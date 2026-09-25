@@ -4,9 +4,10 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { Button, Icon, Loader, Modal, PageHeader } from '../components/ui'
-import { getPokedex, spriteUrl } from '../lib/data'
+import { getPokedex } from '../lib/data'
 import { GENERATIONS, capitalize } from '../lib/pokemon'
 import { useStore } from '../lib/store'
+import Sprite from '../components/Sprite'
 
 const LIVES = 3
 
@@ -120,16 +121,16 @@ export default function GamePage() {
 
       <div className="mt-6 grid aspect-square max-h-[380px] w-full place-items-center rounded-3xl bg-surface">
         <AnimatePresence mode="wait">
-          <motion.img
+          <motion.div
             key={`${game.answerId}-${revealed}`}
-            src={spriteUrl(answerPokemon.sprite)}
-            alt="Quem é esse Pokémon?"
-            className="pixelated h-[85%] object-contain"
+            className="w-[80%]"
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
             style={{ filter: revealed ? 'none' : 'brightness(0)' }}
-          />
+          >
+            <Sprite path={answerPokemon.sprite} box={answerPokemon.box} alt="Quem é esse Pokémon?" />
+          </motion.div>
         </AnimatePresence>
       </div>
       <AnimatePresence>

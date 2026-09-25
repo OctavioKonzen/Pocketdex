@@ -25,6 +25,8 @@ import json
 import os
 import shutil
 
+from PIL import Image
+
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 DB = os.path.join(ROOT, 'assets', 'database')
 OUT = os.path.join(ROOT, 'web-site', 'public')
@@ -41,6 +43,28 @@ def save(path, data):
     os.makedirs(os.path.dirname(full), exist_ok=True)
     with open(full, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, separators=(',', ':'))
+
+
+_boxes = {}
+
+
+def box(path):
+    """Onde o Pokémon está dentro do sprite: [x0, y0, x1, y1, largura, altura].
+
+    Os sprites têm bordas transparentes de tamanhos diferentes (um Bulbasaur
+    ocupa bem menos da imagem que um Charizard). Com esta caixa, o site amplia
+    cada Pokémon para preencher o mesmo espaço e todos ficam do mesmo tamanho.
+    """
+    if not path or not path.endswith('.png'):
+        return None
+    if path not in _boxes:
+        try:
+            with Image.open(os.path.join(DB, 'sprites', path)) as im:
+                bbox = im.convert('RGBA').getbbox()
+                _boxes[path] = [*bbox, *im.size] if bbox else None
+        except FileNotFoundError:
+            _boxes[path] = None
+    return _boxes[path]
 
 
 def form_name(name, base):
@@ -65,8 +89,8 @@ def evolution_edges(node, sprite_of):
             elif d['trigger']:
                 trigger = f"({d['trigger'].replace('-', ' ')})"
         edges.append({
-            'from': {'id': node['species'], 'name': node['name'], 'sprite': sprite_of(node['species'])},
-            'to': {'id': child['species'], 'name': child['name'], 'sprite': sprite_of(child['species'])},
+            'from': {'id': node['species'], 'name': node['name'], 'sprite': sprite_of(node['species']), 'box': box(sprite_of(node['species']))},
+            'to': {'id': child['species'], 'name': child['name'], 'sprite': sprite_of(child['species']), 'box': box(sprite_of(child['species']))},
             'trigger': trigger,
         })
         edges.extend(evolution_edges(child, sprite_of))
@@ -94,6 +118,7 @@ def main():
     index = []
     for p in pokemon:
         s = species_by_id.get(p['species'])
+        sprite = p['sprites'][0] or p['sprites'][2]
         index.append({
             'id': p['id'],
             'name': p['name'],
@@ -101,7 +126,8 @@ def main():
             'default': p['id'] < 10000,
             'gen': s['generation'] if s else None,
             'types': p['types'],
-            'sprite': p['sprites'][0] or p['sprites'][2],
+            'sprite': sprite,
+            'box': box(sprite),
         })
     save('pokemon_index.json', index)
 
@@ -124,6 +150,7 @@ def main():
                 'stats': p['stats'],
                 'abilities': p['abilities'],
                 'sprites': p['sprites'],
+                'boxes': [box(p['sprites'][0]), box(p['sprites'][1])],
                 'moves': p['moves'],
             })
         save(f"pokemon/{s['id']}.json", {

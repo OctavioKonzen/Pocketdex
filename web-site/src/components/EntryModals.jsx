@@ -3,8 +3,9 @@
 
 import { useEffect, useState } from 'react'
 import { getAbilities, getMoveLearners, getMoves, getPokemonById, spriteUrl } from '../lib/data'
-import { displayName, prettyName } from '../lib/pokemon'
+import { prettyName } from '../lib/pokemon'
 import { Icon, Loader, Modal, TypeBadge } from './ui'
+import PokemonCard from './PokemonCard'
 
 const CATEGORY_ICON = { physical: 'physical', special: 'special', status: 'status' }
 
@@ -16,32 +17,28 @@ export function CategoryIcon({ category, className = '' }) {
   )
 }
 
-/** Grade pequena de Pokémon (quem aprende um golpe, quem tem uma habilidade...). */
+/** Grade de Pokémon com o mesmo card da Pokédex (quem aprende um golpe, quem tem uma habilidade...). */
 export function PokemonMiniGrid({ ids, onSelect, hidden = [] }) {
   const [byId, setById] = useState(null)
+  const [limit, setLimit] = useState(60)
   useEffect(() => {
     getPokemonById().then(setById)
   }, [])
   if (!byId) return <Loader size={50} />
+  const list = ids.map((id) => byId.get(id)).filter(Boolean)
   return (
-    <div className="grid grid-cols-[repeat(auto-fill,minmax(96px,1fr))] gap-3">
-      {ids.map((id) => {
-        const p = byId.get(id)
-        if (!p) return null
-        return (
-          <button
-            key={id}
-            type="button"
-            onClick={() => onSelect?.(p)}
-            className="flex cursor-pointer flex-col items-center rounded-2xl bg-surface p-2 transition hover:scale-105 hover:bg-white/10"
-          >
-            <img src={spriteUrl(p.sprite)} alt="" loading="lazy" className="pixelated h-16 w-16" />
-            <span className="w-full truncate text-center text-xs font-semibold">{displayName(p.name)}</span>
-            {hidden.includes(id) && <span className="text-[10px] text-muted">oculta</span>}
-          </button>
-        )
-      })}
-    </div>
+    <>
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(190px,1fr))] gap-4">
+        {list.slice(0, limit).map((p) => (
+          <PokemonCard key={p.id} pokemon={p} onClick={() => onSelect?.(p)} note={hidden.includes(p.id) ? 'oculta' : undefined} />
+        ))}
+      </div>
+      {list.length > limit && (
+        <button type="button" onClick={() => setLimit(limit + 60)} className="mt-4 w-full cursor-pointer rounded-xl bg-surface py-3 font-semibold hover:bg-white/10">
+          Mostrar mais ({list.length - limit})
+        </button>
+      )}
+    </>
   )
 }
 

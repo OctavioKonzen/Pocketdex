@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { createContext, lazy, Suspense, useContext, useEffect, useState } from 'react'
 import { HashRouter, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { imageUrl } from './lib/data'
@@ -84,6 +84,7 @@ function TopBar() {
             className="w-full bg-transparent text-sm outline-none placeholder:text-muted"
           />
         </label>
+        <ThemeToggle />
         <motion.button type="button" whileHover={{ scale: 1.15, rotate: 45 }} onClick={() => navigate('/configuracoes')} aria-label="Configurações" title="Configurações" className="shrink-0 cursor-pointer text-text">
           <Icon name="settings" size={26} />
         </motion.button>
@@ -96,6 +97,37 @@ function TopBar() {
         </label>
       </div>
     </header>
+  )
+}
+
+/** Botão de tema claro/escuro no menu (sol ↔ lua). */
+function ThemeToggle() {
+  const theme = useStore((s) => s.theme)
+  const setTheme = useStore((s) => s.setTheme)
+  const dark = theme === 'dark'
+  return (
+    <motion.button
+      type="button"
+      onClick={() => setTheme(dark ? 'light' : 'dark')}
+      whileHover={{ scale: 1.15 }}
+      whileTap={{ scale: 0.9 }}
+      aria-label={dark ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
+      title={dark ? 'Tema claro' : 'Tema escuro'}
+      className="grid h-10 w-10 shrink-0 cursor-pointer place-items-center rounded-full bg-bg text-text"
+    >
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.span
+          key={theme}
+          initial={{ rotate: -90, scale: 0, opacity: 0 }}
+          animate={{ rotate: 0, scale: 1, opacity: 1 }}
+          exit={{ rotate: 90, scale: 0, opacity: 0 }}
+          transition={{ duration: 0.25 }}
+          className={dark ? 'text-yellow-300' : 'text-indigo-500'}
+        >
+          <Icon name={dark ? 'sun' : 'moon'} size={22} />
+        </motion.span>
+      </AnimatePresence>
+    </motion.button>
   )
 }
 

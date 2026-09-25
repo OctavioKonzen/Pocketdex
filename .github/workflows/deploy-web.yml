@@ -37,7 +37,9 @@ jobs:
           cache-dependency-path: web-site/package-lock.json
 
       - name: Gerar dados do site (Python)
-        run: npm run data
+        run: |
+          pip install pillow
+          npm run data
 
       - run: npm ci
       - run: npm run lint

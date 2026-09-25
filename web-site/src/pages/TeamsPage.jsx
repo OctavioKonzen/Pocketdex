@@ -2,8 +2,9 @@ import { motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button, Empty, Icon, Modal, PageHeader } from '../components/ui'
-import { getPokemonById, spriteUrl } from '../lib/data'
+import { getPokemonById } from '../lib/data'
 import { useStore } from '../lib/store'
+import Sprite from '../components/Sprite'
 
 export default function TeamsPage() {
   const teams = useStore((s) => s.teams)
@@ -73,7 +74,7 @@ export default function TeamsPage() {
                 const p = id && byId?.get(id)
                 return (
                   <div key={i} className="grid aspect-square place-items-center rounded-full bg-surface">
-                    {p && <img src={spriteUrl(p.sprite)} alt="" className="pixelated w-full" />}
+                    {p && <Sprite path={p.sprite} box={p.box} fill={0.8} className="w-full" />}
                   </div>
                 )
               })}
