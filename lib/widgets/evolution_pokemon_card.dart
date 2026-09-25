@@ -3,6 +3,7 @@
 import '../services/pokemon_service.dart';
 import 'package:flutter/material.dart';
 import '../utils/string_extensions.dart';
+import '../utils/app_images.dart';
 
 class EvolutionPokemonCard extends StatefulWidget {
   final String pokemonName;
@@ -116,8 +117,8 @@ class _EvolutionPokemonCardState extends State<EvolutionPokemonCard> {
             children: [
               Hero(
                 tag: 'evolution-$id-$name', 
-                child: Image.network(
-                  imageUrl,
+                child: Image(
+                  image: AppImages.provider(imageUrl),
                   height: widget.size,
                   width: widget.size,
                   fit: BoxFit.contain,

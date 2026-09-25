@@ -9,6 +9,7 @@ import '../utils/string_extensions.dart';
 import '../widgets/pikachu_loading_indicator.dart';
 import '../widgets/pokemon_card.dart';
 import '../utils/responsive.dart';
+import '../utils/app_images.dart';
 
 class BreedingPartnersScreen extends StatefulWidget {
   final PokemonListing initialPokemon;
@@ -228,8 +229,8 @@ class _BreedingPartnersScreenState extends State<BreedingPartnersScreen>
                 right: 0,
                 child: Hero(
                   tag: '${pokemonDetails.id}-${widget.initialPokemon.name}',
-                  child: Image.network(
-                    pokemonDetails.forms.first.pixelImageUrl,
+                  child: Image(
+                    image: AppImages.provider(pokemonDetails.forms.first.pixelImageUrl),
                     height: 200,
                     fit: BoxFit.contain,
                     filterQuality: FilterQuality.none,

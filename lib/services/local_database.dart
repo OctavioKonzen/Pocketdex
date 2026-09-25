@@ -4,17 +4,18 @@
 // (gerados por tool/build_database.py) e são carregados sob demanda, então o
 // app funciona igual no Android, iOS e na Web sem depender da PokeAPI.
 //
-// Os métodos `*Json` devolvem mapas no mesmo formato das respostas da PokeAPI
-// (apenas com os campos usados pelo app), para que os models continuem iguais.
+// Os métodos `*Json` devolvem mapas no mesmo formato das respostas da PokeAPI,
+// para que os models continuem iguais. As imagens também fazem parte do banco
+// (assets/database/sprites/), então as URLs de sprite apontam para assets.
 
 import 'dart:convert';
 import 'package:flutter/services.dart' show rootBundle;
+import '../utils/app_images.dart';
 
 class LocalDatabase {
   LocalDatabase._();
   static final LocalDatabase instance = LocalDatabase._();
 
-  static const spritesBaseUrl = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/';
   static const _statNames = ['hp', 'attack', 'defense', 'special-attack', 'special-defense', 'speed'];
 
   final Map<String, Future<dynamic>> _tables = {};
@@ -51,10 +52,7 @@ class LocalDatabase {
     return (await _indexByName(table))[key];
   }
 
-  static String? spriteUrl(String? path) {
-    if (path == null) return null;
-    return path.startsWith('http') ? path : '$spritesBaseUrl$path';
-  }
+  static String? spriteUrl(String? path) => AppImages.assetPath(path);
 
   /// Converte uma referência no formato "recurso/idOuNome/" em (recurso, chave).
   static (String, String) parseRef(String ref) {
@@ -84,9 +82,22 @@ class LocalDatabase {
     return {
       'id': p['id'],
       'name': p['name'],
+      'is_default': p['is_default'],
+      'base_experience': p['base_experience'],
       'height': p['height'],
       'weight': p['weight'],
       'species': {'name': p['name'], 'url': 'pokemon-species/${p['species']}/'},
+      'abilities': <dynamic>[
+        for (var i = 0; i < (p['abilities'] as List).length; i++)
+          {
+            'slot': i + 1,
+            'is_hidden': p['abilities'][i][1],
+            'ability': {'name': p['abilities'][i][0], 'url': 'ability/${p['abilities'][i][0]}/'},
+          },
+      ],
+      'forms': <dynamic>[
+        for (final id in p['forms'] as List) {'url': 'pokemon-form/$id/'},
+      ],
       'types': <dynamic>[
         for (var i = 0; i < (p['types'] as List).length; i++)
           {'slot': i + 1, 'type': {'name': p['types'][i]}},
@@ -105,19 +116,63 @@ class LocalDatabase {
           },
         },
       },
-      'moves': <dynamic>[
-        for (final m in p['moves'] as List)
-          {
-            'move': {'name': m[0]},
-            'version_group_details': <dynamic>[
-              {
-                'level_learned_at': m[1],
-                'move_learn_method': {'name': m[1] > 0 ? 'level-up' : 'machine'},
-              },
-            ],
-          },
-      ],
+      'moves': _movesToApi(p['moves'] as List),
     };
+  }
+
+  /// Linhas [golpe, método, nível] agrupadas por golpe, no formato da PokeAPI.
+  List<dynamic> _movesToApi(List rows) {
+    final byMove = <String, List<dynamic>>{};
+    for (final row in rows) {
+      byMove.putIfAbsent(row[0] as String, () => <dynamic>[]).add({
+        'level_learned_at': row[2],
+        'move_learn_method': {'name': row[1]},
+      });
+    }
+    return <dynamic>[
+      for (final entry in byMove.entries)
+        {'move': {'name': entry.key, 'url': 'move/${entry.key}/'}, 'version_group_details': entry.value},
+    ];
+  }
+
+  /// Formas (inclusive cosméticas, como Unown A–Z) com sprites normais e shiny.
+  Future<Map<String, dynamic>?> formJson(String idOrName) async {
+    final f = await _find('forms', idOrName);
+    if (f == null) return null;
+    final sprites = f['sprites'] as List;
+    final pokemonById = await _indexById('pokemon');
+    return {
+      'id': f['id'],
+      'name': f['name'],
+      'form_name': f['form_name'],
+      'is_default': f['is_default'],
+      'is_mega': f['is_mega'],
+      'is_battle_only': f['is_battle_only'],
+      'pokemon': {'name': pokemonById[f['pokemon']]?['name'], 'url': 'pokemon/${f['pokemon']}/'},
+      'types': <dynamic>[
+        for (var i = 0; i < (f['types'] as List).length; i++)
+          {'slot': i + 1, 'type': {'name': f['types'][i]}},
+      ],
+      'sprites': {
+        'front_default': spriteUrl(sprites[0]),
+        'front_shiny': spriteUrl(sprites[1]),
+        'other': {
+          'official-artwork': {
+            'front_default': spriteUrl(sprites[2]),
+            'front_shiny': spriteUrl(sprites[3]),
+          },
+        },
+      },
+    };
+  }
+
+  /// Todas as formas de um Pokémon (pelo id do Pokémon).
+  Future<List<Map<String, dynamic>>> formsOfPokemon(int pokemonId) async {
+    final rows = (await _table('forms') as List).cast<Map<String, dynamic>>();
+    return [
+      for (final f in rows)
+        if (f['pokemon'] == pokemonId) (await formJson('${f['id']}'))!,
+    ];
   }
 
   // ---------------------------------------------------------------------------
@@ -133,6 +188,26 @@ class LocalDatabase {
       'name': s['name'],
       'gender_rate': s['gender_rate'],
       'hatch_counter': s['hatch_counter'],
+      'capture_rate': s['capture_rate'],
+      'base_happiness': s['base_happiness'],
+      'is_baby': s['is_baby'],
+      'is_legendary': s['is_legendary'],
+      'is_mythical': s['is_mythical'],
+      'growth_rate': _named(s['growth_rate']),
+      'habitat': _named(s['habitat']),
+      'color': _named(s['color']),
+      'shape': _named(s['shape']),
+      'evolves_from_species': s['evolves_from'] == null
+          ? null
+          : {'name': await speciesName(s['evolves_from'] as int), 'url': 'pokemon-species/${s['evolves_from']}/'},
+      'names': <dynamic>[
+        for (final entry in (s['names'] as Map<String, dynamic>).entries)
+          {'name': entry.value, 'language': {'name': entry.key}},
+      ],
+      'pokedex_numbers': <dynamic>[
+        for (final entry in (s['pokedex_numbers'] as Map<String, dynamic>).entries)
+          {'entry_number': entry.value, 'pokedex': {'name': entry.key}},
+      ],
       'flavor_text_entries': <dynamic>[
         if (s['flavor'] != null) {'flavor_text': s['flavor'], 'language': {'name': 'en'}},
       ],
@@ -228,7 +303,21 @@ class LocalDatabase {
       'accuracy': m['accuracy'],
       'pp': m['pp'],
       'effect_chance': m['effect_chance'],
-      'effect_entries': _englishEffect(m['effect']),
+      'priority': m['priority'],
+      'target': _named(m['target']),
+      'generation': m['generation'] == null ? null : {'url': 'generation/${m['generation']}/'},
+      'meta': m['meta'] == null
+          ? null
+          : {
+              ...m['meta'] as Map<String, dynamic>,
+              'ailment': _named(m['meta']['ailment']),
+              'category': _named(m['meta']['category']),
+            },
+      'stat_changes': <dynamic>[
+        for (final c in m['stat_changes'] as List) {'change': c[1], 'stat': {'name': c[0]}},
+      ],
+      'effect_entries': _englishEffect(m['effect'], m['effect_full']),
+      'flavor_text_entries': _englishFlavor(m['flavor']),
       'learned_by_pokemon': await _pokemonRefs((m['learned_by'] as List).cast<int>()),
     };
   }
@@ -241,7 +330,15 @@ class LocalDatabase {
       'name': i['name'],
       'sprites': {'default': spriteUrl(i['sprite'])},
       'category': {'name': i['category']},
-      'effect_entries': _englishEffect(i['effect']),
+      'cost': i['cost'],
+      'fling_power': i['fling_power'],
+      'fling_effect': _named(i['fling_effect']),
+      'attributes': <dynamic>[for (final a in i['attributes'] as List) {'name': a}],
+      'held_by_pokemon': <dynamic>[
+        for (final ref in await _pokemonRefs((i['held_by'] as List).cast<int>())) {'pokemon': ref},
+      ],
+      'effect_entries': _englishEffect(i['effect'], i['effect_full']),
+      'flavor_text_entries': _englishFlavor(i['flavor'], key: 'text'),
     };
   }
 
@@ -251,8 +348,14 @@ class LocalDatabase {
     return {
       'id': a['id'],
       'name': a['name'],
-      'effect_entries': _englishEffect(a['effect']),
-      'pokemon': await _pokemonRefs((a['pokemon'] as List).cast<int>(), wrap: true),
+      'is_main_series': a['is_main_series'],
+      'generation': a['generation'] == null ? null : {'url': 'generation/${a['generation']}/'},
+      'effect_entries': _englishEffect(a['effect'], a['effect_full']),
+      'flavor_text_entries': _englishFlavor(a['flavor']),
+      'pokemon': [
+        for (final ref in await _pokemonRefs((a['pokemon'] as List).cast<int>(), wrap: true))
+          {...ref as Map<String, dynamic>, 'is_hidden': (a['hidden_for'] as List).contains(_idOf(ref['pokemon']['url']))},
+      ],
     };
   }
 
@@ -274,13 +377,24 @@ class LocalDatabase {
         return abilityJson(key);
       case 'type':
         return typeJson(key);
+      case 'pokemon-form':
+        return formJson(key);
     }
     throw ArgumentError('Recurso desconhecido: $resource');
   }
 
-  List<dynamic> _englishEffect(String? effect) => <dynamic>[
-        if (effect != null) {'short_effect': effect, 'language': {'name': 'en'}},
+  List<dynamic> _englishEffect(String? shortEffect, [String? effect]) => <dynamic>[
+        if (shortEffect != null || effect != null)
+          {'short_effect': shortEffect, 'effect': effect, 'language': {'name': 'en'}},
       ];
+
+  List<dynamic> _englishFlavor(String? text, {String key = 'flavor_text'}) => <dynamic>[
+        if (text != null) {key: text, 'language': {'name': 'en'}},
+      ];
+
+  static Map<String, dynamic>? _named(Object? name) => name == null ? null : {'name': name};
+
+  static int _idOf(String url) => int.parse(parseRef(url).$2);
 
   Future<List<dynamic>> _pokemonRefs(List<int> ids, {bool wrap = false}) async {
     final pokemonById = await _indexById('pokemon');

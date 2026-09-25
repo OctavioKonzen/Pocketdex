@@ -11,6 +11,7 @@ import 'package:pocket_dex/utils/responsive.dart';
 import 'package:pocket_dex/widgets/pikachu_loading_indicator.dart';
 import 'package:pocket_dex/widgets/pokemon_detail_panel.dart';
 import 'package:pocket_dex/widgets/pokemon_display.dart';
+import 'package:pocket_dex/utils/app_images.dart';
 
 enum _AnimationDirection { none, next, previous }
 
@@ -219,8 +220,8 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen>
                             width: 2,
                           ),
                         ),
-                        child: Image.network(
-                          form.pixelImageUrl,
+                        child: Image(
+                          image: AppImages.provider(form.pixelImageUrl),
                           fit: BoxFit.contain,
                           filterQuality: FilterQuality.none,
                           errorBuilder: (context, error, stackTrace) =>
@@ -461,8 +462,8 @@ class _PokemonAnimatedImage extends StatelessWidget {
         scale: scale,
         child: Opacity(
           opacity: opacity,
-          child: Image.network(
-            imageUrl,
+          child: Image(
+            image: AppImages.provider(imageUrl),
             height: 300,
             width: 300,
             fit: BoxFit.contain,

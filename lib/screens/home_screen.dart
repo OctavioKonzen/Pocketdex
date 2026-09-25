@@ -19,6 +19,7 @@ import 'package:pocket_dex/widgets/category_card.dart';
 import 'package:pocket_dex/widgets/pikachu_loading_indicator.dart';
 import 'package:pocket_dex/screens/settings_screen.dart';
 import 'package:pocket_dex/utils/responsive.dart';
+import 'package:pocket_dex/utils/app_images.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -370,7 +371,8 @@ class _SearchResultTileState extends State<_SearchResultTile> {
                       color: backgroundColor,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Image.network(spriteUrl,
+                    child: Image(
+                        image: AppImages.provider(spriteUrl),
                         width: 48, height: 48, gaplessPlayback: true))
               else
                 const SizedBox(width: 56, height: 56),

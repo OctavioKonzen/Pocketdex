@@ -102,16 +102,26 @@ flutter build web --release --no-web-resources-cdn --base-href /Pocketdex/
 
 ## 🗄️ Banco de Dados
 
-O app não consulta mais a PokeAPI em tempo de execução. Os dados ficam em `assets/database/*.json`
-(~2 MB) e são gerados pelo script `tool/build_database.py` a partir do dump estático da PokeAPI.
-As imagens (sprites) continuam sendo carregadas do repositório público de sprites.
+O app não consulta mais a PokeAPI nem baixa imagens da internet: tudo fica em `assets/database/`.
 
-Para atualizar os dados (ex.: novos Pokémon):
+* **Dados (JSON, ~7 MB):** todos os Pokémon e formas (inclusive Mega, Gigantamax, regionais e formas cosméticas como Unown A–Z),
+  espécies, cadeias de evolução, todos os golpes (com todas as formas de aprendizado), habilidades, itens, tipos, egg groups e gerações.
+* **Imagens (~67 MB):** sprites normais e shiny, artes oficiais normais e shiny de todas as formas (em WebP, na resolução original)
+  e os ícones dos itens.
+
+Tudo é gerado pelo script `tool/build_database.py` a partir dos dumps estáticos da PokeAPI. Para atualizar (ex.: novos Pokémon):
 
 ```bash
 git clone --depth 1 --filter=blob:none --sparse https://github.com/PokeAPI/api-data.git
 cd api-data && git sparse-checkout set data/api/v2/pokemon data/api/v2/pokemon-species \
     data/api/v2/evolution-chain data/api/v2/move data/api/v2/type data/api/v2/ability \
-    data/api/v2/item data/api/v2/egg-group data/api/v2/generation && cd ..
-python3 tool/build_database.py api-data
+    data/api/v2/item data/api/v2/egg-group data/api/v2/generation data/api/v2/pokemon-form && cd ..
+
+git clone --depth 1 --filter=blob:none --sparse https://github.com/PokeAPI/sprites.git
+cd sprites && git sparse-checkout set --no-cone '/sprites/pokemon/*.png' '/sprites/pokemon/shiny/*.png' \
+    '/sprites/pokemon/other/official-artwork/*.png' '/sprites/pokemon/other/official-artwork/shiny/*.png' \
+    '/sprites/items/*.png' && cd ..
+
+pip install pillow
+python3 tool/build_database.py api-data sprites
 ```

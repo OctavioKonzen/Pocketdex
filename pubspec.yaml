@@ -32,3 +32,8 @@ flutter:
   assets:
     - assets/images/
     - assets/database/
+    - assets/database/sprites/pokemon/
+    - assets/database/sprites/pokemon/shiny/
+    - assets/database/sprites/pokemon/other/official-artwork/
+    - assets/database/sprites/pokemon/other/official-artwork/shiny/
+    - assets/database/sprites/items/

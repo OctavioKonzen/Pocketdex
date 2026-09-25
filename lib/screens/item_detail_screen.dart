@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import '../models/item.dart';
 import '../utils/responsive.dart';
+import '../utils/app_images.dart';
 
 class ItemDetailScreen extends StatelessWidget {
   final Item item;
@@ -27,8 +28,8 @@ class ItemDetailScreen extends StatelessWidget {
               SizedBox(
                 height: 250,
                 width: 250,
-                child: Image.network(
-                  item.imageUrl,
+                child: Image(
+                  image: AppImages.provider(item.imageUrl),
                   fit: BoxFit.contain,
                   filterQuality: FilterQuality.none,
                   errorBuilder: (c, e, s) => Icon(

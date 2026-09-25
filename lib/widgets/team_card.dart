@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../models/team.dart';
 import '../utils/pokemon_colors.dart';
+import '../utils/app_images.dart';
 
 class TeamCard extends StatelessWidget {
   final Team team;
@@ -163,10 +164,10 @@ class _PokemonIconState extends State<_PokemonIcon> {
           child: CircleAvatar(
             radius: 22,
             backgroundColor: theme.cardColor,
-            backgroundImage: imageUrl.isNotEmpty ? NetworkImage(imageUrl) : null,
+            backgroundImage: imageUrl.isNotEmpty ? AppImages.provider(imageUrl) : null,
             child: imageUrl.isNotEmpty
               ? Ink.image(
-                  image: NetworkImage(imageUrl),
+                  image: AppImages.provider(imageUrl),
                   fit: BoxFit.contain,
                   width: 44,
                   height: 44,

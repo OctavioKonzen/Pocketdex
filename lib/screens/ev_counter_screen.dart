@@ -12,6 +12,7 @@ import '../models/training_pokemon.dart';
 import 'pokedex_screen.dart';
 import 'ev_tracking_screen.dart';
 import 'package:pocket_dex/utils/responsive.dart';
+import 'package:pocket_dex/utils/app_images.dart';
 
 class EvCounterScreen extends StatefulWidget {
   const EvCounterScreen({super.key});
@@ -166,8 +167,8 @@ class _TrainingPokemonCard extends StatelessWidget {
           padding: const EdgeInsets.all(12.0),
           child: Row(
             children: [
-              Image.network(
-                pokemon.imageUrl,
+              Image(
+                image: AppImages.provider(pokemon.imageUrl),
                 width: 70,
                 height: 70,
                 loadingBuilder: (context, child, progress) {

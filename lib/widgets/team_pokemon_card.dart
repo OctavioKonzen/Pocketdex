@@ -4,6 +4,7 @@ import '../services/pokemon_service.dart';
 import 'package:flutter/material.dart';
 import '../utils/pokemon_colors.dart';
 import 'pikachu_loading_indicator.dart';
+import '../utils/app_images.dart';
 
 class TeamPokemonCard extends StatefulWidget {
   final Map<String, String>? pokemonData;
@@ -141,8 +142,8 @@ class _TeamPokemonCardState extends State<TeamPokemonCard> with SingleTickerProv
                     top: 5,
                     left: 0,
                     right: 0,
-                    child: Image.network(
-                      imageUrl,
+                    child: Image(
+                      image: AppImages.provider(imageUrl),
                       height: 80,
                       fit: BoxFit.contain,
                       filterQuality: FilterQuality.none,

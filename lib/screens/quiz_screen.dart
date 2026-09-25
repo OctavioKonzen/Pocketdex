@@ -10,6 +10,7 @@ import '../services/pokemon_service.dart';
 import '../utils/string_extensions.dart';
 import '../widgets/pikachu_loading_indicator.dart';
 import '../utils/responsive.dart';
+import '../utils/app_images.dart';
 
 class QuizScreen extends StatefulWidget {
   final Generation? generation;
@@ -289,8 +290,8 @@ class _QuizScreenState extends State<QuizScreen> {
                           child: Padding(
                             padding: const EdgeInsets.all(8.0),
                             child: _showCorrectAnswer
-                                ? Image.network(
-                                    _correctPokemon!.pixelImageUrl,
+                                ? Image(
+                                    image: AppImages.provider(_correctPokemon!.pixelImageUrl),
                                     key: ValueKey(_correctPokemon!.id),
                                     fit: BoxFit.contain,
                                     filterQuality: FilterQuality.none,
@@ -300,8 +301,8 @@ class _QuizScreenState extends State<QuizScreen> {
                                       Colors.black,
                                       BlendMode.srcIn,
                                     ),
-                                    child: Image.network(
-                                      _correctPokemon!.pixelImageUrl,
+                                    child: Image(
+                                      image: AppImages.provider(_correctPokemon!.pixelImageUrl),
                                       key: ValueKey(
                                           'silhouette_${_correctPokemon!.id}'),
                                       fit: BoxFit.contain,

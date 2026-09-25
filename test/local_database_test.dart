@@ -1,9 +1,12 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pocket_dex/models/ability.dart';
 import 'package:pocket_dex/models/generation.dart';
 import 'package:pocket_dex/models/item.dart';
 import 'package:pocket_dex/models/move.dart';
+import 'package:pocket_dex/services/local_database.dart';
 import 'package:pocket_dex/services/pokemon_service.dart';
+import 'package:pocket_dex/utils/app_images.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -68,6 +71,45 @@ void main() {
     final byId = await service.fetchPokemonJson('25');
     expect(byName['id'], 25);
     expect(byId['name'], 'pikachu');
-    expect(byId['sprites']['front_default'], startsWith('https://'));
+    expect(byId['sprites']['front_default'], 'assets/database/sprites/pokemon/25.png');
+    expect(byId['abilities'].map((a) => a['ability']['name']), containsAll(['static', 'lightning-rod']));
+  });
+
+  test('guarda todos os golpes com a forma de aprendizado', () async {
+    final pikachu = await service.fetchPokemonJson('pikachu');
+    final methods = {
+      for (final m in pikachu['moves'] as List)
+        for (final d in m['version_group_details'] as List) d['move_learn_method']['name'],
+    };
+    expect(methods, containsAll(['level-up', 'machine', 'tutor']));
+  });
+
+  test('todas as imagens (normal, shiny e arte oficial) estão no banco', () async {
+    final db = LocalDatabase.instance;
+    final pokemon = await db.pokemonJson('charizard-mega-x');
+    final sprites = pokemon!['sprites'];
+    final paths = [
+      sprites['front_default'],
+      sprites['front_shiny'],
+      sprites['other']['official-artwork']['front_default'],
+      sprites['other']['official-artwork']['front_shiny'],
+    ];
+    for (final path in paths) {
+      expect(path, startsWith('assets/database/sprites/'));
+      expect((await rootBundle.load(path)).lengthInBytes, greaterThan(0), reason: path);
+    }
+    // URLs antigas salvas em times/treinos são convertidas para o arquivo local.
+    final legacy = AppImages.assetPath(
+        'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/shiny/6.png');
+    expect((await rootBundle.load(legacy!)).lengthInBytes, greaterThan(0));
+    final item = await db.itemJson('master-ball');
+    expect((await rootBundle.load(item!['sprites']['default'])).lengthInBytes, greaterThan(0));
+  });
+
+  test('inclui formas cosméticas', () async {
+    final unown = await LocalDatabase.instance.formsOfPokemon(201);
+    expect(unown.length, greaterThanOrEqualTo(28));
+    final shiny = unown.last['sprites']['front_shiny'] as String;
+    expect((await rootBundle.load(shiny)).lengthInBytes, greaterThan(0));
   });
 }

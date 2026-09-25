@@ -1,6 +1,6 @@
 // lib/models/pokemon_listing.dart
 
-import '../services/local_database.dart';
+import '../utils/app_images.dart';
 
 class PokemonListing {
   final String name;
@@ -37,8 +37,7 @@ class PokemonListing {
     return parts[parts.length - 2];
   }
   
-  String get pixelImageUrl => '${LocalDatabase.spritesBaseUrl}pokemon/$id.png';
+  String get pixelImageUrl => AppImages.pokemonSprite(id);
 
-  static String artworkUrl(String id) =>
-      '${LocalDatabase.spritesBaseUrl}pokemon/other/official-artwork/$id.png';
+  static String artworkUrl(String id) => AppImages.pokemonArtwork(id);
 }

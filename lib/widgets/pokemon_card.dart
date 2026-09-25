@@ -8,6 +8,7 @@ import 'package:pocket_dex/models/pokemon_listing.dart';
 import 'package:pocket_dex/screens/pokemon_detail_screen.dart';
 import 'package:pocket_dex/utils/pokemon_colors.dart';
 import 'package:pocket_dex/widgets/pikachu_loading_indicator.dart';
+import 'package:pocket_dex/utils/app_images.dart';
 
 class PokemonCard extends StatefulWidget {
   final PokemonListing pokemonListing;
@@ -183,8 +184,8 @@ class _PokemonCardState extends State<PokemonCard> with SingleTickerProviderStat
               ),
               Hero(
                 tag: '${_id!}-${widget.pokemonListing.name}',
-                child: Image.network(
-                  _imageUrl!,
+                child: Image(
+                  image: AppImages.provider(_imageUrl!),
                   fit: BoxFit.cover,
                   filterQuality: FilterQuality.none,
                   errorBuilder: (context, error, stackTrace) =>

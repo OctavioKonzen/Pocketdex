@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:pocket_dex/models/pokemon_details.dart';
+import 'package:pocket_dex/utils/app_images.dart';
 
 class PokemonPageItem extends StatelessWidget {
   final PokemonDetails? details;
@@ -46,8 +47,8 @@ class PokemonPageItem extends StatelessWidget {
                 0, 0, colorFactor, 0, 0,
                 0, 0, 0, 1, 0,
               ]),
-              child: Image.network(
-                imageUrl,
+              child: Image(
+                image: AppImages.provider(imageUrl),
                 fit: BoxFit.contain,
                 filterQuality: FilterQuality.none,
                 errorBuilder: (c, e, s) => const Icon(Icons.error_outline, color: Colors.white, size: 50),

@@ -7,6 +7,7 @@ import '../models/pokemon_listing.dart';
 import '../providers/favorites_provider.dart';
 import '../widgets/pokemon_card.dart';
 import '../utils/responsive.dart';
+import '../utils/app_images.dart';
 
 class FavoritesScreen extends StatefulWidget {
   const FavoritesScreen({super.key});
@@ -29,7 +30,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
           name: 'pokemon-$id',
           url: 'pokemon/$id/',
           imageUrl:
-              'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/$id.png');
+              AppImages.pokemonArtwork(id));
     }).toList();
 
     return Scaffold(

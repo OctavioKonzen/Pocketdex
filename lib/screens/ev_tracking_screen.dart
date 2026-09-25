@@ -10,6 +10,7 @@ import 'package:pocket_dex/widgets/pikachu_loading_indicator.dart';
 
 import '../models/training_pokemon.dart';
 import 'package:pocket_dex/utils/responsive.dart';
+import 'package:pocket_dex/utils/app_images.dart';
 
 class EvTrackingScreen extends StatefulWidget {
   final TrainingPokemon pokemon;
@@ -117,8 +118,8 @@ class _EvTrackingScreenState extends State<EvTrackingScreen> {
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
           child: Column(
             children: [
-              Image.network(
-                _currentPokemon.imageUrl,
+              Image(
+                image: AppImages.provider(_currentPokemon.imageUrl),
                 height: 150,
                 errorBuilder: (c, e, s) =>
                     Icon(Icons.error, size: 120, color: theme.hintColor),

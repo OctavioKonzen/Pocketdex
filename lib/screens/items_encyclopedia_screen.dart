@@ -5,6 +5,7 @@ import '../services/pokemon_service.dart';
 import '../utils/string_extensions.dart';
 import 'item_detail_screen.dart';
 import '../utils/responsive.dart';
+import '../utils/app_images.dart';
 
 class ItemsEncyclopediaScreen extends StatefulWidget {
   const ItemsEncyclopediaScreen({super.key});
@@ -128,8 +129,8 @@ class _ItemTile extends StatelessWidget {
           }
           final item = snapshot.data!;
           return ListTile(
-            leading: Image.network(
-              item.imageUrl,
+            leading: Image(
+              image: AppImages.provider(item.imageUrl),
               width: 40,
               height: 40,
               errorBuilder: (c, e, s) =>
