@@ -4,7 +4,7 @@
   <img src="https://img.shields.io/badge/Flutter-3.x-blue?logo=flutter&style=for-the-badge" />
   <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&style=for-the-badge" />
   <img src="https://img.shields.io/badge/Firebase-FFCA28?logo=firebase&style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Android-1.1.3-green?logo=android&style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Android-1.1.4-green?logo=android&style=for-the-badge" />
 </p>
 
 <div align="center">
@@ -35,7 +35,7 @@
 * **Pokédex:** todos os Pokémon e formas (Mega, Alola, Galar...), com filtros por geração e tipo e detalhes completos: status, habilidades, evoluções e golpes.
 * **Favoritos:** guarde os Pokémon que você mais usa.
 * **Montador de Times:** monte times de até 6 Pokémon e veja fraquezas, resistências e a nota do time.
-* **Jogo "Quem é esse Pokémon?":** modo normal e modo **Ranked** (5 segundos por Pokémon), com ranking entre os jogadores.
+* **Jogo "Quem é esse Pokémon?":** modo normal e modo **Ranked** (5 segundos por Pokémon, caindo até 2 conforme os pontos), com ranking entre os jogadores.
 * **Enciclopédia:** golpes, habilidades e itens.
 * **Treino:** guia de Natures, ajuda de Breeding e contador de EVs.
 * **Conta:** login com e-mail/senha ou Google; favoritos, times, treinos e recordes ficam salvos e sincronizados entre o app e o site.

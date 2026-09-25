@@ -3,7 +3,8 @@
 // Partida do "Quem é esse Pokémon?" — mesmas regras do site: 4 opções,
 // 3 vidas. O jogo normal fica salvo na conta para continuar depois (até em
 // outro aparelho). No Ranked (precisa de login) são todas as gerações e só
-// 5 segundos por Pokémon; o recorde dele vai para o ranking.
+// 5 segundos por Pokémon (4 s com 100 pontos, 3 s com 200 e 2 s com 400);
+// o recorde dele vai para o ranking.
 
 import 'dart:math';
 import 'package:flutter/material.dart';
@@ -21,6 +22,14 @@ import '../widgets/pikachu_loading_indicator.dart';
 class QuizScreen extends StatefulWidget {
   static const lives = 3;
   static const rankedSeconds = 5;
+
+  /// Ranked fica mais difícil com os pontos: 100 → 4 s, 200 → 3 s, 400 → 2 s.
+  static int rankedSecondsFor(int score) {
+    if (score >= 400) return 2;
+    if (score >= 200) return 3;
+    if (score >= 100) return 4;
+    return rankedSeconds;
+  }
 
   final Generation? generation;
   final bool ranked;
@@ -127,7 +136,10 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
       _options = options.toList()..shuffle(_random);
     });
     _save();
-    if (_ranked) _timer.forward(from: 0);
+    if (_ranked) {
+      _timer.duration = Duration(seconds: QuizScreen.rankedSecondsFor(_score));
+      _timer.forward(from: 0);
+    }
   }
 
   Map<String, dynamic> get _game => {
