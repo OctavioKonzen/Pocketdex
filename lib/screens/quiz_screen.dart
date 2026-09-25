@@ -12,7 +12,7 @@ import '../models/generation.dart';
 import '../models/pokemon_listing.dart';
 import '../services/pokemon_service.dart';
 import '../services/user_data.dart';
-import '../utils/app_images.dart';
+import '../widgets/pokemon_sprite.dart';
 import '../utils/responsive.dart';
 import '../utils/string_extensions.dart';
 import '../widgets/game_stage.dart';
@@ -298,17 +298,8 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                             transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
                             child: SizedBox.expand(
                               key: ValueKey('$answer-$revealed'),
-                              child: ColorFiltered(
-                                colorFilter: revealed
-                                    ? const ColorFilter.mode(Colors.transparent, BlendMode.dst)
-                                    : const ColorFilter.mode(Colors.black, BlendMode.srcIn),
-                                child: Image.asset(
-                                  AppImages.pokemonSprite(answer),
-                                  fit: BoxFit.contain,
-                                  filterQuality: FilterQuality.none,
-                                  gaplessPlayback: true,
-                                ),
-                              ),
+                              // Mesmo tamanho visual para todos (como no site).
+                              child: PokemonSprite(answer, fill: 0.95, silhouette: revealed ? null : Colors.black),
                             ),
                           ),
                         ),

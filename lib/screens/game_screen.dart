@@ -11,7 +11,7 @@ import '../models/generation.dart';
 import '../services/account_sync.dart';
 import '../services/auth_service.dart';
 import '../services/user_data.dart';
-import '../utils/app_images.dart';
+import '../widgets/pokemon_sprite.dart';
 import '../utils/responsive.dart';
 import '../widgets/game_stage.dart';
 import '../widgets/generation_picker.dart';
@@ -75,10 +75,9 @@ class _GameScreenState extends State<GameScreen> {
                         children: [
                           for (final id in starters)
                             Expanded(
-                              child: ColorFiltered(
-                                colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
-                                child: Image.asset(AppImages.pokemonSprite(id),
-                                    height: 120, fit: BoxFit.contain, filterQuality: FilterQuality.none),
+                              child: SizedBox(
+                                height: 130,
+                                child: PokemonSprite(id, alignBottom: true, silhouette: Colors.black),
                               ),
                             ),
                         ],

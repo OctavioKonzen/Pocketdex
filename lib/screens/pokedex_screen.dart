@@ -7,7 +7,7 @@ import '../models/generation.dart';
 import '../models/pokemon_listing.dart';
 import '../services/pokemon_service.dart';
 import '../utils/pokemon_colors.dart';
-import '../widgets/generation_card.dart';
+import '../widgets/generation_picker.dart';
 import '../widgets/pokemon_card.dart';
 import '../widgets/pikachu_loading_indicator.dart';
 import '../widgets/pokedex_web/pokedex_web_grid.dart';
@@ -240,85 +240,53 @@ class PokedexScreenState extends State<PokedexScreen>
     );
   }
 
+  /// Seletor de geração igual ao do site: botões grandes com as cores da
+  /// geração e os 3 iniciais.
   void _showGenerationSelector() {
     final theme = Theme.of(context);
+    void select(Generation? generation) {
+      setState(() {
+        _selectedGeneration = generation;
+        _selectedTypes.clear();
+      });
+      Navigator.pop(context);
+      _loadPokemon();
+    }
+
     showModalBottomSheet(
-        context: context,
-        backgroundColor: theme.cardColor,
-        isScrollControlled: true,
-        shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-        builder: (context) {
-          return ConstrainedBox(
-              constraints: BoxConstraints(
-                  maxHeight: MediaQuery.of(context).size.height * 0.85),
-              child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 20.0, vertical: 12.0),
-                  child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Center(
-                            child: Container(
-                                width: 40,
-                                height: 5,
-                                decoration: BoxDecoration(
-                                    color: Colors.grey.shade700,
-                                    borderRadius: BorderRadius.circular(10)))),
-                        const SizedBox(height: 24),
-                        Text('Filtrar por Geração',
-                            style: theme.textTheme.headlineSmall),
-                        const SizedBox(height: 20),
-                        Expanded(
-                            child: GridView.builder(
-                                gridDelegate:
-                                    const SliverGridDelegateWithFixedCrossAxisCount(
-                                        crossAxisCount: 2,
-                                        crossAxisSpacing: 16,
-                                        mainAxisSpacing: 16,
-                                        childAspectRatio: 1.2),
-                                itemCount: generations.length + 1,
-                                itemBuilder: (context, index) {
-                                  if (index == 0) {
-                                    return GestureDetector(
-                                        onTap: () {
-                                          setState(() {
-                                            _selectedGeneration = null;
-                                            _selectedTypes.clear();
-                                          });
-                                          Navigator.pop(context);
-                                          _loadPokemon();
-                                        },
-                                        child: Container(
-                                            decoration: BoxDecoration(
-                                                color:
-                                                    theme.colorScheme.surface,
-                                                borderRadius:
-                                                    BorderRadius.circular(16)),
-                                            child: Center(
-                                                child: Text('Todas as Gerações',
-                                                    style: TextStyle(
-                                                        color: theme.colorScheme
-                                                            .onSurface,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        fontSize: 16)))));
-                                  }
-                                  final generation = generations[index - 1];
-                                  return GenerationCard(
-                                      generation: generation,
-                                      onTap: () {
-                                        setState(() {
-                                          _selectedGeneration = generation;
-                                          _selectedTypes.clear();
-                                        });
-                                        Navigator.pop(context);
-                                        _loadPokemon();
-                                      });
-                                }))
-                      ])));
-        });
+      context: context,
+      backgroundColor: theme.cardColor,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (sheet) => ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(sheet).size.height * 0.85),
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 5,
+                decoration: BoxDecoration(color: Colors.grey.shade700, borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text('Filtrar por Geração', style: theme.textTheme.headlineSmall),
+            const SizedBox(height: 12),
+            for (final generation in <Generation?>[null, ...generations])
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: GenerationPicker.option(
+                  gen: generation,
+                  selected: generation?.id == _selectedGeneration?.id,
+                  onTap: () => select(generation),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _handlePokemonSelection(PokemonListing pokemon) async {

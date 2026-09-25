@@ -13,11 +13,12 @@ import 'package:pocket_dex/services/account_sync.dart';
 import 'package:pocket_dex/services/auth_service.dart';
 import 'package:pocket_dex/services/firebase_setup.dart';
 import 'package:pocket_dex/services/user_data.dart';
+import 'package:pocket_dex/widgets/pokemon_sprite.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Dados salvos no aparelho (favoritos, times, treinos, tema e recordes).
-  await UserData.instance.load();
+  await Future.wait([UserData.instance.load(), SpriteBoxes.load()]);
   // Tabela Pokémon → espécie (para converter times/treinos da conta) em
   // segundo plano, sem atrasar a abertura do app.
   AccountFormat.init();

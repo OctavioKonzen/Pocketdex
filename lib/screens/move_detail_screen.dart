@@ -18,7 +18,6 @@ class MoveDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final Color cardBackgroundColor = getColorForType(move.type);
 
     return Scaffold(
       appBar: AppBar(
@@ -27,67 +26,9 @@ class MoveDetailScreen extends StatelessWidget {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: double.infinity,
-            margin: const EdgeInsets.all(16.0),
+          Padding(
             padding: const EdgeInsets.all(16.0),
-            decoration: BoxDecoration(
-              color: cardBackgroundColor.withAlpha(200),
-              borderRadius: BorderRadius.circular(16.0),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Chip(
-                      label: Text(move.type.capitalise(),
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold)),
-                      backgroundColor: cardBackgroundColor,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                    ),
-                    const SizedBox(width: 12),
-                    Icon(
-                      move.category == 'physical'
-                          ? Icons.sports_mma
-                          : move.category == 'special'
-                              ? Icons.star
-                              : Icons.adjust,
-                      color: Colors.white,
-                      size: 22,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      move.category.capitalise(),
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  move.effect,
-                  style: const TextStyle(
-                      color: Colors.white, height: 1.5, fontSize: 16),
-                ),
-                const SizedBox(height: 20),
-                const Divider(color: Colors.white30),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildStatInfo('Power', move.power?.toString() ?? '--'),
-                    _buildStatInfo('Accuracy',
-                        move.accuracy != null ? '${move.accuracy}%' : '--'),
-                    _buildStatInfo('PP', move.pp?.toString() ?? '--'),
-                  ],
-                ),
-              ],
-            ),
+            child: MoveInfoCard(move: move),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
@@ -103,9 +44,7 @@ class MoveDetailScreen extends StatelessWidget {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: PikachuLoadingIndicator());
                 }
-                if (snapshot.hasError ||
-                    !snapshot.hasData ||
-                    snapshot.data!.isEmpty) {
+                if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
                   return Center(
                       child: Text('Nenhum Pokémon encontrado.',
                           style: TextStyle(color: theme.hintColor)));
@@ -131,6 +70,73 @@ class MoveDetailScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Quadro com tipo, categoria, efeito, poder, precisão e PP do golpe
+/// (usado na tela do golpe e aberto dentro da lista da Enciclopédia).
+class MoveInfoCard extends StatelessWidget {
+  final Move move;
+  const MoveInfoCard({super.key, required this.move});
+
+  @override
+  Widget build(BuildContext context) {
+    final Color cardBackgroundColor = getColorForType(move.type);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: cardBackgroundColor.withAlpha(200),
+        borderRadius: BorderRadius.circular(16.0),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Chip(
+                label: Text(move.type.capitalise(),
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                backgroundColor: cardBackgroundColor,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+              ),
+              const SizedBox(width: 12),
+              Icon(
+                move.category == 'physical'
+                    ? Icons.sports_mma
+                    : move.category == 'special'
+                        ? Icons.star
+                        : Icons.adjust,
+                color: Colors.white,
+                size: 22,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                move.category.capitalise(),
+                style:
+                    const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            move.effect,
+            style: const TextStyle(color: Colors.white, height: 1.5, fontSize: 16),
+          ),
+          const SizedBox(height: 20),
+          const Divider(color: Colors.white30),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildStatInfo('Power', move.power?.toString() ?? '--'),
+              _buildStatInfo('Accuracy', move.accuracy != null ? '${move.accuracy}%' : '--'),
+              _buildStatInfo('PP', move.pp?.toString() ?? '--'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildStatInfo(String label, String value) {
     return Column(
@@ -142,8 +148,7 @@ class MoveDetailScreen extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(
-              color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+          style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
         ),
       ],
     );

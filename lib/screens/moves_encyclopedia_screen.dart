@@ -1,6 +1,7 @@
 // lib/screens/moves_encyclopedia_screen.dart
 
 import 'package:flutter/material.dart';
+import '../widgets/expandable_entry.dart';
 import '../models/move.dart';
 import '../services/pokemon_service.dart';
 import '../utils/pokemon_colors.dart';
@@ -18,6 +19,15 @@ class MovesEncyclopediaScreen extends StatefulWidget {
 
 class _MovesEncyclopediaScreenState extends State<MovesEncyclopediaScreen> {
   final PokemonService _pokemonService = PokemonService();
+  // Item aberto na lista (abre embaixo, empurrando os outros).
+  final ValueNotifier<String?> _openId = ValueNotifier(null);
+
+  @override
+  void dispose() {
+    _openId.dispose();
+    super.dispose();
+  }
+
   List<Map<String, String>> _allMoves = [];
   List<Map<String, String>> _filteredMoves = [];
   bool _isLoading = true;
@@ -89,6 +99,7 @@ class _MovesEncyclopediaScreenState extends State<MovesEncyclopediaScreen> {
                         name: moveData['name']!,
                         url: moveData['url']!,
                         pokemonService: _pokemonService,
+                        openId: _openId,
                       );
                     },
                   ),
@@ -103,64 +114,54 @@ class _MoveTile extends StatelessWidget {
   final String name;
   final String url;
   final PokemonService pokemonService;
+  final ValueNotifier<String?> openId;
 
-  const _MoveTile(
-      {required this.name, required this.url, required this.pokemonService});
+  const _MoveTile({required this.name, required this.url, required this.pokemonService, required this.openId});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
-      color: theme.cardColor,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: FutureBuilder<Move>(
-        future: pokemonService.fetchResourceDetails(
-            url, (json) => Move.fromApiJson(json)),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return ListTile(
-              title: Text(name.replaceAll('-', ' ').capitalise(),
-                  style: TextStyle(color: theme.colorScheme.onSurface)),
-              subtitle: Text('Carregando...',
-                  style: TextStyle(color: theme.hintColor)),
-            );
-          }
-          final move = snapshot.data!;
-          return ListTile(
-            title: Text(move.name,
-                style: TextStyle(
-                    color: theme.colorScheme.onSurface,
-                    fontWeight: FontWeight.bold)),
-            subtitle: Row(
-              children: [
-                Chip(
-                  label: Text(move.type.capitalise(),
-                      style: const TextStyle(color: Colors.white)),
-                  backgroundColor: getColorForType(move.type),
-                  visualDensity: VisualDensity.compact,
-                ),
-                const SizedBox(width: 8),
-                Icon(
-                  move.category == 'physical'
-                      ? Icons.sports_mma
-                      : move.category == 'special'
-                          ? Icons.star
-                          : Icons.adjust,
-                  color: theme.hintColor,
-                  size: 20,
-                ),
-              ],
-            ),
-            trailing: Icon(Icons.chevron_right, color: theme.hintColor),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => MoveDetailScreen(move: move)),
-              );
-            },
-          );
-        },
+    return ExpandableEntry<Move>(
+      id: url,
+      openId: openId,
+      accent: const Color(0xFFFFA726),
+      load: () => pokemonService.fetchResourceDetails(url, (json) => Move.fromApiJson(json)),
+      header: (context, move, open) => ListTile(
+        title: Text(move?.name ?? name.replaceAll('-', ' ').capitalise(),
+            style: TextStyle(color: theme.colorScheme.onSurface, fontWeight: FontWeight.bold)),
+        subtitle: move == null
+            ? Text('Carregando...', style: TextStyle(color: theme.hintColor))
+            : Row(
+                children: [
+                  Chip(
+                    label: Text(move.type.capitalise(), style: const TextStyle(color: Colors.white)),
+                    backgroundColor: getColorForType(move.type),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(
+                    move.category == 'physical'
+                        ? Icons.sports_mma
+                        : move.category == 'special'
+                            ? Icons.star
+                            : Icons.adjust,
+                    color: theme.hintColor,
+                    size: 20,
+                  ),
+                ],
+              ),
+      ),
+      details: (context, move) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          MoveInfoCard(move: move),
+          const SizedBox(height: 12),
+          Text('Pokémon que aprendem este Golpe:', style: theme.textTheme.titleMedium),
+          PokemonPreviewGrid(
+            load: () => pokemonService.fetchPokemonWhoLearnMove(move.name),
+            onSeeAll: () => Navigator.push(context, MaterialPageRoute(builder: (_) => MoveDetailScreen(move: move))),
+          ),
+        ],
       ),
     );
   }
