@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+import { m } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import PokemonPicker from '../components/PokemonPicker'
@@ -67,7 +67,7 @@ export default function TeamBuilderPage() {
           />
           <div className="mt-3 flex flex-wrap gap-2">
             {TEAM_COLORS.map((c) => (
-              <motion.button
+              <m.button
                 key={c}
                 type="button"
                 whileHover={{ scale: 1.2 }}
@@ -87,7 +87,7 @@ export default function TeamBuilderPage() {
               return p ? (
                 <PokemonCard key={slot} pokemon={p} onClick={() => setRemovingSlot(slot)} />
               ) : (
-                <motion.button
+                <m.button
                   key={slot}
                   type="button"
                   whileHover={{ scale: 1.05 }}
@@ -98,7 +98,7 @@ export default function TeamBuilderPage() {
                   style={{ height: CARD_STYLE.height, background: 'var(--surface)', border: '2px dashed var(--line)' }}
                 >
                   <Icon name="add" size={40} className="text-muted" />
-                </motion.button>
+                </m.button>
               )
             })}
           </div>
@@ -113,7 +113,7 @@ export default function TeamBuilderPage() {
             <div className="flex-1">
               <div className="text-sm text-muted">Nota (0 a 10)</div>
               <div className="mt-1 h-3 overflow-hidden rounded-full bg-white/15">
-                <motion.div className="h-full rounded-full" style={{ background: color }} animate={{ width: `${score * 10}%` }} />
+                <m.div className="h-full rounded-full" style={{ background: color }} animate={{ width: `${score * 10}%` }} />
               </div>
             </div>
           </div>

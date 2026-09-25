@@ -1,6 +1,6 @@
 // Componentes básicos reutilizados em todo o site.
 
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, m } from 'framer-motion'
 import { useEffect } from 'react'
 import { imageUrl, loaderUrl } from '../lib/data'
 import { capitalize, typeColor } from '../lib/pokemon'
@@ -45,7 +45,7 @@ export function SpinningPokeball({ size, opacity = 0.2, className = '', slow = f
 /** Botão redondo com ícone que cresce ao passar o mouse. */
 export function IconButton({ label, onClick, children, className = '', active = false }) {
   return (
-    <motion.button
+    <m.button
       type="button"
       title={label}
       aria-label={label}
@@ -55,14 +55,14 @@ export function IconButton({ label, onClick, children, className = '', active = 
       className={`grid h-10 w-10 cursor-pointer place-items-center rounded-full bg-white/20 text-white ${active ? 'text-yellow-300' : ''} ${className}`}
     >
       {children}
-    </motion.button>
+    </m.button>
   )
 }
 
 /** Botão comum com animação de hover. */
 export function Button({ children, onClick, color = '#2196f3', className = '', type = 'button', disabled }) {
   return (
-    <motion.button
+    <m.button
       type={type}
       disabled={disabled}
       onClick={onClick}
@@ -72,7 +72,7 @@ export function Button({ children, onClick, color = '#2196f3', className = '', t
       style={{ background: color }}
     >
       {children}
-    </motion.button>
+    </m.button>
   )
 }
 
@@ -117,14 +117,14 @@ export function Modal({ open, onClose, title, children, wide = false }) {
   return (
     <AnimatePresence>
       {open && (
-        <motion.div
+        <m.div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
         >
-          <motion.div
+          <m.div
             role="dialog"
             aria-label={title}
             className={`flex max-h-[90vh] w-full flex-col overflow-hidden rounded-3xl bg-card shadow-2xl ${wide ? 'max-w-5xl' : 'max-w-lg'}`}
@@ -141,8 +141,8 @@ export function Modal({ open, onClose, title, children, wide = false }) {
               </button>
             </div>
             <div className="overflow-y-auto px-6 pb-6">{children}</div>
-          </motion.div>
-        </motion.div>
+          </m.div>
+        </m.div>
       )}
     </AnimatePresence>
   )

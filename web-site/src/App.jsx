@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, m } from 'framer-motion'
 import { createContext, lazy, Suspense, useContext, useEffect, useState } from 'react'
 import { HashRouter, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { imageUrl } from './lib/data'
@@ -34,7 +34,7 @@ function NavButton({ section }) {
   const [hover, setHover] = useState(false)
   return (
     <NavLink to={section.path} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
-      <motion.span
+      <m.span
         whileHover={{ scale: 1.08 }}
         whileTap={{ scale: 0.95 }}
         title={section.label}
@@ -49,7 +49,7 @@ function NavButton({ section }) {
         <Icon name={section.icon} size={20} style={{ color: active || hover ? undefined : section.color }} />
         {/* No celular aparecem só os ícones. */}
         <span className="hidden md:inline">{section.label}</span>
-      </motion.span>
+      </m.span>
     </NavLink>
   )
 }
@@ -67,9 +67,9 @@ function TopBar() {
   return (
     <header className="sticky top-0 z-40 bg-surface shadow-lg">
       <div className="flex h-[72px] items-center gap-2 px-3 sm:gap-4 sm:px-6">
-        <motion.button type="button" onClick={() => navigate('/')} whileHover={{ scale: 1.08 }} className="shrink-0 cursor-pointer" aria-label="PocketDex">
+        <m.button type="button" onClick={() => navigate('/')} whileHover={{ scale: 1.08 }} className="shrink-0 cursor-pointer" aria-label="PocketDex">
           <img src={imageUrl('poke_logo.png')} alt="PocketDex" className="h-10 md:h-[52px]" />
-        </motion.button>
+        </m.button>
         <nav className="flex min-w-0 flex-1 gap-1 overflow-x-auto py-2">
           {SECTIONS.map((s) => (
             <NavButton key={s.path} section={s} />
@@ -85,9 +85,9 @@ function TopBar() {
           />
         </label>
         <ThemeToggle />
-        <motion.button type="button" whileHover={{ scale: 1.15, rotate: 45 }} onClick={() => navigate('/configuracoes')} aria-label="Configurações" title="Configurações" className="shrink-0 cursor-pointer text-text">
+        <m.button type="button" whileHover={{ scale: 1.15, rotate: 45 }} onClick={() => navigate('/configuracoes')} aria-label="Configurações" title="Configurações" className="shrink-0 cursor-pointer text-text">
           <Icon name="settings" size={26} />
-        </motion.button>
+        </m.button>
       </div>
       {/* Busca em telas menores */}
       <div className="px-4 pb-3 lg:hidden">
@@ -106,7 +106,7 @@ function ThemeToggle() {
   const setTheme = useStore((s) => s.setTheme)
   const dark = theme === 'dark'
   return (
-    <motion.button
+    <m.button
       type="button"
       onClick={() => setTheme(dark ? 'light' : 'dark')}
       whileHover={{ scale: 1.15 }}
@@ -116,7 +116,7 @@ function ThemeToggle() {
       className="grid h-10 w-10 shrink-0 cursor-pointer place-items-center rounded-full bg-bg text-text"
     >
       <AnimatePresence mode="wait" initial={false}>
-        <motion.span
+        <m.span
           key={theme}
           initial={{ rotate: -90, scale: 0, opacity: 0 }}
           animate={{ rotate: 0, scale: 1, opacity: 1 }}
@@ -125,9 +125,9 @@ function ThemeToggle() {
           className={dark ? 'text-yellow-300' : 'text-indigo-500'}
         >
           <Icon name={dark ? 'sun' : 'moon'} size={22} />
-        </motion.span>
+        </m.span>
       </AnimatePresence>
-    </motion.button>
+    </m.button>
   )
 }
 

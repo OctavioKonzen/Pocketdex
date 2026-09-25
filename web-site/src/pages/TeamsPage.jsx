@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+import { m } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button, Empty, Icon, Modal, PageHeader } from '../components/ui'
@@ -41,7 +41,7 @@ export default function TeamsPage() {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {teams.map((team) => (
-          <motion.div
+          <m.div
             key={team.id}
             layout
             whileHover={{ scale: 1.03 }}
@@ -79,7 +79,7 @@ export default function TeamsPage() {
                 )
               })}
             </div>
-          </motion.div>
+          </m.div>
         ))}
       </div>
 

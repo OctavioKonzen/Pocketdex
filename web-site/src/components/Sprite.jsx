@@ -5,21 +5,20 @@
 // (calculado em tool/build_web_data.py); com isso o Pokémon é ampliado para
 // preencher a caixa quadrada em que ele é desenhado.
 
-import { motion } from 'framer-motion'
 import { spriteUrl } from '../lib/data'
 
 /**
  * @param fill   quanto da caixa o Pokémon ocupa (0 a 1)
  * @param align  'center' ou 'bottom' (Pokémon "apoiado" embaixo)
  */
-export default function Sprite({ path, box, alt = '', fill = 0.9, align = 'center', className = '', imgClassName = '', motionProps, style }) {
+export default function Sprite({ path, box, alt = '', fill = 0.9, align = 'center', className = '', imgClassName = '', style }) {
   const src = spriteUrl(path)
   if (!src) return null
 
   if (!box) {
     return (
       <div className={`relative aspect-square ${className}`} style={style}>
-        <motion.img src={src} alt={alt} loading="lazy" className={`pixelated absolute inset-0 h-full w-full object-contain ${imgClassName}`} {...motionProps} />
+        <img src={src} alt={alt} loading="lazy" decoding="async" className={`pixelated pointer-events-none absolute inset-0 h-full w-full object-contain ${imgClassName}`} />
       </div>
     )
   }
@@ -33,14 +32,14 @@ export default function Sprite({ path, box, alt = '', fill = 0.9, align = 'cente
 
   return (
     <div className={`relative aspect-square ${className}`} style={style}>
-      <motion.img
+      <img
         src={src}
         alt={alt}
         loading="lazy"
+        decoding="async"
         draggable={false}
-        className={`pixelated absolute max-w-none ${imgClassName}`}
+        className={`pixelated pointer-events-none absolute max-w-none ${imgClassName}`}
         style={{ width: `${(w / m) * 100}%`, height: `${(h / m) * 100}%`, left: `${left * 100}%`, top: `${top * 100}%` }}
-        {...motionProps}
       />
     </div>
   )

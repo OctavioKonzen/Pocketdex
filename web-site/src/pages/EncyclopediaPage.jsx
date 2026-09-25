@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+import { m } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import DetailsPanel from '../components/DetailsPanel'
@@ -28,7 +28,7 @@ export default function EncyclopediaPage() {
       <PageHeader title="Enciclopédia" subtitle="Todos os golpes, habilidades e itens do banco de dados." />
       <div className="mb-5 flex flex-wrap items-center gap-3">
         {TABS.map((t) => (
-          <motion.button
+          <m.button
             key={t.key}
             type="button"
             whileHover={{ scale: 1.06 }}
@@ -37,7 +37,7 @@ export default function EncyclopediaPage() {
             animate={{ backgroundColor: tab === t.key ? t.color : 'var(--surface)', color: tab === t.key ? '#fff' : 'var(--text)' }}
           >
             {t.label}
-          </motion.button>
+          </m.button>
         ))}
         <SearchInput value={query} onChange={setQuery} placeholder={`Procurar ${TABS.find((t) => t.key === tab)?.label.toLowerCase() ?? ''}`} className="min-w-[240px] flex-1" />
       </div>
@@ -69,10 +69,10 @@ function useLimited(list) {
 
 function ListRow({ onClick, children }) {
   return (
-    <motion.button type="button" onClick={onClick} whileHover={{ scale: 1.015 }} className="flex w-full cursor-pointer items-center gap-3 rounded-2xl bg-card px-4 py-3 text-left shadow-sm">
+    <m.button type="button" onClick={onClick} whileHover={{ scale: 1.015 }} className="flex w-full cursor-pointer items-center gap-3 rounded-2xl bg-card px-4 py-3 text-left shadow-sm">
       {children}
       <Icon name="right" className="ml-auto shrink-0 text-muted" />
-    </motion.button>
+    </m.button>
   )
 }
 

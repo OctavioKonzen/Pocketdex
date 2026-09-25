@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, m } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import DetailsPanel from '../components/DetailsPanel'
@@ -24,7 +24,7 @@ export default function TrainingPage() {
       <PageHeader title="Centro de Treinamento" subtitle="Ferramentas para treinadores dedicados que buscam o Pokémon perfeito." />
       <div className="mb-6 grid gap-3 md:grid-cols-3">
         {TOOLS.map((t) => (
-          <motion.button
+          <m.button
             key={t.key}
             type="button"
             whileHover={{ scale: 1.03 }}
@@ -39,15 +39,15 @@ export default function TrainingPage() {
               <span className="block font-bold">{t.label}</span>
               <span className="block text-xs opacity-80">{t.subtitle}</span>
             </span>
-          </motion.button>
+          </m.button>
         ))}
       </div>
       <AnimatePresence mode="wait">
-        <motion.div key={tool} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.2 }}>
+        <m.div key={tool} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.2 }}>
           {tool === 'natures' && <Natures />}
           {tool === 'breeding' && <Breeding />}
           {tool === 'evs' && <EvCounter />}
-        </motion.div>
+        </m.div>
       </AnimatePresence>
     </div>
   )
@@ -57,7 +57,7 @@ function Natures() {
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
       {NATURES.map((n) => (
-        <motion.div key={n.name} whileHover={{ scale: 1.04 }} className="rounded-2xl bg-card p-4 shadow">
+        <m.div key={n.name} whileHover={{ scale: 1.04 }} className="rounded-2xl bg-card p-4 shadow">
           <div className="text-lg font-bold">{n.name}</div>
           {n.neutral ? (
             <div className="mt-1 text-sm text-muted">Neutra - Nenhum efeito</div>
@@ -67,7 +67,7 @@ function Natures() {
               <span className="text-red-400">▼ {n.decreases}</span>
             </div>
           )}
-        </motion.div>
+        </m.div>
       ))}
     </div>
   )
@@ -172,7 +172,7 @@ function EvCounter() {
         {training.map((t) => {
           const total = Object.values(t.evs).reduce((a, b) => a + b, 0)
           return (
-            <motion.div key={t.id} layout className="rounded-3xl bg-card p-5 shadow">
+            <m.div key={t.id} layout className="rounded-3xl bg-card p-5 shadow">
               <div className="flex items-center gap-3">
                 <Sprite path={t.sprite} box={t.box} className="w-20 shrink-0" />
                 <div className="flex-1">
@@ -195,7 +195,7 @@ function EvCounter() {
                         <b>{value}</b>
                       </div>
                       <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/10">
-                        <motion.div className="h-full" style={{ background: s.color }} animate={{ width: `${(value / MAX_STAT_EVS) * 100}%` }} />
+                        <m.div className="h-full" style={{ background: s.color }} animate={{ width: `${(value / MAX_STAT_EVS) * 100}%` }} />
                       </div>
                     </div>
                   )
@@ -203,9 +203,9 @@ function EvCounter() {
               </div>
               <AnimatePresence>
                 {lastGain?.id === t.id && (
-                  <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-3 text-sm text-green-400">
+                  <m.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-3 text-sm text-green-400">
                     {lastGain.text}
-                  </motion.p>
+                  </m.p>
                 )}
               </AnimatePresence>
               <div className="mt-4 flex gap-2">
@@ -216,7 +216,7 @@ function EvCounter() {
                   <Icon name="refresh" />
                 </button>
               </div>
-            </motion.div>
+            </m.div>
           )
         })}
       </div>
