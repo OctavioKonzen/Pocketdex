@@ -116,6 +116,9 @@ primeiro a tela de login. No cadastro a pessoa escolhe um **nome**, que não pod
 Favoritos, times, treinos, recorde e tema ficam salvos na conta (Firestore), então aparecem em qualquer computador
 (e futuramente no app, que pode usar o mesmo projeto do Firebase).
 
+No jogo "Quem é esse Pokémon?" há o modo **Ranked** (todas as gerações, 5 segundos por Pokémon): o recorde dele
+vai para o **ranking** mostrado na tela do jogo (coleção `ranking` do Firestore).
+
 Enquanto o Firebase não estiver configurado, o site funciona sem login. Para ativar:
 
 1. Crie um projeto em https://console.firebase.google.com e adicione um **App da Web**.

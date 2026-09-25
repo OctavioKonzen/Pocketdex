@@ -64,14 +64,18 @@ export const useStore = create(
       resetEvs: (id) => set(({ training }) => ({ training: training.map((t) => (t.id === id ? { ...t, evs: {} } : t)) })),
 
       // Quiz "Quem é esse Pokémon?"
-      quizRecord: 0,
+      quizRecord: 0, // recorde do modo normal
+      rankedRecord: 0, // recorde do modo Ranked (é o que vai para o ranking)
       quizGame: null, // {generation, score, lives, answerId, options}
       saveQuizGame: (game) => set({ quizGame: game }),
       finishQuiz: (score) =>
         set(({ quizRecord }) => ({ quizGame: null, quizRecord: Math.max(quizRecord, score) })),
-      resetQuizRecord: () => set({ quizRecord: 0 }),
+      finishRanked: (score) => set(({ rankedRecord }) => ({ rankedRecord: Math.max(rankedRecord, score) })),
 
-      clearAll: () => set({ favorites: [], teams: [], training: [], quizRecord: 0, quizGame: null }),
+      /** Limpa favoritos, times e treinos (os recordes ficam). */
+      clearCollections: () => set({ favorites: [], teams: [], training: [] }),
+      /** Tudo, ao sair da conta. */
+      clearAll: () => set({ favorites: [], teams: [], training: [], quizRecord: 0, rankedRecord: 0, quizGame: null }),
     }),
     { name: 'pocketdex' },
   ),

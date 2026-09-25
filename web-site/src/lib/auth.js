@@ -199,6 +199,31 @@ export async function saveUserData(uid, data) {
   await setDoc(doc(db, 'users', uid), { data, updatedAt: serverTimestamp() }, { merge: true })
 }
 
+// ---------------------------------------------------------------- ranking
+//   ranking/{uid} → { name, score, updatedAt }   (recorde do "Quem é esse Pokémon?")
+
+/** Coloca (ou tira, se for 0) o recorde da pessoa no ranking. */
+export async function saveRanking(uid, name, score) {
+  const { db, doc, setDoc, deleteDoc, serverTimestamp } = await firebase()
+  const ref = doc(db, 'ranking', uid)
+  if (score > 0) await setDoc(ref, { name, score, updatedAt: serverTimestamp() })
+  else await deleteDoc(ref)
+}
+
+/** Os melhores recordes, do maior para o menor. */
+export async function getRanking(count = 10) {
+  const { db, collection, query, orderBy, limit, getDocs } = await firebase()
+  const snap = await getDocs(query(collection(db, 'ranking'), orderBy('score', 'desc'), limit(count)))
+  return snap.docs.map((d) => ({ uid: d.id, name: d.data().name, score: d.data().score }))
+}
+
+/** Posição de quem tem essa pontuação (quantos têm mais + 1). */
+export async function getRankingPosition(score) {
+  const { db, collection, query, where, getCountFromServer } = await firebase()
+  const snap = await getCountFromServer(query(collection(db, 'ranking'), where('score', '>', score)))
+  return snap.data().count + 1
+}
+
 // ---------------------------------------------------------------- mensagens
 
 const MESSAGES = {

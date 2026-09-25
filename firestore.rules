@@ -11,6 +11,20 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
 
+    // Ranking do modo Ranked do jogo: todos os logados veem; cada pessoa só
+    // escreve a própria linha, com o nome da conta dela.
+    match /ranking/{uid} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['name', 'score', 'updatedAt'])
+        && request.resource.data.score is int
+        && request.resource.data.score > 0
+        && request.resource.data.score <= 5000
+        && request.resource.data.name == get(/databases/$(database)/documents/users/$(uid)).data.name;
+      allow delete: if request.auth != null && request.auth.uid == uid;
+    }
+
     // Nomes já usados. Qualquer um pode consultar (para avisar que o nome
     // já existe), mas só dá para reservar um nome livre, para si mesmo.
     // Assim não existem 2 pessoas com o mesmo nome.
