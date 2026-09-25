@@ -6,6 +6,7 @@
 import 'package:uuid/uuid.dart';
 import '../models/team.dart';
 import 'account_format.dart';
+import 'team_share.dart';
 import 'user_data.dart';
 
 class TeamService {
@@ -21,6 +22,18 @@ class TeamService {
       'teams': [..._data.teams, AccountFormat.teamToAccount(team)],
     });
     return team;
+  }
+
+  /// Time recebido de outra pessoa (código, link ou Showdown).
+  Future<Team> importTeam(SharedTeam shared) async {
+    final account = {
+      'id': _uuid.v4(),
+      'name': shared.name,
+      'color': shared.color,
+      'pokemon': [for (var i = 0; i < 6; i++) i < shared.pokemon.length ? shared.pokemon[i] : null],
+    };
+    _data.update({'teams': [..._data.teams, account]});
+    return AccountFormat.teamFromAccount(account);
   }
 
   Future<void> updateTeam(Team updatedTeam) async {

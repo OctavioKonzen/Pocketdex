@@ -2,6 +2,7 @@
 
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../widgets/team_share_dialogs.dart';
 
 import '../models/team.dart';
 import '../models/type_relations.dart';
@@ -394,6 +395,16 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen>
         appBar: AppBar(
           title: const Text('Editar time'),
           actions: [
+            IconButton(
+              tooltip: 'Compartilhar',
+              icon: const Icon(Icons.share),
+              onPressed: hasPokemon
+                  ? () async {
+                      await _persist();
+                      if (context.mounted) await TeamShareDialogs.share(context, _editableTeam.id);
+                    }
+                  : null,
+            ),
             TextButton.icon(
               onPressed: _saveTeam,
               icon: const Icon(Icons.check),

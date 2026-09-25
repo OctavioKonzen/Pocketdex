@@ -4,13 +4,19 @@
 // 3 vidas. O jogo normal fica salvo na conta para continuar depois (até em
 // outro aparelho). No Ranked (precisa de login) são todas as gerações e só
 // 5 segundos por Pokémon (4 s com 100 pontos, 3 s com 200 e 2 s com 400);
-// o recorde dele vai para o ranking.
+// o recorde dele vai para o ranking geral e o da semana.
+//
+// Desafio do dia (precisa de login): os mesmos 10 Pokémon para todo mundo no
+// dia (os mesmos do site), 10 segundos cada e uma tentativa só. Quanto mais
+// rápido acertar, mais pontos.
 
 import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '../models/generation.dart';
 import '../models/pokemon_listing.dart';
+import '../services/account_sync.dart';
+import '../services/league.dart';
 import '../services/pokemon_service.dart';
 import '../services/user_data.dart';
 import '../widgets/pokemon_sprite.dart';
@@ -33,9 +39,10 @@ class QuizScreen extends StatefulWidget {
 
   final Generation? generation;
   final bool ranked;
+  final bool daily;
   final bool continueGame;
 
-  const QuizScreen({super.key, this.generation, this.ranked = false, this.continueGame = false});
+  const QuizScreen({super.key, this.generation, this.ranked = false, this.daily = false, this.continueGame = false});
 
   @override
   State<QuizScreen> createState() => _QuizScreenState();
@@ -63,6 +70,16 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
   int? _chosen;
   bool _over = false;
 
+  // Desafio do dia
+  late final bool _daily = widget.daily;
+  final String _day = League.dayKey();
+  List<int> _answers = [];
+  int _correct = 0;
+  double _seconds = 0;
+  DateTime _roundStart = DateTime.now();
+
+  bool get _timed => _ranked || _daily;
+
   late final AnimationController _timer = AnimationController(
     vsync: this,
     duration: const Duration(seconds: QuizScreen.rankedSeconds),
@@ -87,15 +104,22 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
       final data = _data;
       Future.microtask(() {
         if (score > data.rankedRecord) data.update({'rankedRecord': score});
+        data.countRanked(League.weekKey());
+        AccountSync.instance.saveWeekly(League.weekKey(), score);
       });
     }
+    if (_daily && !_over) _finishDaily();
     _timer.dispose();
     _shake.dispose();
     super.dispose();
   }
 
   Future<void> _start() async {
-    final saved = widget.continueGame ? _data.quizGame : null;
+    if (_daily) {
+      _answers = League.dailyAnswers(_day);
+      _data.countDaily(_day); // conta já ao começar: uma tentativa por dia
+    }
+    final saved = widget.continueGame && !_daily ? _data.quizGame : null;
     _generationId = saved != null ? (saved['generation'] as num? ?? 0).toInt() : (widget.generation?.id ?? 0);
     final gen = generations.where((g) => g.id == _generationId).firstOrNull;
     final service = PokemonService();
@@ -124,20 +148,22 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
 
   void _next({bool first = false}) {
     final pool = _pool!;
-    final answer = pool[_random.nextInt(pool.length)];
-    final options = <int>{int.parse(answer.id)};
+    final round = first ? 0 : _round + 1;
+    final answerId = _daily ? _answers[round] : int.parse(pool[_random.nextInt(pool.length)].id);
+    final options = <int>{answerId};
     while (options.length < min(4, pool.length)) {
       options.add(int.parse(pool[_random.nextInt(pool.length)].id));
     }
     setState(() {
       _chosen = null;
       if (!first) _round++;
-      _answerId = int.parse(answer.id);
+      _answerId = answerId;
       _options = options.toList()..shuffle(_random);
     });
     _save();
-    if (_ranked) {
-      _timer.duration = Duration(seconds: QuizScreen.rankedSecondsFor(_score));
+    _roundStart = DateTime.now();
+    if (_timed) {
+      _timer.duration = Duration(seconds: _daily ? League.dailySeconds : QuizScreen.rankedSecondsFor(_score));
       _timer.forward(from: 0);
     }
   }
@@ -155,16 +181,26 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
 
   /// O Ranked não fica salvo para continuar depois (senão daria para ganhar tempo).
   void _save() {
-    if (!_ranked) _data.update({'quizGame': _game});
+    if (!_ranked && !_daily) _data.update({'quizGame': _game});
   }
 
   void _answer(int id) {
     if (_chosen != null || _answerId == null || _over) return;
     _timer.stop();
     final correct = id == _answerId;
+    final spent = DateTime.now().difference(_roundStart).inMilliseconds.clamp(0, League.dailySeconds * 1000);
     setState(() {
       _chosen = id;
-      if (correct) {
+      if (_daily) {
+        _seconds += spent / 1000;
+        if (correct) {
+          _score += League.dailyPoints(League.dailySeconds * 1000 - spent);
+          _correct++;
+          _streak++;
+        } else {
+          _streak = 0;
+        }
+      } else if (correct) {
         _score++;
         _streak++;
       } else {
@@ -172,10 +208,11 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
         _streak = 0;
       }
     });
+    _data.countAnswer(correct, _streak);
     if (!correct) _shake.forward(from: 0);
     Future.delayed(Duration(milliseconds: correct ? 1100 : 2000), () {
       if (!mounted) return;
-      if (_lives <= 0) {
+      if (_daily ? _round + 1 >= League.dailyRounds : _lives <= 0) {
         _end();
       } else {
         _next();
@@ -185,18 +222,28 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
 
   void _finishRanked() {
     if (_score > _data.rankedRecord) _data.update({'rankedRecord': _score});
+    final week = League.weekKey();
+    _data.countRanked(week);
+    AccountSync.instance.saveWeekly(week, _score);
+  }
+
+  void _finishDaily() {
+    if (_correct == League.dailyRounds) _data.countDailyPerfect();
+    AccountSync.instance.saveDaily(_day, score: _score, correct: _correct, seconds: _seconds.round());
   }
 
   void _end() {
     _over = true;
     _timer.stop();
     final previous = _ranked ? _data.rankedRecord : _data.quizRecord;
-    if (_ranked) {
+    if (_daily) {
+      _finishDaily();
+    } else if (_ranked) {
       _finishRanked();
     } else {
       _data.update({'quizGame': null, if (_score > _data.quizRecord) 'quizRecord': _score});
     }
-    final newRecord = _score > previous;
+    final newRecord = !_daily && _score > previous;
     final theme = Theme.of(context);
     showDialog(
       context: context,
@@ -204,12 +251,23 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
       builder: (dialog) => AlertDialog(
         backgroundColor: theme.cardColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Center(child: Text(_ranked ? 'Fim do Ranked!' : 'Fim de Jogo!')),
+        title: Center(
+            child: Text(_daily
+                ? 'Fim do desafio do dia!'
+                : _ranked
+                    ? 'Fim do Ranked!'
+                    : 'Fim de Jogo!')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text('Sua pontuação foi:'),
             Text('$_score', style: const TextStyle(color: Colors.amber, fontSize: 56, fontWeight: FontWeight.w900)),
+            if (_daily)
+              Text(
+                '$_correct de ${League.dailyRounds} acertos. Veja sua posição na aba Hoje do ranking e volte amanhã para um desafio novo!',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: theme.hintColor),
+              ),
             if (newRecord)
               Text(_ranked ? 'Novo recorde no Ranked! Confira sua posição no ranking! 🎉' : 'Novo recorde! 🎉',
                   textAlign: TextAlign.center, style: const TextStyle(color: Colors.greenAccent)),
@@ -224,21 +282,22 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
             },
             child: const Text('Sair', style: TextStyle(fontSize: 16)),
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(dialog);
-              setState(() {
-                _over = false;
-                _score = 0;
-                _lives = QuizScreen.lives;
-                _streak = 0;
-                _round = 0;
-              });
-              _next(first: true);
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green.shade600, foregroundColor: Colors.white),
-            child: const Text('Jogar novamente', style: TextStyle(fontSize: 16)),
-          ),
+          if (!_daily)
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(dialog);
+                setState(() {
+                  _over = false;
+                  _score = 0;
+                  _lives = QuizScreen.lives;
+                  _streak = 0;
+                  _round = 0;
+                });
+                _next(first: true);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green.shade600, foregroundColor: Colors.white),
+              child: const Text('Jogar novamente', style: TextStyle(fontSize: 16)),
+            ),
         ],
       ),
     );
@@ -262,18 +321,27 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_ranked ? '🏆 Ranked' : 'Quem é esse Pokémon?'),
+        title: Text(_daily
+            ? '📅 Desafio do dia'
+            : _ranked
+                ? '🏆 Ranked'
+                : 'Quem é esse Pokémon?'),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: Row(
               children: [
-                for (var i = 0; i < QuizScreen.lives; i++)
-                  AnimatedScale(
-                    scale: i < _lives ? 1 : 0.7,
-                    duration: const Duration(milliseconds: 250),
-                    child: Icon(i < _lives ? Icons.favorite : Icons.favorite_border, color: Colors.redAccent, size: 26),
-                  ),
+                if (_daily)
+                  Text('${_round + 1}/${League.dailyRounds}',
+                      style: const TextStyle(color: Color(0xFF26A69A), fontWeight: FontWeight.w900, fontSize: 18)),
+                if (!_daily)
+                  for (var i = 0; i < QuizScreen.lives; i++)
+                    AnimatedScale(
+                      scale: i < _lives ? 1 : 0.7,
+                      duration: const Duration(milliseconds: 250),
+                      child:
+                          Icon(i < _lives ? Icons.favorite : Icons.favorite_border, color: Colors.redAccent, size: 26),
+                    ),
               ],
             ),
           ),
@@ -290,19 +358,25 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                   const SizedBox(width: 8),
                   _Stat('Sequência', '$_streak🔥', color: Colors.orange),
                   const SizedBox(width: 8),
-                  _Stat('Recorde', '${max(record, _score)}', color: Colors.amber),
+                  _daily
+                      ? _Stat('Acertos', '$_correct', color: Colors.amber)
+                      : _Stat('Recorde', '${max(record, _score)}', color: Colors.amber),
                 ],
               ),
-              if (_ranked) ...[
+              if (_timed) ...[
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    const Expanded(
-                      child: Text('🏆 Ranked · Todas as gerações',
-                          style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13)),
+                    Expanded(
+                      child: Text(_daily ? '📅 Desafio do dia · Todas as gerações' : '🏆 Ranked · Todas as gerações',
+                          style: TextStyle(
+                              color: _daily ? const Color(0xFF26A69A) : Colors.amber,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13)),
                     ),
-                    Text('${QuizScreen.rankedSecondsFor(_score)}s por Pokémon',
-                        style: TextStyle(color: Theme.of(context).hintColor, fontWeight: FontWeight.bold, fontSize: 13)),
+                    Text('${_daily ? League.dailySeconds : QuizScreen.rankedSecondsFor(_score)}s por Pokémon',
+                        style:
+                            TextStyle(color: Theme.of(context).hintColor, fontWeight: FontWeight.bold, fontSize: 13)),
                   ],
                 ),
                 const SizedBox(height: 6),
@@ -375,11 +449,17 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                 height: 24,
                 child: revealed
                     ? Text(
-                        hit
-                            ? 'Acertou! +1 ponto'
-                            : _chosen == _timeout
-                                ? 'Tempo esgotado! -1 vida'
-                                : 'Errou! -1 vida',
+                        _daily
+                            ? (hit
+                                ? 'Acertou!'
+                                : _chosen == _timeout
+                                    ? 'Tempo esgotado!'
+                                    : 'Errou!')
+                            : hit
+                                ? 'Acertou! +1 ponto'
+                                : _chosen == _timeout
+                                    ? 'Tempo esgotado! -1 vida'
+                                    : 'Errou! -1 vida',
                         style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,

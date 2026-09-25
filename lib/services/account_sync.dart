@@ -5,7 +5,9 @@
 //   • mudanças da conta (site / outro aparelho) chegam na hora;
 //   • mudanças feitas aqui gravam só os campos alterados, para o app e o site
 //     não sobrescreverem um ao outro;
-//   • o recorde do Ranked vai para o ranking público (ranking/{uid}).
+//   • o recorde do Ranked vai para o ranking público (ranking/{uid}), com a
+//     foto de perfil; o melhor da semana vai para weekly/{segunda}/scores/{uid}
+//     e o desafio do dia para daily/{dia}/scores/{uid}.
 
 import 'dart:async';
 
@@ -86,7 +88,7 @@ class AccountSync {
     if (uid == null) return;
     _dirty.addAll(keys);
     if (!_ready) return; // grava depois de receber a conta
-    if (keys.contains('rankedRecord')) _updateRanking(uid);
+    if (keys.contains('rankedRecord') || keys.contains('avatar')) _updateRanking(uid);
     _scheduleSave();
   }
 
@@ -120,7 +122,7 @@ class AccountSync {
     final score = _data.rankedRecord;
     try {
       if (score > 0) {
-        await ref.set({'name': name, 'score': score, 'updatedAt': FieldValue.serverTimestamp()});
+        await ref.set({'name': name, 'score': score, 'avatar': _data.avatar, 'updatedAt': FieldValue.serverTimestamp()});
       } else {
         await ref.delete();
       }
@@ -134,17 +136,74 @@ class AccountSync {
     await _auth.signOut();
   }
 
-  // ---------------------------------------------------------------- ranking
+  /// Para a sincronização (enquanto a conta é excluída, para não recriar os dados).
+  void pause() {
+    _stop();
+    _uid = null;
+  }
 
-  Future<List<Map<String, dynamic>>> topRanking([int count = 10]) async {
-    final snap = await _db.collection('ranking').orderBy('score', descending: true).limit(count).get();
+  /// Volta a sincronizar a conta conectada (se a exclusão não foi até o fim).
+  void resume() {
+    _uid = null;
+    _onAuth();
+  }
+
+  // ---------------------------------------------------------------- ranking
+  //   board: 'all' (geral), 'week' (semana) ou 'day' (desafio do dia)
+
+  CollectionReference<Map<String, dynamic>> _board(String board, String key) => switch (board) {
+        'week' => _db.collection('weekly').doc(key).collection('scores'),
+        'day' => _db.collection('daily').doc(key).collection('scores'),
+        _ => _db.collection('ranking'),
+      };
+
+  Future<List<Map<String, dynamic>>> topRanking([int count = 10, String board = 'all', String key = '']) async {
+    final snap = await _board(board, key).orderBy('score', descending: true).limit(count).get();
     return [
-      for (final d in snap.docs) {'uid': d.id, 'name': d.data()['name'], 'score': d.data()['score']},
+      for (final d in snap.docs) {'uid': d.id, ...d.data()},
     ];
   }
 
-  Future<int> rankingPosition(int score) async {
-    final snap = await _db.collection('ranking').where('score', isGreaterThan: score).count().get();
+  Future<int> rankingPosition(int score, [String board = 'all', String key = '']) async {
+    final snap = await _board(board, key).where('score', isGreaterThan: score).count().get();
     return (snap.count ?? 0) + 1;
+  }
+
+  /// A linha da pessoa num ranking (ou null).
+  Future<Map<String, dynamic>?> myScore(String board, String key) async {
+    final uid = _uid;
+    if (uid == null) return null;
+    if (board == 'all') return _data.rankedRecord > 0 ? {'score': _data.rankedRecord} : null;
+    return (await _board(board, key).doc(uid).get()).data();
+  }
+
+  /// Guarda a pontuação da semana, se for maior que a já guardada.
+  Future<void> saveWeekly(String week, int score) async {
+    final uid = _uid, name = _auth.user?.name;
+    if (uid == null || name == null || score <= 0) return;
+    try {
+      final ref = _board('week', week).doc(uid);
+      final current = await ref.get();
+      if (current.exists && ((current.data()?['score'] as num?) ?? 0) >= score) return;
+      await ref.set({'name': name, 'score': score, 'avatar': _data.avatar, 'updatedAt': FieldValue.serverTimestamp()});
+      rankingVersion.value++;
+    } catch (_) {}
+  }
+
+  /// Resultado do desafio do dia (uma vez só por dia).
+  Future<void> saveDaily(String day, {required int score, required int correct, required int seconds}) async {
+    final uid = _uid, name = _auth.user?.name;
+    if (uid == null || name == null || score <= 0) return;
+    try {
+      await _board('day', day).doc(uid).set({
+        'name': name,
+        'score': score,
+        'correct': correct,
+        'seconds': seconds,
+        'avatar': _data.avatar,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      rankingVersion.value++;
+    } catch (_) {}
   }
 }

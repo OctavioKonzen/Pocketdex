@@ -5,6 +5,7 @@ import '../models/team.dart';
 import '../services/team_service.dart';
 import '../services/user_data.dart';
 import '../widgets/team_card.dart';
+import '../widgets/team_share_dialogs.dart';
 import 'team_builder_screen.dart';
 import '../utils/responsive.dart';
 import '../utils/site_ui.dart';
@@ -188,6 +189,14 @@ class _TeamsScreenState extends State<TeamsScreen> {
         });
   }
 
+  Future<void> _import() async {
+    final shared = await TeamShareDialogs.import(context);
+    if (shared == null || !mounted) return;
+    final team = await _teamService.importTeam(shared);
+    _loadTeams();
+    if (mounted) _open(team);
+  }
+
   Future<void> _open(Team team) async {
     await Navigator.push(context, MaterialPageRoute(builder: (_) => TeamBuilderScreen(team: team)));
     _loadTeams();
@@ -196,7 +205,12 @@ class _TeamsScreenState extends State<TeamsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Times')),
+      appBar: AppBar(
+        title: const Text('Times'),
+        actions: [
+          TextButton.icon(onPressed: _import, icon: const Icon(Icons.download), label: const Text('Importar')),
+        ],
+      ),
       body: ReadableWidth(
         child: FutureBuilder<List<Team>>(
           future: _teamsFuture,
