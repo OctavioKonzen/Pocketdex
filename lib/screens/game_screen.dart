@@ -4,6 +4,7 @@
 // palco azul com raios, recordes (normal e Ranked), seletor de geração,
 // botões de jogo normal e Ranked (5 s por Pokémon) e o ranking.
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -250,25 +251,38 @@ class _RankingState extends State<_Ranking> {
     super.dispose();
   }
 
+  String? _errorText;
+
   Future<void> _load() async {
+    if (mounted && _error) setState(() => _list = null);
+    List<Map<String, dynamic>> list;
     try {
-      final record = UserData.instance.rankedRecord;
-      final list = await _sync.topRanking();
-      final position = record > 0 ? await _sync.rankingPosition(record) : null;
-      if (mounted) {
-        setState(() {
-          _list = list;
-          _position = position;
-          _error = false;
-        });
-      }
-    } catch (_) {
+      list = await _sync.topRanking();
+    } catch (e) {
       if (mounted) {
         setState(() {
           _list = const [];
           _error = true;
+          _errorText = e is FirebaseException ? e.code : '$e';
         });
       }
+      return;
+    }
+    // A posição é um extra: se falhar, a lista aparece do mesmo jeito.
+    int? position;
+    final record = UserData.instance.rankedRecord;
+    if (record > 0) {
+      try {
+        position = await _sync.rankingPosition(record);
+      } catch (_) {}
+    }
+    if (mounted) {
+      setState(() {
+        _list = list;
+        _position = position;
+        _error = false;
+        _errorText = null;
+      });
     }
   }
 
@@ -301,8 +315,14 @@ class _RankingState extends State<_Ranking> {
             const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()))
           else if (_error)
             Padding(
-              padding: const EdgeInsets.all(16),
-              child: Center(child: Text('Não foi possível carregar o ranking agora.', style: TextStyle(color: theme.hintColor))),
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                children: [
+                  Text('Não foi possível carregar o ranking agora${_errorText != null ? ' ($_errorText)' : ''}.',
+                      textAlign: TextAlign.center, style: TextStyle(color: theme.hintColor)),
+                  TextButton.icon(onPressed: _load, icon: const Icon(Icons.refresh), label: const Text('Tentar de novo')),
+                ],
+              ),
             )
           else if (_list!.isEmpty)
             Padding(

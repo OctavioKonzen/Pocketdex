@@ -20,6 +20,7 @@ import 'package:pocket_dex/widgets/pikachu_loading_indicator.dart';
 import 'package:pocket_dex/screens/settings_screen.dart';
 import 'package:pocket_dex/utils/responsive.dart';
 import 'package:pocket_dex/utils/app_images.dart';
+import 'package:pocket_dex/widgets/pokemon_sprite.dart';
 import 'package:pocket_dex/services/update_service.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -374,9 +375,8 @@ class _SearchResultTileState extends State<_SearchResultTile> {
                       color: backgroundColor,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Image(
-                        image: AppImages.provider(spriteUrl),
-                        width: 48, height: 48, gaplessPlayback: true))
+                    child: SizedBox.square(
+                        dimension: 48, child: PokemonSprite(_details!['id'] as int, fill: 0.9)))
               else
                 const SizedBox(width: 56, height: 56),
               const SizedBox(width: 16),

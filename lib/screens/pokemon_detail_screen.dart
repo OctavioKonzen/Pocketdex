@@ -1,5 +1,6 @@
 // lib/screens/pokemon_detail_screen.dart
 
+import 'dart:math';
 import 'package:flutter/material.dart';
 import '../services/account_format.dart';
 import '../widgets/pokemon_sprite.dart';
@@ -56,30 +57,10 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen>
     _pokeballAnimationController =
         AnimationController(vsync: this, duration: const Duration(seconds: 25))
           ..repeat();
+    // "Roda" de Pokémon: 0 = o atual no centro; 1 = o próximo chegou ao
+    // centro; -1 = o anterior chegou. Acompanha o dedo ao arrastar.
     _slideController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 350));
-
-    _slideController.addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        final int currentIndex = _allPokemonIds.indexOf(_currentPokemonId);
-        int newIndex = currentIndex;
-
-        if (_animationDirection == _AnimationDirection.next) {
-          newIndex = (currentIndex + 1).clamp(0, _allPokemonIds.length - 1);
-        } else if (_animationDirection == _AnimationDirection.previous) {
-          newIndex = (currentIndex - 1).clamp(0, _allPokemonIds.length - 1);
-        }
-
-        setState(() {
-          _currentPokemonId = _allPokemonIds[newIndex];
-          _isShiny = false;
-          _selectedForm = _loadedDetails[_currentPokemonId]?.forms.first;
-          _animationDirection = _AnimationDirection.none;
-          _slideController.reset();
-        });
-        _loadPokemonFamily(_currentPokemonId);
-      }
-    });
+        vsync: this, lowerBound: -1, upperBound: 1, value: 0, duration: const Duration(milliseconds: 320));
 
     _loadAllPokemonIds().then((_) {
       _loadPokemonFamily(_currentPokemonId);
@@ -145,28 +126,69 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen>
     }
   }
 
+  /// Pokémon que sai da Pokébola: o que foi aberto (ou escolhido na
+  /// evolução). Ao girar a roda, não repete a animação.
+  late int _revealId = widget.initialPokemonId;
+
+  int get _currentIndex => _allPokemonIds.indexOf(_currentPokemonId);
+  bool get _hasNext => _currentIndex >= 0 && _currentIndex < _allPokemonIds.length - 1 && _loadedDetails.containsKey(_allPokemonIds[_currentIndex + 1]);
+  bool get _hasPrev => _currentIndex > 0 && _loadedDetails.containsKey(_allPokemonIds[_currentIndex - 1]);
+
+  /// Termina o giro: o vizinho que chegou ao centro vira o atual.
+  void _finishTurn(int direction) {
+    final newIndex = (_currentIndex + direction).clamp(0, _allPokemonIds.length - 1);
+    setState(() {
+      _currentPokemonId = _allPokemonIds[newIndex];
+      _isShiny = false;
+      _selectedForm = _loadedDetails[_currentPokemonId]?.forms.first;
+      _slideController.value = 0;
+    });
+    _loadPokemonFamily(_currentPokemonId);
+  }
+
+  Future<void> _turnTo(double target) async {
+    await _slideController.animateTo(target, curve: Curves.easeOutCubic);
+    if (!mounted) return;
+    if (target == 1) _finishTurn(1);
+    if (target == -1) _finishTurn(-1);
+  }
+
   void _slideTo(_AnimationDirection direction) {
     if (_slideController.isAnimating) return;
-    setState(() => _animationDirection = direction);
-    _slideController.forward();
+    if (direction == _AnimationDirection.next && _hasNext) _turnTo(1);
+    if (direction == _AnimationDirection.previous && _hasPrev) _turnTo(-1);
+  }
+
+  /// Arrastando: o dedo para a esquerda leva ao próximo.
+  void _onDrag(double dx) {
+    if (_slideController.isAnimating) _slideController.stop();
+    final min = _hasPrev ? -1.0 : -0.12; // na ponta, só "balança" um pouco
+    final max = _hasNext ? 1.0 : 0.12;
+    _slideController.value = (_slideController.value - dx).clamp(min, max);
+  }
+
+  void _onDragEnd(double velocity) {
+    final v = _slideController.value;
+    if ((v > 0.3 || velocity < -1.2) && _hasNext) {
+      _turnTo(1);
+    } else if ((v < -0.3 || velocity > 1.2) && _hasPrev) {
+      _turnTo(-1);
+    } else {
+      _turnTo(0);
+    }
   }
 
   void _navigateToPokemonById(int newId) {
-    if (newId == _currentPokemonId) return;
-
-    final currentIndex = _allPokemonIds.indexOf(_currentPokemonId);
-    final newIndex = _allPokemonIds.indexOf(newId);
-
-    if (newIndex == -1) return;
-
-    final direction = newIndex > currentIndex
-        ? _AnimationDirection.next
-        : _AnimationDirection.previous;
-
+    if (newId == _currentPokemonId || !_allPokemonIds.contains(newId)) return;
+    // Evolução escolhida: vai direto (a Pokébola abre de novo).
     setState(() {
-      _animationDirection = direction;
+      _currentPokemonId = newId;
+      _revealId = newId;
+      _isShiny = false;
+      _selectedForm = _loadedDetails[newId]?.forms.first;
+      _slideController.value = 0;
     });
-    _slideController.forward();
+    _loadPokemonFamily(newId);
   }
 
   void _showFormSelection(PokemonDetails pokemon) {
@@ -215,13 +237,9 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen>
                             width: 2,
                           ),
                         ),
-                        child: Image(
-                          image: AppImages.provider(form.pixelImageUrl),
-                          fit: BoxFit.contain,
-                          filterQuality: FilterQuality.none,
-                          errorBuilder: (context, error, stackTrace) =>
-                              const Icon(Icons.error_outline),
-                        ),
+                        child: PokemonSprite(
+                            AccountFormat.pokemonIdFromImage(form.pixelImageUrl) ?? pokemon.id,
+                            fill: 0.85),
                       ),
                     );
                   },
@@ -285,10 +303,8 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen>
                 onFormSelect: () => _showFormSelection(pokemon),
                 // O Pokémon fica parado (só o painel de baixo rola); arrastar
                 // para o lado vai para o próximo/anterior da Pokédex.
-                onSwipe: (direction) {
-                  if (direction > 0 && nextPokemon != null) _slideTo(_AnimationDirection.next);
-                  if (direction < 0 && prevPokemon != null) _slideTo(_AnimationDirection.previous);
-                },
+                onDrag: _onDrag,
+                onDragEnd: _onDragEnd,
                 imageGestureArea: Stack(
                   alignment: Alignment.center,
                   children: [
@@ -297,44 +313,19 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen>
                       child: AnimatedBuilder(
                         animation: _slideController,
                         builder: (context, child) {
-                          final currentOffset =
-                              _animationDirection == _AnimationDirection.next
-                                  ? Offset(-_slideController.value, 0)
-                                  : (_animationDirection ==
-                                          _AnimationDirection.previous
-                                      ? Offset(_slideController.value, 0)
-                                      : Offset.zero);
-
-                          final enteringOffset =
-                              _animationDirection == _AnimationDirection.next
-                                  ? Offset(1.0 - _slideController.value, 0)
-                                  : (_animationDirection ==
-                                          _AnimationDirection.previous
-                                      ? Offset(-1.0 + _slideController.value, 0)
-                                      : const Offset(1.0, 0.0));
-
+                          final t = _slideController.value;
+                          // Cada Pokémon numa posição da roda (-1 anterior,
+                          // 0 atual, 1 próximo), deslocada pelo giro.
+                          final items = <(double, Widget)>[
+                            if (prevPokemon != null) (-1 - t, _PokemonAnimatedImage(details: prevPokemon, position: -1 - t)),
+                            if (nextPokemon != null) (1 - t, _PokemonAnimatedImage(details: nextPokemon, position: 1 - t)),
+                            (-t, _PokemonAnimatedImage(
+                                details: pokemon, form: _selectedForm, isShiny: _isShiny, position: -t, reveal: pokemon.id == _revealId)),
+                          ]..sort((a, b) => b.$1.abs().compareTo(a.$1.abs())); // o mais perto do centro por cima
                           return Stack(
                             alignment: Alignment.center,
-                            children: [
-                              if (_animationDirection ==
-                                      _AnimationDirection.next &&
-                                  nextPokemon != null)
-                                _PokemonAnimatedImage(
-                                    details: nextPokemon,
-                                    offset: enteringOffset),
-                              if (_animationDirection ==
-                                      _AnimationDirection.previous &&
-                                  prevPokemon != null)
-                                _PokemonAnimatedImage(
-                                    details: prevPokemon,
-                                    offset: enteringOffset),
-                              _PokemonAnimatedImage(
-                                  details: pokemon,
-                                  form: _selectedForm,
-                                  isShiny: _isShiny,
-                                  offset: currentOffset,
-                                  reveal: true),
-                            ],
+                            clipBehavior: Clip.none,
+                            children: [for (final item in items) item.$2],
                           );
                         },
                       ),
@@ -383,7 +374,9 @@ class _PokemonAnimatedImage extends StatelessWidget {
   final PokemonDetails details;
   final AlternateForm? form;
   final bool? isShiny;
-  final Offset offset;
+
+  /// Posição na roda: 0 = centro, 1 = à direita, -1 = à esquerda.
+  final double position;
 
   /// Pokémon saindo da Pokébola ao abrir (como no site).
   final bool reveal;
@@ -392,15 +385,20 @@ class _PokemonAnimatedImage extends StatelessWidget {
     required this.details,
     this.form,
     this.isShiny,
-    required this.offset,
+    required this.position,
     this.reveal = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final double progress = offset.dx.abs();
-    final double scale = (1.0 - progress * 0.4).clamp(0.0, 1.0);
-    final double opacity = (1.0 - progress * 1.5).clamp(0.0, 1.0);
+    // Como numa roda vista de frente: indo para o lado ele diminui, desce um
+    // pouco e some; o que vem chega crescendo até o centro.
+    final angle = (position.clamp(-1.0, 1.0)) * pi / 2;
+    final width = MediaQuery.of(context).size.width;
+    final double x = sin(angle) * width * 0.62;
+    final double y = (1 - cos(angle)) * 60;
+    final double scale = 0.35 + 0.65 * cos(angle);
+    final double opacity = pow(cos(angle).clamp(0.0, 1.0), 0.8).toDouble();
 
     final AlternateForm displayForm = form ?? details.forms.first;
     final bool displayShiny = isShiny ?? false;
@@ -408,8 +406,8 @@ class _PokemonAnimatedImage extends StatelessWidget {
         ? displayForm.shinyPixelImageUrl
         : displayForm.pixelImageUrl;
 
-    return FractionalTranslation(
-      translation: offset,
+    return Transform.translate(
+      offset: Offset(x, y),
       child: Transform.scale(
         scale: scale,
         child: Opacity(
@@ -426,7 +424,7 @@ class _PokemonAnimatedImage extends StatelessWidget {
     final Widget image = SizedBox.square(
       dimension: 300,
       child: id != null
-          ? PokemonSprite(id, shiny: shiny, fill: 0.62)
+          ? PokemonSprite(id, shiny: shiny, fill: 0.78)
           : Image(image: AppImages.provider(imageUrl), fit: BoxFit.contain, filterQuality: FilterQuality.none),
     );
     return reveal ? PokeballReveal(key: ValueKey('reveal-${details.id}'), ballSize: 80, child: image) : image;

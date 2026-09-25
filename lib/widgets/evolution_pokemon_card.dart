@@ -2,6 +2,8 @@
 
 import '../services/pokemon_service.dart';
 import 'package:flutter/material.dart';
+import '../services/account_format.dart';
+import 'pokemon_sprite.dart';
 import '../utils/string_extensions.dart';
 import '../utils/app_images.dart';
 
@@ -117,13 +119,9 @@ class _EvolutionPokemonCardState extends State<EvolutionPokemonCard> {
             children: [
               Hero(
                 tag: 'evolution-$id-$name', 
-                child: Image(
-                  image: AppImages.provider(imageUrl),
-                  height: widget.size,
-                  width: widget.size,
-                  fit: BoxFit.contain,
-                  filterQuality: FilterQuality.none,
-                  errorBuilder: (c, e, s) => Icon(Icons.error, size: widget.size * 0.8),
+                child: SizedBox.square(
+                  dimension: widget.size,
+                  child: PokemonSprite(AccountFormat.pokemonIdFromImage(imageUrl) ?? int.parse(id), fill: 0.9),
                 ),
               ),
               const SizedBox(height: 8),
