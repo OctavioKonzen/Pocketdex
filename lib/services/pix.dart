@@ -9,9 +9,9 @@ import 'dart:convert';
 class Pix {
   Pix._();
 
-  static const key = '';
-  static const name = ''; // até 25 letras, sem acento
-  static const city = ''; // até 15 letras, sem acento
+  static const key = 'b2f17626-44c0-421d-9a60-71a33b272741';
+  static const name = 'PocketDex'; // até 25 letras, sem acento
+  static const city = 'Brasil'; // até 15 letras, sem acento
 
   static bool get enabled => key.isNotEmpty && name.isNotEmpty && city.isNotEmpty;
 

@@ -43,6 +43,14 @@
 * **Conta:** login com e-mail/senha ou Google, foto de perfil e opção de excluir a conta; favoritos, times, treinos e recordes ficam salvos e sincronizados entre o app e o site.
 * **Tema claro e escuro** e **atualização pelo próprio app**.
 
+## 💚 Apoie o projeto
+
+O PocketDex é gratuito e sem anúncios. Se ele te ajuda, qualquer valor por **Pix** ajuda a manter o projeto:
+
+**Chave Pix (aleatória):** `b2f17626-44c0-421d-9a60-71a33b272741`
+
+No app e no site, em **Configurações**, tem o QR Code e o "Pix copia e cola".
+
 ## 🛠️ Ferramentas usadas
 
 | Parte | Ferramentas |

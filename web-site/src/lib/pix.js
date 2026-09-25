@@ -3,9 +3,9 @@
 // apoio não aparece.
 
 export const PIX = {
-  key: '',
-  name: '', // até 25 letras, sem acento
-  city: '', // até 15 letras, sem acento
+  key: 'b2f17626-44c0-421d-9a60-71a33b272741',
+  name: 'PocketDex', // até 25 letras, sem acento
+  city: 'Brasil', // até 15 letras, sem acento
 }
 
 export const pixEnabled = () => Boolean(PIX.key && PIX.name && PIX.city)
