@@ -75,6 +75,9 @@ class _PokedexWebCardState extends State<PokedexWebCard>
       AnimationController(vsync: this, duration: PokedexCardStyle.pokeballTurn)
         ..repeat();
 
+  // Cache: cards recriados ao rolar a página aparecem prontos, sem piscar.
+  static final Map<String, (String, String?, List<String>)> _cache = {};
+
   bool _hovering = false;
   String? _id;
   String? _spriteUrl;
@@ -99,6 +102,11 @@ class _PokedexWebCardState extends State<PokedexWebCard>
   }
 
   Future<void> _load() async {
+    final cached = _cache[widget.pokemon.url];
+    if (cached != null) {
+      if (mounted) setState(() => _apply(cached));
+      return;
+    }
     final service = PokemonService();
     Map<String, dynamic> data;
     try {
@@ -107,15 +115,22 @@ class _PokedexWebCardState extends State<PokedexWebCard>
       data =
           await service.fetchPokemonJson(widget.pokemon.name.split('-').first);
     }
+    final entry = (
+      (data['id'] as int).toString(),
+      (data['sprites']['front_default'] ??
+              data['sprites']['other']['official-artwork']['front_default'])
+          as String?,
+      [for (final t in data['types'] as List) t['type']['name'] as String],
+    );
+    _cache[widget.pokemon.url] = entry;
     if (!mounted) return;
-    setState(() {
-      _id = (data['id'] as int).toString();
-      _spriteUrl = data['sprites']['front_default'] ??
-          data['sprites']['other']['official-artwork']['front_default'];
-      _types = [
-        for (final t in data['types'] as List) t['type']['name'] as String
-      ];
-    });
+    setState(() => _apply(entry));
+  }
+
+  void _apply((String, String?, List<String>) entry) {
+    _id = entry.$1;
+    _spriteUrl = entry.$2;
+    _types = entry.$3;
   }
 
   @override

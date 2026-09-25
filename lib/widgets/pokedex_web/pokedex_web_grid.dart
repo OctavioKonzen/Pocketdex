@@ -44,24 +44,56 @@ class _PokedexWebGridState extends State<PokedexWebGrid> {
       ? -1
       : widget.pokemon.indexWhere((p) => p.url == _selectedUrl);
 
+  static const _rowExtent = PokedexCardStyle.height + PokedexCardStyle.spacing;
+  static const _panelDuration = Duration(milliseconds: 400);
+
+  /// Posição da rolagem antes de abrir o painel; ao fechar, volta para ela.
+  double? _returnOffset;
+
+  /// Ao pular para um Pokémon de outra linha, o painel antigo fecha na hora
+  /// (sem animação) para a página não "piscar" vazia.
+  bool _instantCollapse = false;
+
   void _select(PokemonListing? pokemon, {required int columns}) {
+    final wasOpen = _selectedUrl != null;
     final previousRow = _selectedIndex < 0 ? -1 : _selectedIndex ~/ columns;
-    setState(() =>
-        _selectedUrl = pokemon?.url == _selectedUrl ? null : pokemon?.url);
-    final index = _selectedIndex;
-    if (index < 0) return;
-    final row = index ~/ columns;
+    final closing = pokemon == null || pokemon.url == _selectedUrl;
+
+    if (closing) {
+      setState(() => _selectedUrl = null);
+      final back = _returnOffset;
+      _returnOffset = null;
+      if (back != null) _scrollTo(back, animate: true);
+      return;
+    }
+
+    if (!wasOpen && _scrollController.hasClients) {
+      _returnOffset = _scrollController.offset;
+    }
+    final row = widget.pokemon.indexOf(pokemon) ~/ columns;
+    final switchingRow = wasOpen && row != previousRow;
+    setState(() {
+      _selectedUrl = pokemon.url;
+      _instantCollapse = switchingRow;
+    });
     if (row == previousRow) return;
-    // Rola suavemente até a linha do Pokémon aberto.
+    // Leva a linha do card para o topo, com o painel logo abaixo.
+    _scrollTo(row * _rowExtent, animate: !switchingRow);
+  }
+
+  void _scrollTo(double offset, {required bool animate}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _instantCollapse = false;
       if (!_scrollController.hasClients) return;
-      const rowExtent = PokedexCardStyle.height + PokedexCardStyle.spacing;
-      // Deixa a linha do card no topo, com o painel logo abaixo.
-      final target = (row * rowExtent)
-          .clamp(0.0, _scrollController.position.maxScrollExtent);
-      _scrollController.animateTo(target,
-          duration: const Duration(milliseconds: 450),
-          curve: Curves.easeInOutCubic);
+      final target =
+          offset.clamp(0.0, _scrollController.position.maxScrollExtent);
+      if (animate) {
+        _scrollController.animateTo(target,
+            duration: const Duration(milliseconds: 450),
+            curve: Curves.easeInOutCubic);
+      } else {
+        _scrollController.jumpTo(target);
+      }
     });
   }
 
@@ -84,6 +116,13 @@ class _PokedexWebGridState extends State<PokedexWebGrid> {
       final rows = (widget.pokemon.length / columns).ceil();
       final selectedIndex = _selectedIndex;
       final selectedRow = selectedIndex < 0 ? -1 : selectedIndex ~/ columns;
+      // O painel ocupa o espaço visível abaixo da linha do card, sem cortar.
+      final panelHeight = (constraints.maxHeight -
+              _rowExtent -
+              PokedexCardStyle.spacing -
+              12)
+          .clamp(
+              PokedexInlineDetails.minHeight, PokedexInlineDetails.maxHeight);
 
       return ListView.builder(
         key: const PageStorageKey('pokedex_web_grid'),
@@ -124,7 +163,9 @@ class _PokedexWebGridState extends State<PokedexWebGrid> {
                 ),
                 // Painel de detalhes abrindo/fechando com animação.
                 AnimatedSize(
-                  duration: const Duration(milliseconds: 400),
+                  duration: row != selectedRow && _instantCollapse
+                      ? Duration.zero
+                      : _panelDuration,
                   curve: Curves.easeInOutCubic,
                   alignment: Alignment.topCenter,
                   child: row == selectedRow
@@ -145,6 +186,7 @@ class _PokedexWebGridState extends State<PokedexWebGrid> {
                               child: PageStorage(
                                   bucket: PageStorageBucket(),
                                   child: PokedexInlineDetails(
+                                    height: panelHeight,
                                     pokemonId: int.parse(
                                         widget.pokemon[selectedIndex].id),
                                     hasPrevious: selectedIndex > 0,

@@ -30,8 +30,11 @@ class PokedexInlineDetails extends StatefulWidget {
   final VoidCallback onPrevious;
   final VoidCallback onNext;
 
-  /// Altura do painel aberto (~2 linhas de cards a mais que a versão anterior).
-  static const double height = 756;
+  /// Altura do painel; a grade calcula para caber na tela, entre
+  /// [minHeight] e [maxHeight].
+  final double height;
+  static const double minHeight = 460;
+  static const double maxHeight = 756;
 
   const PokedexInlineDetails({
     super.key,
@@ -42,6 +45,7 @@ class PokedexInlineDetails extends StatefulWidget {
     required this.hasNext,
     required this.onPrevious,
     required this.onNext,
+    this.height = maxHeight,
   });
 
   @override
@@ -102,7 +106,7 @@ class _PokedexInlineDetailsState extends State<PokedexInlineDetails>
     return AnimatedContainer(
       duration: const Duration(milliseconds: 350),
       curve: Curves.easeOutCubic,
-      height: PokedexInlineDetails.height,
+      height: widget.height,
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(24),
@@ -131,7 +135,7 @@ class _PokedexInlineDetailsState extends State<PokedexInlineDetails>
                       selectedTabIndex: _tab,
                       onPageChanged: (index) => setState(() => _tab = index),
                       onEvolutionSelected: widget.onNavigate,
-                      height: PokedexInlineDetails.height - 12,
+                      height: widget.height - 12,
                       borderRadius: BorderRadius.circular(20),
                     ),
                   ),
@@ -155,7 +159,9 @@ class _PokedexInlineDetailsState extends State<PokedexInlineDetails>
               child: Opacity(
                 opacity: 0.18,
                 child: Image.asset('assets/images/pokeball.png',
-                    width: 480, height: 480, color: Colors.white),
+                    width: widget.height * 0.6,
+                    height: widget.height * 0.6,
+                    color: Colors.white),
               ),
             ),
           ),
