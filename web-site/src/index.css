@@ -115,6 +115,27 @@ body {
 }
 
 /* Quem prefere menos movimento no sistema não vê as animações contínuas. */
+/* Barra de tempo do modo Ranked: verde → amarelo → vermelho. */
+.ranked-timer {
+  width: 100%;
+  animation-name: ranked-timer;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+@keyframes ranked-timer {
+  0% {
+    width: 100%;
+    background: #43a047;
+  }
+  50% {
+    background: #fdd835;
+  }
+  100% {
+    width: 0%;
+    background: #e53935;
+  }
+}
+
 /* Pokémon flutuando na tela de login. */
 .login-float {
   animation: login-float 5s ease-in-out infinite;

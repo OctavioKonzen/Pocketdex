@@ -3,17 +3,24 @@
 //
 // Layout de tela cheia: Pokémon (silhueta) de um lado e as opções do outro;
 // no celular um embaixo do outro. Teclas 1 a 4 respondem.
+//
+// Modo Ranked (precisa de login): todas as gerações, 5 segundos por Pokémon.
+// Só o recorde do Ranked entra no ranking.
 
 import { AnimatePresence, m } from 'framer-motion'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import GenerationPicker from '../components/GenerationPicker'
 import Sprite from '../components/Sprite'
 import { Button, Icon, Loader, Modal } from '../components/ui'
+import { getRanking, getRankingPosition, useAuth } from '../lib/auth'
 import { getPokedex } from '../lib/data'
 import { GENERATIONS, generationBackground, prettyName } from '../lib/pokemon'
 import { useStore } from '../lib/store'
+import { useRankingVersion } from '../lib/sync'
 
 const LIVES = 3
+const RANKED_SECONDS = 5
+const TIMEOUT = -1 // "resposta" quando o tempo acaba
 const TOP_BAR = 72
 
 function pickQuestion(pool) {
@@ -39,16 +46,97 @@ function Stage({ children }) {
 
 const layoutHeight = { minHeight: `calc(100vh - ${TOP_BAR}px - 40px)` }
 
+const MEDALS = ['#FFD54F', '#CFD8DC', '#FFAB91']
+
+function RankingRow({ position, name, score, me, index }) {
+  const medal = MEDALS[position - 1]
+  return (
+    <m.li
+      initial={{ opacity: 0, x: 16 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: index * 0.04 }}
+      className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 ${me ? 'bg-yellow-400/15 ring-2 ring-yellow-400' : 'bg-surface'}`}
+    >
+      <span
+        className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-black"
+        style={medal ? { background: medal, color: '#3e2723' } : { background: 'var(--card)', color: 'var(--muted)' }}
+      >
+        {position}
+      </span>
+      <span className="min-w-0 flex-1 truncate font-bold">
+        {name}
+        {me && <span className="ml-2 text-xs font-semibold text-yellow-400">você</span>}
+      </span>
+      <span className="text-lg font-black text-yellow-400">{score}</span>
+    </m.li>
+  )
+}
+
+/** Melhores recordes de todos os jogadores (Firestore: ranking/{uid}). */
+function Ranking() {
+  const user = useAuth((s) => (s.status === 'signedIn' ? s.user : null))
+  const record = useStore((s) => s.rankedRecord)
+  const version = useRankingVersion((s) => s.version)
+  const [data, setData] = useState(null) // {list, position, error}
+
+  useEffect(() => {
+    if (!user) return
+    let alive = true
+    Promise.all([getRanking(10), record > 0 ? getRankingPosition(record) : null])
+      .then(([list, position]) => alive && setData({ list, position, error: false }))
+      .catch(() => alive && setData({ list: [], position: null, error: true }))
+    return () => {
+      alive = false
+    }
+  }, [user, record, version])
+
+  if (!user) return null
+  const inTop = data?.list.some((r) => r.uid === user.uid)
+  return (
+    <div className="flex flex-col rounded-[32px] bg-card p-6 shadow-xl sm:p-8 lg:col-span-2 xl:col-span-1">
+      <div className="mb-4 flex items-center gap-3">
+        <span className="grid h-12 w-12 place-items-center rounded-full bg-yellow-400 text-2xl">🏅</span>
+        <div>
+          <h2 className="text-2xl font-black">Ranking</h2>
+          <p className="text-sm text-muted">Os maiores recordes no modo Ranked.</p>
+        </div>
+      </div>
+      {!data ? (
+        <Loader size={56} />
+      ) : data.error ? (
+        <p className="py-10 text-center text-muted">Não foi possível carregar o ranking agora.</p>
+      ) : data.list.length === 0 ? (
+        <p className="py-10 text-center text-muted">Ninguém pontuou no Ranked ainda. Seja o primeiro!</p>
+      ) : (
+        <ol className="space-y-2">
+          {data.list.map((r, i) => (
+            <RankingRow key={r.uid} index={i} position={i + 1} name={r.name} score={r.score} me={r.uid === user.uid} />
+          ))}
+          {!inTop && data.position && (
+            <>
+              <li className="py-1 text-center text-muted">⋯</li>
+              <RankingRow index={data.list.length} position={data.position} name={user.name} score={record} me />
+            </>
+          )}
+        </ol>
+      )}
+    </div>
+  )
+}
+
 export default function GamePage() {
-  const record = useStore((s) => s.quizRecord)
+  const normalRecord = useStore((s) => s.quizRecord)
+  const rankedRecord = useStore((s) => s.rankedRecord)
   const saved = useStore((s) => s.quizGame)
-  const saveGame = useStore((s) => s.saveQuizGame)
-  const finish = useStore((s) => s.finishQuiz)
+  const saveNormalGame = useStore((s) => s.saveQuizGame)
+  const finishNormal = useStore((s) => s.finishQuiz)
+  const finishRanked = useStore((s) => s.finishRanked)
+  const canRank = useAuth((s) => s.status === 'signedIn')
   const [pokedex, setPokedex] = useState(null)
   const [generation, setGeneration] = useState(0)
   const [game, setGame] = useState(null) // {generation, score, lives, streak, answerId, options}
   const [chosen, setChosen] = useState(null)
-  const [ended, setEnded] = useState(null)
+  const [ended, setEnded] = useState(null) // {score, ranked, newRecord}
 
   useEffect(() => {
     getPokedex().then(setPokedex)
@@ -57,12 +145,35 @@ export default function GamePage() {
   const pool = useCallback((gen) => (gen ? pokedex.filter((p) => p.gen === gen) : pokedex), [pokedex])
   const byId = (id) => pokedex.find((p) => p.id === id)
 
-  const start = () => {
-    const g = { generation, score: 0, lives: LIVES, streak: 0, ...pickQuestion(pool(generation)) }
+  // O Ranked não fica salvo para continuar depois (senão daria para ganhar tempo).
+  const saveGame = useCallback((g) => !g.ranked && saveNormalGame(g), [saveNormalGame])
+
+  const start = (ranked = false) => {
+    const gen = ranked ? 0 : generation
+    const g = { generation: gen, ranked, round: 0, score: 0, lives: LIVES, streak: 0, ...pickQuestion(pool(gen)) }
     setGame(g)
     saveGame(g)
     setChosen(null)
   }
+
+  const end = useCallback(
+    (g) => {
+      const record = g.ranked ? useStore.getState().rankedRecord : useStore.getState().quizRecord
+      if (g.ranked) finishRanked(g.score)
+      else finishNormal(g.score)
+      setGame(null)
+      setChosen(null)
+      setEnded({ score: g.score, ranked: g.ranked, newRecord: g.score > record })
+    },
+    [finishNormal, finishRanked],
+  )
+
+  // Sair da página no meio de um Ranked encerra o jogo com os pontos feitos.
+  const gameRef = useRef(null)
+  useEffect(() => {
+    gameRef.current = game
+  }, [game])
+  useEffect(() => () => gameRef.current?.ranked && finishRanked(gameRef.current.score), [finishRanked])
 
   const answer = useCallback(
     (id) => {
@@ -79,11 +190,9 @@ export default function GamePage() {
         () => {
           setChosen(null)
           if (next.lives === 0) {
-            finish(next.score)
-            setGame(null)
-            setEnded(next.score)
+            end(next)
           } else {
-            const g = { ...next, ...pickQuestion(pool(next.generation)) }
+            const g = { ...next, round: (next.round ?? 0) + 1, ...pickQuestion(pool(next.generation)) }
             setGame(g)
             saveGame(g)
           }
@@ -91,8 +200,15 @@ export default function GamePage() {
         correct ? 1100 : 2000,
       )
     },
-    [chosen, game, finish, pool, saveGame],
+    [chosen, game, end, pool, saveGame],
   )
+
+  // Ranked: 5 segundos para responder cada Pokémon.
+  useEffect(() => {
+    if (!game?.ranked || chosen) return
+    const timer = setTimeout(() => answer(TIMEOUT), RANKED_SECONDS * 1000)
+    return () => clearTimeout(timer)
+  }, [game, chosen, answer])
 
   // Teclas 1 a 4 escolhem a resposta.
   useEffect(() => {
@@ -113,7 +229,7 @@ export default function GamePage() {
     const gen = GENERATIONS.find((g) => g.id === generation)
     const showcase = gen ? gen.starters : [25, 6, 150]
     return (
-      <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]" style={layoutHeight}>
+      <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr] xl:grid-cols-[1.3fr_1fr_1fr]" style={layoutHeight}>
         <Stage>
           <div className="relative mt-16 flex w-full max-w-2xl items-end justify-center gap-2 px-6">
             {showcase.map((id, i) => {
@@ -138,17 +254,33 @@ export default function GamePage() {
         </Stage>
 
         <div className="flex flex-col justify-center gap-5 rounded-[32px] bg-card p-6 shadow-xl sm:p-8">
-          <div className="flex items-center gap-4 rounded-2xl bg-surface p-4">
-            <span className="grid h-14 w-14 place-items-center rounded-full bg-yellow-400 text-3xl">🏆</span>
-            <div>
-              <div className="text-sm text-muted">Seu recorde</div>
-              <div className="text-3xl font-black text-yellow-400">{record} pontos</div>
+          <div className={`grid gap-3 ${canRank ? 'grid-cols-2' : ''}`}>
+            <div className="flex items-center gap-3 rounded-2xl bg-surface p-4">
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-sky-500 text-2xl">🎮</span>
+              <div>
+                <div className="text-sm text-muted">Recorde normal</div>
+                <div className="text-2xl font-black text-sky-400">{normalRecord}</div>
+              </div>
             </div>
+            {canRank && (
+              <div className="flex items-center gap-3 rounded-2xl bg-surface p-4">
+                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-yellow-400 text-2xl">🏆</span>
+                <div>
+                  <div className="text-sm text-muted">Recorde Ranked</div>
+                  <div className="text-2xl font-black text-yellow-400">{rankedRecord}</div>
+                </div>
+              </div>
+            )}
           </div>
           <ul className="space-y-1 text-sm text-muted">
             <li>• Adivinhe o Pokémon pela silhueta entre 4 opções.</li>
             <li>• Você tem 3 vidas; cada erro custa uma.</li>
             <li>• Use o mouse ou as teclas 1 a 4.</li>
+            {canRank && (
+              <li>
+                • <b className="text-yellow-400">Ranked:</b> todas as gerações e só {RANKED_SECONDS} segundos por Pokémon. É ele que conta para o ranking.
+              </li>
+            )}
           </ul>
           <div>
             <div className="mb-2 text-sm font-semibold">Geração</div>
@@ -160,12 +292,18 @@ export default function GamePage() {
                 ▶ Continuar jogo ({saved.score} pontos)
               </Button>
             )}
-            <Button onClick={start} className="w-full py-4 text-lg">
-              ▶ {saved ? 'Iniciar novo jogo' : 'Iniciar jogo'}
+            <Button onClick={() => start(false)} className="w-full py-4 text-lg">
+              ▶ {saved ? 'Novo jogo normal' : 'Jogo normal'}
             </Button>
+            {canRank && (
+              <Button onClick={() => start(true)} color="linear-gradient(135deg, #f9a825, #e65100)" className="w-full py-4 text-lg">
+                🏆 Jogar Ranked ({RANKED_SECONDS}s por Pokémon)
+              </Button>
+            )}
           </div>
         </div>
-        <EndModal score={ended} record={record} onClose={() => setEnded(null)} onRestart={() => (setEnded(null), start())} />
+        <Ranking />
+        <EndModal result={ended} onClose={() => setEnded(null)} onRestart={() => (setEnded(null), start(ended.ranked))} />
       </div>
     )
   }
@@ -175,6 +313,7 @@ export default function GamePage() {
   const revealed = Boolean(chosen)
   const hit = revealed && chosen === game.answerId
   const gen = GENERATIONS.find((g) => g.id === game.generation)
+  const record = game.ranked ? rankedRecord : normalRecord
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]" style={layoutHeight}>
@@ -210,7 +349,7 @@ export default function GamePage() {
 
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between rounded-2xl bg-card p-4 shadow">
-          <button type="button" onClick={() => setGame(null)} className="flex cursor-pointer items-center gap-1 text-muted hover:text-text">
+          <button type="button" onClick={() => (game.ranked ? end(game) : setGame(null))} className="flex cursor-pointer items-center gap-1 text-muted hover:text-text">
             <Icon name="back" size={20} /> Sair
           </button>
           <div className="flex gap-1 text-red-500">
@@ -237,6 +376,22 @@ export default function GamePage() {
             <div className="text-3xl font-black text-yellow-400">{Math.max(record, game.score)}</div>
           </div>
         </div>
+        {game.ranked && (
+          <div className="overflow-hidden rounded-2xl bg-card shadow">
+            <div className="flex items-center justify-between px-4 pt-2 text-sm font-bold">
+              <span className="text-yellow-400">🏆 Ranked</span>
+              <span className="text-muted">{RANKED_SECONDS}s por Pokémon</span>
+            </div>
+            <div className="m-3 mt-2 h-3 overflow-hidden rounded-full bg-surface">
+              {/* Barra do tempo: esvazia em 5 s; para quando a resposta aparece. */}
+              <div
+                key={game.round}
+                className="ranked-timer h-full rounded-full"
+                style={{ animationDuration: `${RANKED_SECONDS}s`, animationPlayState: revealed ? 'paused' : 'running' }}
+              />
+            </div>
+          </div>
+        )}
         {gen && (
           <div className="rounded-full px-4 py-2 text-center text-sm font-bold text-white" style={{ background: generationBackground(gen) }}>
             {gen.name.replace('Generation', 'Geração')} · {gen.region}
@@ -269,20 +424,20 @@ export default function GamePage() {
           })}
         </div>
         {revealed && (
-          <p className={`text-center text-lg font-bold ${hit ? 'text-green-400' : 'text-red-400'}`}>{hit ? 'Acertou! +1 ponto' : 'Errou! -1 vida'}</p>
+          <p className={`text-center text-lg font-bold ${hit ? 'text-green-400' : 'text-red-400'}`}>{hit ? 'Acertou! +1 ponto' : chosen === TIMEOUT ? 'Tempo esgotado! -1 vida' : 'Errou! -1 vida'}</p>
         )}
       </div>
     </div>
   )
 }
 
-function EndModal({ score, record, onClose, onRestart }) {
+function EndModal({ result, onClose, onRestart }) {
   return (
-    <Modal open={score !== null} onClose={onClose} title="Fim de Jogo!">
+    <Modal open={result !== null} onClose={onClose} title={result?.ranked ? 'Fim do Ranked!' : 'Fim de Jogo!'}>
       <div className="text-center">
         <p>Sua pontuação foi:</p>
-        <p className="my-2 text-6xl font-black text-yellow-400">{score}</p>
-        {score !== null && score >= record && score > 0 && <p className="text-green-400">Novo recorde! 🎉</p>}
+        <p className="my-2 text-6xl font-black text-yellow-400">{result?.score}</p>
+        {result?.newRecord && <p className="text-green-400">Novo recorde{result.ranked ? ' no Ranked! Confira sua posição no ranking' : ''}! 🎉</p>}
         <div className="mt-6 flex justify-center gap-3">
           <button type="button" onClick={onClose} className="cursor-pointer px-4 text-muted">
             Sair

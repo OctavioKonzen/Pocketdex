@@ -2,10 +2,12 @@
 // com a conta dele no Firestore. Assim os dados aparecem em qualquer
 // computador (e, no futuro, no app) em que a pessoa entrar.
 
-import { loadUserData, saveUserData, signOut, useAuth } from './auth'
+import { create } from 'zustand'
+import { loadUserData, saveRanking, saveUserData, signOut, useAuth } from './auth'
 import { useStore } from './store'
 
-const KEYS = ['theme', 'favorites', 'teams', 'training', 'quizRecord']
+// quizGame é o jogo em andamento: dá para continuar em outro computador.
+const KEYS = ['theme', 'favorites', 'teams', 'training', 'quizRecord', 'rankedRecord', 'quizGame']
 const pick = (state) => Object.fromEntries(KEYS.map((k) => [k, state[k]]))
 
 let stopStore = null
@@ -16,6 +18,18 @@ function stop() {
   stopStore?.()
   stopStore = null
   clearTimeout(timer)
+}
+
+/** Muda sempre que o ranking é atualizado (a tela do jogo recarrega a lista). */
+export const useRankingVersion = create(() => ({ version: 0 }))
+
+/** Leva o recorde do modo Ranked para o ranking público. */
+function updateRanking(uid) {
+  const name = useAuth.getState().user?.name
+  if (!name) return
+  saveRanking(uid, name, useStore.getState().rankedRecord)
+    .then(() => useRankingVersion.setState((s) => ({ version: s.version + 1 })))
+    .catch(() => {})
 }
 
 function scheduleSave(uid) {
@@ -35,6 +49,7 @@ async function start(uid) {
   let changedWhileLoading = false
   stopStore = useStore.subscribe((state, previous) => {
     if (KEYS.every((k) => state[k] === previous[k])) return
+    if (ready && state.rankedRecord !== previous.rankedRecord) updateRanking(uid)
     if (ready) scheduleSave(uid)
     else changedWhileLoading = true
   })
@@ -43,7 +58,7 @@ async function start(uid) {
     if (currentUid !== uid) return
     if (remote) {
       // A conta já tem dados: eles valem neste computador também.
-      useStore.setState({ ...pick({ ...useStore.getState(), ...remote }), quizGame: null })
+      useStore.setState(pick({ ...useStore.getState(), ...remote }))
       changedWhileLoading = false
     } else {
       // Primeira vez: o que já estava salvo neste navegador vai para a conta.
@@ -56,6 +71,7 @@ async function start(uid) {
   if (currentUid !== uid) return
   ready = true
   if (changedWhileLoading) scheduleSave(uid)
+  updateRanking(uid)
 }
 
 /** Salva na hora o que ainda estiver esperando (antes de sair da conta). */

@@ -8,16 +8,13 @@ import { logout } from '../lib/sync'
 export default function SettingsPage() {
   const theme = useStore((s) => s.theme)
   const setTheme = useStore((s) => s.setTheme)
-  const record = useStore((s) => s.quizRecord)
-  const resetQuizRecord = useStore((s) => s.resetQuizRecord)
-  const clearAll = useStore((s) => s.clearAll)
+  const clearCollections = useStore((s) => s.clearCollections)
   const [confirm, setConfirm] = useState(null)
   const [message, setMessage] = useState('')
   const user = useAuth((s) => (s.status === 'signedIn' ? s.user : null))
 
   const actions = {
-    record: { title: 'Zerar recorde', text: 'Tem certeza que deseja zerar o seu recorde no quiz?', run: resetQuizRecord, done: 'Recorde do quiz zerado com sucesso!' },
-    all: { title: 'Limpar dados', text: 'Isso apaga favoritos, times, treinos e recorde. Continuar?', run: clearAll, done: 'Preferências de usuário limpas!' },
+    all: { title: 'Limpar dados', text: 'Isso apaga seus favoritos, times e treinos. Continuar?', run: clearCollections, done: 'Preferências de usuário limpas!' },
   }
 
   return (
@@ -51,15 +48,6 @@ export default function SettingsPage() {
           >
             <m.span layout className="absolute top-1 h-6 w-6 rounded-full bg-white shadow" style={{ left: theme === 'dark' ? 28 : 4 }} />
           </button>
-        </div>
-        <div className="flex items-center justify-between rounded-2xl bg-card p-5 shadow">
-          <div>
-            <div className="font-bold">Recorde do quiz</div>
-            <div className="text-sm text-muted">Atual: {record} pontos</div>
-          </div>
-          <Button color="#e53935" onClick={() => setConfirm('record')}>
-            Zerar
-          </Button>
         </div>
         <div className="flex items-center justify-between rounded-2xl bg-card p-5 shadow">
           <div>
