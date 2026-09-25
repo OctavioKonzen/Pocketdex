@@ -8,7 +8,7 @@ import 'package:pocket_dex/models/pokemon_listing.dart';
 import 'package:pocket_dex/screens/pokemon_detail_screen.dart';
 import 'package:pocket_dex/utils/pokemon_colors.dart';
 import 'package:pocket_dex/widgets/pikachu_loading_indicator.dart';
-import 'package:pocket_dex/utils/app_images.dart';
+import 'package:pocket_dex/widgets/pokemon_sprite.dart';
 
 class PokemonCard extends StatefulWidget {
   final PokemonListing pokemonListing;
@@ -81,7 +81,8 @@ class _PokemonCardState extends State<PokemonCard> with SingleTickerProviderStat
 
       _id = (data['id'] as int).toString();
       _imageUrl = data['sprites']['front_default'] ?? data['sprites']['other']['official-artwork']['front_default'];
-      _displayName = widget.pokemonListing.name.split('-').first;
+      // O nome vem do banco (a lista de favoritos só tem o número).
+      _displayName = ((data['name'] as String?) ?? widget.pokemonListing.name).split('-').first;
       _types = (data['types'] as List).map((t) => t['type']['name'] as String).toList();
 
       if (mounted) {
@@ -154,9 +155,8 @@ class _PokemonCardState extends State<PokemonCard> with SingleTickerProviderStat
       onTap: _handleTap,
       onDoubleTap: _toggleFavorite,
       child: Container(
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.circular(16),
+        // Dois tipos: gradiente com as duas cores (igual ao site).
+        decoration: typeBackground(_types, borderRadius: BorderRadius.circular(16)).copyWith(
           boxShadow: [
             BoxShadow(
               color: backgroundColor.withAlpha(102),
@@ -171,25 +171,27 @@ class _PokemonCardState extends State<PokemonCard> with SingleTickerProviderStat
             alignment: Alignment.center,
             fit: StackFit.expand,
             children: [
-              RotationTransition(
-                turns: _animationController,
-                child: Opacity(
-                  opacity: 0.1,
-                  child: Image.asset(
-                    'assets/images/pokeball.png',
-                    width: 120,
-                    height: 120,
+              // Camada própria: o giro não redesenha o resto do card.
+              RepaintBoundary(
+                child: RotationTransition(
+                  turns: _animationController,
+                  child: Opacity(
+                    opacity: 0.1,
+                    child: Image.asset(
+                      'assets/images/pokeball.png',
+                      width: 120,
+                      height: 120,
+                      cacheWidth: 240,
+                    ),
                   ),
                 ),
               ),
               Hero(
                 tag: '${_id!}-${widget.pokemonListing.name}',
-                child: Image(
-                  image: AppImages.provider(_imageUrl!),
-                  fit: BoxFit.cover,
-                  filterQuality: FilterQuality.none,
-                  errorBuilder: (context, error, stackTrace) =>
-                      const Icon(Icons.error_outline, color: Colors.white, size: 40),
+                // Todos os Pokémon com o mesmo tamanho visual.
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 22),
+                  child: PokemonSprite(_id!, fill: 0.7),
                 ),
               ),
               Positioned(

@@ -1,24 +1,29 @@
-// Sincroniza os dados do usuário (favoritos, times, treinos, recorde e tema)
-// com a conta dele no Firestore. Assim os dados aparecem em qualquer
-// computador (e, no futuro, no app) em que a pessoa entrar.
+// Sincroniza os dados do usuário (favoritos, times, treinos, recordes, jogo e
+// tema) com a conta dele no Firestore, em tempo real e nos dois sentidos:
+// uma mudança feita no app de celular aparece no site na hora, e vice-versa.
+//
+// Formato em users/{uid}.data (o app usa o mesmo):
+//   theme: 'dark' | 'light'
+//   favorites: [id]                       ids de Pokémon (números)
+//   teams: [{ id, name, color, pokemon: [id | null] x6 }]
+//   training: [{ id, pokemonId, name, sprite, box, evs: { hp, attack, defense,
+//               'special-attack', 'special-defense', speed } }]
+//   quizRecord, rankedRecord: número
+//   quizGame: jogo normal em andamento ou null
 
 import { create } from 'zustand'
-import { loadUserData, saveRanking, saveUserData, signOut, useAuth } from './auth'
+import { saveRanking, saveUserData, signOut, useAuth, watchUserData } from './auth'
 import { useStore } from './store'
 
-// quizGame é o jogo em andamento: dá para continuar em outro computador.
 const KEYS = ['theme', 'favorites', 'teams', 'training', 'quizRecord', 'rankedRecord', 'quizGame']
-const pick = (state) => Object.fromEntries(KEYS.map((k) => [k, state[k]]))
+const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
 
+let currentUid = null
+let stopRemote = null
 let stopStore = null
 let timer = null
-let currentUid = null
-
-function stop() {
-  stopStore?.()
-  stopStore = null
-  clearTimeout(timer)
-}
+let dirty = new Set() // campos mudados aqui e ainda não gravados
+let applyingRemote = false
 
 /** Muda sempre que o ranking é atualizado (a tela do jogo recarrega a lista). */
 export const useRankingVersion = create(() => ({ version: 0 }))
@@ -32,54 +37,84 @@ function updateRanking(uid) {
     .catch(() => {})
 }
 
+async function flush(uid) {
+  clearTimeout(timer)
+  timer = null
+  if (!dirty.size) return
+  const state = useStore.getState()
+  const changes = Object.fromEntries([...dirty].map((k) => [k, state[k] ?? null]))
+  dirty = new Set()
+  await saveUserData(uid, changes).catch(() => {
+    // Sem conexão: tenta de novo na próxima mudança.
+    Object.keys(changes).forEach((k) => dirty.add(k))
+  })
+}
+
 function scheduleSave(uid) {
   clearTimeout(timer)
-  timer = setTimeout(() => {
-    timer = null
-    saveUserData(uid, pick(useStore.getState())).catch(() => {})
-  }, 800)
+  timer = setTimeout(() => flush(uid), 600)
+}
+
+function stop() {
+  stopRemote?.()
+  stopStore?.()
+  stopRemote = stopStore = null
+  clearTimeout(timer)
+  timer = null
+  dirty = new Set()
 }
 
 async function start(uid) {
   stop()
   currentUid = uid
-  // Já ouve as mudanças desde o começo; as feitas enquanto a conta carrega
-  // são salvas logo depois (senão se perderiam).
   let ready = false
-  let changedWhileLoading = false
+
   stopStore = useStore.subscribe((state, previous) => {
-    if (KEYS.every((k) => state[k] === previous[k])) return
-    if (ready && state.rankedRecord !== previous.rankedRecord) updateRanking(uid)
-    if (ready) scheduleSave(uid)
-    else changedWhileLoading = true
+    if (applyingRemote) return
+    const changed = KEYS.filter((k) => state[k] !== previous[k])
+    if (!changed.length) return
+    changed.forEach((k) => dirty.add(k))
+    if (!ready) return // grava depois de receber a conta
+    if (changed.includes('rankedRecord')) updateRanking(uid)
+    scheduleSave(uid)
   })
-  try {
-    const remote = await loadUserData(uid)
-    if (currentUid !== uid) return
-    if (remote) {
-      // A conta já tem dados: eles valem neste computador também.
-      useStore.setState(pick({ ...useStore.getState(), ...remote }))
-      changedWhileLoading = false
-    } else {
-      // Primeira vez: o que já estava salvo neste navegador vai para a conta.
-      await saveUserData(uid, pick(useStore.getState()))
-    }
-  } catch {
-    // Sem conexão: continua com os dados locais e tenta salvar depois.
-    changedWhileLoading = true
-  }
-  if (currentUid !== uid) return
-  ready = true
-  if (changedWhileLoading) scheduleSave(uid)
-  updateRanking(uid)
+
+  const unsubscribe = await watchUserData(
+    uid,
+    (remote) => {
+      if (currentUid !== uid) return
+      if (!remote) {
+        // Conta nova: o que já estava neste navegador vai para ela.
+        KEYS.forEach((k) => dirty.add(k))
+      } else {
+        const state = useStore.getState()
+        const incoming = {}
+        for (const k of KEYS) {
+          // O que foi mudado aqui e ainda não foi gravado tem preferência.
+          if (k in remote && !dirty.has(k) && !same(remote[k], state[k])) incoming[k] = remote[k]
+        }
+        if (Object.keys(incoming).length) {
+          applyingRemote = true
+          useStore.setState(incoming)
+          applyingRemote = false
+        }
+      }
+      if (!ready) {
+        ready = true
+        updateRanking(uid)
+      }
+      if (dirty.size) scheduleSave(uid)
+    },
+    () => {},
+  ).catch(() => null)
+
+  if (currentUid !== uid) unsubscribe?.()
+  else stopRemote = unsubscribe
 }
 
 /** Salva na hora o que ainda estiver esperando (antes de sair da conta). */
 export async function flushSync() {
-  if (!timer || !currentUid) return
-  clearTimeout(timer)
-  timer = null
-  await saveUserData(currentUid, pick(useStore.getState())).catch(() => {})
+  if (currentUid) await flush(currentUid)
 }
 
 /** Sai da conta, salvando antes o que faltava. */

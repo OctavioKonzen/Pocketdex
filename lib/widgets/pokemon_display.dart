@@ -33,7 +33,7 @@ class PokemonDisplay extends StatelessWidget {
 
     return Expanded(
       child: Container(
-        color: getColorForType(pokemon.forms.first.types.first),
+        decoration: typeBackground(form.types),
         child: Stack(
           alignment: Alignment.center,
           clipBehavior: Clip.none,
@@ -44,7 +44,8 @@ class PokemonDisplay extends StatelessWidget {
                 turns: pokeballAnimation,
                 child: Opacity(
                   opacity: 0.15,
-                  child: Image.asset('assets/images/pokeball.png', width: pokeballSize, height: pokeballSize, color: Colors.white),
+                  child: Image.asset('assets/images/pokeball.png',
+                      width: pokeballSize, height: pokeballSize, color: Colors.white, cacheWidth: 720),
                 ),
               ),
             ),

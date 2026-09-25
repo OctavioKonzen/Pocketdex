@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import '../models/team.dart';
 import '../services/team_service.dart';
+import '../services/user_data.dart';
 import '../widgets/team_card.dart';
 import 'team_builder_screen.dart';
 import '../utils/responsive.dart';
@@ -21,7 +22,19 @@ class _TeamsScreenState extends State<TeamsScreen> {
   @override
   void initState() {
     super.initState();
+    // Mudanças vindas da conta (site ou outro aparelho) aparecem na hora.
+    UserData.instance.addListener(_onUserData);
     _loadTeams();
+  }
+
+  void _onUserData() {
+    if (mounted) _loadTeams();
+  }
+
+  @override
+  void dispose() {
+    UserData.instance.removeListener(_onUserData);
+    super.dispose();
   }
 
   void _loadTeams() {

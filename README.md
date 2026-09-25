@@ -59,9 +59,29 @@
 
 ## 📥 Como Baixar (APK)
 
-1. Vá até a seção de [**Releases**](https://github.com/OctavioKonzen/Pocketdex/releases).
-2. Baixe o arquivo `app-release.apk` da versão mais recente.
+1. No site, clique em **Baixar app** (menu de cima) ou vá até [**Releases**](https://github.com/OctavioKonzen/Pocketdex/releases).
+2. Baixe o `PocketDex.apk` da versão mais recente.
 3. Instale no seu Android (lembre-se de permitir a instalação de fontes desconhecidas).
+
+As próximas versões são avisadas pelo próprio app, que baixa e instala a atualização. O app usa a **mesma conta do
+site**: favoritos, times, treinos, tema e recordes ficam sincronizados em tempo real entre os dois.
+
+### Publicar uma versão nova do app
+
+Aumente a versão em `pubspec.yaml` (ex.: `1.1.0+2` → `1.2.0+3`) e mande para a `main`. O workflow
+`.github/workflows/android-release.yml` gera o APK assinado e publica em Releases. Ele precisa destes secrets
+(**Settings → Secrets and variables → Actions**):
+
+| Secret | O que é |
+|---|---|
+| `ANDROID_KEYSTORE_BASE64` | chave de assinatura (`.jks`) em base64 — sempre a mesma, senão o Android não instala a atualização |
+| `ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_PASSWORD` | senhas da chave |
+| `ANDROID_KEY_ALIAS` | apelido da chave |
+| `GOOGLE_SERVICES_JSON` | conteúdo do `google-services.json` do app Android no Firebase (`com.octaviokonzen.pocketdex`) |
+
+Para compilar no PC com login, coloque o `google-services.json` em `android/app/` (e, para gerar a versão
+assinada, um `android/key.properties` com `storeFile`, `storePassword`, `keyAlias` e `keyPassword`). Os dois ficam
+fora do git.
 
 ---
 

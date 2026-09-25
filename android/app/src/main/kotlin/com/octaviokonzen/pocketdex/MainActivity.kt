@@ -1,4 +1,4 @@
-package com.example.myapp
+package com.octaviokonzen.pocketdex
 
 import io.flutter.embedding.android.FlutterActivity
 

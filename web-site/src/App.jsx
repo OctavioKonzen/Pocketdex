@@ -2,6 +2,7 @@ import { AnimatePresence, m } from 'framer-motion'
 import { createContext, lazy, Suspense, useContext, useEffect, useState } from 'react'
 import { HashRouter, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { imageUrl } from './lib/data'
+import { getDownloadUrl, RELEASES_URL } from './lib/appRelease'
 import { useStore } from './lib/store'
 import { startAuth, useAuth } from './lib/auth'
 import { logout, startSync } from './lib/sync'
@@ -59,6 +60,7 @@ function NavButton({ section }) {
 
 function TopBar() {
   const { search, setSearch } = useSearch()
+  const apkUrl = useDownloadUrl()
   const navigate = useNavigate()
   const { pathname } = useLocation()
 
@@ -78,7 +80,7 @@ function TopBar() {
             <NavButton key={s.path} section={s} />
           ))}
         </nav>
-        <label className="hidden w-[280px] shrink-0 items-center gap-2 rounded-full bg-bg px-4 py-2.5 lg:flex">
+        <label className="hidden w-[210px] shrink-0 items-center gap-2 rounded-full bg-bg px-4 py-2.5 lg:flex 2xl:w-[280px]">
           <Icon name="search" className="text-muted" />
           <input
             value={search}
@@ -87,6 +89,16 @@ function TopBar() {
             className="w-full bg-transparent text-sm outline-none placeholder:text-muted"
           />
         </label>
+        <m.a
+          href={apkUrl}
+          whileHover={{ scale: 1.08 }}
+          whileTap={{ scale: 0.95 }}
+          title="Baixar o app para Android"
+          className="flex shrink-0 items-center gap-1.5 rounded-full bg-[#3DDC84] px-2.5 py-2 text-sm font-bold text-[#073042] 2xl:px-4"
+        >
+          <Icon name="android" size={20} />
+          <span className="hidden 2xl:inline">Baixar app</span>
+        </m.a>
         <ThemeToggle />
         <UserMenu />
         <m.button type="button" whileHover={{ scale: 1.15, rotate: 45 }} onClick={() => navigate('/configuracoes')} aria-label="Configurações" title="Configurações" className="shrink-0 cursor-pointer text-text">
@@ -102,6 +114,15 @@ function TopBar() {
       </div>
     </header>
   )
+}
+
+/** Link do APK mais recente (GitHub Releases). */
+function useDownloadUrl() {
+  const [url, setUrl] = useState(RELEASES_URL)
+  useEffect(() => {
+    getDownloadUrl().then(setUrl)
+  }, [])
+  return url
 }
 
 /** Botão de tema claro/escuro no menu (sol ↔ lua). */

@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { PokemonList } from '../components/EntryModals'
 import PokemonPicker from '../components/PokemonPicker'
 import { Button, Empty, Icon, Loader, PageHeader } from '../components/ui'
-import { getEggGroups, getSpecies } from '../lib/data'
+import { getEggGroups, getPokemonById, getSpecies } from '../lib/data'
 import { EV_STATS, MAX_STAT_EVS, MAX_TOTAL_EVS, NATURES, capitalize, prettyName } from '../lib/pokemon'
 import { useStore } from '../lib/store'
 import Sprite from '../components/Sprite'
@@ -141,6 +141,11 @@ function EvCounter() {
   const addEvs = useStore((s) => s.addEvs)
   const resetEvs = useStore((s) => s.resetEvs)
   const [adding, setAdding] = useState(false)
+  // Treinos criados no app não trazem o recorte do sprite (box): vem do índice.
+  const [pokemonById, setPokemonById] = useState(null)
+  useEffect(() => {
+    getPokemonById().then(setPokemonById)
+  }, [])
   const [defeatingFor, setDefeatingFor] = useState(null)
   const [lastGain, setLastGain] = useState(null)
 
@@ -169,7 +174,7 @@ function EvCounter() {
           return (
             <m.div key={t.id} layout className="rounded-3xl bg-card p-5 shadow">
               <div className="flex items-center gap-3">
-                <Sprite path={t.sprite} box={t.box} className="w-20 shrink-0" />
+                <Sprite path={t.sprite} box={t.box ?? pokemonById?.get(t.pokemonId)?.box} className="w-20 shrink-0" />
                 <div className="flex-1">
                   <h3 className="text-lg font-bold">{capitalize(t.name)}</h3>
                   <p className="text-sm text-muted">

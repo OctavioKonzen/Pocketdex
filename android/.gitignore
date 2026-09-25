@@ -12,3 +12,6 @@ GeneratedPluginRegistrant.java
 key.properties
 **/*.keystore
 **/*.jks
+
+# Firebase do app Android (vem do Console do Firebase; no CI é um secret)
+/app/google-services.json

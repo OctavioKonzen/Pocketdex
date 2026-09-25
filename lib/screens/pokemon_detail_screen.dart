@@ -1,6 +1,9 @@
 // lib/screens/pokemon_detail_screen.dart
 
 import 'package:flutter/material.dart';
+import '../services/account_format.dart';
+import '../widgets/pokemon_sprite.dart';
+import '../widgets/pokedex_web/pokeball_reveal.dart';
 import 'package:flutter/services.dart';
 import 'package:pocket_dex/models/alternate_form.dart';
 import 'package:pocket_dex/models/pokemon_details.dart';
@@ -331,7 +334,8 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen>
                                   details: pokemon,
                                   form: _selectedForm,
                                   isShiny: _isShiny,
-                                  offset: currentOffset),
+                                  offset: currentOffset,
+                                  reveal: true),
                             ],
                           );
                         },
@@ -383,11 +387,15 @@ class _PokemonAnimatedImage extends StatelessWidget {
   final bool? isShiny;
   final Offset offset;
 
+  /// Pokémon saindo da Pokébola ao abrir (como no site).
+  final bool reveal;
+
   const _PokemonAnimatedImage({
     required this.details,
     this.form,
     this.isShiny,
     required this.offset,
+    this.reveal = false,
   });
 
   @override
@@ -408,16 +416,22 @@ class _PokemonAnimatedImage extends StatelessWidget {
         scale: scale,
         child: Opacity(
           opacity: opacity,
-          child: Image(
-            image: AppImages.provider(imageUrl),
-            height: 300,
-            width: 300,
-            fit: BoxFit.contain,
-            filterQuality: FilterQuality.none,
-          ),
+          child: _image(imageUrl, displayShiny),
         ),
       ),
     );
+  }
+
+  Widget _image(String imageUrl, bool shiny) {
+    final id = AccountFormat.pokemonIdFromImage(imageUrl);
+    // Mesmo tamanho visual para todos os Pokémon.
+    final Widget image = SizedBox.square(
+      dimension: 300,
+      child: id != null
+          ? PokemonSprite(id, shiny: shiny, fill: 0.62)
+          : Image(image: AppImages.provider(imageUrl), fit: BoxFit.contain, filterQuality: FilterQuality.none),
+    );
+    return reveal ? PokeballReveal(key: ValueKey('reveal-${details.id}'), ballSize: 80, child: image) : image;
   }
 }
 

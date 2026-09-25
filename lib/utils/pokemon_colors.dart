@@ -24,3 +24,20 @@ const Map<String, Color> pokemonTypeColors = {
 Color getColorForType(String type) {
   return pokemonTypeColors[type.toLowerCase()] ?? Colors.grey[700]!;
 }
+/// Fundo de um Pokémon: a cor do tipo, ou gradiente das duas cores quando
+/// ele tem dois tipos (igual ao site).
+BoxDecoration typeBackground(List<String> types, {BorderRadius? borderRadius}) {
+  final first = types.isNotEmpty ? getColorForType(types.first) : Colors.grey[850]!;
+  return BoxDecoration(
+    color: first,
+    borderRadius: borderRadius,
+    gradient: types.length > 1
+        ? LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [first, getColorForType(types[1])],
+            stops: const [0.2, 0.85],
+          )
+        : null,
+  );
+}

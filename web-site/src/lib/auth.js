@@ -187,13 +187,25 @@ export async function signOut() {
 
 // ---------------------------------------------------------------- dados
 
-/** Lê os dados salvos (favoritos, times...) da conta. */
-export async function loadUserData(uid) {
-  const { db, doc, getDoc } = await firebase()
-  const snap = await getDoc(doc(db, 'users', uid))
-  return snap.exists() ? snap.data().data ?? null : null
+/**
+ * Ouve os dados da conta em tempo real (mudanças feitas no app ou em outro
+ * computador chegam na hora). `callback(data | null)`; devolve a função
+ * que para de ouvir.
+ */
+export async function watchUserData(uid, callback, onError) {
+  const { db, doc, onSnapshot } = await firebase()
+  return onSnapshot(
+    doc(db, 'users', uid),
+    (snap) => {
+      // Ignora o "eco" das gravações feitas por este navegador.
+      if (snap.metadata.hasPendingWrites) return
+      callback(snap.exists() ? snap.data().data ?? null : null)
+    },
+    onError,
+  )
 }
 
+/** Grava só os campos passados (os outros ficam como estão). */
 export async function saveUserData(uid, data) {
   const { db, doc, setDoc, serverTimestamp } = await firebase()
   await setDoc(doc(db, 'users', uid), { data, updatedAt: serverTimestamp() }, { merge: true })

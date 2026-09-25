@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/theme_provider.dart';
+import '../services/account_sync.dart';
+import '../services/auth_service.dart';
 import '../utils/responsive.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -14,46 +16,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  static const String _recordKey = 'quiz_highscore';
   static const String _genKey = 'selected_generation_index';
-
-  Future<void> _resetHighScore(BuildContext context) async {
-    final navigator = Navigator.of(context);
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-
-    final bool? confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Confirmar Ação'),
-        content:
-            const Text('Tem certeza que deseja zerar o seu recorde no quiz?'),
-        actions: [
-          TextButton(
-            child: const Text('Cancelar'),
-            onPressed: () => navigator.pop(false),
-          ),
-          TextButton(
-            child: const Text('Zerar',
-                style: TextStyle(
-                    color: Colors.redAccent, fontWeight: FontWeight.bold)),
-            onPressed: () => navigator.pop(true),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt(_recordKey, 0);
-      scaffoldMessenger.showSnackBar(
-        const SnackBar(
-          content: Text('Recorde do quiz zerado com sucesso!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    }
-  }
 
   Future<void> _clearCache(BuildContext context) async {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
@@ -105,6 +68,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final themeProvider = context.watch<ThemeProvider>();
     final isDarkMode = themeProvider.themeMode == ThemeMode.dark;
     final theme = Theme.of(context);
+    final auth = context.watch<AuthService>();
+    final user = auth.status == AuthStatus.signedIn ? auth.user : null;
 
     return Scaffold(
       appBar: AppBar(
@@ -114,6 +79,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: ListView(
         padding: const EdgeInsets.all(8.0),
         children: [
+          if (user != null) ...[
+            ListTile(
+              leading: CircleAvatar(
+                backgroundColor: const Color(0xFFE53935),
+                foregroundColor: Colors.white,
+                child: Text((user.name ?? '?').substring(0, 1).toUpperCase(),
+                    style: const TextStyle(fontWeight: FontWeight.w900)),
+              ),
+              title: Text(user.name ?? '', style: theme.textTheme.titleMedium),
+              subtitle: Text('${user.email ?? ''}\nSeus dados ficam salvos na conta (app e site).',
+                  style: theme.textTheme.bodySmall),
+              isThreeLine: true,
+              trailing: TextButton.icon(
+                onPressed: () => AccountSync.instance.logout(),
+                icon: const Icon(Icons.logout, color: Colors.redAccent),
+                label: const Text('Sair', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+              ),
+            ),
+            const Divider(),
+          ],
           SwitchListTile(
             title: Text('Modo Escuro', style: theme.textTheme.titleMedium),
             subtitle: Text('Ative para uma experiência com cores escuras.',
@@ -131,14 +116,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
           const Divider(),
-          _buildOptionTile(
-            icon: Icons.leaderboard_outlined,
-            color: Colors.amber,
-            title: 'Zerar Recorde do Quiz',
-            subtitle: 'Redefine sua pontuação máxima para zero.',
-            onTap: () => _resetHighScore(context),
-            theme: theme,
-          ),
           _buildOptionTile(
             icon: Icons.delete_sweep_outlined,
             color: Colors.lightBlueAccent,

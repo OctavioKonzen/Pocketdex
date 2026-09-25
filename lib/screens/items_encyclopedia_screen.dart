@@ -1,9 +1,9 @@
 // lib/screens/items_encyclopedia_screen.dart
 import 'package:flutter/material.dart';
+import '../widgets/expandable_entry.dart';
 import '../models/item.dart';
 import '../services/pokemon_service.dart';
 import '../utils/string_extensions.dart';
-import 'item_detail_screen.dart';
 import '../utils/responsive.dart';
 import '../utils/app_images.dart';
 
@@ -17,6 +17,15 @@ class ItemsEncyclopediaScreen extends StatefulWidget {
 
 class _ItemsEncyclopediaScreenState extends State<ItemsEncyclopediaScreen> {
   final PokemonService _pokemonService = PokemonService();
+  // Item aberto na lista (abre embaixo, empurrando os outros).
+  final ValueNotifier<String?> _openId = ValueNotifier(null);
+
+  @override
+  void dispose() {
+    _openId.dispose();
+    super.dispose();
+  }
+
   List<Map<String, String>> _allItems = [];
   List<Map<String, String>> _filteredItems = [];
   bool _isLoading = true;
@@ -88,6 +97,7 @@ class _ItemsEncyclopediaScreenState extends State<ItemsEncyclopediaScreen> {
                         name: itemData['name']!,
                         url: itemData['url']!,
                         pokemonService: _pokemonService,
+                        openId: _openId,
                       );
                     },
                   ),
@@ -102,56 +112,45 @@ class _ItemTile extends StatelessWidget {
   final String name;
   final String url;
   final PokemonService pokemonService;
+  final ValueNotifier<String?> openId;
 
-  const _ItemTile(
-      {required this.name, required this.url, required this.pokemonService});
+  const _ItemTile({required this.name, required this.url, required this.pokemonService, required this.openId});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
-      color: theme.cardColor,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: FutureBuilder<Item>(
-        future: pokemonService.fetchResourceDetails(
-            url, (json) => Item.fromApiJson(json)),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return ListTile(
-              leading: const SizedBox(
-                  width: 40,
-                  height: 40,
-                  child:
-                      Center(child: CircularProgressIndicator(strokeWidth: 2))),
-              title: Text(name.replaceAll('-', ' ').capitalise(),
-                  style: TextStyle(color: theme.colorScheme.onSurface)),
-            );
-          }
-          final item = snapshot.data!;
-          return ListTile(
-            leading: Image(
-              image: AppImages.provider(item.imageUrl),
-              width: 40,
-              height: 40,
-              errorBuilder: (c, e, s) =>
-                  Icon(Icons.help_outline, color: theme.hintColor),
-            ),
-            title: Text(item.name,
-                style: TextStyle(
-                    color: theme.colorScheme.onSurface,
-                    fontWeight: FontWeight.bold)),
-            subtitle:
-                Text(item.category, style: TextStyle(color: theme.hintColor)),
-            trailing: Icon(Icons.chevron_right, color: theme.hintColor),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => ItemDetailScreen(item: item)),
-              );
-            },
-          );
-        },
+    return ExpandableEntry<Item>(
+      id: url,
+      openId: openId,
+      accent: const Color(0xFF8D6E63),
+      load: () => pokemonService.fetchResourceDetails(url, (json) => Item.fromApiJson(json)),
+      header: (context, item, open) => ListTile(
+        leading: item == null
+            ? const SizedBox(width: 40, height: 40, child: Center(child: CircularProgressIndicator(strokeWidth: 2)))
+            : Image(
+                image: AppImages.provider(item.imageUrl),
+                width: 40,
+                height: 40,
+                filterQuality: FilterQuality.none,
+                errorBuilder: (c, e, s) => Icon(Icons.help_outline, color: theme.hintColor),
+              ),
+        title: Text(item?.name ?? name.replaceAll('-', ' ').capitalise(),
+            style: TextStyle(color: theme.colorScheme.onSurface, fontWeight: FontWeight.bold)),
+        subtitle: item == null ? null : Text(item.category, style: TextStyle(color: theme.hintColor)),
+      ),
+      details: (context, item) => Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Image(
+            image: AppImages.provider(item.imageUrl),
+            width: 96,
+            height: 96,
+            filterQuality: FilterQuality.none,
+            errorBuilder: (c, e, s) => const SizedBox(width: 96),
+          ),
+          const SizedBox(width: 12),
+          Expanded(child: Text(item.effect, style: theme.textTheme.bodyLarge?.copyWith(height: 1.5))),
+        ],
       ),
     );
   }

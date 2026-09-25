@@ -7,17 +7,63 @@ import 'package:pocket_dex/screens/web_shell.dart';
 import 'package:pocket_dex/utils/app_colors.dart';
 import 'package:provider/provider.dart';
 import 'package:pocket_dex/utils/responsive.dart';
+import 'package:pocket_dex/screens/login_screen.dart';
+import 'package:pocket_dex/services/account_format.dart';
+import 'package:pocket_dex/services/account_sync.dart';
+import 'package:pocket_dex/services/auth_service.dart';
+import 'package:pocket_dex/services/firebase_setup.dart';
+import 'package:pocket_dex/services/user_data.dart';
+import 'package:pocket_dex/widgets/pokemon_sprite.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Dados salvos no aparelho (favoritos, times, treinos, tema e recordes).
+  await Future.wait([UserData.instance.load(), SpriteBoxes.load()]);
+  // Tabela Pokémon → espécie (para converter times/treinos da conta) em
+  // segundo plano, sem atrasar a abertura do app.
+  AccountFormat.init();
+  // Login e sincronização com a conta (a mesma do site).
+  if (await initFirebase()) {
+    AccountSync.instance.start();
+    AuthService.instance.start();
+  }
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider.value(value: AuthService.instance),
         ChangeNotifierProvider(create: (context) => FavoritesProvider()),
         ChangeNotifierProvider(create: (context) => ThemeProvider()),
       ],
       child: const MyApp(),
     ),
   );
+}
+
+/// Sem login aparece a tela de entrar; logado, vai direto para o app.
+class AuthGate extends StatelessWidget {
+  final Widget child;
+  const AuthGate({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final status = context.watch<AuthService>().status;
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      child: switch (status) {
+        AuthStatus.disabled || AuthStatus.signedIn => KeyedSubtree(key: const ValueKey('app'), child: child),
+        AuthStatus.loading => const _Splash(),
+        _ => const LoginScreen(key: ValueKey('login')),
+      },
+    );
+  }
+}
+
+class _Splash extends StatelessWidget {
+  const _Splash();
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        body: Center(child: Image.asset('assets/images/poke_logo.png', height: 96)),
+      );
 }
 
 class MyApp extends StatelessWidget {
@@ -90,9 +136,11 @@ class MyApp extends StatelessWidget {
       scrollBehavior: const AppScrollBehavior(),
       builder: (context, child) => WebFrame(child: child!),
       // No PC o site abre direto na Pokédex, com navegação no topo.
-      home: Builder(
-        builder: (context) =>
-            Responsive.isWide(context) ? const WebShell() : const HomeScreen(),
+      home: AuthGate(
+        child: Builder(
+          builder: (context) =>
+              Responsive.isWide(context) ? const WebShell() : const HomeScreen(),
+        ),
       ),
       debugShowCheckedModeBanner: false,
     );

@@ -1,26 +1,24 @@
 // lib/services/training_service.dart
+//
+// Pokémon em treino de EVs ficam em UserData (mesmo formato do site) e são
+// sincronizados com a conta.
 
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/training_pokemon.dart';
+import 'account_format.dart';
+import 'user_data.dart';
 
 class TrainingService {
-  static const _key = 'training_pokemon_list';
+  UserData get _data => UserData.instance;
 
-  Future<List<TrainingPokemon>> getTrainingList() async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonString = prefs.getString(_key);
-    if (jsonString == null) {
-      return [];
-    }
-    final List<dynamic> jsonList = json.decode(jsonString);
-    return jsonList.map((json) => TrainingPokemon.fromMap(json)).toList();
-  }
+  Future<List<TrainingPokemon>> getTrainingList() async =>
+      _data.training.map(AccountFormat.trainingFromAccount).toList();
 
   Future<void> saveTrainingList(List<TrainingPokemon> pokemons) async {
-    final prefs = await SharedPreferences.getInstance();
-    final List<Map<String, dynamic>> jsonList =
-        pokemons.map((p) => p.toMap()).toList();
-    await prefs.setString(_key, json.encode(jsonList));
+    final previous = {for (final t in _data.training) t['id']: t};
+    _data.update({
+      'training': [
+        for (final p in pokemons) AccountFormat.trainingToAccount(p, previous[p.id]),
+      ],
+    });
   }
 }

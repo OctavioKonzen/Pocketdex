@@ -65,6 +65,12 @@ class LocalDatabase {
   // Pokémon
   // ---------------------------------------------------------------------------
 
+  /// Espécie de cada Pokémon (ex.: 10034 Mega Charizard X → 6).
+  Future<Map<int, int>> speciesOfPokemon() async {
+    final index = await _indexById('pokemon');
+    return {for (final e in index.entries) e.key: e.value['species'] as int};
+  }
+
   /// Pokémon padrão de cada espécie, em ordem da Pokédex nacional.
   Future<List<Map<String, dynamic>>> defaultPokemon() async {
     final rows = (await _table('pokemon') as List).cast<Map<String, dynamic>>();
