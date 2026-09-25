@@ -38,17 +38,21 @@ export function typeBackground(types = []) {
 
 export const STAT_LABELS = ['Hp', 'Attack', 'Defense', 'Sp. Atk', 'Sp. Def', 'Speed']
 
+// Cada geração com a região, os 3 iniciais e as cores dos jogos principais
+// daquela geração (usadas em gradiente no seletor de geração).
 export const GENERATIONS = [
-  { id: 1, name: 'Generation I', starters: [1, 4, 7] },
-  { id: 2, name: 'Generation II', starters: [152, 155, 158] },
-  { id: 3, name: 'Generation III', starters: [252, 255, 258] },
-  { id: 4, name: 'Generation IV', starters: [387, 390, 393] },
-  { id: 5, name: 'Generation V', starters: [495, 498, 501] },
-  { id: 6, name: 'Generation VI', starters: [650, 653, 656] },
-  { id: 7, name: 'Generation VII', starters: [722, 725, 728] },
-  { id: 8, name: 'Generation VIII', starters: [810, 813, 816] },
-  { id: 9, name: 'Generation IX', starters: [906, 909, 912] },
+  { id: 1, name: 'Generation I', region: 'Kanto', starters: [1, 4, 7], colors: ['#E3350D', '#3B7BD4'] }, // Red / Blue
+  { id: 2, name: 'Generation II', region: 'Johto', starters: [152, 155, 158], colors: ['#C9A227', '#9EA3A8'] }, // Gold / Silver
+  { id: 3, name: 'Generation III', region: 'Hoenn', starters: [252, 255, 258], colors: ['#B3122E', '#1F4FA8'] }, // Ruby / Sapphire
+  { id: 4, name: 'Generation IV', region: 'Sinnoh', starters: [387, 390, 393], colors: ['#5F8FD0', '#C98AA0'] }, // Diamond / Pearl
+  { id: 5, name: 'Generation V', region: 'Unova', starters: [495, 498, 501], colors: ['#2B2B2B', '#9A9A9A'] }, // Black / White
+  { id: 6, name: 'Generation VI', region: 'Kalos', starters: [650, 653, 656], colors: ['#1E5AA8', '#C8102E'] }, // X / Y
+  { id: 7, name: 'Generation VII', region: 'Alola', starters: [722, 725, 728], colors: ['#F28C28', '#5B3F9E'] }, // Sun / Moon
+  { id: 8, name: 'Generation VIII', region: 'Galar', starters: [810, 813, 816], colors: ['#0091D5', '#D8006F'] }, // Sword / Shield
+  { id: 9, name: 'Generation IX', region: 'Paldea', starters: [906, 909, 912], colors: ['#D0342C', '#7B3FA0'] }, // Scarlet / Violet
 ]
+
+export const generationBackground = (gen) => `linear-gradient(135deg, ${gen.colors[0]} 15%, ${gen.colors[1]} 90%)`
 
 export const capitalize = (text = '') => (text ? text[0].toUpperCase() + text.slice(1) : text)
 

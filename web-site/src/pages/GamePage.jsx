@@ -5,9 +5,10 @@ import { AnimatePresence, m } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { Button, Icon, Loader, Modal, PageHeader } from '../components/ui'
 import { getPokedex } from '../lib/data'
-import { GENERATIONS, capitalize } from '../lib/pokemon'
+import { capitalize } from '../lib/pokemon'
 import { useStore } from '../lib/store'
 import Sprite from '../components/Sprite'
+import GenerationPicker from '../components/GenerationPicker'
 
 const LIVES = 3
 
@@ -73,18 +74,9 @@ export default function GamePage() {
         <PageHeader title="Quem é esse Pokémon?" />
         <p className="mt-6 text-2xl font-bold text-yellow-400">Seu Recorde: {record} Pontos</p>
         <p className="mt-8 mb-2 text-muted">Escolha a Geração:</p>
-        <select
-          value={generation}
-          onChange={(e) => setGeneration(Number(e.target.value))}
-          className="w-full cursor-pointer rounded-xl bg-surface px-4 py-3 ring-1 ring-line outline-none"
-        >
-          <option value={0}>Todas as Gerações</option>
-          {GENERATIONS.map((g) => (
-            <option key={g.id} value={g.id}>
-              {g.name}
-            </option>
-          ))}
-        </select>
+        <div className="flex justify-center">
+          <GenerationPicker value={generation} onChange={(g) => setGeneration(g ?? 0)} align="center" />
+        </div>
         <div className="mt-6 flex flex-col gap-3">
           {saved && saved.lives > 0 && (
             <Button color="#43a047" onClick={() => setGame(saved)} className="w-full">
