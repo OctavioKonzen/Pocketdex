@@ -26,6 +26,16 @@ export const ALL_TYPES = Object.keys(TYPE_COLORS)
 
 export const typeColor = (type) => TYPE_COLORS[type?.toLowerCase()] ?? '#616161'
 
+/**
+ * Fundo de acordo com a tipagem: a cor do tipo, ou um gradiente entre as duas
+ * cores quando o Pokémon tem dois tipos.
+ */
+export function typeBackground(types = []) {
+  const [first, second] = types
+  if (!second) return typeColor(first)
+  return `linear-gradient(135deg, ${typeColor(first)} 20%, ${typeColor(second)} 85%)`
+}
+
 export const STAT_LABELS = ['Hp', 'Attack', 'Defense', 'Sp. Atk', 'Sp. Def', 'Speed']
 
 export const GENERATIONS = [

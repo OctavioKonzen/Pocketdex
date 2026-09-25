@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useRef, useState } from 'react'
 import { prefetchSpecies } from '../lib/data'
 import Sprite from './Sprite'
-import { displayName, typeColor } from '../lib/pokemon'
+import { displayName, typeBackground, typeColor } from '../lib/pokemon'
 import { useStore } from '../lib/store'
 import { Icon, SpinningPokeball } from './ui'
 
@@ -25,7 +25,7 @@ export const CARD_STYLE = {
 export default function PokemonCard({ pokemon, onClick, hidden = false, selected = false, note }) {
   const isFavorite = useStore((s) => s.favorites.includes(pokemon.id))
   const toggleFavorite = useStore((s) => s.toggleFavorite)
-  const color = typeColor(pokemon.types[0])
+  const background = typeBackground(pokemon.types)
   // Pokébola centralizada atrás do Pokémon.
   const ballRight = CARD_STYLE.spriteRight + (CARD_STYLE.spriteSize - CARD_STYLE.pokeballSize) / 2
   const ballBottom = CARD_STYLE.spriteBottom + (CARD_STYLE.spriteSize - CARD_STYLE.pokeballSize) / 2
@@ -61,7 +61,7 @@ export default function PokemonCard({ pokemon, onClick, hidden = false, selected
       style={{
         height: CARD_STYLE.height,
         borderRadius: CARD_STYLE.radius,
-        background: color,
+        background,
         outline: selected ? '3px solid white' : 'none',
         pointerEvents: hidden ? 'none' : undefined,
       }}
@@ -100,7 +100,11 @@ export default function PokemonCard({ pokemon, onClick, hidden = false, selected
         <div className="truncate pr-10 text-[16px] font-bold text-white drop-shadow">{displayName(pokemon.name)}</div>
         <div className="mt-2 flex flex-col items-start gap-1.5">
           {pokemon.types.map((type) => (
-            <span key={type} className="rounded-xl bg-white/25 px-2.5 py-0.5 text-[11px] font-semibold text-white">
+            <span
+              key={type}
+              className="rounded-xl px-2.5 py-0.5 text-[11px] font-semibold text-white shadow-sm ring-1 ring-white/60"
+              style={{ background: typeColor(type) }}
+            >
               {type}
             </span>
           ))}

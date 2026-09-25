@@ -9,6 +9,7 @@ import {
   capitalize,
   heightToFeet,
   prettyName,
+  typeBackground,
   typeColor,
   typeRelations,
   weightToLbs,
@@ -72,6 +73,7 @@ export default function DetailsPanel({
 
   const form = species.forms[formIndex] ?? species.forms[0]
   const color = typeColor(form.types[0])
+  const background = typeBackground(form.types)
   const spriteIndex = shiny && form.sprites[1] ? 1 : 0
   const sprite = form.sprites[spriteIndex] ?? form.sprites[2]
   const box = form.sprites[spriteIndex] ? form.boxes?.[spriteIndex] : null
@@ -83,11 +85,23 @@ export default function DetailsPanel({
 
   return (
     <motion.div
-      className={`grid overflow-hidden rounded-3xl shadow-2xl ${compact ? 'grid-cols-1' : 'grid-cols-[5fr_7fr]'}`}
-      animate={{ backgroundColor: color, boxShadow: `0 12px 30px ${color}66` }}
+      className={`relative grid overflow-hidden rounded-3xl shadow-2xl ${compact ? 'grid-cols-1' : 'grid-cols-[5fr_7fr]'}`}
+      animate={{ boxShadow: `0 12px 30px ${color}66` }}
       transition={{ duration: 0.35 }}
       style={{ height: compact ? 'auto' : height }}
     >
+      {/* Fundo com a cor do tipo (gradiente se tiver dois tipos), trocando suavemente. */}
+      <AnimatePresence initial={false}>
+        <motion.div
+          key={background}
+          className="absolute inset-0"
+          style={{ background }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.4 }}
+        />
+      </AnimatePresence>
       {/* Vitrine */}
       <div className="relative overflow-hidden" style={{ minHeight: compact ? 420 : undefined }}>
         <div className="absolute inset-0 top-16 grid place-items-center">
@@ -168,7 +182,7 @@ export default function DetailsPanel({
       </div>
 
       {/* Abas */}
-      <div className="m-1.5 flex min-h-0 flex-col rounded-[20px] bg-bg p-5">
+      <div className="relative m-1.5 flex min-h-0 flex-col rounded-[20px] bg-bg p-5">
         <div className="flex justify-between gap-2 px-1">
           {TABS.map((title, i) => (
             <button key={title} type="button" onClick={() => changeTab(i)} className="cursor-pointer text-center">
