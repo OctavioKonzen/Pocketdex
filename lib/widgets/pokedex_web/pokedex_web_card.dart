@@ -20,8 +20,11 @@ class PokedexCardStyle {
   /// Altura do card (a largura acompanha a coluna da grade).
   static const double height = 132;
 
-  /// Largura aproximada de cada card; define quantas colunas cabem na tela.
-  static const double targetWidth = 280;
+  /// Cards por linha no PC.
+  static const int columns = 6;
+
+  /// Largura mínima de um card; em telas menores a grade usa menos colunas.
+  static const double minWidth = 190;
 
   /// Espaço entre os cards.
   static const double spacing = 16;
@@ -30,19 +33,19 @@ class PokedexCardStyle {
   static const EdgeInsets padding = EdgeInsets.fromLTRB(16, 14, 12, 12);
 
   // Textos
-  static const double nameFontSize = 17;
+  static const double nameFontSize = 16;
   static const double numberFontSize = 12;
   static const double typeFontSize = 11;
 
   // Pokébola girando atrás do Pokémon
-  static const double pokeballSize = 130;
+  static const double pokeballSize = 118;
   static const double pokeballOpacity = 0.22;
   static const Duration pokeballTurn = Duration(seconds: 12);
 
   // Pokémon (o sprite tem borda transparente, por isso fica maior que o card
   // e é "puxado" para fora nas bordas; o card corta o excesso).
-  static const double spriteSize = 144;
-  static const double spriteOffset = -18;
+  static const double spriteSize = 132;
+  static const double spriteOffset = -16;
 
   // Hover (mouse em cima)
   static const double hoverScale = 1.05;
@@ -125,7 +128,11 @@ class _PokedexWebCardState extends State<PokedexWebCard>
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovering = true),
+      onEnter: (_) {
+        setState(() => _hovering = true);
+        // Pré-carrega os detalhes: ao clicar, o painel abre sem espera.
+        if (_id != null) PokemonService().fetchPokemonDetails(int.parse(_id!));
+      },
       onExit: (_) => setState(() => _hovering = false),
       child: GestureDetector(
         onTap: widget.onTap,

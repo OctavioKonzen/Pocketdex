@@ -17,6 +17,7 @@ import '../../utils/type_relations_builder.dart';
 import '../hover_scale.dart';
 import '../pikachu_loading_indicator.dart';
 import '../pokemon_detail_panel.dart';
+import 'pokeball_reveal.dart';
 
 class PokedexInlineDetails extends StatefulWidget {
   final int pokemonId;
@@ -29,7 +30,8 @@ class PokedexInlineDetails extends StatefulWidget {
   final VoidCallback onPrevious;
   final VoidCallback onNext;
 
-  static const double height = 460;
+  /// Altura do painel aberto (~2 linhas de cards a mais que a versão anterior).
+  static const double height = 756;
 
   const PokedexInlineDetails({
     super.key,
@@ -153,7 +155,7 @@ class _PokedexInlineDetailsState extends State<PokedexInlineDetails>
               child: Opacity(
                 opacity: 0.18,
                 child: Image.asset('assets/images/pokeball.png',
-                    width: 330, height: 330, color: Colors.white),
+                    width: 480, height: 480, color: Colors.white),
               ),
             ),
           ),
@@ -165,27 +167,33 @@ class _PokedexInlineDetailsState extends State<PokedexInlineDetails>
           bottom: 50,
           left: 56,
           right: 56,
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
-            transitionBuilder: (child, animation) => ScaleTransition(
-              scale: Tween(begin: 0.8, end: 1.0).animate(CurvedAnimation(
-                  parent: animation, curve: Curves.easeOutBack)),
-              child: FadeTransition(opacity: animation, child: child),
-            ),
-            child: HoverScale(
-              key: ValueKey(image),
-              scale: 1.08,
-              cursor: SystemMouseCursors.basic,
-              child: Image(
-                image: AppImages.provider(image),
-                width: double.infinity,
-                height: double.infinity,
-                fit: BoxFit.contain,
-                filterQuality: FilterQuality.none,
-                errorBuilder: (_, __, ___) => const Icon(
-                    Icons.image_not_supported,
-                    color: Colors.white54,
-                    size: 60),
+          // Ao abrir (ou trocar de Pokémon) ele sai da Pokébola; ao trocar
+          // forma/shiny, só faz a transição.
+          child: PokeballReveal(
+            key: ValueKey('reveal-${details.id}'),
+            ballSize: 110,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              transitionBuilder: (child, animation) => ScaleTransition(
+                scale: Tween(begin: 0.8, end: 1.0).animate(CurvedAnimation(
+                    parent: animation, curve: Curves.easeOutBack)),
+                child: FadeTransition(opacity: animation, child: child),
+              ),
+              child: HoverScale(
+                key: ValueKey(image),
+                scale: 1.08,
+                cursor: SystemMouseCursors.basic,
+                child: Image(
+                  image: AppImages.provider(image),
+                  width: double.infinity,
+                  height: double.infinity,
+                  fit: BoxFit.contain,
+                  filterQuality: FilterQuality.none,
+                  errorBuilder: (_, __, ___) => const Icon(
+                      Icons.image_not_supported,
+                      color: Colors.white54,
+                      size: 60),
+                ),
               ),
             ),
           ),

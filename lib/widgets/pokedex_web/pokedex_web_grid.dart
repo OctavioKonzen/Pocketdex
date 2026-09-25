@@ -56,6 +56,7 @@ class _PokedexWebGridState extends State<PokedexWebGrid> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollController.hasClients) return;
       const rowExtent = PokedexCardStyle.height + PokedexCardStyle.spacing;
+      // Deixa a linha do card no topo, com o painel logo abaixo.
       final target = (row * rowExtent)
           .clamp(0.0, _scrollController.position.maxScrollExtent);
       _scrollController.animateTo(target,
@@ -75,8 +76,11 @@ class _PokedexWebGridState extends State<PokedexWebGrid> {
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (context, constraints) {
       final available = constraints.maxWidth - _horizontalPadding * 2;
-      final columns =
-          (available / PokedexCardStyle.targetWidth).floor().clamp(2, 6);
+      // 6 por linha; menos só se a tela for estreita demais para 6.
+      final fit = ((available + PokedexCardStyle.spacing) /
+              (PokedexCardStyle.minWidth + PokedexCardStyle.spacing))
+          .floor();
+      final columns = fit.clamp(2, PokedexCardStyle.columns);
       final rows = (widget.pokemon.length / columns).ceil();
       final selectedIndex = _selectedIndex;
       final selectedRow = selectedIndex < 0 ? -1 : selectedIndex ~/ columns;
@@ -100,13 +104,18 @@ class _PokedexWebGridState extends State<PokedexWebGrid> {
                         const SizedBox(width: PokedexCardStyle.spacing),
                       Expanded(
                         child: start + col < widget.pokemon.length
-                            ? PokedexWebCard(
-                                key: ValueKey(widget.pokemon[start + col].url),
-                                pokemon: widget.pokemon[start + col],
-                                isSelected: start + col == selectedIndex,
-                                onTap: () => _select(
-                                    widget.pokemon[start + col],
-                                    columns: columns),
+                            // O card aberto cresce e some (ele "vira" o painel).
+                            ? _GrowAndFade(
+                                hidden: start + col == selectedIndex,
+                                child: PokedexWebCard(
+                                  key:
+                                      ValueKey(widget.pokemon[start + col].url),
+                                  pokemon: widget.pokemon[start + col],
+                                  isSelected: start + col == selectedIndex,
+                                  onTap: () => _select(
+                                      widget.pokemon[start + col],
+                                      columns: columns),
+                                ),
                               )
                             : const SizedBox(height: PokedexCardStyle.height),
                       ),
@@ -124,24 +133,34 @@ class _PokedexWebGridState extends State<PokedexWebGrid> {
                               top: PokedexCardStyle.spacing),
                           // Bucket próprio: as abas do painel não herdam a
                           // posição de rolagem da lista da Pokédex.
-                          child: PageStorage(
-                              bucket: PageStorageBucket(),
-                              child: PokedexInlineDetails(
-                                pokemonId:
-                                    int.parse(widget.pokemon[selectedIndex].id),
-                                hasPrevious: selectedIndex > 0,
-                                hasNext:
-                                    selectedIndex < widget.pokemon.length - 1,
-                                onPrevious: () => _select(
-                                    widget.pokemon[selectedIndex - 1],
-                                    columns: columns),
-                                onNext: () => _select(
-                                    widget.pokemon[selectedIndex + 1],
-                                    columns: columns),
-                                onNavigate: (id) =>
-                                    _selectById(id, columns: columns),
-                                onClose: () => _select(null, columns: columns),
-                              )),
+                          child: _GrowFromCard(
+                              key: ValueKey(_selectedUrl),
+                              // Cresce a partir da coluna do card clicado.
+                              alignment: Alignment(
+                                  -1 +
+                                      2 *
+                                          (selectedIndex % columns + 0.5) /
+                                          columns,
+                                  -1),
+                              child: PageStorage(
+                                  bucket: PageStorageBucket(),
+                                  child: PokedexInlineDetails(
+                                    pokemonId: int.parse(
+                                        widget.pokemon[selectedIndex].id),
+                                    hasPrevious: selectedIndex > 0,
+                                    hasNext: selectedIndex <
+                                        widget.pokemon.length - 1,
+                                    onPrevious: () => _select(
+                                        widget.pokemon[selectedIndex - 1],
+                                        columns: columns),
+                                    onNext: () => _select(
+                                        widget.pokemon[selectedIndex + 1],
+                                        columns: columns),
+                                    onNavigate: (id) =>
+                                        _selectById(id, columns: columns),
+                                    onClose: () =>
+                                        _select(null, columns: columns),
+                                  ))),
                         )
                       : const SizedBox(width: double.infinity),
                 ),
@@ -151,5 +170,57 @@ class _PokedexWebGridState extends State<PokedexWebGrid> {
         },
       );
     });
+  }
+}
+
+/// Card que cresce e desaparece quando [hidden] (ao abrir os detalhes).
+class _GrowAndFade extends StatelessWidget {
+  final bool hidden;
+  final Widget child;
+
+  const _GrowAndFade({required this.hidden, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      ignoring: hidden,
+      child: AnimatedScale(
+        scale: hidden ? 1.35 : 1.0,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOutCubic,
+        child: AnimatedOpacity(
+          opacity: hidden ? 0 : 1,
+          duration: const Duration(milliseconds: 300),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+/// Painel que "sai" do card: começa pequeno na posição do card e cresce.
+class _GrowFromCard extends StatelessWidget {
+  final Alignment alignment;
+  final Widget child;
+
+  const _GrowFromCard(
+      {super.key, required this.alignment, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeOutCubic,
+      child: child,
+      builder: (context, value, child) => Opacity(
+        opacity: value.clamp(0.0, 1.0),
+        child: Transform.scale(
+          scale: 0.15 + 0.85 * value,
+          alignment: alignment,
+          child: child,
+        ),
+      ),
+    );
   }
 }

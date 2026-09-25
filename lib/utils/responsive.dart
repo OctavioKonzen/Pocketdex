@@ -9,8 +9,10 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 class Responsive {
-  /// Largura máxima do conteúdo das páginas no site.
-  static const double maxContentWidth = 1200;
+  /// Largura máxima do conteúdo das páginas no site. Alta o bastante para o
+  /// site usar a tela inteira em monitores comuns; só centraliza em telas
+  /// ultralargas.
+  static const double maxContentWidth = 1920;
 
   /// A partir desta largura o layout passa a ser o de "site" (desktop).
   static const double wideBreakpoint = 900;
@@ -23,7 +25,8 @@ class Responsive {
 
   /// Número de colunas de uma grade: nunca menos que [min] (o valor usado no
   /// celular) e cresce para que cada item tenha ~[tileWidth] px de largura.
-  static int columns(BuildContext context, {required int min, double tileWidth = 180}) =>
+  static int columns(BuildContext context,
+          {required int min, double tileWidth = 180}) =>
       math.max(min, (contentWidth(context) / tileWidth).floor());
 }
 
@@ -40,7 +43,8 @@ class WebFrame extends StatelessWidget {
       color: Theme.of(context).scaffoldBackgroundColor,
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: Responsive.maxContentWidth),
+          constraints:
+              const BoxConstraints(maxWidth: Responsive.maxContentWidth),
           child: child,
         ),
       ),
