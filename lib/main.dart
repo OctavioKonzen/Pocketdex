@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:pocket_dex/providers/favorites_provider.dart';
 import 'package:pocket_dex/providers/theme_provider.dart';
 import 'package:pocket_dex/screens/home_screen.dart';
+import 'package:pocket_dex/screens/web_shell.dart';
 import 'package:pocket_dex/utils/app_colors.dart';
 import 'package:provider/provider.dart';
 import 'package:pocket_dex/utils/responsive.dart';
@@ -88,7 +89,11 @@ class MyApp extends StatelessWidget {
       themeMode: themeProvider.themeMode,
       scrollBehavior: const AppScrollBehavior(),
       builder: (context, child) => WebFrame(child: child!),
-      home: const HomeScreen(),
+      // No PC o site abre direto na Pokédex, com navegação no topo.
+      home: Builder(
+        builder: (context) =>
+            Responsive.isWide(context) ? const WebShell() : const HomeScreen(),
+      ),
       debugShowCheckedModeBanner: false,
     );
   }

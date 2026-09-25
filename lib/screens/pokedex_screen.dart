@@ -1,6 +1,7 @@
 // lib/screens/pokedex_screen.dart
 
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../models/generation.dart';
 import '../models/pokemon_listing.dart';
@@ -17,9 +18,13 @@ import '../utils/responsive.dart';
 class PokedexScreen extends StatefulWidget {
   final bool isForTeamSelection;
 
+  /// Busca vinda de fora (barra do topo do site); filtra a lista.
+  final ValueListenable<String>? searchQuery;
+
   const PokedexScreen({
     super.key,
     this.isForTeamSelection = false,
+    this.searchQuery,
   });
 
   @override
@@ -47,6 +52,7 @@ class PokedexScreenState extends State<PokedexScreen>
     super.initState();
     _loadPokemon();
     _searchController.addListener(_filterPokemon);
+    widget.searchQuery?.addListener(_onExternalSearch);
 
     _animationController = AnimationController(
       vsync: this,
@@ -54,8 +60,13 @@ class PokedexScreenState extends State<PokedexScreen>
     );
   }
 
+  void _onExternalSearch() {
+    _searchController.text = widget.searchQuery!.value;
+  }
+
   @override
   void dispose() {
+    widget.searchQuery?.removeListener(_onExternalSearch);
     _searchController.dispose();
     _animationController.dispose();
     super.dispose();
@@ -79,6 +90,7 @@ class PokedexScreenState extends State<PokedexScreen>
           _displayList = pokemonList;
           _isLoading = false;
         });
+        if (_searchController.text.isNotEmpty) _filterPokemon();
       }
     } catch (e) {
       if (mounted) {
