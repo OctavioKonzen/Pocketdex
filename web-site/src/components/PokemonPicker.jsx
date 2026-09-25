@@ -2,10 +2,9 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { getPokedex } from '../lib/data'
-import { displayName, typeColor } from '../lib/pokemon'
 import { matchesSearch } from '../pages/PokedexPage'
 import { Loader, Modal, SearchInput } from './ui'
-import Sprite from './Sprite'
+import PokemonCard from './PokemonCard'
 
 const PAGE = 120
 
@@ -31,19 +30,9 @@ export default function PokemonPicker({ open, onClose, onPick, title = 'Selecion
         <Loader />
       ) : (
         <>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(110px,1fr))] gap-3">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(190px,1fr))] gap-4">
             {list.slice(0, limit).map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => onPick(p)}
-                className="flex cursor-pointer flex-col items-center rounded-2xl p-2 text-white transition hover:scale-105"
-                style={{ background: typeColor(p.types[0]) }}
-              >
-                <Sprite path={p.sprite} box={p.box} className="w-20" />
-                <span className="w-full truncate text-center text-xs font-bold">{displayName(p.name)}</span>
-                <span className="text-[10px] opacity-80">#{p.id}</span>
-              </button>
+              <PokemonCard key={p.id} pokemon={p} onClick={() => onPick(p)} />
             ))}
           </div>
           {list.length > limit && (

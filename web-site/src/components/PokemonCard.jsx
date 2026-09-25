@@ -21,7 +21,8 @@ export const CARD_STYLE = {
   hoverSpriteScale: 1.15, // Pokémon ao passar o mouse
 }
 
-export default function PokemonCard({ pokemon, onClick, hidden = false, selected = false }) {
+/** @param note  etiqueta extra no card (ex.: "oculta" para habilidade oculta) */
+export default function PokemonCard({ pokemon, onClick, hidden = false, selected = false, note }) {
   const isFavorite = useStore((s) => s.favorites.includes(pokemon.id))
   const toggleFavorite = useStore((s) => s.toggleFavorite)
   const color = typeColor(pokemon.types[0])
@@ -103,6 +104,7 @@ export default function PokemonCard({ pokemon, onClick, hidden = false, selected
               {type}
             </span>
           ))}
+          {note && <span className="rounded-xl bg-black/30 px-2.5 py-0.5 text-[11px] font-semibold text-white">{note}</span>}
         </div>
       </div>
     </motion.button>

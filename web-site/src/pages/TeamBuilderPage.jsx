@@ -4,9 +4,9 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import PokemonPicker from '../components/PokemonPicker'
 import { Button, Empty, Icon, Loader, Modal, TypeBadge } from '../components/ui'
 import { getPokemonById, getTypes } from '../lib/data'
-import { ALL_TYPES, analyzeTeam, displayName, teamScore, typeColor } from '../lib/pokemon'
+import { ALL_TYPES, analyzeTeam, teamScore } from '../lib/pokemon'
 import { useStore } from '../lib/store'
-import Sprite from '../components/Sprite'
+import PokemonCard, { CARD_STYLE } from '../components/PokemonCard'
 
 const TEAM_COLORS = ['#FF5252', '#FFA726', '#FFCA28', '#66BB6A', '#26A69A', '#42A5F5', '#5C6BC0', '#AB47BC', '#EC407A', '#8D6E63', '#78909C']
 
@@ -80,32 +80,24 @@ export default function TeamBuilderPage() {
           </div>
 
           <h3 className="mt-6 mb-3 font-bold">Pokémon</h3>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
             {team.pokemon.map((pid, slot) => {
               const p = pid && byId.get(pid)
-              return (
+              // Mesmo card da Pokédex; clicar remove do time.
+              return p ? (
+                <PokemonCard key={slot} pokemon={p} onClick={() => setRemovingSlot(slot)} />
+              ) : (
                 <motion.button
                   key={slot}
                   type="button"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.96 }}
-                  onClick={() => (p ? setRemovingSlot(slot) : setPickingSlot(slot))}
-                  className="flex aspect-square cursor-pointer flex-col items-center justify-center rounded-2xl text-white shadow"
-                  style={{ background: p ? typeColor(p.types[0]) : 'var(--surface)', border: p ? 'none' : '2px dashed var(--line)' }}
+                  onClick={() => setPickingSlot(slot)}
+                  aria-label="Adicionar Pokémon"
+                  className="grid cursor-pointer place-items-center rounded-[18px]"
+                  style={{ height: CARD_STYLE.height, background: 'var(--surface)', border: '2px dashed var(--line)' }}
                 >
-                  {p ? (
-                    <>
-                      <Sprite path={p.sprite} box={p.box} className="w-24" />
-                      <span className="font-bold">{displayName(p.name)}</span>
-                      <div className="mt-1 flex gap-1">
-                        {p.types.map((t) => (
-                          <TypeBadge key={t} type={t} small outlined />
-                        ))}
-                      </div>
-                    </>
-                  ) : (
-                    <Icon name="add" size={40} className="text-muted" />
-                  )}
+                  <Icon name="add" size={40} className="text-muted" />
                 </motion.button>
               )
             })}
