@@ -1,5 +1,5 @@
 import { AnimatePresence, m } from 'framer-motion'
-import { createContext, lazy, Suspense, useContext, useEffect, useState } from 'react'
+import { createContext, Suspense, useContext, useEffect, useState } from 'react'
 import { HashRouter, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { imageUrl } from './lib/data'
 import { getDownloadUrl, RELEASES_URL } from './lib/appRelease'
@@ -9,16 +9,17 @@ import { logout, startSync } from './lib/sync'
 import { Icon, Loader, SpinningPokeball } from './components/ui'
 import AccountAvatar from './components/AccountAvatar'
 import PokedexPage from './pages/PokedexPage'
+import { ErrorBoundary, lazyPage } from './lib/staleBuild'
 
-const FavoritesPage = lazy(() => import('./pages/FavoritesPage'))
-const TeamsPage = lazy(() => import('./pages/TeamsPage'))
-const TeamBuilderPage = lazy(() => import('./pages/TeamBuilderPage'))
-const GamePage = lazy(() => import('./pages/GamePage'))
-const EncyclopediaPage = lazy(() => import('./pages/EncyclopediaPage'))
-const TrainingPage = lazy(() => import('./pages/TrainingPage'))
-const SettingsPage = lazy(() => import('./pages/SettingsPage'))
-const LoginPage = lazy(() => import('./pages/LoginPage'))
-const PokemonPicker = lazy(() => import('./components/PokemonPicker'))
+const FavoritesPage = lazyPage(() => import('./pages/FavoritesPage'))
+const TeamsPage = lazyPage(() => import('./pages/TeamsPage'))
+const TeamBuilderPage = lazyPage(() => import('./pages/TeamBuilderPage'))
+const GamePage = lazyPage(() => import('./pages/GamePage'))
+const EncyclopediaPage = lazyPage(() => import('./pages/EncyclopediaPage'))
+const TrainingPage = lazyPage(() => import('./pages/TrainingPage'))
+const SettingsPage = lazyPage(() => import('./pages/SettingsPage'))
+const LoginPage = lazyPage(() => import('./pages/LoginPage'))
+const PokemonPicker = lazyPage(() => import('./components/PokemonPicker'))
 
 // Mesmas cores dos cards do menu do app.
 export const SECTIONS = [
@@ -272,6 +273,12 @@ function AuthGate({ children }) {
   )
 }
 
+/** Um erro numa página não derruba o site; ao trocar de aba ela tenta de novo. */
+function PageBoundary({ children }) {
+  const { pathname } = useLocation()
+  return <ErrorBoundary key={pathname}>{children}</ErrorBoundary>
+}
+
 function ScrollToTop() {
   const { pathname } = useLocation()
   useEffect(() => window.scrollTo(0, 0), [pathname])
@@ -292,21 +299,23 @@ export default function App() {
           <ScrollToTop />
           <TopBar />
           <main className="mx-auto max-w-[1920px] px-4 py-5 sm:px-6">
-            <Suspense fallback={<Loader />}>
-              <Routes>
-                <Route path="/" element={<PokedexPage />} />
-                <Route path="/favoritos" element={<FavoritesPage />} />
-                <Route path="/times" element={<TeamsPage />} />
-                <Route path="/times/:id" element={<TeamBuilderPage />} />
-                <Route path="/jogo" element={<GamePage />} />
-                <Route path="/enciclopedia" element={<EncyclopediaPage />} />
-                <Route path="/enciclopedia/:tab" element={<EncyclopediaPage />} />
-                <Route path="/treino" element={<TrainingPage />} />
-                <Route path="/treino/:tool" element={<TrainingPage />} />
-                <Route path="/configuracoes" element={<SettingsPage />} />
-                <Route path="*" element={<PokedexPage />} />
-              </Routes>
-            </Suspense>
+            <PageBoundary>
+              <Suspense fallback={<Loader />}>
+                <Routes>
+                  <Route path="/" element={<PokedexPage />} />
+                  <Route path="/favoritos" element={<FavoritesPage />} />
+                  <Route path="/times" element={<TeamsPage />} />
+                  <Route path="/times/:id" element={<TeamBuilderPage />} />
+                  <Route path="/jogo" element={<GamePage />} />
+                  <Route path="/enciclopedia" element={<EncyclopediaPage />} />
+                  <Route path="/enciclopedia/:tab" element={<EncyclopediaPage />} />
+                  <Route path="/treino" element={<TrainingPage />} />
+                  <Route path="/treino/:tool" element={<TrainingPage />} />
+                  <Route path="/configuracoes" element={<SettingsPage />} />
+                  <Route path="*" element={<PokedexPage />} />
+                </Routes>
+              </Suspense>
+            </PageBoundary>
           </main>
         </SearchContext.Provider>
       </HashRouter>
