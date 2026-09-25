@@ -172,6 +172,12 @@ class AccountSync {
     ];
   }
 
+  /// O ranking em tempo real: uma lista nova sempre que alguém faz pontos.
+  Stream<List<Map<String, dynamic>>> watchRanking([int count = 10, String board = 'all', String key = '']) =>
+      _board(board, key).orderBy('score', descending: true).limit(count).snapshots().map(
+            (snap) => [for (final d in snap.docs) {'uid': d.id, ...d.data()}],
+          );
+
   Future<int> rankingPosition(int score, [String board = 'all', String key = '']) async {
     final snap = await _board(board, key).where('score', isGreaterThan: score).count().get();
     return (snap.count ?? 0) + 1;

@@ -16,7 +16,7 @@ import GenerationPicker from '../components/GenerationPicker'
 import Sprite from '../components/Sprite'
 import { Button, Icon, Loader, Modal } from '../components/ui'
 import { Avatar } from '../components/AccountAvatar'
-import { getMyScore, getRanking, getRankingPosition, saveDaily, saveWeekly, useAuth } from '../lib/auth'
+import { getMyScore, getRankingPosition, saveDaily, saveWeekly, useAuth, watchRanking } from '../lib/auth'
 import { getPokedex } from '../lib/data'
 import { DAILY_ROUNDS, DAILY_SECONDS, dailyAnswers, dailyPoints, dayKey, weekKey } from '../lib/league'
 import { GENERATIONS, generationBackground, prettyName } from '../lib/pokemon'
@@ -112,19 +112,33 @@ function Ranking({ board, onBoard }) {
   const version = useRankingVersion((s) => s.version)
   const [data, setData] = useState(null) // {board, list, mine, position, error}
 
+  // O ranking atualiza sozinho, em tempo real, quando alguém faz pontos.
   useEffect(() => {
     if (!user) return
     let alive = true
+    let stop = null
     const key = board === 'week' ? weekKey() : board === 'day' ? dayKey() : ''
-    const mine = board === 'all' ? Promise.resolve(record > 0 ? { score: record } : null) : getMyScore(user.uid, board, key)
-    Promise.all([getRanking(10, board, key), mine])
-      .then(async ([list, me]) => {
-        const position = me ? await getRankingPosition(me.score, board, key) : null
-        if (alive) setData({ board, list, mine: me, position, error: false })
-      })
-      .catch(() => alive && setData({ board, list: [], mine: null, position: null, error: true }))
+    const fail = () => alive && setData({ board, list: [], mine: null, position: null, error: true })
+    watchRanking(
+      10,
+      board,
+      key,
+      async (list) => {
+        try {
+          const me = board === 'all' ? (record > 0 ? { score: record } : null) : await getMyScore(user.uid, board, key)
+          const position = me ? await getRankingPosition(me.score, board, key) : null
+          if (alive) setData({ board, list, mine: me, position, error: false })
+        } catch {
+          if (alive) setData({ board, list, mine: null, position: null, error: false })
+        }
+      },
+      fail,
+    )
+      .then((unsubscribe) => (alive ? (stop = unsubscribe) : unsubscribe()))
+      .catch(fail)
     return () => {
       alive = false
+      stop?.()
     }
   }, [user, record, version, board])
 
