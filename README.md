@@ -109,6 +109,21 @@ lint e testes, faz o build e publica no **GitHub Pages**: **https://octaviokonze
 
 O app de celular continua em Flutter (pasta `lib/`), usando o mesmo banco de dados.
 
+### 🔐 Login (Firebase)
+
+O site tem login com **e-mail e senha** ou **Google**, com a opção **Manter conectado**. Quem não está logado vê
+primeiro a tela de login. No cadastro a pessoa escolhe um **nome**, que não pode ser igual ao de outra pessoa.
+Favoritos, times, treinos, recorde e tema ficam salvos na conta (Firestore), então aparecem em qualquer computador
+(e futuramente no app, que pode usar o mesmo projeto do Firebase).
+
+Enquanto o Firebase não estiver configurado, o site funciona sem login. Para ativar:
+
+1. Crie um projeto em https://console.firebase.google.com e adicione um **App da Web**.
+2. **Authentication → Método de login**: ative **E-mail/senha** e **Google**.
+3. **Authentication → Configurações → Domínios autorizados**: adicione `octaviokonzen.github.io`.
+4. **Firestore Database**: crie o banco e, em **Regras**, cole o conteúdo de `firestore.rules`.
+5. Coloque a configuração do app da web em `web-site/src/lib/firebaseConfig.js`.
+
 ---
 
 ## 🗄️ Banco de Dados

@@ -1,7 +1,9 @@
 import { m } from 'framer-motion'
 import { useState } from 'react'
 import { Button, Modal, PageHeader } from '../components/ui'
+import { useAuth } from '../lib/auth'
 import { useStore } from '../lib/store'
+import { logout } from '../lib/sync'
 
 export default function SettingsPage() {
   const theme = useStore((s) => s.theme)
@@ -11,16 +13,30 @@ export default function SettingsPage() {
   const clearAll = useStore((s) => s.clearAll)
   const [confirm, setConfirm] = useState(null)
   const [message, setMessage] = useState('')
+  const user = useAuth((s) => (s.status === 'signedIn' ? s.user : null))
 
   const actions = {
     record: { title: 'Zerar recorde', text: 'Tem certeza que deseja zerar o seu recorde no quiz?', run: resetQuizRecord, done: 'Recorde do quiz zerado com sucesso!' },
-    all: { title: 'Limpar dados', text: 'Isso apaga favoritos, times, treinos e recorde deste navegador. Continuar?', run: clearAll, done: 'Preferências de usuário limpas!' },
+    all: { title: 'Limpar dados', text: 'Isso apaga favoritos, times, treinos e recorde. Continuar?', run: clearAll, done: 'Preferências de usuário limpas!' },
   }
 
   return (
     <div className="mx-auto max-w-2xl">
       <PageHeader title="Configurações" />
       <div className="space-y-3">
+        {user && (
+          <div className="flex items-center justify-between gap-4 rounded-2xl bg-card p-5 shadow">
+            <div className="min-w-0">
+              <div className="font-bold">Conta</div>
+              <div className="truncate text-sm text-muted">
+                {user.name} · {user.email}
+              </div>
+            </div>
+            <Button color="#e53935" onClick={logout}>
+              Sair
+            </Button>
+          </div>
+        )}
         <div className="flex items-center justify-between rounded-2xl bg-card p-5 shadow">
           <div>
             <div className="font-bold">Modo Escuro</div>
@@ -48,7 +64,7 @@ export default function SettingsPage() {
         <div className="flex items-center justify-between rounded-2xl bg-card p-5 shadow">
           <div>
             <div className="font-bold">Dados salvos</div>
-            <div className="text-sm text-muted">Favoritos, times e treinos ficam salvos neste navegador.</div>
+            <div className="text-sm text-muted">{user ? 'Favoritos, times e treinos ficam salvos na sua conta.' : 'Favoritos, times e treinos ficam salvos neste navegador.'}</div>
           </div>
           <Button color="#e53935" onClick={() => setConfirm('all')}>
             Limpar

@@ -115,7 +115,22 @@ body {
 }
 
 /* Quem prefere menos movimento no sistema não vê as animações contínuas. */
+/* Pokémon flutuando na tela de login. */
+.login-float {
+  animation: login-float 5s ease-in-out infinite;
+}
+@keyframes login-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-18px) rotate(2deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .login-float,
   .spin-slow,
   .spin-slower {
     animation: none;

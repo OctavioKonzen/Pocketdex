@@ -1,0 +1,31 @@
+rules_version = '2';
+
+// Regras do banco de dados dos usuários do PocketDex (site e app).
+// Cole no Console do Firebase → Firestore Database → Regras → Publicar.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Perfil e dados (favoritos, times, treinos...) de cada pessoa:
+    // só ela mesma pode ler e escrever.
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Nomes já usados. Qualquer um pode consultar (para avisar que o nome
+    // já existe), mas só dá para reservar um nome livre, para si mesmo.
+    // Assim não existem 2 pessoas com o mesmo nome.
+    match /usernames/{name} {
+      allow read: if true;
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'name'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 3
+        && request.resource.data.name.size() <= 20;
+      allow update: if request.auth != null
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
+    }
+  }
+}
