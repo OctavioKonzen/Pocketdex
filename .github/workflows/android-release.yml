@@ -10,7 +10,8 @@ name: App Android (APK)
 #   ANDROID_KEY_ALIAS         apelido da chave
 #   ANDROID_KEY_PASSWORD      senha do apelido
 #   GOOGLE_SERVICES_JSON      conteúdo do google-services.json (Firebase)
-# Sem eles o workflow só avisa e não publica nada.
+# Sem eles o APK é gerado só como teste (confere que o app compila) e não é
+# publicado.
 
 on:
   push:
@@ -40,14 +41,17 @@ jobs:
         run: |
           VERSION=$(grep -m1 '^version:' pubspec.yaml | sed 's/version: *//; s/+.*//')
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          if [ -z "$KEYSTORE" ] || [ -z "$GOOGLE_SERVICES" ]; then
-            echo "::warning::Faltam os secrets da chave de assinatura ou do google-services.json; o APK não foi publicado."
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-          elif gh release view "v$VERSION" > /dev/null 2>&1; then
+          if gh release view "v$VERSION" > /dev/null 2>&1; then
             echo "A versão v$VERSION já está publicada."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -n "$KEYSTORE" ] && [ -n "$GOOGLE_SERVICES" ]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Faltam os secrets da chave de assinatura ou do google-services.json: o APK é gerado só como teste e não é publicado."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
           fi
 
       - uses: actions/setup-python@v5
@@ -76,9 +80,13 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          echo "$KEYSTORE" | base64 -d > "$RUNNER_TEMP/pocketdex.jks"
-          export ANDROID_KEYSTORE_PATH="$RUNNER_TEMP/pocketdex.jks"
-          printf '%s' "$GOOGLE_SERVICES" > android/app/google-services.json
+          if [ -n "$KEYSTORE" ]; then
+            echo "$KEYSTORE" | base64 -d > "$RUNNER_TEMP/pocketdex.jks"
+            export ANDROID_KEYSTORE_PATH="$RUNNER_TEMP/pocketdex.jks"
+          fi
+          if [ -n "$GOOGLE_SERVICES" ]; then
+            printf '%s' "$GOOGLE_SERVICES" > android/app/google-services.json
+          fi
           flutter pub get
           flutter test
           # Artes menores só no APK (o site continua com as grandes).
@@ -89,7 +97,7 @@ jobs:
           cp build/app/outputs/flutter-apk/app-release.apk PocketDex.apk
 
       - name: Publicar versão
-        if: steps.check.outputs.skip == 'false'
+        if: steps.check.outputs.skip == 'false' && steps.check.outputs.publish == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.check.outputs.version }}
