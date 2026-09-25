@@ -1,7 +1,7 @@
 // "Quem é esse Pokémon?" — mesmas regras do app: 4 opções, 3 vidas, recorde
 // salvo e jogo em andamento que pode ser continuado depois.
 
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, m } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { Button, Icon, Loader, Modal, PageHeader } from '../components/ui'
 import { getPokedex } from '../lib/data'
@@ -112,32 +112,32 @@ export default function GamePage() {
         <div className="text-xl font-bold">Pontos: {game.score}</div>
         <div className="flex gap-1 text-red-500">
           {Array.from({ length: LIVES }, (_, i) => (
-            <motion.span key={i} animate={{ scale: i < game.lives ? 1 : 0.6, opacity: i < game.lives ? 1 : 0.25 }}>
+            <m.span key={i} animate={{ scale: i < game.lives ? 1 : 0.6, opacity: i < game.lives ? 1 : 0.25 }}>
               <Icon name="heart" size={26} />
-            </motion.span>
+            </m.span>
           ))}
         </div>
       </div>
 
-      <div className="mt-6 grid aspect-square max-h-[380px] w-full place-items-center rounded-3xl bg-surface">
+      <div className="mt-6 grid h-[380px] w-full place-items-center overflow-hidden rounded-3xl bg-surface">
         <AnimatePresence mode="wait">
-          <motion.div
+          <m.div
             key={`${game.answerId}-${revealed}`}
-            className="w-[80%]"
+            className="h-[85%] aspect-square"
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
             style={{ filter: revealed ? 'none' : 'brightness(0)' }}
           >
             <Sprite path={answerPokemon.sprite} box={answerPokemon.box} alt="Quem é esse Pokémon?" />
-          </motion.div>
+          </m.div>
         </AnimatePresence>
       </div>
       <AnimatePresence>
         {revealed && (
-          <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-3 text-center text-2xl font-black">
+          <m.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-3 text-center text-2xl font-black">
             É o {capitalize(answerPokemon.name)}!
-          </motion.p>
+          </m.p>
         )}
       </AnimatePresence>
 
@@ -147,7 +147,7 @@ export default function GamePage() {
           const isAnswer = id === game.answerId
           const color = !revealed ? '#42A5F5' : isAnswer ? '#43a047' : id === chosen ? '#e53935' : '#616161'
           return (
-            <motion.button
+            <m.button
               key={id}
               type="button"
               disabled={revealed}
@@ -158,7 +158,7 @@ export default function GamePage() {
               className="cursor-pointer rounded-2xl py-4 text-lg font-bold text-white shadow disabled:cursor-default"
             >
               {capitalize(p.name)}
-            </motion.button>
+            </m.button>
           )
         })}
       </div>

@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+import { m } from 'framer-motion'
 import { useState } from 'react'
 import { Button, Modal, PageHeader } from '../components/ui'
 import { useStore } from '../lib/store'
@@ -33,7 +33,7 @@ export default function SettingsPage() {
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             className={`relative h-8 w-14 cursor-pointer rounded-full transition-colors ${theme === 'dark' ? 'bg-sky-500' : 'bg-gray-400'}`}
           >
-            <motion.span layout className="absolute top-1 h-6 w-6 rounded-full bg-white shadow" style={{ left: theme === 'dark' ? 28 : 4 }} />
+            <m.span layout className="absolute top-1 h-6 w-6 rounded-full bg-white shadow" style={{ left: theme === 'dark' ? 28 : 4 }} />
           </button>
         </div>
         <div className="flex items-center justify-between rounded-2xl bg-card p-5 shadow">

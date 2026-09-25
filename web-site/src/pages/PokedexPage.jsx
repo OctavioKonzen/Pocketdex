@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, m } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
 import { useSearch } from '../App'
 import PokedexGrid from '../components/PokedexGrid'
@@ -59,7 +59,7 @@ export default function PokedexPage() {
               </option>
             ))}
           </select>
-          <motion.button
+          <m.button
             type="button"
             whileHover={{ scale: 1.05 }}
             onClick={() => setShowFilters(!showFilters)}
@@ -67,7 +67,7 @@ export default function PokedexPage() {
           >
             <Icon name="filter" size={18} />
             Tipos{types.length ? `: ${types.map(capitalize).join(' + ')}` : ''}
-          </motion.button>
+          </m.button>
           {filtersActive ? (
             <button
               type="button"
@@ -85,14 +85,14 @@ export default function PokedexPage() {
 
       <AnimatePresence>
         {showFilters && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+          <m.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
             <div className="mb-5 rounded-2xl bg-surface p-4">
               <p className="mb-3 text-sm text-muted">Selecione até dois tipos</p>
               <div className="grid grid-cols-3 gap-2 sm:grid-cols-6 lg:grid-cols-9">
                 {ALL_TYPES.map((type) => {
                   const active = types.includes(type)
                   return (
-                    <motion.button
+                    <m.button
                       key={type}
                       type="button"
                       whileHover={{ scale: 1.06 }}
@@ -102,12 +102,12 @@ export default function PokedexPage() {
                       style={{ background: typeColor(type), opacity: types.length && !active ? 0.45 : 1, outline: active ? '3px solid white' : 'none' }}
                     >
                       {capitalize(type)}
-                    </motion.button>
+                    </m.button>
                   )
                 })}
               </div>
             </div>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
 

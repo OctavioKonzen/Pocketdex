@@ -1,7 +1,7 @@
 // Painel de detalhes de um Pokémon: vitrine (Pokémon saindo da Pokébola,
 // nome, tipos, formas e shiny) e as abas About, Base Stats, Evolution e Moves.
 
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, m } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
 import { getMoves, getSpecies, getTypes } from '../lib/data'
 import {
@@ -84,7 +84,7 @@ export default function DetailsPanel({
   }
 
   return (
-    <motion.div
+    <m.div
       className={`relative grid overflow-hidden rounded-3xl shadow-2xl ${compact ? 'grid-cols-1' : 'grid-cols-[5fr_7fr]'}`}
       animate={{ boxShadow: `0 12px 30px ${color}66` }}
       transition={{ duration: 0.35 }}
@@ -92,7 +92,7 @@ export default function DetailsPanel({
     >
       {/* Fundo com a cor do tipo (gradiente se tiver dois tipos), trocando suavemente. */}
       <AnimatePresence initial={false}>
-        <motion.div
+        <m.div
           key={background}
           className="absolute inset-0"
           style={{ background }}
@@ -111,7 +111,7 @@ export default function DetailsPanel({
         <div className="absolute inset-x-14 top-[110px] bottom-[52px]" style={{ containerType: 'size' }}>
           <PokeballReveal key={species.id} ballSize={96}>
             <AnimatePresence mode="wait">
-              <motion.div
+              <m.div
                 key={sprite}
                 style={{ width: 'min(100cqw, 100cqh)' }}
                 initial={{ opacity: 0, scale: 0.85 }}
@@ -121,7 +121,7 @@ export default function DetailsPanel({
                 transition={{ duration: 0.25 }}
               >
                 <Sprite path={sprite} box={box} alt={species.name} fill={0.72} />
-              </motion.div>
+              </m.div>
             </AnimatePresence>
           </PokeballReveal>
         </div>
@@ -165,7 +165,7 @@ export default function DetailsPanel({
           {species.forms.length > 1 && (
             <div className="relative flex gap-1.5 overflow-x-auto pb-1">
               {species.forms.map((f, i) => (
-                <motion.button
+                <m.button
                   key={f.id}
                   type="button"
                   onClick={() => setFormIndex(i)}
@@ -174,7 +174,7 @@ export default function DetailsPanel({
                   style={i === formIndex ? { background: '#fff', color: typeColor(f.types[0]) } : { background: 'rgba(255,255,255,.2)', color: '#fff' }}
                 >
                   {f.formName}
-                </motion.button>
+                </m.button>
               ))}
             </div>
           )}
@@ -187,25 +187,25 @@ export default function DetailsPanel({
           {TABS.map((title, i) => (
             <button key={title} type="button" onClick={() => changeTab(i)} className="cursor-pointer text-center">
               <span className={`text-[15px] ${tab === i ? 'font-bold text-text' : 'text-muted hover:text-text'}`}>{title}</span>
-              <motion.div className="mx-auto mt-1 h-[3px] rounded" animate={{ width: tab === i ? 24 : 0 }} style={{ background: color }} />
+              <m.div className="mx-auto mt-1 h-[3px] rounded" animate={{ width: tab === i ? 24 : 0 }} style={{ background: color }} />
             </button>
           ))}
         </div>
         <div className="mt-4 min-h-0 flex-1 overflow-y-auto pr-1" style={{ maxHeight: compact ? 480 : undefined }}>
           <AnimatePresence mode="wait">
-            <motion.div key={tab} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.18 }}>
+            <m.div key={tab} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.18 }}>
               {tab === 0 && <AboutTab species={species} form={form} onAbility={setAbilityOpen} />}
               {tab === 1 && <StatsTab form={form} color={color} />}
               {tab === 2 && <EvolutionTab species={species} onSelect={(id) => onNavigate?.(id)} />}
               {tab === 3 && <MovesTab form={form} onMove={setMoveOpen} />}
-            </motion.div>
+            </m.div>
           </AnimatePresence>
         </div>
       </div>
 
       <MoveModal name={moveOpen} onClose={() => setMoveOpen(null)} onSelectPokemon={selectPokemon} />
       <AbilityModal name={abilityOpen} onClose={() => setAbilityOpen(null)} onSelectPokemon={selectPokemon} />
-    </motion.div>
+    </m.div>
   )
 }
 
@@ -317,7 +317,7 @@ function StatsTab({ form, color }) {
           <span className="w-16 text-muted">{STAT_LABELS[i]}</span>
           <b className="w-9">{base}</b>
           <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/15">
-            <motion.div className="h-full rounded-full" style={{ background: color }} initial={{ width: 0 }} animate={{ width: `${Math.min(100, (base / 255) * 100)}%` }} transition={{ duration: 0.6, delay: i * 0.05 }} />
+            <m.div className="h-full rounded-full" style={{ background: color }} initial={{ width: 0 }} animate={{ width: `${Math.min(100, (base / 255) * 100)}%` }} transition={{ duration: 0.6, delay: i * 0.05 }} />
           </div>
           {effort > 0 && <span className="w-12 text-right text-xs text-muted">+{effort} EV</span>}
         </div>
@@ -401,7 +401,7 @@ function MovesTab({ form, onMove }) {
           const move = moves[name]
           if (!move) return null
           return (
-            <motion.button
+            <m.button
               key={name}
               type="button"
               onClick={() => onMove(name)}
@@ -417,7 +417,7 @@ function MovesTab({ form, onMove }) {
               </div>
               {method === 'level-up' && level > 0 && <span className="text-sm text-muted">Lvl {level}</span>}
               <Icon name="right" className="text-muted" />
-            </motion.button>
+            </m.button>
           )
         })}
       </div>

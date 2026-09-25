@@ -1,9 +1,9 @@
-import { motion } from 'framer-motion'
+import { m } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import DetailsPanel from '../components/DetailsPanel'
-import { AbilityModal, CategoryIcon, ItemModal, MoveModal } from '../components/EntryModals'
-import { Icon, Loader, Modal, PageHeader, SearchInput, TypeBadge } from '../components/ui'
+import { AbilityDetails, CategoryIcon, ItemDetails, MoveDetails } from '../components/EntryModals'
+import ExpandableList from '../components/ExpandableList'
+import { Icon, Loader, PageHeader, SearchInput, TypeBadge } from '../components/ui'
 import { getAbilities, getItems, getMoves, spriteUrl } from '../lib/data'
 import { ALL_TYPES, capitalize, prettyName } from '../lib/pokemon'
 
@@ -19,7 +19,6 @@ export default function EncyclopediaPage() {
   const { tab = 'golpes' } = useParams()
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
-  const [pokemonOpen, setPokemonOpen] = useState(null)
 
   useEffect(() => setQuery(''), [tab])
 
@@ -28,7 +27,7 @@ export default function EncyclopediaPage() {
       <PageHeader title="Enciclopédia" subtitle="Todos os golpes, habilidades e itens do banco de dados." />
       <div className="mb-5 flex flex-wrap items-center gap-3">
         {TABS.map((t) => (
-          <motion.button
+          <m.button
             key={t.key}
             type="button"
             whileHover={{ scale: 1.06 }}
@@ -37,18 +36,15 @@ export default function EncyclopediaPage() {
             animate={{ backgroundColor: tab === t.key ? t.color : 'var(--surface)', color: tab === t.key ? '#fff' : 'var(--text)' }}
           >
             {t.label}
-          </motion.button>
+          </m.button>
         ))}
         <SearchInput value={query} onChange={setQuery} placeholder={`Procurar ${TABS.find((t) => t.key === tab)?.label.toLowerCase() ?? ''}`} className="min-w-[240px] flex-1" />
       </div>
 
-      {tab === 'golpes' && <MovesList query={query} onPokemon={setPokemonOpen} />}
-      {tab === 'habilidades' && <AbilitiesList query={query} onPokemon={setPokemonOpen} />}
+      {/* Clicar em um item abre os detalhes logo abaixo dele, empurrando os outros. */}
+      {tab === 'golpes' && <MovesList query={query} />}
+      {tab === 'habilidades' && <AbilitiesList query={query} />}
       {tab === 'itens' && <ItemsList query={query} />}
-
-      <Modal open={Boolean(pokemonOpen)} onClose={() => setPokemonOpen(null)} title="Pokémon" wide>
-        {pokemonOpen && <DetailsPanel speciesId={pokemonOpen} compact onNavigate={setPokemonOpen} />}
-      </Modal>
     </div>
   )
 }
@@ -64,22 +60,53 @@ function useLimited(list) {
         Mostrar mais ({list.length - limit})
       </button>
     ) : null
-  return [list.slice(0, limit), more]
+  return [useMemo(() => list.slice(0, limit), [list, limit]), more]
 }
 
-function ListRow({ onClick, children }) {
-  return (
-    <motion.button type="button" onClick={onClick} whileHover={{ scale: 1.015 }} className="flex w-full cursor-pointer items-center gap-3 rounded-2xl bg-card px-4 py-3 text-left shadow-sm">
-      {children}
-      <Icon name="right" className="ml-auto shrink-0 text-muted" />
-    </motion.button>
-  )
-}
+// Funções fixas (fora dos componentes) para as linhas da lista não serem
+// redesenhadas à toa.
+const byName = (entry) => entry.name
+const titleOf = (entry) => prettyName(entry.name)
 
-function MovesList({ query, onPokemon }) {
+const renderMove = (m) => (
+  <div className="min-w-0">
+    <div className="truncate font-bold">{prettyName(m.name)}</div>
+    <div className="mt-1 flex items-center gap-2">
+      <TypeBadge type={m.type} small />
+      <CategoryIcon category={m.category} />
+      <span className="text-xs text-muted">
+        {m.power ? `Poder ${m.power}` : ''} {m.accuracy ? `· Precisão ${m.accuracy}` : ''}
+      </span>
+    </div>
+  </div>
+)
+const renderMoveDetails = (m) => <MoveDetails key={m.name} name={m.name} inline />
+
+const renderAbility = (a) => (
+  <div className="min-w-0">
+    <div className="font-bold">{prettyName(a.name)}</div>
+    <div className="truncate text-xs text-muted">{a.effect}</div>
+  </div>
+)
+const renderAbilityDetails = (a) => <AbilityDetails key={a.name} name={a.name} inline />
+
+const itemKey = (item) => item.id
+const renderItem = (item) => (
+  <>
+    <div className="grid h-10 w-10 shrink-0 place-items-center">
+      {item.sprite ? <img src={spriteUrl(item.sprite)} alt="" loading="lazy" className="pixelated h-10 w-10" /> : <Icon name="status" className="text-muted" />}
+    </div>
+    <div className="min-w-0">
+      <div className="truncate font-bold">{prettyName(item.name)}</div>
+      <div className="text-xs text-muted">{prettyName(item.category)}</div>
+    </div>
+  </>
+)
+const renderItemDetails = (item) => <ItemDetails item={item} />
+
+function MovesList({ query }) {
   const [moves, setMoves] = useState(null)
   const [type, setType] = useState('')
-  const [open, setOpen] = useState(null)
   useEffect(() => {
     getMoves().then((m) => setMoves(Object.values(m)))
   }, [])
@@ -96,31 +123,14 @@ function MovesList({ query, onPokemon }) {
           </option>
         ))}
       </select>
-      <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-        {shown.map((m) => (
-          <ListRow key={m.name} onClick={() => setOpen(m.name)}>
-            <div className="min-w-0">
-              <div className="truncate font-bold">{prettyName(m.name)}</div>
-              <div className="mt-1 flex items-center gap-2">
-                <TypeBadge type={m.type} small />
-                <CategoryIcon category={m.category} />
-                <span className="text-xs text-muted">
-                  {m.power ? `Poder ${m.power}` : ''} {m.accuracy ? `· Precisão ${m.accuracy}` : ''}
-                </span>
-              </div>
-            </div>
-          </ListRow>
-        ))}
-      </div>
+      <ExpandableList items={shown} getKey={byName} getTitle={titleOf} renderItem={renderMove} renderDetails={renderMoveDetails} accent="#FFA726" />
       {more}
-      <MoveModal name={open} onClose={() => setOpen(null)} onSelectPokemon={(p) => (setOpen(null), onPokemon(p.species))} />
     </>
   )
 }
 
-function AbilitiesList({ query, onPokemon }) {
+function AbilitiesList({ query }) {
   const [abilities, setAbilities] = useState(null)
-  const [open, setOpen] = useState(null)
   useEffect(() => {
     getAbilities().then(setAbilities)
   }, [])
@@ -129,25 +139,14 @@ function AbilitiesList({ query, onPokemon }) {
   if (!abilities) return <Loader />
   return (
     <>
-      <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-        {shown.map((a) => (
-          <ListRow key={a.name} onClick={() => setOpen(a.name)}>
-            <div className="min-w-0">
-              <div className="font-bold">{prettyName(a.name)}</div>
-              <div className="truncate text-xs text-muted">{a.effect}</div>
-            </div>
-          </ListRow>
-        ))}
-      </div>
+      <ExpandableList items={shown} getKey={byName} getTitle={titleOf} renderItem={renderAbility} renderDetails={renderAbilityDetails} accent="#42A5F5" />
       {more}
-      <AbilityModal name={open} onClose={() => setOpen(null)} onSelectPokemon={(p) => (setOpen(null), onPokemon(p.species))} />
     </>
   )
 }
 
 function ItemsList({ query }) {
   const [items, setItems] = useState(null)
-  const [open, setOpen] = useState(null)
   useEffect(() => {
     getItems().then(setItems)
   }, [])
@@ -156,21 +155,8 @@ function ItemsList({ query }) {
   if (!items) return <Loader />
   return (
     <>
-      <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-        {shown.map((item) => (
-          <ListRow key={item.id} onClick={() => setOpen(item)}>
-            <div className="grid h-10 w-10 shrink-0 place-items-center">
-              {item.sprite ? <img src={spriteUrl(item.sprite)} alt="" loading="lazy" className="pixelated h-10 w-10" /> : <Icon name="status" className="text-muted" />}
-            </div>
-            <div className="min-w-0">
-              <div className="truncate font-bold">{prettyName(item.name)}</div>
-              <div className="text-xs text-muted">{prettyName(item.category)}</div>
-            </div>
-          </ListRow>
-        ))}
-      </div>
+      <ExpandableList items={shown} getKey={itemKey} getTitle={titleOf} renderItem={renderItem} renderDetails={renderItemDetails} accent="#8D6E63" />
       {more}
-      <ItemModal item={open} onClose={() => setOpen(null)} />
     </>
   )
 }
