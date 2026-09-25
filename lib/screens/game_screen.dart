@@ -124,7 +124,7 @@ class _GameScreenState extends State<GameScreen> {
             if (signedIn) ...[
               const SizedBox(height: 10),
               _BigButton(
-                label: '🏆 Jogar Ranked (${QuizScreen.rankedSeconds}s → 2s por Pokémon)',
+                label: '🏆 Jogar Ranked (todas as gerações)',
                 gradient: const LinearGradient(colors: [Color(0xFFF9A825), Color(0xFFE65100)]),
                 onPressed: () => _play(ranked: true),
               ),

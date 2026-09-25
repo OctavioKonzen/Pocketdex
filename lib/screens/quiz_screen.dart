@@ -295,6 +295,17 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
               ),
               if (_ranked) ...[
                 const SizedBox(height: 10),
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text('🏆 Ranked · Todas as gerações',
+                          style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13)),
+                    ),
+                    Text('${QuizScreen.rankedSecondsFor(_score)}s por Pokémon',
+                        style: TextStyle(color: Theme.of(context).hintColor, fontWeight: FontWeight.bold, fontSize: 13)),
+                  ],
+                ),
+                const SizedBox(height: 6),
                 _TimerBar(timer: _timer),
               ],
               const SizedBox(height: 12),

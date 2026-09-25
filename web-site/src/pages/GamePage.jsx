@@ -304,7 +304,7 @@ export default function GamePage() {
             </Button>
             {canRank && (
               <Button onClick={() => start(true)} color="linear-gradient(135deg, #f9a825, #e65100)" className="w-full py-4 text-lg">
-                🏆 Jogar Ranked ({RANKED_SECONDS}s → 2s por Pokémon)
+                🏆 Jogar Ranked (todas as gerações)
               </Button>
             )}
           </div>
@@ -386,7 +386,7 @@ export default function GamePage() {
         {game.ranked && (
           <div className="overflow-hidden rounded-2xl bg-card shadow">
             <div className="flex items-center justify-between px-4 pt-2 text-sm font-bold">
-              <span className="text-yellow-400">🏆 Ranked</span>
+              <span className="text-yellow-400">🏆 Ranked · Todas as gerações</span>
               <span className="text-muted">{rankedSeconds(game.score)}s por Pokémon</span>
             </div>
             <div className="m-3 mt-2 h-3 overflow-hidden rounded-full bg-surface">
