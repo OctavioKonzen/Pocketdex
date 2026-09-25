@@ -6,6 +6,7 @@ import '../services/pokemon_service.dart';
 import '../widgets/pikachu_loading_indicator.dart';
 import '../widgets/pokemon_card.dart';
 import 'breeding_partners_screen.dart';
+import '../utils/responsive.dart';
 
 class BreedingHelpScreen extends StatefulWidget {
   const BreedingHelpScreen({super.key});
@@ -70,7 +71,8 @@ class _BreedingHelpScreenState extends State<BreedingHelpScreen> {
               decoration: InputDecoration(
                 hintText: 'Procurar Pokémon...',
                 prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 filled: true,
                 fillColor: theme.colorScheme.surface,
               ),
@@ -80,20 +82,26 @@ class _BreedingHelpScreenState extends State<BreedingHelpScreen> {
             child: FutureBuilder<List<PokemonListing>>(
               future: _pokemonListFuture,
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting && _allPokemon.isEmpty) {
+                if (snapshot.connectionState == ConnectionState.waiting &&
+                    _allPokemon.isEmpty) {
                   return const PikachuLoadingIndicator();
                 }
                 if (snapshot.hasError) {
-                  return Center(child: Text('Erro: ${snapshot.error}', style: TextStyle(color: theme.colorScheme.error)));
+                  return Center(
+                      child: Text('Erro: ${snapshot.error}',
+                          style: TextStyle(color: theme.colorScheme.error)));
                 }
-                if (_filteredPokemon.isEmpty && snapshot.connectionState == ConnectionState.done) {
-                   return Center(child: Text('Nenhum Pokémon encontrado.', style: TextStyle(color: theme.hintColor)));
+                if (_filteredPokemon.isEmpty &&
+                    snapshot.connectionState == ConnectionState.done) {
+                  return Center(
+                      child: Text('Nenhum Pokémon encontrado.',
+                          style: TextStyle(color: theme.hintColor)));
                 }
-                
+
                 return GridView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: Responsive.columns(context, min: 3),
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
                     childAspectRatio: 0.8,
@@ -106,7 +114,9 @@ class _BreedingHelpScreenState extends State<BreedingHelpScreen> {
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => BreedingPartnersScreen(initialPokemon: pokemon)),
+                          MaterialPageRoute(
+                              builder: (context) => BreedingPartnersScreen(
+                                  initialPokemon: pokemon)),
                         );
                       },
                     );

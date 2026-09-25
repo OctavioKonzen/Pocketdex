@@ -6,12 +6,14 @@ import '../services/pokemon_service.dart';
 import '../utils/pokemon_colors.dart';
 import '../utils/string_extensions.dart';
 import 'move_detail_screen.dart';
+import '../utils/responsive.dart';
 
 class MovesEncyclopediaScreen extends StatefulWidget {
   const MovesEncyclopediaScreen({super.key});
 
   @override
-  State<MovesEncyclopediaScreen> createState() => _MovesEncyclopediaScreenState();
+  State<MovesEncyclopediaScreen> createState() =>
+      _MovesEncyclopediaScreenState();
 }
 
 class _MovesEncyclopediaScreenState extends State<MovesEncyclopediaScreen> {
@@ -36,13 +38,15 @@ class _MovesEncyclopediaScreenState extends State<MovesEncyclopediaScreen> {
           _isLoading = false;
         });
       }
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   void _filterMoves(String query) {
     final filtered = _allMoves.where((move) {
-      return move['name']!.toLowerCase().replaceAll('-', ' ').contains(query.toLowerCase());
+      return move['name']!
+          .toLowerCase()
+          .replaceAll('-', ' ')
+          .contains(query.toLowerCase());
     }).toList();
     setState(() {
       _filteredMoves = filtered;
@@ -56,7 +60,8 @@ class _MovesEncyclopediaScreenState extends State<MovesEncyclopediaScreen> {
       appBar: AppBar(
         title: const Text('Enciclopédia de Golpes'),
       ),
-      body: Column(
+      body: ReadableWidth(
+          child: Column(
         children: [
           Padding(
             padding: const EdgeInsets.all(16.0),
@@ -66,7 +71,8 @@ class _MovesEncyclopediaScreenState extends State<MovesEncyclopediaScreen> {
               decoration: InputDecoration(
                 labelText: 'Procurar Golpe',
                 prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 filled: true,
                 fillColor: theme.colorScheme.surface,
               ),
@@ -88,7 +94,7 @@ class _MovesEncyclopediaScreenState extends State<MovesEncyclopediaScreen> {
                   ),
           ),
         ],
-      ),
+      )),
     );
   }
 }
@@ -98,7 +104,8 @@ class _MoveTile extends StatelessWidget {
   final String url;
   final PokemonService pokemonService;
 
-  const _MoveTile({required this.name, required this.url, required this.pokemonService});
+  const _MoveTile(
+      {required this.name, required this.url, required this.pokemonService});
 
   @override
   Widget build(BuildContext context) {
@@ -107,28 +114,40 @@ class _MoveTile extends StatelessWidget {
       color: theme.cardColor,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: FutureBuilder<Move>(
-        future: pokemonService.fetchResourceDetails(url, (json) => Move.fromApiJson(json)),
+        future: pokemonService.fetchResourceDetails(
+            url, (json) => Move.fromApiJson(json)),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             return ListTile(
-              title: Text(name.replaceAll('-', ' ').capitalise(), style: TextStyle(color: theme.colorScheme.onSurface)),
-              subtitle: Text('Carregando...', style: TextStyle(color: theme.hintColor)),
+              title: Text(name.replaceAll('-', ' ').capitalise(),
+                  style: TextStyle(color: theme.colorScheme.onSurface)),
+              subtitle: Text('Carregando...',
+                  style: TextStyle(color: theme.hintColor)),
             );
           }
           final move = snapshot.data!;
           return ListTile(
-            title: Text(move.name, style: TextStyle(color: theme.colorScheme.onSurface, fontWeight: FontWeight.bold)),
+            title: Text(move.name,
+                style: TextStyle(
+                    color: theme.colorScheme.onSurface,
+                    fontWeight: FontWeight.bold)),
             subtitle: Row(
               children: [
                 Chip(
-                  label: Text(move.type.capitalise(), style: const TextStyle(color: Colors.white)),
+                  label: Text(move.type.capitalise(),
+                      style: const TextStyle(color: Colors.white)),
                   backgroundColor: getColorForType(move.type),
                   visualDensity: VisualDensity.compact,
                 ),
                 const SizedBox(width: 8),
                 Icon(
-                  move.category == 'physical' ? Icons.sports_mma : move.category == 'special' ? Icons.star : Icons.adjust,
-                  color: theme.hintColor, size: 20,
+                  move.category == 'physical'
+                      ? Icons.sports_mma
+                      : move.category == 'special'
+                          ? Icons.star
+                          : Icons.adjust,
+                  color: theme.hintColor,
+                  size: 20,
                 ),
               ],
             ),
@@ -136,7 +155,8 @@ class _MoveTile extends StatelessWidget {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => MoveDetailScreen(move: move)),
+                MaterialPageRoute(
+                    builder: (context) => MoveDetailScreen(move: move)),
               );
             },
           );

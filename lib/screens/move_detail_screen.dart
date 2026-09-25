@@ -8,6 +8,7 @@ import '../utils/pokemon_colors.dart';
 import '../utils/string_extensions.dart';
 import '../widgets/pikachu_loading_indicator.dart';
 import '../widgets/pokemon_card.dart';
+import '../utils/responsive.dart';
 
 class MoveDetailScreen extends StatelessWidget {
   final Move move;
@@ -40,27 +41,38 @@ class MoveDetailScreen extends StatelessWidget {
                 Row(
                   children: [
                     Chip(
-                      label: Text(move.type.capitalise(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      label: Text(move.type.capitalise(),
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold)),
                       backgroundColor: cardBackgroundColor,
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                     ),
                     const SizedBox(width: 12),
                     Icon(
-                      move.category == 'physical' ? Icons.sports_mma : move.category == 'special' ? Icons.star : Icons.adjust,
+                      move.category == 'physical'
+                          ? Icons.sports_mma
+                          : move.category == 'special'
+                              ? Icons.star
+                              : Icons.adjust,
                       color: Colors.white,
                       size: 22,
                     ),
                     const SizedBox(width: 6),
                     Text(
                       move.category.capitalise(),
-                      style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
                 Text(
                   move.effect,
-                  style: const TextStyle(color: Colors.white, height: 1.5, fontSize: 16),
+                  style: const TextStyle(
+                      color: Colors.white, height: 1.5, fontSize: 16),
                 ),
                 const SizedBox(height: 20),
                 const Divider(color: Colors.white30),
@@ -69,14 +81,14 @@ class MoveDetailScreen extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     _buildStatInfo('Power', move.power?.toString() ?? '--'),
-                    _buildStatInfo('Accuracy', move.accuracy != null ? '${move.accuracy}%' : '--'),
+                    _buildStatInfo('Accuracy',
+                        move.accuracy != null ? '${move.accuracy}%' : '--'),
                     _buildStatInfo('PP', move.pp?.toString() ?? '--'),
                   ],
                 ),
               ],
             ),
           ),
-          
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
             child: Text(
@@ -91,14 +103,18 @@ class MoveDetailScreen extends StatelessWidget {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: PikachuLoadingIndicator());
                 }
-                if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
-                  return Center(child: Text('Nenhum Pokémon encontrado.', style: TextStyle(color: theme.hintColor)));
+                if (snapshot.hasError ||
+                    !snapshot.hasData ||
+                    snapshot.data!.isEmpty) {
+                  return Center(
+                      child: Text('Nenhum Pokémon encontrado.',
+                          style: TextStyle(color: theme.hintColor)));
                 }
                 final pokemonList = snapshot.data!;
                 return GridView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: Responsive.columns(context, min: 3),
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
                     childAspectRatio: 0.8,
@@ -126,7 +142,8 @@ class MoveDetailScreen extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+          style: const TextStyle(
+              color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
         ),
       ],
     );

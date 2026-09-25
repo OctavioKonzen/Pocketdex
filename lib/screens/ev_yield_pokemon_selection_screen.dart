@@ -5,6 +5,7 @@ import 'package:pocket_dex/models/pokemon_listing.dart';
 import 'package:pocket_dex/services/pokemon_service.dart';
 import 'package:pocket_dex/widgets/pikachu_loading_indicator.dart';
 import 'package:pocket_dex/widgets/pokemon_card.dart';
+import 'package:pocket_dex/utils/responsive.dart';
 
 class EvYieldPokemonSelectionScreen extends StatefulWidget {
   const EvYieldPokemonSelectionScreen({super.key});
@@ -89,8 +90,8 @@ class _EvYieldPokemonSelectionScreenState
                 ? const PikachuLoadingIndicator()
                 : GridView.builder(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: Responsive.columns(context, min: 3),
                       crossAxisSpacing: 12,
                       mainAxisSpacing: 12,
                       childAspectRatio: 0.8,

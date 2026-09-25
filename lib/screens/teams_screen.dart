@@ -5,6 +5,7 @@ import '../models/team.dart';
 import '../services/team_service.dart';
 import '../widgets/team_card.dart';
 import 'team_builder_screen.dart';
+import '../utils/responsive.dart';
 
 class TeamsScreen extends StatefulWidget {
   const TeamsScreen({super.key});
@@ -40,8 +41,8 @@ class _TeamsScreenState extends State<TeamsScreen> {
       backgroundColor: Colors.transparent,
       builder: (builderContext) {
         return Padding(
-          padding:
-              EdgeInsets.only(bottom: MediaQuery.of(builderContext).viewInsets.bottom),
+          padding: EdgeInsets.only(
+              bottom: MediaQuery.of(builderContext).viewInsets.bottom),
           child: Container(
             padding: const EdgeInsets.all(24.0),
             decoration: BoxDecoration(
@@ -57,10 +58,7 @@ class _TeamsScreenState extends State<TeamsScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  Text(
-                    'Criar Novo Time',
-                    style: theme.textTheme.headlineSmall
-                  ),
+                  Text('Criar Novo Time', style: theme.textTheme.headlineSmall),
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: nameController,
@@ -77,7 +75,8 @@ class _TeamsScreenState extends State<TeamsScreen> {
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: theme.colorScheme.primary),
+                          borderSide:
+                              BorderSide(color: theme.colorScheme.primary),
                         )),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
@@ -92,8 +91,10 @@ class _TeamsScreenState extends State<TeamsScreen> {
                     children: [
                       TextButton(
                         child: Text('Cancelar',
-                            style:
-                                TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.7), fontSize: 16)),
+                            style: TextStyle(
+                                color: theme.colorScheme.onSurface
+                                    .withOpacity(0.7),
+                                fontSize: 16)),
                         onPressed: () => Navigator.pop(builderContext),
                       ),
                       const SizedBox(width: 12),
@@ -113,7 +114,7 @@ class _TeamsScreenState extends State<TeamsScreen> {
                           if (formKey.currentState!.validate()) {
                             await _teamService
                                 .createTeam(nameController.text.trim());
-                            
+
                             if (builderContext.mounted) {
                               Navigator.pop(builderContext);
                             }
@@ -148,7 +149,8 @@ class _TeamsScreenState extends State<TeamsScreen> {
               actions: <Widget>[
                 TextButton(
                   child: Text('Cancelar',
-                      style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.7))),
+                      style: TextStyle(
+                          color: theme.colorScheme.onSurface.withOpacity(0.7))),
                   onPressed: () {
                     Navigator.of(dialogContext).pop();
                   },
@@ -161,7 +163,7 @@ class _TeamsScreenState extends State<TeamsScreen> {
                   onPressed: () async {
                     await _teamService.deleteTeam(team.id);
                     if (dialogContext.mounted) {
-                       Navigator.of(dialogContext).pop();
+                      Navigator.of(dialogContext).pop();
                     }
                     _loadTeams();
                   },
@@ -177,7 +179,8 @@ class _TeamsScreenState extends State<TeamsScreen> {
       appBar: AppBar(
         title: const Text('Montador de Times'),
       ),
-      body: FutureBuilder<List<Team>>(
+      body: ReadableWidth(
+          child: FutureBuilder<List<Team>>(
         future: _teamsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -213,14 +216,13 @@ class _TeamsScreenState extends State<TeamsScreen> {
               child: Text(
                 'Você ainda não criou nenhum time.\nClique no botão "+" para começar!',
                 textAlign: TextAlign.center,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: theme.textTheme.bodySmall?.color
-                ),
+                style: theme.textTheme.titleMedium
+                    ?.copyWith(color: theme.textTheme.bodySmall?.color),
               ),
             );
           }
         },
-      ),
+      )),
       floatingActionButton: FloatingActionButton(
         onPressed: _showCreateTeamPanel,
         backgroundColor: const Color(0xFFF7786B),

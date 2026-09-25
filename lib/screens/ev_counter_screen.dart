@@ -11,6 +11,8 @@ import 'package:uuid/uuid.dart';
 import '../models/training_pokemon.dart';
 import 'pokedex_screen.dart';
 import 'ev_tracking_screen.dart';
+import 'package:pocket_dex/utils/responsive.dart';
+import 'package:pocket_dex/utils/app_images.dart';
 
 class EvCounterScreen extends StatefulWidget {
   const EvCounterScreen({super.key});
@@ -55,8 +57,8 @@ class _EvCounterScreenState extends State<EvCounterScreen> {
 
     if (!mounted || selectedPokemon == null) return;
 
-    final PokemonDetails details =
-        await PokemonService().fetchPokemonDetails(int.parse(selectedPokemon['id']!));
+    final PokemonDetails details = await PokemonService()
+        .fetchPokemonDetails(int.parse(selectedPokemon['id']!));
     final pokemonName = details.name;
 
     setState(() {
@@ -82,7 +84,8 @@ class _EvCounterScreenState extends State<EvCounterScreen> {
   Future<void> _navigateToTracking(TrainingPokemon pokemon) async {
     final result = await Navigator.push<TrainingPokemon>(
       context,
-      MaterialPageRoute(builder: (context) => EvTrackingScreen(pokemon: pokemon)),
+      MaterialPageRoute(
+          builder: (context) => EvTrackingScreen(pokemon: pokemon)),
     );
 
     if (result != null && mounted) {
@@ -103,31 +106,32 @@ class _EvCounterScreenState extends State<EvCounterScreen> {
       appBar: AppBar(
         title: const Text('Contador de EVs'),
       ),
-      body: _isLoading
-          ? const PikachuLoadingIndicator()
-          : _trainingPokemon.isEmpty
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Text(
-                      'Nenhum Pokémon em treinamento.\nClique no "+" para adicionar.',
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.titleMedium,
-                    ),
-                  ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(12),
-                  itemCount: _trainingPokemon.length,
-                  itemBuilder: (context, index) {
-                    final pokemon = _trainingPokemon[index];
-                    return _TrainingPokemonCard(
-                      pokemon: pokemon,
-                      onTap: () => _navigateToTracking(pokemon),
-                      onDelete: () => _removePokemon(pokemon.id),
-                    );
-                  },
-                ),
+      body: ReadableWidth(
+          child: _isLoading
+              ? const PikachuLoadingIndicator()
+              : _trainingPokemon.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                        child: Text(
+                          'Nenhum Pokémon em treinamento.\nClique no "+" para adicionar.',
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.titleMedium,
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(12),
+                      itemCount: _trainingPokemon.length,
+                      itemBuilder: (context, index) {
+                        final pokemon = _trainingPokemon[index];
+                        return _TrainingPokemonCard(
+                          pokemon: pokemon,
+                          onTap: () => _navigateToTracking(pokemon),
+                          onDelete: () => _removePokemon(pokemon.id),
+                        );
+                      },
+                    )),
       floatingActionButton: FloatingActionButton(
         onPressed: _addPokemonToTraining,
         backgroundColor: Colors.green.shade600,
@@ -163,8 +167,8 @@ class _TrainingPokemonCard extends StatelessWidget {
           padding: const EdgeInsets.all(12.0),
           child: Row(
             children: [
-              Image.network(
-                pokemon.imageUrl,
+              Image(
+                image: AppImages.provider(pokemon.imageUrl),
                 width: 70,
                 height: 70,
                 loadingBuilder: (context, child, progress) {

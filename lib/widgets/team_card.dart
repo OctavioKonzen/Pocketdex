@@ -1,11 +1,11 @@
 // lib/widgets/team_card.dart
 
-import 'dart:convert';
+import '../services/pokemon_service.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 
 import '../models/team.dart';
 import '../utils/pokemon_colors.dart';
+import '../utils/app_images.dart';
 
 class TeamCard extends StatelessWidget {
   final Team team;
@@ -129,16 +129,12 @@ class _PokemonIconState extends State<_PokemonIcon> {
 
   Future<Map<String, dynamic>> _fetchPokemonData() async {
     try {
-      final response = await http.get(Uri.parse('https://pokeapi.co/api/v2/pokemon/${widget.pokemonId}'));
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final types = (data['types'] as List)
-            .map((t) => t['type']['name'] as String)
-            .toList();
-        final imageUrl = data['sprites']['front_default'] ?? '';
-        return {'types': types, 'imageUrl': imageUrl};
-      }
-      return {};
+      final data = await PokemonService().fetchPokemonJson(widget.pokemonId);
+      final types = (data['types'] as List)
+          .map((t) => t['type']['name'] as String)
+          .toList();
+      final imageUrl = data['sprites']['front_default'] ?? '';
+      return {'types': types, 'imageUrl': imageUrl};
     } catch (e) {
       return {};
     }
@@ -168,10 +164,10 @@ class _PokemonIconState extends State<_PokemonIcon> {
           child: CircleAvatar(
             radius: 22,
             backgroundColor: theme.cardColor,
-            backgroundImage: imageUrl.isNotEmpty ? NetworkImage(imageUrl) : null,
+            backgroundImage: imageUrl.isNotEmpty ? AppImages.provider(imageUrl) : null,
             child: imageUrl.isNotEmpty
               ? Ink.image(
-                  image: NetworkImage(imageUrl),
+                  image: AppImages.provider(imageUrl),
                   fit: BoxFit.contain,
                   width: 44,
                   height: 44,

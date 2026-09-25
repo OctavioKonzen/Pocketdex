@@ -1,7 +1,6 @@
 // lib/screens/ev_tracking_screen.dart
 
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:pocket_dex/services/pokemon_service.dart';
 import 'package:flutter/material.dart';
 
 import 'package:pocket_dex/models/pokemon_listing.dart';
@@ -10,6 +9,8 @@ import 'package:pocket_dex/utils/string_extensions.dart';
 import 'package:pocket_dex/widgets/pikachu_loading_indicator.dart';
 
 import '../models/training_pokemon.dart';
+import 'package:pocket_dex/utils/responsive.dart';
+import 'package:pocket_dex/utils/app_images.dart';
 
 class EvTrackingScreen extends StatefulWidget {
   final TrainingPokemon pokemon;
@@ -32,16 +33,13 @@ class _EvTrackingScreenState extends State<EvTrackingScreen> {
   Future<Map<String, int>> _fetchEvYield(String pokemonId) async {
     final evYields = <String, int>{};
     try {
-      final response = await http.get(Uri.parse('https://pokeapi.co/api/v2/pokemon/$pokemonId'));
-      if (response.statusCode == 200) {
-          final data = json.decode(response.body);
-          final statsData = data['stats'] as List;
-          for (var statInfo in statsData) {
-              if (statInfo['effort'] > 0) {
-                  String statName = statInfo['stat']['name'];
-                  evYields[statName] = (statInfo['effort'] as num).toInt();
-              }
-          }
+      final data = await PokemonService().fetchPokemonJson(pokemonId);
+      final statsData = data['stats'] as List;
+      for (var statInfo in statsData) {
+        if (statInfo['effort'] > 0) {
+          String statName = statInfo['stat']['name'];
+          evYields[statName] = (statInfo['effort'] as num).toInt();
+        }
       }
     } catch (e) {
       return {};
@@ -58,7 +56,7 @@ class _EvTrackingScreenState extends State<EvTrackingScreen> {
     );
 
     if (selectedPokemon == null || !mounted) return;
-    
+
     final evs = await _fetchEvYield(selectedPokemon.id);
 
     if (!mounted) return;
@@ -115,12 +113,13 @@ class _EvTrackingScreenState extends State<EvTrackingScreen> {
             )
           ],
         ),
-        body: SingleChildScrollView(
+        body: ReadableWidth(
+            child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
           child: Column(
             children: [
-              Image.network(
-                _currentPokemon.imageUrl,
+              Image(
+                image: AppImages.provider(_currentPokemon.imageUrl),
                 height: 150,
                 errorBuilder: (c, e, s) =>
                     Icon(Icons.error, size: 120, color: theme.hintColor),
@@ -129,15 +128,14 @@ class _EvTrackingScreenState extends State<EvTrackingScreen> {
                     : const PikachuLoadingIndicator(size: 100),
               ),
               const SizedBox(height: 16),
-              Text(
-                'Total EVs: ${_currentPokemon.totalEVs} / 510',
-                style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)
-              ),
+              Text('Total EVs: ${_currentPokemon.totalEVs} / 510',
+                  style: theme.textTheme.headlineSmall
+                      ?.copyWith(fontWeight: FontWeight.bold)),
               const SizedBox(height: 24),
               _buildEvGrid(theme),
             ],
           ),
-        ),
+        )),
         floatingActionButton: FloatingActionButton.extended(
           onPressed: _addDefeatedPokemon,
           backgroundColor: Colors.green.shade600,
@@ -160,27 +158,35 @@ class _EvTrackingScreenState extends State<EvTrackingScreen> {
       ),
       children: [
         _EVStatTile(
-            label: 'HP', value: _currentPokemon.hpEVs, color: Colors.green, theme: theme),
+            label: 'HP',
+            value: _currentPokemon.hpEVs,
+            color: Colors.green,
+            theme: theme),
         _EVStatTile(
             label: 'Attack',
             value: _currentPokemon.attackEVs,
-            color: Colors.red, theme: theme),
+            color: Colors.red,
+            theme: theme),
         _EVStatTile(
             label: 'Defense',
             value: _currentPokemon.defenseEVs,
-            color: Colors.blue, theme: theme),
+            color: Colors.blue,
+            theme: theme),
         _EVStatTile(
             label: 'Sp. Atk',
             value: _currentPokemon.spAttackEVs,
-            color: Colors.purple, theme: theme),
+            color: Colors.purple,
+            theme: theme),
         _EVStatTile(
             label: 'Sp. Def',
             value: _currentPokemon.spDefenseEVs,
-            color: Colors.yellow.shade700, theme: theme),
+            color: Colors.yellow.shade700,
+            theme: theme),
         _EVStatTile(
             label: 'Speed',
             value: _currentPokemon.speedEVs,
-            color: Colors.pink, theme: theme),
+            color: Colors.pink,
+            theme: theme),
       ],
     );
   }
@@ -193,7 +199,10 @@ class _EVStatTile extends StatelessWidget {
   final ThemeData theme;
 
   const _EVStatTile(
-      {required this.label, required this.value, required this.color, required this.theme});
+      {required this.label,
+      required this.value,
+      required this.color,
+      required this.theme});
 
   @override
   Widget build(BuildContext context) {
@@ -206,10 +215,10 @@ class _EVStatTile extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label,
-              style: theme.textTheme.titleMedium),
+          Text(label, style: theme.textTheme.titleMedium),
           Text(value.toString(),
-              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+              style: theme.textTheme.titleLarge
+                  ?.copyWith(fontWeight: FontWeight.bold)),
         ],
       ),
     );

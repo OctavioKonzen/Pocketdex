@@ -21,6 +21,12 @@ class PokemonDetailPanel extends StatelessWidget {
   final Function(int) onPageChanged;
   final Function(int) onEvolutionSelected;
 
+  /// Altura do painel; por padrão 45% da tela (layout do app).
+  final double? height;
+
+  /// Cantos do painel; por padrão só os de cima são arredondados.
+  final BorderRadius? borderRadius;
+
   const PokemonDetailPanel({
     super.key,
     required this.pokemon,
@@ -30,6 +36,8 @@ class PokemonDetailPanel extends StatelessWidget {
     required this.selectedTabIndex,
     required this.onPageChanged,
     required this.onEvolutionSelected,
+    this.height,
+    this.borderRadius,
   });
 
   String _heightToFeetInches(int decimetres) {
@@ -111,13 +119,14 @@ class PokemonDetailPanel extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.45,
+      height: height ?? MediaQuery.of(context).size.height * 0.45,
       decoration: BoxDecoration(
         color: theme.scaffoldBackgroundColor,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(30),
-          topRight: Radius.circular(30),
-        ),
+        borderRadius: borderRadius ??
+            const BorderRadius.only(
+              topLeft: Radius.circular(30),
+              topRight: Radius.circular(30),
+            ),
       ),
       child: Padding(
         padding:

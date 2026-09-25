@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import '../models/generation.dart';
+import '../utils/app_images.dart';
 
 class GenerationCard extends StatelessWidget {
   final Generation generation;
@@ -40,8 +41,8 @@ class GenerationCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: generation.starterIds.map((id) {
                   return Flexible(
-                    child: Image.network(
-                      'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/$id.png',
+                    child: Image(
+                      image: AppImages.provider(AppImages.pokemonArtwork(id)),
                       height: 50,
                       fit: BoxFit.contain,
                       errorBuilder: (context, error, stackTrace) =>

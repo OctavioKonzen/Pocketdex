@@ -1,5 +1,7 @@
 // lib/models/pokemon_listing.dart
 
+import '../utils/app_images.dart';
+
 class PokemonListing {
   final String name;
   final String url;
@@ -18,14 +20,14 @@ class PokemonListing {
     return PokemonListing(
       name: json['name'],
       url: url,
-      imageUrl: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/$id.png',
+      imageUrl: artworkUrl(id),
     );
   }
   
   factory PokemonListing.fromDbMap(Map<String, dynamic> map) {
     return PokemonListing(
       name: map['name'],
-      url: 'https://pokeapi.co/api/v2/pokemon-form/${map['id']}/',
+      url: 'pokemon/${map['id']}/',
       imageUrl: map['artwork_image_url'] ?? map['pixel_image_url'] ?? '',
     );
   }
@@ -35,6 +37,7 @@ class PokemonListing {
     return parts[parts.length - 2];
   }
   
-  String get pixelImageUrl =>
-      'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/$id.png';
+  String get pixelImageUrl => AppImages.pokemonSprite(id);
+
+  static String artworkUrl(String id) => AppImages.pokemonArtwork(id);
 }

@@ -1,14 +1,14 @@
 // lib/widgets/pokemon_card.dart
 
+import 'package:pocket_dex/services/pokemon_service.dart';
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:pocket_dex/providers/favorites_provider.dart';
 import 'package:pocket_dex/models/pokemon_listing.dart';
 import 'package:pocket_dex/screens/pokemon_detail_screen.dart';
 import 'package:pocket_dex/utils/pokemon_colors.dart';
 import 'package:pocket_dex/widgets/pikachu_loading_indicator.dart';
+import 'package:pocket_dex/utils/app_images.dart';
 
 class PokemonCard extends StatefulWidget {
   final PokemonListing pokemonListing;
@@ -68,31 +68,21 @@ class _PokemonCardState extends State<PokemonCard> with SingleTickerProviderStat
     });
 
     try {
-      http.Response response;
+      final service = PokemonService();
+      Map<String, dynamic> data;
       try {
-        response = await http.get(Uri.parse(widget.pokemonListing.url));
-        if (response.statusCode != 200) throw Exception('Form-specific URL failed');
+        data = await service.fetchPokemonJsonByUrl(widget.pokemonListing.url);
       } catch (e) {
         final baseName = widget.pokemonListing.name.split('-').first;
-        final fallbackUrl = 'https://pokeapi.co/api/v2/pokemon/$baseName/';
-        response = await http.get(Uri.parse(fallbackUrl));
+        data = await service.fetchPokemonJson(baseName);
       }
 
       if (!mounted) return;
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-
-        _id = (data['id'] as int).toString();
-        
-        _imageUrl = data['sprites']['front_default'] ?? data['sprites']['other']['official-artwork']['front_default'];
-
-        _displayName = widget.pokemonListing.name.split('-').first;
-        _types = (data['types'] as List).map((t) => t['type']['name'] as String).toList();
-
-      } else {
-        throw Exception('Failed to load card data');
-      }
+      _id = (data['id'] as int).toString();
+      _imageUrl = data['sprites']['front_default'] ?? data['sprites']['other']['official-artwork']['front_default'];
+      _displayName = widget.pokemonListing.name.split('-').first;
+      _types = (data['types'] as List).map((t) => t['type']['name'] as String).toList();
 
       if (mounted) {
         setState(() => _isLoading = false);
@@ -194,8 +184,8 @@ class _PokemonCardState extends State<PokemonCard> with SingleTickerProviderStat
               ),
               Hero(
                 tag: '${_id!}-${widget.pokemonListing.name}',
-                child: Image.network(
-                  _imageUrl!,
+                child: Image(
+                  image: AppImages.provider(_imageUrl!),
                   fit: BoxFit.cover,
                   filterQuality: FilterQuality.none,
                   errorBuilder: (context, error, stackTrace) =>

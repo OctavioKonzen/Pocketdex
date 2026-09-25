@@ -1,10 +1,10 @@
 // lib/widgets/team_pokemon_card.dart
 
+import '../services/pokemon_service.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import '../utils/pokemon_colors.dart';
 import 'pikachu_loading_indicator.dart';
+import '../utils/app_images.dart';
 
 class TeamPokemonCard extends StatefulWidget {
   final Map<String, String>? pokemonData;
@@ -62,11 +62,7 @@ class _TeamPokemonCardState extends State<TeamPokemonCard> with SingleTickerProv
 
   Future<Map<String, dynamic>?> _fetchCardDetails(String id) async {
     try {
-      final response = await http.get(Uri.parse('https://pokeapi.co/api/v2/pokemon/$id'));
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      }
-      return null;
+      return await PokemonService().fetchPokemonJson(id);
     } catch (e) {
       return null;
     }
@@ -146,8 +142,8 @@ class _TeamPokemonCardState extends State<TeamPokemonCard> with SingleTickerProv
                     top: 5,
                     left: 0,
                     right: 0,
-                    child: Image.network(
-                      imageUrl,
+                    child: Image(
+                      image: AppImages.provider(imageUrl),
                       height: 80,
                       fit: BoxFit.contain,
                       filterQuality: FilterQuality.none,
