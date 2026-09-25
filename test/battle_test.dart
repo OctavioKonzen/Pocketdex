@@ -7,25 +7,41 @@ void main() {
   test('dano igual ao do site (web-site/src/lib/league.test.js)', () {
     expect(Battle.statAt(78, 0), 153);
     expect(Battle.statAt(109, 3, 252), 161);
+    expect(Battle.statAt(109, 3, 252, 50, 31, 'Modest'), 177);
+    expect(Battle.statAt(109, 3, 252, 50, 31, 'Adamant'), 144);
     final chart = {
       'fire': {'double_damage_from': ['water'], 'half_damage_from': ['fire', 'grass'], 'no_damage_from': <String>[]},
       'grass': {'double_damage_from': ['fire'], 'half_damage_from': ['water', 'grass'], 'no_damage_from': <String>[]},
     };
-    final r = Battle.damage(
-      attackerTypes: ['fire'],
-      attackerStats: [78, 84, 78, 109, 85, 100],
-      defenderTypes: ['grass'],
-      defenderStats: [80, 82, 83, 100, 100, 80],
-      moveType: 'fire',
-      physical: false,
-      power: 90,
-      typeData: chart,
-      attackEv: 252,
-    );
+    const attacker = BattleSide(types: ['fire'], stats: [78, 84, 78, 109, 85, 100], evs: {'spa': 252});
+    const defender = BattleSide(types: ['grass'], stats: [80, 82, 83, 100, 100, 80]);
+    DamageResult calc({BattleSide a = attacker, String weather = 'none', bool crit = false, bool screen = false}) =>
+        Battle.damage(
+          attacker: a,
+          defender: defender,
+          moveType: 'fire',
+          physical: false,
+          power: 90,
+          typeData: chart,
+          weather: weather,
+          crit: crit,
+          screen: screen,
+        );
+    final r = calc();
     expect([r.min, r.max, r.hp], [138, 164, 155]);
     expect(r.mult, 2);
     expect(r.stab, isTrue);
+    expect(r.rolls, hasLength(16));
     expect(r.hits, 1);
+    expect(r.chance, 0.375);
+    expect(r.koText, '37,5% de chance de derrotar com 1 golpe.');
+    expect(calc(crit: true).max, greaterThan(r.max));
+    expect(calc(weather: 'rain').max, lessThan(r.max));
+    expect(calc(screen: true).max, lessThan(r.max));
+    expect(
+      calc(a: const BattleSide(types: ['fire'], stats: [78, 84, 78, 109, 85, 100], evs: {'spa': 252}, tera: 'fire')).stabMult,
+      2,
+    );
   });
 
   test('conquistas iguais às do site', () {

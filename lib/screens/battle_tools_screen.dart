@@ -256,6 +256,42 @@ class _StatRow extends StatelessWidget {
 
 // ---------------------------------------------------------------- dano
 
+const _types = [
+  'normal', 'fire', 'water', 'electric', 'grass', 'ice', 'fighting', 'poison', 'ground',
+  'flying', 'psychic', 'bug', 'rock', 'ghost', 'dragon', 'dark', 'steel', 'fairy',
+];
+
+String _natureLabel(String name) {
+  final (up, down) = natures[name]!;
+  return up == down ? '$name (neutra)' : '$name (+${_statLabels[up]} −${_statLabels[down]})';
+}
+
+/// Configuração de um lado (o que dá para mudar na calculadora).
+class _SideConfig {
+  int level = 50;
+  String nature = 'Hardy';
+  Map<String, int> evs;
+  int ivs = 31;
+  int stage = 0;
+  String item = 'none';
+  String? tera;
+  bool burned = false;
+  _SideConfig(this.evs);
+
+  BattleSide toSide(_Picked p) => BattleSide(
+        types: p.types,
+        stats: p.stats,
+        level: level,
+        nature: nature,
+        evs: evs,
+        ivs: ivs,
+        stage: stage,
+        item: item,
+        tera: tera,
+        burned: burned,
+      );
+}
+
 class DamageCalcScreen extends StatefulWidget {
   const DamageCalcScreen({super.key});
   @override
@@ -268,9 +304,12 @@ class _DamageCalcScreenState extends State<DamageCalcScreen> {
   Map<String, Map<String, dynamic>>? _moves;
   Map<String, Map<String, List<String>>>? _chart;
   String? _moveName;
-  int _attackEv = 252;
-  int _defenseEv = 0;
-  int _hpEv = 0;
+  final _a = _SideConfig({'atk': 252, 'spa': 252});
+  final _d = _SideConfig({'hp': 0, 'def': 0, 'spd': 0});
+  String _weather = 'none';
+  bool _crit = false;
+  bool _screen = false;
+  bool _spread = false;
 
   @override
   void initState() {
@@ -301,16 +340,32 @@ class _DamageCalcScreenState extends State<DamageCalcScreen> {
     });
   }
 
-  /// Golpes de dano que o atacante aprende, do mais forte ao mais fraco.
+  void _swap() => setState(() {
+        final a = _attacker;
+        _attacker = _defender;
+        _defender = a;
+        _moveName = null;
+      });
+
+  /// Golpes de dano do atacante, do que mais machuca o defensor ao que menos
+  /// (poder × STAB × efetividade × Attack ou Sp. Atk) — igual ao site.
   List<Map<String, dynamic>> get _options {
-    final a = _attacker, moves = _moves;
+    final a = _attacker, moves = _moves, chart = _chart, d = _defender;
     if (a == null || moves == null) return [];
+    double score(Map<String, dynamic> m) {
+      final type = m['type'] as String;
+      final stab = a.types.contains(type) ? 1.5 : 1.0;
+      final eff = d != null && chart != null ? Battle.effectiveness(type, d.types, chart) : 1.0;
+      final stat = a.stats[m['damage_class'] == 'physical' ? 1 : 3];
+      return (m['power'] as num) * stab * eff * stat;
+    }
+
     final list = [
       for (final n in a.moves)
         if (moves[n] != null && ((moves[n]!['power'] as num?) ?? 0) > 0 && moves[n]!['damage_class'] != 'status') moves[n]!,
     ]..sort((x, y) {
-        final p = (y['power'] as num).compareTo(x['power'] as num);
-        return p != 0 ? p : (x['name'] as String).compareTo(y['name'] as String);
+        final c = score(y).compareTo(score(x));
+        return c != 0 ? c : (x['name'] as String).compareTo(y['name'] as String);
       });
     return list;
   }
@@ -328,38 +383,22 @@ class _DamageCalcScreenState extends State<DamageCalcScreen> {
     final c = SiteColors.of(context);
     final options = _options;
     final move = options.where((m) => m['name'] == _moveName).firstOrNull ?? options.firstOrNull;
-    final physical = move?['damage_class'] == 'physical';
+    final physical = move == null || move['damage_class'] == 'physical';
     final a = _attacker, d = _defender, chart = _chart;
     final result = a != null && d != null && move != null && chart != null
         ? Battle.damage(
-            attackerTypes: a.types,
-            attackerStats: a.stats,
-            defenderTypes: d.types,
-            defenderStats: d.stats,
+            attacker: _a.toSide(a),
+            defender: _d.toSide(d),
             moveType: move['type'] as String,
             physical: physical,
             power: (move['power'] as num).toInt(),
             typeData: chart,
-            attackEv: _attackEv,
-            defenseEv: _defenseEv,
-            hpEv: _hpEv,
+            weather: _weather,
+            crit: _crit,
+            screen: _screen,
+            spread: _spread,
           )
         : null;
-
-    Widget evRow(String label, int value, ValueChanged<int> onChanged) => Row(
-          children: [
-            Expanded(child: Text(label, style: TextStyle(color: c.muted, fontSize: 13))),
-            DropdownButton<int>(
-              value: value,
-              underline: const SizedBox(),
-              items: const [
-                DropdownMenuItem(value: 0, child: Text('Sem EVs')),
-                DropdownMenuItem(value: 252, child: Text('252 EVs')),
-              ],
-              onChanged: (v) => setState(() => onChanged(v ?? 0)),
-            ),
-          ],
-        );
 
     return Scaffold(
       appBar: AppBar(title: const Text('Calculadora de dano')),
@@ -378,7 +417,14 @@ class _DamageCalcScreenState extends State<DamageCalcScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(width: 12),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 24, 4, 0),
+                  child: IconButton.filledTonal(
+                    tooltip: 'Trocar atacante e defensor',
+                    onPressed: a == null && d == null ? null : _swap,
+                    icon: const Icon(Icons.swap_horiz),
+                  ),
+                ),
                 Expanded(
                   child: Column(
                     children: [
@@ -396,7 +442,8 @@ class _DamageCalcScreenState extends State<DamageCalcScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Golpe', style: TextStyle(color: c.text, fontWeight: FontWeight.bold)),
+                    Text('Golpe (os que mais machucam o defensor primeiro)',
+                        style: TextStyle(color: c.muted, fontSize: 12, fontWeight: FontWeight.w600)),
                     DropdownButton<String>(
                       isExpanded: true,
                       value: move?['name'] as String?,
@@ -413,38 +460,33 @@ class _DamageCalcScreenState extends State<DamageCalcScreen> {
                       ],
                       onChanged: (v) => setState(() => _moveName = v),
                     ),
-                    const SizedBox(height: 6),
-                    evRow('EVs em ${physical ? 'Attack' : 'Sp. Atk'} do atacante', _attackEv, (v) => _attackEv = v),
-                    evRow('EVs em HP do defensor', _hpEv, (v) => _hpEv = v),
-                    evRow('EVs em ${physical ? 'Defense' : 'Sp. Def'} do defensor', _defenseEv, (v) => _defenseEv = v),
-                    Text('Nível 50, IVs máximos e Nature neutra, sem crítico, clima ou itens.',
-                        style: TextStyle(color: c.muted, fontSize: 11)),
                   ],
                 ),
               ),
             if (result != null && move != null) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               SiteCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Wrap(
                       spacing: 8,
+                      runSpacing: 4,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         TypeBadge(move['type'] as String, small: true),
                         Text(_multText(result.mult), style: TextStyle(color: c.text, fontWeight: FontWeight.bold)),
-                        if (result.mult != 1 && result.mult != 0)
-                          Text('×${result.mult}', style: TextStyle(color: c.muted)),
+                        if (result.mult != 1 && result.mult != 0) Text('×${result.mult}', style: TextStyle(color: c.muted)),
                         if (result.stab)
-                          const Text('STAB ×1.5', style: TextStyle(color: Color(0xFF0EA5E9), fontWeight: FontWeight.bold)),
+                          Text('STAB ×${result.stabMult}',
+                              style: const TextStyle(color: Color(0xFF0EA5E9), fontWeight: FontWeight.bold)),
+                        if (_crit) const Text('Crítico', style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold)),
                       ],
                     ),
                     const SizedBox(height: 10),
                     Text('${result.minPct}% – ${result.maxPct}%',
                         style: TextStyle(color: c.text, fontSize: 32, fontWeight: FontWeight.w900)),
-                    Text('${result.min}–${result.max} de ${result.hp} HP no nível 50',
-                        style: TextStyle(color: c.muted, fontSize: 13)),
+                    Text('${result.min}–${result.max} de ${result.hp} HP', style: TextStyle(color: c.muted, fontSize: 13)),
                     const SizedBox(height: 10),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
@@ -460,20 +502,268 @@ class _DamageCalcScreenState extends State<DamageCalcScreen> {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    Text(
-                      result.hits == null
-                          ? 'Não causa dano.'
-                          : result.hits == 1
-                              ? 'Pode derrotar com 1 golpe!'
-                              : 'Derrota em cerca de ${result.hits} golpes.',
-                      style: TextStyle(color: c.text, fontWeight: FontWeight.bold),
+                    Text(result.koText, style: TextStyle(color: c.text, fontWeight: FontWeight.bold, fontSize: 16)),
+                    Theme(
+                      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                      child: ExpansionTile(
+                        tilePadding: EdgeInsets.zero,
+                        title: Text('Detalhes', style: TextStyle(color: c.muted, fontSize: 13)),
+                        children: [
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'Ataque usado: ${result.attack} · Defesa usada: ${result.defense} · HP: ${result.hp}\n'
+                              'Os 16 danos possíveis: ${result.rolls.join(', ')}',
+                              style: TextStyle(color: c.muted, fontSize: 12),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
+                  ],
+                ),
+              ),
+            ],
+            if (a != null || d != null) ...[
+              const SizedBox(height: 12),
+              _SideCard(title: 'Atacante', config: _a, attacker: true, physical: physical, onChanged: () => setState(() {})),
+              const SizedBox(height: 12),
+              _SideCard(title: 'Defensor', config: _d, attacker: false, physical: physical, onChanged: () => setState(() {})),
+              const SizedBox(height: 12),
+              SiteCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Campo', style: TextStyle(color: c.text, fontWeight: FontWeight.bold, fontSize: 16)),
+                    _Labeled(
+                      label: 'Clima',
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        value: _weather,
+                        items: [for (final e in weathers.entries) DropdownMenuItem(value: e.key, child: Text(e.value))],
+                        onChanged: (v) => setState(() => _weather = v ?? 'none'),
+                      ),
+                    ),
+                    _Check(label: 'Golpe crítico (×1.5)', value: _crit, onChanged: (v) => setState(() => _crit = v)),
+                    _Check(
+                      label: physical ? 'Reflect no defensor (×0.5)' : 'Light Screen no defensor (×0.5)',
+                      value: _screen,
+                      onChanged: (v) => setState(() => _screen = v),
+                    ),
+                    _Check(
+                      label: 'Golpe em área em batalha dupla (×0.75)',
+                      value: _spread,
+                      onChanged: (v) => setState(() => _spread = v),
+                    ),
+                    const SizedBox(height: 6),
+                    Text('Conta aproximada, igual à do jogo; não considera habilidades nem efeitos especiais de golpes.',
+                        style: TextStyle(color: c.muted, fontSize: 11)),
                   ],
                 ),
               ),
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _Labeled extends StatelessWidget {
+  final String label;
+  final Widget child;
+  const _Labeled({required this.label, required this.child});
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: TextStyle(color: SiteColors.of(context).muted, fontSize: 12, fontWeight: FontWeight.w600)),
+            child,
+          ],
+        ),
+      );
+}
+
+class _Check extends StatelessWidget {
+  final String label;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  const _Check({required this.label, required this.value, required this.onChanged});
+  @override
+  Widget build(BuildContext context) => CheckboxListTile(
+        contentPadding: EdgeInsets.zero,
+        dense: true,
+        controlAffinity: ListTileControlAffinity.leading,
+        value: value,
+        onChanged: (v) => onChanged(v ?? false),
+        title: Text(label, style: TextStyle(color: SiteColors.of(context).text, fontSize: 14)),
+      );
+}
+
+class _SideCard extends StatelessWidget {
+  final String title;
+  final _SideConfig config;
+  final bool attacker;
+  final bool physical;
+  final VoidCallback onChanged;
+  const _SideCard({
+    required this.title,
+    required this.config,
+    required this.attacker,
+    required this.physical,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final c = SiteColors.of(context);
+    final offKey = physical ? 'atk' : 'spa';
+    final defKey = physical ? 'def' : 'spd';
+
+    Widget number(int value, int minV, int maxV, ValueChanged<int> set) => Row(
+          children: [
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              onPressed: value > minV
+                  ? () {
+                      set(value - 1);
+                      onChanged();
+                    }
+                  : null,
+              icon: const Icon(Icons.remove_circle_outline),
+            ),
+            Text('$value', style: TextStyle(color: c.text, fontWeight: FontWeight.bold, fontSize: 16)),
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              onPressed: value < maxV
+                  ? () {
+                      set(value + 1);
+                      onChanged();
+                    }
+                  : null,
+              icon: const Icon(Icons.add_circle_outline),
+            ),
+          ],
+        );
+
+    Widget evSlider(String label, String key) {
+      final v = config.evs[key] ?? 0;
+      return _Labeled(
+        label: '$label: $v',
+        child: Slider(
+          value: v.toDouble(),
+          max: 252,
+          divisions: 63,
+          onChanged: (x) {
+            config.evs = {...config.evs, key: x.round()};
+            onChanged();
+          },
+        ),
+      );
+    }
+
+    return SiteCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: TextStyle(color: c.text, fontWeight: FontWeight.bold, fontSize: 16)),
+          _Labeled(
+            label: 'Nível: ${config.level}',
+            child: Slider(
+              value: config.level.toDouble(),
+              min: 1,
+              max: 100,
+              divisions: 99,
+              onChanged: (x) {
+                config.level = x.round();
+                onChanged();
+              },
+            ),
+          ),
+          _Labeled(label: 'IVs (0 a 31)', child: number(config.ivs, 0, 31, (v) => config.ivs = v)),
+          _Labeled(
+            label: 'Nature',
+            child: DropdownButton<String>(
+              isExpanded: true,
+              value: config.nature,
+              items: [for (final n in natures.keys) DropdownMenuItem(value: n, child: Text(_natureLabel(n)))],
+              onChanged: (v) {
+                config.nature = v ?? 'Hardy';
+                onChanged();
+              },
+            ),
+          ),
+          if (attacker)
+            evSlider('EVs em ${physical ? 'Attack' : 'Sp. Atk'}', offKey)
+          else ...[
+            evSlider('EVs em HP', 'hp'),
+            evSlider('EVs em ${physical ? 'Defense' : 'Sp. Def'}', defKey),
+          ],
+          Row(
+            children: [
+              Expanded(
+                child: _Labeled(
+                  label: 'Estágio',
+                  child: DropdownButton<int>(
+                    isExpanded: true,
+                    value: config.stage,
+                    items: [
+                      for (var s = -6; s <= 6; s++) DropdownMenuItem(value: s, child: Text(s > 0 ? '+$s' : '$s')),
+                    ],
+                    onChanged: (v) {
+                      config.stage = v ?? 0;
+                      onChanged();
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _Labeled(
+                  label: 'Terastal',
+                  child: DropdownButton<String?>(
+                    isExpanded: true,
+                    value: config.tera,
+                    items: [
+                      const DropdownMenuItem<String?>(value: null, child: Text('Sem Tera')),
+                      for (final t in _types) DropdownMenuItem<String?>(value: t, child: Text('Tera $t')),
+                    ],
+                    onChanged: (v) {
+                      config.tera = v;
+                      onChanged();
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+          _Labeled(
+            label: 'Item',
+            child: DropdownButton<String>(
+              isExpanded: true,
+              value: config.item,
+              items: [
+                for (final e in (attacker ? attackerItems : defenderItems).entries)
+                  DropdownMenuItem(value: e.key, child: Text(e.value, overflow: TextOverflow.ellipsis)),
+              ],
+              onChanged: (v) {
+                config.item = v ?? 'none';
+                onChanged();
+              },
+            ),
+          ),
+          if (attacker)
+            _Check(
+              label: 'Queimado (golpes físicos tiram metade)',
+              value: config.burned,
+              onChanged: (v) {
+                config.burned = v;
+                onChanged();
+              },
+            ),
+        ],
       ),
     );
   }

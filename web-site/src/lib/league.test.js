@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { achievementsOf } from './achievements'
-import { damage, statAt } from './battle'
+import { damage, koText, statAt } from './battle'
 import { pixCode } from './pix'
 import { dailyAnswers, dailyPoints, dayKey, seededRandom, seedOf, weekKey } from './league'
 import { decodeTeam, encodeTeam, fromShowdown, showdownName } from './teamShare'
@@ -88,16 +88,25 @@ describe('calculadora de dano', () => {
   it('calcula status e dano no nível 50', () => {
     expect(statAt(78, 0)).toBe(153) // HP do Charizard
     expect(statAt(109, 3, 252)).toBe(161) // Sp. Atk com 252 EVs
-    const r = damage({
-      attacker: { types: ['fire'], stats: [78, 84, 78, 109, 85, 100] },
-      defender: { types: ['grass'], stats: [80, 82, 83, 100, 100, 80] },
-      move: { type: 'fire', category: 'special', power: 90 },
-      typeData,
-      attackEv: 252,
-    })
+    expect(statAt(109, 3, 252, 50, { nature: 'Modest' })).toBe(177)
+    expect(statAt(109, 3, 252, 50, { nature: 'Adamant' })).toBe(144)
+    const attacker = { types: ['fire'], stats: [78, 84, 78, 109, 85, 100], evs: { spa: 252 } }
+    const defender = { types: ['grass'], stats: [80, 82, 83, 100, 100, 80] }
+    const move = { type: 'fire', category: 'special', power: 90 }
+    const r = damage({ attacker, defender, move, typeData })
     expect(r.mult).toBe(2)
     expect(r.stab).toBe(true)
     expect([r.min, r.max, r.hp]).toEqual([RESULT.min, RESULT.max, 155])
+    expect(r.rolls).toHaveLength(16)
+    expect(r.hits).toBe(1)
+    expect(r.chance).toBe(0.375) // 6 das 16 variações passam de 155
+    expect(koText(r)).toBe('37,5% de chance de derrotar com 1 golpe.')
+    // Crítico, chuva, Tera e tela
+    expect(damage({ attacker, defender, move, typeData, field: { crit: true } }).max).toBeGreaterThan(r.max)
+    expect(damage({ attacker, defender, move, typeData, field: { weather: 'rain' } }).max).toBeLessThan(r.max)
+    expect(damage({ attacker: { ...attacker, tera: 'fire' }, defender, move, typeData }).stabMult).toBe(2)
+    expect(damage({ attacker, defender, move, typeData, field: { screen: true } }).max).toBeLessThan(r.max)
+    expect(koText({ hits: 2, chance: 1 })).toBe('Derrota com 2 golpes, garantido.')
   })
 })
 
