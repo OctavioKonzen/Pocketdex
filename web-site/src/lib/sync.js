@@ -11,12 +11,13 @@
 //   quizRecord, rankedRecord: número
 //   quizGame: jogo normal em andamento ou null
 //   avatar: id do Pokémon usado como foto de perfil, ou null
+//   stats: contadores das conquistas (ver achievements.js)
 
 import { create } from 'zustand'
 import { saveRanking, saveUserData, signOut, useAuth, watchUserData } from './auth'
 import { useStore } from './store'
 
-const KEYS = ['theme', 'favorites', 'teams', 'training', 'quizRecord', 'rankedRecord', 'quizGame', 'avatar']
+const KEYS = ['theme', 'favorites', 'teams', 'training', 'quizRecord', 'rankedRecord', 'quizGame', 'avatar', 'stats']
 const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
 
 let currentUid = null
@@ -33,7 +34,8 @@ export const useRankingVersion = create(() => ({ version: 0 }))
 function updateRanking(uid) {
   const name = useAuth.getState().user?.name
   if (!name) return
-  saveRanking(uid, name, useStore.getState().rankedRecord)
+  const { rankedRecord, avatar } = useStore.getState()
+  saveRanking(uid, name, rankedRecord, avatar)
     .then(() => useRankingVersion.setState((s) => ({ version: s.version + 1 })))
     .catch(() => {})
 }
@@ -76,7 +78,7 @@ async function start(uid) {
     if (!changed.length) return
     changed.forEach((k) => dirty.add(k))
     if (!ready) return // grava depois de receber a conta
-    if (changed.includes('rankedRecord')) updateRanking(uid)
+    if (changed.includes('rankedRecord') || changed.includes('avatar')) updateRanking(uid)
     scheduleSave(uid)
   })
 
@@ -122,6 +124,18 @@ export async function flushSync() {
 export async function logout() {
   await flushSync()
   await signOut()
+}
+
+/** Para a sincronização (ex.: enquanto a conta é excluída, para não recriar os dados). */
+export function pauseSync() {
+  stop()
+  currentUid = null
+}
+
+/** Volta a sincronizar a conta conectada (se a exclusão não foi até o fim). */
+export function resumeSync() {
+  const { status, user } = useAuth.getState()
+  if (status === 'signedIn' && user) start(user.uid)
 }
 
 let started = false

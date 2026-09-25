@@ -4,6 +4,7 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { EMPTY_STATS } from './achievements'
 import { MAX_STAT_EVS, MAX_TOTAL_EVS } from './pokemon'
 
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`)
@@ -27,6 +28,12 @@ export const useStore = create(
       teams: [],
       createTeam: (name) => {
         const team = { id: uid(), name, color: null, pokemon: Array(6).fill(null) }
+        set(({ teams }) => ({ teams: [...teams, team] }))
+        return team.id
+      },
+      /** Time recebido de outra pessoa (código, link ou Showdown). */
+      importTeam: ({ name, color, pokemon }) => {
+        const team = { id: uid(), name, color: color ?? null, pokemon: Array.from({ length: 6 }, (_, i) => pokemon?.[i] ?? null) }
         set(({ teams }) => ({ teams: [...teams, team] }))
         return team.id
       },
@@ -76,10 +83,48 @@ export const useStore = create(
         set(({ quizRecord }) => ({ quizGame: null, quizRecord: Math.max(quizRecord, score) })),
       finishRanked: (score) => set(({ rankedRecord }) => ({ rankedRecord: Math.max(rankedRecord, score) })),
 
+      // Contadores das conquistas (ver achievements.js)
+      stats: EMPTY_STATS,
+      /** Uma resposta no jogo (qualquer modo). */
+      countAnswer: (correct, streak) =>
+        set(({ stats }) => {
+          const s = { ...EMPTY_STATS, ...stats }
+          return {
+            stats: {
+              ...s,
+              correct: s.correct + (correct ? 1 : 0),
+              bestStreak: Math.max(s.bestStreak, streak),
+            },
+          }
+        }),
+      /** Um Ranked terminado na semana `week` (guarda as semanas para poder apagar depois). */
+      countRanked: (week) =>
+        set(({ stats }) => {
+          const s = { ...EMPTY_STATS, ...stats }
+          const weeks = s.weeks.includes(week) ? s.weeks : [...s.weeks, week].slice(-60)
+          return { stats: { ...s, rankedGames: s.rankedGames + 1, weeks } }
+        }),
+      /** Desafio do dia terminado. */
+      countDaily: (day, correct) =>
+        set(({ stats }) => {
+          const s = { ...EMPTY_STATS, ...stats }
+          if (s.lastDaily === day) return {}
+          return {
+            stats: {
+              ...s,
+              dailyDone: s.dailyDone + 1,
+              dailyPerfect: s.dailyPerfect + (correct === 10 ? 1 : 0),
+              lastDaily: day,
+              days: [...s.days, day].slice(-60),
+            },
+          }
+        }),
+
       /** Limpa favoritos, times e treinos (os recordes ficam). */
       clearCollections: () => set({ favorites: [], teams: [], training: [] }),
       /** Tudo, ao sair da conta. */
-      clearAll: () => set({ favorites: [], teams: [], training: [], quizRecord: 0, rankedRecord: 0, quizGame: null, avatar: null }),
+      clearAll: () =>
+        set({ favorites: [], teams: [], training: [], quizRecord: 0, rankedRecord: 0, quizGame: null, avatar: null, stats: EMPTY_STATS }),
     }),
     { name: 'pocketdex' },
   ),

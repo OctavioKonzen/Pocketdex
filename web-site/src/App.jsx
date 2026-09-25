@@ -305,6 +305,7 @@ export default function App() {
                   <Route path="/" element={<PokedexPage />} />
                   <Route path="/favoritos" element={<FavoritesPage />} />
                   <Route path="/times" element={<TeamsPage />} />
+                  <Route path="/times/importar/:code" element={<TeamsPage />} />
                   <Route path="/times/:id" element={<TeamBuilderPage />} />
                   <Route path="/jogo" element={<GamePage />} />
                   <Route path="/enciclopedia" element={<EncyclopediaPage />} />

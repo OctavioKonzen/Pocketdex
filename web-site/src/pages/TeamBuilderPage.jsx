@@ -2,6 +2,7 @@ import { m } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import PokemonPicker from '../components/PokemonPicker'
+import { ShareTeamModal } from '../components/TeamShare'
 import { Button, Empty, Icon, Loader, Modal, TypeBadge } from '../components/ui'
 import { getPokemonById, getTypes } from '../lib/data'
 import { ALL_TYPES, analyzeTeam, teamScore } from '../lib/pokemon'
@@ -19,6 +20,7 @@ export default function TeamBuilderPage() {
   const [typeData, setTypeData] = useState(null)
   const [pickingSlot, setPickingSlot] = useState(null)
   const [removingSlot, setRemovingSlot] = useState(null)
+  const [sharing, setSharing] = useState(false)
 
   useEffect(() => {
     getPokemonById().then(setById)
@@ -53,9 +55,15 @@ export default function TeamBuilderPage() {
 
   return (
     <div>
-      <button type="button" onClick={() => navigate('/times')} className="mb-3 flex cursor-pointer items-center gap-1 text-muted hover:text-text">
-        <Icon name="back" size={20} /> Times
-      </button>
+      <div className="mb-3 flex items-center justify-between">
+        <button type="button" onClick={() => navigate('/times')} className="flex cursor-pointer items-center gap-1 text-muted hover:text-text">
+          <Icon name="back" size={20} /> Times
+        </button>
+        <Button color="#546E7A" onClick={() => setSharing(true)} disabled={!team.pokemon.some(Boolean)}>
+          Compartilhar
+        </Button>
+      </div>
+      <ShareTeamModal team={team} byId={byId} open={sharing} onClose={() => setSharing(false)} />
 
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
         <section className="rounded-3xl bg-card p-6 shadow-lg">

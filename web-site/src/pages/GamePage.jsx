@@ -4,16 +4,21 @@
 // Layout de tela cheia: Pokémon (silhueta) de um lado e as opções do outro;
 // no celular um embaixo do outro. Teclas 1 a 4 respondem.
 //
-// Modo Ranked (precisa de login): todas as gerações, 5 segundos por Pokémon.
-// Só o recorde do Ranked entra no ranking.
+// Modo Ranked (precisa de login): todas as gerações, 5 segundos por Pokémon
+// (caindo até 2). O recorde vai para o ranking geral e o da semana.
+//
+// Desafio do dia (precisa de login): os mesmos 10 Pokémon para todo mundo no
+// dia, 10 segundos cada, uma tentativa só. Quanto mais rápido, mais pontos.
 
 import { AnimatePresence, m } from 'framer-motion'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import GenerationPicker from '../components/GenerationPicker'
 import Sprite from '../components/Sprite'
 import { Button, Icon, Loader, Modal } from '../components/ui'
-import { getRanking, getRankingPosition, useAuth } from '../lib/auth'
+import { Avatar } from '../components/AccountAvatar'
+import { getMyScore, getRanking, getRankingPosition, saveDaily, saveWeekly, useAuth } from '../lib/auth'
 import { getPokedex } from '../lib/data'
+import { DAILY_ROUNDS, DAILY_SECONDS, dailyAnswers, dailyPoints, dayKey, weekKey } from '../lib/league'
 import { GENERATIONS, generationBackground, prettyName } from '../lib/pokemon'
 import { useStore } from '../lib/store'
 import { useRankingVersion } from '../lib/sync'
@@ -30,8 +35,8 @@ function rankedSeconds(score) {
 const TIMEOUT = -1 // "resposta" quando o tempo acaba
 const TOP_BAR = 72
 
-function pickQuestion(pool) {
-  const answer = pool[Math.floor(Math.random() * pool.length)]
+function pickQuestion(pool, answerId) {
+  const answer = answerId != null ? { id: answerId } : pool[Math.floor(Math.random() * pool.length)]
   const options = new Set([answer.id])
   while (options.size < Math.min(4, pool.length)) options.add(pool[Math.floor(Math.random() * pool.length)].id)
   return { answerId: answer.id, options: [...options].sort(() => Math.random() - 0.5) }
@@ -55,7 +60,7 @@ const layoutHeight = { minHeight: `calc(100vh - ${TOP_BAR}px - 40px)` }
 
 const MEDALS = ['#FFD54F', '#CFD8DC', '#FFAB91']
 
-function RankingRow({ position, name, score, me, index }) {
+function RankingRow({ position, name, score, avatar, detail, me, index }) {
   const medal = MEDALS[position - 1]
   return (
     <m.li
@@ -70,59 +75,106 @@ function RankingRow({ position, name, score, me, index }) {
       >
         {position}
       </span>
+      <Avatar pokemonId={avatar ?? null} name={name} size={36} />
       <span className="min-w-0 flex-1 truncate font-bold">
         {name}
         {me && <span className="ml-2 text-xs font-semibold text-yellow-400">você</span>}
+        {detail && <span className="block text-xs font-medium text-muted">{detail}</span>}
       </span>
       <span className="text-lg font-black text-yellow-400">{score}</span>
     </m.li>
   )
 }
 
-/** Melhores recordes de todos os jogadores (Firestore: ranking/{uid}). */
-function Ranking() {
+const BOARDS = [
+  { id: 'all', label: 'Geral', text: 'Os maiores recordes no modo Ranked.', empty: 'Ninguém pontuou no Ranked ainda. Seja o primeiro!' },
+  { id: 'week', label: 'Semana', text: 'Os melhores Ranked desta semana (começa na segunda).', empty: 'Ninguém jogou o Ranked esta semana ainda.' },
+  { id: 'day', label: 'Hoje', text: 'Desafio do dia: os mesmos 10 Pokémon para todos.', empty: 'Ninguém fez o desafio de hoje ainda. Seja o primeiro!' },
+]
+
+const dailyDetail = (r) => (r.correct != null ? `${r.correct}/${DAILY_ROUNDS} acertos · ${r.seconds ?? 0}s` : null)
+
+/** Rankings: geral (ranking/{uid}), da semana e do desafio do dia. */
+function Ranking({ board, onBoard }) {
   const user = useAuth((s) => (s.status === 'signedIn' ? s.user : null))
   const record = useStore((s) => s.rankedRecord)
+  const avatar = useStore((s) => s.avatar)
   const version = useRankingVersion((s) => s.version)
-  const [data, setData] = useState(null) // {list, position, error}
+  const [data, setData] = useState(null) // {board, list, mine, position, error}
 
   useEffect(() => {
     if (!user) return
     let alive = true
-    Promise.all([getRanking(10), record > 0 ? getRankingPosition(record) : null])
-      .then(([list, position]) => alive && setData({ list, position, error: false }))
-      .catch(() => alive && setData({ list: [], position: null, error: true }))
+    const key = board === 'week' ? weekKey() : board === 'day' ? dayKey() : ''
+    const mine = board === 'all' ? Promise.resolve(record > 0 ? { score: record } : null) : getMyScore(user.uid, board, key)
+    Promise.all([getRanking(10, board, key), mine])
+      .then(async ([list, me]) => {
+        const position = me ? await getRankingPosition(me.score, board, key) : null
+        if (alive) setData({ board, list, mine: me, position, error: false })
+      })
+      .catch(() => alive && setData({ board, list: [], mine: null, position: null, error: true }))
     return () => {
       alive = false
     }
-  }, [user, record, version])
+  }, [user, record, version, board])
 
   if (!user) return null
-  const inTop = data?.list.some((r) => r.uid === user.uid)
+  const info = BOARDS.find((b) => b.id === board)
+  const ready = data?.board === board
+  const inTop = ready && data.list.some((r) => r.uid === user.uid)
   return (
     <div className="flex flex-col rounded-[32px] bg-card p-6 shadow-xl sm:p-8 lg:col-span-2 xl:col-span-1">
       <div className="mb-4 flex items-center gap-3">
         <span className="grid h-12 w-12 place-items-center rounded-full bg-yellow-400 text-2xl">🏅</span>
         <div>
           <h2 className="text-2xl font-black">Ranking</h2>
-          <p className="text-sm text-muted">Os maiores recordes no modo Ranked.</p>
+          <p className="text-sm text-muted">{info.text}</p>
         </div>
       </div>
-      {!data ? (
+      <div className="mb-4 grid grid-cols-3 gap-1 rounded-full bg-surface p-1">
+        {BOARDS.map((b) => (
+          <button
+            key={b.id}
+            type="button"
+            onClick={() => onBoard(b.id)}
+            className={`cursor-pointer rounded-full py-2 text-sm font-bold transition-colors ${board === b.id ? 'bg-yellow-400 text-[#3e2723]' : 'text-muted hover:text-text'}`}
+          >
+            {b.label}
+          </button>
+        ))}
+      </div>
+      {!ready ? (
         <Loader size={56} />
       ) : data.error ? (
         <p className="py-10 text-center text-muted">Não foi possível carregar o ranking agora.</p>
       ) : data.list.length === 0 ? (
-        <p className="py-10 text-center text-muted">Ninguém pontuou no Ranked ainda. Seja o primeiro!</p>
+        <p className="py-10 text-center text-muted">{info.empty}</p>
       ) : (
         <ol className="space-y-2">
           {data.list.map((r, i) => (
-            <RankingRow key={r.uid} index={i} position={i + 1} name={r.name} score={r.score} me={r.uid === user.uid} />
+            <RankingRow
+              key={r.uid}
+              index={i}
+              position={i + 1}
+              name={r.name}
+              score={r.score}
+              avatar={r.avatar}
+              detail={dailyDetail(r)}
+              me={r.uid === user.uid}
+            />
           ))}
           {!inTop && data.position && (
             <>
               <li className="py-1 text-center text-muted">⋯</li>
-              <RankingRow index={data.list.length} position={data.position} name={user.name} score={record} me />
+              <RankingRow
+                index={data.list.length}
+                position={data.position}
+                name={user.name}
+                score={data.mine.score}
+                avatar={avatar}
+                detail={dailyDetail(data.mine)}
+                me
+              />
             </>
           )}
         </ol>
@@ -135,15 +187,21 @@ export default function GamePage() {
   const normalRecord = useStore((s) => s.quizRecord)
   const rankedRecord = useStore((s) => s.rankedRecord)
   const saved = useStore((s) => s.quizGame)
+  const lastDaily = useStore((s) => s.stats?.lastDaily ?? null)
   const saveNormalGame = useStore((s) => s.saveQuizGame)
   const finishNormal = useStore((s) => s.finishQuiz)
   const finishRanked = useStore((s) => s.finishRanked)
-  const canRank = useAuth((s) => s.status === 'signedIn')
+  const user = useAuth((s) => (s.status === 'signedIn' ? s.user : null))
+  const canRank = Boolean(user)
   const [pokedex, setPokedex] = useState(null)
   const [generation, setGeneration] = useState(0)
-  const [game, setGame] = useState(null) // {generation, score, lives, streak, answerId, options}
+  const [game, setGame] = useState(null) // {generation, ranked, daily, score, lives, streak, answerId, options}
   const [chosen, setChosen] = useState(null)
-  const [ended, setEnded] = useState(null) // {score, ranked, newRecord}
+  const [ended, setEnded] = useState(null) // {score, ranked, daily, correct, newRecord}
+  const [board, setBoard] = useState('all')
+  const roundStart = useRef(0)
+  const today = dayKey()
+  const playedToday = lastDaily === today
 
   useEffect(() => {
     getPokedex().then(setPokedex)
@@ -152,54 +210,103 @@ export default function GamePage() {
   const pool = useCallback((gen) => (gen ? pokedex.filter((p) => p.gen === gen) : pokedex), [pokedex])
   const byId = (id) => pokedex.find((p) => p.id === id)
 
-  // O Ranked não fica salvo para continuar depois (senão daria para ganhar tempo).
-  const saveGame = useCallback((g) => !g.ranked && saveNormalGame(g), [saveNormalGame])
+  // O Ranked e o desafio não ficam salvos para continuar depois (senão daria para ganhar tempo).
+  const saveGame = useCallback((g) => !g.ranked && !g.daily && saveNormalGame(g), [saveNormalGame])
 
-  const start = (ranked = false) => {
-    const gen = ranked ? 0 : generation
-    const g = { generation: gen, ranked, round: 0, score: 0, lives: LIVES, streak: 0, ...pickQuestion(pool(gen)) }
+  const start = (mode = 'normal') => {
+    const ranked = mode === 'ranked'
+    const daily = mode === 'daily'
+    const gen = ranked || daily ? 0 : generation
+    const base = { generation: gen, ranked, daily, round: 0, score: 0, lives: LIVES, streak: 0 }
+    const g = daily
+      ? { ...base, day: today, answers: dailyAnswers(today), correct: 0, seconds: 0, ...pickQuestion(pool(0), dailyAnswers(today)[0]) }
+      : { ...base, ...pickQuestion(pool(gen)) }
     setGame(g)
     saveGame(g)
     setChosen(null)
+    if (daily) useStore.getState().countDaily(today, 0) // conta já ao começar: uma tentativa por dia
   }
 
   const end = useCallback(
     (g) => {
-      const record = g.ranked ? useStore.getState().rankedRecord : useStore.getState().quizRecord
-      if (g.ranked) finishRanked(g.score)
-      else finishNormal(g.score)
+      const state = useStore.getState()
+      const uid = useAuth.getState().user?.uid
+      const name = useAuth.getState().user?.name
+      let newRecord = false
+      if (g.daily) {
+        // Corrige o "Perfeito" (a tentativa já foi contada ao começar).
+        if (g.correct === DAILY_ROUNDS) {
+          useStore.setState({ stats: { ...state.stats, dailyPerfect: (state.stats.dailyPerfect ?? 0) + 1 } })
+        }
+        if (uid && name && g.score > 0) {
+          saveDaily(uid, name, g.day, { score: g.score, correct: g.correct, seconds: Math.round(g.seconds) }, state.avatar)
+            .then(() => useRankingVersion.setState((s) => ({ version: s.version + 1 })))
+            .catch(() => {})
+        }
+      } else if (g.ranked) {
+        newRecord = g.score > state.rankedRecord
+        finishRanked(g.score)
+        const week = weekKey()
+        state.countRanked(week)
+        if (uid && name && g.score > 0) {
+          saveWeekly(uid, name, week, g.score, state.avatar)
+            .then(() => useRankingVersion.setState((s) => ({ version: s.version + 1 })))
+            .catch(() => {})
+        }
+      } else {
+        newRecord = g.score > state.quizRecord
+        finishNormal(g.score)
+      }
       setGame(null)
       setChosen(null)
-      setEnded({ score: g.score, ranked: g.ranked, newRecord: g.score > record })
+      if (g.daily || g.ranked) setBoard(g.daily ? 'day' : 'week')
+      setEnded({ score: g.score, ranked: g.ranked, daily: g.daily, correct: g.correct, newRecord })
     },
     [finishNormal, finishRanked],
   )
 
-  // Sair da página no meio de um Ranked encerra o jogo com os pontos feitos.
+  // Sair da página no meio de um Ranked ou do desafio encerra o jogo com os pontos feitos.
   const gameRef = useRef(null)
+  const endRef = useRef(end)
   useEffect(() => {
     gameRef.current = game
-  }, [game])
-  useEffect(() => () => gameRef.current?.ranked && finishRanked(gameRef.current.score), [finishRanked])
+    endRef.current = end
+  }, [game, end])
+  useEffect(() => () => (gameRef.current?.ranked || gameRef.current?.daily) && endRef.current(gameRef.current), [])
+
+  // Início de cada rodada (para os pontos por rapidez do desafio).
+  useEffect(() => {
+    roundStart.current = Date.now()
+  }, [game?.round, game?.answerId])
 
   const answer = useCallback(
     (id) => {
       if (chosen || !game) return
       setChosen(id)
       const correct = id === game.answerId
-      const next = {
-        ...game,
-        score: game.score + (correct ? 1 : 0),
-        lives: game.lives - (correct ? 0 : 1),
-        streak: correct ? (game.streak ?? 0) + 1 : 0,
+      const streak = correct ? (game.streak ?? 0) + 1 : 0
+      useStore.getState().countAnswer(correct, streak)
+      let next
+      if (game.daily) {
+        const spent = Math.min(DAILY_SECONDS * 1000, Date.now() - roundStart.current)
+        next = {
+          ...game,
+          score: game.score + (correct ? dailyPoints(DAILY_SECONDS * 1000 - spent) : 0),
+          correct: game.correct + (correct ? 1 : 0),
+          seconds: game.seconds + spent / 1000,
+          streak,
+        }
+      } else {
+        next = { ...game, score: game.score + (correct ? 1 : 0), lives: game.lives - (correct ? 0 : 1), streak }
       }
       setTimeout(
         () => {
           setChosen(null)
-          if (next.lives === 0) {
+          const round = (next.round ?? 0) + 1
+          if (next.daily ? round >= DAILY_ROUNDS : next.lives === 0) {
             end(next)
           } else {
-            const g = { ...next, round: (next.round ?? 0) + 1, ...pickQuestion(pool(next.generation)) }
+            const g = { ...next, round, ...pickQuestion(pool(next.generation), next.daily ? next.answers[round] : undefined) }
             setGame(g)
             saveGame(g)
           }
@@ -210,12 +317,13 @@ export default function GamePage() {
     [chosen, game, end, pool, saveGame],
   )
 
-  // Ranked: tempo para responder cada Pokémon (diminui com os pontos).
+  // Ranked e desafio: tempo para responder cada Pokémon.
+  const seconds = game?.daily ? DAILY_SECONDS : rankedSeconds(game?.score ?? 0)
   useEffect(() => {
-    if (!game?.ranked || chosen) return
-    const timer = setTimeout(() => answer(TIMEOUT), rankedSeconds(game.score) * 1000)
+    if (!(game?.ranked || game?.daily) || chosen) return
+    const timer = setTimeout(() => answer(TIMEOUT), seconds * 1000)
     return () => clearTimeout(timer)
-  }, [game, chosen, answer])
+  }, [game, chosen, answer, seconds])
 
   // Teclas 1 a 4 escolhem a resposta.
   useEffect(() => {
@@ -285,6 +393,12 @@ export default function GamePage() {
             <li>• Use o mouse ou as teclas 1 a 4.</li>
             {canRank && (
               <li>
+                • <b className="text-emerald-400">Desafio do dia:</b> os mesmos {DAILY_ROUNDS} Pokémon para todo mundo, {DAILY_SECONDS} segundos cada e
+                uma tentativa por dia. Quanto mais rápido acertar, mais pontos.
+              </li>
+            )}
+            {canRank && (
+              <li>
                 • <b className="text-yellow-400">Ranked:</b> todas as gerações e só {RANKED_SECONDS} segundos por Pokémon, que caem para 4 s com 100 pontos, 3 s com 200 e 2 s com 400. É ele que conta para o ranking.
               </li>
             )}
@@ -299,18 +413,32 @@ export default function GamePage() {
                 ▶ Continuar jogo ({saved.score} pontos)
               </Button>
             )}
-            <Button onClick={() => start(false)} className="w-full py-4 text-lg">
+            <Button onClick={() => start('normal')} className="w-full py-4 text-lg">
               ▶ {saved ? 'Novo jogo normal' : 'Jogo normal'}
             </Button>
             {canRank && (
-              <Button onClick={() => start(true)} color="linear-gradient(135deg, #f9a825, #e65100)" className="w-full py-4 text-lg">
+              <Button onClick={() => start('ranked')} color="linear-gradient(135deg, #f9a825, #e65100)" className="w-full py-4 text-lg">
                 🏆 Jogar Ranked (todas as gerações)
+              </Button>
+            )}
+            {canRank && (
+              <Button
+                onClick={() => start('daily')}
+                disabled={playedToday}
+                color="linear-gradient(135deg, #26a69a, #00695c)"
+                className="w-full py-4 text-lg disabled:opacity-60"
+              >
+                📅 {playedToday ? 'Desafio de hoje feito — volte amanhã!' : 'Desafio do dia'}
               </Button>
             )}
           </div>
         </div>
-        <Ranking />
-        <EndModal result={ended} onClose={() => setEnded(null)} onRestart={() => (setEnded(null), start(ended.ranked))} />
+        <Ranking board={board} onBoard={setBoard} />
+        <EndModal
+          result={ended}
+          onClose={() => setEnded(null)}
+          onRestart={() => (setEnded(null), start(ended.ranked ? 'ranked' : 'normal'))}
+        />
       </div>
     )
   }
@@ -321,6 +449,7 @@ export default function GamePage() {
   const hit = revealed && chosen === game.answerId
   const gen = GENERATIONS.find((g) => g.id === game.generation)
   const record = game.ranked ? rankedRecord : normalRecord
+  const timed = game.ranked || game.daily
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]" style={layoutHeight}>
@@ -356,16 +485,22 @@ export default function GamePage() {
 
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between rounded-2xl bg-card p-4 shadow">
-          <button type="button" onClick={() => (game.ranked ? end(game) : setGame(null))} className="flex cursor-pointer items-center gap-1 text-muted hover:text-text">
+          <button type="button" onClick={() => (timed ? end(game) : setGame(null))} className="flex cursor-pointer items-center gap-1 text-muted hover:text-text">
             <Icon name="back" size={20} /> Sair
           </button>
-          <div className="flex gap-1 text-red-500">
-            {Array.from({ length: LIVES }, (_, i) => (
-              <m.span key={i} animate={{ scale: i < game.lives ? 1 : 0.6, opacity: i < game.lives ? 1 : 0.25 }}>
-                <Icon name="heart" size={28} />
-              </m.span>
-            ))}
-          </div>
+          {game.daily ? (
+            <div className="text-lg font-black text-emerald-400">
+              Pokémon {game.round + 1}/{DAILY_ROUNDS}
+            </div>
+          ) : (
+            <div className="flex gap-1 text-red-500">
+              {Array.from({ length: LIVES }, (_, i) => (
+                <m.span key={i} animate={{ scale: i < game.lives ? 1 : 0.6, opacity: i < game.lives ? 1 : 0.25 }}>
+                  <Icon name="heart" size={28} />
+                </m.span>
+              ))}
+            </div>
+          )}
         </div>
         <div className="grid grid-cols-3 gap-3 text-center">
           <div className="rounded-2xl bg-card p-3 shadow">
@@ -379,22 +514,26 @@ export default function GamePage() {
             <div className="text-3xl font-black text-orange-400">{game.streak ?? 0}🔥</div>
           </div>
           <div className="rounded-2xl bg-card p-3 shadow">
-            <div className="text-xs text-muted">Recorde</div>
-            <div className="text-3xl font-black text-yellow-400">{Math.max(record, game.score)}</div>
+            <div className="text-xs text-muted">{game.daily ? 'Acertos' : 'Recorde'}</div>
+            <div className="text-3xl font-black text-yellow-400">{game.daily ? game.correct : Math.max(record, game.score)}</div>
           </div>
         </div>
-        {game.ranked && (
+        {timed && (
           <div className="overflow-hidden rounded-2xl bg-card shadow">
             <div className="flex items-center justify-between px-4 pt-2 text-sm font-bold">
-              <span className="text-yellow-400">🏆 Ranked · Todas as gerações</span>
-              <span className="text-muted">{rankedSeconds(game.score)}s por Pokémon</span>
+              {game.daily ? (
+                <span className="text-emerald-400">📅 Desafio do dia · Todas as gerações</span>
+              ) : (
+                <span className="text-yellow-400">🏆 Ranked · Todas as gerações</span>
+              )}
+              <span className="text-muted">{seconds}s por Pokémon</span>
             </div>
             <div className="m-3 mt-2 h-3 overflow-hidden rounded-full bg-surface">
               {/* Barra do tempo: esvazia no tempo da rodada; para quando a resposta aparece. */}
               <div
                 key={game.round}
                 className="ranked-timer h-full rounded-full"
-                style={{ animationDuration: `${rankedSeconds(game.score)}s`, animationPlayState: revealed ? 'paused' : 'running' }}
+                style={{ animationDuration: `${seconds}s`, animationPlayState: revealed ? 'paused' : 'running' }}
               />
             </div>
           </div>
@@ -431,7 +570,17 @@ export default function GamePage() {
           })}
         </div>
         {revealed && (
-          <p className={`text-center text-lg font-bold ${hit ? 'text-green-400' : 'text-red-400'}`}>{hit ? 'Acertou! +1 ponto' : chosen === TIMEOUT ? 'Tempo esgotado! -1 vida' : 'Errou! -1 vida'}</p>
+          <p className={`text-center text-lg font-bold ${hit ? 'text-green-400' : 'text-red-400'}`}>{game.daily
+              ? hit
+                ? 'Acertou!'
+                : chosen === TIMEOUT
+                  ? 'Tempo esgotado!'
+                  : 'Errou!'
+              : hit
+                ? 'Acertou! +1 ponto'
+                : chosen === TIMEOUT
+                  ? 'Tempo esgotado! -1 vida'
+                  : 'Errou! -1 vida'}</p>
         )}
       </div>
     </div>
@@ -439,17 +588,23 @@ export default function GamePage() {
 }
 
 function EndModal({ result, onClose, onRestart }) {
+  const title = result?.daily ? 'Fim do desafio do dia!' : result?.ranked ? 'Fim do Ranked!' : 'Fim de Jogo!'
   return (
-    <Modal open={result !== null} onClose={onClose} title={result?.ranked ? 'Fim do Ranked!' : 'Fim de Jogo!'}>
+    <Modal open={result !== null} onClose={onClose} title={title}>
       <div className="text-center">
         <p>Sua pontuação foi:</p>
         <p className="my-2 text-6xl font-black text-yellow-400">{result?.score}</p>
+        {result?.daily && (
+          <p className="text-muted">
+            {result.correct} de {DAILY_ROUNDS} acertos. Veja sua posição na aba <b>Hoje</b> do ranking e volte amanhã para um desafio novo!
+          </p>
+        )}
         {result?.newRecord && <p className="text-green-400">Novo recorde{result.ranked ? ' no Ranked! Confira sua posição no ranking' : ''}! 🎉</p>}
         <div className="mt-6 flex justify-center gap-3">
           <button type="button" onClick={onClose} className="cursor-pointer px-4 text-muted">
             Sair
           </button>
-          <Button onClick={onRestart}>Jogar novamente</Button>
+          {!result?.daily && <Button onClick={onRestart}>Jogar novamente</Button>}
         </div>
       </div>
     </Modal>

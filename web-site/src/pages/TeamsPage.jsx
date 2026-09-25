@@ -1,6 +1,7 @@
 import { m } from 'framer-motion'
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
+import { ImportTeamModal } from '../components/TeamShare'
 import { Button, Empty, Icon, Modal, PageHeader } from '../components/ui'
 import { getPokemonById } from '../lib/data'
 import { useStore } from '../lib/store'
@@ -10,7 +11,11 @@ export default function TeamsPage() {
   const teams = useStore((s) => s.teams)
   const createTeam = useStore((s) => s.createTeam)
   const deleteTeam = useStore((s) => s.deleteTeam)
+  const importTeam = useStore((s) => s.importTeam)
   const navigate = useNavigate()
+  // Link de time compartilhado: #/times/importar/<código>
+  const { code } = useParams()
+  const [importing, setImporting] = useState(false)
   const [byId, setById] = useState(null)
   const [creating, setCreating] = useState(false)
   const [name, setName] = useState('')
@@ -32,9 +37,14 @@ export default function TeamsPage() {
   return (
     <div>
       <PageHeader title="Montador de Times" subtitle="Monte times de até 6 Pokémon e veja as fraquezas e a nota de cada um.">
-        <Button color="#FF5252" onClick={() => setCreating(true)}>
-          + Novo time
-        </Button>
+        <div className="flex gap-2">
+          <Button color="#546E7A" onClick={() => setImporting(true)}>
+            Importar
+          </Button>
+          <Button color="#FF5252" onClick={() => setCreating(true)}>
+            + Novo time
+          </Button>
+        </div>
       </PageHeader>
 
       {teams.length === 0 && <Empty>Você ainda não criou nenhum time. Clique em “Novo time” para começar!</Empty>}
@@ -82,6 +92,21 @@ export default function TeamsPage() {
           </m.div>
         ))}
       </div>
+
+      <ImportTeamModal
+        key={code ?? 'manual'}
+        open={importing || Boolean(code)}
+        initial={code ?? ''}
+        onClose={() => {
+          setImporting(false)
+          if (code) navigate('/times', { replace: true })
+        }}
+        onImport={(team) => {
+          const id = importTeam(team)
+          setImporting(false)
+          navigate(`/times/${id}`, { replace: Boolean(code) })
+        }}
+      />
 
       <Modal open={creating} onClose={() => setCreating(false)} title="Criar Novo Time">
         <form onSubmit={create} className="space-y-4">

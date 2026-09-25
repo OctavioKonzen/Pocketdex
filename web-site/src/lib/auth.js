@@ -38,14 +38,21 @@ export const useAuth = create(() => ({
 export const NAME_MIN = 3
 export const NAME_MAX = 20
 
-/** Chave usada para comparar nomes: "Ash  Ketchum" e "ash ketchum" são o mesmo nome. */
+const ACCENTS = 'áàâãäéèêëíìîïóòôõöúùûüçñ'
+const PLAIN = 'aaaaaeeeeiiiiooooouuuucn'
+
+/**
+ * Chave usada para comparar nomes: "Ash  Ketchum" e "ásh ketchum" são o mesmo
+ * nome. Igual no app (auth_service.dart) e nas regras do Firestore.
+ */
 export function nameKey(name) {
-  return name
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .trim()
+  return [...name.trim().toLowerCase()]
+    .map((ch) => {
+      const i = ACCENTS.indexOf(ch)
+      return i >= 0 ? PLAIN[i] : ch
+    })
+    .join('')
     .replace(/\s+/g, ' ')
-    .toLowerCase()
 }
 
 /** Retorna uma mensagem de erro ou null se o nome for válido. */
@@ -80,7 +87,7 @@ async function claimName(user, name) {
     const taken = await tx.get(nameRef)
     if (taken.exists() && taken.data().uid !== user.uid) throw new AuthError('name-taken')
     tx.set(nameRef, { uid: user.uid, name: clean })
-    tx.set(userRef, { name: clean, email: user.email ?? '', createdAt: serverTimestamp() }, { merge: true })
+    tx.set(userRef, { name: clean, nameKey: nameKey(clean), email: user.email ?? '', createdAt: serverTimestamp() }, { merge: true })
   })
   return clean
 }
@@ -212,28 +219,102 @@ export async function saveUserData(uid, data) {
 }
 
 // ---------------------------------------------------------------- ranking
-//   ranking/{uid} → { name, score, updatedAt }   (recorde do "Quem é esse Pokémon?")
+//   ranking/{uid}                   → { name, score, avatar }   recorde do Ranked
+//   weekly/{segunda}/scores/{uid}   → { name, score, avatar }   melhor da semana
+//   daily/{dia}/scores/{uid}        → { name, score, correct, seconds, avatar }
 
-/** Coloca (ou tira, se for 0) o recorde da pessoa no ranking. */
-export async function saveRanking(uid, name, score) {
+/** Caminho da coleção de cada ranking: 'all' | 'week' | 'day'. */
+function boardPath(board, key) {
+  if (board === 'week') return ['weekly', key, 'scores']
+  if (board === 'day') return ['daily', key, 'scores']
+  return ['ranking']
+}
+
+/** Coloca (ou tira, se for 0) o recorde da pessoa no ranking geral. */
+export async function saveRanking(uid, name, score, avatar = null) {
   const { db, doc, setDoc, deleteDoc, serverTimestamp } = await firebase()
   const ref = doc(db, 'ranking', uid)
-  if (score > 0) await setDoc(ref, { name, score, updatedAt: serverTimestamp() })
+  if (score > 0) await setDoc(ref, { name, score, avatar, updatedAt: serverTimestamp() })
   else await deleteDoc(ref)
 }
 
-/** Os melhores recordes, do maior para o menor. */
-export async function getRanking(count = 10) {
+/** Guarda a pontuação da semana, se for maior que a já guardada. */
+export async function saveWeekly(uid, name, week, score, avatar = null) {
+  if (score <= 0) return
+  const { db, doc, getDoc, setDoc, serverTimestamp } = await firebase()
+  const ref = doc(db, 'weekly', week, 'scores', uid)
+  const current = await getDoc(ref)
+  if (current.exists() && current.data().score >= score) return
+  await setDoc(ref, { name, score, avatar, updatedAt: serverTimestamp() })
+}
+
+/** Resultado do desafio do dia (uma vez só por dia). */
+export async function saveDaily(uid, name, day, { score, correct, seconds }, avatar = null) {
+  const { db, doc, setDoc, serverTimestamp } = await firebase()
+  await setDoc(doc(db, 'daily', day, 'scores', uid), {
+    name,
+    score: Math.max(1, score),
+    correct,
+    seconds,
+    avatar,
+    updatedAt: serverTimestamp(),
+  })
+}
+
+/** A linha da pessoa num ranking (ou null). */
+export async function getMyScore(uid, board = 'all', key = '') {
+  const { db, doc, getDoc } = await firebase()
+  const snap = await getDoc(doc(db, ...boardPath(board, key), uid))
+  return snap.exists() ? snap.data() : null
+}
+
+/** Os melhores de um ranking, do maior para o menor. */
+export async function getRanking(count = 10, board = 'all', key = '') {
   const { db, collection, query, orderBy, limit, getDocs } = await firebase()
-  const snap = await getDocs(query(collection(db, 'ranking'), orderBy('score', 'desc'), limit(count)))
-  return snap.docs.map((d) => ({ uid: d.id, name: d.data().name, score: d.data().score }))
+  const snap = await getDocs(query(collection(db, ...boardPath(board, key)), orderBy('score', 'desc'), limit(count)))
+  return snap.docs.map((d) => ({ uid: d.id, ...d.data() }))
 }
 
 /** Posição de quem tem essa pontuação (quantos têm mais + 1). */
-export async function getRankingPosition(score) {
+export async function getRankingPosition(score, board = 'all', key = '') {
   const { db, collection, query, where, getCountFromServer } = await firebase()
-  const snap = await getCountFromServer(query(collection(db, 'ranking'), where('score', '>', score)))
+  const snap = await getCountFromServer(query(collection(db, ...boardPath(board, key)), where('score', '>', score)))
   return snap.data().count + 1
+}
+
+// ---------------------------------------------------------------- excluir conta
+
+/** Conta entrou com Google (e não com e-mail e senha)? */
+export async function usesGoogle() {
+  const { auth } = await firebase()
+  return auth.currentUser?.providerData.some((p) => p.providerId === 'google.com') ?? false
+}
+
+/**
+ * Apaga a conta e tudo dela: dados, nome reservado, rankings e o login.
+ * Por segurança o Firebase pede para confirmar a senha (ou a conta Google).
+ */
+export async function deleteAccount({ password, weeks = [], days = [] }) {
+  const f = await firebase()
+  const user = f.auth.currentUser
+  if (!user) return
+  if (await usesGoogle()) {
+    await f.reauthenticateWithPopup(user, new f.GoogleAuthProvider())
+  } else {
+    await f.reauthenticateWithCredential(user, f.EmailAuthProvider.credential(user.email, password ?? ''))
+  }
+  const uid = user.uid
+  const profile = await f.getDoc(f.doc(f.db, 'users', uid))
+  const name = profile.exists() ? profile.data().name : null
+  const removals = [
+    f.doc(f.db, 'ranking', uid),
+    ...weeks.map((week) => f.doc(f.db, 'weekly', week, 'scores', uid)),
+    ...days.map((day) => f.doc(f.db, 'daily', day, 'scores', uid)),
+  ]
+  if (name) removals.push(f.doc(f.db, 'usernames', nameKey(name)))
+  await Promise.all(removals.map((ref) => f.deleteDoc(ref).catch(() => {})))
+  await f.deleteDoc(f.doc(f.db, 'users', uid))
+  await f.deleteUser(user)
 }
 
 // ---------------------------------------------------------------- mensagens
@@ -256,6 +337,8 @@ const MESSAGES = {
   'auth/popup-blocked': 'O navegador bloqueou a janela do Google. Libere pop-ups para este site.',
   'auth/unauthorized-domain': 'Este endereço não está autorizado no Firebase (Authentication → Domínios autorizados).',
   'auth/operation-not-allowed': 'Esse tipo de login não está ativado no Firebase.',
+  'auth/requires-recent-login': 'Por segurança, saia e entre de novo na conta e tente outra vez.',
+  'auth/user-mismatch': 'Escolha a mesma conta Google que está conectada.',
   'permission-denied': 'Sem permissão no banco de dados. Confira as regras do Firestore.',
 }
 

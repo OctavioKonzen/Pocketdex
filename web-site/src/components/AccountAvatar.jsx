@@ -1,5 +1,5 @@
-// Foto de perfil da conta: o Pokémon escolhido (o mesmo no app e no site),
-// ou a foto do Google, ou a inicial do nome.
+// Foto de perfil: o Pokémon escolhido (o mesmo no app e no site), ou a foto
+// do Google, ou a inicial do nome.
 
 import { useEffect, useState } from 'react'
 import { useAuth } from '../lib/auth'
@@ -7,21 +7,20 @@ import { getPokemonById } from '../lib/data'
 import { useStore } from '../lib/store'
 import Sprite from './Sprite'
 
-export default function AccountAvatar({ size = 36, className = '' }) {
-  const user = useAuth((s) => s.user)
-  const avatar = useStore((s) => s.avatar)
+/** Foto de qualquer jogador (ex.: nas linhas do ranking). */
+export function Avatar({ pokemonId, name, photo, size = 36, className = '' }) {
   const [pokemon, setPokemon] = useState(null)
 
   useEffect(() => {
-    if (avatar == null) return
+    if (pokemonId == null) return
     let alive = true
-    getPokemonById().then((byId) => alive && setPokemon(byId.get(avatar) ?? null))
+    getPokemonById().then((byId) => alive && setPokemon(byId.get(pokemonId) ?? null))
     return () => {
       alive = false
     }
-  }, [avatar])
+  }, [pokemonId])
 
-  const shown = avatar != null && pokemon?.id === avatar ? pokemon : null
+  const shown = pokemonId != null && pokemon?.id === pokemonId ? pokemon : null
   return (
     <span
       className={`grid shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-red-600 to-red-800 font-black text-white ring-2 ring-white/80 ${className}`}
@@ -29,11 +28,18 @@ export default function AccountAvatar({ size = 36, className = '' }) {
     >
       {shown ? (
         <Sprite path={shown.sprite} box={shown.box} fill={0.9} className="w-[88%]" />
-      ) : user?.photo ? (
-        <img src={user.photo} alt="" referrerPolicy="no-referrer" className="h-full w-full object-cover" />
+      ) : photo ? (
+        <img src={photo} alt="" referrerPolicy="no-referrer" className="h-full w-full object-cover" />
       ) : (
-        user?.name?.[0]?.toUpperCase()
+        name?.[0]?.toUpperCase()
       )}
     </span>
   )
+}
+
+/** Foto da conta conectada. */
+export default function AccountAvatar({ size = 36, className = '' }) {
+  const user = useAuth((s) => s.user)
+  const avatar = useStore((s) => s.avatar)
+  return <Avatar pokemonId={avatar} name={user?.name} photo={user?.photo} size={size} className={className} />
 }
