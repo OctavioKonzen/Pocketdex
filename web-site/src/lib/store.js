@@ -67,6 +67,10 @@ export const useStore = create(
       quizRecord: 0, // recorde do modo normal
       rankedRecord: 0, // recorde do modo Ranked (é o que vai para o ranking)
       quizGame: null, // {generation, score, lives, answerId, options}
+
+      // Foto de perfil: id de um Pokémon (a mesma no app e no site)
+      avatar: null,
+      setAvatar: (avatar) => set({ avatar }),
       saveQuizGame: (game) => set({ quizGame: game }),
       finishQuiz: (score) =>
         set(({ quizRecord }) => ({ quizGame: null, quizRecord: Math.max(quizRecord, score) })),
@@ -75,7 +79,7 @@ export const useStore = create(
       /** Limpa favoritos, times e treinos (os recordes ficam). */
       clearCollections: () => set({ favorites: [], teams: [], training: [] }),
       /** Tudo, ao sair da conta. */
-      clearAll: () => set({ favorites: [], teams: [], training: [], quizRecord: 0, rankedRecord: 0, quizGame: null }),
+      clearAll: () => set({ favorites: [], teams: [], training: [], quizRecord: 0, rankedRecord: 0, quizGame: null, avatar: null }),
     }),
     { name: 'pocketdex' },
   ),

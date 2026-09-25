@@ -14,6 +14,7 @@
 //              'special-attack', 'special-defense', speed}}]
 //   quizRecord, rankedRecord: número
 //   quizGame: jogo normal em andamento ou null
+//   avatar: id do Pokémon usado como foto de perfil, ou null
 
 import 'dart:convert';
 
@@ -24,7 +25,7 @@ class UserData extends ChangeNotifier {
   UserData._();
   static final UserData instance = UserData._();
 
-  static const keys = ['theme', 'favorites', 'teams', 'training', 'quizRecord', 'rankedRecord', 'quizGame'];
+  static const keys = ['theme', 'favorites', 'teams', 'training', 'quizRecord', 'rankedRecord', 'quizGame', 'avatar'];
   static const _prefsKey = 'pocketdex_user_data';
 
   static Map<String, dynamic> get defaults => {
@@ -35,6 +36,7 @@ class UserData extends ChangeNotifier {
         'quizRecord': 0,
         'rankedRecord': 0,
         'quizGame': null,
+        'avatar': null,
       };
 
   Map<String, dynamic> _data = defaults;
@@ -49,6 +51,8 @@ class UserData extends ChangeNotifier {
   List<Map<String, dynamic>> get teams => _maps(_data['teams']);
   List<Map<String, dynamic>> get training => _maps(_data['training']);
   int get quizRecord => (_data['quizRecord'] as num?)?.toInt() ?? 0;
+  /// Foto de perfil: o id de um Pokémon (ou null).
+  int? get avatar => (_data['avatar'] as num?)?.toInt();
   int get rankedRecord => (_data['rankedRecord'] as num?)?.toInt() ?? 0;
   Map<String, dynamic>? get quizGame =>
       _data['quizGame'] == null ? null : Map<String, dynamic>.from(_data['quizGame'] as Map);

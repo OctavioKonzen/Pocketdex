@@ -15,9 +15,11 @@ class PokemonDisplay extends StatelessWidget {
   final Animation<double> pokeballAnimation;
   final Widget imageGestureArea;
 
-  /// Arrastar para o lado em qualquer lugar da parte de cima troca de Pokémon
-  /// (-1 = anterior, 1 = próximo).
-  final ValueChanged<int>? onSwipe;
+  /// Arrastar para o lado em qualquer lugar da parte de cima gira a "roda" de
+  /// Pokémon: [onDrag] recebe quanto o dedo andou (fração da largura) e
+  /// [onDragEnd] a velocidade ao soltar (fração da largura por segundo).
+  final ValueChanged<double>? onDrag;
+  final ValueChanged<double>? onDragEnd;
 
   const PokemonDisplay({
     super.key,
@@ -28,7 +30,8 @@ class PokemonDisplay extends StatelessWidget {
     required this.onFormSelect,
     required this.pokeballAnimation,
     required this.imageGestureArea,
-    this.onSwipe,
+    this.onDrag,
+    this.onDragEnd,
   });
 
   @override
@@ -38,7 +41,8 @@ class PokemonDisplay extends StatelessWidget {
 
     return Expanded(
       child: _SwipeArea(
-        onSwipe: onSwipe,
+        onDrag: onDrag,
+        onDragEnd: onDragEnd,
         child: Container(
           decoration: typeBackground(form.types),
           child: Stack(
@@ -161,36 +165,26 @@ class PokemonDisplay extends StatelessWidget {
   }
 }
 
-/// Troca de Pokémon ao arrastar para o lado: vale um gesto rápido ou um
-/// arrasto mais lento de mais de 80 px (o dedo pode parar antes de soltar).
-class _SwipeArea extends StatefulWidget {
-  final ValueChanged<int>? onSwipe;
+/// Área que acompanha o dedo na horizontal (a roda de Pokémon).
+class _SwipeArea extends StatelessWidget {
+  final ValueChanged<double>? onDrag;
+  final ValueChanged<double>? onDragEnd;
   final Widget child;
-  const _SwipeArea({required this.onSwipe, required this.child});
-
-  @override
-  State<_SwipeArea> createState() => _SwipeAreaState();
-}
-
-class _SwipeAreaState extends State<_SwipeArea> {
-  double _dx = 0;
+  const _SwipeArea({required this.onDrag, required this.onDragEnd, required this.child});
 
   @override
   Widget build(BuildContext context) {
-    if (widget.onSwipe == null) return widget.child;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onHorizontalDragStart: (_) => _dx = 0,
-      onHorizontalDragUpdate: (d) => _dx += d.delta.dx,
-      onHorizontalDragEnd: (d) {
-        final v = d.primaryVelocity ?? 0;
-        if (v < -300 || _dx < -80) {
-          widget.onSwipe!(1);
-        } else if (v > 300 || _dx > 80) {
-          widget.onSwipe!(-1);
-        }
+    if (onDrag == null) return child;
+    return LayoutBuilder(
+      builder: (context, c) {
+        final width = c.maxWidth <= 0 ? 1.0 : c.maxWidth;
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onHorizontalDragUpdate: (d) => onDrag!(d.delta.dx / width),
+          onHorizontalDragEnd: (d) => onDragEnd?.call((d.primaryVelocity ?? 0) / width),
+          child: child,
+        );
       },
-      child: widget.child,
     );
   }
 }

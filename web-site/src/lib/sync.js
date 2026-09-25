@@ -10,12 +10,13 @@
 //               'special-attack', 'special-defense', speed } }]
 //   quizRecord, rankedRecord: número
 //   quizGame: jogo normal em andamento ou null
+//   avatar: id do Pokémon usado como foto de perfil, ou null
 
 import { create } from 'zustand'
 import { saveRanking, saveUserData, signOut, useAuth, watchUserData } from './auth'
 import { useStore } from './store'
 
-const KEYS = ['theme', 'favorites', 'teams', 'training', 'quizRecord', 'rankedRecord', 'quizGame']
+const KEYS = ['theme', 'favorites', 'teams', 'training', 'quizRecord', 'rankedRecord', 'quizGame', 'avatar']
 const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
 
 let currentUid = null

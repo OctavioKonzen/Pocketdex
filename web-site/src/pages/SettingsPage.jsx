@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { Button, Icon, Modal, PageHeader } from '../components/ui'
 import { getLatestRelease, RELEASES_URL } from '../lib/appRelease'
 import { useAuth } from '../lib/auth'
+import AccountAvatar from '../components/AccountAvatar'
 import { useStore } from '../lib/store'
 import { logout } from '../lib/sync'
 
@@ -24,7 +25,8 @@ export default function SettingsPage() {
       <div className="space-y-3">
         {user && (
           <div className="flex items-center justify-between gap-4 rounded-2xl bg-card p-5 shadow">
-            <div className="min-w-0">
+            <AccountAvatar size={48} />
+            <div className="min-w-0 flex-1">
               <div className="font-bold">Conta</div>
               <div className="truncate text-sm text-muted">
                 {user.name} · {user.email}

@@ -1,6 +1,8 @@
 // lib/screens/breeding_partners_screen.dart
 
 import 'package:flutter/material.dart';
+import '../services/account_format.dart';
+import '../widgets/pokemon_sprite.dart';
 import '../models/pokemon_details.dart';
 import '../models/pokemon_listing.dart';
 import '../services/pokemon_service.dart';
@@ -9,7 +11,6 @@ import '../utils/string_extensions.dart';
 import '../widgets/pikachu_loading_indicator.dart';
 import '../widgets/pokemon_card.dart';
 import '../utils/responsive.dart';
-import '../utils/app_images.dart';
 
 class BreedingPartnersScreen extends StatefulWidget {
   final PokemonListing initialPokemon;
@@ -229,11 +230,11 @@ class _BreedingPartnersScreenState extends State<BreedingPartnersScreen>
                 right: 0,
                 child: Hero(
                   tag: '${pokemonDetails.id}-${widget.initialPokemon.name}',
-                  child: Image(
-                    image: AppImages.provider(pokemonDetails.forms.first.pixelImageUrl),
+                  child: SizedBox(
                     height: 200,
-                    fit: BoxFit.contain,
-                    filterQuality: FilterQuality.none,
+                    child: PokemonSprite(
+                        AccountFormat.pokemonIdFromImage(pokemonDetails.forms.first.pixelImageUrl) ?? pokemonDetails.id,
+                        fill: 0.85),
                   ),
                 ),
               ),

@@ -13,6 +13,7 @@ import '../services/update_service.dart';
 import '../services/user_data.dart';
 import '../utils/responsive.dart';
 import '../utils/site_ui.dart';
+import '../widgets/account_avatar.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -77,12 +78,7 @@ class SettingsScreen extends StatelessWidget {
                 children: [
                   if (user != null) ...[
                     row(
-                      leading: CircleAvatar(
-                        radius: 22,
-                        backgroundColor: const Color(0xFFE53935),
-                        child: Text((user.name ?? '?').substring(0, 1).toUpperCase(),
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18)),
-                      ),
+                      leading: AccountAvatar(size: 48, onTap: () => ProfileSheet.show(context)),
                       title: user.name ?? 'Conta',
                       subtitle: user.email ?? '',
                       trailing: PillButton(label: 'Sair', color: const Color(0xFFE53935), onPressed: AccountSync.instance.logout),

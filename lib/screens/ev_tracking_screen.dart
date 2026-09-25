@@ -2,15 +2,15 @@
 
 import 'package:pocket_dex/services/pokemon_service.dart';
 import 'package:flutter/material.dart';
+import '../services/account_format.dart';
+import '../widgets/pokemon_sprite.dart';
 
 import 'package:pocket_dex/models/pokemon_listing.dart';
 import 'package:pocket_dex/screens/ev_yield_pokemon_selection_screen.dart';
 import 'package:pocket_dex/utils/string_extensions.dart';
-import 'package:pocket_dex/widgets/pikachu_loading_indicator.dart';
 
 import '../models/training_pokemon.dart';
 import 'package:pocket_dex/utils/responsive.dart';
-import 'package:pocket_dex/utils/app_images.dart';
 
 class EvTrackingScreen extends StatefulWidget {
   final TrainingPokemon pokemon;
@@ -118,14 +118,13 @@ class _EvTrackingScreenState extends State<EvTrackingScreen> {
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
           child: Column(
             children: [
-              Image(
-                image: AppImages.provider(_currentPokemon.imageUrl),
-                height: 150,
-                errorBuilder: (c, e, s) =>
-                    Icon(Icons.error, size: 120, color: theme.hintColor),
-                loadingBuilder: (c, child, progress) => progress == null
-                    ? child
-                    : const PikachuLoadingIndicator(size: 100),
+              SizedBox(
+                height: 170,
+                child: PokemonSprite(
+                    AccountFormat.pokemonIdFromImage(_currentPokemon.imageUrl) ??
+                        int.tryParse(_currentPokemon.pokemonId) ??
+                        0,
+                    fill: 0.9),
               ),
               const SizedBox(height: 16),
               Text('Total EVs: ${_currentPokemon.totalEVs} / 510',

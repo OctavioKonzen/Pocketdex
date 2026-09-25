@@ -1,9 +1,10 @@
 // lib/widgets/pokemon_page_item.dart
 
 import 'package:flutter/material.dart';
+import '../services/account_format.dart';
+import 'pokemon_sprite.dart';
 
 import 'package:pocket_dex/models/pokemon_details.dart';
-import 'package:pocket_dex/utils/app_images.dart';
 
 class PokemonPageItem extends StatelessWidget {
   final PokemonDetails? details;
@@ -47,12 +48,7 @@ class PokemonPageItem extends StatelessWidget {
                 0, 0, colorFactor, 0, 0,
                 0, 0, 0, 1, 0,
               ]),
-              child: Image(
-                image: AppImages.provider(imageUrl),
-                fit: BoxFit.contain,
-                filterQuality: FilterQuality.none,
-                errorBuilder: (c, e, s) => const Icon(Icons.error_outline, color: Colors.white, size: 50),
-              ),
+              child: PokemonSprite(AccountFormat.pokemonIdFromImage(imageUrl) ?? details!.id, fill: 0.9),
             ),
           ),
           Opacity(
