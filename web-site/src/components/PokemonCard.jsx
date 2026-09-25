@@ -1,0 +1,105 @@
+// Card de Pokémon da Pokédex.
+//
+// Para mudar o visual do card, edite CARD_STYLE logo abaixo.
+
+import { AnimatePresence, motion } from 'framer-motion'
+import { useRef, useState } from 'react'
+import { spriteUrl, prefetchSpecies } from '../lib/data'
+import { displayName, typeColor } from '../lib/pokemon'
+import { useStore } from '../lib/store'
+import { Icon, SpinningPokeball } from './ui'
+
+export const CARD_STYLE = {
+  height: 132, // altura do card (px)
+  radius: 18, // cantos arredondados
+  spriteSize: 132, // tamanho do Pokémon
+  spriteOffset: -16, // quanto o Pokémon "sai" pela borda (o card corta)
+  pokeballSize: 118, // Pokébola girando atrás
+  hoverScale: 1.05, // card ao passar o mouse
+  hoverSpriteScale: 1.15, // Pokémon ao passar o mouse
+}
+
+export default function PokemonCard({ pokemon, onClick, hidden = false, selected = false }) {
+  const isFavorite = useStore((s) => s.favorites.includes(pokemon.id))
+  const toggleFavorite = useStore((s) => s.toggleFavorite)
+  const color = typeColor(pokemon.types[0])
+  const offset = CARD_STYLE.spriteOffset + (CARD_STYLE.spriteSize - CARD_STYLE.pokeballSize) / 2
+  const clickTimer = useRef(null)
+  const [pop, setPop] = useState(0)
+
+  // Espera um instante para saber se é clique simples (abrir) ou duplo (favoritar).
+  const handleClick = () => {
+    clearTimeout(clickTimer.current)
+    clickTimer.current = setTimeout(onClick, 220)
+  }
+  const handleDoubleClick = () => {
+    clearTimeout(clickTimer.current)
+    toggleFavorite(pokemon.id)
+    setPop((n) => n + 1)
+  }
+
+  return (
+    <motion.button
+      type="button"
+      layout={false}
+      onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
+      onMouseEnter={() => prefetchSpecies(pokemon.species)}
+      title="Clique para ver detalhes · clique duplo para favoritar"
+      initial={false}
+      animate={hidden ? { opacity: 0, scale: 1.35 } : { opacity: 1, scale: 1 }}
+      whileHover={hidden ? undefined : 'hover'}
+      whileTap={{ scale: 0.97 }}
+      variants={{ hover: { scale: CARD_STYLE.hoverScale, boxShadow: '0 10px 22px rgba(0,0,0,.45)' } }}
+      transition={{ type: 'spring', stiffness: 300, damping: 22 }}
+      className="group relative w-full cursor-pointer overflow-hidden text-left shadow-[0_4px_10px_rgba(0,0,0,.25)]"
+      style={{
+        height: CARD_STYLE.height,
+        borderRadius: CARD_STYLE.radius,
+        background: color,
+        outline: selected ? '3px solid white' : 'none',
+        pointerEvents: hidden ? 'none' : undefined,
+      }}
+    >
+      <SpinningPokeball size={CARD_STYLE.pokeballSize} opacity={0.22} className="absolute" style={{ right: offset, bottom: offset }} />
+      {pokemon.sprite && (
+        <motion.img
+          src={spriteUrl(pokemon.sprite)}
+          alt=""
+          loading="lazy"
+          variants={{ hover: { scale: CARD_STYLE.hoverSpriteScale } }}
+          transition={{ type: 'spring', stiffness: 400, damping: 12 }}
+          className="pixelated absolute origin-bottom"
+          style={{ width: CARD_STYLE.spriteSize, height: CARD_STYLE.spriteSize, right: CARD_STYLE.spriteOffset, bottom: CARD_STYLE.spriteOffset }}
+        />
+      )}
+      <div className="absolute top-3.5 right-3 flex items-center gap-1 text-xs font-extrabold text-black/35">
+        {isFavorite && <Icon name="star" size={16} className="text-yellow-300" />}#{pokemon.id}
+      </div>
+      <AnimatePresence>
+        {pop > 0 && (
+          <motion.div
+            key={pop}
+            className="pointer-events-none absolute inset-0 grid place-items-center text-yellow-300"
+            initial={{ scale: 0.3, opacity: 1 }}
+            animate={{ scale: 1.8, opacity: 0 }}
+            transition={{ duration: 0.6 }}
+            onAnimationComplete={() => setPop(0)}
+          >
+            <Icon name={isFavorite ? 'star' : 'starOutline'} size={48} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <div className="relative p-4 pt-3.5">
+        <div className="truncate pr-10 text-[16px] font-bold text-white drop-shadow">{displayName(pokemon.name)}</div>
+        <div className="mt-2 flex flex-col items-start gap-1.5">
+          {pokemon.types.map((type) => (
+            <span key={type} className="rounded-xl bg-white/25 px-2.5 py-0.5 text-[11px] font-semibold text-white">
+              {type}
+            </span>
+          ))}
+        </div>
+      </div>
+    </motion.button>
+  )
+}
