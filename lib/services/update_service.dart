@@ -3,7 +3,8 @@
 // Atualização do app pelo próprio app (Android, APK fora da Play Store).
 // Ao abrir, confere a última versão publicada em GitHub Releases
 // (github.com/OctavioKonzen/Pocketdex/releases). Se for mais nova que a
-// instalada, oferece baixar e instalar o APK na hora.
+// instalada, baixa o APK sozinho em segundo plano e, quando termina, abre o
+// instalador do Android (a confirmação final é sempre do Android).
 //
 // As versões são publicadas pelo workflow .github/workflows/android-release.yml
 // sempre que a versão do pubspec.yaml muda.
@@ -61,15 +62,40 @@ class UpdateService {
 
   static bool get supported => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
-  /// Confere uma vez por abertura do app e mostra o aviso se houver versão nova.
+  /// Confere uma vez por abertura do app; se houver versão nova, baixa sozinho.
   static Future<void> checkOnStart(BuildContext context) async {
     if (_checked || !supported) return;
     _checked = true;
     try {
-      await _check(context, quiet: true);
+      final info = await PackageInfo.fromPlatform();
+      final release = await latestRelease();
+      if (release == null || !isNewer(release.version, info.version)) return;
+      if (!context.mounted) return;
+      _downloadInBackground(context, release, info.version);
     } catch (_) {
       // Sem internet ou GitHub fora do ar: tenta na próxima abertura.
     }
+  }
+
+  /// Baixa sem janela; no fim o Android abre a tela de instalar a atualização.
+  /// Se faltar a permissão de instalar apps, mostra o aviso com o botão.
+  static void _downloadInBackground(BuildContext context, AppRelease release, String current) {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    final navigator = Navigator.of(context);
+    messenger?.showSnackBar(SnackBar(content: Text('Baixando a versão ${release.version} em segundo plano...')));
+    OtaUpdate().execute(release.apkUrl, destinationFilename: 'pocketdex-${release.version}.apk').listen(
+      (event) {
+        if (event.status != OtaStatus.PERMISSION_NOT_GRANTED_ERROR) return;
+        if (!navigator.mounted) return;
+        showDialog(
+          context: navigator.context,
+          builder: (_) => _UpdateDialog(release: release, current: current),
+        );
+      },
+      onError: (_) {
+        // Falhou (internet caiu, etc.): tenta de novo na próxima abertura.
+      },
+    );
   }
 
   /// Botão "Procurar atualização" das Configurações.

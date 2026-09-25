@@ -124,7 +124,7 @@ class _GameScreenState extends State<GameScreen> {
             if (signedIn) ...[
               const SizedBox(height: 10),
               _BigButton(
-                label: '🏆 Jogar Ranked (${QuizScreen.rankedSeconds}s por Pokémon)',
+                label: '🏆 Jogar Ranked (${QuizScreen.rankedSeconds}s → 2s por Pokémon)',
                 gradient: const LinearGradient(colors: [Color(0xFFF9A825), Color(0xFFE65100)]),
                 onPressed: () => _play(ranked: true),
               ),
@@ -185,7 +185,7 @@ class _Rules extends StatelessWidget {
             TextSpan(children: [
               const TextSpan(text: '• '),
               const TextSpan(text: 'Ranked: ', style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold)),
-              TextSpan(text: 'todas as gerações e só ${QuizScreen.rankedSeconds} segundos por Pokémon. É ele que conta para o ranking.'),
+              TextSpan(text: 'todas as gerações e só ${QuizScreen.rankedSeconds} segundos por Pokémon, que caem para 4 s com 100 pontos, 3 s com 200 e 2 s com 400. É ele que conta para o ranking.'),
             ]),
             style: style,
           ),

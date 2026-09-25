@@ -20,6 +20,13 @@ import { useRankingVersion } from '../lib/sync'
 
 const LIVES = 3
 const RANKED_SECONDS = 5
+// Ranked fica mais difícil com os pontos: 100 → 4 s, 200 → 3 s, 400 → 2 s (até perder).
+function rankedSeconds(score) {
+  if (score >= 400) return 2
+  if (score >= 200) return 3
+  if (score >= 100) return 4
+  return RANKED_SECONDS
+}
 const TIMEOUT = -1 // "resposta" quando o tempo acaba
 const TOP_BAR = 72
 
@@ -203,10 +210,10 @@ export default function GamePage() {
     [chosen, game, end, pool, saveGame],
   )
 
-  // Ranked: 5 segundos para responder cada Pokémon.
+  // Ranked: tempo para responder cada Pokémon (diminui com os pontos).
   useEffect(() => {
     if (!game?.ranked || chosen) return
-    const timer = setTimeout(() => answer(TIMEOUT), RANKED_SECONDS * 1000)
+    const timer = setTimeout(() => answer(TIMEOUT), rankedSeconds(game.score) * 1000)
     return () => clearTimeout(timer)
   }, [game, chosen, answer])
 
@@ -278,7 +285,7 @@ export default function GamePage() {
             <li>• Use o mouse ou as teclas 1 a 4.</li>
             {canRank && (
               <li>
-                • <b className="text-yellow-400">Ranked:</b> todas as gerações e só {RANKED_SECONDS} segundos por Pokémon. É ele que conta para o ranking.
+                • <b className="text-yellow-400">Ranked:</b> todas as gerações e só {RANKED_SECONDS} segundos por Pokémon, que caem para 4 s com 100 pontos, 3 s com 200 e 2 s com 400. É ele que conta para o ranking.
               </li>
             )}
           </ul>
@@ -297,7 +304,7 @@ export default function GamePage() {
             </Button>
             {canRank && (
               <Button onClick={() => start(true)} color="linear-gradient(135deg, #f9a825, #e65100)" className="w-full py-4 text-lg">
-                🏆 Jogar Ranked ({RANKED_SECONDS}s por Pokémon)
+                🏆 Jogar Ranked ({RANKED_SECONDS}s → 2s por Pokémon)
               </Button>
             )}
           </div>
@@ -380,14 +387,14 @@ export default function GamePage() {
           <div className="overflow-hidden rounded-2xl bg-card shadow">
             <div className="flex items-center justify-between px-4 pt-2 text-sm font-bold">
               <span className="text-yellow-400">🏆 Ranked</span>
-              <span className="text-muted">{RANKED_SECONDS}s por Pokémon</span>
+              <span className="text-muted">{rankedSeconds(game.score)}s por Pokémon</span>
             </div>
             <div className="m-3 mt-2 h-3 overflow-hidden rounded-full bg-surface">
-              {/* Barra do tempo: esvazia em 5 s; para quando a resposta aparece. */}
+              {/* Barra do tempo: esvazia no tempo da rodada; para quando a resposta aparece. */}
               <div
                 key={game.round}
                 className="ranked-timer h-full rounded-full"
-                style={{ animationDuration: `${RANKED_SECONDS}s`, animationPlayState: revealed ? 'paused' : 'running' }}
+                style={{ animationDuration: `${rankedSeconds(game.score)}s`, animationPlayState: revealed ? 'paused' : 'running' }}
               />
             </div>
           </div>
