@@ -153,15 +153,18 @@ class _PokedexInlineDetailsState extends State<PokedexInlineDetails>
               child: Opacity(
                 opacity: 0.18,
                 child: Image.asset('assets/images/pokeball.png',
-                    width: 280, height: 280, color: Colors.white),
+                    width: 330, height: 330, color: Colors.white),
               ),
             ),
           ),
         ),
         // Pokémon (troca com animação ao mudar forma/shiny/Pokémon).
+        // O Pokémon preenche toda a área entre os tipos e o seletor de formas.
         Positioned.fill(
-          top: 90,
-          bottom: 40,
+          top: 110,
+          bottom: 50,
+          left: 56,
+          right: 56,
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 300),
             transitionBuilder: (child, animation) => ScaleTransition(
@@ -175,6 +178,8 @@ class _PokedexInlineDetailsState extends State<PokedexInlineDetails>
               cursor: SystemMouseCursors.basic,
               child: Image(
                 image: AppImages.provider(image),
+                width: double.infinity,
+                height: double.infinity,
                 fit: BoxFit.contain,
                 filterQuality: FilterQuality.none,
                 errorBuilder: (_, __, ___) => const Icon(

@@ -35,12 +35,14 @@ class PokedexCardStyle {
   static const double typeFontSize = 11;
 
   // Pokébola girando atrás do Pokémon
-  static const double pokeballSize = 118;
+  static const double pokeballSize = 130;
   static const double pokeballOpacity = 0.22;
   static const Duration pokeballTurn = Duration(seconds: 12);
 
-  // Pokémon
-  static const double spriteSize = 104;
+  // Pokémon (o sprite tem borda transparente, por isso fica maior que o card
+  // e é "puxado" para fora nas bordas; o card corta o excesso).
+  static const double spriteSize = 144;
+  static const double spriteOffset = -18;
 
   // Hover (mouse em cima)
   static const double hoverScale = 1.05;
@@ -161,10 +163,14 @@ class _PokedexWebCardState extends State<PokedexWebCard>
                 children: [
                   // Pokébola girando atrás do Pokémon.
                   Positioned(
-                    right: -18,
-                    top: (PokedexCardStyle.height -
-                            PokedexCardStyle.pokeballSize) /
-                        2,
+                    right: PokedexCardStyle.spriteOffset +
+                        (PokedexCardStyle.spriteSize -
+                                PokedexCardStyle.pokeballSize) /
+                            2,
+                    bottom: PokedexCardStyle.spriteOffset +
+                        (PokedexCardStyle.spriteSize -
+                                PokedexCardStyle.pokeballSize) /
+                            2,
                     child: RotationTransition(
                       turns: _pokeball,
                       child: Opacity(
@@ -181,8 +187,8 @@ class _PokedexWebCardState extends State<PokedexWebCard>
                   // Pokémon.
                   if (_spriteUrl != null)
                     Positioned(
-                      right: -4,
-                      bottom: 0,
+                      right: PokedexCardStyle.spriteOffset,
+                      bottom: PokedexCardStyle.spriteOffset,
                       child: AnimatedScale(
                         scale:
                             _hovering ? PokedexCardStyle.hoverSpriteScale : 1.0,
