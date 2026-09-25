@@ -5,6 +5,7 @@ import '../models/item.dart';
 import '../services/pokemon_service.dart';
 import '../utils/string_extensions.dart';
 import '../utils/responsive.dart';
+import '../utils/site_ui.dart';
 import '../utils/app_images.dart';
 
 class ItemsEncyclopediaScreen extends StatefulWidget {
@@ -63,7 +64,6 @@ class _ItemsEncyclopediaScreenState extends State<ItemsEncyclopediaScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Enciclopédia de Itens'),
@@ -72,19 +72,8 @@ class _ItemsEncyclopediaScreenState extends State<ItemsEncyclopediaScreen> {
           child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              onChanged: _filterItems,
-              style: TextStyle(color: theme.colorScheme.onSurface),
-              decoration: InputDecoration(
-                labelText: 'Procurar Item',
-                prefixIcon: const Icon(Icons.search),
-                border:
-                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                filled: true,
-                fillColor: theme.colorScheme.surface,
-              ),
-            ),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+            child: SiteSearchField(onChanged: _filterItems, hint: 'Procurar item'),
           ),
           Expanded(
             child: _isLoading

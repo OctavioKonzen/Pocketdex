@@ -2,7 +2,6 @@
 
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 
 import '../models/team.dart';
 import '../models/type_relations.dart';
@@ -15,6 +14,7 @@ import '../widgets/type_relations_section.dart';
 import '../widgets/pikachu_loading_indicator.dart';
 import 'pokedex_screen.dart';
 import '../utils/responsive.dart';
+import '../utils/site_ui.dart';
 
 class TeamBuilderScreen extends StatefulWidget {
   final Team team;
@@ -84,19 +84,18 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen>
     super.dispose();
   }
 
-  Future<void> _saveTeam() async {
-    _editableTeam.name = _nameController.text.trim();
+  /// Salva na hora (como no site): cada mudança já vai para a conta.
+  Future<void> _persist() async {
+    final name = _nameController.text.trim();
+    _editableTeam.name = name.isEmpty ? _editableTeam.name : name;
     _editableTeam.score = _teamScore;
-    _editableTeam.color = _selectedColor?.value.toRadixString(16);
-
+    _editableTeam.color = _selectedColor?.toARGB32().toRadixString(16);
     await _teamService.updateTeam(_editableTeam);
+  }
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Time salvo com sucesso!')),
-      );
-      Navigator.of(context).pop();
-    }
+  Future<void> _saveTeam() async {
+    await _persist();
+    if (mounted) Navigator.of(context).pop();
   }
 
   Future<void> _selectPokemon(int slotIndex) async {
@@ -115,7 +114,8 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen>
         }
         _editableTeam.pokemons[slotIndex] = result;
       });
-      _updateTeamAnalysis();
+      await _updateTeamAnalysis();
+      _persist();
     }
   }
 
@@ -184,7 +184,7 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen>
                               _editableTeam.pokemons[slotIndex] = {};
                             });
                             Navigator.pop(dialogContext);
-                            _updateTeamAnalysis();
+                            _updateTeamAnalysis().then((_) => _persist());
                           },
                           child: const Text('Remover',
                               style: TextStyle(
@@ -370,218 +370,150 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen>
         advantages: {});
   }
 
-  void _showColorPickerDialog() {
-    final theme = Theme.of(context);
-    Color pickerColor = _selectedColor ?? Colors.grey[850]!;
+  static const _teamColors = [
+    Color(0xFFFF5252), Color(0xFFFFA726), Color(0xFFFFCA28), Color(0xFF66BB6A), Color(0xFF26A69A), Color(0xFF42A5F5),
+    Color(0xFF5C6BC0), Color(0xFFAB47BC), Color(0xFFEC407A), Color(0xFF8D6E63), Color(0xFF78909C),
+  ];
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: theme.cardColor,
-        title: Text('Escolha uma cor', style: theme.textTheme.headlineSmall),
-        content: SingleChildScrollView(
-          child: ColorPicker(
-            pickerColor: pickerColor,
-            onColorChanged: (color) {
-              pickerColor = color;
-            },
-            colorPickerWidth: 300.0,
-            pickerAreaHeightPercent: 0.7,
-            enableAlpha: false,
-            labelTypes: const [ColorLabelType.hex],
-            displayThumbColor: true,
-            paletteType: PaletteType.hsv,
-            pickerAreaBorderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(2.0),
-              topRight: Radius.circular(2.0),
-            ),
-          ),
-        ),
-        actions: <Widget>[
-          TextButton(
-            child: Text('OK',
-                style: TextStyle(
-                    color: theme.colorScheme.onSurface.withAlpha(178))),
-            onPressed: () {
-              setState(() => _selectedColor = pickerColor);
-              Navigator.of(context).pop();
-            },
-          ),
-        ],
-      ),
-    );
-  }
+  Color get _scoreColor => _teamScore >= 7.5
+      ? const Color(0xFF43A047)
+      : _teamScore >= 4.5
+          ? const Color(0xFFFB8C00)
+          : const Color(0xFFE53935);
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Editar Time'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.save),
-            tooltip: 'Salvar Time',
-            onPressed: _saveTeam,
-          ),
-        ],
-      ),
-      body: ReadableWidth(
-          child: Stack(
-        children: [
-          Positioned(
-            top: 200,
-            left: -100,
-            child: RotationTransition(
-              turns: _animationController,
-              child: Opacity(
-                opacity: 0.05,
-                child: Image.asset(
-                  'assets/images/pokeball.png',
-                  width: 400,
-                  height: 400,
-                ),
-              ),
+    final c = SiteColors.of(context);
+    final accent = _selectedColor ?? SectionColors.teams;
+    final hasPokemon = _editableTeam.pokemons.any((p) => p.isNotEmpty);
+    return PopScope(
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) _persist();
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Editar time'),
+          actions: [
+            TextButton.icon(
+              onPressed: _saveTeam,
+              icon: const Icon(Icons.check),
+              label: const Text('Concluir'),
             ),
-          ),
-          SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Nome do Time',
-                  style: theme.textTheme.titleLarge,
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _nameController,
-                  style: TextStyle(color: theme.colorScheme.onSurface),
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: theme.colorScheme.surface,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          ],
+        ),
+        body: ReadableWidth(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+            children: [
+              SiteCard(
+                accentLeft: accent,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Cor do Time',
-                      style: theme.textTheme.titleLarge,
-                    ),
-                    GestureDetector(
-                      onTap: _showColorPickerDialog,
-                      child: CircleAvatar(
-                        radius: 18,
-                        backgroundColor:
-                            _selectedColor ?? theme.colorScheme.surface,
-                        child: Icon(Icons.edit,
-                            color: theme.colorScheme.onSurface, size: 18),
+                    Text('Nome do time', style: TextStyle(color: c.muted, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: _nameController,
+                      onChanged: (_) => _persist(),
+                      style: TextStyle(color: c.text, fontSize: 18, fontWeight: FontWeight.bold),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: c.surface,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'Pokémon',
-                  style: theme.textTheme.titleLarge,
-                ),
-                const SizedBox(height: 8),
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 1.0,
-                  ),
-                  itemCount: 6,
-                  itemBuilder: (context, index) {
-                    final pokemonData = pokemonDataForSlot(index);
-                    return TeamPokemonCard(
-                      pokemonData: pokemonData,
-                      onTap: () => _handleSlotTap(index),
-                    );
-                  },
-                ),
-                const SizedBox(height: 24),
-                const Divider(),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(
-                      'Análise do Time',
-                      style: theme.textTheme.titleLarge,
+                    const SizedBox(height: 14),
+                    Text('Cor do time', style: TextStyle(color: c.muted, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final color in _teamColors)
+                          GestureDetector(
+                            onTap: () {
+                              setState(() => _selectedColor = color);
+                              _persist();
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 150),
+                              width: 30,
+                              height: 30,
+                              decoration: BoxDecoration(
+                                color: color,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                    color: color.toARGB32() == accent.toARGB32() ? c.text : Colors.transparent, width: 3),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
-                    if (!_isAnalysisLoading &&
-                        _teamAnalysis != null &&
-                        _editableTeam.pokemons
-                            .where((p) => p.isNotEmpty)
-                            .isNotEmpty)
-                      Chip(
-                        label: Text(
-                            'Nota: ${_teamScore.toStringAsFixed(1)} / 10',
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white)),
-                        backgroundColor: _teamScore >= 7.5
-                            ? Colors.green.shade700
-                            : _teamScore >= 4.5
-                                ? Colors.orange.shade700
-                                : Colors.red.shade700,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                      )
                   ],
                 ),
-                const SizedBox(height: 16),
-                if (_isAnalysisLoading)
-                  const Center(child: PikachuLoadingIndicator())
-                else if (_teamAnalysis == null ||
-                    (_teamAnalysis!.weaknesses.isEmpty &&
-                        _teamAnalysis!.resistances.isEmpty &&
-                        _teamAnalysis!.immunities.isEmpty &&
-                        _teamAnalysis!.advantages.isEmpty))
-                  Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text('Adicione Pokémon para ver a análise.',
-                          style: TextStyle(
-                              color:
-                                  theme.colorScheme.onSurface.withAlpha(178))))
-                else
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      TypeRelationsSection(
-                          title: "Vantagens Ofensivas",
-                          relations: _teamAnalysis!.advantages),
-                      const SizedBox(height: 16),
-                      TypeRelationsSection(
-                          title: "Fraquezas Defensivas",
-                          relations: _teamAnalysis!.weaknesses),
-                      const SizedBox(height: 16),
-                      TypeRelationsSection(
-                          title: "Resistências Defensivas",
-                          relations: _teamAnalysis!.resistances),
-                      const SizedBox(height: 16),
-                      TypeRelationsSection(
-                          title: "Imunidades Defensivas",
-                          relations: _teamAnalysis!.immunities),
+              ),
+              const SizedBox(height: 18),
+              Text('Pokémon', style: TextStyle(color: c.text, fontSize: 18, fontWeight: FontWeight.bold)),
+              Text('Toque num espaço vazio para adicionar; num Pokémon para tirar.',
+                  style: TextStyle(color: c.muted, fontSize: 13)),
+              const SizedBox(height: 10),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                  childAspectRatio: 0.85,
+                ),
+                itemCount: 6,
+                itemBuilder: (context, index) =>
+                    TeamPokemonCard(pokemonData: pokemonDataForSlot(index), onTap: () => _handleSlotTap(index)),
+              ),
+              const SizedBox(height: 18),
+              SiteCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text('Análise do time',
+                              style: TextStyle(color: c.text, fontSize: 18, fontWeight: FontWeight.bold)),
+                        ),
+                        if (!_isAnalysisLoading && _teamAnalysis != null && hasPokemon)
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text('Nota (0 a 10)', style: TextStyle(color: c.muted, fontSize: 12)),
+                              Text(_teamScore.toStringAsFixed(1),
+                                  style: TextStyle(color: _scoreColor, fontSize: 28, fontWeight: FontWeight.w900)),
+                            ],
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (_isAnalysisLoading)
+                      const Center(child: PikachuLoadingIndicator())
+                    else if (_teamAnalysis == null || !hasPokemon)
+                      Text('Adicione Pokémon para ver a análise.', style: TextStyle(color: c.muted))
+                    else ...[
+                      TypeRelationsSection(title: 'Vantagens ofensivas', relations: _teamAnalysis!.advantages),
+                      const SizedBox(height: 14),
+                      TypeRelationsSection(title: 'Fraquezas', relations: _teamAnalysis!.weaknesses),
+                      const SizedBox(height: 14),
+                      TypeRelationsSection(title: 'Resistências', relations: _teamAnalysis!.resistances),
+                      const SizedBox(height: 14),
+                      TypeRelationsSection(title: 'Imunidades', relations: _teamAnalysis!.immunities),
                     ],
-                  )
-              ],
-            ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
-      )),
+        ),
+      ),
     );
   }
 }

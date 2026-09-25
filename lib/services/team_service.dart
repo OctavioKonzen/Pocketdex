@@ -15,11 +15,12 @@ class TeamService {
   Future<List<Team>> getTeams() async =>
       _data.teams.map(AccountFormat.teamFromAccount).toList();
 
-  Future<void> createTeam(String name) async {
+  Future<Team> createTeam(String name) async {
     final team = Team(id: _uuid.v4(), name: name, pokemons: []);
     _data.update({
       'teams': [..._data.teams, AccountFormat.teamToAccount(team)],
     });
+    return team;
   }
 
   Future<void> updateTeam(Team updatedTeam) async {

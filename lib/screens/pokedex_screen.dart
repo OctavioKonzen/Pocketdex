@@ -1,19 +1,26 @@
 // lib/screens/pokedex_screen.dart
+//
+// Pokédex no estilo do site: cabeçalho com a quantidade, busca, seletor de
+// geração e filtro de tipos no topo (sem menu flutuante), e os cards em grade.
+// Também usada para escolher um Pokémon (times e treino de EVs).
 
-import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+
 import '../models/generation.dart';
 import '../models/pokemon_listing.dart';
+import '../services/account_format.dart';
+import '../services/local_database.dart';
 import '../services/pokemon_service.dart';
 import '../utils/pokemon_colors.dart';
+import '../utils/responsive.dart';
+import '../utils/site_ui.dart';
+import '../utils/string_extensions.dart';
 import '../widgets/generation_picker.dart';
-import '../widgets/pokemon_card.dart';
 import '../widgets/pikachu_loading_indicator.dart';
 import '../widgets/pokedex_web/pokedex_web_grid.dart';
+import '../widgets/pokemon_card.dart';
 import 'pokemon_detail_screen.dart';
-import 'favorites_screen.dart';
-import '../utils/responsive.dart';
 
 class PokedexScreen extends StatefulWidget {
   final bool isForTeamSelection;
@@ -21,30 +28,21 @@ class PokedexScreen extends StatefulWidget {
   /// Busca vinda de fora (barra do topo do site); filtra a lista.
   final ValueListenable<String>? searchQuery;
 
-  const PokedexScreen({
-    super.key,
-    this.isForTeamSelection = false,
-    this.searchQuery,
-  });
+  const PokedexScreen({super.key, this.isForTeamSelection = false, this.searchQuery});
 
   @override
   PokedexScreenState createState() => PokedexScreenState();
 }
 
-class PokedexScreenState extends State<PokedexScreen>
-    with SingleTickerProviderStateMixin {
+class PokedexScreenState extends State<PokedexScreen> {
   final PokemonService _pokemonService = PokemonService();
   final TextEditingController _searchController = TextEditingController();
-
-  late AnimationController _animationController;
-  bool _isMenuOpen = false;
 
   List<PokemonListing> _fullPokemonList = [];
   List<PokemonListing> _displayList = [];
   Generation? _selectedGeneration;
   List<String> _selectedTypes = [];
-
-  bool _isSearchVisible = false;
+  bool _showTypes = false;
   bool _isLoading = true;
 
   @override
@@ -53,427 +51,284 @@ class PokedexScreenState extends State<PokedexScreen>
     _loadPokemon();
     _searchController.addListener(_filterPokemon);
     widget.searchQuery?.addListener(_onExternalSearch);
-
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 250),
-    );
   }
 
-  void _onExternalSearch() {
-    _searchController.text = widget.searchQuery!.value;
-  }
+  void _onExternalSearch() => _searchController.text = widget.searchQuery!.value;
 
   @override
   void dispose() {
     widget.searchQuery?.removeListener(_onExternalSearch);
     _searchController.dispose();
-    _animationController.dispose();
     super.dispose();
   }
 
   Future<void> _loadPokemon() async {
     setState(() => _isLoading = true);
     try {
-      List<PokemonListing> pokemonList;
+      List<PokemonListing> list;
       if (_selectedTypes.isNotEmpty) {
-        pokemonList = await _pokemonService.fetchPokemonByTypes(_selectedTypes);
+        // Com tipo, entram também as formas (Alola, Mega...), como no site.
+        list = await _pokemonService.fetchPokemonByTypes(_selectedTypes);
+        final gen = _selectedGeneration;
+        if (gen != null) {
+          final species = (await LocalDatabase.instance.speciesIdsOfGeneration(gen.id)).toSet();
+          list = list.where((p) => species.contains(AccountFormat.speciesOf(int.parse(p.id)))).toList();
+        }
       } else if (_selectedGeneration != null) {
-        pokemonList = await _pokemonService.fetchPokedex(_selectedGeneration!);
+        list = await _pokemonService.fetchPokedex(_selectedGeneration!);
       } else {
-        pokemonList = await _pokemonService.fetchAllPokemonList();
+        list = await _pokemonService.fetchAllPokemonList();
       }
-
-      if (mounted) {
-        setState(() {
-          _fullPokemonList = pokemonList;
-          _displayList = pokemonList;
-          _isLoading = false;
-        });
-        if (_searchController.text.isNotEmpty) _filterPokemon();
-      }
+      if (!mounted) return;
+      setState(() {
+        _fullPokemonList = list;
+        _isLoading = false;
+      });
+      _filterPokemon();
     } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Erro ao carregar Pokémon da API: $e')));
-      }
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro ao carregar os Pokémon: $e')));
     }
   }
 
   void _filterPokemon() {
-    final query = _searchController.text.toLowerCase();
+    final query = _searchController.text.trim().toLowerCase();
     setState(() {
-      _displayList = _fullPokemonList.where((pokemon) {
-        return pokemon.name.toLowerCase().contains(query) ||
-            pokemon.id.contains(query);
-      }).toList();
+      _displayList = query.isEmpty
+          ? _fullPokemonList
+          : _fullPokemonList.where((p) => p.name.toLowerCase().contains(query) || p.id == query).toList();
     });
   }
 
-  void _toggleSearch() {
+  void _toggleType(String type) {
     setState(() {
-      _isSearchVisible = !_isSearchVisible;
-      if (!_isSearchVisible) {
-        _searchController.clear();
-      }
-    });
-  }
-
-  void _toggleMenu() {
-    setState(() {
-      _isMenuOpen = !_isMenuOpen;
-      if (_isMenuOpen) {
-        _animationController.forward();
+      if (_selectedTypes.contains(type)) {
+        _selectedTypes.remove(type);
       } else {
-        _animationController.reverse();
+        // Até dois tipos: o novo substitui o mais antigo.
+        _selectedTypes = [..._selectedTypes.length == 2 ? _selectedTypes.sublist(1) : _selectedTypes, type];
       }
     });
+    _loadPokemon();
   }
 
-  void _showTypeSelector() {
-    final theme = Theme.of(context);
-    List<String> tempSelectedTypes = List.from(_selectedTypes);
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: theme.cardColor,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter modalState) {
-            return ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(context).size.height * 0.85,
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('Filtrar por Tipo',
-                        style: theme.textTheme.headlineSmall),
-                    const SizedBox(height: 8),
-                    Text('Selecione até dois tipos',
-                        style: theme.textTheme.bodyMedium),
-                    const SizedBox(height: 16),
-                    Expanded(
-                      child: GridView.builder(
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          childAspectRatio: 2.5,
-                          crossAxisSpacing: 8,
-                          mainAxisSpacing: 8,
-                        ),
-                        itemCount: pokemonTypeColors.keys.length,
-                        itemBuilder: (context, index) {
-                          final type = pokemonTypeColors.keys.elementAt(index);
-                          return FilterChip(
-                            label:
-                                Text(type[0].toUpperCase() + type.substring(1)),
-                            selected: tempSelectedTypes.contains(type),
-                            onSelected: (bool selected) {
-                              modalState(() {
-                                if (selected) {
-                                  if (tempSelectedTypes.length < 2) {
-                                    tempSelectedTypes.add(type);
-                                  }
-                                } else {
-                                  tempSelectedTypes.remove(type);
-                                }
-                              });
-                            },
-                            backgroundColor:
-                                getColorForType(type).withAlpha(50),
-                            selectedColor: getColorForType(type),
-                            labelStyle: TextStyle(
-                              color: tempSelectedTypes.contains(type)
-                                  ? Colors.white
-                                  : theme.colorScheme.onSurface,
-                            ),
-                            checkmarkColor: Colors.white,
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        ElevatedButton(
-                          onPressed: () {
-                            setState(() {
-                              _selectedTypes.clear();
-                              _selectedGeneration = null;
-                            });
-                            Navigator.pop(context);
-                            _loadPokemon();
-                          },
-                          style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.grey.shade700),
-                          child: const Text('Limpar Filtros'),
-                        ),
-                        ElevatedButton(
-                          onPressed: () {
-                            setState(() {
-                              _selectedTypes = tempSelectedTypes;
-                              _selectedGeneration = null;
-                            });
-                            Navigator.pop(context);
-                            _loadPokemon();
-                          },
-                          child: const Text('Aplicar'),
-                        ),
-                      ],
-                    )
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
+  void _clearFilters() {
+    setState(() {
+      _selectedGeneration = null;
+      _selectedTypes = [];
+    });
+    _loadPokemon();
   }
 
-  /// Seletor de geração igual ao do site: botões grandes com as cores da
-  /// geração e os 3 iniciais.
-  void _showGenerationSelector() {
-    final theme = Theme.of(context);
-    void select(Generation? generation) {
-      setState(() {
-        _selectedGeneration = generation;
-        _selectedTypes.clear();
-      });
-      Navigator.pop(context);
-      _loadPokemon();
-    }
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: theme.cardColor,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (sheet) => ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: MediaQuery.of(sheet).size.height * 0.85),
-        child: ListView(
-          shrinkWrap: true,
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 5,
-                decoration: BoxDecoration(color: Colors.grey.shade700, borderRadius: BorderRadius.circular(10)),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text('Filtrar por Geração', style: theme.textTheme.headlineSmall),
-            const SizedBox(height: 12),
-            for (final generation in <Generation?>[null, ...generations])
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: GenerationPicker.option(
-                  gen: generation,
-                  selected: generation?.id == _selectedGeneration?.id,
-                  onTap: () => select(generation),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _handlePokemonSelection(PokemonListing pokemon) async {
+  void _handlePokemonSelection(PokemonListing pokemon) {
     if (widget.isForTeamSelection) {
-      Navigator.of(context)
-          .pop({'id': pokemon.id, 'imageUrl': pokemon.imageUrl});
+      Navigator.of(context).pop({'id': pokemon.id, 'imageUrl': pokemon.imageUrl});
     } else {
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (context) => PokemonDetailScreen(
-            initialPokemonId: int.parse(pokemon.id),
-          ),
-        ),
+        MaterialPageRoute(builder: (_) => PokemonDetailScreen(initialPokemonId: int.parse(pokemon.id))),
       );
     }
   }
 
-  Widget _buildMenuItem(
-      {required String text,
-      required IconData icon,
-      required VoidCallback onTap,
-      required Animation<double> animation}) {
-    return FadeTransition(
-        opacity: animation,
-        child: SlideTransition(
-            position:
-                Tween<Offset>(begin: const Offset(0, 0.5), end: Offset.zero)
-                    .animate(animation),
-            child: InkWell(
-                onTap: onTap,
-                child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                  Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                          color: Theme.of(context).cardColor,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: const [
-                            BoxShadow(color: Colors.black26, blurRadius: 4)
-                          ]),
-                      child: Text(text,
-                          style: TextStyle(
-                              color: Theme.of(context).colorScheme.onSurface,
-                              fontWeight: FontWeight.bold))),
-                  const SizedBox(width: 12),
-                  CircleAvatar(child: Icon(icon, color: Colors.white))
-                ]))));
+  Widget _header(SiteColors c) {
+    final filters = _selectedGeneration != null || _selectedTypes.isNotEmpty;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        PageHeader(
+          title: widget.isForTeamSelection ? 'Escolha um Pokémon' : 'Pokédex',
+          subtitle: _isLoading ? null : '${_displayList.length} Pokémon',
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: SiteSearchField(controller: _searchController, hint: 'Procurar Pokémon por nome ou número'),
+        ),
+        const SizedBox(height: 10),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: Row(
+            children: [
+              GenerationPicker(
+                value: _selectedGeneration,
+                onChanged: (g) {
+                  setState(() => _selectedGeneration = g);
+                  _loadPokemon();
+                },
+              ),
+              const SizedBox(width: 8),
+              _TypesButton(
+                types: _selectedTypes,
+                open: _showTypes,
+                onTap: () => setState(() => _showTypes = !_showTypes),
+              ),
+              if (filters)
+                TextButton(
+                  onPressed: _clearFilters,
+                  child: Text('Limpar filtros', style: TextStyle(color: c.muted, decoration: TextDecoration.underline)),
+                ),
+            ],
+          ),
+        ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeInOut,
+          child: _showTypes ? _typeGrid(c) : const SizedBox(width: double.infinity),
+        ),
+        const SizedBox(height: 6),
+      ],
+    );
+  }
+
+  Widget _typeGrid(SiteColors c) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(18)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Selecione até dois tipos', style: TextStyle(color: c.muted, fontSize: 13)),
+          const SizedBox(height: 10),
+          GridView.count(
+            crossAxisCount: 3,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+            childAspectRatio: 2.6,
+            children: [
+              for (final type in pokemonTypeColors.keys)
+                _TypeOption(
+                  type: type,
+                  active: _selectedTypes.contains(type),
+                  dimmed: _selectedTypes.isNotEmpty && !_selectedTypes.contains(type),
+                  onTap: () => _toggleType(type),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    String currentTitle =
-        widget.isForTeamSelection ? 'Selecione um Pokémon' : 'Pokédex';
+    final c = SiteColors.of(context);
+    final wide = Responsive.isWide(context) && !widget.isForTeamSelection;
 
     return Scaffold(
-        appBar: AppBar(
-            title: Text(currentTitle),
-            leading: widget.isForTeamSelection
-                ? IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.of(context).pop(null))
-                : null),
-        body: Stack(children: [
-          Column(children: [
-            AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                height: _isSearchVisible ? 70.0 : 0.0,
-                child: SingleChildScrollView(
-                    child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 10),
-                        child: TextField(
-                            controller: _searchController,
-                            style:
-                                TextStyle(color: theme.colorScheme.onSurface),
-                            decoration: InputDecoration(
-                                hintText: 'Procurar Pokémon por nome ou nú...',
-                                hintStyle: TextStyle(color: theme.hintColor),
-                                prefixIcon:
-                                    Icon(Icons.search, color: theme.hintColor),
-                                filled: true,
-                                fillColor: theme.colorScheme.surface,
-                                border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                    borderSide: BorderSide.none)))))),
-            Expanded(
-                child: _isLoading
-                    ? const PikachuLoadingIndicator()
-                    : _displayList.isEmpty
-                        ? Center(
-                            child: Text(
-                                _searchController.text.isNotEmpty
-                                    ? 'Nenhum Pokémon encontrado.'
-                                    : 'Nenhum Pokémon na Pokédex.',
-                                style: TextStyle(
-                                    color: theme.colorScheme.onSurface
-                                        .withAlpha(178))))
-                        : Responsive.isWide(context) &&
-                                !widget.isForTeamSelection
-                            // No site (PC): cards horizontais e detalhes
-                            // abrindo dentro da própria página.
-                            ? PokedexWebGrid(pokemon: _displayList)
-                            : GridView.builder(
-                                key: const PageStorageKey('pokedex_grid'),
-                                padding:
-                                    const EdgeInsets.fromLTRB(20, 10, 20, 80),
-                                physics: const AlwaysScrollableScrollPhysics(),
-                                gridDelegate:
-                                    SliverGridDelegateWithFixedCrossAxisCount(
-                                        crossAxisCount:
-                                            Responsive.columns(context, min: 3),
-                                        crossAxisSpacing: 12,
-                                        mainAxisSpacing: 12,
-                                        childAspectRatio: 0.8),
-                                itemCount: _displayList.length,
-                                itemBuilder: (context, index) {
-                                  final pokemon = _displayList[index];
-                                  return PokemonCard(
-                                      key: ValueKey(pokemon.url),
-                                      pokemonListing: pokemon,
-                                      onTap: () =>
-                                          _handlePokemonSelection(pokemon));
-                                }))
-          ]),
-          if (_isMenuOpen)
-            GestureDetector(
-                onTap: _toggleMenu,
-                child: Container(color: Colors.black.withAlpha(128)))
-        ]),
-        floatingActionButton: Column(
+      appBar: AppBar(
+        title: Text(widget.isForTeamSelection ? 'Selecione um Pokémon' : 'Pokédex'),
+        leading: widget.isForTeamSelection
+            ? IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.of(context).pop(null))
+            : null,
+      ),
+      body: wide
+          // Tela grande (tablet/PC): cards horizontais e detalhes na própria página.
+          ? Column(children: [_header(c), Expanded(child: PokedexWebGrid(pokemon: _displayList))])
+          : CustomScrollView(
+              key: const PageStorageKey('pokedex_scroll'),
+              slivers: [
+                SliverToBoxAdapter(child: _header(c)),
+                if (_isLoading)
+                  const SliverFillRemaining(hasScrollBody: false, child: PikachuLoadingIndicator())
+                else if (_displayList.isEmpty)
+                  SliverToBoxAdapter(
+                    child: EmptyMessage(
+                        _searchController.text.isNotEmpty ? 'Nenhum Pokémon encontrado.' : 'Nenhum Pokémon com esses filtros.'),
+                  )
+                else
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                    sliver: SliverGrid.builder(
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: Responsive.columns(context, min: 3),
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        childAspectRatio: 0.8,
+                      ),
+                      itemCount: _displayList.length,
+                      itemBuilder: (context, index) {
+                        final pokemon = _displayList[index];
+                        return PokemonCard(
+                          key: ValueKey(pokemon.url),
+                          pokemonListing: pokemon,
+                          onTap: () => _handlePokemonSelection(pokemon),
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
+    );
+  }
+}
+
+class _TypesButton extends StatelessWidget {
+  final List<String> types;
+  final bool open;
+  final VoidCallback onTap;
+  const _TypesButton({required this.types, required this.open, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = SiteColors.of(context);
+    final active = types.isNotEmpty;
+    return Material(
+      color: active ? const Color(0xFF0284C7) : c.surface,
+      shape: StadiumBorder(side: BorderSide(color: c.line)),
+      child: InkWell(
+        customBorder: const StadiumBorder(),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          child: Row(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              _buildMenuItem(
-                  text: 'Procurar',
-                  icon: Icons.search,
-                  onTap: () {
-                    _toggleMenu();
-                    _toggleSearch();
-                  },
-                  animation: CurvedAnimation(
-                      parent: _animationController,
-                      curve: const Interval(0.2, 1.0))),
-              const SizedBox(height: 12),
-              _buildMenuItem(
-                  text: 'Filtrar por Geração',
-                  icon: Icons.public,
-                  onTap: () {
-                    _toggleMenu();
-                    _showGenerationSelector();
-                  },
-                  animation: CurvedAnimation(
-                      parent: _animationController,
-                      curve: const Interval(0.4, 1.0))),
-              const SizedBox(height: 12),
-              _buildMenuItem(
-                  text: 'Filtrar por Tipo',
-                  icon: Icons.shield_outlined,
-                  onTap: () {
-                    _toggleMenu();
-                    _showTypeSelector();
-                  },
-                  animation: CurvedAnimation(
-                      parent: _animationController,
-                      curve: const Interval(0.6, 1.0))),
-              const SizedBox(height: 12),
-              _buildMenuItem(
-                  text: 'Favoritos',
-                  icon: Icons.favorite,
-                  onTap: () {
-                    _toggleMenu();
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const FavoritesScreen()));
-                  },
-                  animation: CurvedAnimation(
-                      parent: _animationController,
-                      curve: const Interval(0.8, 1.0))),
-              const SizedBox(height: 16),
-              FloatingActionButton(
-                  onPressed: _toggleMenu,
-                  child: AnimatedIcon(
-                      icon: AnimatedIcons.menu_close,
-                      progress: _animationController))
-            ]));
+              Icon(Icons.filter_list, size: 18, color: active ? Colors.white : c.text),
+              const SizedBox(width: 6),
+              Text(
+                active ? 'Tipos: ${types.map((t) => t.capitalise()).join(' + ')}' : 'Tipos',
+                style: TextStyle(fontWeight: FontWeight.w600, color: active ? Colors.white : c.text),
+              ),
+              Icon(open ? Icons.expand_less : Icons.expand_more, size: 18, color: active ? Colors.white : c.muted),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TypeOption extends StatelessWidget {
+  final String type;
+  final bool active;
+  final bool dimmed;
+  final VoidCallback onTap;
+  const _TypeOption({required this.type, required this.active, required this.dimmed, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 200),
+      opacity: dimmed ? 0.45 : 1,
+      child: Material(
+        color: getColorForType(type),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: active ? const BorderSide(color: Colors.white, width: 3) : BorderSide.none,
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onTap,
+          child: Center(
+            child: Text(type.capitalise(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ),
+      ),
+    );
   }
 }

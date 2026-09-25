@@ -26,9 +26,14 @@
   <img src="docs/screenshots/app_detalhes.jpg" width="200" title="Detalhes" />
 </p>
 <p align="center">
+  <img src="docs/screenshots/app_times.jpg" width="200" title="Montador de Times" />
   <img src="docs/screenshots/app_jogo.jpg" width="200" title="Jogo e Ranking" />
   <img src="docs/screenshots/app_ranked.jpg" width="200" title="Ranked" />
+</p>
+<p align="center">
+  <img src="docs/screenshots/app_treino.jpg" width="200" title="Treino" />
   <img src="docs/screenshots/app_enciclopedia.jpg" width="200" title="Enciclopédia" />
+  <img src="docs/screenshots/app_config.jpg" width="200" title="Configurações" />
 </p>
 
 ### 🌐 Site
@@ -64,7 +69,7 @@
 
 ### 🔍 Exploração e Enciclopédia
 * **Pokédex Avançada:** Navegue por todas as gerações com filtros por geração (botões com as cores e os 3 iniciais de cada uma) e por tipo. Todos os dados vêm de um **banco de dados local** — funciona sem depender de API.
-* **Detalhes Profundos:** Status base, habilidades, linhas evolutivas completas e formas alternativas (Mega Evoluções, Alola, Galar, etc.), com o **Pokémon saindo da Pokébola** ao abrir.
+* **Detalhes Profundos:** Status base, habilidades, linhas evolutivas completas e formas alternativas (Mega Evoluções, Alola, Galar, etc.), com o **Pokémon saindo da Pokébola** ao abrir. No app, o Pokémon fica parado no topo, só as informações de baixo rolam, e **arrastar para o lado** passa para o próximo (ou anterior) da Pokédex.
 * **Visual Uniforme:** Todos os Pokémon aparecem com o **mesmo tamanho visual** em qualquer tela, e as cores seguem os tipos — com **gradiente** quando o Pokémon tem dois tipos.
 * **Enciclopédia de Golpes, Habilidades e Itens:** Cada item abre **logo abaixo**, empurrando a lista, com os detalhes e os Pokémon relacionados.
 
@@ -85,6 +90,7 @@
 * **Mesma Conta no App e no Site:** Favoritos, times, treinos, tema e recordes ficam na conta e são **sincronizados em tempo real** — um time criado no celular aparece no site na hora, e vice-versa.
 
 ### 📲 Experiência do Usuário
+* **Mesmo Visual no App e no Site:** Cores, cards, botões e etiquetas de tipo iguais nos dois, com a tela inicial de menu no app.
 * **Sistema de Favoritos:** Guarde seus Pokémon mais utilizados para consulta rápida (duplo toque no card).
 * **Temas Personalizados:** Suporte completo para **Modo Escuro** e **Modo Claro**, salvo na conta.
 * **Atualização pelo App:** Quando sai uma versão nova, o próprio app avisa, baixa e instala.

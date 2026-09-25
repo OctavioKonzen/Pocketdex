@@ -1,88 +1,67 @@
 // lib/screens/training_screen.dart
+//
+// Centro de Treinamento no estilo do site: um card colorido para cada
+// ferramenta (Natures, Breeding e Contador de EVs).
 
 import 'package:flutter/material.dart';
-import 'package:pocket_dex/screens/nature_guide_screen.dart';
-import 'package:pocket_dex/screens/breeding_help_screen.dart';
-import 'package:pocket_dex/screens/ev_counter_screen.dart';
-import 'package:pocket_dex/utils/responsive.dart';
+
+import '../utils/responsive.dart';
+import '../utils/site_ui.dart';
+import 'breeding_help_screen.dart';
+import 'ev_counter_screen.dart';
+import 'nature_guide_screen.dart';
 
 class TrainingScreen extends StatelessWidget {
   const TrainingScreen({super.key});
 
-  Widget _buildOptionTile(
-    BuildContext context, {
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String subtitle,
-    required Widget destination,
-  }) {
-    final theme = Theme.of(context);
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 0),
-      leading: CircleAvatar(
-        radius: 24,
-        backgroundColor: iconColor.withAlpha(38),
-        child: Icon(icon, color: iconColor, size: 28),
-      ),
-      title: Text(title, style: theme.textTheme.titleMedium),
-      subtitle: Text(subtitle, style: theme.textTheme.bodySmall),
-      trailing: Icon(Icons.chevron_right, color: theme.hintColor),
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => destination),
-        );
-      },
-    );
-  }
+  void _open(BuildContext context, Widget screen) =>
+      Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Centro de Treinamento'),
-      ),
+      appBar: AppBar(title: const Text('Treino')),
       body: ReadableWidth(
-          child: Padding(
-        padding: const EdgeInsets.all(16.0),
         child: ListView(
+          padding: const EdgeInsets.only(bottom: 24),
           children: [
-            Text(
-              'Ferramentas para treinadores dedicados que buscam o Pokémon perfeito.',
-              style:
-                  theme.textTheme.bodyLarge?.copyWith(color: theme.hintColor),
+            const PageHeader(
+              title: 'Centro de Treinamento',
+              subtitle: 'Ferramentas para treinadores que buscam o Pokémon perfeito.',
             ),
-            const SizedBox(height: 24),
-            const Divider(),
-            _buildOptionTile(
-              context,
-              icon: Icons.help_outline,
-              iconColor: Colors.lightBlue.shade300,
-              title: 'Guia de Natures',
-              subtitle: 'Veja como cada Nature afeta os status',
-              destination: const NatureGuideScreen(),
-            ),
-            _buildOptionTile(
-              context,
-              icon: Icons.egg_outlined,
-              iconColor: Colors.pink.shade300,
-              title: 'Ajuda de Criação (Breeding)',
-              subtitle: 'Encontre parceiros compatíveis',
-              destination: const BreedingHelpScreen(),
-            ),
-            _buildOptionTile(
-              context,
-              icon: Icons.calculate_outlined,
-              iconColor: Colors.green.shade400,
-              title: 'Contador de EVs',
-              subtitle: 'Acompanhe o treino dos seus Pokémon',
-              destination: const EvCounterScreen(),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                children: [
+                  ToolCard(
+                    icon: Icons.help_outline,
+                    title: 'Guia de Natures',
+                    subtitle: 'Veja como cada Nature afeta os status',
+                    color: const Color(0xFF42A5F5),
+                    onTap: () => _open(context, const NatureGuideScreen()),
+                  ),
+                  const SizedBox(height: 14),
+                  ToolCard(
+                    icon: Icons.favorite,
+                    title: 'Ajuda de Criação (Breeding)',
+                    subtitle: 'Encontre parceiros compatíveis',
+                    color: const Color(0xFFEC407A),
+                    onTap: () => _open(context, const BreedingHelpScreen()),
+                  ),
+                  const SizedBox(height: 14),
+                  ToolCard(
+                    icon: Icons.fitness_center,
+                    title: 'Contador de EVs',
+                    subtitle: 'Acompanhe o treino dos seus Pokémon',
+                    color: const Color(0xFF66BB6A),
+                    onTap: () => _open(context, const EvCounterScreen()),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
-      )),
+      ),
     );
   }
 }

@@ -1,181 +1,87 @@
 // lib/widgets/team_card.dart
+//
+// Card de time igual ao do site: borda colorida à esquerda (cor do time),
+// nome, quantidade de Pokémon e nota, e os 6 espaços com os Pokémon.
 
-import '../services/pokemon_service.dart';
 import 'package:flutter/material.dart';
 
 import '../models/team.dart';
-import '../utils/pokemon_colors.dart';
-import '../utils/app_images.dart';
+import '../services/account_format.dart';
+import '../utils/site_ui.dart';
+import 'pokemon_sprite.dart';
 
 class TeamCard extends StatelessWidget {
   final Team team;
   final VoidCallback onTap;
   final VoidCallback onDelete;
 
-  const TeamCard({
-    super.key,
-    required this.team,
-    required this.onTap,
-    required this.onDelete,
-  });
+  const TeamCard({super.key, required this.team, required this.onTap, required this.onDelete});
+
+  static Color colorOf(Team team) =>
+      team.color != null ? Color(int.parse(team.color!, radix: 16)) : SectionColors.teams;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final Color cardColor = team.color != null
-        ? Color(int.parse(team.color!, radix: 16))
-        : theme.cardColor;
-
-    return Card(
-      color: cardColor,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      elevation: 4,
-      margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    final c = SiteColors.of(context);
+    final count = team.pokemons.where((p) => p.isNotEmpty).length;
+    return SiteCard(
+      onTap: onTap,
+      accentLeft: colorOf(team),
+      padding: const EdgeInsets.fromLTRB(16, 14, 8, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: Wrap(
-                      spacing: 10.0,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Text(
-                          team.name,
-                          style: const TextStyle(
-                              color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
-                        ),
-                        if (team.score != null && team.score! > 0)
-                          Chip(
-                            label: Text('Nota: ${team.score!.toStringAsFixed(1)}',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                    fontSize: 12)),
-                            backgroundColor: Colors.black26,
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            visualDensity: VisualDensity.compact,
-                          ),
-                      ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(team.name, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: c.text)),
+                    Text(
+                      '$count/6 Pokémon${team.score != null ? ' · Nota ${team.score!.toStringAsFixed(1)}' : ''}',
+                      style: TextStyle(fontSize: 13, color: c.muted),
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.white70),
-                    tooltip: 'Deletar Time',
-                    onPressed: onDelete,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                height: 50,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: List.generate(6, (index) {
-                    final bool hasPokemon = index < team.pokemons.length && team.pokemons[index].isNotEmpty;
-
-                    if (hasPokemon) {
-                      final pokemonData = team.pokemons[index];
-                      return _PokemonIcon(
-                        pokemonId: pokemonData['id']!,
-                      );
-                    } else {
-                      return CircleAvatar(
-                        radius: 25,
-                        backgroundColor: Colors.black.withAlpha(51),
-                        child: CircleAvatar(
-                          radius: 22,
-                          backgroundColor: theme.scaffoldBackgroundColor,
-                        ),
-                      );
-                    }
-                  }),
+                  ],
                 ),
+              ),
+              IconButton(
+                icon: Icon(Icons.delete_outline, color: c.muted),
+                tooltip: 'Deletar time',
+                onPressed: onDelete,
               ),
             ],
           ),
-        ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Row(
+              children: [
+                for (var i = 0; i < 6; i++)
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      child: AspectRatio(
+                        aspectRatio: 1,
+                        child: Container(
+                          decoration: BoxDecoration(color: c.surface, shape: BoxShape.circle),
+                          child: _slot(i),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
-}
 
-class _PokemonIcon extends StatefulWidget {
-  final String pokemonId;
-
-  const _PokemonIcon({required this.pokemonId});
-
-  @override
-  State<_PokemonIcon> createState() => _PokemonIconState();
-}
-
-class _PokemonIconState extends State<_PokemonIcon> {
-  Future<Map<String, dynamic>>? _pokemonDataFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _pokemonDataFuture = _fetchPokemonData();
-  }
-
-  Future<Map<String, dynamic>> _fetchPokemonData() async {
-    try {
-      final data = await PokemonService().fetchPokemonJson(widget.pokemonId);
-      final types = (data['types'] as List)
-          .map((t) => t['type']['name'] as String)
-          .toList();
-      final imageUrl = data['sprites']['front_default'] ?? '';
-      return {'types': types, 'imageUrl': imageUrl};
-    } catch (e) {
-      return {};
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return FutureBuilder<Map<String, dynamic>>(
-      future: _pokemonDataFuture,
-      builder: (context, snapshot) {
-        Color typeColor = Colors.grey.shade700;
-        String imageUrl = '';
-
-        if (snapshot.connectionState == ConnectionState.done && snapshot.hasData && snapshot.data!.isNotEmpty) {
-          final data = snapshot.data!;
-          final types = data['types'] as List<String>;
-          if (types.isNotEmpty) {
-            typeColor = getColorForType(types.first);
-          }
-          imageUrl = data['imageUrl'] as String;
-        }
-
-        return CircleAvatar(
-          radius: 25,
-          backgroundColor: typeColor.withAlpha(204),
-          child: CircleAvatar(
-            radius: 22,
-            backgroundColor: theme.cardColor,
-            backgroundImage: imageUrl.isNotEmpty ? AppImages.provider(imageUrl) : null,
-            child: imageUrl.isNotEmpty
-              ? Ink.image(
-                  image: AppImages.provider(imageUrl),
-                  fit: BoxFit.contain,
-                  width: 44,
-                  height: 44,
-                )
-              : null,
-          ),
-        );
-      },
-    );
+  Widget? _slot(int i) {
+    if (i >= team.pokemons.length || team.pokemons[i].isEmpty) return null;
+    final p = team.pokemons[i];
+    final id = AccountFormat.pokemonIdFromImage(p['imageUrl']) ?? int.tryParse(p['id'] ?? '');
+    return id == null ? null : PokemonSprite(id, fill: 0.8);
   }
 }

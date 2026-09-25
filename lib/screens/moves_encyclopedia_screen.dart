@@ -8,6 +8,7 @@ import '../utils/pokemon_colors.dart';
 import '../utils/string_extensions.dart';
 import 'move_detail_screen.dart';
 import '../utils/responsive.dart';
+import '../utils/site_ui.dart';
 
 class MovesEncyclopediaScreen extends StatefulWidget {
   const MovesEncyclopediaScreen({super.key});
@@ -65,7 +66,6 @@ class _MovesEncyclopediaScreenState extends State<MovesEncyclopediaScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Enciclopédia de Golpes'),
@@ -74,19 +74,8 @@ class _MovesEncyclopediaScreenState extends State<MovesEncyclopediaScreen> {
           child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              onChanged: _filterMoves,
-              style: TextStyle(color: theme.colorScheme.onSurface),
-              decoration: InputDecoration(
-                labelText: 'Procurar Golpe',
-                prefixIcon: const Icon(Icons.search),
-                border:
-                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                filled: true,
-                fillColor: theme.colorScheme.surface,
-              ),
-            ),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+            child: SiteSearchField(onChanged: _filterMoves, hint: 'Procurar golpe'),
           ),
           Expanded(
             child: _isLoading

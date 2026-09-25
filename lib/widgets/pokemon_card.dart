@@ -190,8 +190,8 @@ class _PokemonCardState extends State<PokemonCard> with SingleTickerProviderStat
                 tag: '${_id!}-${widget.pokemonListing.name}',
                 // Todos os Pokémon com o mesmo tamanho visual.
                 child: Padding(
-                  padding: const EdgeInsets.only(bottom: 22),
-                  child: PokemonSprite(_id!, fill: 0.7),
+                  padding: const EdgeInsets.only(bottom: 34),
+                  child: PokemonSprite(_id!, fill: 0.8),
                 ),
               ),
               Positioned(
