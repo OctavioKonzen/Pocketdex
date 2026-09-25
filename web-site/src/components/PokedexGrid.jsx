@@ -18,7 +18,7 @@ const EASE = [0.65, 0, 0.35, 1]
 const ROWS_PER_BATCH = 12
 
 /** Uma linha de cards (+ o painel, se estiver aberto nela). Só é redesenhada quando muda. */
-const GridRow = memo(function GridRow({ items, columns, hiddenId, onCardClick, rowRef, children }) {
+const GridRow = memo(function GridRow({ items, columns, hiddenId, onCardClick, noteFor, rowRef, children }) {
   return (
     <div
       ref={rowRef}
@@ -26,7 +26,7 @@ const GridRow = memo(function GridRow({ items, columns, hiddenId, onCardClick, r
     >
       <div className="grid" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`, gap: GAP }}>
         {items.map((p) => (
-          <PokemonCard key={p.id} pokemon={p} hidden={p.id === hiddenId} onClick={onCardClick} />
+          <PokemonCard key={p.id} pokemon={p} hidden={p.id === hiddenId} onClick={onCardClick} note={noteFor?.(p)} />
         ))}
       </div>
       <AnimatePresence initial={false}>{children}</AnimatePresence>
@@ -57,7 +57,8 @@ function useViewportHeight() {
   return height
 }
 
-export default function PokedexGrid({ pokemon, emptyText = 'Nenhum Pokémon encontrado.' }) {
+/** @param noteFor  etiqueta extra por Pokémon (ex.: habilidade oculta) */
+export default function PokedexGrid({ pokemon, emptyText = 'Nenhum Pokémon encontrado.', noteFor }) {
   const containerRef = useRef(null)
   const rowRefs = useRef([])
   // Funções de referência estáveis por linha (não quebram o memo das linhas).
@@ -186,6 +187,7 @@ export default function PokedexGrid({ pokemon, emptyText = 'Nenhum Pokémon enco
               columns={columns}
               hiddenId={panelHere ? open.id : null}
               onCardClick={onCardClick}
+              noteFor={noteFor}
               rowRef={rowRef(row)}
             >
               {panelHere && (

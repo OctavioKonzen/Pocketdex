@@ -1,10 +1,9 @@
 import { AnimatePresence, m } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import DetailsPanel from '../components/DetailsPanel'
-import { PokemonMiniGrid } from '../components/EntryModals'
+import { PokemonList } from '../components/EntryModals'
 import PokemonPicker from '../components/PokemonPicker'
-import { Button, Empty, Icon, Loader, Modal, PageHeader } from '../components/ui'
+import { Button, Empty, Icon, Loader, PageHeader } from '../components/ui'
 import { getEggGroups, getSpecies } from '../lib/data'
 import { EV_STATS, MAX_STAT_EVS, MAX_TOTAL_EVS, NATURES, capitalize, prettyName } from '../lib/pokemon'
 import { useStore } from '../lib/store'
@@ -78,7 +77,6 @@ function Breeding() {
   const [chosen, setChosen] = useState(null)
   const [species, setSpecies] = useState(null)
   const [groups, setGroups] = useState(null)
-  const [openId, setOpenId] = useState(null)
 
   useEffect(() => {
     getEggGroups().then(setGroups)
@@ -118,7 +116,7 @@ function Breeding() {
             {partners.length === 0 ? (
               <Empty>Este Pokémon não pode se reproduzir.</Empty>
             ) : (
-              <PokemonMiniGrid ids={partners} onSelect={(p) => setOpenId(p.species)} />
+              <PokemonList ids={partners} inline />
             )}
           </div>
         </div>
@@ -132,9 +130,6 @@ function Breeding() {
           setPicking(false)
         }}
       />
-      <Modal open={Boolean(openId)} onClose={() => setOpenId(null)} title="Pokémon" wide>
-        {openId && <DetailsPanel speciesId={openId} compact onNavigate={setOpenId} />}
-      </Modal>
     </div>
   )
 }
