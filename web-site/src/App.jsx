@@ -7,6 +7,7 @@ import { useStore } from './lib/store'
 import { startAuth, useAuth } from './lib/auth'
 import { logout, startSync } from './lib/sync'
 import { Icon, Loader, SpinningPokeball } from './components/ui'
+import AccountAvatar from './components/AccountAvatar'
 import PokedexPage from './pages/PokedexPage'
 
 const FavoritesPage = lazy(() => import('./pages/FavoritesPage'))
@@ -17,6 +18,7 @@ const EncyclopediaPage = lazy(() => import('./pages/EncyclopediaPage'))
 const TrainingPage = lazy(() => import('./pages/TrainingPage'))
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
 const LoginPage = lazy(() => import('./pages/LoginPage'))
+const PokemonPicker = lazy(() => import('./components/PokemonPicker'))
 
 // Mesmas cores dos cards do menu do app.
 export const SECTIONS = [
@@ -159,7 +161,10 @@ function ThemeToggle() {
 /** Pessoa logada: inicial do nome e menu com "Sair". */
 function UserMenu() {
   const user = useAuth((s) => (s.status === 'signedIn' ? s.user : null))
+  const avatar = useStore((s) => s.avatar)
+  const setAvatar = useStore((s) => s.setAvatar)
   const [open, setOpen] = useState(false)
+  const [picking, setPicking] = useState(false)
   useEffect(() => {
     if (!open) return
     const close = () => setOpen(false)
@@ -181,9 +186,7 @@ function UserMenu() {
         aria-label={`Conta de ${user.name}`}
         className="flex cursor-pointer items-center gap-2 rounded-full bg-bg py-1 pr-1 pl-1 xl:pr-4"
       >
-        <span className="grid h-9 w-9 place-items-center overflow-hidden rounded-full bg-red-600 text-lg font-black text-white">
-          {user.photo ? <img src={user.photo} alt="" referrerPolicy="no-referrer" className="h-full w-full object-cover" /> : user.name?.[0]?.toUpperCase()}
-        </span>
+        <AccountAvatar size={36} />
         <span className="hidden max-w-[140px] truncate font-semibold xl:inline">{user.name}</span>
       </m.button>
       <AnimatePresence>
@@ -196,8 +199,29 @@ function UserMenu() {
             onClick={(e) => e.stopPropagation()}
             className="absolute right-0 mt-2 w-64 rounded-2xl bg-card p-4 shadow-2xl ring-1 ring-line"
           >
-            <div className="truncate text-lg font-bold">{user.name}</div>
-            <div className="mb-4 truncate text-sm text-muted">{user.email}</div>
+            <div className="mb-4 flex items-center gap-3">
+              <AccountAvatar size={56} />
+              <div className="min-w-0">
+                <div className="truncate text-lg font-bold">{user.name}</div>
+                <div className="truncate text-sm text-muted">{user.email}</div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false)
+                setPicking(true)
+              }}
+              className="mb-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-sky-600 py-2.5 font-bold text-white transition hover:scale-[1.03]"
+            >
+              <Icon name="pokeball" size={20} />
+              Trocar foto de perfil
+            </button>
+            {avatar != null && (
+              <button type="button" onClick={() => setAvatar(null)} className="mb-2 w-full cursor-pointer text-sm text-muted hover:text-text">
+                Tirar a foto
+              </button>
+            )}
             <button type="button" onClick={logout} className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-red-600 py-2.5 font-bold text-white transition hover:scale-[1.03]">
               <Icon name="logout" size={20} />
               Sair da conta
@@ -205,6 +229,17 @@ function UserMenu() {
           </m.div>
         )}
       </AnimatePresence>
+      <Suspense fallback={null}>
+        <PokemonPicker
+          open={picking}
+          title="Escolha sua foto de perfil"
+          onClose={() => setPicking(false)}
+          onPick={(p) => {
+            setAvatar(p.id)
+            setPicking(false)
+          }}
+        />
+      </Suspense>
     </div>
   )
 }

@@ -21,6 +21,8 @@ import 'package:pocket_dex/screens/settings_screen.dart';
 import 'package:pocket_dex/utils/responsive.dart';
 import 'package:pocket_dex/utils/app_images.dart';
 import 'package:pocket_dex/widgets/pokemon_sprite.dart';
+import 'package:pocket_dex/widgets/account_avatar.dart';
+import 'package:pocket_dex/services/auth_service.dart';
 import 'package:pocket_dex/services/update_service.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -180,14 +182,25 @@ class _HomeScreenState extends State<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(top: 24.0, bottom: 20.0),
-          child: Center(
-            child: Image.asset(
-              'assets/images/poke_logo.png',
-              height: 150,
+        Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 24.0, bottom: 20.0),
+              child: Center(
+                child: Image.asset(
+                  'assets/images/poke_logo.png',
+                  height: 150,
+                ),
+              ),
             ),
-          ),
+            // Conta logada: foto de perfil (toque para abrir o perfil).
+            if (AuthService.instance.status == AuthStatus.signedIn)
+              Positioned(
+                top: 12,
+                right: 0,
+                child: AccountAvatar(size: 48, onTap: () => ProfileSheet.show(context)),
+              ),
+          ],
         ),
         CompositedTransformTarget(
           link: _layerLink,
