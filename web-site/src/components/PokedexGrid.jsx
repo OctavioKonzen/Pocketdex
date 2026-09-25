@@ -160,7 +160,9 @@ export default function PokedexGrid({ pokemon, emptyText = 'Nenhum Pokémon enco
   // Criação progressiva das linhas conforme a rolagem.
   const [rendered, setRendered] = useState(ROWS_PER_BATCH)
   const sentinelRef = useRef(null)
-  useEffect(() => setRendered(ROWS_PER_BATCH), [pokemon])
+  useEffect(() => {
+    setRendered(ROWS_PER_BATCH)
+  }, [pokemon])
   useEffect(() => {
     const el = sentinelRef.current
     if (!el) return

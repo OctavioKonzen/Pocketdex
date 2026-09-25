@@ -20,7 +20,9 @@ export default function EncyclopediaPage() {
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
 
-  useEffect(() => setQuery(''), [tab])
+  useEffect(() => {
+    setQuery('')
+  }, [tab])
 
   return (
     <div>
@@ -53,7 +55,9 @@ const matches = (name, query) => name.replace(/-/g, ' ').includes(query.trim().t
 
 function useLimited(list) {
   const [limit, setLimit] = useState(PAGE)
-  useEffect(() => setLimit(PAGE), [list])
+  useEffect(() => {
+    setLimit(PAGE)
+  }, [list])
   const more =
     list.length > limit ? (
       <button type="button" onClick={() => setLimit(limit + PAGE)} className="mt-4 w-full cursor-pointer rounded-xl bg-surface py-3 font-semibold hover:bg-white/10">

@@ -282,7 +282,11 @@ function PageBoundary({ children }) {
 
 function ScrollToTop() {
   const { pathname } = useLocation()
-  useEffect(() => window.scrollTo(0, 0), [pathname])
+  // Chaves: o efeito não pode devolver o resultado do scrollTo (no Opera GX ele
+  // não é undefined e o React tentava chamá-lo ao trocar de página → tela vazia).
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [pathname])
   return null
 }
 
