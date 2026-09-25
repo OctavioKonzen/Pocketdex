@@ -9,6 +9,7 @@ import '../utils/pokemon_colors.dart';
 import '../widgets/generation_card.dart';
 import '../widgets/pokemon_card.dart';
 import '../widgets/pikachu_loading_indicator.dart';
+import '../widgets/pokedex_web/pokedex_web_grid.dart';
 import 'pokemon_detail_screen.dart';
 import 'favorites_screen.dart';
 import '../utils/responsive.dart';
@@ -405,26 +406,32 @@ class PokedexScreenState extends State<PokedexScreen>
                                 style: TextStyle(
                                     color: theme.colorScheme.onSurface
                                         .withAlpha(178))))
-                        : GridView.builder(
-                            key: const PageStorageKey('pokedex_grid'),
-                            padding: const EdgeInsets.fromLTRB(20, 10, 20, 80),
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            gridDelegate:
-                                SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount:
-                                        Responsive.columns(context, min: 3),
-                                    crossAxisSpacing: 12,
-                                    mainAxisSpacing: 12,
-                                    childAspectRatio: 0.8),
-                            itemCount: _displayList.length,
-                            itemBuilder: (context, index) {
-                              final pokemon = _displayList[index];
-                              return PokemonCard(
-                                  key: ValueKey(pokemon.url),
-                                  pokemonListing: pokemon,
-                                  onTap: () =>
-                                      _handlePokemonSelection(pokemon));
-                            }))
+                        : Responsive.isWide(context) &&
+                                !widget.isForTeamSelection
+                            // No site (PC): cards horizontais e detalhes
+                            // abrindo dentro da própria página.
+                            ? PokedexWebGrid(pokemon: _displayList)
+                            : GridView.builder(
+                                key: const PageStorageKey('pokedex_grid'),
+                                padding:
+                                    const EdgeInsets.fromLTRB(20, 10, 20, 80),
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                gridDelegate:
+                                    SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount:
+                                            Responsive.columns(context, min: 3),
+                                        crossAxisSpacing: 12,
+                                        mainAxisSpacing: 12,
+                                        childAspectRatio: 0.8),
+                                itemCount: _displayList.length,
+                                itemBuilder: (context, index) {
+                                  final pokemon = _displayList[index];
+                                  return PokemonCard(
+                                      key: ValueKey(pokemon.url),
+                                      pokemonListing: pokemon,
+                                      onTap: () =>
+                                          _handlePokemonSelection(pokemon));
+                                }))
           ]),
           if (_isMenuOpen)
             GestureDetector(
