@@ -1,6 +1,7 @@
 import { m } from 'framer-motion'
-import { useState } from 'react'
-import { Button, Modal, PageHeader } from '../components/ui'
+import { useEffect, useState } from 'react'
+import { Button, Icon, Modal, PageHeader } from '../components/ui'
+import { getLatestRelease, RELEASES_URL } from '../lib/appRelease'
 import { useAuth } from '../lib/auth'
 import { useStore } from '../lib/store'
 import { logout } from '../lib/sync'
@@ -59,6 +60,7 @@ export default function SettingsPage() {
           </Button>
         </div>
         {message && <p className="text-center text-green-400">{message}</p>}
+        <AndroidAppCard />
         <p className="pt-6 text-center text-sm text-muted">PocketDex · Site feito em JavaScript (React) com dados gerados em Python.</p>
       </div>
 
@@ -80,6 +82,47 @@ export default function SettingsPage() {
           </Button>
         </div>
       </Modal>
+    </div>
+  )
+}
+
+/** Download do app Android (APK), com a versão mais recente. */
+function AndroidAppCard() {
+  const [release, setRelease] = useState(undefined)
+  useEffect(() => {
+    getLatestRelease().then(setRelease)
+  }, [])
+  return (
+    <div className="rounded-2xl bg-card p-5 shadow">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#3DDC84] text-[#073042]">
+            <Icon name="android" size={28} />
+          </span>
+          <div>
+            <div className="font-bold">App para Android</div>
+            <div className="text-sm text-muted">
+              {release === undefined
+                ? 'Procurando a última versão...'
+                : release
+                  ? `Versão ${release.version} · ${release.sizeMb} MB · ${release.date}`
+                  : 'A primeira versão ainda vai ser publicada.'}
+            </div>
+          </div>
+        </div>
+        {release ? (
+          <a href={release.url} className="flex items-center gap-2 rounded-xl bg-[#3DDC84] px-5 py-2.5 font-bold text-[#073042] shadow-md transition hover:scale-105">
+            <Icon name="download" size={20} /> Baixar APK
+          </a>
+        ) : null}
+      </div>
+      <p className="mt-3 text-sm text-muted">
+        Entre com a mesma conta do site: favoritos, times, treinos e recordes aparecem nos dois. No celular, abra o arquivo baixado e
+        permita instalar apps desta fonte. As próximas versões são avisadas e instaladas pelo próprio app.{' '}
+        <a href={RELEASES_URL} className="underline hover:text-text" target="_blank" rel="noreferrer">
+          Todas as versões
+        </a>
+      </p>
     </div>
   )
 }

@@ -1,7 +1,7 @@
 name: pocket_dex
 description: "A new Flutter project."
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.1.0+2
 
 environment:
   sdk: '>=3.2.3 <4.0.0'
@@ -20,6 +20,9 @@ dependencies:
   firebase_core: ^4.15.0
   firebase_auth: ^6.7.0
   cloud_firestore: ^6.10.0
+  package_info_plus: ^10.2.1
+  ota_update: ^7.1.0
+  http: ^1.6.0
   
   # Adicione suas outras dependências aqui...
 

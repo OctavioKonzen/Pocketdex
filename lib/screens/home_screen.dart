@@ -20,6 +20,7 @@ import 'package:pocket_dex/widgets/pikachu_loading_indicator.dart';
 import 'package:pocket_dex/screens/settings_screen.dart';
 import 'package:pocket_dex/utils/responsive.dart';
 import 'package:pocket_dex/utils/app_images.dart';
+import 'package:pocket_dex/services/update_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -46,6 +47,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    // Versão nova do app publicada? Oferece atualizar direto por aqui.
+    WidgetsBinding.instance.addPostFrameCallback((_) => UpdateService.checkOnStart(context));
     _loadAllPokemon();
     _searchController.addListener(() {
       _debouncer.value = _searchController.text;

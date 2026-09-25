@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -29,9 +31,31 @@ android {
         versionName = flutter.versionName
     }
 
+    // Assinatura fixa das versões publicadas: o Android só instala uma
+    // atualização por cima se ela vier assinada com a MESMA chave. A chave
+    // vem de android/key.properties (no PC) ou das variáveis ANDROID_* (no
+    // GitHub Actions). Sem ela, usa a chave de debug.
+    val keyProps = Properties().apply {
+        val file = rootProject.file("key.properties")
+        if (file.exists()) file.inputStream().use { load(it) }
+    }
+    fun key(name: String, env: String): String? = keyProps.getProperty(name) ?: System.getenv(env)
+    val storeFilePath = key("storeFile", "ANDROID_KEYSTORE_PATH")
+
+    signingConfigs {
+        if (storeFilePath != null) {
+            create("release") {
+                storeFile = file(storeFilePath)
+                storePassword = key("storePassword", "ANDROID_KEYSTORE_PASSWORD")
+                keyAlias = key("keyAlias", "ANDROID_KEY_ALIAS")
+                keyPassword = key("keyPassword", "ANDROID_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
     }
 }

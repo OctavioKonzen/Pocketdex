@@ -3,9 +3,10 @@
 // escolhe um nome, que não pode ser igual ao de outra pessoa.
 
 import { AnimatePresence, m } from 'framer-motion'
-import { useState } from 'react'
-import { SpinningPokeball } from '../components/ui'
+import { useEffect, useState } from 'react'
+import { Icon, SpinningPokeball } from '../components/ui'
 import { imageUrl, spriteUrl } from '../lib/data'
+import { getDownloadUrl, RELEASES_URL } from '../lib/appRelease'
 import {
   chooseName,
   errorMessage,
@@ -149,6 +150,10 @@ const TABS = [
 ]
 
 function AuthForm() {
+  const [apkUrl, setApkUrl] = useState(RELEASES_URL)
+  useEffect(() => {
+    getDownloadUrl().then(setApkUrl)
+  }, [])
   const [mode, setMode] = useState('login') // login | signup | forgot
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -266,6 +271,12 @@ function AuthForm() {
             <span className="h-px flex-1 bg-line" />
           </div>
           <GoogleButton busy={busy} onClick={() => run(() => signInWithGoogle({ keep }))} />
+          <a href={apkUrl} className="mt-6 flex items-center justify-center gap-2 text-sm font-semibold text-muted hover:text-text">
+            <span className="grid h-7 w-7 place-items-center rounded-full bg-[#3DDC84] text-[#073042]">
+              <Icon name="android" size={16} />
+            </span>
+            Baixar o app para Android
+          </a>
         </>
       )}
     </div>
