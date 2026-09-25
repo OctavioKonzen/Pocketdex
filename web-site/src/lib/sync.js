@@ -18,31 +18,44 @@ function stop() {
   clearTimeout(timer)
 }
 
+function scheduleSave(uid) {
+  clearTimeout(timer)
+  timer = setTimeout(() => {
+    timer = null
+    saveUserData(uid, pick(useStore.getState())).catch(() => {})
+  }, 800)
+}
+
 async function start(uid) {
   stop()
   currentUid = uid
+  // Já ouve as mudanças desde o começo; as feitas enquanto a conta carrega
+  // são salvas logo depois (senão se perderiam).
+  let ready = false
+  let changedWhileLoading = false
+  stopStore = useStore.subscribe((state, previous) => {
+    if (KEYS.every((k) => state[k] === previous[k])) return
+    if (ready) scheduleSave(uid)
+    else changedWhileLoading = true
+  })
   try {
     const remote = await loadUserData(uid)
     if (currentUid !== uid) return
     if (remote) {
       // A conta já tem dados: eles valem neste computador também.
       useStore.setState({ ...pick({ ...useStore.getState(), ...remote }), quizGame: null })
+      changedWhileLoading = false
     } else {
       // Primeira vez: o que já estava salvo neste navegador vai para a conta.
       await saveUserData(uid, pick(useStore.getState()))
     }
   } catch {
     // Sem conexão: continua com os dados locais e tenta salvar depois.
+    changedWhileLoading = true
   }
   if (currentUid !== uid) return
-  stopStore = useStore.subscribe((state, previous) => {
-    if (KEYS.every((k) => state[k] === previous[k])) return
-    clearTimeout(timer)
-    timer = setTimeout(() => {
-      timer = null
-      saveUserData(uid, pick(useStore.getState())).catch(() => {})
-    }, 800)
-  })
+  ready = true
+  if (changedWhileLoading) scheduleSave(uid)
 }
 
 /** Salva na hora o que ainda estiver esperando (antes de sair da conta). */
