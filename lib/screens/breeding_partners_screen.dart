@@ -11,7 +11,6 @@ import '../utils/string_extensions.dart';
 import '../widgets/pikachu_loading_indicator.dart';
 import '../widgets/pokemon_card.dart';
 import '../utils/responsive.dart';
-import '../utils/app_images.dart';
 
 class BreedingPartnersScreen extends StatefulWidget {
   final PokemonListing initialPokemon;

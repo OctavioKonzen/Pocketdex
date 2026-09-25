@@ -19,7 +19,6 @@ import 'package:pocket_dex/widgets/category_card.dart';
 import 'package:pocket_dex/widgets/pikachu_loading_indicator.dart';
 import 'package:pocket_dex/screens/settings_screen.dart';
 import 'package:pocket_dex/utils/responsive.dart';
-import 'package:pocket_dex/utils/app_images.dart';
 import 'package:pocket_dex/widgets/pokemon_sprite.dart';
 import 'package:pocket_dex/widgets/account_avatar.dart';
 import 'package:pocket_dex/services/auth_service.dart';

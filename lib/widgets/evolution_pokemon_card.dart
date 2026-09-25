@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import '../services/account_format.dart';
 import 'pokemon_sprite.dart';
 import '../utils/string_extensions.dart';
-import '../utils/app_images.dart';
 
 class EvolutionPokemonCard extends StatefulWidget {
   final String pokemonName;

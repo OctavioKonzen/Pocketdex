@@ -5,7 +5,6 @@ import '../services/account_format.dart';
 import 'pokemon_sprite.dart';
 
 import 'package:pocket_dex/models/pokemon_details.dart';
-import 'package:pocket_dex/utils/app_images.dart';
 
 class PokemonPageItem extends StatelessWidget {
   final PokemonDetails? details;

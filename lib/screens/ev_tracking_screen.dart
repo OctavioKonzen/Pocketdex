@@ -8,11 +8,9 @@ import '../widgets/pokemon_sprite.dart';
 import 'package:pocket_dex/models/pokemon_listing.dart';
 import 'package:pocket_dex/screens/ev_yield_pokemon_selection_screen.dart';
 import 'package:pocket_dex/utils/string_extensions.dart';
-import 'package:pocket_dex/widgets/pikachu_loading_indicator.dart';
 
 import '../models/training_pokemon.dart';
 import 'package:pocket_dex/utils/responsive.dart';
-import 'package:pocket_dex/utils/app_images.dart';
 
 class EvTrackingScreen extends StatefulWidget {
   final TrainingPokemon pokemon;

@@ -17,7 +17,7 @@ import 'package:pocket_dex/widgets/pokemon_detail_panel.dart';
 import 'package:pocket_dex/widgets/pokemon_display.dart';
 import 'package:pocket_dex/utils/app_images.dart';
 
-enum _AnimationDirection { none, next, previous }
+enum _AnimationDirection { next, previous }
 
 class PokemonDetailScreen extends StatefulWidget {
   final int initialPokemonId;
@@ -40,7 +40,6 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen>
   late AnimationController _pokeballAnimationController;
   final PageController _pageController = PageController();
 
-  _AnimationDirection _animationDirection = _AnimationDirection.none;
   int _currentPokemonId = 0;
   List<int> _allPokemonIds = [];
   bool _isLoading = true;
