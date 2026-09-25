@@ -25,11 +25,11 @@ service cloud.firestore {
       allow delete: if request.auth != null && request.auth.uid == uid;
     }
 
-    // Nomes já usados. Qualquer um pode consultar (para avisar que o nome
-    // já existe), mas só dá para reservar um nome livre, para si mesmo.
-    // Assim não existem 2 pessoas com o mesmo nome.
+    // Nomes já usados. Qualquer um pode conferir UM nome (para avisar que já
+    // existe), mas não dá para listar todos. Só dá para reservar um nome
+    // livre, para si mesmo. Assim não existem 2 pessoas com o mesmo nome.
     match /usernames/{name} {
-      allow read: if true;
+      allow get: if true;
       allow create: if request.auth != null
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.keys().hasOnly(['uid', 'name'])
