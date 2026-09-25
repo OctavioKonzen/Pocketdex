@@ -4,7 +4,8 @@ import { useSearch } from '../App'
 import PokedexGrid from '../components/PokedexGrid'
 import { Icon, Loader, PageHeader } from '../components/ui'
 import { getPokedex, getPokemonIndex } from '../lib/data'
-import { ALL_TYPES, GENERATIONS, capitalize, typeColor } from '../lib/pokemon'
+import { ALL_TYPES, capitalize, typeColor } from '../lib/pokemon'
+import GenerationPicker from '../components/GenerationPicker'
 
 /** Filtra por nome ou número (igual à busca do app). */
 export function matchesSearch(p, query) {
@@ -46,19 +47,7 @@ export default function PokedexPage() {
     <div>
       <PageHeader title="Pokédex" subtitle={pokedex ? `${list.length} Pokémon` : null}>
         <div className="flex flex-wrap items-center gap-2">
-          <select
-            value={generation ?? ''}
-            onChange={(e) => setGeneration(e.target.value ? Number(e.target.value) : null)}
-            className="cursor-pointer rounded-full bg-surface px-4 py-2 text-sm font-semibold ring-1 ring-line outline-none"
-            aria-label="Filtrar por geração"
-          >
-            <option value="">Todas as gerações</option>
-            {GENERATIONS.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.name}
-              </option>
-            ))}
-          </select>
+          <GenerationPicker value={generation} onChange={setGeneration} />
           <m.button
             type="button"
             whileHover={{ scale: 1.05 }}
