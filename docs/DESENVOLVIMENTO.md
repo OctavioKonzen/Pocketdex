@@ -60,11 +60,23 @@ O app e o site usam o **mesmo projeto do Firebase** (`pocketdex-ffb4d`):
 * **Authentication:** e-mail e senha ou Google. O "Manter conectado" guarda a sessão; desmarcado, ela termina ao
   fechar o app ou a aba.
 * **Firestore:**
-  * `users/{uid}` — nome, e-mail e os dados da conta (`data`: favoritos, times, treinos, tema, recordes e jogo salvo).
+  * `users/{uid}` — nome, chave do nome, e-mail e os dados da conta (`data`: favoritos, times, treinos, tema,
+    recordes, jogo salvo, foto de perfil e contadores das conquistas).
   * `usernames/{nome}` — reserva de nomes; o nome é comparado sem maiúsculas, acentos e espaços extras.
-  * `ranking/{uid}` — recorde do Ranked de cada jogador.
-* **Regras:** em `firestore.rules` — cada pessoa só lê e escreve os próprios dados; o ranking é visível para quem
-  está logado.
+  * `ranking/{uid}` — recorde do Ranked de cada jogador (com a foto de perfil).
+  * `weekly/{segunda}/scores/{uid}` — melhor Ranked da semana.
+  * `daily/{dia}/scores/{uid}` — resultado do desafio do dia (uma tentativa por dia).
+  * `publicTeams/{teamId}` — cópia pública de cada time (dono, nome, cor, Pokémon e a nota da comunidade:
+    `ratingSum` / `ratingCount`); some quando o dono exclui o time. Os votos ficam em
+    `publicTeams/{teamId}/ratings/{uid}` (1 a 5 estrelas) e só mudam junto com a nota do time.
+* **Regras:** em `firestore.rules` — cada pessoa só lê e escreve os próprios dados; os rankings são visíveis para
+  quem está logado; o nome usado nos rankings precisa ser um nome reservado para a própria pessoa; a lista de nomes
+  não pode ser baixada inteira. Os testes das regras ficam em `firestore-tests/` (`npm ci && npm test`, usa o
+  emulador do Firebase e precisa de Java).
+* **Pix:** a chave, o nome e a cidade ficam em `lib/services/pix.dart` (app) e `web-site/src/lib/pix.js` (site);
+  vazio, o cartão "Apoie o PocketDex" não aparece.
+* **Desafio do dia:** os 10 Pokémon saem de um sorteio com semente = data (horário de Brasília), igual no app
+  (`lib/services/league.dart`) e no site (`web-site/src/lib/league.js`).
 * **Sincronização:** app (`lib/services/account_sync.dart`) e site (`web-site/src/lib/sync.js`) ouvem a conta em
   tempo real e gravam só os campos que mudaram, no mesmo formato, para um não sobrescrever o outro.
 

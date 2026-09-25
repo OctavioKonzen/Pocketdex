@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { analyzeTeam, levelUpMoves, teamScore, typeRelations, heightToFeet, weightToLbs } from './pokemon'
+import { analyzeTeam, levelUpMoves, rowSummary, typeRelations, heightToFeet, weightToLbs } from './pokemon'
 
 const typeData = JSON.parse(readFileSync(new URL('../../public/data/types.json', import.meta.url)))
 const species = (id) => JSON.parse(readFileSync(new URL(`../../public/data/pokemon/${id}.json`, import.meta.url)))
@@ -14,13 +14,20 @@ describe('tipos', () => {
     expect(rel.resistances.grass).toBe(0.25)
   })
 
-  it('analisa um time e dá nota entre 0 e 10', () => {
+  it('analisa o time contando quem é fraco, resiste e é imune a cada tipo', () => {
+    // Charizard, Blastoise e Venusaur
     const analysis = analyzeTeam([['fire', 'flying'], ['water'], ['grass', 'poison']], typeData)
-    expect(analysis.immunities).toContain('ground')
-    const score = teamScore(analysis)
-    expect(score).toBeGreaterThan(0)
-    expect(score).toBeLessThanOrEqual(10)
-    expect(teamScore(null)).toBe(0)
+    expect(analysis.immunities).toEqual(['ground'])
+    expect(analysis.rows.electric).toEqual({ weak: 2, x4: 0, resist: 1, immune: 0 })
+    expect(rowSummary(analysis.rows.electric)).toBe('2 fracos · 1 resiste')
+    expect(rowSummary(analysis.rows.rock)).toBe('1 fraco (1 ×4)')
+    const weak = analysis.weaknesses.map(([t]) => t)
+    expect(weak).toContain('electric')
+    expect(weak).toContain('rock')
+    expect(weak).not.toContain('ice') // 1 fraco e 1 resiste: empate não é fraqueza
+    expect(weak).not.toContain('ground') // Charizard é imune
+    expect(analysis.strengths.map(([t]) => t)).toContain('grass')
+    expect(analyzeTeam([], typeData)).toBeNull()
   })
 })
 

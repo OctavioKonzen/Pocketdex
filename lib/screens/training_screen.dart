@@ -4,6 +4,7 @@
 // ferramenta (Natures, Breeding e Contador de EVs).
 
 import 'package:flutter/material.dart';
+import 'battle_tools_screen.dart';
 
 import '../utils/responsive.dart';
 import '../utils/site_ui.dart';
@@ -55,6 +56,22 @@ class TrainingScreen extends StatelessWidget {
                     subtitle: 'Acompanhe o treino dos seus Pokémon',
                     color: const Color(0xFF66BB6A),
                     onTap: () => _open(context, const EvCounterScreen()),
+                  ),
+                  const SizedBox(height: 14),
+                  ToolCard(
+                    icon: Icons.compare_arrows,
+                    title: 'Comparar Pokémon',
+                    subtitle: 'Status e fraquezas lado a lado',
+                    color: const Color(0xFF7E57C2),
+                    onTap: () => _open(context, const CompareScreen()),
+                  ),
+                  const SizedBox(height: 14),
+                  ToolCard(
+                    icon: Icons.flash_on,
+                    title: 'Calculadora de dano',
+                    subtitle: 'Quanto um golpe tira do outro',
+                    color: const Color(0xFFEF5350),
+                    onTap: () => _open(context, const DamageCalcScreen()),
                   ),
                 ],
               ),

@@ -1,17 +1,18 @@
 // lib/screens/team_builder_screen.dart
 
-import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '../models/team.dart';
-import '../models/type_relations.dart';
-import '../models/pokemon_details.dart';
-import '../models/alternate_form.dart';
-import '../services/pokemon_service.dart';
+import '../services/account_format.dart';
+import '../services/account_sync.dart';
+import '../services/auth_service.dart';
+import '../services/local_database.dart';
 import '../services/team_service.dart';
-import '../widgets/team_pokemon_card.dart';
-import '../widgets/type_relations_section.dart';
+import '../utils/team_analysis.dart';
 import '../widgets/pikachu_loading_indicator.dart';
+import '../widgets/team_analysis_view.dart';
+import '../widgets/team_pokemon_card.dart';
+import '../widgets/team_share_dialogs.dart';
 import 'pokedex_screen.dart';
 import '../utils/responsive.dart';
 import '../utils/site_ui.dart';
@@ -28,7 +29,6 @@ class TeamBuilderScreen extends StatefulWidget {
 class _TeamBuilderScreenState extends State<TeamBuilderScreen>
     with SingleTickerProviderStateMixin {
   final TeamService _teamService = TeamService();
-  final PokemonService _pokemonService = PokemonService();
   late TextEditingController _nameController;
   late Team _editableTeam;
 
@@ -37,32 +37,11 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen>
     duration: const Duration(seconds: 25),
   )..repeat();
 
-  final Map<String, PokemonDetails> _teamDetailsCache = {};
-  TypeRelations? _teamAnalysis;
+  TeamAnalysis? _teamAnalysis;
   bool _isAnalysisLoading = false;
-  double _teamScore = 0.0;
   Color? _selectedColor;
+  (double?, int)? _communityRating; // nota da comunidade (se o time é público)
 
-  final List<String> allTypes = [
-    'normal',
-    'fire',
-    'water',
-    'electric',
-    'grass',
-    'ice',
-    'fighting',
-    'poison',
-    'ground',
-    'flying',
-    'psychic',
-    'bug',
-    'rock',
-    'ghost',
-    'dragon',
-    'dark',
-    'steel',
-    'fairy'
-  ];
 
   @override
   void initState() {
@@ -75,6 +54,15 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen>
     }
 
     _updateTeamAnalysis();
+    _loadRating();
+  }
+
+  Future<void> _loadRating() async {
+    if (AuthService.instance.status != AuthStatus.signedIn) return;
+    try {
+      final ratings = await AccountSync.instance.myTeamRatings();
+      if (mounted) setState(() => _communityRating = ratings[_editableTeam.id]);
+    } catch (_) {}
   }
 
   @override
@@ -88,7 +76,6 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen>
   Future<void> _persist() async {
     final name = _nameController.text.trim();
     _editableTeam.name = name.isEmpty ? _editableTeam.name : name;
-    _editableTeam.score = _teamScore;
     _editableTeam.color = _selectedColor?.toARGB32().toRadixString(16);
     await _teamService.updateTeam(_editableTeam);
   }
@@ -196,190 +183,30 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen>
             ));
   }
 
-  double _calculateTeamScore(TypeRelations analysis) {
-    double score = 5.0;
-
-    analysis.weaknesses.forEach((type, multiplier) {
-      score -= (multiplier - 1) * 0.4;
-    });
-    analysis.resistances.forEach((type, multiplier) {
-      score += (1 - multiplier) * 0.2;
-    });
-    score += analysis.immunities.length * 0.5;
-
-    final uniqueAdvantages = analysis.advantages.keys.toSet();
-    score += (uniqueAdvantages.length / allTypes.length) * 2.5;
-
-    return max(0.0, min(10.0, score));
-  }
-
+  /// Análise igual à do site: conta, para cada tipo, quem é fraco, resiste ou é imune.
   Future<void> _updateTeamAnalysis() async {
-    if (!mounted) {
-      return;
+    if (!mounted) return;
+    setState(() => _isAnalysisLoading = true);
+    final db = LocalDatabase.instance;
+    final membersTypes = <List<String>>[];
+    for (final p in _editableTeam.pokemons.where((p) => p.isNotEmpty)) {
+      final id = AccountFormat.pokemonIdFromImage(p['imageUrl']) ?? int.tryParse(p['id'] ?? '');
+      if (id == null) continue;
+      final row = await db.pokemonRow(id);
+      if (row != null) membersTypes.add((row['types'] as List).cast<String>());
     }
+    final chart = await db.typeChart();
+    if (!mounted) return;
     setState(() {
-      _isAnalysisLoading = true;
+      _teamAnalysis = TeamAnalysis.of(membersTypes, chart);
+      _isAnalysisLoading = false;
     });
-
-    final pokemonInTeam =
-        _editableTeam.pokemons.where((p) => p.isNotEmpty).toList();
-    if (pokemonInTeam.isEmpty) {
-      if (mounted) {
-        setState(() {
-          _teamAnalysis = null;
-          _teamScore = 0.0;
-          _isAnalysisLoading = false;
-        });
-      }
-      return;
-    }
-
-    for (var pokemonData in pokemonInTeam) {
-      final id = pokemonData['id']!;
-      if (!_teamDetailsCache.containsKey(id)) {
-        try {
-          _teamDetailsCache[id] =
-              await _pokemonService.fetchPokemonDetails(int.parse(id));
-        } catch (e) {}
-      }
-    }
-
-    final Map<String, double> combinedMultiplier = {};
-    for (var type in allTypes) {
-      combinedMultiplier[type] = 1.0;
-    }
-
-    final Map<String, int> teamAdvantages = {};
-
-    for (var pokemonData in pokemonInTeam) {
-      final details = _teamDetailsCache[pokemonData['id']];
-      if (details != null) {
-        final form = details.forms.firstWhere(
-            (f) => f.imageUrl == pokemonData['imageUrl'],
-            orElse: () => details.forms.first);
-
-        final relations = _generateTypeRelationsForPokemon(details, form);
-
-        for (var attackingType in allTypes) {
-          if (relations.immunities.contains(attackingType)) {
-            combinedMultiplier[attackingType] = 0;
-          } else if (combinedMultiplier[attackingType] != 0) {
-            if (relations.weaknesses.containsKey(attackingType)) {
-              combinedMultiplier[attackingType] =
-                  (combinedMultiplier[attackingType] ?? 1.0) *
-                      (relations.weaknesses[attackingType] ?? 1.0);
-            }
-            if (relations.resistances.containsKey(attackingType)) {
-              combinedMultiplier[attackingType] =
-                  (combinedMultiplier[attackingType] ?? 1.0) *
-                      (relations.resistances[attackingType] ?? 1.0);
-            }
-          }
-        }
-
-        for (var typeName in form.types) {
-          final typeJson = details.allTypeDetails[typeName];
-          if (typeJson != null && typeJson['damage_relations'] != null) {
-            final doubleDamageTo =
-                typeJson['damage_relations']['double_damage_to'] as List;
-            for (var type in doubleDamageTo) {
-              final typeName = type['name'] as String;
-              teamAdvantages.update(typeName, (count) => count + 1,
-                  ifAbsent: () => 1);
-            }
-          }
-        }
-      }
-    }
-
-    final Map<String, double> finalWeaknesses = {};
-    final Map<String, double> finalResistances = {};
-    final List<String> finalImmunities = [];
-
-    combinedMultiplier.forEach((type, multiplier) {
-      if (multiplier == 0) {
-        finalImmunities.add(type);
-      } else if (multiplier > 1.5) {
-        finalWeaknesses[type] = multiplier;
-      } else if (multiplier < 0.75) {
-        finalResistances[type] = multiplier;
-      }
-    });
-
-    final currentAnalysis = TypeRelations(
-      weaknesses: finalWeaknesses,
-      resistances: finalResistances,
-      immunities: finalImmunities..sort(),
-      advantages: teamAdvantages,
-    );
-
-    if (mounted) {
-      setState(() {
-        _teamAnalysis = currentAnalysis;
-        _teamScore = _calculateTeamScore(currentAnalysis);
-        _isAnalysisLoading = false;
-      });
-    }
-  }
-
-  TypeRelations _generateTypeRelationsForPokemon(
-      PokemonDetails details, AlternateForm form) {
-    final Map<String, double> weaknesses = {};
-    final Map<String, double> resistances = {};
-    final List<String> immunities = [];
-    final Map<String, double> damageTaken = {};
-
-    for (String typeName in form.types) {
-      final typeJson = details.allTypeDetails[typeName];
-      if (typeJson != null) {
-        final relations = typeJson['damage_relations'] as Map<String, dynamic>;
-        for (var relation in relations.entries) {
-          double multiplier = 1.0;
-          if (relation.key == 'double_damage_from') {
-            multiplier = 2.0;
-          } else if (relation.key == 'half_damage_from') {
-            multiplier = 0.5;
-          } else if (relation.key == 'no_damage_from') {
-            multiplier = 0.0;
-          } else {
-            continue;
-          }
-          for (var type in (relation.value as List)) {
-            String attackingTypeName = type['name'];
-            damageTaken.update(attackingTypeName, (value) => value * multiplier,
-                ifAbsent: () => multiplier);
-          }
-        }
-      }
-    }
-
-    damageTaken.forEach((type, multiplier) {
-      if (multiplier >= 2.0) {
-        weaknesses[type] = multiplier;
-      } else if (multiplier > 0 && multiplier < 1) {
-        resistances[type] = multiplier;
-      } else if (multiplier == 0) {
-        immunities.add(type);
-      }
-    });
-
-    return TypeRelations(
-        weaknesses: weaknesses,
-        resistances: resistances,
-        immunities: immunities,
-        advantages: {});
   }
 
   static const _teamColors = [
     Color(0xFFFF5252), Color(0xFFFFA726), Color(0xFFFFCA28), Color(0xFF66BB6A), Color(0xFF26A69A), Color(0xFF42A5F5),
     Color(0xFF5C6BC0), Color(0xFFAB47BC), Color(0xFFEC407A), Color(0xFF8D6E63), Color(0xFF78909C),
   ];
-
-  Color get _scoreColor => _teamScore >= 7.5
-      ? const Color(0xFF43A047)
-      : _teamScore >= 4.5
-          ? const Color(0xFFFB8C00)
-          : const Color(0xFFE53935);
 
   @override
   Widget build(BuildContext context) {
@@ -394,6 +221,16 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen>
         appBar: AppBar(
           title: const Text('Editar time'),
           actions: [
+            IconButton(
+              tooltip: 'Compartilhar',
+              icon: const Icon(Icons.share),
+              onPressed: hasPokemon
+                  ? () async {
+                      await _persist();
+                      if (context.mounted) await TeamShareDialogs.share(context, _editableTeam.id);
+                    }
+                  : null,
+            ),
             TextButton.icon(
               onPressed: _saveTeam,
               icon: const Icon(Icons.check),
@@ -482,13 +319,12 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen>
                           child: Text('Análise do time',
                               style: TextStyle(color: c.text, fontSize: 18, fontWeight: FontWeight.bold)),
                         ),
-                        if (!_isAnalysisLoading && _teamAnalysis != null && hasPokemon)
+                        if (AuthService.instance.status == AuthStatus.signedIn)
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              Text('Nota (0 a 10)', style: TextStyle(color: c.muted, fontSize: 12)),
-                              Text(_teamScore.toStringAsFixed(1),
-                                  style: TextStyle(color: _scoreColor, fontSize: 28, fontWeight: FontWeight.w900)),
+                              Text('Nota da comunidade', style: TextStyle(color: c.muted, fontSize: 12)),
+                              RatingText(rating: _communityRating?.$1, count: _communityRating?.$2 ?? 0),
                             ],
                           ),
                       ],
@@ -496,17 +332,8 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen>
                     const SizedBox(height: 12),
                     if (_isAnalysisLoading)
                       const Center(child: PikachuLoadingIndicator())
-                    else if (_teamAnalysis == null || !hasPokemon)
-                      Text('Adicione Pokémon para ver a análise.', style: TextStyle(color: c.muted))
-                    else ...[
-                      TypeRelationsSection(title: 'Vantagens ofensivas', relations: _teamAnalysis!.advantages),
-                      const SizedBox(height: 14),
-                      TypeRelationsSection(title: 'Fraquezas', relations: _teamAnalysis!.weaknesses),
-                      const SizedBox(height: 14),
-                      TypeRelationsSection(title: 'Resistências', relations: _teamAnalysis!.resistances),
-                      const SizedBox(height: 14),
-                      TypeRelationsSection(title: 'Imunidades', relations: _teamAnalysis!.immunities),
-                    ],
+                    else
+                      TeamAnalysisView(analysis: hasPokemon ? _teamAnalysis : null),
                   ],
                 ),
               ),

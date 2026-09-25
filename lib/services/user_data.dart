@@ -15,17 +15,20 @@
 //   quizRecord, rankedRecord: número
 //   quizGame: jogo normal em andamento ou null
 //   avatar: id do Pokémon usado como foto de perfil, ou null
+//   stats: contadores das conquistas (ver achievements.dart)
 
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'achievements.dart';
+
 class UserData extends ChangeNotifier {
   UserData._();
   static final UserData instance = UserData._();
 
-  static const keys = ['theme', 'favorites', 'teams', 'training', 'quizRecord', 'rankedRecord', 'quizGame', 'avatar'];
+  static const keys = ['theme', 'favorites', 'teams', 'training', 'quizRecord', 'rankedRecord', 'quizGame', 'avatar', 'stats'];
   static const _prefsKey = 'pocketdex_user_data';
 
   static Map<String, dynamic> get defaults => {
@@ -37,6 +40,7 @@ class UserData extends ChangeNotifier {
         'rankedRecord': 0,
         'quizGame': null,
         'avatar': null,
+        'stats': Achievements.emptyStats(),
       };
 
   Map<String, dynamic> _data = defaults;
@@ -53,6 +57,10 @@ class UserData extends ChangeNotifier {
   int get quizRecord => (_data['quizRecord'] as num?)?.toInt() ?? 0;
   /// Foto de perfil: o id de um Pokémon (ou null).
   int? get avatar => (_data['avatar'] as num?)?.toInt();
+  Map<String, dynamic> get stats => {
+        ...Achievements.emptyStats(),
+        if (_data['stats'] is Map) ...Map<String, dynamic>.from(_jsonCopy(_data['stats']) as Map),
+      };
   int get rankedRecord => (_data['rankedRecord'] as num?)?.toInt() ?? 0;
   Map<String, dynamic>? get quizGame =>
       _data['quizGame'] == null ? null : Map<String, dynamic>.from(_data['quizGame'] as Map);
@@ -104,6 +112,53 @@ class UserData extends ChangeNotifier {
     _data = {...defaults, 'theme': theme};
     _persist();
     notifyListeners();
+  }
+
+  // ---------------------------------------------------------------- conquistas
+
+  static int _n(Object? v) => (v as num?)?.toInt() ?? 0;
+
+  /// Uma resposta no jogo (qualquer modo).
+  void countAnswer(bool correct, int streak) {
+    final s = stats;
+    update({
+      'stats': {
+        ...s,
+        'correct': _n(s['correct']) + (correct ? 1 : 0),
+        'bestStreak': streak > _n(s['bestStreak']) ? streak : _n(s['bestStreak']),
+      },
+    });
+  }
+
+  /// Um Ranked terminado na semana `week` (guarda as semanas para poder apagar depois).
+  void countRanked(String week) {
+    final s = stats;
+    final weeks = List<dynamic>.from(s['weeks'] as List? ?? []);
+    if (!weeks.contains(week)) weeks.add(week);
+    update({
+      'stats': {...s, 'rankedGames': _n(s['rankedGames']) + 1, 'weeks': weeks.length > 60 ? weeks.sublist(weeks.length - 60) : weeks},
+    });
+  }
+
+  /// Desafio do dia começado (uma tentativa por dia).
+  void countDaily(String day) {
+    final s = stats;
+    if (s['lastDaily'] == day) return;
+    final days = [...List<dynamic>.from(s['days'] as List? ?? []), day];
+    update({
+      'stats': {
+        ...s,
+        'dailyDone': _n(s['dailyDone']) + 1,
+        'lastDaily': day,
+        'days': days.length > 60 ? days.sublist(days.length - 60) : days,
+      },
+    });
+  }
+
+  /// Desafio do dia com os 10 certos.
+  void countDailyPerfect() {
+    final s = stats;
+    update({'stats': {...s, 'dailyPerfect': _n(s['dailyPerfect']) + 1}});
   }
 
   // ---------------------------------------------------------------- disco

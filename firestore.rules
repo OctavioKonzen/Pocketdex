@@ -5,40 +5,147 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function signedIn(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // Chave do nome ("Ásh  Ketchum" → "ash ketchum"), igual à do site e do app.
+    function keyOf(name) {
+      return name.lower()
+        .replace('[áàâãä]', 'a').replace('[éèêë]', 'e').replace('[íìîï]', 'i')
+        .replace('[óòôõö]', 'o').replace('[úùûü]', 'u').replace('ç', 'c').replace('ñ', 'n')
+        .replace(' +', ' ');
+    }
+
+    // Nome da conta (o mesmo que aparece nos rankings).
+    function accountName(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data.name;
+    }
+
+    // Só dá para usar como nome um nome reservado para si em usernames.
+    function nameIsMine(uid) {
+      let d = request.resource.data;
+      return !('name' in d)
+        || (resource != null && resource.data.get('name', null) == d.name)
+        || ('nameKey' in d
+          && getAfter(/databases/$(database)/documents/usernames/$(d.nameKey)).data.uid == uid
+          && getAfter(/databases/$(database)/documents/usernames/$(d.nameKey)).data.name == d.name);
+    }
+
+    function validAvatar(d) {
+      return !('avatar' in d) || d.avatar == null || d.avatar is int;
+    }
+
+    // Linha de ranking: só a própria pessoa, com o nome da conta dela.
+    function validScore(uid, max) {
+      let d = request.resource.data;
+      return signedIn(uid)
+        && d.keys().hasOnly(['name', 'score', 'avatar', 'correct', 'seconds', 'updatedAt'])
+        && d.score is int && d.score > 0 && d.score <= max
+        && validAvatar(d)
+        && d.name == accountName(uid);
+    }
+
     // Perfil e dados (favoritos, times, treinos...) de cada pessoa:
     // só ela mesma pode ler e escrever.
     match /users/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+      allow read, delete: if signedIn(uid);
+      allow create, update: if signedIn(uid) && nameIsMine(uid);
     }
 
-    // Ranking do modo Ranked do jogo: todos os logados veem; cada pessoa só
-    // escreve a própria linha, com o nome da conta dela.
+    // Ranking geral do Ranked: todos os logados veem.
     match /ranking/{uid} {
       allow read: if request.auth != null;
-      allow create, update: if request.auth != null
-        && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['name', 'score', 'updatedAt'])
-        && request.resource.data.score is int
-        && request.resource.data.score > 0
-        && request.resource.data.score <= 5000
-        && request.resource.data.name == get(/databases/$(database)/documents/users/$(uid)).data.name;
-      allow delete: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if validScore(uid, 5000);
+      allow delete: if signedIn(uid);
     }
 
-    // Nomes já usados. Qualquer um pode consultar (para avisar que o nome
-    // já existe), mas só dá para reservar um nome livre, para si mesmo.
+    // Ranking da semana ({week} = segunda-feira, "AAAA-MM-DD"): só sobe.
+    match /weekly/{week}/scores/{uid} {
+      allow read: if request.auth != null;
+      allow create: if validScore(uid, 5000);
+      allow update: if validScore(uid, 5000) && request.resource.data.score >= resource.data.score;
+      allow delete: if signedIn(uid);
+    }
+
+    // Desafio do dia ({day} = "AAAA-MM-DD"): uma tentativa por dia.
+    match /daily/{day}/scores/{uid} {
+      allow read: if request.auth != null;
+      allow create: if validScore(uid, 11000)
+        && request.resource.data.correct is int
+        && request.resource.data.correct >= 0 && request.resource.data.correct <= 10;
+      allow delete: if signedIn(uid);
+    }
+
+    // Times públicos: todo time de quem tem conta aparece para todos os
+    // logados (busca pelo nome do dono). Só o dono cria, muda e apaga; a nota
+    // da comunidade (soma e quantidade de estrelas) só muda junto com o voto.
+    match /publicTeams/{teamId} {
+      function team() { return request.resource.data; }
+      function ratingPath() {
+        return /databases/$(database)/documents/publicTeams/$(teamId)/ratings/$(request.auth.uid);
+      }
+      function validTeam() {
+        return team().keys().hasOnly(['ownerUid', 'ownerName', 'ownerKey', 'avatar', 'name', 'color', 'pokemon',
+                                      'ratingSum', 'ratingCount', 'updatedAt'])
+          && team().ownerUid == request.auth.uid
+          && team().ownerName == accountName(request.auth.uid)
+          && team().ownerKey == keyOf(team().ownerName)
+          && team().name is string && team().name.size() <= 60
+          && team().pokemon is list && team().pokemon.size() == 6
+          && (team().color == null || team().color is string)
+          && validAvatar(team());
+      }
+      allow read: if request.auth != null;
+      allow create: if validTeam() && team().ratingSum == 0 && team().ratingCount == 0;
+      allow update: if (
+          // dono: muda o time, mas não a nota
+          resource.data.ownerUid == request.auth.uid && validTeam()
+            && team().ratingSum == resource.data.ratingSum && team().ratingCount == resource.data.ratingCount
+        ) || (
+          // outra pessoa: só a nota, junto com o próprio voto
+          request.auth != null && resource.data.ownerUid != request.auth.uid
+            && team().diff(resource.data).affectedKeys().hasOnly(['ratingSum', 'ratingCount'])
+            && existsAfter(ratingPath())
+            && team().ratingSum == resource.data.ratingSum + getAfter(ratingPath()).data.stars
+                 - (exists(ratingPath()) ? get(ratingPath()).data.stars : 0)
+            && team().ratingCount == resource.data.ratingCount + (exists(ratingPath()) ? 0 : 1)
+        );
+      allow delete: if request.auth != null && resource.data.ownerUid == request.auth.uid;
+
+      // Voto de cada pessoa (1 a 5 estrelas), sempre junto com a nota do time.
+      match /ratings/{uid} {
+        function parent() { return /databases/$(database)/documents/publicTeams/$(teamId); }
+        allow read: if signedIn(uid);
+        allow create, update: if signedIn(uid)
+          && request.resource.data.keys().hasOnly(['stars'])
+          && request.resource.data.stars is int
+          && request.resource.data.stars >= 1 && request.resource.data.stars <= 5
+          && get(parent()).data.ownerUid != uid
+          && getAfter(parent()).data.ratingSum == get(parent()).data.ratingSum + request.resource.data.stars
+               - (resource == null ? 0 : resource.data.stars)
+          && getAfter(parent()).data.ratingCount == get(parent()).data.ratingCount + (resource == null ? 1 : 0);
+      }
+    }
+
+    // Nomes já usados. Qualquer um pode conferir UM nome (para avisar que já
+    // existe), mas não dá para listar todos. Só dá para reservar um nome
+    // livre, para si mesmo, e a chave precisa ser a do próprio nome.
     // Assim não existem 2 pessoas com o mesmo nome.
-    match /usernames/{name} {
-      allow read: if true;
+    match /usernames/{key} {
+      allow get: if true;
       allow create: if request.auth != null
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.keys().hasOnly(['uid', 'name'])
         && request.resource.data.name is string
         && request.resource.data.name.size() >= 3
-        && request.resource.data.name.size() <= 20;
+        && request.resource.data.name.size() <= 20
+        && keyOf(request.resource.data.name) == key;
       allow update: if request.auth != null
         && resource.data.uid == request.auth.uid
-        && request.resource.data.uid == request.auth.uid;
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'name'])
+        && keyOf(request.resource.data.name) == key;
       allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
     }
   }

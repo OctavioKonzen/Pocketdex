@@ -120,7 +120,7 @@ class AuthService extends ChangeNotifier {
       final taken = await tx.get(nameRef);
       if (taken.exists && taken.data()?['uid'] != u.uid) throw AuthException(_messages['name-taken']!);
       tx.set(nameRef, {'uid': u.uid, 'name': clean});
-      tx.set(userRef, {'name': clean, 'email': u.email ?? '', 'createdAt': FieldValue.serverTimestamp()},
+      tx.set(userRef, {'name': clean, 'nameKey': nameKey(clean), 'email': u.email ?? '', 'createdAt': FieldValue.serverTimestamp()},
           SetOptions(merge: true));
     });
     return clean;
@@ -207,6 +207,58 @@ class AuthService extends ChangeNotifier {
     await _auth.signOut();
   }
 
+  // ---------------------------------------------------------------- excluir conta
+
+  /// A conta entrou com Google (e não com e-mail e senha)?
+  bool get usesGoogle => _auth.currentUser?.providerData.any((p) => p.providerId == 'google.com') ?? false;
+
+  /// Apaga a conta e tudo dela: dados, nome reservado, rankings e o login.
+  /// Por segurança o Firebase pede para confirmar a senha (ou a conta Google).
+  Future<void> deleteAccount({String? password, List<String> weeks = const [], List<String> days = const []}) =>
+      _guard(() async {
+        final u = _auth.currentUser;
+        if (u == null) return;
+        if (usesGoogle) {
+          if (kIsWeb) {
+            await u.reauthenticateWithPopup(GoogleAuthProvider());
+          } else {
+            final google = GoogleSignIn.instance;
+            if (!_googleReady) {
+              await google.initialize();
+              _googleReady = true;
+            }
+            try {
+              final account = await google.authenticate();
+              final idToken = account.authentication.idToken;
+              if (idToken == null) throw AuthException('O Google não devolveu a conta. Tente de novo.');
+              await u.reauthenticateWithCredential(GoogleAuthProvider.credential(idToken: idToken));
+            } on GoogleSignInException catch (e) {
+              if (e.code == GoogleSignInExceptionCode.canceled) throw AuthException('A confirmação com Google foi cancelada.');
+              rethrow;
+            }
+          }
+        } else {
+          await u.reauthenticateWithCredential(EmailAuthProvider.credential(email: u.email ?? '', password: password ?? ''));
+        }
+        final uid = u.uid;
+        final profile = await _db.collection('users').doc(uid).get();
+        final name = profile.data()?['name'] as String?;
+        final removals = <DocumentReference>[
+          _db.collection('ranking').doc(uid),
+          for (final w in weeks) _db.collection('weekly').doc(w).collection('scores').doc(uid),
+          for (final d in days) _db.collection('daily').doc(d).collection('scores').doc(uid),
+          if (name != null) _db.collection('usernames').doc(nameKey(name)),
+        ];
+        try {
+          final teams = await _db.collection('publicTeams').where('ownerUid', isEqualTo: uid).get();
+          removals.addAll(teams.docs.map((d) => d.reference));
+        } catch (_) {}
+        await Future.wait(removals.map((ref) => ref.delete().catchError((_) {})));
+        await _db.collection('users').doc(uid).delete();
+        await u.delete();
+        if (!kIsWeb && _googleReady) await GoogleSignIn.instance.signOut().catchError((_) {});
+      });
+
   // ---------------------------------------------------------------- erros
 
   Future<void> _guard(Future<void> Function() action) async {
@@ -237,6 +289,8 @@ class AuthService extends ChangeNotifier {
     'auth/web-context-canceled': 'O login com Google foi cancelado.',
     'auth/popup-closed-by-user': 'A janela do Google foi fechada antes de terminar.',
     'auth/operation-not-allowed': 'Esse tipo de login não está ativado no Firebase.',
+    'auth/requires-recent-login': 'Por segurança, saia e entre de novo na conta e tente outra vez.',
+    'auth/user-mismatch': 'Escolha a mesma conta Google que está conectada.',
     'permission-denied': 'Sem permissão no banco de dados. Confira as regras do Firestore.',
     'unavailable': 'Sem conexão com a internet.',
   };

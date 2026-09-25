@@ -60,6 +60,37 @@ class AccountAvatar extends StatelessWidget {
       );
 }
 
+/// Foto de qualquer jogador (ex.: nas linhas do ranking): o Pokémon escolhido
+/// ou a inicial do nome.
+class PlayerAvatar extends StatelessWidget {
+  final int? pokemonId;
+  final String name;
+  final double size;
+  const PlayerAvatar({super.key, required this.pokemonId, required this.name, this.size = 34});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: const LinearGradient(colors: [Color(0xFFE53935), Color(0xFFB71C1C)]),
+        border: Border.all(color: Colors.white, width: size * 0.05),
+      ),
+      child: pokemonId != null
+          ? Padding(padding: EdgeInsets.all(size * 0.08), child: PokemonSprite(pokemonId!, fill: 0.95))
+          : Center(
+              child: Text(
+                name.isEmpty ? '?' : name.substring(0, 1).toUpperCase(),
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: size * 0.42),
+              ),
+            ),
+    );
+  }
+}
+
 /// Painel do perfil: foto, nome, e-mail, trocar foto, configurações e sair.
 class ProfileSheet {
   static Future<void> show(BuildContext context) {

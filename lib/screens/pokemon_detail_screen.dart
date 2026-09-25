@@ -31,8 +31,7 @@ class PokemonDetailScreen extends StatefulWidget {
   State<PokemonDetailScreen> createState() => _PokemonDetailScreenState();
 }
 
-class _PokemonDetailScreenState extends State<PokemonDetailScreen>
-    with TickerProviderStateMixin {
+class _PokemonDetailScreenState extends State<PokemonDetailScreen> with TickerProviderStateMixin {
   final PokemonService _pokemonService = PokemonService();
   final Map<int, PokemonDetails> _loadedDetails = {};
 
@@ -53,9 +52,7 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen>
     super.initState();
     _currentPokemonId = widget.initialPokemonId;
 
-    _pokeballAnimationController =
-        AnimationController(vsync: this, duration: const Duration(seconds: 25))
-          ..repeat();
+    _pokeballAnimationController = AnimationController(vsync: this, duration: const Duration(seconds: 25))..repeat();
     // "Roda" de Pokémon: 0 = o atual no centro; 1 = o próximo chegou ao
     // centro; -1 = o anterior chegou. Acompanha o dedo ao arrastar.
     _slideController = AnimationController(
@@ -84,25 +81,13 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen>
   }
 
   Future<void> _loadPokemonFamily(int centerId) {
-    final idsToLoad = [
-      centerId - 3,
-      centerId - 2,
-      centerId - 1,
-      centerId,
-      centerId + 1,
-      centerId + 2,
-      centerId + 3
-    ]
-        .where((id) =>
-            id > 0 &&
-            id <= _allPokemonIds.length &&
-            !_loadedDetails.containsKey(id))
+    final idsToLoad = [centerId - 3, centerId - 2, centerId - 1, centerId, centerId + 1, centerId + 2, centerId + 3]
+        .where((id) => id > 0 && id <= _allPokemonIds.length && !_loadedDetails.containsKey(id))
         .toSet()
         .toList();
 
     if (idsToLoad.isNotEmpty) {
-      final futures =
-          idsToLoad.map((id) => _pokemonService.fetchPokemonDetails(id));
+      final futures = idsToLoad.map((id) => _pokemonService.fetchPokemonDetails(id));
       return Future.wait(futures).then((results) {
         if (mounted) {
           setState(() {
@@ -130,7 +115,10 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen>
   late int _revealId = widget.initialPokemonId;
 
   int get _currentIndex => _allPokemonIds.indexOf(_currentPokemonId);
-  bool get _hasNext => _currentIndex >= 0 && _currentIndex < _allPokemonIds.length - 1 && _loadedDetails.containsKey(_allPokemonIds[_currentIndex + 1]);
+  bool get _hasNext =>
+      _currentIndex >= 0 &&
+      _currentIndex < _allPokemonIds.length - 1 &&
+      _loadedDetails.containsKey(_allPokemonIds[_currentIndex + 1]);
   bool get _hasPrev => _currentIndex > 0 && _loadedDetails.containsKey(_allPokemonIds[_currentIndex - 1]);
 
   /// Termina o giro: o vizinho que chegou ao centro vira o atual.
@@ -230,14 +218,11 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen>
                               : theme.colorScheme.surface,
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: _selectedForm?.apiName == form.apiName
-                                ? theme.primaryColor
-                                : Colors.transparent,
+                            color: _selectedForm?.apiName == form.apiName ? theme.primaryColor : Colors.transparent,
                             width: 2,
                           ),
                         ),
-                        child: PokemonSprite(
-                            AccountFormat.pokemonIdFromImage(form.pixelImageUrl) ?? pokemon.id,
+                        child: PokemonSprite(AccountFormat.pokemonIdFromImage(form.pixelImageUrl) ?? pokemon.id,
                             fill: 0.85),
                       ),
                     );
@@ -256,12 +241,9 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen>
     final PokemonDetails? pokemon = _loadedDetails[_currentPokemonId];
     final int currentIndex = _allPokemonIds.indexOf(_currentPokemonId);
 
-    final PokemonDetails? prevPokemon = currentIndex > 0
-        ? _loadedDetails[_allPokemonIds[currentIndex - 1]]
-        : null;
-    final PokemonDetails? nextPokemon = currentIndex < _allPokemonIds.length - 1
-        ? _loadedDetails[_allPokemonIds[currentIndex + 1]]
-        : null;
+    final PokemonDetails? prevPokemon = currentIndex > 0 ? _loadedDetails[_allPokemonIds[currentIndex - 1]] : null;
+    final PokemonDetails? nextPokemon =
+        currentIndex < _allPokemonIds.length - 1 ? _loadedDetails[_allPokemonIds[currentIndex + 1]] : null;
 
     if (_isLoading && pokemon == null) {
       return const Scaffold(body: Center(child: PikachuLoadingIndicator()));
@@ -270,9 +252,7 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen>
     if (pokemon == null || _selectedForm == null) {
       return Scaffold(
           backgroundColor: Colors.grey[900],
-          body: const Center(
-              child: Text("Carregando Pokémon...",
-                  style: TextStyle(color: Colors.white))));
+          body: const Center(child: Text("Carregando Pokémon...", style: TextStyle(color: Colors.white))));
     }
 
     final Color backgroundColor = getColorForType(_selectedForm!.types.first);
@@ -291,77 +271,89 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen>
         autofocus: true,
         child: Scaffold(
           backgroundColor: backgroundColor,
-          body: Column(
-            children: [
-              PokemonDisplay(
-                pokemon: pokemon,
-                form: _selectedForm!,
-                isShiny: _isShiny,
-                pokeballAnimation: _pokeballAnimationController,
-                onShinyToggle: () => setState(() => _isShiny = !_isShiny),
-                onFormSelect: () => _showFormSelection(pokemon),
-                // O Pokémon fica parado (só o painel de baixo rola); arrastar
-                // para o lado vai para o próximo/anterior da Pokédex.
-                onDrag: _onDrag,
-                onDragEnd: _onDragEnd,
-                imageGestureArea: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    // Camada própria para a animação de troca de Pokémon.
-                    RepaintBoundary(
-                      child: AnimatedBuilder(
-                        animation: _slideController,
-                        builder: (context, child) {
-                          final t = _slideController.value;
-                          // Cada Pokémon numa posição da roda (-1 anterior,
-                          // 0 atual, 1 próximo), deslocada pelo giro.
-                          final items = <(double, Widget)>[
-                            if (prevPokemon != null) (-1 - t, _PokemonAnimatedImage(details: prevPokemon, position: -1 - t)),
-                            if (nextPokemon != null) (1 - t, _PokemonAnimatedImage(details: nextPokemon, position: 1 - t)),
-                            (-t, _PokemonAnimatedImage(
-                                details: pokemon, form: _selectedForm, isShiny: _isShiny, position: -t, reveal: pokemon.id == _revealId)),
-                          ]..sort((a, b) => b.$1.abs().compareTo(a.$1.abs())); // o mais perto do centro por cima
-                          return Stack(
-                            alignment: Alignment.center,
-                            clipBehavior: Clip.none,
-                            children: [for (final item in items) item.$2],
-                          );
-                        },
-                      ),
-                    ),
-                    if (Responsive.isWide(context) && prevPokemon != null)
-                      Positioned(
-                        left: 8,
-                        child: _NavArrow(
-                          icon: Icons.chevron_left,
-                          tooltip: 'Anterior',
-                          onPressed: () =>
-                              _slideTo(_AnimationDirection.previous),
+          // Degradê dos tipos na tela toda: com 2 tipos, a cor atrás dos cantos
+          // arredondados do painel de baixo continua o degradê de cima.
+          body: DecoratedBox(
+            decoration: _detailBackground(_selectedForm!.types),
+            child: Column(
+              children: [
+                PokemonDisplay(
+                  pokemon: pokemon,
+                  form: _selectedForm!,
+                  isShiny: _isShiny,
+                  pokeballAnimation: _pokeballAnimationController,
+                  onShinyToggle: () => setState(() => _isShiny = !_isShiny),
+                  onFormSelect: () => _showFormSelection(pokemon),
+                  // O Pokémon fica parado (só o painel de baixo rola); arrastar
+                  // para o lado vai para o próximo/anterior da Pokédex.
+                  onDrag: _onDrag,
+                  onDragEnd: _onDragEnd,
+                  imageGestureArea: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Camada própria para a animação de troca de Pokémon.
+                      RepaintBoundary(
+                        child: AnimatedBuilder(
+                          animation: _slideController,
+                          builder: (context, child) {
+                            final t = _slideController.value;
+                            // Cada Pokémon numa posição da roda (-1 anterior,
+                            // 0 atual, 1 próximo), deslocada pelo giro.
+                            final items = <(double, Widget)>[
+                              if (prevPokemon != null)
+                                (-1 - t, _PokemonAnimatedImage(details: prevPokemon, position: -1 - t)),
+                              if (nextPokemon != null)
+                                (1 - t, _PokemonAnimatedImage(details: nextPokemon, position: 1 - t)),
+                              (
+                                -t,
+                                _PokemonAnimatedImage(
+                                    details: pokemon,
+                                    form: _selectedForm,
+                                    isShiny: _isShiny,
+                                    position: -t,
+                                    reveal: pokemon.id == _revealId)
+                              ),
+                            ]..sort((a, b) => b.$1.abs().compareTo(a.$1.abs())); // o mais perto do centro por cima
+                            return Stack(
+                              alignment: Alignment.center,
+                              clipBehavior: Clip.none,
+                              children: [for (final item in items) item.$2],
+                            );
+                          },
                         ),
                       ),
-                    if (Responsive.isWide(context) && nextPokemon != null)
-                      Positioned(
-                        right: 8,
-                        child: _NavArrow(
-                          icon: Icons.chevron_right,
-                          tooltip: 'Próximo',
-                          onPressed: () => _slideTo(_AnimationDirection.next),
+                      if (Responsive.isWide(context) && prevPokemon != null)
+                        Positioned(
+                          left: 8,
+                          child: _NavArrow(
+                            icon: Icons.chevron_left,
+                            tooltip: 'Anterior',
+                            onPressed: () => _slideTo(_AnimationDirection.previous),
+                          ),
                         ),
-                      ),
-                  ],
+                      if (Responsive.isWide(context) && nextPokemon != null)
+                        Positioned(
+                          right: 8,
+                          child: _NavArrow(
+                            icon: Icons.chevron_right,
+                            tooltip: 'Próximo',
+                            onPressed: () => _slideTo(_AnimationDirection.next),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-              PokemonDetailPanel(
-                pokemon: pokemon,
-                form: _selectedForm!,
-                typeRelations: buildTypeRelations(pokemon, _selectedForm!),
-                pageController: _pageController,
-                selectedTabIndex: _selectedTabIndex,
-                onPageChanged: (index) =>
-                    setState(() => _selectedTabIndex = index),
-                onEvolutionSelected: _navigateToPokemonById,
-              )
-            ],
+                PokemonDetailPanel(
+                  pokemon: pokemon,
+                  form: _selectedForm!,
+                  typeRelations: buildTypeRelations(pokemon, _selectedForm!),
+                  pageController: _pageController,
+                  selectedTabIndex: _selectedTabIndex,
+                  onPageChanged: (index) => setState(() => _selectedTabIndex = index),
+                  onEvolutionSelected: _navigateToPokemonById,
+                )
+              ],
+            ),
           ),
         ),
       ),
@@ -401,9 +393,7 @@ class _PokemonAnimatedImage extends StatelessWidget {
 
     final AlternateForm displayForm = form ?? details.forms.first;
     final bool displayShiny = isShiny ?? false;
-    final String imageUrl = displayShiny
-        ? displayForm.shinyPixelImageUrl
-        : displayForm.pixelImageUrl;
+    final String imageUrl = displayShiny ? displayForm.shinyPixelImageUrl : displayForm.pixelImageUrl;
 
     return Transform.translate(
       offset: Offset(x, y),
@@ -435,8 +425,7 @@ class _NavArrow extends StatelessWidget {
   final String tooltip;
   final VoidCallback onPressed;
 
-  const _NavArrow(
-      {required this.icon, required this.tooltip, required this.onPressed});
+  const _NavArrow({required this.icon, required this.tooltip, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
@@ -449,4 +438,21 @@ class _NavArrow extends StatelessWidget {
       icon: Icon(icon),
     );
   }
+}
+
+/// Fundo da tela de detalhes: o degradê dos 2 tipos termina na altura do
+/// painel de baixo (fica igual ao do card), e continua atrás dele.
+BoxDecoration _detailBackground(List<String> types) {
+  final base = typeBackground(types);
+  final gradient = base.gradient as LinearGradient?;
+  if (gradient == null) return base;
+  return BoxDecoration(
+    color: base.color,
+    gradient: LinearGradient(
+      begin: Alignment.topLeft,
+      end: const Alignment(1, 0.15),
+      colors: gradient.colors,
+      stops: gradient.stops,
+    ),
+  );
 }

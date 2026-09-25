@@ -77,6 +77,27 @@ class LocalDatabase {
     return rows.where((p) => (p['id'] as int) < 10000).toList();
   }
 
+  /// Todos os Pokémon e formas, como estão no banco ({id, name, is_default, types, stats, moves...}).
+  Future<List<Map<String, dynamic>>> allPokemonRows() async => (await _table('pokemon') as List).cast<Map<String, dynamic>>();
+
+  /// Um Pokémon (ou forma) como está no banco.
+  Future<Map<String, dynamic>?> pokemonRow(int id) async => (await _indexById('pokemon'))[id];
+
+  /// Golpes por nome ({name, type, damage_class, power...}).
+  Future<Map<String, Map<String, dynamic>>> movesByName() => _indexByName('moves');
+
+  /// Tabela de tipos: tipo → {double_damage_from, half_damage_from, no_damage_from}.
+  Future<Map<String, Map<String, List<String>>>> typeChart() async {
+    final types = await _table('types') as Map<String, dynamic>;
+    return {
+      for (final e in types.entries)
+        e.key: {
+          for (final r in (e.value['damage_relations'] as Map<String, dynamic>).entries)
+            r.key: (r.value as List).cast<String>(),
+        },
+    };
+  }
+
   Future<Map<String, dynamic>?> pokemonJson(String idOrName) async {
     final p = await _find('pokemon', idOrName);
     return p == null ? null : _pokemonToApi(p);

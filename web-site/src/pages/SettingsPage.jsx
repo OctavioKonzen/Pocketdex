@@ -2,10 +2,13 @@ import { m } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { Button, Icon, Modal, PageHeader } from '../components/ui'
 import { getLatestRelease, RELEASES_URL } from '../lib/appRelease'
-import { useAuth } from '../lib/auth'
+import { deleteAccount, errorMessage, usesGoogle, useAuth } from '../lib/auth'
 import AccountAvatar from '../components/AccountAvatar'
+import { achievementsOf } from '../lib/achievements'
+import { dayKey, weekKey } from '../lib/league'
+import { pixCode, pixEnabled, PIX } from '../lib/pix'
 import { useStore } from '../lib/store'
-import { logout } from '../lib/sync'
+import { logout, pauseSync, resumeSync } from '../lib/sync'
 
 export default function SettingsPage() {
   const theme = useStore((s) => s.theme)
@@ -62,7 +65,10 @@ export default function SettingsPage() {
           </Button>
         </div>
         {message && <p className="text-center text-green-400">{message}</p>}
+        {pixEnabled() && <SupportCard />}
+        <Achievements />
         <AndroidAppCard />
+        {user && <DeleteAccountCard />}
         <p className="pt-6 text-center text-sm text-muted">PocketDex · Site feito em JavaScript (React) com dados gerados em Python.</p>
       </div>
 
@@ -125,6 +131,164 @@ function AndroidAppCard() {
           Todas as versões
         </a>
       </p>
+    </div>
+  )
+}
+
+/** Pix para apoiar o projeto (QR Code e "copia e cola"). */
+function SupportCard() {
+  const [qr, setQr] = useState(null)
+  const [copied, setCopied] = useState('')
+  const code = pixCode()
+
+  useEffect(() => {
+    import('qrcode').then((QR) => QR.toDataURL(code, { margin: 1, width: 360 })).then(setQr).catch(() => {})
+  }, [code])
+
+  const copy = async (text, what) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(what)
+      setTimeout(() => setCopied(''), 1800)
+    } catch {
+      setCopied('')
+    }
+  }
+
+  return (
+    <div className="rounded-2xl bg-card p-5 shadow" style={{ borderLeft: '6px solid #32BCAD' }}>
+      <div className="flex flex-wrap items-center gap-5">
+        {qr && <img src={qr} alt="QR Code do Pix" className="h-36 w-36 rounded-xl bg-white p-1" />}
+        <div className="min-w-0 flex-1">
+          <div className="font-bold">💚 Apoie o PocketDex</div>
+          <p className="mt-1 text-sm text-muted">
+            O PocketDex é gratuito e sem anúncios. Se ele te ajuda, uma contribuição por Pix (de qualquer valor) ajuda a manter o projeto.
+          </p>
+          <p className="mt-2 text-sm">
+            Chave: <b className="break-all">{PIX.key}</b>
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button color="#32BCAD" onClick={() => copy(code, 'code')}>
+              {copied === 'code' ? 'Copiado!' : 'Copiar Pix copia e cola'}
+            </Button>
+            <Button color="#546E7A" onClick={() => copy(PIX.key, 'key')}>
+              {copied === 'key' ? 'Copiada!' : 'Copiar chave'}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** Medalhas conquistadas no jogo, na Pokédex e nos times. */
+function Achievements() {
+  const stats = useStore((s) => s.stats)
+  const rankedRecord = useStore((s) => s.rankedRecord)
+  const favorites = useStore((s) => s.favorites)
+  const teams = useStore((s) => s.teams)
+  const list = achievementsOf({ stats, rankedRecord, favorites, teams })
+  const unlocked = list.filter((a) => a.unlocked).length
+  return (
+    <div className="rounded-2xl bg-card p-5 shadow">
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <div>
+          <div className="font-bold">Conquistas</div>
+          <div className="text-sm text-muted">Jogue, monte times e favorite Pokémon para liberar medalhas.</div>
+        </div>
+        <span className="rounded-full bg-yellow-400 px-3 py-1 text-sm font-black text-[#3e2723]">
+          {unlocked}/{list.length}
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        {list.map((a) => (
+          <div
+            key={a.id}
+            title={a.text}
+            className={`flex items-center gap-3 rounded-xl p-3 ${a.unlocked ? 'bg-yellow-400/15 ring-1 ring-yellow-400/60' : 'bg-surface opacity-50 grayscale'}`}
+          >
+            <span className="text-2xl">{a.icon}</span>
+            <div className="min-w-0">
+              <div className="truncate text-sm font-bold">{a.title}</div>
+              <div className="text-xs text-muted">{a.text}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/** Apaga a conta e todos os dados dela (a pessoa confirma a senha ou o Google). */
+function DeleteAccountCard() {
+  const [open, setOpen] = useState(false)
+  const [google, setGoogle] = useState(false)
+  const [password, setPassword] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  const openModal = async () => {
+    setGoogle(await usesGoogle())
+    setPassword('')
+    setError('')
+    setOpen(true)
+  }
+
+  const run = async () => {
+    setBusy(true)
+    setError('')
+    const stats = useStore.getState().stats ?? {}
+    pauseSync()
+    try {
+      await deleteAccount({
+        password,
+        weeks: [...(stats.weeks ?? []), weekKey()],
+        days: [...(stats.days ?? []), dayKey()],
+      })
+      setOpen(false)
+    } catch (e) {
+      resumeSync()
+      setError(errorMessage(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-card p-5 shadow">
+      <div>
+        <div className="font-bold">Excluir conta</div>
+        <div className="text-sm text-muted">Apaga para sempre sua conta, seus dados e suas posições nos rankings.</div>
+      </div>
+      <Button color="#b71c1c" onClick={openModal}>
+        Excluir
+      </Button>
+      <Modal open={open} onClose={() => !busy && setOpen(false)} title="Excluir conta">
+        <p>
+          Isso apaga <b>para sempre</b> sua conta, favoritos, times, treinos, recordes, conquistas e suas linhas nos rankings. No app e no
+          site. Não dá para desfazer.
+        </p>
+        {google ? (
+          <p className="mt-3 text-sm text-muted">Para confirmar, escolha a sua conta Google na janela que vai abrir.</p>
+        ) : (
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Digite sua senha para confirmar"
+            className="mt-4 w-full rounded-xl bg-surface px-4 py-3 outline-none focus:ring-2 focus:ring-red-500"
+          />
+        )}
+        {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
+        <div className="mt-5 flex justify-end gap-3">
+          <button type="button" onClick={() => setOpen(false)} disabled={busy} className="cursor-pointer px-4 text-muted">
+            Cancelar
+          </button>
+          <Button color="#b71c1c" onClick={run} disabled={busy || (!google && !password)}>
+            {busy ? 'Excluindo...' : 'Excluir para sempre'}
+          </Button>
+        </div>
+      </Modal>
     </div>
   )
 }

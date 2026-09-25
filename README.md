@@ -4,7 +4,7 @@
   <img src="https://img.shields.io/badge/Flutter-3.x-blue?logo=flutter&style=for-the-badge" />
   <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&style=for-the-badge" />
   <img src="https://img.shields.io/badge/Firebase-FFCA28?logo=firebase&style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Android-1.1.4-green?logo=android&style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Android-1.3.0-green?logo=android&style=for-the-badge" />
 </p>
 
 <div align="center">
@@ -34,12 +34,22 @@
 
 * **Pokédex:** todos os Pokémon e formas (Mega, Alola, Galar...), com filtros por geração e tipo e detalhes completos: status, habilidades, evoluções e golpes.
 * **Favoritos:** guarde os Pokémon que você mais usa.
-* **Montador de Times:** monte times de até 6 Pokémon e veja fraquezas, resistências e a nota do time.
-* **Jogo "Quem é esse Pokémon?":** modo normal e modo **Ranked** (5 segundos por Pokémon, caindo até 2 conforme os pontos), com ranking entre os jogadores.
+* **Montador de Times:** monte times de até 6 Pokémon, veja fraquezas, defesa e cobertura de ataque por tipo, e compartilhe por link, código ou no formato do Pokémon Showdown.
+* **Times da comunidade:** os times de todos aparecem para todos; pesquise pelo nome do treinador, dê sua nota (1 a 5 estrelas) e salve os que gostar.
+* **Jogo "Quem é esse Pokémon?":** modo normal, modo **Ranked** (5 segundos por Pokémon, caindo até 2 conforme os pontos) e **Desafio do dia** (os mesmos 10 Pokémon para todos), com rankings geral, da semana e do dia.
+* **Conquistas:** medalhas por jogar, montar times e favoritar Pokémon.
 * **Enciclopédia:** golpes, habilidades e itens.
-* **Treino:** guia de Natures, ajuda de Breeding e contador de EVs.
-* **Conta:** login com e-mail/senha ou Google; favoritos, times, treinos e recordes ficam salvos e sincronizados entre o app e o site.
+* **Treino:** guia de Natures, ajuda de Breeding, contador de EVs, comparador de Pokémon e calculadora de dano.
+* **Conta:** login com e-mail/senha ou Google, foto de perfil e opção de excluir a conta; favoritos, times, treinos e recordes ficam salvos e sincronizados entre o app e o site.
 * **Tema claro e escuro** e **atualização pelo próprio app**.
+
+## 💚 Apoie o projeto
+
+O PocketDex é gratuito e sem anúncios. Se ele te ajuda, qualquer valor por **Pix** ajuda a manter o projeto:
+
+**Chave Pix (aleatória):** `b2f17626-44c0-421d-9a60-71a33b272741`
+
+No app e no site, em **Configurações**, tem o QR Code e o "Pix copia e cola".
 
 ## 🛠️ Ferramentas usadas
 
@@ -49,7 +59,7 @@
 | **Site** | React, Vite, Tailwind CSS, Framer Motion, React Router, Zustand |
 | **Conta e dados online** | Firebase Authentication e Firestore |
 | **Banco de dados local** | JSON e imagens em `assets/database/`, gerados com Python a partir da PokeAPI |
-| **Publicação** | GitHub Actions (site no GitHub Pages e APK em Releases) |
+| **Publicação** | GitHub Actions (conferência automática, site no GitHub Pages e APK em Releases) |
 
 ## 📥 Como usar
 

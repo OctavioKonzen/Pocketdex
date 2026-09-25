@@ -106,48 +106,51 @@ export function typeRelations(types, typeData) {
 }
 
 /**
- * Análise de um time (mesma lógica do Montador de Times do app): combina os
- * multiplicadores dos membros e conta quantos membros têm vantagem sobre cada
- * tipo.
+ * Análise de um time (mesma lógica do app, lib/utils/team_analysis.dart).
+ * Para cada tipo de ataque conta quantos membros são fracos, resistem ou são
+ * imunes; o time é fraco a um tipo quando tem mais fracos do que quem aguenta.
+ * No ataque, conta quantos membros acertam cada tipo com dano super efetivo
+ * usando golpes do próprio tipo (STAB).
  */
 export function analyzeTeam(membersTypes, typeData) {
   if (membersTypes.length === 0) return null
-  const combined = Object.fromEntries(ALL_TYPES.map((t) => [t, 1]))
+  const rows = {}
+  for (const attacking of ALL_TYPES) rows[attacking] = { weak: 0, x4: 0, resist: 0, immune: 0 }
   const advantages = {}
   for (const types of membersTypes) {
-    const rel = typeRelations(types, typeData)
+    const taken = damageTaken(types, typeData)
     for (const attacking of ALL_TYPES) {
-      if (rel.immunities.includes(attacking)) combined[attacking] = 0
-      else if (combined[attacking] !== 0) {
-        if (rel.weaknesses[attacking]) combined[attacking] *= rel.weaknesses[attacking]
-        if (rel.resistances[attacking]) combined[attacking] *= rel.resistances[attacking]
-      }
+      const mult = taken[attacking]
+      const row = rows[attacking]
+      if (mult === 0) row.immune++
+      else if (mult > 1) {
+        row.weak++
+        if (mult >= 4) row.x4++
+      } else if (mult < 1) row.resist++
     }
-    for (const type of types) {
+    for (const type of new Set(types)) {
       for (const t of typeData[type]?.double_damage_to ?? []) advantages[t] = (advantages[t] ?? 0) + 1
     }
   }
-  const weaknesses = {}
-  const resistances = {}
-  const immunities = []
-  for (const [type, mult] of Object.entries(combined)) {
-    if (mult === 0) immunities.push(type)
-    else if (mult > 1.5) weaknesses[type] = mult
-    else if (mult < 0.75) resistances[type] = mult
-  }
-  immunities.sort()
-  return { weaknesses, resistances, immunities, advantages }
+  const severity = (r) => r.weak + r.x4 - r.resist - r.immune
+  const weaknesses = ALL_TYPES.filter((t) => rows[t].weak > rows[t].resist + rows[t].immune)
+    .sort((a, b) => severity(rows[b]) - severity(rows[a]))
+    .map((t) => [t, rows[t]])
+  const strengths = ALL_TYPES.filter((t) => rows[t].resist + rows[t].immune >= 2 && rows[t].resist + rows[t].immune > rows[t].weak)
+    .sort((a, b) => severity(rows[a]) - severity(rows[b]))
+    .map((t) => [t, rows[t]])
+  const immunities = ALL_TYPES.filter((t) => rows[t].immune > 0)
+  const missing = ALL_TYPES.filter((t) => !advantages[t])
+  return { rows, weaknesses, strengths, immunities, advantages, missing, size: membersTypes.length }
 }
 
-/** Nota do time de 0 a 10 (mesma fórmula do app). */
-export function teamScore(analysis) {
-  if (!analysis) return 0
-  let score = 5
-  for (const mult of Object.values(analysis.weaknesses)) score -= (mult - 1) * 0.4
-  for (const mult of Object.values(analysis.resistances)) score += (1 - mult) * 0.2
-  score += analysis.immunities.length * 0.5
-  score += (Object.keys(analysis.advantages).length / ALL_TYPES.length) * 2.5
-  return Math.max(0, Math.min(10, score))
+/** Texto curto de uma linha da análise: "3 fracos · 1 resiste". */
+export function rowSummary(row) {
+  const parts = []
+  if (row.weak) parts.push(`${row.weak} ${row.weak === 1 ? 'fraco' : 'fracos'}${row.x4 ? ` (${row.x4} ×4)` : ''}`)
+  if (row.resist) parts.push(`${row.resist} ${row.resist === 1 ? 'resiste' : 'resistem'}`)
+  if (row.immune) parts.push(`${row.immune} ${row.immune === 1 ? 'imune' : 'imunes'}`)
+  return parts.join(' · ')
 }
 
 /** Golpes aprendidos por nível (ou G-Max), ordenados — igual à aba Moves do app. */

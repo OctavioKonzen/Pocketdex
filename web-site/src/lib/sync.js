@@ -11,12 +11,13 @@
 //   quizRecord, rankedRecord: número
 //   quizGame: jogo normal em andamento ou null
 //   avatar: id do Pokémon usado como foto de perfil, ou null
+//   stats: contadores das conquistas (ver achievements.js)
 
 import { create } from 'zustand'
-import { saveRanking, saveUserData, signOut, useAuth, watchUserData } from './auth'
+import { publishTeams, saveRanking, saveUserData, signOut, useAuth, watchUserData } from './auth'
 import { useStore } from './store'
 
-const KEYS = ['theme', 'favorites', 'teams', 'training', 'quizRecord', 'rankedRecord', 'quizGame', 'avatar']
+const KEYS = ['theme', 'favorites', 'teams', 'training', 'quizRecord', 'rankedRecord', 'quizGame', 'avatar', 'stats']
 const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
 
 let currentUid = null
@@ -33,10 +34,28 @@ export const useRankingVersion = create(() => ({ version: 0 }))
 function updateRanking(uid) {
   const name = useAuth.getState().user?.name
   if (!name) return
-  saveRanking(uid, name, useStore.getState().rankedRecord)
+  const { rankedRecord, avatar } = useStore.getState()
+  saveRanking(uid, name, rankedRecord, avatar)
     .then(() => useRankingVersion.setState((s) => ({ version: s.version + 1 })))
     .catch(() => {})
 }
+
+/** Leva os times para a lista pública (busca de times e nota da comunidade). */
+let publishTimer = null
+function schedulePublish(uid) {
+  clearTimeout(publishTimer)
+  publishTimer = setTimeout(() => {
+    const name = useAuth.getState().user?.name
+    if (!name || currentUid !== uid) return
+    const { teams, avatar } = useStore.getState()
+    publishTeams(uid, name, avatar, teams)
+      .then(() => useTeamsVersion.setState((s) => ({ version: s.version + 1 })))
+      .catch(() => {})
+  }, 1500)
+}
+
+/** Muda quando os times públicos da pessoa são atualizados. */
+export const useTeamsVersion = create(() => ({ version: 0 }))
 
 async function flush(uid) {
   clearTimeout(timer)
@@ -61,6 +80,7 @@ function stop() {
   stopStore?.()
   stopRemote = stopStore = null
   clearTimeout(timer)
+  clearTimeout(publishTimer)
   timer = null
   dirty = new Set()
 }
@@ -76,7 +96,8 @@ async function start(uid) {
     if (!changed.length) return
     changed.forEach((k) => dirty.add(k))
     if (!ready) return // grava depois de receber a conta
-    if (changed.includes('rankedRecord')) updateRanking(uid)
+    if (changed.includes('rankedRecord') || changed.includes('avatar')) updateRanking(uid)
+    if (changed.includes('teams') || changed.includes('avatar')) schedulePublish(uid)
     scheduleSave(uid)
   })
 
@@ -103,6 +124,7 @@ async function start(uid) {
       if (!ready) {
         ready = true
         updateRanking(uid)
+        schedulePublish(uid)
       }
       if (dirty.size) scheduleSave(uid)
     },
@@ -122,6 +144,18 @@ export async function flushSync() {
 export async function logout() {
   await flushSync()
   await signOut()
+}
+
+/** Para a sincronização (ex.: enquanto a conta é excluída, para não recriar os dados). */
+export function pauseSync() {
+  stop()
+  currentUid = null
+}
+
+/** Volta a sincronizar a conta conectada (se a exclusão não foi até o fim). */
+export function resumeSync() {
+  const { status, user } = useAuth.getState()
+  if (status === 'signedIn' && user) start(user.uid)
 }
 
 let started = false

@@ -1,6 +1,7 @@
 import { AnimatePresence, m } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { Compare, DamageCalc } from '../components/BattleTools'
 import { PokemonList } from '../components/EntryModals'
 import PokemonPicker from '../components/PokemonPicker'
 import { Button, Empty, Icon, Loader, PageHeader } from '../components/ui'
@@ -13,6 +14,8 @@ const TOOLS = [
   { key: 'natures', label: 'Guia de Natures', subtitle: 'Veja como cada Nature afeta os status', color: '#42A5F5', icon: 'status' },
   { key: 'breeding', label: 'Ajuda de Criação (Breeding)', subtitle: 'Encontre parceiros compatíveis', color: '#EC407A', icon: 'heart' },
   { key: 'evs', label: 'Contador de EVs', subtitle: 'Acompanhe o treino dos seus Pokémon', color: '#66BB6A', icon: 'fitness' },
+  { key: 'comparar', label: 'Comparar Pokémon', subtitle: 'Status e fraquezas lado a lado', color: '#7E57C2', icon: 'layers' },
+  { key: 'dano', label: 'Calculadora de dano', subtitle: 'Quanto um golpe tira do outro', color: '#EF5350', icon: 'physical' },
 ]
 
 export default function TrainingPage() {
@@ -21,7 +24,7 @@ export default function TrainingPage() {
   return (
     <div>
       <PageHeader title="Centro de Treinamento" subtitle="Ferramentas para treinadores dedicados que buscam o Pokémon perfeito." />
-      <div className="mb-6 grid gap-3 md:grid-cols-3">
+      <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {TOOLS.map((t) => (
           <m.button
             key={t.key}
@@ -46,6 +49,8 @@ export default function TrainingPage() {
           {tool === 'natures' && <Natures />}
           {tool === 'breeding' && <Breeding />}
           {tool === 'evs' && <EvCounter />}
+          {tool === 'comparar' && <Compare />}
+          {tool === 'dano' && <DamageCalc />}
         </m.div>
       </AnimatePresence>
     </div>

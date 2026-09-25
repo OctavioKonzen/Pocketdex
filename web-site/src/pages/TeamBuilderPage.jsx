@@ -2,9 +2,13 @@ import { m } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import PokemonPicker from '../components/PokemonPicker'
-import { Button, Empty, Icon, Loader, Modal, TypeBadge } from '../components/ui'
+import { ShareTeamModal } from '../components/TeamShare'
+import { Button, Empty, Icon, Loader, Modal } from '../components/ui'
 import { getPokemonById, getTypes } from '../lib/data'
-import { ALL_TYPES, analyzeTeam, teamScore } from '../lib/pokemon'
+import TeamAnalysis, { RatingText } from '../components/TeamAnalysis'
+import { analyzeTeam } from '../lib/pokemon'
+import { myTeamRatings, useAuth } from '../lib/auth'
+import { useTeamsVersion } from '../lib/sync'
 import { useStore } from '../lib/store'
 import PokemonCard, { CARD_STYLE } from '../components/PokemonCard'
 
@@ -19,6 +23,7 @@ export default function TeamBuilderPage() {
   const [typeData, setTypeData] = useState(null)
   const [pickingSlot, setPickingSlot] = useState(null)
   const [removingSlot, setRemovingSlot] = useState(null)
+  const [sharing, setSharing] = useState(false)
 
   useEffect(() => {
     getPokemonById().then(setById)
@@ -27,12 +32,21 @@ export default function TeamBuilderPage() {
 
   const members = useMemo(() => (team && byId ? team.pokemon.filter(Boolean).map((pid) => byId.get(pid)).filter(Boolean) : []), [team, byId])
   const analysis = useMemo(() => (typeData ? analyzeTeam(members.map((m) => m.types), typeData) : null), [members, typeData])
-  const score = teamScore(analysis)
+  const user = useAuth((s) => (s.status === 'signedIn' ? s.user : null))
+  const teamsVersion = useTeamsVersion((s) => s.version)
+  const [ratings, setRatings] = useState(null)
 
-  // Guarda a nota junto com o time (aparece na lista de times).
+  // Nota da comunidade (os times de quem tem conta aparecem para todos).
   useEffect(() => {
-    if (team && typeData && byId && team.score !== score) updateTeam(team.id, { score })
-  }, [team, score, typeData, byId, updateTeam])
+    if (!user) return
+    let alive = true
+    myTeamRatings(user.uid)
+      .then((r) => alive && setRatings(r))
+      .catch(() => {})
+    return () => {
+      alive = false
+    }
+  }, [user, teamsVersion])
 
   if (!team) {
     return (
@@ -53,9 +67,15 @@ export default function TeamBuilderPage() {
 
   return (
     <div>
-      <button type="button" onClick={() => navigate('/times')} className="mb-3 flex cursor-pointer items-center gap-1 text-muted hover:text-text">
-        <Icon name="back" size={20} /> Times
-      </button>
+      <div className="mb-3 flex items-center justify-between">
+        <button type="button" onClick={() => navigate('/times')} className="flex cursor-pointer items-center gap-1 text-muted hover:text-text">
+          <Icon name="back" size={20} /> Times
+        </button>
+        <Button color="#546E7A" onClick={() => setSharing(true)} disabled={!team.pokemon.some(Boolean)}>
+          Compartilhar
+        </Button>
+      </div>
+      <ShareTeamModal team={team} byId={byId} open={sharing} onClose={() => setSharing(false)} />
 
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
         <section className="rounded-3xl bg-card p-6 shadow-lg">
@@ -105,37 +125,16 @@ export default function TeamBuilderPage() {
         </section>
 
         <section className="rounded-3xl bg-card p-6 shadow-lg">
-          <h3 className="text-lg font-bold">Análise do time</h3>
-          <div className="mt-4 flex items-center gap-4">
-            <div className="text-5xl font-black" style={{ color }}>
-              {score.toFixed(1)}
-            </div>
-            <div className="flex-1">
-              <div className="text-sm text-muted">Nota (0 a 10)</div>
-              <div className="mt-1 h-3 overflow-hidden rounded-full bg-white/15">
-                <m.div className="h-full rounded-full" style={{ background: color }} animate={{ width: `${score * 10}%` }} />
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <h3 className="text-lg font-bold">Análise do time</h3>
+            {user && (
+              <div className="text-right">
+                <div className="text-xs text-muted">Nota da comunidade</div>
+                <RatingText rating={ratings?.[team.id]?.rating ?? null} count={ratings?.[team.id]?.count ?? 0} />
               </div>
-            </div>
+            )}
           </div>
-
-          {!analysis ? (
-            <p className="mt-6 text-muted">Adicione Pokémon para ver a análise.</p>
-          ) : (
-            <div className="mt-6 space-y-4">
-              <Group title="Fraquezas" entries={Object.entries(analysis.weaknesses)} suffix={(m) => `×${m}`} />
-              <Group title="Resistências" entries={Object.entries(analysis.resistances)} suffix={(m) => `×${m}`} />
-              <Group title="Imunidades" entries={analysis.immunities.map((t) => [t])} />
-              <Group title="Vantagem ofensiva" entries={Object.entries(analysis.advantages)} suffix={(n) => `${n}×`} />
-              <div>
-                <div className="mb-2 text-sm text-muted">Tipos sem nenhuma vantagem ofensiva</div>
-                <div className="flex flex-wrap gap-1.5">
-                  {ALL_TYPES.filter((t) => !analysis.advantages[t]).map((t) => (
-                    <TypeBadge key={t} type={t} small />
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
+          <TeamAnalysis analysis={analysis} />
         </section>
       </div>
 
@@ -165,26 +164,6 @@ export default function TeamBuilderPage() {
           </Button>
         </div>
       </Modal>
-    </div>
-  )
-}
-
-function Group({ title, entries, suffix }) {
-  return (
-    <div>
-      <div className="mb-2 text-sm text-muted">{title}</div>
-      {entries.length === 0 ? (
-        <span className="text-sm text-muted">Nenhuma</span>
-      ) : (
-        <div className="flex flex-wrap gap-2">
-          {entries.map(([type, value]) => (
-            <span key={type} className="flex items-center gap-1">
-              <TypeBadge type={type} small />
-              {suffix && <span className="text-xs text-muted">{suffix(value)}</span>}
-            </span>
-          ))}
-        </div>
-      )}
     </div>
   )
 }

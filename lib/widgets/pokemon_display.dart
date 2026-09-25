@@ -43,8 +43,11 @@ class PokemonDisplay extends StatelessWidget {
       child: _SwipeArea(
         onDrag: onDrag,
         onDragEnd: onDragEnd,
-        child: Container(
-          decoration: typeBackground(form.types),
+        // O fundo com as cores dos tipos é pintado pela tela inteira
+        // (PokemonDetailScreen), para aparecer também atrás dos cantos
+        // arredondados do painel de baixo.
+        child: ColoredBox(
+          color: Colors.transparent,
           child: Stack(
             alignment: Alignment.center,
             clipBehavior: Clip.none,
