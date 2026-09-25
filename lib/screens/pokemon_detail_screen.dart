@@ -1,11 +1,13 @@
 // lib/screens/pokemon_detail_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:pocket_dex/models/alternate_form.dart';
 import 'package:pocket_dex/models/pokemon_details.dart';
 import 'package:pocket_dex/models/type_relations.dart';
 import 'package:pocket_dex/services/pokemon_service.dart';
 import 'package:pocket_dex/utils/pokemon_colors.dart';
+import 'package:pocket_dex/utils/responsive.dart';
 import 'package:pocket_dex/widgets/pikachu_loading_indicator.dart';
 import 'package:pocket_dex/widgets/pokemon_detail_panel.dart';
 import 'package:pocket_dex/widgets/pokemon_display.dart';
@@ -140,15 +142,17 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen>
   }
 
   void _onHorizontalDragEnd(DragEndDetails details) {
-    if (_slideController.isAnimating) return;
-
     if (details.primaryVelocity! < -500) {
-      setState(() => _animationDirection = _AnimationDirection.next);
-      _slideController.forward();
+      _slideTo(_AnimationDirection.next);
     } else if (details.primaryVelocity! > 500) {
-      setState(() => _animationDirection = _AnimationDirection.previous);
-      _slideController.forward();
+      _slideTo(_AnimationDirection.previous);
     }
+  }
+
+  void _slideTo(_AnimationDirection direction) {
+    if (_slideController.isAnimating) return;
+    setState(() => _animationDirection = direction);
+    _slideController.forward();
   }
 
   void _navigateToPokemonById(int newId) {
@@ -239,8 +243,9 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen>
     final PokemonDetails? pokemon = _loadedDetails[_currentPokemonId];
     final int currentIndex = _allPokemonIds.indexOf(_currentPokemonId);
 
-    final PokemonDetails? prevPokemon =
-        currentIndex > 0 ? _loadedDetails[_allPokemonIds[currentIndex - 1]] : null;
+    final PokemonDetails? prevPokemon = currentIndex > 0
+        ? _loadedDetails[_allPokemonIds[currentIndex - 1]]
+        : null;
     final PokemonDetails? nextPokemon = currentIndex < _allPokemonIds.length - 1
         ? _loadedDetails[_allPokemonIds[currentIndex + 1]]
         : null;
@@ -259,69 +264,114 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen>
 
     final Color backgroundColor = getColorForType(_selectedForm!.types.first);
 
-    return Scaffold(
-      backgroundColor: backgroundColor,
-      body: Column(
-        children: [
-          PokemonDisplay(
-            pokemon: pokemon,
-            form: _selectedForm!,
-            isShiny: _isShiny,
-            pokeballAnimation: _pokeballAnimationController,
-            onShinyToggle: () => setState(() => _isShiny = !_isShiny),
-            onFormSelect: () => _showFormSelection(pokemon),
-            imageGestureArea: GestureDetector(
-              onHorizontalDragEnd: _onHorizontalDragEnd,
-              child: AnimatedBuilder(
-                animation: _slideController,
-                builder: (context, child) {
-                  final currentOffset =
-                      _animationDirection == _AnimationDirection.next
-                          ? Offset(-_slideController.value, 0)
-                          : (_animationDirection == _AnimationDirection.previous
-                              ? Offset(_slideController.value, 0)
-                              : Offset.zero);
+    // No site: setas do teclado e botões laterais também trocam de Pokémon.
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.arrowRight): () {
+          if (nextPokemon != null) _slideTo(_AnimationDirection.next);
+        },
+        const SingleActivator(LogicalKeyboardKey.arrowLeft): () {
+          if (prevPokemon != null) _slideTo(_AnimationDirection.previous);
+        },
+      },
+      child: Focus(
+        autofocus: true,
+        child: Scaffold(
+          backgroundColor: backgroundColor,
+          body: Column(
+            children: [
+              PokemonDisplay(
+                pokemon: pokemon,
+                form: _selectedForm!,
+                isShiny: _isShiny,
+                pokeballAnimation: _pokeballAnimationController,
+                onShinyToggle: () => setState(() => _isShiny = !_isShiny),
+                onFormSelect: () => _showFormSelection(pokemon),
+                imageGestureArea: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    GestureDetector(
+                      onHorizontalDragEnd: _onHorizontalDragEnd,
+                      child: AnimatedBuilder(
+                        animation: _slideController,
+                        builder: (context, child) {
+                          final currentOffset =
+                              _animationDirection == _AnimationDirection.next
+                                  ? Offset(-_slideController.value, 0)
+                                  : (_animationDirection ==
+                                          _AnimationDirection.previous
+                                      ? Offset(_slideController.value, 0)
+                                      : Offset.zero);
 
-                  final enteringOffset =
-                      _animationDirection == _AnimationDirection.next
-                          ? Offset(1.0 - _slideController.value, 0)
-                          : (_animationDirection == _AnimationDirection.previous
-                              ? Offset(-1.0 + _slideController.value, 0)
-                              : const Offset(1.0, 0.0));
+                          final enteringOffset =
+                              _animationDirection == _AnimationDirection.next
+                                  ? Offset(1.0 - _slideController.value, 0)
+                                  : (_animationDirection ==
+                                          _AnimationDirection.previous
+                                      ? Offset(-1.0 + _slideController.value, 0)
+                                      : const Offset(1.0, 0.0));
 
-                  return Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      if (_animationDirection == _AnimationDirection.next &&
-                          nextPokemon != null)
-                        _PokemonAnimatedImage(
-                            details: nextPokemon, offset: enteringOffset),
-                      if (_animationDirection == _AnimationDirection.previous &&
-                          prevPokemon != null)
-                        _PokemonAnimatedImage(
-                            details: prevPokemon, offset: enteringOffset),
-                      _PokemonAnimatedImage(
-                          details: pokemon,
-                          form: _selectedForm,
-                          isShiny: _isShiny,
-                          offset: currentOffset),
-                    ],
-                  );
-                },
+                          return Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              if (_animationDirection ==
+                                      _AnimationDirection.next &&
+                                  nextPokemon != null)
+                                _PokemonAnimatedImage(
+                                    details: nextPokemon,
+                                    offset: enteringOffset),
+                              if (_animationDirection ==
+                                      _AnimationDirection.previous &&
+                                  prevPokemon != null)
+                                _PokemonAnimatedImage(
+                                    details: prevPokemon,
+                                    offset: enteringOffset),
+                              _PokemonAnimatedImage(
+                                  details: pokemon,
+                                  form: _selectedForm,
+                                  isShiny: _isShiny,
+                                  offset: currentOffset),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                    if (Responsive.isWide(context) && prevPokemon != null)
+                      Positioned(
+                        left: 8,
+                        child: _NavArrow(
+                          icon: Icons.chevron_left,
+                          tooltip: 'Anterior',
+                          onPressed: () =>
+                              _slideTo(_AnimationDirection.previous),
+                        ),
+                      ),
+                    if (Responsive.isWide(context) && nextPokemon != null)
+                      Positioned(
+                        right: 8,
+                        child: _NavArrow(
+                          icon: Icons.chevron_right,
+                          tooltip: 'Próximo',
+                          onPressed: () => _slideTo(_AnimationDirection.next),
+                        ),
+                      ),
+                  ],
+                ),
               ),
-            ),
+              PokemonDetailPanel(
+                pokemon: pokemon,
+                form: _selectedForm!,
+                typeRelations:
+                    _generateTypeRelationsForForm(pokemon, _selectedForm!),
+                pageController: _pageController,
+                selectedTabIndex: _selectedTabIndex,
+                onPageChanged: (index) =>
+                    setState(() => _selectedTabIndex = index),
+                onEvolutionSelected: _navigateToPokemonById,
+              )
+            ],
           ),
-          PokemonDetailPanel(
-            pokemon: pokemon,
-            form: _selectedForm!,
-            typeRelations:
-                _generateTypeRelationsForForm(pokemon, _selectedForm!),
-            pageController: _pageController,
-            selectedTabIndex: _selectedTabIndex,
-            onPageChanged: (index) => setState(() => _selectedTabIndex = index),
-            onEvolutionSelected: _navigateToPokemonById,
-          )
-        ],
+        ),
       ),
     );
   }
@@ -401,8 +451,9 @@ class _PokemonAnimatedImage extends StatelessWidget {
 
     final AlternateForm displayForm = form ?? details.forms.first;
     final bool displayShiny = isShiny ?? false;
-    final String imageUrl =
-        displayShiny ? displayForm.shinyPixelImageUrl : displayForm.pixelImageUrl;
+    final String imageUrl = displayShiny
+        ? displayForm.shinyPixelImageUrl
+        : displayForm.pixelImageUrl;
 
     return FractionalTranslation(
       translation: offset,
@@ -419,6 +470,27 @@ class _PokemonAnimatedImage extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _NavArrow extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  const _NavArrow(
+      {required this.icon, required this.tooltip, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: onPressed,
+      iconSize: 36,
+      color: Colors.white,
+      style: IconButton.styleFrom(backgroundColor: Colors.black.withAlpha(40)),
+      icon: Icon(icon),
     );
   }
 }

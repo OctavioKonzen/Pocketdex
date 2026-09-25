@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 import 'abilities_encyclopedia_screen.dart';
 import 'items_encyclopedia_screen.dart';
 import 'moves_encyclopedia_screen.dart';
+import '../utils/responsive.dart';
 
 class EncyclopediaScreen extends StatelessWidget {
   const EncyclopediaScreen({super.key});
 
-  Widget _buildListTile(BuildContext context, {
+  Widget _buildListTile(
+    BuildContext context, {
     required IconData icon,
     required Color iconColor,
     required String title,
@@ -34,7 +36,8 @@ class EncyclopediaScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Enciclopédia'),
       ),
-      body: ListView(
+      body: ReadableWidth(
+          child: ListView(
         children: [
           _buildListTile(
             context,
@@ -58,7 +61,7 @@ class EncyclopediaScreen extends StatelessWidget {
             destination: const ItemsEncyclopediaScreen(),
           ),
         ],
-      ),
+      )),
     );
   }
 }

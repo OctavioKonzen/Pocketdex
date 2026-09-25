@@ -5,15 +5,18 @@ import '../models/ability.dart';
 import '../services/pokemon_service.dart';
 import '../utils/string_extensions.dart';
 import 'ability_detail_screen.dart';
+import '../utils/responsive.dart';
 
 class AbilitiesEncyclopediaScreen extends StatefulWidget {
   const AbilitiesEncyclopediaScreen({super.key});
 
   @override
-  State<AbilitiesEncyclopediaScreen> createState() => _AbilitiesEncyclopediaScreenState();
+  State<AbilitiesEncyclopediaScreen> createState() =>
+      _AbilitiesEncyclopediaScreenState();
 }
 
-class _AbilitiesEncyclopediaScreenState extends State<AbilitiesEncyclopediaScreen> {
+class _AbilitiesEncyclopediaScreenState
+    extends State<AbilitiesEncyclopediaScreen> {
   final PokemonService _pokemonService = PokemonService();
   List<Map<String, String>> _allAbilities = [];
   List<Map<String, String>> _filteredAbilities = [];
@@ -35,13 +38,15 @@ class _AbilitiesEncyclopediaScreenState extends State<AbilitiesEncyclopediaScree
           _isLoading = false;
         });
       }
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   void _filterAbilities(String query) {
     final filtered = _allAbilities.where((ability) {
-      return ability['name']!.toLowerCase().replaceAll('-', ' ').contains(query.toLowerCase());
+      return ability['name']!
+          .toLowerCase()
+          .replaceAll('-', ' ')
+          .contains(query.toLowerCase());
     }).toList();
     setState(() {
       _filteredAbilities = filtered;
@@ -55,7 +60,8 @@ class _AbilitiesEncyclopediaScreenState extends State<AbilitiesEncyclopediaScree
       appBar: AppBar(
         title: const Text('Enciclopédia de Habilidades'),
       ),
-      body: Column(
+      body: ReadableWidth(
+          child: Column(
         children: [
           Padding(
             padding: const EdgeInsets.all(16.0),
@@ -65,7 +71,8 @@ class _AbilitiesEncyclopediaScreenState extends State<AbilitiesEncyclopediaScree
               decoration: InputDecoration(
                 labelText: 'Procurar Habilidade',
                 prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 filled: true,
                 fillColor: theme.colorScheme.surface,
               ),
@@ -87,7 +94,7 @@ class _AbilitiesEncyclopediaScreenState extends State<AbilitiesEncyclopediaScree
                   ),
           ),
         ],
-      ),
+      )),
     );
   }
 }
@@ -97,7 +104,8 @@ class _AbilityTile extends StatelessWidget {
   final String url;
   final PokemonService pokemonService;
 
-  const _AbilityTile({required this.name, required this.url, required this.pokemonService});
+  const _AbilityTile(
+      {required this.name, required this.url, required this.pokemonService});
 
   @override
   Widget build(BuildContext context) {
@@ -106,23 +114,34 @@ class _AbilityTile extends StatelessWidget {
       color: theme.cardColor,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: FutureBuilder<Ability>(
-        future: pokemonService.fetchResourceDetails(url, (json) => Ability.fromApiJson(json)),
+        future: pokemonService.fetchResourceDetails(
+            url, (json) => Ability.fromApiJson(json)),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             return ListTile(
-              title: Text(name.replaceAll('-', ' ').capitalise(), style: TextStyle(color: theme.colorScheme.onSurface)),
-              subtitle: Text('Carregando...', style: TextStyle(color: theme.hintColor)),
+              title: Text(name.replaceAll('-', ' ').capitalise(),
+                  style: TextStyle(color: theme.colorScheme.onSurface)),
+              subtitle: Text('Carregando...',
+                  style: TextStyle(color: theme.hintColor)),
             );
           }
           final ability = snapshot.data!;
           return ListTile(
-            title: Text(ability.name, style: TextStyle(color: theme.colorScheme.onSurface, fontWeight: FontWeight.bold)),
-            subtitle: Text(ability.description, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: theme.hintColor)),
+            title: Text(ability.name,
+                style: TextStyle(
+                    color: theme.colorScheme.onSurface,
+                    fontWeight: FontWeight.bold)),
+            subtitle: Text(ability.description,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: theme.hintColor)),
             trailing: Icon(Icons.chevron_right, color: theme.hintColor),
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => AbilityDetailScreen(ability: ability)),
+                MaterialPageRoute(
+                    builder: (context) =>
+                        AbilityDetailScreen(ability: ability)),
               );
             },
           );

@@ -1,12 +1,11 @@
 // lib/services/pokemon_service.dart
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import '../models/pokemon_listing.dart';
 import '../models/pokemon_details.dart';
 import '../models/generation.dart';
+import 'local_database.dart';
 
 class PokemonService {
-  final String _baseUrl = 'https://pokeapi.co/api/v2';
+  final LocalDatabase _db = LocalDatabase.instance;
 
   static final Map<int, PokemonDetails> _detailsCache = {};
 
@@ -15,114 +14,80 @@ class PokemonService {
       return [];
     }
 
-    final response1 = await http.get(Uri.parse('$_baseUrl/type/${typeNames[0]}'));
-    if (response1.statusCode != 200) {
+    final data1 = await _db.typeJson(typeNames[0]);
+    if (data1 == null) {
       throw Exception('Failed to load type ${typeNames[0]}');
     }
-    final data1 = json.decode(response1.body);
     final pokemonList1 = (data1['pokemon'] as List)
         .map((p) => p['pokemon'] as Map<String, dynamic>)
         .toList();
 
     if (typeNames.length > 1) {
-      final response2 = await http.get(Uri.parse('$_baseUrl/type/${typeNames[1]}'));
-      if (response2.statusCode != 200) {
+      final data2 = await _db.typeJson(typeNames[1]);
+      if (data2 == null) {
         throw Exception('Failed to load type ${typeNames[1]}');
       }
-      final data2 = json.decode(response2.body);
-      final pokemonNameList1 = pokemonList1.map((p) => p['name'] as String).toSet();
-      final pokemonList2 = (data2['pokemon'] as List)
-          .map((p) => p['pokemon'] as Map<String, dynamic>)
-          .toList();
-      
-      final intersectionList = pokemonList1.where((p) {
-        return pokemonNameList1.contains(p['name']) && pokemonList2.any((p2) => p2['name'] == p['name']);
-      }).toList();
-      
-      return intersectionList.map((p) => PokemonListing.fromJson(p)).toList();
+      final pokemonNameList2 = (data2['pokemon'] as List)
+          .map((p) => p['pokemon']['name'] as String)
+          .toSet();
 
+      return pokemonList1
+          .where((p) => pokemonNameList2.contains(p['name']))
+          .map((p) => PokemonListing.fromJson(p))
+          .toList();
     } else {
       return pokemonList1.map((p) => PokemonListing.fromJson(p)).toList();
     }
   }
 
+  /// [url] é uma referência local no formato "recurso/idOuNome/" (ex.: "move/1/").
   Future<T> fetchResourceDetails<T>(String url, T Function(Map<String, dynamic>) fromJson) async {
-    try {
-      final response = await http.get(Uri.parse(url));
-      if (response.statusCode == 200) {
-        final decodedBody = json.decode(response.body);
-        if (decodedBody is Map<String, dynamic>) {
-            return fromJson(decodedBody);
-        } else {
-            throw Exception('Invalid JSON format received from $url');
-        }
-      } else {
-        throw Exception('Failed to load resource details from $url');
-      }
-    } catch (e) {
-      throw Exception('Error fetching resource details: $e');
+    final data = await _db.resourceJson(url);
+    if (data == null) {
+      throw Exception('Resource not found: $url');
     }
+    return fromJson(data);
   }
 
-  Future<List<Map<String, String>>> _fetchAllPaginated(String endpoint) async {
-    List<Map<String, String>> allResults = [];
-    String? nextUrl = '$_baseUrl/$endpoint?limit=200';
-
-    while (nextUrl != null) {
-      final response = await http.get(Uri.parse(nextUrl));
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final results = (data['results'] as List)
-            .map((item) => {
-                  'name': item['name'] as String,
-                  'url': item['url'] as String,
-                })
-            .toList();
-        allResults.addAll(results);
-        nextUrl = data['next'];
-      } else {
-        throw Exception('Failed to load paginated list from $endpoint');
-      }
+  /// Dados de um Pokémon (por id ou nome) no formato da PokeAPI.
+  Future<Map<String, dynamic>> fetchPokemonJson(String idOrName) async {
+    final data = await _db.pokemonJson(idOrName);
+    if (data == null) {
+      throw Exception('Pokémon not found: $idOrName');
     }
-    return allResults;
+    return data;
+  }
+
+  /// Igual a [fetchPokemonJson], mas a partir da url de um [PokemonListing].
+  Future<Map<String, dynamic>> fetchPokemonJsonByUrl(String url) async {
+    final data = await _db.resourceJson(url);
+    if (data == null) {
+      throw Exception('Pokémon not found: $url');
+    }
+    return data;
   }
 
   Future<List<PokemonListing>> fetchAllPokemonList() async {
-     final response = await http.get(Uri.parse('$_baseUrl/pokemon?limit=1028'));
-     if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return (data['results'] as List)
-            .map((p) => PokemonListing.fromJson(p))
-            .toList();
-     } else {
-       throw Exception('Failed to load full Pokémon list');
-     }
+    final pokemon = await _db.defaultPokemon();
+    return pokemon
+        .map((p) => PokemonListing.fromJson({'name': p['name'], 'url': 'pokemon/${p['id']}/'}))
+        .toList();
   }
 
   Future<List<PokemonListing>> fetchPokedex(Generation generation) async {
-    final response = await http.get(Uri.parse('$_baseUrl/generation/${generation.id}'));
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      final speciesList = (data['pokemon_species'] as List);
-
-      speciesList.sort((a, b) {
-        final idA = int.parse((a['url'] as String).split('/')[6]);
-        final idB = int.parse((b['url'] as String).split('/')[6]);
-        return idA.compareTo(idB);
-      });
-
-      return speciesList.map((species) {
-            final urlParts = (species['url'] as String).split('/');
-            final id = urlParts[urlParts.length - 2];
-            return PokemonListing(
-              name: species['name'],
-              url: 'https://pokeapi.co/api/v2/pokemon/$id/',
-              imageUrl: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/$id.png'
-            );
-          }).toList();
-    } else {
+    final speciesIds = await _db.speciesIdsOfGeneration(generation.id);
+    if (speciesIds.isEmpty) {
       throw Exception('Failed to load Pokedex for ${generation.name}');
     }
+
+    return [
+      for (final id in speciesIds)
+        PokemonListing(
+          name: await _db.speciesName(id),
+          url: 'pokemon/$id/',
+          imageUrl: PokemonListing.artworkUrl('$id'),
+        ),
+    ];
   }
 
   Future<PokemonDetails> fetchPokemonDetails(int id) async {
@@ -130,57 +95,43 @@ class PokemonService {
       return _detailsCache[id]!;
     }
 
-    final basePokemonResponse = await http.get(Uri.parse('$_baseUrl/pokemon/$id/'));
-    if (basePokemonResponse.statusCode != 200) throw Exception('Failed to load base pokemon data for ID $id');
-    final basePokemonJson = json.decode(basePokemonResponse.body);
-    
-    final speciesUrl = basePokemonJson['species']['url'];
+    final basePokemonJson = await _db.pokemonJson('$id');
+    if (basePokemonJson == null) throw Exception('Failed to load base pokemon data for ID $id');
 
-    final speciesResponse = await http.get(Uri.parse(speciesUrl));
-    if (speciesResponse.statusCode != 200) throw Exception('Failed to load species from $speciesUrl');
-    final speciesJson = json.decode(speciesResponse.body);
+    final speciesUrl = basePokemonJson['species']['url'] as String;
+    final speciesJson = await _db.resourceJson(speciesUrl);
+    if (speciesJson == null) throw Exception('Failed to load species from $speciesUrl');
 
-    final evolutionUrl = speciesJson['evolution_chain']['url'];
-    final evolutionResponse = await http.get(Uri.parse(evolutionUrl));
-    if (evolutionResponse.statusCode != 200) throw Exception('Failed to load evolution chain');
-    final evolutionJson = json.decode(evolutionResponse.body);
+    final evolutionUrl = speciesJson['evolution_chain']?['url'] as String?;
+    final evolutionJson = evolutionUrl == null ? null : await _db.resourceJson(evolutionUrl);
+    if (evolutionJson == null) throw Exception('Failed to load evolution chain');
 
-    final varietyUrls = (speciesJson['varieties'] as List).map((v) => v['pokemon']['url'] as String).toList();
-    final varietyFutures = varietyUrls.map((url) => http.get(Uri.parse(url)));
-    final varietyResponses = await Future.wait(varietyFutures);
-    
-    final List<Map<String, dynamic>> varietyJsons = varietyResponses.map((res) {
-      if (res.statusCode == 200) return json.decode(res.body) as Map<String, dynamic>;
-      throw Exception('Failed to load a variety: ${res.request?.url}');
-    }).toList();
-    
-    final Set<String> moveUrls = {};
-    for (var varietyJson in varietyJsons) {
-      for (var move in (varietyJson['moves'] as List)) {
-        moveUrls.add(move['move']['url']);
-      }
+    final List<Map<String, dynamic>> varietyJsons = [];
+    for (final variety in speciesJson['varieties'] as List) {
+      final varietyJson = await _db.resourceJson(variety['pokemon']['url'] as String);
+      if (varietyJson == null) throw Exception('Failed to load a variety: ${variety['pokemon']['url']}');
+      varietyJsons.add(varietyJson);
     }
-    final moveFutures = moveUrls.map((url) => http.get(Uri.parse(url)));
-    final moveResponses = await Future.wait(moveFutures);
-    final Map<String, Map<String, dynamic>> allMoveDetails = {
-      for (var res in moveResponses)
-        if (res.statusCode == 200)
-          (json.decode(res.body) as Map<String, dynamic>)['name'] as String: json.decode(res.body) as Map<String, dynamic>
-    };
 
-    final Set<String> typeUrls = {};
-    for (var varietyJson in varietyJsons) {
-      for (var type in (varietyJson['types'] as List)) {
-        typeUrls.add(type['type']['url']);
-      }
-    }
-    final typeFutures = typeUrls.map((url) => http.get(Uri.parse(url)));
-    final typeResponses = await Future.wait(typeFutures);
-    final Map<String, Map<String, dynamic>> allTypeDetails = {
-      for (var res in typeResponses)
-        if (res.statusCode == 200)
-          (json.decode(res.body) as Map<String, dynamic>)['name'] as String: json.decode(res.body) as Map<String, dynamic>
+    final Set<String> moveNames = {
+      for (final varietyJson in varietyJsons)
+        for (final move in varietyJson['moves'] as List) move['move']['name'] as String,
     };
+    final Map<String, Map<String, dynamic>> allMoveDetails = {};
+    for (final name in moveNames) {
+      final moveJson = await _db.moveJson(name);
+      if (moveJson != null) allMoveDetails[name] = moveJson;
+    }
+
+    final Set<String> typeNames = {
+      for (final varietyJson in varietyJsons)
+        for (final type in varietyJson['types'] as List) type['type']['name'] as String,
+    };
+    final Map<String, Map<String, dynamic>> allTypeDetails = {};
+    for (final name in typeNames) {
+      final typeJson = await _db.typeJson(name);
+      if (typeJson != null) allTypeDetails[name] = typeJson;
+    }
 
     final details = PokemonDetails.fromJsons(
       speciesJson: speciesJson,
@@ -189,65 +140,50 @@ class PokemonService {
       allMoveDetails: allMoveDetails,
       allTypeDetails: allTypeDetails,
     );
-   
+
     _detailsCache[id] = details;
-    
+
     return details;
   }
 
   Future<List<PokemonListing>> fetchCompatiblePartners(PokemonDetails details) async {
-     final eggGroups = details.eggGroups;
-     if (eggGroups.isEmpty || eggGroups.contains('no-eggs')) return [];
+    final eggGroups = details.eggGroups;
+    if (eggGroups.isEmpty || eggGroups.contains('no-eggs')) return [];
 
-     final partnerFutures = eggGroups.map((groupName) => http.get(Uri.parse('$_baseUrl/egg-group/$groupName/')));
-     final responses = await Future.wait(partnerFutures);
-     
-     final Set<String> partnerIds = {};
-     for (var res in responses) {
-       if (res.statusCode == 200) {
-         final data = json.decode(res.body);
-         for (var species in data['pokemon_species']) {
-            final urlParts = (species['url'] as String).split('/');
-            final id = urlParts[urlParts.length - 2];
-            if (id != details.id.toString()) {
-              partnerIds.add(id);
-            }
-         }
-       }
-     }
-     
-     return partnerIds.map((id) {
-        return PokemonListing(
-          name: 'pokemon-$id',
-          url: '$_baseUrl/pokemon/$id/',
-          imageUrl: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/$id.png'
-        );
-     }).toList();
+    final Set<int> partnerIds = {};
+    for (final groupName in eggGroups) {
+      for (final id in await _db.speciesIdsOfEggGroup(groupName)) {
+        if (id != details.id) partnerIds.add(id);
+      }
+    }
+
+    return [
+      for (final id in partnerIds)
+        PokemonListing(
+          name: await _db.speciesName(id),
+          url: 'pokemon/$id/',
+          imageUrl: PokemonListing.artworkUrl('$id'),
+        ),
+    ];
   }
 
-  Future<List<Map<String, String>>> fetchAllMovesList() => _fetchAllPaginated('move');
-  Future<List<Map<String, String>>> fetchAllItemsList() => _fetchAllPaginated('item');
-  Future<List<Map<String, String>>> fetchAllAbilitiesList() => _fetchAllPaginated('ability');
+  Future<List<Map<String, String>>> fetchAllMovesList() => _db.resourceList('moves', 'move');
+  Future<List<Map<String, String>>> fetchAllItemsList() => _db.resourceList('items', 'item');
+  Future<List<Map<String, String>>> fetchAllAbilitiesList() => _db.resourceList('abilities', 'ability');
 
   Future<List<PokemonListing>> fetchPokemonWhoLearnMove(String moveName) async {
-    final response = await http.get(Uri.parse('$_baseUrl/move/${moveName.toLowerCase().replaceAll(' ', '-')}/'));
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      return (data['learned_by_pokemon'] as List)
-          .map((p) => PokemonListing.fromJson(p))
-          .toList();
-    }
-    return [];
+    final data = await _db.moveJson(moveName.toLowerCase().replaceAll(' ', '-'));
+    if (data == null) return [];
+    return (data['learned_by_pokemon'] as List)
+        .map((p) => PokemonListing.fromJson(p))
+        .toList();
   }
 
   Future<List<PokemonListing>> fetchPokemonWithAbility(String abilityName) async {
-    final response = await http.get(Uri.parse('$_baseUrl/ability/${abilityName.toLowerCase().replaceAll(' ', '-')}/'));
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      return (data['pokemon'] as List)
-          .map((p) => PokemonListing.fromJson(p['pokemon']))
-          .toList();
-    }
-    return [];
+    final data = await _db.abilityJson(abilityName.toLowerCase().replaceAll(' ', '-'));
+    if (data == null) return [];
+    return (data['pokemon'] as List)
+        .map((p) => PokemonListing.fromJson(p['pokemon']))
+        .toList();
   }
 }

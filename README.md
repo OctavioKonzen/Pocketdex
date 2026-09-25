@@ -33,7 +33,7 @@
 ## ✨ Funcionalidades Principais
 
 ### 🔍 Exploração e Enciclopédia
-* **Pokédex Avançada:** Navegue por todas as gerações com listagem dinâmica e filtros inteligentes por tipo. Consumo em tempo real da **PokeAPI**.
+* **Pokédex Avançada:** Navegue por todas as gerações com listagem dinâmica e filtros inteligentes por tipo. Todos os dados vêm de um **banco de dados local** embutido no app — funciona sem depender de API.
 * **Detalhes Profundos:** Status base, habilidades, linhas evolutivas completas e formas alternativas (Mega Evoluções, Alola, Galar, etc.).
 * **Enciclopédia de Itens e Moves:** Módulos dedicados para busca técnica de movimentos e itens de segurar.
 
@@ -52,7 +52,9 @@
 
 * **Framework:** Flutter (Dart).
 * **Gestão de Estado:** `Provider` (utilizado para Temas e Favoritos).
-* **Persistência:** `Shared Preferences` para configurações e dados locais.
+* **Banco de dados:** arquivos JSON em `assets/database/` (Pokémon, espécies, evoluções, golpes, tipos, habilidades, itens), lidos por `lib/services/local_database.dart`.
+* **Persistência:** `Shared Preferences` para configurações, times, favoritos e treinos (no site, fica salvo no navegador).
+* **Plataformas:** Android, iOS e **Web** (o mesmo código gera o app e o site).
 * **UI/UX:** Tipografia **Circular Std** e cores dinâmicas baseadas nos tipos dos Pokémon.
 
 ## 📥 Como Baixar (APK)
@@ -72,5 +74,44 @@ git clone [https://github.com/OctavioKonzen/Pocketdex.git](https://github.com/Oc
 # Instale as dependências
 flutter pub get
 
-# Execute o projeto
+# Execute o app
 flutter run
+
+# Execute o site no navegador
+flutter run -d chrome
+```
+
+---
+
+## 🌐 Site (Flutter Web)
+
+O site tem **todas as funcionalidades do app**, com o mesmo visual. Em telas grandes o layout se adapta:
+conteúdo centralizado, grades com mais colunas e navegação entre Pokémon pelas setas do teclado (← →) ou pelos botões laterais.
+
+O deploy é automático: a cada push na `main`, o workflow `.github/workflows/deploy-web.yml` roda os testes,
+gera o build web e publica no **GitHub Pages** (`https://octaviokonzen.github.io/Pocketdex/`).
+Para ativar, vá em **Settings → Pages → Build and deployment → Source** e escolha **GitHub Actions**.
+
+Build manual:
+
+```bash
+flutter build web --release --no-web-resources-cdn --base-href /Pocketdex/
+```
+
+---
+
+## 🗄️ Banco de Dados
+
+O app não consulta mais a PokeAPI em tempo de execução. Os dados ficam em `assets/database/*.json`
+(~2 MB) e são gerados pelo script `tool/build_database.py` a partir do dump estático da PokeAPI.
+As imagens (sprites) continuam sendo carregadas do repositório público de sprites.
+
+Para atualizar os dados (ex.: novos Pokémon):
+
+```bash
+git clone --depth 1 --filter=blob:none --sparse https://github.com/PokeAPI/api-data.git
+cd api-data && git sparse-checkout set data/api/v2/pokemon data/api/v2/pokemon-species \
+    data/api/v2/evolution-chain data/api/v2/move data/api/v2/type data/api/v2/ability \
+    data/api/v2/item data/api/v2/egg-group data/api/v2/generation && cd ..
+python3 tool/build_database.py api-data
+```

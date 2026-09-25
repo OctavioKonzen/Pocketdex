@@ -11,6 +11,7 @@ import '../widgets/pokemon_card.dart';
 import '../widgets/pikachu_loading_indicator.dart';
 import 'pokemon_detail_screen.dart';
 import 'favorites_screen.dart';
+import '../utils/responsive.dart';
 
 class PokedexScreen extends StatefulWidget {
   final bool isForTeamSelection;
@@ -24,7 +25,8 @@ class PokedexScreen extends StatefulWidget {
   PokedexScreenState createState() => PokedexScreenState();
 }
 
-class PokedexScreenState extends State<PokedexScreen> with SingleTickerProviderStateMixin {
+class PokedexScreenState extends State<PokedexScreen>
+    with SingleTickerProviderStateMixin {
   final PokemonService _pokemonService = PokemonService();
   final TextEditingController _searchController = TextEditingController();
 
@@ -139,13 +141,16 @@ class PokedexScreenState extends State<PokedexScreen> with SingleTickerProviderS
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('Filtrar por Tipo', style: theme.textTheme.headlineSmall),
+                    Text('Filtrar por Tipo',
+                        style: theme.textTheme.headlineSmall),
                     const SizedBox(height: 8),
-                    Text('Selecione até dois tipos', style: theme.textTheme.bodyMedium),
+                    Text('Selecione até dois tipos',
+                        style: theme.textTheme.bodyMedium),
                     const SizedBox(height: 16),
                     Expanded(
                       child: GridView.builder(
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 3,
                           childAspectRatio: 2.5,
                           crossAxisSpacing: 8,
@@ -155,7 +160,8 @@ class PokedexScreenState extends State<PokedexScreen> with SingleTickerProviderS
                         itemBuilder: (context, index) {
                           final type = pokemonTypeColors.keys.elementAt(index);
                           return FilterChip(
-                            label: Text(type[0].toUpperCase() + type.substring(1)),
+                            label:
+                                Text(type[0].toUpperCase() + type.substring(1)),
                             selected: tempSelectedTypes.contains(type),
                             onSelected: (bool selected) {
                               modalState(() {
@@ -168,7 +174,8 @@ class PokedexScreenState extends State<PokedexScreen> with SingleTickerProviderS
                                 }
                               });
                             },
-                            backgroundColor: getColorForType(type).withAlpha(50),
+                            backgroundColor:
+                                getColorForType(type).withAlpha(50),
                             selectedColor: getColorForType(type),
                             labelStyle: TextStyle(
                               color: tempSelectedTypes.contains(type)
@@ -190,10 +197,11 @@ class PokedexScreenState extends State<PokedexScreen> with SingleTickerProviderS
                               _selectedTypes.clear();
                               _selectedGeneration = null;
                             });
-                             Navigator.pop(context);
+                            Navigator.pop(context);
                             _loadPokemon();
                           },
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.grey.shade700),
+                          style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.grey.shade700),
                           child: const Text('Limpar Filtros'),
                         ),
                         ElevatedButton(
@@ -324,33 +332,28 @@ class PokedexScreenState extends State<PokedexScreen> with SingleTickerProviderS
     return FadeTransition(
         opacity: animation,
         child: SlideTransition(
-            position: Tween<Offset>(
-                    begin: const Offset(0, 0.5), end: Offset.zero)
-                .animate(animation),
+            position:
+                Tween<Offset>(begin: const Offset(0, 0.5), end: Offset.zero)
+                    .animate(animation),
             child: InkWell(
                 onTap: onTap,
-                child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
-                          decoration: BoxDecoration(
-                              color: Theme.of(context).cardColor,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: const [
-                                BoxShadow(
-                                    color: Colors.black26, blurRadius: 4)
-                              ]),
-                          child: Text(text,
-                              style: TextStyle(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurface,
-                                  fontWeight: FontWeight.bold))),
-                      const SizedBox(width: 12),
-                      CircleAvatar(child: Icon(icon, color: Colors.white))
-                    ]))));
+                child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                  Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                          color: Theme.of(context).cardColor,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: const [
+                            BoxShadow(color: Colors.black26, blurRadius: 4)
+                          ]),
+                      child: Text(text,
+                          style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurface,
+                              fontWeight: FontWeight.bold))),
+                  const SizedBox(width: 12),
+                  CircleAvatar(child: Icon(icon, color: Colors.white))
+                ]))));
   }
 
   @override
@@ -382,10 +385,9 @@ class PokedexScreenState extends State<PokedexScreen> with SingleTickerProviderS
                                 TextStyle(color: theme.colorScheme.onSurface),
                             decoration: InputDecoration(
                                 hintText: 'Procurar Pokémon por nome ou nú...',
-                                hintStyle:
-                                    TextStyle(color: theme.hintColor),
-                                prefixIcon: Icon(Icons.search,
-                                    color: theme.hintColor),
+                                hintStyle: TextStyle(color: theme.hintColor),
+                                prefixIcon:
+                                    Icon(Icons.search, color: theme.hintColor),
                                 filled: true,
                                 fillColor: theme.colorScheme.surface,
                                 border: OutlineInputBorder(
@@ -405,12 +407,12 @@ class PokedexScreenState extends State<PokedexScreen> with SingleTickerProviderS
                                         .withAlpha(178))))
                         : GridView.builder(
                             key: const PageStorageKey('pokedex_grid'),
-                            padding:
-                                const EdgeInsets.fromLTRB(20, 10, 20, 80),
+                            padding: const EdgeInsets.fromLTRB(20, 10, 20, 80),
                             physics: const AlwaysScrollableScrollPhysics(),
                             gridDelegate:
-                                const SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: 3,
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount:
+                                        Responsive.columns(context, min: 3),
                                     crossAxisSpacing: 12,
                                     mainAxisSpacing: 12,
                                     childAspectRatio: 0.8),
@@ -456,15 +458,15 @@ class PokedexScreenState extends State<PokedexScreen> with SingleTickerProviderS
                       curve: const Interval(0.4, 1.0))),
               const SizedBox(height: 12),
               _buildMenuItem(
-                text: 'Filtrar por Tipo',
-                icon: Icons.shield_outlined,
-                onTap: () {
-                  _toggleMenu();
-                  _showTypeSelector();
-                },
-                animation: CurvedAnimation(
-                    parent: _animationController,
-                    curve: const Interval(0.6, 1.0))),
+                  text: 'Filtrar por Tipo',
+                  icon: Icons.shield_outlined,
+                  onTap: () {
+                    _toggleMenu();
+                    _showTypeSelector();
+                  },
+                  animation: CurvedAnimation(
+                      parent: _animationController,
+                      curve: const Interval(0.6, 1.0))),
               const SizedBox(height: 12),
               _buildMenuItem(
                   text: 'Favoritos',

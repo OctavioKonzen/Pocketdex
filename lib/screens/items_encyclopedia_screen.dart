@@ -4,12 +4,14 @@ import '../models/item.dart';
 import '../services/pokemon_service.dart';
 import '../utils/string_extensions.dart';
 import 'item_detail_screen.dart';
+import '../utils/responsive.dart';
 
 class ItemsEncyclopediaScreen extends StatefulWidget {
   const ItemsEncyclopediaScreen({super.key});
 
   @override
-  State<ItemsEncyclopediaScreen> createState() => _ItemsEncyclopediaScreenState();
+  State<ItemsEncyclopediaScreen> createState() =>
+      _ItemsEncyclopediaScreenState();
 }
 
 class _ItemsEncyclopediaScreenState extends State<ItemsEncyclopediaScreen> {
@@ -34,13 +36,15 @@ class _ItemsEncyclopediaScreenState extends State<ItemsEncyclopediaScreen> {
           _isLoading = false;
         });
       }
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   void _filterItems(String query) {
     final filtered = _allItems.where((item) {
-      return item['name']!.toLowerCase().replaceAll('-', ' ').contains(query.toLowerCase());
+      return item['name']!
+          .toLowerCase()
+          .replaceAll('-', ' ')
+          .contains(query.toLowerCase());
     }).toList();
     setState(() {
       _filteredItems = filtered;
@@ -54,7 +58,8 @@ class _ItemsEncyclopediaScreenState extends State<ItemsEncyclopediaScreen> {
       appBar: AppBar(
         title: const Text('Enciclopédia de Itens'),
       ),
-      body: Column(
+      body: ReadableWidth(
+          child: Column(
         children: [
           Padding(
             padding: const EdgeInsets.all(16.0),
@@ -64,7 +69,8 @@ class _ItemsEncyclopediaScreenState extends State<ItemsEncyclopediaScreen> {
               decoration: InputDecoration(
                 labelText: 'Procurar Item',
                 prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 filled: true,
                 fillColor: theme.colorScheme.surface,
               ),
@@ -86,7 +92,7 @@ class _ItemsEncyclopediaScreenState extends State<ItemsEncyclopediaScreen> {
                   ),
           ),
         ],
-      ),
+      )),
     );
   }
 }
@@ -96,7 +102,8 @@ class _ItemTile extends StatelessWidget {
   final String url;
   final PokemonService pokemonService;
 
-  const _ItemTile({required this.name, required this.url, required this.pokemonService});
+  const _ItemTile(
+      {required this.name, required this.url, required this.pokemonService});
 
   @override
   Widget build(BuildContext context) {
@@ -105,12 +112,18 @@ class _ItemTile extends StatelessWidget {
       color: theme.cardColor,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: FutureBuilder<Item>(
-        future: pokemonService.fetchResourceDetails(url, (json) => Item.fromApiJson(json)),
+        future: pokemonService.fetchResourceDetails(
+            url, (json) => Item.fromApiJson(json)),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             return ListTile(
-              leading: const SizedBox(width: 40, height: 40, child: Center(child: CircularProgressIndicator(strokeWidth: 2))),
-              title: Text(name.replaceAll('-', ' ').capitalise(), style: TextStyle(color: theme.colorScheme.onSurface)),
+              leading: const SizedBox(
+                  width: 40,
+                  height: 40,
+                  child:
+                      Center(child: CircularProgressIndicator(strokeWidth: 2))),
+              title: Text(name.replaceAll('-', ' ').capitalise(),
+                  style: TextStyle(color: theme.colorScheme.onSurface)),
             );
           }
           final item = snapshot.data!;
@@ -119,15 +132,21 @@ class _ItemTile extends StatelessWidget {
               item.imageUrl,
               width: 40,
               height: 40,
-              errorBuilder: (c, e, s) => Icon(Icons.help_outline, color: theme.hintColor),
+              errorBuilder: (c, e, s) =>
+                  Icon(Icons.help_outline, color: theme.hintColor),
             ),
-            title: Text(item.name, style: TextStyle(color: theme.colorScheme.onSurface, fontWeight: FontWeight.bold)),
-            subtitle: Text(item.category, style: TextStyle(color: theme.hintColor)),
+            title: Text(item.name,
+                style: TextStyle(
+                    color: theme.colorScheme.onSurface,
+                    fontWeight: FontWeight.bold)),
+            subtitle:
+                Text(item.category, style: TextStyle(color: theme.hintColor)),
             trailing: Icon(Icons.chevron_right, color: theme.hintColor),
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => ItemDetailScreen(item: item)),
+                MaterialPageRoute(
+                    builder: (context) => ItemDetailScreen(item: item)),
               );
             },
           );

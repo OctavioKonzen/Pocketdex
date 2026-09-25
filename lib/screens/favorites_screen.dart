@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../models/pokemon_listing.dart';
 import '../providers/favorites_provider.dart';
 import '../widgets/pokemon_card.dart';
+import '../utils/responsive.dart';
 
 class FavoritesScreen extends StatefulWidget {
   const FavoritesScreen({super.key});
@@ -15,21 +16,20 @@ class FavoritesScreen extends StatefulWidget {
 }
 
 class _FavoritesScreenState extends State<FavoritesScreen> {
-  
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     final favoritesProvider = context.watch<FavoritesProvider>();
     final favoriteIds = favoritesProvider.favoritePokemonIds;
     favoriteIds.sort((a, b) => int.parse(a).compareTo(int.parse(b)));
 
     final List<PokemonListing> favoriteListings = favoriteIds.map((id) {
       return PokemonListing(
-        name: 'pokemon-$id', 
-        url: 'https://pokeapi.co/api/v2/pokemon/$id/',
-        imageUrl: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/$id.png'
-      );
+          name: 'pokemon-$id',
+          url: 'pokemon/$id/',
+          imageUrl:
+              'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/$id.png');
     }).toList();
 
     return Scaffold(
@@ -45,17 +45,16 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                   child: Text(
                     'Você ainda não favoritou nenhum Pokémon.\nDê um duplo clique em um card na Pokédex para adicioná-lo!',
                     textAlign: TextAlign.center,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: theme.textTheme.bodySmall?.color
-                    ),
+                    style: theme.textTheme.titleMedium
+                        ?.copyWith(color: theme.textTheme.bodySmall?.color),
                   ),
                 ),
               )
             : GridView.builder(
                 key: const PageStorageKey('favorites_grid'),
                 padding: const EdgeInsets.only(top: 12.0, bottom: 20.0),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: Responsive.columns(context, min: 3),
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 12,
                   childAspectRatio: 0.8,

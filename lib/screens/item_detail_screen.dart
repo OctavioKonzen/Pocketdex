@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import '../models/item.dart';
+import '../utils/responsive.dart';
 
 class ItemDetailScreen extends StatelessWidget {
   final Item item;
@@ -16,7 +17,8 @@ class ItemDetailScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(item.name),
       ),
-      body: Center(
+      body: ReadableWidth(
+          child: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
           child: Column(
@@ -48,8 +50,7 @@ class ItemDetailScreen extends StatelessWidget {
               Text(
                 'Categoria: ${item.category}',
                 style: theme.textTheme.titleMedium?.copyWith(
-                    color: theme.hintColor,
-                    fontStyle: FontStyle.italic),
+                    color: theme.hintColor, fontStyle: FontStyle.italic),
               ),
               const SizedBox(height: 24),
               const Divider(),
@@ -62,7 +63,7 @@ class ItemDetailScreen extends StatelessWidget {
             ],
           ),
         ),
-      ),
+      )),
     );
   }
 }

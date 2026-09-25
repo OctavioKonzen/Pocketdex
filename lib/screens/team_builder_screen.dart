@@ -14,6 +14,7 @@ import '../widgets/team_pokemon_card.dart';
 import '../widgets/type_relations_section.dart';
 import '../widgets/pikachu_loading_indicator.dart';
 import 'pokedex_screen.dart';
+import '../utils/responsive.dart';
 
 class TeamBuilderScreen extends StatefulWidget {
   final Team team;
@@ -24,7 +25,8 @@ class TeamBuilderScreen extends StatefulWidget {
   State<TeamBuilderScreen> createState() => _TeamBuilderScreenState();
 }
 
-class _TeamBuilderScreenState extends State<TeamBuilderScreen> with SingleTickerProviderStateMixin {
+class _TeamBuilderScreenState extends State<TeamBuilderScreen>
+    with SingleTickerProviderStateMixin {
   final TeamService _teamService = TeamService();
   final PokemonService _pokemonService = PokemonService();
   late TextEditingController _nameController;
@@ -42,8 +44,24 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> with SingleTicker
   Color? _selectedColor;
 
   final List<String> allTypes = [
-    'normal', 'fire', 'water', 'electric', 'grass', 'ice', 'fighting', 'poison',
-    'ground', 'flying', 'psychic', 'bug', 'rock', 'ghost', 'dragon', 'dark', 'steel', 'fairy'
+    'normal',
+    'fire',
+    'water',
+    'electric',
+    'grass',
+    'ice',
+    'fighting',
+    'poison',
+    'ground',
+    'flying',
+    'psychic',
+    'bug',
+    'rock',
+    'ghost',
+    'dragon',
+    'dark',
+    'steel',
+    'fairy'
   ];
 
   @override
@@ -51,11 +69,11 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> with SingleTicker
     super.initState();
     _editableTeam = Team.fromMap(widget.team.toMap());
     _nameController = TextEditingController(text: _editableTeam.name);
-    
+
     if (_editableTeam.color != null) {
       _selectedColor = Color(int.parse(_editableTeam.color!, radix: 16));
     }
-    
+
     _updateTeamAnalysis();
   }
 
@@ -70,7 +88,7 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> with SingleTicker
     _editableTeam.name = _nameController.text.trim();
     _editableTeam.score = _teamScore;
     _editableTeam.color = _selectedColor?.value.toRadixString(16);
-    
+
     await _teamService.updateTeam(_editableTeam);
 
     if (mounted) {
@@ -83,7 +101,7 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> with SingleTicker
 
   Future<void> _selectPokemon(int slotIndex) async {
     final navigator = Navigator.of(context);
-    
+
     final result = await navigator.push<Map<String, String>?>(
       MaterialPageRoute(
         builder: (context) => const PokedexScreen(isForTeamSelection: true),
@@ -111,62 +129,71 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> with SingleTicker
   }
 
   Map<String, String>? pokemonDataForSlot(int index) {
-     if (_editableTeam.pokemons.length > index && _editableTeam.pokemons[index].isNotEmpty) {
-       return _editableTeam.pokemons[index];
-     }
-     return null;
+    if (_editableTeam.pokemons.length > index &&
+        _editableTeam.pokemons[index].isNotEmpty) {
+      return _editableTeam.pokemons[index];
+    }
+    return null;
   }
 
   void _confirmRemovePokemon(int slotIndex) {
     final theme = Theme.of(context);
-     showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (dialogContext) => Container(
-         padding: const EdgeInsets.all(24.0),
-            decoration: BoxDecoration(
-              color: theme.cardColor,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(20.0),
-                topRight: Radius.circular(20.0),
+    showModalBottomSheet(
+        context: context,
+        backgroundColor: Colors.transparent,
+        builder: (dialogContext) => Container(
+              padding: const EdgeInsets.all(24.0),
+              decoration: BoxDecoration(
+                color: theme.cardColor,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(20.0),
+                  topRight: Radius.circular(20.0),
+                ),
               ),
-            ),
-        child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Remover Pokémon?', style: theme.textTheme.headlineSmall),
-              const SizedBox(height: 8),
-              Text('Deseja remover este Pokémon do time?', style: theme.textTheme.bodyMedium),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(dialogContext),
-                    child: Text('Cancelar', style: TextStyle(color: theme.colorScheme.onSurface.withAlpha(178), fontSize: 16))
-                  ),
-                  const SizedBox(width: 12),
-                  ElevatedButton(
-                     style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.redAccent, foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                    onPressed: () {
-                      setState(() {
-                        _editableTeam.pokemons[slotIndex] = {};
-                      });
-                      Navigator.pop(dialogContext);
-                      _updateTeamAnalysis();
-                    },
-                    child: const Text('Remover', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))
-                  ),
+                  Text('Remover Pokémon?',
+                      style: theme.textTheme.headlineSmall),
+                  const SizedBox(height: 8),
+                  Text('Deseja remover este Pokémon do time?',
+                      style: theme.textTheme.bodyMedium),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                          onPressed: () => Navigator.pop(dialogContext),
+                          child: Text('Cancelar',
+                              style: TextStyle(
+                                  color: theme.colorScheme.onSurface
+                                      .withAlpha(178),
+                                  fontSize: 16))),
+                      const SizedBox(width: 12),
+                      ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.redAccent,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 24, vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12))),
+                          onPressed: () {
+                            setState(() {
+                              _editableTeam.pokemons[slotIndex] = {};
+                            });
+                            Navigator.pop(dialogContext);
+                            _updateTeamAnalysis();
+                          },
+                          child: const Text('Remover',
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold))),
+                    ],
+                  )
                 ],
-              )
-            ],
-          ),
-      )
-    );
+              ),
+            ));
   }
 
   double _calculateTeamScore(TypeRelations analysis) {
@@ -194,7 +221,8 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> with SingleTicker
       _isAnalysisLoading = true;
     });
 
-    final pokemonInTeam = _editableTeam.pokemons.where((p) => p.isNotEmpty).toList();
+    final pokemonInTeam =
+        _editableTeam.pokemons.where((p) => p.isNotEmpty).toList();
     if (pokemonInTeam.isEmpty) {
       if (mounted) {
         setState(() {
@@ -210,9 +238,9 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> with SingleTicker
       final id = pokemonData['id']!;
       if (!_teamDetailsCache.containsKey(id)) {
         try {
-          _teamDetailsCache[id] = await _pokemonService.fetchPokemonDetails(int.parse(id));
-        } catch (e) {
-        }
+          _teamDetailsCache[id] =
+              await _pokemonService.fetchPokemonDetails(int.parse(id));
+        } catch (e) {}
       }
     }
 
@@ -220,43 +248,50 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> with SingleTicker
     for (var type in allTypes) {
       combinedMultiplier[type] = 1.0;
     }
-    
+
     final Map<String, int> teamAdvantages = {};
 
     for (var pokemonData in pokemonInTeam) {
       final details = _teamDetailsCache[pokemonData['id']];
       if (details != null) {
         final form = details.forms.firstWhere(
-            (f) => f.imageUrl == pokemonData['imageUrl'], orElse: () => details.forms.first);
-        
+            (f) => f.imageUrl == pokemonData['imageUrl'],
+            orElse: () => details.forms.first);
+
         final relations = _generateTypeRelationsForPokemon(details, form);
-        
-        for(var attackingType in allTypes) {
-           if (relations.immunities.contains(attackingType)) {
-             combinedMultiplier[attackingType] = 0;
-           } else if (combinedMultiplier[attackingType] != 0) { 
-             if(relations.weaknesses.containsKey(attackingType)) {
-                combinedMultiplier[attackingType] = (combinedMultiplier[attackingType] ?? 1.0) * (relations.weaknesses[attackingType] ?? 1.0);
-             }
-             if(relations.resistances.containsKey(attackingType)) {
-                combinedMultiplier[attackingType] = (combinedMultiplier[attackingType] ?? 1.0) * (relations.resistances[attackingType] ?? 1.0);
-             }
-           }
+
+        for (var attackingType in allTypes) {
+          if (relations.immunities.contains(attackingType)) {
+            combinedMultiplier[attackingType] = 0;
+          } else if (combinedMultiplier[attackingType] != 0) {
+            if (relations.weaknesses.containsKey(attackingType)) {
+              combinedMultiplier[attackingType] =
+                  (combinedMultiplier[attackingType] ?? 1.0) *
+                      (relations.weaknesses[attackingType] ?? 1.0);
+            }
+            if (relations.resistances.containsKey(attackingType)) {
+              combinedMultiplier[attackingType] =
+                  (combinedMultiplier[attackingType] ?? 1.0) *
+                      (relations.resistances[attackingType] ?? 1.0);
+            }
+          }
         }
 
         for (var typeName in form.types) {
           final typeJson = details.allTypeDetails[typeName];
           if (typeJson != null && typeJson['damage_relations'] != null) {
-            final doubleDamageTo = typeJson['damage_relations']['double_damage_to'] as List;
+            final doubleDamageTo =
+                typeJson['damage_relations']['double_damage_to'] as List;
             for (var type in doubleDamageTo) {
               final typeName = type['name'] as String;
-              teamAdvantages.update(typeName, (count) => count + 1, ifAbsent: () => 1);
+              teamAdvantages.update(typeName, (count) => count + 1,
+                  ifAbsent: () => 1);
             }
           }
         }
       }
     }
-    
+
     final Map<String, double> finalWeaknesses = {};
     final Map<String, double> finalResistances = {};
     final List<String> finalImmunities = [];
@@ -270,7 +305,7 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> with SingleTicker
         finalResistances[type] = multiplier;
       }
     });
-    
+
     final currentAnalysis = TypeRelations(
       weaknesses: finalWeaknesses,
       resistances: finalResistances,
@@ -287,7 +322,8 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> with SingleTicker
     }
   }
 
-  TypeRelations _generateTypeRelationsForPokemon(PokemonDetails details, AlternateForm form) {
+  TypeRelations _generateTypeRelationsForPokemon(
+      PokemonDetails details, AlternateForm form) {
     final Map<String, double> weaknesses = {};
     final Map<String, double> resistances = {};
     final List<String> immunities = [];
@@ -310,12 +346,13 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> with SingleTicker
           }
           for (var type in (relation.value as List)) {
             String attackingTypeName = type['name'];
-            damageTaken.update(attackingTypeName, (value) => value * multiplier, ifAbsent: () => multiplier);
+            damageTaken.update(attackingTypeName, (value) => value * multiplier,
+                ifAbsent: () => multiplier);
           }
         }
       }
     }
-    
+
     damageTaken.forEach((type, multiplier) {
       if (multiplier >= 2.0) {
         weaknesses[type] = multiplier;
@@ -326,9 +363,13 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> with SingleTicker
       }
     });
 
-    return TypeRelations(weaknesses: weaknesses, resistances: resistances, immunities: immunities, advantages: {});
+    return TypeRelations(
+        weaknesses: weaknesses,
+        resistances: resistances,
+        immunities: immunities,
+        advantages: {});
   }
-  
+
   void _showColorPickerDialog() {
     final theme = Theme.of(context);
     Color pickerColor = _selectedColor ?? Colors.grey[850]!;
@@ -358,7 +399,9 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> with SingleTicker
         ),
         actions: <Widget>[
           TextButton(
-            child: Text('OK', style: TextStyle(color: theme.colorScheme.onSurface.withAlpha(178))),
+            child: Text('OK',
+                style: TextStyle(
+                    color: theme.colorScheme.onSurface.withAlpha(178))),
             onPressed: () {
               setState(() => _selectedColor = pickerColor);
               Navigator.of(context).pop();
@@ -383,7 +426,8 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> with SingleTicker
           ),
         ],
       ),
-      body: Stack(
+      body: ReadableWidth(
+          child: Stack(
         children: [
           Positioned(
             top: 200,
@@ -423,7 +467,6 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> with SingleTicker
                   ),
                 ),
                 const SizedBox(height: 24),
-                
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -435,13 +478,14 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> with SingleTicker
                       onTap: _showColorPickerDialog,
                       child: CircleAvatar(
                         radius: 18,
-                        backgroundColor: _selectedColor ?? theme.colorScheme.surface,
-                        child: Icon(Icons.edit, color: theme.colorScheme.onSurface, size: 18),
+                        backgroundColor:
+                            _selectedColor ?? theme.colorScheme.surface,
+                        child: Icon(Icons.edit,
+                            color: theme.colorScheme.onSurface, size: 18),
                       ),
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 24),
                 Text(
                   'Pokémon',
@@ -469,7 +513,7 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> with SingleTicker
                 const SizedBox(height: 24),
                 const Divider(),
                 const SizedBox(height: 16),
-                 Row(
+                Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
@@ -477,11 +521,24 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> with SingleTicker
                       'Análise do Time',
                       style: theme.textTheme.titleLarge,
                     ),
-                    if (!_isAnalysisLoading && _teamAnalysis != null && _editableTeam.pokemons.where((p) => p.isNotEmpty).isNotEmpty)
+                    if (!_isAnalysisLoading &&
+                        _teamAnalysis != null &&
+                        _editableTeam.pokemons
+                            .where((p) => p.isNotEmpty)
+                            .isNotEmpty)
                       Chip(
-                        label: Text('Nota: ${_teamScore.toStringAsFixed(1)} / 10', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-                        backgroundColor: _teamScore >= 7.5 ? Colors.green.shade700 : _teamScore >= 4.5 ? Colors.orange.shade700 : Colors.red.shade700,
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        label: Text(
+                            'Nota: ${_teamScore.toStringAsFixed(1)} / 10',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white)),
+                        backgroundColor: _teamScore >= 7.5
+                            ? Colors.green.shade700
+                            : _teamScore >= 4.5
+                                ? Colors.orange.shade700
+                                : Colors.red.shade700,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
                       )
                   ],
                 ),
@@ -496,7 +553,9 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> with SingleTicker
                   Align(
                       alignment: Alignment.centerLeft,
                       child: Text('Adicione Pokémon para ver a análise.',
-                          style: TextStyle(color: theme.colorScheme.onSurface.withAlpha(178))))
+                          style: TextStyle(
+                              color:
+                                  theme.colorScheme.onSurface.withAlpha(178))))
                 else
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -522,7 +581,7 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> with SingleTicker
             ),
           ),
         ],
-      ),
+      )),
     );
   }
 }

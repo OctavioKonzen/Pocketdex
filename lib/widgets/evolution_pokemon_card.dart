@@ -1,8 +1,7 @@
 // lib/widgets/evolution_pokemon_card.dart
 
+import '../services/pokemon_service.dart';
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import '../utils/string_extensions.dart';
 
 class EvolutionPokemonCard extends StatefulWidget {
@@ -63,33 +62,25 @@ class _EvolutionPokemonCardState extends State<EvolutionPokemonCard> {
     }
 
     try {
-      final response = await http.get(Uri.parse('https://pokeapi.co/api/v2/pokemon/$potentialApiName'));
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final imageUrl = data['sprites']['front_default'] ?? data['sprites']['other']['official-artwork']['front_default'] ?? '';
-        if (imageUrl.isNotEmpty) {
-          return {
-            'id': (data['id'] as int).toString(),
-            'name': (data['name'] as String).replaceAll('-', ' ').capitalise(),
-            'imageUrl': imageUrl,
-          };
-        }
-      }
-      throw Exception('Fallback to base form');
-    } catch (e) {
-      final response = await http.get(Uri.parse('https://pokeapi.co/api/v2/pokemon/${widget.pokemonId}'));
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final imageUrl = data['sprites']['front_default'] ?? data['sprites']['other']['official-artwork']['front_default'] ?? '';
-         if (imageUrl.isEmpty) throw Exception("No image found for base form");
+      final data = await PokemonService().fetchPokemonJson(potentialApiName);
+      final imageUrl = data['sprites']['front_default'] ?? data['sprites']['other']['official-artwork']['front_default'] ?? '';
+      if (imageUrl.isNotEmpty) {
         return {
           'id': (data['id'] as int).toString(),
           'name': (data['name'] as String).replaceAll('-', ' ').capitalise(),
           'imageUrl': imageUrl,
         };
-      } else {
-        throw Exception('Failed to load evolution data for ${widget.pokemonName}');
       }
+      throw Exception('Fallback to base form');
+    } catch (e) {
+      final data = await PokemonService().fetchPokemonJson(widget.pokemonId);
+      final imageUrl = data['sprites']['front_default'] ?? data['sprites']['other']['official-artwork']['front_default'] ?? '';
+      if (imageUrl.isEmpty) throw Exception("No image found for base form");
+      return {
+        'id': (data['id'] as int).toString(),
+        'name': (data['name'] as String).replaceAll('-', ' ').capitalise(),
+        'imageUrl': imageUrl,
+      };
     }
   }
 

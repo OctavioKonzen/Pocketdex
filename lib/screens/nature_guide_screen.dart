@@ -1,6 +1,7 @@
 // lib/screens/nature_guide_screen.dart
 
 import 'package:flutter/material.dart';
+import '../utils/responsive.dart';
 
 class Nature {
   final String name;
@@ -48,7 +49,8 @@ class NatureGuideScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Guia de Natures'),
       ),
-      body: ListView.builder(
+      body: ReadableWidth(
+          child: ListView.builder(
         padding: const EdgeInsets.all(8.0),
         itemCount: natures.length,
         itemBuilder: (context, index) {
@@ -58,7 +60,8 @@ class NatureGuideScreen extends StatelessWidget {
           return Card(
             color: theme.cardColor,
             margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -74,17 +77,22 @@ class NatureGuideScreen extends StatelessWidget {
                   isNeutral
                       ? Text(
                           'Neutra - Nenhum efeito',
-                          style: theme.textTheme.bodyMedium?.copyWith(color: theme.hintColor),
+                          style: theme.textTheme.bodyMedium
+                              ?.copyWith(color: theme.hintColor),
                         )
                       : Row(
                           children: [
-                            const Icon(Icons.arrow_upward, color: Colors.green, size: 18),
+                            const Icon(Icons.arrow_upward,
+                                color: Colors.green, size: 18),
                             const SizedBox(width: 4),
-                            Text(nature.increases!, style: theme.textTheme.bodyLarge),
+                            Text(nature.increases!,
+                                style: theme.textTheme.bodyLarge),
                             const SizedBox(width: 24),
-                            const Icon(Icons.arrow_downward, color: Colors.red, size: 18),
+                            const Icon(Icons.arrow_downward,
+                                color: Colors.red, size: 18),
                             const SizedBox(width: 4),
-                            Text(nature.decreases!, style: theme.textTheme.bodyLarge),
+                            Text(nature.decreases!,
+                                style: theme.textTheme.bodyLarge),
                           ],
                         ),
                 ],
@@ -92,7 +100,7 @@ class NatureGuideScreen extends StatelessWidget {
             ),
           );
         },
-      ),
+      )),
     );
   }
 }

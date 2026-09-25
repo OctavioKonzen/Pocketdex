@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/generation.dart';
 import '../widgets/generation_card.dart';
 import 'quiz_screen.dart';
+import '../utils/responsive.dart';
 
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
@@ -61,7 +62,8 @@ class _GameScreenState extends State<GameScreen> {
             maxHeight: MediaQuery.of(context).size.height * 0.85,
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -81,7 +83,8 @@ class _GameScreenState extends State<GameScreen> {
                 const SizedBox(height: 20),
                 Expanded(
                   child: GridView.builder(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
                       crossAxisSpacing: 16,
                       mainAxisSpacing: 16,
@@ -143,7 +146,8 @@ class _GameScreenState extends State<GameScreen> {
       appBar: AppBar(
         title: const Text('Quem é esse Pokémon?'),
       ),
-      body: Center(
+      body: ReadableWidth(
+          child: Center(
         child: Padding(
           padding: const EdgeInsets.all(32.0),
           child: Column(
@@ -170,8 +174,8 @@ class _GameScreenState extends State<GameScreen> {
               GestureDetector(
                 onTap: _showGenerationSelector,
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0, vertical: 16.0),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.surface,
                     borderRadius: BorderRadius.circular(16.0),
@@ -218,8 +222,8 @@ class _GameScreenState extends State<GameScreen> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      textStyle:
-                          const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      textStyle: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
@@ -240,8 +244,8 @@ class _GameScreenState extends State<GameScreen> {
                   _checkSavedGame();
                 },
                 icon: const Icon(Icons.play_arrow),
-                label:
-                    Text(_isGameInProgress ? 'Iniciar Novo Jogo' : 'Iniciar Jogo'),
+                label: Text(
+                    _isGameInProgress ? 'Iniciar Novo Jogo' : 'Iniciar Jogo'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: theme.colorScheme.primary,
                   foregroundColor: theme.colorScheme.onPrimary,
@@ -249,14 +253,14 @@ class _GameScreenState extends State<GameScreen> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  textStyle:
-                      const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  textStyle: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ),
             ],
           ),
         ),
-      ),
+      )),
     );
   }
 }

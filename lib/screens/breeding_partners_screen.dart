@@ -8,6 +8,7 @@ import '../utils/pokemon_colors.dart';
 import '../utils/string_extensions.dart';
 import '../widgets/pikachu_loading_indicator.dart';
 import '../widgets/pokemon_card.dart';
+import '../utils/responsive.dart';
 
 class BreedingPartnersScreen extends StatefulWidget {
   final PokemonListing initialPokemon;
@@ -18,7 +19,8 @@ class BreedingPartnersScreen extends StatefulWidget {
   State<BreedingPartnersScreen> createState() => _BreedingPartnersScreenState();
 }
 
-class _BreedingPartnersScreenState extends State<BreedingPartnersScreen> with SingleTickerProviderStateMixin {
+class _BreedingPartnersScreenState extends State<BreedingPartnersScreen>
+    with SingleTickerProviderStateMixin {
   final PokemonService _pokemonService = PokemonService();
   Future<Map<String, dynamic>>? _dataFuture;
 
@@ -104,7 +106,6 @@ class _BreedingPartnersScreenState extends State<BreedingPartnersScreen> with Si
                   ),
                 ),
               ),
-              
               Positioned(
                 top: 40,
                 left: 5,
@@ -186,10 +187,8 @@ class _BreedingPartnersScreenState extends State<BreedingPartnersScreen> with Si
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Center(
-                          child: Text(
-                            'Parceiros Compatíveis',
-                            style: theme.textTheme.titleLarge
-                          ),
+                          child: Text('Parceiros Compatíveis',
+                              style: theme.textTheme.titleLarge),
                         ),
                         const SizedBox(height: 16),
                         Expanded(
@@ -204,8 +203,9 @@ class _BreedingPartnersScreenState extends State<BreedingPartnersScreen> with Si
                                   padding:
                                       const EdgeInsets.only(top: 8, bottom: 16),
                                   gridDelegate:
-                                      const SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: 3,
+                                      SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount:
+                                        Responsive.columns(context, min: 3),
                                     crossAxisSpacing: 12,
                                     mainAxisSpacing: 12,
                                     childAspectRatio: 0.8,

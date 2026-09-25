@@ -1,9 +1,7 @@
 // lib/screens/home_screen.dart
 
 import 'dart:async';
-import 'dart:convert';
 import 'package:debounce_throttle/debounce_throttle.dart';
-import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 
 import 'package:pocket_dex/models/pokemon_listing.dart';
@@ -20,6 +18,7 @@ import 'package:pocket_dex/utils/string_extensions.dart';
 import 'package:pocket_dex/widgets/category_card.dart';
 import 'package:pocket_dex/widgets/pikachu_loading_indicator.dart';
 import 'package:pocket_dex/screens/settings_screen.dart';
+import 'package:pocket_dex/utils/responsive.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -86,8 +85,8 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() {
           _isLoadingPokemonList = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Falha ao carregar a lista de Pokémon.')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Falha ao carregar a lista de Pokémon.')));
       }
     }
   }
@@ -99,10 +98,13 @@ class _HomeScreenState extends State<HomeScreen> {
         _searchResults.clear();
         _showResultsOverlay = false;
       } else {
-        _searchResults = _allPokemonList.where((pokemon) {
-          return pokemon.name.toLowerCase().contains(trimmedQuery) ||
-              pokemon.id == trimmedQuery;
-        }).take(3).toList();
+        _searchResults = _allPokemonList
+            .where((pokemon) {
+              return pokemon.name.toLowerCase().contains(trimmedQuery) ||
+                  pokemon.id == trimmedQuery;
+            })
+            .take(3)
+            .toList();
         _showResultsOverlay = true;
       }
     });
@@ -122,27 +124,36 @@ class _HomeScreenState extends State<HomeScreen> {
             ? const Center(child: PikachuLoadingIndicator(size: 100))
             : GestureDetector(
                 onTap: _dismissSearch,
-                child: Stack(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildHeader(theme),
-                          Expanded(child: _buildCategoryGrid()),
-                        ],
-                      ),
-                    ),
-                    if (_showResultsOverlay)
-                      GestureDetector(
-                        onTap: _dismissSearch,
-                        child: Container(
-                          color: Colors.black.withAlpha(128),
+                child: ReadableWidth(
+                  maxWidth: 960,
+                  child: Stack(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: Responsive.isWide(context)
+                              ? MainAxisAlignment.center
+                              : MainAxisAlignment.start,
+                          children: [
+                            _buildHeader(theme),
+                            if (Responsive.isWide(context))
+                              _buildCategoryGrid()
+                            else
+                              Expanded(child: _buildCategoryGrid()),
+                          ],
                         ),
                       ),
-                    if (_showResultsOverlay) _buildResultsOverlay(theme),
-                  ],
+                      if (_showResultsOverlay)
+                        GestureDetector(
+                          onTap: _dismissSearch,
+                          child: Container(
+                            color: Colors.black.withAlpha(128),
+                          ),
+                        ),
+                      if (_showResultsOverlay) _buildResultsOverlay(theme),
+                    ],
+                  ),
                 ),
               ),
       ),
@@ -216,7 +227,8 @@ class _HomeScreenState extends State<HomeScreen> {
       return Padding(
         padding: const EdgeInsets.all(16.0),
         child: Text('Nenhum Pokémon encontrado.',
-            style: TextStyle(color: theme.colorScheme.onSurface.withAlpha(178))),
+            style:
+                TextStyle(color: theme.colorScheme.onSurface.withAlpha(178))),
       );
     }
     return Column(
@@ -245,46 +257,48 @@ class _HomeScreenState extends State<HomeScreen> {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.only(bottom: 16),
-      crossAxisCount: 2,
+      crossAxisCount: Responsive.isWide(context) ? 3 : 2,
       crossAxisSpacing: 16,
       mainAxisSpacing: 16,
-      childAspectRatio: 2.2,
+      childAspectRatio: Responsive.isWide(context) ? 2.6 : 2.2,
       children: [
         CategoryCard(
           title: 'Pokédex',
           color: Colors.teal.shade400,
-          onTap: () => Navigator.push(
-              context, MaterialPageRoute(builder: (context) => const PokedexScreen())),
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (context) => const PokedexScreen())),
         ),
         CategoryCard(
           title: 'Favoritos',
           color: Colors.amber.shade400,
-          onTap: () => Navigator.push(
-              context, MaterialPageRoute(builder: (context) => const FavoritesScreen())),
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (context) => const FavoritesScreen())),
         ),
         CategoryCard(
           title: 'Time',
           color: Colors.redAccent.shade200,
-          onTap: () => Navigator.push(
-              context, MaterialPageRoute(builder: (context) => const TeamsScreen())),
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (context) => const TeamsScreen())),
         ),
         CategoryCard(
           title: 'Jogo',
           color: Colors.blue.shade400,
-          onTap: () => Navigator.push(
-              context, MaterialPageRoute(builder: (context) => const GameScreen())),
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (context) => const GameScreen())),
         ),
         CategoryCard(
           title: 'Enciclopédia',
           color: Colors.purple.shade400,
-          onTap: () => Navigator.push(context,
-              MaterialPageRoute(builder: (context) => const EncyclopediaScreen())),
+          onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => const EncyclopediaScreen())),
         ),
         CategoryCard(
           title: 'Treino',
           color: Colors.orange.shade400,
-          onTap: () => Navigator.push(
-              context, MaterialPageRoute(builder: (context) => const TrainingScreen())),
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (context) => const TrainingScreen())),
         ),
       ],
     );
@@ -315,14 +329,13 @@ class _SearchResultTileState extends State<_SearchResultTile> {
         if (mounted) setState(() => _details = _cache[widget.pokemon.url]);
         return;
       }
-      final response = await http.get(Uri.parse(widget.pokemon.url));
-      if (mounted && response.statusCode == 200) {
-        final data = json.decode(response.body);
+      final data =
+          await PokemonService().fetchPokemonJsonByUrl(widget.pokemon.url);
+      if (mounted) {
         _cache[widget.pokemon.url] = data;
         setState(() => _details = data);
       }
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   @override

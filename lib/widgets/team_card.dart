@@ -1,8 +1,7 @@
 // lib/widgets/team_card.dart
 
-import 'dart:convert';
+import '../services/pokemon_service.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 
 import '../models/team.dart';
 import '../utils/pokemon_colors.dart';
@@ -129,16 +128,12 @@ class _PokemonIconState extends State<_PokemonIcon> {
 
   Future<Map<String, dynamic>> _fetchPokemonData() async {
     try {
-      final response = await http.get(Uri.parse('https://pokeapi.co/api/v2/pokemon/${widget.pokemonId}'));
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final types = (data['types'] as List)
-            .map((t) => t['type']['name'] as String)
-            .toList();
-        final imageUrl = data['sprites']['front_default'] ?? '';
-        return {'types': types, 'imageUrl': imageUrl};
-      }
-      return {};
+      final data = await PokemonService().fetchPokemonJson(widget.pokemonId);
+      final types = (data['types'] as List)
+          .map((t) => t['type']['name'] as String)
+          .toList();
+      final imageUrl = data['sprites']['front_default'] ?? '';
+      return {'types': types, 'imageUrl': imageUrl};
     } catch (e) {
       return {};
     }

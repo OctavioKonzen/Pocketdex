@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:pocket_dex/screens/nature_guide_screen.dart';
 import 'package:pocket_dex/screens/breeding_help_screen.dart';
 import 'package:pocket_dex/screens/ev_counter_screen.dart';
+import 'package:pocket_dex/utils/responsive.dart';
 
 class TrainingScreen extends StatelessWidget {
   const TrainingScreen({super.key});
 
-  Widget _buildOptionTile(BuildContext context, {
+  Widget _buildOptionTile(
+    BuildContext context, {
     required IconData icon,
     required Color iconColor,
     required String title,
@@ -42,13 +44,15 @@ class TrainingScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Centro de Treinamento'),
       ),
-      body: Padding(
+      body: ReadableWidth(
+          child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: ListView(
           children: [
             Text(
               'Ferramentas para treinadores dedicados que buscam o Pokémon perfeito.',
-              style: theme.textTheme.bodyLarge?.copyWith(color: theme.hintColor),
+              style:
+                  theme.textTheme.bodyLarge?.copyWith(color: theme.hintColor),
             ),
             const SizedBox(height: 24),
             const Divider(),
@@ -78,7 +82,7 @@ class TrainingScreen extends StatelessWidget {
             ),
           ],
         ),
-      ),
+      )),
     );
   }
 }

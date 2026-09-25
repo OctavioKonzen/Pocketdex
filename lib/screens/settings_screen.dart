@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/theme_provider.dart';
+import '../utils/responsive.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -25,14 +26,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Confirmar Ação'),
-        content: const Text('Tem certeza que deseja zerar o seu recorde no quiz?'),
+        content:
+            const Text('Tem certeza que deseja zerar o seu recorde no quiz?'),
         actions: [
           TextButton(
             child: const Text('Cancelar'),
             onPressed: () => navigator.pop(false),
           ),
           TextButton(
-            child: const Text('Zerar', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+            child: const Text('Zerar',
+                style: TextStyle(
+                    color: Colors.redAccent, fontWeight: FontWeight.bold)),
             onPressed: () => navigator.pop(true),
           ),
         ],
@@ -69,7 +73,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       applicationName: 'PocketDex',
       applicationVersion: '1.0.0',
-      applicationLegalese: '© 2025 PocketDex\nPokémon and Pokémon character names are trademarks of Nintendo.',
+      applicationLegalese:
+          '© 2025 PocketDex\nPokémon and Pokémon character names are trademarks of Nintendo.',
       children: [
         const Padding(
           padding: EdgeInsets.only(top: 16),
@@ -78,7 +83,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ],
     );
   }
-  
+
   Widget _buildOptionTile({
     required IconData icon,
     required Color color,
@@ -105,15 +110,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
       appBar: AppBar(
         title: const Text('Configurações'),
       ),
-      body: ListView(
+      body: ReadableWidth(
+          child: ListView(
         padding: const EdgeInsets.all(8.0),
         children: [
           SwitchListTile(
             title: Text('Modo Escuro', style: theme.textTheme.titleMedium),
-            subtitle: Text('Ative para uma experiência com cores escuras.', style: theme.textTheme.bodySmall),
-            secondary: Icon(isDarkMode ? Icons.dark_mode_outlined : Icons.light_mode_outlined, color: theme.colorScheme.secondary),
+            subtitle: Text('Ative para uma experiência com cores escuras.',
+                style: theme.textTheme.bodySmall),
+            secondary: Icon(
+                isDarkMode
+                    ? Icons.dark_mode_outlined
+                    : Icons.light_mode_outlined,
+                color: theme.colorScheme.secondary),
             activeTrackColor: theme.colorScheme.primary.withAlpha(150),
-            activeThumbColor: theme.colorScheme.primary, 
+            activeThumbColor: theme.colorScheme.primary,
             value: isDarkMode,
             onChanged: (value) {
               context.read<ThemeProvider>().toggleTheme(value);
@@ -146,7 +157,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             theme: theme,
           ),
         ],
-      ),
+      )),
     );
   }
 }
