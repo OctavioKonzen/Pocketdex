@@ -77,6 +77,57 @@ service cloud.firestore {
       allow delete: if signedIn(uid);
     }
 
+    // Times públicos: todo time de quem tem conta aparece para todos os
+    // logados (busca pelo nome do dono). Só o dono cria, muda e apaga; a nota
+    // da comunidade (soma e quantidade de estrelas) só muda junto com o voto.
+    match /publicTeams/{teamId} {
+      function team() { return request.resource.data; }
+      function ratingPath() {
+        return /databases/$(database)/documents/publicTeams/$(teamId)/ratings/$(request.auth.uid);
+      }
+      function validTeam() {
+        return team().keys().hasOnly(['ownerUid', 'ownerName', 'ownerKey', 'avatar', 'name', 'color', 'pokemon',
+                                      'ratingSum', 'ratingCount', 'updatedAt'])
+          && team().ownerUid == request.auth.uid
+          && team().ownerName == accountName(request.auth.uid)
+          && team().ownerKey == keyOf(team().ownerName)
+          && team().name is string && team().name.size() <= 60
+          && team().pokemon is list && team().pokemon.size() == 6
+          && (team().color == null || team().color is string)
+          && validAvatar(team());
+      }
+      allow read: if request.auth != null;
+      allow create: if validTeam() && team().ratingSum == 0 && team().ratingCount == 0;
+      allow update: if (
+          // dono: muda o time, mas não a nota
+          resource.data.ownerUid == request.auth.uid && validTeam()
+            && team().ratingSum == resource.data.ratingSum && team().ratingCount == resource.data.ratingCount
+        ) || (
+          // outra pessoa: só a nota, junto com o próprio voto
+          request.auth != null && resource.data.ownerUid != request.auth.uid
+            && team().diff(resource.data).affectedKeys().hasOnly(['ratingSum', 'ratingCount'])
+            && existsAfter(ratingPath())
+            && team().ratingSum == resource.data.ratingSum + getAfter(ratingPath()).data.stars
+                 - (exists(ratingPath()) ? get(ratingPath()).data.stars : 0)
+            && team().ratingCount == resource.data.ratingCount + (exists(ratingPath()) ? 0 : 1)
+        );
+      allow delete: if request.auth != null && resource.data.ownerUid == request.auth.uid;
+
+      // Voto de cada pessoa (1 a 5 estrelas), sempre junto com a nota do time.
+      match /ratings/{uid} {
+        function parent() { return /databases/$(database)/documents/publicTeams/$(teamId); }
+        allow read: if signedIn(uid);
+        allow create, update: if signedIn(uid)
+          && request.resource.data.keys().hasOnly(['stars'])
+          && request.resource.data.stars is int
+          && request.resource.data.stars >= 1 && request.resource.data.stars <= 5
+          && get(parent()).data.ownerUid != uid
+          && getAfter(parent()).data.ratingSum == get(parent()).data.ratingSum + request.resource.data.stars
+               - (resource == null ? 0 : resource.data.stars)
+          && getAfter(parent()).data.ratingCount == get(parent()).data.ratingCount + (resource == null ? 1 : 0);
+      }
+    }
+
     // Nomes já usados. Qualquer um pode conferir UM nome (para avisar que já
     // existe), mas não dá para listar todos. Só dá para reservar um nome
     // livre, para si mesmo, e a chave precisa ser a do próprio nome.

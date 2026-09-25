@@ -35,8 +35,18 @@ function rankedSeconds(score) {
 const TIMEOUT = -1 // "resposta" quando o tempo acaba
 const TOP_BAR = 72
 
-function pickQuestion(pool, answerId) {
-  const answer = answerId != null ? { id: answerId } : pool[Math.floor(Math.random() * pool.length)]
+/** Quantos Pokémon recentes não podem voltar (80% da lista, no máximo 400). */
+const recentLimit = (pool) => Math.min(400, Math.floor(pool.length * 0.8))
+
+/** Guarda a resposta da rodada entre as recentes (igual no app). */
+const withRecent = (game, pool) => [...(game.recent ?? []), game.answerId].slice(-recentLimit(pool))
+
+function pickQuestion(pool, answerId, recent = []) {
+  // Sorteia entre os que não saíram há pouco, para não repetir cedo.
+  const seen = new Set(recent)
+  const fresh = seen.size ? pool.filter((p) => !seen.has(p.id)) : pool
+  const from = fresh.length ? fresh : pool
+  const answer = answerId != null ? { id: answerId } : from[Math.floor(Math.random() * from.length)]
   const options = new Set([answer.id])
   while (options.size < Math.min(4, pool.length)) options.add(pool[Math.floor(Math.random() * pool.length)].id)
   return { answerId: answer.id, options: [...options].sort(() => Math.random() - 0.5) }
@@ -306,7 +316,9 @@ export default function GamePage() {
           if (next.daily ? round >= DAILY_ROUNDS : next.lives === 0) {
             end(next)
           } else {
-            const g = { ...next, round, ...pickQuestion(pool(next.generation), next.daily ? next.answers[round] : undefined) }
+            const list = pool(next.generation)
+            const recent = next.daily ? [] : withRecent(next, list)
+            const g = { ...next, round, recent, ...pickQuestion(list, next.daily ? next.answers[round] : undefined, recent) }
             setGame(g)
             saveGame(g)
           }

@@ -2,7 +2,10 @@
 
 import 'package:flutter/material.dart';
 import '../models/team.dart';
+import '../services/account_sync.dart';
+import '../services/auth_service.dart';
 import '../services/team_service.dart';
+import 'community_teams_screen.dart';
 import '../services/user_data.dart';
 import '../widgets/team_card.dart';
 import '../widgets/team_share_dialogs.dart';
@@ -20,13 +23,27 @@ class TeamsScreen extends StatefulWidget {
 class _TeamsScreenState extends State<TeamsScreen> {
   final TeamService _teamService = TeamService();
   late Future<List<Team>> _teamsFuture;
+  Map<String, (double?, int)> _ratings = {};
 
   @override
   void initState() {
     super.initState();
     // Mudanças vindas da conta (site ou outro aparelho) aparecem na hora.
     UserData.instance.addListener(_onUserData);
+    AccountSync.instance.teamsVersion.addListener(_loadRatings);
     _loadTeams();
+    _loadRatings();
+  }
+
+  bool get _signedIn => AuthService.instance.status == AuthStatus.signedIn;
+
+  /// Nota da comunidade de cada time (os times de quem tem conta são públicos).
+  Future<void> _loadRatings() async {
+    if (!_signedIn) return;
+    try {
+      final r = await AccountSync.instance.myTeamRatings();
+      if (mounted) setState(() => _ratings = r);
+    } catch (_) {}
   }
 
   void _onUserData() {
@@ -36,6 +53,7 @@ class _TeamsScreenState extends State<TeamsScreen> {
   @override
   void dispose() {
     UserData.instance.removeListener(_onUserData);
+    AccountSync.instance.teamsVersion.removeListener(_loadRatings);
     super.dispose();
   }
 
@@ -224,12 +242,30 @@ class _TeamsScreenState extends State<TeamsScreen> {
                   subtitle: 'Monte times de até 6 Pokémon e veja as fraquezas e a nota de cada um.',
                   action: PillButton(label: '+ Novo time', color: SectionColors.teams, onPressed: _showCreateTeamPanel),
                 ),
+                if (_signedIn)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                    child: PillButton(
+                      label: '🔎 Times da comunidade',
+                      expand: true,
+                      gradient: const LinearGradient(colors: [Color(0xFF7E57C2), Color(0xFF3949AB)]),
+                      onPressed: () async {
+                        await Navigator.push(context, MaterialPageRoute(builder: (_) => const CommunityTeamsScreen()));
+                        _loadTeams();
+                      },
+                    ),
+                  ),
                 if (snapshot.connectionState == ConnectionState.done && teams.isEmpty)
                   const EmptyMessage('Você ainda não criou nenhum time. Toque em “Novo time” para começar!'),
                 for (final team in teams)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-                    child: TeamCard(team: team, onTap: () => _open(team), onDelete: () => _confirmDelete(team)),
+                    child: TeamCard(
+                      team: team,
+                      onTap: () => _open(team),
+                      onDelete: () => _confirmDelete(team),
+                      rating: _signedIn ? (_ratings[team.id] ?? (null, 0)) : null,
+                    ),
                   ),
               ],
             );

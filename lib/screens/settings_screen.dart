@@ -4,13 +4,16 @@
 // versão do app (com "Procurar atualização"), excluir conta e sobre.
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../providers/theme_provider.dart';
 import '../services/account_sync.dart';
 import '../services/achievements.dart';
 import '../services/auth_service.dart';
 import '../services/league.dart';
+import '../services/pix.dart';
 import '../services/update_service.dart';
 import '../services/user_data.dart';
 import '../utils/responsive.dart';
@@ -104,6 +107,10 @@ class SettingsScreen extends StatelessWidget {
                         : 'Favoritos, times e treinos ficam salvos neste aparelho.',
                     trailing: PillButton(label: 'Limpar', color: const Color(0xFFE53935), onPressed: () => _confirmClear(context)),
                   ),
+                  if (Pix.enabled) ...[
+                    const SizedBox(height: 12),
+                    const _SupportCard(),
+                  ],
                   const SizedBox(height: 12),
                   const _AchievementsCard(),
                   if (UpdateService.supported) ...[
@@ -319,6 +326,60 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
               style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
         ),
       ],
+    );
+  }
+}
+
+/// Pix para apoiar o projeto (QR Code e "copia e cola").
+class _SupportCard extends StatelessWidget {
+  const _SupportCard();
+
+  void _copy(BuildContext context, String text, String what) {
+    Clipboard.setData(ClipboardData(text: text));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$what copiado!')));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = SiteColors.of(context);
+    final code = Pix.code();
+    return SiteCard(
+      accentLeft: const Color(0xFF32BCAD),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('💚 Apoie o PocketDex', style: TextStyle(color: c.text, fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 4),
+          Text('O PocketDex é gratuito e sem anúncios. Se ele te ajuda, uma contribuição por Pix '
+              '(de qualquer valor) ajuda a manter o projeto.',
+              style: TextStyle(color: c.muted, fontSize: 13)),
+          const SizedBox(height: 12),
+          Center(
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
+              child: QrImageView(data: code, size: 170, padding: EdgeInsets.zero),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SelectableText('Chave: ${Pix.key}', style: TextStyle(color: c.text, fontSize: 13)),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: PillButton(
+                  label: 'Pix copia e cola',
+                  color: const Color(0xFF32BCAD),
+                  expand: true,
+                  onPressed: () => _copy(context, code, 'Pix copia e cola'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              PillButton(label: 'Chave', color: const Color(0xFF546E7A), onPressed: () => _copy(context, Pix.key, 'Chave')),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

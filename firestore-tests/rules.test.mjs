@@ -2,7 +2,7 @@
 // Rodar: cd firestore-tests && npm ci && npm test
 import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing'
 import { readFileSync } from 'node:fs'
-import { doc, setDoc, getDoc, getDocs, collection, deleteDoc, writeBatch, serverTimestamp } from 'firebase/firestore'
+import { doc, setDoc, getDoc, getDocs, collection, deleteDoc, writeBatch, serverTimestamp, updateDoc, query, where } from 'firebase/firestore'
 
 const env = await initializeTestEnvironment({
   projectId: 'demo-pocketdex',
@@ -54,6 +54,37 @@ await check('desafio pontos demais', setDoc(doc(B, 'daily', '2026-09-25', 'score
 
 await check('conferir 1 nome sem login', getDoc(doc(anon, 'usernames', 'ash ketchum')), true)
 await check('listar nomes', getDocs(collection(anon, 'usernames')), false)
+
+// times públicos e nota da comunidade
+const pub = (db, id, data) => setDoc(doc(db, 'publicTeams', id), data)
+const teamA = { ownerUid: 'alice', ownerName: 'Ash Ketchum', ownerKey: 'ash ketchum', avatar: 25, name: 'Time A', color: '#FF5252',
+  pokemon: [6, 9, null, null, null, null], ratingSum: 0, ratingCount: 0, updatedAt: serverTimestamp() }
+await check('publica time', pub(A, 'tA', teamA), true)
+await check('publica time com nome de outro', pub(B, 'tB', { ...teamA, ownerUid: 'bob' }), false)
+await check('publica com nota inventada', pub(B, 'tB', { ...teamA, ownerUid: 'bob', ownerName: 'João', ownerKey: 'joao', ratingSum: 50, ratingCount: 10 }), false)
+await check('publica time do bob', pub(B, 'tB', { ...teamA, ownerUid: 'bob', ownerName: 'João', ownerKey: 'joao', name: 'Time B' }), true)
+await check('dono edita', setDoc(doc(A, 'publicTeams', 'tA'), { ...teamA, name: 'Novo nome' }), true)
+await check('dono mexe na nota', setDoc(doc(A, 'publicTeams', 'tA'), { ...teamA, ratingSum: 5, ratingCount: 1 }), false)
+await check('outro edita o time', setDoc(doc(B, 'publicTeams', 'tA'), { ...teamA, name: 'hack' }), false)
+const vote = (db, uid, team, stars, sum, count) => {
+  const b = writeBatch(db)
+  b.set(doc(db, 'publicTeams', team, 'ratings', uid), { stars })
+  b.update(doc(db, 'publicTeams', team), { ratingSum: sum, ratingCount: count })
+  return b.commit()
+}
+await check('bob vota 4 no time da alice', vote(B, 'bob', 'tA', 4, 4, 1), true)
+await check('bob muda voto para 5', vote(B, 'bob', 'tA', 5, 5, 1), true)
+await check('bob vota com soma errada', vote(B, 'bob', 'tA', 3, 10, 1), false)
+await check('bob conta 2 votos', vote(B, 'bob', 'tA', 5, 10, 2), false)
+await check('voto sem mexer na nota', setDoc(doc(B, 'publicTeams', 'tA', 'ratings', 'bob'), { stars: 1 }), false)
+await check('nota sem voto', updateDoc(doc(B, 'publicTeams', 'tA'), { ratingSum: 100, ratingCount: 20 }), false)
+await check('alice vota no próprio time', vote(A, 'alice', 'tA', 5, 10, 2), false)
+await check('voto 6 estrelas', vote(A, 'alice', 'tB', 6, 6, 1), false)
+await check('ler voto de outro', getDoc(doc(A, 'publicTeams', 'tA', 'ratings', 'bob')), false)
+await check('buscar times pelo nome', getDocs(query(collection(B, 'publicTeams'), where('ownerKey', '==', 'ash ketchum'))), true)
+await check('buscar times sem login', getDocs(collection(anon, 'publicTeams')), false)
+await check('outro apaga time', deleteDoc(doc(B, 'publicTeams', 'tA')), false)
+await check('dono apaga time', deleteDoc(doc(A, 'publicTeams', 'tA')), true)
 
 // excluir conta
 await check('apaga ranking', deleteDoc(doc(A, 'ranking', 'alice')), true)

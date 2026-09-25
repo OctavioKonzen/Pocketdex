@@ -1,7 +1,7 @@
 // lib/widgets/team_card.dart
 //
 // Card de time igual ao do site: borda colorida à esquerda (cor do time),
-// nome, quantidade de Pokémon e nota, e os 6 espaços com os Pokémon.
+// nome, quantidade de Pokémon e nota da comunidade, e os 6 espaços com os Pokémon.
 
 import 'package:flutter/material.dart';
 
@@ -9,13 +9,17 @@ import '../models/team.dart';
 import '../services/account_format.dart';
 import '../utils/site_ui.dart';
 import 'pokemon_sprite.dart';
+import 'team_analysis_view.dart';
 
 class TeamCard extends StatelessWidget {
   final Team team;
   final VoidCallback onTap;
   final VoidCallback onDelete;
 
-  const TeamCard({super.key, required this.team, required this.onTap, required this.onDelete});
+  /// Nota da comunidade (nota, votos); null = não mostra.
+  final (double?, int)? rating;
+
+  const TeamCard({super.key, required this.team, required this.onTap, required this.onDelete, this.rating});
 
   static Color colorOf(Team team) =>
       team.color != null ? Color(int.parse(team.color!, radix: 16)) : SectionColors.teams;
@@ -38,10 +42,8 @@ class TeamCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(team.name, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: c.text)),
-                    Text(
-                      '$count/6 Pokémon${team.score != null ? ' · Nota ${team.score!.toStringAsFixed(1)}' : ''}',
-                      style: TextStyle(fontSize: 13, color: c.muted),
-                    ),
+                    Text('$count/6 Pokémon', style: TextStyle(fontSize: 13, color: c.muted)),
+                    if (rating != null) RatingText(rating: rating!.$1, count: rating!.$2),
                   ],
                 ),
               ),

@@ -14,7 +14,7 @@
 //   stats: contadores das conquistas (ver achievements.js)
 
 import { create } from 'zustand'
-import { saveRanking, saveUserData, signOut, useAuth, watchUserData } from './auth'
+import { publishTeams, saveRanking, saveUserData, signOut, useAuth, watchUserData } from './auth'
 import { useStore } from './store'
 
 const KEYS = ['theme', 'favorites', 'teams', 'training', 'quizRecord', 'rankedRecord', 'quizGame', 'avatar', 'stats']
@@ -40,6 +40,23 @@ function updateRanking(uid) {
     .catch(() => {})
 }
 
+/** Leva os times para a lista pública (busca de times e nota da comunidade). */
+let publishTimer = null
+function schedulePublish(uid) {
+  clearTimeout(publishTimer)
+  publishTimer = setTimeout(() => {
+    const name = useAuth.getState().user?.name
+    if (!name || currentUid !== uid) return
+    const { teams, avatar } = useStore.getState()
+    publishTeams(uid, name, avatar, teams)
+      .then(() => useTeamsVersion.setState((s) => ({ version: s.version + 1 })))
+      .catch(() => {})
+  }, 1500)
+}
+
+/** Muda quando os times públicos da pessoa são atualizados. */
+export const useTeamsVersion = create(() => ({ version: 0 }))
+
 async function flush(uid) {
   clearTimeout(timer)
   timer = null
@@ -63,6 +80,7 @@ function stop() {
   stopStore?.()
   stopRemote = stopStore = null
   clearTimeout(timer)
+  clearTimeout(publishTimer)
   timer = null
   dirty = new Set()
 }
@@ -79,6 +97,7 @@ async function start(uid) {
     changed.forEach((k) => dirty.add(k))
     if (!ready) return // grava depois de receber a conta
     if (changed.includes('rankedRecord') || changed.includes('avatar')) updateRanking(uid)
+    if (changed.includes('teams') || changed.includes('avatar')) schedulePublish(uid)
     scheduleSave(uid)
   })
 
@@ -105,6 +124,7 @@ async function start(uid) {
       if (!ready) {
         ready = true
         updateRanking(uid)
+        schedulePublish(uid)
       }
       if (dirty.size) scheduleSave(uid)
     },

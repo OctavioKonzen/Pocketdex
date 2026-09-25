@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { achievementsOf } from './achievements'
 import { damage, statAt } from './battle'
+import { pixCode } from './pix'
 import { dailyAnswers, dailyPoints, dayKey, seededRandom, seedOf, weekKey } from './league'
 import { decodeTeam, encodeTeam, fromShowdown, showdownName } from './teamShare'
 
@@ -101,3 +102,11 @@ describe('calculadora de dano', () => {
 })
 
 const RESULT = { min: 138, max: 164 }
+
+describe('Pix', () => {
+  it('gera o BR Code igual ao exemplo do Banco Central', () => {
+    expect(pixCode({ key: '123e4567-e12b-12d1-a456-426655440000', name: 'Fulano de Tal', city: 'BRASILIA' })).toBe(
+      '00020126580014br.gov.bcb.pix0136123e4567-e12b-12d1-a456-4266554400005204000053039865802BR5913Fulano de Tal6008BRASILIA62070503***63041D3D',
+    )
+  })
+})

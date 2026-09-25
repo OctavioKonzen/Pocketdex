@@ -66,6 +66,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
   int _round = 0;
   int? _answerId;
   List<int> _options = [];
+  List<int> _recent = []; // respostas recentes, que ainda não podem voltar
 
   int? _chosen;
   bool _over = false;
@@ -139,6 +140,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
         _streak = (saved['streak'] as num? ?? 0).toInt();
         _round = (saved['round'] as num? ?? 0).toInt();
         _answerId = (saved['answerId'] as num).toInt();
+        _recent = [for (final r in saved['recent'] as List? ?? []) (r as num).toInt()];
         _options = [for (final o in saved['options'] as List) (o as num).toInt()];
       });
     } else {
@@ -146,10 +148,21 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
     }
   }
 
+  /// Quantos Pokémon recentes não podem voltar (80% da lista, no máximo 400; igual ao site).
+  int get _recentLimit => min(400, (_pool!.length * 0.8).floor());
+
   void _next({bool first = false}) {
     final pool = _pool!;
     final round = first ? 0 : _round + 1;
-    final answerId = _daily ? _answers[round] : int.parse(pool[_random.nextInt(pool.length)].id);
+    if (!_daily && !first && _answerId != null) {
+      _recent = [..._recent, _answerId!];
+      if (_recent.length > _recentLimit) _recent = _recent.sublist(_recent.length - _recentLimit);
+    }
+    // Sorteia entre os que não saíram há pouco, para não repetir cedo.
+    final seen = _recent.toSet();
+    final fresh = seen.isEmpty ? pool : pool.where((p) => !seen.contains(int.parse(p.id))).toList();
+    final from = fresh.isEmpty ? pool : fresh;
+    final answerId = _daily ? _answers[round] : int.parse(from[_random.nextInt(from.length)].id);
     final options = <int>{answerId};
     while (options.length < min(4, pool.length)) {
       options.add(int.parse(pool[_random.nextInt(pool.length)].id));
@@ -177,6 +190,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
         'streak': _streak,
         'answerId': _answerId,
         'options': _options,
+        'recent': _recent,
       };
 
   /// O Ranked não fica salvo para continuar depois (senão daria para ganhar tempo).

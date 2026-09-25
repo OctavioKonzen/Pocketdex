@@ -4,7 +4,7 @@
   <img src="https://img.shields.io/badge/Flutter-3.x-blue?logo=flutter&style=for-the-badge" />
   <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&style=for-the-badge" />
   <img src="https://img.shields.io/badge/Firebase-FFCA28?logo=firebase&style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Android-1.2.0-green?logo=android&style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Android-1.3.0-green?logo=android&style=for-the-badge" />
 </p>
 
 <div align="center">
@@ -34,7 +34,8 @@
 
 * **Pokédex:** todos os Pokémon e formas (Mega, Alola, Galar...), com filtros por geração e tipo e detalhes completos: status, habilidades, evoluções e golpes.
 * **Favoritos:** guarde os Pokémon que você mais usa.
-* **Montador de Times:** monte times de até 6 Pokémon, veja fraquezas, resistências e a nota do time, e compartilhe por link, código ou no formato do Pokémon Showdown.
+* **Montador de Times:** monte times de até 6 Pokémon, veja fraquezas, defesa e cobertura de ataque por tipo, e compartilhe por link, código ou no formato do Pokémon Showdown.
+* **Times da comunidade:** os times de todos aparecem para todos; pesquise pelo nome do treinador, dê sua nota (1 a 5 estrelas) e salve os que gostar.
 * **Jogo "Quem é esse Pokémon?":** modo normal, modo **Ranked** (5 segundos por Pokémon, caindo até 2 conforme os pontos) e **Desafio do dia** (os mesmos 10 Pokémon para todos), com rankings geral, da semana e do dia.
 * **Conquistas:** medalhas por jogar, montar times e favoritar Pokémon.
 * **Enciclopédia:** golpes, habilidades e itens.

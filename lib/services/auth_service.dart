@@ -249,6 +249,10 @@ class AuthService extends ChangeNotifier {
           for (final d in days) _db.collection('daily').doc(d).collection('scores').doc(uid),
           if (name != null) _db.collection('usernames').doc(nameKey(name)),
         ];
+        try {
+          final teams = await _db.collection('publicTeams').where('ownerUid', isEqualTo: uid).get();
+          removals.addAll(teams.docs.map((d) => d.reference));
+        } catch (_) {}
         await Future.wait(removals.map((ref) => ref.delete().catchError((_) {})));
         await _db.collection('users').doc(uid).delete();
         await u.delete();

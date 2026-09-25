@@ -2,6 +2,9 @@ import { m } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ImportTeamModal } from '../components/TeamShare'
+import { RatingText } from '../components/TeamAnalysis'
+import { myTeamRatings, useAuth } from '../lib/auth'
+import { useTeamsVersion } from '../lib/sync'
 import { Button, Empty, Icon, Modal, PageHeader } from '../components/ui'
 import { getPokemonById } from '../lib/data'
 import { useStore } from '../lib/store'
@@ -25,6 +28,21 @@ export default function TeamsPage() {
     getPokemonById().then(setById)
   }, [])
 
+  // Nota da comunidade de cada time (os times de quem tem conta são públicos).
+  const user = useAuth((s) => (s.status === 'signedIn' ? s.user : null))
+  const teamsVersion = useTeamsVersion((s) => s.version)
+  const [ratings, setRatings] = useState({})
+  useEffect(() => {
+    if (!user) return
+    let alive = true
+    myTeamRatings(user.uid)
+      .then((r) => alive && setRatings(r))
+      .catch(() => {})
+    return () => {
+      alive = false
+    }
+  }, [user, teamsVersion])
+
   const create = (e) => {
     e.preventDefault()
     if (!name.trim()) return
@@ -37,7 +55,12 @@ export default function TeamsPage() {
   return (
     <div>
       <PageHeader title="Montador de Times" subtitle="Monte times de até 6 Pokémon e veja as fraquezas e a nota de cada um.">
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          {user && (
+            <Button color="linear-gradient(135deg, #7E57C2, #3949AB)" onClick={() => navigate('/times/comunidade')}>
+              🔎 Times da comunidade
+            </Button>
+          )}
           <Button color="#546E7A" onClick={() => setImporting(true)}>
             Importar
           </Button>
@@ -62,10 +85,8 @@ export default function TeamsPage() {
             <div className="flex items-start justify-between">
               <div>
                 <h2 className="text-lg font-bold">{team.name}</h2>
-                <p className="text-sm text-muted">
-                  {team.pokemon.filter(Boolean).length}/6 Pokémon
-                  {team.score != null && ` · Nota ${team.score.toFixed(1)}`}
-                </p>
+                <p className="text-sm text-muted">{team.pokemon.filter(Boolean).length}/6 Pokémon</p>
+                {user && <RatingText rating={ratings[team.id]?.rating ?? null} count={ratings[team.id]?.count ?? 0} />}
               </div>
               <button
                 type="button"

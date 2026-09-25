@@ -282,6 +282,102 @@ export async function getRankingPosition(score, board = 'all', key = '') {
   return snap.data().count + 1
 }
 
+// ---------------------------------------------------------------- times públicos
+//   publicTeams/{teamId} → { ownerUid, ownerName, ownerKey, avatar, name, color,
+//                            pokemon: [id|null x6], ratingSum, ratingCount }
+//   publicTeams/{teamId}/ratings/{uid} → { stars: 1..5 }
+
+const publicTeam = (d) => {
+  const data = d.data()
+  return { id: d.id, ...data, rating: data.ratingCount ? data.ratingSum / data.ratingCount : null }
+}
+
+/**
+ * Deixa os times públicos iguais aos times da conta: cria os novos, atualiza
+ * os que mudaram e apaga os que foram excluídos (a nota da comunidade fica).
+ */
+export async function publishTeams(uid, name, avatar, teams) {
+  const { db, collection, doc, query, where, getDocs, writeBatch, serverTimestamp } = await firebase()
+  const snap = await getDocs(query(collection(db, 'publicTeams'), where('ownerUid', '==', uid)))
+  const current = new Map(snap.docs.map((d) => [d.id, d.data()]))
+  const batch = writeBatch(db)
+  let changes = 0
+  const wanted = new Set()
+  for (const team of teams) {
+    const pokemon = Array.from({ length: 6 }, (_, i) => team.pokemon?.[i] ?? null)
+    if (!pokemon.some((p) => p != null)) continue // time vazio não aparece
+    wanted.add(team.id)
+    const fields = { ownerUid: uid, ownerName: name, ownerKey: nameKey(name), avatar: avatar ?? null, name: team.name, color: team.color ?? null, pokemon }
+    const old = current.get(team.id)
+    const same = old && Object.entries(fields).every(([k, v]) => JSON.stringify(old[k] ?? null) === JSON.stringify(v))
+    if (same) continue
+    batch.set(doc(db, 'publicTeams', team.id), {
+      ...fields,
+      ratingSum: old?.ratingSum ?? 0,
+      ratingCount: old?.ratingCount ?? 0,
+      updatedAt: serverTimestamp(),
+    })
+    changes++
+  }
+  for (const id of current.keys()) {
+    if (!wanted.has(id)) {
+      batch.delete(doc(db, 'publicTeams', id))
+      changes++
+    }
+  }
+  if (changes) await batch.commit()
+}
+
+/** Times públicos de uma pessoa (pelo nome) ou os mais recentes. */
+export async function searchPublicTeams(name = '') {
+  const { db, collection, query, where, orderBy, limit, getDocs } = await firebase()
+  const key = nameKey(name)
+  const q = key
+    ? query(collection(db, 'publicTeams'), where('ownerKey', '==', key), limit(50))
+    : query(collection(db, 'publicTeams'), orderBy('updatedAt', 'desc'), limit(30))
+  const snap = await getDocs(q)
+  return snap.docs.map(publicTeam)
+}
+
+/** Nota da comunidade dos times de uma pessoa: {teamId: {rating, count}}. */
+export async function myTeamRatings(uid) {
+  const { db, collection, query, where, getDocs } = await firebase()
+  const snap = await getDocs(query(collection(db, 'publicTeams'), where('ownerUid', '==', uid)))
+  return Object.fromEntries(snap.docs.map((d) => [d.id, { rating: publicTeam(d).rating, count: d.data().ratingCount }]))
+}
+
+/** Um time público (ou null, se o dono excluiu). */
+export async function getPublicTeam(teamId) {
+  const { db, doc, getDoc } = await firebase()
+  const snap = await getDoc(doc(db, 'publicTeams', teamId))
+  return snap.exists() ? publicTeam(snap) : null
+}
+
+/** O voto da pessoa num time (1 a 5) ou null. */
+export async function getMyVote(uid, teamId) {
+  const { db, doc, getDoc } = await firebase()
+  const snap = await getDoc(doc(db, 'publicTeams', teamId, 'ratings', uid))
+  return snap.exists() ? snap.data().stars : null
+}
+
+/** Vota (ou muda o voto) num time; a nota do time muda junto. */
+export async function rateTeam(uid, teamId, stars) {
+  const { db, doc, runTransaction } = await firebase()
+  const teamRef = doc(db, 'publicTeams', teamId)
+  const voteRef = doc(db, 'publicTeams', teamId, 'ratings', uid)
+  return runTransaction(db, async (tx) => {
+    const team = await tx.get(teamRef)
+    if (!team.exists()) throw new AuthError('Esse time foi excluído pelo dono.')
+    const vote = await tx.get(voteRef)
+    const old = vote.exists() ? vote.data().stars : 0
+    const ratingSum = team.data().ratingSum + stars - old
+    const ratingCount = team.data().ratingCount + (vote.exists() ? 0 : 1)
+    tx.set(voteRef, { stars })
+    tx.update(teamRef, { ratingSum, ratingCount })
+    return { rating: ratingSum / ratingCount, count: ratingCount }
+  })
+}
+
 // ---------------------------------------------------------------- excluir conta
 
 /** Conta entrou com Google (e não com e-mail e senha)? */
@@ -312,6 +408,8 @@ export async function deleteAccount({ password, weeks = [], days = [] }) {
     ...days.map((day) => f.doc(f.db, 'daily', day, 'scores', uid)),
   ]
   if (name) removals.push(f.doc(f.db, 'usernames', nameKey(name)))
+  const teams = await f.getDocs(f.query(f.collection(f.db, 'publicTeams'), f.where('ownerUid', '==', uid))).catch(() => null)
+  teams?.docs.forEach((d) => removals.push(d.ref))
   await Promise.all(removals.map((ref) => f.deleteDoc(ref).catch(() => {})))
   await f.deleteDoc(f.doc(f.db, 'users', uid))
   await f.deleteUser(user)

@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pocket_dex/services/achievements.dart';
 import 'package:pocket_dex/services/battle.dart';
+import 'package:pocket_dex/services/pix.dart';
 
 void main() {
   test('dano igual ao do site (web-site/src/lib/league.test.js)', () {
@@ -35,5 +36,12 @@ void main() {
       teams: const [],
     );
     expect(list.where((a) => a.unlocked).map((a) => a.id), ['first', 'trainer', 'streak', 'ranked']);
+  });
+
+  test('Pix igual ao exemplo do Banco Central (e ao site)', () {
+    expect(
+      Pix.code(key: '123e4567-e12b-12d1-a456-426655440000', name: 'Fulano de Tal', city: 'BRASILIA'),
+      '00020126580014br.gov.bcb.pix0136123e4567-e12b-12d1-a456-4266554400005204000053039865802BR5913Fulano de Tal6008BRASILIA62070503***63041D3D',
+    );
   });
 }

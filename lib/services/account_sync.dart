@@ -34,6 +34,10 @@ class AccountSync {
   /// Muda sempre que o ranking é atualizado (a tela do jogo recarrega).
   final rankingVersion = ValueNotifier<int>(0);
 
+  /// Muda quando os times públicos da pessoa são atualizados.
+  final teamsVersion = ValueNotifier<int>(0);
+  Timer? _publishTimer;
+
   void start() {
     _data.onLocalChange = _onLocalChange;
     _auth.addListener(_onAuth);
@@ -59,6 +63,8 @@ class AccountSync {
     _remote = null;
     _timer?.cancel();
     _timer = null;
+    _publishTimer?.cancel();
+    _publishTimer = null;
     _dirty.clear();
     _ready = false;
   }
@@ -78,6 +84,7 @@ class AccountSync {
       if (!_ready) {
         _ready = true;
         _updateRanking(uid);
+        _schedulePublish(uid);
       }
       if (_dirty.isNotEmpty) _scheduleSave();
     }, onError: (_) {});
@@ -89,6 +96,7 @@ class AccountSync {
     _dirty.addAll(keys);
     if (!_ready) return; // grava depois de receber a conta
     if (keys.contains('rankedRecord') || keys.contains('avatar')) _updateRanking(uid);
+    if (keys.contains('teams') || keys.contains('avatar')) _schedulePublish(uid);
     _scheduleSave();
   }
 
@@ -205,5 +213,126 @@ class AccountSync {
       });
       rankingVersion.value++;
     } catch (_) {}
+  }
+
+  // ---------------------------------------------------------------- times públicos
+  //   publicTeams/{teamId} → {ownerUid, ownerName, ownerKey, avatar, name, color,
+  //                           pokemon: [id|null x6], ratingSum, ratingCount}
+  //   publicTeams/{teamId}/ratings/{uid} → {stars: 1..5}
+  // Igual ao site (web-site/src/lib/auth.js): os times de quem tem conta
+  // aparecem para todos; se o dono excluir o time, ele some da lista.
+
+  CollectionReference<Map<String, dynamic>> get _public => _db.collection('publicTeams');
+
+  void _schedulePublish(String uid) {
+    _publishTimer?.cancel();
+    _publishTimer = Timer(const Duration(milliseconds: 1500), () => publishTeams(uid));
+  }
+
+  /// Deixa os times públicos iguais aos times da conta (a nota da comunidade fica).
+  Future<void> publishTeams(String uid) async {
+    final name = _auth.user?.name;
+    if (name == null || _uid != uid) return;
+    try {
+      final snap = await _public.where('ownerUid', isEqualTo: uid).get();
+      final current = {for (final d in snap.docs) d.id: d.data()};
+      final batch = _db.batch();
+      var changes = 0;
+      final wanted = <String>{};
+      for (final team in _data.teams) {
+        final slots = (team['pokemon'] as List?) ?? [];
+        final pokemon = [for (var i = 0; i < 6; i++) i < slots.length ? (slots[i] as num?)?.toInt() : null];
+        if (pokemon.every((p) => p == null)) continue; // time vazio não aparece
+        final id = team['id'] as String;
+        wanted.add(id);
+        final fields = <String, dynamic>{
+          'ownerUid': uid,
+          'ownerName': name,
+          'ownerKey': AuthService.nameKey(name),
+          'avatar': _data.avatar,
+          'name': team['name'] ?? 'Time',
+          'color': team['color'],
+          'pokemon': pokemon,
+        };
+        final old = current[id];
+        final same = old != null && fields.entries.every((e) => '${old[e.key]}' == '${e.value}');
+        if (same) continue;
+        batch.set(_public.doc(id), {
+          ...fields,
+          'ratingSum': old?['ratingSum'] ?? 0,
+          'ratingCount': old?['ratingCount'] ?? 0,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+        changes++;
+      }
+      for (final id in current.keys) {
+        if (!wanted.contains(id)) {
+          batch.delete(_public.doc(id));
+          changes++;
+        }
+      }
+      if (changes > 0) await batch.commit();
+      teamsVersion.value++;
+    } catch (_) {}
+  }
+
+  static Map<String, dynamic> _publicTeam(DocumentSnapshot<Map<String, dynamic>> d) {
+    final data = d.data()!;
+    final count = (data['ratingCount'] as num?)?.toInt() ?? 0;
+    final sum = (data['ratingSum'] as num?)?.toInt() ?? 0;
+    return {'id': d.id, ...data, 'rating': count > 0 ? sum / count : null, 'ratingCount': count};
+  }
+
+  /// Times públicos de uma pessoa (pelo nome) ou os mais recentes.
+  Future<List<Map<String, dynamic>>> searchPublicTeams(String name) async {
+    final key = AuthService.nameKey(name);
+    final query = key.isEmpty
+        ? _public.orderBy('updatedAt', descending: true).limit(30)
+        : _public.where('ownerKey', isEqualTo: key).limit(50);
+    final snap = await query.get();
+    return snap.docs.map(_publicTeam).toList();
+  }
+
+  /// Nota da comunidade dos times da pessoa: {teamId: (nota, votos)}.
+  Future<Map<String, (double?, int)>> myTeamRatings() async {
+    final uid = _uid;
+    if (uid == null) return {};
+    final snap = await _public.where('ownerUid', isEqualTo: uid).get();
+    return {
+      for (final d in snap.docs) d.id: (_publicTeam(d)['rating'] as double?, _publicTeam(d)['ratingCount'] as int),
+    };
+  }
+
+  /// Um time público (ou null, se o dono excluiu).
+  Future<Map<String, dynamic>?> publicTeam(String id) async {
+    final snap = await _public.doc(id).get();
+    return snap.exists ? _publicTeam(snap) : null;
+  }
+
+  /// O voto da pessoa num time (1 a 5) ou null.
+  Future<int?> myVote(String teamId) async {
+    final uid = _uid;
+    if (uid == null) return null;
+    final snap = await _public.doc(teamId).collection('ratings').doc(uid).get();
+    return (snap.data()?['stars'] as num?)?.toInt();
+  }
+
+  /// Vota (ou muda o voto) num time; devolve a nova nota e os votos.
+  Future<(double, int)> rateTeam(String teamId, int stars) async {
+    final uid = _uid;
+    if (uid == null) throw StateError('Entre na sua conta para votar.');
+    final teamRef = _public.doc(teamId);
+    final voteRef = teamRef.collection('ratings').doc(uid);
+    return _db.runTransaction((tx) async {
+      final team = await tx.get(teamRef);
+      if (!team.exists) throw StateError('Esse time foi excluído pelo dono.');
+      final vote = await tx.get(voteRef);
+      final old = (vote.data()?['stars'] as num?)?.toInt() ?? 0;
+      final sum = ((team.data()!['ratingSum'] as num?)?.toInt() ?? 0) + stars - old;
+      final count = ((team.data()!['ratingCount'] as num?)?.toInt() ?? 0) + (vote.exists ? 0 : 1);
+      tx.set(voteRef, {'stars': stars});
+      tx.update(teamRef, {'ratingSum': sum, 'ratingCount': count});
+      return (sum / count, count);
+    });
   }
 }

@@ -6,6 +6,7 @@ import { deleteAccount, errorMessage, usesGoogle, useAuth } from '../lib/auth'
 import AccountAvatar from '../components/AccountAvatar'
 import { achievementsOf } from '../lib/achievements'
 import { dayKey, weekKey } from '../lib/league'
+import { pixCode, pixEnabled, PIX } from '../lib/pix'
 import { useStore } from '../lib/store'
 import { logout, pauseSync, resumeSync } from '../lib/sync'
 
@@ -64,6 +65,7 @@ export default function SettingsPage() {
           </Button>
         </div>
         {message && <p className="text-center text-green-400">{message}</p>}
+        {pixEnabled() && <SupportCard />}
         <Achievements />
         <AndroidAppCard />
         {user && <DeleteAccountCard />}
@@ -129,6 +131,52 @@ function AndroidAppCard() {
           Todas as versões
         </a>
       </p>
+    </div>
+  )
+}
+
+/** Pix para apoiar o projeto (QR Code e "copia e cola"). */
+function SupportCard() {
+  const [qr, setQr] = useState(null)
+  const [copied, setCopied] = useState('')
+  const code = pixCode()
+
+  useEffect(() => {
+    import('qrcode').then((QR) => QR.toDataURL(code, { margin: 1, width: 360 })).then(setQr).catch(() => {})
+  }, [code])
+
+  const copy = async (text, what) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(what)
+      setTimeout(() => setCopied(''), 1800)
+    } catch {
+      setCopied('')
+    }
+  }
+
+  return (
+    <div className="rounded-2xl bg-card p-5 shadow" style={{ borderLeft: '6px solid #32BCAD' }}>
+      <div className="flex flex-wrap items-center gap-5">
+        {qr && <img src={qr} alt="QR Code do Pix" className="h-36 w-36 rounded-xl bg-white p-1" />}
+        <div className="min-w-0 flex-1">
+          <div className="font-bold">💚 Apoie o PocketDex</div>
+          <p className="mt-1 text-sm text-muted">
+            O PocketDex é gratuito e sem anúncios. Se ele te ajuda, uma contribuição por Pix (de qualquer valor) ajuda a manter o projeto.
+          </p>
+          <p className="mt-2 text-sm">
+            Chave: <b className="break-all">{PIX.key}</b>
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button color="#32BCAD" onClick={() => copy(code, 'code')}>
+              {copied === 'code' ? 'Copiado!' : 'Copiar Pix copia e cola'}
+            </Button>
+            <Button color="#546E7A" onClick={() => copy(PIX.key, 'key')}>
+              {copied === 'key' ? 'Copiada!' : 'Copiar chave'}
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

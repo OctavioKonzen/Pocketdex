@@ -12,6 +12,8 @@ analyzer:
     - build/**
     - android/**
     - web/**
+    - web-site/**
+    - firestore-tests/**
 include: package:flutter_lints/flutter.yaml
 
 linter:
