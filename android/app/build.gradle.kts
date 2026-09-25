@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.myapp"
+    namespace = "com.octaviokonzen.pocketdex"
     compileSdk = flutter.compileSdkVersion
 
     ndkVersion = flutter.ndkVersion
@@ -22,7 +22,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.myapp"
+        applicationId = "com.octaviokonzen.pocketdex"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -38,6 +38,13 @@ android {
 
 flutter {
     source = "../.."
+}
+
+// Firebase (login e dados da conta): o arquivo google-services.json vem do
+// Console do Firebase (app Android com.octaviokonzen.pocketdex). Sem ele o
+// app compila e funciona sem login.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
 }
 
 dependencies {

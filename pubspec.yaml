@@ -17,6 +17,9 @@ dependencies:
   flutter_colorpicker: ^1.1.0
   uuid: ^4.4.0
   debounce_throttle: ^2.0.0
+  firebase_core: ^4.15.0
+  firebase_auth: ^6.7.0
+  cloud_firestore: ^6.10.0
   
   # Adicione suas outras dependências aqui...
 

@@ -1,29 +1,33 @@
 // lib/providers/theme_provider.dart
+//
+// Tema claro/escuro fica em UserData (sincronizado com a conta, igual ao site).
 
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../services/user_data.dart';
 
 class ThemeProvider extends ChangeNotifier {
-  ThemeMode _themeMode = ThemeMode.dark;
-  static const String _themeKey = 'theme_preference';
-
-  ThemeMode get themeMode => _themeMode;
+  final UserData _data = UserData.instance;
 
   ThemeProvider() {
-    _loadTheme();
+    _data.addListener(_onData);
+    _onData();
   }
 
-  void _loadTheme() async {
-    final prefs = await SharedPreferences.getInstance();
-    final isDarkMode = prefs.getBool(_themeKey) ?? true;
-    _themeMode = isDarkMode ? ThemeMode.dark : ThemeMode.light;
+  ThemeMode _themeMode = ThemeMode.dark;
+  ThemeMode get themeMode => _themeMode;
+
+  void _onData() {
+    final mode = _data.theme == 'light' ? ThemeMode.light : ThemeMode.dark;
+    if (mode == _themeMode) return;
+    _themeMode = mode;
     notifyListeners();
   }
 
-  void toggleTheme(bool isDarkMode) async {
-    _themeMode = isDarkMode ? ThemeMode.dark : ThemeMode.light;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_themeKey, isDarkMode);
-    notifyListeners();
+  void toggleTheme(bool isDarkMode) => _data.update({'theme': isDarkMode ? 'dark' : 'light'});
+
+  @override
+  void dispose() {
+    _data.removeListener(_onData);
+    super.dispose();
   }
 }

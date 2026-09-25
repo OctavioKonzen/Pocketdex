@@ -1,37 +1,42 @@
+// lib/providers/favorites_provider.dart
+//
+// Favoritos ficam em UserData (sincronizados com a conta). As telas do app
+// usam o id como texto; na conta ele é número.
+
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../services/user_data.dart';
 
 class FavoritesProvider extends ChangeNotifier {
-  List<String> _favoritePokemonIds = [];
-
-  List<String> get favoritePokemonIds => _favoritePokemonIds;
+  final UserData _data = UserData.instance;
 
   FavoritesProvider() {
-    _loadFavorites();
+    _data.addListener(_onData);
+    _onData();
   }
 
-  Future<void> _loadFavorites() async {
-    final prefs = await SharedPreferences.getInstance();
-    _favoritePokemonIds = prefs.getStringList('favorite_pokemon') ?? [];
+  List<String> _ids = [];
+  List<String> get favoritePokemonIds => _ids;
+
+  void _onData() {
+    final ids = _data.favorites.map((id) => '$id').toList();
+    if (ids.join(',') == _ids.join(',')) return;
+    _ids = ids;
     notifyListeners();
   }
 
-  Future<void> _saveFavorites() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList('favorite_pokemon', _favoritePokemonIds);
-  }
-
-  bool isFavorite(String pokemonId) {
-    return _favoritePokemonIds.contains(pokemonId);
-  }
+  bool isFavorite(String pokemonId) => _ids.contains(pokemonId);
 
   void toggleFavorite(String pokemonId) {
-    if (isFavorite(pokemonId)) {
-      _favoritePokemonIds.remove(pokemonId);
-    } else {
-      _favoritePokemonIds.add(pokemonId);
-    }
-    _saveFavorites();
-    notifyListeners();
+    final id = int.tryParse(pokemonId);
+    if (id == null) return;
+    final favorites = _data.favorites;
+    favorites.contains(id) ? favorites.remove(id) : favorites.add(id);
+    _data.update({'favorites': favorites});
+  }
+
+  @override
+  void dispose() {
+    _data.removeListener(_onData);
+    super.dispose();
   }
 }

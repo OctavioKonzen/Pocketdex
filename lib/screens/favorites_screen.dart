@@ -22,7 +22,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     final theme = Theme.of(context);
 
     final favoritesProvider = context.watch<FavoritesProvider>();
-    final favoriteIds = favoritesProvider.favoritePokemonIds;
+    final favoriteIds = [...favoritesProvider.favoritePokemonIds];
     favoriteIds.sort((a, b) => int.parse(a).compareTo(int.parse(b)));
 
     final List<PokemonListing> favoriteListings = favoriteIds.map((id) {

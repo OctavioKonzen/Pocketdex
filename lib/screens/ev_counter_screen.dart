@@ -9,6 +9,7 @@ import 'package:pocket_dex/widgets/pikachu_loading_indicator.dart';
 import 'package:uuid/uuid.dart';
 
 import '../models/training_pokemon.dart';
+import '../services/user_data.dart';
 import 'pokedex_screen.dart';
 import 'ev_tracking_screen.dart';
 import 'package:pocket_dex/utils/responsive.dart';
@@ -30,7 +31,19 @@ class _EvCounterScreenState extends State<EvCounterScreen> {
   @override
   void initState() {
     super.initState();
+    // Mudanças vindas da conta (site ou outro aparelho) aparecem na hora.
+    UserData.instance.addListener(_onUserData);
     _loadTrainingPokemon();
+  }
+
+  void _onUserData() {
+    if (mounted) _loadTrainingPokemon();
+  }
+
+  @override
+  void dispose() {
+    UserData.instance.removeListener(_onUserData);
+    super.dispose();
   }
 
   Future<void> _loadTrainingPokemon() async {

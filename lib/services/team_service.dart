@@ -1,50 +1,38 @@
 // lib/services/team_service.dart
+//
+// Times ficam em UserData (mesmo formato do site) e são sincronizados com a
+// conta: um time criado no celular aparece no site, e vice-versa.
 
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../models/team.dart';
+import 'account_format.dart';
+import 'user_data.dart';
 
 class TeamService {
-  static const _teamsKey = 'pokemon_teams';
   final _uuid = const Uuid();
+  UserData get _data => UserData.instance;
 
-  Future<List<Team>> getTeams() async {
-    final prefs = await SharedPreferences.getInstance();
-    final teamsString = prefs.getString(_teamsKey);
-    if (teamsString == null) {
-      return [];
-    }
-    final List<dynamic> teamsJson = json.decode(teamsString);
-    return teamsJson.map((json) => Team.fromMap(json)).toList();
-  }
-
-  Future<void> _saveTeams(List<Team> teams) async {
-    final prefs = await SharedPreferences.getInstance();
-    final List<Map<String, dynamic>> teamsJson =
-        teams.map((team) => team.toMap()).toList();
-    await prefs.setString(_teamsKey, json.encode(teamsJson));
-  }
+  Future<List<Team>> getTeams() async =>
+      _data.teams.map(AccountFormat.teamFromAccount).toList();
 
   Future<void> createTeam(String name) async {
-    final teams = await getTeams();
-    final newTeam = Team(id: _uuid.v4(), name: name);
-    teams.add(newTeam);
-    await _saveTeams(teams);
+    final team = Team(id: _uuid.v4(), name: name, pokemons: []);
+    _data.update({
+      'teams': [..._data.teams, AccountFormat.teamToAccount(team)],
+    });
   }
-  
+
   Future<void> updateTeam(Team updatedTeam) async {
-    final teams = await getTeams();
-    final index = teams.indexWhere((team) => team.id == updatedTeam.id);
-    if (index != -1) {
-      teams[index] = updatedTeam;
-      await _saveTeams(teams);
-    }
+    final teams = _data.teams;
+    final index = teams.indexWhere((t) => t['id'] == updatedTeam.id);
+    if (index == -1) return;
+    teams[index] = AccountFormat.teamToAccount(updatedTeam, teams[index]);
+    _data.update({'teams': teams});
   }
 
   Future<void> deleteTeam(String teamId) async {
-    final teams = await getTeams();
-    teams.removeWhere((team) => team.id == teamId);
-    await _saveTeams(teams);
+    _data.update({
+      'teams': _data.teams.where((t) => t['id'] != teamId).toList(),
+    });
   }
 }

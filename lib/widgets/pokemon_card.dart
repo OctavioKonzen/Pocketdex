@@ -81,7 +81,8 @@ class _PokemonCardState extends State<PokemonCard> with SingleTickerProviderStat
 
       _id = (data['id'] as int).toString();
       _imageUrl = data['sprites']['front_default'] ?? data['sprites']['other']['official-artwork']['front_default'];
-      _displayName = widget.pokemonListing.name.split('-').first;
+      // O nome vem do banco (a lista de favoritos só tem o número).
+      _displayName = ((data['name'] as String?) ?? widget.pokemonListing.name).split('-').first;
       _types = (data['types'] as List).map((t) => t['type']['name'] as String).toList();
 
       if (mounted) {

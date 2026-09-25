@@ -1,364 +1,480 @@
 // lib/screens/quiz_screen.dart
+//
+// Partida do "Quem é esse Pokémon?" — mesmas regras do site: 4 opções,
+// 3 vidas. O jogo normal fica salvo na conta para continuar depois (até em
+// outro aparelho). No Ranked (precisa de login) são todas as gerações e só
+// 5 segundos por Pokémon; o recorde dele vai para o ranking.
 
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/generation.dart';
 import '../models/pokemon_listing.dart';
 import '../services/pokemon_service.dart';
-import '../utils/string_extensions.dart';
-import '../widgets/pikachu_loading_indicator.dart';
-import '../utils/responsive.dart';
+import '../services/user_data.dart';
 import '../utils/app_images.dart';
+import '../utils/responsive.dart';
+import '../utils/string_extensions.dart';
+import '../widgets/game_stage.dart';
+import '../widgets/pikachu_loading_indicator.dart';
 
 class QuizScreen extends StatefulWidget {
+  static const lives = 3;
+  static const rankedSeconds = 5;
+
   final Generation? generation;
+  final bool ranked;
   final bool continueGame;
 
-  const QuizScreen({super.key, this.generation, this.continueGame = false});
+  const QuizScreen({super.key, this.generation, this.ranked = false, this.continueGame = false});
 
   @override
   State<QuizScreen> createState() => _QuizScreenState();
 }
 
-class _QuizScreenState extends State<QuizScreen> {
-  static const String _recordKey = 'quiz_highscore';
-  static const String _scoreKey = 'quiz_score';
-  static const String _livesKey = 'quiz_lives';
-  static const String _pokemonIdKey = 'quiz_correct_pokemon_id';
-  static const String _optionsKey = 'quiz_options';
-  static const String _generationKey = 'quiz_generation';
+const _timeout = -1; // "resposta" quando o tempo acaba
 
-  final PokemonService _pokemonService = PokemonService();
+class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
+  final _data = UserData.instance;
+  final _random = Random();
 
-  List<PokemonListing>? _pokemonList;
-  PokemonListing? _correctPokemon;
-  List<String> _options = [];
+  List<PokemonListing>? _pool;
+  Map<int, PokemonListing> _byId = {};
 
+  // Estado no mesmo formato do site (quizGame).
+  int _generationId = 0;
+  late bool _ranked = widget.ranked;
   int _score = 0;
-  int _lives = 3;
-  bool _isLoading = true;
-  bool _showCorrectAnswer = false;
+  int _lives = QuizScreen.lives;
+  int _streak = 0;
+  int _round = 0;
+  int? _answerId;
+  List<int> _options = [];
+
+  int? _chosen;
+  bool _over = false;
+
+  late final AnimationController _timer = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: QuizScreen.rankedSeconds),
+  )..addStatusListener((s) {
+      if (s == AnimationStatus.completed) _answer(_timeout);
+    });
+
+  late final AnimationController _shake = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
 
   @override
   void initState() {
     super.initState();
-    if (widget.continueGame) {
-      _loadSavedGameAndStart();
-    } else {
-      _startGame();
-    }
+    _start();
   }
 
   @override
   void dispose() {
-    if (_lives > 0) {
-      _saveGameState();
+    // Sair no meio de um Ranked encerra o jogo com os pontos feitos
+    // (depois do quadro atual, para não mexer em outras telas no meio dele).
+    if (_ranked && !_over) {
+      final score = _score;
+      final data = _data;
+      Future.microtask(() {
+        if (score > data.rankedRecord) data.update({'rankedRecord': score});
+      });
     }
+    _timer.dispose();
+    _shake.dispose();
     super.dispose();
   }
 
-  Future<void> _saveGameState() async {
-    if (_correctPokemon == null || _options.isEmpty) return;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_scoreKey, _score);
-    await prefs.setInt(_livesKey, _lives);
-    await prefs.setString(_pokemonIdKey, _correctPokemon!.id);
-    await prefs.setStringList(_optionsKey, _options);
-    await prefs.setString(
-        _generationKey, widget.generation?.pokedexName ?? 'all');
-  }
-
-  Future<void> _clearGameState() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_scoreKey);
-    await prefs.remove(_livesKey);
-    await prefs.remove(_pokemonIdKey);
-    await prefs.remove(_optionsKey);
-    await prefs.remove(_generationKey);
-  }
-
-  Future<void> _loadSavedGameAndStart() async {
-    setState(() => _isLoading = true);
-    final prefs = await SharedPreferences.getInstance();
-
-    _score = prefs.getInt(_scoreKey) ?? 0;
-    _lives = prefs.getInt(_livesKey) ?? 3;
-    final pokemonId = prefs.getString(_pokemonIdKey);
-    _options = prefs.getStringList(_optionsKey) ?? [];
-    final generationName = prefs.getString(_generationKey);
-
-    if (pokemonId == null || _options.isEmpty || _lives == 0) {
-      _startGame();
+  Future<void> _start() async {
+    final saved = widget.continueGame ? _data.quizGame : null;
+    _generationId = saved != null ? (saved['generation'] as num? ?? 0).toInt() : (widget.generation?.id ?? 0);
+    final gen = generations.where((g) => g.id == _generationId).firstOrNull;
+    final service = PokemonService();
+    try {
+      _pool = gen == null ? await service.fetchAllPokemonList() : await service.fetchPokedex(gen);
+    } catch (_) {
+      if (mounted) Navigator.pop(context);
       return;
     }
-
-    try {
-      if (generationName != null && generationName != 'all') {
-        final savedGeneration =
-            generations.firstWhere((g) => g.pokedexName == generationName);
-        _pokemonList = await _pokemonService.fetchPokedex(savedGeneration);
-      } else {
-        _pokemonList = await _pokemonService.fetchAllPokemonList();
-      }
-
-      _correctPokemon = _pokemonList!.firstWhere((p) => p.id == pokemonId);
-
-      setState(() => _isLoading = false);
-    } catch (e) {
-      _startGame();
-    }
-  }
-
-  Future<void> _startGame() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      if (widget.generation != null) {
-        _pokemonList = await _pokemonService.fetchPokedex(widget.generation!);
-      } else {
-        _pokemonList = await _pokemonService.fetchAllPokemonList();
-      }
-      _loadNextQuestion();
-    } catch (e) {
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Erro ao carregar Pokémon para o jogo.')));
-      }
-    }
-  }
-
-  void _loadNextQuestion() {
-    if (_pokemonList == null || _pokemonList!.isEmpty) return;
-
-    setState(() {
-      _isLoading = true;
-      _showCorrectAnswer = false;
-      _options = [];
-      _correctPokemon = null;
-    });
-
-    final random = Random();
-
-    _correctPokemon = _pokemonList![random.nextInt(_pokemonList!.length)];
-    final correctName = _correctPokemon!.name.capitalise();
-    _options.add(correctName);
-
-    while (_options.length < 4) {
-      final randomPokemon = _pokemonList![random.nextInt(_pokemonList!.length)];
-      final randomName = randomPokemon.name.capitalise();
-      if (!_options.contains(randomName)) {
-        _options.add(randomName);
-      }
-    }
-
-    _options.shuffle();
-    setState(() => _isLoading = false);
-  }
-
-  void _handleAnswer(String selectedName) {
-    if (_showCorrectAnswer) return;
-
-    setState(() => _showCorrectAnswer = true);
-
-    if (selectedName == _correctPokemon!.name.capitalise()) {
-      setState(() => _score++);
-      Future.delayed(const Duration(seconds: 1), _loadNextQuestion);
-    } else {
-      setState(() => _lives--);
-      Future.delayed(const Duration(seconds: 2), () {
-        if (_lives == 0) {
-          _endGame();
-        } else {
-          _loadNextQuestion();
-        }
+    _byId = {for (final p in _pool!) int.parse(p.id): p};
+    if (!mounted) return;
+    if (saved != null && _byId.containsKey(saved['answerId'])) {
+      setState(() {
+        _ranked = false;
+        _score = (saved['score'] as num? ?? 0).toInt();
+        _lives = (saved['lives'] as num? ?? QuizScreen.lives).toInt();
+        _streak = (saved['streak'] as num? ?? 0).toInt();
+        _round = (saved['round'] as num? ?? 0).toInt();
+        _answerId = (saved['answerId'] as num).toInt();
+        _options = [for (final o in saved['options'] as List) (o as num).toInt()];
       });
+    } else {
+      _next(first: true);
     }
   }
 
-  Future<void> _endGame() async {
-    final prefs = await SharedPreferences.getInstance();
-    final highScore = prefs.getInt(_recordKey) ?? 0;
-    if (_score > highScore) {
-      await prefs.setInt(_recordKey, _score);
+  void _next({bool first = false}) {
+    final pool = _pool!;
+    final answer = pool[_random.nextInt(pool.length)];
+    final options = <int>{int.parse(answer.id)};
+    while (options.length < min(4, pool.length)) {
+      options.add(int.parse(pool[_random.nextInt(pool.length)].id));
     }
-    await _clearGameState();
+    setState(() {
+      _chosen = null;
+      if (!first) _round++;
+      _answerId = int.parse(answer.id);
+      _options = options.toList()..shuffle(_random);
+    });
+    _save();
+    if (_ranked) _timer.forward(from: 0);
+  }
 
-    if (mounted) {
-      final theme = Theme.of(context);
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          backgroundColor: theme.cardColor,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
-          title: Center(
-              child:
-                  Text('Fim de Jogo!', style: theme.textTheme.headlineMedium)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Sua pontuação foi:',
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.titleMedium),
-              const SizedBox(height: 8),
-              Text('$_score',
-                  style: TextStyle(
-                      color: Colors.yellow.shade600,
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold)),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      Navigator.of(context).pop();
-                    },
-                    style: TextButton.styleFrom(
-                        foregroundColor:
-                            theme.colorScheme.onSurface.withAlpha(178),
-                        textStyle: const TextStyle(fontSize: 18)),
-                    child: const Text('Sair'),
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      setState(() {
-                        _score = 0;
-                        _lives = 3;
-                      });
-                      _startGame();
-                    },
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green.shade600,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 12),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        textStyle: const TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold)),
-                    child: const Text('Jogar Novamente'),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      );
+  Map<String, dynamic> get _game => {
+        'generation': _generationId,
+        'ranked': _ranked,
+        'round': _round,
+        'score': _score,
+        'lives': _lives,
+        'streak': _streak,
+        'answerId': _answerId,
+        'options': _options,
+      };
+
+  /// O Ranked não fica salvo para continuar depois (senão daria para ganhar tempo).
+  void _save() {
+    if (!_ranked) _data.update({'quizGame': _game});
+  }
+
+  void _answer(int id) {
+    if (_chosen != null || _answerId == null || _over) return;
+    _timer.stop();
+    final correct = id == _answerId;
+    setState(() {
+      _chosen = id;
+      if (correct) {
+        _score++;
+        _streak++;
+      } else {
+        _lives--;
+        _streak = 0;
+      }
+    });
+    if (!correct) _shake.forward(from: 0);
+    Future.delayed(Duration(milliseconds: correct ? 1100 : 2000), () {
+      if (!mounted) return;
+      if (_lives <= 0) {
+        _end();
+      } else {
+        _next();
+      }
+    });
+  }
+
+  void _finishRanked() {
+    if (_score > _data.rankedRecord) _data.update({'rankedRecord': _score});
+  }
+
+  void _end() {
+    _over = true;
+    _timer.stop();
+    final previous = _ranked ? _data.rankedRecord : _data.quizRecord;
+    if (_ranked) {
+      _finishRanked();
+    } else {
+      _data.update({'quizGame': null, if (_score > _data.quizRecord) 'quizRecord': _score});
     }
+    final newRecord = _score > previous;
+    final theme = Theme.of(context);
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialog) => AlertDialog(
+        backgroundColor: theme.cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Center(child: Text(_ranked ? 'Fim do Ranked!' : 'Fim de Jogo!')),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Sua pontuação foi:'),
+            Text('$_score', style: const TextStyle(color: Colors.amber, fontSize: 56, fontWeight: FontWeight.w900)),
+            if (newRecord)
+              Text(_ranked ? 'Novo recorde no Ranked! Confira sua posição no ranking! 🎉' : 'Novo recorde! 🎉',
+                  textAlign: TextAlign.center, style: const TextStyle(color: Colors.greenAccent)),
+          ],
+        ),
+        actionsAlignment: MainAxisAlignment.spaceAround,
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialog);
+              Navigator.pop(context);
+            },
+            child: const Text('Sair', style: TextStyle(fontSize: 16)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(dialog);
+              setState(() {
+                _over = false;
+                _score = 0;
+                _lives = QuizScreen.lives;
+                _streak = 0;
+                _round = 0;
+              });
+              _next(first: true);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green.shade600, foregroundColor: Colors.white),
+            child: const Text('Jogar novamente', style: TextStyle(fontSize: 16)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _name(int id) {
+    final name = _byId[id]?.name ?? '?';
+    return name.replaceAll('-', ' ').capitalise();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final answer = _answerId;
+    if (_pool == null || answer == null) {
+      return Scaffold(appBar: AppBar(), body: const Center(child: PikachuLoadingIndicator()));
+    }
+    final revealed = _chosen != null;
+    final hit = revealed && _chosen == answer;
+    final record = _ranked ? _data.rankedRecord : _data.quizRecord;
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('Pontos: $_score'),
+        title: Text(_ranked ? '🏆 Ranked' : 'Quem é esse Pokémon?'),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 16.0),
+            padding: const EdgeInsets.only(right: 12),
             child: Row(
-              children: List.generate(3, (index) {
-                return Icon(
-                  index < _lives ? Icons.favorite : Icons.favorite_border,
-                  color: Colors.redAccent,
-                );
-              }),
+              children: [
+                for (var i = 0; i < QuizScreen.lives; i++)
+                  AnimatedScale(
+                    scale: i < _lives ? 1 : 0.7,
+                    duration: const Duration(milliseconds: 250),
+                    child: Icon(i < _lives ? Icons.favorite : Icons.favorite_border, color: Colors.redAccent, size: 26),
+                  ),
+              ],
             ),
           ),
         ],
       ),
       body: ReadableWidth(
-          child: _isLoading || _correctPokemon == null
-              ? const Center(child: PikachuLoadingIndicator())
-              : Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      flex: 4,
-                      child: Center(
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 300),
-                          child: Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: _showCorrectAnswer
-                                ? Image(
-                                    image: AppImages.provider(_correctPokemon!.pixelImageUrl),
-                                    key: ValueKey(_correctPokemon!.id),
-                                    fit: BoxFit.contain,
-                                    filterQuality: FilterQuality.none,
-                                  )
-                                : ColorFiltered(
-                                    colorFilter: const ColorFilter.mode(
-                                      Colors.black,
-                                      BlendMode.srcIn,
-                                    ),
-                                    child: Image(
-                                      image: AppImages.provider(_correctPokemon!.pixelImageUrl),
-                                      key: ValueKey(
-                                          'silhouette_${_correctPokemon!.id}'),
-                                      fit: BoxFit.contain,
-                                      filterQuality: FilterQuality.none,
-                                    ),
-                                  ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  _Stat('Pontos', '$_score'),
+                  const SizedBox(width: 8),
+                  _Stat('Sequência', '$_streak🔥', color: Colors.orange),
+                  const SizedBox(width: 8),
+                  _Stat('Recorde', '${max(record, _score)}', color: Colors.amber),
+                ],
+              ),
+              if (_ranked) ...[
+                const SizedBox(height: 10),
+                _TimerBar(timer: _timer),
+              ],
+              const SizedBox(height: 12),
+              Expanded(
+                child: GameStage(
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(24, 24, 24, 56),
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 300),
+                            transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+                            child: SizedBox.expand(
+                              key: ValueKey('$answer-$revealed'),
+                              child: ColorFiltered(
+                                colorFilter: revealed
+                                    ? const ColorFilter.mode(Colors.transparent, BlendMode.dst)
+                                    : const ColorFilter.mode(Colors.black, BlendMode.srcIn),
+                                child: Image.asset(
+                                  AppImages.pokemonSprite(answer),
+                                  fit: BoxFit.contain,
+                                  filterQuality: FilterQuality.none,
+                                  gaplessPlayback: true,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    Expanded(
-                      flex: 2,
-                      child: GridView.builder(
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          childAspectRatio: 2.5,
-                          mainAxisSpacing: 12,
-                          crossAxisSpacing: 12,
+                      if (revealed)
+                        Positioned(
+                          left: 8,
+                          right: 8,
+                          bottom: 12,
+                          child: StageTitle('É o ${_name(answer)}!', size: 24),
                         ),
-                        padding: const EdgeInsets.all(24.0),
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: _options.length,
-                        itemBuilder: (context, index) {
-                          final option = _options[index];
-                          Color buttonColor = theme.colorScheme.surface;
-                          if (_showCorrectAnswer) {
-                            if (option == _correctPokemon!.name.capitalise()) {
-                              buttonColor = Colors.green.shade700;
-                            } else {
-                              buttonColor = Colors.red.shade800;
-                            }
-                          }
-                          return ElevatedButton(
-                            onPressed: () => _handleAnswer(option),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: buttonColor,
-                              foregroundColor: theme.colorScheme.onSurface,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                            ),
-                            child: Text(
-                              option,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          );
-                        },
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              AnimatedBuilder(
+                animation: _shake,
+                builder: (context, child) => Transform.translate(
+                  offset: Offset(sin(_shake.value * pi * 6) * 8 * (1 - _shake.value), 0),
+                  child: child,
+                ),
+                child: Column(
+                  children: [
+                    for (final (i, id) in _options.indexed)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _OptionButton(
+                          index: i + 1,
+                          label: _name(id),
+                          color: !revealed
+                              ? const Color(0xFF42A5F5)
+                              : id == answer
+                                  ? const Color(0xFF43A047)
+                                  : id == _chosen
+                                      ? const Color(0xFFE53935)
+                                      : const Color(0xFF616161),
+                          mark: revealed && id == answer
+                              ? '✓'
+                              : revealed && id == _chosen
+                                  ? '✗'
+                                  : null,
+                          onTap: revealed ? null : () => _answer(id),
+                        ),
                       ),
-                    ),
                   ],
-                )),
+                ),
+              ),
+              SizedBox(
+                height: 24,
+                child: revealed
+                    ? Text(
+                        hit
+                            ? 'Acertou! +1 ponto'
+                            : _chosen == _timeout
+                                ? 'Tempo esgotado! -1 vida'
+                                : 'Errou! -1 vida',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: hit ? Colors.greenAccent : Colors.redAccent),
+                      )
+                    : null,
+              ),
+            ],
+          ),
+        ),
+      ),
+      backgroundColor: theme.scaffoldBackgroundColor,
+    );
+  }
+}
+
+class _Stat extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color? color;
+  const _Stat(this.label, this.value, {this.color});
+  @override
+  Widget build(BuildContext context) => Expanded(
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(14)),
+          child: Column(
+            children: [
+              Text(label, style: TextStyle(fontSize: 11, color: Theme.of(context).hintColor)),
+              Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: color)),
+            ],
+          ),
+        ),
+      );
+}
+
+/// Barra de tempo do Ranked: verde → amarelo → vermelho em 5 s.
+class _TimerBar extends StatelessWidget {
+  final AnimationController timer;
+  const _TimerBar({required this.timer});
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: SizedBox(
+        height: 12,
+        child: AnimatedBuilder(
+          animation: timer,
+          builder: (context, _) {
+            final t = timer.value;
+            final color = t < .5
+                ? Color.lerp(const Color(0xFF43A047), const Color(0xFFFDD835), t * 2)!
+                : Color.lerp(const Color(0xFFFDD835), const Color(0xFFE53935), (t - .5) * 2)!;
+            return LinearProgressIndicator(
+              value: 1 - t,
+              backgroundColor: Theme.of(context).cardColor,
+              valueColor: AlwaysStoppedAnimation(color),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _OptionButton extends StatelessWidget {
+  final int index;
+  final String label;
+  final Color color;
+  final String? mark;
+  final VoidCallback? onTap;
+  const _OptionButton({required this.index, required this.label, required this.color, this.mark, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 3))],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 14,
+                  backgroundColor: Colors.white24,
+                  child: Text('$index',
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(label,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                ),
+                if (mark != null) Text(mark!, style: const TextStyle(color: Colors.white, fontSize: 20)),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
