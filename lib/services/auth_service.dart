@@ -8,6 +8,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 enum AuthStatus { disabled, loading, signedOut, needsName, signedIn }
@@ -39,6 +40,7 @@ class AuthService extends ChangeNotifier {
   AuthStatus status = AuthStatus.disabled;
   AccountUser? user;
   bool _signingUp = false;
+  bool _googleReady = false;
 
   FirebaseAuth get _auth => FirebaseAuth.instance;
   FirebaseFirestore get _db => FirebaseFirestore.instance;
@@ -159,8 +161,31 @@ class AuthService extends ChangeNotifier {
         final provider = GoogleAuthProvider()..setCustomParameters({'prompt': 'select_account'});
         if (kIsWeb) {
           await _auth.signInWithPopup(provider);
-        } else {
-          await _auth.signInWithProvider(provider);
+          return;
+        }
+        // No celular: janela nativa do Google para escolher a conta (sem abrir
+        // o navegador, que em muitos Android não volta direito para o app).
+        final google = GoogleSignIn.instance;
+        try {
+          if (!_googleReady) {
+            await google.initialize(); // usa o ID do google-services.json
+            _googleReady = true;
+          }
+          final account = await google.authenticate();
+          final idToken = account.authentication.idToken;
+          if (idToken == null) throw AuthException('O Google não devolveu a conta. Tente de novo.');
+          await _auth.signInWithCredential(GoogleAuthProvider.credential(idToken: idToken));
+        } on GoogleSignInException catch (e) {
+          if (e.code == GoogleSignInExceptionCode.canceled) {
+            throw AuthException('O login com Google foi cancelado.');
+          }
+          if (e.code == GoogleSignInExceptionCode.clientConfigurationError ||
+              e.code == GoogleSignInExceptionCode.providerConfigurationError) {
+            // Sem a configuração do login nativo: usa o login pelo navegador.
+            await _auth.signInWithProvider(provider);
+            return;
+          }
+          throw AuthException('Não foi possível entrar com Google (${e.code.name}). Tente de novo.');
         }
       });
 
@@ -176,7 +201,11 @@ class AuthService extends ChangeNotifier {
 
   Future<void> resetPassword(String email) => _guard(() => _auth.sendPasswordResetEmail(email: email.trim()));
 
-  Future<void> signOut() => _auth.signOut();
+  Future<void> signOut() async {
+    // Também sai da conta Google, para poder escolher outra na próxima vez.
+    if (!kIsWeb && _googleReady) await GoogleSignIn.instance.signOut().catchError((_) {});
+    await _auth.signOut();
+  }
 
   // ---------------------------------------------------------------- erros
 
@@ -186,7 +215,7 @@ class AuthService extends ChangeNotifier {
     } on AuthException {
       rethrow;
     } on FirebaseAuthException catch (e) {
-      throw AuthException(_messages['auth/${e.code}'] ?? 'Algo deu errado. Tente de novo.');
+      throw AuthException(_messages['auth/${e.code}'] ?? 'Algo deu errado (${e.code}). Tente de novo.');
     } on FirebaseException catch (e) {
       throw AuthException(_messages[e.code] ?? 'Algo deu errado. Tente de novo.');
     }
