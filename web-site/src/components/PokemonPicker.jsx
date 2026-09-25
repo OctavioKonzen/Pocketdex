@@ -1,10 +1,11 @@
 // Janela para escolher um Pokémon (times, treino de EVs, breeding).
 
 import { useEffect, useMemo, useState } from 'react'
-import { getPokedex, spriteUrl } from '../lib/data'
+import { getPokedex } from '../lib/data'
 import { displayName, typeColor } from '../lib/pokemon'
 import { matchesSearch } from '../pages/PokedexPage'
 import { Loader, Modal, SearchInput } from './ui'
+import Sprite from './Sprite'
 
 const PAGE = 120
 
@@ -39,7 +40,7 @@ export default function PokemonPicker({ open, onClose, onPick, title = 'Selecion
                 className="flex cursor-pointer flex-col items-center rounded-2xl p-2 text-white transition hover:scale-105"
                 style={{ background: typeColor(p.types[0]) }}
               >
-                <img src={spriteUrl(p.sprite)} alt="" loading="lazy" className="pixelated h-20 w-20" />
+                <Sprite path={p.sprite} box={p.box} className="w-20" />
                 <span className="w-full truncate text-center text-xs font-bold">{displayName(p.name)}</span>
                 <span className="text-[10px] opacity-80">#{p.id}</span>
               </button>

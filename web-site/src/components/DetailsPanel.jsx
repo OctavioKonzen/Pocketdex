@@ -3,7 +3,7 @@
 
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
-import { getMoves, getSpecies, getTypes, spriteUrl } from '../lib/data'
+import { getMoves, getSpecies, getTypes } from '../lib/data'
 import {
   STAT_LABELS,
   capitalize,
@@ -17,6 +17,7 @@ import { useStore } from '../lib/store'
 import { AbilityModal, CategoryIcon, MoveModal } from './EntryModals'
 import PokeballReveal from './PokeballReveal'
 import { Icon, IconButton, Loader, SpinningPokeball, TypeBadge } from './ui'
+import Sprite from './Sprite'
 
 export const TABS = ['About', 'Base Stats', 'Evolution', 'Moves']
 
@@ -71,7 +72,9 @@ export default function DetailsPanel({
 
   const form = species.forms[formIndex] ?? species.forms[0]
   const color = typeColor(form.types[0])
-  const sprite = shiny ? form.sprites[1] ?? form.sprites[0] : form.sprites[0] ?? form.sprites[2]
+  const spriteIndex = shiny && form.sprites[1] ? 1 : 0
+  const sprite = form.sprites[spriteIndex] ?? form.sprites[2]
+  const box = form.sprites[spriteIndex] ? form.boxes?.[spriteIndex] : null
   const selectPokemon = (p) => {
     setMoveOpen(null)
     setAbilityOpen(null)
@@ -90,20 +93,21 @@ export default function DetailsPanel({
         <div className="absolute inset-0 top-16 grid place-items-center">
           <SpinningPokeball size={Math.min(height * 0.6, 420)} opacity={0.18} slow />
         </div>
-        <div className="absolute inset-x-14 top-[110px] bottom-[52px]">
+        {/* O Pokémon ocupa sempre o mesmo espaço, qualquer que seja o tamanho do sprite. */}
+        <div className="absolute inset-x-14 top-[110px] bottom-[52px]" style={{ containerType: 'size' }}>
           <PokeballReveal key={species.id} ballSize={96}>
             <AnimatePresence mode="wait">
-              <motion.img
+              <motion.div
                 key={sprite}
-                src={spriteUrl(sprite)}
-                alt={species.name}
-                className="pixelated h-full w-full object-contain"
+                style={{ width: 'min(100cqw, 100cqh)' }}
                 initial={{ opacity: 0, scale: 0.85 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.85 }}
                 whileHover={{ scale: 1.06 }}
                 transition={{ duration: 0.25 }}
-              />
+              >
+                <Sprite path={sprite} box={box} alt={species.name} fill={0.72} />
+              </motion.div>
             </AnimatePresence>
           </PokeballReveal>
         </div>
@@ -316,7 +320,7 @@ function EvolutionTab({ species, onSelect }) {
   if (species.evolution.length === 0) return <p className="py-10 text-center text-muted">Este Pokémon não evolui.</p>
   const Poke = ({ p }) => (
     <button type="button" onClick={() => onSelect(p.id)} className="flex cursor-pointer flex-col items-center transition hover:scale-110">
-      <img src={spriteUrl(p.sprite)} alt="" className="pixelated h-20 w-20" />
+      <Sprite path={p.sprite} box={p.box} className="w-20" />
       <span className="text-xs font-bold">{capitalize(p.name)}</span>
     </button>
   )

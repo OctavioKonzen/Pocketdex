@@ -4,7 +4,8 @@
 
 import { AnimatePresence, motion } from 'framer-motion'
 import { useRef, useState } from 'react'
-import { spriteUrl, prefetchSpecies } from '../lib/data'
+import { prefetchSpecies } from '../lib/data'
+import Sprite from './Sprite'
 import { displayName, typeColor } from '../lib/pokemon'
 import { useStore } from '../lib/store'
 import { Icon, SpinningPokeball } from './ui'
@@ -12,8 +13,9 @@ import { Icon, SpinningPokeball } from './ui'
 export const CARD_STYLE = {
   height: 132, // altura do card (px)
   radius: 18, // cantos arredondados
-  spriteSize: 132, // tamanho do Pokémon
-  spriteOffset: -16, // quanto o Pokémon "sai" pela borda (o card corta)
+  spriteSize: 104, // caixa do Pokémon (todos ocupam o mesmo espaço nela)
+  spriteRight: 6, // distância da borda direita
+  spriteBottom: 6, // distância da borda de baixo
   pokeballSize: 118, // Pokébola girando atrás
   hoverScale: 1.05, // card ao passar o mouse
   hoverSpriteScale: 1.15, // Pokémon ao passar o mouse
@@ -23,7 +25,9 @@ export default function PokemonCard({ pokemon, onClick, hidden = false, selected
   const isFavorite = useStore((s) => s.favorites.includes(pokemon.id))
   const toggleFavorite = useStore((s) => s.toggleFavorite)
   const color = typeColor(pokemon.types[0])
-  const offset = CARD_STYLE.spriteOffset + (CARD_STYLE.spriteSize - CARD_STYLE.pokeballSize) / 2
+  // Pokébola centralizada atrás do Pokémon.
+  const ballRight = CARD_STYLE.spriteRight + (CARD_STYLE.spriteSize - CARD_STYLE.pokeballSize) / 2
+  const ballBottom = CARD_STYLE.spriteBottom + (CARD_STYLE.spriteSize - CARD_STYLE.pokeballSize) / 2
   const clickTimer = useRef(null)
   const [pop, setPop] = useState(0)
 
@@ -61,17 +65,18 @@ export default function PokemonCard({ pokemon, onClick, hidden = false, selected
         pointerEvents: hidden ? 'none' : undefined,
       }}
     >
-      <SpinningPokeball size={CARD_STYLE.pokeballSize} opacity={0.22} className="absolute" style={{ right: offset, bottom: offset }} />
+      <SpinningPokeball size={CARD_STYLE.pokeballSize} opacity={0.22} className="absolute" style={{ right: ballRight, bottom: ballBottom }} />
       {pokemon.sprite && (
-        <motion.img
-          src={spriteUrl(pokemon.sprite)}
-          alt=""
-          loading="lazy"
-          variants={{ hover: { scale: CARD_STYLE.hoverSpriteScale } }}
-          transition={{ type: 'spring', stiffness: 400, damping: 12 }}
-          className="pixelated absolute origin-bottom"
-          style={{ width: CARD_STYLE.spriteSize, height: CARD_STYLE.spriteSize, right: CARD_STYLE.spriteOffset, bottom: CARD_STYLE.spriteOffset }}
-        />
+        <div className="absolute" style={{ width: CARD_STYLE.spriteSize, right: CARD_STYLE.spriteRight, bottom: CARD_STYLE.spriteBottom }}>
+          <Sprite
+            path={pokemon.sprite}
+            box={pokemon.box}
+            align="bottom"
+            fill={0.92}
+            imgClassName="origin-bottom"
+            motionProps={{ variants: { hover: { scale: CARD_STYLE.hoverSpriteScale } }, transition: { type: 'spring', stiffness: 400, damping: 12 } }}
+          />
+        </div>
       )}
       <div className="absolute top-3.5 right-3 flex items-center gap-1 text-xs font-extrabold text-black/35">
         {isFavorite && <Icon name="star" size={16} className="text-yellow-300" />}#{pokemon.id}

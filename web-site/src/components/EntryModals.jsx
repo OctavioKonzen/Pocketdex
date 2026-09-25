@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { getAbilities, getMoveLearners, getMoves, getPokemonById, spriteUrl } from '../lib/data'
 import { displayName, prettyName } from '../lib/pokemon'
 import { Icon, Loader, Modal, TypeBadge } from './ui'
+import Sprite from './Sprite'
 
 const CATEGORY_ICON = { physical: 'physical', special: 'special', status: 'status' }
 
@@ -35,7 +36,7 @@ export function PokemonMiniGrid({ ids, onSelect, hidden = [] }) {
             onClick={() => onSelect?.(p)}
             className="flex cursor-pointer flex-col items-center rounded-2xl bg-surface p-2 transition hover:scale-105 hover:bg-white/10"
           >
-            <img src={spriteUrl(p.sprite)} alt="" loading="lazy" className="pixelated h-16 w-16" />
+            <Sprite path={p.sprite} box={p.box} className="w-16" />
             <span className="w-full truncate text-center text-xs font-semibold">{displayName(p.name)}</span>
             {hidden.includes(id) && <span className="text-[10px] text-muted">oculta</span>}
           </button>

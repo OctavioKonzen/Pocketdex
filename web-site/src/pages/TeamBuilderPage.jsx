@@ -3,9 +3,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import PokemonPicker from '../components/PokemonPicker'
 import { Button, Empty, Icon, Loader, Modal, TypeBadge } from '../components/ui'
-import { getPokemonById, getTypes, spriteUrl } from '../lib/data'
+import { getPokemonById, getTypes } from '../lib/data'
 import { ALL_TYPES, analyzeTeam, displayName, teamScore, typeColor } from '../lib/pokemon'
 import { useStore } from '../lib/store'
+import Sprite from '../components/Sprite'
 
 const TEAM_COLORS = ['#FF5252', '#FFA726', '#FFCA28', '#66BB6A', '#26A69A', '#42A5F5', '#5C6BC0', '#AB47BC', '#EC407A', '#8D6E63', '#78909C']
 
@@ -94,7 +95,7 @@ export default function TeamBuilderPage() {
                 >
                   {p ? (
                     <>
-                      <img src={spriteUrl(p.sprite)} alt="" className="pixelated h-24 w-24" />
+                      <Sprite path={p.sprite} box={p.box} className="w-24" />
                       <span className="font-bold">{displayName(p.name)}</span>
                       <div className="mt-1 flex gap-1">
                         {p.types.map((t) => (

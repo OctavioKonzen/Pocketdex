@@ -40,7 +40,7 @@ export const useStore = create(
         set(({ training }) => ({
           training: [
             ...training,
-            { id: uid(), pokemonId: pokemon.id, name: pokemon.name, sprite: pokemon.sprite, evs: {} },
+            { id: uid(), pokemonId: pokemon.id, name: pokemon.name, sprite: pokemon.sprite, box: pokemon.box, evs: {} },
           ],
         })),
       removeTraining: (id) => set(({ training }) => ({ training: training.filter((t) => t.id !== id) })),

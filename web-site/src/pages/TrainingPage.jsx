@@ -5,9 +5,10 @@ import DetailsPanel from '../components/DetailsPanel'
 import { PokemonMiniGrid } from '../components/EntryModals'
 import PokemonPicker from '../components/PokemonPicker'
 import { Button, Empty, Icon, Loader, Modal, PageHeader } from '../components/ui'
-import { getEggGroups, getSpecies, spriteUrl } from '../lib/data'
+import { getEggGroups, getSpecies } from '../lib/data'
 import { EV_STATS, MAX_STAT_EVS, MAX_TOTAL_EVS, NATURES, capitalize, prettyName } from '../lib/pokemon'
 import { useStore } from '../lib/store'
+import Sprite from '../components/Sprite'
 
 const TOOLS = [
   { key: 'natures', label: 'Guia de Natures', subtitle: 'Veja como cada Nature afeta os status', color: '#42A5F5', icon: 'status' },
@@ -105,7 +106,7 @@ function Breeding() {
       {species && species.id === chosen.species && (
         <div className="mt-6 grid gap-6 lg:grid-cols-[320px_1fr]">
           <div className="rounded-3xl bg-card p-5 text-center shadow">
-            <img src={spriteUrl(chosen.sprite)} alt="" className="pixelated mx-auto h-40 w-40" />
+            <Sprite path={chosen.sprite} box={chosen.box} className="mx-auto w-40" />
             <h2 className="text-2xl font-bold">{capitalize(species.name)}</h2>
             <p className="mt-2 text-sm text-muted">Egg groups</p>
             <p className="font-semibold">{species.eggGroups.map(prettyName).join(', ')}</p>
@@ -173,7 +174,7 @@ function EvCounter() {
           return (
             <motion.div key={t.id} layout className="rounded-3xl bg-card p-5 shadow">
               <div className="flex items-center gap-3">
-                <img src={spriteUrl(t.sprite)} alt="" className="pixelated h-20 w-20" />
+                <Sprite path={t.sprite} box={t.box} className="w-20 shrink-0" />
                 <div className="flex-1">
                   <h3 className="text-lg font-bold">{capitalize(t.name)}</h3>
                   <p className="text-sm text-muted">
