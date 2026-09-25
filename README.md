@@ -76,27 +76,38 @@ flutter pub get
 
 # Execute o app
 flutter run
-
-# Execute o site no navegador
-flutter run -d chrome
 ```
+
+Para rodar o site, veja a seção **Site** abaixo.
 
 ---
 
-## 🌐 Site (Flutter Web)
+## 🌐 Site (JavaScript + Python)
 
-O site tem **todas as funcionalidades do app**, com o mesmo visual. Em telas grandes o layout se adapta:
-conteúdo centralizado, grades com mais colunas e navegação entre Pokémon pelas setas do teclado (← →) ou pelos botões laterais.
+O site fica em `web-site/` e foi feito em **JavaScript** com **React**, usando as ferramentas:
 
-O deploy é automático: a cada push na `main`, o workflow `.github/workflows/deploy-web.yml` roda os testes,
-gera o build web e publica no **GitHub Pages** (`https://octaviokonzen.github.io/Pocketdex/`).
-Para ativar, vá em **Settings → Pages → Build and deployment → Source** e escolha **GitHub Actions**.
+* **Vite** (build e servidor de desenvolvimento), **Tailwind CSS** (estilo), **Framer Motion** (animações),
+  **React Router** (páginas), **Zustand** (dados salvos no navegador), **Vitest** (testes) e **oxlint** (lint).
+* **Python** (`tool/build_web_data.py`) gera os dados do site a partir do banco local: divide o banco em arquivos
+  menores (um por Pokémon) e copia as imagens, para cada página baixar só o que precisa.
 
-Build manual:
+Tem todas as funcionalidades do app, com o mesmo visual: Pokédex (6 cards por linha, detalhes abrindo na própria
+página com o Pokémon saindo da Pokébola), Favoritos, Montador de Times com análise, Quiz, Enciclopédia de golpes,
+habilidades e itens, Natures, Breeding, Contador de EVs e Configurações (tema claro/escuro). Funciona no PC e no celular.
 
 ```bash
-flutter build web --release --no-web-resources-cdn --base-href /Pocketdex/
+cd web-site
+npm install
+npm run data     # gera os dados (Python)
+npm run dev      # abre o site em modo desenvolvimento
+npm test         # testes
+npm run build    # gera o site final em web-site/dist
 ```
+
+O deploy é automático: a cada push na `main`, o workflow `.github/workflows/deploy-web.yml` gera os dados, roda
+lint e testes, faz o build e publica no **GitHub Pages**: **https://octaviokonzen.github.io/Pocketdex/**
+
+O app de celular continua em Flutter (pasta `lib/`), usando o mesmo banco de dados.
 
 ---
 

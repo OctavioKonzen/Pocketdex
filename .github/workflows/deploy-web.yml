@@ -1,4 +1,7 @@
-name: Deploy site (Flutter Web)
+name: Deploy site
+
+# Site em JavaScript (React + Vite) em web-site/, com os dados gerados em
+# Python a partir do banco local (assets/database/).
 
 on:
   push:
@@ -17,23 +20,33 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web-site
     steps:
       - uses: actions/checkout@v4
 
-      - uses: subosito/flutter-action@v2
+      - uses: actions/setup-python@v5
         with:
-          channel: stable
-          cache: true
+          python-version: '3.12'
 
-      - run: flutter pub get
-      - run: flutter test
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web-site/package-lock.json
 
-      - name: Build web
-        run: flutter build web --release --no-web-resources-cdn --base-href "/${{ github.event.repository.name }}/"
+      - name: Gerar dados do site (Python)
+        run: npm run data
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: build/web
+          path: web-site/dist
 
   deploy:
     needs: build
@@ -44,3 +57,15 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  # O app (Flutter) continua com os próprios testes.
+  app-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter test
