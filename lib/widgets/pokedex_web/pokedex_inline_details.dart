@@ -92,6 +92,12 @@ class _PokedexInlineDetailsState extends State<PokedexInlineDetails>
       _form = details.forms.first;
       _isShiny = false;
     });
+    // Mantém a aba escolhida ao trocar de Pokémon (as abas são recriadas).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_pageController.hasClients && _tab != 0) {
+        _pageController.jumpToPage(_tab);
+      }
+    });
   }
 
   @override
