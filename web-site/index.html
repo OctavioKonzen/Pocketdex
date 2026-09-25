@@ -7,6 +7,31 @@
     <meta name="description" content="PocketDex - Enciclopédia Pokémon e assistente competitivo." />
     <meta name="theme-color" content="#363636" />
     <title>PocketDex</title>
+    <script>
+      // Saiu versão nova do site e um arquivo da versão antiga sumiu: recarrega
+      // (uma vez a cada 10 s) em vez de ficar com a tela vazia.
+      window.addEventListener(
+        'error',
+        function (e) {
+          var t = e.target
+          if (!t || (t.tagName !== 'SCRIPT' && t.tagName !== 'LINK')) return
+          try {
+            var key = 'pocketdex-stale-reload'
+            if (Date.now() - (Number(sessionStorage.getItem(key)) || 0) < 10000) {
+              var root = document.getElementById('root')
+              if (root && !root.childElementCount)
+                root.innerHTML =
+                  '<p style="padding:48px 16px;text-align:center;color:#ddd;font-family:sans-serif">' +
+                  'O site acabou de ser atualizado. Espere um minuto e recarregue a página.</p>'
+              return
+            }
+            sessionStorage.setItem(key, String(Date.now()))
+          } catch (_) {}
+          location.reload()
+        },
+        true,
+      )
+    </script>
   </head>
   <body>
     <div id="root"></div>

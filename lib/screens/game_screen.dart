@@ -5,6 +5,8 @@
 // botões de jogo normal, Ranked (5 s por Pokémon) e desafio do dia, e o
 // ranking (geral, da semana e do desafio de hoje).
 
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -283,6 +285,8 @@ class _RankingState extends State<_Ranking> {
   String? _errorText;
   String? _loadedBoard;
 
+  StreamSubscription<List<Map<String, dynamic>>>? _live;
+
   @override
   void initState() {
     super.initState();
@@ -298,6 +302,7 @@ class _RankingState extends State<_Ranking> {
 
   @override
   void dispose() {
+    _live?.cancel();
     _sync.rankingVersion.removeListener(_load);
     super.dispose();
   }
@@ -308,24 +313,28 @@ class _RankingState extends State<_Ranking> {
         _ => '',
       };
 
-  Future<void> _load() async {
+  /// Ouve o ranking em tempo real: atualiza sozinho quando alguém faz pontos.
+  void _load() {
     final board = widget.board;
     final key = _key;
-    if (mounted) setState(() => _list = null);
-    List<Map<String, dynamic>> list;
-    try {
-      list = await _sync.topRanking(10, board, key);
-    } catch (e) {
-      if (mounted && board == widget.board) {
-        setState(() {
-          _list = const [];
-          _error = true;
-          _errorText = e is FirebaseException ? e.code : '$e';
-          _loadedBoard = board;
-        });
-      }
-      return;
-    }
+    _live?.cancel();
+    if (mounted && _loadedBoard != board) setState(() => _list = null);
+    _live = _sync.watchRanking(10, board, key).listen(
+      (list) => _show(board, key, list),
+      onError: (Object e) {
+        if (mounted && board == widget.board) {
+          setState(() {
+            _list = const [];
+            _error = true;
+            _errorText = e is FirebaseException ? e.code : '$e';
+            _loadedBoard = board;
+          });
+        }
+      },
+    );
+  }
+
+  Future<void> _show(String board, String key, List<Map<String, dynamic>> list) async {
     // A posição é um extra: se falhar, a lista aparece do mesmo jeito.
     Map<String, dynamic>? mine;
     int? position;

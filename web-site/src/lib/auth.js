@@ -275,6 +275,19 @@ export async function getRanking(count = 10, board = 'all', key = '') {
   return snap.docs.map((d) => ({ uid: d.id, ...d.data() }))
 }
 
+/**
+ * Ouve um ranking em tempo real: `callback(lista)` na hora e a cada mudança
+ * (alguém fez pontos). Devolve a função que para de ouvir.
+ */
+export async function watchRanking(count, board, key, callback, onError) {
+  const { db, collection, query, orderBy, limit, onSnapshot } = await firebase()
+  return onSnapshot(
+    query(collection(db, ...boardPath(board, key)), orderBy('score', 'desc'), limit(count)),
+    (snap) => callback(snap.docs.map((d) => ({ uid: d.id, ...d.data() }))),
+    onError,
+  )
+}
+
 /** Posição de quem tem essa pontuação (quantos têm mais + 1). */
 export async function getRankingPosition(score, board = 'all', key = '') {
   const { db, collection, query, where, getCountFromServer } = await firebase()

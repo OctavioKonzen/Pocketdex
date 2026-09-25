@@ -39,10 +39,10 @@ export function lazyPage(load) {
 
 /** Se mesmo assim algo quebrar, mostra um aviso em vez da tela vazia. */
 export class ErrorBoundary extends Component {
-  state = { failed: false }
+  state = { failed: false, message: '' }
 
-  static getDerivedStateFromError() {
-    return { failed: true }
+  static getDerivedStateFromError(error) {
+    return { failed: true, message: String(error?.message ?? error ?? '').slice(0, 300) }
   }
 
   componentDidCatch(error) {
@@ -54,7 +54,8 @@ export class ErrorBoundary extends Component {
     return (
       <div className="grid min-h-[60vh] place-items-center p-6 text-center text-text">
         <div>
-          <p className="mb-4 text-lg font-bold">Algo deu errado ao abrir esta página.</p>
+          <p className="mb-2 text-lg font-bold">Algo deu errado ao abrir esta página.</p>
+          {this.state.message && <p className="mx-auto mb-4 max-w-md text-xs break-words opacity-60">Erro: {this.state.message}</p>}
           <button
             type="button"
             onClick={() => window.location.reload()}
