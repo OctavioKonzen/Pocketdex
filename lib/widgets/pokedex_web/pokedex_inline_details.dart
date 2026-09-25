@@ -46,7 +46,13 @@ class PokedexInlineDetails extends StatefulWidget {
     required this.onPrevious,
     required this.onNext,
     this.height = maxHeight,
+    this.initialTab = 0,
+    this.onTabChanged,
   });
+
+  /// Aba aberta inicialmente (mantida ao navegar entre Pokémon).
+  final int initialTab;
+  final ValueChanged<int>? onTabChanged;
 
   @override
   State<PokedexInlineDetails> createState() => _PokedexInlineDetailsState();
@@ -62,7 +68,7 @@ class _PokedexInlineDetailsState extends State<PokedexInlineDetails>
   PokemonDetails? _details;
   AlternateForm? _form;
   bool _isShiny = false;
-  int _tab = 0;
+  late int _tab = widget.initialTab;
 
   @override
   void initState() {
@@ -104,8 +110,9 @@ class _PokedexInlineDetailsState extends State<PokedexInlineDetails>
   Widget build(BuildContext context) {
     final details = _details;
     final form = _form;
-    final loaded =
-        details != null && form != null && details.id == widget.pokemonId;
+    // Enquanto o próximo Pokémon carrega, o anterior continua na tela (sem
+    // painel cinza); a cor muda direto de um tipo para o outro.
+    final loaded = details != null && form != null;
     final color =
         loaded ? getColorForType(form.types.first) : Colors.grey.shade700;
 
@@ -139,7 +146,10 @@ class _PokedexInlineDetailsState extends State<PokedexInlineDetails>
                       typeRelations: buildTypeRelations(details, form),
                       pageController: _pageController,
                       selectedTabIndex: _tab,
-                      onPageChanged: (index) => setState(() => _tab = index),
+                      onPageChanged: (index) {
+                        setState(() => _tab = index);
+                        widget.onTabChanged?.call(index);
+                      },
                       onEvolutionSelected: widget.onNavigate,
                       height: widget.height - 12,
                       borderRadius: BorderRadius.circular(20),

@@ -6,6 +6,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/pokemon_listing.dart';
+import '../../services/pokemon_service.dart';
 import 'pokedex_inline_details.dart';
 import 'pokedex_web_card.dart';
 
@@ -24,14 +25,23 @@ class _PokedexWebGridState extends State<PokedexWebGrid> {
   final ScrollController _scrollController = ScrollController();
   String? _selectedUrl;
 
-  /// Linha onde o painel está aberto. Ao navegar pelas setas/evoluções o
-  /// painel fica nessa linha (a página não rola); só muda ao clicar em outro
-  /// card.
+  /// Linha onde o painel está aberto (a do Pokémon mostrado).
   int _panelRow = -1;
 
-  /// Muda a cada vez que o painel é aberto por um clique (reinicia a animação
-  /// de "crescer a partir do card").
+  /// Muda a cada abertura por clique (reinicia a animação de "crescer a
+  /// partir do card"); ao navegar pelas setas o painel só desliza.
   int _openCount = 0;
+  bool _openedByClick = false;
+
+  /// Aba do painel, mantida ao trocar de Pokémon.
+  int _tab = 0;
+
+  /// Posição da rolagem antes de abrir o painel; ao fechar, volta para ela.
+  double? _returnOffset;
+
+  static const _rowExtent = PokedexCardStyle.height + PokedexCardStyle.spacing;
+  static const _transition = Duration(milliseconds: 450);
+  static const _curve = Curves.easeInOutCubic;
 
   @override
   void dispose() {
@@ -54,72 +64,74 @@ class _PokedexWebGridState extends State<PokedexWebGrid> {
       ? -1
       : widget.pokemon.indexWhere((p) => p.url == _selectedUrl);
 
-  static const _rowExtent = PokedexCardStyle.height + PokedexCardStyle.spacing;
-  static const _panelDuration = Duration(milliseconds: 400);
-
-  /// Posição da rolagem antes de abrir o painel; ao fechar, volta para ela.
-  double? _returnOffset;
-
-  /// Ao pular para um Pokémon de outra linha, o painel antigo fecha na hora
-  /// (sem animação) para a página não "piscar" vazia.
-  bool _instantCollapse = false;
-
-  void _select(PokemonListing? pokemon, {required int columns}) {
-    final wasOpen = _selectedUrl != null;
-    final previousRow = _panelRow;
-    final closing = pokemon == null || pokemon.url == _selectedUrl;
-
-    if (closing) {
-      setState(() {
-        _selectedUrl = null;
-        _panelRow = -1;
-      });
-      final back = _returnOffset;
-      _returnOffset = null;
-      if (back != null) _scrollTo(back, animate: true);
-      return;
+  /// Abre (ou fecha, se já aberto) o Pokémon clicado em um card.
+  void _onCardTap(PokemonListing pokemon, int columns) {
+    if (pokemon.url == _selectedUrl) {
+      _close();
+    } else {
+      _open(pokemon, columns, byClick: true);
     }
+  }
 
+  void _close() {
+    setState(() {
+      _selectedUrl = null;
+      _panelRow = -1;
+    });
+    final back = _returnOffset;
+    _returnOffset = null;
+    if (back != null) _scrollTo(back);
+  }
+
+  /// Mostra [pokemon] no painel. Se ele estiver em outra linha, o painel
+  /// acompanha: o antigo encolhe, o novo cresce e a página rola suavemente
+  /// até ele (fica "travada" no Pokémon aberto).
+  void _open(PokemonListing pokemon, int columns, {required bool byClick}) {
+    final wasOpen = _selectedUrl != null;
     if (!wasOpen && _scrollController.hasClients) {
       _returnOffset = _scrollController.offset;
     }
-    final row = widget.pokemon.indexOf(pokemon) ~/ columns;
-    final switchingRow = wasOpen && row != previousRow;
+    final index = widget.pokemon.indexOf(pokemon);
+    final row = index ~/ columns;
+    final changesRow = row != _panelRow;
     setState(() {
       _selectedUrl = pokemon.url;
       _panelRow = row;
-      _instantCollapse = switchingRow;
-      if (row != previousRow) _openCount++;
-    });
-    if (row == previousRow) return;
-    // Leva a linha do card para o topo, com o painel logo abaixo.
-    _scrollTo(row * _rowExtent, animate: !switchingRow);
-  }
-
-  void _scrollTo(double offset, {required bool animate}) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _instantCollapse = false;
-      if (!_scrollController.hasClients) return;
-      final target =
-          offset.clamp(0.0, _scrollController.position.maxScrollExtent);
-      if (animate) {
-        _scrollController.animateTo(target,
-            duration: const Duration(milliseconds: 450),
-            curve: Curves.easeInOutCubic);
-      } else {
-        _scrollController.jumpTo(target);
+      if (changesRow) {
+        _openCount++;
+        _openedByClick = byClick || !wasOpen;
       }
     });
+    _prefetchNeighbours(index);
+    if (changesRow) _scrollTo(row * _rowExtent);
   }
 
-  /// Troca o Pokémon mostrado no painel sem mover o painel nem rolar a página.
-  void _showInPanel(PokemonListing pokemon) {
-    setState(() => _selectedUrl = pokemon.url);
-  }
-
-  void _selectById(int id) {
+  void _openById(int id, int columns) {
     final match = widget.pokemon.where((p) => p.id == '$id');
-    if (match.isNotEmpty) _showInPanel(match.first);
+    if (match.isNotEmpty) _open(match.first, columns, byClick: false);
+  }
+
+  /// Carrega antes os vizinhos, para as setas abrirem sem espera.
+  void _prefetchNeighbours(int index) {
+    final service = PokemonService();
+    for (final i in [index - 1, index + 1]) {
+      if (i >= 0 && i < widget.pokemon.length) {
+        final id = int.tryParse(widget.pokemon[i].id);
+        if (id != null) service.fetchPokemonDetails(id);
+      }
+    }
+  }
+
+  void _scrollTo(double offset) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+      // O alvo é calculado para o layout final (painel antigo já fechado),
+      // então rola junto com as animações dos painéis.
+      final max = _scrollController.position.maxScrollExtent +
+          PokedexInlineDetails.maxHeight;
+      _scrollController.animateTo(offset.clamp(0.0, max),
+          duration: _transition, curve: _curve);
+    });
   }
 
   @override
@@ -171,9 +183,8 @@ class _PokedexWebGridState extends State<PokedexWebGrid> {
                                       ValueKey(widget.pokemon[start + col].url),
                                   pokemon: widget.pokemon[start + col],
                                   isSelected: start + col == selectedIndex,
-                                  onTap: () => _select(
-                                      widget.pokemon[start + col],
-                                      columns: columns),
+                                  onTap: () => _onCardTap(
+                                      widget.pokemon[start + col], columns),
                                 ),
                               )
                             : const SizedBox(height: PokedexCardStyle.height),
@@ -181,21 +192,25 @@ class _PokedexWebGridState extends State<PokedexWebGrid> {
                     ],
                   ],
                 ),
-                // Painel de detalhes abrindo/fechando com animação.
-                AnimatedSize(
-                  duration: row != selectedRow && _instantCollapse
-                      ? Duration.zero
-                      : _panelDuration,
-                  curve: Curves.easeInOutCubic,
-                  alignment: Alignment.topCenter,
+                // Painel de detalhes: abre/fecha encolhendo e crescendo com
+                // o conteúdo visível (sem "piscar" vazio).
+                AnimatedSwitcher(
+                  duration: _transition,
+                  switchInCurve: _curve,
+                  switchOutCurve: _curve,
+                  transitionBuilder: (child, animation) => SizeTransition(
+                    sizeFactor: animation,
+                    alignment: Alignment.topCenter,
+                    child: FadeTransition(opacity: animation, child: child),
+                  ),
                   child: row == selectedRow
                       ? Padding(
+                          key: ValueKey('panel-$row'),
                           padding: const EdgeInsets.only(
                               top: PokedexCardStyle.spacing),
-                          // Bucket próprio: as abas do painel não herdam a
-                          // posição de rolagem da lista da Pokédex.
                           child: _GrowFromCard(
                               key: ValueKey(_openCount),
+                              enabled: _openedByClick,
                               // Cresce a partir da coluna do card clicado.
                               alignment: Alignment(
                                   -1 +
@@ -203,25 +218,33 @@ class _PokedexWebGridState extends State<PokedexWebGrid> {
                                           (selectedIndex % columns + 0.5) /
                                           columns,
                                   -1),
+                              // Bucket próprio: as abas do painel não herdam a
+                              // posição de rolagem da lista da Pokédex.
                               child: PageStorage(
                                   bucket: PageStorageBucket(),
                                   child: PokedexInlineDetails(
                                     height: panelHeight,
                                     pokemonId: int.parse(
                                         widget.pokemon[selectedIndex].id),
+                                    initialTab: _tab,
+                                    onTabChanged: (tab) => _tab = tab,
                                     hasPrevious: selectedIndex > 0,
                                     hasNext: selectedIndex <
                                         widget.pokemon.length - 1,
-                                    onPrevious: () => _showInPanel(
-                                        widget.pokemon[selectedIndex - 1]),
-                                    onNext: () => _showInPanel(
-                                        widget.pokemon[selectedIndex + 1]),
-                                    onNavigate: (id) => _selectById(id),
-                                    onClose: () =>
-                                        _select(null, columns: columns),
+                                    onPrevious: () => _open(
+                                        widget.pokemon[selectedIndex - 1],
+                                        columns,
+                                        byClick: false),
+                                    onNext: () => _open(
+                                        widget.pokemon[selectedIndex + 1],
+                                        columns,
+                                        byClick: false),
+                                    onNavigate: (id) => _openById(id, columns),
+                                    onClose: _close,
                                   ))),
                         )
-                      : const SizedBox(width: double.infinity),
+                      : const SizedBox(
+                          key: ValueKey('empty'), width: double.infinity),
                 ),
               ],
             ),
@@ -260,13 +283,18 @@ class _GrowAndFade extends StatelessWidget {
 /// Painel que "sai" do card: começa pequeno na posição do card e cresce.
 class _GrowFromCard extends StatelessWidget {
   final Alignment alignment;
+  final bool enabled;
   final Widget child;
 
   const _GrowFromCard(
-      {super.key, required this.alignment, required this.child});
+      {super.key,
+      required this.alignment,
+      required this.enabled,
+      required this.child});
 
   @override
   Widget build(BuildContext context) {
+    if (!enabled) return child;
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
       duration: const Duration(milliseconds: 500),
