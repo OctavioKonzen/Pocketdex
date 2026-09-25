@@ -16,7 +16,10 @@ name: App Android (APK)
 on:
   push:
     branches: [main]
-    paths: [pubspec.yaml]
+    paths:
+      - pubspec.yaml
+      - android/**
+      - .github/workflows/android-release.yml
   workflow_dispatch:
 
 permissions:

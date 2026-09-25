@@ -59,22 +59,45 @@ class UpdateService {
     );
   }
 
+  static bool get supported => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
   /// Confere uma vez por abertura do app e mostra o aviso se houver versão nova.
   static Future<void> checkOnStart(BuildContext context) async {
-    if (_checked || kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
+    if (_checked || !supported) return;
     _checked = true;
     try {
-      final info = await PackageInfo.fromPlatform();
-      final release = await latestRelease();
-      if (release == null || !isNewer(release.version, info.version) || !context.mounted) return;
-      await showDialog(
-        context: context,
-        builder: (_) => _UpdateDialog(release: release, current: info.version),
-      );
+      await _check(context, quiet: true);
     } catch (_) {
       // Sem internet ou GitHub fora do ar: tenta na próxima abertura.
     }
   }
+
+  /// Botão "Procurar atualização" das Configurações.
+  static Future<void> checkNow(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await _check(context, quiet: false);
+    } catch (_) {
+      messenger.showSnackBar(const SnackBar(content: Text('Não foi possível procurar agora. Confira a internet.')));
+    }
+  }
+
+  static Future<void> _check(BuildContext context, {required bool quiet}) async {
+    final info = await PackageInfo.fromPlatform();
+    final release = await latestRelease();
+    if (!context.mounted) return;
+    if (release == null || !isNewer(release.version, info.version)) {
+      if (!quiet) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Você já tem a versão mais recente (${info.version}).')),
+        );
+      }
+      return;
+    }
+    await showDialog(context: context, builder: (_) => _UpdateDialog(release: release, current: info.version));
+  }
+
+  static Future<String> currentVersion() async => (await PackageInfo.fromPlatform()).version;
 }
 
 class _UpdateDialog extends StatefulWidget {

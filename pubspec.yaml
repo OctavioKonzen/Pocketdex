@@ -14,7 +14,6 @@ dependencies:
   # Certifique-se que cada uma aparece só uma vez!
   provider: ^6.1.2
   shared_preferences: ^2.2.3
-  flutter_colorpicker: ^1.1.0
   uuid: ^4.4.0
   debounce_throttle: ^2.0.0
   firebase_core: ^4.15.0

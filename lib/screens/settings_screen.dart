@@ -1,140 +1,143 @@
 // lib/screens/settings_screen.dart
+//
+// Configurações no estilo do site: conta, tema, dados salvos, versão do app
+// (com "Procurar atualização") e sobre.
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
 import '../providers/theme_provider.dart';
 import '../services/account_sync.dart';
 import '../services/auth_service.dart';
+import '../services/update_service.dart';
+import '../services/user_data.dart';
 import '../utils/responsive.dart';
+import '../utils/site_ui.dart';
 
-class SettingsScreen extends StatefulWidget {
+class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
-  @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
-}
-
-class _SettingsScreenState extends State<SettingsScreen> {
-  static const String _genKey = 'selected_generation_index';
-
-  Future<void> _clearCache(BuildContext context) async {
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_genKey);
-
-    scaffoldMessenger.showSnackBar(
-      const SnackBar(
-        content: Text('Preferências de usuário limpas!'),
-        backgroundColor: Colors.green,
+  Future<void> _confirmClear(BuildContext context) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialog) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Limpar dados'),
+        content: const Text('Isso apaga seus favoritos, times e treinos. Continuar?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialog, false), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () => Navigator.pop(dialog, true),
+            child: const Text('Limpar', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
     );
-  }
-
-  void _showAboutDialog(BuildContext context) {
-    showAboutDialog(
-      context: context,
-      applicationName: 'PocketDex',
-      applicationVersion: '1.0.0',
-      applicationLegalese:
-          '© 2025 PocketDex\nPokémon and Pokémon character names are trademarks of Nintendo.',
-      children: [
-        const Padding(
-          padding: EdgeInsets.only(top: 16),
-          child: Text('Desenvolvido com Flutter.'),
-        )
-      ],
-    );
-  }
-
-  Widget _buildOptionTile({
-    required IconData icon,
-    required Color color,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-    required ThemeData theme,
-  }) {
-    return ListTile(
-      leading: Icon(icon, color: color),
-      title: Text(title, style: theme.textTheme.titleMedium),
-      subtitle: Text(subtitle, style: theme.textTheme.bodySmall),
-      onTap: onTap,
-    );
+    if (ok != true || !context.mounted) return;
+    UserData.instance.update({'favorites': [], 'teams': [], 'training': []});
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Favoritos, times e treinos apagados.')));
   }
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = context.watch<ThemeProvider>();
-    final isDarkMode = themeProvider.themeMode == ThemeMode.dark;
-    final theme = Theme.of(context);
+    final c = SiteColors.of(context);
+    final dark = context.watch<ThemeProvider>().themeMode == ThemeMode.dark;
     final auth = context.watch<AuthService>();
     final user = auth.status == AuthStatus.signedIn ? auth.user : null;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Configurações'),
-      ),
-      body: ReadableWidth(
-          child: ListView(
-        padding: const EdgeInsets.all(8.0),
-        children: [
-          if (user != null) ...[
-            ListTile(
-              leading: CircleAvatar(
-                backgroundColor: const Color(0xFFE53935),
-                foregroundColor: Colors.white,
-                child: Text((user.name ?? '?').substring(0, 1).toUpperCase(),
-                    style: const TextStyle(fontWeight: FontWeight.w900)),
+    Widget row({required String title, required String subtitle, Widget? trailing, Widget? leading}) => SiteCard(
+          child: Row(
+            children: [
+              if (leading != null) ...[leading, const SizedBox(width: 14)],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: TextStyle(color: c.text, fontWeight: FontWeight.bold, fontSize: 16)),
+                    const SizedBox(height: 2),
+                    Text(subtitle, style: TextStyle(color: c.muted, fontSize: 13)),
+                  ],
+                ),
               ),
-              title: Text(user.name ?? '', style: theme.textTheme.titleMedium),
-              subtitle: Text('${user.email ?? ''}\nSeus dados ficam salvos na conta (app e site).',
-                  style: theme.textTheme.bodySmall),
-              isThreeLine: true,
-              trailing: TextButton.icon(
-                onPressed: () => AccountSync.instance.logout(),
-                icon: const Icon(Icons.logout, color: Colors.redAccent),
-                label: const Text('Sair', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+              if (trailing != null) ...[const SizedBox(width: 12), trailing],
+            ],
+          ),
+        );
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Configurações')),
+      body: ReadableWidth(
+        child: ListView(
+          padding: const EdgeInsets.only(bottom: 32),
+          children: [
+            const PageHeader(title: 'Configurações'),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                children: [
+                  if (user != null) ...[
+                    row(
+                      leading: CircleAvatar(
+                        radius: 22,
+                        backgroundColor: const Color(0xFFE53935),
+                        child: Text((user.name ?? '?').substring(0, 1).toUpperCase(),
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18)),
+                      ),
+                      title: user.name ?? 'Conta',
+                      subtitle: user.email ?? '',
+                      trailing: PillButton(label: 'Sair', color: const Color(0xFFE53935), onPressed: AccountSync.instance.logout),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  row(
+                    title: 'Modo Escuro',
+                    subtitle: 'Ative para uma experiência com cores escuras.',
+                    trailing: Switch(
+                      value: dark,
+                      activeTrackColor: const Color(0xFF0EA5E9),
+                      onChanged: (v) => context.read<ThemeProvider>().toggleTheme(v),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  row(
+                    title: 'Dados salvos',
+                    subtitle: user != null
+                        ? 'Favoritos, times e treinos ficam salvos na sua conta (app e site).'
+                        : 'Favoritos, times e treinos ficam salvos neste aparelho.',
+                    trailing: PillButton(label: 'Limpar', color: const Color(0xFFE53935), onPressed: () => _confirmClear(context)),
+                  ),
+                  if (UpdateService.supported) ...[
+                    const SizedBox(height: 12),
+                    FutureBuilder<String>(
+                      future: UpdateService.currentVersion(),
+                      builder: (context, snapshot) => row(
+                        leading: Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(color: const Color(0xFF3DDC84), borderRadius: BorderRadius.circular(14)),
+                          child: const Icon(Icons.android, color: Color(0xFF073042)),
+                        ),
+                        title: 'PocketDex ${snapshot.data ?? ''}',
+                        subtitle: 'As versões novas são avisadas ao abrir o app.',
+                        trailing: PillButton(
+                          label: 'Procurar',
+                          color: const Color(0xFF3DDC84),
+                          foreground: const Color(0xFF073042),
+                          onPressed: () => UpdateService.checkNow(context),
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 24),
+                  Text('PocketDex · app em Flutter e site em React, com a mesma conta.\n'
+                      'Pokémon e os nomes dos personagens são marcas da Nintendo.',
+                      textAlign: TextAlign.center, style: TextStyle(color: c.muted, fontSize: 12)),
+                ],
               ),
             ),
-            const Divider(),
           ],
-          SwitchListTile(
-            title: Text('Modo Escuro', style: theme.textTheme.titleMedium),
-            subtitle: Text('Ative para uma experiência com cores escuras.',
-                style: theme.textTheme.bodySmall),
-            secondary: Icon(
-                isDarkMode
-                    ? Icons.dark_mode_outlined
-                    : Icons.light_mode_outlined,
-                color: theme.colorScheme.secondary),
-            activeTrackColor: theme.colorScheme.primary.withAlpha(150),
-            activeThumbColor: theme.colorScheme.primary,
-            value: isDarkMode,
-            onChanged: (value) {
-              context.read<ThemeProvider>().toggleTheme(value);
-            },
-          ),
-          const Divider(),
-          _buildOptionTile(
-            icon: Icons.delete_sweep_outlined,
-            color: Colors.lightBlueAccent,
-            title: 'Limpar Preferências',
-            subtitle: 'Remove dados salvos, como sua última geração vista.',
-            onTap: () => _clearCache(context),
-            theme: theme,
-          ),
-          const Divider(),
-          _buildOptionTile(
-            icon: Icons.info_outline,
-            color: Colors.grey,
-            title: 'Sobre o App',
-            subtitle: 'Exibe informações sobre o PocketDex.',
-            onTap: () => _showAboutDialog(context),
-            theme: theme,
-          ),
-        ],
-      )),
+        ),
+      ),
     );
   }
 }

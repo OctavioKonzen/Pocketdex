@@ -145,14 +145,6 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen>
     }
   }
 
-  void _onHorizontalDragEnd(DragEndDetails details) {
-    if (details.primaryVelocity! < -500) {
-      _slideTo(_AnimationDirection.next);
-    } else if (details.primaryVelocity! > 500) {
-      _slideTo(_AnimationDirection.previous);
-    }
-  }
-
   void _slideTo(_AnimationDirection direction) {
     if (_slideController.isAnimating) return;
     setState(() => _animationDirection = direction);
@@ -291,11 +283,17 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen>
                 pokeballAnimation: _pokeballAnimationController,
                 onShinyToggle: () => setState(() => _isShiny = !_isShiny),
                 onFormSelect: () => _showFormSelection(pokemon),
+                // O Pokémon fica parado (só o painel de baixo rola); arrastar
+                // para o lado vai para o próximo/anterior da Pokédex.
+                onSwipe: (direction) {
+                  if (direction > 0 && nextPokemon != null) _slideTo(_AnimationDirection.next);
+                  if (direction < 0 && prevPokemon != null) _slideTo(_AnimationDirection.previous);
+                },
                 imageGestureArea: Stack(
                   alignment: Alignment.center,
                   children: [
-                    GestureDetector(
-                      onHorizontalDragEnd: _onHorizontalDragEnd,
+                    // Camada própria para a animação de troca de Pokémon.
+                    RepaintBoundary(
                       child: AnimatedBuilder(
                         animation: _slideController,
                         builder: (context, child) {

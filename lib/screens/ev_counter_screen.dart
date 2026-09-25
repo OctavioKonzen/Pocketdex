@@ -13,7 +13,9 @@ import '../services/user_data.dart';
 import 'pokedex_screen.dart';
 import 'ev_tracking_screen.dart';
 import 'package:pocket_dex/utils/responsive.dart';
-import 'package:pocket_dex/utils/app_images.dart';
+import 'package:pocket_dex/services/account_format.dart';
+import 'package:pocket_dex/utils/site_ui.dart';
+import 'package:pocket_dex/widgets/pokemon_sprite.dart';
 
 class EvCounterScreen extends StatefulWidget {
   const EvCounterScreen({super.key});
@@ -114,42 +116,33 @@ class _EvCounterScreenState extends State<EvCounterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Contador de EVs'),
-      ),
+      appBar: AppBar(title: const Text('Contador de EVs')),
       body: ReadableWidth(
-          child: _isLoading
-              ? const PikachuLoadingIndicator()
-              : _trainingPokemon.isEmpty
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                        child: Text(
-                          'Nenhum Pokémon em treinamento.\nClique no "+" para adicionar.',
-                          textAlign: TextAlign.center,
-                          style: theme.textTheme.titleMedium,
-                        ),
-                      ),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(12),
-                      itemCount: _trainingPokemon.length,
-                      itemBuilder: (context, index) {
-                        final pokemon = _trainingPokemon[index];
-                        return _TrainingPokemonCard(
-                          pokemon: pokemon,
-                          onTap: () => _navigateToTracking(pokemon),
-                          onDelete: () => _removePokemon(pokemon.id),
-                        );
-                      },
-                    )),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _addPokemonToTraining,
-        backgroundColor: Colors.green.shade600,
-        tooltip: 'Adicionar Pokémon',
-        child: const Icon(Icons.add, size: 30),
+        child: ListView(
+          padding: const EdgeInsets.only(bottom: 24),
+          children: [
+            PageHeader(
+              title: 'Contador de EVs',
+              subtitle: 'Acompanhe o treino dos seus Pokémon (máx. 252 por atributo e 510 no total).',
+              action: PillButton(label: '+ Adicionar', color: const Color(0xFF66BB6A), onPressed: _addPokemonToTraining),
+            ),
+            if (_isLoading)
+              const PikachuLoadingIndicator()
+            else if (_trainingPokemon.isEmpty)
+              const EmptyMessage('Nenhum Pokémon em treinamento. Toque em “Adicionar” para começar.')
+            else
+              for (final pokemon in _trainingPokemon)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                  child: _TrainingPokemonCard(
+                    pokemon: pokemon,
+                    onTap: () => _navigateToTracking(pokemon),
+                    onDelete: () => _removePokemon(pokemon.id),
+                  ),
+                ),
+          ],
+        ),
       ),
     );
   }
@@ -160,63 +153,91 @@ class _TrainingPokemonCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onDelete;
 
-  const _TrainingPokemonCard({
-    required this.pokemon,
-    required this.onTap,
-    required this.onDelete,
-  });
+  const _TrainingPokemonCard({required this.pokemon, required this.onTap, required this.onDelete});
+
+  // Mesmas cores do site para cada atributo.
+  static const _stats = [
+    ('HP', Color(0xFF4CAF50)),
+    ('Atk', Color(0xFFF44336)),
+    ('Def', Color(0xFF2196F3)),
+    ('SpA', Color(0xFF9C27B0)),
+    ('SpD', Color(0xFFFBC02D)),
+    ('Spe', Color(0xFFE91E63)),
+  ];
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      color: theme.cardColor,
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Row(
+    final c = SiteColors.of(context);
+    final values = [
+      pokemon.hpEVs, pokemon.attackEVs, pokemon.defenseEVs,
+      pokemon.spAttackEVs, pokemon.spDefenseEVs, pokemon.speedEVs,
+    ];
+    final id = AccountFormat.pokemonIdFromImage(pokemon.imageUrl) ?? int.tryParse(pokemon.pokemonId) ?? 0;
+    return SiteCard(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Row(
             children: [
-              Image(
-                image: AppImages.provider(pokemon.imageUrl),
-                width: 70,
-                height: 70,
-                loadingBuilder: (context, child, progress) {
-                  return progress == null
-                      ? child
-                      : const PikachuLoadingIndicator(size: 40);
-                },
-                errorBuilder: (context, error, stack) =>
-                    Icon(Icons.error, size: 50, color: theme.hintColor),
-              ),
-              const SizedBox(width: 16),
+              SizedBox(width: 64, height: 64, child: PokemonSprite(id, fill: 0.9)),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      pokemon.pokemonName.capitalise(),
-                      style: theme.textTheme.titleLarge,
+                    Text(pokemon.pokemonName.capitalise(),
+                        style: TextStyle(color: c.text, fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 6),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: LinearProgressIndicator(
+                        value: pokemon.totalEVs / 510,
+                        minHeight: 8,
+                        backgroundColor: c.surface,
+                        valueColor: const AlwaysStoppedAnimation(Color(0xFF66BB6A)),
+                      ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Total EVs: ${pokemon.totalEVs}',
-                      style: theme.textTheme.bodyMedium,
-                    ),
+                    const SizedBox(height: 4),
+                    Text('${pokemon.totalEVs}/510 EVs', style: TextStyle(color: c.muted, fontSize: 12)),
                   ],
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                icon: Icon(Icons.delete_outline, color: c.muted),
                 onPressed: onDelete,
                 tooltip: 'Remover Pokémon',
-              )
+              ),
             ],
           ),
-        ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              for (var i = 0; i < 6; i++)
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 3),
+                    child: Column(
+                      children: [
+                        Text(_stats[i].$1, style: TextStyle(color: c.muted, fontSize: 11, fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 4),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: values[i] / 252,
+                            minHeight: 6,
+                            backgroundColor: c.surface,
+                            valueColor: AlwaysStoppedAnimation(_stats[i].$2),
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text('${values[i]}', style: TextStyle(color: c.text, fontSize: 12, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }

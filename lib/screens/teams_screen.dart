@@ -7,6 +7,7 @@ import '../services/user_data.dart';
 import '../widgets/team_card.dart';
 import 'team_builder_screen.dart';
 import '../utils/responsive.dart';
+import '../utils/site_ui.dart';
 
 class TeamsScreen extends StatefulWidget {
   const TeamsScreen({super.key});
@@ -113,7 +114,7 @@ class _TeamsScreenState extends State<TeamsScreen> {
                       const SizedBox(width: 12),
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFF7786B),
+                            backgroundColor: SectionColors.teams,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 24, vertical: 12),
@@ -125,13 +126,15 @@ class _TeamsScreenState extends State<TeamsScreen> {
                                 fontSize: 16, fontWeight: FontWeight.bold)),
                         onPressed: () async {
                           if (formKey.currentState!.validate()) {
-                            await _teamService
+                            final team = await _teamService
                                 .createTeam(nameController.text.trim());
 
                             if (builderContext.mounted) {
                               Navigator.pop(builderContext);
                             }
                             _loadTeams();
+                            // Igual ao site: já abre o time novo.
+                            if (mounted) _open(team);
                           }
                         },
                       ),
@@ -185,63 +188,39 @@ class _TeamsScreenState extends State<TeamsScreen> {
         });
   }
 
+  Future<void> _open(Team team) async {
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => TeamBuilderScreen(team: team)));
+    _loadTeams();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Montador de Times'),
-      ),
+      appBar: AppBar(title: const Text('Times')),
       body: ReadableWidth(
-          child: FutureBuilder<List<Team>>(
-        future: _teamsFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(
-                child: Text('Erro: ${snapshot.error}',
-                    style: TextStyle(color: theme.colorScheme.error)));
-          } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
-            final teams = snapshot.data!;
-            return ListView.builder(
-              padding: const EdgeInsets.fromLTRB(8, 8, 8, 80),
-              itemCount: teams.length,
-              itemBuilder: (context, index) {
-                final team = teams[index];
-                return TeamCard(
-                  team: team,
-                  onTap: () async {
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => TeamBuilderScreen(team: team),
-                      ),
-                    );
-                    _loadTeams();
-                  },
-                  onDelete: () => _confirmDelete(team),
-                );
-              },
+        child: FutureBuilder<List<Team>>(
+          future: _teamsFuture,
+          builder: (context, snapshot) {
+            final teams = snapshot.data ?? const <Team>[];
+            return ListView(
+              padding: const EdgeInsets.only(bottom: 24),
+              children: [
+                PageHeader(
+                  title: 'Montador de Times',
+                  subtitle: 'Monte times de até 6 Pokémon e veja as fraquezas e a nota de cada um.',
+                  action: PillButton(label: '+ Novo time', color: SectionColors.teams, onPressed: _showCreateTeamPanel),
+                ),
+                if (snapshot.connectionState == ConnectionState.done && teams.isEmpty)
+                  const EmptyMessage('Você ainda não criou nenhum time. Toque em “Novo time” para começar!'),
+                for (final team in teams)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                    child: TeamCard(team: team, onTap: () => _open(team), onDelete: () => _confirmDelete(team)),
+                  ),
+              ],
             );
-          } else {
-            return Center(
-              child: Text(
-                'Você ainda não criou nenhum time.\nClique no botão "+" para começar!',
-                textAlign: TextAlign.center,
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(color: theme.textTheme.bodySmall?.color),
-              ),
-            );
-          }
-        },
-      )),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showCreateTeamPanel,
-        backgroundColor: const Color(0xFFF7786B),
-        foregroundColor: Colors.white,
-        tooltip: 'Criar Novo Time',
-        child: const Icon(Icons.add, size: 30),
+          },
+        ),
       ),
     );
   }

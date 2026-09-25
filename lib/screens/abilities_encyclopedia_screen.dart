@@ -7,6 +7,7 @@ import '../services/pokemon_service.dart';
 import '../utils/string_extensions.dart';
 import 'ability_detail_screen.dart';
 import '../utils/responsive.dart';
+import '../utils/site_ui.dart';
 
 class AbilitiesEncyclopediaScreen extends StatefulWidget {
   const AbilitiesEncyclopediaScreen({super.key});
@@ -65,7 +66,6 @@ class _AbilitiesEncyclopediaScreenState
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Enciclopédia de Habilidades'),
@@ -74,19 +74,8 @@ class _AbilitiesEncyclopediaScreenState
           child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              onChanged: _filterAbilities,
-              style: TextStyle(color: theme.colorScheme.onSurface),
-              decoration: InputDecoration(
-                labelText: 'Procurar Habilidade',
-                prefixIcon: const Icon(Icons.search),
-                border:
-                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                filled: true,
-                fillColor: theme.colorScheme.surface,
-              ),
-            ),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+            child: SiteSearchField(onChanged: _filterAbilities, hint: 'Procurar habilidade'),
           ),
           Expanded(
             child: _isLoading
