@@ -14,7 +14,7 @@ export function getLatestRelease() {
     .then((release) => {
       const apks = release?.assets?.filter((a) => a.name.endsWith('.apk')) ?? []
       const apk = apks.find((a) => a.name === 'PocketDex.apk') ?? apks[0]
-      const apk32 = apks.find((a) => a.name === 'PocketDex-32bits.apk')
+      const apk32 = apks.find((a) => a.name.includes('32bits'))
       if (!apk) return null
       return {
         version: release.tag_name.replace(/^v/, ''),

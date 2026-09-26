@@ -106,7 +106,7 @@ jobs:
           # PocketDex.apk para 64 bits (quase todos) e outro para os de 32 bits.
           flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64
           cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk PocketDex.apk
-          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk PocketDex-32bits.apk
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk PocketDex_32bits.apk
           ls -lh PocketDex*.apk
 
       - name: Publicar versão
@@ -117,7 +117,11 @@ jobs:
         run: |
           # O nome fixo PocketDex.apk deixa o link
           # releases/latest/download/PocketDex.apk sempre apontando para a última.
-          # PocketDex.apk vai primeiro: versões antigas do app baixam o primeiro APK.
-          gh release create "v$VERSION" PocketDex.apk PocketDex-32bits.apk \
+          # Só o PocketDex.apk entra ao criar a versão: o app 1.3.x baixa o
+          # primeiro APK da lista, e ele tem que ser o de 64 bits.
+          gh release create "v$VERSION" PocketDex.apk \
             --title "PocketDex $VERSION" \
             --notes "$(git log -1 --pretty=%B)"
+          # O de 32 bits vai depois (e com "_", que também fica depois na ordem
+          # alfabética).
+          gh release upload "v$VERSION" PocketDex_32bits.apk

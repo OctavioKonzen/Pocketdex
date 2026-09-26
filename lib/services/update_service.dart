@@ -54,9 +54,12 @@ class UpdateService {
         .where((a) => (a['name'] as String).endsWith('.apk'))
         .toList();
     // Um APK para celulares 64 bits (PocketDex.apk) e outro para os antigos,
-    // de 32 bits (PocketDex-32bits.apk).
+    // de 32 bits (PocketDex_32bits.apk; na 1.4.0 era PocketDex-32bits.apk).
     final want = is32Bits ? apk32Bits : apk64Bits;
-    final apk = apks.where((a) => a['name'] == want).firstOrNull ?? apks.firstOrNull;
+    final apk = apks.where((a) => a['name'] == want).firstOrNull ??
+        (is32Bits ? apks.where((a) => (a['name'] as String).contains('32bits')).firstOrNull : null) ??
+        apks.where((a) => !(a['name'] as String).contains('32bits')).firstOrNull ??
+        apks.firstOrNull;
     if (apk == null) return null;
     return AppRelease(
       (json['tag_name'] as String).replaceFirst(RegExp('^v'), ''),
@@ -66,7 +69,7 @@ class UpdateService {
   }
 
   static const apk64Bits = 'PocketDex.apk';
-  static const apk32Bits = 'PocketDex-32bits.apk';
+  static const apk32Bits = 'PocketDex_32bits.apk';
 
   /// Celular antigo (ARM de 32 bits)? `Platform.version` termina com
   /// "on \"android_arm\"" nesses aparelhos e "android_arm64" nos atuais.
