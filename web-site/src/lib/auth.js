@@ -24,7 +24,14 @@ async function firebase() {
   const app = initializeApp(firebaseConfig)
   const auth = authMod.getAuth(app)
   auth.languageCode = 'pt-BR'
-  services = { auth, db: fsMod.getFirestore(app), ...authMod, ...fsMod }
+  const db = fsMod.getFirestore(app)
+  // Teste automático (e2e/): usa os emuladores do Firebase em vez do projeto
+  // de verdade. Só existe no build feito com VITE_EMULATORS=1.
+  if (import.meta.env.VITE_EMULATORS) {
+    authMod.connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true })
+    fsMod.connectFirestoreEmulator(db, '127.0.0.1', 8085)
+  }
+  services = { auth, db, ...authMod, ...fsMod }
   return services
 }
 
