@@ -8,6 +8,7 @@ import '../services/account_sync.dart';
 import '../services/auth_service.dart';
 import '../services/local_database.dart';
 import '../services/team_service.dart';
+import '../utils/profanity.dart';
 import '../utils/team_analysis.dart';
 import '../widgets/pikachu_loading_indicator.dart';
 import '../widgets/team_analysis_view.dart';
@@ -251,7 +252,10 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen>
                     const SizedBox(height: 6),
                     TextField(
                       controller: _nameController,
-                      onChanged: (_) => _persist(),
+                      onChanged: (_) {
+                        setState(() {}); // atualiza o aviso de nome não permitido
+                        _persist();
+                      },
                       style: TextStyle(color: c.text, fontSize: 18, fontWeight: FontWeight.bold),
                       decoration: InputDecoration(
                         filled: true,
@@ -260,6 +264,12 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen>
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
                       ),
                     ),
+                    if (AuthService.instance.status == AuthStatus.signedIn && isOffensive(_nameController.text))
+                      const Padding(
+                        padding: EdgeInsets.only(top: 6),
+                        child: Text('Esse nome não é permitido: o time não aparece na comunidade até você trocar.',
+                            style: TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.w600)),
+                      ),
                     const SizedBox(height: 14),
                     Text('Cor do time', style: TextStyle(color: c.muted, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 8),

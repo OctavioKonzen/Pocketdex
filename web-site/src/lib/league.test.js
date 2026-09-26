@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { achievementsOf } from './achievements'
 import { damage, koText, statAt } from './battle'
 import { pixCode } from './pix'
+import { isOffensive } from './profanity'
 import { dailyAnswers, dailyPoints, dayKey, seededRandom, seedOf, weekKey } from './league'
 import { decodeTeam, encodeTeam, fromShowdown, showdownName } from './teamShare'
 
@@ -117,5 +118,16 @@ describe('Pix', () => {
     expect(pixCode({ key: '123e4567-e12b-12d1-a456-426655440000', name: 'Fulano de Tal', city: 'BRASILIA' })).toBe(
       '00020126580014br.gov.bcb.pix0136123e4567-e12b-12d1-a456-4266554400005204000053039865802BR5913Fulano de Tal6008BRASILIA62070503***63041D3D',
     )
+  })
+})
+
+describe('filtro de palavrões', () => {
+  it('bloqueia palavrões, mesmo disfarçados', () => {
+    for (const bad of ['Porra', 'P0RR4', 'poooorra', 'p o r r a', 'Filho da Puta', 'FdP', 'fuck you', 'Time do Caralho', 'Vai tnc', 'f.d.p'])
+      expect(isOffensive(bad), bad).toBe(true)
+  })
+  it('deixa nomes normais', () => {
+    for (const ok of ['Ash Ketchum', 'Computador', 'Time Rolagem', 'Raposa', 'Mestre Pokémon', 'Team Rocket', 'Rapel', 'Pintura', 'Dragões'])
+      expect(isOffensive(ok), ok).toBe(false)
   })
 })

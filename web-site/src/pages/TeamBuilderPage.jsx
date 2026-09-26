@@ -7,6 +7,7 @@ import { Button, Empty, Icon, Loader, Modal } from '../components/ui'
 import { getPokemonById, getTypes } from '../lib/data'
 import TeamAnalysis, { RatingText } from '../components/TeamAnalysis'
 import { analyzeTeam } from '../lib/pokemon'
+import { isOffensive } from '../lib/profanity'
 import { myTeamRatings, useAuth } from '../lib/auth'
 import { useTeamsVersion } from '../lib/sync'
 import { useStore } from '../lib/store'
@@ -85,6 +86,9 @@ export default function TeamBuilderPage() {
             className="w-full bg-transparent text-2xl font-bold outline-none"
             aria-label="Nome do time"
           />
+          {user && isOffensive(team.name) && (
+            <p className="mt-1 text-sm font-semibold text-red-400">Esse nome não é permitido: o time não aparece na comunidade até você trocar.</p>
+          )}
           <div className="mt-3 flex flex-wrap gap-2">
             {TEAM_COLORS.map((c) => (
               <m.button

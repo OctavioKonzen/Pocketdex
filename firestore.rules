@@ -85,9 +85,13 @@ service cloud.firestore {
       function ratingPath() {
         return /databases/$(database)/documents/publicTeams/$(teamId)/ratings/$(request.auth.uid);
       }
+      function reportPath() {
+        return /databases/$(database)/documents/publicTeams/$(teamId)/reports/$(request.auth.uid);
+      }
+      function reports(d) { return d.get('reportCount', 0); }
       function validTeam() {
         return team().keys().hasOnly(['ownerUid', 'ownerName', 'ownerKey', 'avatar', 'name', 'color', 'pokemon',
-                                      'ratingSum', 'ratingCount', 'updatedAt'])
+                                      'ratingSum', 'ratingCount', 'reportCount', 'updatedAt'])
           && team().ownerUid == request.auth.uid
           && team().ownerName == accountName(request.auth.uid)
           && team().ownerKey == keyOf(team().ownerName)
@@ -97,11 +101,18 @@ service cloud.firestore {
           && validAvatar(team());
       }
       allow read: if request.auth != null;
-      allow create: if validTeam() && team().ratingSum == 0 && team().ratingCount == 0;
+      allow create: if validTeam() && team().ratingSum == 0 && team().ratingCount == 0 && reports(team()) == 0;
       allow update: if (
-          // dono: muda o time, mas não a nota
+          // dono: muda o time, mas não a nota nem as denúncias
           resource.data.ownerUid == request.auth.uid && validTeam()
             && team().ratingSum == resource.data.ratingSum && team().ratingCount == resource.data.ratingCount
+            && reports(team()) == reports(resource.data)
+        ) || (
+          // outra pessoa denuncia: +1 denúncia, junto com a própria (uma por pessoa)
+          request.auth != null && resource.data.ownerUid != request.auth.uid
+            && team().diff(resource.data).affectedKeys().hasOnly(['reportCount'])
+            && !exists(reportPath()) && existsAfter(reportPath())
+            && team().reportCount == reports(resource.data) + 1
         ) || (
           // outra pessoa: só a nota, junto com o próprio voto
           request.auth != null && resource.data.ownerUid != request.auth.uid
@@ -112,6 +123,18 @@ service cloud.firestore {
             && team().ratingCount == resource.data.ratingCount + (exists(ratingPath()) ? 0 : 1)
         );
       allow delete: if request.auth != null && resource.data.ownerUid == request.auth.uid;
+
+      // Denúncia (uma por pessoa), sempre junto com o +1 no time. Com 3 ou mais
+      // o time some da busca; o dono do projeto revisa no Console do Firebase.
+      match /reports/{uid} {
+        function parent() { return /databases/$(database)/documents/publicTeams/$(teamId); }
+        allow read: if signedIn(uid);
+        allow create: if signedIn(uid)
+          && request.resource.data.keys().hasOnly(['reason', 'createdAt'])
+          && request.resource.data.reason is string && request.resource.data.reason.size() <= 200
+          && get(parent()).data.ownerUid != uid
+          && getAfter(parent()).data.get('reportCount', 0) == get(parent()).data.get('reportCount', 0) + 1;
+      }
 
       // Voto de cada pessoa (1 a 5 estrelas), sempre junto com a nota do time.
       match /ratings/{uid} {
