@@ -147,6 +147,15 @@ function AndroidAppCard() {
       <p className="mt-3 text-sm text-muted">
         Entre com a mesma conta do site: favoritos, times, treinos e recordes aparecem nos dois. No celular, abra o arquivo baixado e
         permita instalar apps desta fonte. As próximas versões são avisadas e instaladas pelo próprio app.{' '}
+        {release?.url32 && (
+          <>
+            Celular muito antigo (32 bits)?{' '}
+            <a href={release.url32} className="underline hover:text-text">
+              Baixe esta versão
+            </a>
+            .{' '}
+          </>
+        )}
         <a href={RELEASES_URL} className="underline hover:text-text" target="_blank" rel="noreferrer">
           Todas as versões
         </a>

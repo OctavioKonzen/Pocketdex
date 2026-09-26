@@ -102,9 +102,12 @@ jobs:
           # Artes menores só no APK (o site continua com as grandes).
           pip install pillow
           python3 tool/shrink_app_images.py
-          # Só celulares ARM (praticamente todos): APK menor.
-          flutter build apk --release --target-platform android-arm,android-arm64
-          cp build/app/outputs/flutter-apk/app-release.apk PocketDex.apk
+          # Um APK por tipo de celular (bem menor que um com os dois):
+          # PocketDex.apk para 64 bits (quase todos) e outro para os de 32 bits.
+          flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk PocketDex.apk
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk PocketDex-32bits.apk
+          ls -lh PocketDex*.apk
 
       - name: Publicar versão
         if: steps.check.outputs.skip == 'false' && steps.check.outputs.publish == 'true'
@@ -114,6 +117,7 @@ jobs:
         run: |
           # O nome fixo PocketDex.apk deixa o link
           # releases/latest/download/PocketDex.apk sempre apontando para a última.
-          gh release create "v$VERSION" PocketDex.apk \
+          # PocketDex.apk vai primeiro: versões antigas do app baixam o primeiro APK.
+          gh release create "v$VERSION" PocketDex.apk PocketDex-32bits.apk \
             --title "PocketDex $VERSION" \
             --notes "$(git log -1 --pretty=%B)"

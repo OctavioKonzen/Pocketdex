@@ -10,6 +10,7 @@
 // sempre que a versão do pubspec.yaml muda.
 
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -48,10 +49,14 @@ class UpdateService {
         .timeout(const Duration(seconds: 10));
     if (response.statusCode != 200) return null;
     final json = jsonDecode(response.body) as Map<String, dynamic>;
-    final apk = (json['assets'] as List? ?? [])
+    final apks = (json['assets'] as List? ?? [])
         .cast<Map<String, dynamic>>()
         .where((a) => (a['name'] as String).endsWith('.apk'))
-        .firstOrNull;
+        .toList();
+    // Um APK para celulares 64 bits (PocketDex.apk) e outro para os antigos,
+    // de 32 bits (PocketDex-32bits.apk).
+    final want = is32Bits ? apk32Bits : apk64Bits;
+    final apk = apks.where((a) => a['name'] == want).firstOrNull ?? apks.firstOrNull;
     if (apk == null) return null;
     return AppRelease(
       (json['tag_name'] as String).replaceFirst(RegExp('^v'), ''),
@@ -59,6 +64,13 @@ class UpdateService {
       (json['body'] as String? ?? '').trim(),
     );
   }
+
+  static const apk64Bits = 'PocketDex.apk';
+  static const apk32Bits = 'PocketDex-32bits.apk';
+
+  /// Celular antigo (ARM de 32 bits)? `Platform.version` termina com
+  /// "on \"android_arm\"" nesses aparelhos e "android_arm64" nos atuais.
+  static bool get is32Bits => !kIsWeb && Platform.version.contains('"android_arm"');
 
   static bool get supported => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
