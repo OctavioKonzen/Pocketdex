@@ -14,6 +14,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
+import '../utils/profanity.dart';
 import 'auth_service.dart';
 import 'user_data.dart';
 
@@ -249,6 +250,7 @@ class AccountSync {
         final slots = (team['pokemon'] as List?) ?? [];
         final pokemon = [for (var i = 0; i < 6; i++) i < slots.length ? (slots[i] as num?)?.toInt() : null];
         if (pokemon.every((p) => p == null)) continue; // time vazio não aparece
+        if (isOffensive('${team['name'] ?? ''}')) continue; // nome com palavrão não aparece para os outros
         final id = team['id'] as String;
         wanted.add(id);
         final fields = <String, dynamic>{
@@ -267,6 +269,7 @@ class AccountSync {
           ...fields,
           'ratingSum': old?['ratingSum'] ?? 0,
           'ratingCount': old?['ratingCount'] ?? 0,
+          'reportCount': old?['reportCount'] ?? 0,
           'updatedAt': FieldValue.serverTimestamp(),
         });
         changes++;
@@ -289,6 +292,25 @@ class AccountSync {
     return {'id': d.id, ...data, 'rating': count > 0 ? sum / count : null, 'ratingCount': count};
   }
 
+  /// Times com 3 ou mais denúncias somem da busca (o dono ainda vê os seus).
+  static const reportLimit = 3;
+
+  /// Denuncia um time (uma vez por pessoa); a contagem do time sobe junto.
+  Future<void> reportTeam(String teamId, String reason) async {
+    final uid = _uid;
+    if (uid == null) throw StateError('Entre na sua conta para denunciar.');
+    final teamRef = _public.doc(teamId);
+    final reportRef = teamRef.collection('reports').doc(uid);
+    await _db.runTransaction((tx) async {
+      final team = await tx.get(teamRef);
+      if (!team.exists) throw StateError('Esse time foi excluído pelo dono.');
+      final already = await tx.get(reportRef);
+      if (already.exists) throw StateError('Você já denunciou esse time.');
+      tx.set(reportRef, {'reason': reason, 'createdAt': FieldValue.serverTimestamp()});
+      tx.update(teamRef, {'reportCount': ((team.data()!['reportCount'] as num?)?.toInt() ?? 0) + 1});
+    });
+  }
+
   /// Times públicos de uma pessoa (pelo nome) ou os mais recentes.
   Future<List<Map<String, dynamic>>> searchPublicTeams(String name) async {
     final key = AuthService.nameKey(name);
@@ -296,7 +318,10 @@ class AccountSync {
         ? _public.orderBy('updatedAt', descending: true).limit(30)
         : _public.where('ownerKey', isEqualTo: key).limit(50);
     final snap = await query.get();
-    return snap.docs.map(_publicTeam).toList();
+    return snap.docs
+        .map(_publicTeam)
+        .where((t) => ((t['reportCount'] as num?) ?? 0) < reportLimit || t['ownerUid'] == _uid)
+        .toList();
   }
 
   /// Nota da comunidade dos times da pessoa: {teamId: (nota, votos)}.

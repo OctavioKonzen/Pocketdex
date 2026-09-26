@@ -156,6 +156,9 @@ class _CommunityTeamsScreenState extends State<CommunityTeamsScreen> {
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(color: c.text, fontWeight: FontWeight.bold, fontSize: 17)),
                                   RatingText(rating: team['rating'] as double?, count: team['ratingCount'] as int),
+                                  if (team['ownerUid'] == me && ((team['reportCount'] as num?) ?? 0) >= AccountSync.reportLimit)
+                                    const Text('Oculto para os outros por denúncias',
+                                        style: TextStyle(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.w600)),
                                 ],
                               ),
                             ),
@@ -234,6 +237,30 @@ class _PublicTeamScreenState extends State<_PublicTeamScreen> {
   TeamAnalysis? _analysis;
   int? _vote;
   String? _message;
+  String? _reported;
+
+  Future<void> _report() async {
+    final reason = await showModalBottomSheet<String>(
+      context: context,
+      builder: (sheet) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const ListTile(title: Text('Denunciar time', style: TextStyle(fontWeight: FontWeight.bold))),
+            for (final r in ['Nome ofensivo', 'Spam', 'Outro'])
+              ListTile(leading: const Icon(Icons.flag_outlined), title: Text(r), onTap: () => Navigator.pop(sheet, r)),
+          ],
+        ),
+      ),
+    );
+    if (reason == null) return;
+    try {
+      await AccountSync.instance.reportTeam(widget.team['id'] as String, reason);
+      if (mounted) setState(() => _reported = 'Denúncia enviada. Obrigado por ajudar a manter a comunidade legal!');
+    } catch (e) {
+      if (mounted) setState(() => _reported = e is StateError ? e.message : 'Não foi possível denunciar agora.');
+    }
+  }
 
   bool get _mine => widget.team['ownerUid'] == AuthService.instance.user?.uid;
 
@@ -368,6 +395,17 @@ class _PublicTeamScreenState extends State<_PublicTeamScreen> {
                     if (!_mine) ...[
                       const SizedBox(height: 16),
                       PillButton(label: 'Salvar nos meus times', color: SectionColors.teams, expand: true, onPressed: _save),
+                      const SizedBox(height: 8),
+                      Center(
+                        child: _reported != null
+                            ? Text(_reported!, textAlign: TextAlign.center, style: TextStyle(color: c.muted, fontSize: 13))
+                            : TextButton.icon(
+                                onPressed: _report,
+                                icon: const Icon(Icons.flag_outlined, size: 18),
+                                label: const Text('Denunciar'),
+                                style: TextButton.styleFrom(foregroundColor: c.muted),
+                              ),
+                      ),
                     ],
                   ],
                 ),

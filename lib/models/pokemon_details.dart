@@ -37,7 +37,7 @@ class PokemonDetails {
   }) {
     final baseName = speciesJson['name'] as String;
     
-    String descriptionText = "No description available.";
+    String descriptionText = "Sem descrição.";
     var flavorTextEntries = speciesJson['flavor_text_entries'] as List;
     var englishFlavorText = flavorTextEntries.firstWhere((entry) => entry['language']['name'] == 'en', orElse: () => null);
     if (englishFlavorText != null) {
@@ -48,7 +48,8 @@ class PokemonDetails {
     var genera = speciesJson['genera'] as List;
     var englishGenus = genera.firstWhere((entry) => entry['language']['name'] == 'en', orElse: () => null);
     if (englishGenus != null) {
-      genusText = englishGenus['genus'].replaceAll(' Pokémon', '');
+      // "Pokémon Semente" (ou "Seed Pokémon") → "Semente"
+      genusText = (englishGenus['genus'] as String).replaceAll(' Pokémon', '').replaceFirst(RegExp(r'^Pokémon '), '');
     }
 
     List<String> eggGroupsList = (speciesJson['egg_groups'] as List).map((group) => group['name'] as String).toList();

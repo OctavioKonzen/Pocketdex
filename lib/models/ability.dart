@@ -8,11 +8,11 @@ class Ability {
   Ability({required this.name, required this.description});
 
   factory Ability.fromApiJson(Map<String, dynamic> json) {
-    String desc = "No description available for this ability.";
+    String desc = "Sem descrição.";
     var effectEntries = json['effect_entries'] as List;
     if (effectEntries.isNotEmpty) {
       var englishEntry = effectEntries.firstWhere((e) => e['language']['name'] == 'en', orElse: () => null);
-      if (englishEntry != null && englishEntry['short_effect'] != null) {
+      if (englishEntry != null && (englishEntry['short_effect'] ?? '') != '') {
         desc = englishEntry['short_effect'];
       }
     }

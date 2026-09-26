@@ -74,3 +74,44 @@ jobs:
           cache-dependency-path: firestore-tests/package-lock.json
       - run: npm ci
       - run: npm test
+
+  e2e:
+    name: Site com login (emuladores)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Gerar o site ligado aos emuladores
+        working-directory: web-site
+        run: |
+          pip install pillow
+          npm run data
+          npm ci
+          VITE_EMULATORS=1 npm run build
+      - name: Instalar o teste
+        working-directory: e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Criar conta, abrir as páginas, sair e entrar
+        working-directory: e2e
+        run: |
+          (cd ../web-site && npx vite preview --port 4175 &)
+          for i in $(seq 30); do curl -sf http://localhost:4175/Pocketdex/ >/dev/null && break; sleep 2; done
+          npm test
+      - name: Print da falha
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-falha
+          path: e2e/falha.png
+          if-no-files-found: ignore

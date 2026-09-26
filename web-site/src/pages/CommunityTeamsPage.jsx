@@ -10,7 +10,7 @@ import { Avatar } from '../components/AccountAvatar'
 import Sprite from '../components/Sprite'
 import TeamAnalysis, { RatingText, Stars } from '../components/TeamAnalysis'
 import { Button, Empty, Icon, Loader, Modal, PageHeader, SearchInput } from '../components/ui'
-import { errorMessage, getMyVote, getPublicTeam, rateTeam, searchPublicTeams, useAuth } from '../lib/auth'
+import { errorMessage, getMyVote, getPublicTeam, rateTeam, REPORT_LIMIT, reportTeam, searchPublicTeams, useAuth } from '../lib/auth'
 import { getPokemonById, getTypes } from '../lib/data'
 import { analyzeTeam } from '../lib/pokemon'
 import { useStore } from '../lib/store'
@@ -101,6 +101,9 @@ function PublicTeamCard({ team, byId, mine, onOpen, onOwner }) {
         <div className="min-w-0">
           <h2 className="truncate text-lg font-bold">{team.name}</h2>
           <RatingText rating={team.rating} count={team.ratingCount} />
+          {mine && (team.reportCount ?? 0) >= REPORT_LIMIT && (
+            <p className="text-xs font-semibold text-red-400">Oculto para os outros por denúncias</p>
+          )}
         </div>
         <button
           type="button"
@@ -136,7 +139,19 @@ function PublicTeamModal({ team, byId, onClose, onChange, onGone }) {
   const [typeData, setTypeData] = useState(null)
   const [vote, setVote] = useState(null)
   const [message, setMessage] = useState('')
+  const [reporting, setReporting] = useState(false)
+  const [reported, setReported] = useState('')
   const mine = team.ownerUid === user?.uid
+
+  const report = async (reason) => {
+    try {
+      await reportTeam(user.uid, team.id, reason)
+      setReported('Denúncia enviada. Obrigado por ajudar a manter a comunidade legal!')
+    } catch (e) {
+      setReported(errorMessage(e))
+    }
+    setReporting(false)
+  }
 
   useEffect(() => {
     getTypes().then(setTypeData)
@@ -195,7 +210,28 @@ function PublicTeamModal({ team, byId, onClose, onChange, onGone }) {
         )}
         <TeamAnalysis analysis={analysis} />
         {!mine && (
-          <div className="flex justify-end">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="text-sm">
+              {reported ? (
+                <span className="text-muted">{reported}</span>
+              ) : reporting ? (
+                <span className="flex flex-wrap items-center gap-2">
+                  <span className="text-muted">Motivo:</span>
+                  {['Nome ofensivo', 'Spam', 'Outro'].map((r) => (
+                    <button key={r} type="button" onClick={() => report(r)} className="cursor-pointer rounded-full bg-red-500/15 px-3 py-1 font-semibold text-red-400 hover:bg-red-500/25">
+                      {r}
+                    </button>
+                  ))}
+                  <button type="button" onClick={() => setReporting(false)} className="cursor-pointer px-2 text-muted">
+                    Cancelar
+                  </button>
+                </span>
+              ) : (
+                <button type="button" onClick={() => setReporting(true)} className="cursor-pointer text-muted hover:text-red-400">
+                  🚩 Denunciar
+                </button>
+              )}
+            </div>
             <Button
               color="#FF5252"
               onClick={() => {

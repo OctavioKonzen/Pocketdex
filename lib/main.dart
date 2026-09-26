@@ -12,6 +12,7 @@ import 'package:pocket_dex/services/account_format.dart';
 import 'package:pocket_dex/services/account_sync.dart';
 import 'package:pocket_dex/services/auth_service.dart';
 import 'package:pocket_dex/services/firebase_setup.dart';
+import 'package:pocket_dex/services/daily_reminder.dart';
 import 'package:pocket_dex/services/user_data.dart';
 import 'package:pocket_dex/widgets/pokemon_sprite.dart';
 
@@ -22,6 +23,8 @@ Future<void> main() async {
   // Tabela Pokémon → espécie (para converter times/treinos da conta) em
   // segundo plano, sem atrasar a abertura do app.
   AccountFormat.init();
+  // Lembrete do desafio do dia (se ligado): refaz a agenda dos próximos dias.
+  DailyReminder.instance.reschedule();
   // Login e sincronização com a conta (a mesma do site).
   if (await initFirebase()) {
     AccountSync.instance.start();

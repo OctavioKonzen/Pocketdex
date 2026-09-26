@@ -10,6 +10,7 @@
 
 import { create } from 'zustand'
 import { firebaseConfig, isConfigured } from './firebaseConfig'
+import { isOffensive } from './profanity'
 
 let services = null
 
@@ -23,7 +24,14 @@ async function firebase() {
   const app = initializeApp(firebaseConfig)
   const auth = authMod.getAuth(app)
   auth.languageCode = 'pt-BR'
-  services = { auth, db: fsMod.getFirestore(app), ...authMod, ...fsMod }
+  const db = fsMod.getFirestore(app)
+  // Teste automático (e2e/): usa os emuladores do Firebase em vez do projeto
+  // de verdade. Só existe no build feito com VITE_EMULATORS=1.
+  if (import.meta.env.VITE_EMULATORS) {
+    authMod.connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true })
+    fsMod.connectFirestoreEmulator(db, '127.0.0.1', 8085)
+  }
+  services = { auth, db, ...authMod, ...fsMod }
   return services
 }
 
@@ -61,6 +69,7 @@ export function validateName(name) {
   if (clean.length < NAME_MIN) return `O nome precisa ter pelo menos ${NAME_MIN} letras.`
   if (clean.length > NAME_MAX) return `O nome pode ter no máximo ${NAME_MAX} letras.`
   if (!/^[\p{L}\p{N} _.-]+$/u.test(clean)) return 'Use só letras, números, espaço, ponto, - ou _.'
+  if (isOffensive(clean)) return 'Esse nome não é permitido. Escolha outro.'
   return null
 }
 
@@ -319,6 +328,7 @@ export async function publishTeams(uid, name, avatar, teams) {
   for (const team of teams) {
     const pokemon = Array.from({ length: 6 }, (_, i) => team.pokemon?.[i] ?? null)
     if (!pokemon.some((p) => p != null)) continue // time vazio não aparece
+    if (isOffensive(team.name)) continue // nome com palavrão não aparece para os outros
     wanted.add(team.id)
     const fields = { ownerUid: uid, ownerName: name, ownerKey: nameKey(name), avatar: avatar ?? null, name: team.name, color: team.color ?? null, pokemon }
     const old = current.get(team.id)
@@ -328,6 +338,7 @@ export async function publishTeams(uid, name, avatar, teams) {
       ...fields,
       ratingSum: old?.ratingSum ?? 0,
       ratingCount: old?.ratingCount ?? 0,
+      reportCount: old?.reportCount ?? 0,
       updatedAt: serverTimestamp(),
     })
     changes++
@@ -341,6 +352,24 @@ export async function publishTeams(uid, name, avatar, teams) {
   if (changes) await batch.commit()
 }
 
+/** Times com 3 ou mais denúncias somem da busca (o dono ainda vê os seus). */
+export const REPORT_LIMIT = 3
+
+/** Denuncia um time (uma vez por pessoa); a contagem do time sobe junto. */
+export async function reportTeam(uid, teamId, reason) {
+  const { db, doc, runTransaction, serverTimestamp } = await firebase()
+  const teamRef = doc(db, 'publicTeams', teamId)
+  const reportRef = doc(db, 'publicTeams', teamId, 'reports', uid)
+  await runTransaction(db, async (tx) => {
+    const team = await tx.get(teamRef)
+    if (!team.exists()) throw new AuthError('Esse time foi excluído pelo dono.')
+    const already = await tx.get(reportRef)
+    if (already.exists()) throw new AuthError('Você já denunciou esse time.')
+    tx.set(reportRef, { reason: String(reason ?? '').slice(0, 200), createdAt: serverTimestamp() })
+    tx.update(teamRef, { reportCount: (team.data().reportCount ?? 0) + 1 })
+  })
+}
+
 /** Times públicos de uma pessoa (pelo nome) ou os mais recentes. */
 export async function searchPublicTeams(name = '') {
   const { db, collection, query, where, orderBy, limit, getDocs } = await firebase()
@@ -349,7 +378,8 @@ export async function searchPublicTeams(name = '') {
     ? query(collection(db, 'publicTeams'), where('ownerKey', '==', key), limit(50))
     : query(collection(db, 'publicTeams'), orderBy('updatedAt', 'desc'), limit(30))
   const snap = await getDocs(q)
-  return snap.docs.map(publicTeam)
+  const uid = services?.auth.currentUser?.uid
+  return snap.docs.map(publicTeam).filter((t) => (t.reportCount ?? 0) < REPORT_LIMIT || t.ownerUid === uid)
 }
 
 /** Nota da comunidade dos times de uma pessoa: {teamId: {rating, count}}. */

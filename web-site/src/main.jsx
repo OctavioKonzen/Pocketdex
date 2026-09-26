@@ -8,6 +8,7 @@ import './index.css'
 import { LazyMotion } from 'framer-motion'
 import App from './App.jsx'
 import { ErrorBoundary } from './lib/staleBuild'
+import './lib/install'
 
 const loadMotion = () => import('./lib/motionFeatures').then((mod) => mod.default)
 
@@ -22,3 +23,10 @@ createRoot(document.getElementById('root')).render(
     </ErrorBoundary>
   </StrictMode>,
 )
+
+// Site instalável (PWA) e abrindo sem internet. Só no site publicado.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {})
+  })
+}

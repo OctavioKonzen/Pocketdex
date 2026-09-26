@@ -5,6 +5,7 @@ import { getLatestRelease, RELEASES_URL } from '../lib/appRelease'
 import { deleteAccount, errorMessage, usesGoogle, useAuth } from '../lib/auth'
 import AccountAvatar from '../components/AccountAvatar'
 import { achievementsOf } from '../lib/achievements'
+import { installSite, useCanInstall } from '../lib/install'
 import { dayKey, weekKey } from '../lib/league'
 import { pixCode, pixEnabled, PIX } from '../lib/pix'
 import { useStore } from '../lib/store'
@@ -68,6 +69,7 @@ export default function SettingsPage() {
         {pixEnabled() && <SupportCard />}
         <Achievements />
         <AndroidAppCard />
+        <InstallSiteCard />
         {user && <DeleteAccountCard />}
         <p className="pt-6 text-center text-sm text-muted">PocketDex · Site feito em JavaScript (React) com dados gerados em Python.</p>
       </div>
@@ -90,6 +92,24 @@ export default function SettingsPage() {
           </Button>
         </div>
       </Modal>
+    </div>
+  )
+}
+
+/** Instalar o site como app (computador, iPhone ou Android sem o APK). */
+function InstallSiteCard() {
+  const canInstall = useCanInstall()
+  if (!canInstall) return null
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-card p-5 shadow">
+      <div className="flex items-center gap-4">
+        <img src={`${import.meta.env.BASE_URL}icons/icon-192.png`} alt="" className="h-12 w-12 shrink-0 rounded-2xl" />
+        <div>
+          <div className="font-bold">Instalar o site</div>
+          <div className="text-sm text-muted">Abre em janela própria, com ícone, e funciona até sem internet.</div>
+        </div>
+      </div>
+      <Button onClick={installSite}>Instalar</Button>
     </div>
   )
 }
@@ -127,6 +147,15 @@ function AndroidAppCard() {
       <p className="mt-3 text-sm text-muted">
         Entre com a mesma conta do site: favoritos, times, treinos e recordes aparecem nos dois. No celular, abra o arquivo baixado e
         permita instalar apps desta fonte. As próximas versões são avisadas e instaladas pelo próprio app.{' '}
+        {release?.url32 && (
+          <>
+            Celular muito antigo (32 bits)?{' '}
+            <a href={release.url32} className="underline hover:text-text">
+              Baixe esta versão
+            </a>
+            .{' '}
+          </>
+        )}
         <a href={RELEASES_URL} className="underline hover:text-text" target="_blank" rel="noreferrer">
           Todas as versões
         </a>

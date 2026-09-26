@@ -16,6 +16,7 @@ import 'package:flutter/material.dart';
 import '../models/generation.dart';
 import '../models/pokemon_listing.dart';
 import '../services/account_sync.dart';
+import '../services/daily_reminder.dart';
 import '../services/league.dart';
 import '../services/pokemon_service.dart';
 import '../services/user_data.dart';
@@ -119,6 +120,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
     if (_daily) {
       _answers = League.dailyAnswers(_day);
       _data.countDaily(_day); // conta já ao começar: uma tentativa por dia
+      DailyReminder.instance.reschedule(); // hoje já jogou: sem lembrete hoje
     }
     final saved = widget.continueGame && !_daily ? _data.quizGame : null;
     _generationId = saved != null ? (saved['generation'] as num? ?? 0).toInt() : (widget.generation?.id ?? 0);
@@ -282,6 +284,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                 textAlign: TextAlign.center,
                 style: TextStyle(color: theme.hintColor),
               ),
+            if (_daily && DailyReminder.supported) const _ReminderOffer(),
             if (newRecord)
               Text(_ranked ? 'Novo recorde no Ranked! Confira sua posição no ranking! 🎉' : 'Novo recorde! 🎉',
                   textAlign: TextAlign.center, style: const TextStyle(color: Colors.greenAccent)),
@@ -583,6 +586,46 @@ class _OptionButton extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// No fim do desafio do dia: oferece o lembrete diário (se ainda não estiver ligado).
+class _ReminderOffer extends StatefulWidget {
+  const _ReminderOffer();
+
+  @override
+  State<_ReminderOffer> createState() => _ReminderOfferState();
+}
+
+class _ReminderOfferState extends State<_ReminderOffer> {
+  bool? _on;
+
+  @override
+  void initState() {
+    super.initState();
+    DailyReminder.instance.enabled.then((on) {
+      if (mounted) setState(() => _on = on);
+    });
+  }
+
+  Future<void> _enable() async {
+    final ok = await DailyReminder.instance.setEnabled(true);
+    if (mounted) setState(() => _on = ok);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_on == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: _on!
+          ? const Text('🔔 Lembrete diário ligado', style: TextStyle(color: Colors.greenAccent))
+          : TextButton.icon(
+              onPressed: _enable,
+              icon: const Icon(Icons.notifications_active_outlined),
+              label: const Text('Me lembrar todo dia às 9h'),
+            ),
     );
   }
 }

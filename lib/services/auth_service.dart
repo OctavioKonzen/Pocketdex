@@ -11,6 +11,8 @@ import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../utils/profanity.dart';
+
 enum AuthStatus { disabled, loading, signedOut, needsName, signedIn }
 
 class AccountUser {
@@ -104,6 +106,7 @@ class AuthService extends ChangeNotifier {
     if (!RegExp(r'^[\p{L}\p{N} _.-]+$', unicode: true).hasMatch(clean)) {
       return 'Use só letras, números, espaço, ponto, - ou _.';
     }
+    if (isOffensive(clean)) return 'Esse nome não é permitido. Escolha outro.';
     return null;
   }
 
