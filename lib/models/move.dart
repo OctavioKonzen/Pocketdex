@@ -21,11 +21,11 @@ class Move {
   });
 
   factory Move.fromApiJson(Map<String, dynamic> json) {
-    String effectStr = "No effect description available.";
+    String effectStr = "Sem descrição.";
     var effectEntries = json['effect_entries'] as List;
     if (effectEntries.isNotEmpty) {
       var englishEntry = effectEntries.firstWhere((e) => e['language']['name'] == 'en', orElse: () => null);
-      if (englishEntry != null && englishEntry['short_effect'] != null) {
+      if (englishEntry != null && (englishEntry['short_effect'] ?? '') != '') {
         effectStr = englishEntry['short_effect'].replaceAll('\$effect_chance', json['effect_chance']?.toString() ?? '');
       }
     }

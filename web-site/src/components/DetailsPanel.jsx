@@ -142,7 +142,7 @@ export default function DetailsPanel({
             <div className="min-w-0 flex-1">
               <div className="text-sm font-bold text-white/80">#{String(species.id).padStart(3, '0')}</div>
               <h2 className="truncate text-3xl font-black text-white">{capitalize(species.name)}</h2>
-              {species.genus && <div className="text-sm text-white/85">{species.genus} Pokémon</div>}
+              {species.genus && <div className="text-sm text-white/85">Pokémon {species.genus}</div>}
             </div>
             <IconButton label={isFavorite ? 'Remover dos favoritos' : 'Favoritar'} onClick={() => toggleFavorite(species.id)} active={isFavorite}>
               <Icon name={isFavorite ? 'star' : 'starOutline'} />

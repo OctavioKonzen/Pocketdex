@@ -363,6 +363,11 @@ def main():
             json.dump(data, f, ensure_ascii=False, separators=(',', ':'))
         print(f'{name}.json: {len(data)} registros, {os.path.getsize(path) // 1024} KB')
 
+    # Descrições em português (tool/translations/pt.json). Textos novos que
+    # ainda não têm tradução ficam em inglês até entrarem no dicionário.
+    import translate_texts
+    translate_texts.cmd_apply()
+
     if len(sys.argv) == 3:
         copy_images(sys.argv[2], out_dir)
 

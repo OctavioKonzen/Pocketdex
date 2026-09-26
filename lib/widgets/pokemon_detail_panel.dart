@@ -92,11 +92,11 @@ class PokemonDetailPanel extends StatelessWidget {
 
   PokemonMove _createPokemonMove(
       Map<String, dynamic> moveJson, String learnMethod, int level) {
-    String effectText = "No effect description available.";
+    String effectText = "Sem descrição.";
     var effectEntries = moveJson['effect_entries'] as List;
     var englishEffect = effectEntries
         .firstWhere((e) => e['language']['name'] == 'en', orElse: () => null);
-    if (englishEffect != null && englishEffect['short_effect'] != null) {
+    if (englishEffect != null && (englishEffect['short_effect'] ?? '') != '') {
       effectText = (englishEffect['short_effect'] as String).replaceAll(
           '\$effect_chance', moveJson['effect_chance']?.toString() ?? '');
     }

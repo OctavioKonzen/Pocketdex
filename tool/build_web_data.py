@@ -21,6 +21,7 @@ Uso:
     python3 tool/build_web_data.py
 """
 
+import re
 import json
 import os
 import shutil
@@ -156,8 +157,8 @@ def main():
         save(f"pokemon/{s['id']}.json", {
             'id': s['id'],
             'name': s['name'],
-            'genus': (s['genus'] or '').replace(' Pokémon', ''),
-            'flavor': s['flavor'] or 'No description available.',
+            'genus': re.sub(r'^Pokémon ', '', (s['genus'] or '').replace(' Pokémon', '')),
+            'flavor': s['flavor'] or 'Sem descrição.',
             'generation': s['generation'],
             'genderRate': s['gender_rate'],
             'hatchCounter': s['hatch_counter'] or 0,
@@ -174,7 +175,7 @@ def main():
         })
 
     def short_effect(entry):
-        text = entry.get('effect') or 'No effect description available.'
+        text = entry.get('effect') or 'Sem descrição.'
         chance = entry.get('effect_chance')
         return text.replace('$effect_chance', str(chance) if chance is not None else '')
 
@@ -198,7 +199,7 @@ def main():
     save('abilities.json', [{
         'id': a['id'],
         'name': a['name'],
-        'effect': a['effect'] or 'No description available for this ability.',
+        'effect': a['effect'] or 'Sem descrição.',
         'flavor': a['flavor'],
         'generation': a['generation'],
         'pokemon': a['pokemon'],
@@ -210,7 +211,7 @@ def main():
         'name': i['name'],
         'sprite': i['sprite'],
         'category': i['category'],
-        'effect': i['effect'] or 'No effect description available.',
+        'effect': i['effect'] or 'Sem descrição.',
         'flavor': i['flavor'],
         'cost': i['cost'],
         'attributes': i['attributes'],

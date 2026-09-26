@@ -276,7 +276,7 @@ class _PokedexInlineDetailsState extends State<PokedexInlineDetails>
                         ),
                         if (details.genus.isNotEmpty)
                           Text(
-                            '${details.genus} Pokémon',
+                            'Pokémon ${details.genus}',
                             style: TextStyle(
                                 color: Colors.white.withAlpha(220),
                                 fontSize: 13),
