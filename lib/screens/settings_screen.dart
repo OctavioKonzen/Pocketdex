@@ -12,6 +12,7 @@ import '../providers/theme_provider.dart';
 import '../services/account_sync.dart';
 import '../services/achievements.dart';
 import '../services/auth_service.dart';
+import '../services/daily_reminder.dart';
 import '../services/league.dart';
 import '../services/pix.dart';
 import '../services/update_service.dart';
@@ -99,6 +100,10 @@ class SettingsScreen extends StatelessWidget {
                       onChanged: (v) => context.read<ThemeProvider>().toggleTheme(v),
                     ),
                   ),
+                  if (DailyReminder.supported) ...[
+                    const SizedBox(height: 12),
+                    _ReminderSwitch(row: row),
+                  ],
                   const SizedBox(height: 12),
                   row(
                     title: 'Dados salvos',
@@ -382,4 +387,45 @@ class _SupportCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Liga/desliga o lembrete diário do desafio (fica só neste aparelho).
+class _ReminderSwitch extends StatefulWidget {
+  const _ReminderSwitch({required this.row});
+
+  final Widget Function({Widget? leading, required String title, required String subtitle, Widget? trailing}) row;
+
+  @override
+  State<_ReminderSwitch> createState() => _ReminderSwitchState();
+}
+
+class _ReminderSwitchState extends State<_ReminderSwitch> {
+  bool _on = false;
+
+  @override
+  void initState() {
+    super.initState();
+    DailyReminder.instance.enabled.then((on) {
+      if (mounted) setState(() => _on = on);
+    });
+  }
+
+  Future<void> _toggle(bool on) async {
+    setState(() => _on = on);
+    final ok = await DailyReminder.instance.setEnabled(on);
+    if (!mounted) return;
+    if (on && !ok) {
+      setState(() => _on = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Permita as notificações do PocketDex nas configurações do celular.')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.row(
+        title: 'Lembrete do desafio do dia',
+        subtitle: 'Uma notificação às 9h nos dias em que você ainda não jogou.',
+        trailing: Switch(value: _on, activeTrackColor: const Color(0xFF0EA5E9), onChanged: _toggle),
+      );
 }
