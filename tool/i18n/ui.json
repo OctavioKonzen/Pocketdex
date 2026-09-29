@@ -1,0 +1,3386 @@
+{
+ "(Level {0})": {
+  "en": "(Level {0})",
+  "fr": "(Niveau {0})",
+  "es": "(Nivel {0})",
+  "pt": "(Nível {0})"
+ },
+ "+ Adicionar": {
+  "en": "+ Add",
+  "fr": "+ Ajouter",
+  "es": "+ Añadir"
+ },
+ "+ Adicionar Pokémon ao treino": {
+  "en": "+ Add Pokémon to training",
+  "fr": "+ Ajouter un Pokémon à l'entraînement",
+  "es": "+ Añadir Pokémon al entrenamiento"
+ },
+ "+ Novo time": {
+  "en": "+ New team",
+  "fr": "+ Nouvelle équipe",
+  "es": "+ Nuevo equipo"
+ },
+ ", depois de {0}": {
+  "en": ", after {0}",
+  "fr": ", après {0}",
+  "es": ", después de {0}"
+ },
+ ", vamos mandar um link de confirmação para esse e-mail.": {
+  "en": ", we'll send a confirmation link to that email.",
+  "fr": ", nous allons envoyer un lien de confirmation à cet e-mail.",
+  "es": ", vamos a enviar un enlace de confirmación a ese correo."
+ },
+ ". Escolha o seu nome no PocketDex.": {
+  "en": ". Choose your name on PocketDex.",
+  "fr": ". Choisissez votre nom sur PocketDex.",
+  "es": ". Elige tu nombre en PocketDex."
+ },
+ "1 camada de Spikes": {
+  "en": "1 layer of Spikes",
+  "fr": "1 couche de Spikes",
+  "es": "1 capa de Spikes"
+ },
+ "2 camadas de Spikes": {
+  "en": "2 layers of Spikes",
+  "fr": "2 couches de Spikes",
+  "es": "2 capas de Spikes"
+ },
+ "3 camadas de Spikes": {
+  "en": "3 layers of Spikes",
+  "fr": "3 couches de Spikes",
+  "es": "3 capas de Spikes"
+ },
+ "A confirmação com Google foi cancelada.": {
+  "en": "The Google confirmation was cancelled.",
+  "fr": "La confirmation avec Google a été annulée.",
+  "es": "La confirmación con Google se canceló."
+ },
+ "A conta ainda existe. Abra o link do e-mail e toque em \"Excluir para sempre\".": {
+  "en": "The account still exists. Open the link in the email and tap \"Delete forever\".",
+  "fr": "Le compte existe encore. Ouvrez le lien de l'e-mail et touchez « Supprimer définitivement ».",
+  "es": "La cuenta todavía existe. Abre el enlace del correo y toca \"Eliminar para siempre\"."
+ },
+ "A janela do Google foi fechada antes de terminar.": {
+  "en": "The Google window was closed before finishing.",
+  "fr": "La fenêtre Google a été fermée avant la fin.",
+  "es": "La ventana de Google se cerró antes de terminar."
+ },
+ "A mesma conta vale no app e no site.": {
+  "en": "The same account works in the app and on the website.",
+  "fr": "Le même compte fonctionne dans l'appli et sur le site.",
+  "es": "La misma cuenta sirve en la app y en el sitio."
+ },
+ "A primeira versão ainda vai ser publicada.": {
+  "en": "The first version hasn't been published yet.",
+  "fr": "La première version n'a pas encore été publiée.",
+  "es": "La primera versión aún no se ha publicado."
+ },
+ "Abre em janela própria, com ícone, e funciona até sem internet.": {
+  "en": "Opens in its own window, with an icon, and even works offline.",
+  "fr": "S'ouvre dans sa propre fenêtre, avec une icône, et fonctionne même hors ligne.",
+  "es": "Se abre en su propia ventana, con icono, y funciona incluso sin internet."
+ },
+ "Abrindo o instalador...": {
+  "en": "Opening the installer...",
+  "fr": "Ouverture de l'installateur...",
+  "es": "Abriendo el instalador..."
+ },
+ "Acerte 100 Pokémon no jogo.": {
+  "en": "Guess 100 Pokémon in the game.",
+  "fr": "Devinez 100 Pokémon dans le jeu.",
+  "es": "Acierta 100 Pokémon en el juego."
+ },
+ "Acerte 1000 Pokémon no jogo.": {
+  "en": "Guess 1000 Pokémon in the game.",
+  "fr": "Devinez 1000 Pokémon dans le jeu.",
+  "es": "Acierta 1000 Pokémon en el juego."
+ },
+ "Acerte os 10 Pokémon de um desafio do dia.": {
+  "en": "Guess all 10 Pokémon in a daily challenge.",
+  "fr": "Devinez les 10 Pokémon d'un défi du jour.",
+  "es": "Acierta los 10 Pokémon de un reto del día."
+ },
+ "Acerte um Pokémon no jogo.": {
+  "en": "Guess one Pokémon in the game.",
+  "fr": "Devinez un Pokémon dans le jeu.",
+  "es": "Acierta un Pokémon en el juego."
+ },
+ "Acerto {0}:": {
+  "en": "Hit {0}:",
+  "fr": "Coup {0} :",
+  "es": "Golpe {0}:"
+ },
+ "Acertos": {
+  "en": "Hits",
+  "fr": "Coups",
+  "es": "Golpes"
+ },
+ "Acertou!": {
+  "en": "Correct!",
+  "fr": "Bravo !",
+  "es": "¡Acertaste!"
+ },
+ "Acertou! +1 ponto": {
+  "en": "Correct! +1 point",
+  "fr": "Bravo ! +1 point",
+  "es": "¡Acertaste! +1 punto"
+ },
+ "Acompanhe o treino dos seus Pokémon": {
+  "en": "Track your Pokémon's training",
+  "fr": "Suivez l'entraînement de vos Pokémon",
+  "es": "Sigue el entrenamiento de tus Pokémon"
+ },
+ "Acompanhe o treino dos seus Pokémon (máx. 252 por atributo e 510 no total).": {
+  "en": "Track your Pokémon's training (max 252 per stat and 510 total).",
+  "fr": "Suivez l'entraînement de vos Pokémon (max. 252 par stat et 510 au total).",
+  "es": "Sigue el entrenamiento de tus Pokémon (máx. 252 por estadística y 510 en total)."
+ },
+ "Adicionar Pokémon": {
+  "en": "Add Pokémon",
+  "fr": "Ajouter un Pokémon",
+  "es": "Añadir Pokémon"
+ },
+ "Adicionar Pokémon Derrotado": {
+  "en": "Add Defeated Pokémon",
+  "fr": "Ajouter un Pokémon vaincu",
+  "es": "Añadir Pokémon derrotado"
+ },
+ "Adicione Pokémon para ver a análise.": {
+  "en": "Add Pokémon to see the analysis.",
+  "fr": "Ajoutez des Pokémon pour voir l'analyse.",
+  "es": "Añade Pokémon para ver el análisis."
+ },
+ "Age depois do alvo": {
+  "en": "Moves after the target",
+  "fr": "Agit après la cible",
+  "es": "Actúa después del objetivo"
+ },
+ "Ainda não confirmado. Abra o link que mandamos para o seu e-mail.": {
+  "en": "Not confirmed yet. Open the link we sent to your email.",
+  "fr": "Pas encore confirmé. Ouvrez le lien que nous avons envoyé à votre e-mail.",
+  "es": "Aún no confirmado. Abre el enlace que enviamos a tu correo."
+ },
+ "Ajuda de Criação": {
+  "en": "Breeding Help",
+  "fr": "Aide à l'élevage",
+  "es": "Ayuda de crianza"
+ },
+ "Ajuda de Criação (Breeding)": {
+  "en": "Breeding Help",
+  "fr": "Aide à l'élevage",
+  "es": "Ayuda de crianza"
+ },
+ "Algo deu errado ({0}). Tente de novo.": {
+  "en": "Something went wrong ({0}). Try again.",
+  "fr": "Une erreur s'est produite ({0}). Réessayez.",
+  "es": "Algo salió mal ({0}). Inténtalo de nuevo."
+ },
+ "Algo deu errado ao abrir esta página.": {
+  "en": "Something went wrong opening this page.",
+  "fr": "Une erreur s'est produite en ouvrant cette page.",
+  "es": "Algo salió mal al abrir esta página."
+ },
+ "Algo deu errado. Tente de novo.": {
+  "en": "Something went wrong. Try again.",
+  "fr": "Une erreur s'est produite. Réessayez.",
+  "es": "Algo salió mal. Inténtalo de nuevo."
+ },
+ "Aliado com Plus/Minus": {
+  "en": "Ally with Plus/Minus",
+  "fr": "Allié avec Plus/Minus",
+  "es": "Aliado con Plus/Minus"
+ },
+ "Aliados já derrotados (Supreme Overlord, Last Respects)": {
+  "en": "Fainted allies (Supreme Overlord, Last Respects)",
+  "fr": "Alliés K.O. (Supreme Overlord, Last Respects)",
+  "es": "Aliados debilitados (Supreme Overlord, Last Respects)"
+ },
+ "Análise do time": {
+  "en": "Team analysis",
+  "fr": "Analyse de l'équipe",
+  "es": "Análisis del equipo"
+ },
+ "Anterior": {
+  "en": "Previous",
+  "fr": "Précédent",
+  "es": "Anterior"
+ },
+ "Apaga para sempre sua conta, seus dados e suas posições nos rankings.": {
+  "en": "Permanently deletes your account, your data and your ranking positions.",
+  "fr": "Supprime définitivement votre compte, vos données et vos positions dans les classements.",
+  "es": "Elimina para siempre tu cuenta, tus datos y tus posiciones en los rankings."
+ },
+ "Apelido": {
+  "en": "Nickname",
+  "fr": "Surnom",
+  "es": "Mote"
+ },
+ "App para Android": {
+  "en": "Android app",
+  "fr": "Appli Android",
+  "es": "App para Android"
+ },
+ "As 16 variações de dano": {
+  "en": "The 16 damage rolls",
+  "fr": "Les 16 jets de dégâts",
+  "es": "Las 16 tiradas de daño"
+ },
+ "As senhas não são iguais.": {
+  "en": "The passwords don't match.",
+  "fr": "Les mots de passe ne correspondent pas.",
+  "es": "Las contraseñas no coinciden."
+ },
+ "As versões novas são avisadas ao abrir o app.": {
+  "en": "New versions are announced when you open the app.",
+  "fr": "Les nouvelles versions sont annoncées à l'ouverture de l'appli.",
+  "es": "Las versiones nuevas se avisan al abrir la app."
+ },
+ "Atacante": {
+  "en": "Attacker",
+  "fr": "Attaquant",
+  "es": "Atacante"
+ },
+ "Ataque": {
+  "en": "Attack",
+  "fr": "Attaque",
+  "es": "Ataque"
+ },
+ "Ative para uma experiência com cores escuras.": {
+  "en": "Turn on for a darker color scheme.",
+  "fr": "Activez pour des couleurs sombres.",
+  "es": "Actívalo para usar colores oscuros."
+ },
+ "Atualizar agora": {
+  "en": "Update now",
+  "fr": "Mettre à jour",
+  "es": "Actualizar ahora"
+ },
+ "Baixando a versão {0} em segundo plano...": {
+  "en": "Downloading version {0} in the background...",
+  "fr": "Téléchargement de la version {0} en arrière-plan...",
+  "es": "Descargando la versión {0} en segundo plano..."
+ },
+ "Baixando... {0}%": {
+  "en": "Downloading... {0}%",
+  "fr": "Téléchargement... {0} %",
+  "es": "Descargando... {0}%"
+ },
+ "Baixar APK": {
+  "en": "Download APK",
+  "fr": "Télécharger l'APK",
+  "es": "Descargar APK"
+ },
+ "Baixar app": {
+  "en": "Download app",
+  "fr": "Télécharger l'appli",
+  "es": "Descargar app"
+ },
+ "Baixar o app para Android": {
+  "en": "Download the Android app",
+  "fr": "Télécharger l'appli Android",
+  "es": "Descargar la app para Android"
+ },
+ "Baixe esta versão": {
+  "en": "Download this version",
+  "fr": "Téléchargez cette version",
+  "es": "Descarga esta versión"
+ },
+ "Base": {
+  "en": "Base",
+  "fr": "Base",
+  "es": "Base"
+ },
+ "Base Stats": {
+  "en": "Base Stats",
+  "fr": "Stats de base",
+  "es": "Estadísticas base",
+  "pt": "Status base"
+ },
+ "Base happiness": {
+  "en": "Base happiness",
+  "fr": "Bonheur de base",
+  "es": "Felicidad base",
+  "pt": "Felicidade base"
+ },
+ "Batalha": {
+  "en": "Battle",
+  "fr": "Combat",
+  "es": "Combate"
+ },
+ "Battery (aliado)": {
+  "en": "Battery (ally)",
+  "fr": "Battery (allié)",
+  "es": "Battery (aliado)"
+ },
+ "Bem-vindo de volta!": {
+  "en": "Welcome back!",
+  "fr": "Bon retour !",
+  "es": "¡Bienvenido de nuevo!"
+ },
+ "Boa defesa: aguenta bem {0} tipos.": {
+  "en": "Good defense: handles {0} types well.",
+  "fr": "Bonne défense : encaisse bien {0} types.",
+  "es": "Buena defensa: aguanta bien {0} tipos."
+ },
+ "Buscar": {
+  "en": "Search",
+  "fr": "Rechercher",
+  "es": "Buscar"
+ },
+ "Buscar Pokémon...": {
+  "en": "Search Pokémon...",
+  "fr": "Rechercher un Pokémon...",
+  "es": "Buscar Pokémon..."
+ },
+ "Cada nome só pode ser usado por uma pessoa.": {
+  "en": "Each name can only be used by one person.",
+  "fr": "Chaque nom ne peut être utilisé que par une personne.",
+  "es": "Cada nombre solo puede usarlo una persona."
+ },
+ "Calculadora de dano": {
+  "en": "Damage calculator",
+  "fr": "Calculateur de dégâts",
+  "es": "Calculadora de daño"
+ },
+ "Campo": {
+  "en": "Field",
+  "fr": "Terrain de combat",
+  "es": "Campo"
+ },
+ "Campo todo": {
+  "en": "Whole field",
+  "fr": "Tout le terrain",
+  "es": "Todo el campo"
+ },
+ "Cancelar": {
+  "en": "Cancel",
+  "fr": "Annuler",
+  "es": "Cancelar"
+ },
+ "Capture rate": {
+  "en": "Catch rate",
+  "fr": "Taux de capture",
+  "es": "Ratio de captura",
+  "pt": "Taxa de captura"
+ },
+ "Carregado (Electromorphosis)": {
+  "en": "Charged (Electromorphosis)",
+  "fr": "Chargé (Electromorphosis)",
+  "es": "Cargado (Electromorphosis)"
+ },
+ "Carregando Pokémon...": {
+  "en": "Loading Pokémon...",
+  "fr": "Chargement des Pokémon...",
+  "es": "Cargando Pokémon..."
+ },
+ "Categoria": {
+  "en": "Category",
+  "fr": "Catégorie",
+  "es": "Categoría"
+ },
+ "Centro de Treinamento": {
+  "en": "Training Center",
+  "fr": "Centre d'entraînement",
+  "es": "Centro de entrenamiento"
+ },
+ "Chave": {
+  "en": "Key",
+  "fr": "Clé",
+  "es": "Clave"
+ },
+ "Chave:": {
+  "en": "Key:",
+  "fr": "Clé :",
+  "es": "Clave:"
+ },
+ "Chave: {0}": {
+  "en": "Key: {0}",
+  "fr": "Clé : {0}",
+  "es": "Clave: {0}"
+ },
+ "Chegue a 400 pontos no Ranked (2 s por Pokémon).": {
+  "en": "Reach 400 points in Ranked (2 s per Pokémon).",
+  "fr": "Atteignez 400 points en Classé (2 s par Pokémon).",
+  "es": "Llega a 400 puntos en Ranked (2 s por Pokémon)."
+ },
+ "Chuva": {
+  "en": "Rain",
+  "fr": "Pluie",
+  "es": "Lluvia"
+ },
+ "Chuva forte (Primordial Sea)": {
+  "en": "Heavy rain (Primordial Sea)",
+  "fr": "Pluie battante (Primordial Sea)",
+  "es": "Lluvia intensa (Primordial Sea)"
+ },
+ "Clima": {
+  "en": "Weather",
+  "fr": "Météo",
+  "es": "Clima"
+ },
+ "Clique para ver detalhes · clique duplo para favoritar": {
+  "en": "Click for details · double-click to favorite",
+  "fr": "Cliquez pour les détails · double-cliquez pour ajouter aux favoris",
+  "es": "Haz clic para ver detalles · doble clic para marcar como favorito"
+ },
+ "Colar": {
+  "en": "Paste",
+  "fr": "Coller",
+  "es": "Pegar"
+ },
+ "Cole aqui o link, o código (PDX1...) ou o texto do time (Pokémon Showdown e outros)": {
+  "en": "Paste the link, the code (PDX1...) or the team text (Pokémon Showdown and others) here",
+  "fr": "Collez ici le lien, le code (PDX1...) ou le texte de l'équipe (Pokémon Showdown et autres)",
+  "es": "Pega aquí el enlace, el código (PDX1...) o el texto del equipo (Pokémon Showdown y otros)"
+ },
+ "Colecionador": {
+  "en": "Collector",
+  "fr": "Collectionneur",
+  "es": "Coleccionista"
+ },
+ "Com a senha atual, ou por um link no e-mail se você entra com Google.": {
+  "en": "With your current password, or by an email link if you sign in with Google.",
+  "fr": "Avec votre mot de passe actuel, ou par un lien par e-mail si vous vous connectez avec Google.",
+  "es": "Con tu contraseña actual, o con un enlace por correo si entras con Google."
+ },
+ "Como quer ser chamado?": {
+  "en": "What should we call you?",
+  "fr": "Comment voulez-vous être appelé ?",
+  "es": "¿Cómo quieres que te llamen?"
+ },
+ "Comparar Pokémon": {
+  "en": "Compare Pokémon",
+  "fr": "Comparer des Pokémon",
+  "es": "Comparar Pokémon"
+ },
+ "Compartilhar": {
+  "en": "Share",
+  "fr": "Partager",
+  "es": "Compartir"
+ },
+ "Compartilhar time": {
+  "en": "Share team",
+  "fr": "Partager l'équipe",
+  "es": "Compartir equipo"
+ },
+ "Competidor": {
+  "en": "Competitor",
+  "fr": "Compétiteur",
+  "es": "Competidor"
+ },
+ "Complete 7 desafios do dia.": {
+  "en": "Complete 7 daily challenges.",
+  "fr": "Terminez 7 défis du jour.",
+  "es": "Completa 7 retos del día."
+ },
+ "Complete um desafio do dia.": {
+  "en": "Complete a daily challenge.",
+  "fr": "Terminez un défi du jour.",
+  "es": "Completa un reto del día."
+ },
+ "Concluir": {
+  "en": "Done",
+  "fr": "Terminer",
+  "es": "Listo"
+ },
+ "Configurações": {
+  "en": "Settings",
+  "fr": "Paramètres",
+  "es": "Ajustes"
+ },
+ "Confirmando…": {
+  "en": "Confirming…",
+  "fr": "Confirmation…",
+  "es": "Confirmando…"
+ },
+ "Confirmar": {
+  "en": "Confirm",
+  "fr": "Confirmer",
+  "es": "Confirmar"
+ },
+ "Confirmar Ação": {
+  "en": "Confirm Action",
+  "fr": "Confirmer l'action",
+  "es": "Confirmar acción"
+ },
+ "Confirmar conta": {
+  "en": "Confirm account",
+  "fr": "Confirmer le compte",
+  "es": "Confirmar cuenta"
+ },
+ "Confirmar nova senha": {
+  "en": "Confirm new password",
+  "fr": "Confirmer le nouveau mot de passe",
+  "es": "Confirmar nueva contraseña"
+ },
+ "Confirmar senha": {
+  "en": "Confirm password",
+  "fr": "Confirmer le mot de passe",
+  "es": "Confirmar contraseña"
+ },
+ "Confirme seu e-mail": {
+  "en": "Confirm your email",
+  "fr": "Confirmez votre e-mail",
+  "es": "Confirma tu correo"
+ },
+ "Congelado": {
+  "en": "Frozen",
+  "fr": "Gelé",
+  "es": "Congelado"
+ },
+ "Conquistas": {
+  "en": "Achievements",
+  "fr": "Succès",
+  "es": "Logros"
+ },
+ "Conta": {
+  "en": "Account",
+  "fr": "Compte",
+  "es": "Cuenta"
+ },
+ "Conta de {0}": {
+  "en": "{0}'s account",
+  "fr": "Compte de {0}",
+  "es": "Cuenta de {0}"
+ },
+ "Contador de EVs": {
+  "en": "EV Counter",
+  "fr": "Compteur d'EV",
+  "es": "Contador de EV"
+ },
+ "Continuar": {
+  "en": "Continue",
+  "fr": "Continuer",
+  "es": "Continuar"
+ },
+ "Copiada!": {
+  "en": "Copied!",
+  "fr": "Copiée !",
+  "es": "¡Copiada!"
+ },
+ "Copiado!": {
+  "en": "Copied!",
+  "fr": "Copié !",
+  "es": "¡Copiado!"
+ },
+ "Copiar": {
+  "en": "Copy",
+  "fr": "Copier",
+  "es": "Copiar"
+ },
+ "Copiar Pix copia e cola": {
+  "en": "Copy Pix code",
+  "fr": "Copier le code Pix",
+  "es": "Copiar código Pix"
+ },
+ "Copiar chave": {
+  "en": "Copy key",
+  "fr": "Copier la clé",
+  "es": "Copiar clave"
+ },
+ "Cor do time": {
+  "en": "Team color",
+  "fr": "Couleur de l'équipe",
+  "es": "Color del equipo"
+ },
+ "Cor {0}": {
+  "en": "Color {0}",
+  "fr": "Couleur {0}",
+  "es": "Color {0}"
+ },
+ "Criar": {
+  "en": "Create",
+  "fr": "Créer",
+  "es": "Crear"
+ },
+ "Criar Novo Time": {
+  "en": "Create New Team",
+  "fr": "Créer une nouvelle équipe",
+  "es": "Crear nuevo equipo"
+ },
+ "Criar conta": {
+  "en": "Sign up",
+  "fr": "Créer un compte",
+  "es": "Crear cuenta"
+ },
+ "Criar ou trocar senha": {
+  "en": "Create or change password",
+  "fr": "Créer ou changer le mot de passe",
+  "es": "Crear o cambiar contraseña"
+ },
+ "Crie sua conta": {
+  "en": "Create your account",
+  "fr": "Créez votre compte",
+  "es": "Crea tu cuenta"
+ },
+ "Código": {
+  "en": "Code",
+  "fr": "Code",
+  "es": "Código"
+ },
+ "Dados de EV não encontrados para {0}": {
+  "en": "EV data not found for {0}",
+  "fr": "Données d'EV introuvables pour {0}",
+  "es": "No se encontraron datos de EV para {0}"
+ },
+ "Dados salvos": {
+  "en": "Saved data",
+  "fr": "Données enregistrées",
+  "es": "Datos guardados"
+ },
+ "Dauntless Shield ao entrar": {
+  "en": "Dauntless Shield on entry",
+  "fr": "Dauntless Shield à l'entrée",
+  "es": "Dauntless Shield al entrar"
+ },
+ "Default": {
+  "en": "Default",
+  "fr": "Normal",
+  "es": "Normal",
+  "pt": "Padrão"
+ },
+ "Defensor": {
+  "en": "Defender",
+  "fr": "Défenseur",
+  "es": "Defensor"
+ },
+ "Defesa forte": {
+  "en": "Strong defense",
+  "fr": "Défense solide",
+  "es": "Defensa fuerte"
+ },
+ "Deletar": {
+  "en": "Delete",
+  "fr": "Supprimer",
+  "es": "Eliminar"
+ },
+ "Deletar Time": {
+  "en": "Delete Team",
+  "fr": "Supprimer l'équipe",
+  "es": "Eliminar equipo"
+ },
+ "Deletar time": {
+  "en": "Delete team",
+  "fr": "Supprimer l'équipe",
+  "es": "Eliminar equipo"
+ },
+ "Denunciar": {
+  "en": "Report",
+  "fr": "Signaler",
+  "es": "Denunciar"
+ },
+ "Denunciar time": {
+  "en": "Report team",
+  "fr": "Signaler l'équipe",
+  "es": "Denunciar equipo"
+ },
+ "Denúncia enviada. Obrigado por ajudar a manter a comunidade legal!": {
+  "en": "Report sent. Thanks for helping keep the community friendly!",
+  "fr": "Signalement envoyé. Merci d'aider à garder la communauté sympa !",
+  "es": "Denuncia enviada. ¡Gracias por ayudar a mantener la comunidad agradable!"
+ },
+ "Depois": {
+  "en": "Later",
+  "fr": "Plus tard",
+  "es": "Después"
+ },
+ "Derrota com 1 golpe, garantido.": {
+  "en": "Guaranteed OHKO.",
+  "fr": "K.O. en 1 coup garanti.",
+  "es": "Debilita de 1 golpe, garantizado."
+ },
+ "Derrota com {0}, garantido{1}.": {
+  "en": "Guaranteed KO in {0}{1}.",
+  "fr": "K.O. garanti en {0}{1}.",
+  "es": "Debilita en {0}, garantizado{1}."
+ },
+ "Desafiante": {
+  "en": "Challenger",
+  "fr": "Challenger",
+  "es": "Retador"
+ },
+ "Desafio de hoje feito — volte amanhã!": {
+  "en": "Today's challenge done — come back tomorrow!",
+  "fr": "Défi du jour terminé — revenez demain !",
+  "es": "Reto de hoy hecho — ¡vuelve mañana!"
+ },
+ "Desafio do dia": {
+  "en": "Daily challenge",
+  "fr": "Défi du jour",
+  "es": "Reto del día"
+ },
+ "Desafio do dia 📅": {
+  "en": "Daily challenge 📅",
+  "fr": "Défi du jour 📅",
+  "es": "Reto del día 📅"
+ },
+ "Desafio do dia:": {
+  "en": "Daily challenge:",
+  "fr": "Défi du jour :",
+  "es": "Reto del día:"
+ },
+ "Desafio do dia: os mesmos 10 Pokémon para todos.": {
+  "en": "Daily challenge: the same 10 Pokémon for everyone.",
+  "fr": "Défi du jour : les mêmes 10 Pokémon pour tout le monde.",
+  "es": "Reto del día: los mismos 10 Pokémon para todos."
+ },
+ "Deseja remover este Pokémon do time?": {
+  "en": "Remove this Pokémon from the team?",
+  "fr": "Retirer ce Pokémon de l'équipe ?",
+  "es": "¿Quitar este Pokémon del equipo?"
+ },
+ "Digite a sua senha.": {
+  "en": "Enter your password.",
+  "fr": "Saisissez votre mot de passe.",
+  "es": "Escribe tu contraseña."
+ },
+ "Digite o e-mail da sua conta para receber o link.": {
+  "en": "Enter your account email to receive the link.",
+  "fr": "Saisissez l'e-mail de votre compte pour recevoir le lien.",
+  "es": "Escribe el correo de tu cuenta para recibir el enlace."
+ },
+ "Digite o nome do golpe": {
+  "en": "Type the move name",
+  "fr": "Tapez le nom de l'attaque",
+  "es": "Escribe el nombre del movimiento"
+ },
+ "Digite o seu e-mail.": {
+  "en": "Enter your email.",
+  "fr": "Saisissez votre e-mail.",
+  "es": "Escribe tu correo."
+ },
+ "Digite sua senha para confirmar": {
+  "en": "Enter your password to confirm",
+  "fr": "Saisissez votre mot de passe pour confirmer",
+  "es": "Escribe tu contraseña para confirmar"
+ },
+ "Dormindo": {
+  "en": "Asleep",
+  "fr": "Endormi",
+  "es": "Dormido"
+ },
+ "Dupla": {
+  "en": "Doubles",
+  "fr": "Double",
+  "es": "Dobles"
+ },
+ "Dê sua nota": {
+  "en": "Rate it",
+  "fr": "Donnez votre note",
+  "es": "Da tu nota"
+ },
+ "Dê sua nota:": {
+  "en": "Rate it:",
+  "fr": "Donnez votre note :",
+  "es": "Da tu nota:"
+ },
+ "Dê um duplo clique em um card da Pokédex (ou use a estrela nos detalhes) para favoritar.": {
+  "en": "Double-click a Pokédex card (or use the star in the details) to favorite it.",
+  "fr": "Double-cliquez sur une carte du Pokédex (ou utilisez l'étoile dans les détails) pour l'ajouter aux favoris.",
+  "es": "Haz doble clic en una tarjeta de la Pokédex (o usa la estrella en los detalles) para marcarla como favorita."
+ },
+ "E-mail": {
+  "en": "Email",
+  "fr": "E-mail",
+  "es": "Correo"
+ },
+ "E-mail confirmado! Agora é só escolher o seu nome.": {
+  "en": "Email confirmed! Now just choose your name.",
+  "fr": "E-mail confirmé ! Il ne reste qu'à choisir votre nom.",
+  "es": "¡Correo confirmado! Ahora solo elige tu nombre."
+ },
+ "E-mail confirmado. Escolha a senha nova.": {
+  "en": "Email confirmed. Choose the new password.",
+  "fr": "E-mail confirmé. Choisissez le nouveau mot de passe.",
+  "es": "Correo confirmado. Elige la nueva contraseña."
+ },
+ "E-mail confirmado. Isso apaga": {
+  "en": "Email confirmed. This permanently deletes",
+  "fr": "E-mail confirmé. Cela supprime",
+  "es": "Correo confirmado. Esto elimina"
+ },
+ "E-mail inválido.": {
+  "en": "Invalid email.",
+  "fr": "E-mail invalide.",
+  "es": "Correo no válido."
+ },
+ "E-mail ou senha incorretos.": {
+  "en": "Wrong email or password.",
+  "fr": "E-mail ou mot de passe incorrect.",
+  "es": "Correo o contraseña incorrectos."
+ },
+ "EVs e IVs": {
+  "en": "EVs and IVs",
+  "fr": "EV et IV",
+  "es": "EV e IV"
+ },
+ "EVs usados: {0} de 510": {
+  "en": "EVs used: {0} of 510",
+  "fr": "EV utilisés : {0} sur 510",
+  "es": "EV usados: {0} de 510"
+ },
+ "Editar time": {
+  "en": "Edit team",
+  "fr": "Modifier l'équipe",
+  "es": "Editar equipo"
+ },
+ "Efeito e categoria de cada item": {
+  "en": "Effect and category of each item",
+  "fr": "Effet et catégorie de chaque objet",
+  "es": "Efecto y categoría de cada objeto"
+ },
+ "Egg Cycle": {
+  "en": "Egg Cycle",
+  "fr": "Cycles d'œuf",
+  "es": "Ciclos de huevo",
+  "pt": "Ciclos do ovo"
+ },
+ "Egg Groups": {
+  "en": "Egg Groups",
+  "fr": "Groupes d'œuf",
+  "es": "Grupos huevo",
+  "pt": "Grupos de ovo"
+ },
+ "Egg cycle": {
+  "en": "Egg cycle",
+  "fr": "Cycles d'œuf",
+  "es": "Ciclos de huevo",
+  "pt": "Ciclos do ovo"
+ },
+ "Egg groups": {
+  "en": "Egg groups",
+  "fr": "Groupes d'œuf",
+  "es": "Grupos huevo",
+  "pt": "Grupos de ovo"
+ },
+ "Em chamas": {
+  "en": "On fire",
+  "fr": "En feu",
+  "es": "En llamas"
+ },
+ "Enciclopédia": {
+  "en": "Encyclopedia",
+  "fr": "Encyclopédie",
+  "es": "Enciclopedia"
+ },
+ "Enciclopédia de Golpes": {
+  "en": "Move Encyclopedia",
+  "fr": "Encyclopédie des attaques",
+  "es": "Enciclopedia de movimientos"
+ },
+ "Enciclopédia de Habilidades": {
+  "en": "Ability Encyclopedia",
+  "fr": "Encyclopédie des talents",
+  "es": "Enciclopedia de habilidades"
+ },
+ "Enciclopédia de Itens": {
+  "en": "Item Encyclopedia",
+  "fr": "Encyclopédie des objets",
+  "es": "Enciclopedia de objetos"
+ },
+ "Encontre parceiros compatíveis": {
+  "en": "Find compatible partners",
+  "fr": "Trouvez des partenaires compatibles",
+  "es": "Encuentra compañeros compatibles"
+ },
+ "Entrar": {
+  "en": "Sign in",
+  "fr": "Se connecter",
+  "es": "Entrar"
+ },
+ "Entrar com Google": {
+  "en": "Sign in with Google",
+  "fr": "Se connecter avec Google",
+  "es": "Entrar con Google"
+ },
+ "Entre na sua conta para denunciar.": {
+  "en": "Sign in to report.",
+  "fr": "Connectez-vous pour signaler.",
+  "es": "Entra en tu cuenta para denunciar."
+ },
+ "Entre na sua conta para salvar tudo e acessar do computador ou do app.": {
+  "en": "Sign in to save everything and access it from your computer or the app.",
+  "fr": "Connectez-vous pour tout enregistrer et y accéder depuis l'ordinateur ou l'appli.",
+  "es": "Entra en tu cuenta para guardarlo todo y acceder desde el ordenador o la app."
+ },
+ "Entre na sua conta para ver os times da comunidade.": {
+  "en": "Sign in to see community teams.",
+  "fr": "Connectez-vous pour voir les équipes de la communauté.",
+  "es": "Entra en tu cuenta para ver los equipos de la comunidad."
+ },
+ "Entre na sua conta para votar.": {
+  "en": "Sign in to vote.",
+  "fr": "Connectez-vous pour voter.",
+  "es": "Entra en tu cuenta para votar."
+ },
+ "Entre para continuar na sua Pokédex.": {
+  "en": "Sign in to continue to your Pokédex.",
+  "fr": "Connectez-vous pour continuer vers votre Pokédex.",
+  "es": "Entra para continuar en tu Pokédex."
+ },
+ "Entrou como": {
+  "en": "Signed in as",
+  "fr": "Connecté en tant que",
+  "es": "Entraste como"
+ },
+ "Envenenado": {
+  "en": "Poisoned",
+  "fr": "Empoisonné",
+  "es": "Envenenado"
+ },
+ "Enviamos um e-mail com o link para criar uma nova senha.": {
+  "en": "We sent an email with a link to create a new password.",
+  "fr": "Nous avons envoyé un e-mail avec un lien pour créer un nouveau mot de passe.",
+  "es": "Enviamos un correo con el enlace para crear una nueva contraseña."
+ },
+ "Enviar link": {
+  "en": "Send link",
+  "fr": "Envoyer le lien",
+  "es": "Enviar enlace"
+ },
+ "Enviar link de confirmação": {
+  "en": "Send confirmation link",
+  "fr": "Envoyer le lien de confirmation",
+  "es": "Enviar enlace de confirmación"
+ },
+ "Erro ao carregar dados locais": {
+  "en": "Error loading local data",
+  "fr": "Erreur de chargement des données locales",
+  "es": "Error al cargar los datos locales"
+ },
+ "Erro ao carregar dados.": {
+  "en": "Error loading data.",
+  "fr": "Erreur de chargement des données.",
+  "es": "Error al cargar los datos."
+ },
+ "Erro ao carregar os Pokémon: {0}": {
+  "en": "Error loading Pokémon: {0}",
+  "fr": "Erreur de chargement des Pokémon : {0}",
+  "es": "Error al cargar los Pokémon: {0}"
+ },
+ "Erro durante a comunicação": {
+  "en": "Communication error",
+  "fr": "Erreur de communication",
+  "es": "Error de comunicación"
+ },
+ "Erro: {0}": {
+  "en": "Error: {0}",
+  "fr": "Erreur : {0}",
+  "es": "Error: {0}"
+ },
+ "Errou!": {
+  "en": "Wrong!",
+  "fr": "Raté !",
+  "es": "¡Fallaste!"
+ },
+ "Errou! -1 vida": {
+  "en": "Wrong! -1 life",
+  "fr": "Raté ! -1 vie",
+  "es": "¡Fallaste! -1 vida"
+ },
+ "Escolha a mesma conta Google que está conectada.": {
+  "en": "Choose the same Google account that is signed in.",
+  "fr": "Choisissez le même compte Google que celui connecté.",
+  "es": "Elige la misma cuenta de Google con la que entraste."
+ },
+ "Escolha dois Pokémon para comparar.": {
+  "en": "Choose two Pokémon to compare.",
+  "fr": "Choisissez deux Pokémon à comparer.",
+  "es": "Elige dos Pokémon para comparar."
+ },
+ "Escolha o outro Pokémon para comparar.": {
+  "en": "Choose the other Pokémon to compare.",
+  "fr": "Choisissez l'autre Pokémon à comparer.",
+  "es": "Elige el otro Pokémon para comparar."
+ },
+ "Escolha sua foto de perfil": {
+  "en": "Choose your profile picture",
+  "fr": "Choisissez votre photo de profil",
+  "es": "Elige tu foto de perfil"
+ },
+ "Escolha um Pokémon": {
+  "en": "Choose a Pokémon",
+  "fr": "Choisissez un Pokémon",
+  "es": "Elige un Pokémon"
+ },
+ "Escolha um Pokémon para ver os parceiros de criação compatíveis.": {
+  "en": "Choose a Pokémon to see compatible breeding partners.",
+  "fr": "Choisissez un Pokémon pour voir les partenaires d'élevage compatibles.",
+  "es": "Elige un Pokémon para ver los compañeros de crianza compatibles."
+ },
+ "Escolher Pokémon": {
+  "en": "Choose Pokémon",
+  "fr": "Choisir un Pokémon",
+  "es": "Elegir Pokémon"
+ },
+ "Escolher atacante": {
+  "en": "Choose attacker",
+  "fr": "Choisir l'attaquant",
+  "es": "Elegir atacante"
+ },
+ "Escolher defensor": {
+  "en": "Choose defender",
+  "fr": "Choisir le défenseur",
+  "es": "Elegir defensor"
+ },
+ "Especial": {
+  "en": "Special",
+  "fr": "Spéciale",
+  "es": "Especial"
+ },
+ "Esqueci a senha": {
+  "en": "Forgot password",
+  "fr": "Mot de passe oublié",
+  "es": "Olvidé la contraseña"
+ },
+ "Esqueci minha senha": {
+  "en": "Forgot my password",
+  "fr": "J'ai oublié mon mot de passe",
+  "es": "Olvidé mi contraseña"
+ },
+ "Essa conta foi desativada.": {
+  "en": "This account has been disabled.",
+  "fr": "Ce compte a été désactivé.",
+  "es": "Esta cuenta fue desactivada."
+ },
+ "Essa conta não tem e-mail.": {
+  "en": "This account has no email.",
+  "fr": "Ce compte n'a pas d'e-mail.",
+  "es": "Esta cuenta no tiene correo."
+ },
+ "Esse link expirou. Peça outro.": {
+  "en": "This link has expired. Request another one.",
+  "fr": "Ce lien a expiré. Demandez-en un autre.",
+  "es": "Este enlace caducó. Pide otro."
+ },
+ "Esse link já foi usado ou expirou. Peça outro.": {
+  "en": "This link was already used or has expired. Request another one.",
+  "fr": "Ce lien a déjà été utilisé ou a expiré. Demandez-en un autre.",
+  "es": "Este enlace ya se usó o caducó. Pide otro."
+ },
+ "Esse nome já está sendo usado. Escolha outro.": {
+  "en": "That name is already taken. Choose another one.",
+  "fr": "Ce nom est déjà pris. Choisissez-en un autre.",
+  "es": "Ese nombre ya está en uso. Elige otro."
+ },
+ "Esse nome não é permitido. Escolha outro.": {
+  "en": "That name isn't allowed. Choose another one.",
+  "fr": "Ce nom n'est pas autorisé. Choisissez-en un autre.",
+  "es": "Ese nombre no está permitido. Elige otro."
+ },
+ "Esse nome não é permitido: o time não aparece na comunidade até você trocar.": {
+  "en": "That name isn't allowed: the team won't appear in the community until you change it.",
+  "fr": "Ce nom n'est pas autorisé : l'équipe n'apparaîtra pas dans la communauté tant que vous ne le changez pas.",
+  "es": "Ese nombre no está permitido: el equipo no aparecerá en la comunidad hasta que lo cambies."
+ },
+ "Esse time foi excluído pelo dono.": {
+  "en": "This team was deleted by its owner.",
+  "fr": "Cette équipe a été supprimée par son propriétaire.",
+  "es": "Este equipo fue eliminado por su dueño."
+ },
+ "Esse tipo de login não está ativado no Firebase.": {
+  "en": "This sign-in method isn't enabled in Firebase.",
+  "fr": "Ce mode de connexion n'est pas activé dans Firebase.",
+  "es": "Este tipo de acceso no está activado en Firebase."
+ },
+ "Este Pokémon não evolui.": {
+  "en": "This Pokémon does not evolve.",
+  "fr": "Ce Pokémon n'évolue pas.",
+  "es": "Este Pokémon no evoluciona."
+ },
+ "Este Pokémon não pode se reproduzir.": {
+  "en": "This Pokémon can't breed.",
+  "fr": "Ce Pokémon ne peut pas se reproduire.",
+  "es": "Este Pokémon no puede criar."
+ },
+ "Este endereço não está autorizado no Firebase (Authentication → Domínios autorizados).": {
+  "en": "This address isn't authorized in Firebase (Authentication → Authorized domains).",
+  "fr": "Cette adresse n'est pas autorisée dans Firebase (Authentication → Domaines autorisés).",
+  "es": "Esta dirección no está autorizada en Firebase (Authentication → Dominios autorizados)."
+ },
+ "Estrategista": {
+  "en": "Strategist",
+  "fr": "Stratège",
+  "es": "Estratega"
+ },
+ "Estágio": {
+  "en": "Stage",
+  "fr": "Niveau",
+  "es": "Nivel"
+ },
+ "Evolution": {
+  "en": "Evolution",
+  "fr": "Évolution",
+  "es": "Evolución",
+  "pt": "Evolução"
+ },
+ "Excluir": {
+  "en": "Delete",
+  "fr": "Supprimer",
+  "es": "Eliminar"
+ },
+ "Excluir conta": {
+  "en": "Delete account",
+  "fr": "Supprimer le compte",
+  "es": "Eliminar cuenta"
+ },
+ "Excluir para sempre": {
+  "en": "Delete forever",
+  "fr": "Supprimer définitivement",
+  "es": "Eliminar para siempre"
+ },
+ "Falha ao carregar a lista de Pokémon.": {
+  "en": "Failed to load the Pokémon list.",
+  "fr": "Échec du chargement de la liste des Pokémon.",
+  "es": "No se pudo cargar la lista de Pokémon."
+ },
+ "Falha ao carregar parceiros de criação: {0}": {
+  "en": "Failed to load breeding partners: {0}",
+  "fr": "Échec du chargement des partenaires d'élevage : {0}",
+  "es": "No se pudieron cargar los compañeros de crianza: {0}"
+ },
+ "Falha ao carregar {0}": {
+  "en": "Failed to load {0}",
+  "fr": "Échec du chargement de {0}",
+  "es": "No se pudo cargar {0}"
+ },
+ "Favoritar": {
+  "en": "Favorite",
+  "fr": "Ajouter aux favoris",
+  "es": "Marcar favorito"
+ },
+ "Favoritos": {
+  "en": "Favorites",
+  "fr": "Favoris",
+  "es": "Favoritos"
+ },
+ "Favoritos, times e treinos apagados.": {
+  "en": "Favorites, teams and training deleted.",
+  "fr": "Favoris, équipes et entraînements supprimés.",
+  "es": "Favoritos, equipos y entrenamientos borrados."
+ },
+ "Favoritos, times e treinos ficam salvos na sua conta (app e site).": {
+  "en": "Favorites, teams and training are saved to your account (app and website).",
+  "fr": "Favoris, équipes et entraînements sont enregistrés sur votre compte (appli et site).",
+  "es": "Favoritos, equipos y entrenamientos se guardan en tu cuenta (app y sitio)."
+ },
+ "Favoritos, times e treinos ficam salvos na sua conta.": {
+  "en": "Favorites, teams and training are saved to your account.",
+  "fr": "Favoris, équipes et entraînements sont enregistrés sur votre compte.",
+  "es": "Favoritos, equipos y entrenamientos se guardan en tu cuenta."
+ },
+ "Favoritos, times e treinos ficam salvos neste aparelho.": {
+  "en": "Favorites, teams and training are saved on this device.",
+  "fr": "Favoris, équipes et entraînements sont enregistrés sur cet appareil.",
+  "es": "Favoritos, equipos y entrenamientos se guardan en este dispositivo."
+ },
+ "Favoritos, times e treinos ficam salvos neste navegador.": {
+  "en": "Favorites, teams and training are saved in this browser.",
+  "fr": "Favoris, équipes et entraînements sont enregistrés dans ce navigateur.",
+  "es": "Favoritos, equipos y entrenamientos se guardan en este navegador."
+ },
+ "Faça 100 pontos no Ranked.": {
+  "en": "Score 100 points in Ranked.",
+  "fr": "Marquez 100 points en Classé.",
+  "es": "Consigue 100 puntos en Ranked."
+ },
+ "Faça uma sequência de 10 acertos.": {
+  "en": "Get a streak of 10 correct answers.",
+  "fr": "Faites une série de 10 bonnes réponses.",
+  "es": "Consigue una racha de 10 aciertos."
+ },
+ "Faça uma sequência de 50 acertos.": {
+  "en": "Get a streak of 50 correct answers.",
+  "fr": "Faites une série de 50 bonnes réponses.",
+  "es": "Consigue una racha de 50 aciertos."
+ },
+ "Fechar": {
+  "en": "Close",
+  "fr": "Fermer",
+  "es": "Cerrar"
+ },
+ "Ferramentas para treinadores dedicados que buscam o Pokémon perfeito.": {
+  "en": "Tools for dedicated trainers looking for the perfect Pokémon.",
+  "fr": "Des outils pour les dresseurs passionnés en quête du Pokémon parfait.",
+  "es": "Herramientas para entrenadores dedicados que buscan el Pokémon perfecto."
+ },
+ "Ferramentas para treinadores que buscam o Pokémon perfeito.": {
+  "en": "Tools for trainers looking for the perfect Pokémon.",
+  "fr": "Des outils pour les dresseurs en quête du Pokémon parfait.",
+  "es": "Herramientas para entrenadores que buscan el Pokémon perfecto."
+ },
+ "Fiel": {
+  "en": "Loyal",
+  "fr": "Fidèle",
+  "es": "Fiel"
+ },
+ "Filtrar por geração": {
+  "en": "Filter by generation",
+  "fr": "Filtrer par génération",
+  "es": "Filtrar por generación"
+ },
+ "Filtrar por jogo": {
+  "en": "Filter by game",
+  "fr": "Filtrer par jeu",
+  "es": "Filtrar por juego"
+ },
+ "Fim de Jogo!": {
+  "en": "Game Over!",
+  "fr": "Fin de la partie !",
+  "es": "¡Fin del juego!"
+ },
+ "Fim do Ranked!": {
+  "en": "Ranked over!",
+  "fr": "Fin du Classé !",
+  "es": "¡Fin del Ranked!"
+ },
+ "Fim do desafio do dia!": {
+  "en": "Daily challenge over!",
+  "fr": "Fin du défi du jour !",
+  "es": "¡Fin del reto del día!"
+ },
+ "Final": {
+  "en": "Final",
+  "fr": "Final",
+  "es": "Final"
+ },
+ "Firebase não configurado: {0}": {
+  "en": "Firebase not configured: {0}",
+  "fr": "Firebase non configuré : {0}",
+  "es": "Firebase no configurado: {0}"
+ },
+ "Flash Fire ativado": {
+  "en": "Flash Fire activated",
+  "fr": "Flash Fire activé",
+  "es": "Flash Fire activado"
+ },
+ "Flower Gift (aliado)": {
+  "en": "Flower Gift (ally)",
+  "fr": "Flower Gift (allié)",
+  "es": "Flower Gift (aliado)"
+ },
+ "Fraquezas": {
+  "en": "Weaknesses",
+  "fr": "Faiblesses",
+  "es": "Debilidades"
+ },
+ "Fraquezas de {0}": {
+  "en": "{0}'s weaknesses",
+  "fr": "Faiblesses de {0}",
+  "es": "Debilidades de {0}"
+ },
+ "Friend Guard (aliado)": {
+  "en": "Friend Guard (ally)",
+  "fr": "Friend Guard (allié)",
+  "es": "Friend Guard (aliado)"
+ },
+ "Físico": {
+  "en": "Physical",
+  "fr": "Physique",
+  "es": "Físico"
+ },
+ "Gender": {
+  "en": "Gender",
+  "fr": "Sexe",
+  "es": "Sexo",
+  "pt": "Gênero"
+ },
+ "Genderless": {
+  "en": "Genderless",
+  "fr": "Asexué",
+  "es": "Sin género",
+  "pt": "Sem gênero"
+ },
+ "Generation": {
+  "en": "Generation",
+  "fr": "Génération",
+  "es": "Generación",
+  "pt": "Geração"
+ },
+ "Generation I": {
+  "en": "Generation I",
+  "fr": "Génération I",
+  "es": "Generación I",
+  "pt": "Geração I"
+ },
+ "Generation II": {
+  "en": "Generation II",
+  "fr": "Génération II",
+  "es": "Generación II",
+  "pt": "Geração II"
+ },
+ "Generation III": {
+  "en": "Generation III",
+  "fr": "Génération III",
+  "es": "Generación III",
+  "pt": "Geração III"
+ },
+ "Generation IV": {
+  "en": "Generation IV",
+  "fr": "Génération IV",
+  "es": "Generación IV",
+  "pt": "Geração IV"
+ },
+ "Generation IX": {
+  "en": "Generation IX",
+  "fr": "Génération IX",
+  "es": "Generación IX",
+  "pt": "Geração IX"
+ },
+ "Generation V": {
+  "en": "Generation V",
+  "fr": "Génération V",
+  "es": "Generación V",
+  "pt": "Geração V"
+ },
+ "Generation VI": {
+  "en": "Generation VI",
+  "fr": "Génération VI",
+  "es": "Generación VI",
+  "pt": "Geração VI"
+ },
+ "Generation VII": {
+  "en": "Generation VII",
+  "fr": "Génération VII",
+  "es": "Generación VII",
+  "pt": "Geração VII"
+ },
+ "Generation VIII": {
+  "en": "Generation VIII",
+  "fr": "Génération VIII",
+  "es": "Generación VIII",
+  "pt": "Geração VIII"
+ },
+ "Geral": {
+  "en": "Overall",
+  "fr": "Général",
+  "es": "General"
+ },
+ "Geração": {
+  "en": "Generation",
+  "fr": "Génération",
+  "es": "Generación"
+ },
+ "Geração {0}{1}": {
+  "en": "Generation {0}{1}",
+  "fr": "Génération {0}{1}",
+  "es": "Generación {0}{1}"
+ },
+ "Golpe crítico": {
+  "en": "Critical hit",
+  "fr": "Coup critique",
+  "es": "Golpe crítico"
+ },
+ "Golpe {0}": {
+  "en": "Move {0}",
+  "fr": "Attaque {0}",
+  "es": "Movimiento {0}"
+ },
+ "Golpes": {
+  "en": "Moves",
+  "fr": "Attaques",
+  "es": "Movimientos"
+ },
+ "Golpes de {0}": {
+  "en": "{0}'s moves",
+  "fr": "Attaques de {0}",
+  "es": "Movimientos de {0}"
+ },
+ "Growth rate": {
+  "en": "Growth rate",
+  "fr": "Courbe d'expérience",
+  "es": "Crecimiento",
+  "pt": "Crescimento"
+ },
+ "Guia de Natures": {
+  "en": "Nature Guide",
+  "fr": "Guide des natures",
+  "es": "Guía de naturalezas"
+ },
+ "Gênero": {
+  "en": "Gender",
+  "fr": "Sexe",
+  "es": "Sexo"
+ },
+ "Habilidade": {
+  "en": "Ability",
+  "fr": "Talent",
+  "es": "Habilidad"
+ },
+ "Habilidades": {
+  "en": "Abilities",
+  "fr": "Talents",
+  "es": "Habilidades"
+ },
+ "Height:": {
+  "en": "Height:",
+  "fr": "Taille :",
+  "es": "Altura:",
+  "pt": "Altura:"
+ },
+ "Hoje": {
+  "en": "Today",
+  "fr": "Aujourd'hui",
+  "es": "Hoy"
+ },
+ "Immune to": {
+  "en": "Immune to",
+  "fr": "Immunisé contre",
+  "es": "Inmune a",
+  "pt": "Imune a"
+ },
+ "Imparável": {
+  "en": "Unstoppable",
+  "fr": "Inarrêtable",
+  "es": "Imparable"
+ },
+ "Importar": {
+  "en": "Import",
+  "fr": "Importer",
+  "es": "Importar"
+ },
+ "Importar time": {
+  "en": "Import team",
+  "fr": "Importer une équipe",
+  "es": "Importar equipo"
+ },
+ "Instalar": {
+  "en": "Install",
+  "fr": "Installer",
+  "es": "Instalar"
+ },
+ "Instalar o site": {
+  "en": "Install the website",
+  "fr": "Installer le site",
+  "es": "Instalar el sitio"
+ },
+ "Intimidate no adversário": {
+  "en": "Intimidate on the opponent",
+  "fr": "Intimidate sur l'adversaire",
+  "es": "Intimidate en el rival"
+ },
+ "Intrepid Sword ao entrar": {
+  "en": "Intrepid Sword on entry",
+  "fr": "Intrepid Sword à l'entrée",
+  "es": "Intrepid Sword al entrar"
+ },
+ "Isso apaga": {
+  "en": "This permanently deletes",
+  "fr": "Cela supprime",
+  "es": "Esto elimina"
+ },
+ "Isso apaga para sempre sua conta, favoritos, times, treinos, recordes, conquistas e suas linhas nos rankings. No app e no site. Não dá para desfazer.": {
+  "en": "This permanently deletes your account, favorites, teams, training, records, achievements and your ranking entries. In the app and on the website. It can't be undone.",
+  "fr": "Cela supprime définitivement votre compte, vos favoris, équipes, entraînements, records, succès et vos lignes dans les classements. Dans l'appli et sur le site. C'est irréversible.",
+  "es": "Esto elimina para siempre tu cuenta, favoritos, equipos, entrenamientos, récords, logros y tus filas en los rankings. En la app y en el sitio. No se puede deshacer."
+ },
+ "Isso apaga seus favoritos, times e treinos. Continuar?": {
+  "en": "This deletes your favorites, teams and training. Continue?",
+  "fr": "Cela supprime vos favoris, équipes et entraînements. Continuer ?",
+  "es": "Esto borra tus favoritos, equipos y entrenamientos. ¿Continuar?"
+ },
+ "Item": {
+  "en": "Item",
+  "fr": "Objet",
+  "es": "Objeto"
+ },
+ "Itens": {
+  "en": "Items",
+  "fr": "Objets",
+  "es": "Objetos"
+ },
+ "Jogar novamente": {
+  "en": "Play again",
+  "fr": "Rejouer",
+  "es": "Jugar de nuevo"
+ },
+ "Jogo": {
+  "en": "Game",
+  "fr": "Jeu",
+  "es": "Juego"
+ },
+ "Jogo normal": {
+  "en": "Normal game",
+  "fr": "Partie normale",
+  "es": "Juego normal"
+ },
+ "Jogos": {
+  "en": "Games",
+  "fr": "Jeux",
+  "es": "Juegos"
+ },
+ "Jogue, monte times e favorite Pokémon para liberar medalhas.": {
+  "en": "Play, build teams and favorite Pokémon to unlock medals.",
+  "fr": "Jouez, créez des équipes et ajoutez des Pokémon aux favoris pour débloquer des médailles.",
+  "es": "Juega, arma equipos y marca Pokémon como favoritos para desbloquear medallas."
+ },
+ "Já confirmei": {
+  "en": "I've confirmed",
+  "fr": "J'ai confirmé",
+  "es": "Ya confirmé"
+ },
+ "Já excluí": {
+  "en": "I've deleted it",
+  "fr": "C'est supprimé",
+  "es": "Ya la eliminé"
+ },
+ "Já existe uma conta com esse e-mail.": {
+  "en": "An account with that email already exists.",
+  "fr": "Un compte avec cet e-mail existe déjà.",
+  "es": "Ya existe una cuenta con ese correo."
+ },
+ "Lado do atacante": {
+  "en": "Attacker's side",
+  "fr": "Côté attaquant",
+  "es": "Lado del atacante"
+ },
+ "Lado do defensor": {
+  "en": "Defender's side",
+  "fr": "Côté défenseur",
+  "es": "Lado del defensor"
+ },
+ "Lembrete diário do desafio do dia.": {
+  "en": "Daily reminder for the daily challenge.",
+  "fr": "Rappel quotidien du défi du jour.",
+  "es": "Recordatorio diario del reto del día."
+ },
+ "Lembrete do desafio do dia": {
+  "en": "Daily challenge reminder",
+  "fr": "Rappel du défi du jour",
+  "es": "Recordatorio del reto del día"
+ },
+ "Lembrete do desafio: {0}": {
+  "en": "Challenge reminder: {0}",
+  "fr": "Rappel du défi : {0}",
+  "es": "Recordatorio del reto: {0}"
+ },
+ "Leva menos de um minuto.": {
+  "en": "It takes less than a minute.",
+  "fr": "Cela prend moins d'une minute.",
+  "es": "Lleva menos de un minuto."
+ },
+ "Limpar": {
+  "en": "Clear",
+  "fr": "Effacer",
+  "es": "Borrar"
+ },
+ "Limpar dados": {
+  "en": "Clear data",
+  "fr": "Effacer les données",
+  "es": "Borrar datos"
+ },
+ "Limpar filtros": {
+  "en": "Clear filters",
+  "fr": "Effacer les filtres",
+  "es": "Borrar filtros"
+ },
+ "Link": {
+  "en": "Link",
+  "fr": "Lien",
+  "es": "Enlace"
+ },
+ "Lvl {0}": {
+  "en": "Lvl {0}",
+  "fr": "N. {0}",
+  "es": "Nv. {0}",
+  "pt": "Nv. {0}"
+ },
+ "Mais opções": {
+  "en": "More options",
+  "fr": "Plus d'options",
+  "es": "Más opciones"
+ },
+ "Mandamos um link para o e-mail da conta. Abra o link (confira também o spam) para confirmar a exclusão.": {
+  "en": "We sent a link to the account email. Open it (check spam too) to confirm the deletion.",
+  "fr": "Nous avons envoyé un lien à l'e-mail du compte. Ouvrez-le (vérifiez aussi les spams) pour confirmer la suppression.",
+  "es": "Enviamos un enlace al correo de la cuenta. Ábrelo (revisa también el spam) para confirmar la eliminación."
+ },
+ "Mandamos um link para o e-mail da conta. Abra o link (confira também o spam) para escolher a senha.": {
+  "en": "We sent a link to the account email. Open it (check spam too) to choose the password.",
+  "fr": "Nous avons envoyé un lien à l'e-mail du compte. Ouvrez-le (vérifiez aussi les spams) pour choisir le mot de passe.",
+  "es": "Enviamos un enlace al correo de la cuenta. Ábrelo (revisa también el spam) para elegir la contraseña."
+ },
+ "Mandamos um link para o e-mail da conta. Abra o link (confira também o spam), confirme a exclusão e depois toque em \"Já excluí\".": {
+  "en": "We sent a link to the account email. Open it (check spam too), confirm the deletion and then tap \"I've deleted it\".",
+  "fr": "Nous avons envoyé un lien à l'e-mail du compte. Ouvrez-le (vérifiez aussi les spams), confirmez la suppression puis touchez « C'est supprimé ».",
+  "es": "Enviamos un enlace al correo de la cuenta. Ábrelo (revisa también el spam), confirma la eliminación y luego toca \"Ya la eliminé\"."
+ },
+ "Mandamos um link para {0}. Abra o link (confira também o spam) e depois toque em \"Já confirmei\".": {
+  "en": "We sent a link to {0}. Open it (check spam too) and then tap \"I've confirmed\".",
+  "fr": "Nous avons envoyé un lien à {0}. Ouvrez-le (vérifiez aussi les spams) puis touchez « J'ai confirmé ».",
+  "es": "Enviamos un enlace a {0}. Ábrelo (revisa también el spam) y luego toca \"Ya confirmé\"."
+ },
+ "Mande o link ou o código para um amigo: no site ou no app, ele abre em Times → Importar.": {
+  "en": "Send the link or code to a friend: on the website or in the app, they open it in Teams → Import.",
+  "fr": "Envoyez le lien ou le code à un ami : sur le site ou dans l'appli, il l'ouvre dans Équipes → Importer.",
+  "es": "Manda el enlace o el código a un amigo: en el sitio o en la app, lo abre en Equipos → Importar."
+ },
+ "Manter conectado": {
+  "en": "Stay signed in",
+  "fr": "Rester connecté",
+  "es": "Mantener sesión"
+ },
+ "Me lembrar todo dia às 9h": {
+  "en": "Remind me every day at 9am",
+  "fr": "Me rappeler chaque jour à 9 h",
+  "es": "Recordarme todos los días a las 9"
+ },
+ "Mesma conta dos jogos oficiais (geração 9), com habilidades, itens, campo e golpes especiais.": {
+  "en": "Same formula as the official games (generation 9), with abilities, items, field and special moves.",
+  "fr": "Même calcul que les jeux officiels (génération 9), avec talents, objets, terrain et attaques spéciales.",
+  "es": "Mismo cálculo que los juegos oficiales (generación 9), con habilidades, objetos, campo y movimientos especiales."
+ },
+ "Mestre Pokémon": {
+  "en": "Pokémon Master",
+  "fr": "Maître Pokémon",
+  "es": "Maestro Pokémon"
+ },
+ "Meus times": {
+  "en": "My teams",
+  "fr": "Mes équipes",
+  "es": "Mis equipos"
+ },
+ "Modo Escuro": {
+  "en": "Dark Mode",
+  "fr": "Mode sombre",
+  "es": "Modo oscuro"
+ },
+ "Montador de Times": {
+  "en": "Team Builder",
+  "fr": "Créateur d'équipes",
+  "es": "Creador de equipos"
+ },
+ "Monte times de até 6 Pokémon e veja as fraquezas e a nota de cada um.": {
+  "en": "Build teams of up to 6 Pokémon and see each one's weaknesses and rating.",
+  "fr": "Créez des équipes de 6 Pokémon maximum et voyez les faiblesses et la note de chacune.",
+  "es": "Arma equipos de hasta 6 Pokémon y mira las debilidades y la nota de cada uno."
+ },
+ "Monte um time com 6 Pokémon.": {
+  "en": "Build a team with 6 Pokémon.",
+  "fr": "Créez une équipe de 6 Pokémon.",
+  "es": "Arma un equipo con 6 Pokémon."
+ },
+ "Mostrar": {
+  "en": "Show",
+  "fr": "Afficher",
+  "es": "Mostrar"
+ },
+ "Mostrar menos": {
+  "en": "Show less",
+  "fr": "Afficher moins",
+  "es": "Mostrar menos"
+ },
+ "Motivo:": {
+  "en": "Reason:",
+  "fr": "Motif :",
+  "es": "Motivo:"
+ },
+ "Moves": {
+  "en": "Moves",
+  "fr": "Attaques",
+  "es": "Movimientos",
+  "pt": "Golpes"
+ },
+ "Mudar para tema claro": {
+  "en": "Switch to light theme",
+  "fr": "Passer au thème clair",
+  "es": "Cambiar a tema claro"
+ },
+ "Mudar para tema escuro": {
+  "en": "Switch to dark theme",
+  "fr": "Passer au thème sombre",
+  "es": "Cambiar a tema oscuro"
+ },
+ "Muitas tentativas. Espere um pouco e tente de novo.": {
+  "en": "Too many attempts. Wait a bit and try again.",
+  "fr": "Trop de tentatives. Patientez un peu et réessayez.",
+  "es": "Demasiados intentos. Espera un poco e inténtalo de nuevo."
+ },
+ "Muito envenenado": {
+  "en": "Badly poisoned",
+  "fr": "Gravement empoisonné",
+  "es": "Gravemente envenenado"
+ },
+ "Nacional": {
+  "en": "National",
+  "fr": "National",
+  "es": "Nacional"
+ },
+ "Nenhum": {
+  "en": "None",
+  "fr": "Aucun",
+  "es": "Ninguno"
+ },
+ "Nenhum Pokémon acerta estes tipos com dano super efetivo (STAB).": {
+  "en": "No Pokémon hits these types super effectively (STAB).",
+  "fr": "Aucun Pokémon ne touche ces types de façon super efficace (STAB).",
+  "es": "Ningún Pokémon golpea estos tipos de forma supereficaz (STAB)."
+ },
+ "Nenhum Pokémon com esses filtros.": {
+  "en": "No Pokémon with these filters.",
+  "fr": "Aucun Pokémon avec ces filtres.",
+  "es": "Ningún Pokémon con estos filtros."
+ },
+ "Nenhum Pokémon em treinamento. Clique em “Adicionar” para começar.": {
+  "en": "No Pokémon in training. Click “Add” to start.",
+  "fr": "Aucun Pokémon à l'entraînement. Cliquez sur « Ajouter » pour commencer.",
+  "es": "Ningún Pokémon en entrenamiento. Haz clic en “Añadir” para empezar."
+ },
+ "Nenhum Pokémon em treinamento. Toque em “Adicionar” para começar.": {
+  "en": "No Pokémon in training. Tap “Add” to start.",
+  "fr": "Aucun Pokémon à l'entraînement. Touchez « Ajouter » pour commencer.",
+  "es": "Ningún Pokémon en entrenamiento. Toca “Añadir” para empezar."
+ },
+ "Nenhum Pokémon encontrado.": {
+  "en": "No Pokémon found.",
+  "fr": "Aucun Pokémon trouvé.",
+  "es": "No se encontró ningún Pokémon."
+ },
+ "Nenhum golpe de dano encontrado.": {
+  "en": "No damaging moves found.",
+  "fr": "Aucune attaque offensive trouvée.",
+  "es": "No se encontraron movimientos de daño."
+ },
+ "Nenhum golpe de dano.": {
+  "en": "No damaging moves.",
+  "fr": "Aucune attaque offensive.",
+  "es": "Ningún movimiento de daño."
+ },
+ "Nenhum golpe para mostrar.": {
+  "en": "No moves to show.",
+  "fr": "Aucune attaque à afficher.",
+  "es": "No hay movimientos para mostrar."
+ },
+ "Nenhum parceiro compatível encontrado.": {
+  "en": "No compatible partners found.",
+  "fr": "Aucun partenaire compatible trouvé.",
+  "es": "No se encontraron compañeros compatibles."
+ },
+ "Nenhum tipo deixa o time em desvantagem. Ótima defesa!": {
+  "en": "No type puts the team at a disadvantage. Great defense!",
+  "fr": "Aucun type ne désavantage l'équipe. Excellente défense !",
+  "es": "Ningún tipo deja al equipo en desventaja. ¡Gran defensa!"
+ },
+ "Nenhum treinador com esse nome ou ele ainda não tem times.": {
+  "en": "No trainer with that name, or they have no teams yet.",
+  "fr": "Aucun dresseur à ce nom, ou il n'a pas encore d'équipes.",
+  "es": "Ningún entrenador con ese nombre, o todavía no tiene equipos."
+ },
+ "Nenhum 🎉": {
+  "en": "None 🎉",
+  "fr": "Aucun 🎉",
+  "es": "Ninguno 🎉"
+ },
+ "Nenhuma": {
+  "en": "None",
+  "fr": "Aucune",
+  "es": "Ninguna"
+ },
+ "Nenhuma 🎉": {
+  "en": "None 🎉",
+  "fr": "Aucune 🎉",
+  "es": "Ninguna 🎉"
+ },
+ "Neutra - Nenhum efeito": {
+  "en": "Neutral - No effect",
+  "fr": "Neutre - Aucun effet",
+  "es": "Neutra - Sin efecto"
+ },
+ "Neve": {
+  "en": "Snow",
+  "fr": "Neige",
+  "es": "Nieve"
+ },
+ "Ninguém fez o desafio de hoje ainda. Seja o primeiro!": {
+  "en": "Nobody has done today's challenge yet. Be the first!",
+  "fr": "Personne n'a encore fait le défi du jour. Soyez le premier !",
+  "es": "Nadie ha hecho el reto de hoy todavía. ¡Sé el primero!"
+ },
+ "Ninguém jogou o Ranked esta semana ainda.": {
+  "en": "Nobody has played Ranked this week yet.",
+  "fr": "Personne n'a encore joué en Classé cette semaine.",
+  "es": "Nadie ha jugado Ranked esta semana todavía."
+ },
+ "Ninguém pontuou no Ranked ainda. Seja o primeiro!": {
+  "en": "Nobody has scored in Ranked yet. Be the first!",
+  "fr": "Personne n'a encore marqué en Classé. Soyez le premier !",
+  "es": "Nadie ha puntuado en Ranked todavía. ¡Sé el primero!"
+ },
+ "Ninguém publicou times ainda.": {
+  "en": "Nobody has published teams yet.",
+  "fr": "Personne n'a encore publié d'équipes.",
+  "es": "Nadie ha publicado equipos todavía."
+ },
+ "Nome do Time": {
+  "en": "Team Name",
+  "fr": "Nom de l'équipe",
+  "es": "Nombre del equipo"
+ },
+ "Nome do time": {
+  "en": "Team name",
+  "fr": "Nom de l'équipe",
+  "es": "Nombre del equipo"
+ },
+ "Nome ofensivo": {
+  "en": "Offensive name",
+  "fr": "Nom offensant",
+  "es": "Nombre ofensivo"
+ },
+ "Nota da comunidade": {
+  "en": "Community rating",
+  "fr": "Note de la communauté",
+  "es": "Nota de la comunidad"
+ },
+ "Nova senha": {
+  "en": "New password",
+  "fr": "Nouveau mot de passe",
+  "es": "Nueva contraseña"
+ },
+ "Nova versão disponível!": {
+  "en": "New version available!",
+  "fr": "Nouvelle version disponible !",
+  "es": "¡Nueva versión disponible!"
+ },
+ "Novo jogo normal": {
+  "en": "New normal game",
+  "fr": "Nouvelle partie normale",
+  "es": "Nuevo juego normal"
+ },
+ "Novo recorde no Ranked! Confira sua posição no ranking! 🎉": {
+  "en": "New Ranked record! Check your ranking position! 🎉",
+  "fr": "Nouveau record en Classé ! Découvrez votre position au classement ! 🎉",
+  "es": "¡Nuevo récord en Ranked! ¡Mira tu posición en el ranking! 🎉"
+ },
+ "Novo recorde! 🎉": {
+  "en": "New record! 🎉",
+  "fr": "Nouveau record ! 🎉",
+  "es": "¡Nuevo récord! 🎉"
+ },
+ "Nv. {0}": {
+  "en": "Lv. {0}",
+  "fr": "N. {0}",
+  "es": "Nv. {0}"
+ },
+ "Não autorizado": {
+  "en": "Not authorized",
+  "fr": "Non autorisé",
+  "es": "No autorizado"
+ },
+ "Não causa dano.": {
+  "en": "Deals no damage.",
+  "fr": "N'inflige aucun dégât.",
+  "es": "No causa daño."
+ },
+ "Não derrota.": {
+  "en": "Not a KO.",
+  "fr": "Pas de K.O.",
+  "es": "No debilita."
+ },
+ "Não deu para abrir a calculadora: {0}": {
+  "en": "Couldn't open the calculator: {0}",
+  "fr": "Impossible d'ouvrir le calculateur : {0}",
+  "es": "No se pudo abrir la calculadora: {0}"
+ },
+ "Não encontrei um time nesse texto.": {
+  "en": "I couldn't find a team in that text.",
+  "fr": "Aucune équipe trouvée dans ce texte.",
+  "es": "No encontré un equipo en ese texto."
+ },
+ "Não foi possível baixar a atualização. Tente de novo.": {
+  "en": "Couldn't download the update. Try again.",
+  "fr": "Impossible de télécharger la mise à jour. Réessayez.",
+  "es": "No se pudo descargar la actualización. Inténtalo de nuevo."
+ },
+ "Não foi possível carregar o ranking agora.": {
+  "en": "Couldn't load the ranking right now.",
+  "fr": "Impossible de charger le classement pour le moment.",
+  "es": "No se pudo cargar el ranking ahora."
+ },
+ "Não foi possível carregar os times agora.": {
+  "en": "Couldn't load the teams right now.",
+  "fr": "Impossible de charger les équipes pour le moment.",
+  "es": "No se pudieron cargar los equipos ahora."
+ },
+ "Não foi possível denunciar agora.": {
+  "en": "Couldn't report right now.",
+  "fr": "Impossible de signaler pour le moment.",
+  "es": "No se pudo denunciar ahora."
+ },
+ "Não foi possível entrar com Google ({0}). Tente de novo.": {
+  "en": "Couldn't sign in with Google ({0}). Try again.",
+  "fr": "Impossible de se connecter avec Google ({0}). Réessayez.",
+  "es": "No se pudo entrar con Google ({0}). Inténtalo de nuevo."
+ },
+ "Não foi possível procurar agora. Confira a internet.": {
+  "en": "Couldn't search right now. Check your internet.",
+  "fr": "Recherche impossible pour le moment. Vérifiez votre connexion.",
+  "es": "No se pudo buscar ahora. Revisa tu internet."
+ },
+ "Não foi possível votar agora.": {
+  "en": "Couldn't vote right now.",
+  "fr": "Impossible de voter pour le moment.",
+  "es": "No se pudo votar ahora."
+ },
+ "Nível": {
+  "en": "Level",
+  "fr": "Niveau",
+  "es": "Nivel"
+ },
+ "O Google não devolveu a conta. Tente de novo.": {
+  "en": "Google didn't return the account. Try again.",
+  "fr": "Google n'a pas renvoyé le compte. Réessayez.",
+  "es": "Google no devolvió la cuenta. Inténtalo de nuevo."
+ },
+ "O PocketDex é gratuito e sem anúncios. Se ele te ajuda, uma contribuição por Pix (de qualquer valor) ajuda a manter o projeto.": {
+  "en": "PocketDex is free and ad-free. If it helps you, a Pix contribution (any amount) helps keep the project going.",
+  "fr": "PocketDex est gratuit et sans publicité. S'il vous aide, une contribution par Pix (de n'importe quel montant) aide à maintenir le projet.",
+  "es": "PocketDex es gratis y sin anuncios. Si te ayuda, una contribución por Pix (de cualquier valor) ayuda a mantener el proyecto."
+ },
+ "O alvo acabou de entrar": {
+  "en": "The target just switched in",
+  "fr": "La cible vient d'entrer",
+  "es": "El objetivo acaba de entrar"
+ },
+ "O desafio de hoje já está valendo. Quem é esse Pokémon?": {
+  "en": "Today's challenge is live. Who's that Pokémon?",
+  "fr": "Le défi du jour est lancé. Quel est ce Pokémon ?",
+  "es": "El reto de hoy ya está en marcha. ¿Quién es ese Pokémon?"
+ },
+ "O login com Google foi cancelado.": {
+  "en": "Google sign-in was cancelled.",
+  "fr": "La connexion avec Google a été annulée.",
+  "es": "El acceso con Google se canceló."
+ },
+ "O navegador bloqueou a janela do Google. Libere pop-ups para este site.": {
+  "en": "The browser blocked the Google window. Allow pop-ups for this site.",
+  "fr": "Le navigateur a bloqué la fenêtre Google. Autorisez les pop-ups pour ce site.",
+  "es": "El navegador bloqueó la ventana de Google. Permite ventanas emergentes para este sitio."
+ },
+ "O nome pode ter no máximo {0} letras.": {
+  "en": "The name can have at most {0} letters.",
+  "fr": "Le nom peut avoir au maximum {0} lettres.",
+  "es": "El nombre puede tener como máximo {0} letras."
+ },
+ "O que cada habilidade faz e quem tem": {
+  "en": "What each ability does and who has it",
+  "fr": "Ce que fait chaque talent et qui l'a",
+  "es": "Qué hace cada habilidad y quién la tiene"
+ },
+ "O time não tem golpes super efetivos (STAB) contra {0} tipos.": {
+  "en": "The team has no super effective moves (STAB) against {0} types.",
+  "fr": "L'équipe n'a pas d'attaques super efficaces (STAB) contre {0} types.",
+  "es": "El equipo no tiene movimientos supereficaces (STAB) contra {0} tipos."
+ },
+ "Obrigado pela nota!": {
+  "en": "Thanks for rating!",
+  "fr": "Merci pour la note !",
+  "es": "¡Gracias por tu nota!"
+ },
+ "Ocultar": {
+  "en": "Hide",
+  "fr": "Masquer",
+  "es": "Ocultar"
+ },
+ "Oculto para os outros por denúncias": {
+  "en": "Hidden from others due to reports",
+  "fr": "Masqué aux autres suite à des signalements",
+  "es": "Oculto para los demás por denuncias"
+ },
+ "Os 16 danos possíveis": {
+  "en": "The 16 possible damage values",
+  "fr": "Les 16 dégâts possibles",
+  "es": "Los 16 daños posibles"
+ },
+ "Os maiores recordes no modo Ranked.": {
+  "en": "The highest records in Ranked mode.",
+  "fr": "Les meilleurs records en mode Classé.",
+  "es": "Los mayores récords en el modo Ranked."
+ },
+ "Os melhores Ranked desta semana (começa na segunda).": {
+  "en": "This week's best Ranked scores (starts on Monday).",
+  "fr": "Les meilleurs scores Classé de la semaine (commence le lundi).",
+  "es": "Los mejores Ranked de esta semana (empieza el lunes)."
+ },
+ "Outro": {
+  "en": "Other",
+  "fr": "Autre",
+  "es": "Otro"
+ },
+ "Outro golpe (qualquer um)": {
+  "en": "Another move (any)",
+  "fr": "Autre attaque (n'importe laquelle)",
+  "es": "Otro movimiento (cualquiera)"
+ },
+ "Ovo": {
+  "en": "Egg",
+  "fr": "Œuf",
+  "es": "Huevo"
+ },
+ "Padrão": {
+  "en": "Default",
+  "fr": "Par défaut",
+  "es": "Predeterminado"
+ },
+ "Para confirmar, digite o e-mail da conta (o mesmo que recebeu o link).": {
+  "en": "To confirm, type the account email (the one that received the link).",
+  "fr": "Pour confirmer, saisissez l'e-mail du compte (celui qui a reçu le lien).",
+  "es": "Para confirmar, escribe el correo de la cuenta (el mismo que recibió el enlace)."
+ },
+ "Para confirmar, vamos mandar um link para o e-mail da sua conta Google.": {
+  "en": "To confirm, we'll send a link to your Google account email.",
+  "fr": "Pour confirmer, nous allons envoyer un lien à l'e-mail de votre compte Google.",
+  "es": "Para confirmar, enviaremos un enlace al correo de tu cuenta de Google."
+ },
+ "Para criar sua conta com": {
+  "en": "To create your account with",
+  "fr": "Pour créer votre compte avec",
+  "es": "Para crear tu cuenta con"
+ },
+ "Paralisado": {
+  "en": "Paralyzed",
+  "fr": "Paralysé",
+  "es": "Paralizado"
+ },
+ "Parceiros Compatíveis": {
+  "en": "Compatible Partners",
+  "fr": "Partenaires compatibles",
+  "es": "Compañeros compatibles"
+ },
+ "Parceiros de Criação": {
+  "en": "Breeding Partners",
+  "fr": "Partenaires d'élevage",
+  "es": "Compañeros de crianza"
+ },
+ "Pelo menos 6 caracteres.": {
+  "en": "At least 6 characters.",
+  "fr": "Au moins 6 caractères.",
+  "es": "Al menos 6 caracteres."
+ },
+ "Perfeito": {
+  "en": "Perfect",
+  "fr": "Parfait",
+  "es": "Perfecto"
+ },
+ "Permita as notificações do PocketDex nas configurações do celular.": {
+  "en": "Allow PocketDex notifications in your phone settings.",
+  "fr": "Autorisez les notifications de PocketDex dans les paramètres du téléphone.",
+  "es": "Permite las notificaciones de PocketDex en los ajustes del móvil."
+ },
+ "Permita que o PocketDex instale apps (o Android vai pedir) e tente de novo.": {
+  "en": "Allow PocketDex to install apps (Android will ask) and try again.",
+  "fr": "Autorisez PocketDex à installer des applis (Android le demandera) et réessayez.",
+  "es": "Permite que PocketDex instale apps (Android lo pedirá) e inténtalo de nuevo."
+ },
+ "Pesquisar pelo nome do treinador": {
+  "en": "Search by trainer name",
+  "fr": "Rechercher par nom de dresseur",
+  "es": "Buscar por nombre del entrenador"
+ },
+ "Pix copia e cola": {
+  "en": "Pix copy-paste code",
+  "fr": "Code Pix à copier-coller",
+  "es": "Código Pix para copiar y pegar"
+ },
+ "PocketDex · Site feito em JavaScript (React) com dados gerados em Python.": {
+  "en": "PocketDex · Website made with JavaScript (React), with data generated in Python.",
+  "fr": "PocketDex · Site fait en JavaScript (React) avec des données générées en Python.",
+  "es": "PocketDex · Sitio hecho en JavaScript (React) con datos generados en Python."
+ },
+ "PocketDex · app em Flutter e site em React, com a mesma conta.\nPokémon e os nomes dos personagens são marcas da Nintendo.": {
+  "en": "PocketDex · Flutter app and React website, with the same account.\nPokémon and character names are trademarks of Nintendo.",
+  "fr": "PocketDex · appli Flutter et site React, avec le même compte.\nPokémon et les noms des personnages sont des marques de Nintendo.",
+  "es": "PocketDex · app en Flutter y sitio en React, con la misma cuenta.\nPokémon y los nombres de los personajes son marcas de Nintendo."
+ },
+ "Poder {0}": {
+  "en": "Power {0}",
+  "fr": "Puissance {0}",
+  "es": "Potencia {0}"
+ },
+ "Pontos": {
+  "en": "Points",
+  "fr": "Points",
+  "es": "Puntos"
+ },
+ "Pokédex Nacional": {
+  "en": "National Pokédex",
+  "fr": "Pokédex National",
+  "es": "Pokédex Nacional"
+ },
+ "Pokémon com esta Habilidade:": {
+  "en": "Pokémon with this Ability:",
+  "fr": "Pokémon avec ce talent :",
+  "es": "Pokémon con esta habilidad:"
+ },
+ "Pokémon não encontrado": {
+  "en": "Pokémon not found",
+  "fr": "Pokémon introuvable",
+  "es": "Pokémon no encontrado"
+ },
+ "Pokémon que aprendem este Golpe:": {
+  "en": "Pokémon that learn this Move:",
+  "fr": "Pokémon qui apprennent cette attaque :",
+  "es": "Pokémon que aprenden este movimiento:"
+ },
+ "Por favor, insira um nome.": {
+  "en": "Please enter a name.",
+  "fr": "Veuillez saisir un nom.",
+  "es": "Por favor, escribe un nombre."
+ },
+ "Por segurança, saia e entre de novo na conta e tente outra vez.": {
+  "en": "For security, sign out and back in, then try again.",
+  "fr": "Par sécurité, déconnectez-vous puis reconnectez-vous et réessayez.",
+  "es": "Por seguridad, sal y vuelve a entrar en la cuenta e inténtalo otra vez."
+ },
+ "Power Spot (aliado)": {
+  "en": "Power Spot (ally)",
+  "fr": "Power Spot (allié)",
+  "es": "Power Spot (aliado)"
+ },
+ "Preferências de usuário limpas!": {
+  "en": "User preferences cleared!",
+  "fr": "Préférences effacées !",
+  "es": "¡Preferencias borradas!"
+ },
+ "Primeiro acerto": {
+  "en": "First correct answer",
+  "fr": "Première bonne réponse",
+  "es": "Primer acierto"
+ },
+ "Primeiro uso do tipo (Stellar)": {
+  "en": "First use of the type (Stellar)",
+  "fr": "Première utilisation du type (Stellar)",
+  "es": "Primer uso del tipo (Stellar)"
+ },
+ "Procurando a última versão...": {
+  "en": "Looking for the latest version...",
+  "fr": "Recherche de la dernière version...",
+  "es": "Buscando la última versión..."
+ },
+ "Procurar": {
+  "en": "Search",
+  "fr": "Rechercher",
+  "es": "Buscar"
+ },
+ "Procurar Pokémon": {
+  "en": "Search Pokémon",
+  "fr": "Rechercher un Pokémon",
+  "es": "Buscar Pokémon"
+ },
+ "Procurar Pokémon por nome ou nú...": {
+  "en": "Search Pokémon by name or nu...",
+  "fr": "Rechercher par nom ou nu...",
+  "es": "Buscar Pokémon por nombre o nú..."
+ },
+ "Procurar Pokémon por nome ou número": {
+  "en": "Search Pokémon by name or number",
+  "fr": "Rechercher un Pokémon par nom ou numéro",
+  "es": "Buscar Pokémon por nombre o número"
+ },
+ "Procurar Pokémon...": {
+  "en": "Search Pokémon...",
+  "fr": "Rechercher un Pokémon...",
+  "es": "Buscar Pokémon..."
+ },
+ "Procurar golpe": {
+  "en": "Search move",
+  "fr": "Rechercher une attaque",
+  "es": "Buscar movimiento"
+ },
+ "Procurar habilidade": {
+  "en": "Search ability",
+  "fr": "Rechercher un talent",
+  "es": "Buscar habilidad"
+ },
+ "Procurar item": {
+  "en": "Search item",
+  "fr": "Rechercher un objet",
+  "es": "Buscar objeto"
+ },
+ "Procurar por nome ou número": {
+  "en": "Search by name or number",
+  "fr": "Rechercher par nom ou numéro",
+  "es": "Buscar por nombre o número"
+ },
+ "Procurar {0}": {
+  "en": "Search {0}",
+  "fr": "Rechercher {0}",
+  "es": "Buscar {0}"
+ },
+ "Protosynthesis ativa": {
+  "en": "Protosynthesis active",
+  "fr": "Protosynthesis active",
+  "es": "Protosynthesis activa"
+ },
+ "Próximo": {
+  "en": "Next",
+  "fr": "Suivant",
+  "es": "Siguiente"
+ },
+ "QR Code do Pix": {
+  "en": "Pix QR Code",
+  "fr": "QR code Pix",
+  "es": "Código QR de Pix"
+ },
+ "Qual Pokémon foi derrotado?": {
+  "en": "Which Pokémon was defeated?",
+  "fr": "Quel Pokémon a été vaincu ?",
+  "es": "¿Qué Pokémon fue derrotado?"
+ },
+ "Qual Pokémon você vai treinar?": {
+  "en": "Which Pokémon will you train?",
+  "fr": "Quel Pokémon allez-vous entraîner ?",
+  "es": "¿Qué Pokémon vas a entrenar?"
+ },
+ "Quanto um golpe tira do outro": {
+  "en": "How much one move takes from another Pokémon",
+  "fr": "Combien une attaque retire à l'autre",
+  "es": "Cuánto quita un movimiento al otro"
+ },
+ "Quantos Pokémon acertam cada tipo com dano super efetivo usando golpes do próprio tipo (STAB).": {
+  "en": "How many Pokémon hit each type super effectively using moves of their own type (STAB).",
+  "fr": "Combien de Pokémon touchent chaque type de façon super efficace avec des attaques de leur propre type (STAB).",
+  "es": "Cuántos Pokémon golpean cada tipo de forma supereficaz con movimientos de su propio tipo (STAB)."
+ },
+ "Quark Drive ativa": {
+  "en": "Quark Drive active",
+  "fr": "Quark Drive active",
+  "es": "Quark Drive activa"
+ },
+ "Queimado": {
+  "en": "Burned",
+  "fr": "Brûlé",
+  "es": "Quemado"
+ },
+ "Quem é esse Pokémon?": {
+  "en": "Who's that Pokémon?",
+  "fr": "Quel est ce Pokémon ?",
+  "es": "¿Quién es ese Pokémon?"
+ },
+ "Ranked:": {
+  "en": "Ranked:",
+  "fr": "Classé :",
+  "es": "Ranked:"
+ },
+ "Ranking": {
+  "en": "Ranking",
+  "fr": "Classement",
+  "es": "Ranking"
+ },
+ "Recarregar": {
+  "en": "Reload",
+  "fr": "Recharger",
+  "es": "Recargar"
+ },
+ "Recorde": {
+  "en": "Record",
+  "fr": "Record",
+  "es": "Récord"
+ },
+ "Recorde Ranked": {
+  "en": "Ranked record",
+  "fr": "Record Classé",
+  "es": "Récord Ranked"
+ },
+ "Recorde normal": {
+  "en": "Normal record",
+  "fr": "Record normal",
+  "es": "Récord normal"
+ },
+ "Recuperar senha": {
+  "en": "Reset password",
+  "fr": "Réinitialiser le mot de passe",
+  "es": "Recuperar contraseña"
+ },
+ "Recurso desconhecido: {0}": {
+  "en": "Unknown resource: {0}",
+  "fr": "Ressource inconnue : {0}",
+  "es": "Recurso desconocido: {0}"
+ },
+ "Reenviar": {
+  "en": "Resend",
+  "fr": "Renvoyer",
+  "es": "Reenviar"
+ },
+ "Reenviar link": {
+  "en": "Resend link",
+  "fr": "Renvoyer le lien",
+  "es": "Reenviar enlace"
+ },
+ "Referência inválida: {0}": {
+  "en": "Invalid reference: {0}",
+  "fr": "Référence invalide : {0}",
+  "es": "Referencia no válida: {0}"
+ },
+ "Relâmpago": {
+  "en": "Lightning",
+  "fr": "Éclair",
+  "es": "Relámpago"
+ },
+ "Remover": {
+  "en": "Remove",
+  "fr": "Retirer",
+  "es": "Quitar"
+ },
+ "Remover Pokémon": {
+  "en": "Remove Pokémon",
+  "fr": "Retirer le Pokémon",
+  "es": "Quitar Pokémon"
+ },
+ "Remover Pokémon?": {
+  "en": "Remove Pokémon?",
+  "fr": "Retirer le Pokémon ?",
+  "es": "¿Quitar Pokémon?"
+ },
+ "Remover do time": {
+  "en": "Remove from team",
+  "fr": "Retirer de l'équipe",
+  "es": "Quitar del equipo"
+ },
+ "Remover dos favoritos": {
+  "en": "Remove from favorites",
+  "fr": "Retirer des favoris",
+  "es": "Quitar de favoritos"
+ },
+ "Requisição inválida": {
+  "en": "Invalid request",
+  "fr": "Requête invalide",
+  "es": "Solicitud no válida"
+ },
+ "Resetar EVs": {
+  "en": "Reset EVs",
+  "fr": "Réinitialiser les EV",
+  "es": "Reiniciar EV"
+ },
+ "Resistant to": {
+  "en": "Resistant to",
+  "fr": "Résistant à",
+  "es": "Resistente a",
+  "pt": "Resiste a"
+ },
+ "Saindo da batalha (Pursuit)": {
+  "en": "Switching out (Pursuit)",
+  "fr": "Quitte le combat (Pursuit)",
+  "es": "Saliendo del combate (Pursuit)"
+ },
+ "Sair": {
+  "en": "Sign out",
+  "fr": "Se déconnecter",
+  "es": "Salir"
+ },
+ "Sair da conta": {
+  "en": "Sign out",
+  "fr": "Se déconnecter",
+  "es": "Cerrar sesión"
+ },
+ "Salvar nos meus times": {
+  "en": "Save to my teams",
+  "fr": "Enregistrer dans mes équipes",
+  "es": "Guardar en mis equipos"
+ },
+ "Salvar senha": {
+  "en": "Save password",
+  "fr": "Enregistrer le mot de passe",
+  "es": "Guardar contraseña"
+ },
+ "Saudável": {
+  "en": "Healthy",
+  "fr": "En bonne santé",
+  "es": "Sano"
+ },
+ "Selecione até dois tipos": {
+  "en": "Select up to two types",
+  "fr": "Sélectionnez jusqu'à deux types",
+  "es": "Selecciona hasta dos tipos"
+ },
+ "Selecione o Pokémon Derrotado": {
+  "en": "Select the Defeated Pokémon",
+  "fr": "Sélectionnez le Pokémon vaincu",
+  "es": "Selecciona el Pokémon derrotado"
+ },
+ "Selecione um Pokémon": {
+  "en": "Select a Pokémon",
+  "fr": "Sélectionnez un Pokémon",
+  "es": "Selecciona un Pokémon"
+ },
+ "Selecione uma Forma": {
+  "en": "Select a Form",
+  "fr": "Sélectionnez une forme",
+  "es": "Selecciona una forma"
+ },
+ "Sem cobertura": {
+  "en": "No coverage",
+  "fr": "Sans couverture",
+  "es": "Sin cobertura"
+ },
+ "Sem conexão com a internet.": {
+  "en": "No internet connection.",
+  "fr": "Pas de connexion internet.",
+  "es": "Sin conexión a internet."
+ },
+ "Sem conta": {
+  "en": "No account",
+  "fr": "Sans compte",
+  "es": "Sin cuenta"
+ },
+ "Sem descrição.": {
+  "en": "No description.",
+  "fr": "Pas de description.",
+  "es": "Sin descripción."
+ },
+ "Sem detalhes": {
+  "en": "No details",
+  "fr": "Pas de détails",
+  "es": "Sin detalles"
+ },
+ "Sem notas ainda": {
+  "en": "No ratings yet",
+  "fr": "Pas encore de notes",
+  "es": "Sin notas todavía"
+ },
+ "Sem permissão no banco de dados. Confira as regras do Firestore.": {
+  "en": "No database permission. Check the Firestore rules.",
+  "fr": "Pas d'autorisation sur la base de données. Vérifiez les règles Firestore.",
+  "es": "Sin permiso en la base de datos. Revisa las reglas de Firestore."
+ },
+ "Semana": {
+  "en": "Week",
+  "fr": "Semaine",
+  "es": "Semana"
+ },
+ "Senha": {
+  "en": "Password",
+  "fr": "Mot de passe",
+  "es": "Contraseña"
+ },
+ "Senha atual": {
+  "en": "Current password",
+  "fr": "Mot de passe actuel",
+  "es": "Contraseña actual"
+ },
+ "Senha salva! Agora você também pode entrar com o e-mail e essa senha.": {
+  "en": "Password saved! Now you can also sign in with your email and this password.",
+  "fr": "Mot de passe enregistré ! Vous pouvez aussi vous connecter avec l'e-mail et ce mot de passe.",
+  "es": "¡Contraseña guardada! Ahora también puedes entrar con el correo y esta contraseña."
+ },
+ "Senha trocada!": {
+  "en": "Password changed!",
+  "fr": "Mot de passe changé !",
+  "es": "¡Contraseña cambiada!"
+ },
+ "Sequência": {
+  "en": "Streak",
+  "fr": "Série",
+  "es": "Racha"
+ },
+ "Seu nome": {
+  "en": "Your name",
+  "fr": "Votre nom",
+  "es": "Tu nombre"
+ },
+ "Seu time": {
+  "en": "Your team",
+  "fr": "Votre équipe",
+  "es": "Tu equipo"
+ },
+ "Simples": {
+  "en": "Singles",
+  "fr": "Simple",
+  "es": "Individual"
+ },
+ "Slow Start ativo": {
+  "en": "Slow Start active",
+  "fr": "Slow Start actif",
+  "es": "Slow Start activo"
+ },
+ "Sol": {
+  "en": "Sun",
+  "fr": "Soleil",
+  "es": "Sol"
+ },
+ "Sol extremo (Desolate Land)": {
+  "en": "Harsh sunlight (Desolate Land)",
+  "fr": "Soleil intense (Desolate Land)",
+  "es": "Sol abrasador (Desolate Land)"
+ },
+ "Spikes no defensor": {
+  "en": "Spikes on the defender",
+  "fr": "Spikes chez le défenseur",
+  "es": "Spikes en el defensor"
+ },
+ "Status": {
+  "en": "Stats",
+  "fr": "Stats",
+  "es": "Estadísticas"
+ },
+ "Status base": {
+  "en": "Base stats",
+  "fr": "Stats de base",
+  "es": "Estadísticas base"
+ },
+ "Status e fraquezas lado a lado": {
+  "en": "Stats and weaknesses side by side",
+  "fr": "Stats et faiblesses côte à côte",
+  "es": "Estadísticas y debilidades lado a lado"
+ },
+ "Steely Spirit (aliado)": {
+  "en": "Steely Spirit (ally)",
+  "fr": "Steely Spirit (allié)",
+  "es": "Steely Spirit (aliado)"
+ },
+ "Sua Pokédex, seus times e seus treinos em qualquer lugar.": {
+  "en": "Your Pokédex, teams and training anywhere.",
+  "fr": "Votre Pokédex, vos équipes et vos entraînements partout.",
+  "es": "Tu Pokédex, tus equipos y tus entrenamientos en cualquier lugar."
+ },
+ "Sua conta foi excluída.": {
+  "en": "Your account was deleted.",
+  "fr": "Votre compte a été supprimé.",
+  "es": "Tu cuenta fue eliminada."
+ },
+ "Sua conta foi excluída. Nenhum dado seu ficou guardado.": {
+  "en": "Your account was deleted. None of your data was kept.",
+  "fr": "Votre compte a été supprimé. Aucune de vos données n'a été conservée.",
+  "es": "Tu cuenta fue eliminada. No se guardó ningún dato tuyo."
+ },
+ "Sua nota": {
+  "en": "Your rating",
+  "fr": "Votre note",
+  "es": "Tu nota"
+ },
+ "Sua nota:": {
+  "en": "Your rating:",
+  "fr": "Votre note :",
+  "es": "Tu nota:"
+ },
+ "Sua pontuação foi:": {
+  "en": "Your score was:",
+  "fr": "Votre score :",
+  "es": "Tu puntuación fue:"
+ },
+ "Tem certeza que deseja deletar o time \"{0}\"?": {
+  "en": "Are you sure you want to delete the team \"{0}\"?",
+  "fr": "Voulez-vous vraiment supprimer l'équipe « {0} » ?",
+  "es": "¿Seguro que quieres eliminar el equipo \"{0}\"?"
+ },
+ "Tema claro": {
+  "en": "Light theme",
+  "fr": "Thème clair",
+  "es": "Tema claro"
+ },
+ "Tema escuro": {
+  "en": "Dark theme",
+  "fr": "Thème sombre",
+  "es": "Tema oscuro"
+ },
+ "Tempestade de areia": {
+  "en": "Sandstorm",
+  "fr": "Tempête de sable",
+  "es": "Tormenta de arena"
+ },
+ "Tempo esgotado!": {
+  "en": "Time's up!",
+  "fr": "Temps écoulé !",
+  "es": "¡Se acabó el tiempo!"
+ },
+ "Tempo esgotado! -1 vida": {
+  "en": "Time's up! -1 life",
+  "fr": "Temps écoulé ! -1 vie",
+  "es": "¡Se acabó el tiempo! -1 vida"
+ },
+ "Tenha 10 Pokémon favoritos.": {
+  "en": "Have 10 favorite Pokémon.",
+  "fr": "Ayez 10 Pokémon favoris.",
+  "es": "Ten 10 Pokémon favoritos."
+ },
+ "Tenha 5 times completos.": {
+  "en": "Have 5 complete teams.",
+  "fr": "Ayez 5 équipes complètes.",
+  "es": "Ten 5 equipos completos."
+ },
+ "Tentar de novo": {
+  "en": "Try again",
+  "fr": "Réessayer",
+  "es": "Intentar de nuevo"
+ },
+ "Tera {0}": {
+  "en": "Tera {0}",
+  "fr": "Téra {0}",
+  "es": "Tera {0}"
+ },
+ "Teraform Zero ativo": {
+  "en": "Teraform Zero active",
+  "fr": "Teraform Zero actif",
+  "es": "Teraform Zero activo"
+ },
+ "Terastalizado": {
+  "en": "Terastallized",
+  "fr": "Téracristallisé",
+  "es": "Teracristalizado"
+ },
+ "Terreno": {
+  "en": "Terrain",
+  "fr": "Champ",
+  "es": "Campo"
+ },
+ "Texto (Pokémon Showdown e outros simuladores)": {
+  "en": "Text (Pokémon Showdown and other simulators)",
+  "fr": "Texte (Pokémon Showdown et autres simulateurs)",
+  "es": "Texto (Pokémon Showdown y otros simuladores)"
+ },
+ "This Pokémon does not evolve.": {
+  "en": "This Pokémon does not evolve.",
+  "fr": "Ce Pokémon n'évolue pas.",
+  "es": "Este Pokémon no evoluciona.",
+  "pt": "Este Pokémon não evolui."
+ },
+ "This form has no moves to display.": {
+  "en": "This form has no moves to display.",
+  "fr": "Cette forme n'a aucune attaque à afficher.",
+  "es": "Esta forma no tiene movimientos para mostrar.",
+  "pt": "Esta forma não tem golpes para mostrar."
+ },
+ "Time": {
+  "en": "Team",
+  "fr": "Équipe",
+  "es": "Equipo"
+ },
+ "Time completo": {
+  "en": "Full team",
+  "fr": "Équipe complète",
+  "es": "Equipo completo"
+ },
+ "Time de {0}": {
+  "en": "{0}'s team",
+  "fr": "Équipe de {0}",
+  "es": "Equipo de {0}"
+ },
+ "Time importado": {
+  "en": "Imported team",
+  "fr": "Équipe importée",
+  "es": "Equipo importado"
+ },
+ "Time não encontrado.": {
+  "en": "Team not found.",
+  "fr": "Équipe introuvable.",
+  "es": "Equipo no encontrado."
+ },
+ "Times": {
+  "en": "Teams",
+  "fr": "Équipes",
+  "es": "Equipos"
+ },
+ "Times da comunidade": {
+  "en": "Community teams",
+  "fr": "Équipes de la communauté",
+  "es": "Equipos de la comunidad"
+ },
+ "Times de “{0}”": {
+  "en": "“{0}”'s teams",
+  "fr": "Équipes de « {0} »",
+  "es": "Equipos de “{0}”"
+ },
+ "Times mais recentes": {
+  "en": "Latest teams",
+  "fr": "Équipes les plus récentes",
+  "es": "Equipos más recientes"
+ },
+ "Tipo Tera": {
+  "en": "Tera Type",
+  "fr": "Type Téra",
+  "es": "Teratipo"
+ },
+ "Tipo, categoria, poder, precisão e quem aprende": {
+  "en": "Type, category, power, accuracy and who learns it",
+  "fr": "Type, catégorie, puissance, précision et qui l'apprend",
+  "es": "Tipo, categoría, potencia, precisión y quién lo aprende"
+ },
+ "Tipos": {
+  "en": "Types",
+  "fr": "Types",
+  "es": "Tipos"
+ },
+ "Tipos em que o time tem mais Pokémon fracos do que Pokémon que aguentam.": {
+  "en": "Types where the team has more weak Pokémon than Pokémon that resist.",
+  "fr": "Types pour lesquels l'équipe a plus de Pokémon faibles que de Pokémon qui résistent.",
+  "es": "Tipos en los que el equipo tiene más Pokémon débiles que Pokémon que aguantan."
+ },
+ "Tipos que pelo menos 2 Pokémon aguentam (resistem ou são imunes).": {
+  "en": "Types that at least 2 Pokémon handle (resist or are immune).",
+  "fr": "Types qu'au moins 2 Pokémon encaissent (résistent ou sont immunisés).",
+  "es": "Tipos que al menos 2 Pokémon aguantan (resisten o son inmunes)."
+ },
+ "Tirar a foto": {
+  "en": "Remove the picture",
+  "fr": "Retirer la photo",
+  "es": "Quitar la foto"
+ },
+ "Todas as gerações": {
+  "en": "All generations",
+  "fr": "Toutes les générations",
+  "es": "Todas las generaciones"
+ },
+ "Todas as versões": {
+  "en": "All versions",
+  "fr": "Toutes les versions",
+  "es": "Todas las versiones"
+ },
+ "Todos os golpes, habilidades e itens do banco de dados.": {
+  "en": "All moves, abilities and items in the database.",
+  "fr": "Toutes les attaques, talents et objets de la base de données.",
+  "es": "Todos los movimientos, habilidades y objetos de la base de datos."
+ },
+ "Todos os jogos": {
+  "en": "All games",
+  "fr": "Tous les jeux",
+  "es": "Todos los juegos"
+ },
+ "Todos os tipos": {
+  "en": "All types",
+  "fr": "Tous les types",
+  "es": "Todos los tipos"
+ },
+ "Toque para escolher golpes": {
+  "en": "Tap to choose moves",
+  "fr": "Touchez pour choisir les attaques",
+  "es": "Toca para elegir movimientos"
+ },
+ "Total": {
+  "en": "Total",
+  "fr": "Total",
+  "es": "Total"
+ },
+ "Total EVs:": {
+  "en": "Total EVs:",
+  "fr": "Total des EV :",
+  "es": "Total de EV:"
+ },
+ "Total EVs: {0} / 510": {
+  "en": "Total EVs: {0} / 510",
+  "fr": "Total des EV : {0} / 510",
+  "es": "Total de EV: {0} / 510"
+ },
+ "Training": {
+  "en": "Training",
+  "fr": "Entraînement",
+  "es": "Entrenamiento",
+  "pt": "Treinamento"
+ },
+ "Treinador": {
+  "en": "Trainer",
+  "fr": "Dresseur",
+  "es": "Entrenador"
+ },
+ "Treino": {
+  "en": "Training",
+  "fr": "Entraînement",
+  "es": "Entrenamiento"
+ },
+ "Treino de {0}": {
+  "en": "{0}'s training",
+  "fr": "Entraînement de {0}",
+  "es": "Entrenamiento de {0}"
+ },
+ "Trocar": {
+  "en": "Change",
+  "fr": "Changer",
+  "es": "Cambiar"
+ },
+ "Trocar Pokémon": {
+  "en": "Change Pokémon",
+  "fr": "Changer de Pokémon",
+  "es": "Cambiar Pokémon"
+ },
+ "Trocar atacante e defensor": {
+  "en": "Swap attacker and defender",
+  "fr": "Inverser attaquant et défenseur",
+  "es": "Intercambiar atacante y defensor"
+ },
+ "Trocar foto de perfil": {
+  "en": "Change profile picture",
+  "fr": "Changer la photo de profil",
+  "es": "Cambiar foto de perfil"
+ },
+ "Trocar senha": {
+  "en": "Change password",
+  "fr": "Changer le mot de passe",
+  "es": "Cambiar contraseña"
+ },
+ "Type defenses": {
+  "en": "Type defenses",
+  "fr": "Défenses par type",
+  "es": "Defensas por tipo",
+  "pt": "Defesa por tipo"
+ },
+ "Uma notificação às 9h nos dias em que você ainda não jogou.": {
+  "en": "A notification at 9am on days you haven't played yet.",
+  "fr": "Une notification à 9 h les jours où vous n'avez pas encore joué.",
+  "es": "Una notificación a las 9 los días en que aún no has jugado."
+ },
+ "Unburden ativo": {
+  "en": "Unburden active",
+  "fr": "Unburden actif",
+  "es": "Unburden activo"
+ },
+ "Unknown": {
+  "en": "Unknown",
+  "fr": "Inconnu",
+  "es": "Desconocido",
+  "pt": "Desconhecido"
+ },
+ "Usar outra conta": {
+  "en": "Use another account",
+  "fr": "Utiliser un autre compte",
+  "es": "Usar otra cuenta"
+ },
+ "Use só letras, números, espaço, ponto, - ou _.": {
+  "en": "Use only letters, numbers, spaces, periods, - or _.",
+  "fr": "Utilisez seulement des lettres, chiffres, espaces, points, - ou _.",
+  "es": "Usa solo letras, números, espacios, puntos, - o _."
+ },
+ "Usos com Metronome": {
+  "en": "Uses with Metronome",
+  "fr": "Utilisations avec Metronome",
+  "es": "Usos con Metronome"
+ },
+ "Veja como cada Nature afeta os status": {
+  "en": "See how each Nature affects stats",
+  "fr": "Voyez comment chaque nature modifie les stats",
+  "es": "Mira cómo cada naturaleza afecta a las estadísticas"
+ },
+ "Veja os times de outros treinadores, dê sua nota e salve os que gostar.": {
+  "en": "See other trainers' teams, rate them and save the ones you like.",
+  "fr": "Voyez les équipes des autres dresseurs, notez-les et enregistrez celles qui vous plaisent.",
+  "es": "Mira los equipos de otros entrenadores, dales tu nota y guarda los que te gusten."
+ },
+ "Ventos fortes (Delta Stream)": {
+  "en": "Strong winds (Delta Stream)",
+  "fr": "Vents violents (Delta Stream)",
+  "es": "Turbulencias (Delta Stream)"
+ },
+ "Ver normal": {
+  "en": "View normal",
+  "fr": "Voir normal",
+  "es": "Ver normal"
+ },
+ "Ver shiny": {
+  "en": "View shiny",
+  "fr": "Voir chromatique",
+  "es": "Ver variocolor"
+ },
+ "Ver todos ({0})": {
+  "en": "See all ({0})",
+  "fr": "Tout voir ({0})",
+  "es": "Ver todos ({0})"
+ },
+ "Ver todos os times deste treinador": {
+  "en": "See all of this trainer's teams",
+  "fr": "Voir toutes les équipes de ce dresseur",
+  "es": "Ver todos los equipos de este entrenador"
+ },
+ "Ver todos os {0} golpes": {
+  "en": "See all {0} moves",
+  "fr": "Voir les {0} attaques",
+  "es": "Ver los {0} movimientos"
+ },
+ "Versão {0} (você tem a {1}).": {
+  "en": "Version {0} (you have {1}).",
+  "fr": "Version {0} (vous avez la {1}).",
+  "es": "Versión {0} (tienes la {1})."
+ },
+ "Versão {0} · {1} MB · {2}": {
+  "en": "Version {0} · {1} MB · {2}",
+  "fr": "Version {0} · {1} Mo · {2}",
+  "es": "Versión {0} · {1} MB · {2}"
+ },
+ "Vezes seguidas": {
+  "en": "Times in a row",
+  "fr": "Fois d'affilée",
+  "es": "Veces seguidas"
+ },
+ "Você": {
+  "en": "You",
+  "fr": "Vous",
+  "es": "Tú"
+ },
+ "Você ainda não criou nenhum time. Clique em “Novo time” para começar!": {
+  "en": "You haven't created any teams yet. Click “New team” to start!",
+  "fr": "Vous n'avez encore créé aucune équipe. Cliquez sur « Nouvelle équipe » pour commencer !",
+  "es": "Todavía no has creado ningún equipo. ¡Haz clic en “Nuevo equipo” para empezar!"
+ },
+ "Você ainda não criou nenhum time. Toque em “Novo time” para começar!": {
+  "en": "You haven't created any teams yet. Tap “New team” to start!",
+  "fr": "Vous n'avez encore créé aucune équipe. Touchez « Nouvelle équipe » pour commencer !",
+  "es": "Todavía no has creado ningún equipo. ¡Toca “Nuevo equipo” para empezar!"
+ },
+ "Você ainda não favoritou nenhum Pokémon.": {
+  "en": "You haven't favorited any Pokémon yet.",
+  "fr": "Vous n'avez encore aucun Pokémon favori.",
+  "es": "Todavía no tienes Pokémon favoritos."
+ },
+ "Você ainda não favoritou nenhum Pokémon.\nToque duas vezes em um card na Pokédex para adicioná-lo!": {
+  "en": "You haven't favorited any Pokémon yet.\nDouble-tap a card in the Pokédex to add it!",
+  "fr": "Vous n'avez encore aucun Pokémon favori.\nTouchez deux fois une carte du Pokédex pour l'ajouter !",
+  "es": "Todavía no tienes Pokémon favoritos.\n¡Toca dos veces una tarjeta en la Pokédex para añadirlo!"
+ },
+ "Você já denunciou esse time.": {
+  "en": "You already reported this team.",
+  "fr": "Vous avez déjà signalé cette équipe.",
+  "es": "Ya denunciaste este equipo."
+ },
+ "Você já tem a versão mais recente ({0}).": {
+  "en": "You already have the latest version ({0}).",
+  "fr": "Vous avez déjà la dernière version ({0}).",
+  "es": "Ya tienes la versión más reciente ({0})."
+ },
+ "Voltar aos times": {
+  "en": "Back to teams",
+  "fr": "Retour aux équipes",
+  "es": "Volver a los equipos"
+ },
+ "Weak to": {
+  "en": "Weak to",
+  "fr": "Faible contre",
+  "es": "Débil contra",
+  "pt": "Fraco contra"
+ },
+ "Weight:": {
+  "en": "Weight:",
+  "fr": "Poids :",
+  "es": "Peso:",
+  "pt": "Peso:"
+ },
+ "Wind Rider ativado": {
+  "en": "Wind Rider activated",
+  "fr": "Wind Rider activé",
+  "es": "Wind Rider activado"
+ },
+ "Zerar EVs": {
+  "en": "Reset EVs",
+  "fr": "Remettre les EV à zéro",
+  "es": "Poner EV a cero"
+ },
+ "balança": {
+  "en": "sways",
+  "fr": "vacille",
+  "es": "se tambalea"
+ },
+ "dano de {0}": {
+  "en": "{0} damage",
+  "fr": "dégâts de {0}",
+  "es": "daño de {0}"
+ },
+ "dano do Black Sludge": {
+  "en": "Black Sludge damage",
+  "fr": "dégâts de Black Sludge",
+  "es": "daño de Black Sludge"
+ },
+ "dano do Liquid Ooze": {
+  "en": "Liquid Ooze damage",
+  "fr": "dégâts de Liquid Ooze",
+  "es": "daño de Liquid Ooze"
+ },
+ "dano do Sticky Barb": {
+  "en": "Sticky Barb damage",
+  "fr": "dégâts de Sticky Barb",
+  "es": "daño de Sticky Barb"
+ },
+ "do ranking e volte amanhã para um desafio novo!": {
+  "en": "of the ranking and come back tomorrow for a new challenge!",
+  "fr": "du classement et revenez demain pour un nouveau défi !",
+  "es": "del ranking y vuelve mañana para un reto nuevo!"
+ },
+ "ninguém aguenta": {
+  "en": "nobody resists",
+  "fr": "personne ne résiste",
+  "es": "nadie aguanta"
+ },
+ "no Ranked! Confira sua posição no ranking": {
+  "en": "in Ranked! Check your ranking position",
+  "fr": "en Classé ! Découvrez votre position au classement",
+  "es": "en Ranked! Mira tu posición en el ranking"
+ },
+ "opções ligadas": {
+  "en": "options on",
+  "fr": "options activées",
+  "es": "opciones activadas"
+ },
+ "os mesmos {0} Pokémon para todo mundo, {1} segundos cada e uma tentativa por dia. Quanto mais rápido acertar, mais pontos.": {
+  "en": "the same {0} Pokémon for everyone, {1} seconds each and one try per day. The faster you guess, the more points.",
+  "fr": "les mêmes {0} Pokémon pour tout le monde, {1} secondes chacun et un essai par jour. Plus vous devinez vite, plus vous marquez.",
+  "es": "los mismos {0} Pokémon para todos, {1} segundos cada uno y un intento por día. Cuanto más rápido aciertes, más puntos."
+ },
+ "recuperação do Black Sludge": {
+  "en": "Black Sludge recovery",
+  "fr": "récupération de Black Sludge",
+  "es": "recuperación de Black Sludge"
+ },
+ "recuperação do Dry Skin": {
+  "en": "Dry Skin recovery",
+  "fr": "récupération de Dry Skin",
+  "es": "recuperación de Dry Skin"
+ },
+ "recuperação do Grassy Terrain": {
+  "en": "Grassy Terrain recovery",
+  "fr": "récupération de Grassy Terrain",
+  "es": "recuperación de Grassy Terrain"
+ },
+ "recuperação do Ice Body": {
+  "en": "Ice Body recovery",
+  "fr": "récupération de Ice Body",
+  "es": "recuperación de Ice Body"
+ },
+ "recuperação do Leech Seed": {
+  "en": "Leech Seed recovery",
+  "fr": "récupération de Leech Seed",
+  "es": "recuperación de Leech Seed"
+ },
+ "recuperação do Leftovers": {
+  "en": "Leftovers recovery",
+  "fr": "récupération de Leftovers",
+  "es": "recuperación de Leftovers"
+ },
+ "recuperação do Rain Dish": {
+  "en": "Rain Dish recovery",
+  "fr": "récupération de Rain Dish",
+  "es": "recuperación de Rain Dish"
+ },
+ "sua conta, favoritos, times, treinos, recordes, conquistas e suas linhas nos rankings. No app e no site. Não dá para desfazer.": {
+  "en": "your account, favorites, teams, training, records, achievements and your ranking entries. In the app and on the website. It can't be undone.",
+  "fr": "votre compte, vos favoris, équipes, entraînements, records, succès et vos lignes dans les classements. Dans l'appli et sur le site. C'est irréversible.",
+  "es": "tu cuenta, favoritos, equipos, entrenamientos, récords, logros y tus filas en los rankings. En la app y en el sitio. No se puede deshacer."
+ },
+ "são fracos": {
+  "en": "are weak",
+  "fr": "sont faibles",
+  "es": "son débiles"
+ },
+ "todas as gerações e só {0} segundos por Pokémon, que caem para 4 s com 100 pontos, 3 s com 200 e 2 s com 400. É ele que conta para o ranking.": {
+  "en": "all generations and only {0} seconds per Pokémon, dropping to 4 s at 100 points, 3 s at 200 and 2 s at 400. This is the one that counts for the ranking.",
+  "fr": "toutes les générations et seulement {0} secondes par Pokémon, qui passent à 4 s à 100 points, 3 s à 200 et 2 s à 400. C'est lui qui compte pour le classement.",
+  "es": "todas las generaciones y solo {0} segundos por Pokémon, que bajan a 4 s con 100 puntos, 3 s con 200 y 2 s con 400. Es el que cuenta para el ranking."
+ },
+ "você": {
+  "en": "you",
+  "fr": "vous",
+  "es": "tú"
+ },
+ "{0} Pokémon · toque duas vezes num card para tirar": {
+  "en": "{0} Pokémon · double-tap a card to remove it",
+  "fr": "{0} Pokémon · touchez deux fois une carte pour la retirer",
+  "es": "{0} Pokémon · toca dos veces una tarjeta para quitarla"
+ },
+ "{0} de {1} acertos. Veja sua posição na aba Hoje do ranking e volte amanhã para um desafio novo!": {
+  "en": "{0} of {1} correct. See your position in the ranking's Today tab and come back tomorrow for a new challenge!",
+  "fr": "{0} sur {1} bonnes réponses. Voyez votre position dans l'onglet Aujourd'hui du classement et revenez demain pour un nouveau défi !",
+  "es": "{0} de {1} aciertos. ¡Mira tu posición en la pestaña Hoy del ranking y vuelve mañana para un reto nuevo!"
+ },
+ "{0}/510 EVs": {
+  "en": "{0}/510 EVs",
+  "fr": "{0}/510 EV",
+  "es": "{0}/510 EV"
+ },
+ "{0}Pode derrotar com {1}.": {
+  "en": "{0}Possible KO in {1}.",
+  "fr": "{0}K.O. possible en {1}.",
+  "es": "{0}Puede debilitar en {1}."
+ },
+ "{0}s por Pokémon": {
+  "en": "{0}s per Pokémon",
+  "fr": "{0} s par Pokémon",
+  "es": "{0}s por Pokémon"
+ },
+ "{0}{1} de chance de derrotar com {2}{3} (derrota com {4}, garantido{5}).": {
+  "en": "{0}{1} chance to KO in {2}{3} (guaranteed KO in {4}{5}).",
+  "fr": "{0}{1} de chances de K.O. en {2}{3} (K.O. garanti en {4}{5}).",
+  "es": "{0}{1} de probabilidad de debilitar en {2}{3} (debilita en {4}, garantizado{5})."
+ },
+ "{0}{1} de chance de derrotar com {2}{3} ({4}{5} de chance{6}).": {
+  "en": "{0}{1} chance to KO in {2}{3} ({4}{5} chance{6}).",
+  "fr": "{0}{1} de chances de K.O. en {2}{3} ({4}{5} de chances{6}).",
+  "es": "{0}{1} de probabilidad de debilitar en {2}{3} ({4}{5} de probabilidad{6})."
+ },
+ "{0}{1} de chance de derrotar com {2}{3}.": {
+  "en": "{0}{1} chance to KO in {2}{3}.",
+  "fr": "{0}{1} de chances de K.O. en {2}{3}.",
+  "es": "{0}{1} de probabilidad de debilitar en {2}{3}."
+ },
+ "· Precisão {0}": {
+  "en": "· Accuracy {0}",
+  "fr": "· Précision {0}",
+  "es": "· Precisión {0}"
+ },
+ "· jogo secundário": {
+  "en": "· spin-off",
+  "fr": "· jeu dérivé",
+  "es": "· juego secundario"
+ },
+ "É assim que os outros vão te ver. Cada nome só pode ser usado por uma pessoa.": {
+  "en": "This is how others will see you. Each name can only be used by one person.",
+  "fr": "C'est ainsi que les autres vous verront. Chaque nom ne peut être utilisé que par une personne.",
+  "es": "Así te verán los demás. Cada nombre solo puede usarlo una persona."
+ },
+ "É o {0}!": {
+  "en": "It's {0}!",
+  "fr": "C'est {0} !",
+  "es": "¡Es {0}!"
+ },
+ "Ótima cobertura: acerta quase todos os tipos com dano super efetivo.": {
+  "en": "Great coverage: hits almost every type super effectively.",
+  "fr": "Excellente couverture : touche presque tous les types de façon super efficace.",
+  "es": "Gran cobertura: golpea casi todos los tipos de forma supereficaz."
+ },
+ "é fraco": {
+  "en": "is weak",
+  "fr": "est faible",
+  "es": "es débil"
+ },
+ "• Adivinhe o Pokémon pela silhueta entre 4 opções.": {
+  "en": "• Guess the Pokémon from its silhouette among 4 options.",
+  "fr": "• Devinez le Pokémon d'après sa silhouette parmi 4 choix.",
+  "es": "• Adivina el Pokémon por su silueta entre 4 opciones."
+ },
+ "• Use o mouse ou as teclas 1 a 4.": {
+  "en": "• Use the mouse or keys 1 to 4.",
+  "fr": "• Utilisez la souris ou les touches 1 à 4.",
+  "es": "• Usa el ratón o las teclas 1 a 4."
+ },
+ "← Voltar para o login": {
+  "en": "← Back to sign in",
+  "fr": "← Retour à la connexion",
+  "es": "← Volver al inicio de sesión"
+ },
+ "▶ Jogo normal": {
+  "en": "▶ Normal game",
+  "fr": "▶ Partie normale",
+  "es": "▶ Juego normal"
+ },
+ "▶ Novo jogo normal": {
+  "en": "▶ New normal game",
+  "fr": "▶ Nouvelle partie normale",
+  "es": "▶ Nuevo juego normal"
+ },
+ "♀ Fêmea": {
+  "en": "♀ Female",
+  "fr": "♀ Femelle",
+  "es": "♀ Hembra"
+ },
+ "♂ Macho": {
+  "en": "♂ Male",
+  "fr": "♂ Mâle",
+  "es": "♂ Macho"
+ },
+ "🏆 Jogar Ranked (todas as gerações)": {
+  "en": "🏆 Play Ranked (all generations)",
+  "fr": "🏆 Jouer en Classé (toutes les générations)",
+  "es": "🏆 Jugar Ranked (todas las generaciones)"
+ },
+ "🏆 Ranked · Todas as gerações": {
+  "en": "🏆 Ranked · All generations",
+  "fr": "🏆 Classé · Toutes les générations",
+  "es": "🏆 Ranked · Todas las generaciones"
+ },
+ "💚 Apoie o PocketDex": {
+  "en": "💚 Support PocketDex",
+  "fr": "💚 Soutenez PocketDex",
+  "es": "💚 Apoya a PocketDex"
+ },
+ "📅 Desafio de hoje feito — volte amanhã!": {
+  "en": "📅 Today's challenge done — come back tomorrow!",
+  "fr": "📅 Défi du jour terminé — revenez demain !",
+  "es": "📅 Reto de hoy hecho — ¡vuelve mañana!"
+ },
+ "📅 Desafio do dia": {
+  "en": "📅 Daily challenge",
+  "fr": "📅 Défi du jour",
+  "es": "📅 Reto del día"
+ },
+ "📅 Desafio do dia · Todas as gerações": {
+  "en": "📅 Daily challenge · All generations",
+  "fr": "📅 Défi du jour · Toutes les générations",
+  "es": "📅 Reto del día · Todas las generaciones"
+ },
+ "🔎 Times da comunidade": {
+  "en": "🔎 Community teams",
+  "fr": "🔎 Équipes de la communauté",
+  "es": "🔎 Equipos de la comunidad"
+ },
+ "🔔 Lembrete diário ligado": {
+  "en": "🔔 Daily reminder on",
+  "fr": "🔔 Rappel quotidien activé",
+  "es": "🔔 Recordatorio diario activado"
+ },
+ "🚩 Denunciar": {
+  "en": "🚩 Report",
+  "fr": "🚩 Signaler",
+  "es": "🚩 Denunciar"
+ },
+ "{0} Pokémon": {
+  "en": "{0} Pokémon",
+  "fr": "{0} Pokémon",
+  "es": "{0} Pokémon"
+ },
+ "{0}/6 Pokémon": {
+  "en": "{0}/6 Pokémon",
+  "fr": "{0}/6 Pokémon",
+  "es": "{0}/6 Pokémon"
+ },
+ "Pokémon {0}": {
+  "en": "{0} Pokémon",
+  "fr": "Pokémon {0}",
+  "es": "Pokémon {0}"
+ },
+ "About": {
+  "en": "About",
+  "fr": "Infos",
+  "es": "Info",
+  "pt": "Sobre"
+ },
+ "Abilities": {
+  "en": "Abilities",
+  "fr": "Talents",
+  "es": "Habilidades",
+  "pt": "Habilidades"
+ },
+ "Breeding": {
+  "en": "Breeding",
+  "fr": "Élevage",
+  "es": "Crianza",
+  "pt": "Criação"
+ },
+ "Hp": {
+  "en": "HP",
+  "fr": "PV",
+  "es": "PS",
+  "pt": "HP"
+ },
+ "Attack": {
+  "en": "Attack",
+  "fr": "Attaque",
+  "es": "Ataque",
+  "pt": "Ataque"
+ },
+ "Defense": {
+  "en": "Defense",
+  "fr": "Défense",
+  "es": "Defensa",
+  "pt": "Defesa"
+ },
+ "Sp. Atk": {
+  "en": "Sp. Atk",
+  "fr": "Atq. Spé.",
+  "es": "At. Esp.",
+  "pt": "At. Esp."
+ },
+ "Sp. Def": {
+  "en": "Sp. Def",
+  "fr": "Déf. Spé.",
+  "es": "Def. Esp.",
+  "pt": "Def. Esp."
+ },
+ "Speed": {
+  "en": "Speed",
+  "fr": "Vitesse",
+  "es": "Velocidad",
+  "pt": "Velocidade"
+ },
+ "Accuracy": {
+  "en": "Accuracy",
+  "fr": "Précision",
+  "es": "Precisión",
+  "pt": "Precisão"
+ },
+ "Power": {
+  "en": "Power",
+  "fr": "Puissance",
+  "es": "Potencia",
+  "pt": "Poder"
+ },
+ "Priority": {
+  "en": "Priority",
+  "fr": "Priorité",
+  "es": "Prioridad",
+  "pt": "Prioridade"
+ },
+ "Physical": {
+  "en": "Physical",
+  "fr": "Physique",
+  "es": "Físico",
+  "pt": "Físico"
+ },
+ "Special": {
+  "en": "Special",
+  "fr": "Spéciale",
+  "es": "Especial",
+  "pt": "Especial"
+ },
+ "golpes": {
+  "en": "moves",
+  "fr": "attaques",
+  "es": "movimientos"
+ },
+ "habilidades": {
+  "en": "abilities",
+  "fr": "talents",
+  "es": "habilidades"
+ },
+ "itens": {
+  "en": "items",
+  "fr": "objets",
+  "es": "objetos"
+ },
+ "Idioma": {
+  "en": "Language",
+  "fr": "Langue",
+  "es": "Idioma"
+ },
+ "Nomes dos Pokémon e descrições também mudam.": {
+  "en": "Pokémon names and descriptions change too.",
+  "fr": "Les noms des Pokémon et les descriptions changent aussi.",
+  "es": "Los nombres de los Pokémon y las descripciones también cambian."
+ },
+ "• Você tem 3 vidas; cada erro custa uma.": {
+  "en": "• You have 3 lives; each mistake costs one.",
+  "fr": "• Vous avez 3 vies ; chaque erreur en coûte une.",
+  "es": "• Tienes 3 vidas; cada error cuesta una."
+ },
+ "Você tem 3 vidas; cada erro custa uma.": {
+  "en": "You have 3 lives; each mistake costs one.",
+  "fr": "Vous avez 3 vies ; chaque erreur en coûte une.",
+  "es": "Tienes 3 vidas; cada error cuesta una."
+ },
+ "Mostrar mais ({0})": {
+  "en": "Show more ({0})",
+  "fr": "Afficher plus ({0})",
+  "es": "Mostrar más ({0})"
+ },
+ "Entre com a mesma conta do site: favoritos, times, treinos e recordes aparecem nos dois. No celular, abra o arquivo baixado e permita instalar apps desta fonte. As próximas versões são avisadas e instaladas pelo próprio app.": {
+  "en": "Sign in with the same account as the website: favorites, teams, training and records show up in both. On your phone, open the downloaded file and allow installing apps from this source. New versions are announced and installed by the app itself.",
+  "fr": "Connectez-vous avec le même compte que sur le site : favoris, équipes, entraînements et records apparaissent des deux côtés. Sur le téléphone, ouvrez le fichier téléchargé et autorisez l'installation d'applis depuis cette source. Les nouvelles versions sont annoncées et installées par l'appli elle-même.",
+  "es": "Entra con la misma cuenta del sitio: favoritos, equipos, entrenamientos y récords aparecen en los dos. En el móvil, abre el archivo descargado y permite instalar apps de esta fuente. Las próximas versiones se avisan y se instalan desde la propia app."
+ },
+ "Celular muito antigo (32 bits)?": {
+  "en": "Very old phone (32-bit)?",
+  "fr": "Téléphone très ancien (32 bits) ?",
+  "es": "¿Móvil muy antiguo (32 bits)?"
+ },
+ "Evolução": {
+  "en": "Evolution",
+  "fr": "Évolution",
+  "es": "Evolución"
+ },
+ "Sobre": {
+  "en": "About",
+  "fr": "Infos",
+  "es": "Info"
+ },
+ "Para criar sua conta com {0}, vamos mandar um link de confirmação para esse e-mail.": {
+  "en": "To create your account with {0}, we'll send a confirmation link to that email.",
+  "fr": "Pour créer votre compte avec {0}, nous allons envoyer un lien de confirmation à cette adresse.",
+  "es": "Para crear tu cuenta con {0}, enviaremos un enlace de confirmación a ese correo."
+ },
+ "Entrou como {0}. Escolha o seu nome no PocketDex.": {
+  "en": "Signed in as {0}. Choose your name on PocketDex.",
+  "fr": "Connecté en tant que {0}. Choisissez votre nom sur PocketDex.",
+  "es": "Has entrado como {0}. Elige tu nombre en PocketDex."
+ }
+}

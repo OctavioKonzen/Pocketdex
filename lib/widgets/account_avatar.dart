@@ -4,7 +4,7 @@
 // no site), ou a foto do Google, ou a inicial do nome. Tocar abre o perfil,
 // onde dá para trocar a foto e sair da conta.
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 
 import '../screens/pokedex_screen.dart';
 import '../screens/settings_screen.dart';
@@ -14,6 +14,7 @@ import '../services/auth_service.dart';
 import '../services/user_data.dart';
 import '../utils/site_ui.dart';
 import 'pokemon_sprite.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 class AccountAvatar extends StatelessWidget {
   final double size;

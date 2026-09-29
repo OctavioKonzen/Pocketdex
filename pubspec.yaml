@@ -1,7 +1,7 @@
 name: pocket_dex
 description: "A new Flutter project."
 publish_to: 'none'
-version: 1.7.0+16
+version: 1.8.0+17
 
 environment:
   sdk: '>=3.2.3 <4.0.0'
@@ -36,6 +36,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
+    - assets/i18n/
     - assets/images/
     - assets/database/
     - assets/database/sprites/pokemon/

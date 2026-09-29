@@ -5,7 +5,9 @@ import { AnimatePresence, m } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
 import { getMoves, getSpecies, getTypes } from '../lib/data'
 import {
+  GAME_BY_KEY,
   STAT_LABELS,
+  generationBackground,
   capitalize,
   heightToFeet,
   prettyName,
@@ -17,6 +19,7 @@ import {
 import { useStore } from '../lib/store'
 import { AbilityModal, CategoryIcon, MoveModal } from './EntryModals'
 import PokeballReveal from './PokeballReveal'
+import { pick } from '../lib/i18n'
 import { Icon, IconButton, Loader, SpinningPokeball, TypeBadge } from './ui'
 import Sprite from './Sprite'
 
@@ -153,7 +156,7 @@ export default function DetailsPanel({
             <div className="min-w-0 flex-1">
               <div className="text-sm font-bold text-white/80">#{String(species.id).padStart(3, '0')}</div>
               <h2 className="truncate text-3xl font-black text-white">{capitalize(species.name)}</h2>
-              {species.genus && <div className="text-sm text-white/85">Pokémon {species.genus}</div>}
+              {pick(species.genus, species.genera) && <div className="text-sm text-white/85">{`Pokémon ${pick(species.genus, species.genera)}`}</div>}
             </div>
             <IconButton label={isFavorite ? 'Remover dos favoritos' : 'Favoritar'} onClick={() => toggleFavorite(species.id)} active={isFavorite}>
               <Icon name={isFavorite ? 'star' : 'starOutline'} />
@@ -239,7 +242,7 @@ function AboutTab({ species, form, onAbility }) {
 
   return (
     <div className="space-y-5">
-      <p className="leading-relaxed">{species.flavor}</p>
+      <p className="leading-relaxed">{pick(species.flavor, species.flavors)}</p>
       <div className="flex justify-around rounded-2xl bg-surface py-3 text-sm">
         <span>
           <span className="text-muted">Height: </span>
@@ -267,6 +270,22 @@ function AboutTab({ species, form, onAbility }) {
           ))}
         </div>
       </section>
+
+      {form.games?.length > 0 && (
+        <section>
+          <h3 className="mb-2 font-bold">Jogos</h3>
+          <div className="flex flex-wrap gap-1.5">
+            {form.games.map((key) => {
+              const game = GAME_BY_KEY[key]
+              return game ? (
+                <span key={key} className="rounded-full px-2.5 py-1 text-xs font-bold text-white" style={{ background: generationBackground(game) }}>
+                  {game.name}
+                </span>
+              ) : null
+            })}
+          </div>
+        </section>
+      )}
 
       <section>
         <h3 className="mb-1 font-bold">Breeding</h3>

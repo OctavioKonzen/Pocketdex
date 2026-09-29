@@ -4,10 +4,11 @@
 // cores do tema, cabeçalho de página, cards arredondados, botões "pílula",
 // etiquetas de tipo, campo de busca e cards de ferramenta.
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 
 import 'pokemon_colors.dart';
 import 'string_extensions.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 /// Cores do site (as mesmas variáveis --bg, --surface, --card, --muted, --line).
 class SiteColors {
@@ -243,7 +244,7 @@ class SiteSearchField extends StatelessWidget {
       onChanged: onChanged,
       style: TextStyle(color: c.text),
       decoration: InputDecoration(
-        hintText: hint,
+        hintText: tr(hint),
         hintStyle: TextStyle(color: c.muted),
         prefixIcon: Icon(Icons.search, color: c.muted),
         filled: true,

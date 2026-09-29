@@ -5,8 +5,9 @@
 // Também usada para escolher um Pokémon (times e treino de EVs).
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 
+import '../models/game.dart';
 import '../models/generation.dart';
 import '../models/pokemon_listing.dart';
 import '../services/account_format.dart';
@@ -16,11 +17,14 @@ import '../utils/pokemon_colors.dart';
 import '../utils/responsive.dart';
 import '../utils/site_ui.dart';
 import '../utils/string_extensions.dart';
+import '../widgets/game_picker.dart';
 import '../widgets/generation_picker.dart';
 import '../widgets/pikachu_loading_indicator.dart';
 import '../widgets/pokedex_web/pokedex_web_grid.dart';
 import '../widgets/pokemon_card.dart';
 import 'pokemon_detail_screen.dart';
+import 'package:pocket_dex/i18n/text.dart';
+import 'package:pocket_dex/i18n/i18n.dart';
 
 class PokedexScreen extends StatefulWidget {
   final bool isForTeamSelection;
@@ -41,6 +45,7 @@ class PokedexScreenState extends State<PokedexScreen> {
   List<PokemonListing> _fullPokemonList = [];
   List<PokemonListing> _displayList = [];
   Generation? _selectedGeneration;
+  Game? _selectedGame;
   List<String> _selectedTypes = [];
   bool _showTypes = false;
   bool _isLoading = true;
@@ -66,7 +71,11 @@ class PokedexScreenState extends State<PokedexScreen> {
     setState(() => _isLoading = true);
     try {
       List<PokemonListing> list;
-      if (_selectedTypes.isNotEmpty) {
+      if (_selectedGame != null) {
+        // Com jogo, entram também as formas que aparecem nele (Alola, Mega...).
+        list = await _pokemonService.fetchPokemonInGame(_selectedGame!.key,
+            generation: _selectedGeneration?.id, types: _selectedTypes);
+      } else if (_selectedTypes.isNotEmpty) {
         // Com tipo, entram também as formas (Alola, Mega...), como no site.
         list = await _pokemonService.fetchPokemonByTypes(_selectedTypes);
         final gen = _selectedGeneration;
@@ -97,7 +106,7 @@ class PokedexScreenState extends State<PokedexScreen> {
     setState(() {
       _displayList = query.isEmpty
           ? _fullPokemonList
-          : _fullPokemonList.where((p) => p.name.toLowerCase().contains(query) || p.id == query).toList();
+          : _fullPokemonList.where((p) => I18n.nameMatches(p.name, query) || p.id == query).toList();
     });
   }
 
@@ -116,6 +125,7 @@ class PokedexScreenState extends State<PokedexScreen> {
   void _clearFilters() {
     setState(() {
       _selectedGeneration = null;
+      _selectedGame = null;
       _selectedTypes = [];
     });
     _loadPokemon();
@@ -133,7 +143,7 @@ class PokedexScreenState extends State<PokedexScreen> {
   }
 
   Widget _header(SiteColors c) {
-    final filters = _selectedGeneration != null || _selectedTypes.isNotEmpty;
+    final filters = _selectedGeneration != null || _selectedGame != null || _selectedTypes.isNotEmpty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -155,6 +165,14 @@ class PokedexScreenState extends State<PokedexScreen> {
                 value: _selectedGeneration,
                 onChanged: (g) {
                   setState(() => _selectedGeneration = g);
+                  _loadPokemon();
+                },
+              ),
+              const SizedBox(width: 8),
+              GamePicker(
+                value: _selectedGame,
+                onChanged: (g) {
+                  setState(() => _selectedGame = g);
                   _loadPokemon();
                 },
               ),

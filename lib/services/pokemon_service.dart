@@ -3,11 +3,14 @@ import '../models/pokemon_listing.dart';
 import '../models/pokemon_details.dart';
 import '../models/generation.dart';
 import 'local_database.dart';
+import '../i18n/i18n.dart';
 
 class PokemonService {
   final LocalDatabase _db = LocalDatabase.instance;
 
   static final Map<int, PokemonDetails> _detailsCache = {};
+  // Idioma das descrições guardadas (trocou o idioma: busca de novo).
+  static String _cacheLanguage = '';
 
   Future<List<PokemonListing>> fetchPokemonByTypes(List<String> typeNames) async {
     if (typeNames.isEmpty) {
@@ -74,6 +77,22 @@ class PokemonService {
         .toList();
   }
 
+  /// Pokémon (e formas) de um jogo, com os filtros de geração e tipo.
+  Future<List<PokemonListing>> fetchPokemonInGame(String key, {int? generation, List<String> types = const []}) async {
+    final rows = await _db.pokemonInGame(key);
+    final genSpecies = generation == null ? null : (await _db.speciesIdsOfGeneration(generation)).toSet();
+    return [
+      for (final p in rows)
+        if ((genSpecies == null || genSpecies.contains(p['species'])) &&
+            types.every((t) => (p['types'] as List).contains(t)))
+          PokemonListing(
+            name: p['name'] as String,
+            url: 'pokemon/${p['id']}/',
+            imageUrl: PokemonListing.artworkUrl('${p['id']}'),
+          ),
+    ];
+  }
+
   Future<List<PokemonListing>> fetchPokedex(Generation generation) async {
     final speciesIds = await _db.speciesIdsOfGeneration(generation.id);
     if (speciesIds.isEmpty) {
@@ -91,6 +110,10 @@ class PokemonService {
   }
 
   Future<PokemonDetails> fetchPokemonDetails(int id) async {
+    if (_cacheLanguage != I18n.language) {
+      _detailsCache.clear();
+      _cacheLanguage = I18n.language;
+    }
     if (_detailsCache.containsKey(id)) {
       return _detailsCache[id]!;
     }

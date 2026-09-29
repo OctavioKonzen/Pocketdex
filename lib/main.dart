@@ -15,11 +15,12 @@ import 'package:pocket_dex/services/firebase_setup.dart';
 import 'package:pocket_dex/services/daily_reminder.dart';
 import 'package:pocket_dex/services/user_data.dart';
 import 'package:pocket_dex/widgets/pokemon_sprite.dart';
+import 'package:pocket_dex/i18n/i18n.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Dados salvos no aparelho (favoritos, times, treinos, tema e recordes).
-  await Future.wait([UserData.instance.load(), SpriteBoxes.load()]);
+  // Dados salvos no aparelho (favoritos, times, treinos, tema, recordes e idioma).
+  await Future.wait([UserData.instance.load(), SpriteBoxes.load(), I18n.load()]);
   // Tabela Pokémon → espécie (para converter times/treinos da conta) em
   // segundo plano, sem atrasar a abertura do app.
   AccountFormat.init();
@@ -115,7 +116,11 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
 
-    return MaterialApp(
+    // Trocar o idioma redesenha o app inteiro no idioma novo.
+    return ValueListenableBuilder<String>(
+      valueListenable: I18n.current,
+      builder: (context, language, _) => MaterialApp(
+      key: ValueKey(language),
       title: 'PocketDex',
       // Mesmas cores do site (claro e escuro).
       theme: _siteTheme(SiteColors.light, Brightness.light),
@@ -131,6 +136,7 @@ class MyApp extends StatelessWidget {
         ),
       ),
       debugShowCheckedModeBanner: false,
+      ),
     );
   }
 }

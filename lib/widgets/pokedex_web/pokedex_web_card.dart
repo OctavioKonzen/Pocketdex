@@ -6,7 +6,7 @@
 // logo abaixo: tamanho, cantos, sombra, tamanho da Pokébola e do Pokémon,
 // fontes e o efeito de hover.
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import 'package:provider/provider.dart';
 
 import '../../models/pokemon_listing.dart';
@@ -15,6 +15,7 @@ import '../../services/pokemon_service.dart';
 import '../../utils/app_images.dart';
 import '../../utils/pokemon_colors.dart';
 import '../../utils/string_extensions.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 class PokedexCardStyle {
   /// Altura do card (a largura acompanha a coluna da grade).

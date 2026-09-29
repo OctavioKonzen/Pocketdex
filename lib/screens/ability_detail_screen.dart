@@ -1,11 +1,12 @@
 // lib/screens/ability_detail_screen.dart
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import '../models/ability.dart';
 import '../models/pokemon_listing.dart';
 import '../services/pokemon_service.dart';
 import '../widgets/pokemon_card.dart';
 import '../widgets/pikachu_loading_indicator.dart';
 import '../utils/responsive.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 class AbilityDetailScreen extends StatelessWidget {
   final Ability ability;

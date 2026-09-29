@@ -5,6 +5,7 @@
 import { AnimatePresence, m } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { Icon, SpinningPokeball } from '../components/ui'
+import LanguagePicker from '../components/LanguagePicker'
 import { imageUrl, spriteUrl } from '../lib/data'
 import { getDownloadUrl, RELEASES_URL } from '../lib/appRelease'
 import {
@@ -391,7 +392,10 @@ export default function LoginPage() {
       <Hero />
       <div className="flex items-center justify-center px-5 py-10 sm:px-10">
         <m.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="flex w-full justify-center">
-          {status === 'needsName' ? <ChooseNameForm /> : <AuthForm />}
+          <div className="flex w-full flex-col items-center gap-6">
+            {status === 'needsName' ? <ChooseNameForm /> : <AuthForm />}
+            <LanguagePicker compact />
+          </div>
         </m.div>
       </div>
     </div>

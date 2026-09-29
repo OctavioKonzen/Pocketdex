@@ -1,6 +1,7 @@
 // Janelas de detalhe da Enciclopédia: golpe, habilidade e item. Também são
 // abertas a partir do painel de detalhes do Pokémon.
 
+import { localText, showPortugueseExtra } from '../lib/i18n'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { getAbilities, getMoveLearners, getMoves, getPokemonById, spriteUrl } from '../lib/data'
 import { prettyName } from '../lib/pokemon'
@@ -36,7 +37,7 @@ export function PokemonMiniGrid({ ids, onSelect, hidden = [] }) {
       </div>
       {list.length > limit && (
         <button type="button" onClick={() => setLimit(limit + 60)} className="mt-4 w-full cursor-pointer rounded-xl bg-surface py-3 font-semibold hover:bg-white/10">
-          Mostrar mais ({list.length - limit})
+          {`Mostrar mais (${list.length - limit})`}
         </button>
       )}
     </>
@@ -88,8 +89,8 @@ export function MoveDetails({ name, inline = false, onSelectPokemon }) {
         <Stat label="PP" value={move.pp} />
         <Stat label="Priority" value={move.priority} />
       </div>
-      <p className="leading-relaxed">{move.effect}</p>
-      {move.flavor && <p className="text-sm text-muted italic">{move.flavor}</p>}
+      <p className="leading-relaxed">{localText('moves', move.name, move.effect)}</p>
+      {showPortugueseExtra && move.flavor && <p className="text-sm text-muted italic">{move.flavor}</p>}
       <div>
         <h3 className="mb-3 font-bold">Pokémon que aprendem ({learners?.length ?? '…'})</h3>
         {learners ? <PokemonList ids={learners} inline={inline} onSelect={onSelectPokemon} /> : <Loader size={50} />}
@@ -107,8 +108,8 @@ export function AbilityDetails({ name, inline = false, onSelectPokemon }) {
   if (!ability) return <Loader />
   return (
     <div className="space-y-5">
-      <p className="leading-relaxed">{ability.effect}</p>
-      {ability.flavor && <p className="text-sm text-muted italic">{ability.flavor}</p>}
+      <p className="leading-relaxed">{localText('abilities', ability.name, ability.effect)}</p>
+      {showPortugueseExtra && ability.flavor && <p className="text-sm text-muted italic">{ability.flavor}</p>}
       <div>
         <h3 className="mb-3 font-bold">Pokémon com esta habilidade ({ability.pokemon.length})</h3>
         <PokemonList ids={ability.pokemon} hidden={ability.hiddenFor} inline={inline} onSelect={onSelectPokemon} />
@@ -130,8 +131,8 @@ export function ItemDetails({ item }) {
           {item.cost ? <div className="mt-1 text-sm text-muted">Preço: ₽{item.cost}</div> : null}
         </div>
       </div>
-      <p className="leading-relaxed">{item.effect}</p>
-      {item.flavor && <p className="text-sm text-muted italic">{item.flavor}</p>}
+      <p className="leading-relaxed">{localText('items', item.name, item.effect)}</p>
+      {showPortugueseExtra && item.flavor && <p className="text-sm text-muted italic">{item.flavor}</p>}
     </div>
   )
 }

@@ -1,6 +1,6 @@
 // lib/screens/moves_encyclopedia_screen.dart
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import '../widgets/expandable_entry.dart';
 import '../models/move.dart';
 import '../services/pokemon_service.dart';
@@ -9,6 +9,7 @@ import '../utils/string_extensions.dart';
 import 'move_detail_screen.dart';
 import '../utils/responsive.dart';
 import '../utils/site_ui.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 class MovesEncyclopediaScreen extends StatefulWidget {
   const MovesEncyclopediaScreen({super.key});

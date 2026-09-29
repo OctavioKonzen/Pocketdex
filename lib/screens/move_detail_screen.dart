@@ -1,6 +1,6 @@
 // lib/screens/move_detail_screen.dart
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import '../models/move.dart';
 import '../models/pokemon_listing.dart';
 import '../services/pokemon_service.dart';
@@ -9,6 +9,7 @@ import '../utils/string_extensions.dart';
 import '../widgets/pikachu_loading_indicator.dart';
 import '../widgets/pokemon_card.dart';
 import '../utils/responsive.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 class MoveDetailScreen extends StatelessWidget {
   final Move move;

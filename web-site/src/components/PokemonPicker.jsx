@@ -37,7 +37,7 @@ export default function PokemonPicker({ open, onClose, onPick, title = 'Selecion
           </div>
           {list.length > limit && (
             <button type="button" onClick={() => setLimit(limit + PAGE)} className="mt-4 w-full cursor-pointer rounded-xl bg-surface py-3 font-semibold hover:bg-white/10">
-              Mostrar mais ({list.length - limit})
+              {`Mostrar mais (${list.length - limit})`}
             </button>
           )}
         </>

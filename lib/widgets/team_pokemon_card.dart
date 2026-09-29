@@ -3,7 +3,7 @@
 // Espaço de um Pokémon no Montador de Times (igual ao site): card com a cor
 // do tipo e o Pokémon, ou um espaço tracejado com "+" para adicionar.
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 
 import '../services/account_format.dart';
 import '../services/pokemon_service.dart';
@@ -11,6 +11,7 @@ import '../utils/pokemon_colors.dart';
 import '../utils/site_ui.dart';
 import '../utils/string_extensions.dart';
 import 'pokemon_sprite.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 class TeamPokemonCard extends StatefulWidget {
   final Map<String, String>? pokemonData;

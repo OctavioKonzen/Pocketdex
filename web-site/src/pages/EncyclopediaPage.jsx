@@ -1,3 +1,4 @@
+import { localText } from '../lib/i18n'
 import { m } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -61,7 +62,7 @@ function useLimited(list) {
   const more =
     list.length > limit ? (
       <button type="button" onClick={() => setLimit(limit + PAGE)} className="mt-4 w-full cursor-pointer rounded-xl bg-surface py-3 font-semibold hover:bg-white/10">
-        Mostrar mais ({list.length - limit})
+        {`Mostrar mais (${list.length - limit})`}
       </button>
     ) : null
   return [useMemo(() => list.slice(0, limit), [list, limit]), more]
@@ -89,7 +90,7 @@ const renderMoveDetails = (m) => <MoveDetails key={m.name} name={m.name} inline 
 const renderAbility = (a) => (
   <div className="min-w-0">
     <div className="font-bold">{prettyName(a.name)}</div>
-    <div className="truncate text-xs text-muted">{a.effect}</div>
+    <div className="truncate text-xs text-muted">{localText('abilities', a.name, a.effect)}</div>
   </div>
 )
 const renderAbilityDetails = (a) => <AbilityDetails key={a.name} name={a.name} inline />

@@ -112,4 +112,16 @@ void main() {
     final shiny = unown.last['sprites']['front_shiny'] as String;
     expect((await rootBundle.load(shiny)).lengthInBytes, greaterThan(0));
   });
+
+  test('jogos de cada Pokémon (principais e secundários)', () async {
+    final db = LocalDatabase.instance;
+    final bulba = await db.pokemonRow(1);
+    expect((bulba!['games'] as List), containsAll(['rb', 'swsh', 'sv']));
+    expect((bulba['games'] as List), isNot(contains('pla')));
+    final lgpe = await db.pokemonInGame('lgpe');
+    expect(lgpe.map((p) => p['name']), containsAll(['pikachu-starter', 'eevee-starter']));
+    final za = await db.pokemonInGame('lza');
+    expect(za.map((p) => p['name']), contains('clefable-mega'));
+    expect((await db.pokemonInGame('colosseum')).map((p) => p['name']), contains('espeon'));
+  });
 }

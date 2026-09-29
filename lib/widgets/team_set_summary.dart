@@ -3,13 +3,14 @@
 // Resumo dos dados completos de cada Pokémon de um time (apelido, nível,
 // item, Tera, habilidade, Nature, EVs e golpes) — igual ao site.
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 
 import '../services/local_database.dart';
 import '../services/team_sets.dart';
 import '../utils/site_ui.dart';
 import '../utils/string_extensions.dart';
 import 'pokemon_sprite.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 class TeamSetSummary extends StatelessWidget {
   final List<int?> slots;

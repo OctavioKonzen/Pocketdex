@@ -3,7 +3,7 @@
 // Favoritos no estilo do site: cabeçalho com a quantidade e os cards em grade.
 // Os favoritos ficam na conta (aparecem no site e em outros aparelhos).
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import 'package:provider/provider.dart';
 
 import '../models/pokemon_listing.dart';
@@ -12,6 +12,7 @@ import '../utils/app_images.dart';
 import '../utils/responsive.dart';
 import '../utils/site_ui.dart';
 import '../widgets/pokemon_card.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 class FavoritesScreen extends StatelessWidget {
   const FavoritesScreen({super.key});

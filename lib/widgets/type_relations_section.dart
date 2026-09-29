@@ -2,11 +2,12 @@
 //
 // Grupo de etiquetas de tipo (fraquezas, resistências...) no estilo do site.
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 
 import '../utils/pokemon_colors.dart';
 import '../utils/site_ui.dart';
 import '../utils/string_extensions.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 class TypeRelationsSection extends StatelessWidget {
   final String title;

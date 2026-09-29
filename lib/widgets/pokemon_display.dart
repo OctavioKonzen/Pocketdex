@@ -1,10 +1,11 @@
 // lib/widgets/pokemon_display.dart
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import 'package:pocket_dex/models/alternate_form.dart';
 import 'package:pocket_dex/models/pokemon_details.dart';
 import 'package:pocket_dex/utils/pokemon_colors.dart';
 import 'package:pocket_dex/utils/string_extensions.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 class PokemonDisplay extends StatelessWidget {
   final PokemonDetails pokemon;

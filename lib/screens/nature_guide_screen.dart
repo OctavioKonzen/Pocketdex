@@ -1,7 +1,8 @@
 // lib/screens/nature_guide_screen.dart
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import '../utils/responsive.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 class Nature {
   final String name;

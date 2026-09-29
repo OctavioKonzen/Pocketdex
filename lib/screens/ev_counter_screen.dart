@@ -1,6 +1,6 @@
 // lib/screens/ev_counter_screen.dart
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import 'package:pocket_dex/models/pokemon_details.dart';
 import 'package:pocket_dex/services/pokemon_service.dart';
 import 'package:pocket_dex/services/training_service.dart';
@@ -16,6 +16,7 @@ import 'package:pocket_dex/utils/responsive.dart';
 import 'package:pocket_dex/services/account_format.dart';
 import 'package:pocket_dex/utils/site_ui.dart';
 import 'package:pocket_dex/widgets/pokemon_sprite.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 class EvCounterScreen extends StatefulWidget {
   const EvCounterScreen({super.key});
@@ -205,7 +206,7 @@ class _TrainingPokemonCard extends StatelessWidget {
               IconButton(
                 icon: Icon(Icons.delete_outline, color: c.muted),
                 onPressed: onDelete,
-                tooltip: 'Remover Pokémon',
+                tooltip: tr('Remover Pokémon'),
               ),
             ],
           ),

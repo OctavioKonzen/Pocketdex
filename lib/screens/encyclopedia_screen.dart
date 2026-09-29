@@ -3,13 +3,14 @@
 // Enciclopédia no estilo do site: golpes, habilidades e itens, cada um com a
 // sua cor (as mesmas das abas do site).
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 
 import '../utils/responsive.dart';
 import '../utils/site_ui.dart';
 import 'abilities_encyclopedia_screen.dart';
 import 'items_encyclopedia_screen.dart';
 import 'moves_encyclopedia_screen.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 class EncyclopediaScreen extends StatelessWidget {
   const EncyclopediaScreen({super.key});

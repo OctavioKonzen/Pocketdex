@@ -5,7 +5,7 @@
 //   • a calculadora de dano fica em damage_calc_screen.dart e usa o
 //     PickedPokemon e o PokemonSlot daqui.
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 
 import '../services/account_format.dart';
 import '../services/battle.dart';
@@ -16,6 +16,7 @@ import '../utils/site_ui.dart';
 import '../utils/string_extensions.dart';
 import '../widgets/pokemon_sprite.dart';
 import 'pokedex_screen.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 const _statLabels = ['HP', 'Attack', 'Defense', 'Sp. Atk', 'Sp. Def', 'Speed'];
 

@@ -5,7 +5,8 @@
 // resto da tela.
 
 import 'dart:math';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import 'package:pocket_dex/i18n/text.dart';
 
 class GameStage extends StatefulWidget {
   final Widget child;

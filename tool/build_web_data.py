@@ -98,6 +98,20 @@ def evolution_edges(node, sprite_of):
     return edges
 
 
+def clean_genus(genus):
+    """'Pokémon Semente' / 'Seed Pokémon' → 'Semente' / 'Seed'."""
+    return re.sub(r'^Pokémon ', '', (genus or '').replace(' Pokémon', ''))
+
+
+def local_names(s):
+    """Nome da espécie em inglês, francês e espanhol (só os que mudam)."""
+    if not s:
+        return {}
+    names = s.get('names') or {}
+    out = {lang: names[lang] for lang in ('en', 'fr', 'es') if names.get(lang)}
+    return {k: v for k, v in out.items() if k == 'en' or v != out.get('en')}
+
+
 def main():
     pokemon = load('pokemon')
     species = load('species')
@@ -129,6 +143,9 @@ def main():
             'types': p['types'],
             'sprite': sprite,
             'box': box(sprite),
+            'games': p.get('games', []),
+            # Nome da espécie em outros idiomas (português = inglês).
+            'names': local_names(s),
         })
     save('pokemon_index.json', index)
 
@@ -153,12 +170,17 @@ def main():
                 'sprites': p['sprites'],
                 'boxes': [box(p['sprites'][0]), box(p['sprites'][1])],
                 'moves': p['moves'],
+                'games': p.get('games', []),
             })
         save(f"pokemon/{s['id']}.json", {
             'id': s['id'],
             'name': s['name'],
-            'genus': re.sub(r'^Pokémon ', '', (s['genus'] or '').replace(' Pokémon', '')),
+            'genus': clean_genus(s['genus']),
             'flavor': s['flavor'] or 'Sem descrição.',
+            # Outros idiomas (en, fr, es): nome, descrição e categoria.
+            'names': local_names(s),
+            'flavors': s.get('flavors') or {},
+            'genera': {k: clean_genus(v) for k, v in (s.get('genera') or {}).items()},
             'generation': s['generation'],
             'genderRate': s['gender_rate'],
             'hatchCounter': s['hatch_counter'] or 0,
@@ -216,6 +238,13 @@ def main():
         'cost': i['cost'],
         'attributes': i['attributes'],
     } for i in items])
+
+    # Descrições em outros idiomas (só baixadas com o idioma escolhido).
+    for lang in ('en', 'fr', 'es'):
+        save(f'texts_{lang}.json', {
+            kind: {r['name']: r['flavors'][lang] for r in rows if (r.get('flavors') or {}).get(lang)}
+            for kind, rows in (('moves', moves), ('abilities', abilities), ('items', items))
+        })
 
     save('types.json', {name: t['damage_relations'] for name, t in types.items()})
     save('egg_groups.json', egg_groups)

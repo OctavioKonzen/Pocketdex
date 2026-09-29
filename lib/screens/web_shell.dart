@@ -5,7 +5,7 @@
 // sempre visível (ex.: Enciclopédia → Golpes → detalhe do golpe).
 // No celular o app continua usando a HomeScreen com os cards de menu.
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 
 import '../widgets/hover_scale.dart';
 import 'encyclopedia_screen.dart';
@@ -15,6 +15,7 @@ import 'pokedex_screen.dart';
 import 'settings_screen.dart';
 import 'teams_screen.dart';
 import 'training_screen.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 class _WebSection {
   final String label;
@@ -190,7 +191,7 @@ class _TopBar extends StatelessWidget {
                   onChanged: onSearch,
                   style: TextStyle(color: theme.colorScheme.onSurface),
                   decoration: InputDecoration(
-                    hintText: 'Procurar Pokémon por nome ou número',
+                    hintText: tr('Procurar Pokémon por nome ou número'),
                     hintStyle: TextStyle(color: theme.hintColor, fontSize: 14),
                     prefixIcon: Icon(Icons.search, color: theme.hintColor),
                     filled: true,
@@ -205,7 +206,7 @@ class _TopBar extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Tooltip(
-                message: 'Configurações',
+                message: tr('Configurações'),
                 child: HoverScale(
                   scale: 1.15,
                   child: IconButton(

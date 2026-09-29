@@ -1,6 +1,7 @@
 // lib/widgets/hover_scale.dart
 
 import 'package:flutter/material.dart';
+import 'package:pocket_dex/i18n/i18n.dart';
 
 /// Aumenta suavemente o [child] quando o mouse passa por cima (efeito de site).
 /// No celular não há hover, então nada muda.
@@ -71,7 +72,7 @@ class HoverIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: tooltip,
+      message: tr(tooltip),
       child: HoverScale(
         scale: 1.15,
         child: Material(

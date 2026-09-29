@@ -3,7 +3,7 @@
 // Centro de Treinamento no estilo do site: um card colorido para cada
 // ferramenta (Natures, Breeding e Contador de EVs).
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import 'battle_tools_screen.dart';
 import 'damage_calc_screen.dart';
 
@@ -12,6 +12,7 @@ import '../utils/site_ui.dart';
 import 'breeding_help_screen.dart';
 import 'ev_counter_screen.dart';
 import 'nature_guide_screen.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 class TrainingScreen extends StatelessWidget {
   const TrainingScreen({super.key});

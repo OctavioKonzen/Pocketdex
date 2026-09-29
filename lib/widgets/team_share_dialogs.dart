@@ -3,7 +3,7 @@
 // Janelas de compartilhar e importar times (código, link ou texto de simulador),
 // no mesmo formato do site.
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 
 import '../services/local_database.dart';
@@ -11,6 +11,7 @@ import '../services/team_sets.dart';
 import '../services/team_share.dart';
 import '../services/user_data.dart';
 import 'pokemon_sprite.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 class TeamShareDialogs {
   TeamShareDialogs._();
@@ -159,9 +160,9 @@ class _ImportDialogState extends State<_ImportDialog> {
               minLines: 4,
               maxLines: 6,
               onChanged: _changed,
-              decoration: const InputDecoration(
-                hintText: 'Cole aqui o link, o código (PDX1...) ou o texto do time (Pokémon Showdown e outros)',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                hintText: tr('Cole aqui o link, o código (PDX1...) ou o texto do time (Pokémon Showdown e outros)'),
+                border: const OutlineInputBorder(),
               ),
             ),
             Align(

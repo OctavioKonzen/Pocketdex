@@ -4,11 +4,12 @@
 // outros para baixo (mesma lógica do site) em vez de abrir outra tela.
 // Só um fica aberto por vez; os dados de cada item são carregados uma vez.
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 
 import '../models/pokemon_listing.dart';
 import 'pikachu_loading_indicator.dart';
 import 'pokemon_card.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 class ExpandableEntry<T> extends StatefulWidget {
   final String id;

@@ -36,7 +36,7 @@ const ROUTES = [
 const user = { name: `Teste${Date.now() % 100000}`, email: `teste${Date.now()}@example.com`, password: 'senha123' }
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined })
-const context = await browser.newContext({ viewport: { width: 1280, height: 900 } })
+const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: 'pt-BR' })
 // Opera GX: scrollTo devolve algo em vez de undefined.
 await context.addInitScript(() => {
   const original = window.scrollTo
@@ -107,6 +107,20 @@ try {
   await expectHealthy()
 
   for (const route of ROUTES) await go(route)
+
+  step = 'trocar o idioma para francês'
+  await go('configuracoes')
+  step = 'trocar o idioma para francês'
+  await page.getByRole('button', { name: /Français/ }).click()
+  await page.waitForLoadState('load')
+  await page.getByText('Paramètres').first().waitFor({ timeout: 20000 })
+  await page.evaluate(() => (location.hash = '#/'))
+  await page.getByText('Bulbizarre').first().waitFor({ timeout: 20000 })
+  await expectHealthy()
+  await page.evaluate(() => (location.hash = '#/configuracoes'))
+  await page.getByRole('button', { name: /Português/ }).click()
+  await page.waitForLoadState('load')
+  await page.getByText('Configurações').first().waitFor({ timeout: 20000 })
 
   await go('times')
   step = 'montar time com dados completos'

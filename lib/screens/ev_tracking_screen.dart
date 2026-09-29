@@ -1,7 +1,7 @@
 // lib/screens/ev_tracking_screen.dart
 
 import 'package:pocket_dex/services/pokemon_service.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import '../services/account_format.dart';
 import '../widgets/pokemon_sprite.dart';
 
@@ -11,6 +11,7 @@ import 'package:pocket_dex/utils/string_extensions.dart';
 
 import '../models/training_pokemon.dart';
 import 'package:pocket_dex/utils/responsive.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 class EvTrackingScreen extends StatefulWidget {
   final TrainingPokemon pokemon;
@@ -108,7 +109,7 @@ class _EvTrackingScreenState extends State<EvTrackingScreen> {
           actions: [
             IconButton(
               icon: const Icon(Icons.refresh),
-              tooltip: 'Resetar EVs',
+              tooltip: tr('Resetar EVs'),
               onPressed: _resetEVs,
             )
           ],
