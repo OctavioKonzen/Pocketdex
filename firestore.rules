@@ -121,6 +121,13 @@ service cloud.firestore {
             && team().ratingSum == resource.data.ratingSum + getAfter(ratingPath()).data.stars
                  - (exists(ratingPath()) ? get(ratingPath()).data.stars : 0)
             && team().ratingCount == resource.data.ratingCount + (exists(ratingPath()) ? 0 : 1)
+        ) || (
+          // outra pessoa tira o próprio voto (ao excluir a conta): a nota volta
+          request.auth != null && resource.data.ownerUid != request.auth.uid
+            && team().diff(resource.data).affectedKeys().hasOnly(['ratingSum', 'ratingCount'])
+            && exists(ratingPath()) && !existsAfter(ratingPath())
+            && team().ratingSum == resource.data.ratingSum - get(ratingPath()).data.stars
+            && team().ratingCount == resource.data.ratingCount - 1
         );
       allow delete: if request.auth != null && resource.data.ownerUid == request.auth.uid;
 
@@ -128,7 +135,13 @@ service cloud.firestore {
       // o time some da busca; o dono do projeto revisa no Console do Firebase.
       match /reports/{uid} {
         function parent() { return /databases/$(database)/documents/publicTeams/$(teamId); }
-        allow read: if signedIn(uid);
+        function ownerOfTeam() {
+          return request.auth != null && get(parent()).data.ownerUid == request.auth.uid;
+        }
+        allow read: if signedIn(uid) || ownerOfTeam();
+        // Quem denunciou apaga a própria denúncia ao excluir a conta (a
+        // contagem do time continua); o dono apaga todas ao excluir o time.
+        allow delete: if signedIn(uid) || ownerOfTeam() || !exists(parent());
         allow create: if signedIn(uid)
           && request.resource.data.keys().hasOnly(['reason', 'createdAt'])
           && request.resource.data.reason is string && request.resource.data.reason.size() <= 200
@@ -139,7 +152,17 @@ service cloud.firestore {
       // Voto de cada pessoa (1 a 5 estrelas), sempre junto com a nota do time.
       match /ratings/{uid} {
         function parent() { return /databases/$(database)/documents/publicTeams/$(teamId); }
-        allow read: if signedIn(uid);
+        function ownerOfTeam() {
+          return request.auth != null && get(parent()).data.ownerUid == request.auth.uid;
+        }
+        allow read: if signedIn(uid) || ownerOfTeam();
+        // Tirar o voto (ao excluir a conta): sempre junto com a nota do time
+        // voltando. O dono apaga todos os votos ao excluir o time.
+        allow delete: if (signedIn(uid) && (
+            !exists(parent())
+            || (getAfter(parent()).data.ratingSum == get(parent()).data.ratingSum - resource.data.stars
+                && getAfter(parent()).data.ratingCount == get(parent()).data.ratingCount - 1)
+          )) || ownerOfTeam();
         allow create, update: if signedIn(uid)
           && request.resource.data.keys().hasOnly(['stars'])
           && request.resource.data.stars is int
@@ -156,6 +179,11 @@ service cloud.firestore {
     // livre, para si mesmo, e a chave precisa ser a do próprio nome.
     // Assim não existem 2 pessoas com o mesmo nome.
     match /usernames/{key} {
+      // Nome de uma conta que já foi excluída (o perfil não existe mais):
+      // fica livre para quem quiser usar.
+      function orphanName() {
+        return !exists(/databases/$(database)/documents/users/$(resource.data.uid));
+      }
       allow get: if true;
       allow create: if request.auth != null
         && request.resource.data.uid == request.auth.uid
@@ -165,11 +193,11 @@ service cloud.firestore {
         && request.resource.data.name.size() <= 20
         && keyOf(request.resource.data.name) == key;
       allow update: if request.auth != null
-        && resource.data.uid == request.auth.uid
+        && (resource.data.uid == request.auth.uid || orphanName())
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.keys().hasOnly(['uid', 'name'])
         && keyOf(request.resource.data.name) == key;
-      allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
+      allow delete: if request.auth != null && (resource.data.uid == request.auth.uid || orphanName());
     }
   }
 }

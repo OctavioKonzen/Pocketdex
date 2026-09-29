@@ -120,11 +120,15 @@ class AuthService extends ChangeNotifier {
     final nameRef = _db.collection('usernames').doc(nameKey(clean));
     final userRef = _db.collection('users').doc(u.uid);
     await _db.runTransaction((tx) async {
-      final taken = await tx.get(nameRef);
-      if (taken.exists && taken.data()?['uid'] != u.uid) throw AuthException(_messages['name-taken']!);
+      // Nome de outra pessoa: as regras só deixam pegar se a conta dela foi
+      // excluída (senão a gravação é recusada e o nome continua dela).
+      await tx.get(nameRef);
       tx.set(nameRef, {'uid': u.uid, 'name': clean});
       tx.set(userRef, {'name': clean, 'nameKey': nameKey(clean), 'email': u.email ?? '', 'createdAt': FieldValue.serverTimestamp()},
           SetOptions(merge: true));
+    }).catchError((Object e) {
+      if (e is FirebaseException && e.code == 'permission-denied') throw AuthException(_messages['name-taken']!);
+      throw e;
     });
     return clean;
   }
@@ -135,7 +139,6 @@ class AuthService extends ChangeNotifier {
       _guard(() async {
         final error = validateName(name);
         if (error != null) throw AuthException(error);
-        if (!await isNameAvailable(name)) throw AuthException(_messages['name-taken']!);
         await _setKeep(keep);
         _signingUp = true;
         User? u;
@@ -246,21 +249,78 @@ class AuthService extends ChangeNotifier {
         final uid = u.uid;
         final profile = await _db.collection('users').doc(uid).get();
         final name = profile.data()?['name'] as String?;
-        final removals = <DocumentReference>[
-          _db.collection('ranking').doc(uid),
-          for (final w in weeks) _db.collection('weekly').doc(w).collection('scores').doc(uid),
-          for (final d in days) _db.collection('daily').doc(d).collection('scores').doc(uid),
-          if (name != null) _db.collection('usernames').doc(nameKey(name)),
-        ];
+        final keys = {
+          if (profile.data()?['nameKey'] is String) profile.data()!['nameKey'] as String,
+          if (name != null) nameKey(name),
+        };
+        Future<void> quiet(Future<void> f) => f.catchError((_) {});
+
+        // Times públicos: os da pessoa somem inteiros (com votos e denúncias);
+        // nos dos outros, o voto dela sai (a nota volta) e a denúncia também.
+        QuerySnapshot<Map<String, dynamic>>? teams;
         try {
-          final teams = await _db.collection('publicTeams').where('ownerUid', isEqualTo: uid).get();
-          removals.addAll(teams.docs.map((d) => d.reference));
+          teams = await _db.collection('publicTeams').get();
         } catch (_) {}
-        await Future.wait(removals.map((ref) => ref.delete().catchError((_) {})));
+        for (final team in teams?.docs ?? const <QueryDocumentSnapshot<Map<String, dynamic>>>[]) {
+          if (team.data()['ownerUid'] == uid) {
+            for (final sub in const ['ratings', 'reports']) {
+              try {
+                final docs = await team.reference.collection(sub).get();
+                await Future.wait(docs.docs.map((d) => quiet(d.reference.delete())));
+              } catch (_) {}
+            }
+            await quiet(team.reference.delete());
+          } else {
+            try {
+              final vote = await team.reference.collection('ratings').doc(uid).get();
+              final stars = (vote.data()?['stars'] as num?)?.toInt();
+              if (vote.exists && stars != null) {
+                final batch = _db.batch()
+                  ..update(team.reference, {'ratingSum': FieldValue.increment(-stars), 'ratingCount': FieldValue.increment(-1)})
+                  ..delete(vote.reference);
+                await quiet(batch.commit());
+              }
+            } catch (_) {}
+            await quiet(team.reference.collection('reports').doc(uid).delete());
+          }
+        }
+
+        // Nome reservado e rankings: o geral e todas as semanas e dias desde
+        // que os rankings existem.
+        await Future.wait(keys.map((k) => quiet(_db.collection('usernames').doc(k).delete())));
+        final refs = <DocumentReference>[_db.collection('ranking').doc(uid)];
+        for (final key in {..._boardKeys(), ...weeks, ...days}) {
+          refs
+            ..add(_db.collection('weekly').doc(key).collection('scores').doc(uid))
+            ..add(_db.collection('daily').doc(key).collection('scores').doc(uid));
+        }
+        for (var i = 0; i < refs.length; i += 400) {
+          final part = refs.sublist(i, i + 400 > refs.length ? refs.length : i + 400);
+          final batch = _db.batch();
+          for (final ref in part) {
+            batch.delete(ref);
+          }
+          try {
+            await batch.commit();
+          } catch (_) {
+            await Future.wait(part.map((ref) => quiet(ref.delete())));
+          }
+        }
+
         await _db.collection('users').doc(uid).delete();
         await u.delete();
+        (await SharedPreferences.getInstance()).remove('auth_name_$uid');
         if (!kIsWeb && _googleReady) await GoogleSignIn.instance.signOut().catchError((_) {});
       });
+
+  /// Todos os dias desde o começo dos rankings (semana e dia usam "AAAA-MM-DD").
+  static List<String> _boardKeys() {
+    final end = DateTime.now().toUtc().add(const Duration(days: 2));
+    return [
+      for (var d = DateTime.utc(2026, 9, 20); !d.isAfter(end); d = d.add(const Duration(days: 1)))
+        d.toIso8601String().substring(0, 10),
+    ];
+  }
 
   // ---------------------------------------------------------------- erros
 
