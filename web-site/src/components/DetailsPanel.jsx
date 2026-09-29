@@ -5,7 +5,9 @@ import { AnimatePresence, m } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
 import { getMoves, getSpecies, getTypes } from '../lib/data'
 import {
+  GAME_BY_KEY,
   STAT_LABELS,
+  generationBackground,
   capitalize,
   heightToFeet,
   prettyName,
@@ -267,6 +269,22 @@ function AboutTab({ species, form, onAbility }) {
           ))}
         </div>
       </section>
+
+      {form.games?.length > 0 && (
+        <section>
+          <h3 className="mb-2 font-bold">Jogos</h3>
+          <div className="flex flex-wrap gap-1.5">
+            {form.games.map((key) => {
+              const game = GAME_BY_KEY[key]
+              return game ? (
+                <span key={key} className="rounded-full px-2.5 py-1 text-xs font-bold text-white" style={{ background: generationBackground(game) }}>
+                  {game.name}
+                </span>
+              ) : null
+            })}
+          </div>
+        </section>
+      )}
 
       <section>
         <h3 className="mb-1 font-bold">Breeding</h3>

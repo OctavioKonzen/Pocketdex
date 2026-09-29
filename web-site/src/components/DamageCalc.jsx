@@ -1,5 +1,5 @@
 // Calculadora de dano completa (Treino → Calculadora de dano), com a conta
-// oficial do Pokémon Showdown (lib/damageCalc.js).
+// dos jogos oficiais (lib/damageCalc.js).
 
 import { m } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
@@ -331,11 +331,10 @@ export default function DamageCalc() {
   const [moveSlug, setMoveSlug] = useState('')
   const [moveOptions, setMoveOptions] = useState(null)
   const [otherMove, setOtherMove] = useState('')
-  const [copied, setCopied] = useState(false)
   const a = usePokemonForm(attacker)
   const d = usePokemonForm(defender)
 
-  // Trocar para uma habilidade de clima/terreno muda o campo (como no Showdown).
+  // Trocar para uma habilidade de clima/terreno muda o campo (como nos jogos).
   const withFieldAbility = (setSide) => (next) =>
     setSide((prev) => {
       const value = typeof next === 'function' ? next(prev) : next
@@ -398,7 +397,6 @@ export default function DamageCalc() {
   const pickMove = (slug) => {
     setMoveSlug(slug)
     setMoveOptions(calc.newMoveOptions())
-    setCopied(false)
   }
 
   const swap = () => {
@@ -533,24 +531,6 @@ export default function DamageCalc() {
                 )}
               </div>
 
-              {result.desc && (
-                <div className="mt-4 rounded-xl bg-surface p-3 text-xs">
-                  <div className="mb-1 flex items-center justify-between gap-2">
-                    <span className="font-bold text-muted">Descrição no formato do Showdown</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        navigator.clipboard?.writeText(result.desc)
-                        setCopied(true)
-                      }}
-                      className="cursor-pointer rounded-md bg-card px-2 py-0.5 font-bold"
-                    >
-                      {copied ? 'Copiado!' : 'Copiar'}
-                    </button>
-                  </div>
-                  <p className="break-words">{result.desc}</p>
-                </div>
-              )}
               {!result.noDamage && (
                 <details className="mt-3 text-sm text-muted">
                   <summary className="cursor-pointer">Os 16 danos possíveis</summary>
@@ -575,7 +555,7 @@ export default function DamageCalc() {
         </div>
       )}
 
-      <p className="text-center text-xs text-muted">Conta oficial do Pokémon Showdown (geração 9), com habilidades, itens, campo e golpes especiais.</p>
+      <p className="text-center text-xs text-muted">Mesma conta dos jogos oficiais (geração 9), com habilidades, itens, campo e golpes especiais.</p>
 
       <PokemonPicker
         open={picking !== null}

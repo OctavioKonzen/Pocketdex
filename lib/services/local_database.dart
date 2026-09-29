@@ -83,6 +83,12 @@ class LocalDatabase {
   /// Um Pokémon (ou forma) como está no banco.
   Future<Map<String, dynamic>?> pokemonRow(int id) async => (await _indexById('pokemon'))[id];
 
+  /// Pokémon (e formas) que aparecem no jogo [key] (lib/models/game.dart).
+  Future<List<Map<String, dynamic>>> pokemonInGame(String key) async => [
+        for (final p in await allPokemonRows())
+          if (((p['games'] as List?) ?? const []).contains(key)) p,
+      ];
+
   /// Todos os itens e habilidades (listas do banco).
   Future<List<Map<String, dynamic>>> allItems() async => (await _table('items') as List).cast<Map<String, dynamic>>();
   Future<List<Map<String, dynamic>>> allAbilities() async => (await _table('abilities') as List).cast<Map<String, dynamic>>();
@@ -148,6 +154,7 @@ class LocalDatabase {
         },
       },
       'moves': _movesToApi(p['moves'] as List),
+      'games': p['games'] ?? const [],
     };
   }
 

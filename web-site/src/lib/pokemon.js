@@ -52,6 +52,38 @@ export const GENERATIONS = [
   { id: 9, name: 'Generation IX', region: 'Paldea', starters: [906, 909, 912], colors: ['#D0342C', '#7B3FA0'] }, // Scarlet / Violet
 ]
 
+/** Jogos principais (mesmas chaves de "games" nos dados; mesma ordem no app). */
+export const GAMES = [
+  { key: 'rb', name: 'Red / Blue', gen: 1, mascots: [6, 9], colors: ['#E3350D', '#3B7BD4'] },
+  { key: 'yellow', name: 'Yellow', gen: 1, mascots: [25], colors: ['#F4C430', '#E0A800'] },
+  { key: 'gs', name: 'Gold / Silver', gen: 2, mascots: [250, 249], colors: ['#C9A227', '#9EA3A8'] },
+  { key: 'crystal', name: 'Crystal', gen: 2, mascots: [245], colors: ['#4FC3F7', '#7E57C2'] },
+  { key: 'rs', name: 'Ruby / Sapphire', gen: 3, mascots: [383, 382], colors: ['#B3122E', '#1F4FA8'] },
+  { key: 'emerald', name: 'Emerald', gen: 3, mascots: [384], colors: ['#2E8B57', '#1B5E20'] },
+  { key: 'frlg', name: 'FireRed / LeafGreen', gen: 3, mascots: [6, 3], colors: ['#E65100', '#43A047'] },
+  { key: 'dp', name: 'Diamond / Pearl', gen: 4, mascots: [483, 484], colors: ['#5F8FD0', '#C98AA0'] },
+  { key: 'platinum', name: 'Platinum', gen: 4, mascots: [487], colors: ['#8D8D8D', '#5E5E5E'] },
+  { key: 'hgss', name: 'HeartGold / SoulSilver', gen: 4, mascots: [250, 249], colors: ['#D4A017', '#A8B8C8'] },
+  { key: 'bw', name: 'Black / White', gen: 5, mascots: [643, 644], colors: ['#2B2B2B', '#9A9A9A'] },
+  { key: 'b2w2', name: 'Black 2 / White 2', gen: 5, mascots: [646], colors: ['#37474F', '#B0BEC5'] },
+  { key: 'xy', name: 'X / Y', gen: 6, mascots: [716, 717], colors: ['#1E5AA8', '#C8102E'] },
+  { key: 'oras', name: 'Omega Ruby / Alpha Sapphire', gen: 6, mascots: [383, 382], colors: ['#C62828', '#1565C0'] },
+  { key: 'sm', name: 'Sun / Moon', gen: 7, mascots: [791, 792], colors: ['#F28C28', '#5B3F9E'] },
+  { key: 'usum', name: 'Ultra Sun / Ultra Moon', gen: 7, mascots: [800], colors: ['#FF7043', '#3949AB'] },
+  { key: 'lgpe', name: "Let's Go, Pikachu! / Eevee!", gen: 7, mascots: [25, 133], colors: ['#F4C430', '#A1887F'] },
+  { key: 'swsh', name: 'Sword / Shield', gen: 8, mascots: [888, 889], colors: ['#0091D5', '#D8006F'] },
+  { key: 'bdsp', name: 'Brilliant Diamond / Shining Pearl', gen: 8, mascots: [483, 484], colors: ['#4FA3E0', '#E08DB5'] },
+  { key: 'pla', name: 'Legends: Arceus', gen: 8, mascots: [493], colors: ['#6D5D3B', '#C9B37E'] },
+  { key: 'sv', name: 'Scarlet / Violet', gen: 9, mascots: [1007, 1008], colors: ['#D0342C', '#7B3FA0'] },
+  { key: 'lza', name: 'Legends: Z-A', gen: 9, mascots: [718], colors: ['#2E7D32', '#1B1B1B'] },
+  // Jogos secundários.
+  { key: 'colosseum', name: 'Colosseum', gen: 3, spinoff: true, mascots: [197, 196], colors: ['#6D4C41', '#3E2723'] },
+  { key: 'xd', name: 'XD: Gale of Darkness', gen: 3, spinoff: true, mascots: [249], colors: ['#4527A0', '#1A237E'] },
+  { key: 'conquest', name: 'Conquest', gen: 5, spinoff: true, mascots: [495], colors: ['#B71C1C', '#212121'] },
+  { key: 'champions', name: 'Champions', gen: 9, spinoff: true, mascots: [25], colors: ['#0D47A1', '#FFB300'] },
+]
+export const GAME_BY_KEY = Object.fromEntries(GAMES.map((g) => [g.key, g]))
+
 export const generationBackground = (gen) => `linear-gradient(135deg, ${gen.colors[0]} 15%, ${gen.colors[1]} 90%)`
 
 export const capitalize = (text = '') => (text ? text[0].toUpperCase() + text.slice(1) : text)

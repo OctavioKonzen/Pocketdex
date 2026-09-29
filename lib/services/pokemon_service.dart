@@ -74,6 +74,22 @@ class PokemonService {
         .toList();
   }
 
+  /// Pokémon (e formas) de um jogo, com os filtros de geração e tipo.
+  Future<List<PokemonListing>> fetchPokemonInGame(String key, {int? generation, List<String> types = const []}) async {
+    final rows = await _db.pokemonInGame(key);
+    final genSpecies = generation == null ? null : (await _db.speciesIdsOfGeneration(generation)).toSet();
+    return [
+      for (final p in rows)
+        if ((genSpecies == null || genSpecies.contains(p['species'])) &&
+            types.every((t) => (p['types'] as List).contains(t)))
+          PokemonListing(
+            name: p['name'] as String,
+            url: 'pokemon/${p['id']}/',
+            imageUrl: PokemonListing.artworkUrl('${p['id']}'),
+          ),
+    ];
+  }
+
   Future<List<PokemonListing>> fetchPokedex(Generation generation) async {
     final speciesIds = await _db.speciesIdsOfGeneration(generation.id);
     if (speciesIds.isEmpty) {

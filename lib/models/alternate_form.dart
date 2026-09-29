@@ -12,6 +12,8 @@ class AlternateForm {
   final int weight;
   final Map<String, int> stats;
   final List<dynamic> rawMoves;
+  /// Jogos em que a forma aparece (chaves de lib/models/game.dart).
+  final List<String> games;
 
   AlternateForm({
     required this.formName,
@@ -25,6 +27,7 @@ class AlternateForm {
     required this.weight,
     required this.stats,
     required this.rawMoves,
+    this.games = const [],
   });
 
   factory AlternateForm.fromJson(Map<String, dynamic> json, String baseName) {
@@ -52,6 +55,7 @@ class AlternateForm {
       weight: json['weight'],
       stats: { for (var stat in (json['stats'] as List)) stat['stat']['name'] : stat['base_stat'] as int },
       rawMoves: json['moves'] as List,
+      games: ((json['games'] as List?) ?? const []).cast<String>(),
     );
   }
 }

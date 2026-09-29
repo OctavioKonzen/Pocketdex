@@ -6,6 +6,7 @@ import { Icon, Loader, PageHeader } from '../components/ui'
 import { getPokedex, getPokemonIndex } from '../lib/data'
 import { ALL_TYPES, capitalize, typeColor } from '../lib/pokemon'
 import GenerationPicker from '../components/GenerationPicker'
+import GamePicker from '../components/GamePicker'
 
 /** Filtra por nome ou número (igual à busca do app). */
 export function matchesSearch(p, query) {
@@ -18,6 +19,7 @@ export default function PokedexPage() {
   const [pokedex, setPokedex] = useState(null)
   const [allForms, setAllForms] = useState(null)
   const [generation, setGeneration] = useState(null)
+  const [game, setGame] = useState(null)
   const [types, setTypes] = useState([])
   const [showFilters, setShowFilters] = useState(false)
 
@@ -28,26 +30,28 @@ export default function PokedexPage() {
 
   const list = useMemo(() => {
     if (!pokedex) return []
-    // Com filtro de tipo, entram também as formas (Alola, Mega...), como no app.
-    const source = types.length ? allForms ?? pokedex : pokedex
+    // Com filtro de tipo ou de jogo, entram também as formas (Alola, Mega...), como no app.
+    const source = types.length || game ? allForms ?? pokedex : pokedex
     return source.filter(
       (p) =>
         (!generation || p.gen === generation) &&
+        (!game || p.games?.includes(game)) &&
         types.every((t) => p.types.includes(t)) &&
         matchesSearch(p, search),
     )
-  }, [pokedex, allForms, generation, types, search])
+  }, [pokedex, allForms, generation, game, types, search])
 
   const toggleType = (type) =>
     setTypes((current) => (current.includes(type) ? current.filter((t) => t !== type) : [...current.slice(-1), type]))
 
-  const filtersActive = generation || types.length
+  const filtersActive = generation || game || types.length
 
   return (
     <div>
       <PageHeader title="Pokédex" subtitle={pokedex ? `${list.length} Pokémon` : null}>
         <div className="flex flex-wrap items-center gap-2">
           <GenerationPicker value={generation} onChange={setGeneration} />
+          <GamePicker value={game} onChange={setGame} />
           <m.button
             type="button"
             whileHover={{ scale: 1.05 }}
@@ -62,6 +66,7 @@ export default function PokedexPage() {
               type="button"
               onClick={() => {
                 setGeneration(null)
+                setGame(null)
                 setTypes([])
               }}
               className="cursor-pointer text-sm text-muted underline hover:text-text"
