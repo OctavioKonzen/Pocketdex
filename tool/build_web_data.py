@@ -14,6 +14,8 @@ Saída (tudo gerado, fora do git):
     web-site/public/data/items.json           itens
     web-site/public/data/types.json           relações de dano entre tipos
     web-site/public/data/egg_groups.json      egg groups
+    web-site/public/data/locations.json       nomes dos locais de encontro
+    web-site/public/cries/<id>.mp3            grito de cada espécie
     web-site/public/sprites/...               imagens do banco
     web-site/public/img/...                   imagens da interface
 
@@ -121,6 +123,8 @@ def main():
     items = load('items')
     types = load('types')
     egg_groups = load('egg_groups')
+    encounters = load('encounters')
+    locations = load('locations')
 
     by_id = {p['id']: p for p in pokemon}
     species_by_id = {s['id']: s for s in species}
@@ -146,6 +150,10 @@ def main():
             'games': p.get('games', []),
             # Nome da espécie em outros idiomas (português = inglês).
             'names': local_names(s),
+            # Filtros da Pokédex: status base, habilidades e lendário/mítico.
+            'stats': [v for v, _ in p['stats']],
+            'abilities': [a for a, _ in p['abilities']],
+            'tag': ('mythical' if s['is_mythical'] else 'legendary' if s['is_legendary'] else 'baby' if s['is_baby'] else None) if s else None,
         })
     save('pokemon_index.json', index)
 
@@ -171,6 +179,8 @@ def main():
                 'boxes': [box(p['sprites'][0]), box(p['sprites'][1])],
                 'moves': p['moves'],
                 'games': p.get('games', []),
+                # Onde encontrar: [área, jogo, método, nívelMín, nívelMáx, chance, versões]
+                'encounters': encounters.get(str(p['id']), []),
             })
         save(f"pokemon/{s['id']}.json", {
             'id': s['id'],
@@ -248,9 +258,20 @@ def main():
 
     save('types.json', {name: t['damage_relations'] for name, t in types.items()})
     save('egg_groups.json', egg_groups)
+    save('locations.json', locations)
+    # Áreas de cada jogo (para o Nuzlocke): por região e nome.
+    areas = {}
+    for rows in encounters.values():
+        for area, game, *_ in rows:
+            areas.setdefault(game, set()).add(area)
+    save('game_areas.json', {
+        game: sorted(names, key=lambda a: ((locations.get(a) or {}).get('region') or '', (locations.get(a) or {}).get('name') or a))
+        for game, names in areas.items()
+    })
 
     # Imagens.
     shutil.copytree(os.path.join(DB, 'sprites'), os.path.join(OUT, 'sprites'), dirs_exist_ok=True)
+    shutil.copytree(os.path.join(DB, 'cries'), os.path.join(OUT, 'cries'), dirs_exist_ok=True)
     os.makedirs(os.path.join(OUT, 'img'), exist_ok=True)
     for image in ('pokeball.png', 'poke_logo.png'):
         shutil.copyfile(os.path.join(ROOT, 'assets', 'images', image), os.path.join(OUT, 'img', image))

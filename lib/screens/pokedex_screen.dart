@@ -50,6 +50,18 @@ class PokedexScreenState extends State<PokedexScreen> {
   bool _showTypes = false;
   bool _isLoading = true;
 
+  // Filtros extras (iguais aos do site): categoria, habilidade, golpe e ordem.
+  String? _tag; // 'legendary' | 'mythical' | 'baby'
+  String _ability = '';
+  String _move = '';
+  int? _sort; // 0-5 = status; 6 = total
+  Map<int, Map<String, dynamic>> _rows = {};
+  Map<int, Map<String, dynamic>> _species = {};
+  Map<String, Map<String, dynamic>> _moves = {};
+  List<String> _abilityNames = [];
+
+  static const _statLabels = ['HP', 'Attack', 'Defense', 'Sp. Atk', 'Sp. Def', 'Speed'];
+
   @override
   void initState() {
     super.initState();
@@ -59,6 +71,35 @@ class PokedexScreenState extends State<PokedexScreen> {
   }
 
   void _onExternalSearch() => _searchController.text = widget.searchQuery!.value;
+
+  /// Dados para os filtros extras (carregados na primeira vez que abrem).
+  Future<void> _loadFilterData() async {
+    if (_rows.isNotEmpty) return;
+    final db = LocalDatabase.instance;
+    final rows = await db.allPokemonRows();
+    final species = await db.speciesById();
+    final moves = await db.movesByName();
+    final abilities = [for (final a in await db.allAbilities()) if (a['is_main_series'] == true) a['name'] as String]..sort();
+    if (!mounted) return;
+    setState(() {
+      _rows = {for (final r in rows) r['id'] as int: r};
+      _species = species;
+      _moves = moves;
+      _abilityNames = abilities;
+    });
+    _filterPokemon();
+  }
+
+  static String _slug(String text) => text.trim().toLowerCase().replaceAll(RegExp(r'\s+'), '-');
+
+  int _statOf(Map<String, dynamic>? row, int i) {
+    final stats = (row?['stats'] as List?) ?? const [];
+    int value(int k) => k < stats.length ? ((stats[k] as List)[0] as num).toInt() : 0;
+    if (i == 6) return [for (var k = 0; k < 6; k++) value(k)].fold(0, (a, b) => a + b);
+    return value(i);
+  }
+
+  bool get _extraActive => _tag != null || _slug(_ability).isNotEmpty || _slug(_move).isNotEmpty || _sort != null;
 
   @override
   void dispose() {
@@ -103,11 +144,37 @@ class PokedexScreenState extends State<PokedexScreen> {
 
   void _filterPokemon() {
     final query = _searchController.text.trim().toLowerCase();
-    setState(() {
-      _displayList = query.isEmpty
-          ? _fullPokemonList
-          : _fullPokemonList.where((p) => I18n.nameMatches(p.name, query) || p.id == query).toList();
-    });
+    final ability = _slug(_ability);
+    final move = _slug(_move);
+    final learners = move.isEmpty || _moves[move] == null ? null : ((_moves[move]!['learned_by'] as List?) ?? const []).toSet();
+    final useAbility = ability.isNotEmpty && _abilityNames.contains(ability);
+    var list = _fullPokemonList.where((p) {
+      if (query.isNotEmpty && !(I18n.nameMatches(p.name, query) || p.id == query)) return false;
+      if (!_extraActive || _rows.isEmpty) return true;
+      final id = int.parse(p.id);
+      final row = _rows[id];
+      if (_tag != null) {
+        final s = _species[row?['species']];
+        final tag = s == null
+            ? null
+            : s['is_mythical'] == true
+                ? 'mythical'
+                : s['is_legendary'] == true
+                    ? 'legendary'
+                    : s['is_baby'] == true
+                        ? 'baby'
+                        : null;
+        if (tag != _tag) return false;
+      }
+      if (useAbility && !(((row?['abilities'] as List?) ?? const []).any((a) => (a as List)[0] == ability))) return false;
+      if (learners != null && !learners.contains(id)) return false;
+      return true;
+    }).toList();
+    if (_sort != null && _rows.isNotEmpty) {
+      final i = _sort!;
+      list = [...list]..sort((a, b) => _statOf(_rows[int.parse(b.id)], i).compareTo(_statOf(_rows[int.parse(a.id)], i)));
+    }
+    setState(() => _displayList = list);
   }
 
   void _toggleType(String type) {
@@ -127,6 +194,10 @@ class PokedexScreenState extends State<PokedexScreen> {
       _selectedGeneration = null;
       _selectedGame = null;
       _selectedTypes = [];
+      _tag = null;
+      _ability = '';
+      _move = '';
+      _sort = null;
     });
     _loadPokemon();
   }
@@ -143,7 +214,7 @@ class PokedexScreenState extends State<PokedexScreen> {
   }
 
   Widget _header(SiteColors c) {
-    final filters = _selectedGeneration != null || _selectedGame != null || _selectedTypes.isNotEmpty;
+    final filters = _selectedGeneration != null || _selectedGame != null || _selectedTypes.isNotEmpty || _extraActive;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -179,8 +250,12 @@ class PokedexScreenState extends State<PokedexScreen> {
               const SizedBox(width: 8),
               _TypesButton(
                 types: _selectedTypes,
+                extra: [_tag, _slug(_ability), _slug(_move), _sort].where((v) => v != null && v != '').length,
                 open: _showTypes,
-                onTap: () => setState(() => _showTypes = !_showTypes),
+                onTap: () {
+                  setState(() => _showTypes = !_showTypes);
+                  _loadFilterData();
+                },
               ),
               if (filters)
                 TextButton(
@@ -208,7 +283,7 @@ class PokedexScreenState extends State<PokedexScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Selecione até dois tipos', style: TextStyle(color: c.muted, fontSize: 13)),
+          Text('Tipos (até dois)', style: TextStyle(color: c.muted, fontSize: 13)),
           const SizedBox(height: 10),
           GridView.count(
             crossAxisCount: 3,
@@ -227,8 +302,73 @@ class PokedexScreenState extends State<PokedexScreen> {
                 ),
             ],
           ),
+          const SizedBox(height: 14),
+          _extraFilters(c),
         ],
       ),
+    );
+  }
+
+  Widget _extraFilters(SiteColors c) {
+    InputDecoration deco(String label, [String? hint]) =>
+        InputDecoration(labelText: tr(label), hintText: hint, isDense: true, border: const OutlineInputBorder());
+    Widget auto(String label, String hint, List<String> options, String value, ValueChanged<String> onChanged) =>
+        Autocomplete<String>(
+          initialValue: TextEditingValue(text: value),
+          optionsBuilder: (v) {
+            final q = _slug(v.text);
+            if (q.isEmpty) return const Iterable<String>.empty();
+            return options.where((o) => o.contains(q)).take(20).map((o) => o.replaceAll('-', ' ').capitalise());
+          },
+          onSelected: (v) {
+            onChanged(v);
+            _filterPokemon();
+          },
+          fieldViewBuilder: (context, controller, focus, onSubmit) => TextField(
+            controller: controller,
+            focusNode: focus,
+            decoration: deco(label, hint),
+            onChanged: (v) {
+              onChanged(v);
+              _filterPokemon();
+            },
+          ),
+        );
+    return Column(
+      children: [
+        DropdownButtonFormField<String?>(
+          initialValue: _tag,
+          decoration: deco('Categoria'),
+          items: const [
+            DropdownMenuItem(value: null, child: Text('Todos')),
+            DropdownMenuItem(value: 'legendary', child: Text('Lendários')),
+            DropdownMenuItem(value: 'mythical', child: Text('Míticos')),
+            DropdownMenuItem(value: 'baby', child: Text('Bebês')),
+          ],
+          onChanged: (v) {
+            setState(() => _tag = v);
+            _filterPokemon();
+          },
+        ),
+        const SizedBox(height: 10),
+        auto('Habilidade', 'Ex.: Intimidate', _abilityNames, _ability, (v) => _ability = v),
+        const SizedBox(height: 10),
+        auto('Aprende o golpe', 'Ex.: Earthquake', _moves.keys.toList()..sort(), _move, (v) => _move = v),
+        const SizedBox(height: 10),
+        DropdownButtonFormField<int?>(
+          initialValue: _sort,
+          decoration: deco('Ordenar por'),
+          items: [
+            const DropdownMenuItem(value: null, child: Text('Número da Pokédex')),
+            const DropdownMenuItem(value: 6, child: Text('Total dos status (maior)')),
+            for (var i = 0; i < 6; i++) DropdownMenuItem(value: i, child: Text('${_statLabels[i]} (maior)')),
+          ],
+          onChanged: (v) {
+            setState(() => _sort = v);
+            _filterPokemon();
+          },
+        ),
+      ],
     );
   }
 
@@ -287,14 +427,15 @@ class PokedexScreenState extends State<PokedexScreen> {
 
 class _TypesButton extends StatelessWidget {
   final List<String> types;
+  final int extra;
   final bool open;
   final VoidCallback onTap;
-  const _TypesButton({required this.types, required this.open, required this.onTap});
+  const _TypesButton({required this.types, required this.open, required this.onTap, this.extra = 0});
 
   @override
   Widget build(BuildContext context) {
     final c = SiteColors.of(context);
-    final active = types.isNotEmpty;
+    final active = types.isNotEmpty || extra > 0;
     return Material(
       color: active ? const Color(0xFF0284C7) : c.surface,
       shape: StadiumBorder(side: BorderSide(color: c.line)),
@@ -309,7 +450,7 @@ class _TypesButton extends StatelessWidget {
               Icon(Icons.filter_list, size: 18, color: active ? Colors.white : c.text),
               const SizedBox(width: 6),
               Text(
-                active ? 'Tipos: ${types.map((t) => t.capitalise()).join(' + ')}' : 'Tipos',
+                '${tr('Filtros')}${types.isNotEmpty ? ': ${types.map((t) => t.capitalise()).join(' + ')}' : ''}${extra > 0 ? ' (+$extra)' : ''}',
                 style: TextStyle(fontWeight: FontWeight.w600, color: active ? Colors.white : c.text),
               ),
               Icon(open ? Icons.expand_less : Icons.expand_more, size: 18, color: active ? Colors.white : c.muted),

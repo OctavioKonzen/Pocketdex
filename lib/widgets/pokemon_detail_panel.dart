@@ -1,7 +1,7 @@
 // lib/widgets/pokemon_detail_panel.dart
 
 import 'package:flutter/material.dart' hide Text;
-import '../models/game.dart';
+import 'where_to_find.dart';
 import 'dart:math';
 import 'package:pocket_dex/models/alternate_form.dart';
 import 'package:pocket_dex/models/pokemon_details.dart';
@@ -254,26 +254,14 @@ class PokemonDetailPanel extends StatelessWidget {
                   fontSize: 14)),
           const SizedBox(height: 16),
           _buildHeightWeightInfo(currentForm, theme),
+          const SizedBox(height: 10),
+          CryButton(speciesId: pokemon.id),
           if (currentForm.games.isNotEmpty) ...[
             const SizedBox(height: 16),
-            Text('Jogos', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                for (final key in currentForm.games)
-                  if (gamesByKey[key] != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                          gradient: gamesByKey[key]!.gradient, borderRadius: BorderRadius.circular(30)),
-                      child: Text(gamesByKey[key]!.name,
-                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                    ),
-              ],
-            ),
+            GamesSection(pokemonId: currentForm.id, games: currentForm.games),
           ],
+          const SizedBox(height: 16),
+          WhereToFind(pokemonId: currentForm.id),
           const SizedBox(height: 16),
           Text("Breeding",
               style: theme.textTheme.titleSmall

@@ -9,9 +9,20 @@
 // Desafio do dia (precisa de login): os mesmos 10 Pokémon para todo mundo no
 // dia (os mesmos do site), 10 segundos cada e uma tentativa só. Quanto mais
 // rápido acertar, mais pontos.
+//
+// Modos de pista (jogo normal e desafio entre amigos): silhueta, grito,
+// descrição da Pokédex ou tipos. O desafio entre amigos são 10 Pokémon
+// sorteados por uma semente (os mesmos do site) e um link para comparar.
 
 import 'dart:math';
 import 'package:flutter/material.dart' hide Text;
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
+
+import '../i18n/i18n.dart';
+import '../services/auth_service.dart';
+import '../services/challenge.dart';
+import '../services/cry_player.dart';
+import '../services/local_database.dart';
 
 import '../models/generation.dart';
 import '../models/pokemon_listing.dart';
@@ -21,6 +32,7 @@ import '../services/league.dart';
 import '../services/pokemon_service.dart';
 import '../services/user_data.dart';
 import '../widgets/pokemon_sprite.dart';
+import '../utils/pokemon_colors.dart';
 import '../utils/responsive.dart';
 import '../utils/string_extensions.dart';
 import '../widgets/game_stage.dart';
@@ -44,7 +56,21 @@ class QuizScreen extends StatefulWidget {
   final bool daily;
   final bool continueGame;
 
-  const QuizScreen({super.key, this.generation, this.ranked = false, this.daily = false, this.continueGame = false});
+  /// Pista: 'silhouette' | 'cry' | 'description' | 'types'.
+  final String hint;
+
+  /// Desafio entre amigos (o de outra pessoa, ou um novo com semente própria).
+  final Challenge? challenge;
+
+  const QuizScreen({
+    super.key,
+    this.generation,
+    this.ranked = false,
+    this.daily = false,
+    this.continueGame = false,
+    this.hint = 'silhouette',
+    this.challenge,
+  });
 
   @override
   State<QuizScreen> createState() => _QuizScreenState();
@@ -80,6 +106,11 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
   int _correct = 0;
   double _seconds = 0;
   DateTime _roundStart = DateTime.now();
+
+  // Pista e desafio entre amigos
+  late String _hint = widget.ranked || widget.daily ? 'silhouette' : widget.hint;
+  late Challenge? _challenge = widget.challenge;
+  List<(int, List<int>)> _rounds = [];
 
   bool get _timed => _ranked || _daily;
 
@@ -124,7 +155,13 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
       DailyReminder.instance.reschedule(); // hoje já jogou: sem lembrete hoje
     }
     final saved = widget.continueGame && !_daily ? _data.quizGame : null;
-    _generationId = saved != null ? (saved['generation'] as num? ?? 0).toInt() : (widget.generation?.id ?? 0);
+    _generationId = saved != null
+        ? (saved['generation'] as num? ?? 0).toInt()
+        : _challenge != null
+            ? _challenge!.gen
+            : (widget.generation?.id ?? 0);
+    if (saved?['hint'] is String) _hint = saved!['hint'] as String;
+    if (_challenge != null) _hint = _challenge!.hint;
     final gen = generations.where((g) => g.id == _generationId).firstOrNull;
     final service = PokemonService();
     try {
@@ -135,6 +172,11 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
     }
     _byId = {for (final p in _pool!) int.parse(p.id): p};
     if (!mounted) return;
+    if (_challenge != null) {
+      _rounds = challengeRoundsFor(_byId.keys.toList(), _challenge!.seed);
+      _next(first: true);
+      return;
+    }
     if (saved != null && _byId.containsKey(saved['answerId'])) {
       setState(() {
         _ranked = false;
@@ -165,16 +207,20 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
     final seen = _recent.toSet();
     final fresh = seen.isEmpty ? pool : pool.where((p) => !seen.contains(int.parse(p.id))).toList();
     final from = fresh.isEmpty ? pool : fresh;
-    final answerId = _daily ? _answers[round] : int.parse(from[_random.nextInt(from.length)].id);
+    final answerId = _challenge != null
+        ? _rounds[round].$1
+        : _daily
+            ? _answers[round]
+            : int.parse(from[_random.nextInt(from.length)].id);
     final options = <int>{answerId};
-    while (options.length < min(4, pool.length)) {
+    while (_challenge == null && options.length < min(4, pool.length)) {
       options.add(int.parse(pool[_random.nextInt(pool.length)].id));
     }
     setState(() {
       _chosen = null;
       if (!first) _round++;
       _answerId = answerId;
-      _options = options.toList()..shuffle(_random);
+      _options = _challenge != null ? [..._rounds[round].$2] : (options.toList()..shuffle(_random));
     });
     _save();
     _roundStart = DateTime.now();
@@ -194,11 +240,12 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
         'answerId': _answerId,
         'options': _options,
         'recent': _recent,
+        'hint': _hint,
       };
 
   /// O Ranked não fica salvo para continuar depois (senão daria para ganhar tempo).
   void _save() {
-    if (!_ranked && !_daily) _data.update({'quizGame': _game});
+    if (!_ranked && !_daily && _challenge == null) _data.update({'quizGame': _game});
   }
 
   void _answer(int id) {
@@ -221,7 +268,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
         _score++;
         _streak++;
       } else {
-        _lives--;
+        if (_challenge == null) _lives--;
         _streak = 0;
       }
     });
@@ -229,7 +276,11 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
     if (!correct) _shake.forward(from: 0);
     Future.delayed(Duration(milliseconds: correct ? 1100 : 2000), () {
       if (!mounted) return;
-      if (_daily ? _round + 1 >= League.dailyRounds : _lives <= 0) {
+      if (_challenge != null
+          ? _round + 1 >= _rounds.length
+          : _daily
+              ? _round + 1 >= League.dailyRounds
+              : _lives <= 0) {
         _end();
       } else {
         _next();
@@ -252,6 +303,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
   void _end() {
     _over = true;
     _timer.stop();
+    if (_challenge != null) return _endChallenge();
     final previous = _ranked ? _data.rankedRecord : _data.quizRecord;
     if (_daily) {
       _finishDaily();
@@ -321,6 +373,83 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
     );
   }
 
+  /// Fim do desafio entre amigos: resultado, comparação e link para mandar.
+  void _endChallenge() {
+    final theme = Theme.of(context);
+    final from = _challenge!.name.isEmpty ? null : _challenge!;
+    final mine = Challenge(
+      seed: _challenge!.seed,
+      gen: _generationId,
+      hint: _hint,
+      name: AuthService.instance.user?.name ?? '',
+      score: _score,
+    );
+    final verdict = from == null
+        ? null
+        : _score > from.score
+            ? tr('Você venceu! 🎉')
+            : _score < from.score
+                ? tr('{0} venceu dessa vez.').replaceAll('{0}', from.name)
+                : tr('Empate!');
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialog) => AlertDialog(
+        backgroundColor: theme.cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Center(child: Text('Fim do desafio!')),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('$_score/${_rounds.length}',
+                style: const TextStyle(color: Color(0xFFA78BFA), fontSize: 52, fontWeight: FontWeight.w900)),
+            if (from != null)
+              Text(tr('{0} fez {1}/{2}.').replaceAll('{0}', from.name).replaceAll('{1}', '${from.score}').replaceAll('{2}', '${_rounds.length}'),
+                  style: TextStyle(color: theme.hintColor)),
+            if (verdict != null) Text(verdict, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            const SizedBox(height: 12),
+            Text('Mande este link para um amigo jogar os mesmos Pokémon e tentar te passar:',
+                textAlign: TextAlign.center, style: TextStyle(color: theme.hintColor, fontSize: 13)),
+            const SizedBox(height: 6),
+            SelectableText(mine.link, style: const TextStyle(fontSize: 11)),
+          ],
+        ),
+        actionsAlignment: MainAxisAlignment.spaceAround,
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialog);
+              Navigator.pop(context);
+            },
+            child: const Text('Sair'),
+          ),
+          TextButton(
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: mine.link));
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Link copiado!')));
+            },
+            child: const Text('Copiar link'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(dialog);
+              setState(() {
+                _challenge = Challenge(seed: Random().nextInt(1 << 31), gen: _generationId, hint: _hint);
+                _rounds = challengeRoundsFor(_byId.keys.toList(), _challenge!.seed);
+                _over = false;
+                _score = 0;
+                _streak = 0;
+                _round = 0;
+              });
+              _next(first: true);
+            },
+            child: const Text('Novo desafio'),
+          ),
+        ],
+      ),
+    );
+  }
+
   String _name(int id) {
     final name = _byId[id]?.name ?? '?';
     return name.replaceAll('-', ' ').capitalise();
@@ -339,20 +468,25 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_daily
-            ? '📅 Desafio do dia'
-            : _ranked
-                ? '🏆 Ranked'
-                : 'Quem é esse Pokémon?'),
+        title: Text(_challenge != null
+            ? '🤝 Desafio'
+            : _daily
+                ? '📅 Desafio do dia'
+                : _ranked
+                    ? '🏆 Ranked'
+                    : 'Quem é esse Pokémon?'),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: Row(
               children: [
-                if (_daily)
+                if (_challenge != null)
+                  Text('${_round + 1}/${_rounds.length}',
+                      style: const TextStyle(color: Color(0xFFA78BFA), fontWeight: FontWeight.w900, fontSize: 18))
+                else if (_daily)
                   Text('${_round + 1}/${League.dailyRounds}',
                       style: const TextStyle(color: Color(0xFF26A69A), fontWeight: FontWeight.w900, fontSize: 18)),
-                if (!_daily)
+                if (!_daily && _challenge == null)
                   for (var i = 0; i < QuizScreen.lives; i++)
                     AnimatedScale(
                       scale: i < _lives ? 1 : 0.7,
@@ -376,9 +510,13 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                   const SizedBox(width: 8),
                   _Stat('Sequência', '$_streak🔥', color: Colors.orange),
                   const SizedBox(width: 8),
-                  _daily
-                      ? _Stat('Acertos', '$_correct', color: Colors.amber)
-                      : _Stat('Recorde', '${max(record, _score)}', color: Colors.amber),
+                  _challenge != null
+                      ? (_challenge!.name.isNotEmpty
+                          ? _Stat(tr('{0} fez').replaceAll('{0}', _challenge!.name), '${_challenge!.score}', color: Colors.amber)
+                          : _Stat('Rodada', '${_round + 1}', color: Colors.amber))
+                      : _daily
+                          ? _Stat('Acertos', '$_correct', color: Colors.amber)
+                          : _Stat('Recorde', '${max(record, _score)}', color: Colors.amber),
                 ],
               ),
               if (_timed) ...[
@@ -414,7 +552,9 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                             child: SizedBox.expand(
                               key: ValueKey('$answer-$revealed'),
                               // Mesmo tamanho visual para todos (como no site).
-                              child: PokemonSprite(answer, fill: 0.95, silhouette: revealed ? null : Colors.black),
+                              child: _hint != 'silhouette' && !revealed
+                                  ? _Clue(pokemonId: answer, hint: _hint)
+                                  : PokemonSprite(answer, fill: 0.95, silhouette: revealed ? null : Colors.black),
                             ),
                           ),
                         ),
@@ -475,9 +615,11 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                                     : 'Errou!')
                             : hit
                                 ? 'Acertou! +1 ponto'
-                                : _chosen == _timeout
-                                    ? 'Tempo esgotado! -1 vida'
-                                    : 'Errou! -1 vida',
+                                : _challenge != null
+                                    ? 'Errou!'
+                                    : _chosen == _timeout
+                                        ? 'Tempo esgotado! -1 vida'
+                                        : 'Errou! -1 vida',
                         style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
@@ -629,4 +771,123 @@ class _ReminderOfferState extends State<_ReminderOffer> {
             ),
     );
   }
+}
+
+/// Pista nos modos Grito, Descrição e Tipos (a mesma do site).
+class _Clue extends StatefulWidget {
+  final int pokemonId;
+  final String hint;
+  const _Clue({required this.pokemonId, required this.hint});
+
+  @override
+  State<_Clue> createState() => _ClueState();
+}
+
+class _ClueState extends State<_Clue> {
+  Map<String, dynamic>? _row;
+  Map<String, dynamic>? _species;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final db = LocalDatabase.instance;
+    final row = await db.pokemonRow(widget.pokemonId);
+    final species = row == null ? null : (await db.speciesById())[row['species']];
+    if (!mounted) return;
+    setState(() {
+      _row = row;
+      _species = species;
+    });
+    if (widget.hint == 'cry') CryPlayer.instance.play((row?['species'] as int?) ?? widget.pokemonId);
+  }
+
+  @override
+  void dispose() {
+    if (widget.hint == 'cry') CryPlayer.instance.stop();
+    super.dispose();
+  }
+
+  /// Tira o nome do Pokémon da descrição (para não entregar a resposta).
+  String _hideName(String text) {
+    final species = _species;
+    if (species == null) return text;
+    final names = <String>{
+      species['name'] as String,
+      (species['name'] as String).replaceAll('-', ' '),
+      ...((species['names'] as Map?) ?? const {}).values.whereType<String>(),
+    }.where((n) => n.length > 1);
+    var out = text;
+    for (final n in names) {
+      out = out.replaceAll(RegExp(RegExp.escape(n), caseSensitive: false), '???');
+    }
+    return out;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.hint == 'cry') {
+      return Center(
+        child: Material(
+          color: Colors.white.withAlpha(230),
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: () => CryPlayer.instance.play((_row?['species'] as int?) ?? widget.pokemonId),
+            child: const Padding(padding: EdgeInsets.all(36), child: Text('🔊', style: TextStyle(fontSize: 64))),
+          ),
+        ),
+      );
+    }
+    final species = _species;
+    final row = _row;
+    if (species == null || row == null) return const Center(child: CircularProgressIndicator(color: Colors.white));
+    final box = BoxDecoration(color: Colors.black.withAlpha(90), borderRadius: BorderRadius.circular(24));
+    if (widget.hint == 'types') {
+      final genus = (I18n.pick(species['genus'] as String?, species['genera']) ?? '')
+          .replaceAll(' Pokémon', '')
+          .replaceFirst(RegExp(r'^Pokémon '), '');
+      return Center(
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: box,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Wrap(spacing: 8, children: [
+                for (final t in (row['types'] as List).cast<String>())
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(color: getColorForType(t), borderRadius: BorderRadius.circular(20)),
+                    child: Text(t.capitalise(),
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                  ),
+              ]),
+              const SizedBox(height: 12),
+              Text('Pokémon $genus', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
+      );
+    }
+    final flavor = I18n.pick(species['flavor'] as String?, species['flavors']) ?? '';
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: box,
+        child: SingleChildScrollView(
+          // Já está no idioma escolhido: não passa pelo tradutor (m.Text).
+          child: _plainText(_hideName(flavor)),
+        ),
+      ),
+    );
+  }
+
+  Widget _plainText(String text) => RichText(
+        textAlign: TextAlign.center,
+        text: TextSpan(text: text, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600, height: 1.4)),
+      );
 }

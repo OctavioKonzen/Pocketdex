@@ -5,9 +5,7 @@ import { AnimatePresence, m } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
 import { getMoves, getSpecies, getTypes } from '../lib/data'
 import {
-  GAME_BY_KEY,
   STAT_LABELS,
-  generationBackground,
   capitalize,
   heightToFeet,
   prettyName,
@@ -22,6 +20,8 @@ import PokeballReveal from './PokeballReveal'
 import { pick } from '../lib/i18n'
 import { Icon, IconButton, Loader, SpinningPokeball, TypeBadge } from './ui'
 import Sprite from './Sprite'
+import { GamesSection, WhereToFind } from './WhereToFind'
+import { cryUrl } from '../lib/data'
 
 export const TABS = ['About', 'Base Stats', 'Evolution', 'Moves']
 
@@ -243,6 +243,7 @@ function AboutTab({ species, form, onAbility }) {
   return (
     <div className="space-y-5">
       <p className="leading-relaxed">{pick(species.flavor, species.flavors)}</p>
+      <CryButton id={species.id} />
       <div className="flex justify-around rounded-2xl bg-surface py-3 text-sm">
         <span>
           <span className="text-muted">Height: </span>
@@ -271,21 +272,8 @@ function AboutTab({ species, form, onAbility }) {
         </div>
       </section>
 
-      {form.games?.length > 0 && (
-        <section>
-          <h3 className="mb-2 font-bold">Jogos</h3>
-          <div className="flex flex-wrap gap-1.5">
-            {form.games.map((key) => {
-              const game = GAME_BY_KEY[key]
-              return game ? (
-                <span key={key} className="rounded-full px-2.5 py-1 text-xs font-bold text-white" style={{ background: generationBackground(game) }}>
-                  {game.name}
-                </span>
-              ) : null
-            })}
-          </div>
-        </section>
-      )}
+      <GamesSection form={form} />
+      <WhereToFind form={form} />
 
       <section>
         <h3 className="mb-1 font-bold">Breeding</h3>
@@ -320,6 +308,28 @@ function AboutTab({ species, form, onAbility }) {
         </section>
       )}
     </div>
+  )
+}
+
+/** Toca o grito do Pokémon (arquivo do banco local). */
+function CryButton({ id }) {
+  const [playing, setPlaying] = useState(false)
+  const play = () => {
+    const audio = new Audio(cryUrl(id))
+    audio.volume = 0.6
+    setPlaying(true)
+    audio.onended = audio.onerror = () => setPlaying(false)
+    audio.play().catch(() => setPlaying(false))
+  }
+  return (
+    <button
+      type="button"
+      onClick={play}
+      className="flex cursor-pointer items-center gap-2 rounded-full bg-surface px-4 py-2 text-sm font-semibold transition hover:scale-105"
+    >
+      <Icon name="volume" size={18} className={playing ? 'animate-pulse text-sky-400' : 'text-muted'} />
+      Ouvir o grito
+    </button>
   )
 }
 

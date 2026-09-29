@@ -21,6 +21,8 @@ import 'team_member_screen.dart';
 import '../utils/responsive.dart';
 import '../utils/site_ui.dart';
 import 'package:pocket_dex/i18n/text.dart';
+import '../widgets/team_suggestions.dart';
+import '../models/pokemon_listing.dart';
 
 class TeamBuilderScreen extends StatefulWidget {
   final Team team;
@@ -43,6 +45,7 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen>
   )..repeat();
 
   TeamAnalysis? _teamAnalysis;
+  List<TeamSuggestion> _suggestions = [];
   bool _isAnalysisLoading = false;
   Color? _selectedColor;
   (double?, int)? _communityRating; // nota da comunidade (se o time é público)
@@ -99,8 +102,12 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen>
       ),
     );
 
-    if (result != null && mounted) {
-      // Pokémon novo no espaço: começa com a primeira habilidade dele.
+    if (result != null && mounted) await _putInSlot(slotIndex, result, edit: true);
+  }
+
+  /// Pokémon novo no espaço: começa com a primeira habilidade dele.
+  Future<void> _putInSlot(int slotIndex, Map<String, String> result, {bool edit = false}) async {
+    {
       final id = AccountFormat.pokemonIdFromImage(result['imageUrl']) ?? int.tryParse(result['id'] ?? '');
       final row = id == null ? null : await LocalDatabase.instance.pokemonRow(id);
       final abilities = (row?['abilities'] as List?) ?? const [];
@@ -114,8 +121,16 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen>
       });
       await _updateTeamAnalysis();
       await _persist();
-      if (id != null) await _editMember(slotIndex, id);
+      if (id != null && edit) await _editMember(slotIndex, id);
     }
+  }
+
+  /// Sugestão escolhida: entra no primeiro espaço vazio.
+  Future<void> _addSuggestion(int id) async {
+    var slot = _editableTeam.pokemons.indexWhere((p) => p.isEmpty);
+    if (slot < 0) slot = _editableTeam.pokemons.length;
+    if (slot >= 6) return;
+    await _putInSlot(slot, {'id': '$id', 'imageUrl': PokemonListing.artworkUrl('$id')});
   }
 
   void _handleSlotTap(int slotIndex) {
@@ -231,9 +246,17 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen>
       if (row != null) membersTypes.add((row['types'] as List).cast<String>());
     }
     final chart = await db.typeChart();
+    final candidates = await db.defaultPokemon();
+    final species = await db.speciesById();
+    final mythical = {for (final e in species.entries) if (e.value['is_mythical'] == true) e.key};
+    final inTeam = <int>{
+      for (final p in _editableTeam.pokemons.where((p) => p.isNotEmpty))
+        AccountFormat.speciesOf(AccountFormat.pokemonIdFromImage(p['imageUrl']) ?? int.tryParse(p['id'] ?? '') ?? 0),
+    };
     if (!mounted) return;
     setState(() {
       _teamAnalysis = TeamAnalysis.of(membersTypes, chart);
+      _suggestions = suggestMembers(membersTypes, chart, candidates, mythical: mythical, exclude: inTeam);
       _isAnalysisLoading = false;
     });
   }
@@ -391,6 +414,8 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen>
                       const Center(child: PikachuLoadingIndicator())
                     else
                       TeamAnalysisView(analysis: hasPokemon ? _teamAnalysis : null),
+                    if (!_isAnalysisLoading && hasPokemon)
+                      TeamSuggestionsView(suggestions: _suggestions, onAdd: _addSuggestion),
                   ],
                 ),
               ),

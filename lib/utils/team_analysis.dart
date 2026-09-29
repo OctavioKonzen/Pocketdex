@@ -104,3 +104,54 @@ class TeamAnalysis {
     return out;
   }
 }
+
+/// Uma sugestão para completar o time.
+class TeamSuggestion {
+  final Map<String, dynamic> pokemon; // linha do banco (id, name, types, stats...)
+  final double score;
+  final List<String> resists;
+  final List<String> covers;
+  const TeamSuggestion(this.pokemon, this.score, this.resists, this.covers);
+}
+
+/// Sugestões para completar o time (mesma conta do site, suggestMembers):
+/// Pokémon fortes (total dos status ≥ 480, sem míticos) que aguentam as
+/// fraquezas do time e acertam os tipos que ele não cobre, sem criar
+/// fraquezas novas onde o time já sofre. Um de cada combinação de tipos.
+List<TeamSuggestion> suggestMembers(
+  List<List<String>> membersTypes,
+  Map<String, Map<String, List<String>>> chart,
+  List<Map<String, dynamic>> candidates, {
+  Set<int> mythical = const {},
+  Set<int> exclude = const {},
+  int count = 6,
+}) {
+  final analysis = TeamAnalysis.of(membersTypes, chart);
+  if (analysis == null || analysis.size >= 6) return [];
+  final weak = analysis.weaknesses;
+  final crowded = allTypes.where((t) => analysis.rows[t]!.weak >= 2).toList();
+  final out = <TeamSuggestion>[];
+  for (final p in candidates) {
+    final id = p['id'] as int;
+    if (exclude.contains(id) || mythical.contains(p['species'])) continue;
+    final stats = (p['stats'] as List?) ?? const [];
+    final total = stats.fold<int>(0, (a, s) => a + ((s as List)[0] as num).toInt());
+    if (total < 480) continue;
+    final types = (p['types'] as List).cast<String>();
+    double taken(String t) => Battle.effectiveness(t, types, chart);
+    final resists = weak.where((t) => taken(t) < 1).toList();
+    final covers = analysis.missing
+        .where((t) => types.any((own) => (chart[own]?['double_damage_to'] ?? const <String>[]).contains(t)))
+        .toList();
+    final worse = [...weak, ...crowded].where((t) => taken(t) > 1).length;
+    final score = resists.fold<double>(0, (s, t) => s + (taken(t) == 0 ? 3 : 2)) + covers.length - worse * 2;
+    if (score <= 0) continue;
+    out.add(TeamSuggestion(p, score + total / 1000, resists, covers));
+  }
+  out.sort((a, b) => b.score.compareTo(a.score));
+  final seen = <String>{};
+  return out
+      .where((s) => seen.add(([...(s.pokemon['types'] as List).cast<String>()]..sort()).join('/')))
+      .take(count)
+      .toList();
+}
