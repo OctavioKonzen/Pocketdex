@@ -2,7 +2,7 @@
 // Rodar: cd firestore-tests && npm ci && npm test
 import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing'
 import { readFileSync } from 'node:fs'
-import { doc, setDoc, getDoc, getDocs, collection, deleteDoc, writeBatch, serverTimestamp, updateDoc, query, where } from 'firebase/firestore'
+import { doc, setDoc, getDoc, getDocs, collection, deleteDoc, writeBatch, serverTimestamp, updateDoc, query, where, increment } from 'firebase/firestore'
 
 const env = await initializeTestEnvironment({
   projectId: 'demo-pocketdex',
@@ -80,7 +80,8 @@ await check('voto sem mexer na nota', setDoc(doc(B, 'publicTeams', 'tA', 'rating
 await check('nota sem voto', updateDoc(doc(B, 'publicTeams', 'tA'), { ratingSum: 100, ratingCount: 20 }), false)
 await check('alice vota no próprio time', vote(A, 'alice', 'tA', 5, 10, 2), false)
 await check('voto 6 estrelas', vote(A, 'alice', 'tB', 6, 6, 1), false)
-await check('ler voto de outro', getDoc(doc(A, 'publicTeams', 'tA', 'ratings', 'bob')), false)
+await check('ler voto de outro', getDoc(doc(anon, 'publicTeams', 'tA', 'ratings', 'bob')), false)
+await check('dono lê voto no próprio time', getDoc(doc(A, 'publicTeams', 'tA', 'ratings', 'bob')), true)
 await check('buscar times pelo nome', getDocs(query(collection(B, 'publicTeams'), where('ownerKey', '==', 'ash ketchum'))), true)
 await check('buscar times sem login', getDocs(collection(anon, 'publicTeams')), false)
 const report = (db, uid, team, count) => {
@@ -97,6 +98,27 @@ await check('alice denuncia o próprio', report(A, 'alice', 'tA', 2), false)
 await check('dono zera denúncias', setDoc(doc(A, 'publicTeams', 'tA'), { ...teamA, ratingSum: 5, ratingCount: 1, reportCount: 0 }), false)
 await check('dono edita mantendo denúncias', setDoc(doc(A, 'publicTeams', 'tA'), { ...teamA, name: 'Outro', ratingSum: 5, ratingCount: 1, reportCount: 1 }), true)
 await check('outro apaga time', deleteDoc(doc(B, 'publicTeams', 'tA')), false)
+
+// excluir conta: voto e denúncia saem dos times dos outros
+const unvote = (db, uid, team, stars) => {
+  const b = writeBatch(db)
+  b.update(doc(db, 'publicTeams', team), { ratingSum: increment(-stars), ratingCount: increment(-1) })
+  b.delete(doc(db, 'publicTeams', team, 'ratings', uid))
+  return b.commit()
+}
+await check('tirar voto sem mexer na nota', deleteDoc(doc(B, 'publicTeams', 'tA', 'ratings', 'bob')), false)
+await check('tirar voto com nota errada', unvote(B, 'bob', 'tA', 2), false)
+await check('outro tira voto do bob', unvote(A, 'bob', 'tA', 5), false)
+await check('bob tira o voto (nota volta)', unvote(B, 'bob', 'tA', 5), true)
+await check('bob vota de novo', vote(B, 'bob', 'tA', 3, 3, 1), true)
+await check('outro apaga denúncia do bob', deleteDoc(doc(anon, 'publicTeams', 'tA', 'reports', 'bob')), false)
+await check('bob apaga a própria denúncia', deleteDoc(doc(B, 'publicTeams', 'tA', 'reports', 'bob')), true)
+await check('bob denuncia de novo (contagem continua)', report(B, 'bob', 'tA', 2), true)
+await check('dono lista votos do próprio time', getDocs(collection(A, 'publicTeams', 'tA', 'ratings')), true)
+await check('outro lista votos do time', getDocs(collection(B, 'publicTeams', 'tB', 'ratings')), true)
+await check('bob lista votos do time da alice', getDocs(collection(B, 'publicTeams', 'tA', 'ratings')), false)
+await check('dono apaga votos do próprio time', deleteDoc(doc(A, 'publicTeams', 'tA', 'ratings', 'bob')), true)
+await check('dono apaga denúncias do próprio time', deleteDoc(doc(A, 'publicTeams', 'tA', 'reports', 'bob')), true)
 await check('dono apaga time', deleteDoc(doc(A, 'publicTeams', 'tA')), true)
 
 // excluir conta
@@ -106,6 +128,13 @@ await check('apaga desafio', deleteDoc(doc(A, 'daily', '2026-09-25', 'scores', '
 await check('apaga nome', deleteDoc(doc(A, 'usernames', 'ash ketchum')), true)
 await check('apaga perfil', deleteDoc(doc(A, 'users', 'alice')), true)
 await check('apaga nome de outro', deleteDoc(doc(A, 'usernames', 'joao')), false)
+
+// Nome preso de uma conta já excluída (perfil não existe mais): fica livre.
+await env.withSecurityRulesDisabled(async (ctx) => setDoc(doc(ctx.firestore(), 'usernames', 'misty'), { uid: 'gone', name: 'Misty' }))
+const C = env.authenticatedContext('carol').firestore()
+await check('nova conta pega nome de conta excluída', claim(C, 'carol', 'Misty', 'misty'), true)
+await check('nome de conta ativa continua preso', claim(C, 'carol', 'João', 'joao'), false)
+await check('apaga nome de conta ativa', deleteDoc(doc(anon, 'usernames', 'joao')), false)
 
 await env.cleanup()
 console.log(fails ? `${fails} FALHAS` : 'TUDO CERTO')

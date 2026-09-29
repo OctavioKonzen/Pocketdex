@@ -93,10 +93,13 @@ async function claimName(user, name) {
   const nameRef = doc(db, 'usernames', nameKey(clean))
   const userRef = doc(db, 'users', user.uid)
   await runTransaction(db, async (tx) => {
-    const taken = await tx.get(nameRef)
-    if (taken.exists() && taken.data().uid !== user.uid) throw new AuthError('name-taken')
+    // Nome de outra pessoa: as regras só deixam pegar se a conta dela foi
+    // excluída (senão a gravação é recusada e o nome continua dela).
+    await tx.get(nameRef)
     tx.set(nameRef, { uid: user.uid, name: clean })
     tx.set(userRef, { name: clean, nameKey: nameKey(clean), email: user.email ?? '', createdAt: serverTimestamp() }, { merge: true })
+  }).catch((error) => {
+    throw error?.code === 'permission-denied' ? new AuthError('name-taken') : error
   })
   return clean
 }
@@ -141,7 +144,6 @@ export async function startAuth() {
 export async function signUp({ name, email, password, keep }) {
   const nameError = validateName(name)
   if (nameError) throw new AuthError(nameError)
-  if (!(await isNameAvailable(name))) throw new AuthError('name-taken')
   await setKeepSignedIn(keep)
   const { auth, createUserWithEmailAndPassword, updateProfile, deleteUser } = await firebase()
   signingUp = true
@@ -443,19 +445,55 @@ export async function deleteAccount({ password, weeks = [], days = [] }) {
     await f.reauthenticateWithCredential(user, f.EmailAuthProvider.credential(user.email, password ?? ''))
   }
   const uid = user.uid
-  const profile = await f.getDoc(f.doc(f.db, 'users', uid))
+  const { db, doc, getDoc, getDocs, collection, deleteDoc, writeBatch, increment } = f
+  const quiet = (p) => p.catch(() => {})
+  const profile = await getDoc(doc(db, 'users', uid))
   const name = profile.exists() ? profile.data().name : null
-  const removals = [
-    f.doc(f.db, 'ranking', uid),
-    ...weeks.map((week) => f.doc(f.db, 'weekly', week, 'scores', uid)),
-    ...days.map((day) => f.doc(f.db, 'daily', day, 'scores', uid)),
-  ]
-  if (name) removals.push(f.doc(f.db, 'usernames', nameKey(name)))
-  const teams = await f.getDocs(f.query(f.collection(f.db, 'publicTeams'), f.where('ownerUid', '==', uid))).catch(() => null)
-  teams?.docs.forEach((d) => removals.push(d.ref))
-  await Promise.all(removals.map((ref) => f.deleteDoc(ref).catch(() => {})))
-  await f.deleteDoc(f.doc(f.db, 'users', uid))
+  const keys = new Set([profile.exists() ? profile.data().nameKey : null, name ? nameKey(name) : null].filter(Boolean))
+
+  // Times públicos: os da pessoa somem inteiros (com votos e denúncias);
+  // nos dos outros, o voto dela sai (a nota volta) e a denúncia também.
+  const teams = await getDocs(collection(db, 'publicTeams')).catch(() => null)
+  for (const team of teams?.docs ?? []) {
+    if (team.data().ownerUid === uid) {
+      for (const sub of ['ratings', 'reports']) {
+        const docs = await getDocs(collection(db, 'publicTeams', team.id, sub)).catch(() => null)
+        await Promise.all((docs?.docs ?? []).map((d) => quiet(deleteDoc(d.ref))))
+      }
+      await quiet(deleteDoc(team.ref))
+    } else {
+      const vote = await getDoc(doc(db, 'publicTeams', team.id, 'ratings', uid)).catch(() => null)
+      if (vote?.exists()) {
+        const batch = writeBatch(db)
+        batch.update(team.ref, { ratingSum: increment(-vote.data().stars), ratingCount: increment(-1) })
+        batch.delete(vote.ref)
+        await quiet(batch.commit())
+      }
+      await quiet(deleteDoc(doc(db, 'publicTeams', team.id, 'reports', uid)))
+    }
+  }
+
+  // Rankings: o geral e todas as semanas e dias desde que os rankings existem.
+  await Promise.all([...keys].map((k) => quiet(deleteDoc(doc(db, 'usernames', k)))))
+  const refs = [doc(db, 'ranking', uid)]
+  for (const key of new Set([...boardKeys(), ...weeks, ...days])) {
+    refs.push(doc(db, 'weekly', key, 'scores', uid), doc(db, 'daily', key, 'scores', uid))
+  }
+  for (let i = 0; i < refs.length; i += 400) {
+    const batch = writeBatch(db)
+    refs.slice(i, i + 400).forEach((ref) => batch.delete(ref))
+    await batch.commit().catch(() => Promise.all(refs.slice(i, i + 400).map((ref) => quiet(deleteDoc(ref)))))
+  }
+
+  await deleteDoc(doc(db, 'users', uid))
   await f.deleteUser(user)
+}
+
+/** Todos os dias desde o começo dos rankings (semana e dia usam "AAAA-MM-DD"). */
+function boardKeys(now = Date.now()) {
+  const keys = []
+  for (let t = Date.UTC(2026, 8, 20); t <= now + 2 * 86400000; t += 86400000) keys.push(new Date(t).toISOString().slice(0, 10))
+  return keys
 }
 
 // ---------------------------------------------------------------- mensagens

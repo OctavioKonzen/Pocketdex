@@ -51,6 +51,15 @@ page.on('console', (m) => {
   if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errors.push(m.text())
 })
 
+// Lê o banco do emulador como administrador (só existe no emulador).
+async function emulatorDocs(path) {
+  const res = await fetch(`http://127.0.0.1:8085/v1/projects/pocketdex-ffb4d/databases/(default)/documents/${path}`, {
+    headers: { Authorization: 'Bearer owner' },
+  })
+  const body = await res.json()
+  return (body.documents ?? []).map((d) => d.name.split('/').slice(-1)[0])
+}
+
 let step = ''
 async function expectHealthy() {
   const text = await page.evaluate(() => document.body.innerText)
@@ -93,7 +102,31 @@ try {
   await page.getByText(user.name).first().waitFor({ timeout: 20000 })
   await go('jogo')
 
-  console.log(`TUDO CERTO: conta criada, ${ROUTES.length} páginas abertas, saiu e entrou de novo.`)
+  step = 'excluir conta'
+  await go('configuracoes')
+  await page.getByRole('button', { name: 'Excluir', exact: true }).click()
+  await page.getByPlaceholder('Digite sua senha para confirmar').fill(user.password)
+  await page.getByRole('button', { name: 'Excluir para sempre' }).click()
+  await page.getByRole('button', { name: 'Entrar' }).first().waitFor({ timeout: 30000 })
+  await expectHealthy()
+
+  step = 'banco vazio depois de excluir'
+  for (const path of ['users', 'usernames', 'ranking', 'publicTeams']) {
+    const docs = await emulatorDocs(path)
+    assert.deepEqual(docs, [], `${step}: sobrou algo em ${path}`)
+  }
+
+  step = 'criar de novo com o mesmo e-mail e nome'
+  await page.getByRole('button', { name: 'Criar conta' }).first().click()
+  await page.locator('input[autocomplete=nickname]').fill(user.name)
+  await page.locator('input[type=email]').fill(user.email)
+  await page.locator('input[autocomplete=new-password]').nth(0).fill(user.password)
+  await page.locator('input[autocomplete=new-password]').nth(1).fill(user.password)
+  await page.locator('form button[type=submit]').click()
+  await page.getByText(user.name).first().waitFor({ timeout: 20000 })
+  await go('configuracoes')
+
+  console.log(`TUDO CERTO: conta criada, ${ROUTES.length} páginas abertas, saiu, entrou, excluiu (banco limpo) e criou de novo.`)
 } catch (error) {
   await page.screenshot({ path: 'falha.png', fullPage: true }).catch(() => {})
   console.error(`FALHOU em "${step}":`, error.message)
