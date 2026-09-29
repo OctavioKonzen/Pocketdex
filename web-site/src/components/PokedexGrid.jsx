@@ -132,14 +132,28 @@ export default function PokedexGrid({ pokemon, emptyText = 'Nenhum Pokémon enco
   // força redesenhar todos os cards).
   const openRef = useRef(open)
   openRef.current = open
-  const onCardClick = useCallback((p) => (openRef.current?.id === p.id ? close() : show(p, { byClick: true })), [close, show])
+  // Só o Pokémon aberto (ou a evolução escolhida) sai da Pokébola: indo
+  // para o anterior/próximo, e voltando, a animação não se repete.
+  const [revealSpecies, setRevealSpecies] = useState(null)
+  const onCardClick = useCallback(
+    (p) => {
+      if (openRef.current?.id === p.id) return close()
+      setRevealSpecies(p.species)
+      show(p, { byClick: true })
+    },
+    [close, show],
+  )
   const step = (delta) => {
     const next = pokemon[selectedIndex + delta]
-    if (next) show(next, { byClick: false })
+    if (!next) return
+    setRevealSpecies(null)
+    show(next, { byClick: false })
   }
   const navigateTo = (speciesId) => {
     const target = pokemon.find((p) => p.species === speciesId && p.default) ?? pokemon.find((p) => p.species === speciesId)
-    if (target) show(target, { byClick: false })
+    if (!target) return
+    setRevealSpecies(speciesId)
+    show(target, { byClick: false })
   }
 
   // Teclado: ← → navegam, Esc fecha.
@@ -210,6 +224,7 @@ export default function PokedexGrid({ pokemon, emptyText = 'Nenhum Pokémon enco
                   >
                     <DetailsPanel
                       speciesId={pokemon[selectedIndex].species}
+                      reveal={revealSpecies === pokemon[selectedIndex].species}
                       height={panelHeight}
                       compact={compact}
                       tab={tab}

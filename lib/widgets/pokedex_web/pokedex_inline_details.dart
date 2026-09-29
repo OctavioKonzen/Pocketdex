@@ -30,6 +30,9 @@ class PokedexInlineDetails extends StatefulWidget {
   final VoidCallback onPrevious;
   final VoidCallback onNext;
 
+  /// Sai da Pokébola ao aparecer (só o Pokémon aberto ou a evolução escolhida).
+  final bool reveal;
+
   /// Altura do painel; a grade calcula para caber na tela, entre
   /// [minHeight] e [maxHeight].
   final double height;
@@ -45,6 +48,7 @@ class PokedexInlineDetails extends StatefulWidget {
     required this.hasNext,
     required this.onPrevious,
     required this.onNext,
+    this.reveal = true,
     this.height = maxHeight,
     this.initialTab = 0,
     this.onTabChanged,
@@ -58,11 +62,9 @@ class PokedexInlineDetails extends StatefulWidget {
   State<PokedexInlineDetails> createState() => _PokedexInlineDetailsState();
 }
 
-class _PokedexInlineDetailsState extends State<PokedexInlineDetails>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _pokeball =
-      AnimationController(vsync: this, duration: const Duration(seconds: 20))
-        ..repeat();
+class _PokedexInlineDetailsState extends State<PokedexInlineDetails> with SingleTickerProviderStateMixin {
+  late final AnimationController _pokeball = AnimationController(vsync: this, duration: const Duration(seconds: 20))
+    ..repeat();
   final PageController _pageController = PageController(keepPage: false);
 
   PokemonDetails? _details;
@@ -90,8 +92,7 @@ class _PokedexInlineDetailsState extends State<PokedexInlineDetails>
   }
 
   Future<void> _load() async {
-    final details =
-        await PokemonService().fetchPokemonDetails(widget.pokemonId);
+    final details = await PokemonService().fetchPokemonDetails(widget.pokemonId);
     if (!mounted) return;
     setState(() {
       _details = details;
@@ -113,8 +114,7 @@ class _PokedexInlineDetailsState extends State<PokedexInlineDetails>
     // Enquanto o próximo Pokémon carrega, o anterior continua na tela (sem
     // painel cinza); a cor muda direto de um tipo para o outro.
     final loaded = details != null && form != null;
-    final color =
-        loaded ? getColorForType(form.types.first) : Colors.grey.shade700;
+    final color = loaded ? getColorForType(form.types.first) : Colors.grey.shade700;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 350),
@@ -124,10 +124,7 @@ class _PokedexInlineDetailsState extends State<PokedexInlineDetails>
         color: color,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(
-              color: color.withAlpha(90),
-              blurRadius: 24,
-              offset: const Offset(0, 10)),
+          BoxShadow(color: color.withAlpha(90), blurRadius: 24, offset: const Offset(0, 10)),
         ],
       ),
       clipBehavior: Clip.antiAlias,
@@ -163,6 +160,26 @@ class _PokedexInlineDetailsState extends State<PokedexInlineDetails>
 
   Widget _buildShowcase(PokemonDetails details, AlternateForm form) {
     final image = _isShiny ? form.shinyPixelImageUrl : form.pixelImageUrl;
+    final Widget pokemonImage = AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      transitionBuilder: (child, animation) => ScaleTransition(
+        scale: Tween(begin: 0.8, end: 1.0).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutBack)),
+        child: FadeTransition(opacity: animation, child: child),
+      ),
+      child: HoverScale(
+        key: ValueKey(image),
+        scale: 1.08,
+        cursor: SystemMouseCursors.basic,
+        child: Image(
+          image: AppImages.provider(image),
+          width: double.infinity,
+          height: double.infinity,
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.none,
+          errorBuilder: (_, __, ___) => const Icon(Icons.image_not_supported, color: Colors.white54, size: 60),
+        ),
+      ),
+    );
 
     return Stack(
       children: [
@@ -175,9 +192,7 @@ class _PokedexInlineDetailsState extends State<PokedexInlineDetails>
               child: Opacity(
                 opacity: 0.18,
                 child: Image.asset('assets/images/pokeball.png',
-                    width: widget.height * 0.6,
-                    height: widget.height * 0.6,
-                    color: Colors.white),
+                    width: widget.height * 0.6, height: widget.height * 0.6, color: Colors.white),
               ),
             ),
           ),
@@ -191,34 +206,9 @@ class _PokedexInlineDetailsState extends State<PokedexInlineDetails>
           right: 56,
           // Ao abrir (ou trocar de Pokémon) ele sai da Pokébola; ao trocar
           // forma/shiny, só faz a transição.
-          child: PokeballReveal(
-            key: ValueKey('reveal-${details.id}'),
-            ballSize: 110,
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              transitionBuilder: (child, animation) => ScaleTransition(
-                scale: Tween(begin: 0.8, end: 1.0).animate(CurvedAnimation(
-                    parent: animation, curve: Curves.easeOutBack)),
-                child: FadeTransition(opacity: animation, child: child),
-              ),
-              child: HoverScale(
-                key: ValueKey(image),
-                scale: 1.08,
-                cursor: SystemMouseCursors.basic,
-                child: Image(
-                  image: AppImages.provider(image),
-                  width: double.infinity,
-                  height: double.infinity,
-                  fit: BoxFit.contain,
-                  filterQuality: FilterQuality.none,
-                  errorBuilder: (_, __, ___) => const Icon(
-                      Icons.image_not_supported,
-                      color: Colors.white54,
-                      size: 60),
-                ),
-              ),
-            ),
-          ),
+          child: widget.reveal
+              ? PokeballReveal(key: ValueKey('reveal-${details.id}'), ballSize: 110, child: pokemonImage)
+              : pokemonImage,
         ),
         // Anterior / próximo.
         if (widget.hasPrevious)
@@ -228,10 +218,7 @@ class _PokedexInlineDetailsState extends State<PokedexInlineDetails>
             bottom: 0,
             child: Center(
               child: HoverIconButton(
-                  icon: Icons.chevron_left,
-                  tooltip: 'Anterior',
-                  onPressed: widget.onPrevious,
-                  size: 28),
+                  icon: Icons.chevron_left, tooltip: 'Anterior', onPressed: widget.onPrevious, size: 28),
             ),
           ),
         if (widget.hasNext)
@@ -240,11 +227,7 @@ class _PokedexInlineDetailsState extends State<PokedexInlineDetails>
             top: 0,
             bottom: 0,
             child: Center(
-              child: HoverIconButton(
-                  icon: Icons.chevron_right,
-                  tooltip: 'Próximo',
-                  onPressed: widget.onNext,
-                  size: 28),
+              child: HoverIconButton(icon: Icons.chevron_right, tooltip: 'Próximo', onPressed: widget.onNext, size: 28),
             ),
           ),
         // Nome, número, tipos e ações.
@@ -262,24 +245,17 @@ class _PokedexInlineDetailsState extends State<PokedexInlineDetails>
                       children: [
                         Text(
                           '#${details.id.toString().padLeft(3, '0')}',
-                          style: TextStyle(
-                              color: Colors.white.withAlpha(200),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14),
+                          style:
+                              TextStyle(color: Colors.white.withAlpha(200), fontWeight: FontWeight.bold, fontSize: 14),
                         ),
                         Text(
                           details.name.capitalise(),
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 30,
-                              fontWeight: FontWeight.w900),
+                          style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900),
                         ),
                         if (details.genus.isNotEmpty)
                           Text(
                             'Pokémon ${details.genus}',
-                            style: TextStyle(
-                                color: Colors.white.withAlpha(220),
-                                fontSize: 13),
+                            style: TextStyle(color: Colors.white.withAlpha(220), fontSize: 13),
                           ),
                       ],
                     ),
@@ -291,10 +267,7 @@ class _PokedexInlineDetailsState extends State<PokedexInlineDetails>
                     onPressed: () => setState(() => _isShiny = !_isShiny),
                   ),
                   const SizedBox(width: 8),
-                  HoverIconButton(
-                      icon: Icons.close,
-                      tooltip: 'Fechar',
-                      onPressed: widget.onClose),
+                  HoverIconButton(icon: Icons.close, tooltip: 'Fechar', onPressed: widget.onClose),
                 ],
               ),
               const SizedBox(height: 10),
@@ -303,18 +276,14 @@ class _PokedexInlineDetailsState extends State<PokedexInlineDetails>
                 children: [
                   for (final type in form.types)
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                       decoration: BoxDecoration(
                         color: getColorForType(type),
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(color: Colors.white.withAlpha(150)),
                       ),
                       child: Text(type.capitalise(),
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12)),
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
                     ),
                 ],
               ),
@@ -352,9 +321,7 @@ class _PokedexInlineDetailsState extends State<PokedexInlineDetails>
                 child: Text(
                   form.formName,
                   style: TextStyle(
-                    color: isSelected
-                        ? getColorForType(form.types.first)
-                        : Colors.white,
+                    color: isSelected ? getColorForType(form.types.first) : Colors.white,
                     fontWeight: FontWeight.bold,
                     fontSize: 12,
                   ),

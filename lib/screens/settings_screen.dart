@@ -278,6 +278,8 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
     try {
       await AuthService.instance.deleteAccount(password: _password.text, weeks: weeks, days: days);
       UserData.instance.clearAll();
+      // Nada da conta fica no aparelho: nem o lembrete do desafio.
+      if (DailyReminder.supported) await DailyReminder.instance.setEnabled(false).catchError((_) => false);
       if (!mounted) return;
       final messenger = ScaffoldMessenger.of(context);
       Navigator.of(context).popUntil((route) => route.isFirst);

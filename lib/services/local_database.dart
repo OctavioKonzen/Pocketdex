@@ -83,6 +83,10 @@ class LocalDatabase {
   /// Um Pokémon (ou forma) como está no banco.
   Future<Map<String, dynamic>?> pokemonRow(int id) async => (await _indexById('pokemon'))[id];
 
+  /// Todos os itens e habilidades (listas do banco).
+  Future<List<Map<String, dynamic>>> allItems() async => (await _table('items') as List).cast<Map<String, dynamic>>();
+  Future<List<Map<String, dynamic>>> allAbilities() async => (await _table('abilities') as List).cast<Map<String, dynamic>>();
+
   /// Golpes por nome ({name, type, damage_class, power...}).
   Future<Map<String, Map<String, dynamic>>> movesByName() => _indexByName('moves');
 

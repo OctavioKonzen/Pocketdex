@@ -90,8 +90,10 @@ service cloud.firestore {
       }
       function reports(d) { return d.get('reportCount', 0); }
       function validTeam() {
-        return team().keys().hasOnly(['ownerUid', 'ownerName', 'ownerKey', 'avatar', 'name', 'color', 'pokemon',
+        return team().keys().hasOnly(['ownerUid', 'ownerName', 'ownerKey', 'avatar', 'name', 'color', 'pokemon', 'sets',
                                       'ratingSum', 'ratingCount', 'reportCount', 'updatedAt'])
+          // dados completos de cada Pokémon (golpes, item, EVs...): 6 posições
+          && (!('sets' in team()) || (team().sets is list && team().sets.size() == 6))
           && team().ownerUid == request.auth.uid
           && team().ownerName == accountName(request.auth.uid)
           && team().ownerKey == keyOf(team().ownerName)
@@ -122,6 +124,12 @@ service cloud.firestore {
                  - (exists(ratingPath()) ? get(ratingPath()).data.stars : 0)
             && team().ratingCount == resource.data.ratingCount + (exists(ratingPath()) ? 0 : 1)
         ) || (
+          // outra pessoa tira a própria denúncia (ao excluir a conta): -1 denúncia
+          request.auth != null && resource.data.ownerUid != request.auth.uid
+            && team().diff(resource.data).affectedKeys().hasOnly(['reportCount'])
+            && exists(reportPath()) && !existsAfter(reportPath())
+            && team().reportCount == reports(resource.data) - 1
+        ) || (
           // outra pessoa tira o próprio voto (ao excluir a conta): a nota volta
           request.auth != null && resource.data.ownerUid != request.auth.uid
             && team().diff(resource.data).affectedKeys().hasOnly(['ratingSum', 'ratingCount'])
@@ -139,9 +147,12 @@ service cloud.firestore {
           return request.auth != null && get(parent()).data.ownerUid == request.auth.uid;
         }
         allow read: if signedIn(uid) || ownerOfTeam();
-        // Quem denunciou apaga a própria denúncia ao excluir a conta (a
-        // contagem do time continua); o dono apaga todas ao excluir o time.
-        allow delete: if signedIn(uid) || ownerOfTeam() || !exists(parent());
+        // Quem denunciou apaga a própria denúncia ao excluir a conta, sempre
+        // junto com o -1 no time; o dono apaga todas ao excluir o time.
+        allow delete: if (signedIn(uid) && (
+            !exists(parent())
+            || getAfter(parent()).data.get('reportCount', 0) == get(parent()).data.get('reportCount', 0) - 1
+          )) || ownerOfTeam();
         allow create: if signedIn(uid)
           && request.resource.data.keys().hasOnly(['reason', 'createdAt'])
           && request.resource.data.reason is string && request.resource.data.reason.size() <= 200

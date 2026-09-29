@@ -89,6 +89,32 @@ try {
 
   for (const route of ROUTES) await go(route)
 
+  await go('times')
+  step = 'montar time com dados completos'
+  await page.getByRole('button', { name: '+ Novo time' }).click()
+  await page.getByPlaceholder('Nome do time').fill('Areia')
+  await page.getByRole('button', { name: 'Criar', exact: true }).click()
+  await page.getByRole('button', { name: 'Adicionar Pokémon' }).first().click()
+  await page.getByPlaceholder('Procurar por nome ou número').fill('garchomp')
+  await page.getByRole('dialog').getByRole('button', { name: /garchomp/i }).first().click()
+  const editor = page.getByRole('dialog', { name: 'Garchomp' })
+  await editor.waitFor({ timeout: 15000 })
+  await editor.getByPlaceholder('Nenhum').fill('Choice Scarf')
+  await editor.getByPlaceholder('Golpe 1').fill('Earthquake')
+  await editor.locator('select').filter({ hasText: 'Jolly' }).selectOption('Jolly')
+  // Campos de número: nível, depois EVs e IVs de cada status (HP, Attack...).
+  await editor.locator('input[type=number]').nth(3).fill('252') // EVs de Attack
+  await page.keyboard.press('Escape')
+  await page.getByText('Earthquake').first().waitFor({ timeout: 5000 })
+  await page.getByRole('button', { name: 'Compartilhar' }).click()
+  const text = await page.locator('textarea').first().inputValue()
+  assert.match(text, /Garchomp @ Choice Scarf/, `${step}: texto sem o item`)
+  assert.match(text, /EVs: 252 Atk/, `${step}: texto sem os EVs`)
+  assert.match(text, /Jolly Nature/, `${step}: texto sem a Nature`)
+  assert.match(text, /- Earthquake/, `${step}: texto sem o golpe`)
+  await page.keyboard.press('Escape')
+  await expectHealthy()
+
   step = 'sair'
   await go('configuracoes')
   await page.getByRole('button', { name: 'Sair' }).first().click()

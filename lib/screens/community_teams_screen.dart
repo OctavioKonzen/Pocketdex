@@ -13,6 +13,7 @@ import '../services/account_sync.dart';
 import '../services/auth_service.dart';
 import '../services/local_database.dart';
 import '../services/team_service.dart';
+import '../services/team_sets.dart';
 import '../services/team_share.dart';
 import '../utils/responsive.dart';
 import '../utils/site_ui.dart';
@@ -20,6 +21,7 @@ import '../utils/team_analysis.dart';
 import '../widgets/account_avatar.dart';
 import '../widgets/pokemon_sprite.dart';
 import '../widgets/team_analysis_view.dart';
+import '../widgets/team_set_summary.dart';
 import 'team_builder_screen.dart';
 
 Color _teamColor(Object? color) {
@@ -317,7 +319,8 @@ class _PublicTeamScreenState extends State<_PublicTeamScreen> {
   Future<void> _save() async {
     final team = _team!;
     final saved = await TeamService().importTeam(
-      SharedTeam('${team['name']} (${team['ownerName']})', team['color'] as String?, _slots(team)),
+      SharedTeam('${team['name']} (${team['ownerName']})', team['color'] as String?, _slots(team),
+          teamSets(_slots(team), team['sets'])),
     );
     if (!mounted) return;
     Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => TeamBuilderScreen(team: saved)));
@@ -357,7 +360,7 @@ class _PublicTeamScreenState extends State<_PublicTeamScreen> {
                             ],
                           ),
                           const SizedBox(height: 12),
-                          _SpriteRow(slots: _slots(team)),
+                          TeamSetSummary(slots: _slots(team), sets: teamSets(_slots(team), team['sets'])),
                         ],
                       ),
                     ),

@@ -1,0 +1,40 @@
+name: Regras do Firestore
+
+# Publica firestore.rules no Firebase sempre que muda na main (sem precisar
+# colar no Console). Usa o segredo FIREBASE_SERVICE_ACCOUNT, o mesmo da
+# limpeza do banco; sem ele, só avisa.
+#
+# Todas as buscas do site e do app usam um campo só (ranking por pontos,
+# times por dono ou por data), então o Firestore não precisa de índices extras.
+
+on:
+  push:
+    branches: [main]
+    paths: [firestore.rules, tool/firestore-deploy/**, .github/workflows/firestore-rules.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tool/firestore-deploy
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Publicar as regras
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::warning::Falta o segredo FIREBASE_SERVICE_ACCOUNT: cole firestore.rules no Console do Firebase à mão."
+            exit 0
+          fi
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/chave.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/chave.json"
+          npx --yes firebase-tools@15 deploy --only firestore:rules --project pocketdex-ffb4d --non-interactive

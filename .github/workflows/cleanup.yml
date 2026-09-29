@@ -1,0 +1,44 @@
+name: Limpeza do banco
+
+# Todo dia apaga do Firestore qualquer dado de conta que não existe mais
+# (tool/cleanup/cleanup.mjs), para não sobrar nenhum vestígio de quem
+# excluiu a conta. Precisa do segredo FIREBASE_SERVICE_ACCOUNT (a chave de
+# administrador do Firebase, em JSON); sem ele, não faz nada.
+
+on:
+  schedule:
+    - cron: '17 6 * * *' # 3h17 em Brasília
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Só mostrar o que seria apagado'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tool/cleanup
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tool/cleanup/package-lock.json
+      - name: Limpar
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::warning::Falta o segredo FIREBASE_SERVICE_ACCOUNT (Settings → Secrets and variables → Actions)."
+            exit 0
+          fi
+          npm ci
+          npm start

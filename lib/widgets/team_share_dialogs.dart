@@ -1,12 +1,13 @@
 // lib/widgets/team_share_dialogs.dart
 //
-// Janelas de compartilhar e importar times (código, link ou Pokémon Showdown),
+// Janelas de compartilhar e importar times (código, link ou texto de simulador),
 // no mesmo formato do site.
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../services/local_database.dart';
+import '../services/team_sets.dart';
 import '../services/team_share.dart';
 import '../services/user_data.dart';
 import 'pokemon_sprite.dart';
@@ -21,6 +22,7 @@ class TeamShareDialogs {
     final pokemon = [for (final p in (team['pokemon'] as List? ?? [])) (p as num?)?.toInt()];
     final name = '${team['name'] ?? 'Time'}';
     final color = team['color'] as String?;
+    final sets = teamSets(pokemon, team['sets']);
     final rows = await LocalDatabase.instance.allPokemonRows();
     final names = {for (final r in rows) r['id'] as int: r['name'] as String};
     if (!context.mounted) return;
@@ -37,9 +39,12 @@ class TeamShareDialogs {
               Text('Mande o link ou o código para um amigo: no site ou no app, ele abre em Times → Importar.',
                   style: TextStyle(color: Theme.of(context).hintColor, fontSize: 13)),
               const SizedBox(height: 12),
-              _CopyField(label: 'Link', value: TeamShare.link(name: name, color: color, pokemon: pokemon)),
-              _CopyField(label: 'Código', value: TeamShare.encode(name: name, color: color, pokemon: pokemon)),
-              _CopyField(label: 'Pokémon Showdown', value: TeamShare.toShowdown(name, pokemon, names), lines: 5),
+              _CopyField(label: 'Link', value: TeamShare.link(name: name, color: color, pokemon: pokemon, sets: sets)),
+              _CopyField(label: 'Código', value: TeamShare.encode(name: name, color: color, pokemon: pokemon, sets: sets)),
+              _CopyField(
+                  label: 'Texto (Pokémon Showdown e outros simuladores)',
+                  value: TeamShare.toShowdown(name, pokemon, names, sets),
+                  lines: 8),
             ],
           ),
         ),
@@ -50,9 +55,16 @@ class TeamShareDialogs {
 
   /// Cola um código, link ou texto do Showdown; devolve o time ou null.
   static Future<SharedTeam?> import(BuildContext context) async {
-    final rows = await LocalDatabase.instance.allPokemonRows();
+    final db = LocalDatabase.instance;
+    final rows = await db.allPokemonRows();
+    // Nomes de golpes, habilidades e itens do texto → os do banco.
+    final lookups = (
+      moves: lookupOf((await db.movesByName()).keys),
+      abilities: lookupOf([for (final a in await db.allAbilities()) a['name'] as String]),
+      items: lookupOf([for (final i in await db.allItems()) i['name'] as String]),
+    );
     if (!context.mounted) return null;
-    return showDialog<SharedTeam>(context: context, builder: (_) => _ImportDialog(rows: rows));
+    return showDialog<SharedTeam>(context: context, builder: (_) => _ImportDialog(rows: rows, lookups: lookups));
   }
 }
 
@@ -99,9 +111,12 @@ class _CopyField extends StatelessWidget {
   }
 }
 
+typedef _Lookups = ({Map<String, String> moves, Map<String, String> abilities, Map<String, String> items});
+
 class _ImportDialog extends StatefulWidget {
   final List<Map<String, dynamic>> rows;
-  const _ImportDialog({required this.rows});
+  final _Lookups lookups;
+  const _ImportDialog({required this.rows, required this.lookups});
   @override
   State<_ImportDialog> createState() => _ImportDialogState();
 }
@@ -123,7 +138,10 @@ class _ImportDialogState extends State<_ImportDialog> {
     _changed(_text.text);
   }
 
-  void _changed(String text) => setState(() => _team = text.trim().isEmpty ? null : TeamShare.parse(text, widget.rows));
+  void _changed(String text) => setState(() => _team = text.trim().isEmpty
+      ? null
+      : TeamShare.parse(text, widget.rows,
+          moves: widget.lookups.moves, abilities: widget.lookups.abilities, items: widget.lookups.items));
 
   @override
   Widget build(BuildContext context) {
@@ -142,7 +160,7 @@ class _ImportDialogState extends State<_ImportDialog> {
               maxLines: 6,
               onChanged: _changed,
               decoration: const InputDecoration(
-                hintText: 'Cole aqui o link, o código (PDX1...) ou o time do Pokémon Showdown',
+                hintText: 'Cole aqui o link, o código (PDX1...) ou o texto do time (Pokémon Showdown e outros)',
                 border: OutlineInputBorder(),
               ),
             ),

@@ -10,6 +10,7 @@
 
 import { create } from 'zustand'
 import { firebaseConfig, isConfigured } from './firebaseConfig'
+import { teamSets } from './teamSets'
 import { isOffensive } from './profanity'
 
 let services = null
@@ -316,6 +317,11 @@ const publicTeam = (d) => {
   return { id: d.id, ...data, rating: data.ratingCount ? data.ratingSum / data.ratingCount : null }
 }
 
+// JSON com as chaves em ordem (o Firestore não guarda a ordem dos campos).
+const sortKeys = (v) =>
+  Array.isArray(v) ? v.map(sortKeys) : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, sortKeys(v[k])])) : v
+const canon = (v) => JSON.stringify(sortKeys(v))
+
 /**
  * Deixa os times públicos iguais aos times da conta: cria os novos, atualiza
  * os que mudaram e apaga os que foram excluídos (a nota da comunidade fica).
@@ -332,9 +338,10 @@ export async function publishTeams(uid, name, avatar, teams) {
     if (!pokemon.some((p) => p != null)) continue // time vazio não aparece
     if (isOffensive(team.name)) continue // nome com palavrão não aparece para os outros
     wanted.add(team.id)
-    const fields = { ownerUid: uid, ownerName: name, ownerKey: nameKey(name), avatar: avatar ?? null, name: team.name, color: team.color ?? null, pokemon }
+    const sets = teamSets({ ...team, pokemon })
+    const fields = { ownerUid: uid, ownerName: name, ownerKey: nameKey(name), avatar: avatar ?? null, name: team.name, color: team.color ?? null, pokemon, sets }
     const old = current.get(team.id)
-    const same = old && Object.entries(fields).every(([k, v]) => JSON.stringify(old[k] ?? null) === JSON.stringify(v))
+    const same = old && Object.entries(fields).every(([k, v]) => canon(old[k] ?? null) === canon(v))
     if (same) continue
     batch.set(doc(db, 'publicTeams', team.id), {
       ...fields,
@@ -452,7 +459,7 @@ export async function deleteAccount({ password, weeks = [], days = [] }) {
   const keys = new Set([profile.exists() ? profile.data().nameKey : null, name ? nameKey(name) : null].filter(Boolean))
 
   // Times públicos: os da pessoa somem inteiros (com votos e denúncias);
-  // nos dos outros, o voto dela sai (a nota volta) e a denúncia também.
+  // nos dos outros, o voto e a denúncia dela saem (a nota e a contagem voltam).
   const teams = await getDocs(collection(db, 'publicTeams')).catch(() => null)
   for (const team of teams?.docs ?? []) {
     if (team.data().ownerUid === uid) {
@@ -469,7 +476,13 @@ export async function deleteAccount({ password, weeks = [], days = [] }) {
         batch.delete(vote.ref)
         await quiet(batch.commit())
       }
-      await quiet(deleteDoc(doc(db, 'publicTeams', team.id, 'reports', uid)))
+      const report = await getDoc(doc(db, 'publicTeams', team.id, 'reports', uid)).catch(() => null)
+      if (report?.exists()) {
+        const batch = writeBatch(db)
+        batch.update(team.ref, { reportCount: increment(-1) })
+        batch.delete(report.ref)
+        await quiet(batch.commit())
+      }
     }
   }
 

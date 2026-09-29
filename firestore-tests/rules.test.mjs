@@ -64,6 +64,12 @@ await check('publica time com nome de outro', pub(B, 'tB', { ...teamA, ownerUid:
 await check('publica com nota inventada', pub(B, 'tB', { ...teamA, ownerUid: 'bob', ownerName: 'João', ownerKey: 'joao', ratingSum: 50, ratingCount: 10 }), false)
 await check('publica time do bob', pub(B, 'tB', { ...teamA, ownerUid: 'bob', ownerName: 'João', ownerKey: 'joao', name: 'Time B' }), true)
 await check('dono edita', setDoc(doc(A, 'publicTeams', 'tA'), { ...teamA, name: 'Novo nome' }), true)
+const fullSet = { nickname: 'Chama', level: 50, gender: 'M', shiny: true, ability: 'blaze', item: 'life-orb', nature: 'Timid',
+  tera: 'fire', moves: ['flamethrower', 'air-slash', '', ''], evs: { hp: 0, atk: 0, def: 0, spa: 252, spd: 4, spe: 252 },
+  ivs: { hp: 31, atk: 0, def: 31, spa: 31, spd: 31, spe: 31 } }
+await check('time com dados completos', setDoc(doc(A, 'publicTeams', 'tA'), { ...teamA, sets: [fullSet, null, null, null, null, null] }), true)
+await check('sets com tamanho errado', setDoc(doc(A, 'publicTeams', 'tA'), { ...teamA, sets: [fullSet] }), false)
+await check('sets que não é lista', setDoc(doc(A, 'publicTeams', 'tA'), { ...teamA, sets: 'x' }), false)
 await check('dono mexe na nota', setDoc(doc(A, 'publicTeams', 'tA'), { ...teamA, ratingSum: 5, ratingCount: 1 }), false)
 await check('outro edita o time', setDoc(doc(B, 'publicTeams', 'tA'), { ...teamA, name: 'hack' }), false)
 const vote = (db, uid, team, stars, sum, count) => {
@@ -111,9 +117,17 @@ await check('tirar voto com nota errada', unvote(B, 'bob', 'tA', 2), false)
 await check('outro tira voto do bob', unvote(A, 'bob', 'tA', 5), false)
 await check('bob tira o voto (nota volta)', unvote(B, 'bob', 'tA', 5), true)
 await check('bob vota de novo', vote(B, 'bob', 'tA', 3, 3, 1), true)
+const unreport = (db, uid, team) => {
+  const b = writeBatch(db)
+  b.update(doc(db, 'publicTeams', team), { reportCount: increment(-1) })
+  b.delete(doc(db, 'publicTeams', team, 'reports', uid))
+  return b.commit()
+}
 await check('outro apaga denúncia do bob', deleteDoc(doc(anon, 'publicTeams', 'tA', 'reports', 'bob')), false)
-await check('bob apaga a própria denúncia', deleteDoc(doc(B, 'publicTeams', 'tA', 'reports', 'bob')), true)
-await check('bob denuncia de novo (contagem continua)', report(B, 'bob', 'tA', 2), true)
+await check('bob apaga denúncia sem -1', deleteDoc(doc(B, 'publicTeams', 'tA', 'reports', 'bob')), false)
+await check('-1 denúncia sem apagar a denúncia', updateDoc(doc(B, 'publicTeams', 'tA'), { reportCount: 0 }), false)
+await check('bob tira a própria denúncia (-1)', unreport(B, 'bob', 'tA'), true)
+await check('bob denuncia de novo', report(B, 'bob', 'tA', 1), true)
 await check('dono lista votos do próprio time', getDocs(collection(A, 'publicTeams', 'tA', 'ratings')), true)
 await check('outro lista votos do time', getDocs(collection(B, 'publicTeams', 'tB', 'ratings')), true)
 await check('bob lista votos do time da alice', getDocs(collection(B, 'publicTeams', 'tA', 'ratings')), false)

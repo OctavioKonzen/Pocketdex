@@ -1,7 +1,10 @@
 // Compartilhar times. Mesmo formato no app (lib/services/team_share.dart):
-//   • código: "PDX1" + base64url do JSON {n: nome, c: cor, p: [ids x6]};
+//   • código: "PDX1" + base64url do JSON {n: nome, c: cor, p: [ids x6], s: [sets x6]};
 //   • link: <site>/#/times/importar/<código>;
-//   • texto do Pokémon Showdown (um Pokémon por bloco).
+//   • texto de times dos simuladores (um Pokémon por bloco, com item,
+//     habilidade, EVs, Nature, golpes...).
+
+import { normalizeSet, setToText, teamSets, textToSet } from './teamSets'
 
 const PREFIX = 'PDX1'
 
@@ -21,7 +24,10 @@ function fromBase64Url(code) {
 /** Time → código curto. */
 export function encodeTeam(team) {
   const pokemon = Array.from({ length: 6 }, (_, i) => team.pokemon?.[i] ?? null)
-  return PREFIX + toBase64Url(JSON.stringify({ n: team.name, c: team.color ?? null, p: pokemon }))
+  const sets = teamSets({ ...team, pokemon })
+  const data = { n: team.name, c: team.color ?? null, p: pokemon }
+  if (sets.some(Boolean)) data.s = sets
+  return PREFIX + toBase64Url(JSON.stringify(data))
 }
 
 /** Código (ou link com o código) → {name, color, pokemon} ou null. */
@@ -33,7 +39,8 @@ export function decodeTeam(text) {
     const pokemon = Array.from({ length: 6 }, (_, i) => (Number.isInteger(data.p?.[i]) ? data.p[i] : null))
     const color = typeof data.c === 'string' && /^#[0-9a-fA-F]{6}$/.test(data.c) ? data.c : null
     const name = String(data.n ?? 'Time').slice(0, 40) || 'Time'
-    return { name, color, pokemon }
+    const sets = pokemon.map((id, i) => (id != null ? normalizeSet(data.s?.[i]) : null))
+    return { name, color, pokemon, sets }
   } catch {
     return null
   }
@@ -51,21 +58,23 @@ export const showdownName = (name) =>
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join('-')
 
-/** Time → texto para colar no Pokémon Showdown. */
+/** Time → texto para colar em simuladores (Pokémon Showdown e outros). */
 export function toShowdown(team, byId) {
-  const sets = team.pokemon
-    .filter((id) => id != null && byId.get(id))
-    .map((id) => `${showdownName(byId.get(id).name)}\n`)
-  return `=== ${team.name} ===\n\n${sets.join('\n')}`.trim() + '\n'
+  const sets = teamSets(team)
+  const blocks = team.pokemon
+    .map((id, i) => (id != null && byId.get(id) ? setToText(showdownName(byId.get(id).name), sets[i]) : null))
+    .filter(Boolean)
+  return `=== ${team.name} ===\n\n${blocks.join('\n')}`.trim() + '\n'
 }
 
 const simple = (name) => name.toLowerCase().replace(/[^a-z0-9]/g, '')
 
 /**
- * Texto do Showdown → {name, pokemon}. Aceita "Apelido (Espécie) (M) @ Item"
- * e ignora o resto (golpes, EVs...). Pokémon desconhecidos são pulados.
+ * Texto de simulador → {name, pokemon, sets}. Lê "Apelido (Espécie) (M) @ Item",
+ * habilidade, nível, EVs, IVs, Nature, Tera e golpes. Pokémon desconhecidos
+ * são pulados. `lookups`: {moves, abilities, items} (nome → slug), opcional.
  */
-export function fromShowdown(text, index) {
+export function fromShowdown(text, index, lookups = {}) {
   const byName = new Map()
   for (const p of index) byName.set(simple(p.name), p.id)
   // "Landorus" → "landorus-incarnate", "Deoxys" → "deoxys-normal"...
@@ -80,21 +89,23 @@ export function fromShowdown(text, index) {
     .map((b) => b.trim())
     .filter(Boolean)
   const pokemon = []
+  const sets = []
   for (const block of blocks) {
-    let first = block.split('\n')[0].split('@')[0].trim()
-    first = first.replace(/\((M|F)\)/g, '').trim()
-    const inner = /\(([^()]+)\)\s*$/.exec(first)
-    const species = inner ? inner[1] : first
-    const key = simple(species)
-    const id = byName.get(key) ?? byName.get(simple(species.split('-')[0]))
-    if (id != null) pokemon.push(id)
+    const parsed = textToSet(block, lookups)
+    if (!parsed) continue
+    const key = simple(parsed.species)
+    const id = byName.get(key) ?? byName.get(simple(parsed.species.split('-')[0]))
+    if (id == null) continue
+    pokemon.push(id)
+    sets.push(parsed.set)
     if (pokemon.length === 6) break
   }
   if (!pokemon.length) return null
-  return { name: header?.[1] ?? 'Time importado', color: null, pokemon: [...pokemon, ...Array(6 - pokemon.length).fill(null)] }
+  const empty = Array(6 - pokemon.length).fill(null)
+  return { name: header?.[1] ?? 'Time importado', color: null, pokemon: [...pokemon, ...empty], sets: [...sets, ...empty] }
 }
 
 /** Qualquer coisa colada (código, link ou Showdown) → time ou null. */
-export function parseSharedTeam(text, index) {
-  return decodeTeam(text) ?? fromShowdown(text ?? '', index)
+export function parseSharedTeam(text, index, lookups) {
+  return decodeTeam(text) ?? fromShowdown(text ?? '', index, lookups)
 }
