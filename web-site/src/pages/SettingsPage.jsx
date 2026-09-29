@@ -4,6 +4,7 @@ import { Button, Icon, Modal, PageHeader } from '../components/ui'
 import { getLatestRelease, RELEASES_URL } from '../lib/appRelease'
 import { changePassword, deleteAccount, errorMessage, sendConfirmationLink, usesGoogle, useAuth } from '../lib/auth'
 import AccountAvatar from '../components/AccountAvatar'
+import LanguagePicker from '../components/LanguagePicker'
 import { achievementsOf } from '../lib/achievements'
 import { installSite, useCanInstall } from '../lib/install'
 import { dayKey, weekKey } from '../lib/league'
@@ -41,6 +42,13 @@ export default function SettingsPage() {
             </Button>
           </div>
         )}
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-card p-5 shadow">
+          <div>
+            <div className="font-bold">Idioma</div>
+            <div className="text-sm text-muted">Nomes dos Pokémon e descrições também mudam.</div>
+          </div>
+          <LanguagePicker />
+        </div>
         <div className="flex items-center justify-between rounded-2xl bg-card p-5 shadow">
           <div>
             <div className="font-bold">Modo Escuro</div>

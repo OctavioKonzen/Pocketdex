@@ -19,6 +19,7 @@ import {
 import { useStore } from '../lib/store'
 import { AbilityModal, CategoryIcon, MoveModal } from './EntryModals'
 import PokeballReveal from './PokeballReveal'
+import { pick } from '../lib/i18n'
 import { Icon, IconButton, Loader, SpinningPokeball, TypeBadge } from './ui'
 import Sprite from './Sprite'
 
@@ -155,7 +156,7 @@ export default function DetailsPanel({
             <div className="min-w-0 flex-1">
               <div className="text-sm font-bold text-white/80">#{String(species.id).padStart(3, '0')}</div>
               <h2 className="truncate text-3xl font-black text-white">{capitalize(species.name)}</h2>
-              {species.genus && <div className="text-sm text-white/85">Pokémon {species.genus}</div>}
+              {pick(species.genus, species.genera) && <div className="text-sm text-white/85">{`Pokémon ${pick(species.genus, species.genera)}`}</div>}
             </div>
             <IconButton label={isFavorite ? 'Remover dos favoritos' : 'Favoritar'} onClick={() => toggleFavorite(species.id)} active={isFavorite}>
               <Icon name={isFavorite ? 'star' : 'starOutline'} />
@@ -241,7 +242,7 @@ function AboutTab({ species, form, onAbility }) {
 
   return (
     <div className="space-y-5">
-      <p className="leading-relaxed">{species.flavor}</p>
+      <p className="leading-relaxed">{pick(species.flavor, species.flavors)}</p>
       <div className="flex justify-around rounded-2xl bg-surface py-3 text-sm">
         <span>
           <span className="text-muted">Height: </span>

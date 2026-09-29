@@ -130,6 +130,31 @@ def main(api):
     with open(pokemon_path, 'w', encoding='utf-8') as f:
         json.dump(pokemon, f, ensure_ascii=False, separators=(',', ':'))
 
+    # Golpes, habilidades e itens: descrição do jogo em en, fr e es.
+    for table, folder in (('moves', 'move'), ('abilities', 'ability'), ('items', 'item')):
+        base = os.path.join(v2, folder)
+        if not os.path.isdir(base):
+            continue
+        by_name = {}
+        for d in os.listdir(base):
+            if d.isdigit():
+                raw = load_json(os.path.join(base, d, 'index.json'))
+                flavors = {}
+                for lang in LANGS:
+                    texts = [clean(f.get('flavor_text') or f.get('text')) for f in raw.get('flavor_text_entries', [])
+                             if f['language']['name'] == lang]
+                    texts = [t for t in texts if t and 'XXX' not in t and 'dummy' not in t.lower()]
+                    if texts:
+                        flavors[lang] = texts[-1]
+                by_name[raw['name']] = flavors
+        path = os.path.join(DB, f'{table}.json')
+        rows = load_json(path)
+        for row in rows:
+            row['flavors'] = by_name.get(row['name'], {})
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(rows, f, ensure_ascii=False, separators=(',', ':'))
+        print(f'{table}: {sum(1 for r in rows if r["flavors"])} de {len(rows)} com descrição em outros idiomas')
+
     no_games = [p['name'] for p in pokemon if not p['games']]
     print(f'{len(pokemon)} Pokémon/formas; sem jogo: {len(no_games)} {no_games[:10]}')
 

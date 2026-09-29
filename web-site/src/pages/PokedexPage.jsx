@@ -11,7 +11,8 @@ import GamePicker from '../components/GamePicker'
 /** Filtra por nome ou número (igual à busca do app). */
 export function matchesSearch(p, query) {
   const q = query.trim().toLowerCase()
-  return !q || p.name.includes(q) || String(p.id) === q
+  // Também pelo nome no outro idioma (Bulbizarre, Bulbasaur...).
+  return !q || p.name.includes(q) || String(p.id) === q || Object.values(p.names ?? {}).some((n) => n.toLowerCase().includes(q))
 }
 
 export default function PokedexPage() {

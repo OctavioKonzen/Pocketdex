@@ -1,0 +1,3123 @@
+{
+ "(Level {0})": [
+  "lib/models/pokemon_details.dart"
+ ],
+ "(Trick Room)": [
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "(t.reportCount ?? 0)": [
+  "web-site/src/lib/auth.js"
+ ],
+ ")} e {0}": [
+  "lib/services/damage_calc.dart"
+ ],
+ "+ Adicionar": [
+  "lib/screens/ev_counter_screen.dart"
+ ],
+ "+ Adicionar Pokémon ao treino": [
+  "web-site/src/pages/TrainingPage.jsx"
+ ],
+ "+ Novo time": [
+  "lib/screens/teams_screen.dart",
+  "web-site/src/pages/TeamsPage.jsx"
+ ],
+ ", depois de {0}": [
+  "lib/services/damage_calc.dart"
+ ],
+ ", vamos mandar um link de confirmação para esse e-mail.": [
+  "web-site/src/pages/LoginPage.jsx"
+ ],
+ ". Escolha o seu nome no PocketDex.": [
+  "web-site/src/pages/LoginPage.jsx"
+ ],
+ "../App": [
+  "web-site/src/pages/PokedexPage.jsx"
+ ],
+ "./Sprite": [
+  "web-site/src/components/AccountAvatar.jsx",
+  "web-site/src/components/BattleTools.jsx",
+  "web-site/src/components/DetailsPanel.jsx",
+  "web-site/src/components/GamePicker.jsx",
+  "web-site/src/components/GenerationPicker.jsx",
+  "web-site/src/components/PokemonCard.jsx",
+  "web-site/src/components/TeamMemberEditor.jsx",
+  "web-site/src/components/TeamShare.jsx"
+ ],
+ "1 camada de Spikes": [
+  "lib/services/damage_calc.dart"
+ ],
+ "2 camadas de Spikes": [
+  "lib/services/damage_calc.dart"
+ ],
+ "3 camadas de Spikes": [
+  "lib/services/damage_calc.dart"
+ ],
+ "= 0 && previousRow": [
+  "web-site/src/components/ExpandableList.jsx"
+ ],
+ "A confirmação com Google foi cancelada.": [
+  "lib/services/auth_service.dart"
+ ],
+ "A conta ainda existe. Abra o link do e-mail e toque em \"Excluir para sempre\".": [
+  "lib/screens/settings_screen.dart"
+ ],
+ "A janela do Google foi fechada antes de terminar.": [
+  "lib/services/auth_service.dart",
+  "web-site/src/lib/auth.js"
+ ],
+ "A mesma conta vale no app e no site.": [
+  "lib/screens/login_screen.dart"
+ ],
+ "A primeira versão ainda vai ser publicada.": [
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Abilities": [
+  "web-site/src/components/DetailsPanel.jsx"
+ ],
+ "Ability: {0}": [
+  "web-site/src/lib/teamSets.js"
+ ],
+ "About": [
+  "lib/widgets/pokemon_detail_panel.dart",
+  "web-site/src/components/DetailsPanel.jsx"
+ ],
+ "Abre em janela própria, com ícone, e funciona até sem internet.": [
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Abrindo o instalador...": [
+  "lib/services/update_service.dart"
+ ],
+ "Accept": [
+  "lib/services/update_service.dart"
+ ],
+ "Accuracy": [
+  "lib/screens/move_detail_screen.dart",
+  "web-site/src/components/EntryModals.jsx"
+ ],
+ "Acerte 100 Pokémon no jogo.": [
+  "lib/services/achievements.dart",
+  "web-site/src/lib/achievements.js"
+ ],
+ "Acerte 1000 Pokémon no jogo.": [
+  "lib/services/achievements.dart",
+  "web-site/src/lib/achievements.js"
+ ],
+ "Acerte os 10 Pokémon de um desafio do dia.": [
+  "lib/services/achievements.dart",
+  "web-site/src/lib/achievements.js"
+ ],
+ "Acerte um Pokémon no jogo.": [
+  "lib/services/achievements.dart",
+  "web-site/src/lib/achievements.js"
+ ],
+ "Acerto {0}:": [
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Acertos": [
+  "lib/screens/damage_calc_screen.dart",
+  "lib/screens/quiz_screen.dart",
+  "web-site/src/components/DamageCalc.jsx",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Acertou!": [
+  "lib/screens/quiz_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Acertou! +1 ponto": [
+  "lib/screens/quiz_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Acompanhe o treino dos seus Pokémon": [
+  "lib/screens/training_screen.dart",
+  "web-site/src/pages/TrainingPage.jsx"
+ ],
+ "Acompanhe o treino dos seus Pokémon (máx. 252 por atributo e 510 no total).": [
+  "lib/screens/ev_counter_screen.dart"
+ ],
+ "Adamant": [
+  "lib/screens/nature_guide_screen.dart",
+  "lib/services/team_sets.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Adicionar Pokémon": [
+  "web-site/src/pages/TeamBuilderPage.jsx"
+ ],
+ "Adicionar Pokémon Derrotado": [
+  "lib/screens/ev_tracking_screen.dart",
+  "web-site/src/pages/TrainingPage.jsx"
+ ],
+ "Adicione Pokémon para ver a análise.": [
+  "lib/widgets/team_analysis_view.dart",
+  "web-site/src/components/TeamAnalysis.jsx"
+ ],
+ "Age depois do alvo": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "Ainda não confirmado. Abra o link que mandamos para o seu e-mail.": [
+  "lib/screens/login_screen.dart",
+  "web-site/src/pages/LoginPage.jsx"
+ ],
+ "Ajuda de Criação": [
+  "lib/screens/breeding_help_screen.dart"
+ ],
+ "Ajuda de Criação (Breeding)": [
+  "lib/screens/training_screen.dart",
+  "web-site/src/pages/TrainingPage.jsx"
+ ],
+ "Algo deu errado ({0}). Tente de novo.": [
+  "lib/services/auth_service.dart"
+ ],
+ "Algo deu errado ao abrir esta página.": [
+  "web-site/src/lib/staleBuild.jsx"
+ ],
+ "Algo deu errado. Tente de novo.": [
+  "lib/screens/login_screen.dart",
+  "lib/services/auth_service.dart",
+  "web-site/src/lib/auth.js"
+ ],
+ "Aliado com Plus/Minus": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "Aliados já derrotados (Supreme Overlord, Last Respects)": [
+  "lib/screens/damage_calc_screen.dart",
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Alola": [
+  "lib/models/generation.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Anterior": [
+  "lib/screens/pokemon_detail_screen.dart",
+  "lib/widgets/pokedex_web/pokedex_inline_details.dart",
+  "web-site/src/components/DetailsPanel.jsx"
+ ],
+ "Análise do time": [
+  "lib/screens/community_teams_screen.dart",
+  "lib/screens/team_builder_screen.dart",
+  "web-site/src/pages/TeamBuilderPage.jsx"
+ ],
+ "Apaga para sempre sua conta, seus dados e suas posições nos rankings.": [
+  "lib/screens/settings_screen.dart",
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Apelido": [
+  "lib/screens/team_member_screen.dart",
+  "web-site/src/components/TeamMemberEditor.jsx"
+ ],
+ "App para Android": [
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Arceus": [
+  "lib/services/damage_calc.dart"
+ ],
+ "As 16 variações de dano": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "As senhas não são iguais.": [
+  "lib/screens/login_screen.dart",
+  "lib/screens/settings_screen.dart",
+  "web-site/src/components/EmailLinkPage.jsx",
+  "web-site/src/pages/LoginPage.jsx",
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "As versões novas são avisadas ao abrir o app.": [
+  "lib/screens/settings_screen.dart"
+ ],
+ "Atacante": [
+  "lib/screens/damage_calc_screen.dart",
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Ataque": [
+  "lib/widgets/team_analysis_view.dart",
+  "web-site/src/components/TeamAnalysis.jsx"
+ ],
+ "Ative para uma experiência com cores escuras.": [
+  "lib/screens/settings_screen.dart",
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Atk": [
+  "lib/screens/damage_calc_screen.dart",
+  "lib/screens/ev_counter_screen.dart",
+  "lib/services/team_sets.dart",
+  "web-site/src/components/DamageCalc.jsx",
+  "web-site/src/lib/teamSets.js"
+ ],
+ "Attack": [
+  "lib/screens/battle_tools_screen.dart",
+  "lib/screens/ev_tracking_screen.dart",
+  "lib/screens/nature_guide_screen.dart",
+  "lib/services/team_sets.dart",
+  "web-site/src/lib/pokemon.js",
+  "web-site/src/lib/teamSets.js"
+ ],
+ "Atualizar agora": [
+  "lib/services/update_service.dart"
+ ],
+ "Baixando a versão {0} em segundo plano...": [
+  "lib/services/update_service.dart"
+ ],
+ "Baixando... {0}%": [
+  "lib/services/update_service.dart"
+ ],
+ "Baixar APK": [
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Baixar app": [
+  "web-site/src/App.jsx"
+ ],
+ "Baixar o app para Android": [
+  "web-site/src/App.jsx",
+  "web-site/src/pages/LoginPage.jsx"
+ ],
+ "Baixe esta versão": [
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Ball": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "Base": [
+  "lib/screens/team_member_screen.dart",
+  "web-site/src/components/TeamMemberEditor.jsx"
+ ],
+ "Base Stats": [
+  "lib/widgets/pokemon_detail_panel.dart",
+  "web-site/src/components/DetailsPanel.jsx"
+ ],
+ "Base happiness": [
+  "web-site/src/components/DetailsPanel.jsx"
+ ],
+ "Bashful": [
+  "lib/screens/nature_guide_screen.dart",
+  "lib/services/team_sets.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Batalha": [
+  "lib/screens/damage_calc_screen.dart",
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Battery (aliado)": [
+  "lib/screens/damage_calc_screen.dart",
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Bem-vindo de volta!": [
+  "lib/screens/login_screen.dart",
+  "web-site/src/pages/LoginPage.jsx"
+ ],
+ "Black / White": [
+  "lib/models/game.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Black 2 / White 2": [
+  "lib/models/game.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Boa defesa: aguenta bem {0} tipos.": [
+  "lib/utils/team_analysis.dart",
+  "web-site/src/components/TeamAnalysis.jsx"
+ ],
+ "Bold": [
+  "lib/screens/nature_guide_screen.dart",
+  "lib/services/team_sets.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Brasil": [
+  "lib/services/pix.dart"
+ ],
+ "Brave": [
+  "lib/screens/nature_guide_screen.dart",
+  "lib/services/team_sets.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Breeding": [
+  "lib/widgets/pokemon_detail_panel.dart",
+  "web-site/src/components/DetailsPanel.jsx"
+ ],
+ "Brilliant Diamond / Shining Pearl": [
+  "lib/models/game.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Bug": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Buscar": [
+  "lib/widgets/pick_fields.dart"
+ ],
+ "Buscar Pokémon...": [
+  "lib/screens/ev_yield_pokemon_selection_screen.dart"
+ ],
+ "Cada nome só pode ser usado por uma pessoa.": [
+  "lib/screens/login_screen.dart",
+  "web-site/src/pages/LoginPage.jsx"
+ ],
+ "Calculadora de dano": [
+  "lib/screens/damage_calc_screen.dart",
+  "lib/screens/training_screen.dart",
+  "web-site/src/pages/TrainingPage.jsx"
+ ],
+ "Calm": [
+  "lib/screens/nature_guide_screen.dart",
+  "lib/services/team_sets.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Campo": [
+  "lib/screens/damage_calc_screen.dart",
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Campo todo": [
+  "lib/screens/damage_calc_screen.dart",
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Cancelar": [
+  "lib/screens/settings_screen.dart",
+  "lib/screens/team_builder_screen.dart",
+  "lib/screens/teams_screen.dart",
+  "lib/widgets/team_share_dialogs.dart",
+  "web-site/src/components/EmailLinkPage.jsx",
+  "web-site/src/components/TeamShare.jsx",
+  "web-site/src/pages/CommunityTeamsPage.jsx",
+  "web-site/src/pages/SettingsPage.jsx",
+  "web-site/src/pages/TeamBuilderPage.jsx",
+  "web-site/src/pages/TeamsPage.jsx"
+ ],
+ "Capture rate": [
+  "web-site/src/components/DetailsPanel.jsx"
+ ],
+ "Careful": [
+  "lib/screens/nature_guide_screen.dart",
+  "lib/services/team_sets.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Carregado (Electromorphosis)": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "Carregando Pokémon...": [
+  "lib/screens/pokemon_detail_screen.dart"
+ ],
+ "Castform": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Categoria": [
+  "web-site/src/components/EntryModals.jsx"
+ ],
+ "Centro de Treinamento": [
+  "lib/screens/training_screen.dart",
+  "web-site/src/pages/TrainingPage.jsx"
+ ],
+ "Champions": [
+  "lib/models/game.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Chave": [
+  "lib/screens/settings_screen.dart"
+ ],
+ "Chave:": [
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Chave: {0}": [
+  "lib/screens/settings_screen.dart"
+ ],
+ "Chegue a 400 pontos no Ranked (2 s por Pokémon).": [
+  "lib/services/achievements.dart",
+  "web-site/src/lib/achievements.js"
+ ],
+ "Cherrim": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Chuva": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "Chuva forte (Primordial Sea)": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "Clamperl": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Clima": [
+  "lib/screens/damage_calc_screen.dart",
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Clique para ver detalhes · clique duplo para favoritar": [
+  "web-site/src/components/PokemonCard.jsx"
+ ],
+ "Colar": [
+  "lib/widgets/team_share_dialogs.dart"
+ ],
+ "Cole aqui o link, o código (PDX1...) ou o texto do time (Pokémon Showdown e outros)": [
+  "lib/widgets/team_share_dialogs.dart",
+  "web-site/src/components/TeamShare.jsx"
+ ],
+ "Colecionador": [
+  "lib/services/achievements.dart",
+  "web-site/src/lib/achievements.js"
+ ],
+ "Colosseum": [
+  "lib/models/game.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Com a senha atual, ou por um link no e-mail se você entra com Google.": [
+  "lib/screens/settings_screen.dart",
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Como quer ser chamado?": [
+  "lib/screens/login_screen.dart",
+  "web-site/src/pages/LoginPage.jsx"
+ ],
+ "Comparar Pokémon": [
+  "lib/screens/battle_tools_screen.dart",
+  "lib/screens/training_screen.dart",
+  "web-site/src/pages/TrainingPage.jsx"
+ ],
+ "Compartilhar": [
+  "lib/screens/team_builder_screen.dart",
+  "web-site/src/pages/TeamBuilderPage.jsx"
+ ],
+ "Compartilhar time": [
+  "lib/widgets/team_share_dialogs.dart",
+  "web-site/src/components/TeamShare.jsx"
+ ],
+ "Competidor": [
+  "lib/services/achievements.dart",
+  "web-site/src/lib/achievements.js"
+ ],
+ "Complete 7 desafios do dia.": [
+  "lib/services/achievements.dart",
+  "web-site/src/lib/achievements.js"
+ ],
+ "Complete um desafio do dia.": [
+  "lib/services/achievements.dart",
+  "web-site/src/lib/achievements.js"
+ ],
+ "Concluir": [
+  "lib/screens/team_builder_screen.dart"
+ ],
+ "Configurações": [
+  "lib/screens/home_screen.dart",
+  "lib/screens/settings_screen.dart",
+  "lib/screens/web_shell.dart",
+  "lib/widgets/account_avatar.dart",
+  "web-site/src/App.jsx",
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Confirmando…": [
+  "web-site/src/components/EmailLinkPage.jsx"
+ ],
+ "Confirmar": [
+  "web-site/src/components/EmailLinkPage.jsx"
+ ],
+ "Confirmar Ação": [
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Confirmar conta": [
+  "web-site/src/components/EmailLinkPage.jsx"
+ ],
+ "Confirmar nova senha": [
+  "lib/screens/settings_screen.dart",
+  "web-site/src/components/EmailLinkPage.jsx",
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Confirmar senha": [
+  "lib/screens/login_screen.dart",
+  "web-site/src/pages/LoginPage.jsx"
+ ],
+ "Confirme seu e-mail": [
+  "lib/screens/login_screen.dart",
+  "web-site/src/pages/LoginPage.jsx"
+ ],
+ "Congelado": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "Conquest": [
+  "lib/models/game.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Conquistas": [
+  "lib/screens/settings_screen.dart",
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Conta": [
+  "lib/screens/settings_screen.dart",
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Conta de {0}": [
+  "web-site/src/App.jsx"
+ ],
+ "Contador de EVs": [
+  "lib/screens/ev_counter_screen.dart",
+  "lib/screens/training_screen.dart",
+  "web-site/src/pages/TrainingPage.jsx"
+ ],
+ "Continuar": [
+  "lib/screens/login_screen.dart",
+  "web-site/src/components/EmailLinkPage.jsx",
+  "web-site/src/pages/LoginPage.jsx"
+ ],
+ "Copiada!": [
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Copiado!": [
+  "web-site/src/components/TeamShare.jsx",
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Copiar": [
+  "lib/widgets/team_share_dialogs.dart",
+  "web-site/src/components/TeamShare.jsx"
+ ],
+ "Copiar Pix copia e cola": [
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Copiar chave": [
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Cor do time": [
+  "lib/screens/team_builder_screen.dart"
+ ],
+ "Cor {0}": [
+  "web-site/src/pages/TeamBuilderPage.jsx"
+ ],
+ "Criar": [
+  "lib/screens/teams_screen.dart",
+  "web-site/src/pages/TeamsPage.jsx"
+ ],
+ "Criar Novo Time": [
+  "lib/screens/teams_screen.dart",
+  "web-site/src/pages/TeamsPage.jsx"
+ ],
+ "Criar conta": [
+  "lib/screens/login_screen.dart",
+  "web-site/src/pages/LoginPage.jsx"
+ ],
+ "Criar ou trocar senha": [
+  "web-site/src/components/EmailLinkPage.jsx"
+ ],
+ "Crie sua conta": [
+  "lib/screens/login_screen.dart",
+  "web-site/src/pages/LoginPage.jsx"
+ ],
+ "Crystal": [
+  "lib/models/game.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Cubone": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Código": [
+  "lib/widgets/team_share_dialogs.dart",
+  "web-site/src/components/TeamShare.jsx"
+ ],
+ "Dados de EV não encontrados para {0}": [
+  "lib/screens/ev_tracking_screen.dart"
+ ],
+ "Dados salvos": [
+  "lib/screens/settings_screen.dart",
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Dark": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Dauntless Shield ao entrar": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "Def": [
+  "lib/screens/damage_calc_screen.dart",
+  "lib/screens/ev_counter_screen.dart",
+  "lib/services/team_sets.dart",
+  "web-site/src/components/DamageCalc.jsx",
+  "web-site/src/lib/teamSets.js"
+ ],
+ "Default": [
+  "lib/models/alternate_form.dart"
+ ],
+ "Defense": [
+  "lib/screens/battle_tools_screen.dart",
+  "lib/screens/ev_tracking_screen.dart",
+  "lib/screens/nature_guide_screen.dart",
+  "lib/services/team_sets.dart",
+  "web-site/src/lib/pokemon.js",
+  "web-site/src/lib/teamSets.js"
+ ],
+ "Defensor": [
+  "lib/screens/damage_calc_screen.dart",
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Defesa forte": [
+  "lib/widgets/team_analysis_view.dart",
+  "web-site/src/components/TeamAnalysis.jsx"
+ ],
+ "Deletar": [
+  "lib/screens/teams_screen.dart",
+  "web-site/src/pages/TeamsPage.jsx"
+ ],
+ "Deletar Time": [
+  "lib/screens/teams_screen.dart",
+  "web-site/src/pages/TeamsPage.jsx"
+ ],
+ "Deletar time": [
+  "lib/widgets/team_card.dart",
+  "web-site/src/pages/TeamsPage.jsx"
+ ],
+ "Denunciar": [
+  "lib/screens/community_teams_screen.dart"
+ ],
+ "Denunciar time": [
+  "lib/screens/community_teams_screen.dart"
+ ],
+ "Denúncia enviada. Obrigado por ajudar a manter a comunidade legal!": [
+  "lib/screens/community_teams_screen.dart",
+  "web-site/src/pages/CommunityTeamsPage.jsx"
+ ],
+ "Depois": [
+  "lib/services/update_service.dart"
+ ],
+ "Derrota com 1 golpe, garantido.": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Derrota com {0}, garantido{1}.": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Desafiante": [
+  "lib/services/achievements.dart",
+  "web-site/src/lib/achievements.js"
+ ],
+ "Desafio de hoje feito — volte amanhã!": [
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Desafio do dia": [
+  "lib/services/daily_reminder.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Desafio do dia 📅": [
+  "lib/services/daily_reminder.dart"
+ ],
+ "Desafio do dia:": [
+  "lib/screens/game_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Desafio do dia: os mesmos 10 Pokémon para todos.": [
+  "lib/screens/game_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Deseja remover este Pokémon do time?": [
+  "lib/screens/team_builder_screen.dart",
+  "web-site/src/pages/TeamBuilderPage.jsx"
+ ],
+ "Dialga": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Diamond / Pearl": [
+  "lib/models/game.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Digite a sua senha.": [
+  "lib/services/auth_service.dart",
+  "web-site/src/lib/auth.js"
+ ],
+ "Digite o e-mail da sua conta para receber o link.": [
+  "lib/screens/login_screen.dart",
+  "web-site/src/pages/LoginPage.jsx"
+ ],
+ "Digite o nome do golpe": [
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Digite o seu e-mail.": [
+  "lib/services/auth_service.dart",
+  "web-site/src/lib/auth.js"
+ ],
+ "Digite sua senha para confirmar": [
+  "lib/screens/settings_screen.dart",
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Dipplin": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Ditto": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Docile": [
+  "lib/screens/nature_guide_screen.dart",
+  "lib/services/team_sets.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Dormindo": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "Doubles": [
+  "lib/screens/damage_calc_screen.dart",
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Dragon": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Drive": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Dupla": [
+  "lib/screens/damage_calc_screen.dart",
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Dê sua nota": [
+  "lib/screens/community_teams_screen.dart"
+ ],
+ "Dê sua nota:": [
+  "web-site/src/pages/CommunityTeamsPage.jsx"
+ ],
+ "Dê um duplo clique em um card da Pokédex (ou use a estrela nos detalhes) para favoritar.": [
+  "web-site/src/pages/FavoritesPage.jsx"
+ ],
+ "E-mail": [
+  "lib/screens/login_screen.dart",
+  "web-site/src/components/EmailLinkPage.jsx",
+  "web-site/src/pages/LoginPage.jsx"
+ ],
+ "E-mail confirmado! Agora é só escolher o seu nome.": [
+  "web-site/src/components/EmailLinkPage.jsx"
+ ],
+ "E-mail confirmado. Escolha a senha nova.": [
+  "web-site/src/components/EmailLinkPage.jsx"
+ ],
+ "E-mail confirmado. Isso apaga": [
+  "web-site/src/components/EmailLinkPage.jsx"
+ ],
+ "E-mail inválido.": [
+  "lib/services/auth_service.dart",
+  "web-site/src/lib/auth.js"
+ ],
+ "E-mail ou senha incorretos.": [
+  "lib/services/auth_service.dart",
+  "web-site/src/lib/auth.js"
+ ],
+ "EVs e IVs": [
+  "lib/screens/team_member_screen.dart"
+ ],
+ "EVs usados: {0} de 510": [
+  "lib/screens/damage_calc_screen.dart",
+  "lib/screens/team_member_screen.dart"
+ ],
+ "EVs: {0}": [
+  "lib/widgets/team_set_summary.dart",
+  "web-site/src/lib/teamSets.js"
+ ],
+ "Editar time": [
+  "lib/screens/team_builder_screen.dart"
+ ],
+ "Efeito e categoria de cada item": [
+  "lib/screens/encyclopedia_screen.dart"
+ ],
+ "Egg Cycle": [
+  "lib/widgets/pokemon_detail_panel.dart",
+  "web-site/src/components/DetailsPanel.jsx"
+ ],
+ "Egg Groups": [
+  "lib/widgets/pokemon_detail_panel.dart",
+  "web-site/src/components/DetailsPanel.jsx"
+ ],
+ "Egg cycle": [
+  "web-site/src/pages/TrainingPage.jsx"
+ ],
+ "Egg groups": [
+  "web-site/src/pages/TrainingPage.jsx"
+ ],
+ "Electric": [
+  "lib/screens/damage_calc_screen.dart",
+  "lib/services/damage_calc.dart"
+ ],
+ "Em chamas": [
+  "lib/services/achievements.dart",
+  "web-site/src/lib/achievements.js"
+ ],
+ "Emerald": [
+  "lib/models/game.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Enciclopédia": [
+  "lib/screens/encyclopedia_screen.dart",
+  "lib/screens/home_screen.dart",
+  "lib/screens/web_shell.dart",
+  "web-site/src/App.jsx",
+  "web-site/src/pages/EncyclopediaPage.jsx"
+ ],
+ "Enciclopédia de Golpes": [
+  "lib/screens/moves_encyclopedia_screen.dart"
+ ],
+ "Enciclopédia de Habilidades": [
+  "lib/screens/abilities_encyclopedia_screen.dart"
+ ],
+ "Enciclopédia de Itens": [
+  "lib/screens/items_encyclopedia_screen.dart"
+ ],
+ "Encontre parceiros compatíveis": [
+  "lib/screens/training_screen.dart",
+  "web-site/src/pages/TrainingPage.jsx"
+ ],
+ "Entrar": [
+  "lib/screens/login_screen.dart",
+  "web-site/src/pages/LoginPage.jsx"
+ ],
+ "Entrar com Google": [
+  "lib/screens/login_screen.dart",
+  "web-site/src/pages/LoginPage.jsx"
+ ],
+ "Entre na sua conta para denunciar.": [
+  "lib/services/account_sync.dart"
+ ],
+ "Entre na sua conta para salvar tudo e acessar do computador ou do app.": [
+  "web-site/src/pages/LoginPage.jsx"
+ ],
+ "Entre na sua conta para ver os times da comunidade.": [
+  "web-site/src/pages/CommunityTeamsPage.jsx"
+ ],
+ "Entre na sua conta para votar.": [
+  "lib/services/account_sync.dart"
+ ],
+ "Entre para continuar na sua Pokédex.": [
+  "lib/screens/login_screen.dart",
+  "web-site/src/pages/LoginPage.jsx"
+ ],
+ "Entrou como": [
+  "web-site/src/pages/LoginPage.jsx"
+ ],
+ "Envenenado": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "Enviamos um e-mail com o link para criar uma nova senha.": [
+  "lib/screens/login_screen.dart",
+  "web-site/src/pages/LoginPage.jsx"
+ ],
+ "Enviar link": [
+  "lib/screens/login_screen.dart",
+  "lib/screens/settings_screen.dart",
+  "web-site/src/pages/LoginPage.jsx",
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Enviar link de confirmação": [
+  "lib/screens/login_screen.dart",
+  "web-site/src/pages/LoginPage.jsx",
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Erro ao carregar dados locais": [
+  "lib/utils/app_exceptions.dart"
+ ],
+ "Erro ao carregar dados.": [
+  "lib/screens/breeding_partners_screen.dart"
+ ],
+ "Erro ao carregar os Pokémon: {0}": [
+  "lib/screens/pokedex_screen.dart"
+ ],
+ "Erro durante a comunicação": [
+  "lib/utils/app_exceptions.dart"
+ ],
+ "Erro: {0}": [
+  "lib/screens/breeding_help_screen.dart"
+ ],
+ "Errou!": [
+  "lib/screens/quiz_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Errou! -1 vida": [
+  "lib/screens/quiz_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Escape": [
+  "web-site/src/components/GamePicker.jsx",
+  "web-site/src/components/GenerationPicker.jsx",
+  "web-site/src/components/PokedexGrid.jsx",
+  "web-site/src/components/ui.jsx"
+ ],
+ "Escolha a mesma conta Google que está conectada.": [
+  "lib/services/auth_service.dart",
+  "web-site/src/lib/auth.js"
+ ],
+ "Escolha dois Pokémon para comparar.": [
+  "lib/screens/battle_tools_screen.dart"
+ ],
+ "Escolha o outro Pokémon para comparar.": [
+  "lib/screens/battle_tools_screen.dart",
+  "web-site/src/components/BattleTools.jsx"
+ ],
+ "Escolha sua foto de perfil": [
+  "web-site/src/App.jsx"
+ ],
+ "Escolha um Pokémon": [
+  "lib/screens/pokedex_screen.dart"
+ ],
+ "Escolha um Pokémon para ver os parceiros de criação compatíveis.": [
+  "web-site/src/pages/TrainingPage.jsx"
+ ],
+ "Escolher Pokémon": [
+  "lib/screens/battle_tools_screen.dart",
+  "web-site/src/components/BattleTools.jsx",
+  "web-site/src/pages/TrainingPage.jsx"
+ ],
+ "Escolher atacante": [
+  "lib/screens/damage_calc_screen.dart",
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Escolher defensor": [
+  "lib/screens/damage_calc_screen.dart",
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Especial": [
+  "lib/screens/damage_calc_screen.dart",
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Esqueci a senha": [
+  "lib/screens/login_screen.dart"
+ ],
+ "Esqueci minha senha": [
+  "web-site/src/pages/LoginPage.jsx"
+ ],
+ "Essa conta foi desativada.": [
+  "lib/services/auth_service.dart",
+  "web-site/src/lib/auth.js"
+ ],
+ "Essa conta não tem e-mail.": [
+  "lib/services/auth_service.dart"
+ ],
+ "Esse link expirou. Peça outro.": [
+  "web-site/src/lib/auth.js"
+ ],
+ "Esse link já foi usado ou expirou. Peça outro.": [
+  "web-site/src/lib/auth.js"
+ ],
+ "Esse nome já está sendo usado. Escolha outro.": [
+  "lib/services/auth_service.dart",
+  "web-site/src/lib/auth.js"
+ ],
+ "Esse nome não é permitido. Escolha outro.": [
+  "lib/services/auth_service.dart",
+  "web-site/src/lib/auth.js"
+ ],
+ "Esse nome não é permitido: o time não aparece na comunidade até você trocar.": [
+  "lib/screens/team_builder_screen.dart",
+  "web-site/src/pages/TeamBuilderPage.jsx"
+ ],
+ "Esse time foi excluído pelo dono.": [
+  "lib/screens/community_teams_screen.dart",
+  "lib/services/account_sync.dart",
+  "web-site/src/lib/auth.js"
+ ],
+ "Esse tipo de login não está ativado no Firebase.": [
+  "lib/services/auth_service.dart",
+  "web-site/src/lib/auth.js"
+ ],
+ "Este Pokémon não evolui.": [
+  "web-site/src/components/DetailsPanel.jsx"
+ ],
+ "Este Pokémon não pode se reproduzir.": [
+  "web-site/src/pages/TrainingPage.jsx"
+ ],
+ "Este endereço não está autorizado no Firebase (Authentication → Domínios autorizados).": [
+  "web-site/src/lib/auth.js"
+ ],
+ "Estrategista": [
+  "lib/services/achievements.dart",
+  "web-site/src/lib/achievements.js"
+ ],
+ "Estágio": [
+  "lib/screens/damage_calc_screen.dart",
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Evolution": [
+  "lib/widgets/pokemon_detail_panel.dart",
+  "web-site/src/components/DetailsPanel.jsx"
+ ],
+ "Excluir": [
+  "lib/screens/settings_screen.dart",
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Excluir conta": [
+  "lib/screens/settings_screen.dart",
+  "web-site/src/components/EmailLinkPage.jsx",
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Excluir para sempre": [
+  "lib/screens/settings_screen.dart",
+  "web-site/src/components/EmailLinkPage.jsx",
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Failed to load Pokedex for {0}": [
+  "lib/services/pokemon_service.dart"
+ ],
+ "Failed to load base pokemon data for ID {0}": [
+  "lib/services/pokemon_service.dart"
+ ],
+ "Failed to load evolution chain": [
+  "lib/services/pokemon_service.dart"
+ ],
+ "Failed to load species from {0}": [
+  "lib/services/pokemon_service.dart"
+ ],
+ "Failed to load type {0}": [
+  "lib/services/pokemon_service.dart"
+ ],
+ "Fairy": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Falha ao carregar a lista de Pokémon.": [
+  "lib/screens/home_screen.dart"
+ ],
+ "Falha ao carregar parceiros de criação: {0}": [
+  "lib/screens/breeding_partners_screen.dart"
+ ],
+ "Falha ao carregar {0}": [
+  "web-site/src/lib/data.js"
+ ],
+ "Fallback to base form": [
+  "lib/widgets/evolution_pokemon_card.dart"
+ ],
+ "Favoritar": [
+  "web-site/src/components/DetailsPanel.jsx"
+ ],
+ "Favoritos": [
+  "lib/screens/favorites_screen.dart",
+  "lib/screens/home_screen.dart",
+  "lib/screens/web_shell.dart",
+  "web-site/src/App.jsx",
+  "web-site/src/pages/FavoritesPage.jsx"
+ ],
+ "Favoritos, times e treinos apagados.": [
+  "lib/screens/settings_screen.dart"
+ ],
+ "Favoritos, times e treinos ficam salvos na sua conta (app e site).": [
+  "lib/screens/settings_screen.dart"
+ ],
+ "Favoritos, times e treinos ficam salvos na sua conta.": [
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Favoritos, times e treinos ficam salvos neste aparelho.": [
+  "lib/screens/settings_screen.dart"
+ ],
+ "Favoritos, times e treinos ficam salvos neste navegador.": [
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Faça 100 pontos no Ranked.": [
+  "lib/services/achievements.dart",
+  "web-site/src/lib/achievements.js"
+ ],
+ "Faça uma sequência de 10 acertos.": [
+  "lib/services/achievements.dart",
+  "web-site/src/lib/achievements.js"
+ ],
+ "Faça uma sequência de 50 acertos.": [
+  "lib/services/achievements.dart",
+  "web-site/src/lib/achievements.js"
+ ],
+ "Fechar": [
+  "lib/screens/settings_screen.dart",
+  "lib/services/update_service.dart",
+  "lib/widgets/pokedex_web/pokedex_inline_details.dart",
+  "lib/widgets/team_share_dialogs.dart",
+  "web-site/src/components/DetailsPanel.jsx",
+  "web-site/src/components/ExpandableList.jsx",
+  "web-site/src/components/ui.jsx",
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Ferramentas para treinadores dedicados que buscam o Pokémon perfeito.": [
+  "web-site/src/pages/TrainingPage.jsx"
+ ],
+ "Ferramentas para treinadores que buscam o Pokémon perfeito.": [
+  "lib/screens/training_screen.dart"
+ ],
+ "Fiel": [
+  "lib/services/achievements.dart",
+  "web-site/src/lib/achievements.js"
+ ],
+ "Fighting": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Filtrar por geração": [
+  "web-site/src/components/GenerationPicker.jsx"
+ ],
+ "Filtrar por jogo": [
+  "web-site/src/components/GamePicker.jsx"
+ ],
+ "Fim de Jogo!": [
+  "lib/screens/quiz_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Fim do Ranked!": [
+  "lib/screens/quiz_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Fim do desafio do dia!": [
+  "lib/screens/quiz_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Final": [
+  "lib/screens/damage_calc_screen.dart",
+  "lib/screens/team_member_screen.dart",
+  "web-site/src/components/DamageCalc.jsx",
+  "web-site/src/components/TeamMemberEditor.jsx"
+ ],
+ "Fire": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Fire Pledge (Grass Pledge Boosted)": [
+  "lib/services/damage_calc.dart"
+ ],
+ "FireRed / LeafGreen": [
+  "lib/models/game.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Firebase não configurado: {0}": [
+  "lib/services/firebase_setup.dart"
+ ],
+ "Flash Fire ativado": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "Flower Gift (aliado)": [
+  "lib/screens/damage_calc_screen.dart",
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Flying": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Fraquezas": [
+  "lib/widgets/team_analysis_view.dart",
+  "web-site/src/components/TeamAnalysis.jsx"
+ ],
+ "Fraquezas de {0}": [
+  "lib/screens/battle_tools_screen.dart"
+ ],
+ "Friend Guard (aliado)": [
+  "lib/screens/damage_calc_screen.dart",
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Físico": [
+  "lib/screens/damage_calc_screen.dart",
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "G-Max Fire Ball": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Galar": [
+  "lib/models/generation.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Gender": [
+  "lib/widgets/pokemon_detail_panel.dart",
+  "web-site/src/components/DetailsPanel.jsx"
+ ],
+ "Genderless": [
+  "lib/widgets/pokemon_detail_panel.dart",
+  "web-site/src/components/DetailsPanel.jsx"
+ ],
+ "Generation": [
+  "lib/models/generation.dart",
+  "web-site/src/components/GenerationPicker.jsx",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Generation I": [
+  "lib/models/generation.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Generation II": [
+  "lib/models/generation.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Generation III": [
+  "lib/models/generation.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Generation IV": [
+  "lib/models/generation.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Generation IX": [
+  "lib/models/generation.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Generation V": [
+  "lib/models/generation.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Generation VI": [
+  "lib/models/generation.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Generation VII": [
+  "lib/models/generation.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Generation VIII": [
+  "lib/models/generation.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Genesect": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Gentle": [
+  "lib/screens/nature_guide_screen.dart",
+  "lib/services/team_sets.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Geral": [
+  "lib/screens/game_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Geração": [
+  "lib/models/generation.dart",
+  "lib/screens/game_screen.dart",
+  "lib/widgets/generation_picker.dart",
+  "web-site/src/components/GenerationPicker.jsx",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Geração {0}{1}": [
+  "web-site/src/components/GamePicker.jsx"
+ ],
+ "Ghost": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Giratina": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Gold / Silver": [
+  "lib/models/game.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Golpe crítico": [
+  "lib/screens/damage_calc_screen.dart",
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Golpe {0}": [
+  "lib/screens/team_member_screen.dart",
+  "web-site/src/components/TeamMemberEditor.jsx"
+ ],
+ "Golpes": [
+  "lib/screens/encyclopedia_screen.dart",
+  "lib/screens/team_member_screen.dart",
+  "web-site/src/components/TeamMemberEditor.jsx",
+  "web-site/src/pages/EncyclopediaPage.jsx"
+ ],
+ "Golpes de {0}": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "Grass": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Grass Pledge (Fire Pledge Boosted)": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Grassy": [
+  "lib/screens/damage_calc_screen.dart",
+  "lib/services/damage_calc.dart"
+ ],
+ "Griseous": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Groudon": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Ground": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Growth rate": [
+  "web-site/src/components/DetailsPanel.jsx"
+ ],
+ "Guia de Natures": [
+  "lib/screens/nature_guide_screen.dart",
+  "lib/screens/training_screen.dart",
+  "web-site/src/pages/TrainingPage.jsx"
+ ],
+ "Gênero": [
+  "lib/screens/team_member_screen.dart",
+  "web-site/src/components/TeamMemberEditor.jsx"
+ ],
+ "Habilidade": [
+  "lib/screens/damage_calc_screen.dart",
+  "lib/screens/team_member_screen.dart",
+  "web-site/src/components/DamageCalc.jsx",
+  "web-site/src/components/TeamMemberEditor.jsx"
+ ],
+ "Habilidades": [
+  "lib/screens/encyclopedia_screen.dart",
+  "web-site/src/pages/EncyclopediaPage.jsx"
+ ],
+ "Hardy": [
+  "lib/screens/damage_calc_screen.dart",
+  "lib/screens/nature_guide_screen.dart",
+  "lib/screens/team_member_screen.dart",
+  "lib/services/team_sets.dart",
+  "web-site/src/lib/pokemon.js",
+  "web-site/src/lib/teamSets.js"
+ ],
+ "Harsh Sunshine": [
+  "lib/screens/damage_calc_screen.dart",
+  "lib/services/damage_calc.dart"
+ ],
+ "Hasty": [
+  "lib/screens/nature_guide_screen.dart",
+  "lib/services/team_sets.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "HeartGold / SoulSilver": [
+  "lib/models/game.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Heavy Rain": [
+  "lib/screens/damage_calc_screen.dart",
+  "lib/services/damage_calc.dart"
+ ],
+ "Height:": [
+  "lib/widgets/pokemon_detail_panel.dart",
+  "web-site/src/components/DetailsPanel.jsx"
+ ],
+ "Hoenn": [
+  "lib/models/generation.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Hoje": [
+  "lib/screens/game_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Hp": [
+  "web-site/src/lib/pokemon.js"
+ ],
+ "IVs: {0}": [
+  "web-site/src/lib/teamSets.js"
+ ],
+ "Ice": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Immune to": [
+  "web-site/src/components/DetailsPanel.jsx"
+ ],
+ "Imparável": [
+  "lib/services/achievements.dart",
+  "web-site/src/lib/achievements.js"
+ ],
+ "Impish": [
+  "lib/screens/nature_guide_screen.dart",
+  "lib/services/team_sets.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Importar": [
+  "lib/screens/teams_screen.dart",
+  "lib/widgets/team_share_dialogs.dart",
+  "web-site/src/components/TeamShare.jsx",
+  "web-site/src/pages/TeamsPage.jsx"
+ ],
+ "Importar time": [
+  "lib/widgets/team_share_dialogs.dart",
+  "web-site/src/components/TeamShare.jsx"
+ ],
+ "Instalar": [
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Instalar o site": [
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Intimidate no adversário": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "Intrepid Sword ao entrar": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "Isso apaga": [
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Isso apaga para sempre sua conta, favoritos, times, treinos, recordes, conquistas e suas linhas nos rankings. No app e no site. Não dá para desfazer.": [
+  "lib/screens/settings_screen.dart"
+ ],
+ "Isso apaga seus favoritos, times e treinos. Continuar?": [
+  "lib/screens/settings_screen.dart",
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Item": [
+  "lib/screens/damage_calc_screen.dart",
+  "lib/screens/team_member_screen.dart",
+  "web-site/src/components/DamageCalc.jsx",
+  "web-site/src/components/TeamMemberEditor.jsx"
+ ],
+ "Itens": [
+  "lib/screens/encyclopedia_screen.dart",
+  "web-site/src/pages/EncyclopediaPage.jsx"
+ ],
+ "Jogar novamente": [
+  "lib/screens/quiz_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Jogo": [
+  "lib/screens/game_screen.dart",
+  "lib/screens/home_screen.dart",
+  "lib/screens/web_shell.dart",
+  "lib/widgets/game_picker.dart",
+  "web-site/src/App.jsx"
+ ],
+ "Jogo normal": [
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Jogos": [
+  "lib/widgets/pokemon_detail_panel.dart",
+  "web-site/src/components/DetailsPanel.jsx"
+ ],
+ "Jogue, monte times e favorite Pokémon para liberar medalhas.": [
+  "lib/screens/settings_screen.dart",
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Johto": [
+  "lib/models/generation.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Jolly": [
+  "lib/screens/nature_guide_screen.dart",
+  "lib/services/team_sets.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Já confirmei": [
+  "lib/screens/login_screen.dart",
+  "web-site/src/pages/LoginPage.jsx"
+ ],
+ "Já excluí": [
+  "lib/screens/settings_screen.dart"
+ ],
+ "Já existe uma conta com esse e-mail.": [
+  "lib/services/auth_service.dart",
+  "web-site/src/lib/auth.js"
+ ],
+ "Kalos": [
+  "lib/models/generation.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Kanto": [
+  "lib/models/generation.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Kyogre": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Lado do atacante": [
+  "lib/screens/damage_calc_screen.dart",
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Lado do defensor": [
+  "lib/screens/damage_calc_screen.dart",
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Latias": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Latios": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Lax": [
+  "lib/screens/nature_guide_screen.dart",
+  "lib/services/team_sets.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Legends: Arceus": [
+  "lib/models/game.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Legends: Z-A": [
+  "lib/models/game.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Lembrete diário do desafio do dia.": [
+  "lib/services/daily_reminder.dart"
+ ],
+ "Lembrete do desafio do dia": [
+  "lib/screens/settings_screen.dart"
+ ],
+ "Lembrete do desafio: {0}": [
+  "lib/services/daily_reminder.dart"
+ ],
+ "Let's Go, Pikachu! / Eevee!": [
+  "lib/models/game.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Leva menos de um minuto.": [
+  "web-site/src/pages/LoginPage.jsx"
+ ],
+ "Level:": [
+  "lib/services/team_sets.dart",
+  "web-site/src/lib/teamSets.js"
+ ],
+ "Level: {0}": [
+  "web-site/src/lib/teamSets.js"
+ ],
+ "Limpar": [
+  "lib/screens/settings_screen.dart",
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Limpar dados": [
+  "lib/screens/settings_screen.dart",
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Limpar filtros": [
+  "lib/screens/pokedex_screen.dart",
+  "web-site/src/pages/PokedexPage.jsx"
+ ],
+ "Link": [
+  "lib/widgets/team_share_dialogs.dart",
+  "web-site/src/components/TeamShare.jsx"
+ ],
+ "Lonely": [
+  "lib/screens/nature_guide_screen.dart",
+  "lib/services/team_sets.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Lvl {0}": [
+  "lib/widgets/pokemon_detail_panel.dart"
+ ],
+ "Mais opções": [
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Mandamos um link para o e-mail da conta. Abra o link (confira também o spam) para confirmar a exclusão.": [
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Mandamos um link para o e-mail da conta. Abra o link (confira também o spam) para escolher a senha.": [
+  "lib/screens/settings_screen.dart",
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Mandamos um link para o e-mail da conta. Abra o link (confira também o spam), confirme a exclusão e depois toque em \"Já excluí\".": [
+  "lib/screens/settings_screen.dart"
+ ],
+ "Mandamos um link para {0}. Abra o link (confira também o spam) e depois toque em \"Já confirmei\".": [
+  "web-site/src/pages/LoginPage.jsx"
+ ],
+ "Mande o link ou o código para um amigo: no site ou no app, ele abre em Times → Importar.": [
+  "lib/widgets/team_share_dialogs.dart",
+  "web-site/src/components/TeamShare.jsx"
+ ],
+ "Manter conectado": [
+  "lib/screens/login_screen.dart",
+  "web-site/src/pages/LoginPage.jsx"
+ ],
+ "Marowak": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Me lembrar todo dia às 9h": [
+  "lib/screens/quiz_screen.dart"
+ ],
+ "Memory": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Mesma conta dos jogos oficiais (geração 9), com habilidades, itens, campo e golpes especiais.": [
+  "lib/screens/damage_calc_screen.dart",
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Mestre Pokémon": [
+  "lib/services/achievements.dart",
+  "web-site/src/lib/achievements.js"
+ ],
+ "Meus times": [
+  "web-site/src/pages/CommunityTeamsPage.jsx"
+ ],
+ "Mew": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Mild": [
+  "lib/screens/nature_guide_screen.dart",
+  "lib/services/team_sets.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Misty": [
+  "lib/screens/damage_calc_screen.dart",
+  "lib/services/damage_calc.dart"
+ ],
+ "Modest": [
+  "lib/screens/nature_guide_screen.dart",
+  "lib/services/team_sets.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Modo Escuro": [
+  "lib/screens/settings_screen.dart",
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Montador de Times": [
+  "lib/screens/teams_screen.dart",
+  "web-site/src/pages/TeamsPage.jsx"
+ ],
+ "Monte times de até 6 Pokémon e veja as fraquezas e a nota de cada um.": [
+  "lib/screens/teams_screen.dart",
+  "web-site/src/pages/TeamsPage.jsx"
+ ],
+ "Monte um time com 6 Pokémon.": [
+  "lib/services/achievements.dart",
+  "web-site/src/lib/achievements.js"
+ ],
+ "Mostrar": [
+  "web-site/src/pages/LoginPage.jsx"
+ ],
+ "Mostrar menos": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "Motivo:": [
+  "web-site/src/pages/CommunityTeamsPage.jsx"
+ ],
+ "Moves": [
+  "lib/widgets/pokemon_detail_panel.dart",
+  "web-site/src/components/DetailsPanel.jsx"
+ ],
+ "Mudar para tema claro": [
+  "web-site/src/App.jsx"
+ ],
+ "Mudar para tema escuro": [
+  "web-site/src/App.jsx"
+ ],
+ "Muitas tentativas. Espere um pouco e tente de novo.": [
+  "lib/services/auth_service.dart",
+  "web-site/src/lib/auth.js"
+ ],
+ "Muito envenenado": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "Nacional": [
+  "lib/widgets/generation_picker.dart"
+ ],
+ "Naive": [
+  "lib/screens/nature_guide_screen.dart",
+  "lib/services/team_sets.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Nature": [
+  "lib/screens/damage_calc_screen.dart",
+  "lib/screens/team_member_screen.dart",
+  "web-site/src/components/DamageCalc.jsx",
+  "web-site/src/components/TeamMemberEditor.jsx"
+ ],
+ "Naughty": [
+  "lib/screens/nature_guide_screen.dart",
+  "lib/services/team_sets.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Nenhum": [
+  "lib/screens/damage_calc_screen.dart",
+  "lib/screens/team_member_screen.dart",
+  "web-site/src/components/DamageCalc.jsx",
+  "web-site/src/components/TeamMemberEditor.jsx"
+ ],
+ "Nenhum Pokémon acerta estes tipos com dano super efetivo (STAB).": [
+  "lib/widgets/team_analysis_view.dart",
+  "web-site/src/components/TeamAnalysis.jsx"
+ ],
+ "Nenhum Pokémon com esses filtros.": [
+  "lib/screens/pokedex_screen.dart"
+ ],
+ "Nenhum Pokémon em treinamento. Clique em “Adicionar” para começar.": [
+  "web-site/src/pages/TrainingPage.jsx"
+ ],
+ "Nenhum Pokémon em treinamento. Toque em “Adicionar” para começar.": [
+  "lib/screens/ev_counter_screen.dart"
+ ],
+ "Nenhum Pokémon encontrado.": [
+  "lib/screens/ability_detail_screen.dart",
+  "lib/screens/breeding_help_screen.dart",
+  "lib/screens/home_screen.dart",
+  "lib/screens/move_detail_screen.dart",
+  "lib/screens/pokedex_screen.dart",
+  "lib/widgets/expandable_entry.dart",
+  "web-site/src/components/PokedexGrid.jsx"
+ ],
+ "Nenhum golpe de dano encontrado.": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "Nenhum golpe de dano.": [
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Nenhum golpe para mostrar.": [
+  "web-site/src/components/DetailsPanel.jsx"
+ ],
+ "Nenhum parceiro compatível encontrado.": [
+  "lib/screens/breeding_partners_screen.dart"
+ ],
+ "Nenhum tipo deixa o time em desvantagem. Ótima defesa!": [
+  "lib/utils/team_analysis.dart",
+  "web-site/src/components/TeamAnalysis.jsx"
+ ],
+ "Nenhum treinador com esse nome ou ele ainda não tem times.": [
+  "lib/screens/community_teams_screen.dart",
+  "web-site/src/pages/CommunityTeamsPage.jsx"
+ ],
+ "Nenhum 🎉": [
+  "lib/widgets/team_analysis_view.dart",
+  "web-site/src/components/TeamAnalysis.jsx"
+ ],
+ "Nenhuma": [
+  "lib/screens/damage_calc_screen.dart",
+  "lib/widgets/team_analysis_view.dart",
+  "web-site/src/components/DamageCalc.jsx",
+  "web-site/src/components/TeamAnalysis.jsx"
+ ],
+ "Nenhuma 🎉": [
+  "lib/widgets/team_analysis_view.dart",
+  "web-site/src/components/TeamAnalysis.jsx"
+ ],
+ "Neutra - Nenhum efeito": [
+  "lib/screens/nature_guide_screen.dart",
+  "web-site/src/pages/TrainingPage.jsx"
+ ],
+ "Neve": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "Ninguém fez o desafio de hoje ainda. Seja o primeiro!": [
+  "lib/screens/game_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Ninguém jogou o Ranked esta semana ainda.": [
+  "lib/screens/game_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Ninguém pontuou no Ranked ainda. Seja o primeiro!": [
+  "lib/screens/game_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Ninguém publicou times ainda.": [
+  "lib/screens/community_teams_screen.dart",
+  "web-site/src/pages/CommunityTeamsPage.jsx"
+ ],
+ "No image found for base form": [
+  "lib/widgets/evolution_pokemon_card.dart"
+ ],
+ "Nome do Time": [
+  "lib/screens/teams_screen.dart"
+ ],
+ "Nome do time": [
+  "lib/screens/team_builder_screen.dart",
+  "web-site/src/pages/TeamBuilderPage.jsx",
+  "web-site/src/pages/TeamsPage.jsx"
+ ],
+ "Nome ofensivo": [
+  "lib/screens/community_teams_screen.dart",
+  "web-site/src/pages/CommunityTeamsPage.jsx"
+ ],
+ "Normal": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Nota da comunidade": [
+  "lib/screens/team_builder_screen.dart",
+  "web-site/src/pages/TeamBuilderPage.jsx"
+ ],
+ "Nova senha": [
+  "lib/screens/settings_screen.dart",
+  "web-site/src/components/EmailLinkPage.jsx",
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Nova versão disponível!": [
+  "lib/services/update_service.dart"
+ ],
+ "Novo jogo normal": [
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Novo recorde no Ranked! Confira sua posição no ranking! 🎉": [
+  "lib/screens/quiz_screen.dart"
+ ],
+ "Novo recorde! 🎉": [
+  "lib/screens/quiz_screen.dart"
+ ],
+ "Nv. {0}": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "Não autorizado": [
+  "lib/utils/app_exceptions.dart"
+ ],
+ "Não causa dano.": [
+  "lib/screens/damage_calc_screen.dart",
+  "lib/services/damage_calc.dart",
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Não derrota.": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Não deu para abrir a calculadora: {0}": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "Não encontrei um time nesse texto.": [
+  "lib/widgets/team_share_dialogs.dart",
+  "web-site/src/components/TeamShare.jsx"
+ ],
+ "Não foi possível baixar a atualização. Tente de novo.": [
+  "lib/services/update_service.dart"
+ ],
+ "Não foi possível carregar o ranking agora.": [
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Não foi possível carregar os times agora.": [
+  "lib/screens/community_teams_screen.dart"
+ ],
+ "Não foi possível denunciar agora.": [
+  "lib/screens/community_teams_screen.dart"
+ ],
+ "Não foi possível entrar com Google ({0}). Tente de novo.": [
+  "lib/services/auth_service.dart"
+ ],
+ "Não foi possível procurar agora. Confira a internet.": [
+  "lib/services/update_service.dart"
+ ],
+ "Não foi possível votar agora.": [
+  "lib/screens/community_teams_screen.dart"
+ ],
+ "Nível": [
+  "lib/screens/damage_calc_screen.dart",
+  "lib/screens/team_member_screen.dart",
+  "web-site/src/components/DamageCalc.jsx",
+  "web-site/src/components/DetailsPanel.jsx",
+  "web-site/src/components/TeamMemberEditor.jsx"
+ ],
+ "O Google não devolveu a conta. Tente de novo.": [
+  "lib/services/auth_service.dart"
+ ],
+ "O PocketDex é gratuito e sem anúncios. Se ele te ajuda, uma contribuição por Pix (de qualquer valor) ajuda a manter o projeto.": [
+  "lib/screens/settings_screen.dart",
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "O alvo acabou de entrar": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "O desafio de hoje já está valendo. Quem é esse Pokémon?": [
+  "lib/services/daily_reminder.dart"
+ ],
+ "O login com Google foi cancelado.": [
+  "lib/services/auth_service.dart"
+ ],
+ "O navegador bloqueou a janela do Google. Libere pop-ups para este site.": [
+  "web-site/src/lib/auth.js"
+ ],
+ "O nome pode ter no máximo {0} letras.": [
+  "lib/services/auth_service.dart",
+  "web-site/src/lib/auth.js"
+ ],
+ "O que cada habilidade faz e quem tem": [
+  "lib/screens/encyclopedia_screen.dart"
+ ],
+ "O time não tem golpes super efetivos (STAB) contra {0} tipos.": [
+  "lib/utils/team_analysis.dart",
+  "web-site/src/components/TeamAnalysis.jsx"
+ ],
+ "Obrigado pela nota!": [
+  "lib/screens/community_teams_screen.dart",
+  "web-site/src/pages/CommunityTeamsPage.jsx"
+ ],
+ "Ocultar": [
+  "web-site/src/pages/LoginPage.jsx"
+ ],
+ "Oculto para os outros por denúncias": [
+  "lib/screens/community_teams_screen.dart",
+  "web-site/src/pages/CommunityTeamsPage.jsx"
+ ],
+ "Ogerpon": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Omega Ruby / Alpha Sapphire": [
+  "lib/models/game.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Os 16 danos possíveis": [
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Os maiores recordes no modo Ranked.": [
+  "lib/screens/game_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Os melhores Ranked desta semana (começa na segunda).": [
+  "lib/screens/game_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Outro": [
+  "lib/screens/community_teams_screen.dart",
+  "web-site/src/pages/CommunityTeamsPage.jsx"
+ ],
+ "Outro golpe (qualquer um)": [
+  "lib/screens/damage_calc_screen.dart",
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Ovo": [
+  "web-site/src/components/DetailsPanel.jsx"
+ ],
+ "Padrão": [
+  "lib/screens/damage_calc_screen.dart",
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Paldea": [
+  "lib/models/generation.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Palkia": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Para confirmar, digite o e-mail da conta (o mesmo que recebeu o link).": [
+  "web-site/src/components/EmailLinkPage.jsx"
+ ],
+ "Para confirmar, vamos mandar um link para o e-mail da sua conta Google.": [
+  "lib/screens/settings_screen.dart",
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Para criar sua conta com": [
+  "web-site/src/pages/LoginPage.jsx"
+ ],
+ "Paralisado": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "Parceiros Compatíveis": [
+  "lib/screens/breeding_partners_screen.dart"
+ ],
+ "Parceiros de Criação": [
+  "lib/screens/breeding_partners_screen.dart"
+ ],
+ "Parental Bond (Child)": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Pelo menos 6 caracteres.": [
+  "lib/screens/login_screen.dart",
+  "web-site/src/pages/LoginPage.jsx"
+ ],
+ "Perfeito": [
+  "lib/services/achievements.dart",
+  "web-site/src/lib/achievements.js"
+ ],
+ "Permita as notificações do PocketDex nas configurações do celular.": [
+  "lib/screens/settings_screen.dart"
+ ],
+ "Permita que o PocketDex instale apps (o Android vai pedir) e tente de novo.": [
+  "lib/services/update_service.dart"
+ ],
+ "Pesquisar pelo nome do treinador": [
+  "lib/screens/community_teams_screen.dart",
+  "web-site/src/pages/CommunityTeamsPage.jsx"
+ ],
+ "Physical": [
+  "lib/services/damage_calc.dart",
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Pika Papow": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Pikachu": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Pix copia e cola": [
+  "lib/screens/settings_screen.dart"
+ ],
+ "Plate": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Platinum": [
+  "lib/models/game.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "PocketDex · Site feito em JavaScript (React) com dados gerados em Python.": [
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "PocketDex · app em Flutter e site em React, com a mesma conta.\\nPokémon e os nomes dos personagens são marcas da Nintendo.": [
+  "lib/screens/settings_screen.dart"
+ ],
+ "Poder {0}": [
+  "web-site/src/pages/EncyclopediaPage.jsx"
+ ],
+ "Poison": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Pokédex": [
+  "lib/screens/home_screen.dart",
+  "lib/screens/pokedex_screen.dart",
+  "lib/screens/web_shell.dart",
+  "web-site/src/App.jsx",
+  "web-site/src/pages/PokedexPage.jsx"
+ ],
+ "Pokédex Nacional": [
+  "lib/widgets/game_picker.dart",
+  "web-site/src/components/GamePicker.jsx",
+  "web-site/src/components/GenerationPicker.jsx"
+ ],
+ "Pokémon": [
+  "lib/models/pokemon_details.dart",
+  "lib/screens/team_builder_screen.dart",
+  "web-site/src/pages/TeamBuilderPage.jsx"
+ ],
+ "Pokémon com esta Habilidade:": [
+  "lib/screens/abilities_encyclopedia_screen.dart",
+  "lib/screens/ability_detail_screen.dart"
+ ],
+ "Pokémon not found: {0}": [
+  "lib/services/pokemon_service.dart"
+ ],
+ "Pokémon não encontrado": [
+  "lib/utils/app_exceptions.dart"
+ ],
+ "Pokémon que aprendem este Golpe:": [
+  "lib/screens/move_detail_screen.dart",
+  "lib/screens/moves_encyclopedia_screen.dart"
+ ],
+ "Pokémon {0}": [
+  "lib/widgets/pokedex_web/pokedex_inline_details.dart"
+ ],
+ "Pontos": [
+  "lib/screens/quiz_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Por favor, insira um nome.": [
+  "lib/screens/teams_screen.dart"
+ ],
+ "Por segurança, saia e entre de novo na conta e tente outra vez.": [
+  "lib/services/auth_service.dart",
+  "web-site/src/lib/auth.js"
+ ],
+ "Power": [
+  "lib/screens/move_detail_screen.dart",
+  "web-site/src/components/EntryModals.jsx"
+ ],
+ "Power Spot (aliado)": [
+  "lib/screens/damage_calc_screen.dart",
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Preferências de usuário limpas!": [
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Primeiro acerto": [
+  "lib/services/achievements.dart",
+  "web-site/src/lib/achievements.js"
+ ],
+ "Primeiro uso do tipo (Stellar)": [
+  "lib/screens/damage_calc_screen.dart",
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Priority": [
+  "web-site/src/components/EntryModals.jsx"
+ ],
+ "Procurando a última versão...": [
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Procurar": [
+  "lib/screens/settings_screen.dart"
+ ],
+ "Procurar Pokémon": [
+  "web-site/src/App.jsx"
+ ],
+ "Procurar Pokémon por nome ou nú...": [
+  "lib/screens/home_screen.dart"
+ ],
+ "Procurar Pokémon por nome ou número": [
+  "lib/screens/pokedex_screen.dart",
+  "lib/screens/web_shell.dart",
+  "web-site/src/App.jsx"
+ ],
+ "Procurar Pokémon...": [
+  "lib/screens/breeding_help_screen.dart"
+ ],
+ "Procurar golpe": [
+  "lib/screens/moves_encyclopedia_screen.dart"
+ ],
+ "Procurar habilidade": [
+  "lib/screens/abilities_encyclopedia_screen.dart"
+ ],
+ "Procurar item": [
+  "lib/screens/items_encyclopedia_screen.dart"
+ ],
+ "Procurar por nome ou número": [
+  "web-site/src/components/PokemonPicker.jsx"
+ ],
+ "Procurar {0}": [
+  "web-site/src/pages/EncyclopediaPage.jsx"
+ ],
+ "Protosynthesis ativa": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "Próximo": [
+  "lib/screens/pokemon_detail_screen.dart",
+  "lib/widgets/pokedex_web/pokedex_inline_details.dart",
+  "web-site/src/components/DetailsPanel.jsx"
+ ],
+ "QR Code do Pix": [
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Qual Pokémon foi derrotado?": [
+  "web-site/src/pages/TrainingPage.jsx"
+ ],
+ "Qual Pokémon você vai treinar?": [
+  "web-site/src/pages/TrainingPage.jsx"
+ ],
+ "Quanto um golpe tira do outro": [
+  "lib/screens/training_screen.dart",
+  "web-site/src/pages/TrainingPage.jsx"
+ ],
+ "Quantos Pokémon acertam cada tipo com dano super efetivo usando golpes do próprio tipo (STAB).": [
+  "lib/widgets/team_analysis_view.dart",
+  "web-site/src/components/TeamAnalysis.jsx"
+ ],
+ "Quark Drive ativa": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "Queimado": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "Quem é esse Pokémon?": [
+  "lib/screens/game_screen.dart",
+  "lib/screens/quiz_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Quiet": [
+  "lib/screens/nature_guide_screen.dart",
+  "lib/services/team_sets.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Quirky": [
+  "lib/screens/nature_guide_screen.dart",
+  "lib/services/team_sets.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Rain": [
+  "lib/screens/damage_calc_screen.dart",
+  "lib/services/damage_calc.dart"
+ ],
+ "Ranked:": [
+  "lib/screens/game_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Ranking": [
+  "lib/screens/game_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Rash": [
+  "lib/screens/nature_guide_screen.dart",
+  "lib/services/team_sets.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Recarregar": [
+  "web-site/src/lib/staleBuild.jsx"
+ ],
+ "Recorde": [
+  "lib/screens/quiz_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Recorde Ranked": [
+  "lib/screens/game_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Recorde normal": [
+  "lib/screens/game_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Recuperar senha": [
+  "lib/screens/login_screen.dart",
+  "web-site/src/pages/LoginPage.jsx"
+ ],
+ "Recurso desconhecido: {0}": [
+  "lib/services/local_database.dart"
+ ],
+ "Red / Blue": [
+  "lib/models/game.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Reenviar": [
+  "lib/screens/settings_screen.dart"
+ ],
+ "Reenviar link": [
+  "lib/screens/login_screen.dart",
+  "lib/screens/settings_screen.dart",
+  "web-site/src/pages/LoginPage.jsx",
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Referência inválida: {0}": [
+  "lib/services/local_database.dart"
+ ],
+ "Relaxed": [
+  "lib/screens/nature_guide_screen.dart",
+  "lib/services/team_sets.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Relâmpago": [
+  "lib/services/achievements.dart",
+  "web-site/src/lib/achievements.js"
+ ],
+ "Remover": [
+  "lib/screens/team_builder_screen.dart",
+  "web-site/src/components/TeamMemberEditor.jsx",
+  "web-site/src/pages/TeamBuilderPage.jsx",
+  "web-site/src/pages/TrainingPage.jsx"
+ ],
+ "Remover Pokémon": [
+  "lib/screens/ev_counter_screen.dart"
+ ],
+ "Remover Pokémon?": [
+  "lib/screens/team_builder_screen.dart",
+  "web-site/src/pages/TeamBuilderPage.jsx"
+ ],
+ "Remover do time": [
+  "lib/screens/team_member_screen.dart"
+ ],
+ "Remover dos favoritos": [
+  "web-site/src/components/DetailsPanel.jsx"
+ ],
+ "Requisição inválida": [
+  "lib/utils/app_exceptions.dart"
+ ],
+ "Resetar EVs": [
+  "lib/screens/ev_tracking_screen.dart"
+ ],
+ "Resistant to": [
+  "web-site/src/components/DetailsPanel.jsx"
+ ],
+ "Resource not found: {0}": [
+  "lib/services/pokemon_service.dart"
+ ],
+ "Rock": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Rockruff": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Ruby / Sapphire": [
+  "lib/models/game.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Saindo da batalha (Pursuit)": [
+  "lib/screens/damage_calc_screen.dart",
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Sair": [
+  "lib/screens/quiz_screen.dart",
+  "lib/screens/settings_screen.dart",
+  "lib/widgets/account_avatar.dart",
+  "web-site/src/pages/GamePage.jsx",
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Sair da conta": [
+  "web-site/src/App.jsx"
+ ],
+ "Salvar nos meus times": [
+  "lib/screens/community_teams_screen.dart",
+  "web-site/src/pages/CommunityTeamsPage.jsx"
+ ],
+ "Salvar senha": [
+  "web-site/src/components/EmailLinkPage.jsx"
+ ],
+ "Sand": [
+  "lib/screens/damage_calc_screen.dart",
+  "lib/services/damage_calc.dart"
+ ],
+ "Sassy": [
+  "lib/screens/nature_guide_screen.dart",
+  "lib/services/team_sets.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Saudável": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "Scarlet / Violet": [
+  "lib/models/game.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Seed": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Selecione até dois tipos": [
+  "lib/screens/pokedex_screen.dart",
+  "web-site/src/pages/PokedexPage.jsx"
+ ],
+ "Selecione o Pokémon Derrotado": [
+  "lib/screens/ev_yield_pokemon_selection_screen.dart"
+ ],
+ "Selecione um Pokémon": [
+  "lib/screens/pokedex_screen.dart",
+  "web-site/src/components/PokemonPicker.jsx"
+ ],
+ "Selecione uma Forma": [
+  "lib/screens/pokemon_detail_screen.dart"
+ ],
+ "Sem cobertura": [
+  "lib/widgets/team_analysis_view.dart",
+  "web-site/src/components/TeamAnalysis.jsx"
+ ],
+ "Sem conexão com a internet.": [
+  "lib/services/auth_service.dart",
+  "web-site/src/lib/auth.js"
+ ],
+ "Sem conta": [
+  "lib/widgets/account_avatar.dart"
+ ],
+ "Sem descrição.": [
+  "lib/models/ability.dart",
+  "lib/models/item.dart",
+  "lib/models/move.dart",
+  "lib/models/pokemon_details.dart",
+  "lib/widgets/pokemon_detail_panel.dart"
+ ],
+ "Sem detalhes": [
+  "lib/widgets/team_set_summary.dart",
+  "web-site/src/pages/CommunityTeamsPage.jsx"
+ ],
+ "Sem notas ainda": [
+  "lib/widgets/team_analysis_view.dart",
+  "web-site/src/components/TeamAnalysis.jsx"
+ ],
+ "Sem permissão no banco de dados. Confira as regras do Firestore.": [
+  "lib/services/auth_service.dart",
+  "web-site/src/lib/auth.js"
+ ],
+ "Semana": [
+  "lib/screens/game_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Senha": [
+  "lib/screens/login_screen.dart",
+  "web-site/src/components/EmailLinkPage.jsx",
+  "web-site/src/pages/LoginPage.jsx"
+ ],
+ "Senha atual": [
+  "lib/screens/settings_screen.dart",
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Senha salva! Agora você também pode entrar com o e-mail e essa senha.": [
+  "web-site/src/components/EmailLinkPage.jsx"
+ ],
+ "Senha trocada!": [
+  "lib/screens/settings_screen.dart",
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Sequência": [
+  "lib/screens/quiz_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Serious": [
+  "lib/screens/nature_guide_screen.dart",
+  "lib/services/damage_calc.dart",
+  "lib/services/team_sets.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Seu nome": [
+  "lib/screens/login_screen.dart",
+  "web-site/src/pages/LoginPage.jsx"
+ ],
+ "Seu time": [
+  "lib/screens/community_teams_screen.dart",
+  "web-site/src/pages/CommunityTeamsPage.jsx"
+ ],
+ "Shiny ✨": [
+  "lib/screens/team_member_screen.dart",
+  "web-site/src/components/TeamMemberEditor.jsx"
+ ],
+ "Shiny: Yes": [
+  "lib/services/team_sets.dart",
+  "web-site/src/lib/teamSets.js"
+ ],
+ "Silvally": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Simples": [
+  "lib/screens/damage_calc_screen.dart",
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Singles": [
+  "lib/screens/damage_calc_screen.dart",
+  "lib/services/damage_calc.dart",
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Sinnoh": [
+  "lib/models/generation.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Slow Start ativo": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "Snow": [
+  "lib/screens/damage_calc_screen.dart",
+  "lib/services/damage_calc.dart"
+ ],
+ "Sol": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "Sol extremo (Desolate Land)": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "Sp. Atk": [
+  "lib/screens/battle_tools_screen.dart",
+  "lib/screens/damage_calc_screen.dart",
+  "lib/screens/ev_tracking_screen.dart",
+  "lib/screens/nature_guide_screen.dart",
+  "lib/services/team_sets.dart",
+  "lib/widgets/pokemon_detail_panel.dart",
+  "web-site/src/lib/pokemon.js",
+  "web-site/src/lib/teamSets.js"
+ ],
+ "Sp. Def": [
+  "lib/screens/battle_tools_screen.dart",
+  "lib/screens/damage_calc_screen.dart",
+  "lib/screens/ev_tracking_screen.dart",
+  "lib/screens/nature_guide_screen.dart",
+  "lib/services/team_sets.dart",
+  "lib/widgets/pokemon_detail_panel.dart",
+  "web-site/src/lib/pokemon.js",
+  "web-site/src/lib/teamSets.js"
+ ],
+ "Spam": [
+  "lib/screens/community_teams_screen.dart",
+  "web-site/src/pages/CommunityTeamsPage.jsx"
+ ],
+ "Spe": [
+  "lib/screens/ev_counter_screen.dart",
+  "lib/services/team_sets.dart",
+  "web-site/src/components/DamageCalc.jsx",
+  "web-site/src/lib/teamSets.js"
+ ],
+ "Special": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Speed": [
+  "lib/screens/battle_tools_screen.dart",
+  "lib/screens/damage_calc_screen.dart",
+  "lib/screens/ev_tracking_screen.dart",
+  "lib/screens/nature_guide_screen.dart",
+  "lib/services/team_sets.dart",
+  "web-site/src/lib/pokemon.js",
+  "web-site/src/lib/teamSets.js"
+ ],
+ "Spikes no defensor": [
+  "lib/screens/damage_calc_screen.dart",
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Status": [
+  "lib/screens/damage_calc_screen.dart",
+  "lib/services/damage_calc.dart",
+  "web-site/src/components/DamageCalc.jsx",
+  "web-site/src/components/TeamMemberEditor.jsx"
+ ],
+ "Status base": [
+  "lib/screens/battle_tools_screen.dart",
+  "web-site/src/components/BattleTools.jsx"
+ ],
+ "Status e fraquezas lado a lado": [
+  "lib/screens/training_screen.dart",
+  "web-site/src/pages/TrainingPage.jsx"
+ ],
+ "Steel": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Steely Spirit (aliado)": [
+  "lib/screens/damage_calc_screen.dart",
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Stellar": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Strong Winds": [
+  "lib/screens/damage_calc_screen.dart",
+  "lib/services/damage_calc.dart"
+ ],
+ "Sua Pokédex, seus times e seus treinos em qualquer lugar.": [
+  "web-site/src/pages/LoginPage.jsx"
+ ],
+ "Sua conta foi excluída.": [
+  "lib/screens/settings_screen.dart"
+ ],
+ "Sua conta foi excluída. Nenhum dado seu ficou guardado.": [
+  "web-site/src/components/EmailLinkPage.jsx"
+ ],
+ "Sua nota": [
+  "lib/screens/community_teams_screen.dart"
+ ],
+ "Sua nota:": [
+  "web-site/src/pages/CommunityTeamsPage.jsx"
+ ],
+ "Sua pontuação foi:": [
+  "lib/screens/quiz_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Sun": [
+  "lib/screens/damage_calc_screen.dart",
+  "lib/services/damage_calc.dart"
+ ],
+ "Sun / Moon": [
+  "lib/models/game.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Sword / Shield": [
+  "lib/models/game.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Tauros": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Tem certeza que deseja deletar o time \"{0}\"?": [
+  "lib/screens/teams_screen.dart"
+ ],
+ "Tema claro": [
+  "web-site/src/App.jsx"
+ ],
+ "Tema escuro": [
+  "web-site/src/App.jsx"
+ ],
+ "Tempestade de areia": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "Tempo esgotado!": [
+  "lib/screens/quiz_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Tempo esgotado! -1 vida": [
+  "lib/screens/quiz_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Tenha 10 Pokémon favoritos.": [
+  "lib/services/achievements.dart",
+  "web-site/src/lib/achievements.js"
+ ],
+ "Tenha 5 times completos.": [
+  "lib/services/achievements.dart",
+  "web-site/src/lib/achievements.js"
+ ],
+ "Tentar de novo": [
+  "lib/screens/game_screen.dart"
+ ],
+ "Tera Type: {0}": [
+  "web-site/src/lib/teamSets.js"
+ ],
+ "Tera {0}": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "Teraform Zero ativo": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "Terastalizado": [
+  "lib/screens/damage_calc_screen.dart",
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Terreno": [
+  "lib/screens/damage_calc_screen.dart",
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Texto (Pokémon Showdown e outros simuladores)": [
+  "lib/widgets/team_share_dialogs.dart",
+  "web-site/src/components/TeamShare.jsx"
+ ],
+ "This Pokémon does not evolve.": [
+  "lib/widgets/pokemon_detail_panel.dart"
+ ],
+ "This form has no moves to display.": [
+  "lib/widgets/pokemon_detail_panel.dart"
+ ],
+ "Time": [
+  "lib/screens/community_teams_screen.dart",
+  "lib/screens/home_screen.dart",
+  "lib/services/account_sync.dart",
+  "lib/services/team_share.dart",
+  "lib/widgets/team_share_dialogs.dart",
+  "web-site/src/lib/teamShare.js"
+ ],
+ "Time completo": [
+  "lib/services/achievements.dart",
+  "web-site/src/lib/achievements.js"
+ ],
+ "Time de {0}": [
+  "web-site/src/pages/CommunityTeamsPage.jsx"
+ ],
+ "Time importado": [
+  "lib/services/team_share.dart",
+  "web-site/src/lib/teamShare.js"
+ ],
+ "Time não encontrado.": [
+  "web-site/src/pages/TeamBuilderPage.jsx"
+ ],
+ "Times": [
+  "lib/screens/teams_screen.dart",
+  "lib/screens/web_shell.dart",
+  "web-site/src/App.jsx",
+  "web-site/src/pages/TeamBuilderPage.jsx"
+ ],
+ "Times da comunidade": [
+  "lib/screens/community_teams_screen.dart",
+  "web-site/src/pages/CommunityTeamsPage.jsx"
+ ],
+ "Times de “{0}”": [
+  "lib/screens/community_teams_screen.dart",
+  "web-site/src/pages/CommunityTeamsPage.jsx"
+ ],
+ "Times mais recentes": [
+  "lib/screens/community_teams_screen.dart",
+  "web-site/src/pages/CommunityTeamsPage.jsx"
+ ],
+ "Timid": [
+  "lib/screens/nature_guide_screen.dart",
+  "lib/services/team_sets.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Tipo Tera": [
+  "lib/screens/damage_calc_screen.dart",
+  "lib/screens/team_member_screen.dart",
+  "web-site/src/components/DamageCalc.jsx",
+  "web-site/src/components/TeamMemberEditor.jsx"
+ ],
+ "Tipo, categoria, poder, precisão e quem aprende": [
+  "lib/screens/encyclopedia_screen.dart"
+ ],
+ "Tipos": [
+  "lib/screens/pokedex_screen.dart"
+ ],
+ "Tipos em que o time tem mais Pokémon fracos do que Pokémon que aguentam.": [
+  "lib/widgets/team_analysis_view.dart",
+  "web-site/src/components/TeamAnalysis.jsx"
+ ],
+ "Tipos que pelo menos 2 Pokémon aguentam (resistem ou são imunes).": [
+  "lib/widgets/team_analysis_view.dart",
+  "web-site/src/components/TeamAnalysis.jsx"
+ ],
+ "Tirar a foto": [
+  "lib/widgets/account_avatar.dart",
+  "web-site/src/App.jsx"
+ ],
+ "Todas as gerações": [
+  "lib/widgets/generation_picker.dart",
+  "web-site/src/components/GenerationPicker.jsx"
+ ],
+ "Todas as versões": [
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Todos os golpes, habilidades e itens do banco de dados.": [
+  "lib/screens/encyclopedia_screen.dart",
+  "web-site/src/pages/EncyclopediaPage.jsx"
+ ],
+ "Todos os jogos": [
+  "lib/widgets/game_picker.dart",
+  "web-site/src/components/GamePicker.jsx"
+ ],
+ "Todos os tipos": [
+  "web-site/src/pages/EncyclopediaPage.jsx"
+ ],
+ "Toque para escolher golpes": [
+  "web-site/src/pages/TeamBuilderPage.jsx"
+ ],
+ "Total": [
+  "lib/screens/battle_tools_screen.dart",
+  "web-site/src/components/BattleTools.jsx",
+  "web-site/src/components/DetailsPanel.jsx"
+ ],
+ "Total EVs:": [
+  "web-site/src/pages/TrainingPage.jsx"
+ ],
+ "Total EVs: {0} / 510": [
+  "lib/screens/ev_tracking_screen.dart"
+ ],
+ "Training": [
+  "web-site/src/components/DetailsPanel.jsx"
+ ],
+ "Treinador": [
+  "lib/services/achievements.dart",
+  "web-site/src/lib/achievements.js"
+ ],
+ "Treino": [
+  "lib/screens/home_screen.dart",
+  "lib/screens/training_screen.dart",
+  "lib/screens/web_shell.dart",
+  "web-site/src/App.jsx"
+ ],
+ "Treino de {0}": [
+  "lib/screens/ev_tracking_screen.dart"
+ ],
+ "Trocar": [
+  "lib/screens/settings_screen.dart",
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Trocar Pokémon": [
+  "lib/screens/team_member_screen.dart",
+  "web-site/src/components/TeamMemberEditor.jsx",
+  "web-site/src/pages/TrainingPage.jsx"
+ ],
+ "Trocar atacante e defensor": [
+  "lib/screens/damage_calc_screen.dart",
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Trocar foto de perfil": [
+  "lib/widgets/account_avatar.dart",
+  "web-site/src/App.jsx"
+ ],
+ "Trocar senha": [
+  "lib/screens/settings_screen.dart",
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Tutor": [
+  "web-site/src/components/DetailsPanel.jsx"
+ ],
+ "Type defenses": [
+  "web-site/src/components/DetailsPanel.jsx"
+ ],
+ "Ultra Sun / Ultra Moon": [
+  "lib/models/game.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Uma notificação às 9h nos dias em que você ainda não jogou.": [
+  "lib/screens/settings_screen.dart"
+ ],
+ "Unburden ativo": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "Unknown": [
+  "lib/models/pokemon_details.dart"
+ ],
+ "Unova": [
+  "lib/models/generation.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Usar outra conta": [
+  "lib/screens/login_screen.dart",
+  "web-site/src/pages/LoginPage.jsx"
+ ],
+ "Use só letras, números, espaço, ponto, - ou _.": [
+  "lib/services/auth_service.dart",
+  "web-site/src/lib/auth.js"
+ ],
+ "Usos com Metronome": [
+  "lib/screens/damage_calc_screen.dart",
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Veevee Volley": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Veja como cada Nature afeta os status": [
+  "lib/screens/training_screen.dart",
+  "web-site/src/pages/TrainingPage.jsx"
+ ],
+ "Veja os times de outros treinadores, dê sua nota e salve os que gostar.": [
+  "lib/screens/community_teams_screen.dart",
+  "web-site/src/pages/CommunityTeamsPage.jsx"
+ ],
+ "Ventos fortes (Delta Stream)": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "Ver normal": [
+  "lib/widgets/pokedex_web/pokedex_inline_details.dart",
+  "web-site/src/components/DetailsPanel.jsx"
+ ],
+ "Ver shiny": [
+  "lib/widgets/pokedex_web/pokedex_inline_details.dart",
+  "web-site/src/components/DetailsPanel.jsx"
+ ],
+ "Ver todos ({0})": [
+  "lib/widgets/expandable_entry.dart"
+ ],
+ "Ver todos os times deste treinador": [
+  "web-site/src/pages/CommunityTeamsPage.jsx"
+ ],
+ "Ver todos os {0} golpes": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "Versão {0} (você tem a {1}).": [
+  "lib/services/update_service.dart"
+ ],
+ "Versão {0} · {1} MB · {2}": [
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Vezes seguidas": [
+  "lib/screens/damage_calc_screen.dart",
+  "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Você": [
+  "lib/screens/community_teams_screen.dart",
+  "web-site/src/pages/CommunityTeamsPage.jsx"
+ ],
+ "Você ainda não criou nenhum time. Clique em “Novo time” para começar!": [
+  "web-site/src/pages/TeamsPage.jsx"
+ ],
+ "Você ainda não criou nenhum time. Toque em “Novo time” para começar!": [
+  "lib/screens/teams_screen.dart"
+ ],
+ "Você ainda não favoritou nenhum Pokémon.": [
+  "web-site/src/pages/FavoritesPage.jsx"
+ ],
+ "Você ainda não favoritou nenhum Pokémon.\\nToque duas vezes em um card na Pokédex para adicioná-lo!": [
+  "lib/screens/favorites_screen.dart"
+ ],
+ "Você já denunciou esse time.": [
+  "lib/services/account_sync.dart",
+  "web-site/src/lib/auth.js"
+ ],
+ "Você já tem a versão mais recente ({0}).": [
+  "lib/services/update_service.dart"
+ ],
+ "Voltar aos times": [
+  "web-site/src/pages/TeamBuilderPage.jsx"
+ ],
+ "Water": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Weak to": [
+  "web-site/src/components/DetailsPanel.jsx"
+ ],
+ "Weight:": [
+  "lib/widgets/pokemon_detail_panel.dart",
+  "web-site/src/components/DetailsPanel.jsx"
+ ],
+ "Wind Rider ativado": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "XD: Gale of Darkness": [
+  "lib/models/game.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Yellow": [
+  "lib/models/game.dart",
+  "web-site/src/lib/pokemon.js"
+ ],
+ "Zacian": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Zamazenta": [
+  "lib/services/damage_calc.dart"
+ ],
+ "Zerar EVs": [
+  "web-site/src/pages/TrainingPage.jsx"
+ ],
+ "Zygarde": [
+  "lib/services/damage_calc.dart"
+ ],
+ "balança": [
+  "lib/screens/pokemon_detail_screen.dart"
+ ],
+ "byId.get(id)).filter(Boolean) return (": [
+  "web-site/src/components/EntryModals.jsx"
+ ],
+ "calculadora de dano: {0}": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "dano de {0}": [
+  "lib/services/damage_calc.dart"
+ ],
+ "dano do Black Sludge": [
+  "lib/services/damage_calc.dart"
+ ],
+ "dano do Liquid Ooze": [
+  "lib/services/damage_calc.dart"
+ ],
+ "dano do Sticky Barb": [
+  "lib/services/damage_calc.dart"
+ ],
+ "do ranking e volte amanhã para um desafio novo!": [
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "g.id === game.generation) const record = game.ranked ? rankedRecord : normalRecord const timed = game.ranked || game.daily return (": [
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "getKey(i) === openKey) : -1 const openRow = openIndex": [
+  "web-site/src/components/ExpandableList.jsx"
+ ],
+ "https://api.github.com/repos/OctavioKonzen/Pocketdex/releases/latest": [
+  "lib/services/update_service.dart",
+  "web-site/src/lib/appRelease.js"
+ ],
+ "https://github.com/OctavioKonzen/Pocketdex/releases": [
+  "web-site/src/lib/appRelease.js"
+ ],
+ "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/": [
+  "lib/utils/app_images.dart"
+ ],
+ "if (!byId) return": [
+  "web-site/src/components/EntryModals.jsx"
+ ],
+ "matches(a.name, query)), [abilities, query]) const [shown, more] = useLimited(list) if (!abilities) return": [
+  "web-site/src/pages/EncyclopediaPage.jsx"
+ ],
+ "matches(i.name, query)), [items, query]) const [shown, more] = useLimited(list) if (!items) return": [
+  "web-site/src/pages/EncyclopediaPage.jsx"
+ ],
+ "matches(m.name, query) && (!type || m.type === type)), [moves, query, type]) const [shown, more] = useLimited(list) if (!moves) return": [
+  "web-site/src/pages/EncyclopediaPage.jsx"
+ ],
+ "matchesSearch(p, query)), [pokedex, query]) return (": [
+  "web-site/src/components/PokemonPicker.jsx"
+ ],
+ "mod.default) createRoot(document.getElementById('root')).render(": [
+  "web-site/src/main.jsx"
+ ],
+ "ninguém aguenta": [
+  "lib/utils/team_analysis.dart",
+  "web-site/src/components/TeamAnalysis.jsx"
+ ],
+ "no Ranked! Confira sua posição no ranking": [
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "opções ligadas": [
+  "lib/screens/damage_calc_screen.dart"
+ ],
+ "os mesmos {0} Pokémon para todo mundo, {1} segundos cada e uma tentativa por dia. Quanto mais rápido acertar, mais pontos.": [
+  "lib/screens/game_screen.dart"
+ ],
+ "recuperação do Black Sludge": [
+  "lib/services/damage_calc.dart"
+ ],
+ "recuperação do Dry Skin": [
+  "lib/services/damage_calc.dart"
+ ],
+ "recuperação do Grassy Terrain": [
+  "lib/services/damage_calc.dart"
+ ],
+ "recuperação do Ice Body": [
+  "lib/services/damage_calc.dart"
+ ],
+ "recuperação do Leech Seed": [
+  "lib/services/damage_calc.dart"
+ ],
+ "recuperação do Leftovers": [
+  "lib/services/damage_calc.dart"
+ ],
+ "recuperação do Rain Dish": [
+  "lib/services/damage_calc.dart"
+ ],
+ "s.setTheme) const dark = theme === 'dark' return (": [
+  "web-site/src/App.jsx"
+ ],
+ "sprite_boxes.json não carregou: {0}": [
+  "lib/widgets/pokemon_sprite.dart"
+ ],
+ "sua conta, favoritos, times, treinos, recordes, conquistas e suas linhas nos rankings. No app e no site. Não dá para desfazer.": [
+  "web-site/src/components/EmailLinkPage.jsx",
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "são fracos": [
+  "lib/utils/team_analysis.dart",
+  "web-site/src/components/TeamAnalysis.jsx"
+ ],
+ "t !== type) : [...current.slice(-1), type])) const filtersActive = generation || game || types.length return (": [
+  "web-site/src/pages/PokedexPage.jsx"
+ ],
+ "todas as gerações e só {0} segundos por Pokémon, que caem para 4 s com 100 pontos, 3 s com 200 e 2 s com 400. É ele que conta para o ranking.": [
+  "lib/screens/game_screen.dart"
+ ],
+ "você": [
+  "lib/screens/game_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "{0} Aura": [
+  "lib/services/damage_calc.dart"
+ ],
+ "{0} Gem": [
+  "lib/services/damage_calc.dart"
+ ],
+ "{0} Nature": [
+  "web-site/src/lib/teamSets.js"
+ ],
+ "{0} Pokémon": [
+  "lib/screens/pokedex_screen.dart",
+  "web-site/src/pages/PokedexPage.jsx"
+ ],
+ "{0} Pokémon · toque duas vezes num card para tirar": [
+  "lib/screens/favorites_screen.dart"
+ ],
+ "{0} de {1} acertos. Veja sua posição na aba Hoje do ranking e volte amanhã para um desafio novo!": [
+  "lib/screens/quiz_screen.dart"
+ ],
+ "{0}#byId": [
+  "lib/services/local_database.dart"
+ ],
+ "{0}#byName": [
+  "lib/services/local_database.dart"
+ ],
+ "{0}/510 EVs": [
+  "lib/screens/ev_counter_screen.dart"
+ ],
+ "{0}/6 Pokémon": [
+  "lib/widgets/team_card.dart"
+ ],
+ "{0}Pode derrotar com {1}.": [
+  "lib/services/damage_calc.dart"
+ ],
+ "{0}s por Pokémon": [
+  "lib/screens/quiz_screen.dart"
+ ],
+ "{0}{1} de chance de derrotar com {2}{3} (derrota com {4}, garantido{5}).": [
+  "lib/services/damage_calc.dart"
+ ],
+ "{0}{1} de chance de derrotar com {2}{3} ({4}{5} de chance{6}).": [
+  "lib/services/damage_calc.dart"
+ ],
+ "{0}{1} de chance de derrotar com {2}{3}.": [
+  "lib/services/damage_calc.dart"
+ ],
+ "}, vamos mandar um link de confirmação para esse e-mail.": [
+  "lib/screens/login_screen.dart"
+ ],
+ "}. Abra o link (confira também o spam) e depois toque em \"Já confirmei\".": [
+  "lib/screens/login_screen.dart"
+ ],
+ "}. Escolha o seu nome no PocketDex.": [
+  "lib/screens/login_screen.dart"
+ ],
+ "· Precisão {0}": [
+  "web-site/src/pages/EncyclopediaPage.jsx"
+ ],
+ "· Tera {0}": [
+  "web-site/src/pages/CommunityTeamsPage.jsx"
+ ],
+ "· jogo secundário": [
+  "web-site/src/components/GamePicker.jsx"
+ ],
+ "É assim que os outros vão te ver. Cada nome só pode ser usado por uma pessoa.": [
+  "lib/screens/login_screen.dart",
+  "web-site/src/pages/LoginPage.jsx"
+ ],
+ "É o {0}!": [
+  "lib/screens/quiz_screen.dart"
+ ],
+ "Ótima cobertura: acerta quase todos os tipos com dano super efetivo.": [
+  "lib/utils/team_analysis.dart",
+  "web-site/src/components/TeamAnalysis.jsx"
+ ],
+ "áàâãäéèêëíìîïóòôõöúùûüçñ": [
+  "web-site/src/lib/auth.js"
+ ],
+ "áàâãäéèêëíìîïóòôõöúùûüçñÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇÑ": [
+  "lib/services/auth_service.dart",
+  "lib/services/pix.dart"
+ ],
+ "é fraco": [
+  "web-site/src/components/TeamAnalysis.jsx"
+ ],
+ "• Adivinhe o Pokémon pela silhueta entre 4 opções.": [
+  "lib/screens/game_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "• Use o mouse ou as teclas 1 a 4.": [
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "← Voltar para o login": [
+  "lib/screens/login_screen.dart",
+  "web-site/src/pages/LoginPage.jsx"
+ ],
+ "▶ Jogo normal": [
+  "lib/screens/game_screen.dart"
+ ],
+ "▶ Novo jogo normal": [
+  "lib/screens/game_screen.dart"
+ ],
+ "♀ Fêmea": [
+  "lib/screens/team_member_screen.dart",
+  "web-site/src/components/TeamMemberEditor.jsx"
+ ],
+ "♂ Macho": [
+  "lib/screens/team_member_screen.dart",
+  "web-site/src/components/TeamMemberEditor.jsx"
+ ],
+ "🏆 Jogar Ranked (todas as gerações)": [
+  "lib/screens/game_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "🏆 Ranked": [
+  "lib/screens/quiz_screen.dart"
+ ],
+ "🏆 Ranked · Todas as gerações": [
+  "lib/screens/quiz_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "💚 Apoie o PocketDex": [
+  "lib/screens/settings_screen.dart",
+  "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "📅 Desafio de hoje feito — volte amanhã!": [
+  "lib/screens/game_screen.dart"
+ ],
+ "📅 Desafio do dia": [
+  "lib/screens/game_screen.dart",
+  "lib/screens/quiz_screen.dart"
+ ],
+ "📅 Desafio do dia · Todas as gerações": [
+  "lib/screens/quiz_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "🔎 Times da comunidade": [
+  "lib/screens/teams_screen.dart",
+  "web-site/src/pages/TeamsPage.jsx"
+ ],
+ "🔔 Lembrete diário ligado": [
+  "lib/screens/quiz_screen.dart"
+ ],
+ "🚩 Denunciar": [
+  "web-site/src/pages/CommunityTeamsPage.jsx"
+ ]
+}

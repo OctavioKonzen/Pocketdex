@@ -419,13 +419,14 @@ export default function GamePage() {
             <li>• Use o mouse ou as teclas 1 a 4.</li>
             {canRank && (
               <li>
-                • <b className="text-emerald-400">Desafio do dia:</b> os mesmos {DAILY_ROUNDS} Pokémon para todo mundo, {DAILY_SECONDS} segundos cada e
-                uma tentativa por dia. Quanto mais rápido acertar, mais pontos.
+                • <b className="text-emerald-400">Desafio do dia:</b>
+                {` os mesmos ${DAILY_ROUNDS} Pokémon para todo mundo, ${DAILY_SECONDS} segundos cada e uma tentativa por dia. Quanto mais rápido acertar, mais pontos.`}
               </li>
             )}
             {canRank && (
               <li>
-                • <b className="text-yellow-400">Ranked:</b> todas as gerações e só {RANKED_SECONDS} segundos por Pokémon, que caem para 4 s com 100 pontos, 3 s com 200 e 2 s com 400. É ele que conta para o ranking.
+                • <b className="text-yellow-400">Ranked:</b>
+                {` todas as gerações e só ${RANKED_SECONDS} segundos por Pokémon, que caem para 4 s com 100 pontos, 3 s com 200 e 2 s com 400. É ele que conta para o ranking.`}
               </li>
             )}
           </ul>

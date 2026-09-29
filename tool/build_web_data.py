@@ -239,6 +239,13 @@ def main():
         'attributes': i['attributes'],
     } for i in items])
 
+    # Descrições em outros idiomas (só baixadas com o idioma escolhido).
+    for lang in ('en', 'fr', 'es'):
+        save(f'texts_{lang}.json', {
+            kind: {r['name']: r['flavors'][lang] for r in rows if (r.get('flavors') or {}).get(lang)}
+            for kind, rows in (('moves', moves), ('abilities', abilities), ('items', items))
+        })
+
     save('types.json', {name: t['damage_relations'] for name, t in types.items()})
     save('egg_groups.json', egg_groups)
 
