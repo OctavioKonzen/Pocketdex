@@ -17,26 +17,22 @@ let services = null
 
 async function firebase() {
   if (services) return services
-  const [{ initializeApp }, authMod, fsMod, fnMod] = await Promise.all([
+  const [{ initializeApp }, authMod, fsMod] = await Promise.all([
     import('firebase/app'),
     import('firebase/auth'),
     import('firebase/firestore'),
-    import('firebase/functions'),
   ])
   const app = initializeApp(firebaseConfig)
   const auth = authMod.getAuth(app)
   auth.languageCode = 'pt-BR'
   const db = fsMod.getFirestore(app)
-  const functions = fnMod.getFunctions(app, 'southamerica-east1')
   // Teste automático (e2e/): usa os emuladores do Firebase em vez do projeto
   // de verdade. Só existe no build feito com VITE_EMULATORS=1.
   if (import.meta.env.VITE_EMULATORS) {
     authMod.connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true })
     fsMod.connectFirestoreEmulator(db, '127.0.0.1', 8085)
-    fnMod.connectFunctionsEmulator(functions, '127.0.0.1', 5001)
   }
-  const call = async (name, data) => (await fnMod.httpsCallable(functions, name)(data)).data
-  services = { auth, db, call, ...authMod, ...fsMod }
+  services = { auth, db, ...authMod, ...fsMod }
   return services
 }
 
@@ -173,78 +169,6 @@ export async function signUp({ name, email, password, keep }) {
   }
 }
 
-// ---------------------------------------------------------------- código por e-mail
-//   Com o servidor publicado (functions/, liga config/app.emailCodes), criar
-//   conta, trocar/recuperar senha e apagar conta pedem um código de 6 números
-//   mandado para o e-mail. Sem ele, tudo continua como antes.
-
-let codesOn = null
-/** O código por e-mail está ligado? (config/app.emailCodes) */
-export async function emailCodesEnabled() {
-  if (codesOn !== null) return codesOn
-  try {
-    const { db, doc, getDoc } = await firebase()
-    const snap = await getDoc(doc(db, 'config', 'app'))
-    codesOn = snap.exists() && snap.data().emailCodes === true
-  } catch {
-    codesOn = false
-  }
-  return codesOn
-}
-
-/** Manda o código: purpose 'signup' | 'reset' | 'delete'. */
-export async function sendEmailCode(purpose, email) {
-  const { call } = await firebase()
-  await call('sendCode', { purpose, email: email?.trim() })
-}
-
-/** Cadastro com código: o servidor cria a conta, depois o nome é reservado. */
-export async function signUpWithCode({ name, email, password, code, keep }) {
-  const nameError = validateName(name)
-  if (nameError) throw new AuthError(nameError)
-  await setKeepSignedIn(keep)
-  const { auth, call, signInWithEmailAndPassword, updateProfile, deleteUser } = await firebase()
-  signingUp = true
-  try {
-    await call('signUpWithCode', { email: email.trim(), password, code })
-    const { user } = await signInWithEmailAndPassword(auth, email.trim(), password)
-    try {
-      const clean = await claimName(user, name)
-      await updateProfile(user, { displayName: clean })
-      useAuth.setState({ status: 'signedIn', user: { uid: user.uid, email: user.email, photo: null, name: clean } })
-    } catch (error) {
-      // Alguém pegou o nome no mesmo instante: desfaz a conta criada.
-      await deleteUser(user).catch(() => {})
-      useAuth.setState({ status: 'signedOut', user: null })
-      throw error
-    }
-  } finally {
-    signingUp = false
-  }
-}
-
-/** Conta Google nova: confirma o código antes de escolher o nome. */
-export async function confirmSignupCode(code) {
-  const { call } = await firebase()
-  await call('confirmSignup', { code })
-}
-
-/** Troca a senha com o código (logado: o e-mail é o da conta). */
-export async function resetPasswordWithCode({ email, code, password }) {
-  const { auth, call, signInWithEmailAndPassword } = await firebase()
-  const current = auth.currentUser
-  await call('resetPassword', { email: email?.trim(), code, password })
-  // Logado: entra de novo com a senha nova (as sessões antigas foram encerradas).
-  if (current?.email) await signInWithEmailAndPassword(auth, current.email, password).catch(() => {})
-}
-
-/** Apaga a conta e tudo dela no servidor, depois de conferir o código. */
-export async function deleteAccountWithCode(code) {
-  const { auth, call, signOut: logout } = await firebase()
-  await call('deleteAccount', { code })
-  await logout(auth).catch(() => {})
-}
-
 export async function signIn({ email, password, keep }) {
   await setKeepSignedIn(keep)
   const { auth, signInWithEmailAndPassword } = await firebase()
@@ -273,6 +197,102 @@ export async function chooseName(name) {
 export async function resetPassword(email) {
   const { auth, sendPasswordResetEmail } = await firebase()
   await sendPasswordResetEmail(auth, email.trim())
+}
+
+// ---------------------------------------------------------------- confirmações
+//   Conta com e-mail e senha: trocar a senha e excluir pedem a senha atual.
+//   Conta Google: criar a conta, criar/trocar a senha e excluir pedem que a
+//   pessoa abra um link mandado para o e-mail (grátis, do próprio Firebase).
+//   O link abre o site (EmailLinkPage), que confirma e grava em
+//   confirmations/{uid} — o app espera essa confirmação.
+
+const CONFIRM_EMAIL_KEY = 'pocketdex-confirm-email'
+
+/** Troca a senha de uma conta com e-mail e senha (confirma a senha atual). */
+export async function changePassword({ current, password }) {
+  if (password.length < 6) throw new AuthError('auth/weak-password')
+  const { auth, EmailAuthProvider, reauthenticateWithCredential, updatePassword } = await firebase()
+  const user = auth.currentUser
+  await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email, current))
+  await updatePassword(user, password)
+}
+
+/** Manda o link de confirmação para o e-mail da conta. purpose: 'signup' | 'password' | 'delete'. */
+export async function sendConfirmationLink(purpose) {
+  const { auth, sendSignInLinkToEmail } = await firebase()
+  const email = auth.currentUser?.email
+  if (!email) throw new AuthError('auth/missing-email')
+  const url = `${window.location.origin}${import.meta.env.BASE_URL}?confirmar=${purpose}`
+  await sendSignInLinkToEmail(auth, email, { url, handleCodeInApp: true })
+  try {
+    localStorage.setItem(CONFIRM_EMAIL_KEY, email)
+  } catch {
+    // sem localStorage: o site pergunta o e-mail ao abrir o link
+  }
+}
+
+/** O site foi aberto pelo link de confirmação? Devolve o motivo ou null. */
+export function confirmationFromUrl(href = window.location.href) {
+  const url = new URL(href)
+  if (url.searchParams.get('mode') !== 'signIn' || !url.searchParams.get('oobCode')) return null
+  let purpose = url.searchParams.get('confirmar')
+  if (!purpose) {
+    const cont = url.searchParams.get('continueUrl')
+    if (cont) purpose = new URL(cont).searchParams.get('confirmar')
+  }
+  return ['signup', 'password', 'delete'].includes(purpose) ? purpose : null
+}
+
+/** E-mail guardado ao mandar o link (ou o da conta aberta neste navegador). */
+export async function confirmationEmail() {
+  const { auth } = await firebase()
+  try {
+    return auth.currentUser?.email ?? localStorage.getItem(CONFIRM_EMAIL_KEY) ?? ''
+  } catch {
+    return auth.currentUser?.email ?? ''
+  }
+}
+
+/**
+ * Confirma o link aberto: entra (ou confirma de novo) na conta dona do
+ * e-mail e grava a confirmação. Devolve o uid.
+ */
+export async function completeConfirmation(purpose, email) {
+  const f = await firebase()
+  const href = window.location.href
+  if (!f.isSignInWithEmailLink(f.auth, href)) throw new AuthError('auth/invalid-action-code')
+  const current = f.auth.currentUser
+  let user
+  if (current && current.email?.toLowerCase() === email.trim().toLowerCase()) {
+    ;({ user } = await f.reauthenticateWithCredential(current, f.EmailAuthProvider.credentialWithLink(email.trim(), href)))
+  } else {
+    ;({ user } = await f.signInWithEmailLink(f.auth, email.trim(), href))
+  }
+  await f.setDoc(f.doc(f.db, 'confirmations', user.uid), { [purpose]: f.serverTimestamp() }, { merge: true })
+  try {
+    localStorage.removeItem(CONFIRM_EMAIL_KEY)
+  } catch {
+    // nada
+  }
+  window.history.replaceState(null, '', `${import.meta.env.BASE_URL}${window.location.hash}`)
+  return user.uid
+}
+
+/** A pessoa já abriu o link de confirmação? (depois de `since`, em ms) */
+export async function hasConfirmation(purpose, since = 0) {
+  const { auth, db, doc, getDoc } = await firebase()
+  const uid = auth.currentUser?.uid
+  if (!uid) return false
+  const snap = await getDoc(doc(db, 'confirmations', uid))
+  const at = snap.exists() ? snap.data()[purpose] : null
+  return Boolean(at) && at.toMillis() >= since
+}
+
+/** Cria ou troca a senha logo depois de confirmar pelo link (conta Google). */
+export async function setPasswordAfterLink(password) {
+  if (password.length < 6) throw new AuthError('auth/weak-password')
+  const { auth, updatePassword } = await firebase()
+  await updatePassword(auth.currentUser, password)
 }
 
 export async function signOut() {
@@ -518,11 +538,13 @@ export async function usesGoogle() {
  * Apaga a conta e tudo dela: dados, nome reservado, rankings e o login.
  * Por segurança o Firebase pede para confirmar a senha (ou a conta Google).
  */
-export async function deleteAccount({ password, weeks = [], days = [] }) {
+export async function deleteAccount({ password, weeks = [], days = [], confirmedByLink = false }) {
   const f = await firebase()
   const user = f.auth.currentUser
   if (!user) return
-  if (await usesGoogle()) {
+  if (confirmedByLink) {
+    // já confirmou abrindo o link do e-mail (EmailLinkPage)
+  } else if (await usesGoogle()) {
     await f.reauthenticateWithPopup(user, new f.GoogleAuthProvider())
   } else {
     await f.reauthenticateWithCredential(user, f.EmailAuthProvider.credential(user.email, password ?? ''))
@@ -574,6 +596,7 @@ export async function deleteAccount({ password, weeks = [], days = [] }) {
     await batch.commit().catch(() => Promise.all(refs.slice(i, i + 400).map((ref) => quiet(deleteDoc(ref)))))
   }
 
+  await quiet(deleteDoc(doc(db, 'confirmations', uid)))
   await deleteDoc(doc(db, 'users', uid))
   await f.deleteUser(user)
 }
@@ -608,13 +631,11 @@ const MESSAGES = {
   'auth/requires-recent-login': 'Por segurança, saia e entre de novo na conta e tente outra vez.',
   'auth/user-mismatch': 'Escolha a mesma conta Google que está conectada.',
   'permission-denied': 'Sem permissão no banco de dados. Confira as regras do Firestore.',
+  'auth/invalid-action-code': 'Esse link já foi usado ou expirou. Peça outro.',
+  'auth/expired-action-code': 'Esse link expirou. Peça outro.',
 }
 
 export function errorMessage(error) {
   const code = error?.code ?? ''
-  // Erros do servidor (código por e-mail) já vêm com a mensagem em português.
-  if (code.startsWith('functions/')) {
-    return code === 'functions/internal' || code === 'functions/unavailable' ? 'Não foi possível falar com o servidor. Tente de novo.' : error.message
-  }
   return MESSAGES[code] ?? (error instanceof AuthError ? code : 'Algo deu errado. Tente de novo.')
 }

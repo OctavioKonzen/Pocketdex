@@ -1,7 +1,7 @@
 name: pocket_dex
 description: "A new Flutter project."
 publish_to: 'none'
-version: 1.6.0+15
+version: 1.7.0+16
 
 environment:
   sdk: '>=3.2.3 <4.0.0'
@@ -26,10 +26,6 @@ dependencies:
   qr_flutter: ^4.1.0
   flutter_local_notifications: ^22.3.1
   timezone: ^0.11.1
-  cloud_functions: ^6.5.0
-  
-  # Adicione suas outras dependências aqui...
-
 dev_dependencies:
   flutter_test:
     sdk: flutter

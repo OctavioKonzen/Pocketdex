@@ -4,7 +4,7 @@ import { HashRouter, NavLink, Route, Routes, useLocation, useNavigate } from 're
 import { imageUrl } from './lib/data'
 import { getDownloadUrl, RELEASES_URL } from './lib/appRelease'
 import { useStore } from './lib/store'
-import { startAuth, useAuth } from './lib/auth'
+import { confirmationFromUrl, startAuth, useAuth } from './lib/auth'
 import { logout, startSync } from './lib/sync'
 import { Icon, Loader, SpinningPokeball } from './components/ui'
 import AccountAvatar from './components/AccountAvatar'
@@ -21,6 +21,7 @@ const TrainingPage = lazyPage(() => import('./pages/TrainingPage'))
 const SettingsPage = lazyPage(() => import('./pages/SettingsPage'))
 const LoginPage = lazyPage(() => import('./pages/LoginPage'))
 const PokemonPicker = lazyPage(() => import('./components/PokemonPicker'))
+const EmailLinkPage = lazyPage(() => import('./components/EmailLinkPage'))
 
 // Mesmas cores dos cards do menu do app.
 export const SECTIONS = [
@@ -261,12 +262,27 @@ function Splash() {
 /** Sem login aparece a tela de entrar; logado, vai direto para o site. */
 function AuthGate({ children }) {
   const status = useAuth((s) => s.status)
+  // Aberto pelo link de confirmação do e-mail (contas Google).
+  const [linkPurpose, setLinkPurpose] = useState(() => confirmationFromUrl())
   useEffect(() => {
     startSync()
     startAuth()
   }, [])
-  if (status === 'disabled' || status === 'signedIn') return children
   if (status === 'loading') return <Splash />
+  if (linkPurpose && status !== 'disabled') {
+    return (
+      <Suspense fallback={<Splash />}>
+        <EmailLinkPage
+          purpose={linkPurpose}
+          onDone={() => {
+            window.history.replaceState(null, '', `${import.meta.env.BASE_URL}${window.location.hash}`)
+            setLinkPurpose(null)
+          }}
+        />
+      </Suspense>
+    )
+  }
+  if (status === 'disabled' || status === 'signedIn') return children
   return (
     <Suspense fallback={<Splash />}>
       <LoginPage />

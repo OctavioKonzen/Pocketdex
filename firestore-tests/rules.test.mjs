@@ -150,17 +150,12 @@ await check('nova conta pega nome de conta excluída', claim(C, 'carol', 'Misty'
 await check('nome de conta ativa continua preso', claim(C, 'carol', 'João', 'joao'), false)
 await check('apaga nome de conta ativa', deleteDoc(doc(anon, 'usernames', 'joao')), false)
 
-// Código por e-mail ligado: conta nova só pega nome depois de confirmar.
-await env.withSecurityRulesDisabled(async (ctx) => setDoc(doc(ctx.firestore(), 'config', 'app'), { emailCodes: true }))
-const D = env.authenticatedContext('dave').firestore()
-await check('ler config sem login', getDoc(doc(anon, 'config', 'app')), true)
-await check('mudar config', setDoc(doc(D, 'config', 'app'), { emailCodes: false }), false)
-await check('conta sem código não pega nome', claim(D, 'dave', 'Brock', 'brock'), false)
-await check('criar o próprio "confirmado"', setDoc(doc(D, 'verifiedSignups', 'dave'), { at: 1 }), false)
-await check('ler códigos', getDoc(doc(D, 'emailCodes', 'x')), false)
-await env.withSecurityRulesDisabled(async (ctx) => setDoc(doc(ctx.firestore(), 'verifiedSignups', 'dave'), { at: 1 }))
-await check('conta com código confirmado pega nome', claim(D, 'dave', 'Brock', 'brock'), true)
-await check('conta antiga continua salvando', setDoc(doc(O, 'users', 'old'), { data: { teams: [1] } }, { merge: true }), true)
+// Confirmação por link (contas Google): só a própria pessoa.
+await check('grava a própria confirmação', setDoc(doc(A, 'confirmations', 'alice'), { signup: serverTimestamp() }), true)
+await check('lê a própria confirmação', getDoc(doc(A, 'confirmations', 'alice')), true)
+await check('confirmação de outro', setDoc(doc(B, 'confirmations', 'alice'), { delete: serverTimestamp() }), false)
+await check('ler confirmação de outro', getDoc(doc(B, 'confirmations', 'alice')), false)
+await check('confirmação com campo estranho', setDoc(doc(A, 'confirmations', 'alice'), { hack: 1 }), false)
 
 await env.cleanup()
 console.log(fails ? `${fails} FALHAS` : 'TUDO CERTO')
