@@ -111,8 +111,9 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with TickerPr
   }
 
   /// Pokémon que sai da Pokébola: o que foi aberto (ou escolhido na
-  /// evolução). Ao girar a roda, não repete a animação.
-  late int _revealId = widget.initialPokemonId;
+  /// evolução). A animação é só uma vez: depois de arrastar para outro,
+  /// voltar para ele não abre a Pokébola de novo.
+  late int? _revealId = widget.initialPokemonId;
 
   int get _currentIndex => _allPokemonIds.indexOf(_currentPokemonId);
   bool get _hasNext =>
@@ -126,6 +127,7 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with TickerPr
     final newIndex = (_currentIndex + direction).clamp(0, _allPokemonIds.length - 1);
     setState(() {
       _currentPokemonId = _allPokemonIds[newIndex];
+      _revealId = null; // já saiu da Pokébola: não repete ao voltar
       _isShiny = false;
       _selectedForm = _loadedDetails[_currentPokemonId]?.forms.first;
       _slideController.value = 0;

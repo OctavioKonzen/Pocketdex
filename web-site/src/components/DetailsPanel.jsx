@@ -22,8 +22,19 @@ import Sprite from './Sprite'
 
 export const TABS = ['About', 'Base Stats', 'Evolution', 'Moves']
 
+/** Pokébola abrindo só quando `reveal` (senão, o Pokémon aparece direto). */
+function MaybeReveal({ reveal, id, children }) {
+  if (!reveal) return children
+  return (
+    <PokeballReveal key={id} ballSize={96}>
+      {children}
+    </PokeballReveal>
+  )
+}
+
 export default function DetailsPanel({
   speciesId,
+  reveal = true,
   height = 620,
   tab: initialTab = 0,
   onTabChange,
@@ -109,7 +120,7 @@ export default function DetailsPanel({
         </div>
         {/* O Pokémon ocupa sempre o mesmo espaço, qualquer que seja o tamanho do sprite. */}
         <div className="absolute inset-x-14 top-[110px] bottom-[52px]" style={{ containerType: 'size' }}>
-          <PokeballReveal key={species.id} ballSize={96}>
+          <MaybeReveal reveal={reveal} id={species.id}>
             <AnimatePresence mode="wait">
               <m.div
                 key={sprite}
@@ -123,7 +134,7 @@ export default function DetailsPanel({
                 <Sprite path={sprite} box={box} alt={species.name} fill={0.72} />
               </m.div>
             </AnimatePresence>
-          </PokeballReveal>
+          </MaybeReveal>
         </div>
 
         {hasPrevious && (

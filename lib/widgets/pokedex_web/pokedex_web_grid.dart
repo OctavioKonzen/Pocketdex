@@ -60,6 +60,8 @@ class _PokedexWebGridState extends State<PokedexWebGrid> {
     }
   }
 
+  String? _revealId;
+
   int get _selectedIndex => _selectedUrl == null
       ? -1
       : widget.pokemon.indexWhere((p) => p.url == _selectedUrl);
@@ -86,8 +88,11 @@ class _PokedexWebGridState extends State<PokedexWebGrid> {
   /// Mostra [pokemon] no painel. Se ele estiver em outra linha, o painel
   /// acompanha: o antigo encolhe, o novo cresce e a página rola suavemente
   /// até ele (fica "travada" no Pokémon aberto).
-  void _open(PokemonListing pokemon, int columns, {required bool byClick}) {
+  void _open(PokemonListing pokemon, int columns, {required bool byClick, bool reveal = true}) {
     final wasOpen = _selectedUrl != null;
+    // Só o Pokémon aberto (ou a evolução escolhida) sai da Pokébola: nas
+    // setas de anterior/próximo, e voltando, a animação não se repete.
+    _revealId = reveal ? pokemon.id : null;
     if (!wasOpen && _scrollController.hasClients) {
       _returnOffset = _scrollController.offset;
     }
@@ -231,13 +236,17 @@ class _PokedexWebGridState extends State<PokedexWebGrid> {
                                     hasPrevious: selectedIndex > 0,
                                     hasNext: selectedIndex <
                                         widget.pokemon.length - 1,
+                                    reveal: _revealId ==
+                                        widget.pokemon[selectedIndex].id,
                                     onPrevious: () => _open(
                                         widget.pokemon[selectedIndex - 1],
                                         columns,
-                                        byClick: false),
+                                        byClick: false,
+                                        reveal: false),
                                     onNext: () => _open(
                                         widget.pokemon[selectedIndex + 1],
                                         columns,
+                                        reveal: false,
                                         byClick: false),
                                     onNavigate: (id) => _openById(id, columns),
                                     onClose: _close,
