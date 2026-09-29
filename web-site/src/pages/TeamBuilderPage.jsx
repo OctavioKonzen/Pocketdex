@@ -4,7 +4,9 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import PokemonPicker from '../components/PokemonPicker'
 import { ShareTeamModal } from '../components/TeamShare'
 import { Button, Empty, Icon, Loader, Modal } from '../components/ui'
-import { getPokemonById, getTypes } from '../lib/data'
+import { getPokemonById, getSpecies, getTypes } from '../lib/data'
+import { newSet, prettySlug, teamSets } from '../lib/teamSets'
+import TeamMemberEditor from '../components/TeamMemberEditor'
 import TeamAnalysis, { RatingText } from '../components/TeamAnalysis'
 import { analyzeTeam } from '../lib/pokemon'
 import { isOffensive } from '../lib/profanity'
@@ -24,6 +26,7 @@ export default function TeamBuilderPage() {
   const [typeData, setTypeData] = useState(null)
   const [pickingSlot, setPickingSlot] = useState(null)
   const [removingSlot, setRemovingSlot] = useState(null)
+  const [editingSlot, setEditingSlot] = useState(null)
   const [sharing, setSharing] = useState(false)
 
   useEffect(() => {
@@ -58,10 +61,32 @@ export default function TeamBuilderPage() {
   }
   if (!byId || !typeData) return <Loader />
 
-  const setSlot = (slot, pokemonId) => {
+  const sets = teamSets(team)
+
+  // Pokémon novo no espaço: começa com a primeira habilidade dele.
+  const setSlot = async (slot, picked) => {
     const pokemon = [...team.pokemon]
-    pokemon[slot] = pokemonId
-    updateTeam(team.id, { pokemon })
+    const next = [...sets]
+    pokemon[slot] = picked?.id ?? null
+    next[slot] = picked ? newSet() : null
+    updateTeam(team.id, { pokemon, sets: next })
+    if (!picked) return
+    const species = await getSpecies(picked.species ?? picked.id).catch(() => null)
+    const form = species?.forms.find((f) => f.id === picked.id) ?? species?.forms[0]
+    const ability = form?.abilities?.[0]?.[0]
+    if (ability) {
+      const current = useStore.getState().teams.find((t) => t.id === team.id)
+      if (current?.pokemon[slot] !== picked.id) return
+      const latest = teamSets(current)
+      latest[slot] = { ...latest[slot], ability }
+      updateTeam(team.id, { sets: latest })
+    }
+  }
+
+  const setMember = (slot, set) => {
+    const next = [...sets]
+    next[slot] = set
+    updateTeam(team.id, { sets: next })
   }
 
   const color = team.color ?? '#FF5252'
@@ -108,8 +133,19 @@ export default function TeamBuilderPage() {
             {team.pokemon.map((pid, slot) => {
               const p = pid && byId.get(pid)
               // Mesmo card da Pokédex; clicar remove do time.
+              const set = sets[slot]
               return p ? (
-                <PokemonCard key={slot} pokemon={p} onClick={() => setRemovingSlot(slot)} />
+                <div key={slot}>
+                  <PokemonCard pokemon={p} onClick={() => setEditingSlot(slot)} />
+                  <div className="mt-1 px-1 text-xs text-muted">
+                    {set?.nickname && <div className="truncate font-bold text-text">{set.nickname}</div>}
+                    <div className="truncate">
+                      Nv. {set?.level ?? 50}
+                      {set?.item ? ` · ${prettySlug(set.item)}` : ''}
+                    </div>
+                    <div className="truncate">{set?.moves.filter(Boolean).map(prettySlug).join(', ') || 'Toque para escolher golpes'}</div>
+                  </div>
+                </div>
               ) : (
                 <m.button
                   key={slot}
@@ -146,8 +182,25 @@ export default function TeamBuilderPage() {
         open={pickingSlot !== null}
         onClose={() => setPickingSlot(null)}
         onPick={(p) => {
-          setSlot(pickingSlot, p.id)
+          const slot = pickingSlot
           setPickingSlot(null)
+          setSlot(slot, p).then(() => setEditingSlot(slot))
+        }}
+      />
+
+      <TeamMemberEditor
+        open={editingSlot !== null}
+        pokemon={editingSlot !== null ? byId.get(team.pokemon[editingSlot]) : null}
+        set={editingSlot !== null ? sets[editingSlot] : null}
+        onChange={(set) => setMember(editingSlot, set)}
+        onClose={() => setEditingSlot(null)}
+        onRemove={() => {
+          setRemovingSlot(editingSlot)
+          setEditingSlot(null)
+        }}
+        onSwap={() => {
+          setPickingSlot(editingSlot)
+          setEditingSlot(null)
         }}
       />
 

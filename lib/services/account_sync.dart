@@ -10,12 +10,14 @@
 //     e o desafio do dia para daily/{dia}/scores/{uid}.
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import '../utils/profanity.dart';
 import 'auth_service.dart';
+import 'team_sets.dart';
 import 'user_data.dart';
 
 class AccountSync {
@@ -261,9 +263,10 @@ class AccountSync {
           'name': team['name'] ?? 'Time',
           'color': team['color'],
           'pokemon': pokemon,
+          'sets': teamSets(pokemon, team['sets']),
         };
         final old = current[id];
-        final same = old != null && fields.entries.every((e) => '${old[e.key]}' == '${e.value}');
+        final same = old != null && fields.entries.every((e) => _canon(old[e.key]) == _canon(e.value));
         if (same) continue;
         batch.set(_public.doc(id), {
           ...fields,
@@ -283,6 +286,16 @@ class AccountSync {
       if (changes > 0) await batch.commit();
       teamsVersion.value++;
     } catch (_) {}
+  }
+
+  /// JSON com as chaves em ordem (o Firestore não guarda a ordem dos campos).
+  static String _canon(Object? v) {
+    Object? sort(Object? x) => x is Map
+        ? {for (final k in (x.keys.map((k) => '$k').toList()..sort())) k: sort(x[k])}
+        : x is List
+            ? x.map(sort).toList()
+            : x;
+    return jsonEncode(sort(v));
   }
 
   static Map<String, dynamic> _publicTeam(DocumentSnapshot<Map<String, dynamic>> d) {

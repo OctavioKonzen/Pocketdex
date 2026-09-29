@@ -19,6 +19,7 @@ import '../services/damage_calc.dart';
 import '../utils/responsive.dart';
 import '../utils/site_ui.dart';
 import '../utils/string_extensions.dart';
+import '../widgets/pick_fields.dart';
 import 'battle_tools_screen.dart';
 
 const _statLabels = {'hp': 'HP', 'atk': 'Atk', 'def': 'Def', 'spa': 'Sp. Atk', 'spd': 'Sp. Def', 'spe': 'Speed'};
@@ -421,7 +422,7 @@ class _DamageCalcScreenState extends State<DamageCalcScreen> {
       for (final m in data.moves.values)
         if (m.category != 'Status' && m.basePower >= 0) m.name,
     ]..sort();
-    final chosen = await _searchSheet(context, title: 'Outro golpe (qualquer um)', options: names);
+    final chosen = await showSearchSheet(context, title: 'Outro golpe (qualquer um)', options: names);
     if (chosen == null || chosen.isEmpty || !mounted) return;
     setState(() {
       _moveSlug = toId(chosen);
@@ -802,7 +803,7 @@ class _SidePanel extends StatelessWidget {
               children: [
                 _Labeled(
                   label: 'Nível',
-                  child: _NumField(value: side.level, min: 1, max: 100, width: 72, onChanged: (v) => change(() => side.level = v)),
+                  child: NumberField(value: side.level, min: 1, max: 100, width: 72, onChanged: (v) => change(() => side.level = v)),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -827,7 +828,7 @@ class _SidePanel extends StatelessWidget {
                 value: side.ability,
                 empty: 'Nenhuma',
                 onTap: () async {
-                  final v = await _searchSheet(context,
+                  final v = await showSearchSheet(context,
                       title: 'Habilidade', options: {...own, ...data.abilities}.toList(), emptyLabel: 'Nenhuma');
                   if (v != null) onAbility(v);
                 },
@@ -857,7 +858,7 @@ class _SidePanel extends StatelessWidget {
                 value: side.item,
                 empty: 'Nenhum',
                 onTap: () async {
-                  final v = await _searchSheet(context, title: 'Item', options: _allItems, emptyLabel: 'Nenhum');
+                  final v = await showSearchSheet(context, title: 'Item', options: _allItems, emptyLabel: 'Nenhum');
                   if (v != null) change(() => side.item = v);
                 },
               ),
@@ -948,11 +949,11 @@ class _SidePanel extends StatelessWidget {
                     )),
                     Padding(
                       padding: const EdgeInsets.all(2),
-                      child: _NumField(value: side.evs[key]!, min: 0, max: 252, onChanged: (v) => change(() => side.evs[key] = v)),
+                      child: NumberField(value: side.evs[key]!, min: 0, max: 252, onChanged: (v) => change(() => side.evs[key] = v)),
                     ),
                     Padding(
                       padding: const EdgeInsets.all(2),
-                      child: _NumField(value: side.ivs[key]!, min: 0, max: 31, onChanged: (v) => change(() => side.ivs[key] = v)),
+                      child: NumberField(value: side.ivs[key]!, min: 0, max: 31, onChanged: (v) => change(() => side.ivs[key] = v)),
                     ),
                     key == 'hp'
                         ? const SizedBox()
@@ -1193,74 +1194,6 @@ class _Stepper extends StatelessWidget {
       );
 }
 
-/// Campo de número (EVs, IVs, nível) que aceita só valores entre [min] e [max].
-class _NumField extends StatefulWidget {
-  final int value, min, max;
-  final double? width;
-  final ValueChanged<int> onChanged;
-  const _NumField({required this.value, required this.min, required this.max, required this.onChanged, this.width});
-  @override
-  State<_NumField> createState() => _NumFieldState();
-}
-
-class _NumFieldState extends State<_NumField> {
-  late final _controller = TextEditingController(text: '${widget.value}');
-  final _focus = FocusNode();
-
-  @override
-  void initState() {
-    super.initState();
-    _focus.addListener(() {
-      // Ao sair do campo, mostra o valor que valeu (ex.: vazio → mínimo).
-      if (!_focus.hasFocus) _controller.text = '${widget.value}';
-    });
-  }
-
-  @override
-  void didUpdateWidget(_NumField old) {
-    super.didUpdateWidget(old);
-    if (int.tryParse(_controller.text) != widget.value && !_focus.hasFocus) _controller.text = '${widget.value}';
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    _focus.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final c = SiteColors.of(context);
-    return SizedBox(
-      width: widget.width,
-      child: TextField(
-        controller: _controller,
-        focusNode: _focus,
-        keyboardType: TextInputType.number,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(3)],
-        textAlign: TextAlign.center,
-        style: TextStyle(color: c.text, fontSize: 14),
-        decoration: InputDecoration(
-          isDense: true,
-          filled: true,
-          fillColor: c.surface,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-        ),
-        onChanged: (text) {
-          final n = int.tryParse(text);
-          final v = (n ?? widget.min).clamp(widget.min, widget.max);
-          if (n != null && n != v) {
-            _controller.value = TextEditingValue(text: '$v', selection: TextSelection.collapsed(offset: '$v'.length));
-          }
-          if (v != widget.value) widget.onChanged(v);
-        },
-      ),
-    );
-  }
-}
-
 /// Botão que mostra o valor e abre a busca (habilidades e itens).
 class _PickerButton extends StatelessWidget {
   final String value;
@@ -1284,75 +1217,6 @@ class _PickerButton extends StatelessWidget {
                   style: TextStyle(color: value.isEmpty ? c.muted : c.text, fontWeight: FontWeight.w600)),
             ),
             Icon(Icons.search, size: 18, color: c.muted),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Lista com busca; devolve o escolhido ('' = nenhum) ou null se fechar.
-Future<String?> _searchSheet(BuildContext context, {required String title, required List<String> options, String? emptyLabel}) {
-  return showModalBottomSheet<String>(
-    context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
-    builder: (context) => _SearchSheet(title: title, options: options, emptyLabel: emptyLabel),
-  );
-}
-
-class _SearchSheet extends StatefulWidget {
-  final String title;
-  final List<String> options;
-  final String? emptyLabel;
-  const _SearchSheet({required this.title, required this.options, this.emptyLabel});
-  @override
-  State<_SearchSheet> createState() => _SearchSheetState();
-}
-
-class _SearchSheetState extends State<_SearchSheet> {
-  String _query = '';
-
-  @override
-  Widget build(BuildContext context) {
-    final c = SiteColors.of(context);
-    final q = toId(_query);
-    final list = q.isEmpty ? widget.options : widget.options.where((o) => toId(o).contains(q)).toList();
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-      child: SizedBox(
-        height: MediaQuery.sizeOf(context).height * 0.8,
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text(widget.title, style: TextStyle(color: c.text, fontWeight: FontWeight.bold, fontSize: 18)),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: SiteSearchField(hint: 'Buscar', onChanged: (v) => setState(() => _query = v)),
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: ListView.builder(
-                itemCount: list.length + (widget.emptyLabel != null && q.isEmpty ? 1 : 0),
-                itemBuilder: (context, i) {
-                  if (widget.emptyLabel != null && q.isEmpty) {
-                    if (i == 0) {
-                      return ListTile(
-                        title: Text(widget.emptyLabel!, style: TextStyle(color: c.muted)),
-                        onTap: () => Navigator.pop(context, ''),
-                      );
-                    }
-                    i--;
-                  }
-                  return ListTile(
-                    title: Text(list[i], style: TextStyle(color: c.text)),
-                    onTap: () => Navigator.pop(context, list[i]),
-                  );
-                },
-              ),
-            ),
           ],
         ),
       ),

@@ -64,6 +64,12 @@ await check('publica time com nome de outro', pub(B, 'tB', { ...teamA, ownerUid:
 await check('publica com nota inventada', pub(B, 'tB', { ...teamA, ownerUid: 'bob', ownerName: 'João', ownerKey: 'joao', ratingSum: 50, ratingCount: 10 }), false)
 await check('publica time do bob', pub(B, 'tB', { ...teamA, ownerUid: 'bob', ownerName: 'João', ownerKey: 'joao', name: 'Time B' }), true)
 await check('dono edita', setDoc(doc(A, 'publicTeams', 'tA'), { ...teamA, name: 'Novo nome' }), true)
+const fullSet = { nickname: 'Chama', level: 50, gender: 'M', shiny: true, ability: 'blaze', item: 'life-orb', nature: 'Timid',
+  tera: 'fire', moves: ['flamethrower', 'air-slash', '', ''], evs: { hp: 0, atk: 0, def: 0, spa: 252, spd: 4, spe: 252 },
+  ivs: { hp: 31, atk: 0, def: 31, spa: 31, spd: 31, spe: 31 } }
+await check('time com dados completos', setDoc(doc(A, 'publicTeams', 'tA'), { ...teamA, sets: [fullSet, null, null, null, null, null] }), true)
+await check('sets com tamanho errado', setDoc(doc(A, 'publicTeams', 'tA'), { ...teamA, sets: [fullSet] }), false)
+await check('sets que não é lista', setDoc(doc(A, 'publicTeams', 'tA'), { ...teamA, sets: 'x' }), false)
 await check('dono mexe na nota', setDoc(doc(A, 'publicTeams', 'tA'), { ...teamA, ratingSum: 5, ratingCount: 1 }), false)
 await check('outro edita o time', setDoc(doc(B, 'publicTeams', 'tA'), { ...teamA, name: 'hack' }), false)
 const vote = (db, uid, team, stars, sum, count) => {

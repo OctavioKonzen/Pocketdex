@@ -46,7 +46,7 @@ describe('compartilhar time', () => {
   it('código vai e volta igual', () => {
     const team = { name: 'Time Ação ⚡', color: '#FF5252', pokemon: [6, null, 645, null, null, 122] }
     const back = decodeTeam(`https://site/#/times/importar/${encodeTeam(team)}`)
-    expect(back).toEqual({ name: team.name, color: team.color, pokemon: team.pokemon })
+    expect(back).toEqual({ name: team.name, color: team.color, pokemon: team.pokemon, sets: Array(6).fill(null) })
     expect(decodeTeam('lixo')).toBeNull()
   })
 
@@ -62,7 +62,11 @@ Landorus @ Life Orb
 
 Mr. Mime
 `
-    expect(fromShowdown(text, index)).toEqual({ name: 'Meu Time', color: null, pokemon: [10034, 645, 122, null, null, null] })
+    const team = fromShowdown(text, index)
+    expect(team).toMatchObject({ name: 'Meu Time', color: null, pokemon: [10034, 645, 122, null, null, null] })
+    expect(team.sets[0]).toMatchObject({ nickname: 'Zard', gender: 'M', item: 'charizardite-x', ability: 'tough-claws', moves: ['dragon-dance', '', '', ''] })
+    expect(team.sets[1]).toMatchObject({ item: 'life-orb', moves: ['earthquake', '', '', ''] })
+    expect(team.sets[3]).toBeNull()
     expect(showdownName('charizard-mega-x')).toBe('Charizard-Mega-X')
   })
 })

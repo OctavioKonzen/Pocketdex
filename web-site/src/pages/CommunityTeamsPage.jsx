@@ -14,6 +14,8 @@ import { errorMessage, getMyVote, getPublicTeam, rateTeam, REPORT_LIMIT, reportT
 import { getPokemonById, getTypes } from '../lib/data'
 import { analyzeTeam } from '../lib/pokemon'
 import { useStore } from '../lib/store'
+import { natureLabel, prettySlug, STAT_KEYS, STAT_LABELS, teamSets } from '../lib/teamSets'
+import { prettyName } from '../lib/pokemon'
 
 export default function CommunityTeamsPage() {
   const user = useAuth((s) => (s.status === 'signedIn' ? s.user : null))
@@ -191,12 +193,36 @@ function PublicTeamModal({ team, byId, onClose, onChange, onGone }) {
           </div>
           <RatingText rating={team.rating} count={team.ratingCount} />
         </div>
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {team.pokemon.map((id, i) => {
             const p = id != null && byId.get(id)
+            if (!p) return null
+            const set = teamSets(team)[i]
+            const evs = set ? STAT_KEYS.filter((k) => set.evs[k]).map((k) => `${set.evs[k]} ${STAT_LABELS[k]}`).join(' / ') : ''
             return (
-              <div key={i} className="grid aspect-square place-items-center rounded-2xl bg-surface">
-                {p && <Sprite path={p.sprite} box={p.box} fill={0.85} className="w-full" />}
+              <div key={i} className="flex gap-3 rounded-2xl bg-surface p-3">
+                <Sprite path={p.sprite} box={p.box} fill={0.85} className="h-20 w-20 shrink-0" />
+                <div className="min-w-0 text-xs">
+                  <div className="truncate text-sm font-bold">
+                    {set?.nickname ? `${set.nickname} (${prettyName(p.name)})` : prettyName(p.name)}
+                    {set?.shiny ? ' ✨' : ''}
+                  </div>
+                  {set ? (
+                    <div className="space-y-0.5 text-muted">
+                      <div className="truncate">
+                        Nv. {set.level}
+                        {set.item ? ` · @ ${prettySlug(set.item)}` : ''}
+                        {set.tera ? ` · Tera ${prettySlug(set.tera)}` : ''}
+                      </div>
+                      {set.ability && <div className="truncate">{prettySlug(set.ability)}</div>}
+                      <div className="truncate">{natureLabel(set.nature)}</div>
+                      {evs && <div className="truncate">EVs: {evs}</div>}
+                      {set.moves.some(Boolean) && <div className="truncate text-text">{set.moves.filter(Boolean).map(prettySlug).join(' · ')}</div>}
+                    </div>
+                  ) : (
+                    <div className="text-muted">Sem detalhes</div>
+                  )}
+                </div>
               </div>
             )
           })}
@@ -235,7 +261,7 @@ function PublicTeamModal({ team, byId, onClose, onChange, onGone }) {
             <Button
               color="#FF5252"
               onClick={() => {
-                const id = importTeam({ name: `${team.name} (${team.ownerName})`, color: team.color, pokemon: team.pokemon })
+                const id = importTeam({ name: `${team.name} (${team.ownerName})`, color: team.color, pokemon: team.pokemon, sets: team.sets })
                 navigate(`/times/${id}`)
               }}
             >

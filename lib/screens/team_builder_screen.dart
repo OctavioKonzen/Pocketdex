@@ -8,13 +8,16 @@ import '../services/account_sync.dart';
 import '../services/auth_service.dart';
 import '../services/local_database.dart';
 import '../services/team_service.dart';
+import '../services/team_sets.dart';
 import '../utils/profanity.dart';
 import '../utils/team_analysis.dart';
 import '../widgets/pikachu_loading_indicator.dart';
 import '../widgets/team_analysis_view.dart';
 import '../widgets/team_pokemon_card.dart';
+import '../widgets/team_set_summary.dart';
 import '../widgets/team_share_dialogs.dart';
 import 'pokedex_screen.dart';
+import 'team_member_screen.dart';
 import '../utils/responsive.dart';
 import '../utils/site_ui.dart';
 
@@ -96,24 +99,53 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen>
     );
 
     if (result != null && mounted) {
+      // Pokémon novo no espaço: começa com a primeira habilidade dele.
+      final id = AccountFormat.pokemonIdFromImage(result['imageUrl']) ?? int.tryParse(result['id'] ?? '');
+      final row = id == null ? null : await LocalDatabase.instance.pokemonRow(id);
+      final abilities = (row?['abilities'] as List?) ?? const [];
+      if (!mounted) return;
       setState(() {
         while (_editableTeam.pokemons.length <= slotIndex) {
           _editableTeam.pokemons.add({});
         }
         _editableTeam.pokemons[slotIndex] = result;
+        _editableTeam.sets[slotIndex] = newSet(abilities.isEmpty ? '' : (abilities.first as List).first as String);
       });
       await _updateTeamAnalysis();
-      _persist();
+      await _persist();
+      if (id != null) await _editMember(slotIndex, id);
     }
   }
 
   void _handleSlotTap(int slotIndex) {
     final existingPokemon = pokemonDataForSlot(slotIndex);
-    if (existingPokemon != null) {
-      _confirmRemovePokemon(slotIndex);
+    final id = existingPokemon == null
+        ? null
+        : AccountFormat.pokemonIdFromImage(existingPokemon['imageUrl']) ?? int.tryParse(existingPokemon['id'] ?? '');
+    if (id != null) {
+      _editMember(slotIndex, id);
     } else {
       _selectPokemon(slotIndex);
     }
+  }
+
+  /// Abre o editor completo do Pokémon (golpes, item, EVs...).
+  Future<void> _editMember(int slotIndex, int pokemonId) async {
+    final action = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        builder: (_) => TeamMemberScreen(
+          pokemonId: pokemonId,
+          set: _editableTeam.sets[slotIndex] ?? newSet(),
+          onChanged: (set) {
+            setState(() => _editableTeam.sets[slotIndex] = set);
+            _persist();
+          },
+        ),
+      ),
+    );
+    if (!mounted) return;
+    if (action == 'remove') _confirmRemovePokemon(slotIndex);
+    if (action == 'swap') _selectPokemon(slotIndex);
   }
 
   Map<String, String>? pokemonDataForSlot(int index) {
@@ -170,6 +202,7 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen>
                           onPressed: () {
                             setState(() {
                               _editableTeam.pokemons[slotIndex] = {};
+                              _editableTeam.sets[slotIndex] = null;
                             });
                             Navigator.pop(dialogContext);
                             _updateTeamAnalysis().then((_) => _persist());
@@ -302,7 +335,7 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen>
               ),
               const SizedBox(height: 18),
               Text('Pokémon', style: TextStyle(color: c.text, fontSize: 18, fontWeight: FontWeight.bold)),
-              Text('Toque num espaço vazio para adicionar; num Pokémon para tirar.',
+              Text('Toque num espaço vazio para adicionar; num Pokémon para escolher golpes, item, EVs...',
                   style: TextStyle(color: c.muted, fontSize: 13)),
               const SizedBox(height: 10),
               GridView.builder(
@@ -318,6 +351,19 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen>
                 itemBuilder: (context, index) =>
                     TeamPokemonCard(pokemonData: pokemonDataForSlot(index), onTap: () => _handleSlotTap(index)),
               ),
+              if (hasPokemon) ...[
+                const SizedBox(height: 12),
+                TeamSetSummary(
+                  slots: [
+                    for (var i = 0; i < 6; i++)
+                      pokemonDataForSlot(i) == null
+                          ? null
+                          : AccountFormat.pokemonIdFromImage(pokemonDataForSlot(i)!['imageUrl']) ??
+                              int.tryParse(pokemonDataForSlot(i)!['id'] ?? ''),
+                  ],
+                  sets: _editableTeam.sets,
+                ),
+              ],
               const SizedBox(height: 18),
               SiteCard(
                 child: Column(

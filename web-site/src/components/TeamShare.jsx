@@ -1,7 +1,8 @@
-// Janelas de compartilhar e importar times (código, link ou Pokémon Showdown).
+// Janelas de compartilhar e importar times (código, link ou texto de simulador).
 
 import { useEffect, useMemo, useState } from 'react'
-import { getPokemonIndex } from '../lib/data'
+import { getAbilities, getItems, getMoves, getPokemonIndex } from '../lib/data'
+import { lookupOf } from '../lib/teamSets'
 import { encodeTeam, parseSharedTeam, shareLink, toShowdown } from '../lib/teamShare'
 import Sprite from './Sprite'
 import { Button, Modal } from './ui'
@@ -43,7 +44,7 @@ export function ShareTeamModal({ team, byId, open, onClose }) {
         <p className="text-sm text-muted">Mande o link ou o código para um amigo: no site ou no app, ele abre em Times → Importar.</p>
         <CopyField label="Link" value={shareLink(team)} />
         <CopyField label="Código" value={encodeTeam(team)} />
-        <CopyField label="Pokémon Showdown" value={toShowdown(team, byId)} rows={6} />
+        <CopyField label="Texto (Pokémon Showdown e outros simuladores)" value={toShowdown(team, byId)} rows={8} />
       </div>
     </Modal>
   )
@@ -53,12 +54,24 @@ export function ShareTeamModal({ team, byId, open, onClose }) {
 export function ImportTeamModal({ open, initial = '', onClose, onImport }) {
   const [text, setText] = useState(initial)
   const [index, setIndex] = useState(null)
+  const [lookups, setLookups] = useState(undefined)
 
   useEffect(() => {
-    if (open) getPokemonIndex().then(setIndex)
+    if (!open) return
+    getPokemonIndex().then(setIndex)
+    // Nomes de golpes, habilidades e itens do texto → os do banco.
+    Promise.all([getMoves(), getAbilities(), getItems()])
+      .then(([moves, abilities, items]) =>
+        setLookups({
+          moves: lookupOf(Object.keys(moves)),
+          abilities: lookupOf((Array.isArray(abilities) ? abilities : Object.values(abilities)).map((a) => a.name)),
+          items: lookupOf(items.map((i) => i.name)),
+        }),
+      )
+      .catch(() => setLookups({}))
   }, [open])
 
-  const team = useMemo(() => (index && text.trim() ? parseSharedTeam(text, index) : null), [text, index])
+  const team = useMemo(() => (index && text.trim() ? parseSharedTeam(text, index, lookups) : null), [text, index, lookups])
   const byId = useMemo(() => (index ? new Map(index.map((p) => [p.id, p])) : null), [index])
 
   return (
@@ -69,7 +82,7 @@ export function ImportTeamModal({ open, initial = '', onClose, onImport }) {
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={6}
-          placeholder="Cole aqui o link, o código (PDX1...) ou o time do Pokémon Showdown"
+          placeholder="Cole aqui o link, o código (PDX1...) ou o texto do time (Pokémon Showdown e outros)"
           className="w-full resize-none rounded-xl bg-surface px-4 py-3 text-sm ring-1 ring-line outline-none focus:ring-2 focus:ring-sky-400"
         />
         {team ? (

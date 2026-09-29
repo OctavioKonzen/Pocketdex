@@ -7,6 +7,7 @@
 // no site é só o id do Pokémon (a forma), ex.: 10034 = Mega Charizard X.
 
 import '../models/team.dart';
+import 'team_sets.dart';
 import '../models/training_pokemon.dart';
 import '../utils/app_images.dart';
 import 'local_database.dart';
@@ -60,6 +61,7 @@ class AccountFormat {
 
   static Team teamFromAccount(Map<String, dynamic> t) {
     final slots = (t['pokemon'] as List? ?? []);
+    final ids = [for (var i = 0; i < 6; i++) i < slots.length && slots[i] is num ? (slots[i] as num).toInt() : null];
     return Team(
       id: t['id'] as String? ?? '',
       name: t['name'] as String? ?? '',
@@ -68,6 +70,7 @@ class AccountFormat {
       pokemons: [
         for (final id in slots) id is num ? _appPokemon(id.toInt()) : <String, String>{},
       ],
+      sets: teamSets(ids, t['sets']),
     );
   }
 
@@ -76,12 +79,14 @@ class AccountFormat {
     while (slots.length < 6) {
       slots.add(null);
     }
+    final ids = slots.take(6).toList();
     return {
       ...?previous, // mantém campos que só o site usa
       'id': team.id,
       'name': team.name,
       'color': colorToAccount(team.color),
-      'pokemon': slots.take(6).toList(),
+      'pokemon': ids,
+      'sets': teamSets(ids, team.sets),
       if (team.score != null) 'score': team.score,
     };
   }

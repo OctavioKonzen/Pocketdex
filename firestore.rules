@@ -90,8 +90,10 @@ service cloud.firestore {
       }
       function reports(d) { return d.get('reportCount', 0); }
       function validTeam() {
-        return team().keys().hasOnly(['ownerUid', 'ownerName', 'ownerKey', 'avatar', 'name', 'color', 'pokemon',
+        return team().keys().hasOnly(['ownerUid', 'ownerName', 'ownerKey', 'avatar', 'name', 'color', 'pokemon', 'sets',
                                       'ratingSum', 'ratingCount', 'reportCount', 'updatedAt'])
+          // dados completos de cada Pokémon (golpes, item, EVs...): 6 posições
+          && (!('sets' in team()) || (team().sets is list && team().sets.size() == 6))
           && team().ownerUid == request.auth.uid
           && team().ownerName == accountName(request.auth.uid)
           && team().ownerKey == keyOf(team().ownerName)

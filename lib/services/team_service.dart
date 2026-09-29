@@ -31,6 +31,7 @@ class TeamService {
       'name': shared.name,
       'color': shared.color,
       'pokemon': [for (var i = 0; i < 6; i++) i < shared.pokemon.length ? shared.pokemon[i] : null],
+      'sets': shared.sets,
     };
     _data.update({'teams': [..._data.teams, account]});
     return AccountFormat.teamFromAccount(account);

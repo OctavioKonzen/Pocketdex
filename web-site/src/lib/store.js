@@ -24,16 +24,22 @@ export const useStore = create(
           favorites: favorites.includes(id) ? favorites.filter((f) => f !== id) : [...favorites, id],
         })),
 
-      // Times: {id, name, color, pokemon: [id|null x6]}
+      // Times: {id, name, color, pokemon: [id|null x6], sets: [set|null x6]} (sets: lib/teamSets.js)
       teams: [],
       createTeam: (name) => {
-        const team = { id: uid(), name, color: null, pokemon: Array(6).fill(null) }
+        const team = { id: uid(), name, color: null, pokemon: Array(6).fill(null), sets: Array(6).fill(null) }
         set(({ teams }) => ({ teams: [...teams, team] }))
         return team.id
       },
       /** Time recebido de outra pessoa (código, link ou Showdown). */
-      importTeam: ({ name, color, pokemon }) => {
-        const team = { id: uid(), name, color: color ?? null, pokemon: Array.from({ length: 6 }, (_, i) => pokemon?.[i] ?? null) }
+      importTeam: ({ name, color, pokemon, sets }) => {
+        const team = {
+          id: uid(),
+          name,
+          color: color ?? null,
+          pokemon: Array.from({ length: 6 }, (_, i) => pokemon?.[i] ?? null),
+          sets: Array.from({ length: 6 }, (_, i) => sets?.[i] ?? null),
+        }
         set(({ teams }) => ({ teams: [...teams, team] }))
         return team.id
       },
