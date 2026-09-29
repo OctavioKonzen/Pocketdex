@@ -452,7 +452,7 @@ export async function deleteAccount({ password, weeks = [], days = [] }) {
   const keys = new Set([profile.exists() ? profile.data().nameKey : null, name ? nameKey(name) : null].filter(Boolean))
 
   // Times públicos: os da pessoa somem inteiros (com votos e denúncias);
-  // nos dos outros, o voto dela sai (a nota volta) e a denúncia também.
+  // nos dos outros, o voto e a denúncia dela saem (a nota e a contagem voltam).
   const teams = await getDocs(collection(db, 'publicTeams')).catch(() => null)
   for (const team of teams?.docs ?? []) {
     if (team.data().ownerUid === uid) {
@@ -469,7 +469,13 @@ export async function deleteAccount({ password, weeks = [], days = [] }) {
         batch.delete(vote.ref)
         await quiet(batch.commit())
       }
-      await quiet(deleteDoc(doc(db, 'publicTeams', team.id, 'reports', uid)))
+      const report = await getDoc(doc(db, 'publicTeams', team.id, 'reports', uid)).catch(() => null)
+      if (report?.exists()) {
+        const batch = writeBatch(db)
+        batch.update(team.ref, { reportCount: increment(-1) })
+        batch.delete(report.ref)
+        await quiet(batch.commit())
+      }
     }
   }
 

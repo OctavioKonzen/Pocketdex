@@ -102,6 +102,10 @@ jobs:
         run: |
           npm ci
           npx playwright install --with-deps chromium
+      - name: Limpeza do banco (apaga tudo de contas excluídas)
+        run: |
+          (cd tool/cleanup && npm ci)
+          cd e2e && npx firebase emulators:exec --only auth,firestore --project pocketdex-ffb4d "node ../tool/cleanup/cleanup.test.mjs"
       - name: Criar conta, abrir as páginas, sair e entrar
         working-directory: e2e
         run: |

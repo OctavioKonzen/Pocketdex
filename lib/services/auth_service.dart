@@ -256,7 +256,7 @@ class AuthService extends ChangeNotifier {
         Future<void> quiet(Future<void> f) => f.catchError((_) {});
 
         // Times públicos: os da pessoa somem inteiros (com votos e denúncias);
-        // nos dos outros, o voto dela sai (a nota volta) e a denúncia também.
+        // nos dos outros, o voto e a denúncia dela saem (a nota e a contagem voltam).
         QuerySnapshot<Map<String, dynamic>>? teams;
         try {
           teams = await _db.collection('publicTeams').get();
@@ -281,7 +281,15 @@ class AuthService extends ChangeNotifier {
                 await quiet(batch.commit());
               }
             } catch (_) {}
-            await quiet(team.reference.collection('reports').doc(uid).delete());
+            try {
+              final report = await team.reference.collection('reports').doc(uid).get();
+              if (report.exists) {
+                final batch = _db.batch()
+                  ..update(team.reference, {'reportCount': FieldValue.increment(-1)})
+                  ..delete(report.reference);
+                await quiet(batch.commit());
+              }
+            } catch (_) {}
           }
         }
 
@@ -309,7 +317,10 @@ class AuthService extends ChangeNotifier {
 
         await _db.collection('users').doc(uid).delete();
         await u.delete();
-        (await SharedPreferences.getInstance()).remove('auth_name_$uid');
+        final prefs = await SharedPreferences.getInstance();
+        for (final key in prefs.getKeys().where((k) => k.startsWith('auth_'))) {
+          await prefs.remove(key);
+        }
         if (!kIsWeb && _googleReady) await GoogleSignIn.instance.signOut().catchError((_) {});
       });
 
