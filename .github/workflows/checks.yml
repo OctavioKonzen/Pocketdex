@@ -102,9 +102,6 @@ jobs:
         run: |
           npm ci
           npx playwright install --with-deps chromium
-      - name: Instalar o servidor (código por e-mail)
-        working-directory: functions
-        run: npm ci
       - name: Limpeza do banco (apaga tudo de contas excluídas)
         run: |
           (cd tool/cleanup && npm ci)

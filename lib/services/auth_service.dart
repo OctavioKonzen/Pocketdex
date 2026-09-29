@@ -6,7 +6,6 @@
 //   usernames/{nomeNorm} → { uid, name }   (2 pessoas não têm o mesmo nome)
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -47,7 +46,6 @@ class AuthService extends ChangeNotifier {
 
   FirebaseAuth get _auth => FirebaseAuth.instance;
   FirebaseFirestore get _db => FirebaseFirestore.instance;
-  FirebaseFunctions get _functions => FirebaseFunctions.instanceFor(region: 'southamerica-east1');
 
   void _set(AuthStatus s, [AccountUser? u]) {
     status = s;
@@ -159,88 +157,6 @@ class AuthService extends ChangeNotifier {
         }
       });
 
-  // ---------------------------------------------------------------- código por e-mail
-  //   Com o servidor publicado (functions/, liga config/app.emailCodes), criar
-  //   conta, trocar/recuperar senha e apagar conta pedem um código de 6
-  //   números mandado para o e-mail — igual ao site. Sem ele, tudo como antes.
-
-  bool? _codesOn;
-
-  /// O código por e-mail está ligado? (config/app.emailCodes)
-  Future<bool> emailCodesEnabled() async {
-    if (_codesOn != null) return _codesOn!;
-    try {
-      final snap = await _db.collection('config').doc('app').get();
-      _codesOn = snap.data()?['emailCodes'] == true;
-    } catch (_) {
-      return false; // sem internet: tenta de novo depois
-    }
-    return _codesOn!;
-  }
-
-  Future<dynamic> _call(String name, Map<String, dynamic> data) async =>
-      (await _functions.httpsCallable(name).call<dynamic>(data)).data;
-
-  /// Manda o código: purpose 'signup' | 'reset' | 'delete'.
-  Future<void> sendEmailCode(String purpose, [String? email]) =>
-      _guard(() => _call('sendCode', {'purpose': purpose, if (email != null) 'email': email.trim()}));
-
-  /// Cadastro com código: o servidor cria a conta, depois o nome é reservado.
-  Future<void> signUpWithCode(
-          {required String name,
-          required String email,
-          required String password,
-          required String code,
-          required bool keep}) =>
-      _guard(() async {
-        final error = validateName(name);
-        if (error != null) throw AuthException(error);
-        await _setKeep(keep);
-        _signingUp = true;
-        User? u;
-        try {
-          await _call('signUpWithCode', {'email': email.trim(), 'password': password, 'code': code});
-          u = (await _auth.signInWithEmailAndPassword(email: email.trim(), password: password)).user!;
-          final clean = await _claimName(u, name);
-          await u.updateDisplayName(clean);
-          _set(AuthStatus.signedIn, AccountUser(uid: u.uid, email: u.email, name: clean));
-        } catch (e) {
-          // Alguém pegou o nome no mesmo instante: desfaz a conta criada.
-          await u?.delete().catchError((_) {});
-          if (u != null) _set(AuthStatus.signedOut);
-          rethrow;
-        } finally {
-          _signingUp = false;
-        }
-      });
-
-  /// Conta Google nova: confirma o código antes de escolher o nome.
-  Future<void> confirmSignupCode(String code) => _guard(() => _call('confirmSignup', {'code': code}));
-
-  /// Troca a senha com o código (logado: o e-mail é o da conta).
-  Future<void> resetPasswordWithCode({String? email, required String code, required String password}) =>
-      _guard(() async {
-        final current = _auth.currentUser;
-        await _call('resetPassword', {if (email != null) 'email': email.trim(), 'code': code, 'password': password});
-        // Logado: entra de novo com a senha nova (as sessões antigas foram encerradas).
-        if (current?.email != null) {
-          try {
-            await _auth.signInWithEmailAndPassword(email: current!.email!, password: password);
-          } catch (_) {}
-        }
-      });
-
-  /// Apaga a conta e tudo dela no servidor, depois de conferir o código.
-  Future<void> deleteAccountWithCode(String code) => _guard(() async {
-        final uid = _auth.currentUser?.uid;
-        await _call('deleteAccount', {'code': code});
-        final prefs = await SharedPreferences.getInstance();
-        for (final key in prefs.getKeys().where((k) => k.startsWith('auth_'))) {
-          await prefs.remove(key);
-        }
-        if (uid != null) await signOut().catchError((_) {});
-      });
-
   Future<void> signIn({required String email, required String password, required bool keep}) => _guard(() async {
         await _setKeep(keep);
         await _auth.signInWithEmailAndPassword(email: email.trim(), password: password);
@@ -295,6 +211,65 @@ class AuthService extends ChangeNotifier {
     // Também sai da conta Google, para poder escolher outra na próxima vez.
     if (!kIsWeb && _googleReady) await GoogleSignIn.instance.signOut().catchError((_) {});
     await _auth.signOut();
+  }
+
+  // ---------------------------------------------------------------- confirmações
+  //   Conta com e-mail e senha: trocar a senha e excluir pedem a senha atual.
+  //   Conta Google: criar a conta, criar/trocar a senha e excluir pedem que a
+  //   pessoa abra um link mandado para o e-mail. O link abre o site, que
+  //   confirma e grava em confirmations/{uid} (igual ao site).
+
+  static const _siteUrl = 'https://octaviokonzen.github.io/Pocketdex/';
+
+  /// Troca a senha de uma conta com e-mail e senha (confirma a senha atual).
+  Future<void> changePassword({required String current, required String password}) => _guard(() async {
+        if (password.length < 6) throw AuthException('A senha precisa ter pelo menos 6 caracteres.');
+        final u = _auth.currentUser!;
+        await u.reauthenticateWithCredential(EmailAuthProvider.credential(email: u.email ?? '', password: current));
+        await u.updatePassword(password);
+      });
+
+  /// Manda o link de confirmação: purpose 'signup' | 'password' | 'delete'.
+  Future<void> sendConfirmationLink(String purpose) => _guard(() async {
+        final email = _auth.currentUser?.email;
+        if (email == null) throw AuthException('Essa conta não tem e-mail.');
+        await _auth.sendSignInLinkToEmail(
+          email: email,
+          actionCodeSettings: ActionCodeSettings(url: '$_siteUrl?confirmar=$purpose', handleCodeInApp: true),
+        );
+      });
+
+  /// A pessoa já abriu o link de confirmação?
+  Future<bool> hasConfirmation(String purpose) async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return false;
+    try {
+      final snap = await _db.collection('confirmations').doc(uid).get(const GetOptions(source: Source.server));
+      return snap.data()?[purpose] != null;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Depois de confirmar a exclusão no site: a conta ainda existe? Se não,
+  /// sai dela aqui também.
+  Future<bool> accountStillExists() async {
+    final u = _auth.currentUser;
+    if (u == null) return false;
+    try {
+      await u.reload();
+      return true;
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'user-not-found' || e.code == 'user-disabled' || e.code == 'user-token-expired') {
+        final prefs = await SharedPreferences.getInstance();
+        for (final key in prefs.getKeys().where((k) => k.startsWith('auth_'))) {
+          await prefs.remove(key);
+        }
+        await signOut().catchError((_) {});
+        return false;
+      }
+      return true;
+    }
   }
 
   // ---------------------------------------------------------------- excluir conta
@@ -399,6 +374,7 @@ class AuthService extends ChangeNotifier {
           }
         }
 
+        await quiet(_db.collection('confirmations').doc(uid).delete());
         await _db.collection('users').doc(uid).delete();
         await u.delete();
         final prefs = await SharedPreferences.getInstance();
@@ -424,11 +400,6 @@ class AuthService extends ChangeNotifier {
       await action();
     } on AuthException {
       rethrow;
-    } on FirebaseFunctionsException catch (e) {
-      // Erros do servidor (código por e-mail) já vêm com a mensagem em português.
-      throw AuthException(e.code == 'internal' || e.code == 'unavailable'
-          ? 'Não foi possível falar com o servidor. Tente de novo.'
-          : (e.message ?? 'Algo deu errado. Tente de novo.'));
     } on FirebaseAuthException catch (e) {
       throw AuthException(_messages['auth/${e.code}'] ?? 'Algo deu errado (${e.code}). Tente de novo.');
     } on FirebaseException catch (e) {

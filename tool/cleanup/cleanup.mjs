@@ -5,7 +5,7 @@
 // caiu no meio). Roda todo dia pelo GitHub (.github/workflows/cleanup.yml)
 // com a chave de administrador do Firebase no segredo FIREBASE_SERVICE_ACCOUNT.
 //
-//   users/{uid}, ranking/{uid}, weekly|daily/{dia}/scores/{uid} → apaga se a conta não existe
+//   users/{uid}, confirmations/{uid}, ranking/{uid}, weekly|daily/{dia}/scores/{uid} → apaga se a conta não existe
 //   usernames/{nome}                → apaga se o dono não existe (ou não tem mais perfil)
 //   publicTeams/{id}                → apaga (com votos e denúncias) se o dono não existe
 //   publicTeams/{id}/ratings|reports/{uid} → apaga se a conta não existe e refaz a nota
@@ -48,6 +48,11 @@ const profiles = new Set()
 for (const d of (await db.collection('users').get()).docs) {
   if (accounts.has(d.id)) profiles.add(d.id)
   else await remove(d.ref, 'perfil sem conta')
+}
+
+// Confirmações por link no e-mail (contas Google).
+for (const d of (await db.collection('confirmations').get()).docs) {
+  if (!accounts.has(d.id)) await remove(d.ref, 'confirmação sem conta')
 }
 
 // Nomes reservados.

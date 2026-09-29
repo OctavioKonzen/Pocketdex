@@ -11,6 +11,8 @@
 
 import assert from 'node:assert/strict'
 import { chromium } from 'playwright'
+import { initializeApp } from '../web-site/node_modules/firebase/app/dist/index.mjs'
+import * as fbAuth from '../web-site/node_modules/firebase/auth/dist/index.mjs'
 
 const SITE = process.env.SITE_URL ?? 'http://localhost:4175/Pocketdex/'
 const ROUTES = [
@@ -60,27 +62,21 @@ async function emulatorDocs(path) {
   return (body.documents ?? []).map((d) => d.name.split('/').slice(-1)[0])
 }
 
-// Liga o código por e-mail no emulador (como o servidor faz ao ser publicado).
-async function setEmailCodes(on) {
-  await fetch('http://127.0.0.1:8085/v1/projects/pocketdex-ffb4d/databases/(default)/documents/config/app', {
-    method: 'PATCH',
-    headers: { Authorization: 'Bearer owner', 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fields: { emailCodes: { booleanValue: on } } }),
-  })
-}
+// Conta Google de teste: o emulador aceita um "token do Google" falso.
+const nodeApp = initializeApp({ apiKey: 'fake-api-key', projectId: 'pocketdex-ffb4d', authDomain: 'localhost' }, 'node')
+const nodeAuth = fbAuth.getAuth(nodeApp)
+fbAuth.connectAuthEmulator(nodeAuth, 'http://127.0.0.1:9099', { disableWarnings: true })
 
-// No emulador o servidor não manda e-mail: guarda o código em emulatorOutbox/{e-mail}.
-async function codeFor(email, after = 0) {
+// Último link mandado para o e-mail (no emulador os e-mails ficam guardados).
+async function lastLink(email, after = '') {
   for (let i = 0; i < 40; i++) {
-    const res = await fetch(`http://127.0.0.1:8085/v1/projects/pocketdex-ffb4d/databases/(default)/documents/emulatorOutbox/${email}`, {
-      headers: { Authorization: 'Bearer owner' },
-    })
-    const body = await res.json()
-    const at = Number(body.fields?.at?.integerValue ?? 0)
-    if (body.fields && at > after) return { code: body.fields.code.stringValue, at }
+    const res = await fetch('http://127.0.0.1:9099/emulator/v1/projects/pocketdex-ffb4d/oobCodes')
+    const codes = (await res.json()).oobCodes.filter((c) => c.email === email && c.requestType === 'EMAIL_SIGNIN')
+    const link = codes.at(-1)?.oobLink
+    if (link && link !== after) return link
     await new Promise((r) => setTimeout(r, 500))
   }
-  throw new Error(`nenhum código chegou para ${email}`)
+  throw new Error(`nenhum link chegou para ${email}`)
 }
 
 let step = ''
@@ -175,85 +171,74 @@ try {
   await page.getByText(user.name).first().waitFor({ timeout: 20000 })
   await go('configuracoes')
 
-  // ---------------------------------------------------------------- código por e-mail
-  step = 'ligar código por e-mail'
-  await setEmailCodes(true)
-  await page.getByRole('button', { name: 'Sair' }).first().click()
-  await page.getByRole('button', { name: 'Entrar' }).first().waitFor({ timeout: 15000 })
-  await page.reload()
-  const coded = { name: `Cod${Date.now() % 100000}`, email: `codigo${Date.now()}@example.com`, password: 'senha123' }
-
-  step = 'criar conta com código'
-  await page.getByRole('button', { name: 'Criar conta' }).first().click()
-  await page.locator('input[autocomplete=nickname]').fill(coded.name)
-  await page.locator('input[type=email]').fill(coded.email)
-  await page.locator('input[autocomplete=new-password]').nth(0).fill(coded.password)
-  await page.locator('input[autocomplete=new-password]').nth(1).fill(coded.password)
-  await page.locator('form button[type=submit]').click() // Enviar código
-  let mail = await codeFor(coded.email)
-  await page.locator('input[autocomplete=one-time-code]').fill('000000' === mail.code ? '111111' : '000000')
-  await page.locator('form button[type=submit]').click()
-  await page.getByText('Código errado').waitFor({ timeout: 15000 })
-  await page.locator('input[autocomplete=one-time-code]').fill(mail.code)
-  await page.locator('form button[type=submit]').click()
-  await page.getByText(coded.name).first().waitFor({ timeout: 30000 })
-  await expectHealthy()
-
-  step = 'trocar senha com código'
+  step = 'trocar senha com a senha atual'
   await go('configuracoes')
-  step = 'trocar senha com código'
+  step = 'trocar senha com a senha atual'
   await page.getByRole('button', { name: 'Trocar', exact: true }).click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Enviar código' }).click()
-  mail = await codeFor(coded.email, mail.at)
-  await page.getByPlaceholder('Código de 6 números').fill(mail.code)
-  await page.getByPlaceholder('Nova senha', { exact: true }).fill('senha456')
-  await page.getByPlaceholder('Confirmar nova senha').fill('senha456')
+  await page.getByPlaceholder('Senha atual').fill(user.password)
+  await page.getByPlaceholder('Nova senha', { exact: true }).fill('outra456')
+  await page.getByPlaceholder('Confirmar nova senha').fill('outra456')
   await page.getByRole('dialog').getByRole('button', { name: 'Trocar senha' }).click()
-  await page.getByText('Senha trocada!').waitFor({ timeout: 20000 })
+  await page.getByText('Senha trocada!').waitFor({ timeout: 15000 })
   await page.waitForTimeout(1500)
   await page.getByRole('button', { name: 'Sair' }).first().click()
   await page.getByRole('button', { name: 'Entrar' }).first().waitFor({ timeout: 15000 })
-
-  step = 'entrar com a senha nova'
-  await page.locator('input[type=email]').fill(coded.email)
-  await page.locator('input[autocomplete=current-password]').fill('senha456')
+  await page.locator('input[type=email]').fill(user.email)
+  await page.locator('input[autocomplete=current-password]').fill('outra456')
   await page.locator('form button[type=submit]').click()
-  await page.getByText(coded.name).first().waitFor({ timeout: 20000 })
+  await page.getByText(user.name).first().waitFor({ timeout: 20000 })
   await go('configuracoes')
   await page.getByRole('button', { name: 'Sair' }).first().click()
   await page.getByRole('button', { name: 'Entrar' }).first().waitFor({ timeout: 15000 })
 
-  await page.waitForTimeout(2500) // espera mínima entre códigos
-  step = 'recuperar senha com código'
-  await page.getByRole('button', { name: 'Esqueci minha senha' }).click()
-  await page.locator('input[type=email]').fill(coded.email)
-  await page.locator('form button[type=submit]').click() // Enviar código
-  mail = await codeFor(coded.email, mail.at)
-  await page.locator('input[autocomplete=one-time-code]').fill(mail.code)
-  await page.locator('input[autocomplete=new-password]').nth(0).fill('senha789')
-  await page.locator('input[autocomplete=new-password]').nth(1).fill('senha789')
+  // ---------------------------------------------------------------- conta Google: link no e-mail
+  step = 'conta Google: confirmar pelo link'
+  const gmail = `g${Date.now()}@gmail.com`
+  const gName = `Goo${Date.now() % 100000}`
+  await fbAuth.signInWithCredential(nodeAuth, fbAuth.GoogleAuthProvider.credential(JSON.stringify({ sub: `g${Date.now()}`, email: gmail, email_verified: true })))
+  await fbAuth.sendSignInLinkToEmail(nodeAuth, gmail, { url: `${SITE}?confirmar=signup`, handleCodeInApp: true })
+  let link = await lastLink(gmail)
+  await page.goto(link)
+  await page.getByPlaceholder('E-mail').fill(gmail)
+  await page.getByRole('button', { name: 'Confirmar' }).click()
+  await page.getByText('E-mail confirmado!').waitFor({ timeout: 20000 })
+  await page.getByRole('button', { name: 'Continuar' }).click()
+  await page.locator('input[autocomplete=nickname]').fill(gName)
   await page.locator('form button[type=submit]').click()
-  await page.getByText('Senha trocada! Entre com a senha nova.').waitFor({ timeout: 20000 })
-  await page.locator('input[type=email]').fill(coded.email)
-  await page.locator('input[autocomplete=current-password]').fill('senha789')
-  await page.locator('form button[type=submit]').click()
-  await page.getByText(coded.name).first().waitFor({ timeout: 20000 })
-
-  step = 'apagar conta com código'
-  await go('configuracoes')
-  step = 'apagar conta com código'
-  await page.getByRole('button', { name: 'Excluir', exact: true }).click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Enviar código' }).click()
-  mail = await codeFor(coded.email, mail.at)
-  await page.getByPlaceholder('Código de 6 números').fill(mail.code)
-  await page.getByRole('button', { name: 'Excluir para sempre' }).click()
-  await page.getByRole('button', { name: 'Entrar' }).first().waitFor({ timeout: 60000 })
+  await page.getByText(gName).first().waitFor({ timeout: 20000 })
   await expectHealthy()
-  const names = await emulatorDocs('usernames')
-  assert.ok(!names.includes(coded.name.toLowerCase()), `${step}: o nome ficou reservado`)
-  assert.equal((await emulatorDocs('users')).length, 1, `${step}: sobrou o perfil`)
 
-  console.log(`TUDO CERTO: conta criada, ${ROUTES.length} páginas abertas, saiu, entrou, excluiu (banco limpo) e criou de novo; com código por e-mail: criou, trocou e recuperou a senha e apagou a conta.`)
+  step = 'conta Google: criar senha pelo link'
+  await go('configuracoes')
+  step = 'conta Google: criar senha pelo link'
+  await page.getByRole('button', { name: 'Trocar', exact: true }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Enviar link' }).click()
+  await page.getByText('Mandamos um link').waitFor({ timeout: 15000 })
+  link = await lastLink(gmail, link)
+  await page.goto(link)
+  await page.getByPlaceholder('Nova senha', { exact: true }).fill('google123')
+  await page.getByPlaceholder('Confirmar nova senha').fill('google123')
+  await page.getByRole('button', { name: 'Salvar senha' }).click()
+  await page.getByText('Senha salva!').waitFor({ timeout: 20000 })
+  await page.getByRole('button', { name: 'Continuar' }).click()
+
+  step = 'conta Google: excluir pelo link'
+  await go('configuracoes')
+  step = 'conta Google: excluir pelo link'
+  await page.getByRole('button', { name: 'Excluir', exact: true }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Enviar link de confirmação' }).click()
+  await page.getByText('Mandamos um link').waitFor({ timeout: 15000 })
+  link = await lastLink(gmail, link)
+  await page.goto(link)
+  await page.getByRole('button', { name: 'Excluir para sempre' }).click()
+  await page.getByText('Sua conta foi excluída').waitFor({ timeout: 60000 })
+  await page.getByRole('button', { name: 'Continuar' }).click()
+  await page.getByRole('button', { name: 'Entrar' }).first().waitFor({ timeout: 15000 })
+  await expectHealthy()
+  assert.ok(!(await emulatorDocs('usernames')).includes(gName.toLowerCase()), `${step}: o nome ficou reservado`)
+  assert.deepEqual(await emulatorDocs('confirmations'), [], `${step}: sobrou a confirmação`)
+
+  console.log(`TUDO CERTO: conta criada, ${ROUTES.length} páginas abertas, saiu, entrou, excluiu (banco limpo), criou de novo e trocou a senha; conta Google confirmou, criou senha e excluiu pelo link do e-mail.`)
 } catch (error) {
   await page.screenshot({ path: 'falha.png', fullPage: true }).catch(() => {})
   console.error(`FALHOU em "${step}":`, error.message)

@@ -141,23 +141,15 @@ class SettingsScreen extends StatelessWidget {
                     ),
                   ],
                   if (user != null) ...[
-                    FutureBuilder<bool>(
-                      future: AuthService.instance.emailCodesEnabled(),
-                      builder: (context, snap) => snap.data != true
-                          ? const SizedBox()
-                          : Padding(
-                              padding: const EdgeInsets.only(top: 12),
-                              child: row(
-                                title: 'Trocar senha',
-                                subtitle: 'Confirme com um código no seu e-mail e escolha uma senha nova.',
-                                trailing: PillButton(
-                                  label: 'Trocar',
-                                  color: const Color(0xFF546E7A),
-                                  onPressed: () =>
-                                      showDialog(context: context, builder: (_) => const _ChangePasswordDialog()),
-                                ),
-                              ),
-                            ),
+                    const SizedBox(height: 12),
+                    row(
+                      title: 'Trocar senha',
+                      subtitle: 'Com a senha atual, ou por um link no e-mail se você entra com Google.',
+                      trailing: PillButton(
+                        label: 'Trocar',
+                        color: const Color(0xFF546E7A),
+                        onPressed: () => showDialog(context: context, builder: (_) => const _ChangePasswordDialog()),
+                      ),
                     ),
                     const SizedBox(height: 12),
                     row(
@@ -265,7 +257,7 @@ class _AchievementsCard extends StatelessWidget {
   }
 }
 
-/// Confirma e apaga a conta e todos os dados dela (código no e-mail, ou senha / conta Google).
+/// Confirma e apaga a conta e todos os dados dela (senha ou conta Google).
 class _DeleteAccountDialog extends StatefulWidget {
   const _DeleteAccountDialog();
   @override
@@ -274,42 +266,60 @@ class _DeleteAccountDialog extends StatefulWidget {
 
 class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
   final _password = TextEditingController();
-  final _code = TextEditingController();
   bool _busy = false;
-  bool _codes = false;
-  bool _codeSent = false;
   String? _error;
-  String? _info;
-
-  @override
-  void initState() {
-    super.initState();
-    AuthService.instance.emailCodesEnabled().then((on) => mounted ? setState(() => _codes = on) : null);
-  }
 
   @override
   void dispose() {
     _password.dispose();
-    _code.dispose();
     super.dispose();
   }
 
-  Future<void> _sendCode() async {
+  String? _info;
+  bool _linkSent = false;
+
+  /// Conta Google: manda o link; a exclusão é confirmada no site (abrindo o link).
+  Future<void> _sendLink() async {
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
-      await AuthService.instance.sendEmailCode('delete');
-      _codeSent = true;
-      _info = 'Mandamos um código de 6 números para o e-mail da conta. Confira também o spam.';
+      await AuthService.instance.sendConfirmationLink('delete');
+      _linkSent = true;
+      _info = 'Mandamos um link para o e-mail da conta. Abra o link (confira também o spam), confirme a exclusão '
+          'e depois toque em "Já excluí".';
     } catch (e) {
       _error = '$e';
     }
     if (mounted) setState(() => _busy = false);
   }
 
+  /// Depois de excluir pelo link: confere e sai da conta aqui também.
+  Future<void> _checkDeleted() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final exists = await AuthService.instance.accountStillExists();
+    if (!mounted) return;
+    if (exists) {
+      setState(() {
+        _busy = false;
+        _error = 'A conta ainda existe. Abra o link do e-mail e toque em "Excluir para sempre".';
+      });
+      return;
+    }
+    UserData.instance.clearAll();
+    if (DailyReminder.supported) await DailyReminder.instance.setEnabled(false).catchError((_) => false);
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    Navigator.of(context).popUntil((route) => route.isFirst);
+    messenger.showSnackBar(const SnackBar(content: Text('Sua conta foi excluída.')));
+  }
+
   Future<void> _run() async {
+    if (AuthService.instance.usesGoogle) return _linkSent ? _checkDeleted() : _sendLink();
     setState(() {
       _busy = true;
       _error = null;
@@ -320,11 +330,7 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
     final sync = AccountSync.instance;
     sync.pause(); // não recria os dados enquanto apaga
     try {
-      if (_codes) {
-        await AuthService.instance.deleteAccountWithCode(_code.text);
-      } else {
-        await AuthService.instance.deleteAccount(password: _password.text, weeks: weeks, days: days);
-      }
+      await AuthService.instance.deleteAccount(password: _password.text, weeks: weeks, days: days);
       UserData.instance.clearAll();
       // Nada da conta fica no aparelho: nem o lembrete do desafio.
       if (DailyReminder.supported) await DailyReminder.instance.setEnabled(false).catchError((_) => false);
@@ -346,8 +352,6 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
   @override
   Widget build(BuildContext context) {
     final google = AuthService.instance.usesGoogle;
-    final hint = TextStyle(color: Theme.of(context).hintColor, fontSize: 13);
-    final ready = _codes ? _codeSent && _code.text.length == 6 : google || _password.text.isNotEmpty;
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: const Text('Excluir conta'),
@@ -358,12 +362,9 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
           const Text('Isso apaga para sempre sua conta, favoritos, times, treinos, recordes, conquistas e suas linhas '
               'nos rankings. No app e no site. Não dá para desfazer.'),
           const SizedBox(height: 12),
-          if (_codes)
-            _codeSent
-                ? _CodeInput(controller: _code, enabled: !_busy, onChanged: () => setState(() {}))
-                : Text('Para confirmar, vamos mandar um código para o e-mail da conta.', style: hint)
-          else if (google)
-            Text('Para confirmar, escolha a sua conta Google na janela que vai abrir.', style: hint)
+          if (google)
+            Text('Para confirmar, vamos mandar um link para o e-mail da sua conta Google.',
+                style: TextStyle(color: Theme.of(context).hintColor, fontSize: 13))
           else
             TextField(
               controller: _password,
@@ -384,25 +385,23 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
       ),
       actions: [
         TextButton(onPressed: _busy ? null : () => Navigator.pop(context), child: const Text('Cancelar')),
-        if (_codes && _codeSent) TextButton(onPressed: _busy ? null : _sendCode, child: const Text('Reenviar')),
-        if (_codes && !_codeSent)
-          TextButton(
-            onPressed: _busy ? null : _sendCode,
-            child: Text(_busy ? 'Enviando...' : 'Enviar código',
-                style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
-          )
-        else
-          TextButton(
-            onPressed: _busy || !ready ? null : _run,
-            child: Text(_busy ? 'Excluindo...' : 'Excluir para sempre',
-                style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
-          ),
+        if (google && _linkSent) TextButton(onPressed: _busy ? null : _sendLink, child: const Text('Reenviar')),
+        TextButton(
+          onPressed: _busy || (!google && _password.text.isEmpty) ? null : _run,
+          child: Text(
+              _busy
+                  ? 'Aguarde...'
+                  : google
+                      ? (_linkSent ? 'Já excluí' : 'Enviar link')
+                      : 'Excluir para sempre',
+              style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+        ),
       ],
     );
   }
 }
 
-/// Troca a senha com o código mandado para o e-mail da conta.
+/// Trocar senha: senha atual (conta com e-mail) ou link no e-mail (conta Google).
 class _ChangePasswordDialog extends StatefulWidget {
   const _ChangePasswordDialog();
   @override
@@ -410,55 +409,52 @@ class _ChangePasswordDialog extends StatefulWidget {
 }
 
 class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
-  final _code = TextEditingController();
+  final _current = TextEditingController();
   final _password = TextEditingController();
   final _confirm = TextEditingController();
   bool _busy = false;
-  bool _codeSent = false;
   String? _error;
   String? _info;
 
   @override
   void dispose() {
-    for (final c in [_code, _password, _confirm]) {
+    for (final c in [_current, _password, _confirm]) {
       c.dispose();
     }
     super.dispose();
   }
 
-  Future<void> _act(Future<void> Function() action) async {
+  Future<void> _run() async {
+    final google = AuthService.instance.usesGoogle;
+    if (!google) {
+      if (_password.text.length < 6) return setState(() => _error = 'A senha precisa ter pelo menos 6 caracteres.');
+      if (_password.text != _confirm.text) return setState(() => _error = 'As senhas não são iguais.');
+    }
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
-      await action();
+      if (google) {
+        await AuthService.instance.sendConfirmationLink('password');
+        _info = 'Mandamos um link para o e-mail da conta. Abra o link (confira também o spam) para escolher a senha.';
+      } else {
+        await AuthService.instance.changePassword(current: _current.text, password: _password.text);
+        if (!mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
+        Navigator.pop(context);
+        messenger.showSnackBar(const SnackBar(content: Text('Senha trocada!')));
+        return;
+      }
     } catch (e) {
       _error = '$e';
     }
     if (mounted) setState(() => _busy = false);
   }
 
-  void _sendCode() => _act(() async {
-        await AuthService.instance.sendEmailCode('reset');
-        _codeSent = true;
-        _info = 'Mandamos um código de 6 números para o e-mail da conta. Confira também o spam.';
-      });
-
-  void _save() {
-    if (_password.text.length < 6) return setState(() => _error = 'A senha precisa ter pelo menos 6 caracteres.');
-    if (_password.text != _confirm.text) return setState(() => _error = 'As senhas não são iguais.');
-    _act(() async {
-      await AuthService.instance.resetPasswordWithCode(code: _code.text, password: _password.text);
-      if (!mounted) return;
-      final messenger = ScaffoldMessenger.of(context);
-      Navigator.pop(context);
-      messenger.showSnackBar(const SnackBar(content: Text('Senha trocada!')));
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
+    final google = AuthService.instance.usesGoogle;
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: const Text('Trocar senha'),
@@ -467,16 +463,24 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (!_codeSent)
-              Text('Vamos mandar um código de 6 números para o e-mail da sua conta.',
+            if (google)
+              Text('Você entra com Google. Vamos mandar um link para o seu e-mail; abrindo, você cria ou troca a senha.',
                   style: TextStyle(color: Theme.of(context).hintColor, fontSize: 13))
             else ...[
-              _CodeInput(controller: _code, enabled: !_busy, onChanged: () => setState(() {})),
+              TextField(
+                controller: _current,
+                obscureText: true,
+                enabled: !_busy,
+                autofillHints: const [AutofillHints.password],
+                onChanged: (_) => setState(() {}),
+                decoration: const InputDecoration(labelText: 'Senha atual'),
+              ),
               TextField(
                 controller: _password,
                 obscureText: true,
                 enabled: !_busy,
                 autofillHints: const [AutofillHints.newPassword],
+                onChanged: (_) => setState(() {}),
                 decoration: const InputDecoration(labelText: 'Nova senha'),
               ),
               TextField(
@@ -499,38 +503,16 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: _busy ? null : () => Navigator.pop(context), child: const Text('Cancelar')),
-        if (_codeSent) TextButton(onPressed: _busy ? null : _sendCode, child: const Text('Reenviar')),
         TextButton(
-          onPressed: _busy || (_codeSent && _code.text.length != 6) ? null : (_codeSent ? _save : _sendCode),
-          child: Text(_busy ? 'Aguarde...' : (_codeSent ? 'Trocar senha' : 'Enviar código'),
+            onPressed: _busy ? null : () => Navigator.pop(context), child: Text(_info != null ? 'Fechar' : 'Cancelar')),
+        TextButton(
+          onPressed: _busy || (!google && (_current.text.isEmpty || _password.text.isEmpty)) ? null : _run,
+          child: Text(_busy ? 'Aguarde...' : (google ? (_info != null ? 'Reenviar link' : 'Enviar link') : 'Trocar senha'),
               style: const TextStyle(fontWeight: FontWeight.bold)),
         ),
       ],
     );
   }
-}
-
-/// Campo do código de 6 números.
-class _CodeInput extends StatelessWidget {
-  final TextEditingController controller;
-  final bool enabled;
-  final VoidCallback onChanged;
-  const _CodeInput({required this.controller, required this.enabled, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) => TextField(
-        controller: controller,
-        enabled: enabled,
-        autofocus: true,
-        keyboardType: TextInputType.number,
-        autofillHints: const [AutofillHints.oneTimeCode],
-        maxLength: 6,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        onChanged: (_) => onChanged(),
-        style: const TextStyle(fontSize: 22, letterSpacing: 8, fontWeight: FontWeight.bold),
-        decoration: const InputDecoration(labelText: 'Código do e-mail', counterText: ''),
-      );
 }
 
 /// Pix para apoiar o projeto (QR Code e "copia e cola").

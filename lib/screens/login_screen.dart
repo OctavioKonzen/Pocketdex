@@ -5,7 +5,6 @@
 // senha e, no cadastro, o nome (único) da pessoa.
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../services/auth_service.dart';
 import '../services/update_service.dart';
@@ -185,47 +184,6 @@ class _FieldState extends State<_Field> {
   }
 }
 
-/// Campo do código de 6 números, com "reenviar".
-class _CodeField extends StatelessWidget {
-  final TextEditingController controller;
-  final VoidCallback? onResend;
-  const _CodeField(this.controller, {required this.onResend});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Código do e-mail', style: TextStyle(fontWeight: FontWeight.w600, color: theme.hintColor)),
-          const SizedBox(height: 6),
-          TextField(
-            controller: controller,
-            autofocus: true,
-            keyboardType: TextInputType.number,
-            autofillHints: const [AutofillHints.oneTimeCode],
-            maxLength: 6,
-            style: const TextStyle(fontSize: 22, letterSpacing: 8, fontWeight: FontWeight.bold),
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            decoration: InputDecoration(
-              counterText: '',
-              filled: true,
-              fillColor: theme.cardColor,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-            ),
-          ),
-          TextButton(
-            onPressed: onResend,
-            child: const Text('Reenviar código', style: TextStyle(color: _red, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _Message extends StatelessWidget {
   final String? error;
   final String? info;
@@ -296,28 +254,15 @@ class _AuthFormState extends State<_AuthForm> {
   final _email = TextEditingController();
   final _password = TextEditingController();
   final _confirm = TextEditingController();
-  final _code = TextEditingController();
   _Mode _mode = _Mode.login;
   bool _keep = true;
   bool _busy = false;
   String? _error;
   String? _info;
-  // Código por e-mail (quando ligado): depois de mandar, aparece o campo do código.
-  bool _codes = false;
-  bool _codeSent = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _auth.emailCodesEnabled().then((on) => mounted ? setState(() => _codes = on) : null);
-    _email.addListener(() {
-      if (_codeSent) setState(() => _codeSent = false);
-    });
-  }
 
   @override
   void dispose() {
-    for (final c in [_name, _email, _password, _confirm, _code]) {
+    for (final c in [_name, _email, _password, _confirm]) {
       c.dispose();
     }
     super.dispose();
@@ -327,18 +272,6 @@ class _AuthFormState extends State<_AuthForm> {
         _mode = mode;
         _error = null;
         _info = null;
-        _codeSent = false;
-        _code.clear();
-      });
-
-  void _sendCode(String purpose) => _run(() async {
-        await _auth.sendEmailCode(purpose, _email.text);
-        if (mounted) {
-          setState(() {
-            _codeSent = true;
-            _info = 'Mandamos um código de 6 números para ${_email.text.trim()}. Confira também o spam.';
-          });
-        }
       });
 
   Future<void> _run(Future<void> Function() action) async {
@@ -360,18 +293,6 @@ class _AuthFormState extends State<_AuthForm> {
   void _submit() {
     switch (_mode) {
       case _Mode.forgot:
-        if (_codes) {
-          if (!_codeSent) return _sendCode('reset');
-          if (_password.text.length < 6) return setState(() => _error = 'A senha precisa ter pelo menos 6 caracteres.');
-          if (_password.text != _confirm.text) return setState(() => _error = 'As senhas não são iguais.');
-          _run(() async {
-            await _auth.resetPasswordWithCode(email: _email.text, code: _code.text, password: _password.text);
-            if (!mounted) return;
-            _switch(_Mode.login);
-            setState(() => _info = 'Senha trocada! Entre com a senha nova.');
-          });
-          return;
-        }
         _run(() async {
           await _auth.resetPassword(_email.text);
           if (mounted) setState(() => _info = 'Enviamos um e-mail com o link para criar uma nova senha.');
@@ -379,28 +300,7 @@ class _AuthFormState extends State<_AuthForm> {
       case _Mode.signup:
         final nameError = AuthService.validateName(_name.text);
         if (nameError != null) return setState(() => _error = nameError);
-        if (_password.text.length < 6) return setState(() => _error = 'A senha precisa ter pelo menos 6 caracteres.');
         if (_password.text != _confirm.text) return setState(() => _error = 'As senhas não são iguais.');
-        if (_codes) {
-          if (!_codeSent) {
-            _run(() async {
-              if (!await _auth.isNameAvailable(_name.text)) {
-                throw AuthException('Esse nome já está sendo usado. Escolha outro.');
-              }
-              await _auth.sendEmailCode('signup', _email.text);
-              if (mounted) {
-                setState(() {
-                  _codeSent = true;
-                  _info = 'Mandamos um código de 6 números para ${_email.text.trim()}. Confira também o spam.';
-                });
-              }
-            });
-            return;
-          }
-          _run(() => _auth.signUpWithCode(
-              name: _name.text, email: _email.text, password: _password.text, code: _code.text, keep: _keep));
-          return;
-        }
         _run(() => _auth.signUp(name: _name.text, email: _email.text, password: _password.text, keep: _keep));
       case _Mode.login:
         _run(() => _auth.signIn(email: _email.text, password: _password.text, keep: _keep));
@@ -423,7 +323,7 @@ class _AuthFormState extends State<_AuthForm> {
           const SizedBox(height: 4),
           Text(
             forgot
-                ? (_codes ? 'Digite o e-mail da sua conta para receber um código.' : 'Digite o e-mail da sua conta para receber o link.')
+                ? 'Digite o e-mail da sua conta para receber o link.'
                 : signup
                     ? 'A mesma conta vale no app e no site.'
                     : 'Entre para continuar na sua Pokédex.',
@@ -480,13 +380,6 @@ class _AuthFormState extends State<_AuthForm> {
                       autofill: [signup ? AutofillHints.newPassword : AutofillHints.password],
                       hint: signup ? 'Pelo menos 6 caracteres.' : null),
                 if (signup) _Field('Confirmar senha', _confirm, password: true, autofill: const [AutofillHints.newPassword]),
-                if (_codes && _codeSent && (signup || forgot))
-                  _CodeField(_code, onResend: _busy ? null : () => _sendCode(forgot ? 'reset' : 'signup')),
-                if (forgot && _codes && _codeSent) ...[
-                  _Field('Nova senha', _password,
-                      password: true, autofill: const [AutofillHints.newPassword], hint: 'Pelo menos 6 caracteres.'),
-                  _Field('Confirmar nova senha', _confirm, password: true, autofill: const [AutofillHints.newPassword]),
-                ],
               ],
             ),
           ),
@@ -505,14 +398,7 @@ class _AuthFormState extends State<_AuthForm> {
             ),
           const SizedBox(height: 8),
           _Message(error: _error, info: _info),
-          _MainButton(
-              forgot
-                  ? (_codes ? (_codeSent ? 'Trocar senha' : 'Enviar código') : 'Enviar link')
-                  : signup
-                      ? (_codes && !_codeSent ? 'Enviar código' : 'Criar conta')
-                      : 'Entrar',
-              busy: _busy,
-              onPressed: _submit),
+          _MainButton(forgot ? 'Enviar link' : signup ? 'Criar conta' : 'Entrar', busy: _busy, onPressed: _submit),
           if (forgot)
             Center(
               child: TextButton(onPressed: () => _switch(_Mode.login), child: const Text('← Voltar para o login')),
@@ -558,61 +444,59 @@ class _ChooseNameForm extends StatefulWidget {
 class _ChooseNameFormState extends State<_ChooseNameForm> {
   final _auth = AuthService.instance;
   final _name = TextEditingController();
-  final _code = TextEditingController();
   bool _busy = false;
   String? _error;
   String? _info;
-  bool _codes = false;
-  bool _codeSent = false;
+  // Conta Google nova: confirma pelo link no e-mail antes de escolher o nome.
+  bool? _needsLink; // null = conferindo
+  bool _linkSent = false;
 
   @override
   void initState() {
     super.initState();
-    _auth.emailCodesEnabled().then((on) => mounted ? setState(() => _codes = on) : null);
+    _check();
+  }
+
+  Future<void> _check() async {
+    final needs = _auth.usesGoogle && !await _auth.hasConfirmation('signup');
+    if (mounted) setState(() => _needsLink = needs);
+  }
+
+  Future<void> _linkAction() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      if (!_linkSent) {
+        await _auth.sendConfirmationLink('signup');
+        _linkSent = true;
+        _info = 'Mandamos um link para ${_auth.user?.email ?? ''}. Abra o link (confira também o spam) '
+            'e depois toque em "Já confirmei".';
+      } else {
+        await _check();
+        if (_needsLink == true) _error = 'Ainda não confirmado. Abra o link que mandamos para o seu e-mail.';
+      }
+    } catch (e) {
+      _error = e is AuthException ? e.message : 'Algo deu errado. Tente de novo.';
+    }
+    if (mounted) setState(() => _busy = false);
   }
 
   @override
   void dispose() {
     _name.dispose();
-    _code.dispose();
     super.dispose();
-  }
-
-  Future<void> _sendCode() async {
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
-    try {
-      await _auth.sendEmailCode('signup');
-      if (mounted) {
-        setState(() {
-          _codeSent = true;
-          _info = 'Mandamos um código de 6 números para ${_auth.user?.email ?? ''}. Confira também o spam.';
-        });
-      }
-    } catch (e) {
-      if (mounted) setState(() => _error = e is AuthException ? e.message : 'Algo deu errado. Tente de novo.');
-    }
-    if (mounted) setState(() => _busy = false);
   }
 
   Future<void> _submit() async {
     final nameError = AuthService.validateName(_name.text);
     if (nameError != null) return setState(() => _error = nameError);
-    // Conta Google nova com código ligado: primeiro confirma o e-mail.
-    if (_codes && !_codeSent) {
-      if (!await _auth.isNameAvailable(_name.text)) {
-        return setState(() => _error = 'Esse nome já está sendo usado. Escolha outro.');
-      }
-      return _sendCode();
-    }
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
-      if (_codes) await _auth.confirmSignupCode(_code.text);
       await _auth.chooseName(_name.text);
     } catch (e) {
       if (mounted) {
@@ -627,6 +511,33 @@ class _ChooseNameFormState extends State<_ChooseNameForm> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    if (_needsLink == true) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Confirme seu e-mail', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 4),
+          Text('Para criar sua conta com ${_auth.user?.email ?? ''}, vamos mandar um link de confirmação para esse e-mail.',
+              style: TextStyle(color: theme.hintColor)),
+          const SizedBox(height: 20),
+          _Message(error: _error, info: _info),
+          _MainButton(_linkSent ? 'Já confirmei' : 'Enviar link de confirmação', busy: _busy, onPressed: _linkAction),
+          if (_linkSent)
+            Center(
+              child: TextButton(
+                onPressed: _busy
+                    ? null
+                    : () {
+                        _linkSent = false;
+                        _linkAction();
+                      },
+                child: const Text('Reenviar link', style: TextStyle(color: _red, fontWeight: FontWeight.bold)),
+              ),
+            ),
+          Center(child: TextButton(onPressed: _auth.signOut, child: const Text('Usar outra conta'))),
+        ],
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -636,9 +547,8 @@ class _ChooseNameFormState extends State<_ChooseNameForm> {
             style: TextStyle(color: theme.hintColor)),
         const SizedBox(height: 20),
         _Field('Seu nome', _name, maxLength: AuthService.nameMax, hint: 'Cada nome só pode ser usado por uma pessoa.'),
-        if (_codes && _codeSent) _CodeField(_code, onResend: _busy ? null : _sendCode),
         _Message(error: _error, info: _info),
-        _MainButton(_codes && !_codeSent ? 'Enviar código' : 'Continuar', busy: _busy, onPressed: _submit),
+        _MainButton('Continuar', busy: _busy || _needsLink == null, onPressed: _submit),
         Center(child: TextButton(onPressed: _auth.signOut, child: const Text('Usar outra conta'))),
       ],
     );
