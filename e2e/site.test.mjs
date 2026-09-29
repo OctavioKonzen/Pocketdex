@@ -140,6 +140,10 @@ try {
   await page.keyboard.press('Escape')
   await page.getByText('Earthquake').first().waitFor({ timeout: 5000 })
   await page.getByRole('button', { name: 'Compartilhar' }).click()
+  // O texto do time é montado logo depois de abrir: espera ele aparecer.
+  await page
+    .waitForFunction(() => document.querySelector('textarea')?.value.includes('Garchomp @'), null, { timeout: 5000 })
+    .catch(() => {})
   const text = await page.locator('textarea').first().inputValue()
   assert.match(text, /Garchomp @ Choice Scarf/, `${step}: texto sem o item`)
   assert.match(text, /EVs: 252 Atk/, `${step}: texto sem os EVs`)
@@ -209,7 +213,8 @@ try {
   step = 'conta Google: confirmar pelo link'
   const gmail = `g${Date.now()}@gmail.com`
   const gName = `Goo${Date.now() % 100000}`
-  await fbAuth.signInWithCredential(nodeAuth, fbAuth.GoogleAuthProvider.credential(JSON.stringify({ sub: `g${Date.now()}`, email: gmail, email_verified: true })))
+  const gCred = await fbAuth.signInWithCredential(nodeAuth, fbAuth.GoogleAuthProvider.credential(JSON.stringify({ sub: `g${Date.now()}`, email: gmail, email_verified: true })))
+  const gUid = gCred.user.uid
   await fbAuth.sendSignInLinkToEmail(nodeAuth, gmail, { url: `${SITE}?confirmar=signup`, handleCodeInApp: true })
   let link = await lastLink(gmail)
   await page.goto(link)
@@ -239,6 +244,11 @@ try {
   step = 'conta Google: excluir pelo link'
   await go('configuracoes')
   step = 'conta Google: excluir pelo link'
+  // Outra aba com a conta aberta (como o app no celular): quando a conta some,
+  // ela não pode gravar os dados de volta.
+  const other = await context.newPage()
+  await other.goto(SITE)
+  await other.getByText(gName).first().waitFor({ timeout: 20000 })
   await page.getByRole('button', { name: 'Excluir', exact: true }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Enviar link de confirmação' }).click()
   await page.getByText('Mandamos um link').waitFor({ timeout: 15000 })
@@ -251,6 +261,10 @@ try {
   await expectHealthy()
   assert.ok(!(await emulatorDocs('usernames')).includes(gName.toLowerCase()), `${step}: o nome ficou reservado`)
   assert.deepEqual(await emulatorDocs('confirmations'), [], `${step}: sobrou a confirmação`)
+  await other.getByRole('button', { name: 'Entrar' }).first().waitFor({ timeout: 20000 })
+  await page.waitForTimeout(3000)
+  assert.ok(!(await emulatorDocs('users')).includes(gUid), `${step}: a outra aba gravou os dados de volta`)
+  await other.close()
 
   console.log(`TUDO CERTO: conta criada, ${ROUTES.length} páginas abertas, saiu, entrou, excluiu (banco limpo), criou de novo e trocou a senha; conta Google confirmou, criou senha e excluiu pelo link do e-mail.`)
 } catch (error) {

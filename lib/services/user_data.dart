@@ -7,7 +7,7 @@
 // criado no celular aparece no site na hora, e vice-versa.
 //
 // Formato:
-//   theme: 'dark' | 'light'
+//   theme: 'dark' | 'light' | 'system' (segue o aparelho)
 //   favorites: [id]                          ids de Pokémon (números)
 //   teams: [{id, name, color: '#RRGGBB' | null, pokemon: [id | null] x6}]
 //   training: [{id, pokemonId, name, sprite, box?, evs: {hp, attack, defense,

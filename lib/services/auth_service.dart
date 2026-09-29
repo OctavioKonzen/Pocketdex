@@ -65,14 +65,25 @@ class AuthService extends ChangeNotifier {
       if (_signingUp) return;
       if (u == null) return _set(AuthStatus.signedOut);
       final base = AccountUser(uid: u.uid, email: u.email, photo: u.photoURL);
-      try {
-        final profile = await _db.collection('users').doc(u.uid).get();
-        final name = profile.data()?['name'] as String?;
-        _set(name == null ? AuthStatus.needsName : AuthStatus.signedIn, name == null ? base : base.withName(name));
-      } catch (_) {
-        // Sem internet: entra com o nome salvo no aparelho, se houver.
-        final cached = prefs.getString('auth_name_${u.uid}');
-        _set(cached == null ? AuthStatus.needsName : AuthStatus.signedIn, cached == null ? base : base.withName(cached));
+      // Conta que já existe entra direto: se a leitura do perfil falhar (rede
+      // instável), tenta de novo em vez de achar que é uma conta nova.
+      for (var attempt = 0; _auth.currentUser?.uid == u.uid; attempt++) {
+        try {
+          final profile = await _db.collection('users').doc(u.uid).get();
+          final name = profile.data()?['name'] as String?;
+          _set(name == null ? AuthStatus.needsName : AuthStatus.signedIn, name == null ? base : base.withName(name));
+          break;
+        } catch (_) {
+          // Sem internet: entra com o nome salvo no aparelho (ou no login).
+          final display = u.displayName;
+          final known = prefs.getString('auth_name_${u.uid}') ??
+              (display != null && validateName(display) == null ? display : null);
+          if (known != null) {
+            _set(AuthStatus.signedIn, base.withName(known));
+            break;
+          }
+          await Future<void>.delayed(Duration(seconds: attempt < 4 ? attempt + 1 : 5));
+        }
       }
       if (user?.name != null) prefs.setString('auth_name_${u.uid}', user!.name!);
     });
@@ -215,7 +226,8 @@ class AuthService extends ChangeNotifier {
 
   // ---------------------------------------------------------------- confirmações
   //   Conta com e-mail e senha: trocar a senha e excluir pedem a senha atual.
-  //   Conta Google: criar a conta, criar/trocar a senha e excluir pedem que a
+  //   Conta Google: entra direto (o Google já confirmou o e-mail); criar/trocar
+  //   a senha e excluir pedem que a
   //   pessoa abra um link mandado para o e-mail. O link abre o site, que
   //   confirma e grava em confirmations/{uid} (igual ao site).
 
@@ -261,15 +273,20 @@ class AuthService extends ChangeNotifier {
       return true;
     } on FirebaseAuthException catch (e) {
       if (e.code == 'user-not-found' || e.code == 'user-disabled' || e.code == 'user-token-expired') {
-        final prefs = await SharedPreferences.getInstance();
-        for (final key in prefs.getKeys().where((k) => k.startsWith('auth_'))) {
-          await prefs.remove(key);
-        }
-        await signOut().catchError((_) {});
+        await forgetAccount();
         return false;
       }
       return true;
     }
+  }
+
+  /// A conta foi excluída em outro lugar: sai dela sem deixar nada no aparelho.
+  Future<void> forgetAccount() async {
+    final prefs = await SharedPreferences.getInstance();
+    for (final key in prefs.getKeys().where((k) => k.startsWith('auth_') && k != _keepKey)) {
+      await prefs.remove(key);
+    }
+    await signOut().catchError((_) {});
   }
 
   // ---------------------------------------------------------------- excluir conta

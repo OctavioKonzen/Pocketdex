@@ -76,6 +76,16 @@ class AccountSync {
     _remote = _db.collection('users').doc(uid).snapshots().listen((snap) {
       // Ignora o "eco" das gravações feitas por este aparelho.
       if (snap.metadata.hasPendingWrites || _uid != uid) return;
+      if (!snap.exists) {
+        // Sem o documento só por não estar no cache: espera o servidor.
+        if (snap.metadata.isFromCache) return;
+        // A conta foi excluída (no site, pelo link do e-mail, ou em outro
+        // aparelho): não grava nada de volta — sai dela e limpa o aparelho.
+        pause();
+        _data.clearAll();
+        _auth.forgetAccount();
+        return;
+      }
       final remote = snap.data()?['data'];
       if (remote is Map) {
         // O que foi mudado aqui e ainda não foi gravado tem preferência.

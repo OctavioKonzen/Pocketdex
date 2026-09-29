@@ -5,103 +5,183 @@ import { getLatestRelease, RELEASES_URL } from '../lib/appRelease'
 import { changePassword, deleteAccount, errorMessage, sendConfirmationLink, usesGoogle, useAuth } from '../lib/auth'
 import AccountAvatar from '../components/AccountAvatar'
 import LanguagePicker from '../components/LanguagePicker'
-import { achievementsOf } from '../lib/achievements'
 import { installSite, useCanInstall } from '../lib/install'
 import { dayKey, weekKey } from '../lib/league'
 import { pixCode, pixEnabled, PIX } from '../lib/pix'
 import { useStore } from '../lib/store'
+import { TEXT_SIZES, usePrefs } from '../lib/prefs'
+import { useNavigate } from 'react-router-dom'
 import { logout, pauseSync, resumeSync } from '../lib/sync'
 
 export default function SettingsPage() {
   const theme = useStore((s) => s.theme)
   const setTheme = useStore((s) => s.setTheme)
   const clearCollections = useStore((s) => s.clearCollections)
-  const [confirm, setConfirm] = useState(null)
+  const textSize = usePrefs((s) => s.textSize)
+  const setTextSize = usePrefs((s) => s.setTextSize)
+  const pokeballAnimation = usePrefs((s) => s.pokeballAnimation)
+  const setPokeballAnimation = usePrefs((s) => s.setPokeballAnimation)
+  const [confirm, setConfirm] = useState(false)
   const [message, setMessage] = useState('')
   const user = useAuth((s) => (s.status === 'signedIn' ? s.user : null))
-
-  const actions = {
-    all: { title: 'Limpar dados', text: 'Isso apaga seus favoritos, times e treinos. Continuar?', run: clearCollections, done: 'Preferências de usuário limpas!' },
-  }
+  const navigate = useNavigate()
 
   return (
     <div className="mx-auto max-w-2xl">
       <PageHeader title="Configurações" />
-      <div className="space-y-3">
+      <div className="space-y-8">
         {user && (
-          <div className="flex items-center justify-between gap-4 rounded-2xl bg-card p-5 shadow">
-            <AccountAvatar size={48} />
-            <div className="min-w-0 flex-1">
-              <div className="font-bold">Conta</div>
-              <div className="truncate text-sm text-muted">
-                {user.name} · {user.email}
-              </div>
-            </div>
-            <Button color="#e53935" onClick={logout}>
-              Sair
-            </Button>
-          </div>
+          <Section title="Conta">
+            <Row
+              leading={<AccountAvatar size={48} />}
+              title={user.name}
+              text={user.email}
+            >
+              <Button color="#e53935" onClick={logout}>
+                Sair
+              </Button>
+            </Row>
+            <Row title="Conquistas" text="Medalhas do jogo, da Pokédex e dos times.">
+              <Button color="#F59E0B" onClick={() => navigate('/conquistas')}>
+                Ver
+              </Button>
+            </Row>
+            <ChangePasswordCard />
+          </Section>
         )}
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-card p-5 shadow">
-          <div>
-            <div className="font-bold">Idioma</div>
-            <div className="text-sm text-muted">Nomes dos Pokémon e descrições também mudam.</div>
-          </div>
-          <LanguagePicker />
-        </div>
-        <div className="flex items-center justify-between rounded-2xl bg-card p-5 shadow">
-          <div>
-            <div className="font-bold">Modo Escuro</div>
-            <div className="text-sm text-muted">Ative para uma experiência com cores escuras.</div>
-          </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={theme === 'dark'}
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className={`relative h-8 w-14 cursor-pointer rounded-full transition-colors ${theme === 'dark' ? 'bg-sky-500' : 'bg-gray-400'}`}
+
+        <Section title="Aparência">
+          <Row title="Tema" text="Automático segue o tema do aparelho.">
+            <Choice
+              value={theme}
+              onChange={setTheme}
+              options={[
+                { key: 'light', label: 'Claro' },
+                { key: 'dark', label: 'Escuro' },
+                { key: 'system', label: 'Automático' },
+              ]}
+            />
+          </Row>
+          <Row title="Idioma" text="Nomes dos Pokémon e descrições também mudam.">
+            <LanguagePicker />
+          </Row>
+          <Row title="Tamanho do texto" text="Aumenta letras e botões em todo o site.">
+            <Choice value={textSize} onChange={setTextSize} options={TEXT_SIZES} />
+          </Row>
+        </Section>
+
+        <Section title="Pokédex">
+          <Row title="Animação da Pokébola" text="O Pokémon sai da Pokébola ao abrir os detalhes.">
+            <Switch on={pokeballAnimation} onChange={setPokeballAnimation} label="Animação da Pokébola" />
+          </Row>
+        </Section>
+
+        <Section title="Dados">
+          <Row
+            title="Dados salvos"
+            text={user ? 'Favoritos, times e treinos ficam salvos na sua conta (app e site).' : 'Favoritos, times e treinos ficam salvos neste navegador.'}
           >
-            <m.span layout className="absolute top-1 h-6 w-6 rounded-full bg-white shadow" style={{ left: theme === 'dark' ? 28 : 4 }} />
-          </button>
-        </div>
-        <div className="flex items-center justify-between rounded-2xl bg-card p-5 shadow">
-          <div>
-            <div className="font-bold">Dados salvos</div>
-            <div className="text-sm text-muted">{user ? 'Favoritos, times e treinos ficam salvos na sua conta.' : 'Favoritos, times e treinos ficam salvos neste navegador.'}</div>
-          </div>
-          <Button color="#e53935" onClick={() => setConfirm('all')}>
-            Limpar
-          </Button>
-        </div>
-        {message && <p className="text-center text-green-400">{message}</p>}
-        {pixEnabled() && <SupportCard />}
-        <Achievements />
-        <AndroidAppCard />
-        <InstallSiteCard />
-        {user && <ChangePasswordCard />}
-        {user && <DeleteAccountCard />}
-        <p className="pt-6 text-center text-sm text-muted">PocketDex · Site feito em JavaScript (React) com dados gerados em Python.</p>
+            <Button color="#e53935" onClick={() => setConfirm(true)}>
+              Limpar
+            </Button>
+          </Row>
+          {message && <p className="text-center text-green-400">{message}</p>}
+        </Section>
+
+        <Section title="App e site">
+          <AndroidAppCard />
+          <InstallSiteCard />
+          {pixEnabled() && <SupportCard />}
+        </Section>
+
+        {user && (
+          <Section title="Zona de perigo">
+            <DeleteAccountCard />
+          </Section>
+        )}
+        <p className="text-center text-sm text-muted">PocketDex · Site feito em JavaScript (React) com dados gerados em Python.</p>
       </div>
 
-      <Modal open={Boolean(confirm)} onClose={() => setConfirm(null)} title="Confirmar Ação">
-        <p>{confirm && actions[confirm].text}</p>
+      <Modal open={confirm} onClose={() => setConfirm(false)} title="Limpar dados">
+        <p>Isso apaga seus favoritos, times e treinos. Continuar?</p>
         <div className="mt-5 flex justify-end gap-3">
-          <button type="button" onClick={() => setConfirm(null)} className="cursor-pointer px-4 text-muted">
+          <button type="button" onClick={() => setConfirm(false)} className="cursor-pointer px-4 text-muted">
             Cancelar
           </button>
           <Button
             color="#e53935"
             onClick={() => {
-              actions[confirm].run()
-              setMessage(actions[confirm].done)
-              setConfirm(null)
+              clearCollections()
+              setMessage('Favoritos, times e treinos apagados.')
+              setConfirm(false)
             }}
           >
-            {confirm && actions[confirm].title}
+            Limpar
           </Button>
         </div>
       </Modal>
     </div>
+  )
+}
+
+/** Grupo de configurações com título. */
+function Section({ title, children }) {
+  return (
+    <section>
+      <h2 className="mb-3 px-1 text-sm font-bold tracking-wider text-muted uppercase">{title}</h2>
+      <div className="space-y-3">{children}</div>
+    </section>
+  )
+}
+
+/** Uma configuração: título, explicação e o controle à direita. */
+function Row({ leading, title, text, children }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-card p-5 shadow">
+      {/* Sem espaço (celular), o controle desce para baixo do texto. */}
+      <div className="flex min-w-0 flex-[1_1_16rem] items-center gap-4">
+        {leading}
+        <div className="min-w-0">
+          <div className="font-bold break-words">{title}</div>
+          {text && <div className="text-sm break-words text-muted">{text}</div>}
+        </div>
+      </div>
+      {children}
+    </div>
+  )
+}
+
+/** Botões lado a lado para escolher uma opção. */
+function Choice({ value, onChange, options }) {
+  return (
+    <div className="flex rounded-full bg-surface p-1">
+      {options.map((o) => (
+        <button
+          key={o.key}
+          type="button"
+          aria-pressed={value === o.key}
+          onClick={() => onChange(o.key)}
+          className={`cursor-pointer rounded-full px-3.5 py-1.5 text-sm font-semibold transition ${value === o.key ? 'bg-sky-500 text-white shadow' : 'text-muted hover:text-text'}`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function Switch({ on, onChange, label }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label={label}
+      onClick={() => onChange(!on)}
+      className={`relative h-8 w-14 shrink-0 cursor-pointer rounded-full transition-colors ${on ? 'bg-sky-500' : 'bg-gray-400'}`}
+    >
+      <m.span layout className="absolute top-1 h-6 w-6 rounded-full bg-white shadow" style={{ left: on ? 28 : 4 }} />
+    </button>
   )
 }
 
@@ -214,44 +294,6 @@ function SupportCard() {
             </Button>
           </div>
         </div>
-      </div>
-    </div>
-  )
-}
-
-/** Medalhas conquistadas no jogo, na Pokédex e nos times. */
-function Achievements() {
-  const stats = useStore((s) => s.stats)
-  const rankedRecord = useStore((s) => s.rankedRecord)
-  const favorites = useStore((s) => s.favorites)
-  const teams = useStore((s) => s.teams)
-  const list = achievementsOf({ stats, rankedRecord, favorites, teams })
-  const unlocked = list.filter((a) => a.unlocked).length
-  return (
-    <div className="rounded-2xl bg-card p-5 shadow">
-      <div className="mb-4 flex items-center justify-between gap-4">
-        <div>
-          <div className="font-bold">Conquistas</div>
-          <div className="text-sm text-muted">Jogue, monte times e favorite Pokémon para liberar medalhas.</div>
-        </div>
-        <span className="rounded-full bg-yellow-400 px-3 py-1 text-sm font-black text-[#3e2723]">
-          {unlocked}/{list.length}
-        </span>
-      </div>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        {list.map((a) => (
-          <div
-            key={a.id}
-            title={a.text}
-            className={`flex items-center gap-3 rounded-xl p-3 ${a.unlocked ? 'bg-yellow-400/15 ring-1 ring-yellow-400/60' : 'bg-surface opacity-50 grayscale'}`}
-          >
-            <span className="text-2xl">{a.icon}</span>
-            <div className="min-w-0">
-              <div className="truncate text-sm font-bold">{a.title}</div>
-              <div className="text-xs text-muted">{a.text}</div>
-            </div>
-          </div>
-        ))}
       </div>
     </div>
   )

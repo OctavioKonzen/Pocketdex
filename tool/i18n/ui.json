@@ -3382,5 +3382,105 @@
   "en": "Signed in as {0}. Choose your name on PocketDex.",
   "fr": "Connecté en tant que {0}. Choisissez votre nom sur PocketDex.",
   "es": "Has entrado como {0}. Elige tu nombre en PocketDex."
+ },
+ "Dados": {
+  "en": "Data",
+  "fr": "Données",
+  "es": "Datos"
+ },
+ "Claro": {
+  "en": "Light",
+  "fr": "Clair",
+  "es": "Claro"
+ },
+ "Escuro": {
+  "en": "Dark",
+  "fr": "Sombre",
+  "es": "Oscuro"
+ },
+ "Automático": {
+  "en": "Automatic",
+  "fr": "Automatique",
+  "es": "Automático"
+ },
+ "Tema": {
+  "en": "Theme",
+  "fr": "Thème",
+  "es": "Tema"
+ },
+ "Grande": {
+  "en": "Large",
+  "fr": "Grand",
+  "es": "Grande"
+ },
+ "Maior": {
+  "en": "Larger",
+  "fr": "Plus grand",
+  "es": "Más grande"
+ },
+ "Ver": {
+  "en": "View",
+  "fr": "Voir",
+  "es": "Ver"
+ },
+ "Aparência": {
+  "en": "Appearance",
+  "fr": "Apparence",
+  "es": "Apariencia"
+ },
+ "App e site": {
+  "en": "App and website",
+  "fr": "Application et site",
+  "es": "App y sitio"
+ },
+ "Notificações": {
+  "en": "Notifications",
+  "fr": "Notifications",
+  "es": "Notificaciones"
+ },
+ "Zona de perigo": {
+  "en": "Danger zone",
+  "fr": "Zone de danger",
+  "es": "Zona de peligro"
+ },
+ "Tamanho do texto": {
+  "en": "Text size",
+  "fr": "Taille du texte",
+  "es": "Tamaño del texto"
+ },
+ "Animação da Pokébola": {
+  "en": "Poké Ball animation",
+  "fr": "Animation de la Poké Ball",
+  "es": "Animación de la Poké Ball"
+ },
+ "O Pokémon sai da Pokébola ao abrir os detalhes.": {
+  "en": "The Pokémon comes out of the Poké Ball when you open its details.",
+  "fr": "Le Pokémon sort de la Poké Ball quand vous ouvrez ses détails.",
+  "es": "El Pokémon sale de la Poké Ball al abrir sus detalles."
+ },
+ "Aumenta as letras em todo o app.": {
+  "en": "Makes the text bigger across the app.",
+  "fr": "Agrandit le texte dans toute l'application.",
+  "es": "Agranda el texto en toda la app."
+ },
+ "Aumenta letras e botões em todo o site.": {
+  "en": "Makes text and buttons bigger across the website.",
+  "fr": "Agrandit le texte et les boutons sur tout le site.",
+  "es": "Agranda el texto y los botones en todo el sitio."
+ },
+ "Automático segue o tema do aparelho.": {
+  "en": "Automatic follows your device's theme.",
+  "fr": "Automatique suit le thème de l'appareil.",
+  "es": "Automático sigue el tema del dispositivo."
+ },
+ "Automático segue o tema do celular.": {
+  "en": "Automatic follows your phone's theme.",
+  "fr": "Automatique suit le thème du téléphone.",
+  "es": "Automático sigue el tema del teléfono."
+ },
+ "Medalhas do jogo, da Pokédex e dos times.": {
+  "en": "Medals from the game, the Pokédex and teams.",
+  "fr": "Médailles du jeu, du Pokédex et des équipes.",
+  "es": "Medallas del juego, la Pokédex y los equipos."
  }
 }

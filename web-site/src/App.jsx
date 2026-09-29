@@ -4,6 +4,7 @@ import { HashRouter, NavLink, Route, Routes, useLocation, useNavigate } from 're
 import { imageUrl } from './lib/data'
 import { getDownloadUrl, RELEASES_URL } from './lib/appRelease'
 import { useStore } from './lib/store'
+import { TEXT_SIZES, usePrefs, useResolvedTheme } from './lib/prefs'
 import { confirmationFromUrl, startAuth, useAuth } from './lib/auth'
 import { logout, startSync } from './lib/sync'
 import { Icon, Loader, SpinningPokeball } from './components/ui'
@@ -19,6 +20,7 @@ const GamePage = lazyPage(() => import('./pages/GamePage'))
 const EncyclopediaPage = lazyPage(() => import('./pages/EncyclopediaPage'))
 const TrainingPage = lazyPage(() => import('./pages/TrainingPage'))
 const SettingsPage = lazyPage(() => import('./pages/SettingsPage'))
+const AchievementsPage = lazyPage(() => import('./pages/AchievementsPage'))
 const LoginPage = lazyPage(() => import('./pages/LoginPage'))
 const PokemonPicker = lazyPage(() => import('./components/PokemonPicker'))
 const EmailLinkPage = lazyPage(() => import('./components/EmailLinkPage'))
@@ -68,6 +70,7 @@ function TopBar() {
   const apkUrl = useDownloadUrl()
   const navigate = useNavigate()
   const { pathname } = useLocation()
+  const signedIn = useAuth((s) => s.status === 'signedIn')
 
   const onSearch = (value) => {
     setSearch(value)
@@ -106,9 +109,12 @@ function TopBar() {
         </m.a>
         <ThemeToggle />
         <UserMenu />
-        <m.button type="button" whileHover={{ scale: 1.15, rotate: 45 }} onClick={() => navigate('/configuracoes')} aria-label="Configurações" title="Configurações" className="shrink-0 cursor-pointer text-text">
-          <Icon name="settings" size={26} />
-        </m.button>
+        {/* Sem conta: as Configurações ficam na engrenagem (com conta, no menu do avatar). */}
+        {!signedIn && (
+          <m.button type="button" whileHover={{ scale: 1.15, rotate: 45 }} onClick={() => navigate('/configuracoes')} aria-label="Configurações" title="Configurações" className="shrink-0 cursor-pointer text-text">
+            <Icon name="settings" size={26} />
+          </m.button>
+        )}
       </div>
       {/* Busca em telas menores */}
       <div className="px-4 pb-3 lg:hidden">
@@ -132,7 +138,7 @@ function useDownloadUrl() {
 
 /** Botão de tema claro/escuro no menu (sol ↔ lua). */
 function ThemeToggle() {
-  const theme = useStore((s) => s.theme)
+  const theme = useResolvedTheme(useStore((s) => s.theme))
   const setTheme = useStore((s) => s.setTheme)
   const dark = theme === 'dark'
   return (
@@ -161,13 +167,32 @@ function ThemeToggle() {
   )
 }
 
-/** Pessoa logada: inicial do nome e menu com "Sair". */
+/** Uma linha do menu do avatar. */
+function MenuItem({ icon, danger = false, onClick, children }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-left font-semibold transition hover:bg-surface ${danger ? 'text-red-500' : 'text-text'}`}
+    >
+      <Icon name={icon} size={20} className={danger ? '' : 'text-muted'} />
+      {children}
+    </button>
+  )
+}
+
+/** Pessoa logada: foto de perfil; o menu tem a foto, conquistas, configurações e sair. */
 function UserMenu() {
   const user = useAuth((s) => (s.status === 'signedIn' ? s.user : null))
   const avatar = useStore((s) => s.avatar)
   const setAvatar = useStore((s) => s.setAvatar)
   const [open, setOpen] = useState(false)
   const [picking, setPicking] = useState(false)
+  const navigate = useNavigate()
+  const go = (path) => {
+    setOpen(false)
+    navigate(path)
+  }
   useEffect(() => {
     if (!open) return
     const close = () => setOpen(false)
@@ -209,26 +234,30 @@ function UserMenu() {
                 <div className="truncate text-sm text-muted">{user.email}</div>
               </div>
             </div>
-            <button
-              type="button"
+            <MenuItem
+              icon="pokeball"
               onClick={() => {
                 setOpen(false)
                 setPicking(true)
               }}
-              className="mb-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-sky-600 py-2.5 font-bold text-white transition hover:scale-[1.03]"
             >
-              <Icon name="pokeball" size={20} />
               Trocar foto de perfil
-            </button>
+            </MenuItem>
             {avatar != null && (
-              <button type="button" onClick={() => setAvatar(null)} className="mb-2 w-full cursor-pointer text-sm text-muted hover:text-text">
+              <MenuItem icon="close" onClick={() => setAvatar(null)}>
                 Tirar a foto
-              </button>
+              </MenuItem>
             )}
-            <button type="button" onClick={logout} className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-red-600 py-2.5 font-bold text-white transition hover:scale-[1.03]">
-              <Icon name="logout" size={20} />
+            <MenuItem icon="trophy" onClick={() => go('/conquistas')}>
+              Conquistas
+            </MenuItem>
+            <MenuItem icon="settings" onClick={() => go('/configuracoes')}>
+              Configurações
+            </MenuItem>
+            <div className="my-2 h-px bg-line" />
+            <MenuItem icon="logout" danger onClick={logout}>
               Sair da conta
-            </button>
+            </MenuItem>
           </m.div>
         )}
       </AnimatePresence>
@@ -308,10 +337,16 @@ function ScrollToTop() {
 
 export default function App() {
   const [search, setSearch] = useState('')
-  const theme = useStore((s) => s.theme)
+  const theme = useResolvedTheme(useStore((s) => s.theme))
+  const textSize = usePrefs((s) => s.textSize)
   useEffect(() => {
     document.documentElement.dataset.theme = theme
   }, [theme])
+  // Tamanho do texto (Configurações): tudo no site é medido em rem.
+  useEffect(() => {
+    const scale = TEXT_SIZES.find((t) => t.key === textSize)?.scale ?? 1
+    document.documentElement.style.fontSize = scale === 1 ? '' : `${scale * 100}%`
+  }, [textSize])
 
   return (
     <AuthGate>
@@ -335,6 +370,7 @@ export default function App() {
                   <Route path="/treino" element={<TrainingPage />} />
                   <Route path="/treino/:tool" element={<TrainingPage />} />
                   <Route path="/configuracoes" element={<SettingsPage />} />
+                  <Route path="/conquistas" element={<AchievementsPage />} />
                   <Route path="*" element={<PokedexPage />} />
                 </Routes>
               </Suspense>

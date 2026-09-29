@@ -16,6 +16,8 @@ import 'settings_screen.dart';
 import 'teams_screen.dart';
 import 'training_screen.dart';
 import 'package:pocket_dex/i18n/text.dart';
+import 'package:pocket_dex/services/auth_service.dart';
+import 'package:pocket_dex/widgets/account_avatar.dart';
 
 class _WebSection {
   final String label;
@@ -205,17 +207,22 @@ class _TopBar extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              Tooltip(
-                message: tr('Configurações'),
-                child: HoverScale(
-                  scale: 1.15,
-                  child: IconButton(
-                    onPressed: onSettings,
-                    icon: Icon(Icons.settings_rounded,
-                        color: theme.colorScheme.onSurface),
+              // Com conta: o avatar abre o menu (foto, conquistas,
+              // configurações e sair). Sem conta: a engrenagem.
+              if (AuthService.instance.status == AuthStatus.signedIn)
+                AccountAvatar(size: 40, onTap: () => ProfileSheet.show(context))
+              else
+                Tooltip(
+                  message: tr('Configurações'),
+                  child: HoverScale(
+                    scale: 1.15,
+                    child: IconButton(
+                      onPressed: onSettings,
+                      icon: Icon(Icons.settings_rounded,
+                          color: theme.colorScheme.onSurface),
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
         ),

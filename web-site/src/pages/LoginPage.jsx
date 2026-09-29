@@ -11,9 +11,6 @@ import { getDownloadUrl, RELEASES_URL } from '../lib/appRelease'
 import {
   chooseName,
   errorMessage,
-  hasConfirmation,
-  sendConfirmationLink,
-  usesGoogle,
   NAME_MAX,
   resetPassword,
   signIn,
@@ -287,49 +284,15 @@ function AuthForm() {
   )
 }
 
-/** Primeiro login com Google: falta escolher o nome. */
+/** Primeiro login com Google: só falta escolher o nome (o Google já confirmou o e-mail). */
 function ChooseNameForm() {
   const user = useAuth((s) => s.user)
   const [name, setName] = useState(user?.name ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
-  // Conta Google nova: confirma pelo link no e-mail antes de escolher o nome.
-  const [needsLink, setNeedsLink] = useState(null) // null = conferindo
-  const [linkSent, setLinkSent] = useState(false)
-  const [info, setInfo] = useState('')
-  const check = async () => {
-    const google = await usesGoogle()
-    setNeedsLink(google && !(await hasConfirmation('signup').catch(() => false)))
-  }
-  useEffect(() => {
-    check()
-  }, [])
-
-  const sendLink = async () => {
-    setBusy(true)
-    setError('')
-    try {
-      await sendConfirmationLink('signup')
-      setLinkSent(true)
-      setInfo(`Mandamos um link para ${user?.email}. Abra o link (confira também o spam) e depois toque em "Já confirmei".`)
-    } catch (err) {
-      setError(errorMessage(err))
-    }
-    setBusy(false)
-  }
-
-  const recheck = async () => {
-    setBusy(true)
-    setError('')
-    await check()
-    if (!(await hasConfirmation('signup').catch(() => false))) setError('Ainda não confirmado. Abra o link que mandamos para o seu e-mail.')
-    setBusy(false)
-  }
-
   const onSubmit = async (e) => {
     e.preventDefault()
-    if (needsLink) return linkSent ? recheck() : sendLink()
     const nameError = validateName(name)
     if (nameError) return setError(nameError)
     setBusy(true)
@@ -342,30 +305,6 @@ function ChooseNameForm() {
     }
   }
 
-  if (needsLink) {
-    return (
-      <div className="w-full max-w-md">
-        <img src={imageUrl('poke_logo.png')} alt="PocketDex" className="mx-auto mb-8 h-24 lg:hidden" />
-        <h1 className="text-3xl font-black">Confirme seu e-mail</h1>
-        <p className="mt-1 mb-6 text-muted">
-          Para criar sua conta com <b className="text-text">{user?.email}</b>, vamos mandar um link de confirmação para esse e-mail.
-        </p>
-        <form onSubmit={onSubmit} className="space-y-4" noValidate>
-          <Message error={error} info={info} />
-          <SubmitButton busy={busy}>{linkSent ? 'Já confirmei' : 'Enviar link de confirmação'}</SubmitButton>
-        </form>
-        {linkSent && (
-          <button type="button" onClick={sendLink} disabled={busy} className="mt-4 w-full cursor-pointer text-center text-sm font-semibold text-red-500 hover:underline">
-            Reenviar link
-          </button>
-        )}
-        <button type="button" onClick={() => signOut()} className="mt-3 w-full cursor-pointer text-center font-semibold text-muted hover:text-text">
-          Usar outra conta
-        </button>
-      </div>
-    )
-  }
-
   return (
     <div className="w-full max-w-md">
       <img src={imageUrl('poke_logo.png')} alt="PocketDex" className="mx-auto mb-8 h-24 lg:hidden" />
@@ -375,8 +314,8 @@ function ChooseNameForm() {
       </p>
       <form onSubmit={onSubmit} className="space-y-4" noValidate>
         <Field label="Seu nome" value={name} onChange={setName} autoComplete="nickname" autoFocus maxLength={NAME_MAX} hint="Cada nome só pode ser usado por uma pessoa." />
-        <Message error={error} info={info} />
-        <SubmitButton busy={busy || needsLink === null}>Continuar</SubmitButton>
+        <Message error={error} />
+        <SubmitButton busy={busy}>Continuar</SubmitButton>
       </form>
       <button type="button" onClick={() => signOut()} className="mt-5 w-full cursor-pointer text-center font-semibold text-muted hover:text-text">
         Usar outra conta

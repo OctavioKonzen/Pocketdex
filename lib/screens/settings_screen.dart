@@ -1,7 +1,7 @@
 // lib/screens/settings_screen.dart
 //
-// Configurações no estilo do site: conta, tema, dados salvos, conquistas,
-// versão do app (com "Procurar atualização"), excluir conta e sobre.
+// Configurações em seções, como no site: conta, aparência (tema, idioma e
+// tamanho do texto), Pokédex, notificações, dados, sobre e zona de perigo.
 
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
@@ -11,6 +11,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../providers/theme_provider.dart';
 import '../services/account_sync.dart';
 import '../services/achievements.dart';
+import '../services/app_settings.dart';
 import '../services/auth_service.dart';
 import '../services/daily_reminder.dart';
 import '../services/league.dart';
@@ -50,25 +51,32 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = SiteColors.of(context);
-    final dark = context.watch<ThemeProvider>().themeMode == ThemeMode.dark;
+    final themeProvider = context.watch<ThemeProvider>();
+    final settings = context.watch<AppSettings>();
     final auth = context.watch<AuthService>();
     final user = auth.status == AuthStatus.signedIn ? auth.user : null;
 
-    Widget row({required String title, required String subtitle, Widget? trailing, Widget? leading}) => SiteCard(
-          child: Row(
+    Widget row({required String title, required String subtitle, Widget? trailing, Widget? leading, Widget? below}) => SiteCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (leading != null) ...[leading, const SizedBox(width: 14)],
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: TextStyle(color: c.text, fontWeight: FontWeight.bold, fontSize: 16)),
-                    const SizedBox(height: 2),
-                    Text(subtitle, style: TextStyle(color: c.muted, fontSize: 13)),
-                  ],
-                ),
+              Row(
+                children: [
+                  if (leading != null) ...[leading, const SizedBox(width: 14)],
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(title, style: TextStyle(color: c.text, fontWeight: FontWeight.bold, fontSize: 16)),
+                        const SizedBox(height: 2),
+                        Text(subtitle, style: TextStyle(color: c.muted, fontSize: 13)),
+                      ],
+                    ),
+                  ),
+                  if (trailing != null) ...[const SizedBox(width: 12), trailing],
+                ],
               ),
-              if (trailing != null) ...[const SizedBox(width: 12), trailing],
+              if (below != null) ...[const SizedBox(height: 12), below],
             ],
           ),
         );
@@ -83,99 +91,117 @@ class SettingsScreen extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (user != null) ...[
-                    row(
-                      leading: AccountAvatar(size: 48, onTap: () => ProfileSheet.show(context)),
-                      title: user.name ?? 'Conta',
-                      subtitle: user.email ?? '',
-                      trailing: PillButton(label: 'Sair', color: const Color(0xFFE53935), onPressed: AccountSync.instance.logout),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  SiteCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Idioma', style: TextStyle(color: c.text, fontWeight: FontWeight.bold, fontSize: 16)),
-                        const SizedBox(height: 10),
-                        const Align(alignment: Alignment.centerLeft, child: LanguagePicker()),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  row(
-                    title: 'Modo Escuro',
-                    subtitle: 'Ative para uma experiência com cores escuras.',
-                    trailing: Switch(
-                      value: dark,
-                      activeTrackColor: const Color(0xFF0EA5E9),
-                      onChanged: (v) => context.read<ThemeProvider>().toggleTheme(v),
-                    ),
-                  ),
-                  if (DailyReminder.supported) ...[
-                    const SizedBox(height: 12),
-                    _ReminderSwitch(row: row),
-                  ],
-                  const SizedBox(height: 12),
-                  row(
-                    title: 'Dados salvos',
-                    subtitle: user != null
-                        ? 'Favoritos, times e treinos ficam salvos na sua conta (app e site).'
-                        : 'Favoritos, times e treinos ficam salvos neste aparelho.',
-                    trailing: PillButton(label: 'Limpar', color: const Color(0xFFE53935), onPressed: () => _confirmClear(context)),
-                  ),
-                  if (Pix.enabled) ...[
-                    const SizedBox(height: 12),
-                    const _SupportCard(),
-                  ],
-                  const SizedBox(height: 12),
-                  const _AchievementsCard(),
-                  if (UpdateService.supported) ...[
-                    const SizedBox(height: 12),
-                    FutureBuilder<String>(
-                      future: UpdateService.currentVersion(),
-                      builder: (context, snapshot) => row(
-                        leading: Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(color: const Color(0xFF3DDC84), borderRadius: BorderRadius.circular(14)),
-                          child: const Icon(Icons.android, color: Color(0xFF073042)),
-                        ),
-                        title: 'PocketDex ${snapshot.data ?? ''}',
-                        subtitle: 'As versões novas são avisadas ao abrir o app.',
+                  if (user != null)
+                    _Section('Conta', [
+                      row(
+                        leading: AccountAvatar(size: 48, onTap: () => ProfileSheet.show(context)),
+                        title: user.name ?? 'Conta',
+                        subtitle: user.email ?? '',
+                        trailing: PillButton(label: 'Sair', color: const Color(0xFFE53935), onPressed: AccountSync.instance.logout),
+                      ),
+                      row(
+                        title: 'Conquistas',
+                        subtitle: 'Medalhas do jogo, da Pokédex e dos times.',
                         trailing: PillButton(
-                          label: 'Procurar',
-                          color: const Color(0xFF3DDC84),
-                          foreground: const Color(0xFF073042),
-                          onPressed: () => UpdateService.checkNow(context),
+                          label: 'Ver',
+                          color: const Color(0xFFF59E0B),
+                          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AchievementsScreen())),
                         ),
                       ),
-                    ),
-                  ],
-                  if (user != null) ...[
-                    const SizedBox(height: 12),
+                      row(
+                        title: 'Trocar senha',
+                        subtitle: 'Com a senha atual, ou por um link no e-mail se você entra com Google.',
+                        trailing: PillButton(
+                          label: 'Trocar',
+                          color: const Color(0xFF546E7A),
+                          onPressed: () => showDialog(context: context, builder: (_) => const _ChangePasswordDialog()),
+                        ),
+                      ),
+                    ]),
+                  _Section('Aparência', [
                     row(
-                      title: 'Trocar senha',
-                      subtitle: 'Com a senha atual, ou por um link no e-mail se você entra com Google.',
-                      trailing: PillButton(
-                        label: 'Trocar',
-                        color: const Color(0xFF546E7A),
-                        onPressed: () => showDialog(context: context, builder: (_) => const _ChangePasswordDialog()),
+                      title: 'Tema',
+                      subtitle: 'Automático segue o tema do celular.',
+                      below: _Choice(
+                        value: themeProvider.theme,
+                        onChanged: themeProvider.setTheme,
+                        options: const [('light', 'Claro'), ('dark', 'Escuro'), ('system', 'Automático')],
                       ),
                     ),
-                    const SizedBox(height: 12),
                     row(
-                      title: 'Excluir conta',
-                      subtitle: 'Apaga para sempre sua conta, seus dados e suas posições nos rankings.',
-                      trailing: PillButton(
-                        label: 'Excluir',
-                        color: const Color(0xFFB71C1C),
-                        onPressed: () => showDialog(context: context, builder: (_) => const _DeleteAccountDialog()),
+                      title: 'Idioma',
+                      subtitle: 'Nomes dos Pokémon e descrições também mudam.',
+                      below: const Align(alignment: Alignment.centerLeft, child: LanguagePicker()),
+                    ),
+                    row(
+                      title: 'Tamanho do texto',
+                      subtitle: 'Aumenta as letras em todo o app.',
+                      below: _Choice(
+                        value: settings.textSize,
+                        onChanged: settings.setTextSize,
+                        options: [for (final t in AppSettings.textSizes) (t.$1, t.$2)],
                       ),
                     ),
-                  ],
-                  const SizedBox(height: 24),
+                  ]),
+                  _Section('Pokédex', [
+                    row(
+                      title: 'Animação da Pokébola',
+                      subtitle: 'O Pokémon sai da Pokébola ao abrir os detalhes.',
+                      trailing: Switch(
+                        value: settings.pokeballAnimation,
+                        activeTrackColor: const Color(0xFF0EA5E9),
+                        onChanged: settings.setPokeballAnimation,
+                      ),
+                    ),
+                  ]),
+                  if (DailyReminder.supported) _Section('Notificações', [_ReminderSwitch(row: row)]),
+                  _Section('Dados', [
+                    row(
+                      title: 'Dados salvos',
+                      subtitle: user != null
+                          ? 'Favoritos, times e treinos ficam salvos na sua conta (app e site).'
+                          : 'Favoritos, times e treinos ficam salvos neste aparelho.',
+                      trailing: PillButton(label: 'Limpar', color: const Color(0xFFE53935), onPressed: () => _confirmClear(context)),
+                    ),
+                  ]),
+                  _Section('Sobre', [
+                    if (UpdateService.supported)
+                      FutureBuilder<String>(
+                        future: UpdateService.currentVersion(),
+                        builder: (context, snapshot) => row(
+                          leading: Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(color: const Color(0xFF3DDC84), borderRadius: BorderRadius.circular(14)),
+                            child: const Icon(Icons.android, color: Color(0xFF073042)),
+                          ),
+                          title: 'PocketDex ${snapshot.data ?? ''}',
+                          subtitle: 'As versões novas são avisadas ao abrir o app.',
+                          trailing: PillButton(
+                            label: 'Procurar',
+                            color: const Color(0xFF3DDC84),
+                            foreground: const Color(0xFF073042),
+                            onPressed: () => UpdateService.checkNow(context),
+                          ),
+                        ),
+                      ),
+                    if (Pix.enabled) const _SupportCard(),
+                  ]),
+                  if (user != null)
+                    _Section('Zona de perigo', [
+                      row(
+                        title: 'Excluir conta',
+                        subtitle: 'Apaga para sempre sua conta, seus dados e suas posições nos rankings.',
+                        trailing: PillButton(
+                          label: 'Excluir',
+                          color: const Color(0xFFB71C1C),
+                          onPressed: () => showDialog(context: context, builder: (_) => const _DeleteAccountDialog()),
+                        ),
+                      ),
+                    ]),
+                  const SizedBox(height: 8),
                   Text('PocketDex · app em Flutter e site em React, com a mesma conta.\n'
                       'Pokémon e os nomes dos personagens são marcas da Nintendo.',
                       textAlign: TextAlign.center, style: TextStyle(color: c.muted, fontSize: 12)),
@@ -187,6 +213,73 @@ class SettingsScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Grupo de configurações com título.
+class _Section extends StatelessWidget {
+  final String title;
+  final List<Widget> children;
+  const _Section(this.title, this.children);
+
+  @override
+  Widget build(BuildContext context) {
+    final c = SiteColors.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
+            child: Text(tr(title).toUpperCase(),
+                style: TextStyle(color: c.muted, fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+          ),
+          for (var i = 0; i < children.length; i++) ...[
+            if (i > 0) const SizedBox(height: 12),
+            children[i],
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Botões lado a lado para escolher uma opção.
+class _Choice extends StatelessWidget {
+  final String value;
+  final ValueChanged<String> onChanged;
+  final List<(String, String)> options;
+  const _Choice({required this.value, required this.onChanged, required this.options});
+
+  @override
+  Widget build(BuildContext context) {
+    return SegmentedButton<String>(
+      segments: [for (final o in options) ButtonSegment(value: o.$1, label: Text(o.$2))],
+      selected: {value},
+      showSelectedIcon: false,
+      onSelectionChanged: (s) => onChanged(s.first),
+      style: SegmentedButton.styleFrom(
+        selectedBackgroundColor: const Color(0xFF0EA5E9),
+        selectedForegroundColor: Colors.white,
+      ),
+    );
+  }
+}
+
+/// Página das conquistas (aberta pelo menu do avatar).
+class AchievementsScreen extends StatelessWidget {
+  const AchievementsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: const Text('Conquistas')),
+        body: ReadableWidth(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+            children: const [_AchievementsCard()],
+          ),
+        ),
+      );
 }
 
 /// Medalhas conquistadas no jogo, na Pokédex e nos times (as mesmas do site).
@@ -586,7 +679,7 @@ class _SupportCard extends StatelessWidget {
 class _ReminderSwitch extends StatefulWidget {
   const _ReminderSwitch({required this.row});
 
-  final Widget Function({Widget? leading, required String title, required String subtitle, Widget? trailing}) row;
+  final Widget Function({Widget? leading, required String title, required String subtitle, Widget? trailing, Widget? below}) row;
 
   @override
   State<_ReminderSwitch> createState() => _ReminderSwitchState();

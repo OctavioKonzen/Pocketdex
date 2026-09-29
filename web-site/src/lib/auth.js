@@ -129,12 +129,23 @@ export async function startAuth() {
         return
       }
       const base = { uid: user.uid, email: user.email, photo: user.photoURL, name: null }
-      try {
-        const profile = await getDoc(doc(db, 'users', user.uid))
-        const name = profile.exists() ? profile.data().name : null
-        useAuth.setState({ status: name ? 'signedIn' : 'needsName', user: { ...base, name } })
-      } catch {
-        useAuth.setState({ status: 'needsName', user: base })
+      // Conta que já existe entra direto: se a leitura do perfil falhar (rede
+      // instável), tenta de novo em vez de achar que é uma conta nova.
+      for (let attempt = 0; auth.currentUser?.uid === user.uid; attempt++) {
+        try {
+          const profile = await getDoc(doc(db, 'users', user.uid))
+          const name = profile.exists() ? profile.data().name : null
+          useAuth.setState({ status: name ? 'signedIn' : 'needsName', user: { ...base, name } })
+          return
+        } catch {
+          if (attempt === 0) useAuth.setState({ status: 'loading', user: null })
+          // Sem internet: entra com o nome guardado no login (o mesmo da conta).
+          if (attempt === 2 && user.displayName && !validateName(user.displayName)) {
+            useAuth.setState({ status: 'signedIn', user: { ...base, name: user.displayName } })
+            return
+          }
+          await new Promise((r) => setTimeout(r, Math.min(1000 * (attempt + 1), 5000)))
+        }
       }
     })
   } catch {
@@ -201,7 +212,8 @@ export async function resetPassword(email) {
 
 // ---------------------------------------------------------------- confirmações
 //   Conta com e-mail e senha: trocar a senha e excluir pedem a senha atual.
-//   Conta Google: criar a conta, criar/trocar a senha e excluir pedem que a
+//   Conta Google: entra direto (o Google já confirmou o e-mail); criar/trocar
+//   a senha e excluir pedem que a
 //   pessoa abra um link mandado para o e-mail (grátis, do próprio Firebase).
 //   O link abre o site (EmailLinkPage), que confirma e grava em
 //   confirmations/{uid} — o app espera essa confirmação.
@@ -304,8 +316,9 @@ export async function signOut() {
 
 /**
  * Ouve os dados da conta em tempo real (mudanças feitas no app ou em outro
- * computador chegam na hora). `callback(data | null)`; devolve a função
- * que para de ouvir.
+ * computador chegam na hora). `callback(data | null)` — ou `callback(undefined)`
+ * quando a conta foi excluída (o documento sumiu); devolve a função que para
+ * de ouvir.
  */
 export async function watchUserData(uid, callback, onError) {
   const { db, doc, onSnapshot } = await firebase()
@@ -314,7 +327,12 @@ export async function watchUserData(uid, callback, onError) {
     (snap) => {
       // Ignora o "eco" das gravações feitas por este navegador.
       if (snap.metadata.hasPendingWrites) return
-      callback(snap.exists() ? snap.data().data ?? null : null)
+      if (!snap.exists()) {
+        // Sem o documento só por não estar no cache: espera a resposta do servidor.
+        if (!snap.metadata.fromCache) callback(undefined)
+        return
+      }
+      callback(snap.data().data ?? null)
     },
     onError,
   )
