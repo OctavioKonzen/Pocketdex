@@ -32,6 +32,14 @@ service cloud.firestore {
           && getAfter(/databases/$(database)/documents/usernames/$(d.nameKey)).data.name == d.name);
     }
 
+    // Código por e-mail ligado (config/app.emailCodes, o servidor liga ao ser
+    // publicado): conta nova só escolhe o nome depois de confirmar o código.
+    function signupVerified() {
+      return !exists(/databases/$(database)/documents/config/app)
+        || !get(/databases/$(database)/documents/config/app).data.get('emailCodes', false)
+        || exists(/databases/$(database)/documents/verifiedSignups/$(request.auth.uid));
+    }
+
     function validAvatar(d) {
       return !('avatar' in d) || d.avatar == null || d.avatar is int;
     }
@@ -202,13 +210,21 @@ service cloud.firestore {
         && request.resource.data.name is string
         && request.resource.data.name.size() >= 3
         && request.resource.data.name.size() <= 20
-        && keyOf(request.resource.data.name) == key;
+        && keyOf(request.resource.data.name) == key
+        && signupVerified();
       allow update: if request.auth != null
         && (resource.data.uid == request.auth.uid || orphanName())
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.keys().hasOnly(['uid', 'name'])
-        && keyOf(request.resource.data.name) == key;
+        && keyOf(request.resource.data.name) == key
+        && (resource.data.uid == request.auth.uid || signupVerified());
       allow delete: if request.auth != null && (resource.data.uid == request.auth.uid || orphanName());
+    }
+
+    // Configurações públicas do site e do app (ex.: código por e-mail ligado).
+    // Só o servidor muda. emailCodes/ e verifiedSignups/ ficam fechados.
+    match /config/{doc} {
+      allow get: if true;
     }
   }
 }

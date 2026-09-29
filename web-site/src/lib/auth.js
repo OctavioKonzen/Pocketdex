@@ -17,22 +17,26 @@ let services = null
 
 async function firebase() {
   if (services) return services
-  const [{ initializeApp }, authMod, fsMod] = await Promise.all([
+  const [{ initializeApp }, authMod, fsMod, fnMod] = await Promise.all([
     import('firebase/app'),
     import('firebase/auth'),
     import('firebase/firestore'),
+    import('firebase/functions'),
   ])
   const app = initializeApp(firebaseConfig)
   const auth = authMod.getAuth(app)
   auth.languageCode = 'pt-BR'
   const db = fsMod.getFirestore(app)
+  const functions = fnMod.getFunctions(app, 'southamerica-east1')
   // Teste automático (e2e/): usa os emuladores do Firebase em vez do projeto
   // de verdade. Só existe no build feito com VITE_EMULATORS=1.
   if (import.meta.env.VITE_EMULATORS) {
     authMod.connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true })
     fsMod.connectFirestoreEmulator(db, '127.0.0.1', 8085)
+    fnMod.connectFunctionsEmulator(functions, '127.0.0.1', 5001)
   }
-  services = { auth, db, ...authMod, ...fsMod }
+  const call = async (name, data) => (await fnMod.httpsCallable(functions, name)(data)).data
+  services = { auth, db, call, ...authMod, ...fsMod }
   return services
 }
 
@@ -74,7 +78,7 @@ export function validateName(name) {
   return null
 }
 
-class AuthError extends Error {
+export class AuthError extends Error {
   constructor(code) {
     super(code)
     this.code = code
@@ -167,6 +171,78 @@ export async function signUp({ name, email, password, keep }) {
   } finally {
     signingUp = false
   }
+}
+
+// ---------------------------------------------------------------- código por e-mail
+//   Com o servidor publicado (functions/, liga config/app.emailCodes), criar
+//   conta, trocar/recuperar senha e apagar conta pedem um código de 6 números
+//   mandado para o e-mail. Sem ele, tudo continua como antes.
+
+let codesOn = null
+/** O código por e-mail está ligado? (config/app.emailCodes) */
+export async function emailCodesEnabled() {
+  if (codesOn !== null) return codesOn
+  try {
+    const { db, doc, getDoc } = await firebase()
+    const snap = await getDoc(doc(db, 'config', 'app'))
+    codesOn = snap.exists() && snap.data().emailCodes === true
+  } catch {
+    codesOn = false
+  }
+  return codesOn
+}
+
+/** Manda o código: purpose 'signup' | 'reset' | 'delete'. */
+export async function sendEmailCode(purpose, email) {
+  const { call } = await firebase()
+  await call('sendCode', { purpose, email: email?.trim() })
+}
+
+/** Cadastro com código: o servidor cria a conta, depois o nome é reservado. */
+export async function signUpWithCode({ name, email, password, code, keep }) {
+  const nameError = validateName(name)
+  if (nameError) throw new AuthError(nameError)
+  await setKeepSignedIn(keep)
+  const { auth, call, signInWithEmailAndPassword, updateProfile, deleteUser } = await firebase()
+  signingUp = true
+  try {
+    await call('signUpWithCode', { email: email.trim(), password, code })
+    const { user } = await signInWithEmailAndPassword(auth, email.trim(), password)
+    try {
+      const clean = await claimName(user, name)
+      await updateProfile(user, { displayName: clean })
+      useAuth.setState({ status: 'signedIn', user: { uid: user.uid, email: user.email, photo: null, name: clean } })
+    } catch (error) {
+      // Alguém pegou o nome no mesmo instante: desfaz a conta criada.
+      await deleteUser(user).catch(() => {})
+      useAuth.setState({ status: 'signedOut', user: null })
+      throw error
+    }
+  } finally {
+    signingUp = false
+  }
+}
+
+/** Conta Google nova: confirma o código antes de escolher o nome. */
+export async function confirmSignupCode(code) {
+  const { call } = await firebase()
+  await call('confirmSignup', { code })
+}
+
+/** Troca a senha com o código (logado: o e-mail é o da conta). */
+export async function resetPasswordWithCode({ email, code, password }) {
+  const { auth, call, signInWithEmailAndPassword } = await firebase()
+  const current = auth.currentUser
+  await call('resetPassword', { email: email?.trim(), code, password })
+  // Logado: entra de novo com a senha nova (as sessões antigas foram encerradas).
+  if (current?.email) await signInWithEmailAndPassword(auth, current.email, password).catch(() => {})
+}
+
+/** Apaga a conta e tudo dela no servidor, depois de conferir o código. */
+export async function deleteAccountWithCode(code) {
+  const { auth, call, signOut: logout } = await firebase()
+  await call('deleteAccount', { code })
+  await logout(auth).catch(() => {})
 }
 
 export async function signIn({ email, password, keep }) {
@@ -536,5 +612,9 @@ const MESSAGES = {
 
 export function errorMessage(error) {
   const code = error?.code ?? ''
+  // Erros do servidor (código por e-mail) já vêm com a mensagem em português.
+  if (code.startsWith('functions/')) {
+    return code === 'functions/internal' || code === 'functions/unavailable' ? 'Não foi possível falar com o servidor. Tente de novo.' : error.message
+  }
   return MESSAGES[code] ?? (error instanceof AuthError ? code : 'Algo deu errado. Tente de novo.')
 }

@@ -150,6 +150,18 @@ await check('nova conta pega nome de conta excluída', claim(C, 'carol', 'Misty'
 await check('nome de conta ativa continua preso', claim(C, 'carol', 'João', 'joao'), false)
 await check('apaga nome de conta ativa', deleteDoc(doc(anon, 'usernames', 'joao')), false)
 
+// Código por e-mail ligado: conta nova só pega nome depois de confirmar.
+await env.withSecurityRulesDisabled(async (ctx) => setDoc(doc(ctx.firestore(), 'config', 'app'), { emailCodes: true }))
+const D = env.authenticatedContext('dave').firestore()
+await check('ler config sem login', getDoc(doc(anon, 'config', 'app')), true)
+await check('mudar config', setDoc(doc(D, 'config', 'app'), { emailCodes: false }), false)
+await check('conta sem código não pega nome', claim(D, 'dave', 'Brock', 'brock'), false)
+await check('criar o próprio "confirmado"', setDoc(doc(D, 'verifiedSignups', 'dave'), { at: 1 }), false)
+await check('ler códigos', getDoc(doc(D, 'emailCodes', 'x')), false)
+await env.withSecurityRulesDisabled(async (ctx) => setDoc(doc(ctx.firestore(), 'verifiedSignups', 'dave'), { at: 1 }))
+await check('conta com código confirmado pega nome', claim(D, 'dave', 'Brock', 'brock'), true)
+await check('conta antiga continua salvando', setDoc(doc(O, 'users', 'old'), { data: { teams: [1] } }, { merge: true }), true)
+
 await env.cleanup()
 console.log(fails ? `${fails} FALHAS` : 'TUDO CERTO')
 process.exit(fails ? 1 : 0)

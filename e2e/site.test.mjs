@@ -60,6 +60,29 @@ async function emulatorDocs(path) {
   return (body.documents ?? []).map((d) => d.name.split('/').slice(-1)[0])
 }
 
+// Liga o código por e-mail no emulador (como o servidor faz ao ser publicado).
+async function setEmailCodes(on) {
+  await fetch('http://127.0.0.1:8085/v1/projects/pocketdex-ffb4d/databases/(default)/documents/config/app', {
+    method: 'PATCH',
+    headers: { Authorization: 'Bearer owner', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields: { emailCodes: { booleanValue: on } } }),
+  })
+}
+
+// No emulador o servidor não manda e-mail: guarda o código em emulatorOutbox/{e-mail}.
+async function codeFor(email, after = 0) {
+  for (let i = 0; i < 40; i++) {
+    const res = await fetch(`http://127.0.0.1:8085/v1/projects/pocketdex-ffb4d/databases/(default)/documents/emulatorOutbox/${email}`, {
+      headers: { Authorization: 'Bearer owner' },
+    })
+    const body = await res.json()
+    const at = Number(body.fields?.at?.integerValue ?? 0)
+    if (body.fields && at > after) return { code: body.fields.code.stringValue, at }
+    await new Promise((r) => setTimeout(r, 500))
+  }
+  throw new Error(`nenhum código chegou para ${email}`)
+}
+
 let step = ''
 async function expectHealthy() {
   const text = await page.evaluate(() => document.body.innerText)
@@ -152,7 +175,85 @@ try {
   await page.getByText(user.name).first().waitFor({ timeout: 20000 })
   await go('configuracoes')
 
-  console.log(`TUDO CERTO: conta criada, ${ROUTES.length} páginas abertas, saiu, entrou, excluiu (banco limpo) e criou de novo.`)
+  // ---------------------------------------------------------------- código por e-mail
+  step = 'ligar código por e-mail'
+  await setEmailCodes(true)
+  await page.getByRole('button', { name: 'Sair' }).first().click()
+  await page.getByRole('button', { name: 'Entrar' }).first().waitFor({ timeout: 15000 })
+  await page.reload()
+  const coded = { name: `Cod${Date.now() % 100000}`, email: `codigo${Date.now()}@example.com`, password: 'senha123' }
+
+  step = 'criar conta com código'
+  await page.getByRole('button', { name: 'Criar conta' }).first().click()
+  await page.locator('input[autocomplete=nickname]').fill(coded.name)
+  await page.locator('input[type=email]').fill(coded.email)
+  await page.locator('input[autocomplete=new-password]').nth(0).fill(coded.password)
+  await page.locator('input[autocomplete=new-password]').nth(1).fill(coded.password)
+  await page.locator('form button[type=submit]').click() // Enviar código
+  let mail = await codeFor(coded.email)
+  await page.locator('input[autocomplete=one-time-code]').fill('000000' === mail.code ? '111111' : '000000')
+  await page.locator('form button[type=submit]').click()
+  await page.getByText('Código errado').waitFor({ timeout: 15000 })
+  await page.locator('input[autocomplete=one-time-code]').fill(mail.code)
+  await page.locator('form button[type=submit]').click()
+  await page.getByText(coded.name).first().waitFor({ timeout: 30000 })
+  await expectHealthy()
+
+  step = 'trocar senha com código'
+  await go('configuracoes')
+  step = 'trocar senha com código'
+  await page.getByRole('button', { name: 'Trocar', exact: true }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Enviar código' }).click()
+  mail = await codeFor(coded.email, mail.at)
+  await page.getByPlaceholder('Código de 6 números').fill(mail.code)
+  await page.getByPlaceholder('Nova senha', { exact: true }).fill('senha456')
+  await page.getByPlaceholder('Confirmar nova senha').fill('senha456')
+  await page.getByRole('dialog').getByRole('button', { name: 'Trocar senha' }).click()
+  await page.getByText('Senha trocada!').waitFor({ timeout: 20000 })
+  await page.waitForTimeout(1500)
+  await page.getByRole('button', { name: 'Sair' }).first().click()
+  await page.getByRole('button', { name: 'Entrar' }).first().waitFor({ timeout: 15000 })
+
+  step = 'entrar com a senha nova'
+  await page.locator('input[type=email]').fill(coded.email)
+  await page.locator('input[autocomplete=current-password]').fill('senha456')
+  await page.locator('form button[type=submit]').click()
+  await page.getByText(coded.name).first().waitFor({ timeout: 20000 })
+  await go('configuracoes')
+  await page.getByRole('button', { name: 'Sair' }).first().click()
+  await page.getByRole('button', { name: 'Entrar' }).first().waitFor({ timeout: 15000 })
+
+  await page.waitForTimeout(2500) // espera mínima entre códigos
+  step = 'recuperar senha com código'
+  await page.getByRole('button', { name: 'Esqueci minha senha' }).click()
+  await page.locator('input[type=email]').fill(coded.email)
+  await page.locator('form button[type=submit]').click() // Enviar código
+  mail = await codeFor(coded.email, mail.at)
+  await page.locator('input[autocomplete=one-time-code]').fill(mail.code)
+  await page.locator('input[autocomplete=new-password]').nth(0).fill('senha789')
+  await page.locator('input[autocomplete=new-password]').nth(1).fill('senha789')
+  await page.locator('form button[type=submit]').click()
+  await page.getByText('Senha trocada! Entre com a senha nova.').waitFor({ timeout: 20000 })
+  await page.locator('input[type=email]').fill(coded.email)
+  await page.locator('input[autocomplete=current-password]').fill('senha789')
+  await page.locator('form button[type=submit]').click()
+  await page.getByText(coded.name).first().waitFor({ timeout: 20000 })
+
+  step = 'apagar conta com código'
+  await go('configuracoes')
+  step = 'apagar conta com código'
+  await page.getByRole('button', { name: 'Excluir', exact: true }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Enviar código' }).click()
+  mail = await codeFor(coded.email, mail.at)
+  await page.getByPlaceholder('Código de 6 números').fill(mail.code)
+  await page.getByRole('button', { name: 'Excluir para sempre' }).click()
+  await page.getByRole('button', { name: 'Entrar' }).first().waitFor({ timeout: 60000 })
+  await expectHealthy()
+  const names = await emulatorDocs('usernames')
+  assert.ok(!names.includes(coded.name.toLowerCase()), `${step}: o nome ficou reservado`)
+  assert.equal((await emulatorDocs('users')).length, 1, `${step}: sobrou o perfil`)
+
+  console.log(`TUDO CERTO: conta criada, ${ROUTES.length} páginas abertas, saiu, entrou, excluiu (banco limpo) e criou de novo; com código por e-mail: criou, trocou e recuperou a senha e apagou a conta.`)
 } catch (error) {
   await page.screenshot({ path: 'falha.png', fullPage: true }).catch(() => {})
   console.error(`FALHOU em "${step}":`, error.message)

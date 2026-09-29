@@ -2,7 +2,7 @@ import { m } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { Button, Icon, Modal, PageHeader } from '../components/ui'
 import { getLatestRelease, RELEASES_URL } from '../lib/appRelease'
-import { deleteAccount, errorMessage, usesGoogle, useAuth } from '../lib/auth'
+import { deleteAccount, deleteAccountWithCode, emailCodesEnabled, errorMessage, resetPasswordWithCode, sendEmailCode, usesGoogle, useAuth } from '../lib/auth'
 import AccountAvatar from '../components/AccountAvatar'
 import { achievementsOf } from '../lib/achievements'
 import { installSite, useCanInstall } from '../lib/install'
@@ -18,6 +18,10 @@ export default function SettingsPage() {
   const [confirm, setConfirm] = useState(null)
   const [message, setMessage] = useState('')
   const user = useAuth((s) => (s.status === 'signedIn' ? s.user : null))
+  const [codesOn, setCodesOn] = useState(false)
+  useEffect(() => {
+    emailCodesEnabled().then(setCodesOn)
+  }, [])
 
   const actions = {
     all: { title: 'Limpar dados', text: 'Isso apaga seus favoritos, times e treinos. Continuar?', run: clearCollections, done: 'Preferências de usuário limpas!' },
@@ -70,6 +74,7 @@ export default function SettingsPage() {
         <Achievements />
         <AndroidAppCard />
         <InstallSiteCard />
+        {user && codesOn && <ChangePasswordCard />}
         {user && <DeleteAccountCard />}
         <p className="pt-6 text-center text-sm text-muted">PocketDex · Site feito em JavaScript (React) com dados gerados em Python.</p>
       </div>
@@ -248,19 +253,40 @@ function Achievements() {
   )
 }
 
-/** Apaga a conta e todos os dados dela (a pessoa confirma a senha ou o Google). */
+/** Apaga a conta e todos os dados dela (a pessoa confirma com o código do e-mail, ou a senha/Google). */
 function DeleteAccountCard() {
   const [open, setOpen] = useState(false)
   const [google, setGoogle] = useState(false)
+  const [codes, setCodes] = useState(false)
+  const [codeSent, setCodeSent] = useState(false)
+  const [code, setCode] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [info, setInfo] = useState('')
 
   const openModal = async () => {
     setGoogle(await usesGoogle())
+    setCodes(await emailCodesEnabled())
     setPassword('')
+    setCode('')
+    setCodeSent(false)
     setError('')
+    setInfo('')
     setOpen(true)
+  }
+
+  const sendCode = async () => {
+    setBusy(true)
+    setError('')
+    try {
+      await sendEmailCode('delete')
+      setCodeSent(true)
+      setInfo('Mandamos um código de 6 números para o e-mail da conta. Confira também o spam.')
+    } catch (e) {
+      setError(errorMessage(e))
+    }
+    setBusy(false)
   }
 
   const run = async () => {
@@ -269,11 +295,13 @@ function DeleteAccountCard() {
     const stats = useStore.getState().stats ?? {}
     pauseSync()
     try {
-      await deleteAccount({
-        password,
-        weeks: [...(stats.weeks ?? []), weekKey()],
-        days: [...(stats.days ?? []), dayKey()],
-      })
+      if (codes) await deleteAccountWithCode(code)
+      else
+        await deleteAccount({
+          password,
+          weeks: [...(stats.weeks ?? []), weekKey()],
+          days: [...(stats.days ?? []), dayKey()],
+        })
       setOpen(false)
     } catch (e) {
       resumeSync()
@@ -282,6 +310,8 @@ function DeleteAccountCard() {
       setBusy(false)
     }
   }
+
+  const ready = codes ? codeSent && code.length === 6 : google || password
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-card p-5 shadow">
@@ -297,7 +327,20 @@ function DeleteAccountCard() {
           Isso apaga <b>para sempre</b> sua conta, favoritos, times, treinos, recordes, conquistas e suas linhas nos rankings. No app e no
           site. Não dá para desfazer.
         </p>
-        {google ? (
+        {codes ? (
+          codeSent ? (
+            <input
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              placeholder="Código de 6 números"
+              className="mt-4 w-full rounded-xl bg-surface px-4 py-3 tracking-widest outline-none focus:ring-2 focus:ring-red-500"
+            />
+          ) : (
+            <p className="mt-3 text-sm text-muted">Para confirmar, vamos mandar um código para o e-mail da conta.</p>
+          )
+        ) : google ? (
           <p className="mt-3 text-sm text-muted">Para confirmar, escolha a sua conta Google na janela que vai abrir.</p>
         ) : (
           <input
@@ -308,13 +351,121 @@ function DeleteAccountCard() {
             className="mt-4 w-full rounded-xl bg-surface px-4 py-3 outline-none focus:ring-2 focus:ring-red-500"
           />
         )}
+        {info && !error && <p className="mt-3 text-sm text-green-400">{info}</p>}
         {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
-        <div className="mt-5 flex justify-end gap-3">
+        <div className="mt-5 flex flex-wrap justify-end gap-3">
           <button type="button" onClick={() => setOpen(false)} disabled={busy} className="cursor-pointer px-4 text-muted">
             Cancelar
           </button>
-          <Button color="#b71c1c" onClick={run} disabled={busy || (!google && !password)}>
-            {busy ? 'Excluindo...' : 'Excluir para sempre'}
+          {codes && codeSent && (
+            <button type="button" onClick={sendCode} disabled={busy} className="cursor-pointer px-2 text-sm font-semibold text-red-400">
+              Reenviar código
+            </button>
+          )}
+          {codes && !codeSent ? (
+            <Button color="#b71c1c" onClick={sendCode} disabled={busy}>
+              {busy ? 'Enviando...' : 'Enviar código'}
+            </Button>
+          ) : (
+            <Button color="#b71c1c" onClick={run} disabled={busy || !ready}>
+              {busy ? 'Excluindo...' : 'Excluir para sempre'}
+            </Button>
+          )}
+        </div>
+      </Modal>
+    </div>
+  )
+}
+
+/** Troca a senha com o código mandado para o e-mail da conta. */
+function ChangePasswordCard() {
+  const [open, setOpen] = useState(false)
+  const [codeSent, setCodeSent] = useState(false)
+  const [code, setCode] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [info, setInfo] = useState('')
+
+  const openModal = () => {
+    setCodeSent(false)
+    setCode('')
+    setPassword('')
+    setConfirm('')
+    setError('')
+    setInfo('')
+    setOpen(true)
+  }
+
+  const act = async (action) => {
+    setBusy(true)
+    setError('')
+    try {
+      await action()
+    } catch (e) {
+      setError(errorMessage(e))
+    }
+    setBusy(false)
+  }
+
+  const sendCode = () =>
+    act(async () => {
+      await sendEmailCode('reset')
+      setCodeSent(true)
+      setInfo('Mandamos um código de 6 números para o e-mail da conta. Confira também o spam.')
+    })
+
+  const save = () => {
+    if (password.length < 6) return setError('A senha precisa ter pelo menos 6 caracteres.')
+    if (password !== confirm) return setError('As senhas não são iguais.')
+    act(async () => {
+      await resetPasswordWithCode({ code, password })
+      setInfo('Senha trocada!')
+      setTimeout(() => setOpen(false), 1200)
+    })
+  }
+
+  const input = 'mt-3 w-full rounded-xl bg-surface px-4 py-3 outline-none focus:ring-2 focus:ring-sky-400'
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-card p-5 shadow">
+      <div>
+        <div className="font-bold">Trocar senha</div>
+        <div className="text-sm text-muted">Confirme com um código no seu e-mail e escolha uma senha nova.</div>
+      </div>
+      <Button color="#546E7A" onClick={openModal}>
+        Trocar
+      </Button>
+      <Modal open={open} onClose={() => !busy && setOpen(false)} title="Trocar senha">
+        {!codeSent ? (
+          <p className="text-sm text-muted">Vamos mandar um código de 6 números para o e-mail da sua conta.</p>
+        ) : (
+          <>
+            <input
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              placeholder="Código de 6 números"
+              className={`${input} tracking-widest`}
+            />
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" placeholder="Nova senha" className={input} />
+            <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" placeholder="Confirmar nova senha" className={input} />
+          </>
+        )}
+        {info && !error && <p className="mt-3 text-sm text-green-400">{info}</p>}
+        {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
+        <div className="mt-5 flex flex-wrap justify-end gap-3">
+          <button type="button" onClick={() => setOpen(false)} disabled={busy} className="cursor-pointer px-4 text-muted">
+            Cancelar
+          </button>
+          {codeSent && (
+            <button type="button" onClick={sendCode} disabled={busy} className="cursor-pointer px-2 text-sm font-semibold text-sky-400">
+              Reenviar código
+            </button>
+          )}
+          <Button color="#2196f3" onClick={codeSent ? save : sendCode} disabled={busy || (codeSent && code.length !== 6)}>
+            {busy ? 'Aguarde...' : codeSent ? 'Trocar senha' : 'Enviar código'}
           </Button>
         </div>
       </Modal>

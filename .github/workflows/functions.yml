@@ -1,0 +1,47 @@
+name: Servidor (código por e-mail)
+
+# Publica o servidor (functions/) e as regras do Firestore, e depois liga o
+# código por e-mail no site e no app. Precisa dos segredos:
+#   FIREBASE_SERVICE_ACCOUNT (chave de administrador), SMTP_USER e SMTP_PASS
+#   (e-mail que manda os códigos e a senha de app dele).
+# Sem eles, só avisa: o site e o app continuam sem pedir código.
+
+on:
+  push:
+    branches: [main]
+    paths: [functions/**, firestore.rules, .github/workflows/functions.yml, tool/functions-deploy/**]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: functions-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Publicar servidor e regras
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ] || [ -z "$SMTP_USER" ] || [ -z "$SMTP_PASS" ]; then
+            echo "::warning::Faltam segredos (FIREBASE_SERVICE_ACCOUNT, SMTP_USER, SMTP_PASS): o servidor não foi publicado."
+            exit 0
+          fi
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/chave.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/chave.json"
+          printf 'SMTP_USER=%s\nSMTP_PASS=%s\n' "$SMTP_USER" "$SMTP_PASS" > functions/.env
+          (cd functions && npm ci)
+          npx --yes firebase-tools@15 deploy --only functions,firestore:rules \
+            --config tool/functions-deploy/firebase.json --project pocketdex-ffb4d --non-interactive --force
+          rm -f functions/.env
+          (cd functions && node scripts/enable-codes.mjs)
