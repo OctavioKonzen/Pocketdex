@@ -16,6 +16,9 @@
 //   quizGame: jogo normal em andamento ou null
 //   avatar: id do Pokémon usado como foto de perfil, ou null
 //   stats: contadores das conquistas (ver achievements.dart)
+//   collection: {jogo: {c: [id], s: [id]}}   Pokémon pegos (e shiny) por jogo
+//   hunts: [{id, pokemonId, game, method, count, found, startedAt, foundAt}]
+//   nuzlockes: [{id, name, game, createdAt, entries: [{area, pokemonId, nickname, status}]}]
 
 import 'dart:convert';
 
@@ -28,7 +31,10 @@ class UserData extends ChangeNotifier {
   UserData._();
   static final UserData instance = UserData._();
 
-  static const keys = ['theme', 'favorites', 'teams', 'training', 'quizRecord', 'rankedRecord', 'quizGame', 'avatar', 'stats'];
+  static const keys = [
+    'theme', 'favorites', 'teams', 'training', 'quizRecord', 'rankedRecord', 'quizGame', 'avatar', 'stats', //
+    'collection', 'hunts', 'nuzlockes',
+  ];
   static const _prefsKey = 'pocketdex_user_data';
 
   static Map<String, dynamic> get defaults => {
@@ -41,6 +47,9 @@ class UserData extends ChangeNotifier {
         'quizGame': null,
         'avatar': null,
         'stats': Achievements.emptyStats(),
+        'collection': <String, dynamic>{},
+        'hunts': <dynamic>[],
+        'nuzlockes': <dynamic>[],
       };
 
   Map<String, dynamic> _data = defaults;
@@ -62,6 +71,26 @@ class UserData extends ChangeNotifier {
         if (_data['stats'] is Map) ...Map<String, dynamic>.from(_jsonCopy(_data['stats']) as Map),
       };
   int get rankedRecord => (_data['rankedRecord'] as num?)?.toInt() ?? 0;
+  List<Map<String, dynamic>> get hunts => _maps(_data['hunts']);
+  List<Map<String, dynamic>> get nuzlockes => _maps(_data['nuzlockes']);
+
+  /// Pokémon pegos num jogo (shiny: os pegos shiny).
+  Set<int> caught(String game, {bool shiny = false}) {
+    final entry = _data['collection'] is Map ? (_data['collection'] as Map)[game] : null;
+    return entry is Map ? _ints(entry[shiny ? 's' : 'c']).toSet() : <int>{};
+  }
+
+  /// Marca/desmarca um Pokémon como pego num jogo.
+  void toggleCaught(String game, int id, {bool shiny = false}) {
+    final all = _data['collection'] is Map ? Map<String, dynamic>.from(_jsonCopy(_data['collection']) as Map) : <String, dynamic>{};
+    final entry = all[game] is Map ? Map<String, dynamic>.from(all[game] as Map) : <String, dynamic>{'c': [], 's': []};
+    final key = shiny ? 's' : 'c';
+    final list = _ints(entry[key]);
+    list.contains(id) ? list.remove(id) : list.add(id);
+    entry[key] = list;
+    all[game] = entry;
+    update({'collection': all});
+  }
   Map<String, dynamic>? get quizGame =>
       _data['quizGame'] == null ? null : Map<String, dynamic>.from(_data['quizGame'] as Map);
 

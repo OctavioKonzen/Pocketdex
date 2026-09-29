@@ -38,6 +38,8 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   final LayerLink _layerLink = LayerLink();
+  // Campo de busca: a lista de resultados tem a mesma largura dele.
+  final GlobalKey _searchFieldKey = GlobalKey();
 
   final Debouncer<String> _debouncer =
       Debouncer(const Duration(milliseconds: 300), initialValue: '');
@@ -209,6 +211,7 @@ class _HomeScreenState extends State<HomeScreen> {
         CompositedTransformTarget(
           link: _layerLink,
           child: TextField(
+            key: _searchFieldKey,
             controller: _searchController,
             focusNode: _searchFocusNode,
             style: TextStyle(color: theme.colorScheme.onSurface),
@@ -231,15 +234,28 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildResultsOverlay(ThemeData theme) {
+    final field = _searchFieldKey.currentContext?.size;
     return CompositedTransformFollower(
       link: _layerLink,
       showWhenUnlinked: false,
-      offset: const Offset(0, 60),
-      child: Material(
-        color: theme.cardColor,
-        elevation: 8,
-        borderRadius: BorderRadius.circular(16),
-        child: _buildSearchResultsList(theme),
+      offset: Offset(0, (field?.height ?? 56) + 8),
+      child: Align(
+        alignment: Alignment.topLeft,
+        child: SizedBox(
+          width: field?.width,
+          // Mesmo estilo dos cards do app: cantos de 20 e sombra.
+          child: Material(
+            color: theme.cardColor,
+            elevation: 10,
+            shadowColor: Colors.black54,
+            borderRadius: BorderRadius.circular(20),
+            clipBehavior: Clip.antiAlias,
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: _buildSearchResultsList(theme),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -362,57 +378,84 @@ class _SearchResultTileState extends State<_SearchResultTile> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    if (_details == null) {
-      return const SizedBox(height: 68);
-    }
-    final String spriteUrl = _details!['sprites']['front_default'] ?? '';
-    final String name = (widget.pokemon.name.split('-').first).capitalise();
-    final String id = '#${_details!['id'].toString().padLeft(3, '0')}';
-    final String type = _details!['types'][0]['type']['name'];
-    final Color backgroundColor = getColorForType(type).withAlpha(220);
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: widget.onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(color: theme.dividerColor, width: 0.5),
-            ),
-          ),
-          child: Row(
-            children: [
-              if (spriteUrl.isNotEmpty)
-                Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: backgroundColor,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: SizedBox.square(
-                        dimension: 48, child: PokemonSprite(_details!['id'] as int, fill: 0.9)))
-              else
-                const SizedBox(width: 56, height: 56),
-              const SizedBox(width: 16),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
+    if (_details == null) return const SizedBox(height: 76);
+    final int id = _details!['id'] as int;
+    final String name = I18n.pokemonName(widget.pokemon.name.split('-').first.capitalise());
+    final List<String> types = [for (final t in _details!['types'] as List) t['type']['name'] as String];
+    // Um card da Pokédex em miniatura: cor do tipo, Pokébola ao fundo, nome,
+    // número e tipos (igual aos cards e ao site).
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Material(
+        color: Colors.transparent,
+        child: Ink(
+          height: 76,
+          decoration: typeBackground(types, borderRadius: BorderRadius.circular(16)),
+          child: InkWell(
+            onTap: widget.onTap,
+            borderRadius: BorderRadius.circular(16),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Stack(
                 children: [
-                  Text(name,
-                      style: TextStyle(
-                          color: theme.colorScheme.onSurface,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16)),
-                  const SizedBox(height: 2),
-                  Text(id,
-                      style: TextStyle(
-                          color: theme.colorScheme.onSurface.withAlpha(204))),
+                  Positioned(
+                    right: -14,
+                    top: -14,
+                    bottom: -14,
+                    child: Opacity(opacity: 0.12, child: Image.asset('assets/images/pokeball.png', width: 104, cacheWidth: 208)),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(name,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 17,
+                                            shadows: [Shadow(color: Colors.black38, blurRadius: 4)])),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text('#${id.toString().padLeft(3, '0')}',
+                                      style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w600, fontSize: 13)),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  for (final t in types)
+                                    Container(
+                                      margin: const EdgeInsets.only(right: 6),
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withAlpha(50),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(color: Colors.white.withAlpha(140)),
+                                      ),
+                                      child: Text(t,
+                                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox.square(dimension: 60, child: PokemonSprite(id, fill: 0.9)),
+                      ],
+                    ),
+                  ),
                 ],
               ),
-            ],
+            ),
           ),
         ),
       ),

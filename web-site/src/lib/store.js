@@ -76,6 +76,35 @@ export const useStore = create(
         })),
       resetEvs: (id) => set(({ training }) => ({ training: training.map((t) => (t.id === id ? { ...t, evs: {} } : t)) })),
 
+      // Coleção por jogo: {jogo: {c: [ids pegos], s: [ids pegos shiny]}}
+      collection: {},
+      /** Marca/desmarca um Pokémon como pego (shiny: na lista de shiny) num jogo. */
+      toggleCaught: (game, id, shiny = false) =>
+        set(({ collection }) => {
+          const entry = collection[game] ?? { c: [], s: [] }
+          const key = shiny ? 's' : 'c'
+          const list = entry[key] ?? []
+          const next = { ...entry, [key]: list.includes(id) ? list.filter((x) => x !== id) : [...list, id] }
+          return { collection: { ...collection, [game]: next } }
+        }),
+
+      // Shiny hunts: {id, pokemonId, game, method, count, found, startedAt, foundAt}
+      hunts: [],
+      addHunt: (hunt) => set(({ hunts }) => ({ hunts: [{ id: uid(), count: 0, found: false, startedAt: Date.now(), foundAt: null, ...hunt }, ...hunts] })),
+      updateHunt: (id, changes) => set(({ hunts }) => ({ hunts: hunts.map((h) => (h.id === id ? { ...h, ...changes } : h)) })),
+      deleteHunt: (id) => set(({ hunts }) => ({ hunts: hunts.filter((h) => h.id !== id) })),
+
+      // Nuzlockes: {id, name, game, createdAt, entries: [{area, pokemonId, nickname, status}]}
+      //   status: 'caught' (no time/caixa) | 'dead' | 'missed' (fugiu/nenhum)
+      nuzlockes: [],
+      addNuzlocke: (run) => {
+        const id = uid()
+        set(({ nuzlockes }) => ({ nuzlockes: [{ id, createdAt: Date.now(), entries: [], ...run }, ...nuzlockes] }))
+        return id
+      },
+      updateNuzlocke: (id, changes) => set(({ nuzlockes }) => ({ nuzlockes: nuzlockes.map((r) => (r.id === id ? { ...r, ...changes } : r)) })),
+      deleteNuzlocke: (id) => set(({ nuzlockes }) => ({ nuzlockes: nuzlockes.filter((r) => r.id !== id) })),
+
       // Quiz "Quem é esse Pokémon?"
       quizRecord: 0, // recorde do modo normal
       rankedRecord: 0, // recorde do modo Ranked (é o que vai para o ranking)
@@ -130,7 +159,19 @@ export const useStore = create(
       clearCollections: () => set({ favorites: [], teams: [], training: [] }),
       /** Tudo, ao sair da conta. */
       clearAll: () =>
-        set({ favorites: [], teams: [], training: [], quizRecord: 0, rankedRecord: 0, quizGame: null, avatar: null, stats: EMPTY_STATS }),
+        set({
+          favorites: [],
+          teams: [],
+          training: [],
+          quizRecord: 0,
+          rankedRecord: 0,
+          quizGame: null,
+          avatar: null,
+          stats: EMPTY_STATS,
+          collection: {},
+          hunts: [],
+          nuzlockes: [],
+        }),
     }),
     { name: 'pocketdex' },
   ),

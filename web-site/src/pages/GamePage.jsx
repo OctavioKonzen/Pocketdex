@@ -9,9 +9,16 @@
 //
 // Desafio do dia (precisa de login): os mesmos 10 Pokémon para todo mundo no
 // dia, 10 segundos cada, uma tentativa só. Quanto mais rápido, mais pontos.
+//
+// Modos de pista (jogo normal e desafio entre amigos): silhueta, grito,
+// descrição da Pokédex ou tipos. Desafiar um amigo gera um link com os mesmos
+// 10 Pokémon para ele jogar e comparar.
 
 import { AnimatePresence, m } from 'framer-motion'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import GameClue from '../components/GameClue'
+import { CHALLENGE_ROUNDS, HINTS, challengeLink, challengeRounds, decodeChallenge, encodeChallenge } from '../lib/challenge'
 import GenerationPicker from '../components/GenerationPicker'
 import Sprite from '../components/Sprite'
 import { Button, Icon, Loader, Modal } from '../components/ui'
@@ -226,6 +233,16 @@ export default function GamePage() {
   const roundStart = useRef(0)
   const today = dayKey()
   const playedToday = lastDaily === today
+  const [hint, setHint] = useState('silhouette')
+  const [codeInput, setCodeInput] = useState('')
+  const [codeError, setCodeError] = useState(false)
+  const location = useLocation()
+  const navigate = useNavigate()
+  // Aberto por um link de desafio: mostra quem desafiou.
+  const [incoming, setIncoming] = useState(() => {
+    const code = new URLSearchParams(location.search).get('desafio')
+    return code ? decodeChallenge(code) : null
+  })
 
   useEffect(() => {
     getPokedex().then(setPokedex)
@@ -237,11 +254,33 @@ export default function GamePage() {
   // O Ranked e o desafio não ficam salvos para continuar depois (senão daria para ganhar tempo).
   const saveGame = useCallback((g) => !g.ranked && !g.daily && saveNormalGame(g), [saveNormalGame])
 
-  const start = (mode = 'normal') => {
+  const start = (mode = 'normal', challenge = null) => {
     const ranked = mode === 'ranked'
     const daily = mode === 'daily'
+    if (mode === 'challenge') {
+      // Desafio: semente nova (ou a do amigo), 10 Pokémon, sem vidas.
+      const seed = challenge?.seed ?? Math.floor(Math.random() * 2 ** 31)
+      const gen = challenge ? challenge.gen : generation
+      const rounds = challengeRounds(pool(gen), seed)
+      const g = {
+        generation: gen,
+        hint: challenge ? challenge.hint : hint,
+        challenge: { seed, from: challenge?.name ? { name: challenge.name, score: challenge.score } : null },
+        rounds,
+        round: 0,
+        score: 0,
+        lives: LIVES,
+        streak: 0,
+        ...rounds[0],
+      }
+      setGame(g)
+      setChosen(null)
+      setIncoming(null)
+      if (location.search) navigate('/jogo', { replace: true })
+      return
+    }
     const gen = ranked || daily ? 0 : generation
-    const base = { generation: gen, ranked, daily, round: 0, score: 0, lives: LIVES, streak: 0 }
+    const base = { generation: gen, ranked, daily, round: 0, score: 0, lives: LIVES, streak: 0, hint: ranked || daily ? 'silhouette' : hint }
     const g = daily
       ? { ...base, day: today, answers: dailyAnswers(today), correct: 0, seconds: 0, ...pickQuestion(pool(0), dailyAnswers(today)[0]) }
       : { ...base, ...pickQuestion(pool(gen)) }
@@ -257,6 +296,14 @@ export default function GamePage() {
       const uid = useAuth.getState().user?.uid
       const name = useAuth.getState().user?.name
       let newRecord = false
+      if (g.challenge) {
+        const name = useAuth.getState().user?.name ?? ''
+        const code = encodeChallenge({ seed: g.challenge.seed, gen: g.generation, hint: g.hint, name, score: g.score })
+        setGame(null)
+        setChosen(null)
+        setEnded({ challenge: true, score: g.score, from: g.challenge.from, code })
+        return
+      }
       if (g.daily) {
         // Corrige o "Perfeito" (a tentativa já foi contada ao começar).
         if (g.correct === DAILY_ROUNDS) {
@@ -311,7 +358,9 @@ export default function GamePage() {
       const streak = correct ? (game.streak ?? 0) + 1 : 0
       useStore.getState().countAnswer(correct, streak)
       let next
-      if (game.daily) {
+      if (game.challenge) {
+        next = { ...game, score: game.score + (correct ? 1 : 0), streak }
+      } else if (game.daily) {
         const spent = Math.min(DAILY_SECONDS * 1000, Date.now() - roundStart.current)
         next = {
           ...game,
@@ -327,8 +376,10 @@ export default function GamePage() {
         () => {
           setChosen(null)
           const round = (next.round ?? 0) + 1
-          if (next.daily ? round >= DAILY_ROUNDS : next.lives === 0) {
+          if (next.challenge ? round >= next.rounds.length : next.daily ? round >= DAILY_ROUNDS : next.lives === 0) {
             end(next)
+          } else if (next.challenge) {
+            setGame({ ...next, round, ...next.rounds[round] })
           } else {
             const list = pool(next.generation)
             const recent = next.daily ? [] : withRecent(next, list)
@@ -430,9 +481,41 @@ export default function GamePage() {
               </li>
             )}
           </ul>
+          {incoming && (
+            <div className="rounded-2xl bg-violet-500/15 p-4 ring-2 ring-violet-400">
+              <div className="font-bold">{incoming.name ? `🤝 ${incoming.name} te desafiou!` : '🤝 Você recebeu um desafio!'}</div>
+              <div className="text-sm text-muted">
+                <div>{incoming.name ? `Fez ${incoming.score}/${CHALLENGE_ROUNDS}` : `${CHALLENGE_ROUNDS} Pokémon`}</div>
+                <div>
+                  <span>Pista: </span>
+                  <span>{HINTS.find((h) => h.key === incoming.hint)?.label ?? 'Silhueta'}</span>
+                </div>
+                <div>Jogue os mesmos Pokémon e compare.</div>
+              </div>
+              <Button onClick={() => start('challenge', incoming)} color="#7C3AED" className="mt-3 w-full">
+                Aceitar desafio
+              </Button>
+            </div>
+          )}
           <div>
             <div className="mb-2 text-sm font-semibold">Geração</div>
             <GenerationPicker value={generation || null} onChange={(g) => setGeneration(g ?? 0)} />
+          </div>
+          <div>
+            <div className="mb-2 text-sm font-semibold">Pista (jogo normal e desafio)</div>
+            <div className="grid grid-cols-2 gap-2">
+              {HINTS.map((h) => (
+                <button
+                  key={h.key}
+                  type="button"
+                  onClick={() => setHint(h.key)}
+                  aria-pressed={hint === h.key}
+                  className={`cursor-pointer rounded-2xl px-3 py-2.5 text-sm font-bold transition ${hint === h.key ? 'bg-sky-500 text-white shadow' : 'bg-surface text-muted hover:text-text'}`}
+                >
+                  {`${h.icon} ${h.label}`}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="flex flex-col gap-3">
             {saved && saved.lives > 0 && (
@@ -443,6 +526,33 @@ export default function GamePage() {
             <Button onClick={() => start('normal')} className="w-full py-4 text-lg">
               ▶ {saved ? 'Novo jogo normal' : 'Jogo normal'}
             </Button>
+            <Button onClick={() => start('challenge')} color="linear-gradient(135deg, #7c3aed, #4c1d95)" className="w-full py-4 text-lg">
+              🤝 Desafiar um amigo
+            </Button>
+            <div className="flex gap-2">
+              <input
+                value={codeInput}
+                onChange={(e) => {
+                  setCodeInput(e.target.value)
+                  setCodeError(false)
+                }}
+                placeholder="Recebeu um desafio? Cole o link ou código"
+                className="min-w-0 flex-1 rounded-xl bg-surface px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-violet-400"
+              />
+              <Button
+                color="#7C3AED"
+                onClick={() => {
+                  const c = decodeChallenge(codeInput)
+                  if (!c) return setCodeError(true)
+                  setCodeInput('')
+                  setIncoming(c)
+                }}
+                disabled={!codeInput.trim()}
+              >
+                Abrir
+              </Button>
+            </div>
+            {codeError && <p className="text-sm text-red-400">Código de desafio inválido.</p>}
             {canRank && (
               <Button onClick={() => start('ranked')} color="linear-gradient(135deg, #f9a825, #e65100)" className="w-full py-4 text-lg">
                 🏆 Jogar Ranked (todas as gerações)
@@ -465,6 +575,7 @@ export default function GamePage() {
           result={ended}
           onClose={() => setEnded(null)}
           onRestart={() => (setEnded(null), start(ended.ranked ? 'ranked' : 'normal'))}
+          onRematch={() => (setEnded(null), start('challenge'))}
         />
       </div>
     )
@@ -481,21 +592,25 @@ export default function GamePage() {
   return (
     <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]" style={layoutHeight}>
       <Stage>
-        <div className="relative aspect-square h-[78%] max-h-[640px] max-w-[90%]">
-          <AnimatePresence mode="wait">
-            <m.div
-              key={game.answerId}
-              className="h-full w-full"
-              initial={{ scale: 0.6, opacity: 0 }}
-              animate={{ scale: revealed ? [1, 1.12, 1] : 1, opacity: 1 }}
-              exit={{ scale: 0.6, opacity: 0 }}
-              transition={{ duration: 0.4 }}
-              style={{ filter: revealed ? 'drop-shadow(0 0 18px rgba(255,255,255,.7))' : 'brightness(0)' }}
-            >
-              <Sprite path={answerPokemon.sprite} box={answerPokemon.box} alt="Quem é esse Pokémon?" fill={0.95} />
-            </m.div>
-          </AnimatePresence>
-        </div>
+        {game.hint && game.hint !== 'silhouette' && !revealed ? (
+          <GameClue key={game.answerId} pokemon={answerPokemon} hint={game.hint} />
+        ) : (
+          <div className="relative aspect-square h-[78%] max-h-[640px] max-w-[90%]">
+            <AnimatePresence mode="wait">
+              <m.div
+                key={game.answerId}
+                className="h-full w-full"
+                initial={{ scale: 0.6, opacity: 0 }}
+                animate={{ scale: revealed ? [1, 1.12, 1] : 1, opacity: 1 }}
+                exit={{ scale: 0.6, opacity: 0 }}
+                transition={{ duration: 0.4 }}
+                style={{ filter: revealed ? 'drop-shadow(0 0 18px rgba(255,255,255,.7))' : 'brightness(0)' }}
+              >
+                <Sprite path={answerPokemon.sprite} box={answerPokemon.box} alt="Quem é esse Pokémon?" fill={0.95} />
+              </m.div>
+            </AnimatePresence>
+          </div>
+        )}
         <AnimatePresence>
           {revealed && (
             <m.div
@@ -512,10 +627,12 @@ export default function GamePage() {
 
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between rounded-2xl bg-card p-4 shadow">
-          <button type="button" onClick={() => (timed ? end(game) : setGame(null))} className="flex cursor-pointer items-center gap-1 text-muted hover:text-text">
+          <button type="button" onClick={() => (timed || game.challenge ? end(game) : setGame(null))} className="flex cursor-pointer items-center gap-1 text-muted hover:text-text">
             <Icon name="back" size={20} /> Sair
           </button>
-          {game.daily ? (
+          {game.challenge ? (
+            <div className="text-lg font-black text-violet-400">{`🤝 Pokémon ${game.round + 1}/${game.rounds.length}`}</div>
+          ) : game.daily ? (
             <div className="text-lg font-black text-emerald-400">
               Pokémon {game.round + 1}/{DAILY_ROUNDS}
             </div>
@@ -541,8 +658,10 @@ export default function GamePage() {
             <div className="text-3xl font-black text-orange-400">{game.streak ?? 0}🔥</div>
           </div>
           <div className="rounded-2xl bg-card p-3 shadow">
-            <div className="text-xs text-muted">{game.daily ? 'Acertos' : 'Recorde'}</div>
-            <div className="text-3xl font-black text-yellow-400">{game.daily ? game.correct : Math.max(record, game.score)}</div>
+            <div className="text-xs text-muted">{game.challenge ? (game.challenge.from ? `${game.challenge.from.name} fez` : 'Rodada') : game.daily ? 'Acertos' : 'Recorde'}</div>
+            <div className="text-3xl font-black text-yellow-400">
+              {game.challenge ? (game.challenge.from ? game.challenge.from.score : game.round + 1) : game.daily ? game.correct : Math.max(record, game.score)}
+            </div>
           </div>
         </div>
         {timed && (
@@ -603,18 +722,24 @@ export default function GamePage() {
                 : chosen === TIMEOUT
                   ? 'Tempo esgotado!'
                   : 'Errou!'
-              : hit
-                ? 'Acertou! +1 ponto'
-                : chosen === TIMEOUT
-                  ? 'Tempo esgotado! -1 vida'
-                  : 'Errou! -1 vida'}</p>
+              : game.challenge
+                ? hit
+                  ? 'Acertou! +1 ponto'
+                  : 'Errou!'
+                : hit
+                  ? 'Acertou! +1 ponto'
+                  : chosen === TIMEOUT
+                    ? 'Tempo esgotado! -1 vida'
+                    : 'Errou! -1 vida'}</p>
         )}
       </div>
     </div>
   )
 }
 
-function EndModal({ result, onClose, onRestart }) {
+function EndModal({ result, onClose, onRestart, onRematch }) {
+  const [copied, setCopied] = useState(false)
+  if (result?.challenge) return <ChallengeEnd result={result} onClose={onClose} onRematch={onRematch} copied={copied} setCopied={setCopied} />
   const title = result?.daily ? 'Fim do desafio do dia!' : result?.ranked ? 'Fim do Ranked!' : 'Fim de Jogo!'
   return (
     <Modal open={result !== null} onClose={onClose} title={title}>
@@ -632,6 +757,42 @@ function EndModal({ result, onClose, onRestart }) {
             Sair
           </button>
           {!result?.daily && <Button onClick={onRestart}>Jogar novamente</Button>}
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+/** Fim do desafio entre amigos: resultado, comparação e link para mandar. */
+function ChallengeEnd({ result, onClose, onRematch, copied, setCopied }) {
+  const link = challengeLink(result.code)
+  const from = result.from
+  const verdict = !from ? null : result.score > from.score ? 'Você venceu! 🎉' : result.score < from.score ? `${from.name} venceu dessa vez.` : 'Empate!'
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(link)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1800)
+    } catch {
+      setCopied(false)
+    }
+  }
+  return (
+    <Modal open onClose={onClose} title="Fim do desafio!">
+      <div className="text-center">
+        <p className="my-2 text-6xl font-black text-violet-400">{`${result.score}/${CHALLENGE_ROUNDS}`}</p>
+        {from && <p className="text-muted">{`${from.name} fez ${from.score}/${CHALLENGE_ROUNDS}.`}</p>}
+        {verdict && <p className="mt-1 text-lg font-bold">{verdict}</p>}
+        <p className="mt-4 text-sm text-muted">Mande este link para um amigo jogar os mesmos Pokémon e tentar te passar:</p>
+        <input readOnly value={link} onFocus={(e) => e.target.select()} className="mt-2 w-full rounded-xl bg-surface px-3 py-2 text-xs outline-none" />
+        <div className="mt-5 flex flex-wrap justify-center gap-3">
+          <button type="button" onClick={onClose} className="cursor-pointer px-4 text-muted">
+            Sair
+          </button>
+          <Button color="#7C3AED" onClick={copy}>
+            {copied ? 'Link copiado!' : 'Copiar link'}
+          </Button>
+          <Button onClick={onRematch}>Novo desafio</Button>
         </div>
       </div>
     </Modal>

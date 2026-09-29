@@ -51,6 +51,13 @@ export const getAbilities = () => load('abilities.json')
 export const getItems = () => load('items.json')
 export const getTypes = () => load('types.json')
 export const getEggGroups = () => load('egg_groups.json')
+/** Nomes dos locais de encontro: {área: {name, names: {fr, es}, region}}. */
+export const getLocations = () => load('locations.json')
+/** Áreas com Pokémon em cada jogo: {jogo: [área]} (Nuzlocke). */
+export const getGameAreas = () => load('game_areas.json')
+
+/** Grito da espécie (arquivo do banco, não da PokeAPI). */
+export const cryUrl = (speciesId) => `${BASE}cries/${speciesId}.mp3`
 
 /** Pré-carrega detalhes (ex.: ao passar o mouse sobre um card). */
 export function prefetchSpecies(id) {

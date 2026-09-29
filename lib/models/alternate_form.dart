@@ -1,6 +1,8 @@
 // lib/models/alternate_form.dart
 
 class AlternateForm {
+  /// Id do Pokémon (ou da forma) no banco.
+  final int id;
   final String formName;
   final String apiName;
   final String imageUrl;
@@ -16,6 +18,7 @@ class AlternateForm {
   final List<String> games;
 
   AlternateForm({
+    this.id = 0,
     required this.formName,
     required this.apiName,
     required this.imageUrl,
@@ -44,6 +47,7 @@ class AlternateForm {
     }
 
     return AlternateForm(
+      id: (json['id'] as num?)?.toInt() ?? 0,
       formName: formatFormName(),
       apiName: json['name'],
       imageUrl: json['sprites']['other']['official-artwork']['front_default'] ?? '',

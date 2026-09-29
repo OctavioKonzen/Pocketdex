@@ -10,6 +10,10 @@ import { getEggGroups, getPokemonById, getSpecies } from '../lib/data'
 import { EV_STATS, MAX_STAT_EVS, MAX_TOTAL_EVS, NATURES, capitalize, prettyName } from '../lib/pokemon'
 import { useStore } from '../lib/store'
 import Sprite from '../components/Sprite'
+import IvCalc from '../components/tools/IvCalc'
+import Nuzlocke from '../components/tools/Nuzlocke'
+import ShinyHunt from '../components/tools/ShinyHunt'
+import TypeChart from '../components/tools/TypeChart'
 
 const TOOLS = [
   { key: 'natures', label: 'Guia de Natures', subtitle: 'Veja como cada Nature afeta os status', color: '#42A5F5', icon: 'status' },
@@ -17,6 +21,10 @@ const TOOLS = [
   { key: 'evs', label: 'Contador de EVs', subtitle: 'Acompanhe o treino dos seus Pokémon', color: '#66BB6A', icon: 'fitness' },
   { key: 'comparar', label: 'Comparar Pokémon', subtitle: 'Status e fraquezas lado a lado', color: '#7E57C2', icon: 'layers' },
   { key: 'dano', label: 'Calculadora de dano', subtitle: 'Quanto um golpe tira do outro', color: '#EF5350', icon: 'physical' },
+  { key: 'ivs', label: 'Calculadora de IVs', subtitle: 'Descubra os IVs pelos status do jogo', color: '#26A69A', icon: 'status' },
+  { key: 'tipos', label: 'Tabela de tipos', subtitle: 'Fraquezas e resistências de cada tipo', color: '#5C6BC0', icon: 'layers' },
+  { key: 'shiny', label: 'Contador de shiny', subtitle: 'Conte os encontros da sua caçada', color: '#F59E0B', icon: 'sparkle' },
+  { key: 'nuzlocke', label: 'Nuzlocke', subtitle: 'Capturas por local, mortes e time', color: '#8D6E63', icon: 'pokeball' },
 ]
 
 export default function TrainingPage() {
@@ -25,7 +33,7 @@ export default function TrainingPage() {
   return (
     <div>
       <PageHeader title="Centro de Treinamento" subtitle="Ferramentas para treinadores dedicados que buscam o Pokémon perfeito." />
-      <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
         {TOOLS.map((t) => (
           <m.button
             key={t.key}
@@ -52,6 +60,10 @@ export default function TrainingPage() {
           {tool === 'evs' && <EvCounter />}
           {tool === 'comparar' && <Compare />}
           {tool === 'dano' && <DamageCalc />}
+          {tool === 'ivs' && <IvCalc />}
+          {tool === 'tipos' && <TypeChart />}
+          {tool === 'shiny' && <ShinyHunt />}
+          {tool === 'nuzlocke' && <Nuzlocke />}
         </m.div>
       </AnimatePresence>
     </div>

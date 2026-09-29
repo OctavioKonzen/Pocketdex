@@ -3,7 +3,8 @@
 // Menu do "Quem é esse Pokémon?", igual ao do site adaptado ao celular:
 // palco azul com raios, recordes (normal e Ranked), seletor de geração,
 // botões de jogo normal, Ranked (5 s por Pokémon) e desafio do dia, e o
-// ranking (geral, da semana e do desafio de hoje).
+// ranking (geral, da semana e do desafio de hoje). Modos de pista (silhueta,
+// grito, descrição, tipos) e desafio entre amigos (o mesmo link do site).
 
 import 'dart:async';
 
@@ -14,6 +15,7 @@ import 'package:provider/provider.dart';
 import '../models/generation.dart';
 import '../services/account_sync.dart';
 import '../services/auth_service.dart';
+import '../services/challenge.dart';
 import '../services/league.dart';
 import '../services/user_data.dart';
 import '../widgets/account_avatar.dart';
@@ -33,6 +35,30 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> {
   Generation? _generation;
+  String _hint = 'silhouette';
+  final _code = TextEditingController();
+  String? _codeError;
+
+  @override
+  void dispose() {
+    _code.dispose();
+    super.dispose();
+  }
+
+  /// Desafio entre amigos: um novo (semente própria) ou o de outra pessoa.
+  Future<void> _challenge([Challenge? from]) async {
+    final challenge = from ??
+        Challenge(seed: DateTime.now().microsecondsSinceEpoch % 2147483647, gen: _generation?.id ?? 0, hint: _hint);
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => QuizScreen(challenge: challenge)));
+  }
+
+  void _openCode() {
+    final c = Challenge.decode(_code.text);
+    if (c == null) return setState(() => _codeError = 'Código de desafio inválido.');
+    setState(() => _codeError = null);
+    _code.clear();
+    _challenge(c);
+  }
 
   String _board = 'all';
 
@@ -45,6 +71,7 @@ class _GameScreenState extends State<GameScreen> {
           ranked: ranked,
           daily: daily,
           continueGame: resume,
+          hint: _hint,
         ),
       ),
     );
@@ -122,6 +149,21 @@ class _GameScreenState extends State<GameScreen> {
               alignment: Alignment.centerLeft,
               child: GenerationPicker(value: _generation, onChanged: (g) => setState(() => _generation = g)),
             ),
+            const SizedBox(height: 14),
+            const Text('Pista (jogo normal e desafio)', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final (key, label, icon) in hints)
+                  ChoiceChip(
+                    label: Text('$icon ${tr(label)}'),
+                    selected: _hint == key,
+                    onSelected: (_) => setState(() => _hint = key),
+                  ),
+              ],
+            ),
             const SizedBox(height: 18),
             if (saved != null && (saved['lives'] as num? ?? 0) > 0) ...[
               _BigButton(
@@ -135,6 +177,34 @@ class _GameScreenState extends State<GameScreen> {
               label: saved != null ? '▶ Novo jogo normal' : '▶ Jogo normal',
               color: const Color(0xFF2196F3),
               onPressed: () => _play(ranked: false),
+            ),
+            const SizedBox(height: 10),
+            _BigButton(
+              label: '🤝 Desafiar um amigo',
+              gradient: const LinearGradient(colors: [Color(0xFF7C3AED), Color(0xFF4C1D95)]),
+              onPressed: () => _challenge(),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _code,
+                    decoration: InputDecoration(
+                      hintText: tr('Recebeu um desafio? Cole o link ou código'),
+                      errorText: _codeError == null ? null : tr(_codeError!),
+                      isDense: true,
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFF7C3AED)),
+                  onPressed: _openCode,
+                  child: const Text('Abrir'),
+                ),
+              ],
             ),
             if (signedIn) ...[
               const SizedBox(height: 10),

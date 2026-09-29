@@ -5,6 +5,9 @@
  "(Trick Room)": [
   "web-site/src/components/DamageCalc.jsx"
  ],
+ "(filter === 'missing' ? !caught.has(p.id) : filter === 'caught' ? caught.has(p.id) : true)) const percent = inGame.length ? Math.round((done / inGame.length) * 100) : 0 const info = GAME_BY_KEY[game] if (!pokedex) return": [
+  "web-site/src/components/Collection.jsx"
+ ],
  "(t.reportCount ?? 0)": [
   "web-site/src/lib/auth.js"
  ],
@@ -15,10 +18,15 @@
   "lib/services/damage_calc.dart"
  ],
  "+ Adicionar": [
-  "lib/screens/ev_counter_screen.dart"
+  "lib/screens/ev_counter_screen.dart",
+  "lib/widgets/team_suggestions.dart",
+  "web-site/src/components/TeamSuggestions.jsx"
  ],
  "+ Adicionar Pokémon ao treino": [
   "web-site/src/pages/TrainingPage.jsx"
+ ],
+ "+ Novo Nuzlocke": [
+  "web-site/src/components/tools/Nuzlocke.jsx"
  ],
  "+ Novo time": [
   "lib/screens/teams_screen.dart",
@@ -33,15 +41,22 @@
  "../App": [
   "web-site/src/pages/PokedexPage.jsx"
  ],
+ "../Sprite": [
+  "web-site/src/components/tools/IvCalc.jsx",
+  "web-site/src/components/tools/Nuzlocke.jsx",
+  "web-site/src/components/tools/ShinyHunt.jsx"
+ ],
  "./Sprite": [
   "web-site/src/components/AccountAvatar.jsx",
   "web-site/src/components/BattleTools.jsx",
+  "web-site/src/components/Collection.jsx",
   "web-site/src/components/DetailsPanel.jsx",
   "web-site/src/components/GamePicker.jsx",
   "web-site/src/components/GenerationPicker.jsx",
   "web-site/src/components/PokemonCard.jsx",
   "web-site/src/components/TeamMemberEditor.jsx",
-  "web-site/src/components/TeamShare.jsx"
+  "web-site/src/components/TeamShare.jsx",
+  "web-site/src/components/TeamSuggestions.jsx"
  ],
  "1 camada de Spikes": [
   "lib/services/damage_calc.dart"
@@ -87,12 +102,23 @@
  "Abrindo o instalador...": [
   "lib/services/update_service.dart"
  ],
+ "Abrir": [
+  "lib/screens/game_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
  "Accept": [
   "lib/services/update_service.dart"
  ],
  "Accuracy": [
   "lib/screens/move_detail_screen.dart",
   "web-site/src/components/EntryModals.jsx"
+ ],
+ "Aceitar desafio": [
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Acerta: {0}": [
+  "lib/widgets/team_suggestions.dart",
+  "web-site/src/components/TeamSuggestions.jsx"
  ],
  "Acerte 100 Pokémon no jogo.": [
   "lib/services/achievements.dart",
@@ -127,6 +153,10 @@
   "lib/screens/quiz_screen.dart",
   "web-site/src/pages/GamePage.jsx"
  ],
+ "Achei ✨": [
+  "lib/screens/tools/shiny_hunt_screen.dart",
+  "web-site/src/components/tools/ShinyHunt.jsx"
+ ],
  "Acompanhe o treino dos seus Pokémon": [
   "lib/screens/training_screen.dart",
   "web-site/src/pages/TrainingPage.jsx"
@@ -153,12 +183,24 @@
  "Age depois do alvo": [
   "lib/screens/damage_calc_screen.dart"
  ],
+ "Aguenta: {0}": [
+  "lib/widgets/team_suggestions.dart",
+  "web-site/src/components/TeamSuggestions.jsx"
+ ],
+ "Aguentam as fraquezas do time e acertam tipos que ele ainda não cobre.": [
+  "lib/widgets/team_suggestions.dart",
+  "web-site/src/components/TeamSuggestions.jsx"
+ ],
  "Ajuda de Criação": [
   "lib/screens/breeding_help_screen.dart"
  ],
  "Ajuda de Criação (Breeding)": [
   "lib/screens/training_screen.dart",
   "web-site/src/pages/TrainingPage.jsx"
+ ],
+ "Algas no fundo do mar": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
  ],
  "Algo deu errado ({0}). Tente de novo.": [
   "lib/services/auth_service.dart"
@@ -182,6 +224,26 @@
   "lib/models/generation.dart",
   "web-site/src/lib/pokemon.js"
  ],
+ "Andando na grama": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
+ ],
+ "Andando pela região (grama)": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
+ ],
+ "Andando pela região (água)": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
+ ],
+ "Andando pelo mapa": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
+ ],
+ "Andando pelo mapa (água)": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
+ ],
  "Animação da Pokébola": [
   "lib/screens/settings_screen.dart",
   "web-site/src/pages/SettingsPage.jsx"
@@ -200,6 +262,14 @@
   "lib/screens/settings_screen.dart",
   "web-site/src/pages/SettingsPage.jsx"
  ],
+ "Apagar Nuzlocke": [
+  "lib/screens/tools/nuzlocke_screen.dart",
+  "web-site/src/components/tools/Nuzlocke.jsx"
+ ],
+ "Apagar caçada": [
+  "lib/screens/tools/shiny_hunt_screen.dart",
+  "web-site/src/components/tools/ShinyHunt.jsx"
+ ],
  "Aparência": [
   "lib/screens/settings_screen.dart",
   "web-site/src/pages/SettingsPage.jsx"
@@ -208,11 +278,19 @@
   "lib/screens/team_member_screen.dart",
   "web-site/src/components/TeamMemberEditor.jsx"
  ],
+ "Apelido (opcional)": [
+  "lib/screens/tools/nuzlocke_screen.dart",
+  "web-site/src/components/tools/Nuzlocke.jsx"
+ ],
  "App e site": [
   "web-site/src/pages/SettingsPage.jsx"
  ],
  "App para Android": [
   "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Aprende o golpe": [
+  "lib/screens/pokedex_screen.dart",
+  "web-site/src/pages/PokedexPage.jsx"
  ],
  "Arceus": [
   "lib/services/damage_calc.dart"
@@ -249,7 +327,10 @@
   "lib/screens/battle_tools_screen.dart",
   "lib/screens/ev_tracking_screen.dart",
   "lib/screens/nature_guide_screen.dart",
+  "lib/screens/pokedex_screen.dart",
+  "lib/screens/tools/iv_calc_screen.dart",
   "lib/services/team_sets.dart",
+  "web-site/src/lib/ivs.js",
   "web-site/src/lib/pokemon.js",
   "web-site/src/lib/teamSets.js"
  ],
@@ -305,6 +386,9 @@
  "Base happiness": [
   "web-site/src/components/DetailsPanel.jsx"
  ],
+ "Base: {0}": [
+  "web-site/src/components/tools/IvCalc.jsx"
+ ],
  "Bashful": [
   "lib/screens/nature_guide_screen.dart",
   "lib/services/team_sets.dart",
@@ -317,6 +401,10 @@
  "Battery (aliado)": [
   "lib/screens/damage_calc_screen.dart",
   "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Bebês": [
+  "lib/screens/pokedex_screen.dart",
+  "web-site/src/pages/PokedexPage.jsx"
  ],
  "Bem-vindo de volta!": [
   "lib/screens/login_screen.dart",
@@ -364,9 +452,18 @@
  "Buscar Pokémon...": [
   "lib/screens/ev_yield_pokemon_selection_screen.dart"
  ],
+ "Cabeçada em árvores": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
+ ],
  "Cada nome só pode ser usado por uma pessoa.": [
   "lib/screens/login_screen.dart",
   "web-site/src/pages/LoginPage.jsx"
+ ],
+ "Calculadora de IVs": [
+  "lib/screens/tools/iv_calc_screen.dart",
+  "lib/screens/training_screen.dart",
+  "web-site/src/pages/TrainingPage.jsx"
  ],
  "Calculadora de dano": [
   "lib/screens/damage_calc_screen.dart",
@@ -390,13 +487,23 @@
   "lib/screens/settings_screen.dart",
   "lib/screens/team_builder_screen.dart",
   "lib/screens/teams_screen.dart",
+  "lib/screens/tools/nuzlocke_screen.dart",
   "lib/widgets/team_share_dialogs.dart",
   "web-site/src/components/EmailLinkPage.jsx",
   "web-site/src/components/TeamShare.jsx",
+  "web-site/src/components/tools/Nuzlocke.jsx",
   "web-site/src/pages/CommunityTeamsPage.jsx",
   "web-site/src/pages/SettingsPage.jsx",
   "web-site/src/pages/TeamBuilderPage.jsx",
   "web-site/src/pages/TeamsPage.jsx"
+ ],
+ "Capturando de treinador (Snag)": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
+ ],
+ "Capturas por local, mortes e time": [
+  "lib/screens/training_screen.dart",
+  "web-site/src/pages/TrainingPage.jsx"
  ],
  "Capture rate": [
   "web-site/src/components/DetailsPanel.jsx"
@@ -416,11 +523,25 @@
   "lib/services/damage_calc.dart"
  ],
  "Categoria": [
-  "web-site/src/components/EntryModals.jsx"
+  "lib/screens/pokedex_screen.dart",
+  "web-site/src/components/EntryModals.jsx",
+  "web-site/src/pages/PokedexPage.jsx"
  ],
  "Centro de Treinamento": [
   "lib/screens/training_screen.dart",
   "web-site/src/pages/TrainingPage.jsx"
+ ],
+ "Chamado SOS (31+) + Shiny Charm": [
+  "lib/utils/shiny.dart",
+  "web-site/src/lib/shiny.js"
+ ],
+ "Chamado de ajuda (SOS)": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
+ ],
+ "Chamado de ajuda (água borbulhando)": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
  ],
  "Champions": [
   "lib/models/game.dart",
@@ -473,9 +594,20 @@
   "lib/services/achievements.dart",
   "web-site/src/lib/achievements.js"
  ],
+ "Coleção": [
+  "web-site/src/pages/FavoritesPage.jsx"
+ ],
+ "Coloque os status que aparecem no resumo do Pokémon no jogo e os EVs que ele já tem (0 se nunca treinou).": [
+  "lib/screens/tools/iv_calc_screen.dart",
+  "web-site/src/components/tools/IvCalc.jsx"
+ ],
  "Colosseum": [
   "lib/models/game.dart",
   "web-site/src/lib/pokemon.js"
+ ],
+ "Com Shiny Charm": [
+  "lib/utils/shiny.dart",
+  "web-site/src/lib/shiny.js"
  ],
  "Com a senha atual, ou por um link no e-mail se você entra com Google.": [
   "lib/screens/settings_screen.dart",
@@ -566,6 +698,15 @@
   "lib/screens/training_screen.dart",
   "web-site/src/pages/TrainingPage.jsx"
  ],
+ "Contador de shiny": [
+  "lib/screens/tools/shiny_hunt_screen.dart",
+  "lib/screens/training_screen.dart",
+  "web-site/src/pages/TrainingPage.jsx"
+ ],
+ "Conte os encontros da sua caçada": [
+  "lib/screens/training_screen.dart",
+  "web-site/src/pages/TrainingPage.jsx"
+ ],
  "Continuar": [
   "lib/screens/login_screen.dart",
   "web-site/src/components/EmailLinkPage.jsx",
@@ -588,6 +729,10 @@
  "Copiar chave": [
   "web-site/src/pages/SettingsPage.jsx"
  ],
+ "Copiar link": [
+  "lib/screens/quiz_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
  "Cor do time": [
   "lib/screens/team_builder_screen.dart"
  ],
@@ -596,6 +741,8 @@
  ],
  "Criar": [
   "lib/screens/teams_screen.dart",
+  "lib/screens/tools/nuzlocke_screen.dart",
+  "web-site/src/components/tools/Nuzlocke.jsx",
   "web-site/src/pages/TeamsPage.jsx"
  ],
  "Criar Novo Time": [
@@ -623,6 +770,10 @@
  "Código": [
   "lib/widgets/team_share_dialogs.dart",
   "web-site/src/components/TeamShare.jsx"
+ ],
+ "Código de desafio inválido.": [
+  "lib/screens/game_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
  ],
  "Dados": [
   "lib/screens/settings_screen.dart",
@@ -655,7 +806,10 @@
   "lib/screens/battle_tools_screen.dart",
   "lib/screens/ev_tracking_screen.dart",
   "lib/screens/nature_guide_screen.dart",
+  "lib/screens/pokedex_screen.dart",
+  "lib/screens/tools/iv_calc_screen.dart",
   "lib/services/team_sets.dart",
+  "web-site/src/lib/ivs.js",
   "web-site/src/lib/pokemon.js",
   "web-site/src/lib/teamSets.js"
  ],
@@ -720,6 +874,14 @@
   "lib/screens/game_screen.dart",
   "web-site/src/pages/GamePage.jsx"
  ],
+ "Descrição": [
+  "lib/services/challenge.dart",
+  "web-site/src/lib/challenge.js"
+ ],
+ "Descubra os IVs pelos status do jogo": [
+  "lib/screens/training_screen.dart",
+  "web-site/src/pages/TrainingPage.jsx"
+ ],
  "Deseja remover este Pokémon do time?": [
   "lib/screens/team_builder_screen.dart",
   "web-site/src/pages/TeamBuilderPage.jsx"
@@ -778,6 +940,10 @@
   "lib/screens/damage_calc_screen.dart",
   "web-site/src/components/DamageCalc.jsx"
  ],
+ "Dynamax Adventure": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
+ ],
  "Dê sua nota": [
   "lib/screens/community_teams_screen.dart"
  ],
@@ -808,6 +974,9 @@
  "E-mail ou senha incorretos.": [
   "lib/services/auth_service.dart",
   "web-site/src/lib/auth.js"
+ ],
+ "EVs de {0}": [
+  "web-site/src/components/tools/IvCalc.jsx"
  ],
  "EVs e IVs": [
   "lib/screens/team_member_screen.dart"
@@ -852,6 +1021,10 @@
   "lib/models/game.dart",
   "web-site/src/lib/pokemon.js"
  ],
+ "Empate!": [
+  "lib/screens/quiz_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
  "Enciclopédia": [
   "lib/screens/encyclopedia_screen.dart",
   "lib/screens/home_screen.dart",
@@ -871,6 +1044,22 @@
  "Encontre parceiros compatíveis": [
   "lib/screens/training_screen.dart",
   "web-site/src/pages/TrainingPage.jsx"
+ ],
+ "Encontro fixo": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
+ ],
+ "Encontro normal (Gen 2–5)": [
+  "lib/utils/shiny.dart",
+  "web-site/src/lib/shiny.js"
+ ],
+ "Encontro normal (Gen 6+)": [
+  "lib/utils/shiny.dart",
+  "web-site/src/lib/shiny.js"
+ ],
+ "Encontro único": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
  ],
  "English": [
   "lib/i18n/i18n.dart",
@@ -948,12 +1137,19 @@
   "web-site/src/components/PokedexGrid.jsx",
   "web-site/src/components/ui.jsx"
  ],
+ "Escolha 1 ou 2 tipos (defesa):": [
+  "lib/screens/tools/type_chart_screen.dart",
+  "web-site/src/components/tools/TypeChart.jsx"
+ ],
  "Escolha a mesma conta Google que está conectada.": [
   "lib/services/auth_service.dart",
   "web-site/src/lib/auth.js"
  ],
  "Escolha dois Pokémon para comparar.": [
   "lib/screens/battle_tools_screen.dart"
+ ],
+ "Escolha o Pokémon": [
+  "web-site/src/components/tools/IvCalc.jsx"
  ],
  "Escolha o outro Pokémon para comparar.": [
   "lib/screens/battle_tools_screen.dart",
@@ -970,7 +1166,11 @@
  ],
  "Escolher Pokémon": [
   "lib/screens/battle_tools_screen.dart",
+  "lib/screens/tools/iv_calc_screen.dart",
+  "lib/screens/tools/nuzlocke_screen.dart",
   "web-site/src/components/BattleTools.jsx",
+  "web-site/src/components/tools/IvCalc.jsx",
+  "web-site/src/components/tools/Nuzlocke.jsx",
   "web-site/src/pages/TrainingPage.jsx"
  ],
  "Escolher atacante": [
@@ -1054,6 +1254,14 @@
   "lib/widgets/pokemon_detail_panel.dart",
   "web-site/src/components/DetailsPanel.jsx"
  ],
+ "Ex.: Earthquake": [
+  "lib/screens/pokedex_screen.dart",
+  "web-site/src/pages/PokedexPage.jsx"
+ ],
+ "Ex.: Intimidate": [
+  "lib/screens/pokedex_screen.dart",
+  "web-site/src/pages/PokedexPage.jsx"
+ ],
  "Excluir": [
   "lib/screens/settings_screen.dart",
   "web-site/src/pages/SettingsPage.jsx"
@@ -1097,6 +1305,10 @@
  ],
  "Fallback to base form": [
   "lib/widgets/evolution_pokemon_card.dart"
+ ],
+ "Faltando": [
+  "lib/screens/collection_screen.dart",
+  "web-site/src/components/Collection.jsx"
  ],
  "Favoritar": [
   "web-site/src/components/DetailsPanel.jsx"
@@ -1175,6 +1387,10 @@
   "lib/screens/quiz_screen.dart",
   "web-site/src/pages/GamePage.jsx"
  ],
+ "Fim do desafio!": [
+  "lib/screens/quiz_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
  "Final": [
   "lib/screens/damage_calc_screen.dart",
   "lib/screens/team_member_screen.dart",
@@ -1197,12 +1413,28 @@
  "Flash Fire ativado": [
   "lib/screens/damage_calc_screen.dart"
  ],
+ "Flores amarelas": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
+ ],
+ "Flores roxas": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
+ ],
+ "Flores vermelhas": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
+ ],
  "Flower Gift (aliado)": [
   "lib/screens/damage_calc_screen.dart",
   "web-site/src/components/DamageCalc.jsx"
  ],
  "Flying": [
   "lib/services/damage_calc.dart"
+ ],
+ "Fraco (×2)": [
+  "lib/screens/tools/type_chart_screen.dart",
+  "web-site/src/components/tools/TypeChart.jsx"
  ],
  "Français": [
   "lib/i18n/i18n.dart",
@@ -1214,6 +1446,10 @@
  ],
  "Fraquezas de {0}": [
   "lib/screens/battle_tools_screen.dart"
+ ],
+ "Fraquezas e resistências de cada tipo": [
+  "lib/screens/training_screen.dart",
+  "web-site/src/pages/TrainingPage.jsx"
  ],
  "Friend Guard (aliado)": [
   "lib/screens/damage_calc_screen.dart",
@@ -1328,6 +1564,14 @@
  "Golpes de {0}": [
   "lib/screens/damage_calc_screen.dart"
  ],
+ "Grama balançando": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
+ ],
+ "Grama escura": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
+ ],
  "Grande": [
   "lib/services/app_settings.dart",
   "web-site/src/lib/prefs.js"
@@ -1345,6 +1589,10 @@
  "Griseous": [
   "lib/services/damage_calc.dart"
  ],
+ "Grito": [
+  "lib/services/challenge.dart",
+  "web-site/src/lib/challenge.js"
+ ],
  "Groudon": [
   "lib/services/damage_calc.dart"
  ],
@@ -1353,6 +1601,10 @@
  ],
  "Growth rate": [
   "web-site/src/components/DetailsPanel.jsx"
+ ],
+ "Gruta escondida": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
  ],
  "Guia de Natures": [
   "lib/screens/nature_guide_screen.dart",
@@ -1365,9 +1617,11 @@
  ],
  "Habilidade": [
   "lib/screens/damage_calc_screen.dart",
+  "lib/screens/pokedex_screen.dart",
   "lib/screens/team_member_screen.dart",
   "web-site/src/components/DamageCalc.jsx",
-  "web-site/src/components/TeamMemberEditor.jsx"
+  "web-site/src/components/TeamMemberEditor.jsx",
+  "web-site/src/pages/PokedexPage.jsx"
  ],
  "Habilidades": [
   "lib/screens/encyclopedia_screen.dart",
@@ -1377,7 +1631,9 @@
   "lib/screens/damage_calc_screen.dart",
   "lib/screens/nature_guide_screen.dart",
   "lib/screens/team_member_screen.dart",
+  "lib/screens/tools/iv_calc_screen.dart",
   "lib/services/team_sets.dart",
+  "web-site/src/components/tools/IvCalc.jsx",
   "web-site/src/lib/pokemon.js",
   "web-site/src/lib/teamSets.js"
  ],
@@ -1410,8 +1666,15 @@
   "lib/screens/game_screen.dart",
   "web-site/src/pages/GamePage.jsx"
  ],
+ "Horda": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
+ ],
  "Hp": [
   "web-site/src/lib/pokemon.js"
+ ],
+ "IV possível": [
+  "web-site/src/components/tools/IvCalc.jsx"
  ],
  "IVs: {0}": [
   "web-site/src/lib/teamSets.js"
@@ -1445,6 +1708,10 @@
   "lib/widgets/team_share_dialogs.dart",
   "web-site/src/components/TeamShare.jsx"
  ],
+ "Imune (×0)": [
+  "lib/screens/tools/type_chart_screen.dart",
+  "web-site/src/components/tools/TypeChart.jsx"
+ ],
  "Instalar": [
   "web-site/src/pages/SettingsPage.jsx"
  ],
@@ -1456,6 +1723,10 @@
  ],
  "Intrepid Sword ao entrar": [
   "lib/screens/damage_calc_screen.dart"
+ ],
+ "Island Scan": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
  ],
  "Isso apaga": [
   "web-site/src/pages/SettingsPage.jsx"
@@ -1492,8 +1763,8 @@
   "web-site/src/pages/GamePage.jsx"
  ],
  "Jogos": [
-  "lib/widgets/pokemon_detail_panel.dart",
-  "web-site/src/components/DetailsPanel.jsx"
+  "lib/widgets/where_to_find.dart",
+  "web-site/src/components/WhereToFind.jsx"
  ],
  "Jogue, monte times e favorite Pokémon para liberar medalhas.": [
   "lib/screens/settings_screen.dart",
@@ -1562,6 +1833,10 @@
  "Lembrete do desafio: {0}": [
   "lib/services/daily_reminder.dart"
  ],
+ "Lendários": [
+  "lib/screens/pokedex_screen.dart",
+  "web-site/src/pages/PokedexPage.jsx"
+ ],
  "Let's Go, Pikachu! / Eevee!": [
   "lib/models/game.dart",
   "web-site/src/lib/pokemon.js"
@@ -1592,6 +1867,13 @@
   "lib/widgets/team_share_dialogs.dart",
   "web-site/src/components/TeamShare.jsx"
  ],
+ "Link copiado!": [
+  "lib/screens/quiz_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Local": [
+  "lib/screens/tools/nuzlocke_screen.dart"
+ ],
  "Lonely": [
   "lib/screens/nature_guide_screen.dart",
   "lib/services/team_sets.dart",
@@ -1617,6 +1899,10 @@
  "Mandamos um link para o e-mail da conta. Abra o link (confira também o spam), confirme a exclusão e depois toque em \"Já excluí\".": [
   "lib/screens/settings_screen.dart"
  ],
+ "Mande este link para um amigo jogar os mesmos Pokémon e tentar te passar:": [
+  "lib/screens/quiz_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
  "Mande o link ou o código para um amigo: no site ou no app, ele abre em Times → Importar.": [
   "lib/widgets/team_share_dialogs.dart",
   "web-site/src/components/TeamShare.jsx"
@@ -1625,8 +1911,22 @@
   "lib/screens/login_screen.dart",
   "web-site/src/pages/LoginPage.jsx"
  ],
+ "Marcar como pego": [
+  "web-site/src/components/WhereToFind.jsx"
+ ],
  "Marowak": [
   "lib/services/damage_calc.dart"
+ ],
+ "Marque os Pokémon que você já pegou em cada jogo, normais e shiny.": [
+  "web-site/src/pages/FavoritesPage.jsx"
+ ],
+ "Masuda + Shiny Charm": [
+  "lib/utils/shiny.dart",
+  "web-site/src/lib/shiny.js"
+ ],
+ "Max Raid": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
  ],
  "Me lembrar todo dia às 9h": [
   "lib/screens/quiz_screen.dart"
@@ -1637,6 +1937,13 @@
  ],
  "Memory": [
   "lib/services/damage_calc.dart"
+ ],
+ "Menos um": [
+  "web-site/src/components/tools/ShinyHunt.jsx"
+ ],
+ "Mergulhando": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
  ],
  "Mesma conta dos jogos oficiais (geração 9), com habilidades, itens, campo e golpes especiais.": [
   "lib/screens/damage_calc_screen.dart",
@@ -1678,6 +1985,10 @@
   "lib/services/achievements.dart",
   "web-site/src/lib/achievements.js"
  ],
+ "Morto": [
+  "lib/screens/tools/nuzlocke_screen.dart",
+  "web-site/src/components/tools/Nuzlocke.jsx"
+ ],
  "Mostrar": [
   "web-site/src/pages/LoginPage.jsx"
  ],
@@ -1709,6 +2020,24 @@
  "Muito envenenado": [
   "lib/screens/damage_calc_screen.dart"
  ],
+ "Muito fraco (×4)": [
+  "lib/screens/tools/type_chart_screen.dart",
+  "web-site/src/components/tools/TypeChart.jsx"
+ ],
+ "Método": [
+  "web-site/src/components/tools/ShinyHunt.jsx"
+ ],
+ "Método (para a próxima caçada)": [
+  "lib/screens/tools/shiny_hunt_screen.dart"
+ ],
+ "Método Masuda (ovos)": [
+  "lib/utils/shiny.dart",
+  "web-site/src/lib/shiny.js"
+ ],
+ "Míticos": [
+  "lib/screens/pokedex_screen.dart",
+  "web-site/src/pages/PokedexPage.jsx"
+ ],
  "Nacional": [
   "lib/widgets/generation_picker.dart"
  ],
@@ -1720,8 +2049,10 @@
  "Nature": [
   "lib/screens/damage_calc_screen.dart",
   "lib/screens/team_member_screen.dart",
+  "lib/screens/tools/iv_calc_screen.dart",
   "web-site/src/components/DamageCalc.jsx",
-  "web-site/src/components/TeamMemberEditor.jsx"
+  "web-site/src/components/TeamMemberEditor.jsx",
+  "web-site/src/components/tools/IvCalc.jsx"
  ],
  "Naughty": [
   "lib/screens/nature_guide_screen.dart",
@@ -1733,6 +2064,10 @@
   "lib/screens/team_member_screen.dart",
   "web-site/src/components/DamageCalc.jsx",
   "web-site/src/components/TeamMemberEditor.jsx"
+ ],
+ "Nenhum Nuzlocke ainda. Crie um para anotar cada captura por local, as mortes e o seu time.": [
+  "lib/screens/tools/nuzlocke_screen.dart",
+  "web-site/src/components/tools/Nuzlocke.jsx"
  ],
  "Nenhum Pokémon acerta estes tipos com dano super efetivo (STAB).": [
   "lib/widgets/team_analysis_view.dart",
@@ -1780,11 +2115,18 @@
   "lib/widgets/team_analysis_view.dart",
   "web-site/src/components/TeamAnalysis.jsx"
  ],
+ "Nenhum.": [
+  "web-site/src/components/tools/Nuzlocke.jsx"
+ ],
  "Nenhuma": [
   "lib/screens/damage_calc_screen.dart",
   "lib/widgets/team_analysis_view.dart",
   "web-site/src/components/DamageCalc.jsx",
   "web-site/src/components/TeamAnalysis.jsx"
+ ],
+ "Nenhuma caçada ainda. Escolha o método e o Pokémon para começar a contar.": [
+  "lib/screens/tools/shiny_hunt_screen.dart",
+  "web-site/src/components/tools/ShinyHunt.jsx"
  ],
  "Nenhuma 🎉": [
   "lib/widgets/team_analysis_view.dart",
@@ -1816,6 +2158,16 @@
  "No image found for base form": [
   "lib/widgets/evolution_pokemon_card.dart"
  ],
+ "No jogo": [
+  "lib/screens/tools/iv_calc_screen.dart",
+  "web-site/src/components/tools/IvCalc.jsx"
+ ],
+ "Nome": [
+  "lib/screens/tools/nuzlocke_screen.dart"
+ ],
+ "Nome (ex.: Minha run de FireRed)": [
+  "web-site/src/components/tools/Nuzlocke.jsx"
+ ],
  "Nome do Time": [
   "lib/screens/teams_screen.dart"
  ],
@@ -1844,6 +2196,9 @@
  "Notificações": [
   "lib/screens/settings_screen.dart"
  ],
+ "Nova caçada": [
+  "lib/screens/tools/shiny_hunt_screen.dart"
+ ],
  "Nova senha": [
   "lib/screens/settings_screen.dart",
   "web-site/src/components/EmailLinkPage.jsx",
@@ -1851,6 +2206,18 @@
  ],
  "Nova versão disponível!": [
   "lib/services/update_service.dart"
+ ],
+ "Novo Nuzlocke": [
+  "lib/screens/tools/nuzlocke_screen.dart",
+  "web-site/src/components/tools/Nuzlocke.jsx"
+ ],
+ "Novo desafio": [
+  "lib/screens/quiz_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "Novo encontro": [
+  "lib/screens/tools/nuzlocke_screen.dart",
+  "web-site/src/components/tools/Nuzlocke.jsx"
  ],
  "Novo jogo normal": [
   "web-site/src/pages/GamePage.jsx"
@@ -1861,11 +2228,24 @@
  "Novo recorde! 🎉": [
   "lib/screens/quiz_screen.dart"
  ],
+ "Nuzlocke": [
+  "lib/screens/tools/nuzlocke_screen.dart",
+  "lib/screens/training_screen.dart",
+  "web-site/src/components/tools/Nuzlocke.jsx",
+  "web-site/src/pages/TrainingPage.jsx"
+ ],
+ "Nuzlockes": [
+  "web-site/src/components/tools/Nuzlocke.jsx"
+ ],
  "Nv. {0}": [
   "lib/screens/damage_calc_screen.dart"
  ],
  "Não autorizado": [
   "lib/utils/app_exceptions.dart"
+ ],
+ "Não bate": [
+  "lib/screens/tools/iv_calc_screen.dart",
+  "web-site/src/components/tools/IvCalc.jsx"
  ],
  "Não causa dano.": [
   "lib/screens/damage_calc_screen.dart",
@@ -1906,9 +2286,21 @@
  "Nível": [
   "lib/screens/damage_calc_screen.dart",
   "lib/screens/team_member_screen.dart",
+  "lib/screens/tools/iv_calc_screen.dart",
   "web-site/src/components/DamageCalc.jsx",
   "web-site/src/components/DetailsPanel.jsx",
-  "web-site/src/components/TeamMemberEditor.jsx"
+  "web-site/src/components/TeamMemberEditor.jsx",
+  "web-site/src/components/tools/IvCalc.jsx"
+ ],
+ "Nível {0}": [
+  "lib/widgets/where_to_find.dart"
+ ],
+ "Nível {0}–{1}": [
+  "lib/widgets/where_to_find.dart"
+ ],
+ "Número da Pokédex": [
+  "lib/screens/pokedex_screen.dart",
+  "web-site/src/pages/PokedexPage.jsx"
  ],
  "O Google não devolveu a conta. Tente de novo.": [
   "lib/services/auth_service.dart"
@@ -1962,6 +2354,14 @@
   "lib/models/game.dart",
   "web-site/src/lib/pokemon.js"
  ],
+ "Onde encontrar": [
+  "lib/widgets/where_to_find.dart",
+  "web-site/src/components/WhereToFind.jsx"
+ ],
+ "Ordenar por": [
+  "lib/screens/pokedex_screen.dart",
+  "web-site/src/pages/PokedexPage.jsx"
+ ],
  "Os 16 danos possíveis": [
   "web-site/src/components/DamageCalc.jsx"
  ],
@@ -1981,8 +2381,16 @@
   "lib/screens/damage_calc_screen.dart",
   "web-site/src/components/DamageCalc.jsx"
  ],
+ "Ouvir o grito": [
+  "lib/widgets/where_to_find.dart",
+  "web-site/src/components/DetailsPanel.jsx"
+ ],
  "Ovo": [
   "web-site/src/components/DetailsPanel.jsx"
+ ],
+ "Ovo de presente": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
  ],
  "Padrão": [
   "lib/screens/damage_calc_screen.dart",
@@ -2014,9 +2422,20 @@
  "Parental Bond (Child)": [
   "lib/services/damage_calc.dart"
  ],
+ "Pego — toque para desmarcar": [
+  "web-site/src/components/WhereToFind.jsx"
+ ],
+ "Pegos": [
+  "lib/screens/collection_screen.dart",
+  "web-site/src/components/Collection.jsx"
+ ],
  "Pelo menos 6 caracteres.": [
   "lib/screens/login_screen.dart",
   "web-site/src/pages/LoginPage.jsx"
+ ],
+ "Perdido": [
+  "lib/screens/tools/nuzlocke_screen.dart",
+  "web-site/src/components/tools/Nuzlocke.jsx"
  ],
  "Perfeito": [
   "lib/services/achievements.dart",
@@ -2042,6 +2461,10 @@
  "Pikachu": [
   "lib/services/damage_calc.dart"
  ],
+ "Pista (jogo normal e desafio)": [
+  "lib/screens/game_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
  "Pix copia e cola": [
   "lib/screens/settings_screen.dart"
  ],
@@ -2061,8 +2484,16 @@
  "Poder {0}": [
   "web-site/src/pages/EncyclopediaPage.jsx"
  ],
+ "Poeira na caverna": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
+ ],
  "Poison": [
   "lib/services/damage_calc.dart"
+ ],
+ "Poké Radar": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
  ],
  "Pokédex": [
   "lib/screens/home_screen.dart",
@@ -2080,6 +2511,7 @@
  ],
  "Pokémon": [
   "lib/models/pokemon_details.dart",
+  "lib/screens/quiz_screen.dart",
   "lib/screens/team_builder_screen.dart",
   "web-site/src/pages/TeamBuilderPage.jsx"
  ],
@@ -2098,8 +2530,10 @@
   "lib/screens/moves_encyclopedia_screen.dart"
  ],
  "Pokémon {0}": [
+  "lib/screens/quiz_screen.dart",
   "lib/widgets/pokedex_web/pokedex_inline_details.dart",
-  "web-site/src/components/DetailsPanel.jsx"
+  "web-site/src/components/DetailsPanel.jsx",
+  "web-site/src/components/GameClue.jsx"
  ],
  "Pontos": [
   "lib/screens/quiz_screen.dart",
@@ -2123,6 +2557,10 @@
  "Power Spot (aliado)": [
   "lib/screens/damage_calc_screen.dart",
   "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Presente": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
  ],
  "Primeiro acerto": [
   "lib/services/achievements.dart",
@@ -2181,8 +2619,14 @@
  "QR Code do Pix": [
   "web-site/src/pages/SettingsPage.jsx"
  ],
+ "Qual Pokémon apareceu?": [
+  "web-site/src/components/tools/Nuzlocke.jsx"
+ ],
  "Qual Pokémon foi derrotado?": [
   "web-site/src/pages/TrainingPage.jsx"
+ ],
+ "Qual Pokémon você vai caçar?": [
+  "web-site/src/components/tools/ShinyHunt.jsx"
  ],
  "Qual Pokémon você vai treinar?": [
   "web-site/src/pages/TrainingPage.jsx"
@@ -2197,6 +2641,10 @@
  ],
  "Quark Drive ativa": [
   "lib/screens/damage_calc_screen.dart"
+ ],
+ "Quebrando pedras": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
  ],
  "Queimado": [
   "lib/screens/damage_calc_screen.dart"
@@ -2236,6 +2684,10 @@
  "Recarregar": [
   "web-site/src/lib/staleBuild.jsx"
  ],
+ "Recebeu um desafio? Cole o link ou código": [
+  "lib/screens/game_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
  "Recorde": [
   "lib/screens/quiz_screen.dart",
   "web-site/src/pages/GamePage.jsx"
@@ -2268,6 +2720,10 @@
  ],
  "Referência inválida: {0}": [
   "lib/services/local_database.dart"
+ ],
+ "Regra do Nuzlocke: só o primeiro Pokémon de cada local. Os locais já usados somem da lista.": [
+  "lib/screens/tools/nuzlocke_screen.dart",
+  "web-site/src/components/tools/Nuzlocke.jsx"
  ],
  "Relaxed": [
   "lib/screens/nature_guide_screen.dart",
@@ -2306,6 +2762,14 @@
  "Resistant to": [
   "web-site/src/components/DetailsPanel.jsx"
  ],
+ "Resiste (×½)": [
+  "lib/screens/tools/type_chart_screen.dart",
+  "web-site/src/components/tools/TypeChart.jsx"
+ ],
+ "Resiste muito (×¼)": [
+  "lib/screens/tools/type_chart_screen.dart",
+  "web-site/src/components/tools/TypeChart.jsx"
+ ],
  "Resource not found: {0}": [
   "lib/services/pokemon_service.dart"
  ],
@@ -2315,6 +2779,10 @@
  "Rockruff": [
   "lib/services/damage_calc.dart"
  ],
+ "Rodada": [
+  "lib/screens/quiz_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
  "Ruby / Sapphire": [
   "lib/models/game.dart",
   "web-site/src/lib/pokemon.js"
@@ -2322,6 +2790,10 @@
  "Saindo da batalha (Pursuit)": [
   "lib/screens/damage_calc_screen.dart",
   "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Saindo da terra": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
  ],
  "Sair": [
   "lib/screens/quiz_screen.dart",
@@ -2344,6 +2816,10 @@
   "lib/screens/damage_calc_screen.dart",
   "lib/services/damage_calc.dart"
  ],
+ "Sanduíche Sparkling + surto + Charm (SV)": [
+  "lib/utils/shiny.dart",
+  "web-site/src/lib/shiny.js"
+ ],
  "Sassy": [
   "lib/screens/nature_guide_screen.dart",
   "lib/services/team_sets.dart",
@@ -2358,10 +2834,6 @@
  ],
  "Seed": [
   "lib/services/damage_calc.dart"
- ],
- "Selecione até dois tipos": [
-  "lib/screens/pokedex_screen.dart",
-  "web-site/src/pages/PokedexPage.jsx"
  ],
  "Selecione o Pokémon Derrotado": [
   "lib/screens/ev_yield_pokemon_selection_screen.dart"
@@ -2394,6 +2866,10 @@
  "Sem detalhes": [
   "lib/widgets/team_set_summary.dart",
   "web-site/src/pages/CommunityTeamsPage.jsx"
+ ],
+ "Sem locais de captura na natureza (evolução, ovo, evento ou jogo sem dados de locais).": [
+  "lib/widgets/where_to_find.dart",
+  "web-site/src/components/WhereToFind.jsx"
  ],
  "Sem notas ainda": [
   "lib/widgets/team_analysis_view.dart",
@@ -2449,6 +2925,11 @@
   "lib/services/team_sets.dart",
   "web-site/src/lib/teamSets.js"
  ],
+ "Silhueta": [
+  "lib/services/challenge.dart",
+  "web-site/src/lib/challenge.js",
+  "web-site/src/pages/GamePage.jsx"
+ ],
  "Silvally": [
   "lib/services/damage_calc.dart"
  ],
@@ -2481,13 +2962,20 @@
  "Sol extremo (Desolate Land)": [
   "lib/screens/damage_calc_screen.dart"
  ],
+ "Sombra na ponte": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
+ ],
  "Sp. Atk": [
   "lib/screens/battle_tools_screen.dart",
   "lib/screens/damage_calc_screen.dart",
   "lib/screens/ev_tracking_screen.dart",
   "lib/screens/nature_guide_screen.dart",
+  "lib/screens/pokedex_screen.dart",
+  "lib/screens/tools/iv_calc_screen.dart",
   "lib/services/team_sets.dart",
   "lib/widgets/pokemon_detail_panel.dart",
+  "web-site/src/lib/ivs.js",
   "web-site/src/lib/pokemon.js",
   "web-site/src/lib/teamSets.js"
  ],
@@ -2496,8 +2984,11 @@
   "lib/screens/damage_calc_screen.dart",
   "lib/screens/ev_tracking_screen.dart",
   "lib/screens/nature_guide_screen.dart",
+  "lib/screens/pokedex_screen.dart",
+  "lib/screens/tools/iv_calc_screen.dart",
   "lib/services/team_sets.dart",
   "lib/widgets/pokemon_detail_panel.dart",
+  "web-site/src/lib/ivs.js",
   "web-site/src/lib/pokemon.js",
   "web-site/src/lib/teamSets.js"
  ],
@@ -2519,7 +3010,10 @@
   "lib/screens/damage_calc_screen.dart",
   "lib/screens/ev_tracking_screen.dart",
   "lib/screens/nature_guide_screen.dart",
+  "lib/screens/pokedex_screen.dart",
+  "lib/screens/tools/iv_calc_screen.dart",
   "lib/services/team_sets.dart",
+  "web-site/src/lib/ivs.js",
   "web-site/src/lib/pokemon.js",
   "web-site/src/lib/teamSets.js"
  ],
@@ -2531,7 +3025,8 @@
   "lib/screens/damage_calc_screen.dart",
   "lib/services/damage_calc.dart",
   "web-site/src/components/DamageCalc.jsx",
-  "web-site/src/components/TeamMemberEditor.jsx"
+  "web-site/src/components/TeamMemberEditor.jsx",
+  "web-site/src/components/tools/IvCalc.jsx"
  ],
  "Status base": [
   "lib/screens/battle_tools_screen.dart",
@@ -2574,6 +3069,10 @@
   "lib/screens/quiz_screen.dart",
   "web-site/src/pages/GamePage.jsx"
  ],
+ "Sugestões para completar o time": [
+  "lib/widgets/team_suggestions.dart",
+  "web-site/src/components/TeamSuggestions.jsx"
+ ],
  "Sun": [
   "lib/screens/damage_calc_screen.dart",
   "lib/services/damage_calc.dart"
@@ -2582,9 +3081,34 @@
   "lib/models/game.dart",
   "web-site/src/lib/pokemon.js"
  ],
+ "Supervara": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
+ ],
+ "Supervara (água ondulando)": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
+ ],
+ "Surfando": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
+ ],
+ "Surto em massa + Shiny Charm (SV)": [
+  "lib/utils/shiny.dart",
+  "web-site/src/lib/shiny.js"
+ ],
  "Sword / Shield": [
   "lib/models/game.dart",
   "web-site/src/lib/pokemon.js"
+ ],
+ "Tabela completa: linha = tipo do golpe, coluna = tipo de quem recebe.": [
+  "lib/screens/tools/type_chart_screen.dart",
+  "web-site/src/components/tools/TypeChart.jsx"
+ ],
+ "Tabela de tipos": [
+  "lib/screens/tools/type_chart_screen.dart",
+  "lib/screens/training_screen.dart",
+  "web-site/src/pages/TrainingPage.jsx"
  ],
  "Tamanho do texto": [
   "lib/screens/settings_screen.dart",
@@ -2644,6 +3168,10 @@
  "Terreno": [
   "lib/screens/damage_calc_screen.dart",
   "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Terreno acidentado": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
  ],
  "Texto (Pokémon Showdown e outros simuladores)": [
   "lib/widgets/team_share_dialogs.dart",
@@ -2710,7 +3238,12 @@
   "lib/screens/encyclopedia_screen.dart"
  ],
  "Tipos": [
-  "lib/screens/pokedex_screen.dart"
+  "lib/services/challenge.dart",
+  "web-site/src/lib/challenge.js"
+ ],
+ "Tipos (até dois)": [
+  "lib/screens/pokedex_screen.dart",
+  "web-site/src/pages/PokedexPage.jsx"
  ],
  "Tipos em que o time tem mais Pokémon fracos do que Pokémon que aguentam.": [
   "lib/widgets/team_analysis_view.dart",
@@ -2724,12 +3257,26 @@
   "lib/widgets/account_avatar.dart",
   "web-site/src/App.jsx"
  ],
+ "Tirar encontro": [
+  "lib/screens/tools/nuzlocke_screen.dart",
+  "web-site/src/components/tools/Nuzlocke.jsx"
+ ],
+ "Tocando a Poké Flute": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
+ ],
  "Todas as gerações": [
   "lib/widgets/generation_picker.dart",
   "web-site/src/components/GenerationPicker.jsx"
  ],
  "Todas as versões": [
   "web-site/src/pages/SettingsPage.jsx"
+ ],
+ "Todos": [
+  "lib/screens/collection_screen.dart",
+  "lib/screens/pokedex_screen.dart",
+  "web-site/src/components/Collection.jsx",
+  "web-site/src/pages/PokedexPage.jsx"
  ],
  "Todos os golpes, habilidades e itens do banco de dados.": [
   "lib/screens/encyclopedia_screen.dart",
@@ -2742,19 +3289,36 @@
  "Todos os tipos": [
   "web-site/src/pages/EncyclopediaPage.jsx"
  ],
+ "Toque num Pokémon para marcar que você o pegou neste jogo.": [
+  "lib/screens/collection_screen.dart",
+  "web-site/src/components/Collection.jsx"
+ ],
+ "Toque num Pokémon para marcar que você o pegou shiny.": [
+  "lib/screens/collection_screen.dart",
+  "web-site/src/components/Collection.jsx"
+ ],
+ "Toque num jogo para marcar que você já pegou este Pokémon nele.": [
+  "lib/widgets/where_to_find.dart",
+  "web-site/src/components/WhereToFind.jsx"
+ ],
  "Toque para escolher golpes": [
   "web-site/src/pages/TeamBuilderPage.jsx"
  ],
  "Total": [
   "lib/screens/battle_tools_screen.dart",
   "web-site/src/components/BattleTools.jsx",
-  "web-site/src/components/DetailsPanel.jsx"
+  "web-site/src/components/DetailsPanel.jsx",
+  "web-site/src/pages/PokedexPage.jsx"
  ],
  "Total EVs:": [
   "web-site/src/pages/TrainingPage.jsx"
  ],
  "Total EVs: {0} / 510": [
   "lib/screens/ev_tracking_screen.dart"
+ ],
+ "Total dos status (maior)": [
+  "lib/screens/pokedex_screen.dart",
+  "web-site/src/pages/PokedexPage.jsx"
  ],
  "Training": [
   "web-site/src/components/DetailsPanel.jsx"
@@ -2771,6 +3335,10 @@
  ],
  "Treino de {0}": [
   "lib/screens/ev_tracking_screen.dart"
+ ],
+ "Troca com personagem": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
  ],
  "Trocar": [
   "lib/screens/settings_screen.dart",
@@ -2816,6 +3384,14 @@
   "lib/models/generation.dart",
   "web-site/src/lib/pokemon.js"
  ],
+ "Usando o Devon Scope": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
+ ],
+ "Usando o regador": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
+ ],
  "Usar outra conta": [
   "lib/screens/login_screen.dart",
   "web-site/src/pages/LoginPage.jsx"
@@ -2827,6 +3403,14 @@
  "Usos com Metronome": [
   "lib/screens/damage_calc_screen.dart",
   "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Vara boa": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
+ ],
+ "Vara velha": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
  ],
  "Veevee Volley": [
   "lib/services/damage_calc.dart"
@@ -2873,6 +3457,14 @@
   "lib/screens/damage_calc_screen.dart",
   "web-site/src/components/DamageCalc.jsx"
  ],
+ "Vivo": [
+  "lib/screens/tools/nuzlocke_screen.dart",
+  "web-site/src/components/tools/Nuzlocke.jsx"
+ ],
+ "Voando pelo mapa": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
+ ],
  "Você": [
   "lib/screens/community_teams_screen.dart",
   "web-site/src/pages/CommunityTeamsPage.jsx"
@@ -2895,6 +3487,10 @@
  ],
  "Você já tem a versão mais recente ({0}).": [
   "lib/services/update_service.dart"
+ ],
+ "Você venceu! 🎉": [
+  "lib/screens/quiz_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
  ],
  "Voltar aos times": [
   "web-site/src/pages/TeamBuilderPage.jsx"
@@ -2945,6 +3541,9 @@
  "calculadora de dano: {0}": [
   "lib/screens/damage_calc_screen.dart"
  ],
+ "const title = result?.daily ? 'Fim do desafio do dia!' : result?.ranked ? 'Fim do Ranked!' : 'Fim de Jogo!' return (": [
+  "web-site/src/pages/GamePage.jsx"
+ ],
  "dano de {0}": [
   "lib/services/damage_calc.dart"
  ],
@@ -2958,6 +3557,12 @@
   "lib/services/damage_calc.dart"
  ],
  "do ranking e volte amanhã para um desafio novo!": [
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "e.status === 'dead').length return (": [
+  "web-site/src/components/tools/Nuzlocke.jsx"
+ ],
+ "from.score ? 'Você venceu! 🎉' : result.score": [
   "web-site/src/pages/GamePage.jsx"
  ],
  "g.id === game.generation) const record = game.ranked ? rankedRecord : normalRecord const timed = game.ranked || game.daily return (": [
@@ -3005,6 +3610,9 @@
   "lib/screens/game_screen.dart",
   "web-site/src/pages/GamePage.jsx"
  ],
+ "r.id === openId) if (open) return": [
+  "web-site/src/components/tools/Nuzlocke.jsx"
+ ],
  "recuperação do Black Sludge": [
   "lib/services/damage_calc.dart"
  ],
@@ -3032,6 +3640,9 @@
  "s.setTheme) const dark = theme === 'dark' return (": [
   "web-site/src/App.jsx"
  ],
+ "s.toggleCaught) if (!form.games?.length) return null return (": [
+  "web-site/src/components/WhereToFind.jsx"
+ ],
  "sprite_boxes.json não carregou: {0}": [
   "lib/widgets/pokemon_sprite.dart"
  ],
@@ -3043,7 +3654,7 @@
   "lib/utils/team_analysis.dart",
   "web-site/src/components/TeamAnalysis.jsx"
  ],
- "t !== type) : [...current.slice(-1), type])) const filtersActive = generation || game || types.length return (": [
+ "t !== type) : [...current.slice(-1), type])) const extraFilters = [tag, abilityKey, moveKey, sort !== null].filter(Boolean).length const filtersActive = generation || game || types.length || extraFilters return (": [
   "web-site/src/pages/PokedexPage.jsx"
  ],
  "todas as gerações e só {0} segundos por Pokémon, que caem para 4 s com 100 pontos, 3 s com 200 e 2 s com 400. É ele que conta para o ranking.": [
@@ -3073,11 +3684,18 @@
  "{0} de {1} acertos. Veja sua posição na aba Hoje do ranking e volte amanhã para um desafio novo!": [
   "lib/screens/quiz_screen.dart"
  ],
+ "{0} no jogo": [
+  "web-site/src/components/tools/IvCalc.jsx"
+ ],
  "{0}#byId": [
   "lib/services/local_database.dart"
  ],
  "{0}#byName": [
   "lib/services/local_database.dart"
+ ],
+ "{0}% de chance de já ter aparecido": [
+  "lib/screens/tools/shiny_hunt_screen.dart",
+  "web-site/src/components/tools/ShinyHunt.jsx"
  ],
  "{0}/510 EVs": [
   "lib/screens/ev_counter_screen.dart"
@@ -3100,6 +3718,9 @@
  "{0}{1} de chance de derrotar com {2}{3}.": [
   "lib/services/damage_calc.dart"
  ],
+ "} · modo {0}. Jogue os mesmos Pokémon e compare.": [
+  "web-site/src/pages/GamePage.jsx"
+ ],
  "}. Escolha o seu nome no PocketDex.": [
   "lib/screens/login_screen.dart"
  ],
@@ -3111,6 +3732,22 @@
  ],
  "· jogo secundário": [
   "web-site/src/components/GamePicker.jsx"
+ ],
+ "Água borbulhando": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
+ ],
+ "Água ondulando": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
+ ],
+ "Árvore com mel": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
+ ],
+ "Árvores de frutas": [
+  "lib/utils/encounters.dart",
+  "web-site/src/lib/encounters.js"
  ],
  "É assim que os outros vão te ver. Cada nome só pode ser usado por uma pessoa.": [
   "lib/screens/login_screen.dart",
@@ -3158,6 +3795,23 @@
   "lib/screens/team_member_screen.dart",
   "web-site/src/components/TeamMemberEditor.jsx"
  ],
+ "✨ Encontrado com {0} encontros!": [
+  "lib/screens/tools/shiny_hunt_screen.dart",
+  "web-site/src/components/tools/ShinyHunt.jsx"
+ ],
+ "✨ Marcar shiny": [
+  "web-site/src/components/Collection.jsx"
+ ],
+ "✨ Nova caçada": [
+  "web-site/src/components/tools/ShinyHunt.jsx"
+ ],
+ "✨ Shiny": [
+  "lib/screens/collection_screen.dart"
+ ],
+ "⭐ Favoritos": [
+  "lib/screens/favorites_screen.dart",
+  "web-site/src/pages/FavoritesPage.jsx"
+ ],
  "🏆 Jogar Ranked (todas as gerações)": [
   "lib/screens/game_screen.dart",
   "web-site/src/pages/GamePage.jsx"
@@ -3184,6 +3838,12 @@
   "lib/screens/quiz_screen.dart",
   "web-site/src/pages/GamePage.jsx"
  ],
+ "📦 Coleção": [
+  "lib/screens/favorites_screen.dart"
+ ],
+ "📦 Coleção por jogo": [
+  "web-site/src/pages/FavoritesPage.jsx"
+ ],
  "🔎 Times da comunidade": [
   "lib/screens/teams_screen.dart",
   "web-site/src/pages/TeamsPage.jsx"
@@ -3193,5 +3853,18 @@
  ],
  "🚩 Denunciar": [
   "web-site/src/pages/CommunityTeamsPage.jsx"
+ ],
+ "🤝 Desafiar um amigo": [
+  "lib/screens/game_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "🤝 Desafio": [
+  "lib/screens/quiz_screen.dart"
+ ],
+ "🤝 Pokémon {0}/{1}": [
+  "web-site/src/pages/GamePage.jsx"
+ ],
+ "🤝 Você recebeu um desafio!": [
+  "web-site/src/pages/GamePage.jsx"
  ]
 }

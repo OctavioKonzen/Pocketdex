@@ -236,3 +236,39 @@ export const EV_STATS = [
 
 export const MAX_TOTAL_EVS = 510
 export const MAX_STAT_EVS = 252
+
+/**
+ * Sugestões para completar o time (mesma conta do app): Pokémon fortes (total
+ * dos status ≥ 480, sem míticos) que aguentam as fraquezas do time e acertam
+ * os tipos que ele não cobre, sem criar fraquezas novas onde o time já sofre.
+ * Devolve até `count` itens {pokemon, score, resists: [tipo], covers: [tipo]}.
+ */
+export function suggestMembers(membersTypes, typeData, candidates, exclude = [], count = 6) {
+  const analysis = analyzeTeam(membersTypes, typeData)
+  if (!analysis || analysis.size >= 6) return []
+  const weak = analysis.weaknesses.map(([t]) => t)
+  const crowded = ALL_TYPES.filter((t) => analysis.rows[t].weak >= 2)
+  const skip = new Set(exclude)
+  const out = []
+  for (const p of candidates) {
+    if (skip.has(p.id) || p.tag === 'mythical' || !p.stats) continue
+    const total = p.stats.reduce((a, b) => a + b, 0)
+    if (total < 480) continue
+    const taken = damageTaken(p.types, typeData)
+    const resists = weak.filter((t) => taken[t] < 1)
+    const covers = analysis.missing.filter((t) => p.types.some((own) => typeData[own]?.double_damage_to.includes(t)))
+    const worse = [...weak, ...crowded].filter((t) => taken[t] > 1).length
+    const score = resists.reduce((s, t) => s + (taken[t] === 0 ? 3 : 2), 0) + covers.length - worse * 2
+    if (score <= 0) continue
+    out.push({ pokemon: p, score: score + total / 1000, resists, covers })
+  }
+  out.sort((a, b) => b.score - a.score)
+  // Um de cada combinação de tipos, para variar.
+  const seen = new Set()
+  return out.filter((s) => {
+    const key = [...s.pokemon.types].sort().join('/')
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  }).slice(0, count)
+}

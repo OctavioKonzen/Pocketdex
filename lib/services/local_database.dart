@@ -94,6 +94,35 @@ class LocalDatabase {
   Future<List<Map<String, dynamic>>> allItems() async => (await _table('items') as List).cast<Map<String, dynamic>>();
   Future<List<Map<String, dynamic>>> allAbilities() async => (await _table('abilities') as List).cast<Map<String, dynamic>>();
 
+  /// Espécies como estão no banco (id → {name, is_legendary, flavors, genera...}).
+  Future<Map<int, Map<String, dynamic>>> speciesById() => _indexById('species');
+
+  /// Onde encontrar o Pokémon: [[área, jogo, método, nívelMín, nívelMáx, chance, versões]].
+  Future<List<List<dynamic>>> encountersOf(int pokemonId) async {
+    final all = await _table('encounters') as Map<String, dynamic>;
+    return ((all['$pokemonId'] as List?) ?? const []).cast<List<dynamic>>();
+  }
+
+  /// Nomes dos locais: área → {name, names: {fr, es}, region}.
+  Future<Map<String, dynamic>> locations() async => await _table('locations') as Map<String, dynamic>;
+
+  /// Áreas com Pokémon em cada jogo (Nuzlocke), por região e nome.
+  Future<Map<String, List<String>>> gameAreas() async {
+    final cached = await _tables.putIfAbsent('encounters#areas', () async {
+      final all = await _table('encounters') as Map<String, dynamic>;
+      final locs = await locations();
+      final byGame = <String, Set<String>>{};
+      for (final rows in all.values) {
+        for (final r in rows as List) {
+          byGame.putIfAbsent(r[1] as String, () => {}).add(r[0] as String);
+        }
+      }
+      String sortKey(String a) => '${(locs[a]?['region'] ?? '')}|${(locs[a]?['name'] ?? a)}';
+      return {for (final e in byGame.entries) e.key: (e.value.toList()..sort((a, b) => sortKey(a).compareTo(sortKey(b))))};
+    });
+    return cached as Map<String, List<String>>;
+  }
+
   /// Golpes por nome ({name, type, damage_class, power...}).
   Future<Map<String, Map<String, dynamic>>> movesByName() => _indexByName('moves');
 

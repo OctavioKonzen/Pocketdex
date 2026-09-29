@@ -3482,5 +3482,860 @@
   "en": "Medals from the game, the Pokédex and teams.",
   "fr": "Médailles du jeu, du Pokédex et des équipes.",
   "es": "Medallas del juego, la Pokédex y los equipos."
+ },
+ "Coleção": {
+  "en": "Collection",
+  "fr": "Collection",
+  "es": "Colección"
+ },
+ "📦 Coleção": {
+  "en": "📦 Collection",
+  "fr": "📦 Collection",
+  "es": "📦 Colección"
+ },
+ "📦 Coleção por jogo": {
+  "en": "📦 Collection by game",
+  "fr": "📦 Collection par jeu",
+  "es": "📦 Colección por juego"
+ },
+ "⭐ Favoritos": {
+  "en": "⭐ Favorites",
+  "fr": "⭐ Favoris",
+  "es": "⭐ Favoritos"
+ },
+ "Marque os Pokémon que você já pegou em cada jogo, normais e shiny.": {
+  "en": "Mark the Pokémon you've caught in each game, regular and shiny.",
+  "fr": "Cochez les Pokémon que vous avez attrapés dans chaque jeu, normaux et chromatiques.",
+  "es": "Marca los Pokémon que ya atrapaste en cada juego, normales y variocolor."
+ },
+ "Todos": {
+  "en": "All",
+  "fr": "Tous",
+  "es": "Todos"
+ },
+ "Faltando": {
+  "en": "Missing",
+  "fr": "Manquants",
+  "es": "Faltantes"
+ },
+ "Pegos": {
+  "en": "Caught",
+  "fr": "Attrapés",
+  "es": "Atrapados"
+ },
+ "✨ Marcar shiny": {
+  "en": "✨ Mark shiny",
+  "fr": "✨ Marquer chromatique",
+  "es": "✨ Marcar variocolor"
+ },
+ "✨ Shiny": {
+  "en": "✨ Shiny",
+  "fr": "✨ Chromatique",
+  "es": "✨ Variocolor"
+ },
+ "{0}/{1} pegos · {2} shiny": {
+  "en": "{0}/{1} caught · {2} shiny",
+  "fr": "{0}/{1} attrapés · {2} chromatiques",
+  "es": "{0}/{1} atrapados · {2} variocolor"
+ },
+ "Toque num Pokémon para marcar que você o pegou neste jogo.": {
+  "en": "Tap a Pokémon to mark that you caught it in this game.",
+  "fr": "Touchez un Pokémon pour indiquer que vous l’avez attrapé dans ce jeu.",
+  "es": "Toca un Pokémon para marcar que lo atrapaste en este juego."
+ },
+ "Toque num Pokémon para marcar que você o pegou shiny.": {
+  "en": "Tap a Pokémon to mark that you caught it shiny.",
+  "fr": "Touchez un Pokémon pour indiquer que vous l’avez attrapé chromatique.",
+  "es": "Toca un Pokémon para marcar que lo atrapaste variocolor."
+ },
+ "Toque num jogo para marcar que você já pegou este Pokémon nele.": {
+  "en": "Tap a game to mark that you've caught this Pokémon in it.",
+  "fr": "Touchez un jeu pour indiquer que vous avez attrapé ce Pokémon dedans.",
+  "es": "Toca un juego para marcar que ya atrapaste este Pokémon en él."
+ },
+ "Marcar como pego": {
+  "en": "Mark as caught",
+  "fr": "Marquer comme attrapé",
+  "es": "Marcar como atrapado"
+ },
+ "Pego — toque para desmarcar": {
+  "en": "Caught — tap to unmark",
+  "fr": "Attrapé — touchez pour décocher",
+  "es": "Atrapado — toca para desmarcar"
+ },
+ "Onde encontrar": {
+  "en": "Where to find",
+  "fr": "Où le trouver",
+  "es": "Dónde encontrarlo"
+ },
+ "Ouvir o grito": {
+  "en": "Play cry",
+  "fr": "Écouter le cri",
+  "es": "Escuchar el grito"
+ },
+ "Sem locais de captura na natureza (evolução, ovo, evento ou jogo sem dados de locais).": {
+  "en": "No wild locations (evolution, egg, event or a game without location data).",
+  "fr": "Aucun lieu sauvage (évolution, œuf, événement ou jeu sans données de lieux).",
+  "es": "Sin lugares en estado salvaje (evolución, huevo, evento o juego sin datos de lugares)."
+ },
+ "Nível {0}": {
+  "en": "Level {0}",
+  "fr": "Niveau {0}",
+  "es": "Nivel {0}"
+ },
+ "Nível {0}–{1}": {
+  "en": "Level {0}–{1}",
+  "fr": "Niveau {0}–{1}",
+  "es": "Nivel {0}–{1}"
+ },
+ "Andando na grama": {
+  "en": "Walking in grass",
+  "fr": "En marchant dans les hautes herbes",
+  "es": "Caminando por la hierba"
+ },
+ "Grama escura": {
+  "en": "Dark grass",
+  "fr": "Hautes herbes sombres",
+  "es": "Hierba oscura"
+ },
+ "Grama balançando": {
+  "en": "Rustling grass",
+  "fr": "Herbes qui bougent",
+  "es": "Hierba que se mueve"
+ },
+ "Poeira na caverna": {
+  "en": "Cave dust",
+  "fr": "Poussière dans la grotte",
+  "es": "Polvo en la cueva"
+ },
+ "Sombra na ponte": {
+  "en": "Bridge shadow",
+  "fr": "Ombre sur le pont",
+  "es": "Sombra en el puente"
+ },
+ "Terreno acidentado": {
+  "en": "Rough terrain",
+  "fr": "Terrain accidenté",
+  "es": "Terreno accidentado"
+ },
+ "Flores amarelas": {
+  "en": "Yellow flowers",
+  "fr": "Fleurs jaunes",
+  "es": "Flores amarillas"
+ },
+ "Flores roxas": {
+  "en": "Purple flowers",
+  "fr": "Fleurs violettes",
+  "es": "Flores moradas"
+ },
+ "Flores vermelhas": {
+  "en": "Red flowers",
+  "fr": "Fleurs rouges",
+  "es": "Flores rojas"
+ },
+ "Surfando": {
+  "en": "Surfing",
+  "fr": "En surfant",
+  "es": "Surfeando"
+ },
+ "Água ondulando": {
+  "en": "Rippling water",
+  "fr": "Eau qui ondule",
+  "es": "Agua ondulante"
+ },
+ "Vara velha": {
+  "en": "Old Rod",
+  "fr": "Canne",
+  "es": "Caña Vieja"
+ },
+ "Vara boa": {
+  "en": "Good Rod",
+  "fr": "Super Canne",
+  "es": "Caña Buena"
+ },
+ "Supervara": {
+  "en": "Super Rod",
+  "fr": "Méga Canne",
+  "es": "Supercaña"
+ },
+ "Supervara (água ondulando)": {
+  "en": "Super Rod (rippling water)",
+  "fr": "Méga Canne (eau qui ondule)",
+  "es": "Supercaña (agua ondulante)"
+ },
+ "Quebrando pedras": {
+  "en": "Rock Smash",
+  "fr": "Éclate-Roc",
+  "es": "Golpe Roca"
+ },
+ "Cabeçada em árvores": {
+  "en": "Headbutting trees",
+  "fr": "Coup d’Boule sur les arbres",
+  "es": "Cabezazo a los árboles"
+ },
+ "Árvore com mel": {
+  "en": "Honey tree",
+  "fr": "Arbre à miel",
+  "es": "Árbol con miel"
+ },
+ "Árvores de frutas": {
+  "en": "Berry trees",
+  "fr": "Arbres à baies",
+  "es": "Árboles de bayas"
+ },
+ "Presente": {
+  "en": "Gift",
+  "fr": "Cadeau",
+  "es": "Regalo"
+ },
+ "Ovo de presente": {
+  "en": "Gift egg",
+  "fr": "Œuf offert",
+  "es": "Huevo de regalo"
+ },
+ "Troca com personagem": {
+  "en": "In-game trade",
+  "fr": "Échange avec un personnage",
+  "es": "Intercambio con un personaje"
+ },
+ "Encontro fixo": {
+  "en": "Static encounter",
+  "fr": "Rencontre fixe",
+  "es": "Encuentro fijo"
+ },
+ "Encontro único": {
+  "en": "One-time encounter",
+  "fr": "Rencontre unique",
+  "es": "Encuentro único"
+ },
+ "Tocando a Poké Flute": {
+  "en": "Playing the Poké Flute",
+  "fr": "En jouant de la Pokéflûte",
+  "es": "Tocando la Poké Flauta"
+ },
+ "Usando o regador": {
+  "en": "Using the watering can",
+  "fr": "Avec l’arrosoir",
+  "es": "Usando la regadera"
+ },
+ "Usando o Devon Scope": {
+  "en": "Using the Devon Scope",
+  "fr": "Avec le Devon Scope",
+  "es": "Usando el Detector Devon"
+ },
+ "Algas no fundo do mar": {
+  "en": "Seaweed on the sea floor",
+  "fr": "Algues au fond de la mer",
+  "es": "Algas en el fondo del mar"
+ },
+ "Chamado de ajuda (SOS)": {
+  "en": "SOS call",
+  "fr": "Appel à l’aide (SOS)",
+  "es": "Llamada de auxilio (SOS)"
+ },
+ "Chamado de ajuda (água borbulhando)": {
+  "en": "SOS call (bubbling water)",
+  "fr": "Appel à l’aide (eau qui bouillonne)",
+  "es": "Llamada de auxilio (agua burbujeante)"
+ },
+ "Água borbulhando": {
+  "en": "Bubbling water",
+  "fr": "Eau qui bouillonne",
+  "es": "Agua burbujeante"
+ },
+ "Horda": {
+  "en": "Horde",
+  "fr": "Horde",
+  "es": "Horda"
+ },
+ "Gruta escondida": {
+  "en": "Hidden Grotto",
+  "fr": "Trouée Cachée",
+  "es": "Claro Oculto"
+ },
+ "Andando pelo mapa": {
+  "en": "Roaming the overworld",
+  "fr": "En se déplaçant sur la carte",
+  "es": "Por el mapa"
+ },
+ "Andando pelo mapa (água)": {
+  "en": "Roaming the overworld (water)",
+  "fr": "En se déplaçant sur la carte (eau)",
+  "es": "Por el mapa (agua)"
+ },
+ "Voando pelo mapa": {
+  "en": "Flying in the overworld",
+  "fr": "En volant sur la carte",
+  "es": "Volando por el mapa"
+ },
+ "Saindo da terra": {
+  "en": "Coming out of the ground",
+  "fr": "En sortant du sol",
+  "es": "Saliendo de la tierra"
+ },
+ "Capturando de treinador (Snag)": {
+  "en": "Snagged from a trainer",
+  "fr": "Capturé à un dresseur (Snag)",
+  "es": "Capturado de un entrenador (Snag)"
+ },
+ "Andando pela região (grama)": {
+  "en": "Roaming the region (grass)",
+  "fr": "Errant dans la région (herbes)",
+  "es": "Errante por la región (hierba)"
+ },
+ "Andando pela região (água)": {
+  "en": "Roaming the region (water)",
+  "fr": "Errant dans la région (eau)",
+  "es": "Errante por la región (agua)"
+ },
+ "Mergulhando": {
+  "en": "Diving",
+  "fr": "En plongeant",
+  "es": "Buceando"
+ },
+ "Filtros": {
+  "en": "Filters",
+  "fr": "Filtres",
+  "es": "Filtros"
+ },
+ "Tipos (até dois)": {
+  "en": "Types (up to two)",
+  "fr": "Types (deux max.)",
+  "es": "Tipos (hasta dos)"
+ },
+ "Lendários": {
+  "en": "Legendary",
+  "fr": "Légendaires",
+  "es": "Legendarios"
+ },
+ "Míticos": {
+  "en": "Mythical",
+  "fr": "Fabuleux",
+  "es": "Singulares"
+ },
+ "Bebês": {
+  "en": "Babies",
+  "fr": "Bébés",
+  "es": "Bebés"
+ },
+ "Aprende o golpe": {
+  "en": "Learns the move",
+  "fr": "Apprend la capacité",
+  "es": "Aprende el movimiento"
+ },
+ "Ordenar por": {
+  "en": "Sort by",
+  "fr": "Trier par",
+  "es": "Ordenar por"
+ },
+ "Número da Pokédex": {
+  "en": "Pokédex number",
+  "fr": "Numéro du Pokédex",
+  "es": "Número de la Pokédex"
+ },
+ "Total dos status (maior)": {
+  "en": "Stat total (highest)",
+  "fr": "Total des stats (plus haut)",
+  "es": "Total de estadísticas (mayor)"
+ },
+ "{0} (maior)": {
+  "en": "{0} (highest)",
+  "fr": "{0} (plus haut)",
+  "es": "{0} (mayor)"
+ },
+ "Ex.: Intimidate": {
+  "en": "E.g.: Intimidate",
+  "fr": "Ex. : Intimidate",
+  "es": "Ej.: Intimidate"
+ },
+ "Ex.: Earthquake": {
+  "en": "E.g.: Earthquake",
+  "fr": "Ex. : Earthquake",
+  "es": "Ej.: Earthquake"
+ },
+ "Sugestões para completar o time": {
+  "en": "Suggestions to complete the team",
+  "fr": "Suggestions pour compléter l’équipe",
+  "es": "Sugerencias para completar el equipo"
+ },
+ "Aguentam as fraquezas do time e acertam tipos que ele ainda não cobre.": {
+  "en": "They handle the team’s weaknesses and hit types it doesn’t cover yet.",
+  "fr": "Ils encaissent les faiblesses de l’équipe et touchent des types qu’elle ne couvre pas encore.",
+  "es": "Aguantan las debilidades del equipo y golpean tipos que aún no cubre."
+ },
+ "Aguenta: {0}": {
+  "en": "Resists: {0}",
+  "fr": "Résiste : {0}",
+  "es": "Resiste: {0}"
+ },
+ "Acerta: {0}": {
+  "en": "Hits: {0}",
+  "fr": "Touche : {0}",
+  "es": "Golpea: {0}"
+ },
+ "Calculadora de IVs": {
+  "en": "IV calculator",
+  "fr": "Calculateur d’IV",
+  "es": "Calculadora de IV"
+ },
+ "Descubra os IVs pelos status do jogo": {
+  "en": "Find IVs from the in-game stats",
+  "fr": "Trouvez les IV à partir des stats du jeu",
+  "es": "Descubre los IV con las estadísticas del juego"
+ },
+ "Tabela de tipos": {
+  "en": "Type chart",
+  "fr": "Table des types",
+  "es": "Tabla de tipos"
+ },
+ "Fraquezas e resistências de cada tipo": {
+  "en": "Weaknesses and resistances of each type",
+  "fr": "Faiblesses et résistances de chaque type",
+  "es": "Debilidades y resistencias de cada tipo"
+ },
+ "Contador de shiny": {
+  "en": "Shiny counter",
+  "fr": "Compteur de chromatiques",
+  "es": "Contador de variocolor"
+ },
+ "Conte os encontros da sua caçada": {
+  "en": "Count the encounters of your hunt",
+  "fr": "Comptez les rencontres de votre chasse",
+  "es": "Cuenta los encuentros de tu caza"
+ },
+ "Nuzlocke": {
+  "en": "Nuzlocke",
+  "fr": "Nuzlocke",
+  "es": "Nuzlocke"
+ },
+ "Capturas por local, mortes e time": {
+  "en": "Catches per route, deaths and team",
+  "fr": "Captures par lieu, morts et équipe",
+  "es": "Capturas por ruta, muertes y equipo"
+ },
+ "Nuzlockes": {
+  "en": "Nuzlockes",
+  "fr": "Nuzlockes",
+  "es": "Nuzlockes"
+ },
+ "Escolha o Pokémon": {
+  "en": "Choose the Pokémon",
+  "fr": "Choisissez le Pokémon",
+  "es": "Elige el Pokémon"
+ },
+ "Coloque os status que aparecem no resumo do Pokémon no jogo e os EVs que ele já tem (0 se nunca treinou).": {
+  "en": "Enter the stats shown on the Pokémon’s summary in the game and the EVs it already has (0 if never trained).",
+  "fr": "Entrez les stats affichées dans le résumé du Pokémon et les EV qu’il a déjà (0 s’il n’a jamais été entraîné).",
+  "es": "Pon las estadísticas del resumen del Pokémon en el juego y los EV que ya tiene (0 si nunca entrenó)."
+ },
+ "No jogo": {
+  "en": "In game",
+  "fr": "En jeu",
+  "es": "En el juego"
+ },
+ "IV possível": {
+  "en": "Possible IV",
+  "fr": "IV possible",
+  "es": "IV posible"
+ },
+ "Não bate": {
+  "en": "No match",
+  "fr": "Aucun",
+  "es": "No cuadra"
+ },
+ "EVs de {0}": {
+  "en": "{0} EVs",
+  "fr": "EV de {0}",
+  "es": "EV de {0}"
+ },
+ "{0} no jogo": {
+  "en": "{0} in game",
+  "fr": "{0} en jeu",
+  "es": "{0} en el juego"
+ },
+ "{0} (neutra)": {
+  "en": "{0} (neutral)",
+  "fr": "{0} (neutre)",
+  "es": "{0} (neutra)"
+ },
+ "Escolha 1 ou 2 tipos (defesa):": {
+  "en": "Choose 1 or 2 types (defense):",
+  "fr": "Choisissez 1 ou 2 types (défense) :",
+  "es": "Elige 1 o 2 tipos (defensa):"
+ },
+ "Muito fraco (×4)": {
+  "en": "Very weak (×4)",
+  "fr": "Très faible (×4)",
+  "es": "Muy débil (×4)"
+ },
+ "Fraco (×2)": {
+  "en": "Weak (×2)",
+  "fr": "Faible (×2)",
+  "es": "Débil (×2)"
+ },
+ "Resiste (×½)": {
+  "en": "Resists (×½)",
+  "fr": "Résiste (×½)",
+  "es": "Resiste (×½)"
+ },
+ "Resiste muito (×¼)": {
+  "en": "Strongly resists (×¼)",
+  "fr": "Résiste beaucoup (×¼)",
+  "es": "Resiste mucho (×¼)"
+ },
+ "Imune (×0)": {
+  "en": "Immune (×0)",
+  "fr": "Immunisé (×0)",
+  "es": "Inmune (×0)"
+ },
+ "Tabela completa: linha = tipo do golpe, coluna = tipo de quem recebe.": {
+  "en": "Full chart: row = move type, column = defender type.",
+  "fr": "Table complète : ligne = type de la capacité, colonne = type de la cible.",
+  "es": "Tabla completa: fila = tipo del movimiento, columna = tipo de quien lo recibe."
+ },
+ "Método": {
+  "en": "Method",
+  "fr": "Méthode",
+  "es": "Método"
+ },
+ "Método (para a próxima caçada)": {
+  "en": "Method (for the next hunt)",
+  "fr": "Méthode (pour la prochaine chasse)",
+  "es": "Método (para la próxima caza)"
+ },
+ "✨ Nova caçada": {
+  "en": "✨ New hunt",
+  "fr": "✨ Nouvelle chasse",
+  "es": "✨ Nueva caza"
+ },
+ "Nova caçada": {
+  "en": "New hunt",
+  "fr": "Nouvelle chasse",
+  "es": "Nueva caza"
+ },
+ "Nenhuma caçada ainda. Escolha o método e o Pokémon para começar a contar.": {
+  "en": "No hunts yet. Choose the method and the Pokémon to start counting.",
+  "fr": "Aucune chasse pour l’instant. Choisissez la méthode et le Pokémon pour commencer à compter.",
+  "es": "Ninguna caza todavía. Elige el método y el Pokémon para empezar a contar."
+ },
+ "Qual Pokémon você vai caçar?": {
+  "en": "Which Pokémon will you hunt?",
+  "fr": "Quel Pokémon allez-vous chasser ?",
+  "es": "¿Qué Pokémon vas a cazar?"
+ },
+ "Apagar caçada": {
+  "en": "Delete hunt",
+  "fr": "Supprimer la chasse",
+  "es": "Borrar caza"
+ },
+ "Menos um": {
+  "en": "Minus one",
+  "fr": "Moins un",
+  "es": "Menos uno"
+ },
+ "Achei ✨": {
+  "en": "Found it ✨",
+  "fr": "Trouvé ✨",
+  "es": "¡Lo encontré! ✨"
+ },
+ "✨ Encontrado com {0} encontros!": {
+  "en": "✨ Found after {0} encounters!",
+  "fr": "✨ Trouvé après {0} rencontres !",
+  "es": "✨ ¡Encontrado tras {0} encuentros!"
+ },
+ "{0}% de chance de já ter aparecido": {
+  "en": "{0}% chance it should have appeared by now",
+  "fr": "{0} % de chances qu’il soit déjà apparu",
+  "es": "{0}% de probabilidad de que ya haya aparecido"
+ },
+ "Encontro normal (Gen 6+)": {
+  "en": "Regular encounter (Gen 6+)",
+  "fr": "Rencontre normale (Gen 6+)",
+  "es": "Encuentro normal (Gen 6+)"
+ },
+ "Encontro normal (Gen 2–5)": {
+  "en": "Regular encounter (Gen 2–5)",
+  "fr": "Rencontre normale (Gen 2–5)",
+  "es": "Encuentro normal (Gen 2–5)"
+ },
+ "Com Shiny Charm": {
+  "en": "With Shiny Charm",
+  "fr": "Avec Charme Chroma",
+  "es": "Con Amuleto Iris"
+ },
+ "Método Masuda (ovos)": {
+  "en": "Masuda method (eggs)",
+  "fr": "Méthode Masuda (œufs)",
+  "es": "Método Masuda (huevos)"
+ },
+ "Masuda + Shiny Charm": {
+  "en": "Masuda + Shiny Charm",
+  "fr": "Masuda + Charme Chroma",
+  "es": "Masuda + Amuleto Iris"
+ },
+ "Surto em massa + Shiny Charm (SV)": {
+  "en": "Mass outbreak + Shiny Charm (SV)",
+  "fr": "Apparition massive + Charme Chroma (EV)",
+  "es": "Aparición masiva + Amuleto Iris (EP)"
+ },
+ "Sanduíche Sparkling + surto + Charm (SV)": {
+  "en": "Sparkling sandwich + outbreak + Charm (SV)",
+  "fr": "Sandwich Brillance + apparition + Charme (EV)",
+  "es": "Bocadillo Destello + aparición + Amuleto (EP)"
+ },
+ "Chamado SOS (31+) + Shiny Charm": {
+  "en": "SOS chain (31+) + Shiny Charm",
+  "fr": "Appel SOS (31+) + Charme Chroma",
+  "es": "Llamada SOS (31+) + Amuleto Iris"
+ },
+ "+ Novo Nuzlocke": {
+  "en": "+ New Nuzlocke",
+  "fr": "+ Nouveau Nuzlocke",
+  "es": "+ Nuevo Nuzlocke"
+ },
+ "Novo Nuzlocke": {
+  "en": "New Nuzlocke",
+  "fr": "Nouveau Nuzlocke",
+  "es": "Nuevo Nuzlocke"
+ },
+ "Nenhum Nuzlocke ainda. Crie um para anotar cada captura por local, as mortes e o seu time.": {
+  "en": "No Nuzlockes yet. Create one to log each catch per route, the deaths and your team.",
+  "fr": "Aucun Nuzlocke pour l’instant. Créez-en un pour noter chaque capture par lieu, les morts et votre équipe.",
+  "es": "Ningún Nuzlocke todavía. Crea uno para anotar cada captura por ruta, las muertes y tu equipo."
+ },
+ "Nome": {
+  "en": "Name",
+  "fr": "Nom",
+  "es": "Nombre"
+ },
+ "Nome (ex.: Minha run de FireRed)": {
+  "en": "Name (e.g.: My FireRed run)",
+  "fr": "Nom (ex. : Ma partie de Rouge Feu)",
+  "es": "Nombre (ej.: Mi partida de Rojo Fuego)"
+ },
+ "Apagar Nuzlocke": {
+  "en": "Delete Nuzlocke",
+  "fr": "Supprimer le Nuzlocke",
+  "es": "Borrar Nuzlocke"
+ },
+ "{0} vivos · {1} mortos · {2} locais": {
+  "en": "{0} alive · {1} dead · {2} routes",
+  "fr": "{0} en vie · {1} morts · {2} lieux",
+  "es": "{0} vivos · {1} muertos · {2} rutas"
+ },
+ "{0} · {1}/{2} locais": {
+  "en": "{0} · {1}/{2} routes",
+  "fr": "{0} · {1}/{2} lieux",
+  "es": "{0} · {1}/{2} rutas"
+ },
+ "{0}/{1} locais": {
+  "en": "{0}/{1} routes",
+  "fr": "{0}/{1} lieux",
+  "es": "{0}/{1} rutas"
+ },
+ "Novo encontro": {
+  "en": "New encounter",
+  "fr": "Nouvelle rencontre",
+  "es": "Nuevo encuentro"
+ },
+ "Regra do Nuzlocke: só o primeiro Pokémon de cada local. Os locais já usados somem da lista.": {
+  "en": "Nuzlocke rule: only the first Pokémon of each route. Used routes disappear from the list.",
+  "fr": "Règle du Nuzlocke : seulement le premier Pokémon de chaque lieu. Les lieux déjà utilisés disparaissent de la liste.",
+  "es": "Regla del Nuzlocke: solo el primer Pokémon de cada ruta. Las rutas ya usadas desaparecen de la lista."
+ },
+ "Local": {
+  "en": "Route",
+  "fr": "Lieu",
+  "es": "Ruta"
+ },
+ "Apelido (opcional)": {
+  "en": "Nickname (optional)",
+  "fr": "Surnom (facultatif)",
+  "es": "Mote (opcional)"
+ },
+ "Qual Pokémon apareceu?": {
+  "en": "Which Pokémon appeared?",
+  "fr": "Quel Pokémon est apparu ?",
+  "es": "¿Qué Pokémon apareció?"
+ },
+ "Vivo": {
+  "en": "Alive",
+  "fr": "En vie",
+  "es": "Vivo"
+ },
+ "Morto": {
+  "en": "Dead",
+  "fr": "Mort",
+  "es": "Muerto"
+ },
+ "Perdido": {
+  "en": "Missed",
+  "fr": "Raté",
+  "es": "Perdido"
+ },
+ "Nenhum.": {
+  "en": "None.",
+  "fr": "Aucun.",
+  "es": "Ninguno."
+ },
+ "Tirar encontro": {
+  "en": "Remove encounter",
+  "fr": "Retirer la rencontre",
+  "es": "Quitar encuentro"
+ },
+ "Pista (jogo normal e desafio)": {
+  "en": "Clue (normal game and challenge)",
+  "fr": "Indice (partie normale et défi)",
+  "es": "Pista (juego normal y desafío)"
+ },
+ "Silhueta": {
+  "en": "Silhouette",
+  "fr": "Silhouette",
+  "es": "Silueta"
+ },
+ "Grito": {
+  "en": "Cry",
+  "fr": "Cri",
+  "es": "Grito"
+ },
+ "Descrição": {
+  "en": "Description",
+  "fr": "Description",
+  "es": "Descripción"
+ },
+ "👤 Silhueta": {
+  "en": "👤 Silhouette",
+  "fr": "👤 Silhouette",
+  "es": "👤 Silueta"
+ },
+ "🔊 Grito": {
+  "en": "🔊 Cry",
+  "fr": "🔊 Cri",
+  "es": "🔊 Grito"
+ },
+ "📖 Descrição": {
+  "en": "📖 Description",
+  "fr": "📖 Description",
+  "es": "📖 Descripción"
+ },
+ "🔥 Tipos": {
+  "en": "🔥 Types",
+  "fr": "🔥 Types",
+  "es": "🔥 Tipos"
+ },
+ "🤝 Desafiar um amigo": {
+  "en": "🤝 Challenge a friend",
+  "fr": "🤝 Défier un ami",
+  "es": "🤝 Desafiar a un amigo"
+ },
+ "🤝 Desafio": {
+  "en": "🤝 Challenge",
+  "fr": "🤝 Défi",
+  "es": "🤝 Desafío"
+ },
+ "Recebeu um desafio? Cole o link ou código": {
+  "en": "Got a challenge? Paste the link or code",
+  "fr": "Vous avez reçu un défi ? Collez le lien ou le code",
+  "es": "¿Recibiste un desafío? Pega el enlace o código"
+ },
+ "Abrir": {
+  "en": "Open",
+  "fr": "Ouvrir",
+  "es": "Abrir"
+ },
+ "Código de desafio inválido.": {
+  "en": "Invalid challenge code.",
+  "fr": "Code de défi invalide.",
+  "es": "Código de desafío no válido."
+ },
+ "🤝 Você recebeu um desafio!": {
+  "en": "🤝 You got a challenge!",
+  "fr": "🤝 Vous avez reçu un défi !",
+  "es": "🤝 ¡Recibiste un desafío!"
+ },
+ "🤝 {0} te desafiou!": {
+  "en": "🤝 {0} challenged you!",
+  "fr": "🤝 {0} vous a défié !",
+  "es": "🤝 ¡{0} te desafió!"
+ },
+ "Fez {0}/{1}": {
+  "en": "Scored {0}/{1}",
+  "fr": "A fait {0}/{1}",
+  "es": "Hizo {0}/{1}"
+ },
+ "Pista: ": {
+  "en": "Clue: ",
+  "fr": "Indice : ",
+  "es": "Pista: "
+ },
+ "Jogue os mesmos Pokémon e compare.": {
+  "en": "Play the same Pokémon and compare.",
+  "fr": "Jouez les mêmes Pokémon et comparez.",
+  "es": "Juega los mismos Pokémon y compara."
+ },
+ "Aceitar desafio": {
+  "en": "Accept challenge",
+  "fr": "Accepter le défi",
+  "es": "Aceptar desafío"
+ },
+ "🤝 Pokémon {0}/{1}": {
+  "en": "🤝 Pokémon {0}/{1}",
+  "fr": "🤝 Pokémon {0}/{1}",
+  "es": "🤝 Pokémon {0}/{1}"
+ },
+ "Rodada": {
+  "en": "Round",
+  "fr": "Manche",
+  "es": "Ronda"
+ },
+ "{0} fez": {
+  "en": "{0} scored",
+  "fr": "{0} a fait",
+  "es": "{0} hizo"
+ },
+ "Fim do desafio!": {
+  "en": "Challenge over!",
+  "fr": "Fin du défi !",
+  "es": "¡Fin del desafío!"
+ },
+ "{0} fez {1}/{2}.": {
+  "en": "{0} scored {1}/{2}.",
+  "fr": "{0} a fait {1}/{2}.",
+  "es": "{0} hizo {1}/{2}."
+ },
+ "Você venceu! 🎉": {
+  "en": "You won! 🎉",
+  "fr": "Vous avez gagné ! 🎉",
+  "es": "¡Ganaste! 🎉"
+ },
+ "{0} venceu dessa vez.": {
+  "en": "{0} won this time.",
+  "fr": "{0} a gagné cette fois.",
+  "es": "{0} ganó esta vez."
+ },
+ "Empate!": {
+  "en": "Tie!",
+  "fr": "Égalité !",
+  "es": "¡Empate!"
+ },
+ "Mande este link para um amigo jogar os mesmos Pokémon e tentar te passar:": {
+  "en": "Send this link to a friend so they play the same Pokémon and try to beat you:",
+  "fr": "Envoyez ce lien à un ami pour qu’il joue les mêmes Pokémon et essaie de vous battre :",
+  "es": "Manda este enlace a un amigo para que juegue los mismos Pokémon e intente superarte:"
+ },
+ "Copiar link": {
+  "en": "Copy link",
+  "fr": "Copier le lien",
+  "es": "Copiar enlace"
+ },
+ "Link copiado!": {
+  "en": "Link copied!",
+  "fr": "Lien copié !",
+  "es": "¡Enlace copiado!"
+ },
+ "Novo desafio": {
+  "en": "New challenge",
+  "fr": "Nouveau défi",
+  "es": "Nuevo desafío"
  }
 }

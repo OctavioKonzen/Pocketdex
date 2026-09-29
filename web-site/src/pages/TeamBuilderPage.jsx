@@ -8,6 +8,7 @@ import { getPokemonById, getSpecies, getTypes } from '../lib/data'
 import { newSet, prettySlug, teamSets } from '../lib/teamSets'
 import TeamMemberEditor from '../components/TeamMemberEditor'
 import TeamAnalysis, { RatingText } from '../components/TeamAnalysis'
+import TeamSuggestions from '../components/TeamSuggestions'
 import { analyzeTeam } from '../lib/pokemon'
 import { isOffensive } from '../lib/profanity'
 import { myTeamRatings, useAuth } from '../lib/auth'
@@ -175,6 +176,14 @@ export default function TeamBuilderPage() {
             )}
           </div>
           <TeamAnalysis analysis={analysis} />
+          <TeamSuggestions
+            members={members}
+            typeData={typeData}
+            onAdd={(p) => {
+              const slot = team.pokemon.findIndex((x) => !x)
+              if (slot >= 0) setSlot(slot, p)
+            }}
+          />
         </section>
       </div>
 
