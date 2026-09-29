@@ -3,10 +3,11 @@
 // Seletor de jogo (ao lado do de geração, igual ao site): mostra só os
 // Pokémon que aparecem no jogo escolhido.
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 
 import '../models/game.dart';
 import 'generation_picker.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 const _allGradient = LinearGradient(colors: [Color(0xFF546E7A), Color(0xFF37474F)]);
 

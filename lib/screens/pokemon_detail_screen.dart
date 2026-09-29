@@ -1,7 +1,7 @@
 // lib/screens/pokemon_detail_screen.dart
 
 import 'dart:math';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import '../services/account_format.dart';
 import '../widgets/pokemon_sprite.dart';
 import '../widgets/pokedex_web/pokeball_reveal.dart';
@@ -16,6 +16,7 @@ import 'package:pocket_dex/widgets/pikachu_loading_indicator.dart';
 import 'package:pocket_dex/widgets/pokemon_detail_panel.dart';
 import 'package:pocket_dex/widgets/pokemon_display.dart';
 import 'package:pocket_dex/utils/app_images.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 enum _AnimationDirection { next, previous }
 
@@ -329,7 +330,7 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with TickerPr
                           left: 8,
                           child: _NavArrow(
                             icon: Icons.chevron_left,
-                            tooltip: 'Anterior',
+                            tooltip: tr('Anterior'),
                             onPressed: () => _slideTo(_AnimationDirection.previous),
                           ),
                         ),
@@ -338,7 +339,7 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with TickerPr
                           right: 8,
                           child: _NavArrow(
                             icon: Icons.chevron_right,
-                            tooltip: 'Próximo',
+                            tooltip: tr('Próximo'),
                             onPressed: () => _slideTo(_AnimationDirection.next),
                           ),
                         ),
@@ -432,7 +433,7 @@ class _NavArrow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      tooltip: tooltip,
+      tooltip: tr(tooltip),
       onPressed: onPressed,
       iconSize: 36,
       color: Colors.white,

@@ -7,7 +7,7 @@
 //
 // Ao fechar devolve 'remove' (tirar do time), 'swap' (trocar o Pokémon) ou null.
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 
 import '../services/local_database.dart';
 import '../services/team_sets.dart';
@@ -16,6 +16,7 @@ import '../utils/site_ui.dart';
 import '../utils/string_extensions.dart';
 import '../widgets/pick_fields.dart';
 import '../widgets/pokemon_sprite.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 // Categorias de itens que não dá para segurar em batalha.
 const _notHeld = {
@@ -157,12 +158,12 @@ class _TeamMemberScreenState extends State<TeamMemberScreen> {
         title: Text((_set['nickname'] as String).isNotEmpty ? _set['nickname'] as String : name),
         actions: [
           IconButton(
-            tooltip: 'Trocar Pokémon',
+            tooltip: tr('Trocar Pokémon'),
             icon: const Icon(Icons.swap_horiz),
             onPressed: () => Navigator.pop(context, 'swap'),
           ),
           IconButton(
-            tooltip: 'Remover do time',
+            tooltip: tr('Remover do time'),
             icon: const Icon(Icons.delete_outline),
             onPressed: () => Navigator.pop(context, 'remove'),
           ),

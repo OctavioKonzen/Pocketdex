@@ -1,6 +1,6 @@
 // lib/screens/breeding_partners_screen.dart
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import '../services/account_format.dart';
 import '../widgets/pokemon_sprite.dart';
 import '../models/pokemon_details.dart';
@@ -11,6 +11,7 @@ import '../utils/string_extensions.dart';
 import '../widgets/pikachu_loading_indicator.dart';
 import '../widgets/pokemon_card.dart';
 import '../utils/responsive.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 class BreedingPartnersScreen extends StatefulWidget {
   final PokemonListing initialPokemon;

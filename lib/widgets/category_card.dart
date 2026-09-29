@@ -1,6 +1,7 @@
 // lib/widgets/category_card.dart
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import 'package:pocket_dex/i18n/text.dart';
 
 class CategoryCard extends StatelessWidget {
   final String title;

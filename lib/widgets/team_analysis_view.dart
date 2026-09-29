@@ -2,10 +2,11 @@
 //
 // Análise do time (igual à do site) e as estrelas da nota da comunidade.
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 
 import '../utils/site_ui.dart';
 import '../utils/team_analysis.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 class TeamAnalysisView extends StatelessWidget {
   final TeamAnalysis? analysis;

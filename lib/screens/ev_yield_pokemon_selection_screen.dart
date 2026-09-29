@@ -1,11 +1,13 @@
 // lib/screens/ev_yield_pokemon_selection_screen.dart
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import 'package:pocket_dex/models/pokemon_listing.dart';
 import 'package:pocket_dex/services/pokemon_service.dart';
 import 'package:pocket_dex/widgets/pikachu_loading_indicator.dart';
 import 'package:pocket_dex/widgets/pokemon_card.dart';
 import 'package:pocket_dex/utils/responsive.dart';
+import 'package:pocket_dex/i18n/text.dart';
+import 'package:pocket_dex/i18n/i18n.dart';
 
 class EvYieldPokemonSelectionScreen extends StatefulWidget {
   const EvYieldPokemonSelectionScreen({super.key});
@@ -52,7 +54,7 @@ class _EvYieldPokemonSelectionScreenState
     final query = _searchController.text.toLowerCase();
     setState(() {
       _filteredPokemon = _allPokemon.where((pokemon) {
-        return pokemon.name.toLowerCase().contains(query);
+        return I18n.nameMatches(pokemon.name, query);
       }).toList();
     });
   }
@@ -74,7 +76,7 @@ class _EvYieldPokemonSelectionScreenState
               controller: _searchController,
               autofocus: true,
               decoration: InputDecoration(
-                hintText: 'Buscar Pokémon...',
+                hintText: tr('Buscar Pokémon...'),
                 prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),

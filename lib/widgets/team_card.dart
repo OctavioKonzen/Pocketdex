@@ -3,13 +3,14 @@
 // Card de time igual ao do site: borda colorida à esquerda (cor do time),
 // nome, quantidade de Pokémon e nota da comunidade, e os 6 espaços com os Pokémon.
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 
 import '../models/team.dart';
 import '../services/account_format.dart';
 import '../utils/site_ui.dart';
 import 'pokemon_sprite.dart';
 import 'team_analysis_view.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 class TeamCard extends StatelessWidget {
   final Team team;
@@ -49,7 +50,7 @@ class TeamCard extends StatelessWidget {
               ),
               IconButton(
                 icon: Icon(Icons.delete_outline, color: c.muted),
-                tooltip: 'Deletar time',
+                tooltip: tr('Deletar time'),
                 onPressed: onDelete,
               ),
             ],

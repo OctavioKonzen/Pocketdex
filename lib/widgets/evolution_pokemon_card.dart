@@ -1,10 +1,11 @@
 // lib/widgets/evolution_pokemon_card.dart
 
 import '../services/pokemon_service.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import '../services/account_format.dart';
 import 'pokemon_sprite.dart';
 import '../utils/string_extensions.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 class EvolutionPokemonCard extends StatefulWidget {
   final String pokemonName;

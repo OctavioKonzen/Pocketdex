@@ -3,10 +3,11 @@
 // Peças de formulário usadas na calculadora de dano e no editor de times:
 // campo de número com limite e lista com busca (habilidades, itens, golpes).
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 
 import '../utils/site_ui.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 String _id(String s) => s.toLowerCase().replaceAll(RegExp('[^a-z0-9]'), '');
 

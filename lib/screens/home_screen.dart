@@ -2,7 +2,7 @@
 
 import 'dart:async';
 import 'package:debounce_throttle/debounce_throttle.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 
 import 'package:pocket_dex/models/pokemon_listing.dart';
 import 'package:pocket_dex/screens/pokedex_screen.dart';
@@ -23,6 +23,8 @@ import 'package:pocket_dex/widgets/pokemon_sprite.dart';
 import 'package:pocket_dex/widgets/account_avatar.dart';
 import 'package:pocket_dex/services/auth_service.dart';
 import 'package:pocket_dex/services/update_service.dart';
+import 'package:pocket_dex/i18n/text.dart';
+import 'package:pocket_dex/i18n/i18n.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -106,7 +108,7 @@ class _HomeScreenState extends State<HomeScreen> {
       } else {
         _searchResults = _allPokemonList
             .where((pokemon) {
-              return pokemon.name.toLowerCase().contains(trimmedQuery) ||
+              return I18n.nameMatches(pokemon.name, trimmedQuery) ||
                   pokemon.id == trimmedQuery;
             })
             .take(3)
@@ -170,7 +172,7 @@ class _HomeScreenState extends State<HomeScreen> {
             MaterialPageRoute(builder: (context) => const SettingsScreen()),
           );
         },
-        tooltip: 'Configurações',
+        tooltip: tr('Configurações'),
         backgroundColor: theme.colorScheme.secondary,
         child: Icon(Icons.settings, color: theme.colorScheme.onSecondary),
       ),
@@ -208,7 +210,7 @@ class _HomeScreenState extends State<HomeScreen> {
             focusNode: _searchFocusNode,
             style: TextStyle(color: theme.colorScheme.onSurface),
             decoration: InputDecoration(
-              hintText: 'Procurar Pokémon por nome ou nú...',
+              hintText: tr('Procurar Pokémon por nome ou nú...'),
               hintStyle: TextStyle(color: theme.hintColor),
               prefixIcon: Icon(Icons.search, color: theme.hintColor),
               filled: true,

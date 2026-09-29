@@ -7,7 +7,7 @@
 
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 
 import '../services/account_sync.dart';
 import '../services/auth_service.dart';
@@ -23,6 +23,7 @@ import '../widgets/pokemon_sprite.dart';
 import '../widgets/team_analysis_view.dart';
 import '../widgets/team_set_summary.dart';
 import 'team_builder_screen.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 Color _teamColor(Object? color) {
   if (color is String && RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(color)) {

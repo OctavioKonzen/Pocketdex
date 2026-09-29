@@ -8,7 +8,7 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import 'package:provider/provider.dart';
 
 import '../models/generation.dart';
@@ -22,6 +22,7 @@ import '../utils/responsive.dart';
 import '../widgets/game_stage.dart';
 import '../widgets/generation_picker.dart';
 import 'quiz_screen.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key});

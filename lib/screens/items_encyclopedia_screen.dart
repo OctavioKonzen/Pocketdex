@@ -1,5 +1,5 @@
 // lib/screens/items_encyclopedia_screen.dart
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import '../widgets/expandable_entry.dart';
 import '../models/item.dart';
 import '../services/pokemon_service.dart';
@@ -7,6 +7,7 @@ import '../utils/string_extensions.dart';
 import '../utils/responsive.dart';
 import '../utils/site_ui.dart';
 import '../utils/app_images.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 class ItemsEncyclopediaScreen extends StatefulWidget {
   const ItemsEncyclopediaScreen({super.key});

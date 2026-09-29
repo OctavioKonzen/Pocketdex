@@ -1,12 +1,14 @@
 // lib/screens/breeding_help_screen.dart
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import '../models/pokemon_listing.dart';
 import '../services/pokemon_service.dart';
 import '../widgets/pikachu_loading_indicator.dart';
 import '../widgets/pokemon_card.dart';
 import 'breeding_partners_screen.dart';
 import '../utils/responsive.dart';
+import 'package:pocket_dex/i18n/text.dart';
+import 'package:pocket_dex/i18n/i18n.dart';
 
 class BreedingHelpScreen extends StatefulWidget {
   const BreedingHelpScreen({super.key});
@@ -47,7 +49,7 @@ class _BreedingHelpScreenState extends State<BreedingHelpScreen> {
     final filtered = _allPokemon.where((pokemon) {
       final name = pokemon.name.toLowerCase();
       final id = pokemon.id;
-      return name.contains(query.toLowerCase()) || id == query;
+      return I18n.nameMatches(name, query) || id == query;
     }).toList();
     setState(() {
       _filteredPokemon = filtered;
@@ -69,7 +71,7 @@ class _BreedingHelpScreenState extends State<BreedingHelpScreen> {
               onChanged: _filterPokemon,
               style: TextStyle(color: theme.colorScheme.onSurface),
               decoration: InputDecoration(
-                hintText: 'Procurar Pokémon...',
+                hintText: tr('Procurar Pokémon...'),
                 prefixIcon: const Icon(Icons.search),
                 border:
                     OutlineInputBorder(borderRadius: BorderRadius.circular(12)),

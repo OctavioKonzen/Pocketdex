@@ -10,6 +10,7 @@
 
 import 'dart:convert';
 import 'package:flutter/services.dart' show rootBundle;
+import '../i18n/i18n.dart';
 import '../utils/app_images.dart';
 
 class LocalDatabase {
@@ -247,10 +248,12 @@ class LocalDatabase {
           {'entry_number': entry.value, 'pokedex': {'name': entry.key}},
       ],
       'flavor_text_entries': <dynamic>[
-        if (s['flavor'] != null) {'flavor_text': s['flavor'], 'language': {'name': 'en'}},
+        if (I18n.pick(s['flavor'] as String?, s['flavors']) != null)
+          {'flavor_text': I18n.pick(s['flavor'] as String?, s['flavors']), 'language': {'name': 'en'}},
       ],
       'genera': <dynamic>[
-        if (s['genus'] != null) {'genus': s['genus'], 'language': {'name': 'en'}},
+        if (I18n.pick(s['genus'] as String?, s['genera']) != null)
+          {'genus': I18n.pick(s['genus'] as String?, s['genera']), 'language': {'name': 'en'}},
       ],
       'egg_groups': <dynamic>[for (final g in s['egg_groups'] as List) {'name': g}],
       'evolution_chain': s['evolution_chain'] == null ? null : {'url': 'evolution-chain/${s['evolution_chain']}/'},
@@ -354,7 +357,7 @@ class LocalDatabase {
       'stat_changes': <dynamic>[
         for (final c in m['stat_changes'] as List) {'change': c[1], 'stat': {'name': c[0]}},
       ],
-      'effect_entries': _englishEffect(m['effect'], m['effect_full']),
+      'effect_entries': _englishEffect(_localEffect(m), m['effect_full']),
       'flavor_text_entries': _englishFlavor(m['flavor']),
       'learned_by_pokemon': await _pokemonRefs((m['learned_by'] as List).cast<int>()),
     };
@@ -375,7 +378,7 @@ class LocalDatabase {
       'held_by_pokemon': <dynamic>[
         for (final ref in await _pokemonRefs((i['held_by'] as List).cast<int>())) {'pokemon': ref},
       ],
-      'effect_entries': _englishEffect(i['effect'], i['effect_full']),
+      'effect_entries': _englishEffect(_localEffect(i), i['effect_full']),
       'flavor_text_entries': _englishFlavor(i['flavor'], key: 'text'),
     };
   }
@@ -388,7 +391,7 @@ class LocalDatabase {
       'name': a['name'],
       'is_main_series': a['is_main_series'],
       'generation': a['generation'] == null ? null : {'url': 'generation/${a['generation']}/'},
-      'effect_entries': _englishEffect(a['effect'], a['effect_full']),
+      'effect_entries': _englishEffect(_localEffect(a), a['effect_full']),
       'flavor_text_entries': _englishFlavor(a['flavor']),
       'pokemon': [
         for (final ref in await _pokemonRefs((a['pokemon'] as List).cast<int>(), wrap: true))
@@ -420,6 +423,9 @@ class LocalDatabase {
     }
     throw ArgumentError('Recurso desconhecido: $resource');
   }
+
+  /// Descrição curta: em português a do banco; em outro idioma, a do jogo nesse idioma.
+  static String? _localEffect(Map<String, dynamic> row) => I18n.pick(row['effect'] as String?, row['flavors']);
 
   List<dynamic> _englishEffect(String? shortEffect, [String? effect]) => <dynamic>[
         if (shortEffect != null || effect != null)

@@ -45,7 +45,9 @@ export function setLanguage(code) {
 
 const exact = new Map()
 const patterns = []
-for (const [pt, tr] of Object.entries(ui)) {
+for (const [key, tr] of Object.entries(ui)) {
+  // Espaços e quebras de linha contam como um espaço só (como em t()).
+  const pt = key.replace(/\s+/g, ' ').trim()
   const text = language === 'pt' ? tr[3] : tr[INDEX[language]]
   if (!text || text === pt) continue
   if (/\{\d+\}/.test(pt)) {

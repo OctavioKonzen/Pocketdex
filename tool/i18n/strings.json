@@ -8,6 +8,9 @@
  "(t.reportCount ?? 0)": [
   "web-site/src/lib/auth.js"
  ],
+ ").hasMatch(text) ?  :": [
+  "lib/i18n/i18n.dart"
+ ],
  ")} e {0}": [
   "lib/services/damage_calc.dart"
  ],
@@ -848,6 +851,10 @@
   "lib/screens/training_screen.dart",
   "web-site/src/pages/TrainingPage.jsx"
  ],
+ "English": [
+  "lib/i18n/i18n.dart",
+  "web-site/src/lib/i18n.js"
+ ],
  "Entrar": [
   "lib/screens/login_screen.dart",
   "web-site/src/pages/LoginPage.jsx"
@@ -954,6 +961,10 @@
  "Escolher defensor": [
   "lib/screens/damage_calc_screen.dart",
   "web-site/src/components/DamageCalc.jsx"
+ ],
+ "Español": [
+  "lib/i18n/i18n.dart",
+  "web-site/src/lib/i18n.js"
  ],
  "Especial": [
   "lib/screens/damage_calc_screen.dart",
@@ -1171,6 +1182,10 @@
  "Flying": [
   "lib/services/damage_calc.dart"
  ],
+ "Français": [
+  "lib/i18n/i18n.dart",
+  "web-site/src/lib/i18n.js"
+ ],
  "Fraquezas": [
   "lib/widgets/team_analysis_view.dart",
   "web-site/src/components/TeamAnalysis.jsx"
@@ -1377,6 +1392,10 @@
  ],
  "Ice": [
   "lib/services/damage_calc.dart"
+ ],
+ "Idioma": [
+  "lib/screens/settings_screen.dart",
+  "web-site/src/pages/SettingsPage.jsx"
  ],
  "Immune to": [
   "web-site/src/components/DetailsPanel.jsx"
@@ -1639,6 +1658,11 @@
  "Mostrar": [
   "web-site/src/pages/LoginPage.jsx"
  ],
+ "Mostrar mais ({0})": [
+  "web-site/src/components/EntryModals.jsx",
+  "web-site/src/components/PokemonPicker.jsx",
+  "web-site/src/pages/EncyclopediaPage.jsx"
+ ],
  "Mostrar menos": [
   "lib/screens/damage_calc_screen.dart"
  ],
@@ -1780,6 +1804,9 @@
  "Nome ofensivo": [
   "lib/screens/community_teams_screen.dart",
   "web-site/src/pages/CommunityTeamsPage.jsx"
+ ],
+ "Nomes dos Pokémon e descrições também mudam.": [
+  "web-site/src/pages/SettingsPage.jsx"
  ],
  "Normal": [
   "lib/services/damage_calc.dart"
@@ -2039,7 +2066,8 @@
   "lib/screens/moves_encyclopedia_screen.dart"
  ],
  "Pokémon {0}": [
-  "lib/widgets/pokedex_web/pokedex_inline_details.dart"
+  "lib/widgets/pokedex_web/pokedex_inline_details.dart",
+  "web-site/src/components/DetailsPanel.jsx"
  ],
  "Pontos": [
   "lib/screens/quiz_screen.dart",
@@ -2051,6 +2079,10 @@
  "Por segurança, saia e entre de novo na conta e tente outra vez.": [
   "lib/services/auth_service.dart",
   "web-site/src/lib/auth.js"
+ ],
+ "Português": [
+  "lib/i18n/i18n.dart",
+  "web-site/src/lib/i18n.js"
  ],
  "Power": [
   "lib/screens/move_detail_screen.dart",
@@ -2913,9 +2945,6 @@
  "matchesSearch(p, query)), [pokedex, query]) return (": [
   "web-site/src/components/PokemonPicker.jsx"
  ],
- "mod.default) createRoot(document.getElementById('root')).render(": [
-  "web-site/src/main.jsx"
- ],
  "ninguém aguenta": [
   "lib/utils/team_analysis.dart",
   "web-site/src/components/TeamAnalysis.jsx"
@@ -2927,7 +2956,8 @@
   "lib/screens/damage_calc_screen.dart"
  ],
  "os mesmos {0} Pokémon para todo mundo, {1} segundos cada e uma tentativa por dia. Quanto mais rápido acertar, mais pontos.": [
-  "lib/screens/game_screen.dart"
+  "lib/screens/game_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
  ],
  "recuperação do Black Sludge": [
   "lib/services/damage_calc.dart"
@@ -2968,7 +2998,8 @@
   "web-site/src/pages/PokedexPage.jsx"
  ],
  "todas as gerações e só {0} segundos por Pokémon, que caem para 4 s com 100 pontos, 3 s com 200 e 2 s com 400. É ele que conta para o ranking.": [
-  "lib/screens/game_screen.dart"
+  "lib/screens/game_screen.dart",
+  "web-site/src/pages/GamePage.jsx"
  ],
  "você": [
   "lib/screens/game_screen.dart",

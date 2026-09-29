@@ -5,7 +5,7 @@
 // girando, nome, tipos, formas e shiny. À direita: as mesmas abas do app
 // (About, Base Stats, Evolution e Moves).
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 
 import '../../models/alternate_form.dart';
 import '../../models/pokemon_details.dart';
@@ -18,6 +18,7 @@ import '../hover_scale.dart';
 import '../pikachu_loading_indicator.dart';
 import '../pokemon_detail_panel.dart';
 import 'pokeball_reveal.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 class PokedexInlineDetails extends StatefulWidget {
   final int pokemonId;
@@ -218,7 +219,7 @@ class _PokedexInlineDetailsState extends State<PokedexInlineDetails> with Single
             bottom: 0,
             child: Center(
               child: HoverIconButton(
-                  icon: Icons.chevron_left, tooltip: 'Anterior', onPressed: widget.onPrevious, size: 28),
+                  icon: Icons.chevron_left, tooltip: tr('Anterior'), onPressed: widget.onPrevious, size: 28),
             ),
           ),
         if (widget.hasNext)
@@ -227,7 +228,7 @@ class _PokedexInlineDetailsState extends State<PokedexInlineDetails> with Single
             top: 0,
             bottom: 0,
             child: Center(
-              child: HoverIconButton(icon: Icons.chevron_right, tooltip: 'Próximo', onPressed: widget.onNext, size: 28),
+              child: HoverIconButton(icon: Icons.chevron_right, tooltip: tr('Próximo'), onPressed: widget.onNext, size: 28),
             ),
           ),
         // Nome, número, tipos e ações.
@@ -262,12 +263,12 @@ class _PokedexInlineDetailsState extends State<PokedexInlineDetails> with Single
                   ),
                   HoverIconButton(
                     icon: Icons.auto_awesome,
-                    tooltip: _isShiny ? 'Ver normal' : 'Ver shiny',
+                    tooltip: tr(_isShiny ? 'Ver normal' : 'Ver shiny'),
                     iconColor: _isShiny ? Colors.yellowAccent : Colors.white,
                     onPressed: () => setState(() => _isShiny = !_isShiny),
                   ),
                   const SizedBox(width: 8),
-                  HoverIconButton(icon: Icons.close, tooltip: 'Fechar', onPressed: widget.onClose),
+                  HoverIconButton(icon: Icons.close, tooltip: tr('Fechar'), onPressed: widget.onClose),
                 ],
               ),
               const SizedBox(height: 10),

@@ -4,11 +4,13 @@
 // quem não entrou. E-mail e senha ou Google, "Manter conectado", recuperar
 // senha e, no cadastro, o nome (único) da pessoa.
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 
 import '../services/auth_service.dart';
 import '../services/update_service.dart';
 import '../utils/app_images.dart';
+import 'package:pocket_dex/i18n/text.dart';
+import 'package:pocket_dex/widgets/language_picker.dart';
 
 const _red = Color(0xFFE53935);
 
@@ -43,7 +45,13 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 440),
-                  child: needsName ? const _ChooseNameForm() : const _AuthForm(),
+                  child: Column(
+                    children: [
+                      needsName ? const _ChooseNameForm() : const _AuthForm(),
+                      const SizedBox(height: 24),
+                      const LanguagePicker(),
+                    ],
+                  ),
                 ),
               ),
             ),

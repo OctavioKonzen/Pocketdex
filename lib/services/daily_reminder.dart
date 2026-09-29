@@ -15,6 +15,7 @@ import 'package:timezone/timezone.dart' as tz;
 
 import 'league.dart';
 import 'user_data.dart';
+import '../i18n/i18n.dart';
 
 class DailyReminder {
   DailyReminder._();
@@ -85,8 +86,8 @@ class DailyReminder {
         await _plugin.zonedSchedule(
           id: _firstId + i,
           scheduledDate: tz.TZDateTime.from(day, tz.UTC),
-          title: 'Desafio do dia 📅',
-          body: 'O desafio de hoje já está valendo. Quem é esse Pokémon?',
+          title: tr('Desafio do dia 📅'),
+          body: tr('O desafio de hoje já está valendo. Quem é esse Pokémon?'),
           notificationDetails: const NotificationDetails(
             android: AndroidNotificationDetails(
               'daily_challenge',

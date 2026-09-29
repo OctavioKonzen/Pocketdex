@@ -11,7 +11,7 @@
 // rápido acertar, mais pontos.
 
 import 'dart:math';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 
 import '../models/generation.dart';
 import '../models/pokemon_listing.dart';
@@ -25,6 +25,7 @@ import '../utils/responsive.dart';
 import '../utils/string_extensions.dart';
 import '../widgets/game_stage.dart';
 import '../widgets/pikachu_loading_indicator.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 class QuizScreen extends StatefulWidget {
   static const lives = 3;

@@ -3372,5 +3372,15 @@
   "en": "About",
   "fr": "Infos",
   "es": "Info"
+ },
+ "Para criar sua conta com {0}, vamos mandar um link de confirmação para esse e-mail.": {
+  "en": "To create your account with {0}, we'll send a confirmation link to that email.",
+  "fr": "Pour créer votre compte avec {0}, nous allons envoyer un lien de confirmation à cette adresse.",
+  "es": "Para crear tu cuenta con {0}, enviaremos un enlace de confirmación a ese correo."
+ },
+ "Entrou como {0}. Escolha o seu nome no PocketDex.": {
+  "en": "Signed in as {0}. Choose your name on PocketDex.",
+  "fr": "Connecté en tant que {0}. Choisissez votre nom sur PocketDex.",
+  "es": "Has entrado como {0}. Elige tu nombre en PocketDex."
  }
 }

@@ -1,6 +1,6 @@
 // lib/screens/team_builder_screen.dart
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 
 import '../models/team.dart';
 import '../services/account_format.dart';
@@ -20,6 +20,7 @@ import 'pokedex_screen.dart';
 import 'team_member_screen.dart';
 import '../utils/responsive.dart';
 import '../utils/site_ui.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 class TeamBuilderScreen extends StatefulWidget {
   final Team team;
@@ -256,7 +257,7 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen>
           title: const Text('Editar time'),
           actions: [
             IconButton(
-              tooltip: 'Compartilhar',
+              tooltip: tr('Compartilhar'),
               icon: const Icon(Icons.share),
               onPressed: hasPokemon
                   ? () async {

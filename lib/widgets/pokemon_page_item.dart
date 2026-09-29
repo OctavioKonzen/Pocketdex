@@ -1,10 +1,11 @@
 // lib/widgets/pokemon_page_item.dart
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import '../services/account_format.dart';
 import 'pokemon_sprite.dart';
 
 import 'package:pocket_dex/models/pokemon_details.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 class PokemonPageItem extends StatelessWidget {
   final PokemonDetails? details;

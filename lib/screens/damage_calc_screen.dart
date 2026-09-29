@@ -12,7 +12,7 @@
 //   • resultado: faixa de dano, chance de derrotar, quem age primeiro e as
 //     16 variações de dano.
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 
 import '../services/damage_calc.dart';
@@ -21,6 +21,7 @@ import '../utils/site_ui.dart';
 import '../utils/string_extensions.dart';
 import '../widgets/pick_fields.dart';
 import 'battle_tools_screen.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 const _statLabels = {'hp': 'HP', 'atk': 'Atk', 'def': 'Def', 'spa': 'Sp. Atk', 'spd': 'Sp. Def', 'spe': 'Speed'};
 
@@ -457,7 +458,7 @@ class _DamageCalcScreenState extends State<DamageCalcScreen> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(4, 24, 4, 0),
                 child: IconButton.filledTonal(
-                  tooltip: 'Trocar atacante e defensor',
+                  tooltip: tr('Trocar atacante e defensor'),
                   onPressed: a == null && d == null ? null : _swap,
                   icon: const Icon(Icons.swap_horiz),
                 ),

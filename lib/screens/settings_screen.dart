@@ -3,7 +3,7 @@
 // Configurações no estilo do site: conta, tema, dados salvos, conquistas,
 // versão do app (com "Procurar atualização"), excluir conta e sobre.
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -20,6 +20,8 @@ import '../services/user_data.dart';
 import '../utils/responsive.dart';
 import '../utils/site_ui.dart';
 import '../widgets/account_avatar.dart';
+import 'package:pocket_dex/i18n/text.dart';
+import 'package:pocket_dex/widgets/language_picker.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -91,6 +93,17 @@ class SettingsScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                   ],
+                  SiteCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Idioma', style: TextStyle(color: c.text, fontWeight: FontWeight.bold, fontSize: 16)),
+                        const SizedBox(height: 10),
+                        const Align(alignment: Alignment.centerLeft, child: LanguagePicker()),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   row(
                     title: 'Modo Escuro',
                     subtitle: 'Ative para uma experiência com cores escuras.',
@@ -371,7 +384,7 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
               obscureText: true,
               enabled: !_busy,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(labelText: 'Digite sua senha para confirmar'),
+              decoration: InputDecoration(labelText: tr('Digite sua senha para confirmar')),
             ),
           if (_info != null && _error == null) ...[
             const SizedBox(height: 10),
@@ -473,7 +486,7 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
                 enabled: !_busy,
                 autofillHints: const [AutofillHints.password],
                 onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(labelText: 'Senha atual'),
+                decoration: InputDecoration(labelText: tr('Senha atual')),
               ),
               TextField(
                 controller: _password,
@@ -481,14 +494,14 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
                 enabled: !_busy,
                 autofillHints: const [AutofillHints.newPassword],
                 onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(labelText: 'Nova senha'),
+                decoration: InputDecoration(labelText: tr('Nova senha')),
               ),
               TextField(
                 controller: _confirm,
                 obscureText: true,
                 enabled: !_busy,
                 autofillHints: const [AutofillHints.newPassword],
-                decoration: const InputDecoration(labelText: 'Confirmar nova senha'),
+                decoration: InputDecoration(labelText: tr('Confirmar nova senha')),
               ),
             ],
             if (_info != null && _error == null) ...[

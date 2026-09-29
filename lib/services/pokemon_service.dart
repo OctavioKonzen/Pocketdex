@@ -3,11 +3,14 @@ import '../models/pokemon_listing.dart';
 import '../models/pokemon_details.dart';
 import '../models/generation.dart';
 import 'local_database.dart';
+import '../i18n/i18n.dart';
 
 class PokemonService {
   final LocalDatabase _db = LocalDatabase.instance;
 
   static final Map<int, PokemonDetails> _detailsCache = {};
+  // Idioma das descrições guardadas (trocou o idioma: busca de novo).
+  static String _cacheLanguage = '';
 
   Future<List<PokemonListing>> fetchPokemonByTypes(List<String> typeNames) async {
     if (typeNames.isEmpty) {
@@ -107,6 +110,10 @@ class PokemonService {
   }
 
   Future<PokemonDetails> fetchPokemonDetails(int id) async {
+    if (_cacheLanguage != I18n.language) {
+      _detailsCache.clear();
+      _cacheLanguage = I18n.language;
+    }
     if (_detailsCache.containsKey(id)) {
       return _detailsCache[id]!;
     }

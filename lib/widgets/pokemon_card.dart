@@ -1,7 +1,7 @@
 // lib/widgets/pokemon_card.dart
 
 import 'package:pocket_dex/services/pokemon_service.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import 'package:provider/provider.dart';
 import 'package:pocket_dex/providers/favorites_provider.dart';
 import 'package:pocket_dex/models/pokemon_listing.dart';
@@ -9,6 +9,7 @@ import 'package:pocket_dex/screens/pokemon_detail_screen.dart';
 import 'package:pocket_dex/utils/pokemon_colors.dart';
 import 'package:pocket_dex/widgets/pikachu_loading_indicator.dart';
 import 'package:pocket_dex/widgets/pokemon_sprite.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 class PokemonCard extends StatefulWidget {
   final PokemonListing pokemonListing;

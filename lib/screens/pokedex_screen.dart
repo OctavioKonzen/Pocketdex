@@ -5,7 +5,7 @@
 // Também usada para escolher um Pokémon (times e treino de EVs).
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 
 import '../models/game.dart';
 import '../models/generation.dart';
@@ -23,6 +23,8 @@ import '../widgets/pikachu_loading_indicator.dart';
 import '../widgets/pokedex_web/pokedex_web_grid.dart';
 import '../widgets/pokemon_card.dart';
 import 'pokemon_detail_screen.dart';
+import 'package:pocket_dex/i18n/text.dart';
+import 'package:pocket_dex/i18n/i18n.dart';
 
 class PokedexScreen extends StatefulWidget {
   final bool isForTeamSelection;
@@ -104,7 +106,7 @@ class PokedexScreenState extends State<PokedexScreen> {
     setState(() {
       _displayList = query.isEmpty
           ? _fullPokemonList
-          : _fullPokemonList.where((p) => p.name.toLowerCase().contains(query) || p.id == query).toList();
+          : _fullPokemonList.where((p) => I18n.nameMatches(p.name, query) || p.id == query).toList();
     });
   }
 

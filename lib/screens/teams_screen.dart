@@ -1,6 +1,6 @@
 // lib/screens/teams_screen.dart
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import '../models/team.dart';
 import '../services/account_sync.dart';
 import '../services/auth_service.dart';
@@ -12,6 +12,7 @@ import '../widgets/team_share_dialogs.dart';
 import 'team_builder_screen.dart';
 import '../utils/responsive.dart';
 import '../utils/site_ui.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 class TeamsScreen extends StatefulWidget {
   const TeamsScreen({super.key});
@@ -98,7 +99,7 @@ class _TeamsScreenState extends State<TeamsScreen> {
                     autofocus: true,
                     style: TextStyle(color: theme.colorScheme.onSurface),
                     decoration: InputDecoration(
-                        hintText: "Nome do Time",
+                        hintText: tr("Nome do Time"),
                         hintStyle: TextStyle(color: theme.hintColor),
                         filled: true,
                         fillColor: theme.colorScheme.surface,

@@ -3,9 +3,10 @@
 // Seletor de geração igual ao do site: botão com a cor da geração e os 3
 // iniciais; ao tocar abre uma lista com botões grandes de cada geração.
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import '../models/generation.dart';
 import '../utils/app_images.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 class GenerationPicker extends StatelessWidget {
   final Generation? value; // null = todas

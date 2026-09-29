@@ -1,6 +1,6 @@
 // lib/widgets/pokemon_detail_panel.dart
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import '../models/game.dart';
 import 'dart:math';
 import 'package:pocket_dex/models/alternate_form.dart';
@@ -12,6 +12,7 @@ import 'package:pocket_dex/screens/move_detail_screen.dart';
 import 'package:pocket_dex/utils/pokemon_colors.dart';
 import 'package:pocket_dex/utils/string_extensions.dart';
 import 'package:pocket_dex/widgets/evolution_pokemon_card.dart';
+import 'package:pocket_dex/i18n/text.dart';
 
 class PokemonDetailPanel extends StatelessWidget {
   final PokemonDetails pokemon;
