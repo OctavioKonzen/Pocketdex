@@ -8,8 +8,15 @@ import { Icon, SpinningPokeball } from '../components/ui'
 import { imageUrl, spriteUrl } from '../lib/data'
 import { getDownloadUrl, RELEASES_URL } from '../lib/appRelease'
 import {
+  AuthError,
   chooseName,
+  confirmSignupCode,
+  emailCodesEnabled,
   errorMessage,
+  isNameAvailable,
+  resetPasswordWithCode,
+  sendEmailCode,
+  signUpWithCode,
   NAME_MAX,
   resetPassword,
   signIn,
@@ -77,6 +84,18 @@ function Field({ label, type = 'text', value, onChange, autoComplete, autoFocus,
       </span>
       {hint && <span className="mt-1 block text-xs text-muted">{hint}</span>}
     </label>
+  )
+}
+
+/** Campo do código de 6 números, com "reenviar". */
+function CodeField({ value, onChange, onResend, busy }) {
+  return (
+    <div>
+      <Field label="Código do e-mail" value={value} onChange={(v) => onChange(v.replace(/\D/g, '').slice(0, 6))} autoComplete="one-time-code" autoFocus maxLength={6} />
+      <button type="button" disabled={busy} onClick={onResend} className="mt-1 cursor-pointer text-sm font-semibold text-red-500 hover:underline disabled:opacity-50">
+        Reenviar código
+      </button>
+    </div>
   )
 }
 
@@ -163,12 +182,28 @@ function AuthForm() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
+  // Código por e-mail (quando ligado): depois de mandar, aparece o campo do código.
+  const [codes, setCodes] = useState(false)
+  const [codeSent, setCodeSent] = useState(false)
+  const [code, setCode] = useState('')
+  useEffect(() => {
+    emailCodesEnabled().then(setCodes)
+  }, [])
 
   const switchMode = (next) => {
     setMode(next)
     setError('')
     setInfo('')
+    setCodeSent(false)
+    setCode('')
   }
+
+  const sendCode = (purpose) =>
+    run(async () => {
+      await sendEmailCode(purpose, email)
+      setCodeSent(true)
+      setInfo(`Mandamos um código de 6 números para ${email.trim()}. Confira também o spam.`)
+    })
 
   const run = async (action) => {
     setBusy(true)
@@ -186,6 +221,17 @@ function AuthForm() {
   const onSubmit = (e) => {
     e.preventDefault()
     if (mode === 'forgot') {
+      if (codes) {
+        if (!codeSent) return sendCode('reset')
+        if (password.length < 6) return setError('A senha precisa ter pelo menos 6 caracteres.')
+        if (password !== confirm) return setError('As senhas não são iguais.')
+        run(async () => {
+          await resetPasswordWithCode({ email, code, password })
+          switchMode('login')
+          setInfo('Senha trocada! Entre com a senha nova.')
+        })
+        return
+      }
       run(async () => {
         await resetPassword(email)
         setInfo('Enviamos um e-mail com o link para criar uma nova senha.')
@@ -195,7 +241,21 @@ function AuthForm() {
     if (mode === 'signup') {
       const nameError = validateName(name)
       if (nameError) return setError(nameError)
+      if (password.length < 6) return setError('A senha precisa ter pelo menos 6 caracteres.')
       if (password !== confirm) return setError('As senhas não são iguais.')
+      if (codes) {
+        if (!codeSent) {
+          run(async () => {
+            if (!(await isNameAvailable(name))) throw new AuthError('name-taken')
+            await sendEmailCode('signup', email)
+            setCodeSent(true)
+            setInfo(`Mandamos um código de 6 números para ${email.trim()}. Confira também o spam.`)
+          })
+          return
+        }
+        run(() => signUpWithCode({ name, email, password, code, keep }))
+        return
+      }
       run(() => signUp({ name, email, password, keep }))
       return
     }
@@ -207,7 +267,13 @@ function AuthForm() {
       <img src={imageUrl('poke_logo.png')} alt="PocketDex" className="mx-auto mb-8 h-24 lg:hidden" />
       <h1 className="text-3xl font-black">{mode === 'forgot' ? 'Recuperar senha' : mode === 'signup' ? 'Crie sua conta' : 'Bem-vindo de volta!'}</h1>
       <p className="mt-1 mb-6 text-muted">
-        {mode === 'forgot' ? 'Digite o e-mail da sua conta para receber o link.' : mode === 'signup' ? 'Leva menos de um minuto.' : 'Entre para continuar na sua Pokédex.'}
+        {mode === 'forgot'
+          ? codes
+            ? 'Digite o e-mail da sua conta para receber um código.'
+            : 'Digite o e-mail da sua conta para receber o link.'
+          : mode === 'signup'
+            ? 'Leva menos de um minuto.'
+            : 'Entre para continuar na sua Pokédex.'}
       </p>
 
       {mode !== 'forgot' && (
@@ -229,7 +295,14 @@ function AuthForm() {
             </m.div>
           )}
         </AnimatePresence>
-        <Field label="E-mail" type="email" value={email} onChange={setEmail} autoComplete="email" />
+        <Field label="E-mail" type="email" value={email} onChange={(v) => (setEmail(v), setCodeSent(false))} autoComplete="email" />
+        {mode === 'forgot' && codes && codeSent && (
+          <>
+            <CodeField value={code} onChange={setCode} onResend={() => sendCode('reset')} busy={busy} />
+            <Field label="Nova senha" type="password" value={password} onChange={setPassword} autoComplete="new-password" hint="Pelo menos 6 caracteres." />
+            <Field label="Confirmar nova senha" type="password" value={confirm} onChange={setConfirm} autoComplete="new-password" />
+          </>
+        )}
         {mode !== 'forgot' && (
           <Field label="Senha" type="password" value={password} onChange={setPassword} autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} hint={mode === 'signup' ? 'Pelo menos 6 caracteres.' : null} />
         )}
@@ -254,9 +327,23 @@ function AuthForm() {
           </div>
         )}
 
+        {mode === 'signup' && codes && codeSent && <CodeField value={code} onChange={setCode} onResend={() => sendCode('signup')} busy={busy} />}
+
         <Message error={error} info={info} />
 
-        <SubmitButton busy={busy}>{mode === 'forgot' ? 'Enviar link' : mode === 'signup' ? 'Criar conta' : 'Entrar'}</SubmitButton>
+        <SubmitButton busy={busy}>
+          {mode === 'forgot'
+            ? codes
+              ? codeSent
+                ? 'Trocar senha'
+                : 'Enviar código'
+              : 'Enviar link'
+            : mode === 'signup'
+              ? codes && !codeSent
+                ? 'Enviar código'
+                : 'Criar conta'
+              : 'Entrar'}
+        </SubmitButton>
       </form>
 
       {mode === 'forgot' ? (
@@ -290,13 +377,49 @@ function ChooseNameForm() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
+  const [codes, setCodes] = useState(false)
+  const [codeSent, setCodeSent] = useState(false)
+  const [code, setCode] = useState('')
+  const [info, setInfo] = useState('')
+  useEffect(() => {
+    emailCodesEnabled().then(setCodes)
+  }, [])
+
+  const sendCode = async () => {
+    setBusy(true)
+    setError('')
+    try {
+      await sendEmailCode('signup')
+      setCodeSent(true)
+      setInfo(`Mandamos um código de 6 números para ${user?.email}. Confira também o spam.`)
+    } catch (err) {
+      setError(errorMessage(err))
+    }
+    setBusy(false)
+  }
+
   const onSubmit = async (e) => {
     e.preventDefault()
     const nameError = validateName(name)
     if (nameError) return setError(nameError)
+    // Conta nova com código ligado: primeiro confirma o e-mail.
+    if (codes && !codeSent) {
+      setBusy(true)
+      setError('')
+      try {
+        if (!(await isNameAvailable(name))) throw new AuthError('name-taken')
+      } catch (err) {
+        setError(errorMessage(err))
+        setBusy(false)
+        return
+      }
+      setBusy(false)
+      return sendCode()
+    }
     setBusy(true)
     setError('')
     try {
+      if (codes) await confirmSignupCode(code)
       await chooseName(name)
     } catch (err) {
       setError(errorMessage(err))
@@ -313,8 +436,9 @@ function ChooseNameForm() {
       </p>
       <form onSubmit={onSubmit} className="space-y-4" noValidate>
         <Field label="Seu nome" value={name} onChange={setName} autoComplete="nickname" autoFocus maxLength={NAME_MAX} hint="Cada nome só pode ser usado por uma pessoa." />
-        <Message error={error} />
-        <SubmitButton busy={busy}>Continuar</SubmitButton>
+        {codes && codeSent && <CodeField value={code} onChange={setCode} onResend={sendCode} busy={busy} />}
+        <Message error={error} info={info} />
+        <SubmitButton busy={busy}>{codes && !codeSent ? 'Enviar código' : 'Continuar'}</SubmitButton>
       </form>
       <button type="button" onClick={() => signOut()} className="mt-5 w-full cursor-pointer text-center font-semibold text-muted hover:text-text">
         Usar outra conta

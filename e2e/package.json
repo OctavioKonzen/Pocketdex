@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "cp ../firestore.rules emu.rules && firebase emulators:exec --only auth,firestore --project pocketdex-ffb4d \"node site.test.mjs\""
+    "test": "cp ../firestore.rules emu.rules && firebase emulators:exec --only auth,firestore,functions --project pocketdex-ffb4d \"node site.test.mjs\""
   },
   "devDependencies": {
     "firebase-tools": "^15.0.0",
