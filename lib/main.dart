@@ -16,11 +16,12 @@ import 'package:pocket_dex/services/daily_reminder.dart';
 import 'package:pocket_dex/services/user_data.dart';
 import 'package:pocket_dex/widgets/pokemon_sprite.dart';
 import 'package:pocket_dex/i18n/i18n.dart';
+import 'package:pocket_dex/services/app_settings.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Dados salvos no aparelho (favoritos, times, treinos, tema, recordes e idioma).
-  await Future.wait([UserData.instance.load(), SpriteBoxes.load(), I18n.load()]);
+  await Future.wait([UserData.instance.load(), SpriteBoxes.load(), I18n.load(), AppSettings.instance.load()]);
   // Tabela Pokémon → espécie (para converter times/treinos da conta) em
   // segundo plano, sem atrasar a abertura do app.
   AccountFormat.init();
@@ -35,6 +36,7 @@ Future<void> main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: AuthService.instance),
+        ChangeNotifierProvider.value(value: AppSettings.instance),
         ChangeNotifierProvider(create: (context) => FavoritesProvider()),
         ChangeNotifierProvider(create: (context) => ThemeProvider()),
       ],
@@ -127,7 +129,18 @@ class MyApp extends StatelessWidget {
       darkTheme: _siteTheme(SiteColors.dark, Brightness.dark),
       themeMode: themeProvider.themeMode,
       scrollBehavior: const AppScrollBehavior(),
-      builder: (context, child) => WebFrame(child: child!),
+      // Tamanho do texto escolhido nas Configurações (por cima do do aparelho).
+      builder: (context, child) => ListenableBuilder(
+        listenable: AppSettings.instance,
+        builder: (context, _) {
+          final media = MediaQuery.of(context);
+          final scale = AppSettings.instance.textScale;
+          return MediaQuery(
+            data: scale == 1 ? media : media.copyWith(textScaler: _ScaledText(media.textScaler, scale)),
+            child: WebFrame(child: child!),
+          );
+        },
+      ),
       // No PC o site abre direto na Pokédex, com navegação no topo.
       home: AuthGate(
         child: Builder(
@@ -139,4 +152,24 @@ class MyApp extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Escala do aparelho vezes a escolhida no app.
+class _ScaledText extends TextScaler {
+  final TextScaler base;
+  final double factor;
+  const _ScaledText(this.base, this.factor);
+
+  @override
+  double scale(double fontSize) => base.scale(fontSize) * factor;
+
+  // ignore: deprecated_member_use
+  @override
+  double get textScaleFactor => base.scale(14) / 14 * factor;
+
+  @override
+  bool operator ==(Object other) => other is _ScaledText && other.base == base && other.factor == factor;
+
+  @override
+  int get hashCode => Object.hash(base, factor);
 }

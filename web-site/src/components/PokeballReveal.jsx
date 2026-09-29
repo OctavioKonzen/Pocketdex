@@ -3,6 +3,7 @@
 // Troque a `key` do componente para repetir a animação.
 
 import { m } from 'framer-motion'
+import { usePrefs } from '../lib/prefs'
 
 const TIMES = { drop: 0.35, wiggle: 0.35, open: 0.2 }
 const OPEN_AT = TIMES.drop + TIMES.wiggle
@@ -39,6 +40,9 @@ function Pokeball({ size }) {
 }
 
 export default function PokeballReveal({ children, ballSize = 100 }) {
+  // Animação desligada nas Configurações: o Pokémon aparece direto.
+  const animate = usePrefs((s) => s.pokeballAnimation)
+  if (!animate) return <div className="relative flex h-full w-full items-center justify-center">{children}</div>
   return (
     <div className="relative flex h-full w-full items-center justify-center">
       {/* Pokémon saindo */}

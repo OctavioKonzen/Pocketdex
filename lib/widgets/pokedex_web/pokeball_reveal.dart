@@ -7,6 +7,7 @@
 
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:pocket_dex/services/app_settings.dart';
 
 class PokeballReveal extends StatefulWidget {
   final Widget child;
@@ -57,6 +58,8 @@ class _PokeballRevealState extends State<PokeballReveal>
 
   @override
   Widget build(BuildContext context) {
+    // Animação desligada nas Configurações: o Pokémon aparece direto.
+    if (!AppSettings.instance.pokeballAnimation) return widget.child;
     return AnimatedBuilder(
       animation: _controller,
       child: widget.child,

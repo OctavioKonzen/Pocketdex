@@ -3,7 +3,7 @@
 // uma mudança feita no app de celular aparece no site na hora, e vice-versa.
 //
 // Formato em users/{uid}.data (o app usa o mesmo):
-//   theme: 'dark' | 'light'
+//   theme: 'dark' | 'light' | 'system' (segue o aparelho)
 //   favorites: [id]                       ids de Pokémon (números)
 //   teams: [{ id, name, color, pokemon: [id | null] x6 }]
 //   training: [{ id, pokemonId, name, sprite, box, evs: { hp, attack, defense,
@@ -105,6 +105,14 @@ async function start(uid) {
     uid,
     (remote) => {
       if (currentUid !== uid) return
+      if (remote === undefined) {
+        // A conta foi excluída (em outro aparelho ou pelo link do e-mail):
+        // não grava nada de volta — sai dela e limpa este navegador.
+        stop()
+        currentUid = null
+        signOut().catch(() => {})
+        return
+      }
       if (!remote) {
         // Conta nova: o que já estava neste navegador vai para ela.
         KEYS.forEach((k) => dirty.add(k))

@@ -156,54 +156,63 @@ class _ProfileContent extends StatelessWidget {
                 const SizedBox(height: 14),
                 Text(user?.name ?? 'Sem conta', style: TextStyle(color: c.text, fontSize: 22, fontWeight: FontWeight.w900)),
                 if (user?.email != null) Text(user!.email!, style: TextStyle(color: c.muted)),
-                const SizedBox(height: 20),
-                PillButton(
-                  label: 'Trocar foto de perfil',
-                  icon: Icons.catching_pokemon,
-                  expand: true,
-                  onPressed: () => ProfileSheet.changePhoto(context),
+                const SizedBox(height: 16),
+                _MenuItem(icon: Icons.catching_pokemon, label: 'Trocar foto de perfil', onTap: () => ProfileSheet.changePhoto(context)),
+                if (hasAvatar)
+                  _MenuItem(icon: Icons.hide_image_outlined, label: 'Tirar a foto', onTap: () => UserData.instance.update({'avatar': null})),
+                _MenuItem(
+                  icon: Icons.emoji_events,
+                  label: 'Conquistas',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const AchievementsScreen()));
+                  },
                 ),
-                if (hasAvatar) ...[
-                  const SizedBox(height: 8),
-                  TextButton(
-                    onPressed: () => UserData.instance.update({'avatar': null}),
-                    child: Text('Tirar a foto', style: TextStyle(color: c.muted)),
-                  ),
-                ],
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: PillButton(
-                        label: 'Configurações',
-                        icon: Icons.settings,
-                        color: c.card,
-                        foreground: c.text,
-                        onPressed: () {
-                          Navigator.pop(context);
-                          Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: PillButton(
-                        label: 'Sair',
-                        icon: Icons.logout,
-                        color: const Color(0xFFE53935),
-                        onPressed: () {
-                          Navigator.pop(context);
-                          AccountSync.instance.logout();
-                        },
-                      ),
-                    ),
-                  ],
+                _MenuItem(
+                  icon: Icons.settings,
+                  label: 'Configurações',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
+                  },
+                ),
+                Divider(color: c.line, height: 16),
+                _MenuItem(
+                  icon: Icons.logout,
+                  label: 'Sair da conta',
+                  danger: true,
+                  onTap: () {
+                    Navigator.pop(context);
+                    AccountSync.instance.logout();
+                  },
                 ),
               ],
             ),
           ),
         );
       },
+    );
+  }
+}
+
+/// Uma linha do menu do avatar.
+class _MenuItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool danger;
+  const _MenuItem({required this.icon, required this.label, required this.onTap, this.danger = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = SiteColors.of(context);
+    final color = danger ? const Color(0xFFE53935) : c.text;
+    return ListTile(
+      leading: Icon(icon, color: danger ? color : c.muted),
+      title: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w600)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+      onTap: onTap,
     );
   }
 }

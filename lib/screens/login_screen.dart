@@ -442,7 +442,7 @@ class _AuthFormState extends State<_AuthForm> {
   }
 }
 
-/// Primeiro login com Google: falta escolher o nome.
+/// Primeiro login com Google: só falta escolher o nome (o Google já confirmou o e-mail).
 class _ChooseNameForm extends StatefulWidget {
   const _ChooseNameForm();
   @override
@@ -454,42 +454,6 @@ class _ChooseNameFormState extends State<_ChooseNameForm> {
   final _name = TextEditingController();
   bool _busy = false;
   String? _error;
-  String? _info;
-  // Conta Google nova: confirma pelo link no e-mail antes de escolher o nome.
-  bool? _needsLink; // null = conferindo
-  bool _linkSent = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _check();
-  }
-
-  Future<void> _check() async {
-    final needs = _auth.usesGoogle && !await _auth.hasConfirmation('signup');
-    if (mounted) setState(() => _needsLink = needs);
-  }
-
-  Future<void> _linkAction() async {
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
-    try {
-      if (!_linkSent) {
-        await _auth.sendConfirmationLink('signup');
-        _linkSent = true;
-        _info = 'Mandamos um link para ${_auth.user?.email ?? ''}. Abra o link (confira também o spam) '
-            'e depois toque em "Já confirmei".';
-      } else {
-        await _check();
-        if (_needsLink == true) _error = 'Ainda não confirmado. Abra o link que mandamos para o seu e-mail.';
-      }
-    } catch (e) {
-      _error = e is AuthException ? e.message : 'Algo deu errado. Tente de novo.';
-    }
-    if (mounted) setState(() => _busy = false);
-  }
 
   @override
   void dispose() {
@@ -519,33 +483,6 @@ class _ChooseNameFormState extends State<_ChooseNameForm> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    if (_needsLink == true) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Confirme seu e-mail', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 4),
-          Text('Para criar sua conta com ${_auth.user?.email ?? ''}, vamos mandar um link de confirmação para esse e-mail.',
-              style: TextStyle(color: theme.hintColor)),
-          const SizedBox(height: 20),
-          _Message(error: _error, info: _info),
-          _MainButton(_linkSent ? 'Já confirmei' : 'Enviar link de confirmação', busy: _busy, onPressed: _linkAction),
-          if (_linkSent)
-            Center(
-              child: TextButton(
-                onPressed: _busy
-                    ? null
-                    : () {
-                        _linkSent = false;
-                        _linkAction();
-                      },
-                child: const Text('Reenviar link', style: TextStyle(color: _red, fontWeight: FontWeight.bold)),
-              ),
-            ),
-          Center(child: TextButton(onPressed: _auth.signOut, child: const Text('Usar outra conta'))),
-        ],
-      );
-    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -555,8 +492,8 @@ class _ChooseNameFormState extends State<_ChooseNameForm> {
             style: TextStyle(color: theme.hintColor)),
         const SizedBox(height: 20),
         _Field('Seu nome', _name, maxLength: AuthService.nameMax, hint: 'Cada nome só pode ser usado por uma pessoa.'),
-        _Message(error: _error, info: _info),
-        _MainButton('Continuar', busy: _busy || _needsLink == null, onPressed: _submit),
+        _Message(error: _error),
+        _MainButton('Continuar', busy: _busy, onPressed: _submit),
         Center(child: TextButton(onPressed: _auth.signOut, child: const Text('Usar outra conta'))),
       ],
     );

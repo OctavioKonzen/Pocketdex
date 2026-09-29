@@ -165,17 +165,20 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const SettingsScreen()),
-          );
-        },
-        tooltip: tr('Configurações'),
-        backgroundColor: theme.colorScheme.secondary,
-        child: Icon(Icons.settings, color: theme.colorScheme.onSecondary),
-      ),
+      // Com conta, as Configurações ficam no menu do avatar (no topo).
+      floatingActionButton: AuthService.instance.status == AuthStatus.signedIn
+          ? null
+          : FloatingActionButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                );
+              },
+              tooltip: tr('Configurações'),
+              backgroundColor: theme.colorScheme.secondary,
+              child: Icon(Icons.settings, color: theme.colorScheme.onSecondary),
+            ),
     );
   }
 
