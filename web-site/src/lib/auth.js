@@ -679,6 +679,80 @@ export async function friendTrades(uids) {
   return Object.fromEntries(entries.filter(Boolean))
 }
 
+// ---------------------------------------------------------------- draft
+//   drafts/{id} → { players: [a, b], names: {uid: nome}, picks: {uid: [id]},
+//                   turn: uid, size, status: 'picking' | 'done', createdAt }
+// Igual ao app (lib/services/draft_service.dart).
+
+const draftOf = (d) => {
+  const data = d.data()
+  return { id: d.id, ...data, picks: data.picks ?? {}, createdAt: data.createdAt?.toMillis?.() ?? Date.now() }
+}
+
+/** Ouve os meus drafts (mais novos primeiro). */
+export async function watchMyDrafts(uid, callback) {
+  const { db, collection, query, where, onSnapshot } = await firebase()
+  return onSnapshot(
+    query(collection(db, 'drafts'), where('players', 'array-contains', uid)),
+    (snap) => callback(snap.docs.map(draftOf).sort((a, b) => b.createdAt - a.createdAt)),
+    () => callback([]),
+  )
+}
+
+/** Ouve um draft (null se foi apagado). */
+export async function watchDraft(id, callback) {
+  const { db, doc, onSnapshot } = await firebase()
+  return onSnapshot(
+    doc(db, 'drafts', id),
+    (snap) => callback(snap.exists() ? draftOf(snap) : null),
+    () => callback(null),
+  )
+}
+
+/** Novo draft com um amigo; eu começo. Devolve o id. */
+export async function createDraft(me, friend, size = 6) {
+  const { db, collection, doc, setDoc, serverTimestamp } = await firebase()
+  const ref = doc(collection(db, 'drafts'))
+  await setDoc(ref, {
+    players: [me.uid, friend.uid],
+    names: { [me.uid]: me.name, [friend.uid]: friend.name },
+    picks: {},
+    turn: me.uid,
+    size,
+    status: 'picking',
+    createdAt: serverTimestamp(),
+  })
+  return ref.id
+}
+
+/** Escolhe um Pokémon (na minha vez, sem repetir). Erro: AuthError com a mensagem. */
+export async function pickDraft(meUid, id, pokemonId) {
+  const { db, doc, runTransaction } = await firebase()
+  await runTransaction(db, async (tx) => {
+    const ref = doc(db, 'drafts', id)
+    const snap = await tx.get(ref)
+    if (!snap.exists()) throw new AuthError('Esse draft foi apagado.')
+    const d = draftOf(snap)
+    if (d.status === 'done') throw new AuthError('O draft já acabou.')
+    if (d.turn !== meUid) throw new AuthError('Não é a sua vez.')
+    const other = d.players.find((p) => p !== meUid)
+    const taken = new Set(Object.values(d.picks).flat())
+    if (taken.has(pokemonId)) throw new AuthError('Esse Pokémon já foi escolhido.')
+    const mine = [...(d.picks[meUid] ?? []), pokemonId]
+    const theirs = d.picks[other] ?? []
+    const finished = mine.length === d.size && theirs.length === d.size
+    tx.update(ref, {
+      picks: { [meUid]: mine, ...(theirs.length ? { [other]: theirs } : {}) },
+      ...(finished ? { status: 'done' } : { turn: theirs.length < d.size ? other : meUid }),
+    })
+  })
+}
+
+export async function deleteDraft(id) {
+  const { db, doc, deleteDoc } = await firebase()
+  await deleteDoc(doc(db, 'drafts', id))
+}
+
 /** Times públicos de um amigo (para a batalha). */
 export async function teamsOf(uid) {
   const { db, collection, query, where, getDocs } = await firebase()
@@ -754,7 +828,7 @@ export async function deleteAccount({ password, weeks = [], days = [], confirmed
     await f.reauthenticateWithCredential(user, f.EmailAuthProvider.credential(user.email, password ?? ''))
   }
   const uid = user.uid
-  const { db, doc, getDoc, getDocs, collection, deleteDoc, writeBatch, increment } = f
+  const { db, doc, getDoc, getDocs, collection, deleteDoc, writeBatch, increment, query, where } = f
   const quiet = (p) => p.catch(() => {})
   const profile = await getDoc(doc(db, 'users', uid))
   const name = profile.exists() ? profile.data().name : null
@@ -808,6 +882,9 @@ export async function deleteAccount({ password, weeks = [], days = [], confirmed
   )
 
   await quiet(deleteDoc(doc(db, 'trades', uid)))
+  // Drafts de que a conta participou.
+  const drafts = await getDocs(query(collection(db, 'drafts'), where('players', 'array-contains', uid))).catch(() => null)
+  await Promise.all((drafts?.docs ?? []).map((d) => quiet(deleteDoc(d.ref))))
   await quiet(deleteDoc(doc(db, 'confirmations', uid)))
   await deleteDoc(doc(db, 'users', uid))
   await f.deleteUser(user)

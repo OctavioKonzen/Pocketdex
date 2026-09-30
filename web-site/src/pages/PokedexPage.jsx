@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearch } from '../App'
 import PokedexGrid from '../components/PokedexGrid'
 import { Icon, Loader, PageHeader } from '../components/ui'
+import DailyPokemonCard from '../components/DailyPokemonCard'
 import { getAbilities, getMoveLearners, getMoves, getPokedex, getPokemonIndex } from '../lib/data'
 import { ALL_TYPES, STAT_LABELS, capitalize, prettyName, typeColor } from '../lib/pokemon'
 import GenerationPicker from '../components/GenerationPicker'
@@ -131,6 +132,8 @@ export default function PokedexPage() {
           ) : null}
         </div>
       </PageHeader>
+
+      {!filtersActive && <DailyPokemonCard />}
 
       <AnimatePresence>
         {showFilters && (

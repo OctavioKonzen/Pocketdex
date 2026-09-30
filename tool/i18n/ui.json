@@ -5167,5 +5167,165 @@
   "en": "Use",
   "fr": "Utiliser",
   "es": "Usar"
+ },
+ "⭐ Pokémon do dia": {
+  "en": "⭐ Pokémon of the day",
+  "fr": "⭐ Pokémon du jour",
+  "es": "⭐ Pokémon del día"
+ },
+ "Pokémon do dia": {
+  "en": "Pokémon of the day",
+  "fr": "Pokémon du jour",
+  "es": "Pokémon del día"
+ },
+ "Pokémon do dia: {0}": {
+  "en": "Pokémon of the day: {0}",
+  "fr": "Pokémon du jour : {0}",
+  "es": "Pokémon del día: {0}"
+ },
+ "Toque para conhecer o Pokémon de hoje e ouvir o grito dele.": {
+  "en": "Tap to meet today's Pokémon and hear its cry.",
+  "fr": "Touchez pour découvrir le Pokémon du jour et écouter son cri.",
+  "es": "Toca para conocer al Pokémon de hoy y escuchar su grito."
+ },
+ "Uma notificação às 10h com o Pokémon de hoje.": {
+  "en": "A notification at 10am with today's Pokémon.",
+  "fr": "Une notification à 10 h avec le Pokémon du jour.",
+  "es": "Una notificación a las 10 h con el Pokémon de hoy."
+ },
+ "Draft": {
+  "en": "Draft",
+  "fr": "Draft",
+  "es": "Draft"
+ },
+ "🎯 Draft": {
+  "en": "🎯 Draft",
+  "fr": "🎯 Draft",
+  "es": "🎯 Draft"
+ },
+ "Novo draft": {
+  "en": "New draft",
+  "fr": "Nouveau draft",
+  "es": "Nuevo draft"
+ },
+ "Meus drafts": {
+  "en": "My drafts",
+  "fr": "Mes drafts",
+  "es": "Mis drafts"
+ },
+ "Pokémon para cada um:": {
+  "en": "Pokémon each:",
+  "fr": "Pokémon chacun :",
+  "es": "Pokémon para cada uno:"
+ },
+ "Adicione amigos para fazer um draft.": {
+  "en": "Add friends to do a draft.",
+  "fr": "Ajoutez des amis pour faire un draft.",
+  "es": "Añade amigos para hacer un draft."
+ },
+ "Você e um amigo escolhem Pokémon um de cada vez, sem repetir. Depois, batalhem com os times que saíram!": {
+  "en": "You and a friend pick Pokémon one at a time, no repeats. Then battle with the teams you got!",
+  "fr": "Vous et un ami choisissez des Pokémon à tour de rôle, sans répétition. Ensuite, affrontez-vous avec les équipes obtenues !",
+  "es": "Tú y un amigo eligen Pokémon uno por vez, sin repetir. ¡Después, batallen con los equipos que salieron!"
+ },
+ "Nenhum draft ainda. Toque em \"Novo draft\".": {
+  "en": "No drafts yet. Tap \"New draft\".",
+  "fr": "Aucun draft pour l'instant. Touchez « Nouveau draft ».",
+  "es": "Aún no hay drafts. Toca \"Nuevo draft\"."
+ },
+ "Nenhum draft ainda.": {
+  "en": "No drafts yet.",
+  "fr": "Aucun draft pour l'instant.",
+  "es": "Aún no hay drafts."
+ },
+ "Com {0}": {
+  "en": "With {0}",
+  "fr": "Avec {0}",
+  "es": "Con {0}"
+ },
+ "Acabou · pronto para batalhar": {
+  "en": "Finished · ready to battle",
+  "fr": "Terminé · prêt à combattre",
+  "es": "Terminado · listo para batallar"
+ },
+ "Sua vez de escolher!": {
+  "en": "Your turn to pick!",
+  "fr": "À vous de choisir !",
+  "es": "¡Te toca elegir!"
+ },
+ "Vez do amigo": {
+  "en": "Friend's turn",
+  "fr": "Au tour de l'ami",
+  "es": "Turno del amigo"
+ },
+ "Vez de {0} escolher...": {
+  "en": "{0}'s turn to pick...",
+  "fr": "Au tour de {0} de choisir...",
+  "es": "Le toca elegir a {0}..."
+ },
+ "Draft completo! Hora de batalhar.": {
+  "en": "Draft complete! Time to battle.",
+  "fr": "Draft terminé ! À vous de combattre.",
+  "es": "¡Draft completo! Hora de batallar."
+ },
+ "Salvar meu time": {
+  "en": "Save my team",
+  "fr": "Enregistrer mon équipe",
+  "es": "Guardar mi equipo"
+ },
+ "Apagar draft": {
+  "en": "Delete draft",
+  "fr": "Supprimer le draft",
+  "es": "Borrar draft"
+ },
+ "Draft com {0}": {
+  "en": "Draft with {0}",
+  "fr": "Draft avec {0}",
+  "es": "Draft con {0}"
+ },
+ "Esse draft foi apagado.": {
+  "en": "This draft was deleted.",
+  "fr": "Ce draft a été supprimé.",
+  "es": "Este draft fue borrado."
+ },
+ "O draft já acabou.": {
+  "en": "The draft is already over.",
+  "fr": "Le draft est déjà terminé.",
+  "es": "El draft ya terminó."
+ },
+ "Não é a sua vez.": {
+  "en": "It's not your turn.",
+  "fr": "Ce n'est pas votre tour.",
+  "es": "No es tu turno."
+ },
+ "Esse Pokémon já foi escolhido.": {
+  "en": "That Pokémon was already picked.",
+  "fr": "Ce Pokémon a déjà été choisi.",
+  "es": "Ese Pokémon ya fue elegido."
+ },
+ "No draft vale só a forma normal de cada Pokémon.": {
+  "en": "Only each Pokémon's normal form counts in the draft.",
+  "fr": "Seule la forme normale de chaque Pokémon compte dans le draft.",
+  "es": "En el draft solo vale la forma normal de cada Pokémon."
+ },
+ "Não deu para escolher. Confira a internet.": {
+  "en": "Couldn't pick. Check your connection.",
+  "fr": "Impossible de choisir. Vérifiez votre connexion.",
+  "es": "No se pudo elegir. Revisa tu conexión."
+ },
+ "Entre na sua conta para fazer drafts com os amigos.": {
+  "en": "Sign in to draft with your friends.",
+  "fr": "Connectez-vous pour faire des drafts avec vos amis.",
+  "es": "Inicia sesión para hacer drafts con tus amigos."
+ },
+ "Drafts": {
+  "en": "Drafts",
+  "fr": "Drafts",
+  "es": "Drafts"
+ },
+ "Abra o PocketDex": {
+  "en": "Open PocketDex",
+  "fr": "Ouvrez PocketDex",
+  "es": "Abre PocketDex"
  }
 }

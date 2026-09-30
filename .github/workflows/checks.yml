@@ -30,6 +30,39 @@ jobs:
       - run: flutter analyze --no-fatal-infos
       - run: flutter test
 
+  # Quando o pull request mexe no Android (código nativo, widget) ou nos
+  # pacotes, compila um APK de teste: o erro aparece antes de ir para a main.
+  apk:
+    name: APK de teste
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Mudou algo do Android?
+        id: changed
+        run: |
+          if git diff --name-only "origin/${{ github.base_ref }}...HEAD" | grep -qE '^(android/|pubspec\.(yaml|lock)$)'; then
+            echo "android=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "android=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-java@v4
+        if: steps.changed.outputs.android == 'true'
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: subosito/flutter-action@v2
+        if: steps.changed.outputs.android == 'true'
+        with:
+          channel: stable
+          cache: true
+      - if: steps.changed.outputs.android == 'true'
+        run: |
+          flutter pub get
+          flutter build apk --debug --target-platform android-arm64
+
   site:
     name: Site (React)
     runs-on: ubuntu-latest

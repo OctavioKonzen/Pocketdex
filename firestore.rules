@@ -142,6 +142,52 @@ service cloud.firestore {
         && request.resource.data.caught is list && request.resource.data.caught.size() <= 1100;
     }
 
+    // Draft entre amigos: drafts/{id} = {players: [a, b], names: {uid: nome},
+    // picks: {uid: [id]}, turn: uid, size, status: 'picking' | 'done',
+    // createdAt}. Cada um escolhe um Pokémon na sua vez, sem repetir; só os
+    // dois leem e mexem, e qualquer um apaga.
+    match /drafts/{draft} {
+      function me() { return request.auth.uid; }
+      function isPlayer(d) { return request.auth != null && d.players is list && me() in d.players; }
+      function otherIn(d) { return d.players[0] == me() ? d.players[1] : d.players[0]; }
+      // (Sem "is list" aqui: a lista "meus drafts" usa array-contains e o
+      // Firestore precisa conseguir provar a regra pela consulta.)
+      allow read, delete: if request.auth != null && request.auth.uid in resource.data.players;
+      allow create: if isPlayer(request.resource.data)
+        && request.resource.data.keys().hasOnly(['players', 'names', 'picks', 'turn', 'size', 'status', 'createdAt'])
+        && request.resource.data.players.size() == 2
+        && request.resource.data.players[0] != request.resource.data.players[1]
+        && get(/databases/$(database)/documents/friends/$(me())/list/$(otherIn(request.resource.data))).data.status == 'friends'
+        && request.resource.data.names is map && request.resource.data.names.keys().hasOnly(request.resource.data.players)
+        && request.resource.data.picks == {}
+        && request.resource.data.turn == me()
+        && request.resource.data.size is int && request.resource.data.size >= 1 && request.resource.data.size <= 6
+        && request.resource.data.status == 'picking'
+        && request.resource.data.createdAt == request.time;
+      // Uma escolha: só na minha vez, um Pokémon a mais para mim, que ninguém
+      // escolheu ainda; a vez passa para o outro (ou acaba).
+      allow update: if isPlayer(resource.data)
+        && resource.data.status == 'picking'
+        && resource.data.turn == me()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['picks', 'turn', 'status'])
+        && validPick(resource.data, request.resource.data);
+      function validPick(old, new) {
+        let other = otherIn(old);
+        let mine = old.picks.get(me(), []);
+        let theirs = old.picks.get(other, []);
+        let now = new.picks.get(me(), []);
+        let picked = now[now.size() - 1];
+        return now.size() == mine.size() + 1 && now.size() <= old.size
+          && now.hasAll(mine) && picked is int && picked >= 1 && picked <= 1025
+          && !(picked in mine) && !(picked in theirs)
+          && new.picks.get(other, []) == theirs
+          && new.picks.keys().hasOnly([me(), other])
+          && (now.size() == old.size && theirs.size() == old.size
+                ? new.status == 'done'
+                : new.status == 'picking' && new.turn == (theirs.size() < old.size ? other : me()));
+      }
+    }
+
     // Confirmações por link no e-mail (contas Google): quando a pessoa abriu
     // o link para criar a conta, trocar a senha ou excluir. Só ela vê e muda.
     match /confirmations/{uid} {

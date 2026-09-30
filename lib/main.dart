@@ -14,6 +14,8 @@ import 'package:pocket_dex/services/account_sync.dart';
 import 'package:pocket_dex/services/auth_service.dart';
 import 'package:pocket_dex/services/friends_service.dart';
 import 'package:pocket_dex/services/firebase_setup.dart';
+import 'package:pocket_dex/services/daily_pokemon.dart';
+import 'package:pocket_dex/services/daily_widget.dart';
 import 'package:pocket_dex/services/daily_reminder.dart';
 import 'package:pocket_dex/services/user_data.dart';
 import 'package:pocket_dex/widgets/pokemon_sprite.dart';
@@ -29,6 +31,8 @@ Future<void> main() async {
   AccountFormat.init();
   // Lembrete do desafio do dia (se ligado): refaz a agenda dos próximos dias.
   DailyReminder.instance.reschedule();
+  DailyPokemon.instance.reschedule();
+  DailyWidget.update();
   // Login e sincronização com a conta (a mesma do site).
   if (await initFirebase()) {
     AccountSync.instance.start();
