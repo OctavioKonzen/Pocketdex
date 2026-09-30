@@ -8,11 +8,20 @@ import 'dart:async';
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/material.dart' as m show Text;
 
+import '../i18n/i18n.dart';
 import '../i18n/text.dart';
 import '../services/auth_service.dart';
 import '../services/friends_service.dart';
+import '../services/local_database.dart';
+import '../services/team_service.dart';
+import '../services/team_share.dart';
+import '../services/user_data.dart';
 import '../utils/site_ui.dart';
+import '../utils/string_extensions.dart';
 import '../widgets/account_avatar.dart';
+import '../widgets/pokemon_sprite.dart';
+import 'pokedex_screen.dart';
+import 'pokemon_detail_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   final Friend friend;
@@ -61,6 +70,73 @@ class _ChatScreenState extends State<ChatScreen> {
     } catch (e) {
       _text.text = body;
       setState(() => _error = tr('Não deu para mandar. Confira a internet.'));
+    }
+  }
+
+  Future<void> _sendCard(String text, Map<String, dynamic> card) async {
+    setState(() => _error = null);
+    try {
+      await _service.sendMessage(widget.friend.uid, text, card: card);
+    } catch (_) {
+      setState(() => _error = tr('Não deu para mandar. Confira a internet.'));
+    }
+  }
+
+  /// Anexar: um Pokémon (da Pokédex) ou um dos meus times.
+  Future<void> _attach() async {
+    final teams = UserData.instance.teams.where((t) => ((t['pokemon'] as List?) ?? const []).any((p) => p != null)).toList();
+    final choice = await showModalBottomSheet<Object>(
+      context: context,
+      builder: (sheet) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          children: [
+            ListTile(
+              leading: const Icon(Icons.catching_pokemon),
+              title: const Text('Mandar um Pokémon'),
+              onTap: () => Navigator.pop(sheet, 'pokemon'),
+            ),
+            if (teams.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                child: Text('Mandar um time', style: TextStyle(color: Theme.of(sheet).hintColor, fontWeight: FontWeight.bold)),
+              ),
+            for (final t in teams)
+              ListTile(
+                leading: const Icon(Icons.groups),
+                title: m.Text('${t['name'] ?? 'Time'}', overflow: TextOverflow.ellipsis),
+                trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                  for (final p in (t['pokemon'] as List).whereType<num>())
+                    SizedBox.square(dimension: 26, child: PokemonSprite(p.toInt(), fill: 0.95)),
+                ]),
+                onTap: () => Navigator.pop(sheet, t),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (!mounted || choice == null) return;
+    if (choice == 'pokemon') {
+      final picked = await Navigator.push<Map<String, dynamic>>(
+        context,
+        MaterialPageRoute(builder: (_) => const PokedexScreen(isForTeamSelection: true)),
+      );
+      final id = int.tryParse('${picked?['id']}');
+      if (id == null) return;
+      final row = await LocalDatabase.instance.pokemonRow(id);
+      final name = I18n.pokemonName(((row?['name'] as String?) ?? '#$id').replaceAll('-', ' ').capitalise());
+      await _sendCard('📎 $name', {'kind': 'pokemon', 'id': id, 'name': name.length > 60 ? name.substring(0, 60) : name});
+    } else if (choice is Map<String, dynamic>) {
+      final name = '${choice['name'] ?? 'Time'}';
+      final slots = [for (final p in (choice['pokemon'] as List? ?? const [])) (p as num?)?.toInt()];
+      final sets = [for (final x in (choice['sets'] as List? ?? const [])) x is Map ? Map<String, dynamic>.from(x) : null];
+      await _sendCard('📎 ${tr('Time')}: $name', {
+        'kind': 'team',
+        'name': name.length > 60 ? name.substring(0, 60) : name,
+        'ids': slots.whereType<int>().toList(),
+        'code': TeamShare.encode(name: name, color: choice['color'] as String?, pokemon: slots, sets: sets),
+      });
     }
   }
 
@@ -141,7 +217,9 @@ class _ChatScreenState extends State<ChatScreen> {
                                   // A mensagem vai como foi escrita (sem tradução).
                                   SizedBox(
                                     width: double.infinity,
-                                    child: m.Text(msg.text, style: TextStyle(color: mine ? Colors.white : c.text, fontSize: 15)),
+                                    child: msg.card != null
+                                        ? _CardView(card: msg.card!, light: mine)
+                                        : m.Text(msg.text, style: TextStyle(color: mine ? Colors.white : c.text, fontSize: 15)),
                                   ),
                                   const SizedBox(height: 2),
                                   m.Text(_time(msg.at), style: TextStyle(fontSize: 10, color: mine ? Colors.white70 : c.muted)),
@@ -167,6 +245,11 @@ class _ChatScreenState extends State<ChatScreen> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
+                  IconButton(
+                    tooltip: tr('Mandar Pokémon ou time'),
+                    onPressed: _attach,
+                    icon: Icon(Icons.add_circle_outline, color: c.muted),
+                  ),
                   Expanded(
                     child: TextField(
                       controller: _text,
@@ -201,6 +284,61 @@ class _ChatScreenState extends State<ChatScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Cartão de Pokémon (abre a página dele) ou de time (dá para salvar).
+class _CardView extends StatelessWidget {
+  final Map<String, dynamic> card;
+  final bool light;
+  const _CardView({required this.card, required this.light});
+
+  Future<void> _saveTeam(BuildContext context) async {
+    final shared = TeamShare.decode('${card['code'] ?? ''}');
+    if (shared == null) return;
+    await TeamService().importTeam(shared);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Time salvo nos seus times!'))));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = light ? Colors.white : Theme.of(context).colorScheme.onSurface;
+    final name = '${card['name'] ?? ''}';
+    if (card['kind'] == 'pokemon' && card['id'] is num) {
+      final id = (card['id'] as num).toInt();
+      return InkWell(
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PokemonDetailScreen(initialPokemonId: id))),
+        child: Row(
+          children: [
+            SizedBox.square(dimension: 56, child: PokemonSprite(id, fill: 0.95)),
+            const SizedBox(width: 8),
+            Expanded(child: m.Text(name, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 16))),
+            Icon(Icons.chevron_right, color: color),
+          ],
+        ),
+      );
+    }
+    final ids = [for (final x in (card['ids'] as List?) ?? const []) if (x is num) x.toInt()];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(children: [
+          Icon(Icons.groups, color: color, size: 18),
+          const SizedBox(width: 6),
+          Expanded(child: m.Text(name, overflow: TextOverflow.ellipsis, style: TextStyle(color: color, fontWeight: FontWeight.bold))),
+        ]),
+        const SizedBox(height: 4),
+        Wrap(children: [for (final id in ids) SizedBox.square(dimension: 40, child: PokemonSprite(id, fill: 0.95))]),
+        TextButton.icon(
+          style: TextButton.styleFrom(foregroundColor: color, padding: EdgeInsets.zero),
+          onPressed: () => _saveTeam(context),
+          icon: const Icon(Icons.download, size: 18),
+          label: const Text('Salvar nos meus times'),
+        ),
+      ],
     );
   }
 }

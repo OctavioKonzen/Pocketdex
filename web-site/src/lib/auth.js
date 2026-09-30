@@ -613,7 +613,7 @@ export async function watchChat(meUid, otherUid, callback, onError) {
         snap.docs
           .map((d) => {
             const m = d.data({ serverTimestamps: 'estimate' })
-            return { id: d.id, from: m.from, text: m.text, at: m.at?.toMillis?.() ?? Date.now() }
+            return { id: d.id, from: m.from, text: m.text, at: m.at?.toMillis?.() ?? Date.now(), card: m.card ?? null }
           })
           .reverse(),
       ),
@@ -621,19 +621,69 @@ export async function watchChat(meUid, otherUid, callback, onError) {
   )
 }
 
-/** Manda uma mensagem e avisa o amigo (não lidas + última mensagem). */
-export async function sendMessage(me, otherUid, text) {
+/**
+ * Manda uma mensagem e avisa o amigo (não lidas + última mensagem).
+ * card: cartão clicável ({kind: 'pokemon', id, name} ou {kind: 'team', name, ids, code}).
+ */
+export async function sendMessage(me, otherUid, text, card = null) {
   const body = text.trim().slice(0, CHAT_MAX)
   if (!body) return
   const { db, doc, collection, writeBatch, serverTimestamp, increment } = await firebase()
   const b = writeBatch(db)
-  b.set(doc(collection(db, 'chats', chatId(me.uid, otherUid), 'messages')), { from: me.uid, text: body, at: serverTimestamp() })
+  b.set(doc(collection(db, 'chats', chatId(me.uid, otherUid), 'messages')), {
+    from: me.uid,
+    text: body,
+    at: serverTimestamp(),
+    ...(card ? { card } : {}),
+  })
   b.update(doc(db, 'friends', otherUid, 'list', me.uid), {
     name: me.name,
     unread: increment(1),
     last: { text: body.slice(0, 100), at: Date.now(), from: me.uid },
   })
   await b.commit()
+}
+
+// ---------------------------------------------------------------- trocas
+//   trades/{uid} → { dupes: [id], caught: [id], updatedAt }
+//   dupes = Pokémon repetidos; caught = todos os pegos (da Coleção). Os amigos leem.
+
+export const TRADES_MAX = 1100
+
+/** Todos os Pokémon pegos em qualquer jogo da Coleção. */
+export const allCaught = (collection = {}) =>
+  [...new Set(Object.values(collection).flatMap((e) => [...(e?.c ?? []), ...(e?.s ?? [])]))].sort((a, b) => a - b).slice(0, TRADES_MAX)
+
+/** Ouve a minha lista de trocas. */
+export async function watchMyTrades(uid, callback) {
+  const { db, doc, onSnapshot } = await firebase()
+  return onSnapshot(doc(db, 'trades', uid), (s) => callback({ dupes: s.data()?.dupes ?? [], caught: s.data()?.caught ?? [] }), () => {})
+}
+
+/** Grava os repetidos e os pegos. */
+export async function saveTrades(uid, dupes, caught) {
+  const { db, doc, setDoc, serverTimestamp } = await firebase()
+  await setDoc(doc(db, 'trades', uid), { dupes: dupes.slice(0, TRADES_MAX), caught: caught.slice(0, TRADES_MAX), updatedAt: serverTimestamp() })
+}
+
+/** Listas dos amigos: {uid: {dupes, caught}} (quem não abriu as Trocas fica de fora). */
+export async function friendTrades(uids) {
+  const { db, doc, getDoc } = await firebase()
+  const entries = await Promise.all(
+    uids.map((uid) =>
+      getDoc(doc(db, 'trades', uid))
+        .then((s) => (s.exists() ? [uid, { dupes: s.data().dupes ?? [], caught: s.data().caught ?? [] }] : null))
+        .catch(() => null),
+    ),
+  )
+  return Object.fromEntries(entries.filter(Boolean))
+}
+
+/** Times públicos de um amigo (para a batalha). */
+export async function teamsOf(uid) {
+  const { db, collection, query, where, getDocs } = await firebase()
+  const snap = await getDocs(query(collection(db, 'publicTeams'), where('ownerUid', '==', uid)))
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
 }
 
 /** Marca como lidas as mensagens de um amigo. */
@@ -757,6 +807,7 @@ export async function deleteAccount({ password, weeks = [], days = [], confirmed
     (friends?.docs ?? []).flatMap((d) => [quiet(deleteDoc(doc(db, 'friends', d.id, 'list', uid))), quiet(deleteDoc(d.ref))]),
   )
 
+  await quiet(deleteDoc(doc(db, 'trades', uid)))
   await quiet(deleteDoc(doc(db, 'confirmations', uid)))
   await deleteDoc(doc(db, 'users', uid))
   await f.deleteUser(user)

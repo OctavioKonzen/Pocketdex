@@ -197,6 +197,10 @@ await check('mensagem grande demais', setDoc(doc(collection(A, 'chats', 'alice_b
 await check('mensagem com hora falsa', setDoc(doc(collection(A, 'chats', 'alice_bob', 'messages')), { from: 'alice', text: 'oi', at: 5 }), false)
 await check('mensagem com campo estranho', send(A, 'alice', 'bob', 'oi', { hack: 1 }), false)
 await check('chat com id fora de ordem', setDoc(doc(collection(A, 'chats', 'bob_alice', 'messages')), { from: 'alice', text: 'oi', at: serverTimestamp() }), false)
+await check('manda cartão de Pokémon', setDoc(doc(collection(A, 'chats', 'alice_bob', 'messages')), { from: 'alice', text: '📎 Pikachu', at: serverTimestamp(), card: { kind: 'pokemon', id: 25 } }), true)
+await check('manda cartão de time', setDoc(doc(collection(A, 'chats', 'alice_bob', 'messages')), { from: 'alice', text: '📎 Time', at: serverTimestamp(), card: { kind: 'team', name: 'Meu time', ids: [25, 6], code: 'PDX1abc' } }), true)
+await check('cartão estranho', setDoc(doc(collection(A, 'chats', 'alice_bob', 'messages')), { from: 'alice', text: 'x', at: serverTimestamp(), card: { kind: 'hack', id: 1 } }), false)
+await check('cartão com campo a mais', setDoc(doc(collection(A, 'chats', 'alice_bob', 'messages')), { from: 'alice', text: 'x', at: serverTimestamp(), card: { kind: 'pokemon', id: 1, url: 'http://x' } }), false)
 await check('amigo lê o chat', getDocs(collection(B, 'chats', 'alice_bob', 'messages')), true)
 await check('terceiro lê o chat', getDocs(collection(C, 'chats', 'alice_bob', 'messages')), false)
 await check('terceiro manda no chat', setDoc(doc(collection(C, 'chats', 'alice_bob', 'messages')), { from: 'carol', text: 'oi', at: serverTimestamp() }), false)
@@ -207,6 +211,13 @@ await check('não edita mensagem', updateDoc(doc(A, 'chats', 'alice_bob', 'messa
 await check('terceiro apaga mensagem', deleteDoc(doc(C, 'chats', 'alice_bob', 'messages', msgs.docs[0].id)), false)
 await check('amigo apaga mensagem', deleteDoc(doc(B, 'chats', 'alice_bob', 'messages', msgs.docs[0].id)), true)
 await check('quem não é amigo não manda', setDoc(doc(collection(C, 'chats', 'bob_carol', 'messages')), { from: 'carol', text: 'oi', at: serverTimestamp() }), false)
+
+// Trocas
+await check('grava a própria lista de trocas', setDoc(doc(A, 'trades', 'alice'), { dupes: [1, 4], caught: [1, 4, 7], updatedAt: serverTimestamp() }), true)
+await check('lista de trocas com campo estranho', setDoc(doc(A, 'trades', 'alice'), { dupes: [], caught: [], hack: 1 }), false)
+await check('grava a lista de outro', setDoc(doc(B, 'trades', 'alice'), { dupes: [], caught: [] }), false)
+await check('amigo lê a lista de trocas', getDoc(doc(B, 'trades', 'alice')), true)
+await check('terceiro lê a lista de trocas', getDoc(doc(C, 'trades', 'alice')), false)
 
 await check('terceiro apaga amizade', deleteDoc(doc(C, 'friends', 'alice', 'list', 'bob')), false)
 await check('desfaz amizade (o outro lado)', deleteDoc(doc(B, 'friends', 'alice', 'list', 'bob')), true)

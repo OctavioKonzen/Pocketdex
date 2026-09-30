@@ -4622,5 +4622,240 @@
   "en": "Min and max at level 100: from 0 IV, no EVs and a hindering Nature to 31 IV, 252 EVs and a boosting Nature.",
   "fr": "Min et max au niveau 100 : de 0 IV sans EV et Nature défavorable à 31 IV, 252 EV et Nature favorable.",
   "es": "Mín y máx a nivel 100: de IV 0 sin EV y Naturaleza en contra a IV 31, 252 EV y Naturaleza a favor."
+ },
+ "Início": {
+  "en": "Home",
+  "fr": "Accueil",
+  "es": "Inicio"
+ },
+ "Trocas": {
+  "en": "Trades",
+  "fr": "Échanges",
+  "es": "Intercambios"
+ },
+ "Batalha de times": {
+  "en": "Team battle",
+  "fr": "Combat d'équipes",
+  "es": "Batalla de equipos"
+ },
+ "Meus repetidos ({0})": {
+  "en": "My duplicates ({0})",
+  "fr": "Mes doublons ({0})",
+  "es": "Mis repetidos ({0})"
+ },
+ "Marque os Pokémon que você tem sobrando para trocar. O que você já pegou vem da sua Coleção.": {
+  "en": "Mark the Pokémon you have spare to trade. What you've caught comes from your Collection.",
+  "fr": "Marquez les Pokémon que vous avez en trop pour échanger. Ceux que vous avez déjà viennent de votre Collection.",
+  "es": "Marca los Pokémon que tienes de sobra para intercambiar. Los que ya atrapaste vienen de tu Colección."
+ },
+ "Adicionar repetido": {
+  "en": "Add duplicate",
+  "fr": "Ajouter un doublon",
+  "es": "Añadir repetido"
+ },
+ "+ Adicionar repetido": {
+  "en": "+ Add duplicate",
+  "fr": "+ Ajouter un doublon",
+  "es": "+ Añadir repetido"
+ },
+ "Adicione amigos para ver as trocas possíveis.": {
+  "en": "Add friends to see possible trades.",
+  "fr": "Ajoutez des amis pour voir les échanges possibles.",
+  "es": "Añade amigos para ver los intercambios posibles."
+ },
+ "{0} ainda não abriu as Trocas.": {
+  "en": "{0} hasn't opened Trades yet.",
+  "fr": "{0} n'a pas encore ouvert les Échanges.",
+  "es": "{0} aún no abrió los Intercambios."
+ },
+ "Você pode dar ({0})": {
+  "en": "You can give ({0})",
+  "fr": "Vous pouvez donner ({0})",
+  "es": "Puedes dar ({0})"
+ },
+ "Pode te dar ({0})": {
+  "en": "Can give you ({0})",
+  "fr": "Peut vous donner ({0})",
+  "es": "Te puede dar ({0})"
+ },
+ "Nenhum dos seus repetidos falta para essa pessoa.": {
+  "en": "None of your duplicates are missing for this person.",
+  "fr": "Aucun de vos doublons ne manque à cette personne.",
+  "es": "A esta persona no le falta ninguno de tus repetidos."
+ },
+ "Nenhum repetido dessa pessoa falta para você.": {
+  "en": "None of their duplicates are missing for you.",
+  "fr": "Aucun de ses doublons ne vous manque.",
+  "es": "No te falta ninguno de sus repetidos."
+ },
+ "Marque seus repetidos e veja o que dá para trocar com cada amigo.": {
+  "en": "Mark your duplicates and see what you can trade with each friend.",
+  "fr": "Marquez vos doublons et voyez ce que vous pouvez échanger avec chaque ami.",
+  "es": "Marca tus repetidos y mira qué puedes intercambiar con cada amigo."
+ },
+ "Entre na sua conta para trocar com os amigos.": {
+  "en": "Sign in to trade with friends.",
+  "fr": "Connectez-vous pour échanger avec vos amis.",
+  "es": "Inicia sesión para intercambiar con tus amigos."
+ },
+ "Cada Pokémon do seu time contra cada um do time do amigo, 1 contra 1, com o melhor golpe de cada lado.": {
+  "en": "Each Pokémon on your team against each one on your friend's team, 1 on 1, with each side's best move.",
+  "fr": "Chaque Pokémon de votre équipe contre chacun de l'équipe de votre ami, en 1 contre 1, avec la meilleure attaque de chaque côté.",
+  "es": "Cada Pokémon de tu equipo contra cada uno del equipo de tu amigo, 1 contra 1, con el mejor movimiento de cada lado."
+ },
+ "Monte um time em Times para batalhar.": {
+  "en": "Build a team in Teams to battle.",
+  "fr": "Créez une équipe dans Équipes pour combattre.",
+  "es": "Arma un equipo en Equipos para batallar."
+ },
+ "Adicione amigos para batalhar com os times deles.": {
+  "en": "Add friends to battle their teams.",
+  "fr": "Ajoutez des amis pour affronter leurs équipes.",
+  "es": "Añade amigos para batallar con sus equipos."
+ },
+ "Amigo": {
+  "en": "Friend",
+  "fr": "Ami",
+  "es": "Amigo"
+ },
+ "Time do amigo": {
+  "en": "Friend's team",
+  "fr": "Équipe de l'ami",
+  "es": "Equipo del amigo"
+ },
+ "Esse amigo ainda não montou nenhum time.": {
+  "en": "This friend hasn't built any team yet.",
+  "fr": "Cet ami n'a encore créé aucune équipe.",
+  "es": "Este amigo aún no armó ningún equipo."
+ },
+ "Calculando...": {
+  "en": "Calculating...",
+  "fr": "Calcul...",
+  "es": "Calculando..."
+ },
+ "Batalhar!": {
+  "en": "Battle!",
+  "fr": "Combattre !",
+  "es": "¡Batallar!"
+ },
+ "⚔️ Batalhar!": {
+  "en": "⚔️ Battle!",
+  "fr": "⚔️ Combattre !",
+  "es": "⚔️ ¡Batallar!"
+ },
+ "Escolha…": {
+  "en": "Choose…",
+  "fr": "Choisir…",
+  "es": "Elige…"
+ },
+ "✅ Você ganha": {
+  "en": "✅ You win",
+  "fr": "✅ Vous gagnez",
+  "es": "✅ Ganas"
+ },
+ "❌ Você perde": {
+  "en": "❌ You lose",
+  "fr": "❌ Vous perdez",
+  "es": "❌ Pierdes"
+ },
+ "🤝 Empate": {
+  "en": "🤝 Draw",
+  "fr": "🤝 Égalité",
+  "es": "🤝 Empate"
+ },
+ "Não consegue causar dano.": {
+  "en": "Can't deal damage.",
+  "fr": "Ne peut pas infliger de dégâts.",
+  "es": "No puede causar daño."
+ },
+ "{0}: {1}% por golpe · derrota em {2}": {
+  "en": "{0}: {1}% per hit · KOs in {2}",
+  "fr": "{0} : {1}% par coup · K.O. en {2}",
+  "es": "{0}: {1}% por golpe · derrota en {2}"
+ },
+ "{0}: {1} por golpe · derrota em {2}": {
+  "en": "{0}: {1} per hit · KOs in {2}",
+  "fr": "{0} : {1} par coup · K.O. en {2}",
+  "es": "{0}: {1} por golpe · derrota en {2}"
+ },
+ "1 golpe": {
+  "en": "1 hit",
+  "fr": "1 coup",
+  "es": "1 golpe"
+ },
+ "{0} golpes": {
+  "en": "{0} hits",
+  "fr": "{0} coups",
+  "es": "{0} golpes"
+ },
+ "Mesma velocidade.": {
+  "en": "Same speed.",
+  "fr": "Même vitesse.",
+  "es": "Misma velocidad."
+ },
+ "O seu é mais rápido.": {
+  "en": "Yours is faster.",
+  "fr": "Le vôtre est plus rapide.",
+  "es": "El tuyo es más rápido."
+ },
+ "O dele é mais rápido.": {
+  "en": "Theirs is faster.",
+  "fr": "Le sien est plus rapide.",
+  "es": "El suyo es más rápido."
+ },
+ "🏆 Seu time leva vantagem!": {
+  "en": "🏆 Your team has the edge!",
+  "fr": "🏆 Votre équipe a l'avantage !",
+  "es": "🏆 ¡Tu equipo tiene ventaja!"
+ },
+ "😬 O time do amigo leva vantagem.": {
+  "en": "😬 Your friend's team has the edge.",
+  "fr": "😬 L'équipe de votre ami a l'avantage.",
+  "es": "😬 El equipo de tu amigo tiene ventaja."
+ },
+ "🤝 Equilibrado.": {
+  "en": "🤝 Even.",
+  "fr": "🤝 Équilibré.",
+  "es": "🤝 Parejo."
+ },
+ "Você ganha {0}, perde {1} e empata {2} de {3} confrontos.": {
+  "en": "You win {0}, lose {1} and draw {2} of {3} matchups.",
+  "fr": "Vous gagnez {0}, perdez {1} et faites {2} égalités sur {3} duels.",
+  "es": "Ganas {0}, pierdes {1} y empatas {2} de {3} enfrentamientos."
+ },
+ "Linhas: seu time. Colunas: o time do amigo. O número é quantos golpes o seu precisa. Toque num quadrado para ver os golpes.": {
+  "en": "Rows: your team. Columns: your friend's team. The number is how many hits yours needs. Tap a square to see the moves.",
+  "fr": "Lignes : votre équipe. Colonnes : l'équipe de votre ami. Le nombre indique combien de coups il faut au vôtre. Touchez une case pour voir les attaques.",
+  "es": "Filas: tu equipo. Columnas: el equipo de tu amigo. El número es cuántos golpes necesita el tuyo. Toca un cuadro para ver los movimientos."
+ },
+ "Linhas: seu time. Colunas: o time do amigo. O número é quantos golpes o seu precisa. Clique num quadrado para ver os golpes.": {
+  "en": "Rows: your team. Columns: your friend's team. The number is how many hits yours needs. Click a square to see the moves.",
+  "fr": "Lignes : votre équipe. Colonnes : l'équipe de votre ami. Le nombre indique combien de coups il faut au vôtre. Cliquez sur une case pour voir les attaques.",
+  "es": "Filas: tu equipo. Columnas: el equipo de tu amigo. El número es cuántos golpes necesita el tuyo. Haz clic en un cuadro para ver los movimientos."
+ },
+ "Entre na sua conta para batalhar com os amigos.": {
+  "en": "Sign in to battle your friends.",
+  "fr": "Connectez-vous pour affronter vos amis.",
+  "es": "Inicia sesión para batallar con tus amigos."
+ },
+ "Mandar um Pokémon": {
+  "en": "Send a Pokémon",
+  "fr": "Envoyer un Pokémon",
+  "es": "Enviar un Pokémon"
+ },
+ "Mandar um time": {
+  "en": "Send a team",
+  "fr": "Envoyer une équipe",
+  "es": "Enviar un equipo"
+ },
+ "Mandar Pokémon ou time": {
+  "en": "Send Pokémon or team",
+  "fr": "Envoyer un Pokémon ou une équipe",
+  "es": "Enviar Pokémon o equipo"
+ },
+ "Time salvo nos seus times!": {
+  "en": "Team saved to your teams!",
+  "fr": "Équipe enregistrée !",
+  "es": "¡Equipo guardado en tus equipos!"
  }
 }

@@ -31,6 +31,7 @@ import 'package:pocket_dex/screens/moves_encyclopedia_screen.dart';
 import 'package:pocket_dex/screens/items_encyclopedia_screen.dart';
 import 'package:pocket_dex/screens/abilities_encyclopedia_screen.dart';
 import 'package:pocket_dex/screens/nature_guide_screen.dart';
+import 'package:pocket_dex/screens/main_shell.dart';
 import 'package:pocket_dex/screens/pokedex_screen.dart';
 import 'package:pocket_dex/screens/pokemon_detail_screen.dart';
 import 'package:pocket_dex/screens/quiz_screen.dart';
@@ -52,6 +53,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 final screens = <String, Widget Function()>{
   'Início': () => const HomeScreen(),
+  'Barra de navegação': () => const MainShell(),
   'Pokédex': () => const PokedexScreen(),
   'Filtros da Pokédex': () => const PokedexScreen(),
   'Favoritos': () => const FavoritesScreen(),

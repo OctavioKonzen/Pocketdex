@@ -406,6 +406,7 @@ class AuthService extends ChangeNotifier {
           ]);
         } catch (_) {}
 
+        await quiet(_db.collection('trades').doc(uid).delete());
         await quiet(_db.collection('confirmations').doc(uid).delete());
         await _db.collection('users').doc(uid).delete();
         await u.delete();
