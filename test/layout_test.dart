@@ -48,6 +48,7 @@ import 'package:pocket_dex/screens/tools/nuzlocke_screen.dart';
 import 'package:pocket_dex/screens/tools/shiny_hunt_screen.dart';
 import 'package:pocket_dex/screens/tools/type_chart_screen.dart';
 import 'package:pocket_dex/screens/training_screen.dart';
+import 'package:pocket_dex/screens/turn_battle_screen.dart';
 import 'package:pocket_dex/services/app_settings.dart';
 import 'package:pocket_dex/services/auth_service.dart';
 import 'package:pocket_dex/services/user_data.dart';
@@ -124,6 +125,8 @@ final screens = <String, Widget Function()>{
   'Configurações': () => const SettingsScreen(),
   'Conquistas': () => const AchievementsScreen(),
   'Amigos': () => const FriendsScreen(),
+  'Batalha': () => const TurnBattleScreen(),
+  'Batalha por turnos': () => const TurnBattleScreen(mine: [(6, null), (9, null)], theirs: [(3, null), (94, null)], foeName: 'Ash'),
   'Login': () => const LoginScreen(),
   'Pokémon (Charizard)': () => const PokemonDetailScreen(initialPokemonId: 6),
   'Status do Pokémon': () => const PokemonDetailScreen(initialPokemonId: 6),
@@ -144,6 +147,15 @@ final actions = <String, Future<void> Function(WidgetTester)>{
     for (var i = 0; i < 4; i++) {
       await tester.pump(const Duration(milliseconds: 400));
     }
+  },
+  'Batalha por turnos': (tester) async {
+    for (var i = 0; i < 30 && find.text('LUTAR').evaluate().isEmpty; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+    if (find.text('LUTAR').evaluate().isEmpty) return;
+    await tester.tap(find.text('LUTAR'));
+    await tester.pump(const Duration(milliseconds: 300));
   },
   'Filtros da Pokédex': (tester) async {
     await tester.tap(find.byType(FloatingActionButton));

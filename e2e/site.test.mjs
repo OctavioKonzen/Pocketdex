@@ -260,8 +260,22 @@ try {
   await page.locator('select').nth(0).selectOption({ label: 'Areia' })
   await page.locator('select').nth(1).selectOption({ label: friend.name })
   await page.locator('select').nth(2).selectOption({ label: 'Areia' })
-  await page.getByRole('button', { name: '⚔️ Batalhar!' }).click()
-  await page.getByText(/de 1 confrontos/).waitFor({ timeout: 30000 })
+  await page.getByRole('button', { name: '⚔️ Começar batalha' }).click()
+  await page.getByText(`${friend.name} quer batalhar!`).waitFor({ timeout: 30000 })
+  // Joga até o fim: LUTAR e o primeiro golpe; clicar no texto adianta as falas.
+  for (let i = 0; ; i++) {
+    assert.ok(i < 150, `${step}: a batalha não terminou`)
+    if (await page.getByRole('button', { name: 'Batalhar de novo' }).isVisible()) break
+    if (await page.getByRole('button', { name: '▸ LUTAR' }).isVisible()) {
+      await page.getByRole('button', { name: '▸ LUTAR' }).click()
+      await page.getByTestId('moves').getByRole('button').first().click()
+    } else if (await page.getByTestId('party').isVisible()) {
+      await page.getByTestId('party').locator('button:not([disabled])').first().click()
+    } else await page.getByTestId('battle-text').click()
+    await page.waitForTimeout(150)
+  }
+  const end = await page.getByTestId('battle-text').innerText()
+  assert.ok(/venceu|perdeu/.test(end), `${step}: fim estranho: ${end}`)
   await expectHealthy()
 
   step = 'batalha: quem vence'
@@ -290,7 +304,11 @@ try {
   }
   await page.getByText('Draft completo! Hora de batalhar.').waitFor({ timeout: 15000 })
   await page.getByRole('button', { name: '⚔️ Batalhar!' }).click()
-  await page.getByText(/de 9 confrontos/).waitFor({ timeout: 30000 })
+  // Vira uma batalha por turnos com os times do draft; fugir encerra.
+  await page.getByRole('button', { name: '▸ LUTAR' }).waitFor({ timeout: 30000 })
+  page.once('dialog', (d) => d.accept())
+  await page.getByRole('button', { name: '▸ FUGIR' }).click()
+  await page.getByText('Você fugiu da batalha!').waitFor({ timeout: 15000 })
   await expectHealthy()
 
   step = 'amigos: conversas'

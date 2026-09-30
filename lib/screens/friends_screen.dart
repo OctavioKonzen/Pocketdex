@@ -17,7 +17,7 @@ import '../widgets/account_avatar.dart';
 import '../widgets/conversation_list.dart';
 import 'draft_screen.dart';
 import 'quiz_screen.dart';
-import 'team_battle_screen.dart';
+import 'turn_battle_screen.dart';
 
 class FriendsScreen extends StatefulWidget {
   const FriendsScreen({super.key});
@@ -132,7 +132,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                         label: '⚔️ ${tr('Batalha')}',
                         expand: true,
                         gradient: const LinearGradient(colors: [Color(0xFFDC2626), Color(0xFF9333EA)]),
-                        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TeamBattleScreen())),
+                        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TurnBattleScreen())),
                       ),
                     ),
                     const SizedBox(width: 10),

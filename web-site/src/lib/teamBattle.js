@@ -16,7 +16,7 @@ export function duelResult(d) {
   return d.faster ? 1 : -1
 }
 
-async function fighter(calc, byId, { id, set }) {
+export async function fighter(calc, byId, { id, set }) {
   const entry = byId.get(id)
   if (!entry) return null
   const species = await getSpecies(entry.species ?? id)
@@ -38,7 +38,7 @@ async function fighter(calc, byId, { id, set }) {
   const chosen = (set?.moves ?? []).filter((s) => s && damaging(s))
   const moves = chosen.length ? chosen : trim(calc, [...new Set(form.moves.map((m) => m[0]))].filter(damaging))
   const speed = calc.sideStats(base, side)?.stats.spe ?? 0
-  return { id, base, side, moves, speed }
+  return { id, base, side, moves, speed, form, learnable: [...new Set(form.moves.map((m) => m[0]))] }
 }
 
 /** Sem set: os 2 golpes mais fortes de cada tipo e categoria (e os de dano fixo), como no app. */
