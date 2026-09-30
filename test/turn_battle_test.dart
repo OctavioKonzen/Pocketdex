@@ -1,9 +1,12 @@
 import 'dart:convert';
+import 'dart:math';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pocket_dex/services/damage_calc.dart';
 import 'package:pocket_dex/services/league.dart';
+import 'package:pocket_dex/services/local_database.dart';
+import 'package:pocket_dex/services/move_anim.dart';
 import 'package:pocket_dex/services/turn_battle.dart';
 
 // Batalha de mentira (dano simples, sem a calculadora), a mesma do site
@@ -54,6 +57,8 @@ List<String> fakeBattleLog() {
         log.add('[${e.t} ${e.side}]');
       } else if (e.t == 'attack') {
         log.add('[attack ${e.side} ${e.type}]');
+      } else if (e.t == 'heal') {
+        log.add('[heal ${e.side} ${e.index} ${e.value}]');
       } else {
         log.add('[${e.t} ${e.side} ${e.value}]');
       }
@@ -67,8 +72,13 @@ List<String> fakeBattleLog() {
     }
     final me = battle.active(0);
     final usable = TurnBattle.usableMoves(me);
+    final fainted = battle.teams[0].indexWhere((m) => m.hp <= 0);
     if (turn == 2 && battle.teams[0][1].hp > 0) {
       write(battle.playTurn(_fakeHit, switchTo: 1));
+    } else if (turn == 5 && battle.canUseItem(0, 'super-potion', battle.activeIndex[0])) {
+      write(battle.playTurn(_fakeHit, item: 'super-potion', target: battle.activeIndex[0]));
+    } else if (fainted >= 0 && battle.canUseItem(0, 'revive', fainted)) {
+      write(battle.playTurn(_fakeHit, item: 'revive', target: fainted));
     } else {
       write(battle.playTurn(_fakeHit, move: usable.isEmpty ? -1 : usable.first));
     }
@@ -113,6 +123,7 @@ void main() {
     expect(charizard.moves.length, 4);
     expect(charizard.moves.first.name, 'Flamethrower');
     expect(charizard.moves.first.pp, 15);
+    expect(charizard.moves.first.category, 'special');
   });
 
   test('dano de verdade: água em fogo é super eficaz, normal em fantasma não afeta', () async {
@@ -123,5 +134,18 @@ void main() {
     expect(water.eff, 2);
     expect(water.rolls.single.length, 16);
     expect(hit(mons[1], mons[2], 'body-slam', false)!.eff, 0);
+  });
+
+  test('animação de cada golpe igual ao site (todos os golpes do banco)', () async {
+    final expected = (jsonDecode(File('test/fixtures/move_anims.json').readAsStringSync()) as Map).cast<String, String>();
+    final moves = await LocalDatabase.instance.movesByName();
+    final all = {
+      for (final slug in (moves.keys.where((k) => moves[k]!['damage_class'] != 'status').toList()..sort()))
+        slug: moveAnim(slug, '${moves[slug]!['type']}', '${moves[slug]!['damage_class']}'),
+    };
+    expect(all, expected);
+    for (final kind in fxDuration.keys) {
+      expect(fxPlan(kind, 'fire', 0, const Point(24, 69), const Point(75, 25)).parts, isNotEmpty, reason: kind);
+    }
   });
 }

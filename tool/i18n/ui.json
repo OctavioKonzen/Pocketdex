@@ -5507,5 +5507,60 @@
   "en": "Change teams",
   "fr": "Changer d'équipes",
   "es": "Cambiar equipos"
+ },
+ "BOLSA": {
+  "en": "BAG",
+  "fr": "SAC",
+  "es": "MOCHILA"
+ },
+ "Bolsa": {
+  "en": "Bag",
+  "fr": "Sac",
+  "es": "Mochila"
+ },
+ "Revive com metade do HP": {
+  "en": "Revives with half HP",
+  "fr": "Ranime avec la moitié des PV",
+  "es": "Revive con la mitad de los PS"
+ },
+ "Recupera {0} de HP": {
+  "en": "Restores {0} HP",
+  "fr": "Restaure {0} PV",
+  "es": "Restaura {0} PS"
+ },
+ "Usar em qual Pokémon?": {
+  "en": "Use on which Pokémon?",
+  "fr": "Utiliser sur quel Pokémon ?",
+  "es": "¿Usar en qué Pokémon?"
+ },
+ "Você usou {1} em {0}!": {
+  "en": "You used {1} on {0}!",
+  "fr": "Vous utilisez {1} sur {0} !",
+  "es": "¡Usaste {1} en {0}!"
+ },
+ "O adversário usou {1} em {0}!": {
+  "en": "The foe used {1} on {0}!",
+  "fr": "L'adversaire utilise {1} sur {0} !",
+  "es": "¡El rival usó {1} en {0}!"
+ },
+ "{0} recuperou {1} de HP!": {
+  "en": "{0} recovered {1} HP!",
+  "fr": "{0} récupère {1} PV !",
+  "es": "¡{0} recuperó {1} PS!"
+ },
+ "{0} inimigo recuperou {1} de HP!": {
+  "en": "The foe's {0} recovered {1} HP!",
+  "fr": "{0} ennemi récupère {1} PV !",
+  "es": "¡{0} enemigo recuperó {1} PS!"
+ },
+ "{0} voltou à batalha!": {
+  "en": "{0} is back in the fight!",
+  "fr": "{0} revient au combat !",
+  "es": "¡{0} volvió al combate!"
+ },
+ "{0} inimigo voltou à batalha!": {
+  "en": "The foe's {0} is back in the fight!",
+  "fr": "{0} ennemi revient au combat !",
+  "es": "¡{0} enemigo volvió al combate!"
  }
 }

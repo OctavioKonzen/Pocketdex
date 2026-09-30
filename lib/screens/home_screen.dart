@@ -277,6 +277,9 @@ class _HomeScreenState extends State<HomeScreen> {
       mainAxisSize: MainAxisSize.min,
       children: _searchResults.map((pokemon) {
         return _SearchResultTile(
+          // Um por Pokémon: sem isso, ao digitar mais letras o card mantinha
+          // os dados (número, tipo, sprite) do resultado anterior.
+          key: ValueKey(pokemon.url),
           pokemon: pokemon,
           onTap: () {
             _dismissSearch();
@@ -362,7 +365,7 @@ class _HomeScreenState extends State<HomeScreen> {
 class _SearchResultTile extends StatefulWidget {
   final PokemonListing pokemon;
   final VoidCallback onTap;
-  const _SearchResultTile({required this.pokemon, required this.onTap});
+  const _SearchResultTile({super.key, required this.pokemon, required this.onTap});
   @override
   State<_SearchResultTile> createState() => _SearchResultTileState();
 }
@@ -375,6 +378,15 @@ class _SearchResultTileState extends State<_SearchResultTile> {
   void initState() {
     super.initState();
     _fetchDetails();
+  }
+
+  @override
+  void didUpdateWidget(_SearchResultTile old) {
+    super.didUpdateWidget(old);
+    if (old.pokemon.url != widget.pokemon.url) {
+      _details = null;
+      _fetchDetails();
+    }
   }
 
   Future<void> _fetchDetails() async {

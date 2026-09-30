@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { battleMons, pickMoves } from './battleSetup'
 import { seededRandom } from './league'
-import { active, lineOf, newBattle, playTurn, replace, usableMoves } from './turnBattle'
+import { active, canUseItem, lineOf, newBattle, playTurn, replace, usableMoves } from './turnBattle'
 
 beforeAll(() => {
   vi.stubGlobal('fetch', async (url) => {
@@ -41,6 +41,7 @@ export function fakeBattleLog() {
         const [line, args] = lineOf(e)
         log.push(args.reduce((text, arg, i) => text.replace(`{${i}}`, arg), line))
       } else if (e.t === 'attack') log.push(`[attack ${e.side} ${e.type}]`)
+      else if (e.t === 'heal') log.push(`[heal ${e.side} ${e.index} ${e.hp}]`)
       else log.push(`[${e.t} ${e.side} ${e.hp ?? e.index ?? ''}]`.replace(' ]', ']'))
     }
   }
@@ -50,8 +51,13 @@ export function fakeBattleLog() {
       continue
     }
     const me = active(battle, 0)
-    // Troca uma vez no turno 2; fora isso, o primeiro golpe com PP.
+    const fainted = battle.sides[0].team.findIndex((m) => m.hp <= 0)
+    // Troca uma vez no turno 2, usa uma Super Potion no 5 e revive quem
+    // desmaiou; fora isso, o primeiro golpe com PP.
     if (turn === 2 && battle.sides[0].team[1].hp > 0) write(playTurn(battle, { switch: 1 }, fakeHit))
+    else if (turn === 5 && canUseItem(battle, 0, 'super-potion', battle.sides[0].active))
+      write(playTurn(battle, { item: 'super-potion', target: battle.sides[0].active }, fakeHit))
+    else if (fainted >= 0 && canUseItem(battle, 0, 'revive', fainted)) write(playTurn(battle, { item: 'revive', target: fainted }, fakeHit))
     else write(playTurn(battle, { move: usableMoves(me)[0] ?? -1 }, fakeHit))
   }
   log.push(`vencedor: ${battle.winner}`)

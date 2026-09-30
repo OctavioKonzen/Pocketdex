@@ -12,11 +12,30 @@
 //           moves: [{slug, name, type, category, power, accuracy, pp, maxPp, priority}]}
 // Eventos (para a tela ir mostrando): {t: 'text', key, args} | {t: 'hp', side, hp}
 //   | {t: 'switch', side, index} | {t: 'faint', side}
-//   | {t: 'attack', side, type, category} (animação do golpe) | {t: 'miss', side}
+//   | {t: 'attack', side, type, category, slug} (animação do golpe) | {t: 'miss', side}
+//   | {t: 'heal', side, index, hp} (poção ou Revive num Pokémon do time)
 // Lado 0 = você, lado 1 = o computador.
 
 export const STRUGGLE = { slug: 'struggle', name: 'Struggle', type: 'normal', category: 'physical', power: 50, accuracy: null, pp: 1, maxPp: 1, priority: 0 }
 const CRIT_CHANCE = 1 / 24
+
+/** Itens da Bolsa (os mesmos dos dois lados) e quantos cada um começa. */
+export const ITEMS = [
+  { slug: 'potion', name: 'Potion', heal: 20, count: 3 },
+  { slug: 'super-potion', name: 'Super Potion', heal: 60, count: 2 },
+  { slug: 'hyper-potion', name: 'Hyper Potion', heal: 120, count: 1 },
+  { slug: 'revive', name: 'Revive', revive: true, count: 1 },
+]
+const newBag = () => Object.fromEntries(ITEMS.map((i) => [i.slug, i.count]))
+const itemOf = (slug) => ITEMS.find((i) => i.slug === slug)
+
+/** Dá para usar o item nesse Pokémon? (poção: vivo e ferido; Revive: desmaiado). */
+export function canUseItem(battle, side, slug, index) {
+  const item = itemOf(slug)
+  const mon = battle.sides[side].team[index]
+  if (!item || !mon || !(battle.bags[side][slug] > 0)) return false
+  return item.revive ? mon.hp <= 0 : mon.hp > 0 && mon.hp < mon.maxHp
+}
 
 /** Nova batalha. teams: [meus Pokémon, os do computador]; random: () => [0, 1). */
 export function newBattle(mine, theirs, random) {
@@ -26,6 +45,7 @@ export function newBattle(mine, theirs, random) {
       { team: theirs, active: 0 },
     ],
     random,
+    bags: [newBag(), newBag()],
     turn: 1,
     winner: null, // 0 = você ganhou, 1 = o computador
     needSwitch: false, // seu Pokémon desmaiou: escolha outro
@@ -96,7 +116,7 @@ function doMove(battle, side, moveIndex, hit, events) {
     say(events, 'missed', label(battle, side))
     return
   }
-  events.push({ t: 'attack', side, type: move.type, category: move.category })
+  events.push({ t: 'attack', side, type: move.type, category: move.category, slug: move.slug })
   const crit = battle.random() < CRIT_CHANCE
   const r = hit(mon, target, move.slug, crit)
   if (!r || r.eff === 0) {
@@ -127,6 +147,34 @@ function doMove(battle, side, moveIndex, hit, events) {
   }
 }
 
+function applyItem(battle, side, slug, index, events) {
+  if (!canUseItem(battle, side, slug, index)) return
+  const item = itemOf(slug)
+  const mon = battle.sides[side].team[index]
+  battle.bags[side][slug] -= 1
+  say(events, 'usedItem', { side, name: mon.name }, item.name)
+  if (item.revive) {
+    mon.hp = Math.max(1, Math.floor(mon.maxHp / 2))
+    mon.faintShown = false
+    events.push({ t: 'heal', side, index, hp: mon.hp })
+    say(events, 'revived', { side, name: mon.name })
+  } else {
+    const healed = Math.min(item.heal, mon.maxHp - mon.hp)
+    mon.hp += healed
+    events.push({ t: 'heal', side, index, hp: mon.hp })
+    say(events, 'healed', { side, name: mon.name }, healed)
+  }
+}
+
+/** O computador cura o Pokémon dele quando está com pouca vida (às vezes). */
+function cpuItem(battle) {
+  const me = active(battle, 1)
+  if (me.hp * 4 > me.maxHp) return null
+  const potion = [...ITEMS].reverse().find((i) => i.heal && battle.bags[1][i.slug] > 0)
+  if (!potion || battle.random() >= 0.5) return null
+  return potion.slug
+}
+
 function switchTo(battle, side, index, events) {
   const before = active(battle, side)
   if (before.hp > 0) say(events, side === 0 ? 'comeBack' : 'foeWithdrew', label(battle, side))
@@ -151,16 +199,21 @@ function checkEnd(battle, hit, events) {
 }
 
 /**
- * Um turno. action: {move: índice (-1 = Struggle)} ou {switch: índice}.
+ * Um turno. action: {move: índice (-1 = Struggle)}, {switch: índice} ou
+ * {item: slug, target: índice no time}. Trocas e itens vêm antes dos golpes.
  * Devolve os eventos para mostrar na tela.
  */
 export function playTurn(battle, action, hit) {
   const events = []
   if (battle.winner != null || battle.needSwitch) return events
-  const cpu = cpuMove(battle, hit)
+  const cpuPotion = cpuItem(battle)
+  const cpu = cpuPotion ? null : cpuMove(battle, hit)
   if (action.switch != null) switchTo(battle, 0, action.switch, events)
-  const order = [{ side: 1, move: cpu }]
-  if (action.switch == null) order.push({ side: 0, move: action.move })
+  if (action.item != null) applyItem(battle, 0, action.item, action.target, events)
+  if (cpuPotion) applyItem(battle, 1, cpuPotion, battle.sides[1].active, events)
+  const order = []
+  if (!cpuPotion) order.push({ side: 1, move: cpu })
+  if (action.move != null) order.push({ side: 0, move: action.move })
   const priority = (o) => (o.move < 0 ? 0 : active(battle, o.side).moves[o.move].priority)
   if (order.length === 2) {
     const [a, b] = order
@@ -214,6 +267,9 @@ export const LINES = {
   win: 'Você venceu a batalha!',
   lose: 'Todos os seus Pokémon desmaiaram... Você perdeu!',
   ran: 'Você fugiu da batalha!',
+  usedItem: ['Você usou {1} em {0}!', 'O adversário usou {1} em {0}!'],
+  healed: ['{0} recuperou {1} de HP!', '{0} inimigo recuperou {1} de HP!'],
+  revived: ['{0} voltou à batalha!', '{0} inimigo voltou à batalha!'],
 }
 
 /** Evento de texto → [modelo, valores] (o Pokémon vai no lugar de {0}). */

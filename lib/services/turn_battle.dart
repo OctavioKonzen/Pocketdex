@@ -46,55 +46,91 @@ class BattleMon {
 typedef HitResult = ({List<List<int>> rolls, double eff});
 typedef BattleHit = HitResult? Function(BattleMon att, BattleMon def, String slug, bool crit);
 
-/// Evento para a tela ir mostrando: texto, HP, troca, desmaio ou a animação
-/// do golpe (attack, com o tipo e a categoria) / do erro (miss).
+/// Evento para a tela ir mostrando: texto, HP, troca, desmaio, a animação
+/// do golpe (attack, com o tipo, a categoria e o golpe) / do erro (miss) ou
+/// o item usado num Pokémon do time (heal: [index] e o HP em [value]).
 class BattleEvent {
-  final String t; // text | hp | switch | faint | attack | miss
+  final String t; // text | hp | switch | faint | attack | miss | heal
   final String key;
   final List<Object> args;
-  final int side, value;
-  final String type, category;
+  final int side, value, index;
+  final String type, category, slug;
   const BattleEvent.text(this.key, this.args)
       : t = 'text',
         side = -1,
         value = 0,
+        index = 0,
         type = '',
-        category = '';
-  const BattleEvent.attack(this.side, this.type, this.category)
+        category = '',
+        slug = '';
+  const BattleEvent.attack(this.side, this.type, this.category, this.slug)
       : t = 'attack',
         key = '',
         args = const [],
-        value = 0;
+        value = 0,
+        index = 0;
   const BattleEvent.miss(this.side)
       : t = 'miss',
         key = '',
         args = const [],
         value = 0,
+        index = 0,
         type = '',
-        category = '';
+        category = '',
+        slug = '';
   const BattleEvent.hp(this.side, this.value)
       : t = 'hp',
         key = '',
         args = const [],
+        index = 0,
         type = '',
-        category = '';
+        category = '',
+        slug = '';
   const BattleEvent.switched(this.side, this.value)
       : t = 'switch',
         key = '',
         args = const [],
+        index = 0,
         type = '',
-        category = '';
+        category = '',
+        slug = '';
   const BattleEvent.faint(this.side)
       : t = 'faint',
         key = '',
         args = const [],
         value = 0,
+        index = 0,
         type = '',
-        category = '';
+        category = '',
+        slug = '';
+  const BattleEvent.heal(this.side, this.index, this.value)
+      : t = 'heal',
+        key = '',
+        args = const [],
+        type = '',
+        category = '',
+        slug = '';
 }
 
 final struggle = BattleMove('struggle', 'Struggle', 'normal', 50, null, 1, 1, 0, category: 'physical');
 const _critChance = 1 / 24;
+
+/// Um item da Bolsa: cura [heal] de HP ou revive com metade da vida.
+class BattleItem {
+  final String slug, name;
+  final int heal, count;
+  final bool revive;
+  const BattleItem(this.slug, this.name, {this.heal = 0, this.revive = false, required this.count});
+}
+
+/// Itens da Bolsa (os mesmos dos dois lados) e quantos cada um começa. Igual ao site.
+const battleItems = [
+  BattleItem('potion', 'Potion', heal: 20, count: 3),
+  BattleItem('super-potion', 'Super Potion', heal: 60, count: 2),
+  BattleItem('hyper-potion', 'Hyper Potion', heal: 120, count: 1),
+  BattleItem('revive', 'Revive', revive: true, count: 1),
+];
+BattleItem? _itemOf(String slug) => battleItems.where((i) => i.slug == slug).firstOrNull;
 
 class TurnBattle {
   TurnBattle(List<BattleMon> mine, List<BattleMon> theirs, this.random) : teams = [mine, theirs];
@@ -102,6 +138,9 @@ class TurnBattle {
   final List<List<BattleMon>> teams;
   final List<int> activeIndex = [0, 0];
   final double Function() random;
+  final List<Map<String, int>> bags = [
+    for (var i = 0; i < 2; i++) {for (final item in battleItems) item.slug: item.count},
+  ];
   int turn = 1;
   int? winner; // 0 = você ganhou, 1 = o computador
   bool needSwitch = false; // seu Pokémon desmaiou: escolha outro
@@ -177,7 +216,7 @@ class TurnBattle {
       _say(events, 'missed', [_label(side)]);
       return;
     }
-    events.add(BattleEvent.attack(side, move.type, move.category));
+    events.add(BattleEvent.attack(side, move.type, move.category, move.slug));
     final crit = random() < _critChance;
     final r = hit(mon, target, move.slug, crit);
     if (r == null || r.eff == 0) {
@@ -214,6 +253,43 @@ class TurnBattle {
     }
   }
 
+  /// Dá para usar o item nesse Pokémon? (poção: vivo e ferido; Revive: desmaiado).
+  bool canUseItem(int side, String slug, int index) {
+    final item = _itemOf(slug);
+    if (item == null || index < 0 || index >= teams[side].length || (bags[side][slug] ?? 0) <= 0) return false;
+    final mon = teams[side][index];
+    return item.revive ? mon.hp <= 0 : mon.hp > 0 && mon.hp < mon.maxHp;
+  }
+
+  void _useItem(int side, String slug, int index, List<BattleEvent> events) {
+    if (!canUseItem(side, slug, index)) return;
+    final item = _itemOf(slug)!;
+    final mon = teams[side][index];
+    bags[side][slug] = bags[side][slug]! - 1;
+    _say(events, 'usedItem', [(side, mon.name), item.name]);
+    if (item.revive) {
+      mon.hp = mon.maxHp ~/ 2 < 1 ? 1 : mon.maxHp ~/ 2;
+      mon.faintShown = false;
+      events.add(BattleEvent.heal(side, index, mon.hp));
+      _say(events, 'revived', [(side, mon.name)]);
+    } else {
+      final missing = mon.maxHp - mon.hp;
+      final healed = item.heal < missing ? item.heal : missing;
+      mon.hp += healed;
+      events.add(BattleEvent.heal(side, index, mon.hp));
+      _say(events, 'healed', [(side, mon.name), healed]);
+    }
+  }
+
+  /// O computador cura o Pokémon dele quando está com pouca vida (às vezes).
+  String? _cpuItem() {
+    final me = active(1);
+    if (me.hp * 4 > me.maxHp) return null;
+    final potion = battleItems.reversed.where((i) => i.heal > 0 && (bags[1][i.slug] ?? 0) > 0).firstOrNull;
+    if (potion == null || random() >= 0.5) return null;
+    return potion.slug;
+  }
+
   void _switchTo(int side, int index, List<BattleEvent> events) {
     if (active(side).hp > 0) _say(events, side == 0 ? 'comeBack' : 'foeWithdrew', [_label(side)]);
     activeIndex[side] = index;
@@ -236,14 +312,19 @@ class TurnBattle {
     if (active(0).hp <= 0) needSwitch = true;
   }
 
-  /// Um turno: [move] (índice; -1 = Struggle) ou [switchTo]. Devolve os eventos.
-  List<BattleEvent> playTurn(BattleHit hit, {int? move, int? switchTo}) {
+  /// Um turno: [move] (índice; -1 = Struggle), [switchTo] ou [item] em
+  /// [target] (índice no time). Trocas e itens vêm antes dos golpes.
+  List<BattleEvent> playTurn(BattleHit hit, {int? move, int? switchTo, String? item, int? target}) {
     final events = <BattleEvent>[];
     if (winner != null || needSwitch) return events;
-    final cpu = cpuMove(hit);
+    final cpuPotion = _cpuItem();
+    final cpu = cpuPotion != null ? null : cpuMove(hit);
     if (switchTo != null) _switchTo(0, switchTo, events);
-    var order = <(int, int)>[(1, cpu)];
-    if (switchTo == null) order.add((0, move ?? -1));
+    if (item != null) _useItem(0, item, target ?? activeIndex[0], events);
+    if (cpuPotion != null) _useItem(1, cpuPotion, activeIndex[1], events);
+    var order = <(int, int)>[];
+    if (cpu != null) order.add((1, cpu));
+    if (switchTo == null && item == null) order.add((0, move ?? -1));
     int priority((int, int) o) => o.$2 < 0 ? 0 : active(o.$1).moves[o.$2].priority;
     if (order.length == 2) {
       final a = order[0], b = order[1];
@@ -295,6 +376,9 @@ class TurnBattle {
     'win': 'Você venceu a batalha!',
     'lose': 'Todos os seus Pokémon desmaiaram... Você perdeu!',
     'ran': 'Você fugiu da batalha!',
+    'usedItem': ['Você usou {1} em {0}!', 'O adversário usou {1} em {0}!'],
+    'healed': ['{0} recuperou {1} de HP!', '{0} inimigo recuperou {1} de HP!'],
+    'revived': ['{0} voltou à batalha!', '{0} inimigo voltou à batalha!'],
   };
 
   /// Evento de texto → (modelo, valores) (o Pokémon vai no lugar de {0}).
@@ -327,12 +411,15 @@ class TurnBattleSetup {
     'dark-void', 'upper-hand', 'poltergeist', 'sucker-punch', 'thunderclap',
   };
 
+  /// Categoria do golpe (no banco do app é damage_class; no do site, category).
+  static String _category(Map<String, dynamic> m) => '${m['damage_class'] ?? m['category']}';
+
   /// Os 4 golpes: os de dano do set e, se faltar, os melhores que aprende
   /// (poder × STAB × precisão), um de cada tipo primeiro. Igual ao site.
   static List<String> pickMoves(List<String> setMoves, List<String> learnable, List<String> types, Map<String, Map<String, dynamic>> moves) {
     bool damaging(String slug) {
       final m = moves[slug];
-      return m != null && m['category'] != 'status' && ((m['power'] as num?) ?? 0) > 0;
+      return m != null && _category(m) != 'status' && ((m['power'] as num?) ?? 0) > 0;
     }
 
     final chosen = <String>[];
@@ -395,7 +482,7 @@ class TurnBattleSetup {
               (moves[slug]!['pp'] as num?)?.toInt() ?? 10,
               (moves[slug]!['pp'] as num?)?.toInt() ?? 10,
               (moves[slug]!['priority'] as num?)?.toInt() ?? 0,
-              category: '${moves[slug]!['category']}',
+              category: _category(moves[slug]!),
             ),
         ],
         calc: calc,

@@ -245,29 +245,52 @@ body {
 @keyframes battle-dodge { 45% { transform: translateX(22%); } }
 .battle-idle { animation: battle-idle 1.8s ease-in-out infinite; }
 @keyframes battle-idle { 50% { transform: translateY(-3%); } }
-.battle-orb {
+.battle-dash-0 { animation: battle-dash-0 450ms ease-in-out; }
+.battle-dash-1 { animation: battle-dash-1 450ms ease-in-out; }
+@keyframes battle-dash-0 { 45% { transform: translate(95%, -75%) scale(0.8); } }
+@keyframes battle-dash-1 { 45% { transform: translate(-95%, 75%) scale(1.15); } }
+.battle-shake { animation: battle-shake 650ms linear; }
+@keyframes battle-shake {
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-1.5%); }
+  20%, 40%, 60%, 80% { transform: translateX(1.5%); }
+}
+/* Peças das animações dos golpes (moveAnim.js): posições em % do campo. */
+.battle-field { container-type: inline-size; }
+.fx-emoji {
   position: absolute;
-  width: 9%;
+  translate: -50% -50%;
+  line-height: 1;
+  animation: fx-move var(--dur) ease-out var(--delay) both;
+}
+@keyframes fx-move {
+  from { left: var(--x0); top: var(--y0); scale: var(--s0); rotate: 0deg; opacity: var(--o0); }
+  to { left: var(--x1); top: var(--y1); scale: var(--s1); rotate: var(--rot); opacity: var(--o1); }
+}
+.fx-line { stroke-dasharray: 1; animation: fx-line var(--dur) ease-out var(--delay) both; }
+@keyframes fx-line {
+  0% { stroke-dashoffset: 1; opacity: 1; }
+  55% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 0; }
+}
+.fx-ring {
+  position: absolute;
+  width: 14cqw;
   aspect-ratio: 1;
   border-radius: 9999px;
+  border-width: 0.8cqw;
   translate: -50% -50%;
-  animation: battle-orb 380ms ease-in forwards;
+  animation: fx-ring var(--dur) ease-out var(--delay) both;
 }
-@keyframes battle-orb {
-  from { left: var(--x0); top: var(--y0); scale: 0.5; }
-  to { left: var(--x1); top: var(--y1); scale: 1.3; }
-}
-.battle-burst {
+@keyframes fx-ring { from { scale: 0.2; opacity: 1; } to { scale: 2.2; opacity: 0; } }
+.fx-wave {
   position: absolute;
-  width: 22%;
-  aspect-ratio: 1;
-  translate: -50% -50%;
-  animation: battle-burst 420ms ease-out forwards;
+  bottom: -5%;
+  width: 55%;
+  height: 75%;
+  border-radius: 50% 50% 0 0;
+  animation: fx-wave var(--dur) ease-in-out var(--delay) both;
 }
-@keyframes battle-burst {
-  from { scale: 0.2; opacity: 1; rotate: 0deg; }
-  to { scale: 1.2; opacity: 0; rotate: 45deg; }
-}
+@keyframes fx-wave { from { left: var(--from); opacity: 0.9; } to { left: var(--to); opacity: 0.6; } }
 .battle-flash { animation: battle-flash 260ms ease-out forwards; }
 @keyframes battle-flash { from { opacity: 0.85; } to { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {

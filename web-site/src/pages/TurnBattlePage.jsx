@@ -10,14 +10,15 @@ import { Button, Empty, Icon, PageHeader } from '../components/ui'
 import { teamsOf, useAuth } from '../lib/auth'
 import { battleHitter, battleMons, randomTeam } from '../lib/battleSetup'
 import { friendsOnly, useFriends } from '../lib/friends'
-import { shinyPath } from '../lib/data'
+import { shinyPath, spriteUrl } from '../lib/data'
 import { t } from '../lib/i18n'
 import { seededRandom } from '../lib/league'
 import { typeColor } from '../lib/pokemon'
 import { usePokemonIndex } from '../lib/pokemonIndex'
 import { useStore } from '../lib/store'
 import { teamMembers } from '../lib/teamBattle'
-import { active, forfeit, lineOf, newBattle, playTurn, replace, usableMoves } from '../lib/turnBattle'
+import { FX_DURATION, fxPlan, moveAnim } from '../lib/moveAnim'
+import { active, canUseItem, forfeit, ITEMS, lineOf, newBattle, playTurn, replace, usableMoves } from '../lib/turnBattle'
 import Sprite from '../components/Sprite'
 
 const CARD = 'rounded-2xl bg-card p-5 shadow'
@@ -203,11 +204,86 @@ const BattleSprite = forwardRef(function BattleSprite({ mon, back, fainted, byId
   )
 })
 
-/** Onde fica o meio de cada Pokémon no campo (em %), para as bolas de energia. */
+/** Onde fica o meio de cada Pokémon no campo (em %), para as animações dos golpes. */
 const CENTER = [
-  { x: '24%', y: '70%' },
-  { x: '76%', y: '26%' },
+  { x: 24, y: 70 },
+  { x: 76, y: 26 },
 ]
+/** Golpes corpo a corpo: quem ataca vai até o alvo. */
+const CONTACT = new Set(['tackle', 'punch', 'kick', 'bite', 'slash'])
+
+/** As peças da animação do golpe por cima do campo (moveAnim.js). */
+function MoveFx({ plan, color }) {
+  const line = plan.parts.filter((x) => x.shape === 'line')
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      {plan.parts.map((x, i) =>
+        x.shape === 'emoji' ? (
+          <span
+            key={i}
+            className="fx-emoji"
+            style={{
+              '--x0': `${x.x0}%`,
+              '--y0': `${x.y0}%`,
+              '--x1': `${x.x1}%`,
+              '--y1': `${x.y1}%`,
+              '--s0': x.s0,
+              '--s1': x.s1,
+              '--o0': x.o0,
+              '--o1': x.o1,
+              '--rot': `${x.rot}deg`,
+              '--dur': `${x.dur}ms`,
+              '--delay': `${x.delay}ms`,
+              fontSize: `${x.size * 0.5}cqw`,
+            }}
+          >
+            {x.char}
+          </span>
+        ) : x.shape === 'ring' ? (
+          <div key={i} className="fx-ring" style={{ left: `${x.x}%`, top: `${x.y}%`, borderColor: color, '--dur': `${x.dur}ms`, '--delay': `${x.delay}ms` }} />
+        ) : x.shape === 'wave' ? (
+          <div
+            key={i}
+            className="fx-wave"
+            style={{
+              background: `linear-gradient(${color}dd, ${color}55)`,
+              '--from': x.dir > 0 ? '-60%' : '105%',
+              '--to': x.dir > 0 ? '105%' : '-60%',
+              '--dur': `${x.dur}ms`,
+              '--delay': `${x.delay}ms`,
+            }}
+          />
+        ) : null,
+      )}
+      {line.length > 0 && (
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
+          {line.map((x, i) => (
+            <g key={i} style={{ '--dur': `${x.dur}ms`, '--delay': `${x.delay}ms` }}>
+              {[
+                [color, x.width * 1.6],
+                ['#fff', x.width * 0.6],
+              ].map(([stroke, width]) => (
+                <line
+                  key={stroke}
+                  x1={x.x0}
+                  y1={x.y0}
+                  x2={x.x1}
+                  y2={x.y1}
+                  pathLength={1}
+                  stroke={stroke}
+                  strokeWidth={width}
+                  strokeLinecap="round"
+                  vectorEffect="non-scaling-stroke"
+                  className="fx-line"
+                />
+              ))}
+            </g>
+          ))}
+        </svg>
+      )}
+    </div>
+  )
+}
 
 /** Reinicia uma animação de CSS num elemento. */
 function pulse(el, cls, ms) {
@@ -231,32 +307,40 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
   }))
   const [text, setText] = useState(() => (foeName ? t('{0} quer batalhar!').replace('{0}', foeName) : t('Um treinador quer batalhar!')))
   const [busy, setBusy] = useState(false)
-  const [menu, setMenu] = useState('main') // main | fight | party
+  const [menu, setMenu] = useState('main') // main | fight | party | bag
+  const [item, setItem] = useState(null) // item da Bolsa escolhido (falta escolher em quem)
   const skip = useRef(null)
   const sprites = [useRef(null), useRef(null)]
-  const [effect, setEffect] = useState(null) // {kind: 'orb' | 'burst' | 'flash', ...}
+  const [effect, setEffect] = useState(null) // {plan, color} da animação do golpe
+  const [flash, setFlash] = useState(0)
   const effectKey = useRef(0)
-  const show = (fx) => setEffect({ ...fx, key: ++effectKey.current })
+  const field = useRef(null)
 
   const play = async (events) => {
     setBusy(true)
     for (const e of events) {
       if (e.t === 'attack') {
-        // Quem ataca avança; golpe especial vira uma bola de energia até o alvo.
-        const target = 1 - e.side
-        const color = typeColor(e.type)
-        pulse(sprites[e.side].current, `battle-lunge-${e.side}`, 450)
-        if (e.category === 'special') {
-          show({ kind: 'orb', color, from: CENTER[e.side], to: CENTER[target] })
-          await wait(380)
-        } else await wait(200)
-        show({ kind: 'burst', color, at: CENTER[target] })
-        await wait(260)
+        // Cada golpe com a sua animação (moveAnim.js), nas cores do tipo.
+        const kind = moveAnim(e.slug, e.type, e.category)
+        const plan = fxPlan(kind, e.type, e.side, CENTER[e.side], CENTER[1 - e.side])
+        pulse(sprites[e.side].current, CONTACT.has(kind) ? `battle-dash-${e.side}` : `battle-lunge-${e.side}`, 450)
+        setEffect({ plan, color: typeColor(e.type), key: ++effectKey.current })
+        if (plan.shake) pulse(field.current, 'battle-shake', 650)
+        if (plan.flash) setTimeout(() => setFlash((n) => n + 1), 250)
+        await wait(FX_DURATION[kind])
+        setEffect(null)
+      } else if (e.t === 'heal') {
+        setShown((s) => ({
+          ...s,
+          hp: s.hp.map((side, i) => (i === e.side ? side.map((hp, j) => (j === e.index ? e.hp : hp)) : side)),
+          fainted: s.fainted.map((f, i) => (i === e.side && e.index === s.active[i] ? false : f)),
+        }))
+        await wait(500)
       } else if (e.t === 'miss') {
         pulse(sprites[1 - e.side].current, 'battle-dodge', 420)
         await wait(300)
       } else if (e.t === 'text') {
-        if (e.key === 'crit') show({ kind: 'flash' })
+        if (e.key === 'crit') setFlash((n) => n + 1)
         setText(format(e))
         await new Promise((resolve) => {
           const id = setTimeout(resolve, STEP_MS)
@@ -291,7 +375,13 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
   const waiting = !busy && battle.winner == null
 
   const fight = (i) => play(playTurn(battle, { move: i }, hit))
-  const choose = (i) => play(battle.needSwitch ? replace(battle, i) : playTurn(battle, { switch: i }, hit))
+  const choose = (i) => {
+    if (item) {
+      setItem(null)
+      return play(playTurn(battle, { item, target: i }, hit))
+    }
+    return play(battle.needSwitch ? replace(battle, i) : playTurn(battle, { switch: i }, hit))
+  }
   const run = () => {
     if (window.confirm(t('Fugir da batalha? Conta como derrota.'))) play(forfeit(battle))
   }
@@ -300,7 +390,8 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
     <div className="mx-auto max-w-3xl select-none">
       {/* Campo */}
       <div
-        className="relative aspect-[16/10] overflow-hidden sm:aspect-[16/9] rounded-t-2xl border-4 border-b-0 border-slate-800"
+        ref={field}
+        className="battle-field relative aspect-[16/10] overflow-hidden sm:aspect-[16/9] rounded-t-2xl border-4 border-b-0 border-slate-800"
         style={{ background: 'linear-gradient(#bfe6ff 0%, #e8f6ff 45%, #b9e59a 46%, #8fd16b 100%)' }}
       >
         <div className="absolute top-[6%] left-[4%] w-[46%] max-w-[260px]">
@@ -314,30 +405,8 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
         <div className="absolute bottom-[5%] left-[7%] w-[33%]">
           <BattleSprite ref={sprites[0]} mon={me} back fainted={shown.fainted[0]} byId={byId} />
         </div>
-        {effect?.kind === 'orb' && (
-          <div
-            key={effect.key}
-            className="battle-orb pointer-events-none"
-            style={{
-              '--x0': effect.from.x,
-              '--y0': effect.from.y,
-              '--x1': effect.to.x,
-              '--y1': effect.to.y,
-              background: `radial-gradient(circle, #fff 0%, ${effect.color} 45%, transparent 72%)`,
-            }}
-          />
-        )}
-        {effect?.kind === 'burst' && (
-          <svg key={effect.key} viewBox="0 0 100 100" className="battle-burst pointer-events-none" style={{ left: effect.at.x, top: effect.at.y }}>
-            <polygon
-              points="50,0 61,35 98,35 68,57 79,92 50,70 21,92 32,57 2,35 39,35"
-              fill={effect.color}
-              stroke="#fff"
-              strokeWidth="4"
-            />
-          </svg>
-        )}
-        {effect?.kind === 'flash' && <div key={effect.key} className="battle-flash pointer-events-none absolute inset-0 bg-white" />}
+        {effect && <MoveFx key={effect.key} plan={effect.plan} color={effect.color} />}
+        {flash > 0 && <div key={`flash-${flash}`} className="battle-flash pointer-events-none absolute inset-0 bg-white" />}
         <div className="absolute right-[4%] bottom-[8%] w-[46%] max-w-[260px]">
           <InfoBox mon={me} hp={shown.hp[0][shown.active[0]]} mine />
         </div>
@@ -356,10 +425,9 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
         {waiting && menu === 'main' && !battle.needSwitch && (
           <div className="grid grid-cols-2 gap-1.5 rounded-xl border-4 border-slate-600 bg-white p-2 sm:w-64">
             <MenuButton onClick={() => (usable.length ? setMenu('fight') : fight(-1))}>LUTAR</MenuButton>
-            <MenuButton onClick={() => setMenu('party')}>POKÉMON</MenuButton>
-            <MenuButton onClick={run} className="col-span-2">
-              FUGIR
-            </MenuButton>
+            <MenuButton onClick={() => setMenu('bag')}>BOLSA</MenuButton>
+            <MenuButton onClick={() => (setItem(null), setMenu('party'))}>POKÉMON</MenuButton>
+            <MenuButton onClick={run}>FUGIR</MenuButton>
           </div>
         )}
         {waiting && menu === 'fight' && (
@@ -385,12 +453,47 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
         )}
       </div>
 
+      {waiting && menu === 'bag' && (
+        <div className="mt-3 rounded-2xl bg-card p-3 shadow">
+          <div className="mb-2 flex items-center justify-between">
+            <b>{t('Bolsa')}</b>
+            <button type="button" onClick={() => setMenu('main')} className="cursor-pointer text-sm text-muted hover:text-text">
+              Voltar
+            </button>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2" data-testid="bag">
+            {ITEMS.map((it) => {
+              const left = battle.bags[0][it.slug] ?? 0
+              const usableOn = battle.sides[0].team.some((_, i) => canUseItem(battle, 0, it.slug, i))
+              return (
+                <button
+                  key={it.slug}
+                  type="button"
+                  disabled={!usableOn}
+                  onClick={() => (setItem(it.slug), setMenu('party'))}
+                  className="flex cursor-pointer items-center gap-3 rounded-xl bg-surface p-2 text-left disabled:cursor-default disabled:opacity-50"
+                >
+                  <img src={spriteUrl(`items/${it.slug}.png`)} alt="" className="pixelated h-10 w-10" />
+                  <div className="min-w-0 flex-1">
+                    <div className="font-bold" data-no-translate>
+                      {it.name}
+                    </div>
+                    <div className="text-xs text-muted">{it.revive ? t('Revive com metade do HP') : t('Recupera {0} de HP').replace('{0}', it.heal)}</div>
+                  </div>
+                  <span className="font-black tabular-nums">{`×${left}`}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {waiting && menu === 'party' && (
         <div className="mt-3 rounded-2xl bg-card p-3 shadow">
           <div className="mb-2 flex items-center justify-between">
-            <b>{battle.needSwitch ? t('Escolha o próximo Pokémon') : t('Trocar de Pokémon')}</b>
+            <b>{battle.needSwitch ? t('Escolha o próximo Pokémon') : item ? t('Usar em qual Pokémon?') : t('Trocar de Pokémon')}</b>
             {!battle.needSwitch && (
-              <button type="button" onClick={() => setMenu('main')} className="cursor-pointer text-sm text-muted hover:text-text">
+              <button type="button" onClick={() => (item ? (setItem(null), setMenu('bag')) : setMenu('main'))} className="cursor-pointer text-sm text-muted hover:text-text">
                 Voltar
               </button>
             )}
@@ -402,7 +505,7 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
                 <button
                   key={i}
                   type="button"
-                  disabled={m.hp <= 0 || isActive}
+                  disabled={item ? !canUseItem(battle, 0, item, i) : m.hp <= 0 || isActive}
                   onClick={() => choose(i)}
                   className={`flex cursor-pointer items-center gap-2 rounded-xl bg-surface p-2 text-left disabled:cursor-default disabled:opacity-50 ${isActive ? 'ring-2 ring-sky-500' : ''}`}
                 >
