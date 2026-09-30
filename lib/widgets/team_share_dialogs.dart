@@ -191,14 +191,14 @@ class _ImportDialogState extends State<_ImportDialog> {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        for (final id in _team!.pokemon)
+                        for (final (i, id) in _team!.pokemon.indexed)
                           Expanded(
                             child: AspectRatio(
                               aspectRatio: 1,
                               child: Container(
                                 margin: const EdgeInsets.all(2),
                                 decoration: BoxDecoration(color: theme.cardColor, shape: BoxShape.circle),
-                                child: id == null ? null : PokemonSprite(id, fill: 0.8),
+                                child: id == null ? null : PokemonSprite(id, shiny: _team!.sets[i]?['shiny'] == true, fill: 0.8),
                               ),
                             ),
                           ),

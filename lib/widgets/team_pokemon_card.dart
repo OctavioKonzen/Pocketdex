@@ -17,7 +17,10 @@ class TeamPokemonCard extends StatefulWidget {
   final Map<String, String>? pokemonData;
   final VoidCallback onTap;
 
-  const TeamPokemonCard({super.key, required this.pokemonData, required this.onTap});
+  /// Marcado como shiny no set: mostra o sprite shiny.
+  final bool shiny;
+
+  const TeamPokemonCard({super.key, required this.pokemonData, required this.onTap, this.shiny = false});
 
   @override
   State<TeamPokemonCard> createState() => _TeamPokemonCardState();
@@ -77,7 +80,7 @@ class _TeamPokemonCardState extends State<TeamPokemonCard> {
             ),
             child: Column(
               children: [
-                Expanded(child: Padding(padding: const EdgeInsets.all(6), child: PokemonSprite(id, fill: 0.85))),
+                Expanded(child: Padding(padding: const EdgeInsets.all(6), child: PokemonSprite(id, shiny: widget.shiny, fill: 0.85))),
                 Padding(
                   padding: const EdgeInsets.only(bottom: 6, left: 4, right: 4),
                   child: Text(name,

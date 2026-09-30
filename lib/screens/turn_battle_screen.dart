@@ -147,7 +147,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
   Widget _teamRow(BattleTeam t) => Row(
         children: [
           Expanded(child: m.Text(t.name, overflow: TextOverflow.ellipsis)),
-          for (final mb in t.members) SizedBox.square(dimension: 28, child: PokemonSprite(mb.$1, fill: 0.95)),
+          for (final mb in t.members) SizedBox.square(dimension: 28, child: PokemonSprite(mb.$1, shiny: mb.$2?['shiny'] == true, fill: 0.95)),
         ],
       );
 
@@ -477,7 +477,7 @@ class _BattleViewState extends State<_BattleView> {
                     contentPadding: EdgeInsets.zero,
                     enabled: mon.hp > 0 && i != _b.activeIndex[0],
                     onTap: () => _choose(i),
-                    leading: SizedBox.square(dimension: 44, child: PokemonSprite(mon.id, fill: 0.95)),
+                    leading: SizedBox.square(dimension: 44, child: PokemonSprite(mon.id, shiny: mon.shiny, fill: 0.95)),
                     title: m.Text(mon.name, style: const TextStyle(fontWeight: FontWeight.bold)),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

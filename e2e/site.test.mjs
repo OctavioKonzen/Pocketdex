@@ -163,8 +163,11 @@ try {
   await editor.locator('select').filter({ hasText: 'Jolly' }).selectOption('Jolly')
   // Campos de número: nível, depois EVs e IVs de cada status (HP, Attack...).
   await editor.locator('input[type=number]').nth(3).fill('252') // EVs de Attack
+  await editor.getByText('Shiny ✨').click()
   await page.keyboard.press('Escape')
   await page.getByText('Earthquake').first().waitFor({ timeout: 5000 })
+  // Marcado como shiny: aparece shiny no time.
+  await page.locator('img[src*="shiny/445."]').first().waitFor({ timeout: 10000 })
   await page.getByRole('button', { name: 'Compartilhar' }).click()
   // O texto do time é montado logo depois de abrir: espera ele aparecer.
   await page.waitForFunction(() => document.querySelector('textarea')?.value.includes('Garchomp @ Choice Scarf'), null, { timeout: 20000 })

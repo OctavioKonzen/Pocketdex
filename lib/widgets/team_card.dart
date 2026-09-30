@@ -85,6 +85,7 @@ class TeamCard extends StatelessWidget {
     if (i >= team.pokemons.length || team.pokemons[i].isEmpty) return null;
     final p = team.pokemons[i];
     final id = AccountFormat.pokemonIdFromImage(p['imageUrl']) ?? int.tryParse(p['id'] ?? '');
-    return id == null ? null : PokemonSprite(id, fill: 0.8);
+    final shiny = i < team.sets.length && team.sets[i]?['shiny'] == true;
+    return id == null ? null : PokemonSprite(id, shiny: shiny, fill: 0.8);
   }
 }

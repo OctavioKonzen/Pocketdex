@@ -2,7 +2,7 @@
 // time e cada Pokémon com item, habilidade, Tera e golpes, na cor do time.
 // Desenhada num canvas (1080 px de largura).
 
-import { imageUrl, spriteUrl } from './data'
+import { imageUrl, memberSprite, spriteUrl } from './data'
 import { TYPE_COLORS } from './pokemon'
 
 const W = 1080
@@ -74,7 +74,7 @@ export async function teamImage(team, byId) {
   ctx.font = font(72, 900)
   ctx.fillText(fit(ctx, team.name || 'Time', W - PAD * 2), PAD, PAD)
 
-  const sprites = await Promise.all(members.map((m) => load(spriteUrl(m.set?.shiny ? m.p.sprite.replace(/^pokemon\/(\d)/, 'pokemon/shiny/$1') : m.p.sprite))))
+  const sprites = await Promise.all(members.map((m) => load(spriteUrl(memberSprite(m.p, m.set)))))
   let y = PAD + 90 + 24
   members.forEach((m, i) => {
     const row = Math.floor(i / 2)

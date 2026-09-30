@@ -10,6 +10,7 @@ import { Button, Empty, Icon, PageHeader } from '../components/ui'
 import { teamsOf, useAuth } from '../lib/auth'
 import { battleHitter, battleMons, randomTeam } from '../lib/battleSetup'
 import { friendsOnly, useFriends } from '../lib/friends'
+import { shinyPath } from '../lib/data'
 import { t } from '../lib/i18n'
 import { seededRandom } from '../lib/league'
 import { typeColor } from '../lib/pokemon'
@@ -33,7 +34,7 @@ function TeamLine({ team }) {
   return (
     <div className="flex items-center gap-1">
       {teamMembers(team).map((m, i) => (
-        <PokeIcon key={i} id={m.id} className="h-9 w-9" />
+        <PokeIcon key={i} id={m.id} shiny={Boolean(m.set?.shiny)} className="h-9 w-9" />
       ))}
     </div>
   )
@@ -194,7 +195,7 @@ const BattleSprite = forwardRef(function BattleSprite({ mon, back, fainted, byId
         {(failed || !loaded) && p && (
           // O seu fica de costas (espelhado), como nos jogos.
           <div className={`battle-idle h-full w-full ${back ? '-scale-x-100' : ''} ${!failed ? 'opacity-0' : ''}`}>
-            <Sprite path={p.sprite} box={p.box} fill={0.95} align="bottom" alt={mon.name} />
+            <Sprite path={mon.shiny ? shinyPath(p.sprite) : p.sprite} box={p.box} fill={0.95} align="bottom" alt={mon.name} />
           </div>
         )}
       </div>
@@ -405,7 +406,7 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
                   onClick={() => choose(i)}
                   className={`flex cursor-pointer items-center gap-2 rounded-xl bg-surface p-2 text-left disabled:cursor-default disabled:opacity-50 ${isActive ? 'ring-2 ring-sky-500' : ''}`}
                 >
-                  <PokeIcon id={m.id} className="h-12 w-12" />
+                  <PokeIcon id={m.id} shiny={m.shiny} className="h-12 w-12" />
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-bold">{m.name}</div>
                     <HpBar hp={m.hp} max={m.maxHp} />
