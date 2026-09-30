@@ -46,6 +46,15 @@
                 <action android:name="${applicationId}.ACTION_INSTALL_COMPLETE"/>
             </intent-filter>
         </receiver>
+        <!-- Widget da tela inicial com o Pokémon do dia (DailyPokemonWidget.kt). -->
+        <receiver android:name=".DailyPokemonWidget" android:exported="false" android:label="Pokémon do dia">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/daily_pokemon_widget_info" />
+        </receiver>
         <!-- Lembrete do desafio do dia (flutter_local_notifications). -->
         <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
         <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">

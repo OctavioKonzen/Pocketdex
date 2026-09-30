@@ -151,7 +151,7 @@ class _TeamBattleScreenState extends State<TeamBattleScreen> {
             ),
             if (_result != null) ...[
               const SizedBox(height: 20),
-              _Result(result: _result!, mine: myTeams[_mine!], theirs: _friendTeams![_theirs!]),
+              BattleResultView(result: _result!, mine: myTeams[_mine!], theirs: _friendTeams![_theirs!]),
             ],
           ],
         ),
@@ -160,10 +160,11 @@ class _TeamBattleScreenState extends State<TeamBattleScreen> {
   }
 }
 
-class _Result extends StatelessWidget {
+/// Resultado da batalha de times (também usado no draft).
+class BattleResultView extends StatelessWidget {
   final List<List<Duel?>> result;
   final BattleTeam mine, theirs;
-  const _Result({required this.result, required this.mine, required this.theirs});
+  const BattleResultView({super.key, required this.result, required this.mine, required this.theirs});
 
   static const _win = Color(0xFF22C55E), _lose = Color(0xFFEF4444), _draw = Color(0xFF9CA3AF);
 

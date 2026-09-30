@@ -28,6 +28,7 @@ import 'package:pocket_dex/services/update_service.dart';
 import 'package:pocket_dex/i18n/text.dart';
 import 'package:pocket_dex/i18n/i18n.dart';
 import 'package:pocket_dex/widgets/type_chip.dart';
+import 'package:pocket_dex/widgets/daily_pokemon_card.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -229,7 +230,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
+        const DailyPokemonCard(),
+        const SizedBox(height: 16),
       ],
     );
   }

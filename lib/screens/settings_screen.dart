@@ -13,6 +13,7 @@ import '../services/account_sync.dart';
 import '../services/achievements.dart';
 import '../services/app_settings.dart';
 import '../services/auth_service.dart';
+import '../services/daily_pokemon.dart';
 import '../services/daily_reminder.dart';
 import '../services/league.dart';
 import '../services/pix.dart';
@@ -165,7 +166,7 @@ class SettingsScreen extends StatelessWidget {
                       ),
                     ),
                   ]),
-                  if (DailyReminder.supported) _Section('Notificações', [_ReminderSwitch(row: row)]),
+                  if (DailyReminder.supported) _Section('Notificações', [_ReminderSwitch(row: row), _DailyPokemonSwitch(row: row)]),
                   _Section('Dados', [
                     row(
                       title: 'Dados salvos',
@@ -682,6 +683,47 @@ class _SupportCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Liga/desliga o aviso do Pokémon do dia (fica só neste aparelho).
+class _DailyPokemonSwitch extends StatefulWidget {
+  const _DailyPokemonSwitch({required this.row});
+
+  final Widget Function({Widget? leading, required String title, required String subtitle, Widget? trailing, Widget? below}) row;
+
+  @override
+  State<_DailyPokemonSwitch> createState() => _DailyPokemonSwitchState();
+}
+
+class _DailyPokemonSwitchState extends State<_DailyPokemonSwitch> {
+  bool _on = false;
+
+  @override
+  void initState() {
+    super.initState();
+    DailyPokemon.instance.enabled.then((on) {
+      if (mounted) setState(() => _on = on);
+    });
+  }
+
+  Future<void> _toggle(bool on) async {
+    setState(() => _on = on);
+    final ok = await DailyPokemon.instance.setEnabled(on);
+    if (!mounted) return;
+    if (on && !ok) {
+      setState(() => _on = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Permita as notificações do PocketDex nas configurações do celular.')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.row(
+        title: 'Pokémon do dia',
+        subtitle: 'Uma notificação às 10h com o Pokémon de hoje.',
+        trailing: Switch(value: _on, activeTrackColor: const Color(0xFF0EA5E9), onChanged: _toggle),
+      );
 }
 
 /// Liga/desliga o lembrete diário do desafio (fica só neste aparelho).

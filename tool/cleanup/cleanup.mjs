@@ -11,6 +11,7 @@
 //   friends/{uid}/list/{outro}      → apaga se uma das duas contas não existe
 //   chats/{a_b}/messages/{id}       → apaga se a amizade acabou (ou uma conta não existe)
 //   trades/{uid}                    → apaga se a conta não existe
+//   drafts/{id}                     → apaga se um dos jogadores não existe
 //   publicTeams/{id}/ratings|reports/{uid} → apaga se a conta não existe e refaz a nota
 //                                            e a contagem de denúncias do time
 //
@@ -77,6 +78,11 @@ for (const d of (await db.collectionGroup('messages').get()).docs) {
   const chat = d.ref.parent.parent
   if (chat?.parent.id !== 'chats') continue
   if (!friendships.has(chat.id)) await remove(d.ref, 'mensagem de chat sem amizade')
+}
+
+// Drafts: somem se um dos dois jogadores não existe mais.
+for (const d of (await db.collection('drafts').get()).docs) {
+  if (!(d.data().players ?? []).every((p) => accounts.has(p))) await remove(d.ref, 'draft com conta que não existe')
 }
 
 // Listas de trocas.

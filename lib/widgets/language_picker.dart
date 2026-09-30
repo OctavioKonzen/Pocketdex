@@ -5,6 +5,8 @@
 import 'package:flutter/material.dart';
 
 import '../i18n/i18n.dart';
+import '../services/daily_pokemon.dart';
+import '../services/daily_widget.dart';
 import '../services/daily_reminder.dart';
 
 class LanguagePicker extends StatelessWidget {
@@ -29,6 +31,8 @@ class LanguagePicker extends StatelessWidget {
                 await I18n.setLanguage(lang.code);
                 // O lembrete do desafio também passa a vir no idioma novo.
                 DailyReminder.instance.reschedule();
+                DailyPokemon.instance.reschedule();
+                DailyWidget.update();
               },
             ),
         ],

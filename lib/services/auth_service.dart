@@ -12,6 +12,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../utils/profanity.dart';
+import 'draft_service.dart';
 import 'friends_service.dart';
 
 enum AuthStatus { disabled, loading, signedOut, needsName, signedIn }
@@ -407,6 +408,7 @@ class AuthService extends ChangeNotifier {
         } catch (_) {}
 
         await quiet(_db.collection('trades').doc(uid).delete());
+        await quiet(DraftService.instance.deleteAllOf(uid));
         await quiet(_db.collection('confirmations').doc(uid).delete());
         await _db.collection('users').doc(uid).delete();
         await u.delete();

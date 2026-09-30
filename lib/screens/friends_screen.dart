@@ -16,6 +16,7 @@ import '../utils/responsive.dart';
 import '../utils/site_ui.dart';
 import '../widgets/account_avatar.dart';
 import 'chat_screen.dart';
+import 'draft_screen.dart';
 import 'quiz_screen.dart';
 import 'team_battle_screen.dart';
 import 'trades_screen.dart';
@@ -146,6 +147,13 @@ class _FriendsScreenState extends State<FriendsScreen> {
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 10),
+                PillButton(
+                  label: '🎯 ${tr('Draft')}',
+                  expand: true,
+                  gradient: const LinearGradient(colors: [Color(0xFFF59E0B), Color(0xFFEA580C)]),
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DraftsScreen())),
                 ),
                 const SizedBox(height: 14),
                 _card(c, tr('Adicionar amigo'), [

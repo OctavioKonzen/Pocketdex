@@ -27,6 +27,7 @@ const ChatPage = lazyPage(() => import('./pages/ChatPage'))
 const BattlePage = lazyPage(() => import('./pages/BattlePage'))
 const TradesPage = lazyPage(() => import('./pages/TradesPage'))
 const TeamBattlePage = lazyPage(() => import('./pages/TeamBattlePage'))
+const DraftPage = lazyPage(() => import('./pages/DraftPage'))
 const LoginPage = lazyPage(() => import('./pages/LoginPage'))
 const PokemonPicker = lazyPage(() => import('./components/PokemonPicker'))
 const EmailLinkPage = lazyPage(() => import('./components/EmailLinkPage'))
@@ -67,7 +68,7 @@ function NavButton({ section }) {
       >
         <Icon name={section.icon} size={20} style={{ color: active || hover ? undefined : section.color }} />
         {/* Em telas menores aparecem só os ícones. */}
-        <span className="hidden xl:inline">{section.label}</span>
+        <span className="hidden min-[1440px]:inline">{section.label}</span>
       </m.span>
     </NavLink>
   )
@@ -398,6 +399,8 @@ export default function App() {
                   <Route path="/amigos/chat/:uid" element={<ChatPage />} />
                   <Route path="/amigos/trocas" element={<TradesPage />} />
                   <Route path="/amigos/batalha" element={<TeamBattlePage />} />
+                  <Route path="/amigos/draft" element={<DraftPage />} />
+                  <Route path="/amigos/draft/:id" element={<DraftPage />} />
                   <Route path="*" element={<PokedexPage />} />
                 </Routes>
               </Suspense>

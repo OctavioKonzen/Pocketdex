@@ -96,6 +96,12 @@ export default function FriendsPage() {
         >
           ⚔️ Batalha
         </Link>
+        <Link
+          to="/amigos/draft"
+          className="col-span-2 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 px-4 py-3 text-center font-bold text-white shadow transition hover:scale-[1.02]"
+        >
+          🎯 Draft
+        </Link>
       </div>
 
       <form onSubmit={add} className={CARD}>

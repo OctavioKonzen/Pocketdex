@@ -56,7 +56,12 @@ function SlugInput({ id, value, onChange, options, placeholder }) {
           if (slug) onChange(slug)
           else if (!e.target.value.trim()) onChange('')
         }}
-        onBlur={() => setText(prettySlug(value))}
+        onBlur={() => {
+          // Digitou antes da lista carregar: tenta de novo ao sair do campo.
+          const slug = bySimple.get(text.trim().toLowerCase())
+          if (slug && slug !== value) onChange(slug)
+          else setText(prettySlug(value))
+        }}
         className={input}
       />
       <datalist id={id}>

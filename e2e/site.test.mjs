@@ -44,6 +44,7 @@ const ROUTES = [
   'treino/nuzlocke',
   'conquistas',
   'amigos',
+  'amigos/draft',
   'configuracoes',
 ]
 const user = { name: `Teste${Date.now() % 100000}`, email: `teste${Date.now()}@example.com`, password: 'senha123' }
@@ -155,6 +156,8 @@ try {
   await page.getByRole('dialog').getByRole('button', { name: /garchomp/i }).first().click()
   const editor = page.getByRole('dialog', { name: 'Garchomp' })
   await editor.waitFor({ timeout: 15000 })
+  // Espera a lista de itens carregar antes de digitar o item.
+  await editor.locator('datalist option[value="Choice Scarf"]').first().waitFor({ state: 'attached', timeout: 15000 })
   await editor.getByPlaceholder('Nenhum').fill('Choice Scarf')
   await editor.getByPlaceholder('Golpe 1').fill('Earthquake')
   await editor.locator('select').filter({ hasText: 'Jolly' }).selectOption('Jolly')
@@ -251,6 +254,27 @@ try {
   await page.getByText(/Pokémon ganham do Charizard/).waitFor({ timeout: 60000 })
   await expectHealthy()
 
+  step = 'amigos: draft'
+  const pickIn = async (pg, name) => {
+    await pg.getByRole('button', { name: 'Escolher Pokémon' }).click({ timeout: 15000 })
+    await pg.getByPlaceholder('Procurar por nome ou número').fill(name)
+    await pg.getByRole('dialog').getByRole('button', { name: new RegExp(name, 'i') }).first().click()
+  }
+  await go('amigos/draft')
+  await page.getByRole('button', { name: '3', exact: true }).click()
+  await page.getByRole('button', { name: friend.name }).click()
+  await page.waitForURL(/#\/amigos\/draft\/.+/, { timeout: 15000 })
+  const draftUrl = page.url()
+  await page2.goto(draftUrl.replace(/^.*#/, `${SITE}#`))
+  for (const [pg, name] of [[page, 'pikachu'], [page2, 'charmander'], [page, 'squirtle'], [page2, 'bulbasaur'], [page, 'eevee'], [page2, 'gengar']]) {
+    await pg.getByText('Sua vez de escolher!').waitFor({ timeout: 15000 })
+    await pickIn(pg, name)
+  }
+  await page.getByText('Draft completo! Hora de batalhar.').waitFor({ timeout: 15000 })
+  await page.getByRole('button', { name: '⚔️ Batalhar!' }).click()
+  await page.getByText(/de 9 confrontos/).waitFor({ timeout: 30000 })
+  await expectHealthy()
+
   step = 'amigos: trocas'
   await go('amigos/trocas')
   await page.getByRole('button', { name: '+ Adicionar repetido' }).click()
@@ -279,6 +303,7 @@ try {
   assert.equal(await friendDocs('messages'), 0, `${step}: sobrou mensagem de chat`)
   // O amigo continua com a conta: sobra só o time dele (ele não marcou repetidos).
   assert.equal((await emulatorDocs('publicTeams')).length, 1, `${step}: sobrou time público da conta excluída`)
+  assert.equal((await emulatorDocs('drafts')).length, 0, `${step}: sobrou draft`)
   assert.equal((await emulatorDocs("trades")).length, 0, `${step}: sobrou a lista de trocas (${(await emulatorDocs("trades")).length})`)
 
   step = 'criar de novo com o mesmo e-mail e nome'
