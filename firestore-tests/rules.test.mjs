@@ -157,6 +157,35 @@ await check('confirmação de outro', setDoc(doc(B, 'confirmations', 'alice'), {
 await check('ler confirmação de outro', getDoc(doc(B, 'confirmations', 'alice')), false)
 await check('confirmação com campo estranho', setDoc(doc(A, 'confirmations', 'alice'), { hack: 1 }), false)
 
+// Amigos
+await claim(A, 'alice', 'Ash Ketchum', 'ash ketchum').catch(() => {})
+await env.withSecurityRulesDisabled(async (ctx) => setDoc(doc(ctx.firestore(), 'users', 'alice'), { name: 'Ash Ketchum' }))
+const ask = (db, from, fromName, to, toName) => {
+  const b = writeBatch(db)
+  b.set(doc(db, 'friends', from, 'list', to), { name: toName, avatar: null, status: 'sent', since: serverTimestamp() })
+  b.set(doc(db, 'friends', to, 'list', from), { name: fromName, avatar: 25, status: 'received', since: serverTimestamp() })
+  return b.commit()
+}
+await check('pedido de amizade com nome falso', ask(A, 'alice', 'Outro Nome', 'bob', 'João'), false)
+await check('pedido de amizade em nome de outro', ask(C, 'alice', 'Ash Ketchum', 'bob', 'João'), false)
+await check('pedido de amizade', ask(A, 'alice', 'Ash Ketchum', 'bob', 'João'), true)
+await check('quem pediu não pode aceitar sozinho', updateDoc(doc(A, 'friends', 'alice', 'list', 'bob'), { status: 'friends' }), false)
+await check('terceiro lê lista', getDocs(collection(C, 'friends', 'bob', 'list')), false)
+await check('lê a própria lista', getDocs(collection(B, 'friends', 'bob', 'list')), true)
+const accept = (db) => {
+  const b = writeBatch(db)
+  b.update(doc(db, 'friends', 'bob', 'list', 'alice'), { status: 'friends' })
+  b.update(doc(db, 'friends', 'alice', 'list', 'bob'), { status: 'friends', name: 'João', avatar: 7 })
+  return b.commit()
+}
+await check('aceitar amizade', accept(B), true)
+await check('amigo manda desafio', updateDoc(doc(B, 'friends', 'alice', 'list', 'bob'), { challenge: { code: 'abc', score: 7, at: 1 } }), true)
+await check('desafio com campo estranho', updateDoc(doc(B, 'friends', 'alice', 'list', 'bob'), { challenge: { code: 'abc', hack: 1 } }), false)
+await check('amigo não troca o nome dele por outro', updateDoc(doc(B, 'friends', 'alice', 'list', 'bob'), { name: 'Ash Ketchum' }), false)
+await check('terceiro apaga amizade', deleteDoc(doc(C, 'friends', 'alice', 'list', 'bob')), false)
+await check('desfaz amizade (o outro lado)', deleteDoc(doc(B, 'friends', 'alice', 'list', 'bob')), true)
+await check('desfaz amizade (o próprio lado)', deleteDoc(doc(B, 'friends', 'bob', 'list', 'alice')), true)
+
 await env.cleanup()
 console.log(fails ? `${fails} FALHAS` : 'TUDO CERTO')
 process.exit(fails ? 1 : 0)

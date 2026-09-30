@@ -9,6 +9,7 @@ acessam a PokeAPI: tudo fica em assets/database/.
 Saída:
     assets/database/encounters.json   {idDoPokémon: [[área, jogo, método, nívelMín, nívelMáx, chance, versões]]}
     assets/database/locations.json    {área: {name, names: {fr, es}, region}}
+    assets/database/exclusives.json   {idDoPokémon: {jogo: versão}} exclusivos de uma versão
     assets/database/cries/<id>.mp3    grito (mono, 32 kbps) de cada espécie
 
 Os locais cobrem os jogos que a PokeAPI tem (até Sword/Shield e os DLCs).
@@ -64,6 +65,26 @@ VERSION_SHORT = {
     'the-isle-of-armor-sword': 'Sword', 'the-isle-of-armor-shield': 'Shield',
     'the-crown-tundra-sword': 'Sword', 'the-crown-tundra-shield': 'Shield',
 }
+
+# As duas versões de cada jogo (para os exclusivos: "só em Red").
+PAIRS = {
+    'rb': ['Red', 'Blue'], 'gs': ['Gold', 'Silver'], 'rs': ['Ruby', 'Sapphire'], 'frlg': ['FireRed', 'LeafGreen'],
+    'dp': ['Diamond', 'Pearl'], 'hgss': ['HeartGold', 'SoulSilver'], 'bw': ['Black', 'White'],
+    'b2w2': ['Black 2', 'White 2'], 'xy': ['X', 'Y'], 'oras': ['Omega Ruby', 'Alpha Sapphire'], 'sm': ['Sun', 'Moon'],
+    'usum': ['Ultra Sun', 'Ultra Moon'], 'lgpe': ["Let's Go Pikachu", "Let's Go Eevee"], 'swsh': ['Sword', 'Shield'],
+}
+# Scarlet/Violet (a PokeAPI não tem os locais deles).
+SV_EXCLUSIVES = {
+    'Scarlet': ['larvitar', 'pupitar', 'tyranitar', 'drifloon', 'drifblim', 'stunky', 'skuntank', 'skrelp', 'dragalge',
+                'oranguru', 'stonjourner', 'armarouge', 'great-tusk', 'scream-tail', 'brute-bonnet', 'flutter-mane',
+                'slither-wing', 'sandy-shocks', 'roaring-moon', 'koraidon'],
+    'Violet': ['bagon', 'shelgon', 'salamence', 'misdreavus', 'mismagius', 'gulpin', 'swalot', 'clauncher', 'clawitzer',
+               'passimian', 'eiscue-ice', 'ceruledge', 'iron-treads', 'iron-bundle', 'iron-hands', 'iron-jugulis',
+               'iron-moth', 'iron-thorns', 'iron-valiant', 'miraidon'],
+}
+
+# Versões japonesas de Red/Blue: Red (JP) = Red; Green (JP) tinha os de Blue.
+SAME_AS = {'Red (JP)': 'Red', 'Green (JP)': 'Blue', 'Blue (JP)': None}
 
 GAME_VERSIONS = {}
 for v, g in VERSION_TO_GAME.items():
@@ -160,6 +181,63 @@ def main():
     with open(os.path.join(DB, 'locations.json'), 'w', encoding='utf-8') as f:
         json.dump(locations, f, ensure_ascii=False, separators=(',', ':'), sort_keys=True)
     print(f'locais: {len(encounters)} Pokémon, {len(locations)} áreas')
+
+    # ------------------------------------------------------------ exclusivos
+    # Um Pokémon é exclusivo de uma versão quando todos os encontros dele no
+    # jogo são só nela. Sem encontro no jogo (ex.: evolução), herda o da
+    # pré-evolução (Growlithe só em Red → Arcanine também).
+    species = {sp['id']: sp for sp in load(os.path.join(DB, 'species.json'))}
+    by_id = {pk['id']: pk for pk in pokemon}
+    default_of = {sp_id: sp_id for sp_id in species}  # a forma padrão tem o id da espécie
+
+    def own(pid, game):
+        rows = [r for r in encounters.get(str(pid), []) if r[1] == game]
+        if not rows:
+            return None
+        found = set()
+        for r in rows:
+            if not r[6]:
+                return ''  # nas duas versões
+            for v in r[6]:
+                v = SAME_AS.get(v, v)
+                if v:
+                    found.add(v)
+        both = set(PAIRS[game])
+        found &= both
+        return next(iter(found)) if len(found) == 1 else ('' if found else None)
+
+    exclusives = {}
+    for pk in pokemon:
+        for game in pk.get('games', []):
+            if game not in PAIRS:
+                continue
+            result = own(pk['id'], game)
+            sp = species.get(pk['species'])
+            # Sem encontros: procura na pré-evolução.
+            while result is None and sp and sp.get('evolves_from'):
+                sp = species.get(sp['evolves_from'])
+                pre = default_of.get(sp['id']) if sp else None
+                if pre is None or game not in by_id.get(pre, {}).get('games', []):
+                    break
+                result = own(pre, game)
+            if result:
+                exclusives.setdefault(str(pk['id']), {})[game] = result
+    # Jogos sem dados de locais na PokeAPI:
+    #   BDSP repete os exclusivos de Diamond/Pearl;
+    #   Scarlet/Violet: lista oficial (jogo base).
+    by_name = {pk['name']: pk for pk in pokemon}
+    for pk in pokemon:
+        dp = exclusives.get(str(pk['id']), {}).get('dp')
+        if dp and 'bdsp' in pk.get('games', []):
+            exclusives[str(pk['id'])]['bdsp'] = {'Diamond': 'Brilliant Diamond', 'Pearl': 'Shining Pearl'}[dp]
+    for version, names in SV_EXCLUSIVES.items():
+        for name in names:
+            pk = by_name.get(name)
+            if pk and 'sv' in pk.get('games', []):
+                exclusives.setdefault(str(pk['id']), {})['sv'] = version
+    with open(os.path.join(DB, 'exclusives.json'), 'w', encoding='utf-8') as f:
+        json.dump(exclusives, f, ensure_ascii=False, separators=(',', ':'), sort_keys=True)
+    print(f'exclusivos: {sum(len(v) for v in exclusives.values())} (Pokémon, jogo)')
 
     # ------------------------------------------------------------ gritos
     out_dir = os.path.join(DB, 'cries')

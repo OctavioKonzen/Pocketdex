@@ -94,6 +94,13 @@ class LocalDatabase {
   Future<List<Map<String, dynamic>>> allItems() async => (await _table('items') as List).cast<Map<String, dynamic>>();
   Future<List<Map<String, dynamic>>> allAbilities() async => (await _table('abilities') as List).cast<Map<String, dynamic>>();
 
+  /// Exclusivos de uma versão: id do Pokémon → {jogo: versão} ("só em Red").
+  Future<Map<String, dynamic>> exclusives() async => await _table('exclusives') as Map<String, dynamic>;
+
+  /// Versão exclusiva do Pokémon no jogo (ou null se está nas duas).
+  Future<String?> exclusiveVersion(int pokemonId, String game) async =>
+      ((await exclusives())['$pokemonId'] as Map?)?[game] as String?;
+
   /// Espécies como estão no banco (id → {name, is_legendary, flavors, genera...}).
   Future<Map<int, Map<String, dynamic>>> speciesById() => _indexById('species');
 

@@ -22,6 +22,8 @@ import '../i18n/i18n.dart';
 import '../services/auth_service.dart';
 import '../services/challenge.dart';
 import '../services/cry_player.dart';
+import '../services/friends_service.dart';
+import '../widgets/account_avatar.dart';
 import '../services/local_database.dart';
 
 import '../models/generation.dart';
@@ -412,6 +414,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                 textAlign: TextAlign.center, style: TextStyle(color: theme.hintColor, fontSize: 13)),
             const SizedBox(height: 6),
             SelectableText(mine.link, style: const TextStyle(fontSize: 11)),
+            _SendToFriends(code: mine.code, score: _score),
           ],
         ),
         actionsAlignment: MainAxisAlignment.spaceAround,
@@ -890,4 +893,60 @@ class _ClueState extends State<_Clue> {
         textAlign: TextAlign.center,
         text: TextSpan(text: text, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600, height: 1.4)),
       );
+}
+
+/// No fim do desafio: manda direto para amigos (aparece na tela Amigos deles).
+class _SendToFriends extends StatefulWidget {
+  final String code;
+  final int score;
+  const _SendToFriends({required this.code, required this.score});
+
+  @override
+  State<_SendToFriends> createState() => _SendToFriendsState();
+}
+
+class _SendToFriendsState extends State<_SendToFriends> {
+  final _sent = <String, bool>{}; // true = enviado; false = enviando
+
+  @override
+  Widget build(BuildContext context) {
+    final friends = FriendsService.instance.friends;
+    if (friends.isEmpty) return const SizedBox.shrink();
+    return Column(
+      children: [
+        const SizedBox(height: 10),
+        Text('Ou mande para um amigo:', style: TextStyle(color: Theme.of(context).hintColor, fontSize: 13)),
+        const SizedBox(height: 4),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 180),
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                for (final f in friends)
+                  ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    leading: PlayerAvatar(pokemonId: f.avatar, name: f.name, size: 30),
+                    title: Text(f.name, overflow: TextOverflow.ellipsis),
+                    trailing: FilledButton(
+                      style: FilledButton.styleFrom(backgroundColor: const Color(0xFF7C3AED), visualDensity: VisualDensity.compact),
+                      onPressed: _sent.containsKey(f.uid)
+                          ? null
+                          : () {
+                              setState(() => _sent[f.uid] = false);
+                              FriendsService.instance
+                                  .sendChallenge(f.uid, widget.code, widget.score)
+                                  .then((_) => mounted ? setState(() => _sent[f.uid] = true) : null)
+                                  .catchError((_) => mounted ? setState(() => _sent.remove(f.uid)) : null);
+                            },
+                      child: Text(_sent[f.uid] == true ? 'Enviado ✓' : _sent.containsKey(f.uid) ? '...' : 'Enviar'),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }

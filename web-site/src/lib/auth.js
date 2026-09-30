@@ -546,6 +546,83 @@ export async function rateTeam(uid, teamId, stars) {
 
 // ---------------------------------------------------------------- excluir conta
 
+// ---------------------------------------------------------------- amigos
+//   friends/{uid}/list/{outro} → { name, avatar, status, since, challenge? }
+//   status: 'sent' (pedido enviado) | 'received' (pedido recebido) | 'friends'
+
+/** Procura uma conta pelo nome exato (sem diferença de maiúsculas e acentos). */
+export async function findAccount(name) {
+  const { db, doc, getDoc } = await firebase()
+  const snap = await getDoc(doc(db, 'usernames', nameKey(name)))
+  return snap.exists() ? { uid: snap.data().uid, name: snap.data().name } : null
+}
+
+/** Ouve a lista de amigos e pedidos em tempo real; devolve a função que para. */
+export async function watchFriends(uid, callback, onError) {
+  const { db, collection, onSnapshot } = await firebase()
+  return onSnapshot(
+    collection(db, 'friends', uid, 'list'),
+    (snap) => callback(snap.docs.map((d) => ({ uid: d.id, ...d.data() }))),
+    onError,
+  )
+}
+
+/** Pede amizade: 'sent' na minha lista e 'received' na do outro. */
+export async function sendFriendRequest(me, other) {
+  const { db, doc, writeBatch, serverTimestamp } = await firebase()
+  const b = writeBatch(db)
+  b.set(doc(db, 'friends', me.uid, 'list', other.uid), { name: other.name, avatar: null, status: 'sent', since: serverTimestamp() })
+  b.set(doc(db, 'friends', other.uid, 'list', me.uid), { name: me.name, avatar: me.avatar ?? null, status: 'received', since: serverTimestamp() })
+  await b.commit()
+}
+
+/** Aceita um pedido recebido: os dois lados viram 'friends'. */
+export async function acceptFriend(me, otherUid) {
+  const { db, doc, writeBatch } = await firebase()
+  const b = writeBatch(db)
+  b.update(doc(db, 'friends', me.uid, 'list', otherUid), { status: 'friends' })
+  b.update(doc(db, 'friends', otherUid, 'list', me.uid), { status: 'friends', name: me.name, avatar: me.avatar ?? null })
+  await b.commit()
+}
+
+/** Desfaz a amizade (ou recusa/cancela um pedido): apaga os dois lados. */
+export async function removeFriend(meUid, otherUid) {
+  const { db, doc, writeBatch } = await firebase()
+  const b = writeBatch(db)
+  b.delete(doc(db, 'friends', meUid, 'list', otherUid))
+  b.delete(doc(db, 'friends', otherUid, 'list', meUid))
+  await b.commit()
+}
+
+/** Deixa um desafio (código) para um amigo, com a minha pontuação. */
+export async function sendChallenge(me, friendUid, code, score) {
+  const { db, doc, updateDoc } = await firebase()
+  await updateDoc(doc(db, 'friends', friendUid, 'list', me.uid), {
+    name: me.name,
+    avatar: me.avatar ?? null,
+    challenge: { code, score, at: Date.now() },
+  })
+}
+
+/** Tira o desafio que um amigo deixou (depois de jogar ou dispensar). */
+export async function clearChallenge(meUid, friendUid) {
+  const { db, doc, updateDoc } = await firebase()
+  await updateDoc(doc(db, 'friends', meUid, 'list', friendUid), { challenge: null })
+}
+
+/** Recorde do Ranked de cada amigo (ranking/{uid}), ou 0. */
+export async function friendRecords(uids) {
+  const { db, doc, getDoc } = await firebase()
+  const entries = await Promise.all(
+    uids.map((uid) =>
+      getDoc(doc(db, 'ranking', uid))
+        .then((s) => [uid, s.exists() ? s.data().score : 0])
+        .catch(() => [uid, 0]),
+    ),
+  )
+  return Object.fromEntries(entries)
+}
+
 /** Conta entrou com Google (e não com e-mail e senha)? */
 export async function usesGoogle() {
   const { auth } = await firebase()
@@ -613,6 +690,12 @@ export async function deleteAccount({ password, weeks = [], days = [], confirmed
     refs.slice(i, i + 400).forEach((ref) => batch.delete(ref))
     await batch.commit().catch(() => Promise.all(refs.slice(i, i + 400).map((ref) => quiet(deleteDoc(ref)))))
   }
+
+  // Amizades: some dos dois lados.
+  const friends = await getDocs(collection(db, 'friends', uid, 'list')).catch(() => null)
+  await Promise.all(
+    (friends?.docs ?? []).flatMap((d) => [quiet(deleteDoc(doc(db, 'friends', d.id, 'list', uid))), quiet(deleteDoc(d.ref))]),
+  )
 
   await quiet(deleteDoc(doc(db, 'confirmations', uid)))
   await deleteDoc(doc(db, 'users', uid))

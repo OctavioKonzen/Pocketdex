@@ -31,6 +31,12 @@ const ROUTES = [
   'treino/evs',
   'treino/comparar',
   'treino/dano',
+  'treino/ivs',
+  'treino/tipos',
+  'treino/shiny',
+  'treino/nuzlocke',
+  'conquistas',
+  'amigos',
   'configuracoes',
 ]
 const user = { name: `Teste${Date.now() % 100000}`, email: `teste${Date.now()}@example.com`, password: 'senha123' }
@@ -60,6 +66,16 @@ async function emulatorDocs(path) {
   })
   const body = await res.json()
   return (body.documents ?? []).map((d) => d.name.split('/').slice(-1)[0])
+}
+
+// Quantos documentos de amizade existem (friends/*/list/*).
+async function friendDocs() {
+  const res = await fetch('http://127.0.0.1:8085/v1/projects/pocketdex-ffb4d/databases/(default)/documents:runQuery', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer owner', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ structuredQuery: { from: [{ collectionId: 'list', allDescendants: true }] } }),
+  })
+  return (await res.json()).filter((r) => r.document).length
 }
 
 // Conta Google de teste: o emulador aceita um "token do Google" falso.
@@ -165,6 +181,29 @@ try {
   await page.getByText(user.name).first().waitFor({ timeout: 20000 })
   await go('jogo')
 
+  step = 'amigos: pedido e aceite'
+  const friend = { name: `Amigo${Date.now() % 100000}`, email: `amigo${Date.now()}@example.com`, password: 'senha123' }
+  const friendCtx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: 'pt-BR' })
+  const page2 = await friendCtx.newPage()
+  await page2.goto(SITE)
+  await page2.getByRole('button', { name: 'Criar conta' }).first().click()
+  await page2.locator('input[autocomplete=nickname]').fill(friend.name)
+  await page2.locator('input[type=email]').fill(friend.email)
+  await page2.locator('input[autocomplete=new-password]').nth(0).fill(friend.password)
+  await page2.locator('input[autocomplete=new-password]').nth(1).fill(friend.password)
+  await page2.locator('form button[type=submit]').click()
+  await page2.getByText(friend.name).first().waitFor({ timeout: 20000 })
+  await go('amigos')
+  await page.getByPlaceholder('Nome da pessoa no PocketDex').fill(friend.name.toLowerCase())
+  await page.getByRole('button', { name: 'Enviar pedido' }).click()
+  await page.getByText('Pedido enviado!').waitFor({ timeout: 15000 })
+  await page2.evaluate(() => (location.hash = '#/amigos'))
+  await page2.getByRole('button', { name: 'Aceitar' }).click()
+  await page.getByText('🏆', { exact: false }).nth(1).waitFor({ timeout: 15000 })
+  await page2.getByText(user.name).first().waitFor({ timeout: 15000 })
+  assert.equal(await friendDocs(), 2, `${step}: devia ter os dois lados da amizade`)
+  await friendCtx.close()
+
   step = 'excluir conta'
   await go('configuracoes')
   await page.getByRole('button', { name: 'Excluir', exact: true }).click()
@@ -175,9 +214,11 @@ try {
 
   step = 'banco vazio depois de excluir'
   for (const path of ['users', 'usernames', 'ranking', 'publicTeams']) {
-    const docs = await emulatorDocs(path)
+    const docs = (await emulatorDocs(path)).filter((d) => path !== 'users' && path !== 'usernames' ? true : false)
     assert.deepEqual(docs, [], `${step}: sobrou algo em ${path}`)
   }
+  assert.ok(!(await emulatorDocs('usernames')).includes(user.name.toLowerCase()), `${step}: sobrou o nome`)
+  assert.equal(await friendDocs(), 0, `${step}: sobrou amizade`)
 
   step = 'criar de novo com o mesmo e-mail e nome'
   await page.getByRole('button', { name: 'Criar conta' }).first().click()

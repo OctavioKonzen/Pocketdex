@@ -124,6 +124,7 @@ def main():
     types = load('types')
     egg_groups = load('egg_groups')
     encounters = load('encounters')
+    exclusives = load('exclusives')
     locations = load('locations')
 
     by_id = {p['id']: p for p in pokemon}
@@ -153,6 +154,8 @@ def main():
             # Filtros da Pokédex: status base, habilidades e lendário/mítico.
             'stats': [v for v, _ in p['stats']],
             'abilities': [a for a, _ in p['abilities']],
+            # Exclusivos de uma versão: {jogo: versão} ("só em Red").
+            'only': exclusives.get(str(p['id']), {}),
             'tag': ('mythical' if s['is_mythical'] else 'legendary' if s['is_legendary'] else 'baby' if s['is_baby'] else None) if s else None,
         })
     save('pokemon_index.json', index)
@@ -181,6 +184,7 @@ def main():
                 'games': p.get('games', []),
                 # Onde encontrar: [área, jogo, método, nívelMín, nívelMáx, chance, versões]
                 'encounters': encounters.get(str(p['id']), []),
+                'only': exclusives.get(str(p['id']), {}),
             })
         save(f"pokemon/{s['id']}.json", {
             'id': s['id'],

@@ -11,6 +11,7 @@ import 'package:pocket_dex/screens/login_screen.dart';
 import 'package:pocket_dex/services/account_format.dart';
 import 'package:pocket_dex/services/account_sync.dart';
 import 'package:pocket_dex/services/auth_service.dart';
+import 'package:pocket_dex/services/friends_service.dart';
 import 'package:pocket_dex/services/firebase_setup.dart';
 import 'package:pocket_dex/services/daily_reminder.dart';
 import 'package:pocket_dex/services/user_data.dart';
@@ -30,6 +31,7 @@ Future<void> main() async {
   // Login e sincronização com a conta (a mesma do site).
   if (await initFirebase()) {
     AccountSync.instance.start();
+    FriendsService.instance.start();
     AuthService.instance.start();
   }
   runApp(

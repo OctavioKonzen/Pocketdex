@@ -8,6 +8,7 @@
 //   users/{uid}, confirmations/{uid}, ranking/{uid}, weekly|daily/{dia}/scores/{uid} → apaga se a conta não existe
 //   usernames/{nome}                → apaga se o dono não existe (ou não tem mais perfil)
 //   publicTeams/{id}                → apaga (com votos e denúncias) se o dono não existe
+//   friends/{uid}/list/{outro}      → apaga se uma das duas contas não existe
 //   publicTeams/{id}/ratings|reports/{uid} → apaga se a conta não existe e refaz a nota
 //                                            e a contagem de denúncias do time
 //
@@ -58,6 +59,13 @@ for (const d of (await db.collection('confirmations').get()).docs) {
 // Nomes reservados.
 for (const d of (await db.collection('usernames').get()).docs) {
   if (!profiles.has(d.data().uid)) await remove(d.ref, 'nome sem conta')
+}
+
+// Amizades: somem se uma das duas contas não existe mais.
+for (const d of (await db.collectionGroup('list').get()).docs) {
+  const owner = d.ref.parent.parent
+  if (owner?.parent.id !== 'friends') continue
+  if (!accounts.has(owner.id) || !accounts.has(d.id)) await remove(d.ref, 'amizade com conta que não existe')
 }
 
 // Rankings (geral, semanas e dias).

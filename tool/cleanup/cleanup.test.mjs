@@ -13,6 +13,7 @@ process.env.FIREBASE_AUTH_EMULATOR_HOST ??= '127.0.0.1:9099'
 initializeApp({ projectId: 'pocketdex-ffb4d' })
 const db = getFirestore()
 await getAuth().createUser({ uid: 'viva', email: 'viva@example.com' })
+await getAuth().createUser({ uid: 'amiga', email: 'amiga@example.com' })
 
 const set = (path, data) => db.doc(path).set(data)
 await set('users/viva', { name: 'Viva' })
@@ -32,6 +33,9 @@ await set('publicTeams/daViva', { ownerUid: 'viva', ratingSum: 9, ratingCount: 2
 await set('publicTeams/daViva/ratings/morta', { stars: 4 })
 await set('publicTeams/daViva/ratings/outra', { stars: 5 })
 await set('publicTeams/daViva/reports/morta', { reason: 'x' })
+await set('friends/viva/list/morta', { name: 'Morta', status: 'friends' })
+await set('friends/morta/list/viva', { name: 'Viva', status: 'friends' })
+await set('friends/viva/list/amiga', { name: 'Amiga', status: 'friends' })
 
 execFileSync('node', [new URL('./cleanup.mjs', import.meta.url).pathname], { stdio: 'inherit', env: { ...process.env, FIREBASE_SERVICE_ACCOUNT: '' } })
 
@@ -45,6 +49,8 @@ assert.deepEqual(await ids('daily/2026-09-25/scores'), ['viva'])
 assert.deepEqual(await ids('publicTeams'), ['daViva'])
 assert.deepEqual(await ids('publicTeams/daMorta/ratings'), [])
 assert.deepEqual(await ids('publicTeams/daViva/reports'), [])
+assert.deepEqual(await ids('friends/viva/list'), ['amiga'])
+assert.deepEqual(await ids('friends/morta/list'), [])
 // "outra" também não existe: a nota do time fica zerada.
 const team = (await db.doc('publicTeams/daViva').get()).data()
 assert.deepEqual([team.ratingSum, team.ratingCount, team.reportCount], [0, 0, 0])

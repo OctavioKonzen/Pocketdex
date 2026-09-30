@@ -23,7 +23,8 @@ import GenerationPicker from '../components/GenerationPicker'
 import Sprite from '../components/Sprite'
 import { Button, Icon, Loader, Modal } from '../components/ui'
 import { Avatar } from '../components/AccountAvatar'
-import { getMyScore, getRankingPosition, saveDaily, saveWeekly, useAuth, watchRanking } from '../lib/auth'
+import { getMyScore, getRankingPosition, saveDaily, saveWeekly, sendChallenge, useAuth, watchRanking } from '../lib/auth'
+import { friendsOnly, useFriends } from '../lib/friends'
 import { getPokedex } from '../lib/data'
 import { DAILY_ROUNDS, DAILY_SECONDS, dailyAnswers, dailyPoints, dayKey, weekKey } from '../lib/league'
 import { GENERATIONS, generationBackground, prettyName } from '../lib/pokemon'
@@ -785,6 +786,7 @@ function ChallengeEnd({ result, onClose, onRematch, copied, setCopied }) {
         {verdict && <p className="mt-1 text-lg font-bold">{verdict}</p>}
         <p className="mt-4 text-sm text-muted">Mande este link para um amigo jogar os mesmos Pokémon e tentar te passar:</p>
         <input readOnly value={link} onFocus={(e) => e.target.select()} className="mt-2 w-full rounded-xl bg-surface px-3 py-2 text-xs outline-none" />
+        <SendToFriends code={result.code} score={result.score} />
         <div className="mt-5 flex flex-wrap justify-center gap-3">
           <button type="button" onClick={onClose} className="cursor-pointer px-4 text-muted">
             Sair
@@ -796,5 +798,41 @@ function ChallengeEnd({ result, onClose, onRematch, copied, setCopied }) {
         </div>
       </div>
     </Modal>
+  )
+}
+
+/** Manda o desafio direto para amigos (aparece na página Amigos deles). */
+function SendToFriends({ code, score }) {
+  const user = useAuth((s) => (s.status === 'signedIn' ? s.user : null))
+  const avatar = useStore((s) => s.avatar)
+  const friends = useFriends((s) => friendsOnly(s.list))
+  const [sent, setSent] = useState({})
+  if (!user || !friends.length) return null
+  const send = (f) => {
+    setSent((x) => ({ ...x, [f.uid]: 'sending' }))
+    sendChallenge({ uid: user.uid, name: user.name, avatar }, f.uid, code, score)
+      .then(() => setSent((x) => ({ ...x, [f.uid]: 'sent' })))
+      .catch(() => setSent((x) => ({ ...x, [f.uid]: null })))
+  }
+  return (
+    <div className="mt-4 text-left">
+      <p className="mb-2 text-center text-sm text-muted">Ou mande para um amigo:</p>
+      <ul className="max-h-48 space-y-1.5 overflow-y-auto">
+        {friends.map((f) => (
+          <li key={f.uid} className="flex items-center gap-2 rounded-xl bg-surface px-3 py-1.5">
+            <Avatar pokemonId={f.avatar ?? null} name={f.name} size={30} />
+            <span className="min-w-0 flex-1 truncate text-sm font-semibold">{f.name}</span>
+            <button
+              type="button"
+              disabled={Boolean(sent[f.uid])}
+              onClick={() => send(f)}
+              className="cursor-pointer rounded-full bg-violet-600 px-3 py-1 text-xs font-bold text-white disabled:opacity-60"
+            >
+              {sent[f.uid] === 'sent' ? 'Enviado ✓' : sent[f.uid] ? '...' : 'Enviar'}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }

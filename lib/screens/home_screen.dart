@@ -25,6 +25,7 @@ import 'package:pocket_dex/services/auth_service.dart';
 import 'package:pocket_dex/services/update_service.dart';
 import 'package:pocket_dex/i18n/text.dart';
 import 'package:pocket_dex/i18n/i18n.dart';
+import 'package:pocket_dex/widgets/type_chip.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -430,22 +431,7 @@ class _SearchResultTileState extends State<_SearchResultTile> {
                                 ],
                               ),
                               const SizedBox(height: 6),
-                              Row(
-                                children: [
-                                  for (final t in types)
-                                    Container(
-                                      margin: const EdgeInsets.only(right: 6),
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withAlpha(50),
-                                        borderRadius: BorderRadius.circular(20),
-                                        border: Border.all(color: Colors.white.withAlpha(140)),
-                                      ),
-                                      child: Text(t,
-                                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                                    ),
-                                ],
-                              ),
+                              TypeChips(types),
                             ],
                           ),
                         ),

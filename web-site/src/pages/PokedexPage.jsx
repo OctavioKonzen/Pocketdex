@@ -7,6 +7,7 @@ import { getAbilities, getMoveLearners, getMoves, getPokedex, getPokemonIndex } 
 import { ALL_TYPES, STAT_LABELS, capitalize, prettyName, typeColor } from '../lib/pokemon'
 import GenerationPicker from '../components/GenerationPicker'
 import GamePicker from '../components/GamePicker'
+import VersionPicker, { inVersion } from '../components/VersionPicker'
 
 const FIELD = 'w-full rounded-xl bg-card px-3 py-2 outline-none focus:ring-2 focus:ring-sky-400'
 
@@ -23,6 +24,7 @@ export default function PokedexPage() {
   const [allForms, setAllForms] = useState(null)
   const [generation, setGeneration] = useState(null)
   const [game, setGame] = useState(null)
+  const [version, setVersion] = useState(null)
   const [types, setTypes] = useState([])
   const [showFilters, setShowFilters] = useState(false)
   const [tag, setTag] = useState(null) // 'legendary' | 'mythical' | 'baby'
@@ -59,7 +61,7 @@ export default function PokedexPage() {
     const filtered = source.filter(
       (p) =>
         (!generation || p.gen === generation) &&
-        (!game || p.games?.includes(game)) &&
+        (!game || (p.games?.includes(game) && inVersion(p, game, version))) &&
         types.every((t) => p.types.includes(t)) &&
         (!tag || p.tag === tag) &&
         (!abilityKey || !options.abilities.includes(abilityKey) || p.abilities?.includes(abilityKey)) &&
@@ -69,13 +71,17 @@ export default function PokedexPage() {
     if (sort === null) return filtered
     const value = (p) => (sort === 'total' ? (p.stats ?? []).reduce((a, b) => a + b, 0) : p.stats?.[sort] ?? 0)
     return [...filtered].sort((a, b) => value(b) - value(a))
-  }, [pokedex, allForms, generation, game, types, tag, abilityKey, options.abilities, learnersOf, sort, search])
+  }, [pokedex, allForms, generation, game, version, types, tag, abilityKey, options.abilities, learnersOf, sort, search])
 
   // Ordenado por status: o valor aparece no card.
+  // Exclusivo de uma versão do jogo escolhido: "Só em Red".
   const noteFor = useMemo(() => {
-    if (sort === null) return undefined
-    return (p) => `${sort === 'total' ? 'Total' : STAT_LABELS[sort]}: ${sort === 'total' ? (p.stats ?? []).reduce((a, b) => a + b, 0) : p.stats?.[sort]}`
-  }, [sort])
+    if (sort === null && !game) return undefined
+    return (p) => {
+      if (sort !== null) return `${sort === 'total' ? 'Total' : STAT_LABELS[sort]}: ${sort === 'total' ? (p.stats ?? []).reduce((a, b) => a + b, 0) : p.stats?.[sort]}`
+      return p.only?.[game] ? `Só em ${p.only[game]}` : undefined
+    }
+  }, [sort, game])
 
   const toggleType = (type) =>
     setTypes((current) => (current.includes(type) ? current.filter((t) => t !== type) : [...current.slice(-1), type]))
@@ -88,7 +94,14 @@ export default function PokedexPage() {
       <PageHeader title="Pokédex" subtitle={pokedex ? `${list.length} Pokémon` : null}>
         <div className="flex flex-wrap items-center gap-2">
           <GenerationPicker value={generation} onChange={setGeneration} />
-          <GamePicker value={game} onChange={setGame} />
+          <GamePicker
+            value={game}
+            onChange={(g) => {
+              setGame(g)
+              setVersion(null)
+            }}
+          />
+          <VersionPicker game={game} value={version} onChange={setVersion} />
           <m.button
             type="button"
             whileHover={{ scale: 1.05 }}
@@ -104,6 +117,7 @@ export default function PokedexPage() {
               onClick={() => {
                 setGeneration(null)
                 setGame(null)
+                setVersion(null)
                 setTypes([])
                 setTag(null)
                 setAbility('')

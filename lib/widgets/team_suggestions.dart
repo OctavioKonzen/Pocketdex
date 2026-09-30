@@ -7,10 +7,24 @@ import 'package:flutter/material.dart' hide Text;
 
 import '../i18n/i18n.dart';
 import '../i18n/text.dart';
-import '../utils/pokemon_colors.dart';
 import '../utils/string_extensions.dart';
 import '../utils/team_analysis.dart';
 import 'pokemon_sprite.dart';
+import 'type_chip.dart';
+
+/// "Aguenta: [fire] [ground]" com os tipos na cor de cada um.
+Widget _typeLine(String label, Color color, List<String> types) => Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Wrap(
+        spacing: 4,
+        runSpacing: 4,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Text('${tr(label)}:', style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
+          for (final t in types) TypeChip(t),
+        ],
+      ),
+    );
 
 class TeamSuggestionsView extends StatelessWidget {
   final List<TeamSuggestion> suggestions;
@@ -47,20 +61,11 @@ class TeamSuggestionsView extends StatelessWidget {
                           child: Text(I18n.pokemonName((s.pokemon['name'] as String).split('-').first.capitalise()),
                               overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold)),
                         ),
-                        for (final t in (s.pokemon['types'] as List).cast<String>())
-                          Container(
-                            margin: const EdgeInsets.only(left: 4),
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                            decoration: BoxDecoration(color: getColorForType(t), borderRadius: BorderRadius.circular(10)),
-                            child: Text(t, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                          ),
+                        const SizedBox(width: 6),
+                        TypeChips((s.pokemon['types'] as List).cast<String>()),
                       ]),
-                      if (s.resists.isNotEmpty)
-                        Text(tr('Aguenta: {0}').replaceAll('{0}', s.resists.join(', ')),
-                            style: const TextStyle(color: Color(0xFF4ADE80), fontSize: 12)),
-                      if (s.covers.isNotEmpty)
-                        Text(tr('Acerta: {0}').replaceAll('{0}', s.covers.join(', ')),
-                            style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 12)),
+                      if (s.resists.isNotEmpty) _typeLine('Aguenta', const Color(0xFF4ADE80), s.resists),
+                      if (s.covers.isNotEmpty) _typeLine('Acerta', const Color(0xFF38BDF8), s.covers),
                     ],
                   ),
                 ),

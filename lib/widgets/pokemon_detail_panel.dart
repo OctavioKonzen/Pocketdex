@@ -135,14 +135,15 @@ class PokemonDetailPanel extends StatelessWidget {
             const EdgeInsets.only(top: 20, left: 24, right: 24, bottom: 20),
         child: Column(
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildTab('About', 0, theme),
-                _buildTab('Base Stats', 1, theme),
-                _buildTab('Evolution', 2, theme),
-                _buildTab('Moves', 3, theme),
-              ],
+            // Cinco abas: roláveis de lado se não couberem na tela.
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (final (i, title) in const ['About', 'Base Stats', 'Evolution', 'Moves', 'Jogos'].indexed)
+                    Padding(padding: EdgeInsets.only(right: i == 4 ? 0 : 22), child: _buildTab(title, i, theme)),
+                ],
+              ),
             ),
             const SizedBox(height: 20),
             Expanded(
@@ -154,6 +155,7 @@ class PokemonDetailPanel extends StatelessWidget {
                   _buildBaseStatsTab(form, theme),
                   _buildEvolutionTab(form, theme),
                   _buildMovesTab(form, theme),
+                  GamesTab(pokemonId: form.id, games: form.games),
                 ],
               ),
             ),
@@ -256,12 +258,6 @@ class PokemonDetailPanel extends StatelessWidget {
           _buildHeightWeightInfo(currentForm, theme),
           const SizedBox(height: 10),
           CryButton(speciesId: pokemon.id),
-          if (currentForm.games.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            GamesSection(pokemonId: currentForm.id, games: currentForm.games),
-          ],
-          const SizedBox(height: 16),
-          WhereToFind(pokemonId: currentForm.id),
           const SizedBox(height: 16),
           Text("Breeding",
               style: theme.textTheme.titleSmall
