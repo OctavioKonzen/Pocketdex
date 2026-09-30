@@ -223,17 +223,14 @@ try {
   await page.getByRole('button', { name: /Areia/ }).click()
   await page2.getByRole('button', { name: 'Salvar nos meus times' }).click({ timeout: 15000 })
   await page2.waitForURL(/#\/times\//, { timeout: 15000 })
+  // O time salvo pelo amigo vira público quando a conta dele sincroniza.
+  for (let i = 0; i < 60 && (await emulatorDocs('publicTeams')).length < 2; i++) await page.waitForTimeout(1000)
+  assert.equal((await emulatorDocs('publicTeams')).length, 2, `${step}: o time do amigo não ficou público`)
 
   step = 'amigos: batalha de times'
   await go('amigos/batalha')
   await page.locator('select').nth(0).selectOption({ label: 'Areia' })
-  // O time salvo pelo amigo vira público alguns segundos depois.
-  for (let i = 0; i < 10; i++) {
-    await page.locator('select').nth(1).selectOption({ label: friend.name })
-    if (await page.getByText('Time do amigo').isVisible().catch(() => false)) break
-    await page.locator('select').nth(1).selectOption({ index: 0 })
-    await page.waitForTimeout(1500)
-  }
+  await page.locator('select').nth(1).selectOption({ label: friend.name })
   await page.locator('select').nth(2).selectOption({ label: 'Areia' })
   await page.getByRole('button', { name: '⚔️ Batalhar!' }).click()
   await page.getByText(/de 1 confrontos/).waitFor({ timeout: 30000 })
