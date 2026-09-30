@@ -161,6 +161,7 @@ export default function DetailsPanel({
             <IconButton label={isFavorite ? 'Remover dos favoritos' : 'Favoritar'} onClick={() => toggleFavorite(species.id)} active={isFavorite}>
               <Icon name={isFavorite ? 'star' : 'starOutline'} />
             </IconButton>
+            <CryButton id={species.id} />
             <IconButton label={shiny ? 'Ver normal' : 'Ver shiny'} onClick={() => setShiny(!shiny)} active={shiny}>
               <Icon name="sparkle" />
             </IconButton>
@@ -197,10 +198,10 @@ export default function DetailsPanel({
 
       {/* Abas */}
       <div className="relative m-1.5 flex min-h-0 flex-col rounded-[20px] bg-bg p-5">
-        <div className="flex justify-between gap-2 px-1">
+        <div className="no-scrollbar flex justify-between gap-4 overflow-x-auto px-1">
           {TABS.map((title, i) => (
-            <button key={title} type="button" onClick={() => changeTab(i)} className="cursor-pointer text-center">
-              <span className={`text-[15px] ${tab === i ? 'font-bold text-text' : 'text-muted hover:text-text'}`}>{title}</span>
+            <button key={title} type="button" onClick={() => changeTab(i)} className="shrink-0 cursor-pointer text-center">
+              <span className={`whitespace-nowrap text-[15px] ${tab === i ? 'font-bold text-text' : 'text-muted hover:text-text'}`}>{title}</span>
               <m.div className="mx-auto mt-1 h-[3px] rounded" animate={{ width: tab === i ? 24 : 0 }} style={{ background: color }} />
             </button>
           ))}
@@ -209,7 +210,7 @@ export default function DetailsPanel({
           <AnimatePresence mode="wait">
             <m.div key={tab} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.18 }}>
               {tab === 0 && <AboutTab species={species} form={form} onAbility={setAbilityOpen} />}
-              {tab === 1 && <StatsTab form={form} color={color} />}
+              {tab === 1 && <StatsTab form={form} speciesId={species.id} />}
               {tab === 2 && <EvolutionTab species={species} onSelect={(id) => onNavigate?.(id)} />}
               {tab === 3 && <MovesTab form={form} onMove={setMoveOpen} />}
               {tab === 4 && <GamesTab form={form} />}
@@ -244,7 +245,6 @@ function AboutTab({ species, form, onAbility }) {
   return (
     <div className="space-y-5">
       <p className="leading-relaxed">{pick(species.flavor, species.flavors)}</p>
-      <CryButton id={species.id} />
       <div className="flex justify-around rounded-2xl bg-surface py-3 text-sm">
         <span>
           <span className="text-muted">Height: </span>
@@ -309,7 +309,7 @@ function AboutTab({ species, form, onAbility }) {
   )
 }
 
-/** Toca o grito do Pokémon (arquivo do banco local). */
+/** Toca o grito do Pokémon (arquivo do banco local); fica ao lado do shiny. */
 function CryButton({ id }) {
   const [playing, setPlaying] = useState(false)
   const play = () => {
@@ -320,14 +320,9 @@ function CryButton({ id }) {
     audio.play().catch(() => setPlaying(false))
   }
   return (
-    <button
-      type="button"
-      onClick={play}
-      className="flex cursor-pointer items-center gap-2 rounded-full bg-surface px-4 py-2 text-sm font-semibold transition hover:scale-105"
-    >
-      <Icon name="volume" size={18} className={playing ? 'animate-pulse text-sky-400' : 'text-muted'} />
-      Ouvir o grito
-    </button>
+    <IconButton label="Ouvir o grito" onClick={play} active={playing}>
+      <Icon name="volume" className={playing ? 'animate-pulse' : ''} />
+    </IconButton>
   )
 }
 
@@ -346,24 +341,62 @@ function Relation({ label, entries }) {
   )
 }
 
-function StatsTab({ form, color }) {
-  const total = form.stats.reduce((sum, [base]) => sum + base, 0)
+/** Cor da barra pelo valor (vermelho = baixo, verde/azul = alto). Igual no app. */
+const statColor = (v) => (v < 50 ? '#F34444' : v < 80 ? '#FF7F0F' : v < 100 ? '#FFC928' : v < 120 ? '#A0E515' : v < 150 ? '#23CD5E' : '#00C2B8')
+
+/** Status no nível 100: mínimo (IV 0, sem EV, Nature contra) e máximo (IV 31, 252 EVs, Nature a favor). */
+function statRange(index, base, shedinja = false) {
+  if (index === 0) return shedinja ? [1, 1] : [2 * base + 110, 2 * base + 204]
+  return [Math.floor((2 * base + 5) * 0.9), Math.floor((2 * base + 99) * 1.1)]
+}
+
+function StatBar({ value, color, delay, tall }) {
   return (
-    <div className="space-y-3">
-      {form.stats.map(([base, effort], i) => (
-        <div key={STAT_LABELS[i]} className="flex items-center gap-3 text-sm">
-          <span className="w-16 text-muted">{STAT_LABELS[i]}</span>
-          <b className="w-9">{base}</b>
-          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/15">
-            <m.div className="h-full rounded-full" style={{ background: color }} initial={{ width: 0 }} animate={{ width: `${Math.min(100, (base / 255) * 100)}%` }} transition={{ duration: 0.6, delay: i * 0.05 }} />
+    <div className={`${tall ? 'h-2.5' : 'h-2'} flex-1 overflow-hidden rounded-full bg-text/10`}>
+      <m.div
+        className="h-full rounded-full"
+        style={{ background: `linear-gradient(90deg, ${color}cc, ${color})` }}
+        initial={{ width: 0 }}
+        animate={{ width: `${Math.min(100, value * 100)}%` }}
+        transition={{ duration: 0.6, delay: delay * 0.06, ease: 'easeOut' }}
+      />
+    </div>
+  )
+}
+
+function StatsTab({ form, speciesId }) {
+  const total = form.stats.reduce((sum, [base]) => sum + base, 0)
+  const evs = form.stats.map(([, effort], i) => effort > 0 && `+${effort} ${STAT_LABELS[i]}`).filter(Boolean)
+  return (
+    <div className="space-y-2.5">
+      <div className="flex justify-end text-[11px] font-bold text-muted">Mín – Máx</div>
+      {form.stats.map(([base], i) => {
+        const [min, max] = statRange(i, base, speciesId === 292)
+        return (
+          <div key={STAT_LABELS[i]} className="flex items-center gap-3 text-sm">
+            <span className="w-20 shrink-0 font-semibold text-muted">{STAT_LABELS[i]}</span>
+            <b className="w-9 shrink-0 text-base font-black">{base}</b>
+            <StatBar value={base / 200} color={statColor(base)} delay={i} />
+            <span className="w-20 shrink-0 text-right text-xs text-muted">{`${min} – ${max}`}</span>
           </div>
-          {effort > 0 && <span className="w-12 text-right text-xs text-muted">+{effort} EV</span>}
-        </div>
-      ))}
-      <div className="flex gap-3 pt-2 text-sm">
-        <span className="w-16 text-muted">Total</span>
-        <b>{total}</b>
+        )
+      })}
+      <div className="mt-1 flex items-center gap-3 rounded-2xl bg-surface px-4 py-3">
+        <span className="font-bold text-muted">Total</span>
+        <b className="text-2xl font-black">{total}</b>
+        <StatBar value={total / 720} color={statColor(total / 6)} delay={6} tall />
       </div>
+      {evs.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 pt-1 text-xs">
+          <span className="text-muted">Dá de EV:</span>
+          {evs.map((e) => (
+            <span key={e} className="rounded-full bg-sky-500/15 px-2.5 py-1 font-bold text-sky-400">
+              {e}
+            </span>
+          ))}
+        </div>
+      )}
+      <p className="pt-1 text-[11px] text-muted">Mín e máx no nível 100: de IV 0 sem EV e Nature contra até IV 31, 252 EVs e Nature a favor.</p>
     </div>
   )
 }

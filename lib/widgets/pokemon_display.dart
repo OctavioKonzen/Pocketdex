@@ -6,6 +6,7 @@ import 'package:pocket_dex/models/pokemon_details.dart';
 import 'package:pocket_dex/utils/pokemon_colors.dart';
 import 'package:pocket_dex/utils/string_extensions.dart';
 import 'package:pocket_dex/i18n/text.dart';
+import 'package:pocket_dex/services/cry_player.dart';
 
 class PokemonDisplay extends StatelessWidget {
   final PokemonDetails pokemon;
@@ -121,6 +122,19 @@ class PokemonDisplay extends StatelessWidget {
                               const SizedBox(height: 4),
                               Row(
                                 children: [
+                                  GestureDetector(
+                                    onTap: () => CryPlayer.instance.play(pokemon.id),
+                                    child: Tooltip(
+                                      message: tr('Ouvir o grito'),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration:
+                                            BoxDecoration(shape: BoxShape.circle, color: Colors.white.withAlpha(51)),
+                                        child: const Icon(Icons.volume_up_rounded, color: Colors.white, size: 20),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
                                   if (pokemon.forms.length > 1)
                                     GestureDetector(
                                       onTap: onFormSelect,
@@ -131,7 +145,7 @@ class PokemonDisplay extends StatelessWidget {
                                         child: const Icon(Icons.layers, color: Colors.white, size: 20),
                                       ),
                                     ),
-                                  const SizedBox(width: 8),
+                                  if (pokemon.forms.length > 1) const SizedBox(width: 8),
                                   GestureDetector(
                                     onTap: onShinyToggle,
                                     child: Container(

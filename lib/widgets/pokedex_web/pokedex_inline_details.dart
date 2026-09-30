@@ -9,6 +9,7 @@ import 'package:flutter/material.dart' hide Text;
 
 import '../../models/alternate_form.dart';
 import '../../models/pokemon_details.dart';
+import '../../services/cry_player.dart';
 import '../../services/pokemon_service.dart';
 import '../../utils/app_images.dart';
 import '../../utils/pokemon_colors.dart';
@@ -261,6 +262,12 @@ class _PokedexInlineDetailsState extends State<PokedexInlineDetails> with Single
                       ],
                     ),
                   ),
+                  HoverIconButton(
+                    icon: Icons.volume_up_rounded,
+                    tooltip: tr('Ouvir o grito'),
+                    onPressed: () => CryPlayer.instance.play(details.id),
+                  ),
+                  const SizedBox(width: 8),
                   HoverIconButton(
                     icon: Icons.auto_awesome,
                     tooltip: tr(_isShiny ? 'Ver normal' : 'Ver shiny'),

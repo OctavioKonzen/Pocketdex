@@ -4607,5 +4607,20 @@
   "en": "Ranking among you by Ranked record. Tap the bubble to chat; at the end of a challenge in the Game, you can send it to a friend.",
   "fr": "Classement entre vous selon le record en Classé. Touchez la bulle pour discuter ; à la fin d'un défi dans le Jeu, vous pouvez l'envoyer à un ami.",
   "es": "Ranking entre ustedes por el récord de Ranked. Toca el globo para chatear; al final de un desafío en el Juego, puedes enviarlo a un amigo."
+ },
+ "Mín – Máx": {
+  "en": "Min – Max",
+  "fr": "Min – Max",
+  "es": "Mín – Máx"
+ },
+ "Dá de EV:": {
+  "en": "EV yield:",
+  "fr": "EV donnés :",
+  "es": "EV que da:"
+ },
+ "Mín e máx no nível 100: de IV 0 sem EV e Nature contra até IV 31, 252 EVs e Nature a favor.": {
+  "en": "Min and max at level 100: from 0 IV, no EVs and a hindering Nature to 31 IV, 252 EVs and a boosting Nature.",
+  "fr": "Min et max au niveau 100 : de 0 IV sans EV et Nature défavorable à 31 IV, 252 EV et Nature favorable.",
+  "es": "Mín y máx a nivel 100: de IV 0 sin EV y Naturaleza en contra a IV 31, 252 EV y Naturaleza a favor."
  }
 }

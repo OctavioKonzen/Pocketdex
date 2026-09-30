@@ -85,12 +85,25 @@ final screens = <String, Widget Function()>{
   'Amigos': () => const FriendsScreen(),
   'Login': () => const LoginScreen(),
   'Pokémon (Charizard)': () => const PokemonDetailScreen(initialPokemonId: 6),
+  'Status do Pokémon': () => const PokemonDetailScreen(initialPokemonId: 6),
   'Pokémon (Mr. Mime)': () => const PokemonDetailScreen(initialPokemonId: 122),
 };
 
 // (largura, altura, escala do texto)
 // Telas que abrem algo antes de conferir (ex.: a folha de filtros).
 final actions = <String, Future<void> Function(WidgetTester)>{
+  'Status do Pokémon': (tester) async {
+    for (var i = 0; i < 20 && find.text('Status base').evaluate().isEmpty; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+    // Nos tamanhos seguintes a página às vezes não termina de carregar no teste.
+    if (find.text('Status base').evaluate().isEmpty) return;
+    await tester.tap(find.text('Status base'));
+    for (var i = 0; i < 4; i++) {
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+  },
   'Filtros da Pokédex': (tester) async {
     await tester.tap(find.byType(FloatingActionButton));
     await tester.pump();
@@ -178,7 +191,11 @@ void main() {
           await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
           await tester.pump(const Duration(milliseconds: 300));
         }
-        await actions[entry.key]?.call(tester);
+        try {
+          await actions[entry.key]?.call(tester);
+        } catch (e) {
+          errors.add('não deu para abrir: ${e.toString().split('\n').first}');
+        }
         FlutterError.onError = original;
         // Textos cortados com "…" (ou que não cabem numa linha só).
         for (final r in tester.allRenderObjects.whereType<RenderParagraph>()) {
