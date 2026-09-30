@@ -1,44 +1,73 @@
-// Página do Pokémon: jogos em que ele aparece (tocar marca como pego na
-// Coleção) e onde encontrá-lo em cada jogo (dados do banco local).
+// Aba Jogos da página do Pokémon: jogos em que ele aparece, por geração
+// (tocar marca como pego na Coleção), e onde encontrá-lo em cada jogo.
 
 import { useEffect, useMemo, useState } from 'react'
 import { getLocations } from '../lib/data'
 import { encountersByGame, locationName, methodLabel } from '../lib/encounters'
 import { language } from '../lib/i18n'
-import { GAMES, GAME_BY_KEY, generationBackground } from '../lib/pokemon'
+import { GAMES, generationBackground } from '../lib/pokemon'
 import { useStore } from '../lib/store'
 
-/** Jogos do Pokémon; cada um marca/desmarca "peguei" na Coleção. */
-export function GamesSection({ form }) {
+/**
+ * Aba Jogos da página do Pokémon: os jogos em que ele aparece, por geração
+ * (principais e secundários), com "Só em Red" quando é exclusivo de uma
+ * versão. Tocar num jogo marca/desmarca "peguei" na Coleção.
+ */
+export function GamesTab({ form }) {
   const collection = useStore((s) => s.collection)
   const toggleCaught = useStore((s) => s.toggleCaught)
-  if (!form.games?.length) return null
+  const inGame = new Set(form.games ?? [])
+  const main = GAMES.filter((g) => !g.spinoff && inGame.has(g.key))
+  const spinoffs = GAMES.filter((g) => g.spinoff && inGame.has(g.key))
+  const byGen = main.reduce((acc, g) => ((acc[g.gen] ??= []).push(g), acc), {})
+  const caughtCount = [...inGame].filter((k) => collection?.[k]?.c?.includes(form.id)).length
+
+  const card = (game) => {
+    const caught = collection?.[game.key]?.c?.includes(form.id)
+    const only = form.only?.[game.key]
+    return (
+      <button
+        key={game.key}
+        type="button"
+        aria-pressed={Boolean(caught)}
+        onClick={() => toggleCaught(game.key, form.id)}
+        title={caught ? 'Pego — toque para desmarcar' : 'Marcar como pego'}
+        className={`relative flex cursor-pointer flex-col items-start rounded-2xl px-3 py-2 text-left text-white shadow transition hover:scale-[1.03] ${caught ? 'ring-2 ring-white' : ''}`}
+        style={{ background: generationBackground(game) }}
+      >
+        <span className="text-sm font-bold">{game.name}</span>
+        {only && <span className="mt-0.5 rounded-full bg-black/35 px-2 text-[11px] font-semibold">{`Só em ${only}`}</span>}
+        <span className={`absolute top-1.5 right-2 text-sm ${caught ? '' : 'opacity-40'}`}>{caught ? '✓' : '○'}</span>
+      </button>
+    )
+  }
+
   return (
-    <section>
-      <h3 className="mb-1 font-bold">Jogos</h3>
-      <p className="mb-2 text-xs text-muted">Toque num jogo para marcar que você já pegou este Pokémon nele.</p>
-      <div className="flex flex-wrap gap-1.5">
-        {form.games.map((key) => {
-          const game = GAME_BY_KEY[key]
-          if (!game) return null
-          const caught = collection?.[key]?.c?.includes(form.id)
-          return (
-            <button
-              key={key}
-              type="button"
-              aria-pressed={Boolean(caught)}
-              onClick={() => toggleCaught(key, form.id)}
-              title={caught ? 'Pego — toque para desmarcar' : 'Marcar como pego'}
-              className={`cursor-pointer rounded-full px-2.5 py-1 text-xs font-bold text-white transition hover:scale-105 ${caught ? 'ring-2 ring-white' : 'opacity-80'}`}
-              style={{ background: generationBackground(game) }}
-            >
-              {caught && '✓ '}
-              {game.name}
-            </button>
-          )
-        })}
-      </div>
-    </section>
+    <div className="space-y-5">
+      {!inGame.size ? (
+        <p className="text-sm text-muted">Sem jogos registrados para esta forma.</p>
+      ) : (
+        <>
+          <p className="text-sm text-muted">
+            {`Aparece em ${inGame.size} jogos · pego em ${caughtCount}. `}
+            <span>Toque num jogo para marcar que você já pegou este Pokémon nele.</span>
+          </p>
+          {Object.entries(byGen).map(([gen, list]) => (
+            <section key={gen}>
+              <h3 className="mb-2 text-sm font-bold text-muted">{`Geração ${gen}`}</h3>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{list.map(card)}</div>
+            </section>
+          ))}
+          {spinoffs.length > 0 && (
+            <section>
+              <h3 className="mb-2 text-sm font-bold text-muted">Jogos secundários</h3>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{spinoffs.map(card)}</div>
+            </section>
+          )}
+        </>
+      )}
+      <WhereToFind form={form} />
+    </div>
   )
 }
 

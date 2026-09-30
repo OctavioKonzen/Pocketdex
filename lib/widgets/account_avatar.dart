@@ -7,7 +7,9 @@
 import 'package:flutter/material.dart' hide Text;
 
 import '../screens/pokedex_screen.dart';
+import '../screens/friends_screen.dart';
 import '../screens/settings_screen.dart';
+import '../services/friends_service.dart';
 import '../services/account_format.dart';
 import '../services/account_sync.dart';
 import '../services/auth_service.dart';
@@ -24,7 +26,7 @@ class AccountAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: Listenable.merge([UserData.instance, AuthService.instance]),
+      listenable: Listenable.merge([UserData.instance, AuthService.instance, FriendsService.instance]),
       builder: (context, _) {
         final user = AuthService.instance.user;
         final avatar = UserData.instance.avatar;
@@ -48,7 +50,32 @@ class AccountAvatar extends StatelessWidget {
           ),
           child: content,
         );
-        return onTap == null ? circle : GestureDetector(onTap: onTap, child: circle);
+        if (onTap == null) return circle;
+        // Pedidos de amizade ou desafios esperando: bolinha vermelha.
+        final pending = FriendsService.instance.pending > 0;
+        return GestureDetector(
+          onTap: onTap,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              circle,
+              if (pending)
+                Positioned(
+                  top: -2,
+                  right: -2,
+                  child: Container(
+                    width: size * 0.3,
+                    height: size * 0.3,
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
       },
     );
   }
@@ -122,7 +149,7 @@ class _ProfileContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = SiteColors.of(context);
     return ListenableBuilder(
-      listenable: Listenable.merge([UserData.instance, AuthService.instance]),
+      listenable: Listenable.merge([UserData.instance, AuthService.instance, FriendsService.instance]),
       builder: (context, _) {
         final user = AuthService.instance.user;
         final hasAvatar = UserData.instance.avatar != null;
@@ -160,6 +187,15 @@ class _ProfileContent extends StatelessWidget {
                 _MenuItem(icon: Icons.catching_pokemon, label: 'Trocar foto de perfil', onTap: () => ProfileSheet.changePhoto(context)),
                 if (hasAvatar)
                   _MenuItem(icon: Icons.hide_image_outlined, label: 'Tirar a foto', onTap: () => UserData.instance.update({'avatar': null})),
+                _MenuItem(
+                  icon: Icons.group,
+                  label: 'Amigos',
+                  badge: FriendsService.instance.pending,
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const FriendsScreen()));
+                  },
+                ),
                 _MenuItem(
                   icon: Icons.emoji_events,
                   label: 'Conquistas',
@@ -201,7 +237,8 @@ class _MenuItem extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
   final bool danger;
-  const _MenuItem({required this.icon, required this.label, required this.onTap, this.danger = false});
+  final int badge; // avisos (pedidos de amizade, desafios)
+  const _MenuItem({required this.icon, required this.label, required this.onTap, this.danger = false, this.badge = 0});
 
   @override
   Widget build(BuildContext context) {
@@ -210,6 +247,13 @@ class _MenuItem extends StatelessWidget {
     return ListTile(
       leading: Icon(icon, color: danger ? color : c.muted),
       title: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w600)),
+      trailing: badge > 0
+          ? CircleAvatar(
+              radius: 11,
+              backgroundColor: Colors.redAccent,
+              child: Text('$badge', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+            )
+          : null,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 12),
       onTap: onTap,

@@ -1,5 +1,5 @@
 // Painel de detalhes de um Pokémon: vitrine (Pokémon saindo da Pokébola,
-// nome, tipos, formas e shiny) e as abas About, Base Stats, Evolution e Moves.
+// nome, tipos, formas e shiny) e as abas About, Base Stats, Evolution, Moves e Jogos.
 
 import { AnimatePresence, m } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
@@ -20,10 +20,10 @@ import PokeballReveal from './PokeballReveal'
 import { pick } from '../lib/i18n'
 import { Icon, IconButton, Loader, SpinningPokeball, TypeBadge } from './ui'
 import Sprite from './Sprite'
-import { GamesSection, WhereToFind } from './WhereToFind'
+import { GamesTab } from './WhereToFind'
 import { cryUrl } from '../lib/data'
 
-export const TABS = ['About', 'Base Stats', 'Evolution', 'Moves']
+export const TABS = ['About', 'Base Stats', 'Evolution', 'Moves', 'Jogos']
 
 /** Pokébola abrindo só quando `reveal` (senão, o Pokémon aparece direto). */
 function MaybeReveal({ reveal, id, children }) {
@@ -212,6 +212,7 @@ export default function DetailsPanel({
               {tab === 1 && <StatsTab form={form} color={color} />}
               {tab === 2 && <EvolutionTab species={species} onSelect={(id) => onNavigate?.(id)} />}
               {tab === 3 && <MovesTab form={form} onMove={setMoveOpen} />}
+              {tab === 4 && <GamesTab form={form} />}
             </m.div>
           </AnimatePresence>
         </div>
@@ -271,9 +272,6 @@ function AboutTab({ species, form, onAbility }) {
           ))}
         </div>
       </section>
-
-      <GamesSection form={form} />
-      <WhereToFind form={form} />
 
       <section>
         <h3 className="mb-1 font-bold">Breeding</h3>

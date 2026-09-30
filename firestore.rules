@@ -53,6 +53,40 @@ service cloud.firestore {
       allow create, update: if signedIn(uid) && nameIsMine(uid);
     }
 
+    // Amigos: friends/{dono}/list/{outro} = {name, avatar, status, since, challenge?}
+    //   status: 'sent' (pedido enviado), 'received' (pedido recebido), 'friends'.
+    // Quem pede grava dos dois lados ('sent' no seu, 'received' no do outro);
+    // quem recebeu aceita e os dois viram 'friends'. Qualquer um desfaz
+    // (apaga os dois). Amigos podem deixar um desafio (challenge) um para o outro.
+    match /friends/{owner}/list/{other} {
+      function validFriend(d) {
+        return d.keys().hasOnly(['name', 'avatar', 'status', 'since', 'challenge'])
+          && d.name is string && d.name.size() <= 20
+          && (!('avatar' in d) || d.avatar == null || d.avatar is int)
+          && d.status in ['sent', 'received', 'friends']
+          && (!('challenge' in d) || d.challenge == null
+              || (d.challenge is map && d.challenge.keys().hasOnly(['code', 'score', 'at'])
+                  && d.challenge.code is string && d.challenge.code.size() <= 300));
+      }
+      allow read: if signedIn(owner);
+      allow delete: if signedIn(owner) || signedIn(other);
+      // O dono: manda um pedido (com o nome real do outro), aceita um
+      // recebido, ou atualiza a própria lista sem mudar o estado.
+      allow create: if signedIn(owner) && owner != other && validFriend(request.resource.data)
+        && request.resource.data.status == 'sent' && request.resource.data.name == accountName(other);
+      allow update: if signedIn(owner) && validFriend(request.resource.data)
+        && ((resource.data.status == 'received' && request.resource.data.status == 'friends')
+            || request.resource.data.status == resource.data.status);
+      // O outro: o pedido dele chega aqui ('received', com o nome dele), ele
+      // aceita deste lado, ou (já amigos) manda um desafio / atualiza o nome.
+      allow create: if signedIn(other) && owner != other && validFriend(request.resource.data)
+        && request.resource.data.status == 'received' && request.resource.data.name == accountName(other);
+      allow update: if signedIn(other) && validFriend(request.resource.data)
+        && request.resource.data.name == accountName(other)
+        && request.resource.data.status == 'friends'
+        && resource.data.status in ['sent', 'friends'];
+    }
+
     // Confirmações por link no e-mail (contas Google): quando a pessoa abriu
     // o link para criar a conta, trocar a senha ou excluir. Só ela vê e muda.
     match /confirmations/{uid} {

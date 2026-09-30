@@ -69,7 +69,8 @@ class GenerationPicker extends StatelessWidget {
     );
   }
 
-  void _open(BuildContext context) {
+  /// Abre a lista para escolher (também usada pelo menu de filtros da Pokédex).
+  void open(BuildContext context) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -111,5 +112,5 @@ class GenerationPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) =>
-      option(gen: value, selected: false, compact: true, onTap: () => _open(context));
+      option(gen: value, selected: false, compact: true, onTap: () => open(context));
 }

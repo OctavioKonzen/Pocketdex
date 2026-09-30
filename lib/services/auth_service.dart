@@ -391,6 +391,17 @@ class AuthService extends ChangeNotifier {
           }
         }
 
+        // Amizades: somem dos dois lados.
+        try {
+          final friends = await _db.collection('friends').doc(uid).collection('list').get();
+          await Future.wait([
+            for (final d in friends.docs) ...[
+              quiet(_db.collection('friends').doc(d.id).collection('list').doc(uid).delete()),
+              quiet(d.reference.delete()),
+            ],
+          ]);
+        } catch (_) {}
+
         await quiet(_db.collection('confirmations').doc(uid).delete());
         await _db.collection('users').doc(uid).delete();
         await u.delete();

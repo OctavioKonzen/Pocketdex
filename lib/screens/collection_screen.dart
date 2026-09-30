@@ -27,12 +27,17 @@ class _CollectionViewState extends State<CollectionView> {
   String _game = 'sv';
   String _filter = 'all';
   bool _shinyMode = false;
+  String? _version; // versão do jogo (Red, Blue...)
+  Map<String, dynamic> _exclusives = {};
 
   @override
   void initState() {
     super.initState();
     LocalDatabase.instance.defaultPokemon().then((rows) {
       if (mounted) setState(() => _pokedex = rows);
+    });
+    LocalDatabase.instance.exclusives().then((e) {
+      if (mounted) setState(() => _exclusives = e);
     });
     SharedPreferences.getInstance().then((p) {
       final saved = p.getString(_prefKey);
@@ -42,7 +47,10 @@ class _CollectionViewState extends State<CollectionView> {
 
   void _choose(Game? g) {
     if (g == null) return;
-    setState(() => _game = g.key);
+    setState(() {
+      _game = g.key;
+      _version = null;
+    });
     SharedPreferences.getInstance().then((p) => p.setString(_prefKey, g.key));
   }
 
@@ -62,9 +70,12 @@ class _CollectionViewState extends State<CollectionView> {
       builder: (context, _) {
         final caught = UserData.instance.caught(_game);
         final shiny = UserData.instance.caught(_game, shiny: true);
+        String? only(Map<String, dynamic> p) => (_exclusives['${p['id']}'] as Map?)?[_game] as String?;
         final inGame = [
           for (final p in pokedex)
-            if (((p['games'] as List?) ?? const []).contains(_game)) p
+            if (((p['games'] as List?) ?? const []).contains(_game) &&
+                (_version == null || only(p) == null || only(p) == _version))
+              p,
         ];
         final done = inGame.where((p) => caught.contains(p['id'])).length;
         final doneShiny = inGame.where((p) => shiny.contains(p['id'])).length;
@@ -78,6 +89,21 @@ class _CollectionViewState extends State<CollectionView> {
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
               sliver: SliverList.list(children: [
                 GamePicker(value: game, onChanged: _choose),
+                if (game.versions.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  // Cada versão tem Pokémon que a outra não tem.
+                  Wrap(
+                    spacing: 6,
+                    children: [
+                      for (final v in <String?>[null, ...game.versions])
+                        ChoiceChip(
+                          label: Text(v ?? tr('Todas as versões')),
+                          selected: _version == v,
+                          onSelected: (_) => setState(() => _version = v),
+                        ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 10),
                 Row(
                   children: [
@@ -112,7 +138,7 @@ class _CollectionViewState extends State<CollectionView> {
                       Row(
                         children: [
                           Expanded(
-                            child: Text(game.name,
+                            child: Text(_version ?? game.name,
                                 style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
                           ),
                           Text(
@@ -176,6 +202,16 @@ class _CollectionViewState extends State<CollectionView> {
                           if (isShiny)
                             const Align(
                                 alignment: Alignment.topRight, child: Text('✨', style: TextStyle(fontSize: 12))),
+                          if (_version == null && only(p) != null)
+                            Align(
+                              alignment: const Alignment(1, 0.45),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 4),
+                                decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(8)),
+                                child: Text(only(p)!,
+                                    style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+                              ),
+                            ),
                           Column(
                             children: [
                               Expanded(

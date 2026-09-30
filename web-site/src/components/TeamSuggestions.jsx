@@ -7,6 +7,19 @@ import { displayName, suggestMembers } from '../lib/pokemon'
 import Sprite from './Sprite'
 import { TypeBadge } from './ui'
 
+/** "Aguenta: [Fire] [Ground]" com os tipos na cor de cada um. */
+function TypeLine({ label, className, types }) {
+  if (!types.length) return null
+  return (
+    <div className="mt-1 flex flex-wrap items-center gap-1 text-xs">
+      <span className={`font-semibold ${className}`}>{label}:</span>
+      {types.map((t) => (
+        <TypeBadge key={t} type={t} small />
+      ))}
+    </div>
+  )
+}
+
 export default function TeamSuggestions({ members, typeData, onAdd }) {
   const [pokedex, setPokedex] = useState(null)
   useEffect(() => {
@@ -34,8 +47,8 @@ export default function TeamSuggestions({ members, typeData, onAdd }) {
                   <TypeBadge key={t} type={t} small />
                 ))}
               </div>
-              {resists.length > 0 && <div className="truncate text-xs text-green-400">{`Aguenta: ${resists.join(', ')}`}</div>}
-              {covers.length > 0 && <div className="truncate text-xs text-sky-400">{`Acerta: ${covers.join(', ')}`}</div>}
+              <TypeLine label="Aguenta" className="text-green-400" types={resists} />
+              <TypeLine label="Acerta" className="text-sky-400" types={covers} />
             </div>
             {onAdd && (
               <button

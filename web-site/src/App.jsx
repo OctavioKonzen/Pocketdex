@@ -7,6 +7,7 @@ import { useStore } from './lib/store'
 import { TEXT_SIZES, usePrefs, useResolvedTheme } from './lib/prefs'
 import { confirmationFromUrl, startAuth, useAuth } from './lib/auth'
 import { logout, startSync } from './lib/sync'
+import { pendingCount, startFriends, useFriends } from './lib/friends'
 import { Icon, Loader, SpinningPokeball } from './components/ui'
 import AccountAvatar from './components/AccountAvatar'
 import PokedexPage from './pages/PokedexPage'
@@ -21,6 +22,7 @@ const EncyclopediaPage = lazyPage(() => import('./pages/EncyclopediaPage'))
 const TrainingPage = lazyPage(() => import('./pages/TrainingPage'))
 const SettingsPage = lazyPage(() => import('./pages/SettingsPage'))
 const AchievementsPage = lazyPage(() => import('./pages/AchievementsPage'))
+const FriendsPage = lazyPage(() => import('./pages/FriendsPage'))
 const LoginPage = lazyPage(() => import('./pages/LoginPage'))
 const PokemonPicker = lazyPage(() => import('./components/PokemonPicker'))
 const EmailLinkPage = lazyPage(() => import('./components/EmailLinkPage'))
@@ -168,7 +170,7 @@ function ThemeToggle() {
 }
 
 /** Uma linha do menu do avatar. */
-function MenuItem({ icon, danger = false, onClick, children }) {
+function MenuItem({ icon, danger = false, onClick, badge = 0, children }) {
   return (
     <button
       type="button"
@@ -177,6 +179,7 @@ function MenuItem({ icon, danger = false, onClick, children }) {
     >
       <Icon name={icon} size={20} className={danger ? '' : 'text-muted'} />
       {children}
+      {badge > 0 && <span className="ml-auto grid h-5 min-w-5 place-items-center rounded-full bg-red-500 px-1.5 text-xs font-black text-white">{badge}</span>}
     </button>
   )
 }
@@ -188,6 +191,7 @@ function UserMenu() {
   const setAvatar = useStore((s) => s.setAvatar)
   const [open, setOpen] = useState(false)
   const [picking, setPicking] = useState(false)
+  const pending = useFriends((s) => pendingCount(s.list))
   const navigate = useNavigate()
   const go = (path) => {
     setOpen(false)
@@ -214,7 +218,11 @@ function UserMenu() {
         aria-label={`Conta de ${user.name}`}
         className="flex cursor-pointer items-center gap-2 rounded-full bg-bg py-1 pr-1 pl-1 xl:pr-4"
       >
-        <AccountAvatar size={36} />
+        <span className="relative">
+          <AccountAvatar size={36} />
+          {/* Pedidos de amizade e desafios esperando. */}
+          {pending > 0 && <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-red-500 ring-2 ring-surface" />}
+        </span>
         <span className="hidden max-w-[140px] truncate font-semibold xl:inline">{user.name}</span>
       </m.button>
       <AnimatePresence>
@@ -248,6 +256,9 @@ function UserMenu() {
                 Tirar a foto
               </MenuItem>
             )}
+            <MenuItem icon="groups" onClick={() => go('/amigos')} badge={pending}>
+              Amigos
+            </MenuItem>
             <MenuItem icon="trophy" onClick={() => go('/conquistas')}>
               Conquistas
             </MenuItem>
@@ -295,6 +306,7 @@ function AuthGate({ children }) {
   const [linkPurpose, setLinkPurpose] = useState(() => confirmationFromUrl())
   useEffect(() => {
     startSync()
+    startFriends()
     startAuth()
   }, [])
   if (status === 'loading') return <Splash />
@@ -371,6 +383,7 @@ export default function App() {
                   <Route path="/treino/:tool" element={<TrainingPage />} />
                   <Route path="/configuracoes" element={<SettingsPage />} />
                   <Route path="/conquistas" element={<AchievementsPage />} />
+                  <Route path="/amigos" element={<FriendsPage />} />
                   <Route path="*" element={<PokedexPage />} />
                 </Routes>
               </Suspense>

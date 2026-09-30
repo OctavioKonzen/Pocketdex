@@ -6,6 +6,7 @@ import { getPokedex } from '../lib/data'
 import { GAME_BY_KEY, displayName, generationBackground } from '../lib/pokemon'
 import { useStore } from '../lib/store'
 import GamePicker from './GamePicker'
+import VersionPicker, { inVersion } from './VersionPicker'
 import Sprite from './Sprite'
 import { Loader } from './ui'
 
@@ -22,6 +23,7 @@ export default function Collection() {
   const [game, setGame] = useState(() => localStorage.getItem('pocketdex-collection-game') || 'sv')
   const [filter, setFilter] = useState('all')
   const [shinyMode, setShinyMode] = useState(false)
+  const [version, setVersion] = useState(null)
 
   useEffect(() => {
     getPokedex().then(setPokedex)
@@ -30,6 +32,7 @@ export default function Collection() {
   const choose = (key) => {
     if (!key) return
     setGame(key)
+    setVersion(null)
     try {
       localStorage.setItem('pocketdex-collection-game', key)
     } catch {
@@ -40,7 +43,7 @@ export default function Collection() {
   const entry = collection?.[game] ?? { c: [], s: [] }
   const caught = useMemo(() => new Set(entry.c ?? []), [entry.c])
   const shiny = useMemo(() => new Set(entry.s ?? []), [entry.s])
-  const inGame = useMemo(() => (pokedex ?? []).filter((p) => p.games?.includes(game)), [pokedex, game])
+  const inGame = useMemo(() => (pokedex ?? []).filter((p) => p.games?.includes(game) && inVersion(p, game, version)), [pokedex, game, version])
   const done = inGame.filter((p) => caught.has(p.id)).length
   const doneShiny = inGame.filter((p) => shiny.has(p.id)).length
   const shown = inGame.filter((p) => (filter === 'missing' ? !caught.has(p.id) : filter === 'caught' ? caught.has(p.id) : true))
@@ -52,6 +55,7 @@ export default function Collection() {
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <GamePicker value={game} onChange={choose} />
+        <VersionPicker game={game} value={version} onChange={setVersion} />
         <div className="flex rounded-full bg-card p-1 shadow">
           {FILTERS.map((f) => (
             <button
@@ -76,7 +80,7 @@ export default function Collection() {
 
       <div className="mb-5 rounded-2xl p-4 text-white shadow" style={{ background: info ? generationBackground(info) : '#546E7A' }}>
         <div className="flex flex-wrap items-end justify-between gap-2">
-          <div className="text-lg font-black">{info?.name}</div>
+          <div className="text-lg font-black">{version ?? info?.name}</div>
           <div className="text-sm font-semibold">{`${done}/${inGame.length} pegos · ${doneShiny} shiny`}</div>
         </div>
         <div className="mt-2 h-3 overflow-hidden rounded-full bg-black/30">
@@ -103,6 +107,9 @@ export default function Collection() {
             >
               <span className="absolute top-1 left-2 text-[10px] text-muted">#{p.id}</span>
               {isShiny && <span className="absolute top-0.5 right-1.5 text-sm">✨</span>}
+              {!version && p.only?.[game] && (
+                <span className="absolute right-1 bottom-6 rounded-full bg-black/60 px-1.5 text-[9px] font-bold text-white">{p.only[game]}</span>
+              )}
               <div className={`h-16 w-16 ${isCaught || isShiny ? '' : 'opacity-40 grayscale'}`}>
                 <Sprite path={p.sprite} box={p.box} />
               </div>

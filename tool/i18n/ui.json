@@ -4337,5 +4337,210 @@
   "en": "New challenge",
   "fr": "Nouveau défi",
   "es": "Nuevo desafío"
+ },
+ "Aguenta": {
+  "en": "Resists",
+  "fr": "Résiste",
+  "es": "Resiste"
+ },
+ "Acerta": {
+  "en": "Hits",
+  "fr": "Touche",
+  "es": "Golpea"
+ },
+ "Amigos": {
+  "en": "Friends",
+  "fr": "Amis",
+  "es": "Amigos"
+ },
+ "Adicione amigos pelo nome, compare recordes e mande desafios.": {
+  "en": "Add friends by name, compare records and send challenges.",
+  "fr": "Ajoutez des amis par leur nom, comparez vos records et envoyez des défis.",
+  "es": "Añade amigos por su nombre, compara récords y envía desafíos."
+ },
+ "Adicionar amigo": {
+  "en": "Add friend",
+  "fr": "Ajouter un ami",
+  "es": "Añadir amigo"
+ },
+ "Nome da pessoa no PocketDex": {
+  "en": "Their name on PocketDex",
+  "fr": "Son nom sur PocketDex",
+  "es": "Su nombre en PocketDex"
+ },
+ "Enviar pedido": {
+  "en": "Send request",
+  "fr": "Envoyer la demande",
+  "es": "Enviar solicitud"
+ },
+ "Enviando...": {
+  "en": "Sending...",
+  "fr": "Envoi...",
+  "es": "Enviando..."
+ },
+ "Ninguém com esse nome. Confira como está escrito.": {
+  "en": "No one with that name. Check the spelling.",
+  "fr": "Personne avec ce nom. Vérifiez l’orthographe.",
+  "es": "Nadie con ese nombre. Revisa cómo está escrito."
+ },
+ "Esse é você!": {
+  "en": "That's you!",
+  "fr": "C’est vous !",
+  "es": "¡Ese eres tú!"
+ },
+ "Vocês já são amigos.": {
+  "en": "You're already friends.",
+  "fr": "Vous êtes déjà amis.",
+  "es": "Ya son amigos."
+ },
+ "Você já mandou um pedido para essa pessoa.": {
+  "en": "You already sent a request to this person.",
+  "fr": "Vous avez déjà envoyé une demande à cette personne.",
+  "es": "Ya le enviaste una solicitud a esta persona."
+ },
+ "Essa pessoa já tinha te chamado: agora vocês são amigos!": {
+  "en": "This person had already added you: now you’re friends!",
+  "fr": "Cette personne vous avait déjà ajouté : vous êtes maintenant amis !",
+  "es": "Esta persona ya te había agregado: ¡ahora son amigos!"
+ },
+ "Pedido enviado! Quando a pessoa aceitar, ela aparece na sua lista.": {
+  "en": "Request sent! When they accept, they’ll show up in your list.",
+  "fr": "Demande envoyée ! Quand la personne acceptera, elle apparaîtra dans votre liste.",
+  "es": "¡Solicitud enviada! Cuando la acepte, aparecerá en tu lista."
+ },
+ "Pedidos recebidos ({0})": {
+  "en": "Requests received ({0})",
+  "fr": "Demandes reçues ({0})",
+  "es": "Solicitudes recibidas ({0})"
+ },
+ "Pedidos enviados ({0})": {
+  "en": "Requests sent ({0})",
+  "fr": "Demandes envoyées ({0})",
+  "es": "Solicitudes enviadas ({0})"
+ },
+ "Amigos ({0})": {
+  "en": "Friends ({0})",
+  "fr": "Amis ({0})",
+  "es": "Amigos ({0})"
+ },
+ "Aceitar": {
+  "en": "Accept",
+  "fr": "Accepter",
+  "es": "Aceptar"
+ },
+ "Recusar": {
+  "en": "Decline",
+  "fr": "Refuser",
+  "es": "Rechazar"
+ },
+ "Desafios dos amigos": {
+  "en": "Challenges from friends",
+  "fr": "Défis des amis",
+  "es": "Desafíos de amigos"
+ },
+ "Jogar": {
+  "en": "Play",
+  "fr": "Jouer",
+  "es": "Jugar"
+ },
+ "Dispensar": {
+  "en": "Dismiss",
+  "fr": "Ignorer",
+  "es": "Descartar"
+ },
+ "Ranking entre vocês pelo recorde do Ranked. No fim de um desafio no Jogo, dá para mandar o desafio para um amigo.": {
+  "en": "Ranking between you by Ranked record. At the end of a challenge in the Game, you can send it to a friend.",
+  "fr": "Classement entre vous selon le record en Classé. À la fin d’un défi dans le Jeu, vous pouvez l’envoyer à un ami.",
+  "es": "Ranking entre ustedes por el récord en Clasificatoria. Al final de un desafío en el Juego, puedes enviarlo a un amigo."
+ },
+ "Você ainda não tem amigos aqui. Adicione alguém pelo nome.": {
+  "en": "You don't have friends here yet. Add someone by name.",
+  "fr": "Vous n’avez pas encore d’amis ici. Ajoutez quelqu’un par son nom.",
+  "es": "Todavía no tienes amigos aquí. Añade a alguien por su nombre."
+ },
+ "Desfazer amizade": {
+  "en": "Unfriend",
+  "fr": "Retirer l’ami",
+  "es": "Eliminar amistad"
+ },
+ "Entre na sua conta para ter amigos.": {
+  "en": "Sign in to have friends.",
+  "fr": "Connectez-vous pour avoir des amis.",
+  "es": "Inicia sesión para tener amigos."
+ },
+ "Ou mande para um amigo:": {
+  "en": "Or send it to a friend:",
+  "fr": "Ou envoyez-le à un ami :",
+  "es": "O envíalo a un amigo:"
+ },
+ "Enviar": {
+  "en": "Send",
+  "fr": "Envoyer",
+  "es": "Enviar"
+ },
+ "Enviado ✓": {
+  "en": "Sent ✓",
+  "fr": "Envoyé ✓",
+  "es": "Enviado ✓"
+ },
+ "Versão": {
+  "en": "Version",
+  "fr": "Version",
+  "es": "Versión"
+ },
+ "Tira os exclusivos da outra versão.": {
+  "en": "Hides the other version’s exclusives.",
+  "fr": "Masque les exclusivités de l’autre version.",
+  "es": "Quita los exclusivos de la otra versión."
+ },
+ "Só em {0}": {
+  "en": "Only in {0}",
+  "fr": "Seulement dans {0}",
+  "es": "Solo en {0}"
+ },
+ "Aparece em {0} jogos · pego em {1}.": {
+  "en": "Appears in {0} games · caught in {1}.",
+  "fr": "Apparaît dans {0} jeux · attrapé dans {1}.",
+  "es": "Aparece en {0} juegos · atrapado en {1}."
+ },
+ "Aparece em {0} jogos · pego em {1}. ": {
+  "en": "Appears in {0} games · caught in {1}. ",
+  "fr": "Apparaît dans {0} jeux · attrapé dans {1}. ",
+  "es": "Aparece en {0} juegos · atrapado en {1}. "
+ },
+ "Geração {0}": {
+  "en": "Generation {0}",
+  "fr": "Génération {0}",
+  "es": "Generación {0}"
+ },
+ "Jogos secundários": {
+  "en": "Spin-off games",
+  "fr": "Jeux dérivés",
+  "es": "Juegos secundarios"
+ },
+ "Sem jogos registrados para esta forma.": {
+  "en": "No games recorded for this form.",
+  "fr": "Aucun jeu enregistré pour cette forme.",
+  "es": "Sin juegos registrados para esta forma."
+ },
+ "Habilidade e golpe": {
+  "en": "Ability and move",
+  "fr": "Talent et capacité",
+  "es": "Habilidad y movimiento"
+ },
+ "Pronto": {
+  "en": "Done",
+  "fr": "Terminé",
+  "es": "Listo"
+ },
+ "Golpe": {
+  "en": "Move",
+  "fr": "Capacité",
+  "es": "Movimiento"
+ },
+ "Pista": {
+  "en": "Clue",
+  "fr": "Indice",
+  "es": "Pista"
  }
 }
