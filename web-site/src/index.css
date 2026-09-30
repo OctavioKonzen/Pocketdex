@@ -190,3 +190,11 @@ body {
   outline: 3px solid white;
   outline-offset: -3px;
 }
+
+/* Faixa que rola de lado sem mostrar a barra (abas do Pokémon). */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

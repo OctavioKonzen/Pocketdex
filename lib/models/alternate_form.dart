@@ -13,6 +13,8 @@ class AlternateForm {
   final int height;
   final int weight;
   final Map<String, int> stats;
+  /// EVs que ele dá ao ser derrotado (mesma ordem de [stats]).
+  final Map<String, int> efforts;
   final List<dynamic> rawMoves;
   /// Jogos em que a forma aparece (chaves de lib/models/game.dart).
   final List<String> games;
@@ -29,6 +31,7 @@ class AlternateForm {
     required this.height,
     required this.weight,
     required this.stats,
+    this.efforts = const {},
     required this.rawMoves,
     this.games = const [],
   });
@@ -58,6 +61,7 @@ class AlternateForm {
       height: json['height'],
       weight: json['weight'],
       stats: { for (var stat in (json['stats'] as List)) stat['stat']['name'] : stat['base_stat'] as int },
+      efforts: { for (var stat in (json['stats'] as List)) stat['stat']['name'] : (stat['effort'] as num?)?.toInt() ?? 0 },
       rawMoves: json['moves'] as List,
       games: ((json['games'] as List?) ?? const []).cast<String>(),
     );

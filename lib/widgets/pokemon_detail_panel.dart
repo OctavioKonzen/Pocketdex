@@ -1,8 +1,8 @@
 // lib/widgets/pokemon_detail_panel.dart
 
 import 'package:flutter/material.dart' hide Text;
+import 'base_stats.dart';
 import 'where_to_find.dart';
-import 'dart:math';
 import 'package:pocket_dex/models/alternate_form.dart';
 import 'package:pocket_dex/models/pokemon_details.dart';
 import 'package:pocket_dex/models/pokemon_move.dart';
@@ -256,8 +256,6 @@ class PokemonDetailPanel extends StatelessWidget {
                   fontSize: 14)),
           const SizedBox(height: 16),
           _buildHeightWeightInfo(currentForm, theme),
-          const SizedBox(height: 10),
-          CryButton(speciesId: pokemon.id),
           const SizedBox(height: 16),
           Text("Breeding",
               style: theme.textTheme.titleSmall
@@ -273,21 +271,8 @@ class PokemonDetailPanel extends StatelessWidget {
     );
   }
 
-  Widget _buildBaseStatsTab(AlternateForm currentForm, ThemeData theme) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Column(
-        children: currentForm.stats.entries.map((entry) {
-          String statName = entry.key
-              .replaceAll('special-attack', 'Sp. Atk')
-              .replaceAll('special-defense', 'Sp. Def')
-              .replaceAll('-', ' ')
-              .capitalise();
-          return _buildStatRow(statName, entry.value, theme);
-        }).toList(),
-      ),
-    );
-  }
+  Widget _buildBaseStatsTab(AlternateForm currentForm, ThemeData theme) =>
+      BaseStatsView(stats: currentForm.stats, efforts: currentForm.efforts, shedinja: pokemon.id == 292);
 
   Widget _buildEvolutionTab(AlternateForm currentForm, ThemeData theme) {
     if (pokemon.evolutionChain.isEmpty) {
@@ -500,43 +485,6 @@ class PokemonDetailPanel extends StatelessWidget {
                         color: theme.colorScheme.onSurface, fontSize: 15)),
               ],
             ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatRow(String name, int value, ThemeData theme) {
-    double normalizedValue = min(value / 255.0, 1.0);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 80,
-            child: Text(name, style: TextStyle(color: theme.hintColor)),
-          ),
-          SizedBox(
-            width: 40,
-            child: Text(
-              value.toString(),
-              style: TextStyle(
-                  color: theme.colorScheme.onSurface,
-                  fontWeight: FontWeight.bold),
-            ),
-          ),
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: LinearProgressIndicator(
-                value: normalizedValue,
-                backgroundColor: theme.dividerColor.withAlpha(128),
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  getColorForType(pokemon.forms.first.types.first),
-                ),
-                minHeight: 6,
-              ),
-            ),
-          ),
         ],
       ),
     );
