@@ -5292,5 +5292,15 @@
   "en": "Messages disappear on their own after 7 days.",
   "fr": "Les messages disparaissent d'eux-mêmes après 7 jours.",
   "es": "Los mensajes desaparecen solos después de 7 días."
+ },
+ "Minimizar": {
+  "en": "Minimize",
+  "fr": "Réduire",
+  "es": "Minimizar"
+ },
+ "Abrir em tela cheia": {
+  "en": "Open full screen",
+  "fr": "Ouvrir en plein écran",
+  "es": "Abrir en pantalla completa"
  }
 }

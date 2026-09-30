@@ -8,7 +8,9 @@ import { useAuth, watchFriends } from './auth'
 export const useFriends = create(() => ({ list: [], ready: false }))
 
 // Bolinha do chat: depois de abrir uma conversa, o amigo fica numa bolinha
-// no canto da tela (em qualquer página) até a pessoa fechar no X.
+// no canto da tela (em qualquer página) até a pessoa fechar no X. No PC,
+// como no Facebook, a conversa abre numa janelinha no canto (open) que dá
+// para minimizar de volta para a bolinha.
 const BUBBLE_KEY = 'pocketdex-chat-bubble'
 const readBubble = () => {
   try {
@@ -17,14 +19,26 @@ const readBubble = () => {
     return null
   }
 }
-export const useChatBubble = create(() => ({ uid: readBubble() }))
-export function setChatBubble(uid) {
-  useChatBubble.setState({ uid })
+export const useChatBubble = create(() => ({ uid: readBubble(), open: false }))
+export function setChatBubble(uid, open = false) {
+  useChatBubble.setState({ uid, open: Boolean(uid) && open })
   try {
     if (uid) localStorage.setItem(BUBBLE_KEY, uid)
     else localStorage.removeItem(BUBBLE_KEY)
   } catch {
     // Sem armazenamento: a bolinha vale só até fechar a aba.
+  }
+}
+/** Abre a janelinha do chat no canto (PC). */
+export const openChatWindow = (uid) => setChatBubble(uid, true)
+export const minimizeChatWindow = () => useChatBubble.setState({ open: false })
+
+/** Tela larga (PC): o chat abre na janelinha em vez da página inteira. */
+export const isDesktop = () => {
+  try {
+    return window.matchMedia('(min-width: 1024px)').matches
+  } catch {
+    return false
   }
 }
 

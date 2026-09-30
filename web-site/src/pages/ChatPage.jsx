@@ -61,8 +61,9 @@ function CardView({ card, light, onOpen }) {
   )
 }
 
-export default function ChatPage() {
-  const { uid } = useParams()
+/** A conversa em si (mensagens, cartões e o campo de mandar). Usada na
+ *  página do chat e na janelinha do canto no PC (ChatBubble.jsx). */
+export function ChatBox({ uid, header, className }) {
   const user = useAuth((s) => (s.status === 'signedIn' ? s.user : null))
   const friend = useFriends((s) => s.list.find((f) => f.uid === uid && f.status === 'friends'))
   const ready = useFriends((s) => s.ready)
@@ -77,11 +78,6 @@ export default function ChatPage() {
   const byId = usePokemonIndex()
   const me = user?.uid
   const isFriend = Boolean(friend)
-
-  // Abriu a conversa: o amigo vira a bolinha do chat.
-  useEffect(() => {
-    if (me && isFriend) setChatBubble(uid)
-  }, [me, isFriend, uid])
 
   useEffect(() => {
     if (!me || !isFriend) return
@@ -103,7 +99,9 @@ export default function ChatPage() {
   }, [me, uid, unread])
 
   useEffect(() => {
-    bottom.current?.scrollIntoView({ block: 'end' })
+    // Rola só a lista (sem mexer na página, por causa da janelinha do PC).
+    const list = bottom.current
+    if (list) list.scrollTop = list.scrollHeight
   }, [messages])
 
   if (!user) return <Empty>Entre na sua conta para conversar com os amigos.</Empty>
@@ -145,18 +143,10 @@ export default function ChatPage() {
   const usableTeams = teams.filter((x) => x.pokemon?.some((p) => p != null))
 
   return (
-    <div className="mx-auto flex h-[calc(100dvh-7.5rem)] max-w-2xl flex-col overflow-hidden rounded-2xl bg-card shadow">
-      <header className="flex items-center gap-3 border-b border-line px-3 py-2.5">
-        <Link to="/amigos" aria-label="Voltar" className="rounded-full p-1.5 text-muted hover:bg-surface hover:text-text">
-          <Icon name="back" size={22} />
-        </Link>
-        <Avatar pokemonId={friend.avatar ?? null} name={friend.name} size={38} />
-        <div className="min-w-0 flex-1 truncate font-bold" data-no-translate>
-          {friend.name}
-        </div>
-      </header>
+    <div className={`flex flex-col overflow-hidden bg-card ${className}`}>
+      {header(friend)}
 
-      <div className="flex-1 space-y-2 overflow-y-auto px-3 py-4" data-chat>
+      <div ref={bottom} className="flex-1 space-y-2 overflow-y-auto px-3 py-4" data-chat>
         {messages === null ? (
           <p className="text-center text-sm text-muted">...</p>
         ) : !messages.length ? (
@@ -184,7 +174,6 @@ export default function ChatPage() {
             )
           })
         )}
-        <div ref={bottom} />
       </div>
 
       {error && <p className="px-3 pb-1 text-sm text-red-400">{error}</p>}
@@ -247,5 +236,34 @@ export default function ChatPage() {
       <PokemonPicker open={picking} onClose={() => setPicking(false)} onPick={sendPokemon} />
       <PokemonModal id={open} onClose={() => setOpen(null)} />
     </div>
+  )
+}
+
+export default function ChatPage() {
+  const { uid } = useParams()
+  const me = useAuth((s) => (s.status === 'signedIn' ? s.user.uid : null))
+  const isFriend = useFriends((s) => s.list.some((f) => f.uid === uid && f.status === 'friends'))
+
+  // Abriu a conversa: o amigo vira a bolinha do chat.
+  useEffect(() => {
+    if (me && isFriend) setChatBubble(uid)
+  }, [me, isFriend, uid])
+
+  return (
+    <ChatBox
+      uid={uid}
+      className="mx-auto h-[calc(100dvh-7.5rem)] max-w-2xl rounded-2xl shadow"
+      header={(friend) => (
+        <header className="flex items-center gap-3 border-b border-line px-3 py-2.5">
+          <Link to="/amigos" aria-label="Voltar" className="rounded-full p-1.5 text-muted hover:bg-surface hover:text-text">
+            <Icon name="back" size={22} />
+          </Link>
+          <Avatar pokemonId={friend.avatar ?? null} name={friend.name} size={38} />
+          <div className="min-w-0 flex-1 truncate font-bold" data-no-translate>
+            {friend.name}
+          </div>
+        </header>
+      )}
+    />
   )
 }
