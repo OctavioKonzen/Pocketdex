@@ -217,7 +217,7 @@ class _HomeScreenState extends State<HomeScreen> {
             focusNode: _searchFocusNode,
             style: TextStyle(color: theme.colorScheme.onSurface),
             decoration: InputDecoration(
-              hintText: tr('Procurar Pokémon por nome ou nú...'),
+              hintText: tr('Procurar Pokémon'),
               hintStyle: TextStyle(color: theme.hintColor),
               prefixIcon: Icon(Icons.search, color: theme.hintColor),
               filled: true,

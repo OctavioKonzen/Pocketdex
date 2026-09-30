@@ -68,12 +68,12 @@ async function emulatorDocs(path) {
   return (body.documents ?? []).map((d) => d.name.split('/').slice(-1)[0])
 }
 
-// Quantos documentos de amizade existem (friends/*/list/*).
-async function friendDocs() {
+// Quantos documentos de amizade existem (friends/*/list/*), ou de outra coleção.
+async function friendDocs(collectionId = 'list') {
   const res = await fetch('http://127.0.0.1:8085/v1/projects/pocketdex-ffb4d/databases/(default)/documents:runQuery', {
     method: 'POST',
     headers: { Authorization: 'Bearer owner', 'Content-Type': 'application/json' },
-    body: JSON.stringify({ structuredQuery: { from: [{ collectionId: 'list', allDescendants: true }] } }),
+    body: JSON.stringify({ structuredQuery: { from: [{ collectionId, allDescendants: true }] } }),
   })
   return (await res.json()).filter((r) => r.document).length
 }
@@ -202,6 +202,21 @@ try {
   await page.getByText('🏆', { exact: false }).nth(1).waitFor({ timeout: 15000 })
   await page2.getByText(user.name).first().waitFor({ timeout: 15000 })
   assert.equal(await friendDocs(), 2, `${step}: devia ter os dois lados da amizade`)
+
+  step = 'amigos: chat'
+  await page.getByRole('link', { name: 'Conversar' }).click()
+  await page.getByText('Nenhuma mensagem ainda').waitFor({ timeout: 15000 })
+  await page.getByPlaceholder('Mensagem').fill('Oi! Bora batalhar?')
+  await page.keyboard.press('Enter')
+  await page.getByText('Oi! Bora batalhar?').waitFor({ timeout: 15000 })
+  // O amigo vê a última mensagem e o aviso de não lida na lista.
+  await page2.getByText('Oi! Bora batalhar?').waitFor({ timeout: 15000 })
+  await page2.getByRole('link', { name: 'Conversar' }).click()
+  await page2.getByText('Oi! Bora batalhar?').waitFor({ timeout: 15000 })
+  await page2.getByPlaceholder('Mensagem').fill('Bora!')
+  await page2.getByRole('button', { name: 'Enviar' }).click()
+  await page.getByText('Bora!', { exact: true }).waitFor({ timeout: 15000 })
+  assert.equal(await friendDocs('messages'), 2, `${step}: devia ter 2 mensagens`)
   await friendCtx.close()
 
   step = 'excluir conta'
@@ -219,6 +234,7 @@ try {
   }
   assert.ok(!(await emulatorDocs('usernames')).includes(user.name.toLowerCase()), `${step}: sobrou o nome`)
   assert.equal(await friendDocs(), 0, `${step}: sobrou amizade`)
+  assert.equal(await friendDocs('messages'), 0, `${step}: sobrou mensagem de chat`)
 
   step = 'criar de novo com o mesmo e-mail e nome'
   await page.getByRole('button', { name: 'Criar conta' }).first().click()

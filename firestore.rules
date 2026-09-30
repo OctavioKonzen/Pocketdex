@@ -60,13 +60,18 @@ service cloud.firestore {
     // (apaga os dois). Amigos podem deixar um desafio (challenge) um para o outro.
     match /friends/{owner}/list/{other} {
       function validFriend(d) {
-        return d.keys().hasOnly(['name', 'avatar', 'status', 'since', 'challenge'])
+        return d.keys().hasOnly(['name', 'avatar', 'status', 'since', 'challenge', 'unread', 'last'])
           && d.name is string && d.name.size() <= 20
           && (!('avatar' in d) || d.avatar == null || d.avatar is int)
           && d.status in ['sent', 'received', 'friends']
           && (!('challenge' in d) || d.challenge == null
               || (d.challenge is map && d.challenge.keys().hasOnly(['code', 'score', 'at'])
-                  && d.challenge.code is string && d.challenge.code.size() <= 300));
+                  && d.challenge.code is string && d.challenge.code.size() <= 300))
+          // Chat: mensagens ainda não lidas e a última (para a lista).
+          && (!('unread' in d) || (d.unread is int && d.unread >= 0 && d.unread <= 999))
+          && (!('last' in d) || d.last == null
+              || (d.last is map && d.last.keys().hasOnly(['text', 'at', 'from'])
+                  && d.last.text is string && d.last.text.size() <= 100));
       }
       allow read: if signedIn(owner);
       allow delete: if signedIn(owner) || signedIn(other);
@@ -85,6 +90,30 @@ service cloud.firestore {
         && request.resource.data.name == accountName(other)
         && request.resource.data.status == 'friends'
         && resource.data.status in ['sent', 'friends'];
+    }
+
+    // Chat entre amigos: chats/{uidA_uidB}/messages/{id} = {from, text, at}
+    // (uidA < uidB). Só os dois leem, e só escrevem enquanto são amigos.
+    // Mensagem não muda; qualquer um dos dois apaga (desfazer amizade,
+    // excluir conta).
+    match /chats/{chat}/messages/{msg} {
+      function pair() { return chat.split('_'); }
+      function member() {
+        return request.auth != null && pair().size() == 2 && pair()[0] < pair()[1]
+          && request.auth.uid in pair();
+      }
+      function otherOf() { return pair()[0] == request.auth.uid ? pair()[1] : pair()[0]; }
+      function friends() {
+        return get(/databases/$(database)/documents/friends/$(request.auth.uid)/list/$(otherOf())).data.status == 'friends';
+      }
+      allow read: if member() && friends();
+      allow delete: if member();
+      allow create: if member() && friends()
+        && request.resource.data.keys().hasOnly(['from', 'text', 'at'])
+        && request.resource.data.from == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 500
+        && request.resource.data.at == request.time;
     }
 
     // Confirmações por link no e-mail (contas Google): quando a pessoa abriu

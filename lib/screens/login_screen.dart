@@ -392,11 +392,17 @@ class _AuthFormState extends State<_AuthForm> {
             ),
           ),
           if (!forgot)
-            Row(
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Checkbox(value: _keep, activeColor: _red, onChanged: (v) => setState(() => _keep = v ?? true)),
-                GestureDetector(onTap: () => setState(() => _keep = !_keep), child: const Text('Manter conectado')),
-                const Spacer(),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Checkbox(value: _keep, activeColor: _red, onChanged: (v) => setState(() => _keep = v ?? true)),
+                    GestureDetector(onTap: () => setState(() => _keep = !_keep), child: const Text('Manter conectado')),
+                  ],
+                ),
                 if (!signup)
                   TextButton(
                     onPressed: () => _switch(_Mode.forgot),

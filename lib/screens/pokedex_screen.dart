@@ -45,6 +45,8 @@ class PokedexScreenState extends State<PokedexScreen> {
 
   List<PokemonListing> _fullPokemonList = [];
   List<PokemonListing> _displayList = [];
+  // Quantos Pokémon os filtros deixam (o botão da folha de filtros mostra).
+  final _resultCount = ValueNotifier<int>(0);
   Generation? _selectedGeneration;
   Game? _selectedGame;
   List<String> _selectedTypes = [];
@@ -110,6 +112,7 @@ class PokedexScreenState extends State<PokedexScreen> {
   void dispose() {
     widget.searchQuery?.removeListener(_onExternalSearch);
     _searchController.dispose();
+    _resultCount.dispose();
     super.dispose();
   }
 
@@ -184,6 +187,7 @@ class PokedexScreenState extends State<PokedexScreen> {
       list = [...list]..sort((a, b) => _statOf(_rows[int.parse(b.id)], i).compareTo(_statOf(_rows[int.parse(a.id)], i)));
     }
     setState(() => _displayList = list);
+    _resultCount.value = list.length;
   }
 
   void _toggleType(String type) {
@@ -248,7 +252,7 @@ class PokedexScreenState extends State<PokedexScreen> {
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: SiteSearchField(controller: _searchController, hint: 'Procurar Pokémon por nome ou número'),
+          child: SiteSearchField(controller: _searchController, hint: 'Nome ou número'),
         ),
         if (active.isNotEmpty)
           Padding(
@@ -327,189 +331,133 @@ class PokedexScreenState extends State<PokedexScreen> {
           ? tr('Total dos status (maior)')
           : tr('{0} (maior)').replaceAll('{0}', tr(_statLabels[i]));
 
-  /// Botão flutuante: menu para escolher qual filtro mudar.
+  /// Botão flutuante: abre uma folha com todos os filtros à vista.
   Future<void> _openFiltersMenu() async {
     _loadFilterData();
     final c = SiteColors.of(context);
-    Widget tile(IconData icon, String title, String value, VoidCallback onTap, {Color? color}) => ListTile(
-          leading: CircleAvatar(backgroundColor: (color ?? const Color(0xFF0284C7)).withAlpha(40), child: Icon(icon, color: color ?? const Color(0xFF38BDF8))),
-          title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-          subtitle: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () {
-            Navigator.pop(context);
-            onTap();
-          },
+    Widget section(String title, Widget child) => Padding(
+          padding: const EdgeInsets.only(top: 18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: TextStyle(color: c.muted, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+              const SizedBox(height: 8),
+              child,
+            ],
+          ),
+        );
+    Widget chips<T>(List<T> values, T current, String Function(T) label, void Function(T) onTap) => Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            for (final v in values)
+              ChoiceChip(
+                label: Text(label(v)),
+                selected: v == current,
+                showCheckmark: false,
+                selectedColor: const Color(0xFF0284C7),
+                labelStyle: TextStyle(color: v == current ? Colors.white : null, fontWeight: FontWeight.w600),
+                onSelected: (_) => onTap(v),
+              ),
+          ],
         );
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: c.card,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (sheet) => SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(8, 12, 8, 12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(width: 40, height: 5, decoration: BoxDecoration(color: c.line, borderRadius: BorderRadius.circular(10))),
-              const SizedBox(height: 12),
-              const Text('Filtros', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              tile(Icons.public, tr('Geração'), _selectedGeneration?.name ?? tr('Todas as gerações'),
-                  () => GenerationPicker(value: _selectedGeneration, onChanged: _setGeneration).open(context)),
-              tile(Icons.videogame_asset, tr('Jogo'), _selectedGame?.name ?? tr('Todos os jogos'),
-                  () => GamePicker(value: _selectedGame, onChanged: _setGame).open(context)),
-              if (_selectedGame?.versions.isNotEmpty ?? false)
-                tile(Icons.call_split, tr('Versão'), _version ?? tr('Todas as versões'), _openVersions),
-              tile(Icons.local_fire_department, tr('Tipos'),
-                  _selectedTypes.isEmpty ? tr('Todos') : _selectedTypes.map((t) => t.capitalise()).join(' + '), _openTypes),
-              tile(Icons.star, tr('Categoria'), _tagLabel(_tag), _openCategory),
-              tile(Icons.bolt, tr('Habilidade e golpe'),
-                  [if (_ability.trim().isNotEmpty) _ability.trim(), if (_move.trim().isNotEmpty) _move.trim()].join(' · ').isEmpty
-                      ? tr('Todos')
-                      : [if (_ability.trim().isNotEmpty) _ability.trim(), if (_move.trim().isNotEmpty) _move.trim()].join(' · '),
-                  _openAbilityMove),
-              tile(Icons.sort, tr('Ordenar por'), _sortLabel(_sort), _openSort),
-              if (_activeCount > 0)
-                TextButton.icon(
-                  onPressed: () {
-                    Navigator.pop(sheet);
-                    _clearFilters();
-                  },
-                  icon: const Icon(Icons.clear_all),
-                  label: const Text('Limpar filtros'),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Uma folha simples com título (para cada filtro).
-  Future<void> _sheet(String title, Widget Function(BuildContext sheet, StateSetter update) body) {
-    final c = SiteColors.of(context);
-    return showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: c.card,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (sheet) => StatefulBuilder(
-        builder: (context, update) => Padding(
-          padding: EdgeInsets.fromLTRB(16, 12, 16, 16 + MediaQuery.of(sheet).viewInsets.bottom),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+        builder: (context, update) {
+          void change(VoidCallback fn) {
+            fn();
+            update(() {});
+          }
+
+          return DraggableScrollableSheet(
+            expand: false,
+            initialChildSize: 0.85,
+            minChildSize: 0.4,
+            maxChildSize: 1,
+            builder: (context, scroll) => Column(
               children: [
-                Center(child: Container(width: 40, height: 5, decoration: BoxDecoration(color: c.line, borderRadius: BorderRadius.circular(10)))),
-                const SizedBox(height: 12),
-                Text(title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 12),
-                body(sheet, update),
+                const SizedBox(height: 10),
+                Container(width: 40, height: 5, decoration: BoxDecoration(color: c.line, borderRadius: BorderRadius.circular(10))),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 8, 0),
+                  child: Row(
+                    children: [
+                      const Expanded(child: Text('Filtros', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold))),
+                      if (_activeCount > 0)
+                        TextButton(onPressed: () => change(_clearFilters), child: const Text('Limpar')),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: ListView(
+                    controller: scroll,
+                    padding: EdgeInsets.fromLTRB(20, 0, 20, 16 + MediaQuery.of(sheet).viewInsets.bottom),
+                    children: [
+                      section(tr('Geração'), Align(
+                        alignment: Alignment.centerLeft,
+                        child: GenerationPicker(value: _selectedGeneration, onChanged: (g) => change(() => _setGeneration(g))),
+                      )),
+                      section(tr('Jogo'), Align(
+                        alignment: Alignment.centerLeft,
+                        child: GamePicker(value: _selectedGame, onChanged: (g) => change(() => _setGame(g))),
+                      )),
+                      if (_selectedGame?.versions.isNotEmpty ?? false)
+                        section(tr('Versão'), chips<String?>([null, ..._selectedGame!.versions], _version,
+                            (v) => v ?? tr('Todas'), (v) => change(() => _setVersion(v)))),
+                      section(tr('Tipos (até dois)'), GridView.count(
+                        crossAxisCount: 3,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        mainAxisSpacing: 8,
+                        crossAxisSpacing: 8,
+                        childAspectRatio: 2.6,
+                        children: [
+                          for (final type in pokemonTypeColors.keys)
+                            _TypeOption(
+                              type: type,
+                              active: _selectedTypes.contains(type),
+                              dimmed: _selectedTypes.isNotEmpty && !_selectedTypes.contains(type),
+                              onTap: () => change(() => _toggleType(type)),
+                            ),
+                        ],
+                      )),
+                      section(tr('Categoria'), chips<String?>([null, 'legendary', 'mythical', 'baby'], _tag, _tagLabel,
+                          (t) => change(() => _setExtra(() => _tag = t)))),
+                      section(tr('Habilidade e golpe'), _extraFilters(c)),
+                      section(tr('Ordenar por'), chips<int?>([null, 6, 0, 1, 2, 3, 4, 5], _sort, _sortLabel,
+                          (i) => change(() => _setExtra(() => _sort = i)))),
+                    ],
+                  ),
+                ),
+                SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(backgroundColor: const Color(0xFF0284C7), padding: const EdgeInsets.symmetric(vertical: 14)),
+                        onPressed: () => Navigator.pop(sheet),
+                        child: ValueListenableBuilder<int>(
+                          valueListenable: _resultCount,
+                          builder: (context, n, _) => Text(tr('Ver {0} Pokémon').replaceAll('{0}', '$n')),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
-
-  void _openVersions() => _sheet(tr('Versão'), (sheet, update) {
-        final game = _selectedGame!;
-        return Column(
-          children: [
-            for (final v in <String?>[null, ...game.versions])
-              _Choice(
-                selected: v == _version,
-                title: Text(v ?? tr('Todas as versões')),
-                subtitle: v == null ? null : Text(tr('Tira os exclusivos da outra versão.')),
-                onTap: () {
-                  Navigator.pop(sheet);
-                  _setVersion(v);
-                },
-              ),
-          ],
-        );
-      });
-
-  void _openTypes() => _sheet(tr('Tipos (até dois)'), (sheet, update) {
-        return Column(
-          children: [
-            GridView.count(
-              crossAxisCount: 3,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 8,
-              crossAxisSpacing: 8,
-              childAspectRatio: 2.6,
-              children: [
-                for (final type in pokemonTypeColors.keys)
-                  _TypeOption(
-                    type: type,
-                    active: _selectedTypes.contains(type),
-                    dimmed: _selectedTypes.isNotEmpty && !_selectedTypes.contains(type),
-                    onTap: () {
-                      _toggleType(type);
-                      update(() {});
-                    },
-                  ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(onPressed: () => Navigator.pop(sheet), child: const Text('Pronto')),
-            ),
-          ],
-        );
-      });
-
-  void _openCategory() => _sheet(tr('Categoria'), (sheet, update) {
-        return Column(
-          children: [
-            for (final t in <String?>[null, 'legendary', 'mythical', 'baby'])
-              _Choice(
-                selected: t == _tag,
-                title: Text(_tagLabel(t)),
-                onTap: () {
-                  Navigator.pop(sheet);
-                  _setExtra(() => _tag = t);
-                },
-              ),
-          ],
-        );
-      });
-
-  void _openSort() => _sheet(tr('Ordenar por'), (sheet, update) {
-        return Column(
-          children: [
-            for (final i in <int?>[null, 6, 0, 1, 2, 3, 4, 5])
-              _Choice(
-                selected: i == _sort,
-                title: Text(_sortLabel(i)),
-                onTap: () {
-                  Navigator.pop(sheet);
-                  _setExtra(() => _sort = i);
-                },
-              ),
-          ],
-        );
-      });
-
-  void _openAbilityMove() => _sheet(tr('Habilidade e golpe'), (sheet, update) {
-        return Column(
-          children: [
-            _extraFilters(SiteColors.of(context)),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(onPressed: () => Navigator.pop(sheet), child: const Text('Pronto')),
-            ),
-          ],
-        );
-      });
 
   Widget _extraFilters(SiteColors c) {
     InputDecoration deco(String label, [String? hint]) =>
@@ -563,6 +511,7 @@ class PokedexScreenState extends State<PokedexScreen> {
         onPressed: _openFiltersMenu,
         backgroundColor: const Color(0xFF0284C7),
         foregroundColor: Colors.white,
+        shape: const StadiumBorder(),
         icon: const Icon(Icons.tune),
         label: Text(_activeCount > 0 ? '${tr('Filtros')} ($_activeCount)' : tr('Filtros')),
       ),
@@ -582,7 +531,7 @@ class PokedexScreenState extends State<PokedexScreen> {
                   )
                 else
                   SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
                     sliver: SliverGrid.builder(
                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: Responsive.columns(context, min: 3),
@@ -635,22 +584,4 @@ class _TypeOption extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Uma opção de uma lista (marcada com ✓ quando escolhida).
-class _Choice extends StatelessWidget {
-  final bool selected;
-  final Widget title;
-  final Widget? subtitle;
-  final VoidCallback onTap;
-  const _Choice({required this.selected, required this.title, this.subtitle, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) => ListTile(
-        leading: Icon(selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-            color: selected ? const Color(0xFF38BDF8) : Theme.of(context).hintColor),
-        title: title,
-        subtitle: subtitle,
-        onTap: onTap,
-      );
 }

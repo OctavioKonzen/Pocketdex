@@ -116,17 +116,39 @@ class _IvCalcScreenState extends State<IvCalcScreen> {
             Text('Coloque os status que aparecem no resumo do Pokémon no jogo e os EVs que ele já tem (0 se nunca treinou).',
                 style: TextStyle(color: c.muted, fontSize: 12)),
             const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: DefaultTextStyle.merge(
+                style: TextStyle(color: c.muted, fontSize: 12, fontWeight: FontWeight.bold),
+                child: const Row(
+                  children: [
+                    SizedBox(width: 64, child: Text('Status')),
+                    Expanded(child: Text('No jogo')),
+                    SizedBox(width: 8),
+                    Expanded(child: Text('EVs')),
+                    SizedBox(width: 64, child: Text('IV', textAlign: TextAlign.center)),
+                  ],
+                ),
+              ),
+            ),
             for (var i = 0; i < 6; i++)
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Row(
                   children: [
-                    SizedBox(width: 70, child: Text(_labels[i], style: const TextStyle(fontWeight: FontWeight.w600))),
+                    SizedBox(
+                      width: 64,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(_labels[i], style: const TextStyle(fontWeight: FontWeight.w600)),
+                      ),
+                    ),
                     Expanded(
                       child: TextField(
                         controller: _stats[i],
                         keyboardType: TextInputType.number,
-                        decoration: deco('No jogo'),
+                        decoration: deco(),
                         onChanged: (_) => setState(() {}),
                       ),
                     ),
@@ -135,14 +157,16 @@ class _IvCalcScreenState extends State<IvCalcScreen> {
                       child: TextField(
                         controller: _evs[i],
                         keyboardType: TextInputType.number,
-                        decoration: deco('EVs'),
+                        decoration: deco(),
                         onChanged: (_) => setState(() {}),
                       ),
                     ),
                     SizedBox(
-                      width: 80,
-                      child: Text(_result(i),
-                          textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                      width: 64,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(_result(i), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                      ),
                     ),
                   ],
                 ),

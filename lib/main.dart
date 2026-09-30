@@ -47,7 +47,7 @@ Future<void> main() async {
   );
 }
 
-ThemeData _siteTheme(SiteColors c, Brightness brightness) {
+ThemeData siteTheme(SiteColors c, Brightness brightness) {
   final scheme = ColorScheme.fromSeed(seedColor: const Color(0xFF2196F3), brightness: brightness).copyWith(
     primary: const Color(0xFF2196F3),
     onPrimary: Colors.white,
@@ -127,8 +127,8 @@ class MyApp extends StatelessWidget {
       key: ValueKey(language),
       title: 'PocketDex',
       // Mesmas cores do site (claro e escuro).
-      theme: _siteTheme(SiteColors.light, Brightness.light),
-      darkTheme: _siteTheme(SiteColors.dark, Brightness.dark),
+      theme: siteTheme(SiteColors.light, Brightness.light),
+      darkTheme: siteTheme(SiteColors.dark, Brightness.dark),
       themeMode: themeProvider.themeMode,
       scrollBehavior: const AppScrollBehavior(),
       // Tamanho do texto escolhido nas Configurações (por cima do do aparelho).

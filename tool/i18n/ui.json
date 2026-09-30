@@ -4448,11 +4448,6 @@
   "fr": "Ignorer",
   "es": "Descartar"
  },
- "Ranking entre vocês pelo recorde do Ranked. No fim de um desafio no Jogo, dá para mandar o desafio para um amigo.": {
-  "en": "Ranking between you by Ranked record. At the end of a challenge in the Game, you can send it to a friend.",
-  "fr": "Classement entre vous selon le record en Classé. À la fin d’un défi dans le Jeu, vous pouvez l’envoyer à un ami.",
-  "es": "Ranking entre ustedes por el récord en Clasificatoria. Al final de un desafío en el Juego, puedes enviarlo a un amigo."
- },
  "Você ainda não tem amigos aqui. Adicione alguém pelo nome.": {
   "en": "You don't have friends here yet. Add someone by name.",
   "fr": "Vous n’avez pas encore d’amis ici. Ajoutez quelqu’un par son nom.",
@@ -4542,5 +4537,75 @@
   "en": "Clue",
   "fr": "Indice",
   "es": "Pista"
+ },
+ "Ver {0} Pokémon": {
+  "en": "Show {0} Pokémon",
+  "fr": "Voir {0} Pokémon",
+  "es": "Ver {0} Pokémon"
+ },
+ "Todas": {
+  "en": "All",
+  "fr": "Toutes",
+  "es": "Todas"
+ },
+ "IV": {
+  "en": "IV",
+  "fr": "IV",
+  "es": "IV"
+ },
+ "Nome ou número": {
+  "en": "Name or number",
+  "fr": "Nom ou numéro",
+  "es": "Nombre o número"
+ },
+ "Cole o link ou código": {
+  "en": "Paste the link or code",
+  "fr": "Collez le lien ou le code",
+  "es": "Pega el enlace o código"
+ },
+ "Conversar": {
+  "en": "Chat",
+  "fr": "Discuter",
+  "es": "Chatear"
+ },
+ "Mensagem": {
+  "en": "Message",
+  "fr": "Message",
+  "es": "Mensaje"
+ },
+ "Voltar": {
+  "en": "Back",
+  "fr": "Retour",
+  "es": "Volver"
+ },
+ "Nenhuma mensagem ainda. Diga oi! 👋": {
+  "en": "No messages yet. Say hi! 👋",
+  "fr": "Aucun message pour l'instant. Dites bonjour ! 👋",
+  "es": "Aún no hay mensajes. ¡Saluda! 👋"
+ },
+ "Entre na sua conta para conversar com os amigos.": {
+  "en": "Sign in to chat with your friends.",
+  "fr": "Connectez-vous pour discuter avec vos amis.",
+  "es": "Inicia sesión para chatear con tus amigos."
+ },
+ "Vocês não são amigos (ou a amizade foi desfeita).": {
+  "en": "You are not friends (or the friendship was removed).",
+  "fr": "Vous n'êtes pas amis (ou l'amitié a été supprimée).",
+  "es": "No son amigos (o la amistad se deshizo)."
+ },
+ "Não deu para abrir o chat.": {
+  "en": "Couldn't open the chat.",
+  "fr": "Impossible d'ouvrir la discussion.",
+  "es": "No se pudo abrir el chat."
+ },
+ "Não deu para mandar. Confira a internet.": {
+  "en": "Couldn't send. Check your connection.",
+  "fr": "Envoi impossible. Vérifiez votre connexion.",
+  "es": "No se pudo enviar. Revisa tu conexión."
+ },
+ "Ranking entre vocês pelo recorde do Ranked. Toque no balão para conversar; no fim de um desafio no Jogo, dá para mandar o desafio para um amigo.": {
+  "en": "Ranking among you by Ranked record. Tap the bubble to chat; at the end of a challenge in the Game, you can send it to a friend.",
+  "fr": "Classement entre vous selon le record en Classé. Touchez la bulle pour discuter ; à la fin d'un défi dans le Jeu, vous pouvez l'envoyer à un ami.",
+  "es": "Ranking entre ustedes por el récord de Ranked. Toca el globo para chatear; al final de un desafío en el Juego, puedes enviarlo a un amigo."
  }
 }

@@ -69,7 +69,7 @@ class _MovesEncyclopediaScreenState extends State<MovesEncyclopediaScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Enciclopédia de Golpes'),
+        title: const Text('Golpes'),
       ),
       body: ReadableWidth(
           child: Column(

@@ -5,6 +5,7 @@
 // recorde do Ranked.
 
 import 'package:flutter/material.dart' hide Text;
+import 'package:flutter/material.dart' as m show Text;
 
 import '../i18n/text.dart';
 import '../services/auth_service.dart';
@@ -14,6 +15,7 @@ import '../services/user_data.dart';
 import '../utils/responsive.dart';
 import '../utils/site_ui.dart';
 import '../widgets/account_avatar.dart';
+import 'chat_screen.dart';
 import 'quiz_screen.dart';
 
 class FriendsScreen extends StatefulWidget {
@@ -115,8 +117,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
           final friends = _service.friends;
           _loadRecords(friends);
           final board = [
-            for (final f in friends) (f.uid, f.name, f.avatar, _records[f.uid] ?? 0, false),
-            (user.uid, user.name ?? '', UserData.instance.avatar, UserData.instance.rankedRecord, true),
+            for (final f in friends) (f.uid, f.name, f.avatar, _records[f.uid] ?? 0, f),
+            (user.uid, user.name ?? '', UserData.instance.avatar, UserData.instance.rankedRecord, null),
           ]..sort((a, b) => b.$4.compareTo(a.$4));
           return ReadableWidth(
             child: ListView(
@@ -145,8 +147,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   if (_message != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
-                      child: Text(_message!.$2,
-                          style: TextStyle(color: _message!.$1 ? Colors.greenAccent : Colors.redAccent, fontSize: 13)),
+                      child: Text(_message!.$2, style: TextStyle(color: _message!.$1 ? Colors.greenAccent : Colors.redAccent, fontSize: 13)),
                     ),
                 ]),
                 if (_service.incoming.isNotEmpty)
@@ -176,11 +177,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
                       ListTile(
                         contentPadding: EdgeInsets.zero,
                         leading: PlayerAvatar(pokemonId: f.avatar, name: f.name, size: 40),
-                        title: Text(tr('🤝 {0} te desafiou!').replaceAll('{0}', f.name),
-                            style: const TextStyle(fontWeight: FontWeight.w600)),
-                        subtitle: Text(tr('Fez {0}/{1}')
-                            .replaceAll('{0}', '${f.challenge?['score'] ?? 0}')
-                            .replaceAll('{1}', '$challengeRounds')),
+                        title: Text(tr('🤝 {0} te desafiou!').replaceAll('{0}', f.name), style: const TextStyle(fontWeight: FontWeight.w600)),
+                        subtitle: Text(tr('Fez {0}/{1}').replaceAll('{0}', '${f.challenge?['score'] ?? 0}').replaceAll('{1}', '$challengeRounds')),
                         trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                           FilledButton(
                             style: FilledButton.styleFrom(backgroundColor: const Color(0xFF7C3AED)),
@@ -196,7 +194,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
                       ),
                   ]),
                 _card(c, tr('Amigos ({0})').replaceAll('{0}', '${friends.length}'), [
-                  Text('Ranking entre vocês pelo recorde do Ranked. No fim de um desafio no Jogo, dá para mandar o desafio para um amigo.',
+                  Text(
+                      'Ranking entre vocês pelo recorde do Ranked. Toque no balão para conversar; no fim de um desafio no Jogo, dá para mandar o desafio para um amigo.',
                       style: TextStyle(color: c.muted, fontSize: 12)),
                   const SizedBox(height: 8),
                   if (!_service.ready)
@@ -204,14 +203,14 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   else if (friends.isEmpty)
                     Text('Você ainda não tem amigos aqui. Adicione alguém pelo nome.', style: TextStyle(color: c.muted))
                   else
-                    for (final (i, (uid, name, avatar, score, me)) in board.indexed)
+                    for (final (i, (uid, name, avatar, score, friend)) in board.indexed)
                       Container(
                         margin: const EdgeInsets.only(bottom: 6),
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                         decoration: BoxDecoration(
-                          color: me ? Colors.amber.withAlpha(35) : null,
+                          color: friend == null ? Colors.amber.withAlpha(35) : null,
                           borderRadius: BorderRadius.circular(12),
-                          border: me ? Border.all(color: Colors.amber) : null,
+                          border: friend == null ? Border.all(color: Colors.amber) : null,
                         ),
                         child: Row(
                           children: [
@@ -219,11 +218,35 @@ class _FriendsScreenState extends State<FriendsScreen> {
                             PlayerAvatar(pokemonId: avatar, name: name, size: 36),
                             const SizedBox(width: 10),
                             Expanded(
-                              child: Text(me ? '$name · ${tr('você')}' : name,
-                                  overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600)),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(friend == null ? '$name · ${tr('você')}' : name,
+                                      overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600)),
+                                  if (friend?.lastText != null)
+                                    // A mensagem vai como foi escrita (sem tradução).
+                                    m.Text(friend!.lastText!,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                            fontSize: 12,
+                                            color: friend.unread > 0 ? c.text : c.muted,
+                                            fontWeight: friend.unread > 0 ? FontWeight.bold : null)),
+                                ],
+                              ),
                             ),
                             Text('🏆 $score', style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.w900)),
-                            if (!me)
+                            if (friend != null)
+                              IconButton(
+                                tooltip: tr('Conversar'),
+                                icon: Badge(
+                                  isLabelVisible: friend.unread > 0,
+                                  label: m.Text(friend.unread > 9 ? '9+' : '${friend.unread}'),
+                                  child: const Icon(Icons.chat_bubble_outline, color: Color(0xFF38BDF8), size: 22),
+                                ),
+                                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(friend: friend))),
+                              ),
+                            if (friend != null)
                               IconButton(
                                 tooltip: tr('Desfazer amizade'),
                                 icon: Icon(Icons.person_remove_outlined, color: c.muted, size: 20),

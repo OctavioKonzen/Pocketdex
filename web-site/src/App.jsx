@@ -23,6 +23,7 @@ const TrainingPage = lazyPage(() => import('./pages/TrainingPage'))
 const SettingsPage = lazyPage(() => import('./pages/SettingsPage'))
 const AchievementsPage = lazyPage(() => import('./pages/AchievementsPage'))
 const FriendsPage = lazyPage(() => import('./pages/FriendsPage'))
+const ChatPage = lazyPage(() => import('./pages/ChatPage'))
 const LoginPage = lazyPage(() => import('./pages/LoginPage'))
 const PokemonPicker = lazyPage(() => import('./components/PokemonPicker'))
 const EmailLinkPage = lazyPage(() => import('./components/EmailLinkPage'))
@@ -384,6 +385,7 @@ export default function App() {
                   <Route path="/configuracoes" element={<SettingsPage />} />
                   <Route path="/conquistas" element={<AchievementsPage />} />
                   <Route path="/amigos" element={<FriendsPage />} />
+                  <Route path="/amigos/chat/:uid" element={<ChatPage />} />
                   <Route path="*" element={<PokedexPage />} />
                 </Routes>
               </Suspense>
