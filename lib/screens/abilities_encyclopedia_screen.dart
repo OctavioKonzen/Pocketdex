@@ -69,7 +69,7 @@ class _AbilitiesEncyclopediaScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Enciclopédia de Habilidades'),
+        title: const Text('Habilidades'),
       ),
       body: ReadableWidth(
           child: Column(

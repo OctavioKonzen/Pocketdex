@@ -41,5 +41,8 @@ export function startFriends() {
 export const friendsOnly = (list) => list.filter((f) => f.status === 'friends')
 export const requestsIn = (list) => list.filter((f) => f.status === 'received')
 export const requestsOut = (list) => list.filter((f) => f.status === 'sent')
-/** Quantos avisos (pedidos recebidos + desafios esperando). */
-export const pendingCount = (list) => requestsIn(list).length + list.filter((f) => f.status === 'friends' && f.challenge?.code).length
+/** Quantos avisos (pedidos recebidos + desafios esperando + mensagens não lidas). */
+export const pendingCount = (list) =>
+  requestsIn(list).length +
+  list.filter((f) => f.status === 'friends' && f.challenge?.code).length +
+  list.filter((f) => f.status === 'friends').reduce((n, f) => n + (f.unread ?? 0), 0)

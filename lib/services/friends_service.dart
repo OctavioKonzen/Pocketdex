@@ -4,7 +4,8 @@
 //   friends/{uid}/list/{outro} → {name, avatar, status, since, challenge?}
 //   status: 'sent' (pedido enviado) | 'received' (pedido recebido) | 'friends'
 // Quem pede grava dos dois lados; quem recebe aceita; qualquer um desfaz.
-// Amigos podem deixar um desafio (código do jogo) um para o outro.
+// Amigos podem deixar um desafio (código do jogo) um para o outro e
+// conversar (chats/{uidA_uidB}/messages, com uidA < uidB).
 
 import 'dart:async';
 
@@ -20,7 +21,11 @@ class Friend {
   final int? avatar;
   final String status;
   final Map<String, dynamic>? challenge;
-  const Friend(this.uid, this.name, this.avatar, this.status, this.challenge);
+
+  /// Mensagens do chat ainda não lidas e o texto da última.
+  final int unread;
+  final String? lastText;
+  const Friend(this.uid, this.name, this.avatar, this.status, this.challenge, {this.unread = 0, this.lastText});
 
   factory Friend.fromDoc(String uid, Map<String, dynamic> d) => Friend(
         uid,
@@ -28,6 +33,8 @@ class Friend {
         (d['avatar'] as num?)?.toInt(),
         d['status'] as String? ?? 'sent',
         d['challenge'] is Map ? Map<String, dynamic>.from(d['challenge'] as Map) : null,
+        unread: (d['unread'] as num?)?.toInt() ?? 0,
+        lastText: d['last'] is Map ? (d['last'] as Map)['text'] as String? : null,
       );
 
   bool get isFriend => status == 'friends';
@@ -50,8 +57,8 @@ class FriendsService extends ChangeNotifier {
   List<Friend> get outgoing => list.where((f) => f.status == 'sent').toList();
   List<Friend> get challenges => list.where((f) => f.hasChallenge).toList();
 
-  /// Pedidos recebidos + desafios esperando (o aviso no avatar).
-  int get pending => incoming.length + challenges.length;
+  /// Pedidos recebidos + desafios esperando + mensagens não lidas (o aviso no avatar).
+  int get pending => incoming.length + challenges.length + friends.fold(0, (n, f) => n + f.unread);
 
   void start() {
     _auth.addListener(_onAuth);
@@ -82,8 +89,7 @@ class FriendsService extends ChangeNotifier {
   String get _myName => _auth.user!.name ?? '';
   int? get _myAvatar => UserData.instance.avatar;
 
-  DocumentReference<Map<String, dynamic>> _doc(String owner, String other) =>
-      _db.collection('friends').doc(owner).collection('list').doc(other);
+  DocumentReference<Map<String, dynamic>> _doc(String owner, String other) => _db.collection('friends').doc(owner).collection('list').doc(other);
 
   /// Procura uma conta pelo nome exato; null se não existe.
   Future<(String, String)?> findAccount(String name) async {
@@ -95,8 +101,7 @@ class FriendsService extends ChangeNotifier {
   Future<void> sendRequest(String otherUid, String otherName) async {
     final batch = _db.batch()
       ..set(_doc(_me, otherUid), {'name': otherName, 'avatar': null, 'status': 'sent', 'since': FieldValue.serverTimestamp()})
-      ..set(_doc(otherUid, _me),
-          {'name': _myName, 'avatar': _myAvatar, 'status': 'received', 'since': FieldValue.serverTimestamp()});
+      ..set(_doc(otherUid, _me), {'name': _myName, 'avatar': _myAvatar, 'status': 'received', 'since': FieldValue.serverTimestamp()});
     await batch.commit();
   }
 
@@ -107,8 +112,11 @@ class FriendsService extends ChangeNotifier {
     await batch.commit();
   }
 
-  /// Desfaz a amizade, recusa ou cancela um pedido (apaga os dois lados).
+  /// Desfaz a amizade, recusa ou cancela um pedido (apaga os dois lados e o chat).
   Future<void> remove(String otherUid) async {
+    try {
+      await clearChat(_me, otherUid);
+    } catch (_) {}
     final batch = _db.batch()
       ..delete(_doc(_me, otherUid))
       ..delete(_doc(otherUid, _me));
@@ -136,4 +144,65 @@ class FriendsService extends ChangeNotifier {
     }));
     return out;
   }
+
+  // ------------------------------------------------------------------ chat
+
+  static const chatMax = 500;
+  static String chatId(String a, String b) => (a.compareTo(b) < 0) ? '${a}_$b' : '${b}_$a';
+
+  CollectionReference<Map<String, dynamic>> _messages(String a, String b) => _db.collection('chats').doc(chatId(a, b)).collection('messages');
+
+  /// As últimas 100 mensagens com um amigo, em tempo real (mais antigas primeiro).
+  Stream<List<ChatMessage>> watchChat(String friendUid) =>
+      _messages(_me, friendUid).orderBy('at', descending: true).limit(100).snapshots().map((snap) => [
+            for (final d in snap.docs.reversed)
+              ChatMessage(
+                d.id,
+                d.data()['from'] as String? ?? '',
+                d.data()['text'] as String? ?? '',
+                (d.data()['at'] as Timestamp?)?.toDate() ?? DateTime.now(),
+              ),
+          ]);
+
+  /// Manda uma mensagem e avisa o amigo (não lidas + última mensagem).
+  Future<void> sendMessage(String friendUid, String text) async {
+    final body = text.trim();
+    if (body.isEmpty) return;
+    final clipped = body.length > chatMax ? body.substring(0, chatMax) : body;
+    final batch = _db.batch()
+      ..set(_messages(_me, friendUid).doc(), {'from': _me, 'text': clipped, 'at': FieldValue.serverTimestamp()})
+      ..update(_doc(friendUid, _me), {
+        'name': _myName,
+        'unread': FieldValue.increment(1),
+        'last': {
+          'text': clipped.length > 100 ? clipped.substring(0, 100) : clipped,
+          'at': DateTime.now().millisecondsSinceEpoch,
+          'from': _me,
+        },
+      });
+    await batch.commit();
+  }
+
+  /// Marca como lidas as mensagens de um amigo.
+  Future<void> markRead(String friendUid) => _doc(_me, friendUid).update({'unread': 0});
+
+  /// Apaga todas as mensagens entre duas contas.
+  Future<void> clearChat(String a, String b) async {
+    final snap = await _messages(a, b).get();
+    for (var i = 0; i < snap.docs.length; i += 400) {
+      final batch = _db.batch();
+      for (final d in snap.docs.skip(i).take(400)) {
+        batch.delete(d.reference);
+      }
+      await batch.commit();
+    }
+  }
+}
+
+class ChatMessage {
+  final String id;
+  final String from;
+  final String text;
+  final DateTime at;
+  const ChatMessage(this.id, this.from, this.text, this.at);
 }

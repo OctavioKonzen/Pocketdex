@@ -12,6 +12,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../utils/profanity.dart';
+import 'friends_service.dart';
 
 enum AuthStatus { disabled, loading, signedOut, needsName, signedIn }
 
@@ -391,9 +392,12 @@ class AuthService extends ChangeNotifier {
           }
         }
 
-        // Amizades: somem dos dois lados.
+        // Amizades e chats: somem dos dois lados.
         try {
           final friends = await _db.collection('friends').doc(uid).collection('list').get();
+          await Future.wait([
+            for (final d in friends.docs) quiet(FriendsService.instance.clearChat(uid, d.id)),
+          ]);
           await Future.wait([
             for (final d in friends.docs) ...[
               quiet(_db.collection('friends').doc(d.id).collection('list').doc(uid).delete()),

@@ -67,7 +67,7 @@ class _ItemsEncyclopediaScreenState extends State<ItemsEncyclopediaScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Enciclopédia de Itens'),
+        title: const Text('Itens'),
       ),
       body: ReadableWidth(
           child: Column(

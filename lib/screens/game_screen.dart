@@ -191,7 +191,7 @@ class _GameScreenState extends State<GameScreen> {
                   child: TextField(
                     controller: _code,
                     decoration: InputDecoration(
-                      hintText: tr('Recebeu um desafio? Cole o link ou código'),
+                      hintText: tr('Cole o link ou código'),
                       errorText: _codeError == null ? null : tr(_codeError!),
                       isDense: true,
                       border: const OutlineInputBorder(),

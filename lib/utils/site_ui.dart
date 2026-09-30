@@ -62,25 +62,31 @@ class PageHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = SiteColors.of(context);
+    final text = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: c.text)),
+        if (subtitle != null) ...[
+          const SizedBox(height: 2),
+          Text(subtitle!, style: TextStyle(fontSize: 13, color: c.muted)),
+        ],
+      ],
+    );
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: c.text)),
-                if (subtitle != null) ...[
-                  const SizedBox(height: 2),
-                  Text(subtitle!, style: TextStyle(fontSize: 13, color: c.muted)),
-                ],
-              ],
-            ),
-          ),
-          if (action != null) ...[const SizedBox(width: 12), action!],
-        ],
+      // Em tela estreita a ação desce para baixo do título, em vez de espremê-lo.
+      child: LayoutBuilder(
+        builder: (context, box) => action == null
+            ? text
+            : box.maxWidth < 440
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [text, const SizedBox(height: 10), action!],
+                  )
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [Expanded(child: text), const SizedBox(width: 12), action!],
+                  ),
       ),
     );
   }

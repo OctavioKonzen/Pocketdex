@@ -585,13 +585,72 @@ export async function acceptFriend(me, otherUid) {
   await b.commit()
 }
 
-/** Desfaz a amizade (ou recusa/cancela um pedido): apaga os dois lados. */
+/** Desfaz a amizade (ou recusa/cancela um pedido): apaga os dois lados e o chat. */
 export async function removeFriend(meUid, otherUid) {
+  await clearChat(meUid, otherUid).catch(() => {})
   const { db, doc, writeBatch } = await firebase()
   const b = writeBatch(db)
   b.delete(doc(db, 'friends', meUid, 'list', otherUid))
   b.delete(doc(db, 'friends', otherUid, 'list', meUid))
   await b.commit()
+}
+
+// ---------------------------------------------------------------- chat
+//   chats/{uidA_uidB}/messages/{id} → { from, text, at }  (uidA < uidB)
+//   A lista de amigos guarda, do lado de quem recebe, quantas não leu
+//   (unread) e a última mensagem (last), para mostrar sem abrir o chat.
+
+export const CHAT_MAX = 500
+export const chatId = (a, b) => [a, b].sort().join('_')
+
+/** Ouve as últimas 100 mensagens com um amigo (mais antigas primeiro). */
+export async function watchChat(meUid, otherUid, callback, onError) {
+  const { db, collection, query, orderBy, limit, onSnapshot } = await firebase()
+  return onSnapshot(
+    query(collection(db, 'chats', chatId(meUid, otherUid), 'messages'), orderBy('at', 'desc'), limit(100)),
+    (snap) =>
+      callback(
+        snap.docs
+          .map((d) => {
+            const m = d.data({ serverTimestamps: 'estimate' })
+            return { id: d.id, from: m.from, text: m.text, at: m.at?.toMillis?.() ?? Date.now() }
+          })
+          .reverse(),
+      ),
+    onError,
+  )
+}
+
+/** Manda uma mensagem e avisa o amigo (não lidas + última mensagem). */
+export async function sendMessage(me, otherUid, text) {
+  const body = text.trim().slice(0, CHAT_MAX)
+  if (!body) return
+  const { db, doc, collection, writeBatch, serverTimestamp, increment } = await firebase()
+  const b = writeBatch(db)
+  b.set(doc(collection(db, 'chats', chatId(me.uid, otherUid), 'messages')), { from: me.uid, text: body, at: serverTimestamp() })
+  b.update(doc(db, 'friends', otherUid, 'list', me.uid), {
+    name: me.name,
+    unread: increment(1),
+    last: { text: body.slice(0, 100), at: Date.now(), from: me.uid },
+  })
+  await b.commit()
+}
+
+/** Marca como lidas as mensagens de um amigo. */
+export async function markChatRead(meUid, otherUid) {
+  const { db, doc, updateDoc } = await firebase()
+  await updateDoc(doc(db, 'friends', meUid, 'list', otherUid), { unread: 0 })
+}
+
+/** Apaga todas as mensagens com um amigo. */
+export async function clearChat(meUid, otherUid) {
+  const { db, collection, getDocs, writeBatch } = await firebase()
+  const snap = await getDocs(collection(db, 'chats', chatId(meUid, otherUid), 'messages'))
+  for (let i = 0; i < snap.docs.length; i += 400) {
+    const b = writeBatch(db)
+    snap.docs.slice(i, i + 400).forEach((d) => b.delete(d.ref))
+    await b.commit()
+  }
 }
 
 /** Deixa um desafio (código) para um amigo, com a minha pontuação. */
@@ -691,8 +750,9 @@ export async function deleteAccount({ password, weeks = [], days = [], confirmed
     await batch.commit().catch(() => Promise.all(refs.slice(i, i + 400).map((ref) => quiet(deleteDoc(ref)))))
   }
 
-  // Amizades: some dos dois lados.
+  // Amizades e chats: somem dos dois lados.
   const friends = await getDocs(collection(db, 'friends', uid, 'list')).catch(() => null)
+  await Promise.all((friends?.docs ?? []).map((d) => clearChat(uid, d.id).catch(() => {})))
   await Promise.all(
     (friends?.docs ?? []).flatMap((d) => [quiet(deleteDoc(doc(db, 'friends', d.id, 'list', uid))), quiet(deleteDoc(d.ref))]),
   )

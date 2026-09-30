@@ -36,6 +36,9 @@ await set('publicTeams/daViva/reports/morta', { reason: 'x' })
 await set('friends/viva/list/morta', { name: 'Morta', status: 'friends' })
 await set('friends/morta/list/viva', { name: 'Viva', status: 'friends' })
 await set('friends/viva/list/amiga', { name: 'Amiga', status: 'friends' })
+await set('friends/amiga/list/viva', { name: 'Viva', status: 'friends' })
+await set('chats/amiga_viva/messages/m1', { from: 'viva', text: 'oi', at: 1 })
+await set('chats/morta_viva/messages/m1', { from: 'morta', text: 'oi', at: 1 })
 
 execFileSync('node', [new URL('./cleanup.mjs', import.meta.url).pathname], { stdio: 'inherit', env: { ...process.env, FIREBASE_SERVICE_ACCOUNT: '' } })
 
@@ -51,6 +54,8 @@ assert.deepEqual(await ids('publicTeams/daMorta/ratings'), [])
 assert.deepEqual(await ids('publicTeams/daViva/reports'), [])
 assert.deepEqual(await ids('friends/viva/list'), ['amiga'])
 assert.deepEqual(await ids('friends/morta/list'), [])
+assert.deepEqual(await ids('chats/amiga_viva/messages'), ['m1'])
+assert.deepEqual(await ids('chats/morta_viva/messages'), [])
 // "outra" também não existe: a nota do time fica zerada.
 const team = (await db.doc('publicTeams/daViva').get()).data()
 assert.deepEqual([team.ratingSum, team.ratingCount, team.reportCount], [0, 0, 0])

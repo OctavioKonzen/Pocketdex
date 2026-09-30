@@ -2,7 +2,7 @@
 // os amigos deixaram e a lista com o recorde do Ranked de cada um.
 
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Avatar } from '../components/AccountAvatar'
 import { Button, Empty, Icon, PageHeader } from '../components/ui'
 import { acceptFriend, clearChallenge, errorMessage, findAccount, friendRecords, removeFriend, sendFriendRequest, useAuth } from '../lib/auth'
@@ -148,7 +148,7 @@ export default function FriendsPage() {
 
       <section className={CARD}>
         <div className="mb-1 font-bold">{`Amigos (${friends.length})`}</div>
-        <p className="mb-3 text-xs text-muted">Ranking entre vocês pelo recorde do Ranked. No fim de um desafio no Jogo, dá para mandar o desafio para um amigo.</p>
+        <p className="mb-3 text-xs text-muted">Ranking entre vocês pelo recorde do Ranked. Toque no balão para conversar; no fim de um desafio no Jogo, dá para mandar o desafio para um amigo.</p>
         {!ready ? (
           <p className="text-sm text-muted">...</p>
         ) : !friends.length ? (
@@ -159,11 +159,28 @@ export default function FriendsPage() {
               <li key={f.uid} className={`flex items-center gap-3 rounded-xl px-2 py-1.5 ${f.me ? 'bg-yellow-400/15 ring-1 ring-yellow-400' : ''}`}>
                 <span className="w-6 text-center font-black text-muted">{i + 1}</span>
                 <Avatar pokemonId={f.avatar ?? null} name={f.name} size={38} />
-                <span className="min-w-0 flex-1 truncate font-semibold">
-                  {f.name}
-                  {f.me && <span className="ml-2 text-xs text-yellow-400">você</span>}
-                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-semibold">
+                    <span data-no-translate>{f.name}</span>
+                    {f.me && <span className="ml-2 text-xs text-yellow-400">você</span>}
+                  </div>
+                  {f.last?.text && (
+                    <div className={`truncate text-xs ${f.unread ? 'font-bold text-text' : 'text-muted'}`} data-no-translate>
+                      {f.last.text}
+                    </div>
+                  )}
+                </div>
                 <span className="font-black text-yellow-400">{`🏆 ${f.score}`}</span>
+                {!f.me && (
+                  <Link to={`/amigos/chat/${f.uid}`} aria-label="Conversar" title="Conversar" className="relative text-sky-400 hover:text-sky-300">
+                    <Icon name="chat" size={22} />
+                    {f.unread > 0 && (
+                      <span className="absolute -top-2 -right-2 grid h-4 min-w-4 place-items-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                        {f.unread > 9 ? '9+' : f.unread}
+                      </span>
+                    )}
+                  </Link>
+                )}
                 {!f.me && (
                   <button type="button" aria-label="Desfazer amizade" title="Desfazer amizade" onClick={() => removeFriend(user.uid, f.uid)} className="cursor-pointer text-muted hover:text-red-400">
                     <Icon name="delete" size={18} />
