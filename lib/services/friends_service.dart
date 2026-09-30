@@ -161,16 +161,23 @@ class FriendsService extends ChangeNotifier {
                 d.data()['from'] as String? ?? '',
                 d.data()['text'] as String? ?? '',
                 (d.data()['at'] as Timestamp?)?.toDate() ?? DateTime.now(),
+                d.data()['card'] is Map ? Map<String, dynamic>.from(d.data()['card'] as Map) : null,
               ),
           ]);
 
   /// Manda uma mensagem e avisa o amigo (não lidas + última mensagem).
-  Future<void> sendMessage(String friendUid, String text) async {
+  /// [card]: cartão clicável ({kind: 'pokemon', id} ou {kind: 'team', name, ids, code}).
+  Future<void> sendMessage(String friendUid, String text, {Map<String, dynamic>? card}) async {
     final body = text.trim();
     if (body.isEmpty) return;
     final clipped = body.length > chatMax ? body.substring(0, chatMax) : body;
     final batch = _db.batch()
-      ..set(_messages(_me, friendUid).doc(), {'from': _me, 'text': clipped, 'at': FieldValue.serverTimestamp()})
+      ..set(_messages(_me, friendUid).doc(), {
+        'from': _me,
+        'text': clipped,
+        'at': FieldValue.serverTimestamp(),
+        if (card != null) 'card': card,
+      })
       ..update(_doc(friendUid, _me), {
         'name': _myName,
         'unread': FieldValue.increment(1),
@@ -204,5 +211,6 @@ class ChatMessage {
   final String from;
   final String text;
   final DateTime at;
-  const ChatMessage(this.id, this.from, this.text, this.at);
+  final Map<String, dynamic>? card;
+  const ChatMessage(this.id, this.from, this.text, this.at, [this.card]);
 }

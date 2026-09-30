@@ -217,6 +217,36 @@ try {
   await page2.getByRole('button', { name: 'Enviar' }).click()
   await page.getByText('Bora!', { exact: true }).waitFor({ timeout: 15000 })
   assert.equal(await friendDocs('messages'), 2, `${step}: devia ter 2 mensagens`)
+
+  step = 'amigos: mandar time no chat'
+  await page.getByRole('button', { name: 'Mandar Pokémon ou time' }).click()
+  await page.getByRole('button', { name: /Areia/ }).click()
+  await page2.getByRole('button', { name: 'Salvar nos meus times' }).click({ timeout: 15000 })
+  await page2.waitForURL(/#\/times\//, { timeout: 15000 })
+
+  step = 'amigos: batalha de times'
+  await go('amigos/batalha')
+  await page.locator('select').nth(0).selectOption({ label: 'Areia' })
+  // O time salvo pelo amigo vira público alguns segundos depois.
+  for (let i = 0; i < 10; i++) {
+    await page.locator('select').nth(1).selectOption({ label: friend.name })
+    if (await page.getByText('Time do amigo').isVisible().catch(() => false)) break
+    await page.locator('select').nth(1).selectOption({ index: 0 })
+    await page.waitForTimeout(1500)
+  }
+  await page.locator('select').nth(2).selectOption({ label: 'Areia' })
+  await page.getByRole('button', { name: '⚔️ Batalhar!' }).click()
+  await page.getByText(/de 1 confrontos/).waitFor({ timeout: 30000 })
+  await expectHealthy()
+
+  step = 'amigos: trocas'
+  await go('amigos/trocas')
+  await page.getByRole('button', { name: '+ Adicionar repetido' }).click()
+  await page.getByPlaceholder('Procurar por nome ou número').fill('pikachu')
+  await page.getByRole('dialog').getByRole('button', { name: /pikachu/i }).first().click()
+  await page.getByText('Meus repetidos (1)').waitFor({ timeout: 15000 })
+  await page2.evaluate(() => (location.hash = '#/amigos/trocas'))
+  await page2.getByText('Pode te dar (1)').waitFor({ timeout: 15000 })
   await friendCtx.close()
 
   step = 'excluir conta'
@@ -228,13 +258,16 @@ try {
   await expectHealthy()
 
   step = 'banco vazio depois de excluir'
-  for (const path of ['users', 'usernames', 'ranking', 'publicTeams']) {
+  for (const path of ['users', 'usernames', 'ranking']) {
     const docs = (await emulatorDocs(path)).filter((d) => path !== 'users' && path !== 'usernames' ? true : false)
     assert.deepEqual(docs, [], `${step}: sobrou algo em ${path}`)
   }
   assert.ok(!(await emulatorDocs('usernames')).includes(user.name.toLowerCase()), `${step}: sobrou o nome`)
   assert.equal(await friendDocs(), 0, `${step}: sobrou amizade`)
   assert.equal(await friendDocs('messages'), 0, `${step}: sobrou mensagem de chat`)
+  // O amigo continua com a conta: sobra só o time dele (ele não marcou repetidos).
+  assert.equal((await emulatorDocs('publicTeams')).length, 1, `${step}: sobrou time público da conta excluída`)
+  assert.equal((await emulatorDocs("trades")).length, 0, `${step}: sobrou a lista de trocas (${(await emulatorDocs("trades")).length})`)
 
   step = 'criar de novo com o mesmo e-mail e nome'
   await page.getByRole('button', { name: 'Criar conta' }).first().click()

@@ -83,6 +83,21 @@ export default function FriendsPage() {
     <div className="mx-auto max-w-2xl space-y-6">
       <PageHeader title="Amigos" subtitle="Adicione amigos pelo nome, compare recordes e mande desafios." />
 
+      <div className="grid grid-cols-2 gap-3">
+        <Link
+          to="/amigos/trocas"
+          className="rounded-2xl bg-gradient-to-r from-green-600 to-teal-700 px-4 py-3 text-center font-bold text-white shadow transition hover:scale-[1.02]"
+        >
+          🔁 Trocas
+        </Link>
+        <Link
+          to="/amigos/batalha"
+          className="rounded-2xl bg-gradient-to-r from-red-600 to-purple-600 px-4 py-3 text-center font-bold text-white shadow transition hover:scale-[1.02]"
+        >
+          ⚔️ Batalha
+        </Link>
+      </div>
+
       <form onSubmit={add} className={CARD}>
         <div className="mb-2 font-bold">Adicionar amigo</div>
         <div className="flex gap-2">

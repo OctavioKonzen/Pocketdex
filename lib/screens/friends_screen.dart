@@ -17,6 +17,8 @@ import '../utils/site_ui.dart';
 import '../widgets/account_avatar.dart';
 import 'chat_screen.dart';
 import 'quiz_screen.dart';
+import 'team_battle_screen.dart';
+import 'trades_screen.dart';
 
 class FriendsScreen extends StatefulWidget {
   const FriendsScreen({super.key});
@@ -124,6 +126,28 @@ class _FriendsScreenState extends State<FriendsScreen> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: PillButton(
+                        label: '🔁 ${tr('Trocas')}',
+                        expand: true,
+                        gradient: const LinearGradient(colors: [Color(0xFF16A34A), Color(0xFF0F766E)]),
+                        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TradesScreen())),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: PillButton(
+                        label: '⚔️ ${tr('Batalha')}',
+                        expand: true,
+                        gradient: const LinearGradient(colors: [Color(0xFFDC2626), Color(0xFF9333EA)]),
+                        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TeamBattleScreen())),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
                 _card(c, tr('Adicionar amigo'), [
                   Row(
                     children: [

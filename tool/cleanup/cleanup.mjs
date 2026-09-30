@@ -10,6 +10,7 @@
 //   publicTeams/{id}                → apaga (com votos e denúncias) se o dono não existe
 //   friends/{uid}/list/{outro}      → apaga se uma das duas contas não existe
 //   chats/{a_b}/messages/{id}       → apaga se a amizade acabou (ou uma conta não existe)
+//   trades/{uid}                    → apaga se a conta não existe
 //   publicTeams/{id}/ratings|reports/{uid} → apaga se a conta não existe e refaz a nota
 //                                            e a contagem de denúncias do time
 //
@@ -76,6 +77,11 @@ for (const d of (await db.collectionGroup('messages').get()).docs) {
   const chat = d.ref.parent.parent
   if (chat?.parent.id !== 'chats') continue
   if (!friendships.has(chat.id)) await remove(d.ref, 'mensagem de chat sem amizade')
+}
+
+// Listas de trocas.
+for (const d of (await db.collection('trades').get()).docs) {
+  if (!accounts.has(d.id)) await remove(d.ref, 'lista de trocas sem conta')
 }
 
 // Rankings (geral, semanas e dias).
