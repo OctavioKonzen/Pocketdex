@@ -4628,75 +4628,10 @@
   "fr": "Accueil",
   "es": "Inicio"
  },
- "Trocas": {
-  "en": "Trades",
-  "fr": "Échanges",
-  "es": "Intercambios"
- },
  "Batalha de times": {
   "en": "Team battle",
   "fr": "Combat d'équipes",
   "es": "Batalla de equipos"
- },
- "Meus repetidos ({0})": {
-  "en": "My duplicates ({0})",
-  "fr": "Mes doublons ({0})",
-  "es": "Mis repetidos ({0})"
- },
- "Marque os Pokémon que você tem sobrando para trocar. O que você já pegou vem da sua Coleção.": {
-  "en": "Mark the Pokémon you have spare to trade. What you've caught comes from your Collection.",
-  "fr": "Marquez les Pokémon que vous avez en trop pour échanger. Ceux que vous avez déjà viennent de votre Collection.",
-  "es": "Marca los Pokémon que tienes de sobra para intercambiar. Los que ya atrapaste vienen de tu Colección."
- },
- "Adicionar repetido": {
-  "en": "Add duplicate",
-  "fr": "Ajouter un doublon",
-  "es": "Añadir repetido"
- },
- "+ Adicionar repetido": {
-  "en": "+ Add duplicate",
-  "fr": "+ Ajouter un doublon",
-  "es": "+ Añadir repetido"
- },
- "Adicione amigos para ver as trocas possíveis.": {
-  "en": "Add friends to see possible trades.",
-  "fr": "Ajoutez des amis pour voir les échanges possibles.",
-  "es": "Añade amigos para ver los intercambios posibles."
- },
- "{0} ainda não abriu as Trocas.": {
-  "en": "{0} hasn't opened Trades yet.",
-  "fr": "{0} n'a pas encore ouvert les Échanges.",
-  "es": "{0} aún no abrió los Intercambios."
- },
- "Você pode dar ({0})": {
-  "en": "You can give ({0})",
-  "fr": "Vous pouvez donner ({0})",
-  "es": "Puedes dar ({0})"
- },
- "Pode te dar ({0})": {
-  "en": "Can give you ({0})",
-  "fr": "Peut vous donner ({0})",
-  "es": "Te puede dar ({0})"
- },
- "Nenhum dos seus repetidos falta para essa pessoa.": {
-  "en": "None of your duplicates are missing for this person.",
-  "fr": "Aucun de vos doublons ne manque à cette personne.",
-  "es": "A esta persona no le falta ninguno de tus repetidos."
- },
- "Nenhum repetido dessa pessoa falta para você.": {
-  "en": "None of their duplicates are missing for you.",
-  "fr": "Aucun de ses doublons ne vous manque.",
-  "es": "No te falta ninguno de sus repetidos."
- },
- "Marque seus repetidos e veja o que dá para trocar com cada amigo.": {
-  "en": "Mark your duplicates and see what you can trade with each friend.",
-  "fr": "Marquez vos doublons et voyez ce que vous pouvez échanger avec chaque ami.",
-  "es": "Marca tus repetidos y mira qué puedes intercambiar con cada amigo."
- },
- "Entre na sua conta para trocar com os amigos.": {
-  "en": "Sign in to trade with friends.",
-  "fr": "Connectez-vous pour échanger avec vos amis.",
-  "es": "Inicia sesión para intercambiar con tus amigos."
  },
  "Cada Pokémon do seu time contra cada um do time do amigo, 1 contra 1, com o melhor golpe de cada lado.": {
   "en": "Each Pokémon on your team against each one on your friend's team, 1 on 1, with each side's best move.",
@@ -5327,5 +5262,35 @@
   "en": "Open PocketDex",
   "fr": "Ouvrez PocketDex",
   "es": "Abre PocketDex"
+ },
+ "Conversas": {
+  "en": "Chats",
+  "fr": "Discussions",
+  "es": "Conversaciones"
+ },
+ "💬 Conversas": {
+  "en": "💬 Chats",
+  "fr": "💬 Discussions",
+  "es": "💬 Conversaciones"
+ },
+ "Seus chats com os amigos, do mais recente para o mais antigo.": {
+  "en": "Your chats with friends, most recent first.",
+  "fr": "Vos discussions avec vos amis, des plus récentes aux plus anciennes.",
+  "es": "Tus chats con amigos, del más reciente al más antiguo."
+ },
+ "Nenhuma mensagem ainda. Diga oi!": {
+  "en": "No messages yet. Say hi!",
+  "fr": "Aucun message pour l'instant. Dites bonjour !",
+  "es": "Aún no hay mensajes. ¡Saluda!"
+ },
+ "agora": {
+  "en": "now",
+  "fr": "maintenant",
+  "es": "ahora"
+ },
+ "ontem": {
+  "en": "yesterday",
+  "fr": "hier",
+  "es": "ayer"
  }
 }

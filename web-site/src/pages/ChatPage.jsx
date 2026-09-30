@@ -9,7 +9,7 @@ import PokemonModal from '../components/PokemonModal'
 import PokemonPicker from '../components/PokemonPicker'
 import { Empty, Icon } from '../components/ui'
 import { CHAT_MAX, errorMessage, markChatRead, sendMessage, useAuth, watchChat } from '../lib/auth'
-import { useFriends } from '../lib/friends'
+import { setChatBubble, useFriends } from '../lib/friends'
 import { usePokemonIndex } from '../lib/pokemonIndex'
 import { t } from '../lib/i18n'
 import { prettyName } from '../lib/pokemon'
@@ -77,6 +77,11 @@ export default function ChatPage() {
   const byId = usePokemonIndex()
   const me = user?.uid
   const isFriend = Boolean(friend)
+
+  // Abriu a conversa: o amigo vira a bolinha do chat.
+  useEffect(() => {
+    if (me && isFriend) setChatBubble(uid)
+  }, [me, isFriend, uid])
 
   useEffect(() => {
     if (!me || !isFriend) return

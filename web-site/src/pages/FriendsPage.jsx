@@ -8,6 +8,7 @@ import { Button, Empty, Icon, PageHeader } from '../components/ui'
 import { acceptFriend, clearChallenge, errorMessage, findAccount, friendRecords, removeFriend, sendFriendRequest, useAuth } from '../lib/auth'
 import { decodeChallenge } from '../lib/challenge'
 import { friendsOnly, requestsIn, requestsOut, useFriends } from '../lib/friends'
+import { t } from '../lib/i18n'
 import { useStore } from '../lib/store'
 
 const CARD = 'rounded-2xl bg-card p-5 shadow'
@@ -28,6 +29,7 @@ export default function FriendsPage() {
   const incoming = requestsIn(list)
   const outgoing = requestsOut(list)
   const challenges = friends.filter((f) => f.challenge?.code)
+  const unreadTotal = friends.reduce((n, f) => n + (f.unread ?? 0), 0)
   const friendIds = friends.map((f) => f.uid).join(',')
 
   // Recorde do Ranked de cada amigo.
@@ -85,10 +87,10 @@ export default function FriendsPage() {
 
       <div className="grid grid-cols-2 gap-3">
         <Link
-          to="/amigos/trocas"
-          className="rounded-2xl bg-gradient-to-r from-green-600 to-teal-700 px-4 py-3 text-center font-bold text-white shadow transition hover:scale-[1.02]"
+          to="/amigos/conversas"
+          className="rounded-2xl bg-gradient-to-r from-sky-600 to-indigo-600 px-4 py-3 text-center font-bold text-white shadow transition hover:scale-[1.02]"
         >
-          🔁 Trocas
+          {unreadTotal > 0 ? `💬 ${t('Conversas')} (${unreadTotal})` : '💬 Conversas'}
         </Link>
         <Link
           to="/amigos/batalha"

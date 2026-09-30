@@ -10,7 +10,9 @@
 //   publicTeams/{id}                → apaga (com votos e denúncias) se o dono não existe
 //   friends/{uid}/list/{outro}      → apaga se uma das duas contas não existe
 //   chats/{a_b}/messages/{id}       → apaga se a amizade acabou (ou uma conta não existe)
-//   trades/{uid}                    → apaga se a conta não existe
+//                                     ou se tem mais de 7 dias (o chat se limpa sozinho);
+//                                     a prévia (last) e as não lidas também somem
+//   trades/{uid}                    → apaga todas (as Trocas saíram)
 //   drafts/{id}                     → apaga se um dos jogadores não existe
 //   publicTeams/{id}/ratings|reports/{uid} → apaga se a conta não existe e refaz a nota
 //                                            e a contagem de denúncias do time
@@ -73,11 +75,24 @@ for (const d of (await db.collectionGroup('list').get()).docs) {
   else if (d.data().status === 'friends') friendships.add([owner.id, d.id].sort().join('_'))
 }
 
-// Chats: só ficam enquanto os dois são amigos.
+// Chats: só ficam enquanto os dois são amigos, e por no máximo 7 dias.
+const CHAT_DAYS = 7
+const chatLimit = Date.now() - CHAT_DAYS * 24 * 60 * 60 * 1000
+const millis = (at) => (typeof at === 'number' ? at : at?.toMillis?.() ?? 0)
 for (const d of (await db.collectionGroup('messages').get()).docs) {
   const chat = d.ref.parent.parent
   if (chat?.parent.id !== 'chats') continue
   if (!friendships.has(chat.id)) await remove(d.ref, 'mensagem de chat sem amizade')
+  else if (millis(d.data().at) < chatLimit) await remove(d.ref, 'mensagem de chat com mais de 7 dias')
+}
+
+// Prévia da última mensagem na lista de amigos: some junto com o chat.
+for (const d of (await db.collectionGroup('list').get()).docs) {
+  const last = d.data().last
+  if (d.ref.parent.parent?.parent.id !== 'friends' || !last || millis(last.at) >= chatLimit) continue
+  removed['prévia de chat antiga'] = (removed['prévia de chat antiga'] ?? 0) + 1
+  console.log(`${dryRun ? '[teste] ' : ''}limpa a prévia de ${d.ref.path}`)
+  if (!dryRun) await d.ref.update({ last: null, unread: 0 }).catch(() => {})
 }
 
 // Drafts: somem se um dos dois jogadores não existe mais.
@@ -85,9 +100,9 @@ for (const d of (await db.collection('drafts').get()).docs) {
   if (!(d.data().players ?? []).every((p) => accounts.has(p))) await remove(d.ref, 'draft com conta que não existe')
 }
 
-// Listas de trocas.
+// Listas das antigas Trocas (o recurso saiu): apaga todas.
 for (const d of (await db.collection('trades').get()).docs) {
-  if (!accounts.has(d.id)) await remove(d.ref, 'lista de trocas sem conta')
+  await remove(d.ref, 'lista de trocas (recurso removido)')
 }
 
 // Rankings (geral, semanas e dias).

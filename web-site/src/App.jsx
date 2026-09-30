@@ -1,6 +1,6 @@
 import { AnimatePresence, m } from 'framer-motion'
 import { createContext, Suspense, useContext, useEffect, useState } from 'react'
-import { HashRouter, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { HashRouter, Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { imageUrl } from './lib/data'
 import { getDownloadUrl, RELEASES_URL } from './lib/appRelease'
 import { useStore } from './lib/store'
@@ -8,6 +8,7 @@ import { TEXT_SIZES, usePrefs, useResolvedTheme } from './lib/prefs'
 import { confirmationFromUrl, startAuth, useAuth } from './lib/auth'
 import { logout, startSync } from './lib/sync'
 import { pendingCount, startFriends, useFriends } from './lib/friends'
+import ChatBubble from './components/ChatBubble'
 import { Icon, Loader, SpinningPokeball } from './components/ui'
 import AccountAvatar from './components/AccountAvatar'
 import PokedexPage from './pages/PokedexPage'
@@ -25,7 +26,7 @@ const AchievementsPage = lazyPage(() => import('./pages/AchievementsPage'))
 const FriendsPage = lazyPage(() => import('./pages/FriendsPage'))
 const ChatPage = lazyPage(() => import('./pages/ChatPage'))
 const BattlePage = lazyPage(() => import('./pages/BattlePage'))
-const TradesPage = lazyPage(() => import('./pages/TradesPage'))
+const ConversationsPage = lazyPage(() => import('./pages/ConversationsPage'))
 const TeamBattlePage = lazyPage(() => import('./pages/TeamBattlePage'))
 const DraftPage = lazyPage(() => import('./pages/DraftPage'))
 const LoginPage = lazyPage(() => import('./pages/LoginPage'))
@@ -397,7 +398,9 @@ export default function App() {
                   <Route path="/conquistas" element={<AchievementsPage />} />
                   <Route path="/amigos" element={<FriendsPage />} />
                   <Route path="/amigos/chat/:uid" element={<ChatPage />} />
-                  <Route path="/amigos/trocas" element={<TradesPage />} />
+                  <Route path="/amigos/conversas" element={<ConversationsPage />} />
+                  {/* As Trocas saíram: links antigos vão para as Conversas. */}
+                  <Route path="/amigos/trocas" element={<Navigate to="/amigos/conversas" replace />} />
                   <Route path="/amigos/batalha" element={<TeamBattlePage />} />
                   <Route path="/amigos/draft" element={<DraftPage />} />
                   <Route path="/amigos/draft/:id" element={<DraftPage />} />
@@ -406,6 +409,7 @@ export default function App() {
               </Suspense>
             </PageBoundary>
           </main>
+          <ChatBubble />
         </SearchContext.Provider>
       </HashRouter>
     </AuthGate>

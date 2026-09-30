@@ -16,10 +16,10 @@ import '../utils/responsive.dart';
 import '../utils/site_ui.dart';
 import '../widgets/account_avatar.dart';
 import 'chat_screen.dart';
+import 'conversations_screen.dart';
 import 'draft_screen.dart';
 import 'quiz_screen.dart';
 import 'team_battle_screen.dart';
-import 'trades_screen.dart';
 
 class FriendsScreen extends StatefulWidget {
   const FriendsScreen({super.key});
@@ -131,10 +131,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   children: [
                     Expanded(
                       child: PillButton(
-                        label: '🔁 ${tr('Trocas')}',
+                        label: _service.unreadTotal > 0 ? '💬 ${tr('Conversas')} (${_service.unreadTotal})' : '💬 ${tr('Conversas')}',
                         expand: true,
-                        gradient: const LinearGradient(colors: [Color(0xFF16A34A), Color(0xFF0F766E)]),
-                        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TradesScreen())),
+                        gradient: const LinearGradient(colors: [Color(0xFF0284C7), Color(0xFF4F46E5)]),
+                        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ConversationsScreen())),
                       ),
                     ),
                     const SizedBox(width: 10),

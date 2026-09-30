@@ -1,6 +1,7 @@
 name: Limpeza do banco
 
 # Todo dia apaga do Firestore qualquer dado de conta que não existe mais
+# e as mensagens de chat com mais de 7 dias
 # (tool/cleanup/cleanup.mjs), para não sobrar nenhum vestígio de quem
 # excluiu a conta. Precisa do segredo FIREBASE_SERVICE_ACCOUNT (a chave de
 # administrador do Firebase, em JSON); sem ele, não faz nada.

@@ -187,7 +187,9 @@ const send = (db, from, to, text, extra = {}) => {
   const chat = [from, to].sort().join('_')
   const b = writeBatch(db)
   b.set(doc(collection(db, 'chats', chat, 'messages')), { from, text, at: serverTimestamp(), ...extra })
-  b.update(doc(db, 'friends', to, 'list', from), { unread: increment(1), last: { text: text.slice(0, 100), at: 1, from } })
+  const last = { text: text.slice(0, 100), at: 1, from }
+  b.update(doc(db, 'friends', to, 'list', from), { unread: increment(1), last })
+  b.update(doc(db, 'friends', from, 'list', to), { last })
   return b.commit()
 }
 await check('amigo manda mensagem', send(A, 'alice', 'bob', 'Oi, bora batalhar?'), true)
@@ -213,11 +215,10 @@ await check('amigo apaga mensagem', deleteDoc(doc(B, 'chats', 'alice_bob', 'mess
 await check('quem não é amigo não manda', setDoc(doc(collection(C, 'chats', 'bob_carol', 'messages')), { from: 'carol', text: 'oi', at: serverTimestamp() }), false)
 
 // Trocas
-await check('grava a própria lista de trocas', setDoc(doc(A, 'trades', 'alice'), { dupes: [1, 4], caught: [1, 4, 7], updatedAt: serverTimestamp() }), true)
-await check('lista de trocas com campo estranho', setDoc(doc(A, 'trades', 'alice'), { dupes: [], caught: [], hack: 1 }), false)
-await check('grava a lista de outro', setDoc(doc(B, 'trades', 'alice'), { dupes: [], caught: [] }), false)
-await check('amigo lê a lista de trocas', getDoc(doc(B, 'trades', 'alice')), true)
-await check('terceiro lê a lista de trocas', getDoc(doc(C, 'trades', 'alice')), false)
+await check('não grava mais lista de trocas', setDoc(doc(A, 'trades', 'alice'), { dupes: [1, 4], caught: [1, 4, 7], updatedAt: serverTimestamp() }), false)
+await check('amigo não lê lista de trocas', getDoc(doc(B, 'trades', 'alice')), false)
+await check('apaga a própria lista antiga', deleteDoc(doc(A, 'trades', 'alice')), true)
+await check('apaga a lista de outro', deleteDoc(doc(B, 'trades', 'alice')), false)
 
 // Draft entre amigos
 const draftRef = (db) => doc(db, 'drafts', 'd1')
