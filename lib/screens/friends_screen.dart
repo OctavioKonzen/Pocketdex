@@ -5,7 +5,6 @@
 // recorde do Ranked.
 
 import 'package:flutter/material.dart' hide Text;
-import 'package:flutter/material.dart' as m show Text;
 
 import '../i18n/text.dart';
 import '../services/auth_service.dart';
@@ -15,11 +14,10 @@ import '../services/user_data.dart';
 import '../utils/responsive.dart';
 import '../utils/site_ui.dart';
 import '../widgets/account_avatar.dart';
-import 'chat_screen.dart';
+import '../widgets/conversation_list.dart';
 import 'draft_screen.dart';
 import 'quiz_screen.dart';
-import 'team_battle_screen.dart';
-import 'trades_screen.dart';
+import 'turn_battle_screen.dart';
 
 class FriendsScreen extends StatefulWidget {
   const FriendsScreen({super.key});
@@ -131,29 +129,22 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   children: [
                     Expanded(
                       child: PillButton(
-                        label: '🔁 ${tr('Trocas')}',
+                        label: '⚔️ ${tr('Batalha')}',
                         expand: true,
-                        gradient: const LinearGradient(colors: [Color(0xFF16A34A), Color(0xFF0F766E)]),
-                        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TradesScreen())),
+                        gradient: const LinearGradient(colors: [Color(0xFFDC2626), Color(0xFF9333EA)]),
+                        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TurnBattleScreen())),
                       ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: PillButton(
-                        label: '⚔️ ${tr('Batalha')}',
+                        label: '🎯 ${tr('Draft')}',
                         expand: true,
-                        gradient: const LinearGradient(colors: [Color(0xFFDC2626), Color(0xFF9333EA)]),
-                        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TeamBattleScreen())),
+                        gradient: const LinearGradient(colors: [Color(0xFFF59E0B), Color(0xFFEA580C)]),
+                        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DraftsScreen())),
                       ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 10),
-                PillButton(
-                  label: '🎯 ${tr('Draft')}',
-                  expand: true,
-                  gradient: const LinearGradient(colors: [Color(0xFFF59E0B), Color(0xFFEA580C)]),
-                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DraftsScreen())),
                 ),
                 const SizedBox(height: 14),
                 _card(c, tr('Adicionar amigo'), [
@@ -225,9 +216,20 @@ class _FriendsScreenState extends State<FriendsScreen> {
                         ]),
                       ),
                   ]),
+                // Conversas (como no WhatsApp): tocar no amigo abre o chat.
+                _card(c, _service.unreadTotal > 0 ? '💬 ${tr('Conversas')} (${_service.unreadTotal})' : '💬 ${tr('Conversas')}', [
+                  Text('As mensagens somem sozinhas depois de 7 dias.', style: TextStyle(color: c.muted, fontSize: 12)),
+                  const SizedBox(height: 4),
+                  if (!_service.ready)
+                    const Center(child: CircularProgressIndicator())
+                  else if (friends.isEmpty)
+                    Text('Você ainda não tem amigos aqui. Adicione alguém pelo nome.', style: TextStyle(color: c.muted))
+                  else
+                    ConversationList(friends: friends, me: user.uid),
+                ]),
                 _card(c, tr('Amigos ({0})').replaceAll('{0}', '${friends.length}'), [
                   Text(
-                      'Ranking entre vocês pelo recorde do Ranked. Toque no balão para conversar; no fim de um desafio no Jogo, dá para mandar o desafio para um amigo.',
+                      'Ranking entre vocês pelo recorde do Ranked. No fim de um desafio no Jogo, dá para mandar o desafio para um amigo.',
                       style: TextStyle(color: c.muted, fontSize: 12)),
                   const SizedBox(height: 8),
                   if (!_service.ready)
@@ -255,29 +257,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
                                 children: [
                                   Text(friend == null ? '$name · ${tr('você')}' : name,
                                       overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600)),
-                                  if (friend?.lastText != null)
-                                    // A mensagem vai como foi escrita (sem tradução).
-                                    m.Text(friend!.lastText!,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                            fontSize: 12,
-                                            color: friend.unread > 0 ? c.text : c.muted,
-                                            fontWeight: friend.unread > 0 ? FontWeight.bold : null)),
                                 ],
                               ),
                             ),
                             Text('🏆 $score', style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.w900)),
-                            if (friend != null)
-                              IconButton(
-                                tooltip: tr('Conversar'),
-                                icon: Badge(
-                                  isLabelVisible: friend.unread > 0,
-                                  label: m.Text(friend.unread > 9 ? '9+' : '${friend.unread}'),
-                                  child: const Icon(Icons.chat_bubble_outline, color: Color(0xFF38BDF8), size: 22),
-                                ),
-                                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(friend: friend))),
-                              ),
                             if (friend != null)
                               IconButton(
                                 tooltip: tr('Desfazer amizade'),

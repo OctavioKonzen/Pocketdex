@@ -80,16 +80,6 @@ class UserData extends ChangeNotifier {
     return entry is Map ? _ints(entry[shiny ? 's' : 'c']).toSet() : <int>{};
   }
 
-  /// Todos os Pokémon pegos em qualquer jogo (normal ou shiny).
-  Set<int> get allCaught {
-    final all = _data['collection'];
-    if (all is! Map) return <int>{};
-    return {
-      for (final entry in all.values)
-        if (entry is Map) ...[..._ints(entry['c']), ..._ints(entry['s'])],
-    };
-  }
-
   /// Marca/desmarca um Pokémon como pego num jogo.
   void toggleCaught(String game, int id, {bool shiny = false}) {
     final all = _data['collection'] is Map ? Map<String, dynamic>.from(_jsonCopy(_data['collection']) as Map) : <String, dynamic>{};

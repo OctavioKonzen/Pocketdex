@@ -44,17 +44,21 @@ class _Fighter {
 class TeamBattle {
   TeamBattle._();
 
-  static Future<_Fighter?> _fighter(DamageData data, Member m) async {
+  /// O Pokémon da calculadora com o set (Nature, EVs, IVs, item, habilidade).
+  static Future<CalcPokemon?> calcPokemon(DamageData data, Member m) async {
     final row = await LocalDatabase.instance.pokemonRow(m.$1);
     if (row == null) return null;
-    final set = m.$2;
+    return _calcPokemon(data, row, m.$2);
+  }
+
+  static CalcPokemon _calcPokemon(DamageData data, Map<String, dynamic> row, Map<String, dynamic>? set) {
     final stats = [for (final s in row['stats'] as List) (s as List).first as int];
     Map<String, int>? spread(Object? v, int fallback) => v is Map ? {for (final k in statKeys) k: (v[k] as num?)?.toInt() ?? fallback} : null;
     final abilities = [for (final a in (row['abilities'] as List?) ?? const []) (a as List).first as String];
     final ability = data.abilityName('${set?['ability'] ?? ''}').isNotEmpty
         ? data.abilityName('${set?['ability']}')
         : (abilities.isEmpty ? '' : data.abilityName(abilities.first));
-    final pokemon = CalcPokemon(
+    return CalcPokemon(
       data,
       data.speciesName(row['name'] as String),
       baseStats: {for (var i = 0; i < 6; i++) statIds[i]: stats[i]},
@@ -67,6 +71,13 @@ class TeamBattle {
       evs: spread(set?['evs'], 0),
       ivs: spread(set?['ivs'], 31),
     );
+  }
+
+  static Future<_Fighter?> _fighter(DamageData data, Member m) async {
+    final row = await LocalDatabase.instance.pokemonRow(m.$1);
+    if (row == null) return null;
+    final set = m.$2;
+    final pokemon = _calcPokemon(data, row, set);
     bool damaging(String slug) {
       final info = data.move(slug);
       return info != null && info.category != 'Status';

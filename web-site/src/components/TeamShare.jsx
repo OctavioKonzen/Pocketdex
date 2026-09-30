@@ -1,7 +1,7 @@
 // Janelas de compartilhar e importar times (código, link ou texto de simulador).
 
 import { useEffect, useMemo, useState } from 'react'
-import { getAbilities, getItems, getMoves, getPokemonIndex } from '../lib/data'
+import { getAbilities, getItems, getMoves, getPokemonIndex, memberSprite } from '../lib/data'
 import { teamImage } from '../lib/teamImage'
 import { lookupOf } from '../lib/teamSets'
 import { encodeTeam, parseSharedTeam, shareLink, toShowdown } from '../lib/teamShare'
@@ -135,7 +135,7 @@ export function ImportTeamModal({ open, initial = '', onClose, onImport }) {
                 const p = id != null && byId?.get(id)
                 return (
                   <div key={i} className="grid aspect-square place-items-center rounded-full bg-card">
-                    {p && <Sprite path={p.sprite} box={p.box} fill={0.8} className="w-full" />}
+                    {p && <Sprite path={memberSprite(p, team.sets?.[i])} box={p.box} fill={0.8} className="w-full" />}
                   </div>
                 )
               })}

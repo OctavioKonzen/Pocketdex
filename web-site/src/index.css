@@ -227,3 +227,49 @@ body {
     animation: none;
   }
 }
+
+/* ---------------------------------------------------------------- batalha por turnos
+   Animações dos golpes (TurnBattlePage.jsx): quem ataca avança, o golpe
+   especial vira uma bola de energia da cor do tipo, o alvo pisca e treme,
+   quem esquiva pula para o lado e o crítico dá um clarão. */
+.battle-lunge-0 { animation: battle-lunge-0 450ms ease-out; }
+.battle-lunge-1 { animation: battle-lunge-1 450ms ease-out; }
+@keyframes battle-lunge-0 { 40% { transform: translate(14%, -10%); } }
+@keyframes battle-lunge-1 { 40% { transform: translate(-14%, 10%); } }
+.battle-hurt { animation: battle-hurt 520ms linear; }
+@keyframes battle-hurt {
+  0%, 40%, 80% { opacity: 0.15; transform: translateX(-5%); }
+  20%, 60%, 100% { opacity: 1; transform: translateX(5%); }
+}
+.battle-dodge { animation: battle-dodge 420ms ease-in-out; }
+@keyframes battle-dodge { 45% { transform: translateX(22%); } }
+.battle-idle { animation: battle-idle 1.8s ease-in-out infinite; }
+@keyframes battle-idle { 50% { transform: translateY(-3%); } }
+.battle-orb {
+  position: absolute;
+  width: 9%;
+  aspect-ratio: 1;
+  border-radius: 9999px;
+  translate: -50% -50%;
+  animation: battle-orb 380ms ease-in forwards;
+}
+@keyframes battle-orb {
+  from { left: var(--x0); top: var(--y0); scale: 0.5; }
+  to { left: var(--x1); top: var(--y1); scale: 1.3; }
+}
+.battle-burst {
+  position: absolute;
+  width: 22%;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  animation: battle-burst 420ms ease-out forwards;
+}
+@keyframes battle-burst {
+  from { scale: 0.2; opacity: 1; rotate: 0deg; }
+  to { scale: 1.2; opacity: 0; rotate: 45deg; }
+}
+.battle-flash { animation: battle-flash 260ms ease-out forwards; }
+@keyframes battle-flash { from { opacity: 0.85; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .battle-idle { animation: none; }
+}

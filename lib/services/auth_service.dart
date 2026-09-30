@@ -407,6 +407,7 @@ class AuthService extends ChangeNotifier {
           ]);
         } catch (_) {}
 
+        // Lista das antigas Trocas (o recurso saiu), se ainda existir.
         await quiet(_db.collection('trades').doc(uid).delete());
         await quiet(DraftService.instance.deleteAllOf(uid));
         await quiet(_db.collection('confirmations').doc(uid).delete());

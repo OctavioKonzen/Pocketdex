@@ -42,7 +42,7 @@ class TeamSetSummary extends StatelessWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SizedBox(width: 64, height: 64, child: PokemonSprite(slots[i]!, fill: 0.85)),
+                      SizedBox(width: 64, height: 64, child: PokemonSprite(slots[i]!, shiny: i < sets.length && sets[i]?['shiny'] == true, fill: 0.85)),
                       const SizedBox(width: 10),
                       Expanded(child: _details(c, names[slots[i]] ?? '', i < sets.length ? sets[i] : null)),
                     ],

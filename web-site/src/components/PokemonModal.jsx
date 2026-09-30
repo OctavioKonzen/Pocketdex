@@ -1,4 +1,4 @@
-// Página de um Pokémon por cima da tela (trocas, chat...). id pode ser de uma forma.
+// Página de um Pokémon por cima da tela (chat, draft...). id pode ser de uma forma.
 
 import { useEffect, useState } from 'react'
 import DetailsPanel from './DetailsPanel'

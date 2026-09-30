@@ -18,6 +18,12 @@ function load(path) {
 }
 
 /** URL de uma imagem do banco (ex.: "pokemon/25.png"). */
+/** Caminho do sprite shiny de um sprite normal ("pokemon/6.png" → "pokemon/shiny/6.png"). */
+export const shinyPath = (path) => (path ? path.replace(/^pokemon\/(?!shiny\/)/, 'pokemon/shiny/') : path)
+
+/** Sprite do membro do time: shiny se marcado no set. */
+export const memberSprite = (p, set) => (set?.shiny ? shinyPath(p.sprite) : p.sprite)
+
 export function spriteUrl(path) {
   if (!path) return null
   // As artes oficiais estão em WebP no banco.

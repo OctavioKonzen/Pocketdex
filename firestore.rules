@@ -126,20 +126,9 @@ service cloud.firestore {
         && request.resource.data.at == request.time;
     }
 
-    // Trocas: trades/{uid} = {dupes: [id], caught: [id], updatedAt}. A pessoa
-    // escreve a própria lista; os amigos dela leem (para ver o que dá para
-    // trocar).
+    // Trocas (recurso removido): só dá para apagar a própria lista antiga.
     match /trades/{uid} {
-      function isFriend() {
-        return request.auth != null
-          && get(/databases/$(database)/documents/friends/$(request.auth.uid)/list/$(uid)).data.status == 'friends';
-      }
-      allow read: if signedIn(uid) || isFriend();
       allow delete: if signedIn(uid);
-      allow create, update: if signedIn(uid)
-        && request.resource.data.keys().hasOnly(['dupes', 'caught', 'updatedAt'])
-        && request.resource.data.dupes is list && request.resource.data.dupes.size() <= 1100
-        && request.resource.data.caught is list && request.resource.data.caught.size() <= 1100;
     }
 
     // Draft entre amigos: drafts/{id} = {players: [a, b], names: {uid: nome},

@@ -19,13 +19,14 @@ import 'package:pocket_dex/services/daily_widget.dart';
 import 'package:pocket_dex/services/daily_reminder.dart';
 import 'package:pocket_dex/services/user_data.dart';
 import 'package:pocket_dex/widgets/pokemon_sprite.dart';
+import 'package:pocket_dex/widgets/chat_bubble.dart';
 import 'package:pocket_dex/i18n/i18n.dart';
 import 'package:pocket_dex/services/app_settings.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Dados salvos no aparelho (favoritos, times, treinos, tema, recordes e idioma).
-  await Future.wait([UserData.instance.load(), SpriteBoxes.load(), I18n.load(), AppSettings.instance.load()]);
+  await Future.wait([UserData.instance.load(), SpriteBoxes.load(), I18n.load(), AppSettings.instance.load(), ChatBubble.instance.load()]);
   // Tabela Pokémon → espécie (para converter times/treinos da conta) em
   // segundo plano, sem atrasar a abertura do app.
   AccountFormat.init();
@@ -146,6 +147,7 @@ class MyApp extends StatelessWidget {
       darkTheme: siteTheme(SiteColors.dark, Brightness.dark),
       themeMode: themeProvider.themeMode,
       scrollBehavior: const AppScrollBehavior(),
+      navigatorKey: ChatBubble.instance.navigatorKey,
       // Tamanho do texto escolhido nas Configurações (por cima do do aparelho).
       builder: (context, child) => ListenableBuilder(
         listenable: AppSettings.instance,
@@ -154,7 +156,7 @@ class MyApp extends StatelessWidget {
           final scale = AppSettings.instance.textScale;
           return MediaQuery(
             data: scale == 1 ? media : media.copyWith(textScaler: _ScaledText(media.textScaler, scale)),
-            child: WebFrame(child: child!),
+            child: ChatBubbleLayer(child: WebFrame(child: child!)),
           );
         },
       ),

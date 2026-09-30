@@ -6,7 +6,7 @@ import { RatingText } from '../components/TeamAnalysis'
 import { myTeamRatings, useAuth } from '../lib/auth'
 import { useTeamsVersion } from '../lib/sync'
 import { Button, Empty, Icon, Modal, PageHeader } from '../components/ui'
-import { getPokemonById } from '../lib/data'
+import { getPokemonById, memberSprite } from '../lib/data'
 import { useStore } from '../lib/store'
 import Sprite from '../components/Sprite'
 
@@ -105,7 +105,7 @@ export default function TeamsPage() {
                 const p = id && byId?.get(id)
                 return (
                   <div key={i} className="grid aspect-square place-items-center rounded-full bg-surface">
-                    {p && <Sprite path={p.sprite} box={p.box} fill={0.8} className="w-full" />}
+                    {p && <Sprite path={memberSprite(p, team.sets?.[i])} box={p.box} fill={0.8} className="w-full" />}
                   </div>
                 )
               })}

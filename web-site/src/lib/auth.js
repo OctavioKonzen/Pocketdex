@@ -636,47 +636,11 @@ export async function sendMessage(me, otherUid, text, card = null) {
     at: serverTimestamp(),
     ...(card ? { card } : {}),
   })
-  b.update(doc(db, 'friends', otherUid, 'list', me.uid), {
-    name: me.name,
-    unread: increment(1),
-    last: { text: body.slice(0, 100), at: Date.now(), from: me.uid },
-  })
+  const last = { text: body.slice(0, 100), at: Date.now(), from: me.uid }
+  b.update(doc(db, 'friends', otherUid, 'list', me.uid), { name: me.name, unread: increment(1), last })
+  // Do meu lado também (para a lista de Conversas mostrar o que eu mandei).
+  b.update(doc(db, 'friends', me.uid, 'list', otherUid), { last })
   await b.commit()
-}
-
-// ---------------------------------------------------------------- trocas
-//   trades/{uid} → { dupes: [id], caught: [id], updatedAt }
-//   dupes = Pokémon repetidos; caught = todos os pegos (da Coleção). Os amigos leem.
-
-export const TRADES_MAX = 1100
-
-/** Todos os Pokémon pegos em qualquer jogo da Coleção. */
-export const allCaught = (collection = {}) =>
-  [...new Set(Object.values(collection).flatMap((e) => [...(e?.c ?? []), ...(e?.s ?? [])]))].sort((a, b) => a - b).slice(0, TRADES_MAX)
-
-/** Ouve a minha lista de trocas. */
-export async function watchMyTrades(uid, callback) {
-  const { db, doc, onSnapshot } = await firebase()
-  return onSnapshot(doc(db, 'trades', uid), (s) => callback({ dupes: s.data()?.dupes ?? [], caught: s.data()?.caught ?? [] }), () => {})
-}
-
-/** Grava os repetidos e os pegos. */
-export async function saveTrades(uid, dupes, caught) {
-  const { db, doc, setDoc, serverTimestamp } = await firebase()
-  await setDoc(doc(db, 'trades', uid), { dupes: dupes.slice(0, TRADES_MAX), caught: caught.slice(0, TRADES_MAX), updatedAt: serverTimestamp() })
-}
-
-/** Listas dos amigos: {uid: {dupes, caught}} (quem não abriu as Trocas fica de fora). */
-export async function friendTrades(uids) {
-  const { db, doc, getDoc } = await firebase()
-  const entries = await Promise.all(
-    uids.map((uid) =>
-      getDoc(doc(db, 'trades', uid))
-        .then((s) => (s.exists() ? [uid, { dupes: s.data().dupes ?? [], caught: s.data().caught ?? [] }] : null))
-        .catch(() => null),
-    ),
-  )
-  return Object.fromEntries(entries.filter(Boolean))
 }
 
 // ---------------------------------------------------------------- draft
@@ -881,6 +845,7 @@ export async function deleteAccount({ password, weeks = [], days = [], confirmed
     (friends?.docs ?? []).flatMap((d) => [quiet(deleteDoc(doc(db, 'friends', d.id, 'list', uid))), quiet(deleteDoc(d.ref))]),
   )
 
+  // Lista das antigas Trocas (o recurso saiu), se ainda existir.
   await quiet(deleteDoc(doc(db, 'trades', uid)))
   // Drafts de que a conta participou.
   const drafts = await getDocs(query(collection(db, 'drafts'), where('players', 'array-contains', uid))).catch(() => null)

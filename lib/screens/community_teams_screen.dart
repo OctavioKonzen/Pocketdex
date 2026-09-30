@@ -188,7 +188,7 @@ class _CommunityTeamsScreenState extends State<CommunityTeamsScreen> {
                           ],
                         ),
                         const SizedBox(height: 10),
-                        _SpriteRow(slots: _slots(team)),
+                        _SpriteRow(slots: _slots(team), sets: teamSets(_slots(team), team['sets'])),
                       ],
                     ),
                   ),
@@ -202,13 +202,14 @@ class _CommunityTeamsScreenState extends State<CommunityTeamsScreen> {
 
 class _SpriteRow extends StatelessWidget {
   final List<int?> slots;
-  const _SpriteRow({required this.slots});
+  final List<Map<String, dynamic>?> sets;
+  const _SpriteRow({required this.slots, required this.sets});
   @override
   Widget build(BuildContext context) {
     final c = SiteColors.of(context);
     return Row(
       children: [
-        for (final id in slots)
+        for (final (i, id) in slots.indexed)
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 2),
@@ -216,7 +217,7 @@ class _SpriteRow extends StatelessWidget {
                 aspectRatio: 1,
                 child: Container(
                   decoration: BoxDecoration(color: c.surface, shape: BoxShape.circle),
-                  child: id == null ? null : PokemonSprite(id, fill: 0.8),
+                  child: id == null ? null : PokemonSprite(id, shiny: i < sets.length && sets[i]?['shiny'] == true, fill: 0.8),
                 ),
               ),
             ),

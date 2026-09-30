@@ -4628,75 +4628,10 @@
   "fr": "Accueil",
   "es": "Inicio"
  },
- "Trocas": {
-  "en": "Trades",
-  "fr": "Échanges",
-  "es": "Intercambios"
- },
  "Batalha de times": {
   "en": "Team battle",
   "fr": "Combat d'équipes",
   "es": "Batalla de equipos"
- },
- "Meus repetidos ({0})": {
-  "en": "My duplicates ({0})",
-  "fr": "Mes doublons ({0})",
-  "es": "Mis repetidos ({0})"
- },
- "Marque os Pokémon que você tem sobrando para trocar. O que você já pegou vem da sua Coleção.": {
-  "en": "Mark the Pokémon you have spare to trade. What you've caught comes from your Collection.",
-  "fr": "Marquez les Pokémon que vous avez en trop pour échanger. Ceux que vous avez déjà viennent de votre Collection.",
-  "es": "Marca los Pokémon que tienes de sobra para intercambiar. Los que ya atrapaste vienen de tu Colección."
- },
- "Adicionar repetido": {
-  "en": "Add duplicate",
-  "fr": "Ajouter un doublon",
-  "es": "Añadir repetido"
- },
- "+ Adicionar repetido": {
-  "en": "+ Add duplicate",
-  "fr": "+ Ajouter un doublon",
-  "es": "+ Añadir repetido"
- },
- "Adicione amigos para ver as trocas possíveis.": {
-  "en": "Add friends to see possible trades.",
-  "fr": "Ajoutez des amis pour voir les échanges possibles.",
-  "es": "Añade amigos para ver los intercambios posibles."
- },
- "{0} ainda não abriu as Trocas.": {
-  "en": "{0} hasn't opened Trades yet.",
-  "fr": "{0} n'a pas encore ouvert les Échanges.",
-  "es": "{0} aún no abrió los Intercambios."
- },
- "Você pode dar ({0})": {
-  "en": "You can give ({0})",
-  "fr": "Vous pouvez donner ({0})",
-  "es": "Puedes dar ({0})"
- },
- "Pode te dar ({0})": {
-  "en": "Can give you ({0})",
-  "fr": "Peut vous donner ({0})",
-  "es": "Te puede dar ({0})"
- },
- "Nenhum dos seus repetidos falta para essa pessoa.": {
-  "en": "None of your duplicates are missing for this person.",
-  "fr": "Aucun de vos doublons ne manque à cette personne.",
-  "es": "A esta persona no le falta ninguno de tus repetidos."
- },
- "Nenhum repetido dessa pessoa falta para você.": {
-  "en": "None of their duplicates are missing for you.",
-  "fr": "Aucun de ses doublons ne vous manque.",
-  "es": "No te falta ninguno de sus repetidos."
- },
- "Marque seus repetidos e veja o que dá para trocar com cada amigo.": {
-  "en": "Mark your duplicates and see what you can trade with each friend.",
-  "fr": "Marquez vos doublons et voyez ce que vous pouvez échanger avec chaque ami.",
-  "es": "Marca tus repetidos y mira qué puedes intercambiar con cada amigo."
- },
- "Entre na sua conta para trocar com os amigos.": {
-  "en": "Sign in to trade with friends.",
-  "fr": "Connectez-vous pour échanger avec vos amis.",
-  "es": "Inicia sesión para intercambiar con tus amigos."
  },
  "Cada Pokémon do seu time contra cada um do time do amigo, 1 contra 1, com o melhor golpe de cada lado.": {
   "en": "Each Pokémon on your team against each one on your friend's team, 1 on 1, with each side's best move.",
@@ -5327,5 +5262,250 @@
   "en": "Open PocketDex",
   "fr": "Ouvrez PocketDex",
   "es": "Abre PocketDex"
+ },
+ "Conversas": {
+  "en": "Chats",
+  "fr": "Discussions",
+  "es": "Conversaciones"
+ },
+ "💬 Conversas": {
+  "en": "💬 Chats",
+  "fr": "💬 Discussions",
+  "es": "💬 Conversaciones"
+ },
+ "Nenhuma mensagem ainda. Diga oi!": {
+  "en": "No messages yet. Say hi!",
+  "fr": "Aucun message pour l'instant. Dites bonjour !",
+  "es": "Aún no hay mensajes. ¡Saluda!"
+ },
+ "agora": {
+  "en": "now",
+  "fr": "maintenant",
+  "es": "ahora"
+ },
+ "ontem": {
+  "en": "yesterday",
+  "fr": "hier",
+  "es": "ayer"
+ },
+ "As mensagens somem sozinhas depois de 7 dias.": {
+  "en": "Messages disappear on their own after 7 days.",
+  "fr": "Les messages disparaissent d'eux-mêmes après 7 jours.",
+  "es": "Los mensajes desaparecen solos después de 7 días."
+ },
+ "Minimizar": {
+  "en": "Minimize",
+  "fr": "Réduire",
+  "es": "Minimizar"
+ },
+ "Abrir em tela cheia": {
+  "en": "Open full screen",
+  "fr": "Ouvrir en plein écran",
+  "es": "Abrir en pantalla completa"
+ },
+ "{0} usou {1}!": {
+  "en": "{0} used {1}!",
+  "fr": "{0} utilise {1} !",
+  "es": "¡{0} usó {1}!"
+ },
+ "{0} inimigo usou {1}!": {
+  "en": "The foe's {0} used {1}!",
+  "fr": "{0} ennemi utilise {1} !",
+  "es": "¡{0} enemigo usó {1}!"
+ },
+ "O ataque de {0} errou!": {
+  "en": "{0}'s attack missed!",
+  "fr": "L'attaque de {0} a échoué !",
+  "es": "¡El ataque de {0} falló!"
+ },
+ "O ataque de {0} inimigo errou!": {
+  "en": "The foe's {0}'s attack missed!",
+  "fr": "L'attaque de {0} ennemi a échoué !",
+  "es": "¡El ataque de {0} enemigo falló!"
+ },
+ "Não afeta {0}...": {
+  "en": "It doesn't affect {0}...",
+  "fr": "Ça n'affecte pas {0}...",
+  "es": "No afecta a {0}..."
+ },
+ "Não afeta {0} inimigo...": {
+  "en": "It doesn't affect the foe's {0}...",
+  "fr": "Ça n'affecte pas {0} ennemi...",
+  "es": "No afecta a {0} enemigo..."
+ },
+ "{0} foi atingido pelo recuo!": {
+  "en": "{0} is hit with recoil!",
+  "fr": "{0} subit le contrecoup !",
+  "es": "¡{0} sufrió el retroceso!"
+ },
+ "{0} inimigo foi atingido pelo recuo!": {
+  "en": "The foe's {0} is hit with recoil!",
+  "fr": "{0} ennemi subit le contrecoup !",
+  "es": "¡{0} enemigo sufrió el retroceso!"
+ },
+ "{0} desmaiou!": {
+  "en": "{0} fainted!",
+  "fr": "{0} est K.O. !",
+  "es": "¡{0} se debilitó!"
+ },
+ "{0} inimigo desmaiou!": {
+  "en": "The foe's {0} fainted!",
+  "fr": "{0} ennemi est K.O. !",
+  "es": "¡{0} enemigo se debilitó!"
+ },
+ "Volte, {0}!": {
+  "en": "Come back, {0}!",
+  "fr": "Reviens, {0} !",
+  "es": "¡Vuelve, {0}!"
+ },
+ "Vai, {0}!": {
+  "en": "Go, {0}!",
+  "fr": "En avant, {0} !",
+  "es": "¡Adelante, {0}!"
+ },
+ "O adversário chamou {0} de volta!": {
+  "en": "The foe withdrew {0}!",
+  "fr": "L'adversaire rappelle {0} !",
+  "es": "¡El rival retiró a {0}!"
+ },
+ "O adversário mandou {0}!": {
+  "en": "The foe sent out {0}!",
+  "fr": "L'adversaire envoie {0} !",
+  "es": "¡El rival sacó a {0}!"
+ },
+ "Acertou {0} vezes!": {
+  "en": "Hit {0} times!",
+  "fr": "Touché {0} fois !",
+  "es": "¡Golpeó {0} veces!"
+ },
+ "Um golpe crítico!": {
+  "en": "A critical hit!",
+  "fr": "Coup critique !",
+  "es": "¡Un golpe crítico!"
+ },
+ "É super eficaz!": {
+  "en": "It's super effective!",
+  "fr": "C'est super efficace !",
+  "es": "¡Es súper eficaz!"
+ },
+ "Não é muito eficaz...": {
+  "en": "It's not very effective...",
+  "fr": "Ce n'est pas très efficace...",
+  "es": "No es muy eficaz..."
+ },
+ "Você venceu a batalha!": {
+  "en": "You won the battle!",
+  "fr": "Vous avez gagné le combat !",
+  "es": "¡Ganaste el combate!"
+ },
+ "Todos os seus Pokémon desmaiaram... Você perdeu!": {
+  "en": "All your Pokémon fainted... You lost!",
+  "fr": "Tous vos Pokémon sont K.O.... Vous avez perdu !",
+  "es": "Todos tus Pokémon se debilitaron... ¡Perdiste!"
+ },
+ "Você fugiu da batalha!": {
+  "en": "You ran from the battle!",
+  "fr": "Vous avez pris la fuite !",
+  "es": "¡Huiste del combate!"
+ },
+ "🎲 Time aleatório": {
+  "en": "🎲 Random team",
+  "fr": "🎲 Équipe aléatoire",
+  "es": "🎲 Equipo aleatorio"
+ },
+ "Adversário": {
+  "en": "Opponent",
+  "fr": "Adversaire",
+  "es": "Rival"
+ },
+ "Preparando...": {
+  "en": "Getting ready...",
+  "fr": "Préparation...",
+  "es": "Preparando..."
+ },
+ "⚔️ Começar batalha": {
+  "en": "⚔️ Start battle",
+  "fr": "⚔️ Lancer le combat",
+  "es": "⚔️ Empezar combate"
+ },
+ "Começar batalha": {
+  "en": "Start battle",
+  "fr": "Lancer le combat",
+  "es": "Empezar combate"
+ },
+ "O computador joga pelo adversário. Batalha simplificada: só golpes de dano (com PP, precisão, prioridade e crítico), sem status nem clima.": {
+  "en": "The computer plays for the opponent. Simplified battle: only damaging moves (with PP, accuracy, priority and critical hits), no status or weather.",
+  "fr": "L'ordinateur joue pour l'adversaire. Combat simplifié : seulement des attaques qui infligent des dégâts (avec PP, précision, priorité et coups critiques), sans statut ni météo.",
+  "es": "La computadora juega por el rival. Combate simplificado: solo movimientos de daño (con PP, precisión, prioridad y críticos), sin estados ni clima."
+ },
+ "Batalha por turnos como nos jogos: seu time contra o de um amigo (ou um aleatório), com o computador jogando pelo outro lado.": {
+  "en": "Turn-based battle like in the games: your team against a friend's (or a random one), with the computer playing the other side.",
+  "fr": "Combat au tour par tour comme dans les jeux : votre équipe contre celle d'un ami (ou une aléatoire), l'ordinateur jouant l'autre camp.",
+  "es": "Combate por turnos como en los juegos: tu equipo contra el de un amigo (o uno aleatorio), con la computadora jugando del otro lado."
+ },
+ "{0} quer batalhar!": {
+  "en": "{0} wants to battle!",
+  "fr": "{0} veut se battre !",
+  "es": "¡{0} quiere combatir!"
+ },
+ "Um treinador quer batalhar!": {
+  "en": "A trainer wants to battle!",
+  "fr": "Un dresseur veut se battre !",
+  "es": "¡Un entrenador quiere combatir!"
+ },
+ "Escolha o próximo Pokémon.": {
+  "en": "Choose your next Pokémon.",
+  "fr": "Choisissez le prochain Pokémon.",
+  "es": "Elige el siguiente Pokémon."
+ },
+ "Escolha o próximo Pokémon": {
+  "en": "Choose your next Pokémon",
+  "fr": "Choisissez le prochain Pokémon",
+  "es": "Elige el siguiente Pokémon"
+ },
+ "Trocar de Pokémon": {
+  "en": "Switch Pokémon",
+  "fr": "Changer de Pokémon",
+  "es": "Cambiar de Pokémon"
+ },
+ "Desmaiado": {
+  "en": "Fainted",
+  "fr": "K.O.",
+  "es": "Debilitado"
+ },
+ "Fugir da batalha? Conta como derrota.": {
+  "en": "Run from the battle? It counts as a loss.",
+  "fr": "Fuir le combat ? Cela compte comme une défaite.",
+  "es": "¿Huir del combate? Cuenta como derrota."
+ },
+ "Fugir": {
+  "en": "Run",
+  "fr": "Fuite",
+  "es": "Huir"
+ },
+ "LUTAR": {
+  "en": "FIGHT",
+  "fr": "ATTAQUE",
+  "es": "LUCHAR"
+ },
+ "POKÉMON": {
+  "en": "POKÉMON",
+  "fr": "POKÉMON",
+  "es": "POKÉMON"
+ },
+ "FUGIR": {
+  "en": "RUN",
+  "fr": "FUITE",
+  "es": "HUIR"
+ },
+ "Batalhar de novo": {
+  "en": "Battle again",
+  "fr": "Rejouer",
+  "es": "Combatir de nuevo"
+ },
+ "Trocar os times": {
+  "en": "Change teams",
+  "fr": "Changer d'équipes",
+  "es": "Cambiar equipos"
  }
 }

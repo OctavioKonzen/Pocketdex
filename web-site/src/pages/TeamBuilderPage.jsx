@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import PokemonPicker from '../components/PokemonPicker'
 import { ShareTeamModal } from '../components/TeamShare'
 import { Button, Empty, Icon, Loader, Modal } from '../components/ui'
-import { getPokemonById, getSpecies, getTypes } from '../lib/data'
+import { getPokemonById, getSpecies, getTypes, memberSprite } from '../lib/data'
 import { newSet, prettySlug, teamSets } from '../lib/teamSets'
 import TeamMemberEditor from '../components/TeamMemberEditor'
 import TeamAnalysis, { RatingText } from '../components/TeamAnalysis'
@@ -137,7 +137,7 @@ export default function TeamBuilderPage() {
               const set = sets[slot]
               return p ? (
                 <div key={slot}>
-                  <PokemonCard pokemon={p} onClick={() => setEditingSlot(slot)} />
+                  <PokemonCard pokemon={set?.shiny ? { ...p, sprite: memberSprite(p, set) } : p} onClick={() => setEditingSlot(slot)} />
                   <div className="mt-1 px-1 text-xs text-muted">
                     {set?.nickname && <div className="truncate font-bold text-text">{set.nickname}</div>}
                     <div className="truncate">

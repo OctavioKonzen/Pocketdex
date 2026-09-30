@@ -12,7 +12,6 @@ import '../services/auth_service.dart';
 import '../services/draft_service.dart';
 import '../services/friends_service.dart';
 import '../services/local_database.dart';
-import '../services/team_battle.dart';
 import '../services/team_service.dart';
 import '../services/team_share.dart';
 import '../utils/responsive.dart';
@@ -20,7 +19,7 @@ import '../utils/site_ui.dart';
 import '../utils/string_extensions.dart';
 import '../widgets/pokemon_sprite.dart';
 import 'pokedex_screen.dart';
-import 'team_battle_screen.dart';
+import 'turn_battle_screen.dart';
 
 class DraftsScreen extends StatelessWidget {
   const DraftsScreen({super.key});
@@ -134,7 +133,6 @@ class DraftScreen extends StatefulWidget {
 
 class _DraftScreenState extends State<DraftScreen> {
   late final Stream<Draft?> _draft = DraftService.instance.watch(widget.draftId);
-  List<List<Duel?>>? _battle;
   bool _busy = false;
   Map<int, String> _names = {};
 
@@ -166,16 +164,17 @@ class _DraftScreenState extends State<DraftScreen> {
     if (error != null) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(error))));
   }
 
-  Future<void> _fight(Draft d, String me) async {
-    setState(() => _busy = true);
-    final result = await TeamBattle.run([for (final id in d.of(me)) (id, null)], [for (final id in d.of(d.other(me))) (id, null)]);
-    if (mounted) {
-      setState(() {
-        _busy = false;
-        _battle = result;
-      });
-    }
-  }
+  /// Batalha por turnos com os times do draft (o computador joga pelo amigo).
+  void _fight(Draft d, String me) => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => TurnBattleScreen(
+            mine: [for (final id in d.of(me)) (id, null)],
+            theirs: [for (final id in d.of(d.other(me))) (id, null)],
+            foeName: d.names[d.other(me)] ?? '',
+          ),
+        ),
+      );
 
   Future<void> _save(Draft d, String me) async {
     final ids = d.of(me);
@@ -261,21 +260,13 @@ class _DraftScreenState extends State<DraftScreen> {
                   ),
                 if (d.done) ...[
                   PillButton(
-                    label: _busy ? tr('Calculando...') : '⚔️ ${tr('Batalhar!')}',
+                    label: '⚔️ ${tr('Batalhar!')}',
                     expand: true,
                     gradient: const LinearGradient(colors: [Color(0xFFDC2626), Color(0xFF9333EA)]),
-                    onPressed: _busy ? null : () => _fight(d, me),
+                    onPressed: () => _fight(d, me),
                   ),
                   const SizedBox(height: 8),
                   OutlinedButton.icon(onPressed: () => _save(d, me), icon: const Icon(Icons.save_alt), label: const Text('Salvar meu time')),
-                ],
-                if (_battle != null) ...[
-                  const SizedBox(height: 16),
-                  BattleResultView(
-                    result: _battle!,
-                    mine: BattleTeam(tr('Você'), [for (final id in d.of(me)) (id, null)]),
-                    theirs: BattleTeam(d.names[other] ?? '', [for (final id in d.of(other)) (id, null)]),
-                  ),
                 ],
                 const SizedBox(height: 16),
                 TextButton.icon(

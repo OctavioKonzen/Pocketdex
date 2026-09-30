@@ -6,7 +6,7 @@ import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 import { initializeApp } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
-import { getFirestore } from 'firebase-admin/firestore'
+import { getFirestore, Timestamp } from 'firebase-admin/firestore'
 
 process.env.FIRESTORE_EMULATOR_HOST ??= '127.0.0.1:8085'
 process.env.FIREBASE_AUTH_EMULATOR_HOST ??= '127.0.0.1:9099'
@@ -41,7 +41,9 @@ await set('drafts/bom', { players: ['viva', 'amiga'], picks: {} })
 await set('drafts/ruim', { players: ['viva', 'morta'], picks: {} })
 await set('trades/viva', { dupes: [1], caught: [1] })
 await set('trades/morta', { dupes: [2], caught: [2] })
-await set('chats/amiga_viva/messages/m1', { from: 'viva', text: 'oi', at: 1 })
+await set('chats/amiga_viva/messages/m1', { from: 'viva', text: 'oi', at: Timestamp.now() })
+await set('chats/amiga_viva/messages/velha', { from: 'viva', text: 'faz tempo', at: Timestamp.fromMillis(Date.now() - 8 * 86400000) })
+await set('friends/amiga/list/viva', { name: 'Viva', status: 'friends', unread: 1, last: { text: 'faz tempo', at: Date.now() - 8 * 86400000, from: 'viva' } })
 await set('chats/morta_viva/messages/m1', { from: 'morta', text: 'oi', at: 1 })
 
 execFileSync('node', [new URL('./cleanup.mjs', import.meta.url).pathname], { stdio: 'inherit', env: { ...process.env, FIREBASE_SERVICE_ACCOUNT: '' } })
@@ -59,8 +61,10 @@ assert.deepEqual(await ids('publicTeams/daViva/reports'), [])
 assert.deepEqual(await ids('friends/viva/list'), ['amiga'])
 assert.deepEqual(await ids('friends/morta/list'), [])
 assert.deepEqual(await ids('chats/amiga_viva/messages'), ['m1'])
+const preview = (await db.doc('friends/amiga/list/viva').get()).data()
+assert.deepEqual([preview.last, preview.unread], [null, 0])
 assert.deepEqual(await ids('chats/morta_viva/messages'), [])
-assert.deepEqual(await ids('trades'), ['viva'])
+assert.deepEqual(await ids('trades'), [])
 assert.deepEqual(await ids('drafts'), ['bom'])
 // "outra" também não existe: a nota do time fica zerada.
 const team = (await db.doc('publicTeams/daViva').get()).data()

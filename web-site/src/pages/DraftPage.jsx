@@ -4,7 +4,6 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import BattleResult from '../components/BattleResult'
 import PokeIcon from '../components/PokeIcon'
 import PokemonPicker from '../components/PokemonPicker'
 import { Button, Empty, Icon, PageHeader } from '../components/ui'
@@ -13,7 +12,6 @@ import { friendsOnly, useFriends } from '../lib/friends'
 import { usePokemonIndex } from '../lib/pokemonIndex'
 import { prettyName } from '../lib/pokemon'
 import { useStore } from '../lib/store'
-import { runBattle } from '../lib/teamBattle'
 
 const CARD = 'rounded-2xl bg-card p-5 shadow'
 
@@ -153,8 +151,6 @@ function DraftRoom({ id }) {
   const navigate = useNavigate()
   const [picking, setPicking] = useState(false)
   const [error, setError] = useState(null)
-  const [battle, setBattle] = useState(null)
-  const [busy, setBusy] = useState(false)
   if (!user) return <Empty>Entre na sua conta para fazer drafts com os amigos.</Empty>
   if (draft === undefined) return null
   if (draft === null) return <Empty>Esse draft foi apagado.</Empty>
@@ -176,11 +172,8 @@ function DraftRoom({ id }) {
       setError(errorMessage(e))
     }
   }
-  const fight = async () => {
-    setBusy(true)
-    setBattle(await runBattle(mine.map((pid) => ({ id: pid })), theirs.map((pid) => ({ id: pid }))))
-    setBusy(false)
-  }
+  // Batalha por turnos com os times do draft (o computador joga pelo amigo).
+  const fight = () => navigate('/amigos/batalha', { state: { mine, theirs, foeName: draft.names?.[other] ?? '' } })
   return (
     <div className="mx-auto max-w-3xl space-y-5">
       <Link to="/amigos/draft" className="inline-flex items-center gap-1 text-sm text-muted hover:text-text">
@@ -201,8 +194,8 @@ function DraftRoom({ id }) {
       )}
       {done && (
         <div className="flex flex-wrap gap-2">
-          <Button color="linear-gradient(90deg,#DC2626,#9333EA)" className="flex-1" disabled={busy} onClick={fight}>
-            {busy ? 'Calculando...' : '⚔️ Batalhar!'}
+          <Button color="linear-gradient(90deg,#DC2626,#9333EA)" className="flex-1" onClick={fight}>
+            ⚔️ Batalhar!
           </Button>
           <Button
             color="#546E7A"
@@ -212,7 +205,6 @@ function DraftRoom({ id }) {
           </Button>
         </div>
       )}
-      {battle && <BattleResult result={battle} a={mine.map((pid) => ({ id: pid }))} b={theirs.map((pid) => ({ id: pid }))} />}
       <button
         type="button"
         onClick={async () => {

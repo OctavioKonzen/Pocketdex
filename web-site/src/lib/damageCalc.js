@@ -439,3 +439,29 @@ export function koTextPt(ko, max) {
   }
   return one(text)
 }
+
+// ------------------------------------------------------------------ batalha por turnos
+
+/**
+ * Um golpe na batalha por turnos (turnBattle.js): os 16 danos possíveis de
+ * cada acerto e a eficácia do tipo (0 = não afeta). att/def: {base, side, hp, maxHp}.
+ */
+export function battleHit(att, def, slug, crit) {
+  const data = moveData(slug)
+  if (!data) return null
+  try {
+    const a = makePokemon(att.base, { ...att.side, hpPct: (att.hp / att.maxHp) * 100 })
+    const d = makePokemon(def.base, { ...def.side, hpPct: (def.hp / def.maxHp) * 100 })
+    const move = new Move(gen, data.name, { isCrit: crit, ability: a.ability, item: a.item })
+    const result = calculate(gen, a, d, move, makeField(newField()))
+    const raw = result.damage
+    const rolls = typeof raw === 'number' ? [[raw]] : typeof raw[0] === 'number' ? [raw] : raw
+    const type = gen.types.get(toId(result.move.type))
+    let eff = 1
+    for (const t of d.types) eff *= type?.effectiveness?.[t] ?? 1
+    if (rolls.every((r) => r.every((x) => x === 0))) eff = 0
+    return { rolls, eff }
+  } catch {
+    return null
+  }
+}

@@ -163,8 +163,11 @@ try {
   await editor.locator('select').filter({ hasText: 'Jolly' }).selectOption('Jolly')
   // Campos de número: nível, depois EVs e IVs de cada status (HP, Attack...).
   await editor.locator('input[type=number]').nth(3).fill('252') // EVs de Attack
+  await editor.getByText('Shiny ✨').click()
   await page.keyboard.press('Escape')
   await page.getByText('Earthquake').first().waitFor({ timeout: 5000 })
+  // Marcado como shiny: aparece shiny no time.
+  await page.locator('img[src*="shiny/445."]').first().waitFor({ timeout: 10000 })
   await page.getByRole('button', { name: 'Compartilhar' }).click()
   // O texto do time é montado logo depois de abrir: espera ele aparecer.
   await page.waitForFunction(() => document.querySelector('textarea')?.value.includes('Garchomp @ Choice Scarf'), null, { timeout: 20000 })
@@ -214,36 +217,68 @@ try {
   assert.equal(await friendDocs(), 2, `${step}: devia ter os dois lados da amizade`)
 
   step = 'amigos: chat'
-  await page.getByRole('link', { name: 'Conversar' }).click()
-  await page.getByText('Nenhuma mensagem ainda').waitFor({ timeout: 15000 })
-  await page.getByPlaceholder('Mensagem').fill('Oi! Bora batalhar?')
+  // No PC a conversa abre na janelinha do canto (como no Facebook).
+  const win = (p) => p.getByTestId('chat-window')
+  await page.getByRole('link', { name: `Conversar: ${friend.name}` }).click()
+  await win(page).getByText('Nenhuma mensagem ainda').waitFor({ timeout: 15000 })
+  await win(page).getByPlaceholder('Mensagem').fill('Oi! Bora batalhar?')
   await page.keyboard.press('Enter')
-  await page.getByText('Oi! Bora batalhar?').waitFor({ timeout: 15000 })
+  await win(page).getByText('Oi! Bora batalhar?').waitFor({ timeout: 15000 })
   // O amigo vê a última mensagem e o aviso de não lida na lista.
   await page2.getByText('Oi! Bora batalhar?').waitFor({ timeout: 15000 })
-  await page2.getByRole('link', { name: 'Conversar' }).click()
-  await page2.getByText('Oi! Bora batalhar?').waitFor({ timeout: 15000 })
-  await page2.getByPlaceholder('Mensagem').fill('Bora!')
-  await page2.getByRole('button', { name: 'Enviar' }).click()
-  await page.getByText('Bora!', { exact: true }).waitFor({ timeout: 15000 })
+  await page2.getByRole('link', { name: `Conversar: ${user.name}` }).click()
+  await win(page2).getByText('Oi! Bora batalhar?').waitFor({ timeout: 15000 })
+  await win(page2).getByPlaceholder('Mensagem').fill('Bora!')
+  await win(page2).getByRole('button', { name: 'Enviar' }).click()
+  await win(page).getByText('Bora!', { exact: true }).waitFor({ timeout: 15000 })
   assert.equal(await friendDocs('messages'), 2, `${step}: devia ter 2 mensagens`)
 
   step = 'amigos: mandar time no chat'
-  await page.getByRole('button', { name: 'Mandar Pokémon ou time' }).click()
-  await page.getByRole('button', { name: /Areia/ }).click()
-  await page2.getByRole('button', { name: 'Salvar nos meus times' }).click({ timeout: 15000 })
+  await win(page).getByRole('button', { name: 'Mandar Pokémon ou time' }).click()
+  await win(page).getByRole('button', { name: /Areia/ }).click()
+  await win(page2).getByRole('button', { name: 'Salvar nos meus times' }).click({ timeout: 15000 })
   await page2.waitForURL(/#\/times\//, { timeout: 15000 })
   // O time salvo pelo amigo vira público quando a conta dele sincroniza.
   for (let i = 0; i < 60 && (await emulatorDocs('publicTeams')).length < 2; i++) await page.waitForTimeout(1000)
   assert.equal((await emulatorDocs('publicTeams')).length, 2, `${step}: o time do amigo não ficou público`)
 
-  step = 'amigos: batalha de times'
+  step = 'amigos: janelinha e bolinha do chat'
+  // A janelinha segue aberta em outras páginas; minimizar vira a bolinha,
+  // clicar na bolinha abre de novo, dá para abrir em tela cheia e o X fecha.
   await go('amigos/batalha')
+  await win(page).getByRole('button', { name: 'Minimizar' }).click()
+  await page.getByTestId('chat-bubble').getByRole('button', { name: new RegExp(friend.name) }).click()
+  await win(page).getByRole('link', { name: 'Abrir em tela cheia' }).click()
+  await page.waitForURL(/#\/amigos\/chat\//, { timeout: 15000 })
+  // Espera a página do chat (com o botão Voltar) terminar de abrir.
+  await page.getByRole('link', { name: 'Voltar' }).waitFor({ timeout: 15000 })
+  await page.getByText('Bora!', { exact: true }).waitFor({ timeout: 15000 })
+  await go('amigos/batalha')
+  await page.getByTestId('chat-bubble').getByRole('button', { name: 'Fechar' }).click()
+  await page.getByTestId('chat-bubble').waitFor({ state: 'detached', timeout: 15000 })
+  await win(page2).getByRole('button', { name: 'Fechar' }).click()
+  await win(page2).waitFor({ state: 'detached', timeout: 15000 })
+
+  step = 'amigos: batalha de times'
   await page.locator('select').nth(0).selectOption({ label: 'Areia' })
   await page.locator('select').nth(1).selectOption({ label: friend.name })
   await page.locator('select').nth(2).selectOption({ label: 'Areia' })
-  await page.getByRole('button', { name: '⚔️ Batalhar!' }).click()
-  await page.getByText(/de 1 confrontos/).waitFor({ timeout: 30000 })
+  await page.getByRole('button', { name: '⚔️ Começar batalha' }).click()
+  await page.getByText(`${friend.name} quer batalhar!`).waitFor({ timeout: 30000 })
+  // Joga até o fim: LUTAR e o primeiro golpe; clicar no texto adianta as falas.
+  for (let i = 0; ; i++) {
+    assert.ok(i < 150, `${step}: a batalha não terminou`)
+    if (await page.getByRole('button', { name: 'Batalhar de novo' }).isVisible()) break
+    if (await page.getByRole('button', { name: '▸ LUTAR' }).isVisible()) {
+      await page.getByRole('button', { name: '▸ LUTAR' }).click()
+      await page.getByTestId('moves').getByRole('button').first().click()
+    } else if (await page.getByTestId('party').isVisible()) {
+      await page.getByTestId('party').locator('button:not([disabled])').first().click()
+    } else await page.getByTestId('battle-text').click()
+    await page.waitForTimeout(150)
+  }
+  const end = await page.getByTestId('battle-text').innerText()
+  assert.ok(/venceu|perdeu/.test(end), `${step}: fim estranho: ${end}`)
   await expectHealthy()
 
   step = 'batalha: quem vence'
@@ -272,17 +307,23 @@ try {
   }
   await page.getByText('Draft completo! Hora de batalhar.').waitFor({ timeout: 15000 })
   await page.getByRole('button', { name: '⚔️ Batalhar!' }).click()
-  await page.getByText(/de 9 confrontos/).waitFor({ timeout: 30000 })
+  // Vira uma batalha por turnos com os times do draft; fugir encerra.
+  await page.getByRole('button', { name: '▸ LUTAR' }).waitFor({ timeout: 30000 })
+  page.once('dialog', (d) => d.accept())
+  await page.getByRole('button', { name: '▸ FUGIR' }).click()
+  await page.getByText('Você fugiu da batalha!').waitFor({ timeout: 15000 })
   await expectHealthy()
 
-  step = 'amigos: trocas'
+  step = 'amigos: conversas'
+  // As conversas ficam na própria tela de Amigos (como no WhatsApp).
+  await go('amigos')
+  await page.getByText(/^Você:/).waitFor({ timeout: 15000 })
+  await page.getByRole('link', { name: `Conversar: ${friend.name}` }).click()
+  await win(page).getByRole('button', { name: 'Fechar' }).click()
+  // Link antigo das Trocas cai em Amigos.
   await go('amigos/trocas')
-  await page.getByRole('button', { name: '+ Adicionar repetido' }).click()
-  await page.getByPlaceholder('Procurar por nome ou número').fill('pikachu')
-  await page.getByRole('dialog').getByRole('button', { name: /pikachu/i }).first().click()
-  await page.getByText('Meus repetidos (1)').waitFor({ timeout: 15000 })
-  await page2.evaluate(() => (location.hash = '#/amigos/trocas'))
-  await page2.getByText('Pode te dar (1)').waitFor({ timeout: 15000 })
+  await page.waitForURL(/#\/amigos$/, { timeout: 15000 })
+  await expectHealthy()
   await friendCtx.close()
 
   step = 'excluir conta'
@@ -301,10 +342,9 @@ try {
   assert.ok(!(await emulatorDocs('usernames')).includes(user.name.toLowerCase()), `${step}: sobrou o nome`)
   assert.equal(await friendDocs(), 0, `${step}: sobrou amizade`)
   assert.equal(await friendDocs('messages'), 0, `${step}: sobrou mensagem de chat`)
-  // O amigo continua com a conta: sobra só o time dele (ele não marcou repetidos).
+  // O amigo continua com a conta: sobra só o time dele.
   assert.equal((await emulatorDocs('publicTeams')).length, 1, `${step}: sobrou time público da conta excluída`)
   assert.equal((await emulatorDocs('drafts')).length, 0, `${step}: sobrou draft`)
-  assert.equal((await emulatorDocs("trades")).length, 0, `${step}: sobrou a lista de trocas (${(await emulatorDocs("trades")).length})`)
 
   step = 'criar de novo com o mesmo e-mail e nome'
   await page.getByRole('button', { name: 'Criar conta' }).first().click()

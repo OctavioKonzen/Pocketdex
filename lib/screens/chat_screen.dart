@@ -19,6 +19,7 @@ import '../services/user_data.dart';
 import '../utils/site_ui.dart';
 import '../utils/string_extensions.dart';
 import '../widgets/account_avatar.dart';
+import '../widgets/chat_bubble.dart';
 import '../widgets/pokemon_sprite.dart';
 import 'pokedex_screen.dart';
 import 'pokemon_detail_screen.dart';
@@ -44,11 +45,16 @@ class _ChatScreenState extends State<ChatScreen> {
     super.initState();
     _service.addListener(_markRead);
     _markRead();
+    // Abriu a conversa: o amigo vira a bolinha do chat (escondida enquanto
+    // este chat está aberto).
+    ChatBubble.instance.opened(widget.friend.uid);
+    ChatBubble.instance.show(widget.friend.uid);
   }
 
   @override
   void dispose() {
     _service.removeListener(_markRead);
+    ChatBubble.instance.closed(widget.friend.uid);
     _text.dispose();
     _scroll.dispose();
     super.dispose();

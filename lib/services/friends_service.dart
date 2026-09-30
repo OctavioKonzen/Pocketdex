@@ -22,10 +22,13 @@ class Friend {
   final String status;
   final Map<String, dynamic>? challenge;
 
-  /// Mensagens do chat ainda não lidas e o texto da última.
+  /// Mensagens do chat ainda não lidas e a última (texto, quando e de quem).
   final int unread;
   final String? lastText;
-  const Friend(this.uid, this.name, this.avatar, this.status, this.challenge, {this.unread = 0, this.lastText});
+  final int? lastAt;
+  final String? lastFrom;
+  const Friend(this.uid, this.name, this.avatar, this.status, this.challenge,
+      {this.unread = 0, this.lastText, this.lastAt, this.lastFrom});
 
   factory Friend.fromDoc(String uid, Map<String, dynamic> d) => Friend(
         uid,
@@ -35,6 +38,8 @@ class Friend {
         d['challenge'] is Map ? Map<String, dynamic>.from(d['challenge'] as Map) : null,
         unread: (d['unread'] as num?)?.toInt() ?? 0,
         lastText: d['last'] is Map ? (d['last'] as Map)['text'] as String? : null,
+        lastAt: d['last'] is Map ? ((d['last'] as Map)['at'] as num?)?.toInt() : null,
+        lastFrom: d['last'] is Map ? (d['last'] as Map)['from'] as String? : null,
       );
 
   bool get isFriend => status == 'friends';
@@ -58,7 +63,8 @@ class FriendsService extends ChangeNotifier {
   List<Friend> get challenges => list.where((f) => f.hasChallenge).toList();
 
   /// Pedidos recebidos + desafios esperando + mensagens não lidas (o aviso no avatar).
-  int get pending => incoming.length + challenges.length + friends.fold(0, (n, f) => n + f.unread);
+  int get unreadTotal => friends.fold(0, (n, f) => n + f.unread);
+  int get pending => incoming.length + challenges.length + unreadTotal;
 
   void start() {
     _auth.addListener(_onAuth);
@@ -171,6 +177,11 @@ class FriendsService extends ChangeNotifier {
     final body = text.trim();
     if (body.isEmpty) return;
     final clipped = body.length > chatMax ? body.substring(0, chatMax) : body;
+    final last = {
+      'text': clipped.length > 100 ? clipped.substring(0, 100) : clipped,
+      'at': DateTime.now().millisecondsSinceEpoch,
+      'from': _me,
+    };
     final batch = _db.batch()
       ..set(_messages(_me, friendUid).doc(), {
         'from': _me,
@@ -181,12 +192,10 @@ class FriendsService extends ChangeNotifier {
       ..update(_doc(friendUid, _me), {
         'name': _myName,
         'unread': FieldValue.increment(1),
-        'last': {
-          'text': clipped.length > 100 ? clipped.substring(0, 100) : clipped,
-          'at': DateTime.now().millisecondsSinceEpoch,
-          'from': _me,
-        },
-      });
+        'last': last,
+      })
+      // Do meu lado também (para a lista de Conversas mostrar o que eu mandei).
+      ..update(_doc(_me, friendUid), {'last': last});
     await batch.commit();
   }
 

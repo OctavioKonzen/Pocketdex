@@ -11,7 +11,7 @@ import Sprite from '../components/Sprite'
 import TeamAnalysis, { RatingText, Stars } from '../components/TeamAnalysis'
 import { Button, Empty, Icon, Loader, Modal, PageHeader, SearchInput } from '../components/ui'
 import { errorMessage, getMyVote, getPublicTeam, rateTeam, REPORT_LIMIT, reportTeam, searchPublicTeams, useAuth } from '../lib/auth'
-import { getPokemonById, getTypes } from '../lib/data'
+import { getPokemonById, getTypes, memberSprite } from '../lib/data'
 import { analyzeTeam } from '../lib/pokemon'
 import { useStore } from '../lib/store'
 import { natureLabel, prettySlug, STAT_KEYS, STAT_LABELS, teamSets } from '../lib/teamSets'
@@ -125,7 +125,7 @@ function PublicTeamCard({ team, byId, mine, onOpen, onOwner }) {
           const p = id != null && byId.get(id)
           return (
             <div key={i} className="grid aspect-square place-items-center rounded-full bg-surface">
-              {p && <Sprite path={p.sprite} box={p.box} fill={0.8} className="w-full" />}
+              {p && <Sprite path={memberSprite(p, teamSets(team)[i])} box={p.box} fill={0.8} className="w-full" />}
             </div>
           )
         })}
@@ -201,7 +201,7 @@ function PublicTeamModal({ team, byId, onClose, onChange, onGone }) {
             const evs = set ? STAT_KEYS.filter((k) => set.evs[k]).map((k) => `${set.evs[k]} ${STAT_LABELS[k]}`).join(' / ') : ''
             return (
               <div key={i} className="flex gap-3 rounded-2xl bg-surface p-3">
-                <Sprite path={p.sprite} box={p.box} fill={0.85} className="h-20 w-20 shrink-0" />
+                <Sprite path={memberSprite(p, set)} box={p.box} fill={0.85} className="h-20 w-20 shrink-0" />
                 <div className="min-w-0 text-xs">
                   <div className="truncate text-sm font-bold">
                     {set?.nickname ? `${set.nickname} (${prettyName(p.name)})` : prettyName(p.name)}

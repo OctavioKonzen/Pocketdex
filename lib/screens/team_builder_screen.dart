@@ -373,7 +373,11 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen>
                 ),
                 itemCount: 6,
                 itemBuilder: (context, index) =>
-                    TeamPokemonCard(pokemonData: pokemonDataForSlot(index), onTap: () => _handleSlotTap(index)),
+                    TeamPokemonCard(
+                  pokemonData: pokemonDataForSlot(index),
+                  shiny: _editableTeam.sets[index]?['shiny'] == true,
+                  onTap: () => _handleSlotTap(index),
+                ),
               ),
               if (hasPokemon) ...[
                 const SizedBox(height: 12),
