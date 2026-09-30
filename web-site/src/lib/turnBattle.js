@@ -9,12 +9,13 @@
 // computador. Sem status, clima, efeitos secundários nem mudança de atributos.
 //
 // Pokémon: {id, name, level, maxHp, hp, spe, types,
-//           moves: [{slug, name, type, power, accuracy, pp, maxPp, priority}]}
+//           moves: [{slug, name, type, category, power, accuracy, pp, maxPp, priority}]}
 // Eventos (para a tela ir mostrando): {t: 'text', key, args} | {t: 'hp', side, hp}
 //   | {t: 'switch', side, index} | {t: 'faint', side}
+//   | {t: 'attack', side, type, category} (animação do golpe) | {t: 'miss', side}
 // Lado 0 = você, lado 1 = o computador.
 
-export const STRUGGLE = { slug: 'struggle', name: 'Struggle', type: 'normal', power: 50, accuracy: null, pp: 1, maxPp: 1, priority: 0 }
+export const STRUGGLE = { slug: 'struggle', name: 'Struggle', type: 'normal', category: 'physical', power: 50, accuracy: null, pp: 1, maxPp: 1, priority: 0 }
 const CRIT_CHANCE = 1 / 24
 
 /** Nova batalha. teams: [meus Pokémon, os do computador]; random: () => [0, 1). */
@@ -91,9 +92,11 @@ function doMove(battle, side, moveIndex, hit, events) {
   if (moveIndex >= 0) move.pp -= 1
   say(events, 'used', label(battle, side), move.name)
   if (move.accuracy != null && battle.random() * 100 >= move.accuracy) {
+    events.push({ t: 'miss', side })
     say(events, 'missed', label(battle, side))
     return
   }
+  events.push({ t: 'attack', side, type: move.type, category: move.category })
   const crit = battle.random() < CRIT_CHANCE
   const r = hit(mon, target, move.slug, crit)
   if (!r || r.eff === 0) {

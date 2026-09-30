@@ -3,7 +3,7 @@
 // aleatório), com o computador jogando pelo outro lado. O motor fica em
 // lib/turnBattle.js e os Pokémon são montados em lib/battleSetup.js.
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { forwardRef, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import PokeIcon from '../components/PokeIcon'
 import { Button, Empty, Icon, PageHeader } from '../components/ui'
@@ -155,17 +155,68 @@ function InfoBox({ mon, hp, mine }) {
   )
 }
 
-function BattleSprite({ mon, back, fainted, byId }) {
+// Sprites animados do Black & White (oficiais, do #1 ao #649), de frente e
+// de costas, direto do repositório de sprites da PokeAPI. Do #650 em diante
+// (ou sem internet) fica o sprite parado de sempre, balançando de leve.
+const BW_ANIMATED = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated'
+const bwAnimated = (id, back, shiny) => (id >= 1 && id <= 649 ? `${BW_ANIMATED}/${back ? 'back/' : ''}${shiny ? 'shiny/' : ''}${id}.gif` : null)
+
+const BattleSprite = forwardRef(function BattleSprite({ mon, back, fainted, byId }, ref) {
   const p = byId?.get(mon.id)
+  const url = bwAnimated(mon.id, back, mon.shiny)
+  const box = useRef(null)
+  const [boxWidth, setBoxWidth] = useState(0)
+  const [gif, setGif] = useState(null) // {url, w} quando carrega; {url, failed} se não der
+  useEffect(() => {
+    const el = box.current
+    if (!el) return undefined
+    const observer = new ResizeObserver(() => setBoxWidth(el.clientWidth))
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+  const loaded = gif?.url === url && gif.w
+  const failed = !url || (gif?.url === url && gif.failed)
   return (
-    <div
-      className={`aspect-square w-full transition-all duration-500 ${fainted ? 'translate-y-10 opacity-0' : ''} ${back ? '-scale-x-100' : ''}`}
-    >
-      {/* O seu fica de costas (espelhado), como nos jogos. */}
-      {p && <Sprite path={p.sprite} box={p.box} fill={0.95} align="bottom" alt={mon.name} />}
+    <div ref={box} className={`aspect-square w-full transition-all duration-500 ${fainted ? 'translate-y-10 opacity-0' : ''}`}>
+      <div ref={ref} className="relative h-full w-full">
+        {!failed && (
+          // Tamanho de verdade do sprite (os pequenos continuam pequenos, como no jogo).
+          <img
+            src={url}
+            alt={mon.name}
+            draggable={false}
+            onLoad={(e) => setGif({ url, w: e.currentTarget.naturalWidth })}
+            onError={() => setGif({ url, failed: true })}
+            className="pixelated pointer-events-none absolute bottom-0 left-1/2 max-w-none -translate-x-1/2"
+            style={{ width: loaded ? (gif.w * boxWidth) / 96 : 0, visibility: loaded ? 'visible' : 'hidden' }}
+          />
+        )}
+        {(failed || !loaded) && p && (
+          // O seu fica de costas (espelhado), como nos jogos.
+          <div className={`battle-idle h-full w-full ${back ? '-scale-x-100' : ''} ${!failed ? 'opacity-0' : ''}`}>
+            <Sprite path={p.sprite} box={p.box} fill={0.95} align="bottom" alt={mon.name} />
+          </div>
+        )}
+      </div>
     </div>
   )
+})
+
+/** Onde fica o meio de cada Pokémon no campo (em %), para as bolas de energia. */
+const CENTER = [
+  { x: '24%', y: '70%' },
+  { x: '76%', y: '26%' },
+]
+
+/** Reinicia uma animação de CSS num elemento. */
+function pulse(el, cls, ms) {
+  if (!el) return
+  el.classList.remove(cls)
+  void el.offsetWidth
+  el.classList.add(cls)
+  setTimeout(() => el.classList.remove(cls), ms)
 }
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 /** A batalha em si. */
 function Battle({ battle, foeName, hit, onExit, onAgain }) {
@@ -181,11 +232,30 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
   const [busy, setBusy] = useState(false)
   const [menu, setMenu] = useState('main') // main | fight | party
   const skip = useRef(null)
+  const sprites = [useRef(null), useRef(null)]
+  const [effect, setEffect] = useState(null) // {kind: 'orb' | 'burst' | 'flash', ...}
+  const effectKey = useRef(0)
+  const show = (fx) => setEffect({ ...fx, key: ++effectKey.current })
 
   const play = async (events) => {
     setBusy(true)
     for (const e of events) {
-      if (e.t === 'text') {
+      if (e.t === 'attack') {
+        // Quem ataca avança; golpe especial vira uma bola de energia até o alvo.
+        const target = 1 - e.side
+        const color = typeColor(e.type)
+        pulse(sprites[e.side].current, `battle-lunge-${e.side}`, 450)
+        if (e.category === 'special') {
+          show({ kind: 'orb', color, from: CENTER[e.side], to: CENTER[target] })
+          await wait(380)
+        } else await wait(200)
+        show({ kind: 'burst', color, at: CENTER[target] })
+        await wait(260)
+      } else if (e.t === 'miss') {
+        pulse(sprites[1 - e.side].current, 'battle-dodge', 420)
+        await wait(300)
+      } else if (e.t === 'text') {
+        if (e.key === 'crit') show({ kind: 'flash' })
         setText(format(e))
         await new Promise((resolve) => {
           const id = setTimeout(resolve, STEP_MS)
@@ -193,7 +263,10 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
         })
         skip.current = null
       } else if (e.t === 'hp') {
+        pulse(sprites[e.side].current, 'battle-hurt', 520)
         setShown((s) => ({ ...s, hp: s.hp.map((side, i) => (i === e.side ? side.map((hp, j) => (j === s.active[i] ? e.hp : hp)) : side)) }))
+        // Espera piscar e a barra de HP descer.
+        await wait(550)
       } else if (e.t === 'faint') {
         setShown((s) => ({ ...s, fainted: s.fainted.map((f, i) => (i === e.side ? true : f)) }))
       } else if (e.t === 'switch') {
@@ -234,12 +307,36 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
         </div>
         <div className="absolute top-[38%] right-[6%] h-[9%] w-[35%] rounded-[50%] bg-green-800/35" />
         <div className="absolute top-[3%] right-[10%] w-[27%]">
-          <BattleSprite mon={foe} fainted={shown.fainted[1]} byId={byId} />
+          <BattleSprite ref={sprites[1]} mon={foe} fainted={shown.fainted[1]} byId={byId} />
         </div>
         <div className="absolute bottom-[3%] left-[3%] h-[11%] w-[41%] rounded-[50%] bg-green-800/35" />
         <div className="absolute bottom-[5%] left-[7%] w-[33%]">
-          <BattleSprite mon={me} back fainted={shown.fainted[0]} byId={byId} />
+          <BattleSprite ref={sprites[0]} mon={me} back fainted={shown.fainted[0]} byId={byId} />
         </div>
+        {effect?.kind === 'orb' && (
+          <div
+            key={effect.key}
+            className="battle-orb pointer-events-none"
+            style={{
+              '--x0': effect.from.x,
+              '--y0': effect.from.y,
+              '--x1': effect.to.x,
+              '--y1': effect.to.y,
+              background: `radial-gradient(circle, #fff 0%, ${effect.color} 45%, transparent 72%)`,
+            }}
+          />
+        )}
+        {effect?.kind === 'burst' && (
+          <svg key={effect.key} viewBox="0 0 100 100" className="battle-burst pointer-events-none" style={{ left: effect.at.x, top: effect.at.y }}>
+            <polygon
+              points="50,0 61,35 98,35 68,57 79,92 50,70 21,92 32,57 2,35 39,35"
+              fill={effect.color}
+              stroke="#fff"
+              strokeWidth="4"
+            />
+          </svg>
+        )}
+        {effect?.kind === 'flash' && <div key={effect.key} className="battle-flash pointer-events-none absolute inset-0 bg-white" />}
         <div className="absolute right-[4%] bottom-[8%] w-[46%] max-w-[260px]">
           <InfoBox mon={me} hp={shown.hp[0][shown.active[0]]} mine />
         </div>

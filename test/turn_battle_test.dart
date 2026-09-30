@@ -50,8 +50,10 @@ List<String> fakeBattleLog() {
           text = text.replaceFirst('{$i}', args[i]);
         }
         log.add(text);
-      } else if (e.t == 'faint') {
-        log.add('[faint ${e.side}]');
+      } else if (e.t == 'faint' || e.t == 'miss') {
+        log.add('[${e.t} ${e.side}]');
+      } else if (e.t == 'attack') {
+        log.add('[attack ${e.side} ${e.type}]');
       } else {
         log.add('[${e.t} ${e.side} ${e.value}]');
       }

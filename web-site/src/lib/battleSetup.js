@@ -77,6 +77,7 @@ export async function battleMons(members) {
           slug,
           name: calc.moveData(slug)?.name ?? slug,
           type: m.type,
+          category: m.category,
           power: m.power,
           accuracy: m.accuracy ?? null,
           pp: m.pp ?? 10,

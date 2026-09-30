@@ -16,12 +16,12 @@ import 'local_database.dart';
 import 'team_battle.dart';
 
 class BattleMove {
-  final String slug, name, type;
+  final String slug, name, type, category;
   final int power, maxPp, priority;
   final int? accuracy;
   int pp;
-  BattleMove(this.slug, this.name, this.type, this.power, this.accuracy, this.pp, this.maxPp, this.priority);
-  BattleMove copy() => BattleMove(slug, name, type, power, accuracy, maxPp, maxPp, priority);
+  BattleMove(this.slug, this.name, this.type, this.power, this.accuracy, this.pp, this.maxPp, this.priority, {this.category = 'physical'});
+  BattleMove copy() => BattleMove(slug, name, type, power, accuracy, maxPp, maxPp, priority, category: category);
 }
 
 class BattleMon {
@@ -46,32 +46,54 @@ class BattleMon {
 typedef HitResult = ({List<List<int>> rolls, double eff});
 typedef BattleHit = HitResult? Function(BattleMon att, BattleMon def, String slug, bool crit);
 
-/// Evento para a tela ir mostrando: texto, HP, troca ou desmaio.
+/// Evento para a tela ir mostrando: texto, HP, troca, desmaio ou a animação
+/// do golpe (attack, com o tipo e a categoria) / do erro (miss).
 class BattleEvent {
-  final String t; // text | hp | switch | faint
+  final String t; // text | hp | switch | faint | attack | miss
   final String key;
   final List<Object> args;
   final int side, value;
+  final String type, category;
   const BattleEvent.text(this.key, this.args)
       : t = 'text',
         side = -1,
+        value = 0,
+        type = '',
+        category = '';
+  const BattleEvent.attack(this.side, this.type, this.category)
+      : t = 'attack',
+        key = '',
+        args = const [],
         value = 0;
+  const BattleEvent.miss(this.side)
+      : t = 'miss',
+        key = '',
+        args = const [],
+        value = 0,
+        type = '',
+        category = '';
   const BattleEvent.hp(this.side, this.value)
       : t = 'hp',
         key = '',
-        args = const [];
+        args = const [],
+        type = '',
+        category = '';
   const BattleEvent.switched(this.side, this.value)
       : t = 'switch',
         key = '',
-        args = const [];
+        args = const [],
+        type = '',
+        category = '';
   const BattleEvent.faint(this.side)
       : t = 'faint',
         key = '',
         args = const [],
-        value = 0;
+        value = 0,
+        type = '',
+        category = '';
 }
 
-final struggle = BattleMove('struggle', 'Struggle', 'normal', 50, null, 1, 1, 0);
+final struggle = BattleMove('struggle', 'Struggle', 'normal', 50, null, 1, 1, 0, category: 'physical');
 const _critChance = 1 / 24;
 
 class TurnBattle {
@@ -151,9 +173,11 @@ class TurnBattle {
     if (moveIndex >= 0) move.pp -= 1;
     _say(events, 'used', [_label(side), move.name]);
     if (move.accuracy != null && random() * 100 >= move.accuracy!) {
+      events.add(BattleEvent.miss(side));
       _say(events, 'missed', [_label(side)]);
       return;
     }
+    events.add(BattleEvent.attack(side, move.type, move.category));
     final crit = random() < _critChance;
     final r = hit(mon, target, move.slug, crit);
     if (r == null || r.eff == 0) {
@@ -371,6 +395,7 @@ class TurnBattleSetup {
               (moves[slug]!['pp'] as num?)?.toInt() ?? 10,
               (moves[slug]!['pp'] as num?)?.toInt() ?? 10,
               (moves[slug]!['priority'] as num?)?.toInt() ?? 0,
+              category: '${moves[slug]!['category']}',
             ),
         ],
         calc: calc,

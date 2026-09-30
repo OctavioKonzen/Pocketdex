@@ -156,6 +156,18 @@ final actions = <String, Future<void> Function(WidgetTester)>{
     if (find.text('LUTAR').evaluate().isEmpty) return;
     await tester.tap(find.text('LUTAR'));
     await tester.pump(const Duration(milliseconds: 300));
+    // Um turno inteiro, com as animações dos golpes; depois o menu de golpes de novo.
+    await tester.tap(find.textContaining('PP ').first);
+    for (var i = 0; i < 40 && find.text('LUTAR').evaluate().isEmpty; i++) {
+      await tester.pump(const Duration(milliseconds: 250));
+    }
+    // Deixa carregar o sprite de quem entrou.
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
+    await tester.pump(const Duration(milliseconds: 600));
+    if (find.text('LUTAR').evaluate().isNotEmpty) {
+      await tester.tap(find.text('LUTAR'));
+      await tester.pump(const Duration(milliseconds: 300));
+    }
   },
   'Filtros da Pokédex': (tester) async {
     await tester.tap(find.byType(FloatingActionButton));

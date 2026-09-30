@@ -40,7 +40,8 @@ export function fakeBattleLog() {
       if (e.t === 'text') {
         const [line, args] = lineOf(e)
         log.push(args.reduce((text, arg, i) => text.replace(`{${i}}`, arg), line))
-      } else log.push(`[${e.t} ${e.side} ${e.hp ?? e.index ?? ''}]`.replace(' ]', ']'))
+      } else if (e.t === 'attack') log.push(`[attack ${e.side} ${e.type}]`)
+      else log.push(`[${e.t} ${e.side} ${e.hp ?? e.index ?? ''}]`.replace(' ]', ']'))
     }
   }
   for (let turn = 0; turn < 60 && battle.winner == null; turn++) {

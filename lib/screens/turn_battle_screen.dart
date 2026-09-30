@@ -113,7 +113,8 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
   void _again() {
     final b = _battle!;
     setState(() {
-      _battle = TurnBattle([for (final m in b.teams[0]) m.fresh()], [for (final m in b.teams[1]) m.fresh()], League.seededRandom(Random().nextInt(1 << 31)));
+      _battle = TurnBattle(
+          [for (final m in b.teams[0]) m.fresh()], [for (final m in b.teams[1]) m.fresh()], League.seededRandom(Random().nextInt(1 << 31)));
       _key++;
     });
   }
@@ -200,7 +201,8 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
             ),
         ],
         const SizedBox(height: 10),
-        Text('O computador joga pelo adversário. Batalha simplificada: só golpes de dano (com PP, precisão, prioridade e crítico), sem status nem clima.',
+        Text(
+            'O computador joga pelo adversário. Batalha simplificada: só golpes de dano (com PP, precisão, prioridade e crítico), sem status nem clima.',
             style: TextStyle(color: c.muted, fontSize: 12)),
         const SizedBox(height: 14),
         PillButton(
@@ -233,12 +235,20 @@ class _BattleView extends StatefulWidget {
 class _BattleViewState extends State<_BattleView> {
   static const _step = Duration(milliseconds: 1100);
   late final List<int> _active = [widget.battle.activeIndex[0], widget.battle.activeIndex[1]];
-  late final List<List<int>> _hp = [for (final t in widget.battle.teams) [for (final mon in t) mon.hp]];
+  late final List<List<int>> _hp = [
+    for (final t in widget.battle.teams) [for (final mon in t) mon.hp]
+  ];
   final List<bool> _fainted = [false, false];
   late String _text = widget.foeName.isNotEmpty ? tr('{0} quer batalhar!').replaceAll('{0}', widget.foeName) : tr('Um treinador quer batalhar!');
   bool _busy = false;
   String _menu = 'main'; // main | fight | party
   Completer<void>? _skip;
+  final _sprites = [GlobalKey<_SpriteState>(), GlobalKey<_SpriteState>()];
+  _Fx? _fx;
+  int _fxKey = 0;
+  void _show(String kind, {Color color = Colors.white, Offset from = Offset.zero, Offset to = Offset.zero}) =>
+      setState(() => _fx = _Fx(kind, ++_fxKey, color: color, from: from, to: to));
+  Future<void> _wait(int ms) => Future<void>.delayed(Duration(milliseconds: ms));
 
   TurnBattle get _b => widget.battle;
 
@@ -256,13 +266,34 @@ class _BattleViewState extends State<_BattleView> {
     for (final e in events) {
       if (!mounted) return;
       switch (e.t) {
+        case 'attack':
+          // Quem ataca avança; golpe especial vira uma bola de energia até o alvo.
+          final target = 1 - e.side;
+          final color = getColorForType(e.type);
+          _sprites[e.side].currentState?.lunge();
+          if (e.category == 'special') {
+            _show('orb', color: color, from: _center[e.side], to: _center[target]);
+            await _wait(380);
+          } else {
+            await _wait(200);
+          }
+          if (!mounted) return;
+          _show('burst', color: color, to: _center[target]);
+          await _wait(260);
+        case 'miss':
+          _sprites[1 - e.side].currentState?.dodge();
+          await _wait(300);
         case 'text':
+          if (e.key == 'crit') _show('flash');
           setState(() => _text = _format(e));
           _skip = Completer<void>();
           await Future.any([Future<void>.delayed(_step), _skip!.future]);
           _skip = null;
         case 'hp':
+          _sprites[e.side].currentState?.hurt();
           setState(() => _hp[e.side][_active[e.side]] = e.value);
+          // Espera piscar e a barra de HP descer.
+          await _wait(550);
         case 'faint':
           setState(() => _fainted[e.side] = true);
         case 'switch':
@@ -328,10 +359,21 @@ class _BattleViewState extends State<_BattleView> {
                   children: [
                     Positioned(left: w * 0.03, top: h * 0.05, width: w * 0.48, child: _InfoBox(mon: foe, hp: _hp[1][_active[1]])),
                     Positioned(right: w * 0.06, top: h * 0.32, width: w * 0.38, height: h * 0.07, child: const _Platform()),
-                    Positioned(right: w * 0.1, top: h * 0.02, width: w * 0.3, height: w * 0.3, child: _Sprite(mon: foe, fainted: _fainted[1])),
+                    Positioned(
+                        right: w * 0.1,
+                        top: h * 0.02,
+                        width: w * 0.3,
+                        height: w * 0.3,
+                        child: _Sprite(key: _sprites[1], mon: foe, fainted: _fainted[1])),
                     Positioned(left: w * 0.02, bottom: h * 0.03, width: w * 0.46, height: h * 0.09, child: const _Platform()),
-                    Positioned(left: w * 0.06, bottom: h * 0.05, width: w * 0.36, height: w * 0.36, child: _Sprite(mon: me, back: true, fainted: _fainted[0])),
+                    Positioned(
+                        left: w * 0.06,
+                        bottom: h * 0.05,
+                        width: w * 0.36,
+                        height: w * 0.36,
+                        child: _Sprite(key: _sprites[0], mon: me, back: true, fainted: _fainted[0])),
                     Positioned(right: w * 0.03, bottom: h * 0.06, width: w * 0.5, child: _InfoBox(mon: me, hp: _hp[0][_active[0]], mine: true)),
+                    if (_fx != null) _FxLayer(_fx!, w, h),
                   ],
                 );
               }),
@@ -425,7 +467,8 @@ class _BattleViewState extends State<_BattleView> {
               children: [
                 Row(children: [
                   Expanded(
-                    child: Text(_b.needSwitch ? 'Escolha o próximo Pokémon' : 'Trocar de Pokémon', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    child:
+                        Text(_b.needSwitch ? 'Escolha o próximo Pokémon' : 'Trocar de Pokémon', style: const TextStyle(fontWeight: FontWeight.bold)),
                   ),
                   if (!_b.needSwitch) TextButton(onPressed: () => setState(() => _menu = 'main'), child: const Text('Voltar')),
                 ]),
@@ -440,7 +483,9 @@ class _BattleViewState extends State<_BattleView> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _HpBar(hp: mon.hp, max: mon.maxHp),
-                        mon.hp > 0 ? m.Text('${mon.hp}/${mon.maxHp}', style: const TextStyle(fontSize: 12)) : const Text('Desmaiado', style: TextStyle(fontSize: 12)),
+                        mon.hp > 0
+                            ? m.Text('${mon.hp}/${mon.maxHp}', style: const TextStyle(fontSize: 12))
+                            : const Text('Desmaiado', style: TextStyle(fontSize: 12)),
                       ],
                     ),
                     trailing: i == _b.activeIndex[0] ? const Icon(Icons.check_circle, color: Color(0xFF0EA5E9)) : null,
@@ -480,8 +525,7 @@ class _MenuButton extends StatelessWidget {
             onTap: onTap,
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-              child: Text(label,
-                  textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.w900)),
+              child: Text(label, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.w900)),
             ),
           ),
         ),
@@ -496,22 +540,179 @@ class _Platform extends StatelessWidget {
       );
 }
 
-class _Sprite extends StatelessWidget {
+// Sprites animados do Black & White (oficiais, do #1 ao #649), de frente e de
+// costas, direto do repositório de sprites da PokeAPI (igual ao site). Do #650
+// em diante (ou sem internet) fica o sprite parado de sempre, balançando.
+const _bwAnimated = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated';
+String? _bwUrl(int id, bool back, bool shiny) => id >= 1 && id <= 649 ? '$_bwAnimated/${back ? 'back/' : ''}${shiny ? 'shiny/' : ''}$id.gif' : null;
+
+class _Sprite extends StatefulWidget {
   final BattleMon mon;
   final bool back, fainted;
-  const _Sprite({required this.mon, this.back = false, this.fainted = false});
+  const _Sprite({super.key, required this.mon, this.back = false, this.fainted = false});
 
   @override
-  Widget build(BuildContext context) => AnimatedSlide(
-        duration: const Duration(milliseconds: 500),
-        offset: fainted ? const Offset(0, 0.4) : Offset.zero,
-        child: AnimatedOpacity(
-          duration: const Duration(milliseconds: 500),
-          opacity: fainted ? 0 : 1,
-          // O seu fica de costas (espelhado), como nos jogos.
-          child: Transform.flip(flipX: back, child: PokemonSprite(mon.id, shiny: mon.shiny, fill: 0.95, alignBottom: true)),
+  State<_Sprite> createState() => _SpriteState();
+}
+
+class _SpriteState extends State<_Sprite> with TickerProviderStateMixin {
+  late final _lunge = AnimationController(vsync: this, duration: const Duration(milliseconds: 450));
+  late final _hurt = AnimationController(vsync: this, duration: const Duration(milliseconds: 520));
+  late final _dodge = AnimationController(vsync: this, duration: const Duration(milliseconds: 420));
+  late final _idle = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))..repeat();
+
+  /// Quem ataca avança na direção do outro.
+  void lunge() => _lunge.forward(from: 0);
+
+  /// Levou o golpe: pisca e treme.
+  void hurt() => _hurt.forward(from: 0);
+
+  /// O golpe errou: pula para o lado.
+  void dodge() => _dodge.forward(from: 0);
+
+  @override
+  void dispose() {
+    _lunge.dispose();
+    _hurt.dispose();
+    _dodge.dispose();
+    _idle.dispose();
+    super.dispose();
+  }
+
+  Widget _static(bool bob) => AnimatedBuilder(
+        animation: _idle,
+        builder: (context, child) => FractionalTranslation(
+          translation: Offset(0, bob ? -0.015 * (1 - cos(_idle.value * 2 * pi)) : 0),
+          child: child,
         ),
+        // O seu fica de costas (espelhado), como nos jogos.
+        child: Transform.flip(flipX: widget.back, child: PokemonSprite(widget.mon.id, shiny: widget.mon.shiny, fill: 0.95, alignBottom: true)),
       );
+
+  @override
+  Widget build(BuildContext context) {
+    final url = _bwUrl(widget.mon.id, widget.back, widget.mon.shiny);
+    final dir = widget.back ? 1.0 : -1.0;
+    return AnimatedSlide(
+      duration: const Duration(milliseconds: 500),
+      offset: widget.fainted ? const Offset(0, 0.4) : Offset.zero,
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 500),
+        opacity: widget.fainted ? 0 : 1,
+        child: AnimatedBuilder(
+          animation: Listenable.merge([_lunge, _hurt, _dodge]),
+          builder: (context, child) {
+            final l = _lunge.value, h = _hurt.value, d = _dodge.value;
+            final push = l < 0.4 ? l / 0.4 : (1 - l) / 0.6;
+            final shaking = h > 0 && h < 1;
+            return FractionalTranslation(
+              translation: Offset(
+                dir * 0.14 * push + (shaking ? sin(h * pi * 6) * 0.05 : 0) + sin(d * pi) * 0.22,
+                -dir * 0.10 * push,
+              ),
+              child: Opacity(opacity: shaking && (h * 5).floor().isEven ? 0.15 : 1, child: child),
+            );
+          },
+          // Trocou de Pokémon: começa do zero (sem ficar o sprite do anterior).
+          child: KeyedSubtree(
+            key: ValueKey((widget.mon.id, widget.mon.shiny)),
+            child: url == null
+                ? _static(true)
+                : LayoutBuilder(
+                    // Tamanho de verdade do sprite (os pequenos continuam pequenos, como no jogo).
+                    builder: (context, box) => Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Image.network(
+                        url,
+                        scale: 96 / box.maxWidth,
+                        filterQuality: FilterQuality.none,
+                        gaplessPlayback: true,
+                        loadingBuilder: (context, child, progress) => progress == null ? child : _static(false),
+                        errorBuilder: (context, error, stack) => _static(true),
+                      ),
+                    ),
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Onde fica o meio de cada Pokémon no campo (fração da largura e da altura).
+const _center = [Offset(0.24, 0.69), Offset(0.75, 0.25)];
+
+/// Animação do golpe por cima do campo: bola de energia, estrela do impacto ou clarão.
+class _Fx {
+  final String kind; // orb | burst | flash
+  final Color color;
+  final Offset from, to;
+  final int key;
+  const _Fx(this.kind, this.key, {this.color = Colors.white, this.from = Offset.zero, this.to = Offset.zero});
+}
+
+class _FxLayer extends StatelessWidget {
+  final _Fx fx;
+  final double w, h;
+  const _FxLayer(this.fx, this.w, this.h);
+
+  @override
+  Widget build(BuildContext context) {
+    switch (fx.kind) {
+      case 'orb':
+        final size = w * 0.09;
+        return TweenAnimationBuilder<double>(
+          key: ValueKey(fx.key),
+          tween: Tween(begin: 0, end: 1),
+          duration: const Duration(milliseconds: 380),
+          curve: Curves.easeIn,
+          builder: (context, t, _) {
+            final p = Offset.lerp(fx.from, fx.to, t)!;
+            final s = size * (0.5 + 0.8 * t);
+            return Positioned(
+              left: p.dx * w - s / 2,
+              top: p.dy * h - s / 2,
+              width: s,
+              height: s,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(colors: [Colors.white, fx.color, fx.color.withAlpha(0)], stops: const [0, 0.45, 1]),
+                ),
+              ),
+            );
+          },
+        );
+      case 'burst':
+        final size = w * 0.22;
+        return TweenAnimationBuilder<double>(
+          key: ValueKey(fx.key),
+          tween: Tween(begin: 0, end: 1),
+          duration: const Duration(milliseconds: 420),
+          curve: Curves.easeOut,
+          builder: (context, t, _) => Positioned(
+            left: fx.to.dx * w - size / 2,
+            top: fx.to.dy * h - size / 2,
+            width: size,
+            height: size,
+            child: Opacity(
+              opacity: 1 - t,
+              child: Transform.rotate(
+                angle: t * pi / 4,
+                child: Transform.scale(scale: 0.2 + t, child: Icon(Icons.star_rounded, size: size, color: fx.color)),
+              ),
+            ),
+          ),
+        );
+      default:
+        return TweenAnimationBuilder<double>(
+          key: ValueKey(fx.key),
+          tween: Tween(begin: 0.85, end: 0),
+          duration: const Duration(milliseconds: 260),
+          builder: (context, t, _) => Positioned.fill(child: IgnorePointer(child: ColoredBox(color: Colors.white.withValues(alpha: t)))),
+        );
+    }
+  }
 }
 
 class _HpBar extends StatelessWidget {
