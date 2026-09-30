@@ -1,6 +1,7 @@
 // lib/screens/breeding_partners_screen.dart
 
 import 'package:flutter/material.dart' hide Text;
+import 'package:pocket_dex/utils/site_ui.dart';
 import '../services/account_format.dart';
 import '../widgets/pokemon_sprite.dart';
 import '../models/pokemon_details.dart';
@@ -178,7 +179,7 @@ class _BreedingPartnersScreenState extends State<BreedingPartnersScreen>
                 bottom: 0,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: theme.scaffoldBackgroundColor,
+                    color: SiteColors.of(context).bg,
                     borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(30),
                       topRight: Radius.circular(30),

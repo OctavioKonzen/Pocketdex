@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { getAbilities, getItems, getMoves, getPokemonIndex } from '../lib/data'
+import { teamImage } from '../lib/teamImage'
 import { lookupOf } from '../lib/teamSets'
 import { encodeTeam, parseSharedTeam, shareLink, toShowdown } from '../lib/teamShare'
 import Sprite from './Sprite'
@@ -35,6 +36,46 @@ function CopyField({ label, value, rows = 1 }) {
   )
 }
 
+/** Imagem do time (lib/teamImage.js): prévia, baixar e compartilhar. */
+function TeamImage({ team, byId }) {
+  const [url, setUrl] = useState(null)
+  const [blob, setBlob] = useState(null)
+  const [busy, setBusy] = useState(false)
+  useEffect(() => () => url && URL.revokeObjectURL(url), [url])
+  const make = async () => {
+    setBusy(true)
+    const png = await teamImage(team, byId)
+    setBusy(false)
+    if (!png) return
+    setBlob(png)
+    setUrl(URL.createObjectURL(png))
+  }
+  const file = blob && new File([blob], 'pocketdex-time.png', { type: 'image/png' })
+  const canShare = file && navigator.canShare?.({ files: [file] })
+  if (!url) {
+    return (
+      <Button onClick={make} disabled={busy} className="w-full">
+        {busy ? '...' : '🖼️ Imagem do time'}
+      </Button>
+    )
+  }
+  return (
+    <div className="space-y-2">
+      <img src={url} alt={team.name} className="w-full rounded-2xl" />
+      <div className="flex gap-2">
+        <a href={url} download="pocketdex-time.png" className="flex-1 rounded-xl bg-sky-600 px-4 py-2.5 text-center font-bold text-white">
+          Baixar imagem
+        </a>
+        {canShare && (
+          <Button className="flex-1" onClick={() => navigator.share({ files: [file], title: team.name }).catch(() => {})}>
+            Compartilhar
+          </Button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 /** Mostra o link, o código e o texto do Showdown de um time. */
 export function ShareTeamModal({ team, byId, open, onClose }) {
   if (!team || !byId) return null
@@ -45,6 +86,7 @@ export function ShareTeamModal({ team, byId, open, onClose }) {
         <CopyField label="Link" value={shareLink(team)} />
         <CopyField label="Código" value={encodeTeam(team)} />
         <CopyField label="Texto (Pokémon Showdown e outros simuladores)" value={toShowdown(team, byId)} rows={8} />
+        <TeamImage key={team.id} team={team} byId={byId} />
       </div>
     </Modal>
   )

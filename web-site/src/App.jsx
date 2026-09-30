@@ -24,6 +24,7 @@ const SettingsPage = lazyPage(() => import('./pages/SettingsPage'))
 const AchievementsPage = lazyPage(() => import('./pages/AchievementsPage'))
 const FriendsPage = lazyPage(() => import('./pages/FriendsPage'))
 const ChatPage = lazyPage(() => import('./pages/ChatPage'))
+const BattlePage = lazyPage(() => import('./pages/BattlePage'))
 const TradesPage = lazyPage(() => import('./pages/TradesPage'))
 const TeamBattlePage = lazyPage(() => import('./pages/TeamBattlePage'))
 const LoginPage = lazyPage(() => import('./pages/LoginPage'))
@@ -36,8 +37,10 @@ export const SECTIONS = [
   { path: '/favoritos', label: 'Favoritos', color: '#FFCA28', icon: 'star' },
   { path: '/times', label: 'Times', color: '#FF5252', icon: 'groups' },
   { path: '/jogo', label: 'Jogo', color: '#42A5F5', icon: 'gamepad' },
+  { path: '/batalha', label: 'Batalha', color: '#607D8B', icon: 'physical' },
   { path: '/enciclopedia', label: 'Enciclopédia', color: '#AB47BC', icon: 'book' },
   { path: '/treino', label: 'Treino', color: '#FFA726', icon: 'fitness' },
+  { path: '/amigos', label: 'Amigos', color: '#5C6BC0', icon: 'chat' },
 ]
 
 /** Texto da busca do topo (filtra a Pokédex). */
@@ -63,8 +66,8 @@ function NavButton({ section }) {
         transition={{ duration: 0.2 }}
       >
         <Icon name={section.icon} size={20} style={{ color: active || hover ? undefined : section.color }} />
-        {/* No celular aparecem só os ícones. */}
-        <span className="hidden md:inline">{section.label}</span>
+        {/* Em telas menores aparecem só os ícones. */}
+        <span className="hidden xl:inline">{section.label}</span>
       </m.span>
     </NavLink>
   )
@@ -93,7 +96,8 @@ function TopBar() {
             <NavButton key={s.path} section={s} />
           ))}
         </nav>
-        <label className="hidden w-[210px] shrink-0 items-center gap-2 rounded-full bg-bg px-4 py-2.5 lg:flex 2xl:w-[280px]">
+        {/* Com os 8 botões do menu, a busca só cabe no topo em telas bem largas. */}
+        <label className="hidden w-[280px] shrink-0 items-center gap-2 rounded-full bg-bg px-4 py-2.5 min-[1760px]:flex">
           <Icon name="search" className="text-muted" />
           <input
             value={search}
@@ -107,10 +111,10 @@ function TopBar() {
           whileHover={{ scale: 1.08 }}
           whileTap={{ scale: 0.95 }}
           title="Baixar o app para Android"
-          className="flex shrink-0 items-center gap-1.5 rounded-full bg-[#3DDC84] px-2.5 py-2 text-sm font-bold text-[#073042] 2xl:px-4"
+          className="flex shrink-0 items-center gap-1.5 rounded-full bg-[#3DDC84] px-2.5 py-2 text-sm font-bold text-[#073042] min-[1760px]:px-4"
         >
           <Icon name="android" size={20} />
-          <span className="hidden 2xl:inline">Baixar app</span>
+          <span className="hidden min-[1760px]:inline">Baixar app</span>
         </m.a>
         <ThemeToggle />
         <UserMenu />
@@ -122,7 +126,7 @@ function TopBar() {
         )}
       </div>
       {/* Busca em telas menores */}
-      <div className="px-4 pb-3 lg:hidden">
+      <div className="px-4 pb-3 min-[1760px]:hidden">
         <label className="flex items-center gap-2 rounded-full bg-bg px-4 py-2">
           <Icon name="search" className="text-muted" />
           <input value={search} onChange={(e) => onSearch(e.target.value)} placeholder="Procurar Pokémon" className="w-full bg-transparent text-sm outline-none placeholder:text-muted" />
@@ -354,6 +358,7 @@ export default function App() {
   const [search, setSearch] = useState('')
   const theme = useResolvedTheme(useStore((s) => s.theme))
   const textSize = usePrefs((s) => s.textSize)
+  const backgroundAnimation = usePrefs((s) => s.backgroundAnimation)
   useEffect(() => {
     document.documentElement.dataset.theme = theme
   }, [theme])
@@ -368,6 +373,7 @@ export default function App() {
       <HashRouter>
         <SearchContext.Provider value={{ search, setSearch }}>
           <ScrollToTop />
+          <div className={`pokeball-backdrop ${backgroundAnimation ? '' : 'still'}`} aria-hidden="true" />
           <TopBar />
           <main className="mx-auto max-w-[1920px] px-4 py-5 sm:px-6">
             <PageBoundary>
@@ -382,6 +388,8 @@ export default function App() {
                   <Route path="/jogo" element={<GamePage />} />
                   <Route path="/enciclopedia" element={<EncyclopediaPage />} />
                   <Route path="/enciclopedia/:tab" element={<EncyclopediaPage />} />
+                  <Route path="/batalha" element={<BattlePage />} />
+                  <Route path="/batalha/:tool" element={<BattlePage />} />
                   <Route path="/treino" element={<TrainingPage />} />
                   <Route path="/treino/:tool" element={<TrainingPage />} />
                   <Route path="/configuracoes" element={<SettingsPage />} />

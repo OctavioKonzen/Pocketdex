@@ -55,6 +55,9 @@ export const moveData = (slug) => MOVES.get(toId(slug)) ?? null
 export const abilityName = (slug) => ABILITIES.get(toId(slug)) ?? ''
 export const itemName = (text) => ITEM_NAMES.get(toId(text)) ?? ''
 
+/** A espécie ainda evolui (não é a forma final)? */
+export const isNfe = (slug) => Boolean(gen.species.get(toId(speciesName(slug)))?.nfe)
+
 /** Todas as habilidades e itens (para as listas de busca). */
 export const ALL_ABILITIES = [...ABILITIES.values()].sort()
 const HELD = [...gen.items].filter((i) => !/ Ball$|^TR\d|^TM\d/.test(i.name))
@@ -265,6 +268,36 @@ function makeField(f) {
       isSwitching: f.switchingOut ? 'out' : undefined,
     },
   })
+}
+
+/**
+ * Melhor golpe de dano (média entre o mínimo e o máximo, em % da vida do
+ * outro), montando cada Pokémon uma vez só. Para a batalha de times e o
+ * "Quem vence?". Devolve {move, pct} ou null.
+ */
+export function bestHit(attacker, attackerSide, defender, defenderSide, moveSlugs) {
+  let a, d
+  try {
+    a = makePokemon(attacker, attackerSide)
+    d = makePokemon(defender, defenderSide)
+  } catch {
+    return null
+  }
+  const field = makeField(newField())
+  let top = null
+  for (const slug of moveSlugs) {
+    const data = moveData(slug)
+    if (!data) continue
+    try {
+      const result = calculate(gen, a.clone(), d.clone(), new Move(gen, data.name, { ability: a.ability, item: a.item }), field)
+      const [min, max] = result.range()
+      const pct = ((min + max) / 2 / result.defender.maxHP()) * 100
+      if (pct > 0 && (!top || pct > top.pct)) top = { move: data.name, pct }
+    } catch {
+      // golpe sem dano
+    }
+  }
+  return top
 }
 
 /** Status do Pokémon com Nature, EVs, IVs e estágios (sem itens nem campo). */

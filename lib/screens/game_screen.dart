@@ -10,6 +10,7 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart' hide Text;
+import 'package:pocket_dex/utils/site_ui.dart';
 import 'package:provider/provider.dart';
 
 import '../models/generation.dart';
@@ -459,7 +460,7 @@ class _RankingState extends State<_Ranking> {
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(color: theme.scaffoldBackgroundColor, borderRadius: BorderRadius.circular(30)),
+            decoration: BoxDecoration(color: SiteColors.of(context).bg, borderRadius: BorderRadius.circular(30)),
             child: Row(
               children: [
                 for (final b in _boards)
@@ -560,7 +561,7 @@ class _RankingRow extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: me ? Colors.amber.withAlpha(40) : theme.scaffoldBackgroundColor,
+        color: me ? Colors.amber.withAlpha(40) : SiteColors.of(context).bg,
         borderRadius: BorderRadius.circular(14),
         border: me ? Border.all(color: Colors.amber, width: 2) : null,
       ),

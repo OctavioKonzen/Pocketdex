@@ -79,8 +79,7 @@ class _IvCalcScreenState extends State<IvCalcScreen> {
                         Text(_pokemon == null ? 'Escolher Pokémon' : I18n.pokemonName(shortName(_pokemon!['name'] as String)),
                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                         if (_pokemon != null)
-                          Text('Base: ${[for (var i = 0; i < 6; i++) _base(i)].join(' / ')}',
-                              style: TextStyle(color: c.muted, fontSize: 12)),
+                          Text('Base: ${[for (var i = 0; i < 6; i++) _base(i)].join(' / ')}', style: TextStyle(color: c.muted, fontSize: 12)),
                       ],
                     ),
                   ),

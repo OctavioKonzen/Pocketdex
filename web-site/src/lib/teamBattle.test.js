@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { runBattle, teamMembers } from './teamBattle'
+import { counters, runBattle, teamMembers } from './teamBattle'
 
 beforeAll(() => {
   // O banco local vem de public/data (no site é baixado com fetch).
@@ -32,4 +32,13 @@ describe('batalha de times', () => {
       { id: 6, set: null },
     ])
   })
+
+  it('quem vence o Charizard', async () => {
+    const start = Date.now()
+    const list = await counters(6)
+    const ids = list.map((x) => x.id)
+    console.log(`counters do Charizard: ${ids.length} em ${Date.now() - start} ms; top: ${ids.slice(0, 8)}`)
+    expect(ids).not.toContain(3)
+    expect(ids.slice(0, 40).some((id) => [9, 76, 248, 130, 134, 142].includes(id))).toBe(true)
+  }, 120000)
 })

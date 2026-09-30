@@ -7,6 +7,7 @@
 import 'dart:math' as math;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:pocket_dex/utils/site_ui.dart';
 
 class Responsive {
   /// Largura máxima do conteúdo das páginas no site. Alta o bastante para o
@@ -40,7 +41,7 @@ class WebFrame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: Theme.of(context).scaffoldBackgroundColor,
+      color: SiteColors.of(context).bg,
       child: Center(
         child: ConstrainedBox(
           constraints:

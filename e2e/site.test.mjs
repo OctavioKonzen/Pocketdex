@@ -27,6 +27,7 @@ const ROUTES = [
   'enciclopedia/itens',
   'treino',
   'treino/natures',
+  'treino/ovos',
   'treino/breeding',
   'treino/evs',
   'treino/comparar',
@@ -34,6 +35,12 @@ const ROUTES = [
   'treino/ivs',
   'treino/tipos',
   'treino/shiny',
+  'batalha',
+  'batalha/quem-vence',
+  'batalha/velocidade',
+  'batalha/comparar',
+  'batalha/tipos',
+  'batalha/tera-raids',
   'treino/nuzlocke',
   'conquistas',
   'amigos',
@@ -157,10 +164,10 @@ try {
   await page.getByText('Earthquake').first().waitFor({ timeout: 5000 })
   await page.getByRole('button', { name: 'Compartilhar' }).click()
   // O texto do time é montado logo depois de abrir: espera ele aparecer.
-  await page
-    .waitForFunction(() => document.querySelector('textarea')?.value.includes('Garchomp @'), null, { timeout: 5000 })
-    .catch(() => {})
+  await page.waitForFunction(() => document.querySelector('textarea')?.value.includes('Garchomp @ Choice Scarf'), null, { timeout: 20000 })
   const text = await page.locator('textarea').first().inputValue()
+  await page.getByRole('button', { name: '🖼️ Imagem do time' }).click()
+  await page.getByRole('link', { name: 'Baixar imagem' }).waitFor({ timeout: 15000 })
   assert.match(text, /Garchomp @ Choice Scarf/, `${step}: texto sem o item`)
   assert.match(text, /EVs: 252 Atk/, `${step}: texto sem os EVs`)
   assert.match(text, /Jolly Nature/, `${step}: texto sem a Nature`)
@@ -234,6 +241,14 @@ try {
   await page.locator('select').nth(2).selectOption({ label: 'Areia' })
   await page.getByRole('button', { name: '⚔️ Batalhar!' }).click()
   await page.getByText(/de 1 confrontos/).waitFor({ timeout: 30000 })
+  await expectHealthy()
+
+  step = 'batalha: quem vence'
+  await go('batalha/quem-vence')
+  await page.getByRole('button', { name: 'Escolher Pokémon' }).click()
+  await page.getByPlaceholder('Procurar por nome ou número').fill('charizard')
+  await page.getByRole('dialog').getByRole('button', { name: /charizard/i }).first().click()
+  await page.getByText(/Pokémon ganham do Charizard/).waitFor({ timeout: 60000 })
   await expectHealthy()
 
   step = 'amigos: trocas'

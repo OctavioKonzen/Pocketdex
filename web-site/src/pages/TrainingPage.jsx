@@ -1,8 +1,6 @@
 import { AnimatePresence, m } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { Compare } from '../components/BattleTools'
-import DamageCalc from '../components/DamageCalc'
+import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { PokemonList } from '../components/EntryModals'
 import PokemonPicker from '../components/PokemonPicker'
 import { Button, Empty, Icon, Loader, PageHeader } from '../components/ui'
@@ -10,26 +8,28 @@ import { getEggGroups, getPokemonById, getSpecies } from '../lib/data'
 import { EV_STATS, MAX_STAT_EVS, MAX_TOTAL_EVS, NATURES, capitalize, prettyName } from '../lib/pokemon'
 import { useStore } from '../lib/store'
 import Sprite from '../components/Sprite'
+import EggChain from '../components/tools/EggChain'
 import IvCalc from '../components/tools/IvCalc'
 import Nuzlocke from '../components/tools/Nuzlocke'
 import ShinyHunt from '../components/tools/ShinyHunt'
-import TypeChart from '../components/tools/TypeChart'
 
 const TOOLS = [
   { key: 'natures', label: 'Guia de Natures', subtitle: 'Veja como cada Nature afeta os status', color: '#42A5F5', icon: 'status' },
   { key: 'breeding', label: 'Ajuda de Criação (Breeding)', subtitle: 'Encontre parceiros compatíveis', color: '#EC407A', icon: 'heart' },
+  { key: 'ovos', label: 'Golpes de ovo', subtitle: 'Por quais Pokémon passar para ensinar um golpe de ovo', color: '#F472B6', icon: 'heart' },
   { key: 'evs', label: 'Contador de EVs', subtitle: 'Acompanhe o treino dos seus Pokémon', color: '#66BB6A', icon: 'fitness' },
-  { key: 'comparar', label: 'Comparar Pokémon', subtitle: 'Status e fraquezas lado a lado', color: '#7E57C2', icon: 'layers' },
-  { key: 'dano', label: 'Calculadora de dano', subtitle: 'Quanto um golpe tira do outro', color: '#EF5350', icon: 'physical' },
   { key: 'ivs', label: 'Calculadora de IVs', subtitle: 'Descubra os IVs pelos status do jogo', color: '#26A69A', icon: 'status' },
-  { key: 'tipos', label: 'Tabela de tipos', subtitle: 'Fraquezas e resistências de cada tipo', color: '#5C6BC0', icon: 'layers' },
   { key: 'shiny', label: 'Contador de shiny', subtitle: 'Conte os encontros da sua caçada', color: '#F59E0B', icon: 'sparkle' },
   { key: 'nuzlocke', label: 'Nuzlocke', subtitle: 'Capturas por local, mortes e time', color: '#8D6E63', icon: 'pokeball' },
 ]
 
+// Ferramentas que foram para o Centro de Batalha (links antigos continuam valendo).
+const MOVED = { comparar: 'comparar', dano: 'dano', tipos: 'tipos' }
+
 export default function TrainingPage() {
   const { tool = 'natures' } = useParams()
   const navigate = useNavigate()
+  if (MOVED[tool]) return <Navigate to={`/batalha/${MOVED[tool]}`} replace />
   return (
     <div>
       <PageHeader title="Centro de Treinamento" subtitle="Ferramentas para treinadores dedicados que buscam o Pokémon perfeito." />
@@ -57,11 +57,9 @@ export default function TrainingPage() {
         <m.div key={tool} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.2 }}>
           {tool === 'natures' && <Natures />}
           {tool === 'breeding' && <Breeding />}
+          {tool === 'ovos' && <EggChain />}
           {tool === 'evs' && <EvCounter />}
-          {tool === 'comparar' && <Compare />}
-          {tool === 'dano' && <DamageCalc />}
           {tool === 'ivs' && <IvCalc />}
-          {tool === 'tipos' && <TypeChart />}
           {tool === 'shiny' && <ShinyHunt />}
           {tool === 'nuzlocke' && <Nuzlocke />}
         </m.div>

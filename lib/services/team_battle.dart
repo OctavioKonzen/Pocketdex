@@ -74,9 +74,28 @@ class TeamBattle {
 
     // Golpes do set; sem set, todos os de dano que ele aprende.
     final chosen = [for (final s in (set?['moves'] as List?) ?? const []) '$s'].where((s) => s.isNotEmpty && damaging(s)).toList();
-    final learnable = {for (final mv in row['moves'] as List) (mv as List).first as String}.where(damaging).toList();
+    final learnable = _trim(data, {for (final mv in row['moves'] as List) (mv as List).first as String}.where(damaging));
     final moves = chosen.isNotEmpty ? chosen : learnable;
     return _Fighter(pokemon, [for (final s in moves) data.move(s)!.name]);
+  }
+
+  /// Sem set: os 2 golpes mais fortes de cada tipo e categoria (e os de dano
+  /// fixo). Dá o mesmo melhor golpe com bem menos contas.
+  static List<String> _trim(DamageData data, Iterable<String> slugs) {
+    final groups = <String, List<String>>{};
+    final fixed = <String>[];
+    for (final slug in slugs) {
+      final info = data.move(slug)!;
+      if (info.basePower <= 0) {
+        fixed.add(slug);
+      } else {
+        groups.putIfAbsent('${info.type}/${info.category}', () => []).add(slug);
+      }
+    }
+    return [
+      for (final g in groups.values) ...(g..sort((a, b) => data.move(b)!.basePower.compareTo(data.move(a)!.basePower))).take(2),
+      ...fixed,
+    ];
   }
 
   static Hit _best(DamageData data, _Fighter a, _Fighter b) {
@@ -112,5 +131,44 @@ class TeamBattle {
               }(),
         ],
     ];
+  }
+
+  /// Quem vence [targetId]: todos os Pokémon totalmente evoluídos contra ele,
+  /// 1 contra 1 (nível 50, sem set). Os que ganham com mais folga primeiro.
+  static Future<List<(int, Duel)>> counters(int targetId, {bool legendaries = false, void Function(double done)? progress}) async {
+    final data = await DamageData.load();
+    final target = await _fighter(data, (targetId, null));
+    if (target == null) return const [];
+    final rows = await LocalDatabase.instance.defaultPokemon();
+    final species = await LocalDatabase.instance.speciesById();
+    bool special(int id) => species[id]?['is_legendary'] == true || species[id]?['is_mythical'] == true;
+    final pool = [
+      for (final r in rows)
+        if (r['id'] != targetId &&
+            (legendaries || !special(r['id'] as int)) &&
+            !(data.species[toId(data.speciesName(r['name'] as String))]?.nfe ?? false))
+          r['id'] as int,
+    ];
+    final out = <(int, Duel)>[];
+    for (var i = 0; i < pool.length; i++) {
+      final x = await _fighter(data, (pool[i], null));
+      if (x != null) {
+        final sx = x.pokemon.stats['spe']!, sy = target.pokemon.stats['spe']!;
+        final d = Duel(_best(data, x, target), _best(data, target, x), sx > sy, sx == sy);
+        if (d.result == 1) out.add((pool[i], d));
+      }
+      // Deixa a tela respirar de vez em quando.
+      if (i % 8 == 7) {
+        progress?.call((i + 1) / pool.length);
+        await Future<void>.delayed(Duration.zero);
+      }
+    }
+    progress?.call(1);
+    out.sort((a, b) {
+      final ma = a.$2.theirs.hits - a.$2.mine.hits, mb = b.$2.theirs.hits - b.$2.mine.hits;
+      if (ma != mb) return mb.compareTo(ma);
+      return b.$2.mine.pct.compareTo(a.$2.mine.pct);
+    });
+    return out;
   }
 }

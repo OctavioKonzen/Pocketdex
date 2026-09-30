@@ -4857,5 +4857,315 @@
   "en": "Team saved to your teams!",
   "fr": "Équipe enregistrée !",
   "es": "¡Equipo guardado en tus equipos!"
+ },
+ "Animações": {
+  "en": "Animations",
+  "fr": "Animations",
+  "es": "Animaciones"
+ },
+ "Pokébola girando no fundo": {
+  "en": "Spinning Poké Ball background",
+  "fr": "Poké Ball qui tourne en fond",
+  "es": "Poké Ball girando al fondo"
+ },
+ "Uma Pokébola clarinha gira devagar atrás das telas.": {
+  "en": "A faint Poké Ball slowly spins behind the screens.",
+  "fr": "Une Poké Ball pâle tourne lentement derrière les écrans.",
+  "es": "Una Poké Ball clarita gira despacio detrás de las pantallas."
+ },
+ "Uma Pokébola clarinha gira devagar atrás das páginas.": {
+  "en": "A faint Poké Ball slowly spins behind the pages.",
+  "fr": "Une Poké Ball pâle tourne lentement derrière les pages.",
+  "es": "Una Poké Ball clarita gira despacio detrás de las páginas."
+ },
+ "Centro de Batalha": {
+  "en": "Battle Center",
+  "fr": "Centre de combat",
+  "es": "Centro de Batalla"
+ },
+ "Ferramentas para vencer as batalhas.": {
+  "en": "Tools to win battles.",
+  "fr": "Des outils pour gagner vos combats.",
+  "es": "Herramientas para ganar las batallas."
+ },
+ "Quem vence?": {
+  "en": "Who wins?",
+  "fr": "Qui gagne ?",
+  "es": "¿Quién gana?"
+ },
+ "Quem ganha de um Pokémon 1 contra 1": {
+  "en": "Who beats a Pokémon 1 on 1",
+  "fr": "Qui bat un Pokémon en 1 contre 1",
+  "es": "Quién le gana a un Pokémon 1 contra 1"
+ },
+ "Faixas de velocidade": {
+  "en": "Speed tiers",
+  "fr": "Paliers de vitesse",
+  "es": "Niveles de velocidad"
+ },
+ "Quem ataca primeiro, com Scarf, Tailwind...": {
+  "en": "Who moves first, with Scarf, Tailwind...",
+  "fr": "Qui attaque en premier, avec Scarf, Tailwind...",
+  "es": "Quién ataca primero, con Scarf, Tailwind..."
+ },
+ "Quem ataca primeiro: todos os Pokémon em ordem de Speed.": {
+  "en": "Who moves first: every Pokémon in Speed order.",
+  "fr": "Qui attaque en premier : tous les Pokémon par ordre de Vitesse.",
+  "es": "Quién ataca primero: todos los Pokémon en orden de Velocidad."
+ },
+ "Máx. com Nature": {
+  "en": "Max with Nature",
+  "fr": "Max avec Nature",
+  "es": "Máx. con Naturaleza"
+ },
+ "Máx. neutra": {
+  "en": "Max neutral",
+  "fr": "Max neutre",
+  "es": "Máx. neutra"
+ },
+ "Sem EVs": {
+  "en": "No EVs",
+  "fr": "Sans EV",
+  "es": "Sin EVs"
+ },
+ "Mínima": {
+  "en": "Minimum",
+  "fr": "Minimum",
+  "es": "Mínima"
+ },
+ "Só evoluídos": {
+  "en": "Fully evolved only",
+  "fr": "Évolutions finales",
+  "es": "Solo evolucionados"
+ },
+ "Base {0}": {
+  "en": "Base {0}",
+  "fr": "Base {0}",
+  "es": "Base {0}"
+ },
+ "Mostrar mais": {
+  "en": "Show more",
+  "fr": "Afficher plus",
+  "es": "Mostrar más"
+ },
+ "Escolha um Pokémon e veja quem ganha dele 1 contra 1 (nível 50, melhor golpe de cada lado).": {
+  "en": "Pick a Pokémon and see who beats it 1 on 1 (level 50, each side's best move).",
+  "fr": "Choisissez un Pokémon et voyez qui le bat en 1 contre 1 (niveau 50, meilleure attaque de chaque côté).",
+  "es": "Elige un Pokémon y mira quién le gana 1 contra 1 (nivel 50, el mejor movimiento de cada lado)."
+ },
+ "Incluir lendários e míticos": {
+  "en": "Include legendaries and mythicals",
+  "fr": "Inclure légendaires et fabuleux",
+  "es": "Incluir legendarios y singulares"
+ },
+ "Calculando os confrontos...": {
+  "en": "Calculating matchups...",
+  "fr": "Calcul des duels...",
+  "es": "Calculando los enfrentamientos..."
+ },
+ "Ninguém ganha dele 1 contra 1 nessas condições.": {
+  "en": "Nobody beats it 1 on 1 under these conditions.",
+  "fr": "Personne ne le bat en 1 contre 1 dans ces conditions.",
+  "es": "Nadie le gana 1 contra 1 en estas condiciones."
+ },
+ "{0} Pokémon ganham do {1}": {
+  "en": "{0} Pokémon beat {1}",
+  "fr": "{0} Pokémon battent {1}",
+  "es": "{0} Pokémon le ganan a {1}"
+ },
+ "Não leva dano dele.": {
+  "en": "Takes no damage from it.",
+  "fr": "Ne subit aucun dégât.",
+  "es": "No recibe daño de él."
+ },
+ "Aguenta {0}": {
+  "en": "Survives {0}",
+  "fr": "Encaisse {0}",
+  "es": "Aguanta {0}"
+ },
+ "Nenhum Pokémon escolhido": {
+  "en": "No Pokémon chosen",
+  "fr": "Aucun Pokémon choisi",
+  "es": "Ningún Pokémon elegido"
+ },
+ "Imagem do time": {
+  "en": "Team image",
+  "fr": "Image de l'équipe",
+  "es": "Imagen del equipo"
+ },
+ "Meu time \"{0}\" no PocketDex": {
+  "en": "My team \"{0}\" on PocketDex",
+  "fr": "Mon équipe « {0} » sur PocketDex",
+  "es": "Mi equipo \"{0}\" en PocketDex"
+ },
+ "Baixar imagem": {
+  "en": "Download image",
+  "fr": "Télécharger l'image",
+  "es": "Descargar imagen"
+ },
+ "Tera Raids": {
+  "en": "Tera Raids",
+  "fr": "Raids Téracristal",
+  "es": "Teraincursiones"
+ },
+ "Os melhores Pokémon contra cada chefe": {
+  "en": "The best Pokémon against each boss",
+  "fr": "Les meilleurs Pokémon contre chaque boss",
+  "es": "Los mejores Pokémon contra cada jefe"
+ },
+ "Escolha o chefe da raid e o tipo Tera dele para ver os melhores Pokémon para levar.": {
+  "en": "Pick the raid boss and its Tera type to see the best Pokémon to bring.",
+  "fr": "Choisissez le boss du raid et son type Téra pour voir les meilleurs Pokémon à emmener.",
+  "es": "Elige el jefe de la incursión y su teratipo para ver los mejores Pokémon para llevar."
+ },
+ "Escolher o chefe": {
+  "en": "Choose the boss",
+  "fr": "Choisir le boss",
+  "es": "Elegir el jefe"
+ },
+ "Escolha o chefe": {
+  "en": "Choose the boss",
+  "fr": "Choisissez le boss",
+  "es": "Elige el jefe"
+ },
+ "Tipo Tera do chefe": {
+  "en": "Boss Tera type",
+  "fr": "Type Téra du boss",
+  "es": "Teratipo del jefe"
+ },
+ "Nenhum Pokémon bate super efetivo nesse Tera com o próprio tipo.": {
+  "en": "No Pokémon hits this Tera super effectively with its own type.",
+  "fr": "Aucun Pokémon ne frappe ce Téra super efficacement avec son propre type.",
+  "es": "Ningún Pokémon golpea este tera con su propio tipo de forma supereficaz."
+ },
+ "Melhores para a raid contra {0} Tera {1}": {
+  "en": "Best for the raid against Tera {1} {0}",
+  "fr": "Meilleurs pour le raid contre {0} Téra {1}",
+  "es": "Mejores para la incursión contra {0} tera {1}"
+ },
+ "resiste ao chefe": {
+  "en": "resists the boss",
+  "fr": "résiste au boss",
+  "es": "resiste al jefe"
+ },
+ "leva super efetivo do chefe": {
+  "en": "weak to the boss",
+  "fr": "faible contre le boss",
+  "es": "débil contra el jefe"
+ },
+ "dano normal do chefe": {
+  "en": "neutral to the boss",
+  "fr": "dégâts normaux du boss",
+  "es": "daño normal del jefe"
+ },
+ "Golpes de ovo": {
+  "en": "Egg moves",
+  "fr": "Capacités Œuf",
+  "es": "Movimientos huevo"
+ },
+ "Por quais Pokémon passar para ensinar um golpe de ovo": {
+  "en": "Which Pokémon to breed through to pass an egg move",
+  "fr": "Par quels Pokémon passer pour transmettre une capacité Œuf",
+  "es": "Por qué Pokémon pasar para enseñar un movimiento huevo"
+ },
+ "Escolha o filhote e o golpe de ovo: mostramos por quais Pokémon passar para ele nascer sabendo o golpe.": {
+  "en": "Pick the baby and the egg move: we show which Pokémon to breed through so it hatches knowing it.",
+  "fr": "Choisissez le bébé et la capacité Œuf : nous montrons par quels Pokémon passer pour qu'il naisse en la connaissant.",
+  "es": "Elige la cría y el movimiento huevo: te mostramos por qué Pokémon pasar para que nazca sabiéndolo."
+ },
+ "Esse Pokémon não tem golpes de ovo.": {
+  "en": "This Pokémon has no egg moves.",
+  "fr": "Ce Pokémon n'a pas de capacités Œuf.",
+  "es": "Este Pokémon no tiene movimientos huevo."
+ },
+ "Não achamos uma cadeia de até 3 pais para esse golpe.": {
+  "en": "We couldn't find a chain of up to 3 parents for this move.",
+  "fr": "Aucune chaîne de 3 parents maximum trouvée pour cette capacité.",
+  "es": "No encontramos una cadena de hasta 3 padres para este movimiento."
+ },
+ "Cadeias para {0} aprender {1}": {
+  "en": "Chains for {0} to learn {1}",
+  "fr": "Chaînes pour que {0} apprenne {1}",
+  "es": "Cadenas para que {0} aprenda {1}"
+ },
+ "aprende no nível {0}": {
+  "en": "learns at level {0}",
+  "fr": "apprend au niveau {0}",
+  "es": "aprende al nivel {0}"
+ },
+ "aprende por TM": {
+  "en": "learns by TM",
+  "fr": "apprend par CT",
+  "es": "aprende por MT"
+ },
+ "aprende por TM ou tutor": {
+  "en": "learns by TM or tutor",
+  "fr": "apprend par CT ou tuteur",
+  "es": "aprende por MT o tutor"
+ },
+ "aprende com tutor": {
+  "en": "learns from a tutor",
+  "fr": "apprend avec un tuteur",
+  "es": "aprende con tutor"
+ },
+ "recebe de ovo": {
+  "en": "gets it from an egg",
+  "fr": "l'obtient par un œuf",
+  "es": "lo recibe por huevo"
+ },
+ "Por jogo": {
+  "en": "By game",
+  "fr": "Par jeu",
+  "es": "Por juego"
+ },
+ "Formas": {
+  "en": "Forms",
+  "fr": "Formes",
+  "es": "Formas"
+ },
+ "Regionais": {
+  "en": "Regional",
+  "fr": "Régionales",
+  "es": "Regionales"
+ },
+ "Mega e Primal": {
+  "en": "Mega and Primal",
+  "fr": "Méga et Primo",
+  "es": "Mega y Primigenia"
+ },
+ "Gigantamax": {
+  "en": "Gigantamax",
+  "fr": "Gigamax",
+  "es": "Gigamax"
+ },
+ "Outras formas": {
+  "en": "Other forms",
+  "fr": "Autres formes",
+  "es": "Otras formas"
+ },
+ "{0} de {1} formas no total": {
+  "en": "{0} of {1} forms in total",
+  "fr": "{0} sur {1} formes au total",
+  "es": "{0} de {1} formas en total"
+ },
+ "Sets prontos": {
+  "en": "Ready-made sets",
+  "fr": "Sets prêts",
+  "es": "Sets listos"
+ },
+ "Sets de batalha do Pokémon Showdown. Toque em \"Usar\" para preencher tudo de uma vez.": {
+  "en": "Battle sets from Pokémon Showdown. Tap \"Use\" to fill everything at once.",
+  "fr": "Sets de combat de Pokémon Showdown. Touchez « Utiliser » pour tout remplir d'un coup.",
+  "es": "Sets de batalla de Pokémon Showdown. Toca \"Usar\" para rellenar todo de una vez."
+ },
+ "Sets de batalha do Pokémon Showdown. Clique em \"Usar\" para preencher tudo de uma vez.": {
+  "en": "Battle sets from Pokémon Showdown. Click \"Use\" to fill everything at once.",
+  "fr": "Sets de combat de Pokémon Showdown. Cliquez sur « Utiliser » pour tout remplir d'un coup.",
+  "es": "Sets de batalla de Pokémon Showdown. Haz clic en \"Usar\" para rellenar todo de una vez."
+ },
+ "Usar": {
+  "en": "Use",
+  "fr": "Utiliser",
+  "es": "Usar"
  }
 }

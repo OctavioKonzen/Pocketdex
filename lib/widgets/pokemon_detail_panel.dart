@@ -1,6 +1,7 @@
 // lib/widgets/pokemon_detail_panel.dart
 
 import 'package:flutter/material.dart' hide Text;
+import 'package:pocket_dex/utils/site_ui.dart';
 import 'base_stats.dart';
 import 'where_to_find.dart';
 import 'package:pocket_dex/models/alternate_form.dart';
@@ -123,7 +124,7 @@ class PokemonDetailPanel extends StatelessWidget {
     return Container(
       height: height ?? MediaQuery.of(context).size.height * 0.45,
       decoration: BoxDecoration(
-        color: theme.scaffoldBackgroundColor,
+        color: SiteColors.of(context).bg,
         borderRadius: borderRadius ??
             const BorderRadius.only(
               topLeft: Radius.circular(30),

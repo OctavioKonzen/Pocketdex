@@ -56,6 +56,9 @@ export const getLocations = () => load('locations.json')
 /** Áreas com Pokémon em cada jogo: {jogo: [área]} (Nuzlocke). */
 export const getGameAreas = () => load('game_areas.json')
 
+/** Sets prontos: {id do Pokémon: [set + tier]} (Pokémon Showdown, tool/build_sets.py). */
+export const getReadySets = () => load('sets.json')
+
 /** Grito da espécie (arquivo do banco, não da PokeAPI). */
 export const cryUrl = (speciesId) => `${BASE}cries/${speciesId}.mp3`
 

@@ -16,6 +16,7 @@
 
 import 'dart:math';
 import 'package:flutter/material.dart' hide Text;
+import 'package:pocket_dex/utils/site_ui.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 
 import '../i18n/i18n.dart';
@@ -460,7 +461,6 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final answer = _answerId;
     if (_pool == null || answer == null) {
       return Scaffold(appBar: AppBar(), body: const Center(child: PikachuLoadingIndicator()));
@@ -634,7 +634,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
           ),
         ),
       ),
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: SiteColors.of(context).bg,
     );
   }
 }

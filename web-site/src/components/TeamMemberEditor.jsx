@@ -3,7 +3,7 @@
 // finais). Salva a cada mudança.
 
 import { useEffect, useMemo, useState } from 'react'
-import { getItems, getMoves } from '../lib/data'
+import { getItems, getMoves, getReadySets } from '../lib/data'
 import { prettyName } from '../lib/pokemon'
 import { evTotal, NATURES, natureLabel, normalizeSet, POPULAR_ITEMS, prettySlug, STAT_KEYS, STAT_NAMES, statValue, TERA_TYPES } from '../lib/teamSets'
 import { usePokemonForm } from './BattleTools'
@@ -68,6 +68,55 @@ function SlugInput({ id, value, onChange, options, placeholder }) {
   )
 }
 
+/** Set pronto → campos do set (o apelido, o gênero e o shiny continuam). */
+const readyToSet = (r) => ({
+  level: r.level,
+  ability: r.ability,
+  item: r.item,
+  nature: r.nature,
+  tera: r.tera,
+  moves: r.moves,
+  evs: r.evs,
+  ivs: Object.fromEntries(STAT_KEYS.map((k) => [k, 31])),
+})
+
+/** Sets prontos do Pokémon (Battle Factory/BSS do Pokémon Showdown). */
+function ReadySets({ pokemonId, onUse }) {
+  const [sets, setSets] = useState(null)
+  useEffect(() => {
+    let alive = true
+    getReadySets()
+      .then((all) => alive && setSets(all[pokemonId] ?? []))
+      .catch(() => alive && setSets([]))
+    return () => {
+      alive = false
+    }
+  }, [pokemonId])
+  if (!sets?.length) return null
+  return (
+    <div className="rounded-2xl bg-surface p-3">
+      <div className="font-bold">Sets prontos</div>
+      <p className="mb-2 text-xs text-muted">Sets de batalha do Pokémon Showdown. Clique em &quot;Usar&quot; para preencher tudo de uma vez.</p>
+      <div className="space-y-2">
+        {sets.map((r, i) => (
+          <div key={i} className="flex items-center gap-3 rounded-xl bg-card p-2.5">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-1.5 text-sm">
+                <span className="rounded-md bg-sky-600 px-1.5 text-[11px] font-bold text-white">{r.tier}</span>
+                {r.item && <b>{`@ ${prettySlug(r.item)}`}</b>}
+                {r.tera && <TypeBadge type={r.tera} small />}
+              </div>
+              <div className="mt-0.5 text-xs">{r.moves.filter(Boolean).map(prettySlug).join(' · ')}</div>
+              <div className="text-[11px] text-muted">{`${prettySlug(r.ability)} · ${r.nature}`}</div>
+            </div>
+            <Button onClick={() => onUse(r)}>Usar</Button>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function TeamMemberEditor({ open, pokemon, set, onChange, onClose, onRemove, onSwap }) {
   const form = usePokemonForm(open ? pokemon : null)
   const [moves, setMoves] = useState(null)
@@ -114,6 +163,7 @@ export default function TeamMemberEditor({ open, pokemon, set, onChange, onClose
         </div>
 
         <div className="space-y-4">
+          <ReadySets pokemonId={pokemon.id} onUse={(r) => update(readyToSet(r))} />
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Field label="Apelido" className="col-span-2">
               <input value={s.nickname} maxLength={18} onChange={(e) => update({ nickname: e.target.value })} placeholder={prettyName(pokemon.name)} className={input} />

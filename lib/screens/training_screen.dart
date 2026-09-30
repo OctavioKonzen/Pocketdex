@@ -1,22 +1,20 @@
 // lib/screens/training_screen.dart
 //
 // Centro de Treinamento no estilo do site: um card colorido para cada
-// ferramenta (Natures, Breeding, EVs, comparar, dano, IVs, tipos, shiny e
-// Nuzlocke).
+// ferramenta (Natures, Breeding, EVs, IVs, shiny e Nuzlocke). As de batalha
+// (dano, comparar, velocidade...) ficam no Centro de Batalha.
 
 import 'package:flutter/material.dart' hide Text;
-import 'battle_tools_screen.dart';
-import 'damage_calc_screen.dart';
 
 import '../utils/responsive.dart';
 import '../utils/site_ui.dart';
 import 'breeding_help_screen.dart';
+import 'egg_chain_screen.dart';
 import 'ev_counter_screen.dart';
 import 'nature_guide_screen.dart';
 import 'tools/iv_calc_screen.dart';
 import 'tools/nuzlocke_screen.dart';
 import 'tools/shiny_hunt_screen.dart';
-import 'tools/type_chart_screen.dart';
 import 'package:pocket_dex/i18n/text.dart';
 
 class TrainingScreen extends StatelessWidget {
@@ -58,6 +56,14 @@ class TrainingScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 14),
                   ToolCard(
+                    icon: Icons.egg,
+                    title: 'Golpes de ovo',
+                    subtitle: 'Por quais Pokémon passar para ensinar um golpe de ovo',
+                    color: const Color(0xFFF472B6),
+                    onTap: () => _open(context, const EggChainScreen()),
+                  ),
+                  const SizedBox(height: 14),
+                  ToolCard(
                     icon: Icons.fitness_center,
                     title: 'Contador de EVs',
                     subtitle: 'Acompanhe o treino dos seus Pokémon',
@@ -66,35 +72,11 @@ class TrainingScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 14),
                   ToolCard(
-                    icon: Icons.compare_arrows,
-                    title: 'Comparar Pokémon',
-                    subtitle: 'Status e fraquezas lado a lado',
-                    color: const Color(0xFF7E57C2),
-                    onTap: () => _open(context, const CompareScreen()),
-                  ),
-                  const SizedBox(height: 14),
-                  ToolCard(
-                    icon: Icons.flash_on,
-                    title: 'Calculadora de dano',
-                    subtitle: 'Quanto um golpe tira do outro',
-                    color: const Color(0xFFEF5350),
-                    onTap: () => _open(context, const DamageCalcScreen()),
-                  ),
-                  const SizedBox(height: 14),
-                  ToolCard(
                     icon: Icons.calculate,
                     title: 'Calculadora de IVs',
                     subtitle: 'Descubra os IVs pelos status do jogo',
                     color: const Color(0xFF26A69A),
                     onTap: () => _open(context, const IvCalcScreen()),
-                  ),
-                  const SizedBox(height: 14),
-                  ToolCard(
-                    icon: Icons.grid_on,
-                    title: 'Tabela de tipos',
-                    subtitle: 'Fraquezas e resistências de cada tipo',
-                    color: const Color(0xFF5C6BC0),
-                    onTap: () => _open(context, const TypeChartScreen()),
                   ),
                   const SizedBox(height: 14),
                   ToolCard(
