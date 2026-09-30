@@ -5273,11 +5273,6 @@
   "fr": "💬 Discussions",
   "es": "💬 Conversaciones"
  },
- "Seus chats com os amigos, do mais recente para o mais antigo.": {
-  "en": "Your chats with friends, most recent first.",
-  "fr": "Vos discussions avec vos amis, des plus récentes aux plus anciennes.",
-  "es": "Tus chats con amigos, del más reciente al más antiguo."
- },
  "Nenhuma mensagem ainda. Diga oi!": {
   "en": "No messages yet. Say hi!",
   "fr": "Aucun message pour l'instant. Dites bonjour !",
@@ -5292,5 +5287,10 @@
   "en": "yesterday",
   "fr": "hier",
   "es": "ayer"
+ },
+ "As mensagens somem sozinhas depois de 7 dias.": {
+  "en": "Messages disappear on their own after 7 days.",
+  "fr": "Les messages disparaissent d'eux-mêmes après 7 jours.",
+  "es": "Los mensajes desaparecen solos después de 7 días."
  }
 }

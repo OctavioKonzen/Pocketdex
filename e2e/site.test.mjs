@@ -214,14 +214,14 @@ try {
   assert.equal(await friendDocs(), 2, `${step}: devia ter os dois lados da amizade`)
 
   step = 'amigos: chat'
-  await page.getByRole('link', { name: 'Conversar' }).click()
+  await page.getByRole('link', { name: `Conversar: ${friend.name}` }).click()
   await page.getByText('Nenhuma mensagem ainda').waitFor({ timeout: 15000 })
   await page.getByPlaceholder('Mensagem').fill('Oi! Bora batalhar?')
   await page.keyboard.press('Enter')
   await page.getByText('Oi! Bora batalhar?').waitFor({ timeout: 15000 })
   // O amigo vê a última mensagem e o aviso de não lida na lista.
   await page2.getByText('Oi! Bora batalhar?').waitFor({ timeout: 15000 })
-  await page2.getByRole('link', { name: 'Conversar' }).click()
+  await page2.getByRole('link', { name: `Conversar: ${user.name}` }).click()
   await page2.getByText('Oi! Bora batalhar?').waitFor({ timeout: 15000 })
   await page2.getByPlaceholder('Mensagem').fill('Bora!')
   await page2.getByRole('button', { name: 'Enviar' }).click()
@@ -286,16 +286,14 @@ try {
   await expectHealthy()
 
   step = 'amigos: conversas'
+  // As conversas ficam na própria tela de Amigos (como no WhatsApp).
   await go('amigos')
-  await page.getByRole('link', { name: /Conversas/ }).click()
-  await page.waitForURL(/#\/amigos\/conversas/, { timeout: 15000 })
-  await page.getByText(friend.name).first().waitFor({ timeout: 15000 })
   await page.getByText(/^Você:/).waitFor({ timeout: 15000 })
-  await page.getByText(friend.name).first().click()
+  await page.getByRole('link', { name: `Conversar: ${friend.name}` }).click()
   await page.waitForURL(/#\/amigos\/chat\//, { timeout: 15000 })
-  // Link antigo das Trocas cai nas Conversas.
+  // Link antigo das Trocas cai em Amigos.
   await go('amigos/trocas')
-  await page.waitForURL(/#\/amigos\/conversas/, { timeout: 15000 })
+  await page.waitForURL(/#\/amigos$/, { timeout: 15000 })
   await expectHealthy()
   await friendCtx.close()
 

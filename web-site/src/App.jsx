@@ -26,7 +26,6 @@ const AchievementsPage = lazyPage(() => import('./pages/AchievementsPage'))
 const FriendsPage = lazyPage(() => import('./pages/FriendsPage'))
 const ChatPage = lazyPage(() => import('./pages/ChatPage'))
 const BattlePage = lazyPage(() => import('./pages/BattlePage'))
-const ConversationsPage = lazyPage(() => import('./pages/ConversationsPage'))
 const TeamBattlePage = lazyPage(() => import('./pages/TeamBattlePage'))
 const DraftPage = lazyPage(() => import('./pages/DraftPage'))
 const LoginPage = lazyPage(() => import('./pages/LoginPage'))
@@ -398,9 +397,8 @@ export default function App() {
                   <Route path="/conquistas" element={<AchievementsPage />} />
                   <Route path="/amigos" element={<FriendsPage />} />
                   <Route path="/amigos/chat/:uid" element={<ChatPage />} />
-                  <Route path="/amigos/conversas" element={<ConversationsPage />} />
-                  {/* As Trocas saíram: links antigos vão para as Conversas. */}
-                  <Route path="/amigos/trocas" element={<Navigate to="/amigos/conversas" replace />} />
+                  {/* As Trocas saíram (as conversas ficam em Amigos): link antigo vai para lá. */}
+                  <Route path="/amigos/trocas" element={<Navigate to="/amigos" replace />} />
                   <Route path="/amigos/batalha" element={<TeamBattlePage />} />
                   <Route path="/amigos/draft" element={<DraftPage />} />
                   <Route path="/amigos/draft/:id" element={<DraftPage />} />

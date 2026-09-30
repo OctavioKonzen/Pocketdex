@@ -7,7 +7,7 @@ import { Avatar } from '../components/AccountAvatar'
 import { Button, Empty, Icon, PageHeader } from '../components/ui'
 import { acceptFriend, clearChallenge, errorMessage, findAccount, friendRecords, removeFriend, sendFriendRequest, useAuth } from '../lib/auth'
 import { decodeChallenge } from '../lib/challenge'
-import { friendsOnly, requestsIn, requestsOut, useFriends } from '../lib/friends'
+import { chatTime, conversationOrder, friendsOnly, requestsIn, requestsOut, useFriends } from '../lib/friends'
 import { t } from '../lib/i18n'
 import { useStore } from '../lib/store'
 
@@ -29,6 +29,7 @@ export default function FriendsPage() {
   const incoming = requestsIn(list)
   const outgoing = requestsOut(list)
   const challenges = friends.filter((f) => f.challenge?.code)
+  const chats = useMemo(() => conversationOrder(friends), [friends])
   const unreadTotal = friends.reduce((n, f) => n + (f.unread ?? 0), 0)
   const friendIds = friends.map((f) => f.uid).join(',')
 
@@ -40,6 +41,7 @@ export default function FriendsPage() {
 
   if (!user) return <Empty>Entre na sua conta para ter amigos.</Empty>
   const me = { uid: user.uid, name: user.name, avatar }
+  const now = new Date()
 
   const add = async (e) => {
     e.preventDefault()
@@ -87,12 +89,6 @@ export default function FriendsPage() {
 
       <div className="grid grid-cols-2 gap-3">
         <Link
-          to="/amigos/conversas"
-          className="rounded-2xl bg-gradient-to-r from-sky-600 to-indigo-600 px-4 py-3 text-center font-bold text-white shadow transition hover:scale-[1.02]"
-        >
-          {unreadTotal > 0 ? `💬 ${t('Conversas')} (${unreadTotal})` : '💬 Conversas'}
-        </Link>
-        <Link
           to="/amigos/batalha"
           className="rounded-2xl bg-gradient-to-r from-red-600 to-purple-600 px-4 py-3 text-center font-bold text-white shadow transition hover:scale-[1.02]"
         >
@@ -100,7 +96,7 @@ export default function FriendsPage() {
         </Link>
         <Link
           to="/amigos/draft"
-          className="col-span-2 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 px-4 py-3 text-center font-bold text-white shadow transition hover:scale-[1.02]"
+          className="rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 px-4 py-3 text-center font-bold text-white shadow transition hover:scale-[1.02]"
         >
           🎯 Draft
         </Link>
@@ -169,9 +165,62 @@ export default function FriendsPage() {
         </section>
       )}
 
+      {/* Conversas (como no WhatsApp): cada amigo com a última mensagem; clicar abre o chat. */}
+      <section className={CARD}>
+        <div className="mb-1 font-bold">{unreadTotal > 0 ? `💬 ${t('Conversas')} (${unreadTotal})` : '💬 Conversas'}</div>
+        <p className="mb-2 text-xs text-muted">As mensagens somem sozinhas depois de 7 dias.</p>
+        {!ready ? (
+          <p className="text-sm text-muted">...</p>
+        ) : !friends.length ? (
+          <p className="text-sm text-muted">Você ainda não tem amigos aqui. Adicione alguém pelo nome.</p>
+        ) : (
+          <ul className="-mx-2 divide-y divide-black/5 dark:divide-white/5">
+            {chats.map((f) => {
+              const unread = f.unread > 0
+              return (
+                <li key={f.uid}>
+                  <Link
+                    to={`/amigos/chat/${f.uid}`}
+                    aria-label={`${t('Conversar')}: ${f.name}`}
+                    className="flex items-center gap-3 rounded-xl px-2 py-2.5 transition hover:bg-surface"
+                  >
+                    <Avatar pokemonId={f.avatar ?? null} name={f.name} size={48} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-baseline gap-2">
+                        <span className="min-w-0 flex-1 truncate font-bold" data-no-translate>
+                          {f.name}
+                        </span>
+                        {f.last?.at && <span className={`shrink-0 text-xs ${unread ? 'font-bold text-green-500' : 'text-muted'}`}>{t(chatTime(f.last.at, now))}</span>}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`min-w-0 flex-1 truncate text-sm ${unread ? 'font-semibold text-text' : 'text-muted'}`}>
+                          {f.last?.text ? (
+                            <>
+                              {f.last.from === user.uid && <span>{`${t('Você')}: `}</span>}
+                              <span data-no-translate>{f.last.text}</span>
+                            </>
+                          ) : (
+                            'Nenhuma mensagem ainda. Diga oi!'
+                          )}
+                        </span>
+                        {unread && (
+                          <span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-green-500 px-1.5 text-[11px] font-bold text-white">
+                            {f.unread > 99 ? '99+' : f.unread}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </section>
+
       <section className={CARD}>
         <div className="mb-1 font-bold">{`Amigos (${friends.length})`}</div>
-        <p className="mb-3 text-xs text-muted">Ranking entre vocês pelo recorde do Ranked. Toque no balão para conversar; no fim de um desafio no Jogo, dá para mandar o desafio para um amigo.</p>
+        <p className="mb-3 text-xs text-muted">Ranking entre vocês pelo recorde do Ranked. No fim de um desafio no Jogo, dá para mandar o desafio para um amigo.</p>
         {!ready ? (
           <p className="text-sm text-muted">...</p>
         ) : !friends.length ? (
@@ -187,23 +236,8 @@ export default function FriendsPage() {
                     <span data-no-translate>{f.name}</span>
                     {f.me && <span className="ml-2 text-xs text-yellow-400">você</span>}
                   </div>
-                  {f.last?.text && (
-                    <div className={`truncate text-xs ${f.unread ? 'font-bold text-text' : 'text-muted'}`} data-no-translate>
-                      {f.last.text}
-                    </div>
-                  )}
                 </div>
                 <span className="font-black text-yellow-400">{`🏆 ${f.score}`}</span>
-                {!f.me && (
-                  <Link to={`/amigos/chat/${f.uid}`} aria-label="Conversar" title="Conversar" className="relative text-sky-400 hover:text-sky-300">
-                    <Icon name="chat" size={22} />
-                    {f.unread > 0 && (
-                      <span className="absolute -top-2 -right-2 grid h-4 min-w-4 place-items-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
-                        {f.unread > 9 ? '9+' : f.unread}
-                      </span>
-                    )}
-                  </Link>
-                )}
                 {!f.me && (
                   <button type="button" aria-label="Desfazer amizade" title="Desfazer amizade" onClick={() => removeFriend(user.uid, f.uid)} className="cursor-pointer text-muted hover:text-red-400">
                     <Icon name="delete" size={18} />

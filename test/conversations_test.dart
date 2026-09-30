@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pocket_dex/screens/conversations_screen.dart';
+import 'package:pocket_dex/widgets/conversation_list.dart';
 import 'package:pocket_dex/services/friends_service.dart';
 
 void main() {
