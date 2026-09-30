@@ -36,28 +36,34 @@ async function fighter(calc, byId, { id, set }) {
     return m && m.category !== 'Status'
   }
   const chosen = (set?.moves ?? []).filter((s) => s && damaging(s))
-  const moves = chosen.length ? chosen : [...new Set(form.moves.map((m) => m[0]))].filter(damaging)
+  const moves = chosen.length ? chosen : trim(calc, [...new Set(form.moves.map((m) => m[0]))].filter(damaging))
   const speed = calc.sideStats(base, side)?.stats.spe ?? 0
-  return { base, side, moves, speed }
+  return { id, base, side, moves, speed }
+}
+
+/** Sem set: os 2 golpes mais fortes de cada tipo e categoria (e os de dano fixo), como no app. */
+function trim(calc, slugs) {
+  const groups = new Map()
+  const fixed = []
+  for (const slug of slugs) {
+    const m = calc.moveData(slug)
+    if (!m.basePower) fixed.push(slug)
+    else {
+      const key = `${m.type}/${m.category}`
+      groups.set(key, [...(groups.get(key) ?? []), slug])
+    }
+  }
+  return [...[...groups.values()].flatMap((g) => g.sort((x, y) => calc.moveData(y).basePower - calc.moveData(x).basePower).slice(0, 2)), ...fixed]
 }
 
 function best(calc, a, b) {
-  let top = NONE
-  for (const slug of a.moves) {
-    const r = calc.run({
-      attacker: a.base,
-      attackerSide: a.side,
-      defender: b.base,
-      defenderSide: b.side,
-      moveSlug: slug,
-      moveOptions: calc.newMoveOptions(),
-      field: calc.newField(),
-    })
-    if (!r || r.noDamage) continue
-    const pct = (r.minPct + r.maxPct) / 2
-    if (pct > top.pct) top = { move: r.name, pct, hits: Math.min(98, Math.max(1, Math.ceil(100 / pct))) }
-  }
-  return top
+  const top = calc.bestHit(a.base, a.side, b.base, b.side, a.moves)
+  return top ? { move: top.move, pct: top.pct, hits: Math.min(98, Math.max(1, Math.ceil(100 / top.pct))) } : NONE
+}
+
+const duel = (calc, x, y) => {
+  const d = { mine: best(calc, x, y), theirs: best(calc, y, x), faster: x.speed > y.speed, sameSpeed: x.speed === y.speed }
+  return { ...d, result: duelResult(d) }
 }
 
 /** Todos os confrontos: [i][j] = Pokémon i do primeiro time contra o j do outro. Membros: {id, set}. */
@@ -69,10 +75,38 @@ export async function runBattle(mine, theirs) {
   return a.map((x) =>
     b.map((y) => {
       if (!x || !y) return null
-      const d = { mine: best(calc, x, y), theirs: best(calc, y, x), faster: x.speed > y.speed, sameSpeed: x.speed === y.speed }
-      return { ...d, result: duelResult(d) }
+      return duel(calc, x, y)
     }),
   )
+}
+
+/**
+ * Quem vence o Pokémon [targetId]: todos os totalmente evoluídos contra ele,
+ * 1 contra 1 (nível 50, sem set). Devolve [{id, duel}] dos que ganham, os com
+ * mais folga primeiro. progress(0..1) vai sendo chamado.
+ */
+export async function counters(targetId, { legendaries = false, progress } = {}) {
+  const calc = await import('./damageCalc')
+  const byId = await getPokemonById()
+  const target = await fighter(calc, byId, { id: targetId })
+  if (!target) return []
+  const pool = [...byId.values()].filter(
+    (p) => p.default && p.id !== targetId && (legendaries || !p.tag || p.tag === 'baby') && !calc.isNfe(p.name),
+  )
+  const out = []
+  for (let i = 0; i < pool.length; i++) {
+    const x = await fighter(calc, byId, { id: pool[i].id })
+    if (x) {
+      const d = duel(calc, x, target)
+      if (d.result === 1) out.push({ id: x.id, duel: d })
+    }
+    if (i % 6 === 5) {
+      progress?.((i + 1) / pool.length)
+      await new Promise((r) => setTimeout(r, 0))
+    }
+  }
+  progress?.(1)
+  return out.sort((a, b) => b.duel.theirs.hits - b.duel.mine.hits - (a.duel.theirs.hits - a.duel.mine.hits) || b.duel.mine.pct - a.duel.mine.pct)
 }
 
 /** Membros de um time ({pokemon: [id|null], sets}) para a batalha. */

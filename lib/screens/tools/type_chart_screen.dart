@@ -114,8 +114,7 @@ class _TypeChartScreenState extends State<TypeChartScreen> {
                       );
                     }),
                   const SizedBox(height: 16),
-                  Text('Tabela completa: linha = tipo do golpe, coluna = tipo de quem recebe.',
-                      style: TextStyle(color: c.muted, fontSize: 12)),
+                  Text('Tabela completa: linha = tipo do golpe, coluna = tipo de quem recebe.', style: TextStyle(color: c.muted, fontSize: 12)),
                   const SizedBox(height: 8),
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
@@ -130,8 +129,7 @@ class _TypeChartScreenState extends State<TypeChartScreen> {
                               height: 64,
                               child: RotatedBox(
                                 quarterTurns: 3,
-                                child: Text(d.capitalise(),
-                                    style: TextStyle(color: getColorForType(d), fontSize: 10, fontWeight: FontWeight.bold)),
+                                child: Text(d.capitalise(), style: TextStyle(color: getColorForType(d), fontSize: 10, fontWeight: FontWeight.bold)),
                               ),
                             ),
                         ]),
@@ -139,8 +137,7 @@ class _TypeChartScreenState extends State<TypeChartScreen> {
                           Row(children: [
                             SizedBox(
                               width: 64,
-                              child: Text(a.capitalise(),
-                                  style: TextStyle(color: getColorForType(a), fontSize: 10, fontWeight: FontWeight.bold)),
+                              child: Text(a.capitalise(), style: TextStyle(color: getColorForType(a), fontSize: 10, fontWeight: FontWeight.bold)),
                             ),
                             for (final d in allTypes) _cell(Battle.effectiveness(a, [d], chart), c),
                           ]),

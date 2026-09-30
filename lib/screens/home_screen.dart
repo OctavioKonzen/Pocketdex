@@ -12,6 +12,8 @@ import 'package:pocket_dex/screens/encyclopedia_screen.dart';
 import 'package:pocket_dex/screens/training_screen.dart';
 import 'package:pocket_dex/screens/game_screen.dart';
 import 'package:pocket_dex/screens/favorites_screen.dart';
+import 'package:pocket_dex/screens/battle_center_screen.dart';
+import 'package:pocket_dex/screens/friends_screen.dart';
 import 'package:pocket_dex/services/pokemon_service.dart';
 import 'package:pocket_dex/utils/pokemon_colors.dart';
 import 'package:pocket_dex/utils/string_extensions.dart';
@@ -141,19 +143,17 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: Responsive.isWide(context)
-                              ? MainAxisAlignment.center
-                              : MainAxisAlignment.start,
-                          children: [
-                            _buildHeader(theme),
-                            if (Responsive.isWide(context))
-                              _buildCategoryGrid()
-                            else
-                              Expanded(child: _buildCategoryGrid()),
-                          ],
-                        ),
+                        child: Responsive.isWide(context)
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [_buildHeader(theme), _buildCategoryGrid()],
+                              )
+                            // Celular: o menu rola (são 8 cards).
+                            : ListView(
+                                padding: const EdgeInsets.only(bottom: 80),
+                                children: [_buildHeader(theme), _buildCategoryGrid()],
+                              ),
                       ),
                       if (_showResultsOverlay)
                         GestureDetector(
@@ -326,6 +326,12 @@ class _HomeScreenState extends State<HomeScreen> {
               MaterialPageRoute(builder: (context) => const GameScreen())),
         ),
         CategoryCard(
+          title: 'Batalha',
+          color: Colors.blueGrey.shade500,
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (context) => const BattleCenterScreen())),
+        ),
+        CategoryCard(
           title: 'Enciclopédia',
           color: Colors.purple.shade400,
           onTap: () => Navigator.push(
@@ -338,6 +344,12 @@ class _HomeScreenState extends State<HomeScreen> {
           color: Colors.orange.shade400,
           onTap: () => Navigator.push(context,
               MaterialPageRoute(builder: (context) => const TrainingScreen())),
+        ),
+        CategoryCard(
+          title: 'Amigos',
+          color: Colors.indigo.shade400,
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (context) => const FriendsScreen())),
         ),
       ],
     );

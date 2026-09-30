@@ -32,6 +32,12 @@ import 'package:pocket_dex/screens/items_encyclopedia_screen.dart';
 import 'package:pocket_dex/screens/abilities_encyclopedia_screen.dart';
 import 'package:pocket_dex/screens/nature_guide_screen.dart';
 import 'package:pocket_dex/screens/pokedex_screen.dart';
+import 'package:pocket_dex/screens/tools/counters_screen.dart';
+import 'package:pocket_dex/screens/tools/speed_tiers_screen.dart';
+import 'package:pocket_dex/screens/tools/tera_raid_screen.dart';
+import 'package:pocket_dex/screens/egg_chain_screen.dart';
+import 'package:pocket_dex/screens/battle_center_screen.dart';
+import 'package:pocket_dex/widgets/team_image.dart';
 import 'package:pocket_dex/screens/pokemon_detail_screen.dart';
 import 'package:pocket_dex/screens/quiz_screen.dart';
 import 'package:pocket_dex/screens/settings_screen.dart';
@@ -52,7 +58,42 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 final screens = <String, Widget Function()>{
   'Início': () => const HomeScreen(),
+  'Imagem do time': () => const Scaffold(
+        body: FittedBox(
+          child: TeamImageCard(
+            name: 'Areia',
+            color: '#C0712B',
+            pokemon: [445, 6, 9, null, 25, 248],
+            sets: [
+              {
+                'item': 'choice-scarf',
+                'ability': 'rough-skin',
+                'tera': 'ground',
+                'moves': ['earthquake', 'dragon-claw', 'stone-edge', 'swords-dance']
+              },
+              {
+                'nickname': 'Zard',
+                'moves': ['flamethrower', 'air-slash', '', '']
+              },
+              null,
+              null,
+              {
+                'shiny': true,
+                'item': 'light-ball',
+                'moves': ['thunderbolt']
+              },
+              null,
+            ],
+            names: {445: 'garchomp', 6: 'charizard', 9: 'blastoise', 25: 'pikachu', 248: 'tyranitar'},
+          ),
+        ),
+      ),
   'Pokédex': () => const PokedexScreen(),
+  'Faixas de velocidade': () => const SpeedTiersScreen(),
+  'Tera Raids': () => const TeraRaidScreen(),
+  'Golpes de ovo': () => const EggChainScreen(),
+  'Centro de Batalha': () => const BattleCenterScreen(),
+  'Quem vence': () => const CountersScreen(),
   'Filtros da Pokédex': () => const PokedexScreen(),
   'Favoritos': () => const FavoritesScreen(),
   'Coleção': () => const Scaffold(body: CollectionView()),
@@ -123,8 +164,7 @@ void main() {
     // A Roboto e os ícones vêm do próprio Flutter instalado (sem elas o teste
     // usa uma fonte de blocos e acusa textos cortados que não existem).
     final exe = Platform.resolvedExecutable;
-    final root = Platform.environment['FLUTTER_ROOT'] ??
-        (exe.contains('/bin/cache/') ? exe.substring(0, exe.indexOf('/bin/cache/')) : '');
+    final root = Platform.environment['FLUTTER_ROOT'] ?? (exe.contains('/bin/cache/') ? exe.substring(0, exe.indexOf('/bin/cache/')) : '');
     final fonts = '$root/bin/cache/dart-sdk/bin/resources/devtools/assets';
     hasFonts = File('$fonts/packages/devtools_app_shared/fonts/Roboto/Roboto-Regular.ttf').existsSync();
     Future<void> font(String family, List<String> files) async {

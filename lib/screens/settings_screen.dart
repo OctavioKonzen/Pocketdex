@@ -145,7 +145,7 @@ class SettingsScreen extends StatelessWidget {
                       ),
                     ),
                   ]),
-                  _Section('Pokédex', [
+                  _Section('Animações', [
                     row(
                       title: 'Animação da Pokébola',
                       subtitle: 'O Pokémon sai da Pokébola ao abrir os detalhes.',
@@ -153,6 +153,15 @@ class SettingsScreen extends StatelessWidget {
                         value: settings.pokeballAnimation,
                         activeTrackColor: const Color(0xFF0EA5E9),
                         onChanged: settings.setPokeballAnimation,
+                      ),
+                    ),
+                    row(
+                      title: 'Pokébola girando no fundo',
+                      subtitle: 'Uma Pokébola clarinha gira devagar atrás das telas.',
+                      trailing: Switch(
+                        value: settings.backgroundAnimation,
+                        activeTrackColor: const Color(0xFF0EA5E9),
+                        onChanged: settings.setBackgroundAnimation,
                       ),
                     ),
                   ]),
@@ -333,7 +342,7 @@ class _AchievementsCard extends StatelessWidget {
                     margin: const EdgeInsets.only(bottom: 8),
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: a.unlocked ? Colors.amber.withAlpha(35) : Theme.of(context).scaffoldBackgroundColor,
+                      color: a.unlocked ? Colors.amber.withAlpha(35) : SiteColors.of(context).bg,
                       borderRadius: BorderRadius.circular(14),
                       border: a.unlocked ? Border.all(color: Colors.amber.withAlpha(150)) : null,
                     ),

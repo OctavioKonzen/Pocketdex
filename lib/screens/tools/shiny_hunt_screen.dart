@@ -37,8 +37,9 @@ class _ShinyHuntScreenState extends State<ShinyHuntScreen> {
 
   void _save(List<Map<String, dynamic>> hunts) => UserData.instance.update({'hunts': hunts});
 
-  void _change(String id, Map<String, dynamic> changes) =>
-      _save([for (final h in UserData.instance.hunts) h['id'] == id ? {...h, ...changes} : h]);
+  void _change(String id, Map<String, dynamic> changes) => _save([
+        for (final h in UserData.instance.hunts) h['id'] == id ? {...h, ...changes} : h
+      ]);
 
   Future<void> _newHunt() async {
     final id = await pickPokemon(context);
@@ -86,8 +87,7 @@ class _ShinyHuntScreenState extends State<ShinyHuntScreen> {
                   onChanged: (v) => setState(() => _method = v ?? 'full'),
                 ),
                 const SizedBox(height: 16),
-                if (hunts.isEmpty)
-                  const EmptyMessage('Nenhuma caçada ainda. Escolha o método e o Pokémon para começar a contar.'),
+                if (hunts.isEmpty) const EmptyMessage('Nenhuma caçada ainda. Escolha o método e o Pokémon para começar a contar.'),
                 for (final h in hunts) _card(h, c),
               ],
             ),

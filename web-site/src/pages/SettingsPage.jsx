@@ -21,6 +21,8 @@ export default function SettingsPage() {
   const setTextSize = usePrefs((s) => s.setTextSize)
   const pokeballAnimation = usePrefs((s) => s.pokeballAnimation)
   const setPokeballAnimation = usePrefs((s) => s.setPokeballAnimation)
+  const backgroundAnimation = usePrefs((s) => s.backgroundAnimation)
+  const setBackgroundAnimation = usePrefs((s) => s.setBackgroundAnimation)
   const [confirm, setConfirm] = useState(false)
   const [message, setMessage] = useState('')
   const user = useAuth((s) => (s.status === 'signedIn' ? s.user : null))
@@ -70,9 +72,12 @@ export default function SettingsPage() {
           </Row>
         </Section>
 
-        <Section title="Pokédex">
+        <Section title="Animações">
           <Row title="Animação da Pokébola" text="O Pokémon sai da Pokébola ao abrir os detalhes.">
             <Switch on={pokeballAnimation} onChange={setPokeballAnimation} label="Animação da Pokébola" />
+          </Row>
+          <Row title="Pokébola girando no fundo" text="Uma Pokébola clarinha gira devagar atrás das páginas.">
+            <Switch on={backgroundAnimation} onChange={setBackgroundAnimation} label="Pokébola girando no fundo" />
           </Row>
         </Section>
 

@@ -14,6 +14,8 @@ Saída (tudo gerado, fora do git):
     web-site/public/data/items.json           itens
     web-site/public/data/types.json           relações de dano entre tipos
     web-site/public/data/egg_groups.json      egg groups
+    web-site/public/data/breeding.json        grupos de ovo e gênero de cada espécie
+    web-site/public/data/egg_moves.json       quem aprende cada golpe de ovo e como
     web-site/public/data/locations.json       nomes dos locais de encontro
     web-site/public/cries/<id>.mp3            grito de cada espécie
     web-site/public/sprites/...               imagens do banco
@@ -231,6 +233,35 @@ def main():
         } for m in moves
     })
     save('move_learners.json', {m['name']: m['learned_by'] for m in moves})
+
+    # Criação (cadeia de golpes de ovo, igual ao app lib/services/egg_chain.dart):
+    #   breeding.json   {espécie: [grupos de ovo, gender_rate, evolui de, golpes de ovo]}
+    #   egg_moves.json  {golpe de ovo: {pokémon: como aprende}}
+    #                   como: nível (>= 1), 0 = TM/tutor, -1 = de ovo
+    defaults = [p for p in pokemon if p['id'] < 10000]
+    own_egg_moves = {p['id']: sorted({m[0] for m in p['moves'] if m[1] == 'egg'}) for p in defaults}
+    save('breeding.json', {
+        s['id']: [s['egg_groups'], s['gender_rate'], s['evolves_from'], own_egg_moves.get(s['id'], [])] for s in species
+    })
+    egg_move_names = {m[0] for p in defaults for m in p['moves'] if m[1] == 'egg'}
+    learn = {}
+    for p in defaults:
+        best = {}
+        for name, method, level in p['moves']:
+            if name not in egg_move_names:
+                continue
+            code = (level or 1) if method == 'level-up' else 0 if method in ('machine', 'tutor') else -1 if method == 'egg' else None
+            if code is None:
+                continue
+            old = best.get(name)
+            # Prioridade: nível (o mais cedo) > TM/tutor > ovo.
+            if old is None or (code >= 1 and (old < 1 or code < old)) or (code == 0 and old == -1):
+                best[name] = code
+        for name, code in best.items():
+            learn.setdefault(name, {})[p['id']] = code
+    save('egg_moves.json', learn)
+    # Sets prontos do Montador (tool/build_sets.py).
+    save('sets.json', load('sets'))
 
     save('abilities.json', [{
         'id': a['id'],

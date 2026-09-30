@@ -4,6 +4,7 @@
 // no mesmo formato do site.
 
 import 'package:flutter/material.dart' hide Text;
+import 'package:pocket_dex/utils/site_ui.dart';
 import 'package:flutter/services.dart';
 
 import '../services/local_database.dart';
@@ -12,6 +13,7 @@ import '../services/team_share.dart';
 import '../services/user_data.dart';
 import 'pokemon_sprite.dart';
 import 'package:pocket_dex/i18n/text.dart';
+import 'team_image.dart';
 
 class TeamShareDialogs {
   TeamShareDialogs._();
@@ -49,7 +51,17 @@ class TeamShareDialogs {
             ],
           ),
         ),
-        actions: [TextButton(onPressed: () => Navigator.pop(dialog), child: const Text('Fechar'))],
+        actions: [
+          TextButton.icon(
+            onPressed: () {
+              Navigator.pop(dialog);
+              TeamImage.show(context, name: name, color: color, pokemon: pokemon, sets: sets, names: names);
+            },
+            icon: const Icon(Icons.image),
+            label: const Text('Imagem do time'),
+          ),
+          TextButton(onPressed: () => Navigator.pop(dialog), child: const Text('Fechar')),
+        ],
       ),
     );
   }
@@ -77,7 +89,6 @@ class _CopyField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(
@@ -98,7 +109,7 @@ class _CopyField extends StatelessWidget {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: theme.scaffoldBackgroundColor, borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(color: SiteColors.of(context).bg, borderRadius: BorderRadius.circular(12)),
             child: Text(
               value,
               maxLines: lines,
@@ -172,7 +183,7 @@ class _ImportDialogState extends State<_ImportDialog> {
             if (_team != null)
               Container(
                 padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(color: theme.scaffoldBackgroundColor, borderRadius: BorderRadius.circular(14)),
+                decoration: BoxDecoration(color: SiteColors.of(context).bg, borderRadius: BorderRadius.circular(14)),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

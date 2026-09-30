@@ -4,6 +4,7 @@ import 'package:pocket_dex/providers/favorites_provider.dart';
 import 'package:pocket_dex/providers/theme_provider.dart';
 import 'package:pocket_dex/screens/home_screen.dart';
 import 'package:pocket_dex/screens/web_shell.dart';
+import 'package:pocket_dex/widgets/pokeball_background.dart';
 import 'package:pocket_dex/utils/site_ui.dart';
 import 'package:provider/provider.dart';
 import 'package:pocket_dex/utils/responsive.dart';
@@ -59,7 +60,17 @@ ThemeData siteTheme(SiteColors c, Brightness brightness) {
     useMaterial3: true,
     brightness: brightness,
     colorScheme: scheme,
-    scaffoldBackgroundColor: c.bg,
+    // As telas são transparentes: o fundo (cor + Pokébola girando) vem da
+    // transição de tela (lib/widgets/pokeball_background.dart).
+    scaffoldBackgroundColor: Colors.transparent,
+    pageTransitionsTheme: const PageTransitionsTheme(builders: {
+      TargetPlatform.android: PokeballPageTransitions(),
+      TargetPlatform.iOS: PokeballPageTransitions(),
+      TargetPlatform.linux: PokeballPageTransitions(),
+      TargetPlatform.macOS: PokeballPageTransitions(),
+      TargetPlatform.windows: PokeballPageTransitions(),
+      TargetPlatform.fuchsia: PokeballPageTransitions(),
+    }),
     cardColor: c.card,
     canvasColor: c.bg,
     hintColor: c.muted,

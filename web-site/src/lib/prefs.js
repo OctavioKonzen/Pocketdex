@@ -1,5 +1,5 @@
 // Preferências deste navegador (não vão para a conta): tamanho do texto e
-// animação da Pokébola ao abrir um Pokémon. O tema e o idioma ficam à parte
+// animações da Pokébola (ao abrir um Pokémon e girando no fundo). O tema e o idioma ficam à parte
 // (o tema vai para a conta; o idioma, em lib/i18n.js).
 
 import { useSyncExternalStore } from 'react'
@@ -20,6 +20,9 @@ export const usePrefs = create(
       setTextSize: (textSize) => set({ textSize }),
       pokeballAnimation: true,
       setPokeballAnimation: (pokeballAnimation) => set({ pokeballAnimation }),
+      /** Pokébola girando no fundo das páginas. */
+      backgroundAnimation: true,
+      setBackgroundAnimation: (backgroundAnimation) => set({ backgroundAnimation }),
     }),
     { name: 'pocketdex-prefs' },
   ),

@@ -28,6 +28,13 @@ class LocalDatabase {
     });
   }
 
+  /// Sets prontos do Pokémon (Battle Factory/BSS do Pokémon Showdown, gerados
+  /// por tool/build_sets.py), no formato de lib/services/team_sets.dart + 'tier'.
+  Future<List<Map<String, dynamic>>> readySets(int pokemonId) async {
+    final all = await _table('sets') as Map<String, dynamic>;
+    return [for (final s in (all['$pokemonId'] as List?) ?? const []) Map<String, dynamic>.from(s as Map)];
+  }
+
   Future<Map<String, Map<String, dynamic>>> _indexByName(String table) async {
     final key = '$table#byName';
     final index = await _tables.putIfAbsent(key, () async {

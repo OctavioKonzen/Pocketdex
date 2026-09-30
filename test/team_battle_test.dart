@@ -21,4 +21,15 @@ void main() {
     final r = await TeamBattle.run([(6, set)], [(3, null)]);
     expect(r[0][0]!.mine.move, 'Flamethrower');
   });
+
+  test('quem vence o Charizard: água e pedra aparecem, planta não', () async {
+    final watch = Stopwatch()..start();
+    final list = await TeamBattle.counters(6);
+    final ids = [for (final (id, _) in list) id];
+    // ignore: avoid_print
+    print('counters do Charizard: ${ids.length} em ${watch.elapsedMilliseconds} ms; top: ${ids.take(8).toList()}');
+    expect(ids, isNotEmpty);
+    expect(ids.contains(3), isFalse, reason: 'Venusaur não ganha do Charizard');
+    expect(ids.take(40).any((id) => [9, 76, 248, 130, 134, 142].contains(id)), isTrue);
+  }, timeout: const Timeout(Duration(minutes: 3)));
 }

@@ -11,6 +11,7 @@ import '../i18n/text.dart';
 import '../models/game.dart';
 import '../services/local_database.dart';
 import '../services/user_data.dart';
+import '../widgets/forms_collection.dart';
 import '../widgets/game_picker.dart';
 import '../widgets/pokemon_sprite.dart';
 
@@ -28,6 +29,7 @@ class _CollectionViewState extends State<CollectionView> {
   String _filter = 'all';
   bool _shinyMode = false;
   String? _version; // versão do jogo (Red, Blue...)
+  bool _forms = false;
   Map<String, dynamic> _exclusives = {};
 
   @override
@@ -59,8 +61,20 @@ class _CollectionViewState extends State<CollectionView> {
     return base.isEmpty ? base : base[0].toUpperCase() + base.substring(1);
   }
 
+  /// "Por jogo" ou "Formas" (Living Dex das formas: regionais, Megas...).
+  Widget _modeSwitch() => SegmentedButton<bool>(
+        segments: const [
+          ButtonSegment(value: false, label: Text('Por jogo'), icon: Icon(Icons.videogame_asset)),
+          ButtonSegment(value: true, label: Text('Formas'), icon: Icon(Icons.auto_awesome_mosaic)),
+        ],
+        selected: {_forms},
+        showSelectedIcon: false,
+        onSelectionChanged: (s) => setState(() => _forms = s.first),
+      );
+
   @override
   Widget build(BuildContext context) {
+    if (_forms) return FormsCollection(header: _modeSwitch());
     final pokedex = _pokedex;
     if (pokedex == null) return const Center(child: CircularProgressIndicator());
     final theme = Theme.of(context);
@@ -88,6 +102,8 @@ class _CollectionViewState extends State<CollectionView> {
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
               sliver: SliverList.list(children: [
+                _modeSwitch(),
+                const SizedBox(height: 10),
                 GamePicker(value: game, onChanged: _choose),
                 if (game.versions.isNotEmpty) ...[
                   const SizedBox(height: 8),

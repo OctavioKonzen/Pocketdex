@@ -45,7 +45,10 @@ class _NuzlockeScreenState extends State<NuzlockeScreen> {
   }
 
   Future<void> _create() async {
-    final gameList = [for (final g in games) if (_areas?[g.key] != null) g];
+    final gameList = [
+      for (final g in games)
+        if (_areas?[g.key] != null) g
+    ];
     if (gameList.isEmpty) return;
     final name = TextEditingController();
     var game = gameList.any((g) => g.key == 'frlg') ? 'frlg' : gameList.first.key;
@@ -108,8 +111,7 @@ class _NuzlockeScreenState extends State<NuzlockeScreen> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
               children: [
-                if (runs.isEmpty)
-                  const EmptyMessage('Nenhum Nuzlocke ainda. Crie um para anotar cada captura por local, as mortes e o seu time.'),
+                if (runs.isEmpty) const EmptyMessage('Nenhum Nuzlocke ainda. Crie um para anotar cada captura por local, as mortes e o seu time.'),
                 for (final r in runs) _runCard(r),
               ],
             ),

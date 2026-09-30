@@ -6,6 +6,7 @@
 // No celular o app continua usando a HomeScreen com os cards de menu.
 
 import 'package:flutter/material.dart' hide Text;
+import 'package:pocket_dex/utils/site_ui.dart';
 
 import '../widgets/hover_scale.dart';
 import 'encyclopedia_screen.dart';
@@ -197,7 +198,7 @@ class _TopBar extends StatelessWidget {
                     hintStyle: TextStyle(color: theme.hintColor, fontSize: 14),
                     prefixIcon: Icon(Icons.search, color: theme.hintColor),
                     filled: true,
-                    fillColor: theme.scaffoldBackgroundColor,
+                    fillColor: SiteColors.of(context).bg,
                     contentPadding: EdgeInsets.zero,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(21),

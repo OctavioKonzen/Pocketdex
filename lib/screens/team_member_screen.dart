@@ -42,6 +42,7 @@ class _TeamMemberScreenState extends State<TeamMemberScreen> {
   Map<String, dynamic>? _row;
   Map<String, Map<String, dynamic>>? _moves;
   List<String>? _items;
+  List<Map<String, dynamic>> _ready = const [];
 
   @override
   void initState() {
@@ -58,9 +59,11 @@ class _TeamMemberScreenState extends State<TeamMemberScreen> {
         if (((i['attributes'] as List?) ?? const []).contains('holdable') && !_notHeld.contains(i['category']))
           i['name'] as String,
     ]..sort();
+    final ready = await db.readySets(widget.pokemonId);
     if (!mounted) return;
     setState(() {
       _row = row;
+      _ready = ready;
       _moves = moves;
       _items = {...popularItems.where(items.contains), ...items}.toList();
     });
@@ -75,6 +78,66 @@ class _TeamMemberScreenState extends State<TeamMemberScreen> {
   void _update(Map<String, dynamic> changes) {
     setState(() => _set = normalizeSet({..._set, ...changes})!);
     widget.onChanged(_set);
+  }
+
+  /// Aplica um set pronto (o apelido, o gênero e o shiny continuam).
+  void _useReady(Map<String, dynamic> ready) => _update({
+        'level': ready['level'],
+        'ability': ready['ability'],
+        'item': ready['item'],
+        'nature': ready['nature'],
+        'tera': ready['tera'],
+        'moves': ready['moves'],
+        'evs': ready['evs'],
+        'ivs': {for (final k in statKeys) k: 31},
+      });
+
+  Widget _readySets() {
+    final c = SiteColors.of(context);
+    return SiteCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Sets prontos', style: TextStyle(color: c.text, fontSize: 16, fontWeight: FontWeight.bold)),
+          Text('Sets de batalha do Pokémon Showdown. Toque em "Usar" para preencher tudo de uma vez.',
+              style: TextStyle(color: c.muted, fontSize: 12)),
+          const SizedBox(height: 6),
+          for (final s in _ready)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(12)),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Wrap(spacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                              decoration: BoxDecoration(color: const Color(0xFF0284C7), borderRadius: BorderRadius.circular(6)),
+                              child: Text('${s['tier']}', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                            ),
+                            if ('${s['item']}'.isNotEmpty) Text('@ ${prettySlug(s['item'])}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                            if ('${s['tera']}'.isNotEmpty) TypeBadge('${s['tera']}', small: true),
+                          ]),
+                          const SizedBox(height: 4),
+                          Text([for (final m in s['moves'] as List) if ('$m'.isNotEmpty) prettySlug(m)].join(' · '),
+                              style: TextStyle(color: c.text, fontSize: 12)),
+                          Text('${prettySlug(s['ability'])} · ${s['nature']}', style: TextStyle(color: c.muted, fontSize: 11)),
+                        ],
+                      ),
+                    ),
+                    TextButton(onPressed: () => _useReady(s), child: const Text('Usar')),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   void _setStat(String group, String key, int value) =>
@@ -202,6 +265,7 @@ class _TeamMemberScreenState extends State<TeamMemberScreen> {
                       ],
                     ),
                   ),
+                  if (_ready.isNotEmpty) ...[const SizedBox(height: 12), _readySets()],
                   const SizedBox(height: 12),
                   SiteCard(
                     child: Column(
