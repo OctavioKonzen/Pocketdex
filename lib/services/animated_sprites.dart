@@ -37,37 +37,80 @@ class AnimatedSprites {
   final Queue<Completer<void>> _waiting = Queue();
   int _running = 0;
 
-  /// Carrega a lista do banco e vê o que já está no celular (ao abrir o app).
+  /// Lista atualizada no site: sprites novos (ou trocados) aparecem sem
+  /// precisar de APK novo.
+  static const _list = 'https://octaviokonzen.github.io/Pocketdex/data/animated_sprites.json';
+
+  /// Carrega a lista (a última baixada do site ou a do APK) e vê o que já
+  /// está no celular (ao abrir o app). Depois confere a do site em segundo plano.
   Future<void> load() async {
     try {
-      final raw = json.decode(await rootBundle.loadString('assets/database/animated_sprites.json')) as Map;
-      for (final kind in ['front', 'shiny']) {
-        _have[kind] = {for (final id in (raw[kind] as List? ?? const [])) (id as num).toInt()};
-        final fit = (raw['fit'] as Map?)?[kind] as Map? ?? const {};
-        final hash = (raw['hash'] as Map?)?[kind] as Map? ?? const {};
-        _hash[kind] = {for (final e in hash.entries) int.parse('${e.key}'): '${e.value}'};
-        _fit[kind] = {
-          for (final e in fit.entries) int.parse('${e.key}'): [for (final v in e.value as List) (v as num).toDouble()],
-        };
-      }
       _dir = Directory('${(await getApplicationSupportDirectory()).path}/animated');
-      for (final kind in ['front', 'shiny']) {
-        final folder = Directory('${_dir!.path}/$kind');
-        if (!folder.existsSync()) continue;
-        for (final f in folder.listSync().whereType<File>()) {
-          final name = f.uri.pathSegments.last;
-          final id = int.tryParse(name.split(RegExp(r'[-.]')).first);
-          if (id != null && name == _name(kind, id) && f.lengthSync() > 0) {
-            _saved['$kind/$id'] = f;
-          } else {
-            f.deleteSync(); // versão velha (ou download pela metade)
-          }
-        }
+      final cached = File('${_dir!.path}/list.json');
+      Map? raw;
+      if (cached.existsSync()) {
+        try {
+          raw = json.decode(cached.readAsStringSync()) as Map;
+        } catch (_) {}
       }
+      raw ??= json.decode(await rootBundle.loadString('assets/database/animated_sprites.json')) as Map;
+      _apply(raw);
+      _clean();
       _ready = true;
+      unawaited(_refresh(cached));
     } catch (e) {
       // Sem pasta do app (ex.: nos testes): fica o sprite parado.
       debugPrint('Sprites animados desligados: $e');
+    }
+  }
+
+  void _apply(Map raw) {
+    for (final kind in ['front', 'shiny']) {
+      _have[kind] = {for (final id in (raw[kind] as List? ?? const [])) (id as num).toInt()};
+      final fit = (raw['fit'] as Map?)?[kind] as Map? ?? const {};
+      final hash = (raw['hash'] as Map?)?[kind] as Map? ?? const {};
+      _hash[kind] = {for (final e in hash.entries) int.parse('${e.key}'): '${e.value}'};
+      _fit[kind] = {
+        for (final e in fit.entries) int.parse('${e.key}'): [for (final v in e.value as List) (v as num).toDouble()],
+      };
+    }
+  }
+
+  /// Guarda os já baixados que continuam valendo; apaga versões velhas.
+  void _clean() {
+    _saved.clear();
+    for (final kind in ['front', 'shiny']) {
+      final folder = Directory('${_dir!.path}/$kind');
+      if (!folder.existsSync()) continue;
+      for (final f in folder.listSync().whereType<File>()) {
+        final name = f.uri.pathSegments.last;
+        if (name.endsWith('.part')) continue; // download em andamento
+        final id = int.tryParse(name.split(RegExp(r'[-.]')).first);
+        if (id != null && name == _name(kind, id) && f.lengthSync() > 0) {
+          _saved['$kind/$id'] = f;
+        } else {
+          f.deleteSync(); // versão velha
+        }
+      }
+    }
+  }
+
+  Future<void> _refresh(File cached) async {
+    final client = HttpClient()..connectionTimeout = const Duration(seconds: 15);
+    try {
+      final response = await (await client.getUrl(Uri.parse(_list))).close();
+      if (response.statusCode != 200) return;
+      final text = await response.transform(utf8.decoder).join();
+      final raw = json.decode(text) as Map;
+      if (raw['front'] is! List) return;
+      _apply(raw);
+      _clean();
+      await cached.parent.create(recursive: true);
+      await cached.writeAsString(text, flush: true);
+    } catch (_) {
+      // Sem internet: segue com a lista que já tinha.
+    } finally {
+      client.close();
     }
   }
 

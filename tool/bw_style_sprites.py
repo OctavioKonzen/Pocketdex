@@ -16,7 +16,7 @@ para recalcular a lista e os ajustes de tamanho.
 Uso:
   GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 --filter=blob:none --no-checkout \\
       https://github.com/smogon/sprites /tmp/smogon-sprites
-  python3 tool/bw_style_sprites.py /tmp/smogon-sprites
+  python3 tool/bw_style_sprites.py /tmp/smogon-sprites [--refazer]
 """
 
 import json
@@ -39,10 +39,13 @@ STATIC = os.path.join(DB, 'sprites', 'pokemon')
 BW_MAX_SIDE = 96
 BW_MAX_COLORS = 20
 
-# Quanto o Pokémon estica (em pixels, de cima) em cada quadro da respiração.
-BREATH = [0, 0, 0, 1, 1, 2, 2, 2, 1, 1, 0, 0]
-FRAME_MS = 90
-
+# Respiração: o Pokémon estica para cima e afina um pouco (apoiado no chão),
+# num ciclo suave de FRAMES quadros. Amplitude: 6% da altura (mínimo 3 px).
+FRAMES = 16
+FRAME_MS = 80
+STRETCH = 0.06
+# Marca nos GIFs gerados aqui (para refazer só eles com --refazer).
+MARK = b'pocketdex-respiracao'
 
 def smogon_index(repo):
     """slug da PokeAPI → {'front': caminho, 'shiny': caminho} dos PNG/GIF BW."""
@@ -85,20 +88,37 @@ def crop(im):
 
 
 def breathe(img, path):
-    """GIF com o Pokémon respirando (esticando para cima, apoiado embaixo)."""
+    """GIF com o Pokémon respirando (estica para cima e afina, apoiado embaixo)."""
+    import math
     w, h = img.size
-    top = max(BREATH)
+    amp = max(3, round(h * STRETCH))
     frames = []
-    for s in BREATH:
-        frame = Image.new('RGBA', (w, h + top), (0, 0, 0, 0))
-        frame.alpha_composite(img.resize((w, h + s), Image.NEAREST), (0, top - s))
+    for i in range(FRAMES):
+        t = (1 - math.cos(2 * math.pi * i / FRAMES)) / 2  # 0 → 1 → 0
+        dh = round(amp * t)
+        dw = round(w * (amp * t / h) * 0.5)  # afina metade do que estica
+        frame = Image.new('RGBA', (w, h + amp), (0, 0, 0, 0))
+        body = img.resize((w - dw, h + dh), Image.NEAREST)
+        frame.alpha_composite(body, ((w - body.width) // 2, h + amp - body.height))
         frames.append(frame)
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    frames[0].save(path, save_all=True, append_images=frames[1:], duration=FRAME_MS, loop=0, disposal=2, optimize=False)
+    frames[0].save(path, save_all=True, append_images=frames[1:], duration=FRAME_MS, loop=0, disposal=2, comment=MARK)
+
+
+def generated(path):
+    """GIF feito por este script (marca nova ou a respiração antiga de 1,08 s)."""
+    from PIL import ImageSequence
+    im = Image.open(path)
+    if MARK in (im.info.get('comment') or b''):
+        return True
+    durations = [f.info.get('duration', 0) for f in ImageSequence.Iterator(im)]
+    return sum(durations) == 1080 and all(d % 90 == 0 for d in durations)
 
 
 def main():
-    repo = sys.argv[1] if len(sys.argv) > 1 else '/tmp/smogon-sprites'
+    args = [a for a in sys.argv[1:] if not a.startswith('--')]
+    repo = args[0] if args else '/tmp/smogon-sprites'
+    refazer = '--refazer' in sys.argv  # gera de novo os que este script já fez
     index = smogon_index(repo)
     with open(os.path.join(DB, 'pokemon.json'), encoding='utf-8') as f:
         pokemon = [(p['id'], p['name']) for p in json.load(f) if p['id'] > 649]
@@ -107,7 +127,7 @@ def main():
     jobs = []
     for pid, slug in pokemon:
         cur = os.path.join(OUT, 'front', f'{pid}.gif')
-        if os.path.exists(cur) and is_bw(cur):
+        if os.path.exists(cur) and is_bw(cur) and not (refazer and generated(cur)):
             continue
         for kind in ('front', 'shiny'):
             jobs.append((pid, slug, kind))
