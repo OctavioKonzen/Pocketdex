@@ -47,8 +47,10 @@ STATIC = os.path.join(DB, 'sprites', 'pokemon')
 BW_MAX_SIDE = 160
 BW_MAX_COLORS = 20
 
-# Animação 3D reduzida: paleta do BW e metade dos quadros (o 3D tem o dobro).
+# Animação 3D reduzida: paleta do BW; um pixel cuja cor mudou menos que
+# STABLE (soma de R, G e B) desde o quadro anterior repete a cor de antes.
 BW_COLORS = 16
+STABLE = 90
 PS_3D = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown'
 CACHE_3D = '/tmp/pokeapi-showdown-3d'
 PS = 'https://play.pokemonshowdown.com/sprites'
@@ -227,12 +229,24 @@ def pixel_3d(src, path, target):
     pixels = np.concatenate([np.asarray(f)[np.asarray(f)[..., 3] >= 128][:, :3] for f in small]) if small else np.zeros((1, 3), np.uint8)
     strip = Image.fromarray((pixels if len(pixels) else np.zeros((1, 3), np.uint8)).reshape(1, -1, 3).astype(np.uint8), 'RGB')
     palette = strip.quantize(BW_COLORS, method=Image.Quantize.MEDIANCUT)
-    out = []
-    for f in small[::2]:
-        q = f.convert('RGB').quantize(palette=palette, dither=Image.Dither.NONE).convert('RGBA')
-        q.putalpha(f.getchannel('A'))
-        out.append(q)
-    durations = [sum(durations[i:i + 2]) for i in range(0, len(durations), 2)]
+    # Todos os quadros (o movimento fica liso) e estáveis: um pixel que quase
+    # não mudou desde o quadro anterior repete a cor de antes. Sem isso a luz
+    # do 3D faz os detalhes "ferverem" de um quadro para o outro.
+    # (Compara com a cor de quando o pixel mudou da última vez, para uma
+    # mudança lenta também aparecer.)
+    out, anchor, prev_out = [], None, None
+    for f in small:
+        q = np.asarray(f.convert('RGB').quantize(palette=palette, dither=Image.Dither.NONE).convert('RGBA')).copy()
+        src = np.asarray(f).astype(np.int16)
+        q[..., 3] = src[..., 3]
+        if anchor is None:
+            anchor = src.copy()
+        else:
+            same = (np.abs(src[..., :3] - anchor[..., :3]).sum(axis=2) < STABLE) & (src[..., 3] == anchor[..., 3])
+            q[same] = prev_out[same]
+            anchor[~same] = src[~same]
+        out.append(Image.fromarray(q, 'RGBA'))
+        prev_out = q
     os.makedirs(os.path.dirname(path), exist_ok=True)
     out[0].save(path, save_all=True, append_images=out[1:], duration=durations, loop=0, disposal=2, comment=MARK)
     return True
