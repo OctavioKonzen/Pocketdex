@@ -10,15 +10,15 @@ import { Button, Empty, Icon, PageHeader } from '../components/ui'
 import { teamsOf, useAuth } from '../lib/auth'
 import { battleHitter, battleMons, randomTeam } from '../lib/battleSetup'
 import { friendsOnly, useFriends } from '../lib/friends'
-import { getMoveAnims, shinyPath, spriteUrl } from '../lib/data'
+import { getMoveAnims, getTypes, shinyPath, spriteUrl } from '../lib/data'
 import { t } from '../lib/i18n'
 import { seededRandom } from '../lib/league'
-import { typeColor } from '../lib/pokemon'
+import { ALL_TYPES, damageTaken, typeColor } from '../lib/pokemon'
 import { usePokemonIndex } from '../lib/pokemonIndex'
 import { useStore } from '../lib/store'
 import { teamMembers } from '../lib/teamBattle'
 import { fxPlan, moveAnim } from '../lib/moveAnim'
-import { active, canUseItem, forfeit, ITEMS, lineOf, newBattle, playTurn, replace, STAT_NAMES, usableMoves } from '../lib/turnBattle'
+import { active, canUseItem, effectLabel, forfeit, ITEMS, lineOf, moveEffect, newBattle, playTurn, replace, STAT_NAMES, switchMatchup, usableMoves, weaknesses } from '../lib/turnBattle'
 import Sprite from '../components/Sprite'
 
 const CARD = 'rounded-2xl bg-card p-5 shadow'
@@ -408,6 +408,17 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
   const usable = usableMoves(current)
   const waiting = !busy && battle.winner == null
 
+  // Efetividade (como nos jogos): nos golpes, nas fraquezas do inimigo e na troca.
+  const [typeData, setTypeData] = useState(null)
+  useEffect(() => {
+    getTypes()
+      .then(setTypeData)
+      .catch(() => {})
+  }, [])
+  const typeEff = (type, types) => (typeData ? damageTaken(types, typeData)[type] : 1)
+  const rival = active(battle, 1)
+  const foeWeak = typeData ? weaknesses(rival.types, ALL_TYPES, typeEff) : []
+
   const fight = (i) => play(playTurn(battle, { move: i }, hit))
   const choose = (i) => {
     if (item) {
@@ -466,20 +477,27 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
         )}
         {waiting && menu === 'fight' && (
           <div className="grid grid-cols-2 gap-1.5 rounded-xl border-4 border-slate-600 bg-white p-2 sm:w-96" data-testid="moves">
-            {current.moves.map((m, i) => (
-              <button
-                key={m.slug}
-                type="button"
-                disabled={m.pp <= 0}
-                onClick={() => fight(i)}
-                className="cursor-pointer rounded-lg px-2 py-1.5 text-left text-white disabled:cursor-default disabled:opacity-40"
-                style={{ background: typeColor(m.type) }}
-                data-no-translate
-              >
-                <div className="truncate text-sm font-black">{m.name}</div>
-                <div className="text-[11px] font-semibold opacity-90">{`PP ${m.pp}/${m.maxPp}`}</div>
-              </button>
-            ))}
+            <Weak mon={rival} list={foeWeak} />
+            {current.moves.map((m, i) => {
+              const eff = moveEffect(hit, current, rival, m)
+              return (
+                <button
+                  key={m.slug}
+                  type="button"
+                  disabled={m.pp <= 0}
+                  onClick={() => fight(i)}
+                  className="cursor-pointer rounded-lg px-2 py-1.5 text-left text-white disabled:cursor-default disabled:opacity-40"
+                  style={{ background: typeColor(m.type) }}
+                  data-no-translate
+                >
+                  <div className="truncate text-sm font-black">{m.name}</div>
+                  <div className="flex items-center justify-between gap-1 text-[11px] font-semibold">
+                    <span className="opacity-90">{`PP ${m.pp}/${m.maxPp}`}</span>
+                    <EffectTag eff={eff} />
+                  </div>
+                </button>
+              )
+            })}
             <MenuButton onClick={() => setMenu('main')} className="col-span-2 text-sm">
               Voltar
             </MenuButton>
@@ -532,9 +550,11 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
               </button>
             )}
           </div>
+          {!item && <Weak mon={rival} list={foeWeak} className="mb-2" />}
           <div className="grid gap-2 sm:grid-cols-2" data-testid="party">
             {battle.sides[0].team.map((m, i) => {
               const isActive = i === battle.sides[0].active
+              const match = !item && m.hp > 0 ? switchMatchup(hit, m, rival, typeEff) : null
               return (
                 <button
                   key={i}
@@ -555,6 +575,12 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
                     </div>
                     <HpBar hp={m.hp} max={m.maxHp} />
                     <div className="text-xs text-muted tabular-nums">{m.hp > 0 ? `${m.hp}/${m.maxHp}` : t('Desmaiado')}</div>
+                    {match && (
+                      <div className="mt-1 flex flex-wrap gap-1 text-[10px] font-bold" data-testid="matchup">
+                        {match.attack != null && <EffectTag eff={match.attack} prefix={t('Ataca')} />}
+                        <DefenseTag mult={match.defense} />
+                      </div>
+                    )}
                   </div>
                 </button>
               )
@@ -573,6 +599,48 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
           </Button>
         </div>
       )}
+    </div>
+  )
+}
+
+// Cores da efetividade: verde = bom para quem ataca, vermelho = ruim.
+const EFFECT_COLOR = { 'Super efetivo': '#15803d', Efetivo: '#475569', 'Pouco efetivo': '#b45309', 'Não afeta': '#1f2937' }
+
+/** "Super efetivo ×2", "Pouco efetivo ×½", "Não afeta"... (nada para golpe de status). */
+function EffectTag({ eff, prefix }) {
+  const label = effectLabel(eff)
+  if (!label) return null
+  const mult = eff === 0 || eff === 1 ? '' : ` ×${fraction(eff)}`
+  return (
+    <span className="rounded px-1 py-px text-[10px] font-black whitespace-nowrap text-white" style={{ background: EFFECT_COLOR[label] }} data-testid="effect">
+      {`${prefix ? `${prefix}: ` : ''}${t(label)}${mult}`}
+    </span>
+  )
+}
+
+/** Quanto ele sofre com os tipos do inimigo. */
+function DefenseTag({ mult }) {
+  const [label, color] = mult === 0 ? ['Imune', '#15803d'] : mult < 1 ? ['Resiste', '#15803d'] : mult > 1 ? ['Fraco', '#b91c1c'] : ['Neutro', '#475569']
+  return (
+    <span className="rounded px-1 py-px text-[10px] font-black whitespace-nowrap text-white" style={{ background: color }}>
+      {`${t('Recebe')}: ${t(label)}${mult === 0 || mult === 1 ? '' : ` ×${fraction(mult)}`}`}
+    </span>
+  )
+}
+
+const fraction = (x) => ({ 0.25: '¼', 0.5: '½' })[x] ?? String(x)
+
+/** Fraquezas do inimigo (tipos que causam ×2 ou ×4). */
+function Weak({ mon, list, className = '' }) {
+  if (!mon || !list.length) return null
+  return (
+    <div className={`col-span-2 flex flex-wrap items-center gap-1 text-[11px] font-bold text-slate-700 ${className}`} data-testid="weak">
+      <span>{t('{0} é fraco contra:').replace('{0}', mon.name)}</span>
+      {list.map((w) => (
+        <span key={w.type} className="rounded px-1 py-px font-black text-white uppercase" style={{ background: typeColor(w.type) }}>
+          {`${w.type} ×${w.mult}`}
+        </span>
+      ))}
     </div>
   )
 }

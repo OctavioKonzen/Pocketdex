@@ -26,6 +26,7 @@ import '../utils/pokemon_colors.dart';
 import '../utils/responsive.dart';
 import '../utils/site_ui.dart';
 import '../utils/string_extensions.dart';
+import '../utils/team_analysis.dart' show allTypes;
 import '../widgets/pokemon_sprite.dart';
 
 /// Um time para a batalha: nome e membros (id + set).
@@ -67,6 +68,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
   TurnBattle? _battle;
   String _foeName = '';
   BattleHit? _hit;
+  double Function(String, List<String>)? _typeEff;
   int _key = 0;
 
   List<BattleTeam> get _myTeams => [for (final t in UserData.instance.teams) BattleTeam.fromMap(t)].whereType<BattleTeam>().toList();
@@ -75,7 +77,12 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
   void initState() {
     super.initState();
     DamageData.load().then((data) {
-      if (mounted) setState(() => _hit = TurnBattleSetup.hitter(data));
+      if (mounted) {
+        setState(() {
+          _hit = TurnBattleSetup.hitter(data);
+          _typeEff = TurnBattleSetup.typeEffect(data);
+        });
+      }
     });
     if (widget.mine != null && widget.theirs != null) _start(widget.mine!, widget.theirs!, widget.foeName);
   }
@@ -135,6 +142,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
                     key: ValueKey(_key),
                     battle: battle,
                     hit: _hit!,
+                    typeEff: _typeEff!,
                     foeName: _foeName,
                     onAgain: _again,
                     onExit: () => widget.mine != null ? Navigator.pop(context) : setState(() => _battle = null),
@@ -226,9 +234,17 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
 class _BattleView extends StatefulWidget {
   final TurnBattle battle;
   final BattleHit hit;
+  final double Function(String, List<String>) typeEff;
   final String foeName;
   final VoidCallback onAgain, onExit;
-  const _BattleView({super.key, required this.battle, required this.hit, required this.foeName, required this.onAgain, required this.onExit});
+  const _BattleView(
+      {super.key,
+      required this.battle,
+      required this.hit,
+      required this.typeEff,
+      required this.foeName,
+      required this.onAgain,
+      required this.onExit});
 
   @override
   State<_BattleView> createState() => _BattleViewState();
@@ -377,6 +393,9 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
     final foe = _b.teams[1][_active[1]];
     final current = _b.active(0);
     final waiting = !_busy && _b.winner == null;
+    // Efetividade (como nos jogos): nos golpes, nas fraquezas do inimigo e na troca.
+    final rival = _b.active(1);
+    final foeWeak = TurnBattle.weaknesses(rival.types, allTypes, widget.typeEff);
     const border = Color(0xFF1E293B);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -488,6 +507,7 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
               ],
               if (waiting && _menu == 'fight') ...[
                 const SizedBox(height: 8),
+                _Weak(rival, foeWeak, dark: true),
                 GridView.count(
                   crossAxisCount: 2,
                   shrinkWrap: true,
@@ -513,7 +533,11 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13)),
-                                m.Text('PP ${mv.pp}/${mv.maxPp}', style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                                Row(children: [
+                                  m.Text('PP ${mv.pp}/${mv.maxPp}', style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                                  const Spacer(),
+                                  _EffectTag(TurnBattle.moveEffect(widget.hit, current, rival, mv)),
+                                ]),
                               ],
                             ),
                           ),
@@ -582,6 +606,7 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
                             }),
                         child: const Text('Voltar')),
                 ]),
+                if (_item == null) _Weak(rival, foeWeak),
                 for (final (i, mon) in _b.teams[0].indexed)
                   ListTile(
                     contentPadding: EdgeInsets.zero,
@@ -599,6 +624,7 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
                         mon.hp > 0
                             ? m.Text('${mon.hp}/${mon.maxHp}', style: const TextStyle(fontSize: 12))
                             : const Text('Desmaiado', style: TextStyle(fontSize: 12)),
+                        if (_item == null && mon.hp > 0) _matchup(TurnBattle.switchMatchup(widget.hit, mon, rival, widget.typeEff)),
                       ],
                     ),
                     trailing: i == _b.activeIndex[0] ? const Icon(Icons.check_circle, color: Color(0xFF0EA5E9)) : null,
@@ -1014,4 +1040,83 @@ class _InfoBox extends StatelessWidget {
           ),
         ),
       );
+}
+
+// Cores da efetividade: verde = bom para quem ataca, vermelho = ruim.
+const _effectColors = {
+  'Super efetivo': Color(0xFF15803D),
+  'Efetivo': Color(0xFF475569),
+  'Pouco efetivo': Color(0xFFB45309),
+  'Não afeta': Color(0xFF1F2937),
+};
+
+String _times(double x) => x == 0.25 ? '¼' : x == 0.5 ? '½' : x == x.roundToDouble() ? '${x.toInt()}' : '$x';
+
+class _Tag extends StatelessWidget {
+  final String text;
+  final Color color;
+  const _Tag(this.text, this.color);
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+        decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(4)),
+        // Já traduzido.
+        child: m.Text(text, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900)),
+      );
+}
+
+/// "Super efetivo ×2", "Pouco efetivo ×½", "Não afeta"... (nada para golpe de status).
+class _EffectTag extends StatelessWidget {
+  final double? eff;
+  final String? prefix;
+  const _EffectTag(this.eff, {this.prefix});
+
+  @override
+  Widget build(BuildContext context) {
+    final label = TurnBattle.effectLabel(eff);
+    if (label == null) return const SizedBox.shrink();
+    final mult = eff == 0 || eff == 1 ? '' : ' ×${_times(eff!)}';
+    return _Tag('${prefix == null ? '' : '${tr(prefix!)}: '}${tr(label)}$mult', _effectColors[label]!);
+  }
+}
+
+/// Na troca: quanto ele bate no inimigo e quanto sofre com os tipos dele.
+Widget _matchup(({double? attack, double defense}) m) {
+  final d = m.defense;
+  final (label, color) = d == 0
+      ? ('Imune', const Color(0xFF15803D))
+      : d < 1
+          ? ('Resiste', const Color(0xFF15803D))
+          : d > 1
+              ? ('Fraco', const Color(0xFFB91C1C))
+              : ('Neutro', const Color(0xFF475569));
+  return Padding(
+    padding: const EdgeInsets.only(top: 4),
+    child: Wrap(spacing: 4, runSpacing: 4, children: [
+      if (m.attack != null) _EffectTag(m.attack, prefix: 'Ataca'),
+      _Tag('${tr('Recebe')}: ${tr(label)}${d == 0 || d == 1 ? '' : ' ×${_times(d)}'}', color),
+    ]),
+  );
+}
+
+/// Fraquezas do inimigo (tipos que causam ×2 ou ×4).
+class _Weak extends StatelessWidget {
+  final BattleMon mon;
+  final List<({String type, double mult})> list;
+  final bool dark;
+  const _Weak(this.mon, this.list, {this.dark = false});
+
+  @override
+  Widget build(BuildContext context) {
+    if (list.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Wrap(spacing: 4, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
+        m.Text(tr('{0} é fraco contra:').replaceAll('{0}', mon.name),
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: dark ? Colors.white : null)),
+        for (final w in list) _Tag('${w.type.toUpperCase()} ×${_times(w.mult)}', getColorForType(w.type)),
+      ]),
+    );
+  }
 }

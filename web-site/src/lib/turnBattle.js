@@ -100,6 +100,42 @@ function expected(hit, att, def, move) {
   return Math.min(avg, def.hp) * (move.accuracy == null ? 1 : move.accuracy / 100)
 }
 
+/** Efetividade de um golpe (×0 a ×4), a mesma da conta de dano; null para golpe de status. */
+export function moveEffect(hit, att, def, move) {
+  if (move.category === 'status') return null
+  return hit(att, def, move.slug, false)?.eff ?? null
+}
+
+/** As palavras dos jogos para a efetividade (a tela traduz). */
+export function effectLabel(eff) {
+  if (eff == null) return null
+  if (eff === 0) return 'Não afeta'
+  if (eff < 1) return 'Pouco efetivo'
+  if (eff > 1) return 'Super efetivo'
+  return 'Efetivo'
+}
+
+/**
+ * Para a troca: o melhor golpe dele contra o inimigo (attack, null se só tem
+ * golpe de status) e o quanto ele sofre com os tipos do inimigo (defense).
+ * typeEff(tipo, tipos) = multiplicador de um tipo de ataque contra os tipos.
+ */
+export function switchMatchup(hit, mon, foe, typeEff) {
+  const effs = mon.moves.map((m) => moveEffect(hit, mon, foe, m)).filter((e) => e != null)
+  return {
+    attack: effs.length ? Math.max(...effs) : null,
+    defense: Math.max(...foe.types.map((t) => typeEff(t, mon.types))),
+  }
+}
+
+/** Tipos que causam ×2 ou mais no Pokémon, do pior para ele ao menos pior. */
+export function weaknesses(types, allTypes, typeEff) {
+  return allTypes
+    .map((t) => ({ type: t, mult: typeEff(t, types) }))
+    .filter((w) => w.mult >= 2)
+    .sort((a, b) => b.mult - a.mult)
+}
+
 /** Escolha do computador: o golpe com mais dano esperado (às vezes outro qualquer). */
 export function cpuMove(battle, hit) {
   const me = active(battle, 1)

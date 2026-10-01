@@ -5842,5 +5842,60 @@
   "en": "Pokémon move (Black & White style). Each one is downloaded the first time it appears and stays saved on your phone.",
   "fr": "Les Pokémon bougent (style Noir & Blanc). Chacun est téléchargé la première fois qu'il apparaît et reste enregistré sur le téléphone.",
   "es": "Los Pokémon se mueven (estilo Blanco y Negro). Cada uno se descarga la primera vez que aparece y queda guardado en el móvil."
+ },
+ "Super efetivo": {
+  "en": "Super effective",
+  "fr": "Super efficace",
+  "es": "Superefectivo"
+ },
+ "Pouco efetivo": {
+  "en": "Not very effective",
+  "fr": "Peu efficace",
+  "es": "Poco efectivo"
+ },
+ "Não afeta": {
+  "en": "No effect",
+  "fr": "Sans effet",
+  "es": "No afecta"
+ },
+ "Efetivo": {
+  "en": "Effective",
+  "fr": "Efficace",
+  "es": "Efectivo"
+ },
+ "Ataca": {
+  "en": "Hits",
+  "fr": "Attaque",
+  "es": "Ataca"
+ },
+ "Recebe": {
+  "en": "Takes",
+  "fr": "Subit",
+  "es": "Recibe"
+ },
+ "Imune": {
+  "en": "Immune",
+  "fr": "Immunisé",
+  "es": "Inmune"
+ },
+ "Resiste": {
+  "en": "Resists",
+  "fr": "Résiste",
+  "es": "Resiste"
+ },
+ "Fraco": {
+  "en": "Weak",
+  "fr": "Faible",
+  "es": "Débil"
+ },
+ "Neutro": {
+  "en": "Neutral",
+  "fr": "Neutre",
+  "es": "Neutro"
+ },
+ "{0} é fraco contra:": {
+  "en": "{0} is weak to:",
+  "fr": "{0} est faible contre :",
+  "es": "{0} es débil contra:"
  }
 }

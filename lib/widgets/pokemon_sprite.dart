@@ -153,15 +153,16 @@ class _AnimatedSpriteState extends State<_AnimatedSprite> {
     // Limita o zoom para a animação inteira caber na caixa (como o site):
     // quem pula ou abre as asas não invade o que está em volta.
     final fill = widget.fill;
-    final maxY = widget.alignBottom ? (1 + fill) / (2 * fill * hr) : 1.1 / (fill * hr);
-    final zoom = max(1.0, min(f[0], min(1.1 / (fill * wr), maxY)));
+    final maxY = widget.alignBottom ? (1 + fill) / (2 * fill * hr) : 1 / (fill * hr);
+    final zoom = max(1.0, min(f[0], min(1 / (fill * wr), maxY)));
     return LayoutBuilder(builder: (context, c) {
       final side = c.biggest.shortestSide;
       // Lado do GIF: ampliado para o quadro típico ocupar a caixa (como o site).
       final inner = side * widget.fill * zoom;
-      // Centraliza o quadro típico, sem a animação sair da caixa por mais de 5% de cada lado.
+      // Centraliza o quadro típico, sem a animação sair da caixa (onde o card
+      // recorta, cortaria asas e caudas no meio do movimento).
       double shift(double d, double r) {
-        final limit = max(0.0, (side * 1.1 - inner * r) / 2);
+        final limit = max(0.0, (side - inner * r) / 2);
         return (d * inner).clamp(-limit, limit);
       }
 
