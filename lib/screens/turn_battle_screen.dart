@@ -14,6 +14,7 @@ import 'package:flutter/material.dart' as m show Text;
 
 import '../i18n/i18n.dart';
 import '../i18n/text.dart';
+import '../services/animated_sprites.dart';
 import '../services/damage_calc.dart';
 import '../services/friends_service.dart';
 import '../services/league.dart';
@@ -687,8 +688,6 @@ class _Platform extends StatelessWidget {
 const _sprites = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon';
 String? _bwUrl(int id, bool back, bool shiny) {
   if (id < 1) return null;
-  // De frente: do nosso banco (sprites/animated, publicado com o site).
-  if (!back) return 'https://octaviokonzen.github.io/Pocketdex/sprites/animated/${shiny ? 'shiny' : 'front'}/$id.gif';
   final dir = id <= 649 ? '$_sprites/versions/generation-v/black-white/animated' : '$_sprites/other/showdown';
   return '$dir/${back ? 'back/' : ''}${shiny ? 'shiny/' : ''}$id.gif';
 }
@@ -743,7 +742,12 @@ class _SpriteState extends State<_Sprite> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final url = _bwUrl(widget.mon.id, widget.back, widget.mon.shiny);
+    // De frente: o GIF do nosso banco, que vem no APK (aparece na hora).
+    final mon = widget.mon;
+    final asset = !widget.back && AnimatedSprites.instance.has(mon.id, shiny: mon.shiny)
+        ? AnimatedSprites.instance.asset(mon.id, shiny: mon.shiny)
+        : null;
+    final url = widget.back ? _bwUrl(mon.id, true, mon.shiny) : null;
     final dir = widget.back ? 1.0 : -1.0;
     return AnimatedSlide(
       duration: const Duration(milliseconds: 500),
@@ -768,7 +772,15 @@ class _SpriteState extends State<_Sprite> with TickerProviderStateMixin {
           // Trocou de Pokémon: começa do zero (sem ficar o sprite do anterior).
           child: KeyedSubtree(
             key: ValueKey((widget.mon.id, widget.mon.shiny)),
-            child: url == null
+            child: asset != null
+                ? LayoutBuilder(
+                    builder: (context, box) => Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Image.asset(asset, scale: 96 / box.maxWidth, filterQuality: FilterQuality.none, gaplessPlayback: true,
+                          errorBuilder: (context, error, stack) => _static(true)),
+                    ),
+                  )
+                : url == null
                 ? _static(true)
                 : LayoutBuilder(
                     // Tamanho de verdade do sprite (os pequenos continuam pequenos, como no jogo).
