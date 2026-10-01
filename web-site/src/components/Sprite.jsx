@@ -20,8 +20,8 @@ function useAnimated() {
     if (animated) return undefined
     let alive = true
     loading ??= getAnimatedSprites()
-      .then((d) => (animated = { front: new Set(d.front), shiny: new Set(d.shiny), fit: d.fit ?? {} }))
-      .catch(() => (animated = { front: new Set(), shiny: new Set(), fit: {} }))
+      .then((d) => (animated = { front: new Set(d.front), shiny: new Set(d.shiny), fit: d.fit ?? {}, hash: d.hash ?? {} }))
+      .catch(() => (animated = { front: new Set(), shiny: new Set(), fit: {}, hash: {} }))
     loading.then((a) => alive && setSets(a))
     return () => {
       alive = false
@@ -39,7 +39,9 @@ function animatedOf(path, sets) {
   if (!m || !sets) return null
   const kind = m[1] ? 'shiny' : 'front'
   if (!sets[kind].has(Number(m[2]))) return null
-  return { gif: `animated/${kind}/${m[2]}.gif`, fit: sets.fit[kind]?.[m[2]] ?? [1, 0, 0] }
+  // ?v=impressão digital: quando o GIF muda no banco, o navegador baixa de novo.
+  const v = sets.hash[kind]?.[m[2]]
+  return { gif: `animated/${kind}/${m[2]}.gif${v ? `?v=${v}` : ''}`, fit: sets.fit[kind]?.[m[2]] ?? [1, 0, 0] }
 }
 
 /**
@@ -56,9 +58,15 @@ export default function Sprite(props) {
   const { alt = '', fill = 0.9, align = 'center', className = '', imgClassName = '', style } = props
   // O GIF já vem recortado justo: encaixa na caixa (do tamanho do parado),
   // ampliado para o quadro típico ocupar a caixa (fit).
-  const [zoom, dx, dy] = anim.fit
+  // Limita o zoom para a animação inteira caber na caixa (quem pula ou abre
+  // as asas não invade o que está em volta; apoiado embaixo, nada passa do topo).
+  const [z, dx, dy, wr = 1, hr = 1] = anim.fit
+  const maxY = align === 'bottom' ? (1 + fill) / (2 * fill * hr) : 1.1 / (fill * hr)
+  const zoom = Math.max(1, Math.min(z, 1.1 / (fill * wr), maxY))
   const side = fill * zoom // lado do GIF, em fração da caixa
-  const top = align === 'bottom' ? 1 - (1 - fill) / 2 - side : 0.5 - side / 2 - dy * side
+  // Centraliza o quadro típico, sem a animação sair da caixa por mais de 5% de cada lado.
+  const shift = (d, r) => Math.max(-Math.max(0, (1.1 - side * r) / 2), Math.min(Math.max(0, (1.1 - side * r) / 2), d * side))
+  const top = align === 'bottom' ? 1 - (1 - fill) / 2 - side : 0.5 - side / 2 - shift(dy, hr)
   return (
     <div className={`relative aspect-square ${className}`} style={style}>
       <img
@@ -72,7 +80,7 @@ export default function Sprite(props) {
         style={{
           width: `${side * 100}%`,
           height: `${side * 100}%`,
-          left: `${(0.5 - side / 2 - dx * side) * 100}%`,
+          left: `${(0.5 - side / 2 - shift(dx, wr)) * 100}%`,
           top: `${top * 100}%`,
         }}
       />
