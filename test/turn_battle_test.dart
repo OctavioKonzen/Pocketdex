@@ -246,6 +246,36 @@ void main() {
       }
     }
   });
+
+  group('efetividade na tela (igual ao site)', () {
+    const chart = {
+      'water': {'fire': 2.0, 'grass': 0.5},
+      'electric': {'ground': 0.0, 'water': 2.0},
+      'ground': {'electric': 2.0, 'fire': 2.0},
+    };
+    double typeEff(String t, List<String> types) => types.fold(1.0, (m, d) => m * (chart[t]?[d] ?? 1));
+    HitResult hit(BattleMon att, BattleMon def, String slug, bool crit) => (rolls: [[1]], eff: typeEff(slug, def.types));
+    BattleMove mv(String slug, [String category = 'special']) => BattleMove(slug, slug, slug, 50, 100, 10, 10, 0, category: category);
+    BattleMon mon(List<String> types, [List<BattleMove> moves = const []]) => BattleMon(1, 'X', 50, 100, 50, types, moves);
+
+    test('golpe: super, pouco, não afeta, status', () {
+      final fire = mon(['fire']), att = mon(['water']);
+      expect(TurnBattle.effectLabel(TurnBattle.moveEffect(hit, att, fire, mv('water'))), 'Super efetivo');
+      expect(TurnBattle.effectLabel(TurnBattle.moveEffect(hit, att, mon(['grass']), mv('water'))), 'Pouco efetivo');
+      expect(TurnBattle.effectLabel(TurnBattle.moveEffect(hit, att, mon(['ground']), mv('electric'))), 'Não afeta');
+      expect(TurnBattle.effectLabel(TurnBattle.moveEffect(hit, att, fire, mv('normal'))), 'Efetivo');
+      expect(TurnBattle.moveEffect(hit, att, fire, mv('water', 'status')), isNull);
+    });
+
+    test('troca e fraquezas', () {
+      final foe = mon(['fire'], [mv('normal')]);
+      final m = TurnBattle.switchMatchup(hit, mon(['water'], [mv('water'), mv('normal')]), foe, typeEff);
+      expect(m.attack, 2);
+      expect(m.defense, 1);
+      final w = TurnBattle.weaknesses(['fire'], ['water', 'electric', 'normal', 'ground'], typeEff);
+      expect([for (final x in w) '${x.type} ${x.mult}'], ['water 2.0', 'ground 2.0']);
+    });
+  });
 }
 
 const _kinds = ['tackle', 'punch', 'kick', 'bite', 'slash', 'orb', 'beam', 'stream', 'volley', 'bolt', 'quake', 'rocks', 'meteor', 'wave', 'wind', 'rings', 'drain'];

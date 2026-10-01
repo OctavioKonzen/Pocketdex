@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { battleMons, pickMoves } from './battleSetup'
 import { seededRandom } from './league'
-import { active, canUseItem, lineOf, newBattle, playTurn, replace, usableMoves } from './turnBattle'
+import { active, canUseItem, effectLabel, lineOf, moveEffect, newBattle, playTurn, replace, switchMatchup, usableMoves, weaknesses } from './turnBattle'
 
 beforeAll(() => {
   vi.stubGlobal('fetch', async (url) => {
@@ -118,4 +118,32 @@ describe('batalha por turnos', () => {
     expect(charizard.moves).toHaveLength(4)
     expect(charizard.moves[0]).toMatchObject({ slug: 'flamethrower', name: 'Flamethrower', pp: 15 })
   }, 30000)
+})
+
+describe('efetividade na tela', () => {
+  const chart = { water: { fire: 2, grass: 0.5 }, electric: { ground: 0, water: 2 }, normal: {}, ground: { electric: 2, fire: 2 } }
+  const typeEff = (t, types) => types.reduce((m, d) => m * (chart[t]?.[d] ?? 1), 1)
+  const hit = (att, def, slug) => ({ rolls: [[1]], eff: typeEff(slug, def.types) })
+  const mv = (slug, category = 'special') => ({ slug, type: slug, category })
+  const mon = (types, moves) => ({ types, moves })
+
+  it('golpe: super, pouco, não afeta, status', () => {
+    const fire = mon(['fire'], [])
+    const att = mon(['water'], [])
+    expect(effectLabel(moveEffect(hit, att, fire, mv('water')))).toBe('Super efetivo')
+    expect(effectLabel(moveEffect(hit, att, mon(['grass'], []), mv('water')))).toBe('Pouco efetivo')
+    expect(effectLabel(moveEffect(hit, att, mon(['ground'], []), mv('electric')))).toBe('Não afeta')
+    expect(effectLabel(moveEffect(hit, att, fire, mv('normal')))).toBe('Efetivo')
+    expect(moveEffect(hit, att, fire, mv('water', 'status'))).toBeNull()
+  })
+
+  it('troca e fraquezas', () => {
+    const foe = mon(['fire'], [mv('normal')])
+    const m = switchMatchup(hit, mon(['water'], [mv('water'), mv('normal')]), foe, typeEff)
+    expect(m).toEqual({ attack: 2, defense: 1 })
+    expect(weaknesses(['fire'], ['water', 'electric', 'normal', 'ground'], typeEff)).toEqual([
+      { type: 'water', mult: 2 },
+      { type: 'ground', mult: 2 },
+    ])
+  })
 })

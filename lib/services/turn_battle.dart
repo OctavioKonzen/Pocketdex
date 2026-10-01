@@ -227,6 +227,44 @@ class TurnBattle {
     return (avg < def.hp ? avg : def.hp.toDouble()) * (move.accuracy == null ? 1 : move.accuracy! / 100);
   }
 
+  /// Efetividade de um golpe (×0 a ×4), a mesma da conta de dano; null para golpe de status.
+  static double? moveEffect(BattleHit hit, BattleMon att, BattleMon def, BattleMove move) {
+    if (move.category == 'status') return null;
+    return hit(att, def, move.slug, false)?.eff;
+  }
+
+  /// As palavras dos jogos para a efetividade (a tela traduz).
+  static String? effectLabel(double? eff) {
+    if (eff == null) return null;
+    if (eff == 0) return 'Não afeta';
+    if (eff < 1) return 'Pouco efetivo';
+    if (eff > 1) return 'Super efetivo';
+    return 'Efetivo';
+  }
+
+  /// Para a troca: o melhor golpe dele contra o inimigo (attack, null se só tem
+  /// golpe de status) e o quanto ele sofre com os tipos do inimigo (defense).
+  /// typeEff(tipo, tipos) = multiplicador de um tipo de ataque contra os tipos.
+  static ({double? attack, double defense}) switchMatchup(
+      BattleHit hit, BattleMon mon, BattleMon foe, double Function(String, List<String>) typeEff) {
+    final effs = [for (final m in mon.moves) moveEffect(hit, mon, foe, m)].whereType<double>();
+    return (
+      attack: effs.isEmpty ? null : effs.reduce(max),
+      defense: foe.types.map((t) => typeEff(t, mon.types)).reduce(max),
+    );
+  }
+
+  /// Tipos que causam ×2 ou mais no Pokémon, do pior para ele ao menos pior.
+  static List<({String type, double mult})> weaknesses(
+      List<String> types, List<String> allTypes, double Function(String, List<String>) typeEff) {
+    final list = [
+      for (final t in allTypes)
+        if (typeEff(t, types) >= 2) (type: t, mult: typeEff(t, types)),
+    ];
+    // ×4 antes de ×2; empate fica na ordem dos tipos (como o site).
+    return [...list.where((w) => w.mult >= 4), ...list.where((w) => w.mult < 4)];
+  }
+
   /// Escolha do computador: o golpe com mais dano esperado (às vezes outro qualquer).
   int cpuMove(BattleHit hit) {
     final me = active(1), foe = active(0);
@@ -841,6 +879,12 @@ class TurnBattleSetup {
   }
 
   /// A função de dano para o motor (a calculadora do Showdown).
+  /// Multiplicador de um tipo de ataque contra os tipos (tabela da calculadora).
+  static double Function(String, List<String>) typeEffect(DamageData data) {
+    String cap(String t) => t.isEmpty ? t : '${t[0].toUpperCase()}${t.substring(1)}';
+    return (type, types) => types.fold(1.0, (m, d) => m * data.effectiveness(cap(type), cap(d)));
+  }
+
   static BattleHit hitter(DamageData data) => (att, def, slug, crit) {
         final a = att.calc, d = def.calc;
         if (a == null || d == null || data.move(slug) == null) return null;
