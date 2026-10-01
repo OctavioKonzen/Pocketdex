@@ -266,10 +266,24 @@ try {
   await page.getByRole('button', { name: '⚔️ Começar batalha' }).click()
   await page.getByText(`${friend.name} quer batalhar!`).waitFor({ timeout: 30000 })
   // Joga até o fim: LUTAR e o primeiro golpe; clicar no texto adianta as falas.
+  let healed = false
   for (let i = 0; ; i++) {
     assert.ok(i < 150, `${step}: a batalha não terminou`)
     if (await page.getByRole('button', { name: 'Batalhar de novo' }).isVisible()) break
     if (await page.getByRole('button', { name: '▸ LUTAR' }).isVisible()) {
+      // Uma vez, cura com uma Potion da Bolsa (quando já perdeu vida).
+      if (!healed) {
+        await page.getByRole('button', { name: '▸ BOLSA' }).click()
+        const potion = page.getByTestId('bag').getByRole('button', { name: /^Potion/ })
+        if (await potion.isEnabled()) {
+          healed = true
+          await potion.click()
+          await page.getByTestId('party').locator('button:not([disabled])').first().click()
+          await page.getByText(/recuperou \d+ de HP/).waitFor({ timeout: 15000 })
+          continue
+        }
+        await page.getByTestId('bag').locator('..').getByRole('button', { name: 'Voltar' }).click()
+      }
       await page.getByRole('button', { name: '▸ LUTAR' }).click()
       await page.getByTestId('moves').getByRole('button').first().click()
     } else if (await page.getByTestId('party').isVisible()) {

@@ -5507,5 +5507,325 @@
   "en": "Change teams",
   "fr": "Changer d'équipes",
   "es": "Cambiar equipos"
+ },
+ "BOLSA": {
+  "en": "BAG",
+  "fr": "SAC",
+  "es": "MOCHILA"
+ },
+ "Bolsa": {
+  "en": "Bag",
+  "fr": "Sac",
+  "es": "Mochila"
+ },
+ "Revive com metade do HP": {
+  "en": "Revives with half HP",
+  "fr": "Ranime avec la moitié des PV",
+  "es": "Revive con la mitad de los PS"
+ },
+ "Recupera {0} de HP": {
+  "en": "Restores {0} HP",
+  "fr": "Restaure {0} PV",
+  "es": "Restaura {0} PS"
+ },
+ "Usar em qual Pokémon?": {
+  "en": "Use on which Pokémon?",
+  "fr": "Utiliser sur quel Pokémon ?",
+  "es": "¿Usar en qué Pokémon?"
+ },
+ "Você usou {1} em {0}!": {
+  "en": "You used {1} on {0}!",
+  "fr": "Vous utilisez {1} sur {0} !",
+  "es": "¡Usaste {1} en {0}!"
+ },
+ "O adversário usou {1} em {0}!": {
+  "en": "The foe used {1} on {0}!",
+  "fr": "L'adversaire utilise {1} sur {0} !",
+  "es": "¡El rival usó {1} en {0}!"
+ },
+ "{0} recuperou {1} de HP!": {
+  "en": "{0} recovered {1} HP!",
+  "fr": "{0} récupère {1} PV !",
+  "es": "¡{0} recuperó {1} PS!"
+ },
+ "{0} inimigo recuperou {1} de HP!": {
+  "en": "The foe's {0} recovered {1} HP!",
+  "fr": "{0} ennemi récupère {1} PV !",
+  "es": "¡{0} enemigo recuperó {1} PS!"
+ },
+ "{0} voltou à batalha!": {
+  "en": "{0} is back in the fight!",
+  "fr": "{0} revient au combat !",
+  "es": "¡{0} volvió al combate!"
+ },
+ "{0} inimigo voltou à batalha!": {
+  "en": "The foe's {0} is back in the fight!",
+  "fr": "{0} ennemi revient au combat !",
+  "es": "¡{0} enemigo volvió al combate!"
+ },
+ "{0} foi queimado!": {
+  "en": "{0} was burned!",
+  "fr": "{0} est brûlé !",
+  "es": "¡{0} se quemó!"
+ },
+ "{0} inimigo foi queimado!": {
+  "en": "The foe's {0} was burned!",
+  "fr": "{0} ennemi est brûlé !",
+  "es": "¡{0} enemigo se quemó!"
+ },
+ "{0} foi paralisado! Talvez não consiga se mover!": {
+  "en": "{0} is paralyzed! It may be unable to move!",
+  "fr": "{0} est paralysé ! Il aura du mal à attaquer !",
+  "es": "¡{0} está paralizado! ¡Quizá no pueda moverse!"
+ },
+ "{0} inimigo foi paralisado! Talvez não consiga se mover!": {
+  "en": "The foe's {0} is paralyzed! It may be unable to move!",
+  "fr": "{0} ennemi est paralysé ! Il aura du mal à attaquer !",
+  "es": "¡{0} enemigo está paralizado! ¡Quizá no pueda moverse!"
+ },
+ "{0} foi envenenado!": {
+  "en": "{0} was poisoned!",
+  "fr": "{0} est empoisonné !",
+  "es": "¡{0} fue envenenado!"
+ },
+ "{0} inimigo foi envenenado!": {
+  "en": "The foe's {0} was poisoned!",
+  "fr": "{0} ennemi est empoisonné !",
+  "es": "¡{0} enemigo fue envenenado!"
+ },
+ "{0} foi gravemente envenenado!": {
+  "en": "{0} was badly poisoned!",
+  "fr": "{0} est gravement empoisonné !",
+  "es": "¡{0} fue gravemente envenenado!"
+ },
+ "{0} inimigo foi gravemente envenenado!": {
+  "en": "The foe's {0} was badly poisoned!",
+  "fr": "{0} ennemi est gravement empoisonné !",
+  "es": "¡{0} enemigo fue gravemente envenenado!"
+ },
+ "{0} adormeceu!": {
+  "en": "{0} fell asleep!",
+  "fr": "{0} s'endort !",
+  "es": "¡{0} se durmió!"
+ },
+ "{0} inimigo adormeceu!": {
+  "en": "The foe's {0} fell asleep!",
+  "fr": "{0} ennemi s'endort !",
+  "es": "¡{0} enemigo se durmió!"
+ },
+ "{0} foi congelado!": {
+  "en": "{0} was frozen solid!",
+  "fr": "{0} est gelé !",
+  "es": "¡{0} fue congelado!"
+ },
+ "{0} inimigo foi congelado!": {
+  "en": "The foe's {0} was frozen solid!",
+  "fr": "{0} ennemi est gelé !",
+  "es": "¡{0} enemigo fue congelado!"
+ },
+ "{0} foi ferido pela queimadura!": {
+  "en": "{0} was hurt by its burn!",
+  "fr": "{0} souffre de sa brûlure !",
+  "es": "¡{0} se resiente de la quemadura!"
+ },
+ "{0} inimigo foi ferido pela queimadura!": {
+  "en": "The foe's {0} was hurt by its burn!",
+  "fr": "{0} ennemi souffre de sa brûlure !",
+  "es": "¡{0} enemigo se resiente de la quemadura!"
+ },
+ "{0} foi ferido pelo veneno!": {
+  "en": "{0} was hurt by poison!",
+  "fr": "{0} souffre du poison !",
+  "es": "¡{0} sufre por el veneno!"
+ },
+ "{0} inimigo foi ferido pelo veneno!": {
+  "en": "The foe's {0} was hurt by poison!",
+  "fr": "{0} ennemi souffre du poison !",
+  "es": "¡{0} enemigo sufre por el veneno!"
+ },
+ "{0} está dormindo profundamente.": {
+  "en": "{0} is fast asleep.",
+  "fr": "{0} dort profondément.",
+  "es": "{0} está profundamente dormido."
+ },
+ "{0} inimigo está dormindo profundamente.": {
+  "en": "The foe's {0} is fast asleep.",
+  "fr": "{0} ennemi dort profondément.",
+  "es": "{0} enemigo está profundamente dormido."
+ },
+ "{0} acordou!": {
+  "en": "{0} woke up!",
+  "fr": "{0} se réveille !",
+  "es": "¡{0} se despertó!"
+ },
+ "{0} inimigo acordou!": {
+  "en": "The foe's {0} woke up!",
+  "fr": "{0} ennemi se réveille !",
+  "es": "¡{0} enemigo se despertó!"
+ },
+ "{0} está congelado!": {
+  "en": "{0} is frozen solid!",
+  "fr": "{0} est gelé !",
+  "es": "¡{0} está congelado!"
+ },
+ "{0} inimigo está congelado!": {
+  "en": "The foe's {0} is frozen solid!",
+  "fr": "{0} ennemi est gelé !",
+  "es": "¡{0} enemigo está congelado!"
+ },
+ "{0} descongelou!": {
+  "en": "{0} thawed out!",
+  "fr": "{0} dégèle !",
+  "es": "¡{0} se descongeló!"
+ },
+ "{0} inimigo descongelou!": {
+  "en": "The foe's {0} thawed out!",
+  "fr": "{0} ennemi dégèle !",
+  "es": "¡{0} enemigo se descongeló!"
+ },
+ "{0} está paralisado! Não consegue se mover!": {
+  "en": "{0} is paralyzed! It can't move!",
+  "fr": "{0} est paralysé ! Il ne peut pas attaquer !",
+  "es": "¡{0} está paralizado! ¡No se puede mover!"
+ },
+ "{0} inimigo está paralisado! Não consegue se mover!": {
+  "en": "The foe's {0} is paralyzed! It can't move!",
+  "fr": "{0} ennemi est paralysé ! Il ne peut pas attaquer !",
+  "es": "¡{0} enemigo está paralizado! ¡No se puede mover!"
+ },
+ "{0} recuou e não conseguiu atacar!": {
+  "en": "{0} flinched and couldn't move!",
+  "fr": "{0} a la trouille ! Il ne peut pas attaquer !",
+  "es": "¡{0} retrocedió y no pudo atacar!"
+ },
+ "{0} inimigo recuou e não conseguiu atacar!": {
+  "en": "The foe's {0} flinched and couldn't move!",
+  "fr": "{0} ennemi a la trouille ! Il ne peut pas attaquer !",
+  "es": "¡{0} enemigo retrocedió y no pudo atacar!"
+ },
+ "{1} de {0} subiu!": {
+  "en": "{0}'s {1} rose!",
+  "fr": "{1} de {0} augmente !",
+  "es": "¡{1} de {0} aumentó!"
+ },
+ "{1} de {0} inimigo subiu!": {
+  "en": "The foe's {0}'s {1} rose!",
+  "fr": "{1} de {0} ennemi augmente !",
+  "es": "¡{1} de {0} enemigo aumentó!"
+ },
+ "{1} de {0} subiu muito!": {
+  "en": "{0}'s {1} rose sharply!",
+  "fr": "{1} de {0} augmente beaucoup !",
+  "es": "¡{1} de {0} aumentó mucho!"
+ },
+ "{1} de {0} inimigo subiu muito!": {
+  "en": "The foe's {0}'s {1} rose sharply!",
+  "fr": "{1} de {0} ennemi augmente beaucoup !",
+  "es": "¡{1} de {0} enemigo aumentó mucho!"
+ },
+ "{1} de {0} subiu drasticamente!": {
+  "en": "{0}'s {1} rose drastically!",
+  "fr": "{1} de {0} augmente énormément !",
+  "es": "¡{1} de {0} aumentó muchísimo!"
+ },
+ "{1} de {0} inimigo subiu drasticamente!": {
+  "en": "The foe's {0}'s {1} rose drastically!",
+  "fr": "{1} de {0} ennemi augmente énormément !",
+  "es": "¡{1} de {0} enemigo aumentó muchísimo!"
+ },
+ "{1} de {0} caiu!": {
+  "en": "{0}'s {1} fell!",
+  "fr": "{1} de {0} baisse !",
+  "es": "¡{1} de {0} bajó!"
+ },
+ "{1} de {0} inimigo caiu!": {
+  "en": "The foe's {0}'s {1} fell!",
+  "fr": "{1} de {0} ennemi baisse !",
+  "es": "¡{1} de {0} enemigo bajó!"
+ },
+ "{1} de {0} caiu muito!": {
+  "en": "{0}'s {1} harshly fell!",
+  "fr": "{1} de {0} baisse beaucoup !",
+  "es": "¡{1} de {0} bajó mucho!"
+ },
+ "{1} de {0} inimigo caiu muito!": {
+  "en": "The foe's {0}'s {1} harshly fell!",
+  "fr": "{1} de {0} ennemi baisse beaucoup !",
+  "es": "¡{1} de {0} enemigo bajó mucho!"
+ },
+ "{1} de {0} caiu drasticamente!": {
+  "en": "{0}'s {1} severely fell!",
+  "fr": "{1} de {0} baisse énormément !",
+  "es": "¡{1} de {0} bajó muchísimo!"
+ },
+ "{1} de {0} inimigo caiu drasticamente!": {
+  "en": "The foe's {0}'s {1} severely fell!",
+  "fr": "{1} de {0} ennemi baisse énormément !",
+  "es": "¡{1} de {0} enemigo bajó muchísimo!"
+ },
+ "{1} de {0} não pode subir mais!": {
+  "en": "{0}'s {1} won't go any higher!",
+  "fr": "{1} de {0} ne peut plus augmenter !",
+  "es": "¡{1} de {0} no puede subir más!"
+ },
+ "{1} de {0} inimigo não pode subir mais!": {
+  "en": "The foe's {0}'s {1} won't go any higher!",
+  "fr": "{1} de {0} ennemi ne peut plus augmenter !",
+  "es": "¡{1} de {0} enemigo no puede subir más!"
+ },
+ "{1} de {0} não pode cair mais!": {
+  "en": "{0}'s {1} won't go any lower!",
+  "fr": "{1} de {0} ne peut plus baisser !",
+  "es": "¡{1} de {0} no puede bajar más!"
+ },
+ "{1} de {0} inimigo não pode cair mais!": {
+  "en": "The foe's {0}'s {1} won't go any lower!",
+  "fr": "{1} de {0} ennemi ne peut plus baisser !",
+  "es": "¡{1} de {0} enemigo no puede bajar más!"
+ },
+ "{0} recuperou HP!": {
+  "en": "{0} restored HP!",
+  "fr": "{0} récupère des PV !",
+  "es": "¡{0} recuperó PS!"
+ },
+ "{0} inimigo recuperou HP!": {
+  "en": "The foe's {0} restored HP!",
+  "fr": "{0} ennemi récupère des PV !",
+  "es": "¡{0} enemigo recuperó PS!"
+ },
+ "{0} teve a energia drenada!": {
+  "en": "{0} had its energy drained!",
+  "fr": "L'énergie de {0} est drainée !",
+  "es": "¡{0} perdió energía!"
+ },
+ "{0} inimigo teve a energia drenada!": {
+  "en": "The foe's {0} had its energy drained!",
+  "fr": "L'énergie de {0} ennemi est drainée !",
+  "es": "¡{0} enemigo perdió energía!"
+ },
+ "Mas falhou!": {
+  "en": "But it failed!",
+  "fr": "Mais cela échoue !",
+  "es": "¡Pero falló!"
+ },
+ "Defesa": {
+  "en": "Defense",
+  "fr": "Défense",
+  "es": "Defensa"
+ },
+ "Ataque Especial": {
+  "en": "Sp. Atk",
+  "fr": "Attaque Spéciale",
+  "es": "Ataque Especial"
+ },
+ "Defesa Especial": {
+  "en": "Sp. Def",
+  "fr": "Défense Spéciale",
+  "es": "Defensa Especial"
+ },
+ "Velocidade": {
+  "en": "Speed",
+  "fr": "Vitesse",
+  "es": "Velocidad"
  }
 }

@@ -30,6 +30,12 @@ class LocalDatabase {
 
   /// Sets prontos do Pokémon (Battle Factory/BSS do Pokémon Showdown, gerados
   /// por tool/build_sets.py), no formato de lib/services/team_sets.dart + 'tier'.
+  /// Regras dos golpes na batalha (efeitos, recuo, dreno, status...): {slug: {...}} (tool/build_move_rules.mjs).
+  Future<Map<String, dynamic>> moveRules() async => Map<String, dynamic>.from(await _table('move_rules') as Map);
+
+  /// Animação de cada golpe na batalha: {slug: [estilo, símbolo, variação]} (tool/build_move_anims.py).
+  Future<Map<String, dynamic>> moveAnims() async => Map<String, dynamic>.from(await _table('move_anims') as Map);
+
   Future<List<Map<String, dynamic>>> readySets(int pokemonId) async {
     final all = await _table('sets') as Map<String, dynamic>;
     return [for (final s in (all['$pokemonId'] as List?) ?? const []) Map<String, dynamic>.from(s as Map)];

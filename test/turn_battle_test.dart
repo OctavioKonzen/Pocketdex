@@ -1,16 +1,20 @@
 import 'dart:convert';
+import 'dart:math';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pocket_dex/services/damage_calc.dart';
 import 'package:pocket_dex/services/league.dart';
+import 'package:pocket_dex/services/local_database.dart';
+import 'package:pocket_dex/services/move_anim.dart';
 import 'package:pocket_dex/services/turn_battle.dart';
 
 // Batalha de mentira (dano simples, sem a calculadora), a mesma do site
 // (web-site/src/lib/turnBattle.test.js): tem que dar exatamente o registro
 // de test/fixtures/turn_battle.json.
-BattleMove _move(String slug, String type, int power, int? accuracy, int pp, [int priority = 0]) =>
-    BattleMove(slug, slug, type, power, accuracy, pp, pp, priority);
+BattleMove _move(String slug, String type, int power, int? accuracy, int pp,
+        [int priority = 0, Map<String, dynamic>? rules, String category = 'physical']) =>
+    BattleMove(slug, slug, type, power, accuracy, pp, pp, priority, rules: rules, category: category);
 BattleMon _mon(int id, String name, List<String> types, int hp, int spe, List<BattleMove> moves) =>
     BattleMon(id, name, 50, hp, spe, types, moves);
 
@@ -31,12 +35,57 @@ HitResult? _fakeHit(BattleMon att, BattleMon def, String slug, bool crit) {
 List<String> fakeBattleLog() {
   final battle = TurnBattle(
     [
-      _mon(1, 'Azul', ['water'], 110, 80, [_move('water-gun', 'water', 60, 100, 3), _move('quick-attack', 'normal', 40, 100, 30, 1), _move('double-hit', 'normal', 35, 90, 10)]),
-      _mon(2, 'Verde', ['grass'], 100, 60, [_move('vine-whip', 'grass', 45, 100, 25), _move('tackle', 'normal', 40, 100, 35)]),
+      _mon(1, 'Azul', ['water'], 110, 80, [
+        _move('water-gun', 'water', 60, 100, 3, 0, {
+          'd': [1, 2],
+          'c': 1,
+        }),
+        _move('quick-attack', 'normal', 40, 100, 30, 1),
+        _move('double-hit', 'normal', 35, 90, 10, 0, {
+          'x': [
+            {'p': 50, 'f': 1},
+          ],
+        }),
+      ]),
+      _mon(2, 'Verde', ['grass'], 100, 60, [
+        _move('toxic', 'poison', 0, 90, 2, 0, {'s': 'tox', 'ok': 1}, 'status'),
+        _move('swords-dance', 'normal', 0, null, 1, 0, {
+          'b': {'atk': 2},
+          't': 'self',
+          'ok': 1,
+        }, 'status'),
+        _move('vine-whip', 'grass', 45, 100, 25, 0, {
+          'r': [1, 3],
+          'sb': {'def': -1},
+        }),
+        _move('tackle', 'normal', 40, 100, 35),
+      ]),
     ],
     [
-      _mon(3, 'Fogo', ['fire'], 120, 90, [_move('ember', 'fire', 60, 100, 25), _move('scratch', 'normal', 40, 95, 35)]),
-      _mon(4, 'Fantasma', ['ghost'], 90, 70, [_move('lick', 'ghost', 50, 100, 30), _move('shadow-sneak', 'ghost', 40, 100, 30, 1)]),
+      _mon(3, 'Fogo', ['fire'], 120, 90, [
+        _move('ember', 'fire', 60, 100, 25, 0, {
+          'x': [
+            {'p': 60, 's': 'brn'},
+          ],
+        }),
+        _move('scratch', 'normal', 40, 95, 35),
+      ]),
+      _mon(4, 'Fantasma', ['ghost'], 90, 70, [
+        _move('lick', 'ghost', 50, 100, 30, 0, {
+          'x': [
+            {'p': 70, 's': 'par'},
+            {
+              'p': 40,
+              'b': {'spe': -1},
+            },
+          ],
+        }),
+        _move('shadow-sneak', 'ghost', 40, 100, 30, 1),
+        _move('recover', 'normal', 0, null, 5, 0, {
+          'h': [1, 2],
+          'ok': 1,
+        }, 'status'),
+      ]),
     ],
     League.seededRandom(42),
   );
@@ -54,6 +103,10 @@ List<String> fakeBattleLog() {
         log.add('[${e.t} ${e.side}]');
       } else if (e.t == 'attack') {
         log.add('[attack ${e.side} ${e.type}]');
+      } else if (e.t == 'status') {
+        log.add('[status ${e.side} ${e.type}]');
+      } else if (e.t == 'heal') {
+        log.add('[heal ${e.side} ${e.index} ${e.value}]');
       } else {
         log.add('[${e.t} ${e.side} ${e.value}]');
       }
@@ -67,8 +120,13 @@ List<String> fakeBattleLog() {
     }
     final me = battle.active(0);
     final usable = TurnBattle.usableMoves(me);
+    final fainted = battle.teams[0].indexWhere((m) => m.hp <= 0);
     if (turn == 2 && battle.teams[0][1].hp > 0) {
       write(battle.playTurn(_fakeHit, switchTo: 1));
+    } else if (turn == 5 && battle.canUseItem(0, 'super-potion', battle.activeIndex[0])) {
+      write(battle.playTurn(_fakeHit, item: 'super-potion', target: battle.activeIndex[0]));
+    } else if (fainted >= 0 && battle.canUseItem(0, 'revive', fainted)) {
+      write(battle.playTurn(_fakeHit, item: 'revive', target: fainted));
     } else {
       write(battle.playTurn(_fakeHit, move: usable.isEmpty ? -1 : usable.first));
     }
@@ -113,6 +171,7 @@ void main() {
     expect(charizard.moves.length, 4);
     expect(charizard.moves.first.name, 'Flamethrower');
     expect(charizard.moves.first.pp, 15);
+    expect(charizard.moves.first.category, 'special');
   });
 
   test('dano de verdade: água em fogo é super eficaz, normal em fantasma não afeta', () async {
@@ -124,4 +183,69 @@ void main() {
     expect(water.rolls.single.length, 16);
     expect(hit(mons[1], mons[2], 'body-slam', false)!.eff, 0);
   });
+
+  test('animação de cada golpe igual ao site (todos os golpes do banco)', () async {
+    final expected = (jsonDecode(File('test/fixtures/move_anims.json').readAsStringSync()) as Map).cast<String, String>();
+    final moves = await LocalDatabase.instance.movesByName();
+    final all = {
+      for (final slug in (moves.keys.where((k) => moves[k]!['damage_class'] != 'status').toList()..sort()))
+        slug: moveAnim(slug, '${moves[slug]!['type']}', '${moves[slug]!['damage_class']}'),
+    };
+    expect(all, expected);
+    for (final kind in _kinds) {
+      expect(fxPlan(kind, 'fire', 0, const Point(24, 69), const Point(75, 25)).parts, isNotEmpty, reason: kind);
+    }
+  });
+
+  test('cada golpe com a sua animação (move_anims.json) e peças iguais às do site', () async {
+    final table = await LocalDatabase.instance.moveAnims();
+    final keys = [for (final e in table.values) (e as List).join('|')];
+    expect(keys.toSet().length, keys.length);
+    expect((table['ice-punch'] as List).take(2), ['punch', '🧊']);
+
+    Map<String, Object> json(FxPlan plan) => {
+          'parts': [
+            for (final p in plan.parts)
+              switch (p.shape) {
+                'emoji' => {
+                    'shape': 'emoji', 'char': p.char, 'x0': p.x0, 'y0': p.y0, 'x1': p.x1, 'y1': p.y1, 'delay': p.delay, 'dur': p.dur,
+                    's0': p.s0, 's1': p.s1, 'o0': p.o0, 'o1': p.o1, 'rot': p.rot, 'size': p.size, //
+                  },
+                'line' => {'shape': 'line', 'x0': p.x0, 'y0': p.y0, 'x1': p.x1, 'y1': p.y1, 'delay': p.delay, 'dur': p.dur, 'width': p.width},
+                'ring' => {'shape': 'ring', 'x': p.x0, 'y': p.y0, 'delay': p.delay, 'dur': p.dur},
+                _ => {'shape': 'wave', 'dir': p.dir, 'delay': p.delay, 'dur': p.dur},
+              },
+          ],
+          'shake': plan.shake,
+          'flash': plan.flash,
+          'duration': plan.duration,
+        };
+    void same(Object? a, Object? b, String path) {
+      if (a is num && b is num) {
+        expect(a.toDouble(), closeTo(b.toDouble(), 1e-6), reason: path);
+      } else if (a is Map && b is Map) {
+        expect(a.keys.toSet(), b.keys.toSet(), reason: path);
+        for (final k in a.keys) {
+          same(a[k], b[k], '$path.$k');
+        }
+      } else if (a is List && b is List) {
+        expect(a.length, b.length, reason: path);
+        for (var i = 0; i < a.length; i++) {
+          same(a[i], b[i], '$path[$i]');
+        }
+      } else {
+        expect(a, b, reason: path);
+      }
+    }
+
+    final expected = jsonDecode(File('test/fixtures/fx_plans.json').readAsStringSync()) as Map;
+    for (final kind in _kinds) {
+      for (var v = 0; v < 6; v++) {
+        final plan = fxPlan(kind, 'water', v % 2, const Point(24, 69), const Point(75, 25), v % 3 != 0 ? '🧊' : null, v);
+        same(json(plan), expected['$kind/$v'], '$kind/$v');
+      }
+    }
+  });
 }
+
+const _kinds = ['tackle', 'punch', 'kick', 'bite', 'slash', 'orb', 'beam', 'stream', 'volley', 'bolt', 'quake', 'rocks', 'meteor', 'wave', 'wind', 'rings', 'drain'];

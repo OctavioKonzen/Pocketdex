@@ -64,6 +64,10 @@ export const getGameAreas = () => load('game_areas.json')
 
 /** Sets prontos: {id do Pokémon: [set + tier]} (Pokémon Showdown, tool/build_sets.py). */
 export const getReadySets = () => load('sets.json')
+/** Animação de cada golpe na batalha: {slug: [estilo, símbolo, variação]} (tool/build_move_anims.py). */
+export const getMoveAnims = () => load('move_anims.json')
+/** Regras dos golpes na batalha (efeitos, recuo, dreno, status...): {slug: {...}} (tool/build_move_rules.mjs). */
+export const getMoveRules = () => load('move_rules.json')
 
 /** Grito da espécie (arquivo do banco, não da PokeAPI). */
 export const cryUrl = (speciesId) => `${BASE}cries/${speciesId}.mp3`
