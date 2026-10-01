@@ -416,7 +416,7 @@ class _PokemonAnimatedImage extends StatelessWidget {
     final Widget image = SizedBox.square(
       dimension: 300,
       child: id != null
-          ? PokemonSprite(id, shiny: shiny, fill: 0.78, alignBottom: true)
+          ? PokemonSprite(id, shiny: shiny, fill: 0.78, alignBottom: true, prefetchShiny: true)
           : Image(image: AppImages.provider(imageUrl), fit: BoxFit.contain, filterQuality: FilterQuality.none),
     );
     return reveal ? PokeballReveal(key: ValueKey('reveal-${details.id}'), ballSize: 80, child: image) : image;

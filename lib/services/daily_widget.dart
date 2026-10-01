@@ -63,12 +63,13 @@ class DailyWidget {
     var count = 0;
     var ms = 100;
     try {
-      if (AnimatedSprites.instance.has(id)) {
+      final sprite = AnimatedSprites.instance.source(id);
+      if (sprite != null) {
         // O GIF vem da nuvem (sem internet, o widget fica com o parado).
         final client = HttpClient()..connectionTimeout = const Duration(seconds: 15);
         final Uint8List gif;
         try {
-          final response = await (await client.getUrl(Uri.parse(AnimatedSprites.instance.url(id)))).close();
+          final response = await (await client.getUrl(Uri.parse(sprite.url))).close();
           if (response.statusCode != 200) throw const HttpException('sem o GIF');
           gif = await consolidateHttpClientResponseBytes(response);
         } finally {

@@ -9,21 +9,33 @@ import { useEffect, useState } from 'react'
 import { getAnimatedSprites, spriteUrl } from '../lib/data'
 import { usePrefs } from '../lib/prefs'
 
-// Sprites animados (GIF, estilo Black & White) do banco do site
-// (sprites/animated, tool/fetch_animated_sprites.py): quando o Pokémon tem um e
-// a opção está ligada, ele aparece no lugar do parado.
+// Sprites animados (GIF) do banco do site, igual ao app
+// (lib/services/animated_sprites.dart), em dois estilos:
+//   • Black & White (sprites/animated): oficiais do BW, a animação BW do
+//     Showdown ou, sem animação, a arte BW parada;
+//   • 3D do Pokémon Showdown, na qualidade original (sprites/3d).
+// Na Pokédex vai só o BW. Na batalha, o BW animado ou, sem ele, o 3D (como no
+// Showdown). Com a opção "3D" nas Configurações, tudo em 3D.
 let animated = null
 let loading = null
 // Frente, shiny e as costas (para a batalha).
 const KINDS = ['front', 'shiny', 'back', 'back-shiny']
+const describe = (d = {}, folder) => ({
+  folder,
+  ...Object.fromEntries(KINDS.map((k) => [k, new Set(d[k] ?? [])])),
+  still: Object.fromEntries(KINDS.map((k) => [k, new Set(d.still?.[k] ?? [])])),
+  fit: d.fit ?? {},
+  foot: d.foot ?? {},
+  hash: d.hash ?? {},
+})
 function useAnimated() {
   const [sets, setSets] = useState(animated)
   useEffect(() => {
     if (animated) return undefined
     let alive = true
     loading ??= getAnimatedSprites()
-      .then((d) => (animated = { ...Object.fromEntries(KINDS.map((k) => [k, new Set(d[k] ?? [])])), fit: d.fit ?? {}, hash: d.hash ?? {} }))
-      .catch(() => (animated = { ...Object.fromEntries(KINDS.map((k) => [k, new Set()])), fit: {}, hash: {} }))
+      .then((d) => (animated = { bw: describe(d, 'animated'), d3: describe(d['3d'], '3d') }))
+      .catch(() => (animated = { bw: describe({}, 'animated'), d3: describe({}, '3d') }))
     loading.then((a) => alive && setSets(a))
     return () => {
       alive = false
@@ -33,29 +45,48 @@ function useAnimated() {
 }
 
 /**
- * "pokemon/6.png" ou "pokemon/shiny/6.png" → GIF animado (se existir) e o
- * ajuste [zoom, dx, dy] de quem se mexe muito e ficaria pequeno.
+ * "pokemon/6.png" ou "pokemon/shiny/6.png" → GIF animado (se existir), o
+ * ajuste [zoom, dx, dy] de quem se mexe muito e ficaria pequeno e o pé (na
+ * batalha, quanto descer para pisar na plataforma).
  */
-function animatedOf(path, sets, back) {
+function animatedOf(path, sets, back, battle, style) {
   const m = /^pokemon\/(shiny\/)?(\d+)\.png$/.exec(path ?? '')
   if (!m || !sets) return null
   const kind = back ? (m[1] ? 'back-shiny' : 'back') : m[1] ? 'shiny' : 'front'
-  if (!sets[kind].has(Number(m[2]))) return null
+  const id = Number(m[2])
+  const bw = sets.bw[kind].has(id)
+  const has3d = sets.d3[kind].has(id)
+  const moves = bw && !sets.bw.still[kind].has(id)
+  const set = style === '3d' ? (has3d ? sets.d3 : bw ? sets.bw : null) : battle && !moves && has3d ? sets.d3 : bw ? sets.bw : null
+  if (!set) return null
   // ?v=impressão digital: quando o GIF muda no banco, o navegador baixa de novo.
-  const v = sets.hash[kind]?.[m[2]]
-  return { gif: `animated/${kind}/${m[2]}.gif${v ? `?v=${v}` : ''}`, fit: sets.fit[kind]?.[m[2]] ?? [1, 0, 0] }
+  const v = set.hash[kind]?.[m[2]]
+  return {
+    gif: `${set.folder}/${kind}/${m[2]}.gif${v ? `?v=${v}` : ''}`,
+    fit: set.fit[kind]?.[m[2]] ?? [1, 0, 0],
+    foot: set.foot[kind]?.[m[2]] ?? 0,
+    is3d: set.folder === '3d',
+  }
 }
 
 /**
  * @param fill   quanto da caixa o Pokémon ocupa (0 a 1)
  * @param align  'center' ou 'bottom' (Pokémon "apoiado" embaixo)
  * @param back   de costas (batalha)
+ * @param battle na batalha (BW animado ou, sem ele, o 3D; pé na plataforma)
+ * @param prefetch outro sprite para já baixar (o shiny na página do Pokémon:
+ *                 trocar para ele não fica parado esperando chegar)
  */
 export default function Sprite(props) {
   const on = usePrefs((s) => s.animatedSprites)
+  const spriteStyle = usePrefs((s) => s.spriteStyle)
   const sets = useAnimated()
   const [failed, setFailed] = useState(null)
-  const anim = on ? animatedOf(props.path, sets, props.back) : null
+  const anim = on ? animatedOf(props.path, sets, props.back, props.battle, spriteStyle) : null
+  const next = on && props.prefetch ? animatedOf(props.prefetch, sets, props.back, props.battle, spriteStyle)?.gif : null
+  useEffect(() => {
+    if (next) new Image().src = spriteUrl(next)
+  }, [next])
   const gif = anim?.gif
   if (!gif || failed === gif) {
     // De costas sem as costas no banco: a frente espelhada.
@@ -80,7 +111,9 @@ export default function Sprite(props) {
   // Centraliza o quadro típico, sem a animação sair da caixa (onde o card
   // recorta, cortaria asas e caudas no meio do movimento).
   const shift = (d, r) => Math.max(-Math.max(0, (1 - side * r) / 2), Math.min(Math.max(0, (1 - side * r) / 2), d * side))
-  const top = align === 'bottom' ? 1 - (1 - fill) / 2 - side : 0.5 - side / 2 - shift(dy, hr)
+  // Na batalha, quem pula ou flutua no meio da animação desce o "pé" para pisar na plataforma.
+  const foot = props.battle && align === 'bottom' ? anim.foot * side : 0
+  const top = align === 'bottom' ? 1 - (1 - fill) / 2 - side + foot : 0.5 - side / 2 - shift(dy, hr)
   return (
     <div className={`relative aspect-square ${className}`} style={style}>
       <img
@@ -90,7 +123,7 @@ export default function Sprite(props) {
         decoding="async"
         draggable={false}
         onError={() => setFailed(gif)}
-        className={`pixelated pointer-events-none absolute max-w-none object-contain ${align === 'bottom' ? 'object-bottom' : ''} ${imgClassName}`}
+        className={`${anim.is3d ? '' : 'pixelated'} pointer-events-none absolute max-w-none object-contain ${align === 'bottom' ? 'object-bottom' : ''} ${imgClassName}`}
         style={{
           width: `${side * 100}%`,
           height: `${side * 100}%`,

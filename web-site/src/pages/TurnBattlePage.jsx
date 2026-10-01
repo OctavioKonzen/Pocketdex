@@ -185,7 +185,7 @@ const BattleSprite = forwardRef(function BattleSprite({ mon, id, back, fainted, 
         style={dmax ? { transform: 'scale(1.35)', filter: 'drop-shadow(0 0 6px #e11d48) drop-shadow(0 0 2px #e11d48)' } : undefined}
       >
         <div ref={ref} className="relative h-full w-full">
-          {p && <Sprite key={`${p.id}-${mon.shiny}`} path={mon.shiny ? shinyPath(p.sprite) : p.sprite} box={p.box} fill={0.95} align="bottom" back={back} alt={mon.name} />}
+          {p && <Sprite key={`${p.id}-${mon.shiny}`} path={mon.shiny ? shinyPath(p.sprite) : p.sprite} box={p.box} fill={0.95} align="bottom" back={back} battle alt={mon.name} />}
         </div>
       </div>
     </div>
@@ -602,8 +602,8 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
         <div className="absolute top-[6%] left-[4%] w-[46%] max-w-[260px]">
           <InfoBox mon={foe} hp={shown.hp[1][shown.active[1]]} status={shown.status[1][shown.active[1]]} dmax={shown.dmax[1]} />
         </div>
-        {/* O inimigo fica mais longe: menor e em cima da plataforma dele. */}
-        <div className="absolute right-[11%] bottom-[54%] w-[25%]">
+        {/* O inimigo fica mais longe: menor e com os pés na frente do meio da plataforma (pisando nela, como o seu). */}
+        <div className="absolute right-[11%] bottom-[53%] w-[25%]">
           <BattleSprite ref={sprites[1]} mon={foe} id={shown.form[1] ?? foe.id} dmax={shown.dmax[1]} fainted={shown.fainted[1]} byId={byId} />
         </div>
         <div className="absolute bottom-[5%] left-[7%] w-[33%]">

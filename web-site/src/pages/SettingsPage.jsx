@@ -9,7 +9,7 @@ import { installSite, useCanInstall } from '../lib/install'
 import { dayKey, weekKey } from '../lib/league'
 import { pixCode, pixEnabled, PIX } from '../lib/pix'
 import { useStore } from '../lib/store'
-import { TEXT_SIZES, usePrefs } from '../lib/prefs'
+import { SPRITE_STYLES, TEXT_SIZES, usePrefs } from '../lib/prefs'
 import { useNavigate } from 'react-router-dom'
 import { logout, pauseSync, resumeSync } from '../lib/sync'
 
@@ -24,6 +24,8 @@ export default function SettingsPage() {
   const backgroundAnimation = usePrefs((s) => s.backgroundAnimation)
   const animatedSprites = usePrefs((s) => s.animatedSprites)
   const setAnimatedSprites = usePrefs((s) => s.setAnimatedSprites)
+  const spriteStyle = usePrefs((s) => s.spriteStyle)
+  const setSpriteStyle = usePrefs((s) => s.setSpriteStyle)
   const setBackgroundAnimation = usePrefs((s) => s.setBackgroundAnimation)
   const [confirm, setConfirm] = useState(false)
   const [message, setMessage] = useState('')
@@ -83,6 +85,12 @@ export default function SettingsPage() {
           </Row>
           <Row title="Sprites animados" text="Os Pokémon se mexem, no estilo Black & White.">
             <Switch on={animatedSprites} onChange={setAnimatedSprites} label="Sprites animados" />
+          </Row>
+          <Row
+            title="Estilo dos sprites"
+            text="Black & White: Pokédex no estilo do jogo e, na batalha, o 3D só de quem não tem animação BW. 3D: tudo no 3D do Showdown."
+          >
+            <Choice value={spriteStyle} onChange={setSpriteStyle} options={SPRITE_STYLES} />
           </Row>
         </Section>
 

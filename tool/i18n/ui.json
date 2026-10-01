@@ -6107,5 +6107,15 @@
   "en": "The opposing {0} is buffeted by the hail!",
   "fr": "La grêle frappe {0} ennemi !",
   "es": "¡El granizo golpea al {0} rival!"
+ },
+ "Estilo dos sprites": {
+  "en": "Sprite style",
+  "fr": "Style des sprites",
+  "es": "Estilo de los sprites"
+ },
+ "Black & White: Pokédex no estilo do jogo e, na batalha, o 3D só de quem não tem animação BW. 3D: tudo no 3D do Showdown.": {
+  "en": "Black & White: the Pokédex in the game’s style and, in battle, 3D only for Pokémon without a BW animation. 3D: everything in Showdown’s 3D.",
+  "fr": "Black & White : le Pokédex dans le style du jeu et, en combat, la 3D seulement pour les Pokémon sans animation BW. 3D : tout dans la 3D de Showdown.",
+  "es": "Black & White: la Pokédex con el estilo del juego y, en combate, el 3D solo para los Pokémon sin animación BW. 3D: todo en el 3D de Showdown."
  }
 }

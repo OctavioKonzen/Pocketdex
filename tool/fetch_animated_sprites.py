@@ -1,19 +1,21 @@
 #!/usr/bin/env python3
-"""Baixa os sprites animados (GIF) de todos os Pokémon para o banco.
+"""Baixa os sprites animados (GIF) de todos os Pokémon para o banco e gera
+animated_sprites.json.
 
 Saída: assets/database/sprites/animated/front/<id>.gif e .../shiny/<id>.gif,
-de frente, no estilo Black & White:
-  • do #1 ao #649: os oficiais do Black & White;
-  • do #650 em diante e as formas: os do Pokémon Showdown (Smogon Sprite Project);
-os dois do repositório de sprites da PokeAPI. Quem não tem sprite animado fica
-de fora (o app e o site mostram o parado de sempre). Depois, rode
-tool/bw_style_sprites.py: troca os que vieram em 3D (8ª/9ª geração, Megas...)
-e os que faltam pela arte BW da Smogon, para ficarem todos no mesmo estilo.
+no estilo Black & White: do #1 ao #649 os oficiais do Black & White (do
+repositório de sprites da PokeAPI). Do #650 em diante e as formas quem decide
+é tool/bw_style_sprites.py (animação BW do Showdown ou a arte BW parada), que
+também faz as costas. O 3D do Showdown fica em sprites/3d
+(tool/showdown_3d_sprites.py).
 
-O site publica a pasta junto com os outros sprites (tool/build_web_data.py)
-e o app puxa cada um de lá (da nuvem, com internet; o APK fica leve). No fim, os
-GIFs passam pelo gifsicle -O3 (sem perda: os quadros ficam idênticos, só o
-arquivo diminui), se ele estiver instalado.
+animated_sprites.json descreve as duas pastas (o BW em cima, o 3D em "3d"):
+quais existem, os parados (um quadro só), o ajuste de tamanho, o pé (quem
+pula ou flutua, para pisar na plataforma da batalha) e a impressão digital.
+
+Os GIFs vão dentro do app (funciona sem internet) e no site. No fim, passam
+pelo gifsicle -O3 (sem perda: os quadros ficam idênticos, só o arquivo
+diminui), se ele estiver instalado.
 
 Uso: python3 tool/fetch_animated_sprites.py   (só baixa o que falta)
 """
@@ -31,8 +33,7 @@ KINDS = ('front', 'shiny', 'back', 'back-shiny')
 
 
 def source(pid, shiny):
-    folder = f'{BASE}/versions/generation-v/black-white/animated' if pid <= 649 else f'{BASE}/other/showdown'
-    return f'{folder}/{"shiny/" if shiny else ""}{pid}.gif'
+    return f'{BASE}/versions/generation-v/black-white/animated/{"shiny/" if shiny else ""}{pid}.gif'
 
 
 def fetch(job):
@@ -40,6 +41,9 @@ def fetch(job):
     path = os.path.join(OUT, 'shiny' if shiny else 'front', f'{pid}.gif')
     if os.path.exists(path):
         return 'já tinha'
+    if pid > 649:
+        # Do #650 em diante quem decide é tool/bw_style_sprites.py (só BW).
+        return 'sem animado'
     try:
         with urllib.request.urlopen(source(pid, shiny), timeout=60) as r:
             data = r.read()
@@ -79,31 +83,69 @@ def fit(path):
     return [round(zoom, 2), round((cx - W / 2) / M, 3), round((cy - H / 2) / M, 3), round(W / M, 3), round(H / M, 3)]
 
 
+def foot(path):
+    """Quanto o pé do quadro típico fica acima do fundo do GIF (fração do lado
+    maior): quem pula ou flutua no meio da animação. Na batalha o Pokémon
+    desce isso para pisar na plataforma."""
+    from PIL import Image, ImageFile, ImageSequence
+    ImageFile.LOAD_TRUNCATED_IMAGES = True
+    im = Image.open(path)
+    W, H = im.size
+    bottoms = sorted(b[3] for fr in ImageSequence.Iterator(im) if (b := fr.convert('RGBA').getchannel('A').getbbox()))
+    if not bottoms:
+        return 0
+    gap = (H - bottoms[len(bottoms) // 2]) / max(W, H)
+    return round(gap, 3) if gap >= 0.02 else 0
+
+
+def frames(path):
+    from PIL import Image
+    return getattr(Image.open(path), 'n_frames', 1)
+
+
 def digest(path):
     import hashlib
     with open(path, 'rb') as f:
         return hashlib.sha1(f.read()).hexdigest()[:8]
 
 
-def fits(sub, ids):
+def fits(sub, ids, root=OUT):
     out = {}
     for pid in ids:
-        f = fit(os.path.join(OUT, sub, f'{pid}.gif'))
+        f = fit(os.path.join(root, sub, f'{pid}.gif'))
         if f:
             out[str(pid)] = f
     return out
 
 
-def optimize():
+def optimize(out=OUT):
     """gifsicle -O3 em todos os GIFs (sem perda; mantém a marca dos gerados)."""
     import shutil
     import subprocess
     if not shutil.which('gifsicle'):
         print('gifsicle não instalado: GIFs sem otimizar')
         return
-    files = [os.path.join(OUT, sub, f) for sub in KINDS if os.path.isdir(os.path.join(OUT, sub)) for f in os.listdir(os.path.join(OUT, sub)) if f.endswith('.gif')]
+    files = [os.path.join(out, sub, f) for sub in KINDS if os.path.isdir(os.path.join(out, sub)) for f in os.listdir(os.path.join(out, sub)) if f.endswith('.gif')]
     for i in range(0, len(files), 200):
         subprocess.run(['gifsicle', '-O3', '-b', *files[i:i + 200]], check=False, capture_output=True)
+
+
+OUT_3D = os.path.join(DB, 'sprites', '3d')
+
+
+def describe(root):
+    """Quais existem, ajuste de tamanho (fit), pé (foot), os parados (still,
+    um quadro só) e a impressão digital (hash) de cada GIF da pasta."""
+    kinds = [k for k in KINDS if os.path.isdir(os.path.join(root, k))]
+    have = {sub: sorted(int(f[:-4]) for f in os.listdir(os.path.join(root, sub)) if f.endswith('.gif')) for sub in kinds}
+    path = lambda sub, pid: os.path.join(root, sub, f'{pid}.gif')
+    have['fit'] = {sub: fits(sub, have[sub], root) for sub in kinds}
+    have['foot'] = {sub: {str(pid): v for pid in have[sub] if (v := foot(path(sub, pid)))} for sub in kinds}
+    have['still'] = {sub: [pid for pid in have[sub] if frames(path(sub, pid)) == 1] for sub in kinds}
+    # Impressão digital de cada GIF: quando um muda, o navegador não usa o
+    # velho do cache.
+    have['hash'] = {sub: {str(pid): digest(path(sub, pid)) for pid in have[sub]} for sub in kinds}
+    return have
 
 
 def main():
@@ -119,13 +161,11 @@ def main():
     # Quais têm sprite animado: {"front": [ids], "shiny": [ids]} (o app e o site
     # só procuram esses).
     optimize()
-    # Frente e shiny (e as costas, para a batalha, se já foram geradas).
-    kinds = [k for k in KINDS if os.path.isdir(os.path.join(OUT, k))]
-    have = {sub: sorted(int(f[:-4]) for f in os.listdir(os.path.join(OUT, sub)) if f.endswith('.gif')) for sub in kinds}
-    have['fit'] = {sub: fits(sub, have[sub]) for sub in kinds}
-    # Impressão digital de cada GIF: quando um muda, o app baixa de novo (e o
-    # navegador não usa o velho do cache).
-    have['hash'] = {sub: {str(pid): digest(os.path.join(OUT, sub, f'{pid}.gif')) for pid in have[sub]} for sub in kinds}
+    optimize(OUT_3D)
+    # Estilo BW (frente, shiny e as costas, para a batalha) e, em "3d", o 3D do
+    # Showdown (tool/showdown_3d_sprites.py).
+    have = describe(OUT)
+    have['3d'] = describe(OUT_3D)
     with open(os.path.join(DB, 'animated_sprites.json'), 'w', encoding='utf-8') as f:
         json.dump(have, f, separators=(',', ':'))
         f.write('\n')
