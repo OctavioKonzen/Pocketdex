@@ -48,27 +48,47 @@ class PokemonSprite extends StatelessWidget {
   /// De costas (batalha). Sem as costas no banco: a frente espelhada.
   final bool back;
 
+  /// Na batalha: o BW animado ou, sem ele, o 3D do Showdown; e o Pokémon
+  /// desce o "pé" do GIF para pisar na plataforma.
+  final bool battle;
+
+  /// Já baixa também o outro (normal/shiny): trocar para o shiny não fica
+  /// parado esperando chegar da nuvem (tela do Pokémon).
+  final bool prefetchShiny;
+
   const PokemonSprite(this.id,
-      {super.key, this.shiny = false, this.fill = 0.9, this.alignBottom = false, this.silhouette, this.back = false});
+      {super.key,
+      this.shiny = false,
+      this.fill = 0.9,
+      this.alignBottom = false,
+      this.silhouette,
+      this.back = false,
+      this.battle = false,
+      this.prefetchShiny = false});
 
   @override
   Widget build(BuildContext context) {
-    // Animado (estilo Black & White) quando existe e está ligado nas
-    // Configurações; silhueta (jogo "Quem é esse Pokémon?") fica parada.
+    // Animado quando existe e está ligado nas Configurações (o estilo, BW ou
+    // 3D, também vem de lá); silhueta (jogo "Quem é esse Pokémon?") fica parada.
     final pid = id is int ? id as int : int.tryParse('$id');
     final still = back ? Transform.flip(flipX: true, child: _static()) : _static();
-    if (silhouette != null || pid == null || !AnimatedSprites.instance.has(pid, shiny: shiny, back: back)) {
-      // Sem as costas animadas: a frente (animada, se tiver) espelhada.
-      if (back && pid != null && silhouette == null) {
-        return Transform.flip(flipX: true, child: PokemonSprite(id, shiny: shiny, fill: fill, alignBottom: alignBottom));
-      }
-      return still;
-    }
+    if (silhouette != null || pid == null) return still;
     return ListenableBuilder(
       listenable: AppSettings.instance,
-      builder: (context, _) => AppSettings.instance.animatedSprites
-          ? _AnimatedSprite(pid, shiny: shiny, back: back, fill: fill, alignBottom: alignBottom, fallback: still)
-          : still,
+      builder: (context, _) {
+        if (!AppSettings.instance.animatedSprites) return still;
+        final source = AnimatedSprites.instance.source(pid, shiny: shiny, back: back, battle: battle);
+        if (source == null) {
+          // Sem as costas: a frente (animada, se tiver) espelhada.
+          if (back) return Transform.flip(flipX: true, child: PokemonSprite(id, shiny: shiny, fill: fill, alignBottom: alignBottom, battle: battle));
+          return still;
+        }
+        if (prefetchShiny) {
+          final other = AnimatedSprites.instance.source(pid, shiny: !shiny, back: back, battle: battle);
+          if (other != null) precacheImage(NetworkImage(other.url), context).ignore();
+        }
+        return _AnimatedSprite(source, fill: fill, alignBottom: alignBottom, battle: battle, fallback: still);
+      },
     );
   }
 
@@ -119,17 +139,16 @@ class PokemonSprite extends StatelessWidget {
 
 /// O GIF animado do Pokémon (já recortado justo, vem da nuvem), do mesmo tamanho do parado.
 class _AnimatedSprite extends StatelessWidget {
-  final int id;
-  final bool shiny, back, alignBottom;
+  final SpriteSource source;
+  final bool alignBottom, battle;
   final double fill;
   final Widget fallback;
-  const _AnimatedSprite(this.id,
-      {required this.shiny, required this.back, required this.fill, required this.alignBottom, required this.fallback});
+  const _AnimatedSprite(this.source, {required this.fill, required this.alignBottom, required this.battle, required this.fallback});
 
   @override
   Widget build(BuildContext context) {
     final widget = this;
-    final f = AnimatedSprites.instance.fit(widget.id, shiny: widget.shiny, back: back);
+    final f = source.fit;
     final dx = f[1], dy = f[2], wr = f.length > 3 ? f[3] : 1.0, hr = f.length > 4 ? f[4] : 1.0;
     // Limita o zoom para a animação inteira caber na caixa (como o site):
     // quem pula ou abre as asas não invade o que está em volta.
@@ -148,7 +167,10 @@ class _AnimatedSprite extends StatelessWidget {
       }
 
       final left = side / 2 - inner / 2 - shift(dx, wr);
-      final top = widget.alignBottom ? side - side * (1 - widget.fill) / 2 - inner : side / 2 - inner / 2 - shift(dy, hr);
+      // Na batalha, quem pula ou flutua no meio da animação desce o "pé" para
+      // pisar na plataforma.
+      final foot = widget.battle && widget.alignBottom ? source.foot * inner : 0.0;
+      final top = widget.alignBottom ? side - side * (1 - widget.fill) / 2 - inner + foot : side / 2 - inner / 2 - shift(dy, hr);
       final still = Transform.translate(offset: Offset(-left, -top), child: SizedBox.square(dimension: side, child: widget.fallback));
       return Center(
         child: SizedBox.square(
@@ -160,13 +182,15 @@ class _AnimatedSprite extends StatelessWidget {
                 left: left,
                 top: top,
                 child: Image.network(
-                  AnimatedSprites.instance.url(id, shiny: shiny, back: back),
+                  source.url,
+                  // Outro GIF (trocou para o shiny...): começa a animação do zero.
+                  key: ValueKey(source.url),
                   width: inner,
                   height: inner,
                   fit: BoxFit.contain,
                   alignment: widget.alignBottom ? Alignment.bottomCenter : Alignment.center,
-                  filterQuality: FilterQuality.none,
-                  gaplessPlayback: true,
+                  // Pixel art fica em pixel; o 3D do Showdown, liso.
+                  filterQuality: source.is3d ? FilterQuality.medium : FilterQuality.none,
                   // Enquanto chega da nuvem (ou sem internet): o parado, no lugar da caixa toda.
                   frameBuilder: (_, child, frame, __) => frame == null ? still : child,
                   errorBuilder: (_, __, ___) => still,

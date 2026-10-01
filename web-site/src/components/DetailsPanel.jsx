@@ -134,7 +134,7 @@ export default function DetailsPanel({
                 whileHover={{ scale: 1.06 }}
                 transition={{ duration: 0.25 }}
               >
-                <Sprite path={sprite} box={box} alt={species.name} fill={0.72} />
+                <Sprite path={sprite} box={box} alt={species.name} fill={0.72} prefetch={form.sprites[1 - spriteIndex]} />
               </m.div>
             </AnimatePresence>
           </MaybeReveal>

@@ -491,9 +491,10 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
                           width: w * 0.48,
                           child: _InfoBox(mon: foe, hp: _hp[1][_active[1]], status: _status[1][_active[1]], dmax: _dmax[1])),
                       Positioned(
-                          // O inimigo fica mais longe: menor e em cima da plataforma dele.
+                          // O inimigo fica mais longe: menor e com os pés na
+                          // frente do meio da plataforma (pisando nela, como o seu).
                           right: w * 0.12,
-                          bottom: h * 0.54,
+                          bottom: h * 0.53,
                           width: w * 0.26,
                           height: w * 0.26,
                           child: _Sprite(key: _sprites[1], mon: foe, id: _form[1] ?? foe.id, dmax: _dmax[1], fainted: _fainted[1])),
@@ -1088,10 +1089,10 @@ class _SpriteState extends State<_Sprite> with TickerProviderStateMixin {
                       imageFilter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
                       child: ColorFiltered(
                         colorFilter: const ColorFilter.mode(Color(0xFFE11D48), BlendMode.srcIn),
-                        child: PokemonSprite(widget.id, shiny: widget.mon.shiny, back: widget.back, fill: 0.95, alignBottom: true),
+                        child: PokemonSprite(widget.id, shiny: widget.mon.shiny, back: widget.back, fill: 0.95, alignBottom: true, battle: true),
                       ),
                     ),
-                  PokemonSprite(widget.id, shiny: widget.mon.shiny, back: widget.back, fill: 0.95, alignBottom: true),
+                  PokemonSprite(widget.id, shiny: widget.mon.shiny, back: widget.back, fill: 0.95, alignBottom: true, battle: true),
                 ],
               ),
             ),

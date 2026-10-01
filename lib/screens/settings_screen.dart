@@ -174,6 +174,15 @@ class SettingsScreen extends StatelessWidget {
                         onChanged: settings.setAnimatedSprites,
                       ),
                     ),
+                    row(
+                      title: 'Estilo dos sprites',
+                      subtitle: 'Black & White: Pokédex no estilo do jogo e, na batalha, o 3D só de quem não tem animação BW. 3D: tudo no 3D do Showdown.',
+                      below: _Choice(
+                        value: settings.spriteStyle,
+                        onChanged: settings.setSpriteStyle,
+                        options: AppSettings.spriteStyles,
+                      ),
+                    ),
                   ]),
                   if (DailyReminder.supported) _Section('Notificações', [_ReminderSwitch(row: row), _DailyPokemonSwitch(row: row)]),
                   _Section('Dados', [
