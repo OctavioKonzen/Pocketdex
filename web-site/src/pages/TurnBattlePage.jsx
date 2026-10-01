@@ -628,7 +628,7 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
           {text}
         </button>
         {waiting && menu === 'main' && !battle.needSwitch && (
-          <div className="grid grid-cols-2 gap-1.5 rounded-xl border-4 border-slate-600 bg-white p-2 sm:w-64">
+          <div className="grid grid-cols-2 gap-1.5 rounded-xl border-4 border-slate-600 bg-white p-2 sm:w-72">
             <MenuButton onClick={() => (usable.length ? setMenu('fight') : fight(-1))}>LUTAR</MenuButton>
             <MenuButton onClick={() => setMenu('bag')}>BOLSA</MenuButton>
             <MenuButton onClick={() => (setItem(null), setMenu('party'))}>POKÉMON</MenuButton>
@@ -810,7 +810,7 @@ function Weak({ mon, list, className = '' }) {
 
 function MenuButton({ children, onClick, className = '' }) {
   return (
-    <button type="button" onClick={onClick} className={`cursor-pointer rounded-lg px-3 py-2 text-left font-black text-slate-900 hover:bg-amber-100 ${className}`}>
+    <button type="button" onClick={onClick} className={`cursor-pointer rounded-lg px-2 py-2 text-left font-black whitespace-nowrap text-slate-900 hover:bg-amber-100 ${className}`}>
       {`▸ ${t(children)}`}
     </button>
   )
