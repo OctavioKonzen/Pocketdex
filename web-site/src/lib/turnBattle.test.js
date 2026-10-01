@@ -173,6 +173,17 @@ describe('batalha por turnos', () => {
     expect(zard.mega.ability).toBe('Drought')
   }, 30000)
 
+  it('formas pelo item: Primal e Crowned ao entrar; a Mega da própria forma', async () => {
+    const [groudon, zacian, tatsugiri] = await battleMons([
+      { id: 383, set: { level: 50, item: 'red-orb', moves: ['earthquake'] } },
+      { id: 888, set: { level: 50, item: 'rusted-sword', moves: ['play-rough'] } },
+      { id: 10258, set: { level: 50, item: 'tatsugirinite', moves: ['draco-meteor'] } },
+    ])
+    expect(groudon.id).toBe(10078)
+    expect(zacian.id).toBe(10188)
+    expect(tatsugiri.mega?.id).toBe(10323)
+  }, 30000)
+
   it('escolhe os golpes: os do set e, se faltar, um de cada tipo', () => {
     const moves = {
       flamethrower: { type: 'fire', category: 'special', power: 90, accuracy: 100 },

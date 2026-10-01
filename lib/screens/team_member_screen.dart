@@ -9,6 +9,7 @@
 
 import 'package:flutter/material.dart' hide Text;
 
+import '../services/form_items.dart';
 import '../services/local_database.dart';
 import '../services/team_sets.dart';
 import '../utils/responsive.dart';
@@ -42,6 +43,11 @@ class _TeamMemberScreenState extends State<TeamMemberScreen> {
   Map<String, dynamic>? _row;
   Map<String, Map<String, dynamic>>? _moves;
   List<String>? _items;
+  List<Map<String, dynamic>> _allItems = const [];
+  Map<String, dynamic> _battleItems = const {};
+
+  /// Nomes das formas da mesma espécie (para achar as Megas dele).
+  Set<String> _forms = const {};
   List<Map<String, dynamic>> _ready = const [];
 
   @override
@@ -60,13 +66,65 @@ class _TeamMemberScreenState extends State<TeamMemberScreen> {
           i['name'] as String,
     ]..sort();
     final ready = await db.readySets(widget.pokemonId);
+    final all = await db.allItems();
+    final battleItems = await db.battleItems().catchError((_) => <String, dynamic>{});
+    final forms = {
+      for (final r in await db.allPokemonRows())
+        if (row != null && r['species'] == row['species']) r['name'] as String,
+    };
     if (!mounted) return;
     setState(() {
       _row = row;
       _ready = ready;
       _moves = moves;
       _items = {...popularItems.where(items.contains), ...items}.toList();
+      _allItems = all;
+      _battleItems = battleItems;
+      _forms = forms;
     });
+    // Forma que só existe segurando um item (Primal, Origin, Crowned, máscara
+    // da Ogerpon...): o item vai sozinho, senão a forma não funciona.
+    final needed = row == null ? const <String>[] : requiredItems(row['name'] as String, battleItems);
+    if (needed.isNotEmpty && !needed.contains(itemId(_set['item'] as String?))) _update({'item': itemSlug(needed.first, all)});
+  }
+
+  /// Mega: a pedra vai sozinha; com duas Megas (Charizard X/Y) escolhe-se qual.
+  /// Z-Move: o Cristal Z do tipo dos golpes (com mais de um tipo, escolhe-se).
+  List<({String stone, String form})> get _megas =>
+      _row == null ? const [] : megaOptions(_row!['name'] as String, _forms, _battleItems);
+  List<String> get _zTypes => {
+        for (final m in (_set['moves'] as List).cast<String>())
+          if (_moves?[m] != null && '${_moves![m]!['damage_class'] ?? _moves![m]!['category']}' != 'status') '${_moves![m]!['type']}',
+      }.toList();
+
+  void _chooseGimmick(String gimmick) {
+    final changes = <String, dynamic>{'gimmick': gimmick};
+    if (gimmick == 'mega' && _megas.length == 1) changes['item'] = itemSlug(_megas.first.stone, _allItems);
+    if (gimmick == 'z' && _zTypes.length == 1) {
+      final crystal = zCrystalOf(_zTypes.first, _battleItems);
+      if (crystal != null) changes['item'] = itemSlug(crystal, _allItems);
+    }
+    _update(changes);
+  }
+
+  Widget _choiceRow(String label, List<(String, String)> options, ValueChanged<String> onPick) {
+    final c = SiteColors.of(context);
+    final current = itemId(_set['item'] as String?);
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: c.muted)),
+        const SizedBox(height: 4),
+        Wrap(spacing: 6, runSpacing: 6, children: [
+          for (final (key, text) in options)
+            ChoiceChip(
+              label: Text(text),
+              selected: current == key,
+              onSelected: (_) => onPick(key),
+            ),
+        ]),
+      ]),
+    );
   }
 
   @override
@@ -363,12 +421,32 @@ class _TeamMemberScreenState extends State<TeamMemberScreen> {
                             const DropdownMenuItem(value: '', child: Text('—')),
                             for (final g in gimmicks) DropdownMenuItem(value: g, child: Text(_gimmickNames[g]!)),
                           ],
-                          onChanged: (v) => _update({'gimmick': v ?? ''}),
+                          onChanged: (v) => _chooseGimmick(v ?? ''),
                         ),
                         if ('${_set['gimmick'] ?? ''}'.isNotEmpty)
                           Padding(
                             padding: const EdgeInsets.only(top: 4),
                             child: Text(_gimmickRules['${_set['gimmick']}']!, style: TextStyle(fontSize: 12, color: c.muted)),
+                          ),
+                        if (_set['gimmick'] == 'mega' && _row != null && _megas.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text('Esse Pokémon não tem Mega Evolução.', style: TextStyle(fontSize: 12, color: Colors.red.shade400)),
+                          ),
+                        if (_set['gimmick'] == 'mega' && _megas.length > 1)
+                          _choiceRow('Qual Mega?', [for (final m in _megas) (m.stone, megaLabel(m.form))],
+                              (stone) => _update({'item': itemSlug(stone, _allItems)})),
+                        if (_set['gimmick'] == 'z' && _zTypes.length > 1)
+                          _choiceRow('Cristal Z de qual tipo?', [
+                            for (final t in _zTypes)
+                              if (zCrystalOf(t, _battleItems) != null) (zCrystalOf(t, _battleItems)!, prettySlug(t)),
+                          ], (crystal) => _update({'item': itemSlug(crystal, _allItems)})),
+                        if (_row != null && requiredItems(_row!['name'] as String, _battleItems).isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                                '${tr('Essa forma precisa segurar')} ${prettySlug(itemSlug(requiredItems(_row!['name'] as String, _battleItems).first, _allItems))}.',
+                                style: TextStyle(fontSize: 12, color: c.muted)),
                           ),
                       ],
                     ),

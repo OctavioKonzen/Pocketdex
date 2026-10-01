@@ -59,7 +59,8 @@ export async function battleMons(members) {
   const rules = await getMoveRules().catch(() => ({}))
   const battleItems = await getBattleItems().catch(() => ({ mega: {}, z: {} }))
   const out = []
-  for (const member of members) {
+  for (const original of members) {
+    const member = entryForm(original, byId, battleItems)
     const f = await fighter(calc, byId, member)
     if (!f) continue
     const stats = calc.sideStats(f.base, { ...f.side, hpPct: 100 })
@@ -73,7 +74,10 @@ export async function battleMons(members) {
     const species = byId.get(f.id)?.species ?? f.id
     const forms = (await getSpecies(species).catch(() => null))?.forms ?? []
     const itemId = toId((member.set?.item ?? '').replace(/--held$/, ''))
-    const megaForm = forms.find((x) => x.name === battleItems.mega?.[itemId]) ?? null
+    // A Mega da forma dele, se existir (Tatsugiri Droopy → Mega Tatsugiri Droopy).
+    const stoneForm = battleItems.mega?.[itemId]
+    const ownMega = `${byId.get(f.id)?.name}-mega`
+    const megaForm = stoneForm ? (forms.find((x) => x.name === ownMega) ?? forms.find((x) => x.name === stoneForm) ?? null) : null
     out.push({
       id: f.id,
       name: t(prettyName(byId.get(f.id)?.name ?? f.form.name)),
@@ -111,6 +115,24 @@ export async function battleMons(members) {
     })
   }
   return out
+}
+
+/**
+ * Formas que aparecem ao entrar na batalha segurando o item: Groudon/Kyogre
+ * com Red/Blue Orb viram Primal, Zacian/Zamazenta com Rusted Sword/Shield
+ * viram Crowned (como nos jogos).
+ */
+const ENTRY_FORMS = ['-primal', '-crowned']
+function entryForm(member, byId, battleItems) {
+  const itemId = toId((member.set?.item ?? '').replace(/--held$/, ''))
+  const me = byId.get(member.id)
+  if (!itemId || !me) return member
+  for (const [form, items] of Object.entries(battleItems.forms ?? {})) {
+    if (!items.includes(itemId) || !ENTRY_FORMS.some((e) => form.endsWith(e))) continue
+    const target = [...byId.values()].find((p) => p.name === form && p.species === me.species)
+    if (target && target.id !== member.id) return { ...member, id: target.id }
+  }
+  return member
 }
 
 /** Quem não pode dinamaxizar nos jogos: Zacian, Zamazenta e Eternatus. */

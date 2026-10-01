@@ -6142,5 +6142,25 @@
   "en": "Animated: the Pokémon move. Still: they stay on the first frame, in the chosen style.",
   "fr": "Animés : les Pokémon bougent. Fixes : ils restent sur la première image, dans le style choisi.",
   "es": "Animados: los Pokémon se mueven. Quietos: se quedan en el primer fotograma, con el estilo elegido."
+ },
+ "Esse Pokémon não tem Mega Evolução.": {
+  "en": "This Pokémon has no Mega Evolution.",
+  "fr": "Ce Pokémon n'a pas de Méga-Évolution.",
+  "es": "Este Pokémon no tiene Megaevolución."
+ },
+ "Qual Mega?": {
+  "en": "Which Mega?",
+  "fr": "Quelle Méga ?",
+  "es": "¿Qué Mega?"
+ },
+ "Cristal Z de qual tipo?": {
+  "en": "Z-Crystal of which type?",
+  "fr": "Cristal Z de quel type ?",
+  "es": "¿Cristal Z de qué tipo?"
+ },
+ "Essa forma precisa segurar": {
+  "en": "This form must hold",
+  "fr": "Cette forme doit tenir",
+  "es": "Esta forma necesita llevar"
  }
 }

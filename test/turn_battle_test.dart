@@ -269,6 +269,17 @@ void main() {
     expect(mons[2].noDmax, isTrue);
   });
 
+  test('formas pelo item: Primal e Crowned ao entrar; a Mega da própria forma (igual ao site)', () async {
+    final mons = await TurnBattleSetup.mons([
+      (383, {'level': 50, 'item': 'red-orb', 'moves': ['earthquake']}),
+      (888, {'level': 50, 'item': 'rusted-sword', 'moves': ['play-rough']}),
+      (10258, {'level': 50, 'item': 'tatsugirinite', 'moves': ['draco-meteor']}),
+    ], (row) => '${row['name']}');
+    expect(mons[0].id, 10078);
+    expect(mons[1].id, 10188);
+    expect(mons[2].mega?.id, 10323);
+  });
+
   test('clima com a calculadora: chuva fortalece Surf; Drizzle e Drought (igual ao site)', () async {
     final mons = await TurnBattleSetup.mons([
       (9, {'level': 50, 'moves': ['surf']}),
