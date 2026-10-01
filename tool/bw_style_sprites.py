@@ -46,11 +46,13 @@ STATIC = os.path.join(DB, 'sprites', 'pokemon')
 BW_MAX_SIDE = 160
 BW_MAX_COLORS = 20
 
-# Respiração: o Pokémon estica para cima e afina um pouco (apoiado no chão),
-# num ciclo suave de FRAMES quadros. Amplitude: 6% da altura (mínimo 3 px).
-FRAMES = 16
-FRAME_MS = 80
-STRETCH = 0.06
+# Movimento de quem só tem arte parada: respira (estica para cima e afina,
+# apoiado no chão) e ginga de um lado para o outro (cada linha de pixels anda
+# de lado, mais em cima que nos pés, como o corpo balançando nos jogos).
+FRAMES = 24
+FRAME_MS = 70
+STRETCH = 0.05  # da altura (mínimo 2 px)
+SWAY = 0.05  # da largura, no topo (mínimo 2 px)
 # Marca nos GIFs gerados aqui (para refazer só eles com --refazer).
 MARK = b'pocketdex-respiracao'
 
@@ -133,18 +135,26 @@ def crop_gif(src, path):
 
 
 def breathe(img, path):
-    """GIF com o Pokémon respirando (estica para cima e afina, apoiado embaixo)."""
+    """GIF com o Pokémon respirando e gingando, apoiado embaixo."""
     import math
     w, h = img.size
-    amp = max(3, round(h * STRETCH))
+    amp = max(2, round(h * STRETCH))
+    sway = max(2, round(w * SWAY))
     frames = []
     for i in range(FRAMES):
-        t = (1 - math.cos(2 * math.pi * i / FRAMES)) / 2  # 0 → 1 → 0
+        phase = 2 * math.pi * i / FRAMES
+        t = (1 - math.cos(2 * phase)) / 2  # respira 2 vezes por ciclo
+        side = math.sin(phase)  # ginga 1 vez por ciclo
         dh = round(amp * t)
-        dw = round(w * (amp * t / h) * 0.5)  # afina metade do que estica
-        frame = Image.new('RGBA', (w, h + amp), (0, 0, 0, 0))
+        dw = round(w * (amp * t / h) * 0.5)
         body = img.resize((w - dw, h + dh), Image.NEAREST)
-        frame.alpha_composite(body, ((w - body.width) // 2, h + amp - body.height))
+        # Ginga: cada linha anda de lado, mais no topo.
+        bent = Image.new('RGBA', (body.width + 2 * sway, body.height), (0, 0, 0, 0))
+        for y in range(body.height):
+            shift = round(sway * side * ((body.height - y) / body.height) ** 1.5)
+            bent.alpha_composite(body.crop((0, y, body.width, y + 1)), (sway + shift, y))
+        frame = Image.new('RGBA', (w + 2 * sway, h + amp), (0, 0, 0, 0))
+        frame.alpha_composite(bent, ((frame.width - bent.width) // 2, frame.height - bent.height))
         frames.append(frame)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     frames[0].save(path, save_all=True, append_images=frames[1:], duration=FRAME_MS, loop=0, disposal=2, comment=MARK)
