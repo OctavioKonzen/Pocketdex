@@ -3,7 +3,9 @@
 // finais). Salva a cada mudança.
 
 import { useEffect, useMemo, useState } from 'react'
-import { getItems, getMoves, getReadySets } from '../lib/data'
+import { getBattleItems, getItems, getMoves, getReadySets } from '../lib/data'
+import { itemSlug, megaLabel, megaOptions, requiredItems, toId, zCrystalOf } from '../lib/formItems'
+import { usePokemonIndex } from '../lib/pokemonIndex'
 import { prettyName } from '../lib/pokemon'
 import { evTotal, GIMMICKS, NATURES, natureLabel, normalizeSet, POPULAR_ITEMS, prettySlug, STAT_KEYS, STAT_NAMES, statValue, TERA_TYPES } from '../lib/teamSets'
 import { t } from '../lib/i18n'
@@ -134,23 +136,69 @@ function ReadySets({ pokemonId, onUse }) {
   )
 }
 
+/** Escolha rápida entre poucas opções (qual Mega, qual Cristal Z). */
+function ChoiceRow({ label, options, value, onPick }) {
+  return (
+    <div className="mt-1.5">
+      <div className="text-xs font-semibold text-muted">{label}</div>
+      <div className="mt-1 flex flex-wrap gap-1.5">
+        {options.map(([key, text]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => onPick(key)}
+            className={`cursor-pointer rounded-full px-3 py-1 text-xs font-bold ${value === key ? 'bg-sky-500 text-white' : 'bg-surface text-text'}`}
+          >
+            {text}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function TeamMemberEditor({ open, pokemon, set, onChange, onClose, onRemove, onSwap }) {
   const form = usePokemonForm(open ? pokemon : null)
   const [moves, setMoves] = useState(null)
   const [items, setItems] = useState(null)
+  const [allItems, setAllItems] = useState(null)
+  const [battleItems, setBattleItems] = useState(null)
+  const byId = usePokemonIndex()
 
   useEffect(() => {
     if (!open) return
     getMoves().then(setMoves)
+    getBattleItems()
+      .then(setBattleItems)
+      .catch(() => setBattleItems({}))
     getItems().then((all) => {
+      setAllItems(all)
       const held = all.filter((i) => i.attributes?.includes('holdable') && !HELD_CATEGORIES.has(i.category)).map((i) => i.name)
       setItems([...new Set([...POPULAR_ITEMS.filter((p) => held.includes(p)), ...held.sort()])])
     })
   }, [open])
 
+  // Forma que só existe segurando um item (Primal, Origin, Crowned, máscara da
+  // Ogerpon...): o item vai sozinho, senão a forma não funciona.
+  const needed = pokemon && allItems ? requiredItems(pokemon.name, battleItems) : []
+  const needsItem = needed.length > 0 && set && !needed.includes(toId(normalizeSet(set).item))
+  useEffect(() => {
+    if (needsItem) onChange({ ...normalizeSet(set), item: itemSlug(needed[0], allItems) })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [needsItem])
+
   if (!pokemon || !set) return null
   const s = normalizeSet(set)
   const update = (changes) => onChange({ ...s, ...changes })
+  // Mega: a pedra vai sozinha; com duas Megas (Charizard X/Y) escolhe-se qual.
+  const megas = megaOptions(pokemon, byId, battleItems)
+  const zTypes = [...new Set((s.moves ?? []).map((m) => moves?.[m]?.category !== 'status' && moves?.[m]?.type).filter(Boolean))]
+  const chooseGimmick = (gimmick) => {
+    const changes = { gimmick }
+    if (gimmick === 'mega' && megas.length === 1) changes.item = itemSlug(megas[0].stone, allItems)
+    if (gimmick === 'z' && zTypes.length === 1) changes.item = itemSlug(zCrystalOf(zTypes[0], battleItems), allItems)
+    update(changes)
+  }
   const setStat = (group, key, value) => update({ [group]: { ...s[group], [key]: value } })
   const base = form?.stats?.map((x) => x[0]) ?? null
   const learnable = form ? [...new Set(form.moves.map((mv) => mv[0]))].sort() : []
@@ -230,7 +278,7 @@ export default function TeamMemberEditor({ open, pokemon, set, onChange, onClose
               </select>
             </Field>
             <Field label="Mecânica na batalha">
-              <select value={s.gimmick ?? ''} onChange={(e) => update({ gimmick: e.target.value })} className={input} data-testid="gimmick">
+              <select value={s.gimmick ?? ''} onChange={(e) => chooseGimmick(e.target.value)} className={input} data-testid="gimmick">
                 <option value="">—</option>
                 {GIMMICKS.map((g) => (
                   <option key={g} value={g}>
@@ -239,6 +287,24 @@ export default function TeamMemberEditor({ open, pokemon, set, onChange, onClose
                 ))}
               </select>
               {s.gimmick && <p className="mt-1 text-xs text-muted">{t(GIMMICK_RULES[s.gimmick])}</p>}
+              {s.gimmick === 'mega' && !megas.length && <p className="mt-1 text-xs text-red-400">{t('Esse Pokémon não tem Mega Evolução.')}</p>}
+              {s.gimmick === 'mega' && megas.length > 1 && (
+                <ChoiceRow
+                  label={t('Qual Mega?')}
+                  options={megas.map((m) => [m.stone, megaLabel(m.form)])}
+                  value={toId(s.item)}
+                  onPick={(stone) => update({ item: itemSlug(stone, allItems) })}
+                />
+              )}
+              {s.gimmick === 'z' && zTypes.length > 1 && (
+                <ChoiceRow
+                  label={t('Cristal Z de qual tipo?')}
+                  options={zTypes.map((type) => [zCrystalOf(type, battleItems), prettySlug(type)])}
+                  value={toId(s.item)}
+                  onPick={(crystal) => update({ item: itemSlug(crystal, allItems) })}
+                />
+              )}
+              {needed.length > 0 && <p className="mt-1 text-xs text-muted">{`${t('Essa forma precisa segurar')} ${prettySlug(itemSlug(needed[0], allItems))}.`}</p>}
             </Field>
             <label className="flex items-end gap-2 pb-2 text-sm">
               <input type="checkbox" checked={s.shiny} onChange={(e) => update({ shiny: e.target.checked })} className="h-4 w-4 accent-yellow-400" />

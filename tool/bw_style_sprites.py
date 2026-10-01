@@ -74,12 +74,19 @@ def smogon_index(repo):
     return index
 
 
+# Palavras que mudam a forma: nunca caem ao encurtar o nome (senão a Mega
+# Pyroar viraria o Pyroar e o Zygarde Completo, o Zygarde 50%).
+FORM_WORDS = {'mega', 'gmax', 'primal', 'complete', 'origin', 'crowned', 'eternamax', 'ultra', 'therian', 'black', 'white'}
+
+
 def showdown_names(slug):
     """Jeitos de o Showdown escrever o slug da PokeAPI ("iron-bundle" → "ironbundle",
     "charizard-mega-x" → "charizard-megax", "ogerpon-wellspring-mask" → "ogerpon-wellspring")."""
     parts = slug.split('-')
     names = []
     for end in range(len(parts), 0, -1):  # também sem as últimas palavras ("-mask", "-build"...)
+        if FORM_WORDS & set(parts[end:]):
+            break
         p = parts[:end]
         names += [''.join(p)] + [''.join(p[:i]) + '-' + ''.join(p[i:]) for i in range(1, len(p))]
     return list(dict.fromkeys(names))
@@ -200,7 +207,7 @@ def main():
     def ps_bw(slug, kind):
         # Forma que só muda de pose (Miraidon de batalha...): a animação da espécie.
         found = ps('gen5ani', slug, kind)
-        if not found and '-' in slug and 'mega' not in slug and 'gmax' not in slug:
+        if not found and '-' in slug and not FORM_WORDS & set(slug.split('-')):
             found = ps('gen5ani', slug.split('-')[0], kind)
         return found
 
@@ -212,7 +219,7 @@ def main():
     def art(pid, slug, kind):
         if kind in index.get(slug, {}):
             return index[slug][kind]
-        if 'mega' in slug or 'gmax' in slug or os.path.exists(os.path.join(STATIC, f'{pid}.png')):
+        if FORM_WORDS & set(slug.split('-')) or os.path.exists(os.path.join(STATIC, f'{pid}.png')):
             return None
         return index.get(slug.split('-')[0], {}).get(kind)
 
@@ -273,7 +280,7 @@ def backs(everyone, ps, refazer, index, repo):
                 f.write(data)
             return 'BW oficial'
         bw = ps('gen5ani-back', slug, 'shiny' if shiny else 'front')
-        if not bw and '-' in slug and 'mega' not in slug and 'gmax' not in slug:
+        if not bw and '-' in slug and not FORM_WORDS & set(slug.split('-')):
             bw = ps('gen5ani-back', slug.split('-')[0], 'shiny' if shiny else 'front')
         if bw and is_bw(bw):
             crop_gif(bw, out)
@@ -290,7 +297,7 @@ def backs(everyone, ps, refazer, index, repo):
     def back_art(slug, kind):
         if kind in index.get(slug, {}):
             return index[slug][kind]
-        if 'mega' in slug or 'gmax' in slug:
+        if FORM_WORDS & set(slug.split('-')):
             return None
         return index.get(slug.split('-')[0], {}).get(kind)
 

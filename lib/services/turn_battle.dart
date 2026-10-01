@@ -1240,7 +1240,9 @@ class TurnBattleSetup {
     final battleItems = await LocalDatabase.instance.battleItems().catchError((_) => <String, dynamic>{});
     final megaStones = (battleItems['mega'] as Map?) ?? const {}, zCrystals = (battleItems['z'] as Map?) ?? const {};
     final out = <BattleMon>[];
-    for (final m in members) {
+    final allRows = await LocalDatabase.instance.allPokemonRows();
+    for (final original in members) {
+      final m = _entryForm(original, allRows, battleItems);
       final row = await LocalDatabase.instance.pokemonRow(m.$1);
       final calc = await TeamBattle.calcPokemon(data, m);
       if (row == null || calc == null) continue;
@@ -1260,7 +1262,11 @@ class TurnBattleSetup {
           if (r['species'] == row['species']) r,
       ];
       final itemId = toId('${m.$2?['item'] ?? ''}'.replaceAll(RegExp(r'--held$'), ''));
-      final megaRow = forms.where((r) => r['name'] == megaStones[itemId]).firstOrNull;
+      // A Mega da forma dele, se existir (Tatsugiri Droopy → Mega Tatsugiri Droopy).
+      final stoneForm = megaStones[itemId];
+      final megaRow = stoneForm == null
+          ? null
+          : forms.where((r) => r['name'] == '${row['name']}-mega').firstOrNull ?? forms.where((r) => r['name'] == stoneForm).firstOrNull;
       BattleMega? mega;
       if (megaRow != null) {
         final megaCalc = await TeamBattle.calcPokemon(data, (megaRow['id'] as int, {...?m.$2, 'ability': ''}));
@@ -1310,6 +1316,22 @@ class TurnBattleSetup {
       ));
     }
     return out;
+  }
+
+  /// Formas que aparecem ao entrar na batalha segurando o item: Groudon/Kyogre
+  /// com Red/Blue Orb viram Primal, Zacian/Zamazenta com Rusted Sword/Shield
+  /// viram Crowned (como nos jogos). Igual ao site.
+  static Member _entryForm(Member member, List<Map<String, dynamic>> rows, Map<String, dynamic> battleItems) {
+    final itemId = toId('${member.$2?['item'] ?? ''}'.replaceAll(RegExp(r'--held$'), ''));
+    final me = rows.where((r) => r['id'] == member.$1).firstOrNull;
+    if (itemId.isEmpty || me == null) return member;
+    for (final e in ((battleItems['forms'] as Map?) ?? const {}).entries) {
+      final form = '${e.key}';
+      if (!(e.value as List).contains(itemId) || !(form.endsWith('-primal') || form.endsWith('-crowned'))) continue;
+      final target = rows.where((r) => r['name'] == form && r['species'] == me['species']).firstOrNull;
+      if (target != null && target['id'] != member.$1) return (target['id'] as int, member.$2);
+    }
+    return member;
   }
 
   /// Time aleatório para o computador: 6 Pokémon totalmente evoluídos (sem lendários). Igual ao site.
