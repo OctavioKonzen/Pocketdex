@@ -50,7 +50,7 @@ def fetch(job):
 
 # Os GIFs são recortados pela soma de todos os quadros: quem abre as asas ou se
 # mexe muito (Swanna, Koffing...) fica pequeno na maior parte da animação.
-# Para esses guardamos [zoom, dx, dy]: quanto ampliar para o quadro "típico"
+# Para esses guardamos [zoom, dx, dy, largura, altura]: quanto ampliar para o quadro "típico"
 # (mediana) ocupar a caixa e onde fica o centro dele (fração do lado maior,
 # a partir do centro da imagem).
 MAX_ZOOM = 1.5
@@ -72,7 +72,15 @@ def fit(path):
         return None
     cx = mid([(b[0] + b[2]) / 2 for b in boxes])
     cy = mid([(b[1] + b[3]) / 2 for b in boxes])
-    return [round(zoom, 2), round((cx - W / 2) / M, 3), round((cy - H / 2) / M, 3)]
+    # + largura e altura (fração do lado maior): quem desenha limita o zoom
+    # para a animação inteira caber na caixa.
+    return [round(zoom, 2), round((cx - W / 2) / M, 3), round((cy - H / 2) / M, 3), round(W / M, 3), round(H / M, 3)]
+
+
+def digest(path):
+    import hashlib
+    with open(path, 'rb') as f:
+        return hashlib.sha1(f.read()).hexdigest()[:8]
 
 
 def fits(sub, ids):
@@ -98,6 +106,9 @@ def main():
     # só procuram esses).
     have = {sub: sorted(int(f[:-4]) for f in os.listdir(os.path.join(OUT, sub)) if f.endswith('.gif')) for sub in ('front', 'shiny')}
     have['fit'] = {sub: fits(sub, have[sub]) for sub in ('front', 'shiny')}
+    # Impressão digital de cada GIF: quando um muda, o app baixa de novo (e o
+    # navegador não usa o velho do cache).
+    have['hash'] = {sub: {str(pid): digest(os.path.join(OUT, sub, f'{pid}.gif')) for pid in have[sub]} for sub in ('front', 'shiny')}
     with open(os.path.join(DB, 'animated_sprites.json'), 'w', encoding='utf-8') as f:
         json.dump(have, f, separators=(',', ':'))
         f.write('\n')

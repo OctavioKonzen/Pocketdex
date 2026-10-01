@@ -148,13 +148,25 @@ class _AnimatedSpriteState extends State<_AnimatedSprite> {
   Widget build(BuildContext context) {
     final file = _file;
     if (file == null) return widget.fallback;
-    final [zoom, dx, dy] = AnimatedSprites.instance.fit(widget.id, shiny: widget.shiny);
+    final f = AnimatedSprites.instance.fit(widget.id, shiny: widget.shiny);
+    final dx = f[1], dy = f[2], wr = f.length > 3 ? f[3] : 1.0, hr = f.length > 4 ? f[4] : 1.0;
+    // Limita o zoom para a animação inteira caber na caixa (como o site):
+    // quem pula ou abre as asas não invade o que está em volta.
+    final fill = widget.fill;
+    final maxY = widget.alignBottom ? (1 + fill) / (2 * fill * hr) : 1.1 / (fill * hr);
+    final zoom = max(1.0, min(f[0], min(1.1 / (fill * wr), maxY)));
     return LayoutBuilder(builder: (context, c) {
       final side = c.biggest.shortestSide;
       // Lado do GIF: ampliado para o quadro típico ocupar a caixa (como o site).
       final inner = side * widget.fill * zoom;
-      final left = side / 2 - inner / 2 - dx * inner;
-      final top = widget.alignBottom ? side - side * (1 - widget.fill) / 2 - inner : side / 2 - inner / 2 - dy * inner;
+      // Centraliza o quadro típico, sem a animação sair da caixa por mais de 5% de cada lado.
+      double shift(double d, double r) {
+        final limit = max(0.0, (side * 1.1 - inner * r) / 2);
+        return (d * inner).clamp(-limit, limit);
+      }
+
+      final left = side / 2 - inner / 2 - shift(dx, wr);
+      final top = widget.alignBottom ? side - side * (1 - widget.fill) / 2 - inner : side / 2 - inner / 2 - shift(dy, hr);
       return Center(
         child: SizedBox.square(
           dimension: side,
