@@ -22,6 +22,8 @@ export default function SettingsPage() {
   const pokeballAnimation = usePrefs((s) => s.pokeballAnimation)
   const setPokeballAnimation = usePrefs((s) => s.setPokeballAnimation)
   const backgroundAnimation = usePrefs((s) => s.backgroundAnimation)
+  const animatedSprites = usePrefs((s) => s.animatedSprites)
+  const setAnimatedSprites = usePrefs((s) => s.setAnimatedSprites)
   const setBackgroundAnimation = usePrefs((s) => s.setBackgroundAnimation)
   const [confirm, setConfirm] = useState(false)
   const [message, setMessage] = useState('')
@@ -78,6 +80,9 @@ export default function SettingsPage() {
           </Row>
           <Row title="Pokébola girando no fundo" text="Uma Pokébola clarinha gira devagar atrás das páginas.">
             <Switch on={backgroundAnimation} onChange={setBackgroundAnimation} label="Pokébola girando no fundo" />
+          </Row>
+          <Row title="Sprites animados" text="Os Pokémon se mexem, no estilo Black & White.">
+            <Switch on={animatedSprites} onChange={setAnimatedSprites} label="Sprites animados" />
           </Row>
         </Section>
 

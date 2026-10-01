@@ -14,6 +14,7 @@ class AppSettings extends ChangeNotifier {
   static const _textKey = 'settings_text_size';
   static const _pokeballKey = 'settings_pokeball_animation';
   static const _backgroundKey = 'settings_background_pokeball';
+  static const _animatedSpritesKey = 'settings_animated_sprites';
 
   /// Tamanhos do texto: (chave, nome, escala).
   static const textSizes = [('normal', 'Normal', 1.0), ('large', 'Grande', 1.125), ('larger', 'Maior', 1.25)];
@@ -23,6 +24,10 @@ class AppSettings extends ChangeNotifier {
   /// Pokébola girando no fundo das telas.
   bool backgroundAnimation = true;
 
+  /// Sprites animados (estilo Black & White) em todo o app; baixados do site
+  /// da primeira vez e guardados no celular (lib/services/animated_sprites.dart).
+  bool animatedSprites = true;
+
   double get textScale => textSizes.firstWhere((t) => t.$1 == textSize, orElse: () => textSizes.first).$3;
 
   Future<void> load() async {
@@ -31,6 +36,7 @@ class AppSettings extends ChangeNotifier {
       textSize = prefs.getString(_textKey) ?? 'normal';
       pokeballAnimation = prefs.getBool(_pokeballKey) ?? true;
       backgroundAnimation = prefs.getBool(_backgroundKey) ?? true;
+      animatedSprites = prefs.getBool(_animatedSpritesKey) ?? true;
     } catch (_) {}
   }
 
@@ -55,6 +61,14 @@ class AppSettings extends ChangeNotifier {
     notifyListeners();
     try {
       await (await SharedPreferences.getInstance()).setBool(_backgroundKey, value);
+    } catch (_) {}
+  }
+
+  Future<void> setAnimatedSprites(bool value) async {
+    animatedSprites = value;
+    notifyListeners();
+    try {
+      await (await SharedPreferences.getInstance()).setBool(_animatedSpritesKey, value);
     } catch (_) {}
   }
 }

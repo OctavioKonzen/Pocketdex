@@ -1,7 +1,7 @@
 name: pocket_dex
 description: "A new Flutter project."
 publish_to: 'none'
-version: 1.17.0+27
+version: 1.18.0+28
 
 environment:
   sdk: '>=3.2.3 <4.0.0'
@@ -29,6 +29,7 @@ dependencies:
   audioplayers: ^6.8.1
   share_plus: ^13.3.0
   home_widget: ^0.10.0
+  path_provider: ^2.1.5
 dev_dependencies:
   flutter_test:
     sdk: flutter

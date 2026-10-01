@@ -266,6 +266,8 @@ def main():
     save('move_anims.json', load('move_anims'))
     # Regras dos golpes na batalha (tool/build_move_rules.mjs, dados do Pokémon Showdown).
     save('move_rules.json', load('move_rules'))
+    # Quais Pokémon têm sprite animado (tool/fetch_animated_sprites.py).
+    save('animated_sprites.json', load('animated_sprites'))
 
     save('abilities.json', [{
         'id': a['id'],

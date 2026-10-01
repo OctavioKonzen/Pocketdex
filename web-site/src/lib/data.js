@@ -68,6 +68,8 @@ export const getReadySets = () => load('sets.json')
 export const getMoveAnims = () => load('move_anims.json')
 /** Regras dos golpes na batalha (efeitos, recuo, dreno, status...): {slug: {...}} (tool/build_move_rules.mjs). */
 export const getMoveRules = () => load('move_rules.json')
+/** Quais Pokémon têm sprite animado: {front: [ids], shiny: [ids]} (tool/fetch_animated_sprites.py). */
+export const getAnimatedSprites = () => load('animated_sprites.json')
 
 /** Grito da espécie (arquivo do banco, não da PokeAPI). */
 export const cryUrl = (speciesId) => `${BASE}cries/${speciesId}.mp3`

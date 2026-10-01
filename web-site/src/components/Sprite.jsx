@@ -5,13 +5,72 @@
 // (calculado em tool/build_web_data.py); com isso o Pokémon é ampliado para
 // preencher a caixa quadrada em que ele é desenhado.
 
-import { spriteUrl } from '../lib/data'
+import { useEffect, useState } from 'react'
+import { getAnimatedSprites, spriteUrl } from '../lib/data'
+import { usePrefs } from '../lib/prefs'
+
+// Sprites animados (GIF, estilo Black & White) do banco do site
+// (sprites/animated, tool/fetch_animated_sprites.py): quando o Pokémon tem um e
+// a opção está ligada, ele aparece no lugar do parado.
+let animated = null
+let loading = null
+function useAnimated() {
+  const [sets, setSets] = useState(animated)
+  useEffect(() => {
+    if (animated) return undefined
+    let alive = true
+    loading ??= getAnimatedSprites()
+      .then((d) => (animated = { front: new Set(d.front), shiny: new Set(d.shiny) }))
+      .catch(() => (animated = { front: new Set(), shiny: new Set() }))
+    loading.then((a) => alive && setSets(a))
+    return () => {
+      alive = false
+    }
+  }, [])
+  return sets
+}
+
+/** "pokemon/6.png" ou "pokemon/shiny/6.png" → caminho do GIF animado (se existir). */
+function animatedPath(path, sets) {
+  const m = /^pokemon\/(shiny\/)?(\d+)\.png$/.exec(path ?? '')
+  if (!m || !sets) return null
+  const kind = m[1] ? 'shiny' : 'front'
+  return sets[kind].has(Number(m[2])) ? `animated/${kind}/${m[2]}.gif` : null
+}
 
 /**
  * @param fill   quanto da caixa o Pokémon ocupa (0 a 1)
  * @param align  'center' ou 'bottom' (Pokémon "apoiado" embaixo)
  */
-export default function Sprite({ path, box, alt = '', fill = 0.9, align = 'center', className = '', imgClassName = '', style }) {
+export default function Sprite(props) {
+  const on = usePrefs((s) => s.animatedSprites)
+  const sets = useAnimated()
+  const [failed, setFailed] = useState(null)
+  const gif = on ? animatedPath(props.path, sets) : null
+  if (!gif || failed === gif) return <StaticSprite {...props} />
+  const { alt = '', fill = 0.9, align = 'center', className = '', imgClassName = '', style } = props
+  // O GIF já vem recortado justo: só encaixa na caixa (do tamanho do parado).
+  return (
+    <div className={`relative aspect-square ${className}`} style={style}>
+      <img
+        src={spriteUrl(gif)}
+        alt={alt}
+        loading="lazy"
+        decoding="async"
+        draggable={false}
+        onError={() => setFailed(gif)}
+        className={`pixelated pointer-events-none absolute left-1/2 max-w-none -translate-x-1/2 object-contain ${align === 'bottom' ? 'object-bottom' : ''} ${imgClassName}`}
+        style={{
+          width: `${fill * 100}%`,
+          height: `${fill * 100}%`,
+          top: align === 'bottom' ? `${(1 - fill) * 50}%` : `${(1 - fill) * 50}%`,
+        }}
+      />
+    </div>
+  )
+}
+
+function StaticSprite({ path, box, alt = '', fill = 0.9, align = 'center', className = '', imgClassName = '', style }) {
   const src = spriteUrl(path)
   if (!src) return null
 

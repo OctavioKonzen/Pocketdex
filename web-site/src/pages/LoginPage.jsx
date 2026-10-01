@@ -22,11 +22,29 @@ import {
 } from '../lib/auth'
 
 const HERO = [
-  { id: 6, x: '4%', y: '16%', size: 190, delay: 0 },
-  { id: 9, x: '58%', y: '8%', size: 170, delay: 0.8 },
-  { id: 3, x: '52%', y: '58%', size: 200, delay: 1.6 },
-  { id: 25, x: '10%', y: '60%', size: 150, delay: 2.4 },
+  { id: 6, x: '2%', y: '4%', size: 170, delay: 0 },
+  { id: 9, x: '58%', y: '2%', size: 170, delay: 0.8 },
+  { id: 3, x: '50%', y: '50%', size: 180, delay: 1.6 },
+  { id: 25, x: '14%', y: '66%', size: 170, delay: 2.4 },
 ]
+
+/** Pokémon animado do nosso banco (estilo Black & White), no tamanho de verdade ampliado; sem ele, a arte oficial. */
+function HeroSprite({ id, x, y, size, delay }) {
+  const [width, setWidth] = useState(null)
+  const [failed, setFailed] = useState(false)
+  const style = { left: x, top: y, animationDelay: `${delay}s` }
+  if (failed) return <img src={spriteUrl(`pokemon/other/official-artwork/${id}.png`)} alt="" className="login-float absolute drop-shadow-2xl" style={{ ...style, width: size }} />
+  return (
+    <img
+      src={spriteUrl(`animated/front/${id}.gif`)}
+      alt=""
+      onLoad={(e) => setWidth(e.currentTarget.naturalWidth * (size / 70))}
+      onError={() => setFailed(true)}
+      className="login-float pixelated absolute max-w-none drop-shadow-2xl"
+      style={{ ...style, width: width ?? 0, visibility: width ? 'visible' : 'hidden' }}
+    />
+  )
+}
 
 function Hero() {
   return (
@@ -37,13 +55,7 @@ function Hero() {
         <img src={imageUrl('poke_logo.png')} alt="PocketDex" className="h-28 self-start" />
         <div className="relative mt-6 flex-1">
           {HERO.map((p) => (
-            <img
-              key={p.id}
-              src={spriteUrl(`pokemon/other/official-artwork/${p.id}.png`)}
-              alt=""
-              className="login-float absolute drop-shadow-2xl"
-              style={{ left: p.x, top: p.y, width: p.size, animationDelay: `${p.delay}s` }}
-            />
+            <HeroSprite key={p.id} {...p} />
           ))}
         </div>
         <h2 className="max-w-md text-4xl leading-tight font-black text-white">Sua Pokédex, seus times e seus treinos em qualquer lugar.</h2>

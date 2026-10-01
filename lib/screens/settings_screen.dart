@@ -165,6 +165,15 @@ class SettingsScreen extends StatelessWidget {
                         onChanged: settings.setBackgroundAnimation,
                       ),
                     ),
+                    row(
+                      title: 'Sprites animados',
+                      subtitle: 'Os Pokémon se mexem (estilo Black & White). Cada um é baixado da primeira vez que aparece e fica salvo no celular.',
+                      trailing: Switch(
+                        value: settings.animatedSprites,
+                        activeTrackColor: const Color(0xFF0EA5E9),
+                        onChanged: settings.setAnimatedSprites,
+                      ),
+                    ),
                   ]),
                   if (DailyReminder.supported) _Section('Notificações', [_ReminderSwitch(row: row), _DailyPokemonSwitch(row: row)]),
                   _Section('Dados', [

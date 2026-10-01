@@ -20,13 +20,14 @@ import 'package:pocket_dex/services/daily_reminder.dart';
 import 'package:pocket_dex/services/user_data.dart';
 import 'package:pocket_dex/widgets/pokemon_sprite.dart';
 import 'package:pocket_dex/widgets/chat_bubble.dart';
+import 'package:pocket_dex/services/animated_sprites.dart';
 import 'package:pocket_dex/i18n/i18n.dart';
 import 'package:pocket_dex/services/app_settings.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Dados salvos no aparelho (favoritos, times, treinos, tema, recordes e idioma).
-  await Future.wait([UserData.instance.load(), SpriteBoxes.load(), I18n.load(), AppSettings.instance.load(), ChatBubble.instance.load()]);
+  await Future.wait([UserData.instance.load(), SpriteBoxes.load(), I18n.load(), AppSettings.instance.load(), ChatBubble.instance.load(), AnimatedSprites.instance.load()]);
   // Tabela Pokémon → espécie (para converter times/treinos da conta) em
   // segundo plano, sem atrasar a abertura do app.
   AccountFormat.init();
