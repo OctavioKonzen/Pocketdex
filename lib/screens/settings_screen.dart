@@ -165,15 +165,9 @@ class SettingsScreen extends StatelessWidget {
                         onChanged: settings.setBackgroundAnimation,
                       ),
                     ),
-                    row(
-                      title: 'Sprites animados',
-                      subtitle: 'Os Pokémon se mexem, no estilo Black & White.',
-                      trailing: Switch(
-                        value: settings.animatedSprites,
-                        activeTrackColor: const Color(0xFF0EA5E9),
-                        onChanged: settings.setAnimatedSprites,
-                      ),
-                    ),
+                  ]),
+                  // Sprites: o estilo (BW ou 3D) e se eles se mexem.
+                  _Section('Sprites', [
                     row(
                       title: 'Estilo dos sprites',
                       subtitle: 'Black & White: Pokédex no estilo do jogo e, na batalha, o 3D só de quem não tem animação BW. 3D: tudo no 3D do Showdown.',
@@ -181,6 +175,15 @@ class SettingsScreen extends StatelessWidget {
                         value: settings.spriteStyle,
                         onChanged: settings.setSpriteStyle,
                         options: AppSettings.spriteStyles,
+                      ),
+                    ),
+                    row(
+                      title: 'Movimento dos sprites',
+                      subtitle: 'Animados: os Pokémon se mexem. Parados: ficam no primeiro quadro, no estilo escolhido.',
+                      below: _Choice(
+                        value: settings.animatedSprites ? 'on' : 'off',
+                        onChanged: (v) => settings.setAnimatedSprites(v == 'on'),
+                        options: AppSettings.spriteMotions,
                       ),
                     ),
                   ]),

@@ -20,6 +20,9 @@ class AppSettings extends ChangeNotifier {
   /// Estilos dos sprites: (chave, nome).
   static const spriteStyles = [('bw', 'Black & White'), ('3d', '3D')];
 
+  /// Os sprites se mexem ou ficam parados: (chave, nome).
+  static const spriteMotions = [('on', 'Animados'), ('off', 'Parados')];
+
   /// Tamanhos do texto: (chave, nome, escala).
   static const textSizes = [('normal', 'Normal', 1.0), ('large', 'Grande', 1.125), ('larger', 'Maior', 1.25)];
 

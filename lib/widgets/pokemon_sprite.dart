@@ -68,15 +68,15 @@ class PokemonSprite extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Animado quando existe e está ligado nas Configurações (o estilo, BW ou
-    // 3D, também vem de lá); silhueta (jogo "Quem é esse Pokémon?") fica parada.
+    // O estilo (BW ou 3D) e se ele se mexe vêm das Configurações; parado, fica
+    // no primeiro quadro do mesmo GIF. Silhueta (jogo "Quem é esse Pokémon?")
+    // é o sprite parado de sempre.
     final pid = id is int ? id as int : int.tryParse('$id');
     final still = back ? Transform.flip(flipX: true, child: _static()) : _static();
     if (silhouette != null || pid == null) return still;
     return ListenableBuilder(
       listenable: AppSettings.instance,
       builder: (context, _) {
-        if (!AppSettings.instance.animatedSprites) return still;
         final source = AnimatedSprites.instance.source(pid, shiny: shiny, back: back, battle: battle);
         if (source == null) {
           // Sem as costas: a frente (animada, se tiver) espelhada.
@@ -87,7 +87,8 @@ class PokemonSprite extends StatelessWidget {
           final other = AnimatedSprites.instance.source(pid, shiny: !shiny, back: back, battle: battle);
           if (other != null) precacheImage(NetworkImage(other.url), context).ignore();
         }
-        return _AnimatedSprite(source, fill: fill, alignBottom: alignBottom, battle: battle, fallback: still);
+        return _AnimatedSprite(source,
+            fill: fill, alignBottom: alignBottom, battle: battle, animate: AppSettings.instance.animatedSprites, fallback: still);
       },
     );
   }
@@ -141,9 +142,13 @@ class PokemonSprite extends StatelessWidget {
 class _AnimatedSprite extends StatelessWidget {
   final SpriteSource source;
   final bool alignBottom, battle;
+
+  /// false: parado no primeiro quadro (Configurações → Movimento dos sprites).
+  final bool animate;
   final double fill;
   final Widget fallback;
-  const _AnimatedSprite(this.source, {required this.fill, required this.alignBottom, required this.battle, required this.fallback});
+  const _AnimatedSprite(this.source,
+      {required this.fill, required this.alignBottom, required this.battle, required this.animate, required this.fallback});
 
   @override
   Widget build(BuildContext context) {
@@ -181,25 +186,113 @@ class _AnimatedSprite extends StatelessWidget {
               Positioned(
                 left: left,
                 top: top,
-                child: Image.network(
-                  source.url,
-                  // Outro GIF (trocou para o shiny...): começa a animação do zero.
-                  key: ValueKey(source.url),
-                  width: inner,
-                  height: inner,
-                  fit: BoxFit.contain,
-                  alignment: widget.alignBottom ? Alignment.bottomCenter : Alignment.center,
-                  // Pixel art fica em pixel; o 3D do Showdown, liso.
-                  filterQuality: source.is3d ? FilterQuality.medium : FilterQuality.none,
-                  // Enquanto chega da nuvem (ou sem internet): o parado, no lugar da caixa toda.
-                  frameBuilder: (_, child, frame, __) => frame == null ? still : child,
-                  errorBuilder: (_, __, ___) => still,
-                ),
+                child: animate
+                    ? Image.network(
+                      source.url,
+                      // Outro GIF (trocou para o shiny...): começa a animação do zero.
+                      key: ValueKey(source.url),
+                      width: inner,
+                      height: inner,
+                      fit: BoxFit.contain,
+                      alignment: widget.alignBottom ? Alignment.bottomCenter : Alignment.center,
+                      // Pixel art fica em pixel; o 3D do Showdown, liso.
+                      filterQuality: source.is3d ? FilterQuality.medium : FilterQuality.none,
+                      // Enquanto chega da nuvem (ou sem internet): o parado, no lugar da caixa toda.
+                      frameBuilder: (_, child, frame, __) => frame == null ? still : child,
+                      errorBuilder: (_, __, ___) => still,
+                    )
+                    : _FirstFrame(
+                        url: source.url,
+                        width: inner,
+                        fit: BoxFit.contain,
+                        alignment: alignBottom ? Alignment.bottomCenter : Alignment.center,
+                        filterQuality: source.is3d ? FilterQuality.medium : FilterQuality.none,
+                        placeholder: still,
+                      ),
               ),
             ],
           ),
         ),
       );
     });
+  }
+}
+
+/// Só o primeiro quadro do GIF (sprite parado no estilo escolhido): pega o
+/// quadro e para de ouvir, então o resto da animação nem é decodificado.
+class _FirstFrame extends StatefulWidget {
+  final String url;
+  final double width;
+  final BoxFit fit;
+  final Alignment alignment;
+  final FilterQuality filterQuality;
+  final Widget placeholder;
+  const _FirstFrame(
+      {required this.url, required this.width, required this.fit, required this.alignment, required this.filterQuality, required this.placeholder});
+
+  @override
+  State<_FirstFrame> createState() => _FirstFrameState();
+}
+
+class _FirstFrameState extends State<_FirstFrame> {
+  ImageStream? _stream;
+  ImageStreamListener? _listener;
+  ImageInfo? _frame;
+  bool _failed = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _resolve();
+  }
+
+  @override
+  void didUpdateWidget(_FirstFrame old) {
+    super.didUpdateWidget(old);
+    if (old.url != widget.url) _resolve();
+  }
+
+  void _resolve() {
+    _stop();
+    _frame = null;
+    _failed = false;
+    final stream = NetworkImage(widget.url).resolve(createLocalImageConfiguration(context));
+    final listener = ImageStreamListener((info, _) {
+      if (!mounted) return;
+      setState(() => _frame = info);
+      _stop();
+    }, onError: (_, __) {
+      if (mounted) setState(() => _failed = true);
+      _stop();
+    });
+    stream.addListener(listener);
+    _stream = stream;
+    _listener = listener;
+  }
+
+  void _stop() {
+    if (_stream != null && _listener != null) _stream!.removeListener(_listener!);
+    _stream = null;
+    _listener = null;
+  }
+
+  @override
+  void dispose() {
+    _stop();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final frame = _frame;
+    if (frame == null || _failed) return widget.placeholder;
+    return RawImage(
+      image: frame.image,
+      width: widget.width,
+      height: widget.width,
+      fit: widget.fit,
+      alignment: widget.alignment,
+      filterQuality: widget.filterQuality,
+    );
   }
 }
