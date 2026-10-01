@@ -4,7 +4,7 @@
   <img src="https://img.shields.io/badge/Flutter-3.x-blue?logo=flutter&style=for-the-badge" />
   <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&style=for-the-badge" />
   <img src="https://img.shields.io/badge/Firebase-FFCA28?logo=firebase&style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Android-1.18.0-green?logo=android&style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Android-2.0.0-green?logo=android&style=for-the-badge" />
 </p>
 
 <div align="center">
@@ -88,5 +88,5 @@ Detalhes técnicos (Firebase, publicação de versões, banco de dados): [docs/D
 ## 🙏 Créditos
 
 * Dados e sprites: [PokeAPI](https://pokeapi.co/) (repositório [PokeAPI/sprites](https://github.com/PokeAPI/sprites)). Pokémon e os nomes, imagens e sons são da Nintendo, Game Freak e The Pokémon Company.
-* Batalha: sprites animados do Black & White (até o #649) e, do #650 em diante, os sprites animados do [Smogon Sprite Project](https://www.smogon.com/forums/forums/smeargles-studio.258/) usados pelo Pokémon Showdown.
+* Sprites animados (Pokédex e batalha), todos no estilo Black & White: os oficiais do Black & White (até o #649) e, do #650 em diante, os do [Smogon Sprite Project](https://www.smogon.com/forums/forums/smeargles-studio.258/) ([smogon/sprites](https://github.com/smogon/sprites)) usados pelo Pokémon Showdown — os que só existem parados ganham uma animação de respiração (`tool/bw_style_sprites.py`).
 * Calculadora de dano ([@smogon/calc](https://github.com/smogon/damage-calc)), sets prontos e regras dos golpes do [Pokémon Showdown](https://github.com/smogon/pokemon-showdown) (licença MIT).

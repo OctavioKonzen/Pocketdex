@@ -6,7 +6,9 @@ de frente, no estilo Black & White:
   • do #1 ao #649: os oficiais do Black & White;
   • do #650 em diante e as formas: os do Pokémon Showdown (Smogon Sprite Project);
 os dois do repositório de sprites da PokeAPI. Quem não tem sprite animado fica
-de fora (o app e o site mostram o parado de sempre).
+de fora (o app e o site mostram o parado de sempre). Depois, rode
+tool/bw_style_sprites.py: troca os que vieram em 3D (8ª/9ª geração, Megas...)
+e os que faltam pela arte BW da Smogon, para ficarem todos no mesmo estilo.
 
 O site publica a pasta junto com os outros sprites (tool/build_web_data.py);
 o app NÃO embute esses arquivos (o APK ficaria com ~300 MB): baixa do site
@@ -46,6 +48,42 @@ def fetch(job):
     return 'baixado'
 
 
+# Os GIFs são recortados pela soma de todos os quadros: quem abre as asas ou se
+# mexe muito (Swanna, Koffing...) fica pequeno na maior parte da animação.
+# Para esses guardamos [zoom, dx, dy]: quanto ampliar para o quadro "típico"
+# (mediana) ocupar a caixa e onde fica o centro dele (fração do lado maior,
+# a partir do centro da imagem).
+MAX_ZOOM = 1.5
+
+
+def fit(path):
+    from PIL import Image, ImageFile, ImageSequence
+    ImageFile.LOAD_TRUNCATED_IMAGES = True  # alguns GIFs do Showdown vêm com sobra no fim
+    im = Image.open(path)
+    W, H = im.size
+    M = max(W, H)
+    boxes = [b for fr in ImageSequence.Iterator(im) if (b := fr.convert('RGBA').getchannel('A').getbbox())]
+    if not boxes:
+        return None
+    mid = lambda xs: sorted(xs)[len(xs) // 2]
+    typical = mid([max(b[2] - b[0], b[3] - b[1]) for b in boxes])
+    zoom = min(MAX_ZOOM, M / typical)
+    if zoom < 1.08:
+        return None
+    cx = mid([(b[0] + b[2]) / 2 for b in boxes])
+    cy = mid([(b[1] + b[3]) / 2 for b in boxes])
+    return [round(zoom, 2), round((cx - W / 2) / M, 3), round((cy - H / 2) / M, 3)]
+
+
+def fits(sub, ids):
+    out = {}
+    for pid in ids:
+        f = fit(os.path.join(OUT, sub, f'{pid}.gif'))
+        if f:
+            out[str(pid)] = f
+    return out
+
+
 def main():
     with open(os.path.join(DB, 'pokemon.json'), encoding='utf-8') as f:
         ids = sorted(p['id'] for p in json.load(f))
@@ -59,6 +97,7 @@ def main():
     # Quais têm sprite animado: {"front": [ids], "shiny": [ids]} (o app e o site
     # só procuram esses).
     have = {sub: sorted(int(f[:-4]) for f in os.listdir(os.path.join(OUT, sub)) if f.endswith('.gif')) for sub in ('front', 'shiny')}
+    have['fit'] = {sub: fits(sub, have[sub]) for sub in ('front', 'shiny')}
     with open(os.path.join(DB, 'animated_sprites.json'), 'w', encoding='utf-8') as f:
         json.dump(have, f, separators=(',', ':'))
         f.write('\n')

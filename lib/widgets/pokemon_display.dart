@@ -50,133 +50,141 @@ class PokemonDisplay extends StatelessWidget {
         // arredondados do painel de baixo.
         child: ColoredBox(
           color: Colors.transparent,
-          child: Stack(
-            alignment: Alignment.center,
-            clipBehavior: Clip.none,
-            children: [
-              Positioned(
-                top: topSafePadding + 20,
-                child: RotationTransition(
-                  turns: pokeballAnimation,
-                  child: Opacity(
-                    opacity: 0.15,
-                    child: Image.asset('assets/images/pokeball.png',
-                        width: pokeballSize, height: pokeballSize, color: Colors.white, cacheWidth: 720),
+          child: LayoutBuilder(builder: (context, c) {
+            // O Pokémon fica apoiado em cima do painel de baixo (nunca atrás
+            // dele) e, em tela baixa, diminui para não cobrir nome e tipos.
+            // (No sprite, 11% de folga em cima e embaixo: fill 0.78 apoiado.)
+            final header = topSafePadding + MediaQuery.textScalerOf(context).scale(165);
+            final double imageSize = ((c.maxHeight + 16 - header) / 0.89).clamp(150.0, 300.0);
+            return Stack(
+              alignment: Alignment.center,
+              clipBehavior: Clip.none,
+              children: [
+                Positioned(
+                  top: topSafePadding + 20,
+                  child: RotationTransition(
+                    turns: pokeballAnimation,
+                    child: Opacity(
+                      opacity: 0.15,
+                      child: Image.asset('assets/images/pokeball.png',
+                          width: pokeballSize, height: pokeballSize, color: Colors.white, cacheWidth: 720),
+                    ),
                   ),
                 ),
-              ),
-              Positioned(
-                top: topSafePadding,
-                left: 16,
-                right: 16,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.arrow_back, color: Colors.white, size: 28),
-                          onPressed: () => Navigator.of(context).pop(),
-                        ),
-                        Text(
-                          '#${pokemon.id.toString().padLeft(3, '0')}',
-                          style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                      child: Text(
-                        pokemon.name.capitalise(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 32,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                      child: Row(
+                Positioned(
+                  top: topSafePadding,
+                  left: 16,
+                  right: 16,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          ...form.types.map((type) => Padding(
-                                padding: const EdgeInsets.only(right: 8.0),
-                                child: Chip(
-                                  label: Text(type.capitalise()),
-                                  backgroundColor: getColorForType(type).withAlpha(200),
-                                  labelStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                                ),
-                              )),
-                          const Spacer(),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                pokemon.genus,
-                                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  GestureDetector(
-                                    onTap: () => CryPlayer.instance.play(pokemon.id),
-                                    child: Tooltip(
-                                      message: tr('Ouvir o grito'),
-                                      child: Container(
-                                        padding: const EdgeInsets.all(4),
-                                        decoration:
-                                            BoxDecoration(shape: BoxShape.circle, color: Colors.white.withAlpha(51)),
-                                        child: const Icon(Icons.volume_up_rounded, color: Colors.white, size: 20),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  if (pokemon.forms.length > 1)
-                                    GestureDetector(
-                                      onTap: onFormSelect,
-                                      child: Container(
-                                        padding: const EdgeInsets.all(4),
-                                        decoration:
-                                            BoxDecoration(shape: BoxShape.circle, color: Colors.white.withAlpha(51)),
-                                        child: const Icon(Icons.layers, color: Colors.white, size: 20),
-                                      ),
-                                    ),
-                                  if (pokemon.forms.length > 1) const SizedBox(width: 8),
-                                  GestureDetector(
-                                    onTap: onShinyToggle,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(4),
-                                      decoration:
-                                          BoxDecoration(shape: BoxShape.circle, color: Colors.white.withAlpha(51)),
-                                      child: Icon(Icons.auto_awesome,
-                                          color: isShiny ? Colors.yellowAccent : Colors.white, size: 20),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          )
+                          IconButton(
+                            icon: const Icon(Icons.arrow_back, color: Colors.white, size: 28),
+                            onPressed: () => Navigator.of(context).pop(),
+                          ),
+                          Text(
+                            '#${pokemon.id.toString().padLeft(3, '0')}',
+                            style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                          ),
                         ],
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 4),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                        child: Text(
+                          pokemon.name.capitalise(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 32,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                        child: Row(
+                          children: [
+                            ...form.types.map((type) => Padding(
+                                  padding: const EdgeInsets.only(right: 8.0),
+                                  child: Chip(
+                                    label: Text(type.capitalise()),
+                                    backgroundColor: getColorForType(type).withAlpha(200),
+                                    labelStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                  ),
+                                )),
+                            const Spacer(),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  pokemon.genus,
+                                  style:
+                                      const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    GestureDetector(
+                                      onTap: () => CryPlayer.instance.play(pokemon.id),
+                                      child: Tooltip(
+                                        message: tr('Ouvir o grito'),
+                                        child: Container(
+                                          padding: const EdgeInsets.all(4),
+                                          decoration:
+                                              BoxDecoration(shape: BoxShape.circle, color: Colors.white.withAlpha(51)),
+                                          child: const Icon(Icons.volume_up_rounded, color: Colors.white, size: 20),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    if (pokemon.forms.length > 1)
+                                      GestureDetector(
+                                        onTap: onFormSelect,
+                                        child: Container(
+                                          padding: const EdgeInsets.all(4),
+                                          decoration:
+                                              BoxDecoration(shape: BoxShape.circle, color: Colors.white.withAlpha(51)),
+                                          child: const Icon(Icons.layers, color: Colors.white, size: 20),
+                                        ),
+                                      ),
+                                    if (pokemon.forms.length > 1) const SizedBox(width: 8),
+                                    GestureDetector(
+                                      onTap: onShinyToggle,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration:
+                                            BoxDecoration(shape: BoxShape.circle, color: Colors.white.withAlpha(51)),
+                                        child: Icon(Icons.auto_awesome,
+                                            color: isShiny ? Colors.yellowAccent : Colors.white, size: 20),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            )
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              Positioned(
-                bottom: -50,
-                height: 300,
-                width: 300,
-                child: Hero(
-                  tag: 'pokemon-${pokemon.id}',
-                  child: imageGestureArea,
+                Positioned(
+                  bottom: -16,
+                  height: imageSize,
+                  width: imageSize,
+                  child: Hero(
+                    tag: 'pokemon-${pokemon.id}',
+                    child: imageGestureArea,
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            );
+          }),
         ),
       ),
     );

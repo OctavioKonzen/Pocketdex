@@ -20,8 +20,8 @@ function useAnimated() {
     if (animated) return undefined
     let alive = true
     loading ??= getAnimatedSprites()
-      .then((d) => (animated = { front: new Set(d.front), shiny: new Set(d.shiny) }))
-      .catch(() => (animated = { front: new Set(), shiny: new Set() }))
+      .then((d) => (animated = { front: new Set(d.front), shiny: new Set(d.shiny), fit: d.fit ?? {} }))
+      .catch(() => (animated = { front: new Set(), shiny: new Set(), fit: {} }))
     loading.then((a) => alive && setSets(a))
     return () => {
       alive = false
@@ -30,12 +30,16 @@ function useAnimated() {
   return sets
 }
 
-/** "pokemon/6.png" ou "pokemon/shiny/6.png" → caminho do GIF animado (se existir). */
-function animatedPath(path, sets) {
+/**
+ * "pokemon/6.png" ou "pokemon/shiny/6.png" → GIF animado (se existir) e o
+ * ajuste [zoom, dx, dy] de quem se mexe muito e ficaria pequeno.
+ */
+function animatedOf(path, sets) {
   const m = /^pokemon\/(shiny\/)?(\d+)\.png$/.exec(path ?? '')
   if (!m || !sets) return null
   const kind = m[1] ? 'shiny' : 'front'
-  return sets[kind].has(Number(m[2])) ? `animated/${kind}/${m[2]}.gif` : null
+  if (!sets[kind].has(Number(m[2]))) return null
+  return { gif: `animated/${kind}/${m[2]}.gif`, fit: sets.fit[kind]?.[m[2]] ?? [1, 0, 0] }
 }
 
 /**
@@ -46,10 +50,15 @@ export default function Sprite(props) {
   const on = usePrefs((s) => s.animatedSprites)
   const sets = useAnimated()
   const [failed, setFailed] = useState(null)
-  const gif = on ? animatedPath(props.path, sets) : null
+  const anim = on ? animatedOf(props.path, sets) : null
+  const gif = anim?.gif
   if (!gif || failed === gif) return <StaticSprite {...props} />
   const { alt = '', fill = 0.9, align = 'center', className = '', imgClassName = '', style } = props
-  // O GIF já vem recortado justo: só encaixa na caixa (do tamanho do parado).
+  // O GIF já vem recortado justo: encaixa na caixa (do tamanho do parado),
+  // ampliado para o quadro típico ocupar a caixa (fit).
+  const [zoom, dx, dy] = anim.fit
+  const side = fill * zoom // lado do GIF, em fração da caixa
+  const top = align === 'bottom' ? 1 - (1 - fill) / 2 - side : 0.5 - side / 2 - dy * side
   return (
     <div className={`relative aspect-square ${className}`} style={style}>
       <img
@@ -59,11 +68,12 @@ export default function Sprite(props) {
         decoding="async"
         draggable={false}
         onError={() => setFailed(gif)}
-        className={`pixelated pointer-events-none absolute left-1/2 max-w-none -translate-x-1/2 object-contain ${align === 'bottom' ? 'object-bottom' : ''} ${imgClassName}`}
+        className={`pixelated pointer-events-none absolute max-w-none object-contain ${align === 'bottom' ? 'object-bottom' : ''} ${imgClassName}`}
         style={{
-          width: `${fill * 100}%`,
-          height: `${fill * 100}%`,
-          top: align === 'bottom' ? `${(1 - fill) * 50}%` : `${(1 - fill) * 50}%`,
+          width: `${side * 100}%`,
+          height: `${side * 100}%`,
+          left: `${(0.5 - side / 2 - dx * side) * 100}%`,
+          top: `${top * 100}%`,
         }}
       />
     </div>
