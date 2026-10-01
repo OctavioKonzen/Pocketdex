@@ -7,6 +7,7 @@
 
 import 'dart:async';
 import 'dart:math';
+import 'dart:ui' show ImageFilter;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart' hide Text;
@@ -212,7 +213,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
         ],
         const SizedBox(height: 10),
         Text(
-            'O computador joga pelo adversário. Batalha simplificada: só golpes de dano (com PP, precisão, prioridade e crítico), sem status nem clima.',
+            'O computador joga pelo adversário. Golpes com PP, precisão, prioridade, crítico, status, mudanças de atributo e clima.',
             style: TextStyle(color: c.muted, fontSize: 12)),
         const SizedBox(height: 14),
         PillButton(
@@ -264,6 +265,9 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
   /// Forma na tela (Mega / Gigantamax) e se está dinamaxizado.
   final List<int?> _form = [null, null];
   final List<bool> _dmax = [false, false];
+
+  /// Clima na tela (o cenário muda com ele).
+  late String _weather = widget.battle.weather;
   late String _text = widget.foeName.isNotEmpty ? tr('{0} quer batalhar!').replaceAll('{0}', widget.foeName) : tr('Um treinador quer batalhar!');
   bool _busy = false;
   String _menu = 'main'; // main | fight | party | bag
@@ -282,15 +286,32 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
   void initState() {
     super.initState();
     LocalDatabase.instance.moveAnims().then((t) => _anims = t).catchError((_) => <String, dynamic>{});
+    // Começo: as habilidades de clima de quem entrou (Drizzle, Drought...).
+    final opening = _b.start();
+    if (opening.isNotEmpty) _wait(_step.inMilliseconds).then((_) => mounted ? _play(opening) : null);
   }
 
   @override
   void dispose() {
+    for (final t in _timers) {
+      t.cancel();
+    }
     _shake.dispose();
     super.dispose();
   }
 
-  Future<void> _wait(int ms) => Future<void>.delayed(Duration(milliseconds: ms));
+  /// Esperas da animação: canceladas quando a tela fecha (nada fica rodando).
+  final Set<Timer> _timers = {};
+  Future<void> _wait(int ms) {
+    final done = Completer<void>();
+    late final Timer timer;
+    timer = Timer(Duration(milliseconds: ms), () {
+      _timers.remove(timer);
+      done.complete();
+    });
+    _timers.add(timer);
+    return done.future;
+  }
 
   TurnBattle get _b => widget.battle;
 
@@ -331,7 +352,7 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
           _sprites[e.side].currentState?.lunge(dash: contactKinds.contains(kind));
           setState(() => _fx = (plan, getColorForType(e.type), ++_fxKey));
           if (plan.shake) _shake.forward(from: 0);
-          if (plan.flash) Future<void>.delayed(const Duration(milliseconds: 250), () => mounted ? setState(() => _flash++) : null);
+          if (plan.flash) _wait(250).then((_) => mounted ? setState(() => _flash++) : null);
           await _wait(plan.duration + 80);
           if (!mounted) return;
           setState(() => _fx = null);
@@ -350,7 +371,7 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
           if (e.key == 'crit') setState(() => _flash++);
           setState(() => _text = _format(e));
           _skip = Completer<void>();
-          await Future.any([Future<void>.delayed(_step), _skip!.future]);
+          await Future.any([_wait(_step.inMilliseconds), _skip!.future]);
           _skip = null;
         case 'hp':
           _sprites[e.side].currentState?.hurt();
@@ -381,6 +402,10 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
         case 'tera':
           setState(() => _flash++);
           await _wait(400);
+        case 'weather':
+          // O cenário muda com o clima (céu, chão, chuva caindo...).
+          setState(() => _weather = e.type);
+          await _wait(600);
       }
     }
     if (!mounted) return;
@@ -454,17 +479,23 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
                   ),
                   child: Stack(
                     children: [
-                      const Positioned.fill(child: CustomPaint(painter: _FieldPainter())),
+                      Positioned.fill(
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 800),
+                          child: CustomPaint(key: ValueKey(_weather), painter: _FieldPainter(_weather), size: Size.infinite),
+                        ),
+                      ),
                       Positioned(
                           left: w * 0.03,
                           top: h * 0.05,
                           width: w * 0.48,
                           child: _InfoBox(mon: foe, hp: _hp[1][_active[1]], status: _status[1][_active[1]], dmax: _dmax[1])),
                       Positioned(
-                          right: w * 0.1,
-                          top: h * 0.02,
-                          width: w * 0.3,
-                          height: w * 0.3,
+                          // O inimigo fica mais longe: menor e em cima da plataforma dele.
+                          right: w * 0.12,
+                          bottom: h * 0.54,
+                          width: w * 0.26,
+                          height: w * 0.26,
                           child: _Sprite(key: _sprites[1], mon: foe, id: _form[1] ?? foe.id, dmax: _dmax[1], fainted: _fainted[1])),
                       Positioned(
                           left: w * 0.06,
@@ -477,8 +508,9 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
                           bottom: h * 0.06,
                           width: w * 0.5,
                           child: _InfoBox(mon: me, hp: _hp[0][_active[0]], status: _status[0][_active[0]], dmax: _dmax[0], mine: true)),
-                      if (_fx != null) _MoveFx(key: ValueKey(_fx!.$3), plan: _fx!.$1, color: _fx!.$2, w: w, h: h),
-                      if (_flash > 0) _Flash(key: ValueKey(_flash)),
+                      Positioned.fill(child: _WeatherFx(_weather)),
+                      if (_fx != null) _MoveFx(key: ValueKey(('fx', _fx!.$3)), plan: _fx!.$1, color: _fx!.$2, w: w, h: h),
+                      if (_flash > 0) _Flash(key: ValueKey(('flash', _flash))),
                     ],
                   ),
                 );
@@ -535,13 +567,16 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
               if (waiting && _menu == 'fight') ...[
                 const SizedBox(height: 8),
                 _Weak(rival, foeWeak, dark: true),
-                GridView.count(
-                  crossAxisCount: 2,
+                GridView(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  mainAxisSpacing: 6,
-                  crossAxisSpacing: 6,
-                  childAspectRatio: 3.2,
+                  // Altura pelas duas linhas de texto (cresce com o texto maior).
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 6,
+                    crossAxisSpacing: 6,
+                    mainAxisExtent: 12 + MediaQuery.textScalerOf(context).scale(18) + MediaQuery.textScalerOf(context).scale(19),
+                  ),
                   children: [
                     for (final (i, mv) in current.moves.indexed)
                       Material(
@@ -575,7 +610,15 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
                                           : 'PP ${mv.pp}/${mv.maxPp}',
                                       style: const TextStyle(color: Colors.white70, fontSize: 11)),
                                   const Spacer(),
-                                  _EffectTag(TurnBattle.moveEffect(widget.hit, current, rival, mv)),
+                                  // A efetividade diminui se não couber (tela estreita).
+                                  Flexible(
+                                    flex: 4,
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment: Alignment.centerRight,
+                                      child: _EffectTag(TurnBattle.moveEffect(widget.hit, current, rival, mv)),
+                                    ),
+                                  ),
                                 ]),
                               ],
                             ),
@@ -712,19 +755,41 @@ class _MenuButton extends StatelessWidget {
 
 /// Cenário da batalha (desenho nosso, igual ao do site), com cara de 3D como
 /// no Black & White: céu com sol e nuvens, montanhas com luz e sombra, árvores
-/// no horizonte, gramado em perspectiva e as plataformas com espessura.
+/// no horizonte, gramado em perspectiva e as plataformas com espessura. Muda
+/// com o clima ([weather]: céu, nuvens, sol e o chão).
 /// Coordenadas numa grade de 160 × 100, esticada para o campo.
 class _FieldPainter extends CustomPainter {
-  const _FieldPainter();
+  const _FieldPainter(this.weather);
+  final String weather;
 
   /// Linha do horizonte: o chão começa aqui.
-  static const _horizon = 30.0;
+  static const _horizon = 36.0;
 
   /// Nuvens: (x, y, largura).
-  static const _clouds = [(24.0, 7.0, 11.0), (70.0, 4.0, 8.0), (104.0, 12.0, 9.0), (150.0, 15.0, 6.0)];
+  static const _clouds = [(24.0, 9.0, 11.0), (70.0, 5.0, 8.0), (104.0, 15.0, 9.0), (150.0, 19.0, 6.0)];
 
   /// Montanhas: (x do pico, altura do pico, meia largura).
-  static const _mountains = [(20.0, 13.0, 22.0), (58.0, 8.0, 26.0), (100.0, 15.0, 22.0), (140.0, 10.0, 26.0)];
+  static const _mountains = [(20.0, 16.0, 22.0), (58.0, 10.0, 26.0), (100.0, 18.0, 22.0), (140.0, 12.0, 26.0)];
+
+  /// Céu de cada clima: (cima, horizonte). Igual ao site.
+  static const _sky = {
+    '': (Color(0xFF5FB9F5), Color(0xFFE6F7FF)),
+    'rain': (Color(0xFF4F6073), Color(0xFFA5B2BF)),
+    'sun': (Color(0xFFFF9B3D), Color(0xFFFFF0C2)),
+    'sand': (Color(0xFFB4844B), Color(0xFFE6CB96)),
+    'hail': (Color(0xFF8AA2B9), Color(0xFFE7EFF7)),
+    'snow': (Color(0xFF8AA2B9), Color(0xFFEEF4FA)),
+  };
+
+  /// Cor das nuvens e o chão no clima (cor por cima do gramado).
+  static const _cloudColor = {'rain': Color(0xFF76838F), 'sand': Color(0xFFD8C095), 'hail': Color(0xFFDFE7EF), 'snow': Color(0xFFEEF3F8)};
+  static const _groundTint = {
+    'rain': Color(0x4D16324F),
+    'sun': Color(0x24FFCF5A),
+    'sand': Color(0x66C9A063),
+    'hail': Color(0x40FFFFFF),
+    'snow': Color(0x80FFFFFF),
+  };
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -733,22 +798,25 @@ class _FieldPainter extends CustomPainter {
     Offset p(double x, double y) => Offset(x * sx, y * sy);
     Rect r(double x, double y, double w, double h) => Rect.fromLTWH(x * sx, y * sy, w * sx, h * sy);
     Rect oval(double cx, double cy, double rx, double ry) => Rect.fromCenter(center: p(cx, cy), width: 2 * rx * sx, height: 2 * ry * sy);
-    Path poly(List<(double, double)> points) => Path()
-      ..addPolygon([for (final (x, y) in points) p(x, y)], true);
+    Path poly(List<(double, double)> points) => Path()..addPolygon([for (final (x, y) in points) p(x, y)], true);
 
+    final (skyTop, skyBottom) = _sky[weather] ?? _sky['']!;
     canvas.drawRect(
         r(0, 0, 160, hz + 2),
         Paint()
-          ..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF5FB9F5), Color(0xFFE6F7FF)])
+          ..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [skyTop, skyBottom])
               .createShader(r(0, 0, 160, hz + 2)));
-    // Sol.
-    canvas.drawOval(
-        oval(132, 8, 14, 14),
-        Paint()
-          ..shader = const RadialGradient(colors: [Color(0xFFFFFBE6), Color(0xE6FFF3B0), Color(0x00FFF3B0)], stops: [0, 0.4, 1])
-              .createShader(oval(132, 8, 14, 14)));
+    // Sol (maior no sol forte; escondido na chuva, areia e neve).
+    if (weather.isEmpty || weather == 'sun') {
+      final sun = oval(132, 9, weather == 'sun' ? 24 : 14, weather == 'sun' ? 24 : 14);
+      canvas.drawOval(
+          sun,
+          Paint()
+            ..shader = const RadialGradient(colors: [Color(0xFFFFFBE6), Color(0xE6FFF3B0), Color(0x00FFF3B0)], stops: [0, 0.4, 1])
+                .createShader(sun));
+    }
     // Nuvens.
-    final cloud = Paint()..color = Colors.white.withAlpha(217);
+    final cloud = Paint()..color = (_cloudColor[weather] ?? Colors.white).withAlpha(weather == 'sun' ? 102 : 217);
     for (final (x, y, w) in _clouds) {
       canvas.drawOval(oval(x, y, w, w * 0.32), cloud);
       canvas.drawOval(oval(x - w * 0.45, y + w * 0.08, w * 0.55, w * 0.24), cloud);
@@ -785,13 +853,17 @@ class _FieldPainter extends CustomPainter {
     for (final x in [-60.0, -20.0, 20.0, 60.0, 100.0, 140.0, 180.0, 220.0]) {
       canvas.drawLine(p(80, hz), p(x, 100), line);
     }
-    _platform(canvas, oval, 120, 37.5, 28, 4.5, 2.4);
-    _platform(canvas, oval, 40, 91, 34, 6.5, 3.4);
+    // O chão no clima: molhado, areia, coberto de neve, ao sol.
+    final tint = _groundTint[weather];
+    if (tint != null) canvas.drawRect(r(0, hz, 160, 100 - hz), Paint()..color = tint);
+    // Plataformas no chão: a do inimigo, mais longe, é menor e mais achatada.
+    _platform(canvas, oval, 120, 45, 23, 3.6, 1.4);
+    _platform(canvas, oval, 38.4, 91, 34, 7, 3);
   }
 
   /// Plataforma com espessura: terra, borda de grama e sombra no chão.
   void _platform(Canvas canvas, Rect Function(double, double, double, double) oval, double cx, double cy, double rx, double ry, double depth) {
-    canvas.drawOval(oval(cx + 2, cy + depth + 1.5, rx * 1.04, ry * 1.1), Paint()..color = const Color(0x592F6B2A));
+    canvas.drawOval(oval(cx, cy + depth * 0.7, rx * 1.06, ry * 1.15), Paint()..color = const Color(0x4D2F6B2A));
     final top = oval(cx, cy, rx, ry), bottom = oval(cx, cy + depth, rx, ry);
     final side = Path()
       ..addRect(Rect.fromLTRB(top.left, top.center.dy, top.right, bottom.center.dy))
@@ -811,7 +883,129 @@ class _FieldPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_FieldPainter old) => false;
+  bool shouldRepaint(_FieldPainter old) => old.weather != weather;
+}
+
+/// O clima caindo por cima do campo (chuva, areia, granizo, neve) ou o brilho
+/// do sol. Igual ao site (index.css, .weather-*).
+class _WeatherFx extends StatefulWidget {
+  const _WeatherFx(this.weather);
+  final String weather;
+  @override
+  State<_WeatherFx> createState() => _WeatherFxState();
+}
+
+class _WeatherFxState extends State<_WeatherFx> with SingleTickerProviderStateMixin {
+  late final _clock = AnimationController(vsync: this, duration: const Duration(seconds: 6));
+
+  @override
+  void initState() {
+    super.initState();
+    _sync();
+  }
+
+  @override
+  void didUpdateWidget(_WeatherFx old) {
+    super.didUpdateWidget(old);
+    _sync();
+  }
+
+  /// Só anima com clima (e sem "reduzir animações" no celular).
+  void _sync() {
+    if (widget.weather.isNotEmpty) {
+      if (!_clock.isAnimating) _clock.repeat();
+    } else {
+      _clock.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _clock.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final still = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    return IgnorePointer(
+      child: AnimatedOpacity(
+        opacity: widget.weather.isEmpty ? 0 : 1,
+        duration: const Duration(milliseconds: 700),
+        child: RepaintBoundary(
+          child: AnimatedBuilder(
+            animation: _clock,
+            builder: (context, _) => CustomPaint(
+              painter: _WeatherPainter(widget.weather, still ? 0 : _clock.value * 6),
+              size: Size.infinite,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Desenha as partículas do clima no tempo [t] (segundos, volta a cada 6).
+class _WeatherPainter extends CustomPainter {
+  const _WeatherPainter(this.weather, this.t);
+  final String weather;
+  final double t;
+
+  /// Posição fixa (0 a 1) de cada partícula, sem sorteio a cada quadro.
+  static double _hash(int i, int k) {
+    final v = sin(i * 12.9898 + k * 78.233) * 43758.5453;
+    return v - v.floorToDouble();
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width, h = size.height;
+    if (weather == 'sun') {
+      // Brilho do sol pulsando no canto.
+      final glow = 0.8 + 0.2 * cos(t * pi * 2 / 3);
+      canvas.drawRect(
+          Offset.zero & size,
+          Paint()
+            ..shader = RadialGradient(
+              center: const Alignment(0.68, -0.88),
+              radius: 0.9,
+              colors: [const Color(0xFFFFF4C8).withValues(alpha: 0.75 * glow), const Color(0xFFFFD678).withValues(alpha: 0.25 * glow), Colors.transparent],
+              stops: const [0, 0.3, 0.6],
+            ).createShader(Offset.zero & size));
+      return;
+    }
+    if (weather == 'sand') canvas.drawRect(Offset.zero & size, Paint()..color = const Color(0x40C9A063));
+    // (quantas, velocidade em alturas por segundo, deriva x por y, cor, tamanho)
+    final (count, speed, drift, color, len) = switch (weather) {
+      'rain' => (70, 3.2, -0.25, const Color(0xBFDBE9FF), 0.06),
+      'sand' => (60, 0.6, 0.0, const Color(0xCCE7C58A), 0.012),
+      'hail' => (40, 1.6, -0.1, const Color(0xFFF4FBFF), 0.012),
+      'snow' => (50, 0.35, 0.25, const Color(0xE6FFFFFF), 0.012),
+      _ => (0, 0.0, 0.0, Colors.transparent, 0.0),
+    };
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = weather == 'rain' ? 1.3 : 1
+      ..strokeCap = StrokeCap.round;
+    for (var i = 0; i < count; i++) {
+      final sp = speed * (0.75 + 0.5 * _hash(i, 3));
+      final y = ((_hash(i, 1) + t * sp) % 1.0) * h;
+      // A areia voa de lado; o resto cai inclinado (deriva).
+      final dx = weather == 'sand' ? -t * 0.9 : y / h * drift;
+      final x = (_hash(i, 2) + dx) % 1.0 * w;
+      if (weather == 'rain') {
+        canvas.drawLine(Offset(x, y), Offset(x + drift * len * h, y + len * h), paint);
+      } else if (weather == 'snow') {
+        canvas.drawCircle(Offset(x + sin(t * 2 + i) * 4, y), (1.4 + _hash(i, 4)) * 1.2, paint);
+      } else {
+        canvas.drawCircle(Offset(x, y), len * h * (0.8 + _hash(i, 4)), paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_WeatherPainter old) => old.t != t || old.weather != weather;
 }
 
 class _Sprite extends StatefulWidget {
@@ -880,16 +1074,25 @@ class _SpriteState extends State<_Sprite> with TickerProviderStateMixin {
           // de frente ou de costas, todos do mesmo tamanho (como na Pokédex).
           child: KeyedSubtree(
             key: ValueKey((widget.id, widget.mon.shiny)),
-            // Dinamax: gigante e avermelhado.
+            // Dinamax: gigante e com um brilho vermelho em volta do contorno
+            // dele (não da caixa), como o drop-shadow do site.
             child: AnimatedScale(
-              scale: widget.dmax ? 1.45 : 1,
+              scale: widget.dmax ? 1.35 : 1,
               alignment: Alignment.bottomCenter,
               duration: const Duration(milliseconds: 700),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  boxShadow: widget.dmax ? const [BoxShadow(color: Color(0x66E11D48), blurRadius: 24, spreadRadius: 2)] : const [],
-                ),
-                child: PokemonSprite(widget.id, shiny: widget.mon.shiny, back: widget.back, fill: 0.95, alignBottom: true),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (widget.dmax)
+                    ImageFiltered(
+                      imageFilter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
+                      child: ColorFiltered(
+                        colorFilter: const ColorFilter.mode(Color(0xFFE11D48), BlendMode.srcIn),
+                        child: PokemonSprite(widget.id, shiny: widget.mon.shiny, back: widget.back, fill: 0.95, alignBottom: true),
+                      ),
+                    ),
+                  PokemonSprite(widget.id, shiny: widget.mon.shiny, back: widget.back, fill: 0.95, alignBottom: true),
+                ],
               ),
             ),
           ),
@@ -1139,10 +1342,20 @@ class _InfoBox extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 4),
-                if (mon.terastal) ...[_Tag('TERA ${mon.teraType.toUpperCase()}', getColorForType(mon.teraType)), const SizedBox(width: 4)],
-                if (dmax) ...[const _Tag('DMAX', Color(0xFFE11D48)), const SizedBox(width: 4)],
-                if (status.isNotEmpty) ...[_StatusBadge(status), const SizedBox(width: 4)],
-                m.Text('Nv.${mon.level}', style: const TextStyle(fontSize: 11)),
+                // Selos e nível: diminuem juntos se não couberem (Tera + DMAX + status).
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 110),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerRight,
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      if (mon.terastal) ...[_Tag('TERA ${mon.teraType.toUpperCase()}', getColorForType(mon.teraType)), const SizedBox(width: 4)],
+                      if (dmax) ...[const _Tag('DMAX', Color(0xFFE11D48)), const SizedBox(width: 4)],
+                      if (status.isNotEmpty) ...[_StatusBadge(status), const SizedBox(width: 4)],
+                      m.Text('Nv.${mon.level}', style: const TextStyle(fontSize: 11)),
+                    ]),
+                  ),
+                ),
               ]),
               _HpBar(hp: hp, max: mon.maxHp),
               if (mine) m.Text('$hp/${mon.maxHp}', textAlign: TextAlign.right, style: const TextStyle(fontSize: 12)),

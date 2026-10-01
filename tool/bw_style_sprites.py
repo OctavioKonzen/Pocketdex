@@ -7,8 +7,8 @@ cores) ou nem existem. Para cada um desses, em ordem:
   1. a animação BW de verdade da pasta gen5ani do Showdown
      (play.pokemonshowdown.com/sprites), recortada justo;
   2. a animação 3D do Showdown (pasta ani; ou a cópia da PokeAPI) reduzida ao
-     tamanho e às 16 cores do BW: o movimento é o de verdade (nada de esticar
-     o desenho);
+     tamanho e às 16 cores do BW, com o contorno escuro dos sprites do BW: o
+     movimento é o de verdade (nada de esticar o desenho);
   3. sem animação nenhuma: a arte BW parada do Smogon Sprite Project
      (smogon/sprites, src/sprites/gen5) ou, sem ela, o sprite parado do banco.
 
@@ -21,7 +21,9 @@ Uso:
       https://github.com/smogon/sprites /tmp/smogon-sprites
   python3 tool/bw_style_sprites.py /tmp/smogon-sprites [--refazer] [--costas]
   (--refazer: refaz todos do #650 em diante, buscando de novo no Showdown;
-   --costas: também as costas, para a batalha, em sprites/animated/back)
+   --costas: também as costas, para a batalha, em sprites/animated/back:
+   as BW animadas ou, sem elas, a arte BW de costas da Smogon, reta e no
+   estilo do jogo, em vez das costas 3D, que são vistas de lado)
 """
 
 import json
@@ -55,7 +57,7 @@ CACHE_PS = '/tmp/showdown-sprites'
 MARK = b'pocketdex-respiracao'  # (nome antigo, de quando era só respiração; mantido)
 
 def smogon_index(repo):
-    """slug da PokeAPI → {'front': caminho, 'shiny': caminho} dos PNG/GIF BW."""
+    """slug da PokeAPI → {'front', 'shiny', 'back', 'back-shiny': caminho} dos PNG/GIF BW."""
     files = subprocess.run(
         ['git', '-C', repo, 'ls-tree', '-r', '--name-only', 'HEAD', 'src/sprites/gen5/'],
         capture_output=True, text=True, check=True,
@@ -69,11 +71,11 @@ def smogon_index(repo):
         if not m:
             continue
         flags = set(m.group(3).split('-')) - {''}
-        if flags - {'s'}:  # costas, fêmea, jogo específico...
+        if flags - {'s', 'b'}:  # fêmea, jogo específico...
             continue
         slug = (m.group(1) + ('-' + m.group(2)[2:] if m.group(2) else '')).replace('_', '-')
-        kind = 'shiny' if 's' in flags else 'front'
-        index.setdefault(slug, {})[kind] = f
+        kind = ('back-' if 'b' in flags else '') + ('shiny' if 's' in flags else 'front')
+        index.setdefault(slug, {})[kind.replace('back-front', 'back')] = f
     return index
 
 
@@ -174,8 +176,11 @@ def fetch_3d(pid, kind):
 
 
 def pixel_3d(src, path, target):
-    """Animação 3D reduzida ao tamanho (lado maior = target) e às 16 cores do BW."""
-    from PIL import ImageSequence
+    """Animação 3D reduzida ao tamanho da arte BW (target: o lado maior, ou
+    (largura, altura) da arte) e às 16 cores do BW, com o contorno escuro em
+    volta (como os sprites do BW): fica legível e menos "3D" mesmo pequena."""
+    import numpy as np
+    from PIL import ImageEnhance, ImageSequence
     im = Image.open(src)
     frames, durations, box = [], [], None
     for fr in ImageSequence.Iterator(im):
@@ -188,22 +193,44 @@ def pixel_3d(src, path, target):
     if box is None:
         return False
     # O corpo (quadro típico, não a área toda por onde ele voa) fica do tamanho da arte BW.
-    sides = sorted(max(b[2] - b[0], b[3] - b[1]) for f in frames if (b := f.getchannel('A').getbbox()))
+    boxes = [b for f in frames if (b := f.getchannel('A').getbbox())]
+    mid = lambda xs: sorted(xs)[len(xs) // 2]
+    tw, th = mid([b[2] - b[0] for b in boxes]), mid([b[3] - b[1] for b in boxes])
     frames = [f.crop(box) for f in frames]
     w, h = frames[0].size
-    k = target / sides[len(sides) // 2]
+    if isinstance(target, tuple):
+        # Mesma área da arte BW (quem é comprido, como o Tinkaton com o
+        # martelo, não fica minúsculo), sem passar muito do lado maior dela.
+        k = min((target[0] * target[1] / (tw * th)) ** 0.5, 1.3 * max(target) / max(tw, th))
+    else:
+        k = target / max(tw, th)
     size = (max(1, round(w * k)), max(1, round(h * k)))
-    small = [f.resize(size, Image.BOX) for f in frames]
+    small = []
+    for f in frames:
+        # Redução nítida (Lanczos, com a cor pesada pela transparência para a
+        # borda não escurecer) e pixel art: transparência é tudo ou nada.
+        a = np.asarray(f).astype(np.float32) / 255
+        pre = np.dstack([a[..., :3] * a[..., 3:4], a[..., 3]])
+        r = np.asarray(Image.fromarray((pre * 255).astype(np.uint8), 'RGBA').resize(size, Image.LANCZOS)).astype(np.float32) / 255
+        alpha = r[..., 3] >= 0.5
+        color = np.clip(r[..., :3] / np.maximum(r[..., 3:4], 1e-3), 0, 1)
+        # Cores mais vivas e com mais contraste (o 3D vem lavado pela luz).
+        img = ImageEnhance.Contrast(ImageEnhance.Color(Image.fromarray((color * 255).astype(np.uint8), 'RGB')).enhance(1.25)).enhance(1.15)
+        color = np.asarray(img).astype(np.float32) / 255
+        # Contorno: a borda do Pokémon numa versão bem mais escura da cor dela.
+        pad = np.pad(alpha, 1)
+        edge = alpha & ~(pad[:-2, 1:-1] & pad[2:, 1:-1] & pad[1:-1, :-2] & pad[1:-1, 2:])
+        color[edge] *= 0.35
+        small.append(Image.fromarray(np.dstack([color * 255, alpha * 255]).astype(np.uint8), 'RGBA'))
     # Uma paleta só para a animação inteira (as cores não piscam de um quadro
     # para outro), feita só com as cores do Pokémon (sem o fundo).
-    pixels = [p[:3] for f in small for p in f.getdata() if p[3] >= 128]
-    strip = Image.new('RGB', (max(1, len(pixels)), 1))
-    strip.putdata(pixels or [(0, 0, 0)])
+    pixels = np.concatenate([np.asarray(f)[np.asarray(f)[..., 3] >= 128][:, :3] for f in small]) if small else np.zeros((1, 3), np.uint8)
+    strip = Image.fromarray((pixels if len(pixels) else np.zeros((1, 3), np.uint8)).reshape(1, -1, 3).astype(np.uint8), 'RGB')
     palette = strip.quantize(BW_COLORS, method=Image.Quantize.MEDIANCUT)
     out = []
     for f in small[::2]:
         q = f.convert('RGB').quantize(palette=palette, dither=Image.Dither.NONE).convert('RGBA')
-        q.putalpha(f.getchannel('A').point(lambda a: 255 if a >= 128 else 0))  # pixel art: sem meio-transparente
+        q.putalpha(f.getchannel('A'))
         out.append(q)
     durations = [sum(durations[i:i + 2]) for i in range(0, len(durations), 2)]
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -298,7 +325,7 @@ def main():
             # Forma que só muda de pose (Koraidon de batalha...): a animação da espécie.
             base = ids.get(slug.split('-')[0])
             anim = base and base != pid and fetch_3d(base, kind)
-        if anim and pixel_3d(anim, out, max(img.size) if img else 80):
+        if anim and pixel_3d(anim, out, img.size if img else 80):
             counts['3D reduzido'] += 1
         elif img:
             still(img, out)
@@ -309,13 +336,15 @@ def main():
             counts['sem'] += 1
     print(f'trocados: {len(jobs)} ({counts})')
     if '--costas' in sys.argv:
-        backs(everyone, ps, refazer)
+        backs(everyone, ps, refazer, index, repo)
     subprocess.run([sys.executable, os.path.join(ROOT, 'tool', 'fetch_animated_sprites.py')], check=True)
 
 
-def backs(everyone, ps, refazer):
+def backs(everyone, ps, refazer, index, repo):
     """Costas (para a batalha) no mesmo estilo: até o #649 as oficiais do BW;
-    depois, as costas BW do Showdown (gen5ani-back) ou as 3D reduzidas."""
+    depois, as costas BW animadas do Showdown (gen5ani-back), a arte BW de
+    costas da Smogon (parada, mas reta e no estilo do jogo: as costas 3D são
+    vistas de lado e ficavam tortas) ou, sem ela, as 3D reduzidas."""
     import urllib.request
     from concurrent.futures import ThreadPoolExecutor
     pokeapi = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon'
@@ -325,7 +354,7 @@ def backs(everyone, ps, refazer):
         pid, slug = p['id'], p['name']
         shiny = kind == 'back-shiny'
         out = os.path.join(OUT, kind, f'{pid}.gif')
-        if os.path.exists(out) and not refazer:
+        if os.path.exists(out) and (not refazer or pid <= 649):
             return 'já tinha'
         os.makedirs(os.path.dirname(out), exist_ok=True)
         if pid <= 649:
@@ -344,6 +373,10 @@ def backs(everyone, ps, refazer):
         if bw and is_bw(bw):
             crop_gif(bw, out)
             return 'animado BW'
+        src = back_art(slug, kind)
+        if src:
+            still(crop(Image.open(os.path.join(repo, src))), out)
+            return 'arte BW'
         anim = ps('ani-back', slug, 'shiny' if shiny else 'front')
         front = os.path.join(OUT, 'shiny' if shiny else 'front', f'{pid}.gif')
         target = max(Image.open(front).size) if os.path.exists(front) else 80
@@ -353,7 +386,18 @@ def backs(everyone, ps, refazer):
             os.remove(out)
         return 'sem'
 
+    # Arte BW de costas da Smogon; formas que só mudam de pose usam a da espécie.
+    def back_art(slug, kind):
+        if kind in index.get(slug, {}):
+            return index[slug][kind]
+        if 'mega' in slug or 'gmax' in slug:
+            return None
+        return index.get(slug.split('-')[0], {}).get(kind)
+
     jobs = [(p, kind) for p in everyone for kind in ('back', 'back-shiny')]
+    need = [a for p, kind in jobs if p['id'] > 649 and (a := back_art(p['name'], kind))]
+    for i in range(0, len(need), 200):
+        subprocess.run(['git', '-C', repo, 'checkout', 'HEAD', '--', *need[i:i + 200]], check=True)
     with ThreadPoolExecutor(8) as pool:
         results = list(pool.map(one, jobs))
     print('costas:', {k: results.count(k) for k in set(results)})

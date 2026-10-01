@@ -5433,11 +5433,6 @@
   "fr": "Lancer le combat",
   "es": "Empezar combate"
  },
- "O computador joga pelo adversário. Batalha simplificada: só golpes de dano (com PP, precisão, prioridade e crítico), sem status nem clima.": {
-  "en": "The computer plays for the opponent. Simplified battle: only damaging moves (with PP, accuracy, priority and critical hits), no status or weather.",
-  "fr": "L'ordinateur joue pour l'adversaire. Combat simplifié : seulement des attaques qui infligent des dégâts (avec PP, précision, priorité et coups critiques), sans statut ni météo.",
-  "es": "La computadora juega por el rival. Combate simplificado: solo movimientos de daño (con PP, precisión, prioridad y críticos), sin estados ni clima."
- },
  "Batalha por turnos como nos jogos: seu time contra o de um amigo (ou um aleatório), com o computador jogando pelo outro lado.": {
   "en": "Turn-based battle like in the games: your team against a friend's (or a random one), with the computer playing the other side.",
   "fr": "Combat au tour par tour comme dans les jeux : votre équipe contre celle d'un ami (ou une aléatoire), l'ordinateur jouant l'autre camp.",
@@ -6012,5 +6007,105 @@
   "en": "Changes to the Tera Type chosen above.",
   "fr": "Prend le Type Téra choisi plus haut.",
   "es": "Cambia al Teratipo elegido arriba."
+ },
+ "O computador joga pelo adversário. Golpes com PP, precisão, prioridade, crítico, status, mudanças de atributo e clima.": {
+  "en": "The computer plays for the opponent. Moves with PP, accuracy, priority, critical hits, status, stat changes and weather.",
+  "fr": "L'ordinateur joue pour l'adversaire. Capacités avec PP, précision, priorité, coups critiques, statut, changements de stats et météo.",
+  "es": "La computadora juega por el rival. Movimientos con PP, precisión, prioridad, golpes críticos, estado, cambios de características y clima."
+ },
+ "Começou a chover!": {
+  "en": "It started to rain!",
+  "fr": "Il commence à pleuvoir !",
+  "es": "¡Ha empezado a llover!"
+ },
+ "A chuva continua.": {
+  "en": "Rain continues to fall.",
+  "fr": "Il continue de pleuvoir.",
+  "es": "Sigue lloviendo."
+ },
+ "A chuva parou.": {
+  "en": "The rain stopped.",
+  "fr": "La pluie s'est arrêtée.",
+  "es": "Ha dejado de llover."
+ },
+ "A luz do sol ficou forte!": {
+  "en": "The sunlight turned harsh!",
+  "fr": "Le soleil brille fort !",
+  "es": "¡El sol pega con fuerza!"
+ },
+ "A luz do sol está forte.": {
+  "en": "The sunlight is strong.",
+  "fr": "Le soleil brille toujours fort.",
+  "es": "El sol sigue pegando con fuerza."
+ },
+ "A luz do sol voltou ao normal.": {
+  "en": "The harsh sunlight faded.",
+  "fr": "Le soleil est redevenu normal.",
+  "es": "El sol vuelve a brillar como siempre."
+ },
+ "Começou uma tempestade de areia!": {
+  "en": "A sandstorm kicked up!",
+  "fr": "Une tempête de sable se lève !",
+  "es": "¡Se ha desatado una tormenta de arena!"
+ },
+ "A tempestade de areia continua.": {
+  "en": "The sandstorm is raging.",
+  "fr": "La tempête de sable fait rage.",
+  "es": "La tormenta de arena arrecia."
+ },
+ "A tempestade de areia passou.": {
+  "en": "The sandstorm subsided.",
+  "fr": "La tempête de sable se calme.",
+  "es": "La tormenta de arena ha amainado."
+ },
+ "Começou a cair granizo!": {
+  "en": "It started to hail!",
+  "fr": "Il commence à grêler !",
+  "es": "¡Ha empezado a granizar!"
+ },
+ "O granizo continua.": {
+  "en": "Hail continues to fall.",
+  "fr": "La grêle continue de tomber.",
+  "es": "Sigue granizando."
+ },
+ "O granizo parou.": {
+  "en": "The hail stopped.",
+  "fr": "La grêle s’est arrêtée.",
+  "es": "Ha dejado de granizar."
+ },
+ "Começou a nevar!": {
+  "en": "It started to snow!",
+  "fr": "Il commence à neiger !",
+  "es": "¡Ha empezado a nevar!"
+ },
+ "A neve continua.": {
+  "en": "Snow continues to fall.",
+  "fr": "Il continue de neiger.",
+  "es": "Sigue nevando."
+ },
+ "A neve parou.": {
+  "en": "The snow stopped.",
+  "fr": "La neige s’est arrêtée.",
+  "es": "Ha dejado de nevar."
+ },
+ "{0} foi atingido pela tempestade de areia!": {
+  "en": "{0} is buffeted by the sandstorm!",
+  "fr": "La tempête de sable frappe {0} !",
+  "es": "¡La tormenta de arena zarandea a {0}!"
+ },
+ "{0} inimigo foi atingido pela tempestade de areia!": {
+  "en": "The opposing {0} is buffeted by the sandstorm!",
+  "fr": "La tempête de sable frappe {0} ennemi !",
+  "es": "¡La tormenta de arena zarandea al {0} rival!"
+ },
+ "{0} foi atingido pelo granizo!": {
+  "en": "{0} is buffeted by the hail!",
+  "fr": "La grêle frappe {0} !",
+  "es": "¡El granizo golpea a {0}!"
+ },
+ "{0} inimigo foi atingido pelo granizo!": {
+  "en": "The opposing {0} is buffeted by the hail!",
+  "fr": "La grêle frappe {0} ennemi !",
+  "es": "¡El granizo golpea al {0} rival!"
  }
 }

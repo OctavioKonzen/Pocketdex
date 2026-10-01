@@ -15,10 +15,10 @@ import 'package:pocket_dex/services/turn_battle.dart';
 BattleMove _move(String slug, String type, int power, int? accuracy, int pp,
         [int priority = 0, Map<String, dynamic>? rules, String category = 'physical']) =>
     BattleMove(slug, slug, type, power, accuracy, pp, pp, priority, rules: rules, category: category);
-BattleMon _mon(int id, String name, List<String> types, int hp, int spe, List<BattleMove> moves, {BattleMega? mega}) =>
-    BattleMon(id, name, 50, hp, spe, types, moves, mega: mega);
+BattleMon _mon(int id, String name, List<String> types, int hp, int spe, List<BattleMove> moves, {BattleMega? mega, String ability = ''}) =>
+    BattleMon(id, name, 50, hp, spe, types, moves, mega: mega, ability: ability);
 
-HitResult? _fakeHit(BattleMon att, BattleMon def, String slug, bool crit, [int? override]) {
+HitResult? _fakeHit(BattleMon att, BattleMon def, String slug, bool crit, [int? override, String weather = '']) {
   final m = att.moves.where((x) => x.slug == slug).firstOrNull;
   final power = override ?? m?.power ?? 50, type = m?.type ?? 'normal';
   final eff = type == 'normal' && def.types.contains('ghost')
@@ -28,8 +28,100 @@ HitResult? _fakeHit(BattleMon att, BattleMon def, String slug, bool crit, [int? 
           : type == 'grass' && def.types.contains('fire')
               ? 0.5
               : 1.0;
-  final roll = [for (var i = 0; i < 16; i++) (power * (85 + i) / 100 * eff * 0.5).floor()];
+  // Clima: chuva fortalece água e enfraquece fogo; sol, o contrário.
+  final boosted = (weather == 'rain' && type == 'water') || (weather == 'sun' && type == 'fire');
+  final weakened = (weather == 'rain' && type == 'fire') || (weather == 'sun' && type == 'water');
+  final w = boosted
+      ? 1.5
+      : weakened
+          ? 0.5
+          : 1.0;
+  final roll = [for (var i = 0; i < 16; i++) (power * (85 + i) / 100 * eff * w * 0.5).floor()];
   return (rolls: slug == 'double-hit' ? [roll, roll] : [roll], eff: eff);
+}
+
+/// Registro dos eventos em texto (igual ao do teste do site).
+void Function(List<BattleEvent>) _writer(List<String> log) => (events) {
+      for (final e in events) {
+        if (e.t == 'text') {
+          final (line, args) = TurnBattle.lineOf(e);
+          var text = line;
+          for (var i = 0; i < args.length; i++) {
+            text = text.replaceFirst('{$i}', args[i]);
+          }
+          log.add(text);
+        } else if (e.t == 'faint' || e.t == 'miss') {
+          log.add('[${e.t} ${e.side}]');
+        } else if (e.t == 'attack') {
+          log.add('[attack ${e.side} ${e.type}]');
+        } else if (e.t == 'status') {
+          log.add('[status ${e.side} ${e.type}]');
+        } else if (e.t == 'heal') {
+          log.add('[heal ${e.side} ${e.index} ${e.value}]');
+        } else if (e.t == 'mega') {
+          log.add('[mega ${e.side} ${e.value}]');
+        } else if (e.t == 'tera') {
+          log.add('[tera ${e.side} ${e.type}]');
+        } else if (e.t == 'dmax') {
+          log.add('[dmax ${e.side} ${e.index} ${e.value}]');
+        } else if (e.t == 'weather') {
+          log.add('[weather ${e.type}]');
+        } else {
+          log.add('[${e.t} ${e.side} ${e.value}]');
+        }
+      }
+    };
+
+/// Batalha com clima (igual ao site, test/fixtures/turn_battle_weather.json):
+/// Sand Stream ao entrar, Rain Dance, Thunder na chuva, Swift Swim, Drought
+/// quando o outro entra, Sunny Day e o dano da areia.
+List<String> fakeWeatherLog() {
+  final battle = TurnBattle(
+    [
+      _mon(1, 'Chuva', ['water'], 300, 50, [
+        _move('rain-dance', 'water', 0, null, 5, 0, {'w': 'rain', 'ok': 1}, 'status'),
+        _move('thunder', 'electric', 110, 70, 10, 0, {
+          'x': [
+            {'p': 30, 's': 'par'},
+          ],
+        }),
+        _move('water-gun', 'water', 40, 100, 25),
+      ], ability: 'Swift Swim'),
+    ],
+    [
+      _mon(2, 'Areia', ['rock'], 100, 60, [
+        _move('rock-throw', 'rock', 50, 90, 15),
+        _move('moonlight', 'fairy', 0, null, 5, 0, {
+          'h': [1, 2],
+          'ok': 1,
+        }, 'status'),
+      ], ability: 'Sand Stream'),
+      _mon(3, 'Sol', ['fire'], 90, 40, [
+        _move('sunny-day', 'fire', 0, null, 5, 0, {'w': 'sun', 'ok': 1}, 'status'),
+        _move('ember', 'fire', 40, 100, 25),
+      ], ability: 'Drought'),
+    ],
+    League.seededRandom(7),
+  );
+  final log = <String>[];
+  final write = _writer(log);
+  write(battle.start());
+  for (var turn = 0; turn < 40 && battle.winner == null; turn++) {
+    final me = battle.active(0);
+    // Water Gun no primeiro (a areia machuca), depois Rain Dance sempre que
+    // a chuva não está; senão Thunder.
+    final pick = turn == 0
+        ? 2
+        : battle.weather != 'rain' && me.moves[0].pp > 0
+            ? 0
+            : me.moves[1].pp > 0
+                ? 1
+                : 2;
+    write(battle.playTurn(_fakeHit, move: pick));
+    log.add('clima: ${battle.weather.isEmpty ? '-' : battle.weather} ${battle.weatherTurns}');
+  }
+  log.add('vencedor: ${battle.winner}');
+  return log;
 }
 
 List<String> fakeBattleLog() {
@@ -90,34 +182,7 @@ List<String> fakeBattleLog() {
     League.seededRandom(42),
   );
   final log = <String>[];
-  void write(List<BattleEvent> events) {
-    for (final e in events) {
-      if (e.t == 'text') {
-        final (line, args) = TurnBattle.lineOf(e);
-        var text = line;
-        for (var i = 0; i < args.length; i++) {
-          text = text.replaceFirst('{$i}', args[i]);
-        }
-        log.add(text);
-      } else if (e.t == 'faint' || e.t == 'miss') {
-        log.add('[${e.t} ${e.side}]');
-      } else if (e.t == 'attack') {
-        log.add('[attack ${e.side} ${e.type}]');
-      } else if (e.t == 'status') {
-        log.add('[status ${e.side} ${e.type}]');
-      } else if (e.t == 'heal') {
-        log.add('[heal ${e.side} ${e.index} ${e.value}]');
-      } else if (e.t == 'mega') {
-        log.add('[mega ${e.side} ${e.value}]');
-      } else if (e.t == 'tera') {
-        log.add('[tera ${e.side} ${e.type}]');
-      } else if (e.t == 'dmax') {
-        log.add('[dmax ${e.side} ${e.index} ${e.value}]');
-      } else {
-        log.add('[${e.t} ${e.side} ${e.value}]');
-      }
-    }
-  }
+  final write = _writer(log);
 
   for (var turn = 0; turn < 60 && battle.winner == null; turn++) {
     if (battle.needSwitch) {
@@ -150,6 +215,11 @@ void main() {
   test('igual ao site (mesma semente, mesmo registro)', () {
     final expected = (jsonDecode(File('test/fixtures/turn_battle.json').readAsStringSync()) as List).cast<String>();
     expect(fakeBattleLog(), expected);
+  });
+
+  test('clima igual ao site (mesma semente, mesmo registro)', () {
+    final expected = (jsonDecode(File('test/fixtures/turn_battle_weather.json').readAsStringSync()) as List).cast<String>();
+    expect(fakeWeatherLog(), expected);
   });
 
   test('escolhe os golpes: os do set e, se faltar, um de cada tipo', () {
@@ -197,6 +267,19 @@ void main() {
     expect(mons[0].gimmick, 'mega');
     expect(mons[1].zType, 'fire');
     expect(mons[2].noDmax, isTrue);
+  });
+
+  test('clima com a calculadora: chuva fortalece Surf; Drizzle e Drought (igual ao site)', () async {
+    final mons = await TurnBattleSetup.mons([
+      (9, {'level': 50, 'moves': ['surf']}),
+      (6, {'level': 50, 'item': 'charizardite-y', 'moves': ['flamethrower']}),
+      (279, {'level': 50, 'ability': 'Drizzle', 'moves': ['hurricane']}),
+    ], (row) => '${row['name']}');
+    final hit = TurnBattleSetup.hitter(await DamageData.load());
+    final dry = hit(mons[0], mons[1], 'surf', false)!, wet = hit(mons[0], mons[1], 'surf', false, null, 'rain')!;
+    expect(wet.rolls.first.reduce(max), greaterThan(dry.rolls.first.reduce(max)));
+    expect(mons[2].ability, 'Drizzle');
+    expect(mons[1].mega?.ability, 'Drought');
   });
 
   test('dano de verdade: água em fogo é super eficaz, normal em fantasma não afeta', () async {
@@ -279,7 +362,7 @@ void main() {
       'ground': {'electric': 2.0, 'fire': 2.0},
     };
     double typeEff(String t, List<String> types) => types.fold(1.0, (m, d) => m * (chart[t]?[d] ?? 1));
-    HitResult hit(BattleMon att, BattleMon def, String slug, bool crit, [int? power]) => (rolls: [[1]], eff: typeEff(slug, def.types));
+    HitResult hit(BattleMon att, BattleMon def, String slug, bool crit, [int? power, String weather = '']) => (rolls: [[1]], eff: typeEff(slug, def.types));
     BattleMove mv(String slug, [String category = 'special']) => BattleMove(slug, slug, slug, 50, 100, 10, 10, 0, category: category);
     BattleMon mon(List<String> types, [List<BattleMove> moves = const []]) => BattleMon(1, 'X', 50, 100, 50, types, moves);
 

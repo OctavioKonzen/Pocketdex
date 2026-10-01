@@ -447,7 +447,7 @@ export function koTextPt(ko, max) {
  * cada acerto e a eficácia do tipo (0 = não afeta). att/def: {base, side, hp, maxHp}.
  * power: poder do Z-Move / Max Move (o golpe vira um acerto só).
  */
-export function battleHit(att, def, slug, crit, power) {
+export function battleHit(att, def, slug, crit, power, weather) {
   const data = moveData(slug)
   if (!data) return null
   try {
@@ -462,7 +462,7 @@ export function battleHit(att, def, slug, crit, power) {
       item: a.item,
       ...(power ? { overrides: { basePower: power, multihit: undefined }, hits: 1 } : {}),
     })
-    const result = calculate(gen, a, d, move, makeField(newField()))
+    const result = calculate(gen, a, d, move, makeField({ ...newField(), weather: weather || '' }))
     const raw = result.damage
     const rolls = typeof raw === 'number' ? [[raw]] : typeof raw[0] === 'number' ? [raw] : raw
     const type = gen.types.get(toId(result.move.type))

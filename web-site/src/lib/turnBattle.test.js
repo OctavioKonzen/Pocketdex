@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { battleMons, pickMoves } from './battleSetup'
 import { seededRandom } from './league'
-import { active, canUseItem, effectLabel, lineOf, maxPower, moveEffect, newBattle, playTurn, replace, switchMatchup, usableMoves, weaknesses, zPower } from './turnBattle'
+import { active, canUseItem, effectLabel, lineOf, maxPower, moveEffect, newBattle, playTurn, replace, startBattle, switchMatchup, usableMoves, weaknesses, zPower } from './turnBattle'
 
 beforeAll(() => {
   vi.stubGlobal('fetch', async (url) => {
@@ -27,13 +27,69 @@ const move = (slug, type, power, accuracy, pp, priority = 0, rules = null, categ
   ...(rules ? { rules } : {}),
 })
 const mon = (id, name, types, hp, spe, moves, extra = {}) => ({ id, name, level: 50, maxHp: hp, hp, spe, types, moves, teraType: types[0], ...extra })
-const fakeHit = (att, def, slug, crit, power) => {
+const fakeHit = (att, def, slug, crit, power, weather = '') => {
   const found = att.moves.find((x) => x.slug === slug) ?? { power: 50, type: 'normal' }
   const m = { ...found, power: power ?? found.power }
   const eff = m.type === 'normal' && def.types.includes('ghost') ? 0 : m.type === 'water' && def.types.includes('fire') ? 2 : m.type === 'grass' && def.types.includes('fire') ? 0.5 : 1
-  const roll = Array.from({ length: 16 }, (_, i) => Math.floor(((m.power * (85 + i)) / 100) * eff * 0.5))
+  // Clima: chuva fortalece água e enfraquece fogo; sol, o contrário.
+  const boosted = (weather === 'rain' && m.type === 'water') || (weather === 'sun' && m.type === 'fire')
+  const weakened = (weather === 'rain' && m.type === 'fire') || (weather === 'sun' && m.type === 'water')
+  const w = boosted ? 1.5 : weakened ? 0.5 : 1
+  const roll = Array.from({ length: 16 }, (_, i) => Math.floor(((m.power * (85 + i)) / 100) * eff * w * 0.5))
   return { rolls: slug === 'double-hit' ? [roll, roll] : [roll], eff }
 }
+/** Registro dos eventos em texto (igual ao do teste do app). */
+const writer = (log) => (events) => {
+  for (const e of events) {
+    if (e.t === 'text') {
+      const [line, args] = lineOf(e)
+      log.push(args.reduce((text, arg, i) => text.replace(`{${i}}`, arg), line))
+    } else if (e.t === 'attack') log.push(`[attack ${e.side} ${e.type}]`)
+    else if (e.t === 'status') log.push(`[status ${e.side} ${e.status}]`)
+    else if (e.t === 'heal') log.push(`[heal ${e.side} ${e.index} ${e.hp}]`)
+    else if (e.t === 'mega') log.push(`[mega ${e.side} ${e.id}]`)
+    else if (e.t === 'tera') log.push(`[tera ${e.side} ${e.type}]`)
+    else if (e.t === 'dmax') log.push(`[dmax ${e.side} ${e.on ? 1 : 0} ${e.id}]`)
+    else if (e.t === 'weather') log.push(`[weather ${e.weather}]`)
+    else log.push(`[${e.t} ${e.side} ${e.hp ?? e.index ?? ''}]`.replace(' ]', ']'))
+  }
+}
+
+/**
+ * Batalha com clima: Sand Stream ao entrar, Rain Dance, Thunder (sempre acerta
+ * na chuva), Swift Swim, Moonlight no clima, Drought quando o outro entra,
+ * Sunny Day e o dano da areia. Igual ao do app (test/fixtures/turn_battle_weather.json).
+ */
+export function fakeWeatherLog() {
+  const battle = newBattle(
+    [
+      mon(1, 'Chuva', ['water'], 300, 50, [
+        move('rain-dance', 'water', 0, null, 5, 0, { w: 'rain', ok: 1 }, 'status'),
+        move('thunder', 'electric', 110, 70, 10, 0, { x: [{ p: 30, s: 'par' }] }),
+        move('water-gun', 'water', 40, 100, 25),
+      ], { ability: 'Swift Swim' }),
+    ],
+    [
+      mon(2, 'Areia', ['rock'], 100, 60, [move('rock-throw', 'rock', 50, 90, 15), move('moonlight', 'fairy', 0, null, 5, 0, { h: [1, 2], ok: 1 }, 'status')], { ability: 'Sand Stream' }),
+      mon(3, 'Sol', ['fire'], 90, 40, [move('sunny-day', 'fire', 0, null, 5, 0, { w: 'sun', ok: 1 }, 'status'), move('ember', 'fire', 40, 100, 25)], { ability: 'Drought' }),
+    ],
+    seededRandom(7),
+  )
+  const log = []
+  const write = writer(log)
+  write(startBattle(battle))
+  for (let turn = 0; turn < 40 && battle.winner == null; turn++) {
+    const me = active(battle, 0)
+    // Water Gun no primeiro (a areia machuca), depois Rain Dance sempre que
+    // a chuva não está; senão Thunder.
+    const pick = turn === 0 ? 2 : battle.weather !== 'rain' && me.moves[0].pp > 0 ? 0 : me.moves[1].pp > 0 ? 1 : 2
+    write(playTurn(battle, { move: pick }, fakeHit))
+    log.push(`clima: ${battle.weather || '-'} ${battle.weatherTurns}`)
+  }
+  log.push(`vencedor: ${battle.winner}`)
+  return log
+}
+
 export function fakeBattleLog() {
   const battle = newBattle(
     [
@@ -62,20 +118,7 @@ export function fakeBattleLog() {
     seededRandom(42),
   )
   const log = []
-  const write = (events) => {
-    for (const e of events) {
-      if (e.t === 'text') {
-        const [line, args] = lineOf(e)
-        log.push(args.reduce((text, arg, i) => text.replace(`{${i}}`, arg), line))
-      } else if (e.t === 'attack') log.push(`[attack ${e.side} ${e.type}]`)
-      else if (e.t === 'status') log.push(`[status ${e.side} ${e.status}]`)
-      else if (e.t === 'heal') log.push(`[heal ${e.side} ${e.index} ${e.hp}]`)
-      else if (e.t === 'mega') log.push(`[mega ${e.side} ${e.id}]`)
-      else if (e.t === 'tera') log.push(`[tera ${e.side} ${e.type}]`)
-      else if (e.t === 'dmax') log.push(`[dmax ${e.side} ${e.on ? 1 : 0} ${e.id}]`)
-      else log.push(`[${e.t} ${e.side} ${e.hp ?? e.index ?? ''}]`.replace(' ]', ']'))
-    }
-  }
+  const write = writer(log)
   for (let turn = 0; turn < 60 && battle.winner == null; turn++) {
     if (battle.needSwitch) {
       write(replace(battle, battle.sides[0].team.findIndex((m) => m.hp > 0)))
@@ -105,6 +148,30 @@ describe('batalha por turnos', () => {
     const expected = JSON.parse(readFileSync(file, 'utf8'))
     expect(fakeBattleLog()).toEqual(expected)
   })
+
+  it('clima igual ao app (mesma semente, mesmo registro)', () => {
+    const file = new URL('../../../test/fixtures/turn_battle_weather.json', import.meta.url)
+    if (process.env.WRITE_FIXTURE) writeFileSync(file, `${JSON.stringify(fakeWeatherLog(), null, 1)}\n`)
+    const log = fakeWeatherLog()
+    expect(log).toEqual(JSON.parse(readFileSync(file, 'utf8')))
+    expect(log).toContain('Começou uma tempestade de areia!')
+    expect(log).toContain('Começou a chover!')
+    expect(log).toContain('A luz do sol ficou forte!')
+  })
+
+  it('clima com a calculadora: chuva fortalece Surf; Drizzle e Drought na habilidade', async () => {
+    const { battleHit } = await import('./damageCalc')
+    const [blastoise, zard, pelipper] = await battleMons([
+      { id: 9, set: { level: 50, moves: ['surf'] } },
+      { id: 6, set: { level: 50, item: 'Charizardite Y', moves: ['flamethrower'] } },
+      { id: 279, set: { level: 50, ability: 'Drizzle', moves: ['hurricane'] } },
+    ])
+    const dry = battleHit(blastoise, zard, 'surf', false)
+    const wet = battleHit(blastoise, zard, 'surf', false, undefined, 'Rain')
+    expect(Math.max(...wet.rolls[0])).toBeGreaterThan(Math.max(...dry.rolls[0]))
+    expect(pelipper.ability).toBe('Drizzle')
+    expect(zard.mega.ability).toBe('Drought')
+  }, 30000)
 
   it('escolhe os golpes: os do set e, se faltar, um de cada tipo', () => {
     const moves = {
