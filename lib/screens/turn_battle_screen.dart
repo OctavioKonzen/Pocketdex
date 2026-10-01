@@ -240,6 +240,9 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
   late final List<List<int>> _hp = [
     for (final t in widget.battle.teams) [for (final mon in t) mon.hp]
   ];
+  late final List<List<String>> _status = [
+    for (final t in widget.battle.teams) [for (final _ in t) '']
+  ];
   final List<bool> _fainted = [false, false];
   late String _text = widget.foeName.isNotEmpty ? tr('{0} quer batalhar!').replaceAll('{0}', widget.foeName) : tr('Um treinador quer batalhar!');
   bool _busy = false;
@@ -275,7 +278,8 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
     final (line, args) = TurnBattle.lineOf(e);
     var text = tr(line);
     for (var i = 0; i < args.length; i++) {
-      text = text.replaceFirst('{$i}', args[i]);
+      // Nomes dos atributos (Ataque, Defesa...) também são traduzidos.
+      text = text.replaceFirst('{$i}', statNames.containsValue(args[i]) ? tr(args[i]) : args[i]);
     }
     return text;
   }
@@ -289,8 +293,13 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
           // Cada golpe com a sua animação (move_anim.dart), nas cores do tipo.
           final entry = _anims?[e.slug];
           final kind = entry is List ? '${entry[0]}' : moveAnim(e.slug, e.type, e.category);
-          final plan = fxPlan(kind, e.type, e.side, _center[e.side], _center[1 - e.side], entry is List ? '${entry[1]}' : null,
-              entry is List ? (entry[2] as num).toInt() : 0);
+          final variant = entry is List ? (entry[2] as num).toInt() : 0;
+          // Golpe de status: anéis em quem usa (Swords Dance, Recover) ou no alvo (Will-O-Wisp, Toxic).
+          final rules = _b.active(e.side).moves.where((m) => m.slug == e.slug).firstOrNull?.rules;
+          final self = e.category == 'status' && (rules?['t'] == 'self' || rules?['h'] != null);
+          final plan = e.category == 'status'
+              ? fxPlan('rings', e.type, e.side, _center[e.side], _center[self ? e.side : 1 - e.side], self ? '✨' : null, variant)
+              : fxPlan(kind, e.type, e.side, _center[e.side], _center[1 - e.side], entry is List ? '${entry[1]}' : null, variant);
           _sprites[e.side].currentState?.lunge(dash: contactKinds.contains(kind));
           setState(() => _fx = (plan, getColorForType(e.type), ++_fxKey));
           if (plan.shake) _shake.forward(from: 0);
@@ -298,6 +307,8 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
           await _wait(plan.duration + 80);
           if (!mounted) return;
           setState(() => _fx = null);
+        case 'status':
+          setState(() => _status[e.side][_active[e.side]] = e.type);
         case 'heal':
           setState(() {
             _hp[e.side][e.index] = e.value;
@@ -396,7 +407,11 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
                   ),
                   child: Stack(
                     children: [
-                      Positioned(left: w * 0.03, top: h * 0.05, width: w * 0.48, child: _InfoBox(mon: foe, hp: _hp[1][_active[1]])),
+                      Positioned(
+                          left: w * 0.03,
+                          top: h * 0.05,
+                          width: w * 0.48,
+                          child: _InfoBox(mon: foe, hp: _hp[1][_active[1]], status: _status[1][_active[1]])),
                       Positioned(right: w * 0.06, top: h * 0.32, width: w * 0.38, height: h * 0.07, child: const _Platform()),
                       Positioned(
                           right: w * 0.1,
@@ -411,7 +426,11 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
                           width: w * 0.36,
                           height: w * 0.36,
                           child: _Sprite(key: _sprites[0], mon: me, back: true, fainted: _fainted[0])),
-                      Positioned(right: w * 0.03, bottom: h * 0.06, width: w * 0.5, child: _InfoBox(mon: me, hp: _hp[0][_active[0]], mine: true)),
+                      Positioned(
+                          right: w * 0.03,
+                          bottom: h * 0.06,
+                          width: w * 0.5,
+                          child: _InfoBox(mon: me, hp: _hp[0][_active[0]], status: _status[0][_active[0]], mine: true)),
                       if (_fx != null) _MoveFx(key: ValueKey(_fx!.$3), plan: _fx!.$1, color: _fx!.$2, w: w, h: h),
                       if (_flash > 0) _Flash(key: ValueKey(_flash)),
                     ],
@@ -569,7 +588,10 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
                     enabled: _item != null ? _b.canUseItem(0, _item!, i) : mon.hp > 0 && i != _b.activeIndex[0],
                     onTap: () => _choose(i),
                     leading: SizedBox.square(dimension: 44, child: PokemonSprite(mon.id, shiny: mon.shiny, fill: 0.95)),
-                    title: m.Text(mon.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    title: Row(children: [
+                      Flexible(child: m.Text(mon.name, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold))),
+                      if (mon.status.isNotEmpty && mon.hp > 0) ...[const SizedBox(width: 6), _StatusBadge(mon.status)],
+                    ]),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -928,11 +950,33 @@ class _HpBar extends StatelessWidget {
   }
 }
 
+/// Selo do status, como no Showdown.
+class _StatusBadge extends StatelessWidget {
+  final String status;
+  const _StatusBadge(this.status);
+  static const _colors = {
+    'brn': Color(0xFFEE8130),
+    'par': Color(0xFFC9A400),
+    'psn': Color(0xFFA33EA1),
+    'tox': Color(0xFF7B2E7A),
+    'slp': Color(0xFF78716C),
+    'frz': Color(0xFF4FB3D9),
+  };
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+        decoration: BoxDecoration(color: _colors[status] ?? Colors.grey, borderRadius: BorderRadius.circular(4)),
+        child: m.Text(status.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900)),
+      );
+}
+
 class _InfoBox extends StatelessWidget {
   final BattleMon mon;
   final int hp;
   final bool mine;
-  const _InfoBox({required this.mon, required this.hp, this.mine = false});
+  final String status;
+  const _InfoBox({required this.mon, required this.hp, this.mine = false, this.status = ''});
 
   @override
   Widget build(BuildContext context) => Container(
@@ -959,6 +1003,7 @@ class _InfoBox extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 4),
+                if (status.isNotEmpty) ...[_StatusBadge(status), const SizedBox(width: 4)],
                 m.Text('Nv.${mon.level}', style: const TextStyle(fontSize: 11)),
               ]),
               _HpBar(hp: hp, max: mon.maxHp),

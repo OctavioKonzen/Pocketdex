@@ -450,8 +450,10 @@ export function battleHit(att, def, slug, crit) {
   const data = moveData(slug)
   if (!data) return null
   try {
-    const a = makePokemon(att.base, { ...att.side, hpPct: (att.hp / att.maxHp) * 100 })
-    const d = makePokemon(def.base, { ...def.side, hpPct: (def.hp / def.maxHp) * 100 })
+    // Com o status (queimadura corta o dano físico...) e os estágios de atributo da batalha.
+    const side = (m) => ({ ...m.side, hpPct: (m.hp / m.maxHp) * 100, status: m.status || '', boosts: { ...m.side.boosts, ...(m.boosts ?? {}) } })
+    const a = makePokemon(att.base, side(att))
+    const d = makePokemon(def.base, side(def))
     const move = new Move(gen, data.name, { isCrit: crit, ability: a.ability, item: a.item })
     const result = calculate(gen, a, d, move, makeField(newField()))
     const raw = result.damage

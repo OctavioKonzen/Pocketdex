@@ -3,7 +3,7 @@
 // Nature/EVs/IVs pela calculadora do Showdown e 4 golpes de dano — os do set
 // e, se faltar, os melhores que ele aprende (um de cada tipo primeiro).
 
-import { getMoves, getPokemonById } from './data'
+import { getMoveRules, getMoves, getPokemonById } from './data'
 import { t } from './i18n'
 import { prettyName } from './pokemon'
 import { fighter } from './teamBattle'
@@ -24,12 +24,14 @@ export const BANNED_MOVES = new Set([
 ])
 
 /**
- * Os 4 golpes: os de dano do set e, se faltar, os melhores que aprende
- * (poder × STAB × precisão), um de cada tipo primeiro. Igual ao app.
+ * Os 4 golpes: os do set (de dano, ou de status que a batalha sabe usar:
+ * rules[slug].ok) e, se faltar, os melhores de dano que aprende (poder × STAB ×
+ * precisão), um de cada tipo primeiro. Igual ao app.
  */
-export function pickMoves(setMoves, learnable, types, moves) {
+export function pickMoves(setMoves, learnable, types, moves, rules = {}) {
   const damaging = (slug) => moves[slug] && moves[slug].category !== 'status' && moves[slug].power > 0
-  const chosen = [...new Set(setMoves.filter((s) => s && damaging(s)))].slice(0, 4)
+  const usable = (slug) => damaging(slug) || (moves[slug]?.category === 'status' && rules[slug]?.ok)
+  const chosen = [...new Set(setMoves.filter((s) => s && usable(s)))].slice(0, 4)
   const score = (slug) => {
     const m = moves[slug]
     return m.power * (types.includes(m.type) ? 1.5 : 1) * ((m.accuracy ?? 100) / 100)
@@ -53,6 +55,7 @@ export async function battleMons(members) {
   const calc = await import('./damageCalc')
   const byId = await getPokemonById()
   const moves = await getMoves()
+  const rules = await getMoveRules().catch(() => ({}))
   const out = []
   for (const member of members) {
     const f = await fighter(calc, byId, member)
@@ -60,7 +63,7 @@ export async function battleMons(members) {
     const stats = calc.sideStats(f.base, { ...f.side, hpPct: 100 })
     // Só golpes que a calculadora conhece.
     const known = (list) => list.filter((s) => s && calc.moveData(s))
-    const slugs = pickMoves(known(member.set?.moves ?? []), known(f.learnable), f.form.types, moves)
+    const slugs = pickMoves(known(member.set?.moves ?? []), known(f.learnable), f.form.types, moves, rules)
     if (!stats || !slugs.length) continue
     out.push({
       id: f.id,
@@ -83,6 +86,8 @@ export async function battleMons(members) {
           pp: m.pp ?? 10,
           maxPp: m.pp ?? 10,
           priority: m.priority ?? 0,
+          // Regras do Pokémon Showdown (efeitos, recuo, dreno, status...).
+          ...(rules[slug] ? { rules: rules[slug] } : {}),
         }
       }),
       base: f.base,

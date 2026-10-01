@@ -18,7 +18,7 @@ import { usePokemonIndex } from '../lib/pokemonIndex'
 import { useStore } from '../lib/store'
 import { teamMembers } from '../lib/teamBattle'
 import { fxPlan, moveAnim } from '../lib/moveAnim'
-import { active, canUseItem, forfeit, ITEMS, lineOf, newBattle, playTurn, replace, usableMoves } from '../lib/turnBattle'
+import { active, canUseItem, forfeit, ITEMS, lineOf, newBattle, playTurn, replace, STAT_NAMES, usableMoves } from '../lib/turnBattle'
 import Sprite from '../components/Sprite'
 
 const CARD = 'rounded-2xl bg-card p-5 shadow'
@@ -26,9 +26,11 @@ const SELECT = 'w-full rounded-xl bg-surface px-3 py-2.5 outline-none focus:ring
 const RANDOM = '__random__'
 const STEP_MS = 1100
 
+const STAT_LABELS = new Set(Object.values(STAT_NAMES))
 const format = (event) => {
   const [line, args] = lineOf(event)
-  return args.reduce((text, arg, i) => text.replace(`{${i}}`, arg), t(line))
+  // Nomes dos atributos (Ataque, Defesa...) também são traduzidos.
+  return args.reduce((text, arg, i) => text.replace(`{${i}}`, STAT_LABELS.has(arg) ? t(arg) : arg), t(line))
 }
 
 function TeamLine({ team }) {
@@ -144,11 +146,19 @@ function HpBar({ hp, max }) {
   )
 }
 
-function InfoBox({ mon, hp, mine }) {
+/** Selo do status, como no Showdown. */
+const STATUS_BADGE = { brn: '#EE8130', par: '#C9A400', psn: '#A33EA1', tox: '#7B2E7A', slp: '#78716C', frz: '#4FB3D9' }
+
+function InfoBox({ mon, hp, mine, status }) {
   return (
     <div className="w-full rounded-xl rounded-br-3xl border-4 border-slate-700 bg-amber-50 px-3 py-1.5 text-slate-900 shadow-lg">
       <div className="flex items-baseline justify-between gap-2 font-black">
         <span className="truncate">{mon.name}</span>
+        {status && (
+          <span className="shrink-0 rounded px-1 text-[10px] font-black text-white" style={{ background: STATUS_BADGE[status] }} data-testid="status-badge">
+            {status.toUpperCase()}
+          </span>
+        )}
         <span className="shrink-0 text-sm">{`Nv.${mon.level}`}</span>
       </div>
       <HpBar hp={hp} max={mon.maxHp} />
@@ -309,6 +319,7 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
   const [shown, setShown] = useState(() => ({
     active: [battle.sides[0].active, battle.sides[1].active],
     hp: battle.sides.map((s) => s.team.map((m) => m.hp)),
+    status: battle.sides.map((s) => s.team.map(() => '')),
     fainted: [false, false],
   }))
   const [text, setText] = useState(() => (foeName ? t('{0} quer batalhar!').replace('{0}', foeName) : t('Um treinador quer batalhar!')))
@@ -335,13 +346,21 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
       if (e.t === 'attack') {
         // Cada golpe com a sua animação (moveAnim.js), nas cores do tipo.
         const [kind, icon, variant] = anims.current?.[e.slug] ?? [moveAnim(e.slug, e.type, e.category), null, 0]
-        const plan = fxPlan(kind, e.type, e.side, CENTER[e.side], CENTER[1 - e.side], icon, variant)
+        // Golpe de status: anéis em quem usa (Swords Dance, Recover) ou no alvo (Will-O-Wisp, Toxic).
+        const rules = active(battle, e.side).moves.find((m) => m.slug === e.slug)?.rules
+        const self = e.category === 'status' && (rules?.t === 'self' || rules?.h)
+        const plan =
+          e.category === 'status'
+            ? fxPlan('rings', e.type, e.side, CENTER[e.side], CENTER[self ? e.side : 1 - e.side], self ? '✨' : null, variant)
+            : fxPlan(kind, e.type, e.side, CENTER[e.side], CENTER[1 - e.side], icon, variant)
         pulse(sprites[e.side].current, CONTACT.has(kind) ? `battle-dash-${e.side}` : `battle-lunge-${e.side}`, 450)
         setEffect({ plan, color: typeColor(e.type), key: ++effectKey.current })
         if (plan.shake) pulse(field.current, 'battle-shake', 650)
         if (plan.flash) setTimeout(() => setFlash((n) => n + 1), 250)
         await wait(plan.duration + 80)
         setEffect(null)
+      } else if (e.t === 'status') {
+        setShown((s) => ({ ...s, status: s.status.map((side, i) => (i === e.side ? side.map((x, j) => (j === s.active[i] ? e.status : x)) : side)) }))
       } else if (e.t === 'heal') {
         setShown((s) => ({
           ...s,
@@ -408,7 +427,7 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
         style={{ background: 'linear-gradient(#bfe6ff 0%, #e8f6ff 45%, #b9e59a 46%, #8fd16b 100%)' }}
       >
         <div className="absolute top-[6%] left-[4%] w-[46%] max-w-[260px]">
-          <InfoBox mon={foe} hp={shown.hp[1][shown.active[1]]} />
+          <InfoBox mon={foe} hp={shown.hp[1][shown.active[1]]} status={shown.status[1][shown.active[1]]} />
         </div>
         <div className="absolute top-[38%] right-[6%] h-[9%] w-[35%] rounded-[50%] bg-green-800/35" />
         <div className="absolute top-[3%] right-[10%] w-[27%]">
@@ -421,7 +440,7 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
         {effect && <MoveFx key={effect.key} plan={effect.plan} color={effect.color} />}
         {flash > 0 && <div key={`flash-${flash}`} className="battle-flash pointer-events-none absolute inset-0 bg-white" />}
         <div className="absolute right-[4%] bottom-[8%] w-[46%] max-w-[260px]">
-          <InfoBox mon={me} hp={shown.hp[0][shown.active[0]]} mine />
+          <InfoBox mon={me} hp={shown.hp[0][shown.active[0]]} status={shown.status[0][shown.active[0]]} mine />
         </div>
       </div>
 
@@ -524,7 +543,14 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
                 >
                   <PokeIcon id={m.id} shiny={m.shiny} className="h-12 w-12" />
                   <div className="min-w-0 flex-1">
-                    <div className="truncate font-bold">{m.name}</div>
+                    <div className="flex items-center gap-1.5 font-bold">
+                      <span className="truncate">{m.name}</span>
+                      {m.status && m.hp > 0 && (
+                        <span className="shrink-0 rounded px-1 text-[10px] font-black text-white" style={{ background: STATUS_BADGE[m.status] }}>
+                          {m.status.toUpperCase()}
+                        </span>
+                      )}
+                    </div>
                     <HpBar hp={m.hp} max={m.maxHp} />
                     <div className="text-xs text-muted tabular-nums">{m.hp > 0 ? `${m.hp}/${m.maxHp}` : t('Desmaiado')}</div>
                   </div>

@@ -264,6 +264,8 @@ def main():
     save('sets.json', load('sets'))
     # Animação de cada golpe na batalha (tool/build_move_anims.py).
     save('move_anims.json', load('move_anims'))
+    # Regras dos golpes na batalha (tool/build_move_rules.mjs, dados do Pokémon Showdown).
+    save('move_rules.json', load('move_rules'))
 
     save('abilities.json', [{
         'id': a['id'],

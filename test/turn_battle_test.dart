@@ -12,8 +12,9 @@ import 'package:pocket_dex/services/turn_battle.dart';
 // Batalha de mentira (dano simples, sem a calculadora), a mesma do site
 // (web-site/src/lib/turnBattle.test.js): tem que dar exatamente o registro
 // de test/fixtures/turn_battle.json.
-BattleMove _move(String slug, String type, int power, int? accuracy, int pp, [int priority = 0]) =>
-    BattleMove(slug, slug, type, power, accuracy, pp, pp, priority);
+BattleMove _move(String slug, String type, int power, int? accuracy, int pp,
+        [int priority = 0, Map<String, dynamic>? rules, String category = 'physical']) =>
+    BattleMove(slug, slug, type, power, accuracy, pp, pp, priority, rules: rules, category: category);
 BattleMon _mon(int id, String name, List<String> types, int hp, int spe, List<BattleMove> moves) =>
     BattleMon(id, name, 50, hp, spe, types, moves);
 
@@ -34,12 +35,57 @@ HitResult? _fakeHit(BattleMon att, BattleMon def, String slug, bool crit) {
 List<String> fakeBattleLog() {
   final battle = TurnBattle(
     [
-      _mon(1, 'Azul', ['water'], 110, 80, [_move('water-gun', 'water', 60, 100, 3), _move('quick-attack', 'normal', 40, 100, 30, 1), _move('double-hit', 'normal', 35, 90, 10)]),
-      _mon(2, 'Verde', ['grass'], 100, 60, [_move('vine-whip', 'grass', 45, 100, 25), _move('tackle', 'normal', 40, 100, 35)]),
+      _mon(1, 'Azul', ['water'], 110, 80, [
+        _move('water-gun', 'water', 60, 100, 3, 0, {
+          'd': [1, 2],
+          'c': 1,
+        }),
+        _move('quick-attack', 'normal', 40, 100, 30, 1),
+        _move('double-hit', 'normal', 35, 90, 10, 0, {
+          'x': [
+            {'p': 50, 'f': 1},
+          ],
+        }),
+      ]),
+      _mon(2, 'Verde', ['grass'], 100, 60, [
+        _move('toxic', 'poison', 0, 90, 2, 0, {'s': 'tox', 'ok': 1}, 'status'),
+        _move('swords-dance', 'normal', 0, null, 1, 0, {
+          'b': {'atk': 2},
+          't': 'self',
+          'ok': 1,
+        }, 'status'),
+        _move('vine-whip', 'grass', 45, 100, 25, 0, {
+          'r': [1, 3],
+          'sb': {'def': -1},
+        }),
+        _move('tackle', 'normal', 40, 100, 35),
+      ]),
     ],
     [
-      _mon(3, 'Fogo', ['fire'], 120, 90, [_move('ember', 'fire', 60, 100, 25), _move('scratch', 'normal', 40, 95, 35)]),
-      _mon(4, 'Fantasma', ['ghost'], 90, 70, [_move('lick', 'ghost', 50, 100, 30), _move('shadow-sneak', 'ghost', 40, 100, 30, 1)]),
+      _mon(3, 'Fogo', ['fire'], 120, 90, [
+        _move('ember', 'fire', 60, 100, 25, 0, {
+          'x': [
+            {'p': 60, 's': 'brn'},
+          ],
+        }),
+        _move('scratch', 'normal', 40, 95, 35),
+      ]),
+      _mon(4, 'Fantasma', ['ghost'], 90, 70, [
+        _move('lick', 'ghost', 50, 100, 30, 0, {
+          'x': [
+            {'p': 70, 's': 'par'},
+            {
+              'p': 40,
+              'b': {'spe': -1},
+            },
+          ],
+        }),
+        _move('shadow-sneak', 'ghost', 40, 100, 30, 1),
+        _move('recover', 'normal', 0, null, 5, 0, {
+          'h': [1, 2],
+          'ok': 1,
+        }, 'status'),
+      ]),
     ],
     League.seededRandom(42),
   );
@@ -57,6 +103,8 @@ List<String> fakeBattleLog() {
         log.add('[${e.t} ${e.side}]');
       } else if (e.t == 'attack') {
         log.add('[attack ${e.side} ${e.type}]');
+      } else if (e.t == 'status') {
+        log.add('[status ${e.side} ${e.type}]');
       } else if (e.t == 'heal') {
         log.add('[heal ${e.side} ${e.index} ${e.value}]');
       } else {

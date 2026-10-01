@@ -14,7 +14,18 @@ beforeAll(() => {
 // Batalha de mentira (dano simples, sem a calculadora), a mesma do teste do
 // app (test/turn_battle_test.dart): os dois têm que dar exatamente o mesmo
 // registro, guardado em test/fixtures/turn_battle.json.
-const move = (slug, type, power, accuracy, pp, priority = 0) => ({ slug, name: slug, type, power, accuracy, pp, maxPp: pp, priority })
+const move = (slug, type, power, accuracy, pp, priority = 0, rules = null, category = 'physical') => ({
+  slug,
+  name: slug,
+  type,
+  category,
+  power,
+  accuracy,
+  pp,
+  maxPp: pp,
+  priority,
+  ...(rules ? { rules } : {}),
+})
 const mon = (id, name, types, hp, spe, moves) => ({ id, name, level: 50, maxHp: hp, hp, spe, types, moves })
 const fakeHit = (att, def, slug) => {
   const m = att.moves.find((x) => x.slug === slug) ?? { power: 50, type: 'normal' }
@@ -25,12 +36,25 @@ const fakeHit = (att, def, slug) => {
 export function fakeBattleLog() {
   const battle = newBattle(
     [
-      mon(1, 'Azul', ['water'], 110, 80, [move('water-gun', 'water', 60, 100, 3), move('quick-attack', 'normal', 40, 100, 30, 1), move('double-hit', 'normal', 35, 90, 10)]),
-      mon(2, 'Verde', ['grass'], 100, 60, [move('vine-whip', 'grass', 45, 100, 25), move('tackle', 'normal', 40, 100, 35)]),
+      mon(1, 'Azul', ['water'], 110, 80, [
+        move('water-gun', 'water', 60, 100, 3, 0, { d: [1, 2], c: 1 }),
+        move('quick-attack', 'normal', 40, 100, 30, 1),
+        move('double-hit', 'normal', 35, 90, 10, 0, { x: [{ p: 50, f: 1 }] }),
+      ]),
+      mon(2, 'Verde', ['grass'], 100, 60, [
+        move('toxic', 'poison', 0, 90, 2, 0, { s: 'tox', ok: 1 }, 'status'),
+        move('swords-dance', 'normal', 0, null, 1, 0, { b: { atk: 2 }, t: 'self', ok: 1 }, 'status'),
+        move('vine-whip', 'grass', 45, 100, 25, 0, { r: [1, 3], sb: { def: -1 } }),
+        move('tackle', 'normal', 40, 100, 35),
+      ]),
     ],
     [
-      mon(3, 'Fogo', ['fire'], 120, 90, [move('ember', 'fire', 60, 100, 25), move('scratch', 'normal', 40, 95, 35)]),
-      mon(4, 'Fantasma', ['ghost'], 90, 70, [move('lick', 'ghost', 50, 100, 30), move('shadow-sneak', 'ghost', 40, 100, 30, 1)]),
+      mon(3, 'Fogo', ['fire'], 120, 90, [move('ember', 'fire', 60, 100, 25, 0, { x: [{ p: 60, s: 'brn' }] }), move('scratch', 'normal', 40, 95, 35)]),
+      mon(4, 'Fantasma', ['ghost'], 90, 70, [
+        move('lick', 'ghost', 50, 100, 30, 0, { x: [{ p: 70, s: 'par' }, { p: 40, b: { spe: -1 } }] }),
+        move('shadow-sneak', 'ghost', 40, 100, 30, 1),
+        move('recover', 'normal', 0, null, 5, 0, { h: [1, 2], ok: 1 }, 'status'),
+      ]),
     ],
     seededRandom(42),
   )
@@ -41,6 +65,7 @@ export function fakeBattleLog() {
         const [line, args] = lineOf(e)
         log.push(args.reduce((text, arg, i) => text.replace(`{${i}}`, arg), line))
       } else if (e.t === 'attack') log.push(`[attack ${e.side} ${e.type}]`)
+      else if (e.t === 'status') log.push(`[status ${e.side} ${e.status}]`)
       else if (e.t === 'heal') log.push(`[heal ${e.side} ${e.index} ${e.hp}]`)
       else log.push(`[${e.t} ${e.side} ${e.hp ?? e.index ?? ''}]`.replace(' ]', ']'))
     }
