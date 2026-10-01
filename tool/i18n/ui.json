@@ -5827,5 +5827,20 @@
   "en": "Speed",
   "fr": "Vitesse",
   "es": "Velocidad"
+ },
+ "Sprites animados": {
+  "en": "Animated sprites",
+  "fr": "Sprites animés",
+  "es": "Sprites animados"
+ },
+ "Os Pokémon se mexem, no estilo Black & White.": {
+  "en": "Pokémon move, Black & White style.",
+  "fr": "Les Pokémon bougent, style Noir & Blanc.",
+  "es": "Los Pokémon se mueven, estilo Blanco y Negro."
+ },
+ "Os Pokémon se mexem (estilo Black & White). Cada um é baixado da primeira vez que aparece e fica salvo no celular.": {
+  "en": "Pokémon move (Black & White style). Each one is downloaded the first time it appears and stays saved on your phone.",
+  "fr": "Les Pokémon bougent (style Noir & Blanc). Chacun est téléchargé la première fois qu'il apparaît et reste enregistré sur le téléphone.",
+  "es": "Los Pokémon se mueven (estilo Blanco y Negro). Cada uno se descarga la primera vez que aparece y queda guardado en el móvil."
  }
 }

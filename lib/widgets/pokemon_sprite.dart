@@ -7,12 +7,15 @@
 // Pokémon é ampliado para preencher a caixa em que é desenhado.
 
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter/widgets.dart';
 
+import '../services/animated_sprites.dart';
+import '../services/app_settings.dart';
 import '../utils/app_images.dart';
 
 class SpriteBoxes {
@@ -47,6 +50,19 @@ class PokemonSprite extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Animado (estilo Black & White) quando existe e está ligado nas
+    // Configurações; silhueta (jogo "Quem é esse Pokémon?") fica parada.
+    final pid = id is int ? id as int : int.tryParse('$id');
+    if (silhouette != null || pid == null || !AnimatedSprites.instance.has(pid, shiny: shiny)) return _static();
+    return ListenableBuilder(
+      listenable: AppSettings.instance,
+      builder: (context, _) => AppSettings.instance.animatedSprites
+          ? _AnimatedSprite(pid, shiny: shiny, fill: fill, alignBottom: alignBottom, fallback: _static())
+          : _static(),
+    );
+  }
+
+  Widget _static() {
     final box = SpriteBoxes.of(id);
     Widget image(double width, [double? height]) {
       final img = Image.asset(
@@ -88,5 +104,74 @@ class PokemonSprite extends StatelessWidget {
         );
       },
     );
+  }
+}
+
+/// O GIF animado do Pokémon (já recortado justo), do mesmo tamanho do parado.
+/// Enquanto baixa (ou se não der), mostra o parado.
+class _AnimatedSprite extends StatefulWidget {
+  final int id;
+  final bool shiny, alignBottom;
+  final double fill;
+  final Widget fallback;
+  const _AnimatedSprite(this.id, {required this.shiny, required this.fill, required this.alignBottom, required this.fallback});
+
+  @override
+  State<_AnimatedSprite> createState() => _AnimatedSpriteState();
+}
+
+class _AnimatedSpriteState extends State<_AnimatedSprite> {
+  File? _file;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void didUpdateWidget(_AnimatedSprite old) {
+    super.didUpdateWidget(old);
+    if (old.id != widget.id || old.shiny != widget.shiny) _load();
+  }
+
+  void _load() {
+    final id = widget.id, shiny = widget.shiny;
+    _file = AnimatedSprites.instance.saved(id, shiny: shiny);
+    if (_file != null) return;
+    AnimatedSprites.instance.file(id, shiny: shiny).then((f) {
+      if (mounted && f != null && widget.id == id && widget.shiny == shiny) setState(() => _file = f);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final file = _file;
+    if (file == null) return widget.fallback;
+    return LayoutBuilder(builder: (context, c) {
+      final side = c.biggest.shortestSide;
+      final inner = side * widget.fill;
+      return Center(
+        child: SizedBox.square(
+          dimension: side,
+          child: Padding(
+            padding: EdgeInsets.only(bottom: widget.alignBottom ? side * (1 - widget.fill) / 2 : 0),
+            child: Align(
+              alignment: widget.alignBottom ? Alignment.bottomCenter : Alignment.center,
+              child: Image.file(
+                file,
+                width: inner,
+                height: inner,
+                fit: BoxFit.contain,
+                alignment: widget.alignBottom ? Alignment.bottomCenter : Alignment.center,
+                filterQuality: FilterQuality.none,
+                gaplessPlayback: true,
+                errorBuilder: (_, __, ___) => widget.fallback,
+              ),
+            ),
+          ),
+        ),
+      );
+    });
   }
 }

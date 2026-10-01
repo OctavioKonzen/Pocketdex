@@ -23,6 +23,9 @@ export const usePrefs = create(
       /** Pokébola girando no fundo das páginas. */
       backgroundAnimation: true,
       setBackgroundAnimation: (backgroundAnimation) => set({ backgroundAnimation }),
+      /** Sprites animados (estilo Black & White) em todo o site. */
+      animatedSprites: true,
+      setAnimatedSprites: (animatedSprites) => set({ animatedSprites }),
     }),
     { name: 'pocketdex-prefs' },
   ),
