@@ -45,19 +45,30 @@ class PokemonSprite extends StatelessWidget {
   final bool alignBottom;
   final Color? silhouette;
 
-  const PokemonSprite(this.id, {super.key, this.shiny = false, this.fill = 0.9, this.alignBottom = false, this.silhouette});
+  /// De costas (batalha). Sem as costas no banco: a frente espelhada.
+  final bool back;
+
+  const PokemonSprite(this.id,
+      {super.key, this.shiny = false, this.fill = 0.9, this.alignBottom = false, this.silhouette, this.back = false});
 
   @override
   Widget build(BuildContext context) {
     // Animado (estilo Black & White) quando existe e está ligado nas
     // Configurações; silhueta (jogo "Quem é esse Pokémon?") fica parada.
     final pid = id is int ? id as int : int.tryParse('$id');
-    if (silhouette != null || pid == null || !AnimatedSprites.instance.has(pid, shiny: shiny)) return _static();
+    final still = back ? Transform.flip(flipX: true, child: _static()) : _static();
+    if (silhouette != null || pid == null || !AnimatedSprites.instance.has(pid, shiny: shiny, back: back)) {
+      // Sem as costas animadas: a frente (animada, se tiver) espelhada.
+      if (back && pid != null && silhouette == null) {
+        return Transform.flip(flipX: true, child: PokemonSprite(id, shiny: shiny, fill: fill, alignBottom: alignBottom));
+      }
+      return still;
+    }
     return ListenableBuilder(
       listenable: AppSettings.instance,
       builder: (context, _) => AppSettings.instance.animatedSprites
-          ? _AnimatedSprite(pid, shiny: shiny, fill: fill, alignBottom: alignBottom, fallback: _static())
-          : _static(),
+          ? _AnimatedSprite(pid, shiny: shiny, back: back, fill: fill, alignBottom: alignBottom, fallback: still)
+          : still,
     );
   }
 
@@ -109,15 +120,16 @@ class PokemonSprite extends StatelessWidget {
 /// O GIF animado do Pokémon (já recortado justo, vem da nuvem), do mesmo tamanho do parado.
 class _AnimatedSprite extends StatelessWidget {
   final int id;
-  final bool shiny, alignBottom;
+  final bool shiny, back, alignBottom;
   final double fill;
   final Widget fallback;
-  const _AnimatedSprite(this.id, {required this.shiny, required this.fill, required this.alignBottom, required this.fallback});
+  const _AnimatedSprite(this.id,
+      {required this.shiny, required this.back, required this.fill, required this.alignBottom, required this.fallback});
 
   @override
   Widget build(BuildContext context) {
     final widget = this;
-    final f = AnimatedSprites.instance.fit(widget.id, shiny: widget.shiny);
+    final f = AnimatedSprites.instance.fit(widget.id, shiny: widget.shiny, back: back);
     final dx = f[1], dy = f[2], wr = f.length > 3 ? f[3] : 1.0, hr = f.length > 4 ? f[4] : 1.0;
     // Limita o zoom para a animação inteira caber na caixa (como o site):
     // quem pula ou abre as asas não invade o que está em volta.
@@ -148,7 +160,7 @@ class _AnimatedSprite extends StatelessWidget {
                 left: left,
                 top: top,
                 child: Image.network(
-                  AnimatedSprites.instance.url(id, shiny: shiny),
+                  AnimatedSprites.instance.url(id, shiny: shiny, back: back),
                   width: inner,
                   height: inner,
                   fit: BoxFit.contain,

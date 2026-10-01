@@ -15,12 +15,12 @@ import 'package:pocket_dex/services/turn_battle.dart';
 BattleMove _move(String slug, String type, int power, int? accuracy, int pp,
         [int priority = 0, Map<String, dynamic>? rules, String category = 'physical']) =>
     BattleMove(slug, slug, type, power, accuracy, pp, pp, priority, rules: rules, category: category);
-BattleMon _mon(int id, String name, List<String> types, int hp, int spe, List<BattleMove> moves) =>
-    BattleMon(id, name, 50, hp, spe, types, moves);
+BattleMon _mon(int id, String name, List<String> types, int hp, int spe, List<BattleMove> moves, {BattleMega? mega}) =>
+    BattleMon(id, name, 50, hp, spe, types, moves, mega: mega);
 
-HitResult? _fakeHit(BattleMon att, BattleMon def, String slug, bool crit) {
+HitResult? _fakeHit(BattleMon att, BattleMon def, String slug, bool crit, [int? override]) {
   final m = att.moves.where((x) => x.slug == slug).firstOrNull;
-  final power = m?.power ?? 50, type = m?.type ?? 'normal';
+  final power = override ?? m?.power ?? 50, type = m?.type ?? 'normal';
   final eff = type == 'normal' && def.types.contains('ghost')
       ? 0.0
       : type == 'water' && def.types.contains('fire')
@@ -69,7 +69,7 @@ List<String> fakeBattleLog() {
           ],
         }),
         _move('scratch', 'normal', 40, 95, 35),
-      ]),
+      ], mega: const BattleMega(30, 'Mega Fogo', ['fire', 'dragon'], 110)),
       _mon(4, 'Fantasma', ['ghost'], 90, 70, [
         _move('lick', 'ghost', 50, 100, 30, 0, {
           'x': [
@@ -107,6 +107,12 @@ List<String> fakeBattleLog() {
         log.add('[status ${e.side} ${e.type}]');
       } else if (e.t == 'heal') {
         log.add('[heal ${e.side} ${e.index} ${e.value}]');
+      } else if (e.t == 'mega') {
+        log.add('[mega ${e.side} ${e.value}]');
+      } else if (e.t == 'tera') {
+        log.add('[tera ${e.side} ${e.type}]');
+      } else if (e.t == 'dmax') {
+        log.add('[dmax ${e.side} ${e.index} ${e.value}]');
       } else {
         log.add('[${e.t} ${e.side} ${e.value}]');
       }
@@ -121,7 +127,10 @@ List<String> fakeBattleLog() {
     final me = battle.active(0);
     final usable = TurnBattle.usableMoves(me);
     final fainted = battle.teams[0].indexWhere((m) => m.hp <= 0);
-    if (turn == 2 && battle.teams[0][1].hp > 0) {
+    // Dinamax no primeiro turno (o computador escolhe a dele sozinho).
+    if (turn == 0) {
+      write(battle.playTurn(_fakeHit, move: 0, gimmick: 'dmax'));
+    } else if (turn == 2 && battle.teams[0][1].hp > 0) {
       write(battle.playTurn(_fakeHit, switchTo: 1));
     } else if (turn == 5 && battle.canUseItem(0, 'super-potion', battle.activeIndex[0])) {
       write(battle.playTurn(_fakeHit, item: 'super-potion', target: battle.activeIndex[0]));
@@ -254,7 +263,7 @@ void main() {
       'ground': {'electric': 2.0, 'fire': 2.0},
     };
     double typeEff(String t, List<String> types) => types.fold(1.0, (m, d) => m * (chart[t]?[d] ?? 1));
-    HitResult hit(BattleMon att, BattleMon def, String slug, bool crit) => (rolls: [[1]], eff: typeEff(slug, def.types));
+    HitResult hit(BattleMon att, BattleMon def, String slug, bool crit, [int? power]) => (rolls: [[1]], eff: typeEff(slug, def.types));
     BattleMove mv(String slug, [String category = 'special']) => BattleMove(slug, slug, slug, 50, 100, 10, 10, 0, category: category);
     BattleMon mon(List<String> types, [List<BattleMove> moves = const []]) => BattleMon(1, 'X', 50, 100, 50, types, moves);
 
@@ -275,6 +284,12 @@ void main() {
       final w = TurnBattle.weaknesses(['fire'], ['water', 'electric', 'normal', 'ground'], typeEff);
       expect([for (final x in w) '${x.type} ${x.mult}'], ['water 2.0', 'ground 2.0']);
     });
+  });
+
+  test('poder do Z-Move e do Max Move (tabelas dos jogos, igual ao site)', () {
+    expect([40, 60, 70, 80, 90, 100, 110, 120, 130, 150].map(TurnBattle.zPower), [100, 120, 140, 160, 175, 180, 185, 190, 195, 200]);
+    expect([40, 50, 60, 70, 100, 140, 150].map((p) => TurnBattle.maxPower(p, 'fire')), [90, 100, 110, 120, 130, 140, 150]);
+    expect([40, 100, 150].map((p) => TurnBattle.maxPower(p, 'fighting')), [70, 90, 100]);
   });
 }
 

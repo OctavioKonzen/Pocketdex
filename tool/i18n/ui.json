@@ -5897,5 +5897,80 @@
   "en": "{0} is weak to:",
   "fr": "{0} est faible contre :",
   "es": "{0} es débil contra:"
+ },
+ "A Mega Pedra de {0} está reagindo!": {
+  "en": "{0}'s Mega Stone is reacting!",
+  "fr": "La Méga-Gemme de {0} réagit !",
+  "es": "¡La Megapiedra de {0} está reaccionando!"
+ },
+ "A Mega Pedra de {0} inimigo está reagindo!": {
+  "en": "The opposing {0}'s Mega Stone is reacting!",
+  "fr": "La Méga-Gemme du {0} ennemi réagit !",
+  "es": "¡La Megapiedra del {0} rival está reaccionando!"
+ },
+ "{0} megaevoluiu em {1}!": {
+  "en": "{0} has Mega Evolved into {1}!",
+  "fr": "{0} méga-évolue en {1} !",
+  "es": "¡{0} ha megaevolucionado en {1}!"
+ },
+ "{0} inimigo megaevoluiu em {1}!": {
+  "en": "The opposing {0} has Mega Evolved into {1}!",
+  "fr": "Le {0} ennemi méga-évolue en {1} !",
+  "es": "¡El {0} rival ha megaevolucionado en {1}!"
+ },
+ "{0} terastalizou no tipo {1}!": {
+  "en": "{0} has Terastallized into the {1} type!",
+  "fr": "{0} se téracristallise en type {1} !",
+  "es": "¡{0} se ha teracristalizado en el tipo {1}!"
+ },
+ "{0} inimigo terastalizou no tipo {1}!": {
+  "en": "The opposing {0} has Terastallized into the {1} type!",
+  "fr": "Le {0} ennemi se téracristallise en type {1} !",
+  "es": "¡El {0} rival se ha teracristalizado en el tipo {1}!"
+ },
+ "{0} dinamaxizou!": {
+  "en": "{0} Dynamaxed!",
+  "fr": "{0} se dynamaxe !",
+  "es": "¡{0} se ha dinamaxizado!"
+ },
+ "{0} inimigo dinamaxizou!": {
+  "en": "The opposing {0} Dynamaxed!",
+  "fr": "Le {0} ennemi se dynamaxe !",
+  "es": "¡El {0} rival se ha dinamaxizado!"
+ },
+ "{0} gigantamaxizou!": {
+  "en": "{0} Gigantamaxed!",
+  "fr": "{0} se gigamaxe !",
+  "es": "¡{0} se ha gigamaxizado!"
+ },
+ "{0} inimigo gigantamaxizou!": {
+  "en": "The opposing {0} Gigantamaxed!",
+  "fr": "Le {0} ennemi se gigamaxe !",
+  "es": "¡El {0} rival se ha gigamaxizado!"
+ },
+ "{0} voltou ao tamanho normal!": {
+  "en": "{0} returned to its normal size!",
+  "fr": "{0} reprend sa taille normale !",
+  "es": "¡{0} ha vuelto a su tamaño normal!"
+ },
+ "{0} inimigo voltou ao tamanho normal!": {
+  "en": "The opposing {0} returned to its normal size!",
+  "fr": "Le {0} ennemi reprend sa taille normale !",
+  "es": "¡El {0} rival ha vuelto a su tamaño normal!"
+ },
+ "{0} libera todo o seu Z-Poder!": {
+  "en": "{0} unleashes its full-force Z-Move!",
+  "fr": "{0} déchaîne toute la puissance de sa capacité Z !",
+  "es": "¡{0} desata todo su Poder Z!"
+ },
+ "{0} inimigo libera todo o seu Z-Poder!": {
+  "en": "The opposing {0} unleashes its full-force Z-Move!",
+  "fr": "Le {0} ennemi déchaîne toute la puissance de sa capacité Z !",
+  "es": "¡El {0} rival desata todo su Poder Z!"
+ },
+ "Poder": {
+  "en": "Power",
+  "fr": "Puissance",
+  "es": "Potencia"
  }
 }

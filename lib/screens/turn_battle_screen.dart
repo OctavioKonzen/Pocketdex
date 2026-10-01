@@ -14,7 +14,6 @@ import 'package:flutter/material.dart' as m show Text;
 
 import '../i18n/i18n.dart';
 import '../i18n/text.dart';
-import '../services/animated_sprites.dart';
 import '../services/damage_calc.dart';
 import '../services/friends_service.dart';
 import '../services/league.dart';
@@ -261,6 +260,13 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
     for (final t in widget.battle.teams) [for (final _ in t) '']
   ];
   final List<bool> _fainted = [false, false];
+
+  /// Forma na tela (Mega / Gigantamax) e se está dinamaxizado.
+  final List<int?> _form = [null, null];
+  final List<bool> _dmax = [false, false];
+
+  /// Mecânica escolhida para o próximo golpe ('mega' | 'z' | 'dmax' | 'tera').
+  String? _gimmick;
   late String _text = widget.foeName.isNotEmpty ? tr('{0} quer batalhar!').replaceAll('{0}', widget.foeName) : tr('Um treinador quer batalhar!');
   bool _busy = false;
   String _menu = 'main'; // main | fight | party | bag
@@ -301,8 +307,16 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
     return text;
   }
 
-  Future<void> _play(List<BattleEvent> events) async {
-    setState(() => _busy = true);
+  /// [before]: o id de cada lado antes do turno (o motor já mudou a Mega; a tela muda no evento).
+  Future<void> _play(List<BattleEvent> events, [List<int>? before]) async {
+    setState(() {
+      _busy = true;
+      if (before != null) {
+        for (final s in [0, 1]) {
+          if (!_dmax[s]) _form[s] = before[s];
+        }
+      }
+    });
     for (final e in events) {
       if (!mounted) return;
       switch (e.t) {
@@ -352,7 +366,24 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
           setState(() {
             _active[e.side] = e.value;
             _fainted[e.side] = false;
+            _form[e.side] = null;
+            _dmax[e.side] = false;
           });
+        case 'mega':
+          setState(() {
+            _flash++;
+            _form[e.side] = e.value;
+          });
+          await _wait(500);
+        case 'dmax':
+          setState(() {
+            _form[e.side] = e.value;
+            _dmax[e.side] = e.index == 1;
+          });
+          await _wait(700);
+        case 'tera':
+          setState(() => _flash++);
+          await _wait(400);
       }
     }
     if (!mounted) return;
@@ -363,7 +394,12 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
     });
   }
 
-  void _fight(int i) => _play(_b.playTurn(widget.hit, move: i));
+  void _fight(int i) {
+    final before = [_b.active(0).id, _b.active(1).id];
+    final g = _gimmick;
+    _gimmick = null;
+    _play(_b.playTurn(widget.hit, move: i, gimmick: g), before);
+  }
   void _choose(int i) {
     final item = _item;
     if (item != null) {
@@ -397,6 +433,12 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
     // Efetividade (como nos jogos): nos golpes, nas fraquezas do inimigo e na troca.
     final rival = _b.active(1);
     final foeWeak = TurnBattle.weaknesses(rival.types, allTypes, widget.typeEff);
+    // Mecânicas que dá para usar agora (Z-Move: se algum golpe pode).
+    final gimmicks = [
+      for (final g in TurnBattle.gimmickList)
+        if (g == 'z' ? [for (var i = 0; i < current.moves.length; i++) i].any((i) => _b.canGimmick(0, 'z', i)) : _b.canGimmick(0, g)) g,
+    ];
+    final maxed = _gimmick == 'dmax' || current.dmax > 0;
     const border = Color(0xFF1E293B);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -431,26 +473,26 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
                           left: w * 0.03,
                           top: h * 0.05,
                           width: w * 0.48,
-                          child: _InfoBox(mon: foe, hp: _hp[1][_active[1]], status: _status[1][_active[1]])),
+                          child: _InfoBox(mon: foe, hp: _hp[1][_active[1]], status: _status[1][_active[1]], dmax: _dmax[1])),
                       Positioned(right: w * 0.06, top: h * 0.32, width: w * 0.38, height: h * 0.07, child: const _Platform()),
                       Positioned(
                           right: w * 0.1,
                           top: h * 0.02,
                           width: w * 0.3,
                           height: w * 0.3,
-                          child: _Sprite(key: _sprites[1], mon: foe, fainted: _fainted[1])),
+                          child: _Sprite(key: _sprites[1], mon: foe, id: _form[1] ?? foe.id, dmax: _dmax[1], fainted: _fainted[1])),
                       Positioned(left: w * 0.02, bottom: h * 0.03, width: w * 0.46, height: h * 0.09, child: const _Platform()),
                       Positioned(
                           left: w * 0.06,
                           bottom: h * 0.05,
                           width: w * 0.36,
                           height: w * 0.36,
-                          child: _Sprite(key: _sprites[0], mon: me, back: true, fainted: _fainted[0])),
+                          child: _Sprite(key: _sprites[0], mon: me, id: _form[0] ?? me.id, dmax: _dmax[0], back: true, fainted: _fainted[0])),
                       Positioned(
                           right: w * 0.03,
                           bottom: h * 0.06,
                           width: w * 0.5,
-                          child: _InfoBox(mon: me, hp: _hp[0][_active[0]], status: _status[0][_active[0]], mine: true)),
+                          child: _InfoBox(mon: me, hp: _hp[0][_active[0]], status: _status[0][_active[0]], dmax: _dmax[0], mine: true)),
                       if (_fx != null) _MoveFx(key: ValueKey(_fx!.$3), plan: _fx!.$1, color: _fx!.$2, w: w, h: h),
                       if (_flash > 0) _Flash(key: ValueKey(_flash)),
                     ],
@@ -509,6 +551,30 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
               if (waiting && _menu == 'fight') ...[
                 const SizedBox(height: 8),
                 _Weak(rival, foeWeak, dark: true),
+                if (gimmicks.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Wrap(spacing: 6, runSpacing: 6, children: [
+                      for (final g in gimmicks)
+                        ChoiceChip(
+                          // Nome da mecânica como nos jogos (não traduz).
+                          label: m.Text(
+                              g == 'mega'
+                                  ? 'Mega Evolução'
+                                  : g == 'z'
+                                      ? 'Z-Move'
+                                      : g == 'dmax'
+                                          ? (current.gmax != null ? 'Gigantamax' : 'Dinamax')
+                                          : 'Tera ${current.teraType.toUpperCase()}',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: _gimmick == g ? Colors.white : null)),
+                          selected: _gimmick == g,
+                          selectedColor: _gimmickColors[g],
+                          showCheckmark: false,
+                          visualDensity: VisualDensity.compact,
+                          onSelected: (on) => setState(() => _gimmick = on ? g : null),
+                        ),
+                    ]),
+                  ),
                 GridView.count(
                   crossAxisCount: 2,
                   shrinkWrap: true,
@@ -519,23 +585,35 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
                   children: [
                     for (final (i, mv) in current.moves.indexed)
                       Material(
-                        color: getColorForType(mv.type).withAlpha(mv.pp > 0 ? 255 : 100),
+                        color: getColorForType(mv.type).withAlpha(mv.pp > 0 && (_gimmick != 'z' || mv.category != 'status') ? 255 : 100),
                         borderRadius: BorderRadius.circular(10),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(10),
-                          onTap: mv.pp > 0 ? () => _fight(i) : null,
+                          onTap: mv.pp > 0 && (_gimmick != 'z' || mv.category != 'status') ? () => _fight(i) : null,
                           child: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                m.Text(mv.name,
+                                // Com Z-Move / Dinamax: o nome do golpe especial (o poder dele no lugar do PP).
+                                m.Text(
+                                    mv.category == 'status'
+                                        ? mv.name
+                                        : _gimmick == 'z'
+                                            ? TurnBattle.zMoves[mv.type]!
+                                            : maxed
+                                                ? TurnBattle.maxMoves[mv.type]!
+                                                : mv.name,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13)),
                                 Row(children: [
-                                  m.Text('PP ${mv.pp}/${mv.maxPp}', style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                                  m.Text(
+                                      mv.category != 'status' && (_gimmick == 'z' || maxed)
+                                          ? '${tr('Poder')} ${_gimmick == 'z' ? TurnBattle.zPower(mv.power) : TurnBattle.maxPower(mv.power, mv.type)}'
+                                          : 'PP ${mv.pp}/${mv.maxPp}',
+                                      style: const TextStyle(color: Colors.white70, fontSize: 11)),
                                   const Spacer(),
                                   _EffectTag(TurnBattle.moveEffect(widget.hit, current, rival, mv)),
                                 ]),
@@ -680,22 +758,13 @@ class _Platform extends StatelessWidget {
       );
 }
 
-// Sprites animados no estilo Black & White, de frente e de costas (e shiny),
-// do repositório de sprites da PokeAPI: os oficiais do jogo do #1 ao #649 e,
-// do #650 em diante (e formas), os do Pokémon Showdown (Smogon Sprite
-// Project). Sem sprite animado (ou sem internet) fica o parado de sempre,
-// balançando. Igual ao site.
-const _sprites = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon';
-String? _bwUrl(int id, bool back, bool shiny) {
-  if (id < 1) return null;
-  final dir = id <= 649 ? '$_sprites/versions/generation-v/black-white/animated' : '$_sprites/other/showdown';
-  return '$dir/${back ? 'back/' : ''}${shiny ? 'shiny/' : ''}$id.gif';
-}
-
 class _Sprite extends StatefulWidget {
   final BattleMon mon;
-  final bool back, fainted;
-  const _Sprite({super.key, required this.mon, this.back = false, this.fainted = false});
+
+  /// A forma na tela (Mega / Gigantamax).
+  final int id;
+  final bool back, fainted, dmax;
+  const _Sprite({super.key, required this.mon, required this.id, this.back = false, this.fainted = false, this.dmax = false});
 
   @override
   State<_Sprite> createState() => _SpriteState();
@@ -705,7 +774,6 @@ class _SpriteState extends State<_Sprite> with TickerProviderStateMixin {
   late final _lunge = AnimationController(vsync: this, duration: const Duration(milliseconds: 450));
   late final _hurt = AnimationController(vsync: this, duration: const Duration(milliseconds: 520));
   late final _dodge = AnimationController(vsync: this, duration: const Duration(milliseconds: 420));
-  late final _idle = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))..repeat();
 
   /// Quem ataca avança na direção do outro ([dash]: vai até ele, golpe corpo a corpo).
   void lunge({bool dash = false}) {
@@ -726,27 +794,11 @@ class _SpriteState extends State<_Sprite> with TickerProviderStateMixin {
     _lunge.dispose();
     _hurt.dispose();
     _dodge.dispose();
-    _idle.dispose();
     super.dispose();
   }
 
-  Widget _static(bool bob) => AnimatedBuilder(
-        animation: _idle,
-        builder: (context, child) => FractionalTranslation(
-          translation: Offset(0, bob ? -0.015 * (1 - cos(_idle.value * 2 * pi)) : 0),
-          child: child,
-        ),
-        // O seu fica de costas (espelhado), como nos jogos.
-        child: Transform.flip(flipX: widget.back, child: PokemonSprite(widget.mon.id, shiny: widget.mon.shiny, fill: 0.95, alignBottom: true)),
-      );
-
   @override
   Widget build(BuildContext context) {
-    // De frente: o GIF do nosso banco, puxado da nuvem.
-    final mon = widget.mon;
-    final url = !widget.back
-        ? (AnimatedSprites.instance.has(mon.id, shiny: mon.shiny) ? AnimatedSprites.instance.url(mon.id, shiny: mon.shiny) : null)
-        : _bwUrl(mon.id, true, mon.shiny);
     final dir = widget.back ? 1.0 : -1.0;
     return AnimatedSlide(
       duration: const Duration(milliseconds: 500),
@@ -768,25 +820,22 @@ class _SpriteState extends State<_Sprite> with TickerProviderStateMixin {
               child: Opacity(opacity: shaking && (h * 5).floor().isEven ? 0.15 : 1, child: child),
             );
           },
-          // Trocou de Pokémon: começa do zero (sem ficar o sprite do anterior).
+          // Trocou de Pokémon (ou megaevoluiu): começa do zero. Do nosso banco,
+          // de frente ou de costas, todos do mesmo tamanho (como na Pokédex).
           child: KeyedSubtree(
-            key: ValueKey((widget.mon.id, widget.mon.shiny)),
-            child: url == null
-                ? _static(true)
-                : LayoutBuilder(
-                    // Tamanho de verdade do sprite (os pequenos continuam pequenos, como no jogo).
-                    builder: (context, box) => Align(
-                      alignment: Alignment.bottomCenter,
-                      child: Image.network(
-                        url,
-                        scale: 96 / box.maxWidth,
-                        filterQuality: FilterQuality.none,
-                        gaplessPlayback: true,
-                        loadingBuilder: (context, child, progress) => progress == null ? child : _static(false),
-                        errorBuilder: (context, error, stack) => _static(true),
-                      ),
-                    ),
-                  ),
+            key: ValueKey((widget.id, widget.mon.shiny)),
+            // Dinamax: gigante e avermelhado.
+            child: AnimatedScale(
+              scale: widget.dmax ? 1.45 : 1,
+              alignment: Alignment.bottomCenter,
+              duration: const Duration(milliseconds: 700),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  boxShadow: widget.dmax ? const [BoxShadow(color: Color(0x66E11D48), blurRadius: 24, spreadRadius: 2)] : const [],
+                ),
+                child: PokemonSprite(widget.id, shiny: widget.mon.shiny, back: widget.back, fill: 0.95, alignBottom: true),
+              ),
+            ),
           ),
         ),
       ),
@@ -1005,9 +1054,9 @@ class _StatusBadge extends StatelessWidget {
 class _InfoBox extends StatelessWidget {
   final BattleMon mon;
   final int hp;
-  final bool mine;
+  final bool mine, dmax;
   final String status;
-  const _InfoBox({required this.mon, required this.hp, this.mine = false, this.status = ''});
+  const _InfoBox({required this.mon, required this.hp, this.mine = false, this.status = '', this.dmax = false});
 
   @override
   Widget build(BuildContext context) => Container(
@@ -1034,6 +1083,8 @@ class _InfoBox extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 4),
+                if (mon.terastal) ...[_Tag('TERA ${mon.teraType.toUpperCase()}', getColorForType(mon.teraType)), const SizedBox(width: 4)],
+                if (dmax) ...[const _Tag('DMAX', Color(0xFFE11D48)), const SizedBox(width: 4)],
                 if (status.isNotEmpty) ...[_StatusBadge(status), const SizedBox(width: 4)],
                 m.Text('Nv.${mon.level}', style: const TextStyle(fontSize: 11)),
               ]),
@@ -1044,6 +1095,9 @@ class _InfoBox extends StatelessWidget {
         ),
       );
 }
+
+// Cores dos botões das mecânicas (iguais às do site).
+const _gimmickColors = {'mega': Color(0xFF7C3AED), 'z': Color(0xFFCA8A04), 'dmax': Color(0xFFE11D48), 'tera': Color(0xFF0891B2)};
 
 // Cores da efetividade: verde = bom para quem ataca, vermelho = ruim.
 const _effectColors = {

@@ -14,14 +14,16 @@ import { usePrefs } from '../lib/prefs'
 // a opção está ligada, ele aparece no lugar do parado.
 let animated = null
 let loading = null
+// Frente, shiny e as costas (para a batalha).
+const KINDS = ['front', 'shiny', 'back', 'back-shiny']
 function useAnimated() {
   const [sets, setSets] = useState(animated)
   useEffect(() => {
     if (animated) return undefined
     let alive = true
     loading ??= getAnimatedSprites()
-      .then((d) => (animated = { front: new Set(d.front), shiny: new Set(d.shiny), fit: d.fit ?? {}, hash: d.hash ?? {} }))
-      .catch(() => (animated = { front: new Set(), shiny: new Set(), fit: {}, hash: {} }))
+      .then((d) => (animated = { ...Object.fromEntries(KINDS.map((k) => [k, new Set(d[k] ?? [])])), fit: d.fit ?? {}, hash: d.hash ?? {} }))
+      .catch(() => (animated = { ...Object.fromEntries(KINDS.map((k) => [k, new Set()])), fit: {}, hash: {} }))
     loading.then((a) => alive && setSets(a))
     return () => {
       alive = false
@@ -34,10 +36,10 @@ function useAnimated() {
  * "pokemon/6.png" ou "pokemon/shiny/6.png" → GIF animado (se existir) e o
  * ajuste [zoom, dx, dy] de quem se mexe muito e ficaria pequeno.
  */
-function animatedOf(path, sets) {
+function animatedOf(path, sets, back) {
   const m = /^pokemon\/(shiny\/)?(\d+)\.png$/.exec(path ?? '')
   if (!m || !sets) return null
-  const kind = m[1] ? 'shiny' : 'front'
+  const kind = back ? (m[1] ? 'back-shiny' : 'back') : m[1] ? 'shiny' : 'front'
   if (!sets[kind].has(Number(m[2]))) return null
   // ?v=impressão digital: quando o GIF muda no banco, o navegador baixa de novo.
   const v = sets.hash[kind]?.[m[2]]
@@ -47,14 +49,25 @@ function animatedOf(path, sets) {
 /**
  * @param fill   quanto da caixa o Pokémon ocupa (0 a 1)
  * @param align  'center' ou 'bottom' (Pokémon "apoiado" embaixo)
+ * @param back   de costas (batalha)
  */
 export default function Sprite(props) {
   const on = usePrefs((s) => s.animatedSprites)
   const sets = useAnimated()
   const [failed, setFailed] = useState(null)
-  const anim = on ? animatedOf(props.path, sets) : null
+  const anim = on ? animatedOf(props.path, sets, props.back) : null
   const gif = anim?.gif
-  if (!gif || failed === gif) return <StaticSprite {...props} />
+  if (!gif || failed === gif) {
+    // De costas sem as costas no banco: a frente espelhada.
+    if (props.back) {
+      return (
+        <div className="-scale-x-100">
+          <Sprite {...props} back={false} />
+        </div>
+      )
+    }
+    return <StaticSprite {...props} />
+  }
   const { alt = '', fill = 0.9, align = 'center', className = '', imgClassName = '', style } = props
   // O GIF já vem recortado justo: encaixa na caixa (do tamanho do parado),
   // ampliado para o quadro típico ocupar a caixa (fit).

@@ -27,6 +27,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB = os.path.join(ROOT, 'assets', 'database')
 OUT = os.path.join(DB, 'sprites', 'animated')
 BASE = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon'
+KINDS = ('front', 'shiny', 'back', 'back-shiny')
 
 
 def source(pid, shiny):
@@ -100,7 +101,7 @@ def optimize():
     if not shutil.which('gifsicle'):
         print('gifsicle não instalado: GIFs sem otimizar')
         return
-    files = [os.path.join(OUT, sub, f) for sub in ('front', 'shiny') for f in os.listdir(os.path.join(OUT, sub)) if f.endswith('.gif')]
+    files = [os.path.join(OUT, sub, f) for sub in KINDS if os.path.isdir(os.path.join(OUT, sub)) for f in os.listdir(os.path.join(OUT, sub)) if f.endswith('.gif')]
     for i in range(0, len(files), 200):
         subprocess.run(['gifsicle', '-O3', '-b', *files[i:i + 200]], check=False, capture_output=True)
 
@@ -118,11 +119,13 @@ def main():
     # Quais têm sprite animado: {"front": [ids], "shiny": [ids]} (o app e o site
     # só procuram esses).
     optimize()
-    have = {sub: sorted(int(f[:-4]) for f in os.listdir(os.path.join(OUT, sub)) if f.endswith('.gif')) for sub in ('front', 'shiny')}
-    have['fit'] = {sub: fits(sub, have[sub]) for sub in ('front', 'shiny')}
+    # Frente e shiny (e as costas, para a batalha, se já foram geradas).
+    kinds = [k for k in KINDS if os.path.isdir(os.path.join(OUT, k))]
+    have = {sub: sorted(int(f[:-4]) for f in os.listdir(os.path.join(OUT, sub)) if f.endswith('.gif')) for sub in kinds}
+    have['fit'] = {sub: fits(sub, have[sub]) for sub in kinds}
     # Impressão digital de cada GIF: quando um muda, o app baixa de novo (e o
     # navegador não usa o velho do cache).
-    have['hash'] = {sub: {str(pid): digest(os.path.join(OUT, sub, f'{pid}.gif')) for pid in have[sub]} for sub in ('front', 'shiny')}
+    have['hash'] = {sub: {str(pid): digest(os.path.join(OUT, sub, f'{pid}.gif')) for pid in have[sub]} for sub in kinds}
     with open(os.path.join(DB, 'animated_sprites.json'), 'w', encoding='utf-8') as f:
         json.dump(have, f, separators=(',', ':'))
         f.write('\n')

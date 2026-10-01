@@ -12,14 +12,22 @@
 // Pokémon, Bolsa e o adversário controlado pelo computador. Sem clima,
 // campo nem golpes que mexem no campo (Stealth Rock, Protect...).
 //
+// Mecânicas especiais (uma por batalha para cada lado, à escolha): Mega
+// Evolução, Z-Move, Dinamax/Gigantamax (3 turnos, HP em dobro, Max Moves) e
+// Terastal. Z-Move e Max Move usam o poder das tabelas dos jogos, nunca
+// erram e não têm os efeitos extras do golpe original.
+//
 // Pokémon: {id, name, level, maxHp, hp, spe, types,
 //           moves: [{slug, name, type, category, power, accuracy, pp, maxPp, priority, rules?}],
-//           status, sleep, toxic, boosts: {atk, def, spa, spd, spe}, flinch}
+//           mega?: {id, name, types, spe, ...}, gmax?: id, teraType?,
+//           status, sleep, toxic, boosts: {atk, def, spa, spd, spe}, flinch,
+//           terastal, dmax (turnos que faltam)}
 // Eventos (para a tela ir mostrando): {t: 'text', key, args} | {t: 'hp', side, hp}
 //   | {t: 'switch', side, index} | {t: 'faint', side}
 //   | {t: 'attack', side, type, category, slug} (animação do golpe) | {t: 'miss', side}
 //   | {t: 'heal', side, index, hp} (poção ou Revive num Pokémon do time)
 //   | {t: 'status', side, status} (status novo; '' = curou)
+//   | {t: 'mega', side, id} | {t: 'tera', side, type} | {t: 'dmax', side, on, id}
 // Lado 0 = você, lado 1 = o computador.
 
 export const STRUGGLE = { slug: 'struggle', name: 'Struggle', type: 'normal', category: 'physical', power: 50, accuracy: null, pp: 1, maxPp: 1, priority: 0 }
@@ -33,11 +41,19 @@ const STATUS_IMMUNE = { brn: ['fire'], par: ['electric'], psn: ['poison', 'steel
 
 /** Começa (ou recomeça) o estado de batalha de um Pokémon. */
 function resetMon(mon) {
+  // Mega, Terastal e Dinamax só valem na batalha: na próxima, volta ao original.
+  if (!mon.orig) mon.orig = { id: mon.id, types: mon.types, spe: mon.spe, maxHp: mon.maxHp, base: mon.base, side: mon.side, mega: mon.mega }
+  else {
+    Object.assign(mon, mon.orig)
+    mon.hp = Math.min(mon.hp, mon.maxHp)
+  }
   mon.status = ''
   mon.sleep = 0
   mon.toxic = 0
   mon.flinch = false
   mon.boosts = { atk: 0, def: 0, spa: 0, spd: 0, spe: 0 }
+  mon.terastal = false
+  mon.dmax = 0
 }
 
 /** Multiplicador de um estágio de atributo (−6 a +6). */
@@ -77,6 +93,7 @@ export function newBattle(mine, theirs, random) {
     random,
     bags: [newBag(), newBag()],
     turn: 1,
+    gimmicks: [null, null], // mecânica que cada lado já usou ('mega' | 'z' | 'dmax' | 'tera')
     winner: null, // 0 = você ganhou, 1 = o computador
     needSwitch: false, // seu Pokémon desmaiou: escolha outro
   }
@@ -87,6 +104,102 @@ const alive = (battle, side) => battle.sides[side].team.filter((p) => p.hp > 0).
 const say = (events, key, ...args) => events.push({ t: 'text', key, args })
 /** Nome como aparece nas falas: o do computador é "X inimigo". */
 const label = (battle, side) => ({ side, name: active(battle, side).name })
+
+/** As mecânicas especiais, na ordem dos botões. */
+export const GIMMICKS = ['mega', 'z', 'dmax', 'tera']
+
+/** Z-Move de cada tipo. */
+export const Z_MOVES = {
+  normal: 'Breakneck Blitz', fire: 'Inferno Overdrive', water: 'Hydro Vortex', grass: 'Bloom Doom', electric: 'Gigavolt Havoc',
+  ice: 'Subzero Slammer', fighting: 'All-Out Pummeling', poison: 'Acid Downpour', ground: 'Tectonic Rage', flying: 'Supersonic Skystrike',
+  psychic: 'Shattered Psyche', bug: 'Savage Spin-Out', rock: 'Continental Crush', ghost: 'Never-Ending Nightmare', dragon: 'Devastating Drake',
+  dark: 'Black Hole Eclipse', steel: 'Corkscrew Crash', fairy: 'Twinkle Tackle',
+}
+
+/** Max Move de cada tipo. */
+export const MAX_MOVES = {
+  normal: 'Max Strike', fire: 'Max Flare', water: 'Max Geyser', grass: 'Max Overgrowth', electric: 'Max Lightning',
+  ice: 'Max Hailstorm', fighting: 'Max Knuckle', poison: 'Max Ooze', ground: 'Max Quake', flying: 'Max Airstream',
+  psychic: 'Max Mindstorm', bug: 'Max Flutterby', rock: 'Max Rockfall', ghost: 'Max Phantasm', dragon: 'Max Wyrmwind',
+  dark: 'Max Darkness', steel: 'Max Steelspike', fairy: 'Max Starfall',
+}
+
+/** Poder do Z-Move pelo poder do golpe (tabela dos jogos). */
+export function zPower(power) {
+  const table = [[55, 100], [65, 120], [75, 140], [85, 160], [95, 175], [100, 180], [110, 185], [125, 190], [130, 195]]
+  return (table.find(([max]) => power <= max) ?? [0, 200])[1]
+}
+
+/** Poder do Max Move (Lutador e Venenoso têm uma tabela mais fraca). */
+export function maxPower(power, type) {
+  const weak = type === 'fighting' || type === 'poison'
+  const table = weak
+    ? [[40, 70], [50, 75], [60, 80], [70, 85], [100, 90], [140, 95]]
+    : [[40, 90], [50, 100], [60, 110], [70, 120], [100, 130], [140, 140]]
+  return (table.find(([max]) => power <= max) ?? [0, weak ? 100 : 150])[1]
+}
+
+/** Dá para usar essa mecânica agora? (Z-Move: no golpe [moveIndex], que tem que ser de dano.) */
+export function canGimmick(battle, side, gimmick, moveIndex = -1) {
+  const mon = active(battle, side)
+  if (battle.gimmicks[side] || mon.hp <= 0) return false
+  if (gimmick === 'mega') return Boolean(mon.mega)
+  if (gimmick === 'tera') return Boolean(mon.teraType)
+  if (gimmick === 'z') {
+    const move = mon.moves[moveIndex]
+    return Boolean(move) && move.category !== 'status' && move.pp > 0 && !mon.dmax
+  }
+  return gimmick === 'dmax'
+}
+
+/** Mega, Terastal e Dinamax acontecem no começo do turno (o Z-Move, no golpe). */
+function applyGimmick(battle, side, gimmick, events) {
+  const mon = active(battle, side)
+  battle.gimmicks[side] = gimmick
+  if (gimmick === 'mega') {
+    const mega = mon.mega
+    say(events, 'megaReact', label(battle, side))
+    Object.assign(mon, { id: mega.id, types: mega.types, spe: mega.spe, ...(mega.base ? { base: mega.base, side: mega.side } : {}), ...(mega.calc ? { calc: mega.calc } : {}) })
+    mon.mega = null
+    events.push({ t: 'mega', side, id: mega.id })
+    say(events, 'megaEvolved', label(battle, side), mega.name)
+  } else if (gimmick === 'tera') {
+    mon.terastal = true
+    mon.types = [mon.teraType]
+    if (mon.side) mon.side = { ...mon.side, terastallized: true, teraType: mon.teraType }
+    events.push({ t: 'tera', side, type: mon.teraType })
+    say(events, 'terastallized', label(battle, side), mon.teraType.toUpperCase())
+  } else if (gimmick === 'dmax') {
+    mon.dmax = 3
+    mon.maxHp *= 2
+    mon.hp *= 2
+    events.push({ t: 'dmax', side, on: true, id: mon.gmax ?? mon.id })
+    events.push({ t: 'hp', side, hp: mon.hp })
+    say(events, mon.gmax ? 'gigantamaxed' : 'dynamaxed', label(battle, side))
+  }
+}
+
+/** Fim do Dinamax: volta ao tamanho e à vida de antes (proporcional). */
+function endDmax(battle, side, events, quiet = false) {
+  const mon = active(battle, side)
+  if (!mon.dmax) return
+  mon.dmax = 0
+  mon.maxHp /= 2
+  mon.hp = mon.hp > 0 ? Math.max(1, (mon.hp + 1) >> 1) : 0
+  if (quiet) return
+  events.push({ t: 'dmax', side, on: false, id: mon.id })
+  events.push({ t: 'hp', side, hp: mon.hp })
+  say(events, 'dmaxEnd', label(battle, side))
+}
+
+/** O computador usa a mecânica dele uma vez, num turno qualquer. */
+function cpuGimmick(battle, moveIndex) {
+  if (battle.gimmicks[1] || battle.random() >= 0.35) return null
+  if (canGimmick(battle, 1, 'mega')) return 'mega'
+  const options = ['tera', 'dmax'].filter((g) => canGimmick(battle, 1, g))
+  if (canGimmick(battle, 1, 'z', moveIndex)) options.push('z')
+  return options.length ? options[Math.floor(battle.random() * options.length)] : null
+}
 
 /** Golpes que dá para usar; sem PP em nenhum, só Struggle. */
 export const usableMoves = (mon) => mon.moves.map((m, i) => (m.pp > 0 ? i : -1)).filter((i) => i >= 0)
@@ -229,6 +342,7 @@ function faints(battle, events, first = 1) {
     const m = active(battle, s)
     if (m.hp <= 0 && !m.faintShown) {
       m.faintShown = true
+      endDmax(battle, s, events, true)
       events.push({ t: 'faint', side: s })
       say(events, 'fainted', label(battle, s))
     }
@@ -254,6 +368,12 @@ function endOfTurn(battle, events) {
     }
   }
   faints(battle, events, 0)
+  // Dinamax dura 3 turnos.
+  for (const s of [0, 1]) {
+    const mon = active(battle, s)
+    if (mon.dmax > 1 && mon.hp > 0) mon.dmax -= 1
+    else if (mon.dmax === 1 && mon.hp > 0) endDmax(battle, s, events)
+  }
   for (const s of [0, 1]) for (const mon of battle.sides[s].team) mon.flinch = false
 }
 
@@ -273,7 +393,7 @@ function cpuReplacement(battle, hit) {
   return best
 }
 
-function doMove(battle, side, moveIndex, hit, events) {
+function doMove(battle, side, moveIndex, hit, events, zMove = false) {
   const mon = active(battle, side)
   const foeSide = 1 - side
   const target = active(battle, foeSide)
@@ -308,8 +428,12 @@ function doMove(battle, side, moveIndex, hit, events) {
   }
   const move = moveIndex < 0 ? STRUGGLE : mon.moves[moveIndex]
   if (moveIndex >= 0) move.pp -= 1
-  say(events, 'used', label(battle, side), move.name)
-  if (move.accuracy != null && battle.random() * 100 >= move.accuracy) {
+  // Z-Move e Max Move: outro nome, poder da tabela, nunca erram, sem efeitos extras.
+  const special = move.category !== 'status' && moveIndex >= 0 && (zMove || mon.dmax > 0)
+  if (zMove) say(events, 'zPower', label(battle, side))
+  const name = !special ? move.name : zMove ? Z_MOVES[move.type] : MAX_MOVES[move.type]
+  say(events, 'used', label(battle, side), name)
+  if (!special && move.accuracy != null && battle.random() * 100 >= move.accuracy) {
     events.push({ t: 'miss', side })
     say(events, 'missed', label(battle, side))
     return
@@ -320,9 +444,10 @@ function doMove(battle, side, moveIndex, hit, events) {
     faints(battle, events, foeSide)
     return
   }
-  const rules = move.rules ?? {}
+  const rules = special ? {} : (move.rules ?? {})
   const crit = battle.random() < CRIT_CHANCE[Math.min(3, rules.c ?? 0)]
-  const r = hit(mon, target, move.slug, crit)
+  const power = special ? (zMove ? zPower(move.power) : maxPower(move.power, move.type)) : undefined
+  const r = hit(mon, target, move.slug, crit, power)
   if (!r || r.eff === 0) {
     say(events, 'noEffect', label(battle, foeSide))
     return
@@ -354,7 +479,7 @@ function doMove(battle, side, moveIndex, hit, events) {
       if (battle.random() * 100 >= e.p) continue
       if (e.s && target.hp > 0) inflict(battle, foeSide, e.s, move, events, false)
       if (e.b && target.hp > 0) boost(battle, foeSide, e.b, events)
-      if (e.f && target.hp > 0) target.flinch = true
+      if (e.f && target.hp > 0 && !target.dmax) target.flinch = true
       if (e.sb && mon.hp > 0) boost(battle, side, e.sb, events)
     }
     if (rules.sb && mon.hp > 0) boost(battle, side, rules.sb, events)
@@ -393,6 +518,7 @@ function cpuItem(battle) {
 function switchTo(battle, side, index, events) {
   const before = active(battle, side)
   if (before.hp > 0) say(events, side === 0 ? 'comeBack' : 'foeWithdrew', label(battle, side))
+  endDmax(battle, side, events, true)
   // Quem sai perde as mudanças de atributo (e o veneno grave recomeça).
   before.boosts = { atk: 0, def: 0, spa: 0, spd: 0, spe: 0 }
   before.flinch = false
@@ -418,8 +544,9 @@ function checkEnd(battle, hit, events) {
 }
 
 /**
- * Um turno. action: {move: índice (-1 = Struggle)}, {switch: índice} ou
- * {item: slug, target: índice no time}. Trocas e itens vêm antes dos golpes.
+ * Um turno. action: {move: índice (-1 = Struggle), gimmick?: 'mega' | 'z' |
+ * 'dmax' | 'tera'}, {switch: índice} ou {item: slug, target: índice no time}.
+ * Trocas e itens vêm antes dos golpes.
  * Devolve os eventos para mostrar na tela.
  */
 export function playTurn(battle, action, hit) {
@@ -427,9 +554,19 @@ export function playTurn(battle, action, hit) {
   if (battle.winner != null || battle.needSwitch) return events
   const cpuPotion = cpuItem(battle)
   const cpu = cpuPotion ? null : cpuMove(battle, hit)
+  const cpuG = cpu != null && cpu >= 0 ? cpuGimmick(battle, cpu) : null
+  const myG = action.move != null && action.gimmick && canGimmick(battle, 0, action.gimmick, action.move) ? action.gimmick : null
   if (action.switch != null) switchTo(battle, 0, action.switch, events)
   if (action.item != null) applyItem(battle, 0, action.item, action.target, events)
   if (cpuPotion) applyItem(battle, 1, cpuPotion, battle.sides[1].active, events)
+  // Mega, Terastal e Dinamax antes dos golpes (a Mega já vale para a ordem).
+  const zMove = [false, false]
+  for (const [side, g] of [[0, myG], [1, cpuG]]) {
+    if (g === 'z') {
+      battle.gimmicks[side] = 'z'
+      zMove[side] = true
+    } else if (g) applyGimmick(battle, side, g, events)
+  }
   const order = []
   if (!cpuPotion) order.push({ side: 1, move: cpu })
   if (action.move != null) order.push({ side: 0, move: action.move })
@@ -446,7 +583,7 @@ export function playTurn(battle, action, hit) {
   }
   for (const o of order) {
     if (active(battle, o.side).hp <= 0 || active(battle, 1 - o.side).hp <= 0) continue
-    doMove(battle, o.side, o.move, hit, events)
+    doMove(battle, o.side, o.move, hit, events, zMove[o.side])
   }
   endOfTurn(battle, events)
   checkEnd(battle, hit, events)
@@ -515,6 +652,13 @@ export const LINES = {
   healedMove: ['{0} recuperou HP!', '{0} inimigo recuperou HP!'],
   drained: ['{0} teve a energia drenada!', '{0} inimigo teve a energia drenada!'],
   failed: ['Mas falhou!', 'Mas falhou!'],
+  megaReact: ['A Mega Pedra de {0} está reagindo!', 'A Mega Pedra de {0} inimigo está reagindo!'],
+  megaEvolved: ['{0} megaevoluiu em {1}!', '{0} inimigo megaevoluiu em {1}!'],
+  terastallized: ['{0} terastalizou no tipo {1}!', '{0} inimigo terastalizou no tipo {1}!'],
+  dynamaxed: ['{0} dinamaxizou!', '{0} inimigo dinamaxizou!'],
+  gigantamaxed: ['{0} gigantamaxizou!', '{0} inimigo gigantamaxizou!'],
+  dmaxEnd: ['{0} voltou ao tamanho normal!', '{0} inimigo voltou ao tamanho normal!'],
+  zPower: ['{0} libera todo o seu Z-Poder!', '{0} inimigo libera todo o seu Z-Poder!'],
 }
 
 /** Evento de texto → [modelo, valores] (o Pokémon vai no lugar de {0}). */

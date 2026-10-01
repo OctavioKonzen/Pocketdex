@@ -24,12 +24,16 @@ class AnimatedSprites {
 
   static const _site = 'https://octaviokonzen.github.io/Pocketdex';
 
-  final Map<String, Set<int>> _have = {'front': {}, 'shiny': {}};
-  final Map<String, Map<int, List<double>>> _fit = {'front': {}, 'shiny': {}};
+  /// Frente, shiny e as costas (para a batalha).
+  static const _kinds = ['front', 'shiny', 'back', 'back-shiny'];
+  static String _kind(bool shiny, bool back) => back ? (shiny ? 'back-shiny' : 'back') : (shiny ? 'shiny' : 'front');
+
+  final Map<String, Set<int>> _have = {for (final k in _kinds) k: {}};
+  final Map<String, Map<int, List<double>>> _fit = {for (final k in _kinds) k: {}};
 
   /// Impressão digital de cada GIF: vai na URL, então quando o banco troca um
   /// sprite o celular não usa o velho que ficou no cache da internet.
-  final Map<String, Map<int, String>> _hash = {'front': {}, 'shiny': {}};
+  final Map<String, Map<int, String>> _hash = {for (final k in _kinds) k: {}};
 
   /// Carrega a lista do APK e, em segundo plano, a atualizada do site.
   Future<void> load() async {
@@ -43,7 +47,7 @@ class AnimatedSprites {
   }
 
   void _apply(Map raw) {
-    for (final kind in ['front', 'shiny']) {
+    for (final kind in _kinds) {
       _have[kind] = {for (final id in (raw[kind] as List? ?? const [])) (id as num).toInt()};
       final fit = (raw['fit'] as Map?)?[kind] as Map? ?? const {};
       _fit[kind] = {
@@ -80,11 +84,11 @@ class AnimatedSprites {
   }
 
   /// Tem sprite animado desse Pokémon?
-  bool has(int id, {bool shiny = false}) => _have[shiny ? 'shiny' : 'front']!.contains(id);
+  bool has(int id, {bool shiny = false, bool back = false}) => _have[_kind(shiny, back)]!.contains(id);
 
   /// Endereço do GIF no banco do site.
-  String url(int id, {bool shiny = false}) {
-    final kind = shiny ? 'shiny' : 'front';
+  String url(int id, {bool shiny = false, bool back = false}) {
+    final kind = _kind(shiny, back);
     final hash = _hash[kind]![id];
     return '$_site/sprites/animated/$kind/$id.gif${hash == null ? '' : '?v=$hash'}';
   }
@@ -93,5 +97,5 @@ class AnimatedSprites {
   /// fica pequeno no GIF recortado; amplia para o quadro típico ocupar a
   /// caixa, com o centro dele deslocado (dx, dy em fração do lado maior).
   /// Ver tool/fetch_animated_sprites.py.
-  List<double> fit(int id, {bool shiny = false}) => _fit[shiny ? 'shiny' : 'front']![id] ?? const [1, 0, 0, 1, 1];
+  List<double> fit(int id, {bool shiny = false, bool back = false}) => _fit[_kind(shiny, back)]![id] ?? const [1, 0, 0, 1, 1];
 }

@@ -19,8 +19,9 @@ para recalcular a lista e os ajustes de tamanho.
 Uso:
   GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 --filter=blob:none --no-checkout \\
       https://github.com/smogon/sprites /tmp/smogon-sprites
-  python3 tool/bw_style_sprites.py /tmp/smogon-sprites [--refazer]
-  (--refazer: refaz todos do #650 em diante, buscando de novo no Showdown)
+  python3 tool/bw_style_sprites.py /tmp/smogon-sprites [--refazer] [--costas]
+  (--refazer: refaz todos do #650 em diante, buscando de novo no Showdown;
+   --costas: também as costas, para a batalha, em sprites/animated/back)
 """
 
 import json
@@ -193,10 +194,11 @@ def pixel_3d(src, path, target):
     k = target / sides[len(sides) // 2]
     size = (max(1, round(w * k)), max(1, round(h * k)))
     small = [f.resize(size, Image.BOX) for f in frames]
-    # Uma paleta só para a animação inteira (as cores não piscam de um quadro para outro).
-    strip = Image.new('RGB', (size[0] * len(small), size[1]))
-    for i, f in enumerate(small):
-        strip.paste(f.convert('RGB'), (i * size[0], 0), f.getchannel('A'))
+    # Uma paleta só para a animação inteira (as cores não piscam de um quadro
+    # para outro), feita só com as cores do Pokémon (sem o fundo).
+    pixels = [p[:3] for f in small for p in f.getdata() if p[3] >= 128]
+    strip = Image.new('RGB', (max(1, len(pixels)), 1))
+    strip.putdata(pixels or [(0, 0, 0)])
     palette = strip.quantize(BW_COLORS, method=Image.Quantize.MEDIANCUT)
     out = []
     for f in small[::2]:
@@ -252,8 +254,15 @@ def main():
         return next((g for n in names if (g := fetch_ps(folder, n))), None)
 
     # Baixa do Showdown em paralelo (animação BW e, para quem não tem, a 3D).
+    def ps_bw(slug, kind):
+        # Forma que só muda de pose (Miraidon de batalha...): a animação da espécie.
+        found = ps('gen5ani', slug, kind)
+        if not found and '-' in slug and 'mega' not in slug and 'gmax' not in slug:
+            found = ps('gen5ani', slug.split('-')[0], kind)
+        return found
+
     with ThreadPoolExecutor(8) as pool:
-        bw = dict(zip(jobs, pool.map(lambda j: ps('gen5ani', j[1], j[2]), jobs)))
+        bw = dict(zip(jobs, pool.map(lambda j: ps_bw(j[1], j[2]), jobs)))
         rest = [j for j in jobs if not (bw[j] and is_bw(bw[j]))]
         ani3d = dict(zip(rest, pool.map(lambda j: ps('ani', j[1], j[2]), rest)))
 
@@ -299,7 +308,55 @@ def main():
                 os.remove(out)
             counts['sem'] += 1
     print(f'trocados: {len(jobs)} ({counts})')
+    if '--costas' in sys.argv:
+        backs(everyone, ps, refazer)
     subprocess.run([sys.executable, os.path.join(ROOT, 'tool', 'fetch_animated_sprites.py')], check=True)
+
+
+def backs(everyone, ps, refazer):
+    """Costas (para a batalha) no mesmo estilo: até o #649 as oficiais do BW;
+    depois, as costas BW do Showdown (gen5ani-back) ou as 3D reduzidas."""
+    import urllib.request
+    from concurrent.futures import ThreadPoolExecutor
+    pokeapi = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon'
+
+    def one(job):
+        p, kind = job
+        pid, slug = p['id'], p['name']
+        shiny = kind == 'back-shiny'
+        out = os.path.join(OUT, kind, f'{pid}.gif')
+        if os.path.exists(out) and not refazer:
+            return 'já tinha'
+        os.makedirs(os.path.dirname(out), exist_ok=True)
+        if pid <= 649:
+            url = f"{pokeapi}/versions/generation-v/black-white/animated/back/{'shiny/' if shiny else ''}{pid}.gif"
+            try:
+                with urllib.request.urlopen(url, timeout=60) as r:
+                    data = r.read()
+            except Exception:
+                return 'sem'
+            with open(out, 'wb') as f:
+                f.write(data)
+            return 'BW oficial'
+        bw = ps('gen5ani-back', slug, 'shiny' if shiny else 'front')
+        if not bw and '-' in slug and 'mega' not in slug and 'gmax' not in slug:
+            bw = ps('gen5ani-back', slug.split('-')[0], 'shiny' if shiny else 'front')
+        if bw and is_bw(bw):
+            crop_gif(bw, out)
+            return 'animado BW'
+        anim = ps('ani-back', slug, 'shiny' if shiny else 'front')
+        front = os.path.join(OUT, 'shiny' if shiny else 'front', f'{pid}.gif')
+        target = max(Image.open(front).size) if os.path.exists(front) else 80
+        if anim and pixel_3d(anim, out, target):
+            return '3D reduzido'
+        if os.path.exists(out):
+            os.remove(out)
+        return 'sem'
+
+    jobs = [(p, kind) for p in everyone for kind in ('back', 'back-shiny')]
+    with ThreadPoolExecutor(8) as pool:
+        results = list(pool.map(one, jobs))
+    print('costas:', {k: results.count(k) for k in set(results)})
 
 
 if __name__ == '__main__':

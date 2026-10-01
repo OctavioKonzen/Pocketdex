@@ -13,6 +13,11 @@
 // efeitos secundários (com a chance de cada um) e recuar. Mais troca de
 // Pokémon, Bolsa e o adversário controlado pelo computador. Sem clima,
 // campo nem golpes que mexem no campo (Stealth Rock, Protect...).
+//
+// Mecânicas especiais (uma por batalha para cada lado, à escolha): Mega
+// Evolução, Z-Move, Dinamax/Gigantamax (3 turnos, HP em dobro, Max Moves) e
+// Terastal. Z-Move e Max Move usam o poder das tabelas dos jogos, nunca
+// erram e não têm os efeitos extras do golpe original.
 // Lado 0 = você, lado 1 = o computador.
 
 import 'dart:math';
@@ -38,16 +43,34 @@ class BattleMove {
 const battleStats = ['atk', 'def', 'spa', 'spd', 'spe'];
 const statNames = {'atk': 'Ataque', 'def': 'Defesa', 'spa': 'Ataque Especial', 'spd': 'Defesa Especial', 'spe': 'Velocidade'};
 
-class BattleMon {
+/// A forma Mega de um Pokémon (atributos, tipos e calculadora dela).
+class BattleMega {
   final int id;
   final String name;
-  final int level, maxHp, spe;
   final List<String> types;
+  final int spe;
+  final CalcPokemon? calc;
+  const BattleMega(this.id, this.name, this.types, this.spe, {this.calc});
+}
+
+class BattleMon {
+  final String name;
+  final int level;
   final List<BattleMove> moves;
   final bool shiny;
 
+  /// Id, tipos, velocidade, vida máxima e calculadora: mudam na Mega,
+  /// Terastal e Dinamax (e voltam ao original na próxima batalha).
+  int id, maxHp, spe;
+  List<String> types;
+
   /// Pokémon da calculadora (com Nature, EVs, IVs, item e habilidade).
-  final CalcPokemon? calc;
+  CalcPokemon? calc;
+
+  /// Mecânicas: forma Mega, id da forma Gigantamax e Tera Type.
+  BattleMega? mega;
+  final int? gmax;
+  final String teraType;
   int hp;
   bool faintShown = false;
 
@@ -57,22 +80,45 @@ class BattleMon {
   int sleep = 0, toxic = 0;
   bool flinch = false;
   Map<String, int> boosts = {for (final s in battleStats) s: 0};
-  BattleMon(this.id, this.name, this.level, this.maxHp, this.spe, this.types, this.moves, {this.calc, this.shiny = false}) : hp = maxHp;
+
+  /// Terastalizado e turnos de Dinamax que faltam.
+  bool terastal = false;
+  int dmax = 0;
+
+  final ({int id, List<String> types, int spe, int maxHp, CalcPokemon? calc, BattleMega? mega}) _orig;
+  BattleMon(this.id, this.name, this.level, this.maxHp, this.spe, this.types, this.moves,
+      {this.calc, this.shiny = false, this.mega, this.gmax, String? teraType})
+      : hp = maxHp,
+        teraType = teraType ?? (types.isEmpty ? '' : types.first),
+        _orig = (id: id, types: types, spe: spe, maxHp: maxHp, calc: calc, mega: mega);
+
+  /// Volta ao original (antes da Mega, Terastal e Dinamax).
+  void restore() {
+    id = _orig.id;
+    types = _orig.types;
+    spe = _orig.spe;
+    maxHp = _orig.maxHp;
+    calc = _orig.calc;
+    mega = _orig.mega;
+    hp = min(hp, maxHp);
+  }
 
   /// Com HP e PP cheios (para "batalhar de novo").
-  BattleMon fresh() => BattleMon(id, name, level, maxHp, spe, types, [for (final m in moves) m.copy()], calc: calc, shiny: shiny);
+  BattleMon fresh() => BattleMon(_orig.id, name, level, _orig.maxHp, _orig.spe, _orig.types, [for (final m in moves) m.copy()],
+      calc: _orig.calc, shiny: shiny, mega: _orig.mega, gmax: gmax, teraType: teraType);
 }
 
 /// Resultado de um golpe: os danos possíveis de cada acerto e a eficácia (0 = não afeta).
 typedef HitResult = ({List<List<int>> rolls, double eff});
-typedef BattleHit = HitResult? Function(BattleMon att, BattleMon def, String slug, bool crit);
+/// [power]: poder do Z-Move / Max Move (o golpe vira um acerto só).
+typedef BattleHit = HitResult? Function(BattleMon att, BattleMon def, String slug, bool crit, [int? power]);
 
 /// Evento para a tela ir mostrando: texto, HP, troca, desmaio, a animação
 /// do golpe (attack, com o tipo, a categoria e o golpe) / do erro (miss), o
 /// item usado num Pokémon do time (heal: [index] e o HP em [value]) ou o
 /// status novo (status: em [type]; '' = curou).
 class BattleEvent {
-  final String t; // text | hp | switch | faint | attack | miss | heal | status
+  final String t; // text | hp | switch | faint | attack | miss | heal | status | mega | tera | dmax
   final String key;
   final List<Object> args;
   final int side, value, index;
@@ -133,6 +179,34 @@ class BattleEvent {
         index = 0,
         category = '',
         slug = '';
+  /// Megaevoluiu: a forma nova em [value].
+  const BattleEvent.mega(this.side, this.value)
+      : t = 'mega',
+        key = '',
+        args = const [],
+        index = 0,
+        type = '',
+        category = '',
+        slug = '';
+
+  /// Terastalizou no tipo [type].
+  const BattleEvent.tera(this.side, this.type)
+      : t = 'tera',
+        key = '',
+        args = const [],
+        value = 0,
+        index = 0,
+        category = '',
+        slug = '';
+
+  /// Dinamax: começou ([index] 1) ou acabou (0); a forma (Gigantamax) em [value].
+  const BattleEvent.dmax(this.side, this.index, this.value)
+      : t = 'dmax',
+        key = '',
+        args = const [],
+        type = '',
+        category = '',
+        slug = '';
   const BattleEvent.heal(this.side, this.index, this.value)
       : t = 'heal',
         key = '',
@@ -187,6 +261,9 @@ class TurnBattle {
   TurnBattle(List<BattleMon> mine, List<BattleMon> theirs, this.random) : teams = [mine, theirs] {
     for (final mon in [...mine, ...theirs]) {
       mon
+        ..restore()
+        ..terastal = false
+        ..dmax = 0
         ..status = ''
         ..sleep = 0
         ..toxic = 0
@@ -202,6 +279,9 @@ class TurnBattle {
     for (var i = 0; i < 2; i++) {for (final item in battleItems) item.slug: item.count},
   ];
   int turn = 1;
+
+  /// Mecânica que cada lado já usou ('mega' | 'z' | 'dmax' | 'tera').
+  final List<String?> gimmicks = [null, null];
   int? winner; // 0 = você ganhou, 1 = o computador
   bool needSwitch = false; // seu Pokémon desmaiou: escolha outro
 
@@ -209,6 +289,117 @@ class TurnBattle {
   int _alive(int side) => teams[side].where((p) => p.hp > 0).length;
   void _say(List<BattleEvent> events, String key, [List<Object> args = const []]) => events.add(BattleEvent.text(key, args));
   (int, String) _label(int side) => (side, active(side).name);
+
+  /// As mecânicas especiais, na ordem dos botões.
+  static const gimmickList = ['mega', 'z', 'dmax', 'tera'];
+
+  /// Z-Move de cada tipo.
+  static const zMoves = {
+    'normal': 'Breakneck Blitz', 'fire': 'Inferno Overdrive', 'water': 'Hydro Vortex', 'grass': 'Bloom Doom',
+    'electric': 'Gigavolt Havoc', 'ice': 'Subzero Slammer', 'fighting': 'All-Out Pummeling', 'poison': 'Acid Downpour',
+    'ground': 'Tectonic Rage', 'flying': 'Supersonic Skystrike', 'psychic': 'Shattered Psyche', 'bug': 'Savage Spin-Out',
+    'rock': 'Continental Crush', 'ghost': 'Never-Ending Nightmare', 'dragon': 'Devastating Drake',
+    'dark': 'Black Hole Eclipse', 'steel': 'Corkscrew Crash', 'fairy': 'Twinkle Tackle',
+  };
+
+  /// Max Move de cada tipo.
+  static const maxMoves = {
+    'normal': 'Max Strike', 'fire': 'Max Flare', 'water': 'Max Geyser', 'grass': 'Max Overgrowth',
+    'electric': 'Max Lightning', 'ice': 'Max Hailstorm', 'fighting': 'Max Knuckle', 'poison': 'Max Ooze',
+    'ground': 'Max Quake', 'flying': 'Max Airstream', 'psychic': 'Max Mindstorm', 'bug': 'Max Flutterby',
+    'rock': 'Max Rockfall', 'ghost': 'Max Phantasm', 'dragon': 'Max Wyrmwind', 'dark': 'Max Darkness',
+    'steel': 'Max Steelspike', 'fairy': 'Max Starfall',
+  };
+
+  /// Poder do Z-Move pelo poder do golpe (tabela dos jogos).
+  static int zPower(int power) {
+    const table = [(55, 100), (65, 120), (75, 140), (85, 160), (95, 175), (100, 180), (110, 185), (125, 190), (130, 195)];
+    for (final (top, value) in table) {
+      if (power <= top) return value;
+    }
+    return 200;
+  }
+
+  /// Poder do Max Move (Lutador e Venenoso têm uma tabela mais fraca).
+  static int maxPower(int power, String type) {
+    final weak = type == 'fighting' || type == 'poison';
+    final table = weak
+        ? const [(40, 70), (50, 75), (60, 80), (70, 85), (100, 90), (140, 95)]
+        : const [(40, 90), (50, 100), (60, 110), (70, 120), (100, 130), (140, 140)];
+    for (final (top, value) in table) {
+      if (power <= top) return value;
+    }
+    return weak ? 100 : 150;
+  }
+
+  /// Dá para usar essa mecânica agora? (Z-Move: no golpe [moveIndex], que tem que ser de dano.)
+  bool canGimmick(int side, String gimmick, [int moveIndex = -1]) {
+    final mon = active(side);
+    if (gimmicks[side] != null || mon.hp <= 0) return false;
+    if (gimmick == 'mega') return mon.mega != null;
+    if (gimmick == 'tera') return mon.teraType.isNotEmpty;
+    if (gimmick == 'z') {
+      if (moveIndex < 0 || moveIndex >= mon.moves.length) return false;
+      final move = mon.moves[moveIndex];
+      return move.category != 'status' && move.pp > 0 && mon.dmax == 0;
+    }
+    return gimmick == 'dmax';
+  }
+
+  /// Mega, Terastal e Dinamax acontecem no começo do turno (o Z-Move, no golpe).
+  void _applyGimmick(int side, String gimmick, List<BattleEvent> events) {
+    final mon = active(side);
+    gimmicks[side] = gimmick;
+    if (gimmick == 'mega') {
+      final mega = mon.mega!;
+      _say(events, 'megaReact', [_label(side)]);
+      mon
+        ..id = mega.id
+        ..types = mega.types
+        ..spe = mega.spe
+        ..calc = mega.calc ?? mon.calc
+        ..mega = null;
+      events.add(BattleEvent.mega(side, mega.id));
+      _say(events, 'megaEvolved', [_label(side), mega.name]);
+    } else if (gimmick == 'tera') {
+      mon
+        ..terastal = true
+        ..types = [mon.teraType];
+      events.add(BattleEvent.tera(side, mon.teraType));
+      _say(events, 'terastallized', [_label(side), mon.teraType.toUpperCase()]);
+    } else if (gimmick == 'dmax') {
+      mon
+        ..dmax = 3
+        ..maxHp = mon.maxHp * 2
+        ..hp = mon.hp * 2;
+      events.add(BattleEvent.dmax(side, 1, mon.gmax ?? mon.id));
+      events.add(BattleEvent.hp(side, mon.hp));
+      _say(events, mon.gmax != null ? 'gigantamaxed' : 'dynamaxed', [_label(side)]);
+    }
+  }
+
+  /// Fim do Dinamax: volta ao tamanho e à vida de antes (proporcional).
+  void _endDmax(int side, List<BattleEvent> events, [bool quiet = false]) {
+    final mon = active(side);
+    if (mon.dmax == 0) return;
+    mon
+      ..dmax = 0
+      ..maxHp = mon.maxHp ~/ 2
+      ..hp = mon.hp > 0 ? max(1, (mon.hp + 1) >> 1) : 0;
+    if (quiet) return;
+    events.add(BattleEvent.dmax(side, 0, mon.id));
+    events.add(BattleEvent.hp(side, mon.hp));
+    _say(events, 'dmaxEnd', [_label(side)]);
+  }
+
+  /// O computador usa a mecânica dele uma vez, num turno qualquer.
+  String? _cpuGimmick(int moveIndex) {
+    if (gimmicks[1] != null || random() >= 0.35) return null;
+    if (canGimmick(1, 'mega')) return 'mega';
+    final options = ['tera', 'dmax'].where((g) => canGimmick(1, g)).toList();
+    if (canGimmick(1, 'z', moveIndex)) options.add('z');
+    return options.isEmpty ? null : options[(random() * options.length).floor()];
+  }
 
   /// Golpes que dá para usar; sem PP em nenhum, só Struggle.
   static List<int> usableMoves(BattleMon mon) => [
@@ -366,6 +557,7 @@ class TurnBattle {
       final m = active(s);
       if (m.hp <= 0 && !m.faintShown) {
         m.faintShown = true;
+        _endDmax(s, events, true);
         events.add(BattleEvent.faint(s));
         _say(events, 'fainted', [_label(s)]);
       }
@@ -391,6 +583,15 @@ class TurnBattle {
       }
     }
     _faints(events, 0);
+    // Dinamax dura 3 turnos.
+    for (final s in [0, 1]) {
+      final mon = active(s);
+      if (mon.dmax > 1 && mon.hp > 0) {
+        mon.dmax -= 1;
+      } else if (mon.dmax == 1 && mon.hp > 0) {
+        _endDmax(s, events);
+      }
+    }
     for (final team in teams) {
       for (final mon in team) {
         mon.flinch = false;
@@ -418,7 +619,7 @@ class TurnBattle {
     return best;
   }
 
-  void _doMove(int side, int moveIndex, BattleHit hit, List<BattleEvent> events) {
+  void _doMove(int side, int moveIndex, BattleHit hit, List<BattleEvent> events, [bool zMove = false]) {
     final mon = active(side);
     final foeSide = 1 - side;
     final target = active(foeSide);
@@ -453,8 +654,16 @@ class TurnBattle {
     }
     final move = moveIndex < 0 ? struggle : mon.moves[moveIndex];
     if (moveIndex >= 0) move.pp -= 1;
-    _say(events, 'used', [_label(side), move.name]);
-    if (move.accuracy != null && random() * 100 >= move.accuracy!) {
+    // Z-Move e Max Move: outro nome, poder da tabela, nunca erram, sem efeitos extras.
+    final special = move.category != 'status' && moveIndex >= 0 && (zMove || mon.dmax > 0);
+    if (zMove) _say(events, 'zPower', [_label(side)]);
+    final name = !special
+        ? move.name
+        : zMove
+            ? zMoves[move.type]!
+            : maxMoves[move.type]!;
+    _say(events, 'used', [_label(side), name]);
+    if (!special && move.accuracy != null && random() * 100 >= move.accuracy!) {
       events.add(BattleEvent.miss(side));
       _say(events, 'missed', [_label(side)]);
       return;
@@ -465,9 +674,10 @@ class TurnBattle {
       _faints(events, foeSide);
       return;
     }
-    final rules = move.rules ?? const <String, dynamic>{};
+    final rules = special ? const <String, dynamic>{} : move.rules ?? const <String, dynamic>{};
     final crit = random() < _critChance[min(3, (rules['c'] as num?)?.toInt() ?? 0)];
-    final r = hit(mon, target, move.slug, crit);
+    final power = special ? (zMove ? zPower(move.power) : maxPower(move.power, move.type)) : null;
+    final r = hit(mon, target, move.slug, crit, power);
     if (r == null || r.eff == 0) {
       _say(events, 'noEffect', [_label(foeSide)]);
       return;
@@ -510,7 +720,7 @@ class TurnBattle {
         if (random() * 100 >= (eff['p'] as num)) continue;
         if (eff['s'] != null && target.hp > 0) _inflict(foeSide, eff['s'] as String, move, events, false);
         if (eff['b'] != null && target.hp > 0) _boost(foeSide, eff['b'] as Map, events);
-        if (eff['f'] != null && target.hp > 0) target.flinch = true;
+        if (eff['f'] != null && target.hp > 0 && target.dmax == 0) target.flinch = true;
         if (eff['sb'] != null && mon.hp > 0) _boost(side, eff['sb'] as Map, events);
       }
       if (rules['sb'] != null && mon.hp > 0) _boost(side, rules['sb'] as Map, events);
@@ -558,6 +768,7 @@ class TurnBattle {
   void _switchTo(int side, int index, List<BattleEvent> events) {
     final before = active(side);
     if (before.hp > 0) _say(events, side == 0 ? 'comeBack' : 'foeWithdrew', [_label(side)]);
+    _endDmax(side, events, true);
     // Quem sai perde as mudanças de atributo (e o veneno grave recomeça).
     before.boosts = {for (final s in battleStats) s: 0};
     before.flinch = false;
@@ -582,16 +793,29 @@ class TurnBattle {
     if (active(0).hp <= 0) needSwitch = true;
   }
 
-  /// Um turno: [move] (índice; -1 = Struggle), [switchTo] ou [item] em
-  /// [target] (índice no time). Trocas e itens vêm antes dos golpes.
-  List<BattleEvent> playTurn(BattleHit hit, {int? move, int? switchTo, String? item, int? target}) {
+  /// Um turno: [move] (índice; -1 = Struggle; com [gimmick] 'mega' | 'z' |
+  /// 'dmax' | 'tera'), [switchTo] ou [item] em [target] (índice no time).
+  /// Trocas e itens vêm antes dos golpes.
+  List<BattleEvent> playTurn(BattleHit hit, {int? move, String? gimmick, int? switchTo, String? item, int? target}) {
     final events = <BattleEvent>[];
     if (winner != null || needSwitch) return events;
     final cpuPotion = _cpuItem();
     final cpu = cpuPotion != null ? null : cpuMove(hit);
+    final cpuG = cpu != null && cpu >= 0 ? _cpuGimmick(cpu) : null;
+    final myG = move != null && gimmick != null && canGimmick(0, gimmick, move) ? gimmick : null;
     if (switchTo != null) _switchTo(0, switchTo, events);
     if (item != null) _useItem(0, item, target ?? activeIndex[0], events);
     if (cpuPotion != null) _useItem(1, cpuPotion, activeIndex[1], events);
+    // Mega, Terastal e Dinamax antes dos golpes (a Mega já vale para a ordem).
+    final zMove = [false, false];
+    for (final (side, g) in [(0, myG), (1, cpuG)]) {
+      if (g == 'z') {
+        gimmicks[side] = 'z';
+        zMove[side] = true;
+      } else if (g != null) {
+        _applyGimmick(side, g, events);
+      }
+    }
     var order = <(int, int)>[];
     if (cpu != null) order.add((1, cpu));
     if (switchTo == null && item == null) order.add((0, move ?? -1));
@@ -606,7 +830,7 @@ class TurnBattle {
     }
     for (final o in order) {
       if (active(o.$1).hp <= 0 || active(1 - o.$1).hp <= 0) continue;
-      _doMove(o.$1, o.$2, hit, events);
+      _doMove(o.$1, o.$2, hit, events, zMove[o.$1]);
     }
     _endOfTurn(events);
     _checkEnd(hit, events);
@@ -675,6 +899,13 @@ class TurnBattle {
     'healedMove': ['{0} recuperou HP!', '{0} inimigo recuperou HP!'],
     'drained': ['{0} teve a energia drenada!', '{0} inimigo teve a energia drenada!'],
     'failed': ['Mas falhou!', 'Mas falhou!'],
+    'megaReact': ['A Mega Pedra de {0} está reagindo!', 'A Mega Pedra de {0} inimigo está reagindo!'],
+    'megaEvolved': ['{0} megaevoluiu em {1}!', '{0} inimigo megaevoluiu em {1}!'],
+    'terastallized': ['{0} terastalizou no tipo {1}!', '{0} inimigo terastalizou no tipo {1}!'],
+    'dynamaxed': ['{0} dinamaxizou!', '{0} inimigo dinamaxizou!'],
+    'gigantamaxed': ['{0} gigantamaxizou!', '{0} inimigo gigantamaxizou!'],
+    'dmaxEnd': ['{0} voltou ao tamanho normal!', '{0} inimigo voltou ao tamanho normal!'],
+    'zPower': ['{0} libera todo o seu Z-Poder!', '{0} inimigo libera todo o seu Z-Poder!'],
   };
 
   /// Evento de texto → (modelo, valores) (o Pokémon vai no lugar de {0}).
@@ -830,6 +1061,26 @@ class TurnBattleSetup {
       final setMoves = [for (final s in (m.$2?['moves'] as List?) ?? const []) '$s'].where((s) => data.move(s) != null).toList();
       final slugs = pickMoves(setMoves, learnable, types, moves, rules);
       if (slugs.isEmpty) continue;
+      // Mecânicas: forma Mega (a da Mega Pedra do set, se tiver X/Y), Gigantamax e Tera Type.
+      final forms = [
+        for (final r in await LocalDatabase.instance.allPokemonRows())
+          if (r['species'] == row['species']) r,
+      ];
+      final megaRow = pickMega(forms, '${m.$2?['item'] ?? ''}');
+      BattleMega? mega;
+      if (megaRow != null) {
+        final megaCalc = await TeamBattle.calcPokemon(data, (megaRow['id'] as int, {...?m.$2, 'ability': ''}));
+        if (megaCalc != null) {
+          // "charizard-mega-x" → "Mega Charizard X" (como nos jogos).
+          final parts = (megaRow['name'] as String).split(RegExp(r'-mega-?'));
+          final letter = parts.length > 1 && parts[1].isNotEmpty ? ' ${parts[1].toUpperCase()}' : '';
+          mega = BattleMega(megaRow['id'] as int, 'Mega ${name({...row, 'name': parts[0]})}$letter',
+              [for (final t in megaRow['types'] as List) '$t'], megaCalc.stats['spe']!,
+              calc: megaCalc);
+        }
+      }
+      final gmax = forms.where((r) => (r['name'] as String).endsWith('-gmax')).firstOrNull?['id'] as int?;
+      final tera = '${m.$2?['teraType'] ?? ''}'.toLowerCase();
       out.add(BattleMon(
         m.$1,
         name(row),
@@ -855,9 +1106,19 @@ class TurnBattleSetup {
         ],
         calc: calc,
         shiny: m.$2?['shiny'] == true,
+        mega: mega,
+        gmax: gmax,
+        teraType: tera.isNotEmpty ? tera : (types.isEmpty ? '' : types.first),
       ));
     }
     return out;
+  }
+
+  /// A forma Mega do Pokémon (com Mega Pedra X ou Y no set, a dela). Igual ao site.
+  static Map<String, dynamic>? pickMega(List<Map<String, dynamic>> forms, String item) {
+    final megas = forms.where((f) => RegExp(r'-mega(-|$)').hasMatch(f['name'] as String)).toList();
+    final letter = RegExp(r'\s([xyz])$', caseSensitive: false).firstMatch(item)?.group(1)?.toLowerCase();
+    return (letter != null ? megas.where((f) => (f['name'] as String).endsWith('-mega-$letter')).firstOrNull : null) ?? megas.firstOrNull;
   }
 
   /// Time aleatório para o computador: 6 Pokémon totalmente evoluídos (sem lendários). Igual ao site.
@@ -885,23 +1146,35 @@ class TurnBattleSetup {
     return (type, types) => types.fold(1.0, (m, d) => m * data.effectiveness(cap(type), cap(d)));
   }
 
-  static BattleHit hitter(DamageData data) => (att, def, slug, crit) {
+  static BattleHit hitter(DamageData data) => (att, def, slug, crit, [power]) {
         final a = att.calc, d = def.calc;
         if (a == null || d == null || data.move(slug) == null) return null;
+        String cap(String t) => t.isEmpty ? t : '${t[0].toUpperCase()}${t.substring(1)}';
         try {
-          // Com o status (queimadura corta o dano físico...) e os estágios de atributo da batalha.
+          // Com o status (queimadura corta o dano físico...), os estágios de
+          // atributo e o Terastal da batalha; a vida em proporção (como o site,
+          // que manda a porcentagem: no Dinamax ela está em dobro).
+          int hpOf(CalcPokemon c, BattleMon m) => max(1, (c.maxHP() * m.hp / m.maxHp).floor());
           final attacker = a.clone()
-            ..originalCurHP = att.hp.clamp(1, a.maxHP())
+            ..originalCurHP = hpOf(a, att)
             ..status = att.status
-            ..boosts = {...a.boosts, ...att.boosts};
+            ..boosts = {...a.boosts, ...att.boosts}
+            ..teraType = att.terastal ? cap(att.teraType) : '';
           final defender = d.clone()
-            ..originalCurHP = def.hp.clamp(1, d.maxHP())
+            ..originalCurHP = hpOf(d, def)
             ..status = def.status
-            ..boosts = {...d.boosts, ...def.boosts};
+            ..boosts = {...d.boosts, ...def.boosts}
+            ..teraType = def.terastal ? cap(def.teraType) : '';
           final move = CalcMove(data, data.move(slug)!.name, isCrit: crit, ability: attacker.ability, item: attacker.item);
+          // Z-Move / Max Move: o mesmo golpe com o poder da tabela, um acerto só.
+          if (power != null) {
+            move
+              ..bp = power
+              ..hits = 1;
+          }
           final result = calculateDamage(attacker, defender, move, CalcField());
           var eff = 1.0;
-          for (final t in result.defender.types) {
+          for (final t in defender.teraType.isNotEmpty ? [defender.teraType] : result.defender.types) {
             eff *= data.effectiveness(result.move.type, t);
           }
           if (result.damage.every((r) => r.every((x) => x == 0))) eff = 0;
