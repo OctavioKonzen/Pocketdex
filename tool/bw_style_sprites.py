@@ -9,6 +9,8 @@ desses, em ordem:
   2. sem ela: a arte BW parada do Smogon Sprite Project (smogon/sprites,
      src/sprites/gen5) ou, sem ela, o sprite parado do banco.
 Nada de 3D: tudo no estilo do Black & White.
+Depois, rode tool/fan_sprites.py: põe as animações BW feitas por fãs no
+lugar da arte parada (este script, com --refazer, volta para a parada).
 
 Rode depois de tool/fetch_animated_sprites.py (que baixa o que falta e gera
 animated_sprites.json); este script regrava os GIFs e roda o fetch de novo só

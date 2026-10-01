@@ -113,8 +113,15 @@ class AnimatedSprites {
   }
 
   /// O sprite desse Pokémon, ou null (fica o parado).
+  /// De costas: se as costas são só a arte parada e a frente é animada, null
+  /// (quem desenha espelha a frente, que se mexe).
   SpriteSource? source(int id, {bool shiny = false, bool back = false}) {
     final kind = _kind(shiny, back);
-    return _bw.have[kind]!.contains(id) ? _bw.source(kind, id) : null;
+    if (!_bw.have[kind]!.contains(id)) return null;
+    if (back && _bw.still[kind]!.contains(id)) {
+      final front = _kind(shiny, false);
+      if (_bw.have[front]!.contains(id) && !_bw.still[front]!.contains(id)) return null;
+    }
+    return _bw.source(kind, id);
   }
 }
