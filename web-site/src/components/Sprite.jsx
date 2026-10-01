@@ -50,7 +50,12 @@ function animatedOf(path, set, back) {
   const m = /^pokemon\/(shiny\/)?(\d+)\.png$/.exec(path ?? '')
   if (!m || !set) return null
   const kind = back ? (m[1] ? 'back-shiny' : 'back') : m[1] ? 'shiny' : 'front'
-  if (!set[kind].has(Number(m[2]))) return null
+  const id = Number(m[2])
+  if (!set[kind].has(id)) return null
+  // De costas: se as costas são só a arte parada e a frente é animada, usa a
+  // frente espelhada (que se mexe).
+  const front = m[1] ? 'shiny' : 'front'
+  if (back && set.still[kind].has(id) && set[front].has(id) && !set.still[front].has(id)) return null
   // ?v=impressão digital: quando o GIF muda no banco, o navegador baixa de novo.
   const v = set.hash[kind]?.[m[2]]
   return {
