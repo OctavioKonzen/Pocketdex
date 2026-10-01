@@ -15,10 +15,6 @@ class AppSettings extends ChangeNotifier {
   static const _pokeballKey = 'settings_pokeball_animation';
   static const _backgroundKey = 'settings_background_pokeball';
   static const _animatedSpritesKey = 'settings_animated_sprites';
-  static const _spriteStyleKey = 'settings_sprite_style';
-
-  /// Estilos dos sprites: (chave, nome).
-  static const spriteStyles = [('bw', 'Black & White'), ('3d', '3D')];
 
   /// Os sprites se mexem ou ficam parados: (chave, nome).
   static const spriteMotions = [('on', 'Animados'), ('off', 'Parados')];
@@ -35,10 +31,6 @@ class AppSettings extends ChangeNotifier {
   /// lib/services/animated_sprites.dart).
   bool animatedSprites = true;
 
-  /// 'bw': Pokédex no estilo Black & White e, na batalha, o 3D só de quem não
-  /// tem animação BW (como no Showdown). '3d': tudo no 3D do Showdown.
-  String spriteStyle = 'bw';
-
   double get textScale => textSizes.firstWhere((t) => t.$1 == textSize, orElse: () => textSizes.first).$3;
 
   Future<void> load() async {
@@ -48,7 +40,6 @@ class AppSettings extends ChangeNotifier {
       pokeballAnimation = prefs.getBool(_pokeballKey) ?? true;
       backgroundAnimation = prefs.getBool(_backgroundKey) ?? true;
       animatedSprites = prefs.getBool(_animatedSpritesKey) ?? true;
-      spriteStyle = prefs.getString(_spriteStyleKey) ?? 'bw';
     } catch (_) {}
   }
 
@@ -73,14 +64,6 @@ class AppSettings extends ChangeNotifier {
     notifyListeners();
     try {
       await (await SharedPreferences.getInstance()).setBool(_backgroundKey, value);
-    } catch (_) {}
-  }
-
-  Future<void> setSpriteStyle(String value) async {
-    spriteStyle = value;
-    notifyListeners();
-    try {
-      await (await SharedPreferences.getInstance()).setString(_spriteStyleKey, value);
     } catch (_) {}
   }
 

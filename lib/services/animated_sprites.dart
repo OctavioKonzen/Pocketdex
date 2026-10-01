@@ -1,15 +1,9 @@
 // lib/services/animated_sprites.dart
 //
-// Sprites animados (GIF) de todos os Pokémon, no banco do site (o app puxa da
-// nuvem, com internet; sem ela aparece o sprite parado), em dois estilos:
-//   • Black & White (sprites/animated): os oficiais do BW, a animação BW do
-//     Showdown ou, sem animação, a arte BW parada
-//     (tool/fetch_animated_sprites.py e tool/bw_style_sprites.py);
-//   • 3D do Pokémon Showdown, na qualidade original (sprites/3d,
-//     tool/showdown_3d_sprites.py).
-// Na Pokédex vai só o BW (sem animação BW, a arte parada). Na batalha, o BW
-// animado ou, sem ele, o 3D (como no Showdown). Com a opção "3D" nas
-// Configurações, tudo em 3D.
+// Sprites animados (GIF) de todos os Pokémon, no estilo Black & White, no
+// banco do site (o app puxa da nuvem, com internet; sem ela aparece o sprite
+// parado): os oficiais do BW, a animação BW do Showdown ou, sem animação, a
+// arte BW parada (tool/fetch_animated_sprites.py e tool/bw_style_sprites.py).
 //
 // Quais existem, os parados, o ajuste de tamanho, o pé e a impressão digital
 // de cada um vêm em animated_sprites.json: o do APK ao abrir e, logo depois,
@@ -23,11 +17,11 @@ import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:path_provider/path_provider.dart';
 
-import 'app_settings.dart';
 
 /// Um sprite escolhido: o endereço, o ajuste [zoom, dx, dy, largura, altura],
-/// o pé (quanto descer na batalha, em fração do lado) e se é 3D.
-typedef SpriteSource = ({String url, List<double> fit, double foot, bool is3d});
+/// o pé (quanto descer na batalha, em fração do lado) e o tamanho do GIF em
+/// pixels (largura, altura; 0 se não sabe).
+typedef SpriteSource = ({String url, List<double> fit, double foot, int width, int height});
 
 class _Set {
   final String folder;
@@ -35,6 +29,7 @@ class _Set {
   final Map<String, Set<int>> still = {for (final k in AnimatedSprites.kinds) k: {}};
   final Map<String, Map<int, List<double>>> fit = {for (final k in AnimatedSprites.kinds) k: {}};
   final Map<String, Map<int, double>> foot = {for (final k in AnimatedSprites.kinds) k: {}};
+  final Map<String, Map<int, List<int>>> size = {for (final k in AnimatedSprites.kinds) k: {}};
 
   /// Impressão digital de cada GIF: vai na URL, então quando o banco troca um
   /// sprite o celular não usa o velho que ficou no cache da internet.
@@ -49,17 +44,20 @@ class _Set {
       still[kind] = {for (final id in ((raw['still'] as Map?)?[kind] as List? ?? const [])) (id as num).toInt()};
       fit[kind] = byId((raw['fit'] as Map?)?[kind], (v) => [for (final x in v as List) (x as num).toDouble()]);
       foot[kind] = byId((raw['foot'] as Map?)?[kind], (v) => (v as num).toDouble());
+      size[kind] = byId((raw['size'] as Map?)?[kind], (v) => [for (final x in v as List) (x as num).toInt()]);
       hash[kind] = byId((raw['hash'] as Map?)?[kind], (v) => '$v');
     }
   }
 
   SpriteSource source(String kind, int id) {
     final v = hash[kind]![id];
+    final wh = size[kind]![id];
     return (
       url: '${AnimatedSprites.site}/sprites/$folder/$kind/$id.gif${v == null ? '' : '?v=$v'}',
       fit: fit[kind]![id] ?? const [1, 0, 0, 1, 1],
       foot: foot[kind]![id] ?? 0,
-      is3d: folder == '3d',
+      width: wh == null ? 0 : wh[0],
+      height: wh == null ? 0 : wh[1],
     );
   }
 }
@@ -74,7 +72,7 @@ class AnimatedSprites {
   static const kinds = ['front', 'shiny', 'back', 'back-shiny'];
   static String _kind(bool shiny, bool back) => back ? (shiny ? 'back-shiny' : 'back') : (shiny ? 'shiny' : 'front');
 
-  final _bw = _Set('animated'), _threeD = _Set('3d');
+  final _bw = _Set('animated');
 
   /// Carrega a lista do APK e, em segundo plano, a atualizada do site.
   Future<void> load() async {
@@ -87,10 +85,7 @@ class AnimatedSprites {
     unawaited(_refresh());
   }
 
-  void _apply(Map raw) {
-    _bw.apply(raw);
-    if (raw['3d'] is Map) _threeD.apply(raw['3d'] as Map);
-  }
+  void _apply(Map raw) => _bw.apply(raw);
 
   Future<void> _refresh() async {
     if (kIsWeb) return;
@@ -117,17 +112,9 @@ class AnimatedSprites {
     } catch (_) {}
   }
 
-  /// O sprite desse Pokémon ([battle]: na batalha), ou null (fica o parado).
-  /// Pokédex: só o BW. Batalha: o BW animado ou, sem ele, o 3D. Opção "3D":
-  /// o 3D (sem ele, o BW).
-  SpriteSource? source(int id, {bool shiny = false, bool back = false, bool battle = false}) {
+  /// O sprite desse Pokémon, ou null (fica o parado).
+  SpriteSource? source(int id, {bool shiny = false, bool back = false}) {
     final kind = _kind(shiny, back);
-    final bw = _bw.have[kind]!.contains(id), has3d = _threeD.have[kind]!.contains(id);
-    final bwMoves = bw && !_bw.still[kind]!.contains(id);
-    if (AppSettings.instance.spriteStyle == '3d') {
-      return has3d ? _threeD.source(kind, id) : (bw ? _bw.source(kind, id) : null);
-    }
-    if (battle && !bwMoves && has3d) return _threeD.source(kind, id);
-    return bw ? _bw.source(kind, id) : null;
+    return _bw.have[kind]!.contains(id) ? _bw.source(kind, id) : null;
   }
 }

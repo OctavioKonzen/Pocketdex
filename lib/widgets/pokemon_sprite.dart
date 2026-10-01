@@ -48,8 +48,7 @@ class PokemonSprite extends StatelessWidget {
   /// De costas (batalha). Sem as costas no banco: a frente espelhada.
   final bool back;
 
-  /// Na batalha: o BW animado ou, sem ele, o 3D do Showdown; e o Pokémon
-  /// desce o "pé" do GIF para pisar na plataforma.
+  /// Na batalha: o Pokémon desce o "pé" do GIF para pisar na plataforma.
   final bool battle;
 
   /// Já baixa também o outro (normal/shiny): trocar para o shiny não fica
@@ -68,8 +67,8 @@ class PokemonSprite extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // O estilo (BW ou 3D) e se ele se mexe vêm das Configurações; parado, fica
-    // no primeiro quadro do mesmo GIF. Silhueta (jogo "Quem é esse Pokémon?")
+    // Se ele se mexe vem das Configurações; parado, fica no primeiro quadro do
+    // mesmo GIF. Silhueta (jogo "Quem é esse Pokémon?")
     // é o sprite parado de sempre.
     final pid = id is int ? id as int : int.tryParse('$id');
     final still = back ? Transform.flip(flipX: true, child: _static()) : _static();
@@ -77,14 +76,14 @@ class PokemonSprite extends StatelessWidget {
     return ListenableBuilder(
       listenable: AppSettings.instance,
       builder: (context, _) {
-        final source = AnimatedSprites.instance.source(pid, shiny: shiny, back: back, battle: battle);
+        final source = AnimatedSprites.instance.source(pid, shiny: shiny, back: back);
         if (source == null) {
           // Sem as costas: a frente (animada, se tiver) espelhada.
           if (back) return Transform.flip(flipX: true, child: PokemonSprite(id, shiny: shiny, fill: fill, alignBottom: alignBottom, battle: battle));
           return still;
         }
         if (prefetchShiny) {
-          final other = AnimatedSprites.instance.source(pid, shiny: !shiny, back: back, battle: battle);
+          final other = AnimatedSprites.instance.source(pid, shiny: !shiny, back: back);
           if (other != null) precacheImage(NetworkImage(other.url), context).ignore();
         }
         return _AnimatedSprite(source,
@@ -171,6 +170,12 @@ class _AnimatedSprite extends StatelessWidget {
         return (d * inner).clamp(-limit, limit);
       }
 
+      // Pixel art: cada pixel do GIF vira um número inteiro de pixels da tela
+      // (todos do mesmo tamanho, nítido, sem borrar).
+      final dpr = MediaQuery.devicePixelRatioOf(context);
+      final longest = max(source.width, source.height);
+      final pixelScale = longest > 0 ? max(1, (inner * dpr / longest).floor()) / dpr : null;
+      const quality = FilterQuality.none;
       final left = side / 2 - inner / 2 - shift(dx, wr);
       // Na batalha, quem pula ou flutua no meio da animação desce o "pé" para
       // pisar na plataforma.
@@ -193,10 +198,11 @@ class _AnimatedSprite extends StatelessWidget {
                       key: ValueKey(source.url),
                       width: inner,
                       height: inner,
-                      fit: BoxFit.contain,
+                      // Tamanho exato (escala inteira); sem saber o tamanho, preenche a caixa.
+                      scale: pixelScale == null ? 1 : 1 / pixelScale,
+                      fit: pixelScale == null ? BoxFit.contain : BoxFit.none,
                       alignment: widget.alignBottom ? Alignment.bottomCenter : Alignment.center,
-                      // Pixel art fica em pixel; o 3D do Showdown, liso.
-                      filterQuality: source.is3d ? FilterQuality.medium : FilterQuality.none,
+                      filterQuality: quality,
                       // Enquanto chega da nuvem (ou sem internet): o parado, no lugar da caixa toda.
                       frameBuilder: (_, child, frame, __) => frame == null ? still : child,
                       errorBuilder: (_, __, ___) => still,
@@ -204,9 +210,10 @@ class _AnimatedSprite extends StatelessWidget {
                     : _FirstFrame(
                         url: source.url,
                         width: inner,
-                        fit: BoxFit.contain,
+                        scale: pixelScale == null ? null : 1 / pixelScale,
+                        fit: pixelScale == null ? BoxFit.contain : BoxFit.none,
                         alignment: alignBottom ? Alignment.bottomCenter : Alignment.center,
-                        filterQuality: source.is3d ? FilterQuality.medium : FilterQuality.none,
+                        filterQuality: quality,
                         placeholder: still,
                       ),
               ),
@@ -223,12 +230,15 @@ class _AnimatedSprite extends StatelessWidget {
 class _FirstFrame extends StatefulWidget {
   final String url;
   final double width;
+
+  /// Pixels do GIF por ponto da tela (null: encaixa na caixa).
+  final double? scale;
   final BoxFit fit;
   final Alignment alignment;
   final FilterQuality filterQuality;
   final Widget placeholder;
   const _FirstFrame(
-      {required this.url, required this.width, required this.fit, required this.alignment, required this.filterQuality, required this.placeholder});
+      {required this.url, required this.width, this.scale, required this.fit, required this.alignment, required this.filterQuality, required this.placeholder});
 
   @override
   State<_FirstFrame> createState() => _FirstFrameState();
@@ -290,6 +300,7 @@ class _FirstFrameState extends State<_FirstFrame> {
       image: frame.image,
       width: widget.width,
       height: widget.width,
+      scale: widget.scale ?? 1,
       fit: widget.fit,
       alignment: widget.alignment,
       filterQuality: widget.filterQuality,

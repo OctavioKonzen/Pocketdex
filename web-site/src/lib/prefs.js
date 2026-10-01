@@ -7,12 +7,6 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 /** Tamanhos do texto: escala de toda a tela. */
-/** Estilos dos sprites (Configurações). */
-export const SPRITE_STYLES = [
-  { key: 'bw', label: 'Black & White' },
-  { key: '3d', label: '3D' },
-]
-
 /** Os sprites se mexem ou ficam parados (Configurações). */
 export const SPRITE_MOTIONS = [
   { key: 'on', label: 'Animados' },
@@ -38,12 +32,6 @@ export const usePrefs = create(
       /** Sprites animados (estilo Black & White) em todo o site. */
       animatedSprites: true,
       setAnimatedSprites: (animatedSprites) => set({ animatedSprites }),
-      /**
-       * 'bw': Pokédex no estilo Black & White e, na batalha, o 3D só de quem
-       * não tem animação BW (como no Showdown). '3d': tudo no 3D do Showdown.
-       */
-      spriteStyle: 'bw',
-      setSpriteStyle: (spriteStyle) => set({ spriteStyle }),
     }),
     { name: 'pocketdex-prefs' },
   ),

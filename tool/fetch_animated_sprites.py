@@ -6,12 +6,11 @@ Saída: assets/database/sprites/animated/front/<id>.gif e .../shiny/<id>.gif,
 no estilo Black & White: do #1 ao #649 os oficiais do Black & White (do
 repositório de sprites da PokeAPI). Do #650 em diante e as formas quem decide
 é tool/bw_style_sprites.py (animação BW do Showdown ou a arte BW parada), que
-também faz as costas. O 3D do Showdown fica em sprites/3d
-(tool/showdown_3d_sprites.py).
+também faz as costas.
 
-animated_sprites.json descreve as duas pastas (o BW em cima, o 3D em "3d"):
-quais existem, os parados (um quadro só), o ajuste de tamanho, o pé (quem
-pula ou flutua, para pisar na plataforma da batalha) e a impressão digital.
+animated_sprites.json descreve a pasta: quais existem, os parados (um quadro
+só), o ajuste de tamanho, o pé (quem pula ou flutua, para pisar na plataforma
+da batalha), o tamanho em pixels e a impressão digital.
 
 Os GIFs vão dentro do app (funciona sem internet) e no site. No fim, passam
 pelo gifsicle -O3 (sem perda: os quadros ficam idênticos, só o arquivo
@@ -24,6 +23,8 @@ import json
 import os
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
+
+from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB = os.path.join(ROOT, 'assets', 'database')
@@ -130,18 +131,18 @@ def optimize(out=OUT):
         subprocess.run(['gifsicle', '-O3', '-b', *files[i:i + 200]], check=False, capture_output=True)
 
 
-OUT_3D = os.path.join(DB, 'sprites', '3d')
-
-
 def describe(root):
     """Quais existem, ajuste de tamanho (fit), pé (foot), os parados (still,
-    um quadro só) e a impressão digital (hash) de cada GIF da pasta."""
+    um quadro só), o tamanho em pixels (size: quem desenha amplia por um
+    número inteiro, cada pixel do mesmo tamanho) e a impressão digital (hash)
+    de cada GIF da pasta."""
     kinds = [k for k in KINDS if os.path.isdir(os.path.join(root, k))]
     have = {sub: sorted(int(f[:-4]) for f in os.listdir(os.path.join(root, sub)) if f.endswith('.gif')) for sub in kinds}
     path = lambda sub, pid: os.path.join(root, sub, f'{pid}.gif')
     have['fit'] = {sub: fits(sub, have[sub], root) for sub in kinds}
     have['foot'] = {sub: {str(pid): v for pid in have[sub] if (v := foot(path(sub, pid)))} for sub in kinds}
     have['still'] = {sub: [pid for pid in have[sub] if frames(path(sub, pid)) == 1] for sub in kinds}
+    have['size'] = {sub: {str(pid): list(Image.open(path(sub, pid)).size) for pid in have[sub]} for sub in kinds}
     # Impressão digital de cada GIF: quando um muda, o navegador não usa o
     # velho do cache.
     have['hash'] = {sub: {str(pid): digest(path(sub, pid)) for pid in have[sub]} for sub in kinds}
@@ -161,11 +162,8 @@ def main():
     # Quais têm sprite animado: {"front": [ids], "shiny": [ids]} (o app e o site
     # só procuram esses).
     optimize()
-    optimize(OUT_3D)
-    # Estilo BW (frente, shiny e as costas, para a batalha) e, em "3d", o 3D do
-    # Showdown (tool/showdown_3d_sprites.py).
+    # Frente, shiny e as costas (para a batalha).
     have = describe(OUT)
-    have['3d'] = describe(OUT_3D)
     with open(os.path.join(DB, 'animated_sprites.json'), 'w', encoding='utf-8') as f:
         json.dump(have, f, separators=(',', ':'))
         f.write('\n')
