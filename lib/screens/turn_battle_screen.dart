@@ -442,15 +442,7 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
           child: AspectRatio(
             aspectRatio: 16 / 11,
             child: DecoratedBox(
-              decoration: BoxDecoration(
-                border: Border.all(color: border, width: 4),
-                gradient: const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Color(0xFFBFE6FF), Color(0xFFE8F6FF), Color(0xFFB9E59A), Color(0xFF8FD16B)],
-                  stops: [0, 0.45, 0.46, 1],
-                ),
-              ),
+              decoration: BoxDecoration(border: Border.all(color: border, width: 4), color: const Color(0xFF9FDCFF)),
               child: LayoutBuilder(builder: (context, box) {
                 final w = box.maxWidth, h = box.maxHeight;
                 // Terremoto: o campo treme.
@@ -462,19 +454,20 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
                   ),
                   child: Stack(
                     children: [
+                      const Positioned.fill(child: CustomPaint(painter: _FieldPainter())),
                       Positioned(
                           left: w * 0.03,
                           top: h * 0.05,
                           width: w * 0.48,
                           child: _InfoBox(mon: foe, hp: _hp[1][_active[1]], status: _status[1][_active[1]], dmax: _dmax[1])),
-                      Positioned(right: w * 0.06, top: h * 0.32, width: w * 0.38, height: h * 0.07, child: const _Platform()),
+                      Positioned(right: w * 0.06, top: h * 0.31, width: w * 0.38, height: h * 0.09, child: const _Platform()),
                       Positioned(
                           right: w * 0.1,
                           top: h * 0.02,
                           width: w * 0.3,
                           height: w * 0.3,
                           child: _Sprite(key: _sprites[1], mon: foe, id: _form[1] ?? foe.id, dmax: _dmax[1], fainted: _fainted[1])),
-                      Positioned(left: w * 0.02, bottom: h * 0.03, width: w * 0.46, height: h * 0.09, child: const _Platform()),
+                      Positioned(left: w * 0.02, bottom: h * 0.02, width: w * 0.46, height: h * 0.12, child: const _Platform()),
                       Positioned(
                           left: w * 0.06,
                           bottom: h * 0.05,
@@ -719,12 +712,89 @@ class _MenuButton extends StatelessWidget {
       );
 }
 
+/// Plataforma: terra com a borda de grama, como nos jogos (igual ao site).
 class _Platform extends StatelessWidget {
   const _Platform();
   @override
-  Widget build(BuildContext context) => DecoratedBox(
-        decoration: BoxDecoration(color: const Color(0xFF166534).withAlpha(90), borderRadius: const BorderRadius.all(Radius.elliptical(200, 30))),
+  Widget build(BuildContext context) => const DecoratedBox(
+        decoration: ShapeDecoration(
+          shape: OvalBorder(side: BorderSide(color: Color(0xFF7CBF55), width: 3)),
+          gradient: RadialGradient(
+            center: Alignment(0, -0.2),
+            radius: 0.7,
+            colors: [Color(0xFFE9D9A6), Color(0xFFD6C084), Color(0xFFA98F52)],
+            stops: [0, 0.55, 1],
+          ),
+          shadows: [BoxShadow(color: Color(0x2E000000), blurRadius: 8, offset: Offset(0, 4))],
+        ),
       );
+}
+
+/// Cenário da batalha (desenho nosso, igual ao do site): céu com sol e
+/// nuvens, montanhas e morros ao fundo e o gramado com faixas. Coordenadas
+/// numa grade de 160 × 100, esticada para o campo.
+class _FieldPainter extends CustomPainter {
+  const _FieldPainter();
+
+  static const _clouds = [(24.0, 12.0, 12.0), (70.0, 7.0, 9.0), (104.0, 20.0, 10.0), (150.0, 26.0, 7.0)];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final sx = size.width / 160, sy = size.height / 100;
+    Offset p(double x, double y) => Offset(x * sx, y * sy);
+    Rect r(double x, double y, double w, double h) => Rect.fromLTWH(x * sx, y * sy, w * sx, h * sy);
+    canvas.drawRect(
+        r(0, 0, 160, 60),
+        Paint()
+          ..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF6EC6FF), Color(0xFFE3F6FF)])
+              .createShader(r(0, 0, 160, 60)));
+    // Sol.
+    canvas.drawOval(
+        r(116, -4, 32, 32),
+        Paint()
+          ..shader = const RadialGradient(colors: [Color(0xFFFFFBE6), Color(0xE6FFF3B0), Color(0x00FFF3B0)], stops: [0, 0.4, 1])
+              .createShader(r(116, -4, 32, 32)));
+    // Nuvens.
+    final cloud = Paint()..color = Colors.white.withAlpha(217);
+    for (final (x, y, w) in _clouds) {
+      canvas.drawOval(Rect.fromCenter(center: p(x, y), width: 2 * w * sx, height: 2 * w * 0.32 * sy), cloud);
+      canvas.drawOval(Rect.fromCenter(center: p(x - w * 0.45, y + w * 0.08), width: 2 * w * 0.55 * sx, height: 2 * w * 0.24 * sy), cloud);
+      canvas.drawOval(Rect.fromCenter(center: p(x + w * 0.5, y + w * 0.1), width: 2 * w * 0.5 * sx, height: 2 * w * 0.22 * sy), cloud);
+    }
+    // Montanhas e morros.
+    const peaks = [(0.0, 50.0), (18.0, 36.0), (32.0, 44.0), (50.0, 30.0), (70.0, 45.0), (88.0, 34.0), (108.0, 46.0), (126.0, 32.0), (146.0, 43.0), (160.0, 36.0)];
+    final mountains = Path()..moveTo(0, 56 * sy);
+    for (final (x, y) in peaks) {
+      mountains.lineTo(x * sx, y * sy);
+    }
+    mountains
+      ..lineTo(160 * sx, 56 * sy)
+      ..close();
+    canvas.drawPath(mountains, Paint()..color = const Color(0xCC9CC7D9));
+    final hills = Path()
+      ..moveTo(0, 54 * sy)
+      ..quadraticBezierTo(20 * sx, 44 * sy, 42 * sx, 52 * sy)
+      ..quadraticBezierTo(64 * sx, 60 * sy, 86 * sx, 50 * sy)
+      ..quadraticBezierTo(108 * sx, 40 * sy, 130 * sx, 48 * sy)
+      ..quadraticBezierTo(152 * sx, 56 * sy, 160 * sx, 50 * sy)
+      ..lineTo(160 * sx, 60 * sy)
+      ..lineTo(0, 60 * sy)
+      ..close();
+    canvas.drawPath(hills, Paint()..color = const Color(0xFF7CC46A));
+    // Gramado com faixas.
+    canvas.drawRect(
+        r(0, 56, 160, 44),
+        Paint()
+          ..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFFB5E58A), Color(0xFF6FBF4A)])
+              .createShader(r(0, 56, 160, 44)));
+    final stripe = Paint()..color = Colors.white.withAlpha(31);
+    for (final (i, y) in [62.0, 70.0, 80.0, 92.0].indexed) {
+      canvas.drawRect(r(0, y, 160, 1.5 + i * 0.8), stripe);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_FieldPainter old) => false;
 }
 
 class _Sprite extends StatefulWidget {

@@ -192,6 +192,55 @@ const BattleSprite = forwardRef(function BattleSprite({ mon, id, back, fainted, 
   )
 })
 
+/**
+ * Cenário da batalha (desenho nosso, igual ao do app): céu com sol e nuvens,
+ * montanhas e morros ao fundo e o gramado com faixas.
+ */
+function BattleBackground() {
+  return (
+    <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 160 100" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="bb-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#6ec6ff" />
+          <stop offset="1" stopColor="#e3f6ff" />
+        </linearGradient>
+        <linearGradient id="bb-ground" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#b5e58a" />
+          <stop offset="1" stopColor="#6fbf4a" />
+        </linearGradient>
+        <radialGradient id="bb-sun" cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0" stopColor="#fffbe6" />
+          <stop offset="0.4" stopColor="#fff3b0" stopOpacity="0.9" />
+          <stop offset="1" stopColor="#fff3b0" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <rect width="160" height="60" fill="url(#bb-sky)" />
+      <circle cx="132" cy="12" r="16" fill="url(#bb-sun)" />
+      {BACKGROUND_CLOUDS.map(([x, y, w], i) => (
+        <g key={i} fill="#fff" opacity="0.85">
+          <ellipse cx={x} cy={y} rx={w} ry={w * 0.32} />
+          <ellipse cx={x - w * 0.45} cy={y + w * 0.08} rx={w * 0.55} ry={w * 0.24} />
+          <ellipse cx={x + w * 0.5} cy={y + w * 0.1} rx={w * 0.5} ry={w * 0.22} />
+        </g>
+      ))}
+      <path d="M0 50 L18 36 L32 44 L50 30 L70 45 L88 34 L108 46 L126 32 L146 43 L160 36 L160 56 L0 56 Z" fill="#9cc7d9" opacity="0.8" />
+      <path d="M0 54 Q20 44 42 52 T86 50 T130 48 T160 50 L160 60 L0 60 Z" fill="#7cc46a" />
+      <rect y="56" width="160" height="44" fill="url(#bb-ground)" />
+      {[62, 70, 80, 92].map((y, i) => (
+        <rect key={y} y={y} width="160" height={1.5 + i * 0.8} fill="#ffffff" opacity="0.12" />
+      ))}
+    </svg>
+  )
+}
+
+/** Nuvens do cenário: [x, y, largura]. */
+const BACKGROUND_CLOUDS = [
+  [24, 12, 12],
+  [70, 7, 9],
+  [104, 20, 10],
+  [150, 26, 7],
+]
+
 /** Onde fica o meio de cada Pokémon no campo (em %), para as animações dos golpes. */
 const CENTER = [
   { x: 24, y: 70 },
@@ -435,16 +484,17 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
       <div
         ref={field}
         className="battle-field relative aspect-[16/10] overflow-hidden sm:aspect-[16/9] rounded-t-2xl border-4 border-b-0 border-slate-800"
-        style={{ background: 'linear-gradient(#bfe6ff 0%, #e8f6ff 45%, #b9e59a 46%, #8fd16b 100%)' }}
+        style={{ background: '#9fdcff' }}
       >
+        <BattleBackground />
         <div className="absolute top-[6%] left-[4%] w-[46%] max-w-[260px]">
           <InfoBox mon={foe} hp={shown.hp[1][shown.active[1]]} status={shown.status[1][shown.active[1]]} dmax={shown.dmax[1]} />
         </div>
-        <div className="absolute top-[38%] right-[6%] h-[9%] w-[35%] rounded-[50%] bg-green-800/35" />
+        <div className="battle-platform absolute top-[37%] right-[6%] h-[10%] w-[35%] rounded-[50%]" />
         <div className="absolute top-[3%] right-[10%] w-[27%]">
           <BattleSprite ref={sprites[1]} mon={foe} id={shown.form[1] ?? foe.id} dmax={shown.dmax[1]} fainted={shown.fainted[1]} byId={byId} />
         </div>
-        <div className="absolute bottom-[3%] left-[3%] h-[11%] w-[41%] rounded-[50%] bg-green-800/35" />
+        <div className="battle-platform absolute bottom-[2%] left-[3%] h-[13%] w-[41%] rounded-[50%]" />
         <div className="absolute bottom-[5%] left-[7%] w-[33%]">
           <BattleSprite ref={sprites[0]} mon={me} id={shown.form[0] ?? me.id} dmax={shown.dmax[0]} back fainted={shown.fainted[0]} byId={byId} />
         </div>
