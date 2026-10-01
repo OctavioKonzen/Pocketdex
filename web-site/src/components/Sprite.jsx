@@ -61,11 +61,12 @@ export default function Sprite(props) {
   // Limita o zoom para a animação inteira caber na caixa (quem pula ou abre
   // as asas não invade o que está em volta; apoiado embaixo, nada passa do topo).
   const [z, dx, dy, wr = 1, hr = 1] = anim.fit
-  const maxY = align === 'bottom' ? (1 + fill) / (2 * fill * hr) : 1.1 / (fill * hr)
-  const zoom = Math.max(1, Math.min(z, 1.1 / (fill * wr), maxY))
+  const maxY = align === 'bottom' ? (1 + fill) / (2 * fill * hr) : 1 / (fill * hr)
+  const zoom = Math.max(1, Math.min(z, 1 / (fill * wr), maxY))
   const side = fill * zoom // lado do GIF, em fração da caixa
-  // Centraliza o quadro típico, sem a animação sair da caixa por mais de 5% de cada lado.
-  const shift = (d, r) => Math.max(-Math.max(0, (1.1 - side * r) / 2), Math.min(Math.max(0, (1.1 - side * r) / 2), d * side))
+  // Centraliza o quadro típico, sem a animação sair da caixa (onde o card
+  // recorta, cortaria asas e caudas no meio do movimento).
+  const shift = (d, r) => Math.max(-Math.max(0, (1 - side * r) / 2), Math.min(Math.max(0, (1 - side * r) / 2), d * side))
   const top = align === 'bottom' ? 1 - (1 - fill) / 2 - side : 0.5 - side / 2 - shift(dy, hr)
   return (
     <div className={`relative aspect-square ${className}`} style={style}>

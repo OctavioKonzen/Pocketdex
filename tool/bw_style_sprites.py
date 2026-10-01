@@ -13,15 +13,22 @@ Rode depois de tool/fetch_animated_sprites.py (que baixa o que falta e gera
 animated_sprites.json); este script regrava os GIFs e roda o fetch de novo só
 para recalcular a lista e os ajustes de tamanho.
 
+Antes da arte parada, procura animação BW de verdade na pasta gen5ani do
+Pokémon Showdown (espelho no GitHub: MaribelHearn/pokemon-showdown-sprites),
+que tem parte da 6ª-8ª geração, Megas e formas.
+
 Uso:
   GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 --filter=blob:none --no-checkout \\
       https://github.com/smogon/sprites /tmp/smogon-sprites
-  python3 tool/bw_style_sprites.py /tmp/smogon-sprites [--refazer]
+  GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 --filter=blob:none --no-checkout \\
+      https://github.com/MaribelHearn/pokemon-showdown-sprites /tmp/ps-sprites
+  python3 tool/bw_style_sprites.py /tmp/smogon-sprites /tmp/ps-sprites [--refazer]
 """
 
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 
@@ -34,9 +41,9 @@ DB = os.path.join(ROOT, 'assets', 'database')
 OUT = os.path.join(DB, 'sprites', 'animated')
 STATIC = os.path.join(DB, 'sprites', 'pokemon')
 
-# Sprite BW de verdade: até 96 px e paleta de 16 cores (alguns feitos pela
-# comunidade passam um pouco disso).
-BW_MAX_SIDE = 96
+# Sprite BW de verdade: paleta de 16 cores (alguns feitos pela comunidade
+# passam um pouco disso) e até 96 px (os animados que abrem asas, um pouco mais).
+BW_MAX_SIDE = 160
 BW_MAX_COLORS = 20
 
 # Respiração: o Pokémon estica para cima e afina um pouco (apoiado no chão),
@@ -70,6 +77,25 @@ def smogon_index(repo):
     return index
 
 
+def gen5ani_index(repo):
+    """Nome do Showdown (ex.: "rotom-wash") → caminho do GIF BW animado."""
+    files = subprocess.run(
+        ['git', '-C', repo, 'ls-tree', '-r', '--name-only', 'HEAD', 'sprites/gen5ani/', 'sprites/gen5ani-shiny/'],
+        capture_output=True, text=True, check=True,
+    ).stdout.split()
+    index = {'front': {}, 'shiny': {}}
+    for f in files:
+        if f.endswith('.gif'):
+            index['shiny' if '/gen5ani-shiny/' in f else 'front'][f.split('/')[-1][:-4]] = f
+    return index
+
+
+def showdown_names(slug):
+    """Jeitos de o Showdown escrever o slug da PokeAPI ("iron-bundle" → "ironbundle")."""
+    parts = slug.split('-')
+    return [''.join(parts)] + [''.join(parts[:i]) + '-' + ''.join(parts[i:]) for i in range(1, len(parts))]
+
+
 def is_bw(path):
     im = Image.open(path)
     if max(im.size) > BW_MAX_SIDE:
@@ -85,6 +111,25 @@ def crop(im):
     im.putalpha(alpha)
     box = alpha.getbbox()
     return im.crop(box) if box else im
+
+
+def crop_gif(src, path):
+    """Copia o GIF animado recortado justo (pela soma de todos os quadros)."""
+    from PIL import ImageSequence
+    im = Image.open(src)
+    frames, durations, box = [], [], None
+    for fr in ImageSequence.Iterator(im):
+        f = fr.convert('RGBA')
+        frames.append(f)
+        durations.append(fr.info.get('duration', 80))
+        b = f.getchannel('A').getbbox()
+        if b:
+            box = b if box is None else (min(box[0], b[0]), min(box[1], b[1]), max(box[2], b[2]), max(box[3], b[3]))
+    if box is None:
+        shutil.copyfile(src, path)
+        return
+    frames = [f.crop(box) for f in frames]
+    frames[0].save(path, save_all=True, append_images=frames[1:], duration=durations, loop=0, disposal=2)
 
 
 def breathe(img, path):
@@ -118,6 +163,11 @@ def generated(path):
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith('--')]
     repo = args[0] if args else '/tmp/smogon-sprites'
+    ps_repo = args[1] if len(args) > 1 else None
+    ani = gen5ani_index(ps_repo) if ps_repo else {'front': {}, 'shiny': {}}
+
+    def animated(slug, kind):
+        return next((ani[kind][n] for n in showdown_names(slug) if n in ani[kind]), None)
     refazer = '--refazer' in sys.argv  # gera de novo os que este script já fez
     index = smogon_index(repo)
     with open(os.path.join(DB, 'pokemon.json'), encoding='utf-8') as f:
@@ -127,7 +177,7 @@ def main():
     jobs = []
     for pid, slug in pokemon:
         cur = os.path.join(OUT, 'front', f'{pid}.gif')
-        if os.path.exists(cur) and is_bw(cur) and not (refazer and generated(cur)):
+        if os.path.exists(cur) and is_bw(cur) and not (refazer and (generated(cur) or animated(slug, 'front'))):
             continue
         for kind in ('front', 'shiny'):
             jobs.append((pid, slug, kind))
@@ -145,10 +195,18 @@ def main():
     need = [a for pid, slug, kind in jobs if (a := art(pid, slug, kind))]
     for i in range(0, len(need), 200):
         subprocess.run(['git', '-C', repo, 'checkout', 'HEAD', '--', *need[i:i + 200]], check=True)
+    need = [a for pid, slug, kind in jobs if (a := animated(slug, kind))]
+    for i in range(0, len(need), 200):
+        subprocess.run(['git', '-C', ps_repo, 'checkout', 'HEAD', '--', *need[i:i + 200]], check=True)
 
-    counts = {'smogon': 0, 'banco': 0, 'sem': 0}
+    counts = {'animado BW': 0, 'smogon': 0, 'banco': 0, 'sem': 0}
     for pid, slug, kind in jobs:
         out = os.path.join(OUT, kind, f'{pid}.gif')
+        gif = animated(slug, kind)
+        if gif and is_bw(os.path.join(ps_repo, gif)):
+            crop_gif(os.path.join(ps_repo, gif), out)
+            counts['animado BW'] += 1
+            continue
         src = art(pid, slug, kind)
         if src:
             breathe(crop(Image.open(os.path.join(repo, src))), out)
