@@ -1,8 +1,10 @@
 // Teste da conta Google como no app (lib/services/auth_service.dart), nos
 // emuladores do Firebase, com as regras de verdade (firestore.rules):
 //   1. entra com Google e escolhe o nome (chooseName → _claimName);
-//   2. usa a conta (ranking, time público);
-//   3. exclui a conta pelo app (deleteAccount: apaga tudo e o login);
+//   2. usa a conta: favoritos e times (no perfil, como o app sincroniza),
+//      ranking geral, da semana e do dia, e um time público;
+//   3. exclui a conta pelo app (deleteAccount: apaga tudo e o login) e confere
+//      que nada disso sobrou;
 //   4. entra de novo com a MESMA conta Google: tem que pedir o nome de novo
 //      (conta nova, sem nada da antiga) e aceitar o mesmo nome.
 // Rode com: npm test (junto com o teste do site).
@@ -44,6 +46,9 @@ async function status(u) {
   return profile.data()?.name ? 'signedIn' : 'needsName'
 }
 
+// Semana e dia dos rankings ("AAAA-MM-DD"), como League.weekKey/dayKey.
+const day = new Date().toISOString().slice(0, 10)
+
 // Igual a AuthService.deleteAccount (os pedaços que esta conta usou).
 async function deleteAccount(u) {
   await fbAuth.reauthenticateWithCredential(u, fbAuth.GoogleAuthProvider.credential(JSON.stringify({ sub, email, email_verified: true })))
@@ -53,9 +58,21 @@ async function deleteAccount(u) {
   for (const team of teams.docs) if (team.data().ownerUid === u.uid) await fs.deleteDoc(team.ref)
   await Promise.all([...keys].map((k) => fs.deleteDoc(fs.doc(db, 'usernames', k))))
   await fs.deleteDoc(fs.doc(db, 'ranking', u.uid))
+  await fs.deleteDoc(fs.doc(db, 'weekly', day, 'scores', u.uid))
+  await fs.deleteDoc(fs.doc(db, 'daily', day, 'scores', u.uid))
   await fs.deleteDoc(fs.doc(db, 'confirmations', u.uid)).catch(() => {})
   await fs.deleteDoc(fs.doc(db, 'users', u.uid))
   await u.delete()
+}
+
+// Times públicos de um dono (lidos como dono do banco, sem regras).
+async function ownedTeams(uid) {
+  const res = await fetch('http://127.0.0.1:8085/v1/projects/pocketdex-ffb4d/databases/(default)/documents:runQuery', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer owner', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ structuredQuery: { from: [{ collectionId: 'publicTeams' }], where: { fieldFilter: { field: { fieldPath: 'ownerUid' }, op: 'EQUAL', value: { stringValue: uid } } } } }),
+  })
+  return (await res.json()).filter((r) => r.document)
 }
 
 async function emulatorDocs(path) {
@@ -73,9 +90,16 @@ try {
   await claimName(first, name)
   assert.equal(await status(first), 'signedIn', step)
 
-  step = '2. usar a conta (ranking e time público)'
+  step = '2. usar a conta (favoritos, times, rankings e time público)'
+  // Favoritos e times ficam no perfil (lib/services/account_sync.dart).
+  await fs.setDoc(fs.doc(db, 'users', first.uid), { data: { favorites: [6, 25], teams: [{ id: 't1', name: 'Time', pokemon: [6, 25, 0, 0, 0, 0] }] } }, { merge: true })
   await fs.setDoc(fs.doc(db, 'ranking', first.uid), { name, score: 12 })
-  await fs.addDoc(fs.collection(db, 'publicTeams'), { ownerUid: first.uid, ownerName: name, name: 'Time', members: [] }).catch(() => {})
+  await fs.setDoc(fs.doc(db, 'weekly', day, 'scores', first.uid), { name, score: 12 })
+  await fs.setDoc(fs.doc(db, 'daily', day, 'scores', first.uid), { name, score: 12, correct: 3 })
+  await fs.addDoc(fs.collection(db, 'publicTeams'), {
+    ownerUid: first.uid, ownerName: name, ownerKey: nameKey(name), name: 'Time', color: null, pokemon: [6, 25, 0, 0, 0, 0], ratingSum: 0, ratingCount: 0, reportCount: 0,
+  })
+  assert.equal((await ownedTeams(first.uid)).length, 1, `${step}: o time público não foi criado`)
 
   step = '3. excluir a conta pelo app'
   const oldUid = first.uid
@@ -84,6 +108,9 @@ try {
   assert.ok(!(await emulatorDocs('users')).includes(oldUid), `${step}: sobrou o perfil`)
   assert.ok(!(await emulatorDocs('usernames')).includes(nameKey(name)), `${step}: o nome ficou reservado`)
   assert.ok(!(await emulatorDocs('ranking')).includes(oldUid), `${step}: sobrou o ranking`)
+  assert.ok(!(await emulatorDocs(`weekly/${day}/scores`)).includes(oldUid), `${step}: sobrou o ranking da semana`)
+  assert.ok(!(await emulatorDocs(`daily/${day}/scores`)).includes(oldUid), `${step}: sobrou o desafio do dia`)
+  assert.equal((await ownedTeams(oldUid)).length, 0, `${step}: sobrou o time público`)
 
   step = '4. entrar de novo com a mesma conta Google'
   const again = (await google()).user
@@ -93,8 +120,10 @@ try {
   assert.equal(await status(again), 'signedIn', `${step}: não entrou depois de escolher o nome`)
   assert.equal((await fs.getDoc(fs.doc(db, 'usernames', nameKey(name)))).data()?.uid, again.uid, `${step}: o nome não ficou com a conta nova`)
   assert.equal((await fs.getDoc(fs.doc(db, 'ranking', again.uid))).exists(), false, `${step}: a conta nova herdou o ranking`)
+  const fresh = (await fs.getDoc(fs.doc(db, 'users', again.uid))).data()
+  assert.equal(fresh.data, undefined, `${step}: a conta nova herdou favoritos e times`)
 
-  console.log('TUDO CERTO (app, Google): entrou, escolheu o nome, excluiu a conta e criou de novo com a mesma conta Google e o mesmo nome.')
+  console.log('TUDO CERTO (app, Google): entrou, escolheu o nome, salvou favoritos, times e rankings, excluiu a conta (nada sobrou) e criou de novo com a mesma conta Google e o mesmo nome, vazia.')
 } catch (error) {
   console.error(`FALHOU em "${step}":`, error.message)
   process.exitCode = 1
