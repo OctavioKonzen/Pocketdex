@@ -6117,5 +6117,30 @@
   "en": "Black & White: the Pokédex in the game’s style and, in battle, 3D only for Pokémon without a BW animation. 3D: everything in Showdown’s 3D.",
   "fr": "Black & White : le Pokédex dans le style du jeu et, en combat, la 3D seulement pour les Pokémon sans animation BW. 3D : tout dans la 3D de Showdown.",
   "es": "Black & White: la Pokédex con el estilo del juego y, en combate, el 3D solo para los Pokémon sin animación BW. 3D: todo en el 3D de Showdown."
+ },
+ "Sprites": {
+  "en": "Sprites",
+  "fr": "Sprites",
+  "es": "Sprites"
+ },
+ "Movimento dos sprites": {
+  "en": "Sprite motion",
+  "fr": "Mouvement des sprites",
+  "es": "Movimiento de los sprites"
+ },
+ "Animados": {
+  "en": "Animated",
+  "fr": "Animés",
+  "es": "Animados"
+ },
+ "Parados": {
+  "en": "Still",
+  "fr": "Fixes",
+  "es": "Quietos"
+ },
+ "Animados: os Pokémon se mexem. Parados: ficam no primeiro quadro, no estilo escolhido.": {
+  "en": "Animated: the Pokémon move. Still: they stay on the first frame, in the chosen style.",
+  "fr": "Animés : les Pokémon bougent. Fixes : ils restent sur la première image, dans le style choisi.",
+  "es": "Animados: los Pokémon se mueven. Quietos: se quedan en el primer fotograma, con el estilo elegido."
  }
 }

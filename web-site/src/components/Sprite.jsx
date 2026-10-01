@@ -5,7 +5,7 @@
 // (calculado em tool/build_web_data.py); com isso o Pokémon é ampliado para
 // preencher a caixa quadrada em que ele é desenhado.
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getAnimatedSprites, spriteUrl } from '../lib/data'
 import { usePrefs } from '../lib/prefs'
 
@@ -82,8 +82,10 @@ export default function Sprite(props) {
   const spriteStyle = usePrefs((s) => s.spriteStyle)
   const sets = useAnimated()
   const [failed, setFailed] = useState(null)
-  const anim = on ? animatedOf(props.path, sets, props.back, props.battle, spriteStyle) : null
-  const next = on && props.prefetch ? animatedOf(props.prefetch, sets, props.back, props.battle, spriteStyle)?.gif : null
+  // O estilo (BW ou 3D) e se ele se mexe vêm das Configurações; parado, fica
+  // no primeiro quadro do mesmo GIF.
+  const anim = animatedOf(props.path, sets, props.back, props.battle, spriteStyle)
+  const next = props.prefetch ? animatedOf(props.prefetch, sets, props.back, props.battle, spriteStyle)?.gif : null
   useEffect(() => {
     if (next) new Image().src = spriteUrl(next)
   }, [next])
@@ -114,25 +116,47 @@ export default function Sprite(props) {
   // Na batalha, quem pula ou flutua no meio da animação desce o "pé" para pisar na plataforma.
   const foot = props.battle && align === 'bottom' ? anim.foot * side : 0
   const top = align === 'bottom' ? 1 - (1 - fill) / 2 - side + foot : 0.5 - side / 2 - shift(dy, hr)
+  const imgProps = {
+    className: `${anim.is3d ? '' : 'pixelated'} pointer-events-none absolute max-w-none object-contain ${align === 'bottom' ? 'object-bottom' : ''} ${imgClassName}`,
+    style: {
+      width: `${side * 100}%`,
+      height: `${side * 100}%`,
+      left: `${(0.5 - side / 2 - shift(dx, wr)) * 100}%`,
+      top: `${top * 100}%`,
+    },
+  }
   return (
     <div className={`relative aspect-square ${className}`} style={style}>
-      <img
-        src={spriteUrl(gif)}
-        alt={alt}
-        loading="lazy"
-        decoding="async"
-        draggable={false}
-        onError={() => setFailed(gif)}
-        className={`${anim.is3d ? '' : 'pixelated'} pointer-events-none absolute max-w-none object-contain ${align === 'bottom' ? 'object-bottom' : ''} ${imgClassName}`}
-        style={{
-          width: `${side * 100}%`,
-          height: `${side * 100}%`,
-          left: `${(0.5 - side / 2 - shift(dx, wr)) * 100}%`,
-          top: `${top * 100}%`,
-        }}
-      />
+      {on ? (
+        <img src={spriteUrl(gif)} alt={alt} loading="lazy" decoding="async" draggable={false} onError={() => setFailed(gif)} {...imgProps} />
+      ) : (
+        <FirstFrame key={gif} src={spriteUrl(gif)} alt={alt} onError={() => setFailed(gif)} {...imgProps} />
+      )}
     </div>
   )
+}
+
+/** Só o primeiro quadro do GIF (sprite parado no estilo escolhido), desenhado num canvas. */
+function FirstFrame({ src, alt, onError, className, style }) {
+  const canvas = useRef(null)
+  useEffect(() => {
+    const img = new Image()
+    img.onload = () => {
+      const c = canvas.current
+      if (!c) return
+      c.width = img.naturalWidth
+      c.height = img.naturalHeight
+      c.getContext('2d').drawImage(img, 0, 0)
+    }
+    img.onerror = onError
+    img.src = src
+    return () => {
+      img.onload = null
+      img.onerror = null
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [src])
+  return <canvas ref={canvas} role="img" aria-label={alt} className={className} style={style} />
 }
 
 function StaticSprite({ path, box, alt = '', fill = 0.9, align = 'center', className = '', imgClassName = '', style }) {

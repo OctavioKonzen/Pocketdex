@@ -13,6 +13,12 @@ export const SPRITE_STYLES = [
   { key: '3d', label: '3D' },
 ]
 
+/** Os sprites se mexem ou ficam parados (Configurações). */
+export const SPRITE_MOTIONS = [
+  { key: 'on', label: 'Animados' },
+  { key: 'off', label: 'Parados' },
+]
+
 export const TEXT_SIZES = [
   { key: 'normal', label: 'Normal', scale: 1 },
   { key: 'large', label: 'Grande', scale: 1.125 },

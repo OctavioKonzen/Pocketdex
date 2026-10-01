@@ -9,7 +9,7 @@ import { installSite, useCanInstall } from '../lib/install'
 import { dayKey, weekKey } from '../lib/league'
 import { pixCode, pixEnabled, PIX } from '../lib/pix'
 import { useStore } from '../lib/store'
-import { SPRITE_STYLES, TEXT_SIZES, usePrefs } from '../lib/prefs'
+import { SPRITE_MOTIONS, SPRITE_STYLES, TEXT_SIZES, usePrefs } from '../lib/prefs'
 import { useNavigate } from 'react-router-dom'
 import { logout, pauseSync, resumeSync } from '../lib/sync'
 
@@ -83,14 +83,18 @@ export default function SettingsPage() {
           <Row title="Pokébola girando no fundo" text="Uma Pokébola clarinha gira devagar atrás das páginas.">
             <Switch on={backgroundAnimation} onChange={setBackgroundAnimation} label="Pokébola girando no fundo" />
           </Row>
-          <Row title="Sprites animados" text="Os Pokémon se mexem, no estilo Black & White.">
-            <Switch on={animatedSprites} onChange={setAnimatedSprites} label="Sprites animados" />
-          </Row>
+        </Section>
+
+        {/* Sprites: o estilo (BW ou 3D) e se eles se mexem. */}
+        <Section title="Sprites">
           <Row
             title="Estilo dos sprites"
             text="Black & White: Pokédex no estilo do jogo e, na batalha, o 3D só de quem não tem animação BW. 3D: tudo no 3D do Showdown."
           >
             <Choice value={spriteStyle} onChange={setSpriteStyle} options={SPRITE_STYLES} />
+          </Row>
+          <Row title="Movimento dos sprites" text="Animados: os Pokémon se mexem. Parados: ficam no primeiro quadro, no estilo escolhido.">
+            <Choice value={animatedSprites ? 'on' : 'off'} onChange={(v) => setAnimatedSprites(v === 'on')} options={SPRITE_MOTIONS} />
           </Row>
         </Section>
 
