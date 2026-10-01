@@ -8,7 +8,7 @@ import 'package:flutter/material.dart' hide Text;
 
 import '../services/auth_service.dart';
 import '../services/update_service.dart';
-import '../utils/app_images.dart';
+import '../widgets/pokemon_sprite.dart';
 import 'package:pocket_dex/i18n/text.dart';
 import 'package:pocket_dex/widgets/language_picker.dart';
 
@@ -84,7 +84,8 @@ class _HeroState extends State<_Hero> with SingleTickerProviderStateMixin {
           final t = (_controller.value + phase) % 1.0;
           return Transform.translate(offset: Offset(0, -10 * (t < .5 ? t * 2 : (1 - t) * 2)), child: child);
         },
-        child: Image.asset(AppImages.pokemonArtwork(id), width: size, height: size, cacheWidth: (size * 2).round()),
+        // Sprite animado do nosso banco (estilo Black & White; o parado enquanto baixa).
+        child: SizedBox.square(dimension: size, child: PokemonSprite(id, fill: 0.95)),
       );
 
   @override

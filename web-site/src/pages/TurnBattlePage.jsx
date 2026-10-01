@@ -175,6 +175,8 @@ function InfoBox({ mon, hp, mine, status }) {
 const SPRITES = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon'
 const bwAnimated = (id, back, shiny) => {
   if (!(id >= 1)) return null
+  // De frente: do nosso banco (sprites/animated, publicado com o site).
+  if (!back) return spriteUrl(`animated/${shiny ? 'shiny' : 'front'}/${id}.gif`)
   const dir = id <= 649 ? `${SPRITES}/versions/generation-v/black-white/animated` : `${SPRITES}/other/showdown`
   return `${dir}/${back ? 'back/' : ''}${shiny ? 'shiny/' : ''}${id}.gif`
 }

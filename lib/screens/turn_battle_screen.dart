@@ -661,6 +661,8 @@ class _Platform extends StatelessWidget {
 const _sprites = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon';
 String? _bwUrl(int id, bool back, bool shiny) {
   if (id < 1) return null;
+  // De frente: do nosso banco (sprites/animated, publicado com o site).
+  if (!back) return 'https://octaviokonzen.github.io/Pocketdex/sprites/animated/${shiny ? 'shiny' : 'front'}/$id.gif';
   final dir = id <= 649 ? '$_sprites/versions/generation-v/black-white/animated' : '$_sprites/other/showdown';
   return '$dir/${back ? 'back/' : ''}${shiny ? 'shiny/' : ''}$id.gif';
 }
