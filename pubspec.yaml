@@ -1,7 +1,7 @@
 name: pocket_dex
 description: "A new Flutter project."
 publish_to: 'none'
-version: 2.0.2+32
+version: 2.1.0+33
 
 environment:
   sdk: '>=3.2.3 <4.0.0'
@@ -48,4 +48,6 @@ flutter:
     - assets/database/sprites/pokemon/other/official-artwork/
     - assets/database/sprites/pokemon/other/official-artwork/shiny/
     - assets/database/sprites/items/
+    - assets/database/sprites/animated/front/
+    - assets/database/sprites/animated/shiny/
     - assets/database/cries/

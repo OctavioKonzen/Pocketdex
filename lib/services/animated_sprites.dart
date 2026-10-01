@@ -1,17 +1,15 @@
 // lib/services/animated_sprites.dart
 //
-// Sprites animados (GIF, estilo Black & White) de todos os Pokémon. Ficam no
-// banco do site (assets/database/sprites/animated, tool/fetch_animated_sprites.py),
-// mas NÃO dentro do APK (seriam ~225 MB): o app baixa cada um do site da
-// primeira vez que aparece e guarda no celular; daí em diante funciona sem
-// internet. Quais existem vem em assets/database/animated_sprites.json.
+// Sprites animados (GIF, estilo Black & White) de todos os Pokémon. Vêm
+// dentro do APK (assets/database/sprites/animated, gerados por
+// tool/fetch_animated_sprites.py e tool/bw_style_sprites.py): aparecem na
+// hora, sem baixar nada. Quais existem e o ajuste de tamanho de cada um vêm
+// em assets/database/animated_sprites.json.
 
-import 'dart:async';
-import 'dart:collection';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:path_provider/path_provider.dart';
 
@@ -19,157 +17,45 @@ class AnimatedSprites {
   AnimatedSprites._();
   static final AnimatedSprites instance = AnimatedSprites._();
 
-  static const _site = 'https://octaviokonzen.github.io/Pocketdex/sprites/animated';
-  static const _parallel = 4;
-
   final Map<String, Set<int>> _have = {'front': {}, 'shiny': {}};
   final Map<String, Map<int, List<double>>> _fit = {'front': {}, 'shiny': {}};
 
-  /// Impressão digital de cada GIF: entra no nome do arquivo guardado, então
-  /// quando o banco troca um sprite o app baixa o novo (e apaga o velho).
-  final Map<String, Map<int, String>> _hash = {'front': {}, 'shiny': {}};
-  Directory? _dir;
-  bool _ready = false;
-
-  /// Arquivos já baixados (para mostrar na hora, sem piscar o parado).
-  final Map<String, File> _saved = {};
-  final Map<String, Future<File?>> _pending = {};
-  final Queue<Completer<void>> _waiting = Queue();
-  int _running = 0;
-
-  /// Lista atualizada no site: sprites novos (ou trocados) aparecem sem
-  /// precisar de APK novo.
-  static const _list = 'https://octaviokonzen.github.io/Pocketdex/data/animated_sprites.json';
-
-  /// Carrega a lista (a última baixada do site ou a do APK) e vê o que já
-  /// está no celular (ao abrir o app). Depois confere a do site em segundo plano.
+  /// Carrega a lista do banco (ao abrir o app).
   Future<void> load() async {
     try {
-      _dir = Directory('${(await getApplicationSupportDirectory()).path}/animated');
-      final cached = File('${_dir!.path}/list.json');
-      Map? raw;
-      if (cached.existsSync()) {
-        try {
-          raw = json.decode(cached.readAsStringSync()) as Map;
-        } catch (_) {}
+      final raw = json.decode(await rootBundle.loadString('assets/database/animated_sprites.json')) as Map;
+      for (final kind in ['front', 'shiny']) {
+        _have[kind] = {for (final id in (raw[kind] as List? ?? const [])) (id as num).toInt()};
+        final fit = (raw['fit'] as Map?)?[kind] as Map? ?? const {};
+        _fit[kind] = {
+          for (final e in fit.entries) int.parse('${e.key}'): [for (final v in e.value as List) (v as num).toDouble()],
+        };
       }
-      raw ??= json.decode(await rootBundle.loadString('assets/database/animated_sprites.json')) as Map;
-      _apply(raw);
-      _clean();
-      _ready = true;
-      unawaited(_refresh(cached));
     } catch (e) {
-      // Sem pasta do app (ex.: nos testes): fica o sprite parado.
       debugPrint('Sprites animados desligados: $e');
     }
+    _cleanOldDownloads();
   }
 
-  void _apply(Map raw) {
-    for (final kind in ['front', 'shiny']) {
-      _have[kind] = {for (final id in (raw[kind] as List? ?? const [])) (id as num).toInt()};
-      final fit = (raw['fit'] as Map?)?[kind] as Map? ?? const {};
-      final hash = (raw['hash'] as Map?)?[kind] as Map? ?? const {};
-      _hash[kind] = {for (final e in hash.entries) int.parse('${e.key}'): '${e.value}'};
-      _fit[kind] = {
-        for (final e in fit.entries) int.parse('${e.key}'): [for (final v in e.value as List) (v as num).toDouble()],
-      };
-    }
-  }
-
-  /// Guarda os já baixados que continuam valendo; apaga versões velhas.
-  void _clean() {
-    _saved.clear();
-    for (final kind in ['front', 'shiny']) {
-      final folder = Directory('${_dir!.path}/$kind');
-      if (!folder.existsSync()) continue;
-      for (final f in folder.listSync().whereType<File>()) {
-        final name = f.uri.pathSegments.last;
-        if (name.endsWith('.part')) continue; // download em andamento
-        final id = int.tryParse(name.split(RegExp(r'[-.]')).first);
-        if (id != null && name == _name(kind, id) && f.lengthSync() > 0) {
-          _saved['$kind/$id'] = f;
-        } else {
-          f.deleteSync(); // versão velha
-        }
-      }
-    }
-  }
-
-  Future<void> _refresh(File cached) async {
-    final client = HttpClient()..connectionTimeout = const Duration(seconds: 15);
+  /// Até a 2.0.2 o app baixava os GIFs do site e guardava no celular: agora
+  /// vêm no APK, então a pasta antiga só ocupa espaço.
+  Future<void> _cleanOldDownloads() async {
+    if (kIsWeb) return;
     try {
-      final response = await (await client.getUrl(Uri.parse(_list))).close();
-      if (response.statusCode != 200) return;
-      final text = await response.transform(utf8.decoder).join();
-      final raw = json.decode(text) as Map;
-      if (raw['front'] is! List) return;
-      _apply(raw);
-      _clean();
-      await cached.parent.create(recursive: true);
-      await cached.writeAsString(text, flush: true);
-    } catch (_) {
-      // Sem internet: segue com a lista que já tinha.
-    } finally {
-      client.close();
-    }
+      final dir = Directory('${(await getApplicationSupportDirectory()).path}/animated');
+      if (dir.existsSync()) await dir.delete(recursive: true);
+    } catch (_) {}
   }
 
   /// Tem sprite animado desse Pokémon?
-  bool has(int id, {bool shiny = false}) => _ready && _have[shiny ? 'shiny' : 'front']!.contains(id);
+  bool has(int id, {bool shiny = false}) => _have[shiny ? 'shiny' : 'front']!.contains(id);
+
+  /// O GIF dentro do APK.
+  String asset(int id, {bool shiny = false}) => 'assets/database/sprites/animated/${shiny ? 'shiny' : 'front'}/$id.gif';
 
   /// [zoom, dx, dy, largura, altura]: quem se mexe muito (asas abertas...)
   /// fica pequeno no GIF recortado; amplia para o quadro típico ocupar a
   /// caixa, com o centro dele deslocado (dx, dy em fração do lado maior).
   /// Ver tool/fetch_animated_sprites.py.
   List<double> fit(int id, {bool shiny = false}) => _fit[shiny ? 'shiny' : 'front']![id] ?? const [1, 0, 0, 1, 1];
-
-  /// O arquivo, se já estiver no celular.
-  File? saved(int id, {bool shiny = false}) => _saved['${shiny ? 'shiny' : 'front'}/$id'];
-
-  String _name(String kind, int id) {
-    final hash = _hash[kind]![id];
-    return hash == null ? '$id.gif' : '$id-$hash.gif';
-  }
-
-  /// O arquivo, baixando do site se ainda não estiver no celular (null = não deu).
-  Future<File?> file(int id, {bool shiny = false}) {
-    final kind = shiny ? 'shiny' : 'front';
-    final key = '$kind/$id';
-    final done = _saved[key];
-    if (done != null) return Future.value(done);
-    if (!has(id, shiny: shiny)) return Future.value(null);
-    return _pending.putIfAbsent(key, () => _download(kind, id).whenComplete(() => _pending.remove(key)));
-  }
-
-  Future<File?> _download(String kind, int id) async {
-    // No máximo [_parallel] downloads ao mesmo tempo (rolar a Pokédex pede muitos).
-    if (_running >= _parallel) {
-      final turn = Completer<void>();
-      _waiting.add(turn);
-      await turn.future;
-    }
-    _running++;
-    final client = HttpClient()..connectionTimeout = const Duration(seconds: 15);
-    try {
-      final hash = _hash[kind]![id];
-      final url = '$_site/$kind/$id.gif${hash == null ? '' : '?v=$hash'}';
-      final response = await (await client.getUrl(Uri.parse(url))).close();
-      if (response.statusCode != 200) return null;
-      final bytes = await response.fold<List<int>>(<int>[], (all, chunk) => all..addAll(chunk));
-      final file = File('${_dir!.path}/$kind/${_name(kind, id)}');
-      await file.parent.create(recursive: true);
-      // Grava num temporário e renomeia: um download pela metade nunca fica no lugar.
-      final temp = File('${file.path}.part');
-      await temp.writeAsBytes(bytes, flush: true);
-      await temp.rename(file.path);
-      _saved['$kind/$id'] = file;
-      return file;
-    } catch (_) {
-      return null;
-    } finally {
-      client.close();
-      _running--;
-      if (_waiting.isNotEmpty) _waiting.removeFirst().complete();
-    }
-  }
 }

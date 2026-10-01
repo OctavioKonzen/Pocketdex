@@ -7,7 +7,6 @@
 // Pokémon é ampliado para preencher a caixa em que é desenhado.
 
 import 'dart:convert';
-import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart' show debugPrint;
@@ -107,9 +106,8 @@ class PokemonSprite extends StatelessWidget {
   }
 }
 
-/// O GIF animado do Pokémon (já recortado justo), do mesmo tamanho do parado.
-/// Enquanto baixa (ou se não der), mostra o parado.
-class _AnimatedSprite extends StatefulWidget {
+/// O GIF animado do Pokémon (já recortado justo, vem no APK), do mesmo tamanho do parado.
+class _AnimatedSprite extends StatelessWidget {
   final int id;
   final bool shiny, alignBottom;
   final double fill;
@@ -117,37 +115,8 @@ class _AnimatedSprite extends StatefulWidget {
   const _AnimatedSprite(this.id, {required this.shiny, required this.fill, required this.alignBottom, required this.fallback});
 
   @override
-  State<_AnimatedSprite> createState() => _AnimatedSpriteState();
-}
-
-class _AnimatedSpriteState extends State<_AnimatedSprite> {
-  File? _file;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  @override
-  void didUpdateWidget(_AnimatedSprite old) {
-    super.didUpdateWidget(old);
-    if (old.id != widget.id || old.shiny != widget.shiny) _load();
-  }
-
-  void _load() {
-    final id = widget.id, shiny = widget.shiny;
-    _file = AnimatedSprites.instance.saved(id, shiny: shiny);
-    if (_file != null) return;
-    AnimatedSprites.instance.file(id, shiny: shiny).then((f) {
-      if (mounted && f != null && widget.id == id && widget.shiny == shiny) setState(() => _file = f);
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final file = _file;
-    if (file == null) return widget.fallback;
+    final widget = this;
     final f = AnimatedSprites.instance.fit(widget.id, shiny: widget.shiny);
     final dx = f[1], dy = f[2], wr = f.length > 3 ? f[3] : 1.0, hr = f.length > 4 ? f[4] : 1.0;
     // Limita o zoom para a animação inteira caber na caixa (como o site):
@@ -177,8 +146,8 @@ class _AnimatedSpriteState extends State<_AnimatedSprite> {
               Positioned(
                 left: left,
                 top: top,
-                child: Image.file(
-                  file,
+                child: Image.asset(
+                  AnimatedSprites.instance.asset(id, shiny: shiny),
                   width: inner,
                   height: inner,
                   fit: BoxFit.contain,

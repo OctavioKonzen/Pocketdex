@@ -17,6 +17,7 @@ import 'package:flutter/material.dart' hide Text;
 import 'package:http/http.dart' as http;
 import 'package:ota_update/ota_update.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:pocket_dex/i18n/text.dart';
 
 class AppRelease {
@@ -78,10 +79,25 @@ class UpdateService {
 
   static bool get supported => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
+  /// O APK baixado na atualização (files/ota_update, do pacote ota_update):
+  /// depois de instalado não serve para nada e ocupa ~200 MB. Ao abrir o app
+  /// (já na versão nova, ou depois de um download que não foi instalado),
+  /// apaga os que sobraram.
+  static Future<void> deleteDownloadedApks() async {
+    try {
+      final dir = Directory('${(await getApplicationSupportDirectory()).path}/ota_update');
+      if (!dir.existsSync()) return;
+      for (final f in dir.listSync().whereType<File>()) {
+        if (f.path.endsWith('.apk')) f.deleteSync();
+      }
+    } catch (_) {}
+  }
+
   /// Confere uma vez por abertura do app; se houver versão nova, baixa sozinho.
   static Future<void> checkOnStart(BuildContext context) async {
     if (_checked || !supported) return;
     _checked = true;
+    await deleteDownloadedApks();
     try {
       final info = await PackageInfo.fromPlatform();
       final release = await latestRelease();

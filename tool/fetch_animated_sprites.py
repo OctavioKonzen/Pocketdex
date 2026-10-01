@@ -10,9 +10,10 @@ de fora (o app e o site mostram o parado de sempre). Depois, rode
 tool/bw_style_sprites.py: troca os que vieram em 3D (8ª/9ª geração, Megas...)
 e os que faltam pela arte BW da Smogon, para ficarem todos no mesmo estilo.
 
-O site publica a pasta junto com os outros sprites (tool/build_web_data.py);
-o app NÃO embute esses arquivos (o APK ficaria com ~300 MB): baixa do site
-cada um da primeira vez que aparece e guarda no celular.
+O site publica a pasta junto com os outros sprites (tool/build_web_data.py)
+e o app traz todos dentro do APK (aparecem na hora, sem baixar). No fim, os
+GIFs passam pelo gifsicle -O3 (sem perda: os quadros ficam idênticos, só o
+arquivo diminui), se ele estiver instalado.
 
 Uso: python3 tool/fetch_animated_sprites.py   (só baixa o que falta)
 """
@@ -92,6 +93,18 @@ def fits(sub, ids):
     return out
 
 
+def optimize():
+    """gifsicle -O3 em todos os GIFs (sem perda; mantém a marca dos gerados)."""
+    import shutil
+    import subprocess
+    if not shutil.which('gifsicle'):
+        print('gifsicle não instalado: GIFs sem otimizar')
+        return
+    files = [os.path.join(OUT, sub, f) for sub in ('front', 'shiny') for f in os.listdir(os.path.join(OUT, sub)) if f.endswith('.gif')]
+    for i in range(0, len(files), 200):
+        subprocess.run(['gifsicle', '-O3', '-b', *files[i:i + 200]], check=False, capture_output=True)
+
+
 def main():
     with open(os.path.join(DB, 'pokemon.json'), encoding='utf-8') as f:
         ids = sorted(p['id'] for p in json.load(f))
@@ -104,6 +117,7 @@ def main():
         print(f'{kind}: {results.count(kind)}')
     # Quais têm sprite animado: {"front": [ids], "shiny": [ids]} (o app e o site
     # só procuram esses).
+    optimize()
     have = {sub: sorted(int(f[:-4]) for f in os.listdir(os.path.join(OUT, sub)) if f.endswith('.gif')) for sub in ('front', 'shiny')}
     have['fit'] = {sub: fits(sub, have[sub]) for sub in ('front', 'shiny')}
     # Impressão digital de cada GIF: quando um muda, o app baixa de novo (e o

@@ -62,9 +62,9 @@ class DailyWidget {
     var count = 0;
     var ms = 100;
     try {
-      final file = await AnimatedSprites.instance.file(id);
-      if (file != null) {
-        final codec = await ui.instantiateImageCodec(await file.readAsBytes());
+      if (AnimatedSprites.instance.has(id)) {
+        final gif = await rootBundle.load(AnimatedSprites.instance.asset(id));
+        final codec = await ui.instantiateImageCodec(gif.buffer.asUint8List());
         final total = codec.frameCount;
         final step = (total / _maxFrames).ceil().clamp(1, total);
         var duration = 0;
