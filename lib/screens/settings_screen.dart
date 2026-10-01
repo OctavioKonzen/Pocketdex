@@ -167,7 +167,7 @@ class SettingsScreen extends StatelessWidget {
                     ),
                     row(
                       title: 'Sprites animados',
-                      subtitle: 'Os Pokémon se mexem (estilo Black & White). Cada um é baixado da primeira vez que aparece e fica salvo no celular.',
+                      subtitle: 'Os Pokémon se mexem, no estilo Black & White.',
                       trailing: Switch(
                         value: settings.animatedSprites,
                         activeTrackColor: const Color(0xFF0EA5E9),

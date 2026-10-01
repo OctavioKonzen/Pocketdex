@@ -7,7 +7,6 @@
 // Pokémon é ampliado para preencher a caixa em que é desenhado.
 
 import 'dart:convert';
-import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart' show debugPrint;
