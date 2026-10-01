@@ -193,29 +193,43 @@ const BattleSprite = forwardRef(function BattleSprite({ mon, id, back, fainted, 
 })
 
 /**
- * Cenário da batalha (desenho nosso, igual ao do app): céu com sol e nuvens,
- * montanhas e morros ao fundo e o gramado com faixas.
+ * Cenário da batalha (desenho nosso, igual ao do app), com cara de 3D como
+ * no Black & White: céu com sol e nuvens, montanhas com luz e sombra, árvores
+ * no horizonte, gramado em perspectiva e as plataformas com espessura.
+ * Grade de 160 × 100, esticada para o campo.
  */
 function BattleBackground() {
+  // Faixas do gramado: mais finas perto do horizonte (perspectiva).
+  const bands = []
+  for (let i = 0, y = HORIZON; y < 100; i++) {
+    const h = 1 + i * 0.9
+    bands.push(<rect key={i} y={y} width="160" height={h} fill={i % 2 ? '#8fd162' : '#a3dc74'} />)
+    y += h
+  }
   return (
     <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 160 100" preserveAspectRatio="none" aria-hidden="true">
       <defs>
         <linearGradient id="bb-sky" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#6ec6ff" />
-          <stop offset="1" stopColor="#e3f6ff" />
-        </linearGradient>
-        <linearGradient id="bb-ground" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#b5e58a" />
-          <stop offset="1" stopColor="#6fbf4a" />
+          <stop offset="0" stopColor="#5fb9f5" />
+          <stop offset="1" stopColor="#e6f7ff" />
         </linearGradient>
         <radialGradient id="bb-sun" cx="0.5" cy="0.5" r="0.5">
           <stop offset="0" stopColor="#fffbe6" />
           <stop offset="0.4" stopColor="#fff3b0" stopOpacity="0.9" />
           <stop offset="1" stopColor="#fff3b0" stopOpacity="0" />
         </radialGradient>
+        <linearGradient id="bb-haze" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#ffffff" stopOpacity="0.45" />
+          <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
+        </linearGradient>
+        <radialGradient id="bb-top" cx="0.45" cy="0.35" r="0.7">
+          <stop offset="0" stopColor="#f1e3b4" />
+          <stop offset="0.6" stopColor="#d9c28a" />
+          <stop offset="1" stopColor="#b79c5e" />
+        </radialGradient>
       </defs>
-      <rect width="160" height="60" fill="url(#bb-sky)" />
-      <circle cx="132" cy="12" r="16" fill="url(#bb-sun)" />
+      <rect width="160" height={HORIZON + 2} fill="url(#bb-sky)" />
+      <circle cx="132" cy="9" r="14" fill="url(#bb-sun)" />
       {BACKGROUND_CLOUDS.map(([x, y, w], i) => (
         <g key={i} fill="#fff" opacity="0.85">
           <ellipse cx={x} cy={y} rx={w} ry={w * 0.32} />
@@ -223,22 +237,66 @@ function BattleBackground() {
           <ellipse cx={x + w * 0.5} cy={y + w * 0.1} rx={w * 0.5} ry={w * 0.22} />
         </g>
       ))}
-      <path d="M0 50 L18 36 L32 44 L50 30 L70 45 L88 34 L108 46 L126 32 L146 43 L160 36 L160 56 L0 56 Z" fill="#9cc7d9" opacity="0.8" />
-      <path d="M0 54 Q20 44 42 52 T86 50 T130 48 T160 50 L160 60 L0 60 Z" fill="#7cc46a" />
-      <rect y="56" width="160" height="44" fill="url(#bb-ground)" />
-      {[62, 70, 80, 92].map((y, i) => (
-        <rect key={y} y={y} width="160" height={1.5 + i * 0.8} fill="#ffffff" opacity="0.12" />
+      {/* Montanhas: lado da luz e lado da sombra. */}
+      {MOUNTAINS.map(([x, top, w], i) => (
+        <g key={i}>
+          <path d={`M${x - w} ${HORIZON} L${x} ${top} L${x + w} ${HORIZON} Z`} fill="#a8cfe0" />
+          <path d={`M${x} ${top} L${x + w} ${HORIZON} L${x + w * 0.2} ${HORIZON} Z`} fill="#86b3c9" />
+          <path d={`M${x - w * 0.25} ${top + (HORIZON - top) * 0.25} L${x} ${top} L${x + w * 0.25} ${top + (HORIZON - top) * 0.25} L${x} ${top + (HORIZON - top) * 0.32} Z`} fill="#f4fbff" />
+        </g>
       ))}
+      <rect y={HORIZON - 14} width="160" height="14" fill="url(#bb-haze)" />
+      {/* Árvores no horizonte. */}
+      {Array.from({ length: 23 }, (_, i) => {
+        const x = i * 7.3 + (i % 3)
+        const r = 3.2 + (i % 4) * 0.6
+        return (
+          <g key={i}>
+            <circle cx={x} cy={HORIZON - r * 0.6} r={r} fill="#3f8f45" />
+            <circle cx={x - r * 0.3} cy={HORIZON - r * 0.85} r={r * 0.55} fill="#5aab52" />
+          </g>
+        )
+      })}
+      {bands}
+      {/* Linhas que fogem para o horizonte. */}
+      {[-60, -20, 20, 60, 100, 140, 180, 220].map((x) => (
+        <line key={x} x1="80" y1={HORIZON} x2={x} y2="100" stroke="#ffffff" strokeOpacity="0.1" strokeWidth="0.4" />
+      ))}
+      <Platform cx={122} cy={45} rx={27} ry={5} depth={2.6} />
+      <Platform cx={37.6} cy={91} rx={33} ry={6.5} depth={3.4} />
     </svg>
   )
 }
 
+/** Plataforma com espessura: terra, borda de grama e sombra no chão. */
+function Platform({ cx, cy, rx, ry, depth }) {
+  return (
+    <g>
+      <ellipse cx={cx + 2} cy={cy + depth + 1.5} rx={rx * 1.04} ry={ry * 1.1} fill="#2f6b2a" opacity="0.35" />
+      <path d={`M${cx - rx} ${cy} V${cy + depth} A${rx} ${ry} 0 0 0 ${cx + rx} ${cy + depth} V${cy} Z`} fill="#8a6f3c" />
+      <ellipse cx={cx} cy={cy} rx={rx} ry={ry} fill="url(#bb-top)" />
+      <ellipse cx={cx} cy={cy} rx={rx} ry={ry} fill="none" stroke="#6fb24a" strokeWidth="1.2" />
+    </g>
+  )
+}
+
+/** Linha do horizonte (na grade de 160 × 100): o chão começa aqui. */
+const HORIZON = 36
+
 /** Nuvens do cenário: [x, y, largura]. */
 const BACKGROUND_CLOUDS = [
-  [24, 12, 12],
-  [70, 7, 9],
-  [104, 20, 10],
-  [150, 26, 7],
+  [24, 9, 11],
+  [70, 5, 8],
+  [104, 15, 9],
+  [150, 19, 6],
+]
+
+/** Montanhas: [x do pico, altura do pico, meia largura]. */
+const MOUNTAINS = [
+  [20, 16, 22],
+  [58, 10, 26],
+  [100, 18, 22],
+  [140, 12, 26],
 ]
 
 /** Onde fica o meio de cada Pokémon no campo (em %), para as animações dos golpes. */
@@ -490,11 +548,9 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
         <div className="absolute top-[6%] left-[4%] w-[46%] max-w-[260px]">
           <InfoBox mon={foe} hp={shown.hp[1][shown.active[1]]} status={shown.status[1][shown.active[1]]} dmax={shown.dmax[1]} />
         </div>
-        <div className="battle-platform absolute top-[37%] right-[6%] h-[10%] w-[35%] rounded-[50%]" />
         <div className="absolute top-[3%] right-[10%] w-[27%]">
           <BattleSprite ref={sprites[1]} mon={foe} id={shown.form[1] ?? foe.id} dmax={shown.dmax[1]} fainted={shown.fainted[1]} byId={byId} />
         </div>
-        <div className="battle-platform absolute bottom-[2%] left-[3%] h-[13%] w-[41%] rounded-[50%]" />
         <div className="absolute bottom-[5%] left-[7%] w-[33%]">
           <BattleSprite ref={sprites[0]} mon={me} id={shown.form[0] ?? me.id} dmax={shown.dmax[0]} back fainted={shown.fainted[0]} byId={byId} />
         </div>

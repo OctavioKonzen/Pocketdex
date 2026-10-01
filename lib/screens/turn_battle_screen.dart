@@ -460,14 +460,12 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
                           top: h * 0.05,
                           width: w * 0.48,
                           child: _InfoBox(mon: foe, hp: _hp[1][_active[1]], status: _status[1][_active[1]], dmax: _dmax[1])),
-                      Positioned(right: w * 0.06, top: h * 0.31, width: w * 0.38, height: h * 0.09, child: const _Platform()),
                       Positioned(
                           right: w * 0.1,
                           top: h * 0.02,
                           width: w * 0.3,
                           height: w * 0.3,
                           child: _Sprite(key: _sprites[1], mon: foe, id: _form[1] ?? foe.id, dmax: _dmax[1], fainted: _fainted[1])),
-                      Positioned(left: w * 0.02, bottom: h * 0.02, width: w * 0.46, height: h * 0.12, child: const _Platform()),
                       Positioned(
                           left: w * 0.06,
                           bottom: h * 0.05,
@@ -712,85 +710,104 @@ class _MenuButton extends StatelessWidget {
       );
 }
 
-/// Plataforma: terra com a borda de grama, como nos jogos (igual ao site).
-class _Platform extends StatelessWidget {
-  const _Platform();
-  @override
-  Widget build(BuildContext context) => const DecoratedBox(
-        decoration: ShapeDecoration(
-          shape: OvalBorder(side: BorderSide(color: Color(0xFF7CBF55), width: 3)),
-          gradient: RadialGradient(
-            center: Alignment(0, -0.2),
-            radius: 0.7,
-            colors: [Color(0xFFE9D9A6), Color(0xFFD6C084), Color(0xFFA98F52)],
-            stops: [0, 0.55, 1],
-          ),
-          shadows: [BoxShadow(color: Color(0x2E000000), blurRadius: 8, offset: Offset(0, 4))],
-        ),
-      );
-}
-
-/// Cenário da batalha (desenho nosso, igual ao do site): céu com sol e
-/// nuvens, montanhas e morros ao fundo e o gramado com faixas. Coordenadas
-/// numa grade de 160 × 100, esticada para o campo.
+/// Cenário da batalha (desenho nosso, igual ao do site), com cara de 3D como
+/// no Black & White: céu com sol e nuvens, montanhas com luz e sombra, árvores
+/// no horizonte, gramado em perspectiva e as plataformas com espessura.
+/// Coordenadas numa grade de 160 × 100, esticada para o campo.
 class _FieldPainter extends CustomPainter {
   const _FieldPainter();
 
-  static const _clouds = [(24.0, 12.0, 12.0), (70.0, 7.0, 9.0), (104.0, 20.0, 10.0), (150.0, 26.0, 7.0)];
+  /// Linha do horizonte: o chão começa aqui.
+  static const _horizon = 30.0;
+
+  /// Nuvens: (x, y, largura).
+  static const _clouds = [(24.0, 7.0, 11.0), (70.0, 4.0, 8.0), (104.0, 12.0, 9.0), (150.0, 15.0, 6.0)];
+
+  /// Montanhas: (x do pico, altura do pico, meia largura).
+  static const _mountains = [(20.0, 13.0, 22.0), (58.0, 8.0, 26.0), (100.0, 15.0, 22.0), (140.0, 10.0, 26.0)];
 
   @override
   void paint(Canvas canvas, Size size) {
+    const hz = _horizon;
     final sx = size.width / 160, sy = size.height / 100;
     Offset p(double x, double y) => Offset(x * sx, y * sy);
     Rect r(double x, double y, double w, double h) => Rect.fromLTWH(x * sx, y * sy, w * sx, h * sy);
+    Rect oval(double cx, double cy, double rx, double ry) => Rect.fromCenter(center: p(cx, cy), width: 2 * rx * sx, height: 2 * ry * sy);
+    Path poly(List<(double, double)> points) => Path()
+      ..addPolygon([for (final (x, y) in points) p(x, y)], true);
+
     canvas.drawRect(
-        r(0, 0, 160, 60),
+        r(0, 0, 160, hz + 2),
         Paint()
-          ..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF6EC6FF), Color(0xFFE3F6FF)])
-              .createShader(r(0, 0, 160, 60)));
+          ..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF5FB9F5), Color(0xFFE6F7FF)])
+              .createShader(r(0, 0, 160, hz + 2)));
     // Sol.
     canvas.drawOval(
-        r(116, -4, 32, 32),
+        oval(132, 8, 14, 14),
         Paint()
           ..shader = const RadialGradient(colors: [Color(0xFFFFFBE6), Color(0xE6FFF3B0), Color(0x00FFF3B0)], stops: [0, 0.4, 1])
-              .createShader(r(116, -4, 32, 32)));
+              .createShader(oval(132, 8, 14, 14)));
     // Nuvens.
     final cloud = Paint()..color = Colors.white.withAlpha(217);
     for (final (x, y, w) in _clouds) {
-      canvas.drawOval(Rect.fromCenter(center: p(x, y), width: 2 * w * sx, height: 2 * w * 0.32 * sy), cloud);
-      canvas.drawOval(Rect.fromCenter(center: p(x - w * 0.45, y + w * 0.08), width: 2 * w * 0.55 * sx, height: 2 * w * 0.24 * sy), cloud);
-      canvas.drawOval(Rect.fromCenter(center: p(x + w * 0.5, y + w * 0.1), width: 2 * w * 0.5 * sx, height: 2 * w * 0.22 * sy), cloud);
+      canvas.drawOval(oval(x, y, w, w * 0.32), cloud);
+      canvas.drawOval(oval(x - w * 0.45, y + w * 0.08, w * 0.55, w * 0.24), cloud);
+      canvas.drawOval(oval(x + w * 0.5, y + w * 0.1, w * 0.5, w * 0.22), cloud);
     }
-    // Montanhas e morros.
-    const peaks = [(0.0, 50.0), (18.0, 36.0), (32.0, 44.0), (50.0, 30.0), (70.0, 45.0), (88.0, 34.0), (108.0, 46.0), (126.0, 32.0), (146.0, 43.0), (160.0, 36.0)];
-    final mountains = Path()..moveTo(0, 56 * sy);
-    for (final (x, y) in peaks) {
-      mountains.lineTo(x * sx, y * sy);
+    // Montanhas: lado da luz e lado da sombra.
+    for (final (x, top, w) in _mountains) {
+      final snow = top + (hz - top) * 0.25;
+      canvas.drawPath(poly([(x - w, hz), (x, top), (x + w, hz)]), Paint()..color = const Color(0xFFA8CFE0));
+      canvas.drawPath(poly([(x, top), (x + w, hz), (x + w * 0.2, hz)]), Paint()..color = const Color(0xFF86B3C9));
+      canvas.drawPath(poly([(x - w * 0.25, snow), (x, top), (x + w * 0.25, snow), (x, top + (hz - top) * 0.32)]), Paint()..color = const Color(0xFFF4FBFF));
     }
-    mountains
-      ..lineTo(160 * sx, 56 * sy)
-      ..close();
-    canvas.drawPath(mountains, Paint()..color = const Color(0xCC9CC7D9));
-    final hills = Path()
-      ..moveTo(0, 54 * sy)
-      ..quadraticBezierTo(20 * sx, 44 * sy, 42 * sx, 52 * sy)
-      ..quadraticBezierTo(64 * sx, 60 * sy, 86 * sx, 50 * sy)
-      ..quadraticBezierTo(108 * sx, 40 * sy, 130 * sx, 48 * sy)
-      ..quadraticBezierTo(152 * sx, 56 * sy, 160 * sx, 50 * sy)
-      ..lineTo(160 * sx, 60 * sy)
-      ..lineTo(0, 60 * sy)
-      ..close();
-    canvas.drawPath(hills, Paint()..color = const Color(0xFF7CC46A));
-    // Gramado com faixas.
     canvas.drawRect(
-        r(0, 56, 160, 44),
+        r(0, hz - 14, 160, 14),
         Paint()
-          ..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFFB5E58A), Color(0xFF6FBF4A)])
-              .createShader(r(0, 56, 160, 44)));
-    final stripe = Paint()..color = Colors.white.withAlpha(31);
-    for (final (i, y) in [62.0, 70.0, 80.0, 92.0].indexed) {
-      canvas.drawRect(r(0, y, 160, 1.5 + i * 0.8), stripe);
+          ..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0x73FFFFFF), Color(0x00FFFFFF)])
+              .createShader(r(0, hz - 14, 160, 14)));
+    // Árvores no horizonte.
+    for (var i = 0; i < 23; i++) {
+      final x = i * 7.3 + i % 3, rad = 3.2 + (i % 4) * 0.6;
+      canvas.drawOval(oval(x, hz - rad * 0.6, rad, rad), Paint()..color = const Color(0xFF3F8F45));
+      canvas.drawOval(oval(x - rad * 0.3, hz - rad * 0.85, rad * 0.55, rad * 0.55), Paint()..color = const Color(0xFF5AAB52));
     }
+    // Gramado: faixas mais finas perto do horizonte (perspectiva).
+    for (var i = 0, y = hz; y < 100; i++) {
+      final h = 1 + i * 0.9;
+      canvas.drawRect(r(0, y, 160, h + 0.2), Paint()..color = Color(i.isOdd ? 0xFF8FD162 : 0xFFA3DC74));
+      y += h;
+    }
+    // Linhas que fogem para o horizonte.
+    final line = Paint()
+      ..color = Colors.white.withAlpha(26)
+      ..strokeWidth = 0.4 * sx;
+    for (final x in [-60.0, -20.0, 20.0, 60.0, 100.0, 140.0, 180.0, 220.0]) {
+      canvas.drawLine(p(80, hz), p(x, 100), line);
+    }
+    _platform(canvas, oval, 120, 37.5, 28, 4.5, 2.4);
+    _platform(canvas, oval, 40, 91, 34, 6.5, 3.4);
+  }
+
+  /// Plataforma com espessura: terra, borda de grama e sombra no chão.
+  void _platform(Canvas canvas, Rect Function(double, double, double, double) oval, double cx, double cy, double rx, double ry, double depth) {
+    canvas.drawOval(oval(cx + 2, cy + depth + 1.5, rx * 1.04, ry * 1.1), Paint()..color = const Color(0x592F6B2A));
+    final top = oval(cx, cy, rx, ry), bottom = oval(cx, cy + depth, rx, ry);
+    final side = Path()
+      ..addRect(Rect.fromLTRB(top.left, top.center.dy, top.right, bottom.center.dy))
+      ..addOval(bottom);
+    canvas.drawPath(side, Paint()..color = const Color(0xFF8A6F3C));
+    canvas.drawOval(
+        top,
+        Paint()
+          ..shader = const RadialGradient(center: Alignment(-0.1, -0.3), radius: 0.7, colors: [Color(0xFFF1E3B4), Color(0xFFD9C28A), Color(0xFFB79C5E)], stops: [0, 0.6, 1])
+              .createShader(top));
+    canvas.drawOval(
+        top,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = top.height * 0.12
+          ..color = const Color(0xFF6FB24A));
   }
 
   @override
