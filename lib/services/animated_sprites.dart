@@ -23,6 +23,7 @@ class AnimatedSprites {
   static const _parallel = 4;
 
   final Map<String, Set<int>> _have = {'front': {}, 'shiny': {}};
+  final Map<String, Map<int, List<double>>> _fit = {'front': {}, 'shiny': {}};
   Directory? _dir;
   bool _ready = false;
 
@@ -38,6 +39,10 @@ class AnimatedSprites {
       final raw = json.decode(await rootBundle.loadString('assets/database/animated_sprites.json')) as Map;
       for (final kind in ['front', 'shiny']) {
         _have[kind] = {for (final id in (raw[kind] as List? ?? const [])) (id as num).toInt()};
+        final fit = (raw['fit'] as Map?)?[kind] as Map? ?? const {};
+        _fit[kind] = {
+          for (final e in fit.entries) int.parse('${e.key}'): [for (final v in e.value as List) (v as num).toDouble()],
+        };
       }
       _dir = Directory('${(await getApplicationSupportDirectory()).path}/animated');
       for (final kind in ['front', 'shiny']) {
@@ -56,6 +61,11 @@ class AnimatedSprites {
 
   /// Tem sprite animado desse Pokémon?
   bool has(int id, {bool shiny = false}) => _ready && _have[shiny ? 'shiny' : 'front']!.contains(id);
+
+  /// [zoom, dx, dy]: quem se mexe muito (asas abertas...) fica pequeno no GIF
+  /// recortado; amplia para o quadro típico ocupar a caixa, com o centro dele
+  /// deslocado (dx, dy em fração do lado maior). Ver tool/fetch_animated_sprites.py.
+  List<double> fit(int id, {bool shiny = false}) => _fit[shiny ? 'shiny' : 'front']![id] ?? const [1, 0, 0];
 
   /// O arquivo, se já estiver no celular.
   File? saved(int id, {bool shiny = false}) => _saved['${shiny ? 'shiny' : 'front'}/$id.gif'];

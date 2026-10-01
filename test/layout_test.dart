@@ -136,6 +136,13 @@ final screens = <String, Widget Function()>{
 // (largura, altura, escala do texto)
 // Telas que abrem algo antes de conferir (ex.: a folha de filtros).
 final actions = <String, Future<void> Function(WidgetTester)>{
+  // Espera o Pokémon sair da Pokébola (para a foto mostrar ele no lugar).
+  'Pokémon (Charizard)': (tester) async {
+    for (var i = 0; i < 10; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+  },
   'Batalha por turnos': (tester) async {
     for (var i = 0; i < 30 && find.text('LUTAR').evaluate().isEmpty; i++) {
       await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));

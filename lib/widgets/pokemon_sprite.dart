@@ -148,27 +148,34 @@ class _AnimatedSpriteState extends State<_AnimatedSprite> {
   Widget build(BuildContext context) {
     final file = _file;
     if (file == null) return widget.fallback;
+    final [zoom, dx, dy] = AnimatedSprites.instance.fit(widget.id, shiny: widget.shiny);
     return LayoutBuilder(builder: (context, c) {
       final side = c.biggest.shortestSide;
-      final inner = side * widget.fill;
+      // Lado do GIF: ampliado para o quadro típico ocupar a caixa (como o site).
+      final inner = side * widget.fill * zoom;
+      final left = side / 2 - inner / 2 - dx * inner;
+      final top = widget.alignBottom ? side - side * (1 - widget.fill) / 2 - inner : side / 2 - inner / 2 - dy * inner;
       return Center(
         child: SizedBox.square(
           dimension: side,
-          child: Padding(
-            padding: EdgeInsets.only(bottom: widget.alignBottom ? side * (1 - widget.fill) / 2 : 0),
-            child: Align(
-              alignment: widget.alignBottom ? Alignment.bottomCenter : Alignment.center,
-              child: Image.file(
-                file,
-                width: inner,
-                height: inner,
-                fit: BoxFit.contain,
-                alignment: widget.alignBottom ? Alignment.bottomCenter : Alignment.center,
-                filterQuality: FilterQuality.none,
-                gaplessPlayback: true,
-                errorBuilder: (_, __, ___) => widget.fallback,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned(
+                left: left,
+                top: top,
+                child: Image.file(
+                  file,
+                  width: inner,
+                  height: inner,
+                  fit: BoxFit.contain,
+                  alignment: widget.alignBottom ? Alignment.bottomCenter : Alignment.center,
+                  filterQuality: FilterQuality.none,
+                  gaplessPlayback: true,
+                  errorBuilder: (_, __, ___) => widget.fallback,
+                ),
               ),
-            ),
+            ],
           ),
         ),
       );
