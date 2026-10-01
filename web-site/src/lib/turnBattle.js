@@ -19,7 +19,8 @@
 //
 // Pokémon: {id, name, level, maxHp, hp, spe, types,
 //           moves: [{slug, name, type, category, power, accuracy, pp, maxPp, priority, rules?}],
-//           mega?: {id, name, types, spe, ...}, gmax?: id, teraType?,
+//           mega?: {id, name, types, spe, ...} (com a Mega Pedra), gmax?: id, teraType?,
+//           zType? (tipo do Cristal Z), noDmax?, gimmick? (do set),
 //           status, sleep, toxic, boosts: {atk, def, spa, spd, spe}, flinch,
 //           terastal, dmax (turnos que faltam)}
 // Eventos (para a tela ir mostrando): {t: 'text', key, args} | {t: 'hp', side, hp}
@@ -139,17 +140,22 @@ export function maxPower(power, type) {
   return (table.find(([max]) => power <= max) ?? [0, weak ? 100 : 150])[1]
 }
 
-/** Dá para usar essa mecânica agora? (Z-Move: no golpe [moveIndex], que tem que ser de dano.) */
+/**
+ * Dá para usar essa mecânica agora? Regras dos jogos: uma por batalha; Mega
+ * só com a Mega Pedra (mon.mega), Z-Move só com o Cristal Z do tipo do golpe
+ * [moveIndex] (mon.zType), Dinamax menos quem não pode (mon.noDmax).
+ */
 export function canGimmick(battle, side, gimmick, moveIndex = -1) {
   const mon = active(battle, side)
   if (battle.gimmicks[side] || mon.hp <= 0) return false
   if (gimmick === 'mega') return Boolean(mon.mega)
   if (gimmick === 'tera') return Boolean(mon.teraType)
   if (gimmick === 'z') {
+    // Só com o Cristal Z, e só nos golpes de dano do tipo dele.
     const move = mon.moves[moveIndex]
-    return Boolean(move) && move.category !== 'status' && move.pp > 0 && !mon.dmax
+    return Boolean(move) && move.category !== 'status' && move.pp > 0 && !mon.dmax && move.type === mon.zType
   }
-  return gimmick === 'dmax'
+  return gimmick === 'dmax' && !mon.noDmax
 }
 
 /** Mega, Terastal e Dinamax acontecem no começo do turno (o Z-Move, no golpe). */
@@ -192,9 +198,15 @@ function endDmax(battle, side, events, quiet = false) {
   say(events, 'dmaxEnd', label(battle, side))
 }
 
-/** O computador usa a mecânica dele uma vez, num turno qualquer. */
+/**
+ * O computador usa a mecânica dele uma vez: a do set (no primeiro ataque,
+ * como a sua) ou, sem set (time aleatório), num turno qualquer.
+ */
 function cpuGimmick(battle, moveIndex) {
-  if (battle.gimmicks[1] || battle.random() >= 0.35) return null
+  if (battle.gimmicks[1]) return null
+  const mon = active(battle, 1)
+  if (mon.gimmick) return canGimmick(battle, 1, mon.gimmick, moveIndex) ? mon.gimmick : null
+  if (battle.random() >= 0.35) return null
   if (canGimmick(battle, 1, 'mega')) return 'mega'
   const options = ['tera', 'dmax'].filter((g) => canGimmick(battle, 1, g))
   if (canGimmick(battle, 1, 'z', moveIndex)) options.push('z')
@@ -545,7 +557,8 @@ function checkEnd(battle, hit, events) {
 
 /**
  * Um turno. action: {move: índice (-1 = Struggle), gimmick?: 'mega' | 'z' |
- * 'dmax' | 'tera'}, {switch: índice} ou {item: slug, target: índice no time}.
+ * 'dmax' | 'tera' (sem: a do set do Pokémon)}, {switch: índice} ou
+ * {item: slug, target: índice no time}.
  * Trocas e itens vêm antes dos golpes.
  * Devolve os eventos para mostrar na tela.
  */
@@ -555,7 +568,9 @@ export function playTurn(battle, action, hit) {
   const cpuPotion = cpuItem(battle)
   const cpu = cpuPotion ? null : cpuMove(battle, hit)
   const cpuG = cpu != null && cpu >= 0 ? cpuGimmick(battle, cpu) : null
-  const myG = action.move != null && action.gimmick && canGimmick(battle, 0, action.gimmick, action.move) ? action.gimmick : null
+  // A sua: a do set do Pokémon (escolhida no montador), no primeiro ataque dele.
+  const wanted = action.gimmick ?? active(battle, 0).gimmick
+  const myG = action.move != null && wanted && canGimmick(battle, 0, wanted, action.move) ? wanted : null
   if (action.switch != null) switchTo(battle, 0, action.switch, events)
   if (action.item != null) applyItem(battle, 0, action.item, action.target, events)
   if (cpuPotion) applyItem(battle, 1, cpuPotion, battle.sides[1].active, events)

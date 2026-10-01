@@ -18,7 +18,7 @@ import { usePokemonIndex } from '../lib/pokemonIndex'
 import { useStore } from '../lib/store'
 import { teamMembers } from '../lib/teamBattle'
 import { fxPlan, moveAnim } from '../lib/moveAnim'
-import { active, canGimmick, canUseItem, effectLabel, forfeit, GIMMICKS, ITEMS, lineOf, MAX_MOVES, maxPower, moveEffect, newBattle, playTurn, replace, STAT_NAMES, switchMatchup, usableMoves, weaknesses, Z_MOVES, zPower } from '../lib/turnBattle'
+import { active, canGimmick, canUseItem, effectLabel, forfeit, ITEMS, lineOf, MAX_MOVES, maxPower, moveEffect, newBattle, playTurn, replace, STAT_NAMES, switchMatchup, usableMoves, weaknesses, Z_MOVES, zPower } from '../lib/turnBattle'
 import Sprite from '../components/Sprite'
 
 const CARD = 'rounded-2xl bg-card p-5 shadow'
@@ -297,7 +297,6 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
     form: [null, null],
     dmax: [false, false],
   }))
-  const [gimmick, setGimmick] = useState(null) // mecânica escolhida para o próximo golpe
   const [text, setText] = useState(() => (foeName ? t('{0} quer batalhar!').replace('{0}', foeName) : t('Um treinador quer batalhar!')))
   const [busy, setBusy] = useState(false)
   const [menu, setMenu] = useState('main') // main | fight | party | bag
@@ -413,14 +412,12 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
 
   const fight = (i) => {
     const before = [active(battle, 0).id, active(battle, 1).id]
-    const g = gimmick
-    setGimmick(null)
-    play(playTurn(battle, { move: i, ...(g ? { gimmick: g } : {}) }, hit), before)
+    play(playTurn(battle, { move: i }, hit), before)
   }
-  // Botões das mecânicas que dá para usar agora (Z-Move: se algum golpe pode).
-  const gimmicks = GIMMICKS.filter((g) => (g === 'z' ? current.moves.some((_, i) => canGimmick(battle, 0, 'z', i)) : canGimmick(battle, 0, g)))
-  const gimmickLabel = { mega: 'Mega Evolução', z: 'Z-Move', dmax: current.gmax ? 'Gigantamax' : 'Dinamax', tera: `Tera ${current.teraType?.toUpperCase()}` }
-  const maxed = gimmick === 'dmax' || current.dmax > 0
+  // A mecânica do set (montador) ativa sozinha no primeiro ataque, como nos
+  // jogos: o menu já mostra os Z-Moves / Max Moves que vão sair.
+  const auto = current.gimmick && !battle.gimmicks[0] ? current.gimmick : null
+  const maxed = current.dmax > 0 || (auto === 'dmax' && canGimmick(battle, 0, 'dmax'))
   const choose = (i) => {
     if (item) {
       setItem(null)
@@ -479,31 +476,15 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
         {waiting && menu === 'fight' && (
           <div className="grid grid-cols-2 gap-1.5 rounded-xl border-4 border-slate-600 bg-white p-2 sm:w-96" data-testid="moves">
             <Weak mon={rival} list={foeWeak} />
-            {gimmicks.length > 0 && (
-              <div className="col-span-2 flex flex-wrap gap-1" data-testid="gimmicks">
-                {gimmicks.map((g) => (
-                  <button
-                    key={g}
-                    type="button"
-                    onClick={() => setGimmick(gimmick === g ? null : g)}
-                    className={`cursor-pointer rounded-full border-2 px-2 py-0.5 text-[11px] font-black ${gimmick === g ? 'border-transparent text-white' : 'border-slate-300 text-slate-700'}`}
-                    style={gimmick === g ? { background: GIMMICK_COLORS[g] } : undefined}
-                    data-no-translate
-                  >
-                    {gimmickLabel[g]}
-                  </button>
-                ))}
-              </div>
-            )}
             {current.moves.map((m, i) => {
               const eff = moveEffect(hit, current, rival, m)
-              const z = gimmick === 'z' && m.category !== 'status'
+              const z = auto === 'z' && canGimmick(battle, 0, 'z', i)
               const max = maxed && m.category !== 'status'
               return (
                 <button
                   key={m.slug}
                   type="button"
-                  disabled={m.pp <= 0 || (gimmick === 'z' && !z)}
+                  disabled={m.pp <= 0}
                   onClick={() => fight(i)}
                   className="cursor-pointer rounded-lg px-2 py-1.5 text-left text-white disabled:cursor-default disabled:opacity-40"
                   style={{ background: typeColor(m.type) }}
@@ -622,9 +603,6 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
     </div>
   )
 }
-
-// Cores dos botões das mecânicas.
-const GIMMICK_COLORS = { mega: '#7c3aed', z: '#ca8a04', dmax: '#e11d48', tera: '#0891b2' }
 
 // Cores da efetividade: verde = bom para quem ataca, vermelho = ruim.
 const EFFECT_COLOR = { 'Super efetivo': '#15803d', Efetivo: '#475569', 'Pouco efetivo': '#b45309', 'Não afeta': '#1f2937' }

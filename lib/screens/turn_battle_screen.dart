@@ -264,9 +264,6 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
   /// Forma na tela (Mega / Gigantamax) e se está dinamaxizado.
   final List<int?> _form = [null, null];
   final List<bool> _dmax = [false, false];
-
-  /// Mecânica escolhida para o próximo golpe ('mega' | 'z' | 'dmax' | 'tera').
-  String? _gimmick;
   late String _text = widget.foeName.isNotEmpty ? tr('{0} quer batalhar!').replaceAll('{0}', widget.foeName) : tr('Um treinador quer batalhar!');
   bool _busy = false;
   String _menu = 'main'; // main | fight | party | bag
@@ -396,9 +393,7 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
 
   void _fight(int i) {
     final before = [_b.active(0).id, _b.active(1).id];
-    final g = _gimmick;
-    _gimmick = null;
-    _play(_b.playTurn(widget.hit, move: i, gimmick: g), before);
+    _play(_b.playTurn(widget.hit, move: i), before);
   }
   void _choose(int i) {
     final item = _item;
@@ -433,12 +428,10 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
     // Efetividade (como nos jogos): nos golpes, nas fraquezas do inimigo e na troca.
     final rival = _b.active(1);
     final foeWeak = TurnBattle.weaknesses(rival.types, allTypes, widget.typeEff);
-    // Mecânicas que dá para usar agora (Z-Move: se algum golpe pode).
-    final gimmicks = [
-      for (final g in TurnBattle.gimmickList)
-        if (g == 'z' ? [for (var i = 0; i < current.moves.length; i++) i].any((i) => _b.canGimmick(0, 'z', i)) : _b.canGimmick(0, g)) g,
-    ];
-    final maxed = _gimmick == 'dmax' || current.dmax > 0;
+    // A mecânica do set (montador) ativa sozinha no primeiro ataque, como nos
+    // jogos: o menu já mostra os Z-Moves / Max Moves que vão sair.
+    final auto = current.gimmick.isNotEmpty && _b.gimmicks[0] == null ? current.gimmick : null;
+    final maxed = current.dmax > 0 || (auto == 'dmax' && _b.canGimmick(0, 'dmax'));
     const border = Color(0xFF1E293B);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -551,30 +544,6 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
               if (waiting && _menu == 'fight') ...[
                 const SizedBox(height: 8),
                 _Weak(rival, foeWeak, dark: true),
-                if (gimmicks.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: Wrap(spacing: 6, runSpacing: 6, children: [
-                      for (final g in gimmicks)
-                        ChoiceChip(
-                          // Nome da mecânica como nos jogos (não traduz).
-                          label: m.Text(
-                              g == 'mega'
-                                  ? 'Mega Evolução'
-                                  : g == 'z'
-                                      ? 'Z-Move'
-                                      : g == 'dmax'
-                                          ? (current.gmax != null ? 'Gigantamax' : 'Dinamax')
-                                          : 'Tera ${current.teraType.toUpperCase()}',
-                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: _gimmick == g ? Colors.white : null)),
-                          selected: _gimmick == g,
-                          selectedColor: _gimmickColors[g],
-                          showCheckmark: false,
-                          visualDensity: VisualDensity.compact,
-                          onSelected: (on) => setState(() => _gimmick = on ? g : null),
-                        ),
-                    ]),
-                  ),
                 GridView.count(
                   crossAxisCount: 2,
                   shrinkWrap: true,
@@ -585,11 +554,11 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
                   children: [
                     for (final (i, mv) in current.moves.indexed)
                       Material(
-                        color: getColorForType(mv.type).withAlpha(mv.pp > 0 && (_gimmick != 'z' || mv.category != 'status') ? 255 : 100),
+                        color: getColorForType(mv.type).withAlpha(mv.pp > 0 ? 255 : 100),
                         borderRadius: BorderRadius.circular(10),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(10),
-                          onTap: mv.pp > 0 && (_gimmick != 'z' || mv.category != 'status') ? () => _fight(i) : null,
+                          onTap: mv.pp > 0 ? () => _fight(i) : null,
                           child: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                             child: Column(
@@ -600,7 +569,7 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
                                 m.Text(
                                     mv.category == 'status'
                                         ? mv.name
-                                        : _gimmick == 'z'
+                                        : auto == 'z' && _b.canGimmick(0, 'z', i)
                                             ? TurnBattle.zMoves[mv.type]!
                                             : maxed
                                                 ? TurnBattle.maxMoves[mv.type]!
@@ -610,8 +579,8 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
                                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13)),
                                 Row(children: [
                                   m.Text(
-                                      mv.category != 'status' && (_gimmick == 'z' || maxed)
-                                          ? '${tr('Poder')} ${_gimmick == 'z' ? TurnBattle.zPower(mv.power) : TurnBattle.maxPower(mv.power, mv.type)}'
+                                      mv.category != 'status' && ((auto == 'z' && _b.canGimmick(0, 'z', i)) || maxed)
+                                          ? '${tr('Poder')} ${auto == 'z' && !maxed ? TurnBattle.zPower(mv.power) : TurnBattle.maxPower(mv.power, mv.type)}'
                                           : 'PP ${mv.pp}/${mv.maxPp}',
                                       style: const TextStyle(color: Colors.white70, fontSize: 11)),
                                   const Spacer(),
@@ -1095,9 +1064,6 @@ class _InfoBox extends StatelessWidget {
         ),
       );
 }
-
-// Cores dos botões das mecânicas (iguais às do site).
-const _gimmickColors = {'mega': Color(0xFF7C3AED), 'z': Color(0xFFCA8A04), 'dmax': Color(0xFFE11D48), 'tera': Color(0xFF0891B2)};
 
 // Cores da efetividade: verde = bom para quem ataca, vermelho = ruim.
 const _effectColors = {

@@ -5972,5 +5972,45 @@
   "en": "Power",
   "fr": "Puissance",
   "es": "Potencia"
+ },
+ "Mecânica na batalha": {
+  "en": "Battle gimmick",
+  "fr": "Mécanique de combat",
+  "es": "Mecánica en combate"
+ },
+ "Mega Evolução": {
+  "en": "Mega Evolution",
+  "fr": "Méga-Évolution",
+  "es": "Megaevolución"
+ },
+ "Dinamax / Gigantamax": {
+  "en": "Dynamax / Gigantamax",
+  "fr": "Dynamax / Gigamax",
+  "es": "Dinamax / Gigamax"
+ },
+ "Terastal (usa o Tipo Tera)": {
+  "en": "Terastal (uses the Tera Type)",
+  "fr": "Téracristal (utilise le Type Téra)",
+  "es": "Teracristal (usa el Teratipo)"
+ },
+ "Precisa segurar a Mega Pedra dele (ex.: Charizardite X).": {
+  "en": "Must hold its Mega Stone (e.g. Charizardite X).",
+  "fr": "Doit tenir sa Méga-Gemme (ex. : Dracaufite X).",
+  "es": "Debe llevar su Megapiedra (p. ej.: Charizardita X)."
+ },
+ "Precisa segurar o Cristal Z do tipo do golpe (ex.: Firium Z para golpes de Fogo).": {
+  "en": "Must hold the Z-Crystal of the move's type (e.g. Firium Z for Fire moves).",
+  "fr": "Doit tenir le Cristal Z du type de la capacité (ex. : Pyrostal Z pour le Feu).",
+  "es": "Debe llevar el Cristal Z del tipo del movimiento (p. ej.: Ignistal Z para Fuego)."
+ },
+ "3 turnos com o HP em dobro e Max Moves. Quem tem forma Gigantamax gigantamaxiza.": {
+  "en": "3 turns with double HP and Max Moves. Pokémon with a Gigantamax form Gigantamax.",
+  "fr": "3 tours avec PV doublés et capacités Dynamax. Ceux qui ont une forme Gigamax se gigamaxent.",
+  "es": "3 turnos con el doble de PS y Movimientos Dinamax. Los que tienen forma Gigamax se gigamaxizan."
+ },
+ "Muda para o Tipo Tera escolhido acima.": {
+  "en": "Changes to the Tera Type chosen above.",
+  "fr": "Prend le Type Téra choisi plus haut.",
+  "es": "Cambia al Teratipo elegido arriba."
  }
 }

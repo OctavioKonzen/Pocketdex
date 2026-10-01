@@ -24,6 +24,9 @@ String natureLabel(String name) {
   return up == down ? '$name (neutra)' : '$name (+${statLabels[statKeys[up]]} −${statLabels[statKeys[down]]})';
 }
 
+/// Mecânica que o Pokémon usa na batalha (ativa sozinha no primeiro ataque, uma por time). Igual ao site.
+const gimmicks = ['mega', 'z', 'dmax', 'tera'];
+
 const teraTypes = [
   'normal', 'fire', 'water', 'electric', 'grass', 'ice', 'fighting', 'poison', 'ground', //
   'flying', 'psychic', 'bug', 'rock', 'ghost', 'dragon', 'dark', 'steel', 'fairy', 'stellar',
@@ -55,6 +58,7 @@ Map<String, dynamic> newSet([String ability = '']) => {
       'item': '',
       'nature': 'Hardy',
       'tera': '',
+      'gimmick': '',
       'moves': ['', '', '', ''],
       'evs': _stats(0),
       'ivs': _stats(31),
@@ -78,6 +82,7 @@ Map<String, dynamic>? normalizeSet(Object? raw) {
     'item': str(raw['item']),
     'nature': natures.containsKey(nature) ? nature : 'Hardy',
     'tera': teraTypes.contains(tera) ? tera : '',
+    'gimmick': gimmicks.contains(raw['gimmick']) ? raw['gimmick'] : '',
     'moves': [for (var i = 0; i < 4; i++) i < moves.length ? str(moves[i]) : ''],
     'evs': {for (final k in statKeys) k: _clamp(evs[k], 0, 252, 0)},
     'ivs': {for (final k in statKeys) k: _clamp(ivs[k], 0, 31, 31)},

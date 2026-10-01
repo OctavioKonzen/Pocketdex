@@ -67,10 +67,16 @@ class BattleMon {
   /// Pokémon da calculadora (com Nature, EVs, IVs, item e habilidade).
   CalcPokemon? calc;
 
-  /// Mecânicas: forma Mega, id da forma Gigantamax e Tera Type.
+  /// Mecânicas: forma Mega, id da forma Gigantamax, Tera Type e a que usa
+  /// na batalha (escolhida no montador: '' | mega | z | dmax | tera).
   BattleMega? mega;
   final int? gmax;
-  final String teraType;
+  final String teraType, gimmick;
+
+  /// Tipo do Cristal Z que segura ('' = nenhum) e se não pode dinamaxizar
+  /// (Zacian, Zamazenta, Eternatus).
+  final String zType;
+  final bool noDmax;
   int hp;
   bool faintShown = false;
 
@@ -87,7 +93,14 @@ class BattleMon {
 
   final ({int id, List<String> types, int spe, int maxHp, CalcPokemon? calc, BattleMega? mega}) _orig;
   BattleMon(this.id, this.name, this.level, this.maxHp, this.spe, this.types, this.moves,
-      {this.calc, this.shiny = false, this.mega, this.gmax, String? teraType})
+      {this.calc,
+      this.shiny = false,
+      this.mega,
+      this.gmax,
+      String? teraType,
+      this.gimmick = '',
+      this.zType = '',
+      this.noDmax = false})
       : hp = maxHp,
         teraType = teraType ?? (types.isEmpty ? '' : types.first),
         _orig = (id: id, types: types, spe: spe, maxHp: maxHp, calc: calc, mega: mega);
@@ -105,7 +118,14 @@ class BattleMon {
 
   /// Com HP e PP cheios (para "batalhar de novo").
   BattleMon fresh() => BattleMon(_orig.id, name, level, _orig.maxHp, _orig.spe, _orig.types, [for (final m in moves) m.copy()],
-      calc: _orig.calc, shiny: shiny, mega: _orig.mega, gmax: gmax, teraType: teraType);
+      calc: _orig.calc,
+      shiny: shiny,
+      mega: _orig.mega,
+      gmax: gmax,
+      teraType: teraType,
+      gimmick: gimmick,
+      zType: zType,
+      noDmax: noDmax);
 }
 
 /// Resultado de um golpe: os danos possíveis de cada acerto e a eficácia (0 = não afeta).
@@ -332,7 +352,9 @@ class TurnBattle {
     return weak ? 100 : 150;
   }
 
-  /// Dá para usar essa mecânica agora? (Z-Move: no golpe [moveIndex], que tem que ser de dano.)
+  /// Dá para usar essa mecânica agora? Regras dos jogos: uma por batalha; Mega
+  /// só com a Mega Pedra ([BattleMon.mega]), Z-Move só com o Cristal Z do tipo
+  /// do golpe [moveIndex] ([BattleMon.zType]), Dinamax menos quem não pode.
   bool canGimmick(int side, String gimmick, [int moveIndex = -1]) {
     final mon = active(side);
     if (gimmicks[side] != null || mon.hp <= 0) return false;
@@ -341,9 +363,9 @@ class TurnBattle {
     if (gimmick == 'z') {
       if (moveIndex < 0 || moveIndex >= mon.moves.length) return false;
       final move = mon.moves[moveIndex];
-      return move.category != 'status' && move.pp > 0 && mon.dmax == 0;
+      return move.category != 'status' && move.pp > 0 && mon.dmax == 0 && move.type == mon.zType;
     }
-    return gimmick == 'dmax';
+    return gimmick == 'dmax' && !mon.noDmax;
   }
 
   /// Mega, Terastal e Dinamax acontecem no começo do turno (o Z-Move, no golpe).
@@ -392,9 +414,13 @@ class TurnBattle {
     _say(events, 'dmaxEnd', [_label(side)]);
   }
 
-  /// O computador usa a mecânica dele uma vez, num turno qualquer.
+  /// O computador usa a mecânica dele uma vez: a do set (no primeiro ataque,
+  /// como a sua) ou, sem set (time aleatório), num turno qualquer.
   String? _cpuGimmick(int moveIndex) {
-    if (gimmicks[1] != null || random() >= 0.35) return null;
+    if (gimmicks[1] != null) return null;
+    final mon = active(1);
+    if (mon.gimmick.isNotEmpty) return canGimmick(1, mon.gimmick, moveIndex) ? mon.gimmick : null;
+    if (random() >= 0.35) return null;
     if (canGimmick(1, 'mega')) return 'mega';
     final options = ['tera', 'dmax'].where((g) => canGimmick(1, g)).toList();
     if (canGimmick(1, 'z', moveIndex)) options.add('z');
@@ -794,7 +820,8 @@ class TurnBattle {
   }
 
   /// Um turno: [move] (índice; -1 = Struggle; com [gimmick] 'mega' | 'z' |
-  /// 'dmax' | 'tera'), [switchTo] ou [item] em [target] (índice no time).
+  /// 'dmax' | 'tera'; sem: a do set do Pokémon), [switchTo] ou [item] em
+  /// [target] (índice no time).
   /// Trocas e itens vêm antes dos golpes.
   List<BattleEvent> playTurn(BattleHit hit, {int? move, String? gimmick, int? switchTo, String? item, int? target}) {
     final events = <BattleEvent>[];
@@ -802,7 +829,9 @@ class TurnBattle {
     final cpuPotion = _cpuItem();
     final cpu = cpuPotion != null ? null : cpuMove(hit);
     final cpuG = cpu != null && cpu >= 0 ? _cpuGimmick(cpu) : null;
-    final myG = move != null && gimmick != null && canGimmick(0, gimmick, move) ? gimmick : null;
+    // A sua: a do set do Pokémon (escolhida no montador), no primeiro ataque dele.
+    final wanted = gimmick ?? (active(0).gimmick.isEmpty ? null : active(0).gimmick);
+    final myG = move != null && wanted != null && canGimmick(0, wanted, move) ? wanted : null;
     if (switchTo != null) _switchTo(0, switchTo, events);
     if (item != null) _useItem(0, item, target ?? activeIndex[0], events);
     if (cpuPotion != null) _useItem(1, cpuPotion, activeIndex[1], events);
@@ -1048,6 +1077,8 @@ class TurnBattleSetup {
     final data = await DamageData.load();
     final moves = await LocalDatabase.instance.movesByName();
     final rules = await LocalDatabase.instance.moveRules().catchError((_) => <String, dynamic>{});
+    final battleItems = await LocalDatabase.instance.battleItems().catchError((_) => <String, dynamic>{});
+    final megaStones = (battleItems['mega'] as Map?) ?? const {}, zCrystals = (battleItems['z'] as Map?) ?? const {};
     final out = <BattleMon>[];
     for (final m in members) {
       final row = await LocalDatabase.instance.pokemonRow(m.$1);
@@ -1061,12 +1092,15 @@ class TurnBattleSetup {
       final setMoves = [for (final s in (m.$2?['moves'] as List?) ?? const []) '$s'].where((s) => data.move(s) != null).toList();
       final slugs = pickMoves(setMoves, learnable, types, moves, rules);
       if (slugs.isEmpty) continue;
-      // Mecânicas: forma Mega (a da Mega Pedra do set, se tiver X/Y), Gigantamax e Tera Type.
+      // Mecânicas, com as regras dos jogos: Mega só segurando a Mega Pedra dele
+      // (a X ou a Y decide a forma), Z-Move só com o Cristal Z (e só nos golpes
+      // do tipo dele), Dinamax menos Zacian/Zamazenta/Eternatus e o Tipo Tera.
       final forms = [
         for (final r in await LocalDatabase.instance.allPokemonRows())
           if (r['species'] == row['species']) r,
       ];
-      final megaRow = pickMega(forms, '${m.$2?['item'] ?? ''}');
+      final itemId = toId('${m.$2?['item'] ?? ''}'.replaceAll(RegExp(r'--held$'), ''));
+      final megaRow = forms.where((r) => r['name'] == megaStones[itemId]).firstOrNull;
       BattleMega? mega;
       if (megaRow != null) {
         final megaCalc = await TeamBattle.calcPokemon(data, (megaRow['id'] as int, {...?m.$2, 'ability': ''}));
@@ -1080,7 +1114,7 @@ class TurnBattleSetup {
         }
       }
       final gmax = forms.where((r) => (r['name'] as String).endsWith('-gmax')).firstOrNull?['id'] as int?;
-      final tera = '${m.$2?['teraType'] ?? ''}'.toLowerCase();
+      final tera = '${m.$2?['tera'] ?? ''}'.toLowerCase();
       out.add(BattleMon(
         m.$1,
         name(row),
@@ -1109,16 +1143,12 @@ class TurnBattleSetup {
         mega: mega,
         gmax: gmax,
         teraType: tera.isNotEmpty ? tera : (types.isEmpty ? '' : types.first),
+        gimmick: '${m.$2?['gimmick'] ?? ''}',
+        zType: '${zCrystals[itemId] ?? ''}',
+        noDmax: const {888, 889, 890}.contains(row['species']),
       ));
     }
     return out;
-  }
-
-  /// A forma Mega do Pokémon (com Mega Pedra X ou Y no set, a dela). Igual ao site.
-  static Map<String, dynamic>? pickMega(List<Map<String, dynamic>> forms, String item) {
-    final megas = forms.where((f) => RegExp(r'-mega(-|$)').hasMatch(f['name'] as String)).toList();
-    final letter = RegExp(r'\s([xyz])$', caseSensitive: false).firstMatch(item)?.group(1)?.toLowerCase();
-    return (letter != null ? megas.where((f) => (f['name'] as String).endsWith('-mega-$letter')).firstOrNull : null) ?? megas.firstOrNull;
   }
 
   /// Time aleatório para o computador: 6 Pokémon totalmente evoluídos (sem lendários). Igual ao site.

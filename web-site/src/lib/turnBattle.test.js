@@ -130,12 +130,22 @@ describe('batalha por turnos', () => {
   it('mecânicas com a calculadora: Mega, Z-Move e Tera', async () => {
     const { battleHit } = await import('./damageCalc')
     const [zard, venu] = await battleMons([
-      { id: 6, set: { level: 50, item: 'Charizardite Y', moves: ['flamethrower'], teraType: 'grass' } },
+      { id: 6, set: { level: 50, item: 'Charizardite Y', moves: ['flamethrower'], tera: 'grass', gimmick: 'mega' } },
       { id: 3, set: { level: 50, moves: ['giga-drain'] } },
     ])
     expect(zard.mega).toMatchObject({ id: 10035, name: 'Mega Charizard Y', types: ['fire', 'flying'] })
     expect(zard.gmax).toBe(10196)
     expect(zard.teraType).toBe('grass')
+    expect(zard.gimmick).toBe('mega')
+    // Regras dos jogos: sem a Mega Pedra não megaevolui; Cristal Z só no tipo dele.
+    const [plain, zcrystal, zacian] = await battleMons([
+      { id: 6, set: { level: 50, moves: ['flamethrower'] } },
+      { id: 6, set: { level: 50, item: 'firium-z--held', moves: ['flamethrower', 'air-slash'] } },
+      { id: 888, set: { level: 50, moves: ['play-rough'] } },
+    ])
+    expect(plain.mega).toBeNull()
+    expect(zcrystal.zType).toBe('fire')
+    expect(zacian.noDmax).toBe(true)
     const normal = battleHit(zard, venu, 'flamethrower', false)
     const z = battleHit(zard, venu, 'flamethrower', false, 175)
     expect(Math.max(...z.rolls[0])).toBeGreaterThan(Math.max(...normal.rolls[0]))

@@ -3,7 +3,7 @@
 // Nature/EVs/IVs pela calculadora do Showdown e 4 golpes de dano — os do set
 // e, se faltar, os melhores que ele aprende (um de cada tipo primeiro).
 
-import { getMoveRules, getMoves, getPokemonById, getSpecies } from './data'
+import { getBattleItems, getMoveRules, getMoves, getPokemonById, getSpecies } from './data'
 import { t } from './i18n'
 import { prettyName } from './pokemon'
 import { fighter } from './teamBattle'
@@ -56,6 +56,7 @@ export async function battleMons(members) {
   const byId = await getPokemonById()
   const moves = await getMoves()
   const rules = await getMoveRules().catch(() => ({}))
+  const battleItems = await getBattleItems().catch(() => ({ mega: {}, z: {} }))
   const out = []
   for (const member of members) {
     const f = await fighter(calc, byId, member)
@@ -65,9 +66,13 @@ export async function battleMons(members) {
     const known = (list) => list.filter((s) => s && calc.moveData(s))
     const slugs = pickMoves(known(member.set?.moves ?? []), known(f.learnable), f.form.types, moves, rules)
     if (!stats || !slugs.length) continue
-    // Mecânicas: forma Mega (a da Mega Pedra do set, se tiver X/Y), Gigantamax e Tera Type.
-    const forms = (await getSpecies(byId.get(f.id)?.species ?? f.id).catch(() => null))?.forms ?? []
-    const megaForm = pickMega(forms, member.set?.item)
+    // Mecânicas, com as regras dos jogos: Mega só segurando a Mega Pedra dele
+    // (a X ou a Y decide a forma), Z-Move só com o Cristal Z (e só nos golpes
+    // do tipo dele), Dinamax menos Zacian/Zamazenta/Eternatus e o Tipo Tera.
+    const species = byId.get(f.id)?.species ?? f.id
+    const forms = (await getSpecies(species).catch(() => null))?.forms ?? []
+    const itemId = toId((member.set?.item ?? '').replace(/--held$/, ''))
+    const megaForm = forms.find((x) => x.name === battleItems.mega?.[itemId]) ?? null
     out.push({
       id: f.id,
       name: t(prettyName(byId.get(f.id)?.name ?? f.form.name)),
@@ -97,18 +102,18 @@ export async function battleMons(members) {
       side: f.side,
       mega: megaForm ? await megaOf(calc, byId, member, megaForm) : null,
       gmax: forms.find((x) => x.name.endsWith('-gmax'))?.id ?? null,
-      teraType: (member.set?.teraType || f.form.types[0] || '').toLowerCase(),
+      teraType: (member.set?.tera || f.form.types[0] || '').toLowerCase(),
+      gimmick: member.set?.gimmick || '',
+      zType: battleItems.z?.[itemId] ?? '',
+      noDmax: NO_DMAX.has(species),
     })
   }
   return out
 }
 
-/** A forma Mega do Pokémon (com Mega Pedra X ou Y no set, a dela). */
-export function pickMega(forms, item = '') {
-  const megas = forms.filter((x) => /-mega(-|$)/.test(x.name))
-  const letter = /\s([xyz])$/i.exec(item ?? '')?.[1]?.toLowerCase()
-  return (letter && megas.find((x) => x.name.endsWith(`-mega-${letter}`))) || megas[0] || null
-}
+/** Quem não pode dinamaxizar nos jogos: Zacian, Zamazenta e Eternatus. */
+const NO_DMAX = new Set([888, 889, 890])
+const toId = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, '')
 
 /** Atributos, tipos e habilidade da forma Mega (pela calculadora). */
 async function megaOf(calc, byId, member, form) {

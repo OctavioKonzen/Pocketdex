@@ -33,6 +33,9 @@ class LocalDatabase {
   /// Regras dos golpes na batalha (efeitos, recuo, dreno, status...): {slug: {...}} (tool/build_move_rules.mjs).
   Future<Map<String, dynamic>> moveRules() async => Map<String, dynamic>.from(await _table('move_rules') as Map);
 
+  /// Mega Pedras ({id: forma Mega}) e Cristais Z ({id: tipo}) da batalha (tool/build_battle_items.mjs).
+  Future<Map<String, dynamic>> battleItems() async => Map<String, dynamic>.from(await _table('battle_items') as Map);
+
   /// Animação de cada golpe na batalha: {slug: [estilo, símbolo, variação]} (tool/build_move_anims.py).
   Future<Map<String, dynamic>> moveAnims() async => Map<String, dynamic>.from(await _table('move_anims') as Map);
 

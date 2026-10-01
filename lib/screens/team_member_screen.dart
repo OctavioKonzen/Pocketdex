@@ -355,6 +355,21 @@ class _TeamMemberScreenState extends State<TeamMemberScreen> {
                           ],
                           onChanged: (v) => _update({'tera': v ?? ''}),
                         ),
+                        // A batalha ativa sozinha no primeiro ataque, como nos jogos (uma por time).
+                        _label('Mecânica na batalha'),
+                        _dropdown<String>(
+                          value: '${_set['gimmick'] ?? ''}',
+                          items: [
+                            const DropdownMenuItem(value: '', child: Text('—')),
+                            for (final g in gimmicks) DropdownMenuItem(value: g, child: Text(_gimmickNames[g]!)),
+                          ],
+                          onChanged: (v) => _update({'gimmick': v ?? ''}),
+                        ),
+                        if ('${_set['gimmick'] ?? ''}'.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(_gimmickRules['${_set['gimmick']}']!, style: TextStyle(fontSize: 12, color: c.muted)),
+                          ),
                       ],
                     ),
                   ),
@@ -468,3 +483,19 @@ class _TeamMemberScreenState extends State<TeamMemberScreen> {
     );
   }
 }
+
+/// Nomes das mecânicas no montador (iguais aos do site).
+const _gimmickNames = {
+  'mega': 'Mega Evolução',
+  'z': 'Z-Move',
+  'dmax': 'Dinamax / Gigantamax',
+  'tera': 'Terastal (usa o Tipo Tera)',
+};
+
+/// O que cada uma precisa (regras dos jogos). Ativa sozinha no primeiro ataque; uma por time.
+const _gimmickRules = {
+  'mega': 'Precisa segurar a Mega Pedra dele (ex.: Charizardite X).',
+  'z': 'Precisa segurar o Cristal Z do tipo do golpe (ex.: Firium Z para golpes de Fogo).',
+  'dmax': '3 turnos com o HP em dobro e Max Moves. Quem tem forma Gigantamax gigantamaxiza.',
+  'tera': 'Muda para o Tipo Tera escolhido acima.',
+};

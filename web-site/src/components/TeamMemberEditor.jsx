@@ -5,10 +5,22 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getItems, getMoves, getReadySets } from '../lib/data'
 import { prettyName } from '../lib/pokemon'
-import { evTotal, NATURES, natureLabel, normalizeSet, POPULAR_ITEMS, prettySlug, STAT_KEYS, STAT_NAMES, statValue, TERA_TYPES } from '../lib/teamSets'
+import { evTotal, GIMMICKS, NATURES, natureLabel, normalizeSet, POPULAR_ITEMS, prettySlug, STAT_KEYS, STAT_NAMES, statValue, TERA_TYPES } from '../lib/teamSets'
+import { t } from '../lib/i18n'
 import { usePokemonForm } from './BattleTools'
 import Sprite from './Sprite'
 import { Button, Modal, TypeBadge } from './ui'
+
+/** Nomes das mecânicas no montador (a batalha ativa sozinha, como nos jogos). */
+const GIMMICK_NAMES = { mega: 'Mega Evolução', z: 'Z-Move', dmax: 'Dinamax / Gigantamax', tera: 'Terastal (usa o Tipo Tera)' }
+
+/** O que cada uma precisa (regras dos jogos). Ativa sozinha no primeiro ataque; uma por time. */
+const GIMMICK_RULES = {
+  mega: 'Precisa segurar a Mega Pedra dele (ex.: Charizardite X).',
+  z: 'Precisa segurar o Cristal Z do tipo do golpe (ex.: Firium Z para golpes de Fogo).',
+  dmax: '3 turnos com o HP em dobro e Max Moves. Quem tem forma Gigantamax gigantamaxiza.',
+  tera: 'Muda para o Tipo Tera escolhido acima.',
+}
 
 const input = 'w-full rounded-lg bg-surface px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-sky-400'
 const HELD_CATEGORIES = new Set(['standard-balls', 'special-balls', 'apricorn-balls', 'all-machines', 'plot-advancement', 'event-items', 'gameplay', 'unused', 'data-cards', 'dex-completion', 'mulch', 'apricorn-box', 'spelunking', 'curry-ingredients', 'sandwich-ingredients', 'picnic', 'tm-materials', 'catching-bonus', 'z-crystals', 'dynamax-crystals', 'nature-mint', 'species-candies', 'collectibles', 'loot'])
@@ -216,6 +228,17 @@ export default function TeamMemberEditor({ open, pokemon, set, onChange, onClose
                   </option>
                 ))}
               </select>
+            </Field>
+            <Field label="Mecânica na batalha">
+              <select value={s.gimmick ?? ''} onChange={(e) => update({ gimmick: e.target.value })} className={input} data-testid="gimmick">
+                <option value="">—</option>
+                {GIMMICKS.map((g) => (
+                  <option key={g} value={g}>
+                    {t(GIMMICK_NAMES[g])}
+                  </option>
+                ))}
+              </select>
+              {s.gimmick && <p className="mt-1 text-xs text-muted">{t(GIMMICK_RULES[s.gimmick])}</p>}
             </Field>
             <label className="flex items-end gap-2 pb-2 text-sm">
               <input type="checkbox" checked={s.shiny} onChange={(e) => update({ shiny: e.target.checked })} className="h-4 w-4 accent-yellow-400" />

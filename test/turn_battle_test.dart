@@ -181,6 +181,22 @@ void main() {
     expect(charizard.moves.first.name, 'Flamethrower');
     expect(charizard.moves.first.pp, 15);
     expect(charizard.moves.first.category, 'special');
+    expect(charizard.mega, isNull); // sem a Mega Pedra não megaevolui
+  });
+
+  test('mecânicas com as regras dos jogos (igual ao site)', () async {
+    final mons = await TurnBattleSetup.mons([
+      (6, {'level': 50, 'item': 'charizardite-y', 'tera': 'grass', 'gimmick': 'mega', 'moves': ['flamethrower']}),
+      (6, {'level': 50, 'item': 'firium-z--held', 'moves': ['flamethrower', 'air-slash']}),
+      (888, {'level': 50, 'moves': ['play-rough']}),
+    ], (row) => '${row['name']}');
+    expect(mons[0].mega?.id, 10035);
+    expect(mons[0].mega?.types, ['fire', 'flying']);
+    expect(mons[0].gmax, 10196);
+    expect(mons[0].teraType, 'grass');
+    expect(mons[0].gimmick, 'mega');
+    expect(mons[1].zType, 'fire');
+    expect(mons[2].noDmax, isTrue);
   });
 
   test('dano de verdade: água em fogo é super eficaz, normal em fantasma não afeta', () async {
