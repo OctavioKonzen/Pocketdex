@@ -8,8 +8,7 @@ desses, em ordem:
      (play.pokemonshowdown.com/sprites), recortada justo;
   2. sem ela: a arte BW parada do Smogon Sprite Project (smogon/sprites,
      src/sprites/gen5) ou, sem ela, o sprite parado do banco.
-Nada de 3D aqui: o 3D do Showdown, na qualidade original, fica à parte
-(tool/showdown_3d_sprites.py), para a opção "3D" e para a batalha.
+Nada de 3D: tudo no estilo do Black & White.
 
 Rode depois de tool/fetch_animated_sprites.py (que baixa o que falta e gera
 animated_sprites.json); este script regrava os GIFs e roda o fetch de novo só
@@ -195,7 +194,7 @@ def main():
         names = [n for n in showdown_names(slug) if taken.get(n.replace('-', ''), {slug}) == {slug}]
         return next((g for n in names if (g := fetch_ps(folder, n))), None)
 
-    # Baixa do Showdown em paralelo (animação BW e, para quem não tem, a 3D).
+    # Baixa do Showdown em paralelo (animação BW).
     def ps_bw(slug, kind):
         # Forma que só muda de pose (Miraidon de batalha...): a animação da espécie.
         found = ps('gen5ani', slug, kind)
@@ -248,7 +247,7 @@ def main():
 def backs(everyone, ps, refazer, index, repo):
     """Costas (para a batalha) no mesmo estilo: até o #649 as oficiais do BW;
     depois, as costas BW animadas do Showdown (gen5ani-back) ou a arte BW de
-    costas da Smogon (parada); sem nenhuma, fica sem (a batalha usa o 3D)."""
+    costas da Smogon (parada); sem nenhuma, fica sem (a batalha espelha a frente)."""
     import urllib.request
     from concurrent.futures import ThreadPoolExecutor
     pokeapi = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon'
