@@ -7,6 +7,7 @@ import { getBattleItems, getMoveRules, getMoves, getPokemonById, getSpecies } fr
 import { t } from './i18n'
 import { prettyName } from './pokemon'
 import { fighter } from './teamBattle'
+import { CALC_WEATHER } from './turnBattle'
 
 /** Golpes que ficam de fora do preenchimento automático (recarga, carga, se sacrificar...). */
 export const BANNED_MOVES = new Set([
@@ -106,6 +107,7 @@ export async function battleMons(members) {
       gimmick: member.set?.gimmick || '',
       zType: battleItems.z?.[itemId] ?? '',
       noDmax: NO_DMAX.has(species),
+      ability: f.side.ability ?? '',
     })
   }
   return out
@@ -123,7 +125,7 @@ async function megaOf(calc, byId, member, form) {
   // "charizard-mega-x" → "Mega Charizard X" (como nos jogos).
   const [base, letter] = form.name.split(/-mega-?/)
   const name = `Mega ${t(prettyName(base))}${letter ? ` ${letter.toUpperCase()}` : ''}`
-  return { id: form.id, name, types: m.form.types, spe: stats?.stats.spe ?? 0, base: m.base, side: m.side }
+  return { id: form.id, name, types: m.form.types, spe: stats?.stats.spe ?? 0, base: m.base, side: m.side, ability: m.side.ability ?? '' }
 }
 
 /** Time aleatório para o computador: 6 Pokémon totalmente evoluídos (sem lendários). */
@@ -142,5 +144,6 @@ export async function randomTeam(random) {
 /** A função de dano para o motor. */
 export async function battleHitter() {
   const calc = await import('./damageCalc')
-  return (att, def, slug, crit, power) => calc.battleHit(att, def, slug, crit, power)
+  // O clima do motor (rain, sun...) vira o da calculadora (Rain, Sun...).
+  return (att, def, slug, crit, power, weather) => calc.battleHit(att, def, slug, crit, power, CALC_WEATHER[weather] ?? '')
 }

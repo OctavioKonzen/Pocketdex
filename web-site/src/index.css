@@ -293,6 +293,46 @@ body {
 @keyframes fx-wave { from { left: var(--from); opacity: 0.9; } to { left: var(--to); opacity: 0.6; } }
 .battle-flash { animation: battle-flash 260ms ease-out forwards; }
 @keyframes battle-flash { from { opacity: 0.85; } to { opacity: 0; } }
+/* Clima na batalha (TurnBattlePage.jsx): chuva, areia, granizo e neve caindo; brilho do sol. */
+.weather-rain {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48'%3E%3Cg stroke='%23dbe9ff' stroke-opacity='.75' stroke-width='1.3' stroke-linecap='round'%3E%3Cpath d='M12 2l-6 12'/%3E%3Cpath d='M38 22l-6 12'/%3E%3Cpath d='M25 34l-5 10'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 48px 48px;
+  animation: weather-rain 0.32s linear infinite;
+}
+.weather-rain-far {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cg stroke='%23c7d7ea' stroke-opacity='.5' stroke-width='1' stroke-linecap='round'%3E%3Cpath d='M8 3l-3 7'/%3E%3Cpath d='M26 17l-3 7'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 32px 32px;
+  animation: weather-rain-far 0.45s linear infinite;
+}
+@keyframes weather-rain { to { background-position: -24px 96px; } }
+@keyframes weather-rain-far { to { background-position: -16px 64px; } }
+.weather-sand {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='60'%3E%3Cg fill='%23e7c58a' fill-opacity='.8'%3E%3Ccircle cx='8' cy='10' r='1.3'/%3E%3Ccircle cx='40' cy='26' r='1'/%3E%3Ccircle cx='66' cy='8' r='1.5'/%3E%3Ccircle cx='22' cy='44' r='1.2'/%3E%3Ccircle cx='58' cy='50' r='1'/%3E%3C/g%3E%3Cg stroke='%23d9b57a' stroke-opacity='.55' stroke-width='1'%3E%3Cpath d='M10 30h14'/%3E%3Cpath d='M48 40h18'/%3E%3C/g%3E%3C/svg%3E"),
+    linear-gradient(rgb(201 160 99 / 0.25), rgb(201 160 99 / 0.25));
+  background-size: 80px 60px, 100% 100%;
+  animation: weather-sand 0.7s linear infinite;
+}
+@keyframes weather-sand { to { background-position: -160px 60px, 0 0; } }
+.weather-hail {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='50' height='50'%3E%3Cg fill='%23f4fbff' stroke='%239fc3dd' stroke-width='.6'%3E%3Ccircle cx='10' cy='8' r='2'/%3E%3Ccircle cx='36' cy='22' r='1.6'/%3E%3Ccircle cx='22' cy='40' r='2.2'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 50px 50px;
+  animation: weather-hail 0.55s linear infinite;
+}
+@keyframes weather-hail { to { background-position: -10px 100px; } }
+.weather-snow {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='70' height='70'%3E%3Cg fill='%23ffffff' fill-opacity='.9'%3E%3Ccircle cx='10' cy='12' r='2'/%3E%3Ccircle cx='46' cy='6' r='1.4'/%3E%3Ccircle cx='30' cy='34' r='2.4'/%3E%3Ccircle cx='60' cy='44' r='1.8'/%3E%3Ccircle cx='16' cy='58' r='1.5'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 70px 70px;
+  animation: weather-snow 3.2s linear infinite;
+}
+@keyframes weather-snow { to { background-position: 70px 140px; } }
+.weather-sun {
+  background: radial-gradient(circle at 84% 6%, rgb(255 244 200 / 0.75), rgb(255 214 120 / 0.25) 30%, transparent 60%);
+  animation: weather-sun 3s ease-in-out infinite;
+}
+@keyframes weather-sun { 50% { opacity: 0.6; } }
+@media (prefers-reduced-motion: reduce) {
+  .weather-layer, .weather-sun { animation: none; }
+}
 @media (prefers-reduced-motion: reduce) {
   .battle-idle { animation: none; }
 }

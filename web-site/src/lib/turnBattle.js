@@ -1,6 +1,6 @@
 // Batalha por turnos (como nos jogos de GBA), igual ao app
 // (lib/services/turn_battle.dart). Motor puro: não sabe calcular dano, recebe
-// uma função hit(atacante, defensor, golpe, crítico) → {rolls, eff} que usa a
+// uma função hit(atacante, defensor, golpe, crítico, poder?, clima?) → {rolls, eff} que usa a
 // calculadora do Showdown (battleSetup.js). Mesma semente e mesmos danos dão
 // a mesma batalha no site e no app.
 //
@@ -9,8 +9,17 @@
 // acertos, PP, Struggle, recuo, dreno, cura, status (queimadura, paralisia,
 // veneno, veneno grave, sono e congelamento), mudanças de atributo (−6 a +6),
 // efeitos secundários (com a chance de cada um) e recuar. Mais troca de
-// Pokémon, Bolsa e o adversário controlado pelo computador. Sem clima,
-// campo nem golpes que mexem no campo (Stealth Rock, Protect...).
+// Pokémon, Bolsa e o adversário controlado pelo computador. Sem campo nem
+// golpes que mexem no campo (Stealth Rock, Protect...).
+//
+// Clima (5 turnos): chuva, sol, tempestade de areia, granizo e neve, pelos
+// golpes (Rain Dance, Sunny Day, Sandstorm, Hail, Snowscape e os Max Moves
+// Geyser, Flare, Rockfall e Hailstorm) e pelas habilidades ao entrar
+// (Drizzle, Drought, Sand Stream, Snow Warning, Orichalcum Pulse). Vale na
+// conta de dano (a calculadora recebe o clima), na precisão de Thunder,
+// Hurricane e Blizzard, na cura de Moonlight/Synthesis/Morning Sun/Shore Up,
+// na velocidade (Swift Swim, Chlorophyll, Sand Rush, Slush Rush) e tira vida
+// na areia e no granizo.
 //
 // Mecânicas especiais (uma por batalha para cada lado, à escolha): Mega
 // Evolução, Z-Move, Dinamax/Gigantamax (3 turnos, HP em dobro, Max Moves) e
@@ -20,7 +29,7 @@
 // Pokémon: {id, name, level, maxHp, hp, spe, types,
 //           moves: [{slug, name, type, category, power, accuracy, pp, maxPp, priority, rules?}],
 //           mega?: {id, name, types, spe, ...} (com a Mega Pedra), gmax?: id, teraType?,
-//           zType? (tipo do Cristal Z), noDmax?, gimmick? (do set),
+//           zType? (tipo do Cristal Z), noDmax?, gimmick? (do set), ability?,
 //           status, sleep, toxic, boosts: {atk, def, spa, spd, spe}, flinch,
 //           terastal, dmax (turnos que faltam)}
 // Eventos (para a tela ir mostrando): {t: 'text', key, args} | {t: 'hp', side, hp}
@@ -29,6 +38,7 @@
 //   | {t: 'heal', side, index, hp} (poção ou Revive num Pokémon do time)
 //   | {t: 'status', side, status} (status novo; '' = curou)
 //   | {t: 'mega', side, id} | {t: 'tera', side, type} | {t: 'dmax', side, on, id}
+//   | {t: 'weather', weather} (clima novo: rain | sun | sand | hail | snow; '' = acabou)
 // Lado 0 = você, lado 1 = o computador.
 
 export const STRUGGLE = { slug: 'struggle', name: 'Struggle', type: 'normal', category: 'physical', power: 50, accuracy: null, pp: 1, maxPp: 1, priority: 0 }
@@ -43,7 +53,7 @@ const STATUS_IMMUNE = { brn: ['fire'], par: ['electric'], psn: ['poison', 'steel
 /** Começa (ou recomeça) o estado de batalha de um Pokémon. */
 function resetMon(mon) {
   // Mega, Terastal e Dinamax só valem na batalha: na próxima, volta ao original.
-  if (!mon.orig) mon.orig = { id: mon.id, types: mon.types, spe: mon.spe, maxHp: mon.maxHp, base: mon.base, side: mon.side, mega: mon.mega }
+  if (!mon.orig) mon.orig = { id: mon.id, types: mon.types, spe: mon.spe, maxHp: mon.maxHp, base: mon.base, side: mon.side, mega: mon.mega, ability: mon.ability }
   else {
     Object.assign(mon, mon.orig)
     mon.hp = Math.min(mon.hp, mon.maxHp)
@@ -59,10 +69,53 @@ function resetMon(mon) {
 
 /** Multiplicador de um estágio de atributo (−6 a +6). */
 const stageMult = (s) => (s >= 0 ? (2 + s) / 2 : 2 / (2 - s))
-/** Velocidade na hora da ordem: estágio e paralisia (metade). */
-export const speedOf = (mon) => {
-  const spe = Math.floor(mon.spe * stageMult(mon.boosts?.spe ?? 0))
+/** Velocidade na hora da ordem: estágio, paralisia (metade) e as habilidades do clima (dobro). */
+export const speedOf = (mon, weather = '') => {
+  let spe = Math.floor(mon.spe * stageMult(mon.boosts?.spe ?? 0))
+  if (weather && SPEED_ABILITIES[mon.ability]?.includes(weather)) spe *= 2
   return mon.status === 'par' ? Math.floor(spe / 2) : spe
+}
+
+/** Climas: rain | sun | sand | hail | snow. Golpes de status que mudam o clima. */
+export const WEATHER_MOVES = { 'rain-dance': 'rain', 'sunny-day': 'sun', sandstorm: 'sand', hail: 'hail', snowscape: 'snow' }
+/** Max Moves que mudam o clima (pelo tipo). */
+const MAX_WEATHER = { water: 'rain', fire: 'sun', rock: 'sand', ice: 'hail' }
+/** Habilidades que mudam o clima quando o Pokémon entra (ou megaevolui). */
+const WEATHER_ABILITIES = { Drizzle: 'rain', Drought: 'sun', 'Orichalcum Pulse': 'sun', 'Sand Stream': 'sand', 'Snow Warning': 'snow' }
+/** Habilidades que dobram a velocidade no clima. */
+const SPEED_ABILITIES = { 'Swift Swim': ['rain'], Chlorophyll: ['sun'], 'Sand Rush': ['sand'], 'Slush Rush': ['hail', 'snow'] }
+/** Nome do clima na calculadora do Showdown. */
+export const CALC_WEATHER = { rain: 'Rain', sun: 'Sun', sand: 'Sand', hail: 'Hail', snow: 'Snow' }
+/** Quem não sofre com a areia e o granizo. */
+const WEATHER_IMMUNE = { sand: ['rock', 'ground', 'steel'], hail: ['ice'] }
+
+/** Começa um clima (5 turnos). Se já estava, o golpe de [side] falha. */
+function setWeather(battle, weather, events, side = -1) {
+  if (battle.weather === weather) {
+    if (side >= 0) say(events, 'failed', label(battle, side))
+    return
+  }
+  battle.weather = weather
+  battle.weatherTurns = 5
+  events.push({ t: 'weather', weather })
+  say(events, `${weather}Start`)
+}
+
+/** Habilidade de clima de quem acabou de entrar (ou megaevoluir). */
+function weatherAbility(battle, side, events) {
+  const mon = active(battle, side)
+  const weather = WEATHER_ABILITIES[mon.ability]
+  if (weather && mon.hp > 0 && battle.weather !== weather) setWeather(battle, weather, events)
+}
+
+/** Precisão do golpe no clima (Thunder e Hurricane na chuva/sol, Blizzard no granizo/neve). */
+function accuracyOf(battle, move) {
+  if (move.slug === 'thunder' || move.slug === 'hurricane') {
+    if (battle.weather === 'rain') return null
+    if (battle.weather === 'sun') return 50
+  }
+  if (move.slug === 'blizzard' && (battle.weather === 'hail' || battle.weather === 'snow')) return null
+  return move.accuracy
 }
 
 /** Itens da Bolsa (os mesmos dos dois lados) e quantos cada um começa. */
@@ -95,6 +148,8 @@ export function newBattle(mine, theirs, random) {
     bags: [newBag(), newBag()],
     turn: 1,
     gimmicks: [null, null], // mecânica que cada lado já usou ('mega' | 'z' | 'dmax' | 'tera')
+    weather: '', // rain | sun | sand | hail | snow
+    weatherTurns: 0,
     winner: null, // 0 = você ganhou, 1 = o computador
     needSwitch: false, // seu Pokémon desmaiou: escolha outro
   }
@@ -165,10 +220,11 @@ function applyGimmick(battle, side, gimmick, events) {
   if (gimmick === 'mega') {
     const mega = mon.mega
     say(events, 'megaReact', label(battle, side))
-    Object.assign(mon, { id: mega.id, types: mega.types, spe: mega.spe, ...(mega.base ? { base: mega.base, side: mega.side } : {}), ...(mega.calc ? { calc: mega.calc } : {}) })
+    Object.assign(mon, { id: mega.id, types: mega.types, spe: mega.spe, ...(mega.base ? { base: mega.base, side: mega.side } : {}), ...(mega.calc ? { calc: mega.calc } : {}), ...('ability' in mega ? { ability: mega.ability } : {}) })
     mon.mega = null
     events.push({ t: 'mega', side, id: mega.id })
     say(events, 'megaEvolved', label(battle, side), mega.name)
+    weatherAbility(battle, side, events)
   } else if (gimmick === 'tera') {
     mon.terastal = true
     mon.types = [mon.teraType]
@@ -217,9 +273,9 @@ function cpuGimmick(battle, moveIndex) {
 export const usableMoves = (mon) => mon.moves.map((m, i) => (m.pp > 0 ? i : -1)).filter((i) => i >= 0)
 
 /** Dano médio esperado (sem crítico), para a escolha do computador. */
-function expected(hit, att, def, move) {
+function expected(battle, hit, att, def, move) {
   if (move.category === 'status') return 0
-  const r = hit(att, def, move.slug, false)
+  const r = hit(att, def, move.slug, false, undefined, battle.weather)
   if (!r || !r.eff) return 0
   const avg = r.rolls.reduce((sum, rolls) => sum + rolls.reduce((a, b) => a + b, 0) / rolls.length, 0)
   return Math.min(avg, def.hp) * (move.accuracy == null ? 1 : move.accuracy / 100)
@@ -272,7 +328,7 @@ export function cpuMove(battle, hit) {
   let bestValue = -1
   for (const i of usable) {
     const move = me.moves[i]
-    const value = move.category === 'status' ? statusValue(me, foe, move) : expected(hit, me, foe, move)
+    const value = move.category === 'status' ? statusValue(battle, me, foe, move) : expected(battle, hit, me, foe, move)
     if (value > bestValue) {
       best = i
       bestValue = value
@@ -282,8 +338,14 @@ export function cpuMove(battle, hit) {
 }
 
 /** Quanto vale um golpe de status para o computador (comparado com dano). */
-function statusValue(me, foe, move) {
+function statusValue(battle, me, foe, move) {
   const r = move.rules ?? {}
+  // Clima: vale se ainda não está e ajuda os golpes dele.
+  const weather = WEATHER_MOVES[move.slug]
+  if (weather) {
+    const helps = { rain: 'water', sun: 'fire', sand: 'rock', hail: 'ice', snow: 'ice' }[weather]
+    return battle.weather !== weather && me.moves.some((m) => m.type === helps && m.category !== 'status') ? Math.floor(foe.maxHp * 0.2) : 0
+  }
   if (r.h) return me.hp * 2 < me.maxHp ? Math.floor((me.maxHp * r.h[0]) / r.h[1]) : 0
   if (r.s) return !foe.status && !immuneTo(foe, r.s, move) ? Math.floor(foe.maxHp * (r.s === 'slp' ? 0.5 : 0.3)) : 0
   if (r.b && r.t === 'self') {
@@ -335,10 +397,15 @@ function boost(battle, side, boosts, events) {
 function statusMove(battle, side, move, events) {
   const mon = active(battle, side)
   const r = move.rules ?? {}
+  if (WEATHER_MOVES[move.slug]) {
+    setWeather(battle, WEATHER_MOVES[move.slug], events, side)
+    return
+  }
   if (r.h) {
     if (mon.hp >= mon.maxHp) say(events, 'failed', label(battle, side))
     else {
-      mon.hp = Math.min(mon.maxHp, mon.hp + Math.floor((mon.maxHp * r.h[0]) / r.h[1]))
+      const [n, d] = weatherHeal(battle, move.slug) ?? r.h
+      mon.hp = Math.min(mon.maxHp, mon.hp + Math.floor((mon.maxHp * n) / d))
       events.push({ t: 'hp', side, hp: mon.hp })
       say(events, 'healedMove', label(battle, side))
     }
@@ -346,6 +413,14 @@ function statusMove(battle, side, move, events) {
   if (r.s) inflict(battle, 1 - side, r.s, move, events, true)
   if (r.b) boost(battle, r.t === 'self' ? side : 1 - side, r.b, events)
   if (!r.h && !r.s && !r.b) say(events, 'failed', label(battle, side))
+}
+
+/** Cura que muda com o clima: Moonlight, Synthesis e Morning Sun (sol 2/3, outro clima 1/4), Shore Up (areia 2/3). */
+function weatherHeal(battle, slug) {
+  if (!battle.weather) return null
+  if (slug === 'shore-up') return battle.weather === 'sand' ? [2, 3] : null
+  if (!['moonlight', 'synthesis', 'morning-sun'].includes(slug)) return null
+  return battle.weather === 'sun' ? [2, 3] : [1, 4]
 }
 
 /** Quem ficou sem vida desmaia ([first] primeiro: o alvo do golpe). */
@@ -363,6 +438,26 @@ function faints(battle, events, first = 1) {
 
 /** Fim do turno: queimadura e veneno tiram vida; quem recuou volta ao normal. */
 function endOfTurn(battle, events) {
+  // Clima: conta os turnos; areia e granizo machucam quem não é imune.
+  if (battle.weather) {
+    const weather = battle.weather
+    battle.weatherTurns -= 1
+    if (battle.weatherTurns <= 0) {
+      battle.weather = ''
+      events.push({ t: 'weather', weather: '' })
+      say(events, `${weather}End`)
+    } else {
+      say(events, `${weather}Go`)
+      for (const s of [0, 1]) {
+        const mon = active(battle, s)
+        if (mon.hp <= 0 || !WEATHER_IMMUNE[weather] || mon.types.some((t) => WEATHER_IMMUNE[weather].includes(t))) continue
+        mon.hp = Math.max(0, mon.hp - Math.max(1, Math.floor(mon.maxHp / 16)))
+        events.push({ t: 'hp', side: s, hp: mon.hp })
+        say(events, weather === 'sand' ? 'hurtSand' : 'hurtHail', label(battle, s))
+      }
+      faints(battle, events, 0)
+    }
+  }
   for (const s of [0, 1]) {
     const mon = active(battle, s)
     if (mon.hp <= 0) continue
@@ -396,7 +491,7 @@ function cpuReplacement(battle, hit) {
   let bestValue = -1
   battle.sides[1].team.forEach((mon, i) => {
     if (mon.hp <= 0) return
-    const value = Math.max(0, ...usableMoves(mon).map((m) => expected(hit, mon, foe, mon.moves[m])))
+    const value = Math.max(0, ...usableMoves(mon).map((m) => expected(battle, hit, mon, foe, mon.moves[m])))
     if (value > bestValue) {
       best = i
       bestValue = value
@@ -445,7 +540,8 @@ function doMove(battle, side, moveIndex, hit, events, zMove = false) {
   if (zMove) say(events, 'zPower', label(battle, side))
   const name = !special ? move.name : zMove ? Z_MOVES[move.type] : MAX_MOVES[move.type]
   say(events, 'used', label(battle, side), name)
-  if (!special && move.accuracy != null && battle.random() * 100 >= move.accuracy) {
+  const accuracy = accuracyOf(battle, move)
+  if (!special && accuracy != null && battle.random() * 100 >= accuracy) {
     events.push({ t: 'miss', side })
     say(events, 'missed', label(battle, side))
     return
@@ -459,7 +555,7 @@ function doMove(battle, side, moveIndex, hit, events, zMove = false) {
   const rules = special ? {} : (move.rules ?? {})
   const crit = battle.random() < CRIT_CHANCE[Math.min(3, rules.c ?? 0)]
   const power = special ? (zMove ? zPower(move.power) : maxPower(move.power, move.type)) : undefined
-  const r = hit(mon, target, move.slug, crit, power)
+  const r = hit(mon, target, move.slug, crit, power, battle.weather)
   if (!r || r.eff === 0) {
     say(events, 'noEffect', label(battle, foeSide))
     return
@@ -496,6 +592,8 @@ function doMove(battle, side, moveIndex, hit, events, zMove = false) {
     }
     if (rules.sb && mon.hp > 0) boost(battle, side, rules.sb, events)
   }
+  // Max Geyser, Max Flare, Max Rockfall e Max Hailstorm mudam o clima.
+  if (special && !zMove && MAX_WEATHER[move.type]) setWeather(battle, MAX_WEATHER[move.type], events)
   faints(battle, events, foeSide)
 }
 
@@ -538,6 +636,7 @@ function switchTo(battle, side, index, events) {
   battle.sides[side].active = index
   events.push({ t: 'switch', side, index })
   say(events, side === 0 ? 'go' : 'foeSent', label(battle, side))
+  weatherAbility(battle, side, events)
 }
 
 function checkEnd(battle, hit, events) {
@@ -590,8 +689,8 @@ export function playTurn(battle, action, hit) {
     const [a, b] = order
     const pa = priority(a)
     const pb = priority(b)
-    const sa = speedOf(active(battle, a.side))
-    const sb = speedOf(active(battle, b.side))
+    const sa = speedOf(active(battle, a.side), battle.weather)
+    const sb = speedOf(active(battle, b.side), battle.weather)
     const tie = battle.random() < 0.5
     const bFirst = pb > pa || (pb === pa && (sb > sa || (sb === sa && tie)))
     if (bFirst) order.reverse()
@@ -603,6 +702,17 @@ export function playTurn(battle, action, hit) {
   endOfTurn(battle, events)
   checkEnd(battle, hit, events)
   battle.turn += 1
+  return events
+}
+
+/**
+ * Começo da batalha: as habilidades de clima de quem entrou (o mais rápido
+ * primeiro; o clima do mais lento fica). Devolve os eventos para mostrar.
+ */
+export function startBattle(battle) {
+  const events = []
+  const sides = speedOf(active(battle, 1)) > speedOf(active(battle, 0)) ? [1, 0] : [0, 1]
+  for (const side of sides) weatherAbility(battle, side, events)
   return events
 }
 
@@ -674,6 +784,23 @@ export const LINES = {
   gigantamaxed: ['{0} gigantamaxizou!', '{0} inimigo gigantamaxizou!'],
   dmaxEnd: ['{0} voltou ao tamanho normal!', '{0} inimigo voltou ao tamanho normal!'],
   zPower: ['{0} libera todo o seu Z-Poder!', '{0} inimigo libera todo o seu Z-Poder!'],
+  rainStart: 'Começou a chover!',
+  rainGo: 'A chuva continua.',
+  rainEnd: 'A chuva parou.',
+  sunStart: 'A luz do sol ficou forte!',
+  sunGo: 'A luz do sol está forte.',
+  sunEnd: 'A luz do sol voltou ao normal.',
+  sandStart: 'Começou uma tempestade de areia!',
+  sandGo: 'A tempestade de areia continua.',
+  sandEnd: 'A tempestade de areia passou.',
+  hailStart: 'Começou a cair granizo!',
+  hailGo: 'O granizo continua.',
+  hailEnd: 'O granizo parou.',
+  snowStart: 'Começou a nevar!',
+  snowGo: 'A neve continua.',
+  snowEnd: 'A neve parou.',
+  hurtSand: ['{0} foi atingido pela tempestade de areia!', '{0} inimigo foi atingido pela tempestade de areia!'],
+  hurtHail: ['{0} foi atingido pelo granizo!', '{0} inimigo foi atingido pelo granizo!'],
 }
 
 /** Evento de texto → [modelo, valores] (o Pokémon vai no lugar de {0}). */

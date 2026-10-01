@@ -11,8 +11,17 @@
 // acertos, PP, Struggle, recuo, dreno, cura, status (queimadura, paralisia,
 // veneno, veneno grave, sono e congelamento), mudanças de atributo (−6 a +6),
 // efeitos secundários (com a chance de cada um) e recuar. Mais troca de
-// Pokémon, Bolsa e o adversário controlado pelo computador. Sem clima,
-// campo nem golpes que mexem no campo (Stealth Rock, Protect...).
+// Pokémon, Bolsa e o adversário controlado pelo computador. Sem campo nem
+// golpes que mexem no campo (Stealth Rock, Protect...).
+//
+// Clima (5 turnos): chuva, sol, tempestade de areia, granizo e neve, pelos
+// golpes (Rain Dance, Sunny Day, Sandstorm, Hail, Snowscape e os Max Moves
+// Geyser, Flare, Rockfall e Hailstorm) e pelas habilidades ao entrar
+// (Drizzle, Drought, Sand Stream, Snow Warning, Orichalcum Pulse). Vale na
+// conta de dano (a calculadora recebe o clima), na precisão de Thunder,
+// Hurricane e Blizzard, na cura de Moonlight/Synthesis/Morning Sun/Shore Up,
+// na velocidade (Swift Swim, Chlorophyll, Sand Rush, Slush Rush) e tira vida
+// na areia e no granizo.
 //
 // Mecânicas especiais (uma por batalha para cada lado, à escolha): Mega
 // Evolução, Z-Move, Dinamax/Gigantamax (3 turnos, HP em dobro, Max Moves) e
@@ -50,7 +59,8 @@ class BattleMega {
   final List<String> types;
   final int spe;
   final CalcPokemon? calc;
-  const BattleMega(this.id, this.name, this.types, this.spe, {this.calc});
+  final String ability;
+  const BattleMega(this.id, this.name, this.types, this.spe, {this.calc, this.ability = ''});
 }
 
 class BattleMon {
@@ -66,6 +76,9 @@ class BattleMon {
 
   /// Pokémon da calculadora (com Nature, EVs, IVs, item e habilidade).
   CalcPokemon? calc;
+
+  /// Habilidade (as de clima e de velocidade no clima valem no motor).
+  String ability;
 
   /// Mecânicas: forma Mega, id da forma Gigantamax, Tera Type e a que usa
   /// na batalha (escolhida no montador: '' | mega | z | dmax | tera).
@@ -91,7 +104,7 @@ class BattleMon {
   bool terastal = false;
   int dmax = 0;
 
-  final ({int id, List<String> types, int spe, int maxHp, CalcPokemon? calc, BattleMega? mega}) _orig;
+  final ({int id, List<String> types, int spe, int maxHp, CalcPokemon? calc, BattleMega? mega, String ability}) _orig;
   BattleMon(this.id, this.name, this.level, this.maxHp, this.spe, this.types, this.moves,
       {this.calc,
       this.shiny = false,
@@ -100,10 +113,11 @@ class BattleMon {
       String? teraType,
       this.gimmick = '',
       this.zType = '',
-      this.noDmax = false})
+      this.noDmax = false,
+      this.ability = ''})
       : hp = maxHp,
         teraType = teraType ?? (types.isEmpty ? '' : types.first),
-        _orig = (id: id, types: types, spe: spe, maxHp: maxHp, calc: calc, mega: mega);
+        _orig = (id: id, types: types, spe: spe, maxHp: maxHp, calc: calc, mega: mega, ability: ability);
 
   /// Volta ao original (antes da Mega, Terastal e Dinamax).
   void restore() {
@@ -113,6 +127,7 @@ class BattleMon {
     maxHp = _orig.maxHp;
     calc = _orig.calc;
     mega = _orig.mega;
+    ability = _orig.ability;
     hp = min(hp, maxHp);
   }
 
@@ -125,20 +140,22 @@ class BattleMon {
       teraType: teraType,
       gimmick: gimmick,
       zType: zType,
-      noDmax: noDmax);
+      noDmax: noDmax,
+      ability: _orig.ability);
 }
 
 /// Resultado de um golpe: os danos possíveis de cada acerto e a eficácia (0 = não afeta).
 typedef HitResult = ({List<List<int>> rolls, double eff});
 /// [power]: poder do Z-Move / Max Move (o golpe vira um acerto só).
-typedef BattleHit = HitResult? Function(BattleMon att, BattleMon def, String slug, bool crit, [int? power]);
+/// [weather]: o clima da batalha (rain | sun | sand | hail | snow; '' = nenhum).
+typedef BattleHit = HitResult? Function(BattleMon att, BattleMon def, String slug, bool crit, [int? power, String weather]);
 
 /// Evento para a tela ir mostrando: texto, HP, troca, desmaio, a animação
 /// do golpe (attack, com o tipo, a categoria e o golpe) / do erro (miss), o
 /// item usado num Pokémon do time (heal: [index] e o HP em [value]) ou o
 /// status novo (status: em [type]; '' = curou).
 class BattleEvent {
-  final String t; // text | hp | switch | faint | attack | miss | heal | status | mega | tera | dmax
+  final String t; // text | hp | switch | faint | attack | miss | heal | status | mega | tera | dmax | weather
   final String key;
   final List<Object> args;
   final int side, value, index;
@@ -227,6 +244,16 @@ class BattleEvent {
         type = '',
         category = '',
         slug = '';
+  /// Clima novo em [type] (rain | sun | sand | hail | snow; '' = acabou).
+  const BattleEvent.weather(this.type)
+      : t = 'weather',
+        key = '',
+        args = const [],
+        side = -1,
+        value = 0,
+        index = 0,
+        category = '',
+        slug = '';
   const BattleEvent.heal(this.side, this.index, this.value)
       : t = 'heal',
         key = '',
@@ -254,11 +281,38 @@ const _statusImmune = {
 /// Multiplicador de um estágio de atributo (−6 a +6).
 double _stageMult(int s) => s >= 0 ? (2 + s) / 2 : 2 / (2 - s);
 
-/// Velocidade na hora da ordem: estágio e paralisia (metade).
-int speedOf(BattleMon mon) {
-  final spe = (mon.spe * _stageMult(mon.boosts['spe'] ?? 0)).floor();
+/// Velocidade na hora da ordem: estágio, paralisia (metade) e as habilidades do clima (dobro).
+int speedOf(BattleMon mon, [String weather = '']) {
+  var spe = (mon.spe * _stageMult(mon.boosts['spe'] ?? 0)).floor();
+  if (weather.isNotEmpty && (_speedAbilities[mon.ability]?.contains(weather) ?? false)) spe *= 2;
   return mon.status == 'par' ? spe ~/ 2 : spe;
 }
+
+/// Climas: rain | sun | sand | hail | snow. Golpes de status que mudam o clima.
+const weatherMoves = {'rain-dance': 'rain', 'sunny-day': 'sun', 'sandstorm': 'sand', 'hail': 'hail', 'snowscape': 'snow'};
+
+/// Max Moves que mudam o clima (pelo tipo).
+const _maxWeather = {'water': 'rain', 'fire': 'sun', 'rock': 'sand', 'ice': 'hail'};
+
+/// Habilidades que mudam o clima quando o Pokémon entra (ou megaevolui).
+const _weatherAbilities = {'Drizzle': 'rain', 'Drought': 'sun', 'Orichalcum Pulse': 'sun', 'Sand Stream': 'sand', 'Snow Warning': 'snow'};
+
+/// Habilidades que dobram a velocidade no clima.
+const _speedAbilities = {
+  'Swift Swim': ['rain'],
+  'Chlorophyll': ['sun'],
+  'Sand Rush': ['sand'],
+  'Slush Rush': ['hail', 'snow'],
+};
+
+/// Nome do clima na calculadora do Showdown.
+const calcWeather = {'rain': 'Rain', 'sun': 'Sun', 'sand': 'Sand', 'hail': 'Hail', 'snow': 'Snow'};
+
+/// Quem não sofre com a areia e o granizo.
+const _weatherImmune = {
+  'sand': ['rock', 'ground', 'steel'],
+  'hail': ['ice'],
+};
 
 /// Um item da Bolsa: cura [heal] de HP ou revive com metade da vida.
 class BattleItem {
@@ -302,6 +356,47 @@ class TurnBattle {
 
   /// Mecânica que cada lado já usou ('mega' | 'z' | 'dmax' | 'tera').
   final List<String?> gimmicks = [null, null];
+
+  /// Clima (rain | sun | sand | hail | snow; '' = nenhum) e turnos que faltam.
+  String weather = '';
+  int weatherTurns = 0;
+
+  /// Começa um clima (5 turnos). Se já estava, o golpe de [side] falha.
+  void _setWeather(String w, List<BattleEvent> events, [int side = -1]) {
+    if (weather == w) {
+      if (side >= 0) _say(events, 'failed', [_label(side)]);
+      return;
+    }
+    weather = w;
+    weatherTurns = 5;
+    events.add(BattleEvent.weather(w));
+    _say(events, '${w}Start');
+  }
+
+  /// Habilidade de clima de quem acabou de entrar (ou megaevoluir).
+  void _weatherAbility(int side, List<BattleEvent> events) {
+    final mon = active(side);
+    final w = _weatherAbilities[mon.ability];
+    if (w != null && mon.hp > 0 && weather != w) _setWeather(w, events);
+  }
+
+  /// Precisão do golpe no clima (Thunder e Hurricane na chuva/sol, Blizzard no granizo/neve).
+  int? _accuracyOf(BattleMove move) {
+    if (move.slug == 'thunder' || move.slug == 'hurricane') {
+      if (weather == 'rain') return null;
+      if (weather == 'sun') return 50;
+    }
+    if (move.slug == 'blizzard' && (weather == 'hail' || weather == 'snow')) return null;
+    return move.accuracy;
+  }
+
+  /// Cura que muda com o clima: Moonlight, Synthesis e Morning Sun (sol 2/3, outro clima 1/4), Shore Up (areia 2/3).
+  List<num>? _weatherHeal(String slug) {
+    if (weather.isEmpty) return null;
+    if (slug == 'shore-up') return weather == 'sand' ? const [2, 3] : null;
+    if (!const ['moonlight', 'synthesis', 'morning-sun'].contains(slug)) return null;
+    return weather == 'sun' ? const [2, 3] : const [1, 4];
+  }
   int? winner; // 0 = você ganhou, 1 = o computador
   bool needSwitch = false; // seu Pokémon desmaiou: escolha outro
 
@@ -380,9 +475,11 @@ class TurnBattle {
         ..types = mega.types
         ..spe = mega.spe
         ..calc = mega.calc ?? mon.calc
+        ..ability = mega.ability
         ..mega = null;
       events.add(BattleEvent.mega(side, mega.id));
       _say(events, 'megaEvolved', [_label(side), mega.name]);
+      _weatherAbility(side, events);
     } else if (gimmick == 'tera') {
       mon
         ..terastal = true
@@ -433,9 +530,9 @@ class TurnBattle {
           if (mon.moves[i].pp > 0) i,
       ];
 
-  static double _expected(BattleHit hit, BattleMon att, BattleMon def, BattleMove move) {
+  static double _expected(BattleHit hit, BattleMon att, BattleMon def, BattleMove move, String weather) {
     if (move.category == 'status') return 0;
-    final r = hit(att, def, move.slug, false);
+    final r = hit(att, def, move.slug, false, null, weather);
     if (r == null || r.eff == 0) return 0;
     var avg = 0.0;
     for (final rolls in r.rolls) {
@@ -492,7 +589,7 @@ class TurnBattle {
     var bestValue = -1.0;
     for (final i in usable) {
       final move = me.moves[i];
-      final value = move.category == 'status' ? _statusValue(me, foe, move) : _expected(hit, me, foe, move);
+      final value = move.category == 'status' ? _statusValue(me, foe, move) : _expected(hit, me, foe, move, weather);
       if (value > bestValue) {
         best = i;
         bestValue = value;
@@ -502,8 +599,14 @@ class TurnBattle {
   }
 
   /// Quanto vale um golpe de status para o computador (comparado com dano).
-  static double _statusValue(BattleMon me, BattleMon foe, BattleMove move) {
+  double _statusValue(BattleMon me, BattleMon foe, BattleMove move) {
     final r = move.rules ?? const {};
+    // Clima: vale se ainda não está e ajuda os golpes dele.
+    final w = weatherMoves[move.slug];
+    if (w != null) {
+      final helps = const {'rain': 'water', 'sun': 'fire', 'sand': 'rock', 'hail': 'ice', 'snow': 'ice'}[w];
+      return weather != w && me.moves.any((m) => m.type == helps && m.category != 'status') ? (foe.maxHp * 0.2).floorToDouble() : 0;
+    }
     final h = r['h'] as List?;
     if (h != null) return me.hp * 2 < me.maxHp ? (me.maxHp * (h[0] as num) / (h[1] as num)).floorToDouble() : 0;
     final status = r['s'] as String?;
@@ -562,12 +665,17 @@ class TurnBattle {
   void _statusMove(int side, BattleMove move, List<BattleEvent> events) {
     final mon = active(side);
     final r = move.rules ?? const {};
+    if (weatherMoves[move.slug] != null) {
+      _setWeather(weatherMoves[move.slug]!, events, side);
+      return;
+    }
     final h = r['h'] as List?;
     if (h != null) {
       if (mon.hp >= mon.maxHp) {
         _say(events, 'failed', [_label(side)]);
       } else {
-        mon.hp = (mon.hp + (mon.maxHp * (h[0] as num) / (h[1] as num)).floor()).clamp(0, mon.maxHp);
+        final heal = _weatherHeal(move.slug) ?? h;
+        mon.hp = (mon.hp + (mon.maxHp * (heal[0] as num) / (heal[1] as num)).floor()).clamp(0, mon.maxHp);
         events.add(BattleEvent.hp(side, mon.hp));
         _say(events, 'healedMove', [_label(side)]);
       }
@@ -592,6 +700,27 @@ class TurnBattle {
 
   /// Fim do turno: queimadura e veneno tiram vida; quem recuou volta ao normal.
   void _endOfTurn(List<BattleEvent> events) {
+    // Clima: conta os turnos; areia e granizo machucam quem não é imune.
+    if (weather.isNotEmpty) {
+      final w = weather;
+      weatherTurns -= 1;
+      if (weatherTurns <= 0) {
+        weather = '';
+        events.add(const BattleEvent.weather(''));
+        _say(events, '${w}End');
+      } else {
+        _say(events, '${w}Go');
+        for (final s in [0, 1]) {
+          final mon = active(s);
+          final immune = _weatherImmune[w];
+          if (mon.hp <= 0 || immune == null || mon.types.any(immune.contains)) continue;
+          mon.hp = max(0, mon.hp - max(1, mon.maxHp ~/ 16));
+          events.add(BattleEvent.hp(s, mon.hp));
+          _say(events, w == 'sand' ? 'hurtSand' : 'hurtHail', [_label(s)]);
+        }
+        _faints(events, 0);
+      }
+    }
     for (final s in [0, 1]) {
       final mon = active(s);
       if (mon.hp <= 0) continue;
@@ -634,7 +763,7 @@ class TurnBattle {
       if (mon.hp <= 0) continue;
       var value = 0.0;
       for (final m in usableMoves(mon)) {
-        final v = _expected(hit, mon, foe, mon.moves[m]);
+        final v = _expected(hit, mon, foe, mon.moves[m], weather);
         if (v > value) value = v;
       }
       if (value > bestValue) {
@@ -689,7 +818,8 @@ class TurnBattle {
             ? zMoves[move.type]!
             : maxMoves[move.type]!;
     _say(events, 'used', [_label(side), name]);
-    if (!special && move.accuracy != null && random() * 100 >= move.accuracy!) {
+    final accuracy = _accuracyOf(move);
+    if (!special && accuracy != null && random() * 100 >= accuracy) {
       events.add(BattleEvent.miss(side));
       _say(events, 'missed', [_label(side)]);
       return;
@@ -703,7 +833,7 @@ class TurnBattle {
     final rules = special ? const <String, dynamic>{} : move.rules ?? const <String, dynamic>{};
     final crit = random() < _critChance[min(3, (rules['c'] as num?)?.toInt() ?? 0)];
     final power = special ? (zMove ? zPower(move.power) : maxPower(move.power, move.type)) : null;
-    final r = hit(mon, target, move.slug, crit, power);
+    final r = hit(mon, target, move.slug, crit, power, weather);
     if (r == null || r.eff == 0) {
       _say(events, 'noEffect', [_label(foeSide)]);
       return;
@@ -751,6 +881,8 @@ class TurnBattle {
       }
       if (rules['sb'] != null && mon.hp > 0) _boost(side, rules['sb'] as Map, events);
     }
+    // Max Geyser, Max Flare, Max Rockfall e Max Hailstorm mudam o clima.
+    if (special && !zMove && _maxWeather[move.type] != null) _setWeather(_maxWeather[move.type]!, events);
     _faints(events, foeSide);
   }
 
@@ -802,6 +934,7 @@ class TurnBattle {
     activeIndex[side] = index;
     events.add(BattleEvent.switched(side, index));
     _say(events, side == 0 ? 'go' : 'foeSent', [_label(side)]);
+    _weatherAbility(side, events);
   }
 
   void _checkEnd(BattleHit hit, List<BattleEvent> events) {
@@ -852,7 +985,7 @@ class TurnBattle {
     if (order.length == 2) {
       final a = order[0], b = order[1];
       final pa = priority(a), pb = priority(b);
-      final sa = speedOf(active(a.$1)), sb = speedOf(active(b.$1));
+      final sa = speedOf(active(a.$1), weather), sb = speedOf(active(b.$1), weather);
       final tie = random() < 0.5;
       final bFirst = pb > pa || (pb == pa && (sb > sa || (sb == sa && tie)));
       if (bFirst) order = [b, a];
@@ -864,6 +997,16 @@ class TurnBattle {
     _endOfTurn(events);
     _checkEnd(hit, events);
     turn += 1;
+    return events;
+  }
+
+  /// Começo da batalha: as habilidades de clima de quem entrou (o mais rápido
+  /// primeiro; o clima do mais lento fica). Devolve os eventos para mostrar.
+  List<BattleEvent> start() {
+    final events = <BattleEvent>[];
+    for (final side in speedOf(active(1)) > speedOf(active(0)) ? [1, 0] : [0, 1]) {
+      _weatherAbility(side, events);
+    }
     return events;
   }
 
@@ -935,6 +1078,23 @@ class TurnBattle {
     'gigantamaxed': ['{0} gigantamaxizou!', '{0} inimigo gigantamaxizou!'],
     'dmaxEnd': ['{0} voltou ao tamanho normal!', '{0} inimigo voltou ao tamanho normal!'],
     'zPower': ['{0} libera todo o seu Z-Poder!', '{0} inimigo libera todo o seu Z-Poder!'],
+    'rainStart': 'Começou a chover!',
+    'rainGo': 'A chuva continua.',
+    'rainEnd': 'A chuva parou.',
+    'sunStart': 'A luz do sol ficou forte!',
+    'sunGo': 'A luz do sol está forte.',
+    'sunEnd': 'A luz do sol voltou ao normal.',
+    'sandStart': 'Começou uma tempestade de areia!',
+    'sandGo': 'A tempestade de areia continua.',
+    'sandEnd': 'A tempestade de areia passou.',
+    'hailStart': 'Começou a cair granizo!',
+    'hailGo': 'O granizo continua.',
+    'hailEnd': 'O granizo parou.',
+    'snowStart': 'Começou a nevar!',
+    'snowGo': 'A neve continua.',
+    'snowEnd': 'A neve parou.',
+    'hurtSand': ['{0} foi atingido pela tempestade de areia!', '{0} inimigo foi atingido pela tempestade de areia!'],
+    'hurtHail': ['{0} foi atingido pelo granizo!', '{0} inimigo foi atingido pelo granizo!'],
   };
 
   /// Evento de texto → (modelo, valores) (o Pokémon vai no lugar de {0}).
@@ -1110,7 +1270,7 @@ class TurnBattleSetup {
           final letter = parts.length > 1 && parts[1].isNotEmpty ? ' ${parts[1].toUpperCase()}' : '';
           mega = BattleMega(megaRow['id'] as int, 'Mega ${name({...row, 'name': parts[0]})}$letter',
               [for (final t in megaRow['types'] as List) '$t'], megaCalc.stats['spe']!,
-              calc: megaCalc);
+              calc: megaCalc, ability: megaCalc.ability);
         }
       }
       final gmax = forms.where((r) => (r['name'] as String).endsWith('-gmax')).firstOrNull?['id'] as int?;
@@ -1146,6 +1306,7 @@ class TurnBattleSetup {
         gimmick: '${m.$2?['gimmick'] ?? ''}',
         zType: '${zCrystals[itemId] ?? ''}',
         noDmax: const {888, 889, 890}.contains(row['species']),
+        ability: calc.ability,
       ));
     }
     return out;
@@ -1176,7 +1337,7 @@ class TurnBattleSetup {
     return (type, types) => types.fold(1.0, (m, d) => m * data.effectiveness(cap(type), cap(d)));
   }
 
-  static BattleHit hitter(DamageData data) => (att, def, slug, crit, [power]) {
+  static BattleHit hitter(DamageData data) => (att, def, slug, crit, [power, weather = '']) {
         final a = att.calc, d = def.calc;
         if (a == null || d == null || data.move(slug) == null) return null;
         String cap(String t) => t.isEmpty ? t : '${t[0].toUpperCase()}${t.substring(1)}';
@@ -1202,7 +1363,8 @@ class TurnBattleSetup {
               ..bp = power
               ..hits = 1;
           }
-          final result = calculateDamage(attacker, defender, move, CalcField());
+          // O clima do motor (rain, sun...) vira o da calculadora (Rain, Sun...).
+          final result = calculateDamage(attacker, defender, move, CalcField(weather: calcWeather[weather] ?? ''));
           var eff = 1.0;
           for (final t in defender.teraType.isNotEmpty ? [defender.teraType] : result.defender.types) {
             eff *= data.effectiveness(result.move.type, t);

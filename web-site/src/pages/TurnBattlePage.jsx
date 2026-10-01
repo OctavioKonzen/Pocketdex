@@ -18,7 +18,7 @@ import { usePokemonIndex } from '../lib/pokemonIndex'
 import { useStore } from '../lib/store'
 import { teamMembers } from '../lib/teamBattle'
 import { fxPlan, moveAnim } from '../lib/moveAnim'
-import { active, canGimmick, canUseItem, effectLabel, forfeit, ITEMS, lineOf, MAX_MOVES, maxPower, moveEffect, newBattle, playTurn, replace, STAT_NAMES, switchMatchup, usableMoves, weaknesses, Z_MOVES, zPower } from '../lib/turnBattle'
+import { active, canGimmick, canUseItem, effectLabel, forfeit, ITEMS, lineOf, MAX_MOVES, maxPower, moveEffect, newBattle, playTurn, replace, startBattle, STAT_NAMES, switchMatchup, usableMoves, weaknesses, Z_MOVES, zPower } from '../lib/turnBattle'
 import Sprite from '../components/Sprite'
 
 const CARD = 'rounded-2xl bg-card p-5 shadow'
@@ -124,7 +124,7 @@ function Setup({ onStart }) {
           </label>
         ))}
       <p className="text-xs text-muted">
-        O computador joga pelo adversário. Batalha simplificada: só golpes de dano (com PP, precisão, prioridade e crítico), sem status nem clima.
+        O computador joga pelo adversário. Golpes com PP, precisão, prioridade, crítico, status, mudanças de atributo e clima.
       </p>
       <Button color="linear-gradient(90deg,#DC2626,#9333EA)" className="w-full" disabled={busy || !ready} onClick={start}>
         {busy ? 'Preparando...' : '⚔️ Começar batalha'}
@@ -182,7 +182,7 @@ const BattleSprite = forwardRef(function BattleSprite({ mon, id, back, fainted, 
     <div className={`aspect-square w-full transition-all duration-500 ${fainted ? 'translate-y-10 opacity-0' : ''}`}>
       <div
         className="h-full w-full origin-bottom transition-transform duration-700"
-        style={dmax ? { transform: 'scale(1.45)', filter: 'drop-shadow(0 0 6px #e11d48) drop-shadow(0 0 2px #e11d48)' } : undefined}
+        style={dmax ? { transform: 'scale(1.35)', filter: 'drop-shadow(0 0 6px #e11d48) drop-shadow(0 0 2px #e11d48)' } : undefined}
       >
         <div ref={ref} className="relative h-full w-full">
           {p && <Sprite key={`${p.id}-${mon.shiny}`} path={mon.shiny ? shinyPath(p.sprite) : p.sprite} box={p.box} fill={0.95} align="bottom" back={back} alt={mon.name} />}
@@ -198,7 +198,11 @@ const BattleSprite = forwardRef(function BattleSprite({ mon, id, back, fainted, 
  * no horizonte, gramado em perspectiva e as plataformas com espessura.
  * Grade de 160 × 100, esticada para o campo.
  */
-function BattleBackground() {
+function BattleBackground({ weather = '' }) {
+  const [skyTop, skyBottom] = SKY[weather] ?? SKY['']
+  const cloud = CLOUD_COLOR[weather] ?? '#fff'
+  const [ground, groundOpacity] = GROUND_TINT[weather] ?? ['#000', 0]
+  const fade = { transition: 'all 800ms ease' }
   // Faixas do gramado: mais finas perto do horizonte (perspectiva).
   const bands = []
   for (let i = 0, y = HORIZON; y < 100; i++) {
@@ -210,8 +214,8 @@ function BattleBackground() {
     <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 160 100" preserveAspectRatio="none" aria-hidden="true">
       <defs>
         <linearGradient id="bb-sky" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#5fb9f5" />
-          <stop offset="1" stopColor="#e6f7ff" />
+          <stop offset="0" stopColor={skyTop} style={fade} />
+          <stop offset="1" stopColor={skyBottom} style={fade} />
         </linearGradient>
         <radialGradient id="bb-sun" cx="0.5" cy="0.5" r="0.5">
           <stop offset="0" stopColor="#fffbe6" />
@@ -229,9 +233,9 @@ function BattleBackground() {
         </radialGradient>
       </defs>
       <rect width="160" height={HORIZON + 2} fill="url(#bb-sky)" />
-      <circle cx="132" cy="9" r="14" fill="url(#bb-sun)" />
+      <circle cx="132" cy="9" r={weather === 'sun' ? 24 : 14} fill="url(#bb-sun)" opacity={!weather || weather === 'sun' ? 1 : 0} style={fade} />
       {BACKGROUND_CLOUDS.map(([x, y, w], i) => (
-        <g key={i} fill="#fff" opacity="0.85">
+        <g key={i} fill={cloud} opacity={weather === 'sun' ? 0.4 : 0.85} style={fade}>
           <ellipse cx={x} cy={y} rx={w} ry={w * 0.32} />
           <ellipse cx={x - w * 0.45} cy={y + w * 0.08} rx={w * 0.55} ry={w * 0.24} />
           <ellipse cx={x + w * 0.5} cy={y + w * 0.1} rx={w * 0.5} ry={w * 0.22} />
@@ -258,12 +262,15 @@ function BattleBackground() {
         )
       })}
       {bands}
+      {/* O chão no clima: molhado, areia, coberto de neve, ao sol. */}
+      <rect y={HORIZON} width="160" height={100 - HORIZON} fill={ground} opacity={groundOpacity} style={fade} />
       {/* Linhas que fogem para o horizonte. */}
       {[-60, -20, 20, 60, 100, 140, 180, 220].map((x) => (
         <line key={x} x1="80" y1={HORIZON} x2={x} y2="100" stroke="#ffffff" strokeOpacity="0.1" strokeWidth="0.4" />
       ))}
-      <Platform cx={122} cy={45} rx={27} ry={5} depth={2.6} />
-      <Platform cx={37.6} cy={91} rx={33} ry={6.5} depth={3.4} />
+      {/* Plataformas no chão: a do inimigo, mais longe, é menor e mais achatada. */}
+      <Platform cx={120} cy={45} rx={23} ry={3.6} depth={1.4} />
+      <Platform cx={37.6} cy={91} rx={34} ry={7} depth={3} />
     </svg>
   )
 }
@@ -272,11 +279,43 @@ function BattleBackground() {
 function Platform({ cx, cy, rx, ry, depth }) {
   return (
     <g>
-      <ellipse cx={cx + 2} cy={cy + depth + 1.5} rx={rx * 1.04} ry={ry * 1.1} fill="#2f6b2a" opacity="0.35" />
+      <ellipse cx={cx} cy={cy + depth * 0.7} rx={rx * 1.06} ry={ry * 1.15} fill="#2f6b2a" opacity="0.3" />
       <path d={`M${cx - rx} ${cy} V${cy + depth} A${rx} ${ry} 0 0 0 ${cx + rx} ${cy + depth} V${cy} Z`} fill="#8a6f3c" />
       <ellipse cx={cx} cy={cy} rx={rx} ry={ry} fill="url(#bb-top)" />
       <ellipse cx={cx} cy={cy} rx={rx} ry={ry} fill="none" stroke="#6fb24a" strokeWidth="1.2" />
     </g>
+  )
+}
+
+/** Céu de cada clima: [cima, horizonte]. */
+const SKY = {
+  '': ['#5fb9f5', '#e6f7ff'],
+  rain: ['#4f6073', '#a5b2bf'],
+  sun: ['#ff9b3d', '#fff0c2'],
+  sand: ['#b4844b', '#e6cb96'],
+  hail: ['#8aa2b9', '#e7eff7'],
+  snow: ['#8aa2b9', '#eef4fa'],
+}
+/** Cor das nuvens no clima. */
+const CLOUD_COLOR = { rain: '#76838f', sand: '#d8c095', hail: '#dfe7ef', snow: '#eef3f8' }
+/** O chão no clima: [cor, opacidade] por cima do gramado. */
+const GROUND_TINT = { rain: ['#16324f', 0.3], sun: ['#ffcf5a', 0.14], sand: ['#c9a063', 0.4], hail: ['#ffffff', 0.25], snow: ['#ffffff', 0.5] }
+
+/** O clima caindo por cima do campo (chuva, areia, granizo, neve) ou o brilho do sol. */
+function WeatherFx({ weather }) {
+  return (
+    <div className="pointer-events-none absolute inset-0 transition-opacity duration-700" style={{ opacity: weather ? 1 : 0 }} aria-hidden="true">
+      {weather === 'rain' && (
+        <>
+          <div className="weather-layer weather-rain-far absolute inset-0" />
+          <div className="weather-layer weather-rain absolute inset-0" />
+        </>
+      )}
+      {weather === 'sun' && <div className="weather-sun absolute inset-0" />}
+      {weather === 'sand' && <div className="weather-layer weather-sand absolute inset-0" />}
+      {weather === 'hail' && <div className="weather-layer weather-hail absolute inset-0" />}
+      {weather === 'snow' && <div className="weather-layer weather-snow absolute inset-0" />}
+    </div>
   )
 }
 
@@ -403,6 +442,7 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
     // Forma na tela (Mega / Gigantamax) e se está dinamaxizado.
     form: [null, null],
     dmax: [false, false],
+    weather: battle.weather,
   }))
   const [text, setText] = useState(() => (foeName ? t('{0} quer batalhar!').replace('{0}', foeName) : t('Um treinador quer batalhar!')))
   const [busy, setBusy] = useState(false)
@@ -488,12 +528,26 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
       } else if (e.t === 'tera') {
         setFlash((n) => n + 1)
         await wait(400)
+      } else if (e.t === 'weather') {
+        // O cenário muda com o clima (céu, chão, chuva caindo...).
+        setShown((s) => ({ ...s, weather: e.weather }))
+        await wait(600)
       }
     }
     setBusy(false)
     setMenu(battle.needSwitch ? 'party' : 'main')
     redraw((n) => n + 1)
   }
+
+  // Começo: as habilidades de clima de quem entrou (Drizzle, Drought...).
+  const opening = useRef(null)
+  useEffect(() => {
+    const events = (opening.current ??= startBattle(battle))
+    if (!events.length) return
+    const id = setTimeout(() => play(events), STEP_MS)
+    return () => clearTimeout(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [battle])
 
   // Seu Pokémon desmaiou: a lista abre sozinha.
   useEffect(() => {
@@ -544,16 +598,18 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
         className="battle-field relative aspect-[16/10] overflow-hidden sm:aspect-[16/9] rounded-t-2xl border-4 border-b-0 border-slate-800"
         style={{ background: '#9fdcff' }}
       >
-        <BattleBackground />
+        <BattleBackground weather={shown.weather} />
         <div className="absolute top-[6%] left-[4%] w-[46%] max-w-[260px]">
           <InfoBox mon={foe} hp={shown.hp[1][shown.active[1]]} status={shown.status[1][shown.active[1]]} dmax={shown.dmax[1]} />
         </div>
-        <div className="absolute top-[3%] right-[10%] w-[27%]">
+        {/* O inimigo fica mais longe: menor e em cima da plataforma dele. */}
+        <div className="absolute right-[11%] bottom-[54%] w-[25%]">
           <BattleSprite ref={sprites[1]} mon={foe} id={shown.form[1] ?? foe.id} dmax={shown.dmax[1]} fainted={shown.fainted[1]} byId={byId} />
         </div>
         <div className="absolute bottom-[5%] left-[7%] w-[33%]">
           <BattleSprite ref={sprites[0]} mon={me} id={shown.form[0] ?? me.id} dmax={shown.dmax[0]} back fainted={shown.fainted[0]} byId={byId} />
         </div>
+        <WeatherFx weather={shown.weather} />
         {effect && <MoveFx key={effect.key} plan={effect.plan} color={effect.color} />}
         {flash > 0 && <div key={`flash-${flash}`} className="battle-flash pointer-events-none absolute inset-0 bg-white" />}
         <div className="absolute right-[4%] bottom-[8%] w-[46%] max-w-[260px]">

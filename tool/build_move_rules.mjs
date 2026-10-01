@@ -9,6 +9,7 @@
 //   b: mudanças de atributo do golpe de status, em quem usa (t: 'self') ou no alvo
 //   sb: mudanças em quem usa depois de um golpe de dano (Close Combat, Draco Meteor)
 //   x: efeitos secundários [{p: chance, s?: status, b?: atributos no alvo, sb?: em quem usa, f?: 1 recua}]
+//   w: clima que o golpe de status começa (rain, sun, sand, hail, snow)
 //   ok: 1 = golpe de status que a batalha sabe usar
 //
 // Uso: node tool/build_move_rules.mjs /caminho/do/package (npm pack pokemon-showdown)
@@ -26,6 +27,7 @@ const ours = JSON.parse(readFileSync(path.join(root, 'assets/database/moves.json
 const toId = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, '')
 const STATUSES = new Set(['brn', 'par', 'psn', 'tox', 'slp', 'frz'])
 const STATS = ['atk', 'def', 'spa', 'spd', 'spe']
+const WEATHERS = { raindance: 'rain', sunnyday: 'sun', sandstorm: 'sand', hail: 'hail', snowscape: 'snow' }
 const boostsOf = (b) => {
   if (!b) return null
   const out = Object.fromEntries(Object.entries(b).filter(([k, v]) => STATS.includes(k) && v))
@@ -61,7 +63,11 @@ for (const m of [...ours].sort((a, b) => (a.name < b.name ? -1 : 1))) {
     }
     if (ps.heal && ps.target === 'self') r.h = ps.heal
     if (['roost', 'moonlight', 'morningsun', 'synthesis', 'shoreup'].includes(ps.id)) r.h = [1, 2]
-    if (r.s || r.b || r.h) {
+    // Golpes de clima (Rain Dance, Sunny Day, Sandstorm, Hail, Snowscape).
+    if (WEATHERS[toId(ps.weather ?? '')] && ps.target === 'all' && !ps.selfSwitch) {
+      r.w = WEATHERS[toId(ps.weather)]
+      r.ok = 1
+    } else if (r.s || r.b || r.h) {
       // Golpes de status com outras coisas que não fazemos (troca, campo...) ficam de fora.
       const extra = ps.volatileStatus || ps.sideCondition || ps.weather || ps.terrain || ps.pseudoWeather || ps.selfSwitch || ps.forceSwitch
       if (!extra || ps.id === 'roost') r.ok = 1
