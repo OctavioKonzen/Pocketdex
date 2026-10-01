@@ -1,8 +1,10 @@
 name: App Android (APK)
 
-# Gera o APK do app e publica em GitHub Releases sempre que a versão do
-# pubspec.yaml muda (ex.: 1.1.0+2 → 1.2.0+3). O app confere essa página ao
-# abrir e oferece a atualização; o site tem o botão de download.
+# Gera o APK do app e publica em GitHub Releases, com a versão do
+# pubspec.yaml (ex.: 1.1.0+2 → 1.2.0+3). Só roda quando pedido (Actions →
+# App Android (APK) → Run workflow): mesclar na main não publica APK. O app
+# confere essa página ao abrir e oferece a atualização; o site tem o botão
+# de download. (Que o app compila é conferido em todo PR, em checks.yml.)
 #
 # Precisa destes secrets (Settings → Secrets and variables → Actions):
 #   ANDROID_KEYSTORE_BASE64   chave de assinatura (.jks) em base64
@@ -14,12 +16,6 @@ name: App Android (APK)
 # publicado.
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - pubspec.yaml
-      - android/**
-      - .github/workflows/android-release.yml
   workflow_dispatch:
 
 permissions:
