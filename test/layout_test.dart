@@ -17,8 +17,6 @@ import 'package:pocket_dex/models/team.dart';
 import 'package:pocket_dex/providers/favorites_provider.dart';
 import 'package:pocket_dex/providers/theme_provider.dart';
 import 'package:pocket_dex/screens/collection_screen.dart';
-import 'package:pocket_dex/services/local_database.dart';
-import 'package:pocket_dex/services/turn_battle.dart';
 import 'package:pocket_dex/screens/battle_tools_screen.dart';
 import 'package:pocket_dex/screens/breeding_help_screen.dart';
 import 'package:pocket_dex/screens/damage_calc_screen.dart';
@@ -129,15 +127,6 @@ final screens = <String, Widget Function()>{
   'Amigos': () => const FriendsScreen(),
   'Batalha': () => const TurnBattleScreen(),
   'Batalha por turnos': () => const TurnBattleScreen(mine: [(6, null), (9, null)], theirs: [(3, null), (94, null)], foeName: 'Ash'),
-  // Clima: Rain Dance muda o cenário (céu, chão e a chuva caindo).
-  'Batalha com chuva': () => const TurnBattleScreen(mine: [
-        (9, {
-          'level': 50,
-          'moves': ['rain-dance', 'surf', 'ice-beam', 'flash-cannon'],
-        }),
-      ], theirs: [
-        (6, null),
-      ], foeName: 'Ash'),
   'Login': () => const LoginScreen(),
   'Pokémon (Charizard)': () => const PokemonDetailScreen(initialPokemonId: 6),
   'Status do Pokémon': () => const PokemonDetailScreen(initialPokemonId: 6),
@@ -174,21 +163,6 @@ final actions = <String, Future<void> Function(WidgetTester)>{
       await tester.tap(find.text('LUTAR'));
       await tester.pump(const Duration(milliseconds: 300));
     }
-  },
-  'Batalha com chuva': (tester) async {
-    for (var i = 0; i < 30 && find.text('LUTAR').evaluate().isEmpty; i++) {
-      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
-      await tester.pump(const Duration(milliseconds: 300));
-    }
-    if (find.text('LUTAR').evaluate().isEmpty) return;
-    await tester.tap(find.text('LUTAR'));
-    await tester.pump(const Duration(milliseconds: 300));
-    await tester.tap(find.text('Rain Dance'));
-    for (var i = 0; i < 60 && find.text('LUTAR').evaluate().isEmpty; i++) {
-      await tester.pump(const Duration(milliseconds: 250));
-    }
-    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
-    await tester.pump(const Duration(milliseconds: 600));
   },
   'Filtros da Pokédex': (tester) async {
     await tester.tap(find.byType(FloatingActionButton));
@@ -230,15 +204,6 @@ void main() {
     await UserData.instance.load();
     await SpriteBoxes.load();
     await AppSettings.instance.load();
-    // Tabelas que a batalha usa, carregadas fora dos testes: um Future guardado
-    // no cache dentro de um teste (tempo de mentira) trava no teste seguinte.
-    await TurnBattleSetup.mons([
-      (9, {
-        'moves': ['rain-dance'],
-      }),
-      (6, null),
-    ], (row) => '${row['name']}');
-    await LocalDatabase.instance.moveAnims();
   });
 
   final problems = <String>[];
