@@ -4,10 +4,11 @@
 Do #650 em diante o Pokémon Showdown só tem animação no estilo BW para parte
 das gerações novas; o resto são renderizações 3D (maiores e com centenas de
 cores) ou nem existem. Para cada um desses, em ordem:
-  1. a animação BW de verdade da pasta gen5ani do Showdown (espelho no GitHub:
-     MaribelHearn/pokemon-showdown-sprites), recortada justo;
-  2. a animação 3D do Showdown (PokeAPI) reduzida ao tamanho e às 16 cores do
-     BW: o movimento é o de verdade (nada de esticar o desenho);
+  1. a animação BW de verdade da pasta gen5ani do Showdown
+     (play.pokemonshowdown.com/sprites), recortada justo;
+  2. a animação 3D do Showdown (pasta ani; ou a cópia da PokeAPI) reduzida ao
+     tamanho e às 16 cores do BW: o movimento é o de verdade (nada de esticar
+     o desenho);
   3. sem animação nenhuma: a arte BW parada do Smogon Sprite Project
      (smogon/sprites, src/sprites/gen5) ou, sem ela, o sprite parado do banco.
 
@@ -18,9 +19,8 @@ para recalcular a lista e os ajustes de tamanho.
 Uso:
   GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 --filter=blob:none --no-checkout \\
       https://github.com/smogon/sprites /tmp/smogon-sprites
-  GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 --filter=blob:none --no-checkout \\
-      https://github.com/MaribelHearn/pokemon-showdown-sprites /tmp/ps-sprites
-  python3 tool/bw_style_sprites.py /tmp/smogon-sprites /tmp/ps-sprites [--refazer]
+  python3 tool/bw_style_sprites.py /tmp/smogon-sprites [--refazer]
+  (--refazer: refaz todos do #650 em diante, buscando de novo no Showdown)
 """
 
 import json
@@ -48,6 +48,8 @@ BW_MAX_COLORS = 20
 BW_COLORS = 16
 PS_3D = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown'
 CACHE_3D = '/tmp/pokeapi-showdown-3d'
+PS = 'https://play.pokemonshowdown.com/sprites'
+CACHE_PS = '/tmp/showdown-sprites'
 # Marca nos GIFs gerados aqui (para refazer só eles com --refazer).
 MARK = b'pocketdex-respiracao'  # (nome antigo, de quando era só respiração; mantido)
 
@@ -74,23 +76,15 @@ def smogon_index(repo):
     return index
 
 
-def gen5ani_index(repo):
-    """Nome do Showdown (ex.: "rotom-wash") → caminho do GIF BW animado."""
-    files = subprocess.run(
-        ['git', '-C', repo, 'ls-tree', '-r', '--name-only', 'HEAD', 'sprites/gen5ani/', 'sprites/gen5ani-shiny/'],
-        capture_output=True, text=True, check=True,
-    ).stdout.split()
-    index = {'front': {}, 'shiny': {}}
-    for f in files:
-        if f.endswith('.gif'):
-            index['shiny' if '/gen5ani-shiny/' in f else 'front'][f.split('/')[-1][:-4]] = f
-    return index
-
-
 def showdown_names(slug):
-    """Jeitos de o Showdown escrever o slug da PokeAPI ("iron-bundle" → "ironbundle")."""
+    """Jeitos de o Showdown escrever o slug da PokeAPI ("iron-bundle" → "ironbundle",
+    "charizard-mega-x" → "charizard-megax", "ogerpon-wellspring-mask" → "ogerpon-wellspring")."""
     parts = slug.split('-')
-    return [''.join(parts)] + [''.join(parts[:i]) + '-' + ''.join(parts[i:]) for i in range(1, len(parts))]
+    names = []
+    for end in range(len(parts), 0, -1):  # também sem as últimas palavras ("-mask", "-build"...)
+        p = parts[:end]
+        names += [''.join(p)] + [''.join(p[:i]) + '-' + ''.join(p[i:]) for i in range(1, len(p))]
+    return list(dict.fromkeys(names))
 
 
 def is_bw(path):
@@ -133,6 +127,33 @@ def still(img, path):
     """Arte parada (um quadro só): sem animação nenhuma, nada de deformar o desenho."""
     os.makedirs(os.path.dirname(path), exist_ok=True)
     img.save(path, save_all=True, append_images=[], loop=0, disposal=2, comment=MARK)
+
+
+def fetch_ps(folder, name):
+    """Um GIF do servidor de sprites do Showdown (guardado em CACHE_PS; None se não existe)."""
+    import urllib.error
+    import urllib.request
+    path = os.path.join(CACHE_PS, folder, f'{name}.gif')
+    missing = path + '.404'
+    if os.path.exists(path):
+        return path
+    if os.path.exists(missing):
+        return None
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    try:
+        # Sem User-Agent o servidor do Showdown responde 403.
+        request = urllib.request.Request(f'{PS}/{folder}/{name}.gif', headers={'User-Agent': 'PocketDex sprite tool'})
+        with urllib.request.urlopen(request, timeout=60) as r:
+            data = r.read()
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            open(missing, 'w').close()
+        return None
+    except Exception:
+        return None
+    with open(path, 'wb') as f:
+        f.write(data)
+    return path
 
 
 def fetch_3d(pid, kind):
@@ -199,14 +220,10 @@ def generated(path):
 
 
 def main():
+    from concurrent.futures import ThreadPoolExecutor
     args = [a for a in sys.argv[1:] if not a.startswith('--')]
     repo = args[0] if args else '/tmp/smogon-sprites'
-    ps_repo = args[1] if len(args) > 1 else None
-    ani = gen5ani_index(ps_repo) if ps_repo else {'front': {}, 'shiny': {}}
-
-    def animated(slug, kind):
-        return next((ani[kind][n] for n in showdown_names(slug) if n in ani[kind]), None)
-    refazer = '--refazer' in sys.argv  # gera de novo os que este script já fez
+    refazer = '--refazer' in sys.argv  # refaz todos do #650 em diante
     index = smogon_index(repo)
     with open(os.path.join(DB, 'pokemon.json'), encoding='utf-8') as f:
         everyone = json.load(f)
@@ -217,10 +234,28 @@ def main():
     jobs = []
     for pid, slug in pokemon:
         cur = os.path.join(OUT, 'front', f'{pid}.gif')
-        if os.path.exists(cur) and is_bw(cur) and not (refazer and (generated(cur) or animated(slug, 'front'))):
+        if os.path.exists(cur) and is_bw(cur) and not refazer:
             continue
         for kind in ('front', 'shiny'):
             jobs.append((pid, slug, kind))
+
+    # Um nome que é de outro Pokémon do banco nunca vale ("charizard" não serve
+    # para a Mega, "ogerpon" não serve para a máscara).
+    taken = {}
+    for _, other in pokemon + [(0, n) for n in ids]:
+        taken.setdefault(other.replace('-', ''), set()).add(other)
+
+    def ps(folder, slug, kind):
+        """Primeiro nome que existe no Showdown para esse slug."""
+        folder += '-shiny' if kind == 'shiny' else ''
+        names = [n for n in showdown_names(slug) if taken.get(n.replace('-', ''), {slug}) == {slug}]
+        return next((g for n in names if (g := fetch_ps(folder, n))), None)
+
+    # Baixa do Showdown em paralelo (animação BW e, para quem não tem, a 3D).
+    with ThreadPoolExecutor(8) as pool:
+        bw = dict(zip(jobs, pool.map(lambda j: ps('gen5ani', j[1], j[2]), jobs)))
+        rest = [j for j in jobs if not (bw[j] and is_bw(bw[j]))]
+        ani3d = dict(zip(rest, pool.map(lambda j: ps('ani', j[1], j[2]), rest)))
 
     # Formas que só mudam de pose (Koraidon/Miraidon de batalha...) e não têm
     # arte própria: usam a da espécie. Mega/Gigantamax nunca (seria outro visual).
@@ -235,16 +270,13 @@ def main():
     need = [a for pid, slug, kind in jobs if (a := art(pid, slug, kind))]
     for i in range(0, len(need), 200):
         subprocess.run(['git', '-C', repo, 'checkout', 'HEAD', '--', *need[i:i + 200]], check=True)
-    need = [a for pid, slug, kind in jobs if (a := animated(slug, kind))]
-    for i in range(0, len(need), 200):
-        subprocess.run(['git', '-C', ps_repo, 'checkout', 'HEAD', '--', *need[i:i + 200]], check=True)
 
     counts = {'animado BW': 0, '3D reduzido': 0, 'parado': 0, 'sem': 0}
-    for pid, slug, kind in jobs:
+    for job in jobs:
+        pid, slug, kind = job
         out = os.path.join(OUT, kind, f'{pid}.gif')
-        gif = animated(slug, kind)
-        if gif and is_bw(os.path.join(ps_repo, gif)):
-            crop_gif(os.path.join(ps_repo, gif), out)
+        if bw[job] and is_bw(bw[job]):
+            crop_gif(bw[job], out)
             counts['animado BW'] += 1
             continue
         # Arte BW parada: a da Smogon ou, sem ela, a do banco.
@@ -252,7 +284,7 @@ def main():
         static = os.path.join(STATIC, *(['shiny'] if kind == 'shiny' else []), f'{pid}.png')
         img = crop(Image.open(os.path.join(repo, src))) if src else crop(Image.open(static)) if os.path.exists(static) else None
         # O 3D reduzido fica do tamanho da arte BW.
-        anim = fetch_3d(pid, kind)
+        anim = ani3d.get(job) or fetch_3d(pid, kind)
         if not anim and not ('mega' in slug or 'gmax' in slug):
             # Forma que só muda de pose (Koraidon de batalha...): a animação da espécie.
             base = ids.get(slug.split('-')[0])
