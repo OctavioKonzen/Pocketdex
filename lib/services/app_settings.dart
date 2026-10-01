@@ -24,7 +24,7 @@ class AppSettings extends ChangeNotifier {
   /// Pokébola girando no fundo das telas.
   bool backgroundAnimation = true;
 
-  /// Sprites animados (estilo Black & White) em todo o app; vêm no APK
+  /// Sprites animados (estilo Black & White) em todo o app; puxados da nuvem
   /// (lib/services/animated_sprites.dart).
   bool animatedSprites = true;
 

@@ -14,7 +14,6 @@ import 'package:flutter/material.dart' as m show Text;
 
 import '../i18n/i18n.dart';
 import '../i18n/text.dart';
-import '../services/animated_sprites.dart';
 import '../services/damage_calc.dart';
 import '../services/friends_service.dart';
 import '../services/league.dart';
@@ -261,6 +260,10 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
     for (final t in widget.battle.teams) [for (final _ in t) '']
   ];
   final List<bool> _fainted = [false, false];
+
+  /// Forma na tela (Mega / Gigantamax) e se está dinamaxizado.
+  final List<int?> _form = [null, null];
+  final List<bool> _dmax = [false, false];
   late String _text = widget.foeName.isNotEmpty ? tr('{0} quer batalhar!').replaceAll('{0}', widget.foeName) : tr('Um treinador quer batalhar!');
   bool _busy = false;
   String _menu = 'main'; // main | fight | party | bag
@@ -301,8 +304,16 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
     return text;
   }
 
-  Future<void> _play(List<BattleEvent> events) async {
-    setState(() => _busy = true);
+  /// [before]: o id de cada lado antes do turno (o motor já mudou a Mega; a tela muda no evento).
+  Future<void> _play(List<BattleEvent> events, [List<int>? before]) async {
+    setState(() {
+      _busy = true;
+      if (before != null) {
+        for (final s in [0, 1]) {
+          if (!_dmax[s]) _form[s] = before[s];
+        }
+      }
+    });
     for (final e in events) {
       if (!mounted) return;
       switch (e.t) {
@@ -352,7 +363,24 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
           setState(() {
             _active[e.side] = e.value;
             _fainted[e.side] = false;
+            _form[e.side] = null;
+            _dmax[e.side] = false;
           });
+        case 'mega':
+          setState(() {
+            _flash++;
+            _form[e.side] = e.value;
+          });
+          await _wait(500);
+        case 'dmax':
+          setState(() {
+            _form[e.side] = e.value;
+            _dmax[e.side] = e.index == 1;
+          });
+          await _wait(700);
+        case 'tera':
+          setState(() => _flash++);
+          await _wait(400);
       }
     }
     if (!mounted) return;
@@ -363,7 +391,10 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
     });
   }
 
-  void _fight(int i) => _play(_b.playTurn(widget.hit, move: i));
+  void _fight(int i) {
+    final before = [_b.active(0).id, _b.active(1).id];
+    _play(_b.playTurn(widget.hit, move: i), before);
+  }
   void _choose(int i) {
     final item = _item;
     if (item != null) {
@@ -397,6 +428,10 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
     // Efetividade (como nos jogos): nos golpes, nas fraquezas do inimigo e na troca.
     final rival = _b.active(1);
     final foeWeak = TurnBattle.weaknesses(rival.types, allTypes, widget.typeEff);
+    // A mecânica do set (montador) ativa sozinha no primeiro ataque, como nos
+    // jogos: o menu já mostra os Z-Moves / Max Moves que vão sair.
+    final auto = current.gimmick.isNotEmpty && _b.gimmicks[0] == null ? current.gimmick : null;
+    final maxed = current.dmax > 0 || (auto == 'dmax' && _b.canGimmick(0, 'dmax'));
     const border = Color(0xFF1E293B);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -407,15 +442,7 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
           child: AspectRatio(
             aspectRatio: 16 / 11,
             child: DecoratedBox(
-              decoration: BoxDecoration(
-                border: Border.all(color: border, width: 4),
-                gradient: const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Color(0xFFBFE6FF), Color(0xFFE8F6FF), Color(0xFFB9E59A), Color(0xFF8FD16B)],
-                  stops: [0, 0.45, 0.46, 1],
-                ),
-              ),
+              decoration: BoxDecoration(border: Border.all(color: border, width: 4), color: const Color(0xFF9FDCFF)),
               child: LayoutBuilder(builder: (context, box) {
                 final w = box.maxWidth, h = box.maxHeight;
                 // Terremoto: o campo treme.
@@ -427,30 +454,31 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
                   ),
                   child: Stack(
                     children: [
+                      const Positioned.fill(child: CustomPaint(painter: _FieldPainter())),
                       Positioned(
                           left: w * 0.03,
                           top: h * 0.05,
                           width: w * 0.48,
-                          child: _InfoBox(mon: foe, hp: _hp[1][_active[1]], status: _status[1][_active[1]])),
-                      Positioned(right: w * 0.06, top: h * 0.32, width: w * 0.38, height: h * 0.07, child: const _Platform()),
+                          child: _InfoBox(mon: foe, hp: _hp[1][_active[1]], status: _status[1][_active[1]], dmax: _dmax[1])),
+                      Positioned(right: w * 0.06, top: h * 0.31, width: w * 0.38, height: h * 0.09, child: const _Platform()),
                       Positioned(
                           right: w * 0.1,
                           top: h * 0.02,
                           width: w * 0.3,
                           height: w * 0.3,
-                          child: _Sprite(key: _sprites[1], mon: foe, fainted: _fainted[1])),
-                      Positioned(left: w * 0.02, bottom: h * 0.03, width: w * 0.46, height: h * 0.09, child: const _Platform()),
+                          child: _Sprite(key: _sprites[1], mon: foe, id: _form[1] ?? foe.id, dmax: _dmax[1], fainted: _fainted[1])),
+                      Positioned(left: w * 0.02, bottom: h * 0.02, width: w * 0.46, height: h * 0.12, child: const _Platform()),
                       Positioned(
                           left: w * 0.06,
                           bottom: h * 0.05,
                           width: w * 0.36,
                           height: w * 0.36,
-                          child: _Sprite(key: _sprites[0], mon: me, back: true, fainted: _fainted[0])),
+                          child: _Sprite(key: _sprites[0], mon: me, id: _form[0] ?? me.id, dmax: _dmax[0], back: true, fainted: _fainted[0])),
                       Positioned(
                           right: w * 0.03,
                           bottom: h * 0.06,
                           width: w * 0.5,
-                          child: _InfoBox(mon: me, hp: _hp[0][_active[0]], status: _status[0][_active[0]], mine: true)),
+                          child: _InfoBox(mon: me, hp: _hp[0][_active[0]], status: _status[0][_active[0]], dmax: _dmax[0], mine: true)),
                       if (_fx != null) _MoveFx(key: ValueKey(_fx!.$3), plan: _fx!.$1, color: _fx!.$2, w: w, h: h),
                       if (_flash > 0) _Flash(key: ValueKey(_flash)),
                     ],
@@ -530,12 +558,24 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
                               crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                m.Text(mv.name,
+                                // Com Z-Move / Dinamax: o nome do golpe especial (o poder dele no lugar do PP).
+                                m.Text(
+                                    mv.category == 'status'
+                                        ? mv.name
+                                        : auto == 'z' && _b.canGimmick(0, 'z', i)
+                                            ? TurnBattle.zMoves[mv.type]!
+                                            : maxed
+                                                ? TurnBattle.maxMoves[mv.type]!
+                                                : mv.name,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13)),
                                 Row(children: [
-                                  m.Text('PP ${mv.pp}/${mv.maxPp}', style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                                  m.Text(
+                                      mv.category != 'status' && ((auto == 'z' && _b.canGimmick(0, 'z', i)) || maxed)
+                                          ? '${tr('Poder')} ${auto == 'z' && !maxed ? TurnBattle.zPower(mv.power) : TurnBattle.maxPower(mv.power, mv.type)}'
+                                          : 'PP ${mv.pp}/${mv.maxPp}',
+                                      style: const TextStyle(color: Colors.white70, fontSize: 11)),
                                   const Spacer(),
                                   _EffectTag(TurnBattle.moveEffect(widget.hit, current, rival, mv)),
                                 ]),
@@ -672,30 +712,98 @@ class _MenuButton extends StatelessWidget {
       );
 }
 
+/// Plataforma: terra com a borda de grama, como nos jogos (igual ao site).
 class _Platform extends StatelessWidget {
   const _Platform();
   @override
-  Widget build(BuildContext context) => DecoratedBox(
-        decoration: BoxDecoration(color: const Color(0xFF166534).withAlpha(90), borderRadius: const BorderRadius.all(Radius.elliptical(200, 30))),
+  Widget build(BuildContext context) => const DecoratedBox(
+        decoration: ShapeDecoration(
+          shape: OvalBorder(side: BorderSide(color: Color(0xFF7CBF55), width: 3)),
+          gradient: RadialGradient(
+            center: Alignment(0, -0.2),
+            radius: 0.7,
+            colors: [Color(0xFFE9D9A6), Color(0xFFD6C084), Color(0xFFA98F52)],
+            stops: [0, 0.55, 1],
+          ),
+          shadows: [BoxShadow(color: Color(0x2E000000), blurRadius: 8, offset: Offset(0, 4))],
+        ),
       );
 }
 
-// Sprites animados no estilo Black & White, de frente e de costas (e shiny),
-// do repositório de sprites da PokeAPI: os oficiais do jogo do #1 ao #649 e,
-// do #650 em diante (e formas), os do Pokémon Showdown (Smogon Sprite
-// Project). Sem sprite animado (ou sem internet) fica o parado de sempre,
-// balançando. Igual ao site.
-const _sprites = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon';
-String? _bwUrl(int id, bool back, bool shiny) {
-  if (id < 1) return null;
-  final dir = id <= 649 ? '$_sprites/versions/generation-v/black-white/animated' : '$_sprites/other/showdown';
-  return '$dir/${back ? 'back/' : ''}${shiny ? 'shiny/' : ''}$id.gif';
+/// Cenário da batalha (desenho nosso, igual ao do site): céu com sol e
+/// nuvens, montanhas e morros ao fundo e o gramado com faixas. Coordenadas
+/// numa grade de 160 × 100, esticada para o campo.
+class _FieldPainter extends CustomPainter {
+  const _FieldPainter();
+
+  static const _clouds = [(24.0, 12.0, 12.0), (70.0, 7.0, 9.0), (104.0, 20.0, 10.0), (150.0, 26.0, 7.0)];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final sx = size.width / 160, sy = size.height / 100;
+    Offset p(double x, double y) => Offset(x * sx, y * sy);
+    Rect r(double x, double y, double w, double h) => Rect.fromLTWH(x * sx, y * sy, w * sx, h * sy);
+    canvas.drawRect(
+        r(0, 0, 160, 60),
+        Paint()
+          ..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF6EC6FF), Color(0xFFE3F6FF)])
+              .createShader(r(0, 0, 160, 60)));
+    // Sol.
+    canvas.drawOval(
+        r(116, -4, 32, 32),
+        Paint()
+          ..shader = const RadialGradient(colors: [Color(0xFFFFFBE6), Color(0xE6FFF3B0), Color(0x00FFF3B0)], stops: [0, 0.4, 1])
+              .createShader(r(116, -4, 32, 32)));
+    // Nuvens.
+    final cloud = Paint()..color = Colors.white.withAlpha(217);
+    for (final (x, y, w) in _clouds) {
+      canvas.drawOval(Rect.fromCenter(center: p(x, y), width: 2 * w * sx, height: 2 * w * 0.32 * sy), cloud);
+      canvas.drawOval(Rect.fromCenter(center: p(x - w * 0.45, y + w * 0.08), width: 2 * w * 0.55 * sx, height: 2 * w * 0.24 * sy), cloud);
+      canvas.drawOval(Rect.fromCenter(center: p(x + w * 0.5, y + w * 0.1), width: 2 * w * 0.5 * sx, height: 2 * w * 0.22 * sy), cloud);
+    }
+    // Montanhas e morros.
+    const peaks = [(0.0, 50.0), (18.0, 36.0), (32.0, 44.0), (50.0, 30.0), (70.0, 45.0), (88.0, 34.0), (108.0, 46.0), (126.0, 32.0), (146.0, 43.0), (160.0, 36.0)];
+    final mountains = Path()..moveTo(0, 56 * sy);
+    for (final (x, y) in peaks) {
+      mountains.lineTo(x * sx, y * sy);
+    }
+    mountains
+      ..lineTo(160 * sx, 56 * sy)
+      ..close();
+    canvas.drawPath(mountains, Paint()..color = const Color(0xCC9CC7D9));
+    final hills = Path()
+      ..moveTo(0, 54 * sy)
+      ..quadraticBezierTo(20 * sx, 44 * sy, 42 * sx, 52 * sy)
+      ..quadraticBezierTo(64 * sx, 60 * sy, 86 * sx, 50 * sy)
+      ..quadraticBezierTo(108 * sx, 40 * sy, 130 * sx, 48 * sy)
+      ..quadraticBezierTo(152 * sx, 56 * sy, 160 * sx, 50 * sy)
+      ..lineTo(160 * sx, 60 * sy)
+      ..lineTo(0, 60 * sy)
+      ..close();
+    canvas.drawPath(hills, Paint()..color = const Color(0xFF7CC46A));
+    // Gramado com faixas.
+    canvas.drawRect(
+        r(0, 56, 160, 44),
+        Paint()
+          ..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFFB5E58A), Color(0xFF6FBF4A)])
+              .createShader(r(0, 56, 160, 44)));
+    final stripe = Paint()..color = Colors.white.withAlpha(31);
+    for (final (i, y) in [62.0, 70.0, 80.0, 92.0].indexed) {
+      canvas.drawRect(r(0, y, 160, 1.5 + i * 0.8), stripe);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_FieldPainter old) => false;
 }
 
 class _Sprite extends StatefulWidget {
   final BattleMon mon;
-  final bool back, fainted;
-  const _Sprite({super.key, required this.mon, this.back = false, this.fainted = false});
+
+  /// A forma na tela (Mega / Gigantamax).
+  final int id;
+  final bool back, fainted, dmax;
+  const _Sprite({super.key, required this.mon, required this.id, this.back = false, this.fainted = false, this.dmax = false});
 
   @override
   State<_Sprite> createState() => _SpriteState();
@@ -705,7 +813,6 @@ class _SpriteState extends State<_Sprite> with TickerProviderStateMixin {
   late final _lunge = AnimationController(vsync: this, duration: const Duration(milliseconds: 450));
   late final _hurt = AnimationController(vsync: this, duration: const Duration(milliseconds: 520));
   late final _dodge = AnimationController(vsync: this, duration: const Duration(milliseconds: 420));
-  late final _idle = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))..repeat();
 
   /// Quem ataca avança na direção do outro ([dash]: vai até ele, golpe corpo a corpo).
   void lunge({bool dash = false}) {
@@ -726,28 +833,11 @@ class _SpriteState extends State<_Sprite> with TickerProviderStateMixin {
     _lunge.dispose();
     _hurt.dispose();
     _dodge.dispose();
-    _idle.dispose();
     super.dispose();
   }
 
-  Widget _static(bool bob) => AnimatedBuilder(
-        animation: _idle,
-        builder: (context, child) => FractionalTranslation(
-          translation: Offset(0, bob ? -0.015 * (1 - cos(_idle.value * 2 * pi)) : 0),
-          child: child,
-        ),
-        // O seu fica de costas (espelhado), como nos jogos.
-        child: Transform.flip(flipX: widget.back, child: PokemonSprite(widget.mon.id, shiny: widget.mon.shiny, fill: 0.95, alignBottom: true)),
-      );
-
   @override
   Widget build(BuildContext context) {
-    // De frente: o GIF do nosso banco, que vem no APK (aparece na hora).
-    final mon = widget.mon;
-    final asset = !widget.back && AnimatedSprites.instance.has(mon.id, shiny: mon.shiny)
-        ? AnimatedSprites.instance.asset(mon.id, shiny: mon.shiny)
-        : null;
-    final url = widget.back ? _bwUrl(mon.id, true, mon.shiny) : null;
     final dir = widget.back ? 1.0 : -1.0;
     return AnimatedSlide(
       duration: const Duration(milliseconds: 500),
@@ -769,33 +859,22 @@ class _SpriteState extends State<_Sprite> with TickerProviderStateMixin {
               child: Opacity(opacity: shaking && (h * 5).floor().isEven ? 0.15 : 1, child: child),
             );
           },
-          // Trocou de Pokémon: começa do zero (sem ficar o sprite do anterior).
+          // Trocou de Pokémon (ou megaevoluiu): começa do zero. Do nosso banco,
+          // de frente ou de costas, todos do mesmo tamanho (como na Pokédex).
           child: KeyedSubtree(
-            key: ValueKey((widget.mon.id, widget.mon.shiny)),
-            child: asset != null
-                ? LayoutBuilder(
-                    builder: (context, box) => Align(
-                      alignment: Alignment.bottomCenter,
-                      child: Image.asset(asset, scale: 96 / box.maxWidth, filterQuality: FilterQuality.none, gaplessPlayback: true,
-                          errorBuilder: (context, error, stack) => _static(true)),
-                    ),
-                  )
-                : url == null
-                ? _static(true)
-                : LayoutBuilder(
-                    // Tamanho de verdade do sprite (os pequenos continuam pequenos, como no jogo).
-                    builder: (context, box) => Align(
-                      alignment: Alignment.bottomCenter,
-                      child: Image.network(
-                        url,
-                        scale: 96 / box.maxWidth,
-                        filterQuality: FilterQuality.none,
-                        gaplessPlayback: true,
-                        loadingBuilder: (context, child, progress) => progress == null ? child : _static(false),
-                        errorBuilder: (context, error, stack) => _static(true),
-                      ),
-                    ),
-                  ),
+            key: ValueKey((widget.id, widget.mon.shiny)),
+            // Dinamax: gigante e avermelhado.
+            child: AnimatedScale(
+              scale: widget.dmax ? 1.45 : 1,
+              alignment: Alignment.bottomCenter,
+              duration: const Duration(milliseconds: 700),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  boxShadow: widget.dmax ? const [BoxShadow(color: Color(0x66E11D48), blurRadius: 24, spreadRadius: 2)] : const [],
+                ),
+                child: PokemonSprite(widget.id, shiny: widget.mon.shiny, back: widget.back, fill: 0.95, alignBottom: true),
+              ),
+            ),
           ),
         ),
       ),
@@ -1014,9 +1093,9 @@ class _StatusBadge extends StatelessWidget {
 class _InfoBox extends StatelessWidget {
   final BattleMon mon;
   final int hp;
-  final bool mine;
+  final bool mine, dmax;
   final String status;
-  const _InfoBox({required this.mon, required this.hp, this.mine = false, this.status = ''});
+  const _InfoBox({required this.mon, required this.hp, this.mine = false, this.status = '', this.dmax = false});
 
   @override
   Widget build(BuildContext context) => Container(
@@ -1043,6 +1122,8 @@ class _InfoBox extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 4),
+                if (mon.terastal) ...[_Tag('TERA ${mon.teraType.toUpperCase()}', getColorForType(mon.teraType)), const SizedBox(width: 4)],
+                if (dmax) ...[const _Tag('DMAX', Color(0xFFE11D48)), const SizedBox(width: 4)],
                 if (status.isNotEmpty) ...[_StatusBadge(status), const SizedBox(width: 4)],
                 m.Text('Nv.${mon.level}', style: const TextStyle(fontSize: 11)),
               ]),

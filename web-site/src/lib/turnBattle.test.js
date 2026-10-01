@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { battleMons, pickMoves } from './battleSetup'
 import { seededRandom } from './league'
-import { active, canUseItem, effectLabel, lineOf, moveEffect, newBattle, playTurn, replace, switchMatchup, usableMoves, weaknesses } from './turnBattle'
+import { active, canUseItem, effectLabel, lineOf, maxPower, moveEffect, newBattle, playTurn, replace, switchMatchup, usableMoves, weaknesses, zPower } from './turnBattle'
 
 beforeAll(() => {
   vi.stubGlobal('fetch', async (url) => {
@@ -26,9 +26,10 @@ const move = (slug, type, power, accuracy, pp, priority = 0, rules = null, categ
   priority,
   ...(rules ? { rules } : {}),
 })
-const mon = (id, name, types, hp, spe, moves) => ({ id, name, level: 50, maxHp: hp, hp, spe, types, moves })
-const fakeHit = (att, def, slug) => {
-  const m = att.moves.find((x) => x.slug === slug) ?? { power: 50, type: 'normal' }
+const mon = (id, name, types, hp, spe, moves, extra = {}) => ({ id, name, level: 50, maxHp: hp, hp, spe, types, moves, teraType: types[0], ...extra })
+const fakeHit = (att, def, slug, crit, power) => {
+  const found = att.moves.find((x) => x.slug === slug) ?? { power: 50, type: 'normal' }
+  const m = { ...found, power: power ?? found.power }
   const eff = m.type === 'normal' && def.types.includes('ghost') ? 0 : m.type === 'water' && def.types.includes('fire') ? 2 : m.type === 'grass' && def.types.includes('fire') ? 0.5 : 1
   const roll = Array.from({ length: 16 }, (_, i) => Math.floor(((m.power * (85 + i)) / 100) * eff * 0.5))
   return { rolls: slug === 'double-hit' ? [roll, roll] : [roll], eff }
@@ -49,7 +50,9 @@ export function fakeBattleLog() {
       ]),
     ],
     [
-      mon(3, 'Fogo', ['fire'], 120, 90, [move('ember', 'fire', 60, 100, 25, 0, { x: [{ p: 60, s: 'brn' }] }), move('scratch', 'normal', 40, 95, 35)]),
+      mon(3, 'Fogo', ['fire'], 120, 90, [move('ember', 'fire', 60, 100, 25, 0, { x: [{ p: 60, s: 'brn' }] }), move('scratch', 'normal', 40, 95, 35)], {
+        mega: { id: 30, name: 'Mega Fogo', types: ['fire', 'dragon'], spe: 110 },
+      }),
       mon(4, 'Fantasma', ['ghost'], 90, 70, [
         move('lick', 'ghost', 50, 100, 30, 0, { x: [{ p: 70, s: 'par' }, { p: 40, b: { spe: -1 } }] }),
         move('shadow-sneak', 'ghost', 40, 100, 30, 1),
@@ -67,6 +70,9 @@ export function fakeBattleLog() {
       } else if (e.t === 'attack') log.push(`[attack ${e.side} ${e.type}]`)
       else if (e.t === 'status') log.push(`[status ${e.side} ${e.status}]`)
       else if (e.t === 'heal') log.push(`[heal ${e.side} ${e.index} ${e.hp}]`)
+      else if (e.t === 'mega') log.push(`[mega ${e.side} ${e.id}]`)
+      else if (e.t === 'tera') log.push(`[tera ${e.side} ${e.type}]`)
+      else if (e.t === 'dmax') log.push(`[dmax ${e.side} ${e.on ? 1 : 0} ${e.id}]`)
       else log.push(`[${e.t} ${e.side} ${e.hp ?? e.index ?? ''}]`.replace(' ]', ']'))
     }
   }
@@ -79,7 +85,9 @@ export function fakeBattleLog() {
     const fainted = battle.sides[0].team.findIndex((m) => m.hp <= 0)
     // Troca uma vez no turno 2, usa uma Super Potion no 5 e revive quem
     // desmaiou; fora isso, o primeiro golpe com PP.
-    if (turn === 2 && battle.sides[0].team[1].hp > 0) write(playTurn(battle, { switch: 1 }, fakeHit))
+    // Dinamax no primeiro turno (o computador escolhe a dele sozinho).
+    if (turn === 0) write(playTurn(battle, { move: 0, gimmick: 'dmax' }, fakeHit))
+    else if (turn === 2 && battle.sides[0].team[1].hp > 0) write(playTurn(battle, { switch: 1 }, fakeHit))
     else if (turn === 5 && canUseItem(battle, 0, 'super-potion', battle.sides[0].active))
       write(playTurn(battle, { item: 'super-potion', target: battle.sides[0].active }, fakeHit))
     else if (fainted >= 0 && canUseItem(battle, 0, 'revive', fainted)) write(playTurn(battle, { item: 'revive', target: fainted }, fakeHit))
@@ -118,6 +126,34 @@ describe('batalha por turnos', () => {
     expect(charizard.moves).toHaveLength(4)
     expect(charizard.moves[0]).toMatchObject({ slug: 'flamethrower', name: 'Flamethrower', pp: 15 })
   }, 30000)
+
+  it('mecânicas com a calculadora: Mega, Z-Move e Tera', async () => {
+    const { battleHit } = await import('./damageCalc')
+    const [zard, venu] = await battleMons([
+      { id: 6, set: { level: 50, item: 'Charizardite Y', moves: ['flamethrower'], tera: 'grass', gimmick: 'mega' } },
+      { id: 3, set: { level: 50, moves: ['giga-drain'] } },
+    ])
+    expect(zard.mega).toMatchObject({ id: 10035, name: 'Mega Charizard Y', types: ['fire', 'flying'] })
+    expect(zard.gmax).toBe(10196)
+    expect(zard.teraType).toBe('grass')
+    expect(zard.gimmick).toBe('mega')
+    // Regras dos jogos: sem a Mega Pedra não megaevolui; Cristal Z só no tipo dele.
+    const [plain, zcrystal, zacian] = await battleMons([
+      { id: 6, set: { level: 50, moves: ['flamethrower'] } },
+      { id: 6, set: { level: 50, item: 'firium-z--held', moves: ['flamethrower', 'air-slash'] } },
+      { id: 888, set: { level: 50, moves: ['play-rough'] } },
+    ])
+    expect(plain.mega).toBeNull()
+    expect(zcrystal.zType).toBe('fire')
+    expect(zacian.noDmax).toBe(true)
+    const normal = battleHit(zard, venu, 'flamethrower', false)
+    const z = battleHit(zard, venu, 'flamethrower', false, 175)
+    expect(Math.max(...z.rolls[0])).toBeGreaterThan(Math.max(...normal.rolls[0]))
+    // Terastal em Grama: Giga Drain deixa de ser ×¼ (Fogo/Voador) e vira ×½ (Grama).
+    const tera = { ...zard, side: { ...zard.side, terastallized: true, teraType: 'grass' } }
+    expect(battleHit({ ...venu, moves: venu.moves }, zard, 'giga-drain', false).eff).toBe(0.25)
+    expect(battleHit(venu, tera, 'giga-drain', false).eff).toBe(0.5)
+  }, 30000)
 })
 
 describe('efetividade na tela', () => {
@@ -147,3 +183,12 @@ describe('efetividade na tela', () => {
     ])
   })
 })
+
+describe('mecânicas especiais', () => {
+  it('poder do Z-Move e do Max Move (tabelas dos jogos)', () => {
+    expect([40, 60, 70, 80, 90, 100, 110, 120, 130, 150].map(zPower)).toEqual([100, 120, 140, 160, 175, 180, 185, 190, 195, 200])
+    expect([40, 50, 60, 70, 100, 140, 150].map((p) => maxPower(p, 'fire'))).toEqual([90, 100, 110, 120, 130, 140, 150])
+    expect([40, 100, 150].map((p) => maxPower(p, 'fighting'))).toEqual([70, 90, 100])
+  })
+})
+

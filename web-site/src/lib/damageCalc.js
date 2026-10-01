@@ -445,8 +445,9 @@ export function koTextPt(ko, max) {
 /**
  * Um golpe na batalha por turnos (turnBattle.js): os 16 danos possíveis de
  * cada acerto e a eficácia do tipo (0 = não afeta). att/def: {base, side, hp, maxHp}.
+ * power: poder do Z-Move / Max Move (o golpe vira um acerto só).
  */
-export function battleHit(att, def, slug, crit) {
+export function battleHit(att, def, slug, crit, power) {
   const data = moveData(slug)
   if (!data) return null
   try {
@@ -454,13 +455,20 @@ export function battleHit(att, def, slug, crit) {
     const side = (m) => ({ ...m.side, hpPct: (m.hp / m.maxHp) * 100, status: m.status || '', boosts: { ...m.side.boosts, ...(m.boosts ?? {}) } })
     const a = makePokemon(att.base, side(att))
     const d = makePokemon(def.base, side(def))
-    const move = new Move(gen, data.name, { isCrit: crit, ability: a.ability, item: a.item })
+    // Z-Move / Max Move: o mesmo golpe com o poder da tabela, um acerto só.
+    const move = new Move(gen, data.name, {
+      isCrit: crit,
+      ability: a.ability,
+      item: a.item,
+      ...(power ? { overrides: { basePower: power, multihit: undefined }, hits: 1 } : {}),
+    })
     const result = calculate(gen, a, d, move, makeField(newField()))
     const raw = result.damage
     const rolls = typeof raw === 'number' ? [[raw]] : typeof raw[0] === 'number' ? [raw] : raw
     const type = gen.types.get(toId(result.move.type))
     let eff = 1
-    for (const t of d.types) eff *= type?.effectiveness?.[t] ?? 1
+    // Terastal: o tipo de defesa vira o Tera Type.
+    for (const t of d.teraType ? [d.teraType] : d.types) eff *= type?.effectiveness?.[t] ?? 1
     if (rolls.every((r) => r.every((x) => x === 0))) eff = 0
     return { rolls, eff }
   } catch {

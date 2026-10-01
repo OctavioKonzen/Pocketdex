@@ -1,11 +1,16 @@
 // lib/services/animated_sprites.dart
 //
-// Sprites animados (GIF, estilo Black & White) de todos os Pokémon. Vêm
-// dentro do APK (assets/database/sprites/animated, gerados por
-// tool/fetch_animated_sprites.py e tool/bw_style_sprites.py): aparecem na
-// hora, sem baixar nada. Quais existem e o ajuste de tamanho de cada um vêm
-// em assets/database/animated_sprites.json.
+// Sprites animados (GIF, estilo Black & White) de todos os Pokémon. Ficam no
+// banco do site (assets/database/sprites/animated, gerados por
+// tool/fetch_animated_sprites.py e tool/bw_style_sprites.py) e o app sempre
+// puxa da nuvem, com internet: não guarda no celular e o APK fica leve. Sem
+// internet aparece o sprite parado de sempre.
+//
+// Quais existem, o ajuste de tamanho e a impressão digital de cada um vêm em
+// animated_sprites.json: o do APK ao abrir e, logo depois, o do site (assim
+// sprites novos aparecem sem precisar de APK novo).
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -17,28 +22,59 @@ class AnimatedSprites {
   AnimatedSprites._();
   static final AnimatedSprites instance = AnimatedSprites._();
 
-  final Map<String, Set<int>> _have = {'front': {}, 'shiny': {}};
-  final Map<String, Map<int, List<double>>> _fit = {'front': {}, 'shiny': {}};
+  static const _site = 'https://octaviokonzen.github.io/Pocketdex';
 
-  /// Carrega a lista do banco (ao abrir o app).
+  /// Frente, shiny e as costas (para a batalha).
+  static const _kinds = ['front', 'shiny', 'back', 'back-shiny'];
+  static String _kind(bool shiny, bool back) => back ? (shiny ? 'back-shiny' : 'back') : (shiny ? 'shiny' : 'front');
+
+  final Map<String, Set<int>> _have = {for (final k in _kinds) k: {}};
+  final Map<String, Map<int, List<double>>> _fit = {for (final k in _kinds) k: {}};
+
+  /// Impressão digital de cada GIF: vai na URL, então quando o banco troca um
+  /// sprite o celular não usa o velho que ficou no cache da internet.
+  final Map<String, Map<int, String>> _hash = {for (final k in _kinds) k: {}};
+
+  /// Carrega a lista do APK e, em segundo plano, a atualizada do site.
   Future<void> load() async {
     try {
-      final raw = json.decode(await rootBundle.loadString('assets/database/animated_sprites.json')) as Map;
-      for (final kind in ['front', 'shiny']) {
-        _have[kind] = {for (final id in (raw[kind] as List? ?? const [])) (id as num).toInt()};
-        final fit = (raw['fit'] as Map?)?[kind] as Map? ?? const {};
-        _fit[kind] = {
-          for (final e in fit.entries) int.parse('${e.key}'): [for (final v in e.value as List) (v as num).toDouble()],
-        };
-      }
+      _apply(json.decode(await rootBundle.loadString('assets/database/animated_sprites.json')) as Map);
     } catch (e) {
       debugPrint('Sprites animados desligados: $e');
     }
-    _cleanOldDownloads();
+    unawaited(_cleanOldDownloads());
+    unawaited(_refresh());
   }
 
-  /// Até a 2.0.2 o app baixava os GIFs do site e guardava no celular: agora
-  /// vêm no APK, então a pasta antiga só ocupa espaço.
+  void _apply(Map raw) {
+    for (final kind in _kinds) {
+      _have[kind] = {for (final id in (raw[kind] as List? ?? const [])) (id as num).toInt()};
+      final fit = (raw['fit'] as Map?)?[kind] as Map? ?? const {};
+      _fit[kind] = {
+        for (final e in fit.entries) int.parse('${e.key}'): [for (final v in e.value as List) (v as num).toDouble()],
+      };
+      final hash = (raw['hash'] as Map?)?[kind] as Map? ?? const {};
+      _hash[kind] = {for (final e in hash.entries) int.parse('${e.key}'): '${e.value}'};
+    }
+  }
+
+  Future<void> _refresh() async {
+    if (kIsWeb) return;
+    final client = HttpClient()..connectionTimeout = const Duration(seconds: 15);
+    try {
+      final response = await (await client.getUrl(Uri.parse('$_site/data/animated_sprites.json'))).close();
+      if (response.statusCode != 200) return;
+      final raw = json.decode(await response.transform(utf8.decoder).join());
+      if (raw is Map && raw['front'] is List) _apply(raw);
+    } catch (_) {
+      // Sem internet: segue com a lista do APK.
+    } finally {
+      client.close();
+    }
+  }
+
+  /// Até a 2.0.2 o app baixava os GIFs e guardava no celular: agora puxa
+  /// sempre da nuvem, então a pasta antiga só ocupa espaço.
   Future<void> _cleanOldDownloads() async {
     if (kIsWeb) return;
     try {
@@ -48,14 +84,18 @@ class AnimatedSprites {
   }
 
   /// Tem sprite animado desse Pokémon?
-  bool has(int id, {bool shiny = false}) => _have[shiny ? 'shiny' : 'front']!.contains(id);
+  bool has(int id, {bool shiny = false, bool back = false}) => _have[_kind(shiny, back)]!.contains(id);
 
-  /// O GIF dentro do APK.
-  String asset(int id, {bool shiny = false}) => 'assets/database/sprites/animated/${shiny ? 'shiny' : 'front'}/$id.gif';
+  /// Endereço do GIF no banco do site.
+  String url(int id, {bool shiny = false, bool back = false}) {
+    final kind = _kind(shiny, back);
+    final hash = _hash[kind]![id];
+    return '$_site/sprites/animated/$kind/$id.gif${hash == null ? '' : '?v=$hash'}';
+  }
 
   /// [zoom, dx, dy, largura, altura]: quem se mexe muito (asas abertas...)
   /// fica pequeno no GIF recortado; amplia para o quadro típico ocupar a
   /// caixa, com o centro dele deslocado (dx, dy em fração do lado maior).
   /// Ver tool/fetch_animated_sprites.py.
-  List<double> fit(int id, {bool shiny = false}) => _fit[shiny ? 'shiny' : 'front']![id] ?? const [1, 0, 0, 1, 1];
+  List<double> fit(int id, {bool shiny = false, bool back = false}) => _fit[_kind(shiny, back)]![id] ?? const [1, 0, 0, 1, 1];
 }

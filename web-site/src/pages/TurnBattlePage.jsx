@@ -18,7 +18,7 @@ import { usePokemonIndex } from '../lib/pokemonIndex'
 import { useStore } from '../lib/store'
 import { teamMembers } from '../lib/teamBattle'
 import { fxPlan, moveAnim } from '../lib/moveAnim'
-import { active, canUseItem, effectLabel, forfeit, ITEMS, lineOf, moveEffect, newBattle, playTurn, replace, STAT_NAMES, switchMatchup, usableMoves, weaknesses } from '../lib/turnBattle'
+import { active, canGimmick, canUseItem, effectLabel, forfeit, ITEMS, lineOf, MAX_MOVES, maxPower, moveEffect, newBattle, playTurn, replace, STAT_NAMES, switchMatchup, usableMoves, weaknesses, Z_MOVES, zPower } from '../lib/turnBattle'
 import Sprite from '../components/Sprite'
 
 const CARD = 'rounded-2xl bg-card p-5 shadow'
@@ -149,11 +149,17 @@ function HpBar({ hp, max }) {
 /** Selo do status, como no Showdown. */
 const STATUS_BADGE = { brn: '#EE8130', par: '#C9A400', psn: '#A33EA1', tox: '#7B2E7A', slp: '#78716C', frz: '#4FB3D9' }
 
-function InfoBox({ mon, hp, mine, status }) {
+function InfoBox({ mon, hp, mine, status, dmax }) {
   return (
     <div className="w-full rounded-xl rounded-br-3xl border-4 border-slate-700 bg-amber-50 px-3 py-1.5 text-slate-900 shadow-lg">
       <div className="flex items-baseline justify-between gap-2 font-black">
         <span className="truncate">{mon.name}</span>
+        {mon.terastal && (
+          <span className="shrink-0 rounded px-1 text-[10px] font-black text-white uppercase" style={{ background: typeColor(mon.teraType) }} data-testid="tera-badge">
+            {`Tera ${mon.teraType}`}
+          </span>
+        )}
+        {dmax && <span className="shrink-0 rounded bg-rose-600 px-1 text-[10px] font-black text-white">DMAX</span>}
         {status && (
           <span className="shrink-0 rounded px-1 text-[10px] font-black text-white" style={{ background: STATUS_BADGE[status] }} data-testid="status-badge">
             {status.toUpperCase()}
@@ -167,60 +173,73 @@ function InfoBox({ mon, hp, mine, status }) {
   )
 }
 
-// Sprites animados no estilo Black & White, de frente e de costas (e shiny),
-// do repositório de sprites da PokeAPI: os oficiais do jogo do #1 ao #649 e,
-// do #650 em diante (e formas), os do Pokémon Showdown (Smogon Sprite
-// Project). Sem sprite animado (ou sem internet) fica o parado de sempre,
-// balançando de leve. Igual ao app.
-const SPRITES = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon'
-const bwAnimated = (id, back, shiny) => {
-  if (!(id >= 1)) return null
-  // De frente: do nosso banco (sprites/animated, publicado com o site).
-  if (!back) return spriteUrl(`animated/${shiny ? 'shiny' : 'front'}/${id}.gif`)
-  const dir = id <= 649 ? `${SPRITES}/versions/generation-v/black-white/animated` : `${SPRITES}/other/showdown`
-  return `${dir}/${back ? 'back/' : ''}${shiny ? 'shiny/' : ''}${id}.gif`
-}
-
-const BattleSprite = forwardRef(function BattleSprite({ mon, back, fainted, byId }, ref) {
-  const p = byId?.get(mon.id)
-  const url = bwAnimated(mon.id, back, mon.shiny)
-  const box = useRef(null)
-  const [boxWidth, setBoxWidth] = useState(0)
-  const [gif, setGif] = useState(null) // {url, w} quando carrega; {url, failed} se não der
-  useEffect(() => {
-    const el = box.current
-    if (!el) return undefined
-    const observer = new ResizeObserver(() => setBoxWidth(el.clientWidth))
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [])
-  const loaded = gif?.url === url && gif.w
-  const failed = !url || (gif?.url === url && gif.failed)
+// O Pokémon no campo: o GIF do nosso banco (de frente ou de costas), todos do
+// mesmo tamanho, como na Pokédex. Igual ao app.
+// Mega: a forma nova; Dinamax: gigante e avermelhado (Gigantamax: a forma dele).
+const BattleSprite = forwardRef(function BattleSprite({ mon, id, back, fainted, dmax, byId }, ref) {
+  const p = byId?.get(id) ?? byId?.get(mon.id)
   return (
-    <div ref={box} className={`aspect-square w-full transition-all duration-500 ${fainted ? 'translate-y-10 opacity-0' : ''}`}>
-      <div ref={ref} className="relative h-full w-full">
-        {!failed && (
-          // Tamanho de verdade do sprite (os pequenos continuam pequenos, como no jogo).
-          <img
-            src={url}
-            alt={mon.name}
-            draggable={false}
-            onLoad={(e) => setGif({ url, w: e.currentTarget.naturalWidth })}
-            onError={() => setGif({ url, failed: true })}
-            className="pixelated pointer-events-none absolute bottom-0 left-1/2 max-w-none -translate-x-1/2"
-            style={{ width: loaded ? (gif.w * boxWidth) / 96 : 0, visibility: loaded ? 'visible' : 'hidden' }}
-          />
-        )}
-        {(failed || !loaded) && p && (
-          // O seu fica de costas (espelhado), como nos jogos.
-          <div className={`battle-idle h-full w-full ${back ? '-scale-x-100' : ''} ${!failed ? 'opacity-0' : ''}`}>
-            <Sprite path={mon.shiny ? shinyPath(p.sprite) : p.sprite} box={p.box} fill={0.95} align="bottom" alt={mon.name} />
-          </div>
-        )}
+    <div className={`aspect-square w-full transition-all duration-500 ${fainted ? 'translate-y-10 opacity-0' : ''}`}>
+      <div
+        className="h-full w-full origin-bottom transition-transform duration-700"
+        style={dmax ? { transform: 'scale(1.45)', filter: 'drop-shadow(0 0 6px #e11d48) drop-shadow(0 0 2px #e11d48)' } : undefined}
+      >
+        <div ref={ref} className="relative h-full w-full">
+          {p && <Sprite key={`${p.id}-${mon.shiny}`} path={mon.shiny ? shinyPath(p.sprite) : p.sprite} box={p.box} fill={0.95} align="bottom" back={back} alt={mon.name} />}
+        </div>
       </div>
     </div>
   )
 })
+
+/**
+ * Cenário da batalha (desenho nosso, igual ao do app): céu com sol e nuvens,
+ * montanhas e morros ao fundo e o gramado com faixas.
+ */
+function BattleBackground() {
+  return (
+    <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 160 100" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="bb-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#6ec6ff" />
+          <stop offset="1" stopColor="#e3f6ff" />
+        </linearGradient>
+        <linearGradient id="bb-ground" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#b5e58a" />
+          <stop offset="1" stopColor="#6fbf4a" />
+        </linearGradient>
+        <radialGradient id="bb-sun" cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0" stopColor="#fffbe6" />
+          <stop offset="0.4" stopColor="#fff3b0" stopOpacity="0.9" />
+          <stop offset="1" stopColor="#fff3b0" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <rect width="160" height="60" fill="url(#bb-sky)" />
+      <circle cx="132" cy="12" r="16" fill="url(#bb-sun)" />
+      {BACKGROUND_CLOUDS.map(([x, y, w], i) => (
+        <g key={i} fill="#fff" opacity="0.85">
+          <ellipse cx={x} cy={y} rx={w} ry={w * 0.32} />
+          <ellipse cx={x - w * 0.45} cy={y + w * 0.08} rx={w * 0.55} ry={w * 0.24} />
+          <ellipse cx={x + w * 0.5} cy={y + w * 0.1} rx={w * 0.5} ry={w * 0.22} />
+        </g>
+      ))}
+      <path d="M0 50 L18 36 L32 44 L50 30 L70 45 L88 34 L108 46 L126 32 L146 43 L160 36 L160 56 L0 56 Z" fill="#9cc7d9" opacity="0.8" />
+      <path d="M0 54 Q20 44 42 52 T86 50 T130 48 T160 50 L160 60 L0 60 Z" fill="#7cc46a" />
+      <rect y="56" width="160" height="44" fill="url(#bb-ground)" />
+      {[62, 70, 80, 92].map((y, i) => (
+        <rect key={y} y={y} width="160" height={1.5 + i * 0.8} fill="#ffffff" opacity="0.12" />
+      ))}
+    </svg>
+  )
+}
+
+/** Nuvens do cenário: [x, y, largura]. */
+const BACKGROUND_CLOUDS = [
+  [24, 12, 12],
+  [70, 7, 9],
+  [104, 20, 10],
+  [150, 26, 7],
+]
 
 /** Onde fica o meio de cada Pokémon no campo (em %), para as animações dos golpes. */
 const CENTER = [
@@ -323,6 +342,9 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
     hp: battle.sides.map((s) => s.team.map((m) => m.hp)),
     status: battle.sides.map((s) => s.team.map(() => '')),
     fainted: [false, false],
+    // Forma na tela (Mega / Gigantamax) e se está dinamaxizado.
+    form: [null, null],
+    dmax: [false, false],
   }))
   const [text, setText] = useState(() => (foeName ? t('{0} quer batalhar!').replace('{0}', foeName) : t('Um treinador quer batalhar!')))
   const [busy, setBusy] = useState(false)
@@ -342,8 +364,10 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
       .catch(() => {})
   }, [])
 
-  const play = async (events) => {
+  // before: o id de cada lado antes do turno (o motor já mudou a Mega; a tela muda no evento).
+  const play = async (events, before = null) => {
     setBusy(true)
+    if (before) setShown((s) => ({ ...s, form: s.form.map((f, i) => (s.dmax[i] ? f : before[i])) }))
     for (const e of events) {
       if (e.t === 'attack') {
         // Cada golpe com a sua animação (moveAnim.js), nas cores do tipo.
@@ -389,7 +413,23 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
       } else if (e.t === 'faint') {
         setShown((s) => ({ ...s, fainted: s.fainted.map((f, i) => (i === e.side ? true : f)) }))
       } else if (e.t === 'switch') {
-        setShown((s) => ({ ...s, active: s.active.map((a, i) => (i === e.side ? e.index : a)), fainted: s.fainted.map((f, i) => (i === e.side ? false : f)) }))
+        setShown((s) => ({
+          ...s,
+          active: s.active.map((a, i) => (i === e.side ? e.index : a)),
+          fainted: s.fainted.map((f, i) => (i === e.side ? false : f)),
+          form: s.form.map((f, i) => (i === e.side ? null : f)),
+          dmax: s.dmax.map((d, i) => (i === e.side ? false : d)),
+        }))
+      } else if (e.t === 'mega') {
+        setFlash((n) => n + 1)
+        setShown((s) => ({ ...s, form: s.form.map((f, i) => (i === e.side ? e.id : f)) }))
+        await wait(500)
+      } else if (e.t === 'dmax') {
+        setShown((s) => ({ ...s, form: s.form.map((f, i) => (i === e.side ? e.id : f)), dmax: s.dmax.map((d, i) => (i === e.side ? e.on : d)) }))
+        await wait(700)
+      } else if (e.t === 'tera') {
+        setFlash((n) => n + 1)
+        await wait(400)
       }
     }
     setBusy(false)
@@ -419,7 +459,14 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
   const rival = active(battle, 1)
   const foeWeak = typeData ? weaknesses(rival.types, ALL_TYPES, typeEff) : []
 
-  const fight = (i) => play(playTurn(battle, { move: i }, hit))
+  const fight = (i) => {
+    const before = [active(battle, 0).id, active(battle, 1).id]
+    play(playTurn(battle, { move: i }, hit), before)
+  }
+  // A mecânica do set (montador) ativa sozinha no primeiro ataque, como nos
+  // jogos: o menu já mostra os Z-Moves / Max Moves que vão sair.
+  const auto = current.gimmick && !battle.gimmicks[0] ? current.gimmick : null
+  const maxed = current.dmax > 0 || (auto === 'dmax' && canGimmick(battle, 0, 'dmax'))
   const choose = (i) => {
     if (item) {
       setItem(null)
@@ -437,23 +484,24 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
       <div
         ref={field}
         className="battle-field relative aspect-[16/10] overflow-hidden sm:aspect-[16/9] rounded-t-2xl border-4 border-b-0 border-slate-800"
-        style={{ background: 'linear-gradient(#bfe6ff 0%, #e8f6ff 45%, #b9e59a 46%, #8fd16b 100%)' }}
+        style={{ background: '#9fdcff' }}
       >
+        <BattleBackground />
         <div className="absolute top-[6%] left-[4%] w-[46%] max-w-[260px]">
-          <InfoBox mon={foe} hp={shown.hp[1][shown.active[1]]} status={shown.status[1][shown.active[1]]} />
+          <InfoBox mon={foe} hp={shown.hp[1][shown.active[1]]} status={shown.status[1][shown.active[1]]} dmax={shown.dmax[1]} />
         </div>
-        <div className="absolute top-[38%] right-[6%] h-[9%] w-[35%] rounded-[50%] bg-green-800/35" />
+        <div className="battle-platform absolute top-[37%] right-[6%] h-[10%] w-[35%] rounded-[50%]" />
         <div className="absolute top-[3%] right-[10%] w-[27%]">
-          <BattleSprite ref={sprites[1]} mon={foe} fainted={shown.fainted[1]} byId={byId} />
+          <BattleSprite ref={sprites[1]} mon={foe} id={shown.form[1] ?? foe.id} dmax={shown.dmax[1]} fainted={shown.fainted[1]} byId={byId} />
         </div>
-        <div className="absolute bottom-[3%] left-[3%] h-[11%] w-[41%] rounded-[50%] bg-green-800/35" />
+        <div className="battle-platform absolute bottom-[2%] left-[3%] h-[13%] w-[41%] rounded-[50%]" />
         <div className="absolute bottom-[5%] left-[7%] w-[33%]">
-          <BattleSprite ref={sprites[0]} mon={me} back fainted={shown.fainted[0]} byId={byId} />
+          <BattleSprite ref={sprites[0]} mon={me} id={shown.form[0] ?? me.id} dmax={shown.dmax[0]} back fainted={shown.fainted[0]} byId={byId} />
         </div>
         {effect && <MoveFx key={effect.key} plan={effect.plan} color={effect.color} />}
         {flash > 0 && <div key={`flash-${flash}`} className="battle-flash pointer-events-none absolute inset-0 bg-white" />}
         <div className="absolute right-[4%] bottom-[8%] w-[46%] max-w-[260px]">
-          <InfoBox mon={me} hp={shown.hp[0][shown.active[0]]} status={shown.status[0][shown.active[0]]} mine />
+          <InfoBox mon={me} hp={shown.hp[0][shown.active[0]]} status={shown.status[0][shown.active[0]]} dmax={shown.dmax[0]} mine />
         </div>
       </div>
 
@@ -480,6 +528,8 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
             <Weak mon={rival} list={foeWeak} />
             {current.moves.map((m, i) => {
               const eff = moveEffect(hit, current, rival, m)
+              const z = auto === 'z' && canGimmick(battle, 0, 'z', i)
+              const max = maxed && m.category !== 'status'
               return (
                 <button
                   key={m.slug}
@@ -490,7 +540,8 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
                   style={{ background: typeColor(m.type) }}
                   data-no-translate
                 >
-                  <div className="truncate text-sm font-black">{m.name}</div>
+                  <div className="truncate text-sm font-black">{z ? Z_MOVES[m.type] : max ? MAX_MOVES[m.type] : m.name}</div>
+                  {(z || max) && <div className="truncate text-[10px] font-bold opacity-90">{`${m.name} · ${t('Poder')} ${z ? zPower(m.power) : maxPower(m.power, m.type)}`}</div>}
                   <div className="flex items-center justify-between gap-1 text-[11px] font-semibold">
                     <span className="opacity-90">{`PP ${m.pp}/${m.maxPp}`}</span>
                     <EffectTag eff={eff} />

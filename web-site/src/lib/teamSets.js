@@ -2,7 +2,8 @@
 // lib/services/team_sets.dart). O time guarda `sets`: 6 posições, uma para
 // cada Pokémon de `pokemon`, com:
 //   {nickname, level, gender ('M'|'F'|''), shiny, ability (slug), item (slug),
-//    nature ('Jolly'...), tera (tipo), moves: [slug x4], evs: {hp..spe}, ivs: {hp..spe}}
+//    nature ('Jolly'...), tera (tipo), gimmick (mecânica na batalha: '' | mega | z | dmax | tera),
+//    moves: [slug x4], evs: {hp..spe}, ivs: {hp..spe}}
 
 export const STAT_KEYS = ['hp', 'atk', 'def', 'spa', 'spd', 'spe']
 export const STAT_LABELS = { hp: 'HP', atk: 'Atk', def: 'Def', spa: 'SpA', spd: 'SpD', spe: 'Spe' }
@@ -21,6 +22,9 @@ export const natureLabel = (name) => {
   return up === down ? `${name} (neutra)` : `${name} (+${STAT_LABELS[STAT_KEYS[up]]} −${STAT_LABELS[STAT_KEYS[down]]})`
 }
 
+/** Mecânica que o Pokémon usa na batalha (ativa sozinha no primeiro ataque, uma por time). */
+export const GIMMICKS = ['mega', 'z', 'dmax', 'tera']
+
 export const TERA_TYPES = ['normal', 'fire', 'water', 'electric', 'grass', 'ice', 'fighting', 'poison', 'ground', 'flying', 'psychic', 'bug', 'rock', 'ghost', 'dragon', 'dark', 'steel', 'fairy', 'stellar']
 
 /** Itens mais usados em batalha (aparecem primeiro). */
@@ -35,7 +39,7 @@ const clamp = (n, min, max, fallback) => (Number.isFinite(Number(n)) ? Math.min(
 
 /** Set novo para um Pokémon (habilidade: a primeira da forma). */
 export function newSet(ability = '') {
-  return { nickname: '', level: 50, gender: '', shiny: false, ability, item: '', nature: 'Hardy', tera: '', moves: ['', '', '', ''], evs: stats(0), ivs: stats(31) }
+  return { nickname: '', level: 50, gender: '', shiny: false, ability, item: '', nature: 'Hardy', tera: '', gimmick: '', moves: ['', '', '', ''], evs: stats(0), ivs: stats(31) }
 }
 
 /** Corrige um set vindo de fora (conta, código, outra versão): sempre completo e válido. */
@@ -52,6 +56,7 @@ export function normalizeSet(s) {
     item: str(s.item),
     nature: NATURES[s.nature] ? s.nature : 'Hardy',
     tera: TERA_TYPES.includes(s.tera) ? s.tera : '',
+    gimmick: GIMMICKS.includes(s.gimmick) ? s.gimmick : '',
     moves,
     evs: Object.fromEntries(STAT_KEYS.map((k) => [k, clamp(s.evs?.[k], 0, 252, 0)])),
     ivs: Object.fromEntries(STAT_KEYS.map((k) => [k, clamp(s.ivs?.[k], 0, 31, 31)])),
