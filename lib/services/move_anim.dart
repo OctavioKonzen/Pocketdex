@@ -82,27 +82,6 @@ String moveAnim(String slug, String type, String category) {
   return category == 'physical' ? 'tackle' : 'orb';
 }
 
-/// Quanto tempo (ms) cada estilo leva, para a tela esperar.
-const fxDuration = {
-  'tackle': 650,
-  'punch': 650,
-  'kick': 650,
-  'bite': 700,
-  'slash': 700,
-  'orb': 700,
-  'beam': 750,
-  'stream': 900,
-  'volley': 900,
-  'bolt': 650,
-  'quake': 900,
-  'rocks': 900,
-  'meteor': 1000,
-  'wave': 1000,
-  'wind': 950,
-  'rings': 850,
-  'drain': 1100,
-};
-
 /// Golpes corpo a corpo: quem ataca vai até o alvo.
 const contactKinds = {'tackle', 'punch', 'kick', 'bite', 'slash'};
 
@@ -136,68 +115,100 @@ class FxPlan {
   final List<FxPart> parts;
   final bool shake, flash;
   const FxPlan(this.parts, {this.shake = false, this.flash = false});
+
+  /// Quanto tempo (ms) a animação leva, para a tela esperar.
+  int get duration => parts.fold(0, (m, p) => max(m, p.delay + p.dur));
 }
 
-/// Peças da animação de [kind] do lado [from] (0 = você, 1 = o computador), de [a] (quem ataca) até [t] (o alvo). Igual ao site.
-FxPlan fxPlan(String kind, String type, int from, Point<double> a, Point<double> t) {
-  final p = typeParticle[type] ?? '⭐';
+/// Peças da animação de um golpe: [kind] (estilo), [icon] (símbolo do golpe,
+/// de move_anims.json) e [variant] (a variação dele, que muda quantidade,
+/// ângulo, giro, tamanho e ritmo). Do lado [from] (0 = você, 1 = o computador),
+/// de [a] (quem ataca) até [t] (o alvo). Igual ao site (moveAnim.js).
+FxPlan fxPlan(String kind, String type, int from, Point<double> a, Point<double> t, [String? icon, int variant = 0]) {
+  final q = typeParticle[type] ?? '⭐';
+  final p = icon ?? q;
+  final v = variant;
+  final extra = v % 3;
+  final turn = ((v * 47) % 360) * (pi / 180);
+  final spin = v % 2 == 0 ? 1 : -1;
+  final spread = 1 + (v % 4) * 0.15;
+  final pace = 1 + ((v ~/ 4) % 3) * 0.15;
+  final grow = 1 + (((v ~/ 2) % 3) - 1) * 0.12;
   final parts = <FxPart>[];
   void emoji(String char, double x0, double y0, double x1, double y1,
           {int delay = 0, int dur = 450, double s0 = 0.6, double s1 = 1.2, double o0 = 1, double o1 = 0, double rot = 0, double size = 12}) =>
-      parts.add(
-          FxPart('emoji', char: char, x0: x0, y0: y0, x1: x1, y1: y1, delay: delay, dur: dur, s0: s0, s1: s1, o0: o0, o1: o1, rot: rot, size: size));
-  void burst(int delay, [double size = 16]) => emoji(p, t.x, t.y, t.x, t.y, delay: delay, dur: 380, s0: 0.3, s1: 1.6, size: size);
-  void around(int n, double radius, int delay, {double size = 8}) {
-    for (var i = 0; i < n; i++) {
-      final ang = i / n * pi * 2;
-      emoji(p, t.x, t.y, t.x + cos(ang) * radius, t.y + sin(ang) * radius * 1.4, delay: delay, dur: 450, s0: 0.5, s1: 1, size: size);
+      parts.add(FxPart('emoji',
+          char: char,
+          x0: x0,
+          y0: y0,
+          x1: x1,
+          y1: y1,
+          delay: (delay * pace).round(),
+          dur: dur,
+          s0: s0,
+          s1: s1,
+          o0: o0,
+          o1: o1,
+          rot: rot * spin,
+          size: size * grow));
+  void burst(int delay, [double size = 16, String? char]) =>
+      emoji(char ?? p, t.x, t.y, t.x, t.y, delay: delay, dur: 380, s0: 0.3, s1: 1.6, size: size);
+  void around(int n, double radius, int delay, {double size = 8, String? char}) {
+    final total = n + extra;
+    for (var i = 0; i < total; i++) {
+      final ang = turn + i / total * pi * 2;
+      final r = radius * spread;
+      emoji(char ?? q, t.x, t.y, t.x + cos(ang) * r, t.y + sin(ang) * r * 1.4, delay: delay, dur: 450, s0: 0.5, s1: 1, size: size);
     }
   }
 
   void line(double x0, double y0, double x1, double y1, int delay, int dur, double width) =>
-      parts.add(FxPart('line', x0: x0, y0: y0, x1: x1, y1: y1, delay: delay, dur: dur, width: width));
+      parts.add(FxPart('line', x0: x0, y0: y0, x1: x1, y1: y1, delay: (delay * pace).round(), dur: dur, width: width * grow));
   var shake = false, flash = false;
   switch (kind) {
     case 'punch':
     case 'kick':
-      final icon = kind == 'punch' ? '👊' : '🦶';
-      emoji(icon, t.x, t.y, t.x, t.y, delay: 150, dur: 380, s0: 2, s1: 0.9, o0: 0.4, o1: 1, size: 18);
-      emoji(icon, t.x, t.y, t.x, t.y, delay: 530, dur: 120, s0: 0.9, s1: 1.1, o0: 1, o1: 0, size: 18);
-      around(5, 9, 450);
+      final limb = kind == 'punch' ? '👊' : '🦶';
+      emoji(limb, t.x, t.y, t.x, t.y, delay: 150, dur: 380, s0: 2, s1: 0.9, o0: 0.4, o1: 1, size: 18);
+      emoji(limb, t.x, t.y, t.x, t.y, delay: 530, dur: 120, s0: 0.9, s1: 1.1, o0: 1, o1: 0, size: 18);
+      around(5, 9, 450, char: p);
     case 'bite':
       emoji('🦷', t.x, t.y - 16, t.x, t.y - 4, delay: 100, dur: 300, s0: 1, s1: 1, o0: 1, o1: 1, rot: 180, size: 14);
       emoji('🦷', t.x, t.y + 16, t.x, t.y + 4, delay: 100, dur: 300, s0: 1, s1: 1, o0: 1, o1: 1, size: 14);
-      around(5, 9, 420);
+      around(5, 9, 420, char: p);
     case 'slash':
-      for (var i = 0; i < 3; i++) {
-        final dx = (i - 1) * 5.0;
-        line(t.x - 9 + dx, t.y - 14, t.x + 9 + dx, t.y + 14, 100 + i * 130, 260, 3);
+      for (var i = 0; i < 3 + (extra > 1 ? 1 : 0); i++) {
+        final dx = (i - 1) * 5 * spread;
+        final tilt = spin * 9.0;
+        line(t.x - tilt + dx, t.y - 14, t.x + tilt + dx, t.y + 14, 100 + i * 130, 260, 3);
       }
-      around(4, 8, 480);
+      around(4, 8, 480, char: p);
     case 'beam':
       line(a.x, a.y, t.x, t.y, 0, 500, 9);
-      for (var i = 1; i <= 6; i++) {
-        final x = a.x + (t.x - a.x) * i / 7, y = a.y + (t.y - a.y) * i / 7;
+      final n = 6 + extra;
+      for (var i = 1; i <= n; i++) {
+        final x = a.x + (t.x - a.x) * i / (n + 1), y = a.y + (t.y - a.y) * i / (n + 1);
         emoji(p, x, y, x, y, delay: i * 50, dur: 400, s0: 0.4, s1: 1, size: 7);
       }
-      burst(450);
+      burst(450, 16, q);
     case 'stream':
-      for (var i = 0; i < 9; i++) {
-        emoji(p, a.x, a.y, t.x + (i % 3 - 1) * 3, t.y + ((i + 1) % 3 - 1) * 4, delay: i * 60, dur: 420, s0: 0.5, s1: 1.3, o0: 1, o1: 0.2, size: 9);
+      for (var i = 0; i < 9 + extra * 2; i++) {
+        emoji(p, a.x, a.y, t.x + (i % 3 - 1) * 3 * spread, t.y + ((i + 1) % 3 - 1) * 4 * spread,
+            delay: i * 60, dur: 420, s0: 0.5, s1: 1.3, o0: 1, o1: 0.2, size: 9);
       }
-      burst(620);
+      burst(620 + extra * 120, 16, q);
     case 'volley':
-      for (var i = 0; i < 5; i++) {
-        final x = t.x + (i % 3 - 1) * 4, y = t.y + ((i % 2) * 2 - 1) * 4;
+      for (var i = 0; i < 5 + extra; i++) {
+        final x = t.x + (i % 3 - 1) * 4 * spread, y = t.y + ((i % 2) * 2 - 1) * 4 * spread;
         emoji(p, a.x, a.y, x, y, delay: i * 110, dur: 330, s0: 0.7, s1: 1, o0: 1, o1: 1, rot: 360, size: 8);
-        emoji(p, x, y, x, y, delay: i * 110 + 330, dur: 200, s0: 1, s1: 1.8, size: 8);
+        emoji(q, x, y, x, y, delay: i * 110 + 330, dur: 200, s0: 1, s1: 1.8, size: 8);
       }
     case 'bolt':
       final zig = [
-        Point(t.x - 4, 0.0),
-        Point(t.x + 5, t.y * 0.35),
-        Point(t.x - 3, t.y * 0.6),
-        Point(t.x + 3, t.y * 0.8),
+        Point(t.x - 4 * spin, 0.0),
+        Point(t.x + 5 * spin * spread, t.y * 0.35),
+        Point(t.x - 3 * spin * spread, t.y * 0.6),
+        Point(t.x + 3 * spin, t.y * 0.8),
         Point(t.x, t.y),
       ];
       for (var i = 0; i < zig.length - 1; i++) {
@@ -208,49 +219,50 @@ FxPlan fxPlan(String kind, String type, int from, Point<double> a, Point<double>
       around(6, 10, 350);
     case 'quake':
       shake = true;
-      for (var i = 0; i < 7; i++) {
-        emoji(p, t.x + (i - 3) * 6, t.y + 14, t.x + (i - 3) * 7, t.y - 4 - (i % 3) * 5, delay: 100 + i * 60, dur: 500, s0: 0.6, s1: 1, size: 8);
+      for (var i = 0; i < 7 + extra; i++) {
+        emoji(p, t.x + (i - 3) * 6 * spread, t.y + 14, t.x + (i - 3) * 7 * spread, t.y - 4 - (i % 3) * 5,
+            delay: 100 + i * 60, dur: 500, s0: 0.6, s1: 1, size: 8);
       }
-      burst(600);
+      burst(600, 16, q);
     case 'rocks':
-      for (var i = 0; i < 5; i++) {
-        emoji(p, t.x + (i - 2) * 6, -10, t.x + (i - 2) * 4, t.y + ((i % 2) * 2 - 1) * 3,
+      for (var i = 0; i < 5 + extra; i++) {
+        emoji(p, t.x + (i - 2) * 6 * spread, -10, t.x + (i - 2) * 4, t.y + ((i % 2) * 2 - 1) * 3,
             delay: i * 100, dur: 400, s0: 1, s1: 1, o0: 1, o1: 1, rot: 180, size: 11);
       }
-      burst(650);
+      burst(650 + extra * 100, 16, q);
     case 'meteor':
-      for (var i = 0; i < 3; i++) {
-        emoji(p, t.x - 40 + i * 10, -15, t.x + (i - 1) * 5, t.y, delay: i * 200, dur: 450, s0: 1.4, s1: 1, o0: 1, o1: 1, size: 14);
+      for (var i = 0; i < 3 + extra; i++) {
+        emoji(p, t.x - 40 * spin + i * 10 * spin, -15, t.x + (i - 1) * 5, t.y, delay: i * 200, dur: 450, s0: 1.4, s1: 1, o0: 1, o1: 1, size: 14);
       }
       flash = true;
-      burst(800, 22);
+      burst(800 + extra * 200, 22, q);
     case 'wave':
       parts.add(FxPart('wave', dir: from == 0 ? 1 : -1, delay: 0, dur: 850));
-      for (var i = 0; i < 6; i++) {
-        emoji(p, from == 0 ? 5 : 95, 30.0 + i * 10, from == 0 ? 95 : 5, 20.0 + i * 11,
+      for (var i = 0; i < 6 + extra; i++) {
+        emoji(p, from == 0 ? 5 : 95, 30.0 + i * 10, from == 0 ? 95 : 5, 20 + i * 11 * spread,
             delay: i * 70, dur: 700, s0: 0.8, s1: 1, o0: 1, o1: 0.3, size: 8);
       }
     case 'wind':
-      for (var i = 0; i < 8; i++) {
-        final ang = i / 8 * pi * 2;
-        emoji(p, t.x + cos(ang) * 16, t.y + sin(ang) * 20, t.x + cos(ang + 2.4) * 3, t.y + sin(ang + 2.4) * 4,
+      for (var i = 0; i < 8 + extra; i++) {
+        final ang = turn + i / (8 + extra) * pi * 2;
+        emoji(p, t.x + cos(ang) * 16 * spread, t.y + sin(ang) * 20 * spread, t.x + cos(ang + 2.4 * spin) * 3, t.y + sin(ang + 2.4 * spin) * 4,
             delay: i * 60, dur: 520, s0: 1, s1: 0.5, o0: 1, o1: 0.2, rot: 540, size: 9);
       }
-      burst(700);
+      burst(700, 16, q);
     case 'rings':
-      for (var i = 0; i < 3; i++) {
-        parts.add(FxPart('ring', x0: t.x, y0: t.y, delay: i * 180, dur: 500));
+      for (var i = 0; i < 3 + extra; i++) {
+        parts.add(FxPart('ring', x0: t.x, y0: t.y, delay: (i * 180 * pace).round(), dur: 500));
       }
-      around(4, 10, 500, size: 7);
+      around(4, 10, 500, size: 7, char: p);
     case 'drain':
-      burst(0);
-      for (var i = 0; i < 6; i++) {
-        emoji('💚', t.x + (i % 3 - 1) * 5, t.y + ((i % 2) * 2 - 1) * 5, a.x, a.y,
+      burst(0, 16, q);
+      for (var i = 0; i < 6 + extra; i++) {
+        emoji(p, t.x + (i % 3 - 1) * 5 * spread, t.y + ((i % 2) * 2 - 1) * 5, a.x, a.y,
             delay: 300 + i * 90, dur: 500, s0: 1, s1: 0.6, o0: 1, o1: 0.3, size: 8);
       }
     case 'orb':
       emoji(p, a.x, a.y, t.x, t.y, delay: 0, dur: 420, s0: 0.6, s1: 1.8, o0: 1, o1: 1, rot: 360, size: 12);
-      burst(420, 20);
+      burst(420, 20, q);
       around(5, 9, 450);
     default:
       // Investida: quem ataca vai com tudo até o alvo.

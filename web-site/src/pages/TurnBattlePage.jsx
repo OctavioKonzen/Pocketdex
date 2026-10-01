@@ -10,14 +10,14 @@ import { Button, Empty, Icon, PageHeader } from '../components/ui'
 import { teamsOf, useAuth } from '../lib/auth'
 import { battleHitter, battleMons, randomTeam } from '../lib/battleSetup'
 import { friendsOnly, useFriends } from '../lib/friends'
-import { shinyPath, spriteUrl } from '../lib/data'
+import { getMoveAnims, shinyPath, spriteUrl } from '../lib/data'
 import { t } from '../lib/i18n'
 import { seededRandom } from '../lib/league'
 import { typeColor } from '../lib/pokemon'
 import { usePokemonIndex } from '../lib/pokemonIndex'
 import { useStore } from '../lib/store'
 import { teamMembers } from '../lib/teamBattle'
-import { FX_DURATION, fxPlan, moveAnim } from '../lib/moveAnim'
+import { fxPlan, moveAnim } from '../lib/moveAnim'
 import { active, canUseItem, forfeit, ITEMS, lineOf, newBattle, playTurn, replace, usableMoves } from '../lib/turnBattle'
 import Sprite from '../components/Sprite'
 
@@ -157,11 +157,17 @@ function InfoBox({ mon, hp, mine }) {
   )
 }
 
-// Sprites animados do Black & White (oficiais, do #1 ao #649), de frente e
-// de costas, direto do repositório de sprites da PokeAPI. Do #650 em diante
-// (ou sem internet) fica o sprite parado de sempre, balançando de leve.
-const BW_ANIMATED = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated'
-const bwAnimated = (id, back, shiny) => (id >= 1 && id <= 649 ? `${BW_ANIMATED}/${back ? 'back/' : ''}${shiny ? 'shiny/' : ''}${id}.gif` : null)
+// Sprites animados no estilo Black & White, de frente e de costas (e shiny),
+// do repositório de sprites da PokeAPI: os oficiais do jogo do #1 ao #649 e,
+// do #650 em diante (e formas), os do Pokémon Showdown (Smogon Sprite
+// Project). Sem sprite animado (ou sem internet) fica o parado de sempre,
+// balançando de leve. Igual ao app.
+const SPRITES = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon'
+const bwAnimated = (id, back, shiny) => {
+  if (!(id >= 1)) return null
+  const dir = id <= 649 ? `${SPRITES}/versions/generation-v/black-white/animated` : `${SPRITES}/other/showdown`
+  return `${dir}/${back ? 'back/' : ''}${shiny ? 'shiny/' : ''}${id}.gif`
+}
 
 const BattleSprite = forwardRef(function BattleSprite({ mon, back, fainted, byId }, ref) {
   const p = byId?.get(mon.id)
@@ -315,19 +321,26 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
   const [flash, setFlash] = useState(0)
   const effectKey = useRef(0)
   const field = useRef(null)
+  // A animação de cada golpe (estilo, símbolo e variação).
+  const anims = useRef(null)
+  useEffect(() => {
+    getMoveAnims()
+      .then((table) => (anims.current = table))
+      .catch(() => {})
+  }, [])
 
   const play = async (events) => {
     setBusy(true)
     for (const e of events) {
       if (e.t === 'attack') {
         // Cada golpe com a sua animação (moveAnim.js), nas cores do tipo.
-        const kind = moveAnim(e.slug, e.type, e.category)
-        const plan = fxPlan(kind, e.type, e.side, CENTER[e.side], CENTER[1 - e.side])
+        const [kind, icon, variant] = anims.current?.[e.slug] ?? [moveAnim(e.slug, e.type, e.category), null, 0]
+        const plan = fxPlan(kind, e.type, e.side, CENTER[e.side], CENTER[1 - e.side], icon, variant)
         pulse(sprites[e.side].current, CONTACT.has(kind) ? `battle-dash-${e.side}` : `battle-lunge-${e.side}`, 450)
         setEffect({ plan, color: typeColor(e.type), key: ++effectKey.current })
         if (plan.shake) pulse(field.current, 'battle-shake', 650)
         if (plan.flash) setTimeout(() => setFlash((n) => n + 1), 250)
-        await wait(FX_DURATION[kind])
+        await wait(plan.duration + 80)
         setEffect(null)
       } else if (e.t === 'heal') {
         setShown((s) => ({

@@ -18,6 +18,7 @@ import '../services/damage_calc.dart';
 import '../services/friends_service.dart';
 import '../services/league.dart';
 import '../services/team_battle.dart';
+import '../services/local_database.dart';
 import '../services/move_anim.dart';
 import '../services/turn_battle.dart';
 import '../services/user_data.dart';
@@ -251,6 +252,15 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
   (FxPlan, Color, int)? _fx; // animação do golpe na tela
   int _fxKey = 0;
 
+  /// A animação de cada golpe (estilo, símbolo e variação).
+  Map<String, dynamic>? _anims;
+
+  @override
+  void initState() {
+    super.initState();
+    LocalDatabase.instance.moveAnims().then((t) => _anims = t).catchError((_) => <String, dynamic>{});
+  }
+
   @override
   void dispose() {
     _shake.dispose();
@@ -277,13 +287,15 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
       switch (e.t) {
         case 'attack':
           // Cada golpe com a sua animação (move_anim.dart), nas cores do tipo.
-          final kind = moveAnim(e.slug, e.type, e.category);
-          final plan = fxPlan(kind, e.type, e.side, _center[e.side], _center[1 - e.side]);
+          final entry = _anims?[e.slug];
+          final kind = entry is List ? '${entry[0]}' : moveAnim(e.slug, e.type, e.category);
+          final plan = fxPlan(kind, e.type, e.side, _center[e.side], _center[1 - e.side], entry is List ? '${entry[1]}' : null,
+              entry is List ? (entry[2] as num).toInt() : 0);
           _sprites[e.side].currentState?.lunge(dash: contactKinds.contains(kind));
           setState(() => _fx = (plan, getColorForType(e.type), ++_fxKey));
           if (plan.shake) _shake.forward(from: 0);
           if (plan.flash) Future<void>.delayed(const Duration(milliseconds: 250), () => mounted ? setState(() => _flash++) : null);
-          await _wait(fxDuration[kind] ?? 700);
+          await _wait(plan.duration + 80);
           if (!mounted) return;
           setState(() => _fx = null);
         case 'heal':
@@ -619,11 +631,17 @@ class _Platform extends StatelessWidget {
       );
 }
 
-// Sprites animados do Black & White (oficiais, do #1 ao #649), de frente e de
-// costas, direto do repositório de sprites da PokeAPI (igual ao site). Do #650
-// em diante (ou sem internet) fica o sprite parado de sempre, balançando.
-const _bwAnimated = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated';
-String? _bwUrl(int id, bool back, bool shiny) => id >= 1 && id <= 649 ? '$_bwAnimated/${back ? 'back/' : ''}${shiny ? 'shiny/' : ''}$id.gif' : null;
+// Sprites animados no estilo Black & White, de frente e de costas (e shiny),
+// do repositório de sprites da PokeAPI: os oficiais do jogo do #1 ao #649 e,
+// do #650 em diante (e formas), os do Pokémon Showdown (Smogon Sprite
+// Project). Sem sprite animado (ou sem internet) fica o parado de sempre,
+// balançando. Igual ao site.
+const _sprites = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon';
+String? _bwUrl(int id, bool back, bool shiny) {
+  if (id < 1) return null;
+  final dir = id <= 649 ? '$_sprites/versions/generation-v/black-white/animated' : '$_sprites/other/showdown';
+  return '$dir/${back ? 'back/' : ''}${shiny ? 'shiny/' : ''}$id.gif';
+}
 
 class _Sprite extends StatefulWidget {
   final BattleMon mon;

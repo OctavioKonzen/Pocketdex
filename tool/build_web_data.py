@@ -262,6 +262,8 @@ def main():
     save('egg_moves.json', learn)
     # Sets prontos do Montador (tool/build_sets.py).
     save('sets.json', load('sets'))
+    # Animação de cada golpe na batalha (tool/build_move_anims.py).
+    save('move_anims.json', load('move_anims'))
 
     save('abilities.json', [{
         'id': a['id'],

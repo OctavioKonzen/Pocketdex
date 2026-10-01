@@ -84,3 +84,9 @@ npm run dev
 ```
 
 Detalhes técnicos (Firebase, publicação de versões, banco de dados): [docs/DESENVOLVIMENTO.md](docs/DESENVOLVIMENTO.md).
+
+## 🙏 Créditos
+
+* Dados e sprites: [PokeAPI](https://pokeapi.co/) (repositório [PokeAPI/sprites](https://github.com/PokeAPI/sprites)). Pokémon e os nomes, imagens e sons são da Nintendo, Game Freak e The Pokémon Company.
+* Batalha: sprites animados do Black & White (até o #649) e, do #650 em diante, os sprites animados do [Smogon Sprite Project](https://www.smogon.com/forums/forums/smeargles-studio.258/) usados pelo Pokémon Showdown.
+* Calculadora de dano ([@smogon/calc](https://github.com/smogon/damage-calc)), sets prontos e regras dos golpes do [Pokémon Showdown](https://github.com/smogon/pokemon-showdown) (licença MIT).

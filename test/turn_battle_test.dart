@@ -144,8 +144,60 @@ void main() {
         slug: moveAnim(slug, '${moves[slug]!['type']}', '${moves[slug]!['damage_class']}'),
     };
     expect(all, expected);
-    for (final kind in fxDuration.keys) {
+    for (final kind in _kinds) {
       expect(fxPlan(kind, 'fire', 0, const Point(24, 69), const Point(75, 25)).parts, isNotEmpty, reason: kind);
     }
   });
+
+  test('cada golpe com a sua animação (move_anims.json) e peças iguais às do site', () async {
+    final table = await LocalDatabase.instance.moveAnims();
+    final keys = [for (final e in table.values) (e as List).join('|')];
+    expect(keys.toSet().length, keys.length);
+    expect((table['ice-punch'] as List).take(2), ['punch', '🧊']);
+
+    Map<String, Object> json(FxPlan plan) => {
+          'parts': [
+            for (final p in plan.parts)
+              switch (p.shape) {
+                'emoji' => {
+                    'shape': 'emoji', 'char': p.char, 'x0': p.x0, 'y0': p.y0, 'x1': p.x1, 'y1': p.y1, 'delay': p.delay, 'dur': p.dur,
+                    's0': p.s0, 's1': p.s1, 'o0': p.o0, 'o1': p.o1, 'rot': p.rot, 'size': p.size, //
+                  },
+                'line' => {'shape': 'line', 'x0': p.x0, 'y0': p.y0, 'x1': p.x1, 'y1': p.y1, 'delay': p.delay, 'dur': p.dur, 'width': p.width},
+                'ring' => {'shape': 'ring', 'x': p.x0, 'y': p.y0, 'delay': p.delay, 'dur': p.dur},
+                _ => {'shape': 'wave', 'dir': p.dir, 'delay': p.delay, 'dur': p.dur},
+              },
+          ],
+          'shake': plan.shake,
+          'flash': plan.flash,
+          'duration': plan.duration,
+        };
+    void same(Object? a, Object? b, String path) {
+      if (a is num && b is num) {
+        expect(a.toDouble(), closeTo(b.toDouble(), 1e-6), reason: path);
+      } else if (a is Map && b is Map) {
+        expect(a.keys.toSet(), b.keys.toSet(), reason: path);
+        for (final k in a.keys) {
+          same(a[k], b[k], '$path.$k');
+        }
+      } else if (a is List && b is List) {
+        expect(a.length, b.length, reason: path);
+        for (var i = 0; i < a.length; i++) {
+          same(a[i], b[i], '$path[$i]');
+        }
+      } else {
+        expect(a, b, reason: path);
+      }
+    }
+
+    final expected = jsonDecode(File('test/fixtures/fx_plans.json').readAsStringSync()) as Map;
+    for (final kind in _kinds) {
+      for (var v = 0; v < 6; v++) {
+        final plan = fxPlan(kind, 'water', v % 2, const Point(24, 69), const Point(75, 25), v % 3 != 0 ? '🧊' : null, v);
+        same(json(plan), expected['$kind/$v'], '$kind/$v');
+      }
+    }
+  });
 }
+
+const _kinds = ['tackle', 'punch', 'kick', 'bite', 'slash', 'orb', 'beam', 'stream', 'volley', 'bolt', 'quake', 'rocks', 'meteor', 'wave', 'wind', 'rings', 'drain'];
