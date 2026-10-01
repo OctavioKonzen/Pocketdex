@@ -48,6 +48,4 @@ flutter:
     - assets/database/sprites/pokemon/other/official-artwork/
     - assets/database/sprites/pokemon/other/official-artwork/shiny/
     - assets/database/sprites/items/
-    - assets/database/sprites/animated/front/
-    - assets/database/sprites/animated/shiny/
     - assets/database/cries/

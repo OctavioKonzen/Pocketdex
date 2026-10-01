@@ -7,6 +7,7 @@
 // também os quadros dele (o widget troca de quadro com um ViewFlipper:
 // widget do Android não toca GIF).
 
+import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
@@ -63,8 +64,17 @@ class DailyWidget {
     var ms = 100;
     try {
       if (AnimatedSprites.instance.has(id)) {
-        final gif = await rootBundle.load(AnimatedSprites.instance.asset(id));
-        final codec = await ui.instantiateImageCodec(gif.buffer.asUint8List());
+        // O GIF vem da nuvem (sem internet, o widget fica com o parado).
+        final client = HttpClient()..connectionTimeout = const Duration(seconds: 15);
+        final Uint8List gif;
+        try {
+          final response = await (await client.getUrl(Uri.parse(AnimatedSprites.instance.url(id)))).close();
+          if (response.statusCode != 200) throw const HttpException('sem o GIF');
+          gif = await consolidateHttpClientResponseBytes(response);
+        } finally {
+          client.close();
+        }
+        final codec = await ui.instantiateImageCodec(gif);
         final total = codec.frameCount;
         final step = (total / _maxFrames).ceil().clamp(1, total);
         var duration = 0;

@@ -106,7 +106,7 @@ class PokemonSprite extends StatelessWidget {
   }
 }
 
-/// O GIF animado do Pokémon (já recortado justo, vem no APK), do mesmo tamanho do parado.
+/// O GIF animado do Pokémon (já recortado justo, vem da nuvem), do mesmo tamanho do parado.
 class _AnimatedSprite extends StatelessWidget {
   final int id;
   final bool shiny, alignBottom;
@@ -137,6 +137,7 @@ class _AnimatedSprite extends StatelessWidget {
 
       final left = side / 2 - inner / 2 - shift(dx, wr);
       final top = widget.alignBottom ? side - side * (1 - widget.fill) / 2 - inner : side / 2 - inner / 2 - shift(dy, hr);
+      final still = Transform.translate(offset: Offset(-left, -top), child: SizedBox.square(dimension: side, child: widget.fallback));
       return Center(
         child: SizedBox.square(
           dimension: side,
@@ -146,15 +147,17 @@ class _AnimatedSprite extends StatelessWidget {
               Positioned(
                 left: left,
                 top: top,
-                child: Image.asset(
-                  AnimatedSprites.instance.asset(id, shiny: shiny),
+                child: Image.network(
+                  AnimatedSprites.instance.url(id, shiny: shiny),
                   width: inner,
                   height: inner,
                   fit: BoxFit.contain,
                   alignment: widget.alignBottom ? Alignment.bottomCenter : Alignment.center,
                   filterQuality: FilterQuality.none,
                   gaplessPlayback: true,
-                  errorBuilder: (_, __, ___) => widget.fallback,
+                  // Enquanto chega da nuvem (ou sem internet): o parado, no lugar da caixa toda.
+                  frameBuilder: (_, child, frame, __) => frame == null ? still : child,
+                  errorBuilder: (_, __, ___) => still,
                 ),
               ),
             ],

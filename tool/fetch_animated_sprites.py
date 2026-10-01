@@ -11,7 +11,7 @@ tool/bw_style_sprites.py: troca os que vieram em 3D (8ª/9ª geração, Megas...
 e os que faltam pela arte BW da Smogon, para ficarem todos no mesmo estilo.
 
 O site publica a pasta junto com os outros sprites (tool/build_web_data.py)
-e o app traz todos dentro do APK (aparecem na hora, sem baixar). No fim, os
+e o app puxa cada um de lá (da nuvem, com internet; o APK fica leve). No fim, os
 GIFs passam pelo gifsicle -O3 (sem perda: os quadros ficam idênticos, só o
 arquivo diminui), se ele estiver instalado.
 

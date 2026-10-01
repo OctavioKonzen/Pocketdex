@@ -742,12 +742,11 @@ class _SpriteState extends State<_Sprite> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    // De frente: o GIF do nosso banco, que vem no APK (aparece na hora).
+    // De frente: o GIF do nosso banco, puxado da nuvem.
     final mon = widget.mon;
-    final asset = !widget.back && AnimatedSprites.instance.has(mon.id, shiny: mon.shiny)
-        ? AnimatedSprites.instance.asset(mon.id, shiny: mon.shiny)
-        : null;
-    final url = widget.back ? _bwUrl(mon.id, true, mon.shiny) : null;
+    final url = !widget.back
+        ? (AnimatedSprites.instance.has(mon.id, shiny: mon.shiny) ? AnimatedSprites.instance.url(mon.id, shiny: mon.shiny) : null)
+        : _bwUrl(mon.id, true, mon.shiny);
     final dir = widget.back ? 1.0 : -1.0;
     return AnimatedSlide(
       duration: const Duration(milliseconds: 500),
@@ -772,15 +771,7 @@ class _SpriteState extends State<_Sprite> with TickerProviderStateMixin {
           // Trocou de Pokémon: começa do zero (sem ficar o sprite do anterior).
           child: KeyedSubtree(
             key: ValueKey((widget.mon.id, widget.mon.shiny)),
-            child: asset != null
-                ? LayoutBuilder(
-                    builder: (context, box) => Align(
-                      alignment: Alignment.bottomCenter,
-                      child: Image.asset(asset, scale: 96 / box.maxWidth, filterQuality: FilterQuality.none, gaplessPlayback: true,
-                          errorBuilder: (context, error, stack) => _static(true)),
-                    ),
-                  )
-                : url == null
+            child: url == null
                 ? _static(true)
                 : LayoutBuilder(
                     // Tamanho de verdade do sprite (os pequenos continuam pequenos, como no jogo).
