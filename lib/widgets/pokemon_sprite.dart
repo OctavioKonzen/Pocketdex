@@ -154,11 +154,12 @@ class _AnimatedSprite extends StatelessWidget {
     final widget = this;
     final f = source.fit;
     final dx = f[1], dy = f[2], wr = f.length > 3 ? f[3] : 1.0, hr = f.length > 4 ? f[4] : 1.0;
-    // Limita o zoom para a animação inteira caber na caixa (como o site):
-    // quem pula ou abre as asas não invade o que está em volta.
+    // O quadro típico ocupa a caixa (como o site); quem abre as asas ou pula
+    // passa um pouco da borda no meio do movimento. Na batalha, a animação
+    // inteira cabe na caixa (não invade a caixa de texto nem o outro lado).
     final fill = widget.fill;
     final maxY = widget.alignBottom ? (1 + fill) / (2 * fill * hr) : 1 / (fill * hr);
-    final zoom = max(1.0, min(f[0], min(1 / (fill * wr), maxY)));
+    final zoom = widget.battle ? max(1.0, min(f[0], min(1 / (fill * wr), maxY))) : max(1.0, f[0]);
     return LayoutBuilder(builder: (context, c) {
       final side = c.biggest.shortestSide;
       // Lado do GIF: ampliado para o quadro típico ocupar a caixa (como o site).
@@ -166,6 +167,7 @@ class _AnimatedSprite extends StatelessWidget {
       // Centraliza o quadro típico, sem a animação sair da caixa (onde o card
       // recorta, cortaria asas e caudas no meio do movimento).
       double shift(double d, double r) {
+        if (!widget.battle) return d * inner;
         final limit = max(0.0, (side - inner * r) / 2);
         return (d * inner).clamp(-limit, limit);
       }
