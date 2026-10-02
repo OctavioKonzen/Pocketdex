@@ -60,14 +60,23 @@ class _TeamMemberScreenState extends State<TeamMemberScreen> {
     final db = LocalDatabase.instance;
     final row = await db.pokemonRow(widget.pokemonId);
     final moves = await db.movesByName();
+    final battleItems = await db.battleItems().catchError((_) => <String, dynamic>{});
+    // Mega Pedras, Cristais Z e os itens das formas (orbes, Rusted Sword,
+    // máscaras da Ogerpon...) vêm sem a marca "holdable" no banco.
+    final special = {
+      ...((battleItems['mega'] as Map?) ?? const {}).keys.map((k) => '$k'),
+      ...((battleItems['z'] as Map?) ?? const {}).keys.map((k) => '$k'),
+      for (final list in ((battleItems['forms'] as Map?) ?? const {}).values)
+        for (final i in list as List) '$i',
+    };
     final items = [
       for (final i in await db.allItems())
-        if (((i['attributes'] as List?) ?? const []).contains('holdable') && !_notHeld.contains(i['category']))
+        if ((((i['attributes'] as List?) ?? const []).contains('holdable') && !_notHeld.contains(i['category'])) ||
+            special.contains(itemId(i['name'] as String?)))
           i['name'] as String,
     ]..sort();
     final ready = await db.readySets(widget.pokemonId);
     final all = await db.allItems();
-    final battleItems = await db.battleItems().catchError((_) => <String, dynamic>{});
     final forms = {
       for (final r in await db.allPokemonRows())
         if (row != null && r['species'] == row['species']) r['name'] as String,
@@ -90,8 +99,7 @@ class _TeamMemberScreenState extends State<TeamMemberScreen> {
 
   /// Mega: a pedra vai sozinha; com duas Megas (Charizard X/Y) escolhe-se qual.
   /// Z-Move: o Cristal Z do tipo dos golpes (com mais de um tipo, escolhe-se).
-  List<({String stone, String form})> get _megas =>
-      _row == null ? const [] : megaOptions(_row!['name'] as String, _forms, _battleItems);
+  List<({String stone, String form})> get _megas => _row == null ? const [] : megaOptions(_row!['name'] as String, _forms, _battleItems);
   List<String> get _zTypes => {
         for (final m in (_set['moves'] as List).cast<String>())
           if (_moves?[m] != null && '${_moves![m]!['damage_class'] ?? _moves![m]!['category']}' != 'status') '${_moves![m]!['type']}',
@@ -182,7 +190,11 @@ class _TeamMemberScreenState extends State<TeamMemberScreen> {
                             if ('${s['tera']}'.isNotEmpty) TypeBadge('${s['tera']}', small: true),
                           ]),
                           const SizedBox(height: 4),
-                          Text([for (final m in s['moves'] as List) if ('$m'.isNotEmpty) prettySlug(m)].join(' · '),
+                          Text(
+                              [
+                                for (final m in s['moves'] as List)
+                                  if ('$m'.isNotEmpty) prettySlug(m)
+                              ].join(' · '),
                               style: TextStyle(color: c.text, fontSize: 12)),
                           Text('${prettySlug(s['ability'])} · ${s['nature']}', style: TextStyle(color: c.muted, fontSize: 11)),
                         ],
@@ -198,13 +210,13 @@ class _TeamMemberScreenState extends State<TeamMemberScreen> {
     );
   }
 
-  void _setStat(String group, String key, int value) =>
-      _update({group: {...(_set[group] as Map<String, int>), key: value}});
+  void _setStat(String group, String key, int value) => _update({
+        group: {...(_set[group] as Map<String, int>), key: value}
+      });
 
   Widget _label(String text) => Padding(
         padding: const EdgeInsets.only(top: 12, bottom: 4),
-        child: Text(text,
-            style: TextStyle(color: SiteColors.of(context).muted, fontSize: 12, fontWeight: FontWeight.w600)),
+        child: Text(text, style: TextStyle(color: SiteColors.of(context).muted, fontSize: 12, fontWeight: FontWeight.w600)),
       );
 
   Widget _box({required Widget child, VoidCallback? onTap}) {
@@ -221,8 +233,7 @@ class _TeamMemberScreenState extends State<TeamMemberScreen> {
     );
   }
 
-  Widget _dropdown<T>({required T value, required List<DropdownMenuItem<T>> items, required ValueChanged<T?> onChanged}) =>
-      _box(
+  Widget _dropdown<T>({required T value, required List<DropdownMenuItem<T>> items, required ValueChanged<T?> onChanged}) => _box(
         child: DropdownButtonHideUnderline(
           child: DropdownButton<T>(isExpanded: true, isDense: true, value: value, items: items, onChanged: onChanged),
         ),
@@ -238,8 +249,7 @@ class _TeamMemberScreenState extends State<TeamMemberScreen> {
         const SizedBox(width: 6),
         SizedBox(
           width: 28,
-          child: Text('${m['power'] ?? '—'}',
-              textAlign: TextAlign.end, style: TextStyle(color: SiteColors.of(context).muted, fontSize: 12)),
+          child: Text('${m['power'] ?? '—'}', textAlign: TextAlign.end, style: TextStyle(color: SiteColors.of(context).muted, fontSize: 12)),
         ),
       ],
     );
@@ -249,8 +259,8 @@ class _TeamMemberScreenState extends State<TeamMemberScreen> {
     final row = _row;
     if (row == null) return;
     final learnable = {for (final m in row['moves'] as List) (m as List).first as String}.toList()..sort();
-    final chosen = await showSearchSheet(context,
-        title: 'Golpe ${index + 1}', options: learnable, emptyLabel: 'Nenhum', label: prettySlug, trailing: _moveInfo);
+    final chosen =
+        await showSearchSheet(context, title: 'Golpe ${index + 1}', options: learnable, emptyLabel: 'Nenhum', label: prettySlug, trailing: _moveInfo);
     if (chosen == null) return;
     final moves = List<String>.from(_set['moves'] as List);
     moves[index] = chosen;
@@ -258,8 +268,7 @@ class _TeamMemberScreenState extends State<TeamMemberScreen> {
   }
 
   Future<void> _pickItem() async {
-    final chosen =
-        await showSearchSheet(context, title: 'Item', options: _items ?? const [], emptyLabel: 'Nenhum', label: prettySlug);
+    final chosen = await showSearchSheet(context, title: 'Item', options: _items ?? const [], emptyLabel: 'Nenhum', label: prettySlug);
     if (chosen != null) _update({'item': chosen});
   }
 
@@ -349,8 +358,7 @@ class _TeamMemberScreenState extends State<TeamMemberScreen> {
                             Expanded(
                               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                                 _label('Nível'),
-                                NumberField(
-                                    value: _set['level'] as int, min: 1, max: 100, onChanged: (v) => _update({'level': v})),
+                                NumberField(value: _set['level'] as int, min: 1, max: 100, onChanged: (v) => _update({'level': v})),
                               ]),
                             ),
                             const SizedBox(width: 12),
@@ -437,10 +445,13 @@ class _TeamMemberScreenState extends State<TeamMemberScreen> {
                           _choiceRow('Qual Mega?', [for (final m in _megas) (m.stone, megaLabel(m.form))],
                               (stone) => _update({'item': itemSlug(stone, _allItems)})),
                         if (_set['gimmick'] == 'z' && _zTypes.length > 1)
-                          _choiceRow('Cristal Z de qual tipo?', [
-                            for (final t in _zTypes)
-                              if (zCrystalOf(t, _battleItems) != null) (zCrystalOf(t, _battleItems)!, prettySlug(t)),
-                          ], (crystal) => _update({'item': itemSlug(crystal, _allItems)})),
+                          _choiceRow(
+                              'Cristal Z de qual tipo?',
+                              [
+                                for (final t in _zTypes)
+                                  if (zCrystalOf(t, _battleItems) != null) (zCrystalOf(t, _battleItems)!, prettySlug(t)),
+                              ],
+                              (crystal) => _update({'item': itemSlug(crystal, _allItems)})),
                         if (_row != null && requiredItems(_row!['name'] as String, _battleItems).isNotEmpty)
                           Padding(
                             padding: const EdgeInsets.only(top: 4),
@@ -497,8 +508,7 @@ class _TeamMemberScreenState extends State<TeamMemberScreen> {
                           children: [
                             TableRow(children: [
                               const SizedBox(),
-                              for (final h in const ['Base', 'EVs', 'IVs'])
-                                Center(child: Text(h, style: TextStyle(color: c.muted, fontSize: 12))),
+                              for (final h in const ['Base', 'EVs', 'IVs']) Center(child: Text(h, style: TextStyle(color: c.muted, fontSize: 12))),
                               Align(
                                 alignment: Alignment.centerRight,
                                 child: Text('Final', style: TextStyle(color: c.muted, fontSize: 12)),
@@ -510,10 +520,8 @@ class _TeamMemberScreenState extends State<TeamMemberScreen> {
                                   text: statNames[statKeys[i]],
                                   style: TextStyle(color: c.text, fontWeight: FontWeight.bold, fontSize: 13),
                                   children: [
-                                    if (up != down && i == up)
-                                      const TextSpan(text: '+', style: TextStyle(color: Color(0xFF22C55E))),
-                                    if (up != down && i == down)
-                                      const TextSpan(text: '−', style: TextStyle(color: Color(0xFFEF4444))),
+                                    if (up != down && i == up) const TextSpan(text: '+', style: TextStyle(color: Color(0xFF22C55E))),
+                                    if (up != down && i == down) const TextSpan(text: '−', style: TextStyle(color: Color(0xFFEF4444))),
                                   ],
                                 )),
                                 Center(child: Text('${base![i]}', style: TextStyle(color: c.muted))),
@@ -537,8 +545,7 @@ class _TeamMemberScreenState extends State<TeamMemberScreen> {
                                 ),
                                 Align(
                                   alignment: Alignment.centerRight,
-                                  child: Text('${statValue(base, i, _set)}',
-                                      style: TextStyle(color: c.text, fontWeight: FontWeight.bold)),
+                                  child: Text('${statValue(base, i, _set)}', style: TextStyle(color: c.text, fontWeight: FontWeight.bold)),
                                 ),
                               ]),
                           ],
