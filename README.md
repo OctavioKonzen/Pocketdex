@@ -4,7 +4,7 @@
   <img src="https://img.shields.io/badge/Flutter-3.x-blue?logo=flutter&style=for-the-badge" />
   <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&style=for-the-badge" />
   <img src="https://img.shields.io/badge/Firebase-FFCA28?logo=firebase&style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Android-5.8.0-green?logo=android&style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Android-5.9.0-green?logo=android&style=for-the-badge" />
 </p>
 
 <div align="center">
@@ -73,7 +73,7 @@ O número do app é **grande.média.pequena**:
 - **média** (0.X.0): coisas novas ou melhorias visíveis;
 - **pequena** (0.0.X): correções e ajustes.
 
-Até a 2.3.0 a contagem era outra. Recontada por essa regra, a 2.3.0 seria a 5.6.0; depois veio a 5.7.0 (sprites só no estilo Black & White, em alta qualidade) e a 5.8.0 (escolha da Mega X/Y, itens das formas, animações das Megas e formas).
+Até a 2.3.0 a contagem era outra. Recontada por essa regra, a 2.3.0 seria a 5.6.0; depois veio a 5.7.0 (sprites só no estilo Black & White, em alta qualidade) , a 5.8.0 (escolha da Mega X/Y, itens das formas, animações das Megas e formas) e a 5.9.0 (botão de Mega na batalha, foto de perfil shiny e com formas, sprites ocupando o quadrado).
 
 ## 🚀 Como rodar o código
 
