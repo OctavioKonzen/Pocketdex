@@ -21,6 +21,13 @@ function load(path) {
 /** Caminho do sprite shiny de um sprite normal ("pokemon/6.png" → "pokemon/shiny/6.png"). */
 export const shinyPath = (path) => (path ? path.replace(/^pokemon\/(?!shiny\/)/, 'pokemon/shiny/') : path)
 
+/**
+ * Foto de perfil: o id do Pokémon (formas têm id próprio); shiny = id + SHINY_AVATAR
+ * (igual ao app, lib/services/user_data.dart).
+ */
+export const SHINY_AVATAR = 100000
+export const avatarOf = (value) => (value == null ? null : { id: value % SHINY_AVATAR, shiny: value >= SHINY_AVATAR })
+
 /** Sprite do membro do time: shiny se marcado no set. */
 export const memberSprite = (p, set) => (set?.shiny ? shinyPath(p.sprite) : p.sprite)
 

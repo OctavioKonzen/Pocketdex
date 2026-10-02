@@ -1,7 +1,7 @@
 import { AnimatePresence, m } from 'framer-motion'
 import { createContext, Suspense, useContext, useEffect, useState } from 'react'
 import { HashRouter, Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
-import { imageUrl } from './lib/data'
+import { SHINY_AVATAR, imageUrl } from './lib/data'
 import { getDownloadUrl, RELEASES_URL } from './lib/appRelease'
 import { useStore } from './lib/store'
 import { TEXT_SIZES, usePrefs, useResolvedTheme } from './lib/prefs'
@@ -284,9 +284,10 @@ function UserMenu() {
         <PokemonPicker
           open={picking}
           title="Escolha sua foto de perfil"
+          extras
           onClose={() => setPicking(false)}
-          onPick={(p) => {
-            setAvatar(p.id)
+          onPick={(p, { shiny } = {}) => {
+            setAvatar(shiny ? p.id + SHINY_AVATAR : p.id)
             setPicking(false)
           }}
         />

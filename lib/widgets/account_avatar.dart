@@ -10,6 +10,7 @@ import '../screens/pokedex_screen.dart';
 import '../screens/friends_screen.dart';
 import '../screens/settings_screen.dart';
 import '../services/friends_service.dart';
+import '../services/local_database.dart';
 import '../services/account_format.dart';
 import '../services/account_sync.dart';
 import '../services/auth_service.dart';
@@ -32,7 +33,8 @@ class AccountAvatar extends StatelessWidget {
         final avatar = UserData.instance.avatar;
         final Widget content;
         if (avatar != null) {
-          content = Padding(padding: EdgeInsets.all(size * 0.08), child: PokemonSprite(avatar, fill: 0.95));
+          content = Padding(
+              padding: EdgeInsets.all(size * 0.08), child: PokemonSprite(UserData.avatarId(avatar), shiny: UserData.avatarShiny(avatar), fill: 0.95));
         } else if (user?.photo != null) {
           content = Image.network(user!.photo!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _initial(user));
         } else {
@@ -108,7 +110,9 @@ class PlayerAvatar extends StatelessWidget {
         border: Border.all(color: Colors.white, width: size * 0.05),
       ),
       child: pokemonId != null
-          ? Padding(padding: EdgeInsets.all(size * 0.08), child: PokemonSprite(pokemonId!, fill: 0.95))
+          ? Padding(
+              padding: EdgeInsets.all(size * 0.08),
+              child: PokemonSprite(UserData.avatarId(pokemonId!), shiny: UserData.avatarShiny(pokemonId!), fill: 0.95))
           : Center(
               child: Text(
                 name.isEmpty ? '?' : name.substring(0, 1).toUpperCase(),
@@ -138,7 +142,109 @@ class ProfileSheet {
     );
     if (picked == null) return;
     final id = AccountFormat.pokemonIdFromImage(picked['imageUrl']) ?? int.tryParse(picked['id'] ?? '');
-    if (id != null) UserData.instance.update({'avatar': id});
+    if (id == null || !context.mounted) return;
+    // Forma (Mega, regional...) e shiny.
+    final chosen = await showModalBottomSheet<int>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (_) => _AvatarOptions(id),
+    );
+    if (chosen != null) UserData.instance.update({'avatar': chosen});
+  }
+}
+
+/// Escolhe a forma (as da mesma espécie) e se é shiny, vendo como fica.
+class _AvatarOptions extends StatefulWidget {
+  final int id;
+  const _AvatarOptions(this.id);
+
+  @override
+  State<_AvatarOptions> createState() => _AvatarOptionsState();
+}
+
+class _AvatarOptionsState extends State<_AvatarOptions> {
+  late int _id = widget.id;
+  bool _shiny = false;
+  List<int> _forms = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final db = LocalDatabase.instance;
+    final species = (await db.pokemonRow(widget.id))?['species'];
+    final rows = await db.allPokemonRows();
+    final forms = [
+      for (final r in rows)
+        if (r['species'] == species) (r['id'] as num).toInt(),
+    ]..sort();
+    if (mounted) setState(() => _forms = forms);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = SiteColors.of(context);
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Escolha sua foto de perfil', style: TextStyle(color: c.text, fontSize: 18, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 12),
+            SizedBox.square(dimension: 120, child: PokemonSprite(_id, shiny: _shiny, fill: 0.95)),
+            SwitchListTile(
+              value: _shiny,
+              onChanged: (v) => setState(() => _shiny = v),
+              title: Text('✨ Shiny', style: TextStyle(color: c.text, fontWeight: FontWeight.w700)),
+            ),
+            if (_forms.length > 1) ...[
+              Align(
+                  alignment: Alignment.centerLeft, child: Text('Formas alternativas', style: TextStyle(color: c.muted, fontWeight: FontWeight.w700))),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 76,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: [
+                    for (final f in _forms)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: InkWell(
+                          key: ValueKey('form-$f'),
+                          borderRadius: BorderRadius.circular(14),
+                          onTap: () => setState(() => _id = f),
+                          child: Container(
+                            width: 72,
+                            decoration: BoxDecoration(
+                              color: c.surface,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: f == _id ? const Color(0xFFFBBF24) : Colors.transparent, width: 3),
+                            ),
+                            child: PokemonSprite(f, shiny: _shiny, fill: 0.85),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () => Navigator.pop(context, _shiny ? _id + UserData.shinyAvatar : _id),
+                child: const Text('Salvar'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
