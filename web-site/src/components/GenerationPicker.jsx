@@ -17,7 +17,7 @@ function Starters({ ids, byId, size }) {
         const p = byId?.get(id)
         return p ? (
           <div key={id} style={{ width: size }}>
-            <Sprite path={p.sprite} box={p.box} align="bottom" fill={0.95} />
+            <Sprite path={p.sprite} box={p.box} align="bottom" fill={0.95} whole />
           </div>
         ) : null
       })}
