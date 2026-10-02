@@ -174,7 +174,12 @@ class _AnimatedSprite extends StatelessWidget {
       // (todos do mesmo tamanho, nítido, sem borrar).
       final dpr = MediaQuery.devicePixelRatioOf(context);
       final longest = max(source.width, source.height);
-      final pixelScale = longest > 0 ? max(1, (inner * dpr / longest).floor()) / dpr : null;
+      // Escala inteira (pixels nítidos) quando perde pouco tamanho; senão a
+      // exata, para os pequenos não encolherem pela metade (1,9× virava 1×) e
+      // os grandes caberem na caixa.
+      final fitScale = longest > 0 ? inner * dpr / longest : 0.0;
+      final whole = fitScale.floorToDouble();
+      final pixelScale = longest > 0 ? (whole >= 1 && whole >= 0.85 * fitScale ? whole : fitScale) / dpr : null;
       const quality = FilterQuality.none;
       final left = side / 2 - inner / 2 - shift(dx, wr);
       // Na batalha, quem pula ou flutua no meio da animação desce o "pé" para
