@@ -2,7 +2,7 @@ name: Regras do Firestore
 
 # Publica firestore.rules no Firebase sempre que muda na main (sem precisar
 # colar no Console). Usa o segredo FIREBASE_SERVICE_ACCOUNT, o mesmo da
-# limpeza do banco; sem ele, só avisa.
+# limpeza do banco; sem ele, falha para não indicar uma publicação inexistente.
 #
 # Todas as buscas do site e do app usam um campo só (ranking por pontos,
 # times por dono ou por data), então o Firestore não precisa de índices extras.
@@ -32,8 +32,8 @@ jobs:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
           if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
-            echo "::warning::Falta o segredo FIREBASE_SERVICE_ACCOUNT: cole firestore.rules no Console do Firebase à mão."
-            exit 0
+            echo "::error::Falta o segredo FIREBASE_SERVICE_ACCOUNT: configure-o no GitHub ou publique firestore.rules no Console do Firebase."
+            exit 1
           fi
           printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/chave.json"
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/chave.json"

@@ -37,6 +37,7 @@ function MaybeReveal({ reveal, id, children }) {
 
 export default function DetailsPanel({
   speciesId,
+  initialFormId,
   reveal = true,
   height = 620,
   tab: initialTab = 0,
@@ -64,13 +65,14 @@ export default function DetailsPanel({
     getSpecies(speciesId).then((data) => {
       if (!alive) return
       setSpecies(data)
-      setFormIndex(0)
+      const index = data.forms.findIndex((f) => f.id === initialFormId)
+      setFormIndex(index < 0 ? 0 : index)
       setShiny(false)
     })
     return () => {
       alive = false
     }
-  }, [speciesId])
+  }, [speciesId, initialFormId])
 
   const changeTab = (index) => {
     setTab(index)
@@ -88,8 +90,8 @@ export default function DetailsPanel({
   const form = species.forms[formIndex] ?? species.forms[0]
   const color = typeColor(form.types[0])
   const background = typeBackground(form.types)
-  const spriteIndex = shiny && form.sprites[1] ? 1 : 0
-  const sprite = form.sprites[spriteIndex] ?? form.sprites[2]
+  const spriteIndex = shiny ? 1 : 0
+  const sprite = form.sprites[spriteIndex] ?? form.sprites[shiny ? 3 : 2] ?? form.sprites[2]
   const box = form.sprites[spriteIndex] ? form.boxes?.[spriteIndex] : null
   const selectPokemon = (p) => {
     setMoveOpen(null)
@@ -134,7 +136,7 @@ export default function DetailsPanel({
                 whileHover={{ scale: 1.06 }}
                 transition={{ duration: 0.25 }}
               >
-                <Sprite path={sprite} box={box} alt={species.name} fill={0.72} prefetch={form.sprites[1 - spriteIndex]} />
+                <Sprite path={sprite} box={box} alt={species.name} fill={0.72} prefetch={form.sprites[1 - spriteIndex] ?? form.sprites[shiny ? 2 : 3]} />
               </m.div>
             </AnimatePresence>
           </MaybeReveal>

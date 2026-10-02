@@ -28,7 +28,7 @@ function Modal({ id, onClose }) {
   return (
     <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/60 p-3" onClick={onClose}>
       <div className="w-full max-w-5xl" onClick={(e) => e.stopPropagation()}>
-        <DetailsPanel speciesId={speciesId} compact={!wide} height={wide ? 620 : 560} onClose={onClose} onNavigate={setPicked} />
+        <DetailsPanel initialFormId={picked == null ? id : undefined} speciesId={speciesId} compact={!wide} height={wide ? 620 : 560} onClose={onClose} onNavigate={setPicked} />
       </div>
     </div>
   )

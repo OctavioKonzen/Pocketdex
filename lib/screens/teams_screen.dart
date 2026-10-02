@@ -32,6 +32,7 @@ class _TeamsScreenState extends State<TeamsScreen> {
     // Mudanças vindas da conta (site ou outro aparelho) aparecem na hora.
     UserData.instance.addListener(_onUserData);
     AccountSync.instance.teamsVersion.addListener(_loadRatings);
+    AccountSync.instance.publicationError.addListener(_onUserData);
     _loadTeams();
     _loadRatings();
   }
@@ -55,6 +56,7 @@ class _TeamsScreenState extends State<TeamsScreen> {
   void dispose() {
     UserData.instance.removeListener(_onUserData);
     AccountSync.instance.teamsVersion.removeListener(_loadRatings);
+    AccountSync.instance.publicationError.removeListener(_onUserData);
     super.dispose();
   }
 
@@ -255,6 +257,14 @@ class _TeamsScreenState extends State<TeamsScreen> {
                         _loadTeams();
                       },
                     ),
+                  ),
+                if (_signedIn && AccountSync.instance.publicationError.value != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(AccountSync.instance.publicationError.value!),
+                      TextButton(onPressed: AccountSync.instance.retryPublish, child: const Text('Tentar novamente')),
+                    ]),
                   ),
                 if (snapshot.connectionState == ConnectionState.done && teams.isEmpty)
                   const EmptyMessage('Você ainda não criou nenhum time. Toque em “Novo time” para começar!'),

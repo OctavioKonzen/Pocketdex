@@ -5,6 +5,7 @@
 // recorde do Ranked.
 
 import 'package:flutter/material.dart' hide Text;
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../i18n/text.dart';
 import '../services/auth_service.dart';
@@ -70,7 +71,9 @@ class _FriendsScreenState extends State<FriendsScreen> {
         _name.clear();
       }
     } catch (e) {
-      _message = (false, 'Algo deu errado. Tente de novo.');
+      _message = (false, e is FirebaseException && e.code == 'permission-denied'
+          ? 'Sem permissão para adicionar amigos. As regras do Firestore precisam ser atualizadas.'
+          : 'Não foi possível adicionar o amigo. Confira sua conexão e tente novamente.');
     }
     if (mounted) setState(() => _busy = false);
   }
