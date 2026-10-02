@@ -37,4 +37,7 @@ jobs:
           fi
           printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/chave.json"
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/chave.json"
+          # O Firebase CLI exige que as regras estejam dentro da pasta do projeto.
+          cp ../../firestore.rules firestore.rules
+          node -e "const fs = require('fs'); const config = JSON.parse(fs.readFileSync('firebase.json', 'utf8')); config.firestore.rules = 'firestore.rules'; fs.writeFileSync('firebase.json', JSON.stringify(config));"
           npx --yes firebase-tools@15 deploy --only firestore:rules --project pocketdex-ffb4d --non-interactive
