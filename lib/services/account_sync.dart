@@ -39,6 +39,12 @@ class AccountSync {
 
   /// Muda quando os times públicos da pessoa são atualizados.
   final teamsVersion = ValueNotifier<int>(0);
+  final publicationError = ValueNotifier<String?>(null);
+
+  Future<void> retryPublish() async {
+    final uid = _uid;
+    if (uid != null) await publishTeams(uid);
+  }
   Timer? _publishTimer;
 
   void start() {
@@ -68,6 +74,7 @@ class AccountSync {
     _timer = null;
     _publishTimer?.cancel();
     _publishTimer = null;
+    publicationError.value = null;
     _dirty.clear();
     _ready = false;
   }
@@ -278,13 +285,18 @@ class AccountSync {
         final old = current[id];
         final same = old != null && fields.entries.every((e) => _canon(old[e.key]) == _canon(e.value));
         if (same) continue;
-        batch.set(_public.doc(id), {
-          ...fields,
-          'ratingSum': old?['ratingSum'] ?? 0,
-          'ratingCount': old?['ratingCount'] ?? 0,
-          'reportCount': old?['reportCount'] ?? 0,
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
+        if (old != null) {
+          // Não sobrescreve votos ou denúncias recebidos durante a publicação.
+          batch.update(_public.doc(id), {...fields, 'updatedAt': FieldValue.serverTimestamp()});
+        } else {
+          batch.set(_public.doc(id), {
+            ...fields,
+            'ratingSum': 0,
+            'ratingCount': 0,
+            'reportCount': 0,
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        }
         changes++;
       }
       for (final id in current.keys) {
@@ -294,8 +306,15 @@ class AccountSync {
         }
       }
       if (changes > 0) await batch.commit();
-      teamsVersion.value++;
-    } catch (_) {}
+      if (_uid == uid) {
+        publicationError.value = null;
+        teamsVersion.value++;
+      }
+    } catch (e) {
+      if (_uid == uid) publicationError.value = e is FirebaseException && e.code == 'permission-denied'
+          ? 'Sem permissão para publicar os times. As regras do Firestore precisam ser atualizadas.'
+          : 'Não foi possível publicar os times. Tente novamente.';
+    }
   }
 
   /// JSON com as chaves em ordem (o Firestore não guarda a ordem dos campos).

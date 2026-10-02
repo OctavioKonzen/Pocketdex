@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ImportTeamModal } from '../components/TeamShare'
 import { RatingText } from '../components/TeamAnalysis'
 import { myTeamRatings, useAuth } from '../lib/auth'
-import { useTeamsVersion } from '../lib/sync'
+import { retryPublish, useTeamsVersion } from '../lib/sync'
 import { Button, Empty, Icon, Modal, PageHeader } from '../components/ui'
 import { getPokemonById, memberSprite } from '../lib/data'
 import { useStore } from '../lib/store'
@@ -31,6 +31,7 @@ export default function TeamsPage() {
   // Nota da comunidade de cada time (os times de quem tem conta são públicos).
   const user = useAuth((s) => (s.status === 'signedIn' ? s.user : null))
   const teamsVersion = useTeamsVersion((s) => s.version)
+  const publicationError = useTeamsVersion((s) => s.error)
   const [ratings, setRatings] = useState({})
   useEffect(() => {
     if (!user) return
@@ -69,6 +70,13 @@ export default function TeamsPage() {
           </Button>
         </div>
       </PageHeader>
+
+      {user && publicationError && (
+        <div role="alert" className="mb-4 rounded-2xl bg-card p-4">
+          <p>{publicationError}</p>
+          <Button onClick={retryPublish}>Tentar novamente</Button>
+        </div>
+      )}
 
       {teams.length === 0 && <Empty>Você ainda não criou nenhum time. Clique em “Novo time” para começar!</Empty>}
 

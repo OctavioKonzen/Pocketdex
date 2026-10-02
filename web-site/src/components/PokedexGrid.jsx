@@ -224,6 +224,7 @@ export default function PokedexGrid({ pokemon, emptyText = 'Nenhum Pokémon enco
                   >
                     <DetailsPanel
                       speciesId={pokemon[selectedIndex].species}
+                      initialFormId={pokemon[selectedIndex].id}
                       reveal={revealSpecies === pokemon[selectedIndex].species}
                       height={panelHeight}
                       compact={compact}

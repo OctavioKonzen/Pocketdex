@@ -2,7 +2,7 @@
 
 import 'dart:math';
 import 'package:flutter/material.dart' hide Text;
-import '../services/account_format.dart';
+import '../services/local_database.dart';
 import '../widgets/pokemon_sprite.dart';
 import '../widgets/pokedex_web/pokeball_reveal.dart';
 import 'package:flutter/services.dart';
@@ -15,7 +15,6 @@ import 'package:pocket_dex/utils/responsive.dart';
 import 'package:pocket_dex/widgets/pikachu_loading_indicator.dart';
 import 'package:pocket_dex/widgets/pokemon_detail_panel.dart';
 import 'package:pocket_dex/widgets/pokemon_display.dart';
-import 'package:pocket_dex/utils/app_images.dart';
 import 'package:pocket_dex/i18n/text.dart';
 
 enum _AnimationDirection { next, previous }
@@ -43,6 +42,8 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with TickerPr
   int _currentPokemonId = 0;
   List<int> _allPokemonIds = [];
   bool _isLoading = true;
+  String? _loadError;
+  int? _initialFormId;
 
   bool _isShiny = false;
   AlternateForm? _selectedForm;
@@ -59,9 +60,7 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with TickerPr
     _slideController = AnimationController(
         vsync: this, lowerBound: -1, upperBound: 1, value: 0, duration: const Duration(milliseconds: 320));
 
-    _loadAllPokemonIds().then((_) {
-      _loadPokemonFamily(_currentPokemonId);
-    });
+    _loadInitialPokemon();
   }
 
   @override
@@ -70,6 +69,25 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with TickerPr
     _pokeballAnimationController.dispose();
     _pageController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadInitialPokemon() async {
+    if (mounted) setState(() { _isLoading = true; _loadError = null; });
+    try {
+      final row = await LocalDatabase.instance.pokemonRow(widget.initialPokemonId);
+      if (row == null) throw StateError('Pokémon não encontrado.');
+      await _loadAllPokemonIds();
+      if (!mounted) return;
+      _currentPokemonId = row['species'] as int;
+      _initialFormId = widget.initialPokemonId;
+      _revealId = _currentPokemonId;
+      await _loadPokemonFamily(_currentPokemonId);
+    } catch (_) {
+      if (mounted) setState(() {
+        _isLoading = false;
+        _loadError = 'Não foi possível carregar esse Pokémon.';
+      });
+    }
   }
 
   Future<void> _loadAllPokemonIds() async {
@@ -81,34 +99,38 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with TickerPr
     }
   }
 
-  Future<void> _loadPokemonFamily(int centerId) {
-    final idsToLoad = [centerId - 3, centerId - 2, centerId - 1, centerId, centerId + 1, centerId + 2, centerId + 3]
-        .where((id) => id > 0 && id <= _allPokemonIds.length && !_loadedDetails.containsKey(id))
-        .toSet()
-        .toList();
-
-    if (idsToLoad.isNotEmpty) {
-      final futures = idsToLoad.map((id) => _pokemonService.fetchPokemonDetails(id));
-      return Future.wait(futures).then((results) {
-        if (mounted) {
-          setState(() {
-            for (var i = 0; i < results.length; i++) {
-              _loadedDetails[idsToLoad[i]] = results[i];
-            }
-            _selectedForm ??= _loadedDetails[centerId]?.forms.first;
-            if (_isLoading) _isLoading = false;
-          });
-        }
+  Future<void> _loadPokemonFamily(int centerId) async {
+    try {
+      // A forma tem um ID próprio, mas a família e a navegação usam a espécie.
+      final details = _loadedDetails[centerId] ?? await _pokemonService.fetchPokemonDetails(centerId);
+      if (!mounted) return;
+      setState(() {
+        _loadedDetails[centerId] = details;
+        _selectedForm ??= details.forms.where((f) => f.id == _initialFormId).firstOrNull ?? details.forms.first;
+        _initialFormId = null;
+        _isLoading = false;
+        _loadError = null;
       });
-    } else {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _selectedForm ??= _loadedDetails[centerId]?.forms.first;
-        });
-      }
-      return Future.value();
+    } catch (_) {
+      if (mounted && _currentPokemonId == centerId) setState(() {
+        _isLoading = false;
+        _loadError = 'Não foi possível carregar esse Pokémon.';
+      });
+      return;
     }
+    final centerIndex = _allPokemonIds.indexOf(centerId);
+    if (centerIndex < 0) return;
+    final neighbours = _allPokemonIds
+        .skip(max(0, centerIndex - 3))
+        .take(min(_allPokemonIds.length, centerIndex + 4) - max(0, centerIndex - 3))
+        .where((id) => id != centerId && !_loadedDetails.containsKey(id));
+    // A falha de um vizinho não impede abrir o Pokémon escolhido.
+    await Future.wait(neighbours.map((id) async {
+      try {
+        final details = await _pokemonService.fetchPokemonDetails(id);
+        if (mounted) setState(() => _loadedDetails[id] = details);
+      } catch (_) {}
+    }));
   }
 
   /// Pokémon que sai da Pokébola: o que foi aberto (ou escolhido na
@@ -225,7 +247,7 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with TickerPr
                             width: 2,
                           ),
                         ),
-                        child: PokemonSprite(AccountFormat.pokemonIdFromImage(form.pixelImageUrl) ?? pokemon.id,
+                        child: PokemonSprite(form.id > 0 ? form.id : pokemon.id,
                             fill: 0.85),
                       ),
                     );
@@ -247,6 +269,16 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with TickerPr
     final PokemonDetails? prevPokemon = currentIndex > 0 ? _loadedDetails[_allPokemonIds[currentIndex - 1]] : null;
     final PokemonDetails? nextPokemon =
         currentIndex < _allPokemonIds.length - 1 ? _loadedDetails[_allPokemonIds[currentIndex + 1]] : null;
+
+    if (_loadError != null && pokemon == null) {
+      return Scaffold(
+        appBar: AppBar(),
+        body: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Text(_loadError!),
+          TextButton(onPressed: _loadInitialPokemon, child: const Text('Tentar novamente')),
+        ])),
+      );
+    }
 
     if (_isLoading && pokemon == null) {
       return const Scaffold(body: Center(child: PikachuLoadingIndicator()));
@@ -396,7 +428,6 @@ class _PokemonAnimatedImage extends StatelessWidget {
 
     final AlternateForm displayForm = form ?? details.forms.first;
     final bool displayShiny = isShiny ?? false;
-    final String imageUrl = displayShiny ? displayForm.shinyPixelImageUrl : displayForm.pixelImageUrl;
 
     return Transform.translate(
       offset: Offset(x, y),
@@ -404,20 +435,18 @@ class _PokemonAnimatedImage extends StatelessWidget {
         scale: scale,
         child: Opacity(
           opacity: opacity,
-          child: _image(imageUrl, displayShiny),
+          child: _image(displayForm, details.id, displayShiny),
         ),
       ),
     );
   }
 
-  Widget _image(String imageUrl, bool shiny) {
-    final id = AccountFormat.pokemonIdFromImage(imageUrl);
+  Widget _image(AlternateForm form, int speciesId, bool shiny) {
+    final id = form.id > 0 ? form.id : speciesId;
     // Mesmo tamanho visual para todos os Pokémon.
     final Widget image = SizedBox.square(
       dimension: 300,
-      child: id != null
-          ? PokemonSprite(id, shiny: shiny, fill: 0.78, alignBottom: true, prefetchShiny: true)
-          : Image(image: AppImages.provider(imageUrl), fit: BoxFit.contain, filterQuality: FilterQuality.none),
+      child: PokemonSprite(id, shiny: shiny, fill: 0.78, alignBottom: true, prefetchShiny: true),
     );
     return reveal ? PokeballReveal(key: ValueKey('reveal-${details.id}'), ballSize: 80, child: image) : image;
   }

@@ -52,13 +52,25 @@ function schedulePublish(uid) {
     if (!name || currentUid !== uid) return
     const { teams, avatar } = useStore.getState()
     publishTeams(uid, name, avatar, teams)
-      .then(() => useTeamsVersion.setState((s) => ({ version: s.version + 1 })))
-      .catch(() => {})
+      .then(() => {
+        if (currentUid === uid) useTeamsVersion.setState((s) => ({ version: s.version + 1, error: null }))
+      })
+      .catch((e) => {
+        if (currentUid === uid) useTeamsVersion.setState({
+          error: e?.code === 'permission-denied'
+            ? 'Sem permissão para publicar os times. As regras do Firestore precisam ser atualizadas.'
+            : 'Não foi possível publicar os times. Tente novamente.',
+        })
+      })
   }, 1500)
 }
 
 /** Muda quando os times públicos da pessoa são atualizados. */
-export const useTeamsVersion = create(() => ({ version: 0 }))
+export const useTeamsVersion = create(() => ({ version: 0, error: null }))
+
+export function retryPublish() {
+  if (currentUid) schedulePublish(currentUid)
+}
 
 async function flush(uid) {
   clearTimeout(timer)
@@ -79,6 +91,7 @@ function scheduleSave(uid) {
 }
 
 function stop() {
+  useTeamsVersion.setState({ error: null })
   stopRemote?.()
   stopStore?.()
   stopRemote = stopStore = null

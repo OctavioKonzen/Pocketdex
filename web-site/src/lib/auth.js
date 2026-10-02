@@ -457,13 +457,13 @@ export async function publishTeams(uid, name, avatar, teams) {
     const old = current.get(team.id)
     const same = old && Object.entries(fields).every(([k, v]) => canon(old[k] ?? null) === canon(v))
     if (same) continue
-    batch.set(doc(db, 'publicTeams', team.id), {
-      ...fields,
-      ratingSum: old?.ratingSum ?? 0,
-      ratingCount: old?.ratingCount ?? 0,
-      reportCount: old?.reportCount ?? 0,
-      updatedAt: serverTimestamp(),
-    })
+    const ref = doc(db, 'publicTeams', team.id)
+    if (old) {
+      // Os votos e denúncias podem mudar depois da leitura: não os regrave.
+      batch.update(ref, { ...fields, updatedAt: serverTimestamp() })
+    } else {
+      batch.set(ref, { ...fields, ratingSum: 0, ratingCount: 0, reportCount: 0, updatedAt: serverTimestamp() })
+    }
     changes++
   }
   for (const id of current.keys()) {

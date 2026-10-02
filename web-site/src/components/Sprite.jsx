@@ -48,8 +48,8 @@ function useAnimated() {
  * ajuste [zoom, dx, dy] de quem se mexe muito e ficaria pequeno e o pé (na
  * batalha, quanto descer para pisar na plataforma).
  */
-function animatedOf(path, set, back) {
-  const m = /^pokemon\/(shiny\/)?(\d+)(-[a-z0-9-]+)?\.png$/.exec(path ?? '')
+export function animatedOf(path, set, back) {
+  const m = /^pokemon\/(?:other\/official-artwork\/)?(shiny\/)?(\d+)(-[a-z0-9-]+)?\.(?:png|webp)$/.exec(path ?? '')
   if (!m || !set) return null
   const kind = back ? (m[1] ? 'back-shiny' : 'back') : m[1] ? 'shiny' : 'front'
   const front = m[1] ? 'shiny' : 'front'
