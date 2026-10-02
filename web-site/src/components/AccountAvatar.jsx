@@ -3,24 +3,27 @@
 
 import { useEffect, useState } from 'react'
 import { useAuth } from '../lib/auth'
-import { getPokemonById } from '../lib/data'
+import { avatarOf, getPokemonById, shinyPath } from '../lib/data'
 import { useStore } from '../lib/store'
 import Sprite from './Sprite'
 
-/** Foto de qualquer jogador (ex.: nas linhas do ranking). */
+/** Foto de qualquer jogador (ex.: nas linhas do ranking). pokemonId: o avatar salvo (shiny = id + SHINY_AVATAR). */
 export function Avatar({ pokemonId, name, photo, size = 36, className = '' }) {
   const [pokemon, setPokemon] = useState(null)
+  const chosen = avatarOf(pokemonId)
+  const chosenId = chosen?.id
 
   useEffect(() => {
-    if (pokemonId == null) return
+    if (chosenId == null) return
     let alive = true
-    getPokemonById().then((byId) => alive && setPokemon(byId.get(pokemonId) ?? null))
+    getPokemonById().then((byId) => alive && setPokemon(byId.get(chosenId) ?? null))
     return () => {
       alive = false
     }
-  }, [pokemonId])
+  }, [chosenId])
 
-  const shown = pokemonId != null && pokemon?.id === pokemonId ? pokemon : null
+  const found = chosen && pokemon?.id === chosen.id ? pokemon : null
+  const shown = found && chosen.shiny ? { ...found, sprite: shinyPath(found.sprite), box: null } : found
   return (
     <span
       className={`grid shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-red-600 to-red-800 font-black text-white ring-2 ring-white/80 ${className}`}

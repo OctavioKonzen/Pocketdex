@@ -66,6 +66,11 @@ class UserData extends ChangeNotifier {
   int get quizRecord => (_data['quizRecord'] as num?)?.toInt() ?? 0;
   /// Foto de perfil: o id de um Pokémon (ou null).
   int? get avatar => (_data['avatar'] as num?)?.toInt();
+
+  /// Foto de perfil: shiny = id + [shinyAvatar] (igual ao site, avatarOf em web-site/src/lib/data.js).
+  static const shinyAvatar = 100000;
+  static int avatarId(int value) => value % shinyAvatar;
+  static bool avatarShiny(int value) => value >= shinyAvatar;
   Map<String, dynamic> get stats => {
         ...Achievements.emptyStats(),
         if (_data['stats'] is Map) ...Map<String, dynamic>.from(_jsonCopy(_data['stats']) as Map),
