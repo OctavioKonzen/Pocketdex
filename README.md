@@ -66,15 +66,6 @@ No app e no site, em **Configurações**, tem o QR Code e o "Pix copia e cola".
 * **Site:** https://octaviokonzen.github.io/Pocketdex/
 * **App:** no site, clique em **Baixar app** (ou vá em [Releases](https://github.com/OctavioKonzen/Pocketdex/releases)), instale o `PocketDex.apk` e entre com a mesma conta do site.
 
-## 🔢 Versões
-
-O número do app é **grande.média.pequena**:
-- **grande** (X.0.0): mudança grande, como um recurso novo de peso (contas, comunidade, idiomas, amigos, batalha por turnos);
-- **média** (0.X.0): coisas novas ou melhorias visíveis;
-- **pequena** (0.0.X): correções e ajustes.
-
-Até a 2.3.0 a contagem era outra. Recontada por essa regra, a 2.3.0 seria a 5.6.0; depois veio a 5.7.0 (sprites só no estilo Black & White, em alta qualidade) , a 5.8.0 (escolha da Mega X/Y, itens das formas, animações das Megas e formas) e a 5.9.0 (botão de Mega na batalha, foto de perfil shiny e com formas, sprites ocupando o quadrado).
-
 ## 🚀 Como rodar o código
 
 ```bash
