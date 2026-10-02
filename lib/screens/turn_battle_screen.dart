@@ -212,8 +212,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
             ),
         ],
         const SizedBox(height: 10),
-        Text(
-            'O computador joga pelo adversário. Golpes com PP, precisão, prioridade, crítico, status, mudanças de atributo e clima.',
+        Text('O computador joga pelo adversário. Golpes com PP, precisão, prioridade, crítico, status, mudanças de atributo e clima.',
             style: TextStyle(color: c.muted, fontSize: 12)),
         const SizedBox(height: 14),
         PillButton(
@@ -272,6 +271,7 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
   bool _busy = false;
   String _menu = 'main'; // main | fight | party | bag
   String? _item; // item da Bolsa escolhido (falta escolher em quem)
+  bool _megaPick = false; // botão da Mega: só Mega Evolui quando você apertar
   late final _shake = AnimationController(vsync: this, duration: const Duration(milliseconds: 650));
   int _flash = 0;
   Completer<void>? _skip;
@@ -416,10 +416,17 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
     });
   }
 
+  /// Mega Evolução: botão no menu de golpes, como nos jogos (com a Mega Pedra);
+  /// nunca sozinha. Depois dura a batalha inteira, mesmo trocando de Pokémon.
+  bool get _canMega => _b.canGimmick(0, 'mega');
+  bool get _megaOn => _canMega && _megaPick;
+
   void _fight(int i) {
     final before = [_b.active(0).id, _b.active(1).id];
-    _play(_b.playTurn(widget.hit, move: i), before);
+    final gimmick = _canMega ? (_megaOn ? 'mega' : 'none') : null;
+    _play(_b.playTurn(widget.hit, move: i, gimmick: gimmick), before);
   }
+
   void _choose(int i) {
     final item = _item;
     if (item != null) {
@@ -568,6 +575,34 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
               if (waiting && _menu == 'fight') ...[
                 const SizedBox(height: 8),
                 _Weak(rival, foeWeak, dark: true),
+                if (_canMega)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Material(
+                      borderRadius: BorderRadius.circular(8),
+                      clipBehavior: Clip.antiAlias,
+                      child: Ink(
+                        decoration: BoxDecoration(
+                          gradient: _megaOn ? const LinearGradient(colors: [Color(0xFFD946EF), Color(0xFFFBBF24), Color(0xFF0EA5E9)]) : null,
+                          color: _megaOn ? null : const Color(0xFFF1F5F9),
+                          border: Border.all(color: _megaOn ? const Color(0xFFC026D3) : const Color(0xFFCBD5E1), width: 2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: InkWell(
+                          key: const ValueKey('mega'),
+                          onTap: () => setState(() => _megaPick = !_megaOn),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 6),
+                            child: Text(
+                              '🧬 ${tr('Mega Evolução').toUpperCase()}${_megaOn ? ' ✓' : ''}',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: _megaOn ? Colors.white : const Color(0xFF64748B)),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 GridView(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
@@ -813,8 +848,7 @@ class _FieldPainter extends CustomPainter {
       canvas.drawOval(
           sun,
           Paint()
-            ..shader = const RadialGradient(colors: [Color(0xFFFFFBE6), Color(0xE6FFF3B0), Color(0x00FFF3B0)], stops: [0, 0.4, 1])
-                .createShader(sun));
+            ..shader = const RadialGradient(colors: [Color(0xFFFFFBE6), Color(0xE6FFF3B0), Color(0x00FFF3B0)], stops: [0, 0.4, 1]).createShader(sun));
     }
     // Nuvens.
     final cloud = Paint()..color = (_cloudColor[weather] ?? Colors.white).withAlpha(weather == 'sun' ? 102 : 217);
@@ -828,7 +862,8 @@ class _FieldPainter extends CustomPainter {
       final snow = top + (hz - top) * 0.25;
       canvas.drawPath(poly([(x - w, hz), (x, top), (x + w, hz)]), Paint()..color = const Color(0xFFA8CFE0));
       canvas.drawPath(poly([(x, top), (x + w, hz), (x + w * 0.2, hz)]), Paint()..color = const Color(0xFF86B3C9));
-      canvas.drawPath(poly([(x - w * 0.25, snow), (x, top), (x + w * 0.25, snow), (x, top + (hz - top) * 0.32)]), Paint()..color = const Color(0xFFF4FBFF));
+      canvas.drawPath(
+          poly([(x - w * 0.25, snow), (x, top), (x + w * 0.25, snow), (x, top + (hz - top) * 0.32)]), Paint()..color = const Color(0xFFF4FBFF));
     }
     canvas.drawRect(
         r(0, hz - 14, 160, 14),
@@ -873,8 +908,11 @@ class _FieldPainter extends CustomPainter {
     canvas.drawOval(
         top,
         Paint()
-          ..shader = const RadialGradient(center: Alignment(-0.1, -0.3), radius: 0.7, colors: [Color(0xFFF1E3B4), Color(0xFFD9C28A), Color(0xFFB79C5E)], stops: [0, 0.6, 1])
-              .createShader(top));
+          ..shader = const RadialGradient(
+              center: Alignment(-0.1, -0.3),
+              radius: 0.7,
+              colors: [Color(0xFFF1E3B4), Color(0xFFD9C28A), Color(0xFFB79C5E)],
+              stops: [0, 0.6, 1]).createShader(top));
     canvas.drawOval(
         top,
         Paint()
@@ -971,7 +1009,11 @@ class _WeatherPainter extends CustomPainter {
             ..shader = RadialGradient(
               center: const Alignment(0.68, -0.88),
               radius: 0.9,
-              colors: [const Color(0xFFFFF4C8).withValues(alpha: 0.75 * glow), const Color(0xFFFFD678).withValues(alpha: 0.25 * glow), Colors.transparent],
+              colors: [
+                const Color(0xFFFFF4C8).withValues(alpha: 0.75 * glow),
+                const Color(0xFFFFD678).withValues(alpha: 0.25 * glow),
+                Colors.transparent
+              ],
               stops: const [0, 0.3, 0.6],
             ).createShader(Offset.zero & size));
       return;
@@ -1374,7 +1416,13 @@ const _effectColors = {
   'Não afeta': Color(0xFF1F2937),
 };
 
-String _times(double x) => x == 0.25 ? '¼' : x == 0.5 ? '½' : x == x.roundToDouble() ? '${x.toInt()}' : '$x';
+String _times(double x) => x == 0.25
+    ? '¼'
+    : x == 0.5
+        ? '½'
+        : x == x.roundToDouble()
+            ? '${x.toInt()}'
+            : '$x';
 
 class _Tag extends StatelessWidget {
   final String text;
