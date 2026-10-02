@@ -135,9 +135,14 @@ def describe(root):
     """Quais existem, ajuste de tamanho (fit), pé (foot), os parados (still,
     um quadro só), o tamanho em pixels (size: quem desenha amplia por um
     número inteiro, cada pixel do mesmo tamanho) e a impressão digital (hash)
-    de cada GIF da pasta."""
+    de cada GIF da pasta.
+
+    As formas só de aparência (Vivillon, Unown, Alcremie...) têm GIF com o
+    nome do sprite ("666-polar.gif") e vão à parte, em "forms" (assim versões
+    antigas do app, que só leem números, continuam funcionando)."""
     kinds = [k for k in KINDS if os.path.isdir(os.path.join(root, k))]
-    have = {sub: sorted(int(f[:-4]) for f in os.listdir(os.path.join(root, sub)) if f.endswith('.gif')) for sub in kinds}
+    gifs = {sub: [f[:-4] for f in os.listdir(os.path.join(root, sub)) if f.endswith('.gif')] for sub in kinds}
+    have = {sub: sorted(int(n) for n in gifs[sub] if n.isdigit()) for sub in kinds}
     path = lambda sub, pid: os.path.join(root, sub, f'{pid}.gif')
     have['fit'] = {sub: fits(sub, have[sub], root) for sub in kinds}
     have['foot'] = {sub: {str(pid): v for pid in have[sub] if (v := foot(path(sub, pid)))} for sub in kinds}
@@ -146,6 +151,18 @@ def describe(root):
     # Impressão digital de cada GIF: quando um muda, o navegador não usa o
     # velho do cache.
     have['hash'] = {sub: {str(pid): digest(path(sub, pid)) for pid in have[sub]} for sub in kinds}
+    forms = {}
+    for sub in kinds:
+        for key in sorted(n for n in gifs[sub] if not n.isdigit()):
+            info = {'size': list(Image.open(path(sub, key)).size), 'hash': digest(path(sub, key))}
+            if (v := fit(path(sub, key))):
+                info['fit'] = v
+            if (v := foot(path(sub, key))):
+                info['foot'] = v
+            if frames(path(sub, key)) == 1:
+                info['still'] = True
+            forms.setdefault(sub, {})[key] = info
+    have['forms'] = forms
     return have
 
 
