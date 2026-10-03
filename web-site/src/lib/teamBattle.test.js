@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { counters, runBattle, teamMembers } from './teamBattle'
+import { battleLevel, counters, runBattle, teamMembers } from './teamBattle'
 
 beforeAll(() => {
   // O banco local vem de public/data (no site é baixado com fetch).
@@ -11,6 +11,14 @@ beforeAll(() => {
 })
 
 describe('batalha de times', () => {
+  it('limite de nível também vale no confronto de times', async () => {
+    expect([undefined, 0, 10, 50, 100, Infinity].map(battleLevel)).toEqual([50, 1, 10, 50, 50, 50])
+    const set = { level: 100, nature: 'Timid', moves: ['flamethrower'], evs: { spa: 252, spe: 252 } }
+    expect(await runBattle([{ id: 6, set }], [{ id: 3 }])).toEqual(
+      await runBattle([{ id: 6, set: { ...set, level: 50 } }], [{ id: 3 }]))
+    expect(set.level).toBe(100)
+  }, 30000)
+
   it('fogo ganha de planta, água ganha de fogo', async () => {
     const r = await runBattle(
       [{ id: 6 }, { id: 9 }],

@@ -9,7 +9,7 @@ import { teamMembers } from '../lib/teamBattle'
 import { battleMons, battleHitter } from '../lib/battleSetup'
 import { seededRandom } from '../lib/league'
 import { active, newBattle, playOnlineTurn, startBattle } from '../lib/turnBattle'
-import { inviteBattle, acceptBattle, closeBattle, watchBattles, watchBattle, watchActions, submitAction, pairedActions, unpackTeam, MAX_ROUNDS, battlePerspective, eventPerspective } from '../lib/onlineBattle'
+import { inviteBattle, acceptBattle, closeBattle, watchBattles, watchBattle, watchActions, submitAction, pairedActions, unpackTeam, BATTLE_PROTOCOL, MAX_ROUNDS, battlePerspective, eventPerspective } from '../lib/onlineBattle'
 
 const CARD = 'rounded-2xl bg-card p-4 shadow'
 const SELECT = 'w-full rounded-xl bg-surface p-3'
@@ -101,7 +101,7 @@ function BattleRoom({ id, user }) {
     if (!room || !actions || room.status === 'pending' || !room.teams[room.players[1]]) return
     setReplaying(true)
     const replay = async () => {
-      if (room.protocol !== 1) throw new Error('Atualize o PocketDex para abrir esta partida.')
+      if (room.protocol !== BATTLE_PROTOCOL) throw new Error('Atualize o PocketDex e crie uma nova partida para batalhar com o limite de nível 50.')
       const mons = await Promise.all(room.players.map((p) => battleMons(teamMembers(unpackTeam(room.teams[p])))))
       if (mons.some((t) => !t.length)) throw new Error('Não foi possível preparar os times.')
       const hit = await battleHitter()
@@ -142,16 +142,20 @@ function BattleRoom({ id, user }) {
     ownAction ? 'Você já enviou sua ação. Aguardando seu amigo…' : replaying ? 'Atualizando batalha…' :
     replacing ? active(battle, side).hp <= 0 ? 'Escolha o próximo Pokémon.' : 'Seu amigo precisa trocar de Pokémon.' : 'Escolha sua ação.'
   return <div className="mx-auto max-w-3xl space-y-4">
-    <PageHeader title={'Batalha com ' + room.names[room.players[other]]} subtitle="Escolham uma ação. O turno acontece quando os dois enviarem." />
+    <PageHeader title={'Batalha com ' + room.names[room.players[other]]} subtitle="Nível máximo 50. O turno acontece quando os dois enviarem." />
     <Link to="/amigos/online">← Convites e partidas</Link>
     {(roomError || actionsError || error) && <p role="alert" className="text-red-400">{roomError || actionsError || error}</p>}
     {expired && <p>Este convite expirou. Crie uma nova batalha.</p>}
-    {room.status === 'pending' && !expired && <section className={CARD + ' space-y-3'}>
+    {room.status === 'pending' && room.protocol === BATTLE_PROTOCOL && !expired && <section className={CARD + ' space-y-3'}>
       {side === 0 ? <p>Convite enviado. Aguardando seu amigo aceitar e escolher o time.</p> : <>
         <p>Você recebeu um convite para batalhar!</p><TeamChoice value={team} onChange={setTeam} />
         <Button disabled={busy || !team} onClick={() => run(() => acceptBattle(id, teams.find((t) => t.id === team)))}>Aceitar e entrar</Button>
       </>}
       <Button disabled={busy} onClick={() => run(() => closeBattle(id))}>{side === 0 ? 'Cancelar convite' : 'Recusar'}</Button>
+    </section>}
+    {room.protocol !== BATTLE_PROTOCOL && room.status === 'pending' && <section className={CARD}>
+      <p>Atualize o PocketDex e crie uma nova partida para batalhar com o limite de nível 50.</p>
+      <Button disabled={busy} onClick={() => run(() => closeBattle(id))}>Encerrar convite antigo</Button>
     </section>}
     {closed && !battle && <p className={CARD}>{room.endedBy === user.uid ? 'Você encerrou a partida.' : 'Seu amigo encerrou a partida.'}</p>}
     {room.status !== 'pending' && viewBattle && hit && <Battle

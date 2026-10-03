@@ -141,7 +141,7 @@ class _OnlineBattleRoomScreenState extends State<OnlineBattleRoomScreen> {
     final side = _side;
     setState(() => _replaying = true);
     try {
-      if (_room!['protocol'] != 1) throw StateError('Atualize o PocketDex para abrir esta partida.');
+      if (_room!['protocol'] != OnlineBattles.protocol) throw StateError('Atualize o PocketDex e crie uma nova partida para batalhar com o limite de nível 50.');
       final players = _players;
       final teams = _room!['teams'] as Map;
       final seed = (_room!['seed'] as num).toInt();
@@ -187,9 +187,9 @@ class _OnlineBattleRoomScreenState extends State<OnlineBattleRoomScreen> {
         if (room == null) const Center(child: CircularProgressIndicator())
         else ...[
           Text('Batalha com ${(room['names'] as Map)[_players[1 - _side]]}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          const Text('Escolham uma ação. O turno acontece quando os dois enviarem.'),
+          const Text('Nível máximo 50. O turno acontece quando os dois enviarem.'),
           const SizedBox(height: 12),
-          if (room['status'] == 'pending') ...[
+          if (room['status'] == 'pending' && room['protocol'] == OnlineBattles.protocol) ...[
             if (_side == 0) const Text('Convite enviado. Aguardando seu amigo aceitar e escolher o time.')
             else ...[
               const Text('Você recebeu um convite para batalhar!'),
@@ -201,6 +201,10 @@ class _OnlineBattleRoomScreenState extends State<OnlineBattleRoomScreen> {
               FilledButton(onPressed: _busy || _team == null ? null : () => _run(() => OnlineBattles.accept(widget.id, _teams[_team!])), child: const Text('Aceitar e entrar')),
             ],
             TextButton(onPressed: _busy ? null : () => _run(() => OnlineBattles.close(widget.id)), child: Text(_side == 0 ? 'Cancelar convite' : 'Recusar')),
+          ],
+          if (room['status'] == 'pending' && room['protocol'] != OnlineBattles.protocol) ...[
+            const Text('Atualize o PocketDex e crie uma nova partida para batalhar com o limite de nível 50.'),
+            TextButton(onPressed: _busy ? null : () => _run(() => OnlineBattles.close(widget.id)), child: const Text('Encerrar convite antigo')),
           ],
           if (room['status'] == 'closed' && battle == null) Text(room['endedBy'] == OnlineBattles.me ? 'Você encerrou a partida.' : 'Seu amigo encerrou a partida.'),
           if (battle != null && _hit != null && _typeEff != null)

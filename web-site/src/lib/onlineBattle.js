@@ -1,6 +1,6 @@
 import { firebaseServices, useAuth } from './auth'
 
-export const BATTLE_PROTOCOL = 1
+export const BATTLE_PROTOCOL = 2
 export const MAX_ROUNDS = 500
 
 export function packTeam(team) {

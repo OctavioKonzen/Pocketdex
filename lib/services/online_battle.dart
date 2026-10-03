@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'auth_service.dart';
 
 class OnlineBattles {
+  static const protocol = 2;
   static const maxRounds = 500;
   static FirebaseFirestore get db => FirebaseFirestore.instance;
   static String get me => AuthService.instance.user!.uid;
@@ -28,7 +29,7 @@ class OnlineBattles {
   }
   static Future<String> invite(String friendUid, String friendName, Map<String, dynamic> team) async {
     final ref = await rooms.add({
-      'protocol': 1, 'players': [me, friendUid],
+      'protocol': protocol, 'players': [me, friendUid],
       'names': {me: AuthService.instance.user!.name ?? '', friendUid: friendName},
       'teams': {me: packTeam(team)}, 'status': 'pending',
       'seed': Random().nextInt(1 << 31), 'createdAt': FieldValue.serverTimestamp(), 'endedBy': null,

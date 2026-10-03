@@ -172,7 +172,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Text('Batalha por turnos como nos jogos: seu time contra o de um amigo (ou um aleatório), com o computador jogando pelo outro lado.',
+        Text('Nível máximo 50. Batalha por turnos como nos jogos: seu time contra o de um amigo (ou um aleatório), com o computador jogando pelo outro lado.',
             style: TextStyle(color: c.muted, fontSize: 13)),
         const SizedBox(height: 14),
         if (myTeams.isEmpty)

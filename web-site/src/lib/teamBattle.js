@@ -6,6 +6,9 @@
 
 import { getPokemonById, getSpecies } from './data'
 
+export const MAX_BATTLE_LEVEL = 50
+export const battleLevel = (level) => Number.isFinite(level) ? Math.max(1, Math.min(MAX_BATTLE_LEVEL, Math.trunc(level))) : MAX_BATTLE_LEVEL
+
 const NONE = { move: '', pct: 0, hits: 99 }
 
 /** 1 = o primeiro ganha, -1 = perde, 0 = empate. */
@@ -24,7 +27,7 @@ export async function fighter(calc, byId, { id, set }) {
   const base = { name: form.name, types: form.types, stats: form.stats.map((s) => s[0]), weight: form.weight }
   const side = {
     ...calc.newSide(),
-    level: set?.level ?? 50,
+    level: battleLevel(set?.level),
     nature: set?.nature || 'Hardy',
     ability: calc.abilityName(set?.ability ?? '') || calc.abilityName(form.abilities?.[0]?.[0] ?? ''),
     item: calc.itemName(set?.item ?? ''),
