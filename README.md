@@ -39,7 +39,7 @@
 * **Comunidade:** publique times, pesquise treinadores, avalie e salve equipes.
 * **Amigos e chat:** adicione amigos, converse e envie desafios do quiz ou convites de batalha online.
 * **Jogos e conquistas:** “Quem é esse Pokémon?”, Ranked, desafio diário, desafios entre amigos, rankings e medalhas.
-* **Batalhas e draft:** batalhe online por turnos com amigos, cada um controlando seu time, com nível máximo 50 e uma mecânica por time em cada batalha; treine contra o computador com o mesmo limite e monte equipes pelo draft.
+* **Batalhas e draft:** batalhe online por turnos com amigos, cada um controlando seu time, com nível máximo 50 e um uso de cada mecânica por time em cada batalha; treine contra o computador, que escolhe golpes, faz trocas e usa itens, com o mesmo limite e monte equipes pelo draft.
 * **Centro de Batalha:** calculadora de dano, comparador, tabela de tipos, velocidade, sugestões de adversários e Tera Raids.
 * **Treinamento:** Natures, breeding, golpes de ovo, EVs, IVs, contador de shiny e acompanhamento de Nuzlocke.
 * **Enciclopédia:** consulta de golpes, habilidades e itens.

@@ -360,8 +360,10 @@ class TurnBattle {
       view.activeIndex[i] = activeIndex[order[i]];
       view.bags[i] = bags[order[i]];
       view.gimmicks[i] = gimmicks[order[i]];
+      view.usedGimmicks[i] = usedGimmicks[order[i]];
     }
     view.turn = turn;
+    view.cpuSwitchTurn = cpuSwitchTurn;
     view.weather = weather;
     view.weatherTurns = weatherTurns;
     view.winner = winner == null ? null : winner == side ? 0 : 1;
@@ -376,9 +378,11 @@ class TurnBattle {
     for (var i = 0; i < 2; i++) {for (final item in battleItems) item.slug: item.count},
   ];
   int turn = 1;
+  int cpuSwitchTurn = -2;
 
   /// Mecânica que cada lado já usou ('mega' | 'z' | 'dmax' | 'tera').
   final List<String?> gimmicks = [null, null];
+  final List<Set<String>> usedGimmicks = [{}, {}];
 
   /// Clima (rain | sun | sand | hail | snow; '' = nenhum) e turnos que faltam.
   String weather = '';
@@ -475,7 +479,7 @@ class TurnBattle {
   /// do golpe [moveIndex] ([BattleMon.zType]), Dinamax menos quem não pode.
   bool canGimmick(int side, String gimmick, [int moveIndex = -1]) {
     final mon = active(side);
-    if (gimmicks[side] != null || mon.hp <= 0) return false;
+    if (usedGimmicks[side].contains(gimmick) || mon.hp <= 0) return false;
     if (mon.gimmick.isNotEmpty && mon.gimmick != gimmick) return false;
     if (gimmick == 'mega') return mon.mega != null;
     if (gimmick == 'tera') return mon.teraType.isNotEmpty;
@@ -491,6 +495,7 @@ class TurnBattle {
   void _applyGimmick(int side, String gimmick, List<BattleEvent> events) {
     final mon = active(side);
     gimmicks[side] = gimmick;
+    usedGimmicks[side].add(gimmick);
     if (gimmick == 'mega') {
       final mega = mon.mega!;
       _say(events, 'megaReact', [_label(side)]);
@@ -538,7 +543,6 @@ class TurnBattle {
   /// O computador usa a mecânica dele uma vez: a do set (no primeiro ataque,
   /// como a sua) ou, sem set (time aleatório), num turno qualquer.
   String? _cpuGimmick(int moveIndex) {
-    if (gimmicks[1] != null) return null;
     final mon = active(1);
     if (mon.gimmick.isNotEmpty) return canGimmick(1, mon.gimmick, moveIndex) ? mon.gimmick : null;
     if (random() >= 0.35) return null;
@@ -603,12 +607,11 @@ class TurnBattle {
     return [...list.where((w) => w.mult >= 4), ...list.where((w) => w.mult < 4)];
   }
 
-  /// Escolha do computador: o golpe com mais dano esperado (às vezes outro qualquer).
+  /// Escolha do computador: maior dano previsto ou um status útil.
   int cpuMove(BattleHit hit) {
     final me = active(1), foe = active(0);
     final usable = usableMoves(me);
     if (usable.isEmpty) return -1;
-    if (random() < 0.15) return usable[(random() * usable.length).floor()];
     var best = usable.first;
     var bestValue = -1.0;
     for (final i in usable) {
@@ -939,12 +942,63 @@ class TurnBattle {
   }
 
   /// O computador cura o Pokémon dele quando está com pouca vida (às vezes).
-  String? _cpuItem() {
-    final me = active(1);
-    if (me.hp * 4 > me.maxHp) return null;
-    final potion = battleItems.reversed.where((i) => i.heal > 0 && (bags[1][i.slug] ?? 0) > 0).firstOrNull;
-    if (potion == null || random() >= 0.5) return null;
-    return potion.slug;
+  double _bestDamage(BattleHit hit, BattleMon att, BattleMon def) {
+    var best = 0.0;
+    for (final i in usableMoves(att)) {
+      final move = att.moves[i];
+      if (move.category == 'status') continue;
+      final result = hit(att, def, move.slug, false, null, weather);
+      if (result == null || result.eff == 0) continue;
+      var damage = 0.0;
+      for (final rolls in result.rolls) {
+        damage += rolls.fold<int>(0, (a, b) => a + b) / rolls.length;
+      }
+      best = max(best, damage * (move.accuracy == null ? 1 : move.accuracy! / 100));
+    }
+    return best;
+  }
+
+  double _matchupScore(BattleHit hit, BattleMon mon, BattleMon foe) =>
+      _bestDamage(hit, mon, foe) / max(1, foe.hp) - _bestDamage(hit, foe, mon) / max(1, mon.hp);
+
+  /// Decide sem olhar a ação do jogador: golpe, troca ou item.
+  ({String kind, int index, String? item, int? target}) cpuPlan(BattleHit hit) {
+    final me = active(1), foe = active(0), index = cpuMove(hit);
+    final outgoing = _bestDamage(hit, me, foe), incoming = _bestDamage(hit, foe, me);
+    final canFinish = outgoing >= foe.hp && (speedOf(me, weather) >= speedOf(foe, weather) || (index >= 0 && me.moves[index].priority > 0)) && !['slp', 'frz'].contains(me.status);
+    if (!canFinish && me.dmax == 0 && turn - cpuSwitchTurn >= 2) {
+      var best = activeIndex[1];
+      final currentScore = _matchupScore(hit, me, foe);
+      var score = currentScore;
+      for (var i = 0; i < teams[1].length; i++) {
+        final mon = teams[1][i];
+        if (i == activeIndex[1] || mon.hp <= 0 || _bestDamage(hit, foe, mon) >= mon.hp) continue;
+        final value = _matchupScore(hit, mon, foe);
+        if (value > score) { best = i; score = value; }
+      }
+      if (best != activeIndex[1] && score > currentScore + 0.35 && (incoming >= me.maxHp / 3 || outgoing == 0)) {
+        return (kind: 'switch', index: best, item: null, target: null);
+      }
+    }
+    if (!canFinish) {
+      final missing = me.maxHp - me.hp;
+      final potions = battleItems.where((item) => item.heal > 0 && (bags[1][item.slug] ?? 0) > 0).toList();
+      final potion = potions.where((item) => item.heal >= missing).firstOrNull ?? potions.lastOrNull;
+      if (potion != null && missing >= min(20, me.maxHp / 4) && (me.hp <= me.maxHp / 2 || incoming >= me.hp) && me.hp + min(missing, potion.heal) > incoming) {
+        return (kind: 'item', index: -1, item: potion.slug, target: activeIndex[1]);
+      }
+      if (incoming < me.hp && (bags[1]['revive'] ?? 0) > 0 && teams[1].any((mon) => mon.hp <= 0)) {
+        var target = -1, score = double.negativeInfinity;
+        for (var i = 0; i < teams[1].length; i++) {
+          final mon = teams[1][i];
+          if (mon.hp > 0) continue;
+          final value = _bestDamage(hit, mon, foe) / max(1, foe.hp);
+          if (value > score) { target = i; score = value; }
+        }
+        if (target >= 0) return (kind: 'item', index: -1, item: 'revive', target: target);
+      }
+    }
+    return (kind: 'move', index: index, item: null, target: null);
   }
 
   void _switchTo(int side, int index, List<BattleEvent> events) {
@@ -983,20 +1037,21 @@ class TurnBattle {
   List<BattleEvent> playTurn(BattleHit hit, {int? move, String? gimmick, int? switchTo, String? item, int? target}) {
     final events = <BattleEvent>[];
     if (winner != null || needSwitch) return events;
-    final cpuPotion = _cpuItem();
-    final cpu = cpuPotion != null ? null : cpuMove(hit);
+    final plan = cpuPlan(hit);
+    final cpu = plan.kind == 'move' ? plan.index : null;
     final cpuG = cpu != null && cpu >= 0 ? _cpuGimmick(cpu) : null;
     // A sua: a do set do Pokémon (escolhida no montador), no primeiro ataque dele.
     final wanted = gimmick ?? (active(0).gimmick.isEmpty ? null : active(0).gimmick);
     final myG = move != null && wanted != null && canGimmick(0, wanted, move) ? wanted : null;
     if (switchTo != null) _switchTo(0, switchTo, events);
     if (item != null) _useItem(0, item, target ?? activeIndex[0], events);
-    if (cpuPotion != null) _useItem(1, cpuPotion, activeIndex[1], events);
+    if (plan.kind == 'item') _useItem(1, plan.item!, plan.target!, events);
+    if (plan.kind == 'switch') { _switchTo(1, plan.index, events); cpuSwitchTurn = turn; }
     // Mega, Terastal e Dinamax antes dos golpes (a Mega já vale para a ordem).
     final zMove = [false, false];
     for (final (side, g) in [(0, myG), (1, cpuG)]) {
       if (g == 'z') {
-        gimmicks[side] = 'z';
+        gimmicks[side] = 'z'; usedGimmicks[side].add('z');
         zMove[side] = true;
       } else if (g != null) {
         _applyGimmick(side, g, events);
@@ -1063,7 +1118,7 @@ class TurnBattle {
         }
         final wanted = (action['gimmick'] as String?) ?? mon.gimmick;
         if (wanted.isNotEmpty && canGimmick(side, wanted, index)) {
-          if (wanted == 'z') { gimmicks[side] = 'z'; zMove[side] = true; }
+          if (wanted == 'z') { gimmicks[side] = 'z'; usedGimmicks[side].add('z'); zMove[side] = true; }
           else { _applyGimmick(side, wanted, events); }
         }
         order.add((side, index));

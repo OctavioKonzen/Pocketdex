@@ -147,7 +147,9 @@ export function newBattle(mine, theirs, random) {
     random,
     bags: [newBag(), newBag()],
     turn: 1,
-    gimmicks: [null, null], // mecânica que cada lado já usou ('mega' | 'z' | 'dmax' | 'tera')
+    cpuSwitchTurn: -2,
+    gimmicks: [null, null], // última mecânica usada, para o registro
+    usedGimmicks: [[], []], // cada mecânica pode ser usada uma vez por lado
     weather: '', // rain | sun | sand | hail | snow
     weatherTurns: 0,
     winner: null, // 0 = você ganhou, 1 = o computador
@@ -196,13 +198,13 @@ export function maxPower(power, type) {
 }
 
 /**
- * Dá para usar essa mecânica agora? Regras dos jogos: uma por batalha; Mega
+ * Dá para usar essa mecânica agora? Uma vez por mecânica e por time; Mega
  * só com a Mega Pedra (mon.mega), Z-Move só com o Cristal Z do tipo do golpe
  * [moveIndex] (mon.zType), Dinamax menos quem não pode (mon.noDmax).
  */
 export function canGimmick(battle, side, gimmick, moveIndex = -1) {
   const mon = active(battle, side)
-  if (battle.gimmicks[side] || mon.hp <= 0) return false
+  if (battle.usedGimmicks[side].includes(gimmick) || mon.hp <= 0) return false
   if (mon.gimmick && mon.gimmick !== gimmick) return false
   if (gimmick === 'mega') return Boolean(mon.mega)
   if (gimmick === 'tera') return Boolean(mon.teraType)
@@ -218,6 +220,7 @@ export function canGimmick(battle, side, gimmick, moveIndex = -1) {
 function applyGimmick(battle, side, gimmick, events) {
   const mon = active(battle, side)
   battle.gimmicks[side] = gimmick
+  battle.usedGimmicks[side].push(gimmick)
   if (gimmick === 'mega') {
     const mega = mon.mega
     say(events, 'megaReact', label(battle, side))
@@ -260,7 +263,6 @@ function endDmax(battle, side, events, quiet = false) {
  * como a sua) ou, sem set (time aleatório), num turno qualquer.
  */
 function cpuGimmick(battle, moveIndex) {
-  if (battle.gimmicks[1]) return null
   const mon = active(battle, 1)
   if (mon.gimmick) return canGimmick(battle, 1, mon.gimmick, moveIndex) ? mon.gimmick : null
   if (battle.random() >= 0.35) return null
@@ -318,13 +320,12 @@ export function weaknesses(types, allTypes, typeEff) {
     .sort((a, b) => b.mult - a.mult)
 }
 
-/** Escolha do computador: o golpe com mais dano esperado (às vezes outro qualquer). */
+/** Escolha do computador: maior dano previsto ou um status útil. */
 export function cpuMove(battle, hit) {
   const me = active(battle, 1)
   const foe = active(battle, 0)
   const usable = usableMoves(me)
   if (!usable.length) return -1
-  if (battle.random() < 0.15) return usable[Math.floor(battle.random() * usable.length)]
   let best = usable[0]
   let bestValue = -1
   for (const i of usable) {
@@ -618,12 +619,58 @@ function applyItem(battle, side, slug, index, events) {
 }
 
 /** O computador cura o Pokémon dele quando está com pouca vida (às vezes). */
-function cpuItem(battle) {
-  const me = active(battle, 1)
-  if (me.hp * 4 > me.maxHp) return null
-  const potion = [...ITEMS].reverse().find((i) => i.heal && battle.bags[1][i.slug] > 0)
-  if (!potion || battle.random() >= 0.5) return null
-  return potion.slug
+function bestDamage(battle, hit, att, def) {
+  return Math.max(0, ...usableMoves(att).map((i) => {
+    const move = att.moves[i]
+    if (move.category === 'status') return 0
+    const result = hit(att, def, move.slug, false, undefined, battle.weather)
+    if (!result || !result.eff) return 0
+    return result.rolls.reduce((sum, rolls) => sum + rolls.reduce((a, b) => a + b, 0) / rolls.length, 0) * (move.accuracy == null ? 1 : move.accuracy / 100)
+  }))
+}
+
+function matchupScore(battle, hit, mon, foe) {
+  const outgoing = bestDamage(battle, hit, mon, foe) / Math.max(1, foe.hp)
+  const incoming = bestDamage(battle, hit, foe, mon) / Math.max(1, mon.hp)
+  return outgoing - incoming
+}
+
+/** Decide sem olhar a ação do jogador: golpe, troca ou item. */
+export function cpuPlan(battle, hit) {
+  const me = active(battle, 1), foe = active(battle, 0)
+  const index = cpuMove(battle, hit)
+  const outgoing = bestDamage(battle, hit, me, foe)
+  const incoming = bestDamage(battle, hit, foe, me)
+  const canFinish = outgoing >= foe.hp && (speedOf(me, battle.weather) >= speedOf(foe, battle.weather) || (index >= 0 && me.moves[index].priority > 0)) && !['slp', 'frz'].includes(me.status)
+  if (!canFinish && !me.dmax && battle.turn - battle.cpuSwitchTurn >= 2) {
+    let best = battle.sides[1].active
+    const currentScore = matchupScore(battle, hit, me, foe)
+    let score = currentScore
+    battle.sides[1].team.forEach((mon, i) => {
+      if (i === battle.sides[1].active || mon.hp <= 0 || bestDamage(battle, hit, foe, mon) >= mon.hp) return
+      const value = matchupScore(battle, hit, mon, foe)
+      if (value > score) { best = i; score = value }
+    })
+    if (best !== battle.sides[1].active && score > currentScore + 0.35 && (incoming >= me.maxHp / 3 || outgoing === 0)) return { kind: 'switch', index: best }
+  }
+  if (!canFinish) {
+    const missing = me.maxHp - me.hp
+    const potions = ITEMS.filter((item) => item.heal && battle.bags[1][item.slug] > 0)
+    const potion = potions.find((item) => item.heal >= missing) ?? potions.at(-1)
+    if (potion && missing >= Math.min(20, me.maxHp / 4) && (me.hp <= me.maxHp / 2 || incoming >= me.hp) && me.hp + Math.min(missing, potion.heal) > incoming) {
+      return { kind: 'item', item: potion.slug, target: battle.sides[1].active }
+    }
+    if (incoming < me.hp && battle.bags[1].revive > 0 && battle.sides[1].team.filter((mon) => mon.hp > 0).length < battle.sides[1].team.length) {
+      let target = -1, score = -Infinity
+      battle.sides[1].team.forEach((mon, i) => {
+        if (mon.hp > 0) return
+        const value = bestDamage(battle, hit, mon, foe) / Math.max(1, foe.hp)
+        if (value > score) { target = i; score = value }
+      })
+      if (target >= 0) return { kind: 'item', item: 'revive', target }
+    }
+  }
+  return { kind: 'move', index }
 }
 
 function switchTo(battle, side, index, events) {
@@ -665,25 +712,26 @@ function checkEnd(battle, hit, events) {
 export function playTurn(battle, action, hit) {
   const events = []
   if (battle.winner != null || battle.needSwitch) return events
-  const cpuPotion = cpuItem(battle)
-  const cpu = cpuPotion ? null : cpuMove(battle, hit)
+  const plan = cpuPlan(battle, hit)
+  const cpu = plan.kind === 'move' ? plan.index : null
   const cpuG = cpu != null && cpu >= 0 ? cpuGimmick(battle, cpu) : null
   // A sua: a do set do Pokémon (escolhida no montador), no primeiro ataque dele.
   const wanted = action.gimmick ?? active(battle, 0).gimmick
   const myG = action.move != null && wanted && canGimmick(battle, 0, wanted, action.move) ? wanted : null
   if (action.switch != null) switchTo(battle, 0, action.switch, events)
   if (action.item != null) applyItem(battle, 0, action.item, action.target, events)
-  if (cpuPotion) applyItem(battle, 1, cpuPotion, battle.sides[1].active, events)
+  if (plan.kind === 'item') applyItem(battle, 1, plan.item, plan.target, events)
+  if (plan.kind === 'switch') { switchTo(battle, 1, plan.index, events); battle.cpuSwitchTurn = battle.turn }
   // Mega, Terastal e Dinamax antes dos golpes (a Mega já vale para a ordem).
   const zMove = [false, false]
   for (const [side, g] of [[0, myG], [1, cpuG]]) {
     if (g === 'z') {
-      battle.gimmicks[side] = 'z'
+      battle.gimmicks[side] = 'z'; battle.usedGimmicks[side].push('z')
       zMove[side] = true
     } else if (g) applyGimmick(battle, side, g, events)
   }
   const order = []
-  if (!cpuPotion) order.push({ side: 1, move: cpu })
+  if (cpu != null) order.push({ side: 1, move: cpu })
   if (action.move != null) order.push({ side: 0, move: action.move })
   const priority = (o) => (o.move < 0 ? 0 : active(battle, o.side).moves[o.move].priority)
   if (order.length === 2) {
@@ -742,7 +790,7 @@ export function playOnlineTurn(battle, actions, hit) {
       if (!(i === -1 ? usableMoves(mon).length === 0 : mon.moves[i]?.pp > 0)) throw new Error('Golpe inválido')
       const g = action.gimmick || mon.gimmick
       if (g && canGimmick(battle, side, g, i)) {
-        if (g === 'z') { battle.gimmicks[side] = 'z'; zMove[side] = true }
+        if (g === 'z') { battle.gimmicks[side] = 'z'; battle.usedGimmicks[side].push('z'); zMove[side] = true }
         else applyGimmick(battle, side, g, events)
       }
       order.push({ side, move: i })

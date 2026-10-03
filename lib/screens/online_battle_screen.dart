@@ -141,7 +141,7 @@ class _OnlineBattleRoomScreenState extends State<OnlineBattleRoomScreen> {
     final side = _side;
     setState(() => _replaying = true);
     try {
-      if (_room!['protocol'] != OnlineBattles.protocol) throw StateError('Atualize o PocketDex e crie uma nova partida para batalhar com o limite de nível 50.');
+      if (_room!['protocol'] != OnlineBattles.protocol) throw StateError('Atualize o PocketDex e crie uma nova partida para usar as regras atuais de batalha.');
       final players = _players;
       final teams = _room!['teams'] as Map;
       final seed = (_room!['seed'] as num).toInt();
@@ -203,7 +203,7 @@ class _OnlineBattleRoomScreenState extends State<OnlineBattleRoomScreen> {
             TextButton(onPressed: _busy ? null : () => _run(() => OnlineBattles.close(widget.id)), child: Text(_side == 0 ? 'Cancelar convite' : 'Recusar')),
           ],
           if (room['status'] == 'pending' && room['protocol'] != OnlineBattles.protocol) ...[
-            const Text('Atualize o PocketDex e crie uma nova partida para batalhar com o limite de nível 50.'),
+            const Text('Atualize o PocketDex e crie uma nova partida para usar as regras atuais de batalha.'),
             TextButton(onPressed: _busy ? null : () => _run(() => OnlineBattles.close(widget.id)), child: const Text('Encerrar convite antigo')),
           ],
           if (room['status'] == 'closed' && battle == null) Text(room['endedBy'] == OnlineBattles.me ? 'Você encerrou a partida.' : 'Seu amigo encerrou a partida.'),
