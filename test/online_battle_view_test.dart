@@ -51,7 +51,7 @@ void main() {
     expect(find.text('Aguardando amigo'), findsOneWidget);
     canonical.active(1).hp = 75;
     await tester.pumpWidget(screen(round: 1, events: [const BattleEvent.hp(0, 75)]));
-    await tester.pump(); await tester.pump(const Duration(seconds: 1));
+    await tester.pump(); await tester.pump(const Duration(seconds: 1)); await tester.pump();
     expect(find.text('75/100'), findsOneWidget);
     expect(find.text('LUTAR'), findsOneWidget);
     expect(tester.takeException(), isNull);
