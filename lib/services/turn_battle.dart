@@ -476,6 +476,7 @@ class TurnBattle {
   bool canGimmick(int side, String gimmick, [int moveIndex = -1]) {
     final mon = active(side);
     if (gimmicks[side] != null || mon.hp <= 0) return false;
+    if (mon.gimmick.isNotEmpty && mon.gimmick != gimmick) return false;
     if (gimmick == 'mega') return mon.mega != null;
     if (gimmick == 'tera') return mon.teraType.isNotEmpty;
     if (gimmick == 'z') {

@@ -4,7 +4,7 @@
   <img src="https://img.shields.io/badge/Flutter-3.x-blue?logo=flutter&style=for-the-badge" />
   <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&style=for-the-badge" />
   <img src="https://img.shields.io/badge/Firebase-FFCA28?logo=firebase&style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Android-5.10.3-green?logo=android&style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Android-5.10.4-green?logo=android&style=for-the-badge" />
 </p>
 
 <div align="center">
@@ -35,11 +35,11 @@
 * **Pokédex:** Pokémon, Megas e outras formas, filtros, evoluções, status, habilidades e golpes.
 * **Sprites:** versões normais e shiny, com animações configuráveis.
 * **Favoritos e coleção:** salve seus favoritos e acompanhe capturas por jogo e por forma.
-* **Times:** monte equipes de até 6 Pokémon, analise a cobertura de tipos e compartilhe por link, código ou Pokémon Showdown.
+* **Times:** monte equipes de até 6 Pokémon, escolha a mecânica de cada Pokémon (Mega, Tera, Dynamax/Gigantamax ou Z), analise a cobertura de tipos e compartilhe por link, código ou Pokémon Showdown.
 * **Comunidade:** publique times, pesquise treinadores, avalie e salve equipes.
 * **Amigos e chat:** adicione amigos, converse e envie desafios do quiz ou convites de batalha online.
 * **Jogos e conquistas:** “Quem é esse Pokémon?”, Ranked, desafio diário, desafios entre amigos, rankings e medalhas.
-* **Batalhas e draft:** batalhe online por turnos com amigos, cada um controlando seu time, com nível máximo 50; treine contra o computador com o mesmo limite e monte equipes pelo draft.
+* **Batalhas e draft:** batalhe online por turnos com amigos, cada um controlando seu time, com nível máximo 50 e uma mecânica por time em cada batalha; treine contra o computador com o mesmo limite e monte equipes pelo draft.
 * **Centro de Batalha:** calculadora de dano, comparador, tabela de tipos, velocidade, sugestões de adversários e Tera Raids.
 * **Treinamento:** Natures, breeding, golpes de ovo, EVs, IVs, contador de shiny e acompanhamento de Nuzlocke.
 * **Enciclopédia:** consulta de golpes, habilidades e itens.

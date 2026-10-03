@@ -65,7 +65,7 @@ void main() {
       BattleMon mon(int id) => BattleMon(id, 'Mon $id', 50, 100, 80, ['normal'],
         [BattleMove('tackle', 'Tackle', 'normal', 40, 100, 10, 10, 0)],
         mega: const BattleMega(10035, 'Mega', ['fire'], 100), teraType: 'grass',
-        gmax: kind == 'dmax' ? 10196 : null, gimmick: 'tera');
+        gmax: kind == 'dmax' ? 10196 : null, gimmick: kind);
       final battle = TurnBattle([mon(6)], [mon(9)], () => 0.9);
       Map<String, dynamic>? chosen;
       await tester.pumpWidget(ChangeNotifierProvider.value(value: AppSettings.instance,
@@ -78,6 +78,9 @@ void main() {
         ))))));
       await tester.pump();
       await tester.tap(find.text('LUTAR')); await tester.pump();
+      for (final other in ['mega', 'tera', 'dmax', 'z'].where((other) => other != kind)) {
+        expect(find.byKey(ValueKey(other)), findsNothing);
+      }
       final button = find.byKey(ValueKey(kind));
       await tester.ensureVisible(button);
       await tester.tap(button); await tester.pump();
