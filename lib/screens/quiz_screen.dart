@@ -64,6 +64,7 @@ class QuizScreen extends StatefulWidget {
 
   /// Desafio entre amigos (o de outra pessoa, ou um novo com semente própria).
   final Challenge? challenge;
+  final String? targetFriendUid;
 
   const QuizScreen({
     super.key,
@@ -73,6 +74,7 @@ class QuizScreen extends StatefulWidget {
     this.continueGame = false,
     this.hint = 'silhouette',
     this.challenge,
+    this.targetFriendUid,
   });
 
   @override
@@ -415,7 +417,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                 textAlign: TextAlign.center, style: TextStyle(color: theme.hintColor, fontSize: 13)),
             const SizedBox(height: 6),
             SelectableText(mine.link, style: const TextStyle(fontSize: 11)),
-            _SendToFriends(code: mine.code, score: _score),
+            _SendToFriends(code: mine.code, score: _score, targetUid: widget.targetFriendUid),
           ],
         ),
         actionsAlignment: MainAxisAlignment.spaceAround,
@@ -899,7 +901,8 @@ class _ClueState extends State<_Clue> {
 class _SendToFriends extends StatefulWidget {
   final String code;
   final int score;
-  const _SendToFriends({required this.code, required this.score});
+  final String? targetUid;
+  const _SendToFriends({required this.code, required this.score, this.targetUid});
 
   @override
   State<_SendToFriends> createState() => _SendToFriendsState();
@@ -910,7 +913,7 @@ class _SendToFriendsState extends State<_SendToFriends> {
 
   @override
   Widget build(BuildContext context) {
-    final friends = FriendsService.instance.friends;
+    final friends = FriendsService.instance.friends.where((f) => widget.targetUid == null || f.uid == widget.targetUid).toList();
     if (friends.isEmpty) return const SizedBox.shrink();
     return Column(
       children: [

@@ -239,6 +239,7 @@ export default function GamePage() {
   const [codeError, setCodeError] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
+  const [targetUid] = useState(() => new URLSearchParams(location.search).get('amigo'))
   // Aberto por um link de desafio: mostra quem desafiou.
   const [incoming, setIncoming] = useState(() => {
     const code = new URLSearchParams(location.search).get('desafio')
@@ -266,7 +267,7 @@ export default function GamePage() {
       const g = {
         generation: gen,
         hint: challenge ? challenge.hint : hint,
-        challenge: { seed, from: challenge?.name ? { name: challenge.name, score: challenge.score } : null },
+        challenge: { seed, targetUid, from: challenge?.name ? { name: challenge.name, score: challenge.score } : null },
         rounds,
         round: 0,
         score: 0,
@@ -302,7 +303,7 @@ export default function GamePage() {
         const code = encodeChallenge({ seed: g.challenge.seed, gen: g.generation, hint: g.hint, name, score: g.score })
         setGame(null)
         setChosen(null)
-        setEnded({ challenge: true, score: g.score, from: g.challenge.from, code })
+        setEnded({ challenge: true, score: g.score, from: g.challenge.from, targetUid: g.challenge.targetUid, code })
         return
       }
       if (g.daily) {
@@ -786,7 +787,7 @@ function ChallengeEnd({ result, onClose, onRematch, copied, setCopied }) {
         {verdict && <p className="mt-1 text-lg font-bold">{verdict}</p>}
         <p className="mt-4 text-sm text-muted">Mande este link para um amigo jogar os mesmos Pokémon e tentar te passar:</p>
         <input readOnly value={link} onFocus={(e) => e.target.select()} className="mt-2 w-full rounded-xl bg-surface px-3 py-2 text-xs outline-none" />
-        <SendToFriends code={result.code} score={result.score} />
+        <SendToFriends code={result.code} score={result.score} targetUid={result.targetUid} />
         <div className="mt-5 flex flex-wrap justify-center gap-3">
           <button type="button" onClick={onClose} className="cursor-pointer px-4 text-muted">
             Sair
@@ -802,10 +803,10 @@ function ChallengeEnd({ result, onClose, onRematch, copied, setCopied }) {
 }
 
 /** Manda o desafio direto para amigos (aparece na página Amigos deles). */
-function SendToFriends({ code, score }) {
+function SendToFriends({ code, score, targetUid }) {
   const user = useAuth((s) => (s.status === 'signedIn' ? s.user : null))
   const avatar = useStore((s) => s.avatar)
-  const friends = useFriends((s) => friendsOnly(s.list))
+  const friends = useFriends((s) => friendsOnly(s.list)).filter((f) => !targetUid || f.uid === targetUid)
   const [sent, setSent] = useState({})
   if (!user || !friends.length) return null
   const send = (f) => {

@@ -177,6 +177,81 @@ service cloud.firestore {
       }
     }
 
+
+    // onlineBattles/{id}: convite privado e times imutáveis depois do aceite.
+    // actions/{round_uid}: ação imutável de cada jogador; até 500 rodadas.
+    match /onlineBattles/{battle} {
+      function member(d) { return request.auth != null && request.auth.uid in d.players; }
+      function validRoom(d) {
+        return d.keys().hasAll(['protocol', 'players', 'names', 'teams', 'status', 'seed', 'createdAt', 'endedBy'])
+          && d.keys().hasOnly(['protocol', 'players', 'names', 'teams', 'status', 'seed', 'createdAt', 'endedBy'])
+          && d.protocol == 1 && d.players is list && d.players.size() == 2
+          && d.players[0] is string && d.players[1] is string
+          && d.players[0] != d.players[1]
+          && d.names is map && d.names.keys().hasOnly(d.players) && d.names.keys().hasAll(d.players)
+          && d.names[d.players[0]] is string && d.names[d.players[0]].size() <= 20
+          && d.names[d.players[1]] is string && d.names[d.players[1]].size() <= 20
+          && d.teams is map && d.teams.keys().hasOnly(d.players)
+          && d.teams[d.players[0]] is string && d.teams[d.players[0]].size() <= 20000
+          && (!(d.players[1] in d.teams) || (d.teams[d.players[1]] is string && d.teams[d.players[1]].size() <= 20000))
+          && d.status in ['pending', 'active', 'closed']
+          && d.seed is int && d.seed >= 0 && d.seed < 2147483648
+          && d.createdAt is timestamp
+          && (d.endedBy == null || d.endedBy in d.players);
+      }
+      function stillFriends(d) {
+        return get(/databases/$(database)/documents/friends/$(d.players[0])/list/$(d.players[1])).data.status == 'friends'
+          && get(/databases/$(database)/documents/friends/$(d.players[1])/list/$(d.players[0])).data.status == 'friends';
+      }
+      allow read: if request.auth != null && request.auth.uid in resource.data.players;
+      allow create: if validRoom(request.resource.data) && member(request.resource.data)
+        && request.resource.data.players[0] == request.auth.uid
+        && request.resource.data.names[request.auth.uid] == accountName(request.auth.uid)
+        && request.resource.data.names[request.resource.data.players[1]] == accountName(request.resource.data.players[1])
+        && request.resource.data.teams.keys().hasOnly([request.auth.uid])
+        && request.resource.data.status == 'pending' && request.resource.data.endedBy == null
+        && request.resource.data.createdAt == request.time && stillFriends(request.resource.data);
+      allow update: if member(resource.data) && validRoom(request.resource.data)
+        && (
+          // Só quem recebeu o convite escolhe seu time e aceita.
+          (resource.data.status == 'pending' && request.auth.uid == resource.data.players[1]
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['teams', 'status'])
+            && request.resource.data.teams.diff(resource.data.teams).affectedKeys().hasOnly([request.auth.uid])
+            && request.resource.data.teams.keys().hasAll(resource.data.players)
+            && request.resource.data.status == 'active'
+            && request.time < resource.data.createdAt + duration.value(7, 'd') && stillFriends(resource.data))
+          // Cada jogador só pode declarar a própria desistência.
+          || (resource.data.status in ['pending', 'active']
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'endedBy'])
+            && request.resource.data.status == 'closed' && request.resource.data.endedBy == request.auth.uid)
+        );
+      match /actions/{action} {
+        function room() { return get(/databases/$(database)/documents/onlineBattles/$(battle)).data; }
+        function validAction(d) {
+          return d.keys().hasAll(['uid', 'round', 'kind', 'index', 'at'])
+            && d.keys().hasOnly(['uid', 'round', 'kind', 'index', 'gimmick', 'at'])
+            && d.uid == request.auth.uid && d.round is int && d.round >= 0 && d.round < 500
+            && action == string(d.round) + '_' + d.uid
+            && d.kind in ['move', 'switch', 'wait']
+            && d.index is int
+            && (d.kind == 'move' ? d.index >= -1 && d.index <= 3
+                : d.kind == 'switch' ? d.index >= 0 && d.index <= 5 : d.index == 0)
+            && (!('gimmick' in d) || (d.kind == 'move' && d.gimmick in ['mega', 'z', 'dmax', 'tera']))
+            && d.at == request.time;
+        }
+        function previousComplete(d, r) {
+          return d.round == 0
+            || (exists(/databases/$(database)/documents/onlineBattles/$(battle)/actions/$(string(d.round - 1) + '_' + r.players[0]))
+                && exists(/databases/$(database)/documents/onlineBattles/$(battle)/actions/$(string(d.round - 1) + '_' + r.players[1])));
+        }
+        allow read: if member(room());
+        allow create: if member(room()) && room().status == 'active'
+          && request.time < room().createdAt + duration.value(7, 'd')
+          && validAction(request.resource.data) && previousComplete(request.resource.data, room());
+        // Sem update/delete: não dá para mudar uma ação já enviada.
+      }
+    }
+
     // Confirmações por link no e-mail (contas Google): quando a pessoa abriu
     // o link para criar a conta, trocar a senha ou excluir. Só ela vê e muda.
     match /confirmations/{uid} {

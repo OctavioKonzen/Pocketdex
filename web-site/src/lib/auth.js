@@ -15,6 +15,10 @@ import { isOffensive } from './profanity'
 
 let services = null
 
+export async function firebaseServices() {
+  return firebase()
+}
+
 async function firebase() {
   if (services) return services
   const [{ initializeApp }, authMod, fsMod] = await Promise.all([

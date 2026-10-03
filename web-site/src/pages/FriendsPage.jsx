@@ -75,7 +75,7 @@ export default function FriendsPage() {
   const play = (friend) => {
     const code = friend.challenge.code
     clearChallenge(user.uid, friend.uid).catch(() => {})
-    navigate(`/jogo?desafio=${code}`)
+    navigate(`/jogo?desafio=${code}&amigo=${friend.uid}`)
   }
 
   // Ranking entre amigos (eu incluído), pelo recorde do Ranked.
@@ -101,6 +101,8 @@ export default function FriendsPage() {
           🎯 Draft
         </Link>
       </div>
+
+      <Link to="/amigos/online" className="block rounded-2xl bg-sky-600 px-4 py-3 text-center font-bold text-white">⚔️ Batalha online com amigos</Link>
 
       <form onSubmit={add} className={CARD}>
         <div className="mb-2 font-bold">Adicionar amigo</div>
@@ -245,6 +247,12 @@ export default function FriendsPage() {
                   </div>
                 </div>
                 <span className="font-black text-yellow-400">{`🏆 ${f.score}`}</span>
+                {!f.me && (
+                  <div className="flex flex-wrap gap-2">
+                    <Link to={`/amigos/online?amigo=${f.uid}`} className="rounded-full bg-sky-600 px-3 py-1 text-xs font-bold text-white">Batalha</Link>
+                    <Link to={`/jogo?amigo=${f.uid}`} className="rounded-full bg-violet-600 px-3 py-1 text-xs font-bold text-white">Quiz</Link>
+                  </div>
+                )}
                 {!f.me && (
                   <button type="button" aria-label="Desfazer amizade" title="Desfazer amizade" onClick={() => removeFriend(user.uid, f.uid)} className="cursor-pointer text-muted hover:text-red-400">
                     <Icon name="delete" size={18} />
