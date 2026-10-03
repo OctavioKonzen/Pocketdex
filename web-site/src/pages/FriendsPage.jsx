@@ -9,6 +9,7 @@ import { acceptFriend, clearChallenge, errorMessage, findAccount, friendRecords,
 import { decodeChallenge } from '../lib/challenge'
 import { chatTime, conversationOrder, friendsOnly, isDesktop, openChatWindow, requestsIn, requestsOut, useFriends } from '../lib/friends'
 import { t } from '../lib/i18n'
+import { BattleInvites } from './OnlineBattlePage'
 import { useStore } from '../lib/store'
 
 const CARD = 'rounded-2xl bg-card p-5 shadow'
@@ -75,7 +76,7 @@ export default function FriendsPage() {
   const play = (friend) => {
     const code = friend.challenge.code
     clearChallenge(user.uid, friend.uid).catch(() => {})
-    navigate(`/jogo?desafio=${code}`)
+    navigate(`/jogo?desafio=${code}&amigo=${friend.uid}`)
   }
 
   // Ranking entre amigos (eu incluído), pelo recorde do Ranked.
@@ -92,7 +93,7 @@ export default function FriendsPage() {
           to="/amigos/batalha"
           className="rounded-2xl bg-gradient-to-r from-red-600 to-purple-600 px-4 py-3 text-center font-bold text-white shadow transition hover:scale-[1.02]"
         >
-          ⚔️ Batalha
+          🎮 Treinar contra computador
         </Link>
         <Link
           to="/amigos/draft"
@@ -102,6 +103,9 @@ export default function FriendsPage() {
         </Link>
       </div>
 
+      <Link to="/amigos/online" className="block rounded-2xl bg-sky-600 px-4 py-3 text-center font-bold text-white">⚔️ Batalha online com amigos</Link>
+
+      <BattleInvites />
       <form onSubmit={add} className={CARD}>
         <div className="mb-2 font-bold">Adicionar amigo</div>
         <div className="flex gap-2">
@@ -245,6 +249,12 @@ export default function FriendsPage() {
                   </div>
                 </div>
                 <span className="font-black text-yellow-400">{`🏆 ${f.score}`}</span>
+                {!f.me && (
+                  <div className="flex flex-wrap gap-2">
+                    <Link to={`/amigos/online?amigo=${f.uid}`} className="rounded-full bg-sky-600 px-3 py-1 text-xs font-bold text-white">Batalha</Link>
+                    <Link to={`/jogo?amigo=${f.uid}`} className="rounded-full bg-violet-600 px-3 py-1 text-xs font-bold text-white">Quiz</Link>
+                  </div>
+                )}
                 {!f.me && (
                   <button type="button" aria-label="Desfazer amizade" title="Desfazer amizade" onClick={() => removeFriend(user.uid, f.uid)} className="cursor-pointer text-muted hover:text-red-400">
                     <Icon name="delete" size={18} />

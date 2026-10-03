@@ -709,6 +709,62 @@ export function playTurn(battle, action, hit) {
  * Começo da batalha: as habilidades de clima de quem entrou (o mais rápido
  * primeiro; o clima do mais lento fica). Devolve os eventos para mostrar.
  */
+/** Turno entre dois jogadores. A ordem dos lados nunca muda entre aparelhos. */
+export function playOnlineTurn(battle, actions, hit) {
+  const events = []
+  if (battle.winner != null) return events
+  if (actions.some((a) => a.kind === 'forfeit')) {
+    battle.winner = actions[0].kind === 'forfeit' ? 1 : 0
+    return events
+  }
+  const replacing = [0, 1].some((side) => active(battle, side).hp <= 0)
+  if (replacing) {
+    for (const side of [0, 1]) {
+      if (active(battle, side).hp <= 0) {
+        const index = actions[side].index
+        if (actions[side].kind !== 'switch' || !battle.sides[side].team[index] || battle.sides[side].team[index].hp <= 0) throw new Error('Troca inválida')
+        switchTo(battle, side, index, events)
+      }
+    }
+    return events
+  }
+  const order = []
+  const zMove = [false, false]
+  for (const side of [0, 1]) {
+    const action = actions[side]
+    const mon = active(battle, side)
+    if (action.kind === 'switch') {
+      if (action.index === battle.sides[side].active || !battle.sides[side].team[action.index] || battle.sides[side].team[action.index].hp <= 0) throw new Error('Troca inválida')
+      switchTo(battle, side, action.index, events)
+    } else if (action.kind === 'move') {
+      const i = action.index
+      if (!(i === -1 ? usableMoves(mon).length === 0 : mon.moves[i]?.pp > 0)) throw new Error('Golpe inválido')
+      const g = action.gimmick || mon.gimmick
+      if (g && canGimmick(battle, side, g, i)) {
+        if (g === 'z') { battle.gimmicks[side] = 'z'; zMove[side] = true }
+        else applyGimmick(battle, side, g, events)
+      }
+      order.push({ side, move: i })
+    } else throw new Error('Ação inválida')
+  }
+  if (order.length === 2) {
+    const [a, b] = order
+    const pa = a.move < 0 ? 0 : active(battle, a.side).moves[a.move].priority
+    const pb = b.move < 0 ? 0 : active(battle, b.side).moves[b.move].priority
+    const sa = speedOf(active(battle, a.side), battle.weather), sb = speedOf(active(battle, b.side), battle.weather)
+    const tie = battle.random() < 0.5
+    if (pb > pa || (pb === pa && (sb > sa || (sb === sa && tie)))) order.reverse()
+  }
+  for (const o of order) {
+    if (active(battle, o.side).hp > 0 && active(battle, 1 - o.side).hp > 0) doMove(battle, o.side, o.move, hit, events, zMove[o.side])
+  }
+  endOfTurn(battle, events)
+  if (!alive(battle, 1)) battle.winner = 0
+  else if (!alive(battle, 0)) battle.winner = 1
+  battle.turn += 1
+  return events
+}
+
 export function startBattle(battle) {
   const events = []
   const sides = speedOf(active(battle, 1)) > speedOf(active(battle, 0)) ? [1, 0] : [0, 1]

@@ -1002,6 +1002,69 @@ class TurnBattle {
 
   /// Começo da batalha: as habilidades de clima de quem entrou (o mais rápido
   /// primeiro; o clima do mais lento fica). Devolve os eventos para mostrar.
+  /// Resolve as ações dos dois jogadores, sem escolher ações pelo computador.
+  List<BattleEvent> playOnlineTurn(List<Map<String, dynamic>> actions, BattleHit hit) {
+    final events = <BattleEvent>[];
+    if (winner != null) return events;
+    if (actions.any((a) => a['kind'] == 'forfeit')) {
+      winner = actions[0]['kind'] == 'forfeit' ? 1 : 0;
+      return events;
+    }
+    if ([0, 1].any((s) => active(s).hp <= 0)) {
+      for (final side in [0, 1]) {
+        if (active(side).hp <= 0) {
+          final index = (actions[side]['index'] as num?)?.toInt() ?? -1;
+          if (actions[side]['kind'] != 'switch' || index < 0 || index >= teams[side].length || teams[side][index].hp <= 0) {
+            throw StateError('Troca inválida');
+          }
+          _switchTo(side, index, events);
+        }
+      }
+      return events;
+    }
+    var order = <(int, int)>[];
+    final zMove = [false, false];
+    for (final side in [0, 1]) {
+      final action = actions[side];
+      final mon = active(side);
+      final index = (action['index'] as num?)?.toInt() ?? -1;
+      if (action['kind'] == 'switch') {
+        if (index == activeIndex[side] || index < 0 || index >= teams[side].length || teams[side][index].hp <= 0) {
+          throw StateError('Troca inválida');
+        }
+        _switchTo(side, index, events);
+      } else if (action['kind'] == 'move') {
+        if (index == -1 ? mon.moves.any((m) => m.pp > 0) : index < 0 || index >= mon.moves.length || mon.moves[index].pp <= 0) {
+          throw StateError('Golpe inválido');
+        }
+        final wanted = (action['gimmick'] as String?) ?? mon.gimmick;
+        if (wanted.isNotEmpty && canGimmick(side, wanted, index)) {
+          if (wanted == 'z') { gimmicks[side] = 'z'; zMove[side] = true; }
+          else { _applyGimmick(side, wanted, events); }
+        }
+        order.add((side, index));
+      } else {
+        throw StateError('Ação inválida');
+      }
+    }
+    if (order.length == 2) {
+      final a = order[0], b = order[1];
+      final pa = a.$2 < 0 ? 0 : active(a.$1).moves[a.$2].priority;
+      final pb = b.$2 < 0 ? 0 : active(b.$1).moves[b.$2].priority;
+      final sa = speedOf(active(a.$1), weather), sb = speedOf(active(b.$1), weather);
+      final tie = random() < 0.5;
+      if (pb > pa || (pb == pa && (sb > sa || (sb == sa && tie)))) order = [b, a];
+    }
+    for (final o in order) {
+      if (active(o.$1).hp > 0 && active(1 - o.$1).hp > 0) _doMove(o.$1, o.$2, hit, events, zMove[o.$1]);
+    }
+    _endOfTurn(events);
+    if (_alive(1) == 0) { winner = 0; }
+    else if (_alive(0) == 0) { winner = 1; }
+    turn += 1;
+    return events;
+  }
+
   List<BattleEvent> start() {
     final events = <BattleEvent>[];
     for (final side in speedOf(active(1)) > speedOf(active(0)) ? [1, 0] : [0, 1]) {

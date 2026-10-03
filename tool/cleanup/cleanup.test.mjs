@@ -46,6 +46,12 @@ await set('chats/amiga_viva/messages/velha', { from: 'viva', text: 'faz tempo', 
 await set('friends/amiga/list/viva', { name: 'Viva', status: 'friends', unread: 1, last: { text: 'faz tempo', at: Date.now() - 8 * 86400000, from: 'viva' } })
 await set('chats/morta_viva/messages/m1', { from: 'morta', text: 'oi', at: 1 })
 
+await set('onlineBattles/atual', { players: ['viva', 'amiga'], createdAt: Timestamp.now() })
+await set('onlineBattles/excluida', { players: ['viva', 'morta'], createdAt: Timestamp.now() })
+await set('onlineBattles/excluida/actions/0_viva', { uid: 'viva', round: 0 })
+await set('onlineBattles/expirada', { players: ['viva', 'amiga'], createdAt: Timestamp.fromMillis(Date.now() - 8 * 86400000) })
+await set('onlineBattles/expirada/actions/0_viva', { uid: 'viva', round: 0 })
+
 execFileSync('node', [new URL('./cleanup.mjs', import.meta.url).pathname], { stdio: 'inherit', env: { ...process.env, FIREBASE_SERVICE_ACCOUNT: '' } })
 
 const ids = async (path) => (await db.collection(path).get()).docs.map((d) => d.id).sort()
@@ -66,6 +72,9 @@ assert.deepEqual([preview.last, preview.unread], [null, 0])
 assert.deepEqual(await ids('chats/morta_viva/messages'), [])
 assert.deepEqual(await ids('trades'), [])
 assert.deepEqual(await ids('drafts'), ['bom'])
+assert.deepEqual(await ids('onlineBattles'), ['atual'])
+assert.deepEqual(await ids('onlineBattles/excluida/actions'), [])
+assert.deepEqual(await ids('onlineBattles/expirada/actions'), [])
 // "outra" também não existe: a nota do time fica zerada.
 const team = (await db.doc('publicTeams/daViva').get()).data()
 assert.deepEqual([team.ratingSum, team.ratingCount, team.reportCount], [0, 0, 0])

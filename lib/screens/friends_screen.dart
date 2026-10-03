@@ -6,6 +6,7 @@
 
 import 'package:flutter/material.dart' hide Text;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:math';
 
 import '../i18n/text.dart';
 import '../services/auth_service.dart';
@@ -17,6 +18,7 @@ import '../utils/site_ui.dart';
 import '../widgets/account_avatar.dart';
 import '../widgets/conversation_list.dart';
 import 'draft_screen.dart';
+import 'online_battle_screen.dart';
 import 'quiz_screen.dart';
 import 'turn_battle_screen.dart';
 
@@ -91,7 +93,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
     final c = Challenge.decode(f.challenge!['code'] as String);
     _service.clearChallenge(f.uid).catchError((_) {});
     if (c == null) return;
-    Navigator.push(context, MaterialPageRoute(builder: (_) => QuizScreen(challenge: c)));
+    Navigator.push(context, MaterialPageRoute(builder: (_) => QuizScreen(challenge: c, targetFriendUid: f.uid)));
   }
 
   Widget _card(SiteColors c, String title, List<Widget> children) => Padding(
@@ -132,7 +134,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   children: [
                     Expanded(
                       child: PillButton(
-                        label: '⚔️ ${tr('Batalha')}',
+                        label: '🎮 ${tr('Treinar contra computador')}',
                         expand: true,
                         gradient: const LinearGradient(colors: [Color(0xFFDC2626), Color(0xFF9333EA)]),
                         onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TurnBattleScreen())),
@@ -150,6 +152,12 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   ],
                 ),
                 const SizedBox(height: 14),
+                FilledButton.icon(
+                  icon: const Icon(Icons.public), label: const Text('Batalha online'),
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OnlineBattleScreen())),
+                ),
+                const SizedBox(height: 14),
+                const OnlineBattleInvites(),
                 _card(c, tr('Adicionar amigo'), [
                   Row(
                     children: [
@@ -264,6 +272,24 @@ class _FriendsScreenState extends State<FriendsScreen> {
                               ),
                             ),
                             Text('🏆 $score', style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.w900)),
+                            if (friend != null)
+                              PopupMenuButton<String>(
+                                tooltip: 'Desafiar amigo', icon: const Icon(Icons.sports_esports),
+                                itemBuilder: (_) => const [
+                                  PopupMenuItem(value: 'battle', child: Text('Batalha online')),
+                                  PopupMenuItem(value: 'quiz', child: Text('Desafio do quiz')),
+                                ],
+                                onSelected: (kind) {
+                                  if (kind == 'battle') {
+                                    Navigator.push(context, MaterialPageRoute(builder: (_) => OnlineBattleScreen(friendUid: uid)));
+                                  } else {
+                                    Navigator.push(context, MaterialPageRoute(builder: (_) => QuizScreen(
+                                      targetFriendUid: uid,
+                                      challenge: Challenge(seed: Random().nextInt(1 << 31), gen: 0, hint: 'silhouette'),
+                                    )));
+                                  }
+                                },
+                              ),
                             if (friend != null)
                               IconButton(
                                 tooltip: tr('Desfazer amizade'),

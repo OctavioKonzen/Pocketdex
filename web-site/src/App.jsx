@@ -27,6 +27,7 @@ const FriendsPage = lazyPage(() => import('./pages/FriendsPage'))
 const ChatPage = lazyPage(() => import('./pages/ChatPage'))
 const BattlePage = lazyPage(() => import('./pages/BattlePage'))
 const TurnBattlePage = lazyPage(() => import('./pages/TurnBattlePage'))
+const OnlineBattlePage = lazyPage(() => import('./pages/OnlineBattlePage'))
 const DraftPage = lazyPage(() => import('./pages/DraftPage'))
 const LoginPage = lazyPage(() => import('./pages/LoginPage'))
 const PokemonPicker = lazyPage(() => import('./components/PokemonPicker'))
@@ -401,6 +402,8 @@ export default function App() {
                   {/* As Trocas saíram (as conversas ficam em Amigos): link antigo vai para lá. */}
                   <Route path="/amigos/trocas" element={<Navigate to="/amigos" replace />} />
                   <Route path="/amigos/batalha" element={<TurnBattlePage />} />
+                  <Route path="/amigos/online" element={<OnlineBattlePage />} />
+                  <Route path="/amigos/online/:id" element={<OnlineBattlePage />} />
                   <Route path="/amigos/draft" element={<DraftPage />} />
                   <Route path="/amigos/draft/:id" element={<DraftPage />} />
                   <Route path="*" element={<PokedexPage />} />
