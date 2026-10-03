@@ -252,6 +252,7 @@ void main() {
     final hit = TurnBattleSetup.hitter(await DamageData.load());
     final actual = hit(capped, foe, 'flamethrower', false)!, expected = hit(reference, foe, 'flamethrower', false)!;
     expect(actual.rolls, expected.rolls); expect(actual.eff, expected.eff);
+    expect([actual.rolls.first.reduce(min), actual.rolls.first.reduce(max)], [138, 164]);
     expect(foe.level, 50);
     expect(lower.level, 10); expect(lower.maxHp, 38); expect(lower.spe, 37);
     expect(set['level'], 100);
