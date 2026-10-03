@@ -9,6 +9,7 @@ import { acceptFriend, clearChallenge, errorMessage, findAccount, friendRecords,
 import { decodeChallenge } from '../lib/challenge'
 import { chatTime, conversationOrder, friendsOnly, isDesktop, openChatWindow, requestsIn, requestsOut, useFriends } from '../lib/friends'
 import { t } from '../lib/i18n'
+import { BattleInvites } from './OnlineBattlePage'
 import { useStore } from '../lib/store'
 
 const CARD = 'rounded-2xl bg-card p-5 shadow'
@@ -92,7 +93,7 @@ export default function FriendsPage() {
           to="/amigos/batalha"
           className="rounded-2xl bg-gradient-to-r from-red-600 to-purple-600 px-4 py-3 text-center font-bold text-white shadow transition hover:scale-[1.02]"
         >
-          ⚔️ Batalha
+          🎮 Treinar contra computador
         </Link>
         <Link
           to="/amigos/draft"
@@ -104,6 +105,7 @@ export default function FriendsPage() {
 
       <Link to="/amigos/online" className="block rounded-2xl bg-sky-600 px-4 py-3 text-center font-bold text-white">⚔️ Batalha online com amigos</Link>
 
+      <BattleInvites />
       <form onSubmit={add} className={CARD}>
         <div className="mb-2 font-bold">Adicionar amigo</div>
         <div className="flex gap-2">

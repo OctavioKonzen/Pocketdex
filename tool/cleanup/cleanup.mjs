@@ -75,6 +75,15 @@ for (const d of (await db.collectionGroup('list').get()).docs) {
   else if (d.data().status === 'friends') friendships.add([owner.id, d.id].sort().join('_'))
 }
 
+// Batalhas: convites e histórico somem após sete dias ou exclusão da conta.
+for (const d of (await db.collection('onlineBattles').get()).docs) {
+  const r = d.data()
+  if (!Array.isArray(r.players) || r.players.some((uid) => !accounts.has(uid)) ||
+      (r.createdAt?.toMillis?.() ?? 0) < Date.now() - 7 * 24 * 60 * 60 * 1000) {
+    await remove(d.ref, 'batalha expirada ou sem conta')
+  }
+}
+
 // Chats: só ficam enquanto os dois são amigos, e por no máximo 7 dias.
 const CHAT_DAYS = 7
 const chatLimit = Date.now() - CHAT_DAYS * 24 * 60 * 60 * 1000

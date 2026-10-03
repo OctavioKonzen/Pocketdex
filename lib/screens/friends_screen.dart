@@ -134,7 +134,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   children: [
                     Expanded(
                       child: PillButton(
-                        label: '⚔️ ${tr('Batalha')}',
+                        label: '🎮 ${tr('Treinar contra computador')}',
                         expand: true,
                         gradient: const LinearGradient(colors: [Color(0xFFDC2626), Color(0xFF9333EA)]),
                         onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TurnBattleScreen())),
@@ -157,6 +157,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OnlineBattleScreen())),
                 ),
                 const SizedBox(height: 14),
+                const OnlineBattleInvites(),
                 _card(c, tr('Adicionar amigo'), [
                   Row(
                     children: [

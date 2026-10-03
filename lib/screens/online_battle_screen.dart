@@ -251,3 +251,32 @@ class _OnlineBattleRoomScreenState extends State<OnlineBattleRoomScreen> {
     );
   }
 }
+
+class OnlineBattleInvites extends StatefulWidget {
+  const OnlineBattleInvites({super.key});
+  @override
+  State<OnlineBattleInvites> createState() => _OnlineBattleInvitesState();
+}
+class _OnlineBattleInvitesState extends State<OnlineBattleInvites> {
+  late final Stream<QuerySnapshot<Map<String, dynamic>>> _stream = OnlineBattles.watchMine();
+  @override
+  Widget build(BuildContext context) => StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+    stream: _stream,
+    builder: (context, snapshot) {
+      final docs = snapshot.data?.docs.where((d) => d.data()['status'] != 'closed' &&
+        d.data()['createdAt'] is Timestamp && DateTime.now().difference((d.data()['createdAt'] as Timestamp).toDate()).inDays < 7).toList() ?? [];
+      if (docs.isEmpty) return const SizedBox.shrink();
+      return Card(child: Column(children: [
+        const Padding(padding: EdgeInsets.all(12), child: Text('Batalhas com amigos', style: TextStyle(fontWeight: FontWeight.bold))),
+        for (final d in docs.take(10)) Builder(builder: (context) {
+          final r = d.data(), players = List<String>.from(d.data()['players'] as List);
+          final other = players.firstWhere((p) => p != OnlineBattles.me);
+          return ListTile(title: Text('${(r['names'] as Map)[other]}'),
+            subtitle: Text(r['status'] == 'pending' ? players[0] == OnlineBattles.me ? 'Convite enviado' : 'Te desafiou para uma batalha!' : 'Continuar partida'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OnlineBattleRoomScreen(id: d.id))));
+        }),
+      ]));
+    },
+  );
+}

@@ -240,6 +240,7 @@ export default function GamePage() {
   const location = useLocation()
   const navigate = useNavigate()
   const [targetUid] = useState(() => new URLSearchParams(location.search).get('amigo'))
+  const targetFriend = useFriends((s) => s.list.find((f) => f.uid === targetUid && f.status === 'friends'))
   // Aberto por um link de desafio: mostra quem desafiou.
   const [incoming, setIncoming] = useState(() => {
     const code = new URLSearchParams(location.search).get('desafio')
@@ -529,7 +530,7 @@ export default function GamePage() {
               ▶ {saved ? 'Novo jogo normal' : 'Jogo normal'}
             </Button>
             <Button onClick={() => start('challenge')} color="linear-gradient(135deg, #7c3aed, #4c1d95)" className="w-full py-4 text-lg">
-              🤝 Desafiar um amigo
+              {targetFriend ? `🤝 Desafiar ${targetFriend.name} no quiz` : '🤝 Desafiar um amigo'}
             </Button>
             <div className="flex gap-2">
               <input

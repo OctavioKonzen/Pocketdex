@@ -151,7 +151,7 @@ function BattleRoom({ id, user }) {
           {row && <Sprite path={p.shiny ? shinyPath(row.sprite) : row.sprite} box={row.box} back={s === side} battle className="mx-auto h-40 w-40 max-w-full" />}
           <p>{p.name} {p.status && '(' + p.status.toUpperCase() + ')'}</p>
           <progress className="w-full" value={p.hp} max={p.maxHp} aria-label={'HP de ' + p.name} />
-          <p>{p.hp}/{p.maxHp} HP</p>
+          <p data-testid={"online-hp-" + s}>{p.hp}/{p.maxHp} HP</p>
         </section>
       })}</div>
       <section className={CARD + ' space-y-3'}>
@@ -171,4 +171,17 @@ function BattleRoom({ id, user }) {
     </>}
     {room.status === 'active' && <Button disabled={busy} onClick={() => run(() => closeBattle(id))}>Desistir / encerrar partida</Button>}
   </div>
+}
+
+export function BattleInvites() {
+  const uid = useAuth((s) => s.status === 'signedIn' ? s.user?.uid : null)
+  const [rooms] = useFeed(watchBattles, uid)
+  const current = rooms?.filter((r) => r.status !== 'closed' && r.createdAt && Date.now() < r.createdAt.toMillis() + 7 * 86400000).slice(0, 10) ?? []
+  if (!current.length) return null
+  return <section className={CARD}><h2 className="mb-2 font-bold">Batalhas com amigos</h2>{current.map((r) => {
+    const other = r.players.find((p) => p !== uid)
+    return <Link key={r.id} to={'/amigos/online/' + r.id} className="mb-2 block rounded-xl bg-sky-500/10 p-3">
+      {r.names[other]} · {r.status === 'pending' ? r.players[0] === uid ? 'Convite enviado' : 'Te desafiou para uma batalha!' : 'Continuar partida'}
+    </Link>
+  })}</section>
 }
