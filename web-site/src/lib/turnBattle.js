@@ -203,6 +203,7 @@ export function maxPower(power, type) {
 export function canGimmick(battle, side, gimmick, moveIndex = -1) {
   const mon = active(battle, side)
   if (battle.gimmicks[side] || mon.hp <= 0) return false
+  if (mon.gimmick && mon.gimmick !== gimmick) return false
   if (gimmick === 'mega') return Boolean(mon.mega)
   if (gimmick === 'tera') return Boolean(mon.teraType)
   if (gimmick === 'z') {

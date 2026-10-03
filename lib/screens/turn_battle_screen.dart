@@ -454,7 +454,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
       ('tera', 'Tera'),
       ('dmax', mon.gmax != null ? 'Gigantamax' : 'Dynamax'),
       ('z', 'Movimento Z'),
-    ].where((option) => option.$1 == 'z'
+    ].where((option) => option.$1 == mon.gimmick).where((option) => option.$1 == 'z'
         ? mon.moves.indexed.any((move) => _b.canGimmick(0, 'z', move.$1))
         : _b.canGimmick(0, option.$1)).toList();
   }

@@ -212,6 +212,22 @@ List<String> fakeBattleLog() {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  test('respeita a mecânica do set e bloqueia outro uso após trocar', () {
+    BattleMon member(int id) => BattleMon(id, 'Mon', 50, 100, 80, ['normal'],
+      [_move('tackle', 'normal', 40, 100, 10)],
+      gimmick: 'tera', teraType: 'grass',
+      mega: const BattleMega(10035, 'Mega', ['fire'], 100));
+    final battle = TurnBattle([member(6), member(9)], [member(25)], () => 0.9);
+    expect(battle.canGimmick(0, 'tera'), isTrue);
+    expect(battle.canGimmick(0, 'mega'), isFalse);
+    expect(battle.canGimmick(0, 'dmax'), isFalse);
+    battle.playTurn(_fakeHit, move: 0, gimmick: 'tera');
+    expect(battle.gimmicks[0], 'tera');
+    battle.playTurn(_fakeHit, switchTo: 1);
+    expect(battle.active(0).id, 9);
+    expect(battle.canGimmick(0, 'tera'), isFalse);
+  });
+
   test('igual ao site (mesma semente, mesmo registro)', () {
     final expected = (jsonDecode(File('test/fixtures/turn_battle.json').readAsStringSync()) as List).cast<String>();
     expect(fakeBattleLog(), expected);

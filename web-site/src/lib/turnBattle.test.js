@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { battleMons, pickMoves } from './battleSetup'
 import { seededRandom } from './league'
-import { active, canUseItem, effectLabel, lineOf, maxPower, moveEffect, newBattle, playTurn, replace, startBattle, switchMatchup, usableMoves, weaknesses, zPower } from './turnBattle'
+import { active, canGimmick, canUseItem, effectLabel, lineOf, maxPower, moveEffect, newBattle, playTurn, replace, startBattle, switchMatchup, usableMoves, weaknesses, zPower } from './turnBattle'
 
 beforeAll(() => {
   vi.stubGlobal('fetch', async (url) => {
@@ -292,3 +292,18 @@ describe('mecânicas especiais', () => {
   })
 })
 
+
+it('respeita a mecânica do set e bloqueia outro uso após trocar de Pokémon', () => {
+  const member = (id) => mon(id, 'Mon', ['normal'], 100, 80, [move('tackle', 'normal', 40, 100, 10)], {
+    gimmick: 'tera', teraType: 'grass', mega: { id: 10035, name: 'Mega', types: ['fire'], spe: 100 },
+  })
+  const battle = newBattle([member(6), member(9)], [member(25)], () => 0.9)
+  expect(canGimmick(battle, 0, 'tera')).toBe(true)
+  expect(canGimmick(battle, 0, 'mega')).toBe(false)
+  expect(canGimmick(battle, 0, 'dmax')).toBe(false)
+  playTurn(battle, { move: 0, gimmick: 'tera' }, fakeHit)
+  expect(battle.gimmicks[0]).toBe('tera')
+  playTurn(battle, { switchTo: 1 }, fakeHit)
+  expect(active(battle, 0).id).toBe(9)
+  expect(canGimmick(battle, 0, 'tera')).toBe(false)
+})

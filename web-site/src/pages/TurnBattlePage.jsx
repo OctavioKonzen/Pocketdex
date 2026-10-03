@@ -594,7 +594,7 @@ export function Battle({ battle, foeName, hit, onExit, onAgain, online = null })
     ['tera', 'Tera'],
     ['dmax', current.gmax ? 'Gigantamax' : 'Dynamax'],
     ['z', 'Movimento Z'],
-  ].filter(([kind]) => kind === 'z'
+  ].filter(([kind]) => kind === current.gimmick).filter(([kind]) => kind === 'z'
     ? current.moves.some((_, i) => canGimmick(battle, 0, kind, i))
     : canGimmick(battle, 0, kind))
   const selected = gimmickPick?.id === current.id && options.some(([kind]) => kind === gimmickPick.kind)
