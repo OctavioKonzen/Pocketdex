@@ -31,7 +31,7 @@ function useFeed(subscribe, key) {
 }
 function TeamChoice({ value, onChange }) {
   const teams = useStore((s) => s.teams).filter((t) => teamMembers(t).length)
-  return <label className="block space-y-2"><span>Seu time</span><select className={SELECT} value={value} onChange={(e) => onChange(e.target.value)}>
+  return <label className="block space-y-2"><span>Seu time</span><select aria-label="Seu time" className={SELECT} value={value} onChange={(e) => onChange(e.target.value)}>
     <option value="">Escolha seu time…</option>{teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
   </select>{!teams.length && <Link to="/times">Monte um time em Times para batalhar.</Link>}</label>
 }
@@ -64,7 +64,7 @@ function Lobby({ user }) {
   return <div className="mx-auto max-w-2xl space-y-4">
     <PageHeader title="Batalha online" subtitle="Convide um amigo. Cada jogador controla seu próprio time." />
     <section className={CARD + ' space-y-3'}>
-      <label className="block space-y-2"><span>Amigo</span><select className={SELECT} value={friend} onChange={(e) => setFriend(e.target.value)}>
+      <label className="block space-y-2"><span>Amigo</span><select aria-label="Amigo" className={SELECT} value={friend} onChange={(e) => setFriend(e.target.value)}>
         <option value="">Escolha um amigo…</option>{friends.map((f) => <option key={f.uid} value={f.uid}>{f.name}</option>)}
       </select></label>
       <TeamChoice value={team} onChange={setTeam} />
