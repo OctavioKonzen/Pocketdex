@@ -47,7 +47,7 @@ class BattleTeam {
   }
 }
 
-String _monName(Map<String, dynamic> row) => I18n.pokemonName((row['name'] as String).split('-').first.capitalise());
+String battleMonName(Map<String, dynamic> row) => I18n.pokemonName((row['name'] as String).split('-').first.capitalise());
 
 class TurnBattleScreen extends StatefulWidget {
   /// Vindo do Draft: começa direto com esses times.
@@ -107,8 +107,8 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
   Future<void> _start(List<Member> mine, List<Member>? theirs, String foeName) async {
     setState(() => _busy = true);
     final random = League.seededRandom(Random().nextInt(1 << 31));
-    final a = await TurnBattleSetup.mons(mine, _monName);
-    final b = await TurnBattleSetup.mons(theirs ?? await TurnBattleSetup.randomTeam(random), _monName);
+    final a = await TurnBattleSetup.mons(mine, battleMonName);
+    final b = await TurnBattleSetup.mons(theirs ?? await TurnBattleSetup.randomTeam(random), battleMonName);
     if (!mounted) return;
     setState(() {
       _busy = false;
@@ -139,7 +139,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
             ? ListView(
                 padding: const EdgeInsets.all(12),
                 children: [
-                  _BattleView(
+                  BattleView(
                     key: ValueKey(_key),
                     battle: battle,
                     hit: _hit!,
@@ -232,39 +232,54 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
   }
 }
 
-class _BattleView extends StatefulWidget {
+class OnlineBattleControl {
+  final int round;
+  final List<BattleEvent> events;
+  final List<int>? before;
+  final bool locked, waitForSwitch;
+  final String message;
+  final void Function(Map<String, dynamic>) onAction;
+  final VoidCallback onClose;
+  const OnlineBattleControl({required this.round, required this.events, this.before,
+    required this.locked, required this.waitForSwitch, required this.message,
+    required this.onAction, required this.onClose});
+}
+
+class BattleView extends StatefulWidget {
   final TurnBattle battle;
   final BattleHit hit;
   final double Function(String, List<String>) typeEff;
   final String foeName;
   final VoidCallback onAgain, onExit;
-  const _BattleView(
+  final OnlineBattleControl? online;
+  const BattleView(
       {super.key,
       required this.battle,
       required this.hit,
       required this.typeEff,
       required this.foeName,
       required this.onAgain,
-      required this.onExit});
+      required this.onExit,
+      this.online});
 
   @override
-  State<_BattleView> createState() => _BattleViewState();
+  State<BattleView> createState() => BattleViewState();
 }
 
-class _BattleViewState extends State<_BattleView> with SingleTickerProviderStateMixin {
+class BattleViewState extends State<BattleView> with SingleTickerProviderStateMixin {
   static const _step = Duration(milliseconds: 1100);
   late final List<int> _active = [widget.battle.activeIndex[0], widget.battle.activeIndex[1]];
   late final List<List<int>> _hp = [
     for (final t in widget.battle.teams) [for (final mon in t) mon.hp]
   ];
   late final List<List<String>> _status = [
-    for (final t in widget.battle.teams) [for (final _ in t) '']
+    for (final t in widget.battle.teams) [for (final mon in t) mon.status]
   ];
-  final List<bool> _fainted = [false, false];
+  late final List<bool> _fainted = [for (final s in [0, 1]) widget.battle.active(s).hp <= 0];
 
   /// Forma na tela (Mega / Gigantamax) e se está dinamaxizado.
-  final List<int?> _form = [null, null];
-  final List<bool> _dmax = [false, false];
+  late final List<int?> _form = [for (final s in [0, 1]) widget.battle.active(s).id];
+  late final List<bool> _dmax = [for (final s in [0, 1]) widget.battle.active(s).dmax > 0];
 
   /// Clima na tela (o cenário muda com ele).
   late String _weather = widget.battle.weather;
@@ -282,14 +297,28 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
 
   /// A animação de cada golpe (estilo, símbolo e variação).
   Map<String, dynamic>? _anims;
+  Future<void> _onlineQueue = Future.value();
 
   @override
   void initState() {
     super.initState();
     LocalDatabase.instance.moveAnims().then((t) => _anims = t).catchError((_) => <String, dynamic>{});
     // Começo: as habilidades de clima de quem entrou (Drizzle, Drought...).
+    _menu = _b.needSwitch ? 'party' : 'main';
+    if (widget.online != null) return;
     final opening = _b.start();
     if (opening.isNotEmpty) _wait(_step.inMilliseconds).then((_) => mounted ? _play(opening) : null);
+  }
+
+  @override
+  void didUpdateWidget(covariant BattleView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final online = widget.online;
+    if (online == null || online.round == oldWidget.online?.round) return;
+    _busy = true;
+    _onlineQueue = _onlineQueue.then((_) async {
+      if (mounted) await _play(online.events, online.before);
+    });
   }
 
   @override
@@ -425,9 +454,14 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
   void _fight(int i) {
     final before = [_b.active(0).id, _b.active(1).id];
     final gimmick = _canMega ? (_megaOn ? 'mega' : 'none') : null;
+    if (widget.online != null) {
+      widget.online!.onAction({'kind': 'move', 'index': i, if (gimmick != null) 'gimmick': gimmick});
+      return;
+    }
     _play(_b.playTurn(widget.hit, move: i, gimmick: gimmick), before);
   }
   void _choose(int i) {
+    if (widget.online != null) { widget.online!.onAction({'kind': 'switch', 'index': i}); return; }
     final item = _item;
     if (item != null) {
       _item = null;
@@ -448,7 +482,10 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
         ],
       ),
     );
-    if (ok == true) _play(_b.forfeit());
+    if (ok == true) {
+      if (widget.online != null) { widget.online!.onClose(); }
+      else { _play(_b.forfeit()); }
+    }
   }
 
   @override
@@ -456,7 +493,7 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
     final me = _b.teams[0][_active[0]];
     final foe = _b.teams[1][_active[1]];
     final current = _b.active(0);
-    final waiting = !_busy && _b.winner == null;
+    final waiting = !_busy && !(widget.online?.locked ?? false) && _b.winner == null;
     // Efetividade (como nos jogos): nos golpes, nas fraquezas do inimigo e na troca.
     final rival = _b.active(1);
     final foeWeak = TurnBattle.weaknesses(rival.types, allTypes, widget.typeEff);
@@ -534,7 +571,7 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               GestureDetector(
-                onTap: () => _skip?.complete(),
+                onTap: () { if (_skip != null && !_skip!.isCompleted) _skip!.complete(); },
                 child: Container(
                   constraints: const BoxConstraints(minHeight: 72),
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -544,10 +581,12 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
                     borderRadius: BorderRadius.circular(12),
                   ),
                   // Já traduzido (nomes e golpes não mudam).
-                  child: m.Text(_text, style: const TextStyle(color: Color(0xFF0F172A), fontSize: 16, fontWeight: FontWeight.bold)),
+                  child: m.Text(!_busy && widget.online != null ? tr(widget.online!.message) : _text, style: const TextStyle(color: Color(0xFF0F172A), fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
               ),
-              if (waiting && _menu == 'main' && !_b.needSwitch) ...[
+              if (waiting && (widget.online?.waitForSwitch ?? false))
+                FilledButton(onPressed: () => widget.online!.onAction({'kind': 'wait', 'index': 0}), child: const Text('Aguardar troca do amigo')),
+              if (waiting && !(widget.online?.waitForSwitch ?? false) && _menu == 'main' && !_b.needSwitch) ...[
                 const SizedBox(height: 8),
                 Row(children: [
                   _MenuButton('LUTAR', () {
@@ -558,7 +597,7 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
                     }
                   }),
                   const SizedBox(width: 6),
-                  _MenuButton('BOLSA', () => setState(() => _menu = 'bag')),
+                  _MenuButton('BOLSA', widget.online == null ? () => setState(() => _menu = 'bag') : null),
                 ]),
                 const SizedBox(height: 6),
                 Row(children: [
@@ -751,7 +790,7 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
             ),
           ),
         ],
-        if (!_busy && _b.winner != null) ...[
+        if (!_busy && _b.winner != null && widget.online == null) ...[
           const SizedBox(height: 14),
           PillButton(
             label: tr('Batalhar de novo'),
@@ -769,7 +808,7 @@ class _BattleViewState extends State<_BattleView> with SingleTickerProviderState
 
 class _MenuButton extends StatelessWidget {
   final String label;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   const _MenuButton(this.label, this.onTap);
 
   @override
@@ -782,7 +821,7 @@ class _MenuButton extends StatelessWidget {
             onTap: onTap,
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-              child: Text(label, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.w900)),
+              child: Opacity(opacity: onTap == null ? 0.4 : 1, child: Text(label, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.w900))),
             ),
           ),
         ),

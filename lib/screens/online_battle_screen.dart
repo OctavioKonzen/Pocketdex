@@ -9,7 +9,6 @@ import '../services/online_battle.dart';
 import '../services/turn_battle.dart';
 import '../services/user_data.dart';
 import '../utils/responsive.dart';
-import '../widgets/pokemon_sprite.dart';
 import 'turn_battle_screen.dart';
 
 String _error(Object e) => e is FirebaseException
@@ -105,12 +104,14 @@ class _OnlineBattleRoomScreenState extends State<OnlineBattleRoomScreen> {
   Map<String, dynamic>? _room;
   List<Map<String, dynamic>>? _actions;
   TurnBattle? _battle;
-  List<String> _logs = [];
+  BattleHit? _hit;
+  double Function(String, List<String>)? _typeEff;
+  List<BattleEvent> _events = [];
+  List<int>? _before;
   int _round = 0, _generation = 0;
   int? _team;
   bool _busy = false, _replaying = true;
   String? _errorText;
-  String _gimmick = '';
   List<String> get _players => List<String>.from(_room!['players'] as List);
   int get _side => _players.indexOf(OnlineBattles.me);
   List<Map<String, dynamic>> get _teams => UserData.instance.teams.where((t) => BattleTeam.fromMap(t) != null).toList();
@@ -136,6 +137,8 @@ class _OnlineBattleRoomScreenState extends State<OnlineBattleRoomScreen> {
   Future<void> _replay() async {
     if (_room == null || _actions == null || _room!['status'] == 'pending' || !(_room!['teams'] as Map).containsKey(_players[1])) return;
     final generation = ++_generation;
+    final previousRound = _battle == null ? null : _round;
+    final side = _side;
     setState(() => _replaying = true);
     try {
       if (_room!['protocol'] != 1) throw StateError('Atualize o PocketDex para abrir esta partida.');
@@ -143,24 +146,27 @@ class _OnlineBattleRoomScreenState extends State<OnlineBattleRoomScreen> {
       final teams = _room!['teams'] as Map;
       final seed = (_room!['seed'] as num).toInt();
       final pairs = OnlineBattles.pairs(_actions!, players);
-      final a = await TurnBattleSetup.mons(BattleTeam.fromMap(OnlineBattles.unpackTeam(teams[players[0]] as String))!.members, (row) => '${row['name']}');
-      final b = await TurnBattleSetup.mons(BattleTeam.fromMap(OnlineBattles.unpackTeam(teams[players[1]] as String))!.members, (row) => '${row['name']}');
+      final a = await TurnBattleSetup.mons(BattleTeam.fromMap(OnlineBattles.unpackTeam(teams[players[0]] as String))!.members, battleMonName);
+      final b = await TurnBattleSetup.mons(BattleTeam.fromMap(OnlineBattles.unpackTeam(teams[players[1]] as String))!.members, battleMonName);
       if (a.isEmpty || b.isEmpty) throw StateError('Não foi possível preparar os times.');
-      final hit = TurnBattleSetup.hitter(await DamageData.load());
+      final data = await DamageData.load();
+      final hit = TurnBattleSetup.hitter(data);
       final battle = TurnBattle(a, b, League.seededRandom(seed));
-      final events = [...battle.start()];
-      for (final pair in pairs) { events.addAll(battle.playOnlineTurn(pair, hit)); }
-      final logs = <String>[];
-      for (final e in events.where((e) => e.t == 'text')) {
-        // Ajusta as falas à perspectiva de quem está vendo.
-        final args = [for (final v in e.args) v is (int, String) ? (v.$1 == players.indexOf(OnlineBattles.me) ? 0 : 1, v.$2) : v];
-        final (template, values) = TurnBattle.lineOf(BattleEvent.text(e.key, args));
-        var text = tr(template);
-        for (final (i, value) in values.indexed) { text = text.replaceAll('{$i}', value); }
-        logs.add(text);
+      battle.start();
+      final events = <BattleEvent>[];
+      List<int>? before;
+      for (final (i, pair) in pairs.indexed) {
+        final animate = previousRound != null && i >= previousRound;
+        if (animate && before == null) before = [battle.active(side).id, battle.active(1 - side).id];
+        final next = battle.playOnlineTurn(pair, hit);
+        if (animate) events.addAll(next.map((e) => BattleEvent.viewFor(e, side)));
       }
       if (!mounted || generation != _generation) return;
-      setState(() { _battle = battle; _round = pairs.length; _logs = logs.skip(logs.length > 10 ? logs.length - 10 : 0).toList(); _replaying = false; _errorText = null; _gimmick = ''; });
+      setState(() {
+        _battle = battle; _round = pairs.length; _hit = hit;
+        _typeEff = TurnBattleSetup.typeEffect(data); _events = events; _before = before;
+        _replaying = false; _errorText = null;
+      });
     } catch (e) {
       if (mounted && generation == _generation) setState(() { _errorText = _error(e); _replaying = false; });
     }
@@ -172,16 +178,6 @@ class _OnlineBattleRoomScreenState extends State<OnlineBattleRoomScreen> {
     finally { if (mounted) setState(() => _busy = false); }
   }
   void _send(Map<String, dynamic> action) => _run(() => OnlineBattles.submit(widget.id, _round, action));
-  Widget _mon(TurnBattle battle, int side) {
-    final p = battle.active(side);
-    return Card(child: Padding(padding: const EdgeInsets.all(12), child: Column(children: [
-      Text('${(_room!['names'] as Map)[_players[side]]}', style: const TextStyle(fontWeight: FontWeight.bold)),
-      SizedBox(height: 140, child: PokemonSprite(p.id, shiny: p.shiny, back: side == _side, battle: true)),
-      Text('${p.name} ${p.status.isEmpty ? '' : '(${p.status.toUpperCase()})'}'),
-      LinearProgressIndicator(value: p.hp.clamp(0, p.maxHp) / p.maxHp),
-      Text('${p.hp}/${p.maxHp} HP'),
-    ])));
-  }
   @override
   Widget build(BuildContext context) {
     final room = _room, battle = _battle;
@@ -206,45 +202,35 @@ class _OnlineBattleRoomScreenState extends State<OnlineBattleRoomScreen> {
             ],
             TextButton(onPressed: _busy ? null : () => _run(() => OnlineBattles.close(widget.id)), child: Text(_side == 0 ? 'Cancelar convite' : 'Recusar')),
           ],
-          if (room['status'] == 'closed') Text(room['endedBy'] == OnlineBattles.me ? 'Você encerrou a partida.' : 'Seu amigo encerrou a partida.'),
-          if (battle != null) ...[
-            Row(children: [Expanded(child: _mon(battle, 1 - _side)), Expanded(child: _mon(battle, _side))]),
+          if (room['status'] == 'closed' && battle == null) Text(room['endedBy'] == OnlineBattles.me ? 'Você encerrou a partida.' : 'Seu amigo encerrou a partida.'),
+          if (battle != null && _hit != null && _typeEff != null)
             Builder(builder: (context) {
               final mine = battle.active(_side);
               final ownAction = _actions!.any((a) => a['round'] == _round && a['uid'] == OnlineBattles.me);
               final expired = room['createdAt'] is Timestamp && DateTime.now().difference((room['createdAt'] as Timestamp).toDate()).inDays >= 7;
               final disabled = _busy || ownAction || _replaying || room['status'] != 'active' || expired || _round >= OnlineBattles.maxRounds || battle.winner != null;
               final replacing = [0, 1].any((s) => battle.active(s).hp <= 0);
-              return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                if (battle.winner != null) Text(battle.winner == _side ? 'Você venceu! 🎉' : 'Seu amigo venceu!', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold))
-                else if (expired) const Text('Esta partida expirou. Crie uma nova batalha.')
-                else if (_round >= OnlineBattles.maxRounds) const Text('Limite de turnos atingido. Partida encerrada.')
-                else Text(ownAction ? 'Você já enviou sua ação. Aguardando seu amigo…'
-                    : _replaying ? 'Atualizando batalha…' : replacing ? mine.hp <= 0 ? 'Escolha outro Pokémon.' : 'Seu amigo precisa trocar de Pokémon.' : 'Escolha sua ação para o turno ${battle.turn}'),
-                if (!replacing) ...[
-                  Wrap(spacing: 8, children: [
-                    if (mine.moves.every((m) => m.pp <= 0))
-                      FilledButton(onPressed: disabled ? null : () => _send({'kind': 'move', 'index': -1}), child: const Text('Struggle'))
-                    else for (final (i, m) in mine.moves.indexed)
-                      FilledButton(onPressed: disabled || m.pp <= 0 ? null : () => _send({'kind': 'move', 'index': i, if (_gimmick.isNotEmpty) 'gimmick': _gimmick}),
-                        child: Text('${m.name} · PP ${m.pp}/${m.maxPp}')),
-                  ]),
-                  DropdownButtonFormField<String>(
-                    key: ValueKey(_round), initialValue: _gimmick, decoration: const InputDecoration(labelText: 'Mecânica especial'),
-                    items: [const DropdownMenuItem(value: '', child: Text('Mecânica do time')),
-                      for (final g in TurnBattle.gimmickList.where((g) => battle.canGimmick(_side, g, 0))) DropdownMenuItem(value: g, child: Text(g))],
-                    onChanged: disabled ? null : (v) => setState(() => _gimmick = v ?? '')),
-                ],
-                if (replacing && mine.hp > 0) FilledButton(onPressed: disabled ? null : () => _send({'kind': 'wait', 'index': 0}), child: const Text('Aguardar troca do amigo')),
-                if (!replacing || mine.hp <= 0) Wrap(spacing: 8, children: [
-                  for (final (i, p) in battle.teams[_side].indexed)
-                    OutlinedButton(onPressed: disabled || p.hp <= 0 || i == battle.activeIndex[_side] ? null : () => _send({'kind': 'switch', 'index': i}), child: Text('Trocar: ${p.name} (${p.hp} HP)')),
-                ]),
-              ]);
+              final message = room['status'] == 'closed'
+                  ? room['endedBy'] == OnlineBattles.me ? 'Você encerrou a partida.' : 'Seu amigo encerrou a partida.'
+                  : battle.winner != null ? battle.winner == _side ? 'Você venceu! 🎉' : 'Seu amigo venceu!'
+                  : expired ? 'Esta partida expirou. Crie uma nova batalha.'
+                  : _round >= OnlineBattles.maxRounds ? 'Limite de turnos atingido. Partida encerrada.'
+                  : ownAction ? 'Você já enviou sua ação. Aguardando seu amigo…'
+                  : _replaying ? 'Atualizando batalha…'
+                  : replacing ? mine.hp <= 0 ? 'Escolha outro Pokémon.' : 'Seu amigo precisa trocar de Pokémon.'
+                  : 'Escolha sua ação para o turno ${battle.turn}';
+              return BattleView(
+                battle: battle.viewFor(_side), hit: _hit!, typeEff: _typeEff!,
+                foeName: '${(room['names'] as Map)[_players[1 - _side]]}',
+                onAgain: () {}, onExit: () => Navigator.pop(context),
+                online: OnlineBattleControl(
+                  round: _round, events: _events, before: _before,
+                  locked: disabled, message: message,
+                  waitForSwitch: replacing && mine.hp > 0,
+                  onAction: _send, onClose: () => _run(() => OnlineBattles.close(widget.id)),
+                ),
+              );
             }),
-            const SizedBox(height: 12),
-            for (final line in _logs) Text(line),
-          ],
           if (room['status'] == 'active') TextButton(onPressed: _busy ? null : () => _run(() => OnlineBattles.close(widget.id)), child: const Text('Desistir / encerrar partida')),
         ],
       ])),

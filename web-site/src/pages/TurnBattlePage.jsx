@@ -149,7 +149,7 @@ function HpBar({ hp, max }) {
 /** Selo do status, como no Showdown. */
 const STATUS_BADGE = { brn: '#EE8130', par: '#C9A400', psn: '#A33EA1', tox: '#7B2E7A', slp: '#78716C', frz: '#4FB3D9' }
 
-function InfoBox({ mon, hp, mine, status, dmax }) {
+function InfoBox({ mon, hp, mine, status, dmax, hpTestId }) {
   return (
     <div className="w-full rounded-xl rounded-br-3xl border-4 border-slate-700 bg-amber-50 px-3 py-1.5 text-slate-900 shadow-lg">
       <div className="flex items-baseline justify-between gap-2 font-black">
@@ -168,7 +168,7 @@ function InfoBox({ mon, hp, mine, status, dmax }) {
         <span className="shrink-0 text-sm">{`Nv.${mon.level}`}</span>
       </div>
       <HpBar hp={hp} max={mon.maxHp} />
-      {mine && <div className="text-right text-sm font-black tabular-nums">{`${hp}/${mon.maxHp}`}</div>}
+      {(mine || hpTestId) && <div data-testid={hpTestId} className="text-right text-sm font-black tabular-nums">{`${hp}/${mon.maxHp}`}</div>}
     </div>
   )
 }
@@ -430,23 +430,23 @@ function pulse(el, cls, ms) {
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 /** A batalha em si. */
-function Battle({ battle, foeName, hit, onExit, onAgain }) {
+export function Battle({ battle, foeName, hit, onExit, onAgain, online = null }) {
   const byId = usePokemonIndex()
   const [, redraw] = useState(0)
   // O que está na tela (anda atrás do motor enquanto os eventos passam).
   const [shown, setShown] = useState(() => ({
     active: [battle.sides[0].active, battle.sides[1].active],
     hp: battle.sides.map((s) => s.team.map((m) => m.hp)),
-    status: battle.sides.map((s) => s.team.map(() => '')),
-    fainted: [false, false],
+    status: battle.sides.map((s) => s.team.map((m) => m.status ?? '')),
+    fainted: battle.sides.map((s) => s.team[s.active].hp <= 0),
     // Forma na tela (Mega / Gigantamax) e se está dinamaxizado.
-    form: [null, null],
-    dmax: [false, false],
+    form: battle.sides.map((s) => s.team[s.active].id),
+    dmax: battle.sides.map((s) => s.team[s.active].dmax > 0),
     weather: battle.weather,
   }))
   const [text, setText] = useState(() => (foeName ? t('{0} quer batalhar!').replace('{0}', foeName) : t('Um treinador quer batalhar!')))
   const [busy, setBusy] = useState(false)
-  const [menu, setMenu] = useState('main') // main | fight | party | bag
+  const [menu, setMenu] = useState(() => battle.needSwitch ? 'party' : 'main') // main | fight | party | bag
   const [item, setItem] = useState(null) // item da Bolsa escolhido (falta escolher em quem)
   const [megaPick, setMegaPick] = useState(false) // botão da Mega: só Mega Evolui quando você apertar
   const skip = useRef(null)
@@ -457,6 +457,10 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
   const field = useRef(null)
   // A animação de cada golpe (estilo, símbolo e variação).
   const anims = useRef(null)
+  const live = useRef(true)
+  const queued = useRef(Promise.resolve())
+  const seenRound = useRef(online?.round)
+  useEffect(() => { live.current = true; return () => { live.current = false; skip.current?.() } }, [])
   useEffect(() => {
     getMoveAnims()
       .then((table) => (anims.current = table))
@@ -468,6 +472,7 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
     setBusy(true)
     if (before) setShown((s) => ({ ...s, form: s.form.map((f, i) => (s.dmax[i] ? f : before[i])) }))
     for (const e of events) {
+      if (!live.current) return
       if (e.t === 'attack') {
         // Cada golpe com a sua animação (moveAnim.js), nas cores do tipo.
         const [kind, icon, variant] = anims.current?.[e.slug] ?? [moveAnim(e.slug, e.type, e.category), null, 0]
@@ -481,8 +486,9 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
         pulse(sprites[e.side].current, CONTACT.has(kind) ? `battle-dash-${e.side}` : `battle-lunge-${e.side}`, 450)
         setEffect({ plan, color: typeColor(e.type), key: ++effectKey.current })
         if (plan.shake) pulse(field.current, 'battle-shake', 650)
-        if (plan.flash) setTimeout(() => setFlash((n) => n + 1), 250)
+        if (plan.flash) setTimeout(() => live.current && setFlash((n) => n + 1), 250)
         await wait(plan.duration + 80)
+        if (!live.current) return
         setEffect(null)
       } else if (e.t === 'status') {
         setShown((s) => ({ ...s, status: s.status.map((side, i) => (i === e.side ? side.map((x, j) => (j === s.active[i] ? e.status : x)) : side)) }))
@@ -535,6 +541,7 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
         await wait(600)
       }
     }
+    if (!live.current) return
     setBusy(false)
     setMenu(battle.needSwitch ? 'party' : 'main')
     redraw((n) => n + 1)
@@ -543,12 +550,22 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
   // Começo: as habilidades de clima de quem entrou (Drizzle, Drought...).
   const opening = useRef(null)
   useEffect(() => {
+    if (online) return
     const events = (opening.current ??= startBattle(battle))
     if (!events.length) return
     const id = setTimeout(() => play(events), STEP_MS)
     return () => clearTimeout(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [battle])
+
+  useEffect(() => {
+    if (!online || online.round === seenRound.current) return
+    seenRound.current = online.round
+    const events = online.events, before = online.before
+    setBusy(true)
+    queued.current = queued.current.then(() => live.current ? play(events, before) : undefined)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [online?.round])
 
   // Seu Pokémon desmaiou: a lista abre sozinha.
   useEffect(() => {
@@ -559,7 +576,7 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
   const foe = battle.sides[1].team[shown.active[1]]
   const current = active(battle, 0)
   const usable = usableMoves(current)
-  const waiting = !busy && battle.winner == null
+  const waiting = !busy && !online?.locked && battle.winner == null
 
   // Efetividade (como nos jogos): nos golpes, nas fraquezas do inimigo e na troca.
   const [typeData, setTypeData] = useState(null)
@@ -582,10 +599,12 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
   const fight = (i) => {
     const before = [active(battle, 0).id, active(battle, 1).id]
     const gimmick = canMega ? (megaOn ? 'mega' : 'none') : undefined
+    if (online) return online.onAction({ kind: 'move', index: i, ...(gimmick ? { gimmick } : {}) })
     play(playTurn(battle, { move: i, gimmick }, hit), before)
   }
   const maxed = current.dmax > 0 || (auto === 'dmax' && canGimmick(battle, 0, 'dmax'))
   const choose = (i) => {
+    if (online) return online.onAction({ kind: 'switch', index: i })
     if (item) {
       setItem(null)
       return play(playTurn(battle, { item, target: i }, hit))
@@ -593,7 +612,10 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
     return play(battle.needSwitch ? replace(battle, i) : playTurn(battle, { switch: i }, hit))
   }
   const run = () => {
-    if (window.confirm(t('Fugir da batalha? Conta como derrota.'))) play(forfeit(battle))
+    if (window.confirm(t('Fugir da batalha? Conta como derrota.'))) {
+      if (online) online.onClose()
+      else play(forfeit(battle))
+    }
   }
 
   return (
@@ -606,7 +628,7 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
       >
         <BattleBackground weather={shown.weather} />
         <div className="absolute top-[6%] left-[4%] w-[46%] max-w-[260px]">
-          <InfoBox mon={foe} hp={shown.hp[1][shown.active[1]]} status={shown.status[1][shown.active[1]]} dmax={shown.dmax[1]} />
+          <InfoBox mon={foe} hp={shown.hp[1][shown.active[1]]} status={shown.status[1][shown.active[1]]} dmax={shown.dmax[1]} hpTestId={online ? "online-hp-" + (1 - online.side) : undefined} />
         </div>
         {/* O inimigo fica mais longe: menor e com os pés na frente do meio da plataforma (pisando nela, como o seu). */}
         <div className="absolute right-[11%] bottom-[53%] w-[25%]">
@@ -619,7 +641,7 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
         {effect && <MoveFx key={effect.key} plan={effect.plan} color={effect.color} />}
         {flash > 0 && <div key={`flash-${flash}`} className="battle-flash pointer-events-none absolute inset-0 bg-white" />}
         <div className="absolute right-[4%] bottom-[8%] w-[46%] max-w-[260px]">
-          <InfoBox mon={me} hp={shown.hp[0][shown.active[0]]} status={shown.status[0][shown.active[0]]} dmax={shown.dmax[0]} mine />
+          <InfoBox mon={me} hp={shown.hp[0][shown.active[0]]} status={shown.status[0][shown.active[0]]} dmax={shown.dmax[0]} mine hpTestId={online ? "online-hp-" + online.side : undefined} />
         </div>
       </div>
 
@@ -631,12 +653,13 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
           className="min-h-20 flex-1 cursor-pointer rounded-xl border-4 border-amber-600 bg-white px-4 py-3 text-left text-lg font-bold text-slate-900"
           data-testid="battle-text"
         >
-          {text}
+          {!busy && online?.message ? t(online.message) : text}
         </button>
-        {waiting && menu === 'main' && !battle.needSwitch && (
+        {waiting && online?.waitForSwitch && <Button onClick={() => online.onAction({ kind: 'wait', index: 0 })}>Aguardar troca do amigo</Button>}
+        {waiting && !online?.waitForSwitch && menu === 'main' && !battle.needSwitch && (
           <div className="grid grid-cols-2 gap-1.5 rounded-xl border-4 border-slate-600 bg-white p-2 sm:w-72">
             <MenuButton onClick={() => (usable.length ? setMenu('fight') : fight(-1))}>LUTAR</MenuButton>
-            <MenuButton onClick={() => setMenu('bag')}>BOLSA</MenuButton>
+            <MenuButton disabled={Boolean(online)} onClick={() => setMenu('bag')}>BOLSA</MenuButton>
             <MenuButton onClick={() => (setItem(null), setMenu('party'))}>POKÉMON</MenuButton>
             <MenuButton onClick={run}>FUGIR</MenuButton>
           </div>
@@ -771,11 +794,11 @@ function Battle({ battle, foeName, hit, onExit, onAgain }) {
 
       {!busy && battle.winner != null && (
         <div className="mt-4 flex flex-wrap justify-center gap-3">
-          <Button color="linear-gradient(90deg,#DC2626,#9333EA)" onClick={onAgain}>
+          {!online && <Button color="linear-gradient(90deg,#DC2626,#9333EA)" onClick={onAgain}>
             Batalhar de novo
-          </Button>
+          </Button>}
           <Button color="#546E7A" onClick={onExit}>
-            Trocar os times
+            {online ? 'Sair' : 'Trocar os times'}
           </Button>
         </div>
       )}
@@ -825,9 +848,9 @@ function Weak({ mon, list, className = '' }) {
   )
 }
 
-function MenuButton({ children, onClick, className = '' }) {
+function MenuButton({ children, onClick, className = '', disabled = false }) {
   return (
-    <button type="button" onClick={onClick} className={`cursor-pointer rounded-lg px-2 py-2 text-left font-black whitespace-nowrap text-slate-900 hover:bg-amber-100 ${className}`}>
+    <button type="button" onClick={onClick} disabled={disabled} className={`disabled:cursor-default disabled:opacity-40 cursor-pointer rounded-lg px-2 py-2 text-left font-black whitespace-nowrap text-slate-900 hover:bg-amber-100 ${className}`}>
       {`▸ ${t(children)}`}
     </button>
   )

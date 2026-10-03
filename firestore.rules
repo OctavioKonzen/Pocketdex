@@ -236,7 +236,7 @@ service cloud.firestore {
             && d.index is int
             && (d.kind == 'move' ? d.index >= -1 && d.index <= 3
                 : d.kind == 'switch' ? d.index >= 0 && d.index <= 5 : d.index == 0)
-            && (!('gimmick' in d) || (d.kind == 'move' && d.gimmick in ['mega', 'z', 'dmax', 'tera']))
+            && (!('gimmick' in d) || (d.kind == 'move' && d.gimmick in ['none', 'mega', 'z', 'dmax', 'tera']))
             && d.at == request.time;
         }
         function previousComplete(d, r) {

@@ -1,17 +1,15 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Button, Empty, PageHeader } from '../components/ui'
-import Sprite from '../components/Sprite'
+import { Battle } from './TurnBattlePage'
 import { useAuth, errorMessage } from '../lib/auth'
 import { useFriends, friendsOnly } from '../lib/friends'
 import { useStore } from '../lib/store'
-import { usePokemonIndex } from '../lib/pokemonIndex'
-import { shinyPath } from '../lib/data'
 import { teamMembers } from '../lib/teamBattle'
 import { battleMons, battleHitter } from '../lib/battleSetup'
 import { seededRandom } from '../lib/league'
-import { active, newBattle, playOnlineTurn, startBattle, lineOf, usableMoves, canGimmick, GIMMICKS } from '../lib/turnBattle'
-import { inviteBattle, acceptBattle, closeBattle, watchBattles, watchBattle, watchActions, submitAction, pairedActions, unpackTeam, MAX_ROUNDS } from '../lib/onlineBattle'
+import { active, newBattle, playOnlineTurn, startBattle } from '../lib/turnBattle'
+import { inviteBattle, acceptBattle, closeBattle, watchBattles, watchBattle, watchActions, submitAction, pairedActions, unpackTeam, MAX_ROUNDS, battlePerspective, eventPerspective } from '../lib/onlineBattle'
 
 const CARD = 'rounded-2xl bg-card p-4 shadow'
 const SELECT = 'w-full rounded-xl bg-surface p-3'
@@ -88,14 +86,16 @@ function BattleRoom({ id, user }) {
   const [team, setTeam] = useState('')
   const [battle, setBattle] = useState(null)
   const [round, setRound] = useState(0)
-  const [logs, setLogs] = useState([])
+  const [hit, setHit] = useState(null)
+  const [playback, setPlayback] = useState({ events: [], before: null })
+  const replayedRound = useRef(null)
+  const navigate = useNavigate()
   const [busy, setBusy] = useState(false)
   const [replaying, setReplaying] = useState(true)
   const [error, setError] = useState('')
-  const [gimmick, setGimmick] = useState('')
   const pairs = useMemo(() => room && actions ? pairedActions(actions, room.players) : [], [room, actions])
   const side = room?.players.indexOf(user.uid) ?? 0
-  const byId = usePokemonIndex()
+  const viewBattle = battle && battlePerspective(battle, side)
   useEffect(() => {
     let live = true
     if (!room || !actions || room.status === 'pending' || !room.teams[room.players[1]]) return
@@ -106,14 +106,20 @@ function BattleRoom({ id, user }) {
       if (mons.some((t) => !t.length)) throw new Error('Não foi possível preparar os times.')
       const hit = await battleHitter()
       const b = newBattle(mons[0], mons[1], seededRandom(room.seed))
-      let events = startBattle(b)
-      for (const pair of pairs) events = [...events, ...playOnlineTurn(b, pair, hit)]
-      const text = events.filter((e) => e.t === 'text').map((e) => {
-        const args = e.args.map((v) => v && typeof v === 'object' && 'side' in v ? { ...v, side: v.side === side ? 0 : 1 } : v)
-        const [line, values] = lineOf({ ...e, args })
-        return values.reduce((s, value, i) => s.replace('{' + i + '}', value), line)
-      })
-      if (live) { setBattle(b); setRound(pairs.length); setLogs(text.slice(-10)); setError(''); setReplaying(false) }
+      startBattle(b)
+      const freshEvents = []
+      let before = null
+      for (const [i, pair] of pairs.entries()) {
+        const animate = replayedRound.current != null && i >= replayedRound.current
+        if (animate && !before) before = [active(b, side).id, active(b, 1 - side).id]
+        const events = playOnlineTurn(b, pair, hit)
+        if (animate) freshEvents.push(...events.map((e) => eventPerspective(e, side)))
+      }
+      if (live) {
+        replayedRound.current = pairs.length
+        setBattle(b); setRound(pairs.length); setHit(() => hit)
+        setPlayback({ events: freshEvents, before }); setError(''); setReplaying(false)
+      }
     }
     replay().catch((e) => { if (live) { setError(errorMessage(e)); setReplaying(false) } })
     return () => { live = false }
@@ -130,7 +136,11 @@ function BattleRoom({ id, user }) {
   const send = (action) => run(() => submitAction(id, round, action))
   const disabled = busy || ownAction || replaying || closed || expired || round >= MAX_ROUNDS || battle?.winner != null
   const replacing = battle && [0, 1].some((s) => active(battle, s).hp <= 0)
-  const mon = battle && active(battle, side)
+  const message = closed ? room.endedBy === user.uid ? 'Você encerrou a partida.' : 'Seu amigo encerrou a partida.' :
+    battle?.winner != null ? battle.winner === side ? 'Você venceu! 🎉' : 'Seu amigo venceu!' :
+    expired ? 'Esta partida expirou. Crie uma nova batalha.' : round >= MAX_ROUNDS ? 'Limite de turnos atingido. Partida encerrada.' :
+    ownAction ? 'Você já enviou sua ação. Aguardando seu amigo…' : replaying ? 'Atualizando batalha…' :
+    replacing ? active(battle, side).hp <= 0 ? 'Escolha o próximo Pokémon.' : 'Seu amigo precisa trocar de Pokémon.' : 'Escolha sua ação.'
   return <div className="mx-auto max-w-3xl space-y-4">
     <PageHeader title={'Batalha com ' + room.names[room.players[other]]} subtitle="Escolham uma ação. O turno acontece quando os dois enviarem." />
     <Link to="/amigos/online">← Convites e partidas</Link>
@@ -143,33 +153,14 @@ function BattleRoom({ id, user }) {
       </>}
       <Button disabled={busy} onClick={() => run(() => closeBattle(id))}>{side === 0 ? 'Cancelar convite' : 'Recusar'}</Button>
     </section>}
-    {closed && <p className={CARD}>{room.endedBy === user.uid ? 'Você encerrou a partida.' : 'Seu amigo encerrou a partida.'}</p>}
-    {room.status !== 'pending' && battle && <>
-      <div className="grid grid-cols-2 gap-3">{[other, side].map((s) => {
-        const p = active(battle, s), row = byId?.get(p.id)
-        return <section key={s} className={CARD + ' text-center'}>
-          <p className="font-bold">{room.names[room.players[s]]}</p>
-          {row && <Sprite path={p.shiny ? shinyPath(row.sprite) : row.sprite} box={row.box} back={s === side} battle className="mx-auto h-40 w-40 max-w-full" />}
-          <p>{p.name} {p.status && '(' + p.status.toUpperCase() + ')'}</p>
-          <progress className="w-full" value={p.hp} max={p.maxHp} aria-label={'HP de ' + p.name} />
-          <p data-testid={"online-hp-" + s}>{p.hp}/{p.maxHp} HP</p>
-        </section>
-      })}</div>
-      <section className={CARD + ' space-y-3'}>
-        {battle.winner != null ? <p className="text-xl font-bold">{battle.winner === side ? 'Você venceu! 🎉' : 'Seu amigo venceu!'}</p> :
-          round >= MAX_ROUNDS ? <p>Limite de turnos atingido. Partida encerrada.</p> :
-          ownAction ? <p>Você já enviou sua ação. Aguardando seu amigo…</p> : <p>{replaying ? 'Atualizando batalha…' : replacing ? mon.hp <= 0 ? 'Escolha outro Pokémon.' : 'Seu amigo precisa trocar de Pokémon.' : 'Escolha sua ação para o turno ' + battle.turn}</p>}
-        {!replacing && mon && <><div className="flex flex-wrap gap-2">
-          {usableMoves(mon).length ? mon.moves.map((m, i) => <Button key={i} disabled={disabled || m.pp <= 0} onClick={() => send({ kind: 'move', index: i, ...(gimmick ? { gimmick } : {}) })}>{m.name} · PP {m.pp}/{m.maxPp}</Button>) :
-            <Button disabled={disabled} onClick={() => send({ kind: 'move', index: -1 })}>Struggle</Button>}
-        </div><select aria-label="Mecânica especial" className={SELECT} value={gimmick} onChange={(e) => setGimmick(e.target.value)} disabled={disabled}>
-          <option value="">Mecânica do time</option>{GIMMICKS.filter((g) => canGimmick(battle, side, g, 0)).map((g) => <option key={g} value={g}>{g}</option>)}
-        </select></>}
-        {replacing && mon.hp > 0 && <Button disabled={disabled} onClick={() => send({ kind: 'wait', index: 0 })}>Aguardar troca do amigo</Button>}
-        {(!replacing || mon.hp <= 0) && <div className="flex flex-wrap gap-2">{battle.sides[side].team.map((p, i) => <Button key={i} disabled={disabled || p.hp <= 0 || i === battle.sides[side].active} onClick={() => send({ kind: 'switch', index: i })}>Trocar: {p.name} ({p.hp} HP)</Button>)}</div>}
-      </section>
-      <section className={CARD} aria-live="polite">{logs.map((text, i) => <p key={i} className="text-sm">{text}</p>)}</section>
-    </>}
+    {closed && !battle && <p className={CARD}>{room.endedBy === user.uid ? 'Você encerrou a partida.' : 'Seu amigo encerrou a partida.'}</p>}
+    {room.status !== 'pending' && viewBattle && hit && <Battle
+      battle={viewBattle} hit={hit} foeName={room.names[room.players[other]]}
+      onExit={() => navigate('/amigos/online')}
+      online={{ side, round, ...playback, locked: disabled, message,
+        waitForSwitch: replacing && active(battle, side).hp > 0,
+        onAction: send, onClose: () => run(() => closeBattle(id)) }}
+    />}
     {room.status === 'active' && <Button disabled={busy} onClick={() => run(() => closeBattle(id))}>Desistir / encerrar partida</Button>}
   </div>
 }

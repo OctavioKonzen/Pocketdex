@@ -11,6 +11,18 @@ HitResult hit(BattleMon att, BattleMon def, String slug, bool crit, [int? power,
     (rolls: [[att.moves.firstWhere((m) => m.slug == slug).power]], eff: 1.0);
 Map<String, dynamic> attack(int index) => {'kind': 'move', 'index': index};
 void main() {
+  test('perspectiva preserva HP e status sem restaurar a partida', () {
+    final b = battle();
+    b.active(1).hp = 42; b.active(1).status = 'brn';
+    b.weather = 'rain'; b.winner = 1;
+    final view = b.viewFor(1);
+    expect(view.active(0).hp, 42); expect(view.active(0).status, 'brn');
+    expect(view.weather, 'rain'); expect(view.winner, 0);
+    expect(b.active(0).id, 1); expect(b.winner, 1);
+    final event = BattleEvent.text('move', [(1, 'Mon')]);
+    expect(BattleEvent.viewFor(event, 1).args, [(0, 'Mon')]);
+    expect(event.args, [(1, 'Mon')]);
+  });
   test('usa a escolha do segundo jogador sem CPU, igual ao site', () {
     final b = battle();
     b.playOnlineTurn([attack(0), attack(1)], hit);

@@ -76,3 +76,17 @@ export function pairedActions(actions, players) {
   }
   return pairs
 }
+
+// A tela existente usa sempre o lado 0 para quem está jogando.
+// A ordem original da sala continua sendo usada para calcular os turnos.
+export function battlePerspective(battle, side) {
+  const order = [side, 1 - side]
+  return { ...battle, sides: order.map((s) => battle.sides[s]),
+    bags: order.map((s) => battle.bags[s]), gimmicks: order.map((s) => battle.gimmicks[s]),
+    winner: battle.winner == null ? null : battle.winner === side ? 0 : 1,
+    needSwitch: battle.winner == null && battle.sides[side].team[battle.sides[side].active].hp <= 0 }
+}
+export function eventPerspective(event, side) {
+  return { ...event, ...(event.side == null ? {} : { side: event.side < 0 ? event.side : event.side === side ? 0 : 1 }),
+    ...(event.args ? { args: event.args.map((v) => v && typeof v === 'object' && 'side' in v ? { ...v, side: v.side === side ? 0 : 1 } : v) } : {}) }
+}
