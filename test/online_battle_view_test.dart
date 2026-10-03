@@ -29,7 +29,7 @@ void main() {
       ChangeNotifierProvider.value(value: AppSettings.instance,
         child: MaterialApp(home: Scaffold(body: SingleChildScrollView(child: BattleView(
           battle: canonical.viewFor(1), foeName: 'Amigo',
-          hit: (_, __, ___, ____, [int? power, String weather = '']) => throw StateError('Online não chama a CPU'),
+          hit: (_, __, ___, ____, [int? power, String weather = '']) => (rolls: [[25]], eff: 1.0),
           typeEff: (_, __) => 1, onAgain: () {}, onExit: () {},
           online: OnlineBattleControl(round: round, events: events, locked: locked,
             message: locked ? 'Aguardando amigo' : 'Escolha sua ação', waitForSwitch: false,
