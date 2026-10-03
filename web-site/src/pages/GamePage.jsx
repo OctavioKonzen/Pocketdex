@@ -701,6 +701,7 @@ export default function GamePage() {
             return (
               <m.button
                 key={id}
+                data-testid="quiz-option"
                 type="button"
                 disabled={revealed}
                 onClick={() => answer(id)}
@@ -807,7 +808,8 @@ function ChallengeEnd({ result, onClose, onRematch, copied, setCopied }) {
 function SendToFriends({ code, score, targetUid }) {
   const user = useAuth((s) => (s.status === 'signedIn' ? s.user : null))
   const avatar = useStore((s) => s.avatar)
-  const friends = useFriends((s) => friendsOnly(s.list)).filter((f) => !targetUid || f.uid === targetUid)
+  const friendList = useFriends((s) => s.list)
+  const friends = friendsOnly(friendList).filter((f) => !targetUid || f.uid === targetUid)
   const [sent, setSent] = useState({})
   if (!user || !friends.length) return null
   const send = (f) => {

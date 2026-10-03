@@ -290,6 +290,25 @@ try {
   await expectHealthy()
   await go('amigos/batalha')
 
+  step = 'amigos: desafio de quiz para o amigo escolhido'
+  await go('amigos')
+  await page.getByRole('link', { name: 'Quiz', exact: true }).click()
+  await page.getByRole('button', { name: '🤝 Desafiar ' + friend.name + ' no quiz', exact: true }).click()
+  for (let round = 0; round < 10; round++) {
+    await page.waitForFunction(() => document.querySelector('[data-testid="quiz-option"]:not([disabled])'), null, { timeout: 15000 })
+    await page.getByTestId('quiz-option').first().click()
+    await page.waitForFunction(() => !document.querySelector('[data-testid="quiz-option"]:not([disabled])'), null, { timeout: 10000 })
+  }
+  await page.getByRole('dialog').getByText('Fim do desafio!', { exact: true }).waitFor({ timeout: 15000 })
+  await page.getByRole('dialog').getByRole('button', { name: 'Enviar', exact: true }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Enviado ✓', exact: true }).waitFor({ timeout: 15000 })
+  await page2.goto(SITE + '#/amigos')
+  await page2.getByText('🤝 ' + user.name + ' te desafiou!', { exact: true }).waitFor({ timeout: 15000 })
+  await page2.getByRole('button', { name: 'Jogar', exact: true }).click()
+  await page2.waitForURL(/#\/jogo\?desafio=.+&amigo=/, { timeout: 15000 })
+  await expectHealthy()
+  await go('amigos/batalha')
+
   step = 'amigos: batalha de times'
   await page.locator('select').nth(0).selectOption({ label: 'Areia' })
   await page.locator('select').nth(1).selectOption({ label: friend.name })
