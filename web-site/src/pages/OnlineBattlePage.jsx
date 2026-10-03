@@ -44,7 +44,8 @@ export default function OnlineBattlePage() {
 function Lobby({ user }) {
   const navigate = useNavigate()
   const [params] = useSearchParams()
-  const friends = useFriends((s) => friendsOnly(s.list))
+  const friendList = useFriends((s) => s.list)
+  const friends = friendsOnly(friendList)
   const teams = useStore((s) => s.teams)
   const [friend, setFriend] = useState(params.get('amigo') ?? '')
   const [team, setTeam] = useState('')
