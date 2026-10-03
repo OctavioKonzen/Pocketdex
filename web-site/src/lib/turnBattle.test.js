@@ -303,7 +303,7 @@ it('respeita a mecânica do set e bloqueia outro uso após trocar de Pokémon', 
   expect(canGimmick(battle, 0, 'dmax')).toBe(false)
   playTurn(battle, { move: 0, gimmick: 'tera' }, fakeHit)
   expect(battle.gimmicks[0]).toBe('tera')
-  playTurn(battle, { switchTo: 1 }, fakeHit)
+  playTurn(battle, { switch: 1 }, fakeHit)
   expect(active(battle, 0).id).toBe(9)
   expect(canGimmick(battle, 0, 'tera')).toBe(false)
 })
