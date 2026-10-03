@@ -287,7 +287,8 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
   bool _busy = false;
   String _menu = 'main'; // main | fight | party | bag
   String? _item; // item da Bolsa escolhido (falta escolher em quem)
-  bool _megaPick = false; // botão da Mega: só Mega Evolui quando você apertar
+  String? _gimmickPick;
+  int? _gimmickMon;
   late final _shake = AnimationController(vsync: this, duration: const Duration(milliseconds: 650));
   int _flash = 0;
   Completer<void>? _skip;
@@ -446,21 +447,34 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
     });
   }
 
-  /// Mega Evolução: botão no menu de golpes, como nos jogos (com a Mega Pedra);
-  /// nunca sozinha. Depois dura a batalha inteira, mesmo trocando de Pokémon.
-  bool get _canMega => _b.canGimmick(0, 'mega');
-  bool get _megaOn => _canMega && _megaPick;
+  List<(String, String)> get _gimmickOptions {
+    final mon = _b.active(0);
+    return [
+      ('mega', 'Mega Evolução'),
+      ('tera', 'Tera'),
+      ('dmax', mon.gmax != null ? 'Gigantamax' : 'Dynamax'),
+      ('z', 'Movimento Z'),
+    ].where((option) => option.$1 == 'z'
+        ? mon.moves.indexed.any((move) => _b.canGimmick(0, 'z', move.$1))
+        : _b.canGimmick(0, option.$1)).toList();
+  }
+
+  String get _selectedGimmick => _gimmickMon == _b.active(0).id &&
+      _gimmickOptions.any((option) => option.$1 == _gimmickPick)
+      ? _gimmickPick! : 'none';
 
   void _fight(int i) {
     final before = [_b.active(0).id, _b.active(1).id];
-    final gimmick = _canMega ? (_megaOn ? 'mega' : 'none') : null;
+    final gimmick = _selectedGimmick;
+    setState(() { _gimmickPick = null; _gimmickMon = null; });
     if (widget.online != null) {
-      widget.online!.onAction({'kind': 'move', 'index': i, if (gimmick != null) 'gimmick': gimmick});
+      widget.online!.onAction({'kind': 'move', 'index': i, 'gimmick': gimmick});
       return;
     }
     _play(_b.playTurn(widget.hit, move: i, gimmick: gimmick), before);
   }
   void _choose(int i) {
+    setState(() { _gimmickPick = null; _gimmickMon = null; });
     if (widget.online != null) { widget.online!.onAction({'kind': 'switch', 'index': i}); return; }
     final item = _item;
     if (item != null) {
@@ -499,8 +513,8 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
     final foeWeak = TurnBattle.weaknesses(rival.types, allTypes, widget.typeEff);
     // A mecânica do set (montador) ativa sozinha no primeiro ataque, como nos
     // jogos: o menu já mostra os Z-Moves / Max Moves que vão sair.
-    final auto = current.gimmick.isNotEmpty && _b.gimmicks[0] == null ? current.gimmick : null;
-    final maxed = current.dmax > 0 || (auto == 'dmax' && _b.canGimmick(0, 'dmax'));
+    final selected = _selectedGimmick;
+    final maxed = current.dmax > 0 || (selected == 'dmax' && _b.canGimmick(0, 'dmax'));
     const border = Color(0xFF1E293B);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -614,7 +628,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
               if (waiting && _menu == 'fight') ...[
                 const SizedBox(height: 8),
                 _Weak(rival, foeWeak, dark: true),
-                if (_canMega)
+                for (final option in _gimmickOptions)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 6),
                     child: Material(
@@ -622,20 +636,23 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                       clipBehavior: Clip.antiAlias,
                       child: Ink(
                         decoration: BoxDecoration(
-                          gradient: _megaOn ? const LinearGradient(colors: [Color(0xFFD946EF), Color(0xFFFBBF24), Color(0xFF0EA5E9)]) : null,
-                          color: _megaOn ? null : const Color(0xFFF1F5F9),
-                          border: Border.all(color: _megaOn ? const Color(0xFFC026D3) : const Color(0xFFCBD5E1), width: 2),
+                          gradient: selected == option.$1 ? const LinearGradient(colors: [Color(0xFFD946EF), Color(0xFFFBBF24), Color(0xFF0EA5E9)]) : null,
+                          color: selected == option.$1 ? null : const Color(0xFFF1F5F9),
+                          border: Border.all(color: selected == option.$1 ? const Color(0xFFC026D3) : const Color(0xFFCBD5E1), width: 2),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: InkWell(
-                          key: const ValueKey('mega'),
-                          onTap: () => setState(() => _megaPick = !_megaOn),
+                          key: ValueKey(option.$1),
+                          onTap: () => setState(() {
+                            _gimmickPick = selected == option.$1 ? null : option.$1;
+                            _gimmickMon = current.id;
+                          }),
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 6),
                             child: Text(
-                              '🧬 ${tr('Mega Evolução').toUpperCase()}${_megaOn ? ' ✓' : ''}',
+                              '${tr(option.$2).toUpperCase()}${option.$1 == 'tera' ? ' ${current.teraType}' : ''}${selected == option.$1 ? ' ✓' : ''}',
                               textAlign: TextAlign.center,
-                              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: _megaOn ? Colors.white : const Color(0xFF64748B)),
+                              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: selected == option.$1 ? Colors.white : const Color(0xFF64748B)),
                             ),
                           ),
                         ),
@@ -670,7 +687,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                                 m.Text(
                                     mv.category == 'status'
                                         ? mv.name
-                                        : auto == 'z' && _b.canGimmick(0, 'z', i)
+                                        : selected == 'z' && _b.canGimmick(0, 'z', i)
                                             ? TurnBattle.zMoves[mv.type]!
                                             : maxed
                                                 ? TurnBattle.maxMoves[mv.type]!
@@ -680,8 +697,8 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13)),
                                 Row(children: [
                                   m.Text(
-                                      mv.category != 'status' && ((auto == 'z' && _b.canGimmick(0, 'z', i)) || maxed)
-                                          ? '${tr('Poder')} ${auto == 'z' && !maxed ? TurnBattle.zPower(mv.power) : TurnBattle.maxPower(mv.power, mv.type)}'
+                                      mv.category != 'status' && ((selected == 'z' && _b.canGimmick(0, 'z', i)) || maxed)
+                                          ? '${tr('Poder')} ${selected == 'z' && !maxed ? TurnBattle.zPower(mv.power) : TurnBattle.maxPower(mv.power, mv.type)}'
                                           : 'PP ${mv.pp}/${mv.maxPp}',
                                       style: const TextStyle(color: Colors.white70, fontSize: 11)),
                                   const Spacer(),
