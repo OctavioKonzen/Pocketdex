@@ -160,6 +160,11 @@ class BattleEvent {
   final List<Object> args;
   final int side, value, index;
   final String type, category, slug;
+  BattleEvent.viewFor(BattleEvent event, int viewer)
+      : t = event.t, key = event.key,
+        side = event.side < 0 ? event.side : event.side == viewer ? 0 : 1,
+        value = event.value, index = event.index, type = event.type, category = event.category, slug = event.slug,
+        args = [for (final v in event.args) v is (int, String) ? (v.$1 == viewer ? 0 : 1, v.$2) : v];
   const BattleEvent.text(this.key, this.args)
       : t = 'text',
         side = -1,
@@ -344,6 +349,24 @@ class TurnBattle {
         ..flinch = false
         ..boosts = {for (final s in battleStats) s: 0};
     }
+  }
+
+  // Visão da partida sem restaurar HP, formas ou status.
+  TurnBattle._view(this.teams, this.random);
+  TurnBattle viewFor(int side) {
+    final order = [side, 1 - side];
+    final view = TurnBattle._view([for (final s in order) teams[s]], random);
+    for (var i = 0; i < 2; i++) {
+      view.activeIndex[i] = activeIndex[order[i]];
+      view.bags[i] = bags[order[i]];
+      view.gimmicks[i] = gimmicks[order[i]];
+    }
+    view.turn = turn;
+    view.weather = weather;
+    view.weatherTurns = weatherTurns;
+    view.winner = winner == null ? null : winner == side ? 0 : 1;
+    view.needSwitch = winner == null && active(side).hp <= 0;
+    return view;
   }
 
   final List<List<BattleMon>> teams;

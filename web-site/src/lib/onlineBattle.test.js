@@ -1,11 +1,25 @@
 import { describe, expect, it } from 'vitest'
 import { active, newBattle, playOnlineTurn } from './turnBattle'
-import { pairedActions, packTeam, unpackTeam } from './onlineBattle'
+import { pairedActions, packTeam, unpackTeam, battlePerspective, eventPerspective } from './onlineBattle'
 const move = (slug, power) => ({ slug, name: slug, type: 'normal', category: 'physical', power, accuracy: 100, pp: 10, maxPp: 10, priority: 0 })
 const mon = (id, spe = 80) => ({ id, name: 'Mon ' + id, level: 50, hp: 100, maxHp: 100, spe, types: ['normal'], moves: [move('strong', 25), move('weak', 5)] })
 const battle = () => newBattle([mon(1), mon(2)], [mon(3, 60), mon(4, 60)], () => 0.9)
 const hit = (att, def, slug) => ({ rolls: [[att.moves.find((m) => m.slug === slug).power]], eff: 1 })
 const attack = (index) => ({ kind: 'move', index })
+describe('perspectiva da tela compartilhada', () => {
+  it('inverte os lados sem restaurar HP, status ou alterar a partida', () => {
+    const b = battle(); active(b, 1).hp = 42; active(b, 1).status = 'brn'
+    b.weather = 'rain'; b.winner = 1
+    const view = battlePerspective(b, 1)
+    expect(active(view, 0).hp).toBe(42)
+    expect(active(view, 0).status).toBe('brn')
+    expect(view.weather).toBe('rain'); expect(view.winner).toBe(0)
+    expect(active(b, 0).id).toBe(1); expect(b.winner).toBe(1)
+    const event = { t: 'text', side: 1, args: [{ side: 1, name: 'Mon' }] }
+    expect(eventPerspective(event, 1)).toEqual({ t: 'text', side: 0, args: [{ side: 0, name: 'Mon' }] })
+    expect(event.side).toBe(1)
+  })
+})
 describe('batalha entre dois jogadores', () => {
   it('usa o golpe escolhido pelo segundo jogador, sem CPU', () => {
     const b = battle()
