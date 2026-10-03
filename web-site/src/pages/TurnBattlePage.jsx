@@ -448,7 +448,7 @@ export function Battle({ battle, foeName, hit, onExit, onAgain, online = null })
   const [busy, setBusy] = useState(false)
   const [menu, setMenu] = useState(() => battle.needSwitch ? 'party' : 'main') // main | fight | party | bag
   const [item, setItem] = useState(null) // item da Bolsa escolhido (falta escolher em quem)
-  const [megaPick, setMegaPick] = useState(false) // botão da Mega: só Mega Evolui quando você apertar
+  const [gimmickPick, setGimmickPick] = useState(null)
   const skip = useRef(null)
   const sprites = [useRef(null), useRef(null)]
   const [effect, setEffect] = useState(null) // {plan, color} da animação do golpe
@@ -589,21 +589,26 @@ export function Battle({ battle, foeName, hit, onExit, onAgain, online = null })
   const rival = active(battle, 1)
   const foeWeak = typeData ? weaknesses(rival.types, ALL_TYPES, typeEff) : []
 
-  // A mecânica do set (montador) ativa sozinha no primeiro ataque, como nos
-  // jogos: o menu já mostra os Z-Moves / Max Moves que vão sair.
-  const auto = current.gimmick && !battle.gimmicks[0] ? current.gimmick : null
-  // Mega Evolução: botão no menu de golpes, como nos jogos (com a Mega Pedra);
-  // nunca sozinha. Depois dura a batalha inteira, mesmo trocando de Pokémon.
-  const canMega = canGimmick(battle, 0, 'mega')
-  const megaOn = canMega && megaPick
+  const options = [
+    ['mega', 'Mega Evolução'],
+    ['tera', 'Tera'],
+    ['dmax', current.gmax ? 'Gigantamax' : 'Dynamax'],
+    ['z', 'Movimento Z'],
+  ].filter(([kind]) => kind === 'z'
+    ? current.moves.some((_, i) => canGimmick(battle, 0, kind, i))
+    : canGimmick(battle, 0, kind))
+  const selected = gimmickPick?.id === current.id && options.some(([kind]) => kind === gimmickPick.kind)
+    ? gimmickPick.kind : 'none'
   const fight = (i) => {
     const before = [active(battle, 0).id, active(battle, 1).id]
-    const gimmick = canMega ? (megaOn ? 'mega' : 'none') : undefined
-    if (online) return online.onAction({ kind: 'move', index: i, ...(gimmick ? { gimmick } : {}) })
+    const gimmick = selected
+    setGimmickPick(null)
+    if (online) return online.onAction({ kind: 'move', index: i, gimmick })
     play(playTurn(battle, { move: i, gimmick }, hit), before)
   }
-  const maxed = current.dmax > 0 || (auto === 'dmax' && canGimmick(battle, 0, 'dmax'))
+  const maxed = current.dmax > 0 || selected === 'dmax'
   const choose = (i) => {
+    setGimmickPick(null)
     if (online) return online.onAction({ kind: 'switch', index: i })
     if (item) {
       setItem(null)
@@ -667,20 +672,21 @@ export function Battle({ battle, foeName, hit, onExit, onAgain, online = null })
         {waiting && menu === 'fight' && (
           <div className="grid grid-cols-2 gap-1.5 rounded-xl border-4 border-slate-600 bg-white p-2 sm:w-96" data-testid="moves">
             <Weak mon={rival} list={foeWeak} />
-            {canMega && (
+            {options.map(([kind, label]) => (
               <button
+                key={kind}
                 type="button"
-                onClick={() => setMegaPick(!megaOn)}
-                aria-pressed={megaOn}
-                className={`col-span-2 cursor-pointer rounded-lg border-2 px-2 py-1 text-sm font-black uppercase ${megaOn ? 'border-fuchsia-600 bg-gradient-to-r from-fuchsia-500 via-amber-400 to-sky-500 text-white' : 'border-slate-300 bg-slate-100 text-slate-500'}`}
-                data-testid="mega"
+                onClick={() => setGimmickPick(selected === kind ? null : { id: current.id, kind })}
+                aria-pressed={selected === kind}
+                className={`cursor-pointer rounded-lg border-2 px-2 py-1 text-sm font-black uppercase ${selected === kind ? 'border-fuchsia-600 bg-gradient-to-r from-fuchsia-500 via-amber-400 to-sky-500 text-white' : 'border-slate-300 bg-slate-100 text-slate-500'}`}
+                data-testid={kind}
               >
-                {`🧬 ${t('Mega Evolução')} ${megaOn ? '✓' : ''}`}
+                {`${t(label)} ${kind === 'tera' ? current.teraType : ''} ${selected === kind ? '✓' : ''}`}
               </button>
-            )}
+            ))}
             {current.moves.map((m, i) => {
               const eff = moveEffect(hit, current, rival, m)
-              const z = auto === 'z' && canGimmick(battle, 0, 'z', i)
+              const z = selected === 'z' && canGimmick(battle, 0, 'z', i)
               const max = maxed && m.category !== 'status'
               return (
                 <button
