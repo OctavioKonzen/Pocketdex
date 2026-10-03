@@ -236,6 +236,28 @@ void main() {
         ['flamethrower', 'air-slash', 'dragon-claw', 'scratch']);
   });
 
+  test('limite 50 recalcula HP, atributos, Mega e dano sem mudar o time', () async {
+    final set = <String, dynamic>{'level': 100, 'nature': 'Timid', 'item': 'charizardite-y',
+      'moves': ['flamethrower'], 'evs': {'hp': 4, 'spa': 252, 'spe': 252}, 'ivs': {'atk': 0}};
+    final mons = await TurnBattleSetup.mons([
+      (6, set), (6, {...set, 'level': 50}), (6, {...set, 'level': 10}),
+      (3, {'level': 100, 'moves': ['tackle']}),
+    ], (row) => '${row['name']}');
+    final capped = mons[0], reference = mons[1], lower = mons[2], foe = mons[3];
+    expect(capped.level, 50); expect(capped.calc!.level, 50);
+    expect(capped.maxHp, 154); expect(capped.spe, 167);
+    expect(capped.calc!.ivs['atk'], 0); expect(capped.calc!.evs['spa'], 252);
+    expect(capped.mega!.calc!.level, 50); expect(capped.mega!.spe, 167); expect(capped.mega!.calc!.stats['spa'], 211);
+    expect(capped.mega!.calc!.stats, reference.mega!.calc!.stats);
+    final hit = TurnBattleSetup.hitter(await DamageData.load());
+    final actual = hit(capped, foe, 'flamethrower', false)!, expected = hit(reference, foe, 'flamethrower', false)!;
+    expect(actual.rolls, expected.rolls); expect(actual.eff, expected.eff);
+    expect([actual.rolls.first.reduce(min), actual.rolls.first.reduce(max)], [138, 164]);
+    expect(foe.level, 50);
+    expect(lower.level, 10); expect(lower.maxHp, 38); expect(lower.spe, 37);
+    expect(set['level'], 100);
+  });
+
   test('monta os Pokémon com a calculadora (igual ao site)', () async {
     final set = {
       'level': 50,

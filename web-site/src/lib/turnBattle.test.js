@@ -197,6 +197,28 @@ describe('batalha por turnos', () => {
     expect(pickMoves(['roost', 'flamethrower'], Object.keys(moves), ['fire', 'flying'], moves)).toEqual(['flamethrower', 'air-slash', 'dragon-claw', 'scratch'])
   })
 
+  it('limita a 50 antes de calcular HP, atributos, Mega e dano, sem mudar o time', async () => {
+    const { battleHit } = await import('./damageCalc')
+    const set = { level: 100, nature: 'Timid', item: 'charizardite-y', moves: ['flamethrower'], evs: { hp: 4, spa: 252, spe: 252 }, ivs: { atk: 0 } }
+    const [capped, reference, lower, foe] = await battleMons([
+      { id: 6, set }, { id: 6, set: { ...set, level: 50 } },
+      { id: 6, set: { ...set, level: 10 } }, { id: 3, set: { level: 100, moves: ['tackle'] } },
+    ])
+    expect(capped.level).toBe(50); expect(capped.side.level).toBe(50)
+    expect(capped.maxHp).toBe(154); expect(capped.spe).toBe(167)
+    expect(capped.side.ivs.atk).toBe(0); expect(capped.side.evs.spa).toBe(252)
+    expect(capped.mega.side.level).toBe(50)
+    expect(capped.mega.spe).toBe(167)
+    expect(capped.mega).toEqual(reference.mega)
+    const actual = battleHit(capped, foe, 'flamethrower', false)
+    expect(actual).not.toBeNull()
+    expect(actual).toEqual(battleHit(reference, foe, 'flamethrower', false))
+    expect([Math.min(...actual.rolls[0]), Math.max(...actual.rolls[0])]).toEqual([138, 164])
+    expect(foe.level).toBe(50)
+    expect(lower.level).toBe(10); expect(lower.maxHp).toBe(38); expect(lower.spe).toBe(37)
+    expect(set.level).toBe(100)
+  }, 30000)
+
   it('monta os Pokémon com a calculadora', async () => {
     const [charizard] = await battleMons([{ id: 6, set: { level: 50, nature: 'Timid', moves: ['flamethrower', 'roost'], evs: { hp: 4, spa: 252, spe: 252 } } }])
     expect(charizard.maxHp).toBe(154)

@@ -4,7 +4,7 @@
   <img src="https://img.shields.io/badge/Flutter-3.x-blue?logo=flutter&style=for-the-badge" />
   <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&style=for-the-badge" />
   <img src="https://img.shields.io/badge/Firebase-FFCA28?logo=firebase&style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Android-5.10.1-green?logo=android&style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Android-5.10.2-green?logo=android&style=for-the-badge" />
 </p>
 
 <div align="center">
@@ -39,7 +39,7 @@
 * **Comunidade:** publique times, pesquise treinadores, avalie e salve equipes.
 * **Amigos e chat:** adicione amigos, converse e envie desafios do quiz ou convites de batalha online.
 * **Jogos e conquistas:** “Quem é esse Pokémon?”, Ranked, desafio diário, desafios entre amigos, rankings e medalhas.
-* **Batalhas e draft:** batalhe online por turnos com amigos, cada um controlando seu time; treine contra o computador e monte equipes pelo draft.
+* **Batalhas e draft:** batalhe online por turnos com amigos, cada um controlando seu time, com nível máximo 50; treine contra o computador com o mesmo limite e monte equipes pelo draft.
 * **Centro de Batalha:** calculadora de dano, comparador, tabela de tipos, velocidade, sugestões de adversários e Tera Raids.
 * **Treinamento:** Natures, breeding, golpes de ovo, EVs, IVs, contador de shiny e acompanhamento de Nuzlocke.
 * **Enciclopédia:** consulta de golpes, habilidades e itens.

@@ -43,6 +43,9 @@ class _Fighter {
 
 class TeamBattle {
   TeamBattle._();
+  static const maxLevel = 50;
+  static int battleLevel(Object? level) => level is num && level.isFinite ? level.toInt().clamp(1, maxLevel) : maxLevel;
+
 
   /// O Pokémon da calculadora com o set (Nature, EVs, IVs, item, habilidade).
   static Future<CalcPokemon?> calcPokemon(DamageData data, Member m) async {
@@ -64,7 +67,7 @@ class TeamBattle {
       baseStats: {for (var i = 0; i < 6; i++) statIds[i]: stats[i]},
       types: [for (final t in row['types'] as List) '${(t as String)[0].toUpperCase()}${t.substring(1)}'],
       weightkg: ((row['weight'] as num?) ?? 1000) / 10,
-      level: (set?['level'] as num?)?.toInt() ?? 50,
+      level: battleLevel(set?['level']),
       ability: ability,
       item: data.itemName('${set?['item'] ?? ''}'),
       nature: '${set?['nature'] ?? 'Hardy'}',

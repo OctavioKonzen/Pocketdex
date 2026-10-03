@@ -256,8 +256,9 @@ await env.withSecurityRulesDisabled(async (ctx) => {
 })
 const roomA = doc(A, 'onlineBattles', 'battle1'), roomB = doc(B, 'onlineBattles', 'battle1')
 const packed = JSON.stringify({ name: 'Time', pokemon: [6, null], sets: [] })
-const invitation = { protocol: 1, players: ['alice', 'bob'], names: { alice: 'Ash Ketchum', bob: 'João' },
+const invitation = { protocol: 2, players: ['alice', 'bob'], names: { alice: 'Ash Ketchum', bob: 'João' },
   teams: { alice: packed }, seed: 42, status: 'pending', createdAt: serverTimestamp(), endedBy: null }
+await check('batalha antiga não inicia partida acima de 50', setDoc(doc(A, 'onlineBattles', 'legacy-new'), { ...invitation, protocol: 1 }), false)
 await check('batalha convida amigo', setDoc(roomA, invitation), true)
 await check('batalha sem login não lê', getDoc(doc(anon, 'onlineBattles', 'battle1')), false)
 await check('batalha terceiro não lê', getDoc(doc(C, 'onlineBattles', 'battle1')), false)
@@ -284,6 +285,15 @@ await check('batalha não declara desistência do outro', updateDoc(roomA, { sta
 await check('batalha participante encerra', updateDoc(roomB, { status: 'closed', endedBy: 'bob' }), true)
 await check('batalha encerrada bloqueia ações', setDoc(actionRef(B, 'bob', 1), input('bob', 1)), false)
 await check('batalha encerrada não reabre', updateDoc(roomB, { status: 'active', endedBy: null }), false)
+
+await env.withSecurityRulesDisabled(async (ctx) => {
+  await setDoc(doc(ctx.firestore(), 'onlineBattles', 'legacy-active'), {
+    ...invitation, protocol: 1, teams: { alice: packed, bob: packed }, status: 'active',
+    createdAt: new Date(),
+  })
+})
+await check('partida antiga não recebe novos turnos incompatíveis', setDoc(doc(A, 'onlineBattles', 'legacy-active', 'actions', '0_alice'), input('alice', 0)), false)
+await check('ainda permite encerrar partida antiga', updateDoc(doc(A, 'onlineBattles', 'legacy-active'), { status: 'closed', endedBy: 'alice' }), true)
 
 await env.cleanup()
 console.log(fails ? `${fails} FALHAS` : 'TUDO CERTO')
