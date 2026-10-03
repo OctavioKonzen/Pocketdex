@@ -185,7 +185,7 @@ service cloud.firestore {
       function validRoom(d) {
         return d.keys().hasAll(['protocol', 'players', 'names', 'teams', 'status', 'seed', 'createdAt', 'endedBy'])
           && d.keys().hasOnly(['protocol', 'players', 'names', 'teams', 'status', 'seed', 'createdAt', 'endedBy'])
-          && d.protocol in [1, 2] && d.players is list && d.players.size() == 2
+          && d.protocol in [1, 2, 3] && d.players is list && d.players.size() == 2
           && d.players[0] is string && d.players[1] is string
           && d.players[0] != d.players[1]
           && d.names is map && d.names.keys().hasOnly(d.players) && d.names.keys().hasAll(d.players)
@@ -204,7 +204,7 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/friends/$(d.players[1])/list/$(d.players[0])).data.status == 'friends';
       }
       allow read: if request.auth != null && request.auth.uid in resource.data.players;
-      allow create: if validRoom(request.resource.data) && request.resource.data.protocol == 2 && member(request.resource.data)
+      allow create: if validRoom(request.resource.data) && request.resource.data.protocol == 3 && member(request.resource.data)
         && request.resource.data.players[0] == request.auth.uid
         && request.resource.data.names[request.auth.uid] == accountName(request.auth.uid)
         && request.resource.data.names[request.resource.data.players[1]] == accountName(request.resource.data.players[1])
@@ -214,7 +214,7 @@ service cloud.firestore {
       allow update: if member(resource.data) && validRoom(request.resource.data)
         && (
           // Só quem recebeu o convite escolhe seu time e aceita.
-          (resource.data.status == 'pending' && resource.data.protocol == 2 && request.auth.uid == resource.data.players[1]
+          (resource.data.status == 'pending' && resource.data.protocol == 3 && request.auth.uid == resource.data.players[1]
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['teams', 'status'])
             && request.resource.data.teams.diff(resource.data.teams).affectedKeys().hasOnly([request.auth.uid])
             && request.resource.data.teams.keys().hasAll(resource.data.players)
@@ -245,7 +245,7 @@ service cloud.firestore {
                 && exists(/databases/$(database)/documents/onlineBattles/$(battle)/actions/$(string(d.round - 1) + '_' + r.players[1])));
         }
         allow read: if member(room());
-        allow create: if member(room()) && room().protocol == 2 && room().status == 'active'
+        allow create: if member(room()) && room().protocol == 3 && room().status == 'active'
           && request.time < room().createdAt + duration.value(7, 'd')
           && validAction(request.resource.data) && previousComplete(request.resource.data, room());
         // Sem update/delete: não dá para mudar uma ação já enviada.

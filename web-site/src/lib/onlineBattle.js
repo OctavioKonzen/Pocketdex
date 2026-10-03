@@ -1,6 +1,6 @@
 import { firebaseServices, useAuth } from './auth'
 
-export const BATTLE_PROTOCOL = 2
+export const BATTLE_PROTOCOL = 3
 export const MAX_ROUNDS = 500
 
 export function packTeam(team) {
@@ -82,6 +82,7 @@ export function pairedActions(actions, players) {
 export function battlePerspective(battle, side) {
   const order = [side, 1 - side]
   return { ...battle, sides: order.map((s) => battle.sides[s]),
+    usedGimmicks: order.map((s) => battle.usedGimmicks[s]),
     bags: order.map((s) => battle.bags[s]), gimmicks: order.map((s) => battle.gimmicks[s]),
     winner: battle.winner == null ? null : battle.winner === side ? 0 : 1,
     needSwitch: battle.winner == null && battle.sides[side].team[battle.sides[side].active].hp <= 0 }

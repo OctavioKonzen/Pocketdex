@@ -11,6 +11,29 @@ HitResult hit(BattleMon att, BattleMon def, String slug, bool crit, [int? power,
     (rolls: [[att.moves.firstWhere((m) => m.slug == slug).power]], eff: 1.0);
 Map<String, dynamic> attack(int index) => {'kind': 'move', 'index': index};
 void main() {
+  test('quatro mecânicas uma vez cada e limites separados por jogador', () {
+    BattleMon member(int id, String gimmick) => BattleMon(id, 'Mon', 50, 100, 80, ['normal'],
+      [BattleMove('tackle', 'Tackle', 'normal', 40, 100, 10, 10, 0)],
+      gimmick: gimmick, teraType: 'grass', zType: 'normal', gmax: 10196,
+      mega: const BattleMega(10035, 'Mega', ['fire'], 100));
+    final kinds = ['mega', 'dmax', 'tera', 'z'];
+    final b = TurnBattle([for (var i = 0; i < 4; i++) member(i + 1, kinds[i])],
+      [for (var i = 0; i < 4; i++) member(i + 10, kinds[i])], () => 0.9);
+    HitResult tinyHit(BattleMon att, BattleMon def, String slug, bool crit, [int? power, String weather = '']) =>
+      (rolls: [[1]], eff: 1.0);
+    for (var i = 0; i < kinds.length; i++) {
+      if (i > 0) b.playOnlineTurn([{'kind': 'switch', 'index': i}, {'kind': 'switch', 'index': i}], tinyHit);
+      expect(b.canGimmick(0, kinds[i], 0), isTrue);
+      expect(b.canGimmick(1, kinds[i], 0), isTrue);
+      b.playOnlineTurn([{'kind': 'move', 'index': 0, 'gimmick': kinds[i]}, {'kind': 'move', 'index': 0, 'gimmick': 'none'}], tinyHit);
+      expect(b.canGimmick(0, kinds[i], 0), isFalse);
+      expect(b.canGimmick(1, kinds[i], 0), isTrue);
+    }
+    expect(b.usedGimmicks[0], kinds.toSet());
+    expect(b.usedGimmicks[1], isEmpty);
+    expect(b.viewFor(1).usedGimmicks[1], kinds.toSet());
+  });
+
   test('perspectiva preserva HP e status sem restaurar a partida', () {
     final b = battle();
     b.active(1).hp = 42; b.active(1).status = 'brn';

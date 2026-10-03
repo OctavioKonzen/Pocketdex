@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { battleMons, pickMoves } from './battleSetup'
 import { seededRandom } from './league'
-import { active, canGimmick, canUseItem, effectLabel, lineOf, maxPower, moveEffect, newBattle, playTurn, replace, startBattle, switchMatchup, usableMoves, weaknesses, zPower } from './turnBattle'
+import { active, cpuPlan, canGimmick, canUseItem, effectLabel, lineOf, maxPower, moveEffect, newBattle, playTurn, replace, startBattle, switchMatchup, usableMoves, weaknesses, zPower } from './turnBattle'
 
 beforeAll(() => {
   vi.stubGlobal('fetch', async (url) => {
@@ -306,4 +306,39 @@ it('respeita a mecânica do set e bloqueia outro uso após trocar de Pokémon', 
   playTurn(battle, { switch: 1 }, fakeHit)
   expect(active(battle, 0).id).toBe(9)
   expect(canGimmick(battle, 0, 'tera')).toBe(false)
+})
+
+describe('computador usa vantagem, trocas e bolsa', () => {
+  const member = (id, type, spe = 80) => mon(id, 'Mon', [type], 100, spe, [move(type, type, 40, 100, 10)])
+  const hit = (att, def, slug) => {
+    const type = att.moves.find((m) => m.slug === slug).type
+    const eff = type === 'water' && def.types.includes('fire') ? 2 : type === 'water' && def.types.includes('grass') ? 0.5 : 1
+    return { rolls: [[40 * eff]], eff }
+  }
+  it('troca para resistir e atacar melhor, sem atacar no turno da troca', () => {
+    const b = newBattle([member(1, 'water')], [member(2, 'fire'), member(3, 'grass')], () => 0.9)
+    expect(cpuPlan(b, hit)).toEqual({ kind: 'switch', index: 1 })
+    const events = playTurn(b, { move: 0, gimmick: 'none' }, hit)
+    expect(active(b, 1).id).toBe(3)
+    expect(active(b, 0).hp).toBe(100)
+    expect(events.some((e) => e.t === 'switch' && e.side === 1)).toBe(true)
+    expect(cpuPlan(b, hit).kind).not.toBe('switch')
+  })
+  it('cura, gasta o item e não desperdiça turno quando consegue finalizar', () => {
+    const b = newBattle([member(1, 'normal', 60)], [member(2, 'normal')], () => 0.9)
+    active(b, 1).hp = 25
+    expect(cpuPlan(b, hit)).toEqual({ kind: 'item', item: 'hyper-potion', target: 0 })
+    playTurn(b, { move: 0, gimmick: 'none' }, hit)
+    expect(b.bags[1]['hyper-potion']).toBe(0)
+    expect(active(b, 0).hp).toBe(100)
+    active(b, 1).hp = 25; active(b, 0).hp = 20
+    expect(cpuPlan(b, hit).kind).toBe('move')
+  })
+  it('prioriza golpe vantajoso e revive um reserva quando está seguro', () => {
+    const b = newBattle([member(1, 'fire')], [member(2, 'normal'), member(3, 'grass')], () => 0)
+    active(b, 1).moves.push(move('water', 'water', 40, 100, 10))
+    expect(cpuPlan(b, hit)).toEqual({ kind: 'move', index: 1 })
+    b.sides[1].team[1].hp = 0
+    expect(cpuPlan(b, hit)).toEqual({ kind: 'item', item: 'revive', target: 1 })
+  })
 })

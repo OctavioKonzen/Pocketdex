@@ -101,7 +101,7 @@ function BattleRoom({ id, user }) {
     if (!room || !actions || room.status === 'pending' || !room.teams[room.players[1]]) return
     setReplaying(true)
     const replay = async () => {
-      if (room.protocol !== BATTLE_PROTOCOL) throw new Error('Atualize o PocketDex e crie uma nova partida para batalhar com o limite de nível 50.')
+      if (room.protocol !== BATTLE_PROTOCOL) throw new Error('Atualize o PocketDex e crie uma nova partida para usar as regras atuais de batalha.')
       const mons = await Promise.all(room.players.map((p) => battleMons(teamMembers(unpackTeam(room.teams[p])))))
       if (mons.some((t) => !t.length)) throw new Error('Não foi possível preparar os times.')
       const hit = await battleHitter()
@@ -154,7 +154,7 @@ function BattleRoom({ id, user }) {
       <Button disabled={busy} onClick={() => run(() => closeBattle(id))}>{side === 0 ? 'Cancelar convite' : 'Recusar'}</Button>
     </section>}
     {room.protocol !== BATTLE_PROTOCOL && room.status === 'pending' && <section className={CARD}>
-      <p>Atualize o PocketDex e crie uma nova partida para batalhar com o limite de nível 50.</p>
+      <p>Atualize o PocketDex e crie uma nova partida para usar as regras atuais de batalha.</p>
       <Button disabled={busy} onClick={() => run(() => closeBattle(id))}>Encerrar convite antigo</Button>
     </section>}
     {closed && !battle && <p className={CARD}>{room.endedBy === user.uid ? 'Você encerrou a partida.' : 'Seu amigo encerrou a partida.'}</p>}

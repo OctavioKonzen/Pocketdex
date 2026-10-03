@@ -228,6 +228,37 @@ void main() {
     expect(battle.canGimmick(0, 'tera'), isFalse);
   });
 
+  test('computador troca, cura, revive e prioriza vantagem', () {
+    BattleMon member(int id, String type, [int spe = 80]) =>
+      BattleMon(id, 'Mon', 50, 100, spe, [type], [_move(type, type, 40, 100, 10)]);
+    HitResult hit(BattleMon att, BattleMon def, String slug, bool crit, [int? power, String weather = '']) {
+      final type = att.moves.firstWhere((m) => m.slug == slug).type;
+      final eff = type == 'water' && def.types.contains('fire') ? 2.0 : type == 'water' && def.types.contains('grass') ? 0.5 : 1.0;
+      return (rolls: [[(40 * eff).toInt()]], eff: eff);
+    }
+    final switching = TurnBattle([member(1, 'water')], [member(2, 'fire'), member(3, 'grass')], () => 0.9);
+    expect(switching.cpuPlan(hit).kind, 'switch');
+    expect(switching.cpuPlan(hit).index, 1);
+    switching.playTurn(hit, move: 0, gimmick: 'none');
+    expect(switching.active(1).id, 3);
+    expect(switching.active(0).hp, 100);
+    expect(switching.cpuPlan(hit).kind, isNot('switch'));
+    final healing = TurnBattle([member(1, 'normal', 60)], [member(2, 'normal')], () => 0.9);
+    healing.active(1).hp = 25;
+    expect(healing.cpuPlan(hit).item, 'hyper-potion');
+    healing.playTurn(hit, move: 0, gimmick: 'none');
+    expect(healing.bags[1]['hyper-potion'], 0);
+    expect(healing.active(0).hp, 100);
+    healing.active(1).hp = 25; healing.active(0).hp = 20;
+    expect(healing.cpuPlan(hit).kind, 'move');
+    final advantage = TurnBattle([member(1, 'fire')], [member(2, 'normal'), member(3, 'grass')], () => 0);
+    advantage.active(1).moves.add(_move('water', 'water', 40, 100, 10));
+    expect(advantage.cpuPlan(hit).index, 1);
+    advantage.teams[1][1].hp = 0;
+    expect(advantage.cpuPlan(hit).item, 'revive');
+    expect(advantage.cpuPlan(hit).target, 1);
+  });
+
   test('igual ao site (mesma semente, mesmo registro)', () {
     final expected = (jsonDecode(File('test/fixtures/turn_battle.json').readAsStringSync()) as List).cast<String>();
     expect(fakeBattleLog(), expected);

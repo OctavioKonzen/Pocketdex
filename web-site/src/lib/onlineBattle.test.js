@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { active, newBattle, playOnlineTurn } from './turnBattle'
+import { active, canGimmick, newBattle, playOnlineTurn } from './turnBattle'
 import { pairedActions, packTeam, unpackTeam, battlePerspective, eventPerspective } from './onlineBattle'
 const move = (slug, power) => ({ slug, name: slug, type: 'normal', category: 'physical', power, accuracy: 100, pp: 10, maxPp: 10, priority: 0 })
 const mon = (id, spe = 80) => ({ id, name: 'Mon ' + id, level: 50, hp: 100, maxHp: 100, spe, types: ['normal'], moves: [move('strong', 25), move('weak', 5)] })
@@ -61,4 +61,23 @@ describe('batalha entre dois jogadores', () => {
     expect(unpackTeam(value)).toEqual({ name: 'Time', pokemon: [6, null], sets: [] })
     expect(() => unpackTeam('{"pokemon":[-1],"sets":[]}')).toThrow()
   })
+})
+
+it('usa as quatro mecânicas uma vez cada, com limites independentes por jogador', () => {
+  const member = (id, gimmick) => ({ ...mon(id), gimmick, teraType: 'grass', zType: 'normal', gmax: 10196,
+    mega: { id: 10035, name: 'Mega', types: ['fire'], spe: 100 } })
+  const kinds = ['mega', 'dmax', 'tera', 'z']
+  const b = newBattle(kinds.map((g, i) => member(i + 1, g)), kinds.map((g, i) => member(i + 10, g)), () => 0.9)
+  const tinyHit = () => ({ rolls: [[1]], eff: 1 })
+  for (let i = 0; i < kinds.length; i++) {
+    if (i) playOnlineTurn(b, [{ kind: 'switch', index: i }, { kind: 'switch', index: i }], tinyHit)
+    expect(canGimmick(b, 0, kinds[i], 0)).toBe(true)
+    expect(canGimmick(b, 1, kinds[i], 0)).toBe(true)
+    playOnlineTurn(b, [{ kind: 'move', index: 0, gimmick: kinds[i] }, { kind: 'move', index: 0, gimmick: 'none' }], tinyHit)
+    expect(canGimmick(b, 0, kinds[i], 0)).toBe(false)
+    expect(canGimmick(b, 1, kinds[i], 0)).toBe(true)
+  }
+  expect(b.usedGimmicks[0]).toEqual(kinds)
+  expect(b.usedGimmicks[1]).toEqual([])
+  expect(battlePerspective(b, 1).usedGimmicks[1]).toEqual(kinds)
 })
