@@ -277,7 +277,7 @@ await check('batalha não altera ação enviada', updateDoc(actionRef(A, 'alice'
 await check('batalha não apaga ação', deleteDoc(actionRef(A, 'alice', 0)), false)
 await check('batalha não pula rodada incompleta', setDoc(actionRef(A, 'alice', 1), input('alice', 1)), false)
 await check('batalha amigo envia ação', setDoc(actionRef(B, 'bob', 0), input('bob', 0)), true)
-await check('batalha próxima rodada completa liberada', setDoc(actionRef(A, 'alice', 1), input('alice', 1)), true)
+await check('batalha próxima rodada completa liberada', setDoc(actionRef(A, 'alice', 1), { ...input('alice', 1), gimmick: 'none' }), true)
 await check('batalha índice inválido recusado', setDoc(actionRef(B, 'bob', 1), { ...input('bob', 1), index: 9 }), false)
 await check('batalha histórico privado para terceiro', getDocs(collection(C, 'onlineBattles', 'battle1', 'actions')), false)
 await check('batalha não declara desistência do outro', updateDoc(roomA, { status: 'closed', endedBy: 'bob' }), false)
