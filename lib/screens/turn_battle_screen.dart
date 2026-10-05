@@ -225,7 +225,9 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
         ),
         if (_friend == _random || _npcPartner) ...[
           const SizedBox(height: 12),
-          DropdownButtonFormField<String>(isExpanded: true, initialValue: _difficulty, decoration: deco('Dificuldade dos NPCs'), items: const [DropdownMenuItem(value: 'normal', child: Text('Normal · IVs e EVs aleatórios', maxLines: 1, overflow: TextOverflow.ellipsis)), DropdownMenuItem(value: 'hard', child: Text('Difícil · sets competitivos', maxLines: 1, overflow: TextOverflow.ellipsis))], onChanged: _busy ? null : (v) => setState(() => _difficulty = v!)),
+          DropdownButtonFormField<String>(isExpanded: true, initialValue: _difficulty, decoration: deco('Dificuldade dos NPCs'), items: const [DropdownMenuItem(value: 'normal', child: Text('Normal')), DropdownMenuItem(value: 'hard', child: Text('Difícil'))], onChanged: _busy ? null : (v) => setState(() => _difficulty = v!)),
+          const SizedBox(height: 6),
+          const Text('Normal: IVs e EVs aleatórios.\nDifícil: sets competitivos.'),
         ],
         if (_friend != _random) ...[
           const SizedBox(height: 12),

@@ -80,7 +80,8 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen> {
           const Text('Dupla: até quatro jogadores. Tripla: até seis. Também vale você e um amigo contra NPCs.'),
         ],
         const SizedBox(height: 12),
-        if (_count > 1) DropdownButtonFormField<String>(isExpanded: true, initialValue: _npcDifficulty, decoration: const InputDecoration(labelText: 'Dificuldade dos NPCs'), items: const [DropdownMenuItem(value: 'normal', child: Text('Normal · IVs e EVs aleatórios', maxLines: 1, overflow: TextOverflow.ellipsis)), DropdownMenuItem(value: 'hard', child: Text('Difícil · sets competitivos', maxLines: 1, overflow: TextOverflow.ellipsis))], onChanged: _busy ? null : (v) => setState(() => _npcDifficulty = v!)),
+        if (_count > 1) DropdownButtonFormField<String>(isExpanded: true, initialValue: _npcDifficulty, decoration: const InputDecoration(labelText: 'Dificuldade dos NPCs'), items: const [DropdownMenuItem(value: 'normal', child: Text('Normal')), DropdownMenuItem(value: 'hard', child: Text('Difícil'))], onChanged: _busy ? null : (v) => setState(() => _npcDifficulty = v!)),
+        if (_count > 1) const Padding(padding: EdgeInsets.only(top: 6, bottom: 12), child: Text('Normal: IVs e EVs aleatórios.\nDifícil: sets competitivos.')),
         DropdownButtonFormField<int>(
           initialValue: _team, isExpanded: true, decoration: const InputDecoration(labelText: 'Seu time'),
           items: [const DropdownMenuItem(value: -1, child: Text('🎲 Time aleatório')), for (final (i, t) in _teams.indexed) DropdownMenuItem(value: i, child: Text('${t['name']}'))],
