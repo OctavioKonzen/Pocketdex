@@ -161,7 +161,7 @@ function HpBar({ hp, max }) {
   return (
     <div className="flex items-center gap-1.5">
       <span className="text-[10px] font-black text-amber-600">HP</span>
-      <div className="h-2.5 flex-1 overflow-hidden rounded-full border border-slate-700 bg-slate-700">
+      <div className="h-2 flex-1 overflow-hidden rounded-sm border border-slate-700 bg-slate-700">
         <div className="h-full rounded-full transition-[width] duration-700 ease-out" style={{ width: `${pct}%`, background: color }} />
       </div>
     </div>
@@ -173,8 +173,8 @@ const STATUS_BADGE = { brn: '#EE8130', par: '#C9A400', psn: '#A33EA1', tox: '#7B
 
 function InfoBox({ mon, hp, mine, status, dmax, hpTestId }) {
   return (
-    <div className="w-full rounded-xl rounded-br-3xl border-4 border-slate-700 bg-amber-50 px-3 py-1.5 text-slate-900 shadow-lg">
-      <div className="flex items-baseline justify-between gap-2 font-black">
+    <div className="w-full rounded-sm border-2 border-slate-800 bg-[#fffde0] px-2 py-1 font-mono text-slate-900 shadow-[2px_2px_0_#52634a]">
+      <div className="flex items-baseline justify-between gap-1 text-xs font-black">
         <span className="truncate">{mon.name}</span>
         {mon.terastal && (
           <span className="shrink-0 rounded px-1 text-[10px] font-black text-white uppercase" style={{ background: typeColor(mon.teraType) }} data-testid="tera-badge">
@@ -187,10 +187,10 @@ function InfoBox({ mon, hp, mine, status, dmax, hpTestId }) {
             {status.toUpperCase()}
           </span>
         )}
-        <span className="shrink-0 text-sm">{`Nv.${mon.level}`}</span>
+        <span className="shrink-0 text-xs">{`Nv.${mon.level}`}</span>
       </div>
       <HpBar hp={hp} max={mon.maxHp} />
-      {(mine || hpTestId) && <div data-testid={hpTestId} className="text-right text-sm font-black tabular-nums">{`${hp}/${mon.maxHp}`}</div>}
+      {(mine || hpTestId) && <div data-testid={hpTestId} className="text-right text-[11px] font-black tabular-nums">{`${hp}/${mon.maxHp}`}</div>}
     </div>
   )
 }
@@ -214,114 +214,20 @@ const BattleSprite = forwardRef(function BattleSprite({ mon, id, back, fainted, 
   )
 })
 
-/**
- * Cenário da batalha (desenho nosso, igual ao do app), com cara de 3D como
- * no Black & White: céu com sol e nuvens, montanhas com luz e sombra, árvores
- * no horizonte, gramado em perspectiva e as plataformas com espessura.
- * Grade de 160 × 100, esticada para o campo.
- */
-function BattleBackground({ weather = '' }) {
-  const [skyTop, skyBottom] = SKY[weather] ?? SKY['']
-  const cloud = CLOUD_COLOR[weather] ?? '#fff'
-  const [ground, groundOpacity] = GROUND_TINT[weather] ?? ['#000', 0]
-  const fade = { transition: 'all 800ms ease' }
-  // Faixas do gramado: mais finas perto do horizonte (perspectiva).
-  const bands = []
-  for (let i = 0, y = HORIZON; y < 100; i++) {
-    const h = 1 + i * 0.9
-    bands.push(<rect key={i} y={y} width="160" height={h} fill={i % 2 ? '#8fd162' : '#a3dc74'} />)
-    y += h
-  }
-  return (
-    <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 160 100" preserveAspectRatio="none" aria-hidden="true">
-      <defs>
-        <linearGradient id="bb-sky" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor={skyTop} style={fade} />
-          <stop offset="1" stopColor={skyBottom} style={fade} />
-        </linearGradient>
-        <radialGradient id="bb-sun" cx="0.5" cy="0.5" r="0.5">
-          <stop offset="0" stopColor="#fffbe6" />
-          <stop offset="0.4" stopColor="#fff3b0" stopOpacity="0.9" />
-          <stop offset="1" stopColor="#fff3b0" stopOpacity="0" />
-        </radialGradient>
-        <linearGradient id="bb-haze" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#ffffff" stopOpacity="0.45" />
-          <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
-        </linearGradient>
-        <radialGradient id="bb-top" cx="0.45" cy="0.35" r="0.7">
-          <stop offset="0" stopColor="#f1e3b4" />
-          <stop offset="0.6" stopColor="#d9c28a" />
-          <stop offset="1" stopColor="#b79c5e" />
-        </radialGradient>
-      </defs>
-      <rect width="160" height={HORIZON + 2} fill="url(#bb-sky)" />
-      <circle cx="132" cy="9" r={weather === 'sun' ? 24 : 14} fill="url(#bb-sun)" opacity={!weather || weather === 'sun' ? 1 : 0} style={fade} />
-      {BACKGROUND_CLOUDS.map(([x, y, w], i) => (
-        <g key={i} fill={cloud} opacity={weather === 'sun' ? 0.4 : 0.85} style={fade}>
-          <ellipse cx={x} cy={y} rx={w} ry={w * 0.32} />
-          <ellipse cx={x - w * 0.45} cy={y + w * 0.08} rx={w * 0.55} ry={w * 0.24} />
-          <ellipse cx={x + w * 0.5} cy={y + w * 0.1} rx={w * 0.5} ry={w * 0.22} />
-        </g>
-      ))}
-      {/* Montanhas: lado da luz e lado da sombra. */}
-      {MOUNTAINS.map(([x, top, w], i) => (
-        <g key={i}>
-          <path d={`M${x - w} ${HORIZON} L${x} ${top} L${x + w} ${HORIZON} Z`} fill="#a8cfe0" />
-          <path d={`M${x} ${top} L${x + w} ${HORIZON} L${x + w * 0.2} ${HORIZON} Z`} fill="#86b3c9" />
-          <path d={`M${x - w * 0.25} ${top + (HORIZON - top) * 0.25} L${x} ${top} L${x + w * 0.25} ${top + (HORIZON - top) * 0.25} L${x} ${top + (HORIZON - top) * 0.32} Z`} fill="#f4fbff" />
-        </g>
-      ))}
-      <rect y={HORIZON - 14} width="160" height="14" fill="url(#bb-haze)" />
-      {/* Árvores no horizonte. */}
-      {Array.from({ length: 23 }, (_, i) => {
-        const x = i * 7.3 + (i % 3)
-        const r = 3.2 + (i % 4) * 0.6
-        return (
-          <g key={i}>
-            <circle cx={x} cy={HORIZON - r * 0.6} r={r} fill="#3f8f45" />
-            <circle cx={x - r * 0.3} cy={HORIZON - r * 0.85} r={r * 0.55} fill="#5aab52" />
-          </g>
-        )
-      })}
-      {bands}
-      {/* O chão no clima: molhado, areia, coberto de neve, ao sol. */}
-      <rect y={HORIZON} width="160" height={100 - HORIZON} fill={ground} opacity={groundOpacity} style={fade} />
-      {/* Linhas que fogem para o horizonte. */}
-      {[-60, -20, 20, 60, 100, 140, 180, 220].map((x) => (
-        <line key={x} x1="80" y1={HORIZON} x2={x} y2="100" stroke="#ffffff" strokeOpacity="0.1" strokeWidth="0.4" />
-      ))}
-      {/* Plataformas no chão: a do inimigo, mais longe, é menor e mais achatada. */}
-      <Platform cx={120} cy={45} rx={23} ry={3.6} depth={1.4} />
-      <Platform cx={37.6} cy={91} rx={34} ry={7} depth={3} />
-    </svg>
-  )
+/** Campo clássico: cores planas, faixas horizontais e duas bases de grama. */
+function BattleBackground({weather=''}) {
+  const palettes={rain:['#a1bac4','#d6e3d6'],sun:['#ffe4a1','#e8f6b6'],sand:['#d1bd96','#eee2ad'],hail:['#bacbd8','#eef5e3'],snow:['#bacbd8','#eef5e3']}
+  const [top,bottom]=palettes[weather] || ['#b9e6bd','#edf9c8']
+  return <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 160 100" preserveAspectRatio="none" aria-hidden="true">
+    <defs><linearGradient id="classic-grass" x1="0" y1="0" x2="0" y2="1"><stop stopColor={top}/><stop offset="1" stopColor={bottom}/></linearGradient></defs>
+    <rect width="160" height="100" fill="url(#classic-grass)"/>
+    {Array.from({length:50},(_,i)=><rect key={i} y={i*2} width="160" height="0.4" fill="#fff" opacity="0.25"/>)}
+    <ellipse cx="120" cy="45" rx="32" ry="8" fill="#7eba62"/>
+    <ellipse cx="120" cy="44" rx="29" ry="6" fill="#a9d57b"/>
+    <ellipse cx="38" cy="91" rx="42" ry="12" fill="#7eba62"/>
+    <ellipse cx="38" cy="89" rx="39" ry="9" fill="#a9d57b"/>
+  </svg>
 }
-
-/** Plataforma com espessura: terra, borda de grama e sombra no chão. */
-function Platform({ cx, cy, rx, ry, depth }) {
-  return (
-    <g>
-      <ellipse cx={cx} cy={cy + depth * 0.7} rx={rx * 1.06} ry={ry * 1.15} fill="#2f6b2a" opacity="0.3" />
-      <path d={`M${cx - rx} ${cy} V${cy + depth} A${rx} ${ry} 0 0 0 ${cx + rx} ${cy + depth} V${cy} Z`} fill="#8a6f3c" />
-      <ellipse cx={cx} cy={cy} rx={rx} ry={ry} fill="url(#bb-top)" />
-      <ellipse cx={cx} cy={cy} rx={rx} ry={ry} fill="none" stroke="#6fb24a" strokeWidth="1.2" />
-    </g>
-  )
-}
-
-/** Céu de cada clima: [cima, horizonte]. */
-const SKY = {
-  '': ['#5fb9f5', '#e6f7ff'],
-  rain: ['#4f6073', '#a5b2bf'],
-  sun: ['#ff9b3d', '#fff0c2'],
-  sand: ['#b4844b', '#e6cb96'],
-  hail: ['#8aa2b9', '#e7eff7'],
-  snow: ['#8aa2b9', '#eef4fa'],
-}
-/** Cor das nuvens no clima. */
-const CLOUD_COLOR = { rain: '#76838f', sand: '#d8c095', hail: '#dfe7ef', snow: '#eef3f8' }
-/** O chão no clima: [cor, opacidade] por cima do gramado. */
-const GROUND_TINT = { rain: ['#16324f', 0.3], sun: ['#ffcf5a', 0.14], sand: ['#c9a063', 0.4], hail: ['#ffffff', 0.25], snow: ['#ffffff', 0.5] }
 
 /** O clima caindo por cima do campo (chuva, areia, granizo, neve) ou o brilho do sol. */
 function WeatherFx({ weather }) {
@@ -340,25 +246,6 @@ function WeatherFx({ weather }) {
     </div>
   )
 }
-
-/** Linha do horizonte (na grade de 160 × 100): o chão começa aqui. */
-const HORIZON = 36
-
-/** Nuvens do cenário: [x, y, largura]. */
-const BACKGROUND_CLOUDS = [
-  [24, 9, 11],
-  [70, 5, 8],
-  [104, 15, 9],
-  [150, 19, 6],
-]
-
-/** Montanhas: [x do pico, altura do pico, meia largura]. */
-const MOUNTAINS = [
-  [20, 16, 22],
-  [58, 10, 26],
-  [100, 18, 22],
-  [140, 12, 26],
-]
 
 /** Onde fica o meio de cada Pokémon no campo (em %), para as animações dos golpes. */
 const CENTER = [
@@ -880,7 +767,7 @@ function Weak({ mon, list, className = '' }) {
   )
 }
 
-function MultiBattle({battle, onExit, onAgain, online = null}) {
+export function MultiBattle({battle, onExit, onAgain, online = null}) {
   const byId = usePokemonIndex()
   const uid = online?.uid || 'me'
   const side = battle.controllers.findIndex(team => team.includes(uid))
@@ -922,22 +809,21 @@ function MultiBattle({battle, onExit, onAgain, online = null}) {
     } catch(e) {setError(e.message)}
   }
   const trainer = controller => controller === uid ? 'Você' : online?.names?.[controller] || 'NPC'
-  const renderSide = teamSide => <div className="relative z-10 grid gap-1 p-2" style={{gridTemplateColumns:`repeat(${count},minmax(0,1fr))`}}>
-    {state.sides[teamSide].slots.map(slot=>{
+  const fieldSlots = teamSide => state.sides[teamSide].slots.filter(slot=>slot.index>=0)
+  const info = teamSide => <div className={`absolute z-20 w-[45%] space-y-1 ${teamSide===side?'bottom-[4%] right-[3%]':'top-[4%] left-[3%]'}`}>
+    {fieldSlots(teamSide).map(slot=>{
       const mon=battle.sides[teamSide].team[slot.index]
-      return mon && <div key={slot.slot} className="min-w-0">
-        <p className="truncate rounded bg-slate-900/75 px-1 text-center text-xs text-white">{trainer(battle.controllers[teamSide][slot.slot])}</p>
-        <div className="mx-auto max-w-36"><BattleSprite mon={mon} id={mon.dmax && mon.gmax || mon.id} back={teamSide===side} fainted={mon.hp<=0} dmax={mon.dmax>0} byId={byId}/></div>
-        <div className="rounded-lg border-2 border-slate-700 bg-amber-50 px-1 py-1 text-slate-900">
-          <p className="truncate text-xs font-bold">{mon.name}{mon.status && ` · ${mon.status.toUpperCase()}`}</p><HpBar hp={mon.hp} max={mon.maxHp}/>
-          <p className="text-right text-xs" data-testid={`multi-hp-${teamSide}-${slot.slot}`}>{mon.hp}/{mon.maxHp}</p>
-        </div>
+      return <div key={slot.slot} aria-label={`${trainer(battle.controllers[teamSide][slot.slot])} · posição ${slot.slot+1}`}>
+        <InfoBox mon={mon} hp={mon.hp} mine={teamSide===side} status={mon.status} dmax={mon.dmax>0} hpTestId={`multi-hp-${teamSide}-${slot.slot}`}/>
       </div>
     })}
   </div>
-  return <section className="space-y-3">
-    <div className="relative overflow-hidden rounded-xl border-4 border-slate-700" data-testid="multi-battle-field">
-      <BattleBackground weather={battle.weather}/>{renderSide(1-side)}{renderSide(side)}
+  const sprites = teamSide => <div className={`absolute z-10 grid w-[53%] items-end ${teamSide===side?'bottom-[5%] left-[1%]':'bottom-[52%] right-[1%]'}`} style={{gridTemplateColumns:`repeat(${count},minmax(0,1fr))`}}>
+    {fieldSlots(teamSide).map(slot=>{const mon=battle.sides[teamSide].team[slot.index];return <BattleSprite key={slot.slot} mon={mon} id={mon.dmax && mon.gmax || mon.id} back={teamSide===side} fainted={mon.hp<=0} dmax={mon.dmax>0} byId={byId}/>})}
+  </div>
+  return <section className="mx-auto max-w-3xl space-y-2">
+    <div className="battle-field relative aspect-[16/10] overflow-hidden border-4 border-slate-800" data-testid="multi-battle-field">
+      <BattleBackground weather={battle.weather}/>{sprites(1-side)}{sprites(side)}{info(1-side)}{info(side)}<WeatherFx weather={battle.weather}/>
     </div>
     <p className="rounded-xl bg-card p-3 font-bold" data-testid="multi-turn" data-turn={state.turn} data-round={online?.round ?? state.turn}>{online?.message || (state.winner != null ? state.winner === -1 ? 'Empate!' : state.winner === side ? 'Você venceu!' : 'A equipe adversária venceu!' : `Turno ${state.turn}: escolha uma ação por Pokémon.`)}</p>
     {state.winner == null && owned.map(slot=>{
@@ -947,16 +833,30 @@ function MultiBattle({battle, onExit, onAgain, online = null}) {
       const mechanic=battle.sides[side].team[slot.index].gimmick
       const available=mechanic==='mega'?req?.canMegaEvo:mechanic==='tera'?req?.canTerastallize:mechanic==='dmax'?req?.canDynamax:mechanic==='z'?req?.canZMove?.[action?.index ?? 0]:false
       const reserved=Object.entries(choices).some(([other,c])=>Number(other)!==slot.slot && c.gimmick===mechanic)
-      return <div key={slot.slot} className={`${CARD} space-y-2`}>
+      return <div key={slot.slot} className="space-y-2 rounded-xl border-4 border-slate-800 bg-slate-800 p-2 text-white" data-testid="multi-actions">
         <h3 className="font-bold">{mon.name} · posição {slot.slot+1}</h3>
         {automatic(slot) ? <p>{own.wait ? 'Aguardando as substituições.' : 'Esta posição passa durante a substituição.'}</p> : <>
-          <select aria-label={`Ação de ${mon.name} ${slot.slot+1}`} className={SELECT} disabled={locked} value={action?`${action.kind}:${action.index}`:''} onChange={e=>{const [kind,index]=e.target.value.split(':');if(kind)setChoice(slot,kind,Number(index))}}>
-            <option value="">Escolha sua ação…</option>
-            {!slot.forceSwitch && req?.moves.map((m,index)=><option key={`move${index}`} value={`move:${index}`} disabled={m.disabled || m.pp===0}>{m.move} · PP {m.pp ?? '—'}</option>)}
-            {slot.switchOptions.map(index=><option key={`switch${index}`} value={`switch:${index}`}>{slot.revival?'Reviver':'Trocar para'} {battle.sides[side].team[index].name}</option>)}
-            {slot.canShift && <option value="shift:0">Trocar posição com o centro</option>}
-            {slot.forceSwitch && !slot.switchOptions.length && <option value="pass:0">Sem reservas: passar</option>}
-          </select>
+          {!slot.forceSwitch && <div className="grid grid-cols-2 gap-1.5 rounded-xl border-4 border-slate-600 bg-white p-2" data-testid="multi-moves" aria-label={`Golpes de ${mon.name} ${slot.slot+1}`}>
+            {(req?.moves || []).map((m,index)=>{
+              const move=mon.moves[index]
+              const selected=action?.kind==='move' && action.index===index
+              return <button key={`move${index}`} type="button" data-testid={`battle-move-${slot.slot}-${index}`} disabled={locked || m.disabled || m.pp===0}
+                aria-pressed={selected} onClick={()=>setChoice(slot,'move',index)}
+                className={`rounded-lg border-2 px-2 py-2 text-left text-white disabled:opacity-40 ${selected?'border-amber-300 ring-2 ring-amber-400':'border-transparent'}`}
+                style={{background:typeColor(move?.type || 'normal')}}>
+                <span className="block text-sm font-black" data-no-translate>{m.move}</span>
+                <span className="text-xs">PP {m.pp ?? '—'}/{move?.maxPp ?? m.pp ?? '—'}{selected?' ✓':''}</span>
+              </button>
+            })}
+          </div>}
+          {(slot.switchOptions.length>0 || slot.canShift || slot.forceSwitch) && <label className="block text-sm font-bold">POKÉMON
+            <select aria-label={`Troca de ${mon.name} ${slot.slot+1}`} className={SELECT} disabled={locked} value={action && action.kind!=='move'?`${action.kind}:${action.index}`:''} onChange={e=>{const [kind,index]=e.target.value.split(':');if(kind)setChoice(slot,kind,Number(index))}}>
+              <option value="">{slot.forceSwitch?'Escolha o substituto…':'Trocar Pokémon (gasta a ação)'}</option>
+              {slot.switchOptions.map(index=><option key={`switch${index}`} value={`switch:${index}`}>{slot.revival?'Reviver':'Trocar para'} {battle.sides[side].team[index].name}</option>)}
+              {slot.canShift && <option value="shift:0">Trocar posição com o centro</option>}
+              {slot.forceSwitch && !slot.switchOptions.length && <option value="pass:0">Sem reservas: passar</option>}
+            </select>
+          </label>}
           {action?.kind==='move' && !targets.automatic && <label className="block">Alvo<select aria-label={`Alvo de ${mon.name} ${slot.slot+1}`} className={SELECT} disabled={locked} value={action.target} onChange={e=>setChoices(old=>({...old,[slot.slot]:{...action,target:Number(e.target.value)}}))}>
             {targets.targets.map(target=><option key={target.loc} value={target.loc}>{target.ally?'Aliado':'Adversário'}: {target.name} · posição {target.slot+1}</option>)}
           </select></label>}

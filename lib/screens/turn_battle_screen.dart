@@ -883,135 +883,27 @@ class _MenuButton extends StatelessWidget {
       );
 }
 
-/// Cenário da batalha (desenho nosso, igual ao do site), com cara de 3D como
-/// no Black & White: céu com sol e nuvens, montanhas com luz e sombra, árvores
-/// no horizonte, gramado em perspectiva e as plataformas com espessura. Muda
-/// com o clima ([weather]: céu, nuvens, sol e o chão).
-/// Coordenadas numa grade de 160 × 100, esticada para o campo.
+/// Campo clássico compartilhado pela individual, dupla e tripla.
 class _FieldPainter extends CustomPainter {
   const _FieldPainter(this.weather);
   final String weather;
-
-  /// Linha do horizonte: o chão começa aqui.
-  static const _horizon = 36.0;
-
-  /// Nuvens: (x, y, largura).
-  static const _clouds = [(24.0, 9.0, 11.0), (70.0, 5.0, 8.0), (104.0, 15.0, 9.0), (150.0, 19.0, 6.0)];
-
-  /// Montanhas: (x do pico, altura do pico, meia largura).
-  static const _mountains = [(20.0, 16.0, 22.0), (58.0, 10.0, 26.0), (100.0, 18.0, 22.0), (140.0, 12.0, 26.0)];
-
-  /// Céu de cada clima: (cima, horizonte). Igual ao site.
-  static const _sky = {
-    '': (Color(0xFF5FB9F5), Color(0xFFE6F7FF)),
-    'rain': (Color(0xFF4F6073), Color(0xFFA5B2BF)),
-    'sun': (Color(0xFFFF9B3D), Color(0xFFFFF0C2)),
-    'sand': (Color(0xFFB4844B), Color(0xFFE6CB96)),
-    'hail': (Color(0xFF8AA2B9), Color(0xFFE7EFF7)),
-    'snow': (Color(0xFF8AA2B9), Color(0xFFEEF4FA)),
-  };
-
-  /// Cor das nuvens e o chão no clima (cor por cima do gramado).
-  static const _cloudColor = {'rain': Color(0xFF76838F), 'sand': Color(0xFFD8C095), 'hail': Color(0xFFDFE7EF), 'snow': Color(0xFFEEF3F8)};
-  static const _groundTint = {
-    'rain': Color(0x4D16324F),
-    'sun': Color(0x24FFCF5A),
-    'sand': Color(0x66C9A063),
-    'hail': Color(0x40FFFFFF),
-    'snow': Color(0x80FFFFFF),
-  };
-
   @override
   void paint(Canvas canvas, Size size) {
-    const hz = _horizon;
-    final sx = size.width / 160, sy = size.height / 100;
-    Offset p(double x, double y) => Offset(x * sx, y * sy);
-    Rect r(double x, double y, double w, double h) => Rect.fromLTWH(x * sx, y * sy, w * sx, h * sy);
-    Rect oval(double cx, double cy, double rx, double ry) => Rect.fromCenter(center: p(cx, cy), width: 2 * rx * sx, height: 2 * ry * sy);
-    Path poly(List<(double, double)> points) => Path()..addPolygon([for (final (x, y) in points) p(x, y)], true);
-
-    final (skyTop, skyBottom) = _sky[weather] ?? _sky['']!;
-    canvas.drawRect(
-        r(0, 0, 160, hz + 2),
-        Paint()
-          ..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [skyTop, skyBottom])
-              .createShader(r(0, 0, 160, hz + 2)));
-    // Sol (maior no sol forte; escondido na chuva, areia e neve).
-    if (weather.isEmpty || weather == 'sun') {
-      final sun = oval(132, 9, weather == 'sun' ? 24 : 14, weather == 'sun' ? 24 : 14);
-      canvas.drawOval(
-          sun,
-          Paint()
-            ..shader = const RadialGradient(colors: [Color(0xFFFFFBE6), Color(0xE6FFF3B0), Color(0x00FFF3B0)], stops: [0, 0.4, 1])
-                .createShader(sun));
-    }
-    // Nuvens.
-    final cloud = Paint()..color = (_cloudColor[weather] ?? Colors.white).withAlpha(weather == 'sun' ? 102 : 217);
-    for (final (x, y, w) in _clouds) {
-      canvas.drawOval(oval(x, y, w, w * 0.32), cloud);
-      canvas.drawOval(oval(x - w * 0.45, y + w * 0.08, w * 0.55, w * 0.24), cloud);
-      canvas.drawOval(oval(x + w * 0.5, y + w * 0.1, w * 0.5, w * 0.22), cloud);
-    }
-    // Montanhas: lado da luz e lado da sombra.
-    for (final (x, top, w) in _mountains) {
-      final snow = top + (hz - top) * 0.25;
-      canvas.drawPath(poly([(x - w, hz), (x, top), (x + w, hz)]), Paint()..color = const Color(0xFFA8CFE0));
-      canvas.drawPath(poly([(x, top), (x + w, hz), (x + w * 0.2, hz)]), Paint()..color = const Color(0xFF86B3C9));
-      canvas.drawPath(poly([(x - w * 0.25, snow), (x, top), (x + w * 0.25, snow), (x, top + (hz - top) * 0.32)]), Paint()..color = const Color(0xFFF4FBFF));
-    }
-    canvas.drawRect(
-        r(0, hz - 14, 160, 14),
-        Paint()
-          ..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0x73FFFFFF), Color(0x00FFFFFF)])
-              .createShader(r(0, hz - 14, 160, 14)));
-    // Árvores no horizonte.
-    for (var i = 0; i < 23; i++) {
-      final x = i * 7.3 + i % 3, rad = 3.2 + (i % 4) * 0.6;
-      canvas.drawOval(oval(x, hz - rad * 0.6, rad, rad), Paint()..color = const Color(0xFF3F8F45));
-      canvas.drawOval(oval(x - rad * 0.3, hz - rad * 0.85, rad * 0.55, rad * 0.55), Paint()..color = const Color(0xFF5AAB52));
-    }
-    // Gramado: faixas mais finas perto do horizonte (perspectiva).
-    for (var i = 0, y = hz; y < 100; i++) {
-      final h = 1 + i * 0.9;
-      canvas.drawRect(r(0, y, 160, h + 0.2), Paint()..color = Color(i.isOdd ? 0xFF8FD162 : 0xFFA3DC74));
-      y += h;
-    }
-    // Linhas que fogem para o horizonte.
-    final line = Paint()
-      ..color = Colors.white.withAlpha(26)
-      ..strokeWidth = 0.4 * sx;
-    for (final x in [-60.0, -20.0, 20.0, 60.0, 100.0, 140.0, 180.0, 220.0]) {
-      canvas.drawLine(p(80, hz), p(x, 100), line);
-    }
-    // O chão no clima: molhado, areia, coberto de neve, ao sol.
-    final tint = _groundTint[weather];
-    if (tint != null) canvas.drawRect(r(0, hz, 160, 100 - hz), Paint()..color = tint);
-    // Plataformas no chão: a do inimigo, mais longe, é menor e mais achatada.
-    _platform(canvas, oval, 120, 45, 23, 3.6, 1.4);
-    _platform(canvas, oval, 38.4, 91, 34, 7, 3);
+    final colors = switch(weather) {
+      'rain' => [const Color(0xFFA1BAC4),const Color(0xFFD6E3D6)],
+      'sun' => [const Color(0xFFFFE4A1),const Color(0xFFE8F6B6)],
+      'sand' => [const Color(0xFFD1BD96),const Color(0xFFEEE2AD)],
+      'hail' || 'snow' => [const Color(0xFFBACBD8),const Color(0xFFEEF5E3)],
+      _ => [const Color(0xFFB9E6BD),const Color(0xFFEDF9C8)],
+    };
+    final rect=Offset.zero & size;
+    canvas.drawRect(rect,Paint()..shader=LinearGradient(begin:Alignment.topCenter,end:Alignment.bottomCenter,colors:colors).createShader(rect));
+    final sx=size.width/160,sy=size.height/100;
+    for(var i=0;i<50;i++) canvas.drawRect(Rect.fromLTWH(0,i*2*sy,size.width,0.4*sy),Paint()..color=const Color(0x40FFFFFF));
+    void base(double cx,double cy,double rx,double ry,Color color) => canvas.drawOval(Rect.fromCenter(center:Offset(cx*sx,cy*sy),width:rx*2*sx,height:ry*2*sy),Paint()..color=color);
+    base(120,45,32,8,const Color(0xFF7EBA62));base(120,44,29,6,const Color(0xFFA9D57B));
+    base(38,91,42,12,const Color(0xFF7EBA62));base(38,89,39,9,const Color(0xFFA9D57B));
   }
-
-  /// Plataforma com espessura: terra, borda de grama e sombra no chão.
-  void _platform(Canvas canvas, Rect Function(double, double, double, double) oval, double cx, double cy, double rx, double ry, double depth) {
-    canvas.drawOval(oval(cx, cy + depth * 0.7, rx * 1.06, ry * 1.15), Paint()..color = const Color(0x4D2F6B2A));
-    final top = oval(cx, cy, rx, ry), bottom = oval(cx, cy + depth, rx, ry);
-    final side = Path()
-      ..addRect(Rect.fromLTRB(top.left, top.center.dy, top.right, bottom.center.dy))
-      ..addOval(bottom);
-    canvas.drawPath(side, Paint()..color = const Color(0xFF8A6F3C));
-    canvas.drawOval(
-        top,
-        Paint()
-          ..shader = const RadialGradient(center: Alignment(-0.1, -0.3), radius: 0.7, colors: [Color(0xFFF1E3B4), Color(0xFFD9C28A), Color(0xFFB79C5E)], stops: [0, 0.6, 1])
-              .createShader(top));
-    canvas.drawOval(
-        top,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = top.height * 0.12
-          ..color = const Color(0xFF6FB24A));
-  }
-
   @override
   bool shouldRepaint(_FieldPainter old) => old.weather != weather;
 }
@@ -1506,20 +1398,27 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
     } catch (e) { setState(() => _error = e is StateError ? e.message : 'Não foi possível executar estas ações. Escolha novamente.'); }
   }
   String _trainer(String controller) => controller == _uid ? tr('Você') : '${widget.online?.names[controller] ?? 'NPC'}';
-  Widget _teamRow(int side) {
-    final slots = (_b.simulatorState!['sides'][side]['slots'] as List).cast<Map>();
-    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [for (final slot in slots)
-      Expanded(child: Padding(padding: const EdgeInsets.all(3), child: Builder(builder: (context) {
-        final mon = _b.teams[side][slot['index'] as int];
-        return Column(children: [
-          Container(width: double.infinity, padding: const EdgeInsets.all(2), color: const Color(0xBB0F172A), child: m.Text(_trainer(_b.controllers![side][slot['slot'] as int]), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 11))),
-          AspectRatio(aspectRatio: 1, child: _Sprite(mon: mon, id: mon.dmax > 0 ? mon.gmax ?? mon.id : mon.id, dmax: mon.dmax > 0, back: side == _side, fainted: mon.hp <= 0)),
-          SizedBox(width: double.infinity, child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.topCenter,
-            child: SizedBox(width: 210, child: _InfoBox(mon: mon, hp: mon.hp, mine: true, status: mon.status, dmax: mon.dmax > 0)))),
-        ]);
-      }))),
-    ]);
-  }
+  Widget _field() => AspectRatio(aspectRatio:16/10,child: Container(
+    decoration:BoxDecoration(border:Border.all(color:const Color(0xFF1E293B),width:4)),
+    child:LayoutBuilder(builder:(context,constraints) {
+      final w=constraints.maxWidth,h=constraints.maxHeight;
+      Widget sprites(int side) => Positioned(left:side==_side?w*0.01:null,right:side==_side?null:w*0.01,bottom:h*(side==_side ? 0.05 : 0.52),width:w*0.53,
+        child:Row(crossAxisAlignment:CrossAxisAlignment.end,children:[for(final slot in (_b.simulatorState!['sides'][side]['slots'] as List).cast<Map>())
+          if((slot['index'] as int)>=0) Expanded(child:AspectRatio(aspectRatio:1,child:Builder(builder:(_) {
+            final mon=_b.teams[side][slot['index'] as int];
+            return _Sprite(mon:mon,id:mon.dmax>0?mon.gmax??mon.id:mon.id,dmax:mon.dmax>0,back:side==_side,fainted:mon.hp<=0);
+          }))),
+        ]));
+      Widget info(int side) => Positioned(left:side==_side?null:w*0.03,right:side==_side?w*0.03:null,top:side==_side?null:h*0.04,bottom:side==_side?h*0.04:null,width:w*0.45,
+        child:Column(children:[for(final slot in (_b.simulatorState!['sides'][side]['slots'] as List).cast<Map>())
+          if((slot['index'] as int)>=0) Padding(padding:const EdgeInsets.only(bottom:2),child:Builder(builder:(_) {
+            final mon=_b.teams[side][slot['index'] as int];
+            return Semantics(label:'${_trainer(_b.controllers![side][slot['slot'] as int])} · ${mon.name}',child:FittedBox(fit:BoxFit.scaleDown,child:SizedBox(width:210,child:_InfoBox(mon:mon,hp:mon.hp,mine:side==_side,status:mon.status,dmax:mon.dmax>0))));
+          })),
+        ]));
+      return Stack(clipBehavior:Clip.hardEdge,children:[Positioned.fill(child:CustomPaint(painter:_FieldPainter(_b.weather))),sprites(1-_side),sprites(_side),info(1-_side),info(_side)]);
+    }),
+  ));
   Widget _actions(Map slot) {
     final position = slot['slot'] as int, mon = _b.teams[_side][slot['index'] as int];
     final action = _picked(slot), req = slot['request'] as Map?;
@@ -1536,23 +1435,45 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
     final reserved = _choices.entries.any((entry) => entry.key != position && entry.value['gimmick'] == mechanic);
     final targetData = action?['kind'] == 'move' ? _b.targets(_side, position, index, '${action?['gimmick'] ?? ''}') : {'targets': <dynamic>[], 'automatic': true};
     final targets = (targetData['targets'] as List).cast<Map>();
-    return Card(child: Padding(padding: const EdgeInsets.all(12), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+    return Card(color: const Color(0xFF1E293B), child: Padding(padding: const EdgeInsets.all(8), child: DefaultTextStyle.merge(style: const TextStyle(color: Colors.white), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       m.Text('${mon.name} · ${tr('posição')} ${position + 1}', style: const TextStyle(fontWeight: FontWeight.bold)),
       const SizedBox(height: 8),
       if (_automatic(slot) != null) Text(_own['wait'] == true ? 'Aguardando as substituições.' : 'Esta posição passa durante a substituição.')
       else ...[
-        DropdownButtonFormField<String>(key: ValueKey((_generation, position, action?['kind'], action?['index'])), initialValue: action == null ? null : '${action['kind']}:${action['index']}', isExpanded: true,
-          decoration: InputDecoration(labelText: '${tr('Ação de')} ${mon.name} ${position + 1}'),
-          items: [
-            if (slot['forceSwitch'] != true) for (final (i, move) in moves.indexed) DropdownMenuItem(value: 'move:$i', enabled: move['disabled'] != true && move['pp'] != 0, child: m.Text('${move['move']} · PP ${move['pp'] ?? '—'}', overflow: TextOverflow.ellipsis)),
-            for (final dynamic i in slot['switchOptions'] as List) DropdownMenuItem(value: 'switch:$i', child: m.Text('${tr(slot['revival'] == true ? 'Reviver' : 'Trocar para')} ${_b.teams[_side][i as int].name}', overflow: TextOverflow.ellipsis)),
-            if (slot['canShift'] == true) const DropdownMenuItem(value: 'shift:0', child: Text('Trocar posição com o centro')),
-            if (slot['forceSwitch'] == true && (slot['switchOptions'] as List).isEmpty) const DropdownMenuItem(value: 'pass:0', child: Text('Sem reservas: passar')),
-          ],
-          onChanged: _locked ? null : (v) { if (v != null) { final fields = v.split(':'); _pick(slot, fields[0], int.parse(fields[1])); } }),
+        if (slot['forceSwitch'] != true) Container(
+          key: ValueKey('battle-moves-$position'),
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(color: Colors.white, border: Border.all(color: const Color(0xFF475569), width: 4), borderRadius: BorderRadius.circular(12)),
+          child: LayoutBuilder(builder: (context, constraints) => Wrap(spacing: 6, runSpacing: 6, children: [
+            for (final (i, move) in moves.indexed) SizedBox(width: (constraints.maxWidth - 6) / 2, child: Material(
+              color: getColorForType(i < mon.moves.length ? mon.moves[i].type : 'normal'),
+              borderRadius: BorderRadius.circular(10),
+              child: InkWell(key: ValueKey('battle-move-$position-$i'), borderRadius: BorderRadius.circular(10),
+                onTap: _locked || move['disabled'] == true || move['pp'] == 0 ? null : () => _pick(slot, 'move', i),
+                child: Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), border: Border.all(color: action?['kind'] == 'move' && index == i ? Colors.amber : Colors.transparent, width: 2)),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    m.Text('${move['move']}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13)),
+                    m.Text('PP ${move['pp'] ?? '—'}/${i < mon.moves.length ? mon.moves[i].maxPp : move['pp'] ?? '—'}${action?['kind'] == 'move' && index == i ? ' ✓' : ''}', style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                  ])),
+              ),
+            )),
+          ])),
+        ),
+        if ((slot['switchOptions'] as List).isNotEmpty || slot['canShift'] == true || slot['forceSwitch'] == true) ...[
+          const SizedBox(height: 8),
+          DropdownButtonFormField<String>(key: ValueKey((_generation, position, action?['kind'], action?['index'])), initialValue: action != null && action['kind'] != 'move' ? '${action['kind']}:${action['index']}' : null, isExpanded: true, dropdownColor: const Color(0xFF1E293B), style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(labelStyle: const TextStyle(color: Colors.white70), labelText: '${tr('POKÉMON')} · ${tr('Trocar para')}'),
+            items: [
+              for (final dynamic i in slot['switchOptions'] as List) DropdownMenuItem(value: 'switch:$i', child: m.Text('${tr(slot['revival'] == true ? 'Reviver' : 'Trocar para')} ${_b.teams[_side][i as int].name}', overflow: TextOverflow.ellipsis)),
+              if (slot['canShift'] == true) const DropdownMenuItem(value: 'shift:0', child: Text('Trocar posição com o centro')),
+              if (slot['forceSwitch'] == true && (slot['switchOptions'] as List).isEmpty) const DropdownMenuItem(value: 'pass:0', child: Text('Sem reservas: passar')),
+            ],
+            onChanged: _locked ? null : (v) { if (v != null) { final fields = v.split(':'); _pick(slot, fields[0], int.parse(fields[1])); } }),
+        ],
         if (action?['kind'] == 'move' && targetData['automatic'] != true) ...[
           const SizedBox(height: 8),
-          DropdownButtonFormField<int>(key: ValueKey((_generation, position, action?['gimmick'], action?['target'])), initialValue: action?['target'] as int?, isExpanded: true, decoration: InputDecoration(labelText: '${tr('Alvo de')} ${mon.name} ${position + 1}'),
+          DropdownButtonFormField<int>(key: ValueKey((_generation, position, action?['gimmick'], action?['target'])), initialValue: action?['target'] as int?, isExpanded: true, dropdownColor: const Color(0xFF1E293B), style: const TextStyle(color: Colors.white), decoration: InputDecoration(labelStyle: const TextStyle(color: Colors.white70), labelText: '${tr('Alvo de')} ${mon.name} ${position + 1}'),
             items: [for (final target in targets) DropdownMenuItem(value: target['loc'] as int, child: m.Text('${tr(target['ally'] == true ? 'Aliado' : 'Adversário')}: ${target['name']} · ${(target['slot'] as int) + 1}', overflow: TextOverflow.ellipsis))],
             onChanged: _locked ? null : (v) => setState(() => _choices[position] = {...action!, 'target': v})),
         ],
@@ -1560,18 +1481,18 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
         if (available) TextButton(onPressed: _locked || reserved ? null : () => _pick(slot, 'move', index, action?['gimmick'] == mechanic ? '' : mechanic),
           child: Text('${mechanic == 'dmax' && mon.gmax != null ? 'Gigantamax' : const {'mega': 'Mega', 'tera': 'Terastal', 'dmax': 'Dynamax', 'z': 'Z-Move'}[mechanic]}${action?['gimmick'] == mechanic ? ' ✓' : ''}')),
       ],
-    ])));
+    ]))));
   }
   @override
   Widget build(BuildContext context) {
     final owned = _slots.where((s) => _b.controllers![_side][s['slot'] as int] == _uid).toList();
     final events = widget.online?.events ?? _events;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      ClipRRect(borderRadius: BorderRadius.circular(16), child: Stack(children: [Positioned.fill(child: CustomPaint(painter: _FieldPainter(_b.weather))), Column(children: [_teamRow(1 - _side), _teamRow(_side)])])),
+      _field(),
       const SizedBox(height: 8),
       Text(widget.online?.message ?? (_b.winner != null ? _b.winner == -1 ? 'Empate!' : _b.winner == _side ? 'Você venceu!' : 'A equipe adversária venceu!' : 'Turno ${_b.turn}: escolha uma ação por Pokémon.'), style: const TextStyle(fontWeight: FontWeight.bold)),
       if (_b.winner == null) for (final slot in owned) _actions(slot),
-      const Text('A reserva é compartilhada pela equipe. Os itens equipados mantêm seus efeitos.', style: TextStyle(fontSize: 12)),
+      const Text('Trocar Pokémon gasta a ação da posição. A reserva é compartilhada pela equipe. Os itens equipados mantêm seus efeitos.', style: TextStyle(fontSize: 12)),
       if (_error != null) Text(_error!, style: const TextStyle(color: Colors.redAccent)),
       if (_b.winner == null) FilledButton(onPressed: _locked || owned.any((s) => _picked(s) == null) ? null : _send, child: Text(owned.every((s) => _automatic(s) != null) ? 'Continuar' : 'Confirmar ações')),
       ConstrainedBox(constraints: const BoxConstraints(maxHeight: 180), child: SingleChildScrollView(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [for (final e in events.where((e) => e.t == 'text')) Builder(builder: (_) {
@@ -1595,13 +1516,13 @@ class _InfoBox extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFFBEB),
-          border: Border.all(color: const Color(0xFF334155), width: 3),
-          borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(10), topRight: Radius.circular(10), bottomLeft: Radius.circular(10), bottomRight: Radius.circular(22)),
+          color: const Color(0xFFFFFDE0),
+          border: Border.all(color: const Color(0xFF334155), width: 2),
+          borderRadius: BorderRadius.circular(2),
+          boxShadow: const [BoxShadow(color: Color(0xFF52634A), offset: Offset(2,2))],
         ),
         child: DefaultTextStyle.merge(
-          style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.w900),
+          style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.w900, fontFamily: 'monospace'),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,

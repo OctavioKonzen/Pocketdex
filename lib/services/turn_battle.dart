@@ -443,7 +443,7 @@ class TurnBattle {
       case 'tera': return BattleEvent.tera(side, e['type'] as String);
       case 'dmax': return BattleEvent.dmax(side, e['on'] == true ? 1 : 0, e['id'] as int);
       case 'weather': return BattleEvent.weather(e['weather'] as String);
-      default: return BattleEvent.text(e['key'] as String, [for (final dynamic arg in e['args'] as List) arg is Map ? (side: arg['side'] as int, name: arg['name'] as String) : arg as Object]);
+      default: return BattleEvent.text(e['key'] as String, [for (final dynamic arg in e['args'] as List) arg is Map ? (arg['side'] as int, arg['name'] as String) : arg as Object]);
     }
   }
 

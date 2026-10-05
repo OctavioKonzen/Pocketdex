@@ -319,8 +319,8 @@ try {
     await page2.getByRole('button',{name:'Aceitar e entrar',exact:true}).click()
     for (const p of [page,page2]) {
       await p.getByTestId('multi-battle-field').waitFor({timeout:30000})
-      assert.equal(await p.locator('select[aria-label^="Ação de"]').count(),1,'cada amigo controla somente sua posição')
-      await p.locator('select[aria-label^="Ação de"]').selectOption('move:0')
+      assert.equal(await p.getByTestId('multi-moves').count(),1,'cada amigo controla somente sua posição')
+      const move=p.getByTestId('multi-moves').getByRole('button').first(); await move.click(); assert.equal(await move.getAttribute('aria-pressed'),'true','golpe selecionado visível')
     }
     await page.getByRole('button',{name:'Confirmar ações',exact:true}).click()
     await page.getByText('Você já enviou sua ação. Aguardando seu amigo…',{exact:true}).waitFor({timeout:15000})
