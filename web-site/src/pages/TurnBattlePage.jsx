@@ -1,3 +1,4 @@
+import {simulatorDispose} from '../lib/battleSimulator'
 // Batalha por turnos (como nos jogos de GBA), igual ao app
 // (turn_battle_screen.dart): seu time contra o time de um amigo (ou um time
 // aleatório), com o computador jogando pelo outro lado. O motor fica em
@@ -553,6 +554,7 @@ export function Battle({ battle, foeName, hit, onExit, onAgain, online = null })
     if (online) return
     const events = (opening.current ??= startBattle(battle))
     if (!events.length) return
+    setBusy(true)
     const id = setTimeout(() => play(events), STEP_MS)
     return () => clearTimeout(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -866,6 +868,10 @@ export default function TurnBattlePage() {
   const user = useAuth((s) => (s.status === 'signedIn' ? s.user : null))
   const [game, setGame] = useState(null) // {battle, foeName, key, setup}
   const [hit, setHit] = useState(null)
+  useEffect(() => {
+    const battle = game?.battle
+    return () => { if (battle) simulatorDispose(battle) }
+  }, [game?.battle])
 
   useEffect(() => {
     battleHitter().then((h) => setHit(() => h))

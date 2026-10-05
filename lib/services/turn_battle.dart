@@ -1,34 +1,5 @@
-// lib/services/turn_battle.dart
-//
-// Batalha por turnos (como nos jogos de GBA), igual ao site
-// (web-site/src/lib/turnBattle.js e battleSetup.js). O motor não sabe
-// calcular dano: recebe uma função [BattleHit] que usa a calculadora do
-// Showdown (damage_calc.dart). Mesma semente e mesmos danos dão a mesma
-// batalha no site e no app (test/fixtures/turn_battle.json).
-//
-// Regras dos golpes do Pokémon Showdown (move_rules.json, tool/build_move_rules.mjs):
-// precisão, prioridade, crítico (e golpes com mais chance de crítico), vários
-// acertos, PP, Struggle, recuo, dreno, cura, status (queimadura, paralisia,
-// veneno, veneno grave, sono e congelamento), mudanças de atributo (−6 a +6),
-// efeitos secundários (com a chance de cada um) e recuar. Mais troca de
-// Pokémon, Bolsa e o adversário controlado pelo computador. Sem campo nem
-// golpes que mexem no campo (Stealth Rock, Protect...).
-//
-// Clima (5 turnos): chuva, sol, tempestade de areia, granizo e neve, pelos
-// golpes (Rain Dance, Sunny Day, Sandstorm, Hail, Snowscape e os Max Moves
-// Geyser, Flare, Rockfall e Hailstorm) e pelas habilidades ao entrar
-// (Drizzle, Drought, Sand Stream, Snow Warning, Orichalcum Pulse). Vale na
-// conta de dano (a calculadora recebe o clima), na precisão de Thunder,
-// Hurricane e Blizzard, na cura de Moonlight/Synthesis/Morning Sun/Shore Up,
-// na velocidade (Swift Swim, Chlorophyll, Sand Rush, Slush Rush) e tira vida
-// na areia e no granizo.
-//
-// Mecânicas especiais (uma por batalha para cada lado, à escolha): Mega
-// Evolução, Z-Move, Dinamax/Gigantamax (3 turnos, HP em dobro, Max Moves) e
-// Terastal. Z-Move e Max Move usam o poder das tabelas dos jogos, nunca
-// erram e não têm os efeitos extras do golpe original.
-// Lado 0 = você, lado 1 = o computador.
-
+// Production battles use the shared offline Pokémon Showdown simulator.
+// The callback-based path is retained for legacy test fixtures without simulator sets.
 import 'dart:math';
 
 import 'damage_calc.dart';
@@ -72,6 +43,10 @@ class BattleMon {
   final bool shiny;
   final List<BattleMove> _initialMoves;
   Map<String, dynamic>? _simSet;
+  String? simulationSpecies;
+  String? simulationAbility;
+  String? simulationItem;
+  int? effectiveSpe;
 
   /// Id, tipos, velocidade, vida máxima e calculadora: mudam na Mega,
   /// Terastal e Dinamax (e voltam ao original na próxima batalha).
@@ -147,7 +122,7 @@ class BattleMon {
       gimmick: gimmick,
       zType: zType,
       noDmax: noDmax,
-      ability: _orig.ability).._simSet = _simSet;
+      ability: _orig.ability).._simSet = _simSet..simulationSpecies = simulationSpecies..simulationAbility = simulationAbility..simulationItem = simulationItem;
 }
 
 /// Resultado de um golpe: os danos possíveis de cada acerto e a eficácia (0 = não afeta).
@@ -294,6 +269,7 @@ double _stageMult(int s) => s >= 0 ? (2 + s) / 2 : 2 / (2 - s);
 
 /// Velocidade na hora da ordem: estágio, paralisia (metade) e as habilidades do clima (dobro).
 int speedOf(BattleMon mon, [String weather = '']) {
+  if (mon.effectiveSpe != null) return mon.effectiveSpe!;
   var spe = (mon.spe * _stageMult(mon.boosts['spe'] ?? 0)).floor();
   if (weather.isNotEmpty && (_speedAbilities[mon.ability]?.contains(weather) ?? false)) spe *= 2;
   return mon.status == 'par' ? spe ~/ 2 : spe;
@@ -383,8 +359,8 @@ class TurnBattle {
     return {
       'id': mon.id, 'name': mon.name, 'mega': mon.mega == null ? null : {'id': mon.mega!.id},
       'gmax': mon.gmax, 'teraType': mon.teraType, 'gimmick': mon.gimmick, 'noDmax': mon.noDmax,
-      'set': mon._simSet ??= {'species': p.name, 'moves': [for (final m in mon._initialMoves) m.slug], 'level': p.level,
-        'ability': p.ability, 'item': p.item, 'nature': p.nature, 'gender': p.gender,
+      'set': mon._simSet ??= {'species': mon.simulationSpecies ?? p.name, 'moves': [for (final m in mon._initialMoves) m.slug], 'level': p.level,
+        'ability': mon.simulationAbility ?? p.ability, 'item': mon.simulationItem ?? p.item, 'nature': p.nature, 'gender': p.gender,
         'ivs': p.ivs, 'evs': p.evs, 'shiny': mon.shiny},
     };
   }
@@ -411,6 +387,7 @@ class TurnBattle {
         mon.hp = p['hp'] as int;
         mon.maxHp = p['maxHp'] as int;
         mon.spe = p['spe'] as int;
+        mon.effectiveSpe = p['actionSpeed'] as int?;
         mon.types = [for (final type in p['types'] as List) '$type'.toLowerCase()];
         mon.status = p['status'] as String;
         mon.boosts = Map<String, int>.from(p['boosts'] as Map);
@@ -485,7 +462,7 @@ class TurnBattle {
     view.cpuSwitchTurn = cpuSwitchTurn;
     view.weather = weather;
     view.weatherTurns = weatherTurns;
-    view.winner = winner == null ? null : winner == side ? 0 : 1;
+    view.winner = winner == null ? null : winner == -1 ? -1 : winner == side ? 0 : 1;
     view.needSwitch = winner == null && (_simHandle != null ? forceSwitch[side] : active(side).hp <= 0);
     view._simState = _simState == null ? null : {..._simState!, 'sides': [for (final s in order) _simState!['sides'][s]]};
     return view;
@@ -1326,6 +1303,7 @@ class TurnBattle {
   /// Texto das falas (em português; a tela traduz). {0} = Pokémon, {1} = golpe.
   static const lines = <String, Object>{
     'sim': '{0}',
+    'draw': 'A batalha terminou empatada!',
     'used': ['{0} usou {1}!', '{0} inimigo usou {1}!'],
     'missed': ['O ataque de {0} errou!', 'O ataque de {0} inimigo errou!'],
     'noEffect': ['Não afeta {0}...', 'Não afeta {0} inimigo...'],
@@ -1612,7 +1590,9 @@ class TurnBattleSetup {
         zType: '${zCrystals[itemId] ?? ''}',
         noDmax: const {888, 889, 890}.contains(row['species']),
         ability: calc.ability,
-      ));
+      )..simulationSpecies = BattleSimulator.call('species', [row['name']])['name'] as String?
+        ..simulationAbility = BattleSimulator.call('ability', [m.$2?['ability'] ?? ((row['abilities'] as List).isEmpty ? '' : (row['abilities'] as List).first[0])])['name'] as String?
+        ..simulationItem = BattleSimulator.call('item', [m.$2?['item']])['name'] as String?);
     }
     return out;
   }

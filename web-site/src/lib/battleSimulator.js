@@ -21,6 +21,7 @@ export function syncSimulator(battle, result) {
   battle.simulator.state = state
   battle.turn = state.turn
   battle.winner = state.winner
+  battle.terrain = state.terrain
   battle.weather = weatherIds[state.weather] ?? ''
   battle.bags = state.bags
   battle.forceSwitch = state.sides.map(s => s.forceSwitch)
@@ -38,7 +39,7 @@ export function syncSimulator(battle, result) {
         mon.base = mon.mega.base
         mon.side = {...mon.mega.side}
       } else mon.id = mon.orig?.id ?? mon.id
-      Object.assign(mon, {hp: p.hp, maxHp: p.maxHp, spe: p.spe, types: p.types.map(t => t.toLowerCase()), status: p.status, boosts: p.boosts, ability: p.ability, terastal: Boolean(p.tera), dmax: p.dmax})
+      Object.assign(mon, {hp: p.hp, maxHp: p.maxHp, spe: p.spe, effectiveSpe: p.actionSpeed, types: p.types.map(t => t.toLowerCase()), status: p.status, boosts: p.boosts, ability: p.ability, terastal: Boolean(p.tera), dmax: p.dmax})
       if (mon.side) mon.side = {...mon.side, item: p.item, ability: p.ability, terastallized: Boolean(p.tera), teraType: p.tera.toLowerCase()}
       const requestMoves = p.index === s.active ? s.request?.moves : null
       const slots = requestMoves?.length ? requestMoves : p.moves

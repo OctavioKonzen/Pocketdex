@@ -1,3 +1,4 @@
+import {simulatorDispose} from '../lib/battleSimulator'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Button, Empty, PageHeader } from '../components/ui'
@@ -85,6 +86,8 @@ function BattleRoom({ id, user }) {
   const teams = useStore((s) => s.teams)
   const [team, setTeam] = useState('')
   const [battle, setBattle] = useState(null)
+  const liveBattle = useRef(null)
+  useEffect(() => () => { if (liveBattle.current) simulatorDispose(liveBattle.current) }, [])
   const [round, setRound] = useState(0)
   const [hit, setHit] = useState(null)
   const [playback, setPlayback] = useState({ events: [], before: null })
@@ -98,6 +101,7 @@ function BattleRoom({ id, user }) {
   const viewBattle = battle && battlePerspective(battle, side)
   useEffect(() => {
     let live = true
+    let pendingBattle = null
     if (!room || !actions || room.status === 'pending' || !room.teams[room.players[1]]) return
     setReplaying(true)
     const replay = async () => {
@@ -105,7 +109,7 @@ function BattleRoom({ id, user }) {
       const mons = await Promise.all(room.players.map((p) => battleMons(teamMembers(unpackTeam(room.teams[p])))))
       if (mons.some((t) => !t.length)) throw new Error('Não foi possível preparar os times.')
       const hit = await battleHitter()
-      const b = newBattle(mons[0], mons[1], seededRandom(room.seed))
+      const b = pendingBattle = newBattle(mons[0], mons[1], seededRandom(room.seed))
       startBattle(b)
       const freshEvents = []
       let before = null
@@ -116,12 +120,15 @@ function BattleRoom({ id, user }) {
         if (animate) freshEvents.push(...events.map((e) => eventPerspective(e, side)))
       }
       if (live) {
+        if (liveBattle.current) simulatorDispose(liveBattle.current)
+        liveBattle.current = b
+        pendingBattle = null
         replayedRound.current = pairs.length
         setBattle(b); setRound(pairs.length); setHit(() => hit)
         setPlayback({ events: freshEvents, before }); setError(''); setReplaying(false)
-      }
+      } else { simulatorDispose(b); pendingBattle = null }
     }
-    replay().catch((e) => { if (live) { setError(errorMessage(e)); setReplaying(false) } })
+    replay().catch((e) => { if (pendingBattle) simulatorDispose(pendingBattle); if (live) { setError(errorMessage(e)); setReplaying(false) } })
     return () => { live = false }
   }, [room, actions, pairs, side])
   const run = async (fn) => {
@@ -137,10 +144,10 @@ function BattleRoom({ id, user }) {
   const disabled = busy || ownAction || replaying || closed || expired || round >= MAX_ROUNDS || battle?.winner != null
   const replacing = battle && [0, 1].some((s) => battle.forceSwitch?.[s] ?? active(battle, s).hp <= 0)
   const message = closed ? room.endedBy === user.uid ? 'Você encerrou a partida.' : 'Seu amigo encerrou a partida.' :
-    battle?.winner != null ? battle.winner === side ? 'Você venceu! 🎉' : 'Seu amigo venceu!' :
+    battle?.winner != null ? battle.winner === -1 ? 'A batalha terminou empatada!' : battle.winner === side ? 'Você venceu! 🎉' : 'Seu amigo venceu!' :
     expired ? 'Esta partida expirou. Crie uma nova batalha.' : round >= MAX_ROUNDS ? 'Limite de turnos atingido. Partida encerrada.' :
     ownAction ? 'Você já enviou sua ação. Aguardando seu amigo…' : replaying ? 'Atualizando batalha…' :
-    replacing ? active(battle, side).hp <= 0 ? 'Escolha o próximo Pokémon.' : 'Seu amigo precisa trocar de Pokémon.' : 'Escolha sua ação.'
+    replacing ? (battle.forceSwitch?.[side] ?? active(battle, side).hp <= 0) ? 'Escolha o próximo Pokémon.' : 'Seu amigo precisa trocar de Pokémon.' : 'Escolha sua ação.'
   return <div className="mx-auto max-w-3xl space-y-4">
     <PageHeader title={'Batalha com ' + room.names[room.players[other]]} subtitle="Nível máximo 50. O turno acontece quando os dois enviarem." />
     <Link to="/amigos/online">← Convites e partidas</Link>

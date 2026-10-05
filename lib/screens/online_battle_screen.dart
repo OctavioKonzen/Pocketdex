@@ -218,7 +218,7 @@ class _OnlineBattleRoomScreenState extends State<OnlineBattleRoomScreen> {
               final replacing = battle.forceSwitch.any((s) => s) || [0, 1].any((s) => battle.active(s).hp <= 0);
               final message = room['status'] == 'closed'
                   ? room['endedBy'] == OnlineBattles.me ? 'Você encerrou a partida.' : 'Seu amigo encerrou a partida.'
-                  : battle.winner != null ? battle.winner == _side ? 'Você venceu! 🎉' : 'Seu amigo venceu!'
+                  : battle.winner != null ? battle.winner == -1 ? 'A batalha terminou empatada!' : battle.winner == _side ? 'Você venceu! 🎉' : 'Seu amigo venceu!'
                   : expired ? 'Esta partida expirou. Crie uma nova batalha.'
                   : _round >= OnlineBattles.maxRounds ? 'Limite de turnos atingido. Partida encerrada.'
                   : ownAction ? 'Você já enviou sua ação. Aguardando seu amigo…'

@@ -3,6 +3,27 @@ import 'package:pocket_dex/services/battle_simulator.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test('Native runtime preserves hidden abilities, Nature stats and recharge metadata', () async {
+    await BattleSimulator.load();
+    expect(BattleSimulator.call('ability', ['contrary'])['name'], 'Contrary');
+    expect(BattleSimulator.call('nature', ['Adamant'])['plus'], 'atk');
+    expect(BattleSimulator.call('nature', ['Adamant'])['minus'], 'spa');
+    expect(BattleSimulator.call('move', ['recharge'])['category'], 'status');
+    final game = BattleSimulator.call('create', [{
+      'teams': [
+        [{'set': {'species': 'Serperior', 'moves': ['leafstorm'], 'ability': 'Contrary', 'nature': 'Timid', 'level': 50}}],
+        [{'set': {'species': 'Blissey', 'moves': ['splash'], 'level': 50}}],
+      ],
+      'seed': [1, 2, 3, 4],
+    }]);
+    final handle = game['handle'] as int;
+    try {
+      final next = BattleSimulator.call('choose', [handle, [
+        {'kind': 'move', 'index': 0, 'gimmick': ''}, {'kind': 'move', 'index': 0, 'gimmick': ''},
+      ]]);
+      expect(next['state']['sides'][0]['team'][0]['boosts']['spa'], 2);
+    } finally { BattleSimulator.release(handle); }
+  });
   test('Android runtime executes pivot, status and field effects offline', () async {
     await BattleSimulator.load();
     final game = BattleSimulator.call('create', [{

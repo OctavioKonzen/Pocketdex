@@ -1,46 +1,5 @@
-// Batalha por turnos (como nos jogos de GBA), igual ao app
-// (lib/services/turn_battle.dart). Motor puro: não sabe calcular dano, recebe
-// uma função hit(atacante, defensor, golpe, crítico, poder?, clima?) → {rolls, eff} que usa a
-// calculadora do Showdown (battleSetup.js). Mesma semente e mesmos danos dão
-// a mesma batalha no site e no app.
-//
-// Regras dos golpes do Pokémon Showdown (move_rules.json, tool/build_move_rules.mjs):
-// precisão, prioridade, crítico (e golpes com mais chance de crítico), vários
-// acertos, PP, Struggle, recuo, dreno, cura, status (queimadura, paralisia,
-// veneno, veneno grave, sono e congelamento), mudanças de atributo (−6 a +6),
-// efeitos secundários (com a chance de cada um) e recuar. Mais troca de
-// Pokémon, Bolsa e o adversário controlado pelo computador. Sem campo nem
-// golpes que mexem no campo (Stealth Rock, Protect...).
-//
-// Clima (5 turnos): chuva, sol, tempestade de areia, granizo e neve, pelos
-// golpes (Rain Dance, Sunny Day, Sandstorm, Hail, Snowscape e os Max Moves
-// Geyser, Flare, Rockfall e Hailstorm) e pelas habilidades ao entrar
-// (Drizzle, Drought, Sand Stream, Snow Warning, Orichalcum Pulse). Vale na
-// conta de dano (a calculadora recebe o clima), na precisão de Thunder,
-// Hurricane e Blizzard, na cura de Moonlight/Synthesis/Morning Sun/Shore Up,
-// na velocidade (Swift Swim, Chlorophyll, Sand Rush, Slush Rush) e tira vida
-// na areia e no granizo.
-//
-// Mecânicas especiais (uma por batalha para cada lado, à escolha): Mega
-// Evolução, Z-Move, Dinamax/Gigantamax (3 turnos, HP em dobro, Max Moves) e
-// Terastal. Z-Move e Max Move usam o poder das tabelas dos jogos, nunca
-// erram e não têm os efeitos extras do golpe original.
-//
-// Pokémon: {id, name, level, maxHp, hp, spe, types,
-//           moves: [{slug, name, type, category, power, accuracy, pp, maxPp, priority, rules?}],
-//           mega?: {id, name, types, spe, ...} (com a Mega Pedra), gmax?: id, teraType?,
-//           zType? (tipo do Cristal Z), noDmax?, gimmick? (do set), ability?,
-//           status, sleep, toxic, boosts: {atk, def, spa, spd, spe}, flinch,
-//           terastal, dmax (turnos que faltam)}
-// Eventos (para a tela ir mostrando): {t: 'text', key, args} | {t: 'hp', side, hp}
-//   | {t: 'switch', side, index} | {t: 'faint', side}
-//   | {t: 'attack', side, type, category, slug} (animação do golpe) | {t: 'miss', side}
-//   | {t: 'heal', side, index, hp} (poção ou Revive num Pokémon do time)
-//   | {t: 'status', side, status} (status novo; '' = curou)
-//   | {t: 'mega', side, id} | {t: 'tera', side, type} | {t: 'dmax', side, on, id}
-//   | {t: 'weather', weather} (clima novo: rain | sun | sand | hail | snow; '' = acabou)
-// Lado 0 = você, lado 1 = o computador.
-
+// Production battles use the shared offline Pokémon Showdown simulator.
+// The callback-based path is retained for legacy test fixtures without simulator sets.
 import {initializeSimulator, simulatorCanGimmick, simulatorTurn} from './battleSimulator'
 
 export const STRUGGLE = { slug: 'struggle', name: 'Struggle', type: 'normal', category: 'physical', power: 50, accuracy: null, pp: 1, maxPp: 1, priority: 0 }
@@ -73,6 +32,7 @@ function resetMon(mon) {
 const stageMult = (s) => (s >= 0 ? (2 + s) / 2 : 2 / (2 - s))
 /** Velocidade na hora da ordem: estágio, paralisia (metade) e as habilidades do clima (dobro). */
 export const speedOf = (mon, weather = '') => {
+  if (mon.effectiveSpe != null) return mon.effectiveSpe
   let spe = Math.floor(mon.spe * stageMult(mon.boosts?.spe ?? 0))
   if (weather && SPEED_ABILITIES[mon.ability]?.includes(weather)) spe *= 2
   return mon.status === 'par' ? Math.floor(spe / 2) : spe
@@ -872,6 +832,7 @@ export function forfeit(battle) {
 /** Texto das falas (em português; a tela traduz). {0} = Pokémon, {1} = golpe. */
 export const LINES = {
   sim: '{0}',
+  draw: 'A batalha terminou empatada!',
   used: ['{0} usou {1}!', '{0} inimigo usou {1}!'],
   missed: ['O ataque de {0} errou!', 'O ataque de {0} inimigo errou!'],
   noEffect: ['Não afeta {0}...', 'Não afeta {0} inimigo...'],
