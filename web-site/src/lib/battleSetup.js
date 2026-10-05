@@ -29,9 +29,9 @@ export const BANNED_MOVES = new Set([
  * rules[slug].ok) e, se faltar, os melhores de dano que aprende (poder × STAB ×
  * precisão), um de cada tipo primeiro. Igual ao app.
  */
-export function pickMoves(setMoves, learnable, types, moves, rules = {}) {
+export function pickMoves(setMoves, learnable, types, moves, _rules = {}) {
   const damaging = (slug) => moves[slug] && moves[slug].category !== 'status' && moves[slug].power > 0
-  const usable = (slug) => damaging(slug) || (moves[slug]?.category === 'status' && rules[slug]?.ok)
+  const usable = (slug) => Boolean(moves[slug])
   const chosen = [...new Set(setMoves.filter((s) => s && usable(s)))].slice(0, 4)
   const score = (slug) => {
     const m = moves[slug]
@@ -64,8 +64,9 @@ export async function battleMons(members) {
     const f = await fighter(calc, byId, member)
     if (!f) continue
     const stats = calc.sideStats(f.base, { ...f.side, hpPct: 100 })
-    // Só golpes que a calculadora conhece.
-    const known = (list) => list.filter((s) => s && calc.moveData(s))
+    // The simulator, rather than the damage-only calculator, decides which
+    // moves exist. This also preserves fixed damage and Let's Go moves.
+    const known = (list) => list.filter((s) => s && globalThis.PocketDexSim.move(s))
     const slugs = pickMoves(known(member.set?.moves ?? []), known(f.learnable), f.form.types, moves, rules)
     if (!stats || !slugs.length) continue
     // Mecânicas, com as regras dos jogos: Mega só segurando a Mega Pedra dele
@@ -112,6 +113,7 @@ export async function battleMons(members) {
       zType: battleItems.z?.[itemId] ?? '',
       noDmax: NO_DMAX.has(species),
       ability: f.side.ability ?? '',
+      simulation: {set: {species: globalThis.PocketDexSim.species(f.base.name)?.name || calc.speciesName(f.base.name), moves: slugs, level: f.side.level, nature: f.side.nature, ability: globalThis.PocketDexSim.ability(member.set?.ability || f.form.abilities?.[0]?.[0])?.name || f.side.ability, item: globalThis.PocketDexSim.item(member.set?.item)?.name || f.side.item, ivs: f.side.ivs, evs: f.side.evs, shiny: Boolean(member.set?.shiny)}},
     })
   }
   return out

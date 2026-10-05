@@ -280,7 +280,7 @@ void main() {
       'scratch': {'type': 'normal', 'category': 'physical', 'power': 40, 'accuracy': 100},
     };
     expect(TurnBattleSetup.pickMoves(['roost', 'flamethrower'], moves.keys.toList(), ['fire', 'flying'], moves),
-        ['flamethrower', 'air-slash', 'dragon-claw', 'scratch']);
+        ['roost', 'flamethrower', 'dragon-claw', 'scratch']);
   });
 
   test('limite 50 recalcula HP, atributos, Mega e dano sem mudar o time', () async {

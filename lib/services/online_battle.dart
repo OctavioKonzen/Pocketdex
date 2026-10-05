@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'auth_service.dart';
 
 class OnlineBattles {
-  static const protocol = 3;
+  static const protocol = 4;
   static const maxRounds = 500;
   static FirebaseFirestore get db => FirebaseFirestore.instance;
   static String get me => AuthService.instance.user!.uid;

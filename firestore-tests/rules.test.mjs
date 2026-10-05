@@ -256,9 +256,10 @@ await env.withSecurityRulesDisabled(async (ctx) => {
 })
 const roomA = doc(A, 'onlineBattles', 'battle1'), roomB = doc(B, 'onlineBattles', 'battle1')
 const packed = JSON.stringify({ name: 'Time', pokemon: [6, null], sets: [] })
-const invitation = { protocol: 3, players: ['alice', 'bob'], names: { alice: 'Ash Ketchum', bob: 'João' },
+const invitation = { protocol: 4, players: ['alice', 'bob'], names: { alice: 'Ash Ketchum', bob: 'João' },
   teams: { alice: packed }, seed: 42, status: 'pending', createdAt: serverTimestamp(), endedBy: null }
 await check('batalha protocolo 2 não inicia partida com regras antigas', setDoc(doc(A, 'onlineBattles', 'legacy-v2-new'), { ...invitation, protocol: 2 }), false)
+await check('batalha protocolo 3 não inicia partida com o motor antigo', setDoc(doc(A, 'onlineBattles', 'legacy-v3-new'), { ...invitation, protocol: 3 }), false)
 await check('batalha antiga não inicia partida acima de 50', setDoc(doc(A, 'onlineBattles', 'legacy-new'), { ...invitation, protocol: 1 }), false)
 await check('batalha convida amigo', setDoc(roomA, invitation), true)
 await check('batalha sem login não lê', getDoc(doc(anon, 'onlineBattles', 'battle1')), false)

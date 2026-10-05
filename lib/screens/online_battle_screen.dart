@@ -132,6 +132,7 @@ class _OnlineBattleRoomScreenState extends State<OnlineBattleRoomScreen> {
   void dispose() {
     _generation++;
     _roomSub?.cancel(); _actionsSub?.cancel();
+    _battle?.dispose();
     super.dispose();
   }
   Future<void> _replay() async {
@@ -161,7 +162,8 @@ class _OnlineBattleRoomScreenState extends State<OnlineBattleRoomScreen> {
         final next = battle.playOnlineTurn(pair, hit);
         if (animate) events.addAll(next.map((e) => BattleEvent.viewFor(e, side)));
       }
-      if (!mounted || generation != _generation) return;
+      if (!mounted || generation != _generation) { battle.dispose(); return; }
+      _battle?.dispose();
       setState(() {
         _battle = battle; _round = pairs.length; _hit = hit;
         _typeEff = TurnBattleSetup.typeEffect(data); _events = events; _before = before;
@@ -213,10 +215,10 @@ class _OnlineBattleRoomScreenState extends State<OnlineBattleRoomScreen> {
               final ownAction = _actions!.any((a) => a['round'] == _round && a['uid'] == OnlineBattles.me);
               final expired = room['createdAt'] is Timestamp && DateTime.now().difference((room['createdAt'] as Timestamp).toDate()).inDays >= 7;
               final disabled = _busy || ownAction || _replaying || room['status'] != 'active' || expired || _round >= OnlineBattles.maxRounds || battle.winner != null;
-              final replacing = [0, 1].any((s) => battle.active(s).hp <= 0);
+              final replacing = battle.forceSwitch.any((s) => s) || [0, 1].any((s) => battle.active(s).hp <= 0);
               final message = room['status'] == 'closed'
                   ? room['endedBy'] == OnlineBattles.me ? 'Você encerrou a partida.' : 'Seu amigo encerrou a partida.'
-                  : battle.winner != null ? battle.winner == _side ? 'Você venceu! 🎉' : 'Seu amigo venceu!'
+                  : battle.winner != null ? battle.winner == -1 ? 'A batalha terminou empatada!' : battle.winner == _side ? 'Você venceu! 🎉' : 'Seu amigo venceu!'
                   : expired ? 'Esta partida expirou. Crie uma nova batalha.'
                   : _round >= OnlineBattles.maxRounds ? 'Limite de turnos atingido. Partida encerrada.'
                   : ownAction ? 'Você já enviou sua ação. Aguardando seu amigo…'
@@ -230,7 +232,7 @@ class _OnlineBattleRoomScreenState extends State<OnlineBattleRoomScreen> {
                 online: OnlineBattleControl(
                   round: _round, events: _events, before: _before,
                   locked: disabled, message: message,
-                  waitForSwitch: replacing && mine.hp > 0,
+                  waitForSwitch: replacing && !battle.viewFor(_side).needSwitch,
                   onAction: _send, onClose: () => _run(() => OnlineBattles.close(widget.id)),
                 ),
               );

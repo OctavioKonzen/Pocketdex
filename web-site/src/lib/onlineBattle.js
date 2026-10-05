@@ -1,6 +1,6 @@
 import { firebaseServices, useAuth } from './auth'
 
-export const BATTLE_PROTOCOL = 3
+export const BATTLE_PROTOCOL = 4
 export const MAX_ROUNDS = 500
 
 export function packTeam(team) {
@@ -84,8 +84,10 @@ export function battlePerspective(battle, side) {
   return { ...battle, sides: order.map((s) => battle.sides[s]),
     usedGimmicks: order.map((s) => battle.usedGimmicks[s]),
     bags: order.map((s) => battle.bags[s]), gimmicks: order.map((s) => battle.gimmicks[s]),
-    winner: battle.winner == null ? null : battle.winner === side ? 0 : 1,
-    needSwitch: battle.winner == null && battle.sides[side].team[battle.sides[side].active].hp <= 0 }
+    winner: battle.winner == null ? null : battle.winner === -1 ? -1 : battle.winner === side ? 0 : 1,
+    simulator: battle.simulator ? {...battle.simulator, state: {...battle.simulator.state, sides: order.map(s => battle.simulator.state.sides[s])}} : undefined,
+    forceSwitch: battle.forceSwitch ? order.map(s => battle.forceSwitch[s]) : undefined,
+    needSwitch: battle.winner == null && (battle.forceSwitch?.[side] ?? battle.sides[side].team[battle.sides[side].active].hp <= 0) }
 }
 export function eventPerspective(event, side) {
   return { ...event, ...(event.side == null ? {} : { side: event.side < 0 ? event.side : event.side === side ? 0 : 1 }),

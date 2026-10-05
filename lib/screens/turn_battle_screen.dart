@@ -127,6 +127,13 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
           [for (final m in b.teams[0]) m.fresh()], [for (final m in b.teams[1]) m.fresh()], League.seededRandom(Random().nextInt(1 << 31)));
       _key++;
     });
+    b.dispose();
+  }
+
+  @override
+  void dispose() {
+    _battle?.dispose();
+    super.dispose();
   }
 
   @override
@@ -676,7 +683,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                         borderRadius: BorderRadius.circular(10),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(10),
-                          onTap: mv.pp > 0 ? () => _fight(i) : null,
+                          onTap: mv.pp > 0 && !mv.disabled ? () => _fight(i) : null,
                           child: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                             child: Column(
@@ -784,7 +791,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                 for (final (i, mon) in _b.teams[0].indexed)
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    enabled: _item != null ? _b.canUseItem(0, _item!, i) : mon.hp > 0 && i != _b.activeIndex[0],
+                    enabled: _item != null ? _b.canUseItem(0, _item!, i) : _b.canSwitch(0, i),
                     onTap: () => _choose(i),
                     leading: SizedBox.square(dimension: 44, child: PokemonSprite(mon.id, shiny: mon.shiny, fill: 0.95)),
                     title: Row(children: [

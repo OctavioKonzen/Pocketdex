@@ -70,10 +70,17 @@ jobs:
           channel: stable
           cache: true
 
+      - uses: actions/setup-node@v4
+        if: steps.check.outputs.skip == 'false'
+        with:
+          node-version: 22
+
       - name: Conferir o app antes de gerar (análise e testes)
         if: steps.check.outputs.skip == 'false'
         run: |
+          bash tool/build_battle_engine.sh
           flutter pub get
+          bash tool/build_quickjs_test.sh
           flutter analyze --no-fatal-infos
           flutter test
 

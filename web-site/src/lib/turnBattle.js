@@ -1,45 +1,6 @@
-// Batalha por turnos (como nos jogos de GBA), igual ao app
-// (lib/services/turn_battle.dart). Motor puro: não sabe calcular dano, recebe
-// uma função hit(atacante, defensor, golpe, crítico, poder?, clima?) → {rolls, eff} que usa a
-// calculadora do Showdown (battleSetup.js). Mesma semente e mesmos danos dão
-// a mesma batalha no site e no app.
-//
-// Regras dos golpes do Pokémon Showdown (move_rules.json, tool/build_move_rules.mjs):
-// precisão, prioridade, crítico (e golpes com mais chance de crítico), vários
-// acertos, PP, Struggle, recuo, dreno, cura, status (queimadura, paralisia,
-// veneno, veneno grave, sono e congelamento), mudanças de atributo (−6 a +6),
-// efeitos secundários (com a chance de cada um) e recuar. Mais troca de
-// Pokémon, Bolsa e o adversário controlado pelo computador. Sem campo nem
-// golpes que mexem no campo (Stealth Rock, Protect...).
-//
-// Clima (5 turnos): chuva, sol, tempestade de areia, granizo e neve, pelos
-// golpes (Rain Dance, Sunny Day, Sandstorm, Hail, Snowscape e os Max Moves
-// Geyser, Flare, Rockfall e Hailstorm) e pelas habilidades ao entrar
-// (Drizzle, Drought, Sand Stream, Snow Warning, Orichalcum Pulse). Vale na
-// conta de dano (a calculadora recebe o clima), na precisão de Thunder,
-// Hurricane e Blizzard, na cura de Moonlight/Synthesis/Morning Sun/Shore Up,
-// na velocidade (Swift Swim, Chlorophyll, Sand Rush, Slush Rush) e tira vida
-// na areia e no granizo.
-//
-// Mecânicas especiais (uma por batalha para cada lado, à escolha): Mega
-// Evolução, Z-Move, Dinamax/Gigantamax (3 turnos, HP em dobro, Max Moves) e
-// Terastal. Z-Move e Max Move usam o poder das tabelas dos jogos, nunca
-// erram e não têm os efeitos extras do golpe original.
-//
-// Pokémon: {id, name, level, maxHp, hp, spe, types,
-//           moves: [{slug, name, type, category, power, accuracy, pp, maxPp, priority, rules?}],
-//           mega?: {id, name, types, spe, ...} (com a Mega Pedra), gmax?: id, teraType?,
-//           zType? (tipo do Cristal Z), noDmax?, gimmick? (do set), ability?,
-//           status, sleep, toxic, boosts: {atk, def, spa, spd, spe}, flinch,
-//           terastal, dmax (turnos que faltam)}
-// Eventos (para a tela ir mostrando): {t: 'text', key, args} | {t: 'hp', side, hp}
-//   | {t: 'switch', side, index} | {t: 'faint', side}
-//   | {t: 'attack', side, type, category, slug} (animação do golpe) | {t: 'miss', side}
-//   | {t: 'heal', side, index, hp} (poção ou Revive num Pokémon do time)
-//   | {t: 'status', side, status} (status novo; '' = curou)
-//   | {t: 'mega', side, id} | {t: 'tera', side, type} | {t: 'dmax', side, on, id}
-//   | {t: 'weather', weather} (clima novo: rain | sun | sand | hail | snow; '' = acabou)
-// Lado 0 = você, lado 1 = o computador.
+// Production battles use the shared offline Pokémon Showdown simulator.
+// The callback-based path is retained for legacy test fixtures without simulator sets.
+import {initializeSimulator, simulatorCanGimmick, simulatorTurn} from './battleSimulator'
 
 export const STRUGGLE = { slug: 'struggle', name: 'Struggle', type: 'normal', category: 'physical', power: 50, accuracy: null, pp: 1, maxPp: 1, priority: 0 }
 /** Chance de crítico por estágio (geração 7 em diante). */
@@ -71,6 +32,7 @@ function resetMon(mon) {
 const stageMult = (s) => (s >= 0 ? (2 + s) / 2 : 2 / (2 - s))
 /** Velocidade na hora da ordem: estágio, paralisia (metade) e as habilidades do clima (dobro). */
 export const speedOf = (mon, weather = '') => {
+  if (mon.effectiveSpe != null) return mon.effectiveSpe
   let spe = Math.floor(mon.spe * stageMult(mon.boosts?.spe ?? 0))
   if (weather && SPEED_ABILITIES[mon.ability]?.includes(weather)) spe *= 2
   return mon.status === 'par' ? Math.floor(spe / 2) : spe
@@ -139,7 +101,7 @@ export function canUseItem(battle, side, slug, index) {
 /** Nova batalha. teams: [meus Pokémon, os do computador]; random: () => [0, 1). */
 export function newBattle(mine, theirs, random) {
   for (const mon of [...mine, ...theirs]) resetMon(mon)
-  return {
+  const battle = {
     sides: [
       { team: mine, active: 0 },
       { team: theirs, active: 0 },
@@ -155,6 +117,8 @@ export function newBattle(mine, theirs, random) {
     winner: null, // 0 = você ganhou, 1 = o computador
     needSwitch: false, // seu Pokémon desmaiou: escolha outro
   }
+  if ([...mine, ...theirs].every(mon => mon.simulation)) initializeSimulator(battle)
+  return battle
 }
 
 export const active = (battle, side) => battle.sides[side].team[battle.sides[side].active]
@@ -203,6 +167,7 @@ export function maxPower(power, type) {
  * [moveIndex] (mon.zType), Dinamax menos quem não pode (mon.noDmax).
  */
 export function canGimmick(battle, side, gimmick, moveIndex = -1) {
+  if (battle.simulator) return simulatorCanGimmick(battle, side, gimmick, moveIndex)
   const mon = active(battle, side)
   if (battle.usedGimmicks[side].includes(gimmick) || mon.hp <= 0) return false
   if (mon.gimmick && mon.gimmick !== gimmick) return false
@@ -273,7 +238,7 @@ function cpuGimmick(battle, moveIndex) {
 }
 
 /** Golpes que dá para usar; sem PP em nenhum, só Struggle. */
-export const usableMoves = (mon) => mon.moves.map((m, i) => (m.pp > 0 ? i : -1)).filter((i) => i >= 0)
+export const usableMoves = (mon) => mon.moves.map((m, i) => (m.pp > 0 && !m.disabled ? i : -1)).filter((i) => i >= 0)
 
 /** Dano médio esperado (sem crítico), para a escolha do computador. */
 function expected(battle, hit, att, def, move) {
@@ -492,7 +457,7 @@ function cpuReplacement(battle, hit) {
   let best = -1
   let bestValue = -1
   battle.sides[1].team.forEach((mon, i) => {
-    if (mon.hp <= 0) return
+    if (battle.simulator ? !battle.simulator.state.sides[1].switchOptions.includes(i) : mon.hp <= 0) return
     const value = Math.max(0, ...usableMoves(mon).map((m) => expected(battle, hit, mon, foe, mon.moves[m])))
     if (value > bestValue) {
       best = i
@@ -642,7 +607,7 @@ export function cpuPlan(battle, hit) {
   const outgoing = bestDamage(battle, hit, me, foe)
   const incoming = bestDamage(battle, hit, foe, me)
   const canFinish = outgoing >= foe.hp && (speedOf(me, battle.weather) >= speedOf(foe, battle.weather) || (index >= 0 && me.moves[index].priority > 0)) && !['slp', 'frz'].includes(me.status)
-  if (!canFinish && !me.dmax && battle.turn - battle.cpuSwitchTurn >= 2) {
+  if (!canFinish && !me.dmax && !me.trapped && battle.turn - battle.cpuSwitchTurn >= 2) {
     let best = battle.sides[1].active
     const currentScore = matchupScore(battle, hit, me, foe)
     let score = currentScore
@@ -710,6 +675,16 @@ function checkEnd(battle, hit, events) {
  * Devolve os eventos para mostrar na tela.
  */
 export function playTurn(battle, action, hit) {
+  if (battle.simulator) {
+    battle.lastHit = hit
+    const plan = cpuPlan(battle, hit)
+    const mine = action.switch != null ? {kind: 'switch', index: action.switch} : action.item != null ? {kind: 'item', item: action.item, index: action.target} : {kind: 'move', index: action.move, gimmick: action.gimmick}
+    const theirs = battle.simulator.state.sides[1].wait ? {kind: 'wait'} : plan.kind === 'item' ? {kind: 'item', item: plan.item, index: plan.target} : plan.kind === 'switch' ? plan : {kind: 'move', index: plan.index, gimmick: cpuGimmick(battle, plan.index)}
+    const events = simulatorTurn(battle, [mine, theirs])
+    if (plan.kind === 'switch') battle.cpuSwitchTurn = battle.turn
+    completeCpuSwitches(battle, hit, events)
+    return events
+  }
   const events = []
   if (battle.winner != null || battle.needSwitch) return events
   const plan = cpuPlan(battle, hit)
@@ -754,12 +729,23 @@ export function playTurn(battle, action, hit) {
   return events
 }
 
+function completeCpuSwitches(battle, hit, events) {
+  let attempts = 0
+  while (battle.winner == null && battle.simulator.state.sides[1].forceSwitch) {
+    if (++attempts > 12) throw new Error('Não foi possível resolver a substituição')
+    if (battle.simulator.state.sides[0].forceSwitch) break
+    const index = cpuReplacement(battle, hit)
+    events.push(...simulatorTurn(battle, [{kind: 'wait'}, {kind: 'switch', index}]))
+  }
+}
+
 /**
  * Começo da batalha: as habilidades de clima de quem entrou (o mais rápido
  * primeiro; o clima do mais lento fica). Devolve os eventos para mostrar.
  */
 /** Turno entre dois jogadores. A ordem dos lados nunca muda entre aparelhos. */
 export function playOnlineTurn(battle, actions, hit) {
+  if (battle.simulator) return simulatorTurn(battle, actions)
   const events = []
   if (battle.winner != null) return events
   if (actions.some((a) => a.kind === 'forfeit')) {
@@ -815,6 +801,7 @@ export function playOnlineTurn(battle, actions, hit) {
 }
 
 export function startBattle(battle) {
+  if (battle.simulator) return battle.simulator.opening.splice(0)
   const events = []
   const sides = speedOf(active(battle, 1)) > speedOf(active(battle, 0)) ? [1, 0] : [0, 1]
   for (const side of sides) weatherAbility(battle, side, events)
@@ -823,6 +810,12 @@ export function startBattle(battle) {
 
 /** Seu Pokémon desmaiou: manda outro (não gasta turno). */
 export function replace(battle, index) {
+  if (battle.simulator) {
+    const cpu = battle.forceSwitch[1] ? {kind: 'switch', index: cpuReplacement(battle, battle.lastHit)} : {kind: 'wait'}
+    const events = simulatorTurn(battle, [{kind: 'switch', index}, cpu])
+    completeCpuSwitches(battle, battle.lastHit, events)
+    return events
+  }
   const events = []
   if (!battle.needSwitch) return events
   battle.needSwitch = false
@@ -838,6 +831,8 @@ export function forfeit(battle) {
 
 /** Texto das falas (em português; a tela traduz). {0} = Pokémon, {1} = golpe. */
 export const LINES = {
+  sim: '{0}',
+  draw: 'A batalha terminou empatada!',
   used: ['{0} usou {1}!', '{0} inimigo usou {1}!'],
   missed: ['O ataque de {0} errou!', 'O ataque de {0} inimigo errou!'],
   noEffect: ['Não afeta {0}...', 'Não afeta {0} inimigo...'],

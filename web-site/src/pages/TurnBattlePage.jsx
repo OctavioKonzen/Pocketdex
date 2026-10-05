@@ -1,3 +1,4 @@
+import {simulatorDispose} from '../lib/battleSimulator'
 // Batalha por turnos (como nos jogos de GBA), igual ao app
 // (turn_battle_screen.dart): seu time contra o time de um amigo (ou um time
 // aleatório), com o computador jogando pelo outro lado. O motor fica em
@@ -553,6 +554,7 @@ export function Battle({ battle, foeName, hit, onExit, onAgain, online = null })
     if (online) return
     const events = (opening.current ??= startBattle(battle))
     if (!events.length) return
+    setBusy(true)
     const id = setTimeout(() => play(events), STEP_MS)
     return () => clearTimeout(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -692,7 +694,7 @@ export function Battle({ battle, foeName, hit, onExit, onAgain, online = null })
                 <button
                   key={m.slug}
                   type="button"
-                  disabled={m.pp <= 0}
+                  disabled={m.pp <= 0 || m.disabled}
                   onClick={() => fight(i)}
                   className="cursor-pointer rounded-lg px-2 py-1.5 text-left text-white disabled:cursor-default disabled:opacity-40"
                   style={{ background: typeColor(m.type) }}
@@ -768,7 +770,7 @@ export function Battle({ battle, foeName, hit, onExit, onAgain, online = null })
                 <button
                   key={i}
                   type="button"
-                  disabled={item ? !canUseItem(battle, 0, item, i) : m.hp <= 0 || isActive}
+                  disabled={item ? !canUseItem(battle, 0, item, i) : battle.sides[0].switchOptions ? !battle.sides[0].switchOptions.includes(i) : m.hp <= 0 || isActive}
                   onClick={() => choose(i)}
                   className={`flex cursor-pointer items-center gap-2 rounded-xl bg-surface p-2 text-left disabled:cursor-default disabled:opacity-50 ${isActive ? 'ring-2 ring-sky-500' : ''}`}
                 >
@@ -866,6 +868,10 @@ export default function TurnBattlePage() {
   const user = useAuth((s) => (s.status === 'signedIn' ? s.user : null))
   const [game, setGame] = useState(null) // {battle, foeName, key, setup}
   const [hit, setHit] = useState(null)
+  useEffect(() => {
+    const battle = game?.battle
+    return () => { if (battle) simulatorDispose(battle) }
+  }, [game?.battle])
 
   useEffect(() => {
     battleHitter().then((h) => setHit(() => h))
