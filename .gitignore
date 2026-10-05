@@ -43,3 +43,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Generated shared battle runtime (built by tool/build_battle_engine.sh).
+/assets/database/battle_engine.js
+/tool/battle-engine/node_modules/

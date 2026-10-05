@@ -194,7 +194,7 @@ describe('batalha por turnos', () => {
       roost: { type: 'flying', category: 'status', power: null, accuracy: null },
       scratch: { type: 'normal', category: 'physical', power: 40, accuracy: 100 },
     }
-    expect(pickMoves(['roost', 'flamethrower'], Object.keys(moves), ['fire', 'flying'], moves)).toEqual(['flamethrower', 'air-slash', 'dragon-claw', 'scratch'])
+    expect(pickMoves(['roost', 'flamethrower'], Object.keys(moves), ['fire', 'flying'], moves)).toEqual(['roost', 'flamethrower', 'dragon-claw', 'scratch'])
   })
 
   it('limita a 50 antes de calcular HP, atributos, Mega e dano, sem mudar o time', async () => {

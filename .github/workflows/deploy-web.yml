@@ -38,6 +38,7 @@ jobs:
 
       - name: Gerar dados do site (Python)
         run: |
+          bash ../tool/build_battle_engine.sh
           pip install pillow
           npm run data
 
@@ -65,9 +66,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: bash tool/build_battle_engine.sh
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
       - run: flutter pub get
+      - run: bash tool/build_quickjs_test.sh
       - run: flutter test

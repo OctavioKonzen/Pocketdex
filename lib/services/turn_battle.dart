@@ -34,6 +34,7 @@ import 'dart:math';
 import 'damage_calc.dart';
 import 'local_database.dart';
 import 'team_battle.dart';
+import 'battle_simulator.dart';
 
 class BattleMove {
   final String slug, name, type, category;
@@ -43,6 +44,7 @@ class BattleMove {
   /// Regras do Pokémon Showdown (move_rules.json): efeitos, recuo, dreno, status...
   final Map<String, dynamic>? rules;
   int pp;
+  bool disabled = false;
   BattleMove(this.slug, this.name, this.type, this.power, this.accuracy, this.pp, this.maxPp, this.priority,
       {this.category = 'physical', this.rules});
   BattleMove copy() => BattleMove(slug, name, type, power, accuracy, maxPp, maxPp, priority, category: category, rules: rules);
@@ -68,6 +70,8 @@ class BattleMon {
   final int level;
   final List<BattleMove> moves;
   final bool shiny;
+  final List<BattleMove> _initialMoves;
+  Map<String, dynamic>? _simSet;
 
   /// Id, tipos, velocidade, vida máxima e calculadora: mudam na Mega,
   /// Terastal e Dinamax (e voltam ao original na próxima batalha).
@@ -92,6 +96,7 @@ class BattleMon {
   final bool noDmax;
   int hp;
   bool faintShown = false;
+  bool trapped = false;
 
   /// Status ('', brn, par, psn, tox, slp, frz), turnos de sono, contador do
   /// veneno grave, estágios de atributo (−6 a +6) e se recuou neste turno.
@@ -116,6 +121,7 @@ class BattleMon {
       this.noDmax = false,
       this.ability = ''})
       : hp = maxHp,
+        _initialMoves = [for (final move in moves) move.copy()],
         teraType = teraType ?? (types.isEmpty ? '' : types.first),
         _orig = (id: id, types: types, spe: spe, maxHp: maxHp, calc: calc, mega: mega, ability: ability);
 
@@ -132,7 +138,7 @@ class BattleMon {
   }
 
   /// Com HP e PP cheios (para "batalhar de novo").
-  BattleMon fresh() => BattleMon(_orig.id, name, level, _orig.maxHp, _orig.spe, _orig.types, [for (final m in moves) m.copy()],
+  BattleMon fresh() => BattleMon(_orig.id, name, level, _orig.maxHp, _orig.spe, _orig.types, [for (final m in _initialMoves) m.copy()],
       calc: _orig.calc,
       shiny: shiny,
       mega: _orig.mega,
@@ -141,7 +147,7 @@ class BattleMon {
       gimmick: gimmick,
       zType: zType,
       noDmax: noDmax,
-      ability: _orig.ability);
+      ability: _orig.ability).._simSet = _simSet;
 }
 
 /// Resultado de um golpe: os danos possíveis de cada acerto e a eficácia (0 = não afeta).
@@ -349,6 +355,118 @@ class TurnBattle {
         ..flinch = false
         ..boosts = {for (final s in battleStats) s: 0};
     }
+    if (BattleSimulator.ready && [...mine, ...theirs].every((mon) => mon.calc != null)) {
+      final created = BattleSimulator.call('create', [{
+        'teams': [for (final team in teams) [for (final mon in team) _simMon(mon)]],
+        'seed': List.generate(4, (_) => (random() * 65536).floor()),
+      }]);
+      _simHandle = created['handle'] as int;
+      _opening = _simSync(created);
+    }
+  }
+
+  int? _simHandle;
+  Map<String, dynamic>? _simState;
+  List<BattleEvent> _opening = [];
+  BattleHit? _lastHit;
+  final List<bool> forceSwitch = [false, false];
+  bool canSwitch(int side, int index) => _simState != null
+      ? (_simState!['sides'][side]['switchOptions'] as List).contains(index)
+      : index != activeIndex[side] && teams[side][index].hp > 0;
+  void dispose() {
+    if (_simHandle != null) BattleSimulator.release(_simHandle!);
+    _simHandle = null;
+  }
+
+  static Map<String, dynamic> _simMon(BattleMon mon) {
+    final p = mon.calc!;
+    return {
+      'id': mon.id, 'name': mon.name, 'mega': mon.mega == null ? null : {'id': mon.mega!.id},
+      'gmax': mon.gmax, 'teraType': mon.teraType, 'gimmick': mon.gimmick, 'noDmax': mon.noDmax,
+      'set': mon._simSet ??= {'species': p.name, 'moves': [for (final m in mon._initialMoves) m.slug], 'level': p.level,
+        'ability': p.ability, 'item': p.item, 'nature': p.nature, 'gender': p.gender,
+        'ivs': p.ivs, 'evs': p.evs, 'shiny': mon.shiny},
+    };
+  }
+
+  List<BattleEvent> _simSync(Map<String, dynamic> result) {
+    final state = Map<String, dynamic>.from(result['state'] as Map);
+    _simState = state;
+    turn = state['turn'] as int;
+    winner = state['winner'] as int?;
+    weather = const {'raindance': 'rain', 'sunnyday': 'sun', 'sandstorm': 'sand', 'hail': 'hail', 'snow': 'snow'}[state['weather']] ?? '';
+    for (var side = 0; side < 2; side++) {
+      final s = state['sides'][side] as Map;
+      activeIndex[side] = s['active'] as int;
+      forceSwitch[side] = s['forceSwitch'] == true;
+      bags[side] = Map<String, int>.from(state['bags'][side] as Map);
+      usedGimmicks[side] = {for (final e in (s['used'] as Map).entries) if (e.value == true) e.key as String};
+      for (final dynamic raw in s['team'] as List) {
+        final p = raw as Map;
+        final mon = teams[side][p['index'] as int];
+        if ('${p['species']}'.toLowerCase().contains('-mega') && mon.mega != null) {
+          mon.id = mon.mega!.id;
+          mon.calc = mon.mega!.calc;
+        } else mon.id = mon._orig.id;
+        mon.hp = p['hp'] as int;
+        mon.maxHp = p['maxHp'] as int;
+        mon.spe = p['spe'] as int;
+        mon.types = [for (final type in p['types'] as List) '$type'.toLowerCase()];
+        mon.status = p['status'] as String;
+        mon.boosts = Map<String, int>.from(p['boosts'] as Map);
+        mon.ability = p['ability'] as String;
+        mon.terastal = '${p['tera']}'.isNotEmpty;
+        mon.dmax = p['dmax'] as int;
+        mon.trapped = p['index'] == s['active'] && s['trapped'] == true;
+        if (mon.calc != null) {
+          mon.calc!.item = p['item'] as String;
+          mon.calc!.ability = mon.ability;
+        }
+        final req = p['index'] == s['active'] ? (s['request'] as Map?)?['moves'] as List? : null;
+        final slots = req ?? p['moves'] as List;
+        mon.moves.clear();
+        for (final dynamic rawSlot in slots) {
+          final slot = rawSlot as Map;
+          final data = BattleSimulator.call('move', [slot['id'] ?? slot['slug']]);
+          final original = (p['moves'] as List).cast<Map>().where((m) => m['slug'] == (slot['id'] ?? slot['slug'])).firstOrNull;
+          final move = BattleMove(data['slug'] as String, data['name'] as String, data['type'] as String,
+            data['power'] as int, data['accuracy'] as int?, (slot['pp'] as int?) ?? 1,
+            (slot['maxpp'] ?? slot['maxPp'] ?? original?['maxPp'] ?? 1) as int, data['priority'] as int,
+            category: data['category'] as String)..disabled = slot['disabled'] == true;
+          mon.moves.add(move);
+        }
+      }
+    }
+    needSwitch = winner == null && forceSwitch[0];
+    return [for (final dynamic raw in result['events'] as List) _simEvent(Map<String, dynamic>.from(raw as Map))];
+  }
+
+  static BattleEvent _simEvent(Map<String, dynamic> e) {
+    final side = (e['side'] as int?) ?? 0;
+    switch (e['t']) {
+      case 'hp': return BattleEvent.hp(side, e['hp'] as int);
+      case 'switch': return BattleEvent.switched(side, e['index'] as int);
+      case 'faint': return BattleEvent.faint(side);
+      case 'attack': return BattleEvent.attack(side, e['type'] as String, e['category'] as String, e['slug'] as String);
+      case 'miss': return BattleEvent.miss(side);
+      case 'status': return BattleEvent.status(side, e['status'] as String);
+      case 'heal': return BattleEvent.heal(side, e['index'] as int, e['hp'] as int);
+      case 'mega': return BattleEvent.mega(side, e['id'] as int);
+      case 'tera': return BattleEvent.tera(side, e['type'] as String);
+      case 'dmax': return BattleEvent.dmax(side, e['on'] == true ? 1 : 0, e['id'] as int);
+      case 'weather': return BattleEvent.weather(e['weather'] as String);
+      default: return BattleEvent.text(e['key'] as String, [for (final dynamic arg in e['args'] as List) arg is Map ? (side: arg['side'] as int, name: arg['name'] as String) : arg as Object]);
+    }
+  }
+
+  List<BattleEvent> _simChoose(List<Map<String, dynamic>> actions) => _simSync(BattleSimulator.call('choose', [_simHandle, actions]));
+
+  void _completeCpuSwitches(BattleHit hit, List<BattleEvent> events) {
+    var attempts = 0;
+    while (winner == null && forceSwitch[1] && !forceSwitch[0]) {
+      if (++attempts > 12) throw StateError('Não foi possível resolver a substituição');
+      events.addAll(_simChoose([{'kind': 'wait'}, {'kind': 'switch', 'index': _cpuReplacement(hit)}]));
+    }
   }
 
   // Visão da partida sem restaurar HP, formas ou status.
@@ -361,13 +479,15 @@ class TurnBattle {
       view.bags[i] = bags[order[i]];
       view.gimmicks[i] = gimmicks[order[i]];
       view.usedGimmicks[i] = usedGimmicks[order[i]];
+      view.forceSwitch[i] = forceSwitch[order[i]];
     }
     view.turn = turn;
     view.cpuSwitchTurn = cpuSwitchTurn;
     view.weather = weather;
     view.weatherTurns = weatherTurns;
     view.winner = winner == null ? null : winner == side ? 0 : 1;
-    view.needSwitch = winner == null && active(side).hp <= 0;
+    view.needSwitch = winner == null && (_simHandle != null ? forceSwitch[side] : active(side).hp <= 0);
+    view._simState = _simState == null ? null : {..._simState!, 'sides': [for (final s in order) _simState!['sides'][s]]};
     return view;
   }
 
@@ -478,6 +598,15 @@ class TurnBattle {
   /// só com a Mega Pedra ([BattleMon.mega]), Z-Move só com o Cristal Z do tipo
   /// do golpe [moveIndex] ([BattleMon.zType]), Dinamax menos quem não pode.
   bool canGimmick(int side, String gimmick, [int moveIndex = -1]) {
+    if (_simState != null) {
+      final req = _simState!['sides'][side]['request'] as Map?;
+      if (req == null) return false;
+      if (gimmick == 'mega') return req['canMegaEvo'] == true;
+      if (gimmick == 'tera') return req['canTerastallize'] != null;
+      if (gimmick == 'dmax') return req['canDynamax'] == true;
+      final z = req['canZMove'] as List?;
+      return gimmick == 'z' && z != null && moveIndex >= 0 && moveIndex < z.length && z[moveIndex] != null;
+    }
     final mon = active(side);
     if (usedGimmicks[side].contains(gimmick) || mon.hp <= 0) return false;
     if (mon.gimmick.isNotEmpty && mon.gimmick != gimmick) return false;
@@ -555,7 +684,7 @@ class TurnBattle {
   /// Golpes que dá para usar; sem PP em nenhum, só Struggle.
   static List<int> usableMoves(BattleMon mon) => [
         for (var i = 0; i < mon.moves.length; i++)
-          if (mon.moves[i].pp > 0) i,
+          if (mon.moves[i].pp > 0 && !mon.moves[i].disabled) i,
       ];
 
   static double _expected(BattleHit hit, BattleMon att, BattleMon def, BattleMove move, String weather) {
@@ -787,7 +916,7 @@ class TurnBattle {
     var bestValue = -1.0;
     for (var i = 0; i < teams[1].length; i++) {
       final mon = teams[1][i];
-      if (mon.hp <= 0) continue;
+      if (_simState != null ? !canSwitch(1, i) : mon.hp <= 0) continue;
       var value = 0.0;
       for (final m in usableMoves(mon)) {
         final v = _expected(hit, mon, foe, mon.moves[m], weather);
@@ -966,7 +1095,7 @@ class TurnBattle {
     final me = active(1), foe = active(0), index = cpuMove(hit);
     final outgoing = _bestDamage(hit, me, foe), incoming = _bestDamage(hit, foe, me);
     final canFinish = outgoing >= foe.hp && (speedOf(me, weather) >= speedOf(foe, weather) || (index >= 0 && me.moves[index].priority > 0)) && !['slp', 'frz'].contains(me.status);
-    if (!canFinish && me.dmax == 0 && turn - cpuSwitchTurn >= 2) {
+    if (!canFinish && me.dmax == 0 && !me.trapped && turn - cpuSwitchTurn >= 2) {
       var best = activeIndex[1];
       final currentScore = _matchupScore(hit, me, foe);
       var score = currentScore;
@@ -1035,6 +1164,21 @@ class TurnBattle {
   /// [target] (índice no time).
   /// Trocas e itens vêm antes dos golpes.
   List<BattleEvent> playTurn(BattleHit hit, {int? move, String? gimmick, int? switchTo, String? item, int? target}) {
+    if (_simHandle != null) {
+      _lastHit = hit;
+      final plan = cpuPlan(hit);
+      final mine = switchTo != null ? {'kind': 'switch', 'index': switchTo}
+        : item != null ? {'kind': 'item', 'item': item, 'index': target ?? activeIndex[0]}
+        : {'kind': 'move', 'index': move, 'gimmick': gimmick};
+      final theirs = _simState!['sides'][1]['wait'] == true ? <String, dynamic>{'kind': 'wait'}
+        : plan.kind == 'item' ? {'kind': 'item', 'item': plan.item, 'index': plan.target}
+        : plan.kind == 'switch' ? {'kind': 'switch', 'index': plan.index}
+        : {'kind': 'move', 'index': plan.index, 'gimmick': _cpuGimmick(plan.index)};
+      final events = _simChoose([mine, theirs]);
+      if (plan.kind == 'switch') cpuSwitchTurn = turn;
+      _completeCpuSwitches(hit, events);
+      return events;
+    }
     final events = <BattleEvent>[];
     if (winner != null || needSwitch) return events;
     final plan = cpuPlan(hit);
@@ -1083,6 +1227,7 @@ class TurnBattle {
   /// primeiro; o clima do mais lento fica). Devolve os eventos para mostrar.
   /// Resolve as ações dos dois jogadores, sem escolher ações pelo computador.
   List<BattleEvent> playOnlineTurn(List<Map<String, dynamic>> actions, BattleHit hit) {
+    if (_simHandle != null) return _simChoose(actions);
     final events = <BattleEvent>[];
     if (winner != null) return events;
     if (actions.any((a) => a['kind'] == 'forfeit')) {
@@ -1145,6 +1290,11 @@ class TurnBattle {
   }
 
   List<BattleEvent> start() {
+    if (_simHandle != null) {
+      final events = _opening;
+      _opening = [];
+      return events;
+    }
     final events = <BattleEvent>[];
     for (final side in speedOf(active(1)) > speedOf(active(0)) ? [1, 0] : [0, 1]) {
       _weatherAbility(side, events);
@@ -1154,6 +1304,12 @@ class TurnBattle {
 
   /// Seu Pokémon desmaiou: manda outro (não gasta turno).
   List<BattleEvent> replace(int index) {
+    if (_simHandle != null) {
+      final cpu = forceSwitch[1] && _lastHit != null ? {'kind': 'switch', 'index': _cpuReplacement(_lastHit!)} : <String, dynamic>{'kind': 'wait'};
+      final events = _simChoose([{'kind': 'switch', 'index': index}, cpu]);
+      if (_lastHit != null) _completeCpuSwitches(_lastHit!, events);
+      return events;
+    }
     final events = <BattleEvent>[];
     if (!needSwitch) return events;
     needSwitch = false;
@@ -1169,6 +1325,7 @@ class TurnBattle {
 
   /// Texto das falas (em português; a tela traduz). {0} = Pokémon, {1} = golpe.
   static const lines = <String, Object>{
+    'sim': '{0}',
     'used': ['{0} usou {1}!', '{0} inimigo usou {1}!'],
     'missed': ['O ataque de {0} errou!', 'O ataque de {0} inimigo errou!'],
     'noEffect': ['Não afeta {0}...', 'Não afeta {0} inimigo...'],
@@ -1347,8 +1504,7 @@ class TurnBattleSetup {
     }
 
     // Do set também valem os de status que a batalha sabe usar (rules[slug].ok).
-    bool usable(String slug) =>
-        damaging(slug) || (moves[slug] != null && _category(moves[slug]!) == 'status' && (rules[slug] as Map?)?['ok'] != null);
+    bool usable(String slug) => moves[slug] != null;
     final chosen = <String>[];
     for (final s in setMoves) {
       if (s.isNotEmpty && usable(s) && !chosen.contains(s) && chosen.length < 4) chosen.add(s);
@@ -1376,6 +1532,7 @@ class TurnBattleSetup {
 
   /// Membros do time → Pokémon da batalha. [name] dá o nome na tela.
   static Future<List<BattleMon>> mons(List<Member> members, String Function(Map<String, dynamic> row) name) async {
+    await BattleSimulator.load();
     final data = await DamageData.load();
     final moves = await LocalDatabase.instance.movesByName();
     final rules = await LocalDatabase.instance.moveRules().catchError((_) => <String, dynamic>{});

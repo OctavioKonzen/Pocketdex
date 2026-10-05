@@ -29,9 +29,9 @@ export const BANNED_MOVES = new Set([
  * rules[slug].ok) e, se faltar, os melhores de dano que aprende (poder × STAB ×
  * precisão), um de cada tipo primeiro. Igual ao app.
  */
-export function pickMoves(setMoves, learnable, types, moves, rules = {}) {
+export function pickMoves(setMoves, learnable, types, moves, _rules = {}) {
   const damaging = (slug) => moves[slug] && moves[slug].category !== 'status' && moves[slug].power > 0
-  const usable = (slug) => damaging(slug) || (moves[slug]?.category === 'status' && rules[slug]?.ok)
+  const usable = (slug) => Boolean(moves[slug])
   const chosen = [...new Set(setMoves.filter((s) => s && usable(s)))].slice(0, 4)
   const score = (slug) => {
     const m = moves[slug]
@@ -112,6 +112,7 @@ export async function battleMons(members) {
       zType: battleItems.z?.[itemId] ?? '',
       noDmax: NO_DMAX.has(species),
       ability: f.side.ability ?? '',
+      simulation: {set: {species: calc.speciesName(f.base.name), moves: slugs, level: f.side.level, nature: f.side.nature, ability: f.side.ability, item: f.side.item, ivs: f.side.ivs, evs: f.side.evs, shiny: Boolean(member.set?.shiny)}},
     })
   }
   return out

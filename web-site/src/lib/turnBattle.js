@@ -41,6 +41,8 @@
 //   | {t: 'weather', weather} (clima novo: rain | sun | sand | hail | snow; '' = acabou)
 // Lado 0 = você, lado 1 = o computador.
 
+import {initializeSimulator, simulatorCanGimmick, simulatorTurn} from './battleSimulator'
+
 export const STRUGGLE = { slug: 'struggle', name: 'Struggle', type: 'normal', category: 'physical', power: 50, accuracy: null, pp: 1, maxPp: 1, priority: 0 }
 /** Chance de crítico por estágio (geração 7 em diante). */
 const CRIT_CHANCE = [1 / 24, 1 / 8, 1 / 2, 1]
@@ -139,7 +141,7 @@ export function canUseItem(battle, side, slug, index) {
 /** Nova batalha. teams: [meus Pokémon, os do computador]; random: () => [0, 1). */
 export function newBattle(mine, theirs, random) {
   for (const mon of [...mine, ...theirs]) resetMon(mon)
-  return {
+  const battle = {
     sides: [
       { team: mine, active: 0 },
       { team: theirs, active: 0 },
@@ -155,6 +157,8 @@ export function newBattle(mine, theirs, random) {
     winner: null, // 0 = você ganhou, 1 = o computador
     needSwitch: false, // seu Pokémon desmaiou: escolha outro
   }
+  if ([...mine, ...theirs].every(mon => mon.simulation)) initializeSimulator(battle)
+  return battle
 }
 
 export const active = (battle, side) => battle.sides[side].team[battle.sides[side].active]
@@ -203,6 +207,7 @@ export function maxPower(power, type) {
  * [moveIndex] (mon.zType), Dinamax menos quem não pode (mon.noDmax).
  */
 export function canGimmick(battle, side, gimmick, moveIndex = -1) {
+  if (battle.simulator) return simulatorCanGimmick(battle, side, gimmick, moveIndex)
   const mon = active(battle, side)
   if (battle.usedGimmicks[side].includes(gimmick) || mon.hp <= 0) return false
   if (mon.gimmick && mon.gimmick !== gimmick) return false
@@ -273,7 +278,7 @@ function cpuGimmick(battle, moveIndex) {
 }
 
 /** Golpes que dá para usar; sem PP em nenhum, só Struggle. */
-export const usableMoves = (mon) => mon.moves.map((m, i) => (m.pp > 0 ? i : -1)).filter((i) => i >= 0)
+export const usableMoves = (mon) => mon.moves.map((m, i) => (m.pp > 0 && !m.disabled ? i : -1)).filter((i) => i >= 0)
 
 /** Dano médio esperado (sem crítico), para a escolha do computador. */
 function expected(battle, hit, att, def, move) {
@@ -492,7 +497,7 @@ function cpuReplacement(battle, hit) {
   let best = -1
   let bestValue = -1
   battle.sides[1].team.forEach((mon, i) => {
-    if (mon.hp <= 0) return
+    if (battle.simulator ? !battle.simulator.state.sides[1].switchOptions.includes(i) : mon.hp <= 0) return
     const value = Math.max(0, ...usableMoves(mon).map((m) => expected(battle, hit, mon, foe, mon.moves[m])))
     if (value > bestValue) {
       best = i
@@ -642,7 +647,7 @@ export function cpuPlan(battle, hit) {
   const outgoing = bestDamage(battle, hit, me, foe)
   const incoming = bestDamage(battle, hit, foe, me)
   const canFinish = outgoing >= foe.hp && (speedOf(me, battle.weather) >= speedOf(foe, battle.weather) || (index >= 0 && me.moves[index].priority > 0)) && !['slp', 'frz'].includes(me.status)
-  if (!canFinish && !me.dmax && battle.turn - battle.cpuSwitchTurn >= 2) {
+  if (!canFinish && !me.dmax && !me.trapped && battle.turn - battle.cpuSwitchTurn >= 2) {
     let best = battle.sides[1].active
     const currentScore = matchupScore(battle, hit, me, foe)
     let score = currentScore
@@ -710,6 +715,16 @@ function checkEnd(battle, hit, events) {
  * Devolve os eventos para mostrar na tela.
  */
 export function playTurn(battle, action, hit) {
+  if (battle.simulator) {
+    battle.lastHit = hit
+    const plan = cpuPlan(battle, hit)
+    const mine = action.switch != null ? {kind: 'switch', index: action.switch} : action.item != null ? {kind: 'item', item: action.item, index: action.target} : {kind: 'move', index: action.move, gimmick: action.gimmick}
+    const theirs = battle.simulator.state.sides[1].wait ? {kind: 'wait'} : plan.kind === 'item' ? {kind: 'item', item: plan.item, index: plan.target} : plan.kind === 'switch' ? plan : {kind: 'move', index: plan.index, gimmick: cpuGimmick(battle, plan.index)}
+    const events = simulatorTurn(battle, [mine, theirs])
+    if (plan.kind === 'switch') battle.cpuSwitchTurn = battle.turn
+    completeCpuSwitches(battle, hit, events)
+    return events
+  }
   const events = []
   if (battle.winner != null || battle.needSwitch) return events
   const plan = cpuPlan(battle, hit)
@@ -754,12 +769,23 @@ export function playTurn(battle, action, hit) {
   return events
 }
 
+function completeCpuSwitches(battle, hit, events) {
+  let attempts = 0
+  while (battle.winner == null && battle.simulator.state.sides[1].forceSwitch) {
+    if (++attempts > 12) throw new Error('Não foi possível resolver a substituição')
+    if (battle.simulator.state.sides[0].forceSwitch) break
+    const index = cpuReplacement(battle, hit)
+    events.push(...simulatorTurn(battle, [{kind: 'wait'}, {kind: 'switch', index}]))
+  }
+}
+
 /**
  * Começo da batalha: as habilidades de clima de quem entrou (o mais rápido
  * primeiro; o clima do mais lento fica). Devolve os eventos para mostrar.
  */
 /** Turno entre dois jogadores. A ordem dos lados nunca muda entre aparelhos. */
 export function playOnlineTurn(battle, actions, hit) {
+  if (battle.simulator) return simulatorTurn(battle, actions)
   const events = []
   if (battle.winner != null) return events
   if (actions.some((a) => a.kind === 'forfeit')) {
@@ -815,6 +841,7 @@ export function playOnlineTurn(battle, actions, hit) {
 }
 
 export function startBattle(battle) {
+  if (battle.simulator) return battle.simulator.opening.splice(0)
   const events = []
   const sides = speedOf(active(battle, 1)) > speedOf(active(battle, 0)) ? [1, 0] : [0, 1]
   for (const side of sides) weatherAbility(battle, side, events)
@@ -823,6 +850,12 @@ export function startBattle(battle) {
 
 /** Seu Pokémon desmaiou: manda outro (não gasta turno). */
 export function replace(battle, index) {
+  if (battle.simulator) {
+    const cpu = battle.forceSwitch[1] ? {kind: 'switch', index: cpuReplacement(battle, battle.lastHit)} : {kind: 'wait'}
+    const events = simulatorTurn(battle, [{kind: 'switch', index}, cpu])
+    completeCpuSwitches(battle, battle.lastHit, events)
+    return events
+  }
   const events = []
   if (!battle.needSwitch) return events
   battle.needSwitch = false
@@ -838,6 +871,7 @@ export function forfeit(battle) {
 
 /** Texto das falas (em português; a tela traduz). {0} = Pokémon, {1} = golpe. */
 export const LINES = {
+  sim: '{0}',
   used: ['{0} usou {1}!', '{0} inimigo usou {1}!'],
   missed: ['O ataque de {0} errou!', 'O ataque de {0} inimigo errou!'],
   noEffect: ['Não afeta {0}...', 'Não afeta {0} inimigo...'],

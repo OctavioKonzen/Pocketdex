@@ -135,7 +135,7 @@ function BattleRoom({ id, user }) {
   const expired = room.createdAt && Date.now() > room.createdAt.toMillis() + 7 * 86400000
   const send = (action) => run(() => submitAction(id, round, action))
   const disabled = busy || ownAction || replaying || closed || expired || round >= MAX_ROUNDS || battle?.winner != null
-  const replacing = battle && [0, 1].some((s) => active(battle, s).hp <= 0)
+  const replacing = battle && [0, 1].some((s) => battle.forceSwitch?.[s] ?? active(battle, s).hp <= 0)
   const message = closed ? room.endedBy === user.uid ? 'Você encerrou a partida.' : 'Seu amigo encerrou a partida.' :
     battle?.winner != null ? battle.winner === side ? 'Você venceu! 🎉' : 'Seu amigo venceu!' :
     expired ? 'Esta partida expirou. Crie uma nova batalha.' : round >= MAX_ROUNDS ? 'Limite de turnos atingido. Partida encerrada.' :
@@ -162,7 +162,7 @@ function BattleRoom({ id, user }) {
       battle={viewBattle} hit={hit} foeName={room.names[room.players[other]]}
       onExit={() => navigate('/amigos/online')}
       online={{ side, round, ...playback, locked: disabled, message,
-        waitForSwitch: replacing && active(battle, side).hp > 0,
+        waitForSwitch: replacing && !(battle.forceSwitch?.[side] ?? active(battle, side).hp <= 0),
         onAction: send, onClose: () => run(() => closeBattle(id)) }}
     />}
     {room.status === 'active' && <Button disabled={busy} onClick={() => run(() => closeBattle(id))}>Desistir / encerrar partida</Button>}
