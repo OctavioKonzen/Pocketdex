@@ -103,7 +103,7 @@ function Setup({ onStart }) {
       {(
         <label className="block space-y-1.5">
           <span className="text-sm font-semibold text-muted">Seu time</span>
-          <select value={mine} onChange={(e) => setMine(e.target.value)} className={SELECT}>
+          <select aria-label="Seu time" value={mine} onChange={(e) => setMine(e.target.value)} className={SELECT}>
             <option value={RANDOM}>🎲 Time aleatório</option>
             {myTeams.map((x) => (
               <option key={x.id} value={x.id}>
@@ -116,7 +116,7 @@ function Setup({ onStart }) {
       )}
       <label className="block space-y-1.5">
         <span className="text-sm font-semibold text-muted">Adversário</span>
-        <select value={friend} onChange={(e) => pickFriend(e.target.value)} className={SELECT} data-no-translate>
+        <select aria-label="Adversário" value={friend} onChange={(e) => pickFriend(e.target.value)} className={SELECT} data-no-translate>
           <option value={RANDOM}>{t('🎲 Time aleatório')}</option>
           {friends.map((f) => (
             <option key={f.uid} value={f.uid}>
@@ -134,7 +134,7 @@ function Setup({ onStart }) {
         ) : (
           <label className="block space-y-1.5">
             <span className="text-sm font-semibold text-muted">Time do amigo</span>
-            <select value={theirs} onChange={(e) => setTheirs(e.target.value)} className={SELECT}>
+            <select aria-label="Time do amigo" value={theirs} onChange={(e) => setTheirs(e.target.value)} className={SELECT}>
               <option value="">Escolha…</option>
               {friendTeams.map((x) => (
                 <option key={x.id} value={x.id}>
