@@ -39,6 +39,8 @@ class LocalDatabase {
   /// Animação de cada golpe na batalha: {slug: [estilo, símbolo, variação]} (tool/build_move_anims.py).
   Future<Map<String, dynamic>> moveAnims() async => Map<String, dynamic>.from(await _table('move_anims') as Map);
 
+  Future<Map<String, dynamic>> npcSets() async => Map<String, dynamic>.from(await _table('npc_sets') as Map);
+
   Future<List<Map<String, dynamic>>> readySets(int pokemonId) async {
     final all = await _table('sets') as Map<String, dynamic>;
     return [for (final s in (all['$pokemonId'] as List?) ?? const []) Map<String, dynamic>.from(s as Map)];

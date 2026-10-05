@@ -17,7 +17,7 @@ export function getLatestRelease() {
       const apk32 = apks.find((a) => a.name.includes('32bits'))
       if (!apk) return null
       return {
-        version: release.tag_name.replace(/^v/, ''),
+        version: release.tag_name.replace(/^(?:v|apk-)/, ''),
         date: new Date(release.published_at).toLocaleDateString('pt-BR'),
         sizeMb: Math.round(apk.size / 1024 / 1024),
         url: apk.browser_download_url,

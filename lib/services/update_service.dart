@@ -36,7 +36,7 @@ class UpdateService {
   /// "1.10.0" > "1.9.2"
   static bool isNewer(String candidate, String current) {
     List<int> parts(String v) =>
-        v.replaceFirst(RegExp('^v'), '').split('+').first.split('.').map((p) => int.tryParse(p) ?? 0).toList();
+        v.replaceFirst(RegExp(r'^(?:v|apk-)'), '').split('+').first.split('.').map((p) => int.tryParse(p) ?? 0).toList();
     final a = parts(candidate), b = parts(current);
     for (var i = 0; i < 3; i++) {
       final x = i < a.length ? a[i] : 0, y = i < b.length ? b[i] : 0;
@@ -64,7 +64,7 @@ class UpdateService {
         apks.firstOrNull;
     if (apk == null) return null;
     return AppRelease(
-      (json['tag_name'] as String).replaceFirst(RegExp('^v'), ''),
+      (json['tag_name'] as String).replaceFirst(RegExp(r'^(?:v|apk-)'), ''),
       apk['browser_download_url'] as String,
       (json['body'] as String? ?? '').trim(),
     );

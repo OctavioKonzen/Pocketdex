@@ -1,6 +1,7 @@
 // Production battles use the shared offline Pokémon Showdown simulator.
 // The callback-based path is retained for legacy test fixtures without simulator sets.
 import 'dart:math';
+import 'dart:convert';
 
 import 'damage_calc.dart';
 import 'local_database.dart';
@@ -319,7 +320,7 @@ const battleItems = [
 BattleItem? _itemOf(String slug) => battleItems.where((i) => i.slug == slug).firstOrNull;
 
 class TurnBattle {
-  TurnBattle(List<BattleMon> mine, List<BattleMon> theirs, this.random) : teams = [mine, theirs] {
+  TurnBattle(List<BattleMon> mine, List<BattleMon> theirs, this.random, {this.mode = 'singles', this.controllers}) : teams = [mine, theirs] {
     for (final mon in [...mine, ...theirs]) {
       mon
         ..restore()
@@ -335,6 +336,7 @@ class TurnBattle {
       final created = BattleSimulator.call('create', [{
         'teams': [for (final team in teams) [for (final mon in team) _simMon(mon)]],
         'seed': List.generate(4, (_) => (random() * 65536).floor()),
+        'mode': mode, 'controllers': controllers,
       }]);
       _simHandle = created['handle'] as int;
       _opening = _simSync(created);
@@ -342,6 +344,14 @@ class TurnBattle {
   }
 
   int? _simHandle;
+  final String mode;
+  final List<List<String>>? controllers;
+  Map<String, dynamic>? get simulatorState => _simState;
+  List<Map<String, dynamic>> recommend(int side, [Map<String, dynamic>? options]) =>
+      (BattleSimulator.call('recommend', [_simHandle, side, options])['actions'] as List).map((x) => Map<String, dynamic>.from(x as Map)).toList();
+  Map<String, dynamic> targets(int side, int slot, int move, [String gimmick = '']) =>
+      BattleSimulator.call('targets', [_simHandle, side, slot, move, gimmick]);
+  List<BattleEvent> playGroupTurn(List<List<Map<String, dynamic>>> actions) => _simChoose(actions);
   Map<String, dynamic>? _simState;
   List<BattleEvent> _opening = [];
   BattleHit? _lastHit;
@@ -399,7 +409,8 @@ class TurnBattle {
           mon.calc!.item = p['item'] as String;
           mon.calc!.ability = mon.ability;
         }
-        final req = p['index'] == s['active'] ? ((s['request'] as Map?)?['moves'] as List?) : null;
+        final activeSlot = (s['slots'] as List?)?.cast<Map>().where((slot) => slot['index'] == p['index']).firstOrNull;
+        final req = (activeSlot?['request'] as Map?)?['moves'] as List?;
         final slots = req ?? p['moves'] as List;
         mon.moves.clear();
         for (final dynamic rawSlot in slots) {
@@ -436,7 +447,7 @@ class TurnBattle {
     }
   }
 
-  List<BattleEvent> _simChoose(List<Map<String, dynamic>> actions) => _simSync(BattleSimulator.call('choose', [_simHandle, actions]));
+  List<BattleEvent> _simChoose(List<Object?> actions) => _simSync(BattleSimulator.call('choose', [_simHandle, actions]));
 
   void _completeCpuSwitches(BattleHit hit, List<BattleEvent> events) {
     var attempts = 0;
@@ -447,7 +458,7 @@ class TurnBattle {
   }
 
   // Visão da partida sem restaurar HP, formas ou status.
-  TurnBattle._view(this.teams, this.random);
+  TurnBattle._view(this.teams, this.random) : mode = 'singles', controllers = null;
   TurnBattle viewFor(int side) {
     final order = [side, 1 - side];
     final view = TurnBattle._view([for (final s in order) teams[s]], random);
@@ -1614,7 +1625,7 @@ class TurnBattleSetup {
   }
 
   /// Time aleatório para o computador: 6 Pokémon totalmente evoluídos (sem lendários). Igual ao site.
-  static Future<List<Member>> randomTeam(double Function() random) async {
+  static Future<List<Member>> randomTeam(double Function() random, {String difficulty = 'normal'}) async {
     final data = await DamageData.load();
     final rows = await LocalDatabase.instance.defaultPokemon();
     final species = await LocalDatabase.instance.speciesById();
@@ -1628,7 +1639,53 @@ class TurnBattleSetup {
       final id = pool[(random() * pool.length).floor()];
       if (!ids.contains(id)) ids.add(id);
     }
-    return [for (final id in ids) (id, null)];
+    final builds = await LocalDatabase.instance.npcSets();
+    Map<String, dynamic> build(int id) => Map<String, dynamic>.from(builds['$id'] as Map);
+    Map<String, dynamic> copy(dynamic value) => Map<String, dynamic>.from(jsonDecode(jsonEncode(value)) as Map);
+    final members = <Member>[
+      for (final id in ids)
+        (id, copy((build(id)['sets'] as List)[(random() * (build(id)['sets'] as List).length).floor()])),
+    ];
+    final assigned = <int>{};
+    final mega = ids.indexWhere((id) => (build(id)['mega'] as List).isNotEmpty);
+    if (mega >= 0) {
+      final options = build(ids[mega])['mega'] as List;
+      members[mega] = (ids[mega], copy(options[(random() * options.length).floor()]));
+      assigned.add(mega);
+    }
+    int find(bool Function(Map<String, dynamic>) test) {
+      for (var i = 0; i < ids.length; i++) {
+        if (!assigned.contains(i) && test(build(ids[i]))) return i;
+      }
+      return -1;
+    }
+    var dmax = find((b) => b['gmax'] == true && b['dmax'] == true);
+    if (dmax < 0) dmax = find((b) => b['dmax'] == true);
+    if (dmax >= 0) {
+      members[dmax].$2!['gimmick'] = 'dmax';
+      assigned.add(dmax);
+    }
+    final z = find((b) => b['z'] != null);
+    if (z >= 0) {
+      final b = build(ids[z]);
+      final set = copy((b['sets'] as List).first)..['item'] = b['z']..['gimmick'] = 'z';
+      members[z] = (ids[z], set);
+    }
+    if (difficulty != 'hard') {
+      const stats = ['hp', 'atk', 'def', 'spa', 'spd', 'spe'];
+      for (final member in members) {
+        final set = member.$2!;
+        set['ivs'] = {for (final stat in stats) stat: (random() * 32).floor()};
+        final evs = {for (final stat in stats) stat: 0};
+        for (var unit = 0; unit < 127; unit++) {
+          final available = stats.where((stat) => evs[stat]! < 252).toList();
+          final stat = available[(random() * available.length).floor()];
+          evs[stat] = evs[stat]! + 4;
+        }
+        set['evs'] = evs;
+      }
+    }
+    return members;
   }
 
   /// A função de dano para o motor (a calculadora do Showdown).

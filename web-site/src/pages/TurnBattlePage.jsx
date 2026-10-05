@@ -21,6 +21,8 @@ import { teamMembers } from '../lib/teamBattle'
 import { fxPlan, moveAnim } from '../lib/moveAnim'
 import { active, canGimmick, canUseItem, effectLabel, forfeit, ITEMS, lineOf, MAX_MOVES, maxPower, moveEffect, newBattle, playTurn, replace, startBattle, STAT_NAMES, switchMatchup, usableMoves, weaknesses, Z_MOVES, zPower } from '../lib/turnBattle'
 import Sprite from '../components/Sprite'
+import {simulatorTargets} from '../lib/battleSimulator'
+import {newPartyBattle, playPartyTurn, describeEvents} from '../lib/partyBattle'
 
 const CARD = 'rounded-2xl bg-card p-5 shadow'
 const SELECT = 'w-full rounded-xl bg-surface px-3 py-2.5 outline-none focus:ring-2 focus:ring-sky-400'
@@ -50,11 +52,15 @@ function Setup({ onStart }) {
   const list = useFriends((s) => s.list)
   const friends = useMemo(() => friendsOnly(list), [list])
   const myTeams = teams.filter((x) => teamMembers(x).length)
-  const [mine, setMine] = useState('')
+  const [mine, setMine] = useState(RANDOM)
   const [friend, setFriend] = useState(RANDOM)
   const [friendTeams, setFriendTeams] = useState([])
   const [theirs, setTheirs] = useState('')
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [count, setCount] = useState(1)
+  const [difficulty, setDifficulty] = useState('normal')
+  const [npcPartner, setNpcPartner] = useState(false)
 
   const pickFriend = (uid) => {
     setFriend(uid)
@@ -65,26 +71,40 @@ function Setup({ onStart }) {
   }
   const myTeam = myTeams.find((x) => x.id === mine)
   const theirTeam = friendTeams?.find((x) => x.id === theirs)
-  const ready = myTeam && (friend === RANDOM || theirTeam)
+  const ready = (mine === RANDOM || myTeam && teamMembers(myTeam).length >= (npcPartner ? 1 : count)) && (friend === RANDOM || theirTeam && teamMembers(theirTeam).length >= count)
   const start = async () => {
     setBusy(true)
+    setError('')
+    try {
     const seed = Math.floor(Math.random() * 2 ** 31)
     const random = seededRandom(seed)
     const foeName = friend === RANDOM ? '' : friends.find((f) => f.uid === friend)?.name ?? ''
-    const [a, b] = await Promise.all([battleMons(teamMembers(myTeam)), battleMons(friend === RANDOM ? await randomTeam(random) : teamMembers(theirTeam))])
-    setBusy(false)
-    if (a.length && b.length) onStart(newBattle(a, b, random), foeName)
+    const [a, b] = await Promise.all([battleMons(mine === RANDOM ? await randomTeam(random, difficulty) : teamMembers(myTeam)), battleMons(friend === RANDOM ? await randomTeam(random, difficulty) : teamMembers(theirTeam))])
+    if (a.length && b.length) {
+      if (count === 1) onStart(newBattle(a,b,random),foeName)
+      else {
+        const rosters = {me:a,npc3:b}
+        const own = Array.from({length:count},(_,i) => i && npcPartner ? `npc${i}` : 'me')
+        for (const uid of own.filter(x => x !== 'me')) rosters[uid] = await battleMons(await randomTeam(random, difficulty))
+        onStart(newPartyBattle(rosters,[...own,...Array(count).fill('npc3')],count,random),foeName)
+      }
+    }
+    } catch(e) {setError(e.message || 'Não foi possível iniciar a batalha. Tente novamente.')}
+    finally {setBusy(false)}
   }
 
   return (
     <section className={`${CARD} space-y-4`}>
-      {!myTeams.length ? (
-        <p className="text-muted">Monte um time em Times para batalhar.</p>
-      ) : (
+      {error && <p role="alert" className="text-red-400">{error}</p>}
+      <label className="block space-y-1.5"><span>Formato</span><select aria-label="Formato" className={SELECT} value={count} onChange={e=>setCount(Number(e.target.value))}>
+        <option value={1}>Individual</option><option value={2}>Dupla</option><option value={3}>Tripla</option>
+      </select></label>
+      {count > 1 && <label className="flex gap-2"><input type="checkbox" checked={npcPartner} onChange={e=>setNpcPartner(e.target.checked)} />Jogar com parceiros NPC (desmarcado: você controla todos)</label>}
+      {(
         <label className="block space-y-1.5">
           <span className="text-sm font-semibold text-muted">Seu time</span>
-          <select value={mine} onChange={(e) => setMine(e.target.value)} className={SELECT}>
-            <option value="">Escolha…</option>
+          <select aria-label="Seu time" value={mine} onChange={(e) => setMine(e.target.value)} className={SELECT}>
+            <option value={RANDOM}>🎲 Time aleatório</option>
             {myTeams.map((x) => (
               <option key={x.id} value={x.id}>
                 {x.name}
@@ -96,7 +116,7 @@ function Setup({ onStart }) {
       )}
       <label className="block space-y-1.5">
         <span className="text-sm font-semibold text-muted">Adversário</span>
-        <select value={friend} onChange={(e) => pickFriend(e.target.value)} className={SELECT} data-no-translate>
+        <select aria-label="Adversário" value={friend} onChange={(e) => pickFriend(e.target.value)} className={SELECT} data-no-translate>
           <option value={RANDOM}>{t('🎲 Time aleatório')}</option>
           {friends.map((f) => (
             <option key={f.uid} value={f.uid}>
@@ -105,6 +125,7 @@ function Setup({ onStart }) {
           ))}
         </select>
       </label>
+      {(friend === RANDOM || npcPartner) && <label className="block space-y-1.5"><span>Dificuldade dos NPCs</span><select aria-label="Dificuldade dos NPCs" className={SELECT} value={difficulty} onChange={e=>setDifficulty(e.target.value)}><option value="normal">Normal · IVs e EVs aleatórios</option><option value="hard">Difícil · sets competitivos</option></select></label>}
       {friend !== RANDOM &&
         (friendTeams === null ? (
           <p className="text-sm text-muted">...</p>
@@ -113,7 +134,7 @@ function Setup({ onStart }) {
         ) : (
           <label className="block space-y-1.5">
             <span className="text-sm font-semibold text-muted">Time do amigo</span>
-            <select value={theirs} onChange={(e) => setTheirs(e.target.value)} className={SELECT}>
+            <select aria-label="Time do amigo" value={theirs} onChange={(e) => setTheirs(e.target.value)} className={SELECT}>
               <option value="">Escolha…</option>
               {friendTeams.map((x) => (
                 <option key={x.id} value={x.id}>
@@ -431,7 +452,10 @@ function pulse(el, cls, ms) {
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 /** A batalha em si. */
-export function Battle({ battle, foeName, hit, onExit, onAgain, online = null }) {
+export function Battle(props) {
+  return props.battle.mode && props.battle.mode !== 'singles' ? <MultiBattle {...props} /> : <SingleBattle {...props} />
+}
+function SingleBattle({ battle, foeName, hit, onExit, onAgain, online = null }) {
   const byId = usePokemonIndex()
   const [, redraw] = useState(0)
   // O que está na tela (anda atrás do motor enquanto os eventos passam).
@@ -856,6 +880,99 @@ function Weak({ mon, list, className = '' }) {
   )
 }
 
+function MultiBattle({battle, onExit, onAgain, online = null}) {
+  const byId = usePokemonIndex()
+  const uid = online?.uid || 'me'
+  const side = battle.controllers.findIndex(team => team.includes(uid))
+  const count = battle.controllers[0].length
+  const state = battle.simulator.state
+  const own = state.sides[side]
+  const owned = own.slots.filter(slot => battle.controllers[side][slot.slot] === uid)
+  const [choices,setChoices] = useState({})
+  const [error,setError] = useState('')
+  const [history,setHistory] = useState([])
+  const [,redraw] = useState(0)
+  const choicePhase = JSON.stringify([state.turn, online?.round, own.wait, owned.map(slot => [slot.slot, slot.index, slot.forceSwitch, slot.pass])])
+  useEffect(()=>{setChoices({});setError('')},[choicePhase])
+  const forced = own.slots.some(slot=>slot.forceSwitch)
+  const automatic = slot => own.wait ? {kind:'wait',index:0} : slot.pass || forced && !slot.forceSwitch ? {kind:'pass',index:0} : null
+  const picked = slot => automatic(slot) || choices[slot.slot]
+  const locked = Boolean(online?.locked) || state.winner != null
+  const setChoice = (slot,kind,index,gimmick = choices[slot.slot]?.gimmick || '') => {
+    const result = kind === 'move' ? simulatorTargets(battle,side,slot.slot,index,gimmick) : {targets:[],automatic:true}
+    const target = result.targets.find(t=>!t.ally) || result.targets[0]
+    setChoices(old=>({...old,[slot.slot]:{kind,index,gimmick:kind === 'move' ? gimmick : '',target:target?.loc || 0}}))
+  }
+  const send = () => {
+    const submitted = owned.map(slot=>({seat:side*count+slot.slot,...picked(slot)}))
+    const switches = submitted.filter(a=>a.kind === 'switch').map(a=>a.index)
+    if (new Set(switches).size !== switches.length) {setError('Escolha Pokémon diferentes para as substituições.');return}
+    const action = {kind:'team',choices:submitted}
+    if (online) {online.onAction(action);return}
+    try {
+      const events = playPartyTurn(battle,[action])
+      for(let attempt=0;attempt<12 && battle.winner == null;attempt++) {
+        const s=battle.simulator.state.sides[side]
+        const requiresChoice=s.slots.some(slot=>battle.controllers[side][slot.slot] === uid && !s.wait && !slot.pass && (!s.slots.some(x=>x.forceSwitch) || slot.forceSwitch))
+        if(requiresChoice) break
+        const waiting={kind:'team',choices:s.slots.filter(slot=>battle.controllers[side][slot.slot] === uid).map(slot=>({seat:side*count+slot.slot,kind:s.wait?'wait':'pass',index:0}))}
+        events.push(...playPartyTurn(battle,[waiting]))
+      }
+      setHistory(describeEvents(events));setChoices({});redraw(x=>x+1)
+    } catch(e) {setError(e.message)}
+  }
+  const trainer = controller => controller === uid ? 'Você' : online?.names?.[controller] || 'NPC'
+  const renderSide = teamSide => <div className="relative z-10 grid gap-1 p-2" style={{gridTemplateColumns:`repeat(${count},minmax(0,1fr))`}}>
+    {state.sides[teamSide].slots.map(slot=>{
+      const mon=battle.sides[teamSide].team[slot.index]
+      return mon && <div key={slot.slot} className="min-w-0">
+        <p className="truncate rounded bg-slate-900/75 px-1 text-center text-xs text-white">{trainer(battle.controllers[teamSide][slot.slot])}</p>
+        <div className="mx-auto max-w-36"><BattleSprite mon={mon} id={mon.dmax && mon.gmax || mon.id} back={teamSide===side} fainted={mon.hp<=0} dmax={mon.dmax>0} byId={byId}/></div>
+        <div className="rounded-lg border-2 border-slate-700 bg-amber-50 px-1 py-1 text-slate-900">
+          <p className="truncate text-xs font-bold">{mon.name}{mon.status && ` · ${mon.status.toUpperCase()}`}</p><HpBar hp={mon.hp} max={mon.maxHp}/>
+          <p className="text-right text-xs" data-testid={`multi-hp-${teamSide}-${slot.slot}`}>{mon.hp}/{mon.maxHp}</p>
+        </div>
+      </div>
+    })}
+  </div>
+  return <section className="space-y-3">
+    <div className="relative overflow-hidden rounded-xl border-4 border-slate-700" data-testid="multi-battle-field">
+      <BattleBackground weather={battle.weather}/>{renderSide(1-side)}{renderSide(side)}
+    </div>
+    <p className="rounded-xl bg-card p-3 font-bold" data-testid="multi-turn" data-turn={state.turn} data-round={online?.round ?? state.turn}>{online?.message || (state.winner != null ? state.winner === -1 ? 'Empate!' : state.winner === side ? 'Você venceu!' : 'A equipe adversária venceu!' : `Turno ${state.turn}: escolha uma ação por Pokémon.`)}</p>
+    {state.winner == null && owned.map(slot=>{
+      const mon=battle.sides[side].team[slot.index], action=picked(slot)
+      const targets=action?.kind === 'move' ? simulatorTargets(battle,side,slot.slot,action.index,action.gimmick) : {targets:[],automatic:true}
+      const req=slot.request
+      const mechanic=battle.sides[side].team[slot.index].gimmick
+      const available=mechanic==='mega'?req?.canMegaEvo:mechanic==='tera'?req?.canTerastallize:mechanic==='dmax'?req?.canDynamax:mechanic==='z'?req?.canZMove?.[action?.index ?? 0]:false
+      const reserved=Object.entries(choices).some(([other,c])=>Number(other)!==slot.slot && c.gimmick===mechanic)
+      return <div key={slot.slot} className={`${CARD} space-y-2`}>
+        <h3 className="font-bold">{mon.name} · posição {slot.slot+1}</h3>
+        {automatic(slot) ? <p>{own.wait ? 'Aguardando as substituições.' : 'Esta posição passa durante a substituição.'}</p> : <>
+          <select aria-label={`Ação de ${mon.name} ${slot.slot+1}`} className={SELECT} disabled={locked} value={action?`${action.kind}:${action.index}`:''} onChange={e=>{const [kind,index]=e.target.value.split(':');if(kind)setChoice(slot,kind,Number(index))}}>
+            <option value="">Escolha sua ação…</option>
+            {!slot.forceSwitch && req?.moves.map((m,index)=><option key={`move${index}`} value={`move:${index}`} disabled={m.disabled || m.pp===0}>{m.move} · PP {m.pp ?? '—'}</option>)}
+            {slot.switchOptions.map(index=><option key={`switch${index}`} value={`switch:${index}`}>{slot.revival?'Reviver':'Trocar para'} {battle.sides[side].team[index].name}</option>)}
+            {slot.canShift && <option value="shift:0">Trocar posição com o centro</option>}
+            {slot.forceSwitch && !slot.switchOptions.length && <option value="pass:0">Sem reservas: passar</option>}
+          </select>
+          {action?.kind==='move' && !targets.automatic && <label className="block">Alvo<select aria-label={`Alvo de ${mon.name} ${slot.slot+1}`} className={SELECT} disabled={locked} value={action.target} onChange={e=>setChoices(old=>({...old,[slot.slot]:{...action,target:Number(e.target.value)}}))}>
+            {targets.targets.map(target=><option key={target.loc} value={target.loc}>{target.ally?'Aliado':'Adversário'}: {target.name} · posição {target.slot+1}</option>)}
+          </select></label>}
+          {action?.kind==='move' && targets.automatic && <p className="text-xs text-muted">O golpe aplica seus alvos automaticamente.</p>}
+          {available && <button className="rounded-lg bg-violet-600 px-3 py-2 font-bold text-white disabled:opacity-40" disabled={locked || reserved} aria-pressed={action?.gimmick===mechanic} onClick={()=>setChoice(slot,'move',action?.index ?? 0,action?.gimmick===mechanic?'':mechanic)}>{mechanic==='dmax' && mon.gmax?'Gigantamax':{mega:'Mega',tera:'Terastal',dmax:'Dynamax',z:'Z-Move'}[mechanic]}{action?.gimmick===mechanic?' ✓':''}</button>}
+        </>}
+      </div>
+    })}
+    <p className="text-xs text-muted">A reserva é compartilhada pela equipe. Os itens equipados mantêm seus efeitos.</p>
+    {(error || online?.error) && <p role="alert" className="text-red-400">{error || online.error}</p>}
+    {state.winner==null && <Button className="w-full" disabled={locked || owned.some(slot=>!picked(slot))} onClick={send}>{owned.every(slot=>automatic(slot))?'Continuar':'Confirmar ações'}</Button>}
+    <div className="max-h-44 overflow-auto rounded-xl bg-card p-3 text-sm" aria-live="polite">{(online?.events?describeEvents(online.events):history).map((line,index)=><p key={index}>{line}</p>)}</div>
+    <div className="flex gap-3"><Button onClick={online?.onClose || onExit}>{online?'Desistir':'Voltar'}</Button>{!online && state.winner!=null && <Button onClick={onAgain}>Batalhar de novo</Button>}</div>
+  </section>
+}
+
 function MenuButton({ children, onClick, className = '', disabled = false }) {
   return (
     <button type="button" onClick={onClick} disabled={disabled} className={`disabled:cursor-default disabled:opacity-40 cursor-pointer rounded-lg px-2 py-2 text-left font-black whitespace-nowrap text-slate-900 hover:bg-amber-100 ${className}`}>
@@ -899,7 +1016,7 @@ export default function TurnBattlePage() {
     const fresh = (team) => team.map((m) => ({ ...m, hp: m.maxHp, faintShown: false, moves: m.moves.map((mv) => ({ ...mv, pp: mv.maxPp })) }))
     const b = game.battle
     const random = seededRandom(Math.floor(Math.random() * 2 ** 31))
-    setGame({ ...game, battle: newBattle(fresh(b.sides[0].team), fresh(b.sides[1].team), random), key: game.key + 1 })
+    setGame({ ...game, battle: newBattle(fresh(b.sides[0].team), fresh(b.sides[1].team), random, {mode:b.mode,controllers:b.controllers}), key: game.key + 1 })
   }
 
   return (

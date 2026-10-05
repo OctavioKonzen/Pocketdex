@@ -128,7 +128,15 @@ as artes só para o APK.
 
 ## 📦 Publicar uma versão nova do app
 
-Aumente a versão em `pubspec.yaml` (ex.: `1.1.0+2` → `1.2.0+3`) e mande para a `main`. O workflow
+O workflow conta os lançamentos de APK publicados e escreve o contador com pontos:
+35º lançamento = `0.3.5`, 40º = `0.4.0` e 100º = `1.0.0`.
+A versão avança uma vez por publicação (64 e 32 bits são o mesmo lançamento);
+uma tentativa que falhou mantém o mesmo próximo número. O número interno do Android
+também cresce, e `pubspec.yaml` e o selo do README são atualizados na `main`.
+Depois de publicar os dois APKs, os arquivos APK das versões anteriores são
+removidos. As notas e tags permanecem para conservar o histórico e o contador.
+Os novos lançamentos usam tags `apk-0.3.5` para evitar conflito com a numeração antiga.
+Execute **Actions → App Android (APK) → Run workflow**, usando a `main`. O workflow
 `.github/workflows/android-release.yml` gera o APK assinado e publica em Releases. Ele precisa destes secrets
 (**Settings → Secrets and variables → Actions**):
 

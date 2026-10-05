@@ -2,7 +2,7 @@
   "name": "pocketdex-battle-engine",
   "private": true,
   "type": "module",
-  "scripts": {"build": "node build.mjs", "test": "node --test engine.test.mjs"},
+  "scripts": {"build": "node build.mjs", "test": "node --test engine.test.mjs multi.test.mjs"},
   "dependencies": {"@pkmn/sim": "0.10.11"},
   "devDependencies": {"esbuild": "0.25.12"}
 }

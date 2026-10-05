@@ -88,3 +88,5 @@ export const cryUrl = (speciesId) => `${BASE}cries/${speciesId}.mp3`
 export function prefetchSpecies(id) {
   getSpecies(id).catch(() => {})
 }
+
+export const getNpcSets = () => load('npc_sets.json')

@@ -99,9 +99,10 @@ export function canUseItem(battle, side, slug, index) {
 }
 
 /** Nova batalha. teams: [meus Pokémon, os do computador]; random: () => [0, 1). */
-export function newBattle(mine, theirs, random) {
+export function newBattle(mine, theirs, random, options = {}) {
   for (const mon of [...mine, ...theirs]) resetMon(mon)
   const battle = {
+    mode: options.mode || 'singles', controllers: options.controllers,
     sides: [
       { team: mine, active: 0 },
       { team: theirs, active: 0 },
