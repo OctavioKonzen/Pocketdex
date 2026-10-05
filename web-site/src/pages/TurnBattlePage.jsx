@@ -939,7 +939,7 @@ function MultiBattle({battle, onExit, onAgain, online = null}) {
     <div className="relative overflow-hidden rounded-xl border-4 border-slate-700" data-testid="multi-battle-field">
       <BattleBackground weather={battle.weather}/>{renderSide(1-side)}{renderSide(side)}
     </div>
-    <p className="rounded-xl bg-card p-3 font-bold" data-testid="multi-turn" data-turn={state.turn}>{online?.message || (state.winner != null ? state.winner === -1 ? 'Empate!' : state.winner === side ? 'Você venceu!' : 'A equipe adversária venceu!' : `Turno ${state.turn}: escolha uma ação por Pokémon.`)}</p>
+    <p className="rounded-xl bg-card p-3 font-bold" data-testid="multi-turn" data-turn={state.turn} data-round={online?.round ?? state.turn}>{online?.message || (state.winner != null ? state.winner === -1 ? 'Empate!' : state.winner === side ? 'Você venceu!' : 'A equipe adversária venceu!' : `Turno ${state.turn}: escolha uma ação por Pokémon.`)}</p>
     {state.winner == null && owned.map(slot=>{
       const mon=battle.sides[side].team[slot.index], action=picked(slot)
       const targets=action?.kind === 'move' ? simulatorTargets(battle,side,slot.slot,action.index,action.gimmick) : {targets:[],automatic:true}

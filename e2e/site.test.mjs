@@ -326,7 +326,7 @@ try {
     await page.getByText('Você já enviou sua ação. Aguardando seu amigo…',{exact:true}).waitFor({timeout:15000})
     assert.equal(await page2.getByTestId('multi-turn').getAttribute('data-turn'),'1','NPCs aguardam os dois amigos')
     await page2.getByRole('button',{name:'Confirmar ações',exact:true}).click()
-    for (const p of [page,page2]) await p.waitForFunction(()=>Number(document.querySelector('[data-testid="multi-turn"]')?.dataset.turn)>1,null,{timeout:30000})
+    for (const p of [page,page2]) await p.waitForFunction(()=>Number(document.querySelector('[data-testid="multi-turn"]')?.dataset.round)>0,null,{timeout:30000})
     const field=await page.locator('[data-testid^="multi-hp-"]').allTextContents()
     assert.deepEqual(await page2.locator('[data-testid^="multi-hp-"]').allTextContents(),field,'amigos calculam o mesmo turno com NPCs')
     await page.reload()
