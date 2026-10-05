@@ -1402,7 +1402,7 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
     decoration:BoxDecoration(border:Border.all(color:const Color(0xFF1E293B),width:4)),
     child:LayoutBuilder(builder:(context,constraints) {
       final w=constraints.maxWidth,h=constraints.maxHeight;
-      Widget sprites(int side) => Positioned(left:side==_side?w*0.01:null,right:side==_side?null:w*0.01,bottom:h*(side==_side ? 0.05 : 0.52),width:w*0.53,
+      Widget sprites(int side) => Positioned(left:side==_side?w*0.01:null,right:side==_side?null:w*0.01,bottom:h*(side==_side ? 0.05 : 0.52),width:w*0.45,
         child:Row(crossAxisAlignment:CrossAxisAlignment.end,children:[for(final slot in (_b.simulatorState!['sides'][side]['slots'] as List).cast<Map>())
           if((slot['index'] as int)>=0) Expanded(child:AspectRatio(aspectRatio:1,child:Builder(builder:(_) {
             final mon=_b.teams[side][slot['index'] as int];

@@ -93,6 +93,14 @@ jobs:
           flutter analyze --no-fatal-infos
           flutter test
 
+      - name: Imagens da interface de batalha
+        if: steps.check.outputs.skip == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: battle-layout-preview-${{ steps.check.outputs.version }}
+          path: build/battle-ui-shots
+          if-no-files-found: ignore
+
       - name: Gerar APK assinado
         if: steps.check.outputs.skip == 'false'
         env:
