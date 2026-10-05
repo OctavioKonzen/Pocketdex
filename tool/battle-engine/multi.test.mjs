@@ -83,3 +83,19 @@ test('Triple CPU shifts into reach after adjacent foes faint and finishes the ba
     assert.equal(next.state.winner,1);
   } finally {sim.dispose(game.handle);}
 });
+
+test('CPU switches a healthy disadvantaged Pokémon to a safer reserve', () => {
+  const g = sim.create({seed:[1,2,3,4],teams:[[mon('Charizard',['tackle']),mon('Venusaur',['energyball'])],[mon('Blastoise',['hydropump'])]]});
+  try {
+    const action = sim.recommend(g.handle,0).actions[0];
+    assert.deepEqual(action,{kind:'switch',index:1});
+    assert.equal(g.state.sides[0].team[0].hp,g.state.sides[0].team[0].maxHp);
+  } finally {sim.dispose(g.handle);}
+});
+test('CPU attacks with a super-effective move instead of unnecessarily switching', () => {
+  const g = sim.create({seed:[1,2,3,4],teams:[[mon('Charizard',['tackle','energyball']),mon('Venusaur',['energyball'])],[mon('Blastoise',['hydropump'])]]});
+  try {
+    const action = sim.recommend(g.handle,0).actions[0];
+    assert.equal(action.kind,'move');assert.equal(action.index,1);
+  } finally {sim.dispose(g.handle);}
+});

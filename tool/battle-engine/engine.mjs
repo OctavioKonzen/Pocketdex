@@ -254,8 +254,9 @@ function command(game, sideIndex, action, slot = 0) {
 
 function estimatedDamage(source, target, move) {
   if (!target || target.fainted || !Dex.getImmunity(move.type, target)) return 0;
-  const absorb = {water: ['waterabsorb','stormdrain','dryskin'], electric: ['voltabsorb','lightningrod','motordrive'], fire: ['flashfire','wellbakedbody'], grass: ['sapsipper'], ground: ['levitate']};
-  if (absorb[move.type.toLowerCase()]?.includes(target.ability) && !['moldbreaker','teravolt','turboblaze'].includes(source.ability)) return 0;
+  const absorb = {water: ['waterabsorb','stormdrain','dryskin'], electric: ['voltabsorb','lightningrod','motordrive'], fire: ['flashfire','wellbakedbody'], grass: ['sapsipper'], ground: ['levitate','eartheater']};
+  const ignoresAbility = ['moldbreaker','teravolt','turboblaze'].includes(source.ability);
+  if (!ignoresAbility && (absorb[move.type.toLowerCase()]?.includes(target.ability) || target.ability === 'wonderguard' && Dex.getEffectiveness(move.type,target) <= 0 || target.ability === 'soundproof' && move.flags.sound || target.ability === 'bulletproof' && move.flags.bullet || target.ability === 'windrider' && move.flags.wind)) return 0;
   const attack = move.category === 'Physical' ? 'atk' : 'spa', defense = move.category === 'Physical' ? 'def' : 'spd';
   const power = typeof move.damage === 'number' ? move.damage * 2 : move.damage === 'level' ? source.level * 2 : move.basePower || (move.basePowerCallback ? 70 : 0);
   return power * source.getStat(attack) / Math.max(1, target.getStat(defense)) * 2 ** Dex.getEffectiveness(move.type, target) * (source.hasType(move.type) ? 1.5 : 1) * (move.accuracy === true ? 1 : (move.accuracy || 100) / 100);
@@ -271,7 +272,9 @@ function recommended(game, sideIndex, options = {}) {
     const foes = side.foes().filter(p => p.hp);
     const bench = slot.switchOptions.filter(index => !reserved.has(index));
     const matchup = p => Math.max(0, ...p.moveSlots.map(m => Math.max(0, ...foes.map(foe => estimatedDamage(p, foe, Dex.moves.get(m.id))))));
-    const bestBench = bench.map(index => ({index, p: side.pokemon.find(p => originalIndex(p) === index)})).sort((a,b) => matchup(b.p) - matchup(a.p))[0];
+    const threat = p => Math.max(0, ...foes.flatMap(foe => foe.moveSlots.filter(m => m.pp > 0 && !m.disabled).map(m => estimatedDamage(foe,p,Dex.moves.get(m.id)))));
+    const fitness = p => matchup(p) - threat(p) * .6;
+    const bestBench = bench.map(index => ({index, p: side.pokemon.find(p => originalIndex(p) === index)})).sort((a,b) => fitness(b.p) - fitness(a.p))[0];
     if (slot.forceSwitch) {
       if (!bestBench) return {kind: 'pass', index: 0};
       reserved.add(bestBench.index); return {kind: 'switch', index: bestBench.index};
@@ -297,8 +300,15 @@ function recommended(game, sideIndex, options = {}) {
       }
     }
     if (slot.canShift && best.score <= 0 && foes.some(p => !p.isAdjacent(source))) return {kind:'shift',index:0};
-    if (bestBench && best.score < 30 && matchup(bestBench.p) > best.score * 1.5 + 25 && game.battle.turn - (game.cpuSwitch?.[sideIndex] || -10) > 2) {
-      (game.cpuSwitch ??= {})[sideIndex] = game.battle.turn; reserved.add(bestBench.index);
+    const chosenMove = Dex.moves.get(slot.request?.moves[best.action.index]?.id);
+    const chosenTarget = game.battle.getAllActive(true).find(p => source.getLocOf(p) === best.action.target);
+    const advantagedAttack = chosenMove.category !== 'Status' && (chosenTarget ? !source.isAlly(chosenTarget) && Dex.getEffectiveness(chosenMove.type,chosenTarget) > 0 && estimatedDamage(source,chosenTarget,chosenMove) > 0 : foes.some(foe => Dex.getEffectiveness(chosenMove.type,foe) > 0 && estimatedDamage(source,foe,chosenMove) > 0));
+    const threatened = foes.some(foe => foe.moveSlots.some(m => m.pp > 0 && !m.disabled && Dex.getEffectiveness(Dex.moves.get(m.id).type,source) > 0 && estimatedDamage(foe,source,Dex.moves.get(m.id)) > 0));
+    const poorOffense = best.score < 30 && bestBench && matchup(bestBench.p) > best.score * 1.5 + 25;
+    const saferReserve = bestBench && threatened && threat(bestBench.p) < threat(source) * .65 && fitness(bestBench.p) > fitness(source) + 20;
+    const cooldownKey = `${sideIndex}:${slot.slot}`;
+    if (bestBench && !advantagedAttack && (poorOffense || saferReserve) && game.battle.turn - (game.cpuSwitch?.[cooldownKey] ?? -10) > 2) {
+      (game.cpuSwitch ??= {})[cooldownKey] = game.battle.turn; reserved.add(bestBench.index);
       return {kind: 'switch', index: bestBench.index};
     }
     const mechanic = game.teams[sideIndex][originalIndex(source)].gimmick;
