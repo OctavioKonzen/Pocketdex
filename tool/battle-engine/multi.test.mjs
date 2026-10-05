@@ -119,3 +119,20 @@ test('CPU Z-status support retains its ally target', () => {
     sim.choose(g.handle,[actions,sim.recommend(g.handle,1).actions]);
   } finally {sim.dispose(g.handle);}
 });
+
+test('CPU planning does not run attack-only ability callbacks without a move', () => {
+  for (const [species,ability,move] of [['Venusaur','Overgrow','energyball'],['Charizard','Blaze','flamethrower'],['Blastoise','Torrent','surf'],['Scizor','Swarm','xscissor']]) {
+    const g = sim.create({seed:[1,2,3,4],teams:[[mon(species,[move],ability)],[mon('Mew',['splash'])]]});
+    try {assert.equal(sim.recommend(g.handle,0).actions[0].kind,'move');}
+    finally {sim.dispose(g.handle);}
+  }
+});
+
+test('CPU does not attempt a voluntary switch under possible Shadow Tag trapping', () => {
+  const g = sim.create({mode:'triples',seed:[1,2,3,4],teams:[[mon('Mew',['splash']),mon('Mew',['splash']),mon('Mew',['splash']),mon('Darkrai',['darkpulse'])],[mon('Wynaut',['splash'],'Shadow Tag'),mon('Mew',['splash']),mon('Mew',['splash'])]]});
+  try {
+    const actions = sim.recommend(g.handle,0).actions;
+    assert.ok(actions.every(a=>a.kind!=='switch'));
+    sim.choose(g.handle,[actions,sim.recommend(g.handle,1).actions]);
+  } finally {sim.dispose(g.handle);}
+});

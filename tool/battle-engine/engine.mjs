@@ -259,7 +259,7 @@ function estimatedDamage(source, target, move) {
   if (!ignoresAbility && (absorb[move.type.toLowerCase()]?.includes(target.ability) || target.ability === 'wonderguard' && Dex.getEffectiveness(move.type,target) <= 0 || target.ability === 'soundproof' && move.flags.sound || target.ability === 'bulletproof' && move.flags.bullet || target.ability === 'windrider' && move.flags.wind)) return 0;
   const attack = move.category === 'Physical' ? 'atk' : 'spa', defense = move.category === 'Physical' ? 'def' : 'spd';
   const power = typeof move.damage === 'number' ? move.damage * 2 : move.damage === 'level' ? source.level * 2 : move.basePower || (move.basePowerCallback ? 70 : 0);
-  return power * source.getStat(attack) / Math.max(1, target.getStat(defense)) * 2 ** Dex.getEffectiveness(move.type, target) * (source.hasType(move.type) ? 1.5 : 1) * (move.accuracy === true ? 1 : (move.accuracy || 100) / 100);
+  return power * source.getStat(attack, false, true) / Math.max(1, target.getStat(defense, false, true)) * 2 ** Dex.getEffectiveness(move.type, target) * (source.hasType(move.type) ? 1.5 : 1) * (move.accuracy === true ? 1 : (move.accuracy || 100) / 100);
 }
 function recommended(game, sideIndex, options = {}) {
   const side = game.battle.sides[sideIndex];
@@ -270,7 +270,7 @@ function recommended(game, sideIndex, options = {}) {
     const source = side.active[slot.slot];
     if (slot.pass || side.activeRequest?.forceSwitch && !slot.forceSwitch) return {kind: 'pass', index: 0};
     const foes = side.foes().filter(p => p.hp);
-    const bench = slot.switchOptions.filter(index => !reserved.has(index));
+    const bench = slot.switchOptions.filter(index => !reserved.has(index) && (slot.forceSwitch || !slot.request?.maybeTrapped));
     const matchup = p => Math.max(0, ...p.moveSlots.map(m => Math.max(0, ...foes.map(foe => estimatedDamage(p, foe, Dex.moves.get(m.id))))));
     const threat = p => Math.max(0, ...foes.flatMap(foe => foe.moveSlots.filter(m => m.pp > 0 && !m.disabled).map(m => estimatedDamage(foe,p,Dex.moves.get(m.id)))));
     const fitness = p => matchup(p) - threat(p) * .6;
