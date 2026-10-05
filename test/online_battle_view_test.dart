@@ -5,6 +5,8 @@ import 'package:pocket_dex/screens/turn_battle_screen.dart';
 import 'package:pocket_dex/services/app_settings.dart';
 import 'package:pocket_dex/services/pokemon_service.dart';
 import 'package:pocket_dex/services/turn_battle.dart';
+import 'package:pocket_dex/services/battle_simulator.dart';
+import 'package:pocket_dex/services/party_battle.dart';
 import 'package:pocket_dex/widgets/pokemon_sprite.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -57,6 +59,29 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
+  for (final count in [2,3]) {
+    testWidgets('campo com $count Pokémon cabe no celular e mostra apenas a posição do jogador', (tester) async {
+      tester.view.physicalSize = const Size(320,900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      late TurnBattle battle;
+      await tester.runAsync(() async {
+        await BattleSimulator.load();
+        final mons = await TurnBattleSetup.mons([(6, {'moves': ['tackle']}), (9, {'moves': ['tackle']}), (3, {'moves': ['tackle']})], (row) => '${row['name']}');
+        final seats = [for (var i=0;i<count;i++) i==0?'alice':'npc$i', for (var i=count;i<count*2;i++) 'npc$i'];
+        battle = PartyBattle.create({for (final uid in seats) uid: mons.map((mon)=>mon.fresh()).toList()},seats,count,()=>0.5);
+      });
+      await tester.pumpWidget(ChangeNotifierProvider.value(value: AppSettings.instance, child: MaterialApp(home: Scaffold(body: SingleChildScrollView(child: BattleView(
+        battle: battle, hit: (_, __, ___, ____, [int? power, String weather='']) => (rolls:[[25]],eff:1.0), typeEff: (_,__)=>1,
+        onAgain:(){},onExit:(){}, online: OnlineBattleControl(uid:'alice',round:0,events:const [],locked:false,message:'Escolha',waitForSwitch:false,onAction:(_){},onClose:(){}),
+      ))))));
+      await tester.pump();
+      expect(find.byType(DropdownButtonFormField<String>),findsOneWidget);
+      expect(tester.takeException(),isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      battle.dispose();
+    });
+  }
   for (final kind in ['mega', 'tera', 'dmax']) {
     testWidgets('botão $kind seleciona, desmarca e envia só com o golpe', (tester) async {
       tester.view.physicalSize = const Size(390, 900);

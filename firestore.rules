@@ -201,23 +201,27 @@ service cloud.firestore {
       }
       function slots(d) { return d.mode == 'triples' ? 3 : d.mode == 'doubles' ? 2 : 1; }
       function validPlayer(d, i) {
-        return i >= d.players.size() || (d.players[i] is string && d.players[i].size() > 0 && d.players[i].size() <= 128
-          && !(d.players[i] in ['npc0', 'npc1', 'npc2', 'npc3', 'npc4', 'npc5'])
-          && d.names[d.players[i]] is string && d.names[d.players[i]].size() <= 20
-          && (!(d.players[i] in d.teams) || (d.teams[d.players[i]] is string && d.teams[d.players[i]].size() <= 20000)));
+        let uid = i < d.players.size() ? d.players[i] : '';
+        let name = d.names.get(uid, null);
+        let team = d.teams.get(uid, null);
+        return i >= d.players.size() || (uid is string && uid.size() > 0 && uid.size() <= 128
+          && !(uid in ['npc0', 'npc1', 'npc2', 'npc3', 'npc4', 'npc5'])
+          && name is string && name.size() <= 20
+          && (!(uid in d.teams) || (team is string && team.size() <= 20000)));
       }
       function validSeat(d, i) {
-        return i >= d.seats.size() || (d.seats[i] is string && (d.seats[i] in d.players || d.seats[i] == 'npc' + string(i)));
+        let seat = i < d.seats.size() ? d.seats[i] : '';
+        return i >= d.seats.size() || (seat is string && (seat in d.players || seat == 'npc' + string(i)));
       }
       function validNpc(d, uid) {
-        return uid in d.seats ? (uid in d.npcTeams && d.npcTeams[uid] is string && d.npcTeams[uid].size() <= 20000) : !(uid in d.npcTeams);
+        let team = d.npcTeams.get(uid, null);
+        return uid in d.seats ? (team is string && team.size() <= 20000) : !(uid in d.npcTeams);
       }
       function separateTeams(d) {
-        return d.mode == 'singles' ? d.seats[0] != d.seats[1]
-          : d.mode == 'doubles' ? d.seats[0] != d.seats[2] && d.seats[0] != d.seats[3] && d.seats[1] != d.seats[2] && d.seats[1] != d.seats[3]
-          : d.seats[0] != d.seats[3] && d.seats[0] != d.seats[4] && d.seats[0] != d.seats[5]
-            && d.seats[1] != d.seats[3] && d.seats[1] != d.seats[4] && d.seats[1] != d.seats[5]
-            && d.seats[2] != d.seats[3] && d.seats[2] != d.seats[4] && d.seats[2] != d.seats[5];
+        let s = d.seats;
+        let own = d.mode == 'singles' ? [s[0]] : d.mode == 'doubles' ? [s[0], s[1]] : [s[0], s[1], s[2]];
+        let foe = d.mode == 'singles' ? [s[1]] : d.mode == 'doubles' ? [s[2], s[3]] : [s[3], s[4], s[5]];
+        return !own.hasAny(foe);
       }
       function newRoom(d) {
         return d.keys().hasAll(['protocol', 'players', 'names', 'teams', 'status', 'seed', 'createdAt', 'endedBy', 'mode', 'seats', 'npcTeams'])
@@ -247,6 +251,7 @@ service cloud.firestore {
         return old.protocol == 5 && old.status == 'pending' && !(request.auth.uid in old.teams)
           && now.diff(old).affectedKeys().hasOnly(['teams', 'status'])
           && now.teams.diff(old.teams).affectedKeys().hasOnly([request.auth.uid]) && request.auth.uid in now.teams
+          && now.teams[request.auth.uid] is string && now.teams[request.auth.uid].size() <= 20000
           && now.status == (now.teams.keys().hasAll(old.players) ? 'active' : 'pending')
           && request.time < old.createdAt + duration.value(7, 'd') && newFriends(old);
       }
@@ -255,14 +260,14 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/friends/$(d.players[1])/list/$(d.players[0])).data.status == 'friends';
       }
       allow read: if request.auth != null && request.auth.uid in resource.data.players;
-      allow create: if (legacyRoom(request.resource.data) && request.resource.data.protocol == 4 && member(request.resource.data)
+      allow create: if request.resource.data.protocol == 5 ? newCreate(request.resource.data) : (legacyRoom(request.resource.data) && request.resource.data.protocol == 4 && member(request.resource.data)
         && request.resource.data.players[0] == request.auth.uid
         && request.resource.data.names[request.auth.uid] == accountName(request.auth.uid)
         && request.resource.data.names[request.resource.data.players[1]] == accountName(request.resource.data.players[1])
         && request.resource.data.teams.keys().hasOnly([request.auth.uid])
         && request.resource.data.status == 'pending' && request.resource.data.endedBy == null
-        && request.resource.data.createdAt == request.time && stillFriends(request.resource.data)) || newCreate(request.resource.data);
-      allow update: if member(resource.data) && validRoom(request.resource.data)
+        && request.resource.data.createdAt == request.time && stillFriends(request.resource.data));
+      allow update: if member(resource.data) && (resource.data.protocol == 5 || validRoom(request.resource.data))
         && (
           // Só quem recebeu o convite escolhe seu time e aceita.
           (resource.data.status == 'pending' && resource.data.protocol == 4 && request.auth.uid == resource.data.players[1]
@@ -303,12 +308,13 @@ service cloud.firestore {
         function ownedSeat(r, i) { return i < r.seats.size() && r.seats[i] == request.auth.uid ? 1 : 0; }
         function ownedCount(r) { return ownedSeat(r, 0) + ownedSeat(r, 1) + ownedSeat(r, 2) + ownedSeat(r, 3) + ownedSeat(r, 4) + ownedSeat(r, 5); }
         function validChoice(c, r) {
+          let count = slots(r);
           return c is map && c.keys().hasAll(['seat', 'kind', 'index', 'target', 'gimmick']) && c.keys().hasOnly(['seat', 'kind', 'index', 'target', 'gimmick'])
             && c.seat is int && c.seat >= 0 && c.seat < r.seats.size() && r.seats[c.seat] == request.auth.uid
             && c.kind in ['move', 'switch', 'wait', 'pass', 'shift'] && c.index is int
             && (c.kind == 'move' ? c.index >= -1 && c.index <= 3 : c.kind == 'switch' ? c.index >= 0 && c.index <= 5 : c.index == 0)
             && (c.kind != 'shift' || r.mode == 'triples' && c.seat % 3 != 1)
-            && c.target is int && c.target >= -slots(r) && c.target <= slots(r) && (c.kind == 'move' || c.target == 0)
+            && c.target is int && c.target >= -count && c.target <= count && (c.kind == 'move' || c.target == 0)
             && c.gimmick in ['none', 'mega', 'z', 'dmax', 'tera'] && (c.kind == 'move' || c.gimmick == 'none');
         }
         function validGroup(d, r) {
@@ -321,9 +327,13 @@ service cloud.firestore {
             && d.at == request.time;
         }
         allow read: if member(room());
-        allow create: if member(room()) && room().protocol in [4, 5] && room().status == 'active'
-          && request.time < room().createdAt + duration.value(7, 'd')
-          && (room().protocol == 5 ? validGroup(request.resource.data, room()) : validAction(request.resource.data)) && previousComplete(request.resource.data, room());
+        function canSubmit(d) {
+          let r = room();
+          return member(r) && r.protocol in [4, 5] && r.status == 'active'
+            && request.time < r.createdAt + duration.value(7, 'd')
+            && (r.protocol == 5 ? validGroup(d, r) : validAction(d)) && previousComplete(d, r);
+        }
+        allow create: if canSubmit(request.resource.data);
         // Sem update/delete: não dá para mudar uma ação já enviada.
       }
     }

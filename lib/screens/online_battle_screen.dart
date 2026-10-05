@@ -157,6 +157,7 @@ class _OnlineBattleRoomScreenState extends State<OnlineBattleRoomScreen> {
     final previousRound = _battle == null ? null : _round;
     final side = _side;
     setState(() => _replaying = true);
+    TurnBattle? pendingBattle;
     try {
       if (_room!['protocol'] != OnlineBattles.protocol) throw StateError('Atualize o PocketDex e crie uma nova partida para usar as regras atuais de batalha.');
       final players = _players;
@@ -173,6 +174,7 @@ class _OnlineBattleRoomScreenState extends State<OnlineBattleRoomScreen> {
       final data = await DamageData.load();
       final hit = TurnBattleSetup.hitter(data);
       final battle = PartyBattle.create(rosters, seats, PartyBattle.countOf(_room!), League.seededRandom(seed));
+      pendingBattle = battle;
       battle.start();
       final events = <BattleEvent>[];
       List<int>? before;
@@ -182,14 +184,16 @@ class _OnlineBattleRoomScreenState extends State<OnlineBattleRoomScreen> {
         final next = PartyBattle.play(battle, pair);
         if (animate) events.addAll(next.map((e) => BattleEvent.viewFor(e, side)));
       }
-      if (!mounted || generation != _generation) { battle.dispose(); return; }
+      if (!mounted || generation != _generation) { battle.dispose(); pendingBattle = null; return; }
       _battle?.dispose();
       setState(() {
         _battle = battle; _round = pairs.length; _hit = hit;
         _typeEff = TurnBattleSetup.typeEffect(data); _events = events; _before = before;
         _replaying = false; _errorText = null;
       });
+      pendingBattle = null;
     } catch (e) {
+      pendingBattle?.dispose();
       if (mounted && generation == _generation) setState(() { _errorText = _error(e); _replaying = false; });
     }
   }

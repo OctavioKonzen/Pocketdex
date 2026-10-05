@@ -1505,7 +1505,8 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
         return Column(children: [
           Container(width: double.infinity, padding: const EdgeInsets.all(2), color: const Color(0xBB0F172A), child: m.Text(_trainer(_b.controllers![side][slot['slot'] as int]), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 11))),
           AspectRatio(aspectRatio: 1, child: _Sprite(mon: mon, id: mon.dmax > 0 ? mon.gmax ?? mon.id : mon.id, dmax: mon.dmax > 0, back: side == _side, fainted: mon.hp <= 0)),
-          _InfoBox(mon: mon, hp: mon.hp, mine: true, status: mon.status, dmax: mon.dmax > 0),
+          SizedBox(width: double.infinity, child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.topCenter,
+            child: SizedBox(width: 210, child: _InfoBox(mon: mon, hp: mon.hp, mine: true, status: mon.status, dmax: mon.dmax > 0)))),
         ]);
       }))),
     ]);
