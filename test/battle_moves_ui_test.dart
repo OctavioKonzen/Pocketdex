@@ -46,8 +46,8 @@ void main() {
       }
     } finally {battle.dispose();}
   });
-  for (final count in [2,3]) {
-    testWidgets('Golpes visíveis e utilizáveis nas $count posições após atacar', (tester) async {
+  for (final (count,scale) in [(2,1.0),(3,1.0),(3,1.3)]) {
+    testWidgets('Golpes visíveis e utilizáveis nas $count posições após atacar (texto $scale)', (tester) async {
       tester.view.physicalSize = const Size(1080,2220);
       tester.view.devicePixelRatio = 3;
       addTearDown(tester.view.reset);
@@ -57,7 +57,7 @@ void main() {
         return PartyBattle.create({'me':me,'npc3':npc}, [...List.filled(count,'me'),...List.filled(count,'npc3')],count,Random(42).nextDouble);
       });
       addTearDown(battle!.dispose);
-      await tester.pumpWidget(RepaintBoundary(key:const ValueKey('preview'),child:MaterialApp(debugShowCheckedModeBanner:false,theme:ThemeData(fontFamily:'Roboto'),home: Scaffold(body: SingleChildScrollView(child: BattleView(
+      await tester.pumpWidget(RepaintBoundary(key:const ValueKey('preview'),child:MaterialApp(debugShowCheckedModeBanner:false,theme:ThemeData(fontFamily:'Roboto'),builder:(context,child)=>MediaQuery(data:MediaQuery.of(context).copyWith(textScaler:TextScaler.linear(scale)),child:child!),home: Scaffold(body: SingleChildScrollView(child: BattleView(
         battle:battle, hit:(_, _, _, _, [power, weather=''])=>null, typeEff:(_,_)=>1,
         foeName:'NPC', onAgain:(){}, onExit:(){},
       ))))));
@@ -66,12 +66,14 @@ void main() {
         await precacheImage(const AssetImage('assets/database/sprites/pokemon/151.png'),tester.element(find.byType(BattleView)));
       });
       await tester.pump(const Duration(milliseconds:300));
+      expect(tester.getRect(find.byKey(const ValueKey('battle-sprites-1'))).overlaps(tester.getRect(find.byKey(const ValueKey('battle-info-0')))),isFalse,reason:'HP do jogador não cobre os adversários');
+      expect(tester.getRect(find.byKey(const ValueKey('battle-sprites-0'))).overlaps(tester.getRect(find.byKey(const ValueKey('battle-info-1')))),isFalse,reason:'HP dos adversários não cobre o jogador');
       final boundary=tester.renderObject<RenderRepaintBoundary>(find.byKey(const ValueKey('preview')));
       await tester.runAsync(() async {
         final image=await boundary.toImage(pixelRatio:1.5);
         final png=await image.toByteData(format:ui.ImageByteFormat.png);
         final dir=Directory('build/battle-ui-shots')..createSync(recursive:true);
-        File('${dir.path}/classic-$count.png').writeAsBytesSync(png!.buffer.asUint8List());
+        File('${dir.path}/classic-$count${scale==1?'':'-large'}.png').writeAsBytesSync(png!.buffer.asUint8List());
       });
       for(var turn=0;turn<3;turn++) {
         for(var position=0;position<count;position++) {

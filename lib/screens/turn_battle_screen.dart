@@ -1398,19 +1398,19 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
     } catch (e) { setState(() => _error = e is StateError ? e.message : 'Não foi possível executar estas ações. Escolha novamente.'); }
   }
   String _trainer(String controller) => controller == _uid ? tr('Você') : '${widget.online?.names[controller] ?? 'NPC'}';
-  Widget _field() => AspectRatio(aspectRatio:16/10,child: Container(
+  Widget _field() => AspectRatio(aspectRatio:(_count==3?1:16/10)/MediaQuery.textScalerOf(context).scale(1).clamp(1,2),child: Container(
     decoration:BoxDecoration(border:Border.all(color:const Color(0xFF1E293B),width:4)),
     child:LayoutBuilder(builder:(context,constraints) {
       final w=constraints.maxWidth,h=constraints.maxHeight;
       Widget sprites(int side) => Positioned(left:side==_side?w*0.01:null,right:side==_side?null:w*0.01,bottom:h*(side==_side ? 0.05 : 0.52),width:w*0.45,
-        child:Row(crossAxisAlignment:CrossAxisAlignment.end,children:[for(final slot in (_b.simulatorState!['sides'][side]['slots'] as List).cast<Map>())
+        child:Row(key:ValueKey('battle-sprites-$side'),crossAxisAlignment:CrossAxisAlignment.end,children:[for(final slot in (_b.simulatorState!['sides'][side]['slots'] as List).cast<Map>())
           if((slot['index'] as int)>=0) Expanded(child:AspectRatio(aspectRatio:1,child:Builder(builder:(_) {
             final mon=_b.teams[side][slot['index'] as int];
             return _Sprite(mon:mon,id:mon.dmax>0?mon.gmax??mon.id:mon.id,dmax:mon.dmax>0,back:side==_side,fainted:mon.hp<=0);
           }))),
         ]));
       Widget info(int side) => Positioned(left:side==_side?null:w*0.03,right:side==_side?w*0.03:null,top:side==_side?null:h*0.04,bottom:side==_side?h*0.04:null,width:w*0.45,
-        child:Column(children:[for(final slot in (_b.simulatorState!['sides'][side]['slots'] as List).cast<Map>())
+        child:Column(key:ValueKey('battle-info-$side'),children:[for(final slot in (_b.simulatorState!['sides'][side]['slots'] as List).cast<Map>())
           if((slot['index'] as int)>=0) Padding(padding:const EdgeInsets.only(bottom:2),child:Builder(builder:(_) {
             final mon=_b.teams[side][slot['index'] as int];
             return Semantics(label:'${_trainer(_b.controllers![side][slot['slot'] as int])} · ${mon.name}',child:FittedBox(fit:BoxFit.scaleDown,child:SizedBox(width:210,child:_InfoBox(mon:mon,hp:mon.hp,mine:side==_side,status:mon.status,dmax:mon.dmax>0))));
