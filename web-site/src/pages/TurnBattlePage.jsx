@@ -892,7 +892,8 @@ function MultiBattle({battle, onExit, onAgain, online = null}) {
   const [error,setError] = useState('')
   const [history,setHistory] = useState([])
   const [,redraw] = useState(0)
-  useEffect(()=>{setChoices({});setError('')},[state,online?.round])
+  const choicePhase = JSON.stringify([state.turn, online?.round, own.wait, owned.map(slot => [slot.slot, slot.index, slot.forceSwitch, slot.pass])])
+  useEffect(()=>{setChoices({});setError('')},[choicePhase])
   const forced = own.slots.some(slot=>slot.forceSwitch)
   const automatic = slot => own.wait ? {kind:'wait',index:0} : slot.pass || forced && !slot.forceSwitch ? {kind:'pass',index:0} : null
   const picked = slot => automatic(slot) || choices[slot.slot]
