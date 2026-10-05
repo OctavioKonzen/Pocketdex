@@ -2,6 +2,8 @@
 import argparse
 import json
 import os
+import re
+from pathlib import Path
 import subprocess
 
 REPOSITORY = 'OctavioKonzen/Pocketdex'
@@ -35,7 +37,11 @@ if __name__=='__main__':
         raise ValueError('Repositório inesperado; nenhuma alteração foi feita.')
     history=releases()
     if args.count:
-        print(sum(not r['draft'] and not r['prerelease'] for r in history))
+        published = [r for r in history if not r['draft'] and not r['prerelease']]
+        baseline = int(Path('tool/apk_release_baseline.txt').read_text().strip())
+        counters = [int(m[1]) * 100 + int(m[2]) * 10 + int(m[3]) for r in published
+                    if (m := re.fullmatch(r'apk-(\d+)\.([0-9])\.([0-9])', r['tag_name']))]
+        print(max([len(published), baseline, *counters]))
     else:
         latest=gh('api',f'repos/{REPOSITORY}/releases/latest')
         plan=removal_plan(history,latest)
