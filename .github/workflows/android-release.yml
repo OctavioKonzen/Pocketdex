@@ -1,8 +1,9 @@
 name: App Android (APK)
 
 # Gera o APK do app e publica em GitHub Releases, com a versão do
-# pubspec.yaml (ex.: 1.1.0+2 → 1.2.0+3). Só roda quando pedido (Actions →
+# contador de lançamentos publicados (35 → 0.3.5). Só roda quando pedido (Actions →
 # App Android (APK) → Run workflow): mesclar na main não publica APK. O app
+# A versão avança uma vez por APK publicado, com passagem de 9 para 0.
 # confere essa página ao abrir e oferece a atualização; o site tem o botão
 # de download. (Que o app compila é conferido em todo PR, em checks.yml.)
 #
@@ -38,15 +39,22 @@ jobs:
           KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           GOOGLE_SERVICES: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
-          VERSION=$(grep -m1 '^version:' pubspec.yaml | sed 's/version: *//; s/+.*//')
+          python3 -m unittest discover -s tool -p 'test_apk_version.py'
+          python3 -m unittest discover -s tool -p 'test_cleanup_old_apks.py'
+          LATEST_TAG=$(gh release view --json tagName --jq .tagName)
+          PREVIOUS_VERSION=$(gh api "repos/$GITHUB_REPOSITORY/contents/pubspec.yaml?ref=$LATEST_TAG" --jq .content | base64 --decode | sed -n 's/^version: *//p')
+          CURRENT_VERSION=$(sed -n 's/^version: *//p' pubspec.yaml)
+          PUBLISHED_COUNT=$(python3 tool/cleanup_old_apks.py --count)
+          FULL_VERSION=$(python3 tool/next_apk_version.py "$PUBLISHED_COUNT" "$CURRENT_VERSION" "$PREVIOUS_VERSION" --write)
+          VERSION="${FULL_VERSION%+*}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          if gh release view "v$VERSION" > /dev/null 2>&1; then
-            echo "A versão v$VERSION já está publicada."
+          if [ "$(gh release view "apk-$VERSION" --json isDraft --jq .isDraft 2>/dev/null || true)" = 'false' ]; then
+            echo "A versão $VERSION já está publicada."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
-          if [ -n "$KEYSTORE" ] && [ -n "$GOOGLE_SERVICES" ]; then
+          if [ "$GITHUB_REF" = 'refs/heads/main' ] && [ -n "$KEYSTORE" ] && [ -n "$GOOGLE_SERVICES" ]; then
             echo "publish=true" >> "$GITHUB_OUTPUT"
           else
             echo "::warning::Faltam os secrets da chave de assinatura ou do google-services.json: o APK é gerado só como teste e não é publicado."
@@ -102,7 +110,7 @@ jobs:
             printf '%s' "$GOOGLE_SERVICES" > android/app/google-services.json
           fi
           flutter pub get
-          flutter test
+          # Os testes foram executados na etapa anterior.
           # Artes menores só no APK (o site continua com as grandes).
           pip install pillow
           python3 tool/shrink_app_images.py
@@ -119,13 +127,26 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.check.outputs.version }}
         run: |
+          NOTES=$(git log -1 --pretty=%B)
+          if ! git diff --quiet -- pubspec.yaml README.md; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add pubspec.yaml README.md
+            git commit -m "Release APK v$VERSION"
+            git push origin HEAD:main
+          fi
           # O nome fixo PocketDex.apk deixa o link
           # releases/latest/download/PocketDex.apk sempre apontando para a última.
           # Só o PocketDex.apk entra ao criar a versão: o app 1.3.x baixa o
           # primeiro APK da lista, e ele tem que ser o de 64 bits.
-          gh release create "v$VERSION" PocketDex.apk \
-            --title "PocketDex $VERSION" \
-            --notes "$(git log -1 --pretty=%B)"
-          # O de 32 bits vai depois (e com "_", que também fica depois na ordem
-          # alfabética).
-          gh release upload "v$VERSION" PocketDex_32bits.apk
+          # O rascunho permite repetir um upload que falhou sem contar outro
+          # lançamento ou substituir a versão atual por uma publicação incompleta.
+          TAG="apk-$VERSION"
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" PocketDex.apk PocketDex_32bits.apk --clobber
+          else
+            gh release create "$TAG" PocketDex.apk PocketDex_32bits.apk --draft \
+              --target "$(git rev-parse HEAD)" --title "PocketDex $VERSION" --notes "$NOTES"
+          fi
+          gh release edit "$TAG" --draft=false --latest
+          python3 tool/cleanup_old_apks.py

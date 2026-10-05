@@ -200,10 +200,8 @@ service cloud.firestore {
           && (d.endedBy == null || d.endedBy in d.players);
       }
       function slots(d) { return d.mode == 'triples' ? 3 : d.mode == 'doubles' ? 2 : 1; }
-      function validPlayer(uid, name) {
-        return uid is string && uid.size() > 0 && uid.size() <= 128
-          && !(uid in ['npc0', 'npc1', 'npc2', 'npc3', 'npc4', 'npc5'])
-          && name is string && name.size() <= 20;
+      function validPlayer(name) {
+        return name is string && name.size() <= 20;
       }
       function validSeat(seats, players, i) {
         let seat = i < seats.size() ? seats[i] : '';
@@ -214,9 +212,8 @@ service cloud.firestore {
       }
       function separateTeams(d) {
         let s = d.seats;
-        let own = d.mode == 'singles' ? [s[0]] : d.mode == 'doubles' ? [s[0], s[1]] : [s[0], s[1], s[2]];
-        let foe = d.mode == 'singles' ? [s[1]] : d.mode == 'doubles' ? [s[2], s[3]] : [s[3], s[4], s[5]];
-        return !own.hasAny(foe);
+        let count = slots(d);
+        return !s[0:count].hasAny(s[count:count * 2]);
       }
       function newRoom(d) {
         let p = d.players;
@@ -228,10 +225,11 @@ service cloud.firestore {
           && d.protocol == 5 && d.mode in ['singles', 'doubles', 'triples']
           && p is list && p.size() >= 2 && p.size() <= 6 && p.toSet().size() == p.size()
           && n is map && n.keys().toSet() == p.toSet()
+          && p.join('|').size() <= 773 && !p.hasAny(['npc0', 'npc1', 'npc2', 'npc3', 'npc4', 'npc5'])
           && d.teams is map && d.teams.keys().hasOnly(p)
-          && validPlayer(p[0], n[p[0]]) && validPlayer(p[1], n[p[1]])
-          && (p.size() < 3 || validPlayer(p[2], n[p[2]])) && (p.size() < 4 || validPlayer(p[3], n[p[3]]))
-          && (p.size() < 5 || validPlayer(p[4], n[p[4]])) && (p.size() < 6 || validPlayer(p[5], n[p[5]]))
+          && validPlayer(n[p[0]]) && validPlayer(n[p[1]])
+          && (p.size() < 3 || validPlayer(n[p[2]])) && (p.size() < 4 || validPlayer(n[p[3]]))
+          && (p.size() < 5 || validPlayer(n[p[4]])) && (p.size() < 6 || validPlayer(n[p[5]]))
           && s is list && s.size() == slots(d) * 2 && s[0] == p[0] && s.hasAll(p)
           && s.hasOnly(p.concat(['npc0', 'npc1', 'npc2', 'npc3', 'npc4', 'npc5']))
           && validSeat(s, p, 0) && validSeat(s, p, 1) && validSeat(s, p, 2) && validSeat(s, p, 3) && validSeat(s, p, 4) && validSeat(s, p, 5) && separateTeams(d)

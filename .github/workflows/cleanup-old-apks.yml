@@ -1,0 +1,25 @@
+name: Manter somente os APKs atuais
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/doubles-triples-partners]
+    paths: [.github/workflows/cleanup-old-apks.yml]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apk-asset-cleanup
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m unittest discover -s tool -p 'test_cleanup_old_apks.py'
+      - name: Remover arquivos APK antigos e preservar a versão atual
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tool/cleanup_old_apks.py
