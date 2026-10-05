@@ -422,7 +422,7 @@ class TurnBattle {
           mon.calc!.item = p['item'] as String;
           mon.calc!.ability = mon.ability;
         }
-        final req = p['index'] == s['active'] ? (s['request'] as Map?)?['moves'] as List? : null;
+        final req = p['index'] == s['active'] ? ((s['request'] as Map?)?['moves'] as List?) : null;
         final slots = req ?? p['moves'] as List;
         mon.moves.clear();
         for (final dynamic rawSlot in slots) {
@@ -1548,9 +1548,9 @@ class TurnBattleSetup {
       final types = [for (final t in row['types'] as List) '$t'];
       final learnable = [
         for (final mv in {for (final mv in row['moves'] as List) (mv as List).first as String})
-          if (data.move(mv) != null) mv,
+          if (moves.containsKey(mv)) mv,
       ];
-      final setMoves = [for (final s in (m.$2?['moves'] as List?) ?? const []) '$s'].where((s) => data.move(s) != null).toList();
+      final setMoves = [for (final s in (m.$2?['moves'] as List?) ?? const []) '$s'].where(moves.containsKey).toList();
       final slugs = pickMoves(setMoves, learnable, types, moves, rules);
       if (slugs.isEmpty) continue;
       // Mecânicas, com as regras dos jogos: Mega só segurando a Mega Pedra dele
@@ -1591,7 +1591,7 @@ class TurnBattleSetup {
           for (final slug in slugs)
             BattleMove(
               slug,
-              data.move(slug)!.name,
+              data.move(slug)?.name ?? slug,
               '${moves[slug]!['type']}',
               (moves[slug]!['power'] as num?)?.toInt() ?? 0,
               (moves[slug]!['accuracy'] as num?)?.toInt(),

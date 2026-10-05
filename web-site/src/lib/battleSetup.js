@@ -64,8 +64,9 @@ export async function battleMons(members) {
     const f = await fighter(calc, byId, member)
     if (!f) continue
     const stats = calc.sideStats(f.base, { ...f.side, hpPct: 100 })
-    // Só golpes que a calculadora conhece.
-    const known = (list) => list.filter((s) => s && calc.moveData(s))
+    // The simulator, rather than the damage-only calculator, decides which
+    // moves exist. This also preserves fixed damage and Let's Go moves.
+    const known = (list) => list.filter((s) => s && globalThis.PocketDexSim.move(s))
     const slugs = pickMoves(known(member.set?.moves ?? []), known(f.learnable), f.form.types, moves, rules)
     if (!stats || !slugs.length) continue
     // Mecânicas, com as regras dos jogos: Mega só segurando a Mega Pedra dele
@@ -112,7 +113,7 @@ export async function battleMons(members) {
       zType: battleItems.z?.[itemId] ?? '',
       noDmax: NO_DMAX.has(species),
       ability: f.side.ability ?? '',
-      simulation: {set: {species: calc.speciesName(f.base.name), moves: slugs, level: f.side.level, nature: f.side.nature, ability: f.side.ability, item: f.side.item, ivs: f.side.ivs, evs: f.side.evs, shiny: Boolean(member.set?.shiny)}},
+      simulation: {set: {species: globalThis.PocketDexSim.species(f.base.name)?.name || calc.speciesName(f.base.name), moves: slugs, level: f.side.level, nature: f.side.nature, ability: f.side.ability, item: f.side.item, ivs: f.side.ivs, evs: f.side.evs, shiny: Boolean(member.set?.shiny)}},
     })
   }
   return out

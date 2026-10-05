@@ -105,9 +105,12 @@ test('Dynamax, Mega and Terastal have separate team budgets', () => {
   // Mega requires the respective stone; missing stones must not expose it.
   try {
     assert.equal(game.state.sides[0].request.canMegaEvo, undefined);
+    assert.equal(game.state.sides[0].used.dmax, false);
     sim.choose(game.handle, [{kind: 'switch', index: 1}, move(0)]);
     const max = sim.choose(game.handle, [{kind: 'move', index: 0, gimmick: 'dmax'}, move(0)]);
     assert.equal(max.state.sides[0].used.dmax, true);
+    assert.equal(max.state.sides[0].team[1].dmax > 0, true);
+    assert.equal(max.state.sides[0].team[1].maxHp, game.state.sides[0].team[1].maxHp * 2);
     sim.choose(game.handle, [{kind: 'switch', index: 2}, move(0)]);
     const tera = sim.choose(game.handle, [{kind: 'move', index: 0, gimmick: 'tera'}, move(0)]);
     assert.equal(tera.state.sides[0].used.dmax, true);

@@ -18,6 +18,7 @@ function setFor(mon, index) {
 
 function configure(game) {
   for (const side of game.battle.sides) {
+    side.dynamaxUsed = false;
     side.canDynamaxNow = function () { return !this.dynamaxUsed; };
     for (const pokemon of side.pokemon) {
       const mon = game.teams[side.n][originalIndex(pokemon)];
@@ -58,6 +59,7 @@ function snapshot(game) {
     turn: b.turn,
     winner: b.ended ? (b.winner === b.sides[0].name ? 0 : b.winner === b.sides[1].name ? 1 : -1) : null,
     weather: b.field.weather,
+    terrain: b.field.terrain,
     bags: game.bags,
     sides: b.sides.map(side => ({
       active: originalIndex(side.active[0]),
@@ -212,6 +214,21 @@ export const PocketDexSim = {
     const m = Dex.moves.get(id(slug));
     return m.exists ? {slug: m.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'), name: m.name, type: m.type.toLowerCase(), category: m.category.toLowerCase(), power: m.basePower, accuracy: m.accuracy === true ? null : m.accuracy, pp: m.pp, priority: m.priority} : null;
   },
-  audit(slugs) { return slugs.map(slug => ({slug, implemented: Dex.moves.get(id(slug)).exists})); },
+  species(slug) { const s = Dex.species.get(slug); return s.exists ? {name: s.name} : null; },
+  audit(slugs) { return slugs.map(slug => {
+    const move = Dex.moves.get(id(slug));
+    return {slug, canonicalId: move.id, implemented: move.exists,
+      ...(move.exists ? {accuracy: move.accuracy, category: move.category, type: move.type,
+        basePower: move.basePower, priority: move.priority, target: move.target,
+        status: move.status || null, volatileStatus: move.volatileStatus || null,
+        secondaries: move.secondaries || (move.secondary ? [move.secondary] : []),
+        boosts: move.boosts || null, self: move.self || null,
+        terrain: move.terrain || null, weather: move.weather || null,
+        sideCondition: move.sideCondition || null, pseudoWeather: move.pseudoWeather || null,
+        selfSwitch: move.selfSwitch || null, forceSwitch: Boolean(move.forceSwitch),
+        hooks: Object.keys(move).filter(key => typeof move[key] === 'function').sort(),
+      } : {}),
+    };
+  }); },
 };
 globalThis.PocketDexSim = PocketDexSim;
