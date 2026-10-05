@@ -37,7 +37,7 @@ def fallback(p, moves, profile=None):
     def score(name):
         m = moves[name]
         return (m['power'] or 0) * (m['accuracy'] or 100) / 100 * (1.5 if m['type'] in profile['types'] else 1) * (1 if m['damage_class'] == category else .6)
-    attacks = sorted((n for n in legal if n in moves and moves[n]['power'] and moves[n]['damage_class'] != 'status' and not n.startswith('shadow-') and n not in EXCLUDE), key=lambda n: (-score(n), n))
+    attacks = sorted((n for n in legal if n in moves and moves[n]['power'] and moves[n]['damage_class'] != 'status' and moves[n]['id'] < 10000 and n not in EXCLUDE), key=lambda n: (-score(n), n))
     chosen = []
     types = set()
     for n in attacks:
@@ -53,7 +53,7 @@ def fallback(p, moves, profile=None):
         if len(chosen) < 4 and n not in chosen:
             chosen.append(n)
     for n in sorted(legal):
-        if len(chosen) < 4 and n in moves and n not in chosen and not n.startswith('shadow-'):
+        if len(chosen) < 4 and n in moves and n not in chosen and moves[n]['id'] < 10000:
             chosen.append(n)
     abilities = [a[0] for a in p['abilities']]
     ability = next((a for a in PREFERRED_ABILITIES if a in abilities), abilities[0])
