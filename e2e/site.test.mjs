@@ -358,9 +358,9 @@ try {
   await go('amigos/batalha')
 
   step = 'amigos: batalha de times'
-  await page.locator('select').nth(0).selectOption({ label: 'Areia' })
-  await page.locator('select').nth(1).selectOption({ label: friend.name })
-  await page.locator('select').nth(2).selectOption({ label: 'Areia' })
+  await page.getByLabel('Seu time', {exact:true}).selectOption({ label: 'Areia' })
+  await page.getByLabel('Adversário', {exact:true}).selectOption({ label: friend.name })
+  await page.getByLabel('Time do amigo', {exact:true}).selectOption({ label: 'Areia' })
   await page.getByRole('button', { name: '⚔️ Começar batalha' }).click()
   await page.getByText(`${friend.name} quer batalhar!`).waitFor({ timeout: 30000 })
   // Joga até o fim: LUTAR e o primeiro golpe; clicar no texto adianta as falas.
