@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest'
-import {assembleParty,countOf,sideOf} from './partyBattle'
+import {assembleParty,countOf,sideOf,automaticPartyChoices} from './partyBattle'
 import {pairedActions,validateGroupChoices,validateParticipantTeam} from './onlineBattle'
 
 describe('equipes cooperativas',()=>{
@@ -33,5 +33,18 @@ describe('equipes cooperativas',()=>{
   it('recusa um time pequeno para as posições controladas',()=>{
     expect(()=>validateParticipantTeam({pokemon:[6,null]},['a','a','b','b'],'a')).toThrow()
     expect(()=>validateParticipantTeam({pokemon:[6,25]},['a','a','b','b'],'a')).not.toThrow()
+  })
+})
+
+describe('substituições automáticas de NPCs',()=>{
+  const battle = humanForced => ({controllers:[['a','b'],['npc2','npc3']],simulator:{state:{sides:[
+    {wait:!humanForced,slots:[{slot:0,forceSwitch:humanForced,pass:false},{slot:1,forceSwitch:false,pass:humanForced}]},
+    {wait:false,slots:[{slot:0,forceSwitch:true},{slot:1,forceSwitch:true}]},
+  ]}}})
+  it('não pede outra rodada aos amigos quando apenas NPCs precisam trocar',()=>{
+    expect(automaticPartyChoices(battle(false))).toEqual({kind:'team',choices:[{seat:0,kind:'wait',index:0},{seat:1,kind:'wait',index:0}]})
+  })
+  it('aguarda a escolha quando um Pokémon de um humano desmaia',()=>{
+    expect(automaticPartyChoices(battle(true))).toBeNull()
   })
 })

@@ -34,8 +34,27 @@ export function groupActions(battle, submissions) {
     return actions
   })
 }
+export function automaticPartyChoices(battle) {
+  const choices = []
+  for (const [side, team] of battle.controllers.entries()) {
+    const state = battle.simulator.state.sides[side]
+    const forced = state.slots.some(slot => slot.forceSwitch)
+    for (const slot of state.slots) {
+      if (isNpc(team[slot.slot])) continue
+      if (!state.wait && !slot.pass && (!forced || slot.forceSwitch)) return null
+      choices.push({seat:side * team.length + slot.slot,kind:state.wait?'wait':'pass',index:0})
+    }
+  }
+  return {kind:'team',choices}
+}
 export function playPartyTurn(battle, submissions) {
-  return simulatorTurn(battle,groupActions(battle,submissions))
+  const events = simulatorTurn(battle,groupActions(battle,submissions))
+  for (let attempt=0;attempt<12 && battle.winner == null;attempt++) {
+    const automatic = automaticPartyChoices(battle)
+    if (!automatic) break
+    events.push(...simulatorTurn(battle,groupActions(battle,[automatic])))
+  }
+  return events
 }
 export function describeEvents(events) {
   return events.filter(e => e.t === 'text').map(e => {

@@ -22,6 +22,27 @@ class PartyBattle {
     return TurnBattle(assemble(controllers[0], rosters), assemble(controllers[1], rosters), random, mode: modeOf(count), controllers: controllers);
   }
   static List<BattleEvent> play(TurnBattle battle, List<Map<String, dynamic>> submissions) {
+    final events = _playOnce(battle, submissions);
+    for (var attempt = 0; attempt < 12 && battle.winner == null; attempt++) {
+      final choices = <Map<String, dynamic>>[];
+      var needsHuman = false;
+      final count = battle.controllers![0].length;
+      for (var side = 0; side < 2; side++) {
+        final state = battle.simulatorState!['sides'][side] as Map;
+        final slots = state['slots'] as List;
+        final forced = slots.any((slot) => slot['forceSwitch'] == true);
+        for (final slot in slots) {
+          if (isNpc(battle.controllers![side][slot['slot'] as int])) continue;
+          if (state['wait'] != true && slot['pass'] != true && (!forced || slot['forceSwitch'] == true)) needsHuman = true;
+          choices.add({'seat': side * count + (slot['slot'] as int), 'kind': state['wait'] == true ? 'wait' : 'pass', 'index': 0});
+        }
+      }
+      if (needsHuman) break;
+      events.addAll(_playOnce(battle, [{'kind': 'team', 'choices': choices}]));
+    }
+    return events;
+  }
+  static List<BattleEvent> _playOnce(TurnBattle battle, List<Map<String, dynamic>> submissions) {
     final count = battle.controllers![0].length;
     final all = <List<Map<String, dynamic>>>[];
     for (var side = 0; side < 2; side++) {

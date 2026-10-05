@@ -548,7 +548,8 @@ try {
   console.log(`TUDO CERTO: conta criada, ${ROUTES.length} páginas abertas, saiu, entrou, excluiu (banco limpo), criou de novo e trocou a senha; conta Google confirmou, criou senha e excluiu pelo link do e-mail.`)
 } catch (error) {
   await page.screenshot({ path: 'falha.png', fullPage: true }).catch(() => {})
-  console.error(`FALHOU em "${step}":`, error.message)
+  console.error(`FALHOU em "${step}":`, error.stack)
+  console.error('TELA:', await page.locator('body').innerText().catch(()=>''))
   process.exitCode = 1
 } finally {
   await browser.close()
