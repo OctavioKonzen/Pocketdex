@@ -22,6 +22,7 @@ import '../services/team_battle.dart';
 import '../services/local_database.dart';
 import '../services/move_anim.dart';
 import '../services/turn_battle.dart';
+import '../services/party_battle.dart';
 import '../services/user_data.dart';
 import '../utils/pokemon_colors.dart';
 import '../utils/responsive.dart';
@@ -66,6 +67,8 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
   List<BattleTeam>? _friendTeams = const [];
   int? _theirs;
   bool _busy = false;
+  int _count = 1;
+  bool _npcPartner = false;
   TurnBattle? _battle;
   String _foeName = '';
   BattleHit? _hit;
@@ -106,25 +109,37 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
 
   Future<void> _start(List<Member> mine, List<Member>? theirs, String foeName) async {
     setState(() => _busy = true);
+    try {
     final random = League.seededRandom(Random().nextInt(1 << 31));
     final a = await TurnBattleSetup.mons(mine, battleMonName);
     final b = await TurnBattleSetup.mons(theirs ?? await TurnBattleSetup.randomTeam(random), battleMonName);
+    final rosters = <String, List<BattleMon>>{'me': a, 'npc3': b};
+    final own = [for (var slot = 0; slot < _count; slot++) slot > 0 && _npcPartner ? 'npc$slot' : 'me'];
+    for (final uid in own.where((uid) => uid != 'me')) {
+      rosters[uid] = await TurnBattleSetup.mons(await TurnBattleSetup.randomTeam(random), battleMonName);
+    }
     if (!mounted) return;
     setState(() {
       _busy = false;
       if (a.isNotEmpty && b.isNotEmpty) {
-        _battle = TurnBattle(a, b, random);
+        _battle = _count == 1 ? TurnBattle(a, b, random) : PartyBattle.create(rosters, [...own, ...List.filled(_count, 'npc3')], _count, random);
         _foeName = foeName;
         _key++;
       }
     });
+    } catch (_) {
+      if (mounted) {
+        setState(() => _busy = false);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Não foi possível iniciar a batalha. Confira os times e tente novamente.')));
+      }
+    }
   }
 
   void _again() {
     final b = _battle!;
     setState(() {
       _battle = TurnBattle(
-          [for (final m in b.teams[0]) m.fresh()], [for (final m in b.teams[1]) m.fresh()], League.seededRandom(Random().nextInt(1 << 31)));
+          [for (final m in b.teams[0]) m.fresh()], [for (final m in b.teams[1]) m.fresh()], League.seededRandom(Random().nextInt(1 << 31)), mode: b.mode, controllers: b.controllers);
       _key++;
     });
     b.dispose();
@@ -153,7 +168,10 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
                     typeEff: _typeEff!,
                     foeName: _foeName,
                     onAgain: _again,
-                    onExit: () => widget.mine != null ? Navigator.pop(context) : setState(() => _battle = null),
+                    onExit: () {
+                      if (widget.mine != null) { Navigator.pop(context); }
+                      else { _battle?.dispose(); setState(() => _battle = null); }
+                    },
                   ),
                 ],
               )
@@ -175,10 +193,13 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
     final myTeams = _myTeams;
     final friends = FriendsService.instance.friends;
     InputDecoration deco(String label) => InputDecoration(labelText: tr(label), border: const OutlineInputBorder(), isDense: true);
-    final ready = _mine != null && (_friend == _random || _theirs != null);
+    final ready = _mine != null && myTeams[_mine!].members.length >= (_npcPartner ? 1 : _count) && (_friend == _random || _theirs != null && _friendTeams![_theirs!].members.length >= _count);
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        DropdownButtonFormField<int>(initialValue: _count, decoration: deco('Formato'), items: const [DropdownMenuItem(value: 1, child: Text('Individual')), DropdownMenuItem(value: 2, child: Text('Dupla')), DropdownMenuItem(value: 3, child: Text('Tripla'))], onChanged: _busy ? null : (v) => setState(() => _count = v!)),
+        if (_count > 1) CheckboxListTile(contentPadding: EdgeInsets.zero, title: const Text('Jogar com parceiros NPC'), subtitle: const Text('Desmarcado: você controla todos os Pokémon.'), value: _npcPartner, onChanged: _busy ? null : (v) => setState(() => _npcPartner = v!)),
+        const SizedBox(height: 12),
         Text('Nível máximo 50. Batalha por turnos como nos jogos: seu time contra o de um amigo (ou um aleatório), com o computador jogando pelo outro lado.',
             style: TextStyle(color: c.muted, fontSize: 13)),
         const SizedBox(height: 14),
@@ -240,6 +261,8 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
 }
 
 class OnlineBattleControl {
+  final String uid;
+  final Map<String, dynamic> names;
   final int round;
   final List<BattleEvent> events;
   final List<int>? before;
@@ -247,7 +270,7 @@ class OnlineBattleControl {
   final String message;
   final void Function(Map<String, dynamic>) onAction;
   final VoidCallback onClose;
-  const OnlineBattleControl({required this.round, required this.events, this.before,
+  const OnlineBattleControl({required this.round, required this.events, this.before, this.uid = 'me', this.names = const {},
     required this.locked, required this.waitForSwitch, required this.message,
     required this.onAction, required this.onClose});
 }
@@ -310,6 +333,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
   @override
   void initState() {
     super.initState();
+    if (_b.mode != 'singles') return;
     LocalDatabase.instance.moveAnims().then((t) => _anims = t).catchError((_) => <String, dynamic>{});
     // Começo: as habilidades de clima de quem entrou (Drizzle, Drought...).
     _menu = _b.needSwitch ? 'party' : 'main';
@@ -321,6 +345,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
   @override
   void didUpdateWidget(covariant BattleView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (_b.mode != 'singles') return;
     final online = widget.online;
     if (online == null || online.round == oldWidget.online?.round) return;
     _busy = true;
@@ -511,6 +536,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
 
   @override
   Widget build(BuildContext context) {
+    if (_b.mode != 'singles') return _MultiBattleView(battle: _b, online: widget.online, onExit: widget.onExit, onAgain: widget.onAgain);
     final me = _b.teams[0][_active[0]];
     final foe = _b.teams[1][_active[1]];
     final current = _b.active(0);
@@ -1407,6 +1433,145 @@ class _StatusBadge extends StatelessWidget {
         decoration: BoxDecoration(color: _colors[status] ?? Colors.grey, borderRadius: BorderRadius.circular(4)),
         child: m.Text(status.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900)),
       );
+}
+
+class _MultiBattleView extends StatefulWidget {
+  final TurnBattle battle;
+  final OnlineBattleControl? online;
+  final VoidCallback onExit, onAgain;
+  const _MultiBattleView({required this.battle, this.online, required this.onExit, required this.onAgain});
+  @override
+  State<_MultiBattleView> createState() => _MultiBattleViewState();
+}
+class _MultiBattleViewState extends State<_MultiBattleView> {
+  final Map<int, Map<String, dynamic>> _choices = {};
+  List<BattleEvent> _events = [];
+  String? _error;
+  int _generation = 0;
+  TurnBattle get _b => widget.battle;
+  String get _uid => widget.online?.uid ?? 'me';
+  int get _side => _b.controllers!.indexWhere((team) => team.contains(_uid));
+  int get _count => _b.controllers![0].length;
+  Map get _own => _b.simulatorState!['sides'][_side] as Map;
+  List<Map> get _slots => (_own['slots'] as List).cast<Map>();
+  bool get _forced => _slots.any((slot) => slot['forceSwitch'] == true);
+  bool get _locked => widget.online?.locked == true || _b.winner != null;
+  @override
+  void didUpdateWidget(covariant _MultiBattleView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.battle != _b || oldWidget.online?.round != widget.online?.round) {
+      _choices.clear(); _error = null; _generation++;
+    }
+  }
+  Map<String, dynamic>? _automatic(Map slot) => _own['wait'] == true
+      ? {'kind': 'wait', 'index': 0}
+      : slot['pass'] == true || _forced && slot['forceSwitch'] != true ? {'kind': 'pass', 'index': 0} : null;
+  Map<String, dynamic>? _picked(Map slot) => _automatic(slot) ?? _choices[slot['slot'] as int];
+  void _pick(Map slot, String kind, int index, [String? mechanic]) {
+    final position = slot['slot'] as int;
+    final gimmick = mechanic ?? '${_choices[position]?['gimmick'] ?? ''}';
+    final result = kind == 'move' ? _b.targets(_side, position, index, gimmick) : {'targets': <dynamic>[]};
+    final targets = (result['targets'] as List).cast<Map>();
+    final target = targets.where((t) => t['ally'] != true).firstOrNull ?? targets.firstOrNull;
+    setState(() => _choices[position] = {'kind': kind, 'index': index, 'gimmick': kind == 'move' ? gimmick : '', 'target': target?['loc'] ?? 0});
+  }
+  void _send() {
+    final owned = _slots.where((slot) => _b.controllers![_side][slot['slot'] as int] == _uid);
+    final submitted = [for (final slot in owned) {'seat': _side * _count + (slot['slot'] as int), ..._picked(slot)!}];
+    final switches = [for (final c in submitted) if (c['kind'] == 'switch') c['index']];
+    if (switches.toSet().length != switches.length) { setState(() => _error = 'Escolha Pokémon diferentes para as substituições.'); return; }
+    final action = <String, dynamic>{'kind': 'team', 'choices': submitted};
+    if (widget.online != null) { widget.online!.onAction(action); return; }
+    try {
+      final events = PartyBattle.play(_b, [action]);
+      for (var attempt = 0; attempt < 12 && _b.winner == null; attempt++) {
+        final state = _b.simulatorState!['sides'][_side] as Map;
+        final slots = (state['slots'] as List).cast<Map>();
+        final forced = slots.any((s) => s['forceSwitch'] == true);
+        final needsChoice = slots.any((s) => _b.controllers![_side][s['slot'] as int] == _uid && state['wait'] != true && s['pass'] != true && (!forced || s['forceSwitch'] == true));
+        if (needsChoice) break;
+        final waiting = {'kind': 'team', 'choices': [for (final s in slots) if (_b.controllers![_side][s['slot'] as int] == _uid) {'seat': _side * _count + (s['slot'] as int), 'kind': state['wait'] == true ? 'wait' : 'pass', 'index': 0}]};
+        events.addAll(PartyBattle.play(_b, [waiting]));
+      }
+      setState(() { _events = events; _choices.clear(); _error = null; _generation++; });
+    } catch (e) { setState(() => _error = e is StateError ? e.message : 'Não foi possível executar estas ações. Escolha novamente.'); }
+  }
+  String _trainer(String controller) => controller == _uid ? tr('Você') : '${widget.online?.names[controller] ?? 'NPC'}';
+  Widget _teamRow(int side) {
+    final slots = (_b.simulatorState!['sides'][side]['slots'] as List).cast<Map>();
+    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [for (final slot in slots)
+      Expanded(child: Padding(padding: const EdgeInsets.all(3), child: Builder(builder: (context) {
+        final mon = _b.teams[side][slot['index'] as int];
+        return Column(children: [
+          Container(width: double.infinity, padding: const EdgeInsets.all(2), color: const Color(0xBB0F172A), child: m.Text(_trainer(_b.controllers![side][slot['slot'] as int]), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 11))),
+          AspectRatio(aspectRatio: 1, child: _Sprite(mon: mon, id: mon.dmax > 0 ? mon.gmax ?? mon.id : mon.id, dmax: mon.dmax > 0, back: side == _side, fainted: mon.hp <= 0)),
+          _InfoBox(mon: mon, hp: mon.hp, mine: true, status: mon.status, dmax: mon.dmax > 0),
+        ]);
+      }))),
+    ]);
+  }
+  Widget _actions(Map slot) {
+    final position = slot['slot'] as int, mon = _b.teams[_side][slot['index'] as int];
+    final action = _picked(slot), req = slot['request'] as Map?;
+    final moves = (req?['moves'] as List?)?.cast<Map>() ?? [];
+    final mechanic = mon.gimmick;
+    final index = action?['index'] as int? ?? 0;
+    final available = switch (mechanic) {
+      'mega' => req?['canMegaEvo'] == true,
+      'tera' => req?['canTerastallize'] != null && req?['canTerastallize'] != false,
+      'dmax' => req?['canDynamax'] == true,
+      'z' => req?['canZMove'] is List && index < (req!['canZMove'] as List).length && (req['canZMove'] as List)[index] != null,
+      _ => false,
+    };
+    final reserved = _choices.entries.any((entry) => entry.key != position && entry.value['gimmick'] == mechanic);
+    final targetData = action?['kind'] == 'move' ? _b.targets(_side, position, index, '${action?['gimmick'] ?? ''}') : {'targets': <dynamic>[], 'automatic': true};
+    final targets = (targetData['targets'] as List).cast<Map>();
+    return Card(child: Padding(padding: const EdgeInsets.all(12), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      m.Text('${mon.name} · ${tr('posição')} ${position + 1}', style: const TextStyle(fontWeight: FontWeight.bold)),
+      const SizedBox(height: 8),
+      if (_automatic(slot) != null) Text(_own['wait'] == true ? 'Aguardando as substituições.' : 'Esta posição passa durante a substituição.')
+      else ...[
+        DropdownButtonFormField<String>(key: ValueKey((_generation, position, action?['kind'], action?['index'])), initialValue: action == null ? null : '${action['kind']}:${action['index']}', isExpanded: true,
+          decoration: InputDecoration(labelText: '${tr('Ação de')} ${mon.name} ${position + 1}'),
+          items: [
+            if (slot['forceSwitch'] != true) for (final (i, move) in moves.indexed) DropdownMenuItem(value: 'move:$i', enabled: move['disabled'] != true && move['pp'] != 0, child: m.Text('${move['move']} · PP ${move['pp'] ?? '—'}', overflow: TextOverflow.ellipsis)),
+            for (final dynamic i in slot['switchOptions'] as List) DropdownMenuItem(value: 'switch:$i', child: m.Text('${tr(slot['revival'] == true ? 'Reviver' : 'Trocar para')} ${_b.teams[_side][i as int].name}', overflow: TextOverflow.ellipsis)),
+            if (slot['canShift'] == true) const DropdownMenuItem(value: 'shift:0', child: Text('Trocar posição com o centro')),
+            if (slot['forceSwitch'] == true && (slot['switchOptions'] as List).isEmpty) const DropdownMenuItem(value: 'pass:0', child: Text('Sem reservas: passar')),
+          ],
+          onChanged: _locked ? null : (v) { if (v != null) { final fields = v.split(':'); _pick(slot, fields[0], int.parse(fields[1])); } }),
+        if (action?['kind'] == 'move' && targetData['automatic'] != true) ...[
+          const SizedBox(height: 8),
+          DropdownButtonFormField<int>(key: ValueKey((_generation, position, action?['gimmick'], action?['target'])), initialValue: action?['target'] as int?, isExpanded: true, decoration: InputDecoration(labelText: '${tr('Alvo de')} ${mon.name} ${position + 1}'),
+            items: [for (final target in targets) DropdownMenuItem(value: target['loc'] as int, child: m.Text('${tr(target['ally'] == true ? 'Aliado' : 'Adversário')}: ${target['name']} · ${(target['slot'] as int) + 1}', overflow: TextOverflow.ellipsis))],
+            onChanged: _locked ? null : (v) => setState(() => _choices[position] = {...action!, 'target': v})),
+        ],
+        if (action?['kind'] == 'move' && targetData['automatic'] == true) const Text('O golpe aplica seus alvos automaticamente.', style: TextStyle(fontSize: 12)),
+        if (available) TextButton(onPressed: _locked || reserved ? null : () => _pick(slot, 'move', index, action?['gimmick'] == mechanic ? '' : mechanic),
+          child: Text('${mechanic == 'dmax' && mon.gmax != null ? 'Gigantamax' : const {'mega': 'Mega', 'tera': 'Terastal', 'dmax': 'Dynamax', 'z': 'Z-Move'}[mechanic]}${action?['gimmick'] == mechanic ? ' ✓' : ''}')),
+      ],
+    ])));
+  }
+  @override
+  Widget build(BuildContext context) {
+    final owned = _slots.where((s) => _b.controllers![_side][s['slot'] as int] == _uid).toList();
+    final events = widget.online?.events ?? _events;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      ClipRRect(borderRadius: BorderRadius.circular(16), child: Stack(children: [Positioned.fill(child: CustomPaint(painter: _FieldPainter(_b.weather))), Column(children: [_teamRow(1 - _side), _teamRow(_side)])])),
+      const SizedBox(height: 8),
+      Text(widget.online?.message ?? (_b.winner != null ? _b.winner == -1 ? 'Empate!' : _b.winner == _side ? 'Você venceu!' : 'A equipe adversária venceu!' : 'Turno ${_b.turn}: escolha uma ação por Pokémon.'), style: const TextStyle(fontWeight: FontWeight.bold)),
+      if (_b.winner == null) for (final slot in owned) _actions(slot),
+      const Text('A reserva é compartilhada pela equipe. Os itens equipados mantêm seus efeitos.', style: TextStyle(fontSize: 12)),
+      if (_error != null) Text(_error!, style: const TextStyle(color: Colors.redAccent)),
+      if (_b.winner == null) FilledButton(onPressed: _locked || owned.any((s) => _picked(s) == null) ? null : _send, child: Text(owned.every((s) => _automatic(s) != null) ? 'Continuar' : 'Confirmar ações')),
+      ConstrainedBox(constraints: const BoxConstraints(maxHeight: 180), child: SingleChildScrollView(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [for (final e in events.where((e) => e.t == 'text')) Builder(builder: (_) {
+        final (line, args) = TurnBattle.lineOf(e); var value = tr(line);
+        for (var i = 0; i < args.length; i++) { value = value.replaceFirst('{$i}', args[i]); }
+        return m.Text(value, style: const TextStyle(fontSize: 12));
+      })]))),
+      Wrap(spacing: 10, children: [TextButton(onPressed: widget.online?.onClose ?? widget.onExit, child: Text(widget.online == null ? 'Voltar' : 'Desistir')), if (widget.online == null && _b.winner != null) TextButton(onPressed: widget.onAgain, child: const Text('Batalhar de novo'))]),
+    ]);
+  }
 }
 
 class _InfoBox extends StatelessWidget {

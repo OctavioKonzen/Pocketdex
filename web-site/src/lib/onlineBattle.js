@@ -1,6 +1,8 @@
 import { firebaseServices, useAuth } from './auth'
+import {isNpc, countOf, seatsOf} from './partyBattle'
+import {randomTeam} from './battleSetup'
 
-export const BATTLE_PROTOCOL = 4
+export const BATTLE_PROTOCOL = 5
 export const MAX_ROUNDS = 500
 
 export function packTeam(team) {
@@ -18,21 +20,39 @@ export function unpackTeam(value) {
     !Array.isArray(team.sets) || team.sets.length > 6) throw new Error('Time inválido.')
   return team
 }
-export async function inviteBattle(friend, team) {
+export async function inviteBattle(friend, team, layout = null) {
   const { db, collection, addDoc, serverTimestamp } = await firebaseServices()
   const me = useAuth.getState().user
+  const mode = layout?.mode || 'singles'
+  const seats = layout?.seats || [me.uid,friend.uid]
+  const players = [me.uid,...[...new Set(seats)].filter(uid=>uid!==me.uid && !isNpc(uid))]
+  const count=countOf({mode})
+  if(players.length<2 || players.length>6 || seats.length!==count*2 || seats[0]!==me.uid || players.some(uid=>seats.slice(0,count).includes(uid)&&seats.slice(count).includes(uid))) throw new Error('Escolha os participantes de cada equipe, com pelo menos um amigo.')
+  validateParticipantTeam(team,seats,me.uid)
+  const npcTeams={}
+  for(const uid of [...new Set(seats)].filter(isNpc)) {
+    const members=await randomTeam(Math.random)
+    npcTeams[uid]=packTeam({name:'NPC',pokemon:members.map(m=>m.id),sets:members.map(()=>({gimmick:'tera'}))})
+  }
   const ref = await addDoc(collection(db, 'onlineBattles'), {
-    protocol: BATTLE_PROTOCOL, players: [me.uid, friend.uid],
-    names: { [me.uid]: me.name, [friend.uid]: friend.name },
+    protocol: BATTLE_PROTOCOL, players, mode, seats, npcTeams,
+    names: layout?.names || { [me.uid]: me.name, [friend.uid]: friend.name },
     teams: { [me.uid]: packTeam(team) }, status: 'pending',
     seed: Math.floor(Math.random() * 2 ** 31), createdAt: serverTimestamp(), endedBy: null,
   })
   return ref.id
 }
 export async function acceptBattle(id, team) {
-  const { db, doc, updateDoc } = await firebaseServices()
+  const { db, doc, runTransaction } = await firebaseServices()
   const uid = useAuth.getState().user.uid
-  await updateDoc(doc(db, 'onlineBattles', id), { [`teams.${uid}`]: packTeam(team), status: 'active' })
+  const ref=doc(db,'onlineBattles',id)
+  await runTransaction(db,async tx=>{
+    const room=(await tx.get(ref)).data()
+    if(!room || room.status!=='pending' || room.teams[uid]) throw new Error('Este convite já foi respondido.')
+    validateParticipantTeam(team,seatsOf(room),uid)
+    const teams={...room.teams,[uid]:packTeam(team)}
+    tx.update(ref,{teams,status:room.players.every(p=>teams[p])?'active':'pending'})
+  })
 }
 export async function closeBattle(id) {
   const { db, doc, updateDoc } = await firebaseServices()
@@ -49,7 +69,7 @@ export async function watchBattle(id, next, error) {
 }
 export async function watchActions(id, next, error) {
   const { db, collection, onSnapshot, query, limit } = await firebaseServices()
-  return onSnapshot(query(collection(db, 'onlineBattles', id, 'actions'), limit(MAX_ROUNDS * 2)),
+  return onSnapshot(query(collection(db, 'onlineBattles', id, 'actions'), limit(MAX_ROUNDS * 6)),
     (s) => next(s.docs.map((d) => d.data())), error)
 }
 export async function submitAction(id, round, action) {
@@ -57,9 +77,16 @@ export async function submitAction(id, round, action) {
   const uid = useAuth.getState().user.uid
   const ref = doc(db, 'onlineBattles', id, 'actions', `${round}_${uid}`)
   await runTransaction(db, async (tx) => {
+    const room=(await tx.get(doc(db,'onlineBattles',id))).data()
     const old = await tx.get(ref)
     if (old.exists()) throw new Error('Você já enviou sua ação neste turno.')
-    tx.set(ref, { uid, round, ...action, at: serverTimestamp() })
+    const count=countOf(room), seats=seatsOf(room), side=Math.floor(seats.indexOf(uid)/count)
+    const choices=(action.kind==='team'?action.choices:[{seat:seats.indexOf(uid),...action}]).map(c=>({...c,index:c.index??0,gimmick:c.gimmick||'none',target:c.target||0}))
+    const teammates=[...new Set(seats.slice(side*count,(side+1)*count))].filter(p=>p!==uid&&!isNpc(p))
+    const others=await Promise.all(teammates.map(p=>tx.get(doc(db,'onlineBattles',id,'actions',`${round}_${p}`))))
+    const existing=others.filter(d=>d.exists()).flatMap(d=>d.data().choices)
+    validateGroupChoices([...existing,...choices])
+    tx.set(ref, { uid, round, kind:'team',choices, at: serverTimestamp() })
   })
 }
 export function pairedActions(actions, players) {
@@ -71,10 +98,21 @@ export function pairedActions(actions, players) {
   const pairs = []
   for (let round = 0; round < MAX_ROUNDS; round++) {
     const r = rounds.get(round)
-    if (!r?.[players[0]] || !r?.[players[1]]) break
+    if (!r || !players.every(p=>r[p])) break
     pairs.push(players.map((p) => r[p]))
   }
   return pairs
+}
+export function validateParticipantTeam(team,seats,uid) {
+  const required=seats.filter(p=>p===uid).length
+  const available=team.pokemon.slice(0,6).filter(id=>Number.isInteger(id)&&id>0).length
+  if(!required || available<required) throw new Error(`Escolha um time com pelo menos ${required || 1} Pokémon para suas posições.`)
+}
+export function validateGroupChoices(choices) {
+  const switches=choices.filter(c=>c.kind==='switch').map(c=>c.index)
+  if(new Set(switches).size!==switches.length) throw new Error('Esse Pokémon já foi escolhido para outra posição. Escolha outra reserva.')
+  const mechanics=choices.filter(c=>c.kind==='move'&&c.gimmick&&c.gimmick!=='none').map(c=>c.gimmick)
+  if(new Set(mechanics).size!==mechanics.length) throw new Error('Seu parceiro já escolheu essa transformação neste turno.')
 }
 
 // A tela existente usa sempre o lado 0 para quem está jogando.

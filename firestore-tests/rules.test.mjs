@@ -297,6 +297,46 @@ await env.withSecurityRulesDisabled(async (ctx) => {
 await check('partida antiga não recebe novos turnos incompatíveis', setDoc(doc(A, 'onlineBattles', 'legacy-active', 'actions', '0_alice'), input('alice', 0)), false)
 await check('ainda permite encerrar partida antiga', updateDoc(doc(A, 'onlineBattles', 'legacy-active'), { status: 'closed', endedBy: 'alice' }), true)
 
+// Duplas/triplas: parceiros humanos e NPCs, com ações por posição.
+const groupUsers = ['alice', 'bob', 'carol', 'dave', 'erin', 'frank']
+const groupDb = Object.fromEntries(groupUsers.map(uid => [uid, env.authenticatedContext(uid).firestore()]))
+await env.withSecurityRulesDisabled(async ctx => {
+  for (const uid of groupUsers.slice(1)) await setDoc(doc(ctx.firestore(), 'friends', 'alice', 'list', uid), {name: uid, status: 'friends'})
+})
+const groupRoom = (mode, seats) => {
+  const players = [...new Set(seats.filter(uid => !uid.startsWith('npc')))]
+  return {...invitation, protocol: 5, mode, seats, players,
+    names: Object.fromEntries(players.map(uid => [uid, uid === 'alice' ? 'Ash Ketchum' : uid])),
+    npcTeams: Object.fromEntries(seats.filter(uid => uid.startsWith('npc')).map(uid => [uid, packed]))}
+}
+const groupInput = (uid, seats, round = 0) => ({uid, round, kind: 'team', at: serverTimestamp(),
+  choices: seats.flatMap((owner, seat) => owner === uid ? [{seat, kind: 'move', index: 0, target: 0, gimmick: 'none'}] : [])})
+for (const [id, mode, seats] of [
+  ['four', 'doubles', groupUsers.slice(0,4)],
+  ['six', 'triples', groupUsers],
+  ['coop', 'doubles', ['alice','bob','npc2','npc3']],
+  ['mixed', 'triples', ['alice','bob','npc2','npc3','npc4','npc5']],
+  ['solo', 'triples', ['alice','alice','alice','bob','bob','bob']],
+]) {
+  const room = groupRoom(mode,seats), ref = uid => doc(groupDb[uid],'onlineBattles',id)
+  await check(`${id}: cria convite`,setDoc(ref('alice'),room),true)
+  await check(`${id}: ações bloqueadas antes do aceite`,setDoc(doc(groupDb.alice,'onlineBattles',id,'actions','0_alice'),groupInput('alice',seats)),false)
+  for (let i=1;i<room.players.length;i++) {
+    const uid=room.players[i]
+    await check(`${id}: ${uid} aceita somente seu time`,updateDoc(ref(uid),{[`teams.${uid}`]:packed,status:i===room.players.length-1?'active':'pending'}),true)
+  }
+  if (room.players.length<6) await check(`${id}: estranho não lê`,getDoc(doc(groupDb.frank,'onlineBattles',id)),false)
+  await check(`${id}: não muda posições`,updateDoc(ref('alice'),{seats:[...seats].reverse()}),false)
+  const bad=groupInput('alice',seats);bad.choices[0].seat=seats.indexOf('bob')
+  await check(`${id}: não controla Pokémon do amigo`,setDoc(doc(groupDb.alice,'onlineBattles',id,'actions','0_alice'),bad),false)
+  for (const uid of room.players) await check(`${id}: ${uid} envia suas posições`,setDoc(doc(groupDb[uid],'onlineBattles',id,'actions',`0_${uid}`),groupInput(uid,seats)),true)
+  await check(`${id}: próxima rodada aguarda todos os humanos`,setDoc(doc(groupDb.alice,'onlineBattles',id,'actions','1_alice'),groupInput('alice',seats,1)),true)
+  await check(`${id}: não pula rodada incompleta`,setDoc(doc(groupDb.alice,'onlineBattles',id,'actions','2_alice'),groupInput('alice',seats,2)),false)
+  if (Object.keys(room.npcTeams).length) await check(`${id}: NPC imutável`,updateDoc(ref('alice'),{npcTeams:{}}),false)
+}
+await check('protocolo 5: não participa nos dois lados',setDoc(doc(A,'onlineBattles','cross'),groupRoom('doubles',['alice','bob','alice','npc3'])),false)
+await check('protocolo 5: NPC corresponde à posição',setDoc(doc(A,'onlineBattles','badnpc'),groupRoom('doubles',['alice','bob','npc3','npc2'])),false)
+
 await env.cleanup()
 console.log(fails ? `${fails} FALHAS` : 'TUDO CERTO')
 process.exit(fails ? 1 : 0)

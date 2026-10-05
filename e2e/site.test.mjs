@@ -305,6 +305,37 @@ try {
   await page.getByRole('button', { name: 'Desistir / encerrar partida', exact: true }).click()
   await page2.getByText('Seu amigo encerrou a partida.', { exact: true }).waitFor({ timeout: 15000 })
   await expectHealthy()
+  for (const count of [2,3]) {
+    step = `amigos contra NPCs: ${count === 2 ? 'dupla' : 'tripla'}`
+    await go('amigos/online')
+    await page.getByLabel('Formato', {exact:true}).selectOption(String(count))
+    await page.getByLabel('Participante 1', {exact:true}).selectOption({label:friend.name})
+    if (count===3) await page.getByLabel('Participante 2', {exact:true}).selectOption('npc2')
+    await page.getByLabel('Seu time', {exact:true}).selectOption({label:'Areia'})
+    await page.getByRole('button',{name:'Desafiar para batalha',exact:true}).click()
+    await page.waitForURL(/#\/amigos\/online\//,{timeout:30000})
+    await page2.goto(page.url())
+    await page2.getByLabel('Seu time',{exact:true}).selectOption({label:'Areia'})
+    await page2.getByRole('button',{name:'Aceitar e entrar',exact:true}).click()
+    for (const p of [page,page2]) {
+      await p.getByTestId('multi-battle-field').waitFor({timeout:30000})
+      assert.equal(await p.locator('select[aria-label^="Ação de"]').count(),1,'cada amigo controla somente sua posição')
+      await p.locator('select[aria-label^="Ação de"]').selectOption('move:0')
+    }
+    await page.getByRole('button',{name:'Confirmar ações',exact:true}).click()
+    await page.getByText('Você já enviou sua ação. Aguardando seu amigo…',{exact:true}).waitFor({timeout:15000})
+    assert.equal(await page2.getByTestId('multi-turn').getAttribute('data-turn'),'1','NPCs aguardam os dois amigos')
+    await page2.getByRole('button',{name:'Confirmar ações',exact:true}).click()
+    for (const p of [page,page2]) await p.waitForFunction(()=>Number(document.querySelector('[data-testid="multi-turn"]')?.dataset.turn)>1,null,{timeout:30000})
+    const field=await page.locator('[data-testid^="multi-hp-"]').allTextContents()
+    assert.deepEqual(await page2.locator('[data-testid^="multi-hp-"]').allTextContents(),field,'amigos calculam o mesmo turno com NPCs')
+    await page.reload()
+    await page.getByTestId('multi-battle-field').waitFor({timeout:30000})
+    assert.deepEqual(await page.locator('[data-testid^="multi-hp-"]').allTextContents(),field,'reabertura retoma a equipe cooperativa')
+    await page.getByRole('button',{name:'Desistir / encerrar partida',exact:true}).click()
+    await page2.getByText('Seu amigo encerrou a partida.',{exact:true}).waitFor({timeout:15000})
+    await expectHealthy()
+  }
   await go('amigos/batalha')
 
   step = 'amigos: desafio de quiz para o amigo escolhido'

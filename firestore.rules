@@ -182,7 +182,7 @@ service cloud.firestore {
     // actions/{round_uid}: ação imutável de cada jogador; até 500 rodadas.
     match /onlineBattles/{battle} {
       function member(d) { return request.auth != null && request.auth.uid in d.players; }
-      function validRoom(d) {
+      function legacyRoom(d) {
         return d.keys().hasAll(['protocol', 'players', 'names', 'teams', 'status', 'seed', 'createdAt', 'endedBy'])
           && d.keys().hasOnly(['protocol', 'players', 'names', 'teams', 'status', 'seed', 'createdAt', 'endedBy'])
           && d.protocol in [1, 2, 3, 4] && d.players is list && d.players.size() == 2
@@ -199,18 +199,69 @@ service cloud.firestore {
           && d.createdAt is timestamp
           && (d.endedBy == null || d.endedBy in d.players);
       }
+      function slots(d) { return d.mode == 'triples' ? 3 : d.mode == 'doubles' ? 2 : 1; }
+      function validPlayer(d, i) {
+        return i >= d.players.size() || (d.players[i] is string && d.players[i].size() > 0 && d.players[i].size() <= 128
+          && !(d.players[i] in ['npc0', 'npc1', 'npc2', 'npc3', 'npc4', 'npc5'])
+          && d.names[d.players[i]] is string && d.names[d.players[i]].size() <= 20
+          && (!(d.players[i] in d.teams) || (d.teams[d.players[i]] is string && d.teams[d.players[i]].size() <= 20000)));
+      }
+      function validSeat(d, i) {
+        return i >= d.seats.size() || (d.seats[i] is string && (d.seats[i] in d.players || d.seats[i] == 'npc' + string(i)));
+      }
+      function validNpc(d, uid) {
+        return uid in d.seats ? (uid in d.npcTeams && d.npcTeams[uid] is string && d.npcTeams[uid].size() <= 20000) : !(uid in d.npcTeams);
+      }
+      function separateTeams(d) {
+        return d.mode == 'singles' ? d.seats[0] != d.seats[1]
+          : d.mode == 'doubles' ? d.seats[0] != d.seats[2] && d.seats[0] != d.seats[3] && d.seats[1] != d.seats[2] && d.seats[1] != d.seats[3]
+          : d.seats[0] != d.seats[3] && d.seats[0] != d.seats[4] && d.seats[0] != d.seats[5]
+            && d.seats[1] != d.seats[3] && d.seats[1] != d.seats[4] && d.seats[1] != d.seats[5]
+            && d.seats[2] != d.seats[3] && d.seats[2] != d.seats[4] && d.seats[2] != d.seats[5];
+      }
+      function newRoom(d) {
+        return d.keys().hasAll(['protocol', 'players', 'names', 'teams', 'status', 'seed', 'createdAt', 'endedBy', 'mode', 'seats', 'npcTeams'])
+          && d.keys().hasOnly(['protocol', 'players', 'names', 'teams', 'status', 'seed', 'createdAt', 'endedBy', 'mode', 'seats', 'npcTeams'])
+          && d.protocol == 5 && d.mode in ['singles', 'doubles', 'triples']
+          && d.players is list && d.players.size() >= 2 && d.players.size() <= 6 && d.players.toSet().size() == d.players.size()
+          && d.names is map && d.names.keys().hasOnly(d.players) && d.names.keys().hasAll(d.players)
+          && d.teams is map && d.teams.keys().hasOnly(d.players) && d.teams[d.players[0]] is string
+          && validPlayer(d, 0) && validPlayer(d, 1) && validPlayer(d, 2) && validPlayer(d, 3) && validPlayer(d, 4) && validPlayer(d, 5)
+          && d.seats is list && d.seats.size() == slots(d) * 2 && d.seats[0] == d.players[0] && d.seats.hasAll(d.players)
+          && validSeat(d, 0) && validSeat(d, 1) && validSeat(d, 2) && validSeat(d, 3) && validSeat(d, 4) && validSeat(d, 5) && separateTeams(d)
+          && d.npcTeams is map && d.npcTeams.keys().hasOnly(['npc0', 'npc1', 'npc2', 'npc3', 'npc4', 'npc5'])
+          && validNpc(d, 'npc0') && validNpc(d, 'npc1') && validNpc(d, 'npc2') && validNpc(d, 'npc3') && validNpc(d, 'npc4') && validNpc(d, 'npc5')
+          && d.status in ['pending', 'active', 'closed'] && d.seed is int && d.seed >= 0 && d.seed < 2147483648
+          && d.createdAt is timestamp && (d.endedBy == null || d.endedBy in d.players);
+      }
+      function validRoom(d) { return d.protocol == 5 ? newRoom(d) : legacyRoom(d); }
+      function hostFriend(d, i) {
+        return i >= d.players.size() || get(/databases/$(database)/documents/friends/$(d.players[0])/list/$(d.players[i])).data.status == 'friends';
+      }
+      function newFriends(d) { return hostFriend(d, 1) && hostFriend(d, 2) && hostFriend(d, 3) && hostFriend(d, 4) && hostFriend(d, 5); }
+      function newCreate(d) {
+        return newRoom(d) && member(d) && d.players[0] == request.auth.uid && d.names[request.auth.uid] == accountName(request.auth.uid)
+          && d.teams.keys().hasOnly([request.auth.uid]) && d.status == 'pending' && d.endedBy == null && d.createdAt == request.time && newFriends(d);
+      }
+      function newAccept(old, now) {
+        return old.protocol == 5 && old.status == 'pending' && !(request.auth.uid in old.teams)
+          && now.diff(old).affectedKeys().hasOnly(['teams', 'status'])
+          && now.teams.diff(old.teams).affectedKeys().hasOnly([request.auth.uid]) && request.auth.uid in now.teams
+          && now.status == (now.teams.keys().hasAll(old.players) ? 'active' : 'pending')
+          && request.time < old.createdAt + duration.value(7, 'd') && newFriends(old);
+      }
       function stillFriends(d) {
         return get(/databases/$(database)/documents/friends/$(d.players[0])/list/$(d.players[1])).data.status == 'friends'
           && get(/databases/$(database)/documents/friends/$(d.players[1])/list/$(d.players[0])).data.status == 'friends';
       }
       allow read: if request.auth != null && request.auth.uid in resource.data.players;
-      allow create: if validRoom(request.resource.data) && request.resource.data.protocol == 4 && member(request.resource.data)
+      allow create: if (legacyRoom(request.resource.data) && request.resource.data.protocol == 4 && member(request.resource.data)
         && request.resource.data.players[0] == request.auth.uid
         && request.resource.data.names[request.auth.uid] == accountName(request.auth.uid)
         && request.resource.data.names[request.resource.data.players[1]] == accountName(request.resource.data.players[1])
         && request.resource.data.teams.keys().hasOnly([request.auth.uid])
         && request.resource.data.status == 'pending' && request.resource.data.endedBy == null
-        && request.resource.data.createdAt == request.time && stillFriends(request.resource.data);
+        && request.resource.data.createdAt == request.time && stillFriends(request.resource.data)) || newCreate(request.resource.data);
       allow update: if member(resource.data) && validRoom(request.resource.data)
         && (
           // Só quem recebeu o convite escolhe seu time e aceita.
@@ -224,6 +275,7 @@ service cloud.firestore {
           || (resource.data.status in ['pending', 'active']
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'endedBy'])
             && request.resource.data.status == 'closed' && request.resource.data.endedBy == request.auth.uid)
+          || newAccept(resource.data, request.resource.data)
         );
       match /actions/{action} {
         function room() { return get(/databases/$(database)/documents/onlineBattles/$(battle)).data; }
@@ -242,12 +294,36 @@ service cloud.firestore {
         function previousComplete(d, r) {
           return d.round == 0
             || (exists(/databases/$(database)/documents/onlineBattles/$(battle)/actions/$(string(d.round - 1) + '_' + r.players[0]))
-                && exists(/databases/$(database)/documents/onlineBattles/$(battle)/actions/$(string(d.round - 1) + '_' + r.players[1])));
+                && exists(/databases/$(database)/documents/onlineBattles/$(battle)/actions/$(string(d.round - 1) + '_' + r.players[1]))
+                && (r.players.size() < 3 || exists(/databases/$(database)/documents/onlineBattles/$(battle)/actions/$(string(d.round - 1) + '_' + r.players[2])))
+                && (r.players.size() < 4 || exists(/databases/$(database)/documents/onlineBattles/$(battle)/actions/$(string(d.round - 1) + '_' + r.players[3])))
+                && (r.players.size() < 5 || exists(/databases/$(database)/documents/onlineBattles/$(battle)/actions/$(string(d.round - 1) + '_' + r.players[4])))
+                && (r.players.size() < 6 || exists(/databases/$(database)/documents/onlineBattles/$(battle)/actions/$(string(d.round - 1) + '_' + r.players[5]))));
+        }
+        function ownedSeat(r, i) { return i < r.seats.size() && r.seats[i] == request.auth.uid ? 1 : 0; }
+        function ownedCount(r) { return ownedSeat(r, 0) + ownedSeat(r, 1) + ownedSeat(r, 2) + ownedSeat(r, 3) + ownedSeat(r, 4) + ownedSeat(r, 5); }
+        function validChoice(c, r) {
+          return c is map && c.keys().hasAll(['seat', 'kind', 'index', 'target', 'gimmick']) && c.keys().hasOnly(['seat', 'kind', 'index', 'target', 'gimmick'])
+            && c.seat is int && c.seat >= 0 && c.seat < r.seats.size() && r.seats[c.seat] == request.auth.uid
+            && c.kind in ['move', 'switch', 'wait', 'pass', 'shift'] && c.index is int
+            && (c.kind == 'move' ? c.index >= -1 && c.index <= 3 : c.kind == 'switch' ? c.index >= 0 && c.index <= 5 : c.index == 0)
+            && (c.kind != 'shift' || r.mode == 'triples' && c.seat % 3 != 1)
+            && c.target is int && c.target >= -slots(r) && c.target <= slots(r) && (c.kind == 'move' || c.target == 0)
+            && c.gimmick in ['none', 'mega', 'z', 'dmax', 'tera'] && (c.kind == 'move' || c.gimmick == 'none');
+        }
+        function validGroup(d, r) {
+          return d.keys().hasAll(['uid', 'round', 'kind', 'choices', 'at']) && d.keys().hasOnly(['uid', 'round', 'kind', 'choices', 'at'])
+            && d.uid == request.auth.uid && d.round is int && d.round >= 0 && d.round < 500 && action == string(d.round) + '_' + d.uid
+            && d.kind == 'team' && d.choices is list && d.choices.size() == ownedCount(r) && d.choices.size() >= 1 && d.choices.size() <= 3
+            && validChoice(d.choices[0], r)
+            && (d.choices.size() < 2 || validChoice(d.choices[1], r) && d.choices[0].seat != d.choices[1].seat)
+            && (d.choices.size() < 3 || validChoice(d.choices[2], r) && d.choices[0].seat != d.choices[2].seat && d.choices[1].seat != d.choices[2].seat)
+            && d.at == request.time;
         }
         allow read: if member(room());
-        allow create: if member(room()) && room().protocol == 4 && room().status == 'active'
+        allow create: if member(room()) && room().protocol in [4, 5] && room().status == 'active'
           && request.time < room().createdAt + duration.value(7, 'd')
-          && validAction(request.resource.data) && previousComplete(request.resource.data, room());
+          && (room().protocol == 5 ? validGroup(request.resource.data, room()) : validAction(request.resource.data)) && previousComplete(request.resource.data, room());
         // Sem update/delete: não dá para mudar uma ação já enviada.
       }
     }

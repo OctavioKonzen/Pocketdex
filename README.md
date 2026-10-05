@@ -4,7 +4,7 @@
   <img src="https://img.shields.io/badge/Flutter-3.x-blue?logo=flutter&style=for-the-badge" />
   <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&style=for-the-badge" />
   <img src="https://img.shields.io/badge/Firebase-FFCA28?logo=firebase&style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Android-5.11.0-green?logo=android&style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Android-5.12.0-green?logo=android&style=for-the-badge" />
 </p>
 
 <div align="center">
@@ -41,6 +41,7 @@
 * **Jogos e conquistas:** “Quem é esse Pokémon?”, Ranked, desafio diário, desafios entre amigos, rankings e medalhas.
 * **Batalhas e draft:** batalhe online por turnos com amigos, cada um controlando seu time, com nível máximo 50 e um uso de cada mecânica por time em cada batalha; treine contra o computador, que escolhe golpes, faz trocas e usa itens, com o mesmo limite e monte equipes pelo draft.
 * **Regras de combate:** efeitos de golpes, precisão, status, clima, terrenos, Natures e habilidades comuns e ocultas, com o mesmo motor offline no app e no site.
+* **Duplas e triplas:** controle todas as posições ou forme equipes com amigos e NPCs, inclusive amigos juntos contra a máquina. Até quatro jogadores na dupla e seis na tripla, com seis Pokémon por equipe e reserva compartilhada.
 * **Centro de Batalha:** calculadora de dano, comparador, tabela de tipos, velocidade, sugestões de adversários e Tera Raids.
 * **Treinamento:** Natures, breeding, golpes de ovo, EVs, IVs, contador de shiny e acompanhamento de Nuzlocke.
 * **Enciclopédia:** consulta de golpes, habilidades e itens.

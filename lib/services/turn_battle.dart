@@ -319,7 +319,7 @@ const battleItems = [
 BattleItem? _itemOf(String slug) => battleItems.where((i) => i.slug == slug).firstOrNull;
 
 class TurnBattle {
-  TurnBattle(List<BattleMon> mine, List<BattleMon> theirs, this.random) : teams = [mine, theirs] {
+  TurnBattle(List<BattleMon> mine, List<BattleMon> theirs, this.random, {this.mode = 'singles', this.controllers}) : teams = [mine, theirs] {
     for (final mon in [...mine, ...theirs]) {
       mon
         ..restore()
@@ -335,6 +335,7 @@ class TurnBattle {
       final created = BattleSimulator.call('create', [{
         'teams': [for (final team in teams) [for (final mon in team) _simMon(mon)]],
         'seed': List.generate(4, (_) => (random() * 65536).floor()),
+        'mode': mode, 'controllers': controllers,
       }]);
       _simHandle = created['handle'] as int;
       _opening = _simSync(created);
@@ -342,6 +343,14 @@ class TurnBattle {
   }
 
   int? _simHandle;
+  final String mode;
+  final List<List<String>>? controllers;
+  Map<String, dynamic>? get simulatorState => _simState;
+  List<Map<String, dynamic>> recommend(int side, [Map<String, dynamic>? options]) =>
+      (BattleSimulator.call('recommend', [_simHandle, side, options])['actions'] as List).map((x) => Map<String, dynamic>.from(x as Map)).toList();
+  Map<String, dynamic> targets(int side, int slot, int move, [String gimmick = '']) =>
+      BattleSimulator.call('targets', [_simHandle, side, slot, move, gimmick]);
+  List<BattleEvent> playGroupTurn(List<List<Map<String, dynamic>>> actions) => _simChoose(actions);
   Map<String, dynamic>? _simState;
   List<BattleEvent> _opening = [];
   BattleHit? _lastHit;
@@ -399,7 +408,8 @@ class TurnBattle {
           mon.calc!.item = p['item'] as String;
           mon.calc!.ability = mon.ability;
         }
-        final req = p['index'] == s['active'] ? ((s['request'] as Map?)?['moves'] as List?) : null;
+        final activeSlot = (s['slots'] as List?)?.cast<Map>().where((slot) => slot['index'] == p['index']).firstOrNull;
+        final req = (activeSlot?['request'] as Map?)?['moves'] as List?;
         final slots = req ?? p['moves'] as List;
         mon.moves.clear();
         for (final dynamic rawSlot in slots) {
@@ -436,7 +446,7 @@ class TurnBattle {
     }
   }
 
-  List<BattleEvent> _simChoose(List<Map<String, dynamic>> actions) => _simSync(BattleSimulator.call('choose', [_simHandle, actions]));
+  List<BattleEvent> _simChoose(List<Object?> actions) => _simSync(BattleSimulator.call('choose', [_simHandle, actions]));
 
   void _completeCpuSwitches(BattleHit hit, List<BattleEvent> events) {
     var attempts = 0;
@@ -447,7 +457,7 @@ class TurnBattle {
   }
 
   // Visão da partida sem restaurar HP, formas ou status.
-  TurnBattle._view(this.teams, this.random);
+  TurnBattle._view(this.teams, this.random) : mode = 'singles', controllers = null;
   TurnBattle viewFor(int side) {
     final order = [side, 1 - side];
     final view = TurnBattle._view([for (final s in order) teams[s]], random);

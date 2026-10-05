@@ -6,6 +6,8 @@ import '../services/damage_calc.dart';
 import '../services/friends_service.dart';
 import '../services/league.dart';
 import '../services/online_battle.dart';
+import '../services/party_battle.dart';
+import '../services/auth_service.dart';
 import '../services/turn_battle.dart';
 import '../services/user_data.dart';
 import '../utils/responsive.dart';
@@ -24,6 +26,8 @@ class OnlineBattleScreen extends StatefulWidget {
 class _OnlineBattleScreenState extends State<OnlineBattleScreen> {
   String? _friend;
   int? _team;
+  int _count = 1;
+  final Map<int, String> _participants = {};
   bool _busy = false;
   String? _errorText;
   late final Stream<QuerySnapshot<Map<String, dynamic>>> _rooms;
@@ -37,8 +41,9 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen> {
   Future<void> _invite() async {
     setState(() { _busy = true; _errorText = null; });
     try {
-      final f = FriendsService.instance.friends.firstWhere((f) => f.uid == _friend);
-      final id = await OnlineBattles.invite(f.uid, f.name, _teams[_team!]);
+      final seats = [for (var seat = 0; seat < _count * 2; seat++) seat == 0 ? OnlineBattles.me : _participants[seat] ?? (seat < _count ? OnlineBattles.me : _friend ?? 'npc$seat')];
+      final names = {for (final uid in seats.toSet().where((uid) => !PartyBattle.isNpc(uid))) uid: uid == OnlineBattles.me ? AuthService.instance.user!.name ?? '' : FriendsService.instance.friends.firstWhere((friend) => friend.uid == uid).name};
+      final id = await OnlineBattles.inviteGame(seats, _count, names, _teams[_team!]);
       if (mounted) await Navigator.push(context, MaterialPageRoute(builder: (_) => OnlineBattleRoomScreen(id: id)));
     } catch (e) { if (mounted) setState(() => _errorText = _error(e)); }
     finally { if (mounted) setState(() => _busy = false); }
@@ -48,13 +53,24 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Batalha online')),
       body: ReadableWidth(child: ListView(padding: const EdgeInsets.all(16), children: [
-        const Text('Convide um amigo. Cada jogador controla seu próprio time.'),
+        const Text('Monte as equipes com amigos e NPCs. Você também pode controlar todas as posições da sua equipe.'),
         const SizedBox(height: 16),
-        DropdownButtonFormField<String>(
+        DropdownButtonFormField<int>(initialValue: _count, isExpanded: true, decoration: const InputDecoration(labelText: 'Formato'), items: const [DropdownMenuItem(value: 1, child: Text('Individual')), DropdownMenuItem(value: 2, child: Text('Dupla')), DropdownMenuItem(value: 3, child: Text('Tripla'))], onChanged: _busy ? null : (v) => setState(() { _count = v!; _participants.clear(); })),
+        const SizedBox(height: 12),
+        if (_count == 1) DropdownButtonFormField<String>(
           initialValue: _friend, isExpanded: true, decoration: const InputDecoration(labelText: 'Amigo'),
           items: [for (final f in FriendsService.instance.friends) DropdownMenuItem(value: f.uid, child: Text(f.name))],
           onChanged: _busy ? null : (v) => setState(() => _friend = v),
         ),
+        if (_count > 1) ...[
+          const Text('Sua equipe começa com você. Escolha quem controla cada posição; a mesma pessoa pode controlar mais de uma.'),
+          for (var seat = 1; seat < _count * 2; seat++) Padding(padding: const EdgeInsets.symmetric(vertical: 6), child: DropdownButtonFormField<String>(key: ValueKey((_count, seat)),
+            initialValue: _participants[seat] ?? (seat < _count ? OnlineBattles.me : _friend ?? 'npc$seat'), isExpanded: true,
+            decoration: InputDecoration(labelText: '${seat < _count ? 'Sua equipe' : 'Equipe adversária'} · posição ${seat % _count + 1}'),
+            items: [if (seat < _count) DropdownMenuItem(value: OnlineBattles.me, child: const Text('Você')), DropdownMenuItem(value: 'npc$seat', child: const Text('NPC')), for (final friend in FriendsService.instance.friends) DropdownMenuItem(value: friend.uid, child: Text(friend.name))],
+            onChanged: _busy ? null : (value) => setState(() => _participants[seat] = value!))),
+          const Text('Dupla: até quatro jogadores. Tripla: até seis. Também vale você e um amigo contra NPCs.'),
+        ],
         const SizedBox(height: 12),
         DropdownButtonFormField<int>(
           initialValue: _team, isExpanded: true, decoration: const InputDecoration(labelText: 'Seu time'),
@@ -63,7 +79,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen> {
         ),
         if (_teams.isEmpty) const Text('Monte um time em Times para batalhar.'),
         const SizedBox(height: 12),
-        FilledButton(onPressed: _busy || _friend == null || _team == null ? null : _invite, child: Text(_busy ? 'Enviando…' : 'Desafiar para batalha')),
+        FilledButton(onPressed: _busy || _count == 1 && _friend == null || _team == null ? null : _invite, child: Text(_busy ? 'Enviando…' : 'Desafiar para batalha')),
         if (_errorText != null) Text(_errorText!, style: const TextStyle(color: Colors.redAccent)),
         const SizedBox(height: 24),
         const Text('Convites e partidas', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
@@ -113,7 +129,7 @@ class _OnlineBattleRoomScreenState extends State<OnlineBattleRoomScreen> {
   bool _busy = false, _replaying = true;
   String? _errorText;
   List<String> get _players => List<String>.from(_room!['players'] as List);
-  int get _side => _players.indexOf(OnlineBattles.me);
+  int get _side => PartyBattle.sideOf(_room!, OnlineBattles.me);
   List<Map<String, dynamic>> get _teams => UserData.instance.teams.where((t) => BattleTeam.fromMap(t) != null).toList();
   @override
   void initState() {
@@ -136,7 +152,7 @@ class _OnlineBattleRoomScreenState extends State<OnlineBattleRoomScreen> {
     super.dispose();
   }
   Future<void> _replay() async {
-    if (_room == null || _actions == null || _room!['status'] == 'pending' || !(_room!['teams'] as Map).containsKey(_players[1])) return;
+    if (_room == null || _actions == null || _room!['status'] == 'pending' || !_players.every((_room!['teams'] as Map).containsKey)) return;
     final generation = ++_generation;
     final previousRound = _battle == null ? null : _round;
     final side = _side;
@@ -147,19 +163,23 @@ class _OnlineBattleRoomScreenState extends State<OnlineBattleRoomScreen> {
       final teams = _room!['teams'] as Map;
       final seed = (_room!['seed'] as num).toInt();
       final pairs = OnlineBattles.pairs(_actions!, players);
-      final a = await TurnBattleSetup.mons(BattleTeam.fromMap(OnlineBattles.unpackTeam(teams[players[0]] as String))!.members, battleMonName);
-      final b = await TurnBattleSetup.mons(BattleTeam.fromMap(OnlineBattles.unpackTeam(teams[players[1]] as String))!.members, battleMonName);
-      if (a.isEmpty || b.isEmpty) throw StateError('Não foi possível preparar os times.');
+      final seats = PartyBattle.seatsOf(_room!);
+      final rosters = <String, List<BattleMon>>{};
+      for (final uid in seats.toSet()) {
+        final packed = PartyBattle.isNpc(uid) ? (_room!['npcTeams'] as Map)[uid] : teams[uid];
+        rosters[uid] = await TurnBattleSetup.mons(BattleTeam.fromMap(OnlineBattles.unpackTeam(packed as String))!.members, battleMonName);
+        if (rosters[uid]!.isEmpty) throw StateError('Não foi possível preparar os times.');
+      }
       final data = await DamageData.load();
       final hit = TurnBattleSetup.hitter(data);
-      final battle = TurnBattle(a, b, League.seededRandom(seed));
+      final battle = PartyBattle.create(rosters, seats, PartyBattle.countOf(_room!), League.seededRandom(seed));
       battle.start();
       final events = <BattleEvent>[];
       List<int>? before;
       for (final (i, pair) in pairs.indexed) {
         final animate = previousRound != null && i >= previousRound;
         if (animate && before == null) before = [battle.active(side).id, battle.active(1 - side).id];
-        final next = battle.playOnlineTurn(pair, hit);
+        final next = PartyBattle.play(battle, pair);
         if (animate) events.addAll(next.map((e) => BattleEvent.viewFor(e, side)));
       }
       if (!mounted || generation != _generation) { battle.dispose(); return; }
@@ -188,11 +208,12 @@ class _OnlineBattleRoomScreenState extends State<OnlineBattleRoomScreen> {
         if (_errorText != null) Text(_errorText!, style: const TextStyle(color: Colors.redAccent)),
         if (room == null) const Center(child: CircularProgressIndicator())
         else ...[
-          Text('Batalha com ${(room['names'] as Map)[_players[1 - _side]]}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          const Text('Nível máximo 50. O turno acontece quando os dois enviarem.'),
+          Text('Batalha com ${_players.where((uid) => uid != OnlineBattles.me).map((uid) => (room['names'] as Map)[uid]).join(', ')}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          const Text('Nível máximo 50. O turno acontece quando todos os jogadores enviarem suas escolhas.'),
           const SizedBox(height: 12),
           if (room['status'] == 'pending' && room['protocol'] == OnlineBattles.protocol) ...[
-            if (_side == 0) const Text('Convite enviado. Aguardando seu amigo aceitar e escolher o time.')
+            for (final uid in _players) Text('${(room['names'] as Map)[uid]}: ${(room['teams'] as Map).containsKey(uid) ? 'pronto' : 'aguardando aceite e time'}'),
+            if ((room['teams'] as Map).containsKey(OnlineBattles.me)) const Text('Aguardando os outros participantes.')
             else ...[
               const Text('Você recebeu um convite para batalhar!'),
               DropdownButtonFormField<int>(
@@ -226,11 +247,11 @@ class _OnlineBattleRoomScreenState extends State<OnlineBattleRoomScreen> {
                   : replacing ? mine.hp <= 0 ? 'Escolha outro Pokémon.' : 'Seu amigo precisa trocar de Pokémon.'
                   : 'Escolha sua ação para o turno ${battle.turn}';
               return BattleView(
-                battle: battle.viewFor(_side), hit: _hit!, typeEff: _typeEff!,
-                foeName: '${(room['names'] as Map)[_players[1 - _side]]}',
+                battle: battle.mode == 'singles' ? battle.viewFor(_side) : battle, hit: _hit!, typeEff: _typeEff!,
+                foeName: _players.where((uid) => uid != OnlineBattles.me).map((uid) => (room['names'] as Map)[uid]).join(', '),
                 onAgain: () {}, onExit: () => Navigator.pop(context),
                 online: OnlineBattleControl(
-                  round: _round, events: _events, before: _before,
+                  round: _round, events: _events, before: _before, uid: OnlineBattles.me, names: Map<String, dynamic>.from(room['names'] as Map),
                   locked: disabled, message: message,
                   waitForSwitch: replacing && !battle.viewFor(_side).needSwitch,
                   onAction: _send, onClose: () => _run(() => OnlineBattles.close(widget.id)),
