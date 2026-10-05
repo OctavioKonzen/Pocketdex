@@ -142,7 +142,7 @@ function BattleRoom({ id, user }) {
         setPlayback({ events: freshEvents, before }); setError(''); setReplaying(false)
       } else { simulatorDispose(b); pendingBattle = null }
     }
-    replay().catch((e) => { if (pendingBattle) simulatorDispose(pendingBattle); if (live) { setError(errorMessage(e)); setReplaying(false) } })
+    replay().catch((e) => { if (import.meta.env.VITE_EMULATORS) console.error('Falha no replay:',e.stack || e.message); if (pendingBattle) simulatorDispose(pendingBattle); if (live) { setError(errorMessage(e)); setReplaying(false) } })
     return () => { live = false }
   }, [room, actions, pairs, side])
   const run = async (fn) => {

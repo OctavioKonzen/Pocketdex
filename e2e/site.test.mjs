@@ -549,6 +549,7 @@ try {
 } catch (error) {
   await page.screenshot({ path: 'falha.png', fullPage: true }).catch(() => {})
   console.error(`FALHOU em "${step}":`, error.stack)
+  console.error('ERROS:', errors)
   console.error('TELA:', await page.locator('body').innerText().catch(()=>''))
   process.exitCode = 1
 } finally {

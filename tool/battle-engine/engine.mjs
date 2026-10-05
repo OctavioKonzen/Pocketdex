@@ -318,7 +318,12 @@ function recommended(game, sideIndex, options = {}) {
       // Max/Z can change a spread move into a move that requires one target.
       const base = Dex.moves.get(req.moves[best.action.index].id);
       const transformed = mechanic === 'dmax' ? game.battle.actions.getMaxMove(base, source) : mechanic === 'z' ? req.canZMove[best.action.index].move : null;
-      if (transformed) best.action.target = targetsFor(game, source, transformed)[0]?.loc || 0;
+      if (transformed && (mechanic === 'dmax' || base.category !== 'Status')) {
+        const candidates = targetsFor(game,source,transformed).filter(target => !target.ally && !target.fainted);
+        const transformedMove = Dex.moves.get(transformed);
+        candidates.sort((a,b) => estimatedDamage(source,game.battle.sides[b.side].pokemon.find(p => originalIndex(p) === b.index),transformedMove) - estimatedDamage(source,game.battle.sides[a.side].pokemon.find(p => originalIndex(p) === a.index),transformedMove));
+        best.action.target = candidates[0]?.loc || 0;
+      }
     }
     return best.action;
   });

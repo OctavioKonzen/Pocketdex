@@ -99,3 +99,23 @@ test('CPU attacks with a super-effective move instead of unnecessarily switching
     assert.equal(action.kind,'move');assert.equal(action.index,1);
   } finally {sim.dispose(g.handle);}
 });
+
+test('CPU Dynamax attacks target an opponent instead of the adjacent ally', () => {
+  const charizard = {...mon('Charizard',['heatwave']),gimmick:'dmax'};
+  const g = sim.create({mode:'doubles',seed:[1,2,3,4],teams:[[charizard,mon('Blissey',['splash'])],[mon('Venusaur',['splash']),mon('Scizor',['splash'])]]});
+  try {
+    const actions = sim.recommend(g.handle,0).actions;
+    assert.equal(actions[0].gimmick,'dmax');assert.ok(actions[0].target>0);
+    sim.choose(g.handle,[actions,sim.recommend(g.handle,1).actions]);
+  } finally {sim.dispose(g.handle);}
+});
+
+test('CPU Z-status support retains its ally target', () => {
+  const helper = {...mon('Mew',['helpinghand']),gimmick:'z'};helper.set.item='Normalium Z';
+  const g = sim.create({mode:'doubles',seed:[1,2,3,4],teams:[[helper,mon('Charizard',['flamethrower'])],[mon('Venusaur',['splash']),mon('Scizor',['splash'])]]});
+  try {
+    const actions = sim.recommend(g.handle,0).actions;
+    assert.equal(actions[0].gimmick,'z');assert.ok(actions[0].target<0);
+    sim.choose(g.handle,[actions,sim.recommend(g.handle,1).actions]);
+  } finally {sim.dispose(g.handle);}
+});
