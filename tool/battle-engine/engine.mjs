@@ -75,7 +75,8 @@ function configure(game) {
     const item = {potion: 20, 'super-potion': 60, 'hyper-potion': 120, revive: 0}[action.item];
     if (item === undefined || !target || !(game.bags[pokemon.side.n][action.item] > 0)) throw new Error('Item inválido');
     game.bags[pokemon.side.n][action.item]--;
-    this.add('message', `${game.teams[pokemon.side.n][action.index].name}: ${action.item}`);
+    const previousHp = target.hp;
+    this.add('pocketdexitem', target, action.item);
     if (action.item === 'revive') {
       target.fainted = false;
       target.faintQueued = false;
@@ -85,6 +86,7 @@ function configure(game) {
       target.side.pokemonLeft++;
       this.add('-heal', target, target.getHealth);
     } else this.heal(item, target, pokemon, {id: action.item, name: action.item, effectType: 'Item'});
+    this.add('pocketdexheal', target, action.item, target.hp - previousHp);
     game.pendingItems[pokemon.side.n] = null;
   });
 }
@@ -178,6 +180,12 @@ function eventsFor(game, lines) {
       const subject = side >= 0 ? label(side).name : 'Campo';
       const effect = value?.replace(/^move: /, '') || extra || '';
       say('sim', `${subject}: ${effect}${extra && ['-boost', '-unboost'].includes(kind) ? ` (${kind === '-unboost' ? '−' : '+'}${extra})` : ''}`);
+    } else if (kind === 'pocketdexitem' || kind === 'pocketdexheal') {
+      const index = Number(actor.split(': ')[1]?.slice(2));
+      const target = {side, name: game.teams[side][index].name || game.teams[side][index].set.species};
+      if (kind === 'pocketdexitem') say('usedItem', target, {potion: 'Potion', 'super-potion': 'Super Potion', 'hyper-potion': 'Hyper Potion', revive: 'Revive'}[value]);
+      else if (value === 'revive') say('revived', target);
+      else say('healed', target, Number(extra));
     } else if (kind === 'message') say('sim', actor);
     else if (kind === 'win') say(actor === game.battle.sides[0].name ? 'win' : 'lose');
     else if (kind === 'tie') say('draw');

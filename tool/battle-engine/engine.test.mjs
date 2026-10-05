@@ -128,6 +128,8 @@ test('Bag healing spends a turn and the opponent still attacks', () => {
     assert.equal(healed.state.turn, 3);
     assert.ok(healed.state.sides[0].team[0].hp >= hurt.state.sides[0].team[0].hp);
     assert.ok(healed.state.sides[0].team[0].hp < healed.state.sides[0].team[0].maxHp);
+    assert.ok(healed.events.some(event => event.key === 'usedItem'));
+    assert.ok(healed.events.some(event => event.key === 'healed' && event.args[1] > 0));
   } finally { sim.dispose(game.handle); }
 });
 
