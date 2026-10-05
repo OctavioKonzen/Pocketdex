@@ -81,6 +81,7 @@ jobs:
           bash tool/build_battle_engine.sh
           flutter pub get
           bash tool/build_quickjs_test.sh
+          export LIBQUICKJSC_TEST_PATH="$PWD/build/quickjs-test/libquickjs_c_bridge_plugin.so"
           flutter analyze --no-fatal-infos
           flutter test
 
