@@ -314,6 +314,7 @@ const groupInput = (uid, seats, round = 0) => ({uid, round, kind: 'team', at: se
 for (const [id, mode, seats] of [
   ['four', 'doubles', groupUsers.slice(0,4)],
   ['six', 'triples', groupUsers],
+  ['five', 'triples', [...groupUsers.slice(0,5),'npc5']],
   ['coop', 'doubles', ['alice','bob','npc2','npc3']],
   ['mixed', 'triples', ['alice','bob','npc2','npc3','npc4','npc5']],
   ['solo', 'triples', ['alice','alice','alice','bob','bob','bob']],
