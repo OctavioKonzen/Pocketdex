@@ -880,7 +880,7 @@ function Weak({ mon, list, className = '' }) {
   )
 }
 
-function MultiBattle({battle, onExit, onAgain, online = null}) {
+export function MultiBattle({battle, onExit, onAgain, online = null}) {
   const byId = usePokemonIndex()
   const uid = online?.uid || 'me'
   const side = battle.controllers.findIndex(team => team.includes(uid))
@@ -928,10 +928,8 @@ function MultiBattle({battle, onExit, onAgain, online = null}) {
       return mon && <div key={slot.slot} className="min-w-0">
         <p className="truncate rounded bg-slate-900/75 px-1 text-center text-xs text-white">{trainer(battle.controllers[teamSide][slot.slot])}</p>
         <div className="mx-auto max-w-36"><BattleSprite mon={mon} id={mon.dmax && mon.gmax || mon.id} back={teamSide===side} fainted={mon.hp<=0} dmax={mon.dmax>0} byId={byId}/></div>
-        <div className="rounded-lg border-2 border-slate-700 bg-amber-50 px-1 py-1 text-slate-900">
-          <p className="truncate text-xs font-bold">{mon.name}{mon.status && ` · ${mon.status.toUpperCase()}`}</p><HpBar hp={mon.hp} max={mon.maxHp}/>
-          <p className="text-right text-xs" data-testid={`multi-hp-${teamSide}-${slot.slot}`}>{mon.hp}/{mon.maxHp}</p>
-        </div>
+        <InfoBox mon={mon} hp={mon.hp} mine status={mon.status} dmax={mon.dmax>0} hpTestId={`multi-hp-${teamSide}-${slot.slot}`}/>
+
       </div>
     })}
   </div>
@@ -947,16 +945,30 @@ function MultiBattle({battle, onExit, onAgain, online = null}) {
       const mechanic=battle.sides[side].team[slot.index].gimmick
       const available=mechanic==='mega'?req?.canMegaEvo:mechanic==='tera'?req?.canTerastallize:mechanic==='dmax'?req?.canDynamax:mechanic==='z'?req?.canZMove?.[action?.index ?? 0]:false
       const reserved=Object.entries(choices).some(([other,c])=>Number(other)!==slot.slot && c.gimmick===mechanic)
-      return <div key={slot.slot} className={`${CARD} space-y-2`}>
+      return <div key={slot.slot} className="space-y-2 rounded-xl border-4 border-slate-800 bg-slate-800 p-2 text-white" data-testid="multi-actions">
         <h3 className="font-bold">{mon.name} · posição {slot.slot+1}</h3>
         {automatic(slot) ? <p>{own.wait ? 'Aguardando as substituições.' : 'Esta posição passa durante a substituição.'}</p> : <>
-          <select aria-label={`Ação de ${mon.name} ${slot.slot+1}`} className={SELECT} disabled={locked} value={action?`${action.kind}:${action.index}`:''} onChange={e=>{const [kind,index]=e.target.value.split(':');if(kind)setChoice(slot,kind,Number(index))}}>
-            <option value="">Escolha sua ação…</option>
-            {!slot.forceSwitch && req?.moves.map((m,index)=><option key={`move${index}`} value={`move:${index}`} disabled={m.disabled || m.pp===0}>{m.move} · PP {m.pp ?? '—'}</option>)}
-            {slot.switchOptions.map(index=><option key={`switch${index}`} value={`switch:${index}`}>{slot.revival?'Reviver':'Trocar para'} {battle.sides[side].team[index].name}</option>)}
-            {slot.canShift && <option value="shift:0">Trocar posição com o centro</option>}
-            {slot.forceSwitch && !slot.switchOptions.length && <option value="pass:0">Sem reservas: passar</option>}
-          </select>
+          {!slot.forceSwitch && <div className="grid grid-cols-2 gap-1.5 rounded-xl border-4 border-slate-600 bg-white p-2" data-testid="multi-moves" aria-label={`Golpes de ${mon.name} ${slot.slot+1}`}>
+            {(req?.moves || []).map((m,index)=>{
+              const move=mon.moves[index]
+              const selected=action?.kind==='move' && action.index===index
+              return <button key={`move${index}`} type="button" data-testid={`battle-move-${slot.slot}-${index}`} disabled={locked || m.disabled || m.pp===0}
+                aria-pressed={selected} onClick={()=>setChoice(slot,'move',index)}
+                className={`rounded-lg border-2 px-2 py-2 text-left text-white disabled:opacity-40 ${selected?'border-amber-300 ring-2 ring-amber-400':'border-transparent'}`}
+                style={{background:typeColor(move?.type || 'normal')}}>
+                <span className="block text-sm font-black" data-no-translate>{m.move}</span>
+                <span className="text-xs">PP {m.pp ?? '—'}/{move?.maxPp ?? m.pp ?? '—'}{selected?' ✓':''}</span>
+              </button>
+            })}
+          </div>}
+          {(slot.switchOptions.length>0 || slot.canShift || slot.forceSwitch) && <label className="block text-sm font-bold">POKÉMON
+            <select aria-label={`Troca de ${mon.name} ${slot.slot+1}`} className={SELECT} disabled={locked} value={action && action.kind!=='move'?`${action.kind}:${action.index}`:''} onChange={e=>{const [kind,index]=e.target.value.split(':');if(kind)setChoice(slot,kind,Number(index))}}>
+              <option value="">{slot.forceSwitch?'Escolha o substituto…':'Trocar Pokémon (gasta a ação)'}</option>
+              {slot.switchOptions.map(index=><option key={`switch${index}`} value={`switch:${index}`}>{slot.revival?'Reviver':'Trocar para'} {battle.sides[side].team[index].name}</option>)}
+              {slot.canShift && <option value="shift:0">Trocar posição com o centro</option>}
+              {slot.forceSwitch && !slot.switchOptions.length && <option value="pass:0">Sem reservas: passar</option>}
+            </select>
+          </label>}
           {action?.kind==='move' && !targets.automatic && <label className="block">Alvo<select aria-label={`Alvo de ${mon.name} ${slot.slot+1}`} className={SELECT} disabled={locked} value={action.target} onChange={e=>setChoices(old=>({...old,[slot.slot]:{...action,target:Number(e.target.value)}}))}>
             {targets.targets.map(target=><option key={target.loc} value={target.loc}>{target.ally?'Aliado':'Adversário'}: {target.name} · posição {target.slot+1}</option>)}
           </select></label>}

@@ -1536,23 +1536,45 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
     final reserved = _choices.entries.any((entry) => entry.key != position && entry.value['gimmick'] == mechanic);
     final targetData = action?['kind'] == 'move' ? _b.targets(_side, position, index, '${action?['gimmick'] ?? ''}') : {'targets': <dynamic>[], 'automatic': true};
     final targets = (targetData['targets'] as List).cast<Map>();
-    return Card(child: Padding(padding: const EdgeInsets.all(12), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+    return Card(color: const Color(0xFF1E293B), child: Padding(padding: const EdgeInsets.all(8), child: DefaultTextStyle.merge(style: const TextStyle(color: Colors.white), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       m.Text('${mon.name} · ${tr('posição')} ${position + 1}', style: const TextStyle(fontWeight: FontWeight.bold)),
       const SizedBox(height: 8),
       if (_automatic(slot) != null) Text(_own['wait'] == true ? 'Aguardando as substituições.' : 'Esta posição passa durante a substituição.')
       else ...[
-        DropdownButtonFormField<String>(key: ValueKey((_generation, position, action?['kind'], action?['index'])), initialValue: action == null ? null : '${action['kind']}:${action['index']}', isExpanded: true,
-          decoration: InputDecoration(labelText: '${tr('Ação de')} ${mon.name} ${position + 1}'),
-          items: [
-            if (slot['forceSwitch'] != true) for (final (i, move) in moves.indexed) DropdownMenuItem(value: 'move:$i', enabled: move['disabled'] != true && move['pp'] != 0, child: m.Text('${move['move']} · PP ${move['pp'] ?? '—'}', overflow: TextOverflow.ellipsis)),
-            for (final dynamic i in slot['switchOptions'] as List) DropdownMenuItem(value: 'switch:$i', child: m.Text('${tr(slot['revival'] == true ? 'Reviver' : 'Trocar para')} ${_b.teams[_side][i as int].name}', overflow: TextOverflow.ellipsis)),
-            if (slot['canShift'] == true) const DropdownMenuItem(value: 'shift:0', child: Text('Trocar posição com o centro')),
-            if (slot['forceSwitch'] == true && (slot['switchOptions'] as List).isEmpty) const DropdownMenuItem(value: 'pass:0', child: Text('Sem reservas: passar')),
-          ],
-          onChanged: _locked ? null : (v) { if (v != null) { final fields = v.split(':'); _pick(slot, fields[0], int.parse(fields[1])); } }),
+        if (slot['forceSwitch'] != true) Container(
+          key: ValueKey('battle-moves-$position'),
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(color: Colors.white, border: Border.all(color: const Color(0xFF475569), width: 4), borderRadius: BorderRadius.circular(12)),
+          child: LayoutBuilder(builder: (context, constraints) => Wrap(spacing: 6, runSpacing: 6, children: [
+            for (final (i, move) in moves.indexed) SizedBox(width: (constraints.maxWidth - 6) / 2, child: Material(
+              color: getColorForType(i < mon.moves.length ? mon.moves[i].type : 'normal'),
+              borderRadius: BorderRadius.circular(10),
+              child: InkWell(key: ValueKey('battle-move-$position-$i'), borderRadius: BorderRadius.circular(10),
+                onTap: _locked || move['disabled'] == true || move['pp'] == 0 ? null : () => _pick(slot, 'move', i),
+                child: Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), border: Border.all(color: action?['kind'] == 'move' && index == i ? Colors.amber : Colors.transparent, width: 2)),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    m.Text('${move['move']}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13)),
+                    m.Text('PP ${move['pp'] ?? '—'}/${i < mon.moves.length ? mon.moves[i].maxPp : move['pp'] ?? '—'}${action?['kind'] == 'move' && index == i ? ' ✓' : ''}', style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                  ])),
+              ),
+            )),
+          ])),
+        ),
+        if ((slot['switchOptions'] as List).isNotEmpty || slot['canShift'] == true || slot['forceSwitch'] == true) ...[
+          const SizedBox(height: 8),
+          DropdownButtonFormField<String>(key: ValueKey((_generation, position, action?['kind'], action?['index'])), initialValue: action != null && action['kind'] != 'move' ? '${action['kind']}:${action['index']}' : null, isExpanded: true, dropdownColor: const Color(0xFF1E293B), style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(labelStyle: const TextStyle(color: Colors.white70), labelText: '${tr('POKÉMON')} · ${tr('Trocar para')}'),
+            items: [
+              for (final dynamic i in slot['switchOptions'] as List) DropdownMenuItem(value: 'switch:$i', child: m.Text('${tr(slot['revival'] == true ? 'Reviver' : 'Trocar para')} ${_b.teams[_side][i as int].name}', overflow: TextOverflow.ellipsis)),
+              if (slot['canShift'] == true) const DropdownMenuItem(value: 'shift:0', child: Text('Trocar posição com o centro')),
+              if (slot['forceSwitch'] == true && (slot['switchOptions'] as List).isEmpty) const DropdownMenuItem(value: 'pass:0', child: Text('Sem reservas: passar')),
+            ],
+            onChanged: _locked ? null : (v) { if (v != null) { final fields = v.split(':'); _pick(slot, fields[0], int.parse(fields[1])); } }),
+        ],
         if (action?['kind'] == 'move' && targetData['automatic'] != true) ...[
           const SizedBox(height: 8),
-          DropdownButtonFormField<int>(key: ValueKey((_generation, position, action?['gimmick'], action?['target'])), initialValue: action?['target'] as int?, isExpanded: true, decoration: InputDecoration(labelText: '${tr('Alvo de')} ${mon.name} ${position + 1}'),
+          DropdownButtonFormField<int>(key: ValueKey((_generation, position, action?['gimmick'], action?['target'])), initialValue: action?['target'] as int?, isExpanded: true, dropdownColor: const Color(0xFF1E293B), style: const TextStyle(color: Colors.white), decoration: InputDecoration(labelStyle: const TextStyle(color: Colors.white70), labelText: '${tr('Alvo de')} ${mon.name} ${position + 1}'),
             items: [for (final target in targets) DropdownMenuItem(value: target['loc'] as int, child: m.Text('${tr(target['ally'] == true ? 'Aliado' : 'Adversário')}: ${target['name']} · ${(target['slot'] as int) + 1}', overflow: TextOverflow.ellipsis))],
             onChanged: _locked ? null : (v) => setState(() => _choices[position] = {...action!, 'target': v})),
         ],
@@ -1560,7 +1582,7 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
         if (available) TextButton(onPressed: _locked || reserved ? null : () => _pick(slot, 'move', index, action?['gimmick'] == mechanic ? '' : mechanic),
           child: Text('${mechanic == 'dmax' && mon.gmax != null ? 'Gigantamax' : const {'mega': 'Mega', 'tera': 'Terastal', 'dmax': 'Dynamax', 'z': 'Z-Move'}[mechanic]}${action?['gimmick'] == mechanic ? ' ✓' : ''}')),
       ],
-    ])));
+    ]))));
   }
   @override
   Widget build(BuildContext context) {
@@ -1571,7 +1593,7 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
       const SizedBox(height: 8),
       Text(widget.online?.message ?? (_b.winner != null ? _b.winner == -1 ? 'Empate!' : _b.winner == _side ? 'Você venceu!' : 'A equipe adversária venceu!' : 'Turno ${_b.turn}: escolha uma ação por Pokémon.'), style: const TextStyle(fontWeight: FontWeight.bold)),
       if (_b.winner == null) for (final slot in owned) _actions(slot),
-      const Text('A reserva é compartilhada pela equipe. Os itens equipados mantêm seus efeitos.', style: TextStyle(fontSize: 12)),
+      const Text('Trocar Pokémon gasta a ação da posição. A reserva é compartilhada pela equipe. Os itens equipados mantêm seus efeitos.', style: TextStyle(fontSize: 12)),
       if (_error != null) Text(_error!, style: const TextStyle(color: Colors.redAccent)),
       if (_b.winner == null) FilledButton(onPressed: _locked || owned.any((s) => _picked(s) == null) ? null : _send, child: Text(owned.every((s) => _automatic(s) != null) ? 'Continuar' : 'Confirmar ações')),
       ConstrainedBox(constraints: const BoxConstraints(maxHeight: 180), child: SingleChildScrollView(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [for (final e in events.where((e) => e.t == 'text')) Builder(builder: (_) {
