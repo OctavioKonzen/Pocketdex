@@ -63,7 +63,8 @@ class TurnBattleScreen extends StatefulWidget {
 
 class _TurnBattleScreenState extends State<TurnBattleScreen> {
   static const _random = '__random__';
-  int? _mine;
+  int? _mine = -1;
+  String _difficulty = 'normal';
   String _friend = _random;
   List<BattleTeam>? _friendTeams = const [];
   int? _theirs;
@@ -108,16 +109,16 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
     }
   }
 
-  Future<void> _start(List<Member> mine, List<Member>? theirs, String foeName) async {
+  Future<void> _start(List<Member>? mine, List<Member>? theirs, String foeName) async {
     setState(() => _busy = true);
     try {
     final random = League.seededRandom(Random().nextInt(1 << 31));
-    final a = await TurnBattleSetup.mons(mine, battleMonName);
-    final b = await TurnBattleSetup.mons(theirs ?? await TurnBattleSetup.randomTeam(random), battleMonName);
+    final a = await TurnBattleSetup.mons(mine ?? await TurnBattleSetup.randomTeam(random, difficulty: _difficulty), battleMonName);
+    final b = await TurnBattleSetup.mons(theirs ?? await TurnBattleSetup.randomTeam(random, difficulty: _difficulty), battleMonName);
     final rosters = <String, List<BattleMon>>{'me': a, 'npc3': b};
     final own = [for (var slot = 0; slot < _count; slot++) slot > 0 && _npcPartner ? 'npc$slot' : 'me'];
     for (final uid in own.where((uid) => uid != 'me')) {
-      rosters[uid] = await TurnBattleSetup.mons(await TurnBattleSetup.randomTeam(random), battleMonName);
+      rosters[uid] = await TurnBattleSetup.mons(await TurnBattleSetup.randomTeam(random, difficulty: _difficulty), battleMonName);
     }
     if (!mounted) return;
     setState(() {
@@ -194,7 +195,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
     final myTeams = _myTeams;
     final friends = FriendsService.instance.friends;
     InputDecoration deco(String label) => InputDecoration(labelText: tr(label), border: const OutlineInputBorder(), isDense: true);
-    final ready = _mine != null && myTeams[_mine!].members.length >= (_npcPartner ? 1 : _count) && (_friend == _random || _theirs != null && _friendTeams![_theirs!].members.length >= _count);
+    final ready = (_mine == -1 || _mine != null && myTeams[_mine!].members.length >= (_npcPartner ? 1 : _count)) && (_friend == _random || _theirs != null && _friendTeams![_theirs!].members.length >= _count);
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -204,14 +205,11 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
         Text('Nível máximo 50. Batalha por turnos como nos jogos: seu time contra o de um amigo (ou um aleatório), com o computador jogando pelo outro lado.',
             style: TextStyle(color: c.muted, fontSize: 13)),
         const SizedBox(height: 14),
-        if (myTeams.isEmpty)
-          const EmptyMessage('Monte um time em Times para batalhar.')
-        else
           DropdownButtonFormField<int>(
             initialValue: _mine,
             isExpanded: true,
             decoration: deco('Seu time'),
-            items: [for (final (i, t) in myTeams.indexed) DropdownMenuItem(value: i, child: _teamRow(t))],
+            items: [const DropdownMenuItem(value: -1, child: Text('🎲 Time aleatório')), for (final (i, t) in myTeams.indexed) DropdownMenuItem(value: i, child: _teamRow(t))],
             onChanged: (v) => setState(() => _mine = v),
           ),
         const SizedBox(height: 12),
@@ -225,6 +223,10 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
           ],
           onChanged: (v) => _pickFriend(v ?? _random),
         ),
+        if (_friend == _random || _npcPartner) ...[
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(initialValue: _difficulty, decoration: deco('Dificuldade dos NPCs'), items: const [DropdownMenuItem(value: 'normal', child: Text('Normal · IVs e EVs aleatórios')), DropdownMenuItem(value: 'hard', child: Text('Difícil · sets competitivos'))], onChanged: _busy ? null : (v) => setState(() => _difficulty = v!)),
+        ],
         if (_friend != _random) ...[
           const SizedBox(height: 12),
           if (_friendTeams == null)
@@ -253,7 +255,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
               ? null
               : () {
                   final foe = _friend == _random ? '' : friends.where((f) => f.uid == _friend).firstOrNull?.name ?? '';
-                  _start(myTeams[_mine!].members, _friend == _random ? null : _friendTeams![_theirs!].members, foe);
+                  _start(_mine == -1 ? null : myTeams[_mine!].members, _friend == _random ? null : _friendTeams![_theirs!].members, foe);
                 },
         ),
       ],

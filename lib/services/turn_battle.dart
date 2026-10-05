@@ -1,6 +1,7 @@
 // Production battles use the shared offline Pokémon Showdown simulator.
 // The callback-based path is retained for legacy test fixtures without simulator sets.
 import 'dart:math';
+import 'dart:convert';
 
 import 'damage_calc.dart';
 import 'local_database.dart';
@@ -1624,7 +1625,7 @@ class TurnBattleSetup {
   }
 
   /// Time aleatório para o computador: 6 Pokémon totalmente evoluídos (sem lendários). Igual ao site.
-  static Future<List<Member>> randomTeam(double Function() random) async {
+  static Future<List<Member>> randomTeam(double Function() random, {String difficulty = 'normal'}) async {
     final data = await DamageData.load();
     final rows = await LocalDatabase.instance.defaultPokemon();
     final species = await LocalDatabase.instance.speciesById();
@@ -1638,7 +1639,53 @@ class TurnBattleSetup {
       final id = pool[(random() * pool.length).floor()];
       if (!ids.contains(id)) ids.add(id);
     }
-    return [for (final id in ids) (id, null)];
+    final builds = await LocalDatabase.instance.npcSets();
+    Map<String, dynamic> build(int id) => Map<String, dynamic>.from(builds['$id'] as Map);
+    Map<String, dynamic> copy(dynamic value) => Map<String, dynamic>.from(jsonDecode(jsonEncode(value)) as Map);
+    final members = <Member>[
+      for (final id in ids)
+        (id, copy((build(id)['sets'] as List)[(random() * (build(id)['sets'] as List).length).floor()])),
+    ];
+    final assigned = <int>{};
+    final mega = ids.indexWhere((id) => (build(id)['mega'] as List).isNotEmpty);
+    if (mega >= 0) {
+      final options = build(ids[mega])['mega'] as List;
+      members[mega] = (ids[mega], copy(options[(random() * options.length).floor()]));
+      assigned.add(mega);
+    }
+    int find(bool Function(Map<String, dynamic>) test) {
+      for (var i = 0; i < ids.length; i++) {
+        if (!assigned.contains(i) && test(build(ids[i]))) return i;
+      }
+      return -1;
+    }
+    var dmax = find((b) => b['gmax'] == true && b['dmax'] == true);
+    if (dmax < 0) dmax = find((b) => b['dmax'] == true);
+    if (dmax >= 0) {
+      members[dmax].$2!['gimmick'] = 'dmax';
+      assigned.add(dmax);
+    }
+    final z = find((b) => b['z'] != null);
+    if (z >= 0) {
+      final b = build(ids[z]);
+      final set = copy((b['sets'] as List).first)..['item'] = b['z']..['gimmick'] = 'z';
+      members[z] = (ids[z], set);
+    }
+    if (difficulty != 'hard') {
+      const stats = ['hp', 'atk', 'def', 'spa', 'spd', 'spe'];
+      for (final member in members) {
+        final set = member.$2!;
+        set['ivs'] = {for (final stat in stats) stat: (random() * 32).floor()};
+        final evs = {for (final stat in stats) stat: 0};
+        for (var unit = 0; unit < 127; unit++) {
+          final available = stats.where((stat) => evs[stat]! < 252).toList();
+          final stat = available[(random() * available.length).floor()];
+          evs[stat] = evs[stat]! + 4;
+        }
+        set['evs'] = evs;
+      }
+    }
+    return members;
   }
 
   /// A função de dano para o motor (a calculadora do Showdown).

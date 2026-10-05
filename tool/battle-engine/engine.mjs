@@ -57,7 +57,7 @@ function slotsFor(game, side) {
       pass: !p || p.fainted && !forced, trapped: Boolean(request?.trapped),
       canShift: game.battle.gameType === 'triples' && slot !== 1 && !forced && !side.activeRequest?.wait && Boolean(p?.hp),
       switchOptions: side.pokemon.filter(mon => revival ? mon.fainted : !mon.fainted && !side.active.includes(mon) && (!request?.trapped || forced)).map(originalIndex),
-      request: request ? {...request, moves: request.moves.map(m => ({...m, targets: targetsFor(game, p, m.id, m.target)}))} : null};
+      request: request ? {...request, moves: request.moves.map(m => ({...m, targets: p.volatiles.dynamax ? targetsFor(game, p, game.battle.actions.getMaxMove(Dex.moves.get(m.id), p)) : targetsFor(game, p, m.id, m.target || 'randomNormal')}))} : null};
   });
 }
 function setFor(mon, index) {
@@ -334,6 +334,7 @@ export const PocketDexSim = {
     const game = games.get(handle), pokemon = game?.battle.sides[side]?.active[slot];
     if (!pokemon) throw new Error('Pokémon inválido');
     const req = pokemon.side.activeRequest?.active?.[slot];
+    if (req?.moves[index] && !req.moves[index].target) return {targets: [], automatic: true};
     const base = Dex.moves.get(req?.moves[index]?.id);
     const transformed = gimmick === 'dmax' || pokemon.volatiles.dynamax ? game.battle.actions.getMaxMove(base, pokemon) : gimmick === 'z' ? req?.canZMove?.[index]?.move : null;
     const move = transformed ? Dex.moves.get(transformed) : base;

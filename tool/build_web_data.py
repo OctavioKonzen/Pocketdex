@@ -262,6 +262,7 @@ def main():
     save('egg_moves.json', learn)
     # Sets prontos do Montador (tool/build_sets.py).
     save('sets.json', load('sets'))
+    save('npc_sets.json', load('npc_sets'))
     # Animação de cada golpe na batalha (tool/build_move_anims.py).
     save('move_anims.json', load('move_anims'))
     # Regras dos golpes na batalha (tool/build_move_rules.mjs, dados do Pokémon Showdown).

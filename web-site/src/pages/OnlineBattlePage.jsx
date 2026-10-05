@@ -7,13 +7,19 @@ import { useAuth, errorMessage } from '../lib/auth'
 import { useFriends, friendsOnly } from '../lib/friends'
 import { useStore } from '../lib/store'
 import { teamMembers } from '../lib/teamBattle'
-import { battleMons, battleHitter } from '../lib/battleSetup'
+import { battleMons, battleHitter, randomTeam } from '../lib/battleSetup'
 import { seededRandom } from '../lib/league'
 import { active, startBattle } from '../lib/turnBattle'
 import { inviteBattle, acceptBattle, closeBattle, watchBattles, watchBattle, watchActions, submitAction, pairedActions, unpackTeam, BATTLE_PROTOCOL, MAX_ROUNDS, battlePerspective, eventPerspective } from '../lib/onlineBattle'
 import {newPartyBattle, playPartyTurn, modeOf, countOf, seatsOf, sideOf, isNpc} from '../lib/partyBattle'
 
 const CARD = 'rounded-2xl bg-card p-4 shadow'
+const RANDOM = '__random__'
+async function selectedTeam(value, teams) {
+  if (value !== RANDOM) return teams.find(t => t.id === value)
+  const members = await randomTeam(Math.random)
+  return {name:'Time aleatório',pokemon:members.map(m=>m.id),sets:members.map(m=>m.set)}
+}
 const SELECT = 'w-full rounded-xl bg-surface p-3'
 function useFeed(subscribe, key) {
   const [data, setData] = useState(null)
@@ -32,8 +38,8 @@ function useFeed(subscribe, key) {
 function TeamChoice({ value, onChange }) {
   const teams = useStore((s) => s.teams).filter((t) => teamMembers(t).length)
   return <label className="block space-y-2"><span>Seu time</span><select aria-label="Seu time" className={SELECT} value={value} onChange={(e) => onChange(e.target.value)}>
-    <option value="">Escolha seu time…</option>{teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-  </select>{!teams.length && <Link to="/times">Monte um time em Times para batalhar.</Link>}</label>
+    <option value="">Escolha seu time…</option><option value={RANDOM}>🎲 Time aleatório</option>{teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+  </select></label>
 }
 export default function OnlineBattlePage() {
   const { id } = useParams()
@@ -48,8 +54,9 @@ function Lobby({ user }) {
   const friends = friendsOnly(friendList)
   const teams = useStore((s) => s.teams)
   const [friend, setFriend] = useState(params.get('amigo') ?? '')
-  const [team, setTeam] = useState('')
+  const [team, setTeam] = useState(RANDOM)
   const [count,setCount]=useState(1)
+  const [npcDifficulty,setNpcDifficulty]=useState('normal')
   const [participants,setParticipants]=useState({})
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -57,12 +64,12 @@ function Lobby({ user }) {
   const invite = async () => {
     setBusy(true); setError('')
     try {
-      const f = friends.find((f) => f.uid === friend), t = teams.find((t) => t.id === team)
+      const f = friends.find((f) => f.uid === friend), t = await selectedTeam(team,teams)
       if (!t) throw new Error('Escolha seu time.')
       const seats=Array.from({length:count*2},(_,seat)=>seat===0?user.uid:participants[seat] || (seat<count?user.uid:friend || `npc${seat}`))
       const humans=[...new Set(seats.filter(uid=>!isNpc(uid)))]
       const names=Object.fromEntries(humans.map(uid=>[uid,uid===user.uid?user.name:friends.find(f=>f.uid===uid)?.name]))
-      navigate('/amigos/online/' + await inviteBattle(f,t,{mode:modeOf(count),seats,names}))
+      navigate('/amigos/online/' + await inviteBattle(f,t,{mode:modeOf(count),seats,names,npcDifficulty}))
     } catch (e) { setError(errorMessage(e)) }
     finally { setBusy(false) }
   }
@@ -79,6 +86,7 @@ function Lobby({ user }) {
         </select></label>)}
         <p className="text-xs text-muted">Dupla: até quatro jogadores. Tripla: até seis. Também vale você e um amigo contra NPCs.</p>
       </>}
+      {count>1 && <label className="block space-y-2"><span>Dificuldade dos NPCs</span><select aria-label="Dificuldade dos NPCs" className={SELECT} value={npcDifficulty} onChange={e=>setNpcDifficulty(e.target.value)}><option value="normal">Normal · IVs e EVs aleatórios</option><option value="hard">Difícil · sets competitivos</option></select></label>}
       <TeamChoice value={team} onChange={setTeam} />
       <Button disabled={busy || count===1&&!friend || !team} onClick={invite}>{busy ? 'Enviando…' : 'Desafiar para batalha'}</Button>
       {(error || feedError) && <p role="alert" className="text-red-400">{error || feedError}</p>}
@@ -97,7 +105,7 @@ function BattleRoom({ id, user }) {
   const [room, roomError] = useFeed(watchBattle, id)
   const [actions, actionsError] = useFeed(watchActions, id)
   const teams = useStore((s) => s.teams)
-  const [team, setTeam] = useState('')
+  const [team, setTeam] = useState(RANDOM)
   const [battle, setBattle] = useState(null)
   const liveBattle = useRef(null)
   useEffect(() => () => { if (liveBattle.current) simulatorDispose(liveBattle.current) }, [])
@@ -171,7 +179,7 @@ function BattleRoom({ id, user }) {
       {room.players.map(uid=><p key={uid}>{room.names[uid]}: {room.teams[uid]?'pronto':'aguardando aceite e time'}</p>)}
       {room.teams[user.uid] ? <p>Aguardando os outros participantes.</p> : <>
         <p>Você recebeu um convite para batalhar!</p><TeamChoice value={team} onChange={setTeam} />
-        <Button disabled={busy || !team} onClick={() => run(() => acceptBattle(id, teams.find((t) => t.id === team)))}>Aceitar e entrar</Button>
+        <Button disabled={busy || !team} onClick={() => run(async () => acceptBattle(id, await selectedTeam(team,teams)))}>Aceitar e entrar</Button>
       </>}
       <Button disabled={busy} onClick={() => run(() => closeBattle(id))}>{side === 0 ? 'Cancelar convite' : 'Recusar'}</Button>
     </section>}

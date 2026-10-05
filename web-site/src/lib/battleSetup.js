@@ -3,7 +3,8 @@
 // Nature/EVs/IVs pela calculadora do Showdown e 4 golpes de dano — os do set
 // e, se faltar, os melhores que ele aprende (um de cada tipo primeiro).
 
-import { getBattleItems, getMoveRules, getMoves, getPokemonById, getSpecies } from './data'
+import { getBattleItems, getNpcSets, getMoveRules, getMoves, getPokemonById, getSpecies } from './data'
+import { npcMembers } from './npcSets'
 import { t } from './i18n'
 import { prettyName } from './pokemon'
 import { fighter } from './teamBattle'
@@ -153,7 +154,7 @@ async function megaOf(calc, byId, member, form) {
 }
 
 /** Time aleatório para o computador: 6 Pokémon totalmente evoluídos (sem lendários). */
-export async function randomTeam(random) {
+export async function randomTeam(random, difficulty = 'normal') {
   const calc = await import('./damageCalc')
   const byId = await getPokemonById()
   const pool = [...byId.values()].filter((p) => p.default && !p.tag && !calc.isNfe(p.name)).sort((a, b) => a.id - b.id)
@@ -162,7 +163,7 @@ export async function randomTeam(random) {
     const id = pool[Math.floor(random() * pool.length)].id
     if (!ids.includes(id)) ids.push(id)
   }
-  return ids.map((id) => ({ id, set: null }))
+  return npcMembers(ids, await getNpcSets(), random, difficulty)
 }
 
 /** A função de dano para o motor. */

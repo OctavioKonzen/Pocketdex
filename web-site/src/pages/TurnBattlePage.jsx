@@ -52,13 +52,14 @@ function Setup({ onStart }) {
   const list = useFriends((s) => s.list)
   const friends = useMemo(() => friendsOnly(list), [list])
   const myTeams = teams.filter((x) => teamMembers(x).length)
-  const [mine, setMine] = useState('')
+  const [mine, setMine] = useState(RANDOM)
   const [friend, setFriend] = useState(RANDOM)
   const [friendTeams, setFriendTeams] = useState([])
   const [theirs, setTheirs] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [count, setCount] = useState(1)
+  const [difficulty, setDifficulty] = useState('normal')
   const [npcPartner, setNpcPartner] = useState(false)
 
   const pickFriend = (uid) => {
@@ -70,7 +71,7 @@ function Setup({ onStart }) {
   }
   const myTeam = myTeams.find((x) => x.id === mine)
   const theirTeam = friendTeams?.find((x) => x.id === theirs)
-  const ready = myTeam && teamMembers(myTeam).length >= (npcPartner ? 1 : count) && (friend === RANDOM || theirTeam && teamMembers(theirTeam).length >= count)
+  const ready = (mine === RANDOM || myTeam && teamMembers(myTeam).length >= (npcPartner ? 1 : count)) && (friend === RANDOM || theirTeam && teamMembers(theirTeam).length >= count)
   const start = async () => {
     setBusy(true)
     setError('')
@@ -78,13 +79,13 @@ function Setup({ onStart }) {
     const seed = Math.floor(Math.random() * 2 ** 31)
     const random = seededRandom(seed)
     const foeName = friend === RANDOM ? '' : friends.find((f) => f.uid === friend)?.name ?? ''
-    const [a, b] = await Promise.all([battleMons(teamMembers(myTeam)), battleMons(friend === RANDOM ? await randomTeam(random) : teamMembers(theirTeam))])
+    const [a, b] = await Promise.all([battleMons(mine === RANDOM ? await randomTeam(random, difficulty) : teamMembers(myTeam)), battleMons(friend === RANDOM ? await randomTeam(random, difficulty) : teamMembers(theirTeam))])
     if (a.length && b.length) {
       if (count === 1) onStart(newBattle(a,b,random),foeName)
       else {
         const rosters = {me:a,npc3:b}
         const own = Array.from({length:count},(_,i) => i && npcPartner ? `npc${i}` : 'me')
-        for (const uid of own.filter(x => x !== 'me')) rosters[uid] = await battleMons(await randomTeam(random))
+        for (const uid of own.filter(x => x !== 'me')) rosters[uid] = await battleMons(await randomTeam(random, difficulty))
         onStart(newPartyBattle(rosters,[...own,...Array(count).fill('npc3')],count,random),foeName)
       }
     }
@@ -99,13 +100,11 @@ function Setup({ onStart }) {
         <option value={1}>Individual</option><option value={2}>Dupla</option><option value={3}>Tripla</option>
       </select></label>
       {count > 1 && <label className="flex gap-2"><input type="checkbox" checked={npcPartner} onChange={e=>setNpcPartner(e.target.checked)} />Jogar com parceiros NPC (desmarcado: você controla todos)</label>}
-      {!myTeams.length ? (
-        <p className="text-muted">Monte um time em Times para batalhar.</p>
-      ) : (
+      {(
         <label className="block space-y-1.5">
           <span className="text-sm font-semibold text-muted">Seu time</span>
           <select value={mine} onChange={(e) => setMine(e.target.value)} className={SELECT}>
-            <option value="">Escolha…</option>
+            <option value={RANDOM}>🎲 Time aleatório</option>
             {myTeams.map((x) => (
               <option key={x.id} value={x.id}>
                 {x.name}
@@ -126,6 +125,7 @@ function Setup({ onStart }) {
           ))}
         </select>
       </label>
+      {(friend === RANDOM || npcPartner) && <label className="block space-y-1.5"><span>Dificuldade dos NPCs</span><select aria-label="Dificuldade dos NPCs" className={SELECT} value={difficulty} onChange={e=>setDifficulty(e.target.value)}><option value="normal">Normal · IVs e EVs aleatórios</option><option value="hard">Difícil · sets competitivos</option></select></label>}
       {friend !== RANDOM &&
         (friendTeams === null ? (
           <p className="text-sm text-muted">...</p>

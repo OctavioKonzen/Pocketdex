@@ -31,8 +31,8 @@ export async function inviteBattle(friend, team, layout = null) {
   validateParticipantTeam(team,seats,me.uid)
   const npcTeams={}
   for(const uid of [...new Set(seats)].filter(isNpc)) {
-    const members=await randomTeam(Math.random)
-    npcTeams[uid]=packTeam({name:'NPC',pokemon:members.map(m=>m.id),sets:members.map(()=>({gimmick:'tera'}))})
+    const members=await randomTeam(Math.random, layout?.npcDifficulty || 'normal')
+    npcTeams[uid]=packTeam({name:'NPC',pokemon:members.map(m=>m.id),sets:members.map(m=>m.set)})
   }
   const ref = await addDoc(collection(db, 'onlineBattles'), {
     protocol: BATTLE_PROTOCOL, players, mode, seats, npcTeams,

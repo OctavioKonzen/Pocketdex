@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart' hide Text;
 import '../i18n/text.dart';
@@ -13,6 +14,12 @@ import '../services/user_data.dart';
 import '../utils/responsive.dart';
 import 'turn_battle_screen.dart';
 
+Future<Map<String, dynamic>> _selectedTeam(int index, List<Map<String, dynamic>> teams) async {
+  if (index >= 0) return teams[index];
+  final members = await TurnBattleSetup.randomTeam(Random().nextDouble);
+  return {'name': 'Time aleatório', 'pokemon': [for (final m in members) m.$1], 'sets': [for (final m in members) m.$2]};
+}
+
 String _error(Object e) => e is FirebaseException
     ? e.code == 'permission-denied' ? 'Sem permissão para esta partida. Confira se vocês ainda são amigos e se o app está atualizado.' : 'Confira sua conexão e tente novamente.'
     : e is StateError ? e.message : 'Não foi possível atualizar a partida. Tente novamente.';
@@ -25,8 +32,9 @@ class OnlineBattleScreen extends StatefulWidget {
 }
 class _OnlineBattleScreenState extends State<OnlineBattleScreen> {
   String? _friend;
-  int? _team;
+  int? _team = -1;
   int _count = 1;
+  String _npcDifficulty = 'normal';
   final Map<int, String> _participants = {};
   bool _busy = false;
   String? _errorText;
@@ -43,7 +51,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen> {
     try {
       final seats = [for (var seat = 0; seat < _count * 2; seat++) seat == 0 ? OnlineBattles.me : _participants[seat] ?? (seat < _count ? OnlineBattles.me : _friend ?? 'npc$seat')];
       final names = {for (final uid in seats.toSet().where((uid) => !PartyBattle.isNpc(uid))) uid: uid == OnlineBattles.me ? AuthService.instance.user!.name ?? '' : FriendsService.instance.friends.firstWhere((friend) => friend.uid == uid).name};
-      final id = await OnlineBattles.inviteGame(seats, _count, names, _teams[_team!]);
+      final id = await OnlineBattles.inviteGame(seats, _count, names, await _selectedTeam(_team!, _teams), npcDifficulty: _npcDifficulty);
       if (mounted) await Navigator.push(context, MaterialPageRoute(builder: (_) => OnlineBattleRoomScreen(id: id)));
     } catch (e) { if (mounted) setState(() => _errorText = _error(e)); }
     finally { if (mounted) setState(() => _busy = false); }
@@ -72,12 +80,13 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen> {
           const Text('Dupla: até quatro jogadores. Tripla: até seis. Também vale você e um amigo contra NPCs.'),
         ],
         const SizedBox(height: 12),
+        if (_count > 1) DropdownButtonFormField<String>(initialValue: _npcDifficulty, decoration: const InputDecoration(labelText: 'Dificuldade dos NPCs'), items: const [DropdownMenuItem(value: 'normal', child: Text('Normal · IVs e EVs aleatórios')), DropdownMenuItem(value: 'hard', child: Text('Difícil · sets competitivos'))], onChanged: _busy ? null : (v) => setState(() => _npcDifficulty = v!)),
         DropdownButtonFormField<int>(
           initialValue: _team, isExpanded: true, decoration: const InputDecoration(labelText: 'Seu time'),
-          items: [for (final (i, t) in _teams.indexed) DropdownMenuItem(value: i, child: Text('${t['name']}'))],
+          items: [const DropdownMenuItem(value: -1, child: Text('🎲 Time aleatório')), for (final (i, t) in _teams.indexed) DropdownMenuItem(value: i, child: Text('${t['name']}'))],
           onChanged: _busy ? null : (v) => setState(() => _team = v),
         ),
-        if (_teams.isEmpty) const Text('Monte um time em Times para batalhar.'),
+
         const SizedBox(height: 12),
         FilledButton(onPressed: _busy || _count == 1 && _friend == null || _team == null ? null : _invite, child: Text(_busy ? 'Enviando…' : 'Desafiar para batalha')),
         if (_errorText != null) Text(_errorText!, style: const TextStyle(color: Colors.redAccent)),
@@ -125,7 +134,7 @@ class _OnlineBattleRoomScreenState extends State<OnlineBattleRoomScreen> {
   List<BattleEvent> _events = [];
   List<int>? _before;
   int _round = 0, _generation = 0;
-  int? _team;
+  int? _team = -1;
   bool _busy = false, _replaying = true;
   String? _errorText;
   List<String> get _players => List<String>.from(_room!['players'] as List);
@@ -222,10 +231,10 @@ class _OnlineBattleRoomScreenState extends State<OnlineBattleRoomScreen> {
               const Text('Você recebeu um convite para batalhar!'),
               DropdownButtonFormField<int>(
                 initialValue: _team, isExpanded: true, decoration: const InputDecoration(labelText: 'Seu time'),
-                items: [for (final (i, t) in _teams.indexed) DropdownMenuItem(value: i, child: Text('${t['name']}'))],
+                items: [const DropdownMenuItem(value: -1, child: Text('🎲 Time aleatório')), for (final (i, t) in _teams.indexed) DropdownMenuItem(value: i, child: Text('${t['name']}'))],
                 onChanged: _busy ? null : (v) => setState(() => _team = v)),
-              if (_teams.isEmpty) const Text('Monte um time em Times para batalhar.'),
-              FilledButton(onPressed: _busy || _team == null ? null : () => _run(() => OnlineBattles.accept(widget.id, _teams[_team!])), child: const Text('Aceitar e entrar')),
+      
+              FilledButton(onPressed: _busy || _team == null ? null : () => _run(() async => OnlineBattles.accept(widget.id, await _selectedTeam(_team!, _teams))), child: const Text('Aceitar e entrar')),
             ],
             TextButton(onPressed: _busy ? null : () => _run(() => OnlineBattles.close(widget.id)), child: Text(_side == 0 ? 'Cancelar convite' : 'Recusar')),
           ],

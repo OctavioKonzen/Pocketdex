@@ -32,7 +32,7 @@ class OnlineBattles {
   static Future<String> invite(String friendUid, String friendName, Map<String, dynamic> team) async {
     return inviteGame([me, friendUid], 1, {me: AuthService.instance.user!.name ?? '', friendUid: friendName}, team);
   }
-  static Future<String> inviteGame(List<String> seats, int count, Map<String, String> names, Map<String, dynamic> team) async {
+  static Future<String> inviteGame(List<String> seats, int count, Map<String, String> names, Map<String, dynamic> team, {String npcDifficulty = 'normal'}) async {
     final players = [me, ...seats.toSet().where((uid) => uid != me && !PartyBattle.isNpc(uid))];
     if (players.length < 2 || players.length > 6 || seats.length != count * 2 || seats[0] != me || players.any((uid) => seats.take(count).contains(uid) && seats.skip(count).contains(uid))) {
       throw StateError('Escolha os participantes de cada equipe, com pelo menos um amigo.');
@@ -41,8 +41,8 @@ class OnlineBattles {
     validateParticipantTeam(team, seats, me);
     final random = Random();
     for (final uid in seats.toSet().where(PartyBattle.isNpc)) {
-      final members = await TurnBattleSetup.randomTeam(random.nextDouble);
-      npcTeams[uid] = packTeam({'name': 'NPC', 'pokemon': [for (final member in members) member.$1], 'sets': [for (final _ in members) {'gimmick': 'tera'}]});
+      final members = await TurnBattleSetup.randomTeam(random.nextDouble, difficulty: npcDifficulty);
+      npcTeams[uid] = packTeam({'name': 'NPC', 'pokemon': [for (final member in members) member.$1], 'sets': [for (final member in members) member.$2]});
     }
     final ref = await rooms.add({
       'protocol': protocol, 'players': players, 'mode': PartyBattle.modeOf(count), 'seats': seats, 'npcTeams': npcTeams,

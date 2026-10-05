@@ -136,3 +136,28 @@ test('CPU does not attempt a voluntary switch under possible Shadow Tag trapping
     sim.choose(g.handle,[actions,sim.recommend(g.handle,1).actions]);
   } finally {sim.dispose(g.handle);}
 });
+
+
+test('CPU keeps choosing a foe for spread attacks during every Dynamax turn', () => {
+  const attacker = {...mon('Dusknoir',['earthquake']),gimmick:'dmax'};
+  const g = sim.create({mode:'doubles',seed:[1,2,3,4],teams:[[attacker,mon('Blissey',['splash'])],[mon('Blissey',['splash']),mon('Blissey',['splash'])]]});
+  try {
+    for (let turn=0;turn<3;turn++) {
+      const actions=sim.recommend(g.handle,0).actions;
+      assert.ok(actions[0].target>0);
+      sim.choose(g.handle,[actions,sim.recommend(g.handle,1).actions]);
+    }
+  } finally {sim.dispose(g.handle);}
+});
+
+
+test('locked second-turn moves retain their automatic target in doubles', () => {
+  const g=sim.create({mode:'doubles',seed:[1,2,3,4],teams:[[mon('Mew',['bounce']),mon('Blissey',['splash'])],[mon('Blissey',['splash']),mon('Blissey',['splash'])]]});
+  try {
+    sim.choose(g.handle,[sim.recommend(g.handle,0).actions,sim.recommend(g.handle,1).actions]);
+    const actions=sim.recommend(g.handle,0).actions;
+    assert.equal(actions[0].target,0);
+    assert.equal(sim.targets(g.handle,0,0,0).automatic,true);
+    sim.choose(g.handle,[actions,sim.recommend(g.handle,1).actions]);
+  } finally {sim.dispose(g.handle);}
+});
