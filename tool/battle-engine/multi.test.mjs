@@ -71,3 +71,15 @@ test('A voluntary switch consumes that slot action; partners and foes still act'
     } finally {sim.dispose(game.handle);}
   }
 });
+
+test('Triple CPU shifts into reach after adjacent foes faint and finishes the battle', () => {
+  const game=sim.create({mode:'triples',seed:[1,2,3,4],teams:[Array.from({length:3},()=>mon('Magikarp',['splash'])),Array.from({length:3},()=>mon('Mewtwo',['psychic']))]});
+  try {
+    let next;
+    for(let turn=0;turn<8;turn++) {
+      next=sim.choose(game.handle,[sim.recommend(game.handle,0).actions,sim.recommend(game.handle,1).actions]);
+      if(next.state.winner!==null) break;
+    }
+    assert.equal(next.state.winner,1);
+  } finally {sim.dispose(game.handle);}
+});

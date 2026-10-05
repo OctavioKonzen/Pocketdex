@@ -72,7 +72,7 @@ void main() {
         battle = PartyBattle.create({for (final uid in seats) uid: mons.map((mon)=>mon.fresh()).toList()},seats,count,()=>0.5);
       });
       await tester.pumpWidget(ChangeNotifierProvider.value(value: AppSettings.instance, child: MaterialApp(home: Scaffold(body: SingleChildScrollView(child: BattleView(
-        battle: battle, hit: (_, __, ___, ____, [int? power, String weather='']) => (rolls:[[25]],eff:1.0), typeEff: (_,__)=>1,
+        battle: battle, foeName:'NPC', hit: (_, __, ___, ____, [int? power, String weather='']) => (rolls:[[25]],eff:1.0), typeEff: (_,__)=>1,
         onAgain:(){},onExit:(){}, online: OnlineBattleControl(uid:'alice',round:0,events:const [],locked:false,message:'Escolha',waitForSwitch:false,onAction:(_){},onClose:(){}),
       ))))));
       await tester.pump();

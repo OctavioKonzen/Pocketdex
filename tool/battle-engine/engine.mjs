@@ -43,9 +43,9 @@ function targetsFor(game, pokemon, moveId, targetType) {
   const move = Dex.moves.get(moveId);
   const target = targetType || move.target;
   if (!game.battle.actions.targetTypeChoices(target)) return [];
-  return game.battle.getAllActive().filter(p => !p.fainted && game.battle.validTarget(p, pokemon, target)).map(p => ({
+  return game.battle.getAllActive(true).filter(p => game.battle.validTarget(p, pokemon, target)).map(p => ({
     loc: pokemon.getLocOf(p), side: p.side.n, index: originalIndex(p), slot: p.position,
-    name: game.teams[p.side.n][originalIndex(p)].name || p.species.name, ally: pokemon.isAlly(p),
+    name: game.teams[p.side.n][originalIndex(p)].name || p.species.name, ally: pokemon.isAlly(p), fainted: p.fainted,
   }));
 }
 function slotsFor(game, side) {
@@ -284,7 +284,7 @@ function recommended(game, sideIndex, options = {}) {
       for (const target of choices) {
         const p = game.battle.sides[target.side].pokemon.find(p => originalIndex(p) === target.index);
         const ally = source.isAlly(p);
-        let score = move.category === 'Status' ? 0 : estimatedDamage(source, p, move) * (ally ? -1 : 1);
+        let score = move.category === 'Status' ? 0 : p.fainted ? 0 : estimatedDamage(source, p, move) * (ally ? -1 : 1);
         if (move.category !== 'Status' && !targets.length) score = foes.reduce((sum, foe) => sum + estimatedDamage(source, foe, move), 0);
         if (move.heal) score = source.hp < source.maxhp * .6 ? 110 : 0;
         if (move.status && p && !p.status && !ally) score = 50;
@@ -292,9 +292,11 @@ function recommended(game, sideIndex, options = {}) {
         if (move.id === 'helpinghand' && ally && p !== source) score = Math.max(...p.moveSlots.map(m => Math.max(0, ...foes.map(foe => estimatedDamage(p, foe, Dex.moves.get(m.id)))))) * .55;
         if (['coaching','dragoncheer','aromaticmist'].includes(move.id) && ally && p !== source) score = 35;
         if (['reflect','lightscreen','auroraveil','tailwind'].includes(move.id) && !side.sideConditions[move.id]) score = 45;
+        if (target.fainted) score = 0;
         if (score > best.score) best = {score, action: {kind: 'move', index, target: target.loc, gimmick: ''}};
       }
     }
+    if (slot.canShift && best.score <= 0 && foes.some(p => !p.isAdjacent(source))) return {kind:'shift',index:0};
     if (bestBench && best.score < 30 && matchup(bestBench.p) > best.score * 1.5 + 25 && game.battle.turn - (game.cpuSwitch?.[sideIndex] || -10) > 2) {
       (game.cpuSwitch ??= {})[sideIndex] = game.battle.turn; reserved.add(bestBench.index);
       return {kind: 'switch', index: bestBench.index};

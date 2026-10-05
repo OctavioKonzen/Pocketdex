@@ -200,22 +200,17 @@ service cloud.firestore {
           && (d.endedBy == null || d.endedBy in d.players);
       }
       function slots(d) { return d.mode == 'triples' ? 3 : d.mode == 'doubles' ? 2 : 1; }
-      function validPlayer(d, i) {
-        let uid = i < d.players.size() ? d.players[i] : '';
-        let name = d.names.get(uid, null);
-        let team = d.teams.get(uid, null);
-        return i >= d.players.size() || (uid is string && uid.size() > 0 && uid.size() <= 128
+      function validPlayer(uid, name) {
+        return uid is string && uid.size() > 0 && uid.size() <= 128
           && !(uid in ['npc0', 'npc1', 'npc2', 'npc3', 'npc4', 'npc5'])
-          && name is string && name.size() <= 20
-          && (!(uid in d.teams) || (team is string && team.size() <= 20000)));
+          && name is string && name.size() <= 20;
       }
       function validSeat(d, i) {
         let seat = i < d.seats.size() ? d.seats[i] : '';
-        return i >= d.seats.size() || (seat is string && (seat in d.players || seat == 'npc' + string(i)));
+        return i >= d.seats.size() || seat in d.players || seat == 'npc' + string(i);
       }
       function validNpc(d, uid) {
-        let team = d.npcTeams.get(uid, null);
-        return uid in d.seats ? (team is string && team.size() <= 20000) : !(uid in d.npcTeams);
+        return !(uid in d.npcTeams) || (d.npcTeams[uid] is string && d.npcTeams[uid].size() <= 20000);
       }
       function separateTeams(d) {
         let s = d.seats;
@@ -224,16 +219,22 @@ service cloud.firestore {
         return !own.hasAny(foe);
       }
       function newRoom(d) {
+        let p = d.players;
+        let s = d.seats;
+        let n = d.names;
         return d.keys().hasAll(['protocol', 'players', 'names', 'teams', 'status', 'seed', 'createdAt', 'endedBy', 'mode', 'seats', 'npcTeams'])
           && d.keys().hasOnly(['protocol', 'players', 'names', 'teams', 'status', 'seed', 'createdAt', 'endedBy', 'mode', 'seats', 'npcTeams'])
           && d.protocol == 5 && d.mode in ['singles', 'doubles', 'triples']
-          && d.players is list && d.players.size() >= 2 && d.players.size() <= 6 && d.players.toSet().size() == d.players.size()
-          && d.names is map && d.names.keys().hasOnly(d.players) && d.names.keys().hasAll(d.players)
-          && d.teams is map && d.teams.keys().hasOnly(d.players) && d.teams[d.players[0]] is string
-          && validPlayer(d, 0) && validPlayer(d, 1) && validPlayer(d, 2) && validPlayer(d, 3) && validPlayer(d, 4) && validPlayer(d, 5)
-          && d.seats is list && d.seats.size() == slots(d) * 2 && d.seats[0] == d.players[0] && d.seats.hasAll(d.players)
+          && p is list && p.size() >= 2 && p.size() <= 6 && p.toSet().size() == p.size()
+          && n is map && n.keys().toSet() == p.toSet()
+          && d.teams is map && d.teams.keys().hasOnly(p)
+          && validPlayer(p[0], n[p[0]]) && validPlayer(p[1], n[p[1]])
+          && (p.size() < 3 || validPlayer(p[2], n[p[2]])) && (p.size() < 4 || validPlayer(p[3], n[p[3]]))
+          && (p.size() < 5 || validPlayer(p[4], n[p[4]])) && (p.size() < 6 || validPlayer(p[5], n[p[5]]))
+          && s is list && s.size() == slots(d) * 2 && s[0] == p[0] && s.hasAll(p)
+          && s.hasOnly(p.concat(['npc0', 'npc1', 'npc2', 'npc3', 'npc4', 'npc5']))
           && validSeat(d, 0) && validSeat(d, 1) && validSeat(d, 2) && validSeat(d, 3) && validSeat(d, 4) && validSeat(d, 5) && separateTeams(d)
-          && d.npcTeams is map && d.npcTeams.keys().hasOnly(['npc0', 'npc1', 'npc2', 'npc3', 'npc4', 'npc5'])
+          && d.npcTeams is map && d.npcTeams.keys().toSet() == s.toSet().difference(p.toSet())
           && validNpc(d, 'npc0') && validNpc(d, 'npc1') && validNpc(d, 'npc2') && validNpc(d, 'npc3') && validNpc(d, 'npc4') && validNpc(d, 'npc5')
           && d.status in ['pending', 'active', 'closed'] && d.seed is int && d.seed >= 0 && d.seed < 2147483648
           && d.createdAt is timestamp && (d.endedBy == null || d.endedBy in d.players);
@@ -245,6 +246,7 @@ service cloud.firestore {
       function newFriends(d) { return hostFriend(d, 1) && hostFriend(d, 2) && hostFriend(d, 3) && hostFriend(d, 4) && hostFriend(d, 5); }
       function newCreate(d) {
         return newRoom(d) && member(d) && d.players[0] == request.auth.uid && d.names[request.auth.uid] == accountName(request.auth.uid)
+          && d.teams[request.auth.uid] is string && d.teams[request.auth.uid].size() <= 20000
           && d.teams.keys().hasOnly([request.auth.uid]) && d.status == 'pending' && d.endedBy == null && d.createdAt == request.time && newFriends(d);
       }
       function newAccept(old, now) {
