@@ -6,6 +6,7 @@
 // lib/services/turn_battle.dart.
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 import 'dart:ui' show ImageFilter;
 
@@ -1456,10 +1457,14 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
   List<Map> get _slots => (_own['slots'] as List).cast<Map>();
   bool get _forced => _slots.any((slot) => slot['forceSwitch'] == true);
   bool get _locked => widget.online?.locked == true || _b.winner != null;
+  String _choicePhase(TurnBattle battle) {
+    final state = battle.simulatorState!;
+    return jsonEncode([state['turn'], for (final side in state['sides'] as List) [side['wait'], for (final slot in side['slots'] as List) [slot['slot'], slot['index'], slot['forceSwitch'], slot['pass']]]]);
+  }
   @override
   void didUpdateWidget(covariant _MultiBattleView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.battle != _b || oldWidget.online?.round != widget.online?.round) {
+    if (_choicePhase(oldWidget.battle) != _choicePhase(_b) || oldWidget.online?.round != widget.online?.round) {
       _choices.clear(); _error = null; _generation++;
     }
   }
