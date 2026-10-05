@@ -35,6 +35,12 @@ jobs:
       - run: flutter analyze --no-fatal-infos
       - run: flutter test
       - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: battle-layout-preview
+          path: build/battle-ui-shots
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
         with:
           name: battle-move-verification
           path: docs/battle-move-verification.json
