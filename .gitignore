@@ -47,3 +47,5 @@ app.*.map.json
 # Generated shared battle runtime (built by tool/build_battle_engine.sh).
 /assets/database/battle_engine.js
 /tool/battle-engine/node_modules/
+/test/fixtures/battle_move_reference.json
+/docs/battle-move-verification.json
