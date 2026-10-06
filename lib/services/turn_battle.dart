@@ -348,7 +348,7 @@ class TurnBattle {
   final List<List<String>>? controllers;
   Map<String, dynamic>? get simulatorState => _simState;
   List<Map<String, dynamic>> recommend(int side, [Map<String, dynamic>? options]) =>
-      (BattleSimulator.call('recommend', [_simHandle, side, options])['actions'] as List).map((x) => Map<String, dynamic>.from(x as Map)).toList();
+      (BattleSimulator.call('recommend', [_simHandle, side, options ?? const <String, dynamic>{}])['actions'] as List).map((x) => Map<String, dynamic>.from(x as Map)).toList();
   Map<String, dynamic> targets(int side, int slot, int move, [String gimmick = '']) =>
       BattleSimulator.call('targets', [_simHandle, side, slot, move, gimmick]);
   List<BattleEvent> playGroupTurn(List<List<Map<String, dynamic>>> actions) => _simChoose(actions);
