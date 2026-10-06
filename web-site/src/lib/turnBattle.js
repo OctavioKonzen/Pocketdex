@@ -7,7 +7,7 @@ export const STRUGGLE = { slug: 'struggle', name: 'Struggle', type: 'normal', ca
 const CRIT_CHANCE = [1 / 24, 1 / 8, 1 / 2, 1]
 export const STATS = ['atk', 'def', 'spa', 'spd', 'spe']
 /** Nome dos atributos nas falas (em português; a tela traduz). */
-export const STAT_NAMES = { atk: 'Ataque', def: 'Defesa', spa: 'Ataque Especial', spd: 'Defesa Especial', spe: 'Velocidade' }
+export const STAT_NAMES = { atk: 'Ataque', def: 'Defesa', spa: 'Ataque Especial', spd: 'Defesa Especial', spe: 'Velocidade', accuracy: 'Precisão', evasion: 'Evasão' }
 /** Tipos imunes a cada status. */
 const STATUS_IMMUNE = { brn: ['fire'], par: ['electric'], psn: ['poison', 'steel'], tox: ['poison', 'steel'], frz: ['ice'], slp: [] }
 
@@ -912,6 +912,7 @@ export const LINES = {
   statDown: ['{1} de {0} caiu!', '{1} de {0} inimigo caiu!'],
   statDown2: ['{1} de {0} caiu muito!', '{1} de {0} inimigo caiu muito!'],
   statDown3: ['{1} de {0} caiu drasticamente!', '{1} de {0} inimigo caiu drasticamente!'],
+  statsReset: 'Os atributos de todos voltaram ao normal!',
   statMax: ['{1} de {0} não pode subir mais!', '{1} de {0} inimigo não pode subir mais!'],
   statMin: ['{1} de {0} não pode cair mais!', '{1} de {0} inimigo não pode cair mais!'],
   healedMove: ['{0} recuperou HP!', '{0} inimigo recuperou HP!'],

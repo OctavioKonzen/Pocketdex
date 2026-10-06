@@ -206,7 +206,14 @@ function eventsFor(game, lines) {
       const weather = {RainDance: 'rain', SunnyDay: 'sun', Sandstorm: 'sand', Hail: 'hail', Snow: 'snow'}[actor] || '';
       events.push({t: 'weather', weather});
       if (actor === 'ShadowSky') say('sim', 'O céu ficou sombrio!');
-    } else if (['-start', '-end', '-activate', '-sidestart', '-sideend', '-fieldstart', '-fieldend', '-boost', '-unboost', '-setboost', '-clearboost', '-clearallboost', '-prepare', 'cant', '-item', '-enditem', '-ability', '-transform'].includes(kind)) {
+    } else if (kind === '-boost' || kind === '-unboost') {
+      // Atributo subindo ou caindo, com o texto dos jogos (Swords Dance: "subiu muito!"; no +6: "não pode subir mais!").
+      const by = Math.min(3, Number(extra) || 0);
+      const up = kind === '-boost';
+      say(by ? `${up ? 'statUp' : 'statDown'}${by > 1 ? by : ''}` : up ? 'statMax' : 'statMin', label(side), value);
+    } else if (kind === '-setboost' && Number(extra) === 6) say('statUp3', label(side), value);
+    else if (kind === '-clearallboost') say('statsReset');
+    else if (['-start', '-end', '-activate', '-sidestart', '-sideend', '-fieldstart', '-fieldend', '-boost', '-unboost', '-setboost', '-clearboost', '-clearallboost', '-prepare', 'cant', '-item', '-enditem', '-ability', '-transform'].includes(kind)) {
       const subject = side >= 0 ? label(side).name : 'Campo';
       const effect = value?.replace(/^move: /, '') || extra || '';
       say('sim', `${subject}: ${effect}${extra && ['-boost', '-unboost'].includes(kind) ? ` (${kind === '-unboost' ? '−' : '+'}${extra})` : ''}`);

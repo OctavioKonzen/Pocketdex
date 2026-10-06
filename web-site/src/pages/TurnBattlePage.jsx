@@ -169,9 +169,29 @@ function HpBar({ hp, max }) {
 }
 
 /** Selo do status, como no Showdown. */
+/** Selo dos estágios de atributo (Swords Dance: Atq +2, +4... até +6). */
+const BOOST_SHORT = { atk: 'Atq', def: 'Def', spa: 'AtE', spd: 'DfE', spe: 'Vel', accuracy: 'Pre', evasion: 'Eva' }
+/** Quanto o texto do turno muda o estágio (statUp2 = +2...). */
+const BOOST_TEXT = { statUp: 1, statUp2: 2, statUp3: 3, statDown: -1, statDown2: -2, statDown3: -3 }
+const boostsOf = (mon) => ({ ...(mon.boosts ?? {}) })
+
+function BoostTags({ boosts }) {
+  const list = Object.entries(boosts ?? {}).filter(([k, v]) => v && BOOST_SHORT[k])
+  if (!list.length) return null
+  return (
+    <div className="mt-0.5 flex flex-wrap justify-end gap-0.5" data-testid="boost-tags">
+      {list.map(([k, v]) => (
+        <span key={k} className={`rounded px-1 text-[10px] font-black text-white ${v > 0 ? 'bg-emerald-600' : 'bg-rose-600'}`}>
+          {`${t(BOOST_SHORT[k])} ${v > 0 ? '+' : '−'}${Math.abs(v)}`}
+        </span>
+      ))}
+    </div>
+  )
+}
+
 const STATUS_BADGE = { brn: '#EE8130', par: '#C9A400', psn: '#A33EA1', tox: '#7B2E7A', slp: '#78716C', frz: '#4FB3D9' }
 
-function InfoBox({ mon, hp, mine, status, dmax, hpTestId }) {
+function InfoBox({ mon, hp, mine, status, dmax, boosts, hpTestId }) {
   return (
     <div className="w-full rounded-sm border-2 border-slate-800 bg-[#fffde0] px-2 py-1 font-mono text-slate-900 shadow-[2px_2px_0_#52634a]">
       <div className="flex items-baseline justify-between gap-1 text-xs font-black">
@@ -190,6 +210,7 @@ function InfoBox({ mon, hp, mine, status, dmax, hpTestId }) {
         <span className="shrink-0 text-xs">{`Nv.${mon.level}`}</span>
       </div>
       <HpBar hp={hp} max={mon.maxHp} />
+      <BoostTags boosts={boosts} />
       {(mine || hpTestId) && <div data-testid={hpTestId} className="text-right text-[11px] font-black tabular-nums">{`${hp}/${mon.maxHp}`}</div>}
     </div>
   )
@@ -282,6 +303,23 @@ function MoveFx({ plan, color }) {
           >
             {x.char}
           </span>
+        ) : x.shape === 'orbit' ? (
+          <span
+            key={i}
+            className="fx-orbit"
+            style={{
+              '--x': `${x.x}%`,
+              '--y': `${x.y}%`,
+              '--r': `${x.r}%`,
+              '--a0': `${x.a0}deg`,
+              '--a1': `${x.a1}deg`,
+              '--dur': `${x.dur}ms`,
+              '--delay': `${x.delay}ms`,
+              fontSize: `${x.size * 0.5}cqw`,
+            }}
+          >
+            {x.char}
+          </span>
         ) : x.shape === 'ring' ? (
           <div key={i} className="fx-ring" style={{ left: `${x.x}%`, top: `${x.y}%`, borderColor: color, '--dur': `${x.dur}ms`, '--delay': `${x.delay}ms` }} />
         ) : x.shape === 'wave' ? (
@@ -355,6 +393,7 @@ function SingleBattle({ battle, foeName, hit, onExit, onAgain, online = null }) 
     form: battle.sides.map((s) => s.team[s.active].id),
     dmax: battle.sides.map((s) => s.team[s.active].dmax > 0),
     weather: battle.weather,
+    boosts: battle.sides.map((s) => boostsOf(s.team[s.active])),
   }))
   const [text, setText] = useState(() => (foeName ? t('{0} quer batalhar!').replace('{0}', foeName) : t('Um treinador quer batalhar!')))
   const [busy, setBusy] = useState(false)
@@ -417,6 +456,15 @@ function SingleBattle({ battle, foeName, hit, onExit, onAgain, online = null }) 
         pulse(sprites[1 - e.side].current, 'battle-dodge', 420)
         await wait(300)
       } else if (e.t === 'text') {
+        // Estágio do atributo na caixa de HP, junto com o texto (o fim do turno confere com o motor).
+        const by = BOOST_TEXT[e.key]
+        const who = e.args?.[0]?.side
+        if (by && (who === 0 || who === 1))
+          setShown((s) => ({
+            ...s,
+            boosts: s.boosts.map((b, i) => (i === who ? { ...b, [e.args[1]]: Math.max(-6, Math.min(6, (b[e.args[1]] ?? 0) + by)) } : b)),
+          }))
+        if (e.key === 'statsReset') setShown((s) => ({ ...s, boosts: [{}, {}] }))
         if (e.key === 'crit') setFlash((n) => n + 1)
         const line = format(e)
         if (!line) continue
@@ -440,6 +488,7 @@ function SingleBattle({ battle, foeName, hit, onExit, onAgain, online = null }) 
           fainted: s.fainted.map((f, i) => (i === e.side ? false : f)),
           form: s.form.map((f, i) => (i === e.side ? null : f)),
           dmax: s.dmax.map((d, i) => (i === e.side ? false : d)),
+          boosts: s.boosts.map((b, i) => (i === e.side ? {} : b)),
         }))
       } else if (e.t === 'mega') {
         setFlash((n) => n + 1)
@@ -460,7 +509,7 @@ function SingleBattle({ battle, foeName, hit, onExit, onAgain, online = null }) 
     } finally {
       actionBusy.current = false
       if (live.current) {
-        setShown({active:battle.sides.map(s=>s.active),hp:battle.sides.map(s=>s.team.map(m=>m.hp)),status:battle.sides.map(s=>s.team.map(m=>m.status)),fainted:battle.sides.map(s=>s.team[s.active].hp<=0),form:battle.sides.map(s=>{const mon=s.team[s.active];return mon.dmax>0?mon.gmax??mon.id:mon.id}),dmax:battle.sides.map(s=>s.team[s.active].dmax>0),weather:battle.weather})
+        setShown({active:battle.sides.map(s=>s.active),hp:battle.sides.map(s=>s.team.map(m=>m.hp)),status:battle.sides.map(s=>s.team.map(m=>m.status)),fainted:battle.sides.map(s=>s.team[s.active].hp<=0),form:battle.sides.map(s=>{const mon=s.team[s.active];return mon.dmax>0?mon.gmax??mon.id:mon.id}),dmax:battle.sides.map(s=>s.team[s.active].dmax>0),weather:battle.weather,boosts:battle.sides.map(s=>boostsOf(s.team[s.active]))})
         setEffect(null)
         skip.current = null
         setBusy(false)
@@ -568,7 +617,7 @@ function SingleBattle({ battle, foeName, hit, onExit, onAgain, online = null }) 
       >
         <BattleBackground weather={shown.weather} />
         <div className="absolute top-[6%] left-[4%] w-[46%] max-w-[260px]">
-          <InfoBox mon={foe} hp={shown.hp[1][shown.active[1]]} status={shown.status[1][shown.active[1]]} dmax={shown.dmax[1]} hpTestId={online ? "online-hp-" + (1 - online.side) : undefined} />
+          <InfoBox mon={foe} hp={shown.hp[1][shown.active[1]]} status={shown.status[1][shown.active[1]]} dmax={shown.dmax[1]} boosts={shown.boosts[1]} hpTestId={online ? "online-hp-" + (1 - online.side) : undefined} />
         </div>
         {/* O inimigo fica mais longe: menor e com os pés na frente do meio da plataforma (pisando nela, como o seu). */}
         <div className="absolute right-[11%] bottom-[53%] w-[25%]">
@@ -581,7 +630,7 @@ function SingleBattle({ battle, foeName, hit, onExit, onAgain, online = null }) 
         {effect && <MoveFx key={effect.key} plan={effect.plan} color={effect.color} />}
         {flash > 0 && <div key={`flash-${flash}`} className="battle-flash pointer-events-none absolute inset-0 bg-white" />}
         <div className="absolute right-[4%] bottom-[8%] w-[46%] max-w-[260px]">
-          <InfoBox mon={me} hp={shown.hp[0][shown.active[0]]} status={shown.status[0][shown.active[0]]} dmax={shown.dmax[0]} mine hpTestId={online ? "online-hp-" + online.side : undefined} />
+          <InfoBox mon={me} hp={shown.hp[0][shown.active[0]]} status={shown.status[0][shown.active[0]]} dmax={shown.dmax[0]} boosts={shown.boosts[0]} mine hpTestId={online ? "online-hp-" + online.side : undefined} />
         </div>
       </div>
 

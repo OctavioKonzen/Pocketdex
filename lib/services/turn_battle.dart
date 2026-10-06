@@ -24,7 +24,7 @@ class BattleMove {
 
 /// Atributos que mudam na batalha e o nome deles nas falas (em português; a tela traduz).
 const battleStats = ['atk', 'def', 'spa', 'spd', 'spe'];
-const statNames = {'atk': 'Ataque', 'def': 'Defesa', 'spa': 'Ataque Especial', 'spd': 'Defesa Especial', 'spe': 'Velocidade'};
+const statNames = {'atk': 'Ataque', 'def': 'Defesa', 'spa': 'Ataque Especial', 'spd': 'Defesa Especial', 'spe': 'Velocidade', 'accuracy': 'Precisão', 'evasion': 'Evasão'};
 
 /// A forma Mega de um Pokémon (atributos, tipos e calculadora dela).
 class BattleMega {
@@ -1397,6 +1397,7 @@ class TurnBattle {
     'statDown': ['{1} de {0} caiu!', '{1} de {0} inimigo caiu!'],
     'statDown2': ['{1} de {0} caiu muito!', '{1} de {0} inimigo caiu muito!'],
     'statDown3': ['{1} de {0} caiu drasticamente!', '{1} de {0} inimigo caiu drasticamente!'],
+    'statsReset': 'Os atributos de todos voltaram ao normal!',
     'statMax': ['{1} de {0} não pode subir mais!', '{1} de {0} inimigo não pode subir mais!'],
     'statMin': ['{1} de {0} não pode cair mais!', '{1} de {0} inimigo não pode cair mais!'],
     'healedMove': ['{0} recuperou HP!', '{0} inimigo recuperou HP!'],

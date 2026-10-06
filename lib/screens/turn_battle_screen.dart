@@ -316,6 +316,9 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
   late final List<int?> _form = [for (final s in [0, 1]) widget.battle.active(s).id];
   late final List<bool> _dmax = [for (final s in [0, 1]) widget.battle.active(s).dmax > 0];
 
+  /// Estágios dos atributos de quem está em campo (Swords Dance: Atq +2, +4... até +6).
+  late final List<Map<String, int>> _boosts = [for (final s in [0, 1]) Map.of(widget.battle.active(s).boosts)];
+
   /// Clima na tela (o cenário muda com ele).
   late String _weather = widget.battle.weather;
   late String _text = widget.foeName.isNotEmpty ? tr('{0} quer batalhar!').replaceAll('{0}', widget.foeName) : tr('Um treinador quer batalhar!');
@@ -443,6 +446,20 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
           await _wait(300);
         case 'text':
           if (e.key == 'crit') setState(() => _flash++);
+          // Estágio do atributo na caixa de HP, junto com o texto (o fim do turno confere com o motor).
+          final by = _boostText[e.key];
+          final who = e.args.isNotEmpty && e.args.first is (int, String) ? (e.args.first as (int, String)).$1 : -1;
+          if (by != null && e.args.length > 1 && (who == 0 || who == 1)) {
+            final stat = '${e.args[1]}';
+            setState(() => _boosts[who][stat] = ((_boosts[who][stat] ?? 0) + by).clamp(-6, 6));
+          }
+          if (e.key == 'statsReset') {
+            setState(() {
+              for (final b in _boosts) {
+                b.clear();
+              }
+            });
+          }
           final line = _format(e);
           if (line.isEmpty) continue;
           setState(() => _text = line);
@@ -462,6 +479,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
             _fainted[e.side] = false;
             _form[e.side] = null;
             _dmax[e.side] = false;
+            _boosts[e.side].clear();
           });
         case 'mega':
           setState(() {
@@ -499,6 +517,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
           _fainted[side] = _b.active(side).hp <= 0;
           _form[side] = _b.active(side).dmax > 0 ? _b.active(side).gmax ?? _b.active(side).id : _b.active(side).id;
           _dmax[side] = _b.active(side).dmax > 0;
+          _boosts[side] = Map.of(_b.active(side).boosts);
         }
         _weather = _b.weather;
         _fx = null;
@@ -629,7 +648,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                           left: w * 0.03,
                           top: h * 0.05,
                           width: w * 0.48,
-                          child: _InfoBox(mon: foe, hp: _hp[1][_active[1]], status: _status[1][_active[1]], dmax: _dmax[1])),
+                          child: _InfoBox(mon: foe, hp: _hp[1][_active[1]], status: _status[1][_active[1]], dmax: _dmax[1], boosts: _boosts[1])),
                       Positioned(
                           // O inimigo fica mais longe: menor e com os pés na
                           // frente do meio da plataforma (pisando nela, como o seu).
@@ -648,7 +667,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                           right: w * 0.03,
                           bottom: h * 0.06,
                           width: w * 0.5,
-                          child: _InfoBox(mon: me, hp: _hp[0][_active[0]], status: _status[0][_active[0]], dmax: _dmax[0], mine: true)),
+                          child: _InfoBox(mon: me, hp: _hp[0][_active[0]], status: _status[0][_active[0]], dmax: _dmax[0], boosts: _boosts[0], mine: true)),
                       Positioned.fill(child: _WeatherFx(_weather)),
                       if (_fx != null) _MoveFx(key: ValueKey(('fx', _fx!.$3)), plan: _fx!.$1, color: _fx!.$2, w: w, h: h),
                       if (_flash > 0) _Flash(key: ValueKey(('flash', _flash))),
@@ -1257,6 +1276,28 @@ class _MoveFxState extends State<_MoveFx> with SingleTickerProviderStateMixin {
                       if (_t(p) case final t?) (p, t),
                 ], widget.color),
               ),
+              // Órbita (Swords Dance): gira em volta de quem usa, aparecendo e sumindo devagar.
+              for (final p in widget.plan.parts.where((p) => p.shape == 'orbit'))
+                if (_clock.value * _total >= p.delay)
+                  () {
+                    final t = ((_clock.value * _total - p.delay) / p.dur).clamp(0.0, 1.0);
+                    final ang = lerp(p.a0, p.a1, t) * pi / 180;
+                    final size = p.size * 0.5 / 100 * w;
+                    final opacity = t < 0.1 ? t / 0.1 : t > 0.85 ? (1 - t) / 0.15 : 1.0;
+                    return Positioned(
+                      left: (p.x0 + cos(ang) * p.r) / 100 * w - size,
+                      top: (p.y0 + sin(ang) * p.r * 0.8) / 100 * h - size,
+                      width: size * 2,
+                      height: size * 2,
+                      child: Opacity(
+                        opacity: opacity.clamp(0.0, 1.0),
+                        child: Transform.scale(
+                          scale: 0.85 + sin(ang) * 0.15,
+                          child: Center(child: m.Text(p.char, style: TextStyle(fontSize: size, height: 1))),
+                        ),
+                      ),
+                    );
+                  }(),
               for (final p in widget.plan.parts.where((p) => p.shape == 'emoji'))
                 if (_t(p) case final t?)
                   () {
@@ -1551,12 +1592,19 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
   }
 }
 
+/// Quanto o texto do turno muda o estágio (statUp2 = +2...).
+const _boostText = {'statUp': 1, 'statUp2': 2, 'statUp3': 3, 'statDown': -1, 'statDown2': -2, 'statDown3': -3};
+
+/// Selo dos estágios de atributo.
+const _boostShort = {'atk': 'Atq', 'def': 'Def', 'spa': 'AtE', 'spd': 'DfE', 'spe': 'Vel', 'accuracy': 'Pre', 'evasion': 'Eva'};
+
 class _InfoBox extends StatelessWidget {
   final BattleMon mon;
   final int hp;
   final bool mine, dmax;
   final String status;
-  const _InfoBox({required this.mon, required this.hp, this.mine = false, this.status = '', this.dmax = false});
+  final Map<String, int> boosts;
+  const _InfoBox({required this.mon, required this.hp, this.mine = false, this.status = '', this.dmax = false, this.boosts = const {}});
 
   @override
   Widget build(BuildContext context) => Container(
@@ -1599,6 +1647,16 @@ class _InfoBox extends StatelessWidget {
                 ),
               ]),
               _HpBar(hp: hp, max: mon.maxHp),
+              if (boosts.entries.any((b) => b.value != 0 && _boostShort.containsKey(b.key)))
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Wrap(alignment: WrapAlignment.end, spacing: 2, runSpacing: 2, children: [
+                    for (final b in boosts.entries)
+                      if (b.value != 0 && _boostShort.containsKey(b.key))
+                        _Tag('${tr(_boostShort[b.key]!)} ${b.value > 0 ? '+' : '−'}${b.value.abs()}',
+                            b.value > 0 ? const Color(0xFF059669) : const Color(0xFFE11D48)),
+                  ]),
+                ),
               if (mine) m.Text('$hp/${mon.maxHp}', textAlign: TextAlign.right, style: const TextStyle(fontSize: 12)),
             ],
           ),
