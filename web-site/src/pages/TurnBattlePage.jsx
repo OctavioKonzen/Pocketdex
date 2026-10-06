@@ -359,6 +359,7 @@ function SingleBattle({ battle, foeName, hit, onExit, onAgain, online = null }) 
   const [text, setText] = useState(() => (foeName ? t('{0} quer batalhar!').replace('{0}', foeName) : t('Um treinador quer batalhar!')))
   const [busy, setBusy] = useState(false)
   const [menu, setMenu] = useState(() => battle.needSwitch ? 'party' : 'main') // main | fight | party | bag
+  const actionBusy = useRef(false)
   const [item, setItem] = useState(null) // item da Bolsa escolhido (falta escolher em quem)
   const [gimmickPick, setGimmickPick] = useState(null)
   const skip = useRef(null)
@@ -381,7 +382,9 @@ function SingleBattle({ battle, foeName, hit, onExit, onAgain, online = null }) 
 
   // before: o id de cada lado antes do turno (o motor já mudou a Mega; a tela muda no evento).
   const play = async (events, before = null) => {
+    actionBusy.current = true
     setBusy(true)
+    try {
     if (before) setShown((s) => ({ ...s, form: s.form.map((f, i) => (s.dmax[i] ? f : before[i])) }))
     for (const e of events) {
       if (!live.current) return
@@ -416,7 +419,9 @@ function SingleBattle({ battle, foeName, hit, onExit, onAgain, online = null }) 
         await wait(300)
       } else if (e.t === 'text') {
         if (e.key === 'crit') setFlash((n) => n + 1)
-        setText(format(e))
+        const line = format(e)
+        if (!line) continue
+        setText(line)
         await new Promise((resolve) => {
           const id = setTimeout(resolve, STEP_MS)
           skip.current = () => (clearTimeout(id), resolve())
@@ -453,10 +458,17 @@ function SingleBattle({ battle, foeName, hit, onExit, onAgain, online = null }) 
         await wait(600)
       }
     }
-    if (!live.current) return
-    setBusy(false)
-    setMenu(battle.needSwitch ? 'party' : 'main')
-    redraw((n) => n + 1)
+    } finally {
+      actionBusy.current = false
+      if (live.current) {
+        setShown({active:battle.sides.map(s=>s.active),hp:battle.sides.map(s=>s.team.map(m=>m.hp)),status:battle.sides.map(s=>s.team.map(m=>m.status)),fainted:battle.sides.map(s=>s.team[s.active].hp<=0),form:battle.sides.map(s=>s.team[s.active].id),dmax:battle.sides.map(s=>s.team[s.active].dmax>0),weather:battle.weather})
+        setEffect(null)
+        skip.current = null
+        setBusy(false)
+        setMenu(battle.needSwitch ? 'party' : 'main')
+        redraw((n) => n + 1)
+      }
+    }
   }
 
   // Começo: as habilidades de clima de quem entrou (Drizzle, Drought...).
@@ -465,6 +477,7 @@ function SingleBattle({ battle, foeName, hit, onExit, onAgain, online = null }) 
     if (online) return
     const events = (opening.current ??= startBattle(battle))
     if (!events.length) return
+    actionBusy.current = true
     setBusy(true)
     const id = setTimeout(() => play(events), STEP_MS)
     return () => clearTimeout(id)
@@ -476,7 +489,7 @@ function SingleBattle({ battle, foeName, hit, onExit, onAgain, online = null }) 
     seenRound.current = online.round
     const events = online.events, before = online.before
     setBusy(true)
-    queued.current = queued.current.then(() => live.current ? play(events, before) : undefined)
+    queued.current = queued.current.then(() => live.current ? play(events, before) : undefined).catch(() => { if(live.current) setText(t('Não foi possível exibir esta ação.')) })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [online?.round])
 
@@ -512,22 +525,32 @@ function SingleBattle({ battle, foeName, hit, onExit, onAgain, online = null }) 
     : canGimmick(battle, 0, kind))
   const selected = gimmickPick?.id === current.id && options.some(([kind]) => kind === gimmickPick.kind)
     ? gimmickPick.kind : 'none'
+  const act = async (resolve, before = null) => {
+    if (actionBusy.current || online?.locked || battle.winner != null) return
+    actionBusy.current = true
+    setBusy(true)
+    try { await play(resolve(), before) }
+    catch { if(live.current) setText(t('Não foi possível executar esta ação. Escolha novamente.')) }
+    finally { actionBusy.current=false; if(live.current) setBusy(false) }
+  }
   const fight = (i) => {
+    if (actionBusy.current || busy || battle.needSwitch || online?.locked) return
     const before = [active(battle, 0).id, active(battle, 1).id]
     const gimmick = selected
     setGimmickPick(null)
     if (online) return online.onAction({ kind: 'move', index: i, gimmick })
-    play(playTurn(battle, { move: i, gimmick }, hit), before)
+    act(() => playTurn(battle, { move: i, gimmick }, hit), before)
   }
   const maxed = current.dmax > 0 || selected === 'dmax'
   const choose = (i) => {
+    if (actionBusy.current || busy || online?.locked) return
     setGimmickPick(null)
     if (online) return online.onAction({ kind: 'switch', index: i })
     if (item) {
       setItem(null)
-      return play(playTurn(battle, { item, target: i }, hit))
+      return act(() => playTurn(battle, { item, target: i }, hit))
     }
-    return play(battle.needSwitch ? replace(battle, i) : playTurn(battle, { switch: i }, hit))
+    return act(() => battle.needSwitch ? replace(battle, i) : playTurn(battle, { switch: i }, hit))
   }
   const run = () => {
     if (window.confirm(t('Fugir da batalha? Conta como derrota.'))) {

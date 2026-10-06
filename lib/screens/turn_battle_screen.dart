@@ -344,7 +344,10 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
     _menu = _b.needSwitch ? 'party' : 'main';
     if (widget.online != null) return;
     final opening = _b.start();
-    if (opening.isNotEmpty) _wait(_step.inMilliseconds).then((_) => mounted ? _play(opening) : null);
+    if (opening.isNotEmpty) {
+      _busy = true;
+      _wait(_step.inMilliseconds).then((_) => mounted ? _play(opening) : null);
+    }
   }
 
   @override
@@ -403,6 +406,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
         }
       }
     });
+    try {
     for (final e in events) {
       if (!mounted) return;
       switch (e.t) {
@@ -437,7 +441,9 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
           await _wait(300);
         case 'text':
           if (e.key == 'crit') setState(() => _flash++);
-          setState(() => _text = _format(e));
+          final line = _format(e);
+          if (line.isEmpty) continue;
+          setState(() => _text = line);
           _skip = Completer<void>();
           await Future.any([_wait(_step.inMilliseconds), _skip!.future]);
           _skip = null;
@@ -476,12 +482,30 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
           await _wait(600);
       }
     }
-    if (!mounted) return;
-    setState(() {
-      _busy = false;
-      _menu = _b.needSwitch ? 'party' : 'main';
-      if (_b.needSwitch) _text = tr('Escolha o próximo Pokémon.');
-    });
+    } catch (error, stack) {
+      debugPrint('Battle presentation failed: $error\n$stack');
+    } finally {
+      if (mounted) setState(() {
+        // The simulator already resolved the turn. Always restore its final
+        // state, even if one visual event could not be displayed.
+        for (final side in [0, 1]) {
+          _active[side] = _b.activeIndex[side];
+          for (final (index, mon) in _b.teams[side].indexed) {
+            _hp[side][index] = mon.hp;
+            _status[side][index] = mon.status;
+          }
+          _fainted[side] = _b.active(side).hp <= 0;
+          _form[side] = _b.active(side).id;
+          _dmax[side] = _b.active(side).dmax > 0;
+        }
+        _weather = _b.weather;
+        _fx = null;
+        _skip = null;
+        _busy = false;
+        _menu = _b.needSwitch ? 'party' : 'main';
+        if (_b.needSwitch) _text = tr('Escolha o próximo Pokémon.');
+      });
+    }
   }
 
   List<(String, String)> get _gimmickOptions {
@@ -501,6 +525,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
       ? _gimmickPick! : 'none';
 
   void _fight(int i) {
+    if (_busy || widget.online?.locked == true || _b.needSwitch || _b.winner != null) return;
     final before = [_b.active(0).id, _b.active(1).id];
     final gimmick = _selectedGimmick;
     setState(() { _gimmickPick = null; _gimmickMon = null; });
@@ -508,18 +533,35 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
       widget.online!.onAction({'kind': 'move', 'index': i, 'gimmick': gimmick});
       return;
     }
-    _play(_b.playTurn(widget.hit, move: i, gimmick: gimmick), before);
+    _act(() => _b.playTurn(widget.hit, move: i, gimmick: gimmick), before);
   }
   void _choose(int i) {
+    if (_busy || widget.online?.locked == true || _b.winner != null) return;
     setState(() { _gimmickPick = null; _gimmickMon = null; });
     if (widget.online != null) { widget.online!.onAction({'kind': 'switch', 'index': i}); return; }
     final item = _item;
     if (item != null) {
       _item = null;
-      _play(_b.playTurn(widget.hit, item: item, target: i));
+      _act(() => _b.playTurn(widget.hit, item: item, target: i));
       return;
     }
-    _play(_b.needSwitch ? _b.replace(i) : _b.playTurn(widget.hit, switchTo: i));
+    _act(() => _b.needSwitch ? _b.replace(i) : _b.playTurn(widget.hit, switchTo: i));
+  }
+
+  Future<void> _act(List<BattleEvent> Function() action, [List<int>? before]) async {
+    setState(() => _busy = true);
+    try {
+      await _play(action(), before);
+    } catch (error, stack) {
+      debugPrint('Battle action failed: $error\n$stack');
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _fx = null;
+        _menu = _b.needSwitch ? 'party' : 'main';
+        _text = tr('Não foi possível executar esta ação. Escolha novamente.');
+      });
+    }
   }
 
   Future<void> _run() async {
@@ -713,6 +755,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                         color: getColorForType(mv.type).withAlpha(mv.pp > 0 ? 255 : 100),
                         borderRadius: BorderRadius.circular(10),
                         child: InkWell(
+                          key: ValueKey('battle-single-move-$i'),
                           borderRadius: BorderRadius.circular(10),
                           onTap: mv.pp > 0 && !mv.disabled ? () => _fight(i) : null,
                           child: Padding(
@@ -821,6 +864,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                 if (_item == null) _Weak(rival, foeWeak),
                 for (final (i, mon) in _b.teams[0].indexed)
                   ListTile(
+                    key: ValueKey('battle-single-switch-$i'),
                     contentPadding: EdgeInsets.zero,
                     enabled: _item != null ? _b.canUseItem(0, _item!, i) : _b.canSwitch(0, i),
                     onTap: () => _choose(i),

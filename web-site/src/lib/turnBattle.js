@@ -608,12 +608,12 @@ export function cpuPlan(battle, hit) {
   const outgoing = bestDamage(battle, hit, me, foe)
   const incoming = bestDamage(battle, hit, foe, me)
   const canFinish = outgoing >= foe.hp && (speedOf(me, battle.weather) >= speedOf(foe, battle.weather) || (index >= 0 && me.moves[index].priority > 0)) && !['slp', 'frz'].includes(me.status)
-  if (!canFinish && !me.dmax && !me.trapped && battle.turn - battle.cpuSwitchTurn >= 2) {
+  if (!canFinish && !me.dmax && !me.trapped && !battle.simulator?.state.sides[1].request?.maybeTrapped && battle.turn - battle.cpuSwitchTurn >= 2) {
     let best = battle.sides[1].active
     const currentScore = matchupScore(battle, hit, me, foe)
     let score = currentScore
     battle.sides[1].team.forEach((mon, i) => {
-      if (i === battle.sides[1].active || mon.hp <= 0 || bestDamage(battle, hit, foe, mon) >= mon.hp) return
+      if ((battle.simulator ? !battle.simulator.state.sides[1].switchOptions.includes(i) : i === battle.sides[1].active) || mon.hp <= 0 || bestDamage(battle, hit, foe, mon) >= mon.hp) return
       const value = matchupScore(battle, hit, mon, foe)
       if (value > score) { best = i; score = value }
     })
