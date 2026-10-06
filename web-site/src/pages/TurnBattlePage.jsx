@@ -18,7 +18,7 @@ import { ALL_TYPES, damageTaken, typeColor } from '../lib/pokemon'
 import { usePokemonIndex } from '../lib/pokemonIndex'
 import { useStore } from '../lib/store'
 import { teamMembers } from '../lib/teamBattle'
-import { fxPlan, moveAnim } from '../lib/moveAnim'
+import { fxPlan, moveAnim, SELF_KINDS } from '../lib/moveAnim'
 import { active, canGimmick, canUseItem, effectLabel, forfeit, ITEMS, lineOf, MAX_MOVES, maxPower, moveEffect, newBattle, playTurn, replace, startBattle, STAT_NAMES, switchMatchup, usableMoves, weaknesses, Z_MOVES, zPower } from '../lib/turnBattle'
 import Sprite from '../components/Sprite'
 import {simulatorTargets} from '../lib/battleSimulator'
@@ -389,16 +389,15 @@ function SingleBattle({ battle, foeName, hit, onExit, onAgain, online = null }) 
     for (const e of events) {
       if (!live.current) return
       if (e.t === 'attack') {
-        // Cada golpe com a sua animação (moveAnim.js), nas cores do tipo.
-        const [kind, icon, variant] = anims.current?.[e.slug] ?? [moveAnim(e.slug, e.type, e.category), null, 0]
-        // Golpe de status: anéis em quem usa (Swords Dance, Recover) ou no alvo (Will-O-Wisp, Toxic).
+        // Cada golpe com a sua animação (move_anims.json + moveAnim.js), nas cores do tipo:
+        // os de status também (Swords Dance sobe, Toxic no alvo, Rain Dance no campo...).
+        const entry = anims.current?.[e.slug]
         const rules = active(battle, e.side).moves.find((m) => m.slug === e.slug)?.rules
-        const self = e.category === 'status' && (rules?.t === 'self' || rules?.h)
-        const plan =
-          e.category === 'status'
-            ? fxPlan('rings', e.type, e.side, CENTER[e.side], CENTER[self ? e.side : 1 - e.side], self ? '✨' : null, variant)
-            : fxPlan(kind, e.type, e.side, CENTER[e.side], CENTER[1 - e.side], icon, variant)
-        pulse(sprites[e.side].current, CONTACT.has(kind) ? `battle-dash-${e.side}` : `battle-lunge-${e.side}`, 450)
+        const self = rules?.t === 'self' || rules?.h
+        const [kind, icon, variant] =
+          entry ?? (e.category === 'status' ? [self ? 'boost' : 'status', null, 0] : [moveAnim(e.slug, e.type, e.category), null, 0])
+        const plan = fxPlan(kind, e.type, e.side, CENTER[e.side], CENTER[1 - e.side], icon, variant)
+        if (!SELF_KINDS.has(kind)) pulse(sprites[e.side].current, CONTACT.has(kind) ? `battle-dash-${e.side}` : `battle-lunge-${e.side}`, 450)
         setEffect({ plan, color: typeColor(e.type), key: ++effectKey.current })
         if (plan.shake) pulse(field.current, 'battle-shake', 650)
         if (plan.flash) setTimeout(() => live.current && setFlash((n) => n + 1), 250)

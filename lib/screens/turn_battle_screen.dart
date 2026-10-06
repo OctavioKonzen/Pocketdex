@@ -411,17 +411,19 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
       if (!mounted) return;
       switch (e.t) {
         case 'attack':
-          // Cada golpe com a sua animação (move_anim.dart), nas cores do tipo.
+          // Cada golpe com a sua animação (move_anims.json + move_anim.dart), nas cores do tipo:
+          // os de status também (Swords Dance sobe, Toxic no alvo, Rain Dance no campo...).
           final entry = _anims?[e.slug];
-          final kind = entry is List ? '${entry[0]}' : moveAnim(e.slug, e.type, e.category);
-          final variant = entry is List ? (entry[2] as num).toInt() : 0;
-          // Golpe de status: anéis em quem usa (Swords Dance, Recover) ou no alvo (Will-O-Wisp, Toxic).
           final rules = _b.active(e.side).moves.where((m) => m.slug == e.slug).firstOrNull?.rules;
-          final self = e.category == 'status' && (rules?['t'] == 'self' || rules?['h'] != null);
-          final plan = e.category == 'status'
-              ? fxPlan('rings', e.type, e.side, _center[e.side], _center[self ? e.side : 1 - e.side], self ? '✨' : null, variant)
-              : fxPlan(kind, e.type, e.side, _center[e.side], _center[1 - e.side], entry is List ? '${entry[1]}' : null, variant);
-          _sprites[e.side].currentState?.lunge(dash: contactKinds.contains(kind));
+          final self = rules?['t'] == 'self' || rules?['h'] != null;
+          final kind = entry is List
+              ? '${entry[0]}'
+              : e.category == 'status'
+                  ? (self ? 'boost' : 'status')
+                  : moveAnim(e.slug, e.type, e.category);
+          final variant = entry is List ? (entry[2] as num).toInt() : 0;
+          final plan = fxPlan(kind, e.type, e.side, _center[e.side], _center[1 - e.side], entry is List ? '${entry[1]}' : null, variant);
+          if (!selfKinds.contains(kind)) _sprites[e.side].currentState?.lunge(dash: contactKinds.contains(kind));
           setState(() => _fx = (plan, getColorForType(e.type), ++_fxKey));
           if (plan.shake) _shake.forward(from: 0);
           if (plan.flash) _wait(250).then((_) => mounted ? setState(() => _flash++) : null);
