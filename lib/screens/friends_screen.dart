@@ -74,7 +74,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
       }
     } catch (e) {
       _message = (false, e is FirebaseException && e.code == 'permission-denied'
-          ? 'Sem permissão para adicionar amigos. As regras do Firestore precisam ser atualizadas.'
+          ? 'Essa conta não existe mais (foi excluída).'
           : 'Não foi possível adicionar o amigo. Confira sua conexão e tente novamente.');
     }
     if (mounted) setState(() => _busy = false);

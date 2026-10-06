@@ -571,9 +571,14 @@ export async function watchFriends(uid, callback, onError) {
   )
 }
 
-/** Pede amizade: 'sent' na minha lista e 'received' na do outro. */
+/**
+ * Pede amizade: 'sent' na minha lista e 'received' na do outro. Antes apaga o
+ * que sobrou de um pedido antigo na lista do outro (as regras não deixam
+ * sobrescrever um 'sent'/'friends' antigo com 'received').
+ */
 export async function sendFriendRequest(me, other) {
-  const { db, doc, writeBatch, serverTimestamp } = await firebase()
+  const { db, doc, deleteDoc, writeBatch, serverTimestamp } = await firebase()
+  await deleteDoc(doc(db, 'friends', other.uid, 'list', me.uid)).catch(() => {})
   const b = writeBatch(db)
   b.set(doc(db, 'friends', me.uid, 'list', other.uid), { name: other.name, avatar: null, status: 'sent', since: serverTimestamp() })
   b.set(doc(db, 'friends', other.uid, 'list', me.uid), { name: me.name, avatar: me.avatar ?? null, status: 'received', since: serverTimestamp() })

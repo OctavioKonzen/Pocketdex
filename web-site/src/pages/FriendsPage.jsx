@@ -68,7 +68,9 @@ export default function FriendsPage() {
         setName('')
       }
     } catch (err) {
-      setMessage({ ok: false, text: errorMessage(err) })
+      // Com o pedido antigo já limpo, o que ainda bloqueia é a conta não existir
+      // mais (excluída; o nome dela ficou registrado).
+      setMessage({ ok: false, text: err?.code === 'permission-denied' ? t('Essa conta não existe mais (foi excluída).') : errorMessage(err) })
     }
     setBusy(false)
   }

@@ -104,7 +104,10 @@ class FriendsService extends ChangeNotifier {
     return d == null ? null : (d['uid'] as String, d['name'] as String);
   }
 
+  /// Antes apaga o que sobrou de um pedido antigo na lista do outro (as regras
+  /// não deixam sobrescrever um 'sent'/'friends' antigo com 'received').
   Future<void> sendRequest(String otherUid, String otherName) async {
+    await _doc(otherUid, _me).delete().catchError((_) {});
     final batch = _db.batch()
       ..set(_doc(_me, otherUid), {'name': otherName, 'avatar': null, 'status': 'sent', 'since': FieldValue.serverTimestamp()})
       ..set(_doc(otherUid, _me), {'name': _myName, 'avatar': _myAvatar, 'status': 'received', 'since': FieldValue.serverTimestamp()});
