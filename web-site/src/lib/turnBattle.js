@@ -1,6 +1,6 @@
 // Production battles use the shared offline Pokémon Showdown simulator.
 // The callback-based path is retained for legacy test fixtures without simulator sets.
-import {initializeSimulator, simulatorCanGimmick, simulatorTurn} from './battleSimulator'
+import {initializeSimulator, simulatorCanGimmick, simulatorRecommend, simulatorTurn} from './battleSimulator'
 
 export const STRUGGLE = { slug: 'struggle', name: 'Struggle', type: 'normal', category: 'physical', power: 50, accuracy: null, pp: 1, maxPp: 1, priority: 0 }
 /** Chance de crítico por estágio (geração 7 em diante). */
@@ -118,7 +118,11 @@ export function newBattle(mine, theirs, random, options = {}) {
     winner: null, // 0 = você ganhou, 1 = o computador
     needSwitch: false, // seu Pokémon desmaiou: escolha outro
   }
-  if ([...mine, ...theirs].every(mon => mon.simulation)) initializeSimulator(battle)
+  if ([...mine, ...theirs].every(mon => mon.simulation)) {
+    initializeSimulator(battle)
+    // Quem acabou de entrar fica pelo menos dois turnos antes de o computador trocar.
+    battle.cpuSwitchTurn = battle.turn
+  }
   return battle
 }
 
@@ -681,10 +685,19 @@ export function playTurn(battle, action, hit) {
     const plan = cpuPlan(battle, hit)
     const mine = action.switch != null ? {kind: 'switch', index: action.switch} : action.item != null ? {kind: 'item', item: action.item, index: action.target} : {kind: 'move', index: action.move, gimmick: action.gimmick}
     const theirs = battle.simulator.state.sides[1].wait ? {kind: 'wait'} : plan.kind === 'item' ? {kind: 'item', item: plan.item, index: plan.target} : plan.kind === 'switch' ? plan : {kind: 'move', index: plan.index, gimmick: cpuGimmick(battle, plan.index)}
-    const events = simulatorTurn(battle, [mine, theirs])
-    if (plan.kind === 'switch') battle.cpuSwitchTurn = battle.turn
+    let events
+    try {
+      events = simulatorTurn(battle, [mine, theirs])
+    } catch (error) {
+      // O motor recusou a jogada do computador (ex.: golpe bloqueado por
+      // Encore/Taunt/Choice): ele joga a que o próprio motor recomenda, em vez
+      // de o turno travar.
+      if (theirs.kind === 'wait') throw error
+      events = simulatorTurn(battle, [mine, simulatorRecommend(battle, 1)[0]])
+    }
     completeCpuSwitches(battle, hit, events)
-    return events
+    noteCpuEntry(battle, events)
+    return [...turnOrder(events), ...events]
   }
   const events = []
   if (battle.winner != null || battle.needSwitch) return events
@@ -728,6 +741,30 @@ export function playTurn(battle, action, hit) {
   checkEnd(battle, hit, events)
   battle.turn += 1
   return events
+}
+
+/** O computador não troca quem acabou de entrar (troca, substituição ou U-turn). */
+function noteCpuEntry(battle, events) {
+  if (events.some((e) => e.t === 'switch' && e.side === 1)) battle.cpuSwitchTurn = battle.turn
+}
+
+/**
+ * A fila do turno: quem agiu e em que ordem (pela velocidade e prioridade de
+ * verdade, tirada do que o motor executou), mostrada antes das ações.
+ * 🔵 = seu, 🔴 = do adversário.
+ */
+export function turnOrder(events) {
+  const queue = []
+  let moved = false
+  for (const e of events) {
+    if (e.t !== 'text') continue
+    const who = e.args[0]?.side ? '🔴' : '🔵'
+    if (e.key === 'used') { queue.push(`${who} ${e.args[0].name} (${e.args[1]})`); moved = true }
+    // Trocas e itens escolhidos vêm antes dos golpes (as trocas depois são substituições).
+    else if (!moved && (e.key === 'go' || e.key === 'foeSent')) queue.push(`${who} ⇄ ${e.args[0].name}`)
+    else if (!moved && e.key === 'usedItem') queue.push(`${who} ${e.args[1]}`)
+  }
+  return queue.length > 1 ? [{ t: 'text', key: 'turnOrder', args: [queue.join(' → ')] }] : []
 }
 
 function completeCpuSwitches(battle, hit, events) {
@@ -815,6 +852,7 @@ export function replace(battle, index) {
     const cpu = battle.forceSwitch[1] ? {kind: 'switch', index: cpuReplacement(battle, battle.lastHit)} : {kind: 'wait'}
     const events = simulatorTurn(battle, [{kind: 'switch', index}, cpu])
     completeCpuSwitches(battle, battle.lastHit, events)
+    noteCpuEntry(battle, events)
     return events
   }
   const events = []
@@ -833,6 +871,7 @@ export function forfeit(battle) {
 /** Texto das falas (em português; a tela traduz). {0} = Pokémon, {1} = golpe. */
 export const LINES = {
   sim: '{0}',
+  turnOrder: 'Ordem do turno: {0}',
   draw: 'A batalha terminou empatada!',
   used: ['{0} usou {1}!', '{0} inimigo usou {1}!'],
   missed: ['O ataque de {0} errou!', 'O ataque de {0} inimigo errou!'],

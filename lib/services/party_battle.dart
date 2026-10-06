@@ -21,7 +21,9 @@ class PartyBattle {
     final controllers = [seats.take(count).toList(), seats.skip(count).take(count).toList()];
     return TurnBattle(assemble(controllers[0], rosters), assemble(controllers[1], rosters), random, mode: modeOf(count), controllers: controllers);
   }
-  static List<BattleEvent> play(TurnBattle battle, List<Map<String, dynamic>> submissions) {
+  /// [order]: mostra a fila do turno antes das ações (contra o computador; online
+  /// as cores 🔵/🔴 ficariam trocadas para o outro jogador).
+  static List<BattleEvent> play(TurnBattle battle, List<Map<String, dynamic>> submissions, {bool order = false}) {
     final events = _playOnce(battle, submissions);
     for (var attempt = 0; attempt < 12 && battle.winner == null; attempt++) {
       final choices = <Map<String, dynamic>>[];
@@ -40,7 +42,7 @@ class PartyBattle {
       if (needsHuman) break;
       events.addAll(_playOnce(battle, [{'kind': 'team', 'choices': choices}]));
     }
-    return events;
+    return [if (order) ...TurnBattle.turnOrder(events), ...events];
   }
   static List<BattleEvent> _playOnce(TurnBattle battle, List<Map<String, dynamic>> submissions) {
     final count = battle.controllers![0].length;

@@ -340,6 +340,8 @@ class TurnBattle {
       }]);
       _simHandle = created['handle'] as int;
       _opening = _simSync(created);
+      // Quem acabou de entrar fica pelo menos dois turnos antes de o computador trocar.
+      cpuSwitchTurn = turn;
     }
   }
 
@@ -448,6 +450,35 @@ class TurnBattle {
   }
 
   List<BattleEvent> _simChoose(List<Object?> actions) => _simSync(BattleSimulator.call('choose', [_simHandle, actions]));
+
+  /// O computador não troca quem acabou de entrar (troca, substituição ou U-turn).
+  void _noteCpuEntry(List<BattleEvent> events) {
+    if (events.any((e) => e.t == 'switch' && e.side == 1)) cpuSwitchTurn = turn;
+  }
+
+  /// A fila do turno: quem agiu e em que ordem (pela velocidade e prioridade de
+  /// verdade, tirada do que o motor executou), mostrada antes das ações.
+  /// 🔵 = seu, 🔴 = do adversário. Igual ao site (turnOrder em turnBattle.js).
+  static List<BattleEvent> turnOrder(List<BattleEvent> events) {
+    final queue = <String>[];
+    var moved = false;
+    for (final e in events) {
+      if (e.t != 'text' || e.args.isEmpty) continue;
+      final first = e.args.first;
+      final who = first is (int, String) && first.$1 == 1 ? '🔴' : '🔵';
+      final name = first is (int, String) ? first.$2 : '$first';
+      if (e.key == 'used') {
+        queue.add('$who $name (${e.args.length > 1 ? e.args[1] : ''})');
+        moved = true;
+      } else if (!moved && (e.key == 'go' || e.key == 'foeSent')) {
+        // Trocas e itens escolhidos vêm antes dos golpes (as trocas depois são substituições).
+        queue.add('$who ⇄ $name');
+      } else if (!moved && e.key == 'usedItem') {
+        queue.add('$who ${e.args.length > 1 ? e.args[1] : ''}');
+      }
+    }
+    return queue.length > 1 ? [BattleEvent.text('turnOrder', [queue.join(' → ')])] : const [];
+  }
 
   void _completeCpuSwitches(BattleHit hit, List<BattleEvent> events) {
     var attempts = 0;
@@ -1163,10 +1194,19 @@ class TurnBattle {
         : plan.kind == 'item' ? {'kind': 'item', 'item': plan.item, 'index': plan.target}
         : plan.kind == 'switch' ? {'kind': 'switch', 'index': plan.index}
         : {'kind': 'move', 'index': plan.index, 'gimmick': _cpuGimmick(plan.index)};
-      final events = _simChoose([mine, theirs]);
-      if (plan.kind == 'switch') cpuSwitchTurn = turn;
+      List<BattleEvent> events;
+      try {
+        events = _simChoose([mine, theirs]);
+      } catch (_) {
+        // O motor recusou a jogada do computador (ex.: golpe bloqueado por
+        // Encore/Taunt/Choice): ele joga a que o próprio motor recomenda, em
+        // vez de o turno travar.
+        if (theirs['kind'] == 'wait') rethrow;
+        events = _simChoose([mine, recommend(1).first]);
+      }
       _completeCpuSwitches(hit, events);
-      return events;
+      _noteCpuEntry(events);
+      return [...turnOrder(events), ...events];
     }
     final events = <BattleEvent>[];
     if (winner != null || needSwitch) return events;
@@ -1297,6 +1337,7 @@ class TurnBattle {
       final cpu = forceSwitch[1] && _lastHit != null ? {'kind': 'switch', 'index': _cpuReplacement(_lastHit!)} : <String, dynamic>{'kind': 'wait'};
       final events = _simChoose([{'kind': 'switch', 'index': index}, cpu]);
       if (_lastHit != null) _completeCpuSwitches(_lastHit!, events);
+      _noteCpuEntry(events);
       return events;
     }
     final events = <BattleEvent>[];
@@ -1315,6 +1356,7 @@ class TurnBattle {
   /// Texto das falas (em português; a tela traduz). {0} = Pokémon, {1} = golpe.
   static const lines = <String, Object>{
     'sim': '{0}',
+    'turnOrder': 'Ordem do turno: {0}',
     'draw': 'A batalha terminou empatada!',
     'used': ['{0} usou {1}!', '{0} inimigo usou {1}!'],
     'missed': ['O ataque de {0} errou!', 'O ataque de {0} inimigo errou!'],

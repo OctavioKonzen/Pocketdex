@@ -64,6 +64,18 @@ describe('shared simulator integration', () => {
       expect(b.turn).toBe(2)
     } finally { simulatorDispose(b) }
   })
+  it('each offline turn starts with the turn order (who acts first)', () => {
+    const b = newBattle([mon('Jolteon', ['swift'])], [mon('Snorlax', ['tackle'])], seed())
+    try {
+      startBattle(b)
+      const events = playTurn(b, {move: 0, gimmick: 'none'}, hit)
+      expect(events[0].key).toBe('turnOrder')
+      const [line, [queue]] = lineOf(events[0])
+      expect(line).toBe('Ordem do turno: {0}')
+      expect(queue.indexOf('Jolteon')).toBeLessThan(queue.indexOf('Snorlax'))
+      expect(queue.startsWith('🔵')).toBe(true)
+    } finally { simulatorDispose(b) }
+  })
   it('a completed battle ends its event sequence with the victory text', () => {
     const b = newBattle([mon('Mewtwo', ['psychic'])], [mon('Magikarp', ['splash'])], seed())
     try {
