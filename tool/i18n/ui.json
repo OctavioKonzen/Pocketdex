@@ -5383,6 +5383,86 @@
   "fr": "{1} de {0} ennemi est renforcé !",
   "es": "¡{1} de {0} rival se ha potenciado!"
  },
+ "Em quem": {
+  "en": "On whom will",
+  "fr": "Sur qui",
+  "es": "¿Contra quién"
+ },
+ "vai usar": {
+  "en": "use",
+  "fr": "va utiliser",
+  "es": "usará"
+ },
+ "Quem entra no lugar de": {
+  "en": "Who replaces",
+  "fr": "Qui remplace",
+  "es": "¿Quién sustituye a"
+ },
+ "O que": {
+  "en": "What will",
+  "fr": "Que va faire",
+  "es": "¿Qué hará"
+ },
+ "vai fazer?": {
+  "en": "do?",
+  "fr": "?",
+  "es": "?"
+ },
+ "TROCAR (gasta a ação)": {
+  "en": "SWITCH (uses the action)",
+  "fr": "CHANGER (utilise l'action)",
+  "es": "CAMBIAR (gasta la acción)"
+ },
+ "trocar de posição": {
+  "en": "shift position",
+  "fr": "changer de position",
+  "es": "cambiar de posición"
+ },
+ "passar": {
+  "en": "pass",
+  "fr": "passer",
+  "es": "pasar"
+ },
+ "Aguardando os outros jogadores…": {
+  "en": "Waiting for the other players…",
+  "fr": "En attente des autres joueurs…",
+  "es": "Esperando a los demás jugadores…"
+ },
+ "Enviando…": {
+  "en": "Sending…",
+  "fr": "Envoi…",
+  "es": "Enviando…"
+ },
+ "◂ Voltar": {
+  "en": "◂ Back",
+  "fr": "◂ Retour",
+  "es": "◂ Volver"
+ },
+ "Aliado": {
+  "en": "Ally",
+  "fr": "Allié",
+  "es": "Aliado"
+ },
+ "Reviver": {
+  "en": "Revive",
+  "fr": "Ranimer",
+  "es": "Revivir"
+ },
+ "Trocar posição com o centro": {
+  "en": "Shift to the center",
+  "fr": "Passer au centre",
+  "es": "Cambiar al centro"
+ },
+ "Sem reservas: passar": {
+  "en": "No reserves: pass",
+  "fr": "Plus de réserve : passer",
+  "es": "Sin reservas: pasar"
+ },
+ "Turno": {
+  "en": "Turn",
+  "fr": "Tour",
+  "es": "Turno"
+ },
  "Formas alternativas": {
   "en": "Alternate forms",
   "fr": "Formes alternatives",

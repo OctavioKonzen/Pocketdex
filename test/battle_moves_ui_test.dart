@@ -135,20 +135,59 @@ void main() {
         File('${dir.path}/classic-$count${scale==1?'':'-large'}.png').writeAsBytesSync(png!.buffer.asUint8List());
       });
       for(var turn=0;turn<3;turn++) {
+        final previous=battle.turn;
+        // Como no Showdown: um Pokémon por vez; depois do último, o turno vai sozinho.
         for(var position=0;position<count;position++) {
           for(var move=0;move<4;move++) expect(find.byKey(ValueKey('battle-move-$position-$move')), findsOneWidget);
+          for(var other=position+1;other<count;other++) { expect(find.byKey(ValueKey('battle-move-$other-0')), findsNothing);}
+          expect(find.textContaining('(${position+1}/$count)'), findsOneWidget);
           final button=find.byKey(ValueKey('battle-move-$position-0'));
           expect(tester.widget<InkWell>(button).onTap,isNotNull);
           await tester.ensureVisible(button); await tester.tap(button); await tester.pump();
+          if(position<count-1) expect(battle.turn,previous);
         }
-        final confirm=find.widgetWithText(FilledButton,'Confirmar ações');
-        expect(tester.widget<FilledButton>(confirm).onPressed,isNotNull);
-        final previous=battle.turn;
-        await tester.ensureVisible(confirm); await tester.tap(confirm); await tester.pump();
         expect(battle.turn,greaterThan(previous));
         expect(tester.takeException(),isNull);
       }
       await tester.pumpWidget(const SizedBox());
     });
   }
+  testWidgets('Dupla como no Showdown: golpe, alvo, voltar e o próximo Pokémon', (tester) async {
+    tester.view.physicalSize = const Size(1080,2220);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final battle = await tester.runAsync(() async {
+      final me=await TurnBattleSetup.mons([for(var i=0;i<6;i++) (151, <String,dynamic>{'moves':['psychic','recover','helping-hand','protect']})], (row)=>'Mew');
+      final npc=await TurnBattleSetup.mons([for(var i=0;i<6;i++) (151, <String,dynamic>{'moves':['splash','recover','helping-hand','protect']})], (row)=>'Mew');
+      return PartyBattle.create({'me':me,'npc3':npc}, ['me','me','npc3','npc3'],2,Random(7).nextDouble);
+    });
+    addTearDown(battle!.dispose);
+    await tester.pumpWidget(MaterialApp(home: Scaffold(body: SingleChildScrollView(child: BattleView(
+      battle:battle, hit:(_, _, _, _, [power, weather=''])=>null, typeEff:(_,_)=>1, foeName:'NPC', onAgain:(){}, onExit:(){},
+    )))));
+    await tester.pump(const Duration(milliseconds:300));
+    Future<void> tap(String key) async { final f=find.byKey(ValueKey(key)); await tester.ensureVisible(f); await tester.tap(f); await tester.pump(); }
+    final turn=battle.turn;
+    await tap('battle-move-0-0');
+    // Psychic: escolhe o alvo (2 adversários e o aliado).
+    expect(find.byKey(const ValueKey('battle-move-0-0')), findsNothing);
+    expect(find.byWidgetPredicate((w) => w.key is ValueKey && '${(w.key as ValueKey).value}'.startsWith('battle-target-')), findsNWidgets(3));
+    await tap('battle-back');
+    expect(find.byKey(const ValueKey('battle-move-0-0')), findsOneWidget);
+    await tap('battle-move-0-0');
+    final foe=find.byWidgetPredicate((w) => w.key is ValueKey && '${(w.key as ValueKey).value}'.startsWith('battle-target-')).first;
+    await tester.ensureVisible(foe); await tester.tap(foe); await tester.pump();
+    // Próximo Pokémon; o primeiro aparece como escolhido e dá para voltar.
+    expect(find.byKey(const ValueKey('battle-move-1-0')), findsOneWidget);
+    expect(find.textContaining('✓ Mew: Psychic'), findsOneWidget);
+    await tap('battle-back');
+    expect(find.byKey(const ValueKey('battle-move-0-0')), findsOneWidget);
+    expect(battle.turn, turn);
+    for (final position in [0, 1]) {
+      await tap('battle-move-$position-1');
+    }
+    expect(battle.turn, greaterThan(turn));
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
 }

@@ -1429,9 +1429,11 @@ class _MultiBattleView extends StatefulWidget {
 }
 class _MultiBattleViewState extends State<_MultiBattleView> {
   final Map<int, Map<String, dynamic>> _choices = {};
+  // Como no Showdown: um Pokémon por vez; golpe com alvo abre a escolha do alvo.
+  Map<String, dynamic>? _aim;
+  bool _gimmickOn = false;
   List<BattleEvent> _events = [];
   String? _error;
-  int _generation = 0;
   TurnBattle get _b => widget.battle;
   String get _uid => widget.online?.uid ?? 'me';
   int get _side => _b.controllers!.indexWhere((team) => team.contains(_uid));
@@ -1448,28 +1450,66 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
   void didUpdateWidget(covariant _MultiBattleView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (_choicePhase(oldWidget.battle) != _choicePhase(_b) || oldWidget.online?.round != widget.online?.round) {
-      _choices.clear(); _error = null; _generation++;
+      _choices.clear(); _aim = null; _gimmickOn = false; _error = null;
     }
   }
   Map<String, dynamic>? _automatic(Map slot) => _own['wait'] == true
       ? {'kind': 'wait', 'index': 0}
       : slot['pass'] == true || _forced && slot['forceSwitch'] != true ? {'kind': 'pass', 'index': 0} : null;
   Map<String, dynamic>? _picked(Map slot) => _automatic(slot) ?? _choices[slot['slot'] as int];
-  void _pick(Map slot, String kind, int index, [String? mechanic]) {
-    final position = slot['slot'] as int;
-    final gimmick = mechanic ?? '${_choices[position]?['gimmick'] ?? ''}';
-    final result = kind == 'move' ? _b.targets(_side, position, index, gimmick) : {'targets': <dynamic>[]};
+  List<Map> get _owned => _slots.where((slot) => _b.controllers![_side][slot['slot'] as int] == _uid).toList();
+  List<Map> get _pending => _owned.where((slot) => _automatic(slot) == null).toList();
+  // Fecha a escolha deste Pokémon; depois do último, manda o turno (como no Showdown).
+  void _commit(Map slot, Map<String, dynamic> choice) {
+    _choices[slot['slot'] as int] = choice;
+    _aim = null;
+    _gimmickOn = false;
+    if (_pending.every((p) => _choices.containsKey(p['slot']))) {
+      _send();
+    } else {
+      setState(() {});
+    }
+  }
+  void _chooseMove(Map slot, int index) {
+    final position = slot['slot'] as int, mon = _b.teams[_side][slot['index'] as int];
+    final canZ = (slot['request'] as Map?)?['canZMove'];
+    // Z-Move só nos golpes que têm Z (o motor diz quais).
+    final gimmick = _gimmickOn && (mon.gimmick != 'z' || canZ is List && index < canZ.length && canZ[index] != null) ? mon.gimmick : '';
+    final result = _b.targets(_side, position, index, gimmick);
     final targets = (result['targets'] as List).cast<Map>();
-    final target = targets.where((t) => t['ally'] != true).firstOrNull ?? targets.firstOrNull;
-    setState(() => _choices[position] = {'kind': kind, 'index': index, 'gimmick': kind == 'move' ? gimmick : '', 'target': target?['loc'] ?? 0});
+    if (result['automatic'] != true && targets.length > 1) {
+      setState(() => _aim = {'kind': 'move', 'index': index, 'gimmick': gimmick});
+      return;
+    }
+    _commit(slot, {'kind': 'move', 'index': index, 'gimmick': gimmick, 'target': targets.firstOrNull?['loc'] ?? 0});
+  }
+  void _back() => setState(() {
+        if (_aim != null) {
+          _aim = null;
+          return;
+        }
+        final last = _pending.reversed.where((slot) => _choices.containsKey(slot['slot'])).firstOrNull;
+        if (last != null) _choices.remove(last['slot']);
+        _gimmickOn = false;
+      });
+  String _describe(Map slot) {
+    final c = _choices[slot['slot'] as int]!, mon = _b.teams[_side][slot['index'] as int];
+    if (c['kind'] == 'move') {
+      final moves = ((slot['request'] as Map?)?['moves'] as List?)?.cast<Map>() ?? [];
+      final target = (_b.targets(_side, slot['slot'] as int, c['index'] as int, '${c['gimmick']}')['targets'] as List).cast<Map>().where((t) => t['loc'] == c['target']).firstOrNull;
+      final gimmick = const {'mega': 'Mega', 'tera': 'Terastal', 'dmax': 'Dynamax', 'z': 'Z-Move'}[c['gimmick']];
+      return '${mon.name}: ${(c['index'] as int) < moves.length ? moves[c['index'] as int]['move'] : ''}${gimmick != null ? ' ($gimmick)' : ''}${target != null ? ' → ${target['name']}' : ''}';
+    }
+    if (c['kind'] == 'switch') return '${mon.name} ⇄ ${_b.teams[_side][c['index'] as int].name}';
+    return '${mon.name}: ${tr(c['kind'] == 'shift' ? 'trocar de posição' : 'passar')}';
   }
   void _send() {
     final owned = _slots.where((slot) => _b.controllers![_side][slot['slot'] as int] == _uid);
     final submitted = [for (final slot in owned) {'seat': _side * _count + (slot['slot'] as int), ..._picked(slot)!}];
     final switches = [for (final c in submitted) if (c['kind'] == 'switch') c['index']];
-    if (switches.toSet().length != switches.length) { setState(() => _error = 'Escolha Pokémon diferentes para as substituições.'); return; }
+    if (switches.toSet().length != switches.length) { setState(() { _error = 'Escolha Pokémon diferentes para as substituições.'; _choices.clear(); }); return; }
     final action = <String, dynamic>{'kind': 'team', 'choices': submitted};
-    if (widget.online != null) { widget.online!.onAction(action); return; }
+    if (widget.online != null) { setState(() {}); widget.online!.onAction(action); return; }
     try {
       final events = PartyBattle.play(_b, [action], order: true);
       for (var attempt = 0; attempt < 12 && _b.winner == null; attempt++) {
@@ -1481,8 +1521,8 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
         final waiting = {'kind': 'team', 'choices': [for (final s in slots) if (_b.controllers![_side][s['slot'] as int] == _uid) {'seat': _side * _count + (s['slot'] as int), 'kind': state['wait'] == true ? 'wait' : 'pass', 'index': 0}]};
         events.addAll(PartyBattle.play(_b, [waiting]));
       }
-      setState(() { _events = events; _choices.clear(); _error = null; _generation++; });
-    } catch (e) { setState(() => _error = e is StateError ? e.message : 'Não foi possível executar estas ações. Escolha novamente.'); }
+      setState(() { _events = events; _choices.clear(); _error = null; });
+    } catch (e) { setState(() { _error = e is StateError ? e.message : 'Não foi possível executar estas ações. Escolha novamente.'; _choices.clear(); }); }
   }
   String _trainer(String controller) => controller == _uid ? tr('Você') : '${widget.online?.names[controller] ?? 'NPC'}';
   Widget _field() => AspectRatio(aspectRatio:(_count==3?1:16/10)/MediaQuery.textScalerOf(context).scale(1).clamp(1,2),child: Container(
@@ -1506,82 +1546,107 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
       return Stack(clipBehavior:Clip.hardEdge,children:[Positioned.fill(child:CustomPaint(painter:_FieldPainter(_b.weather))),sprites(1-_side),sprites(_side),info(1-_side),info(_side)]);
     }),
   ));
-  Widget _actions(Map slot) {
-    final position = slot['slot'] as int, mon = _b.teams[_side][slot['index'] as int];
-    final action = _picked(slot), req = slot['request'] as Map?;
-    final moves = (req?['moves'] as List?)?.cast<Map>() ?? [];
-    final mechanic = mon.gimmick;
-    final index = action?['index'] as int? ?? 0;
-    final available = switch (mechanic) {
-      'mega' => req?['canMegaEvo'] == true,
-      'tera' => req?['canTerastallize'] != null && req?['canTerastallize'] != false,
-      'dmax' => req?['canDynamax'] == true,
-      'z' => req?['canZMove'] is List && index < (req!['canZMove'] as List).length && (req['canZMove'] as List)[index] != null,
-      _ => false,
-    };
-    final reserved = _choices.entries.any((entry) => entry.key != position && entry.value['gimmick'] == mechanic);
-    final targetData = action?['kind'] == 'move' ? _b.targets(_side, position, index, '${action?['gimmick'] ?? ''}') : {'targets': <dynamic>[], 'automatic': true};
-    final targets = (targetData['targets'] as List).cast<Map>();
+  Widget _button(String label, String sub, Color color, Key key, VoidCallback? onTap, {Color text = Colors.white}) => Material(
+        color: color,
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(key: key, borderRadius: BorderRadius.circular(10), onTap: onTap,
+          child: Padding(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            m.Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: text, fontWeight: FontWeight.w900, fontSize: 13)),
+            if (sub.isNotEmpty) m.Text(sub, style: TextStyle(color: text.withValues(alpha: 0.75), fontSize: 11)),
+          ]))),
+      );
+  Widget _grid(List<Widget> children, {int columns = 2}) => LayoutBuilder(builder: (context, constraints) => Wrap(spacing: 6, runSpacing: 6, children: [
+        for (final c in children) SizedBox(width: (constraints.maxWidth - 6 * (columns - 1)) / columns, child: c),
+      ]));
+  Widget _panel() {
+    final pending = _pending;
+    final current = pending.where((slot) => !_choices.containsKey(slot['slot'])).firstOrNull;
+    final chosen = pending.where((slot) => _choices.containsKey(slot['slot'])).toList();
+    Widget body;
+    if (current == null) {
+      body = Text(widget.online?.locked == true ? 'Aguardando os outros jogadores…' : 'Enviando…');
+    } else {
+      final slot = current, position = slot['slot'] as int, mon = _b.teams[_side][slot['index'] as int];
+      final req = slot['request'] as Map?;
+      final moves = (req?['moves'] as List?)?.cast<Map>() ?? [];
+      final step = '(${pending.indexOf(slot) + 1}/${pending.length})';
+      if (_aim != null) {
+        final index = _aim!['index'] as int;
+        final targets = (_b.targets(_side, position, index, '${_aim!['gimmick']}')['targets'] as List).cast<Map>();
+        List<Map> row(bool ally) => targets.where((t) => (t['ally'] == true) == ally).toList()..sort((a, b) => (a['slot'] as int).compareTo(b['slot'] as int));
+        body = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          m.Text('${tr('Em quem')} ${mon.name} ${tr('vai usar')} ${index < moves.length ? moves[index]['move'] : ''}? $step', style: const TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          for (final ally in [false, true])
+            if (row(ally).isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 6), child: _grid(columns: _count, [
+              for (final target in row(ally))
+                _button('${target['name']}', '${tr(ally ? 'Aliado' : 'Adversário')} · ${(target['slot'] as int) + 1}', ally ? const Color(0xFFE0F2FE) : const Color(0xFFFFE4E6),
+                    ValueKey('battle-target-${target['loc']}'), _locked ? null : () => _commit(slot, {..._aim!, 'target': target['loc']}), text: const Color(0xFF0F172A)),
+            ])),
+        ]);
+      } else {
+        final mechanic = mon.gimmick;
+        final available = switch (mechanic) {
+          'mega' => req?['canMegaEvo'] == true,
+          'tera' => req?['canTerastallize'] != null && req?['canTerastallize'] != false,
+          'dmax' => req?['canDynamax'] == true,
+          'z' => req?['canZMove'] is List && (req!['canZMove'] as List).any((z) => z != null),
+          _ => false,
+        };
+        final reserved = _choices.values.any((c) => c['gimmick'] == mechanic);
+        // Pokémon que outro já escolheu para entrar não aparece de novo.
+        final taken = {for (final c in _choices.values) if (c['kind'] == 'switch') c['index']};
+        final options = [for (final i in slot['switchOptions'] as List) if (!taken.contains(i)) i as int];
+        body = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          m.Text(slot['forceSwitch'] == true ? '${tr('Quem entra no lugar de')} ${mon.name}? $step' : '${tr('O que')} ${mon.name} ${tr('vai fazer?')} $step', style: const TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          if (slot['forceSwitch'] != true) Container(
+            key: ValueKey('battle-moves-$position'),
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(color: Colors.white, border: Border.all(color: const Color(0xFF475569), width: 4), borderRadius: BorderRadius.circular(12)),
+            child: _grid([
+              for (final (i, move) in moves.indexed)
+                _button('${move['move']}', 'PP ${move['pp'] ?? '—'}/${i < mon.moves.length ? mon.moves[i].maxPp : move['pp'] ?? '—'}', getColorForType(i < mon.moves.length ? mon.moves[i].type : 'normal'),
+                    ValueKey('battle-move-$position-$i'), _locked || move['disabled'] == true || move['pp'] == 0 ? null : () => _chooseMove(slot, i)),
+            ]),
+          ),
+          if (slot['forceSwitch'] != true && available) Padding(padding: const EdgeInsets.only(top: 6), child: Align(alignment: Alignment.centerLeft, child: FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: _gimmickOn ? const Color(0xFF8B5CF6) : const Color(0xFF6D28D9)),
+            onPressed: _locked || reserved ? null : () => setState(() => _gimmickOn = !_gimmickOn),
+            child: Text('${mechanic == 'dmax' && mon.gmax != null ? 'Gigantamax' : const {'mega': 'Mega', 'tera': 'Terastal', 'dmax': 'Dynamax', 'z': 'Z-Move'}[mechanic]}${_gimmickOn ? ' ✓' : ''}')))),
+          if (options.isNotEmpty || slot['canShift'] == true || slot['forceSwitch'] == true) ...[
+            const SizedBox(height: 8),
+            Text(slot['forceSwitch'] == true ? 'POKÉMON' : 'TROCAR (gasta a ação)', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white70)),
+            const SizedBox(height: 4),
+            _grid([
+              for (final i in options)
+                _button('${tr(slot['revival'] == true ? 'Reviver' : '')} ${_b.teams[_side][i].name}'.trim(), '${_b.teams[_side][i].hp}/${_b.teams[_side][i].maxHp}', const Color(0xFF334155),
+                    ValueKey('battle-switch-$position-$i'), _locked ? null : () => _commit(slot, {'kind': 'switch', 'index': i})),
+              if (slot['canShift'] == true) _button(tr('Trocar posição com o centro'), '', const Color(0xFF334155), ValueKey('battle-shift-$position'), _locked ? null : () => _commit(slot, {'kind': 'shift', 'index': 0})),
+              if (slot['forceSwitch'] == true && options.isEmpty) _button(tr('Sem reservas: passar'), '', const Color(0xFF334155), ValueKey('battle-pass-$position'), _locked ? null : () => _commit(slot, {'kind': 'pass', 'index': 0})),
+            ]),
+          ],
+        ]);
+      }
+    }
     return Card(color: const Color(0xFF1E293B), child: Padding(padding: const EdgeInsets.all(8), child: DefaultTextStyle.merge(style: const TextStyle(color: Colors.white), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      m.Text('${mon.name} · ${tr('posição')} ${position + 1}', style: const TextStyle(fontWeight: FontWeight.bold)),
-      const SizedBox(height: 8),
-      if (_automatic(slot) != null) Text(_own['wait'] == true ? 'Aguardando as substituições.' : 'Esta posição passa durante a substituição.')
-      else ...[
-        if (slot['forceSwitch'] != true) Container(
-          key: ValueKey('battle-moves-$position'),
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(color: Colors.white, border: Border.all(color: const Color(0xFF475569), width: 4), borderRadius: BorderRadius.circular(12)),
-          child: LayoutBuilder(builder: (context, constraints) => Wrap(spacing: 6, runSpacing: 6, children: [
-            for (final (i, move) in moves.indexed) SizedBox(width: (constraints.maxWidth - 6) / 2, child: Material(
-              color: getColorForType(i < mon.moves.length ? mon.moves[i].type : 'normal'),
-              borderRadius: BorderRadius.circular(10),
-              child: InkWell(key: ValueKey('battle-move-$position-$i'), borderRadius: BorderRadius.circular(10),
-                onTap: _locked || move['disabled'] == true || move['pp'] == 0 ? null : () => _pick(slot, 'move', i),
-                child: Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                  decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), border: Border.all(color: action?['kind'] == 'move' && index == i ? Colors.amber : Colors.transparent, width: 2)),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    m.Text('${move['move']}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13)),
-                    m.Text('PP ${move['pp'] ?? '—'}/${i < mon.moves.length ? mon.moves[i].maxPp : move['pp'] ?? '—'}${action?['kind'] == 'move' && index == i ? ' ✓' : ''}', style: const TextStyle(color: Colors.white70, fontSize: 11)),
-                  ])),
-              ),
-            )),
-          ])),
-        ),
-        if ((slot['switchOptions'] as List).isNotEmpty || slot['canShift'] == true || slot['forceSwitch'] == true) ...[
-          const SizedBox(height: 8),
-          DropdownButtonFormField<String>(key: ValueKey((_generation, position, action?['kind'], action?['index'])), initialValue: action != null && action['kind'] != 'move' ? '${action['kind']}:${action['index']}' : null, isExpanded: true, dropdownColor: const Color(0xFF1E293B), style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(labelStyle: const TextStyle(color: Colors.white70), labelText: '${tr('POKÉMON')} · ${tr('Trocar para')}'),
-            items: [
-              for (final dynamic i in slot['switchOptions'] as List) DropdownMenuItem(value: 'switch:$i', child: m.Text('${tr(slot['revival'] == true ? 'Reviver' : 'Trocar para')} ${_b.teams[_side][i as int].name}', overflow: TextOverflow.ellipsis)),
-              if (slot['canShift'] == true) const DropdownMenuItem(value: 'shift:0', child: Text('Trocar posição com o centro')),
-              if (slot['forceSwitch'] == true && (slot['switchOptions'] as List).isEmpty) const DropdownMenuItem(value: 'pass:0', child: Text('Sem reservas: passar')),
-            ],
-            onChanged: _locked ? null : (v) { if (v != null) { final fields = v.split(':'); _pick(slot, fields[0], int.parse(fields[1])); } }),
-        ],
-        if (action?['kind'] == 'move' && targetData['automatic'] != true) ...[
-          const SizedBox(height: 8),
-          DropdownButtonFormField<int>(key: ValueKey((_generation, position, action?['gimmick'], action?['target'])), initialValue: action?['target'] as int?, isExpanded: true, dropdownColor: const Color(0xFF1E293B), style: const TextStyle(color: Colors.white), decoration: InputDecoration(labelStyle: const TextStyle(color: Colors.white70), labelText: '${tr('Alvo de')} ${mon.name} ${position + 1}'),
-            items: [for (final target in targets) DropdownMenuItem(value: target['loc'] as int, child: m.Text('${tr(target['ally'] == true ? 'Aliado' : 'Adversário')}: ${target['name']} · ${(target['slot'] as int) + 1}', overflow: TextOverflow.ellipsis))],
-            onChanged: _locked ? null : (v) => setState(() => _choices[position] = {...action!, 'target': v})),
-        ],
-        if (action?['kind'] == 'move' && targetData['automatic'] == true) const Text('O golpe aplica seus alvos automaticamente.', style: TextStyle(fontSize: 12)),
-        if (available) TextButton(onPressed: _locked || reserved ? null : () => _pick(slot, 'move', index, action?['gimmick'] == mechanic ? '' : mechanic),
-          child: Text('${mechanic == 'dmax' && mon.gmax != null ? 'Gigantamax' : const {'mega': 'Mega', 'tera': 'Terastal', 'dmax': 'Dynamax', 'z': 'Z-Move'}[mechanic]}${action?['gimmick'] == mechanic ? ' ✓' : ''}')),
-      ],
+      for (final slot in chosen) m.Text('✓ ${_describe(slot)}', style: const TextStyle(fontSize: 12, color: Colors.white70)),
+      if (chosen.isNotEmpty) const SizedBox(height: 6),
+      body,
+      if ((_aim != null || chosen.isNotEmpty) && !_locked) Align(alignment: Alignment.centerLeft, child: TextButton(key: const ValueKey('battle-back'), onPressed: _back, child: const Text('◂ Voltar'))),
     ]))));
   }
   @override
   Widget build(BuildContext context) {
-    final owned = _slots.where((s) => _b.controllers![_side][s['slot'] as int] == _uid).toList();
     final events = widget.online?.events ?? _events;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       _field(),
       const SizedBox(height: 8),
-      Text(widget.online?.message ?? (_b.winner != null ? _b.winner == -1 ? 'Empate!' : _b.winner == _side ? 'Você venceu!' : 'A equipe adversária venceu!' : 'Turno ${_b.turn}: escolha uma ação por Pokémon.'), style: const TextStyle(fontWeight: FontWeight.bold)),
-      if (_b.winner == null) for (final slot in owned) _actions(slot),
-      const Text('Trocar Pokémon gasta a ação da posição. A reserva é compartilhada pela equipe. Os itens equipados mantêm seus efeitos.', style: TextStyle(fontSize: 12)),
+      Text(widget.online?.message ?? (_b.winner != null ? _b.winner == -1 ? 'Empate!' : _b.winner == _side ? 'Você venceu!' : 'A equipe adversária venceu!' : '${tr('Turno')} ${_b.turn}'), style: const TextStyle(fontWeight: FontWeight.bold)),
+      if (_b.winner == null && _pending.isNotEmpty) _panel(),
+      const Text('A reserva é compartilhada pela equipe. Os itens equipados mantêm seus efeitos.', style: TextStyle(fontSize: 12)),
       if (_error != null) Text(_error!, style: const TextStyle(color: Colors.redAccent)),
-      if (_b.winner == null) FilledButton(onPressed: _locked || owned.any((s) => _picked(s) == null) ? null : _send, child: Text(owned.every((s) => _automatic(s) != null) ? 'Continuar' : 'Confirmar ações')),
+      if (_b.winner == null && _pending.isEmpty) FilledButton(onPressed: _locked ? null : _send, child: const Text('Continuar')),
       ConstrainedBox(constraints: const BoxConstraints(maxHeight: 180), child: SingleChildScrollView(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [for (final e in events.where((e) => e.t == 'text')) Builder(builder: (_) {
         final (line, args) = TurnBattle.lineOf(e); var value = tr(line);
         for (var i = 0; i < args.length; i++) { value = value.replaceFirst('{$i}', args[i]); }
