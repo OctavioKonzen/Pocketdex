@@ -5,7 +5,7 @@ import { fxPlan, moveAnim, TYPE_PARTICLE } from './moveAnim'
 const moves = JSON.parse(readFileSync(new URL('../../public/data/moves.json', import.meta.url), 'utf8'))
 
 const KINDS = ['tackle', 'punch', 'kick', 'bite', 'slash', 'orb', 'beam', 'stream', 'volley', 'bolt', 'quake', 'rocks', 'meteor', 'wave', 'wind', 'rings', 'drain',
-  'boost', 'drop', 'heal', 'shield', 'wall', 'powder', 'status', 'hazard', 'weather', 'terrain', 'field', 'charge', 'explode', 'spin', 'dive', 'pierce', 'whip', 'swap']
+  'boost', 'drop', 'heal', 'shield', 'wall', 'powder', 'status', 'hazard', 'weather', 'terrain', 'field', 'charge', 'explode', 'spin', 'dive', 'pierce', 'whip', 'swap', 'dance']
 
 describe('animação dos golpes', () => {
   it('cada golpe no seu estilo', () => {
@@ -56,7 +56,7 @@ describe('animação dos golpes', () => {
     expect(table.thunderbolt.slice(0, 2)).toEqual(['bolt', '⚡'])
     // Todos os golpes, inclusive os de status, cada um com a sua.
     for (const slug of Object.keys(moves)) expect(table[slug], slug).toBeDefined()
-    expect(table['swords-dance'].slice(0, 2)).toEqual(['boost', '⚔️'])
+    expect(table['swords-dance'].slice(0, 2)).toEqual(['dance', '⚔️'])
     expect(table.toxic.slice(0, 2)).toEqual(['status', '☠️'])
     expect(table['rain-dance'].slice(0, 2)).toEqual(['weather', '🌧️'])
     expect(table['stealth-rock'].slice(0, 2)).toEqual(['hazard', '🪨'])

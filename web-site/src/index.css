@@ -260,13 +260,15 @@ body {
   position: absolute;
   translate: -50% -50%;
   line-height: 1;
-  animation: fx-move var(--dur) ease-out var(--delay) both;
+  /* Escondida até a vez dela (igual ao app). */
+  opacity: 0;
+  animation: fx-move var(--dur) ease-out var(--delay) forwards;
 }
 @keyframes fx-move {
   from { left: var(--x0); top: var(--y0); scale: var(--s0); rotate: 0deg; opacity: var(--o0); }
   to { left: var(--x1); top: var(--y1); scale: var(--s1); rotate: var(--rot); opacity: var(--o1); }
 }
-.fx-line { stroke-dasharray: 1; animation: fx-line var(--dur) ease-out var(--delay) both; }
+.fx-line { stroke-dasharray: 1; opacity: 0; animation: fx-line var(--dur) ease-out var(--delay) forwards; }
 @keyframes fx-line {
   0% { stroke-dashoffset: 1; opacity: 1; }
   55% { stroke-dashoffset: 0; opacity: 1; }
@@ -279,7 +281,25 @@ body {
   border-radius: 9999px;
   border-width: 0.8cqw;
   translate: -50% -50%;
-  animation: fx-ring var(--dur) ease-out var(--delay) both;
+  opacity: 0;
+  animation: fx-ring var(--dur) ease-out var(--delay) forwards;
+}
+/* Órbita: o símbolo gira em volta de quem usa o golpe (Swords Dance). */
+@property --fx-a { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+.fx-orbit {
+  position: absolute;
+  translate: -50% -50%;
+  line-height: 1;
+  left: calc(var(--x) + cos(var(--fx-a)) * var(--r));
+  top: calc(var(--y) + sin(var(--fx-a)) * var(--r) * 0.8);
+  scale: calc(0.85 + sin(var(--fx-a)) * 0.15);
+  opacity: 0;
+  animation: fx-orbit var(--dur) linear var(--delay) forwards;
+}
+@keyframes fx-orbit {
+  0% { --fx-a: var(--a0); opacity: 0; }
+  10%, 85% { opacity: 1; }
+  100% { --fx-a: var(--a1); opacity: 0; }
 }
 @keyframes fx-ring { from { scale: 0.2; opacity: 1; } to { scale: 2.2; opacity: 0; } }
 .fx-wave {
@@ -288,7 +308,8 @@ body {
   width: 55%;
   height: 75%;
   border-radius: 50% 50% 0 0;
-  animation: fx-wave var(--dur) ease-in-out var(--delay) both;
+  opacity: 0;
+  animation: fx-wave var(--dur) ease-in-out var(--delay) forwards;
 }
 @keyframes fx-wave { from { left: var(--from); opacity: 0.9; } to { left: var(--to); opacity: 0.6; } }
 .battle-flash { animation: battle-flash 260ms ease-out forwards; }

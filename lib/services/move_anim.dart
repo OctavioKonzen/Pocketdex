@@ -87,13 +87,16 @@ String moveAnim(String slug, String type, String category) {
 const contactKinds = {'tackle', 'punch', 'kick', 'bite', 'slash'};
 
 /// Estilos que acontecem em quem usa o golpe (ele não avança até o alvo).
-const selfKinds = {'boost', 'heal', 'shield', 'charge', 'weather', 'terrain', 'field', 'wall', 'explode'};
+const selfKinds = {'boost', 'dance', 'heal', 'shield', 'charge', 'weather', 'terrain', 'field', 'wall', 'explode'};
 
 /// Uma peça da animação: partícula (emoji), linha (raio, corte, relâmpago), anel ou onda.
 class FxPart {
-  final String shape; // emoji | line | ring | wave
+  final String shape; // emoji | line | ring | wave | orbit
   final String char;
   final double x0, y0, x1, y1, s0, s1, o0, o1, rot, size, width;
+
+  /// Órbita: raio (em % da largura) e ângulo de começo e fim (graus), em volta de (x0, y0).
+  final double r, a0, a1;
   final int delay, dur, dir;
   const FxPart(
     this.shape, {
@@ -112,6 +115,9 @@ class FxPart {
     this.size = 12,
     this.width = 3,
     this.dir = 1,
+    this.r = 0,
+    this.a0 = 0,
+    this.a1 = 0,
   });
 }
 
@@ -168,6 +174,8 @@ FxPlan fxPlan(String kind, String type, int from, Point<double> a, Point<double>
   }
 
   void around(int n, double radius, int delay, {double size = 8, String? char}) => aroundAt(t, n, radius, delay, size: size, char: char);
+  void orbit(String char, Point<double> c, double r, double a0, int turns, int delay, int dur, double size) => parts.add(FxPart('orbit',
+      char: char, x0: c.x, y0: c.y, r: r * spread, a0: a0, a1: a0 + turns * 360 * spin, delay: (delay * pace).round(), dur: dur, size: size * grow));
   void ring(Point<double> c, int delay, [int dur = 500]) => parts.add(FxPart('ring', x0: c.x, y0: c.y, delay: (delay * pace).round(), dur: dur));
   // Meio do campo e a direção de quem ataca até o alvo.
   final m = Point((a.x + t.x) / 2, (a.y + t.y) / 2);
@@ -289,6 +297,16 @@ FxPlan fxPlan(String kind, String type, int from, Point<double> a, Point<double>
         final x = c.x + (i - (n - 1) / 2) * 5 * spread;
         final y0 = c.y + (up ? 12 : -16) + (i % 2) * 3;
         emoji(up ? '⬆️' : '⬇️', x, y0, x, y0 + (up ? -26 : 26), delay: 120 + i * 90, dur: 480, s0: 0.8, s1: 1, o0: 1, o1: 0, size: 8);
+      }
+    case 'dance':
+      // Swords Dance, Dragon Dance, Quiver Dance: os símbolos girando em volta de quem usa, e o atributo sobe.
+      final n = 3 + extra;
+      for (var k = 0; k < n; k++) {
+        orbit(p, a, 13, ((v * 47) % 360) + k * 360 / n, 2, 0, 1100, 12);
+      }
+      ring(a, 850);
+      for (var i = 0; i < 3; i++) {
+        emoji('⬆️', a.x + (i - 1) * 6, a.y + 10, a.x + (i - 1) * 6, a.y - 16, delay: 800 + i * 80, dur: 450, s0: 0.8, s1: 1, o0: 1, o1: 0, size: 8);
       }
     case 'heal':
       // Recover, Roost, Synthesis: brilho subindo em quem usa.

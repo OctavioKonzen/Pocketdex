@@ -8,6 +8,7 @@
 //   {shape: 'emoji', char, x0, y0, x1, y1, delay, dur, s0, s1, o0, o1, rot, size}
 //   {shape: 'line', x0, y0, x1, y1, delay, dur, width}  (raio, corte, relâmpago)
 //   {shape: 'ring', x, y, delay, dur}  {shape: 'wave', dir, delay, dur}
+//   {shape: 'orbit', char, x, y, r, a0, a1, delay, dur, size}  (girando em volta de x, y: as espadas do Swords Dance)
 // e diz se o campo treme (shake) ou dá um clarão (flash).
 //
 // Golpes de status também têm a sua: atributo subindo (boost) ou descendo
@@ -54,7 +55,7 @@ export function moveAnim(slug, type, category) {
  * de A (quem ataca) até T (o alvo). Igual ao app (move_anim.dart).
  */
 /** Estilos que acontecem em quem usa o golpe (ele não avança até o alvo). */
-export const SELF_KINDS = new Set(['boost', 'heal', 'shield', 'charge', 'weather', 'terrain', 'field', 'wall', 'explode'])
+export const SELF_KINDS = new Set(['boost', 'dance', 'heal', 'shield', 'charge', 'weather', 'terrain', 'field', 'wall', 'explode'])
 
 export function fxPlan(kind, type, from, A, T, icon = null, variant = 0) {
   const q = TYPE_PARTICLE[type] ?? '⭐'
@@ -82,6 +83,8 @@ export function fxPlan(kind, type, from, A, T, icon = null, variant = 0) {
     }
   }
   const around = (n, radius, delay, extraProps = {}, char = q) => aroundAt(T, n, radius, delay, extraProps, char)
+  const orbit = (char, C, r, a0, turns, delay, dur, size) =>
+    parts.push({ shape: 'orbit', char, x: C.x, y: C.y, r: r * spread, a0, a1: a0 + turns * 360 * spin, delay: Math.round(delay * pace), dur, size: size * grow })
   const ring = (C, delay, dur = 500) => parts.push({ shape: 'ring', x: C.x, y: C.y, delay: Math.round(delay * pace), dur })
   // Meio do campo e a direção de quem ataca até o alvo.
   const M = { x: (A.x + T.x) / 2, y: (A.y + T.y) / 2 }
@@ -217,6 +220,15 @@ export function fxPlan(kind, type, from, A, T, icon = null, variant = 0) {
         const y0 = C.y + (up ? 12 : -16) + (i % 2) * 3
         emoji(up ? '⬆️' : '⬇️', x, y0, x, y0 + (up ? -26 : 26), { delay: 120 + i * 90, dur: 480, s0: 0.8, s1: 1, o0: 1, o1: 0, size: 8 })
       }
+      break
+    }
+    case 'dance': {
+      // Swords Dance, Dragon Dance, Quiver Dance: os símbolos girando em volta de quem usa, e o atributo sobe.
+      const n = 3 + extra
+      for (let k = 0; k < n; k++) orbit(p, A, 13, ((v * 47) % 360) + (k * 360) / n, 2, 0, 1100, 12)
+      ring(A, 850)
+      for (let i = 0; i < 3; i++)
+        emoji('⬆️', A.x + (i - 1) * 6, A.y + 10, A.x + (i - 1) * 6, A.y - 16, { delay: 800 + i * 80, dur: 450, s0: 0.8, s1: 1, o0: 1, o1: 0, size: 8 })
       break
     }
     case 'heal':

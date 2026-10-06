@@ -401,6 +401,10 @@ void main() {
                   },
                 'line' => {'shape': 'line', 'x0': p.x0, 'y0': p.y0, 'x1': p.x1, 'y1': p.y1, 'delay': p.delay, 'dur': p.dur, 'width': p.width},
                 'ring' => {'shape': 'ring', 'x': p.x0, 'y': p.y0, 'delay': p.delay, 'dur': p.dur},
+                'orbit' => {
+                    'shape': 'orbit', 'char': p.char, 'x': p.x0, 'y': p.y0, 'r': p.r, 'a0': p.a0, 'a1': p.a1, //
+                    'delay': p.delay, 'dur': p.dur, 'size': p.size,
+                  },
                 _ => {'shape': 'wave', 'dir': p.dir, 'delay': p.delay, 'dur': p.dur},
               },
           ],
@@ -475,5 +479,5 @@ void main() {
 const _kinds = [
   'tackle', 'punch', 'kick', 'bite', 'slash', 'orb', 'beam', 'stream', 'volley', 'bolt', 'quake', 'rocks', 'meteor', 'wave', 'wind', 'rings', 'drain', //
   'boost', 'drop', 'heal', 'shield', 'wall', 'powder', 'status', 'hazard', 'weather', 'terrain', 'field', 'charge', 'explode', 'spin', 'dive', 'pierce',
-  'whip', 'swap',
+  'whip', 'swap', 'dance',
 ];

@@ -5073,6 +5073,56 @@
   "fr": "Ordre du tour : {0}",
   "es": "Orden del turno: {0}"
  },
+ "Precisão": {
+  "en": "Accuracy",
+  "fr": "Précision",
+  "es": "Precisión"
+ },
+ "Evasão": {
+  "en": "Evasion",
+  "fr": "Esquive",
+  "es": "Evasión"
+ },
+ "Os atributos de todos voltaram ao normal!": {
+  "en": "All stat changes were eliminated!",
+  "fr": "Les changements de stats ont été annulés !",
+  "es": "¡Se anularon los cambios en las características!"
+ },
+ "Atq": {
+  "en": "Atk",
+  "fr": "Atq",
+  "es": "Atq"
+ },
+ "Def": {
+  "en": "Def",
+  "fr": "Déf",
+  "es": "Def"
+ },
+ "AtE": {
+  "en": "SpA",
+  "fr": "AtS",
+  "es": "AtE"
+ },
+ "DfE": {
+  "en": "SpD",
+  "fr": "DfS",
+  "es": "DfE"
+ },
+ "Vel": {
+  "en": "Spe",
+  "fr": "Vit",
+  "es": "Vel"
+ },
+ "Pre": {
+  "en": "Acc",
+  "fr": "Pré",
+  "es": "Pre"
+ },
+ "Eva": {
+  "en": "Eva",
+  "fr": "Esq",
+  "es": "Eva"
+ },
  "Formas alternativas": {
   "en": "Alternate forms",
   "fr": "Formes alternatives",
