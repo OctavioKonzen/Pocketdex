@@ -1,4 +1,4 @@
-import {newBattle, lineOf} from './turnBattle'
+import {newBattle, lineOf, turnOrder} from './turnBattle'
 import {simulatorRecommend, simulatorTurn} from './battleSimulator'
 
 export const modeOf = count => ['singles','doubles','triples'][count - 1]
@@ -47,14 +47,16 @@ export function automaticPartyChoices(battle) {
   }
   return {kind:'team',choices}
 }
-export function playPartyTurn(battle, submissions) {
+// order: mostra a fila do turno antes das ações (contra o computador; online as
+// cores 🔵/🔴 ficariam trocadas para o outro jogador).
+export function playPartyTurn(battle, submissions, {order = false} = {}) {
   const events = simulatorTurn(battle,groupActions(battle,submissions))
   for (let attempt=0;attempt<12 && battle.winner == null;attempt++) {
     const automatic = automaticPartyChoices(battle)
     if (!automatic) break
     events.push(...simulatorTurn(battle,groupActions(battle,[automatic])))
   }
-  return events
+  return [...(order ? turnOrder(events) : []), ...events]
 }
 export function describeEvents(events) {
   return events.filter(e => e.t === 'text').map(e => {

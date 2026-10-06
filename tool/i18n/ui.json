@@ -5068,6 +5068,11 @@
   "fr": "Choisissez des amis de votre liste.",
   "es": "Elige amigos de tu lista."
  },
+ "Ordem do turno: {0}": {
+  "en": "Turn order: {0}",
+  "fr": "Ordre du tour : {0}",
+  "es": "Orden del turno: {0}"
+ },
  "Formas alternativas": {
   "en": "Alternate forms",
   "fr": "Formes alternatives",

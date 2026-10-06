@@ -820,7 +820,7 @@ export function MultiBattle({battle, onExit, onAgain, online = null}) {
     const action = {kind:'team',choices:submitted}
     if (online) {online.onAction(action);return}
     try {
-      const events = playPartyTurn(battle,[action])
+      const events = playPartyTurn(battle,[action],{order: true})
       for(let attempt=0;attempt<12 && battle.winner == null;attempt++) {
         const s=battle.simulator.state.sides[side]
         const requiresChoice=s.slots.some(slot=>battle.controllers[side][slot.slot] === uid && !s.wait && !slot.pass && (!s.slots.some(x=>x.forceSwitch) || slot.forceSwitch))

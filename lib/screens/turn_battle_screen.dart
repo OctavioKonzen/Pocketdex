@@ -1428,7 +1428,7 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
     final action = <String, dynamic>{'kind': 'team', 'choices': submitted};
     if (widget.online != null) { widget.online!.onAction(action); return; }
     try {
-      final events = PartyBattle.play(_b, [action]);
+      final events = PartyBattle.play(_b, [action], order: true);
       for (var attempt = 0; attempt < 12 && _b.winner == null; attempt++) {
         final state = _b.simulatorState!['sides'][_side] as Map;
         final slots = (state['slots'] as List).cast<Map>();
