@@ -6,6 +6,10 @@
 //   forms: {forma (slug da PokeAPI): [ids dos itens que ela precisa segurar]}
 //          ex. groudon-primal: [redorb], zacian-crowned: [rustedsword],
 //          arceus-fire: [flameplate, firiumz] (o montador põe o item sozinho)
+//   held: [ids dos itens com efeito na batalha que o motor conhece] — o
+//         montador mostra todos (Air Balloon, Assault Vest, bagas, gems...),
+//         mesmo os que o banco não marca como "seguráveis". Ficam de fora
+//         Poké Balls, TRs, fósseis, pedras e itens de evolução e doces.
 // (id do Showdown: nome sem espaços nem símbolos, em minúsculas: "Charizardite X" → charizarditex.)
 //
 // Uso: node tool/build_battle_items.mjs /caminho/do/package (npm pack pokemon-showdown)
@@ -45,6 +49,13 @@ for (const species of Object.values(Pokedex)) {
   const slug = bySlugId.get(toId(species.name)) ?? bySlugId.get(`${toId(species.name)}mask`)
   if (slug) forms[slug] = items.map(toId)
 }
-const out = { mega, z, forms }
+// Itens sem efeito na batalha (só evolução, captura ou venda).
+const NO_BATTLE = /^(tr\d+|.*fossil.*|oldamber|.*stone|.*sweet|.*apple|.*pot|.*teacup|.*armor|.*cuff|.*wreath|metalalloy|.*bottlecap|bignugget|rarebone|dragonscale|upgrade|dubiousdisc|electirizer|magmarizer|protector|reapercloth|prismscale|razzberry|sachet|whippeddream|berserkgene|mail|prettyfeather|pinkbow|polkadotbow|strawberrysweet)$/
+const KEEP = new Set(['floatstone', 'everstone', 'rockyhelmet'])
+const held = Object.entries(Items)
+  .filter(([id, item]) => (!item.isNonstandard || item.isNonstandard === 'Past') && !item.isPokeball && (KEEP.has(id) || !NO_BATTLE.test(id)))
+  .map(([id]) => id)
+  .sort()
+const out = { mega, z, forms, held }
 writeFileSync(path.join(root, 'assets/database/battle_items.json'), `${JSON.stringify(out)}\n`)
-console.log(`Mega Pedras: ${Object.keys(mega).length}, Cristais Z: ${Object.keys(z).length}, formas com item: ${Object.keys(forms).length}`)
+console.log(`Mega Pedras: ${Object.keys(mega).length}, Cristais Z: ${Object.keys(z).length}, formas com item: ${Object.keys(forms).length}, itens de batalha: ${held.length}`)
