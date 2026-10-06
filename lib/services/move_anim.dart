@@ -341,7 +341,7 @@ FxPlan fxPlan(String kind, String type, int from, Point<double> a, Point<double>
       // Sunny Day, Rain Dance, Sandstorm, Snowscape: caindo do céu no campo todo.
       for (var i = 0; i < 12 + extra * 2; i++) {
         final x = 4.0 + (i * 37 + v * 11) % 92;
-        emoji(p, x, -8, x - 8 * spin, 100, delay: i * 70, dur: 800, s0: 1, s1: 1, o0: 1, o1: 0.3, rot: 90, size: 9);
+        emoji(p, x, -8, x - 8 * spin, 100, delay: i * 70, dur: 800, s0: 1, s1: 1, o0: 1, o1: 0.3, size: 9);
       }
     case 'terrain':
       // Electric, Grassy, Misty, Psychic Terrain: subindo do chão no campo todo.
@@ -373,7 +373,7 @@ FxPlan fxPlan(String kind, String type, int from, Point<double> a, Point<double>
       ring(a, 0, 600);
       ring(a, 200, 600);
       aroundAt(a, 8, 22, 150, size: 10, char: p);
-      burst(400, 18, q);
+      burst(400, 18, p);
     case 'spin':
       // Rapid Spin, Rollout, Gyro Ball: rodando até o alvo.
       for (var i = 0; i < 2 + extra; i++) {

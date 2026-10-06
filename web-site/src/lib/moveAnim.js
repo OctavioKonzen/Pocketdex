@@ -288,7 +288,7 @@ export function fxPlan(kind, type, from, A, T, icon = null, variant = 0) {
       // Sunny Day, Rain Dance, Sandstorm, Snowscape: caindo do céu no campo todo.
       for (let i = 0; i < 12 + extra * 2; i++) {
         const x = 4 + ((i * 37 + v * 11) % 92)
-        emoji(p, x, -8, x - 8 * spin, 100, { delay: i * 70, dur: 800, s0: 1, s1: 1, o0: 1, o1: 0.3, rot: 90, size: 9 })
+        emoji(p, x, -8, x - 8 * spin, 100, { delay: i * 70, dur: 800, s0: 1, s1: 1, o0: 1, o1: 0.3, size: 9 })
       }
       break
     case 'terrain':
@@ -322,7 +322,7 @@ export function fxPlan(kind, type, from, A, T, icon = null, variant = 0) {
       ring(A, 0, 600)
       ring(A, 200, 600)
       aroundAt(A, 8, 22, 150, { size: 10 }, p)
-      burst(400, 18, q)
+      burst(400, 18, p)
       break
     case 'spin':
       // Rapid Spin, Rollout, Gyro Ball: rodando até o alvo.

@@ -128,7 +128,7 @@ STATUS_RECIPES = {
     'swords-dance': ('boost', '⚔️'), 'growth': ('boost', '🌱'), 'meditate': ('boost', '🧘'), 'agility': ('boost', '💨'),
     'double-team': ('boost', '👥'), 'harden': ('boost', '🪨'), 'minimize': ('boost', '🔹'), 'withdraw': ('boost', '🐢'),
     'defense-curl': ('boost', '🔄'), 'barrier': ('wall', '🔷'), 'amnesia': ('boost', '❓'), 'acid-armor': ('boost', '🟣'),
-    'sharpen': ('boost', '📐'), 'howl': ('rings', '🐺'), 'bulk-up': ('boost', '💪'), 'calm-mind': ('boost', '🧘'),
+    'sharpen': ('boost', '📐'), 'howl': ('boost', '🐺'), 'bulk-up': ('boost', '💪'), 'calm-mind': ('boost', '🧘'),
     'dragon-dance': ('boost', '🐉'), 'cosmic-power': ('boost', '🌌'), 'iron-defense': ('boost', '🛡️'), 'tail-glow': ('boost', '💡'),
     'rock-polish': ('boost', '💎'), 'nasty-plot': ('boost', '😈'), 'defend-order': ('boost', '🐝'), 'hone-claws': ('boost', '✴️'),
     'autotomize': ('boost', '⚙️'), 'quiver-dance': ('boost', '🦋'), 'coil': ('boost', '🐍'), 'shell-smash': ('boost', '🐚'),
@@ -138,8 +138,8 @@ STATUS_RECIPES = {
     'tidy-up': ('boost', '🧹'), 'stuff-cheeks': ('heal', '🍒'), 'acupressure': ('boost', '📍'), 'aromatic-mist': ('boost', '🌸'),
     'coaching': ('boost', '📣'), 'gear-up': ('boost', '🔩'), 'magnetic-flux': ('boost', '🧲'), 'decorate': ('boost', '🎀'),
     'flower-shield': ('boost', '🌼'), 'rototiller': ('terrain', '🌱'), 'happy-hour': ('boost', '🎉'), 'celebrate': ('boost', '🎊'),
-    'hold-hands': ('swap', '🤝'), 'helping-hand': ('boost', '✋'), 'dragon-cheer': ('boost', '🐲'), 'power-trick': ('swap', '🔀'),
-    'power-shift': ('swap', '🔃'), 'laser-focus': ('charge', '🎯'), 'focus-energy': ('charge', '🔥'), 'charge': ('charge', '⚡'),
+    'hold-hands': ('boost', '🤝'), 'helping-hand': ('boost', '✋'), 'dragon-cheer': ('boost', '🐲'), 'power-trick': ('boost', '🔀'),
+    'power-shift': ('boost', '🔃'), 'laser-focus': ('charge', '🎯'), 'focus-energy': ('charge', '🔥'), 'charge': ('charge', '⚡'),
     'stockpile': ('charge', '🫃'), 'swallow': ('heal', '😋'), 'spit-up': ('orb', '💨'),
     # Atributos descendo no alvo.
     'sand-attack': ('powder', '🟫'), 'tail-whip': ('drop', '〰️'), 'leer': ('drop', '👀'), 'growl': ('rings', '🗯️'),
@@ -159,7 +159,7 @@ STATUS_RECIPES = {
     'will-o-wisp': ('status', '🔥'), 'flatter': ('status', '🥰'), 'yawn': ('status', '🥱'), 'grass-whistle': ('rings', '🎶'),
     'teeter-dance': ('rings', '💃'), 'dark-void': ('powder', '🌑'), 'nightmare': ('status', '😱'), 'leech-seed': ('hazard', '🌱'),
     'disable': ('status', '🚫'), 'taunt': ('status', '😜'), 'torment': ('status', '😖'), 'encore': ('status', '👏'),
-    'curse': ('status', '📌'), 'perish-song': ('rings', '🎼'), 'destiny-bond': ('status', '⛓️'), 'grudge': ('status', '👻'),
+    'curse': ('status', '📌'), 'perish-song': ('rings', '🎼'), 'destiny-bond': ('charge', '⛓️'), 'grudge': ('charge', '👻'),
     'spite': ('status', '😠'), 'mean-look': ('status', '👁️‍🗨️'), 'block': ('wall', '🧱'), 'spider-web': ('hazard', '🕸️'),
     'octolock': ('status', '🐙'), 'embargo': ('status', '📦'), 'heal-block': ('status', '⛔'), 'gastro-acid': ('powder', '🟢'),
     'worry-seed': ('status', '🌰'), 'telekinesis': ('status', '🛸'), 'soak': ('stream', '💦'), 'simple-beam': ('beam', '⚪'),
@@ -174,7 +174,7 @@ STATUS_RECIPES = {
     'guard-split': ('swap', '⚖️'), 'power-split': ('swap', '⚖️'), 'pain-split': ('swap', '💔'), 'bestow': ('swap', '🎁'),
     'transform': ('swap', '🟪'), 'mimic': ('swap', '🪞'), 'sketch': ('swap', '🖌️'), 'doodle': ('swap', '🎨'),
     'psych-up': ('swap', '📈'), 'conversion': ('boost', '🔣'), 'conversion-2': ('boost', '🔁'), 'camouflage': ('boost', '🦎'),
-    'ally-switch': ('swap', '↔️'), 'baton-pass': ('swap', '🪄'), 'teleport': ('charge', '✨'), 'shed-tail': ('swap', '🦎'),
+    'ally-switch': ('charge', '↔️'), 'baton-pass': ('charge', '🪄'), 'teleport': ('charge', '✨'), 'shed-tail': ('shield', '🦎'),
     'court-change': ('field', '🔄'), 'recycle': ('charge', '♻️'),
     # Cura.
     'recover': ('heal', '💖'), 'soft-boiled': ('heal', '🥚'), 'rest': ('heal', '💤'), 'milk-drink': ('heal', '🥛'),
@@ -182,13 +182,13 @@ STATUS_RECIPES = {
     'roost': ('heal', '🪶'), 'heal-order': ('heal', '🐝'), 'shore-up': ('heal', '🏖️'), 'wish': ('heal', '🌠'),
     'healing-wish': ('heal', '🙏'), 'lunar-dance': ('heal', '🌕'), 'heal-pulse': ('rings', '💗'), 'floral-healing': ('heal', '🌸'),
     'life-dew': ('heal', '💧'), 'jungle-healing': ('heal', '🌴'), 'lunar-blessing': ('heal', '🌙'), 'aqua-ring': ('shield', '💧'),
-    'ingrain': ('heal', '🌳'), 'heal-bell': ('rings', '🔔'), 'aromatherapy': ('heal', '🌺'), 'refresh': ('heal', '🫧'),
+    'ingrain': ('heal', '🌳'), 'heal-bell': ('heal', '🔔'), 'aromatherapy': ('heal', '🌺'), 'refresh': ('heal', '🫧'),
     'revival-blessing': ('heal', '🪽'), 'teatime': ('heal', '🍵'),
     # Proteção.
     'protect': ('shield', '🟢'), 'detect': ('shield', '👁️'), 'endure': ('shield', '😣'), 'kings-shield': ('shield', '👑'),
     'spiky-shield': ('shield', '🌵'), 'baneful-bunker': ('shield', '☠️'), 'obstruct': ('shield', '✋'), 'silk-trap': ('shield', '🕸️'),
     'burning-bulwark': ('shield', '🔥'), 'max-guard': ('shield', '🔰'), 'substitute': ('shield', '🧸'), 'magic-coat': ('shield', '🪞'),
-    'snatch': ('swap', '🫳'), 'follow-me': ('boost', '👉'), 'rage-powder': ('powder', '😡'), 'magnet-rise': ('boost', '🧲'),
+    'snatch': ('charge', '🫳'), 'follow-me': ('boost', '👉'), 'rage-powder': ('charge', '😡'), 'magnet-rise': ('boost', '🧲'),
     'mat-block': ('wall', '🟫'), 'quick-guard': ('wall', '⚡'), 'wide-guard': ('wall', '🪨'), 'crafty-shield': ('wall', '✨'),
     # Barreiras no lado de quem usa.
     'reflect': ('wall', '🟪'), 'light-screen': ('wall', '🟨'), 'aurora-veil': ('wall', '🌌'), 'safeguard': ('wall', '🛡️'),
@@ -205,7 +205,7 @@ STATUS_RECIPES = {
     'haze': ('field', '🌫️'), 'defog': ('weather', '🌬️'), 'whirlwind': ('wind', '🌪️'), 'roar': ('rings', '🦁'),
     # Golpes que chamam outros golpes.
     'metronome': ('charge', '☝️'), 'mirror-move': ('swap', '🪞'), 'nature-power': ('charge', '🌳'), 'assist': ('charge', '🤝'),
-    'copycat': ('swap', '🐱'), 'me-first': ('swap', '🥇'), 'sleep-talk': ('charge', '💭'), 'splash': ('boost', '💦'),
+    'copycat': ('charge', '🐱'), 'me-first': ('swap', '🥇'), 'sleep-talk': ('charge', '💭'), 'splash': ('boost', '💦'),
     # Golpes Sombrios do Colosseum/XD.
     'shadow-down': ('drop', '🖤'), 'shadow-hold': ('status', '🖤'), 'shadow-mist': ('powder', '🖤'), 'shadow-panic': ('status', '😵‍💫'),
     'shadow-shed': ('field', '🖤'), 'shadow-sky': ('weather', '🖤'),
