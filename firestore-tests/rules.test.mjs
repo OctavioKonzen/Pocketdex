@@ -301,7 +301,10 @@ await check('ainda permite encerrar partida antiga', updateDoc(doc(A, 'onlineBat
 const groupUsers = ['alice', 'bob', 'carol', 'dave', 'erin', 'frank']
 const groupDb = Object.fromEntries(groupUsers.map(uid => [uid, env.authenticatedContext(uid).firestore()]))
 await env.withSecurityRulesDisabled(async ctx => {
-  for (const uid of groupUsers.slice(1)) await setDoc(doc(ctx.firestore(), 'friends', 'alice', 'list', uid), {name: uid, status: 'friends'})
+  for (const uid of groupUsers.slice(1)) {
+    await setDoc(doc(ctx.firestore(), 'friends', 'alice', 'list', uid), {name: uid, status: 'friends'})
+    await setDoc(doc(ctx.firestore(), 'friends', uid, 'list', 'alice'), {name: 'Ash Ketchum', status: 'friends'})
+  }
 })
 const groupRoom = (mode, seats) => {
   const players = [...new Set(seats.filter(uid => !uid.startsWith('npc')))]
@@ -335,6 +338,10 @@ for (const [id, mode, seats] of [
   await check(`${id}: não pula rodada incompleta`,setDoc(doc(groupDb.alice,'onlineBattles',id,'actions','2_alice'),groupInput('alice',seats,2)),false)
   if (Object.keys(room.npcTeams).length) await check(`${id}: NPC imutável`,updateDoc(ref('alice'),{npcTeams:{}}),false)
 }
+await check('protocolo 5: convidado com nome falso', setDoc(doc(A,'onlineBattles','fakename'), {...groupRoom('doubles',['alice','bob','npc2','npc3']), names: {alice: 'Ash Ketchum', bob: 'Admin'}}), false)
+await env.withSecurityRulesDisabled(async ctx => { await deleteDoc(doc(ctx.firestore(), 'friends', 'carol', 'list', 'alice')) })
+await check('protocolo 5: cria com quem desfez a amizade do lado dele', setDoc(doc(groupDb.alice,'onlineBattles','oneside'), groupRoom('doubles',['alice','carol','npc2','npc3'])), true)
+await check('protocolo 5: quem desfez a amizade não aceita', updateDoc(doc(groupDb.carol,'onlineBattles','oneside'), {'teams.carol': packed, status: 'active'}), false)
 await check('protocolo 5: não participa nos dois lados',setDoc(doc(A,'onlineBattles','cross'),groupRoom('doubles',['alice','bob','alice','npc3'])),false)
 await check('protocolo 5: NPC corresponde à posição',setDoc(doc(A,'onlineBattles','badnpc'),groupRoom('doubles',['alice','bob','npc3','npc2'])),false)
 

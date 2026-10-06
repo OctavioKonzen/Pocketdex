@@ -2,9 +2,6 @@ name: Manter somente os APKs atuais
 
 on:
   workflow_dispatch:
-  push:
-    branches: [codex/doubles-triples-partners]
-    paths: [.github/workflows/cleanup-old-apks.yml]
 
 permissions:
   contents: write

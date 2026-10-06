@@ -46,11 +46,18 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen> {
     _rooms = OnlineBattles.watchMine();
   }
   List<Map<String, dynamic>> get _teams => UserData.instance.teams.where((t) => BattleTeam.fromMap(t) != null).toList();
+  /// O amigo escolhido, se ele está na lista (os menus quebram com um valor fora da lista).
+  String? get _knownFriend => FriendsService.instance.friends.any((f) => f.uid == _friend) ? _friend : null;
+
   Future<void> _invite() async {
     setState(() { _busy = true; _errorText = null; });
     try {
       final seats = [for (var seat = 0; seat < _count * 2; seat++) seat == 0 ? OnlineBattles.me : _participants[seat] ?? (seat < _count ? OnlineBattles.me : _friend ?? 'npc$seat')];
-      final names = {for (final uid in seats.toSet().where((uid) => !PartyBattle.isNpc(uid))) uid: uid == OnlineBattles.me ? AuthService.instance.user!.name ?? '' : FriendsService.instance.friends.firstWhere((friend) => friend.uid == uid).name};
+      // Quem não está (mais) na lista de amigos não entra: avisa em vez de quebrar.
+      final friendNames = {for (final f in FriendsService.instance.friends) f.uid: f.name};
+      final humans = seats.toSet().where((uid) => !PartyBattle.isNpc(uid));
+      if (humans.any((uid) => uid != OnlineBattles.me && !friendNames.containsKey(uid))) throw StateError('Escolha amigos da sua lista.');
+      final names = {for (final uid in humans) uid: uid == OnlineBattles.me ? AuthService.instance.user!.name ?? '' : friendNames[uid]!};
       final id = await OnlineBattles.inviteGame(seats, _count, names, await _selectedTeam(_team!, _teams), npcDifficulty: _npcDifficulty);
       if (mounted) await Navigator.push(context, MaterialPageRoute(builder: (_) => OnlineBattleRoomScreen(id: id)));
     } catch (e) { if (mounted) setState(() => _errorText = _error(e)); }
@@ -66,14 +73,14 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen> {
         DropdownButtonFormField<int>(initialValue: _count, isExpanded: true, decoration: const InputDecoration(labelText: 'Formato'), items: const [DropdownMenuItem(value: 1, child: Text('Individual')), DropdownMenuItem(value: 2, child: Text('Dupla')), DropdownMenuItem(value: 3, child: Text('Tripla'))], onChanged: _busy ? null : (v) => setState(() { _count = v!; _participants.clear(); })),
         const SizedBox(height: 12),
         if (_count == 1) DropdownButtonFormField<String>(
-          initialValue: _friend, isExpanded: true, decoration: const InputDecoration(labelText: 'Amigo'),
+          initialValue: _knownFriend, isExpanded: true, decoration: const InputDecoration(labelText: 'Amigo'),
           items: [for (final f in FriendsService.instance.friends) DropdownMenuItem(value: f.uid, child: Text(f.name))],
           onChanged: _busy ? null : (v) => setState(() => _friend = v),
         ),
         if (_count > 1) ...[
           const Text('Sua equipe começa com você. Escolha quem controla cada posição; a mesma pessoa pode controlar mais de uma.'),
           for (var seat = 1; seat < _count * 2; seat++) Padding(padding: const EdgeInsets.symmetric(vertical: 6), child: DropdownButtonFormField<String>(key: ValueKey((_count, seat)),
-            initialValue: _participants[seat] ?? (seat < _count ? OnlineBattles.me : _friend ?? 'npc$seat'), isExpanded: true,
+            initialValue: _participants[seat] ?? (seat < _count ? OnlineBattles.me : _knownFriend ?? 'npc$seat'), isExpanded: true,
             decoration: InputDecoration(labelText: '${seat < _count ? 'Sua equipe' : 'Equipe adversária'} · posição ${seat % _count + 1}'),
             items: [if (seat < _count) DropdownMenuItem(value: OnlineBattles.me, child: const Text('Você')), DropdownMenuItem(value: 'npc$seat', child: const Text('NPC')), for (final friend in FriendsService.instance.friends) DropdownMenuItem(value: friend.uid, child: Text(friend.name))],
             onChanged: _busy ? null : (value) => setState(() => _participants[seat] = value!))),

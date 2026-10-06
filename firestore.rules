@@ -239,12 +239,20 @@ service cloud.firestore {
           && d.createdAt is timestamp && (d.endedBy == null || d.endedBy in d.players);
       }
       function validRoom(d) { return d.protocol == 5 ? newRoom(d) : legacyRoom(d); }
-      function hostFriend(host, players, i) {
-        return i >= players.size() || get(/databases/$(database)/documents/friends/$(host)/list/$(players[i])).data.status == 'friends';
+      // Cada convidado é amigo de quem cria, e o nome dele na sala é o nome
+      // real (o mesmo da lista de amigos de quem cria, que só aceita o nome
+      // da conta): ninguém se passa por outro.
+      function hostFriend(host, d, i) {
+        let friend = i >= d.players.size() ? null : get(/databases/$(database)/documents/friends/$(host)/list/$(d.players[i])).data;
+        return i >= d.players.size() || (friend.status == 'friends' && friend.name == d.names[d.players[i]]);
       }
       function newFriends(d) {
         let p = d.players;
-        return hostFriend(p[0], p, 1) && hostFriend(p[0], p, 2) && hostFriend(p[0], p, 3) && hostFriend(p[0], p, 4) && hostFriend(p[0], p, 5);
+        return hostFriend(p[0], d, 1) && hostFriend(p[0], d, 2) && hostFriend(p[0], d, 3) && hostFriend(p[0], d, 4) && hostFriend(p[0], d, 5);
+      }
+      // Quem aceita ainda é amigo de quem criou, do próprio lado também.
+      function acceptorFriend(d) {
+        return get(/databases/$(database)/documents/friends/$(request.auth.uid)/list/$(d.players[0])).data.status == 'friends';
       }
       function newCreate(d) {
         return newRoom(d) && member(d) && d.players[0] == request.auth.uid && d.names[request.auth.uid] == accountName(request.auth.uid)
@@ -257,7 +265,7 @@ service cloud.firestore {
           && now.teams.diff(old.teams).affectedKeys().hasOnly([request.auth.uid]) && request.auth.uid in now.teams
           && now.teams[request.auth.uid] is string && now.teams[request.auth.uid].size() <= 20000
           && now.status == (now.teams.keys().hasAll(old.players) ? 'active' : 'pending')
-          && request.time < old.createdAt + duration.value(7, 'd') && newFriends(old);
+          && request.time < old.createdAt + duration.value(7, 'd') && newFriends(old) && acceptorFriend(old);
       }
       function stillFriends(d) {
         return get(/databases/$(database)/documents/friends/$(d.players[0])/list/$(d.players[1])).data.status == 'friends'

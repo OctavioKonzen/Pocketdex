@@ -31,6 +31,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # o histórico completo deixa pôr o commit da versão por cima do main
 
       - name: Versão e secrets
         id: check
@@ -141,6 +143,9 @@ jobs:
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
             git add pubspec.yaml README.md
             git commit -m "Release APK v$VERSION"
+            # O main pode ter andado enquanto o APK era gerado: põe o commit da
+            # versão por cima dele em vez de falhar no push.
+            git pull --rebase origin main
             git push origin HEAD:main
           fi
           # O nome fixo PocketDex.apk deixa o link

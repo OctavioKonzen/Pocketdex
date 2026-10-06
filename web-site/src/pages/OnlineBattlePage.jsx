@@ -69,8 +69,10 @@ function Lobby({ user }) {
       const seats=Array.from({length:count*2},(_,seat)=>seat===0?user.uid:participants[seat] || (seat<count?user.uid:friend || `npc${seat}`))
       const humans=[...new Set(seats.filter(uid=>!isNpc(uid)))]
       const names=Object.fromEntries(humans.map(uid=>[uid,uid===user.uid?user.name:friends.find(f=>f.uid===uid)?.name]))
+      // Quem não está (mais) na lista de amigos não entra: avisa em vez de mandar um nome vazio.
+      if (Object.values(names).some(name=>!name)) throw new Error('Escolha amigos da sua lista.')
       navigate('/amigos/online/' + await inviteBattle(f,t,{mode:modeOf(count),seats,names,npcDifficulty}))
-    } catch (e) { setError(errorMessage(e)) }
+    } catch (e) { setError(e?.code ? errorMessage(e) : e?.message || errorMessage(e)) }
     finally { setBusy(false) }
   }
   return <div className="mx-auto max-w-2xl space-y-4">

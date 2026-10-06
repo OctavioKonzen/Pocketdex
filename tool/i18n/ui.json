@@ -5058,6 +5058,16 @@
   "fr": "Formes",
   "es": "Formas"
  },
+ "Essa conta não existe mais (foi excluída).": {
+  "en": "This account no longer exists (it was deleted).",
+  "fr": "Ce compte n'existe plus (il a été supprimé).",
+  "es": "Esta cuenta ya no existe (fue eliminada)."
+ },
+ "Escolha amigos da sua lista.": {
+  "en": "Choose friends from your list.",
+  "fr": "Choisissez des amis de votre liste.",
+  "es": "Elige amigos de tu lista."
+ },
  "Formas alternativas": {
   "en": "Alternate forms",
   "fr": "Formes alternatives",
