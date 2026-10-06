@@ -83,7 +83,7 @@ void main() {
     addTearDown(tester.view.reset);
     final battle=await tester.runAsync(() async {
       final me=await TurnBattleSetup.mons([(212,<String,dynamic>{'moves':['u-turn','swift','recover','protect']}),(25,<String,dynamic>{'moves':['swift','recover','protect','splash']})],(row)=>'${row['name']}');
-      final npc=await TurnBattleSetup.mons([(242,<String,dynamic>{'moves':['splash','splash','splash','splash']})],(row)=>'${row['name']}');
+      final npc=await TurnBattleSetup.mons([(242,<String,dynamic>{'moves':['splash','helping-hand','celebrate','hold-hands']})],(row)=>'${row['name']}');
       return TurnBattle(me,npc,Random(3).nextDouble);
     });
     addTearDown(battle!.dispose);

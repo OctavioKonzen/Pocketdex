@@ -495,7 +495,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
             _status[side][index] = mon.status;
           }
           _fainted[side] = _b.active(side).hp <= 0;
-          _form[side] = _b.active(side).id;
+          _form[side] = _b.active(side).dmax > 0 ? _b.active(side).gmax ?? _b.active(side).id : _b.active(side).id;
           _dmax[side] = _b.active(side).dmax > 0;
         }
         _weather = _b.weather;

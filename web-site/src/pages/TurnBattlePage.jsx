@@ -461,7 +461,7 @@ function SingleBattle({ battle, foeName, hit, onExit, onAgain, online = null }) 
     } finally {
       actionBusy.current = false
       if (live.current) {
-        setShown({active:battle.sides.map(s=>s.active),hp:battle.sides.map(s=>s.team.map(m=>m.hp)),status:battle.sides.map(s=>s.team.map(m=>m.status)),fainted:battle.sides.map(s=>s.team[s.active].hp<=0),form:battle.sides.map(s=>s.team[s.active].id),dmax:battle.sides.map(s=>s.team[s.active].dmax>0),weather:battle.weather})
+        setShown({active:battle.sides.map(s=>s.active),hp:battle.sides.map(s=>s.team.map(m=>m.hp)),status:battle.sides.map(s=>s.team.map(m=>m.status)),fainted:battle.sides.map(s=>s.team[s.active].hp<=0),form:battle.sides.map(s=>{const mon=s.team[s.active];return mon.dmax>0?mon.gmax??mon.id:mon.id}),dmax:battle.sides.map(s=>s.team[s.active].dmax>0),weather:battle.weather})
         setEffect(null)
         skip.current = null
         setBusy(false)
@@ -479,7 +479,7 @@ function SingleBattle({ battle, foeName, hit, onExit, onAgain, online = null }) 
     if (!events.length) return
     actionBusy.current = true
     setBusy(true)
-    const id = setTimeout(() => play(events), STEP_MS)
+    const id = setTimeout(() => { play(events).catch(() => { if(live.current) setText(t('Não foi possível exibir esta ação.')) }) }, STEP_MS)
     return () => clearTimeout(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [battle])
