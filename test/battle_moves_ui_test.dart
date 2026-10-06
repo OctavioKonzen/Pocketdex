@@ -11,6 +11,7 @@ import 'package:pocket_dex/screens/turn_battle_screen.dart';
 import 'package:pocket_dex/services/app_settings.dart';
 import 'package:pocket_dex/services/party_battle.dart';
 import 'package:pocket_dex/services/turn_battle.dart';
+import 'package:pocket_dex/services/damage_calc.dart';
 import 'package:pocket_dex/widgets/pokemon_sprite.dart';
 
 void main() {
@@ -45,6 +46,64 @@ void main() {
         for(final side in [0,1]) expect(TurnBattle.lineOf(BattleEvent.viewFor(e,side)).$1,isA<String>());
       }
     } finally {battle.dispose();}
+  });
+  test('Combate individual continua após pivôs, recarga, aprisionamento e golpes bloqueados', () async {
+    final hit=TurnBattleSetup.hitter(await DamageData.load());
+    for(final moves in [
+      ['u-turn','swift','recover','protect'],
+      ['volt-switch','thunderbolt','recover','protect'],
+      ['baton-pass','swords-dance','swift','protect'],
+      ['hyper-beam','swift','recover','protect'],
+      ['fly','swift','recover','protect'],
+      ['outrage','swift','recover','protect'],
+      ['encore','disable','taunt','swift'],
+      ['mean-look','toxic','stealth-rock','swift'],
+    ]) {
+      final me=await TurnBattleSetup.mons([for(var i=0;i<3;i++) (151,<String,dynamic>{'moves':moves})],(row)=>'Mew');
+      final foe=await TurnBattleSetup.mons([for(var i=0;i<3;i++) (151,<String,dynamic>{'moves':moves})],(row)=>'Mew');
+      final battle=TurnBattle(me,foe,Random(7).nextDouble);
+      try {
+        battle.start();
+        for(var step=0;step<24 && battle.winner==null;step++) {
+          final choice=battle.recommend(0).first;
+          final before=battle.turn;
+          final wasSwitch=battle.needSwitch;
+          final events=wasSwitch ? battle.replace(choice['index'] as int)
+            : battle.playTurn(hit,move:choice['kind']=='move'?choice['index'] as int:null,
+                switchTo:choice['kind']=='switch'?choice['index'] as int:null,gimmick:'none');
+          for(final event in events.where((e)=>e.t=='text')) { TurnBattle.lineOf(event); }
+          expect(battle.turn>before || battle.needSwitch || wasSwitch || battle.winner!=null,isTrue,reason:'Não ficou parado com ${moves.first}');
+          expect(battle.simulatorState!['sides'][0]['wait'],isFalse,reason:'NPC resolve a própria substituição');
+        }
+      } finally { battle.dispose(); }
+    }
+  });
+  testWidgets('Entrada individual bloqueia cliques; U-turn permite substituir e voltar a atacar', (tester) async {
+    tester.view.physicalSize=const Size(1080,2220); tester.view.devicePixelRatio=3;
+    addTearDown(tester.view.reset);
+    final battle=await tester.runAsync(() async {
+      final me=await TurnBattleSetup.mons([(212,<String,dynamic>{'moves':['u-turn','swift','recover','protect']}),(25,<String,dynamic>{'moves':['swift','recover','protect','splash']})],(row)=>'${row['name']}');
+      final npc=await TurnBattleSetup.mons([(242,<String,dynamic>{'moves':['splash','helping-hand','celebrate','hold-hands']})],(row)=>'${row['name']}');
+      return TurnBattle(me,npc,Random(3).nextDouble);
+    });
+    addTearDown(battle!.dispose);
+    await tester.pumpWidget(MaterialApp(home:Scaffold(body:SingleChildScrollView(child:BattleView(battle:battle,hit:(_,_,_,_,[power,weather=''])=>null,typeEff:(_,_)=>1,foeName:'NPC',onAgain:(){},onExit:(){})))));
+    expect(find.text('LUTAR'),findsNothing);
+    expect(battle.turn,1);
+    Future<void> finishAnimations() async {for(var i=0;i<90;i++) {await tester.pump(const Duration(milliseconds:500));} expect(tester.takeException(),isNull);}
+    await finishAnimations();
+    final fight=find.text('LUTAR'); await tester.ensureVisible(fight); await tester.tap(fight); await tester.pump();
+    final move=find.byKey(const ValueKey('battle-single-move-0')); await tester.ensureVisible(move);
+    await tester.tap(move); await tester.tap(move,warnIfMissed:false); await tester.pump();
+    await finishAnimations();
+    expect(battle.needSwitch,isTrue);
+    final replacement=find.byKey(const ValueKey('battle-single-switch-1')); await tester.ensureVisible(replacement); await tester.tap(replacement); await tester.pump();
+    await finishAnimations();
+    expect(battle.needSwitch,isFalse); expect(battle.activeIndex[0],1); expect(battle.turn,2);
+    await tester.ensureVisible(fight); await tester.tap(fight); await tester.pump();
+    await tester.ensureVisible(move); await tester.tap(move); await tester.pump(); await finishAnimations();
+    expect(battle.turn,3); expect(find.text('LUTAR'),findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
   });
   for (final (count,scale) in [(2,1.0),(3,1.0),(3,1.3)]) {
     testWidgets('Golpes visíveis e utilizáveis nas $count posições após atacar (texto $scale)', (tester) async {

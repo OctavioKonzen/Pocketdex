@@ -382,7 +382,7 @@ export const PocketDexSim = {
         game.pendingItems[side] = commands[side].item;
         s.clearChoice();
         s.choice.actions.push({choice: 'event', event: 'PocketDexItem', pokemon: s.active[0], order: 102});
-        if (game.battle.sides.every(s => s.isChoiceDone())) game.battle.commitDecisions();
+        if (game.battle.allChoicesDone()) game.battle.commitChoices();
         continue;
       }
       if (!game.battle.choose(`p${side + 1}`, commands[side])) {

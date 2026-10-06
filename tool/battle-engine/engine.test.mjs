@@ -6,6 +6,32 @@ const mon = (species, moves, extra = {}) => ({set: {species, moves, level: 50}, 
 const create = (team, foe) => sim.create({teams: [team, foe], seed: [1, 2, 3, 4]});
 const move = index => ({kind: 'move', index, gimmick: ''});
 
+test('NPC healing executes only after both actions and consumes exactly one turn', () => {
+  const game=create([mon('Mew',['seismictoss'])],[mon('Blissey',['splash'])]);
+  try {
+    const first=sim.choose(game.handle,[move(0),move(0)]);
+    const hp=first.state.sides[1].team[0].hp;
+    const next=sim.choose(game.handle,[move(0),{kind:'item',item:'potion',index:0}]);
+    assert.equal(next.state.turn,first.state.turn+1);
+    assert.equal(next.state.sides[1].team[0].hp,hp+20-50);
+    assert.equal(next.state.bags[1].potion,2);
+    assert.equal(next.log.filter(line=>line.startsWith('|move|p1')).length,1);
+    assert.equal(next.log.filter(line=>line.startsWith('|move|p2')).length,0);
+  } finally {sim.dispose(game.handle);}
+});
+
+test('Both trainers can heal without extra attacks and the next attack still works', () => {
+  const game=create([mon('Mew',['seismictoss'])],[mon('Blissey',['seismictoss'])]);
+  try {
+    const first=sim.choose(game.handle,[move(0),move(0)]);
+    const next=sim.choose(game.handle,[{kind:'item',item:'potion',index:0},{kind:'item',item:'potion',index:0}]);
+    assert.equal(next.state.turn,first.state.turn+1);
+    for(let side=0;side<2;side++) assert.equal(next.state.sides[side].team[0].hp,first.state.sides[side].team[0].hp+20);
+    assert.equal(next.log.filter(line=>line.startsWith('|move|')).length,0);
+    assert.equal(sim.choose(game.handle,[move(0),move(0)]).state.turn,next.state.turn+1);
+  } finally {sim.dispose(game.handle);}
+});
+
 test('U-turn pauses for replacement and continues the queued enemy attack', () => {
   const game = create([mon('Scizor', ['uturn']), mon('Pikachu', ['thunderbolt'])], [mon('Blissey', ['tackle'])]);
   try {

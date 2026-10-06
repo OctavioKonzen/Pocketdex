@@ -348,7 +348,7 @@ class TurnBattle {
   final List<List<String>>? controllers;
   Map<String, dynamic>? get simulatorState => _simState;
   List<Map<String, dynamic>> recommend(int side, [Map<String, dynamic>? options]) =>
-      (BattleSimulator.call('recommend', [_simHandle, side, options])['actions'] as List).map((x) => Map<String, dynamic>.from(x as Map)).toList();
+      (BattleSimulator.call('recommend', [_simHandle, side, options ?? const <String, dynamic>{}])['actions'] as List).map((x) => Map<String, dynamic>.from(x as Map)).toList();
   Map<String, dynamic> targets(int side, int slot, int move, [String gimmick = '']) =>
       BattleSimulator.call('targets', [_simHandle, side, slot, move, gimmick]);
   List<BattleEvent> playGroupTurn(List<List<Map<String, dynamic>>> actions) => _simChoose(actions);
@@ -1083,13 +1083,14 @@ class TurnBattle {
     final me = active(1), foe = active(0), index = cpuMove(hit);
     final outgoing = _bestDamage(hit, me, foe), incoming = _bestDamage(hit, foe, me);
     final canFinish = outgoing >= foe.hp && (speedOf(me, weather) >= speedOf(foe, weather) || (index >= 0 && me.moves[index].priority > 0)) && !['slp', 'frz'].contains(me.status);
-    if (!canFinish && me.dmax == 0 && !me.trapped && turn - cpuSwitchTurn >= 2) {
+    final possibleTrap = (_simState?['sides'][1]['request'] as Map?)?['maybeTrapped'] == true;
+    if (!canFinish && me.dmax == 0 && !me.trapped && !possibleTrap && turn - cpuSwitchTurn >= 2) {
       var best = activeIndex[1];
       final currentScore = _matchupScore(hit, me, foe);
       var score = currentScore;
       for (var i = 0; i < teams[1].length; i++) {
         final mon = teams[1][i];
-        if (i == activeIndex[1] || mon.hp <= 0 || _bestDamage(hit, foe, mon) >= mon.hp) continue;
+        if (!canSwitch(1, i) || mon.hp <= 0 || _bestDamage(hit, foe, mon) >= mon.hp) continue;
         final value = _matchupScore(hit, mon, foe);
         if (value > score) { best = i; score = value; }
       }
