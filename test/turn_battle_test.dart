@@ -472,4 +472,8 @@ void main() {
   });
 }
 
-const _kinds = ['tackle', 'punch', 'kick', 'bite', 'slash', 'orb', 'beam', 'stream', 'volley', 'bolt', 'quake', 'rocks', 'meteor', 'wave', 'wind', 'rings', 'drain'];
+const _kinds = [
+  'tackle', 'punch', 'kick', 'bite', 'slash', 'orb', 'beam', 'stream', 'volley', 'bolt', 'quake', 'rocks', 'meteor', 'wave', 'wind', 'rings', 'drain', //
+  'boost', 'drop', 'heal', 'shield', 'wall', 'powder', 'status', 'hazard', 'weather', 'terrain', 'field', 'charge', 'explode', 'spin', 'dive', 'pierce',
+  'whip', 'swap',
+];
