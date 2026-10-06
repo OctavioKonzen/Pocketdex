@@ -61,13 +61,16 @@ class _TeamMemberScreenState extends State<TeamMemberScreen> {
     final row = await db.pokemonRow(widget.pokemonId);
     final moves = await db.movesByName();
     final battleItems = await db.battleItems().catchError((_) => <String, dynamic>{});
-    // Mega Pedras, Cristais Z e os itens das formas (orbes, Rusted Sword,
-    // máscaras da Ogerpon...) vêm sem a marca "holdable" no banco.
+    // Mega Pedras, Cristais Z, os itens das formas (orbes, Rusted Sword,
+    // máscaras da Ogerpon...) e muitos itens de batalha (Air Balloon,
+    // Assault Vest, bagas, gems...) vêm sem a marca "holdable" no banco:
+    // battle_items.json lista todos os que o motor conhece.
     final special = {
       ...((battleItems['mega'] as Map?) ?? const {}).keys.map((k) => '$k'),
       ...((battleItems['z'] as Map?) ?? const {}).keys.map((k) => '$k'),
       for (final list in ((battleItems['forms'] as Map?) ?? const {}).values)
         for (final i in list as List) '$i',
+      for (final i in (battleItems['held'] as List?) ?? const []) '$i',
     };
     final items = [
       for (final i in await db.allItems())

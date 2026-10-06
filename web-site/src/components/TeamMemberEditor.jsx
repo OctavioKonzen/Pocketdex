@@ -171,9 +171,11 @@ export default function TeamMemberEditor({ open, pokemon, set, onChange, onClose
     Promise.all([getItems(), getBattleItems().catch(() => ({}))]).then(([all, battle]) => {
       setBattleItems(battle)
       setAllItems(all)
-      // Mega Pedras, Cristais Z e os itens das formas (orbes, Rusted Sword,
-      // máscaras da Ogerpon...) vêm sem a marca "holdable" no banco.
-      const special = new Set([...Object.keys(battle.mega ?? {}), ...Object.keys(battle.z ?? {}), ...Object.values(battle.forms ?? {}).flat()])
+      // Mega Pedras, Cristais Z, os itens das formas (orbes, Rusted Sword,
+      // máscaras da Ogerpon...) e muitos itens de batalha (Air Balloon,
+      // Assault Vest, bagas, gems...) vêm sem a marca "holdable" no banco:
+      // battle_items.json lista todos os que o motor conhece.
+      const special = new Set([...Object.keys(battle.mega ?? {}), ...Object.keys(battle.z ?? {}), ...Object.values(battle.forms ?? {}).flat(), ...(battle.held ?? [])])
       const held = all.filter((i) => (i.attributes?.includes('holdable') && !HELD_CATEGORIES.has(i.category)) || special.has(toId(i.name))).map((i) => i.name)
       setItems([...new Set([...POPULAR_ITEMS.filter((p) => held.includes(p)), ...held.sort()])])
     })

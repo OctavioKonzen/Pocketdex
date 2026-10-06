@@ -76,6 +76,14 @@ describe('shared simulator integration', () => {
       expect(queue.startsWith('🔵')).toBe(true)
     } finally { simulatorDispose(b) }
   })
+  it('items and abilities show their own text, like the games (no raw simulator lines)', () => {
+    const b=newBattle([mon('Gyarados',['waterfall'],{simulation:{set:{species:'Gyarados',moves:['waterfall'],level:50,ability:'Intimidate',item:'Life Orb'}}})],[mon('Pelipper',['hurricane'],{simulation:{set:{species:'Pelipper',moves:['hurricane'],level:50,ability:'Drizzle',item:'Leftovers'}}})],seed())
+    try {
+      const keys=[...startBattle(b),...playTurn(b,{move:0},hit)].filter(e=>e.t==='text').map(e=>e.key)
+      expect(keys).toEqual(expect.arrayContaining(['abilityShow','rainStart','hurtBy','healedBy']))
+      expect(keys).not.toContain('sim')
+    } finally {simulatorDispose(b)}
+  })
   it('a completed battle ends its event sequence with the victory text', () => {
     const b = newBattle([mon('Mewtwo', ['psychic'])], [mon('Magikarp', ['splash'])], seed())
     try {

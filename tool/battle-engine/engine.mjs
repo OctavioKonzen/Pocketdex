@@ -161,8 +161,23 @@ function eventsFor(game, lines) {
   };
   const say = (key, ...args) => events.push({t: 'text', key, args});
   const health = value => Number(String(value).split(/[ /]/)[0]) || 0;
-  for (const line of lines) {
+  // Quem é "p2a: pd3" (o [of] das mensagens: o dono da habilidade ou do item).
+  const who = ref => {
+    const s = sideOf(ref), i = Number(ref?.split(': ')[1]?.slice(2));
+    const mon = s >= 0 && game.teams[s][Number.isInteger(i) ? i : active[s]];
+    return mon ? {side: s, name: mon.name || mon.set.species} : null;
+  };
+  // Clima: o texto de quando começa e quando acaba (como nos jogos).
+  const WEATHER_TEXT = {RainDance: 'rain', PrimordialSea: 'rain', SunnyDay: 'sun', DesolateLand: 'sun', Sandstorm: 'sand', Hail: 'hail', Snow: 'snow', Snowscape: 'snow'};
+  for (const [lineIndex, line] of lines.entries()) {
     const [, kind, actor, value, extra] = line.split('|');
+    const parts = line.split('|');
+    // [from] item: Leftovers / [from] ability: Rough Skin / [of] p2a: pd0
+    const tag = name => parts.find(x => x.startsWith(`[${name}] `))?.slice(name.length + 3) ?? '';
+    const from = tag('from');
+    const fromItem = from.startsWith('item: ') ? from.slice(6) : '';
+    const fromAbility = from.startsWith('ability: ') ? from.slice(9) : '';
+    const of = who(tag('of'));
     const side = sideOf(actor);
     const actorIndex = Number(actor?.split(': ')[1]?.slice(2));
     actorSide = side; actorPokemon = actorIndex;
@@ -178,6 +193,29 @@ function eventsFor(game, lines) {
       say('used', label(side), value);
     } else if (kind === '-damage' || kind === '-heal') {
       const index = Number(actor.split(': ')[1]?.slice(2));
+      // Por que o HP mudou: item, habilidade, status, clima, armadilha... (o texto vem antes da barra mexer).
+      const POTIONS = ['potion', 'super-potion', 'hyper-potion', 'revive'];
+      if (kind === '-damage') {
+        if (fromItem) say('hurtBy', label(side), fromItem);
+        else if (fromAbility) { if (of && of.side !== side) say('abilityShow', of, fromAbility); say('hurtBy', label(side), fromAbility); }
+        else if (from === 'brn') say('hurtBurn', label(side));
+        else if (from === 'psn' || from === 'tox') say('hurtPoison', label(side));
+        else if (from === 'Recoil' || from === 'recoil') say('recoil', label(side));
+        else if (from === 'Sandstorm' || from === 'sandstorm') say('hurtSand', label(side));
+        else if (from === 'hail' || from === 'Hail') say('hurtHail', label(side));
+        else if (from === 'Stealth Rock') say('hurtRocks', label(side));
+        else if (from === 'Spikes') say('hurtSpikes', label(side));
+        else if (from === 'Leech Seed') say('seedSap', label(side));
+        else if (from === 'confusion') say('hurtConfusion', label(side));
+        else if (from === 'Curse') say('hurtCurse', label(side));
+        else if (from === 'Salt Cure') say('hurtBy', label(side), 'Salt Cure');
+        else if (from === 'partiallytrapped') say('hurtBy', label(side), tag('partiallytrapped') || 'Bind');
+      } else if (!POTIONS.includes(fromItem.toLowerCase()) && !parts.includes('[silent]')) {
+        if (fromItem && !/Berry$/.test(fromItem)) say('healedBy', label(side), fromItem);
+        else if (fromAbility) say('healedBy', label(side), fromAbility);
+        else if (from === 'drain' && of) say('drained', of);
+        else if (!from && !lines.slice(lineIndex + 1).some(l => l.startsWith('|pocketdexheal|'))) say('healedMove', label(side));
+      }
       if (index !== active[side] && Number.isInteger(index)) events.push({t: 'heal', side, index, hp: health(value)});
       else events.push({t: 'hp', side, hp: health(value)});
     } else if (kind === 'faint') {
@@ -186,7 +224,43 @@ function eventsFor(game, lines) {
     } else if (kind === '-status') {
       events.push({t: 'status', side, status: value});
       say({brn: 'burned', par: 'paralyzed', psn: 'poisoned', tox: 'badlyPoisoned', slp: 'fellAsleep', frz: 'frozen'}[value] || 'failed', label(side));
-    } else if (kind === '-curestatus') events.push({t: 'status', side, status: ''});
+    } else if (kind === '-curestatus') {
+      events.push({t: 'status', side, status: ''});
+      if (value === 'slp' && parts.includes('[msg]')) say('woke', label(side));
+      else if (value === 'frz' && parts.includes('[msg]')) say('thawed', label(side));
+      else if (fromItem || fromAbility) say('statusCured', label(side), fromItem || fromAbility);
+    }
+    else if (kind === 'cant') {
+      // Não conseguiu agir: paralisia, sono, congelado, recuo, recarga, Truant...
+      const reason = {par: 'fullPara', slp: 'asleep', frz: 'isFrozen', flinch: 'flinched', recharge: 'mustRecharge', 'ability: Truant': 'loafing'}[value];
+      say(reason || 'cantMove', label(side));
+    }
+    else if (kind === '-ability') say('abilityShow', label(side), value);
+    else if (kind === '-item') {
+      // Item que aparece: Air Balloon ao entrar, Frisk mostrando o item, Trick trocando.
+      if (fromAbility && of) say('abilityShow', of, fromAbility);
+      if (value === 'Air Balloon' && !from) say('balloon', label(side));
+      else if (from.startsWith('move: ')) say('gotItem', label(side), value);
+      else say('itemShow', label(side), value);
+    } else if (kind === '-enditem') {
+      // Item gasto: baga comida, balão estourado, Focus Sash, Knock Off...
+      if (parts.includes('[eat]')) say('ateItem', label(side), value);
+      else if (from === 'gem') say('gemUsed', label(side), value);
+      else if (value === 'Air Balloon') say('balloonPop', label(side));
+      else if (value === 'Focus Sash') say('sashHung', label(side));
+      else if (from.startsWith('move: ') || from === 'stealeat') say('lostItem', label(side), value);
+      else say('itemUsedUp', label(side), value);
+    } else if (kind === '-immune' && fromAbility) { say('abilityShow', label(side), fromAbility); say('noEffect', label(side)); }
+    else if (kind === '-activate' && (value?.startsWith('ability: ') || value?.startsWith('item: '))) {
+      const name = value.replace(/^(ability|item): /, '');
+      say(value.startsWith('ability: ') ? 'abilityShow' : 'itemActive', label(side), name);
+    } else if (kind === '-activate' && (value === 'move: Protect' || value === 'Protect')) say('protected', label(side));
+    else if (kind === '-activate' && value === 'confusion') say('isConfused', label(side));
+    else if (kind === '-start' && value === 'confusion') say('confused', label(side));
+    // Protosynthesis / Quark Drive (sol, Electric Terrain ou Booster Energy): o melhor atributo sobe.
+    else if (kind === '-start' && /^(protosynthesis|quarkdrive)(atk|def|spa|spd|spe)$/.test(value)) say('paradoxBoost', label(side), value.slice(-3));
+    else if (kind === '-end' && ['Protosynthesis', 'Quark Drive'].includes(value)) continue;
+    else if (kind === '-end' && value === 'confusion') say('confusionEnd', label(side));
     else if (kind === '-miss') { events.push({t: 'miss', side}); say('missed', label(side)); }
     else if (kind === '-immune') say('noEffect', label(side));
     else if (kind === '-crit') say('crit');
@@ -204,6 +278,12 @@ function eventsFor(game, lines) {
       events.push({t: 'dmax', side, on: kind === '-start', id: kind === '-start' ? mon.gmax || mon.id : mon.id});
     } else if (kind === '-weather' && value !== '[upkeep]') {
       const weather = {RainDance: 'rain', SunnyDay: 'sun', Sandstorm: 'sand', Hail: 'hail', Snow: 'snow'}[actor] || '';
+      // Drizzle, Drought, Sand Stream, Snow Warning: mostra a habilidade e o clima que começou.
+      if (fromAbility && of) say('abilityShow', of, fromAbility);
+      const text = WEATHER_TEXT[actor] || '';
+      if (text) say(`${text}Start`);
+      else if (actor === 'none' && game.lastWeather) say(`${game.lastWeather}End`);
+      game.lastWeather = text;
       events.push({t: 'weather', weather});
       if (actor === 'ShadowSky') say('sim', 'O céu ficou sombrio!');
     } else if (kind === '-boost' || kind === '-unboost') {

@@ -5123,6 +5123,266 @@
   "fr": "Esq",
   "es": "Eva"
  },
+ "{1} de {0}!": {
+  "en": "{0}'s {1}!",
+  "fr": "{1} de {0} !",
+  "es": "¡{1} de {0}!"
+ },
+ "{1} de {0} inimigo!": {
+  "en": "The opposing {0}'s {1}!",
+  "fr": "{1} de {0} ennemi !",
+  "es": "¡{1} de {0} rival!"
+ },
+ "{0} está segurando {1}!": {
+  "en": "{0} is holding {1}!",
+  "fr": "{0} tient {1} !",
+  "es": "¡{0} lleva {1}!"
+ },
+ "{0} inimigo está segurando {1}!": {
+  "en": "The opposing {0} is holding {1}!",
+  "fr": "{0} ennemi tient {1} !",
+  "es": "¡{0} rival lleva {1}!"
+ },
+ "{0} recebeu {1}!": {
+  "en": "{0} obtained {1}!",
+  "fr": "{0} a obtenu {1} !",
+  "es": "¡{0} obtuvo {1}!"
+ },
+ "{0} inimigo recebeu {1}!": {
+  "en": "The opposing {0} obtained {1}!",
+  "fr": "{0} ennemi a obtenu {1} !",
+  "es": "¡{0} rival obtuvo {1}!"
+ },
+ "{0} está flutuando com o Air Balloon!": {
+  "en": "{0} floats in the air with its Air Balloon!",
+  "fr": "{0} flotte grâce à son Air Balloon !",
+  "es": "¡{0} flota gracias a su Air Balloon!"
+ },
+ "{0} inimigo está flutuando com o Air Balloon!": {
+  "en": "The opposing {0} floats in the air with its Air Balloon!",
+  "fr": "{0} ennemi flotte grâce à son Air Balloon !",
+  "es": "¡{0} rival flota gracias a su Air Balloon!"
+ },
+ "O Air Balloon de {0} estourou!": {
+  "en": "{0}'s Air Balloon popped!",
+  "fr": "L'Air Balloon de {0} a éclaté !",
+  "es": "¡El Air Balloon de {0} explotó!"
+ },
+ "O Air Balloon de {0} inimigo estourou!": {
+  "en": "The opposing {0}'s Air Balloon popped!",
+  "fr": "L'Air Balloon de {0} ennemi a éclaté !",
+  "es": "¡El Air Balloon de {0} rival explotó!"
+ },
+ "{0} comeu {1}!": {
+  "en": "{0} ate its {1}!",
+  "fr": "{0} a mangé sa {1} !",
+  "es": "¡{0} se comió su {1}!"
+ },
+ "{0} inimigo comeu {1}!": {
+  "en": "The opposing {0} ate its {1}!",
+  "fr": "{0} ennemi a mangé sa {1} !",
+  "es": "¡{0} rival se comió su {1}!"
+ },
+ "{0} aguentou firme com o Focus Sash!": {
+  "en": "{0} hung on using its Focus Sash!",
+  "fr": "{0} tient bon grâce à sa Focus Sash !",
+  "es": "¡{0} resistió gracias a su Focus Sash!"
+ },
+ "{0} inimigo aguentou firme com o Focus Sash!": {
+  "en": "The opposing {0} hung on using its Focus Sash!",
+  "fr": "{0} ennemi tient bon grâce à sa Focus Sash !",
+  "es": "¡{0} rival resistió gracias a su Focus Sash!"
+ },
+ "{0} perdeu {1}!": {
+  "en": "{0} lost its {1}!",
+  "fr": "{0} a perdu {1} !",
+  "es": "¡{0} perdió {1}!"
+ },
+ "{0} inimigo perdeu {1}!": {
+  "en": "The opposing {0} lost its {1}!",
+  "fr": "{0} ennemi a perdu {1} !",
+  "es": "¡{0} rival perdió {1}!"
+ },
+ "{1} de {0} foi ativado!": {
+  "en": "{0}'s {1} activated!",
+  "fr": "{1} de {0} s'est activé !",
+  "es": "¡{1} de {0} se activó!"
+ },
+ "{1} de {0} inimigo foi ativado!": {
+  "en": "The opposing {0}'s {1} activated!",
+  "fr": "{1} de {0} ennemi s'est activé !",
+  "es": "¡{1} de {0} rival se activó!"
+ },
+ "{0} foi ferido por {1}!": {
+  "en": "{0} was hurt by {1}!",
+  "fr": "{0} est blessé par {1} !",
+  "es": "¡{0} fue herido por {1}!"
+ },
+ "{0} inimigo foi ferido por {1}!": {
+  "en": "The opposing {0} was hurt by {1}!",
+  "fr": "{0} ennemi est blessé par {1} !",
+  "es": "¡{0} rival fue herido por {1}!"
+ },
+ "{0} recuperou um pouco de HP com {1}!": {
+  "en": "{0} restored a little HP using its {1}!",
+  "fr": "{0} récupère un peu de PV grâce à {1} !",
+  "es": "¡{0} recuperó algunos PS gracias a {1}!"
+ },
+ "{0} inimigo recuperou um pouco de HP com {1}!": {
+  "en": "The opposing {0} restored a little HP using its {1}!",
+  "fr": "{0} ennemi récupère un peu de PV grâce à {1} !",
+  "es": "¡{0} rival recuperó algunos PS gracias a {1}!"
+ },
+ "Pedras afiadas atingiram {0}!": {
+  "en": "Pointed stones dug into {0}!",
+  "fr": "Des pierres pointues blessent {0} !",
+  "es": "¡Unas piedras puntiagudas hirieron a {0}!"
+ },
+ "Pedras afiadas atingiram {0} inimigo!": {
+  "en": "Pointed stones dug into the opposing {0}!",
+  "fr": "Des pierres pointues blessent {0} ennemi !",
+  "es": "¡Unas piedras puntiagudas hirieron a {0} rival!"
+ },
+ "{0} foi ferido pelos espinhos!": {
+  "en": "{0} was hurt by the spikes!",
+  "fr": "{0} est blessé par les picots !",
+  "es": "¡{0} fue herido por las púas!"
+ },
+ "{0} inimigo foi ferido pelos espinhos!": {
+  "en": "The opposing {0} was hurt by the spikes!",
+  "fr": "{0} ennemi est blessé par les picots !",
+  "es": "¡{0} rival fue herido por las púas!"
+ },
+ "A Leech Seed drenou a energia de {0}!": {
+  "en": "{0}'s health is sapped by Leech Seed!",
+  "fr": "Leech Seed draine l'énergie de {0} !",
+  "es": "¡Leech Seed absorbió la energía de {0}!"
+ },
+ "A Leech Seed drenou a energia de {0} inimigo!": {
+  "en": "The opposing {0}'s health is sapped by Leech Seed!",
+  "fr": "Leech Seed draine l'énergie de {0} ennemi !",
+  "es": "¡Leech Seed absorbió la energía de {0} rival!"
+ },
+ "{0} se feriu na confusão!": {
+  "en": "{0} hurt itself in its confusion!",
+  "fr": "{0} se blesse dans sa confusion !",
+  "es": "¡{0} se hirió en su confusión!"
+ },
+ "{0} inimigo se feriu na confusão!": {
+  "en": "The opposing {0} hurt itself in its confusion!",
+  "fr": "{0} ennemi se blesse dans sa confusion !",
+  "es": "¡{0} rival se hirió en su confusión!"
+ },
+ "{0} foi afetado pela maldição!": {
+  "en": "{0} is afflicted by the curse!",
+  "fr": "{0} est touché par la malédiction !",
+  "es": "¡{0} sufre los efectos de la maldición!"
+ },
+ "{0} inimigo foi afetado pela maldição!": {
+  "en": "The opposing {0} is afflicted by the curse!",
+  "fr": "{0} ennemi est touché par la malédiction !",
+  "es": "¡{0} rival sufre los efectos de la maldición!"
+ },
+ "{0} se curou com {1}!": {
+  "en": "{0} was cured by {1}!",
+  "fr": "{0} est soigné par {1} !",
+  "es": "¡{0} se curó gracias a {1}!"
+ },
+ "{0} inimigo se curou com {1}!": {
+  "en": "The opposing {0} was cured by {1}!",
+  "fr": "{0} ennemi est soigné par {1} !",
+  "es": "¡{0} rival se curó gracias a {1}!"
+ },
+ "{0} precisa recarregar!": {
+  "en": "{0} must recharge!",
+  "fr": "{0} doit se recharger !",
+  "es": "¡{0} necesita recuperarse!"
+ },
+ "{0} inimigo precisa recarregar!": {
+  "en": "The opposing {0} must recharge!",
+  "fr": "{0} ennemi doit se recharger !",
+  "es": "¡{0} rival necesita recuperarse!"
+ },
+ "{0} está fazendo corpo mole!": {
+  "en": "{0} is loafing around!",
+  "fr": "{0} paresse !",
+  "es": "¡{0} está holgazaneando!"
+ },
+ "{0} inimigo está fazendo corpo mole!": {
+  "en": "The opposing {0} is loafing around!",
+  "fr": "{0} ennemi paresse !",
+  "es": "¡{0} rival está holgazaneando!"
+ },
+ "{0} não conseguiu se mover!": {
+  "en": "{0} couldn't move!",
+  "fr": "{0} ne peut pas bouger !",
+  "es": "¡{0} no se pudo mover!"
+ },
+ "{0} inimigo não conseguiu se mover!": {
+  "en": "The opposing {0} couldn't move!",
+  "fr": "{0} ennemi ne peut pas bouger !",
+  "es": "¡{0} rival no se pudo mover!"
+ },
+ "{0} se protegeu!": {
+  "en": "{0} protected itself!",
+  "fr": "{0} se protège !",
+  "es": "¡{0} se protegió!"
+ },
+ "{0} inimigo se protegeu!": {
+  "en": "The opposing {0} protected itself!",
+  "fr": "{0} ennemi se protège !",
+  "es": "¡{0} rival se protegió!"
+ },
+ "{0} está confuso!": {
+  "en": "{0} is confused!",
+  "fr": "{0} est confus !",
+  "es": "¡{0} está confuso!"
+ },
+ "{0} inimigo está confuso!": {
+  "en": "The opposing {0} is confused!",
+  "fr": "{0} ennemi est confus !",
+  "es": "¡{0} rival está confuso!"
+ },
+ "{0} ficou confuso!": {
+  "en": "{0} became confused!",
+  "fr": "{0} devient confus !",
+  "es": "¡{0} se encuentra confuso!"
+ },
+ "{0} inimigo ficou confuso!": {
+  "en": "The opposing {0} became confused!",
+  "fr": "{0} ennemi devient confus !",
+  "es": "¡{0} rival se encuentra confuso!"
+ },
+ "{0} não está mais confuso!": {
+  "en": "{0} snapped out of its confusion!",
+  "fr": "{0} n'est plus confus !",
+  "es": "¡{0} ya no está confuso!"
+ },
+ "{0} inimigo não está mais confuso!": {
+  "en": "The opposing {0} snapped out of its confusion!",
+  "fr": "{0} ennemi n'est plus confus !",
+  "es": "¡{0} rival ya no está confuso!"
+ },
+ "{1} fortaleceu o golpe de {0}!": {
+  "en": "The {1} strengthened {0}'s power!",
+  "fr": "{1} renforce l'attaque de {0} !",
+  "es": "¡{1} potenció el ataque de {0}!"
+ },
+ "{1} fortaleceu o golpe de {0} inimigo!": {
+  "en": "The {1} strengthened the opposing {0}'s power!",
+  "fr": "{1} renforce l'attaque de {0} ennemi !",
+  "es": "¡{1} potenció el ataque de {0} rival!"
+ },
+ "{1} de {0} foi fortalecido!": {
+  "en": "{0}'s {1} was heightened!",
+  "fr": "{1} de {0} est renforcé !",
+  "es": "¡{1} de {0} se ha potenciado!"
+ },
+ "{1} de {0} inimigo foi fortalecido!": {
+  "en": "The opposing {0}'s {1} was heightened!",
+  "fr": "{1} de {0} ennemi est renforcé !",
+  "es": "¡{1} de {0} rival se ha potenciado!"
+ },
  "Formas alternativas": {
   "en": "Alternate forms",
   "fr": "Formes alternatives",
