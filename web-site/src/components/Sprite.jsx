@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from 'react'
 import { getAnimatedSprites, spriteUrl } from '../lib/data'
 import { usePrefs } from '../lib/prefs'
 import { gifFrames } from '../lib/gifFrames'
+import { crystalLayer, drawCrystal } from '../lib/teraCrystal'
 
 // Sprites animados (GIF) no estilo Black & White, do banco do site
 // (sprites/animated), igual ao app (lib/services/animated_sprites.dart): os
@@ -93,6 +94,7 @@ export function animatedOf(path, set, back) {
  *                 trocar para ele não fica parado esperando chegar)
  * @param crown  algo para pôr no topo da cabeça (a coroa do Terastal), que
  *               acompanha a animação quadro a quadro
+ * @param crystal cor do Tera Type: o corpo fica cristalizado (facetas e reflexo)
  */
 export default function Sprite(props) {
   const on = usePrefs((s) => s.animatedSprites)
@@ -169,7 +171,7 @@ export default function Sprite(props) {
         }}
       >
         {props.crown && k ? (
-          <CrownedGif key={gif} src={spriteUrl(gif)} alt={alt} animate={on} crown={props.crown} crownSize={boxWidth * 0.26} onError={() => setFailed(gif)} {...imgProps} />
+          <CrownedGif key={gif} src={spriteUrl(gif)} alt={alt} animate={on} crown={props.crown} crystal={props.crystal} crownSize={boxWidth * 0.26} onError={() => setFailed(gif)} {...imgProps} />
         ) : on ? (
           <img src={spriteUrl(gif)} alt={alt} loading="lazy" decoding="async" draggable={false} onError={() => setFailed(gif)} {...imgProps} />
         ) : (
@@ -182,9 +184,10 @@ export default function Sprite(props) {
 
 /**
  * O GIF desenhado quadro a quadro num canvas, com `crown` no topo da cabeça
- * de cada quadro (lib/headAnchor.js): a coroa sobe, desce e anda junto.
+ * de cada quadro (lib/headAnchor.js): a coroa sobe, desce e anda junto. Com
+ * `crystal`, o corpo fica cristalizado (lib/teraCrystal.js).
  */
-function CrownedGif({ src, alt, animate, crown, crownSize, onError, className, style }) {
+function CrownedGif({ src, alt, animate, crown, crystal, crownSize, onError, className, style }) {
   const canvas = useRef(null)
   const holder = useRef(null)
   useEffect(() => {
@@ -204,10 +207,23 @@ function CrownedGif({ src, alt, animate, crown, crownSize, onError, className, s
         c.height = height
         const ctx = c.getContext('2d')
         const images = frames.map((f) => new ImageData(f.data, width, height))
+        const layer = crystal ? crystalLayer(width, height, crystal) : null
+        const moving = animate && frames.length > 1
+        const start = performance.now()
         let i = 0
+        let shown = -1
+        let next = start
         const draw = () => {
           if (stop) return
+          const now = performance.now()
+          if (moving && shown >= 0 && now >= next) {
+            i = (i + 1) % frames.length
+            next = now + frames[i].delay
+          } else if (shown < 0) next = now + frames[i].delay
+          shown = i
           ctx.putImageData(images[i], 0, 0)
+          // O reflexo do cristal passa a cada 2,4 s.
+          if (layer) drawCrystal(ctx, layer, width, height, ((now - start) % 2400) / 2400)
           const head = frames[i].head
           const el = holder.current
           if (el) {
@@ -217,9 +233,8 @@ function CrownedGif({ src, alt, animate, crown, crownSize, onError, className, s
               el.style.top = `${head.y * 100}%`
             }
           }
-          if (!animate || frames.length < 2) return
-          timer = setTimeout(draw, frames[i].delay)
-          i = (i + 1) % frames.length
+          if (layer) timer = setTimeout(draw, Math.min(60, Math.max(0, next - now)) || 60)
+          else if (moving) timer = setTimeout(draw, frames[i].delay)
         }
         draw()
       })
@@ -229,7 +244,7 @@ function CrownedGif({ src, alt, animate, crown, crownSize, onError, className, s
       clearTimeout(timer)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [src, animate])
+  }, [src, animate, crystal])
   return (
     <span className="relative inline-block" style={style}>
       <canvas ref={canvas} role="img" aria-label={alt} className={className} style={{ width: '100%', height: '100%', display: 'block' }} />

@@ -1218,8 +1218,9 @@ class _SpriteState extends State<_Sprite> with TickerProviderStateMixin {
                       alignBottom: true,
                       battle: true,
                       // Terastal: a coroa de cristal na cabeça, acompanhando a animação.
-                      crown: widget.tera.isEmpty ? null : CustomPaint(painter: _TeraCrownPainter(getColorForType(widget.tera)))),
-                  if (widget.tera.isNotEmpty) ..._teraFront(),
+                      crown: widget.tera.isEmpty ? null : CustomPaint(painter: _TeraCrownPainter(getColorForType(widget.tera))),
+                      // e o corpo cristalizado (facetas e reflexo).
+                      crystal: widget.tera.isEmpty ? null : getColorForType(widget.tera)),
                 ],
               ),
             ),
@@ -1247,30 +1248,6 @@ extension on _SpriteState {
           imageFilter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
           child: ColorFiltered(colorFilter: ColorFilter.mode(color, BlendMode.srcIn), child: _plain()),
         ),
-      ),
-    ];
-  }
-
-  /// Na frente: o reflexo de cristal passando só pelo corpo do Pokémon.
-  List<Widget> _teraFront() {
-    final color = getColorForType(widget.tera);
-    return [
-      AnimatedBuilder(
-        animation: _shine,
-        builder: (context, child) {
-          final x = -1.5 + 3 * _shine.value;
-          return ShaderMask(
-            blendMode: BlendMode.srcATop,
-            shaderCallback: (rect) => LinearGradient(
-              begin: Alignment(x - 0.6, -1),
-              end: Alignment(x + 0.6, 1),
-              colors: [Colors.transparent, color.withAlpha(0x40), Colors.white.withAlpha(0x8C), color.withAlpha(0x40), Colors.transparent],
-              stops: const [0, 0.35, 0.5, 0.65, 1],
-            ).createShader(rect),
-            child: child,
-          );
-        },
-        child: _plain(),
       ),
     ];
   }
