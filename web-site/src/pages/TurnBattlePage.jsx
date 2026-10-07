@@ -24,6 +24,7 @@ import Sprite from '../components/Sprite'
 import { TrainerBack, TrainerSprite } from '../components/Trainer'
 import { randomTrainer, useMyTrainer, useTrainers } from '../lib/trainers'
 import { battleRecord } from '../lib/battleLog'
+import { playSound, soundOf, startMusic, stopMusic } from '../lib/battleSound'
 import {simulatorTargets} from '../lib/battleSimulator'
 import {newPartyBattle, playPartyTurn, describeEvents} from '../lib/partyBattle'
 
@@ -530,6 +531,12 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   // Replay (BattleHistoryPage.jsx): a primeira rodada (o começo da batalha) também passa na tela.
   const seenRound = useRef(online?.replay ? 0 : online?.round)
   useEffect(() => { live.current = true; return () => { live.current = false; skip.current?.() } }, [])
+  // A música da batalha (para quando sai da tela).
+  useEffect(() => {
+    if (battle.winner == null) startMusic()
+    return () => stopMusic()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [battle])
   useEffect(() => {
     getMoveAnims()
       .then((table) => (anims.current = table))
@@ -544,6 +551,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
 
   /** A Poké Ball abre na plataforma e o Pokémon sai dela. */
   const release = async (side) => {
+    playSound('open')
     setSide(setBall, side, 'open')
     await wait(260)
     setSide(setBall, side, null)
@@ -562,6 +570,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
     const mine = battle.sides[0].team[battle.sides[0].active]
     setText(t('{0} enviou {1}!').replace('{0}', foeName || coachRef.current?.name || t('O adversário')).replace('{1}', foeMon.name))
     setIntro((i) => ({ ...i, foe: 'out' }))
+    playSound('throw')
     setSide(setBall, 1, 'throw')
     await wait(520)
     await release(1)
@@ -572,6 +581,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
       await wait(90)
     }
     setIntro((i) => ({ ...i, me: 'out' }))
+    playSound('throw')
     setSide(setBall, 0, 'throw')
     await wait(520)
     await release(0)
@@ -584,8 +594,14 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
     setBusy(true)
     try {
     if (before) setShown((s) => ({ ...s, form: s.form.map((f, i) => (s.dmax[i] ? f : before[i])) }))
+    let lastEffect = null
     for (const e of events) {
       if (!live.current) return
+      // Som de cada evento (golpe, super efetivo, desmaio, atributos, cura).
+      if (e.t === 'text' && (e.key === 'super' || e.key === 'weak')) lastEffect = e.key
+      const sound = soundOf(e, lastEffect)
+      if (sound) playSound(sound)
+      if (e.t === 'hp') lastEffect = null
       if (e.t === 'attack') {
         // Cada golpe com a sua animação (move_anims.json + moveAnim.js), nas cores do tipo:
         // os de status também (Swords Dance sobe, Toxic no alvo, Rain Dance no campo...).
@@ -644,6 +660,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         // Volta para a Poké Ball (se não desmaiou) e o outro sai dela.
         const gone = shownRef.current.fainted[e.side]
         if (!gone && shownRef.current.active[e.side] !== e.index) {
+          playSound('recall')
           setSide(setPoke, e.side, 'recall')
           await wait(380)
         }
@@ -687,9 +704,12 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         skip.current = null
         setBusy(false)
         setMenu(battle.needSwitch ? 'party' : 'main')
-        if (battle.winner != null && !online && !finished.current) {
+        if (battle.winner != null && !finished.current) {
           finished.current = true
-          onFinish?.(coachRef.current?.id ?? null)
+          // Fim: a música para; vencendo, a fanfarra.
+          stopMusic()
+          if (battle.winner === (online?.side ?? 0)) playSound('victory', 0.7)
+          if (!online) onFinish?.(coachRef.current?.id ?? null)
         }
         redraw((n) => n + 1)
       }

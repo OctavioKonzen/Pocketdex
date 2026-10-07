@@ -32,6 +32,11 @@ export const usePrefs = create(
       /** Sprites animados (estilo Black & White) em todo o site. */
       animatedSprites: true,
       setAnimatedSprites: (animatedSprites) => set({ animatedSprites }),
+      /** Sons da batalha (golpes, Poké Ball...) e a música (lib/battleSound.js). */
+      battleSounds: true,
+      setBattleSounds: (battleSounds) => set({ battleSounds }),
+      battleMusic: true,
+      setBattleMusic: (battleMusic) => set({ battleMusic }),
     }),
     { name: 'pocketdex-prefs' },
   ),

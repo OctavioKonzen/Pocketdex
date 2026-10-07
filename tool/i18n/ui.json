@@ -5718,6 +5718,31 @@
   "fr": "Tes victoires, le MVP de l'équipe et le replay de chaque combat",
   "es": "Tus victorias, el MVP del equipo y la repetición de cada batalla"
  },
+ "Sons da batalha": {
+  "en": "Battle sounds",
+  "fr": "Sons du combat",
+  "es": "Sonidos de batalla"
+ },
+ "Efeitos sonoros": {
+  "en": "Sound effects",
+  "fr": "Effets sonores",
+  "es": "Efectos de sonido"
+ },
+ "Golpes, Poké Ball, desmaio, atributos e a fanfarra da vitória.": {
+  "en": "Moves, Poké Ball, fainting, stats and the victory fanfare.",
+  "fr": "Attaques, Poké Ball, K.O., statistiques et la fanfare de victoire.",
+  "es": "Movimientos, Poké Ball, debilitados, estadísticas y la fanfarria de victoria."
+ },
+ "Música da batalha": {
+  "en": "Battle music",
+  "fr": "Musique du combat",
+  "es": "Música de batalla"
+ },
+ "Uma música chiptune original toca durante a batalha.": {
+  "en": "An original chiptune song plays during the battle.",
+  "fr": "Une musique chiptune originale joue pendant le combat.",
+  "es": "Una música chiptune original suena durante la batalla."
+ },
  "Formas alternativas": {
   "en": "Alternate forms",
   "fr": "Formes alternatives",

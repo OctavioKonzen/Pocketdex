@@ -25,6 +25,10 @@ export default function SettingsPage() {
   const animatedSprites = usePrefs((s) => s.animatedSprites)
   const setAnimatedSprites = usePrefs((s) => s.setAnimatedSprites)
   const setBackgroundAnimation = usePrefs((s) => s.setBackgroundAnimation)
+  const battleSounds = usePrefs((s) => s.battleSounds)
+  const setBattleSounds = usePrefs((s) => s.setBattleSounds)
+  const battleMusic = usePrefs((s) => s.battleMusic)
+  const setBattleMusic = usePrefs((s) => s.setBattleMusic)
   const [confirm, setConfirm] = useState(false)
   const [message, setMessage] = useState('')
   const user = useAuth((s) => (s.status === 'signedIn' ? s.user : null))
@@ -87,6 +91,16 @@ export default function SettingsPage() {
         <Section title="Sprites">
           <Row title="Movimento dos sprites" text="Animados: os Pokémon se mexem. Parados: ficam no primeiro quadro, no estilo escolhido.">
             <Choice value={animatedSprites ? 'on' : 'off'} onChange={(v) => setAnimatedSprites(v === 'on')} options={SPRITE_MOTIONS} />
+          </Row>
+        </Section>
+
+        {/* Batalha: efeitos e música (sintetizados, lib/battleSound.js). */}
+        <Section title="Sons da batalha">
+          <Row title="Efeitos sonoros" text="Golpes, Poké Ball, desmaio, atributos e a fanfarra da vitória.">
+            <Switch on={battleSounds} onChange={setBattleSounds} label="Efeitos sonoros" />
+          </Row>
+          <Row title="Música da batalha" text="Uma música chiptune original toca durante a batalha.">
+            <Switch on={battleMusic} onChange={setBattleMusic} label="Música da batalha" />
           </Row>
         </Section>
 
