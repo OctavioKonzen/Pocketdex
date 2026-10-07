@@ -75,6 +75,9 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
   bool _npcPartner = false;
   TurnBattle? _battle;
   String _foeName = '';
+
+  /// Prévia dos times (como no Showdown): os dois times e você escolhe quem começa.
+  ({List<BattleMon> a, List<BattleMon> b, double Function() random, String foeName})? _preview;
   BattleHit? _hit;
   double Function(String, List<String>)? _typeEff;
   int _key = 0;
@@ -126,7 +129,11 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
     setState(() {
       _busy = false;
       if (a.isNotEmpty && b.isNotEmpty) {
-        _battle = _count == 1 ? TurnBattle(a, b, random) : PartyBattle.create(rosters, [...own, ...List.filled(_count, 'npc3')], _count, random);
+        if (_count == 1 && widget.mine == null) {
+          _preview = (a: a, b: b, random: random, foeName: foeName);
+          return;
+        }
+        _battle = _count == 1 ? (TurnBattle(a, b, random)..ai = _difficulty == 'easy' ? 'easy' : 'normal') : PartyBattle.create(rosters, [...own, ...List.filled(_count, 'npc3')], _count, random);
         _foeName = foeName;
         _key++;
       }
@@ -143,7 +150,8 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
     final b = _battle!;
     setState(() {
       _battle = TurnBattle(
-          [for (final m in b.teams[0]) m.fresh()], [for (final m in b.teams[1]) m.fresh()], League.seededRandom(Random().nextInt(1 << 31)), mode: b.mode, controllers: b.controllers);
+          [for (final m in b.teams[0]) m.fresh()], [for (final m in b.teams[1]) m.fresh()], League.seededRandom(Random().nextInt(1 << 31)), mode: b.mode, controllers: b.controllers)
+        ..ai = b.ai;
       _key++;
     });
     b.dispose();
@@ -180,8 +188,74 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
                   ),
                 ],
               )
-            : _setup(context),
+            : _preview != null
+                ? _previewView(context, _preview!)
+                : _setup(context),
       ),
+    );
+  }
+
+  /// Prévia dos times: o do adversário e o seu, tocando em quem começa.
+  Widget _previewView(BuildContext context, ({List<BattleMon> a, List<BattleMon> b, double Function() random, String foeName}) p) {
+    final c = SiteColors.of(context);
+    void lead(int i) {
+      final order = [p.a[i], for (var j = 0; j < p.a.length; j++) if (j != i) p.a[j]];
+      setState(() {
+        _preview = null;
+        _battle = TurnBattle(order, p.b, p.random)..ai = _difficulty == 'easy' ? 'easy' : 'normal';
+        _foeName = p.foeName;
+        _key++;
+      });
+    }
+
+    Widget icon(BattleMon mon, double size) => SizedBox.square(dimension: size, child: PokemonSprite(mon.id, shiny: mon.shiny, fill: 0.95));
+    return ListView(
+      key: const ValueKey('team-preview'),
+      padding: const EdgeInsets.all(16),
+      children: [
+        Text('Prévia dos times', style: TextStyle(color: c.text, fontSize: 20, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 12),
+        Text(p.foeName.isNotEmpty ? tr('Time de {0}').replaceAll('{0}', p.foeName) : 'Time do adversário', style: TextStyle(color: c.muted, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 6),
+        Wrap(spacing: 6, runSpacing: 6, children: [
+          for (final mon in p.b)
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(12)),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [icon(mon, 48), m.Text(mon.name, style: TextStyle(color: c.text, fontSize: 11, fontWeight: FontWeight.w700))]),
+            ),
+        ]),
+        const SizedBox(height: 16),
+        Text('Escolha quem começa', style: TextStyle(color: c.muted, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 6),
+        GridView.count(
+          crossAxisCount: 3,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 8,
+          crossAxisSpacing: 8,
+          childAspectRatio: 0.85,
+          children: [
+            for (var i = 0; i < p.a.length; i++)
+              InkWell(
+                key: ValueKey('lead-$i'),
+                borderRadius: BorderRadius.circular(14),
+                onTap: () => lead(i),
+                child: Container(
+                  decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(14)),
+                  padding: const EdgeInsets.all(6),
+                  child: Column(children: [
+                    Expanded(child: LayoutBuilder(builder: (context, box) => icon(p.a[i], box.biggest.shortestSide))),
+                    m.Text(p.a[i].name, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: c.text, fontSize: 12, fontWeight: FontWeight.w800)),
+                    Wrap(spacing: 2, children: [for (final t in p.a[i].types) TypeBadge(t, small: true)]),
+                  ]),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        OutlinedButton(onPressed: () => setState(() => _preview = null), child: const Text('Voltar')),
+      ],
     );
   }
 
@@ -228,9 +302,9 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
         ),
         if (_friend == _random || _npcPartner) ...[
           const SizedBox(height: 12),
-          DropdownButtonFormField<String>(isExpanded: true, initialValue: _difficulty, decoration: deco('Dificuldade dos NPCs'), items: const [DropdownMenuItem(value: 'normal', child: Text('Normal')), DropdownMenuItem(value: 'hard', child: Text('Difícil'))], onChanged: _busy ? null : (v) => setState(() => _difficulty = v!)),
+          DropdownButtonFormField<String>(isExpanded: true, initialValue: _difficulty, decoration: deco('Dificuldade dos NPCs'), items: const [DropdownMenuItem(value: 'easy', child: Text('Fácil')), DropdownMenuItem(value: 'normal', child: Text('Normal')), DropdownMenuItem(value: 'hard', child: Text('Difícil'))], onChanged: _busy ? null : (v) => setState(() => _difficulty = v!)),
           const SizedBox(height: 6),
-          const Text('Normal: IVs e EVs aleatórios.\nDifícil: sets competitivos.'),
+          const Text('Fácil: o computador ataca ao acaso, sem trocar nem usar itens.\nNormal: IVs e EVs aleatórios.\nDifícil: sets competitivos.'),
         ],
         if (_friend != _random) ...[
           const SizedBox(height: 12),

@@ -324,6 +324,14 @@ describe('computador usa vantagem, trocas e bolsa', () => {
     expect(events.some((e) => e.t === 'switch' && e.side === 1)).toBe(true)
     expect(cpuPlan(b, hit).kind).not.toBe('switch')
   })
+  it('no Fácil não troca nem usa a Bolsa (golpe ao acaso ou o melhor)', () => {
+    let n = 0
+    const rolls = [0.1, 0.99, 0.5, 0.2, 0.9, 0.3]
+    const b = newBattle([member(1, 'water')], [member(2, 'fire'), member(3, 'grass')], () => rolls[n++ % rolls.length], { ai: 'easy' })
+    // No Normal ele trocaria para o de Grama e curaria com HP baixo.
+    active(b, 1).hp = 25
+    for (let i = 0; i < 12; i++) expect(cpuPlan(b, hit).kind).toBe('move')
+  })
   it('cura, gasta o item e não desperdiça turno quando consegue finalizar', () => {
     const b = newBattle([member(1, 'normal', 60)], [member(2, 'normal')], () => 0.9)
     active(b, 1).hp = 25

@@ -110,6 +110,8 @@ export function newBattle(mine, theirs, random, options = {}) {
     random,
     bags: [newBag(), newBag()],
     turn: 1,
+    // Como o computador joga: 'easy' (golpe ao acaso na maioria das vezes, sem trocas nem Bolsa) ou 'normal'.
+    ai: options.ai || 'normal',
     cpuSwitchTurn: -2,
     gimmicks: [null, null], // última mecânica usada, para o registro
     usedGimmicks: [[], []], // cada mecânica pode ser usada uma vez por lado
@@ -607,6 +609,13 @@ function matchupScore(battle, hit, mon, foe) {
 
 /** Decide sem olhar a ação do jogador: golpe, troca ou item. */
 export function cpuPlan(battle, hit) {
+  // Fácil: um golpe qualquer na maioria das vezes; nunca troca nem usa a Bolsa (igual ao app).
+  if (battle.ai === 'easy') {
+    const usable = usableMoves(active(battle, 1))
+    if (!usable.length) return { kind: 'move', index: -1 }
+    if (battle.random() < 0.6) return { kind: 'move', index: usable[Math.floor(battle.random() * usable.length)] }
+    return { kind: 'move', index: cpuMove(battle, hit) }
+  }
   const me = active(battle, 1), foe = active(battle, 0)
   const index = cpuMove(battle, hit)
   const outgoing = bestDamage(battle, hit, me, foe)

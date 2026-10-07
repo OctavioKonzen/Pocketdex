@@ -243,6 +243,14 @@ void main() {
     expect(switching.active(1).id, 3);
     expect(switching.active(0).hp, 100);
     expect(switching.cpuPlan(hit).kind, isNot('switch'));
+    // No Fácil: nem troca nem usa a Bolsa (golpe ao acaso ou o melhor), igual ao site.
+    var n = 0;
+    const rolls = [0.1, 0.99, 0.5, 0.2, 0.9, 0.3];
+    final easy = TurnBattle([member(1, 'water')], [member(2, 'fire'), member(3, 'grass')], () => rolls[n++ % rolls.length])..ai = 'easy';
+    easy.active(1).hp = 25;
+    for (var i = 0; i < 12; i++) {
+      expect(easy.cpuPlan(hit).kind, 'move');
+    }
     final healing = TurnBattle([member(1, 'normal', 60)], [member(2, 'normal')], () => 0.9);
     healing.active(1).hp = 25;
     expect(healing.cpuPlan(hit).item, 'hyper-potion');
