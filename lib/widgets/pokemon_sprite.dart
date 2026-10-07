@@ -61,6 +61,10 @@ class PokemonSprite extends StatelessWidget {
   /// acompanha a animação quadro a quadro (headAnchor).
   final Widget? crown;
 
+  /// Cor do Tera Type: o corpo fica cristalizado (facetas e reflexo, como o
+  /// site em web-site/src/lib/teraCrystal.js). Vem junto com [crown].
+  final Color? crystal;
+
   const PokemonSprite(this.id,
       {super.key,
       this.shiny = false,
@@ -70,7 +74,8 @@ class PokemonSprite extends StatelessWidget {
       this.back = false,
       this.battle = false,
       this.prefetchShiny = false,
-      this.crown});
+      this.crown,
+      this.crystal});
 
   @override
   Widget build(BuildContext context) {
@@ -86,7 +91,7 @@ class PokemonSprite extends StatelessWidget {
         final source = AnimatedSprites.instance.source(pid, shiny: shiny, back: back);
         if (source == null) {
           // Sem as costas: a frente (animada, se tiver) espelhada.
-          if (back) return Transform.flip(flipX: true, child: PokemonSprite(id, shiny: shiny, fill: fill, alignBottom: alignBottom, battle: battle, crown: crown));
+          if (back) return Transform.flip(flipX: true, child: PokemonSprite(id, shiny: shiny, fill: fill, alignBottom: alignBottom, battle: battle, crown: crown, crystal: crystal));
           return still;
         }
         if (prefetchShiny) {
@@ -94,7 +99,7 @@ class PokemonSprite extends StatelessWidget {
           if (other != null) precacheImage(NetworkImage(other.url), context).ignore();
         }
         return _AnimatedSprite(source,
-            fill: fill, alignBottom: alignBottom, battle: battle, animate: AppSettings.instance.animatedSprites, fallback: still, crown: crown);
+            fill: fill, alignBottom: alignBottom, battle: battle, animate: AppSettings.instance.animatedSprites, fallback: still, crown: crown, crystal: crystal);
       },
     );
   }
@@ -154,8 +159,9 @@ class _AnimatedSprite extends StatelessWidget {
   final double fill;
   final Widget fallback;
   final Widget? crown;
+  final Color? crystal;
   const _AnimatedSprite(this.source,
-      {required this.fill, required this.alignBottom, required this.battle, required this.animate, required this.fallback, this.crown});
+      {required this.fill, required this.alignBottom, required this.battle, required this.animate, required this.fallback, this.crown, this.crystal});
 
   @override
   Widget build(BuildContext context) {
@@ -214,6 +220,7 @@ class _AnimatedSprite extends StatelessWidget {
                         alignBottom: widget.alignBottom,
                         animate: animate,
                         crown: widget.crown!,
+                        crystal: widget.crystal,
                         crownWidth: side * 0.26,
                         placeholder: still,
                       )
@@ -464,6 +471,7 @@ class _CrownedGif extends StatefulWidget {
   final double? scale;
   final bool alignBottom, animate;
   final Widget crown;
+  final Color? crystal;
   final double crownWidth;
   final Widget placeholder;
   const _CrownedGif(
@@ -473,6 +481,7 @@ class _CrownedGif extends StatefulWidget {
       required this.alignBottom,
       required this.animate,
       required this.crown,
+      this.crystal,
       required this.crownWidth,
       required this.placeholder});
 
@@ -480,7 +489,10 @@ class _CrownedGif extends StatefulWidget {
   State<_CrownedGif> createState() => _CrownedGifState();
 }
 
-class _CrownedGifState extends State<_CrownedGif> {
+class _CrownedGifState extends State<_CrownedGif> with SingleTickerProviderStateMixin {
+  // O reflexo do cristal passa a cada 2,4 s.
+  late final AnimationController _shine = AnimationController(vsync: this, duration: const Duration(milliseconds: 2400));
+  List<_Facet>? _facets;
   // Ouve o mesmo GIF que os outros Image.network dele (o brilho do Tera usa
   // cópias do sprite): todos mostram o mesmo quadro ao mesmo tempo.
   ImageStream? _stream;
@@ -498,14 +510,26 @@ class _CrownedGifState extends State<_CrownedGif> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.crystal != null) _shine.repeat();
+  }
+
+  @override
   void didUpdateWidget(_CrownedGif old) {
     super.didUpdateWidget(old);
     if (old.url != widget.url || old.animate != widget.animate) _resolve();
+    if (widget.crystal == null) {
+      _shine.stop();
+    } else if (!_shine.isAnimating) {
+      _shine.repeat();
+    }
   }
 
   void _resolve() {
     _stop();
     _tracker = null;
+    _facets = null;
     final stream = NetworkImage(widget.url).resolve(createLocalImageConfiguration(context));
     final listener = ImageStreamListener((info, _) {
       if (!mounted) return;
@@ -556,6 +580,7 @@ class _CrownedGifState extends State<_CrownedGif> {
 
   @override
   void dispose() {
+    _shine.dispose();
     _stop();
     _pending?.dispose();
     _image?.dispose();
@@ -580,15 +605,27 @@ class _CrownedGifState extends State<_CrownedGif> {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          RawImage(
-            image: image,
-            width: box,
-            height: box,
-            scale: widget.scale == null ? 1 : 1 / widget.scale!,
-            fit: widget.scale == null ? BoxFit.contain : BoxFit.none,
-            alignment: widget.alignBottom ? Alignment.bottomCenter : Alignment.center,
-            filterQuality: FilterQuality.none,
-          ),
+          if (widget.crystal case final color?)
+            CustomPaint(
+              size: Size.square(box),
+              painter: _CrystalPainter(
+                image: image,
+                dst: Rect.fromLTWH(left, top, w, h),
+                color: color,
+                shine: _shine,
+                facets: _facets ??= _crystalFacets(image.width, image.height),
+              ),
+            )
+          else
+            RawImage(
+              image: image,
+              width: box,
+              height: box,
+              scale: widget.scale == null ? 1 : 1 / widget.scale!,
+              fit: widget.scale == null ? BoxFit.contain : BoxFit.none,
+              alignment: widget.alignBottom ? Alignment.bottomCenter : Alignment.center,
+              filterQuality: FilterQuality.none,
+            ),
           if (head != null)
             Positioned(
               left: left + head.dx * w - cw / 2,
@@ -601,4 +638,103 @@ class _CrownedGifState extends State<_CrownedGif> {
       ),
     );
   }
+}
+
+/// Uma faceta do cristal: triângulo (em pixels do GIF) claro (0), da cor (1) ou escuro (2).
+typedef _Facet = ({List<Offset> points, int shade});
+
+/// Número "aleatório" fixo por posição, igual ao site (teraCrystal.js).
+double _crystalHash(int a, int b, int c) {
+  int imul(int x, int y) => ((x & 0xFFFFFFFF) * (y & 0xFFFFFFFF)) & 0xFFFFFFFF;
+  var n = (imul(a, 374761393) + imul(b, 668265263) + imul(c, 2147483647)) & 0xFFFFFFFF;
+  n = imul(n ^ (n >> 13), 1274126177);
+  return ((n ^ (n >> 16)) & 0xFFFFFFFF) / 4294967296;
+}
+
+/// As facetas de um sprite w × h (igual ao site, crystalFacets): triângulos
+/// de uma grade com os cantos mexidos.
+List<_Facet> _crystalFacets(int w, int h) {
+  final s = max(5, (max(w, h) / 9).round());
+  final cols = (w / s).ceil() + 1, rows = (h / s).ceil() + 1;
+  Offset at(int i, int j) {
+    final edge = i == 0 || j == 0 || i == cols || j == rows;
+    final jx = edge ? 0.0 : (_crystalHash(i, j, 1) - 0.5) * s * 0.7;
+    final jy = edge ? 0.0 : (_crystalHash(i, j, 2) - 0.5) * s * 0.7;
+    return Offset(i * s + jx, j * s + jy);
+  }
+
+  final facets = <_Facet>[];
+  for (var j = 0; j < rows; j++) {
+    for (var i = 0; i < cols; i++) {
+      final a = at(i, j), b = at(i + 1, j), c = at(i + 1, j + 1), d = at(i, j + 1);
+      final tris = _crystalHash(i, j, 3) < 0.5
+          ? [
+              [a, b, c],
+              [a, c, d]
+            ]
+          : [
+              [a, b, d],
+              [b, c, d]
+            ];
+      for (var k = 0; k < 2; k++) {
+        final v = _crystalHash(i, j, 4 + k);
+        facets.add((points: tris[k], shade: v < 0.3 ? 0 : (v < 0.75 ? 1 : 2)));
+      }
+    }
+  }
+  return facets;
+}
+
+/// O quadro do GIF com o corpo cristalizado: tinta da cor do tipo, facetas e
+/// o reflexo passando, tudo só por cima dos pixels do Pokémon (srcATop).
+class _CrystalPainter extends CustomPainter {
+  final ui.Image image;
+  final Rect dst;
+  final Color color;
+  final Animation<double> shine;
+  final List<_Facet> facets;
+  _CrystalPainter({required this.image, required this.dst, required this.color, required this.shine, required this.facets}) : super(repaint: shine);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = image.width.toDouble(), h = image.height.toDouble();
+    canvas.saveLayer(dst, Paint());
+    canvas.drawImageRect(image, Rect.fromLTWH(0, 0, w, h), dst, Paint()..filterQuality = FilterQuality.none);
+    canvas
+      ..save()
+      ..translate(dst.left, dst.top)
+      ..scale(dst.width / w, dst.height / h);
+    final whole = Rect.fromLTWH(0, 0, w, h);
+    canvas.drawRect(whole, Paint()
+      ..blendMode = BlendMode.srcATop
+      ..color = color.withValues(alpha: 0.3));
+    final fills = [const Color(0xFFFFFFFF).withValues(alpha: 0.26), color.withValues(alpha: 0.2), const Color(0xFF000000).withValues(alpha: 0.12)];
+    final edge = Paint()
+      ..blendMode = BlendMode.srcATop
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.6
+      ..color = const Color(0xFFFFFFFF).withValues(alpha: 0.2);
+    for (final f in facets) {
+      final path = Path()..addPolygon(f.points, true);
+      canvas
+        ..drawPath(path, Paint()
+          ..blendMode = BlendMode.srcATop
+          ..color = fills[f.shade])
+        ..drawPath(path, edge);
+    }
+    // O reflexo: uma faixa branca na diagonal atravessando o corpo.
+    final x = -w + 3 * w * shine.value;
+    canvas.drawRect(
+        whole,
+        Paint()
+          ..blendMode = BlendMode.srcATop
+          ..shader = ui.Gradient.linear(Offset(x, 0), Offset(x + w * 0.45, h * 0.45),
+              [const Color(0xFFFFFFFF).withValues(alpha: 0), const Color(0xFFFFFFFF).withValues(alpha: 0.5), const Color(0xFFFFFFFF).withValues(alpha: 0)], [0, 0.5, 1]));
+    canvas
+      ..restore()
+      ..restore();
+  }
+
+  @override
+  bool shouldRepaint(_CrystalPainter old) => old.image != image || old.dst != dst || old.color != color;
 }
