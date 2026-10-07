@@ -34,6 +34,7 @@ import '../widgets/pokemon_sprite.dart';
 import '../widgets/trainer_sprite.dart';
 import '../services/trainers.dart';
 import '../services/battle_log.dart';
+import '../services/battle_sounds.dart';
 
 /// Um time para a batalha: nome e membros (id + set).
 class BattleTeam {
@@ -475,6 +476,8 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
   void initState() {
     super.initState();
     if (_b.mode != 'singles') return;
+    // A música da batalha (para quando sai da tela).
+    if (_b.winner == null) BattleSounds.startMusic();
     LocalDatabase.instance.moveAnims().then((t) => _anims = t).catchError((_) => <String, dynamic>{});
     // Começo: as habilidades de clima de quem entrou (Drizzle, Drought...).
     _menu = _b.needSwitch ? 'party' : 'main';
@@ -516,6 +519,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
 
   /// A Poké Ball abre na plataforma e o Pokémon sai dela.
   Future<void> _release(int side) async {
+    BattleSounds.play('open');
     setState(() => _ball[side] = 'open');
     await _wait(260);
     if (!mounted) return;
@@ -540,6 +544,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
       _foeGone = true;
       _ball[1] = 'throw';
     });
+    BattleSounds.play('throw');
     await _wait(520);
     if (!mounted) return;
     await _release(1);
@@ -554,6 +559,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
       _meGone = true;
       _ball[0] = 'throw';
     });
+    BattleSounds.play('throw');
     await _wait(520);
     if (!mounted) return;
     await _release(0);
@@ -579,6 +585,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
       t.cancel();
     }
     _shake.dispose();
+    if (_b.mode == 'singles') BattleSounds.stopMusic();
     super.dispose();
   }
 
@@ -618,8 +625,14 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
       }
     });
     try {
+    String? lastEffect;
     for (final e in events) {
       if (!mounted) return;
+      // Som de cada evento (golpe, super efetivo, desmaio, atributos, cura).
+      if (e.t == 'text' && (e.key == 'super' || e.key == 'weak')) lastEffect = e.key;
+      final sound = BattleSounds.of(e, lastEffect);
+      if (sound != null) BattleSounds.play(sound);
+      if (e.t == 'hp') lastEffect = null;
       switch (e.t) {
         case 'attack':
           // Cada golpe com a sua animação (move_anims.json + move_anim.dart), nas cores do tipo:
@@ -684,6 +697,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
         case 'switch':
           // Volta para a Poké Ball (se não desmaiou) e o outro sai dela.
           if (!_fainted[e.side] && _active[e.side] != e.value) {
+            BattleSounds.play('recall');
             setState(() => _poke[e.side] = 'recall');
             await _wait(380);
             if (!mounted) return;
@@ -752,9 +766,12 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
         if (_b.needSwitch) _text = tr('Escolha o próximo Pokémon.');
       });
       // Acabou: vai para o histórico (só as batalhas contra o computador).
-      if (mounted && _b.winner != null && widget.online == null && !_finished) {
+      if (mounted && _b.winner != null && !_finished) {
         _finished = true;
-        widget.onFinish?.call(_coach?.id);
+        // Fim: a música para; vencendo, a fanfarra.
+        BattleSounds.stopMusic();
+        if (_b.winner == 0) BattleSounds.play('victory', volume: 0.7);
+        if (widget.online == null) widget.onFinish?.call(_coach?.id);
       }
     }
   }

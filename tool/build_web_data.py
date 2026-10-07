@@ -318,6 +318,8 @@ def main():
     # Imagens.
     shutil.copytree(os.path.join(DB, 'sprites'), os.path.join(OUT, 'sprites'), dirs_exist_ok=True)
     shutil.copytree(os.path.join(DB, 'cries'), os.path.join(OUT, 'cries'), dirs_exist_ok=True)
+    # Sons da batalha (tool/build_battle_sounds.py).
+    shutil.copytree(os.path.join(DB, 'sounds'), os.path.join(OUT, 'sounds'), dirs_exist_ok=True)
     os.makedirs(os.path.join(OUT, 'img'), exist_ok=True)
     for image in ('pokeball.png', 'poke_logo.png'):
         shutil.copyfile(os.path.join(ROOT, 'assets', 'images', image), os.path.join(OUT, 'img', image))

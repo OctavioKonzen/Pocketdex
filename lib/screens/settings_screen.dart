@@ -178,6 +178,19 @@ class SettingsScreen extends StatelessWidget {
                       ),
                     ),
                   ]),
+                  // Batalha: efeitos e música (sintetizados, battle_sounds.dart).
+                  _Section('Sons da batalha', [
+                    row(
+                      title: 'Efeitos sonoros',
+                      subtitle: 'Golpes, Poké Ball, desmaio, atributos e a fanfarra da vitória.',
+                      trailing: Switch(value: settings.battleSounds, activeTrackColor: const Color(0xFF0EA5E9), onChanged: settings.setBattleSounds),
+                    ),
+                    row(
+                      title: 'Música da batalha',
+                      subtitle: 'Uma música chiptune original toca durante a batalha.',
+                      trailing: Switch(value: settings.battleMusic, activeTrackColor: const Color(0xFF0EA5E9), onChanged: settings.setBattleMusic),
+                    ),
+                  ]),
                   if (DailyReminder.supported) _Section('Notificações', [_ReminderSwitch(row: row), _DailyPokemonSwitch(row: row)]),
                   _Section('Dados', [
                     row(

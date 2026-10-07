@@ -15,6 +15,8 @@ class AppSettings extends ChangeNotifier {
   static const _pokeballKey = 'settings_pokeball_animation';
   static const _backgroundKey = 'settings_background_pokeball';
   static const _animatedSpritesKey = 'settings_animated_sprites';
+  static const _battleSoundsKey = 'settings_battle_sounds';
+  static const _battleMusicKey = 'settings_battle_music';
 
   /// Os sprites se mexem ou ficam parados: (chave, nome).
   static const spriteMotions = [('on', 'Animados'), ('off', 'Parados')];
@@ -31,6 +33,10 @@ class AppSettings extends ChangeNotifier {
   /// lib/services/animated_sprites.dart).
   bool animatedSprites = true;
 
+  /// Sons da batalha (golpes, Poké Ball...) e a música (battle_sounds.dart).
+  bool battleSounds = true;
+  bool battleMusic = true;
+
   double get textScale => textSizes.firstWhere((t) => t.$1 == textSize, orElse: () => textSizes.first).$3;
 
   Future<void> load() async {
@@ -40,6 +46,8 @@ class AppSettings extends ChangeNotifier {
       pokeballAnimation = prefs.getBool(_pokeballKey) ?? true;
       backgroundAnimation = prefs.getBool(_backgroundKey) ?? true;
       animatedSprites = prefs.getBool(_animatedSpritesKey) ?? true;
+      battleSounds = prefs.getBool(_battleSoundsKey) ?? true;
+      battleMusic = prefs.getBool(_battleMusicKey) ?? true;
     } catch (_) {}
   }
 
@@ -72,6 +80,22 @@ class AppSettings extends ChangeNotifier {
     notifyListeners();
     try {
       await (await SharedPreferences.getInstance()).setBool(_animatedSpritesKey, value);
+    } catch (_) {}
+  }
+
+  Future<void> setBattleSounds(bool value) async {
+    battleSounds = value;
+    notifyListeners();
+    try {
+      await (await SharedPreferences.getInstance()).setBool(_battleSoundsKey, value);
+    } catch (_) {}
+  }
+
+  Future<void> setBattleMusic(bool value) async {
+    battleMusic = value;
+    notifyListeners();
+    try {
+      await (await SharedPreferences.getInstance()).setBool(_battleMusicKey, value);
     } catch (_) {}
   }
 }

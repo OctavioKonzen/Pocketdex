@@ -50,4 +50,5 @@ flutter:
     - assets/database/sprites/pokemon/other/official-artwork/shiny/
     - assets/database/sprites/items/
     - assets/database/sprites/trainers/
+    - assets/database/sounds/
     - assets/database/cries/
