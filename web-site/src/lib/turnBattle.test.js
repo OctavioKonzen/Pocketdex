@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { battleMons, pickMoves } from './battleSetup'
 import { seededRandom } from './league'
-import { active, cpuPlan, canGimmick, canUseItem, effectLabel, lineOf, maxPower, moveEffect, newBattle, playTurn, replace, startBattle, switchMatchup, usableMoves, weaknesses, zPower } from './turnBattle'
+import { active, cpuMove, cpuPlan, canGimmick, canUseItem, effectLabel, lineOf, maxPower, moveEffect, newBattle, playTurn, replace, startBattle, switchMatchup, usableMoves, weaknesses, zPower } from './turnBattle'
 
 beforeAll(() => {
   vi.stubGlobal('fetch', async (url) => {
@@ -351,5 +351,29 @@ describe('computador usa vantagem, trocas e bolsa', () => {
     expect(cpuPlan(b, hit)).toEqual({ kind: 'move', index: 1 })
     const harmless = (att, def, slug) => (att === active(b, 1) ? { rolls: [[0]], eff: 0 } : hit(att, def, slug))
     expect(cpuPlan(b, harmless)).toEqual({ kind: 'item', item: 'revive', target: 1 })
+  })
+  // Dano = poder do golpe (para testar as contas da IA).
+  const byPower = (att, def, slug) => ({ rolls: [[att.moves.find((m) => m.slug === slug).power]], eff: 1 })
+  it('mais lento e para cair: nocauteia com o golpe de prioridade', () => {
+    const b = newBattle([mon(1, 'A', ['normal'], 30, 100, [move('hit', 'normal', 100, 100, 10)])],
+      [mon(2, 'B', ['normal'], 100, 50, [move('strong', 'normal', 80, 100, 10), move('quick', 'normal', 35, 100, 10, 1)])], () => 0.9)
+    expect(cpuMove(b, byPower)).toBe(1)
+    // Sem nocaute à vista e sem perigo: o golpe forte.
+    active(b, 0).maxHp = 200; active(b, 0).hp = 200; active(b, 0).moves[0].power = 50
+    expect(cpuMove(b, byPower)).toBe(0)
+  })
+  it('não cura nem se fortalece quando perde mais do que ganha', () => {
+    const recover = move('recover', 'normal', 0, null, 10, 0, { h: [1, 2] }, 'status')
+    const dance = move('swords-dance', 'normal', 0, null, 10, 0, { b: { atk: 2 }, t: 'self' }, 'status')
+    const b = newBattle([mon(1, 'A', ['normal'], 100, 100, [move('hit', 'normal', 60, 100, 10)])],
+      [mon(2, 'B', ['normal'], 100, 50, [move('tap', 'normal', 10, 100, 10), recover, dance])], () => 0.9)
+    active(b, 1).hp = 40
+    expect(cpuMove(b, byPower)).toBe(0)
+    active(b, 0).moves[0].power = 20
+    expect(cpuMove(b, byPower)).toBe(1)
+    active(b, 1).hp = 100
+    expect(cpuMove(b, byPower)).toBe(2)
+    active(b, 0).moves[0].power = 40
+    expect(cpuMove(b, byPower)).toBe(0)
   })
 })
