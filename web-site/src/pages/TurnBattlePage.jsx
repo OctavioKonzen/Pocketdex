@@ -12,6 +12,7 @@ import { teamsOf, useAuth } from '../lib/auth'
 import { battleHitter, battleMons, leaderTeam, randomTeam } from '../lib/battleSetup'
 import { friendsOnly, useFriends } from '../lib/friends'
 import { getGymLeaders, getMoveAnims, getTypes, shinyPath, spriteUrl } from '../lib/data'
+import { addHallOfFame, badgesNeeded, badgesOf, leagueOpen, leagueOrder, musicOf, regionGyms, regionOf, winBadge } from '../lib/gymChallenge'
 import { t } from '../lib/i18n'
 import { seededRandom } from '../lib/league'
 import { ALL_TYPES, damageTaken, typeColor } from '../lib/pokemon'
@@ -75,6 +76,44 @@ function LeaderCard({ leader }) {
   )
 }
 
+/** A região do líder: as insígnias e a Liga (liberada com as insígnias). */
+function RegionProgress({ region, busy, ready, onLeague }) {
+  const league = useStore((s) => s.league)
+  const have = badgesOf(league, region)
+  const open = leagueOpen(league, region)
+  const order = leagueOrder(region)
+  const halls = (league?.hall ?? []).filter((h) => h.region === region.region).length
+  return (
+    <div className="space-y-2 rounded-2xl bg-bg p-3" data-testid="region-progress">
+      <p className="text-sm font-bold">
+        {t('Insígnias de {0}').replace('{0}', region.region)}: {have.length}/{badgesNeeded(region)}
+        {halls > 0 && <span className="ml-2 text-amber-500">🏆 ×{halls}</span>}
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {regionGyms(region).map((l) => (
+          <span
+            key={l.id}
+            title={l.name}
+            data-badge={have.includes(l.id) ? 'on' : 'off'}
+            className="grid h-7 w-7 place-items-center rounded-full text-[10px] font-black text-white"
+            style={{ background: have.includes(l.id) ? typeColor(l.type) : '#64748b55', boxShadow: have.includes(l.id) ? '0 0 0 2px #fbbf24' : 'none' }}
+          >
+            {have.includes(l.id) ? '★' : ''}
+          </span>
+        ))}
+      </div>
+      <Button color="linear-gradient(90deg,#F59E0B,#DC2626)" disabled={!open || busy || !ready || !order.length} onClick={() => onLeague(order[0], region)}>
+        🏆 {t('Desafiar a Liga de {0}').replace('{0}', region.region)}
+      </Button>
+      <p className="text-xs text-muted">
+        {open
+          ? t('Elite Four e Campeão em sequência ({0} batalhas). Perdeu, recomeça.').replace('{0}', order.length)
+          : t('Vença os líderes de ginásio para ganhar as insígnias e liberar a Liga.')}
+      </p>
+    </div>
+  )
+}
+
 function Setup({ onStart }) {
   const teams = useStore((s) => s.teams)
   const list = useFriends((s) => s.list)
@@ -107,19 +146,20 @@ function Setup({ onStart }) {
   const myTeam = myTeams.find((x) => x.id === mine)
   const theirTeam = friendTeams?.find((x) => x.id === theirs)
   const ready = (mine === RANDOM || myTeam && teamMembers(myTeam).length >= (npcPartner ? 1 : count)) && (friend === RANDOM || leader || theirTeam && teamMembers(theirTeam).length >= count)
-  const start = async () => {
+  // pick: o líder (ou null); challenge: {kind: 'gym' | 'league', ...} para a jornada (lib/gymChallenge.js).
+  const start = async (pick = leader, challenge = pick ? { kind: 'gym', leader: pick.id, difficulty } : null) => {
     setBusy(true)
     setError('')
     try {
     const seed = Math.floor(Math.random() * 2 ** 31)
     const random = seededRandom(seed)
-    const foeName = leader ? leader.name : friend === RANDOM ? '' : friends.find((f) => f.uid === friend)?.name ?? ''
-    const foeTrainer = leader?.trainer ?? null
+    const foeName = pick ? pick.name : friend === RANDOM ? '' : friends.find((f) => f.uid === friend)?.name ?? ''
+    const foeTrainer = pick?.trainer ?? null
     const ma = mine === RANDOM ? await randomTeam(random, difficulty) : teamMembers(myTeam)
-    const mb = leader ? await leaderTeam(leader, random, difficulty) : friend === RANDOM ? await randomTeam(random, difficulty) : teamMembers(theirTeam)
+    const mb = pick ? await leaderTeam(pick, random, difficulty) : friend === RANDOM ? await randomTeam(random, difficulty) : teamMembers(theirTeam)
     const [a, b] = await Promise.all([battleMons(ma), battleMons(mb)])
     if (a.length && b.length) {
-      if (count === 1) setPreview({ a, b, ma: ma.slice(0, a.length), mb: mb.slice(0, b.length), random, foeName, foeTrainer })
+      if (count === 1 || challenge?.kind === 'league') setPreview({ a, b, ma: ma.slice(0, a.length), mb: mb.slice(0, b.length), random, foeName, foeTrainer, challenge })
       else {
         const rosters = {me:a,npc3:b}
         const own = Array.from({length:count},(_,i) => i && npcPartner ? `npc${i}` : 'me')
@@ -139,7 +179,7 @@ function Setup({ onStart }) {
       const seed = Math.floor(preview.random() * 2 ** 31)
       const battle = newBattle(first(preview.a), preview.b, seededRandom(seed), { ai: difficulty === 'easy' ? 'easy' : 'normal', seed })
       battle.members = { mine: first(preview.ma), theirs: preview.mb }
-      onStart(battle, preview.foeName, preview.foeTrainer)
+      onStart(battle, preview.foeName, preview.foeTrainer, preview.challenge)
     }
     return (
       <section className={`${CARD} space-y-4`} data-testid="team-preview">
@@ -224,6 +264,9 @@ function Setup({ onStart }) {
         </select>
       </label>
       {leader && <LeaderCard leader={leader} />}
+      {leader && regionOf(regions, leader.id) && (
+        <RegionProgress region={regionOf(regions, leader.id)} busy={busy} ready={mine === RANDOM || Boolean(myTeam)} onLeague={(first, region) => start(first, { kind: 'league', region: region.region, step: 0, difficulty })} />
+      )}
       {(friend === RANDOM || leader || npcPartner) && <label className="block space-y-1.5"><span>Dificuldade dos NPCs</span><select aria-label="Dificuldade dos NPCs" className={SELECT} value={difficulty} onChange={e=>setDifficulty(e.target.value)}><option value="easy">Fácil · ataca ao acaso, sem trocas nem itens</option><option value="normal">Normal · IVs e EVs aleatórios</option><option value="hard">Difícil · sets competitivos</option></select></label>}
       {friend !== RANDOM && !leader &&
         (friendTeams === null ? (
@@ -247,7 +290,7 @@ function Setup({ onStart }) {
       <p className="text-xs text-muted">
         O computador joga pelo adversário. Golpes com PP, precisão, prioridade, crítico, status, mudanças de atributo e clima.
       </p>
-      <Button color="linear-gradient(90deg,#DC2626,#9333EA)" className="w-full" disabled={busy || !ready} onClick={start}>
+      <Button color="linear-gradient(90deg,#DC2626,#9333EA)" className="w-full" disabled={busy || !ready} onClick={() => start()}>
         {busy ? 'Preparando...' : '⚔️ Começar batalha'}
       </Button>
     </section>
@@ -529,7 +572,7 @@ function PokeBall({ side, phase }) {
 export function Battle(props) {
   return props.battle.mode && props.battle.mode !== 'singles' ? <MultiBattle {...props} /> : <SingleBattle {...props} />
 }
-function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain, onFinish, online = null }) {
+function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain, onFinish, online = null, music = 'battle_music', endNote = '', next = null }) {
   const byId = usePokemonIndex()
   // Os treinadores: o seu (de costas, lançando a Poké Ball) e o do adversário.
   const myTrainer = useMyTrainer()
@@ -577,7 +620,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   useEffect(() => { live.current = true; return () => { live.current = false; skip.current?.() } }, [])
   // A música da batalha (para quando sai da tela).
   useEffect(() => {
-    if (battle.winner == null) startMusic()
+    if (battle.winner == null) startMusic(music)
     return () => stopMusic()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [battle])
@@ -1066,9 +1109,15 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         </div>
       )}
 
+      {!busy && battle.winner != null && endNote && (
+        <p className="mt-4 rounded-xl bg-card p-3 text-center font-bold" data-testid="end-note">{endNote}</p>
+      )}
       {!busy && battle.winner != null && (
         <div className="mt-4 flex flex-wrap justify-center gap-3">
-          {!online && <Button color="linear-gradient(90deg,#DC2626,#9333EA)" onClick={onAgain}>
+          {next && <Button color="linear-gradient(90deg,#F59E0B,#DC2626)" onClick={next.onClick}>
+            {next.label}
+          </Button>}
+          {!online && onAgain && <Button color="linear-gradient(90deg,#DC2626,#9333EA)" onClick={onAgain}>
             Batalhar de novo
           </Button>}
           <Button color="#546E7A" onClick={onExit}>
@@ -1289,8 +1338,12 @@ function MenuButton({ children, onClick, className = '', disabled = false }) {
 
 export default function TurnBattlePage() {
   const user = useAuth((s) => (s.status === 'signedIn' ? s.user : null))
-  const [game, setGame] = useState(null) // {battle, foeName, key, setup}
+  const [game, setGame] = useState(null) // {battle, foeName, foeTrainer, challenge, endNote, next, key}
   const [hit, setHit] = useState(null)
+  const [regions, setRegions] = useState([])
+  useEffect(() => {
+    getGymLeaders().then(setRegions).catch(() => setRegions([]))
+  }, [])
   useEffect(() => {
     const battle = game?.battle
     return () => { if (battle) simulatorDispose(battle) }
@@ -1329,7 +1382,58 @@ export default function TurnBattlePage() {
     const seed = Math.floor(Math.random() * 2 ** 31)
     const battle = newBattle(fresh(b.sides[0].team), fresh(b.sides[1].team), seededRandom(seed), {mode:b.mode,controllers:b.controllers,ai:b.ai,seed})
     battle.members = b.members
-    setGame({ ...game, battle, key: game.key + 1 })
+    setGame({ ...game, battle, endNote: '', next: null, key: game.key + 1 })
+  }
+
+  const leaders = regions.flatMap((r) => r.leaders)
+  const challenge = game?.challenge ?? null
+  const foeLeader = challenge ? leaders.find((l) => l.id === (challenge.kind === 'league' ? leagueOrder(regions.find((r) => r.region === challenge.region))[challenge.step]?.id : challenge.leader)) : null
+
+  // Liga: o próximo da Elite Four (ou o Campeão) com o mesmo time seu.
+  const nextLeague = async () => {
+    const region = regions.find((r) => r.region === challenge.region)
+    const step = challenge.step + 1
+    const foe = leagueOrder(region)[step]
+    const seed = Math.floor(Math.random() * 2 ** 31)
+    const random = seededRandom(seed)
+    const ma = game.battle.members.mine
+    const mb = await leaderTeam(foe, random, challenge.difficulty)
+    const [a, b] = await Promise.all([battleMons(ma), battleMons(mb)])
+    const battle = newBattle(a, b, seededRandom(seed), { ai: challenge.difficulty === 'easy' ? 'easy' : 'normal', seed })
+    battle.members = { mine: ma, theirs: mb.slice(0, b.length) }
+    setGame({ battle, foeName: foe.name, foeTrainer: foe.trainer, challenge: { ...challenge, step }, key: game.key + 1 })
+  }
+
+  // Fim de uma batalha da jornada: insígnia, próxima da Liga ou Hall da Fama.
+  const finishChallenge = () => {
+    if (!challenge || !foeLeader) return
+    const won = game.battle.winner === 0
+    const { league, updateLeague, trainer } = useStore.getState()
+    const region = regionOf(regions, foeLeader.id)
+    let endNote = '', next = null
+    if (challenge.kind === 'gym') {
+      if (won) {
+        const had = badgesOf(league, region).includes(foeLeader.id)
+        const after = winBadge(league, regions, foeLeader)
+        updateLeague(() => after)
+        if (!had && badgesOf(after, region).length > badgesOf(league, region).length) {
+          endNote = `🏅 ${t('Você ganhou a insígnia de {0}!').replace('{0}', foeLeader.name)}`
+          if (!leagueOpen(league, region) && leagueOpen(after, region)) endNote += ` ${t('A Liga de {0} foi liberada!').replace('{0}', region.region)}`
+        }
+      }
+    } else if (challenge.kind === 'league') {
+      const order = leagueOrder(region)
+      if (!won) endNote = t('A Liga acabou. Tente de novo!')
+      else if (challenge.step < order.length - 1) {
+        const foe = order[challenge.step + 1]
+        endNote = t('Próximo desafiante: {0}').replace('{0}', foe.name)
+        if (game.battle.members) next = { label: `⚔️ ${t('Enfrentar {0}').replace('{0}', foe.name)}`, onClick: nextLeague }
+      } else {
+        updateLeague((l) => addHallOfFame(l, region, game.battle.members?.mine.map((m) => m.id) ?? [], trainer))
+        endNote = `🏆 ${t('Você venceu a Liga de {0} e entrou no Hall da Fama!').replace('{0}', region.region)}`
+      }
+    }
+    setGame((g) => (g ? { ...g, endNote, next } : g))
   }
 
   return (
@@ -1339,7 +1443,7 @@ export default function TurnBattlePage() {
         <Icon name="back" size={16} /> Centro de Batalha
       </Link>
       {!game || !hit ? (
-        <Setup onStart={(battle, foeName, foeTrainer = null) => setGame({ battle, foeName, foeTrainer, key: 1 })} />
+        <Setup onStart={(battle, foeName, foeTrainer = null, challenge = null) => setGame({ battle, foeName, foeTrainer, challenge, key: 1 })} />
       ) : (
         <Battle
           key={game.key}
@@ -1348,10 +1452,14 @@ export default function TurnBattlePage() {
           foeTrainer={game.foeTrainer}
           hit={hit}
           onExit={() => setGame(null)}
-          onAgain={again}
+          onAgain={challenge?.kind === 'league' ? null : again}
+          music={musicOf(foeLeader)}
+          endNote={game.endNote}
+          next={game.next}
           onFinish={(foeTrainer) => {
             // Histórico e replay (lib/battleLog.js): só batalhas individuais que dá para refazer.
             if (game.battle.members && game.battle.seed != null) useStore.getState().addBattle(battleRecord(game.battle, { foeName: game.foeName, foeTrainer }))
+            finishChallenge()
           }}
         />
       )}

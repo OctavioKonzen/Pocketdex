@@ -35,13 +35,14 @@ class BattleSounds {
   }
 
   /// A música da batalha, em loop.
-  static Future<void> startMusic() async {
+  /// A música em loop: battle_music, gym_music (líderes) ou champion_music.
+  static Future<void> startMusic([String track = 'battle_music']) async {
     if (_off || !AppSettings.instance.battleMusic) return;
     try {
       final player = _music ??= AudioPlayer();
       await player.setReleaseMode(ReleaseMode.loop);
       await player.setVolume(0.3);
-      await player.play(AssetSource('database/sounds/battle_music.mp3'));
+      await player.play(AssetSource('database/sounds/$track.mp3'));
     } catch (_) {}
   }
 

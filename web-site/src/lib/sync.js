@@ -13,6 +13,7 @@
 //   avatar: id do Pokémon usado como foto de perfil, ou null
 //   trainer: id do seu treinador (trainers.json)
 //   battles: histórico e replays das batalhas (lib/battleLog.js)
+//   league: insígnias, Hall da Fama e recordes da Torre/Factory (lib/gymChallenge.js)
 //   stats: contadores das conquistas (ver achievements.js)
 //   collection: {jogo: {c: [id], s: [id]}}   Pokémon pegos (e shiny) por jogo
 //   hunts: [{ id, pokemonId, game, method, count, found, startedAt, foundAt }]
@@ -22,7 +23,7 @@ import { create } from 'zustand'
 import { publishTeams, saveRanking, saveUserData, signOut, useAuth, watchUserData } from './auth'
 import { useStore } from './store'
 
-const KEYS = ['theme', 'favorites', 'teams', 'training', 'quizRecord', 'rankedRecord', 'quizGame', 'avatar', 'stats', 'collection', 'hunts', 'nuzlockes', 'trainer', 'battles']
+const KEYS = ['theme', 'favorites', 'teams', 'training', 'quizRecord', 'rankedRecord', 'quizGame', 'avatar', 'stats', 'collection', 'hunts', 'nuzlockes', 'trainer', 'battles', 'league']
 const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
 
 let currentUid = null

@@ -2,6 +2,7 @@
 // treinos de EV, recorde/jogo do quiz e tema. Quando houver login, esta é a
 // parte que passa a sincronizar com o servidor.
 
+import { emptyLeague } from './gymChallenge'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { EMPTY_STATS } from './achievements'
@@ -120,6 +121,9 @@ export const useStore = create(
       battles: [],
       addBattle: (record) => set(({ battles }) => ({ battles: [record, ...battles].slice(0, 30) })),
       deleteBattle: (id) => set(({ battles }) => ({ battles: battles.filter((b) => b.id !== id) })),
+      // Desafio dos Líderes, Torre e Factory (lib/gymChallenge.js): insígnias, Hall da Fama e recordes.
+      league: emptyLeague(),
+      updateLeague: (change) => set(({ league }) => ({ league: change({ ...emptyLeague(), ...league }) })),
       saveQuizGame: (game) => set({ quizGame: game }),
       finishQuiz: (score) =>
         set(({ quizRecord }) => ({ quizGame: null, quizRecord: Math.max(quizRecord, score) })),
@@ -176,6 +180,7 @@ export const useStore = create(
           avatar: null,
           trainer: 'red',
           battles: [],
+          league: emptyLeague(),
           stats: EMPTY_STATS,
           collection: {},
           hunts: [],

@@ -35,6 +35,7 @@ import '../widgets/trainer_sprite.dart';
 import '../services/trainers.dart';
 import '../services/battle_log.dart';
 import '../services/battle_sounds.dart';
+import '../services/gym_challenge.dart';
 import '../services/gym_leaders.dart';
 
 /// Um time para a batalha: nome e membros (id + set).
@@ -79,6 +80,22 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
   TurnBattle? _battle;
   String _foeName = '';
   String? _foeTrainer;
+  // Jornada (gym_challenge.dart): {kind: 'gym' | 'league', leader | region, step, difficulty}.
+  Map<String, dynamic>? _challenge;
+  String _endNote = '';
+  ({String label, VoidCallback onTap})? _next;
+  List<Member> _lastMine = const [];
+  GymLeader? get _foeLeader {
+    final ch = _challenge;
+    if (ch == null) return null;
+    if (ch['kind'] == 'league') {
+      final region = _regions.where((r) => r.region == ch['region']).firstOrNull;
+      final order = region == null ? const <GymLeader>[] : GymChallenge.leagueOrder(region);
+      final step = ch['step'] as int;
+      return step < order.length ? order[step] : null;
+    }
+    return _regions.expand((r) => r.leaders).where((l) => l.id == ch['leader']).firstOrNull;
+  }
   // Adversário 'gym:<id>': um líder, Elite Four ou campeão (gym_leaders.json).
   static const _gym = 'gym:';
   List<({String region, List<GymLeader> leaders})> _regions = const [];
@@ -87,7 +104,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
       : null;
 
   /// Prévia dos times (como no Showdown): os dois times e você escolhe quem começa.
-  ({List<BattleMon> a, List<BattleMon> b, List<Member> ma, List<Member> mb, double Function() random, String foeName, String? foeTrainer})? _preview;
+  ({List<BattleMon> a, List<BattleMon> b, List<Member> ma, List<Member> mb, double Function() random, String foeName, String? foeTrainer, Map<String, dynamic>? challenge})? _preview;
 
   /// A batalha individual com a sua própria semente: o replay refaz tudo igual (battle_log.dart).
   TurnBattle _single(List<BattleMon> a, List<BattleMon> b, List<Member> ma, List<Member> mb, double Function() random) {
@@ -136,12 +153,13 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
     }
   }
 
-  Future<void> _start(List<Member>? mine, List<Member>? theirs, String foeName) async {
+  Future<void> _start(List<Member>? mine, List<Member>? theirs, String foeName, {GymLeader? pick, Map<String, dynamic>? challenge}) async {
     setState(() => _busy = true);
     try {
     final random = League.seededRandom(Random().nextInt(1 << 31));
     final ma = mine ?? await TurnBattleSetup.randomTeam(random, difficulty: _difficulty);
-    final leader = theirs == null ? _leader : null;
+    final leader = theirs == null ? pick ?? _leader : null;
+    challenge ??= leader != null ? {'kind': 'gym', 'leader': leader.id, 'difficulty': _difficulty} : null;
     final mb = theirs ?? (leader != null ? await leader.members(random, difficulty: _difficulty) : await TurnBattleSetup.randomTeam(random, difficulty: _difficulty));
     final foeTrainer = leader?.trainer;
     final a = await TurnBattleSetup.mons(ma, battleMonName);
@@ -155,13 +173,17 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
     setState(() {
       _busy = false;
       if (a.isNotEmpty && b.isNotEmpty) {
-        if (_count == 1 && widget.mine == null) {
-          _preview = (a: a, b: b, ma: ma, mb: mb, random: random, foeName: foeName, foeTrainer: foeTrainer);
+        if ((_count == 1 || challenge?['kind'] == 'league') && widget.mine == null) {
+          _preview = (a: a, b: b, ma: ma, mb: mb, random: random, foeName: foeName, foeTrainer: foeTrainer, challenge: challenge);
           return;
         }
         _battle = _count == 1 ? _single(a, b, ma, mb, random) : PartyBattle.create(rosters, [...own, ...List.filled(_count, 'npc3')], _count, random);
         _foeName = foeName;
         _foeTrainer = foeTrainer;
+        _challenge = challenge;
+        _endNote = '';
+        _next = null;
+        _lastMine = ma;
         _key++;
       }
     });
@@ -182,9 +204,80 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
         ..ai = b.ai
         ..seed = seed
         ..members = b.members;
+      _endNote = '';
+      _next = null;
       _key++;
     });
     b.dispose();
+  }
+
+  /// Liga: o próximo da Elite Four (ou o Campeão) com o mesmo time seu.
+  Future<void> _nextLeague() async {
+    final ch = _challenge!;
+    final region = _regions.firstWhere((r) => r.region == ch['region']);
+    final step = (ch['step'] as int) + 1;
+    final foe = GymChallenge.leagueOrder(region)[step];
+    final difficulty = '${ch['difficulty'] ?? 'normal'}';
+    final random = League.seededRandom(Random().nextInt(1 << 31));
+    final mb = await foe.members(random, difficulty: difficulty);
+    final a = await TurnBattleSetup.mons(_lastMine, battleMonName);
+    final b = await TurnBattleSetup.mons(mb, battleMonName);
+    if (!mounted || a.isEmpty || b.isEmpty) return;
+    final old = _battle;
+    setState(() {
+      _difficulty = difficulty;
+      _battle = _single(a, b, _lastMine, mb, random);
+      _foeName = foe.name;
+      _foeTrainer = foe.trainer;
+      _challenge = {...ch, 'step': step};
+      _endNote = '';
+      _next = null;
+      _key++;
+    });
+    old?.dispose();
+  }
+
+  /// Fim de uma batalha da jornada: insígnia, próxima da Liga ou Hall da Fama.
+  void _finishChallenge() {
+    final ch = _challenge, foe = _foeLeader, b = _battle;
+    if (ch == null || foe == null || b == null) return;
+    final won = b.winner == 0;
+    final league = UserData.instance.league;
+    final region = GymChallenge.regionOf(_regions, foe.id);
+    if (region == null) return;
+    var note = '';
+    ({String label, VoidCallback onTap})? next;
+    if (ch['kind'] == 'gym') {
+      if (won) {
+        final after = GymChallenge.winBadge(league, _regions, foe);
+        UserData.instance.update({'league': after});
+        if (GymChallenge.badgesOf(after, region).length > GymChallenge.badgesOf(league, region).length) {
+          note = '🏅 ${tr('Você ganhou a insígnia de {0}!').replaceAll('{0}', foe.name)}';
+          if (!GymChallenge.leagueOpen(league, region) && GymChallenge.leagueOpen(after, region)) {
+            note += ' ${tr('A Liga de {0} foi liberada!').replaceAll('{0}', region.region)}';
+          }
+        }
+      }
+    } else {
+      final order = GymChallenge.leagueOrder(region);
+      final step = ch['step'] as int;
+      if (!won) {
+        note = tr('A Liga acabou. Tente de novo!');
+      } else if (step < order.length - 1) {
+        final upcoming = order[step + 1];
+        note = tr('Próximo desafiante: {0}').replaceAll('{0}', upcoming.name);
+        next = (label: '⚔️ ${tr('Enfrentar {0}').replaceAll('{0}', upcoming.name)}', onTap: _nextLeague);
+      } else {
+        UserData.instance.update({
+          'league': GymChallenge.addHallOfFame(league, region, [for (final m in _lastMine) m.$1], UserData.instance.trainer, DateTime.now().millisecondsSinceEpoch),
+        });
+        note = '🏆 ${tr('Você venceu a Liga de {0} e entrou no Hall da Fama!').replaceAll('{0}', region.region)}';
+      }
+    }
+    setState(() {
+      _endNote = note;
+      _next = next;
+    });
   }
 
   @override
@@ -211,10 +304,14 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
                     foeName: _foeName,
                     foeTrainer: _foeTrainer,
                     intro: true,
+                    music: GymChallenge.musicOf(_foeLeader),
+                    endNote: _endNote,
+                    next: _next,
+                    canAgain: _challenge?['kind'] != 'league',
                     onFinish: (foeTrainer) {
                       final b = _battle;
-                      if (b == null || b.members == null || b.seed == null) return;
-                      BattleLog.add(BattleLog.record(b, foeName: _foeName, foeTrainer: foeTrainer));
+                      if (b != null && b.members != null && b.seed != null) BattleLog.add(BattleLog.record(b, foeName: _foeName, foeTrainer: foeTrainer));
+                      _finishChallenge();
                     },
                     onAgain: _again,
                     onExit: () {
@@ -232,7 +329,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
   }
 
   /// Prévia dos times: o do adversário e o seu, tocando em quem começa.
-  Widget _previewView(BuildContext context, ({List<BattleMon> a, List<BattleMon> b, List<Member> ma, List<Member> mb, double Function() random, String foeName, String? foeTrainer}) p) {
+  Widget _previewView(BuildContext context, ({List<BattleMon> a, List<BattleMon> b, List<Member> ma, List<Member> mb, double Function() random, String foeName, String? foeTrainer, Map<String, dynamic>? challenge}) p) {
     final c = SiteColors.of(context);
     void lead(int i) {
       List<T> first<T>(List<T> list) => [list[i], for (var j = 0; j < list.length; j++) if (j != i) list[j]];
@@ -241,6 +338,10 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
         _battle = _single(first(p.a), p.b, p.ma.length == p.a.length ? first(p.ma) : p.ma, p.mb, p.random);
         _foeName = p.foeName;
         _foeTrainer = p.foeTrainer;
+        _challenge = p.challenge;
+        _endNote = '';
+        _next = null;
+        _lastMine = p.ma.length == p.a.length ? first(p.ma) : p.ma;
         _key++;
       });
     }
@@ -347,6 +448,18 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
           onChanged: (v) => _pickFriend(v ?? _random),
         ),
         if (_leader != null) ...[const SizedBox(height: 10), _LeaderCard(leader: _leader!)],
+        if (_leader != null && GymChallenge.regionOf(_regions, _leader!.id) != null) ...[
+          const SizedBox(height: 10),
+          ListenableBuilder(
+            listenable: UserData.instance,
+            builder: (context, _) => _RegionProgress(
+              region: GymChallenge.regionOf(_regions, _leader!.id)!,
+              enabled: !_busy && _hit != null && (_mine == -1 || _mine != null),
+              onLeague: (first, region) => _start(_mine == -1 ? null : myTeams[_mine!].members, null, first.name,
+                  pick: first, challenge: {'kind': 'league', 'region': region.region, 'step': 0, 'difficulty': _difficulty}),
+            ),
+          ),
+        ],
         if (_friend == _random || _leader != null || _npcPartner) ...[
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(isExpanded: true, initialValue: _difficulty, decoration: deco('Dificuldade dos NPCs'), items: const [DropdownMenuItem(value: 'easy', child: Text('Fácil')), DropdownMenuItem(value: 'normal', child: Text('Normal')), DropdownMenuItem(value: 'hard', child: Text('Difícil'))], onChanged: _busy ? null : (v) => setState(() => _difficulty = v!)),
@@ -386,6 +499,70 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
                 },
         ),
       ],
+    );
+  }
+}
+
+/// A região do líder: as insígnias e a Liga (liberada com as insígnias).
+class _RegionProgress extends StatelessWidget {
+  final Region region;
+  final bool enabled;
+  final void Function(GymLeader first, Region region) onLeague;
+  const _RegionProgress({required this.region, required this.enabled, required this.onLeague});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = SiteColors.of(context);
+    final league = UserData.instance.league;
+    final have = GymChallenge.badgesOf(league, region);
+    final open = GymChallenge.leagueOpen(league, region);
+    final order = GymChallenge.leagueOrder(region);
+    final halls = [for (final h in league['hall'] as List) if ((h as Map)['region'] == region.region) h].length;
+    return Container(
+      key: const ValueKey('region-progress'),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(16)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          m.Text('${tr('Insígnias de {0}').replaceAll('{0}', region.region)}: ${have.length}/${GymChallenge.badgesNeeded(region)}${halls > 0 ? '   🏆 ×$halls' : ''}',
+              style: TextStyle(color: c.text, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 6),
+          Wrap(spacing: 6, runSpacing: 6, children: [
+            for (final l in GymChallenge.regionGyms(region))
+              Tooltip(
+                message: l.name,
+                child: Container(
+                  key: ValueKey('badge-${l.id}-${have.contains(l.id) ? 'on' : 'off'}'),
+                  width: 28,
+                  height: 28,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: have.contains(l.id) ? getColorForType(l.type) : const Color(0x5564748B),
+                    border: have.contains(l.id) ? Border.all(color: const Color(0xFFFBBF24), width: 2) : null,
+                  ),
+                  child: have.contains(l.id) ? const m.Text('★', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900)) : null,
+                ),
+              ),
+          ]),
+          const SizedBox(height: 8),
+          PillButton(
+            key: const ValueKey('league-button'),
+            label: '🏆 ${tr('Desafiar a Liga de {0}').replaceAll('{0}', region.region)}',
+            expand: true,
+            gradient: const LinearGradient(colors: [Color(0xFFF59E0B), Color(0xFFDC2626)]),
+            onPressed: open && enabled && order.isNotEmpty ? () => onLeague(order.first, region) : null,
+          ),
+          const SizedBox(height: 4),
+          m.Text(
+            open
+                ? tr('Elite Four e Campeão em sequência ({0} batalhas). Perdeu, recomeça.').replaceAll('{0}', '${order.length}')
+                : tr('Vença os líderes de ginásio para ganhar as insígnias e liberar a Liga.'),
+            style: TextStyle(color: c.muted, fontSize: 12),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -463,6 +640,12 @@ class BattleView extends StatefulWidget {
 
   /// A batalha acabou (com o treinador do adversário): histórico e replay.
   final void Function(String? foeTrainer)? onFinish;
+
+  /// Jornada (gym_challenge.dart): a música, a mensagem do fim e o próximo desafiante.
+  final String music;
+  final String endNote;
+  final ({String label, VoidCallback onTap})? next;
+  final bool canAgain;
   const BattleView(
       {super.key,
       required this.battle,
@@ -474,7 +657,11 @@ class BattleView extends StatefulWidget {
       this.online,
       this.intro = false,
       this.foeTrainer,
-      this.onFinish});
+      this.onFinish,
+      this.music = 'battle_music',
+      this.endNote = '',
+      this.next,
+      this.canAgain = true});
 
   @override
   State<BattleView> createState() => BattleViewState();
@@ -539,7 +726,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
     super.initState();
     if (_b.mode != 'singles') return;
     // A música da batalha (para quando sai da tela).
-    if (_b.winner == null) BattleSounds.startMusic();
+    if (_b.winner == null) BattleSounds.startMusic(widget.music);
     LocalDatabase.instance.moveAnims().then((t) => _anims = t).catchError((_) => <String, dynamic>{});
     // Começo: as habilidades de clima de quem entrou (Drizzle, Drought...).
     _menu = _b.needSwitch ? 'party' : 'main';
@@ -1275,7 +1462,27 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
             ),
           ),
         ],
+        if (!_busy && _b.winner != null && widget.endNote.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          Container(
+            key: const ValueKey('end-note'),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: SiteColors.of(context).surface, borderRadius: BorderRadius.circular(14)),
+            child: m.Text(widget.endNote, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w800)),
+          ),
+        ],
+        if (!_busy && _b.winner != null && widget.online == null && widget.next != null) ...[
+          const SizedBox(height: 14),
+          PillButton(
+            key: const ValueKey('next-challenger'),
+            label: widget.next!.label,
+            expand: true,
+            gradient: const LinearGradient(colors: [Color(0xFFF59E0B), Color(0xFFDC2626)]),
+            onPressed: widget.next!.onTap,
+          ),
+        ],
         if (!_busy && _b.winner != null && widget.online == null) ...[
+          if (widget.canAgain) ...[
           const SizedBox(height: 14),
           PillButton(
             label: tr('Batalhar de novo'),
@@ -1283,6 +1490,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
             gradient: const LinearGradient(colors: [Color(0xFFDC2626), Color(0xFF9333EA)]),
             onPressed: widget.onAgain,
           ),
+          ],
           const SizedBox(height: 8),
           OutlinedButton(onPressed: widget.onExit, child: Text(widget.foeName.isEmpty ? 'Trocar os times' : 'Sair')),
         ],

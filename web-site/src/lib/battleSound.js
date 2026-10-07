@@ -24,11 +24,12 @@ export function playSound(name, volume = 0.6) {
   }
 }
 
-/** A música da batalha, em loop. */
-export function startMusic() {
+/** A música da batalha, em loop: battle_music, gym_music (líderes) ou champion_music. */
+export function startMusic(track = 'battle_music') {
   if (!usePrefs.getState().battleMusic || typeof Audio === 'undefined') return
   try {
-    music ??= new Audio(url('battle_music'))
+    if (music && !music.src.endsWith(`${track}.mp3`)) music.pause()
+    if (!music || !music.src.endsWith(`${track}.mp3`)) music = new Audio(url(track))
     music.loop = true
     music.volume = 0.3
     music.currentTime = 0

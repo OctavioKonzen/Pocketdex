@@ -26,6 +26,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'achievements.dart';
+import 'gym_challenge.dart';
 
 class UserData extends ChangeNotifier {
   UserData._();
@@ -33,7 +34,7 @@ class UserData extends ChangeNotifier {
 
   static const keys = [
     'theme', 'favorites', 'teams', 'training', 'quizRecord', 'rankedRecord', 'quizGame', 'avatar', 'stats', //
-    'collection', 'hunts', 'nuzlockes', 'trainer', 'battles',
+    'collection', 'hunts', 'nuzlockes', 'trainer', 'battles', 'league',
   ];
   static const _prefsKey = 'pocketdex_user_data';
 
@@ -52,6 +53,7 @@ class UserData extends ChangeNotifier {
         'nuzlockes': <dynamic>[],
         'trainer': 'red',
         'battles': <dynamic>[],
+        'league': GymChallenge.empty(),
       };
 
   Map<String, dynamic> _data = defaults;
@@ -71,6 +73,9 @@ class UserData extends ChangeNotifier {
 
   /// Histórico das batalhas contra o computador (battle_log.dart), as mais novas primeiro.
   List<Map<String, dynamic>> get battles => _maps(_data['battles']);
+
+  /// Insígnias, Hall da Fama e recordes da Torre/Factory (gym_challenge.dart).
+  Map<String, dynamic> get league => {...GymChallenge.empty(), ...?(_data['league'] is Map ? Map<String, dynamic>.from(_jsonCopy(_data['league']) as Map) : null)};
 
   /// Seu treinador na batalha (id de trainers.json; o mesmo no app e no site).
   String get trainer => _data['trainer'] as String? ?? 'red';
