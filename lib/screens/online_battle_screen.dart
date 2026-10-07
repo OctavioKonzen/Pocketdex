@@ -99,6 +99,8 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen> {
         FilledButton(onPressed: _busy || _count == 1 && _friend == null || _team == null ? null : _invite, child: Text(_busy ? 'Enviando…' : 'Desafiar para batalha')),
         if (_errorText != null) Text(_errorText!, style: const TextStyle(color: Colors.redAccent)),
         const SizedBox(height: 24),
+        _RandomMatch(teams: _teams),
+        const SizedBox(height: 24),
         const Text('Convites e partidas', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
           stream: _rooms,
@@ -122,6 +124,133 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen> {
           },
         ),
       ])),
+    );
+  }
+}
+
+/// Adversário aleatório (OnlineBattles.tryMatch, matchQueue): entra na fila
+/// com o time e procura a cada 3 s; quando alguém pega você (ou você pega
+/// alguém), a sala aparece e a batalha abre sozinha. Igual ao site.
+class _RandomMatch extends StatefulWidget {
+  final List<Map<String, dynamic>> teams;
+  const _RandomMatch({required this.teams});
+  @override
+  State<_RandomMatch> createState() => _RandomMatchState();
+}
+
+class _RandomMatchState extends State<_RandomMatch> {
+  int? _team = -1;
+  DateTime? _since;
+  Map<String, dynamic>? _chosen;
+  Timer? _timer;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _watch;
+  String? _errorText;
+  DateTime _renewed = DateTime.now();
+
+  Future<void> _start() async {
+    setState(() => _errorText = null);
+    try {
+      final team = await _selectedTeam(_team!, widget.teams);
+      _chosen = team;
+      await OnlineBattles.joinQueue(team);
+      final since = DateTime.now();
+      _renewed = since;
+      setState(() => _since = since);
+      // Alguém pegou você: a sala nova aparece na sua lista.
+      _watch = OnlineBattles.watchMine().listen((snap) {
+        for (final d in snap.docs) {
+          final r = d.data();
+          final at = (r['createdAt'] as Timestamp?)?.toDate() ?? since;
+          if (r['match'] == true && r['status'] == 'active' && !at.isBefore(since.subtract(const Duration(seconds: 5)))) {
+            _found(d.id);
+            return;
+          }
+        }
+      });
+      _timer = Timer.periodic(const Duration(seconds: 3), (_) => _tick());
+      _tick();
+    } catch (e) {
+      if (mounted) setState(() => _errorText = _error(e));
+    }
+  }
+
+  Future<void> _tick() async {
+    final team = _chosen;
+    if (_since == null || team == null) return;
+    try {
+      if (DateTime.now().difference(_renewed) > const Duration(minutes: 1)) {
+        _renewed = DateTime.now();
+        await OnlineBattles.joinQueue(team);
+      }
+      final id = await OnlineBattles.tryMatch(team);
+      if (id != null) _found(id);
+    } catch (e) {
+      if (mounted) setState(() => _errorText = _error(e));
+    }
+  }
+
+  void _found(String id) {
+    if (_since == null) return;
+    _stop();
+    OnlineBattles.leaveQueue();
+    if (mounted) Navigator.push(context, MaterialPageRoute(builder: (_) => OnlineBattleRoomScreen(id: id)));
+  }
+
+  void _stop() {
+    _timer?.cancel();
+    _watch?.cancel();
+    _timer = null;
+    _watch = null;
+    if (mounted) setState(() => _since = null);
+  }
+
+  void _cancel() {
+    _stop();
+    OnlineBattles.leaveQueue();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _watch?.cancel();
+    if (_since != null) OnlineBattles.leaveQueue();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      key: const ValueKey('random-match'),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text('🎲 Adversário aleatório', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            const Text('Batalha individual com qualquer pessoa que também esteja procurando agora.'),
+            const SizedBox(height: 12),
+            if (_since == null) ...[
+              DropdownButtonFormField<int>(
+                initialValue: _team,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Seu time'),
+                items: [const DropdownMenuItem(value: -1, child: Text('🎲 Time aleatório')), for (final (i, t) in widget.teams.indexed) DropdownMenuItem(value: i, child: Text('${t['name']}'))],
+                onChanged: (v) => setState(() => _team = v),
+              ),
+              const SizedBox(height: 12),
+              FilledButton(onPressed: _team == null ? null : _start, child: const Text('Procurar adversário')),
+            ] else
+              Row(children: [
+                const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+                const SizedBox(width: 12),
+                const Expanded(child: Text('Procurando um adversário…')),
+                OutlinedButton(onPressed: _cancel, child: const Text('Cancelar')),
+              ]),
+            if (_errorText != null) Text(_errorText!, style: const TextStyle(color: Colors.redAccent)),
+          ],
+        ),
+      ),
     );
   }
 }

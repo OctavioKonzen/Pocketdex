@@ -4,13 +4,14 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Button, Empty, PageHeader } from '../components/ui'
 import { Battle } from './TurnBattlePage'
 import { useAuth, errorMessage } from '../lib/auth'
+import { t } from '../lib/i18n'
 import { useFriends, friendsOnly } from '../lib/friends'
 import { useStore } from '../lib/store'
 import { teamMembers } from '../lib/teamBattle'
 import { battleMons, battleHitter, randomTeam } from '../lib/battleSetup'
 import { seededRandom } from '../lib/league'
 import { active, startBattle } from '../lib/turnBattle'
-import { inviteBattle, acceptBattle, closeBattle, watchBattles, watchBattle, watchActions, submitAction, pairedActions, unpackTeam, BATTLE_PROTOCOL, MAX_ROUNDS, battlePerspective, eventPerspective } from '../lib/onlineBattle'
+import { inviteBattle, acceptBattle, joinQueue, leaveQueue, tryMatch, closeBattle, watchBattles, watchBattle, watchActions, submitAction, pairedActions, unpackTeam, BATTLE_PROTOCOL, MAX_ROUNDS, battlePerspective, eventPerspective } from '../lib/onlineBattle'
 import {newPartyBattle, playPartyTurn, modeOf, countOf, seatsOf, sideOf, isNpc} from '../lib/partyBattle'
 
 const CARD = 'rounded-2xl bg-card p-4 shadow'
@@ -35,9 +36,9 @@ function useFeed(subscribe, key) {
   }, [subscribe, key])
   return [data, error]
 }
-function TeamChoice({ value, onChange }) {
+function TeamChoice({ value, onChange, label = 'Seu time' }) {
   const teams = useStore((s) => s.teams).filter((t) => teamMembers(t).length)
-  return <label className="block space-y-2"><span>Seu time</span><select aria-label="Seu time" className={SELECT} value={value} onChange={(e) => onChange(e.target.value)}>
+  return <label className="block space-y-2"><span>Seu time</span><select aria-label={label} className={SELECT} value={value} onChange={(e) => onChange(e.target.value)}>
     <option value="">Escolha seu time…</option><option value={RANDOM}>🎲 Time aleatório</option>{teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
   </select></label>
 }
@@ -93,6 +94,7 @@ function Lobby({ user }) {
       <Button disabled={busy || count===1&&!friend || !team} onClick={invite}>{busy ? 'Enviando…' : 'Desafiar para batalha'}</Button>
       {(error || feedError) && <p role="alert" className="text-red-400">{error || feedError}</p>}
     </section>
+    <RandomMatch rooms={rooms} />
     <section className={CARD}><h2 className="mb-3 font-bold">Convites e partidas</h2>
       {rooms == null ? <p>Carregando…</p> : !rooms.length ? <p>Nenhum convite ainda.</p> : rooms.slice(0, 50).map((r) => {
         const other = r.players.find((p) => p !== user.uid)
@@ -103,6 +105,89 @@ function Lobby({ user }) {
     </section>
   </div>
 }
+/**
+ * Adversário aleatório (lib/onlineBattle.js, matchQueue): entra na fila com o
+ * time e procura a cada 3 s; quando alguém pega você (ou você pega alguém),
+ * a sala aparece e a batalha abre sozinha.
+ */
+function RandomMatch({ rooms }) {
+  const navigate = useNavigate()
+  const teams = useStore((s) => s.teams)
+  const [team, setTeam] = useState(RANDOM)
+  const [since, setSince] = useState(null) // procurando desde (ms)
+  const [error, setError] = useState('')
+  const chosen = useRef(null)
+  // Achou (a sala nova com você): entra nela.
+  useEffect(() => {
+    if (since == null || !rooms) return
+    const found = rooms.find((r) => r.match && r.status === 'active' && (r.createdAt?.toMillis?.() ?? since) >= since - 5000)
+    if (!found) return
+    setSince(null)
+    leaveQueue()
+    navigate('/batalha/online/' + found.id)
+  }, [rooms, since, navigate])
+  // Procurando: tenta parear a cada 3 s e renova a vaga a cada minuto.
+  useEffect(() => {
+    if (since == null) return undefined
+    let live = true
+    let renewed = Date.now()
+    const tick = async () => {
+      if (!live || !chosen.current) return
+      try {
+        if (Date.now() - renewed > 60000) {
+          renewed = Date.now()
+          await joinQueue(chosen.current)
+        }
+        const id = await tryMatch(chosen.current)
+        if (id && live) {
+          setSince(null)
+          await leaveQueue()
+          navigate('/batalha/online/' + id)
+        }
+      } catch (e) {
+        if (live) setError(e?.message || errorMessage(e))
+      }
+    }
+    const timer = setInterval(tick, 3000)
+    tick()
+    return () => {
+      live = false
+      clearInterval(timer)
+    }
+  }, [since, navigate])
+  // Saiu da página procurando: sai da fila.
+  useEffect(() => () => { leaveQueue() }, [])
+  const start = async () => {
+    setError('')
+    try {
+      const picked = await selectedTeam(team, teams)
+      if (!picked) throw new Error('Escolha seu time.')
+      chosen.current = picked
+      await joinQueue(picked)
+      setSince(Date.now())
+    } catch (e) {
+      setError(e?.code ? errorMessage(e) : e?.message || errorMessage(e))
+    }
+  }
+  const cancel = () => {
+    setSince(null)
+    leaveQueue()
+  }
+  return <section className={CARD + ' space-y-3'} data-testid="random-match">
+    <h2 className="font-bold">🎲 {t('Adversário aleatório')}</h2>
+    <p className="text-sm text-muted">{t('Batalha individual com qualquer pessoa que também esteja procurando agora.')}</p>
+    {since == null ? <>
+      <TeamChoice value={team} onChange={setTeam} label="Seu time para o adversário aleatório" />
+      <Button disabled={!team} onClick={start}>{t('Procurar adversário')}</Button>
+    </> : <div className="flex items-center gap-3">
+      <span className="h-3 w-3 animate-ping rounded-full bg-sky-400" />
+      <span className="flex-1">{t('Procurando um adversário…')}</span>
+      <Button color="#64748b" onClick={cancel}>{t('Cancelar')}</Button>
+    </div>}
+    {error && <p role="alert" className="text-red-400">{error}</p>}
+  </section>
+}
+
 function BattleRoom({ id, user }) {
   const [room, roomError] = useFeed(watchBattle, id)
   const [actions, actionsError] = useFeed(watchActions, id)

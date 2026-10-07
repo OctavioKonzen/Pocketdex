@@ -157,6 +157,10 @@ jobs:
         run: |
           (cd tool/cleanup && npm ci)
           cd e2e && npx firebase emulators:exec --only auth,firestore --project pocketdex-ffb4d "node ../tool/cleanup/cleanup.test.mjs"
+      - name: Notificações no celular (o que mudou vira aviso)
+        run: |
+          (cd tool/notify && npm ci)
+          cd e2e && npx firebase emulators:exec --only firestore --project pocketdex-ffb4d "node ../tool/notify/notify.test.mjs"
       - name: Criar conta, abrir as páginas, sair e entrar
         working-directory: e2e
         run: |

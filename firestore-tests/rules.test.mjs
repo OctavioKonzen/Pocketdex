@@ -156,6 +156,13 @@ await check('lê a própria confirmação', getDoc(doc(A, 'confirmations', 'alic
 await check('confirmação de outro', setDoc(doc(B, 'confirmations', 'alice'), { delete: serverTimestamp() }), false)
 await check('ler confirmação de outro', getDoc(doc(B, 'confirmations', 'alice')), false)
 await check('confirmação com campo estranho', setDoc(doc(A, 'confirmations', 'alice'), { hack: 1 }), false)
+await check('grava os próprios aparelhos', setDoc(doc(A, 'pushTokens', 'alice'), { tokens: ['t1'], lang: 'pt' }), true)
+await check('lê os próprios aparelhos', getDoc(doc(A, 'pushTokens', 'alice')), true)
+await check('aparelhos de outro', setDoc(doc(B, 'pushTokens', 'alice'), { tokens: ['t2'] }), false)
+await check('ler aparelhos de outro', getDoc(doc(B, 'pushTokens', 'alice')), false)
+await check('aparelhos com campo estranho', setDoc(doc(A, 'pushTokens', 'alice'), { tokens: [], hack: 1 }), false)
+await check('aparelhos demais', setDoc(doc(A, 'pushTokens', 'alice'), { tokens: Array.from({ length: 11 }, (_, i) => `t${i}`) }), false)
+await check('estado das notificações é só do servidor', getDoc(doc(A, 'meta', 'notify')), false)
 
 // Amigos
 await claim(A, 'alice', 'Ash Ketchum', 'ash ketchum').catch(() => {})
@@ -344,6 +351,36 @@ await check('protocolo 5: cria com quem desfez a amizade do lado dele', setDoc(d
 await check('protocolo 5: quem desfez a amizade não aceita', updateDoc(doc(groupDb.carol,'onlineBattles','oneside'), {'teams.carol': packed, status: 'active'}), false)
 await check('protocolo 5: não participa nos dois lados',setDoc(doc(A,'onlineBattles','cross'),groupRoom('doubles',['alice','bob','alice','npc3'])),false)
 await check('protocolo 5: NPC corresponde à posição',setDoc(doc(A,'onlineBattles','badnpc'),groupRoom('doubles',['alice','bob','npc3','npc2'])),false)
+
+// Adversário aleatório: fila (matchQueue) e a sala que nasce dela.
+await env.withSecurityRulesDisabled(async ctx => {
+  await setDoc(doc(ctx.firestore(), 'users', 'alice'), { name: 'Ash Ketchum' }, { merge: true })
+  await setDoc(doc(ctx.firestore(), 'users', 'bob'), { name: 'João' }, { merge: true })
+})
+const queueEntry = (name, team = packed) => ({ name, team, mode: 'singles', at: serverTimestamp(), claimedBy: null })
+const matchRoom = (team = packed) => ({ protocol: 5, mode: 'singles', players: ['alice', 'bob'], seats: ['alice', 'bob'], npcTeams: {},
+  names: { alice: 'Ash Ketchum', bob: 'João' }, teams: { alice: packed, bob: team }, status: 'active', seed: 7,
+  createdAt: serverTimestamp(), endedBy: null, match: true })
+const claimAndCreate = (id, team = packed) => {
+  const b = writeBatch(A)
+  b.update(doc(A, 'matchQueue', 'bob'), { claimedBy: 'alice' })
+  b.set(doc(A, 'onlineBattles', id), matchRoom(team))
+  return b.commit()
+}
+await check('fila: entra com o próprio nome', setDoc(doc(B, 'matchQueue', 'bob'), queueEntry('João')), true)
+await check('fila: nome falso', setDoc(doc(B, 'matchQueue', 'bob'), queueEntry('Ash Ketchum')), false)
+await check('fila: entrar no lugar de outro', setDoc(doc(A, 'matchQueue', 'bob'), queueEntry('João')), false)
+await check('fila: todos os logados veem', getDoc(doc(A, 'matchQueue', 'bob')), true)
+await check('fila: pegar alguém sem estar na fila', claimAndCreate('m0'), false)
+await check('fila: alice entra', setDoc(doc(A, 'matchQueue', 'alice'), queueEntry('Ash Ketchum')), true)
+await check('fila: uid maior não pega o menor', updateDoc(doc(B, 'matchQueue', 'alice'), { claimedBy: 'bob' }), false)
+await check('fila: sala com outro time do que o da fila', claimAndCreate('m1', JSON.stringify({ name: 'Outro', pokemon: [25], sets: [] })), false)
+await check('fila: sala sem marcar a vaga como pega', setDoc(doc(A, 'onlineBattles', 'm2'), matchRoom()), false)
+await check('fila: pega e cria a sala', claimAndCreate('m3'), true)
+await check('fila: o pego vê a sala', getDoc(doc(B, 'onlineBattles', 'm3')), true)
+await check('fila: não pega quem já foi pego', claimAndCreate('m4'), false)
+await check('fila: sala de convite não usa match', setDoc(doc(A, 'onlineBattles', 'm5'), { ...matchRoom(), status: 'pending', teams: { alice: packed }, match: false }), false)
+await check('fila: cada um sai da própria vaga', deleteDoc(doc(B, 'matchQueue', 'bob')), true)
 
 await env.cleanup()
 console.log(fails ? `${fails} FALHAS` : 'TUDO CERTO')

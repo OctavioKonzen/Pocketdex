@@ -14,6 +14,8 @@
 //                                     a prévia (last) e as não lidas também somem
 //   trades/{uid}                    → apaga todas (as Trocas saíram)
 //   drafts/{id}                     → apaga se um dos jogadores não existe
+//   pushTokens/{uid}                → apaga se a conta não existe
+//   matchQueue/{uid}                → apaga se a conta não existe ou parada há 10 min
 //   publicTeams/{id}/ratings|reports/{uid} → apaga se a conta não existe e refaz a nota
 //                                            e a contagem de denúncias do time
 //
@@ -107,6 +109,18 @@ for (const d of (await db.collectionGroup('list').get()).docs) {
 // Drafts: somem se um dos dois jogadores não existe mais.
 for (const d of (await db.collection('drafts').get()).docs) {
   if (!(d.data().players ?? []).every((p) => accounts.has(p))) await remove(d.ref, 'draft com conta que não existe')
+}
+
+// Aparelhos das notificações: somem com a conta.
+for (const d of (await db.collection('pushTokens').get()).docs) {
+  if (!accounts.has(d.id)) await remove(d.ref, 'aparelhos sem conta')
+}
+
+// Fila do adversário aleatório: vaga de conta excluída ou parada há mais de 10 minutos.
+const queueLimit = Date.now() - 10 * 60 * 1000
+for (const d of (await db.collection('matchQueue').get()).docs) {
+  if (!accounts.has(d.id)) await remove(d.ref, 'vaga na fila sem conta')
+  else if ((d.data().at?.toMillis?.() ?? 0) < queueLimit) await remove(d.ref, 'vaga velha na fila')
 }
 
 // Listas das antigas Trocas (o recurso saiu): apaga todas.

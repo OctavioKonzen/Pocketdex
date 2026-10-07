@@ -221,7 +221,8 @@ service cloud.firestore {
         let n = d.names;
         let npc = d.npcTeams;
         return d.keys().hasAll(['protocol', 'players', 'names', 'teams', 'status', 'seed', 'createdAt', 'endedBy', 'mode', 'seats', 'npcTeams'])
-          && d.keys().hasOnly(['protocol', 'players', 'names', 'teams', 'status', 'seed', 'createdAt', 'endedBy', 'mode', 'seats', 'npcTeams'])
+          && d.keys().hasOnly(['protocol', 'players', 'names', 'teams', 'status', 'seed', 'createdAt', 'endedBy', 'mode', 'seats', 'npcTeams', 'match'])
+          && (!('match' in d) || d.match == true)
           && d.protocol == 5 && d.mode in ['singles', 'doubles', 'triples']
           && p is list && p.size() >= 2 && p.size() <= 6 && p.toSet().size() == p.size()
           && n is map && n.keys().toSet() == p.toSet()
@@ -254,8 +255,9 @@ service cloud.firestore {
       function acceptorFriend(d) {
         return get(/databases/$(database)/documents/friends/$(request.auth.uid)/list/$(d.players[0])).data.status == 'friends';
       }
+      // (newRoom é conferido uma vez só, no allow create: é pesado.)
       function newCreate(d) {
-        return newRoom(d) && member(d) && d.players[0] == request.auth.uid && d.names[request.auth.uid] == accountName(request.auth.uid)
+        return member(d) && d.players[0] == request.auth.uid && d.names[request.auth.uid] == accountName(request.auth.uid)
           && d.teams[request.auth.uid] is string && d.teams[request.auth.uid].size() <= 20000
           && d.teams.keys().hasOnly([request.auth.uid]) && d.status == 'pending' && d.endedBy == null && d.createdAt == request.time && newFriends(d);
       }
@@ -267,12 +269,25 @@ service cloud.firestore {
           && now.status == (now.teams.keys().hasAll(old.players) ? 'active' : 'pending')
           && request.time < old.createdAt + duration.value(7, 'd') && newFriends(old) && acceptorFriend(old);
       }
+      // Adversário aleatório (matchQueue): quem cria pega um da fila (que
+      // ainda não foi pego) e a sala nasce pronta com o time que ele deixou
+      // lá. Na mesma escrita a vaga dele fica marcada como pega por quem criou.
+      function matchCreate(d) {
+        let me = request.auth.uid;
+        let other = d.players[1];
+        let queue = getAfter(/databases/$(database)/documents/matchQueue/$(other)).data;
+        return d.match == true && member(d) && d.players.size() == 2 && d.players[0] == me
+          && d.mode == 'singles' && d.names[me] == accountName(me) && d.names[other] == queue.name
+          && d.teams.keys().hasAll(d.players) && d.teams[me] is string && d.teams[me].size() <= 20000
+          && d.teams[other] == queue.team && queue.claimedBy == me
+          && d.status == 'active' && d.endedBy == null && d.createdAt == request.time;
+      }
       function stillFriends(d) {
         return get(/databases/$(database)/documents/friends/$(d.players[0])/list/$(d.players[1])).data.status == 'friends'
           && get(/databases/$(database)/documents/friends/$(d.players[1])/list/$(d.players[0])).data.status == 'friends';
       }
       allow read: if request.auth != null && request.auth.uid in resource.data.players;
-      allow create: if request.resource.data.protocol == 5 ? newCreate(request.resource.data) : (legacyRoom(request.resource.data) && request.resource.data.protocol == 4 && member(request.resource.data)
+      allow create: if request.resource.data.protocol == 5 ? (newRoom(request.resource.data) && ('match' in request.resource.data ? matchCreate(request.resource.data) : newCreate(request.resource.data))) : (legacyRoom(request.resource.data) && request.resource.data.protocol == 4 && member(request.resource.data)
         && request.resource.data.players[0] == request.auth.uid
         && request.resource.data.names[request.auth.uid] == accountName(request.auth.uid)
         && request.resource.data.names[request.resource.data.players[1]] == accountName(request.resource.data.players[1])
@@ -356,6 +371,35 @@ service cloud.firestore {
       allow read, delete: if signedIn(uid);
       allow create, update: if signedIn(uid)
         && request.resource.data.keys().hasOnly(['signup', 'password', 'delete']);
+    }
+
+    // Fila do adversário aleatório (batalha online individual): cada um deixa
+    // o nome e o time; quem procura pega um da fila (só os de uid maior que o
+    // seu, para dois não se pegarem ao mesmo tempo) e cria a sala (matchCreate).
+    match /matchQueue/{uid} {
+      function entry(d) {
+        return d.keys().hasOnly(['name', 'team', 'mode', 'at', 'claimedBy'])
+          && d.name == accountName(uid) && d.team is string && d.team.size() <= 20000
+          && d.mode == 'singles' && d.at == request.time && d.claimedBy == null;
+      }
+      allow read: if request.auth != null;
+      allow create: if signedIn(uid) && entry(request.resource.data);
+      allow update: if (signedIn(uid) && entry(request.resource.data))
+        || (request.auth != null && request.auth.uid < uid && resource.data.claimedBy == null
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['claimedBy'])
+          && request.resource.data.claimedBy == request.auth.uid
+          && exists(/databases/$(database)/documents/matchQueue/$(request.auth.uid)));
+      allow delete: if signedIn(uid);
+    }
+
+    // Aparelhos para as notificações no celular (tool/notify/notify.mjs):
+    // só a pessoa vê e muda os dela. Quem manda os avisos é o servidor.
+    match /pushTokens/{uid} {
+      allow read, delete: if signedIn(uid);
+      allow create, update: if signedIn(uid)
+        && request.resource.data.keys().hasOnly(['tokens', 'lang'])
+        && request.resource.data.tokens is list && request.resource.data.tokens.size() <= 10
+        && (!('lang' in request.resource.data) || request.resource.data.lang in ['pt', 'en', 'fr', 'es']);
     }
 
     // Ranking geral do Ranked: todos os logados veem.
