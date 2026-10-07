@@ -7,7 +7,7 @@ import {simulatorDispose} from '../lib/battleSimulator'
 import { forwardRef, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import PokeIcon from '../components/PokeIcon'
-import { Button, Empty, Icon, PageHeader } from '../components/ui'
+import { Button, Empty, Icon, PageHeader, TypeBadge } from '../components/ui'
 import { teamsOf, useAuth } from '../lib/auth'
 import { battleHitter, battleMons, randomTeam } from '../lib/battleSetup'
 import { friendsOnly, useFriends } from '../lib/friends'
@@ -63,6 +63,8 @@ function Setup({ onStart }) {
   const [count, setCount] = useState(1)
   const [difficulty, setDifficulty] = useState('normal')
   const [npcPartner, setNpcPartner] = useState(false)
+  // Prévia dos times (como no Showdown): os dois times e você escolhe quem começa.
+  const [preview, setPreview] = useState(null) // {a, b, random, foeName}
 
   const pickFriend = (uid) => {
     setFriend(uid)
@@ -83,7 +85,7 @@ function Setup({ onStart }) {
     const foeName = friend === RANDOM ? '' : friends.find((f) => f.uid === friend)?.name ?? ''
     const [a, b] = await Promise.all([battleMons(mine === RANDOM ? await randomTeam(random, difficulty) : teamMembers(myTeam)), battleMons(friend === RANDOM ? await randomTeam(random, difficulty) : teamMembers(theirTeam))])
     if (a.length && b.length) {
-      if (count === 1) onStart(newBattle(a,b,random),foeName)
+      if (count === 1) setPreview({ a, b, random, foeName })
       else {
         const rosters = {me:a,npc3:b}
         const own = Array.from({length:count},(_,i) => i && npcPartner ? `npc${i}` : 'me')
@@ -93,6 +95,49 @@ function Setup({ onStart }) {
     }
     } catch(e) {setError(e.message || 'Não foi possível iniciar a batalha. Tente novamente.')}
     finally {setBusy(false)}
+  }
+
+  if (preview) {
+    const lead = (i) => {
+      const order = [preview.a[i], ...preview.a.filter((_, j) => j !== i)]
+      setPreview(null)
+      onStart(newBattle(order, preview.b, preview.random, { ai: difficulty === 'easy' ? 'easy' : 'normal' }), preview.foeName)
+    }
+    return (
+      <section className={`${CARD} space-y-4`} data-testid="team-preview">
+        <h2 className="text-lg font-black">Prévia dos times</h2>
+        <div>
+          <p className="mb-2 text-sm font-semibold text-muted">{preview.foeName ? t('Time de {0}').replace('{0}', preview.foeName) : t('Time do adversário')}</p>
+          <div className="flex flex-wrap gap-2">
+            {preview.b.map((m, i) => (
+              <span key={i} className="flex flex-col items-center rounded-xl bg-bg p-1.5" title={m.name}>
+                <PokeIcon id={m.id} shiny={m.shiny} className="h-12 w-12" />
+                <span className="text-[11px] font-bold" data-no-translate>{m.name}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="mb-2 text-sm font-semibold text-muted">Escolha quem começa</p>
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+            {preview.a.map((m, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => lead(i)}
+                data-testid={`lead-${i}`}
+                className="flex cursor-pointer flex-col items-center rounded-xl bg-bg p-2 ring-2 ring-transparent transition hover:ring-red-500"
+              >
+                <PokeIcon id={m.id} shiny={m.shiny} className="h-14 w-14" />
+                <span className="text-xs font-bold" data-no-translate>{m.name}</span>
+                <span className="mt-1 flex flex-wrap justify-center gap-0.5">{m.types.map((type) => <TypeBadge key={type} type={type} small />)}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+        <Button color="#64748b" onClick={() => setPreview(null)}>Voltar</Button>
+      </section>
+    )
   }
 
   return (
@@ -127,7 +172,7 @@ function Setup({ onStart }) {
           ))}
         </select>
       </label>
-      {(friend === RANDOM || npcPartner) && <label className="block space-y-1.5"><span>Dificuldade dos NPCs</span><select aria-label="Dificuldade dos NPCs" className={SELECT} value={difficulty} onChange={e=>setDifficulty(e.target.value)}><option value="normal">Normal · IVs e EVs aleatórios</option><option value="hard">Difícil · sets competitivos</option></select></label>}
+      {(friend === RANDOM || npcPartner) && <label className="block space-y-1.5"><span>Dificuldade dos NPCs</span><select aria-label="Dificuldade dos NPCs" className={SELECT} value={difficulty} onChange={e=>setDifficulty(e.target.value)}><option value="easy">Fácil · ataca ao acaso, sem trocas nem itens</option><option value="normal">Normal · IVs e EVs aleatórios</option><option value="hard">Difícil · sets competitivos</option></select></label>}
       {friend !== RANDOM &&
         (friendTeams === null ? (
           <p className="text-sm text-muted">...</p>
@@ -1177,7 +1222,7 @@ export default function TurnBattlePage() {
     const fresh = (team) => team.map((m) => ({ ...m, hp: m.maxHp, faintShown: false, moves: m.moves.map((mv) => ({ ...mv, pp: mv.maxPp })) }))
     const b = game.battle
     const random = seededRandom(Math.floor(Math.random() * 2 ** 31))
-    setGame({ ...game, battle: newBattle(fresh(b.sides[0].team), fresh(b.sides[1].team), random, {mode:b.mode,controllers:b.controllers}), key: game.key + 1 })
+    setGame({ ...game, battle: newBattle(fresh(b.sides[0].team), fresh(b.sides[1].team), random, {mode:b.mode,controllers:b.controllers,ai:b.ai}), key: game.key + 1 })
   }
 
   return (

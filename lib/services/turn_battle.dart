@@ -1119,8 +1119,18 @@ class TurnBattle {
   double _matchupScore(BattleHit hit, BattleMon mon, BattleMon foe) =>
       _bestDamage(hit, mon, foe) / max(1, foe.hp) - _bestDamage(hit, foe, mon) / max(1, mon.hp);
 
+  /// Como o computador joga: 'easy' (golpe ao acaso na maioria das vezes, sem
+  /// trocas nem Bolsa) ou 'normal'. Igual ao site (battle.ai).
+  String ai = 'normal';
+
   /// Decide sem olhar a ação do jogador: golpe, troca ou item.
   ({String kind, int index, String? item, int? target}) cpuPlan(BattleHit hit) {
+    if (ai == 'easy') {
+      final usable = usableMoves(active(1));
+      if (usable.isEmpty) return (kind: 'move', index: -1, item: null, target: null);
+      if (random() < 0.6) return (kind: 'move', index: usable[(random() * usable.length).floor()], item: null, target: null);
+      return (kind: 'move', index: cpuMove(hit), item: null, target: null);
+    }
     final me = active(1), foe = active(0), index = cpuMove(hit);
     final outgoing = _bestDamage(hit, me, foe), incoming = _bestDamage(hit, foe, me);
     final canFinish = outgoing >= foe.hp && (speedOf(me, weather) >= speedOf(foe, weather) || (index >= 0 && me.moves[index].priority > 0)) && !['slp', 'frz'].contains(me.status);

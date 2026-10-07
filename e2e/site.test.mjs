@@ -368,6 +368,9 @@ try {
   await page.getByLabel('Adversário', {exact:true}).selectOption({ label: friend.name })
   await page.getByLabel('Time do amigo', {exact:true}).selectOption({ label: 'Areia' })
   await page.getByRole('button', { name: '⚔️ Começar batalha' }).click()
+  // Prévia dos times: escolhe quem começa.
+  await page.getByTestId('team-preview').waitFor({ timeout: 30000 })
+  await page.getByTestId('lead-0').click()
   await page.getByText(`${friend.name} quer batalhar!`).waitFor({ timeout: 30000 })
   // Joga até o fim: LUTAR e o primeiro golpe; clicar no texto adianta as falas.
   let healed = false

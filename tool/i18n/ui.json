@@ -5573,6 +5573,36 @@
   "fr": "Mon dresseur",
   "es": "Mi entrenador"
  },
+ "Fácil · ataca ao acaso, sem trocas nem itens": {
+   "en": "Easy · attacks at random, no switching or items",
+   "fr": "Facile · attaque au hasard, sans changer ni utiliser d'objets",
+   "es": "Fácil · ataca al azar, sin cambios ni objetos"
+ },
+ "Fácil: o computador ataca ao acaso, sem trocar nem usar itens.\nNormal: IVs e EVs aleatórios.\nDifícil: sets competitivos.": {
+   "en": "Easy: the computer attacks at random, without switching or using items.\nNormal: random IVs and EVs.\nHard: competitive sets.",
+   "fr": "Facile : l'ordinateur attaque au hasard, sans changer ni utiliser d'objets.\nNormal : IV et EV aléatoires.\nDifficile : sets compétitifs.",
+   "es": "Fácil: la computadora ataca al azar, sin cambiar ni usar objetos.\nNormal: IVs y EVs aleatorios.\nDifícil: sets competitivos."
+ },
+ "Fácil": {
+   "en": "Easy",
+   "fr": "Facile",
+   "es": "Fácil"
+ },
+ "Prévia dos times": {
+  "en": "Team preview",
+  "fr": "Aperçu des équipes",
+  "es": "Vista previa de los equipos"
+ },
+ "Time do adversário": {
+  "en": "Opponent's team",
+  "fr": "Équipe adverse",
+  "es": "Equipo rival"
+ },
+ "Escolha quem começa": {
+  "en": "Choose your lead",
+  "fr": "Choisis qui commence",
+  "es": "Elige quién empieza"
+ },
  "Formas alternativas": {
   "en": "Alternate forms",
   "fr": "Formes alternatives",
