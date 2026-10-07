@@ -204,6 +204,15 @@ class BattleEvent {
         category = '',
         slug = '';
   /// Megaevoluiu: a forma nova em [value].
+  /// Forma que mudou na batalha (Stance Change, Disguise, Zen Mode...): [value] é o id da forma.
+  const BattleEvent.form(this.side, this.value)
+      : t = 'form',
+        key = '',
+        args = const [],
+        index = 0,
+        type = '',
+        category = '',
+        slug = '';
   const BattleEvent.mega(this.side, this.value)
       : t = 'mega',
         key = '',
@@ -395,7 +404,7 @@ class TurnBattle {
         if ('${p['species']}'.toLowerCase().contains('-mega') && mon.mega != null) {
           mon.id = mon.mega!.id;
           mon.calc = mon.mega!.calc;
-        } else mon.id = mon._orig.id;
+        } else mon.id = (p['formId'] as int?) ?? mon._orig.id;
         mon.hp = p['hp'] as int;
         mon.maxHp = p['maxHp'] as int;
         mon.spe = p['spe'] as int;
@@ -442,6 +451,7 @@ class TurnBattle {
       case 'status': return BattleEvent.status(side, e['status'] as String);
       case 'heal': return BattleEvent.heal(side, e['index'] as int, e['hp'] as int);
       case 'mega': return BattleEvent.mega(side, e['id'] as int);
+      case 'form': return BattleEvent.form(side, e['id'] as int);
       case 'tera': return BattleEvent.tera(side, e['type'] as String);
       case 'dmax': return BattleEvent.dmax(side, e['on'] == true ? 1 : 0, e['id'] as int);
       case 'weather': return BattleEvent.weather(e['weather'] as String);
@@ -1458,6 +1468,7 @@ class TurnBattle {
     'confusionEnd': ['{0} não está mais confuso!', '{0} inimigo não está mais confuso!'],
     'gemUsed': ['{1} fortaleceu o golpe de {0}!', '{1} fortaleceu o golpe de {0} inimigo!'],
     'paradoxBoost': ['{1} de {0} foi fortalecido!', '{1} de {0} inimigo foi fortalecido!'],
+    'formChanged': ['{0} mudou para a forma {1}!', '{0} inimigo mudou para a forma {1}!'],
   };
 
   /// Evento de texto → (modelo, valores) (o Pokémon vai no lugar de {0}).

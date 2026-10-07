@@ -487,6 +487,10 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
             _form[e.side] = e.value;
           });
           await _wait(500);
+        case 'form':
+          // Forma que muda na batalha (Aegislash, Mimikyu, Darmanitan, Palafin...).
+          if (!_dmax[e.side]) setState(() => _form[e.side] = e.value);
+          await _wait(400);
         case 'dmax':
           setState(() {
             _form[e.side] = e.value;

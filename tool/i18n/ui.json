@@ -5528,6 +5528,16 @@
   "fr": "⚔️ Combattre",
   "es": "⚔️ Combatir"
  },
+ "{0} mudou para a forma {1}!": {
+  "en": "{0} transformed into {1}!",
+  "fr": "{0} prend la forme {1} !",
+  "es": "¡{0} cambió a la forma {1}!"
+ },
+ "{0} inimigo mudou para a forma {1}!": {
+  "en": "The opposing {0} transformed into {1}!",
+  "fr": "{0} ennemi prend la forme {1} !",
+  "es": "¡{0} rival cambió a la forma {1}!"
+ },
  "Formas alternativas": {
   "en": "Alternate forms",
   "fr": "Formes alternatives",

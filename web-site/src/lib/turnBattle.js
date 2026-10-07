@@ -973,6 +973,7 @@ export const LINES = {
   confusionEnd: ['{0} não está mais confuso!', '{0} inimigo não está mais confuso!'],
   gemUsed: ['{1} fortaleceu o golpe de {0}!', '{1} fortaleceu o golpe de {0} inimigo!'],
   paradoxBoost: ['{1} de {0} foi fortalecido!', '{1} de {0} inimigo foi fortalecido!'],
+  formChanged: ['{0} mudou para a forma {1}!', '{0} inimigo mudou para a forma {1}!'],
 }
 
 /** Evento de texto → [modelo, valores] (o Pokémon vai no lugar de {0}). */

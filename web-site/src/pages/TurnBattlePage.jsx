@@ -494,6 +494,10 @@ function SingleBattle({ battle, foeName, hit, onExit, onAgain, online = null }) 
         setFlash((n) => n + 1)
         setShown((s) => ({ ...s, form: s.form.map((f, i) => (i === e.side ? e.id : f)) }))
         await wait(500)
+      } else if (e.t === 'form') {
+        // Forma que muda na batalha (Aegislash, Mimikyu, Darmanitan, Palafin...).
+        setShown((s) => ({ ...s, form: s.form.map((f, i) => (i === e.side && !s.dmax[i] ? e.id : f)) }))
+        await wait(400)
       } else if (e.t === 'dmax') {
         setShown((s) => ({ ...s, form: s.form.map((f, i) => (i === e.side ? e.id : f)), dmax: s.dmax.map((d, i) => (i === e.side ? e.on : d)) }))
         await wait(700)
