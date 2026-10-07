@@ -20,6 +20,7 @@ const BATTLE_MODES = [
   { to: '/batalha/computador', emoji: '🎮', label: 'Contra o computador', subtitle: 'Individual, dupla ou tripla, com o seu time ou um aleatório', from: '#DC2626', to2: '#9333EA' },
   { to: '/batalha/online', emoji: '🌐', label: 'Online com amigos', subtitle: 'Convide amigos e batalhem ao vivo', from: '#0284C7', to2: '#4F46E5' },
   { to: '/batalha/draft', emoji: '🎯', label: 'Draft', subtitle: 'Você e um amigo escolhem Pokémon um de cada vez e batalham', from: '#F59E0B', to2: '#EA580C' },
+  { to: '/batalha/historico', emoji: '📜', label: 'Histórico e replays', subtitle: 'Suas vitórias, o MVP do time e o replay de cada batalha', from: '#059669', to2: '#0D9488' },
 ]
 
 const TOOL_GROUPS = [
@@ -52,7 +53,7 @@ export default function BattlePage() {
     <div>
       <PageHeader title="Centro de Batalha" subtitle="Batalhe e prepare o seu time." />
       <SectionTitle>Batalhar</SectionTitle>
-      <div className="mb-8 grid gap-3 sm:grid-cols-3">
+      <div className="mb-8 grid gap-3 sm:grid-cols-2">
         {BATTLE_MODES.map((mode) => (
           <m.button
             key={mode.to}

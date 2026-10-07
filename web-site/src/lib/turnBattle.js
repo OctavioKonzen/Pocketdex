@@ -110,6 +110,9 @@ export function newBattle(mine, theirs, random, options = {}) {
     random,
     bags: [newBag(), newBag()],
     turn: 1,
+    // Semente da batalha (para o replay) e as suas jogadas (logTurn).
+    seed: options.seed ?? null,
+    actions: [],
     // Como o computador joga: 'easy' (golpe ao acaso na maioria das vezes, sem trocas nem Bolsa) ou 'normal'.
     ai: options.ai || 'normal',
     cpuSwitchTurn: -2,
@@ -691,7 +694,25 @@ function checkEnd(battle, hit, events) {
  * Trocas e itens vêm antes dos golpes.
  * Devolve os eventos para mostrar na tela.
  */
+/**
+ * Para o replay e o histórico (lib/battleLog.js): cada jogada sua e quem
+ * derrubou quem. Com a semente e os times, a batalha inteira se repete igual.
+ */
+function logTurn(battle, action, events) {
+  ;(battle.actions ??= []).push(action)
+  for (const e of events) {
+    if (e.t !== 'faint' || e.side !== 1) continue
+    const i = battle.sides[0].active
+    battle.kos = { ...battle.kos, [i]: (battle.kos?.[i] ?? 0) + 1 }
+  }
+  return events
+}
+
 export function playTurn(battle, action, hit) {
+  return logTurn(battle, action, turnOf(battle, action, hit))
+}
+
+function turnOf(battle, action, hit) {
   if (battle.simulator) {
     battle.lastHit = hit
     const plan = cpuPlan(battle, hit)
@@ -860,6 +881,10 @@ export function startBattle(battle) {
 
 /** Seu Pokémon desmaiou: manda outro (não gasta turno). */
 export function replace(battle, index) {
+  return logTurn(battle, { replace: index }, replaceOf(battle, index))
+}
+
+function replaceOf(battle, index) {
   if (battle.simulator) {
     const cpu = battle.forceSwitch[1] ? {kind: 'switch', index: cpuReplacement(battle, battle.lastHit)} : {kind: 'wait'}
     const events = simulatorTurn(battle, [{kind: 'switch', index}, cpu])

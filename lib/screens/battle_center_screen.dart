@@ -12,6 +12,7 @@ import 'package:flutter/material.dart' as m show Text;
 import '../i18n/text.dart';
 import '../utils/responsive.dart';
 import '../utils/site_ui.dart';
+import 'battle_history_screen.dart';
 import 'battle_tools_screen.dart';
 import 'damage_calc_screen.dart';
 import 'draft_screen.dart';
@@ -93,6 +94,8 @@ class BattleCenterScreen extends StatelessWidget {
             _mode(context, '🌐', 'Online com amigos', 'Convide amigos e batalhem ao vivo', const [Color(0xFF0284C7), Color(0xFF4F46E5)], const OnlineBattleScreen()),
             _mode(context, '🎯', 'Draft', 'Você e um amigo escolhem Pokémon um de cada vez e batalham',
                 const [Color(0xFFF59E0B), Color(0xFFEA580C)], const DraftsScreen()),
+            _mode(context, '📜', 'Histórico e replays', 'Suas vitórias, o MVP do time e o replay de cada batalha',
+                const [Color(0xFF059669), Color(0xFF0D9488)], const BattleHistoryScreen()),
             _title(tr('PREPARAR O TIME')),
             ...tools(prepare),
             _title(tr('CONSULTAR')),

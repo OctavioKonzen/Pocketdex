@@ -1206,7 +1206,36 @@ class TurnBattle {
   /// 'dmax' | 'tera'; sem: a do set do Pokémon), [switchTo] ou [item] em
   /// [target] (índice no time).
   /// Trocas e itens vêm antes dos golpes.
-  List<BattleEvent> playTurn(BattleHit hit, {int? move, String? gimmick, int? switchTo, String? item, int? target}) {
+  /// Semente da batalha (para o replay) e as suas jogadas, no mesmo formato do
+  /// site ({move, gimmick} · {switch} · {item, target} · {replace}): com a
+  /// semente e os times, a batalha inteira se repete igual (battle_log.dart).
+  int? seed;
+  final List<Map<String, dynamic>> actions = [];
+
+  /// Derrubados por cada Pokémon seu (posição no time), para o histórico.
+  final Map<int, int> kos = {};
+
+  /// Os times como entraram ({id, set}), para o replay.
+  ({List<Map<String, dynamic>> mine, List<Map<String, dynamic>> theirs})? members;
+
+  List<BattleEvent> _logTurn(Map<String, dynamic> action, List<BattleEvent> events) {
+    actions.add(action);
+    for (final e in events) {
+      if (e.t != 'faint' || e.side != 1) continue;
+      kos[activeIndex[0]] = (kos[activeIndex[0]] ?? 0) + 1;
+    }
+    return events;
+  }
+
+  List<BattleEvent> playTurn(BattleHit hit, {int? move, String? gimmick, int? switchTo, String? item, int? target}) => _logTurn(
+      switchTo != null
+          ? {'switch': switchTo}
+          : item != null
+              ? {'item': item, 'target': target}
+              : {'move': move, 'gimmick': gimmick},
+      _turnOf(hit, move: move, gimmick: gimmick, switchTo: switchTo, item: item, target: target));
+
+  List<BattleEvent> _turnOf(BattleHit hit, {int? move, String? gimmick, int? switchTo, String? item, int? target}) {
     if (_simHandle != null) {
       _lastHit = hit;
       final plan = cpuPlan(hit);
@@ -1355,7 +1384,9 @@ class TurnBattle {
   }
 
   /// Seu Pokémon desmaiou: manda outro (não gasta turno).
-  List<BattleEvent> replace(int index) {
+  List<BattleEvent> replace(int index) => _logTurn({'replace': index}, _replaceOf(index));
+
+  List<BattleEvent> _replaceOf(int index) {
     if (_simHandle != null) {
       final cpu = forceSwitch[1] && _lastHit != null ? {'kind': 'switch', 'index': _cpuReplacement(_lastHit!)} : <String, dynamic>{'kind': 'wait'};
       final events = _simChoose([{'kind': 'switch', 'index': index}, cpu]);

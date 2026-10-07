@@ -33,7 +33,7 @@ class UserData extends ChangeNotifier {
 
   static const keys = [
     'theme', 'favorites', 'teams', 'training', 'quizRecord', 'rankedRecord', 'quizGame', 'avatar', 'stats', //
-    'collection', 'hunts', 'nuzlockes', 'trainer',
+    'collection', 'hunts', 'nuzlockes', 'trainer', 'battles',
   ];
   static const _prefsKey = 'pocketdex_user_data';
 
@@ -51,6 +51,7 @@ class UserData extends ChangeNotifier {
         'hunts': <dynamic>[],
         'nuzlockes': <dynamic>[],
         'trainer': 'red',
+        'battles': <dynamic>[],
       };
 
   Map<String, dynamic> _data = defaults;
@@ -67,6 +68,9 @@ class UserData extends ChangeNotifier {
   int get quizRecord => (_data['quizRecord'] as num?)?.toInt() ?? 0;
   /// Foto de perfil: o id de um Pokémon (ou null).
   int? get avatar => (_data['avatar'] as num?)?.toInt();
+
+  /// Histórico das batalhas contra o computador (battle_log.dart), as mais novas primeiro.
+  List<Map<String, dynamic>> get battles => _maps(_data['battles']);
 
   /// Seu treinador na batalha (id de trainers.json; o mesmo no app e no site).
   String get trainer => _data['trainer'] as String? ?? 'red';

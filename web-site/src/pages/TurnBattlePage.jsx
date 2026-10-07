@@ -23,6 +23,7 @@ import { active, canGimmick, canUseItem, effectLabel, forfeit, ITEMS, lineOf, MA
 import Sprite from '../components/Sprite'
 import { TrainerBack, TrainerSprite } from '../components/Trainer'
 import { randomTrainer, useMyTrainer, useTrainers } from '../lib/trainers'
+import { battleRecord } from '../lib/battleLog'
 import {simulatorTargets} from '../lib/battleSimulator'
 import {newPartyBattle, playPartyTurn, describeEvents} from '../lib/partyBattle'
 
@@ -83,9 +84,11 @@ function Setup({ onStart }) {
     const seed = Math.floor(Math.random() * 2 ** 31)
     const random = seededRandom(seed)
     const foeName = friend === RANDOM ? '' : friends.find((f) => f.uid === friend)?.name ?? ''
-    const [a, b] = await Promise.all([battleMons(mine === RANDOM ? await randomTeam(random, difficulty) : teamMembers(myTeam)), battleMons(friend === RANDOM ? await randomTeam(random, difficulty) : teamMembers(theirTeam))])
+    const ma = mine === RANDOM ? await randomTeam(random, difficulty) : teamMembers(myTeam)
+    const mb = friend === RANDOM ? await randomTeam(random, difficulty) : teamMembers(theirTeam)
+    const [a, b] = await Promise.all([battleMons(ma), battleMons(mb)])
     if (a.length && b.length) {
-      if (count === 1) setPreview({ a, b, random, foeName })
+      if (count === 1) setPreview({ a, b, ma: ma.slice(0, a.length), mb: mb.slice(0, b.length), random, foeName })
       else {
         const rosters = {me:a,npc3:b}
         const own = Array.from({length:count},(_,i) => i && npcPartner ? `npc${i}` : 'me')
@@ -99,9 +102,13 @@ function Setup({ onStart }) {
 
   if (preview) {
     const lead = (i) => {
-      const order = [preview.a[i], ...preview.a.filter((_, j) => j !== i)]
+      const first = (list) => [list[i], ...list.filter((_, j) => j !== i)]
       setPreview(null)
-      onStart(newBattle(order, preview.b, preview.random, { ai: difficulty === 'easy' ? 'easy' : 'normal' }), preview.foeName)
+      // A batalha com a sua própria semente: o replay refaz tudo igual (lib/battleLog.js).
+      const seed = Math.floor(preview.random() * 2 ** 31)
+      const battle = newBattle(first(preview.a), preview.b, seededRandom(seed), { ai: difficulty === 'easy' ? 'easy' : 'normal', seed })
+      battle.members = { mine: first(preview.ma), theirs: preview.mb }
+      onStart(battle, preview.foeName)
     }
     return (
       <section className={`${CARD} space-y-4`} data-testid="team-preview">
@@ -294,7 +301,8 @@ const BattleSprite = forwardRef(function BattleSprite({ mon, id, back, fainted, 
     <div className={`aspect-square w-full transition-all duration-500 ${fainted ? 'translate-y-10 opacity-0' : ''}`}>
       <div
         className="h-full w-full origin-bottom transition-transform duration-700"
-        style={dmax ? { transform: 'scale(1.35)', filter: 'drop-shadow(0 0 6px #e11d48) drop-shadow(0 0 2px #e11d48)' } : undefined}
+        // Dinamax: gigante; o do adversário (lá no alto do campo) cresce menos e desce um pouco, para não passar do topo.
+        style={dmax ? { transform: back ? 'scale(1.35)' : 'translateY(6%) scale(1.15)', filter: 'drop-shadow(0 0 6px #e11d48) drop-shadow(0 0 2px #e11d48)' } : undefined}
       >
         {/* Terastal: brilho de cristal na cor do tipo em volta do Pokémon e a coroa na cabeça (as duas seguem a animação). */}
         <div ref={ref} className={`relative h-full w-full ${teraColor ? 'tera-glow' : ''}`} style={teraColor ? { '--tera': teraColor } : undefined} data-tera={tera || undefined}>
@@ -476,7 +484,7 @@ function PokeBall({ side, phase }) {
 export function Battle(props) {
   return props.battle.mode && props.battle.mode !== 'singles' ? <MultiBattle {...props} /> : <SingleBattle {...props} />
 }
-function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain, online = null }) {
+function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain, onFinish, online = null }) {
   const byId = usePokemonIndex()
   // Os treinadores: o seu (de costas, lançando a Poké Ball) e o do adversário.
   const myTrainer = useMyTrainer()
@@ -519,7 +527,8 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   const anims = useRef(null)
   const live = useRef(true)
   const queued = useRef(Promise.resolve())
-  const seenRound = useRef(online?.round)
+  // Replay (BattleHistoryPage.jsx): a primeira rodada (o começo da batalha) também passa na tela.
+  const seenRound = useRef(online?.replay ? 0 : online?.round)
   useEffect(() => { live.current = true; return () => { live.current = false; skip.current?.() } }, [])
   useEffect(() => {
     getMoveAnims()
@@ -531,6 +540,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   shownRef.current = shown
   const coachRef = useRef(coach)
   coachRef.current = coach
+  const finished = useRef(false)
 
   /** A Poké Ball abre na plataforma e o Pokémon sai dela. */
   const release = async (side) => {
@@ -677,6 +687,10 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         skip.current = null
         setBusy(false)
         setMenu(battle.needSwitch ? 'party' : 'main')
+        if (battle.winner != null && !online && !finished.current) {
+          finished.current = true
+          onFinish?.(coachRef.current?.id ?? null)
+        }
         redraw((n) => n + 1)
       }
     }
@@ -714,7 +728,8 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
     seenRound.current = online.round
     const events = online.events, before = online.before
     setBusy(true)
-    queued.current = queued.current.then(() => live.current ? play(events, before) : undefined).catch(() => { if(live.current) setText(t('Não foi possível exibir esta ação.')) })
+    const played = online.onPlayed
+    queued.current = queued.current.then(() => live.current ? play(events, before) : undefined).then(() => { if (live.current) played?.() }).catch(() => { if(live.current) setText(t('Não foi possível exibir esta ação.')) })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [online?.round])
 
@@ -1206,9 +1221,14 @@ export default function TurnBattlePage() {
   useEffect(() => {
     if (!fromDraft) return
     let alive = true
-    const random = seededRandom(Math.floor(Math.random() * 2 ** 31))
-    Promise.all([battleMons(fromDraft.mine.map((id) => ({ id }))), battleMons(fromDraft.theirs.map((id) => ({ id })))]).then(([a, b]) => {
-      if (alive && a.length && b.length) setGame({ battle: newBattle(a, b, random), foeName: fromDraft.foeName, key: 1 })
+    const seed = Math.floor(Math.random() * 2 ** 31)
+    const ma = fromDraft.mine.map((id) => ({ id, set: null }))
+    const mb = fromDraft.theirs.map((id) => ({ id, set: null }))
+    Promise.all([battleMons(ma), battleMons(mb)]).then(([a, b]) => {
+      if (!alive || !a.length || !b.length) return
+      const battle = newBattle(a, b, seededRandom(seed), { seed })
+      battle.members = a.length === ma.length && b.length === mb.length ? { mine: ma, theirs: mb } : null
+      setGame({ battle, foeName: fromDraft.foeName, key: 1 })
     })
     return () => {
       alive = false
@@ -1221,8 +1241,10 @@ export default function TurnBattlePage() {
   const again = () => {
     const fresh = (team) => team.map((m) => ({ ...m, hp: m.maxHp, faintShown: false, moves: m.moves.map((mv) => ({ ...mv, pp: mv.maxPp })) }))
     const b = game.battle
-    const random = seededRandom(Math.floor(Math.random() * 2 ** 31))
-    setGame({ ...game, battle: newBattle(fresh(b.sides[0].team), fresh(b.sides[1].team), random, {mode:b.mode,controllers:b.controllers,ai:b.ai}), key: game.key + 1 })
+    const seed = Math.floor(Math.random() * 2 ** 31)
+    const battle = newBattle(fresh(b.sides[0].team), fresh(b.sides[1].team), seededRandom(seed), {mode:b.mode,controllers:b.controllers,ai:b.ai,seed})
+    battle.members = b.members
+    setGame({ ...game, battle, key: game.key + 1 })
   }
 
   return (
@@ -1234,7 +1256,18 @@ export default function TurnBattlePage() {
       {!game || !hit ? (
         <Setup onStart={(battle, foeName) => setGame({ battle, foeName, key: 1 })} />
       ) : (
-        <Battle key={game.key} battle={game.battle} foeName={game.foeName} hit={hit} onExit={() => setGame(null)} onAgain={again} />
+        <Battle
+          key={game.key}
+          battle={game.battle}
+          foeName={game.foeName}
+          hit={hit}
+          onExit={() => setGame(null)}
+          onAgain={again}
+          onFinish={(foeTrainer) => {
+            // Histórico e replay (lib/battleLog.js): só batalhas individuais que dá para refazer.
+            if (game.battle.members && game.battle.seed != null) useStore.getState().addBattle(battleRecord(game.battle, { foeName: game.foeName, foeTrainer }))
+          }}
+        />
       )}
     </div>
   )

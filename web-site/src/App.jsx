@@ -28,6 +28,7 @@ const FriendsPage = lazyPage(() => import('./pages/FriendsPage'))
 const ChatPage = lazyPage(() => import('./pages/ChatPage'))
 const BattlePage = lazyPage(() => import('./pages/BattlePage'))
 const TurnBattlePage = lazyPage(() => import('./pages/TurnBattlePage'))
+const BattleHistoryPage = lazyPage(() => import('./pages/BattleHistoryPage'))
 const OnlineBattlePage = lazyPage(() => import('./pages/OnlineBattlePage'))
 const DraftPage = lazyPage(() => import('./pages/DraftPage'))
 const LoginPage = lazyPage(() => import('./pages/LoginPage'))
@@ -405,6 +406,7 @@ export default function App() {
                   <Route path="/enciclopedia/:tab" element={<EncyclopediaPage />} />
                   <Route path="/batalha" element={<BattlePage />} />
                   <Route path="/batalha/computador" element={<TurnBattlePage />} />
+                  <Route path="/batalha/historico" element={<BattleHistoryPage />} />
                   <Route path="/batalha/online" element={<OnlineBattlePage />} />
                   <Route path="/batalha/online/:id" element={<OnlineBattlePage />} />
                   <Route path="/batalha/draft" element={<DraftPage />} />

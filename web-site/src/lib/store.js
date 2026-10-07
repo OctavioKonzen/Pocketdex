@@ -116,6 +116,10 @@ export const useStore = create(
       // Seu treinador na batalha (id de trainers.json; o mesmo no app e no site)
       trainer: 'red',
       setTrainer: (trainer) => set({ trainer }),
+      // Histórico das batalhas contra o computador (lib/battleLog.js), as mais novas primeiro.
+      battles: [],
+      addBattle: (record) => set(({ battles }) => ({ battles: [record, ...battles].slice(0, 30) })),
+      deleteBattle: (id) => set(({ battles }) => ({ battles: battles.filter((b) => b.id !== id) })),
       saveQuizGame: (game) => set({ quizGame: game }),
       finishQuiz: (score) =>
         set(({ quizRecord }) => ({ quizGame: null, quizRecord: Math.max(quizRecord, score) })),
@@ -171,6 +175,7 @@ export const useStore = create(
           quizGame: null,
           avatar: null,
           trainer: 'red',
+          battles: [],
           stats: EMPTY_STATS,
           collection: {},
           hunts: [],
