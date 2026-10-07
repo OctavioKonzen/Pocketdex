@@ -363,3 +363,40 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .battle-idle { animation: none; }
 }
+/* Treinadores e Poké Balls na batalha (TurnBattlePage.jsx). */
+.trainer-leave-1 { animation: trainer-leave-1 520ms ease-in forwards; }
+@keyframes trainer-leave-1 { to { transform: translateX(160%); opacity: 0; } }
+.trainer-leave-0 { animation: trainer-leave-0 520ms ease-in forwards; }
+@keyframes trainer-leave-0 { to { transform: translateX(-120%); opacity: 0; } }
+.poke-hidden { transform: scale(0); opacity: 0; transform-origin: 50% 85%; }
+.poke-release { transform-origin: 50% 85%; animation: poke-release 420ms ease-out; }
+@keyframes poke-release {
+  0% { transform: scale(0); opacity: 0.4; filter: brightness(4) saturate(0); }
+  60% { transform: scale(1.08); opacity: 1; filter: brightness(2.2) saturate(0.4); }
+  100% { transform: scale(1); filter: none; }
+}
+.poke-recall { transform-origin: 50% 85%; animation: poke-recall 380ms ease-in forwards; }
+@keyframes poke-recall {
+  0% { transform: scale(1); filter: none; }
+  40% { filter: brightness(0.6) sepia(1) saturate(8) hue-rotate(-40deg); }
+  100% { transform: scale(0); opacity: 0; filter: brightness(0.6) sepia(1) saturate(8) hue-rotate(-40deg); }
+}
+/* A sua Poké Ball sai da esquerda (da mão do treinador) em arco; a do adversário, de trás dele. */
+.pokeball-throw-0 { animation: pokeball-throw-0 520ms cubic-bezier(.3,.7,.5,1) forwards; }
+@keyframes pokeball-throw-0 {
+  0% { transform: translate(-220%, -40%) rotate(0deg) scale(0.9); }
+  45% { transform: translate(-110%, -260%) rotate(-360deg) scale(1); }
+  100% { transform: translate(-50%, 0) rotate(-720deg) scale(0.9); }
+}
+.pokeball-throw-1 { animation: pokeball-throw-1 520ms cubic-bezier(.3,.7,.5,1) forwards; }
+@keyframes pokeball-throw-1 {
+  0% { transform: translate(60%, -150%) rotate(0deg) scale(0.7); }
+  50% { transform: translate(0%, -320%) rotate(360deg) scale(0.8); }
+  100% { transform: translate(-50%, 0) rotate(720deg) scale(0.8); }
+}
+.pokeball-open-0, .pokeball-open-1 { animation: pokeball-open 260ms ease-out forwards; }
+@keyframes pokeball-open {
+  0% { transform: translate(-50%, 0) scale(0.9); filter: none; opacity: 1; }
+  60% { transform: translate(-50%, -10%) scale(1.25); filter: brightness(3); opacity: 1; }
+  100% { transform: translate(-50%, -10%) scale(1.6); filter: brightness(5); opacity: 0; }
+}

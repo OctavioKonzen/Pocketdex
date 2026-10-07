@@ -11,6 +11,7 @@ import { pendingCount, startFriends, useFriends } from './lib/friends'
 import ChatBubble from './components/ChatBubble'
 import { Icon, Loader, SpinningPokeball } from './components/ui'
 import AccountAvatar from './components/AccountAvatar'
+import { TrainerPicker } from './components/Trainer'
 import PokedexPage from './pages/PokedexPage'
 import { ErrorBoundary, lazyPage } from './lib/staleBuild'
 
@@ -200,6 +201,7 @@ function UserMenu() {
   const setAvatar = useStore((s) => s.setAvatar)
   const [open, setOpen] = useState(false)
   const [picking, setPicking] = useState(false)
+  const [pickingTrainer, setPickingTrainer] = useState(false)
   const pending = useFriends((s) => pendingCount(s.list))
   const navigate = useNavigate()
   const go = (path) => {
@@ -260,6 +262,15 @@ function UserMenu() {
             >
               Trocar foto de perfil
             </MenuItem>
+            <MenuItem
+              icon="groups"
+              onClick={() => {
+                setOpen(false)
+                setPickingTrainer(true)
+              }}
+            >
+              Meu treinador
+            </MenuItem>
             {avatar != null && (
               <MenuItem icon="close" onClick={() => setAvatar(null)}>
                 Tirar a foto
@@ -292,6 +303,7 @@ function UserMenu() {
             setPicking(false)
           }}
         />
+        <TrainerPicker open={pickingTrainer} onClose={() => setPickingTrainer(false)} />
       </Suspense>
     </div>
   )

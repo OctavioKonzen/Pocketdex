@@ -17,6 +17,8 @@ import '../services/auth_service.dart';
 import '../services/user_data.dart';
 import '../utils/site_ui.dart';
 import 'pokemon_sprite.dart';
+import 'trainer_sprite.dart';
+import '../services/trainers.dart';
 import 'package:pocket_dex/i18n/text.dart';
 
 class AccountAvatar extends StatelessWidget {
@@ -32,7 +34,10 @@ class AccountAvatar extends StatelessWidget {
         final user = AuthService.instance.user;
         final avatar = UserData.instance.avatar;
         final Widget content;
-        if (avatar != null) {
+        final trainer = Trainers.ofAvatar(avatar);
+        if (trainer != null) {
+          content = TrainerFace(trainer, size: size);
+        } else if (avatar != null) {
           content = Padding(
               padding: EdgeInsets.all(size * 0.08), child: PokemonSprite(UserData.avatarId(avatar), shiny: UserData.avatarShiny(avatar), fill: 0.95));
         } else if (user?.photo != null) {
@@ -109,7 +114,9 @@ class PlayerAvatar extends StatelessWidget {
         gradient: const LinearGradient(colors: [Color(0xFFE53935), Color(0xFFB71C1C)]),
         border: Border.all(color: Colors.white, width: size * 0.05),
       ),
-      child: pokemonId != null
+      child: Trainers.ofAvatar(pokemonId) != null
+          ? TrainerFace(Trainers.ofAvatar(pokemonId)!, size: size)
+          : pokemonId != null
           ? Padding(
               padding: EdgeInsets.all(size * 0.08),
               child: PokemonSprite(UserData.avatarId(pokemonId!), shiny: UserData.avatarShiny(pokemonId!), fill: 0.95))
@@ -291,6 +298,7 @@ class _ProfileContent extends StatelessWidget {
                 if (user?.email != null) Text(user!.email!, style: TextStyle(color: c.muted)),
                 const SizedBox(height: 16),
                 _MenuItem(icon: Icons.catching_pokemon, label: 'Trocar foto de perfil', onTap: () => ProfileSheet.changePhoto(context)),
+                _MenuItem(icon: Icons.person_pin, label: 'Meu treinador', onTap: () => TrainerPicker.show(context)),
                 if (hasAvatar)
                   _MenuItem(icon: Icons.hide_image_outlined, label: 'Tirar a foto', onTap: () => UserData.instance.update({'avatar': null})),
                 _MenuItem(

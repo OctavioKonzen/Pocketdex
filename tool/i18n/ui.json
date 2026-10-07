@@ -5538,6 +5538,41 @@
   "fr": "{0} ennemi prend la forme {1} !",
   "es": "¡{0} rival cambió a la forma {1}!"
  },
+"{0} enviou {1}!": {
+  "en": "{0} sent out {1}!",
+  "fr": "{0} envoie {1} !",
+  "es": "¡{0} sacó a {1}!"
+ },
+ "O adversário": {
+  "en": "The opponent",
+  "fr": "L'adversaire",
+  "es": "El rival"
+ },
+ "Escolha seu treinador": {
+  "en": "Choose your trainer",
+  "fr": "Choisis ton dresseur",
+  "es": "Elige tu entrenador"
+ },
+ "Ele aparece na batalha lançando a Poké Ball e pode ser a sua foto de perfil.": {
+  "en": "They appear in battle throwing the Poké Ball and can be your profile picture.",
+  "fr": "Il apparaît en combat en lançant la Poké Ball et peut être ta photo de profil.",
+  "es": "Aparece en la batalla lanzando la Poké Ball y puede ser tu foto de perfil."
+ },
+ "Escolher e usar como foto": {
+  "en": "Choose and use as photo",
+  "fr": "Choisir et utiliser comme photo",
+  "es": "Elegir y usar como foto"
+ },
+ "Escolher": {
+  "en": "Choose",
+  "fr": "Choisir",
+  "es": "Elegir"
+ },
+ "Meu treinador": {
+  "en": "My trainer",
+  "fr": "Mon dresseur",
+  "es": "Mi entrenador"
+ },
  "Formas alternativas": {
   "en": "Alternate forms",
   "fr": "Formes alternatives",

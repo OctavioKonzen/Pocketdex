@@ -21,6 +21,8 @@ import { teamMembers } from '../lib/teamBattle'
 import { fxPlan, moveAnim, SELF_KINDS } from '../lib/moveAnim'
 import { active, canGimmick, canUseItem, effectLabel, forfeit, ITEMS, lineOf, MAX_MOVES, maxPower, moveEffect, newBattle, playTurn, replace, startBattle, STAT_NAMES, switchMatchup, usableMoves, weaknesses, Z_MOVES, zPower } from '../lib/turnBattle'
 import Sprite from '../components/Sprite'
+import { TrainerBack, TrainerSprite } from '../components/Trainer'
+import { randomTrainer, useMyTrainer, useTrainers } from '../lib/trainers'
 import {simulatorTargets} from '../lib/battleSimulator'
 import {newPartyBattle, playPartyTurn, describeEvents} from '../lib/partyBattle'
 
@@ -399,12 +401,49 @@ function pulse(el, cls, ms) {
 }
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
+/** Altura e largura do campo na tela (para o tamanho dos treinadores). */
+const fieldHeight = (field) => field.current?.clientHeight || 300
+const fieldWidth = (field) => field.current?.clientWidth || 480
+
+// Um treinador sorteado por batalha (o mesmo enquanto ela durar).
+const drawn = new WeakMap()
+function randomOnce(list, mine, battle) {
+  if (!list?.length) return null
+  if (!drawn.has(battle)) drawn.set(battle, randomTrainer(list, mine))
+  return drawn.get(battle)
+}
+
+/** A Poké Ball: lançada até a plataforma ('throw') ou abrindo nela ('open'). */
+function PokeBall({ side, phase }) {
+  return (
+    <div className={`pokeball-${phase}-${side} pointer-events-none absolute bottom-[8%] left-1/2 w-[18%]`} data-testid={`pokeball-${side}`} aria-hidden="true">
+      <svg viewBox="0 0 20 20" className="block w-full">
+        <circle cx="10" cy="10" r="9" fill="#fff" stroke="#1f2937" strokeWidth="1.6" />
+        <path d="M1 10a9 9 0 0 1 18 0z" fill="#e3350d" stroke="#1f2937" strokeWidth="1.6" />
+        <rect x="1" y="9.2" width="18" height="1.6" fill="#1f2937" />
+        <circle cx="10" cy="10" r="2.8" fill="#fff" stroke="#1f2937" strokeWidth="1.4" />
+      </svg>
+    </div>
+  )
+}
+
 /** A batalha em si. */
 export function Battle(props) {
   return props.battle.mode && props.battle.mode !== 'singles' ? <MultiBattle {...props} /> : <SingleBattle {...props} />
 }
-function SingleBattle({ battle, foeName, hit, onExit, onAgain, online = null }) {
+function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain, online = null }) {
   const byId = usePokemonIndex()
+  // Os treinadores: o seu (de costas, lançando a Poké Ball) e o do adversário.
+  const myTrainer = useMyTrainer()
+  const trainers = useTrainers()
+  const [foeCoach] = useState(() => foeTrainer)
+  const coach = (typeof foeCoach === 'string' ? trainers?.find((x) => x.id === foeCoach) : foeCoach) ?? randomOnce(trainers, myTrainer?.id, battle)
+  // A abertura (treinadores e Poké Balls) só no começo de uma batalha nova.
+  const [intro, setIntro] = useState(() => (!online && battle.turn <= 1 ? { foe: 'in', me: 'in', back: 0 } : null))
+  // Cada Pokémon: '' na tela, 'hidden' dentro da Poké Ball, 'release' saindo, 'recall' voltando.
+  const [poke, setPoke] = useState(() => (!online && battle.turn <= 1 ? ['hidden', 'hidden'] : ['', '']))
+  const [ball, setBall] = useState([null, null]) // 'throw' | 'open'
+  const setSide = (setter, side, value) => setter((list) => list.map((x, i) => (i === side ? value : x)))
   const [, redraw] = useState(0)
   // O que está na tela (anda atrás do motor enquanto os eventos passam).
   const [shown, setShown] = useState(() => ({
@@ -442,6 +481,47 @@ function SingleBattle({ battle, foeName, hit, onExit, onAgain, online = null }) 
       .then((table) => (anims.current = table))
       .catch(() => {})
   }, [])
+
+  const shownRef = useRef(shown)
+  shownRef.current = shown
+  const coachRef = useRef(coach)
+  coachRef.current = coach
+
+  /** A Poké Ball abre na plataforma e o Pokémon sai dela. */
+  const release = async (side) => {
+    setSide(setBall, side, 'open')
+    await wait(260)
+    setSide(setBall, side, null)
+    setSide(setPoke, side, 'release')
+    await wait(420)
+    setSide(setPoke, side, '')
+  }
+
+  /** A abertura: os treinadores aparecem, lançam a Poké Ball e os Pokémon saem. */
+  const runIntro = async () => {
+    await wait(700)
+    if (!foeName && coachRef.current) setText(t('{0} quer batalhar!').replace('{0}', coachRef.current.name))
+    await wait(1100)
+    if (!live.current) return
+    const foeMon = battle.sides[1].team[battle.sides[1].active]
+    const mine = battle.sides[0].team[battle.sides[0].active]
+    setText(t('{0} enviou {1}!').replace('{0}', foeName || coachRef.current?.name || t('O adversário')).replace('{1}', foeMon.name))
+    setIntro((i) => ({ ...i, foe: 'out' }))
+    setSide(setBall, 1, 'throw')
+    await wait(520)
+    await release(1)
+    if (!live.current) return
+    setText(t('Vai, {0}!').replace('{0}', mine.name))
+    for (let f = 1; f < 5; f++) {
+      setIntro((i) => ({ ...i, back: f }))
+      await wait(90)
+    }
+    setIntro((i) => ({ ...i, me: 'out' }))
+    setSide(setBall, 0, 'throw')
+    await wait(520)
+    await release(0)
+    setIntro(null)
+  }
 
   // before: o id de cada lado antes do turno (o motor já mudou a Mega; a tela muda no evento).
   const play = async (events, before = null) => {
@@ -506,6 +586,13 @@ function SingleBattle({ battle, foeName, hit, onExit, onAgain, online = null }) 
       } else if (e.t === 'faint') {
         setShown((s) => ({ ...s, fainted: s.fainted.map((f, i) => (i === e.side ? true : f)) }))
       } else if (e.t === 'switch') {
+        // Volta para a Poké Ball (se não desmaiou) e o outro sai dela.
+        const gone = shownRef.current.fainted[e.side]
+        if (!gone && shownRef.current.active[e.side] !== e.index) {
+          setSide(setPoke, e.side, 'recall')
+          await wait(380)
+        }
+        setSide(setPoke, e.side, 'hidden')
         setShown((s) => ({
           ...s,
           active: s.active.map((a, i) => (i === e.side ? e.index : a)),
@@ -515,6 +602,7 @@ function SingleBattle({ battle, foeName, hit, onExit, onAgain, online = null }) 
           boosts: s.boosts.map((b, i) => (i === e.side ? {} : b)),
           tera: s.tera.map((x, i) => (i === e.side ? '' : x)),
         }))
+        await release(e.side)
       } else if (e.t === 'mega') {
         setFlash((n) => n + 1)
         setShown((s) => ({ ...s, form: s.form.map((f, i) => (i === e.side ? e.id : f)) }))
@@ -553,11 +641,25 @@ function SingleBattle({ battle, foeName, hit, onExit, onAgain, online = null }) 
   const opening = useRef(null)
   useEffect(() => {
     if (online) return
-    const events = (opening.current ??= startBattle(battle))
-    if (!events.length) return
+    const withIntro = intro != null
+    // Com a abertura, quem entrou já saiu da Poké Ball nela: sem repetir o "enviou".
+    const events = (opening.current ??= startBattle(battle)).filter((e) => !withIntro || (e.t !== 'switch' && e.key !== 'go' && e.key !== 'foeSent'))
+    if (!events.length && !withIntro) return
     actionBusy.current = true
     setBusy(true)
-    const id = setTimeout(() => { play(events).catch(() => { if(live.current) setText(t('Não foi possível exibir esta ação.')) }) }, STEP_MS)
+    const id = setTimeout(async () => {
+      try {
+        if (withIntro) await runIntro()
+        if (!live.current) return
+        if (events.length) await play(events)
+        else {
+          actionBusy.current = false
+          setBusy(false)
+        }
+      } catch {
+        if (live.current) setText(t('Não foi possível exibir esta ação.'))
+      }
+    }, withIntro ? 0 : STEP_MS)
     return () => clearTimeout(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [battle])
@@ -646,20 +748,36 @@ function SingleBattle({ battle, foeName, hit, onExit, onAgain, online = null }) 
         style={{ background: '#9fdcff' }}
       >
         <BattleBackground weather={shown.weather} />
-        <div className="absolute top-[6%] left-[4%] w-[46%] max-w-[260px]">
+        <div className={`absolute top-[6%] left-[4%] w-[46%] max-w-[260px] transition-opacity ${intro && poke[1] === 'hidden' ? 'opacity-0' : ''}`}>
           <InfoBox mon={foe} hp={shown.hp[1][shown.active[1]]} status={shown.status[1][shown.active[1]]} dmax={shown.dmax[1]} boosts={shown.boosts[1]} hpTestId={online ? "online-hp-" + (1 - online.side) : undefined} />
         </div>
         {/* O inimigo fica mais longe: menor e com os pés na frente do meio da plataforma (pisando nela, como o seu). */}
         <div className="absolute right-[11%] bottom-[53%] w-[25%]">
-          <BattleSprite ref={sprites[1]} mon={foe} id={shown.form[1] ?? foe.id} dmax={shown.dmax[1]} tera={shown.tera[1]} fainted={shown.fainted[1]} byId={byId} />
+          <div className={`poke-${poke[1] || 'shown'}`}>
+            <BattleSprite ref={sprites[1]} mon={foe} id={shown.form[1] ?? foe.id} dmax={shown.dmax[1]} tera={shown.tera[1]} fainted={shown.fainted[1]} byId={byId} />
+          </div>
+          {ball[1] && <PokeBall side={1} phase={ball[1]} />}
+          {intro && coach && (
+            <div className={`trainer-foe absolute inset-x-0 bottom-0 flex justify-center ${intro.foe === 'out' ? 'trainer-leave-1' : ''}`} data-testid="foe-trainer">
+              <TrainerSprite trainer={coach} box={fieldWidth(field) * 0.34} />
+            </div>
+          )}
         </div>
         <div className="absolute bottom-[5%] left-[7%] w-[33%]">
-          <BattleSprite ref={sprites[0]} mon={me} id={shown.form[0] ?? me.id} dmax={shown.dmax[0]} tera={shown.tera[0]} back fainted={shown.fainted[0]} byId={byId} />
+          <div className={`poke-${poke[0] || 'shown'}`}>
+            <BattleSprite ref={sprites[0]} mon={me} id={shown.form[0] ?? me.id} dmax={shown.dmax[0]} tera={shown.tera[0]} back fainted={shown.fainted[0]} byId={byId} />
+          </div>
+          {ball[0] && <PokeBall side={0} phase={ball[0]} />}
         </div>
+        {intro && myTrainer && (
+          <div className={`absolute bottom-0 left-[2%] ${intro.me === 'out' ? 'trainer-leave-0' : ''}`} data-testid="my-trainer">
+            <TrainerBack trainer={myTrainer} frame={intro.back} box={fieldHeight(field) * 0.62} />
+          </div>
+        )}
         <WeatherFx weather={shown.weather} />
         {effect && <MoveFx key={effect.key} plan={effect.plan} color={effect.color} />}
         {flash > 0 && <div key={`flash-${flash}`} className="battle-flash pointer-events-none absolute inset-0 bg-white" />}
-        <div className="absolute right-[4%] bottom-[8%] w-[46%] max-w-[260px]">
+        <div className={`absolute right-[4%] bottom-[8%] w-[46%] max-w-[260px] transition-opacity ${intro && poke[0] === 'hidden' ? 'opacity-0' : ''}`}>
           <InfoBox mon={me} hp={shown.hp[0][shown.active[0]]} status={shown.status[0][shown.active[0]]} dmax={shown.dmax[0]} boosts={shown.boosts[0]} mine hpTestId={online ? "online-hp-" + online.side : undefined} />
         </div>
       </div>

@@ -26,7 +26,10 @@ export const shinyPath = (path) => (path ? path.replace(/^pokemon\/(?!shiny\/)/,
  * (igual ao app, lib/services/user_data.dart).
  */
 export const SHINY_AVATAR = 100000
-export const avatarOf = (value) => (value == null ? null : { id: value % SHINY_AVATAR, shiny: value >= SHINY_AVATAR })
+/** Foto de perfil de treinador: TRAINER_AVATAR + a posição dele em trainers.json. */
+export const TRAINER_AVATAR = 1000000
+export const avatarOf = (value) =>
+  value == null ? null : value >= TRAINER_AVATAR ? { trainer: value - TRAINER_AVATAR } : { id: value % SHINY_AVATAR, shiny: value >= SHINY_AVATAR }
 
 /** Sprite do membro do time: shiny se marcado no set. */
 export const memberSprite = (p, set) => (set?.shiny ? shinyPath(p.sprite) : p.sprite)
@@ -80,6 +83,8 @@ export const getMoveRules = () => load('move_rules.json')
 export const getBattleItems = () => load('battle_items.json')
 
 export const getAnimatedSprites = () => load('animated_sprites.json')
+/** Treinadores (batalha e foto de perfil): tool/build_trainers.py. */
+export const getTrainers = () => load('trainers.json')
 
 /** Grito da espécie (arquivo do banco, não da PokeAPI). */
 export const cryUrl = (speciesId) => `${BASE}cries/${speciesId}.mp3`

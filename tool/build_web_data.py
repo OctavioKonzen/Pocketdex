@@ -271,6 +271,8 @@ def main():
     save('battle_items.json', load('battle_items'))
     # Quais Pokémon têm sprite animado (tool/fetch_animated_sprites.py).
     save('animated_sprites.json', load('animated_sprites'))
+    # Treinadores (tool/build_trainers.py): batalha e foto de perfil.
+    save('trainers.json', load('trainers'))
 
     save('abilities.json', [{
         'id': a['id'],
