@@ -9,9 +9,9 @@ import { Link, useLocation } from 'react-router-dom'
 import PokeIcon from '../components/PokeIcon'
 import { Button, Empty, Icon, PageHeader, TypeBadge } from '../components/ui'
 import { teamsOf, useAuth } from '../lib/auth'
-import { battleHitter, battleMons, randomTeam } from '../lib/battleSetup'
+import { battleHitter, battleMons, leaderTeam, randomTeam } from '../lib/battleSetup'
 import { friendsOnly, useFriends } from '../lib/friends'
-import { getMoveAnims, getTypes, shinyPath, spriteUrl } from '../lib/data'
+import { getGymLeaders, getMoveAnims, getTypes, shinyPath, spriteUrl } from '../lib/data'
 import { t } from '../lib/i18n'
 import { seededRandom } from '../lib/league'
 import { ALL_TYPES, damageTaken, typeColor } from '../lib/pokemon'
@@ -31,6 +31,9 @@ import {newPartyBattle, playPartyTurn, describeEvents} from '../lib/partyBattle'
 const CARD = 'rounded-2xl bg-card p-5 shadow'
 const SELECT = 'w-full rounded-xl bg-surface px-3 py-2.5 outline-none focus:ring-2 focus:ring-sky-400'
 const RANDOM = '__random__'
+// Adversário 'gym:<id>': um líder, Elite Four ou campeão (gym_leaders.json).
+const GYM = 'gym:'
+const KIND_LABEL = { gym: 'Líder de Ginásio', elite: 'Elite Four', champion: 'Campeão', kahuna: 'Kahuna' }
 const STEP_MS = 1100
 
 const STAT_LABELS = new Set(Object.values(STAT_NAMES))
@@ -51,6 +54,27 @@ function TeamLine({ team }) {
 }
 
 /** Escolher o seu time e o do adversário. */
+/** O líder escolhido: o treinador e o time (todos no nível 50, já evoluídos). */
+function LeaderCard({ leader }) {
+  const trainers = useTrainers()
+  const trainer = trainers?.find((x) => x.id === leader.trainer)
+  return (
+    <div className="flex items-center gap-3 rounded-2xl bg-bg p-3" data-testid="leader-card">
+      {trainer && <TrainerSprite trainer={trainer} box={84} />}
+      <div className="min-w-0">
+        <p className="font-black" data-no-translate>{leader.name}</p>
+        <p className="text-xs text-muted">{t(KIND_LABEL[leader.kind])}{leader.type ? ` · ` : ''}{leader.type && <TypeBadge type={leader.type} small />}</p>
+        <div className="mt-1 flex flex-wrap gap-1">
+          {leader.team.map((id, i) => (
+            <PokeIcon key={i} id={id} className="h-10 w-10" />
+          ))}
+        </div>
+        <p className="text-[11px] text-muted">Time original, já evoluído, todos no nível 50.</p>
+      </div>
+    </div>
+  )
+}
+
 function Setup({ onStart }) {
   const teams = useStore((s) => s.teams)
   const list = useFriends((s) => s.list)
@@ -66,35 +90,41 @@ function Setup({ onStart }) {
   const [difficulty, setDifficulty] = useState('normal')
   const [npcPartner, setNpcPartner] = useState(false)
   // Prévia dos times (como no Showdown): os dois times e você escolhe quem começa.
-  const [preview, setPreview] = useState(null) // {a, b, random, foeName}
+  const [preview, setPreview] = useState(null) // {a, b, random, foeName, foeTrainer}
+  const [regions, setRegions] = useState([])
+  useEffect(() => {
+    getGymLeaders().then(setRegions).catch(() => setRegions([]))
+  }, [])
+  const leader = friend.startsWith(GYM) ? regions.flatMap((r) => r.leaders).find((l) => l.id === friend.slice(GYM.length)) : null
 
   const pickFriend = (uid) => {
     setFriend(uid)
     setTheirs('')
     setFriendTeams(null)
-    if (uid === RANDOM) setFriendTeams([])
+    if (uid === RANDOM || uid.startsWith(GYM)) setFriendTeams([])
     else teamsOf(uid).then((x) => setFriendTeams(x.filter((y) => teamMembers(y).length))).catch(() => setFriendTeams([]))
   }
   const myTeam = myTeams.find((x) => x.id === mine)
   const theirTeam = friendTeams?.find((x) => x.id === theirs)
-  const ready = (mine === RANDOM || myTeam && teamMembers(myTeam).length >= (npcPartner ? 1 : count)) && (friend === RANDOM || theirTeam && teamMembers(theirTeam).length >= count)
+  const ready = (mine === RANDOM || myTeam && teamMembers(myTeam).length >= (npcPartner ? 1 : count)) && (friend === RANDOM || leader || theirTeam && teamMembers(theirTeam).length >= count)
   const start = async () => {
     setBusy(true)
     setError('')
     try {
     const seed = Math.floor(Math.random() * 2 ** 31)
     const random = seededRandom(seed)
-    const foeName = friend === RANDOM ? '' : friends.find((f) => f.uid === friend)?.name ?? ''
+    const foeName = leader ? leader.name : friend === RANDOM ? '' : friends.find((f) => f.uid === friend)?.name ?? ''
+    const foeTrainer = leader?.trainer ?? null
     const ma = mine === RANDOM ? await randomTeam(random, difficulty) : teamMembers(myTeam)
-    const mb = friend === RANDOM ? await randomTeam(random, difficulty) : teamMembers(theirTeam)
+    const mb = leader ? await leaderTeam(leader, random, difficulty) : friend === RANDOM ? await randomTeam(random, difficulty) : teamMembers(theirTeam)
     const [a, b] = await Promise.all([battleMons(ma), battleMons(mb)])
     if (a.length && b.length) {
-      if (count === 1) setPreview({ a, b, ma: ma.slice(0, a.length), mb: mb.slice(0, b.length), random, foeName })
+      if (count === 1) setPreview({ a, b, ma: ma.slice(0, a.length), mb: mb.slice(0, b.length), random, foeName, foeTrainer })
       else {
         const rosters = {me:a,npc3:b}
         const own = Array.from({length:count},(_,i) => i && npcPartner ? `npc${i}` : 'me')
         for (const uid of own.filter(x => x !== 'me')) rosters[uid] = await battleMons(await randomTeam(random, difficulty))
-        onStart(newPartyBattle(rosters,[...own,...Array(count).fill('npc3')],count,random),foeName)
+        onStart(newPartyBattle(rosters,[...own,...Array(count).fill('npc3')],count,random),foeName,foeTrainer)
       }
     }
     } catch(e) {setError(e.message || 'Não foi possível iniciar a batalha. Tente novamente.')}
@@ -109,7 +139,7 @@ function Setup({ onStart }) {
       const seed = Math.floor(preview.random() * 2 ** 31)
       const battle = newBattle(first(preview.a), preview.b, seededRandom(seed), { ai: difficulty === 'easy' ? 'easy' : 'normal', seed })
       battle.members = { mine: first(preview.ma), theirs: preview.mb }
-      onStart(battle, preview.foeName)
+      onStart(battle, preview.foeName, preview.foeTrainer)
     }
     return (
       <section className={`${CARD} space-y-4`} data-testid="team-preview">
@@ -173,15 +203,29 @@ function Setup({ onStart }) {
         <span className="text-sm font-semibold text-muted">Adversário</span>
         <select aria-label="Adversário" value={friend} onChange={(e) => pickFriend(e.target.value)} className={SELECT} data-no-translate>
           <option value={RANDOM}>{t('🎲 Time aleatório')}</option>
-          {friends.map((f) => (
-            <option key={f.uid} value={f.uid}>
-              {f.name}
-            </option>
+          {friends.length > 0 && (
+            <optgroup label={t('Amigos')}>
+              {friends.map((f) => (
+                <option key={f.uid} value={f.uid}>
+                  {f.name}
+                </option>
+              ))}
+            </optgroup>
+          )}
+          {regions.map((r) => (
+            <optgroup key={r.region} label={`${t('Líderes e campeões')} · ${r.region}`}>
+              {r.leaders.map((l) => (
+                <option key={l.id} value={GYM + l.id}>
+                  {`${l.name} · ${t(KIND_LABEL[l.kind])}${l.type ? ` (${l.type})` : ''}`}
+                </option>
+              ))}
+            </optgroup>
           ))}
         </select>
       </label>
-      {(friend === RANDOM || npcPartner) && <label className="block space-y-1.5"><span>Dificuldade dos NPCs</span><select aria-label="Dificuldade dos NPCs" className={SELECT} value={difficulty} onChange={e=>setDifficulty(e.target.value)}><option value="easy">Fácil · ataca ao acaso, sem trocas nem itens</option><option value="normal">Normal · IVs e EVs aleatórios</option><option value="hard">Difícil · sets competitivos</option></select></label>}
-      {friend !== RANDOM &&
+      {leader && <LeaderCard leader={leader} />}
+      {(friend === RANDOM || leader || npcPartner) && <label className="block space-y-1.5"><span>Dificuldade dos NPCs</span><select aria-label="Dificuldade dos NPCs" className={SELECT} value={difficulty} onChange={e=>setDifficulty(e.target.value)}><option value="easy">Fácil · ataca ao acaso, sem trocas nem itens</option><option value="normal">Normal · IVs e EVs aleatórios</option><option value="hard">Difícil · sets competitivos</option></select></label>}
+      {friend !== RANDOM && !leader &&
         (friendTeams === null ? (
           <p className="text-sm text-muted">...</p>
         ) : !friendTeams.length ? (
@@ -1295,12 +1339,13 @@ export default function TurnBattlePage() {
         <Icon name="back" size={16} /> Centro de Batalha
       </Link>
       {!game || !hit ? (
-        <Setup onStart={(battle, foeName) => setGame({ battle, foeName, key: 1 })} />
+        <Setup onStart={(battle, foeName, foeTrainer = null) => setGame({ battle, foeName, foeTrainer, key: 1 })} />
       ) : (
         <Battle
           key={game.key}
           battle={game.battle}
           foeName={game.foeName}
+          foeTrainer={game.foeTrainer}
           hit={hit}
           onExit={() => setGame(null)}
           onAgain={again}

@@ -273,6 +273,8 @@ def main():
     save('animated_sprites.json', load('animated_sprites'))
     # Treinadores (tool/build_trainers.py): batalha e foto de perfil.
     save('trainers.json', load('trainers'))
+    # Desafio dos Líderes (tool/build_gym_leaders.py).
+    save('gym_leaders.json', load('gym_leaders'))
 
     save('abilities.json', [{
         'id': a['id'],

@@ -166,6 +166,11 @@ export async function randomTeam(random, difficulty = 'normal') {
   return npcMembers(ids, await getNpcSets(), random, difficulty)
 }
 
+/** O time de um líder/campeão (gym_leaders.json): os Pokémon originais, evoluídos, no nível 50. */
+export async function leaderTeam(leader, random, difficulty = 'normal') {
+  return npcMembers(leader.team, await getNpcSets(), random, difficulty)
+}
+
 /** A função de dano para o motor. */
 export async function battleHitter() {
   const calc = await import('./damageCalc')

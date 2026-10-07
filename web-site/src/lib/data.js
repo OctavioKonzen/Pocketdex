@@ -85,6 +85,8 @@ export const getBattleItems = () => load('battle_items.json')
 export const getAnimatedSprites = () => load('animated_sprites.json')
 /** Treinadores (batalha e foto de perfil): tool/build_trainers.py. */
 export const getTrainers = () => load('trainers.json')
+/** Líderes de ginásio, Elite Four e campeões com os times originais: tool/build_gym_leaders.py. */
+export const getGymLeaders = () => load('gym_leaders.json')
 
 /** Grito da espécie (arquivo do banco, não da PokeAPI). */
 export const cryUrl = (speciesId) => `${BASE}cries/${speciesId}.mp3`

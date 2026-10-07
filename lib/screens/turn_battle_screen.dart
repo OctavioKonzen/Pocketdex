@@ -35,6 +35,7 @@ import '../widgets/trainer_sprite.dart';
 import '../services/trainers.dart';
 import '../services/battle_log.dart';
 import '../services/battle_sounds.dart';
+import '../services/gym_leaders.dart';
 
 /// Um time para a batalha: nome e membros (id + set).
 class BattleTeam {
@@ -77,9 +78,16 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
   bool _npcPartner = false;
   TurnBattle? _battle;
   String _foeName = '';
+  String? _foeTrainer;
+  // Adversário 'gym:<id>': um líder, Elite Four ou campeão (gym_leaders.json).
+  static const _gym = 'gym:';
+  List<({String region, List<GymLeader> leaders})> _regions = const [];
+  GymLeader? get _leader => _friend.startsWith(_gym)
+      ? _regions.expand((r) => r.leaders).where((l) => l.id == _friend.substring(_gym.length)).firstOrNull
+      : null;
 
   /// Prévia dos times (como no Showdown): os dois times e você escolhe quem começa.
-  ({List<BattleMon> a, List<BattleMon> b, List<Member> ma, List<Member> mb, double Function() random, String foeName})? _preview;
+  ({List<BattleMon> a, List<BattleMon> b, List<Member> ma, List<Member> mb, double Function() random, String foeName, String? foeTrainer})? _preview;
 
   /// A batalha individual com a sua própria semente: o replay refaz tudo igual (battle_log.dart).
   TurnBattle _single(List<BattleMon> a, List<BattleMon> b, List<Member> ma, List<Member> mb, double Function() random) {
@@ -109,15 +117,16 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
       }
     });
     if (widget.mine != null && widget.theirs != null) _start(widget.mine!, widget.theirs!, widget.foeName);
+    GymLeaders.load().then((regions) => mounted ? setState(() => _regions = regions) : null).catchError((_) => null);
   }
 
   Future<void> _pickFriend(String uid) async {
     setState(() {
       _friend = uid;
       _theirs = null;
-      _friendTeams = uid == _random ? const [] : null;
+      _friendTeams = uid == _random || uid.startsWith(_gym) ? const [] : null;
     });
-    if (uid == _random) return;
+    if (uid == _random || uid.startsWith(_gym)) return;
     try {
       final snap = await FirebaseFirestore.instance.collection('publicTeams').where('ownerUid', isEqualTo: uid).get();
       final teams = [for (final d in snap.docs) BattleTeam.fromMap(d.data())].whereType<BattleTeam>().toList();
@@ -132,7 +141,9 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
     try {
     final random = League.seededRandom(Random().nextInt(1 << 31));
     final ma = mine ?? await TurnBattleSetup.randomTeam(random, difficulty: _difficulty);
-    final mb = theirs ?? await TurnBattleSetup.randomTeam(random, difficulty: _difficulty);
+    final leader = theirs == null ? _leader : null;
+    final mb = theirs ?? (leader != null ? await leader.members(random, difficulty: _difficulty) : await TurnBattleSetup.randomTeam(random, difficulty: _difficulty));
+    final foeTrainer = leader?.trainer;
     final a = await TurnBattleSetup.mons(ma, battleMonName);
     final b = await TurnBattleSetup.mons(mb, battleMonName);
     final rosters = <String, List<BattleMon>>{'me': a, 'npc3': b};
@@ -145,11 +156,12 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
       _busy = false;
       if (a.isNotEmpty && b.isNotEmpty) {
         if (_count == 1 && widget.mine == null) {
-          _preview = (a: a, b: b, ma: ma, mb: mb, random: random, foeName: foeName);
+          _preview = (a: a, b: b, ma: ma, mb: mb, random: random, foeName: foeName, foeTrainer: foeTrainer);
           return;
         }
         _battle = _count == 1 ? _single(a, b, ma, mb, random) : PartyBattle.create(rosters, [...own, ...List.filled(_count, 'npc3')], _count, random);
         _foeName = foeName;
+        _foeTrainer = foeTrainer;
         _key++;
       }
     });
@@ -197,6 +209,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
                     hit: _hit!,
                     typeEff: _typeEff!,
                     foeName: _foeName,
+                    foeTrainer: _foeTrainer,
                     intro: true,
                     onFinish: (foeTrainer) {
                       final b = _battle;
@@ -219,7 +232,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
   }
 
   /// Prévia dos times: o do adversário e o seu, tocando em quem começa.
-  Widget _previewView(BuildContext context, ({List<BattleMon> a, List<BattleMon> b, List<Member> ma, List<Member> mb, double Function() random, String foeName}) p) {
+  Widget _previewView(BuildContext context, ({List<BattleMon> a, List<BattleMon> b, List<Member> ma, List<Member> mb, double Function() random, String foeName, String? foeTrainer}) p) {
     final c = SiteColors.of(context);
     void lead(int i) {
       List<T> first<T>(List<T> list) => [list[i], for (var j = 0; j < list.length; j++) if (j != i) list[j]];
@@ -227,6 +240,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
         _preview = null;
         _battle = _single(first(p.a), p.b, p.ma.length == p.a.length ? first(p.ma) : p.ma, p.mb, p.random);
         _foeName = p.foeName;
+        _foeTrainer = p.foeTrainer;
         _key++;
       });
     }
@@ -295,7 +309,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
     final myTeams = _myTeams;
     final friends = FriendsService.instance.friends;
     InputDecoration deco(String label) => InputDecoration(labelText: tr(label), border: const OutlineInputBorder(), isDense: true);
-    final ready = (_mine == -1 || _mine != null && myTeams[_mine!].members.length >= (_npcPartner ? 1 : _count)) && (_friend == _random || _theirs != null && _friendTeams![_theirs!].members.length >= _count);
+    final ready = (_mine == -1 || _mine != null && myTeams[_mine!].members.length >= (_npcPartner ? 1 : _count)) && (_friend == _random || _leader != null || _theirs != null && _friendTeams![_theirs!].members.length >= _count);
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -320,16 +334,26 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
           items: [
             const DropdownMenuItem(value: _random, child: Text('🎲 Time aleatório')),
             for (final f in friends) DropdownMenuItem(value: f.uid, child: m.Text(f.name)),
+            // Desafio dos Líderes: um cabeçalho por região.
+            for (final r in _regions) ...[
+              DropdownMenuItem(
+                  enabled: false,
+                  value: 'region:${r.region}',
+                  child: m.Text('${tr('Líderes e campeões')} · ${r.region}', style: TextStyle(color: c.muted, fontSize: 12, fontWeight: FontWeight.w800))),
+              for (final l in r.leaders)
+                DropdownMenuItem(value: '$_gym${l.id}', child: m.Text('   ${l.name}${const {'elite': ' · E4', 'champion': ' · 👑', 'kahuna': ' · Kahuna'}[l.kind] ?? ''}')),
+            ],
           ],
           onChanged: (v) => _pickFriend(v ?? _random),
         ),
-        if (_friend == _random || _npcPartner) ...[
+        if (_leader != null) ...[const SizedBox(height: 10), _LeaderCard(leader: _leader!)],
+        if (_friend == _random || _leader != null || _npcPartner) ...[
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(isExpanded: true, initialValue: _difficulty, decoration: deco('Dificuldade dos NPCs'), items: const [DropdownMenuItem(value: 'easy', child: Text('Fácil')), DropdownMenuItem(value: 'normal', child: Text('Normal')), DropdownMenuItem(value: 'hard', child: Text('Difícil'))], onChanged: _busy ? null : (v) => setState(() => _difficulty = v!)),
           const SizedBox(height: 6),
           const Text('Fácil: o computador ataca ao acaso, sem trocar nem usar itens.\nNormal: IVs e EVs aleatórios.\nDifícil: sets competitivos.'),
         ],
-        if (_friend != _random) ...[
+        if (_friend != _random && _leader == null) ...[
           const SizedBox(height: 12),
           if (_friendTeams == null)
             const Center(child: CircularProgressIndicator())
@@ -356,11 +380,49 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
           onPressed: _busy || !ready || _hit == null
               ? null
               : () {
-                  final foe = _friend == _random ? '' : friends.where((f) => f.uid == _friend).firstOrNull?.name ?? '';
-                  _start(_mine == -1 ? null : myTeams[_mine!].members, _friend == _random ? null : _friendTeams![_theirs!].members, foe);
+                  final leader = _leader;
+                  final foe = leader?.name ?? (_friend == _random ? '' : friends.where((f) => f.uid == _friend).firstOrNull?.name ?? '');
+                  _start(_mine == -1 ? null : myTeams[_mine!].members, _friend == _random || leader != null ? null : _friendTeams![_theirs!].members, foe);
                 },
         ),
       ],
+    );
+  }
+}
+
+/// O líder escolhido: o treinador e o time (todos no nível 50, já evoluídos).
+class _LeaderCard extends StatelessWidget {
+  final GymLeader leader;
+  const _LeaderCard({required this.leader});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = SiteColors.of(context);
+    final trainer = Trainers.byId(leader.trainer);
+    return Container(
+      key: const ValueKey('leader-card'),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(16)),
+      child: Row(
+        children: [
+          if (trainer != null) TrainerSprite(trainer, box: 84),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                m.Text(leader.name, style: TextStyle(color: c.text, fontWeight: FontWeight.w900, fontSize: 16)),
+                Text(leader.kindLabel, style: TextStyle(color: c.muted, fontSize: 12)),
+                const SizedBox(height: 4),
+                Wrap(spacing: 2, runSpacing: 2, children: [
+                  for (final id in leader.team) SizedBox.square(dimension: 40, child: PokemonSprite(id, fill: 0.95)),
+                ]),
+                Text('Time original, já evoluído, todos no nível 50.', style: TextStyle(color: c.muted, fontSize: 11)),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
