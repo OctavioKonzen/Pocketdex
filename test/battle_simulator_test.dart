@@ -58,4 +58,25 @@ void main() {
       expect(status['state']['sides'][1]['team'][0]['status'], 'par');
     } finally { BattleSimulator.release(handle); }
   });
+  test('Outrage locks the next turn and the engine forces it', () async {
+    await BattleSimulator.load();
+    final game = BattleSimulator.call('create', [{
+      'teams': [
+        [{'set': {'species': 'Dragonite', 'moves': ['outrage', 'roost'], 'level': 50}}],
+        [for (final s in ['Blissey', 'Chansey', 'Snorlax']) {'set': {'species': s, 'moves': ['softboiled'], 'level': 100, 'evs': {'hp': 252, 'def': 252}}}],
+      ],
+      'seed': [1, 2, 3, 4],
+    }]);
+    final handle = game['handle'] as int;
+    try {
+      final next = BattleSimulator.call('choose', [handle, [
+        {'kind': 'move', 'index': 0, 'gimmick': ''}, {'kind': 'move', 'index': 0, 'gimmick': ''},
+      ]]);
+      expect(next['state']['sides'][0]['locked']['slug'], 'outrage');
+      final after = BattleSimulator.call('choose', [handle, [
+        {'kind': 'move', 'index': 1, 'gimmick': ''}, {'kind': 'move', 'index': 0, 'gimmick': ''},
+      ]]);
+      expect((after['log'] as List).any((line) => '$line'.contains('|Roost|')), false);
+    } finally { BattleSimulator.release(handle); }
+  });
 }

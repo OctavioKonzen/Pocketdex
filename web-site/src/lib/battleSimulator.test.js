@@ -1,5 +1,5 @@
 import {describe, it, expect} from 'vitest'
-import {newBattle, playOnlineTurn, playTurn, replace, canGimmick, lineOf, startBattle} from './turnBattle'
+import {newBattle, playOnlineTurn, playTurn, replace, canGimmick, lineOf, startBattle, lockedMove} from './turnBattle'
 import {battlePerspective} from './onlineBattle'
 import {simulatorDispose, simulatorRecommend} from './battleSimulator'
 
@@ -9,6 +9,19 @@ const attack = index => ({kind: 'move', index, gimmick: ''})
 const hit = () => ({rolls: [[1]], eff: 1})
 
 describe('shared simulator integration', () => {
+  it.each([['outrage', 'outrage'], ['hyperbeam', 'recharge']])('golpe em sequência (%s): o turno seguinte vem preso e o motor usa ele', (move, slug) => {
+    const named = (species, moves) => ({...mon(species, moves), moves: moves.map(m => ({slug: m, name: m, pp: 10, maxPp: 10}))})
+    const b=newBattle([named('Dragonite',[move,'extremespeed','roost','earthquake'])],[named('Blissey',['softboiled']),named('Chansey',['softboiled']),named('Snorlax',['rest'])],seed())
+    try {
+      startBattle(b)
+      expect(lockedMove(b)).toBeNull()
+      playTurn(b,{move:0,gimmick:'none'},hit)
+      expect(lockedMove(b)?.slug).toBe(slug)
+      // Pedindo outro golpe, o motor usa o preso (a tela nem pergunta).
+      const used=playTurn(b,{move:2,gimmick:'none'},hit).filter(e=>e.key==='used'&&e.args[0].side===0).map(e=>e.args[1])
+      expect(used.some(name=>/roost/i.test(name))).toBe(false)
+    } finally {simulatorDispose(b)}
+  })
   it('NPC bag use does not stall offline combat and uses its only action', () => {
     const b=newBattle([mon('Mew',['seismictoss','recover'])],[mon('Mew',['seismictoss'])],seed())
     // Seismic Toss tira 50: o NPC só usa poção quando está com pouco HP e desmaiaria neste turno.

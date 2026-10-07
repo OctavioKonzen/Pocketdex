@@ -132,6 +132,19 @@ export function newBattle(mine, theirs, random, options = {}) {
 }
 
 export const active = (battle, side) => battle.sides[side].team[battle.sides[side].active]
+
+/**
+ * Golpe que continua sozinho neste turno (Outrage, Thrash, Rollout, o segundo
+ * turno de Solar Beam/Fly, a recarga do Hyper Beam...): {slug, name, index}
+ * ou null. Nesse turno não tem escolha: a tela joga sozinha. Igual ao app.
+ */
+export function lockedMove(battle, side = 0) {
+  const locked = battle.simulator?.state.sides[side]?.locked
+  if (!locked) return null
+  const key = (s) => String(s ?? '').toLowerCase().replace(/[^a-z0-9]/g, '')
+  const index = active(battle, side).moves.findIndex((m) => key(m.slug) === key(locked.slug))
+  return { ...locked, index }
+}
 const alive = (battle, side) => battle.sides[side].team.filter((p) => p.hp > 0).length
 const say = (events, key, ...args) => events.push({ t: 'text', key, args })
 /** Nome como aparece nas falas: o do computador é "X inimigo". */

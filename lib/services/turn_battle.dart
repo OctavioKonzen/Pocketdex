@@ -363,6 +363,15 @@ class TurnBattle {
   Map<String, dynamic> targets(int side, int slot, int move, [String gimmick = '']) =>
       BattleSimulator.call('targets', [_simHandle, side, slot, move, gimmick]);
   List<BattleEvent> playGroupTurn(List<List<Map<String, dynamic>>> actions) => _simChoose(actions);
+  /// Golpe em sequência (Outrage, Thrash, a recarga do Hyper Beam...): o
+  /// Showdown só aceita ele no turno, então a tela joga sozinha.
+  ({String slug, String name, int index})? lockedMove([int side = 0]) {
+    final locked = _simState?['sides'][side]['locked'] as Map?;
+    if (locked == null) return null;
+    String key(Object? s) => '$s'.toLowerCase().replaceAll(RegExp('[^a-z0-9]'), '');
+    final slug = '${locked['slug']}';
+    return (slug: slug, name: '${locked['name']}', index: active(side).moves.indexWhere((m) => key(m.slug) == key(slug)));
+  }
   Map<String, dynamic>? _simState;
   List<BattleEvent> _opening = [];
   BattleHit? _lastHit;
