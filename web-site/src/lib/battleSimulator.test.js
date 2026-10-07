@@ -11,16 +11,21 @@ const hit = () => ({rolls: [[1]], eff: 1})
 describe('shared simulator integration', () => {
   it('NPC bag use does not stall offline combat and uses its only action', () => {
     const b=newBattle([mon('Mew',['seismictoss','recover'])],[mon('Mew',['seismictoss'])],seed())
+    // Seismic Toss tira 50: o NPC só usa poção quando está com pouco HP e desmaiaria neste turno.
+    const toss=()=>({rolls:[[50]],eff:1})
     try {
       startBattle(b)
-      playTurn(b,{move:0},hit)
-      playTurn(b,{move:0},hit)
-      const turn=b.turn
-      const events=playTurn(b,{move:1},hit)
+      let events=[],turn=b.turn
+      for(let i=0;i<6;i++) {
+        turn=b.turn
+        events=playTurn(b,{move:i<3?0:1},toss)
+        if(events.some(e=>e.key==='usedItem' && e.args[0].side===1)) break
+      }
+      expect(events.some(e=>e.key==='usedItem' && e.args[0].side===1)).toBe(true)
       expect(b.turn).toBe(turn+1)
       expect(b.bags[1].potion+b.bags[1]['super-potion']+b.bags[1]['hyper-potion']).toBe(5)
       expect(events.filter(e=>e.key==='used' && e.args[0].side===1)).toHaveLength(0)
-      playTurn(b,{move:0},hit)
+      playTurn(b,{move:1},toss)
       expect(b.turn).toBe(turn+2)
     } finally {simulatorDispose(b)}
   })

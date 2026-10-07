@@ -627,10 +627,13 @@ export function cpuPlan(battle, hit) {
     const missing = me.maxHp - me.hp
     const potions = ITEMS.filter((item) => item.heal && battle.bags[1][item.slug] > 0)
     const potion = potions.find((item) => item.heal >= missing) ?? potions.at(-1)
-    if (potion && missing >= Math.min(20, me.maxHp / 4) && (me.hp <= me.maxHp / 2 || incoming >= me.hp) && me.hp + Math.min(missing, potion.heal) > incoming) {
+    // Bolsa como um treinador: poção só para não desmaiar agora (HP baixo e a
+    // poção salva); Revive só se quem está em campo não consegue causar dano.
+    // Cada item é um turno sem atacar.
+    if (potion && me.hp <= me.maxHp / 3 && incoming >= me.hp && me.hp + Math.min(missing, potion.heal) > incoming) {
       return { kind: 'item', item: potion.slug, target: battle.sides[1].active }
     }
-    if (incoming < me.hp && battle.bags[1].revive > 0 && battle.sides[1].team.filter((mon) => mon.hp > 0).length < battle.sides[1].team.length) {
+    if (outgoing === 0 && incoming < me.hp && battle.bags[1].revive > 0 && battle.sides[1].team.filter((mon) => mon.hp > 0).length < battle.sides[1].team.length) {
       let target = -1, score = -Infinity
       battle.sides[1].team.forEach((mon, i) => {
         if (mon.hp > 0) return

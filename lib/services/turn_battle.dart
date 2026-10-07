@@ -1133,10 +1133,13 @@ class TurnBattle {
       final missing = me.maxHp - me.hp;
       final potions = battleItems.where((item) => item.heal > 0 && (bags[1][item.slug] ?? 0) > 0).toList();
       final potion = potions.where((item) => item.heal >= missing).firstOrNull ?? potions.lastOrNull;
-      if (potion != null && missing >= min(20, me.maxHp / 4) && (me.hp <= me.maxHp / 2 || incoming >= me.hp) && me.hp + min(missing, potion.heal) > incoming) {
+      // Bolsa como um treinador: poção só para não desmaiar agora (HP baixo e a
+      // poção salva); Revive só se quem está em campo não consegue causar dano.
+      // Cada item é um turno sem atacar.
+      if (potion != null && me.hp <= me.maxHp / 3 && incoming >= me.hp && me.hp + min(missing, potion.heal) > incoming) {
         return (kind: 'item', index: -1, item: potion.slug, target: activeIndex[1]);
       }
-      if (incoming < me.hp && (bags[1]['revive'] ?? 0) > 0 && teams[1].any((mon) => mon.hp <= 0)) {
+      if (outgoing == 0 && incoming < me.hp && (bags[1]['revive'] ?? 0) > 0 && teams[1].any((mon) => mon.hp <= 0)) {
         var target = -1, score = double.negativeInfinity;
         for (var i = 0; i < teams[1].length; i++) {
           final mon = teams[1][i];

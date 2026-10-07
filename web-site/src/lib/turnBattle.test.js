@@ -334,11 +334,14 @@ describe('computador usa vantagem, trocas e bolsa', () => {
     active(b, 1).hp = 25; active(b, 0).hp = 20
     expect(cpuPlan(b, hit).kind).toBe('move')
   })
-  it('prioriza golpe vantajoso e revive um reserva quando está seguro', () => {
+  it('prioriza golpe vantajoso; Revive só quando não consegue causar dano', () => {
     const b = newBattle([member(1, 'fire')], [member(2, 'normal'), member(3, 'grass')], () => 0)
     active(b, 1).moves.push(move('water', 'water', 40, 100, 10))
     expect(cpuPlan(b, hit)).toEqual({ kind: 'move', index: 1 })
     b.sides[1].team[1].hp = 0
-    expect(cpuPlan(b, hit)).toEqual({ kind: 'item', item: 'revive', target: 1 })
+    // Pode atacar: ataca (cada item é um turno sem atacar).
+    expect(cpuPlan(b, hit)).toEqual({ kind: 'move', index: 1 })
+    const harmless = (att, def, slug) => (att === active(b, 1) ? { rolls: [[0]], eff: 0 } : hit(att, def, slug))
+    expect(cpuPlan(b, harmless)).toEqual({ kind: 'item', item: 'revive', target: 1 })
   })
 })
