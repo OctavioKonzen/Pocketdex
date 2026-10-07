@@ -76,7 +76,10 @@ void main() {
         onAgain:(){},onExit:(){}, online: OnlineBattleControl(uid:'alice',round:0,events:const [],locked:false,message:'Escolha',waitForSwitch:false,onAction:(_){},onClose:(){}),
       ))))));
       await tester.pump();
-      expect(find.byType(DropdownButtonFormField<String>),findsOneWidget);
+      // Só o painel do jogador (posição 1), com os golpes e as trocas em botões.
+      expect(find.byKey(const ValueKey('battle-move-0-0')),findsOneWidget);
+      expect(find.byWidgetPredicate((w) => w.key is ValueKey && '${(w.key as ValueKey).value}'.startsWith('battle-switch-0-')),findsWidgets);
+      expect(find.byWidgetPredicate((w) => w.key is ValueKey && RegExp(r'^battle-(move|switch)-[12]-').hasMatch('${(w.key as ValueKey).value}')),findsNothing);
       expect(tester.takeException(),isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       battle.dispose();

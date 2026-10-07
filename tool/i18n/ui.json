@@ -5383,6 +5383,151 @@
   "fr": "{1} de {0} ennemi est renforcé !",
   "es": "¡{1} de {0} rival se ha potenciado!"
  },
+ "Em quem": {
+  "en": "On whom will",
+  "fr": "Sur qui",
+  "es": "¿Contra quién"
+ },
+ "vai usar": {
+  "en": "use",
+  "fr": "va utiliser",
+  "es": "usará"
+ },
+ "Quem entra no lugar de": {
+  "en": "Who replaces",
+  "fr": "Qui remplace",
+  "es": "¿Quién sustituye a"
+ },
+ "O que": {
+  "en": "What will",
+  "fr": "Que va faire",
+  "es": "¿Qué hará"
+ },
+ "vai fazer?": {
+  "en": "do?",
+  "fr": "?",
+  "es": "?"
+ },
+ "TROCAR (gasta a ação)": {
+  "en": "SWITCH (uses the action)",
+  "fr": "CHANGER (utilise l'action)",
+  "es": "CAMBIAR (gasta la acción)"
+ },
+ "trocar de posição": {
+  "en": "shift position",
+  "fr": "changer de position",
+  "es": "cambiar de posición"
+ },
+ "passar": {
+  "en": "pass",
+  "fr": "passer",
+  "es": "pasar"
+ },
+ "Aguardando os outros jogadores…": {
+  "en": "Waiting for the other players…",
+  "fr": "En attente des autres joueurs…",
+  "es": "Esperando a los demás jugadores…"
+ },
+ "Enviando…": {
+  "en": "Sending…",
+  "fr": "Envoi…",
+  "es": "Enviando…"
+ },
+ "◂ Voltar": {
+  "en": "◂ Back",
+  "fr": "◂ Retour",
+  "es": "◂ Volver"
+ },
+ "Aliado": {
+  "en": "Ally",
+  "fr": "Allié",
+  "es": "Aliado"
+ },
+ "Reviver": {
+  "en": "Revive",
+  "fr": "Ranimer",
+  "es": "Revivir"
+ },
+ "Trocar posição com o centro": {
+  "en": "Shift to the center",
+  "fr": "Passer au centre",
+  "es": "Cambiar al centro"
+ },
+ "Sem reservas: passar": {
+  "en": "No reserves: pass",
+  "fr": "Plus de réserve : passer",
+  "es": "Sin reservas: pasar"
+ },
+ "Turno": {
+  "en": "Turn",
+  "fr": "Tour",
+  "es": "Turno"
+ },
+ "Batalhar": {
+  "en": "Battle",
+  "fr": "Combattre",
+  "es": "Combatir"
+ },
+ "BATALHAR": {
+  "en": "BATTLE",
+  "fr": "COMBATTRE",
+  "es": "COMBATIR"
+ },
+ "Preparar o time": {
+  "en": "Prepare your team",
+  "fr": "Préparer l'équipe",
+  "es": "Preparar el equipo"
+ },
+ "PREPARAR O TIME": {
+  "en": "PREPARE YOUR TEAM",
+  "fr": "PRÉPARER L'ÉQUIPE",
+  "es": "PREPARAR EL EQUIPO"
+ },
+ "Consultar": {
+  "en": "Look up",
+  "fr": "Consulter",
+  "es": "Consultar"
+ },
+ "CONSULTAR": {
+  "en": "LOOK UP",
+  "fr": "CONSULTER",
+  "es": "CONSULTAR"
+ },
+ "Contra o computador": {
+  "en": "Against the computer",
+  "fr": "Contre l'ordinateur",
+  "es": "Contra la computadora"
+ },
+ "Online com amigos": {
+  "en": "Online with friends",
+  "fr": "En ligne avec des amis",
+  "es": "En línea con amigos"
+ },
+ "Individual, dupla ou tripla, com o seu time ou um aleatório": {
+  "en": "Single, double or triple, with your team or a random one",
+  "fr": "Simple, double ou triple, avec ton équipe ou une aléatoire",
+  "es": "Individual, doble o triple, con tu equipo o uno aleatorio"
+ },
+ "Convide amigos e batalhem ao vivo": {
+  "en": "Invite friends and battle live",
+  "fr": "Invite des amis et combattez en direct",
+  "es": "Invita a amigos y combatan en vivo"
+ },
+ "Você e um amigo escolhem Pokémon um de cada vez e batalham": {
+  "en": "You and a friend pick Pokémon one at a time and battle",
+  "fr": "Toi et un ami choisissez des Pokémon à tour de rôle et combattez",
+  "es": "Tú y un amigo eligen Pokémon por turnos y combaten"
+ },
+ "Batalhe e prepare o seu time.": {
+  "en": "Battle and prepare your team.",
+  "fr": "Combats et prépare ton équipe.",
+  "es": "Combate y prepara tu equipo."
+ },
+ "⚔️ Batalhar": {
+  "en": "⚔️ Battle",
+  "fr": "⚔️ Combattre",
+  "es": "⚔️ Combatir"
+ },
  "Formas alternativas": {
   "en": "Alternate forms",
   "fr": "Formes alternatives",

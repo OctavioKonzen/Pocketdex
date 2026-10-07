@@ -268,7 +268,7 @@ try {
   await page.getByLabel('Amigo', { exact: true }).selectOption({ label: friend.name })
   await page.getByLabel('Seu time', { exact: true }).selectOption({ label: 'Areia' })
   await page.getByRole('button', { name: 'Desafiar para batalha', exact: true }).click()
-  await page.waitForURL(/#\/amigos\/online\//, { timeout: 20000 })
+  await page.waitForURL(/#\/(amigos|batalha)\/online\//, { timeout: 20000 })
   const battleUrl = page.url()
   await page2.goto(battleUrl)
   await page2.getByLabel('Seu time', { exact: true }).selectOption({ label: 'Areia' })
@@ -313,19 +313,25 @@ try {
     if (count===3) await page.getByLabel('Participante 2', {exact:true}).selectOption('npc2')
     await page.getByLabel('Seu time', {exact:true}).selectOption({label:'Areia'})
     await page.getByRole('button',{name:'Desafiar para batalha',exact:true}).click()
-    await page.waitForURL(/#\/amigos\/online\//,{timeout:30000})
+    await page.waitForURL(/#\/(amigos|batalha)\/online\//,{timeout:30000})
     await page2.goto(page.url())
     await page2.getByLabel('Seu time',{exact:true}).selectOption({label:'Areia'})
     await page2.getByRole('button',{name:'Aceitar e entrar',exact:true}).click()
     for (const p of [page,page2]) {
       await p.getByTestId('multi-battle-field').waitFor({timeout:30000})
       assert.equal(await p.getByTestId('multi-moves').count(),1,'cada amigo controla somente sua posição')
-      const move=p.getByTestId('multi-moves').getByRole('button').first(); await move.click(); assert.equal(await move.getAttribute('aria-pressed'),'true','golpe selecionado visível')
     }
-    await page.getByRole('button',{name:'Confirmar ações',exact:true}).click()
+    // Como no Showdown: golpe (e alvo, se precisar); depois do último Pokémon a ação vai sozinha.
+    const act=async (p)=>{
+      await p.getByTestId('multi-moves').getByRole('button').first().click()
+      await p.waitForTimeout(300)
+      const target=p.locator('[data-testid^="battle-target-"]')
+      if (await target.count()) await target.first().click()
+    }
+    await act(page)
     await page.getByText('Você já enviou sua ação. Aguardando seu amigo…',{exact:true}).waitFor({timeout:15000})
     assert.equal(await page2.getByTestId('multi-turn').getAttribute('data-turn'),'1','NPCs aguardam os dois amigos')
-    await page2.getByRole('button',{name:'Confirmar ações',exact:true}).click()
+    await act(page2)
     for (const p of [page,page2]) await p.waitForFunction(()=>Number(document.querySelector('[data-testid="multi-turn"]')?.dataset.round)>0,null,{timeout:30000})
     const field=await page.locator('[data-testid^="multi-hp-"]').allTextContents()
     assert.deepEqual(await page2.locator('[data-testid^="multi-hp-"]').allTextContents(),field,'amigos calculam o mesmo turno com NPCs')
@@ -410,7 +416,7 @@ try {
   await go('amigos/draft')
   await page.getByRole('button', { name: '3', exact: true }).click()
   await page.getByRole('button', { name: friend.name }).click()
-  await page.waitForURL(/#\/amigos\/draft\/.+/, { timeout: 15000 })
+  await page.waitForURL(/#\/(amigos|batalha)\/draft\/.+/, { timeout: 15000 })
   const draftUrl = page.url()
   await page2.goto(draftUrl.replace(/^.*#/, `${SITE}#`))
   for (const [pg, name] of [[page, 'pikachu'], [page2, 'charmander'], [page, 'squirtle'], [page2, 'bulbasaur'], [page, 'eevee'], [page2, 'gengar']]) {

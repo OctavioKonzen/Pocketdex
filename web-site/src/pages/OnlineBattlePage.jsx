@@ -71,7 +71,7 @@ function Lobby({ user }) {
       const names=Object.fromEntries(humans.map(uid=>[uid,uid===user.uid?user.name:friends.find(f=>f.uid===uid)?.name]))
       // Quem não está (mais) na lista de amigos não entra: avisa em vez de mandar um nome vazio.
       if (Object.values(names).some(name=>!name)) throw new Error('Escolha amigos da sua lista.')
-      navigate('/amigos/online/' + await inviteBattle(f,t,{mode:modeOf(count),seats,names,npcDifficulty}))
+      navigate('/batalha/online/' + await inviteBattle(f,t,{mode:modeOf(count),seats,names,npcDifficulty}))
     } catch (e) { setError(e?.code ? errorMessage(e) : e?.message || errorMessage(e)) }
     finally { setBusy(false) }
   }
@@ -96,7 +96,7 @@ function Lobby({ user }) {
     <section className={CARD}><h2 className="mb-3 font-bold">Convites e partidas</h2>
       {rooms == null ? <p>Carregando…</p> : !rooms.length ? <p>Nenhum convite ainda.</p> : rooms.slice(0, 50).map((r) => {
         const other = r.players.find((p) => p !== user.uid)
-        return <Link key={r.id} to={'/amigos/online/' + r.id} className="mb-2 flex items-center justify-between gap-3 rounded-xl bg-surface p-3">
+        return <Link key={r.id} to={'/batalha/online/' + r.id} className="mb-2 flex items-center justify-between gap-3 rounded-xl bg-surface p-3">
           <span>{r.names[other]}</span><span className="text-sm">{r.status === 'pending' ? r.players[0] === user.uid ? 'Convite enviado' : 'Convite recebido' : r.status === 'closed' ? 'Encerrada' : 'Continuar batalha'}</span>
         </Link>
       })}
@@ -174,7 +174,7 @@ function BattleRoom({ id, user }) {
     replacing ? (battle.forceSwitch?.[side] ?? active(battle, side).hp <= 0) ? 'Escolha o próximo Pokémon.' : 'Seu amigo precisa trocar de Pokémon.' : 'Escolha sua ação.'
   return <div className="mx-auto max-w-3xl space-y-4">
     <PageHeader title={'Batalha com ' + otherName} subtitle="Nível máximo 50. O turno acontece quando todos os jogadores enviarem suas escolhas." />
-    <Link to="/amigos/online">← Convites e partidas</Link>
+    <Link to="/batalha/online">← Convites e partidas</Link>
     {(roomError || actionsError || error) && <p role="alert" className="text-red-400">{roomError || actionsError || error}</p>}
     {expired && <p>Este convite expirou. Crie uma nova batalha.</p>}
     {room.status === 'pending' && room.protocol === BATTLE_PROTOCOL && !expired && <section className={CARD + ' space-y-3'}>
@@ -192,7 +192,7 @@ function BattleRoom({ id, user }) {
     {closed && !battle && <p className={CARD}>{room.endedBy === user.uid ? 'Você encerrou a partida.' : 'Seu amigo encerrou a partida.'}</p>}
     {room.status !== 'pending' && viewBattle && hit && <Battle
       battle={battle.mode==='singles'?viewBattle:battle} hit={hit} foeName={otherName}
-      onExit={() => navigate('/amigos/online')}
+      onExit={() => navigate('/batalha/online')}
       online={{ uid:user.uid, names:room.names, side, round, ...playback, locked: disabled, message,
         waitForSwitch: replacing && !(battle.forceSwitch?.[side] ?? active(battle, side).hp <= 0),
         onAction: send, onClose: () => run(() => closeBattle(id)) }}
@@ -208,7 +208,7 @@ export function BattleInvites() {
   if (!current.length) return null
   return <section className={CARD}><h2 className="mb-2 font-bold">Batalhas com amigos</h2>{current.map((r) => {
     const other = r.players.find((p) => p !== uid)
-    return <Link key={r.id} to={'/amigos/online/' + r.id} className="mb-2 block rounded-xl bg-sky-500/10 p-3">
+    return <Link key={r.id} to={'/batalha/online/' + r.id} className="mb-2 block rounded-xl bg-sky-500/10 p-3">
       {r.names[other]} · {r.status === 'pending' ? r.players[0] === uid ? 'Convite enviado' : 'Te desafiou para uma batalha!' : 'Continuar partida'}
     </Link>
   })}</section>
