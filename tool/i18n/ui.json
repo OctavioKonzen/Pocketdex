@@ -5780,6 +5780,12 @@
  },
  "{0} continua com {1}!": {"en": "{0} keeps using {1}!", "fr": "{0} continue avec {1} !", "es": "¡{0} sigue con {1}!"},
  "Buscar treinador": {"en": "Search trainer", "fr": "Rechercher un dresseur", "es": "Buscar entrenador"},
+ "Líderes e campeões": {"en": "Leaders and champions", "fr": "Champions d'arène et Maîtres", "es": "Líderes y campeones"},
+ "Líder de Ginásio": {"en": "Gym Leader", "fr": "Champion d'arène", "es": "Líder de Gimnasio"},
+ "Elite Four": {"en": "Elite Four", "fr": "Conseil 4", "es": "Alto Mando"},
+ "Campeão": {"en": "Champion", "fr": "Maître", "es": "Campeón"},
+ "Kahuna": {"en": "Kahuna", "fr": "Doyen", "es": "Kahuna"},
+ "Time original, já evoluído, todos no nível 50.": {"en": "Original team, fully evolved, all at level 50.", "fr": "Équipe d'origine, entièrement évoluée, tous au niveau 50.", "es": "Equipo original, ya evolucionado, todos al nivel 50."},
  "Formas alternativas": {
   "en": "Alternate forms",
   "fr": "Formes alternatives",

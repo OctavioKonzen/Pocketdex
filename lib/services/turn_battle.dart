@@ -1803,6 +1803,12 @@ class TurnBattleSetup {
       final id = pool[(random() * pool.length).floor()];
       if (!ids.contains(id)) ids.add(id);
     }
+    return npcMembers(ids, random, difficulty: difficulty);
+  }
+
+  /// Os sets do computador para esses Pokémon (um de cada mecânica: Mega,
+  /// Dynamax e Z), igual ao site (npcMembers em web-site/src/lib/npcSets.js).
+  static Future<List<Member>> npcMembers(List<int> ids, double Function() random, {String difficulty = 'normal'}) async {
     final builds = await LocalDatabase.instance.npcSets();
     Map<String, dynamic> build(int id) => Map<String, dynamic>.from(builds['$id'] as Map);
     Map<String, dynamic> copy(dynamic value) => Map<String, dynamic>.from(jsonDecode(jsonEncode(value)) as Map);

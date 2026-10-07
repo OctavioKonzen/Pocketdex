@@ -13,6 +13,7 @@ STATS = ['hp', 'atk', 'def', 'spa', 'spd', 'spe']
 EXCLUDE = {'explosion', 'self-destruct', 'hyper-beam', 'giga-impact', 'dream-eater',
            'last-resort', 'belch', 'snore', 'struggle', 'fling', 'natural-gift',
            'solar-beam', 'solar-blade', 'focus-punch', 'bide', 'counter', 'mirror-coat'}
+BATTLE_FORMS = ['-alola', '-galar', '-hisui', '-paldea', 'lycanroc-']
 PREFERRED_ABILITIES = ['imposter', 'huge-power', 'pure-power', 'intimidate', 'regenerator',
                       'magic-guard', 'speed-boost', 'technician', 'adaptability',
                       'sheer-force', 'moxie', 'multiscale', 'levitate', 'sturdy']
@@ -70,7 +71,8 @@ def build():
     stones = items['mega']
     out = {'_source': ready['_source'], '_fallback': 'Role-based builds; not competitive analysis sets.'}
     for p in pokemon:
-        if not p['is_default']:
+        # Formas regionais e de batalha entram também (os times dos líderes usam).
+        if not p['is_default'] and not any(tag in p['name'] for tag in BATTLE_FORMS):
             continue
         legal = {m[0] for m in p['moves']}
         abilities = {a[0] for a in p['abilities']}
