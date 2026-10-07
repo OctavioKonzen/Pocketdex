@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { getAnimatedSprites, spriteUrl } from '../lib/data'
 import { usePrefs } from '../lib/prefs'
+import { gifFrames } from '../lib/gifFrames'
 
 // Sprites animados (GIF) no estilo Black & White, do banco do site
 // (sprites/animated), igual ao app (lib/services/animated_sprites.dart): os
@@ -90,6 +91,8 @@ export function animatedOf(path, set, back) {
  * @param whole  a animação inteira cabe na caixa (onde nada recorta, como os mascotes dos seletores)
  * @param prefetch outro sprite para já baixar (o shiny na página do Pokémon:
  *                 trocar para ele não fica parado esperando chegar)
+ * @param crown  algo para pôr no topo da cabeça (a coroa do Terastal), que
+ *               acompanha a animação quadro a quadro
  */
 export default function Sprite(props) {
   const on = usePrefs((s) => s.animatedSprites)
@@ -165,13 +168,80 @@ export default function Sprite(props) {
           top: `${top * 100}%`,
         }}
       >
-        {on ? (
+        {props.crown && k ? (
+          <CrownedGif key={gif} src={spriteUrl(gif)} alt={alt} animate={on} crown={props.crown} crownSize={boxWidth * 0.26} onError={() => setFailed(gif)} {...imgProps} />
+        ) : on ? (
           <img src={spriteUrl(gif)} alt={alt} loading="lazy" decoding="async" draggable={false} onError={() => setFailed(gif)} {...imgProps} />
         ) : (
           <FirstFrame key={gif} src={spriteUrl(gif)} alt={alt} onError={() => setFailed(gif)} {...imgProps} />
         )}
       </div>
     </div>
+  )
+}
+
+/**
+ * O GIF desenhado quadro a quadro num canvas, com `crown` no topo da cabeça
+ * de cada quadro (lib/headAnchor.js): a coroa sobe, desce e anda junto.
+ */
+function CrownedGif({ src, alt, animate, crown, crownSize, onError, className, style }) {
+  const canvas = useRef(null)
+  const holder = useRef(null)
+  useEffect(() => {
+    let stop = false
+    let timer = 0
+    fetch(src)
+      .then((res) => {
+        if (!res.ok) throw new Error(res.statusText)
+        return res.arrayBuffer()
+      })
+      .then((buffer) => {
+        const c = canvas.current
+        if (stop || !c) return
+        const { width, height, frames } = gifFrames(buffer)
+        if (!frames.length) throw new Error('GIF vazio')
+        c.width = width
+        c.height = height
+        const ctx = c.getContext('2d')
+        const images = frames.map((f) => new ImageData(f.data, width, height))
+        let i = 0
+        const draw = () => {
+          if (stop) return
+          ctx.putImageData(images[i], 0, 0)
+          const head = frames[i].head
+          const el = holder.current
+          if (el) {
+            el.style.visibility = head ? 'visible' : 'hidden'
+            if (head) {
+              el.style.left = `${head.x * 100}%`
+              el.style.top = `${head.y * 100}%`
+            }
+          }
+          if (!animate || frames.length < 2) return
+          timer = setTimeout(draw, frames[i].delay)
+          i = (i + 1) % frames.length
+        }
+        draw()
+      })
+      .catch(() => !stop && onError?.())
+    return () => {
+      stop = true
+      clearTimeout(timer)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [src, animate])
+  return (
+    <span className="relative inline-block" style={style}>
+      <canvas ref={canvas} role="img" aria-label={alt} className={className} style={{ width: '100%', height: '100%', display: 'block' }} />
+      <span
+        ref={holder}
+        className="pointer-events-none absolute"
+        style={{ visibility: 'hidden', width: crownSize, transform: 'translate(-50%, -78%)' }}
+        data-testid="sprite-crown"
+      >
+        {crown}
+      </span>
+    </span>
   )
 }
 
