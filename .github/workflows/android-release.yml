@@ -144,8 +144,9 @@ jobs:
             git add pubspec.yaml README.md
             git commit -m "Release APK v$VERSION"
             # O main pode ter andado enquanto o APK era gerado: põe o commit da
-            # versão por cima dele em vez de falhar no push.
-            git pull --rebase origin main
+            # versão por cima dele em vez de falhar no push. O build deixa
+            # arquivos gerados alterados (--autostash guarda e devolve).
+            git pull --rebase --autostash origin main
             git push origin HEAD:main
           fi
           # O nome fixo PocketDex.apk deixa o link
