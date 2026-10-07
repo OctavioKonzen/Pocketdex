@@ -64,7 +64,7 @@ function slotsFor(game, side) {
     const forced = Boolean(side.activeRequest?.forceSwitch?.[slot]);
     const revival = Boolean(p && side.slotConditions[p.position]?.revivalblessing);
     return {slot, controller: game.controllers?.[side.n]?.[slot] || '', index: p ? originalIndex(p) : -1, forceSwitch: forced, revival,
-      pass: !p || p.fainted && !forced, trapped: Boolean(request?.trapped),
+      pass: !p || p.fainted && !forced, trapped: Boolean(request?.trapped), locked: forced ? null : lockedOf(request),
       canShift: game.battle.gameType === 'triples' && slot !== 1 && !forced && !side.activeRequest?.wait && Boolean(p?.hp),
       switchOptions: side.pokemon.filter(mon => revival ? mon.fainted : !mon.fainted && !side.active.includes(mon) && (!request?.trapped || forced)).map(originalIndex),
       request: request ? {...request, moves: request.moves.map(m => ({...m, targets: p.volatiles.dynamax ? targetsFor(game, p, game.battle.actions.getMaxMove(Dex.moves.get(m.id), p)) : targetsFor(game, p, m.id, m.target || 'randomNormal')}))} : null};
@@ -122,6 +122,17 @@ function configure(game) {
   });
 }
 
+/**
+ * Golpe que continua sozinho (Outrage, Thrash, Rollout, o segundo turno de
+ * Solar Beam/Fly, a recarga do Hyper Beam...): o pedido do Showdown traz um
+ * golpe só, sem PP. Nesse turno não tem escolha: a tela joga sozinha.
+ */
+function lockedOf(request) {
+  const moves = request?.moves;
+  if (!moves || moves.length !== 1 || moves[0].pp != null) return null;
+  return {slug: moves[0].id, name: moves[0].move};
+}
+
 function snapshot(game) {
   const b = game.battle;
   return {
@@ -141,6 +152,7 @@ function snapshot(game) {
       revival: Boolean(side.slotConditions[side.active[0].position]?.revivalblessing),
       switchOptions: side.pokemon.filter(p => side.slotConditions[side.active[0].position]?.revivalblessing ? p.fainted : !p.fainted && p !== side.active[0] && (!side.activeRequest?.active?.[0]?.trapped || side.activeRequest?.forceSwitch)).map(originalIndex),
       request: side.activeRequest?.active?.[0] ?? null,
+      locked: side.activeRequest?.forceSwitch || side.activeRequest?.wait ? null : lockedOf(side.activeRequest?.active?.[0]),
       used: {mega: game.used[side.n].mega, dmax: Boolean(side.dynamaxUsed), z: Boolean(side.zMoveUsed), tera: game.used[side.n].tera},
       team: [...side.pokemon].sort((a, c) => originalIndex(a) - originalIndex(c)).map(p => ({
         index: originalIndex(p), hp: p.hp, maxHp: p.maxhp, status: p.status, boosts: {...p.boosts},
@@ -347,6 +359,8 @@ function command(game, sideIndex, action, slot = 0) {
     return {item: action};
   }
   if (action.kind !== 'move' || side.activeRequest?.forceSwitch?.[slot]) throw new Error('Ação inválida');
+  // Preso no golpe (Outrage, recarga...): é o único que dá.
+  if (lockedOf(side.activeRequest?.active?.[slot])) return `move 1${action.target ? ` ${action.target}` : ''}`;
   const mon = game.teams[sideIndex][originalIndex(side.active[slot])];
   const mechanic = action.gimmick ?? mon.gimmick;
   const req = side.activeRequest?.active?.[slot];

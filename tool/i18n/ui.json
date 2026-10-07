@@ -5778,6 +5778,7 @@
   "fr": "Recherche d'un adversaire…",
   "es": "Buscando un rival…"
  },
+ "{0} continua com {1}!": {"en": "{0} keeps using {1}!", "fr": "{0} continue avec {1} !", "es": "¡{0} sigue con {1}!"},
  "Formas alternativas": {
   "en": "Alternate forms",
   "fr": "Formes alternatives",

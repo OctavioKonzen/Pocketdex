@@ -773,7 +773,23 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
         if (_b.winner == 0) BattleSounds.play('victory', volume: 0.7);
         if (widget.online == null) widget.onFinish?.call(_coach?.id);
       }
+      _autoLocked();
     }
+  }
+
+  /// Golpe em sequência: não pergunta nada, só continua o golpe.
+  Future<void> _autoLocked() async {
+    if (!mounted || widget.online != null || _b.winner != null || _b.needSwitch) return;
+    final locked = _b.lockedMove();
+    if (locked == null) return;
+    setState(() {
+      _busy = true;
+      _text = tr('{0} continua com {1}!').replaceAll('{0}', _b.active(0).name).replaceAll('{1}', locked.name);
+    });
+    await Future.delayed(const Duration(milliseconds: 900));
+    if (!mounted) return;
+    _busy = false;
+    _fight(locked.index < 0 ? 0 : locked.index);
   }
 
   List<(String, String)> get _gimmickOptions {
@@ -1958,7 +1974,20 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
   }
   Map<String, dynamic>? _automatic(Map slot) => _own['wait'] == true
       ? {'kind': 'wait', 'index': 0}
-      : slot['pass'] == true || _forced && slot['forceSwitch'] != true ? {'kind': 'pass', 'index': 0} : null;
+      : slot['pass'] == true || _forced && slot['forceSwitch'] != true ? {'kind': 'pass', 'index': 0}
+      : slot['locked'] != null && !_forced ? {'kind': 'move', 'index': 0, 'gimmick': 'none'} : null;
+  // Golpe em sequência (Outrage, recarga...) em todos os seus: joga sozinho.
+  String? _autoSent;
+  void _autoLocked() {
+    final phase = _choicePhase(_b);
+    if (_locked || _autoSent == phase || _own['wait'] == true || _forced) return;
+    final owned = _owned;
+    if (owned.isEmpty || owned.any((slot) => _automatic(slot) == null) || !owned.any((slot) => slot['locked'] != null)) return;
+    _autoSent = phase;
+    Future.delayed(const Duration(milliseconds: 900), () {
+      if (mounted && _choicePhase(_b) == phase) _send();
+    });
+  }
   Map<String, dynamic>? _picked(Map slot) => _automatic(slot) ?? _choices[slot['slot'] as int];
   List<Map> get _owned => _slots.where((slot) => _b.controllers![_side][slot['slot'] as int] == _uid).toList();
   List<Map> get _pending => _owned.where((slot) => _automatic(slot) == null).toList();
@@ -2142,6 +2171,7 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
   @override
   Widget build(BuildContext context) {
     final events = widget.online?.events ?? _events;
+    WidgetsBinding.instance.addPostFrameCallback((_) { if (mounted) _autoLocked(); });
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       _field(),
       const SizedBox(height: 8),

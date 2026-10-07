@@ -19,7 +19,7 @@ import { usePokemonIndex } from '../lib/pokemonIndex'
 import { useStore } from '../lib/store'
 import { teamMembers } from '../lib/teamBattle'
 import { fxPlan, moveAnim, SELF_KINDS } from '../lib/moveAnim'
-import { active, canGimmick, canUseItem, effectLabel, forfeit, ITEMS, lineOf, MAX_MOVES, maxPower, moveEffect, newBattle, playTurn, replace, startBattle, STAT_NAMES, switchMatchup, usableMoves, weaknesses, Z_MOVES, zPower } from '../lib/turnBattle'
+import { active, lockedMove, canGimmick, canUseItem, effectLabel, forfeit, ITEMS, lineOf, MAX_MOVES, maxPower, moveEffect, newBattle, playTurn, replace, startBattle, STAT_NAMES, switchMatchup, usableMoves, weaknesses, Z_MOVES, zPower } from '../lib/turnBattle'
 import Sprite from '../components/Sprite'
 import { TrainerBack, TrainerSprite } from '../components/Trainer'
 import { randomTrainer, useMyTrainer, useTrainers } from '../lib/trainers'
@@ -763,6 +763,8 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   const current = active(battle, 0)
   const usable = usableMoves(current)
   const waiting = !busy && !online?.locked && battle.winner == null
+  // Golpe em sequência (Outrage, recarga, 2º turno de Solar Beam...): sem escolha, sai sozinho.
+  const locked = waiting && !online && !battle.needSwitch ? lockedMove(battle) : null
 
   // Efetividade (como nos jogos): nos golpes, nas fraquezas do inimigo e na troca.
   const [typeData, setTypeData] = useState(null)
@@ -793,6 +795,16 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
     catch { if(live.current) setText(t('Não foi possível executar esta ação. Escolha novamente.')) }
     finally { actionBusy.current=false; if(live.current) setBusy(false) }
   }
+  useEffect(() => {
+    if (!locked) return undefined
+    setText(t('{0} continua com {1}!').replace('{0}', current.name).replace('{1}', locked.name))
+    const id = setTimeout(() => {
+      const before = [active(battle, 0).id, active(battle, 1).id]
+      act(() => playTurn(battle, { move: Math.max(0, locked.index), gimmick: 'none' }, hit), before)
+    }, 900)
+    return () => clearTimeout(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locked?.slug, battle.turn, waiting])
   const fight = (i) => {
     if (actionBusy.current || busy || battle.needSwitch || online?.locked) return
     const before = [active(battle, 0).id, active(battle, 1).id]
@@ -873,7 +885,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
           {!busy && online?.message ? t(online.message) : text}
         </button>
         {waiting && online?.waitForSwitch && <Button onClick={() => online.onAction({ kind: 'wait', index: 0 })}>Aguardar troca do amigo</Button>}
-        {waiting && !online?.waitForSwitch && menu === 'main' && !battle.needSwitch && (
+        {waiting && !locked && !online?.waitForSwitch && menu === 'main' && !battle.needSwitch && (
           <div className="grid grid-cols-2 gap-1.5 rounded-xl border-4 border-slate-600 bg-white p-2 sm:w-72">
             <MenuButton onClick={() => (usable.length ? setMenu('fight') : fight(-1))}>LUTAR</MenuButton>
             <MenuButton disabled={Boolean(online)} onClick={() => setMenu('bag')}>BOLSA</MenuButton>
@@ -881,7 +893,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
             <MenuButton onClick={run}>FUGIR</MenuButton>
           </div>
         )}
-        {waiting && menu === 'fight' && (
+        {waiting && !locked && menu === 'fight' && (
           <div className="grid grid-cols-2 gap-1.5 rounded-xl border-4 border-slate-600 bg-white p-2 sm:w-96" data-testid="moves">
             <Weak mon={rival} list={foeWeak} />
             {options.map(([kind, label]) => (
@@ -1084,7 +1096,7 @@ export function MultiBattle({battle, onExit, onAgain, online = null}) {
   const choicePhase = JSON.stringify([state.turn, online?.round, own.wait, owned.map(slot => [slot.slot, slot.index, slot.forceSwitch, slot.pass])])
   useEffect(()=>{setChoices({});setAim(null);setGimmickOn(false);setError('')},[choicePhase])
   const forced = own.slots.some(slot=>slot.forceSwitch)
-  const automatic = slot => own.wait ? {kind:'wait',index:0} : slot.pass || forced && !slot.forceSwitch ? {kind:'pass',index:0} : null
+  const automatic = slot => own.wait ? {kind:'wait',index:0} : slot.pass || forced && !slot.forceSwitch ? {kind:'pass',index:0} : slot.locked && !forced ? {kind:'move',index:0,gimmick:'none'} : null
   const locked = Boolean(online?.locked) || state.winner != null
   const pending = owned.filter(slot => !automatic(slot))
   const current = pending.find(slot => !choices[slot.slot])
@@ -1106,6 +1118,15 @@ export function MultiBattle({battle, onExit, onAgain, online = null}) {
       setHistory(describeEvents(events));setChoices({});setError('');redraw(x=>x+1)
     } catch(e) {setError(e.message);setChoices({})}
   }
+  // Golpe em sequência (Outrage, recarga...) em todos os seus: joga sozinho.
+  const autoSent = useRef('')
+  const allLocked = !own.wait && !forced && owned.length > 0 && owned.every(slot => automatic(slot)) && owned.some(slot => slot.locked)
+  useEffect(()=>{
+    if (!allLocked || state.winner != null || autoSent.current === choicePhase) return
+    const timer = setTimeout(()=>{autoSent.current = choicePhase;send({})}, 900)
+    return () => clearTimeout(timer)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[allLocked, choicePhase])
   // Fecha a escolha deste Pokémon; depois do último, manda o turno (como no Showdown).
   const commit = (slot, choice) => {
     const next = {...choices,[slot.slot]:choice}
