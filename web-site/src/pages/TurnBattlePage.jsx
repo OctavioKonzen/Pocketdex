@@ -219,16 +219,39 @@ function InfoBox({ mon, hp, mine, status, dmax, boosts, hpTestId }) {
 // O Pokémon no campo: o GIF do nosso banco (de frente ou de costas), todos do
 // mesmo tamanho, como na Pokédex. Igual ao app.
 // Mega: a forma nova; Dinamax: gigante e avermelhado (Gigantamax: a forma dele).
-const BattleSprite = forwardRef(function BattleSprite({ mon, id, back, fainted, dmax, byId }, ref) {
+/** Tipo Tera de quem terastalizou ('' se não terastalizou). */
+const teraOf = (mon) => (mon?.terastal ? mon.side?.teraType || mon.teraType || 'normal' : '')
+
+/** A coroa de cristal do Terastal (na cor do Tera Type), presa à cabeça pelo Sprite. */
+function TeraCrown({ color }) {
+  return (
+    <svg viewBox="0 0 24 16" className="block w-full drop-shadow-[0_0_2px_rgba(255,255,255,0.9)]" aria-hidden="true">
+      <g stroke="rgba(0,0,0,0.55)" strokeWidth="0.8" strokeLinejoin="round">
+        <polygon points="1,15 4,5 8,12" fill={color} />
+        <polygon points="16,12 20,5 23,15" fill={color} />
+        <polygon points="6,15 12,0 18,15" fill={color} />
+        <polygon points="1,15 23,15 21,11 3,11" fill={color} />
+      </g>
+      <polygon points="12,1.5 12,14 8.5,14" fill="#fff" opacity="0.55" />
+      <polygon points="4,6 4.4,12 2.6,13" fill="#fff" opacity="0.5" />
+      <polygon points="20,6 19.6,12 17.6,11.6" fill="#fff" opacity="0.35" />
+      <rect x="3" y="12" width="18" height="1" fill="#fff" opacity="0.4" />
+    </svg>
+  )
+}
+
+const BattleSprite = forwardRef(function BattleSprite({ mon, id, back, fainted, dmax, tera = '', byId }, ref) {
   const p = byId?.get(id) ?? byId?.get(mon.id)
+  const teraColor = tera ? typeColor(tera) : null
   return (
     <div className={`aspect-square w-full transition-all duration-500 ${fainted ? 'translate-y-10 opacity-0' : ''}`}>
       <div
         className="h-full w-full origin-bottom transition-transform duration-700"
         style={dmax ? { transform: 'scale(1.35)', filter: 'drop-shadow(0 0 6px #e11d48) drop-shadow(0 0 2px #e11d48)' } : undefined}
       >
-        <div ref={ref} className="relative h-full w-full">
-          {p && <Sprite key={`${p.id}-${mon.shiny}`} path={mon.shiny ? shinyPath(p.sprite) : p.sprite} box={p.box} fill={0.95} align="bottom" back={back} battle alt={mon.name} />}
+        {/* Terastal: brilho de cristal na cor do tipo em volta do Pokémon e a coroa na cabeça (as duas seguem a animação). */}
+        <div ref={ref} className={`relative h-full w-full ${teraColor ? 'tera-glow' : ''}`} style={teraColor ? { '--tera': teraColor } : undefined} data-tera={tera || undefined}>
+          {p && <Sprite key={`${p.id}-${mon.shiny}`} path={mon.shiny ? shinyPath(p.sprite) : p.sprite} box={p.box} fill={0.95} align="bottom" back={back} battle alt={mon.name} crown={teraColor ? <TeraCrown color={teraColor} /> : null} />}
         </div>
       </div>
     </div>
@@ -394,6 +417,7 @@ function SingleBattle({ battle, foeName, hit, onExit, onAgain, online = null }) 
     dmax: battle.sides.map((s) => s.team[s.active].dmax > 0),
     weather: battle.weather,
     boosts: battle.sides.map((s) => boostsOf(s.team[s.active])),
+    tera: battle.sides.map((s) => teraOf(s.team[s.active])),
   }))
   const [text, setText] = useState(() => (foeName ? t('{0} quer batalhar!').replace('{0}', foeName) : t('Um treinador quer batalhar!')))
   const [busy, setBusy] = useState(false)
@@ -489,17 +513,23 @@ function SingleBattle({ battle, foeName, hit, onExit, onAgain, online = null }) 
           form: s.form.map((f, i) => (i === e.side ? null : f)),
           dmax: s.dmax.map((d, i) => (i === e.side ? false : d)),
           boosts: s.boosts.map((b, i) => (i === e.side ? {} : b)),
+          tera: s.tera.map((x, i) => (i === e.side ? '' : x)),
         }))
       } else if (e.t === 'mega') {
         setFlash((n) => n + 1)
         setShown((s) => ({ ...s, form: s.form.map((f, i) => (i === e.side ? e.id : f)) }))
         await wait(500)
+      } else if (e.t === 'form') {
+        // Forma que muda na batalha (Aegislash, Mimikyu, Darmanitan, Palafin...).
+        setShown((s) => ({ ...s, form: s.form.map((f, i) => (i === e.side && !s.dmax[i] ? e.id : f)) }))
+        await wait(400)
       } else if (e.t === 'dmax') {
         setShown((s) => ({ ...s, form: s.form.map((f, i) => (i === e.side ? e.id : f)), dmax: s.dmax.map((d, i) => (i === e.side ? e.on : d)) }))
         await wait(700)
       } else if (e.t === 'tera') {
         setFlash((n) => n + 1)
-        await wait(400)
+        setShown((s) => ({ ...s, tera: s.tera.map((x, i) => (i === e.side ? e.type || 'normal' : x)) }))
+        await wait(700)
       } else if (e.t === 'weather') {
         // O cenário muda com o clima (céu, chão, chuva caindo...).
         setShown((s) => ({ ...s, weather: e.weather }))
@@ -509,7 +539,7 @@ function SingleBattle({ battle, foeName, hit, onExit, onAgain, online = null }) 
     } finally {
       actionBusy.current = false
       if (live.current) {
-        setShown({active:battle.sides.map(s=>s.active),hp:battle.sides.map(s=>s.team.map(m=>m.hp)),status:battle.sides.map(s=>s.team.map(m=>m.status)),fainted:battle.sides.map(s=>s.team[s.active].hp<=0),form:battle.sides.map(s=>{const mon=s.team[s.active];return mon.dmax>0?mon.gmax??mon.id:mon.id}),dmax:battle.sides.map(s=>s.team[s.active].dmax>0),weather:battle.weather,boosts:battle.sides.map(s=>boostsOf(s.team[s.active]))})
+        setShown({active:battle.sides.map(s=>s.active),hp:battle.sides.map(s=>s.team.map(m=>m.hp)),status:battle.sides.map(s=>s.team.map(m=>m.status)),fainted:battle.sides.map(s=>s.team[s.active].hp<=0),form:battle.sides.map(s=>{const mon=s.team[s.active];return mon.dmax>0?mon.gmax??mon.id:mon.id}),dmax:battle.sides.map(s=>s.team[s.active].dmax>0),weather:battle.weather,boosts:battle.sides.map(s=>boostsOf(s.team[s.active])),tera:battle.sides.map(s=>teraOf(s.team[s.active]))})
         setEffect(null)
         skip.current = null
         setBusy(false)
@@ -621,10 +651,10 @@ function SingleBattle({ battle, foeName, hit, onExit, onAgain, online = null }) 
         </div>
         {/* O inimigo fica mais longe: menor e com os pés na frente do meio da plataforma (pisando nela, como o seu). */}
         <div className="absolute right-[11%] bottom-[53%] w-[25%]">
-          <BattleSprite ref={sprites[1]} mon={foe} id={shown.form[1] ?? foe.id} dmax={shown.dmax[1]} fainted={shown.fainted[1]} byId={byId} />
+          <BattleSprite ref={sprites[1]} mon={foe} id={shown.form[1] ?? foe.id} dmax={shown.dmax[1]} tera={shown.tera[1]} fainted={shown.fainted[1]} byId={byId} />
         </div>
         <div className="absolute bottom-[5%] left-[7%] w-[33%]">
-          <BattleSprite ref={sprites[0]} mon={me} id={shown.form[0] ?? me.id} dmax={shown.dmax[0]} back fainted={shown.fainted[0]} byId={byId} />
+          <BattleSprite ref={sprites[0]} mon={me} id={shown.form[0] ?? me.id} dmax={shown.dmax[0]} tera={shown.tera[0]} back fainted={shown.fainted[0]} byId={byId} />
         </div>
         <WeatherFx weather={shown.weather} />
         {effect && <MoveFx key={effect.key} plan={effect.plan} color={effect.color} />}
@@ -920,7 +950,7 @@ export function MultiBattle({battle, onExit, onAgain, online = null}) {
     })}
   </div>
   const sprites = teamSide => <div className={`absolute z-10 grid w-[45%] items-end ${teamSide===side?'bottom-[5%] left-[1%]':'bottom-[52%] right-[1%]'}`} style={{gridTemplateColumns:`repeat(${count},minmax(0,1fr))`}}>
-    {fieldSlots(teamSide).map(slot=>{const mon=battle.sides[teamSide].team[slot.index];return <BattleSprite key={slot.slot} mon={mon} id={mon.dmax && mon.gmax || mon.id} back={teamSide===side} fainted={mon.hp<=0} dmax={mon.dmax>0} byId={byId}/>})}
+    {fieldSlots(teamSide).map(slot=>{const mon=battle.sides[teamSide].team[slot.index];return <BattleSprite key={slot.slot} mon={mon} id={mon.dmax && mon.gmax || mon.id} back={teamSide===side} fainted={mon.hp<=0} dmax={mon.dmax>0} tera={teraOf(mon)} byId={byId}/>})}
   </div>
   return <section className="mx-auto max-w-3xl space-y-2">
     <div className="battle-field relative aspect-[16/10] overflow-hidden border-4 border-slate-800" data-testid="multi-battle-field" style={{aspectRatio:count===3?'1':'16 / 10',minHeight:count===3?'22rem':'14rem'}}>

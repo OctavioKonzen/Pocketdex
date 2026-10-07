@@ -312,6 +312,12 @@ body {
   animation: fx-wave var(--dur) ease-in-out var(--delay) forwards;
 }
 @keyframes fx-wave { from { left: var(--from); opacity: 0.9; } to { left: var(--to); opacity: 0.6; } }
+/* Terastal: brilho de cristal na cor do tipo (--tera) em volta do Pokémon, pulsando. */
+.tera-glow { animation: tera-glow 2.4s ease-in-out infinite; }
+@keyframes tera-glow {
+  0%, 100% { filter: drop-shadow(0 0 3px var(--tera)) drop-shadow(0 0 1px #fff) saturate(1.15); }
+  50% { filter: drop-shadow(0 0 8px var(--tera)) drop-shadow(0 0 2px #fff) saturate(1.35) brightness(1.15); }
+}
 .battle-flash { animation: battle-flash 260ms ease-out forwards; }
 @keyframes battle-flash { from { opacity: 0.85; } to { opacity: 0; } }
 /* Clima na batalha (TurnBattlePage.jsx): chuva, areia, granizo e neve caindo; brilho do sol. */

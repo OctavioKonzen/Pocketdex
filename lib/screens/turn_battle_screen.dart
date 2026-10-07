@@ -316,6 +316,9 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
   late final List<int?> _form = [for (final s in [0, 1]) widget.battle.active(s).id];
   late final List<bool> _dmax = [for (final s in [0, 1]) widget.battle.active(s).dmax > 0];
 
+  /// Tipo Tera de quem terastalizou ('' se não): brilho de cristal e joia na tela.
+  late final List<String> _tera = [for (final s in [0, 1]) _teraOf(widget.battle.active(s))];
+
   /// Estágios dos atributos de quem está em campo (Swords Dance: Atq +2, +4... até +6).
   late final List<Map<String, int>> _boosts = [for (final s in [0, 1]) Map.of(widget.battle.active(s).boosts)];
 
@@ -479,6 +482,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
             _fainted[e.side] = false;
             _form[e.side] = null;
             _dmax[e.side] = false;
+            _tera[e.side] = '';
             _boosts[e.side].clear();
           });
         case 'mega':
@@ -487,6 +491,10 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
             _form[e.side] = e.value;
           });
           await _wait(500);
+        case 'form':
+          // Forma que muda na batalha (Aegislash, Mimikyu, Darmanitan, Palafin...).
+          if (!_dmax[e.side]) setState(() => _form[e.side] = e.value);
+          await _wait(400);
         case 'dmax':
           setState(() {
             _form[e.side] = e.value;
@@ -494,8 +502,11 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
           });
           await _wait(700);
         case 'tera':
-          setState(() => _flash++);
-          await _wait(400);
+          setState(() {
+            _flash++;
+            _tera[e.side] = e.type.isEmpty ? 'normal' : e.type;
+          });
+          await _wait(700);
         case 'weather':
           // O cenário muda com o clima (céu, chão, chuva caindo...).
           setState(() => _weather = e.type);
@@ -518,6 +529,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
           _form[side] = _b.active(side).dmax > 0 ? _b.active(side).gmax ?? _b.active(side).id : _b.active(side).id;
           _dmax[side] = _b.active(side).dmax > 0;
           _boosts[side] = Map.of(_b.active(side).boosts);
+          _tera[side] = _teraOf(_b.active(side));
         }
         _weather = _b.weather;
         _fx = null;
@@ -656,13 +668,13 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                           bottom: h * 0.53,
                           width: w * 0.26,
                           height: w * 0.26,
-                          child: _Sprite(key: _sprites[1], mon: foe, id: _form[1] ?? foe.id, dmax: _dmax[1], fainted: _fainted[1])),
+                          child: _Sprite(key: _sprites[1], mon: foe, id: _form[1] ?? foe.id, dmax: _dmax[1], tera: _tera[1], fainted: _fainted[1])),
                       Positioned(
                           left: w * 0.06,
                           bottom: h * 0.05,
                           width: w * 0.36,
                           height: w * 0.36,
-                          child: _Sprite(key: _sprites[0], mon: me, id: _form[0] ?? me.id, dmax: _dmax[0], back: true, fainted: _fainted[0])),
+                          child: _Sprite(key: _sprites[0], mon: me, id: _form[0] ?? me.id, dmax: _dmax[0], tera: _tera[0], back: true, fainted: _fainted[0])),
                       Positioned(
                           right: w * 0.03,
                           bottom: h * 0.06,
@@ -1101,7 +1113,10 @@ class _Sprite extends StatefulWidget {
   /// A forma na tela (Mega / Gigantamax).
   final int id;
   final bool back, fainted, dmax;
-  const _Sprite({super.key, required this.mon, required this.id, this.back = false, this.fainted = false, this.dmax = false});
+
+  /// Tipo Tera ('' se não terastalizou).
+  final String tera;
+  const _Sprite({super.key, required this.mon, required this.id, this.back = false, this.fainted = false, this.dmax = false, this.tera = ''});
 
   @override
   State<_Sprite> createState() => _SpriteState();
@@ -1111,6 +1126,22 @@ class _SpriteState extends State<_Sprite> with TickerProviderStateMixin {
   late final _lunge = AnimationController(vsync: this, duration: const Duration(milliseconds: 450));
   late final _hurt = AnimationController(vsync: this, duration: const Duration(milliseconds: 520));
   late final _dodge = AnimationController(vsync: this, duration: const Duration(milliseconds: 420));
+
+  /// Terastal: o reflexo de cristal passando pelo corpo e o brilho pulsando.
+  late final _shine = AnimationController(vsync: this, duration: const Duration(milliseconds: 2400));
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.tera.isNotEmpty) _shine.repeat();
+  }
+
+  @override
+  void didUpdateWidget(covariant _Sprite old) {
+    super.didUpdateWidget(old);
+    if (widget.tera.isNotEmpty && !_shine.isAnimating) _shine.repeat();
+    if (widget.tera.isEmpty && _shine.isAnimating) _shine.stop();
+  }
 
   /// Quem ataca avança na direção do outro ([dash]: vai até ele, golpe corpo a corpo).
   void lunge({bool dash = false}) {
@@ -1131,6 +1162,7 @@ class _SpriteState extends State<_Sprite> with TickerProviderStateMixin {
     _lunge.dispose();
     _hurt.dispose();
     _dodge.dispose();
+    _shine.dispose();
     super.dispose();
   }
 
@@ -1178,7 +1210,16 @@ class _SpriteState extends State<_Sprite> with TickerProviderStateMixin {
                         child: PokemonSprite(widget.id, shiny: widget.mon.shiny, back: widget.back, fill: 0.95, alignBottom: true, battle: true),
                       ),
                     ),
-                  PokemonSprite(widget.id, shiny: widget.mon.shiny, back: widget.back, fill: 0.95, alignBottom: true, battle: true),
+                  if (widget.tera.isNotEmpty) ..._teraBack(),
+                  PokemonSprite(widget.id,
+                      shiny: widget.mon.shiny,
+                      back: widget.back,
+                      fill: 0.95,
+                      alignBottom: true,
+                      battle: true,
+                      // Terastal: a coroa de cristal na cabeça, acompanhando a animação.
+                      crown: widget.tera.isEmpty ? null : CustomPaint(painter: _TeraCrownPainter(getColorForType(widget.tera)))),
+                  if (widget.tera.isNotEmpty) ..._teraFront(),
                 ],
               ),
             ),
@@ -1187,6 +1228,104 @@ class _SpriteState extends State<_Sprite> with TickerProviderStateMixin {
       ),
     );
   }
+}
+
+/// Tipo Tera de quem terastalizou ('' se não).
+String _teraOf(BattleMon mon) => mon.terastal ? (mon.teraType.isEmpty ? 'normal' : mon.teraType) : '';
+
+extension on _SpriteState {
+  PokemonSprite _plain() => PokemonSprite(widget.id, shiny: widget.mon.shiny, back: widget.back, fill: 0.95, alignBottom: true, battle: true);
+
+  /// Atrás do Pokémon: brilho na cor do tipo em volta do contorno, pulsando.
+  List<Widget> _teraBack() {
+    final color = getColorForType(widget.tera);
+    return [
+      AnimatedBuilder(
+        animation: _shine,
+        builder: (context, child) => Opacity(opacity: 0.55 + 0.45 * sin(_shine.value * pi), child: child),
+        child: ImageFiltered(
+          imageFilter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
+          child: ColorFiltered(colorFilter: ColorFilter.mode(color, BlendMode.srcIn), child: _plain()),
+        ),
+      ),
+    ];
+  }
+
+  /// Na frente: o reflexo de cristal passando só pelo corpo do Pokémon.
+  List<Widget> _teraFront() {
+    final color = getColorForType(widget.tera);
+    return [
+      AnimatedBuilder(
+        animation: _shine,
+        builder: (context, child) {
+          final x = -1.5 + 3 * _shine.value;
+          return ShaderMask(
+            blendMode: BlendMode.srcATop,
+            shaderCallback: (rect) => LinearGradient(
+              begin: Alignment(x - 0.6, -1),
+              end: Alignment(x + 0.6, 1),
+              colors: [Colors.transparent, color.withAlpha(0x40), Colors.white.withAlpha(0x8C), color.withAlpha(0x40), Colors.transparent],
+              stops: const [0, 0.35, 0.5, 0.65, 1],
+            ).createShader(rect),
+            child: child,
+          );
+        },
+        child: _plain(),
+      ),
+    ];
+  }
+}
+
+/// A coroa de cristal do Terastal na cor do Tera Type (igual ao site, TeraCrown).
+class _TeraCrownPainter extends CustomPainter {
+  final Color color;
+  const _TeraCrownPainter(this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Desenhada numa grade de 24 × 16, como o SVG do site.
+    canvas.scale(size.width / 24, size.height / 16);
+    Path poly(List<double> p) {
+      final path = Path()..moveTo(p[0], p[1]);
+      for (var i = 2; i < p.length; i += 2) {
+        path.lineTo(p[i], p[i + 1]);
+      }
+      return path..close();
+    }
+
+    final parts = [
+      poly([1, 15, 4, 5, 8, 12]),
+      poly([16, 12, 20, 5, 23, 15]),
+      poly([6, 15, 12, 0, 18, 15]),
+      poly([1, 15, 23, 15, 21, 11, 3, 11]),
+    ];
+    final glow = Paint()
+      ..color = Colors.white.withAlpha(0xE6)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1);
+    final fill = Paint()..color = color;
+    final edge = Paint()
+      ..color = Colors.black.withAlpha(0x8C)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8
+      ..strokeJoin = StrokeJoin.round;
+    for (final p in parts) {
+      canvas.drawPath(p, glow);
+    }
+    for (final p in parts) {
+      canvas
+        ..drawPath(p, fill)
+        ..drawPath(p, edge);
+    }
+    final light = Paint()..color = Colors.white.withAlpha(0x8C);
+    canvas
+      ..drawPath(poly([12, 1.5, 12, 14, 8.5, 14]), light)
+      ..drawPath(poly([4, 6, 4.4, 12, 2.6, 13]), Paint()..color = Colors.white.withAlpha(0x80))
+      ..drawPath(poly([20, 6, 19.6, 12, 17.6, 11.6]), Paint()..color = Colors.white.withAlpha(0x59))
+      ..drawRect(const Rect.fromLTWH(3, 12, 18, 1), Paint()..color = Colors.white.withAlpha(0x66));
+  }
+
+  @override
+  bool shouldRepaint(_TeraCrownPainter old) => old.color != color;
 }
 
 /// Onde fica o meio de cada Pokémon no campo (em %).
@@ -1533,7 +1672,7 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
         child:Row(key:ValueKey('battle-sprites-$side'),crossAxisAlignment:CrossAxisAlignment.end,children:[for(final slot in (_b.simulatorState!['sides'][side]['slots'] as List).cast<Map>())
           if((slot['index'] as int)>=0) Expanded(child:AspectRatio(aspectRatio:1,child:Builder(builder:(_) {
             final mon=_b.teams[side][slot['index'] as int];
-            return _Sprite(mon:mon,id:mon.dmax>0?mon.gmax??mon.id:mon.id,dmax:mon.dmax>0,back:side==_side,fainted:mon.hp<=0);
+            return _Sprite(mon:mon,id:mon.dmax>0?mon.gmax??mon.id:mon.id,dmax:mon.dmax>0,tera:_teraOf(mon),back:side==_side,fainted:mon.hp<=0);
           }))),
         ]));
       Widget info(int side) => Positioned(left:side==_side?null:w*0.03,right:side==_side?w*0.03:null,top:side==_side?null:h*0.04,bottom:side==_side?h*0.04:null,width:w*0.45,

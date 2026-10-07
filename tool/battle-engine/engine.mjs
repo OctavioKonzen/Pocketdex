@@ -39,6 +39,16 @@ const games = new Map();
 let nextHandle = 1;
 
 function originalIndex(pokemon) { return Number(pokemon.set.name.slice(2)); }
+// Espécie do Showdown → id do Pokémon no banco (vem do build.mjs). Nos testes do motor, vazio.
+/* global POCKETDEX_FORMS */
+const FORMS = typeof POCKETDEX_FORMS === 'undefined' ? {} : POCKETDEX_FORMS;
+// Forma que o motor mudou durante a batalha (Aegislash-Blade, Mimikyu-Busted, Darmanitan-Zen,
+// Palafin-Hero...): o id dela no banco; null enquanto for a forma do começo da batalha.
+function formIdOf(game, pokemon) {
+  const start = game.startSpecies?.[pokemon.side.n]?.[originalIndex(pokemon)];
+  if (!start || pokemon.species.name === start) return null;
+  return FORMS[pokemon.species.name.toLowerCase().replace(/[^a-z0-9]/g, '')] ?? null;
+}
 function targetsFor(game, pokemon, moveId, targetType) {
   const move = Dex.moves.get(moveId);
   const target = targetType || move.target;
@@ -134,7 +144,7 @@ function snapshot(game) {
       used: {mega: game.used[side.n].mega, dmax: Boolean(side.dynamaxUsed), z: Boolean(side.zMoveUsed), tera: game.used[side.n].tera},
       team: [...side.pokemon].sort((a, c) => originalIndex(a) - originalIndex(c)).map(p => ({
         index: originalIndex(p), hp: p.hp, maxHp: p.maxhp, status: p.status, boosts: {...p.boosts},
-        species: p.species.name, types: p.getTypes(), ability: Dex.abilities.get(p.ability).name,
+        species: p.species.name, formId: formIdOf(game, p), types: p.getTypes(), ability: Dex.abilities.get(p.ability).name,
         item: Dex.items.get(p.item).name, stats: {...p.baseStoredStats}, spe: p.baseStoredStats.spe, actionSpeed: p.getActionSpeed(), tera: p.terastallized || '',
         dmax: p.volatiles.dynamax ? Math.max(0, p.volatiles.dynamax.duration ?? 3) : 0,
         moves: p.moveSlots.map(m => ({slug: m.id, name: m.move, pp: m.pp, maxPp: m.maxpp, disabled: m.disabled})),
@@ -286,6 +296,12 @@ function eventsFor(game, lines) {
       game.lastWeather = text;
       events.push({t: 'weather', weather});
       if (actor === 'ShadowSky') say('sim', 'O céu ficou sombrio!');
+    } else if ((kind === 'detailschange' || kind === '-formechange') && !/-(Mega|Primal)/.test(value || '')) {
+      // Forma que muda na batalha (Stance Change, Disguise, Zen Mode, Zero to Hero, Schooling...).
+      const species = (value || '').split(',')[0];
+      const id = FORMS[species.toLowerCase().replace(/[^a-z0-9]/g, '')];
+      if (id) events.push({t: 'form', side, index: actorIndex, id});
+      say('formChanged', label(side), species);
     } else if (kind === '-boost' || kind === '-unboost') {
       // Atributo subindo ou caindo, com o texto dos jogos (Swords Dance: "subiu muito!"; no +6: "não pode subir mais!").
       const by = Math.min(3, Number(extra) || 0);
@@ -441,6 +457,8 @@ export const PocketDexSim = {
     const game = {battle, teams: input.teams, controllers: input.controllers, cursor: 0, used: input.teams.map(() => ({mega: false, tera: false})), pendingItems: input.teams.map(() => null), bags: input.teams.map(() => ({potion: 3, 'super-potion': 2, 'hyper-potion': 1, revive: 1}))};
     input.teams.forEach((team, side) => battle.setPlayer(`p${side + 1}`, {name: ['Você', 'Adversário', 'Aliado', 'Aliado adversário'][side], team: team.map(setFor)}));
     configure(game);
+    // A espécie do começo de cada Pokémon: mudou depois, é forma de batalha.
+    game.startSpecies = battle.sides.map((side) => Object.fromEntries(side.pokemon.map((p) => [originalIndex(p), p.species.name])));
     const handle = nextHandle++;
     games.set(handle, game);
     return {handle, ...result(game)};

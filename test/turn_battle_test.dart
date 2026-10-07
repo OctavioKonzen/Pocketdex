@@ -255,8 +255,12 @@ void main() {
     advantage.active(1).moves.add(_move('water', 'water', 40, 100, 10));
     expect(advantage.cpuPlan(hit).index, 1);
     advantage.teams[1][1].hp = 0;
-    expect(advantage.cpuPlan(hit).item, 'revive');
-    expect(advantage.cpuPlan(hit).target, 1);
+    // Pode atacar: ataca (cada item é um turno sem atacar); Revive só sem causar dano.
+    expect(advantage.cpuPlan(hit).kind, 'move');
+    HitResult harmless(BattleMon att, BattleMon def, String slug, bool crit, [int? power, String weather = '']) =>
+        identical(att, advantage.active(1)) ? (rolls: [[0]], eff: 0.0) : hit(att, def, slug, crit, power, weather);
+    expect(advantage.cpuPlan(harmless).item, 'revive');
+    expect(advantage.cpuPlan(harmless).target, 1);
   });
 
   test('igual ao site (mesma semente, mesmo registro)', () {

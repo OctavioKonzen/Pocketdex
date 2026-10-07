@@ -8,6 +8,8 @@
 
 import 'dart:convert';
 import 'dart:math';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/services.dart' show rootBundle;
@@ -55,6 +57,10 @@ class PokemonSprite extends StatelessWidget {
   /// parado esperando chegar da nuvem (tela do Pokémon).
   final bool prefetchShiny;
 
+  /// Algo para pôr no topo da cabeça (a coroa do Terastal na batalha), que
+  /// acompanha a animação quadro a quadro (headAnchor).
+  final Widget? crown;
+
   const PokemonSprite(this.id,
       {super.key,
       this.shiny = false,
@@ -63,7 +69,8 @@ class PokemonSprite extends StatelessWidget {
       this.silhouette,
       this.back = false,
       this.battle = false,
-      this.prefetchShiny = false});
+      this.prefetchShiny = false,
+      this.crown});
 
   @override
   Widget build(BuildContext context) {
@@ -79,7 +86,7 @@ class PokemonSprite extends StatelessWidget {
         final source = AnimatedSprites.instance.source(pid, shiny: shiny, back: back);
         if (source == null) {
           // Sem as costas: a frente (animada, se tiver) espelhada.
-          if (back) return Transform.flip(flipX: true, child: PokemonSprite(id, shiny: shiny, fill: fill, alignBottom: alignBottom, battle: battle));
+          if (back) return Transform.flip(flipX: true, child: PokemonSprite(id, shiny: shiny, fill: fill, alignBottom: alignBottom, battle: battle, crown: crown));
           return still;
         }
         if (prefetchShiny) {
@@ -87,7 +94,7 @@ class PokemonSprite extends StatelessWidget {
           if (other != null) precacheImage(NetworkImage(other.url), context).ignore();
         }
         return _AnimatedSprite(source,
-            fill: fill, alignBottom: alignBottom, battle: battle, animate: AppSettings.instance.animatedSprites, fallback: still);
+            fill: fill, alignBottom: alignBottom, battle: battle, animate: AppSettings.instance.animatedSprites, fallback: still, crown: crown);
       },
     );
   }
@@ -146,8 +153,9 @@ class _AnimatedSprite extends StatelessWidget {
   final bool animate;
   final double fill;
   final Widget fallback;
+  final Widget? crown;
   const _AnimatedSprite(this.source,
-      {required this.fill, required this.alignBottom, required this.battle, required this.animate, required this.fallback});
+      {required this.fill, required this.alignBottom, required this.battle, required this.animate, required this.fallback, this.crown});
 
   @override
   Widget build(BuildContext context) {
@@ -198,7 +206,18 @@ class _AnimatedSprite extends StatelessWidget {
               Positioned(
                 left: left,
                 top: top,
-                child: animate
+                child: widget.crown != null
+                    ? _CrownedGif(
+                        url: source.url,
+                        width: inner,
+                        scale: pixelScale,
+                        alignBottom: widget.alignBottom,
+                        animate: animate,
+                        crown: widget.crown!,
+                        crownWidth: side * 0.26,
+                        placeholder: still,
+                      )
+                    : animate
                     ? Image.network(
                       source.url,
                       // Outro GIF (trocou para o shiny...): começa a animação do zero.
@@ -311,6 +330,275 @@ class _FirstFrameState extends State<_FirstFrame> {
       fit: widget.fit,
       alignment: widget.alignment,
       filterQuality: widget.filterQuality,
+    );
+  }
+}
+
+/// O topo da cabeça num quadro (em pixels) e o contorno do Pokémon, igual ao
+/// site (web-site/src/lib/headAnchor.js): a primeira linha com pixels
+/// suficientes (antenas, orelhas e chifres finos não contam) e o meio do que
+/// aparece logo abaixo.
+({int x, int y, int x0, int x1, int y0, int y1})? headAnchor(Uint8List rgba, int w, int h) {
+  int alpha(int x, int y) => rgba[(y * w + x) * 4 + 3];
+  var x0 = w, x1 = -1, y0 = -1, y1 = -1;
+  final counts = List.filled(h, 0);
+  for (var y = 0; y < h; y++) {
+    for (var x = 0; x < w; x++) {
+      if (alpha(x, y) < 128) continue;
+      counts[y]++;
+      if (x < x0) x0 = x;
+      if (x > x1) x1 = x;
+      if (y0 < 0) y0 = y;
+      y1 = y;
+    }
+  }
+  if (y0 < 0) return null;
+  final need = max(2, ((x1 - x0 + 1) * 0.12).floor());
+  var top = y0;
+  while (top < y1 && counts[top] < need) {
+    top++;
+  }
+  final band = max(2, ((y1 - y0 + 1) * 0.08).floor());
+  var lo = w, hi = -1;
+  for (var y = top; y <= min(y1, top + band); y++) {
+    for (var x = 0; x < w; x++) {
+      if (alpha(x, y) < 128) continue;
+      if (x < lo) lo = x;
+      if (x > hi) hi = x;
+    }
+  }
+  return (x: (lo + hi + 1) ~/ 2, y: top, x0: x0, x1: x1, y0: y0, y1: y1);
+}
+
+/// Segue a cabeça quadro a quadro, igual ao site (HeadTracker): procura onde
+/// o pedaço da cabeça do primeiro quadro foi parar (sempre comparando com o
+/// primeiro, então a coroa não escorrega para a asa ou o rabo com o tempo).
+class HeadTracker {
+  final int w, h;
+  late final ({int x, int y, int x0, int x1, int y0, int y1})? head;
+  late final int _left, _top, _pw, _ph, _reach;
+  late final Int32List _patch;
+  int _dx = 0, _dy = 0;
+
+  HeadTracker(Uint8List rgba, this.w, this.h) {
+    head = headAnchor(rgba, w, h);
+    final head0 = head;
+    if (head0 == null) return;
+    final pw = max(6, ((head0.x1 - head0.x0 + 1) * 0.22).floor());
+    final ph = max(6, ((head0.y1 - head0.y0 + 1) * 0.18).floor());
+    // O pedaço: a cabeça logo abaixo do topo (um pouco de ar em cima).
+    _left = head0.x - (pw >> 1);
+    _top = head0.y - 2;
+    _pw = pw;
+    _ph = ph + 2;
+    _patch = Int32List(_pw * _ph * 4);
+    for (var y = 0; y < _ph; y++) {
+      for (var x = 0; x < _pw; x++) {
+        _pixel(rgba, _left + x, _top + y, _patch, (y * _pw + x) * 4);
+      }
+    }
+    _reach = max(4, (max(w, h) * 0.12).floor());
+  }
+
+  void _pixel(Uint8List rgba, int x, int y, Int32List out, int o) {
+    if (x < 0 || y < 0 || x >= w || y >= h || rgba[(y * w + x) * 4 + 3] < 128) {
+      out[o] = out[o + 1] = out[o + 2] = out[o + 3] = 0;
+      return;
+    }
+    final i = (y * w + x) * 4;
+    out[o] = rgba[i];
+    out[o + 1] = rgba[i + 1];
+    out[o + 2] = rgba[i + 2];
+    out[o + 3] = 255;
+  }
+
+  /// A cabeça neste quadro (x, y em fração da imagem).
+  Offset? track(Uint8List rgba) {
+    final head0 = head;
+    if (head0 == null) return null;
+    final px = Int32List(4);
+    var best = 1 << 62;
+    var bx = _dx, by = _dy;
+    // Perto de onde estava no quadro anterior; empate fica com o mais perto dele.
+    for (var r = 0; r <= _reach; r++) {
+      for (var oy = -r; oy <= r; oy++) {
+        for (var ox = -r; ox <= r; ox++) {
+          if (max(ox.abs(), oy.abs()) != r) continue;
+          final sx = _dx + ox, sy = _dy + oy;
+          if (max(sx.abs(), sy.abs()) > _reach * 2) continue;
+          var cost = 0;
+          for (var y = 0; y < _ph && cost < best; y++) {
+            for (var x = 0; x < _pw; x++) {
+              _pixel(rgba, _left + sx + x, _top + sy + y, px, 0);
+              final o = (y * _pw + x) * 4;
+              final a = _patch[o + 3];
+              if (a != px[3]) {
+                cost += 300;
+              } else if (a != 0) {
+                cost += (_patch[o] - px[0]).abs() + (_patch[o + 1] - px[1]).abs() + (_patch[o + 2] - px[2]).abs();
+              }
+            }
+          }
+          if (cost < best) {
+            best = cost;
+            bx = sx;
+            by = sy;
+          }
+        }
+      }
+      if (best == 0) break;
+    }
+    _dx = bx;
+    _dy = by;
+    return Offset((head0.x + bx) / w, (head0.y + by) / h);
+  }
+}
+
+/// O GIF tocado aqui mesmo, quadro a quadro, com [crown] no topo da cabeça de
+/// cada quadro (headAnchor): a coroa sobe, desce e anda junto.
+class _CrownedGif extends StatefulWidget {
+  final String url;
+  final double width;
+
+  /// Pontos da tela por pixel do GIF (null: encaixa na caixa).
+  final double? scale;
+  final bool alignBottom, animate;
+  final Widget crown;
+  final double crownWidth;
+  final Widget placeholder;
+  const _CrownedGif(
+      {required this.url,
+      required this.width,
+      this.scale,
+      required this.alignBottom,
+      required this.animate,
+      required this.crown,
+      required this.crownWidth,
+      required this.placeholder});
+
+  @override
+  State<_CrownedGif> createState() => _CrownedGifState();
+}
+
+class _CrownedGifState extends State<_CrownedGif> {
+  // Ouve o mesmo GIF que os outros Image.network dele (o brilho do Tera usa
+  // cópias do sprite): todos mostram o mesmo quadro ao mesmo tempo.
+  ImageStream? _stream;
+  ImageStreamListener? _listener;
+  ui.Image? _image;
+  Offset? _head;
+  ui.Image? _pending;
+  bool _busy = false;
+  HeadTracker? _tracker;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _resolve();
+  }
+
+  @override
+  void didUpdateWidget(_CrownedGif old) {
+    super.didUpdateWidget(old);
+    if (old.url != widget.url || old.animate != widget.animate) _resolve();
+  }
+
+  void _resolve() {
+    _stop();
+    _tracker = null;
+    final stream = NetworkImage(widget.url).resolve(createLocalImageConfiguration(context));
+    final listener = ImageStreamListener((info, _) {
+      if (!mounted) return;
+      _pending?.dispose();
+      _pending = info.image.clone();
+      info.dispose();
+      if (!widget.animate) _stop();
+      _next();
+    }, onError: (_, __) => _stop());
+    stream.addListener(listener);
+    _stream = stream;
+    _listener = listener;
+  }
+
+  /// Acha a cabeça do quadro que chegou e só então mostra os dois juntos.
+  Future<void> _next() async {
+    if (_busy || _pending == null) return;
+    _busy = true;
+    final image = _pending!;
+    _pending = null;
+    Offset? head;
+    try {
+      final data = await image.toByteData();
+      if (data != null) {
+        final rgba = data.buffer.asUint8List();
+        head = (_tracker ??= HeadTracker(rgba, image.width, image.height)).track(rgba);
+      }
+    } catch (_) {}
+    _busy = false;
+    if (!mounted) {
+      image.dispose();
+      return;
+    }
+    final old = _image;
+    setState(() {
+      _image = image;
+      _head = head ?? _head;
+    });
+    old?.dispose();
+    _next();
+  }
+
+  void _stop() {
+    if (_stream != null && _listener != null) _stream!.removeListener(_listener!);
+    _stream = null;
+    _listener = null;
+  }
+
+  @override
+  void dispose() {
+    _stop();
+    _pending?.dispose();
+    _image?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final image = _image;
+    if (image == null) return widget.placeholder;
+    final box = widget.width;
+    // Onde o quadro aparece dentro da caixa (como o RawImage o desenha).
+    final k = widget.scale ?? min(box / image.width, box / image.height);
+    final w = image.width * k, h = image.height * k;
+    final left = (box - w) / 2;
+    final top = widget.alignBottom ? box - h : (box - h) / 2;
+    final head = _head;
+    final cw = widget.crownWidth;
+    final ch = cw * 2 / 3;
+    return SizedBox.square(
+      dimension: box,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          RawImage(
+            image: image,
+            width: box,
+            height: box,
+            scale: widget.scale == null ? 1 : 1 / widget.scale!,
+            fit: widget.scale == null ? BoxFit.contain : BoxFit.none,
+            alignment: widget.alignBottom ? Alignment.bottomCenter : Alignment.center,
+            filterQuality: FilterQuality.none,
+          ),
+          if (head != null)
+            Positioned(
+              left: left + head.dx * w - cw / 2,
+              top: top + head.dy * h - ch * 0.78,
+              width: cw,
+              height: ch,
+              child: IgnorePointer(child: widget.crown),
+            ),
+        ],
+      ),
     );
   }
 }
