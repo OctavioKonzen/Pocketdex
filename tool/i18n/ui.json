@@ -5779,6 +5779,7 @@
   "es": "Buscando un rival…"
  },
  "{0} continua com {1}!": {"en": "{0} keeps using {1}!", "fr": "{0} continue avec {1} !", "es": "¡{0} sigue con {1}!"},
+ "Buscar treinador": {"en": "Search trainer", "fr": "Rechercher un dresseur", "es": "Buscar entrenador"},
  "Formas alternativas": {
   "en": "Alternate forms",
   "fr": "Formes alternatives",
