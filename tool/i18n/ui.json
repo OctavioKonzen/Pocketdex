@@ -5603,6 +5603,121 @@
   "fr": "Choisis qui commence",
   "es": "Elige quién empieza"
  },
+ "Histórico de batalhas": {
+  "en": "Battle history",
+  "fr": "Historique des combats",
+  "es": "Historial de batallas"
+ },
+ "Suas batalhas contra o computador, as estatísticas de cada Pokémon e o replay.": {
+  "en": "Your battles against the computer, each Pokémon's stats and the replay.",
+  "fr": "Tes combats contre l'ordinateur, les statistiques de chaque Pokémon et le replay.",
+  "es": "Tus batallas contra la computadora, las estadísticas de cada Pokémon y la repetición."
+ },
+ "Nenhuma batalha ainda. Batalhe contra o computador e ela aparece aqui.": {
+  "en": "No battles yet. Battle the computer and it shows up here.",
+  "fr": "Aucun combat pour l'instant. Affronte l'ordinateur et il apparaîtra ici.",
+  "es": "Aún no hay batallas. Lucha contra la computadora y aparecerá aquí."
+ },
+ "Batalhas": {
+  "en": "Battles",
+  "fr": "Combats",
+  "es": "Batallas"
+ },
+ "Vitórias": {
+  "en": "Wins",
+  "fr": "Victoires",
+  "es": "Victorias"
+ },
+ "Aproveitamento": {
+  "en": "Win rate",
+  "fr": "Taux de victoire",
+  "es": "Porcentaje de victorias"
+ },
+ "Seus Pokémon": {
+  "en": "Your Pokémon",
+  "fr": "Tes Pokémon",
+  "es": "Tus Pokémon"
+ },
+ "batalhas": {
+  "en": "battles",
+  "fr": "combats",
+  "es": "batallas"
+ },
+ "vitórias": {
+  "en": "wins",
+  "fr": "victoires",
+  "es": "victorias"
+ },
+ "derrubados": {
+  "en": "KOs",
+  "fr": "K.O.",
+  "es": "derribados"
+ },
+ "Vitória": {
+  "en": "Victory",
+  "fr": "Victoire",
+  "es": "Victoria"
+ },
+ "Derrota": {
+  "en": "Defeat",
+  "fr": "Défaite",
+  "es": "Derrota"
+ },
+ "Computador": {
+  "en": "Computer",
+  "fr": "Ordinateur",
+  "es": "Computadora"
+ },
+ "turnos": {
+  "en": "turns",
+  "fr": "tours",
+  "es": "turnos"
+ },
+ "Assistir": {
+  "en": "Watch",
+  "fr": "Regarder",
+  "es": "Ver"
+ },
+ "Apagar": {
+  "en": "Delete",
+  "fr": "Supprimer",
+  "es": "Borrar"
+ },
+ "Replay": {
+  "en": "Replay",
+  "fr": "Replay",
+  "es": "Repetición"
+ },
+ "Preparando o replay…": {
+  "en": "Preparing the replay…",
+  "fr": "Préparation du replay…",
+  "es": "Preparando la repetición…"
+ },
+ "Voltar ao histórico": {
+  "en": "Back to history",
+  "fr": "Retour à l'historique",
+  "es": "Volver al historial"
+ },
+ "Não foi possível abrir este replay.": {
+  "en": "Couldn't open this replay.",
+  "fr": "Impossible d'ouvrir ce replay.",
+  "es": "No se pudo abrir esta repetición."
+ },
+ "O replay não pôde continuar daqui (os dados mudaram desde a batalha).": {
+  "en": "The replay couldn't continue from here (the data changed since the battle).",
+  "fr": "Le replay n'a pas pu continuer (les données ont changé depuis le combat).",
+  "es": "La repetición no pudo continuar (los datos cambiaron desde la batalla)."
+ },
+ "Histórico e replays": {
+  "en": "History and replays",
+  "fr": "Historique et replays",
+  "es": "Historial y repeticiones"
+ },
+ "Suas vitórias, o MVP do time e o replay de cada batalha": {
+  "en": "Your wins, your team's MVP and the replay of each battle",
+  "fr": "Tes victoires, le MVP de l'équipe et le replay de chaque combat",
+  "es": "Tus victorias, el MVP del equipo y la repetición de cada batalla"
+ },
  "Formas alternativas": {
   "en": "Alternate forms",
   "fr": "Formes alternatives",

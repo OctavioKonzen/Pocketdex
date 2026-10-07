@@ -33,6 +33,7 @@ import '../utils/team_analysis.dart' show allTypes;
 import '../widgets/pokemon_sprite.dart';
 import '../widgets/trainer_sprite.dart';
 import '../services/trainers.dart';
+import '../services/battle_log.dart';
 
 /// Um time para a batalha: nome e membros (id + set).
 class BattleTeam {
@@ -77,7 +78,18 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
   String _foeName = '';
 
   /// Prévia dos times (como no Showdown): os dois times e você escolhe quem começa.
-  ({List<BattleMon> a, List<BattleMon> b, double Function() random, String foeName})? _preview;
+  ({List<BattleMon> a, List<BattleMon> b, List<Member> ma, List<Member> mb, double Function() random, String foeName})? _preview;
+
+  /// A batalha individual com a sua própria semente: o replay refaz tudo igual (battle_log.dart).
+  TurnBattle _single(List<BattleMon> a, List<BattleMon> b, List<Member> ma, List<Member> mb, double Function() random) {
+    final seed = (random() * (1 << 31)).floor();
+    final battle = TurnBattle(a, b, League.seededRandom(seed))
+      ..ai = _difficulty == 'easy' ? 'easy' : 'normal'
+      ..seed = seed;
+    // Só quando todos entraram (o time do registro bate com o da batalha).
+    if (a.length == ma.length && b.length == mb.length) battle.members = (mine: BattleLog.toRecord(ma), theirs: BattleLog.toRecord(mb));
+    return battle;
+  }
   BattleHit? _hit;
   double Function(String, List<String>)? _typeEff;
   int _key = 0;
@@ -118,8 +130,10 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
     setState(() => _busy = true);
     try {
     final random = League.seededRandom(Random().nextInt(1 << 31));
-    final a = await TurnBattleSetup.mons(mine ?? await TurnBattleSetup.randomTeam(random, difficulty: _difficulty), battleMonName);
-    final b = await TurnBattleSetup.mons(theirs ?? await TurnBattleSetup.randomTeam(random, difficulty: _difficulty), battleMonName);
+    final ma = mine ?? await TurnBattleSetup.randomTeam(random, difficulty: _difficulty);
+    final mb = theirs ?? await TurnBattleSetup.randomTeam(random, difficulty: _difficulty);
+    final a = await TurnBattleSetup.mons(ma, battleMonName);
+    final b = await TurnBattleSetup.mons(mb, battleMonName);
     final rosters = <String, List<BattleMon>>{'me': a, 'npc3': b};
     final own = [for (var slot = 0; slot < _count; slot++) slot > 0 && _npcPartner ? 'npc$slot' : 'me'];
     for (final uid in own.where((uid) => uid != 'me')) {
@@ -130,10 +144,10 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
       _busy = false;
       if (a.isNotEmpty && b.isNotEmpty) {
         if (_count == 1 && widget.mine == null) {
-          _preview = (a: a, b: b, random: random, foeName: foeName);
+          _preview = (a: a, b: b, ma: ma, mb: mb, random: random, foeName: foeName);
           return;
         }
-        _battle = _count == 1 ? (TurnBattle(a, b, random)..ai = _difficulty == 'easy' ? 'easy' : 'normal') : PartyBattle.create(rosters, [...own, ...List.filled(_count, 'npc3')], _count, random);
+        _battle = _count == 1 ? _single(a, b, ma, mb, random) : PartyBattle.create(rosters, [...own, ...List.filled(_count, 'npc3')], _count, random);
         _foeName = foeName;
         _key++;
       }
@@ -148,10 +162,13 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
 
   void _again() {
     final b = _battle!;
+    final seed = Random().nextInt(1 << 31);
     setState(() {
       _battle = TurnBattle(
-          [for (final m in b.teams[0]) m.fresh()], [for (final m in b.teams[1]) m.fresh()], League.seededRandom(Random().nextInt(1 << 31)), mode: b.mode, controllers: b.controllers)
-        ..ai = b.ai;
+          [for (final m in b.teams[0]) m.fresh()], [for (final m in b.teams[1]) m.fresh()], League.seededRandom(seed), mode: b.mode, controllers: b.controllers)
+        ..ai = b.ai
+        ..seed = seed
+        ..members = b.members;
       _key++;
     });
     b.dispose();
@@ -180,6 +197,11 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
                     typeEff: _typeEff!,
                     foeName: _foeName,
                     intro: true,
+                    onFinish: (foeTrainer) {
+                      final b = _battle;
+                      if (b == null || b.members == null || b.seed == null) return;
+                      BattleLog.add(BattleLog.record(b, foeName: _foeName, foeTrainer: foeTrainer));
+                    },
                     onAgain: _again,
                     onExit: () {
                       if (widget.mine != null) { Navigator.pop(context); }
@@ -196,13 +218,13 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
   }
 
   /// Prévia dos times: o do adversário e o seu, tocando em quem começa.
-  Widget _previewView(BuildContext context, ({List<BattleMon> a, List<BattleMon> b, double Function() random, String foeName}) p) {
+  Widget _previewView(BuildContext context, ({List<BattleMon> a, List<BattleMon> b, List<Member> ma, List<Member> mb, double Function() random, String foeName}) p) {
     final c = SiteColors.of(context);
     void lead(int i) {
-      final order = [p.a[i], for (var j = 0; j < p.a.length; j++) if (j != i) p.a[j]];
+      List<T> first<T>(List<T> list) => [list[i], for (var j = 0; j < list.length; j++) if (j != i) list[j]];
       setState(() {
         _preview = null;
-        _battle = TurnBattle(order, p.b, p.random)..ai = _difficulty == 'easy' ? 'easy' : 'normal';
+        _battle = _single(first(p.a), p.b, p.ma.length == p.a.length ? first(p.ma) : p.ma, p.mb, p.random);
         _foeName = p.foeName;
         _key++;
       });
@@ -352,9 +374,14 @@ class OnlineBattleControl {
   final String message;
   final void Function(Map<String, dynamic>) onAction;
   final VoidCallback onClose;
+
+  /// Replay (battle_history_screen.dart): os eventos do começo também passam
+  /// na tela, e [onPlayed] avisa quando cada rodada terminou de passar.
+  final bool replay;
+  final VoidCallback? onPlayed;
   const OnlineBattleControl({required this.round, required this.events, this.before, this.uid = 'me', this.names = const {},
     required this.locked, required this.waitForSwitch, required this.message,
-    required this.onAction, required this.onClose});
+    required this.onAction, required this.onClose, this.replay = false, this.onPlayed});
 }
 
 class BattleView extends StatefulWidget {
@@ -370,6 +397,9 @@ class BattleView extends StatefulWidget {
 
   /// O treinador do adversário (id de trainers.json; null: um sorteado).
   final String? foeTrainer;
+
+  /// A batalha acabou (com o treinador do adversário): histórico e replay.
+  final void Function(String? foeTrainer)? onFinish;
   const BattleView(
       {super.key,
       required this.battle,
@@ -380,7 +410,8 @@ class BattleView extends StatefulWidget {
       required this.onExit,
       this.online,
       this.intro = false,
-      this.foeTrainer});
+      this.foeTrainer,
+      this.onFinish});
 
   @override
   State<BattleView> createState() => BattleViewState();
@@ -430,6 +461,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
   late final Trainer? _coach = widget.foeTrainer != null ? Trainers.byId(widget.foeTrainer) : Trainers.random();
   late final Trainer? _myTrainer = Trainers.mine;
   bool _introOn = false;
+  bool _finished = false;
   bool _foeGone = false, _meGone = false;
   int _backFrame = 0;
 
@@ -446,7 +478,19 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
     LocalDatabase.instance.moveAnims().then((t) => _anims = t).catchError((_) => <String, dynamic>{});
     // Começo: as habilidades de clima de quem entrou (Drizzle, Drought...).
     _menu = _b.needSwitch ? 'party' : 'main';
-    if (widget.online != null) return;
+    final online = widget.online;
+    if (online != null) {
+      // Replay: a primeira rodada (o começo da batalha) também passa na tela.
+      if (online.replay) {
+        _busy = true;
+        _onlineQueue = _onlineQueue.then((_) async {
+          await _wait(300);
+          if (mounted) await _play(online.events, online.before);
+          if (mounted) online.onPlayed?.call();
+        });
+      }
+      return;
+    }
     _introOn = widget.intro;
     // Com a abertura, quem entrou já saiu da Poké Ball nela: sem repetir o "enviou".
     final opening = [
@@ -525,6 +569,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
     _busy = true;
     _onlineQueue = _onlineQueue.then((_) async {
       if (mounted) await _play(online.events, online.before);
+      if (mounted) online.onPlayed?.call();
     });
   }
 
@@ -706,6 +751,11 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
         _menu = _b.needSwitch ? 'party' : 'main';
         if (_b.needSwitch) _text = tr('Escolha o próximo Pokémon.');
       });
+      // Acabou: vai para o histórico (só as batalhas contra o computador).
+      if (mounted && _b.winner != null && widget.online == null && !_finished) {
+        _finished = true;
+        widget.onFinish?.call(_coach?.id);
+      }
     }
   }
 
@@ -1403,8 +1453,12 @@ class _SpriteState extends State<_Sprite> with TickerProviderStateMixin {
             key: ValueKey((widget.id, widget.mon.shiny)),
             // Dinamax: gigante e com um brilho vermelho em volta do contorno
             // dele (não da caixa), como o drop-shadow do site.
-            child: AnimatedScale(
-              scale: widget.dmax ? 1.35 : 1,
+            child: AnimatedSlide(
+              // O do adversário (lá no alto do campo) cresce menos e desce um pouco, para não passar do topo.
+              offset: Offset(0, widget.dmax && !widget.back ? 0.06 : 0),
+              duration: const Duration(milliseconds: 700),
+              child: AnimatedScale(
+              scale: widget.dmax ? (widget.back ? 1.35 : 1.15) : 1,
               alignment: Alignment.bottomCenter,
               duration: const Duration(milliseconds: 700),
               child: Stack(
@@ -1430,6 +1484,7 @@ class _SpriteState extends State<_Sprite> with TickerProviderStateMixin {
                       // e o corpo cristalizado (facetas e reflexo).
                       crystal: widget.tera.isEmpty ? null : getColorForType(widget.tera)),
                 ],
+              ),
               ),
             ),
           ),
