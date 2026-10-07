@@ -5743,6 +5743,41 @@
   "fr": "Une musique chiptune originale joue pendant le combat.",
   "es": "Una música chiptune original suena durante la batalla."
  },
+ "Amigos e batalhas": {
+  "en": "Friends and battles",
+  "fr": "Amis et combats",
+  "es": "Amigos y batallas"
+ },
+ "Avisa pedidos de amizade, mensagens, desafios e convites para batalhar ou draft.": {
+  "en": "Notifies friend requests, messages, challenges and battle or draft invites.",
+  "fr": "Prévient des demandes d'ami, messages, défis et invitations à combattre ou au draft.",
+  "es": "Avisa solicitudes de amistad, mensajes, desafíos e invitaciones a batallar o draft."
+ },
+ "Adversário aleatório": {
+  "en": "Random opponent",
+  "fr": "Adversaire aléatoire",
+  "es": "Rival aleatorio"
+ },
+ "🎲 Adversário aleatório": {
+  "en": "🎲 Random opponent",
+  "fr": "🎲 Adversaire aléatoire",
+  "es": "🎲 Rival aleatorio"
+ },
+ "Batalha individual com qualquer pessoa que também esteja procurando agora.": {
+  "en": "Single battle with anyone who is also searching right now.",
+  "fr": "Combat simple contre n'importe qui qui cherche aussi en ce moment.",
+  "es": "Batalla individual con cualquiera que también esté buscando ahora."
+ },
+ "Procurar adversário": {
+  "en": "Find opponent",
+  "fr": "Chercher un adversaire",
+  "es": "Buscar rival"
+ },
+ "Procurando um adversário…": {
+  "en": "Looking for an opponent…",
+  "fr": "Recherche d'un adversaire…",
+  "es": "Buscando un rival…"
+ },
  "Formas alternativas": {
   "en": "Alternate forms",
   "fr": "Formes alternatives",

@@ -131,3 +131,57 @@ export function eventPerspective(event, side) {
   return { ...event, ...(event.side == null ? {} : { side: event.side < 0 ? event.side : event.side === side ? 0 : 1 }),
     ...(event.args ? { args: event.args.map((v) => v && typeof v === 'object' && 'side' in v ? { ...v, side: v.side === side ? 0 : 1 } : v) } : {}) }
 }
+
+// ---------------------------------------------------------- adversário aleatório
+// Fila matchQueue/{uid} = {name, team, mode, at, claimedBy} (firestore.rules):
+// cada um deixa o nome e o time; quem procura pega da fila só quem tem uid
+// maior que o seu (assim dois não se pegam ao mesmo tempo) e, na mesma
+// escrita, marca a vaga e cria a sala já pronta (match: true). O outro vê a
+// sala aparecer na lista dele (watchBattles) e entra. Igual ao app.
+
+/** Quanto tempo uma vaga na fila vale sem ser renovada. */
+export const QUEUE_TTL = 2 * 60 * 1000
+
+export async function joinQueue(team) {
+  const { db, doc, setDoc, serverTimestamp } = await firebaseServices()
+  const me = useAuth.getState().user
+  await setDoc(doc(db, 'matchQueue', me.uid), { name: me.name, team: packTeam(team), mode: 'singles', at: serverTimestamp(), claimedBy: null })
+}
+
+export async function leaveQueue() {
+  const { db, doc, deleteDoc } = await firebaseServices()
+  const uid = useAuth.getState().user?.uid
+  if (uid) await deleteDoc(doc(db, 'matchQueue', uid)).catch(() => {})
+}
+
+/** Procura alguém na fila; achou: cria a sala e devolve o id (senão null). */
+export async function tryMatch(team, now = Date.now()) {
+  const { db, doc, collection, query, where, getDocs, runTransaction, serverTimestamp } = await firebaseServices()
+  const me = useAuth.getState().user
+  const snap = await getDocs(query(collection(db, 'matchQueue'), where('mode', '==', 'singles')))
+  const candidates = snap.docs
+    .map((d) => ({ uid: d.id, ...d.data() }))
+    .filter((q) => q.uid > me.uid && !q.claimedBy && now - (q.at?.toMillis?.() ?? 0) < QUEUE_TTL)
+    .sort((a, b) => (a.at?.toMillis?.() ?? 0) - (b.at?.toMillis?.() ?? 0))
+  for (const other of candidates) {
+    const room = doc(collection(db, 'onlineBattles'))
+    try {
+      await runTransaction(db, async (tx) => {
+        const ref = doc(db, 'matchQueue', other.uid)
+        const current = await tx.get(ref)
+        if (!current.exists() || current.data().claimedBy) throw new Error('já pego')
+        const q = current.data()
+        tx.update(ref, { claimedBy: me.uid })
+        tx.set(room, {
+          protocol: BATTLE_PROTOCOL, mode: 'singles', players: [me.uid, other.uid], seats: [me.uid, other.uid], npcTeams: {},
+          names: { [me.uid]: me.name, [other.uid]: q.name }, teams: { [me.uid]: packTeam(team), [other.uid]: q.team },
+          status: 'active', seed: Math.floor(Math.random() * 2 ** 31), createdAt: serverTimestamp(), endedBy: null, match: true,
+        })
+      })
+      return room.id
+    } catch {
+      // Outro pegou antes: tenta o próximo.
+    }
+  }
+  return null
+}

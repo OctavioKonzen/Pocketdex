@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../providers/theme_provider.dart';
+import '../services/push_service.dart';
 import '../services/account_sync.dart';
 import '../services/achievements.dart';
 import '../services/app_settings.dart';
@@ -191,7 +192,7 @@ class SettingsScreen extends StatelessWidget {
                       trailing: Switch(value: settings.battleMusic, activeTrackColor: const Color(0xFF0EA5E9), onChanged: settings.setBattleMusic),
                     ),
                   ]),
-                  if (DailyReminder.supported) _Section('Notificações', [_ReminderSwitch(row: row), _DailyPokemonSwitch(row: row)]),
+                  if (DailyReminder.supported) _Section('Notificações', [_PushSwitch(row: row), _ReminderSwitch(row: row), _DailyPokemonSwitch(row: row)]),
                   _Section('Dados', [
                     row(
                       title: 'Dados salvos',
@@ -752,6 +753,47 @@ class _DailyPokemonSwitchState extends State<_DailyPokemonSwitch> {
 }
 
 /// Liga/desliga o lembrete diário do desafio (fica só neste aparelho).
+/// Avisos de amigos e batalhas no celular (push_service.dart).
+class _PushSwitch extends StatefulWidget {
+  const _PushSwitch({required this.row});
+
+  final Widget Function({Widget? leading, required String title, required String subtitle, Widget? trailing, Widget? below}) row;
+
+  @override
+  State<_PushSwitch> createState() => _PushSwitchState();
+}
+
+class _PushSwitchState extends State<_PushSwitch> {
+  bool _on = true;
+
+  @override
+  void initState() {
+    super.initState();
+    PushService.instance.enabled.then((on) {
+      if (mounted) setState(() => _on = on);
+    });
+  }
+
+  Future<void> _toggle(bool on) async {
+    setState(() => _on = on);
+    final ok = await PushService.instance.setEnabled(on);
+    if (!mounted) return;
+    if (on && !ok) {
+      setState(() => _on = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Permita as notificações do PocketDex nas configurações do celular.')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.row(
+        title: 'Amigos e batalhas',
+        subtitle: 'Avisa pedidos de amizade, mensagens, desafios e convites para batalhar ou draft.',
+        trailing: Switch(value: _on, activeTrackColor: const Color(0xFF0EA5E9), onChanged: _toggle),
+      );
+}
+
 class _ReminderSwitch extends StatefulWidget {
   const _ReminderSwitch({required this.row});
 

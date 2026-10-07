@@ -68,6 +68,64 @@ class OnlineBattles {
     final available = (team['pokemon'] as List).take(6).where((id) => id is int && id > 0).length;
     if (required == 0 || available < required) throw StateError('Escolha um time com pelo menos ${required == 0 ? 1 : required} Pokémon para suas posições.');
   }
+  // ------------------------------------------------------ adversário aleatório
+  // Fila matchQueue/{uid} = {name, team, mode, at, claimedBy} (firestore.rules):
+  // cada um deixa o nome e o time; quem procura pega da fila só quem tem uid
+  // maior que o seu (assim dois não se pegam ao mesmo tempo) e, na mesma
+  // escrita, marca a vaga e cria a sala já pronta (match: true). O outro vê a
+  // sala aparecer na lista dele e entra. Igual ao site (lib/onlineBattle.js).
+
+  /// Quanto tempo uma vaga na fila vale sem ser renovada.
+  static const queueTtl = Duration(minutes: 2);
+
+  static Future<void> joinQueue(Map<String, dynamic> team) => db.doc('matchQueue/$me').set({
+        'name': AuthService.instance.user!.name ?? '',
+        'team': packTeam(team),
+        'mode': 'singles',
+        'at': FieldValue.serverTimestamp(),
+        'claimedBy': null,
+      });
+
+  static Future<void> leaveQueue() async {
+    final user = AuthService.instance.user;
+    if (user == null) return;
+    try {
+      await db.doc('matchQueue/${user.uid}').delete();
+    } catch (_) {}
+  }
+
+  /// Procura alguém na fila; achou: cria a sala e devolve o id (senão null).
+  static Future<String?> tryMatch(Map<String, dynamic> team) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final snap = await db.collection('matchQueue').where('mode', isEqualTo: 'singles').get();
+    final candidates = snap.docs
+        .where((d) => d.id.compareTo(me) > 0 && d.data()['claimedBy'] == null &&
+            now - ((d.data()['at'] as Timestamp?)?.millisecondsSinceEpoch ?? 0) < queueTtl.inMilliseconds)
+        .toList()
+      ..sort((a, b) => ((a.data()['at'] as Timestamp?)?.millisecondsSinceEpoch ?? 0).compareTo((b.data()['at'] as Timestamp?)?.millisecondsSinceEpoch ?? 0));
+    for (final other in candidates) {
+      final room = rooms.doc();
+      try {
+        await db.runTransaction((tx) async {
+          final ref = db.doc('matchQueue/${other.id}');
+          final current = await tx.get(ref);
+          final q = current.data();
+          if (q == null || q['claimedBy'] != null) throw StateError('já pego');
+          tx.update(ref, {'claimedBy': me});
+          tx.set(room, {
+            'protocol': protocol, 'mode': 'singles', 'players': [me, other.id], 'seats': [me, other.id], 'npcTeams': <String, dynamic>{},
+            'names': {me: AuthService.instance.user!.name ?? '', other.id: q['name']}, 'teams': {me: packTeam(team), other.id: q['team']},
+            'status': 'active', 'seed': Random().nextInt(1 << 31), 'createdAt': FieldValue.serverTimestamp(), 'endedBy': null, 'match': true,
+          });
+        });
+        return room.id;
+      } catch (_) {
+        // Outro pegou antes: tenta o próximo.
+      }
+    }
+    return null;
+  }
+
   static Stream<QuerySnapshot<Map<String, dynamic>>> watchMine() => rooms.where('players', arrayContains: me).snapshots();
   static Stream<DocumentSnapshot<Map<String, dynamic>>> watch(String id) => rooms.doc(id).snapshots();
   static Stream<QuerySnapshot<Map<String, dynamic>>> watchActions(String id) =>

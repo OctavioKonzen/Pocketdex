@@ -1,5 +1,6 @@
 // lib/main.dart
 import 'services/trainers.dart';
+import 'services/push_service.dart';
 import 'package:flutter/material.dart';
 import 'package:pocket_dex/providers/favorites_provider.dart';
 import 'package:pocket_dex/providers/theme_provider.dart';
@@ -41,6 +42,8 @@ Future<void> main() async {
     AccountSync.instance.start();
     FriendsService.instance.start();
     AuthService.instance.start();
+    // Avisos de amigos e batalhas no celular (push).
+    PushService.instance.start();
   }
   runApp(
     MultiProvider(
