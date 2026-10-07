@@ -113,6 +113,9 @@ export const useStore = create(
       // Foto de perfil: id de um Pokémon (a mesma no app e no site)
       avatar: null,
       setAvatar: (avatar) => set({ avatar }),
+      // Seu treinador na batalha (id de trainers.json; o mesmo no app e no site)
+      trainer: 'red',
+      setTrainer: (trainer) => set({ trainer }),
       saveQuizGame: (game) => set({ quizGame: game }),
       finishQuiz: (score) =>
         set(({ quizRecord }) => ({ quizGame: null, quizRecord: Math.max(quizRecord, score) })),
@@ -167,6 +170,7 @@ export const useStore = create(
           rankedRecord: 0,
           quizGame: null,
           avatar: null,
+          trainer: 'red',
           stats: EMPTY_STATS,
           collection: {},
           hunts: [],

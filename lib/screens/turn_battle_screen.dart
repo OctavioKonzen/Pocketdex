@@ -31,6 +31,8 @@ import '../utils/site_ui.dart';
 import '../utils/string_extensions.dart';
 import '../utils/team_analysis.dart' show allTypes;
 import '../widgets/pokemon_sprite.dart';
+import '../widgets/trainer_sprite.dart';
+import '../services/trainers.dart';
 
 /// Um time para a batalha: nome e membros (id + set).
 class BattleTeam {
@@ -169,6 +171,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
                     hit: _hit!,
                     typeEff: _typeEff!,
                     foeName: _foeName,
+                    intro: true,
                     onAgain: _again,
                     onExit: () {
                       if (widget.mine != null) { Navigator.pop(context); }
@@ -287,6 +290,12 @@ class BattleView extends StatefulWidget {
   final String foeName;
   final VoidCallback onAgain, onExit;
   final OnlineBattleControl? online;
+
+  /// A abertura: os treinadores aparecem, lançam a Poké Ball e os Pokémon saem.
+  final bool intro;
+
+  /// O treinador do adversário (id de trainers.json; null: um sorteado).
+  final String? foeTrainer;
   const BattleView(
       {super.key,
       required this.battle,
@@ -295,7 +304,9 @@ class BattleView extends StatefulWidget {
       required this.foeName,
       required this.onAgain,
       required this.onExit,
-      this.online});
+      this.online,
+      this.intro = false,
+      this.foeTrainer});
 
   @override
   State<BattleView> createState() => BattleViewState();
@@ -341,6 +352,19 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
   Map<String, dynamic>? _anims;
   Future<void> _onlineQueue = Future.value();
 
+  /// Os treinadores da abertura: o seu (de costas) e o do adversário.
+  late final Trainer? _coach = widget.foeTrainer != null ? Trainers.byId(widget.foeTrainer) : Trainers.random();
+  late final Trainer? _myTrainer = Trainers.mine;
+  bool _introOn = false;
+  bool _foeGone = false, _meGone = false;
+  int _backFrame = 0;
+
+  /// Cada Pokémon: '' na tela, 'hidden' dentro da Poké Ball, 'release' saindo, 'recall' voltando.
+  final List<String> _poke = ['', ''];
+
+  /// A Poké Ball de cada lado: 'throw' (lançada) ou 'open' (abrindo na plataforma).
+  final List<String?> _ball = [null, null];
+
   @override
   void initState() {
     super.initState();
@@ -349,11 +373,73 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
     // Começo: as habilidades de clima de quem entrou (Drizzle, Drought...).
     _menu = _b.needSwitch ? 'party' : 'main';
     if (widget.online != null) return;
-    final opening = _b.start();
-    if (opening.isNotEmpty) {
+    _introOn = widget.intro;
+    // Com a abertura, quem entrou já saiu da Poké Ball nela: sem repetir o "enviou".
+    final opening = [
+      for (final e in _b.start())
+        if (!_introOn || (e.t != 'switch' && e.key != 'go' && e.key != 'foeSent')) e
+    ];
+    if (_introOn) {
+      _poke.setAll(0, ['hidden', 'hidden']);
+      _busy = true;
+      _runIntro().then((_) {
+        if (!mounted) return;
+        if (opening.isNotEmpty) {
+          _play(opening);
+        } else {
+          setState(() => _busy = false);
+        }
+      });
+    } else if (opening.isNotEmpty) {
       _busy = true;
       _wait(_step.inMilliseconds).then((_) => mounted ? _play(opening) : null);
     }
+  }
+
+  /// A Poké Ball abre na plataforma e o Pokémon sai dela.
+  Future<void> _release(int side) async {
+    setState(() => _ball[side] = 'open');
+    await _wait(260);
+    if (!mounted) return;
+    setState(() {
+      _ball[side] = null;
+      _poke[side] = 'release';
+    });
+    await _wait(420);
+    if (mounted) setState(() => _poke[side] = '');
+  }
+
+  /// A abertura: os treinadores aparecem, lançam a Poké Ball e os Pokémon saem.
+  Future<void> _runIntro() async {
+    await _wait(700);
+    if (!mounted) return;
+    if (widget.foeName.isEmpty && _coach != null) setState(() => _text = tr('{0} quer batalhar!').replaceAll('{0}', _coach.name));
+    await _wait(1100);
+    if (!mounted) return;
+    final who = widget.foeName.isNotEmpty ? widget.foeName : _coach?.name ?? tr('O adversário');
+    setState(() {
+      _text = tr('{0} enviou {1}!').replaceAll('{0}', who).replaceAll('{1}', _b.active(1).name);
+      _foeGone = true;
+      _ball[1] = 'throw';
+    });
+    await _wait(520);
+    if (!mounted) return;
+    await _release(1);
+    if (!mounted) return;
+    setState(() => _text = tr('Vai, {0}!').replaceAll('{0}', _b.active(0).name));
+    for (var f = 1; f < 5; f++) {
+      setState(() => _backFrame = f);
+      await _wait(90);
+      if (!mounted) return;
+    }
+    setState(() {
+      _meGone = true;
+      _ball[0] = 'throw';
+    });
+    await _wait(520);
+    if (!mounted) return;
+    await _release(0);
+    if (mounted) setState(() => _introOn = false);
   }
 
   @override
@@ -477,7 +563,14 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
         case 'faint':
           setState(() => _fainted[e.side] = true);
         case 'switch':
+          // Volta para a Poké Ball (se não desmaiou) e o outro sai dela.
+          if (!_fainted[e.side] && _active[e.side] != e.value) {
+            setState(() => _poke[e.side] = 'recall');
+            await _wait(380);
+            if (!mounted) return;
+          }
           setState(() {
+            _poke[e.side] = 'hidden';
             _active[e.side] = e.value;
             _fainted[e.side] = false;
             _form[e.side] = null;
@@ -485,6 +578,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
             _tera[e.side] = '';
             _boosts[e.side].clear();
           });
+          await _release(e.side);
         case 'mega':
           setState(() {
             _flash++;
@@ -660,7 +754,10 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                           left: w * 0.03,
                           top: h * 0.05,
                           width: w * 0.48,
-                          child: _InfoBox(mon: foe, hp: _hp[1][_active[1]], status: _status[1][_active[1]], dmax: _dmax[1], boosts: _boosts[1])),
+                          child: AnimatedOpacity(
+                              opacity: _introOn && _poke[1] == 'hidden' ? 0 : 1,
+                              duration: const Duration(milliseconds: 200),
+                              child: _InfoBox(mon: foe, hp: _hp[1][_active[1]], status: _status[1][_active[1]], dmax: _dmax[1], boosts: _boosts[1]))),
                       Positioned(
                           // O inimigo fica mais longe: menor e com os pés na
                           // frente do meio da plataforma (pisando nela, como o seu).
@@ -668,18 +765,55 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                           bottom: h * 0.53,
                           width: w * 0.26,
                           height: w * 0.26,
-                          child: _Sprite(key: _sprites[1], mon: foe, id: _form[1] ?? foe.id, dmax: _dmax[1], tera: _tera[1], fainted: _fainted[1])),
+                          child: _PokeOut(
+                              state: _poke[1],
+                              child: _Sprite(key: _sprites[1], mon: foe, id: _form[1] ?? foe.id, dmax: _dmax[1], tera: _tera[1], fainted: _fainted[1]))),
+                      if (_ball[1] != null)
+                        Positioned(right: w * 0.12, bottom: h * 0.53, width: w * 0.26, height: w * 0.26, child: _Ball(side: 1, phase: _ball[1]!)),
+                      if (_introOn && _coach != null)
+                        Positioned(
+                          right: w * 0.08,
+                          bottom: h * 0.53,
+                          width: w * 0.34,
+                          height: w * 0.34,
+                          child: AnimatedSlide(
+                            key: const ValueKey('foe-trainer'),
+                            offset: _foeGone ? const Offset(1.6, 0) : Offset.zero,
+                            duration: const Duration(milliseconds: 520),
+                            curve: Curves.easeIn,
+                            child: TrainerSprite(_coach, box: w * 0.34),
+                          ),
+                        ),
                       Positioned(
                           left: w * 0.06,
                           bottom: h * 0.05,
                           width: w * 0.36,
                           height: w * 0.36,
-                          child: _Sprite(key: _sprites[0], mon: me, id: _form[0] ?? me.id, dmax: _dmax[0], tera: _tera[0], back: true, fainted: _fainted[0])),
+                          child: _PokeOut(
+                              state: _poke[0],
+                              child: _Sprite(key: _sprites[0], mon: me, id: _form[0] ?? me.id, dmax: _dmax[0], tera: _tera[0], back: true, fainted: _fainted[0]))),
+                      if (_ball[0] != null)
+                        Positioned(left: w * 0.06, bottom: h * 0.05, width: w * 0.36, height: w * 0.36, child: _Ball(side: 0, phase: _ball[0]!)),
+                      if (_introOn && _myTrainer != null)
+                        Positioned(
+                          left: w * 0.02,
+                          bottom: 0,
+                          child: AnimatedSlide(
+                            key: const ValueKey('my-trainer'),
+                            offset: _meGone ? const Offset(-1.3, 0) : Offset.zero,
+                            duration: const Duration(milliseconds: 520),
+                            curve: Curves.easeIn,
+                            child: TrainerBack(_myTrainer, frame: _backFrame, height: h * 0.62),
+                          ),
+                        ),
                       Positioned(
                           right: w * 0.03,
                           bottom: h * 0.06,
                           width: w * 0.5,
-                          child: _InfoBox(mon: me, hp: _hp[0][_active[0]], status: _status[0][_active[0]], dmax: _dmax[0], boosts: _boosts[0], mine: true)),
+                          child: AnimatedOpacity(
+                              opacity: _introOn && _poke[0] == 'hidden' ? 0 : 1,
+                              duration: const Duration(milliseconds: 200),
+                              child: _InfoBox(mon: me, hp: _hp[0][_active[0]], status: _status[0][_active[0]], dmax: _dmax[0], boosts: _boosts[0], mine: true))),
                       Positioned.fill(child: _WeatherFx(_weather)),
                       if (_fx != null) _MoveFx(key: ValueKey(('fx', _fx!.$3)), plan: _fx!.$1, color: _fx!.$2, w: w, h: h),
                       if (_flash > 0) _Flash(key: ValueKey(('flash', _flash))),
@@ -1251,6 +1385,113 @@ extension on _SpriteState {
       ),
     ];
   }
+}
+
+/// O Pokémon entrando ('release': sai da Poké Ball num clarão), voltando
+/// ('recall': encolhe numa luz vermelha) ou guardado ('hidden'). Igual ao site.
+class _PokeOut extends StatelessWidget {
+  final String state;
+  final Widget child;
+  const _PokeOut({required this.state, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    if (state == 'hidden') return Opacity(opacity: 0, child: child);
+    if (state != 'release' && state != 'recall') return child;
+    final release = state == 'release';
+    return TweenAnimationBuilder<double>(
+      key: ValueKey(state),
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: release ? 420 : 380),
+      builder: (context, t, child) {
+        final scale = release ? (t < 0.6 ? t / 0.6 * 1.08 : 1.08 - (t - 0.6) / 0.4 * 0.08) : 1 - t;
+        final tint = release ? Colors.white.withValues(alpha: (1 - t).clamp(0, 1)) : const Color(0xFFE53935).withValues(alpha: (t * 1.6).clamp(0, 0.8));
+        return Transform.scale(
+          scale: scale,
+          alignment: const Alignment(0, 0.7),
+          child: ColorFiltered(colorFilter: ColorFilter.mode(tint, BlendMode.srcATop), child: child),
+        );
+      },
+      child: child,
+    );
+  }
+}
+
+/// A Poké Ball: lançada em arco até a plataforma ('throw') ou abrindo nela ('open').
+class _Ball extends StatelessWidget {
+  final int side;
+  final String phase;
+  const _Ball({required this.side, required this.phase});
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, box) {
+      final size = box.maxWidth * 0.3;
+      final ground = Offset(box.maxWidth / 2 - size / 2, box.maxHeight * 0.92 - size);
+      return TweenAnimationBuilder<double>(
+        key: ValueKey(phase),
+        tween: Tween(begin: 0, end: 1),
+        duration: Duration(milliseconds: phase == 'throw' ? 520 : 260),
+        curve: phase == 'throw' ? const Cubic(.3, .7, .5, 1) : Curves.easeOut,
+        builder: (context, t, _) {
+          if (phase == 'open') {
+            return Stack(children: [
+              Positioned(
+                left: ground.dx,
+                top: ground.dy - size * 0.1 * t,
+                width: size,
+                height: size,
+                child: Opacity(
+                  opacity: t < 0.6 ? 1 : (1 - (t - 0.6) / 0.4).clamp(0, 1),
+                  child: Transform.scale(scale: 1 + 0.6 * t, child: CustomPaint(painter: _BallPainter(glow: t))),
+                ),
+              ),
+            ]);
+          }
+          // Do treinador até a plataforma, num arco (a sua vem da esquerda, a dele de trás).
+          final start = side == 0 ? Offset(ground.dx - box.maxWidth * 0.9, ground.dy - box.maxHeight * 0.2) : Offset(ground.dx + box.maxWidth * 0.5, ground.dy - box.maxHeight * 0.6);
+          final pos = Offset.lerp(start, ground, t)! - Offset(0, sin(t * pi) * box.maxHeight * (side == 0 ? 0.9 : 0.6));
+          return Stack(children: [
+            Positioned(
+              left: pos.dx,
+              top: pos.dy,
+              width: size,
+              height: size,
+              child: Transform.rotate(angle: (side == 0 ? -1 : 1) * t * 4 * pi, child: const CustomPaint(painter: _BallPainter())),
+            ),
+          ]);
+        },
+      );
+    });
+  }
+}
+
+class _BallPainter extends CustomPainter {
+  final double glow;
+  const _BallPainter({this.glow = 0});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final r = size.shortestSide / 2;
+    final c = size.center(Offset.zero);
+    final edge = Paint()
+      ..color = const Color(0xFF1F2937)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = r * 0.16;
+    final rect = Rect.fromCircle(center: c, radius: r * 0.9);
+    canvas
+      ..drawCircle(c, r * 0.9, Paint()..color = Colors.white)
+      ..drawArc(rect, pi, pi, true, Paint()..color = const Color(0xFFE3350D))
+      ..drawCircle(c, r * 0.9, edge)
+      ..drawLine(Offset(c.dx - r * 0.9, c.dy), Offset(c.dx + r * 0.9, c.dy), edge)
+      ..drawCircle(c, r * 0.28, Paint()..color = Colors.white)
+      ..drawCircle(c, r * 0.28, edge..strokeWidth = r * 0.12);
+    // Abrindo: a luz branca de dentro.
+    if (glow > 0) canvas.drawCircle(c, r, Paint()..color = Colors.white.withValues(alpha: (glow * 1.4).clamp(0, 0.9)));
+  }
+
+  @override
+  bool shouldRepaint(_BallPainter old) => old.glow != glow;
 }
 
 /// A coroa de cristal do Terastal na cor do Tera Type (igual ao site, TeraCrown).

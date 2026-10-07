@@ -6,12 +6,17 @@ import { useAuth } from '../lib/auth'
 import { avatarOf, getPokemonById, shinyPath } from '../lib/data'
 import { useStore } from '../lib/store'
 import Sprite from './Sprite'
+import { TrainerFace } from './Trainer'
+import { useTrainers } from '../lib/trainers'
 
 /** Foto de qualquer jogador (ex.: nas linhas do ranking). pokemonId: o avatar salvo (shiny = id + SHINY_AVATAR). */
 export function Avatar({ pokemonId, name, photo, size = 36, className = '' }) {
   const [pokemon, setPokemon] = useState(null)
   const chosen = avatarOf(pokemonId)
   const chosenId = chosen?.id
+  // Foto de treinador (TRAINER_AVATAR + posição em trainers.json).
+  const trainers = useTrainers()
+  const trainer = chosen?.trainer != null ? trainers?.[chosen.trainer] : null
 
   useEffect(() => {
     if (chosenId == null) return
@@ -29,7 +34,9 @@ export function Avatar({ pokemonId, name, photo, size = 36, className = '' }) {
       className={`grid shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-red-600 to-red-800 font-black text-white ring-2 ring-white/80 ${className}`}
       style={{ width: size, height: size, fontSize: size * 0.45 }}
     >
-      {shown ? (
+      {trainer ? (
+        <TrainerFace trainer={trainer} size={size} />
+      ) : shown ? (
         <Sprite path={shown.sprite} box={shown.box} fill={0.9} className="w-[88%]" />
       ) : photo ? (
         <img src={photo} alt="" referrerPolicy="no-referrer" className="h-full w-full object-cover" />
