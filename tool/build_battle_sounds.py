@@ -189,43 +189,73 @@ LEAD = [
 CHORDS = [(40, [64, 67, 71]), (36, [60, 64, 67]), (38, [62, 66, 69]), (35, [59, 63, 66])] * 2
 
 
-def music():
-    bars = len(LEAD) // 8
-    total = bars * 8 * STEP
+# Líder de ginásio (original): Lá menor, mais rápida e marcada, i–VII–VI–V.
+GYM_LEAD = [
+    69, 0, 72, 76, 74, 72, 71, 72, 69, 0, 64, 0, 69, 71, 72, 74,
+    76, 0, 74, 72, 71, 0, 67, 71, 74, 0, 72, 71, 67, 0, 0, 0,
+    65, 0, 69, 72, 77, 76, 74, 72, 69, 0, 72, 0, 77, 0, 76, 74,
+    76, 0, 71, 0, 68, 71, 76, 0, 80, 79, 76, 74, 71, 68, 64, 0,
+    69, 72, 76, 81, 79, 76, 72, 0, 74, 0, 76, 74, 72, 71, 69, 0,
+    67, 71, 74, 79, 77, 74, 71, 0, 72, 0, 74, 72, 71, 69, 67, 0,
+    65, 69, 72, 77, 76, 72, 69, 0, 77, 0, 76, 0, 74, 0, 72, 0,
+    76, 0, 80, 0, 83, 0, 80, 76, 74, 71, 68, 71, 76, 0, 0, 0,
+]
+GYM_CHORDS = [(45, [69, 72, 76]), (43, [67, 71, 74]), (41, [65, 69, 72]), (40, [64, 68, 71])] * 2
+
+# Campeão (original): Ré menor, a mais intensa, i–VI–iv–V com a melodia subindo.
+CHAMPION_LEAD = [
+    74, 0, 77, 81, 79, 77, 76, 77, 74, 0, 69, 0, 74, 76, 77, 79,
+    81, 82, 81, 79, 77, 0, 76, 77, 79, 0, 77, 76, 74, 0, 0, 0,
+    70, 74, 77, 82, 81, 79, 77, 74, 79, 0, 77, 0, 82, 81, 79, 77,
+    67, 70, 74, 79, 77, 74, 70, 67, 72, 0, 74, 0, 76, 0, 79, 0,
+    81, 0, 86, 0, 84, 82, 81, 79, 77, 0, 81, 0, 86, 84, 82, 81,
+    82, 0, 77, 74, 70, 74, 77, 82, 81, 0, 79, 77, 76, 0, 74, 0,
+    79, 82, 86, 0, 84, 82, 79, 0, 82, 0, 81, 79, 77, 0, 76, 77,
+    81, 0, 85, 0, 88, 0, 85, 81, 79, 76, 73, 76, 81, 0, 0, 0,
+]
+CHAMPION_CHORDS = [(38, [62, 65, 69]), (34, [58, 62, 65]), (43, [55, 58, 62]), (45, [57, 61, 64])] * 2
+
+
+def music(lead=None, chords=None, bpm=BPM):
+    lead = lead or LEAD
+    chords = chords or CHORDS
+    step = 60 / bpm / 2
+    bars = len(lead) // 8
+    total = bars * 8 * step
     n = int(RATE * total)
     out = np.zeros(n)
-    step_n = int(RATE * STEP)
+    step_n = int(RATE * step)
 
     def put(start_step, signal, offset=0):
-        i = int(start_step * RATE * STEP) + offset
+        i = int(start_step * RATE * step) + offset
         end = min(n, i + len(signal))
         out[i:end] += signal[: end - i]
 
     # Melodia (pulso 25%), nota a nota, ligando as repetidas.
     i = 0
-    while i < len(LEAD):
-        note = LEAD[i]
+    while i < len(lead):
+        note = lead[i]
         length = 1
-        while i + length < len(LEAD) and LEAD[i + length] == 0 and length < 2:
+        while i + length < len(lead) and lead[i + length] == 0 and length < 2:
             length += 1
         if note:
-            d = STEP * length * 0.95
+            d = step * length * 0.95
             sig = pulse(freq(note), d, 0.25) * env(int(RATE * d), 0.004, 0.04) * 0.22
             # Vibrato leve nas notas longas.
             put(i, sig)
         i += length
 
-    for c, (root, tones) in enumerate(CHORDS):
+    for c, (root, tones) in enumerate(chords):
         base = c * 16
         # Baixo (triângulo): raiz em oitavas, colcheias.
         for k in range(16):
             m = root + (12 if k % 2 else 0)
-            d = STEP * 0.9
+            d = step * 0.9
             put(base + k, triangle(freq(m), d) * env(int(RATE * d), 0.002, 0.02) * 0.35)
         # Arpejo (pulso 12,5%) em semicolcheias, bem baixinho.
         for k in range(32):
             m = tones[k % 3] - 12
-            d = STEP / 2 * 0.9
+            d = step / 2 * 0.9
             sig = pulse(freq(m), d, 0.125) * env(int(RATE * d), 0.001, 0.01) * 0.07
             put(base + k / 2, sig)
 
@@ -264,7 +294,9 @@ def main():
     for name, sig in sounds.items():
         total += save(name, sig)
     total += save('battle_music', music(), bitrate=64)
-    print(f'{len(sounds) + 1} sons, {total // 1024} KB')
+    total += save('gym_music', music(GYM_LEAD, GYM_CHORDS, 164), bitrate=64)
+    total += save('champion_music', music(CHAMPION_LEAD, CHAMPION_CHORDS, 172), bitrate=64)
+    print(f'{len(sounds) + 3} sons, {total // 1024} KB')
 
 
 if __name__ == '__main__':

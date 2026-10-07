@@ -22,6 +22,48 @@ import { Battle } from './TurnBattlePage'
 
 const CARD = 'rounded-2xl bg-card p-4 shadow-lg ring-1 ring-line'
 
+/** Hall da Fama (lib/gymChallenge.js): cada Liga vencida, com o time campeão. */
+function HallOfFame() {
+  const league = useStore((s) => s.league)
+  const trainers = useTrainers()
+  const hall = league?.hall ?? []
+  const records = [
+    ['Torre de Batalha', league?.tower],
+    ['Battle Factory', league?.factory],
+  ].filter(([, r]) => r?.best > 0)
+  if (!hall.length && !records.length) return null
+  return (
+    <section className={CARD} data-testid="hall-of-fame">
+      <h2 className="mb-3 font-black">🏆 {t('Hall da Fama')}</h2>
+      <div className="space-y-2">
+        {hall.map((h) => {
+          const trainer = trainers?.find((x) => x.id === h.trainer)
+          return (
+            <div key={`${h.region}-${h.at}`} className="flex items-center gap-2 rounded-xl bg-bg p-2">
+              {trainer && <TrainerSprite trainer={trainer} box={48} still />}
+              <div className="min-w-0">
+                <p className="text-sm font-bold">
+                  {t('Liga de {0}').replace('{0}', h.region)} · <span className="text-muted">{new Date(h.at).toLocaleDateString()}</span>
+                </p>
+                <div className="flex flex-wrap">
+                  {h.team.map((id, i) => (
+                    <PokeIcon key={i} id={id} className="h-9 w-9" />
+                  ))}
+                </div>
+              </div>
+            </div>
+          )
+        })}
+        {records.map(([name, r]) => (
+          <p key={name} className="text-sm">
+            <b>{t(name)}</b>: {t('recorde de {0} vitórias seguidas').replace('{0}', r.best)}
+          </p>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 export default function BattleHistoryPage() {
   const battles = useStore((s) => s.battles)
   const deleteBattle = useStore((s) => s.deleteBattle)
@@ -36,6 +78,7 @@ export default function BattleHistoryPage() {
       <Link to="/batalha" className="inline-flex items-center gap-1 text-sm text-muted hover:text-text">
         <Icon name="back" size={16} /> Centro de Batalha
       </Link>
+      <HallOfFame />
       {!battles.length ? (
         <Empty>Nenhuma batalha ainda. Batalhe contra o computador e ela aparece aqui.</Empty>
       ) : (

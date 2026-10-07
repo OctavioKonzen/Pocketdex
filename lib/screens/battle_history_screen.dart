@@ -33,6 +33,8 @@ class BattleHistoryScreen extends StatelessWidget {
           listenable: UserData.instance,
           builder: (context, _) {
             final battles = UserData.instance.battles;
+            final hall = _HallOfFame.shown ? const _HallOfFame() : null;
+            if (battles.isEmpty && hall != null) return ListView(padding: const EdgeInsets.all(12), children: [hall]);
             if (battles.isEmpty) {
               return Center(
                 child: Padding(
@@ -52,6 +54,7 @@ class BattleHistoryScreen extends StatelessWidget {
             return ListView(
               padding: const EdgeInsets.all(12),
               children: [
+                ?hall,
                 Card(
                   key: const ValueKey('battle-stats'),
                   child: Padding(
@@ -97,6 +100,56 @@ class BattleHistoryScreen extends StatelessWidget {
               ],
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+/// Hall da Fama (gym_challenge.dart): cada Liga vencida, com o time campeão.
+class _HallOfFame extends StatelessWidget {
+  const _HallOfFame();
+
+  static List<(String, int)> get _records => [
+        for (final (name, key) in const [('Torre de Batalha', 'tower'), ('Battle Factory', 'factory')])
+          if (((UserData.instance.league[key] as Map?)?['best'] as num? ?? 0) > 0) (name, ((UserData.instance.league[key] as Map)['best'] as num).toInt()),
+      ];
+  static List<Map> get _hall => [for (final h in UserData.instance.league['hall'] as List) if (h is Map) h];
+  static bool get shown => _hall.isNotEmpty || _records.isNotEmpty;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = SiteColors.of(context);
+    return Card(
+      key: const ValueKey('hall-of-fame'),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('🏆 ${tr('Hall da Fama')}', style: TextStyle(color: c.text, fontSize: 17, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 8),
+            for (final h in _hall)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(children: [
+                  if (Trainers.byId('${h['trainer']}') case final t?) TrainerSprite(t, box: 48, still: true),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(
+                          '${tr('Liga de {0}').replaceAll('{0}', '${h['region']}')} · ${DateTime.fromMillisecondsSinceEpoch((h['at'] as num).toInt()).toLocal().toString().substring(0, 10)}',
+                          style: TextStyle(color: c.text, fontWeight: FontWeight.w800, fontSize: 13)),
+                      Wrap(children: [
+                        for (final id in h['team'] as List) SizedBox.square(dimension: 36, child: PokemonSprite((id as num).toInt(), fill: 0.95)),
+                      ]),
+                    ]),
+                  ),
+                ]),
+              ),
+            for (final (name, best) in _records)
+              Text('${tr(name)}: ${tr('recorde de {0} vitórias seguidas').replaceAll('{0}', '$best')}', style: TextStyle(color: c.text, fontSize: 13)),
+          ],
         ),
       ),
     );
