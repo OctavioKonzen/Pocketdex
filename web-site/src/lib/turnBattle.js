@@ -308,17 +308,29 @@ export function weaknesses(types, allTypes, typeEff) {
     .sort((a, b) => b.mult - a.mult)
 }
 
-/** Escolha do computador: maior dano previsto ou um status útil. */
+/**
+ * Escolha do computador, como um treinador: nocauteia quando dá (com
+ * prioridade se o seu é mais rápido), não gasta turno com cura ou bônus
+ * quando vai cair antes, e senão o maior dano previsto ou um status útil.
+ */
 export function cpuMove(battle, hit) {
   const me = active(battle, 1)
   const foe = active(battle, 0)
   const usable = usableMoves(me)
   if (!usable.length) return -1
+  const faster = speedOf(me, battle.weather) >= speedOf(foe, battle.weather)
+  const threat = bestDamage(battle, hit, foe, me)
+  // O seu derruba ele antes de ele agir: só um golpe de prioridade age antes.
+  const doomed = threat >= me.hp && !faster
   let best = usable[0]
   let bestValue = -1
   for (const i of usable) {
     const move = me.moves[i]
-    const value = move.category === 'status' ? statusValue(battle, me, foe, move) : expected(battle, hit, me, foe, move)
+    const first = faster || move.priority > 0
+    let value = move.category === 'status' ? statusValue(battle, me, foe, move, threat) : expected(battle, hit, me, foe, move)
+    // Nocaute: vale o dobro (e mais se acerta antes do seu).
+    if (move.category !== 'status' && value > 0 && averageDamage(battle, hit, me, foe, move) >= foe.hp) value += foe.hp * (first ? 2 : 1) * accuracyFactor(move)
+    if (doomed && move.priority <= 0) value *= 0.3
     if (value > bestValue) {
       best = i
       bestValue = value
@@ -327,8 +339,19 @@ export function cpuMove(battle, hit) {
   return best
 }
 
-/** Quanto vale um golpe de status para o computador (comparado com dano). */
-function statusValue(battle, me, foe, move) {
+function accuracyFactor(move) {
+  return move.accuracy == null ? 1 : move.accuracy / 100
+}
+
+/** Dano médio (sem contar a precisão), para saber se nocauteia. */
+function averageDamage(battle, hit, att, def, move) {
+  const r = hit(att, def, move.slug, false, undefined, battle.weather)
+  if (!r || !r.eff) return 0
+  return r.rolls.reduce((sum, rolls) => sum + rolls.reduce((a, b) => a + b, 0) / rolls.length, 0)
+}
+
+/** Quanto vale um golpe de status para o computador (comparado com dano). threat: o dano que ele sofre por turno. */
+function statusValue(battle, me, foe, move, threat = 0) {
   const r = move.rules ?? {}
   // Clima: vale se ainda não está e ajuda os golpes dele.
   const weather = WEATHER_MOVES[move.slug]
@@ -336,13 +359,18 @@ function statusValue(battle, me, foe, move) {
     const helps = { rain: 'water', sun: 'fire', sand: 'rock', hail: 'ice', snow: 'ice' }[weather]
     return battle.weather !== weather && me.moves.some((m) => m.type === helps && m.category !== 'status') ? Math.floor(foe.maxHp * 0.2) : 0
   }
-  if (r.h) return me.hp * 2 < me.maxHp ? Math.floor((me.maxHp * r.h[0]) / r.h[1]) : 0
+  // Cura só se recupera mais do que perde no turno (senão é turno perdido).
+  if (r.h) {
+    const healed = Math.min(me.maxHp - me.hp, Math.floor((me.maxHp * r.h[0]) / r.h[1]))
+    return me.hp * 2 < me.maxHp && healed > threat ? healed : 0
+  }
   if (r.s) return !foe.status && !immuneTo(foe, r.s, move) ? Math.floor(foe.maxHp * (r.s === 'slp' ? 0.5 : 0.3)) : 0
+  // Bônus em si mesmo só com folga: vida alta e o inimigo sem tirar 1/3 por turno.
   if (r.b && r.t === 'self') {
     const room = Object.entries(r.b).some(([k, v]) => v > 0 && me.boosts[k] < 2)
-    return room && me.hp * 10 >= me.maxHp * 6 ? Math.floor(me.maxHp * 0.25) : 0
+    return room && me.hp * 10 >= me.maxHp * 6 && threat * 3 < me.hp ? Math.floor(me.maxHp * 0.25) : 0
   }
-  if (r.b) return Math.floor(foe.maxHp * 0.1)
+  if (r.b) return Object.entries(r.b).some(([k, v]) => v < 0 && (foe.boosts[k] ?? 0) > -2) ? Math.floor(foe.maxHp * 0.1) : 0
   return 0
 }
 

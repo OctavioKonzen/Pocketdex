@@ -774,16 +774,28 @@ class TurnBattle {
     return [...list.where((w) => w.mult >= 4), ...list.where((w) => w.mult < 4)];
   }
 
-  /// Escolha do computador: maior dano previsto ou um status útil.
+  /// Escolha do computador, como um treinador: nocauteia quando dá (com
+  /// prioridade se o seu é mais rápido), não gasta turno com cura ou bônus
+  /// quando vai cair antes, e senão o maior dano previsto ou um status útil.
   int cpuMove(BattleHit hit) {
     final me = active(1), foe = active(0);
     final usable = usableMoves(me);
     if (usable.isEmpty) return -1;
+    final faster = speedOf(me, weather) >= speedOf(foe, weather);
+    final threat = _bestDamage(hit, foe, me);
+    // O seu derruba ele antes de ele agir: só um golpe de prioridade age antes.
+    final doomed = threat >= me.hp && !faster;
     var best = usable.first;
     var bestValue = -1.0;
     for (final i in usable) {
       final move = me.moves[i];
-      final value = move.category == 'status' ? _statusValue(me, foe, move) : _expected(hit, me, foe, move, weather);
+      final first = faster || move.priority > 0;
+      var value = move.category == 'status' ? _statusValue(me, foe, move, threat) : _expected(hit, me, foe, move, weather);
+      // Nocaute: vale o dobro (e mais se acerta antes do seu).
+      if (move.category != 'status' && value > 0 && _averageDamage(hit, me, foe, move) >= foe.hp) {
+        value += foe.hp * (first ? 2 : 1) * (move.accuracy == null ? 1 : move.accuracy! / 100);
+      }
+      if (doomed && move.priority <= 0) value *= 0.3;
       if (value > bestValue) {
         best = i;
         bestValue = value;
@@ -792,8 +804,19 @@ class TurnBattle {
     return best;
   }
 
-  /// Quanto vale um golpe de status para o computador (comparado com dano).
-  double _statusValue(BattleMon me, BattleMon foe, BattleMove move) {
+  /// Dano médio (sem contar a precisão), para saber se nocauteia.
+  double _averageDamage(BattleHit hit, BattleMon att, BattleMon def, BattleMove move) {
+    final r = hit(att, def, move.slug, false, null, weather);
+    if (r == null || r.eff == 0) return 0;
+    var avg = 0.0;
+    for (final rolls in r.rolls) {
+      avg += rolls.fold<int>(0, (a, b) => a + b) / rolls.length;
+    }
+    return avg;
+  }
+
+  /// Quanto vale um golpe de status para o computador (comparado com dano). [threat]: o dano que ele sofre por turno.
+  double _statusValue(BattleMon me, BattleMon foe, BattleMove move, [double threat = 0]) {
     final r = move.rules ?? const {};
     // Clima: vale se ainda não está e ajuda os golpes dele.
     final w = weatherMoves[move.slug];
@@ -801,18 +824,23 @@ class TurnBattle {
       final helps = const {'rain': 'water', 'sun': 'fire', 'sand': 'rock', 'hail': 'ice', 'snow': 'ice'}[w];
       return weather != w && me.moves.any((m) => m.type == helps && m.category != 'status') ? (foe.maxHp * 0.2).floorToDouble() : 0;
     }
+    // Cura só se recupera mais do que perde no turno (senão é turno perdido).
     final h = r['h'] as List?;
-    if (h != null) return me.hp * 2 < me.maxHp ? (me.maxHp * (h[0] as num) / (h[1] as num)).floorToDouble() : 0;
+    if (h != null) {
+      final healed = min(me.maxHp - me.hp, (me.maxHp * (h[0] as num) / (h[1] as num)).floor());
+      return me.hp * 2 < me.maxHp && healed > threat ? healed.toDouble() : 0;
+    }
     final status = r['s'] as String?;
     if (status != null) {
       return foe.status.isEmpty && !_immuneTo(foe, status, move) ? (foe.maxHp * (status == 'slp' ? 0.5 : 0.3)).floorToDouble() : 0;
     }
+    // Bônus em si mesmo só com folga: vida alta e o inimigo sem tirar 1/3 por turno.
     final b = r['b'] as Map?;
     if (b != null && r['t'] == 'self') {
       final room = b.entries.any((e) => (e.value as num) > 0 && (me.boosts['${e.key}'] ?? 0) < 2);
-      return room && me.hp * 10 >= me.maxHp * 6 ? (me.maxHp * 0.25).floorToDouble() : 0;
+      return room && me.hp * 10 >= me.maxHp * 6 && threat * 3 < me.hp ? (me.maxHp * 0.25).floorToDouble() : 0;
     }
-    if (b != null) return (foe.maxHp * 0.1).floorToDouble();
+    if (b != null) return b.entries.any((e) => (e.value as num) < 0 && (foe.boosts['${e.key}'] ?? 0) > -2) ? (foe.maxHp * 0.1).floorToDouble() : 0;
     return 0;
   }
 

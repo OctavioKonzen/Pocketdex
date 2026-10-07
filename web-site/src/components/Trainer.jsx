@@ -7,7 +7,7 @@ import { useState } from 'react'
 import { spriteUrl, TRAINER_AVATAR } from '../lib/data'
 import { useStore } from '../lib/store'
 import { useTrainers } from '../lib/trainers'
-import { Button, Modal } from './ui'
+import { Button, Modal, SearchInput } from './ui'
 
 /** Pixels na tela por pixel do sprite, para a caixa `box` (quadro de 96 px cabe nela). */
 const unit = (box) => box / 96
@@ -121,12 +121,16 @@ function PickerBody({ onClose }) {
   const setTrainer = useStore((s) => s.setTrainer)
   const setAvatar = useStore((s) => s.setAvatar)
   const [pick, setPick] = useState(chosen)
+  const [query, setQuery] = useState('')
   const index = list?.findIndex((t) => t.id === pick) ?? -1
+  const q = query.trim().toLowerCase()
+  const shown = (list ?? []).filter((t) => !q || t.name.toLowerCase().includes(q) || t.title.toLowerCase().includes(q))
   return (
     <>
       <p className="mb-3 text-sm text-muted">Ele aparece na batalha lançando a Poké Ball e pode ser a sua foto de perfil.</p>
+      <SearchInput value={query} onChange={setQuery} placeholder="Buscar treinador" className="mb-3" />
       <div className="grid max-h-[55vh] grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-5" data-testid="trainer-list">
-        {(list ?? []).map((t) => (
+        {shown.map((t) => (
           <button
             key={t.id}
             type="button"

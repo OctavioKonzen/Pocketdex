@@ -271,6 +271,28 @@ void main() {
     expect(advantage.cpuPlan(harmless).target, 1);
   });
 
+  test('computador nocauteia com prioridade e não cura/se fortalece no perigo (igual ao site)', () {
+    HitResult byPower(BattleMon att, BattleMon def, String slug, bool crit, [int? power, String weather = '']) =>
+        (rolls: [[att.moves.firstWhere((m) => m.slug == slug).power]], eff: 1.0);
+    BattleMon cpu() => _mon(2, 'B', ['normal'], 100, 50, [_move('strong', 'normal', 80, 100, 10), _move('quick', 'normal', 35, 100, 10, 1)]);
+    final doomed = TurnBattle([_mon(1, 'A', ['normal'], 30, 100, [_move('hit', 'normal', 100, 100, 10)])], [cpu()], () => 0.9);
+    expect(doomed.cpuMove(byPower), 1);
+    final safe = TurnBattle([_mon(1, 'A', ['normal'], 200, 100, [_move('hit', 'normal', 50, 100, 10)])], [cpu()], () => 0.9);
+    expect(safe.cpuMove(byPower), 0);
+    final recover = _move('recover', 'normal', 0, null, 10, 0, {'h': [1, 2]}, 'status');
+    final dance = _move('swords-dance', 'normal', 0, null, 10, 0, {'b': {'atk': 2}, 't': 'self'}, 'status');
+    final b = TurnBattle([_mon(1, 'A', ['normal'], 100, 100, [_move('hit', 'normal', 60, 100, 10)])],
+        [_mon(2, 'B', ['normal'], 100, 50, [_move('tap', 'normal', 10, 100, 10), recover, dance])], () => 0.9);
+    b.active(1).hp = 40;
+    expect(b.cpuMove(byPower), 0);
+    b.active(0).moves[0] = _move('hit', 'normal', 20, 100, 10);
+    expect(b.cpuMove(byPower), 1);
+    b.active(1).hp = 100;
+    expect(b.cpuMove(byPower), 2);
+    b.active(0).moves[0] = _move('hit', 'normal', 40, 100, 10);
+    expect(b.cpuMove(byPower), 0);
+  });
+
   test('igual ao site (mesma semente, mesmo registro)', () {
     final expected = (jsonDecode(File('test/fixtures/turn_battle.json').readAsStringSync()) as List).cast<String>();
     expect(fakeBattleLog(), expected);

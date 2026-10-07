@@ -151,6 +151,7 @@ class TrainerPicker extends StatefulWidget {
 
 class _TrainerPickerState extends State<TrainerPicker> {
   late String _pick = UserData.instance.trainer;
+  String _query = '';
 
   @override
   void initState() {
@@ -168,10 +169,11 @@ class _TrainerPickerState extends State<TrainerPicker> {
   @override
   Widget build(BuildContext context) {
     final c = SiteColors.of(context);
-    final list = Trainers.list;
+    final q = _query.trim().toLowerCase();
+    final shown = [for (final t in Trainers.list) if (q.isEmpty || t.name.toLowerCase().contains(q) || t.title.toLowerCase().contains(q)) t];
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+        padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.viewInsetsOf(context).bottom),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -179,40 +181,50 @@ class _TrainerPickerState extends State<TrainerPicker> {
             const SizedBox(height: 4),
             Text('Ele aparece na batalha lançando a Poké Ball e pode ser a sua foto de perfil.',
                 textAlign: TextAlign.center, style: TextStyle(color: c.muted, fontSize: 13)),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
+            TextField(
+              key: const ValueKey('trainer-search'),
+              onChanged: (v) => setState(() => _query = v),
+              decoration: InputDecoration(
+                hintText: tr('Buscar treinador'),
+                prefixIcon: const Icon(Icons.search),
+                isDense: true,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+            ),
+            const SizedBox(height: 8),
             SizedBox(
               height: MediaQuery.sizeOf(context).height * 0.5,
-              child: GridView.count(
-                crossAxisCount: 3,
-                mainAxisSpacing: 8,
-                crossAxisSpacing: 8,
-                childAspectRatio: 0.8,
-                children: [
-                  for (final t in list)
-                    InkWell(
-                      key: ValueKey('trainer-${t.id}'),
-                      borderRadius: BorderRadius.circular(14),
-                      onTap: () => setState(() => _pick = t.id),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: _pick == t.id ? const Color(0x26EF4444) : c.surface,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: _pick == t.id ? const Color(0xFFEF4444) : Colors.transparent, width: 2),
-                        ),
-                        padding: const EdgeInsets.all(4),
-                        child: Column(
-                          children: [
-                            Expanded(child: LayoutBuilder(builder: (context, box) => TrainerSprite(t, box: box.biggest.shortestSide))),
-                            Text(t.name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(color: c.text, fontSize: 12, fontWeight: FontWeight.w800)),
-                            Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: c.muted, fontSize: 10)),
-                          ],
-                        ),
+              child: GridView.builder(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3, mainAxisSpacing: 8, crossAxisSpacing: 8, childAspectRatio: 0.8),
+                itemCount: shown.length,
+                itemBuilder: (context, i) {
+                  final t = shown[i];
+                  return InkWell(
+                    key: ValueKey('trainer-${t.id}'),
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: () => setState(() => _pick = t.id),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: _pick == t.id ? const Color(0x26EF4444) : c.surface,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: _pick == t.id ? const Color(0xFFEF4444) : Colors.transparent, width: 2),
+                      ),
+                      padding: const EdgeInsets.all(4),
+                      child: Column(
+                        children: [
+                          Expanded(child: LayoutBuilder(builder: (context, box) => TrainerSprite(t, box: box.biggest.shortestSide))),
+                          Text(t.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(color: c.text, fontSize: 12, fontWeight: FontWeight.w800)),
+                          Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: c.muted, fontSize: 10)),
+                        ],
                       ),
                     ),
-                ],
+                  );
+                },
               ),
             ),
             const SizedBox(height: 12),
