@@ -1035,8 +1035,8 @@ export default function TurnBattlePage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <PageHeader title="Batalha" subtitle="Nível máximo 50. Batalha por turnos como nos jogos: seu time contra o de um amigo (ou um aleatório), com o computador jogando pelo outro lado." />
-      <Link to="/amigos" className="inline-flex items-center gap-1 text-sm text-muted hover:text-text">
-        <Icon name="back" size={16} /> Amigos
+      <Link to="/batalha" className="inline-flex items-center gap-1 text-sm text-muted hover:text-text">
+        <Icon name="back" size={16} /> Centro de Batalha
       </Link>
       {!game || !hit ? (
         <Setup onStart={(battle, foeName) => setGame({ battle, foeName, key: 1 })} />

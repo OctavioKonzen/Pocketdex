@@ -69,7 +69,7 @@ function DraftList() {
   if (!user) return <Empty>Entre na sua conta para fazer drafts com os amigos.</Empty>
   const start = async (f) => {
     try {
-      navigate(`/amigos/draft/${await createDraft({ uid: user.uid, name: user.name }, f, size)}`)
+      navigate(`/batalha/draft/${await createDraft({ uid: user.uid, name: user.name }, f, size)}`)
     } catch (e) {
       setError(errorMessage(e))
     }
@@ -77,8 +77,8 @@ function DraftList() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <PageHeader title="Draft" subtitle="Você e um amigo escolhem Pokémon um de cada vez, sem repetir. Depois, batalhem com os times que saíram!" />
-      <Link to="/amigos" className="inline-flex items-center gap-1 text-sm text-muted hover:text-text">
-        <Icon name="back" size={16} /> Amigos
+      <Link to="/batalha" className="inline-flex items-center gap-1 text-sm text-muted hover:text-text">
+        <Icon name="back" size={16} /> Centro de Batalha
       </Link>
       <section className={CARD}>
         <div className="mb-2 font-bold">Novo draft</div>
@@ -121,7 +121,7 @@ function DraftList() {
               const myTurn = d.status !== 'done' && d.turn === user.uid
               return (
                 <li key={d.id}>
-                  <Link to={`/amigos/draft/${d.id}`} className="flex items-center gap-3 rounded-xl bg-surface p-3 hover:ring-2 hover:ring-sky-400">
+                  <Link to={`/batalha/draft/${d.id}`} className="flex items-center gap-3 rounded-xl bg-surface p-3 hover:ring-2 hover:ring-sky-400">
                     <div className="min-w-0 flex-1">
                       <div className="truncate font-semibold" data-no-translate>{`Com ${d.names?.[other] ?? '?'}`}</div>
                       <div className={`text-xs ${myTurn ? 'font-bold text-red-400' : 'text-muted'}`}>
@@ -173,10 +173,10 @@ function DraftRoom({ id }) {
     }
   }
   // Batalha por turnos com os times do draft (o computador joga pelo amigo).
-  const fight = () => navigate('/amigos/batalha', { state: { mine, theirs, foeName: draft.names?.[other] ?? '' } })
+  const fight = () => navigate('/batalha/computador', { state: { mine, theirs, foeName: draft.names?.[other] ?? '' } })
   return (
     <div className="mx-auto max-w-3xl space-y-5">
-      <Link to="/amigos/draft" className="inline-flex items-center gap-1 text-sm text-muted hover:text-text">
+      <Link to="/batalha/draft" className="inline-flex items-center gap-1 text-sm text-muted hover:text-text">
         <Icon name="back" size={16} /> Drafts
       </Link>
       <div className="text-2xl font-black">
@@ -209,7 +209,7 @@ function DraftRoom({ id }) {
         type="button"
         onClick={async () => {
           await deleteDraft(id).catch(() => {})
-          navigate('/amigos/draft')
+          navigate('/batalha/draft')
         }}
         className="cursor-pointer text-sm text-red-400 hover:underline"
       >

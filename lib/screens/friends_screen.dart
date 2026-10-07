@@ -17,10 +17,9 @@ import '../utils/responsive.dart';
 import '../utils/site_ui.dart';
 import '../widgets/account_avatar.dart';
 import '../widgets/conversation_list.dart';
-import 'draft_screen.dart';
+import 'battle_center_screen.dart';
 import 'online_battle_screen.dart';
 import 'quiz_screen.dart';
-import 'turn_battle_screen.dart';
 
 class FriendsScreen extends StatefulWidget {
   const FriendsScreen({super.key});
@@ -130,31 +129,13 @@ class _FriendsScreenState extends State<FriendsScreen> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: PillButton(
-                        label: '🎮 ${tr('Treinar contra computador')}',
-                        expand: true,
-                        gradient: const LinearGradient(colors: [Color(0xFFDC2626), Color(0xFF9333EA)]),
-                        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TurnBattleScreen())),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: PillButton(
-                        label: '🎯 ${tr('Draft')}',
-                        expand: true,
-                        gradient: const LinearGradient(colors: [Color(0xFFF59E0B), Color(0xFFEA580C)]),
-                        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DraftsScreen())),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                FilledButton.icon(
-                  icon: const Icon(Icons.public), label: const Text('Batalha online'),
-                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OnlineBattleScreen())),
+                // Os modos de batalha (computador, online e draft) ficam no menu Batalha.
+                PillButton(
+                  key: const ValueKey('friends-battle'),
+                  label: '⚔️ ${tr('Batalhar')}',
+                  expand: true,
+                  gradient: const LinearGradient(colors: [Color(0xFFDC2626), Color(0xFF9333EA)]),
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BattleCenterScreen())),
                 ),
                 const SizedBox(height: 14),
                 const OnlineBattleInvites(),

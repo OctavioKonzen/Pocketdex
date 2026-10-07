@@ -392,6 +392,11 @@ export default function App() {
                   <Route path="/enciclopedia" element={<EncyclopediaPage />} />
                   <Route path="/enciclopedia/:tab" element={<EncyclopediaPage />} />
                   <Route path="/batalha" element={<BattlePage />} />
+                  <Route path="/batalha/computador" element={<TurnBattlePage />} />
+                  <Route path="/batalha/online" element={<OnlineBattlePage />} />
+                  <Route path="/batalha/online/:id" element={<OnlineBattlePage />} />
+                  <Route path="/batalha/draft" element={<DraftPage />} />
+                  <Route path="/batalha/draft/:id" element={<DraftPage />} />
                   <Route path="/batalha/:tool" element={<BattlePage />} />
                   <Route path="/treino" element={<TrainingPage />} />
                   <Route path="/treino/:tool" element={<TrainingPage />} />
@@ -401,6 +406,7 @@ export default function App() {
                   <Route path="/amigos/chat/:uid" element={<ChatPage />} />
                   {/* As Trocas saíram (as conversas ficam em Amigos): link antigo vai para lá. */}
                   <Route path="/amigos/trocas" element={<Navigate to="/amigos" replace />} />
+                  {/* Endereços antigos dos modos de batalha (convites e links já enviados). */}
                   <Route path="/amigos/batalha" element={<TurnBattlePage />} />
                   <Route path="/amigos/online" element={<OnlineBattlePage />} />
                   <Route path="/amigos/online/:id" element={<OnlineBattlePage />} />

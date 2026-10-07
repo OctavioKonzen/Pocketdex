@@ -5463,6 +5463,71 @@
   "fr": "Tour",
   "es": "Turno"
  },
+ "Batalhar": {
+  "en": "Battle",
+  "fr": "Combattre",
+  "es": "Combatir"
+ },
+ "BATALHAR": {
+  "en": "BATTLE",
+  "fr": "COMBATTRE",
+  "es": "COMBATIR"
+ },
+ "Preparar o time": {
+  "en": "Prepare your team",
+  "fr": "Préparer l'équipe",
+  "es": "Preparar el equipo"
+ },
+ "PREPARAR O TIME": {
+  "en": "PREPARE YOUR TEAM",
+  "fr": "PRÉPARER L'ÉQUIPE",
+  "es": "PREPARAR EL EQUIPO"
+ },
+ "Consultar": {
+  "en": "Look up",
+  "fr": "Consulter",
+  "es": "Consultar"
+ },
+ "CONSULTAR": {
+  "en": "LOOK UP",
+  "fr": "CONSULTER",
+  "es": "CONSULTAR"
+ },
+ "Contra o computador": {
+  "en": "Against the computer",
+  "fr": "Contre l'ordinateur",
+  "es": "Contra la computadora"
+ },
+ "Online com amigos": {
+  "en": "Online with friends",
+  "fr": "En ligne avec des amis",
+  "es": "En línea con amigos"
+ },
+ "Individual, dupla ou tripla, com o seu time ou um aleatório": {
+  "en": "Single, double or triple, with your team or a random one",
+  "fr": "Simple, double ou triple, avec ton équipe ou une aléatoire",
+  "es": "Individual, doble o triple, con tu equipo o uno aleatorio"
+ },
+ "Convide amigos e batalhem ao vivo": {
+  "en": "Invite friends and battle live",
+  "fr": "Invite des amis et combattez en direct",
+  "es": "Invita a amigos y combatan en vivo"
+ },
+ "Você e um amigo escolhem Pokémon um de cada vez e batalham": {
+  "en": "You and a friend pick Pokémon one at a time and battle",
+  "fr": "Toi et un ami choisissez des Pokémon à tour de rôle et combattez",
+  "es": "Tú y un amigo eligen Pokémon por turnos y combaten"
+ },
+ "Batalhe e prepare o seu time.": {
+  "en": "Battle and prepare your team.",
+  "fr": "Combats et prépare ton équipe.",
+  "es": "Combate y prepara tu equipo."
+ },
+ "⚔️ Batalhar": {
+  "en": "⚔️ Battle",
+  "fr": "⚔️ Combattre",
+  "es": "⚔️ Combatir"
+ },
  "Formas alternativas": {
   "en": "Alternate forms",
   "fr": "Formes alternatives",

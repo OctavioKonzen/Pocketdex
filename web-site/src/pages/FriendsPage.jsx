@@ -90,22 +90,10 @@ export default function FriendsPage() {
     <div className="mx-auto max-w-2xl space-y-6">
       <PageHeader title="Amigos" subtitle="Adicione amigos pelo nome, compare recordes e mande desafios." />
 
-      <div className="grid grid-cols-2 gap-3">
-        <Link
-          to="/amigos/batalha"
-          className="rounded-2xl bg-gradient-to-r from-red-600 to-purple-600 px-4 py-3 text-center font-bold text-white shadow transition hover:scale-[1.02]"
-        >
-          🎮 Treinar contra computador
-        </Link>
-        <Link
-          to="/amigos/draft"
-          className="rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 px-4 py-3 text-center font-bold text-white shadow transition hover:scale-[1.02]"
-        >
-          🎯 Draft
-        </Link>
-      </div>
-
-      <Link to="/amigos/online" className="block rounded-2xl bg-sky-600 px-4 py-3 text-center font-bold text-white">⚔️ Batalha online com amigos</Link>
+      {/* Os modos de batalha (computador, online e draft) ficam no menu Batalha. */}
+      <Link to="/batalha" className="block rounded-2xl bg-gradient-to-r from-red-600 to-purple-600 px-4 py-3 text-center font-bold text-white shadow transition hover:scale-[1.02]">
+        ⚔️ Batalhar
+      </Link>
 
       <BattleInvites />
       <form onSubmit={add} className={CARD}>
@@ -253,7 +241,7 @@ export default function FriendsPage() {
                 <span className="font-black text-yellow-400">{`🏆 ${f.score}`}</span>
                 {!f.me && (
                   <div className="flex flex-wrap gap-2">
-                    <Link to={`/amigos/online?amigo=${f.uid}`} className="rounded-full bg-sky-600 px-3 py-1 text-xs font-bold text-white">Batalha</Link>
+                    <Link to={`/batalha/online?amigo=${f.uid}`} className="rounded-full bg-sky-600 px-3 py-1 text-xs font-bold text-white">Batalha</Link>
                     <Link to={`/jogo?amigo=${f.uid}`} className="rounded-full bg-violet-600 px-3 py-1 text-xs font-bold text-white">Quiz</Link>
                   </div>
                 )}
