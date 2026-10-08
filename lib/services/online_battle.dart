@@ -32,7 +32,9 @@ class OnlineBattles {
   static Future<String> invite(String friendUid, String friendName, Map<String, dynamic> team) async {
     return inviteGame([me, friendUid], 1, {me: AuthService.instance.user!.name ?? '', friendUid: friendName}, team);
   }
-  static Future<String> inviteGame(List<String> seats, int count, Map<String, String> names, Map<String, dynamic> team, {String npcDifficulty = 'normal'}) async {
+  static Future<String> inviteGame(List<String> seats, int count, Map<String, String> names, Map<String, dynamic> team,
+      {String npcDifficulty = 'normal', List<String> rules = const []}) async {
+    if (rules.contains('species') && repeatedSpecies(team)) throw StateError('Com a regra "sem Pokémon repetido", o time não pode repetir Pokémon.');
     final players = [me, ...seats.toSet().where((uid) => uid != me && !PartyBattle.isNpc(uid))];
     if (players.length < 2 || players.length > 6 || seats.length != count * 2 || seats[0] != me || players.any((uid) => seats.take(count).contains(uid) && seats.skip(count).contains(uid))) {
       throw StateError('Escolha os participantes de cada equipe, com pelo menos um amigo.');
@@ -49,6 +51,7 @@ class OnlineBattles {
       'names': names,
       'teams': {me: packTeam(team)}, 'status': 'pending',
       'seed': Random().nextInt(1 << 31), 'createdAt': FieldValue.serverTimestamp(), 'endedBy': null,
+      if (rules.isNotEmpty) 'rules': rules,
     });
     return ref.id;
   }
@@ -57,12 +60,82 @@ class OnlineBattles {
     await db.runTransaction((tx) async {
       final room = (await tx.get(ref)).data();
       if (room == null || room['status'] != 'pending' || (room['teams'] as Map).containsKey(me)) throw StateError('Este convite já foi respondido.');
+      if (((room['rules'] as List?) ?? const []).contains('species') && repeatedSpecies(team)) {
+        throw StateError('Com a regra "sem Pokémon repetido", o time não pode repetir Pokémon.');
+      }
       validateParticipantTeam(team, PartyBattle.seatsOf(room), me);
       final teams = {...room['teams'] as Map, me: packTeam(team)};
       tx.update(ref, {'teams': teams, 'status': (room['players'] as List).every(teams.containsKey) ? 'active' : 'pending'});
     });
   }
   static Future<void> close(String id) => rooms.doc(id).update({'status': 'closed', 'endedBy': me});
+  // ------------------------------------------- tempo, emotes e ranking (igual ao site)
+
+  /// Tempo para escolher a ação; depois disso o jogo escolhe por você.
+  static const turnSeconds = 90;
+  /// Sem jogar por esse tempo depois da sua ação: dá para reivindicar a vitória.
+  static const idle = Duration(minutes: 3);
+
+  /// O adversário sumiu na rodada [round] (você já jogou há 3 min): você vence.
+  static Future<void> claimTimeout(String id, int round, String other) =>
+      rooms.doc(id).update({'status': 'closed', 'endedBy': other, 'timeout': round});
+
+  static const emotes = ['👍', '😂', '😮', '😡', '🔥', 'GG'];
+  static Future<void> sendEmote(String id, String e) =>
+      rooms.doc(id).collection('emotes').add({'uid': me, 'e': e, 'at': FieldValue.serverTimestamp()});
+  static Stream<List<Map<String, dynamic>>> watchEmotes(String id) => rooms
+      .doc(id)
+      .collection('emotes')
+      .orderBy('at', descending: true)
+      .limit(6)
+      .snapshots()
+      .map((s) => [for (final d in s.docs) {'id': d.id, ...d.data()}]);
+
+  /// Temporada do ranking: o mês ("AAAA-MM").
+  static String currentSeason([DateTime? now]) {
+    final d = now ?? DateTime.now();
+    return '${d.year}-${'${d.month}'.padLeft(2, '0')}';
+  }
+
+  /// Elo (K = 32): os pontos depois da partida, no máximo ±40.
+  static int eloAfter(int rating, int opponent, bool won) {
+    final expected = 1 / (1 + pow(10, (opponent - rating) / 400));
+    final change = (32 * ((won ? 1 : 0) - expected)).round().clamp(-40, 40);
+    return rating + change;
+  }
+
+  /// Depois de uma partida da fila: atualiza o seu ranking (uma vez por sala). Devolve a mudança.
+  static Future<int?> rateMatch(String roomId, String opponent, bool won, {int? avatar}) async {
+    final season = currentSeason();
+    final mine = await db.doc('ratings/$me').get();
+    final theirs = await db.doc('ratings/$opponent').get();
+    if (mine.data()?['lastRoom'] == roomId) return null;
+    final old = mine.data()?['season'] == season ? mine.data() : null;
+    final base = (old?['rating'] as num?)?.toInt() ?? 1000;
+    final opp = theirs.data()?['season'] == season ? (theirs.data()!['rating'] as num).toInt() : 1000;
+    final rating = eloAfter(base, opp, won);
+    await db.doc('ratings/$me').set({
+      'name': AuthService.instance.user!.name ?? '', 'avatar': avatar, 'rating': rating,
+      'wins': ((old?['wins'] as num?)?.toInt() ?? 0) + (won ? 1 : 0), 'losses': ((old?['losses'] as num?)?.toInt() ?? 0) + (won ? 0 : 1),
+      'season': season, 'lastRoom': roomId, 'updatedAt': FieldValue.serverTimestamp(),
+    });
+    return rating - base;
+  }
+
+  /// Os melhores da temporada (sem índice composto: pega os maiores e filtra aqui).
+  static Stream<List<Map<String, dynamic>>> watchLeaderboard(String season) => db
+      .collection('ratings')
+      .orderBy('rating', descending: true)
+      .limit(100)
+      .snapshots()
+      .map((s) => [for (final d in s.docs) if (d.data()['season'] == season) {'uid': d.id, ...d.data()}].take(20).toList());
+
+  /// Regras opcionais do convite: Pokémon repetido no time.
+  static bool repeatedSpecies(Map<String, dynamic> team) {
+    final ids = [for (final id in (team['pokemon'] as List? ?? const [])) if (id != null) id];
+    return ids.length != ids.toSet().length;
+  }
+
   static void validateParticipantTeam(Map<String, dynamic> team, List<String> seats, String uid) {
     final required = seats.where((p) => p == uid).length;
     final available = (team['pokemon'] as List).take(6).where((id) => id is int && id > 0).length;

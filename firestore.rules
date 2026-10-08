@@ -221,8 +221,10 @@ service cloud.firestore {
         let n = d.names;
         let npc = d.npcTeams;
         return d.keys().hasAll(['protocol', 'players', 'names', 'teams', 'status', 'seed', 'createdAt', 'endedBy', 'mode', 'seats', 'npcTeams'])
-          && d.keys().hasOnly(['protocol', 'players', 'names', 'teams', 'status', 'seed', 'createdAt', 'endedBy', 'mode', 'seats', 'npcTeams', 'match'])
+          && d.keys().hasOnly(['protocol', 'players', 'names', 'teams', 'status', 'seed', 'createdAt', 'endedBy', 'mode', 'seats', 'npcTeams', 'match', 'rules'])
           && (!('match' in d) || d.match == true)
+          // Regras opcionais do convite: sem Pokémon repetido, Sleep Clause.
+          && (!('rules' in d) || d.rules is list && d.rules.size() <= 2 && d.rules.hasOnly(['species', 'sleep']))
           && d.protocol == 5 && d.mode in ['singles', 'doubles', 'triples']
           && p is list && p.size() >= 2 && p.size() <= 6 && p.toSet().size() == p.size()
           && n is map && n.keys().toSet() == p.toSet()
@@ -308,7 +310,29 @@ service cloud.firestore {
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'endedBy'])
             && request.resource.data.status == 'closed' && request.resource.data.endedBy == request.auth.uid)
           || newAccept(resource.data, request.resource.data)
+          // Adversário sumiu: 3 min sem jogar a rodada em que você já jogou.
+          // Quem reclama vence (endedBy = quem sumiu, como numa desistência).
+          || (resource.data.status == 'active' && resource.data.protocol == 5 && resource.data.players.size() == 2
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'endedBy', 'timeout'])
+            && request.resource.data.status == 'closed' && request.resource.data.endedBy in resource.data.players
+            && request.resource.data.endedBy != request.auth.uid
+            && request.resource.data.timeout is int && request.resource.data.timeout >= 0 && request.resource.data.timeout < 500
+            && timedOut(request.resource.data.timeout, request.resource.data.endedBy))
         );
+      function timedOut(round, other) {
+        let mine = get(/databases/$(database)/documents/onlineBattles/$(battle)/actions/$(string(round) + '_' + request.auth.uid)).data;
+        return mine.at + duration.value(3, 'm') < request.time
+          && !exists(/databases/$(database)/documents/onlineBattles/$(battle)/actions/$(string(round) + '_' + other));
+      }
+      // Emotes rápidos durante a partida (só os da lista).
+      match /emotes/{emote} {
+        function room() { return get(/databases/$(database)/documents/onlineBattles/$(battle)).data; }
+        allow read: if member(room());
+        allow create: if member(room()) && request.resource.data.keys().hasOnly(['uid', 'e', 'at'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.e in ['👍', '😂', '😮', '😡', '🔥', 'GG']
+          && request.resource.data.at == request.time;
+      }
       match /actions/{action} {
         function room() { return get(/databases/$(database)/documents/onlineBattles/$(battle)).data; }
         function validAction(d) {
@@ -400,6 +424,30 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['tokens', 'lang'])
         && request.resource.data.tokens is list && request.resource.data.tokens.size() <= 10
         && (!('lang' in request.resource.data) || request.resource.data.lang in ['pt', 'en', 'fr', 'es']);
+    }
+
+    // Ranking das batalhas online (adversário aleatório), por temporada (mês):
+    // cada um atualiza o próprio depois de uma partida da fila (uma vez por
+    // sala), mudando no máximo 40 pontos; temporada nova começa em 1000.
+    match /ratings/{uid} {
+      function validRating(d, old) {
+        let fresh = old == null || old.season != d.season;
+        let base = fresh ? 1000 : old.rating;
+        let games = fresh ? 0 : old.wins + old.losses;
+        let r = get(/databases/$(database)/documents/onlineBattles/$(d.lastRoom)).data;
+        return d.keys().hasOnly(['name', 'avatar', 'rating', 'wins', 'losses', 'season', 'lastRoom', 'updatedAt'])
+          && d.name == accountName(uid) && (d.avatar == null || d.avatar is int)
+          && d.rating is int && d.rating >= base - 40 && d.rating <= base + 40
+          && d.wins is int && d.losses is int && d.wins >= 0 && d.losses >= 0 && d.wins + d.losses == games + 1
+          && (fresh || d.wins >= old.wins && d.losses >= old.losses && old.lastRoom != d.lastRoom)
+          && d.season is string && d.season.matches('^[0-9]{4}-[0-9]{2}$')
+          && d.lastRoom is string && d.updatedAt == request.time
+          && r.match == true && uid in r.players;
+      }
+      allow read: if request.auth != null;
+      allow create: if signedIn(uid) && validRating(request.resource.data, null);
+      allow update: if signedIn(uid) && validRating(request.resource.data, resource.data);
+      allow delete: if signedIn(uid);
     }
 
     // Ranking geral do Ranked: todos os logados veem.

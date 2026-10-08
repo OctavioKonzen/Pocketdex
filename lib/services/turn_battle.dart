@@ -329,7 +329,7 @@ const battleItems = [
 BattleItem? _itemOf(String slug) => battleItems.where((i) => i.slug == slug).firstOrNull;
 
 class TurnBattle {
-  TurnBattle(List<BattleMon> mine, List<BattleMon> theirs, this.random, {this.mode = 'singles', this.controllers}) : teams = [mine, theirs] {
+  TurnBattle(List<BattleMon> mine, List<BattleMon> theirs, this.random, {this.mode = 'singles', this.controllers, this.rules = const []}) : teams = [mine, theirs] {
     for (final mon in [...mine, ...theirs]) {
       mon
         ..restore()
@@ -345,7 +345,7 @@ class TurnBattle {
       final created = BattleSimulator.call('create', [{
         'teams': [for (final team in teams) [for (final mon in team) _simMon(mon)]],
         'seed': List.generate(4, (_) => (random() * 65536).floor()),
-        'mode': mode, 'controllers': controllers,
+        'mode': mode, 'controllers': controllers, 'rules': rules,
       }]);
       _simHandle = created['handle'] as int;
       _opening = _simSync(created);
@@ -356,6 +356,9 @@ class TurnBattle {
 
   int? _simHandle;
   final String mode;
+
+  /// Regras opcionais do convite online (Sleep Clause no motor). Igual ao site.
+  final List<String> rules;
   final List<List<String>>? controllers;
   Map<String, dynamic>? get simulatorState => _simState;
   List<Map<String, dynamic>> recommend(int side, [Map<String, dynamic>? options]) =>
@@ -508,7 +511,7 @@ class TurnBattle {
   }
 
   // Visão da partida sem restaurar HP, formas ou status.
-  TurnBattle._view(this.teams, this.random) : mode = 'singles', controllers = null;
+  TurnBattle._view(this.teams, this.random) : mode = 'singles', controllers = null, rules = const [];
   TurnBattle viewFor(int side) {
     final order = [side, 1 - side];
     final view = TurnBattle._view([for (final s in order) teams[s]], random);

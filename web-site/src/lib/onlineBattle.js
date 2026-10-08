@@ -39,6 +39,7 @@ export async function inviteBattle(friend, team, layout = null) {
     names: layout?.names || { [me.uid]: me.name, [friend.uid]: friend.name },
     teams: { [me.uid]: packTeam(team) }, status: 'pending',
     seed: Math.floor(Math.random() * 2 ** 31), createdAt: serverTimestamp(), endedBy: null,
+    ...(layout?.rules?.length ? { rules: layout.rules } : {}),
   })
   return ref.id
 }
@@ -89,6 +90,75 @@ export async function submitAction(id, round, action) {
     tx.set(ref, { uid, round, kind:'team',choices, at: serverTimestamp() })
   })
 }
+// ------------------------------------------------- tempo, emotes e ranking
+
+/** Tempo para escolher a ação; depois disso o jogo escolhe por você. */
+export const TURN_SECONDS = 90
+/** Sem jogar por esse tempo depois da sua ação: dá para reivindicar a vitória. */
+export const IDLE_MS = 3 * 60 * 1000
+
+/** O adversário sumiu na rodada `round` (você já jogou há 3 min): você vence. */
+export async function claimTimeout(id, round, other) {
+  const { db, doc, updateDoc } = await firebaseServices()
+  await updateDoc(doc(db, 'onlineBattles', id), { status: 'closed', endedBy: other, timeout: round })
+}
+
+export const EMOTES = ['👍', '😂', '😮', '😡', '🔥', 'GG']
+export async function sendEmote(id, e) {
+  const { db, collection, addDoc, serverTimestamp } = await firebaseServices()
+  await addDoc(collection(db, 'onlineBattles', id, 'emotes'), { uid: useAuth.getState().user.uid, e, at: serverTimestamp() })
+}
+/** O último emote de cada jogador. */
+export async function watchEmotes(id, next, error) {
+  const { db, collection, onSnapshot, query, orderBy, limit } = await firebaseServices()
+  return onSnapshot(query(collection(db, 'onlineBattles', id, 'emotes'), orderBy('at', 'desc'), limit(6)),
+    (s) => next(s.docs.map((d) => ({ id: d.id, ...d.data() }))), error)
+}
+
+/** Temporada do ranking: o mês ("AAAA-MM"). */
+export const currentSeason = (now = new Date()) => `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+
+/** Elo (K = 32): os pontos depois da partida, no máximo ±40. */
+export function eloAfter(rating, opponent, won) {
+  const expected = 1 / (1 + 10 ** ((opponent - rating) / 400))
+  const change = Math.round(32 * ((won ? 1 : 0) - expected))
+  return rating + Math.max(-40, Math.min(40, change))
+}
+
+/** Depois de uma partida da fila: atualiza o seu ranking (uma vez por sala). */
+export async function rateMatch(roomId, opponentUid, won) {
+  const { db, doc, getDoc, setDoc, serverTimestamp } = await firebaseServices()
+  const me = useAuth.getState().user
+  const season = currentSeason()
+  const [mine, theirs] = await Promise.all([getDoc(doc(db, 'ratings', me.uid)), getDoc(doc(db, 'ratings', opponentUid))])
+  const old = mine.exists() && mine.data().season === season ? mine.data() : null
+  if (mine.exists() && mine.data().lastRoom === roomId) return null
+  const base = old?.rating ?? 1000
+  const opp = theirs.exists() && theirs.data().season === season ? theirs.data().rating : 1000
+  const rating = eloAfter(base, opp, won)
+  const { avatar } = (await import('./store')).useStore.getState()
+  await setDoc(doc(db, 'ratings', me.uid), {
+    name: me.name, avatar: Number.isInteger(avatar) ? avatar : null, rating,
+    wins: (old?.wins ?? 0) + (won ? 1 : 0), losses: (old?.losses ?? 0) + (won ? 0 : 1),
+    season, lastRoom: roomId, updatedAt: serverTimestamp(),
+  })
+  return rating - base
+}
+
+/** Os melhores da temporada. */
+export async function watchLeaderboard(season, next, error) {
+  // Sem índice composto: pega os maiores e filtra a temporada aqui.
+  const { db, collection, onSnapshot, query, orderBy, limit } = await firebaseServices()
+  return onSnapshot(query(collection(db, 'ratings'), orderBy('rating', 'desc'), limit(100)),
+    (s) => next(s.docs.map((d) => ({ uid: d.id, ...d.data() })).filter((r) => r.season === season).slice(0, 20)), error)
+}
+
+/** Regras opcionais do convite: Pokémon repetido no time. */
+export function repeatedSpecies(team) {
+  const ids = (team.pokemon ?? []).filter((id) => id != null)
+  return ids.length !== new Set(ids).size
+}
+
 export function pairedActions(actions, players) {
   const rounds = new Map()
   for (const a of actions) {
