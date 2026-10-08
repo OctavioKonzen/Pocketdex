@@ -90,6 +90,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
   GymLeader? get _foeLeader {
     final ch = _challenge;
     if (ch == null) return null;
+    if (ch['kind'] == 'factory') return null;
     if (ch['kind'] == 'league') {
       final region = _regions.where((r) => r.region == ch['region']).firstOrNull;
       final order = region == null ? const <GymLeader>[] : GymChallenge.leagueOrder(region);
@@ -105,6 +106,8 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
   String? get _streak => _friend == _tower ? 'tower' : null;
   bool get _isFactory => _friend == _factory;
   FactoryData? _factoryData;
+  // Battle Factory: a posição de cada um da batalha no time da corrida (para ler o HP no fim).
+  List<int> _factoryOrder = const [];
   /// Na sequência, a partir da 4ª batalha o computador usa sets competitivos.
   static String _streakDifficulty(int wins, String difficulty) => wins >= 3 ? 'hard' : difficulty;
   List<({String region, List<GymLeader> leaders})> _regions = const [];
@@ -289,15 +292,17 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
     setState(() => _busy = true);
     try {
       _factoryData ??= await FactoryData.load();
-      final battle = await factoryBattle(run);
+      final (battle, order) = await factoryBattle(run);
+      final foe = factoryFoe(run);
       if (!mounted) return;
       final old = _battle;
       setState(() {
         _busy = false;
         _battle = battle;
-        _foeName = '';
-        _foeTrainer = null;
-        _challenge = {'kind': 'factory', 'wild': run['encounter']?['kind'] != 'trainer'};
+        _factoryOrder = order;
+        _foeName = foe.foeName;
+        _foeTrainer = foe.foeTrainer;
+        _challenge = foe.challenge;
         _endNote = '';
         _next = null;
         _key++;
@@ -322,8 +327,10 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
       String note;
       if (_battle?.winner == 0) {
         final data = _factoryData ??= await FactoryData.load();
-        saveFactory({...factory, 'run': FactoryRun.winFloor(run, data)});
-        note = '🏆 ${tr('Andar {0} vencido!').replaceAll('{0}', '$floor')}';
+        final after = factoryAfter(_battle!, _factoryOrder, run);
+        saveFactory({...factory, 'run': FactoryRun.winFloor(run, data, hp: after.hp, bag: after.bag)});
+        final boss = run['encounter']['boss'] as Map?;
+        note = '${boss != null ? '🏅 ${tr('Você venceu {0}!').replaceAll('{0}', '${boss['name']}')} ' : '🏆 '}${tr('Andar {0} vencido!').replaceAll('{0}', '$floor')}';
       } else {
         final after = FactoryRun.endRun(factory, run);
         saveFactory(after);
@@ -418,7 +425,9 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
                     foeName: _foeName,
                     foeTrainer: _foeTrainer,
                     intro: true,
-                    music: GymChallenge.musicOf(_foeLeader),
+                    music: _challenge?['boss'] is Map
+                        ? GymChallenge.musicFor('${_challenge!['boss']['name']}', '${_challenge!['boss']['kind']}', '${_challenge!['boss']['region']}')
+                        : GymChallenge.musicOf(_foeLeader),
                     endNote: _endNote,
                     next: _next,
                     wild: _challenge?['wild'] == true,
@@ -1655,6 +1664,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                   TextButton(onPressed: () => setState(() => _menu = 'main'), child: const Text('Voltar')),
                 ]),
                 for (final it in battleItems)
+                  if (it.count > 0 || (_b.bags[0][it.slug] ?? 0) > 0)
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     enabled: [for (var i = 0; i < _b.teams[0].length; i++) i].any((i) => _b.canUseItem(0, it.slug, i)),
@@ -1666,7 +1676,13 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                         width: 40, height: 40, filterQuality: FilterQuality.none, errorBuilder: (_, __, ___) => const SizedBox(width: 40)),
                     // Nome do item como no jogo (não traduz).
                     title: m.Text(it.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text(it.revive ? tr('Revive com metade do HP') : tr('Recupera {0} de HP').replaceAll('{0}', '${it.heal}')),
+                    subtitle: Text(it.revive
+                        ? tr('Revive com metade do HP')
+                        : it.heal >= 9999
+                            ? tr('Recupera todo o HP')
+                            : _b.healPct
+                                ? tr('Recupera {0}% do HP').replaceAll('{0}', '${((const {'potion': 0.25, 'super-potion': 0.5, 'hyper-potion': 0.75}[it.slug] ?? 0) * 100).round()}')
+                                : tr('Recupera {0} de HP').replaceAll('{0}', '${it.heal}')),
                     trailing: m.Text('×${_b.bags[0][it.slug] ?? 0}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
                   ),
               ],

@@ -6937,5 +6937,300 @@
   "en": "This form must hold",
   "fr": "Cette forme doit tenir",
   "es": "Esta forma necesita llevar"
+ },
+ "+1 nível": {
+  "en": "+1 level",
+  "fr": "+1 niveau",
+  "es": "+1 nivel"
+ },
+ "+3 níveis para o time todo": {
+  "en": "+3 levels for the whole team",
+  "fr": "+3 niveaux pour toute l’équipe",
+  "es": "+3 niveles para todo el equipo"
+ },
+ "+5 Poké Balls": {
+  "en": "+5 Poké Balls",
+  "fr": "+5 Poké Balls",
+  "es": "+5 Poké Balls"
+ },
+ "+50% de XP por Pokémon derrotado": {
+  "en": "+50% XP per defeated Pokémon",
+  "fr": "+50 % d’XP par Pokémon vaincu",
+  "es": "+50% de EXP por Pokémon derrotado"
+ },
+ "+50% de dinheiro por Pokémon derrotado": {
+  "en": "+50% money per defeated Pokémon",
+  "fr": "+50 % d’argent par Pokémon vaincu",
+  "es": "+50% de dinero por Pokémon derrotado"
+ },
+ "+6% de Ataque e Ataque Especial para o time todo": {
+  "en": "+6% Attack and Special Attack for the whole team",
+  "fr": "+6 % d’Attaque et d’Attaque Spéciale pour toute l’équipe",
+  "es": "+6% de Ataque y Ataque Especial para todo el equipo"
+ },
+ "+6% de Defesa e Defesa Especial para o time todo": {
+  "en": "+6% Defense and Special Defense for the whole team",
+  "fr": "+6 % de Défense et de Défense Spéciale pour toute l’équipe",
+  "es": "+6% de Defensa y Defensa Especial para todo el equipo"
+ },
+ "+6% de Velocidade para o time todo": {
+  "en": "+6% Speed for the whole team",
+  "fr": "+6 % de Vitesse pour toute l’équipe",
+  "es": "+6% de Velocidad para todo el equipo"
+ },
+ "+8% de HP para o time todo": {
+  "en": "+8% HP for the whole team",
+  "fr": "+8 % de PV pour toute l’équipe",
+  "es": "+8% de PS para todo el equipo"
+ },
+ "+{0} EVs em {1}, sem limite": {
+  "en": "+{0} EVs in {1}, no limit",
+  "fr": "+{0} EV en {1}, sans limite",
+  "es": "+{0} EV en {1}, sin límite"
+ },
+ "+{0} IVs em todos os atributos, sem limite": {
+  "en": "+{0} IVs in every stat, no limit",
+  "fr": "+{0} IV dans toutes les stats, sans limite",
+  "es": "+{0} IV en todas las estadísticas, sin límite"
+ },
+ "A Enfermeira Joy apareceu e curou o time todo!": {
+  "en": "Nurse Joy showed up and healed the whole team!",
+  "fr": "L’Infirmière Joëlle est apparue et a soigné toute l’équipe !",
+  "es": "¡La Enfermera Joy apareció y curó a todo el equipo!"
+ },
+ "A corrida acabou no andar {0}: +{1} moedas. Recorde: andar {2}.": {
+  "en": "The run ended on floor {0}: +{1} coins. Record: floor {2}.",
+  "fr": "La partie s’est terminée à l’étage {0} : +{1} pièces. Record : étage {2}.",
+  "es": "La partida terminó en el piso {0}: +{1} monedas. Récord: piso {2}."
+ },
+ "Andar vencido!": {
+  "en": "Floor cleared!",
+  "fr": "Étage terminé !",
+  "es": "¡Piso superado!"
+ },
+ "Andar {0} vencido!": {
+  "en": "Floor {0} cleared!",
+  "fr": "Étage {0} terminé !",
+  "es": "¡Piso {0} superado!"
+ },
+ "Bem-vindo! Do que você precisa?": {
+  "en": "Welcome! What do you need?",
+  "fr": "Bienvenue ! De quoi avez-vous besoin ?",
+  "es": "¡Bienvenido! ¿Qué necesitas?"
+ },
+ "Buscar Pokémon": {
+  "en": "Search Pokémon",
+  "fr": "Chercher un Pokémon",
+  "es": "Buscar Pokémon"
+ },
+ "Capturar": {
+  "en": "Catch",
+  "fr": "Capturer",
+  "es": "Capturar"
+ },
+ "Capturar {0} (Nv. {1})?": {
+  "en": "Catch {0} (Lv. {1})?",
+  "fr": "Capturer {0} (N. {1}) ?",
+  "es": "¿Capturar a {0} (Nv. {1})?"
+ },
+ "Cartas": {
+  "en": "Cards",
+  "fr": "Cartes",
+  "es": "Cartas"
+ },
+ "Começar a corrida": {
+  "en": "Start the run",
+  "fr": "Commencer la partie",
+  "es": "Empezar la partida"
+ },
+ "Comprar": {
+  "en": "Buy",
+  "fr": "Acheter",
+  "es": "Comprar"
+ },
+ "Comprar Pokémon com moedas": {
+  "en": "Buy Pokémon with coins",
+  "fr": "Acheter des Pokémon avec des pièces",
+  "es": "Comprar Pokémon con monedas"
+ },
+ "Corrida em andamento: andar {0}": {
+  "en": "Run in progress: floor {0}",
+  "fr": "Partie en cours : étage {0}",
+  "es": "Partida en curso: piso {0}"
+ },
+ "Cura o time todo e +1 Max Potion": {
+  "en": "Heals the whole team and +1 Max Potion",
+  "fr": "Soigne toute l’équipe et +1 Max Potion",
+  "es": "Cura a todo el equipo y +1 Max Potion"
+ },
+ "Deixar ir": {
+  "en": "Let it go",
+  "fr": "Le laisser partir",
+  "es": "Dejarlo ir"
+ },
+ "Desistir (recebe as moedas)": {
+  "en": "Give up (get the coins)",
+  "fr": "Abandonner (recevoir les pièces)",
+  "es": "Rendirse (recibe las monedas)"
+ },
+ "Escolha o seu inicial": {
+  "en": "Choose your starter",
+  "fr": "Choisissez votre starter",
+  "es": "Elige tu inicial"
+ },
+ "Escolha uma carta de bônus": {
+  "en": "Choose a bonus card",
+  "fr": "Choisissez une carte bonus",
+  "es": "Elige una carta de bonificación"
+ },
+ "Inicial shiny": {
+  "en": "Shiny starter",
+  "fr": "Starter chromatique",
+  "es": "Inicial variocolor"
+ },
+ "Itens segurados": {
+  "en": "Held items",
+  "fr": "Objets tenus",
+  "es": "Objetos equipados"
+ },
+ "Loja 20% mais barata": {
+  "en": "Shop 20% cheaper",
+  "fr": "Boutique 20 % moins chère",
+  "es": "Tienda un 20% más barata"
+ },
+ "Lutar no andar {0}": {
+  "en": "Fight on floor {0}",
+  "fr": "Combattre à l’étage {0}",
+  "es": "Luchar en el piso {0}"
+ },
+ "Líder de ginásio": {
+  "en": "Gym Leader",
+  "fr": "Champion d’Arène",
+  "es": "Líder de gimnasio"
+ },
+ "O principal tem o efeito de verdade; os outros dão só uma porcentagem pequena no atributo. Toque num extra para ele virar o principal.": {
+  "en": "The main item has its real effect; the others only give a small percentage to the stat. Tap an extra to make it the main one.",
+  "fr": "L’objet principal a son vrai effet ; les autres ne donnent qu’un petit pourcentage à la stat. Touchez un extra pour en faire l’objet principal.",
+  "es": "El principal tiene su efecto real; los demás solo dan un pequeño porcentaje a la estadística. Toca un extra para que sea el principal."
+ },
+ "O time todo está desmaiado: use um Revive ou desista.": {
+  "en": "The whole team has fainted: use a Revive or give up.",
+  "fr": "Toute l’équipe est K.O. : utilisez un Revive ou abandonnez.",
+  "es": "Todo el equipo está debilitado: usa un Revive o ríndete."
+ },
+ "Os mais fortes custam mais. Comprado, ele aparece entre os iniciais (sempre no nível 5).": {
+  "en": "Stronger ones cost more. Once bought, it shows up among the starters (always at level 5).",
+  "fr": "Les plus forts coûtent plus cher. Acheté, il apparaît parmi les starters (toujours au niveau 5).",
+  "es": "Los más fuertes cuestan más. Una vez comprado, aparece entre los iniciales (siempre al nivel 5)."
+ },
+ "Para capturar os selvagens": {
+  "en": "To catch wild Pokémon",
+  "fr": "Pour capturer les Pokémon sauvages",
+  "es": "Para capturar a los salvajes"
+ },
+ "Para quem é a compra (Poké Ball e itens da Bolsa vão para a Bolsa):": {
+  "en": "Who is the purchase for (Poké Balls and Bag items go to the Bag):",
+  "fr": "Pour qui est l’achat (Poké Balls et objets du Sac vont dans le Sac) :",
+  "es": "Para quién es la compra (las Poké Balls y los objetos de la Mochila van a la Mochila):"
+ },
+ "Próximo andar ({0})": {
+  "en": "Next floor ({0})",
+  "fr": "Étage suivant ({0})",
+  "es": "Siguiente piso ({0})"
+ },
+ "Próximo chefe (andar {0}):": {
+  "en": "Next boss (floor {0}):",
+  "fr": "Prochain boss (étage {0}) :",
+  "es": "Próximo jefe (piso {0}):"
+ },
+ "Recorde: andar {0}": {
+  "en": "Record: floor {0}",
+  "fr": "Record : étage {0}",
+  "es": "Récord: piso {0}"
+ },
+ "Recupera todo o HP": {
+  "en": "Restores all HP",
+  "fr": "Restaure tous les PV",
+  "es": "Restaura todos los PS"
+ },
+ "Recupera {0}% do HP": {
+  "en": "Restores {0}% of HP",
+  "fr": "Restaure {0} % des PV",
+  "es": "Restaura el {0}% de los PS"
+ },
+ "Rival": {
+  "en": "Rival",
+  "fr": "Rival",
+  "es": "Rival"
+ },
+ "Segura o item; se já tem um, vira extra ({0})": {
+  "en": "Holds the item; if it already has one, it becomes an extra ({0})",
+  "fr": "Tient l’objet ; s’il en a déjà un, il devient un extra ({0})",
+  "es": "Lleva el objeto; si ya tiene uno, se vuelve extra ({0})"
+ },
+ "Sem Poké Balls: compre mais na loja.": {
+  "en": "No Poké Balls: buy more at the shop.",
+  "fr": "Plus de Poké Balls : achetez-en à la boutique.",
+  "es": "Sin Poké Balls: compra más en la tienda."
+ },
+ "Shiny tem +10% em todos os atributos. Capture um inicial shiny na corrida para liberar o shiny dele, ou transforme com moedas (bem caro).": {
+  "en": "Shiny gets +10% to every stat. Catch a shiny starter during a run to unlock its shiny, or transform it with coins (very expensive).",
+  "fr": "Un chromatique a +10 % dans toutes les stats. Capturez un starter chromatique pendant une partie pour débloquer sa version chromatique, ou transformez-le avec des pièces (très cher).",
+  "es": "Un variocolor tiene +10% en todas las estadísticas. Captura un inicial variocolor en la partida para desbloquear su variocolor, o transfórmalo con monedas (muy caro)."
+ },
+ "Time cheio: escolha quem sai.": {
+  "en": "Team full: choose who leaves.",
+  "fr": "Équipe complète : choisissez qui part.",
+  "es": "Equipo lleno: elige quién sale."
+ },
+ "Um roguelike sem fim: escolha um inicial no nível 5 e suba andares contra Pokémon selvagens (capture com Poké Ball: você começa com 5), treinadores e lendários. A cada 10 andares vem um chefe, na ordem da história de um jogo sorteado: líderes de ginásio, rival e vilões (com times cada vez maiores), a Elite Four e o Campeão. O time não é curado entre os andares (só com a Bolsa, a loja ou, com 5% de chance, a Enfermeira Joy). Sem limite de nível, IVs, EVs ou itens. Perdeu: a pontuação vira moedas para comprar Pokémon e começar com eles.": {
+  "en": "An endless roguelike: pick a starter at level 5 and climb floors against wild Pokémon (catch them with Poké Balls: you start with 5), trainers and legendaries. Every 10 floors there is a boss, following the story of a random game: Gym Leaders, the rival and villains (with ever bigger teams), the Elite Four and the Champion. Your team is not healed between floors (only with the Bag, the shop or, with a 5% chance, Nurse Joy). No limit on level, IVs, EVs or items. Lost: your score becomes coins to buy Pokémon and start with them.",
+  "fr": "Un roguelike sans fin : choisissez un starter au niveau 5 et montez les étages contre des Pokémon sauvages (capturez-les avec des Poké Balls : vous commencez avec 5), des dresseurs et des légendaires. Tous les 10 étages, un boss, dans l’ordre de l’histoire d’un jeu tiré au sort : Champions d’Arène, le rival et les méchants (avec des équipes de plus en plus grandes), le Conseil 4 et le Maître. L’équipe n’est pas soignée entre les étages (seulement avec le Sac, la boutique ou, avec 5 % de chance, l’Infirmière Joëlle). Pas de limite de niveau, d’IV, d’EV ou d’objets. Perdu : le score devient des pièces pour acheter des Pokémon et commencer avec eux.",
+  "es": "Un roguelike sin fin: elige un inicial al nivel 5 y sube pisos contra Pokémon salvajes (captúralos con Poké Balls: empiezas con 5), entrenadores y legendarios. Cada 10 pisos llega un jefe, en el orden de la historia de un juego al azar: líderes de gimnasio, el rival y los villanos (con equipos cada vez más grandes), el Alto Mando y el Campeón. El equipo no se cura entre pisos (solo con la Mochila, la tienda o, con un 5% de probabilidad, la Enfermera Joy). Sin límite de nivel, IV, EV ni objetos. Si pierdes: la puntuación se convierte en monedas para comprar Pokémon y empezar con ellos."
+ },
+ "Um {0} selvagem apareceu!": {
+  "en": "A wild {0} appeared!",
+  "fr": "Un {0} sauvage apparaît !",
+  "es": "¡Un {0} salvaje apareció!"
+ },
+ "Usar a Bolsa": {
+  "en": "Use the Bag",
+  "fr": "Utiliser le Sac",
+  "es": "Usar la Mochila"
+ },
+ "Vilão": {
+  "en": "Villain",
+  "fr": "Méchant",
+  "es": "Villano"
+ },
+ "Você venceu {0}!": {
+  "en": "You defeated {0}!",
+  "fr": "Vous avez battu {0} !",
+  "es": "¡Venciste a {0}!"
+ },
+ "evoluiu!": {
+  "en": "evolved!",
+  "fr": "a évolué !",
+  "es": "¡evolucionó!"
+ },
+ "moedas": {
+  "en": "coins",
+  "fr": "pièces",
+  "es": "monedas"
+ },
+ "{0} shiny liberado para começar as próximas corridas!": {
+  "en": "Shiny {0} unlocked for your next runs!",
+  "fr": "{0} chromatique débloqué pour les prochaines parties !",
+  "es": "¡{0} variocolor desbloqueado para las próximas partidas!"
+ },
+ "É shiny! (+10% em todos os atributos)": {
+  "en": "It's shiny! (+10% to every stat)",
+  "fr": "Il est chromatique ! (+10 % dans toutes les stats)",
+  "es": "¡Es variocolor! (+10% en todas las estadísticas)"
+ },
+ "Última corrida: andar {0}, +{1} moedas.": {
+  "en": "Last run: floor {0}, +{1} coins.",
+  "fr": "Dernière partie : étage {0}, +{1} pièces.",
+  "es": "Última partida: piso {0}, +{1} monedas."
  }
 }

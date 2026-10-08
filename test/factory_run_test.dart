@@ -20,80 +20,132 @@ void main() {
     expect(FactoryRun.nextRandom(s1).$1, closeTo(0.002735721180215478, 1e-12));
   });
 
-  test('começa com um inicial grátis no nível 5; a mesma semente dá a mesma corrida', () {
+  test('começa com um inicial grátis no nível 5, 5 Poké Balls e a Bolsa; a mesma semente dá a mesma corrida', () {
     final f = FactoryRun.empty();
     expect(FactoryRun.startRun(f, data, 150, 1), isNull);
     final run = FactoryRun.startRun(f, data, 1, 42)!;
     expect(run['team'], hasLength(1));
     expect(run['team'][0]['level'], 5);
+    expect(run['balls'], 5);
+    expect(run['bag'], FactoryRun.startBag);
     expect(jsonEncode(FactoryRun.startRun(f, data, 1, 42)), jsonEncode(run));
-    // O mesmo que o site sorteia (web-site/src/lib/factoryRun.js): a corrida continua de um no outro.
-    expect(run['seed'], 1135788988);
+    // O mesmo que o site sorteia (web-site/src/lib/factoryRun.test.js): a corrida continua de um no outro.
+    expect(run['seed'], 503953318);
     expect(run['team'][0]['ivs'], {'hp': 25, 'atk': 22, 'def': 29, 'spa': 26, 'spd': 17, 'spe': 23});
     expect(run['team'][0]['nature'], 'Docile');
-    expect(run['encounter'], {'kind': 'wild', 'foes': [{'id': 403, 'level': 3, 'iv': 0}]});
+    expect(run['boss'], {'region': 11, 'step': 0});
+    expect(run['encounter'], {'kind': 'wild', 'foes': [{'id': 235, 'level': 3, 'iv': 0, 'ev': 2}]});
   });
 
-  test('venceu: XP, dinheiro, captura; time cheio troca; evolução', () {
+  test('40 andares iguais ao site (test/fixtures/factory_trace.json): chefes, captura, carta e loja', () {
+    final expected = jsonDecode(File('test/fixtures/factory_trace.json').readAsStringSync()) as List;
+    var run = FactoryRun.startRun(FactoryRun.empty(), data, 7, 2024)!;
+    final out = [];
+    for (var i = 0; i < 40; i++) {
+      final team = FactoryRun.teamOf(run);
+      run = FactoryRun.winFloor(run, data, hp: [for (var k = 0; k < team.length; k++) k == 0 ? 0.7 : 1.0]);
+      if (FactoryRun.pendingOf(run)!['capture'] != null) run = FactoryRun.capture(run, FactoryRun.teamOf(run).length >= FactoryRun.maxTeam ? 1 : null);
+      if (FactoryRun.pendingOf(run)!['cards'] != null) run = FactoryRun.takeCard(run, '${(FactoryRun.pendingOf(run)!['cards'] as List).first}', data);
+      run = {...run, 'money': (run['money'] as int) + 500};
+      for (final id in (FactoryRun.pendingOf(run)!['shop'] as List?) ?? const []) {
+        run = FactoryRun.buyItem(run, '$id', 0, data) ?? run;
+      }
+      run = FactoryRun.nextFloor(run, data);
+      out.add([
+        run['seed'], run['floor'], run['money'], run['balls'], run['boss']['region'], run['boss']['step'],
+        [for (final m in FactoryRun.teamOf(run)) [m['id'], m['level'], m['exp'], m['item'] ?? '', (m['extras'] as List).length]],
+        run['encounter']['kind'],
+        [for (final f in FactoryRun.foesOf(run)) [f['id'], f['level'], f['shiny'] == true ? 1 : 0]],
+      ]);
+    }
+    for (var i = 0; i < expected.length; i++) {
+      expect(jsonEncode(out[i]), jsonEncode(expected[i]), reason: 'andar ${i + 1}');
+    }
+  });
+
+  test('venceu: XP só para quem está de pé; HP continua; captura com Poké Ball; shiny libera o inicial shiny', () {
     var run = FactoryRun.startRun(FactoryRun.empty(), data, 4, 3)!;
-    run = {...run, 'encounter': {'kind': 'wild', 'foes': [{'id': 19, 'level': 5, 'iv': 0}]}};
-    final after = FactoryRun.winFloor(run, data);
+    run = {
+      ...run,
+      'team': [...FactoryRun.teamOf(run), {...FactoryRun.teamOf(run).first, 'id': 7}],
+      'encounter': {'kind': 'wild', 'foes': [{'id': 19, 'level': 5, 'iv': 0, 'ev': 0, 'shiny': true}]},
+    };
+    final after = FactoryRun.winFloor(run, data, hp: [0.4, 0]);
     expect(after['floor'], 2);
-    expect(after['money'], 40);
-    expect(after['team'][0]['exp'], FactoryRun.expAt(5) + (data.species[19]![0] * 5 / 7).floor());
+    final team = FactoryRun.teamOf(after);
+    expect(team[0]['exp'], FactoryRun.expAt(5) + FactoryRun.expFor(data.species[19]![0] as int, 5, 5));
+    expect(team[1]['exp'], FactoryRun.expAt(5));
     final caught = FactoryRun.capture(after);
-    expect([for (final m in caught['team']) m['id']], [4, 19]);
-    final (mon, evolved) = FactoryRun.levelTo({'id': 1, 'level': 15, 'exp': 0, 'bonus': {}}, 16, data, () => 0);
-    expect([mon['id'], evolved], [2, 2]);
+    expect(caught['balls'], 4);
+    expect(caught['team'][2]['shiny'], true);
+    expect(FactoryRun.capture({...after, 'balls': 0}), {...after, 'balls': 0});
+    final f = FactoryRun.empty();
+    expect(FactoryRun.unlockShiny(f, data, {'id': 19, 'shiny': true}), f);
+    expect(FactoryRun.unlockShiny(f, data, {'id': 4, 'shiny': true})['shinies'], [4]);
+    expect(FactoryRun.buyShiny({...f, 'coins': 1000000}, data, 1)!['shinies'], [1]);
+    expect(FactoryRun.buyShiny({...f, 'coins': 100}, data, 1), isNull);
   });
 
-  test('loja e cartas; itens sem limite viram pontos', () {
+  test('itens sem limite: principal e extras (porcentagem); Bolsa fora da batalha', () {
     var run = FactoryRun.startRun(FactoryRun.empty(), data, 1, 5)!;
-    run = {...run, 'floor': 10, 'encounter': {'kind': 'trainer', 'foes': [{'id': 19, 'level': 12, 'iv': 0}]}};
-    final after = FactoryRun.winFloor(run, data);
-    expect(after['pending']['shop'], contains('rare-candy'));
-    expect(after['pending']['cards'], hasLength(3));
-    var shop = {...after, 'money': 20000, 'pending': {'shop': ['leftovers', 'choice-band', 'protein']}};
-    shop = FactoryRun.buyItem(shop, 'leftovers', 0, data)!;
-    shop = FactoryRun.buyItem(shop, 'choice-band', 0, data)!;
-    expect(shop['team'][0]['item'], 'leftovers');
-    expect(shop['team'][0]['bonus']['atk'], 10);
-    final card = FactoryRun.takeCard({...shop, 'pending': {'cards': ['atk']}}, 'atk', data);
-    expect(FactoryRun.memberOf(card, FactoryRun.teamOf(card)[0], ['tackle']).$2['bonus']['atk'], 18);
+    run = {...run, 'money': 1000000000, 'pending': {'shop': ['leftovers', 'choice-band', 'protein', 'super-potion', 'poke-ball']}};
+    run = FactoryRun.buyItem(run, 'leftovers', 0, data)!;
+    run = FactoryRun.buyItem(run, 'choice-band', 0, data)!;
+    run = FactoryRun.buyItem(run, 'poke-ball', 0, data)!;
+    expect(run['balls'], 6);
+    expect(run['team'][0]['item'], 'leftovers');
+    expect(FactoryRun.memberOf(run, FactoryRun.teamOf(run)[0], ['tackle']).$2['boost']['atk'], 0.05);
+    final swapped = FactoryRun.setMainItem(run, 0, 0);
+    expect([swapped['team'][0]['item'], swapped['team'][0]['extras']], ['choice-band', ['leftovers']]);
+    for (var i = 0; i < 20; i++) {
+      run = FactoryRun.buyItem(run, 'protein', 0, data)!;
+    }
+    final set = FactoryRun.memberOf(run, FactoryRun.teamOf(run)[0], ['tackle']).$2;
+    expect(set['evs']['atk'], 252);
+    expect(set['bonus']['atk'], FactoryRun.overflowPoints(run['team'][0]['ivs'] as Map, run['team'][0]['evs'] as Map, 5)['atk']);
+    final hurt = {...run, 'team': [{...FactoryRun.teamOf(run)[0], 'hp': 0.3}]};
+    expect(FactoryRun.applyBagItem(hurt, 'super-potion', 0)!['team'][0]['hp'], 0.8);
+    expect(FactoryRun.applyBagItem(hurt, 'revive', 0), isNull);
+    expect(FactoryRun.teamDown({...run, 'team': [{'hp': 0}]}), isTrue);
   });
 
   test('perdeu: moedas pela pontuação; moedas compram Pokémon pela força', () {
-    final run = {...FactoryRun.startRun(FactoryRun.empty(), data, 1, 5)!, 'floor': 21, 'defeated': 30};
+    final run = {...FactoryRun.startRun(FactoryRun.empty(), data, 1, 5)!, 'floor': 21, 'defeated': 30, 'bosses': 2};
     final f = FactoryRun.endRun({...FactoryRun.empty(), 'best': 7}, run);
-    expect([f['coins'], f['best'], f['run']], [160, 20, null]);
+    expect([f['coins'], f['best'], f['run']], [210, 20, null]);
     final bought = FactoryRun.buyPokemon({...f, 'coins': 10000}, data, 150)!;
     expect(bought['owned'], [150]);
     expect(FactoryRun.startersOf(bought, data), contains(150));
-    expect(FactoryRun.pokemonPrice(data.species[150]![1]), greaterThan(FactoryRun.pokemonPrice(data.species[19]![1])));
   });
 
-  test('golpes pelo nível, iguais ao site', () {
-    final list = FactoryRun.movesAt(pokemon[4]!['moves'] as List, 5, ['fire'], moves);
-    expect(list, ['scratch', 'growl']);
+  test('golpes pelo nível, iguais ao site; golpes fortes esperam um nível compatível', () {
+    expect(FactoryRun.movesAt(pokemon[4]!['moves'] as List, 5, ['fire'], moves), ['scratch', 'growl']);
+    final golem = FactoryRun.movesAt(pokemon[76]!['moves'] as List, 9, ['rock', 'ground'], moves);
+    expect(golem, isNot(contains('explosion')));
+    expect(golem, isNot(contains('rollout')));
   });
 
-  test('na batalha: passa do nível 50, os bônus somam e o selvagem fica sem bolsa', () async {
+  test('na batalha: passa do nível 100, os bônus somam, o HP continua e o selvagem fica sem bolsa', () async {
     final start = FactoryRun.startRun(FactoryRun.empty(), data, 4, 7)!;
-    final run = {...start, 'team': [{...start['team'][0], 'level': 80, 'bonus': {'hp': 0, 'atk': 0, 'def': 0, 'spa': 0, 'spd': 0, 'spe': 600}}]};
-    final moveList = FactoryRun.movesAt(pokemon[4]!['moves'] as List, 80, ['fire'], moves);
-    final plain = {...run, 'team': [{...run['team'][0], 'bonus': {'hp': 0, 'atk': 0, 'def': 0, 'spa': 0, 'spd': 0, 'spe': 0}}]};
+    final strong = {...FactoryRun.teamOf(start)[0], 'level': 150, 'extras': ['choice-scarf', 'choice-scarf'], 'hp': 0.5};
+    final run = {...start, 'team': [strong, {...strong, 'hp': 0}]};
+    final moveList = FactoryRun.movesAt(pokemon[4]!['moves'] as List, 150, ['fire'], moves);
+    final plain = {...strong, 'extras': <String>[], 'hp': 1};
     final mons = await TurnBattleSetup.mons([
-      FactoryRun.memberOf(run, FactoryRun.teamOf(run).single, moveList),
-      FactoryRun.memberOf(plain, FactoryRun.teamOf(plain).single, moveList),
+      for (final i in FactoryRun.battleOrder(run)) FactoryRun.memberOf(run, FactoryRun.teamOf(run)[i], moveList),
+      FactoryRun.memberOf(run, plain, moveList),
     ], (row) => '${row['name']}');
-    expect(mons[0].level, 80);
+    expect(mons[0].level, 150);
     final foes = await TurnBattleSetup.mons([for (final f in FactoryRun.foesOf(run)) FactoryRun.foeMember(f, const ['tackle'])], (row) => '${row['name']}');
-    final battle = TurnBattle([mons[0]], foes, League.seededRandom(1), startBags: FactoryRun.bagsFor(run));
-    expect(run['encounter']['kind'], 'wild');
+    final battle = TurnBattle([mons[0], mons[1]], foes, League.seededRandom(1), startBags: FactoryRun.bagsFor(run), healPct: true);
+    final reference = TurnBattle([mons[2]], foes, League.seededRandom(1));
     expect(battle.bags[1].values.every((n) => n == 0), isTrue);
-    expect(battle.bags[0]['potion'], 3);
-    // Os bônus valem no motor (a velocidade volta dele já somada).
-    expect(battle.teams[0][0].spe, mons[1].spe + 600);
+    expect(battle.bags[0]['potion'], 4);
+    // No motor: +10% de Velocidade (2 extras), metade do HP e o segundo continua desmaiado.
+    expect(battle.teams[0][0].spe, (reference.teams[0][0].spe * 1.1).floor());
+    expect(battle.teams[0][0].hp, (battle.teams[0][0].maxHp / 2).ceil());
+    expect(battle.teams[0][1].hp, 0);
     battle.dispose();
+    reference.dispose();
   });
 }

@@ -85,10 +85,14 @@ export const ITEMS = [
   { slug: 'potion', name: 'Potion', heal: 20, count: 3 },
   { slug: 'super-potion', name: 'Super Potion', heal: 60, count: 2 },
   { slug: 'hyper-potion', name: 'Hyper Potion', heal: 120, count: 1 },
+  // Só na Battle Factory (comprada na loja): cura todo o HP.
+  { slug: 'max-potion', name: 'Max Potion', heal: 9999, count: 0 },
   { slug: 'revive', name: 'Revive', revive: true, count: 1 },
 ]
 const newBag = () => Object.fromEntries(ITEMS.map((i) => [i.slug, i.count]))
 const itemOf = (slug) => ITEMS.find((i) => i.slug === slug)
+/** Battle Factory (healPct): quanto cada poção cura do HP máximo. */
+export const HEAL_SHARE = { potion: 0.25, 'super-potion': 0.5, 'hyper-potion': 0.75, 'max-potion': 1 }
 
 /** Dá para usar o item nesse Pokémon? (poção: vivo e ferido; Revive: desmaiado). */
 export function canUseItem(battle, side, slug, index) {
@@ -111,6 +115,8 @@ export function newBattle(mine, theirs, random, options = {}) {
     bags: [0, 1].map((i) => ({ ...newBag(), ...(options.bags?.[i] ?? {}) })),
     // Bolsa de cada lado diferente da padrão (Battle Factory: selvagem sem itens).
     startBags: options.bags ?? null,
+    // Battle Factory: as poções curam uma parte do HP máximo (o nível não tem limite).
+    healPct: Boolean(options.healPct),
     turn: 1,
     // Semente da batalha (para o replay) e as suas jogadas (logTurn).
     seed: options.seed ?? null,
@@ -682,7 +688,8 @@ function applyItem(battle, side, slug, index, events) {
     events.push({ t: 'heal', side, index, hp: mon.hp })
     say(events, 'revived', { side, name: mon.name })
   } else {
-    const healed = Math.min(item.heal, mon.maxHp - mon.hp)
+    const amount = battle.healPct ? Math.max(item.heal >= 9999 ? 0 : item.heal, Math.ceil(mon.maxHp * (HEAL_SHARE[slug] ?? 0))) : item.heal
+    const healed = Math.min(amount, mon.maxHp - mon.hp)
     mon.hp += healed
     events.push({ t: 'heal', side, index, hp: mon.hp })
     say(events, 'healed', { side, name: mon.name }, healed)

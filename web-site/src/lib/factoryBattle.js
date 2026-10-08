@@ -4,7 +4,7 @@
 
 import { battleMons } from './battleSetup'
 import { getMoves, getPokemonById, getSpecies } from './data'
-import { bagsFor, foeMember, memberOf, movesAt } from './factoryRun'
+import { bagsFor, battleOrder, foeMember, memberOf, movesAt } from './factoryRun'
 import { seededRandom } from './league'
 import { newBattle } from './turnBattle'
 
@@ -17,14 +17,40 @@ async function movesFor(id, level) {
   return movesAt(form.moves, level, form.types, moves)
 }
 
-/** Monta a batalha do andar atual da corrida. */
+/**
+ * Monta a batalha do andar atual da corrida. Quem está de pé vai na frente
+ * (battle.factoryOrder: a posição de cada um no time da corrida, para ler o HP
+ * no fim: factoryAfter).
+ */
 export async function factoryBattle(run) {
-  const mine = await Promise.all(run.team.map(async (m) => memberOf(run, m, await movesFor(m.id, m.level))))
+  const order = battleOrder(run)
+  const mine = await Promise.all(order.map(async (i) => memberOf(run, run.team[i], await movesFor(run.team[i].id, run.team[i].level))))
   const theirs = await Promise.all(run.encounter.foes.map(async (f) => foeMember(f, await movesFor(f.id, f.level))))
   const [a, b] = await Promise.all([battleMons(mine), battleMons(theirs)])
   if (!a.length || !b.length) throw new Error('Não foi possível montar a batalha do andar.')
   const seed = run.seed ^ (run.floor * 2654435761)
-  const battle = newBattle(a, b, seededRandom(seed >>> 0), { ai: 'normal', seed: seed >>> 0, bags: bagsFor(run) })
+  const battle = newBattle(a, b, seededRandom(seed >>> 0), { ai: 'normal', seed: seed >>> 0, bags: bagsFor(run), healPct: true })
   battle.members = { mine, theirs }
+  battle.factoryOrder = order
   return battle
+}
+
+/** Como o time terminou a batalha (para winFloor): a parte do HP de cada um, na ordem da corrida, e a Bolsa. */
+export function factoryAfter(battle, run) {
+  const hp = run.team.map((m) => m.hp ?? 1)
+  battle.factoryOrder?.forEach((teamIndex, slot) => {
+    const mon = battle.sides[0].team[slot]
+    if (mon) hp[teamIndex] = mon.maxHp ? Math.round((Math.max(0, mon.hp) / mon.maxHp) * 1000) / 1000 : 0
+  })
+  return { hp, bag: { ...battle.bags[0] } }
+}
+
+/** Quem é o adversário do andar: o chefe (nome, treinador e música) ou um selvagem (sem treinador). */
+export function factoryFoe(run) {
+  const { kind, boss } = run.encounter
+  return {
+    foeName: boss?.name ?? '',
+    foeTrainer: boss?.trainer || null,
+    challenge: { kind: 'factory', wild: kind === 'wild' || kind === 'legendary', ...(boss ? { boss } : {}) },
+  }
 }

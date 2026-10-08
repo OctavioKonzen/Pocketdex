@@ -75,10 +75,12 @@ class GymChallenge {
 
   /// A música da batalha (temas originais, nenhum copiado dos jogos): o tema do
   /// campeão, o da região para líderes, Elite Four e kahunas, ou a normal.
-  static String musicOf(GymLeader? leader) {
-    if (leader == null) return 'battle_music';
-    final champion = leader.name.toLowerCase();
-    if (leader.kind == 'champion' && championThemes.contains(champion)) return 'champion_$champion';
-    return 'gym_${leader.region.toLowerCase()}';
+  static String musicOf(GymLeader? leader) => leader == null ? 'battle_music' : musicFor(leader.name, leader.kind, leader.region);
+
+  /// A música de um chefe pelo nome, tipo e região (também os da Battle Factory: rival e vilões).
+  static String musicFor(String name, String kind, String region) {
+    final champion = name.toLowerCase();
+    if (kind == 'champion' && championThemes.contains(champion)) return 'champion_$champion';
+    return 'gym_${region.toLowerCase()}';
   }
 }

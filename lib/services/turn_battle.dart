@@ -50,8 +50,11 @@ class BattleMon {
   int? effectiveSpe;
 
   /// Battle Factory: nível até 100 e pontos a mais nos atributos (o motor soma).
-  int? levelCap;
+  /// Battle Factory: 100 ou 'none' (sem limite de nível); pontos e porcentagem a mais; o HP do andar anterior.
+  Object? levelCap;
   Map<String, int>? bonus;
+  Map<String, double>? boost;
+  double? hpRatio;
 
   /// Id, tipos, velocidade, vida máxima e calculadora: mudam na Mega,
   /// Terastal e Dinamax (e voltam ao original na próxima batalha).
@@ -128,7 +131,7 @@ class BattleMon {
       zType: zType,
       noDmax: noDmax,
       ability: _orig.ability).._simSet = _simSet..simulationSpecies = simulationSpecies..simulationAbility = simulationAbility..simulationItem = simulationItem
-        ..levelCap = levelCap..bonus = bonus;
+        ..levelCap = levelCap..bonus = bonus..boost = boost..hpRatio = hpRatio;
 }
 
 /// Resultado de um golpe: os danos possíveis de cada acerto e a eficácia (0 = não afeta).
@@ -329,12 +332,14 @@ const battleItems = [
   BattleItem('potion', 'Potion', heal: 20, count: 3),
   BattleItem('super-potion', 'Super Potion', heal: 60, count: 2),
   BattleItem('hyper-potion', 'Hyper Potion', heal: 120, count: 1),
+  // Só na Battle Factory (comprada na loja): cura todo o HP.
+  BattleItem('max-potion', 'Max Potion', heal: 9999, count: 0),
   BattleItem('revive', 'Revive', revive: true, count: 1),
 ];
 BattleItem? _itemOf(String slug) => battleItems.where((i) => i.slug == slug).firstOrNull;
 
 class TurnBattle {
-  TurnBattle(List<BattleMon> mine, List<BattleMon> theirs, this.random, {this.mode = 'singles', this.controllers, this.rules = const [], this.startBags})
+  TurnBattle(List<BattleMon> mine, List<BattleMon> theirs, this.random, {this.mode = 'singles', this.controllers, this.rules = const [], this.startBags, this.healPct = false})
       : teams = [mine, theirs] {
     for (final mon in [...mine, ...theirs]) {
       mon
@@ -356,6 +361,7 @@ class TurnBattle {
         'seed': List.generate(4, (_) => (random() * 65536).floor()),
         'mode': mode, 'controllers': controllers, 'rules': rules,
         if (startBags != null) 'bags': startBags,
+        if (healPct) 'healPct': true,
       }]);
       _simHandle = created['handle'] as int;
       _opening = _simSync(created);
@@ -372,6 +378,9 @@ class TurnBattle {
 
   /// Bolsa de cada lado diferente da padrão (Battle Factory: selvagem sem itens).
   final List<Map<String, int>?>? startBags;
+
+  /// Battle Factory: as poções curam uma parte do HP máximo (o nível não tem limite).
+  final bool healPct;
   final List<List<String>>? controllers;
   Map<String, dynamic>? get simulatorState => _simState;
   List<Map<String, dynamic>> recommend(int side, [Map<String, dynamic>? options]) =>
@@ -410,6 +419,8 @@ class TurnBattle {
         'ivs': p.ivs, 'evs': p.evs, 'shiny': mon.shiny},
       if (mon.levelCap != null) 'levelCap': mon.levelCap,
       if (mon.bonus != null) 'bonus': mon.bonus,
+      if (mon.boost != null) 'boost': mon.boost,
+      if (mon.hpRatio != null) 'hpRatio': mon.hpRatio,
     };
   }
 
@@ -526,7 +537,7 @@ class TurnBattle {
   }
 
   // Visão da partida sem restaurar HP, formas ou status.
-  TurnBattle._view(this.teams, this.random) : mode = 'singles', controllers = null, rules = const [], startBags = null;
+  TurnBattle._view(this.teams, this.random) : mode = 'singles', controllers = null, rules = const [], startBags = null, healPct = false;
   TurnBattle viewFor(int side) {
     final order = [side, 1 - side];
     final view = TurnBattle._view([for (final s in order) teams[s]], random);
@@ -1204,7 +1215,9 @@ class TurnBattle {
       _say(events, 'revived', [(side, mon.name)]);
     } else {
       final missing = mon.maxHp - mon.hp;
-      final healed = item.heal < missing ? item.heal : missing;
+      final share = const {'potion': 0.25, 'super-potion': 0.5, 'hyper-potion': 0.75, 'max-potion': 1.0}[slug] ?? 0;
+      final amount = healPct ? max(item.heal >= 9999 ? 0 : item.heal, (mon.maxHp * share).ceil()) : item.heal;
+      final healed = amount < missing ? amount : missing;
       mon.hp += healed;
       events.add(BattleEvent.heal(side, index, mon.hp));
       _say(events, 'healed', [(side, mon.name), healed]);
@@ -1844,8 +1857,10 @@ class TurnBattleSetup {
       )..simulationSpecies = BattleSimulator.call('species', [row['name']])['name'] as String?
         ..simulationAbility = BattleSimulator.call('ability', [m.$2?['ability'] ?? ((row['abilities'] as List).isEmpty ? '' : (row['abilities'] as List).first[0])])['name'] as String?
         ..simulationItem = BattleSimulator.call('item', [m.$2?['item']])['name'] as String?
-        ..levelCap = (m.$2?['levelCap'] as num?)?.toInt()
-        ..bonus = m.$2?['bonus'] is Map ? {for (final e in (m.$2!['bonus'] as Map).entries) '${e.key}': (e.value as num).toInt()} : null);
+        ..levelCap = m.$2?['levelCap'] == 'none' ? 'none' : (m.$2?['levelCap'] as num?)?.toInt()
+        ..bonus = m.$2?['bonus'] is Map ? {for (final e in (m.$2!['bonus'] as Map).entries) '${e.key}': (e.value as num).toInt()} : null
+        ..boost = m.$2?['boost'] is Map ? {for (final e in (m.$2!['boost'] as Map).entries) '${e.key}': (e.value as num).toDouble()} : null
+        ..hpRatio = (m.$2?['hpRatio'] as num?)?.toDouble());
     }
     return out;
   }

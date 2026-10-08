@@ -20,7 +20,7 @@ import { usePokemonIndex } from '../lib/pokemonIndex'
 import { useStore } from '../lib/store'
 import { teamMembers } from '../lib/teamBattle'
 import { fxPlan, moveAnim, SELF_KINDS } from '../lib/moveAnim'
-import { active, damageRange, fieldConditions, monDetails, lockedMove, canGimmick, canUseItem, effectLabel, forfeit, ITEMS, lineOf, MAX_MOVES, maxPower, moveEffect, newBattle, playTurn, replace, startBattle, STAT_NAMES, switchMatchup, usableMoves, weaknesses, Z_MOVES, zPower } from '../lib/turnBattle'
+import { active, damageRange, fieldConditions, monDetails, lockedMove, canGimmick, canUseItem, effectLabel, forfeit, HEAL_SHARE, ITEMS, lineOf, MAX_MOVES, maxPower, moveEffect, newBattle, playTurn, replace, startBattle, STAT_NAMES, switchMatchup, usableMoves, weaknesses, Z_MOVES, zPower } from '../lib/turnBattle'
 import Sprite from '../components/Sprite'
 import { TrainerBack, TrainerSprite } from '../components/Trainer'
 import { randomTrainer, useMyTrainer, useTrainers } from '../lib/trainers'
@@ -29,7 +29,7 @@ import { playSound, soundOf, startMusic, stopMusic } from '../lib/battleSound'
 import {simulatorTargets} from '../lib/battleSimulator'
 import {newPartyBattle, playPartyTurn, describeEvents} from '../lib/partyBattle'
 import { FactoryAfter, FactoryHub, saveFactory } from '../components/FactoryPanels'
-import { factoryBattle } from '../lib/factoryBattle'
+import { factoryAfter, factoryBattle, factoryFoe } from '../lib/factoryBattle'
 import { endRun, factoryOf, winFloor } from '../lib/factoryRun'
 import { getFactoryData } from '../lib/data'
 
@@ -204,7 +204,8 @@ function Setup({ onStart }) {
     setError('')
     try {
       const battle = await factoryBattle(run)
-      onStart(battle, '', null, { kind: 'factory', wild: run.encounter.kind !== 'trainer' })
+      const foe = factoryFoe(run)
+      onStart(battle, foe.foeName, foe.foeTrainer, foe.challenge)
     } catch (e) {
       setError(e.message || 'Não foi possível iniciar a batalha. Tente novamente.')
     } finally {
@@ -1159,7 +1160,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
             </button>
           </div>
           <div className="grid gap-2 sm:grid-cols-2" data-testid="bag">
-            {ITEMS.map((it) => {
+            {ITEMS.filter((it) => it.count > 0 || (battle.bags[0][it.slug] ?? 0) > 0).map((it) => {
               const left = battle.bags[0][it.slug] ?? 0
               const usableOn = battle.sides[0].team.some((_, i) => canUseItem(battle, 0, it.slug, i))
               return (
@@ -1175,7 +1176,15 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
                     <div className="font-bold" data-no-translate>
                       {it.name}
                     </div>
-                    <div className="text-xs text-muted">{it.revive ? t('Revive com metade do HP') : t('Recupera {0} de HP').replace('{0}', it.heal)}</div>
+                    <div className="text-xs text-muted">
+                      {it.revive
+                        ? t('Revive com metade do HP')
+                        : it.heal >= 9999
+                          ? t('Recupera todo o HP')
+                          : battle.healPct
+                            ? t('Recupera {0}% do HP').replace('{0}', Math.round(HEAL_SHARE[it.slug] * 100))
+                            : t('Recupera {0} de HP').replace('{0}', it.heal)}
+                    </div>
                   </div>
                   <span className="font-black tabular-nums">{`×${left}`}</span>
                 </button>
@@ -1546,7 +1555,7 @@ export default function TurnBattlePage() {
   const nextFactoryFloor = async (run) => {
     try {
       const battle = await factoryBattle(run)
-      setGame({ battle, foeName: '', foeTrainer: null, challenge: { kind: 'factory', wild: run.encounter.kind !== 'trainer' }, key: (game?.key ?? 0) + 1 })
+      setGame({ battle, ...factoryFoe(run), key: (game?.key ?? 0) + 1 })
     } catch {
       setGame(null)
     }
@@ -1562,9 +1571,11 @@ export default function TurnBattlePage() {
       let endNote
       if (won) {
         const data = await getFactoryData()
-        const next = winFloor(run, data)
+        const next = winFloor(run, data, factoryAfter(game.battle, run))
         saveFactory({ ...factory, run: next })
-        endNote = `🏆 ${t('Andar {0} vencido!').replace('{0}', run.floor)}`
+        endNote = run.encounter.boss
+          ? `🏅 ${t('Você venceu {0}!').replace('{0}', run.encounter.boss.name)} ${t('Andar {0} vencido!').replace('{0}', run.floor)}`
+          : `🏆 ${t('Andar {0} vencido!').replace('{0}', run.floor)}`
       } else {
         const after = endRun(factory, run)
         saveFactory(after)
@@ -1632,7 +1643,7 @@ export default function TurnBattlePage() {
           hit={hit}
           onExit={() => setGame(null)}
           onAgain={['league', 'tower', 'factory'].includes(challenge?.kind) ? null : again}
-          music={musicOf(foeLeader)}
+          music={musicOf(foeLeader ?? challenge?.boss)}
           wild={Boolean(challenge?.wild)}
           endNote={game.endNote}
           next={game.next}

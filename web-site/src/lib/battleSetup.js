@@ -115,7 +115,7 @@ export async function battleMons(members) {
       zType: battleItems.z?.[itemId] ?? '',
       noDmax: NO_DMAX.has(species),
       ability: f.side.ability ?? '',
-      simulation: {set: {species: globalThis.PocketDexSim.species(f.base.name)?.name || calc.speciesName(f.base.name), moves: slugs, level: f.side.level, nature: f.side.nature, ability: globalThis.PocketDexSim.ability(member.set?.ability || f.form.abilities?.[0]?.[0])?.name || f.side.ability, item: globalThis.PocketDexSim.item(member.set?.item)?.name || f.side.item, ivs: f.side.ivs, evs: f.side.evs, shiny: Boolean(member.set?.shiny)}, ...(member.set?.levelCap ? {levelCap: member.set.levelCap} : {}), ...(member.set?.bonus ? {bonus: member.set.bonus} : {})},
+      simulation: {set: {species: globalThis.PocketDexSim.species(f.base.name)?.name || calc.speciesName(f.base.name), moves: slugs, level: f.side.level, nature: f.side.nature, ability: globalThis.PocketDexSim.ability(member.set?.ability || f.form.abilities?.[0]?.[0])?.name || f.side.ability, item: globalThis.PocketDexSim.item(member.set?.item)?.name || f.side.item, ivs: f.side.ivs, evs: f.side.evs, shiny: Boolean(member.set?.shiny)}, ...(member.set?.levelCap ? {levelCap: member.set.levelCap} : {}), ...(member.set?.bonus ? {bonus: member.set.bonus} : {}), ...(member.set?.boost ? {boost: member.set.boost} : {}), ...(member.set?.hpRatio != null ? {hpRatio: member.set.hpRatio} : {})},
     })
   }
   return out

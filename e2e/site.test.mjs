@@ -412,9 +412,12 @@ try {
   assert.ok(await page.getByRole('button', { name: /Desafiar a Liga de Kanto/ }).isDisabled(), `${step}: Liga começa bloqueada`)
   await page.getByLabel('Adversário', {exact:true}).selectOption('__tower__')
   await page.getByTestId('streak-card').waitFor({ timeout: 15000 })
+  // Battle Factory (roguelike): escolhe o inicial e começa o 1º andar.
   await page.getByLabel('Adversário', {exact:true}).selectOption('__factory__')
-  await page.getByRole('button', { name: '⚔️ Começar batalha' }).click()
-  await page.getByTestId('team-preview').waitFor({ timeout: 30000 })
+  await page.getByTestId('factory-hub').waitFor({ timeout: 30000 })
+  await page.getByTestId('starter-4').click({ timeout: 30000 })
+  await page.getByTestId('factory-start').click()
+  await page.getByTestId('battle-text').waitFor({ timeout: 60000 })
   await expectHealthy()
 
   step = 'batalha: quem vence'

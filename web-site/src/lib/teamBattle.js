@@ -27,8 +27,8 @@ export async function fighter(calc, byId, { id, set }) {
   const base = { name: form.name, types: form.types, stats: form.stats.map((s) => s[0]), weight: form.weight }
   const side = {
     ...calc.newSide(),
-    // Battle Factory: o nível vai até 100 (levelCap).
-    level: set?.levelCap === 100 ? Math.max(1, Math.min(100, Math.trunc(set.level || 1))) : battleLevel(set?.level),
+    // Battle Factory: o nível vai até 100 (levelCap 100) ou não tem limite ('none').
+    level: set?.levelCap === 'none' || set?.levelCap === 100 ? Math.max(1, Math.min(set.levelCap === 'none' ? 9999 : 100, Math.trunc(set.level || 1))) : battleLevel(set?.level),
     nature: set?.nature || 'Hardy',
     ability: calc.abilityName(set?.ability ?? '') || calc.abilityName(form.abilities?.[0]?.[0] ?? ''),
     item: calc.itemName(set?.item ?? ''),
