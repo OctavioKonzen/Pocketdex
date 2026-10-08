@@ -147,7 +147,11 @@ class FactoryRun {
   static int foeEvsAt(int floor) => 3 * floor;
   static int foeIvsAt(int floor) => math.min(31, floor ~/ 2) + math.max(0, ((floor - 100) / 10).floor());
   static double foeBoostAt(int floor) => (math.max(0, floor - 30) * 0.003 * 1000).round() / 1000;
-  static double priceScale(int floor) => 1 + (floor - 1) / 20;
+  /// Preço da loja no andar: cresce junto com o dinheiro (nível e tamanho dos times dos treinadores). Igual ao site.
+  static double priceScale(int floor) => (1 + (floor - 1) / 20) * (1 + 0.4 * math.min(5, floor ~/ 12));
+
+  /// Nos 10 primeiros andares, mais dinheiro (até o dobro no 1º).
+  static double earlyMoney(int floor) => 1 + math.max(0, 11 - floor) / 10;
   static int speciesBudget(int floor) => 290 + floor * 7;
 
   // ------------------------------------------------------------ itens e cartas
@@ -457,7 +461,7 @@ class FactoryRun {
     var money = 0;
     final evs = _zero();
     for (final f in foes) {
-      money += ((_int(f['level']) * 6 + 10) * moneyFactor * _mult(out, 'money')).floor();
+      money += ((_int(f['level']) * 6 + 10) * moneyFactor * _mult(out, 'money') * earlyMoney(_int(run['floor']))).floor();
       final yields = (data.speciesOf(_int(f['id'])))?.elementAtOrNull(3) as List? ?? const [0, 0, 0, 0, 0, 0];
       for (var i = 0; i < stats.length; i++) {
         evs[stats[i]] = (evs[stats[i]] as int) + _int(yields[i]) * 3;
@@ -602,9 +606,12 @@ class FactoryRun {
 
   /// Preço do item no andar (com o desconto das cartas). O Rare Candy também sobe com o nível do time.
   static int shopPrice(Json run, String id) {
-    final top = id == 'rare-candy' ? teamOf(run).fold(startLevel, (int a, m) => math.max(a, _int(m['level']))) : startLevel;
+    // O Rare Candy sobe com o nível do time (e não com o tamanho dos times dos treinadores).
+    final candy = id == 'rare-candy';
+    final top = candy ? teamOf(run).fold(startLevel, (int a, m) => math.max(a, _int(m['level']))) : startLevel;
     final base = id.startsWith('tm:') ? tmPrice : id.startsWith('evo:') ? evoPrice : shop[id] ?? 0;
-    return math.max(1, (base * priceScale(_int(run['floor'])) * (top / startLevel) * _mult(run, 'shop')).round());
+    final scale = candy ? 1 + (_int(run['floor']) - 1) / 20 : priceScale(_int(run['floor']));
+    return math.max(1, (base * scale * (top / startLevel) * _mult(run, 'shop')).round());
   }
 
   /// Evoluções que o Pokémon faz com o item (pedra).
@@ -839,16 +846,14 @@ class FactoryRun {
     return chosen.isEmpty ? ['tackle'] : chosen;
   }
 
-  /// A Bolsa de cada lado: a sua é a da corrida; selvagem não tem itens; treinador e chefe têm mais nos andares altos. Igual ao site.
+  /// A Bolsa de cada lado: a sua é a da corrida; só os chefes da história usam itens. Igual ao site.
   static List<Map<String, int>?> bagsFor(Json run) {
     final floor = _int(run['floor']);
     final kind = run['encounter']?['kind'];
     final none = {for (final id in bagItems) id: 0};
     final foe = kind == 'boss'
         ? {...none, 'hyper-potion': 1 + floor ~/ 40, 'max-potion': floor >= 60 ? 1 : 0, 'revive': floor >= 100 ? 1 : 0}
-        : kind == 'trainer'
-            ? {...none, 'potion': math.min(3, 1 + floor ~/ 15), 'super-potion': floor >= 20 ? 1 : 0, 'hyper-potion': floor >= 40 ? 1 : 0}
-            : none;
+        : none;
     return [{...none, ...bagOf(run)}, foe];
   }
 

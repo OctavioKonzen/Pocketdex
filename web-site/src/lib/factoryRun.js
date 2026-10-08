@@ -32,7 +32,8 @@
 //   XP                     quem está abaixo do nível do adversário ganha bem
 //                          mais e quem está acima bem menos (expFor), então o
 //                          time acompanha os andares sem disparar
-//   dinheiro e preços      os dois crescem com o andar (a loja não fica de graça)
+//   dinheiro e preços      os dois crescem com o andar (priceScale); mais
+//                          dinheiro nos 10 primeiros andares (earlyMoney)
 // Dados: assets/database/factory.json (tool/build_factory_data.py). Igual ao
 // app (lib/services/factory_run.dart).
 
@@ -91,8 +92,14 @@ export const foeEvsAt = (floor) => 3 * floor
 export const foeIvsAt = (floor) => Math.min(31, Math.floor(floor / 2)) + Math.max(0, Math.floor((floor - 100) / 10))
 /** Porcentagem a mais em todos os atributos dos adversários depois do andar 30 (um pouco mais que as cartas: um dia a corrida acaba). */
 export const foeBoostAt = (floor) => Math.round(Math.max(0, floor - 30) * 0.003 * 1000) / 1000
-/** Preço da loja no andar (cresce junto com o dinheiro que os adversários dão). */
-export const priceScale = (floor) => 1 + (floor - 1) / 20
+/**
+ * Preço da loja no andar: cresce junto com o dinheiro que os adversários dão
+ * (o nível sobe e os treinadores ganham 1 Pokémon a cada 12 andares, até 6):
+ * cada visita à loja compra mais ou menos a mesma coisa do começo ao fim.
+ */
+export const priceScale = (floor) => (1 + (floor - 1) / 20) * (1 + 0.4 * Math.min(5, Math.floor(floor / 12)))
+/** Nos 10 primeiros andares, mais dinheiro (até o dobro no 1º) para preparar o time para o primeiro chefe. */
+export const earlyMoney = (floor) => 1 + Math.max(0, 11 - floor) / 10
 
 // ------------------------------------------------------------ itens e cartas
 
@@ -388,7 +395,7 @@ export function winFloor(run, data, after = {}) {
   let money = 0
   const evs = zero()
   for (const f of foes) {
-    money += Math.floor((f.level * 6 + 10) * moneyFactor * out.mult.money)
+    money += Math.floor((f.level * 6 + 10) * moneyFactor * out.mult.money * earlyMoney(run.floor))
     const yields = speciesOf(data, f.id)?.[3] ?? [0, 0, 0, 0, 0, 0]
     STATS.forEach((s, i) => { evs[s] += yields[i] * 3 })
   }
@@ -497,9 +504,12 @@ export function takeCard(run, id, data) {
 
 /** Preço do item no andar (com o desconto das cartas). O Rare Candy também sobe com o nível do time (cada nível pede mais XP). */
 export function shopPrice(run, id) {
-  const top = id === 'rare-candy' ? Math.max(START_LEVEL, ...run.team.map((m) => m.level)) : START_LEVEL
+  // O Rare Candy sobe com o nível do time (e não com o tamanho dos times dos treinadores).
+  const candy = id === 'rare-candy'
+  const top = candy ? Math.max(START_LEVEL, ...run.team.map((m) => m.level)) : START_LEVEL
   const base = id.startsWith('tm:') ? TM_PRICE : id.startsWith('evo:') ? EVO_PRICE : SHOP[id] ?? 0
-  return Math.max(1, Math.round(base * priceScale(run.floor) * (top / START_LEVEL) * run.mult.shop))
+  const scale = candy ? 1 + (run.floor - 1) / 20 : priceScale(run.floor)
+  return Math.max(1, Math.round(base * scale * (top / START_LEVEL) * run.mult.shop))
 }
 
 /** Evoluções que o Pokémon faz com o item (pedra): [para, ...]. */
@@ -682,16 +692,14 @@ export function movesAt(formMoves, level, types, moves) {
   return chosen.length ? chosen : ['tackle']
 }
 
-/** A Bolsa de cada lado: a sua é a da corrida; selvagem não tem itens; treinador e chefe têm mais nos andares altos. */
+/** A Bolsa de cada lado: a sua é a da corrida; só os chefes da história usam itens (mais nos andares altos). */
 export function bagsFor(run) {
   const floor = run.floor
   const kind = run.encounter?.kind
   const none = { potion: 0, 'super-potion': 0, 'hyper-potion': 0, 'max-potion': 0, revive: 0 }
   const foe = kind === 'boss'
     ? { ...none, 'hyper-potion': 1 + Math.floor(floor / 40), 'max-potion': floor >= 60 ? 1 : 0, revive: floor >= 100 ? 1 : 0 }
-    : kind === 'trainer'
-      ? { ...none, potion: Math.min(3, 1 + Math.floor(floor / 15)), 'super-potion': floor >= 20 ? 1 : 0, 'hyper-potion': floor >= 40 ? 1 : 0 }
-      : none
+    : none
   return [{ ...none, ...run.bag }, foe]
 }
 
