@@ -816,7 +816,7 @@ class BattleView extends StatefulWidget {
   State<BattleView> createState() => BattleViewState();
 }
 
-class BattleViewState extends State<BattleView> with SingleTickerProviderStateMixin {
+class BattleViewState extends State<BattleView> with SingleTickerProviderStateMixin, RouteAware {
   static const _step = Duration(milliseconds: 1100);
   late final List<int> _active = [widget.battle.activeIndex[0], widget.battle.activeIndex[1]];
   late final List<List<int>> _hp = [
@@ -875,7 +875,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
     super.initState();
     if (_b.mode != 'singles') return;
     // A música da batalha (para quando sai da tela).
-    if (_b.winner == null) BattleSounds.startMusic(widget.music);
+    if (_b.winner == null) BattleSounds.startMusic(widget.music, this);
     LocalDatabase.instance.moveAnims().then((t) => _anims = t).catchError((_) => <String, dynamic>{});
     // Começo: as habilidades de clima de quem entrou (Drizzle, Drought...).
     _menu = _b.needSwitch ? 'party' : 'main';
@@ -978,14 +978,58 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route != null) {
+      BattleSounds.routes.unsubscribe(this);
+      BattleSounds.routes.subscribe(this, route);
+    }
+  }
+
+  // Outra tela abriu por cima da batalha: a música pausa; voltou, continua.
+  @override
+  void didPushNext() => BattleSounds.setCovered(true, this);
+  @override
+  void didPopNext() => BattleSounds.setCovered(false, this);
+
+  @override
   void dispose() {
     for (final t in _timers) {
       t.cancel();
     }
     _shake.dispose();
-    if (_b.mode == 'singles') BattleSounds.stopMusic();
+    BattleSounds.routes.unsubscribe(this);
+    BattleSounds.stopMusic(this);
     super.dispose();
   }
+
+  /// Voltar no meio da batalha: pergunta antes de sair.
+  Future<void> _confirmLeave() async {
+    final leave = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sair da batalha?'),
+        content: const Text('A batalha em andamento será perdida.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Continuar batalhando')),
+          FilledButton(key: const ValueKey('confirm-leave'), onPressed: () => Navigator.pop(context, true), child: const Text('Sair')),
+        ],
+      ),
+    );
+    if (leave != true || !mounted) return;
+    BattleSounds.stopMusic(this);
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) => PopScope(
+        canPop: _b.winner != null || widget.online?.replay == true,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) _confirmLeave();
+        },
+        child: _battleBody(context),
+      );
 
   /// Esperas da animação: canceladas quando a tela fecha (nada fica rodando).
   final Set<Timer> _timers = {};
@@ -1167,7 +1211,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
       if (mounted && _b.winner != null && !_finished) {
         _finished = true;
         // Fim: a música para; vencendo, a fanfarra.
-        BattleSounds.stopMusic();
+        BattleSounds.stopMusic(this);
         if (_b.winner == 0) BattleSounds.play('victory', volume: 0.7);
         if (widget.online == null) widget.onFinish?.call(_coach?.id);
       }
@@ -1304,8 +1348,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _battleBody(BuildContext context) {
     if (_b.mode != 'singles') return _MultiBattleView(battle: _b, online: widget.online, onExit: widget.onExit, onAgain: widget.onAgain);
     final me = _b.teams[0][_active[0]];
     final foe = _b.teams[1][_active[1]];

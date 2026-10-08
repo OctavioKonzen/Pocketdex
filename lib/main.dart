@@ -1,6 +1,7 @@
 // lib/main.dart
 import 'services/trainers.dart';
 import 'services/push_service.dart';
+import 'services/battle_sounds.dart';
 import 'package:flutter/material.dart';
 import 'package:pocket_dex/providers/favorites_provider.dart';
 import 'package:pocket_dex/providers/theme_provider.dart';
@@ -153,6 +154,8 @@ class MyApp extends StatelessWidget {
       themeMode: themeProvider.themeMode,
       scrollBehavior: const AppScrollBehavior(),
       navigatorKey: ChatBubble.instance.navigatorKey,
+      // A música da batalha pausa quando outra tela abre por cima.
+      navigatorObservers: [BattleSounds.routes],
       // Tamanho do texto escolhido nas Configurações (por cima do do aparelho).
       builder: (context, child) => ListenableBuilder(
         listenable: AppSettings.instance,

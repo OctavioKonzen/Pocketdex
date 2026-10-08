@@ -403,7 +403,8 @@ try {
   await expectHealthy()
 
   step = 'batalha: Desafio dos Líderes, insígnias e Torre'
-  await go('amigos/batalha')
+  // A batalha anterior acabou: volta para a escolha dos times.
+  await page.getByRole('button', { name: 'Trocar os times' }).click()
   await page.getByLabel('Adversário', {exact:true}).selectOption('gym:kanto-brock')
   await page.getByTestId('leader-card').waitFor({ timeout: 15000 })
   await page.getByTestId('region-progress').waitFor({ timeout: 15000 })
