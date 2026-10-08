@@ -1,0 +1,215 @@
+"""Times oficiais dos personagens (líderes, Elite Four, campeões, vilões e
+rivais), exatamente como estão nos jogos, a partir dos projetos de
+desmontagem pret (github.com/pret). Nível, golpes, item, IVs, EVs, nature e
+habilidade como o jogo gera. Separado por jogo; todas as lutas de cada um.
+
+Saída: assets/database/official_teams.json
+
+Uso:
+    python3 tool/build_official_teams.py <pasta com os arquivos do pret>
+    (a pasta tem uma subpasta por projeto: pokered/, pokeyellow/, pokegold/,
+    pokecrystal/, pokeruby/, pokeemerald/, pokefirered/, pokeplatinum/, com os
+    arquivos que cada módulo de tool/official_teams/ lê; para a 2ª geração,
+    os scripts dos mapas ficam em maps/<projeto>/maps/, de onde sai o local
+    de cada luta do rival e dos executivos)
+"""
+
+import json
+import os
+import re
+import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'official_teams'))
+import gen1  # noqa: E402
+import gen2  # noqa: E402
+import gen3  # noqa: E402
+import gen4  # noqa: E402
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DB = os.path.join(ROOT, 'assets', 'database')
+
+# Constantes do pret que não batem com o nome do banco (PokéAPI).
+ALIASES = {
+    'species': {'NIDORAN_F': 'nidoran-f', 'NIDORAN_M': 'nidoran-m', 'MR_MIME': 'mr-mime', 'MR__MIME': 'mr-mime', 'HO_OH': 'ho-oh', 'FARFETCHD': 'farfetchd'},
+    'move': {
+        'HI_JUMP_KICK': 'high-jump-kick', 'SMELLING_SALT': 'smelling-salts', 'FAINT_ATTACK': 'feint-attack',
+        'SONICBOOM': 'sonic-boom', 'DOUBLESLAP': 'double-slap', 'THUNDERPUNCH': 'thunder-punch', 'THUNDERSHOCK': 'thunder-shock',
+        'SOLARBEAM': 'solar-beam', 'SELFDESTRUCT': 'self-destruct', 'POISONPOWDER': 'poison-powder', 'DYNAMICPUNCH': 'dynamic-punch',
+        'EXTREMESPEED': 'extreme-speed', 'ANCIENTPOWER': 'ancient-power', 'DRAGONBREATH': 'dragon-breath', 'BUBBLEBEAM': 'bubble-beam',
+        'SAND_ATTACK': 'sand-attack', 'VICEGRIP': 'vise-grip', 'VICE_GRIP': 'vise-grip', 'SOFTBOILED': 'soft-boiled', 'GRASSWHISTLE': 'grass-whistle',
+        'FEATHERDANCE': 'feather-dance', 'PSYCHO_BOOST': 'psycho-boost', 'MUD_SLAP': 'mud-slap', 'U_TURN': 'u-turn', 'SMOKE_SCREEN': 'smokescreen', 'PSYCHIC_M': 'psychic',
+    },
+    'item': {},
+    'ability': {},
+}
+
+GAMES = [
+    ('red-blue', 'Red/Blue', 'Kanto', 1, gen1, 'pokered', {}),
+    ('yellow', 'Yellow', 'Kanto', 1, gen1, 'pokeyellow', {}),
+    # (id, nome, região, geração, módulo, pasta pret, arquivos)
+    ('gold-silver', 'Gold/Silver', 'Johto', 2, gen2, 'pokegold', {}),
+    ('crystal', 'Crystal', 'Johto', 2, gen2, 'pokecrystal', {}),
+    ('ruby-sapphire', 'Ruby/Sapphire', 'Hoenn', 3, gen3, 'pokeruby', {
+        'charmap': 'charmap.txt', 'species_names': 'species_names.h', 'species_info': 'base_stats.h',
+        'learnsets': 'level_up_learnsets.h', 'learnset_pointers': 'level_up_learnset_pointers.h',
+        'trainers': 'trainers_en.h', 'parties': 'trainer_parties.h'}),
+    ('emerald', 'Emerald', 'Hoenn', 3, gen3, 'pokeemerald', {
+        'charmap': 'charmap.txt', 'species_names': 'species_names.h', 'species_info': 'species_info.h',
+        'learnsets': 'level_up_learnsets.h', 'learnset_pointers': 'level_up_learnset_pointers.h',
+        'trainers': 'trainers.h', 'parties': 'trainer_parties.h'}),
+    ('firered-leafgreen', 'FireRed/LeafGreen', 'Kanto', 3, gen3, 'pokefirered', {
+        'charmap': 'charmap.txt', 'species_names': 'species_names.h', 'species_info': 'species_info.h',
+        'learnsets': 'level_up_learnsets.h', 'learnset_pointers': 'level_up_learnset_pointers.h',
+        'trainers': 'trainers.h', 'parties': 'trainer_parties.h'}),
+    ('platinum', 'Platinum', 'Sinnoh', 4, gen4, 'pokeplatinum', {}),
+]
+
+STARTERS = {'MUDKIP', 'TREECKO', 'TORCHIC', 'SQUIRTLE', 'BULBASAUR', 'CHARMANDER', 'CHIKORITA', 'CYNDAQUIL', 'TOTODILE',
+            'TURTWIG', 'CHIMCHAR', 'PIPLUP'}
+# Treinadores nas classes de rival que não lutam contra você (parceiros, link).
+SKIP = {('emerald', 'STEVEN'), ('emerald', 'RED'), ('emerald', 'LEAF')}
+# Rivais com o nome que o jogador escolhe: o nome padrão de cada jogo.
+RIVAL_NAMES = {'TERRY': 'Blue', 'CEDRIC': 'Barry'}
+
+
+# Retrato (assets/database/trainers.json) quando o nome não bate direto.
+PORTRAITS = {('Campeão', 'Blue'): 'champion-blue', ('Líder de Ginásio', 'Blue'): 'champion-blue', 'Drake': 'sd-drake-gen3', 'Phoebe': 'sd-phoebe-gen6', 'Maxie': 'sd-maxie-gen6',
+             'Archie': 'sd-archie-gen6', 'Executivo': 'rocket-grunt-m', 'Executiva': 'rocket-grunt-f'}
+
+
+def portrait(person, ids):
+    name = person['name']
+    if (person['class'], name) in PORTRAITS or name in PORTRAITS:
+        return PORTRAITS.get((person['class'], name)) or PORTRAITS[name]
+    slug = re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')
+    return next((c for c in (slug, 'sd-' + slug, 'sd-' + slug.replace('-', '')) if c in ids), None)
+
+
+# Ginásios na ordem das insígnias (o código do jogo nem sempre segue essa ordem).
+GYM_ORDER = ['Falkner', 'Bugsy', 'Whitney', 'Morty', 'Chuck', 'Jasmine', 'Pryce', 'Clair',
+             'Brock', 'Misty', 'Lt. Surge', 'Erika', 'Koga', 'Janine', 'Sabrina', 'Blaine', 'Giovanni', 'Blue',
+             'Roark', 'Gardenia', 'Fantina', 'Maylene', 'Wake', 'Byron', 'Candice', 'Volkner']
+
+
+def read(path):
+    raw = open(path, 'rb').read()
+    try:
+        return raw.decode('utf-8')
+    except UnicodeDecodeError:
+        return raw.decode('latin-1')
+
+
+def load(name):
+    with open(os.path.join(DB, f'{name}.json'), encoding='utf-8') as f:
+        return json.load(f)
+
+
+def resolver(errors):
+    pokemon = load('pokemon')
+    by_name = {p['name']: p for p in pokemon}
+    known = {
+        'move': {m['name'] for m in load('moves')},
+        'item': {i['name'] for i in load('items')},
+        'ability': {a['name'] for a in load('abilities')},
+    }
+
+    def resolve(kind, const):
+        prefix = {'species': 'SPECIES_', 'move': 'MOVE_', 'item': 'ITEM_', 'ability': 'ABILITY_'}[kind]
+        raw = const[len(prefix):]
+        name = ALIASES[kind].get(raw, raw.lower().replace('_', '-'))
+        if kind == 'species':
+            p = by_name.get(name) or next((p for p in pokemon if p['is_default'] and p['name'].startswith(name + '-')), None)
+            if not p:
+                errors.add(f'{kind} {const}')
+                return None
+            return p['id']
+        if name not in known[kind]:
+            errors.add(f'{kind} {const} -> {name}')
+        return name
+    return resolve
+
+
+def title(name):
+    """'LT. SURGE' -> 'Lt. Surge'; 'TATE&LIZA' -> 'Tate & Liza'."""
+    name = re.sub(r'\.(?=\S)', '. ', name.replace('&', ' & '))
+    return ' '.join(w[:1].upper() + w[1:].lower() for w in name.split())
+
+
+# Palavras das constantes do pret nas legendas das lutas.
+WORDS = {'REMATCH': 'Revanche', 'VR': 'Victory Road', 'FIRST': '', 'REMATCH': 'Revanche', 'EARLY': '(começo)', 'LATE': '(depois)', 'OAKS': "Oak's",
+         'MT': 'Mt.', 'SS': 'S.S.', 'AND': '', 'COMMANDER': '', 'GALACTIC': '', 'HQ': 'HQ', 'POKEMON': 'Pokémon', 'LEADER': '', 'ELITE': '', 'FOUR': '', 'BOSS': '', 'RIVAL': '', 'CHAMPION': ''}
+
+
+def battle_label(key, name, cls):
+    """TRAINER_ROXANNE_2 -> 'Revanche 1'; ..._ROUTE_103_MUDKIP -> 'Route 103 (se você escolheu Mudkip)'."""
+    words = key.removeprefix('TRAINER_').split('_')
+    tokens = set(re.sub(r'[^A-Z]', ' ', name.upper()).split())
+    words = [w for w in words if w not in tokens]
+    starter = next((w for w in words if w in STARTERS), None)
+    words = [w for w in words if w != starter]
+    parts = []
+    for w in words:
+        if w in WORDS:
+            if WORDS[w]:
+                parts.append(WORDS[w])
+        elif w.isdigit():
+            parts.append(w)
+        else:
+            parts.append(re.sub(r'([A-Z]+)(\d+)', r'\1 \2', w).capitalize().replace('Route ', 'Route '))
+    text = ' '.join(parts).strip()
+    if text.isdigit():
+        n = int(text)
+        text = ('Primeira luta' if n == 1 else f'Revanche {n - 1}') if cls == 'Líder de Ginásio' else f'Luta {n}'
+    if not text:
+        text = 'Primeira luta' if 'FIRST' in words else 'Luta'
+    if starter:
+        text = f'{text} (se você escolheu {starter.capitalize()})'
+    return text
+
+
+def main(src):
+    errors = set()
+    resolve = resolver(errors)
+    games = []
+    ids = {t['id'] for t in load('trainers')}
+    for gid, gname, region, gen, module, folder, files in GAMES:
+        if module is gen1:
+            built = gen1.build(os.path.join(src, folder), resolve, yellow=gid == 'yellow')
+        elif module is gen2:
+            built = gen2.build(os.path.join(src, folder), resolve, os.path.join(src, 'maps', folder, 'maps'))
+        elif module is gen4:
+            built = gen4.build(os.path.join(src, folder), resolve)
+        else:
+            built = module.build({k: read(os.path.join(src, folder, v)) for k, v in files.items()}, resolve)
+        # Sem nome ou sem time: sobras de outro jogo no código (não aparecem no jogo).
+        battles = [b for b in built if b['name'] and b['team'] and all(m['id'] for m in b['team'])]
+        battles = [b for b in battles if (gid, b['name']) not in SKIP]
+        people = {}
+        for b in battles:
+            display = RIVAL_NAMES.get(b['name'], title(b['name']))
+            person = people.setdefault((b['class'], display), {'name': display, 'class': b['class'], 'battles': []})
+            label = b.get('label') or battle_label(b['key'], b['name'], b['class'])
+            person['battles'].append({'label': label, 'team': b['team']})
+        for person in people.values():
+            person['trainer'] = portrait(person, ids)
+            labels = [b['label'] for b in person['battles']]
+            for b in person['battles']:
+                if b['label'] == 'Luta' and 'Luta 2' in labels:
+                    b['label'] = 'Luta 1'
+                if b['label'] == 'Luta 2' and person['class'] in ('Elite Four', 'Campeão'):
+                    b['label'] = 'Revanche'
+        rank = ['Líder de Ginásio', 'Elite Four', 'Campeão', 'Rival']
+        people = dict(sorted(people.items(), key=lambda kv: (rank.index(kv[0][0]) if kv[0][0] in rank else len(rank),
+                                                             GYM_ORDER.index(kv[0][1]) if kv[0][0] == rank[0] and kv[0][1] in GYM_ORDER else 0)))
+        games.append({'id': gid, 'name': gname, 'region': region, 'generation': gen, 'source': f'pret/{folder}',
+                      'trainers': list(people.values())})
+    if errors:
+        raise SystemExit('Não reconhecidos:\n' + '\n'.join(sorted(errors)))
+    with open(os.path.join(DB, 'official_teams.json'), 'w', encoding='utf-8') as f:
+        json.dump(games, f, ensure_ascii=False, separators=(',', ':'))
+        f.write('\n')
+    print({g['name']: (len(g['trainers']), sum(len(t['battles']) for t in g['trainers'])) for g in games})
+
+
+if __name__ == '__main__':
+    main(sys.argv[1])

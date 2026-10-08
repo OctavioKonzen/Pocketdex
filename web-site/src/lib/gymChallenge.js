@@ -48,5 +48,16 @@ export function streakResult(league, kind, won) {
   return { ...base, [kind]: { best: Math.max(now.best, streak), streak } }
 }
 
-/** A música da batalha: a do campeão, a de líder (ginásio, Elite Four, kahuna) ou a normal. */
-export const musicOf = (leader) => (!leader ? 'battle_music' : leader.kind === 'champion' ? 'champion_music' : 'gym_music')
+/** Campeões com tema próprio (tool/build_battle_sounds.py). */
+export const CHAMPION_THEMES = ['blue', 'lance', 'steven', 'cynthia', 'alder', 'iris', 'diantha', 'kukui', 'leon', 'geeta']
+
+/**
+ * A música da batalha (temas originais, nenhum copiado dos jogos): o tema do
+ * campeão, o da região para líderes, Elite Four e kahunas, ou a normal.
+ */
+export function musicOf(leader) {
+  if (!leader) return 'battle_music'
+  const champion = leader.name.toLowerCase()
+  if (leader.kind === 'champion' && CHAMPION_THEMES.includes(champion)) return `champion_${champion}`
+  return `gym_${leader.id.split('-')[0]}`
+}

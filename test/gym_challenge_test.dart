@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pocket_dex/services/gym_challenge.dart';
 import 'package:pocket_dex/services/gym_leaders.dart';
@@ -33,7 +35,11 @@ void main() {
     l = GymChallenge.streakResult(l, 'tower', false);
     expect(l['tower'], {'best': 2, 'streak': 0});
     expect(GymChallenge.musicOf(null), 'battle_music');
-    expect(GymChallenge.musicOf(GymChallenge.leagueOrder(kanto).last), 'champion_music');
-    expect(GymChallenge.musicOf(GymChallenge.regionGyms(kanto).first), 'gym_music');
+    expect(GymChallenge.musicOf(GymChallenge.leagueOrder(kanto).last), 'champion_blue');
+    expect(GymChallenge.musicOf(GymChallenge.regionGyms(kanto).first), 'gym_kanto');
+    // Todo líder tem a música no banco (igual ao site).
+    for (final leader in regions.expand((r) => r.leaders)) {
+      expect(File('assets/database/sounds/${GymChallenge.musicOf(leader)}.mp3').existsSync(), isTrue, reason: leader.id);
+    }
   });
 }

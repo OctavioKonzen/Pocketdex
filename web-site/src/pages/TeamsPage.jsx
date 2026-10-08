@@ -62,6 +62,9 @@ export default function TeamsPage() {
               🔎 Times da comunidade
             </Button>
           )}
+          <Button color="linear-gradient(135deg, #FFB300, #F4511E)" onClick={() => navigate('/times/personagens')}>
+            📜 Times dos personagens
+          </Button>
           <Button color="#546E7A" onClick={() => setImporting(true)}>
             Importar
           </Button>

@@ -69,7 +69,15 @@ class GymChallenge {
     return {...base, kind: {'best': streak > best ? streak : best, 'streak': streak}};
   }
 
-  /// A música da batalha: a do campeão, a de líder (ginásio, Elite Four, kahuna) ou a normal.
-  static String musicOf(GymLeader? leader) =>
-      leader == null ? 'battle_music' : leader.kind == 'champion' ? 'champion_music' : 'gym_music';
+  /// Campeões com tema próprio (tool/build_battle_sounds.py).
+  static const championThemes = ['blue', 'lance', 'steven', 'cynthia', 'alder', 'iris', 'diantha', 'kukui', 'leon', 'geeta'];
+
+  /// A música da batalha (temas originais, nenhum copiado dos jogos): o tema do
+  /// campeão, o da região para líderes, Elite Four e kahunas, ou a normal.
+  static String musicOf(GymLeader? leader) {
+    if (leader == null) return 'battle_music';
+    final champion = leader.name.toLowerCase();
+    if (leader.kind == 'champion' && championThemes.contains(champion)) return 'champion_$champion';
+    return 'gym_${leader.region.toLowerCase()}';
+  }
 }

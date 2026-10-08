@@ -19,6 +19,7 @@ const FavoritesPage = lazyPage(() => import('./pages/FavoritesPage'))
 const TeamsPage = lazyPage(() => import('./pages/TeamsPage'))
 const TeamBuilderPage = lazyPage(() => import('./pages/TeamBuilderPage'))
 const CommunityTeamsPage = lazyPage(() => import('./pages/CommunityTeamsPage'))
+const OfficialTeamsPage = lazyPage(() => import('./pages/OfficialTeamsPage'))
 const GamePage = lazyPage(() => import('./pages/GamePage'))
 const EncyclopediaPage = lazyPage(() => import('./pages/EncyclopediaPage'))
 const TrainingPage = lazyPage(() => import('./pages/TrainingPage'))
@@ -413,6 +414,7 @@ export default function App() {
                   <Route path="/times" element={<TeamsPage />} />
                   <Route path="/times/importar/:code" element={<TeamsPage />} />
                   <Route path="/times/comunidade" element={<CommunityTeamsPage />} />
+                  <Route path="/times/personagens" element={<OfficialTeamsPage />} />
                   <Route path="/times/:id" element={<TeamBuilderPage />} />
                   <Route path="/jogo" element={<GamePage />} />
                   <Route path="/enciclopedia" element={<EncyclopediaPage />} />
