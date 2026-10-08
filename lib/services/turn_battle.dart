@@ -49,6 +49,10 @@ class BattleMon {
   String? simulationItem;
   int? effectiveSpe;
 
+  /// Battle Factory: nível até 100 e pontos a mais nos atributos (o motor soma).
+  int? levelCap;
+  Map<String, int>? bonus;
+
   /// Id, tipos, velocidade, vida máxima e calculadora: mudam na Mega,
   /// Terastal e Dinamax (e voltam ao original na próxima batalha).
   int id, maxHp, spe;
@@ -123,7 +127,8 @@ class BattleMon {
       gimmick: gimmick,
       zType: zType,
       noDmax: noDmax,
-      ability: _orig.ability).._simSet = _simSet..simulationSpecies = simulationSpecies..simulationAbility = simulationAbility..simulationItem = simulationItem;
+      ability: _orig.ability).._simSet = _simSet..simulationSpecies = simulationSpecies..simulationAbility = simulationAbility..simulationItem = simulationItem
+        ..levelCap = levelCap..bonus = bonus;
 }
 
 /// Resultado de um golpe: os danos possíveis de cada acerto e a eficácia (0 = não afeta).
@@ -329,7 +334,8 @@ const battleItems = [
 BattleItem? _itemOf(String slug) => battleItems.where((i) => i.slug == slug).firstOrNull;
 
 class TurnBattle {
-  TurnBattle(List<BattleMon> mine, List<BattleMon> theirs, this.random, {this.mode = 'singles', this.controllers, this.rules = const []}) : teams = [mine, theirs] {
+  TurnBattle(List<BattleMon> mine, List<BattleMon> theirs, this.random, {this.mode = 'singles', this.controllers, this.rules = const [], this.startBags})
+      : teams = [mine, theirs] {
     for (final mon in [...mine, ...theirs]) {
       mon
         ..restore()
@@ -341,11 +347,15 @@ class TurnBattle {
         ..flinch = false
         ..boosts = {for (final s in battleStats) s: 0};
     }
+    for (var i = 0; i < 2; i++) {
+      bags[i].addAll(startBags?[i] ?? const {});
+    }
     if (BattleSimulator.ready && [...mine, ...theirs].every((mon) => mon.calc != null)) {
       final created = BattleSimulator.call('create', [{
         'teams': [for (final team in teams) [for (final mon in team) _simMon(mon)]],
         'seed': List.generate(4, (_) => (random() * 65536).floor()),
         'mode': mode, 'controllers': controllers, 'rules': rules,
+        if (startBags != null) 'bags': startBags,
       }]);
       _simHandle = created['handle'] as int;
       _opening = _simSync(created);
@@ -359,6 +369,9 @@ class TurnBattle {
 
   /// Regras opcionais do convite online (Sleep Clause no motor). Igual ao site.
   final List<String> rules;
+
+  /// Bolsa de cada lado diferente da padrão (Battle Factory: selvagem sem itens).
+  final List<Map<String, int>?>? startBags;
   final List<List<String>>? controllers;
   Map<String, dynamic>? get simulatorState => _simState;
   List<Map<String, dynamic>> recommend(int side, [Map<String, dynamic>? options]) =>
@@ -395,6 +408,8 @@ class TurnBattle {
       'set': mon._simSet ??= {'species': mon.simulationSpecies ?? p.name, 'moves': [for (final m in mon._initialMoves) m.slug], 'level': p.level,
         'ability': mon.simulationAbility ?? p.ability, 'item': mon.simulationItem ?? p.item, 'nature': p.nature, 'gender': p.gender,
         'ivs': p.ivs, 'evs': p.evs, 'shiny': mon.shiny},
+      if (mon.levelCap != null) 'levelCap': mon.levelCap,
+      if (mon.bonus != null) 'bonus': mon.bonus,
     };
   }
 
@@ -511,7 +526,7 @@ class TurnBattle {
   }
 
   // Visão da partida sem restaurar HP, formas ou status.
-  TurnBattle._view(this.teams, this.random) : mode = 'singles', controllers = null, rules = const [];
+  TurnBattle._view(this.teams, this.random) : mode = 'singles', controllers = null, rules = const [], startBags = null;
   TurnBattle viewFor(int side) {
     final order = [side, 1 - side];
     final view = TurnBattle._view([for (final s in order) teams[s]], random);
@@ -1764,7 +1779,8 @@ class TurnBattleSetup {
           if (moves.containsKey(mv)) mv,
       ];
       final setMoves = [for (final s in (m.$2?['moves'] as List?) ?? const []) '$s'].where(moves.containsKey).toList();
-      final slugs = pickMoves(setMoves, learnable, types, moves, rules);
+      // lockMoves (Battle Factory): só os golpes que ele sabe no nível, sem completar com outros.
+      final slugs = pickMoves(setMoves, m.$2?['lockMoves'] == true ? const [] : learnable, types, moves, rules);
       if (slugs.isEmpty) continue;
       // Mecânicas, com as regras dos jogos: Mega só segurando a Mega Pedra dele
       // (a X ou a Y decide a forma), Z-Move só com o Cristal Z (e só nos golpes
@@ -1827,7 +1843,9 @@ class TurnBattleSetup {
         ability: calc.ability,
       )..simulationSpecies = BattleSimulator.call('species', [row['name']])['name'] as String?
         ..simulationAbility = BattleSimulator.call('ability', [m.$2?['ability'] ?? ((row['abilities'] as List).isEmpty ? '' : (row['abilities'] as List).first[0])])['name'] as String?
-        ..simulationItem = BattleSimulator.call('item', [m.$2?['item']])['name'] as String?);
+        ..simulationItem = BattleSimulator.call('item', [m.$2?['item']])['name'] as String?
+        ..levelCap = (m.$2?['levelCap'] as num?)?.toInt()
+        ..bonus = m.$2?['bonus'] is Map ? {for (final e in (m.$2!['bonus'] as Map).entries) '${e.key}': (e.value as num).toInt()} : null);
     }
     return out;
   }

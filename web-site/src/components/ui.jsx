@@ -60,10 +60,11 @@ export function IconButton({ label, onClick, children, className = '', active = 
 }
 
 /** Botão comum com animação de hover. */
-export function Button({ children, onClick, color = '#2196f3', className = '', type = 'button', disabled }) {
+export function Button({ children, onClick, color = '#2196f3', className = '', type = 'button', disabled, 'data-testid': testId }) {
   return (
     <m.button
       type={type}
+      data-testid={testId}
       disabled={disabled}
       onClick={onClick}
       whileHover={disabled ? undefined : { scale: 1.05 }}

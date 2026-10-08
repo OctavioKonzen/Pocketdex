@@ -87,6 +87,8 @@ export const getAnimatedSprites = () => load('animated_sprites.json')
 export const getTrainers = () => load('trainers.json')
 /** Líderes de ginásio, Elite Four e campeões com os times originais: tool/build_gym_leaders.py. */
 export const getGymLeaders = () => load('gym_leaders.json')
+/** Battle Factory: XP base, força, raridade e evoluções de cada espécie (tool/build_factory_data.py). */
+export const getFactoryData = () => load('factory.json')
 /** Times oficiais dos personagens, por jogo: tool/build_official_teams.py. */
 export const getOfficialTeams = () => load('official_teams.json')
 

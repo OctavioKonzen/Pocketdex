@@ -67,7 +67,8 @@ class TeamBattle {
       baseStats: {for (var i = 0; i < 6; i++) statIds[i]: stats[i]},
       types: [for (final t in row['types'] as List) '${(t as String)[0].toUpperCase()}${t.substring(1)}'],
       weightkg: ((row['weight'] as num?) ?? 1000) / 10,
-      level: battleLevel(set?['level']),
+      // Battle Factory: o nível vai até 100 (levelCap).
+      level: set?['levelCap'] == 100 ? ((set?['level'] as num?)?.toInt() ?? 1).clamp(1, 100) : battleLevel(set?['level']),
       ability: ability,
       item: data.itemName('${set?['item'] ?? ''}'),
       nature: '${set?['nature'] ?? 'Hardy'}',

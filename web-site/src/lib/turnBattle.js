@@ -108,7 +108,9 @@ export function newBattle(mine, theirs, random, options = {}) {
       { team: theirs, active: 0 },
     ],
     random,
-    bags: [newBag(), newBag()],
+    bags: [0, 1].map((i) => ({ ...newBag(), ...(options.bags?.[i] ?? {}) })),
+    // Bolsa de cada lado diferente da padrão (Battle Factory: selvagem sem itens).
+    startBags: options.bags ?? null,
     turn: 1,
     // Semente da batalha (para o replay) e as suas jogadas (logTurn).
     seed: options.seed ?? null,

@@ -4,7 +4,8 @@
 // (web-site/src/lib/gymChallenge.js):
 //   badges: {região: [id do líder]}   insígnias (líderes de ginásio e kahunas vencidos)
 //   hall: [{region, at, team: [id do Pokémon], trainer}]   Hall da Fama (Liga vencida)
-//   tower, factory: {best, streak}   Torre de Batalha e Battle Factory
+//   tower: {best, streak}   Torre de Batalha
+//   factory: {best, coins, owned, run}   Battle Factory (factory_run.dart)
 // A Liga (Elite Four e o Campeão em sequência) fica liberada com 8 insígnias
 // da região (ou todas, se a região tem menos de 8, como os 4 kahunas de Alola).
 
@@ -21,7 +22,7 @@ class GymChallenge {
         'badges': <String, dynamic>{},
         'hall': <dynamic>[],
         'tower': {'best': 0, 'streak': 0},
-        'factory': {'best': 0, 'streak': 0},
+        'factory': {'best': 0, 'coins': 0, 'owned': <int>[], 'run': null},
       };
 
   static Map<String, dynamic> _base(Map<String, dynamic>? league) =>

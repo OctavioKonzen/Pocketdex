@@ -358,3 +358,27 @@ test('Every database form resolves to a simulator species instead of a generic f
   const records = JSON.parse(readFileSync(new URL('../../assets/database/pokemon.json', import.meta.url)));
   for (const record of records) assert.ok(sim.species(record.name).name, record.name);
 });
+
+test('Battle Factory: level above 50 only with levelCap 100, and stat bonuses past the IV/EV limits', () => {
+  const stats = extra => {
+    const game = create([mon('Pikachu', ['thunderbolt'], extra)], [mon('Pikachu', ['thunderbolt'])]);
+    try {
+      const p = game.state.sides[0].team[0];
+      return [p.maxHp, p.hp, p.spe];
+    } finally {sim.dispose(game.handle);}
+  };
+  const capped = stats({set: {species: 'Pikachu', moves: ['thunderbolt'], level: 80}});
+  const free = stats({set: {species: 'Pikachu', moves: ['thunderbolt'], level: 80}, levelCap: 100});
+  const bonus = stats({set: {species: 'Pikachu', moves: ['thunderbolt'], level: 80}, levelCap: 100, bonus: {hp: 50, spe: 40}});
+  assert.deepEqual(capped, [110, 110, 110]);
+  assert.ok(free[0] > capped[0]);
+  assert.deepEqual(bonus, [free[0] + 50, free[1] + 50, free[2] + 40]);
+});
+
+test('Bag per side: a wild Pokémon (Battle Factory) can have no items', () => {
+  const game = sim.create({teams: [[mon('Pikachu', ['thunderbolt'])], [mon('Pikachu', ['thunderbolt'])]], seed: [1, 2, 3, 4], bags: [null, {potion: 0, 'super-potion': 0, 'hyper-potion': 0, revive: 0}]});
+  try {
+    assert.deepEqual(game.state.bags[0], {potion: 3, 'super-potion': 2, 'hyper-potion': 1, revive: 1});
+    assert.deepEqual(game.state.bags[1], {potion: 0, 'super-potion': 0, 'hyper-potion': 0, revive: 0});
+  } finally {sim.dispose(game.handle);}
+});

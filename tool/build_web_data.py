@@ -275,6 +275,8 @@ def main():
     save('trainers.json', load('trainers'))
     # Desafio dos Líderes (tool/build_gym_leaders.py).
     save('gym_leaders.json', load('gym_leaders'))
+    # Battle Factory: evoluções, XP base e força de cada espécie (tool/build_factory_data.py).
+    save('factory.json', load('factory'))
     # Times oficiais dos personagens (tool/build_official_teams.py).
     save('official_teams.json', load('official_teams'))
 

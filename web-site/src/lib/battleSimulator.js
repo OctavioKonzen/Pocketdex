@@ -8,7 +8,7 @@ export function simulatorInput(mon) {
 }
 export function initializeSimulator(battle) {
   const seed = Array.from({length: 4}, () => Math.floor(battle.random() * 65536))
-  const created = engine().create({teams: battle.sides.map(s => s.team.map(simulatorInput)), seed, mode: battle.mode, controllers: battle.controllers, rules: battle.rules ?? []})
+  const created = engine().create({teams: battle.sides.map(s => s.team.map(simulatorInput)), seed, mode: battle.mode, controllers: battle.controllers, rules: battle.rules ?? [], ...(battle.startBags ? {bags: battle.startBags} : {})})
   battle.simulator = {handle: created.handle, state: created.state, opening: created.events}
   syncSimulator(battle, created)
 }

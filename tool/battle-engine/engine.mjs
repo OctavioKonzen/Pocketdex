@@ -76,7 +76,7 @@ function setFor(mon, index) {
   for (const move of set.moves) if (!Dex.moves.get(id(move)).exists) throw new Error(`Golpe desconhecido: ${move}`);
   const aspect = id(set.species).includes('cornerstone') ? 'cornerstone' : id(set.species).includes('hearthflame') ? 'hearthflame' : id(set.species).includes('wellspring') ? 'wellspring' : 'teal';
   const ability = id(set.ability) === 'embodyaspect' ? `Embody Aspect (${aspect})` : set.ability;
-  return {...set, species: speciesFor(set.species).name, ability, moves: set.moves.map(id), name: `pd${index}`, level: Math.min(50, Math.max(1, set.level || 50)), gigantamax: Boolean(mon.gmax), teraType: title(mon.teraType || set.teraType || '')};
+  return {...set, species: speciesFor(set.species).name, ability, moves: set.moves.map(id), name: `pd${index}`, level: Math.min(mon.levelCap === 100 ? 100 : 50, Math.max(1, set.level || 50)), gigantamax: Boolean(mon.gmax), teraType: title(mon.teraType || set.teraType || '')};
 }
 
 function configure(game) {
@@ -95,6 +95,19 @@ function configure(game) {
       pokemon.getDynamaxRequest = skip => mon.gimmick === 'dmax' && !mon.noDmax ? dynamaxRequest(skip) : undefined;
       for (const slot of pokemon.moveSlots) {
         slot.pp = slot.maxpp = Dex.moves.get(slot.id).pp;
+      }
+      // Battle Factory: pontos a mais nos atributos, sem o limite de IVs/EVs (itens e cartas).
+      for (const [stat, value] of Object.entries(mon.bonus ?? {})) {
+        const points = Math.max(0, Math.floor(Number(value) || 0));
+        if (!points) continue;
+        if (stat === 'hp') {
+          pokemon.maxhp += points;
+          pokemon.baseMaxhp += points;
+          pokemon.hp = pokemon.maxhp;
+        } else if (stat in pokemon.storedStats) {
+          pokemon.storedStats[stat] += points;
+          pokemon.baseStoredStats[stat] += points;
+        }
       }
     }
   }
@@ -498,7 +511,7 @@ export const PocketDexSim = {
     // Regras opcionais (convite online): Sleep Clause (só um Pokémon dormindo por vez).
     const ruleset = (input.rules ?? []).includes('sleep') ? ['Sleep Clause Mod'] : [];
     const battle = new Battle({format: {...formats, gameType: mode, playerCount: mode === 'multi' ? 4 : 2, ruleset}, seed: input.seed});
-    const game = {battle, teams: input.teams, controllers: input.controllers, cursor: 0, used: input.teams.map(() => ({mega: false, tera: false})), pendingItems: input.teams.map(() => null), bags: input.teams.map(() => ({potion: 3, 'super-potion': 2, 'hyper-potion': 1, revive: 1}))};
+    const game = {battle, teams: input.teams, controllers: input.controllers, cursor: 0, used: input.teams.map(() => ({mega: false, tera: false})), pendingItems: input.teams.map(() => null), bags: input.teams.map((_, side) => ({potion: 3, 'super-potion': 2, 'hyper-potion': 1, revive: 1, ...(input.bags?.[side] ?? {})}))};
     input.teams.forEach((team, side) => battle.setPlayer(`p${side + 1}`, {name: ['Você', 'Adversário', 'Aliado', 'Aliado adversário'][side], team: team.map(setFor)}));
     configure(game);
     // A espécie do começo de cada Pokémon: mudou depois, é forma de batalha.
