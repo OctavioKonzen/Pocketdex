@@ -7,9 +7,11 @@ const game = (id) => games.find((g) => g.id === id)
 const person = (gid, name, cls) => game(gid).trainers.find((t) => t.name === name && (!cls || t.class === cls))
 
 describe('times oficiais dos personagens', () => {
-  it('separa por jogo: da 1ª à 4ª geração e Scarlet/Violet', () => {
-    expect(games.map((g) => g.id)).toEqual(['red-blue', 'yellow', 'gold-silver', 'crystal', 'ruby-sapphire', 'emerald', 'firered-leafgreen', 'platinum', 'scarlet-violet'])
-    expect(generationsOf(games)).toEqual([1, 2, 3, 4, 9])
+  it('separa por jogo: todas as gerações', () => {
+    expect(games.map((g) => g.id)).toEqual(['red-blue', 'yellow', 'gold-silver', 'crystal', 'ruby-sapphire', 'emerald', 'firered-leafgreen', 'diamond-pearl', 'platinum', 'heartgold-soulsilver', 'black-white', 'black2-white2', 'x-y', 'omegaruby-alphasapphire', 'sun-moon', 'ultrasun-ultramoon', 'sword-shield', 'brilliantdiamond-shiningpearl', 'scarlet-violet'])
+    expect(generationsOf(games)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9])
+    // Jogos sem o código aberto: dados da comunidade, marcados na tela.
+    expect(games.filter((g) => g.source === 'community').map((g) => g.generation)).toEqual([4, 4, 5, 6, 6, 7, 7, 8, 8])
     for (const g of games) {
       expect(g.trainers.length).toBeGreaterThan(10)
       for (const t of g.trainers) for (const b of t.battles) expect(b.team.length).toBeGreaterThan(0)
@@ -52,9 +54,27 @@ describe('times oficiais dos personagens', () => {
     expect(ivText({ iv: null, ivNote: 'sorteados' })).toBe('IVs: sorteados')
   })
 
+  it('Iris (Black 2/White 2): nature e habilidade pela fórmula do jogo', () => {
+    const team = person('black2-white2', 'Iris').battles[0].team
+    expect(team.map((m) => m.level)).toEqual([57, 57, 57, 57, 57, 59])
+    expect(team[5].item).toBe('focus-sash')
+    expect(team[5].ability).toBe('mold-breaker')
+    expect(team.every((m) => m.iv === 30 && m.nature)).toBe(true)
+    // Bug do jogo: a Liepard do Grimsley pede ser fêmea e a base do PID fica para os próximos.
+    expect(person('black2-white2', 'Grimsley').battles[0].team.map((m) => m.nature)).toEqual(['Docile', 'Brave', 'Hasty', 'Sassy'])
+  })
+
+  it('Leon (Sword/Shield, dados da comunidade): time conforme o inicial', () => {
+    const leon = person('sword-shield', 'Leon', 'Campeão')
+    const vsScorbunny = leon.battles.find((b) => b.label.includes('Scorbunny')).team
+    expect(vsScorbunny[0].id).toBe(6)
+    expect(vsScorbunny.map((m) => m.id)).toContain(818) // Inteleon
+    expect(vsScorbunny[0].nature).toBe('Timid')
+  })
+
   it('mostra todas as aparições do personagem', () => {
     const brock = appearances(games, 'Brock').map((a) => a.game.id)
-    expect(brock).toEqual(['red-blue', 'yellow', 'gold-silver', 'crystal', 'firered-leafgreen'])
+    expect(brock).toEqual(['red-blue', 'yellow', 'gold-silver', 'crystal', 'firered-leafgreen', 'heartgold-soulsilver'])
     expect(filterTrainers(game('crystal'), 'elite').map((t) => t.name)).toEqual(['Will', 'Koga', 'Bruno', 'Karen'])
   })
 })

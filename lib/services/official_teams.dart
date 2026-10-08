@@ -100,6 +100,9 @@ class OfficialGame {
   final List<OfficialTrainer> trainers;
   const OfficialGame({required this.id, required this.name, required this.region, required this.source, required this.generation, required this.trainers});
 
+  /// Dados da comunidade (calculadoras de Nuzlocke), não tirados do código do jogo.
+  bool get community => source == 'community';
+
   /// Personagens que batem com a busca (nome ou classe).
   List<OfficialTrainer> filter(String query) {
     final q = query.trim().toLowerCase();
