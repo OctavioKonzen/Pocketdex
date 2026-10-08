@@ -9,7 +9,8 @@ void main() {
   test('times oficiais: separados por jogo, com os dados do jogo (igual ao site)', () async {
     final games = await OfficialTeams.load();
     expect([for (final g in games) g.id],
-        ['red-blue', 'yellow', 'gold-silver', 'crystal', 'ruby-sapphire', 'emerald', 'firered-leafgreen', 'platinum', 'black2-white2', 'scarlet-violet']);
+        ['red-blue', 'yellow', 'gold-silver', 'crystal', 'ruby-sapphire', 'emerald', 'firered-leafgreen', 'diamond-pearl', 'platinum', 'heartgold-soulsilver', 'black-white', 'black2-white2', 'x-y', 'omegaruby-alphasapphire', 'sun-moon', 'ultrasun-ultramoon', 'sword-shield', 'brilliantdiamond-shiningpearl', 'scarlet-violet']);
+    expect(games.where((g) => g.community).length, 9);
     final glimmora = games.last.trainers.firstWhere((t) => t.name == 'Geeta').battles.first.team.last;
     expect(glimmora.tera, 'rock');
     expect(glimmora.evText, 'EVs: 252 HP');
@@ -25,14 +26,14 @@ void main() {
     expect(onix.ivText, 'DVs: HP 8 · Atk 9 · Def 8 · Spe 8 · Spc 8');
     expect(onix.evText, 'Stat Exp: 0');
     expect([for (final a in OfficialTeams.appearances(games, 'Brock')) a.game.id],
-        ['red-blue', 'yellow', 'gold-silver', 'crystal', 'firered-leafgreen']);
+        ['red-blue', 'yellow', 'gold-silver', 'crystal', 'firered-leafgreen', 'heartgold-soulsilver']);
     expect([for (final t in games[3].filter('elite')) t.name], ['Will', 'Koga', 'Bruno', 'Karen']);
   });
 
   testWidgets('tela: escolhe o jogo, abre o personagem e mostra todas as aparições', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(400, 900));
+    await tester.binding.setSurfaceSize(const Size(400, 2400));
     await tester.pumpWidget(const MaterialApp(home: OfficialTeamsScreen()));
-    for (var i = 0; i < 10 && find.text('Brock').evaluate().isEmpty; i++) {
+    for (var i = 0; i < 40 && find.text('Brock').evaluate().isEmpty; i++) {
       await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
       await tester.pump(const Duration(milliseconds: 300));
     }

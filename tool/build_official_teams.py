@@ -7,7 +7,9 @@ Saída: assets/database/official_teams.json
 
 Uso:
     python3 tool/build_official_teams.py <pasta com os arquivos do pret>
-    (a pasta tem uma subpasta por projeto: pokebw2/ (Black 2/White 2, a
+    (a pasta tem uma subpasta por projeto: trevenant/ (o repositório do
+    Trevenant, para os jogos sem desmontagem; ver tool/official_teams/wiki.py),
+    pokebw2/ (Black 2/White 2, a
     desmontagem inteira), sv/ (Scarlet/Violet, ver
     tool/official_teams/gen9.py), pokered/, pokeyellow/, pokegold/,
     pokecrystal/, pokeruby/, pokeemerald/, pokefirered/, pokeplatinum/, com os
@@ -28,6 +30,7 @@ import gen3  # noqa: E402
 import gen4  # noqa: E402
 import gen5  # noqa: E402
 import gen9  # noqa: E402
+import wiki  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB = os.path.join(ROOT, 'assets', 'database')
@@ -65,8 +68,17 @@ GAMES = [
         'charmap': 'charmap.txt', 'species_names': 'species_names.h', 'species_info': 'species_info.h',
         'learnsets': 'level_up_learnsets.h', 'learnset_pointers': 'level_up_learnset_pointers.h',
         'trainers': 'trainers.h', 'parties': 'trainer_parties.h'}),
+    ('diamond-pearl', 'Diamond/Pearl', 'Sinnoh', 4, wiki, 'trevenant', {}),
     ('platinum', 'Platinum', 'Sinnoh', 4, gen4, 'pokeplatinum', {}),
+    ('heartgold-soulsilver', 'HeartGold/SoulSilver', 'Johto', 4, wiki, 'trevenant', {}),
+    ('black-white', 'Black/White', 'Unova', 5, wiki, 'trevenant', {}),
     ('black2-white2', 'Black 2/White 2', 'Unova', 5, gen5, 'pokebw2', {}),
+    ('x-y', 'X/Y', 'Kalos', 6, wiki, 'trevenant', {}),
+    ('omegaruby-alphasapphire', 'Omega Ruby/Alpha Sapphire', 'Hoenn', 6, wiki, 'trevenant', {}),
+    ('sun-moon', 'Sun/Moon', 'Alola', 7, wiki, 'trevenant', {}),
+    ('ultrasun-ultramoon', 'Ultra Sun/Ultra Moon', 'Alola', 7, wiki, 'trevenant', {}),
+    ('sword-shield', 'Sword/Shield', 'Galar', 8, wiki, 'trevenant', {}),
+    ('brilliantdiamond-shiningpearl', 'Brilliant Diamond/Shining Pearl', 'Sinnoh', 8, wiki, 'trevenant', {}),
     ('scarlet-violet', 'Scarlet/Violet', 'Paldea', 9, gen9, 'sv', {}),
 ]
 
@@ -80,7 +92,7 @@ RIVAL_NAMES = {'TERRY': 'Blue', 'CEDRIC': 'Barry'}
 
 # Retrato (assets/database/trainers.json) quando o nome não bate direto.
 PORTRAITS = {('Campeão', 'Blue'): 'champion-blue', ('Líder de Ginásio', 'Blue'): 'champion-blue', 'Drake': 'sd-drake-gen3', 'Phoebe': 'sd-phoebe-gen6', 'Maxie': 'sd-maxie-gen6',
-             'Archie': 'sd-archie-gen6', 'Nemona': 'sd-nemona-v', 'Arven': 'sd-arven-v', 'Clavell': 'sd-clavell-s', 'Executivo': 'rocket-grunt-m', 'Executiva': 'rocket-grunt-f'}
+             'Archie': 'sd-archie-gen6', 'Nemona': 'sd-nemona-v', 'Brendan/May': 'brendan', 'Arven': 'sd-arven-v', 'Clavell': 'sd-clavell-s', 'Executivo': 'rocket-grunt-m', 'Executiva': 'rocket-grunt-f'}
 
 
 def portrait(person, ids):
@@ -123,7 +135,23 @@ def resolver(errors):
 
     move_by_id = {m['id']: m['name'] for m in load('moves')}
 
+    names = {'move_name': known['move'], 'item_name': known['item'], 'ability_name': known['ability']}
+
     def resolve(kind, const):
+        if kind == 'species_name':
+            name = WIKI_SPECIES.get(const, wiki.slug(const))
+            p = by_name.get(name) or next((p for p in pokemon if p['is_default'] and p['name'].startswith(name + '-')), None)
+            if not p:
+                errors.add(f'{kind} {const} -> {name}')
+            return p and p['id']
+        if kind in names:
+            name = WIKI_NAMES.get(const, wiki.slug(const))
+            if kind == 'item_name' and name.endswith('ium-z'):
+                name += '--held'  # Cristais Z (o banco tem a versão de segurar)
+            if name not in names[kind]:
+                errors.add(f'{kind} {const} -> {name}')
+                return None
+            return name
         if kind == 'move_id':
             if const not in move_by_id:
                 errors.add(f'move id {const}')
@@ -141,6 +169,14 @@ def resolver(errors):
             errors.add(f'{kind} {const} -> {name}')
         return name
     return resolve
+
+
+# Nomes do Trevenant que não viram o nome do banco só trocando espaços por hífen.
+WIKI_SPECIES = {'Meowstic-F': 'meowstic-female', 'Meowstic-M': 'meowstic-male', 'Mr.Mime': 'mr-mime'}
+WIKI_NAMES = {  # erros de digitação dos dados
+    'Beserk': 'berserk', 'Unburnden': 'unburden', 'Pom-Pom Style': 'dancer', 'Scope Lense': 'scope-lens',
+    'Attrack': 'attract', 'Heabutt': 'headbutt', 'Poision Fang': 'poison-fang', 'Screch': 'screech', 'Seedbomb': 'seed-bomb',
+}
 
 
 def title(name):
@@ -193,6 +229,8 @@ def main(src):
             built = gen2.build(os.path.join(src, folder), resolve, os.path.join(src, 'maps', folder, 'maps'))
         elif module is gen5:
             built = gen5.build(os.path.join(src, folder), resolve, load('pokemon'), load('species'))
+        elif module is wiki:
+            built = wiki.build(json.loads(read(os.path.join(src, folder, 'src/data/trainers', wiki.GAMES[gid][0] + '.json'))), resolve, gid)
         elif module is gen9:
             built = gen9.build(json.loads(read(os.path.join(src, folder, 'trdata_array_clean.json'))),
                                open(os.path.join(src, folder, 'trdata_array.bfbs'), 'rb').read(), resolve, load('pokemon'))
@@ -205,7 +243,7 @@ def main(src):
         battles = [b for b in battles if (gid, b['name']) not in SKIP]
         people = {}
         for b in battles:
-            display = RIVAL_NAMES.get(b['name'], title(b['name']))
+            display = b['name'] if module is wiki else RIVAL_NAMES.get(b['name'], title(b['name']))
             person = people.setdefault((b['class'], display), {'name': display, 'class': b['class'], 'battles': []})
             label = b.get('label') or battle_label(b['key'], b['name'], b['class'])
             person['battles'].append({'label': label, 'team': b['team']})
@@ -217,10 +255,17 @@ def main(src):
                     b['label'] = 'Luta 1'
                 if b['label'] == 'Luta 2' and person['class'] in ('Elite Four', 'Campeão'):
                     b['label'] = 'Revanche'
+            # Legenda repetida na mesma pessoa: "(2)", "(3)"...
+            used = {}
+            for b in person['battles']:
+                used[b['label']] = used.get(b['label'], 0) + 1
+                if used[b['label']] > 1:
+                    b['label'] = f"{b['label']} ({used[b['label']]})"
         rank = ['Líder de Ginásio', 'Elite Four', 'Campeão', 'Rival']
         people = dict(sorted(people.items(), key=lambda kv: (rank.index(kv[0][0]) if kv[0][0] in rank else len(rank),
                                                              GYM_ORDER.index(kv[0][1]) if kv[0][0] == rank[0] and kv[0][1] in GYM_ORDER else 0)))
-        games.append({'id': gid, 'name': gname, 'region': region, 'generation': gen, 'source': f'pret/{folder}',
+        source = 'community' if module is wiki else 'game'
+        games.append({'id': gid, 'name': gname, 'region': region, 'generation': gen, 'source': source,
                       'trainers': list(people.values())})
     if errors:
         raise SystemExit('Não reconhecidos:\n' + '\n'.join(sorted(errors)))

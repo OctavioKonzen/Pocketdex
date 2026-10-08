@@ -76,6 +76,14 @@ class _OfficialTeamsScreenState extends State<OfficialTeamsScreen> {
                       ),
                     ]),
                   ),
+                if (game.community)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    child: Text(
+                      '📖 ${game.name}: dados da comunidade (calculadoras de Nuzlocke, tirados dos jogos por fãs). Podem ter pequenas diferenças do jogo.',
+                      style: TextStyle(color: c.muted, fontSize: 12),
+                    ),
+                  ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
                   child: SiteSearchField(hint: 'Buscar personagem ou classe', onChanged: (t) => setState(() => _query = t)),
@@ -115,7 +123,7 @@ class _OfficialTeamsScreenState extends State<OfficialTeamsScreen> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                   child: Text(
-                    'Dados tirados do código dos jogos: da 1ª à 4ª geração pelos projetos de desmontagem do pret (github.com/pret), Black 2/White 2 pela desmontagem pokebw2 e Scarlet/Violet (versão 1.0, sem as DLCs) pelos arquivos do jogo. Da 6ª à 8ª geração ainda não há uma fonte aberta com esses detalhes.',
+                    'Dados tirados do código dos jogos: da 1ª à 4ª geração pelos projetos de desmontagem do pret (github.com/pret), Black 2/White 2 pela desmontagem pokebw2 e Scarlet/Violet (versão 1.0, sem as DLCs) pelos arquivos do jogo. Os outros jogos (marcados com 📖) vêm dos dados de treinadores do Trevenant/VanillaNuzlockeCalc, feitos pela comunidade.',
                     style: TextStyle(color: c.muted, fontSize: 11),
                   ),
                 ),
