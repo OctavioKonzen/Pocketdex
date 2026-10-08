@@ -145,7 +145,7 @@ typedef BattleHit = HitResult? Function(BattleMon att, BattleMon def, String slu
 /// item usado num Pokémon do time (heal: [index] e o HP em [value]) ou o
 /// status novo (status: em [type]; '' = curou).
 class BattleEvent {
-  final String t; // text | hp | switch | faint | attack | miss | heal | status | mega | tera | dmax | weather
+  final String t; // text | hp | switch | faint | attack | miss | heal | status | mega | tera | dmax | weather | ball
   final String key;
   final List<Object> args;
   final int side, value, index;
@@ -265,6 +265,13 @@ class BattleEvent {
         type = '',
         category = '',
         slug = '';
+  /// Battle Factory: a bola [slug] no selvagem [side]; [value] balanços (até 3); [index] 1 = capturou.
+  const BattleEvent.ball(this.side, this.slug, this.value, this.index)
+      : t = 'ball',
+        key = '',
+        args = const [],
+        type = '',
+        category = '';
 }
 
 final struggle = BattleMove('struggle', 'Struggle', 'normal', 50, null, 1, 1, 0, category: 'physical');
@@ -323,8 +330,8 @@ const _weatherImmune = {
 class BattleItem {
   final String slug, name;
   final int heal, count;
-  final bool revive;
-  const BattleItem(this.slug, this.name, {this.heal = 0, this.revive = false, required this.count});
+  final bool revive, ball;
+  const BattleItem(this.slug, this.name, {this.heal = 0, this.revive = false, this.ball = false, required this.count});
 }
 
 /// Itens da Bolsa (os mesmos dos dois lados) e quantos cada um começa. Igual ao site.
@@ -335,11 +342,21 @@ const battleItems = [
   // Só na Battle Factory (comprada na loja): cura todo o HP.
   BattleItem('max-potion', 'Max Potion', heal: 9999, count: 0),
   BattleItem('revive', 'Revive', revive: true, count: 1),
+  // Só na Battle Factory, contra selvagens (a chance de cada uma está no motor).
+  BattleItem('poke-ball', 'Poké Ball', ball: true, count: 0),
+  BattleItem('great-ball', 'Great Ball', ball: true, count: 0),
+  BattleItem('ultra-ball', 'Ultra Ball', ball: true, count: 0),
+  BattleItem('quick-ball', 'Quick Ball', ball: true, count: 0),
+  BattleItem('net-ball', 'Net Ball', ball: true, count: 0),
+  BattleItem('dusk-ball', 'Dusk Ball', ball: true, count: 0),
+  BattleItem('timer-ball', 'Timer Ball', ball: true, count: 0),
+  BattleItem('master-ball', 'Master Ball', ball: true, count: 0),
 ];
 BattleItem? _itemOf(String slug) => battleItems.where((i) => i.slug == slug).firstOrNull;
 
 class TurnBattle {
-  TurnBattle(List<BattleMon> mine, List<BattleMon> theirs, this.random, {this.mode = 'singles', this.controllers, this.rules = const [], this.startBags, this.healPct = false})
+  TurnBattle(List<BattleMon> mine, List<BattleMon> theirs, this.random,
+      {this.mode = 'singles', this.controllers, this.rules = const [], this.startBags, this.healPct = false, this.capture})
       : teams = [mine, theirs] {
     for (final mon in [...mine, ...theirs]) {
       mon
@@ -362,6 +379,7 @@ class TurnBattle {
         'mode': mode, 'controllers': controllers, 'rules': rules,
         if (startBags != null) 'bags': startBags,
         if (healPct) 'healPct': true,
+        if (capture != null) 'capture': capture,
       }]);
       _simHandle = created['handle'] as int;
       _opening = _simSync(created);
@@ -381,6 +399,10 @@ class TurnBattle {
 
   /// Battle Factory: as poções curam uma parte do HP máximo (o nível não tem limite).
   final bool healPct;
+
+  /// Battle Factory, selvagem: dá para jogar Poké Balls ({rates, dusk}; o motor faz a conta). captured: pegou.
+  final Map<String, dynamic>? capture;
+  int? captured;
   final List<List<String>>? controllers;
   Map<String, dynamic>? get simulatorState => _simState;
   List<Map<String, dynamic>> recommend(int side, [Map<String, dynamic>? options]) =>
@@ -429,6 +451,7 @@ class TurnBattle {
     _simState = state;
     turn = state['turn'] as int;
     winner = state['winner'] as int?;
+    captured = state['captured'] as int?;
     weather = const {'raindance': 'rain', 'sunnyday': 'sun', 'sandstorm': 'sand', 'hail': 'hail', 'snow': 'snow'}[state['weather']] ?? '';
     for (var side = 0; side < 2; side++) {
       final s = state['sides'][side] as Map;
@@ -493,6 +516,7 @@ class TurnBattle {
       case 'tera': return BattleEvent.tera(side, e['type'] as String);
       case 'dmax': return BattleEvent.dmax(side, e['on'] == true ? 1 : 0, e['id'] as int);
       case 'weather': return BattleEvent.weather(e['weather'] as String);
+      case 'ball': return BattleEvent.ball(side, e['ball'] as String, e['shakes'] as int, e['caught'] == true ? 1 : 0);
       default: return BattleEvent.text(e['key'] as String, [for (final dynamic arg in e['args'] as List) arg is Map ? (arg['side'] as int, arg['name'] as String) : arg as Object]);
     }
   }
@@ -537,7 +561,7 @@ class TurnBattle {
   }
 
   // Visão da partida sem restaurar HP, formas ou status.
-  TurnBattle._view(this.teams, this.random) : mode = 'singles', controllers = null, rules = const [], startBags = null, healPct = false;
+  TurnBattle._view(this.teams, this.random) : mode = 'singles', controllers = null, rules = const [], startBags = null, healPct = false, capture = null;
   TurnBattle viewFor(int side) {
     final order = [side, 1 - side];
     final view = TurnBattle._view([for (final s in order) teams[s]], random);
@@ -1194,9 +1218,13 @@ class TurnBattle {
     _faints(events, foeSide);
   }
 
-  /// Dá para usar o item nesse Pokémon? (poção: vivo e ferido; Revive: desmaiado).
+  /// Dá para jogar a bola? Só no Pokémon selvagem da Battle Factory (capture), ainda de pé.
+  bool canThrow(String slug) => capture != null && _simHandle != null && (bags[0][slug] ?? 0) > 0 && active(1).hp > 0;
+
+  /// Dá para usar o item nesse Pokémon? (poção: vivo e ferido; Revive: desmaiado; bola: o selvagem de pé).
   bool canUseItem(int side, String slug, int index) {
     final item = _itemOf(slug);
+    if (item?.ball == true) return canThrow(slug);
     if (item == null || index < 0 || index >= teams[side].length || (bags[side][slug] ?? 0) <= 0) return false;
     final mon = teams[side][index];
     return item.revive ? mon.hp <= 0 : mon.hp > 0 && mon.hp < mon.maxHp;
@@ -1556,6 +1584,9 @@ class TurnBattle {
     'usedItem': ['Você usou {1} em {0}!', 'O adversário usou {1} em {0}!'],
     'healed': ['{0} recuperou {1} de HP!', '{0} inimigo recuperou {1} de HP!'],
     'revived': ['{0} voltou à batalha!', '{0} inimigo voltou à batalha!'],
+    'threwBall': 'Você jogou uma {1}!',
+    'caught': ['', 'Pegou! {0} foi capturado!'],
+    'brokeFree': ['', 'Ah, não! {0} escapou da bola!'],
     'burned': ['{0} foi queimado!', '{0} inimigo foi queimado!'],
     'paralyzed': ['{0} foi paralisado! Talvez não consiga se mover!', '{0} inimigo foi paralisado! Talvez não consiga se mover!'],
     'poisoned': ['{0} foi envenenado!', '{0} inimigo foi envenenado!'],

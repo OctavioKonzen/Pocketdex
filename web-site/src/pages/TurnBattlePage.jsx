@@ -28,7 +28,7 @@ import { battleRecord } from '../lib/battleLog'
 import { playSound, soundOf, startMusic, stopMusic } from '../lib/battleSound'
 import {simulatorTargets} from '../lib/battleSimulator'
 import {newPartyBattle, playPartyTurn, describeEvents} from '../lib/partyBattle'
-import { FactoryAfter, FactoryHub, saveFactory } from '../components/FactoryPanels'
+import { FactoryHub, FactoryScreen, saveFactory } from '../components/FactoryPanels'
 import { factoryAfter, factoryBattle, factoryFoe } from '../lib/factoryBattle'
 import { endRun, factoryOf, winFloor } from '../lib/factoryRun'
 import { getFactoryData } from '../lib/data'
@@ -138,7 +138,7 @@ function RegionProgress({ region, busy, ready, onLeague }) {
   )
 }
 
-function Setup({ onStart, onFactory }) {
+function Setup({ onStart, onFactory, onFactoryRun }) {
   const teams = useStore((s) => s.teams)
   const list = useFriends((s) => s.list)
   const friends = useMemo(() => friendsOnly(list), [list])
@@ -198,21 +198,6 @@ function Setup({ onStart, onFactory }) {
     }
     } catch(e) {setError(e.message || 'Não foi possível iniciar a batalha. Tente novamente.')}
     finally {setBusy(false)}
-  }
-
-  // Battle Factory: a batalha do andar da corrida.
-  const factoryFloor = async (run) => {
-    setBusy(true)
-    setError('')
-    try {
-      const battle = await factoryBattle(run)
-      const foe = factoryFoe(run)
-      onStart(battle, foe.foeName, foe.foeTrainer, foe.challenge)
-    } catch (e) {
-      setError(e.message || 'Não foi possível iniciar a batalha. Tente novamente.')
-    } finally {
-      setBusy(false)
-    }
   }
 
   if (preview) {
@@ -309,7 +294,7 @@ function Setup({ onStart, onFactory }) {
           ))}
         </select>
       </label>
-      {friend === FACTORY && <FactoryHub onBattle={factoryFloor} busy={busy} />}
+      {friend === FACTORY && <FactoryHub onContinue={onFactoryRun} busy={busy} />}
       {leader && <LeaderCard leader={leader} />}
       {streak && <StreakCard kind={streak} />}
       {leader && regionOf(regions, leader.id) && (
@@ -347,17 +332,6 @@ function Setup({ onStart, onFactory }) {
       )}
     </section>
   )
-}
-
-/** Depois do andar: o painel da corrida (se ainda há algo para escolher). */
-function FactoryAfterBattle({ onNext }) {
-  const run = useStore((s) => factoryOf(s.league).run)
-  const [data, setData] = useState(null)
-  useEffect(() => {
-    getFactoryData().then(setData)
-  }, [])
-  if (!run?.pending || !data) return null
-  return <FactoryAfter run={run} data={data} onNext={onNext} />
 }
 
 function HpBar({ hp, max }) {
@@ -690,7 +664,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   const [intro, setIntro] = useState(() => (!online && battle.turn <= 1 ? { foe: 'in', me: 'in', back: 0 } : null))
   // Cada Pokémon: '' na tela, 'hidden' dentro da Poké Ball, 'release' saindo, 'recall' voltando.
   const [poke, setPoke] = useState(() => (!online && battle.turn <= 1 ? ['hidden', 'hidden'] : ['', '']))
-  const [ball, setBall] = useState([null, null]) // 'throw' | 'open'
+  const [ball, setBall] = useState([null, null]) // 'throw' | 'open' | Battle Factory: 'catch' | 'still' | 'shake' | 'caught'
   // Detalhes do Pokémon tocado (0: o seu, 1: o adversário).
   const [inspect, setInspect] = useState(null)
   const setSide = (setter, side, value) => setter((list) => list.map((x, i) => (i === side ? value : x)))
@@ -893,6 +867,25 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         setFlash((n) => n + 1)
         setShown((s) => ({ ...s, tera: s.tera.map((x, i) => (i === e.side ? e.type || 'normal' : x)) }))
         await wait(700)
+      } else if (e.t === 'ball') {
+        // Battle Factory: a bola no selvagem; ele entra nela, ela balança (até 3 vezes) e pega ou abre.
+        playSound('throw')
+        setSide(setBall, 1, 'catch')
+        await wait(520)
+        playSound('recall')
+        setSide(setPoke, 1, 'recall')
+        await wait(380)
+        setSide(setPoke, 1, 'hidden')
+        setSide(setBall, 1, 'still')
+        for (let k = 0; k < e.shakes; k++) {
+          await wait(250)
+          setSide(setBall, 1, 'shake')
+          await wait(520)
+          setSide(setBall, 1, 'still')
+        }
+        await wait(300)
+        if (e.caught) setSide(setBall, 1, 'caught')
+        else await release(1)
       } else if (e.t === 'weather') {
         // O cenário muda com o clima (céu, chão, chuva caindo...).
         setShown((s) => ({ ...s, weather: e.weather }))
@@ -1026,6 +1019,11 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
       return act(() => playTurn(battle, { item, target: i }, hit))
     }
     return act(() => battle.needSwitch ? replace(battle, i) : playTurn(battle, { switch: i }, hit))
+  }
+  const throwBall = (slug) => {
+    if (actionBusy.current || busy || online) return
+    setMenu('main')
+    return act(() => playTurn(battle, { item: slug, target: battle.sides[1].active }, hit))
   }
   const run = () => {
     if (window.confirm(t('Fugir da batalha? Conta como derrota.'))) {
@@ -1170,7 +1168,9 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
                   key={it.slug}
                   type="button"
                   disabled={!usableOn}
-                  onClick={() => (setItem(it.slug), setMenu('party'))}
+                  data-testid={`bag-${it.slug}`}
+                  // A bola vai direto no selvagem; os remédios perguntam em quem.
+                  onClick={() => (it.ball ? throwBall(it.slug) : (setItem(it.slug), setMenu('party')))}
                   className="flex cursor-pointer items-center gap-3 rounded-xl bg-surface p-2 text-left disabled:cursor-default disabled:opacity-50"
                 >
                   <img src={spriteUrl(`items/${it.slug}.png`)} alt="" className="pixelated h-10 w-10" />
@@ -1179,7 +1179,9 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
                       {it.name}
                     </div>
                     <div className="text-xs text-muted">
-                      {it.revive
+                      {it.ball
+                        ? t('Jogar no Pokémon selvagem')
+                        : it.revive
                         ? t('Revive com metade do HP')
                         : it.heal >= 9999
                           ? t('Recupera todo o HP')
@@ -1476,6 +1478,8 @@ export default function TurnBattlePage() {
   const user = useAuth((s) => (s.status === 'signedIn' ? s.user : null))
   const [game, setGame] = useState(null) // {battle, foeName, foeTrainer, challenge, endNote, next, key}
   const [factoryMode, setFactoryMode] = useState(false)
+  const [factoryBusy, setFactoryBusy] = useState(false)
+  const [factoryError, setFactoryError] = useState('')
   const [hit, setHit] = useState(null)
   const [regions, setRegions] = useState([])
   useEffect(() => {
@@ -1554,13 +1558,18 @@ export default function TurnBattlePage() {
     setGame({ battle, foeName: '', foeTrainer: null, challenge: { ...challenge, wins }, key: game.key + 1 })
   }
 
-  // Battle Factory: o próximo andar (depois de captura, carta e loja).
-  const nextFactoryFloor = async (run) => {
+  // Battle Factory: a corrida em tela cheia (resultado, loja, mapa) e a batalha do caminho escolhido.
+  const openFactory = () => setGame((g) => ({ factory: true, key: (g?.key ?? 0) + 1 }))
+  const factoryFloor = async (run) => {
+    setFactoryBusy(true)
+    setFactoryError('')
     try {
       const battle = await factoryBattle(run)
-      setGame({ battle, ...factoryFoe(run), key: (game?.key ?? 0) + 1 })
-    } catch {
-      setGame(null)
+      setGame((g) => ({ battle, ...factoryFoe(run), key: (g?.key ?? 0) + 1 }))
+    } catch (e) {
+      setFactoryError(e.message || 'Não foi possível iniciar a batalha. Tente novamente.')
+    } finally {
+      setFactoryBusy(false)
     }
   }
 
@@ -1584,7 +1593,8 @@ export default function TurnBattlePage() {
         saveFactory(after)
         endNote = t('A corrida acabou no andar {0}: +{1} moedas. Recorde: andar {2}.').replace('{0}', run.floor).replace('{1}', after.last.coins).replace('{2}', after.best)
       }
-      setGame((g) => (g ? { ...g, endNote, next: null } : g))
+      // "Continuar": a tela da corrida no lugar da batalha (resultado, captura, carta, loja e mapa).
+      setGame((g) => (g ? { ...g, endNote, next: { label: `${t('Continuar')} →`, onClick: openFactory } } : g))
       return
     }
     if (challenge?.kind === 'tower') {
@@ -1634,7 +1644,7 @@ export default function TurnBattlePage() {
       <PageHeader
         title="Batalha"
         subtitle={
-          factoryMode || challenge?.kind === 'factory'
+          factoryMode || game?.factory || challenge?.kind === 'factory'
             ? 'Battle Factory: sem nível máximo. Batalha por turnos como nos jogos, com o computador jogando pelo outro lado.'
             : 'Nível máximo 50. Batalha por turnos como nos jogos: seu time contra o de um amigo (ou um aleatório), com o computador jogando pelo outro lado.'
         }
@@ -1642,8 +1652,13 @@ export default function TurnBattlePage() {
       <Link to="/batalha" className="inline-flex items-center gap-1 text-sm text-muted hover:text-text">
         <Icon name="back" size={16} /> Centro de Batalha
       </Link>
-      {!game || !hit ? (
-        <Setup onFactory={setFactoryMode} onStart={(battle, foeName, foeTrainer = null, challenge = null) => setGame({ battle, foeName, foeTrainer, challenge, key: 1 })} />
+      {game?.factory ? (
+        <>
+          {factoryError && <p className="text-sm font-bold text-red-500">{t(factoryError)}</p>}
+          <FactoryScreen key={game.key} onBattle={factoryFloor} onExit={() => setGame(null)} busy={factoryBusy} />
+        </>
+      ) : !game || !hit ? (
+        <Setup onFactory={setFactoryMode} onFactoryRun={openFactory} onStart={(battle, foeName, foeTrainer = null, challenge = null) => setGame({ battle, foeName, foeTrainer, challenge, key: 1 })} />
       ) : (
         <Battle
           key={game.key}
@@ -1665,7 +1680,6 @@ export default function TurnBattlePage() {
           }}
         />
       )}
-      {challenge?.kind === 'factory' && game?.endNote && <FactoryAfterBattle onNext={nextFactoryFloor} />}
     </div>
   )
 }

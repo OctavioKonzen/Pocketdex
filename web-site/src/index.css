@@ -401,6 +401,21 @@ body {
   50% { transform: translate(0%, -320%) rotate(360deg) scale(0.8); }
   100% { transform: translate(-50%, 0) rotate(720deg) scale(0.8); }
 }
+/* Battle Factory: a sua bola no selvagem (sai da sua mão e cai na plataforma dele), os balanços e a bola fechada. */
+.pokeball-catch-1 { animation: pokeball-catch-1 520ms cubic-bezier(.3,.7,.5,1) forwards; }
+@keyframes pokeball-catch-1 {
+  0% { transform: translate(-420%, 320%) rotate(0deg) scale(1.1); }
+  50% { transform: translate(-200%, -180%) rotate(-360deg) scale(0.9); }
+  100% { transform: translate(-50%, 0) rotate(-720deg) scale(0.8); }
+}
+.pokeball-still-1, .pokeball-caught-1 { transform: translate(-50%, 0) scale(0.8); }
+.pokeball-caught-1 { filter: brightness(0.75); }
+.pokeball-shake-1 { transform-origin: 50% 90%; animation: pokeball-shake 520ms ease-in-out; }
+@keyframes pokeball-shake {
+  0%, 100% { transform: translate(-50%, 0) scale(0.8) rotate(0deg); }
+  25% { transform: translate(-50%, 0) scale(0.8) rotate(-22deg); }
+  75% { transform: translate(-50%, 0) scale(0.8) rotate(22deg); }
+}
 .pokeball-open-0, .pokeball-open-1 { animation: pokeball-open 260ms ease-out forwards; }
 @keyframes pokeball-open {
   0% { transform: translate(-50%, 0) scale(0.9); filter: none; opacity: 1; }

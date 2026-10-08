@@ -425,3 +425,52 @@ test('Battle Factory: potions heal a share of max HP (healPct) and Max Potion he
     assert.equal(max.state.bags[0]['max-potion'], 0);
   } finally {sim.dispose(game.handle);}
 });
+
+test('Battle Factory: a Master Ball catches the wild Pokémon and ends the battle without the foe acting', () => {
+  const game = sim.create({teams: [[mon('Pikachu', ['thunderbolt'])], [mon('Mewtwo', ['psychic'])]], seed: [1, 2, 3, 4], capture: {rates: [3]}, bags: [{'master-ball': 1}, null]});
+  try {
+    const next = sim.choose(game.handle, [{kind: 'item', item: 'master-ball', index: 0}, move(0)]);
+    assert.equal(next.state.captured, 0);
+    assert.equal(next.state.winner, 0);
+    assert.equal(next.state.bags[0]['master-ball'], 0);
+    assert.equal(next.log.filter(line => line.startsWith('|move|')).length, 0);
+    const ball = next.events.find(e => e.t === 'ball');
+    assert.deepEqual({ball: ball.ball, caught: ball.caught, shakes: ball.shakes}, {ball: 'master-ball', caught: true, shakes: 3});
+    assert.ok(next.events.some(e => e.key === 'caught'));
+    assert.ok(!next.events.some(e => e.key === 'win'));
+  } finally {sim.dispose(game.handle);}
+});
+
+test('Battle Factory: a failed throw spends the ball and the turn; balls only work on wild battles', () => {
+  const game = sim.create({teams: [[mon('Pikachu', ['splash'])], [mon('Mewtwo', ['splash'])]], seed: [1, 2, 3, 4], capture: {rates: [3]}, bags: [{'poke-ball': 1}, null]});
+  try {
+    const next = sim.choose(game.handle, [{kind: 'item', item: 'poke-ball', index: 0}, move(0)]);
+    assert.equal(next.state.captured, null);
+    assert.equal(next.state.winner, null);
+    assert.equal(next.state.bags[0]['poke-ball'], 0);
+    assert.ok(next.events.some(e => e.key === 'brokeFree'));
+    assert.equal(next.log.filter(line => line.startsWith('|move|p2')).length, 1);
+    assert.throws(() => sim.choose(game.handle, [{kind: 'item', item: 'poke-ball', index: 0}, move(0)]));
+  } finally {sim.dispose(game.handle);}
+  const trainer = sim.create({teams: [[mon('Pikachu', ['splash'])], [mon('Rattata', ['splash'])]], seed: [1, 2, 3, 4], bags: [{'poke-ball': 3}, null]});
+  try {
+    assert.throws(() => sim.choose(trainer.handle, [{kind: 'item', item: 'poke-ball', index: 0}, move(0)]));
+  } finally {sim.dispose(trainer.handle);}
+});
+
+test('Battle Factory: better balls, low HP and status catch more often', () => {
+  const rate = (ball, extra = {}) => {
+    let caught = 0;
+    for (let i = 0; i < 60; i++) {
+      const game = sim.create({teams: [[mon('Pikachu', ['splash'])], [{set: {species: 'Rattata', moves: ['splash'], level: 50}, ...extra}]], seed: [i, 7, 3, 9], capture: {rates: [60]}, bags: [{[ball]: 1}, null]});
+      try {
+        if (sim.choose(game.handle, [{kind: 'item', item: ball, index: 0}, move(0)]).state.captured != null) caught++;
+      } finally {sim.dispose(game.handle);}
+    }
+    return caught;
+  };
+  const poke = rate('poke-ball'), ultra = rate('ultra-ball'), weak = rate('poke-ball', {hpRatio: 0.05});
+  assert.ok(ultra > poke, `ultra ${ultra} > poke ${poke}`);
+  assert.ok(weak > poke, `weak ${weak} > poke ${poke}`);
+  assert.ok(rate('quick-ball') > ultra);
+});

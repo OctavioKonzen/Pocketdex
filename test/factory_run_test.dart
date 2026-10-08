@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pocket_dex/services/damage_calc.dart';
 import 'package:pocket_dex/services/factory_run.dart';
 import 'package:pocket_dex/services/league.dart';
 import 'package:pocket_dex/services/turn_battle.dart';
@@ -26,36 +27,51 @@ void main() {
     final run = FactoryRun.startRun(f, data, 1, 42)!;
     expect(run['team'], hasLength(1));
     expect(run['team'][0]['level'], 5);
-    expect(run['balls'], 5);
     expect(run['bag'], FactoryRun.startBag);
+    expect(run['bag']['poke-ball'], 5);
     expect(jsonEncode(FactoryRun.startRun(f, data, 1, 42)), jsonEncode(run));
     // O mesmo que o site sorteia (web-site/src/lib/factoryRun.test.js): a corrida continua de um no outro.
-    expect(run['seed'], 503953318);
+    expect(run['seed'], 3599190471);
     expect(run['team'][0]['ivs'], {'hp': 25, 'atk': 22, 'def': 29, 'spa': 26, 'spd': 17, 'spe': 23});
     expect(run['team'][0]['nature'], 'Docile');
     expect(run['boss'], {'region': 11, 'step': 0});
-    expect(run['encounter'], {'kind': 'wild', 'foes': [{'id': 235, 'level': 3, 'iv': 0, 'ev': 3}]});
+    expect(run['encounter'], isNull);
+    expect(run['route'], {'floor': 1, 'biome': 'grass', 'options': [{'kind': 'trainer'}]});
+    expect(FactoryRun.chooseNode(run, data, 0)['encounter'], {
+      'kind': 'trainer', 'foes': [{'id': 859, 'level': 2, 'iv': 0, 'ev': 3}, {'id': 273, 'level': 2, 'iv': 0, 'ev': 3}], 'trainerSeed': 500729487,
+    });
   });
 
-  test('40 andares iguais ao site (test/fixtures/factory_trace.json): chefes, captura, carta e loja', () {
+  test('40 andares iguais ao site (test/fixtures/factory_trace.json): mapa, chefes, captura, carta e loja', () {
     final expected = jsonDecode(File('test/fixtures/factory_trace.json').readAsStringSync()) as List;
     var run = FactoryRun.startRun(FactoryRun.empty(), data, 7, 2024)!;
     final out = [];
+    // 1.0 no Dart é 1 no site.
+    Object? n(Object? v) => v is double && v == v.roundToDouble() ? v.toInt() : v;
     for (var i = 0; i < 40; i++) {
-      final team = FactoryRun.teamOf(run);
-      run = FactoryRun.winFloor(run, data, hp: [for (var k = 0; k < team.length; k++) k == 0 ? 0.7 : 1.0]);
+      final options = [for (final o in FactoryRun.routeOf(run)!['options'] as List) Map<String, dynamic>.from(o as Map)];
+      run = FactoryRun.chooseNode(run, data, i % options.length);
+      final encounter = run['encounter'] == null ? null : Map<String, dynamic>.from(run['encounter'] as Map);
+      final foes = FactoryRun.foesOf(run);
+      if (encounter != null) {
+        final team = FactoryRun.teamOf(run);
+        run = FactoryRun.winFloor(run, data, hp: [for (var k = 0; k < team.length; k++) k == 0 ? 0.7 : 1.0], captured: i % 3 == 0);
+      }
       if (FactoryRun.pendingOf(run)!['capture'] != null) run = FactoryRun.capture(run, FactoryRun.teamOf(run).length >= FactoryRun.maxTeam ? 1 : null);
       if (FactoryRun.pendingOf(run)!['cards'] != null) run = FactoryRun.takeCard(run, '${(FactoryRun.pendingOf(run)!['cards'] as List).first}', data);
       run = {...run, 'money': (run['money'] as int) + 500};
       for (final id in (FactoryRun.pendingOf(run)!['shop'] as List?) ?? const []) {
         run = FactoryRun.buyItem(run, '$id', 0, data) ?? run;
       }
+      final pending = FactoryRun.pendingOf(run)!;
       run = FactoryRun.nextFloor(run, data);
       out.add([
-        run['seed'], run['floor'], run['money'], run['balls'], run['boss']['region'], run['boss']['step'],
-        [for (final m in FactoryRun.teamOf(run)) [m['id'], m['level'], m['exp'], m['item'] ?? '', (m['extras'] as List).length]],
-        run['encounter']['kind'],
-        [for (final f in FactoryRun.foesOf(run)) [f['id'], f['level'], f['shiny'] == true ? 1 : 0]],
+        run['seed'], run['floor'], run['money'], run['bag'], run['boss']['region'], run['boss']['step'],
+        [for (final m in FactoryRun.teamOf(run)) [m['id'], m['level'], m['exp'], m['item'] ?? '', (m['extras'] as List).length, n(m['hp'])]],
+        [for (final o in options) '${o['kind']}${o['biome'] != null ? ':${o['biome']}' : ''}'],
+        encounter?['kind'] ?? '',
+        [for (final f in foes) [f['id'], f['level'], f['shiny'] == true ? 1 : 0]],
+        pending['event'], pending['reward'], run['stash'],
       ]);
     }
     for (var i = 0; i < expected.length; i++) {
@@ -63,22 +79,22 @@ void main() {
     }
   });
 
-  test('venceu: XP só para quem está de pé; HP continua; captura com Poké Ball; shiny libera o inicial shiny', () {
+  test('venceu: XP só para quem está de pé; HP continua; o capturado na batalha entra no time; shiny libera o inicial shiny', () {
     var run = FactoryRun.startRun(FactoryRun.empty(), data, 4, 3)!;
     run = {
       ...run,
       'team': [...FactoryRun.teamOf(run), {...FactoryRun.teamOf(run).first, 'id': 7}],
       'encounter': {'kind': 'wild', 'foes': [{'id': 19, 'level': 5, 'iv': 0, 'ev': 0, 'shiny': true}]},
     };
-    final after = FactoryRun.winFloor(run, data, hp: [0.4, 0]);
+    final after = FactoryRun.winFloor(run, data, hp: [0.4, 0], captured: true);
     expect(after['floor'], 2);
+    expect(FactoryRun.pendingOf(FactoryRun.winFloor(run, data))!['capture'], isNull);
     final team = FactoryRun.teamOf(after);
     expect(team[0]['exp'], FactoryRun.expAt(5) + FactoryRun.expFor(data.species[19]![0] as int, 5, 5));
     expect(team[1]['exp'], FactoryRun.expAt(5));
     final caught = FactoryRun.capture(after);
-    expect(caught['balls'], 4);
     expect(caught['team'][2]['shiny'], true);
-    expect(FactoryRun.capture({...after, 'balls': 0}), {...after, 'balls': 0});
+    expect(FactoryRun.teamOf(FactoryRun.skipCapture(after)), hasLength(2));
     final f = FactoryRun.empty();
     expect(FactoryRun.unlockShiny(f, data, {'id': 19, 'shiny': true}), f);
     expect(FactoryRun.unlockShiny(f, data, {'id': 4, 'shiny': true})['shinies'], [4]);
@@ -93,7 +109,7 @@ void main() {
     run = FactoryRun.buyItem(run, 'leftovers', 0, data)!;
     run = FactoryRun.buyItem(run, 'choice-band', 0, data)!;
     run = FactoryRun.buyItem(run, 'poke-ball', 0, data)!;
-    expect(run['balls'], 6);
+    expect(run['bag']['poke-ball'], 6);
     expect(run['team'][0]['item'], 'leftovers');
     expect(FactoryRun.memberOf(run, FactoryRun.teamOf(run)[0], ['tackle']).$2['boost']['atk'], 0.05);
     final swapped = FactoryRun.setMainItem(run, 0, 0);
@@ -128,7 +144,7 @@ void main() {
   test('chefe sem treinador (Mega deixa a Mega Pedra), loja nova, golpes, itens guardados e mecânicas', () {
     var run = FactoryRun.startRun(FactoryRun.empty(), data, 4, 3)!;
     run = {...run, 'floor': 25, 'encounter': {'kind': 'wildboss', 'foes': [{'id': 6, 'level': 20, 'iv': 31, 'ev': 50, 'item': 'charizardite-x', 'gimmick': 'mega', 'title': 'mega'}]}};
-    var after = FactoryRun.winFloor(run, data);
+    var after = FactoryRun.winFloor(run, data, captured: true);
     expect(after['stash'], ['charizardite-x']);
     expect(FactoryRun.pendingOf(after)!['capture']['id'], 6);
     expect(FactoryRun.foeMember(FactoryRun.foesOf(run).first, ['tackle']).$2['gimmick'], 'mega');
@@ -161,7 +177,7 @@ void main() {
   test('na batalha: passa do nível 100, os bônus somam, o HP continua e o selvagem fica sem bolsa', () async {
     final start = FactoryRun.startRun(FactoryRun.empty(), data, 4, 7)!;
     final strong = {...FactoryRun.teamOf(start)[0], 'level': 150, 'extras': ['choice-scarf', 'choice-scarf'], 'hp': 0.5};
-    final run = {...start, 'team': [strong, {...strong, 'hp': 0}]};
+    final run = {...start, 'team': [strong, {...strong, 'hp': 0}], 'encounter': {'kind': 'wild', 'foes': [{'id': 19, 'level': 5, 'iv': 0, 'ev': 0}]}};
     final moveList = FactoryRun.movesAt(pokemon[4]!['moves'] as List, 150, ['fire'], moves);
     final plain = {...strong, 'extras': <String>[], 'hp': 1};
     final mons = await TurnBattleSetup.mons([
@@ -180,5 +196,79 @@ void main() {
     expect(battle.teams[0][1].hp, 0);
     battle.dispose();
     reference.dispose();
+  });
+
+  test('mapa: cidades, caminhos (sempre uma batalha), bioma, treinador forte, Poké Mart, Centro e eventos; bolas antigas vão para a Bolsa', () {
+    final kanto = data.bosses.firstWhere((b) => b['game'] == 'Red/Blue');
+    final brock = (kanto['leaders'] as List).firstWhere((l) => l['name'] == 'Brock');
+    expect(brock['city'], 'Pewter City');
+    Map<String, dynamic> at(int floor, [int seed = 3]) => {...FactoryRun.startRun(FactoryRun.empty(), data, 4, seed)!, 'floor': floor};
+    var state = 5;
+    double rand() {
+      final (v, s) = FactoryRun.nextRandom(state);
+      state = s;
+      return v;
+    }
+
+    // Até o ginásio (Brock): o caminho só se divide nas bifurcações; o líder só na cidade dele.
+    final red = data.bosses.indexWhere((b) => b['game'] == 'Red/Blue');
+    final leaders = data.bosses[red]['leaders'] as List;
+    Map<String, dynamic> on(int floor, int step, [int leg = 1]) => {...at(floor), 'leg': leg, 'boss': {'region': red, 'step': step}};
+    double Function() seq(List<double> v) {
+      var i = 0;
+      return () => v[i++ % v.length];
+    }
+
+    for (var pos = 0; pos < FactoryRun.routeLength; pos++) {
+      final options = FactoryRun.routeOptions(on(11 + pos, 1, 11), data, rand)['options'] as List;
+      expect(options, hasLength(FactoryRun.forks.contains(pos) ? 3 : 1));
+      expect(options.any((o) => FactoryRun.isBattleNode(o as Map)), isTrue);
+    }
+    expect(FactoryRun.routeOptions(on(10, 1), data, rand)['options'], [{'kind': 'boss'}]);
+    // O rival: em qualquer andar da rota; no último, sempre. Liga: a Elite Four e o Campeão em sequência.
+    expect(FactoryRun.routeOptions(on(3, 0), data, seq([0.1, 0.5]))['options'], [{'kind': 'boss'}]);
+    expect((FactoryRun.routeOptions(on(1, 0), data, seq([0.9, 0.5]))['options'] as List).first['kind'], isNot('boss'));
+    expect(FactoryRun.routeOptions(on(9, 0), data, seq([0.9, 0.5]))['options'], [{'kind': 'boss'}]);
+    final first = leaders.indexWhere((l) => l['kind'] == 'elite');
+    expect((FactoryRun.routeOptions(on(5, first), data, seq([0.1, 0.5]))['options'] as List).first['kind'], isNot('boss'));
+    for (var step = first + 1; step < leaders.length; step++) {
+      expect(FactoryRun.routeOptions(on(12, step, 12), data, seq([0.5]))['options'], [{'kind': 'boss'}]);
+    }
+    expect(FactoryRun.routeCities(data, on(12, first + 1, 12)), (from: 'Indigo Plateau', to: 'Indigo Plateau'));
+    final water = FactoryRun.encounterFor(data, 20, rand, null, false, {'kind': 'wild', 'biome': 'water'});
+    expect((data.species[water['foes'][0]['id']]![4] as List).any(FactoryRun.biomes['water']!.contains), isTrue);
+    final cave = {...at(20), 'encounter': {'kind': 'wild', 'biome': 'cave', 'foes': [{'id': 74, 'level': 20}]}};
+    expect(FactoryRun.captureFor(cave, data), {'rates': [255], 'dusk': true});
+    final ace = FactoryRun.encounterFor(data, 30, rand, null, false, {'kind': 'ace'});
+    final won = FactoryRun.winFloor({...at(30), 'encounter': {...ace, 'reward': 'ultra-ball'}}, data);
+    expect(won['bag']['ultra-ball'], 1);
+    final base = {...at(4), 'team': [{...FactoryRun.teamOf(at(4)).first, 'hp': 0}]};
+    final center = FactoryRun.chooseNode({...base, 'route': {'floor': 4, 'options': [{'kind': 'center'}]}}, data, 0);
+    expect([center['floor'], center['team'][0]['hp']], [5, 1]);
+    final mart = FactoryRun.chooseNode({...base, 'route': {'floor': 4, 'options': [{'kind': 'mart'}]}}, data, 0);
+    expect((FactoryRun.pendingOf(mart)!['shop'] as List).length, greaterThanOrEqualTo(10));
+    final old = FactoryRun.of({'factory': {'run': {...at(3), 'balls': 7}}});
+    expect([old['run']['balls'], old['run']['bag']['poke-ball']], [null, 12]);
+  });
+
+  test('na batalha: a bola só no selvagem; a Master Ball captura e acaba a batalha (igual ao site)', () async {
+    final hit = TurnBattleSetup.hitter(await DamageData.load());
+    Map<String, dynamic> set(List<String> moves) => {'level': 50, 'moves': moves};
+    final a = await TurnBattleSetup.mons([(25, set(['thunderbolt']))], (row) => '${row['name']}');
+    final b = await TurnBattleSetup.mons([(150, set(['psychic']))], (row) => '${row['name']}');
+    final wild = TurnBattle(a, b, League.seededRandom(3), startBags: [{'master-ball': 1}, null], capture: {'rates': [3], 'dusk': false});
+    addTearDown(wild.dispose);
+    wild.start();
+    expect(wild.canUseItem(0, 'master-ball', 0), isTrue);
+    expect(wild.canUseItem(0, 'poke-ball', 0), isFalse);
+    final events = wild.playTurn(hit, item: 'master-ball', target: wild.activeIndex[1]);
+    expect([wild.captured, wild.winner, wild.bags[0]['master-ball']], [0, 0, 0]);
+    final ball = events.firstWhere((e) => e.t == 'ball');
+    expect([ball.slug, ball.value, ball.index], ['master-ball', 3, 1]);
+    expect(events.any((e) => e.key == 'caught'), isTrue);
+    final c = await TurnBattleSetup.mons([(150, set(['psychic']))], (row) => '${row['name']}');
+    final trainer = TurnBattle(await TurnBattleSetup.mons([(25, set(['thunderbolt']))], (row) => '${row['name']}'), c, League.seededRandom(3), startBags: [{'master-ball': 1}, null]);
+    addTearDown(trainer.dispose);
+    expect(trainer.canUseItem(0, 'master-ball', 0), isFalse);
   });
 }

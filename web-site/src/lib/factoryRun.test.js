@@ -4,12 +4,15 @@ import {
   battleOrder, bossOf, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, foeLevelAt, foeMember,
   HELD_BOOST, levelTo, MAX_TEAM, memberOf, movesAt, nextFloor, nextRandom, overflowPoints, pokemonPrice, runCoins, setMainItem, shopPrice,
   SHINY_BOOST, SHINY_CHANCE, START_BAG, START_BALLS, startersOf, buyShiny, shinyPrice, unlockShiny, claimStarter, freePick, canEvolveWith, teachMove,
-  equipFromStash, gimmicksOf, setGimmick, storyLine, startRun, takeCard, teamDown, applyBagItem, winFloor,
+  equipFromStash, gimmicksOf, setGimmick, storyLine, startRun, takeCard, teamDown, applyBagItem, winFloor, chooseNode, routeOptions, routeCities,
+  captureFor, factoryOf, BIOMES, isBattleNode, skipCapture, FORKS, ROUTE_LENGTH,
 } from './factoryRun'
 
 const data = JSON.parse(readFileSync(new URL('../../../assets/database/factory.json', import.meta.url), 'utf8'))
 const moves = Object.fromEntries(JSON.parse(readFileSync(new URL('../../../assets/database/moves.json', import.meta.url), 'utf8')).map((m) => [m.name, { ...m, category: m.damage_class }]))
 const forms = Object.fromEntries(JSON.parse(readFileSync(new URL('../../../assets/database/pokemon.json', import.meta.url), 'utf8')).map((p) => [p.id, p]))
+const ROUTE_42 = { floor: 1, biome: 'grass', options: [{ kind: 'trainer' }] }
+const ENCOUNTER_42 = { kind: 'trainer', foes: [{ id: 859, level: 2, iv: 0, ev: 3 }, { id: 273, level: 2, iv: 0, ev: 3 }], trainerSeed: 500729487 }
 const seq = (values) => { let i = 0; return () => values[i++ % values.length] }
 
 describe('Battle Factory (roguelike)', () => {
@@ -19,16 +22,19 @@ describe('Battle Factory (roguelike)', () => {
     const run = startRun(f, data, 1, 42)
     expect(run.team).toHaveLength(1)
     expect(run.team[0]).toMatchObject({ id: 1, level: 5, exp: expAt(5), item: null, hp: 1 })
-    expect(run.balls).toBe(START_BALLS)
     expect(run.bag).toEqual(START_BAG)
+    expect(run.bag['poke-ball']).toBe(START_BALLS)
     expect(run.floor).toBe(1)
     // Mesma semente, mesma corrida (e o mesmo que o app sorteia: test/factory_run_test.dart).
     expect(startRun(f, data, 1, 42)).toEqual(run)
-    expect(run.seed).toBe(503953318)
+    expect(run.seed).toBe(3599190471)
     expect(run.team[0].ivs).toEqual({ hp: 25, atk: 22, def: 29, spa: 26, spd: 17, spe: 23 })
     expect(run.team[0].nature).toBe('Docile')
     expect(run.boss).toEqual({ region: 11, step: 0 })
-    expect(run.encounter).toEqual({ kind: 'wild', foes: [{ id: 235, level: 3, iv: 0, ev: 3 }] })
+    // O mapa: no 1º andar, o caminho segue (uma batalha comum).
+    expect(run.encounter).toBe(null)
+    expect(run.route).toEqual(ROUTE_42)
+    expect(chooseNode(run, data, 0).encounter).toEqual(ENCOUNTER_42)
   })
 
   it('o sorteio é o mulberry32 (o app usa o mesmo)', () => {
@@ -53,30 +59,34 @@ describe('Battle Factory (roguelike)', () => {
     for (let i = 0; i < 200; i++) for (const f of encounterFor(data, 2, rand).foes) expect(data.species[f.id][4]).not.toContain('ghost')
   })
 
-  it('a cada 10 andares um chefe: a história de um jogo (líderes, rival, vilões, Elite Four, Campeão); depois outro jogo', () => {
+  it('o líder na cidade dele (no fim da rota): a história de um jogo (líderes, rival, vilões, Elite Four, Campeão); depois outro jogo', () => {
     let run = startRun(emptyFactory(), data, 4, 3)
-    const region = data.bosses[run.boss.region]
-    run = { ...run, floor: 10 }
-    run = nextFloor({ ...run, floor: 10 }, data)
+    const red = data.bosses.findIndex((b) => b.game === 'Red/Blue')
+    const region = data.bosses[red]
+    run = nextFloor({ ...run, floor: 10, leg: 1, boss: { region: red, step: 1 } }, data)
+    expect(run.route.options).toEqual([{ kind: 'boss' }])
+    run = chooseNode(run, data, 0)
     expect(run.encounter.kind).toBe('boss')
-    expect(run.encounter.boss.name).toBe(region.leaders[0].name)
-    expect(run.encounter.foes.map((f) => f.id)).toEqual(bossTeam(region.leaders[0], 10))
+    expect(run.encounter.boss.name).toBe('Brock')
+    expect(run.encounter.foes.map((f) => f.id)).toEqual(bossTeam(region.leaders[1], 10))
     const won = winFloor(run, data)
-    expect(won.boss).toEqual({ region: run.boss.region, step: 1 })
+    expect(won.boss).toEqual({ region: red, step: 2 })
+    // Venceu o líder: começa a rota seguinte.
+    expect(won.leg).toBe(11)
     expect(won.bosses).toBe(1)
     expect(won.pending.cards).toHaveLength(3)
     expect(won.pending.capture).toBe(null)
     // Depois do Campeão, outra região.
-    const last = { ...run, boss: { region: run.boss.region, step: region.leaders.length - 1 } }
+    const last = { ...run, boss: { region: red, step: region.leaders.length - 1 } }
     const champ = winFloor({ ...last, encounter: encounterFor(data, 10, seq([0.3]), bossOf(data, last)) }, data)
     expect(champ.boss.step).toBe(0)
-    expect(champ.boss.region).not.toBe(run.boss.region)
+    expect(champ.boss.region).not.toBe(red)
   })
 
-  it('venceu: XP e EVs só para quem está de pé; o HP e a Bolsa continuam; selvagem dá para capturar com Poké Ball', () => {
+  it('venceu: XP e EVs só para quem está de pé; o HP e a Bolsa continuam; o capturado na batalha entra no time', () => {
     let run = startRun(emptyFactory(), data, 4, 3)
     run = { ...run, team: [...run.team, { ...run.team[0], id: 7 }], encounter: { kind: 'wild', foes: [{ id: 19, level: 5, iv: 0, ev: 0 }] } }
-    const after = winFloor(run, data, { hp: [0.4, 0], bag: { ...run.bag, potion: 1 } })
+    const after = winFloor(run, data, { hp: [0.4, 0], bag: { ...run.bag, potion: 1, 'poke-ball': 4 }, captured: true })
     expect(after.floor).toBe(2)
     expect(after.defeated).toBe(1)
     expect(after.team.map((m) => m.hp)).toEqual(after.pending.joy ? [1, 1] : [0.4, 0])
@@ -85,10 +95,12 @@ describe('Battle Factory (roguelike)', () => {
     expect(after.team[0].evs.spe).toBe(data.species[19][3][5] * 3)
     expect(after.team[1].exp).toBe(expAt(5))
     expect(after.pending.capture).toMatchObject({ id: 19, level: 5 })
+    expect(after.bag['poke-ball']).toBe(4)
     const caught = capture(after)
     expect(caught.team.map((m) => m.id)).toEqual([4, 7, 19])
-    expect(caught.balls).toBe(START_BALLS - 1)
-    expect(capture({ ...after, balls: 0 })).toEqual({ ...after, balls: 0 })
+    expect(skipCapture(after).team).toHaveLength(2)
+    // Derrotou sem capturar: nada para pôr no time.
+    expect(winFloor(run, data).pending.capture).toBe(null)
     // Treinador: sem captura e dinheiro em dobro.
     const t = winFloor({ ...run, encounter: { kind: 'trainer', foes: [{ id: 19, level: 5, iv: 0, ev: 0 }] } }, data)
     expect(t.pending.capture).toBe(null)
@@ -130,16 +142,19 @@ describe('Battle Factory (roguelike)', () => {
     expect(levelTo({ id: 3, level: 100, exp: 0 }, 250, data, rand)[0].level).toBe(250)
   })
 
-  it('loja a cada 5 andares (uma logo antes do chefe), com Poké Ball e itens da Bolsa', () => {
+  it('loja ao chegar na cidade (logo antes do chefe), com Poké Balls e itens da Bolsa', () => {
     let run = startRun(emptyFactory(), data, 1, 5)
-    run = { ...run, floor: 9, encounter: { kind: 'trainer', foes: [{ id: 19, level: 12, iv: 0, ev: 0 }] } }
+    run = { ...run, floor: 9, leg: 1, boss: { region: data.bosses.findIndex((b) => b.game === 'Red/Blue'), step: 1 }, encounter: { kind: 'trainer', foes: [{ id: 19, level: 12, iv: 0, ev: 0 }] } }
     const after = winFloor(run, data)
     expect(after.pending.shop).toContain('poke-ball')
     expect(after.pending.cards).toBe(null)
     let shop = { ...after, money: 100000 }
     shop = buyItem(shop, 'poke-ball', 0, data)
-    expect(shop.balls).toBe(START_BALLS + 1)
-    const potion = after.pending.shop[1]
+    expect(shop.bag['poke-ball']).toBe(START_BALLS + 1)
+    const better = after.pending.shop[1]
+    expect(['great-ball', 'ultra-ball', 'quick-ball', 'net-ball', 'dusk-ball', 'timer-ball']).toContain(better)
+    expect(buyItem(shop, better, 0, data).bag[better]).toBe(1)
+    const potion = after.pending.shop[2]
     expect(buyItem(shop, potion, 0, data).bag[potion]).toBe((shop.bag[potion] ?? 0) + 1)
     // Preços sobem com o andar; o Rare Candy também com o nível do time.
     expect(shopPrice({ ...run, floor: 50 }, 'poke-ball')).toBeGreaterThan(shopPrice({ ...run, floor: 1 }, 'poke-ball'))
@@ -208,7 +223,7 @@ describe('Battle Factory (roguelike)', () => {
     }
     expect([...titles].sort()).toEqual(['gmax', 'legend', 'mega'])
     const run = { ...startRun(emptyFactory(), data, 4, 3), floor: 25, encounter: { kind: 'wildboss', foes: [{ id: 6, level: 20, iv: 31, ev: 50, item: 'charizardite-x', gimmick: 'mega', title: 'mega' }] } }
-    const after = winFloor(run, data)
+    const after = winFloor(run, data, { captured: true })
     expect(after.stash).toEqual(['charizardite-x'])
     expect(after.pending.drop).toBe('charizardite-x')
     expect(after.pending.capture.id).toBe(6)
@@ -219,7 +234,7 @@ describe('Battle Factory (roguelike)', () => {
     let run = startRun(emptyFactory(), data, 4, 3)
     const game = data.bosses[run.boss.region]
     run = { ...run, floor: 10, boss: { region: run.boss.region, step: game.leaders.length - 1 } }
-    run = nextFloor(run, data)
+    run = chooseNode(nextFloor(run, data), data, 0)
     const after = winFloor(run, data)
     expect(after.boss.step).toBe(0)
     expect(data.bosses[after.boss.region].region).not.toBe(game.region)
@@ -340,14 +355,19 @@ function factoryTrace(F, data) {
   let run = F.startRun(F.emptyFactory(), data, 7, 2024)
   const out = []
   for (let i = 0; i < 40; i++) {
-    run = F.winFloor(run, data, { hp: run.team.map((_, k) => (k === 0 ? 0.7 : 1)) })
+    const options = run.route.options
+    run = F.chooseNode(run, data, i % options.length)
+    const encounter = run.encounter
+    if (encounter) run = F.winFloor(run, data, { hp: run.team.map((_, k) => (k === 0 ? 0.7 : 1)), captured: i % 3 === 0 })
     if (run.pending.capture) run = F.capture(run, run.team.length >= F.MAX_TEAM ? 1 : null)
     if (run.pending.cards) run = F.takeCard(run, run.pending.cards[0], data)
     run = { ...run, money: run.money + 500 }
     for (const id of run.pending.shop ?? []) run = F.buyItem(run, id, 0, data) ?? run
+    const pending = run.pending
     run = F.nextFloor(run, data)
-    out.push([run.seed, run.floor, run.money, run.balls, run.boss.region, run.boss.step, run.team.map((m) => [m.id, m.level, m.exp, m.item ?? '', m.extras.length]),
-      run.encounter.kind, run.encounter.foes.map((f) => [f.id, f.level, f.shiny ? 1 : 0])])
+    out.push([run.seed, run.floor, run.money, run.bag, run.boss.region, run.boss.step, run.team.map((m) => [m.id, m.level, m.exp, m.item ?? '', m.extras.length, m.hp]),
+      options.map((o) => `${o.kind}${o.biome ? `:${o.biome}` : ''}`), encounter?.kind ?? '', (encounter?.foes ?? []).map((f) => [f.id, f.level, f.shiny ? 1 : 0]),
+      pending.event ?? null, pending.reward ?? null, run.stash])
   }
   return out
 }
@@ -360,6 +380,126 @@ describe('roteiro igual ao app', () => {
     const { writeFileSync } = await import('node:fs')
     if (process.env.UPDATE_FACTORY_TRACE) writeFileSync(url, JSON.stringify(trace) + '\n')
     expect(trace).toEqual(JSON.parse(readFileSync(url, 'utf8')))
-    expect(trace.some((t) => t[7] === 'boss')).toBe(true)
+    expect(trace.some((t) => t[8] === 'boss')).toBe(true)
+    for (const kind of ['mart', 'event', 'ace']) expect(trace.some((t) => t[7].some((o) => o.startsWith(kind)))).toBe(true)
+  })
+})
+
+describe('mapa da corrida', () => {
+  const runAt = (floor, seed = 3) => ({ ...startRun(emptyFactory(), data, 4, seed), floor })
+
+  it('cada chefe tem a sua cidade; a rota vai de uma cidade a outra', () => {
+    for (const game of data.bosses) for (const l of game.leaders) expect(l.city?.length).toBeGreaterThan(2)
+    const red = data.bosses.find((b) => b.game === 'Red/Blue')
+    expect(red.leaders.find((l) => l.name === 'Brock').city).toBe('Pewter City')
+    expect(red.leaders.at(-1).city).toBe('Indigo Plateau')
+    const run = { ...runAt(1), boss: { region: data.bosses.indexOf(red), step: 2 } }
+    expect(routeCities(data, run)).toEqual({ from: red.leaders[1].city, to: red.leaders[2].city })
+  })
+
+  it('o caminho só se divide nas bifurcações (2 a 3 caminhos, sempre uma batalha); Centro Pokémon raro', () => {
+    let state = 5
+    const rand = () => { const [v, s] = nextRandom(state); state = s; return v }
+    const kinds = {}
+    // Um líder de ginásio como próximo chefe (sem rival no caminho).
+    const red = data.bosses.findIndex((b) => b.game === 'Red/Blue')
+    const at = (floor, leg = 1) => ({ ...runAt(floor), leg, boss: { region: red, step: 1 } })
+    for (let pos = 0; pos < ROUTE_LENGTH; pos++) {
+      const route = routeOptions(at(11 + pos, 11), data, rand)
+      expect(route.options.length).toBe(FORKS.includes(pos) ? 3 : 1)
+    }
+    for (let i = 0; i < 600; i++) {
+      const route = routeOptions(at(1 + FORKS[i % 3]), data, rand)
+      expect(route.options.length).toBe(1 + FORKS[i % 3] <= 2 ? 2 : 3)
+      expect(route.options.some(isBattleNode)).toBe(true)
+      for (const o of route.options) kinds[o.kind] = (kinds[o.kind] ?? 0) + 1
+      for (const o of route.options.filter((o) => o.kind === 'wild')) expect(Object.keys(BIOMES)).toContain(o.biome)
+    }
+    expect(Object.keys(kinds).sort()).toEqual(['ace', 'center', 'event', 'mart', 'trainer', 'wild', 'wildboss'])
+    expect(kinds.center).toBeLessThan(kinds.mart)
+    for (let i = 0; i < 50; i++) for (const o of routeOptions(at(1), data, rand).options) expect(['wild', 'trainer']).toContain(o.kind)
+  })
+
+  it('rival e vilões aparecem em qualquer andar da rota (sempre antes da cidade); Elite Four e Campeão em sequência na Liga', () => {
+    const red = data.bosses.findIndex((b) => b.game === 'Red/Blue')
+    const leaders = data.bosses[red].leaders
+    expect(leaders[0].kind).toBe('rival')
+    const at = (floor, step, leg = 1) => ({ ...runAt(floor), leg, boss: { region: red, step } })
+    // O rival: com sorte aparece logo; no último andar da rota, sempre.
+    expect(routeOptions(at(3, 0), data, seq([0.1, 0.5])).options).toEqual([{ kind: 'boss' }])
+    expect(routeOptions(at(1, 0), data, seq([0.1, 0.5])).options[0].kind).not.toBe('boss')
+    expect(routeOptions(at(1, 0), data, seq([0.9, 0.5])).options[0].kind).not.toBe('boss')
+    expect(routeOptions(at(9, 0), data, seq([0.9, 0.5])).options).toEqual([{ kind: 'boss' }])
+    // Dois rivais seguidos (Blue, Blue antes da Misty): os dois cabem antes da cidade.
+    const twice = leaders.findIndex((l, i) => l.kind === 'rival' && leaders[i + 1]?.kind === 'rival')
+    expect(routeOptions(at(8, twice), data, seq([0.9, 0.5])).options).toEqual([{ kind: 'boss' }])
+    // Na rota até o ginásio, o líder só aparece na cidade dele.
+    expect(routeOptions(at(9, 1), data, seq([0.1, 0.5])).options[0].kind).not.toBe('boss')
+    // A Elite Four: a primeira no fim da Victory Road; as outras e o Campeão, uma atrás da outra.
+    const first = leaders.findIndex((l) => l.kind === 'elite')
+    expect(routeOptions(at(5, first), data, seq([0.1, 0.5])).options[0].kind).not.toBe('boss')
+    expect(routeOptions(at(10, first), data, seq([0.5])).options).toEqual([{ kind: 'boss' }])
+    for (let step = first + 1; step < leaders.length; step++) expect(routeOptions(at(12, step, 12), data, seq([0.5])).options).toEqual([{ kind: 'boss' }])
+    expect(routeCities(data, at(12, first + 1, 12))).toEqual({ from: 'Indigo Plateau', to: 'Indigo Plateau' })
+    // A loja da cidade: chegando nela (depois do último andar da rota).
+    const before = { ...at(9, 1), encounter: { kind: 'trainer', foes: [{ id: 19, level: 9, iv: 0, ev: 0 }] } }
+    expect(winFloor(before, data).pending.shop).not.toBe(null)
+    expect(winFloor({ ...before, floor: 5 }, data).pending.shop).toBe(null)
+  })
+
+  it('selvagem do bioma: os tipos dele; Dusk Ball nas rotas escuras', () => {
+    let state = 9
+    const rand = () => { const [v, s] = nextRandom(state); state = s; return v }
+    for (let i = 0; i < 100; i++) {
+      const e = encounterFor(data, 20, rand, null, false, { kind: 'wild', biome: 'water' })
+      expect(e.kind).toBe('wild')
+      expect(data.species[e.foes[0].id][4].some((t) => BIOMES.water.includes(t))).toBe(true)
+    }
+    const run = { ...runAt(20), encounter: { kind: 'wild', biome: 'cave', foes: [{ id: 74, level: 20 }] } }
+    expect(captureFor(run, data)).toEqual({ rates: [255], dusk: true })
+    expect(captureFor({ ...run, encounter: { kind: 'trainer', foes: [{ id: 74, level: 20 }] } }, data)).toBe(null)
+  })
+
+  it('treinador forte: um Pokémon a mais, mais forte, e sempre deixa um item', () => {
+    let state = 2
+    const rand = () => { const [v, s] = nextRandom(state); state = s; return v }
+    const e = encounterFor(data, 30, rand, null, false, { kind: 'ace' })
+    expect(e.kind).toBe('ace')
+    expect(e.reward).toBeTruthy()
+    const run = { ...runAt(30), encounter: { ...e, reward: 'ultra-ball' } }
+    const after = winFloor(run, data)
+    expect(after.bag['ultra-ball']).toBe(1)
+    expect(after.pending.reward).toBe('ultra-ball')
+    const held = winFloor({ ...run, encounter: { ...e, reward: 'leftovers' } }, data)
+    expect(held.stash).toContain('leftovers')
+    expect(winFloor({ ...run, encounter: { ...e, kind: 'trainer' } }, data).money).toBeLessThan(after.money)
+  })
+
+  it('sem batalha: Poké Mart (loja), Centro Pokémon (cura todos) e eventos; contam como um andar', () => {
+    const base = { ...runAt(4), team: [{ ...runAt(4).team[0], hp: 0 }, { ...runAt(4).team[0], hp: 0.2 }] }
+    const mart = chooseNode({ ...base, route: { floor: 4, options: [{ kind: 'mart' }] } }, data, 0)
+    expect(mart.floor).toBe(5)
+    expect(mart.encounter).toBe(null)
+    expect(mart.pending.shop.length).toBeGreaterThanOrEqual(10)
+    const center = chooseNode({ ...base, route: { floor: 4, options: [{ kind: 'center' }] } }, data, 0)
+    expect(center.team.map((m) => m.hp)).toEqual([1, 1])
+    for (let seed = 0; seed < 20; seed++) {
+      const ev = chooseNode({ ...base, seed, route: { floor: 4, options: [{ kind: 'event' }] } }, data, 0)
+      const { kind } = ev.pending.event
+      if (kind === 'items') expect(ev.bag[ev.pending.event.item]).toBe((base.bag[ev.pending.event.item] ?? 0) + ev.pending.event.count)
+      if (kind === 'money') expect(ev.money).toBeGreaterThan(0)
+      if (kind === 'berries') expect(ev.team.map((m) => m.hp)).toEqual([0, 0.5])
+      if (kind === 'tutor') expect(ev.tokens['move-tutor']).toBe(1)
+    }
+    const next = nextFloor(mart, data)
+    expect(next.pending).toBe(null)
+    expect(next.route.floor).toBe(5)
+  })
+
+  it('corridas antigas: as Poké Balls de fora vão para a Bolsa', () => {
+    const run = { ...runAt(3), balls: 7 }
+    const f = factoryOf({ factory: { ...emptyFactory(), run } })
+    expect(f.run.balls).toBeUndefined()
+    expect(f.run.bag['poke-ball']).toBe(START_BALLS + 7)
   })
 })

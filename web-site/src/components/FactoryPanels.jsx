@@ -1,24 +1,29 @@
 // As telas da Battle Factory (lib/factoryRun.js): o começo (o inicial grátis,
 // comprar Pokémon e shiny com as moedas, continuar a corrida, a história da
-// região) e o que vem depois de vencer um andar (XP, Enfermeira Joy, captura
-// com Poké Ball, drops, carta de bônus, loja, Bolsa, itens, golpes e
-// mecânicas). Igual ao app (lib/screens/factory_panels.dart).
+// região) e a corrida em tela cheia, no lugar da batalha (FactoryScreen): o
+// resultado do andar (XP, Enfermeira Joy, drops), o capturado, a carta de
+// bônus, a loja com "Continuar" e o mapa com os caminhos de cada andar (Bolsa,
+// itens, golpes e mecânicas em todos). Igual ao app (lib/screens/factory_panels.dart).
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import PokeIcon from './PokeIcon'
+import Sprite from './Sprite'
+import { TrainerSprite } from './Trainer'
 import { Button, SearchInput } from './ui'
-import { getFactoryData, spriteUrl } from '../lib/data'
+import { getFactoryData, shinyPath, spriteUrl } from '../lib/data'
 import { learnsetOf, movesFor } from '../lib/factoryBattle'
 import {
-  BAG_ITEMS, BOSS_EVERY, bossOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, claimStarter, endRun, equipFromStash, factoryOf,
-  freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, MAX_TEAM, nextFloor, pokemonPrice, setGimmick, setMainItem, shinyPrice, shopOwned, shopPrice,
-  skipCapture, startersOf, startRun, storyLine, takeCard, teachMove, teamDown, applyBagItem, unlockShiny, VITAMIN_EVS, VITAMINS, buyShiny,
+  BAG_ITEMS, bossOf, FORKS, ROUTE_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
+  factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, MAX_TEAM, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
+  shinyPrice, shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, takeCard, teachMove, teamDown, applyBagItem, unlockShiny, VITAMIN_EVS, VITAMINS,
+  buyShiny,
 } from '../lib/factoryRun'
 import { t } from '../lib/i18n'
 import { prettyName } from '../lib/pokemon'
 import { usePokemonIndex } from '../lib/pokemonIndex'
 import { prettySlug } from '../lib/teamSets'
 import { useStore } from '../lib/store'
+import { useMyTrainer, useTrainers } from '../lib/trainers'
 
 /** Salva a Factory (meta e corrida) na conta. */
 export const saveFactory = (factory) => useStore.getState().updateLeague((l) => ({ ...l, factory }))
@@ -82,14 +87,11 @@ function MonChip({ mon, byId, selected, onClick, testid }) {
   )
 }
 
-/** Poké Balls, dinheiro e a Bolsa da corrida. */
+/** O dinheiro e a Bolsa da corrida (Poké Balls e remédios). */
 function RunStatus({ run }) {
   return (
     <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-bold">
       <span>💰 {run.money}</span>
-      <span className="inline-flex items-center gap-1">
-        <img src={spriteUrl('items/poke-ball.png')} alt="" className="pixelated h-6 w-6" />×{run.balls}
-      </span>
       {BAG_ITEMS.filter((id) => run.bag[id] > 0).map((id) => (
         <span key={id} className="inline-flex items-center gap-1" data-no-translate title={prettySlug(id)}>
           <img src={spriteUrl(`items/${id}.png`)} alt="" className="pixelated h-6 w-6" />×{run.bag[id]}
@@ -100,12 +102,12 @@ function RunStatus({ run }) {
 }
 
 /** Usar a Bolsa fora da batalha: poções em quem está ferido, Revive em quem desmaiou. */
-function BagPanel({ run, byId, save }) {
+function BagPanel({ run, byId, save, open = false }) {
   const [item, setItem] = useState(null)
   const usable = BAG_ITEMS.filter((id) => run.bag[id] > 0 && run.team.some((_, i) => applyBagItem(run, id, i)))
-  if (!usable.length) return null
+  if (!usable.length) return open ? <p className="text-sm text-muted">{t('Nada da Bolsa para usar agora.')}</p> : null
   return (
-    <details className="rounded-xl bg-bg p-2" data-testid="factory-bag">
+    <details open={open} className="rounded-xl bg-bg p-2" data-testid="factory-bag">
       <summary className="cursor-pointer text-sm font-bold">🎒 {t('Usar a Bolsa')}</summary>
       <div className="mt-2 flex flex-wrap gap-2">
         {usable.map((id) => (
@@ -132,12 +134,12 @@ function BagPanel({ run, byId, save }) {
  * (porcentagem bem menor), a mecânica (Mega, Z, Dynamax, Tera), ensinar
  * golpes (TM, Move Tutor, Move Reminder) e os itens guardados (drops).
  */
-function TeamPanel({ run, data, byId, save }) {
+function TeamPanel({ run, data, byId, save, open = false }) {
   const [teaching, setTeaching] = useState(null)
   const [stashItem, setStashItem] = useState(null)
   const canTeach = Object.values(run.tms ?? {}).some((n) => n > 0) || Object.values(run.tokens ?? {}).some((n) => n > 0)
   return (
-    <details className="rounded-xl bg-bg p-2" data-testid="factory-items">
+    <details open={open} className="rounded-xl bg-bg p-2" data-testid="factory-items">
       <summary className="cursor-pointer text-sm font-bold">🧩 {t('Time: itens, golpes e mecânicas')}</summary>
       <p className="my-1 text-xs text-muted">{t('O principal tem o efeito de verdade; os outros dão só uma porcentagem pequena no atributo. Toque num extra para ele virar o principal.')}</p>
       {(run.stash ?? []).length > 0 && (
@@ -253,20 +255,19 @@ function StoryPanel({ run, data }) {
 
 export const bossKindLabel = (kind) => ({ gym: t('Líder de ginásio'), rival: t('Rival'), villain: t('Vilão'), elite: t('Elite Four'), champion: t('Campeão') })[kind] ?? ''
 
-/** O próximo chefe (a cada 10 andares). */
+/** O próximo chefe de cidade (o destino da rota). */
 function NextBoss({ run, data }) {
-  const boss = bossOf(data, run)
-  const floor = Math.ceil(run.floor / BOSS_EVERY) * BOSS_EVERY
+  const boss = targetOf(data, run)
   return (
     <p className="text-xs text-muted">
-      👑 {t('Próximo chefe (andar {0}):').replace('{0}', floor)}{' '}
-      <b data-no-translate>{boss.name}</b> · {bossKindLabel(boss.kind)} · <span data-no-translate>{boss.region} ({boss.game})</span>
+      👑 {t('Chefe em {0}:').replace('{0}', boss.city ?? '')}{' '}
+      <b data-no-translate>{boss.name}</b> · {bossKindLabel(boss.kind)} · <span data-no-translate>{boss.region ?? data.bosses[run.boss.region].region} ({data.bosses[run.boss.region].game})</span>
     </p>
   )
 }
 
-/** O começo: corrida em andamento, ou escolher o inicial; e a loja de Pokémon (moedas). */
-export function FactoryHub({ onBattle, busy }) {
+/** O começo: corrida em andamento (continuar no mapa), ou escolher o inicial; e a loja de Pokémon (moedas). */
+export function FactoryHub({ onContinue, busy }) {
   const factory = useFactory()
   const data = useFactoryData()
   const byId = usePokemonIndex()
@@ -274,7 +275,6 @@ export function FactoryHub({ onBattle, busy }) {
   const [query, setQuery] = useState('')
   const [lucky, setLucky] = useState(null)
   const run = factory.run
-  const save = (next) => next && saveFactory({ ...factory, run: next })
 
   const shopList = useMemo(() => {
     if (!data || !byId) return []
@@ -287,13 +287,12 @@ export function FactoryHub({ onBattle, busy }) {
   }, [data, byId, query, factory.owned])
 
   if (!data) return <p className="text-sm text-muted">...</p>
-  const down = run && teamDown(run)
   return (
     <div className="space-y-4" data-testid="factory-hub">
       <div className="rounded-2xl bg-bg p-3 text-sm">
         <p className="font-black">🏭 {t('Battle Factory')}</p>
         <p className="text-muted">
-          {t('Um roguelike sem fim com a história de cada região: escolha um inicial no nível 5 e suba andares contra Pokémon selvagens (capture com Poké Ball: você começa com 5) e treinadores. A cada 10 andares vem um chefe da história: líderes de ginásio, rival e vilões (com times cada vez maiores), a Elite Four e o Campeão; nos andares 5, 15, 25... pode aparecer uma Mega, um Gigantamax ou um lendário. Acabou a história, começa a de outra região. O time não é curado entre os andares (só com a Bolsa, a loja ou, com 5% de chance, a Enfermeira Joy). Sem limite de nível, IVs, EVs ou itens; shiny é 1 em 4096. Perdeu: a pontuação vira moedas para comprar Pokémon e começar com eles.')}
+          {t('Um roguelike sem fim com a história de cada região: escolha um inicial no nível 5 e siga o mapa de cidade em cidade. Em cada andar você escolhe o caminho: Pokémon selvagem do bioma da rota (capture jogando a bola na batalha, antes de ele desmaiar; cada bola tem a sua chance), treinador, treinador forte (sempre deixa um item), Poké Mart, Centro Pokémon (raro) ou um evento. A cada 10 andares, na cidade, vem um chefe da história: líderes de ginásio, rival e vilões (com times cada vez maiores), a Elite Four e o Campeão; nos andares 5, 15, 25... pode aparecer uma Mega, um Gigantamax ou um lendário. O time não é curado entre os andares (só com a Bolsa, a loja, o Centro Pokémon ou, com 5% de chance, a Enfermeira Joy). Sem limite de nível, IVs, EVs ou itens; shiny é 1 em 4096. Perdeu: a pontuação vira moedas para comprar Pokémon e começar com eles.')}
         </p>
         <p className="mt-1 font-bold">
           {t('Recorde: andar {0}').replace('{0}', factory.best)} · 🪙 {factory.coins} {t('moedas')}
@@ -309,14 +308,10 @@ export function FactoryHub({ onBattle, busy }) {
           <NextBoss run={run} data={data} />
           <div className="flex flex-wrap gap-1">{run.team.map((m, i) => <MonChip key={i} mon={m} byId={byId} />)}</div>
           {run.cards.length > 0 && <p className="text-xs text-muted">{t('Cartas')}: {run.cards.map((c) => t(CARDS[c].label)).join(' · ')}</p>}
-          {!run.pending && <BagPanel run={run} byId={byId} save={save} />}
-          {!run.pending && <TeamPanel run={run} data={data} byId={byId} save={save} />}
-          {down && !run.pending && <p className="text-sm font-bold text-red-500">{t('O time todo está desmaiado: use um Revive ou desista.')}</p>}
           <div className="flex flex-wrap gap-2">
-            <Button data-testid="factory-fight" disabled={busy || Boolean(run.pending) || down} onClick={() => onBattle(run)}>⚔️ {t('Lutar no andar {0}').replace('{0}', run.floor)}</Button>
-            <Button color="#64748b" onClick={() => saveFactory(endRun(factory, run))}>{t('Desistir (recebe as moedas)')}</Button>
+            <Button data-testid="factory-continue-run" disabled={busy} onClick={onContinue}>🗺️ {t('Continuar a corrida')}</Button>
+            <Button color="#64748b" onClick={() => window.confirm(t('Desistir da corrida? A pontuação vira moedas.')) && saveFactory(endRun(factory, run))}>{t('Desistir (recebe as moedas)')}</Button>
           </div>
-          {run.pending && <FactoryAfter run={run} data={data} onNext={onBattle} />}
         </div>
       ) : (
         <div className="space-y-2">
@@ -339,7 +334,7 @@ export function FactoryHub({ onBattle, busy }) {
               const next = startRun(meta, data, pick.id, Math.floor(Math.random() * 2 ** 31), pick.shiny)
               if (!next) return
               saveFactory({ ...meta, run: next })
-              onBattle(next)
+              onContinue()
             }}
           >
             🏭 {t('Começar a corrida')}
@@ -399,142 +394,468 @@ export function FactoryHub({ onBattle, busy }) {
   )
 }
 
-/** Depois de vencer um andar: XP/níveis, Enfermeira Joy, captura, carta e loja; depois o próximo andar. */
-export function FactoryAfter({ run, data, onNext }) {
-  const factory = useFactory()
-  const byId = usePokemonIndex()
-  const [target, setTarget] = useState(0)
-  const [unlocked, setUnlocked] = useState(null)
-  const p = run.pending
-  if (!p) return null
-  const save = (next) => next && saveFactory({ ...factory, run: next })
-  const name = (id) => t(prettyName(byId?.get(id)?.name ?? ''))
-  const down = teamDown(run)
-  // Captura; se for um inicial shiny, libera o shiny dele para começar as próximas corridas.
-  const catchIt = (replace = null) => {
-    const next = capture(run, replace)
-    if (next === run) return
-    const meta = unlockShiny(factory, data, p.capture)
-    if (meta !== factory) setUnlocked(p.capture.id)
-    saveFactory({ ...meta, run: next })
-  }
-  return (
-    <section className="space-y-3 rounded-2xl bg-card p-4 shadow-lg ring-1 ring-line" data-testid="factory-after">
-      <p className="font-black">🏆 {t('Andar vencido!')} +{p.exp} XP · +💰{p.money}</p>
-      {p.levels?.map((l) => (
-        <p key={l.index} className="text-sm" data-no-translate>
-          {name(run.team[l.index]?.id)}: Nv. {l.from} → {l.to}{l.evolved ? ` · ${t('evoluiu!')}` : ''}
-        </p>
-      ))}
-      {p.joy && (
-        <div className="flex items-center gap-3 rounded-xl bg-pink-500/15 p-2 text-sm font-bold" data-testid="factory-joy">
-          <img src={spriteUrl('trainers/sd-nurse.png')} alt="" className="pixelated h-16 w-16 object-contain" />
-          <span>💗 {t('A Enfermeira Joy apareceu e curou o time todo!')}</span>
-        </div>
-      )}
-      {p.drop && (
-        <p className="flex items-center gap-2 rounded-xl bg-emerald-500/15 p-2 text-sm font-bold" data-testid="factory-drop">
-          <img src={itemIcon(p.drop)} alt="" className="pixelated h-8 w-8" onError={hide} />
-          🎁 {t('Ganhou {0}! (está nos itens guardados)').replace('{0}', itemName(p.drop))}
-        </p>
-      )}
-      {p.story && (
-        <div className="space-y-1 rounded-xl bg-indigo-500/10 p-2 text-sm" data-testid="factory-story-end">
-          {p.story.split('\n\n').map((line, k) => <p key={k}>📖 {line}</p>)}
-        </div>
-      )}
-      {unlocked != null && (
-        <p className="rounded-xl bg-amber-500/15 p-2 text-sm font-bold" data-testid="factory-shiny-unlocked">
-          ✨ {t('{0} shiny liberado para começar as próximas corridas!').replace('{0}', name(unlocked))}
-        </p>
-      )}
-      <RunStatus run={run} />
-      <div className="flex flex-wrap gap-1">{run.team.map((m, i) => <MonChip key={i} mon={m} byId={byId} />)}</div>
+/** Os biomas das rotas: nome, símbolo e as cores do caminho no mapa. */
+const BIOME_INFO = {
+  grass: { label: 'Campo', icon: '🌾', color: '#65a30d' },
+  forest: { label: 'Floresta', icon: '🌲', color: '#15803d' },
+  water: { label: 'Mar', icon: '🌊', color: '#0284c7' },
+  cave: { label: 'Caverna', icon: '🪨', color: '#57534e' },
+  mountain: { label: 'Montanha', icon: '⛰️', color: '#78716c' },
+  volcano: { label: 'Vulcão', icon: '🌋', color: '#dc2626' },
+  city: { label: 'Cidade', icon: '🏙️', color: '#6366f1' },
+  snow: { label: 'Neve', icon: '❄️', color: '#38bdf8' },
+  tower: { label: 'Torre', icon: '👻', color: '#7c3aed' },
+  sky: { label: 'Céu', icon: '☁️', color: '#0ea5e9' },
+}
+/** Cada ponto do mapa: símbolo, nome e o que tem nele. */
+const NODE_INFO = {
+  wild: { icon: '🌿', label: 'Pokémon selvagem', help: 'Dá para capturar: jogue a bola antes de ele desmaiar.' },
+  trainer: { icon: '🧢', label: 'Treinador', help: 'Dinheiro em dobro.' },
+  ace: { icon: '💪', label: 'Treinador forte', help: 'Um Pokémon a mais e mais forte; sempre deixa um item.' },
+  mart: { icon: '🛒', label: 'Poké Mart', help: 'Uma loja maior (sem batalha, sem XP).' },
+  center: { icon: '🏥', label: 'Centro Pokémon', help: 'Cura o time todo, até quem desmaiou (sem batalha).' },
+  event: { icon: '❓', label: 'Evento', help: 'Itens, dinheiro, frutas ou uma ficha de Move Tutor (sem batalha).' },
+  wildboss: { icon: '🐉', label: 'Chefe sem treinador', help: 'Uma Mega, um Gigantamax ou um lendário. Dá para capturar.' },
+  boss: { icon: '👑', label: 'Chefe', help: '' },
+}
+const CITY_KIND_SET = new Set(['gym', 'elite', 'champion'])
+const EVENT_TEXT = {
+  items: 'Você achou {1}× {0} no caminho!',
+  money: 'Um treinador perdeu 💰{0} e não voltou para buscar.',
+  berries: 'Frutas no caminho: o time recuperou 30% do HP.',
+  tutor: 'Um velho professor te deu uma ficha de Move Tutor.',
+}
 
-      {p.capture ? (
-        <div className="space-y-2" data-testid="factory-capture">
-          <p className="font-bold">{p.capture.shiny ? '✨ ' : ''}{t('Capturar {0} (Nv. {1})?').replace('{0}', name(p.capture.id)).replace('{1}', p.capture.level)}</p>
-          {p.capture.shiny && <p className="text-sm font-bold text-amber-500">{t('É shiny! (+10% em todos os atributos)')}</p>}
-          <div className="flex items-center gap-2"><PokeIcon id={p.capture.id} shiny={Boolean(p.capture.shiny)} className="h-14 w-14" /></div>
-          {!(run.balls > 0) ? (
-            <p className="text-sm text-muted">{t('Sem Poké Balls: compre mais na loja.')}</p>
-          ) : run.team.length < MAX_TEAM ? (
-            <Button onClick={() => catchIt()}>🔴 {t('Capturar')} (×{run.balls})</Button>
-          ) : (
-            <div className="space-y-1">
-              <p className="text-xs text-muted">{t('Time cheio: escolha quem sai.')}</p>
-              <div className="flex flex-wrap gap-1">{run.team.map((m, i) => <MonChip key={i} mon={m} byId={byId} onClick={() => catchIt(i)} testid={`replace-${i}`} />)}</div>
-            </div>
-          )}
-          <Button color="#64748b" onClick={() => save(skipCapture(run))}>{t('Deixar ir')}</Button>
-        </div>
-      ) : p.cards ? (
-        <div className="space-y-2" data-testid="factory-cards">
-          <p className="font-bold">🃏 {t('Escolha uma carta de bônus')}</p>
-          <div className="grid gap-2 sm:grid-cols-3">
-            {p.cards.map((c) => (
-              <button key={c} type="button" data-testid={`card-${c}`} onClick={() => save(takeCard(run, c, data))} className="cursor-pointer rounded-xl bg-bg p-3 text-left text-sm font-bold ring-2 ring-transparent hover:ring-amber-500">
-                {t(CARDS[c].label)}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <>
-          {p.shop && (
-            <div className="space-y-2" data-testid="factory-shop">
-              <ShopCounter money={run.money} />
-              <p className="text-xs text-muted">{t('Para quem é a compra (Poké Ball e itens da Bolsa vão para a Bolsa):')}</p>
-              <div className="flex flex-wrap gap-1">{run.team.map((m, i) => <MonChip key={i} mon={m} byId={byId} selected={target === i} onClick={() => setTarget(i)} testid={`target-${i}`} />)}</div>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {p.shop.map((id) => (
-                  <div key={id} className="flex items-center justify-between gap-2 rounded-xl bg-bg p-2 text-sm">
-                    <img src={itemIcon(id)} alt="" className="pixelated h-8 w-8" onError={hide} />
-                    <div className="min-w-0 flex-1">
-                      <p className="font-bold" data-no-translate>{itemName(id)}</p>
-                      <p className="text-xs text-muted">{shopOwned(run, id) ? t('Você já tem') : itemHelp(id)}</p>
-                    </div>
-                    <Button data-testid={`buy-${id}`}
-                      disabled={run.money < shopPrice(run, id) || shopOwned(run, id) || (id.startsWith('evo:') && !canEvolveWith(data, run.team[Math.min(target, run.team.length - 1)], id.slice(4)).length)}
-                      onClick={() => save(buyItem(run, id, Math.min(target, run.team.length - 1), data))}>
-                      💰{shopPrice(run, id)}
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          <BagPanel run={run} byId={byId} save={save} />
-          <TeamPanel run={run} data={data} byId={byId} save={save} />
-          {down && <p className="text-sm font-bold text-red-500">{t('O time todo está desmaiado: use um Revive ou desista.')}</p>}
-          <Button className="w-full" disabled={down} color="linear-gradient(90deg,#DC2626,#9333EA)" onClick={() => { const next = nextFloor(run, data); save(next); onNext(next) }} data-testid="factory-next">
-            ⚔️ {t('Próximo andar ({0})').replace('{0}', run.floor)}
-          </Button>
-        </>
-      )}
-    </section>
+/** O passo da tela depois do andar: o que ainda falta ver ou escolher (ou nada: o mapa). */
+function stepOf(p) {
+  if (!p) return null
+  if (!p.seen && (p.exp != null || p.center || p.event)) return 'result'
+  if (p.capture) return 'capture'
+  if (p.cards) return 'cards'
+  if (p.shop) return 'shop'
+  return null
+}
+
+/** As cores do campo em cada bioma: [céu, chão, base escura, base clara] (o campo da batalha é o 'grass'). */
+const FIELD_COLORS = {
+  grass: ['#b9e6bd', '#edf9c8', '#7eba62', '#a9d57b'],
+  forest: ['#9fd39a', '#d3ebb4', '#4f8a3c', '#6fae4f'],
+  water: ['#9fdcff', '#d6f1ff', '#3b82c4', '#60a5e0'],
+  cave: ['#8d8173', '#c4b8a6', '#6b5f52', '#8a7d6d'],
+  mountain: ['#c9d3dc', '#e7e2d4', '#8f8a80', '#aba497'],
+  volcano: ['#f3b38a', '#f7d9b5', '#b4532a', '#d0743e'],
+  city: ['#c7d2fe', '#e9edf7', '#94a3b8', '#b6c2d1'],
+  snow: ['#dbeafe', '#f8fafc', '#a5c3dd', '#cfe0ef'],
+  tower: ['#c4b5fd', '#e9e3ff', '#7c6ba8', '#9d8cc9'],
+  sky: ['#bae6fd', '#f0f9ff', '#cbd5e1', '#e2e8f0'],
+  center: ['#fbcfe8', '#fdf2f8', '#f472b6', '#f9a8d4'],
+  over: ['#94a3b8', '#cbd5e1', '#64748b', '#94a3b8'],
+}
+
+/** A largura de um elemento (os sprites de treinador são em px). */
+function useWidth() {
+  const [width, setWidth] = useState(640)
+  const observer = useRef(null)
+  const ref = useCallback((el) => {
+    observer.current?.disconnect()
+    if (!el || typeof ResizeObserver === 'undefined') return
+    observer.current = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width))
+    observer.current.observe(el)
+  }, [])
+  return [ref, width]
+}
+
+/** O campo da batalha (as mesmas faixas e as duas bases), nas cores do bioma. */
+function Field({ biome = 'grass', fieldRef, children, testid }) {
+  const [top, bottom, dark, light] = FIELD_COLORS[biome] ?? FIELD_COLORS.grass
+  return (
+    <div ref={fieldRef} className="relative aspect-[16/10] overflow-hidden rounded-t-2xl border-4 border-b-0 border-slate-800 sm:aspect-[16/9]" data-testid={testid}>
+      <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 160 100" preserveAspectRatio="none" aria-hidden="true">
+        <defs><linearGradient id={`factory-${biome}`} x1="0" y1="0" x2="0" y2="1"><stop stopColor={top} /><stop offset="1" stopColor={bottom} /></linearGradient></defs>
+        <rect width="160" height="100" fill={`url(#factory-${biome})`} />
+        {Array.from({ length: 50 }, (_, i) => <rect key={i} y={i * 2} width="160" height="0.4" fill="#fff" opacity="0.25" />)}
+        <ellipse cx="120" cy="45" rx="32" ry="8" fill={dark} />
+        <ellipse cx="120" cy="44" rx="29" ry="6" fill={light} />
+        <ellipse cx="38" cy="91" rx="42" ry="12" fill={dark} />
+        <ellipse cx="38" cy="89" rx="39" ry="9" fill={light} />
+      </svg>
+      {children}
+    </div>
   )
 }
 
-/** A loja: os vendedores atrás do balcão. */
-function ShopCounter({ money }) {
+/** Um Pokémon da corrida no campo: o seu de costas (embaixo, à esquerda) ou de frente na base de cima. */
+function FieldMon({ mon, byId, back = false }) {
+  const p = byId?.get(mon.id)
+  if (!p) return null
   return (
-    <div className="relative overflow-hidden rounded-xl bg-gradient-to-b from-sky-300 to-sky-100 text-slate-900">
-      <div className="absolute left-3 top-2 rounded-lg bg-white/80 px-2 py-0.5 text-sm font-black">🛒 Poké Mart</div>
-      <div className="absolute right-3 top-2 rounded-lg bg-white/80 px-2 py-0.5 text-sm font-black">💰 {money}</div>
-      <div className="flex items-end justify-center gap-2 pt-6">
-        <img src={spriteUrl('trainers/sd-clerk.png')} alt="" className="pixelated h-36 w-36 object-contain object-bottom" />
-        <img src={spriteUrl('trainers/sd-clerkf.png')} alt="" className="pixelated h-36 w-36 object-contain object-bottom" />
-      </div>
-      <div className="relative -mt-14 h-14 border-t-[6px] border-amber-400 bg-gradient-to-b from-amber-600 to-amber-800 shadow-inner">
-        <p className="pt-4 text-center text-xs font-bold text-amber-50">{t('Bem-vindo! Do que você precisa?')}</p>
+    <div className={back ? 'absolute bottom-[5%] left-[7%] w-[33%]' : 'absolute right-[11%] bottom-[53%] w-[25%]'}>
+      <div className="aspect-square w-full">
+        <Sprite key={`${p.id}-${mon.shiny}`} path={mon.shiny ? shinyPath(p.sprite) : p.sprite} box={p.box} fill={0.95} align="bottom" back={back} battle alt={p.name} />
       </div>
     </div>
   )
 }
 
+/** Alguém de pé na base de cima (Enfermeira Joy, o chefe, os vendedores...). */
+function FarStand({ children }) {
+  return <div className="absolute right-[6%] bottom-[53%] flex w-[36%] items-end justify-center">{children}</div>
+}
+
+/** Os botões do menu, como os da batalha ("▸ LUTAR"); sub: uma linha menor embaixo. */
+function MenuButton({ children, sub, onClick, disabled = false, testid, active = false }) {
+  return (
+    <button type="button" onClick={onClick} disabled={disabled} data-testid={testid}
+      className={`cursor-pointer rounded-lg px-2 py-2 text-left text-slate-900 hover:bg-amber-100 disabled:cursor-default disabled:opacity-40 ${active ? 'bg-amber-100' : ''}`}>
+      <span className="block font-black">▸ {children}</span>
+      {sub && <span className="block pl-3 text-[11px] font-semibold leading-tight text-slate-500">{sub}</span>}
+    </button>
+  )
+}
+
+/** A moldura da batalha: o campo, a barra da corrida (dinheiro, Bolsa e time) e a caixa de texto com o menu. */
+function BattleFrame({ field, run, byId, text, menu, wideMenu = false }) {
+  return (
+    <div className="select-none">
+      {field}
+      {run && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-x-4 border-slate-800 bg-slate-700 px-2 py-1 text-xs font-bold text-white" data-testid="factory-bar">
+          <span>🏭 {t('Andar {0}').replace('{0}', run.floor)}</span>
+          <span>💰 {run.money}</span>
+          {BAG_ITEMS.filter((id) => run.bag[id] > 0).map((id) => (
+            <span key={id} className="inline-flex items-center" data-no-translate title={prettySlug(id)}>
+              <img src={spriteUrl(`items/${id}.png`)} alt="" className="pixelated h-5 w-5" />×{run.bag[id]}
+            </span>
+          ))}
+          <span className="ml-auto flex gap-0.5">
+            {run.team.map((m, i) => (
+              <span key={i} className="flex flex-col items-center" title={t(prettyName(byId?.get(m.id)?.name ?? ''))}>
+                <PokeIcon id={m.id} shiny={Boolean(m.shiny)} className={`h-7 w-7 ${(m.hp ?? 1) > 0 ? '' : 'opacity-40 grayscale'}`} />
+                <span className="block h-1 w-6 overflow-hidden rounded bg-slate-900">
+                  <span className={`block h-full ${(m.hp ?? 1) > 0.5 ? 'bg-emerald-400' : (m.hp ?? 1) > 0.2 ? 'bg-amber-400' : 'bg-red-500'}`} style={{ width: `${Math.max(0, Math.min(1, m.hp ?? 1)) * 100}%` }} />
+                </span>
+              </span>
+            ))}
+          </span>
+        </div>
+      )}
+      <div className="flex min-h-36 flex-col gap-2 rounded-b-2xl border-4 border-slate-800 bg-slate-800 p-2 sm:flex-row">
+        <div className="min-h-20 flex-1 space-y-1 rounded-xl border-4 border-amber-600 bg-white px-4 py-3 text-left text-base font-bold text-slate-900 sm:text-lg" data-testid="factory-text">
+          {text}
+        </div>
+        {menu && <div className={`grid content-start gap-1 rounded-xl border-4 border-slate-600 bg-white p-2 ${wideMenu ? 'sm:w-96' : 'grid-cols-2 sm:w-72'}`}>{menu}</div>}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * A corrida em tela cheia, no lugar da batalha e com a cara dela: o campo, a
+ * caixa de texto e o menu. O resultado do andar, o capturado, a carta, a loja
+ * (com "Continuar") e o mapa com os caminhos do próximo andar.
+ * onBattle(run): começa a batalha do caminho escolhido.
+ */
+export function FactoryScreen({ onBattle, onExit, busy = false }) {
+  const factory = useFactory()
+  const data = useFactoryData()
+  const byId = usePokemonIndex()
+  const trainers = useTrainers()
+  const me = useMyTrainer()
+  const [fieldRef, width] = useWidth()
+  const [panel, setPanel] = useState(null) // embaixo do menu: 'bag' | 'team' (na loja, a lista de compras)
+  const [unlocked, setUnlocked] = useState(null)
+  const [target, setTarget] = useState(0)
+  const run = factory.run
+  if (!data) return <p className="text-sm text-muted">...</p>
+  const name = (id) => t(prettyName(byId?.get(id)?.name ?? ''))
+  const save = (next) => {
+    if (!next) return
+    const out = next.pending && !stepOf(next.pending) ? nextFloor(next, data) : next
+    saveFactory({ ...factory, run: out })
+  }
+  const lead = run?.team.find((m) => (m.hp ?? 1) > 0) ?? run?.team[0]
+  const links = run && (
+    <div className="mt-2 flex flex-wrap justify-between gap-2 text-sm">
+      <button type="button" onClick={onExit} className="cursor-pointer text-muted hover:text-text">← {t('Sair (a corrida fica salva)')}</button>
+      <button type="button" onClick={() => window.confirm(t('Desistir da corrida? A pontuação vira moedas.')) && saveFactory(endRun(factory, run))} className="cursor-pointer text-muted hover:text-red-500">
+        {t('Desistir (recebe as moedas)')}
+      </button>
+    </div>
+  )
+  const extras = run && (panel === 'bag' || panel === 'team') && (
+    <div className="mt-3 rounded-2xl bg-card p-3 shadow">
+      {panel === 'bag' ? <BagPanel run={run} byId={byId} save={save} open /> : <TeamPanel run={run} data={data} byId={byId} save={save} open />}
+    </div>
+  )
+  const tools = (
+    <>
+      <MenuButton onClick={() => setPanel(panel === 'bag' ? null : 'bag')} active={panel === 'bag'} testid="factory-menu-bag">{t('BOLSA')}</MenuButton>
+      <MenuButton onClick={() => setPanel(panel === 'team' ? null : 'team')} active={panel === 'team'} testid="factory-menu-team">{t('TIME')}</MenuButton>
+    </>
+  )
+
+  // Acabou: o andar, as moedas e o recorde.
+  if (!run) {
+    return (
+      <section data-testid="factory-over">
+        <BattleFrame
+          field={<Field biome="over" fieldRef={fieldRef}><div className="absolute inset-0 flex items-center justify-center text-7xl">🏁</div></Field>}
+          text={<>
+            <p>{t('A corrida acabou')}</p>
+            {factory.last && <p className="text-sm">{t('Andar {0} · +{1} moedas').replace('{0}', factory.last.floor).replace('{1}', factory.last.coins)}</p>}
+            <p className="text-sm text-slate-500">{t('Recorde: andar {0}').replace('{0}', factory.best)} · 🪙 {factory.coins} {t('moedas')}</p>
+          </>}
+          menu={<MenuButton onClick={onExit} testid="factory-over-exit">{t('VOLTAR')}</MenuButton>}
+        />
+      </section>
+    )
+  }
+
+  const p = run.pending
+  const step = stepOf(p)
+  const nurse = <img src={spriteUrl('trainers/sd-nurse.png')} alt="" className="pixelated w-full object-contain object-bottom" style={{ maxHeight: width * 0.3 }} />
+  let field, text, menu, below = null, wideMenu = false
+
+  if (step === 'result') {
+    const event = p.event
+    const shown = p.center || p.joy ? nurse : [p.drop, p.reward].filter(Boolean).length ? <img src={itemIcon(p.drop ?? p.reward)} alt="" className="pixelated w-1/2" onError={hide} /> : null
+    field = (
+      <Field biome={p.center ? 'center' : 'grass'} fieldRef={fieldRef} testid="factory-result">
+        {shown && <FarStand>{shown}</FarStand>}
+        {!shown && event && <FarStand><span className="text-7xl">{event.kind === 'money' ? '💰' : event.kind === 'berries' ? '🍒' : event.kind === 'tutor' ? '📀' : '🎁'}</span></FarStand>}
+        {lead && <FieldMon mon={lead} byId={byId} back />}
+      </Field>
+    )
+    text = (
+      <>
+        {p.center ? (
+          <p data-testid="factory-center">🏥 {t('Centro Pokémon: o seu time foi curado!')}</p>
+        ) : event ? (
+          <p data-testid="factory-event">{t(EVENT_TEXT[event.kind]).replace('{0}', event.kind === 'money' ? event.money : itemName(event.item ?? '')).replace('{1}', event.count ?? '')}</p>
+        ) : (
+          <>
+            <p>🏆 {t('Andar vencido!')} +{p.exp} XP · +💰{p.money}</p>
+            {p.levels?.map((l) => (
+              <p key={l.index} className="text-sm" data-no-translate>{name(run.team[l.index]?.id)}: Nv. {l.from} → {l.to}{l.evolved ? ` · ${t('evoluiu!')}` : ''}</p>
+            ))}
+          </>
+        )}
+        {p.joy && <p className="text-sm" data-testid="factory-joy">💗 {t('A Enfermeira Joy apareceu e curou o time todo!')}</p>}
+        {[p.drop, p.reward].filter(Boolean).map((id) => <p key={id} className="text-sm" data-testid="factory-drop">🎁 {t('Ganhou {0}!').replace('{0}', itemName(id))}</p>)}
+        {p.story && p.story.split('\n\n').map((line, k) => <p key={k} className="text-sm font-semibold" data-testid="factory-story-end">📖 {line}</p>)}
+      </>
+    )
+    menu = <MenuButton onClick={() => save({ ...run, pending: { ...p, seen: true } })} testid="factory-continue">{t('CONTINUAR')}</MenuButton>
+  } else if (step === 'capture') {
+    const mon = p.capture
+    const full = run.team.length >= MAX_TEAM
+    const keep = (replace) => {
+      const next = capture(run, replace)
+      if (next === run) return
+      const meta = unlockShiny(factory, data, mon)
+      if (meta !== factory) setUnlocked(mon.id)
+      const out = next.pending && !stepOf(next.pending) ? nextFloor(next, data) : next
+      saveFactory({ ...meta, run: out })
+    }
+    field = (
+      <Field fieldRef={fieldRef} testid="factory-capture">
+        <FieldMon mon={mon} byId={byId} />
+        {lead && <FieldMon mon={lead} byId={byId} back />}
+      </Field>
+    )
+    text = (
+      <>
+        <p>{mon.shiny ? '✨ ' : ''}{t('Pegou! {0} foi capturado!').replace('{0}', name(mon.id))} <span className="text-slate-500">Nv. {mon.level}</span></p>
+        {mon.shiny && <p className="text-sm text-amber-600">{t('É shiny! (+10% em todos os atributos)')}</p>}
+        {full && <p className="text-sm">{t('Time cheio: escolha quem sai.')}</p>}
+      </>
+    )
+    wideMenu = full
+    menu = full ? (
+      <>
+        {run.team.map((m, i) => <MenuButton key={i} onClick={() => keep(i)} testid={`replace-${i}`} sub={`Nv. ${m.level}`}>{name(m.id)}</MenuButton>)}
+        <MenuButton onClick={() => save(skipCapture(run))}>{t('SOLTAR')}</MenuButton>
+      </>
+    ) : <MenuButton onClick={() => keep(null)} testid="factory-continue">{t('CONTINUAR')}</MenuButton>
+  } else if (step === 'cards') {
+    field = (
+      <Field fieldRef={fieldRef} testid="factory-cards">
+        <div className="absolute inset-0 grid grid-cols-3 items-center gap-2 p-3 sm:gap-4 sm:p-6">
+          {p.cards.map((c) => (
+            <button key={c} type="button" data-testid={`card-${c}`} onClick={() => save(takeCard(run, c, data))}
+              className="flex h-[85%] cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-4 border-slate-800 bg-gradient-to-b from-amber-200 to-white p-1 text-center text-[11px] font-black text-slate-900 shadow-lg transition hover:-translate-y-1 sm:text-sm">
+              <span className="text-2xl sm:text-4xl">🃏</span>
+              {t(CARDS[c].label)}
+            </button>
+          ))}
+        </div>
+      </Field>
+    )
+    text = <p>🃏 {t('Escolha uma carta de bônus')}</p>
+  } else if (step === 'shop') {
+    const pick = Math.min(target, run.team.length - 1)
+    field = (
+      <Field biome="city" fieldRef={fieldRef} testid="factory-shop">
+        <div className="absolute inset-x-0 bottom-[22%] flex items-end justify-center gap-1">
+          <img src={spriteUrl('trainers/sd-clerk.png')} alt="" className="pixelated object-contain object-bottom" style={{ height: width * 0.32 }} />
+          <img src={spriteUrl('trainers/sd-clerkf.png')} alt="" className="pixelated object-contain object-bottom" style={{ height: width * 0.32 }} />
+        </div>
+        <div className="absolute inset-x-0 bottom-0 h-[26%] border-t-[6px] border-amber-400 bg-gradient-to-b from-amber-600 to-amber-800" />
+        <div className="absolute left-3 top-2 rounded-lg bg-white/80 px-2 py-0.5 text-sm font-black text-slate-900">🛒 Poké Mart</div>
+      </Field>
+    )
+    text = <p>{t('Bem-vindo! Do que você precisa?')} <span className="text-slate-500">💰{run.money}</span></p>
+    menu = (
+      <>
+        <MenuButton onClick={() => setPanel(null)} active={!panel}>{t('COMPRAR')}</MenuButton>
+        {tools}
+        <MenuButton onClick={() => { setPanel(null); save({ ...run, pending: { ...p, shop: null } }) }} testid="factory-continue">{t('CONTINUAR')}</MenuButton>
+      </>
+    )
+    if (!panel) {
+      below = (
+        <div className="mt-3 space-y-2 rounded-2xl bg-card p-3 shadow">
+          <p className="text-xs text-muted">{t('Para quem é a compra (bolas e itens da Bolsa vão para a Bolsa):')}</p>
+          <div className="flex flex-wrap gap-1">{run.team.map((m, i) => <MonChip key={i} mon={m} byId={byId} selected={pick === i} onClick={() => setTarget(i)} testid={`target-${i}`} />)}</div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {p.shop.map((id) => (
+              <div key={id} className="flex items-center justify-between gap-2 rounded-xl bg-surface p-2 text-sm">
+                <img src={itemIcon(id)} alt="" className="pixelated h-8 w-8" onError={hide} />
+                <div className="min-w-0 flex-1">
+                  <p className="font-bold" data-no-translate>{itemName(id)}</p>
+                  <p className="text-xs text-muted">{shopOwned(run, id) ? t('Você já tem') : itemHelp(id)}</p>
+                </div>
+                <Button data-testid={`buy-${id}`}
+                  disabled={run.money < shopPrice(run, id) || shopOwned(run, id) || (id.startsWith('evo:') && !canEvolveWith(data, run.team[pick], id.slice(4)).length)}
+                  onClick={() => save(buyItem(run, id, pick, data))}>
+                  💰{shopPrice(run, id)}
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )
+    }
+  } else if (!p && run.route) {
+    const boss = bossOf(data, run)
+    const target = targetOf(data, run)
+    const { from, to } = routeCities(data, run)
+    const route = run.route
+    const biome = BIOME_INFO[route.biome] ?? BIOME_INFO.grass
+    const pos = Math.min(ROUTE_LENGTH, routePos(run))
+    const down = teamDown(run)
+    const meeting = route.options.length === 1 && route.options[0].kind === 'boss'
+    const coach = trainers?.find((x) => x.id === boss.trainer) ?? null
+    const intro = run.boss.step === 0 && pos === 0 ? storyLine(data, boss.region, 'intro') : ''
+    const pickNode = (index) => {
+      const next = chooseNode(run, data, index)
+      if (next === run) return
+      saveFactory({ ...factoryOf(useStore.getState().league), run: next })
+      if (next.encounter) onBattle(next)
+    }
+    // A rota no campo: da cidade de onde veio (esquerda) até a do chefe (direita); você no andar de agora.
+    const x = (k) => 8 + (k / (ROUTE_LENGTH + 1)) * 84
+    const END = ROUTE_LENGTH + 1
+    field = (
+      <Field biome={route.biome} fieldRef={fieldRef} testid="factory-map">
+        <div className="absolute left-3 top-2 rounded-lg bg-white/85 px-2 py-0.5 text-xs font-black text-slate-900 sm:text-sm">
+          <span data-no-translate>{boss.region} · {boss.game}</span> · {biome.icon} {t('Rota para {0}').replace('{0}', to)}
+        </div>
+        <div className="absolute inset-x-0 top-[34%] h-0">
+          <div className="absolute h-2 rounded-full bg-amber-800/60" style={{ left: `${x(0)}%`, right: `${100 - x(END)}%` }} />
+          {/* As cidades nas pontas; cada andar da rota é um ponto (os das bifurcações em forma de losango). */}
+          {Array.from({ length: END + 1 }, (_, k) => {
+            const end = k === 0 || k === END
+            const fork = !end && FORKS.includes(k - 1)
+            return (
+              <span key={k} className={`absolute -translate-x-1/2 border-2 border-slate-800 ${end ? '-mt-2 h-6 w-6 rounded-full bg-amber-400' : fork ? `-mt-1.5 h-5 w-5 rotate-45 ${k - 1 < pos ? 'bg-white' : 'bg-sky-300'}` : `-mt-1 h-4 w-4 rounded-full ${k - 1 < pos ? 'bg-white' : 'bg-white/40'}`}`} style={{ left: `${x(k)}%` }} />
+            )
+          })}
+          <span className="absolute mt-4 -translate-x-1/2 rounded bg-white/85 px-1 text-[10px] font-bold text-slate-900 sm:text-xs" style={{ left: `${x(0)}%` }} data-no-translate>🏠 {from ?? t('Início')}</span>
+          <span className="absolute mt-4 -translate-x-1/2 rounded bg-white/85 px-1 text-[10px] font-bold text-slate-900 sm:text-xs" style={{ left: `${x(END)}%` }} data-no-translate>👑 {to}</span>
+          {me && (
+            <span className="absolute -translate-x-1/2 -translate-y-full transition-all duration-700" style={{ left: `${x(pos + 1)}%` }}>
+              <TrainerSprite trainer={me} box={width * 0.14} />
+            </span>
+          )}
+        </div>
+        {coach && meeting && <FarStand><TrainerSprite trainer={coach} box={width * 0.24} /></FarStand>}
+        {lead && <FieldMon mon={lead} byId={byId} back />}
+      </Field>
+    )
+    text = (
+      <>
+        {intro && <p className="text-sm font-semibold">📖 {intro}</p>}
+        {meeting && (boss.kind === 'rival' || boss.kind === 'villain') ? (
+          <>
+            <p>{t('{0} apareceu no caminho!').replace('{0}', boss.name)}</p>
+            <p className="text-sm font-semibold">{storyLine(data, boss.region, boss.kind, boss.name)}</p>
+          </>
+        ) : meeting ? (
+          <>
+            <p>{t('O chefe espera')}</p>
+            <p className="text-sm font-semibold">{storyLine(data, boss.region, boss.kind, boss.name)}</p>
+          </>
+        ) : (
+          <p>{route.options.length > 1 ? t('O caminho se divide: escolha por onde ir') : t('O caminho segue.')}</p>
+        )}
+        <p className="text-sm text-slate-600">{t('Chefe em {0}:').replace('{0}', to)} <b data-no-translate>{target.name}</b> · {bossKindLabel(target.kind)}</p>
+        {down && <p className="text-sm text-red-600">{t('O time todo está desmaiado: use um Revive ou desista.')}</p>}
+      </>
+    )
+    wideMenu = true
+    menu = (
+      <>
+        {route.options.map((node, k) => {
+          const info = NODE_INFO[node.kind]
+          const b = node.biome ? BIOME_INFO[node.biome] : null
+          return (
+            <MenuButton key={k} testid={`map-node-${k}`} disabled={busy || (isBattleNode(node) && down)} onClick={() => pickNode(k)}
+              sub={node.kind === 'boss' ? `${bossKindLabel(boss.kind)}${CITY_KIND_SET.has(boss.kind) ? ` · ${to}` : ''}` : t(info.help)}>
+              {route.options.length === 1 && node.kind !== 'boss' ? `${t('SEGUIR')}: ` : ''}{b ? b.icon : info.icon} {node.kind === 'boss' ? <span data-no-translate>{boss.name}</span> : t(info.label)}{b ? ` · ${t(b.label)}` : ''}
+            </MenuButton>
+          )
+        })}
+        <div className="grid grid-cols-2">{tools}</div>
+      </>
+    )
+  } else if (!p && run.encounter) {
+    field = <Field fieldRef={fieldRef}>{lead && <FieldMon mon={lead} byId={byId} back />}</Field>
+    text = <p>{t('Lutar no andar {0}').replace('{0}', run.floor)}</p>
+    menu = <MenuButton testid="factory-fight" disabled={busy || teamDown(run)} onClick={() => onBattle(run)}>{t('LUTAR')}</MenuButton>
+  } else {
+    field = <Field fieldRef={fieldRef} />
+    text = <p>...</p>
+  }
+
+  return (
+    <section data-testid="factory-screen">
+      <BattleFrame field={field} run={run} byId={byId} text={text} menu={menu} wideMenu={wideMenu} />
+      {unlocked != null && (
+        <p className="mt-2 rounded-xl bg-amber-500/15 p-2 text-sm font-bold" data-testid="factory-shiny-unlocked">
+          ✨ {t('{0} shiny liberado para começar as próximas corridas!').replace('{0}', name(unlocked))}
+        </p>
+      )}
+      {below}
+      {extras}
+      {links}
+    </section>
+  )
+}
+
+const BALL_HELP = {
+  'poke-ball': 'Para capturar os selvagens (jogue na batalha)',
+  'great-ball': 'Captura 1,5× melhor',
+  'ultra-ball': 'Captura 2× melhor',
+  'quick-ball': '5× melhor no primeiro turno',
+  'net-ball': '3,5× melhor em Água e Inseto',
+  'dusk-ball': '3× melhor em cavernas e torres',
+  'timer-ball': 'Melhora a cada turno (até 4×)',
+}
+
 function itemHelp(id) {
-  if (id === 'poke-ball') return t('Para capturar os selvagens')
+  if (id === 'master-ball') return t('Captura sempre')
+  if (BALL_HELP[id]) return t(BALL_HELP[id])
   if (id.startsWith('tm:')) return t('Ensina o golpe a quem aprende por TM (uma vez)')
   if (id.startsWith('evo:')) return t('Evolui na hora quem evolui com ela (escolha acima)')
   if (id === 'move-tutor') return t('Ensina um golpe de tutor ou de ovo (uma vez)')
