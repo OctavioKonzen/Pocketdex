@@ -1,5 +1,6 @@
 """Sons da batalha, sintetizados aqui (nada copiado de jogo): efeitos no
-estilo 8-bit e uma música de batalha chiptune original em loop.
+estilo 8-bit, uma música de batalha chiptune original em loop e um tema
+original para cada região (líderes, Elite Four e kahunas) e cada campeão.
 
 Saída: assets/database/sounds/<nome>.mp3 (o site copia com o resto do banco).
 
@@ -189,34 +190,15 @@ LEAD = [
 CHORDS = [(40, [64, 67, 71]), (36, [60, 64, 67]), (38, [62, 66, 69]), (35, [59, 63, 66])] * 2
 
 
-# Líder de ginásio (original): Lá menor, mais rápida e marcada, i–VII–VI–V.
-GYM_LEAD = [
-    69, 0, 72, 76, 74, 72, 71, 72, 69, 0, 64, 0, 69, 71, 72, 74,
-    76, 0, 74, 72, 71, 0, 67, 71, 74, 0, 72, 71, 67, 0, 0, 0,
-    65, 0, 69, 72, 77, 76, 74, 72, 69, 0, 72, 0, 77, 0, 76, 74,
-    76, 0, 71, 0, 68, 71, 76, 0, 80, 79, 76, 74, 71, 68, 64, 0,
-    69, 72, 76, 81, 79, 76, 72, 0, 74, 0, 76, 74, 72, 71, 69, 0,
-    67, 71, 74, 79, 77, 74, 71, 0, 72, 0, 74, 72, 71, 69, 67, 0,
-    65, 69, 72, 77, 76, 72, 69, 0, 77, 0, 76, 0, 74, 0, 72, 0,
-    76, 0, 80, 0, 83, 0, 80, 76, 74, 71, 68, 71, 76, 0, 0, 0,
-]
-GYM_CHORDS = [(45, [69, 72, 76]), (43, [67, 71, 74]), (41, [65, 69, 72]), (40, [64, 68, 71])] * 2
-
-# Campeão (original): Ré menor, a mais intensa, i–VI–iv–V com a melodia subindo.
-CHAMPION_LEAD = [
-    74, 0, 77, 81, 79, 77, 76, 77, 74, 0, 69, 0, 74, 76, 77, 79,
-    81, 82, 81, 79, 77, 0, 76, 77, 79, 0, 77, 76, 74, 0, 0, 0,
-    70, 74, 77, 82, 81, 79, 77, 74, 79, 0, 77, 0, 82, 81, 79, 77,
-    67, 70, 74, 79, 77, 74, 70, 67, 72, 0, 74, 0, 76, 0, 79, 0,
-    81, 0, 86, 0, 84, 82, 81, 79, 77, 0, 81, 0, 86, 84, 82, 81,
-    82, 0, 77, 74, 70, 74, 77, 82, 81, 0, 79, 77, 76, 0, 74, 0,
-    79, 82, 86, 0, 84, 82, 79, 0, 82, 0, 81, 79, 77, 0, 76, 77,
-    81, 0, 85, 0, 88, 0, 85, 81, 79, 76, 73, 76, 81, 0, 0, 0,
-]
-CHAMPION_CHORDS = [(38, [62, 65, 69]), (34, [58, 62, 65]), (43, [55, 58, 62]), (45, [57, 61, 64])] * 2
+def piano(f, seconds):
+    """Timbre de piano simples: seno com harmônicos, ataque rápido e queda longa."""
+    x = t(seconds)
+    wave = np.sin(2 * np.pi * f * x) + 0.4 * np.sin(4 * np.pi * f * x) + 0.15 * np.sin(6 * np.pi * f * x)
+    return wave / 1.55 * decay(len(x), 3.5)
 
 
-def music(lead=None, chords=None, bpm=BPM):
+def music(lead=None, chords=None, bpm=BPM, duty=0.25, voice='pulse', drive=False):
+    """Uma música em loop. voice: 'pulse' (chiptune, com `duty`) ou 'piano'; drive: bumbo em todo tempo."""
     lead = lead or LEAD
     chords = chords or CHORDS
     step = 60 / bpm / 2
@@ -240,7 +222,10 @@ def music(lead=None, chords=None, bpm=BPM):
             length += 1
         if note:
             d = step * length * 0.95
-            sig = pulse(freq(note), d, 0.25) * env(int(RATE * d), 0.004, 0.04) * 0.22
+            if voice == 'piano':
+                sig = piano(freq(note), d) * env(int(RATE * d), 0.002, 0.03) * 0.42
+            else:
+                sig = pulse(freq(note), d, duty) * env(int(RATE * d), 0.004, 0.04) * 0.22
             # Vibrato leve nas notas longas.
             put(i, sig)
         i += length
@@ -263,14 +248,122 @@ def music(lead=None, chords=None, bpm=BPM):
     for b in range(bars):
         for beat in range(4):
             s = b * 8 + beat * 2
-            if beat in (0, 2):
+            if beat in (0, 2) or drive:
                 kick_n = int(RATE * 0.12)
                 put(s, pulse(np.linspace(140, 45, kick_n), 0.12, 0.5) * decay(kick_n, 30) * 0.3)
-            else:
+            if beat in (1, 3):
                 sn = int(RATE * 0.12)
                 put(s, noise(0.12, 13 + b, 1) * decay(sn, 28) * 0.18)
             hh = int(RATE * 0.04)
             put(s + 1, noise(0.04, 17 + beat, 1) * decay(hh, 90) * 0.08)
+    return out
+
+
+# ------------------------------------------------------------------ temas
+
+# Escalas (semitons a partir da tônica).
+MODES = {
+    'minor': [0, 2, 3, 5, 7, 8, 10], 'harmonic': [0, 2, 3, 5, 7, 8, 11], 'dorian': [0, 2, 3, 5, 7, 9, 10],
+    'major': [0, 2, 4, 5, 7, 9, 11], 'mixolydian': [0, 2, 4, 5, 7, 9, 10], 'phrygian': [0, 1, 3, 5, 7, 8, 10],
+}
+# Ritmos de 2 compassos (colcheias): 1 = nota nova, 0 = segura/pausa.
+RHYTHMS = [
+    [1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 0, 0],
+    [1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0],
+    [1, 0, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 0, 0],
+    [1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0],
+    [1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0],
+    [1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 1, 0, 0],
+]
+CADENCE = [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0]
+
+# Cada região (líderes, Elite Four e kahunas) e cada campeão com o seu tema
+# original: tônica, escala, progressão (graus), andamento, timbre e semente.
+REGION_THEMES = {
+    'kanto': (69, 'dorian', [0, 6, 5, 6], 160, 0.25),
+    'johto': (62, 'dorian', [0, 3, 6, 4], 156, 0.5),
+    'hoenn': (67, 'minor', [0, 5, 2, 6], 164, 0.25),
+    'sinnoh': (64, 'harmonic', [0, 5, 3, 4], 158, 0.125),
+    'unova': (65, 'minor', [0, 5, 6, 4], 170, 0.25),
+    'kalos': (66, 'phrygian', [0, 1, 0, 6], 162, 0.5),
+    'alola': (67, 'mixolydian', [0, 3, 6, 4], 150, 0.5),
+    'galar': (62, 'minor', [0, 5, 6, 0], 168, 0.25),
+    'paldea': (69, 'dorian', [0, 3, 0, 6], 166, 0.125),
+}
+CHAMPION_THEMES = {
+    'blue': (64, 'harmonic', [0, 5, 3, 4], 176, 0.25, 'pulse'),
+    'lance': (62, 'harmonic', [0, 3, 5, 4], 172, 0.5, 'pulse'),
+    'steven': (65, 'minor', [0, 5, 6, 4], 174, 0.25, 'pulse'),
+    'cynthia': (64, 'harmonic', [0, 5, 3, 4], 168, 0.25, 'piano'),
+    'alder': (67, 'dorian', [0, 6, 3, 4], 168, 0.5, 'pulse'),
+    'iris': (69, 'harmonic', [0, 5, 1, 4], 178, 0.125, 'pulse'),
+    'diantha': (66, 'minor', [0, 2, 5, 4], 170, 0.5, 'piano'),
+    'kukui': (67, 'mixolydian', [0, 6, 3, 4], 160, 0.25, 'pulse'),
+    'leon': (62, 'minor', [0, 5, 6, 4], 180, 0.25, 'pulse'),
+    'geeta': (63, 'harmonic', [0, 3, 5, 4], 172, 0.125, 'pulse'),
+}
+
+
+def compose(name, tonic, mode, progression, climax=False):
+    """Melodia e acordes originais (128 colcheias) a partir de motivos gerados:
+    A no 1º acorde, A em sequência no 2º, B no 3º e uma cadência no 4º; depois
+    tudo de novo com variação (mais alto no tema de campeão)."""
+    scale = MODES[mode]
+    rng = np.random.default_rng(sum(ord(c) * (i + 1) for i, c in enumerate(name)))
+
+    def midi(degree):
+        return tonic + 12 * (degree // 7) + scale[degree % 7]
+
+    def motif(rhythm):
+        out, d = [], int(rng.choice([0, 2, 4]))
+        for pos, on in enumerate(rhythm):
+            if not on:
+                out.append(None)
+                continue
+            if out:
+                d += int(rng.choice([-2, -1, -1, 1, 1, 2, 3, -3]))
+            if pos % 4 == 0:  # tempo forte: nota do acorde
+                d = min((c for c in range(-7, 12) if c % 7 in (0, 2, 4)), key=lambda c: (abs(c - d), c))
+            d = max(-2, min(7, d))
+            out.append(d)
+        return out
+
+    a = motif(RHYTHMS[int(rng.integers(len(RHYTHMS)))])
+    b = motif(RHYTHMS[int(rng.integers(len(RHYTHMS)))])
+    cadence = [4, None, None, None, 2, None, None, None, 1, None, 0, None, 2, None, None, None]
+    lead, chords = [], []
+    for half in range(2):
+        lift = (5 if climax else 2) if half else 0
+        for k, root in enumerate(progression):
+            part = [a, a, b, cadence][k]
+            if half and k == 2:
+                part = [None if x is None else 4 - x for x in b]  # B espelhado
+            # A raiz do acorde fica perto da tônica, para a melodia não pular.
+            r = root if root <= 3 else root - 7
+            for x in part:
+                m = 0 if x is None else midi(r + x + lift)
+                while m and m < 62:  # registro confortável: dobra a oitava nos extremos
+                    m += 12
+                while m > 88:
+                    m -= 12
+                lead.append(m)
+            tones = [midi(root + i) for i in (0, 2, 4)]
+            bass = tones[0] - 24
+            while bass > 47:
+                bass -= 12
+            chords.append((bass, [m - 12 if m >= 72 else m for m in tones]))
+    return lead, chords
+
+
+def theme_tracks():
+    """{nome do arquivo: música} dos temas de região e de campeão."""
+    out = {}
+    for region, (tonic, mode, prog, bpm, duty) in REGION_THEMES.items():
+        lead, chords = compose(region, tonic, mode, prog)
+        out[f'gym_{region}'] = music(lead, chords, bpm, duty=duty)
+    for champion, (tonic, mode, prog, bpm, duty, voice) in CHAMPION_THEMES.items():
+        lead, chords = compose(champion, tonic, mode, prog, climax=True)
+        out[f'champion_{champion}'] = music(lead, chords, bpm, duty=duty, voice=voice, drive=voice == 'pulse')
     return out
 
 
@@ -294,9 +387,10 @@ def main():
     for name, sig in sounds.items():
         total += save(name, sig)
     total += save('battle_music', music(), bitrate=64)
-    total += save('gym_music', music(GYM_LEAD, GYM_CHORDS, 164), bitrate=64)
-    total += save('champion_music', music(CHAMPION_LEAD, CHAMPION_CHORDS, 172), bitrate=64)
-    print(f'{len(sounds) + 3} sons, {total // 1024} KB')
+    themes = theme_tracks()
+    for name, sig in themes.items():
+        total += save(name, sig, bitrate=40)
+    print(f'{len(sounds) + 1 + len(themes)} sons, {total // 1024} KB')
 
 
 if __name__ == '__main__':

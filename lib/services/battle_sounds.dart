@@ -48,7 +48,7 @@ class BattleSounds {
   /// Avisa quando outra tela abre por cima da batalha (BattleViewState, RouteAware).
   static final RouteObserver<ModalRoute<void>> routes = RouteObserver<ModalRoute<void>>();
 
-  /// A música em loop: battle_music, gym_music (líderes) ou champion_music.
+  /// A música em loop: battle_music, gym_<região> (líderes) ou champion_<nome>.
   static Future<void> startMusic([String track = 'battle_music', Object? owner]) async {
     if (_off || !AppSettings.instance.battleMusic) return;
     _wanted = true;

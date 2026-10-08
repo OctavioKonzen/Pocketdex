@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { addHallOfFame, badgesNeeded, badgesOf, emptyLeague, leagueOpen, leagueOrder, musicOf, regionGyms, streakResult, winBadge } from './gymChallenge'
 
@@ -32,7 +32,14 @@ describe('jornada do Desafio dos Líderes', () => {
     l = streakResult(l, 'tower', false)
     expect(l.tower).toEqual({ best: 2, streak: 0 })
     expect(musicOf(null)).toBe('battle_music')
-    expect(musicOf(leagueOrder(byName('Kanto')).at(-1))).toBe('champion_music')
-    expect(musicOf(regionGyms(byName('Kanto'))[0])).toBe('gym_music')
+    expect(musicOf(leagueOrder(byName('Kanto')).at(-1))).toBe('champion_blue')
+    expect(musicOf(leagueOrder(byName('Sinnoh')).at(-1))).toBe('champion_cynthia')
+    expect(musicOf(regionGyms(byName('Kanto'))[0])).toBe('gym_kanto')
+    expect(musicOf(regionGyms(byName('Galar'))[0])).toBe('gym_galar')
+    expect(musicOf(null)).toBe('battle_music')
+    // Todo líder tem a música no banco.
+    for (const leader of regions.flatMap((r) => r.leaders)) {
+      expect(existsSync(new URL(`../../../assets/database/sounds/${musicOf(leader)}.mp3`, import.meta.url)), leader.id).toBe(true)
+    }
   })
 })
