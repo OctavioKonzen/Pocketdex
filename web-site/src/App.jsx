@@ -29,6 +29,7 @@ const ChatPage = lazyPage(() => import('./pages/ChatPage'))
 const BattlePage = lazyPage(() => import('./pages/BattlePage'))
 const TurnBattlePage = lazyPage(() => import('./pages/TurnBattlePage'))
 const BattleHistoryPage = lazyPage(() => import('./pages/BattleHistoryPage'))
+const ReplayLinkPage = lazyPage(() => import('./pages/BattleHistoryPage').then((m) => ({ default: m.ReplayLinkPage })))
 const OnlineBattlePage = lazyPage(() => import('./pages/OnlineBattlePage'))
 const DraftPage = lazyPage(() => import('./pages/DraftPage'))
 const LoginPage = lazyPage(() => import('./pages/LoginPage'))
@@ -347,6 +348,18 @@ function AuthGate({ children }) {
     )
   }
   if (status === 'disabled' || status === 'signedIn') return children
+  // Replay por link: abre sem conta (só a batalha, sem o resto do site).
+  if (window.location.hash.startsWith('#/batalha/replay')) {
+    return (
+      <HashRouter>
+        <Suspense fallback={<Splash />}>
+          <main className="p-4">
+            <ReplayLinkPage />
+          </main>
+        </Suspense>
+      </HashRouter>
+    )
+  }
   return (
     <Suspense fallback={<Splash />}>
       <LoginPage />
@@ -407,6 +420,7 @@ export default function App() {
                   <Route path="/batalha" element={<BattlePage />} />
                   <Route path="/batalha/computador" element={<TurnBattlePage />} />
                   <Route path="/batalha/historico" element={<BattleHistoryPage />} />
+                  <Route path="/batalha/replay" element={<ReplayLinkPage />} />
                   <Route path="/batalha/online" element={<OnlineBattlePage />} />
                   <Route path="/batalha/online/:id" element={<OnlineBattlePage />} />
                   <Route path="/batalha/draft" element={<DraftPage />} />

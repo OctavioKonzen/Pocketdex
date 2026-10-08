@@ -10,7 +10,10 @@ import 'package:flutter/material.dart' hide Text;
 import '../i18n/text.dart';
 import '../services/battle_log.dart';
 import '../services/damage_calc.dart';
+import 'package:share_plus/share_plus.dart';
+
 import '../services/league.dart';
+import '../services/replay_link.dart';
 import '../services/trainers.dart';
 import '../services/turn_battle.dart';
 import '../services/user_data.dart';
@@ -208,6 +211,15 @@ class _BattleTile extends StatelessWidget {
                   tooltip: tr('Assistir'),
                   onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ReplayScreen(record))),
                   icon: const Icon(Icons.play_arrow),
+                ),
+              // Link do replay (abre no site, sem conta): replay_link.dart.
+              if (BattleLog.canReplay(record))
+                IconButton(
+                  key: ValueKey('share-${record['id']}'),
+                  tooltip: tr('Compartilhar'),
+                  onPressed: () => SharePlus.instance.share(
+                      ShareParams(text: '${tr('Replay da minha batalha no PocketDex')}\n${ReplayLink.url(ReplayLink.encode(record))}')),
+                  icon: Icon(Icons.share, color: c.muted),
                 ),
               IconButton(tooltip: tr('Apagar'), onPressed: () => BattleLog.delete(record['id'] as String), icon: Icon(Icons.delete_outline, color: c.muted)),
             ]),
