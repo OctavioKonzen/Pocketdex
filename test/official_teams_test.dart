@@ -9,8 +9,12 @@ void main() {
   test('times oficiais: separados por jogo, com os dados do jogo (igual ao site)', () async {
     final games = await OfficialTeams.load();
     expect([for (final g in games) g.id],
-        ['red-blue', 'yellow', 'gold-silver', 'crystal', 'ruby-sapphire', 'emerald', 'firered-leafgreen', 'platinum']);
-    final cynthia = games.last.trainers.firstWhere((t) => t.name == 'Cynthia');
+        ['red-blue', 'yellow', 'gold-silver', 'crystal', 'ruby-sapphire', 'emerald', 'firered-leafgreen', 'platinum', 'scarlet-violet']);
+    final glimmora = games.last.trainers.firstWhere((t) => t.name == 'Geeta').battles.first.team.last;
+    expect(glimmora.tera, 'rock');
+    expect(glimmora.evText, 'EVs: 252 HP');
+    expect(glimmora.abilityText((s) => s), 'toxic-debris');
+    final cynthia = games.firstWhere((g) => g.id == 'platinum').trainers.firstWhere((t) => t.name == 'Cynthia');
     final garchomp = cynthia.battles.first.team.last;
     expect([for (final m in cynthia.battles.first.team) m.level], [58, 58, 60, 60, 58, 62]);
     expect(garchomp.item, 'sitrus-berry');

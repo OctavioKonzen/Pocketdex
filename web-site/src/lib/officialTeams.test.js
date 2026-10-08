@@ -1,14 +1,15 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { appearances, evText, filterTrainers, ivText } from './officialTeams'
+import { abilityText, appearances, evText, filterTrainers, generationsOf, ivText } from './officialTeams'
 
 const games = JSON.parse(readFileSync(new URL('../../../assets/database/official_teams.json', import.meta.url), 'utf8'))
 const game = (id) => games.find((g) => g.id === id)
 const person = (gid, name, cls) => game(gid).trainers.find((t) => t.name === name && (!cls || t.class === cls))
 
 describe('times oficiais dos personagens', () => {
-  it('separa por jogo, da 1ª à 4ª geração', () => {
-    expect(games.map((g) => g.id)).toEqual(['red-blue', 'yellow', 'gold-silver', 'crystal', 'ruby-sapphire', 'emerald', 'firered-leafgreen', 'platinum'])
+  it('separa por jogo: da 1ª à 4ª geração e Scarlet/Violet', () => {
+    expect(games.map((g) => g.id)).toEqual(['red-blue', 'yellow', 'gold-silver', 'crystal', 'ruby-sapphire', 'emerald', 'firered-leafgreen', 'platinum', 'scarlet-violet'])
+    expect(generationsOf(games)).toEqual([1, 2, 3, 4, 9])
     for (const g of games) {
       expect(g.trainers.length).toBeGreaterThan(10)
       for (const t of g.trainers) for (const b of t.battles) expect(b.team.length).toBeGreaterThan(0)
@@ -35,6 +36,20 @@ describe('times oficiais dos personagens', () => {
     // O rival muda o inicial conforme o seu.
     const labels = person('red-blue', 'Blue', 'Campeão').battles.map((b) => b.label)
     expect(labels).toEqual(expect.arrayContaining(['Liga Pokémon (se você escolheu Charmander)']))
+  })
+
+  it('Geeta (Scarlet/Violet): Tera, EVs e habilidade definidos pelo jogo', () => {
+    const team = person('scarlet-violet', 'Geeta').battles[0].team
+    expect(team.map((m) => m.level)).toEqual([61, 61, 61, 61, 61, 62])
+    const glimmora = team[5]
+    expect(glimmora.id).toBe(970)
+    expect(glimmora.tera).toBe('rock')
+    expect(glimmora.moves).toEqual(['tera-blast', 'sludge-wave', 'earth-power', 'dazzling-gleam'])
+    expect(ivText(glimmora)).toBe('IVs: 30 em todos')
+    expect(evText(glimmora)).toBe('EVs: 252 HP')
+    expect(abilityText(glimmora, (s) => s)).toBe('toxic-debris')
+    expect(abilityText({ abilityOptions: ['a', 'b'] }, (s) => s)).toBe('a ou b (sorteada)')
+    expect(ivText({ iv: null, ivNote: 'sorteados' })).toBe('IVs: sorteados')
   })
 
   it('mostra todas as aparições do personagem', () => {
