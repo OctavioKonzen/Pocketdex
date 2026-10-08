@@ -20,16 +20,39 @@ class BattleSounds {
   static final bool _off = Platform.environment.containsKey('FLUTTER_TEST');
   static AudioPlayer? _music;
 
+  // Até 3 tocadores fixos por efeito, usados em rodízio (dois golpes seguidos
+  // tocam os dois). Antes cada som criava um tocador novo que nunca era
+  // liberado: no Android o modo de baixa latência não avisa quando termina, e
+  // cada um seguia consultando a posição do som a cada quadro da tela, então a
+  // batalha ia travando.
+  static final Map<String, List<AudioPlayer>> _fx = {};
+  static final Map<String, int> _nextFx = {};
+  static const _fxPlayers = 3;
+
+  static Future<AudioPlayer> _fxPlayer(String name) async {
+    final players = _fx.putIfAbsent(name, () => []);
+    if (players.length < _fxPlayers) {
+      final player = AudioPlayer()..positionUpdater = null;
+      players.add(player);
+      await player.setPlayerMode(PlayerMode.lowLatency);
+      await player.setReleaseMode(ReleaseMode.stop);
+      await player.setSource(AssetSource('database/sounds/$name.mp3'));
+      return player;
+    }
+    final i = (_nextFx[name] ?? 0) % _fxPlayers;
+    _nextFx[name] = i + 1;
+    return players[i];
+  }
+
   /// Um efeito: hit, super, weak, faint, throw, open, recall, statup, statdown, heal, select, victory.
   static Future<void> play(String name, {double volume = 0.6}) async {
-    if (_off || !AppSettings.instance.battleSounds) return;
+    // Minimizado ou em outra tela: sem efeitos (a batalha segue sem som).
+    if (_off || !AppSettings.instance.battleSounds || _backgrounded || _covered) return;
     try {
-      // Um tocador por efeito (dois golpes seguidos tocam os dois); some ao terminar.
-      final player = AudioPlayer();
-      await player.setPlayerMode(PlayerMode.lowLatency);
+      final player = await _fxPlayer(name);
+      await player.stop();
       await player.setVolume(volume);
-      player.onPlayerComplete.first.then((_) => player.dispose());
-      await player.play(AssetSource('database/sounds/$name.mp3'));
+      await player.resume();
     } catch (_) {
       // Sem som: a batalha continua.
     }
@@ -56,7 +79,8 @@ class BattleSounds {
     _covered = false;
     _lifecycle ??= _Lifecycle()..attach();
     try {
-      final player = _music ??= AudioPlayer();
+      // Sem acompanhar a posição (a música só toca em loop): nada de consulta a cada quadro.
+      final player = _music ??= AudioPlayer()..positionUpdater = null;
       await player.setReleaseMode(ReleaseMode.loop);
       await player.setVolume(0.3);
       await player.setSource(AssetSource('database/sounds/$track.mp3'));
@@ -82,14 +106,29 @@ class BattleSounds {
   }
 
   static Future<void> _sync() async {
-    if (_off || _music == null) return;
+    if (_off) return;
+    final player = _music;
+    if (player == null) return;
+    if (_wanted && !_backgrounded && !_covered) {
+      try {
+        await player.resume();
+      } catch (_) {}
+      return;
+    }
+    // Os efeitos que ainda estão tocando também param.
+    for (final fx in _fx.values.expand((p) => p)) {
+      fx.stop().catchError((_) {});
+    }
     try {
-      if (_wanted && !_backgrounded && !_covered) {
-        await _music!.resume();
-      } else {
-        await _music!.pause();
-      }
+      await player.pause();
     } catch (_) {}
+    // Se a pausa não pegou (o tocador ainda estava carregando, por exemplo),
+    // para de vez: voltando para a batalha, a música recomeça do início.
+    if (player.state == PlayerState.playing) {
+      try {
+        await player.stop();
+      } catch (_) {}
+    }
   }
 
   /// O som de cada evento ([lastEffect]: o último "É super eficaz"/"Não é muito eficaz").
@@ -111,11 +150,17 @@ class BattleSounds {
 
 /// App minimizado ou trocado: a música pausa; voltando para a batalha, continua.
 class _Lifecycle with WidgetsBindingObserver {
-  void attach() => WidgetsBinding.instance.addObserver(this);
+  void attach() {
+    WidgetsBinding.instance.addObserver(this);
+    final now = WidgetsBinding.instance.lifecycleState;
+    BattleSounds._backgrounded = now != null && now != AppLifecycleState.resumed;
+  }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    BattleSounds._backgrounded = state != AppLifecycleState.resumed;
+    final away = state != AppLifecycleState.resumed;
+    if (away == BattleSounds._backgrounded) return;
+    BattleSounds._backgrounded = away;
     BattleSounds._sync();
   }
 }
