@@ -9,33 +9,76 @@ import 'dart:convert';
 
 import 'package:flutter/services.dart' show rootBundle;
 
+Map<String, int>? _stats(Object? value) =>
+    value is Map ? {for (final e in value.entries) e.key as String: (e.value as num).toInt()} : null;
+
 class OfficialMon {
-  final int id, level, ev;
-  final int? iv;
-  final String? item, nature, ability;
+  final int id, level;
+
+  /// IVs e EVs: o mesmo valor em todos ([iv], [ev]) ou um por status ([ivs], [evs]).
+  final int? iv, ev;
+  final Map<String, int>? ivs, evs, dv;
+  final String? item, nature, ability, ivNote, tera;
+  final List<String>? abilityOptions;
+  final bool shiny;
   final List<String> moves;
-  final Map<String, int>? dv;
-  const OfficialMon({required this.id, required this.level, required this.moves, this.item, this.iv, this.ev = 0, this.nature, this.ability, this.dv});
+  const OfficialMon({
+    required this.id,
+    required this.level,
+    required this.moves,
+    this.item,
+    this.iv,
+    this.ivs,
+    this.ivNote,
+    this.ev = 0,
+    this.evs,
+    this.nature,
+    this.ability,
+    this.abilityOptions,
+    this.tera,
+    this.shiny = false,
+    this.dv,
+  });
 
   factory OfficialMon.fromJson(Map<String, dynamic> j) => OfficialMon(
         id: (j['id'] as num).toInt(),
         level: (j['level'] as num).toInt(),
         moves: [for (final m in j['moves'] as List) m as String],
         item: j['item'] as String?,
-        iv: (j['iv'] as num?)?.toInt(),
-        ev: (j['ev'] as num?)?.toInt() ?? 0,
+        iv: j['iv'] is num ? (j['iv'] as num).toInt() : null,
+        ivs: _stats(j['iv']),
+        ivNote: j['ivNote'] as String?,
+        ev: j['ev'] is num ? (j['ev'] as num).toInt() : null,
+        evs: _stats(j['ev']),
         nature: j['nature'] as String?,
         ability: j['ability'] as String?,
-        dv: j['dv'] == null ? null : {for (final e in (j['dv'] as Map).entries) e.key as String: (e.value as num).toInt()},
+        abilityOptions: (j['abilityOptions'] as List?)?.cast<String>(),
+        tera: j['tera'] as String?,
+        shiny: j['shiny'] == true,
+        dv: _stats(j['dv']),
       );
 
   static const _dvLabels = {'hp': 'HP', 'atk': 'Atk', 'def': 'Def', 'spe': 'Spe', 'spc': 'Spc'};
+  static const _statLabels = {'hp': 'HP', 'atk': 'Atk', 'def': 'Def', 'spa': 'SpA', 'spd': 'SpD', 'spe': 'Spe'};
 
-  /// "IVs: 30 em todos" (3ª/4ª geração) ou os DVs da 1ª/2ª geração.
-  String get ivText => dv != null ? 'DVs: ${_dvLabels.entries.map((e) => '${e.value} ${dv![e.key]}').join(' · ')}' : 'IVs: $iv em todos';
+  /// "IVs: 30 em todos", um por status, sorteados (o jogo sorteia) ou os DVs da 1ª/2ª geração.
+  String get ivText {
+    if (dv != null) return 'DVs: ${_dvLabels.entries.map((e) => '${e.value} ${dv![e.key]}').join(' · ')}';
+    if (ivNote != null) return 'IVs: $ivNote';
+    if (ivs != null) return 'IVs: ${_statLabels.entries.map((e) => '${e.value} ${ivs![e.key]}').join(' · ')}';
+    return 'IVs: $iv em todos';
+  }
 
-  /// Na 1ª/2ª geração os treinadores não têm stat exp; nas outras, EVs 0.
-  String get evText => dv != null ? 'Stat Exp: 0' : 'EVs: $ev em todos';
+  /// Na 1ª/2ª geração os treinadores não têm stat exp; nas outras, os EVs (iguais ou um por status).
+  String get evText {
+    if (dv != null) return 'Stat Exp: 0';
+    if (evs != null) return 'EVs: ${_statLabels.entries.where((e) => (evs![e.key] ?? 0) > 0).map((e) => '${evs![e.key]} ${e.value}').join(' / ')}';
+    return 'EVs: $ev em todos';
+  }
+
+  /// A habilidade, ou as opções quando o jogo sorteia.
+  String? abilityText(String Function(String) pretty) =>
+      ability != null ? pretty(ability!) : abilityOptions == null ? null : '${abilityOptions!.map(pretty).join(' ou ')} (sorteada)';
 }
 
 class OfficialBattle {

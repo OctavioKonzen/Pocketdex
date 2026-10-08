@@ -7,7 +7,8 @@ Saída: assets/database/official_teams.json
 
 Uso:
     python3 tool/build_official_teams.py <pasta com os arquivos do pret>
-    (a pasta tem uma subpasta por projeto: pokered/, pokeyellow/, pokegold/,
+    (a pasta tem uma subpasta por projeto: sv/ (Scarlet/Violet, ver
+    tool/official_teams/gen9.py), pokered/, pokeyellow/, pokegold/,
     pokecrystal/, pokeruby/, pokeemerald/, pokefirered/, pokeplatinum/, com os
     arquivos que cada módulo de tool/official_teams/ lê; para a 2ª geração,
     os scripts dos mapas ficam em maps/<projeto>/maps/, de onde sai o local
@@ -24,6 +25,7 @@ import gen1  # noqa: E402
 import gen2  # noqa: E402
 import gen3  # noqa: E402
 import gen4  # noqa: E402
+import gen9  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB = os.path.join(ROOT, 'assets', 'database')
@@ -62,6 +64,7 @@ GAMES = [
         'learnsets': 'level_up_learnsets.h', 'learnset_pointers': 'level_up_learnset_pointers.h',
         'trainers': 'trainers.h', 'parties': 'trainer_parties.h'}),
     ('platinum', 'Platinum', 'Sinnoh', 4, gen4, 'pokeplatinum', {}),
+    ('scarlet-violet', 'Scarlet/Violet', 'Paldea', 9, gen9, 'sv', {}),
 ]
 
 STARTERS = {'MUDKIP', 'TREECKO', 'TORCHIC', 'SQUIRTLE', 'BULBASAUR', 'CHARMANDER', 'CHIKORITA', 'CYNDAQUIL', 'TOTODILE',
@@ -74,7 +77,7 @@ RIVAL_NAMES = {'TERRY': 'Blue', 'CEDRIC': 'Barry'}
 
 # Retrato (assets/database/trainers.json) quando o nome não bate direto.
 PORTRAITS = {('Campeão', 'Blue'): 'champion-blue', ('Líder de Ginásio', 'Blue'): 'champion-blue', 'Drake': 'sd-drake-gen3', 'Phoebe': 'sd-phoebe-gen6', 'Maxie': 'sd-maxie-gen6',
-             'Archie': 'sd-archie-gen6', 'Executivo': 'rocket-grunt-m', 'Executiva': 'rocket-grunt-f'}
+             'Archie': 'sd-archie-gen6', 'Nemona': 'sd-nemona-v', 'Arven': 'sd-arven-v', 'Clavell': 'sd-clavell-s', 'Executivo': 'rocket-grunt-m', 'Executiva': 'rocket-grunt-f'}
 
 
 def portrait(person, ids):
@@ -88,6 +91,7 @@ def portrait(person, ids):
 # Ginásios na ordem das insígnias (o código do jogo nem sempre segue essa ordem).
 GYM_ORDER = ['Falkner', 'Bugsy', 'Whitney', 'Morty', 'Chuck', 'Jasmine', 'Pryce', 'Clair',
              'Brock', 'Misty', 'Lt. Surge', 'Erika', 'Koga', 'Janine', 'Sabrina', 'Blaine', 'Giovanni', 'Blue',
+             'Katy', 'Brassius', 'Iono', 'Kofu', 'Larry', 'Ryme', 'Tulip', 'Grusha',
              'Roark', 'Gardenia', 'Fantina', 'Maylene', 'Wake', 'Byron', 'Candice', 'Volkner']
 
 
@@ -113,7 +117,13 @@ def resolver(errors):
         'ability': {a['name'] for a in load('abilities')},
     }
 
+    move_by_id = {m['id']: m['name'] for m in load('moves')}
+
     def resolve(kind, const):
+        if kind == 'move_id':
+            if const not in move_by_id:
+                errors.add(f'move id {const}')
+            return move_by_id.get(const)
         prefix = {'species': 'SPECIES_', 'move': 'MOVE_', 'item': 'ITEM_', 'ability': 'ABILITY_'}[kind]
         raw = const[len(prefix):]
         name = ALIASES[kind].get(raw, raw.lower().replace('_', '-'))
@@ -177,6 +187,9 @@ def main(src):
             built = gen1.build(os.path.join(src, folder), resolve, yellow=gid == 'yellow')
         elif module is gen2:
             built = gen2.build(os.path.join(src, folder), resolve, os.path.join(src, 'maps', folder, 'maps'))
+        elif module is gen9:
+            built = gen9.build(json.loads(read(os.path.join(src, folder, 'trdata_array_clean.json'))),
+                               open(os.path.join(src, folder, 'trdata_array.bfbs'), 'rb').read(), resolve, load('pokemon'))
         elif module is gen4:
             built = gen4.build(os.path.join(src, folder), resolve)
         else:

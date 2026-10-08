@@ -63,7 +63,7 @@ class _OfficialTeamsScreenState extends State<OfficialTeamsScreen> {
                   title: 'Times dos personagens',
                   subtitle: 'Os times oficiais dos jogos: nível, golpes, item, IVs, EVs, nature e habilidade de cada Pokémon, em todas as lutas.',
                 ),
-                for (final gen in [1, 2, 3, 4])
+                for (final gen in {for (final g in data.games) g.generation})
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
                     child: Row(children: [
@@ -115,7 +115,7 @@ class _OfficialTeamsScreenState extends State<OfficialTeamsScreen> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                   child: Text(
-                    'Dados tirados do código dos jogos pelos projetos de desmontagem do pret (github.com/pret). Da 5ª geração em diante ainda não há uma fonte aberta com esses detalhes.',
+                    'Dados tirados do código dos jogos: da 1ª à 4ª geração pelos projetos de desmontagem do pret (github.com/pret); Scarlet/Violet (versão 1.0, sem as DLCs) pelos arquivos do jogo. Da 5ª à 8ª geração ainda não há uma fonte aberta com esses detalhes.',
                     style: TextStyle(color: c.muted, fontSize: 11),
                   ),
                 ),
@@ -221,10 +221,14 @@ class _MonCard extends StatelessWidget {
         const SizedBox(width: 10),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(name, style: TextStyle(fontWeight: FontWeight.bold, color: c.text)),
-            Text('Nv. ${mon.level}${mon.item != null ? ' · @ ${prettySlug(mon.item!)}' : ''}', style: muted),
-            if (mon.ability != null) Text(prettySlug(mon.ability!), style: muted),
-            if (mon.nature != null) Text(natureLabel(mon.nature!), style: muted),
+            Text('$name${mon.shiny ? ' ✨' : ''}', style: TextStyle(fontWeight: FontWeight.bold, color: c.text)),
+            Text('Nv. ${mon.level}${mon.item != null ? ' · @ ${prettySlug(mon.item!)}' : ''}${mon.tera != null ? ' · Tera ${prettySlug(mon.tera!)}' : ''}',
+                style: muted),
+            if (mon.abilityText(prettySlug) != null) Text(mon.abilityText(prettySlug)!, style: muted),
+            if (mon.nature != null)
+              Text(natureLabel(mon.nature!), style: muted)
+            else if (mon.dv == null)
+              Text('Nature sorteada', style: muted),
             Text(mon.ivText, style: muted),
             Text(mon.evText, style: muted),
             Text(mon.moves.map(prettySlug).join(' · '), style: TextStyle(color: c.text, fontSize: 12)),

@@ -9,7 +9,7 @@ import Sprite from '../components/Sprite'
 import { TrainerSprite } from '../components/Trainer'
 import { Button, Empty, Loader, Modal, PageHeader, SearchInput } from '../components/ui'
 import { getOfficialTeams, getPokemonById } from '../lib/data'
-import { appearances, evText, filterTrainers, ivText } from '../lib/officialTeams'
+import { abilityText, appearances, evText, filterTrainers, generationsOf, ivText } from '../lib/officialTeams'
 import { prettyName } from '../lib/pokemon'
 import { natureLabel, prettySlug } from '../lib/teamSets'
 import { useTrainers } from '../lib/trainers'
@@ -47,7 +47,7 @@ export default function OfficialTeamsPage() {
         </Button>
       </PageHeader>
 
-      {[1, 2, 3, 4].map((gen) => (
+      {generationsOf(games).map((gen) => (
         <div key={gen} className="mb-2 flex flex-wrap items-center gap-2">
           <span className="w-20 text-xs text-muted">{gen}ª geração</span>
           {games
@@ -98,8 +98,8 @@ export default function OfficialTeamsPage() {
       )}
 
       <p className="mt-6 text-xs text-muted">
-        Dados tirados do código dos jogos pelos projetos de desmontagem do pret (github.com/pret). Da 5ª geração em diante ainda não
-        há uma fonte aberta com esses detalhes.
+        Dados tirados do código dos jogos: da 1ª à 4ª geração pelos projetos de desmontagem do pret (github.com/pret); Scarlet/Violet
+        (versão 1.0, sem as DLCs) pelos arquivos do jogo. Da 5ª à 8ª geração ainda não há uma fonte aberta com esses detalhes.
       </p>
 
       <TrainerModal key={open ?? ''} name={open} games={games} gameId={gameId} byId={byId} onClose={() => setOpen(null)} />
@@ -160,14 +160,18 @@ function OfficialMon({ mon, p }) {
     <div className="flex gap-3 rounded-2xl bg-surface p-3">
       <Sprite path={p.sprite} box={p.box} fill={0.85} className="h-20 w-20 shrink-0" />
       <div className="min-w-0 text-xs">
-        <div className="truncate text-sm font-bold">{prettyName(p.name)}</div>
+        <div className="truncate text-sm font-bold">
+          {prettyName(p.name)}
+          {mon.shiny ? ' ✨' : ''}
+        </div>
         <div className="text-muted">
           <div className="truncate">
             Nv. {mon.level}
             {mon.item ? ` · @ ${prettySlug(mon.item)}` : ''}
+            {mon.tera ? ` · Tera ${prettySlug(mon.tera)}` : ''}
           </div>
-          {mon.ability && <div className="truncate">{prettySlug(mon.ability)}</div>}
-          {mon.nature && <div className="truncate">{natureLabel(mon.nature)}</div>}
+          {abilityText(mon, prettySlug) && <div>{abilityText(mon, prettySlug)}</div>}
+          <div className="truncate">{mon.nature ? natureLabel(mon.nature) : !mon.dv && 'Nature sorteada'}</div>
           <div>{ivText(mon)}</div>
           <div>{evText(mon)}</div>
           <div className="text-text">{mon.moves.map(prettySlug).join(' · ')}</div>
