@@ -736,6 +736,63 @@ class TurnBattle {
     return (avg < def.hp ? avg : def.hp.toDouble()) * (move.accuracy == null ? 1 : move.accuracy! / 100);
   }
 
+  /// Dano estimado de um golpe em % da vida máxima do alvo (mínimo e máximo),
+  /// a mesma conta da batalha (sem crítico); null para golpe de status. Igual ao site.
+  static ({int low, int high})? damageRange(BattleHit hit, BattleMon att, BattleMon def, BattleMove move, [String weather = '']) {
+    if (move.category == 'status' || def.maxHp <= 0) return null;
+    final r = hit(att, def, move.slug, false, null, weather);
+    if (r == null || r.eff == 0) return (low: 0, high: 0);
+    var low = 0, high = 0;
+    for (final rolls in r.rolls) {
+      low += rolls.reduce(min);
+      high += rolls.reduce(max);
+    }
+    return (low: low * 100 ~/ def.maxHp, high: high * 100 ~/ def.maxHp);
+  }
+
+  /// Nomes das condições do campo (armadilhas, telas, Trick Room...): os do jogo, sem traduzir.
+  static const fieldNames = {
+    'stealthrock': 'Stealth Rock', 'spikes': 'Spikes', 'toxicspikes': 'Toxic Spikes', 'stickyweb': 'Sticky Web', 'gmaxsteelsurge': 'Steelsurge',
+    'reflect': 'Reflect', 'lightscreen': 'Light Screen', 'auroraveil': 'Aurora Veil', 'tailwind': 'Tailwind', 'safeguard': 'Safeguard',
+    'mist': 'Mist', 'luckychant': 'Lucky Chant', 'trickroom': 'Trick Room', 'gravity': 'Gravity', 'magicroom': 'Magic Room',
+    'wonderroom': 'Wonder Room', 'electricterrain': 'Electric Terrain', 'grassyterrain': 'Grassy Terrain',
+    'mistyterrain': 'Misty Terrain', 'psychicterrain': 'Psychic Terrain',
+  };
+
+  /// O campo em textos curtos: [o seu lado, o do adversário, o campo todo]. Igual ao site.
+  List<List<String>> fieldConditions() {
+    final state = _simState;
+    if (state == null) return const [[], [], []];
+    String label(String id, [num n = 0]) {
+      final name = fieldNames[id] ?? id;
+      return (id == 'spikes' || id == 'toxicspikes') && n > 1 ? '$name ×$n' : name;
+    }
+    final sides = [
+      for (final s in [0, 1]) [for (final e in ((state['sides'][s]['conditions'] as Map?) ?? const {}).entries) label('${e.key}', e.value as num)],
+    ];
+    final terrain = '${state['terrain'] ?? ''}';
+    return [...sides, [for (final id in (state['pseudoWeather'] as List?) ?? const []) label('$id'), if (terrain.isNotEmpty) label(terrain)]];
+  }
+
+  /// O que a tela mostra do Pokémon no campo (side 0: o seu, tudo; 1: o adversário, só o que já apareceu).
+  ({String? ability, String? item, List<String> moves, Map<String, num>? stats, List<String> types})? monDetails(int side) {
+    final team = (_simState?['sides'][side]['team'] as List?)?.cast<Map>();
+    final entry = team?.where((m) => m['index'] == activeIndex[side]).firstOrNull;
+    if (entry == null) return null;
+    final revealed = (entry['revealed'] as Map?) ?? const {};
+    final mine = side == 0;
+    String? text(Object? v) => v == null || '$v'.isEmpty ? null : '$v';
+    return (
+      ability: mine ? text(entry['ability']) : text(revealed['ability']),
+      item: mine ? text(entry['item']) : text(revealed['item']),
+      moves: mine
+          ? [for (final m in (entry['moves'] as List).cast<Map>()) '${m['name']} (${m['pp']}/${m['maxPp']})']
+          : [for (final m in (revealed['moves'] as List?) ?? const []) '$m'],
+      stats: mine ? Map<String, num>.from(entry['stats'] as Map) : null,
+      types: [for (final t in entry['types'] as List) '$t'.toLowerCase()],
+    );
+  }
+
   /// Efetividade de um golpe (×0 a ×4), a mesma da conta de dano; null para golpe de status.
   static double? moveEffect(BattleHit hit, BattleMon att, BattleMon def, BattleMove move) {
     if (move.category == 'status') return null;

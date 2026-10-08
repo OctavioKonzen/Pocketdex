@@ -272,6 +272,59 @@ function expected(battle, hit, att, def, move) {
   return Math.min(avg, def.hp) * (move.accuracy == null ? 1 : move.accuracy / 100)
 }
 
+/**
+ * Dano estimado de um golpe em % da vida máxima do alvo ([mínimo, máximo]),
+ * a mesma conta da batalha (sem crítico); null para golpe de status.
+ */
+export function damageRange(hit, att, def, move, weather = '') {
+  if (move.category === 'status' || !def?.maxHp) return null
+  const r = hit(att, def, move.slug, false, undefined, weather)
+  if (!r || !r.eff) return [0, 0]
+  const low = r.rolls.reduce((sum, rolls) => sum + Math.min(...rolls), 0)
+  const high = r.rolls.reduce((sum, rolls) => sum + Math.max(...rolls), 0)
+  return [Math.floor((low * 100) / def.maxHp), Math.floor((high * 100) / def.maxHp)]
+}
+
+/** Nomes das condições do campo (armadilhas, telas, Trick Room...): os do jogo, sem traduzir. */
+export const FIELD_NAMES = {
+  stealthrock: 'Stealth Rock', spikes: 'Spikes', toxicspikes: 'Toxic Spikes', stickyweb: 'Sticky Web', gmaxsteelsurge: 'Steelsurge',
+  reflect: 'Reflect', lightscreen: 'Light Screen', auroraveil: 'Aurora Veil', tailwind: 'Tailwind', safeguard: 'Safeguard',
+  mist: 'Mist', luckychant: 'Lucky Chant', trickroom: 'Trick Room', gravity: 'Gravity', magicroom: 'Magic Room',
+  wonderroom: 'Wonder Room', electricterrain: 'Electric Terrain', grassyterrain: 'Grassy Terrain',
+  mistyterrain: 'Misty Terrain', psychicterrain: 'Psychic Terrain',
+}
+
+/** O campo em textos curtos: [[o seu lado], [o do adversário], [o campo todo]]. */
+export function fieldConditions(battle) {
+  const state = battle.simulator?.state
+  if (!state) return [[], [], []]
+  const label = (id, n) => {
+    const name = FIELD_NAMES[id] ?? id
+    if (['spikes', 'toxicspikes'].includes(id) && n > 1) return `${name} ×${n}`
+    return name
+  }
+  const sides = [0, 1].map((s) => Object.entries(state.sides[s]?.conditions ?? {}).map(([id, n]) => label(id, n)))
+  const all = [...(state.pseudoWeather ?? []).map((id) => label(id)), ...(state.terrain ? [label(state.terrain)] : [])]
+  return [...sides, all]
+}
+
+/** O que a tela mostra de um Pokémon no campo (side 0: o seu, tudo; 1: o adversário, só o que já apareceu). */
+export function monDetails(battle, side) {
+  const state = battle.simulator?.state?.sides?.[side]
+  const index = battle.sides[side].active
+  const entry = state?.team?.find((m) => m.index === index)
+  if (!entry) return null
+  const shown = side === 0
+  return {
+    ability: shown ? entry.ability : entry.revealed?.ability || null,
+    item: shown ? entry.item : entry.revealed?.item || null,
+    moves: shown ? entry.moves.map((m) => `${m.name} (${m.pp}/${m.maxPp})`) : entry.revealed?.moves ?? [],
+    stats: shown ? entry.stats : null,
+    types: entry.types,
+    tera: entry.tera,
+  }
+}
+
 /** Efetividade de um golpe (×0 a ×4), a mesma da conta de dano; null para golpe de status. */
 export function moveEffect(hit, att, def, move) {
   if (move.category === 'status') return null

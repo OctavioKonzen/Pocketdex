@@ -1,5 +1,5 @@
 import {describe, it, expect} from 'vitest'
-import {newBattle, playOnlineTurn, playTurn, replace, canGimmick, lineOf, startBattle, lockedMove} from './turnBattle'
+import {newBattle, playOnlineTurn, playTurn, replace, canGimmick, lineOf, startBattle, lockedMove, fieldConditions, monDetails, damageRange} from './turnBattle'
 import {battlePerspective} from './onlineBattle'
 import {simulatorDispose, simulatorRecommend} from './battleSimulator'
 
@@ -9,6 +9,23 @@ const attack = index => ({kind: 'move', index, gimmick: ''})
 const hit = () => ({rolls: [[1]], eff: 1})
 
 describe('shared simulator integration', () => {
+  it('o campo e o que o adversário já mostrou (Stealth Rock, Reflect, Leftovers, golpes usados)', () => {
+    const named = (species, moves, item) => ({...mon(species, moves, {simulation: {set: {species, moves, level: 50, item}}}), moves: moves.map(m => ({slug: m, name: m, pp: 10, maxPp: 10}))})
+    const b=newBattle([named('Skarmory',['stealthrock','roost'],'Leftovers'), named('Blissey',['softboiled'])],[named('Klefki',['reflect','spikes'],'Leftovers'), named('Chansey',['softboiled'])],seed())
+    try {
+      startBattle(b)
+      expect(monDetails(b,1).moves).toEqual([])
+      expect(monDetails(b,1).item).toBe(null)
+      expect(monDetails(b,0).item).toBe('Leftovers')
+      playTurn(b,{move:0,gimmick:'none'},hit)
+      const [mine, theirs] = fieldConditions(b)
+      expect(theirs).toContain('Stealth Rock')
+      // O computador usou Reflect (no lado dele) ou Spikes (no seu).
+      expect([...mine, ...theirs].some(x => /Reflect|Spikes/.test(x))).toBe(true)
+      expect(monDetails(b,1).moves.length).toBe(1)
+      expect(monDetails(b,1).ability).toBe(null)
+    } finally {simulatorDispose(b)}
+  })
   it.each([['outrage', 'outrage'], ['hyperbeam', 'recharge']])('golpe em sequência (%s): o turno seguinte vem preso e o motor usa ele', (move, slug) => {
     const named = (species, moves) => ({...mon(species, moves), moves: moves.map(m => ({slug: m, name: m, pp: 10, maxPp: 10}))})
     const b=newBattle([named('Dragonite',[move,'extremespeed','roost','earthquake'])],[named('Blissey',['softboiled']),named('Chansey',['softboiled']),named('Snorlax',['rest'])],seed())

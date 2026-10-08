@@ -377,3 +377,15 @@ describe('computador usa vantagem, trocas e bolsa', () => {
     expect(cpuMove(b, byPower)).toBe(0)
   })
 })
+
+describe('dano estimado no botão do golpe', () => {
+  it('em % da vida máxima do alvo (com golpes de vários acertos somados)', async () => {
+    const { damageRange } = await import('./turnBattle')
+    const hitter = (att, def, slug) => (slug === 'double' ? { rolls: [[10, 12], [10, 12]], eff: 1 } : slug === 'none' ? { rolls: [[0]], eff: 0 } : { rolls: [[30, 36]], eff: 1 })
+    const def = { maxHp: 120, hp: 120 }
+    expect(damageRange(hitter, {}, def, { slug: 'tackle', category: 'physical' })).toEqual([25, 30])
+    expect(damageRange(hitter, {}, def, { slug: 'double', category: 'physical' })).toEqual([16, 20])
+    expect(damageRange(hitter, {}, def, { slug: 'none', category: 'special' })).toEqual([0, 0])
+    expect(damageRange(hitter, {}, def, { slug: 'growl', category: 'status' })).toBe(null)
+  })
+})

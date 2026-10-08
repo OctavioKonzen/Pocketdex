@@ -7,12 +7,12 @@ import {simulatorDispose} from '../lib/battleSimulator'
 import { forwardRef, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import PokeIcon from '../components/PokeIcon'
-import { Button, Empty, Icon, PageHeader, TypeBadge } from '../components/ui'
+import { Button, Empty, Icon, Modal, PageHeader, TypeBadge } from '../components/ui'
 import { teamsOf, useAuth } from '../lib/auth'
 import { battleHitter, battleMons, leaderTeam, randomTeam } from '../lib/battleSetup'
 import { friendsOnly, useFriends } from '../lib/friends'
 import { getGymLeaders, getMoveAnims, getTypes, shinyPath, spriteUrl } from '../lib/data'
-import { addHallOfFame, badgesNeeded, badgesOf, leagueOpen, leagueOrder, musicOf, regionGyms, regionOf, winBadge } from '../lib/gymChallenge'
+import { addHallOfFame, badgesNeeded, badgesOf, leagueOpen, leagueOrder, musicOf, regionGyms, regionOf, streakResult, winBadge } from '../lib/gymChallenge'
 import { t } from '../lib/i18n'
 import { seededRandom } from '../lib/league'
 import { ALL_TYPES, damageTaken, typeColor } from '../lib/pokemon'
@@ -20,7 +20,7 @@ import { usePokemonIndex } from '../lib/pokemonIndex'
 import { useStore } from '../lib/store'
 import { teamMembers } from '../lib/teamBattle'
 import { fxPlan, moveAnim, SELF_KINDS } from '../lib/moveAnim'
-import { active, lockedMove, canGimmick, canUseItem, effectLabel, forfeit, ITEMS, lineOf, MAX_MOVES, maxPower, moveEffect, newBattle, playTurn, replace, startBattle, STAT_NAMES, switchMatchup, usableMoves, weaknesses, Z_MOVES, zPower } from '../lib/turnBattle'
+import { active, damageRange, fieldConditions, monDetails, lockedMove, canGimmick, canUseItem, effectLabel, forfeit, ITEMS, lineOf, MAX_MOVES, maxPower, moveEffect, newBattle, playTurn, replace, startBattle, STAT_NAMES, switchMatchup, usableMoves, weaknesses, Z_MOVES, zPower } from '../lib/turnBattle'
 import Sprite from '../components/Sprite'
 import { TrainerBack, TrainerSprite } from '../components/Trainer'
 import { randomTrainer, useMyTrainer, useTrainers } from '../lib/trainers'
@@ -34,6 +34,11 @@ const SELECT = 'w-full rounded-xl bg-surface px-3 py-2.5 outline-none focus:ring
 const RANDOM = '__random__'
 // Adversário 'gym:<id>': um líder, Elite Four ou campeão (gym_leaders.json).
 const GYM = 'gym:'
+// Sequências de vitórias (lib/gymChallenge.js): Torre (seu time) e Factory (times emprestados).
+const TOWER = '__tower__'
+const FACTORY = '__factory__'
+/** Na sequência, a partir da 4ª batalha o computador usa sets competitivos. */
+const streakDifficulty = (wins, difficulty) => (wins >= 3 ? 'hard' : difficulty)
 const KIND_LABEL = { gym: 'Líder de Ginásio', elite: 'Elite Four', champion: 'Campeão', kahuna: 'Kahuna' }
 const STEP_MS = 1100
 
@@ -72,6 +77,52 @@ function LeaderCard({ leader }) {
         </div>
         <p className="text-[11px] text-muted">Time original, já evoluído, todos no nível 50.</p>
       </div>
+    </div>
+  )
+}
+
+/** Factory: depois de vencer, troca um Pokémon seu por um do adversário (ou segue igual). */
+function FactorySwap({ members, onNext }) {
+  const [give, setGive] = useState(null)
+  const [take, setTake] = useState(null)
+  const pick = (list, value, setter, prefix) =>
+    list.map((m, i) => (
+      <button
+        key={i}
+        type="button"
+        data-testid={`${prefix}-${i}`}
+        aria-pressed={value === i}
+        onClick={() => setter(value === i ? null : i)}
+        className={`cursor-pointer rounded-xl p-1 ring-2 ${value === i ? 'bg-amber-500/20 ring-amber-500' : 'ring-transparent hover:ring-line'}`}
+      >
+        <PokeIcon id={m.id} className="h-12 w-12" />
+      </button>
+    ))
+  return (
+    <section className="space-y-3 rounded-2xl bg-card p-4 shadow-lg ring-1 ring-line" data-testid="factory-swap">
+      <h2 className="font-black">🏭 {t('Trocar um Pokémon')}</h2>
+      <p className="text-sm text-muted">{t('Escolha um do adversário e um seu para trocar, ou siga com o mesmo time.')}</p>
+      <div className="flex flex-wrap gap-1">{pick(members.theirs, take, setTake, 'take')}</div>
+      <div className="flex flex-wrap gap-1">{pick(members.mine, give, setGive, 'give')}</div>
+      <Button disabled={give == null || take == null} onClick={() => onNext({ give, take })}>
+        ⇄ {t('Trocar e seguir')}
+      </Button>
+    </section>
+  )
+}
+
+/** Torre de Batalha / Battle Factory: como funciona e o seu recorde. */
+function StreakCard({ kind }) {
+  const best = useStore((s) => s.league?.[kind]?.best ?? 0)
+  return (
+    <div className="rounded-2xl bg-bg p-3 text-sm" data-testid="streak-card">
+      <p className="font-black">{kind === 'tower' ? `🗼 ${t('Torre de Batalha')}` : `🏭 ${t('Battle Factory')}`}</p>
+      <p className="text-muted">
+        {kind === 'tower'
+          ? t('Seu time contra adversários aleatórios em sequência; a partir da 4ª vitória eles usam sets competitivos. Perdeu, a sequência acaba.')
+          : t('Você recebe 6 Pokémon emprestados. A cada vitória pode trocar um deles por um do adversário. Perdeu, a sequência acaba.')}
+      </p>
+      <p className="mt-1 font-bold">{t('Recorde: {0} vitórias seguidas').replace('{0}', best)}</p>
     </div>
   )
 }
@@ -134,20 +185,21 @@ function Setup({ onStart }) {
   useEffect(() => {
     getGymLeaders().then(setRegions).catch(() => setRegions([]))
   }, [])
+  const streak = friend === TOWER ? 'tower' : friend === FACTORY ? 'factory' : null
   const leader = friend.startsWith(GYM) ? regions.flatMap((r) => r.leaders).find((l) => l.id === friend.slice(GYM.length)) : null
 
   const pickFriend = (uid) => {
     setFriend(uid)
     setTheirs('')
     setFriendTeams(null)
-    if (uid === RANDOM || uid.startsWith(GYM)) setFriendTeams([])
+    if (uid === RANDOM || uid === TOWER || uid === FACTORY || uid.startsWith(GYM)) setFriendTeams([])
     else teamsOf(uid).then((x) => setFriendTeams(x.filter((y) => teamMembers(y).length))).catch(() => setFriendTeams([]))
   }
   const myTeam = myTeams.find((x) => x.id === mine)
   const theirTeam = friendTeams?.find((x) => x.id === theirs)
-  const ready = (mine === RANDOM || myTeam && teamMembers(myTeam).length >= (npcPartner ? 1 : count)) && (friend === RANDOM || leader || theirTeam && teamMembers(theirTeam).length >= count)
+  const ready = (mine === RANDOM || myTeam && teamMembers(myTeam).length >= (npcPartner ? 1 : count)) && (friend === RANDOM || streak || leader || theirTeam && teamMembers(theirTeam).length >= count)
   // pick: o líder (ou null); challenge: {kind: 'gym' | 'league', ...} para a jornada (lib/gymChallenge.js).
-  const start = async (pick = leader, challenge = pick ? { kind: 'gym', leader: pick.id, difficulty } : null) => {
+  const start = async (pick = leader, challenge = pick ? { kind: 'gym', leader: pick.id, difficulty } : streak ? { kind: streak, wins: 0, difficulty } : null) => {
     setBusy(true)
     setError('')
     try {
@@ -155,11 +207,13 @@ function Setup({ onStart }) {
     const random = seededRandom(seed)
     const foeName = pick ? pick.name : friend === RANDOM ? '' : friends.find((f) => f.uid === friend)?.name ?? ''
     const foeTrainer = pick?.trainer ?? null
-    const ma = mine === RANDOM ? await randomTeam(random, difficulty) : teamMembers(myTeam)
-    const mb = pick ? await leaderTeam(pick, random, difficulty) : friend === RANDOM ? await randomTeam(random, difficulty) : teamMembers(theirTeam)
+    // Factory: os dois times são emprestados (sets competitivos); Torre: o seu contra um aleatório.
+    const ma = challenge?.kind === 'factory' ? await randomTeam(random, 'hard') : mine === RANDOM ? await randomTeam(random, difficulty) : teamMembers(myTeam)
+    const mb = pick ? await leaderTeam(pick, random, difficulty) : friend === RANDOM || streak ? await randomTeam(random, difficulty) : teamMembers(theirTeam)
+    if (streak) useStore.getState().updateLeague((l) => ({ ...l, [streak]: { ...l[streak], streak: 0 } }))
     const [a, b] = await Promise.all([battleMons(ma), battleMons(mb)])
     if (a.length && b.length) {
-      if (count === 1 || challenge?.kind === 'league') setPreview({ a, b, ma: ma.slice(0, a.length), mb: mb.slice(0, b.length), random, foeName, foeTrainer, challenge })
+      if (count === 1 || challenge?.kind === 'league' || streak) setPreview({ a, b, ma: ma.slice(0, a.length), mb: mb.slice(0, b.length), random, foeName, foeTrainer, challenge })
       else {
         const rosters = {me:a,npc3:b}
         const own = Array.from({length:count},(_,i) => i && npcPartner ? `npc${i}` : 'me')
@@ -243,6 +297,8 @@ function Setup({ onStart }) {
         <span className="text-sm font-semibold text-muted">Adversário</span>
         <select aria-label="Adversário" value={friend} onChange={(e) => pickFriend(e.target.value)} className={SELECT} data-no-translate>
           <option value={RANDOM}>{t('🎲 Time aleatório')}</option>
+          <option value={TOWER}>{`🗼 ${t('Torre de Batalha')}`}</option>
+          <option value={FACTORY}>{`🏭 ${t('Battle Factory')}`}</option>
           {friends.length > 0 && (
             <optgroup label={t('Amigos')}>
               {friends.map((f) => (
@@ -264,11 +320,12 @@ function Setup({ onStart }) {
         </select>
       </label>
       {leader && <LeaderCard leader={leader} />}
+      {streak && <StreakCard kind={streak} />}
       {leader && regionOf(regions, leader.id) && (
         <RegionProgress region={regionOf(regions, leader.id)} busy={busy} ready={mine === RANDOM || Boolean(myTeam)} onLeague={(first, region) => start(first, { kind: 'league', region: region.region, step: 0, difficulty })} />
       )}
-      {(friend === RANDOM || leader || npcPartner) && <label className="block space-y-1.5"><span>Dificuldade dos NPCs</span><select aria-label="Dificuldade dos NPCs" className={SELECT} value={difficulty} onChange={e=>setDifficulty(e.target.value)}><option value="easy">Fácil · ataca ao acaso, sem trocas nem itens</option><option value="normal">Normal · IVs e EVs aleatórios</option><option value="hard">Difícil · sets competitivos</option></select></label>}
-      {friend !== RANDOM && !leader &&
+      {(friend === RANDOM || streak || leader || npcPartner) && <label className="block space-y-1.5"><span>Dificuldade dos NPCs</span><select aria-label="Dificuldade dos NPCs" className={SELECT} value={difficulty} onChange={e=>setDifficulty(e.target.value)}><option value="easy">Fácil · ataca ao acaso, sem trocas nem itens</option><option value="normal">Normal · IVs e EVs aleatórios</option><option value="hard">Difícil · sets competitivos</option></select></label>}
+      {friend !== RANDOM && !leader && !streak &&
         (friendTeams === null ? (
           <p className="text-sm text-muted">...</p>
         ) : !friendTeams.length ? (
@@ -332,6 +389,49 @@ function BoostTags({ boosts }) {
 }
 
 const STATUS_BADGE = { brn: '#EE8130', par: '#C9A400', psn: '#A33EA1', tox: '#7B2E7A', slp: '#78716C', frz: '#4FB3D9' }
+
+/** Armadilhas, telas e efeitos do campo (como no Showdown), em cima do texto. */
+function FieldBar({ battle }) {
+  const [mine, theirs, all] = fieldConditions(battle)
+  if (!mine.length && !theirs.length && !all.length) return null
+  const chips = (list, color) => list.map((x) => <span key={x} className="rounded-full px-2 py-0.5 text-[11px] font-bold text-white" style={{ background: color }}>{x}</span>)
+  return (
+    <div className="flex flex-wrap items-center gap-1 border-x-4 border-slate-800 bg-slate-700 px-2 py-1" data-testid="field-bar" data-no-translate>
+      {theirs.length > 0 && <span className="text-[11px] font-bold text-slate-300">{t('Adversário')}:</span>}
+      {chips(theirs, '#b45309')}
+      {mine.length > 0 && <span className="text-[11px] font-bold text-slate-300">{t('Você')}:</span>}
+      {chips(mine, '#0369a1')}
+      {chips(all, '#7c3aed')}
+    </div>
+  )
+}
+
+/** Tocar no Pokémon: o seu mostra tudo; o do adversário, só o que já apareceu na batalha. */
+function MonDetails({ battle, side, mon }) {
+  const d = monDetails(battle, side)
+  if (!d) return <p className="text-sm text-muted">{mon.name}</p>
+  const unknown = <span className="text-muted">?</span>
+  const STAT = { hp: 'HP', atk: 'Atk', def: 'Def', spa: 'SpA', spd: 'SpD', spe: 'Spe' }
+  return (
+    <div className="space-y-2 text-sm" data-testid="mon-details">
+      <div className="flex flex-wrap gap-1">{d.types.map((x) => <TypeBadge key={x} type={x.toLowerCase()} small />)}</div>
+      <p><b>{t('Habilidade')}:</b> <span data-no-translate>{d.ability ?? unknown}</span></p>
+      <p><b>{t('Item')}:</b> <span data-no-translate>{d.item || (side === 0 ? '—' : unknown)}</span></p>
+      <div>
+        <b>{side === 0 ? t('Golpes') : t('Golpes vistos')}:</b>
+        <ul className="mt-1 list-disc pl-5" data-no-translate>
+          {d.moves.length ? d.moves.map((m) => <li key={m}>{m}</li>) : <li className="text-muted">?</li>}
+        </ul>
+      </div>
+      {d.stats && (
+        <p className="tabular-nums" data-no-translate>
+          {Object.entries(STAT).filter(([k]) => d.stats[k] != null).map(([k, label]) => `${label} ${d.stats[k]}`).join(' · ')}
+        </p>
+      )}
+      {side === 1 && <p className="text-xs text-muted">{t('Do adversário aparece só o que ele já mostrou na batalha.')}</p>}
+    </div>
+  )
+}
 
 function InfoBox({ mon, hp, mine, status, dmax, boosts, hpTestId }) {
   return (
@@ -584,6 +684,8 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   // Cada Pokémon: '' na tela, 'hidden' dentro da Poké Ball, 'release' saindo, 'recall' voltando.
   const [poke, setPoke] = useState(() => (!online && battle.turn <= 1 ? ['hidden', 'hidden'] : ['', '']))
   const [ball, setBall] = useState([null, null]) // 'throw' | 'open'
+  // Detalhes do Pokémon tocado (0: o seu, 1: o adversário).
+  const [inspect, setInspect] = useState(null)
   const setSide = (setter, side, value) => setter((list) => list.map((x, i) => (i === side ? value : x)))
   const [, redraw] = useState(0)
   // O que está na tela (anda atrás do motor enquanto os eventos passam).
@@ -928,7 +1030,9 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
       >
         <BattleBackground weather={shown.weather} />
         <div className={`absolute top-[6%] left-[4%] w-[46%] max-w-[260px] transition-opacity ${intro && poke[1] === 'hidden' ? 'opacity-0' : ''}`}>
-          <InfoBox mon={foe} hp={shown.hp[1][shown.active[1]]} status={shown.status[1][shown.active[1]]} dmax={shown.dmax[1]} boosts={shown.boosts[1]} hpTestId={online ? "online-hp-" + (1 - online.side) : undefined} />
+          <button type="button" className="block w-full cursor-pointer text-left" onClick={() => setInspect(1)} aria-label={t('Ver detalhes do adversário')} data-testid="inspect-foe">
+            <InfoBox mon={foe} hp={shown.hp[1][shown.active[1]]} status={shown.status[1][shown.active[1]]} dmax={shown.dmax[1]} boosts={shown.boosts[1]} hpTestId={online ? "online-hp-" + (1 - online.side) : undefined} />
+          </button>
         </div>
         {/* O inimigo fica mais longe: menor e com os pés na frente do meio da plataforma (pisando nela, como o seu). */}
         <div className="absolute right-[11%] bottom-[53%] w-[25%]">
@@ -957,10 +1061,16 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         {effect && <MoveFx key={effect.key} plan={effect.plan} color={effect.color} />}
         {flash > 0 && <div key={`flash-${flash}`} className="battle-flash pointer-events-none absolute inset-0 bg-white" />}
         <div className={`absolute right-[4%] bottom-[8%] w-[46%] max-w-[260px] transition-opacity ${intro && poke[0] === 'hidden' ? 'opacity-0' : ''}`}>
-          <InfoBox mon={me} hp={shown.hp[0][shown.active[0]]} status={shown.status[0][shown.active[0]]} dmax={shown.dmax[0]} boosts={shown.boosts[0]} mine hpTestId={online ? "online-hp-" + online.side : undefined} />
+          <button type="button" className="block w-full cursor-pointer text-left" onClick={() => setInspect(0)} aria-label={t('Ver detalhes do seu Pokémon')} data-testid="inspect-me">
+            <InfoBox mon={me} hp={shown.hp[0][shown.active[0]]} status={shown.status[0][shown.active[0]]} dmax={shown.dmax[0]} boosts={shown.boosts[0]} mine hpTestId={online ? "online-hp-" + online.side : undefined} />
+          </button>
         </div>
       </div>
 
+      <FieldBar battle={battle} />
+      <Modal open={inspect != null} onClose={() => setInspect(null)} title={inspect === 1 ? foe.name : me.name}>
+        {inspect != null && <MonDetails battle={battle} side={inspect} mon={inspect === 1 ? foe : me} />}
+      </Modal>
       {/* Texto e menus */}
       <div className="flex min-h-36 flex-col gap-2 rounded-b-2xl border-4 border-slate-800 bg-slate-800 p-2 sm:flex-row">
         <button
@@ -1013,6 +1123,10 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
                   {(z || max) && <div className="truncate text-[10px] font-bold opacity-90">{`${m.name} · ${t('Poder')} ${z ? zPower(m.power) : maxPower(m.power, m.type)}`}</div>}
                   <div className="flex items-center justify-between gap-1 text-[11px] font-semibold">
                     <span className="opacity-90">{`PP ${m.pp}/${m.maxPp}`}</span>
+                    {(() => {
+                      const range = !z && !max ? damageRange(hit, current, rival, m, shown.weather) : null
+                      return range && <span className="tabular-nums opacity-95" data-testid="damage-range">{range[0] === range[1] ? `${range[0]}%` : `${range[0]}–${range[1]}%`}</span>
+                    })()}
                     <EffectTag eff={eff} />
                   </div>
                 </button>
@@ -1404,8 +1518,33 @@ export default function TurnBattlePage() {
     setGame({ battle, foeName: foe.name, foeTrainer: foe.trainer, challenge: { ...challenge, step }, key: game.key + 1 })
   }
 
-  // Fim de uma batalha da jornada: insígnia, próxima da Liga ou Hall da Fama.
+  // Torre/Factory: o próximo adversário aleatório (na Factory, com a troca escolhida).
+  const nextStreak = async (swap = null) => {
+    const wins = challenge.wins + 1
+    const seed = Math.floor(Math.random() * 2 ** 31)
+    const random = seededRandom(seed)
+    const ma = game.battle.members.mine.map((m, i) => (swap && i === swap.give ? game.battle.members.theirs[swap.take] : m))
+    const mb = await randomTeam(random, streakDifficulty(wins, challenge.difficulty))
+    const [a, b] = await Promise.all([battleMons(ma), battleMons(mb)])
+    const battle = newBattle(a, b, seededRandom(seed), { ai: challenge.difficulty === 'easy' && wins < 3 ? 'easy' : 'normal', seed })
+    battle.members = a.length === ma.length && b.length === mb.length ? { mine: ma, theirs: mb } : null
+    setGame({ battle, foeName: '', foeTrainer: null, challenge: { ...challenge, wins }, key: game.key + 1 })
+  }
+
+  // Fim de uma batalha da jornada: insígnia, próxima da Liga ou Hall da Fama; Torre/Factory: a sequência.
   const finishChallenge = () => {
+    if (challenge?.kind === 'tower' || challenge?.kind === 'factory') {
+      const won = game.battle.winner === 0
+      const { updateLeague } = useStore.getState()
+      updateLeague((l) => streakResult(l, challenge.kind, won))
+      const best = useStore.getState().league[challenge.kind].best
+      const endNote = won
+        ? `🔥 ${t('{0} vitórias seguidas!').replace('{0}', challenge.wins + 1)}`
+        : t('A sequência terminou com {0} vitórias. Recorde: {1}.').replace('{0}', challenge.wins).replace('{1}', best)
+      const next = won && game.battle.members ? { label: `⚔️ ${t('Próximo adversário')}`, onClick: () => nextStreak(null) } : null
+      setGame((g) => (g ? { ...g, endNote, next } : g))
+      return
+    }
     if (!challenge || !foeLeader) return
     const won = game.battle.winner === 0
     const { league, updateLeague, trainer } = useStore.getState()
@@ -1452,7 +1591,7 @@ export default function TurnBattlePage() {
           foeTrainer={game.foeTrainer}
           hit={hit}
           onExit={() => setGame(null)}
-          onAgain={challenge?.kind === 'league' ? null : again}
+          onAgain={['league', 'tower', 'factory'].includes(challenge?.kind) ? null : again}
           music={musicOf(foeLeader)}
           endNote={game.endNote}
           next={game.next}
@@ -1463,6 +1602,7 @@ export default function TurnBattlePage() {
           }}
         />
       )}
+      {game?.next && challenge?.kind === 'factory' && game.battle.members && <FactorySwap members={game.battle.members} onNext={nextStreak} />}
     </div>
   )
 }

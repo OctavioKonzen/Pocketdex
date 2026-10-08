@@ -402,6 +402,20 @@ try {
   assert.ok(/venceu|perdeu/.test(end), `${step}: fim estranho: ${end}`)
   await expectHealthy()
 
+  step = 'batalha: Desafio dos Líderes, insígnias e Torre'
+  await go('amigos/batalha')
+  await page.getByLabel('Adversário', {exact:true}).selectOption('gym:kanto-brock')
+  await page.getByTestId('leader-card').waitFor({ timeout: 15000 })
+  await page.getByTestId('region-progress').waitFor({ timeout: 15000 })
+  assert.equal(await page.locator('[data-badge]').count(), 8, `${step}: 8 insígnias de Kanto`)
+  assert.ok(await page.getByRole('button', { name: /Desafiar a Liga de Kanto/ }).isDisabled(), `${step}: Liga começa bloqueada`)
+  await page.getByLabel('Adversário', {exact:true}).selectOption('__tower__')
+  await page.getByTestId('streak-card').waitFor({ timeout: 15000 })
+  await page.getByLabel('Adversário', {exact:true}).selectOption('__factory__')
+  await page.getByRole('button', { name: '⚔️ Começar batalha' }).click()
+  await page.getByTestId('team-preview').waitFor({ timeout: 30000 })
+  await expectHealthy()
+
   step = 'batalha: quem vence'
   await go('batalha/quem-vence')
   await page.getByRole('button', { name: 'Escolher Pokémon' }).click()
