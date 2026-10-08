@@ -495,7 +495,9 @@ export const PocketDexSim = {
     if (!['singles', 'doubles', 'triples', 'multi'].includes(mode) || input.teams.length !== (mode === 'multi' ? 4 : 2)) throw new Error('Formato inválido');
     const count = mode === 'doubles' ? 2 : mode === 'triples' ? 3 : 1;
     if (input.teams.some(team => team.length < count || team.length > 6)) throw new Error(`Escolha pelo menos ${count} Pokémon por time`);
-    const battle = new Battle({format: {...formats, gameType: mode, playerCount: mode === 'multi' ? 4 : 2}, seed: input.seed});
+    // Regras opcionais (convite online): Sleep Clause (só um Pokémon dormindo por vez).
+    const ruleset = (input.rules ?? []).includes('sleep') ? ['Sleep Clause Mod'] : [];
+    const battle = new Battle({format: {...formats, gameType: mode, playerCount: mode === 'multi' ? 4 : 2, ruleset}, seed: input.seed});
     const game = {battle, teams: input.teams, controllers: input.controllers, cursor: 0, used: input.teams.map(() => ({mega: false, tera: false})), pendingItems: input.teams.map(() => null), bags: input.teams.map(() => ({potion: 3, 'super-potion': 2, 'hyper-potion': 1, revive: 1}))};
     input.teams.forEach((team, side) => battle.setPlayer(`p${side + 1}`, {name: ['Você', 'Adversário', 'Aliado', 'Aliado adversário'][side], team: team.map(setFor)}));
     configure(game);

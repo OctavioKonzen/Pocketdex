@@ -129,3 +129,25 @@ describe('shared simulator integration', () => {
     } finally { simulatorDispose(b) }
   })
 })
+
+describe('regras opcionais do convite online', () => {
+  it('Sleep Clause: com ela, o segundo Pokémon não dorme enquanto o primeiro está dormindo', () => {
+    const sim = globalThis.PocketDexSim
+    const play = (rules) => {
+      const game = sim.create({
+        teams: [
+          [{set: {species: 'Breloom', moves: ['spore'], level: 50, ability: 'Technician'}}],
+          [{set: {species: 'Snorlax', moves: ['splash'], level: 50}}, {set: {species: 'Chansey', moves: ['splash'], level: 50}}],
+        ],
+        seed: [1, 2, 3, 4], rules,
+      })
+      try {
+        sim.choose(game.handle, [{kind: 'move', index: 0, gimmick: ''}, {kind: 'move', index: 0, gimmick: ''}])
+        const next = sim.choose(game.handle, [{kind: 'move', index: 0, gimmick: ''}, {kind: 'switch', index: 1}])
+        return next.state.sides[1].team.map((m) => m.status)
+      } finally { sim.dispose(game.handle) }
+    }
+    expect(play([])).toEqual(['slp', 'slp'])
+    expect(play(['sleep'])).toEqual(['slp', ''])
+  })
+})

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart' hide Text;
+import 'package:flutter/material.dart' as m show Text;
 import '../i18n/text.dart';
 import '../services/damage_calc.dart';
 import '../services/friends_service.dart';
@@ -12,6 +13,7 @@ import '../services/auth_service.dart';
 import '../services/turn_battle.dart';
 import '../services/user_data.dart';
 import '../utils/responsive.dart';
+import '../utils/site_ui.dart';
 import 'turn_battle_screen.dart';
 
 Future<Map<String, dynamic>> _selectedTeam(int index, List<Map<String, dynamic>> teams) async {
@@ -36,6 +38,8 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen> {
   int _count = 1;
   String _npcDifficulty = 'normal';
   final Map<int, String> _participants = {};
+  // Regras opcionais: sem Pokémon repetido ('species') e Sleep Clause ('sleep').
+  final Set<String> _rules = {};
   bool _busy = false;
   String? _errorText;
   late final Stream<QuerySnapshot<Map<String, dynamic>>> _rooms;
@@ -58,7 +62,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen> {
       final humans = seats.toSet().where((uid) => !PartyBattle.isNpc(uid));
       if (humans.any((uid) => uid != OnlineBattles.me && !friendNames.containsKey(uid))) throw StateError('Escolha amigos da sua lista.');
       final names = {for (final uid in humans) uid: uid == OnlineBattles.me ? AuthService.instance.user!.name ?? '' : friendNames[uid]!};
-      final id = await OnlineBattles.inviteGame(seats, _count, names, await _selectedTeam(_team!, _teams), npcDifficulty: _npcDifficulty);
+      final id = await OnlineBattles.inviteGame(seats, _count, names, await _selectedTeam(_team!, _teams), npcDifficulty: _npcDifficulty, rules: _rules.toList());
       if (mounted) await Navigator.push(context, MaterialPageRoute(builder: (_) => OnlineBattleRoomScreen(id: id)));
     } catch (e) { if (mounted) setState(() => _errorText = _error(e)); }
     finally { if (mounted) setState(() => _busy = false); }
@@ -95,11 +99,23 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen> {
           onChanged: _busy ? null : (v) => setState(() => _team = v),
         ),
 
+        const SizedBox(height: 8),
+        const Text('Regras (opcional)', style: TextStyle(fontWeight: FontWeight.bold)),
+        CheckboxListTile(
+          key: const ValueKey('rule-species'), contentPadding: EdgeInsets.zero, dense: true,
+          title: const Text('Sem Pokémon repetido no time'), value: _rules.contains('species'),
+          onChanged: _busy ? null : (v) => setState(() => v! ? _rules.add('species') : _rules.remove('species'))),
+        CheckboxListTile(
+          key: const ValueKey('rule-sleep'), contentPadding: EdgeInsets.zero, dense: true,
+          title: const Text('Sleep Clause: só um Pokémon de cada time dormindo por vez'), value: _rules.contains('sleep'),
+          onChanged: _busy ? null : (v) => setState(() => v! ? _rules.add('sleep') : _rules.remove('sleep'))),
         const SizedBox(height: 12),
         FilledButton(onPressed: _busy || _count == 1 && _friend == null || _team == null ? null : _invite, child: Text(_busy ? 'Enviando…' : 'Desafiar para batalha')),
         if (_errorText != null) Text(_errorText!, style: const TextStyle(color: Colors.redAccent)),
         const SizedBox(height: 24),
         _RandomMatch(teams: _teams),
+        const SizedBox(height: 12),
+        const _Leaderboard(),
         const SizedBox(height: 24),
         const Text('Convites e partidas', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
@@ -319,7 +335,8 @@ class _OnlineBattleRoomScreenState extends State<OnlineBattleRoomScreen> {
       }
       final data = await DamageData.load();
       final hit = TurnBattleSetup.hitter(data);
-      final battle = PartyBattle.create(rosters, seats, PartyBattle.countOf(_room!), League.seededRandom(seed));
+      final battle = PartyBattle.create(rosters, seats, PartyBattle.countOf(_room!), League.seededRandom(seed),
+          rules: [for (final r in (_room!['rules'] as List?) ?? const []) '$r']);
       pendingBattle = battle;
       battle.start();
       final events = <BattleEvent>[];
@@ -366,6 +383,9 @@ class _OnlineBattleRoomScreenState extends State<OnlineBattleRoomScreen> {
             if ((room['teams'] as Map).containsKey(OnlineBattles.me)) const Text('Aguardando os outros participantes.')
             else ...[
               const Text('Você recebeu um convite para batalhar!'),
+              if (((room['rules'] as List?) ?? const []).isNotEmpty)
+                m.Text('${tr('Regras')}: ${[for (final r in room['rules'] as List) r == 'species' ? tr('Sem Pokémon repetido no time') : 'Sleep Clause'].join(' · ')}',
+                    key: const ValueKey('room-rules')),
               DropdownButtonFormField<int>(
                 initialValue: _team, isExpanded: true, decoration: const InputDecoration(labelText: 'Seu time'),
                 items: [const DropdownMenuItem(value: -1, child: Text('🎲 Time aleatório')), for (final (i, t) in _teams.indexed) DropdownMenuItem(value: i, child: Text('${t['name']}'))],
@@ -387,7 +407,10 @@ class _OnlineBattleRoomScreenState extends State<OnlineBattleRoomScreen> {
               final expired = room['createdAt'] is Timestamp && DateTime.now().difference((room['createdAt'] as Timestamp).toDate()).inDays >= 7;
               final disabled = _busy || ownAction || _replaying || room['status'] != 'active' || expired || _round >= OnlineBattles.maxRounds || battle.winner != null;
               final replacing = battle.forceSwitch.any((s) => s) || [0, 1].any((s) => battle.active(s).hp <= 0);
-              final message = room['status'] == 'closed'
+              final timedOut = room['status'] == 'closed' && room['timeout'] != null;
+              final message = timedOut
+                  ? room['endedBy'] == OnlineBattles.me ? 'Você ficou sem jogar e perdeu a partida.' : 'Seu adversário sumiu. Você venceu! 🎉'
+                  : room['status'] == 'closed'
                   ? room['endedBy'] == OnlineBattles.me ? 'Você encerrou a partida.' : 'Seu amigo encerrou a partida.'
                   : battle.winner != null ? battle.winner == -1 ? 'A batalha terminou empatada!' : battle.winner == _side ? 'Você venceu! 🎉' : 'Seu amigo venceu!'
                   : expired ? 'Esta partida expirou. Crie uma nova batalha.'
@@ -408,11 +431,166 @@ class _OnlineBattleRoomScreenState extends State<OnlineBattleRoomScreen> {
                 ),
               );
             }),
+          if (battle != null && room['status'] != 'pending' && _players.length == 2 && battle.mode == 'singles')
+            _OnlineExtras(
+              key: ValueKey('extras-${widget.id}'),
+              id: widget.id, room: room, battle: battle.viewFor(_side), actions: _actions ?? const [], round: _round,
+              disabled: _busy || _replaying || room['status'] != 'active' || battle.winner != null
+                  || _actions!.any((a) => a['round'] == _round && a['uid'] == OnlineBattles.me),
+              send: _send, run: _run,
+            ),
           if (room['status'] == 'active') TextButton(onPressed: _busy ? null : () => _run(() => OnlineBattles.close(widget.id)), child: const Text('Desistir / encerrar partida')),
         ],
       ])),
     );
   }
+}
+
+/// Partida a dois: o tempo para escolher (acabou, o jogo escolhe), a vitória
+/// quando o adversário some, os emotes e o ranking (partidas da fila). Igual ao site.
+class _OnlineExtras extends StatefulWidget {
+  final String id;
+  final Map<String, dynamic> room;
+  final TurnBattle battle;
+  final List<Map<String, dynamic>> actions;
+  final int round;
+  final bool disabled;
+  final void Function(Map<String, dynamic>) send;
+  final Future<void> Function(Future<void> Function()) run;
+  const _OnlineExtras({super.key, required this.id, required this.room, required this.battle, required this.actions, required this.round,
+      required this.disabled, required this.send, required this.run});
+
+  @override
+  State<_OnlineExtras> createState() => _OnlineExtrasState();
+}
+
+class _OnlineExtrasState extends State<_OnlineExtras> {
+  late final Timer _clock = Timer.periodic(const Duration(seconds: 1), (_) { if (mounted) setState(() {}); });
+  late final Stream<List<Map<String, dynamic>>> _emotes = OnlineBattles.watchEmotes(widget.id);
+  DateTime _since = DateTime.now();
+  String _phase = '', _auto = '';
+  bool _rated = false;
+  int? _change;
+
+  String get _other => List<String>.from(widget.room['players'] as List).firstWhere((p) => p != OnlineBattles.me);
+
+  @override
+  void dispose() {
+    _clock.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = SiteColors.of(context);
+    final b = widget.battle;
+    // Um relógio novo a cada escolha (rodada nova ou troca obrigatória).
+    final phase = '${widget.round}-${b.needSwitch}-${widget.disabled}';
+    if (phase != _phase) { _phase = phase; _since = DateTime.now(); }
+    final left = (OnlineBattles.turnSeconds - DateTime.now().difference(_since).inSeconds).clamp(0, OnlineBattles.turnSeconds);
+    if (!widget.disabled && left == 0 && _auto != phase) {
+      _auto = phase;
+      // Acabou o tempo: o primeiro golpe que dá para usar (ou o primeiro Pokémon de pé).
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (b.needSwitch) {
+          final next = [for (var i = 0; i < b.teams[0].length; i++) i].where((i) => b.teams[0][i].hp > 0 && i != b.activeIndex[0]).firstOrNull;
+          if (next != null) widget.send({'kind': 'switch', 'index': next});
+        } else {
+          final usable = TurnBattle.usableMoves(b.active(0));
+          widget.send({'kind': 'move', 'index': usable.isEmpty ? -1 : usable.first, 'gimmick': 'none'});
+        }
+      });
+    }
+    // O adversário sumiu: você jogou há 3 min e ele não.
+    final mine = widget.actions.where((a) => a['round'] == widget.round && a['uid'] == OnlineBattles.me).firstOrNull;
+    final theirs = widget.actions.any((a) => a['round'] == widget.round && a['uid'] == _other);
+    final over = b.winner != null || widget.room['status'] == 'closed';
+    final idle = widget.room['status'] == 'active' && b.winner == null && mine?['at'] is Timestamp && !theirs
+        && DateTime.now().difference((mine!['at'] as Timestamp).toDate()) > OnlineBattles.idle;
+    // Ranking: uma vez por partida da fila, quando acaba.
+    if (widget.room['match'] == true && over && !_rated && b.winner != -1) {
+      _rated = true;
+      final won = widget.room['status'] == 'closed' ? widget.room['endedBy'] != OnlineBattles.me : b.winner == 0;
+      OnlineBattles.rateMatch(widget.id, _other, won, avatar: UserData.instance.avatar)
+          .then((change) { if (mounted && change != null) setState(() => _change = change); })
+          .catchError((_) => null);
+    }
+    return Card(
+      key: const ValueKey('online-extras'),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          if (!over && !widget.disabled)
+            m.Text('⏱ ${tr('Tempo para escolher')}: ${left}s', key: const ValueKey('turn-timer'),
+                style: TextStyle(fontWeight: FontWeight.bold, color: left <= 10 ? Colors.redAccent : c.text)),
+          if (idle)
+            FilledButton(
+              key: const ValueKey('claim-win'),
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF16A34A)),
+              onPressed: () => widget.run(() => OnlineBattles.claimTimeout(widget.id, widget.round, _other)),
+              child: m.Text('🏆 ${tr('O adversário sumiu: reivindicar a vitória')}'),
+            ),
+          if (_change != null) m.Text('${tr('Ranking')}: ${_change! >= 0 ? '+$_change' : '$_change'}', key: const ValueKey('rating-change'), style: const TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 6),
+          StreamBuilder<List<Map<String, dynamic>>>(
+            stream: _emotes,
+            builder: (context, snap) {
+              final recent = [
+                for (final e in snap.data ?? const <Map<String, dynamic>>[])
+                  if (e['at'] is Timestamp && DateTime.now().difference((e['at'] as Timestamp).toDate()).inSeconds < 5) e,
+              ];
+              return Wrap(spacing: 6, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                for (final e in OnlineBattles.emotes)
+                  ActionChip(label: m.Text(e, style: const TextStyle(fontSize: 18)), onPressed: over ? null : () => widget.run(() => OnlineBattles.sendEmote(widget.id, e))),
+                for (final e in recent)
+                  Chip(
+                    key: ValueKey('emote-${e['id']}'),
+                    backgroundColor: const Color(0xFFFBBF24),
+                    label: m.Text('${(widget.room['names'] as Map)[e['uid']] ?? ''}: ${e['e']}', style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                  ),
+              ]);
+            },
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+/// Os melhores da temporada (adversário aleatório).
+class _Leaderboard extends StatefulWidget {
+  const _Leaderboard();
+  @override
+  State<_Leaderboard> createState() => _LeaderboardState();
+}
+
+class _LeaderboardState extends State<_Leaderboard> {
+  final _season = OnlineBattles.currentSeason();
+  late final Stream<List<Map<String, dynamic>>> _list = OnlineBattles.watchLeaderboard(_season);
+
+  @override
+  Widget build(BuildContext context) => Column(
+        key: const ValueKey('leaderboard'),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          m.Text('🏆 ${tr('Ranking da temporada')} $_season', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          StreamBuilder<List<Map<String, dynamic>>>(
+            stream: _list,
+            builder: (context, snap) {
+              if (snap.hasError) return Text(_error(snap.error!));
+              if (!snap.hasData) return const Padding(padding: EdgeInsets.all(8), child: LinearProgressIndicator());
+              if (snap.data!.isEmpty) return const Text('Ninguém jogou nesta temporada ainda.');
+              return Column(children: [
+                for (final (i, r) in snap.data!.indexed)
+                  Row(children: [
+                    Expanded(child: m.Text('${i + 1}. ${r['name']}')),
+                    m.Text('${r['rating']} · ${r['wins']}V ${r['losses']}D'),
+                  ]),
+              ]);
+            },
+          ),
+        ],
+      );
 }
 
 class OnlineBattleInvites extends StatefulWidget {

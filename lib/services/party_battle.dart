@@ -17,9 +17,9 @@ class PartyBattle {
     }
     return [...active, for (final uid in unique) ...pools[uid]!];
   }
-  static TurnBattle create(Map<String, List<BattleMon>> rosters, List<String> seats, int count, double Function() random) {
+  static TurnBattle create(Map<String, List<BattleMon>> rosters, List<String> seats, int count, double Function() random, {List<String> rules = const []}) {
     final controllers = [seats.take(count).toList(), seats.skip(count).take(count).toList()];
-    return TurnBattle(assemble(controllers[0], rosters), assemble(controllers[1], rosters), random, mode: modeOf(count), controllers: controllers);
+    return TurnBattle(assemble(controllers[0], rosters), assemble(controllers[1], rosters), random, mode: modeOf(count), controllers: controllers, rules: rules);
   }
   /// [order]: mostra a fila do turno antes das ações (contra o computador; online
   /// as cores 🔵/🔴 ficariam trocadas para o outro jogador).
