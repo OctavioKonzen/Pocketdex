@@ -87,6 +87,8 @@ export const getAnimatedSprites = () => load('animated_sprites.json')
 export const getTrainers = () => load('trainers.json')
 /** Líderes de ginásio, Elite Four e campeões com os times originais: tool/build_gym_leaders.py. */
 export const getGymLeaders = () => load('gym_leaders.json')
+/** Times oficiais dos personagens, por jogo: tool/build_official_teams.py. */
+export const getOfficialTeams = () => load('official_teams.json')
 
 /** Grito da espécie (arquivo do banco, não da PokeAPI). */
 export const cryUrl = (speciesId) => `${BASE}cries/${speciesId}.mp3`

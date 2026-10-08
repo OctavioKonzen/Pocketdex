@@ -6,6 +6,7 @@ import '../services/account_sync.dart';
 import '../services/auth_service.dart';
 import '../services/team_service.dart';
 import 'community_teams_screen.dart';
+import 'official_teams_screen.dart';
 import '../services/user_data.dart';
 import '../widgets/team_card.dart';
 import '../widgets/team_share_dialogs.dart';
@@ -244,6 +245,15 @@ class _TeamsScreenState extends State<TeamsScreen> {
                   title: 'Montador de Times',
                   subtitle: 'Monte times de até 6 Pokémon e veja as fraquezas e a nota de cada um.',
                   action: PillButton(label: '+ Novo time', color: SectionColors.teams, onPressed: _showCreateTeamPanel),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                  child: PillButton(
+                    label: '📜 Times dos personagens',
+                    expand: true,
+                    gradient: const LinearGradient(colors: [Color(0xFFFFB300), Color(0xFFF4511E)]),
+                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OfficialTeamsScreen())),
+                  ),
                 ),
                 if (_signedIn)
                   Padding(
