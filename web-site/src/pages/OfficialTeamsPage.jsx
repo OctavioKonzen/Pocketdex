@@ -98,8 +98,9 @@ export default function OfficialTeamsPage() {
       )}
 
       <p className="mt-6 text-xs text-muted">
-        Dados tirados do código dos jogos: da 1ª à 4ª geração pelos projetos de desmontagem do pret (github.com/pret); Scarlet/Violet
-        (versão 1.0, sem as DLCs) pelos arquivos do jogo. Da 5ª à 8ª geração ainda não há uma fonte aberta com esses detalhes.
+        Dados tirados do código dos jogos: da 1ª à 4ª geração pelos projetos de desmontagem do pret (github.com/pret), Black 2/White 2
+        pela desmontagem pokebw2 e Scarlet/Violet (versão 1.0, sem as DLCs) pelos arquivos do jogo. Da 6ª à 8ª geração ainda não há uma
+        fonte aberta com esses detalhes.
       </p>
 
       <TrainerModal key={open ?? ''} name={open} games={games} gameId={gameId} byId={byId} onClose={() => setOpen(null)} />

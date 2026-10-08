@@ -7,7 +7,8 @@ Saída: assets/database/official_teams.json
 
 Uso:
     python3 tool/build_official_teams.py <pasta com os arquivos do pret>
-    (a pasta tem uma subpasta por projeto: sv/ (Scarlet/Violet, ver
+    (a pasta tem uma subpasta por projeto: pokebw2/ (Black 2/White 2, a
+    desmontagem inteira), sv/ (Scarlet/Violet, ver
     tool/official_teams/gen9.py), pokered/, pokeyellow/, pokegold/,
     pokecrystal/, pokeruby/, pokeemerald/, pokefirered/, pokeplatinum/, com os
     arquivos que cada módulo de tool/official_teams/ lê; para a 2ª geração,
@@ -25,6 +26,7 @@ import gen1  # noqa: E402
 import gen2  # noqa: E402
 import gen3  # noqa: E402
 import gen4  # noqa: E402
+import gen5  # noqa: E402
 import gen9  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -64,6 +66,7 @@ GAMES = [
         'learnsets': 'level_up_learnsets.h', 'learnset_pointers': 'level_up_learnset_pointers.h',
         'trainers': 'trainers.h', 'parties': 'trainer_parties.h'}),
     ('platinum', 'Platinum', 'Sinnoh', 4, gen4, 'pokeplatinum', {}),
+    ('black2-white2', 'Black 2/White 2', 'Unova', 5, gen5, 'pokebw2', {}),
     ('scarlet-violet', 'Scarlet/Violet', 'Paldea', 9, gen9, 'sv', {}),
 ]
 
@@ -91,6 +94,7 @@ def portrait(person, ids):
 # Ginásios na ordem das insígnias (o código do jogo nem sempre segue essa ordem).
 GYM_ORDER = ['Falkner', 'Bugsy', 'Whitney', 'Morty', 'Chuck', 'Jasmine', 'Pryce', 'Clair',
              'Brock', 'Misty', 'Lt. Surge', 'Erika', 'Koga', 'Janine', 'Sabrina', 'Blaine', 'Giovanni', 'Blue',
+             'Cheren', 'Roxie', 'Burgh', 'Elesa', 'Clay', 'Skyla', 'Drayden', 'Marlon',
              'Katy', 'Brassius', 'Iono', 'Kofu', 'Larry', 'Ryme', 'Tulip', 'Grusha',
              'Roark', 'Gardenia', 'Fantina', 'Maylene', 'Wake', 'Byron', 'Candice', 'Volkner']
 
@@ -187,6 +191,8 @@ def main(src):
             built = gen1.build(os.path.join(src, folder), resolve, yellow=gid == 'yellow')
         elif module is gen2:
             built = gen2.build(os.path.join(src, folder), resolve, os.path.join(src, 'maps', folder, 'maps'))
+        elif module is gen5:
+            built = gen5.build(os.path.join(src, folder), resolve, load('pokemon'), load('species'))
         elif module is gen9:
             built = gen9.build(json.loads(read(os.path.join(src, folder, 'trdata_array_clean.json'))),
                                open(os.path.join(src, folder, 'trdata_array.bfbs'), 'rb').read(), resolve, load('pokemon'))

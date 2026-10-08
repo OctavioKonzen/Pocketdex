@@ -9,7 +9,7 @@ void main() {
   test('times oficiais: separados por jogo, com os dados do jogo (igual ao site)', () async {
     final games = await OfficialTeams.load();
     expect([for (final g in games) g.id],
-        ['red-blue', 'yellow', 'gold-silver', 'crystal', 'ruby-sapphire', 'emerald', 'firered-leafgreen', 'platinum', 'scarlet-violet']);
+        ['red-blue', 'yellow', 'gold-silver', 'crystal', 'ruby-sapphire', 'emerald', 'firered-leafgreen', 'platinum', 'black2-white2', 'scarlet-violet']);
     final glimmora = games.last.trainers.firstWhere((t) => t.name == 'Geeta').battles.first.team.last;
     expect(glimmora.tera, 'rock');
     expect(glimmora.evText, 'EVs: 252 HP');

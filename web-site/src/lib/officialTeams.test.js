@@ -7,9 +7,9 @@ const game = (id) => games.find((g) => g.id === id)
 const person = (gid, name, cls) => game(gid).trainers.find((t) => t.name === name && (!cls || t.class === cls))
 
 describe('times oficiais dos personagens', () => {
-  it('separa por jogo: da 1ª à 4ª geração e Scarlet/Violet', () => {
-    expect(games.map((g) => g.id)).toEqual(['red-blue', 'yellow', 'gold-silver', 'crystal', 'ruby-sapphire', 'emerald', 'firered-leafgreen', 'platinum', 'scarlet-violet'])
-    expect(generationsOf(games)).toEqual([1, 2, 3, 4, 9])
+  it('separa por jogo: da 1ª à 5ª geração e Scarlet/Violet', () => {
+    expect(games.map((g) => g.id)).toEqual(['red-blue', 'yellow', 'gold-silver', 'crystal', 'ruby-sapphire', 'emerald', 'firered-leafgreen', 'platinum', 'black2-white2', 'scarlet-violet'])
+    expect(generationsOf(games)).toEqual([1, 2, 3, 4, 5, 9])
     for (const g of games) {
       expect(g.trainers.length).toBeGreaterThan(10)
       for (const t of g.trainers) for (const b of t.battles) expect(b.team.length).toBeGreaterThan(0)
@@ -50,6 +50,16 @@ describe('times oficiais dos personagens', () => {
     expect(abilityText(glimmora, (s) => s)).toBe('toxic-debris')
     expect(abilityText({ abilityOptions: ['a', 'b'] }, (s) => s)).toBe('a ou b (sorteada)')
     expect(ivText({ iv: null, ivNote: 'sorteados' })).toBe('IVs: sorteados')
+  })
+
+  it('Iris (Black 2/White 2): nature e habilidade pela fórmula do jogo', () => {
+    const team = person('black2-white2', 'Iris').battles[0].team
+    expect(team.map((m) => m.level)).toEqual([57, 57, 57, 57, 57, 59])
+    expect(team[5].item).toBe('focus-sash')
+    expect(team[5].ability).toBe('mold-breaker')
+    expect(team.every((m) => m.iv === 30 && m.nature)).toBe(true)
+    // Bug do jogo: a Liepard do Grimsley pede ser fêmea e a base do PID fica para os próximos.
+    expect(person('black2-white2', 'Grimsley').battles[0].team.map((m) => m.nature)).toEqual(['Docile', 'Brave', 'Hasty', 'Sassy'])
   })
 
   it('mostra todas as aparições do personagem', () => {
