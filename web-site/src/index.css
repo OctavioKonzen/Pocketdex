@@ -365,6 +365,13 @@ body {
 }
 /* Treinadores e Poké Balls na batalha (TurnBattlePage.jsx). */
 .trainer-leave-1 { animation: trainer-leave-1 520ms ease-in forwards; }
+/* Treinador sem quadros de animação (sprites parados): respira de leve, apoiado nos pés. Igual ao app. */
+@keyframes trainer-idle {
+  0%, 100% { transform: scale(1, 1); }
+  50% { transform: scale(1.012, 1.03); }
+}
+.trainer-idle { animation: trainer-idle 2.4s ease-in-out infinite; transform-origin: 50% 100%; }
+@media (prefers-reduced-motion: reduce) { .trainer-idle { animation: none; } }
 @keyframes trainer-leave-1 { to { transform: translateX(160%); opacity: 0; } }
 .trainer-leave-0 { animation: trainer-leave-0 520ms ease-in forwards; }
 @keyframes trainer-leave-0 { to { transform: translateX(-120%); opacity: 0; } }

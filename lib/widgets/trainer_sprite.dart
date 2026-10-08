@@ -5,6 +5,8 @@
 // lançando a Poké Ball, o rosto para a foto de perfil e a escolha do seu
 // treinador. Igual ao site (web-site/src/components/Trainer.jsx).
 
+import 'dart:math';
+
 import 'package:flutter/material.dart' hide Text;
 
 import '../services/trainers.dart';
@@ -45,22 +47,25 @@ class _TrainerSpriteState extends State<TrainerSprite> with SingleTickerProvider
   // Cada quadro 90 ms, e uma pausa de 900 ms no primeiro.
   late final AnimationController _clock = AnimationController(vsync: this, duration: _cycle);
 
-  Duration get _cycle => Duration(milliseconds: widget.trainer.frames * 90 + 900);
+  Duration get _cycle => _idle ? const Duration(milliseconds: 2400) : Duration(milliseconds: widget.trainer.frames * 90 + 900);
 
   @override
   void initState() {
     super.initState();
-    if (_moving) _clock.repeat();
+    if (_moving || _idle) _clock.repeat();
   }
 
   bool get _moving => !widget.still && widget.trainer.frames > 1;
+
+  /// Sem quadros de animação (sprites parados): respira de leve, apoiado nos pés. Igual ao site (trainer-idle).
+  bool get _idle => !widget.still && widget.trainer.frames <= 1;
 
   @override
   void didUpdateWidget(TrainerSprite old) {
     super.didUpdateWidget(old);
     if (old.trainer.id != widget.trainer.id || old.still != widget.still) {
       _clock.duration = _cycle;
-      if (_moving) {
+      if (_moving || _idle) {
         _clock.repeat();
       } else {
         _clock.stop();
@@ -87,7 +92,14 @@ class _TrainerSpriteState extends State<TrainerSprite> with SingleTickerProvider
           builder: (context, _) {
             final ms = _clock.value * _cycle.inMilliseconds;
             final frame = !_moving || ms < 900 ? 0 : (1 + (ms - 900) ~/ 90).clamp(0, t.frames - 1);
-            return _frameOf(t.front, frame: frame, frames: t.frames, w: t.size, h: t.size, scale: k, flip: widget.flip);
+            final sprite = _frameOf(t.front, frame: frame, frames: t.frames, w: t.size, h: t.size, scale: k, flip: widget.flip);
+            if (!_idle) return sprite;
+            final breath = (1 - cos(_clock.value * 2 * pi)) / 2;
+            return Transform(
+              alignment: Alignment.bottomCenter,
+              transform: Matrix4.diagonal3Values(1 + 0.012 * breath, 1 + 0.03 * breath, 1),
+              child: sprite,
+            );
           },
         ),
       ),

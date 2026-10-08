@@ -133,6 +133,28 @@ function lockedOf(request) {
   return {slug: moves[0].id, name: moves[0].move};
 }
 
+/**
+ * O que já apareceu de cada Pokémon (como no Showdown): golpes usados,
+ * habilidade e item que se mostraram. A tela mostra só isso do adversário.
+ */
+function revealed(game, side, index) {
+  game.revealed ??= game.teams.map(team => team.map(() => ({moves: [], ability: '', item: ''})));
+  return game.revealed[side]?.[index] ?? null;
+}
+
+function revealFrom(game, kind, actor, value, fromAbility, fromItem, ofRef) {
+  const ref = r => {
+    const s = /^p[1-4]/.test(r || '') ? Number(r[1]) - 1 : -1, i = Number(r?.split(': ')[1]?.slice(2));
+    return s >= 0 && Number.isInteger(i) ? revealed(game, s, i) : null;
+  };
+  const me = ref(actor), owner = ref(ofRef) ?? me;
+  if (me && kind === 'move' && value && !me.moves.includes(value)) me.moves.push(value);
+  if (me && kind === '-ability' && value) me.ability = value;
+  if (me && (kind === '-item' || kind === '-enditem') && value) me.item = value;
+  if (owner && fromAbility) owner.ability = fromAbility;
+  if (owner && fromItem) owner.item = fromItem;
+}
+
 function snapshot(game) {
   const b = game.battle;
   return {
@@ -140,6 +162,8 @@ function snapshot(game) {
     winner: b.ended ? (b.winner === b.sides[0].name || b.winner === `${b.sides[0].name} & ${b.sides[2]?.name}` ? 0 : b.winner ? 1 : -1) : null,
     weather: b.field.weather,
     terrain: b.field.terrain,
+    // Trick Room, Gravity, Magic Room, Wonder Room...
+    pseudoWeather: Object.keys(b.field.pseudoWeather),
     mode: b.gameType,
     bags: game.bags,
     sides: b.sides.map(side => ({
@@ -153,6 +177,8 @@ function snapshot(game) {
       switchOptions: side.pokemon.filter(p => side.slotConditions[side.active[0].position]?.revivalblessing ? p.fainted : !p.fainted && p !== side.active[0] && (!side.activeRequest?.active?.[0]?.trapped || side.activeRequest?.forceSwitch)).map(originalIndex),
       request: side.activeRequest?.active?.[0] ?? null,
       locked: side.activeRequest?.forceSwitch || side.activeRequest?.wait ? null : lockedOf(side.activeRequest?.active?.[0]),
+      // Stealth Rock, Spikes (camadas), Reflect, Light Screen, Tailwind... (turnos que faltam, se tiver).
+      conditions: Object.fromEntries(Object.entries(side.sideConditions).map(([id, c]) => [id, c.layers ?? c.duration ?? 0])),
       used: {mega: game.used[side.n].mega, dmax: Boolean(side.dynamaxUsed), z: Boolean(side.zMoveUsed), tera: game.used[side.n].tera},
       team: [...side.pokemon].sort((a, c) => originalIndex(a) - originalIndex(c)).map(p => ({
         index: originalIndex(p), hp: p.hp, maxHp: p.maxhp, status: p.status, boosts: {...p.boosts},
@@ -160,6 +186,7 @@ function snapshot(game) {
         item: Dex.items.get(p.item).name, stats: {...p.baseStoredStats}, spe: p.baseStoredStats.spe, actionSpeed: p.getActionSpeed(), tera: p.terastallized || '',
         dmax: p.volatiles.dynamax ? Math.max(0, p.volatiles.dynamax.duration ?? 3) : 0,
         moves: p.moveSlots.map(m => ({slug: m.id, name: m.move, pp: m.pp, maxPp: m.maxpp, disabled: m.disabled})),
+        revealed: revealed(game, side.n, originalIndex(p)) ?? {moves: [], ability: '', item: ''},
       })),
     })),
   };
@@ -203,6 +230,7 @@ function eventsFor(game, lines) {
     const side = sideOf(actor);
     const actorIndex = Number(actor?.split(': ')[1]?.slice(2));
     actorSide = side; actorPokemon = actorIndex;
+    revealFrom(game, kind, actor, value, fromAbility, fromItem, tag('of'));
     if (kind === 'switch' || kind === 'drag') {
       const index = Number(actor.split(': ')[1]?.slice(2));
       if (!Number.isInteger(index)) continue;

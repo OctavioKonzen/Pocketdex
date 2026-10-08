@@ -30,6 +30,7 @@ export function startMusic(track = 'battle_music') {
   try {
     if (music && !music.src.endsWith(`${track}.mp3`)) music.pause()
     if (!music || !music.src.endsWith(`${track}.mp3`)) music = new Audio(url(track))
+    wanted = true
     music.loop = true
     music.volume = 0.3
     music.currentTime = 0
@@ -40,11 +41,25 @@ export function startMusic(track = 'battle_music') {
 }
 
 export function stopMusic() {
+  wanted = false
   try {
     music?.pause()
   } catch {
     // Sem som.
   }
+}
+
+// Aba escondida ou navegador minimizado: a música pausa; voltando, continua. Igual ao app.
+let wanted = false
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    try {
+      if (document.hidden) music?.pause()
+      else if (wanted) music?.play().catch(() => {})
+    } catch {
+      // Sem som.
+    }
+  })
 }
 
 /** O som de cada evento da batalha (lastEffect: o último "É super efetivo"/"Não é muito efetivo"). */

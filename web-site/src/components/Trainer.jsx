@@ -22,8 +22,11 @@ export function TrainerSprite({ trainer, box = 96, flip = false, still = false, 
   const k = unit(box) * (trainer.scale ?? 1)
   const side = trainer.size * k
   const frames = still ? 1 : trainer.frames
+  // Sem quadros de animação: respira de leve (trainer-idle, index.css).
+  const idle = !still && trainer.frames <= 1
   return (
     <span className={`relative inline-block ${className}`} style={{ width: box, height: box, ...style }} aria-label={trainer.name} role="img">
+      <span className={`absolute inset-0 ${idle ? 'trainer-idle' : ''}`} data-idle={idle ? '' : undefined}>
       <span
         className="pixelated absolute bottom-0 left-1/2"
         style={{
@@ -38,6 +41,7 @@ export function TrainerSprite({ trainer, box = 96, flip = false, still = false, 
           animation: frames > 1 ? `${stripKeyframes(frames)} ${frames * 90 + 900}ms steps(1) infinite` : 'none',
         }}
       />
+      </span>
     </span>
   )
 }

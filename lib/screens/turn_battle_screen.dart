@@ -84,7 +84,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
   Map<String, dynamic>? _challenge;
   String _endNote = '';
   ({String label, VoidCallback onTap})? _next;
-  List<Member> _lastMine = const [];
+  List<Member> _lastMine = const [], _lastTheirs = const [];
   GymLeader? get _foeLeader {
     final ch = _challenge;
     if (ch == null) return null;
@@ -98,6 +98,11 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
   }
   // Adversário 'gym:<id>': um líder, Elite Four ou campeão (gym_leaders.json).
   static const _gym = 'gym:';
+  // Sequências de vitórias (gym_challenge.dart): Torre (seu time) e Factory (times emprestados).
+  static const _tower = '__tower__', _factory = '__factory__';
+  String? get _streak => _friend == _tower ? 'tower' : _friend == _factory ? 'factory' : null;
+  /// Na sequência, a partir da 4ª batalha o computador usa sets competitivos.
+  static String _streakDifficulty(int wins, String difficulty) => wins >= 3 ? 'hard' : difficulty;
   List<({String region, List<GymLeader> leaders})> _regions = const [];
   GymLeader? get _leader => _friend.startsWith(_gym)
       ? _regions.expand((r) => r.leaders).where((l) => l.id == _friend.substring(_gym.length)).firstOrNull
@@ -141,9 +146,9 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
     setState(() {
       _friend = uid;
       _theirs = null;
-      _friendTeams = uid == _random || uid.startsWith(_gym) ? const [] : null;
+      _friendTeams = uid == _random || uid == _tower || uid == _factory || uid.startsWith(_gym) ? const [] : null;
     });
-    if (uid == _random || uid.startsWith(_gym)) return;
+    if (uid == _random || uid == _tower || uid == _factory || uid.startsWith(_gym)) return;
     try {
       final snap = await FirebaseFirestore.instance.collection('publicTeams').where('ownerUid', isEqualTo: uid).get();
       final teams = [for (final d in snap.docs) BattleTeam.fromMap(d.data())].whereType<BattleTeam>().toList();
@@ -157,9 +162,19 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
     setState(() => _busy = true);
     try {
     final random = League.seededRandom(Random().nextInt(1 << 31));
-    final ma = mine ?? await TurnBattleSetup.randomTeam(random, difficulty: _difficulty);
     final leader = theirs == null ? pick ?? _leader : null;
-    challenge ??= leader != null ? {'kind': 'gym', 'leader': leader.id, 'difficulty': _difficulty} : null;
+    final streak = leader == null && theirs == null ? _streak : null;
+    challenge ??= leader != null
+        ? {'kind': 'gym', 'leader': leader.id, 'difficulty': _difficulty}
+        : streak != null
+            ? {'kind': streak, 'wins': 0, 'difficulty': _difficulty}
+            : null;
+    // Factory: os dois times são emprestados (sets competitivos); Torre: o seu contra um aleatório.
+    final ma = streak == 'factory' ? await TurnBattleSetup.randomTeam(random, difficulty: 'hard') : mine ?? await TurnBattleSetup.randomTeam(random, difficulty: _difficulty);
+    if (streak != null) {
+      final league = UserData.instance.league;
+      UserData.instance.update({'league': {...league, streak: {...league[streak] as Map, 'streak': 0}}});
+    }
     final mb = theirs ?? (leader != null ? await leader.members(random, difficulty: _difficulty) : await TurnBattleSetup.randomTeam(random, difficulty: _difficulty));
     final foeTrainer = leader?.trainer;
     final a = await TurnBattleSetup.mons(ma, battleMonName);
@@ -173,7 +188,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
     setState(() {
       _busy = false;
       if (a.isNotEmpty && b.isNotEmpty) {
-        if ((_count == 1 || challenge?['kind'] == 'league') && widget.mine == null) {
+        if ((_count == 1 || challenge?['kind'] == 'league' || streak != null) && widget.mine == null) {
           _preview = (a: a, b: b, ma: ma, mb: mb, random: random, foeName: foeName, foeTrainer: foeTrainer, challenge: challenge);
           return;
         }
@@ -184,6 +199,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
         _endNote = '';
         _next = null;
         _lastMine = ma;
+        _lastTheirs = mb;
         _key++;
       }
     });
@@ -230,6 +246,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
       _foeName = foe.name;
       _foeTrainer = foe.trainer;
       _challenge = {...ch, 'step': step};
+      _lastTheirs = mb;
       _endNote = '';
       _next = null;
       _key++;
@@ -238,7 +255,51 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
   }
 
   /// Fim de uma batalha da jornada: insígnia, próxima da Liga ou Hall da Fama.
+  /// Torre/Factory: o próximo adversário aleatório (na Factory, com a troca escolhida).
+  Future<void> _nextStreak([({int give, int take})? swap]) async {
+    final ch = _challenge!;
+    final wins = (ch['wins'] as int) + 1;
+    final difficulty = '${ch['difficulty'] ?? 'normal'}';
+    final random = League.seededRandom(Random().nextInt(1 << 31));
+    final theirs = _lastTheirs;
+    final ma = [for (final (i, m) in _lastMine.indexed) swap != null && i == swap.give ? theirs[swap.take] : m];
+    final mb = await TurnBattleSetup.randomTeam(random, difficulty: _streakDifficulty(wins, difficulty));
+    final a = await TurnBattleSetup.mons(ma, battleMonName);
+    final b = await TurnBattleSetup.mons(mb, battleMonName);
+    if (!mounted || a.isEmpty || b.isEmpty) return;
+    final old = _battle;
+    setState(() {
+      // O computador deixa de jogar ao acaso a partir da 4ª batalha.
+      _difficulty = wins >= 3 && difficulty == 'easy' ? 'normal' : difficulty;
+      _battle = _single(a, b, ma, mb, random);
+      _difficulty = difficulty;
+      _lastMine = ma;
+      _lastTheirs = mb;
+      _foeName = '';
+      _foeTrainer = null;
+      _challenge = {...ch, 'wins': wins};
+      _endNote = '';
+      _next = null;
+      _key++;
+    });
+    old?.dispose();
+  }
+
   void _finishChallenge() {
+    final kind = _challenge?['kind'];
+    if (kind == 'tower' || kind == 'factory') {
+      final won = _battle?.winner == 0;
+      final after = GymChallenge.streakResult(UserData.instance.league, '$kind', won);
+      UserData.instance.update({'league': after});
+      final wins = _challenge!['wins'] as int;
+      setState(() {
+        _endNote = won
+            ? '🔥 ${tr('{0} vitórias seguidas!').replaceAll('{0}', '${wins + 1}')}'
+            : tr('A sequência terminou com {0} vitórias. Recorde: {1}.').replaceAll('{0}', '$wins').replaceAll('{1}', '${(after[kind] as Map)['best']}');
+        _next = won ? (label: '⚔️ ${tr('Próximo adversário')}', onTap: () => _nextStreak()) : null;
+      });
+      return;
+    }
     final ch = _challenge, foe = _foeLeader, b = _battle;
     if (ch == null || foe == null || b == null) return;
     final won = b.winner == 0;
@@ -307,7 +368,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
                     music: GymChallenge.musicOf(_foeLeader),
                     endNote: _endNote,
                     next: _next,
-                    canAgain: _challenge?['kind'] != 'league',
+                    canAgain: !const ['league', 'tower', 'factory'].contains(_challenge?['kind']),
                     onFinish: (foeTrainer) {
                       final b = _battle;
                       if (b != null && b.members != null && b.seed != null) BattleLog.add(BattleLog.record(b, foeName: _foeName, foeTrainer: foeTrainer));
@@ -319,6 +380,8 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
                       else { _battle?.dispose(); setState(() => _battle = null); }
                     },
                   ),
+                  if (_next != null && _challenge?['kind'] == 'factory' && _lastMine.isNotEmpty && _lastTheirs.isNotEmpty)
+                    _FactorySwap(mine: _lastMine, theirs: _lastTheirs, onSwap: (swap) => _nextStreak(swap)),
                 ],
               )
             : _preview != null
@@ -342,6 +405,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
         _endNote = '';
         _next = null;
         _lastMine = p.ma.length == p.a.length ? first(p.ma) : p.ma;
+        _lastTheirs = p.mb;
         _key++;
       });
     }
@@ -410,7 +474,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
     final myTeams = _myTeams;
     final friends = FriendsService.instance.friends;
     InputDecoration deco(String label) => InputDecoration(labelText: tr(label), border: const OutlineInputBorder(), isDense: true);
-    final ready = (_mine == -1 || _mine != null && myTeams[_mine!].members.length >= (_npcPartner ? 1 : _count)) && (_friend == _random || _leader != null || _theirs != null && _friendTeams![_theirs!].members.length >= _count);
+    final ready = (_mine == -1 || _mine != null && myTeams[_mine!].members.length >= (_npcPartner ? 1 : _count)) && (_friend == _random || _streak != null || _leader != null || _theirs != null && _friendTeams![_theirs!].members.length >= _count);
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -434,6 +498,8 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
           decoration: deco('Adversário'),
           items: [
             const DropdownMenuItem(value: _random, child: Text('🎲 Time aleatório')),
+            DropdownMenuItem(value: _tower, child: m.Text('🗼 ${tr('Torre de Batalha')}')),
+            DropdownMenuItem(value: _factory, child: m.Text('🏭 ${tr('Battle Factory')}')),
             for (final f in friends) DropdownMenuItem(value: f.uid, child: m.Text(f.name)),
             // Desafio dos Líderes: um cabeçalho por região.
             for (final r in _regions) ...[
@@ -448,6 +514,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
           onChanged: (v) => _pickFriend(v ?? _random),
         ),
         if (_leader != null) ...[const SizedBox(height: 10), _LeaderCard(leader: _leader!)],
+        if (_streak != null) ...[const SizedBox(height: 10), _StreakCard(kind: _streak!)],
         if (_leader != null && GymChallenge.regionOf(_regions, _leader!.id) != null) ...[
           const SizedBox(height: 10),
           ListenableBuilder(
@@ -460,13 +527,13 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
             ),
           ),
         ],
-        if (_friend == _random || _leader != null || _npcPartner) ...[
+        if (_friend == _random || _streak != null || _leader != null || _npcPartner) ...[
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(isExpanded: true, initialValue: _difficulty, decoration: deco('Dificuldade dos NPCs'), items: const [DropdownMenuItem(value: 'easy', child: Text('Fácil')), DropdownMenuItem(value: 'normal', child: Text('Normal')), DropdownMenuItem(value: 'hard', child: Text('Difícil'))], onChanged: _busy ? null : (v) => setState(() => _difficulty = v!)),
           const SizedBox(height: 6),
           const Text('Fácil: o computador ataca ao acaso, sem trocar nem usar itens.\nNormal: IVs e EVs aleatórios.\nDifícil: sets competitivos.'),
         ],
-        if (_friend != _random && _leader == null) ...[
+        if (_friend != _random && _leader == null && _streak == null) ...[
           const SizedBox(height: 12),
           if (_friendTeams == null)
             const Center(child: CircularProgressIndicator())
@@ -495,10 +562,92 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
               : () {
                   final leader = _leader;
                   final foe = leader?.name ?? (_friend == _random ? '' : friends.where((f) => f.uid == _friend).firstOrNull?.name ?? '');
-                  _start(_mine == -1 ? null : myTeams[_mine!].members, _friend == _random || leader != null ? null : _friendTeams![_theirs!].members, foe);
+                  _start(_mine == -1 ? null : myTeams[_mine!].members, _friend == _random || leader != null || _streak != null ? null : _friendTeams![_theirs!].members, foe);
                 },
         ),
       ],
+    );
+  }
+}
+
+/// Torre de Batalha / Battle Factory: como funciona e o seu recorde.
+class _StreakCard extends StatelessWidget {
+  final String kind;
+  const _StreakCard({required this.kind});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = SiteColors.of(context);
+    final best = ((UserData.instance.league[kind] as Map?)?['best'] as num? ?? 0).toInt();
+    return Container(
+      key: const ValueKey('streak-card'),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(16)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        m.Text(kind == 'tower' ? '🗼 ${tr('Torre de Batalha')}' : '🏭 ${tr('Battle Factory')}', style: TextStyle(color: c.text, fontWeight: FontWeight.w900)),
+        Text(
+            kind == 'tower'
+                ? 'Seu time contra adversários aleatórios em sequência; a partir da 4ª vitória eles usam sets competitivos. Perdeu, a sequência acaba.'
+                : 'Você recebe 6 Pokémon emprestados. A cada vitória pode trocar um deles por um do adversário. Perdeu, a sequência acaba.',
+            style: TextStyle(color: c.muted, fontSize: 12)),
+        const SizedBox(height: 4),
+        m.Text(tr('Recorde: {0} vitórias seguidas').replaceAll('{0}', '$best'), style: TextStyle(color: c.text, fontWeight: FontWeight.w800, fontSize: 13)),
+      ]),
+    );
+  }
+}
+
+/// Factory: depois de vencer, troca um Pokémon seu por um do adversário (ou segue igual).
+class _FactorySwap extends StatefulWidget {
+  final List<Member> mine, theirs;
+  final void Function(({int give, int take}) swap) onSwap;
+  const _FactorySwap({required this.mine, required this.theirs, required this.onSwap});
+
+  @override
+  State<_FactorySwap> createState() => _FactorySwapState();
+}
+
+class _FactorySwapState extends State<_FactorySwap> {
+  int? _give, _take;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = SiteColors.of(context);
+    Widget row(List<Member> list, int? value, void Function(int?) set, String prefix) => Wrap(spacing: 4, runSpacing: 4, children: [
+          for (final (i, member) in list.indexed)
+            InkWell(
+              key: ValueKey('$prefix-$i'),
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => setState(() => set(value == i ? null : i)),
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  color: value == i ? const Color(0x33F59E0B) : null,
+                  border: Border.all(color: value == i ? const Color(0xFFF59E0B) : Colors.transparent, width: 2),
+                ),
+                child: SizedBox.square(dimension: 44, child: PokemonSprite(member.$1, fill: 0.95)),
+              ),
+            ),
+        ]);
+    return Card(
+      key: const ValueKey('factory-swap'),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          m.Text('🏭 ${tr('Trocar um Pokémon')}', style: TextStyle(color: c.text, fontWeight: FontWeight.w900)),
+          Text('Escolha um do adversário e um seu para trocar, ou siga com o mesmo time.', style: TextStyle(color: c.muted, fontSize: 12)),
+          const SizedBox(height: 6),
+          row(widget.theirs, _take, (v) => _take = v, 'take'),
+          const SizedBox(height: 6),
+          row(widget.mine, _give, (v) => _give = v, 'give'),
+          const SizedBox(height: 8),
+          FilledButton(
+            onPressed: _give == null || _take == null ? null : () => widget.onSwap((give: _give!, take: _take!)),
+            child: m.Text('⇄ ${tr('Trocar e seguir')}'),
+          ),
+        ]),
+      ),
     );
   }
 }
@@ -667,7 +816,7 @@ class BattleView extends StatefulWidget {
   State<BattleView> createState() => BattleViewState();
 }
 
-class BattleViewState extends State<BattleView> with SingleTickerProviderStateMixin {
+class BattleViewState extends State<BattleView> with SingleTickerProviderStateMixin, RouteAware {
   static const _step = Duration(milliseconds: 1100);
   late final List<int> _active = [widget.battle.activeIndex[0], widget.battle.activeIndex[1]];
   late final List<List<int>> _hp = [
@@ -726,7 +875,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
     super.initState();
     if (_b.mode != 'singles') return;
     // A música da batalha (para quando sai da tela).
-    if (_b.winner == null) BattleSounds.startMusic(widget.music);
+    if (_b.winner == null) BattleSounds.startMusic(widget.music, this);
     LocalDatabase.instance.moveAnims().then((t) => _anims = t).catchError((_) => <String, dynamic>{});
     // Começo: as habilidades de clima de quem entrou (Drizzle, Drought...).
     _menu = _b.needSwitch ? 'party' : 'main';
@@ -829,14 +978,58 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route != null) {
+      BattleSounds.routes.unsubscribe(this);
+      BattleSounds.routes.subscribe(this, route);
+    }
+  }
+
+  // Outra tela abriu por cima da batalha: a música pausa; voltou, continua.
+  @override
+  void didPushNext() => BattleSounds.setCovered(true, this);
+  @override
+  void didPopNext() => BattleSounds.setCovered(false, this);
+
+  @override
   void dispose() {
     for (final t in _timers) {
       t.cancel();
     }
     _shake.dispose();
-    if (_b.mode == 'singles') BattleSounds.stopMusic();
+    BattleSounds.routes.unsubscribe(this);
+    BattleSounds.stopMusic(this);
     super.dispose();
   }
+
+  /// Voltar no meio da batalha: pergunta antes de sair.
+  Future<void> _confirmLeave() async {
+    final leave = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sair da batalha?'),
+        content: const Text('A batalha em andamento será perdida.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Continuar batalhando')),
+          FilledButton(key: const ValueKey('confirm-leave'), onPressed: () => Navigator.pop(context, true), child: const Text('Sair')),
+        ],
+      ),
+    );
+    if (leave != true || !mounted) return;
+    BattleSounds.stopMusic(this);
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) => PopScope(
+        canPop: _b.winner != null || widget.online?.replay == true,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) _confirmLeave();
+        },
+        child: _battleBody(context),
+      );
 
   /// Esperas da animação: canceladas quando a tela fecha (nada fica rodando).
   final Set<Timer> _timers = {};
@@ -1018,7 +1211,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
       if (mounted && _b.winner != null && !_finished) {
         _finished = true;
         // Fim: a música para; vencendo, a fanfarra.
-        BattleSounds.stopMusic();
+        BattleSounds.stopMusic(this);
         if (_b.winner == 0) BattleSounds.play('victory', volume: 0.7);
         if (widget.online == null) widget.onFinish?.call(_coach?.id);
       }
@@ -1039,6 +1232,47 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
     if (!mounted) return;
     _busy = false;
     _fight(locked.index < 0 ? 0 : locked.index);
+  }
+
+  /// Tocar no Pokémon: o seu mostra tudo; o do adversário, só o que já apareceu na batalha.
+  void _inspect(int side) {
+    final d = _b.monDetails(side);
+    final mon = _b.active(side);
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        final c = SiteColors.of(context);
+        const stat = {'hp': 'HP', 'atk': 'Atk', 'def': 'Def', 'spa': 'SpA', 'spd': 'SpD', 'spe': 'Spe'};
+        Widget line(String label, String? value) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('$label: ', style: TextStyle(color: c.text, fontWeight: FontWeight.w800)),
+                Expanded(child: m.Text(value ?? '?', style: TextStyle(color: value == null ? c.muted : c.text))),
+              ]),
+            );
+        return SafeArea(
+          child: Padding(
+            key: const ValueKey('mon-details'),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              m.Text(mon.name, style: TextStyle(color: c.text, fontSize: 18, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 8),
+              if (d != null) ...[
+                Wrap(spacing: 4, children: [for (final t in d.types) TypeBadge(t)]),
+                const SizedBox(height: 8),
+                line(tr('Habilidade'), d.ability),
+                line(tr('Item'), d.item ?? (side == 0 ? '—' : null)),
+                line(side == 0 ? tr('Golpes') : tr('Golpes vistos'), d.moves.isEmpty ? null : d.moves.join(', ')),
+                if (d.stats != null)
+                  m.Text([for (final e in stat.entries) if (d.stats![e.key] != null) '${e.value} ${d.stats![e.key]}'].join(' · '), style: TextStyle(color: c.text)),
+                if (side == 1) Text('Do adversário aparece só o que ele já mostrou na batalha.', style: TextStyle(color: c.muted, fontSize: 12)),
+              ],
+            ]),
+          ),
+        );
+      },
+    );
   }
 
   List<(String, String)> get _gimmickOptions {
@@ -1114,8 +1348,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _battleBody(BuildContext context) {
     if (_b.mode != 'singles') return _MultiBattleView(battle: _b, online: widget.online, onExit: widget.onExit, onAgain: widget.onAgain);
     final me = _b.teams[0][_active[0]];
     final foe = _b.teams[1][_active[1]];
@@ -1163,7 +1396,10 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                           child: AnimatedOpacity(
                               opacity: _introOn && _poke[1] == 'hidden' ? 0 : 1,
                               duration: const Duration(milliseconds: 200),
-                              child: _InfoBox(mon: foe, hp: _hp[1][_active[1]], status: _status[1][_active[1]], dmax: _dmax[1], boosts: _boosts[1]))),
+                              child: GestureDetector(
+                                  key: const ValueKey('inspect-foe'),
+                                  onTap: () => _inspect(1),
+                                  child: _InfoBox(mon: foe, hp: _hp[1][_active[1]], status: _status[1][_active[1]], dmax: _dmax[1], boosts: _boosts[1])))),
                       Positioned(
                           // O inimigo fica mais longe: menor e com os pés na
                           // frente do meio da plataforma (pisando nela, como o seu).
@@ -1219,7 +1455,10 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                           child: AnimatedOpacity(
                               opacity: _introOn && _poke[0] == 'hidden' ? 0 : 1,
                               duration: const Duration(milliseconds: 200),
-                              child: _InfoBox(mon: me, hp: _hp[0][_active[0]], status: _status[0][_active[0]], dmax: _dmax[0], boosts: _boosts[0], mine: true))),
+                              child: GestureDetector(
+                                  key: const ValueKey('inspect-me'),
+                                  onTap: () => _inspect(0),
+                                  child: _InfoBox(mon: me, hp: _hp[0][_active[0]], status: _status[0][_active[0]], dmax: _dmax[0], boosts: _boosts[0], mine: true)))),
                       Positioned.fill(child: _WeatherFx(_weather)),
                       if (_fx != null) _MoveFx(key: ValueKey(('fx', _fx!.$3)), plan: _fx!.$1, color: _fx!.$2, w: w, h: h),
                       if (_flash > 0) _Flash(key: ValueKey(('flash', _flash))),
@@ -1230,6 +1469,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
             ),
           ),
         ),
+        _FieldBar(conditions: _b.fieldConditions()),
         // Texto e menus
         Container(
           padding: const EdgeInsets.all(8),
@@ -1355,6 +1595,14 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                                           ? '${tr('Poder')} ${selected == 'z' && !maxed ? TurnBattle.zPower(mv.power) : TurnBattle.maxPower(mv.power, mv.type)}'
                                           : 'PP ${mv.pp}/${mv.maxPp}',
                                       style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                                  // Dano estimado (em % da vida do adversário).
+                                  if (!maxed && !(selected == 'z' && _b.canGimmick(0, 'z', i)))
+                                    if (TurnBattle.damageRange(widget.hit, current, rival, mv, _weather) case final r?)
+                                      Padding(
+                                        padding: const EdgeInsets.only(left: 6),
+                                        child: m.Text(r.low == r.high ? '${r.low}%' : '${r.low}–${r.high}%',
+                                            key: ValueKey('damage-range-$i'), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
+                                      ),
                                   const Spacer(),
                                   // A efetividade diminui se não couber (tela estreita).
                                   Flexible(
@@ -2465,6 +2713,36 @@ const _boostText = {'statUp': 1, 'statUp2': 2, 'statUp3': 3, 'statDown': -1, 'st
 
 /// Selo dos estágios de atributo.
 const _boostShort = {'atk': 'Atq', 'def': 'Def', 'spa': 'AtE', 'spd': 'DfE', 'spe': 'Vel', 'accuracy': 'Pre', 'evasion': 'Eva'};
+
+/// Armadilhas, telas e efeitos do campo (como no Showdown), entre o campo e o texto.
+class _FieldBar extends StatelessWidget {
+  final List<List<String>> conditions;
+  const _FieldBar({required this.conditions});
+
+  @override
+  Widget build(BuildContext context) {
+    final [mine, theirs, all] = conditions;
+    if (mine.isEmpty && theirs.isEmpty && all.isEmpty) return const SizedBox.shrink();
+    Widget chip(String text, Color color) => Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(99)),
+          child: m.Text(text, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
+        );
+    const label = TextStyle(color: Color(0xFFCBD5E1), fontSize: 11, fontWeight: FontWeight.w800);
+    return Container(
+      key: const ValueKey('field-bar'),
+      color: const Color(0xFF334155),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: Wrap(spacing: 4, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
+        if (theirs.isNotEmpty) const Text('Adversário:', style: label),
+        for (final x in theirs) chip(x, const Color(0xFFB45309)),
+        if (mine.isNotEmpty) const Text('Você:', style: label),
+        for (final x in mine) chip(x, const Color(0xFF0369A1)),
+        for (final x in all) chip(x, const Color(0xFF7C3AED)),
+      ]),
+    );
+  }
+}
 
 class _InfoBox extends StatelessWidget {
   final BattleMon mon;

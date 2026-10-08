@@ -134,6 +134,29 @@ SHOWDOWN = [
 ]
 
 
+# Os que já estavam na lista sem animação e que o pacote tem animados: troca só
+# a frente (o id, a posição e as costas continuam).
+ANIMATED_FRONTS = {
+    'red': 'POKEMONTRAINER_Red',
+    'bruno': 'ELITEFOUR_Bruno',
+    'cool-couple': 'COOLCOUPLE',
+    'crush-kin': 'CRUSHKIN',
+    'plasma-grunt-m': 'TEAMPLASMA2_M',
+    'plasma-grunt-f': 'TEAMPLASMA2_F',
+}
+
+
+def strip(im):
+    """Os quadros quadrados lado a lado, sem os vazios do começo: (imagem, lado, quantos)."""
+    side = im.height
+    count = max(1, im.width // side)
+    first = 0
+    while first < count - 1 and not im.crop((first * side, 0, (first + 1) * side, side)).getbbox():
+        first += 1
+    count -= first
+    return im.crop((first * side, 0, (first + count) * side, side)), side, count
+
+
 def main(src, extra):
     with open(LIST, encoding='utf-8') as f:
         listing = json.load(f)
@@ -171,6 +194,17 @@ def main(src, extra):
         Image.open(os.path.join(extra, name + '.png')).convert('RGBA').save(os.path.join(OUT, f'{tid}.png'), optimize=True)
         listing.append({'id': tid, 'name': label, 'title': title, 'size': 80, 'frames': 1})
         added += 1
+    for entry in listing:
+        name = ANIMATED_FRONTS.get(entry['id'])
+        if not name:
+            continue
+        im, side, count = strip(Image.open(os.path.join(src, name + '.png')).convert('RGBA'))
+        im.save(os.path.join(OUT, f"{entry['id']}.png"), optimize=True)
+        entry.update(size=side, frames=count)
+        entry.pop('scale', None)
+        tall = im.crop((0, 0, side, side)).getbbox()
+        if tall and tall[3] - tall[1] > 84:
+            entry['scale'] = round(78 / (tall[3] - tall[1]), 3)
     with open(LIST, 'w', encoding='utf-8') as f:
         json.dump(listing, f, ensure_ascii=False, separators=(',', ':'))
         f.write('\n')
