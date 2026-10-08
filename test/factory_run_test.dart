@@ -34,7 +34,7 @@ void main() {
     expect(run['team'][0]['ivs'], {'hp': 25, 'atk': 22, 'def': 29, 'spa': 26, 'spd': 17, 'spe': 23});
     expect(run['team'][0]['nature'], 'Docile');
     expect(run['boss'], {'region': 11, 'step': 0});
-    expect(run['encounter'], {'kind': 'wild', 'foes': [{'id': 235, 'level': 3, 'iv': 0, 'ev': 2}]});
+    expect(run['encounter'], {'kind': 'wild', 'foes': [{'id': 235, 'level': 3, 'iv': 0, 'ev': 3}]});
   });
 
   test('40 andares iguais ao site (test/fixtures/factory_trace.json): chefes, captura, carta e loja', () {
@@ -82,7 +82,8 @@ void main() {
     final f = FactoryRun.empty();
     expect(FactoryRun.unlockShiny(f, data, {'id': 19, 'shiny': true}), f);
     expect(FactoryRun.unlockShiny(f, data, {'id': 4, 'shiny': true})['shinies'], [4]);
-    expect(FactoryRun.buyShiny({...f, 'coins': 1000000}, data, 1)!['shinies'], [1]);
+    expect(FactoryRun.buyShiny({...f, 'coins': 1000000}, data, 1), isNull);
+    expect(FactoryRun.buyShiny({...f, 'owned': [1], 'coins': 1000000}, data, 1)!['shinies'], [1]);
     expect(FactoryRun.buyShiny({...f, 'coins': 100}, data, 1), isNull);
   });
 
@@ -113,9 +114,41 @@ void main() {
     final run = {...FactoryRun.startRun(FactoryRun.empty(), data, 1, 5)!, 'floor': 21, 'defeated': 30, 'bosses': 2};
     final f = FactoryRun.endRun({...FactoryRun.empty(), 'best': 7}, run);
     expect([f['coins'], f['best'], f['run']], [210, 20, null]);
-    final bought = FactoryRun.buyPokemon({...f, 'coins': 10000}, data, 150)!;
-    expect(bought['owned'], [150]);
+    // Primeiro um inicial grátis (de qualquer geração); os outros se compram (1 em 4096 de vir shiny).
+    expect(FactoryRun.buyPokemon({...f, 'coins': 10000}, data, 150), isNull);
+    final picked = FactoryRun.claimStarter(f, data, 906);
+    expect(FactoryRun.startersOf(picked, data), [906]);
+    final bought = FactoryRun.buyPokemon({...picked, 'coins': 10000}, data, 150)!;
+    expect(bought['owned'], [906, 150]);
+    expect(bought['shinies'], isEmpty);
+    expect(FactoryRun.buyPokemon({...picked, 'coins': 10000}, data, 150, 0)!['shinies'], [150]);
     expect(FactoryRun.startersOf(bought, data), contains(150));
+  });
+
+  test('chefe sem treinador (Mega deixa a Mega Pedra), loja nova, golpes, itens guardados e mecânicas', () {
+    var run = FactoryRun.startRun(FactoryRun.empty(), data, 4, 3)!;
+    run = {...run, 'floor': 25, 'encounter': {'kind': 'wildboss', 'foes': [{'id': 6, 'level': 20, 'iv': 31, 'ev': 50, 'item': 'charizardite-x', 'gimmick': 'mega', 'title': 'mega'}]}};
+    var after = FactoryRun.winFloor(run, data);
+    expect(after['stash'], ['charizardite-x']);
+    expect(FactoryRun.pendingOf(after)!['capture']['id'], 6);
+    expect(FactoryRun.foeMember(FactoryRun.foesOf(run).first, ['tackle']).$2['gimmick'], 'mega');
+    after = {...after, 'money': 1000000, 'team': [...FactoryRun.teamOf(after), {...FactoryRun.teamOf(after).first, 'id': 133}, {...FactoryRun.teamOf(after).first, 'id': 6}],
+      'pending': {'shop': ['tm:thunderbolt', 'move-tutor', 'evo:thunder-stone', 'dynamax-band', 'tera-orb']}};
+    expect(FactoryRun.buyItem(after, 'evo:thunder-stone', 0, data), isNull);
+    after = FactoryRun.buyItem(after, 'evo:thunder-stone', 1, data)!;
+    expect(after['team'][1]['id'], 135);
+    after = FactoryRun.buyItem(after, 'tm:thunderbolt', 0, data)!;
+    final taught = FactoryRun.teachMove(after, 1, 'thunderbolt', ['tackle', 'growl', 'quick-attack', 'thunder-shock'], 3, 'tm')!;
+    expect(taught['team'][1]['moves'], ['tackle', 'growl', 'quick-attack', 'thunderbolt']);
+    expect(FactoryRun.memberOf(taught, FactoryRun.teamOf(taught)[1], ['tackle']).$2['moves'], ['tackle', 'growl', 'quick-attack', 'thunderbolt']);
+    after = FactoryRun.buyItem(FactoryRun.buyItem(after, 'dynamax-band', 0, data)!, 'tera-orb', 0, data)!;
+    expect(FactoryRun.buyItem(after, 'dynamax-band', 0, data), isNull);
+    after = FactoryRun.equipFromStash(after, 0, 2);
+    expect(FactoryRun.gimmicksOf(data, after, FactoryRun.teamOf(after)[2]), ['mega', 'dmax', 'tera']);
+    expect(FactoryRun.memberOf(after, FactoryRun.teamOf(after)[2], ['ember'], data).$2['gimmick'], 'mega');
+    for (final region in {for (final b in data.bosses) '${b['region']}'}) {
+      expect(FactoryRun.storyLine(data, region, 'intro').length, greaterThan(20));
+    }
   });
 
   test('golpes pelo nível, iguais ao site; golpes fortes esperam um nível compatível', () {

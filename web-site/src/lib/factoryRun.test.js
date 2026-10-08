@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest'
 import {
   battleOrder, bossOf, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, foeLevelAt, foeMember,
   HELD_BOOST, levelTo, MAX_TEAM, memberOf, movesAt, nextFloor, nextRandom, overflowPoints, pokemonPrice, runCoins, setMainItem, shopPrice,
-  SHINY_BOOST, START_BAG, START_BALLS, startersOf, buyShiny, shinyPrice, unlockShiny, startRun, takeCard, teamDown, applyBagItem, winFloor,
+  SHINY_BOOST, SHINY_CHANCE, START_BAG, START_BALLS, startersOf, buyShiny, shinyPrice, unlockShiny, claimStarter, freePick, canEvolveWith, teachMove,
+  equipFromStash, gimmicksOf, setGimmick, storyLine, startRun, takeCard, teamDown, applyBagItem, winFloor,
 } from './factoryRun'
 
 const data = JSON.parse(readFileSync(new URL('../../../assets/database/factory.json', import.meta.url), 'utf8'))
@@ -27,7 +28,7 @@ describe('Battle Factory (roguelike)', () => {
     expect(run.team[0].ivs).toEqual({ hp: 25, atk: 22, def: 29, spa: 26, spd: 17, spe: 23 })
     expect(run.team[0].nature).toBe('Docile')
     expect(run.boss).toEqual({ region: 11, step: 0 })
-    expect(run.encounter).toEqual({ kind: 'wild', foes: [{ id: 235, level: 3, iv: 0, ev: 2 }] })
+    expect(run.encounter).toEqual({ kind: 'wild', foes: [{ id: 235, level: 3, iv: 0, ev: 3 }] })
   })
 
   it('o sorteio é o mulberry32 (o app usa o mesmo)', () => {
@@ -35,19 +36,19 @@ describe('Battle Factory (roguelike)', () => {
     expect(nextRandom(nextRandom(1)[1])[0]).toBeCloseTo(0.002735721180215478, 12)
   })
 
-  it('andares sem fim: selvagem, treinador e lendário; o nível e a força sobem sem teto', () => {
+  it('andares sem fim: selvagem e treinador (lendário só como chefe); o nível e a força sobem sem teto', () => {
     const kinds = new Set()
     let state = 7
     const rand = () => { const [v, s] = nextRandom(state); state = s; return v }
     for (let i = 0; i < 400; i++) kinds.add(encounterFor(data, 30, rand).kind)
-    expect([...kinds].sort()).toEqual(['legendary', 'trainer', 'wild'])
-    for (let i = 0; i < 100; i++) expect(encounterFor(data, 3, rand).kind).not.toBe('legendary')
+    expect([...kinds].sort()).toEqual(['trainer', 'wild'])
+    for (let i = 0; i < 400; i++) for (const f of encounterFor(data, 30, rand).foes) expect([1, 2]).not.toContain(data.species[f.id][2])
     const deep = encounterFor(data, 500, seq([0.5, 0.9, 0.1]))
     expect(deep.foes[0].level).toBeGreaterThan(300)
     expect(deep.foes[0].iv).toBeGreaterThan(31)
     expect(deep.foes[0].boost).toBeCloseTo(foeBoostAt(500))
     expect(foeLevelAt(1)).toBe(2)
-    expect(foeBoostAt(50)).toBe(0)
+    expect(foeBoostAt(30)).toBe(0)
     // Nada de Fantasma nos primeiros andares (os iniciais só têm golpes Normal).
     for (let i = 0; i < 200; i++) for (const f of encounterFor(data, 2, rand).foes) expect(data.species[f.id][4]).not.toContain('ghost')
   })
@@ -193,27 +194,111 @@ describe('Battle Factory (roguelike)', () => {
     expect(teamDown(run)).toBe(false)
   })
 
+  it('chefes sem treinador nos andares 5, 15...: Mega (deixa a Mega Pedra), Gigantamax e lendário; dá para capturar', () => {
+    let state = 3
+    const rand = () => { const [v, s] = nextRandom(state); state = s; return v }
+    const titles = new Set()
+    for (let i = 0; i < 60; i++) {
+      const e = encounterFor(data, 25, rand, null, true)
+      expect(e.kind).toBe('wildboss')
+      titles.add(e.foes[0].title)
+      if (e.foes[0].title === 'mega') expect(data.megas[e.foes[0].id].map((m) => m[0])).toContain(e.foes[0].item)
+      if (e.foes[0].title === 'gmax') expect(e.foes[0].gimmick).toBe('dmax')
+      if (e.foes[0].title === 'legend') expect([1, 2]).toContain(data.species[e.foes[0].id][2])
+    }
+    expect([...titles].sort()).toEqual(['gmax', 'legend', 'mega'])
+    const run = { ...startRun(emptyFactory(), data, 4, 3), floor: 25, encounter: { kind: 'wildboss', foes: [{ id: 6, level: 20, iv: 31, ev: 50, item: 'charizardite-x', gimmick: 'mega', title: 'mega' }] } }
+    const after = winFloor(run, data)
+    expect(after.stash).toEqual(['charizardite-x'])
+    expect(after.pending.drop).toBe('charizardite-x')
+    expect(after.pending.capture.id).toBe(6)
+    expect(foeMember(run.encounter.foes[0], ['tackle']).set).toMatchObject({ item: 'charizardite-x', gimmick: 'mega' })
+  })
+
+  it('chefe da história deixa um Cristal Z; acabou a história, começa a de outra região (com o fim e o começo da história)', () => {
+    let run = startRun(emptyFactory(), data, 4, 3)
+    const game = data.bosses[run.boss.region]
+    run = { ...run, floor: 10, boss: { region: run.boss.region, step: game.leaders.length - 1 } }
+    run = nextFloor(run, data)
+    const after = winFloor(run, data)
+    expect(after.boss.step).toBe(0)
+    expect(data.bosses[after.boss.region].region).not.toBe(game.region)
+    expect(after.played).toEqual([game.region, data.bosses[after.boss.region].region])
+    expect(after.pending.story).toContain(storyLine(data, game.region, 'end'))
+    expect(after.pending.story).toContain(storyLine(data, data.bosses[after.boss.region].region, 'intro'))
+    expect(Object.values(data.zcrystals)).toContain(after.stash[0])
+    for (const region of new Set(data.bosses.map((b) => b.region))) {
+      for (const key of ['intro', 'gym', 'rival', 'villain', 'elite', 'champion', 'end']) expect(storyLine(data, region, key, 'X').length).toBeGreaterThan(20)
+    }
+  })
+
+  it('loja nova: TM, Move Tutor, Move Reminder, pedras de evolução, Dynamax Band e Tera Orb; Mega e Z pelo item', () => {
+    let run = startRun(emptyFactory(), data, 1, 5)
+    run = { ...run, money: 1e9, team: [{ ...run.team[0], id: 133 }, { ...run.team[0], id: 6 }],
+      pending: { shop: ['tm:thunderbolt', 'move-tutor', 'move-reminder', 'evo:thunder-stone', 'evo:fire-stone', 'dynamax-band', 'tera-orb'] } }
+    expect(canEvolveWith(data, run.team[0], 'thunder-stone')).toEqual([135])
+    expect(buyItem(run, 'evo:fire-stone', 1, data)).toBe(null)
+    run = buyItem(run, 'evo:thunder-stone', 0, data)
+    expect(run.team[0].id).toBe(135)
+    run = buyItem(run, 'tm:thunderbolt', 0, data)
+    expect(run.tms.thunderbolt).toBe(1)
+    run = buyItem(run, 'move-tutor', 0, data)
+    expect(run.tokens['move-tutor']).toBe(1)
+    const taught = teachMove(run, 0, 'thunderbolt', ['tackle', 'growl', 'quick-attack', 'thunder-shock'], 3, 'tm')
+    expect(taught.team[0].moves).toEqual(['tackle', 'growl', 'quick-attack', 'thunderbolt'])
+    expect(taught.tms.thunderbolt).toBe(0)
+    expect(teachMove(taught, 0, 'thunderbolt', ['tackle'], 0, 'tm')).toBe(null)
+    expect(memberOf(taught, taught.team[0], ['tackle']).set.moves).toEqual(['tackle', 'growl', 'quick-attack', 'thunderbolt'])
+    expect(teachMove(run, 0, 'zap-cannon', ['tackle'], 0, 'move-tutor').tokens['move-tutor']).toBe(0)
+    expect(gimmicksOf(data, run, run.team[1])).toEqual([])
+    run = buyItem(buyItem(run, 'dynamax-band', 0, data), 'tera-orb', 0, data)
+    expect(buyItem(run, 'dynamax-band', 0, data)).toBe(null)
+    run = { ...run, stash: ['charizardite-y', 'firium-z'] }
+    run = equipFromStash(run, 0, 1)
+    expect(run.team[1].item).toBe('charizardite-y')
+    expect(gimmicksOf(data, run, run.team[1])).toEqual(['mega', 'dmax', 'tera'])
+    expect(memberOf(run, run.team[1], ['ember'], data).set.gimmick).toBe('mega')
+    expect(memberOf(setGimmick(run, 1, 'tera'), run.team[1], ['ember'], data).set.gimmick).toBe('mega')
+    const tera = setGimmick(run, 1, 'tera')
+    expect(memberOf(tera, tera.team[1], ['ember'], data).set.gimmick).toBe('tera')
+    expect(gimmicksOf(data, run, equipFromStash(run, 0, 0).team[0])).toContain('z')
+  })
+
   it('perdeu: moedas pela pontuação, recorde; moedas compram Pokémon pela força', () => {
     const run = { ...startRun(emptyFactory(), data, 1, 5), floor: 21, defeated: 30, bosses: 2 }
     expect(runCoins(run)).toBe(20 * 5 + 30 * 2 + 2 * 25)
     const f = endRun({ ...emptyFactory(), best: 7 }, run)
     expect(f).toMatchObject({ coins: 210, best: 20, run: null, last: { floor: 20, coins: 210 } })
     expect(pokemonPrice(data.species[150][1])).toBeGreaterThan(pokemonPrice(data.species[19][1]))
-    const rich = { ...f, coins: 10000 }
+    // Primeiro um inicial grátis (de qualquer geração); os outros, inclusive iniciais, se compram.
+    expect(freePick(f)).toBe(true)
+    expect(startersOf(f, data)).toEqual(data.starters)
+    expect(buyPokemon({ ...f, coins: 1e6 }, data, 150)).toBe(null)
+    const picked = claimStarter(f, data, 906)
+    expect(picked.owned).toEqual([906])
+    expect(claimStarter(picked, data, 1)).toBe(picked)
+    expect(startersOf(picked, data)).toEqual([906])
+    const rich = { ...picked, coins: 10000 }
     const bought = buyPokemon(rich, data, 150)
-    expect(bought.owned).toEqual([150])
+    expect(bought.owned).toEqual([906, 150])
     expect(bought.coins).toBe(10000 - pokemonPrice(data.species[150][1]))
+    expect(bought.shinies).toEqual([])
+    expect(buyPokemon(rich, data, 4).owned).toContain(4)
+    expect(buyPokemon(rich, data, 150, 0).shinies).toEqual([150])
     expect(startersOf(bought, data)).toContain(150)
-    expect(buyPokemon(f, data, 150)).toBe(null)
+    expect(buyPokemon(picked, data, 150)).toBe(null)
   })
 
   it('shiny: selvagem shiny dá para capturar e tem bônus; inicial shiny libera o shiny dele (que também se compra, bem caro)', () => {
     let state = 11
     const rand = () => { const [v, s] = nextRandom(state); state = s; return v }
     let shinies = 0
-    for (let i = 0; i < 3000; i++) if (encounterFor(data, 20, rand).foes.some((f) => f.shiny)) shinies++
-    expect(shinies).toBeGreaterThan(20)
-    expect(shinies).toBeLessThan(120)
+    for (let i = 0; i < 4000; i++) if (encounterFor(data, 20, rand).foes.some((f) => f.shiny)) shinies++
+    expect(SHINY_CHANCE).toBe(1 / 4096)
+    expect(shinies).toBeLessThan(6)
+    // Nível, tipo (selvagem), espécie e o sorteio do shiny (abaixo de 1/4096).
+    expect(encounterFor(data, 20, seq([0.5, 0.9, 0.5, 0.0001])).foes[0].shiny).toBe(true)
+    expect(encounterFor(data, 20, seq([0.5, 0.9, 0.5, 0.001])).foes[0].shiny).toBeUndefined()
     const f = emptyFactory()
     expect(startRun(f, data, 4, 1, true)).toBe(null)
     let run = startRun(f, data, 1, 5)
@@ -232,7 +317,8 @@ describe('Battle Factory (roguelike)', () => {
     expect(shinyPrice(data.species[1][1])).toBeGreaterThanOrEqual(3000)
     expect(buyShiny({ ...f, coins: 100 }, data, 1)).toBe(null)
     expect(buyShiny({ ...f, coins: 1e6 }, data, 150)).toBe(null)
-    expect(buyShiny({ ...f, coins: 1e6 }, data, 1).shinies).toEqual([1])
+    expect(buyShiny({ ...f, coins: 1e6 }, data, 1)).toBe(null)
+    expect(buyShiny({ ...f, owned: [1], coins: 1e6 }, data, 1).shinies).toEqual([1])
   })
 
   it('golpes pelo nível; golpes fortes só a partir de um nível compatível com o poder', () => {

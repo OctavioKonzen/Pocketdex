@@ -138,13 +138,15 @@ function RegionProgress({ region, busy, ready, onLeague }) {
   )
 }
 
-function Setup({ onStart }) {
+function Setup({ onStart, onFactory }) {
   const teams = useStore((s) => s.teams)
   const list = useFriends((s) => s.list)
   const friends = useMemo(() => friendsOnly(list), [list])
   const myTeams = teams.filter((x) => teamMembers(x).length)
   const [mine, setMine] = useState(RANDOM)
   const [friend, setFriend] = useState(RANDOM)
+  // A página troca o texto de cima: na Battle Factory não há nível máximo.
+  useEffect(() => onFactory?.(friend === FACTORY), [friend, onFactory])
   const [friendTeams, setFriendTeams] = useState([])
   const [theirs, setTheirs] = useState('')
   const [busy, setBusy] = useState(false)
@@ -1473,6 +1475,7 @@ function MenuButton({ children, onClick, className = '', disabled = false }) {
 export default function TurnBattlePage() {
   const user = useAuth((s) => (s.status === 'signedIn' ? s.user : null))
   const [game, setGame] = useState(null) // {battle, foeName, foeTrainer, challenge, endNote, next, key}
+  const [factoryMode, setFactoryMode] = useState(false)
   const [hit, setHit] = useState(null)
   const [regions, setRegions] = useState([])
   useEffect(() => {
@@ -1628,12 +1631,19 @@ export default function TurnBattlePage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <PageHeader title="Batalha" subtitle="Nível máximo 50. Batalha por turnos como nos jogos: seu time contra o de um amigo (ou um aleatório), com o computador jogando pelo outro lado." />
+      <PageHeader
+        title="Batalha"
+        subtitle={
+          factoryMode || challenge?.kind === 'factory'
+            ? 'Battle Factory: sem nível máximo. Batalha por turnos como nos jogos, com o computador jogando pelo outro lado.'
+            : 'Nível máximo 50. Batalha por turnos como nos jogos: seu time contra o de um amigo (ou um aleatório), com o computador jogando pelo outro lado.'
+        }
+      />
       <Link to="/batalha" className="inline-flex items-center gap-1 text-sm text-muted hover:text-text">
         <Icon name="back" size={16} /> Centro de Batalha
       </Link>
       {!game || !hit ? (
-        <Setup onStart={(battle, foeName, foeTrainer = null, challenge = null) => setGame({ battle, foeName, foeTrainer, challenge, key: 1 })} />
+        <Setup onFactory={setFactoryMode} onStart={(battle, foeName, foeTrainer = null, challenge = null) => setGame({ battle, foeName, foeTrainer, challenge, key: 1 })} />
       ) : (
         <Battle
           key={game.key}

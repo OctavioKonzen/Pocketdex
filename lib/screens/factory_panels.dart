@@ -42,7 +42,10 @@ Future<List<String>> _movesFor(int id, int level) async {
 Future<(TurnBattle, List<int>)> factoryBattle(Json run) async {
   final order = FactoryRun.battleOrder(run);
   final team = FactoryRun.teamOf(run);
-  final mine = <Member>[for (final i in order) FactoryRun.memberOf(run, team[i], await _movesFor((team[i]['id'] as num).toInt(), (team[i]['level'] as num).toInt()))];
+  final data = await FactoryData.load();
+  final mine = <Member>[
+    for (final i in order) FactoryRun.memberOf(run, team[i], await _movesFor((team[i]['id'] as num).toInt(), (team[i]['level'] as num).toInt()), data)
+  ];
   final theirs = <Member>[for (final f in FactoryRun.foesOf(run)) FactoryRun.foeMember(f, await _movesFor((f['id'] as num).toInt(), (f['level'] as num).toInt()))];
   final a = await TurnBattleSetup.mons(mine, battleMonName);
   final b = await TurnBattleSetup.mons(theirs, battleMonName);
@@ -73,14 +76,28 @@ Future<(TurnBattle, List<int>)> factoryBattle(Json run) async {
   return (
     foeName: '${boss?['name'] ?? ''}',
     foeTrainer: (boss?['trainer'] as String?)?.isNotEmpty == true ? boss!['trainer'] as String : null,
-    challenge: {'kind': 'factory', 'wild': kind == 'wild' || kind == 'legendary', if (boss != null) 'boss': Map<String, dynamic>.from(boss)},
+    challenge: {'kind': 'factory', 'wild': kind == 'wild' || kind == 'wildboss', if (boss != null) 'boss': Map<String, dynamic>.from(boss)},
   );
 }
 
 const _statLabel = {'hp': 'HP', 'atk': 'Atk', 'def': 'Def', 'spa': 'SpA', 'spd': 'SpD', 'spe': 'Spe'};
 
-Widget _itemIcon(String id, [double size = 28]) => Image.asset('assets/database/sprites/items/$id.png',
-    width: size, height: size, filterQuality: FilterQuality.none, errorBuilder: (_, __, ___) => SizedBox(width: size, height: size));
+/// Nome de um item da corrida (TM, pedra, Cristal Z...), como nos jogos (não traduz).
+String _itemName(String id) => id.startsWith('tm:') ? 'TM ${prettySlug(id.substring(3))}' : prettySlug(id.startsWith('evo:') ? id.substring(4) : id);
+
+/// O sprite do item (TM, ficha de serviço e Cristal Z têm nomes próprios).
+Widget _itemIcon(String id, [double size = 28]) {
+  final own = {'move-tutor': 'tm-case', 'move-reminder': 'heart-scale', 'dynamax-band': 'wishing-piece', 'tera-orb': 'tera-orb'}[id];
+  final file = id.startsWith('tm:')
+      ? 'tm-normal'
+      : id.startsWith('evo:')
+          ? id.substring(4)
+          : own ?? (id.endsWith('-z') ? '$id--held' : id);
+  return Image.asset('assets/database/sprites/items/$file.png',
+      width: size, height: size, filterQuality: FilterQuality.none, errorBuilder: (_, __, ___) => SizedBox(width: size, height: size));
+}
+
+const _gimmickLabel = {'mega': 'Mega', 'z': 'Z-Move', 'dmax': 'Dynamax', 'tera': 'Tera'};
 
 Widget _hpBar(BuildContext context, double hp) {
   final value = hp.clamp(0.0, 1.0);
@@ -120,7 +137,7 @@ Widget _mon(BuildContext context, Map m, {bool selected = false, VoidCallback? o
         if (m['level'] != null) Text('Nv. ${m['level']}', style: TextStyle(fontSize: 11, color: c.muted)),
         if (hp != null) down ? Text(tr('Desmaiado'), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFEF4444))) : _hpBar(context, hp),
         if (m['item'] != null)
-          FittedBox(fit: BoxFit.scaleDown, child: Text('${prettySlug('${m['item']}')}${extras > 0 ? ' +$extras' : ''}', style: TextStyle(fontSize: 10, color: c.muted), maxLines: 1)),
+          FittedBox(fit: BoxFit.scaleDown, child: Text('${_itemName('${m['item']}')}${extras > 0 ? ' +$extras' : ''}', style: TextStyle(fontSize: 10, color: c.muted), maxLines: 1)),
       ]),
     ),
   );
@@ -139,12 +156,13 @@ Widget _runStatus(BuildContext context, Json run) {
   ]);
 }
 
-/// Usar a Bolsa fora da batalha e escolher o item principal de cada um.
+/// Usar a Bolsa fora da batalha e o time: item principal, mecânica, ensinar golpes e itens guardados.
 class _BagAndItems extends StatefulWidget {
   final Json run;
+  final FactoryData data;
   final Map<int, String> names;
   final void Function(Json next) onSave;
-  const _BagAndItems({required this.run, required this.names, required this.onSave});
+  const _BagAndItems({required this.run, required this.data, required this.names, required this.onSave});
 
   @override
   State<_BagAndItems> createState() => _BagAndItemsState();
@@ -152,6 +170,65 @@ class _BagAndItems extends StatefulWidget {
 
 class _BagAndItemsState extends State<_BagAndItems> {
   String? _item;
+  int? _stash;
+
+  /// Ensinar um golpe: TM (os que ele aprende por máquina), Move Tutor (tutor e ovo) ou Move Reminder (os do nível).
+  Future<void> _teach(int index) async {
+    final run = widget.run;
+    final mon = FactoryRun.teamOf(run)[index];
+    final id = (mon['id'] as num).toInt(), level = (mon['level'] as num).toInt();
+    final row = await LocalDatabase.instance.pokemonRow(id);
+    final learnset = [for (final m in (row?['moves'] as List?) ?? const []) m as List];
+    final own = [for (final m in (mon['moves'] as List?) ?? const []) '$m'];
+    final current = own.isNotEmpty ? own : await _movesFor(id, level);
+    bool has(String move, List<String> ways) => learnset.any((m) => m[0] == move && ways.contains(m[1]));
+    List<String> unique(Iterable<String> list) => [for (final m in {...list}) if (!current.contains(m)) m];
+    final tms = (run['tms'] as Map?) ?? const {};
+    final tokens = (run['tokens'] as Map?) ?? const {};
+    final sources = <(String, String, List<String>)>[
+      ('tm', 'TM', unique([for (final e in tms.entries) if ((e.value as num) > 0 && has('${e.key}', const ['machine'])) '${e.key}'])),
+      if (((tokens['move-tutor'] as num?) ?? 0) > 0)
+        ('move-tutor', 'Move Tutor', unique([for (final m in learnset) if (m[1] == 'tutor' || m[1] == 'egg') '${m[0]}'])),
+      if (((tokens['move-reminder'] as num?) ?? 0) > 0)
+        ('move-reminder', 'Move Reminder', unique([for (final m in learnset) if (m[1] == 'level-up' && (m[2] as num) <= level) '${m[0]}'])),
+    ].where((s) => s.$3.isNotEmpty).toList();
+    if (!mounted) return;
+    final picked = await showDialog<(String, String)>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('📀 ${tr('Ensinar golpe')}'),
+        content: SizedBox(
+          width: 360,
+          child: sources.isEmpty
+              ? Text(tr('Nada para ensinar a ele agora (TM que ele aprende ou fichas de Move Tutor/Reminder).'))
+              : ListView(shrinkWrap: true, children: [
+                  for (final (source, label, list) in sources) ...[
+                    Padding(padding: const EdgeInsets.only(top: 8), child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold))),
+                    Wrap(spacing: 4, runSpacing: 4, children: [
+                      for (final move in list) ActionChip(label: Text(prettySlug(move)), onPressed: () => Navigator.pop(context, (move, source))),
+                    ]),
+                  ],
+                ]),
+        ),
+        actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text(tr('Cancelar')))],
+      ),
+    );
+    if (picked == null || !mounted) return;
+    var slot = -1;
+    if (current.length >= 4) {
+      final chosen = await showDialog<int>(
+        context: context,
+        builder: (context) => SimpleDialog(
+          title: Text(tr('Esquecer qual golpe para aprender {0}?').replaceAll('{0}', prettySlug(picked.$1))),
+          children: [for (var i = 0; i < current.length; i++) SimpleDialogOption(onPressed: () => Navigator.pop(context, i), child: Text(prettySlug(current[i])))],
+        ),
+      );
+      if (chosen == null) return;
+      slot = chosen;
+    }
+    final next = FactoryRun.teachMove(run, index, picked.$1, current, slot, picked.$2);
+    if (next != null) widget.onSave(next);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -163,7 +240,8 @@ class _BagAndItemsState extends State<_BagAndItems> {
       for (final id in FactoryRun.bagItems)
         if ((bag[id] ?? 0) > 0 && [for (var i = 0; i < team.length; i++) i].any((i) => FactoryRun.applyBagItem(run, id, i) != null)) id
     ];
-    final holders = [for (var i = 0; i < team.length; i++) if (((team[i]['extras'] as List?) ?? const []).isNotEmpty) i];
+    final stash = [for (final x in (run['stash'] as List?) ?? const []) '$x'];
+    final canTeach = ((run['tms'] as Map?) ?? const {}).values.any((n) => (n as num) > 0) || ((run['tokens'] as Map?) ?? const {}).values.any((n) => (n as num) > 0);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       if (usable.isNotEmpty)
         ExpansionTile(
@@ -196,26 +274,52 @@ class _BagAndItemsState extends State<_BagAndItems> {
             ],
           ],
         ),
-      if (holders.isNotEmpty)
-        ExpansionTile(
-          key: const ValueKey('factory-items'),
-          tilePadding: EdgeInsets.zero,
-          title: Text('🎒 ${tr('Itens segurados')}', style: TextStyle(fontWeight: FontWeight.bold, color: c.text)),
-          children: [
-            Text(tr('O principal tem o efeito de verdade; os outros dão só uma porcentagem pequena no atributo. Toque num extra para ele virar o principal.'),
-                style: TextStyle(color: c.muted, fontSize: 12)),
-            for (final i in holders)
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Wrap(spacing: 6, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
-                  SizedBox(width: 32, height: 32, child: PokemonSprite((team[i]['id'] as num).toInt(), shiny: team[i]['shiny'] == true, fill: 0.9)),
-                  Chip(label: Text('★ ${prettySlug('${team[i]['item']}')}'), backgroundColor: const Color(0x33F59E0B)),
-                  for (var k = 0; k < (team[i]['extras'] as List).length; k++)
-                    ActionChip(label: Text(prettySlug('${(team[i]['extras'] as List)[k]}')), onPressed: () => widget.onSave(FactoryRun.setMainItem(run, i, k))),
-                ]),
-              ),
+      ExpansionTile(
+        key: const ValueKey('factory-items'),
+        tilePadding: EdgeInsets.zero,
+        title: Text('🧩 ${tr('Time: itens, golpes e mecânicas')}', style: TextStyle(fontWeight: FontWeight.bold, color: c.text)),
+        children: [
+          Text(tr('O principal tem o efeito de verdade; os outros dão só uma porcentagem pequena no atributo. Toque num extra para ele virar o principal.'),
+              style: TextStyle(color: c.muted, fontSize: 12)),
+          if (stash.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text('🎁 ${tr('Itens guardados (toque e escolha quem segura)')}', style: TextStyle(fontWeight: FontWeight.bold, color: c.text, fontSize: 12)),
+            Wrap(spacing: 4, runSpacing: 4, children: [
+              for (var k = 0; k < stash.length; k++)
+                ChoiceChip(avatar: _itemIcon(stash[k], 20), label: Text(_itemName(stash[k])), selected: _stash == k, onSelected: (_) => setState(() => _stash = k)),
+            ]),
+            if (_stash != null)
+              Wrap(spacing: 6, runSpacing: 6, children: [
+                for (var i = 0; i < team.length; i++)
+                  _mon(context, team[i], key: ValueKey('equip-$i'), name: battleMonName({'name': widget.names[(team[i]['id'] as num).toInt()] ?? ''}), onTap: () {
+                    final next = FactoryRun.equipFromStash(run, _stash!, i);
+                    setState(() => _stash = null);
+                    widget.onSave(next);
+                  }),
+              ]),
           ],
-        ),
+          for (var i = 0; i < team.length; i++)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Wrap(spacing: 6, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                SizedBox(width: 32, height: 32, child: PokemonSprite((team[i]['id'] as num).toInt(), shiny: team[i]['shiny'] == true, fill: 0.9)),
+                if (team[i]['item'] != null) Chip(label: Text('★ ${_itemName('${team[i]['item']}')}'), backgroundColor: const Color(0x33F59E0B)),
+                for (var k = 0; k < ((team[i]['extras'] as List?) ?? const []).length; k++)
+                  ActionChip(label: Text(_itemName('${(team[i]['extras'] as List)[k]}')), onPressed: () => widget.onSave(FactoryRun.setMainItem(run, i, k))),
+                if (FactoryRun.gimmicksOf(widget.data, run, team[i]).isNotEmpty)
+                  DropdownButton<String>(
+                    value: FactoryRun.gimmickOf(widget.data, run, team[i]).isEmpty ? 'none' : FactoryRun.gimmickOf(widget.data, run, team[i]),
+                    items: [
+                      DropdownMenuItem(value: 'none', child: Text(tr('Sem mecânica'))),
+                      for (final g in FactoryRun.gimmicksOf(widget.data, run, team[i])) DropdownMenuItem(value: g, child: Text(_gimmickLabel[g]!)),
+                    ],
+                    onChanged: (g) => widget.onSave(FactoryRun.setGimmick(run, i, g ?? 'none')),
+                  ),
+                if (canTeach) TextButton(key: ValueKey('teach-$i'), onPressed: () => _teach(i), child: Text('📀 ${tr('Ensinar golpe')}')),
+              ]),
+            ),
+        ],
+      ),
     ]);
   }
 }
@@ -233,6 +337,7 @@ class FactoryHub extends StatefulWidget {
 class _FactoryHubState extends State<FactoryHub> {
   FactoryData? _data;
   ({int id, bool shiny})? _pick;
+  int? _lucky;
   String _query = '';
   Map<int, String> _names = const {};
 
@@ -260,7 +365,7 @@ class _FactoryHubState extends State<FactoryHub> {
     final q = _query.trim().toLowerCase();
     final shopList = ([
       for (final e in data.species.entries)
-        if (!data.starters.contains(e.key) && !owned.contains(e.key) && (q.isEmpty || (_names[e.key] ?? '').contains(q)))
+        if (!owned.contains(e.key) && (q.isEmpty || (_names[e.key] ?? '').contains(q)))
           (id: e.key, price: FactoryRun.pokemonPrice((e.value[1] as num).toInt()))
     ]..sort((a, b) => a.price != b.price ? a.price.compareTo(b.price) : a.id.compareTo(b.id)))
         .take(24)
@@ -278,7 +383,7 @@ class _FactoryHubState extends State<FactoryHub> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('🏭 Battle Factory', style: TextStyle(fontWeight: FontWeight.w900, color: c.text)),
             Text(
-              'Um roguelike sem fim: escolha um inicial no nível 5 e suba andares contra Pokémon selvagens (capture com Poké Ball: você começa com 5), treinadores e lendários. A cada 10 andares vem um chefe, na ordem da história de um jogo sorteado: líderes de ginásio, rival e vilões (com times cada vez maiores), a Elite Four e o Campeão. O time não é curado entre os andares (só com a Bolsa, a loja ou, com 5% de chance, a Enfermeira Joy). Sem limite de nível, IVs, EVs ou itens. Perdeu: a pontuação vira moedas para comprar Pokémon e começar com eles.',
+              'Um roguelike sem fim com a história de cada região: escolha um inicial no nível 5 e suba andares contra Pokémon selvagens (capture com Poké Ball: você começa com 5) e treinadores. A cada 10 andares vem um chefe da história: líderes de ginásio, rival e vilões (com times cada vez maiores), a Elite Four e o Campeão; nos andares 5, 15, 25... pode aparecer uma Mega, um Gigantamax ou um lendário. Acabou a história, começa a de outra região. O time não é curado entre os andares (só com a Bolsa, a loja ou, com 5% de chance, a Enfermeira Joy). Sem limite de nível, IVs, EVs ou itens; shiny é 1 em 4096. Perdeu: a pontuação vira moedas para comprar Pokémon e começar com eles.',
               style: TextStyle(color: c.muted, fontSize: 13),
             ),
             const SizedBox(height: 4),
@@ -294,6 +399,7 @@ class _FactoryHubState extends State<FactoryHub> {
           Text(tr('Corrida em andamento: andar {0}').replaceAll('{0}', '${run['floor']}'), style: TextStyle(fontWeight: FontWeight.w900, color: c.text)),
           const SizedBox(height: 4),
           _runStatus(context, run),
+          _story(context, data, run),
           _nextBoss(context, data, run),
           const SizedBox(height: 6),
           Wrap(spacing: 6, runSpacing: 6, children: [
@@ -309,7 +415,7 @@ class _FactoryHubState extends State<FactoryHub> {
           if (run['pending'] != null)
             FactoryAfter(run: run, data: data, onNext: widget.onBattle, onChanged: () => setState(() {}))
           else ...[
-            _BagAndItems(run: run, names: _names, onSave: (next) => _save({...factory, 'run': next})),
+            _BagAndItems(run: run, data: data, names: _names, onSave: (next) => _save({...factory, 'run': next})),
             if (down)
               Padding(
                 padding: const EdgeInsets.only(bottom: 6),
@@ -324,7 +430,8 @@ class _FactoryHubState extends State<FactoryHub> {
             ]),
           ],
         ] else ...[
-          Text(tr('Escolha o seu inicial'), style: TextStyle(color: c.muted, fontWeight: FontWeight.bold)),
+          Text(FactoryRun.freePick(factory) ? tr('Escolha o seu inicial grátis (de qualquer geração). Os outros você compra com moedas.') : tr('Escolha com quem começar'),
+              style: TextStyle(color: c.muted, fontWeight: FontWeight.bold)),
           const SizedBox(height: 6),
           Wrap(spacing: 6, runSpacing: 6, children: [
             for (final id in FactoryRun.startersOf(factory, data)) ...[
@@ -342,9 +449,10 @@ class _FactoryHubState extends State<FactoryHub> {
             onPressed: widget.busy || _pick == null
                 ? null
                 : () {
-                    final next = FactoryRun.startRun(factory, data, _pick!.id, Random().nextInt(1 << 31), _pick!.shiny);
+                    final meta = FactoryRun.claimStarter(factory, data, _pick!.id);
+                    final next = FactoryRun.startRun(meta, data, _pick!.id, Random().nextInt(1 << 31), _pick!.shiny);
                     if (next == null) return;
-                    saveFactory({...factory, 'run': next});
+                    saveFactory({...meta, 'run': next});
                     widget.onBattle(next);
                   },
           ),
@@ -357,7 +465,7 @@ class _FactoryHubState extends State<FactoryHub> {
           children: [
             Text(tr('Shiny tem +10% em todos os atributos. Capture um inicial shiny na corrida para liberar o shiny dele, ou transforme com moedas (bem caro).'),
                 style: TextStyle(color: c.muted, fontSize: 12)),
-            for (final id in FactoryRun.startersOf(factory, data))
+            for (final id in owned)
               if (!shinies.contains(id))
                 ListTile(
                   contentPadding: EdgeInsets.zero,
@@ -380,7 +488,12 @@ class _FactoryHubState extends State<FactoryHub> {
           tilePadding: EdgeInsets.zero,
           title: Text('🪙 ${tr('Comprar Pokémon com moedas')}', style: TextStyle(fontWeight: FontWeight.bold, color: c.text)),
           children: [
-            Text(tr('Os mais fortes custam mais. Comprado, ele aparece entre os iniciais (sempre no nível 5).'), style: TextStyle(color: c.muted, fontSize: 12)),
+            Text(tr('Os mais fortes custam mais. Comprado, ele aparece entre os iniciais (sempre no nível 5). Tem 1 chance em 4096 de vir shiny.'),
+                style: TextStyle(color: c.muted, fontSize: 12)),
+            if (FactoryRun.freePick(factory))
+              Text(tr('Primeiro escolha o seu inicial grátis.'), style: const TextStyle(color: Color(0xFFF59E0B), fontWeight: FontWeight.bold, fontSize: 12)),
+            if (_lucky != null)
+              Text('✨ ${tr('{0} veio shiny!').replaceAll('{0}', _name(_lucky!))}', style: TextStyle(color: c.text, fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             SiteSearchField(hint: 'Buscar Pokémon', onChanged: (t) => setState(() => _query = t)),
             const SizedBox(height: 6),
@@ -391,11 +504,13 @@ class _FactoryHubState extends State<FactoryHub> {
                 title: Text(_name(p.id), style: TextStyle(color: c.text)),
                 subtitle: Text('🪙 ${p.price}', style: TextStyle(color: c.muted)),
                 trailing: TextButton(
-                  onPressed: coins < p.price
+                  onPressed: coins < p.price || FactoryRun.freePick(factory)
                       ? null
                       : () {
-                          final next = FactoryRun.buyPokemon(factory, data, p.id);
-                          if (next != null) _save(next);
+                          final next = FactoryRun.buyPokemon(factory, data, p.id, Random().nextDouble());
+                          if (next == null) return;
+                          if (FactoryRun.shiniesOf(next).length > shinies.length) _lucky = p.id;
+                          _save(next);
                         },
                   child: const Text('Comprar'),
                 ),
@@ -405,6 +520,26 @@ class _FactoryHubState extends State<FactoryHub> {
       ],
     );
   }
+}
+
+/// O texto da história: o começo da região (1º chefe) e quem vem a seguir.
+Widget _story(BuildContext context, FactoryData data, Json run) {
+  if (data.bosses.isEmpty) return const SizedBox.shrink();
+  final c = SiteColors.of(context);
+  final boss = FactoryRun.bossOf(data, run);
+  final region = '${boss['region']}';
+  final intro = run['boss']['step'] == 0 ? FactoryRun.storyLine(data, region, 'intro') : '';
+  return Container(
+    key: const ValueKey('factory-story'),
+    margin: const EdgeInsets.only(top: 6),
+    padding: const EdgeInsets.all(8),
+    decoration: BoxDecoration(color: const Color(0x1A6366F1), borderRadius: BorderRadius.circular(12)),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text('📖 $region · ${boss['game']}', style: TextStyle(fontWeight: FontWeight.w900, color: c.text)),
+      if (intro.isNotEmpty) Text(intro, style: TextStyle(color: c.text, fontSize: 13)),
+      Text(FactoryRun.storyLine(data, region, '${boss['kind']}', '${boss['name']}'), style: TextStyle(color: c.muted, fontSize: 13)),
+    ]),
+  );
 }
 
 /// O próximo chefe (a cada 10 andares).
@@ -516,6 +651,12 @@ class _FactoryAfterState extends State<FactoryAfter> {
   }
 
   static String _help(String id) {
+    if (id.startsWith('tm:')) return tr('Ensina o golpe a quem aprende por TM (uma vez)');
+    if (id.startsWith('evo:')) return tr('Evolui na hora quem evolui com ela (escolha acima)');
+    if (id == 'move-tutor') return tr('Ensina um golpe de tutor ou de ovo (uma vez)');
+    if (id == 'move-reminder') return tr('Lembra um golpe do nível (uma vez)');
+    if (id == 'dynamax-band') return tr('Libera o Dynamax (e o Gigantamax) para o time');
+    if (id == 'tera-orb') return tr('Libera a Terastalização para o time');
     if (id == 'poke-ball') return tr('Para capturar os selvagens');
     if (id == 'revive') return tr('Revive com metade do HP');
     final share = FactoryRun.healShare[id];
@@ -597,18 +738,20 @@ class _FactoryAfterState extends State<FactoryAfter> {
               key: ValueKey('shop-$id'),
               contentPadding: EdgeInsets.zero,
               leading: _itemIcon('$id', 32),
-              title: Text(prettySlug('$id'), style: TextStyle(fontWeight: FontWeight.bold, color: c.text)),
-              subtitle: Text(_help('$id'), style: TextStyle(color: c.muted, fontSize: 12)),
+              title: Text(_itemName('$id'), style: TextStyle(fontWeight: FontWeight.bold, color: c.text)),
+              subtitle: Text(FactoryRun.shopOwned(run, '$id') ? tr('Você já tem') : _help('$id'), style: TextStyle(color: c.muted, fontSize: 12)),
               trailing: TextButton(
                 key: ValueKey('buy-$id'),
-                onPressed: (run['money'] as num) < FactoryRun.shopPrice(run, '$id')
+                onPressed: (run['money'] as num) < FactoryRun.shopPrice(run, '$id') ||
+                        FactoryRun.shopOwned(run, '$id') ||
+                        ('$id'.startsWith('evo:') && FactoryRun.canEvolveWith(data, team[min(_target, team.length - 1)], '$id'.substring(4)).isEmpty)
                     ? null
                     : () => _save(FactoryRun.buyItem(run, '$id', min(_target, team.length - 1), data)),
                 child: Text('💰${FactoryRun.shopPrice(run, '$id')}'),
               ),
             ),
         ],
-        _BagAndItems(run: run, names: _names, onSave: _save),
+        _BagAndItems(run: run, data: data, names: _names, onSave: _save),
         if (down)
           Text(tr('O time todo está desmaiado: use um Revive ou desista.'), style: const TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.bold)),
         const SizedBox(height: 6),
@@ -646,6 +789,30 @@ class _FactoryAfterState extends State<FactoryAfter> {
               Image.asset('assets/database/sprites/trainers/sd-nurse.png', width: 56, height: 56, filterQuality: FilterQuality.none, errorBuilder: (_, __, ___) => const SizedBox()),
               const SizedBox(width: 8),
               Expanded(child: Text('💗 ${tr('A Enfermeira Joy apareceu e curou o time todo!')}', style: TextStyle(fontWeight: FontWeight.bold, color: c.text))),
+            ]),
+          ),
+        if (p['drop'] != null)
+          Container(
+            key: const ValueKey('factory-drop'),
+            margin: const EdgeInsets.only(top: 6),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: const Color(0x2610B981), borderRadius: BorderRadius.circular(12)),
+            child: Row(children: [
+              _itemIcon('${p['drop']}', 32),
+              const SizedBox(width: 8),
+              Expanded(
+                  child: Text('🎁 ${tr('Ganhou {0}! (está nos itens guardados)').replaceAll('{0}', _itemName('${p['drop']}'))}',
+                      style: TextStyle(fontWeight: FontWeight.bold, color: c.text))),
+            ]),
+          ),
+        if (p['story'] != null)
+          Container(
+            key: const ValueKey('factory-story-end'),
+            margin: const EdgeInsets.only(top: 6),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: const Color(0x1A6366F1), borderRadius: BorderRadius.circular(12)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              for (final line in '${p['story']}'.split('\n\n')) Text('📖 $line', style: TextStyle(color: c.text, fontSize: 13)),
             ]),
           ),
         if (_unlocked != null)

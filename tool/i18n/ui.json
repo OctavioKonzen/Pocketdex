@@ -7232,5 +7232,115 @@
   "en": "Last run: floor {0}, +{1} coins.",
   "fr": "Dernière partie : étage {0}, +{1} pièces.",
   "es": "Última partida: piso {0}, +{1} monedas."
+ },
+ "Battle Factory: sem nível máximo. Batalha por turnos como nos jogos, com o computador jogando pelo outro lado.": {
+  "en": "Battle Factory: no level cap. Turn-based battles like in the games, with the computer playing the other side.",
+  "fr": "Battle Factory : pas de niveau maximum. Combats au tour par tour comme dans les jeux, l’ordinateur joue l’autre camp.",
+  "es": "Battle Factory: sin nivel máximo. Batallas por turnos como en los juegos, con la computadora jugando del otro lado."
+ },
+ "Ensina o golpe a quem aprende por TM (uma vez)": {
+  "en": "Teaches the move to a Pokémon that learns it by TM (once)",
+  "fr": "Apprend la capacité à un Pokémon qui l’apprend par CT (une fois)",
+  "es": "Enseña el movimiento a quien lo aprende por MT (una vez)"
+ },
+ "Ensina um golpe de tutor ou de ovo (uma vez)": {
+  "en": "Teaches a tutor or egg move (once)",
+  "fr": "Apprend une capacité de tuteur ou d’œuf (une fois)",
+  "es": "Enseña un movimiento de tutor o huevo (una vez)"
+ },
+ "Ensinar golpe": {
+  "en": "Teach a move",
+  "fr": "Apprendre une capacité",
+  "es": "Enseñar movimiento"
+ },
+ "Escolha com quem começar": {
+  "en": "Choose who to start with",
+  "fr": "Choisissez avec qui commencer",
+  "es": "Elige con quién empezar"
+ },
+ "Escolha o seu inicial grátis (de qualquer geração). Os outros você compra com moedas.": {
+  "en": "Choose your free starter (from any generation). The others you buy with coins.",
+  "fr": "Choisissez votre starter gratuit (de n’importe quelle génération). Les autres s’achètent avec des pièces.",
+  "es": "Elige tu inicial gratis (de cualquier generación). Los demás se compran con monedas."
+ },
+ "Esquecer qual golpe para aprender {0}?": {
+  "en": "Forget which move to learn {0}?",
+  "fr": "Oublier quelle capacité pour apprendre {0} ?",
+  "es": "¿Olvidar qué movimiento para aprender {0}?"
+ },
+ "Evolui na hora quem evolui com ela (escolha acima)": {
+  "en": "Instantly evolves a Pokémon that evolves with it (choose above)",
+  "fr": "Fait évoluer tout de suite un Pokémon qui évolue avec (choisissez au-dessus)",
+  "es": "Evoluciona al instante a quien evoluciona con ella (elige arriba)"
+ },
+ "Ganhou {0}! (está nos itens guardados)": {
+  "en": "You got {0}! (it is in your stored items)",
+  "fr": "Vous avez obtenu {0} ! (dans les objets gardés)",
+  "es": "¡Conseguiste {0}! (está en los objetos guardados)"
+ },
+ "Itens guardados (toque e escolha quem segura)": {
+  "en": "Stored items (tap and choose who holds it)",
+  "fr": "Objets gardés (touchez et choisissez qui le tient)",
+  "es": "Objetos guardados (toca y elige quién lo lleva)"
+ },
+ "Lembra um golpe do nível (uma vez)": {
+  "en": "Relearns a level-up move (once)",
+  "fr": "Fait se souvenir d’une capacité de niveau (une fois)",
+  "es": "Recuerda un movimiento de nivel (una vez)"
+ },
+ "Libera a Terastalização para o time": {
+  "en": "Unlocks Terastallization for the team",
+  "fr": "Débloque la Téracristallisation pour l’équipe",
+  "es": "Desbloquea la Teracristalización para el equipo"
+ },
+ "Libera o Dynamax (e o Gigantamax) para o time": {
+  "en": "Unlocks Dynamax (and Gigantamax) for the team",
+  "fr": "Débloque le Dynamax (et le Gigamax) pour l’équipe",
+  "es": "Desbloquea el Dinamax (y el Gigamax) para el equipo"
+ },
+ "Mecânica": {
+  "en": "Mechanic",
+  "fr": "Mécanique",
+  "es": "Mecánica"
+ },
+ "Nada para ensinar a ele agora (TM que ele aprende ou fichas de Move Tutor/Reminder).": {
+  "en": "Nothing to teach it right now (a TM it can learn or Move Tutor/Reminder tokens).",
+  "fr": "Rien à lui apprendre pour l’instant (une CT qu’il apprend ou des jetons de Move Tutor/Reminder).",
+  "es": "Nada que enseñarle ahora (una MT que aprenda o fichas de Move Tutor/Reminder)."
+ },
+ "Os mais fortes custam mais. Comprado, ele aparece entre os iniciais (sempre no nível 5). Tem 1 chance em 4096 de vir shiny.": {
+  "en": "Stronger ones cost more. Once bought, it shows up among the starters (always at level 5). It has a 1 in 4096 chance of being shiny.",
+  "fr": "Les plus forts coûtent plus cher. Acheté, il apparaît parmi les starters (toujours au niveau 5). 1 chance sur 4096 d’être chromatique.",
+  "es": "Los más fuertes cuestan más. Una vez comprado, aparece entre los iniciales (siempre al nivel 5). Tiene 1 probabilidad entre 4096 de ser variocolor."
+ },
+ "Primeiro escolha o seu inicial grátis.": {
+  "en": "First choose your free starter.",
+  "fr": "Choisissez d’abord votre starter gratuit.",
+  "es": "Primero elige tu inicial gratis."
+ },
+ "Sem mecânica": {
+  "en": "No mechanic",
+  "fr": "Aucune mécanique",
+  "es": "Sin mecánica"
+ },
+ "Time: itens, golpes e mecânicas": {
+  "en": "Team: items, moves and mechanics",
+  "fr": "Équipe : objets, capacités et mécaniques",
+  "es": "Equipo: objetos, movimientos y mecánicas"
+ },
+ "Um roguelike sem fim com a história de cada região: escolha um inicial no nível 5 e suba andares contra Pokémon selvagens (capture com Poké Ball: você começa com 5) e treinadores. A cada 10 andares vem um chefe da história: líderes de ginásio, rival e vilões (com times cada vez maiores), a Elite Four e o Campeão; nos andares 5, 15, 25... pode aparecer uma Mega, um Gigantamax ou um lendário. Acabou a história, começa a de outra região. O time não é curado entre os andares (só com a Bolsa, a loja ou, com 5% de chance, a Enfermeira Joy). Sem limite de nível, IVs, EVs ou itens; shiny é 1 em 4096. Perdeu: a pontuação vira moedas para comprar Pokémon e começar com eles.": {
+  "en": "An endless roguelike with each region’s story: pick a starter at level 5 and climb floors against wild Pokémon (catch them with Poké Balls: you start with 5) and trainers. Every 10 floors there is a story boss: Gym Leaders, the rival and villains (with ever bigger teams), the Elite Four and the Champion; on floors 5, 15, 25... a Mega, a Gigantamax or a legendary may show up. When the story ends, another region’s begins. Your team is not healed between floors (only with the Bag, the shop or, with a 5% chance, Nurse Joy). No limit on level, IVs, EVs or items; shiny is 1 in 4096. Lost: your score becomes coins to buy Pokémon and start with them.",
+  "fr": "Un roguelike sans fin avec l’histoire de chaque région : choisissez un starter au niveau 5 et montez les étages contre des Pokémon sauvages (capturez-les avec des Poké Balls : vous commencez avec 5) et des dresseurs. Tous les 10 étages, un boss de l’histoire : Champions d’Arène, le rival et les méchants (avec des équipes de plus en plus grandes), le Conseil 4 et le Maître ; aux étages 5, 15, 25... peut apparaître un Méga, un Gigamax ou un légendaire. Quand l’histoire se termine, celle d’une autre région commence. L’équipe n’est pas soignée entre les étages (seulement avec le Sac, la boutique ou, avec 5 % de chance, l’Infirmière Joëlle). Pas de limite de niveau, d’IV, d’EV ou d’objets ; un chromatique sort 1 fois sur 4096. Perdu : le score devient des pièces pour acheter des Pokémon et commencer avec eux.",
+  "es": "Un roguelike sin fin con la historia de cada región: elige un inicial al nivel 5 y sube pisos contra Pokémon salvajes (captúralos con Poké Balls: empiezas con 5) y entrenadores. Cada 10 pisos llega un jefe de la historia: líderes de gimnasio, el rival y los villanos (con equipos cada vez más grandes), el Alto Mando y el Campeón; en los pisos 5, 15, 25... puede aparecer una Mega, un Gigamax o un legendario. Cuando termina la historia, empieza la de otra región. El equipo no se cura entre pisos (solo con la Mochila, la tienda o, con un 5% de probabilidad, la Enfermera Joy). Sin límite de nivel, IV, EV ni objetos; el variocolor sale 1 de cada 4096. Si pierdes: la puntuación se convierte en monedas para comprar Pokémon y empezar con ellos."
+ },
+ "Você já tem": {
+  "en": "You already have it",
+  "fr": "Vous l’avez déjà",
+  "es": "Ya lo tienes"
+ },
+ "{0} veio shiny!": {
+  "en": "{0} came out shiny!",
+  "fr": "{0} est chromatique !",
+  "es": "¡{0} salió variocolor!"
  }
 }
