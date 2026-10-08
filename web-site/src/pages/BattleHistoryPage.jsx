@@ -4,7 +4,8 @@
 // (lib/battleLog.js) e mostra na mesma tela da batalha.
 
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
+import { decodeReplay, encodeReplay, replayUrl } from '../lib/replayLink'
 import PokeIcon from '../components/PokeIcon'
 import { TrainerSprite } from '../components/Trainer'
 import { Button, Empty, Icon, PageHeader } from '../components/ui'
@@ -145,6 +146,7 @@ export default function BattleHistoryPage() {
                         ▶ {t('Assistir')}
                       </Button>
                     )}
+                    {canReplay(b) && <ShareReplay record={b} />}
                     <Button color="#64748b" onClick={() => deleteBattle(b.id)}>
                       {t('Apagar')}
                     </Button>
@@ -160,7 +162,43 @@ export default function BattleHistoryPage() {
 }
 
 /** O replay: refaz a batalha jogada a jogada e mostra na tela da batalha. */
-function Replay({ record, onExit }) {
+/** Copia (ou compartilha) o link do replay: quem abre assiste sem conta (lib/replayLink.js). */
+function ShareReplay({ record }) {
+  const [done, setDone] = useState(false)
+  const share = async () => {
+    const url = replayUrl(await encodeReplay(record))
+    try {
+      if (navigator.share) await navigator.share({ title: 'PocketDex', text: t('Replay da minha batalha no PocketDex'), url })
+      else await navigator.clipboard.writeText(url)
+      setDone(true)
+    } catch {
+      // Cancelou o compartilhamento.
+    }
+  }
+  return (
+    <Button color="#0ea5e9" onClick={share} data-testid={`share-${record.id}`}>
+      {done ? `✓ ${t('Link copiado')}` : `🔗 ${t('Compartilhar')}`}
+    </Button>
+  )
+}
+
+/** O replay aberto por link (#/batalha/replay?d=...). */
+export function ReplayLinkPage() {
+  const [params] = useSearchParams()
+  const [record, setRecord] = useState(undefined)
+  useEffect(() => {
+    let alive = true
+    decodeReplay(params.get('d') ?? '').then((r) => alive && setRecord(r))
+    return () => {
+      alive = false
+    }
+  }, [params])
+  if (record === undefined) return <Empty>...</Empty>
+  if (!record) return <Empty>{t('Link de replay inválido.')}</Empty>
+  return <Replay record={record} onExit={() => window.history.back()} />
+}
+
+export function Replay({ record, onExit }) {
   const [game, setGame] = useState(null) // {battle, hit}
   const [online, setOnline] = useState(null)
   const [error, setError] = useState('')
@@ -201,7 +239,7 @@ function Replay({ record, onExit }) {
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
-      <PageHeader title="Replay" subtitle={`${t(record.result === 'win' ? 'Vitória' : 'Derrota')} · ${new Date(record.at).toLocaleString()}`} />
+      <PageHeader title="Replay" subtitle={[record.foe, record.result && t(record.result === 'win' ? 'Vitória' : 'Derrota'), record.at && new Date(record.at).toLocaleString()].filter(Boolean).join(' · ')} />
       {error && <p role="alert" className="text-red-400">{error}</p>}
       {game && online ? (
         <Battle battle={game.battle} foeName={record.foe} foeTrainer={record.foeTrainer} hit={game.hit} online={online} onExit={onExit} onAgain={onExit} />

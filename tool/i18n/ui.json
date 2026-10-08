@@ -5814,6 +5814,9 @@
  "Ver detalhes do seu Pokémon": {"en": "See your Pokémon's details", "fr": "Voir les détails de votre Pokémon", "es": "Ver detalles de tu Pokémon"},
  "Golpes vistos": {"en": "Moves seen", "fr": "Capacités vues", "es": "Movimientos vistos"},
  "Do adversário aparece só o que ele já mostrou na batalha.": {"en": "For the opponent, only what it has already shown in battle appears.", "fr": "Pour l'adversaire, seul ce qu'il a déjà montré au combat apparaît.", "es": "Del rival solo aparece lo que ya mostró en el combate."},
+ "Replay da minha batalha no PocketDex": {"en": "Replay of my battle on PocketDex", "fr": "Replay de mon combat sur PocketDex", "es": "Repetición de mi combate en PocketDex"},
+ "Link copiado": {"en": "Link copied", "fr": "Lien copié", "es": "Enlace copiado"},
+ "Link de replay inválido.": {"en": "Invalid replay link.", "fr": "Lien de replay invalide.", "es": "Enlace de repetición no válido."},
  "Formas alternativas": {
   "en": "Alternate forms",
   "fr": "Formes alternatives",
