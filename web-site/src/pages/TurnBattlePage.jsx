@@ -20,7 +20,7 @@ import { usePokemonIndex } from '../lib/pokemonIndex'
 import { useStore } from '../lib/store'
 import { teamMembers } from '../lib/teamBattle'
 import { fxPlan, moveAnim, SELF_KINDS } from '../lib/moveAnim'
-import { active, damageRange, fieldConditions, monDetails, lockedMove, canGimmick, canUseItem, effectLabel, forfeit, ITEMS, lineOf, MAX_MOVES, maxPower, moveEffect, newBattle, playTurn, replace, startBattle, STAT_NAMES, switchMatchup, usableMoves, weaknesses, Z_MOVES, zPower } from '../lib/turnBattle'
+import { active, damageRange, fieldConditions, monDetails, lockedMove, canGimmick, canUseItem, effectLabel, forfeit, HEAL_SHARE, ITEMS, lineOf, MAX_MOVES, maxPower, moveEffect, newBattle, playTurn, replace, startBattle, STAT_NAMES, switchMatchup, usableMoves, weaknesses, Z_MOVES, zPower } from '../lib/turnBattle'
 import Sprite from '../components/Sprite'
 import { TrainerBack, TrainerSprite } from '../components/Trainer'
 import { randomTrainer, useMyTrainer, useTrainers } from '../lib/trainers'
@@ -28,13 +28,18 @@ import { battleRecord } from '../lib/battleLog'
 import { playSound, soundOf, startMusic, stopMusic } from '../lib/battleSound'
 import {simulatorTargets} from '../lib/battleSimulator'
 import {newPartyBattle, playPartyTurn, describeEvents} from '../lib/partyBattle'
+import { FactoryAfter, FactoryHub, saveFactory } from '../components/FactoryPanels'
+import { factoryAfter, factoryBattle, factoryFoe } from '../lib/factoryBattle'
+import { endRun, factoryOf, winFloor } from '../lib/factoryRun'
+import { getFactoryData } from '../lib/data'
 
 const CARD = 'rounded-2xl bg-card p-5 shadow'
 const SELECT = 'w-full rounded-xl bg-surface px-3 py-2.5 outline-none focus:ring-2 focus:ring-sky-400'
 const RANDOM = '__random__'
 // Adversário 'gym:<id>': um líder, Elite Four ou campeão (gym_leaders.json).
 const GYM = 'gym:'
-// Sequências de vitórias (lib/gymChallenge.js): Torre (seu time) e Factory (times emprestados).
+// Torre (sequência de vitórias com o seu time, lib/gymChallenge.js) e Battle Factory
+// (subir andares com um inicial, lib/factoryRun.js).
 const TOWER = '__tower__'
 const FACTORY = '__factory__'
 /** Na sequência, a partir da 4ª batalha o computador usa sets competitivos. */
@@ -81,46 +86,14 @@ function LeaderCard({ leader }) {
   )
 }
 
-/** Factory: depois de vencer, troca um Pokémon seu por um do adversário (ou segue igual). */
-function FactorySwap({ members, onNext }) {
-  const [give, setGive] = useState(null)
-  const [take, setTake] = useState(null)
-  const pick = (list, value, setter, prefix) =>
-    list.map((m, i) => (
-      <button
-        key={i}
-        type="button"
-        data-testid={`${prefix}-${i}`}
-        aria-pressed={value === i}
-        onClick={() => setter(value === i ? null : i)}
-        className={`cursor-pointer rounded-xl p-1 ring-2 ${value === i ? 'bg-amber-500/20 ring-amber-500' : 'ring-transparent hover:ring-line'}`}
-      >
-        <PokeIcon id={m.id} className="h-12 w-12" />
-      </button>
-    ))
-  return (
-    <section className="space-y-3 rounded-2xl bg-card p-4 shadow-lg ring-1 ring-line" data-testid="factory-swap">
-      <h2 className="font-black">🏭 {t('Trocar um Pokémon')}</h2>
-      <p className="text-sm text-muted">{t('Escolha um do adversário e um seu para trocar, ou siga com o mesmo time.')}</p>
-      <div className="flex flex-wrap gap-1">{pick(members.theirs, take, setTake, 'take')}</div>
-      <div className="flex flex-wrap gap-1">{pick(members.mine, give, setGive, 'give')}</div>
-      <Button disabled={give == null || take == null} onClick={() => onNext({ give, take })}>
-        ⇄ {t('Trocar e seguir')}
-      </Button>
-    </section>
-  )
-}
-
-/** Torre de Batalha / Battle Factory: como funciona e o seu recorde. */
+/** Torre de Batalha: como funciona e o seu recorde. */
 function StreakCard({ kind }) {
   const best = useStore((s) => s.league?.[kind]?.best ?? 0)
   return (
     <div className="rounded-2xl bg-bg p-3 text-sm" data-testid="streak-card">
-      <p className="font-black">{kind === 'tower' ? `🗼 ${t('Torre de Batalha')}` : `🏭 ${t('Battle Factory')}`}</p>
+      <p className="font-black">{`🗼 ${t('Torre de Batalha')}`}</p>
       <p className="text-muted">
-        {kind === 'tower'
-          ? t('Seu time contra adversários aleatórios em sequência; a partir da 4ª vitória eles usam sets competitivos. Perdeu, a sequência acaba.')
-          : t('Você recebe 6 Pokémon emprestados. A cada vitória pode trocar um deles por um do adversário. Perdeu, a sequência acaba.')}
+        {t('Seu time contra adversários aleatórios em sequência; a partir da 4ª vitória eles usam sets competitivos. Perdeu, a sequência acaba.')}
       </p>
       <p className="mt-1 font-bold">{t('Recorde: {0} vitórias seguidas').replace('{0}', best)}</p>
     </div>
@@ -165,13 +138,15 @@ function RegionProgress({ region, busy, ready, onLeague }) {
   )
 }
 
-function Setup({ onStart }) {
+function Setup({ onStart, onFactory }) {
   const teams = useStore((s) => s.teams)
   const list = useFriends((s) => s.list)
   const friends = useMemo(() => friendsOnly(list), [list])
   const myTeams = teams.filter((x) => teamMembers(x).length)
   const [mine, setMine] = useState(RANDOM)
   const [friend, setFriend] = useState(RANDOM)
+  // A página troca o texto de cima: na Battle Factory não há nível máximo.
+  useEffect(() => onFactory?.(friend === FACTORY), [friend, onFactory])
   const [friendTeams, setFriendTeams] = useState([])
   const [theirs, setTheirs] = useState('')
   const [busy, setBusy] = useState(false)
@@ -185,7 +160,7 @@ function Setup({ onStart }) {
   useEffect(() => {
     getGymLeaders().then(setRegions).catch(() => setRegions([]))
   }, [])
-  const streak = friend === TOWER ? 'tower' : friend === FACTORY ? 'factory' : null
+  const streak = friend === TOWER ? 'tower' : null
   const leader = friend.startsWith(GYM) ? regions.flatMap((r) => r.leaders).find((l) => l.id === friend.slice(GYM.length)) : null
 
   const pickFriend = (uid) => {
@@ -207,8 +182,8 @@ function Setup({ onStart }) {
     const random = seededRandom(seed)
     const foeName = pick ? pick.name : friend === RANDOM ? '' : friends.find((f) => f.uid === friend)?.name ?? ''
     const foeTrainer = pick?.trainer ?? null
-    // Factory: os dois times são emprestados (sets competitivos); Torre: o seu contra um aleatório.
-    const ma = challenge?.kind === 'factory' ? await randomTeam(random, 'hard') : mine === RANDOM ? await randomTeam(random, difficulty) : teamMembers(myTeam)
+    // Torre: o seu time contra um aleatório.
+    const ma = mine === RANDOM ? await randomTeam(random, difficulty) : teamMembers(myTeam)
     const mb = pick ? await leaderTeam(pick, random, difficulty) : friend === RANDOM || streak ? await randomTeam(random, difficulty) : teamMembers(theirTeam)
     if (streak) useStore.getState().updateLeague((l) => ({ ...l, [streak]: { ...l[streak], streak: 0 } }))
     const [a, b] = await Promise.all([battleMons(ma), battleMons(mb)])
@@ -223,6 +198,21 @@ function Setup({ onStart }) {
     }
     } catch(e) {setError(e.message || 'Não foi possível iniciar a batalha. Tente novamente.')}
     finally {setBusy(false)}
+  }
+
+  // Battle Factory: a batalha do andar da corrida.
+  const factoryFloor = async (run) => {
+    setBusy(true)
+    setError('')
+    try {
+      const battle = await factoryBattle(run)
+      const foe = factoryFoe(run)
+      onStart(battle, foe.foeName, foe.foeTrainer, foe.challenge)
+    } catch (e) {
+      setError(e.message || 'Não foi possível iniciar a batalha. Tente novamente.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   if (preview) {
@@ -275,11 +265,11 @@ function Setup({ onStart }) {
   return (
     <section className={`${CARD} space-y-4`}>
       {error && <p role="alert" className="text-red-400">{error}</p>}
-      <label className="block space-y-1.5"><span>Formato</span><select aria-label="Formato" className={SELECT} value={count} onChange={e=>setCount(Number(e.target.value))}>
+      {friend !== FACTORY && <label className="block space-y-1.5"><span>Formato</span><select aria-label="Formato" className={SELECT} value={count} onChange={e=>setCount(Number(e.target.value))}>
         <option value={1}>Individual</option><option value={2}>Dupla</option><option value={3}>Tripla</option>
-      </select></label>
-      {count > 1 && <label className="flex gap-2"><input type="checkbox" checked={npcPartner} onChange={e=>setNpcPartner(e.target.checked)} />Jogar com parceiros NPC (desmarcado: você controla todos)</label>}
-      {(
+      </select></label>}
+      {count > 1 && friend !== FACTORY && <label className="flex gap-2"><input type="checkbox" checked={npcPartner} onChange={e=>setNpcPartner(e.target.checked)} />Jogar com parceiros NPC (desmarcado: você controla todos)</label>}
+      {friend !== FACTORY && (
         <label className="block space-y-1.5">
           <span className="text-sm font-semibold text-muted">Seu time</span>
           <select aria-label="Seu time" value={mine} onChange={(e) => setMine(e.target.value)} className={SELECT}>
@@ -319,13 +309,14 @@ function Setup({ onStart }) {
           ))}
         </select>
       </label>
+      {friend === FACTORY && <FactoryHub onBattle={factoryFloor} busy={busy} />}
       {leader && <LeaderCard leader={leader} />}
       {streak && <StreakCard kind={streak} />}
       {leader && regionOf(regions, leader.id) && (
         <RegionProgress region={regionOf(regions, leader.id)} busy={busy} ready={mine === RANDOM || Boolean(myTeam)} onLeague={(first, region) => start(first, { kind: 'league', region: region.region, step: 0, difficulty })} />
       )}
       {(friend === RANDOM || streak || leader || npcPartner) && <label className="block space-y-1.5"><span>Dificuldade dos NPCs</span><select aria-label="Dificuldade dos NPCs" className={SELECT} value={difficulty} onChange={e=>setDifficulty(e.target.value)}><option value="easy">Fácil · ataca ao acaso, sem trocas nem itens</option><option value="normal">Normal · IVs e EVs aleatórios</option><option value="hard">Difícil · sets competitivos</option></select></label>}
-      {friend !== RANDOM && !leader && !streak &&
+      {friend !== RANDOM && friend !== FACTORY && !leader && !streak &&
         (friendTeams === null ? (
           <p className="text-sm text-muted">...</p>
         ) : !friendTeams.length ? (
@@ -344,14 +335,29 @@ function Setup({ onStart }) {
             {theirTeam && <TeamLine team={theirTeam} />}
           </label>
         ))}
-      <p className="text-xs text-muted">
-        O computador joga pelo adversário. Golpes com PP, precisão, prioridade, crítico, status, mudanças de atributo e clima.
-      </p>
-      <Button color="linear-gradient(90deg,#DC2626,#9333EA)" className="w-full" disabled={busy || !ready} onClick={() => start()}>
-        {busy ? 'Preparando...' : '⚔️ Começar batalha'}
-      </Button>
+      {friend !== FACTORY && (
+        <>
+          <p className="text-xs text-muted">
+            O computador joga pelo adversário. Golpes com PP, precisão, prioridade, crítico, status, mudanças de atributo e clima.
+          </p>
+          <Button color="linear-gradient(90deg,#DC2626,#9333EA)" className="w-full" disabled={busy || !ready} onClick={() => start()}>
+            {busy ? 'Preparando...' : '⚔️ Começar batalha'}
+          </Button>
+        </>
+      )}
     </section>
   )
+}
+
+/** Depois do andar: o painel da corrida (se ainda há algo para escolher). */
+function FactoryAfterBattle({ onNext }) {
+  const run = useStore((s) => factoryOf(s.league).run)
+  const [data, setData] = useState(null)
+  useEffect(() => {
+    getFactoryData().then(setData)
+  }, [])
+  if (!run?.pending || !data) return null
+  return <FactoryAfter run={run} data={data} onNext={onNext} />
 }
 
 function HpBar({ hp, max }) {
@@ -672,13 +678,14 @@ function PokeBall({ side, phase }) {
 export function Battle(props) {
   return props.battle.mode && props.battle.mode !== 'singles' ? <MultiBattle {...props} /> : <SingleBattle {...props} />
 }
-function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain, onFinish, online = null, music = 'battle_music', endNote = '', next = null }) {
+function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain, onFinish, online = null, music = 'battle_music', endNote = '', next = null, wild = false }) {
   const byId = usePokemonIndex()
   // Os treinadores: o seu (de costas, lançando a Poké Ball) e o do adversário.
   const myTrainer = useMyTrainer()
   const trainers = useTrainers()
   const [foeCoach] = useState(() => foeTrainer)
-  const coach = (typeof foeCoach === 'string' ? trainers?.find((x) => x.id === foeCoach) : foeCoach) ?? randomOnce(trainers, myTrainer?.id, battle)
+  // Pokémon selvagem (Battle Factory): sem treinador do outro lado.
+  const coach = wild ? null : (typeof foeCoach === 'string' ? trainers?.find((x) => x.id === foeCoach) : foeCoach) ?? randomOnce(trainers, myTrainer?.id, battle)
   // A abertura (treinadores e Poké Balls) só no começo de uma batalha nova.
   const [intro, setIntro] = useState(() => (!online && battle.turn <= 1 ? { foe: 'in', me: 'in', back: 0 } : null))
   // Cada Pokémon: '' na tela, 'hidden' dentro da Poké Ball, 'release' saindo, 'recall' voltando.
@@ -757,12 +764,19 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
     if (!live.current) return
     const foeMon = battle.sides[1].team[battle.sides[1].active]
     const mine = battle.sides[0].team[battle.sides[0].active]
-    setText(t('{0} enviou {1}!').replace('{0}', foeName || coachRef.current?.name || t('O adversário')).replace('{1}', foeMon.name))
     setIntro((i) => ({ ...i, foe: 'out' }))
-    playSound('throw')
-    setSide(setBall, 1, 'throw')
-    await wait(520)
-    await release(1)
+    if (wild) {
+      // Selvagem: ele já está ali, sem Poké Ball.
+      setSide(setPoke, 1, '')
+      setText(t('Um {0} selvagem apareceu!').replace('{0}', foeMon.name))
+      await wait(900)
+    } else {
+      setText(t('{0} enviou {1}!').replace('{0}', foeName || coachRef.current?.name || t('O adversário')).replace('{1}', foeMon.name))
+      playSound('throw')
+      setSide(setBall, 1, 'throw')
+      await wait(520)
+      await release(1)
+    }
     if (!live.current) return
     setText(t('Vai, {0}!').replace('{0}', mine.name))
     for (let f = 1; f < 5; f++) {
@@ -1148,7 +1162,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
             </button>
           </div>
           <div className="grid gap-2 sm:grid-cols-2" data-testid="bag">
-            {ITEMS.map((it) => {
+            {ITEMS.filter((it) => it.count > 0 || (battle.bags[0][it.slug] ?? 0) > 0).map((it) => {
               const left = battle.bags[0][it.slug] ?? 0
               const usableOn = battle.sides[0].team.some((_, i) => canUseItem(battle, 0, it.slug, i))
               return (
@@ -1164,7 +1178,15 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
                     <div className="font-bold" data-no-translate>
                       {it.name}
                     </div>
-                    <div className="text-xs text-muted">{it.revive ? t('Revive com metade do HP') : t('Recupera {0} de HP').replace('{0}', it.heal)}</div>
+                    <div className="text-xs text-muted">
+                      {it.revive
+                        ? t('Revive com metade do HP')
+                        : it.heal >= 9999
+                          ? t('Recupera todo o HP')
+                          : battle.healPct
+                            ? t('Recupera {0}% do HP').replace('{0}', Math.round(HEAL_SHARE[it.slug] * 100))
+                            : t('Recupera {0} de HP').replace('{0}', it.heal)}
+                    </div>
                   </div>
                   <span className="font-black tabular-nums">{`×${left}`}</span>
                 </button>
@@ -1453,6 +1475,7 @@ function MenuButton({ children, onClick, className = '', disabled = false }) {
 export default function TurnBattlePage() {
   const user = useAuth((s) => (s.status === 'signedIn' ? s.user : null))
   const [game, setGame] = useState(null) // {battle, foeName, foeTrainer, challenge, endNote, next, key}
+  const [factoryMode, setFactoryMode] = useState(false)
   const [hit, setHit] = useState(null)
   const [regions, setRegions] = useState([])
   useEffect(() => {
@@ -1518,12 +1541,12 @@ export default function TurnBattlePage() {
     setGame({ battle, foeName: foe.name, foeTrainer: foe.trainer, challenge: { ...challenge, step }, key: game.key + 1 })
   }
 
-  // Torre/Factory: o próximo adversário aleatório (na Factory, com a troca escolhida).
-  const nextStreak = async (swap = null) => {
+  // Torre: o próximo adversário aleatório.
+  const nextStreak = async () => {
     const wins = challenge.wins + 1
     const seed = Math.floor(Math.random() * 2 ** 31)
     const random = seededRandom(seed)
-    const ma = game.battle.members.mine.map((m, i) => (swap && i === swap.give ? game.battle.members.theirs[swap.take] : m))
+    const ma = game.battle.members.mine
     const mb = await randomTeam(random, streakDifficulty(wins, challenge.difficulty))
     const [a, b] = await Promise.all([battleMons(ma), battleMons(mb)])
     const battle = newBattle(a, b, seededRandom(seed), { ai: challenge.difficulty === 'easy' && wins < 3 ? 'easy' : 'normal', seed })
@@ -1531,9 +1554,40 @@ export default function TurnBattlePage() {
     setGame({ battle, foeName: '', foeTrainer: null, challenge: { ...challenge, wins }, key: game.key + 1 })
   }
 
-  // Fim de uma batalha da jornada: insígnia, próxima da Liga ou Hall da Fama; Torre/Factory: a sequência.
-  const finishChallenge = () => {
-    if (challenge?.kind === 'tower' || challenge?.kind === 'factory') {
+  // Battle Factory: o próximo andar (depois de captura, carta e loja).
+  const nextFactoryFloor = async (run) => {
+    try {
+      const battle = await factoryBattle(run)
+      setGame({ battle, ...factoryFoe(run), key: (game?.key ?? 0) + 1 })
+    } catch {
+      setGame(null)
+    }
+  }
+
+  // Fim de uma batalha da jornada: insígnia, próxima da Liga ou Hall da Fama; Torre: a sequência; Factory: o andar.
+  const finishChallenge = async () => {
+    if (challenge?.kind === 'factory') {
+      const factory = factoryOf(useStore.getState().league)
+      const run = factory.run
+      if (!run?.encounter) return
+      const won = game.battle.winner === 0
+      let endNote
+      if (won) {
+        const data = await getFactoryData()
+        const next = winFloor(run, data, factoryAfter(game.battle, run))
+        saveFactory({ ...factory, run: next })
+        endNote = run.encounter.boss
+          ? `🏅 ${t('Você venceu {0}!').replace('{0}', run.encounter.boss.name)} ${t('Andar {0} vencido!').replace('{0}', run.floor)}`
+          : `🏆 ${t('Andar {0} vencido!').replace('{0}', run.floor)}`
+      } else {
+        const after = endRun(factory, run)
+        saveFactory(after)
+        endNote = t('A corrida acabou no andar {0}: +{1} moedas. Recorde: andar {2}.').replace('{0}', run.floor).replace('{1}', after.last.coins).replace('{2}', after.best)
+      }
+      setGame((g) => (g ? { ...g, endNote, next: null } : g))
+      return
+    }
+    if (challenge?.kind === 'tower') {
       const won = game.battle.winner === 0
       const { updateLeague } = useStore.getState()
       updateLeague((l) => streakResult(l, challenge.kind, won))
@@ -1541,7 +1595,7 @@ export default function TurnBattlePage() {
       const endNote = won
         ? `🔥 ${t('{0} vitórias seguidas!').replace('{0}', challenge.wins + 1)}`
         : t('A sequência terminou com {0} vitórias. Recorde: {1}.').replace('{0}', challenge.wins).replace('{1}', best)
-      const next = won && game.battle.members ? { label: `⚔️ ${t('Próximo adversário')}`, onClick: () => nextStreak(null) } : null
+      const next = won && game.battle.members ? { label: `⚔️ ${t('Próximo adversário')}`, onClick: () => nextStreak() } : null
       setGame((g) => (g ? { ...g, endNote, next } : g))
       return
     }
@@ -1577,12 +1631,19 @@ export default function TurnBattlePage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <PageHeader title="Batalha" subtitle="Nível máximo 50. Batalha por turnos como nos jogos: seu time contra o de um amigo (ou um aleatório), com o computador jogando pelo outro lado." />
+      <PageHeader
+        title="Batalha"
+        subtitle={
+          factoryMode || challenge?.kind === 'factory'
+            ? 'Battle Factory: sem nível máximo. Batalha por turnos como nos jogos, com o computador jogando pelo outro lado.'
+            : 'Nível máximo 50. Batalha por turnos como nos jogos: seu time contra o de um amigo (ou um aleatório), com o computador jogando pelo outro lado.'
+        }
+      />
       <Link to="/batalha" className="inline-flex items-center gap-1 text-sm text-muted hover:text-text">
         <Icon name="back" size={16} /> Centro de Batalha
       </Link>
       {!game || !hit ? (
-        <Setup onStart={(battle, foeName, foeTrainer = null, challenge = null) => setGame({ battle, foeName, foeTrainer, challenge, key: 1 })} />
+        <Setup onFactory={setFactoryMode} onStart={(battle, foeName, foeTrainer = null, challenge = null) => setGame({ battle, foeName, foeTrainer, challenge, key: 1 })} />
       ) : (
         <Battle
           key={game.key}
@@ -1592,17 +1653,19 @@ export default function TurnBattlePage() {
           hit={hit}
           onExit={() => setGame(null)}
           onAgain={['league', 'tower', 'factory'].includes(challenge?.kind) ? null : again}
-          music={musicOf(foeLeader)}
+          music={musicOf(foeLeader ?? challenge?.boss)}
+          wild={Boolean(challenge?.wild)}
           endNote={game.endNote}
           next={game.next}
           onFinish={(foeTrainer) => {
             // Histórico e replay (lib/battleLog.js): só batalhas individuais que dá para refazer.
-            if (game.battle.members && game.battle.seed != null) useStore.getState().addBattle(battleRecord(game.battle, { foeName: game.foeName, foeTrainer }))
+            // A Factory fica fora do histórico: o replay não refaz as bolsas da corrida.
+            if (game.battle.members && game.battle.seed != null && challenge?.kind !== 'factory') useStore.getState().addBattle(battleRecord(game.battle, { foeName: game.foeName, foeTrainer }))
             finishChallenge()
           }}
         />
       )}
-      {game?.next && challenge?.kind === 'factory' && game.battle.members && <FactorySwap members={game.battle.members} onNext={nextStreak} />}
+      {challenge?.kind === 'factory' && game?.endNote && <FactoryAfterBattle onNext={nextFactoryFloor} />}
     </div>
   )
 }

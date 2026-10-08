@@ -76,7 +76,7 @@ function setFor(mon, index) {
   for (const move of set.moves) if (!Dex.moves.get(id(move)).exists) throw new Error(`Golpe desconhecido: ${move}`);
   const aspect = id(set.species).includes('cornerstone') ? 'cornerstone' : id(set.species).includes('hearthflame') ? 'hearthflame' : id(set.species).includes('wellspring') ? 'wellspring' : 'teal';
   const ability = id(set.ability) === 'embodyaspect' ? `Embody Aspect (${aspect})` : set.ability;
-  return {...set, species: speciesFor(set.species).name, ability, moves: set.moves.map(id), name: `pd${index}`, level: Math.min(50, Math.max(1, set.level || 50)), gigantamax: Boolean(mon.gmax), teraType: title(mon.teraType || set.teraType || '')};
+  return {...set, species: speciesFor(set.species).name, ability, moves: set.moves.map(id), name: `pd${index}`, level: Math.min(mon.levelCap === 'none' ? 9999 : mon.levelCap === 100 ? 100 : 50, Math.max(1, set.level || 50)), gigantamax: Boolean(mon.gmax), teraType: title(mon.teraType || set.teraType || '')};
 }
 
 function configure(game) {
@@ -96,6 +96,40 @@ function configure(game) {
       for (const slot of pokemon.moveSlots) {
         slot.pp = slot.maxpp = Dex.moves.get(slot.id).pp;
       }
+      // Battle Factory: pontos a mais nos atributos, sem o limite de IVs/EVs (itens e cartas).
+      for (const [stat, value] of Object.entries(mon.bonus ?? {})) {
+        const points = Math.max(0, Math.floor(Number(value) || 0));
+        if (!points) continue;
+        if (stat === 'hp') {
+          pokemon.maxhp += points;
+          pokemon.baseMaxhp += points;
+          pokemon.hp = pokemon.maxhp;
+        } else if (stat in pokemon.storedStats) {
+          pokemon.storedStats[stat] += points;
+          pokemon.baseStoredStats[stat] += points;
+        }
+      }
+      // Battle Factory: os itens a mais (bem mais fracos que o segurado) somam uma porcentagem.
+      for (const [stat, value] of Object.entries(mon.boost ?? {})) {
+        const pct = Math.max(0, Number(value) || 0);
+        if (!pct) continue;
+        if (stat === 'hp') {
+          pokemon.maxhp = pokemon.baseMaxhp = Math.floor(pokemon.maxhp * (1 + pct));
+          pokemon.hp = pokemon.maxhp;
+        } else if (stat in pokemon.storedStats) {
+          pokemon.storedStats[stat] = pokemon.baseStoredStats[stat] = Math.floor(pokemon.storedStats[stat] * (1 + pct));
+        }
+      }
+      // Battle Factory: o HP que sobrou do andar anterior (0 = continua desmaiado).
+      if (mon.hpRatio != null) {
+        const ratio = Math.min(1, Math.max(0, Number(mon.hpRatio) || 0));
+        pokemon.hp = ratio > 0 ? Math.max(1, Math.ceil(pokemon.maxhp * ratio)) : 0;
+        if (!pokemon.hp) {
+          pokemon.fainted = true;
+          pokemon.status = '';
+          side.pokemonLeft--;
+        }
+      }
     }
   }
   game.battle.makeRequest('move');
@@ -103,7 +137,11 @@ function configure(game) {
     const action = game.pendingItems[pokemon.side.n];
     if (!action) return;
     const target = pokemon.side.pokemon.find(p => originalIndex(p) === action.index);
-    const item = {potion: 20, 'super-potion': 60, 'hyper-potion': 120, revive: 0}[action.item];
+    const fixed = {potion: 20, 'super-potion': 60, 'hyper-potion': 120, 'max-potion': 1e9, revive: 0}[action.item];
+    // Battle Factory (healPct): cura uma parte do HP máximo (o nível não tem limite).
+    const share = {potion: .25, 'super-potion': .5, 'hyper-potion': .75, 'max-potion': 1}[action.item];
+    const base = fixed === 1e9 ? target.maxhp : fixed;
+    const item = game.healPct && share ? Math.max(base, Math.ceil(target.maxhp * share)) : base;
     if (item === undefined || !target || !(game.bags[pokemon.side.n][action.item] > 0)) throw new Error('Item inválido');
     game.bags[pokemon.side.n][action.item]--;
     const previousHp = target.hp;
@@ -498,7 +536,7 @@ export const PocketDexSim = {
     // Regras opcionais (convite online): Sleep Clause (só um Pokémon dormindo por vez).
     const ruleset = (input.rules ?? []).includes('sleep') ? ['Sleep Clause Mod'] : [];
     const battle = new Battle({format: {...formats, gameType: mode, playerCount: mode === 'multi' ? 4 : 2, ruleset}, seed: input.seed});
-    const game = {battle, teams: input.teams, controllers: input.controllers, cursor: 0, used: input.teams.map(() => ({mega: false, tera: false})), pendingItems: input.teams.map(() => null), bags: input.teams.map(() => ({potion: 3, 'super-potion': 2, 'hyper-potion': 1, revive: 1}))};
+    const game = {battle, teams: input.teams, controllers: input.controllers, cursor: 0, used: input.teams.map(() => ({mega: false, tera: false})), pendingItems: input.teams.map(() => null), bags: input.teams.map((_, side) => ({potion: 3, 'super-potion': 2, 'hyper-potion': 1, 'max-potion': 0, revive: 1, ...(input.bags?.[side] ?? {})})), healPct: Boolean(input.healPct)};
     input.teams.forEach((team, side) => battle.setPlayer(`p${side + 1}`, {name: ['Você', 'Adversário', 'Aliado', 'Aliado adversário'][side], team: team.map(setFor)}));
     configure(game);
     // A espécie do começo de cada Pokémon: mudou depois, é forma de batalha.

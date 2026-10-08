@@ -68,7 +68,8 @@ export async function battleMons(members) {
     // The simulator, rather than the damage-only calculator, decides which
     // moves exist. This also preserves fixed damage and Let's Go moves.
     const known = (list) => list.filter((s) => s && globalThis.PocketDexSim.move(s))
-    const slugs = pickMoves(known(member.set?.moves ?? []), known(f.learnable), f.form.types, moves, rules)
+    // lockMoves (Battle Factory): só os golpes que ele sabe no nível, sem completar com outros.
+    const slugs = pickMoves(known(member.set?.moves ?? []), member.set?.lockMoves ? [] : known(f.learnable), f.form.types, moves, rules)
     if (!stats || !slugs.length) continue
     // Mecânicas, com as regras dos jogos: Mega só segurando a Mega Pedra dele
     // (a X ou a Y decide a forma), Z-Move só com o Cristal Z (e só nos golpes
@@ -114,7 +115,7 @@ export async function battleMons(members) {
       zType: battleItems.z?.[itemId] ?? '',
       noDmax: NO_DMAX.has(species),
       ability: f.side.ability ?? '',
-      simulation: {set: {species: globalThis.PocketDexSim.species(f.base.name)?.name || calc.speciesName(f.base.name), moves: slugs, level: f.side.level, nature: f.side.nature, ability: globalThis.PocketDexSim.ability(member.set?.ability || f.form.abilities?.[0]?.[0])?.name || f.side.ability, item: globalThis.PocketDexSim.item(member.set?.item)?.name || f.side.item, ivs: f.side.ivs, evs: f.side.evs, shiny: Boolean(member.set?.shiny)}},
+      simulation: {set: {species: globalThis.PocketDexSim.species(f.base.name)?.name || calc.speciesName(f.base.name), moves: slugs, level: f.side.level, nature: f.side.nature, ability: globalThis.PocketDexSim.ability(member.set?.ability || f.form.abilities?.[0]?.[0])?.name || f.side.ability, item: globalThis.PocketDexSim.item(member.set?.item)?.name || f.side.item, ivs: f.side.ivs, evs: f.side.evs, shiny: Boolean(member.set?.shiny)}, ...(member.set?.levelCap ? {levelCap: member.set.levelCap} : {}), ...(member.set?.bonus ? {bonus: member.set.bonus} : {}), ...(member.set?.boost ? {boost: member.set.boost} : {}), ...(member.set?.hpRatio != null ? {hpRatio: member.set.hpRatio} : {})},
     })
   }
   return out

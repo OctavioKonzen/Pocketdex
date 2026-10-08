@@ -37,6 +37,8 @@ import '../services/battle_log.dart';
 import '../services/battle_sounds.dart';
 import '../services/gym_challenge.dart';
 import '../services/gym_leaders.dart';
+import '../services/factory_run.dart';
+import 'factory_panels.dart';
 
 /// Um time para a batalha: nome e membros (id + set).
 class BattleTeam {
@@ -84,10 +86,11 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
   Map<String, dynamic>? _challenge;
   String _endNote = '';
   ({String label, VoidCallback onTap})? _next;
-  List<Member> _lastMine = const [], _lastTheirs = const [];
+  List<Member> _lastMine = const [];
   GymLeader? get _foeLeader {
     final ch = _challenge;
     if (ch == null) return null;
+    if (ch['kind'] == 'factory') return null;
     if (ch['kind'] == 'league') {
       final region = _regions.where((r) => r.region == ch['region']).firstOrNull;
       final order = region == null ? const <GymLeader>[] : GymChallenge.leagueOrder(region);
@@ -98,9 +101,13 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
   }
   // Adversário 'gym:<id>': um líder, Elite Four ou campeão (gym_leaders.json).
   static const _gym = 'gym:';
-  // Sequências de vitórias (gym_challenge.dart): Torre (seu time) e Factory (times emprestados).
+  // Torre (sequência de vitórias, gym_challenge.dart) e Battle Factory (subir andares com um inicial, factory_run.dart).
   static const _tower = '__tower__', _factory = '__factory__';
-  String? get _streak => _friend == _tower ? 'tower' : _friend == _factory ? 'factory' : null;
+  String? get _streak => _friend == _tower ? 'tower' : null;
+  bool get _isFactory => _friend == _factory;
+  FactoryData? _factoryData;
+  // Battle Factory: a posição de cada um da batalha no time da corrida (para ler o HP no fim).
+  List<int> _factoryOrder = const [];
   /// Na sequência, a partir da 4ª batalha o computador usa sets competitivos.
   static String _streakDifficulty(int wins, String difficulty) => wins >= 3 ? 'hard' : difficulty;
   List<({String region, List<GymLeader> leaders})> _regions = const [];
@@ -169,8 +176,8 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
         : streak != null
             ? {'kind': streak, 'wins': 0, 'difficulty': _difficulty}
             : null;
-    // Factory: os dois times são emprestados (sets competitivos); Torre: o seu contra um aleatório.
-    final ma = streak == 'factory' ? await TurnBattleSetup.randomTeam(random, difficulty: 'hard') : mine ?? await TurnBattleSetup.randomTeam(random, difficulty: _difficulty);
+    // Torre: o seu time contra um aleatório.
+    final ma = mine ?? await TurnBattleSetup.randomTeam(random, difficulty: _difficulty);
     if (streak != null) {
       final league = UserData.instance.league;
       UserData.instance.update({'league': {...league, streak: {...league[streak] as Map, 'streak': 0}}});
@@ -199,7 +206,6 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
         _endNote = '';
         _next = null;
         _lastMine = ma;
-        _lastTheirs = mb;
         _key++;
       }
     });
@@ -246,7 +252,6 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
       _foeName = foe.name;
       _foeTrainer = foe.trainer;
       _challenge = {...ch, 'step': step};
-      _lastTheirs = mb;
       _endNote = '';
       _next = null;
       _key++;
@@ -254,15 +259,13 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
     old?.dispose();
   }
 
-  /// Fim de uma batalha da jornada: insígnia, próxima da Liga ou Hall da Fama.
-  /// Torre/Factory: o próximo adversário aleatório (na Factory, com a troca escolhida).
-  Future<void> _nextStreak([({int give, int take})? swap]) async {
+  /// Torre: o próximo adversário aleatório.
+  Future<void> _nextStreak() async {
     final ch = _challenge!;
     final wins = (ch['wins'] as int) + 1;
     final difficulty = '${ch['difficulty'] ?? 'normal'}';
     final random = League.seededRandom(Random().nextInt(1 << 31));
-    final theirs = _lastTheirs;
-    final ma = [for (final (i, m) in _lastMine.indexed) swap != null && i == swap.give ? theirs[swap.take] : m];
+    final ma = _lastMine;
     final mb = await TurnBattleSetup.randomTeam(random, difficulty: _streakDifficulty(wins, difficulty));
     final a = await TurnBattleSetup.mons(ma, battleMonName);
     final b = await TurnBattleSetup.mons(mb, battleMonName);
@@ -274,7 +277,6 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
       _battle = _single(a, b, ma, mb, random);
       _difficulty = difficulty;
       _lastMine = ma;
-      _lastTheirs = mb;
       _foeName = '';
       _foeTrainer = null;
       _challenge = {...ch, 'wins': wins};
@@ -285,9 +287,67 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
     old?.dispose();
   }
 
-  void _finishChallenge() {
+  /// Battle Factory: a batalha do andar atual da corrida.
+  Future<void> _factoryFloor(Json run) async {
+    setState(() => _busy = true);
+    try {
+      _factoryData ??= await FactoryData.load();
+      final (battle, order) = await factoryBattle(run);
+      final foe = factoryFoe(run);
+      if (!mounted) return;
+      final old = _battle;
+      setState(() {
+        _busy = false;
+        _battle = battle;
+        _factoryOrder = order;
+        _foeName = foe.foeName;
+        _foeTrainer = foe.foeTrainer;
+        _challenge = foe.challenge;
+        _endNote = '';
+        _next = null;
+        _key++;
+      });
+      old?.dispose();
+    } catch (_) {
+      if (mounted) {
+        setState(() => _busy = false);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Não foi possível iniciar a batalha. Confira os times e tente novamente.')));
+      }
+    }
+  }
+
+  /// Fim de uma batalha da jornada: insígnia, próxima da Liga ou Hall da Fama; Torre: a sequência; Factory: o andar.
+  Future<void> _finishChallenge() async {
     final kind = _challenge?['kind'];
-    if (kind == 'tower' || kind == 'factory') {
+    if (kind == 'factory') {
+      final factory = currentFactory();
+      final run = factory['run'] as Map<String, dynamic>?;
+      if (run == null || run['encounter'] == null) return;
+      final floor = run['floor'];
+      String note;
+      if (_battle?.winner == 0) {
+        final data = _factoryData ??= await FactoryData.load();
+        final after = factoryAfter(_battle!, _factoryOrder, run);
+        saveFactory({...factory, 'run': FactoryRun.winFloor(run, data, hp: after.hp, bag: after.bag)});
+        final boss = run['encounter']['boss'] as Map?;
+        note = '${boss != null ? '🏅 ${tr('Você venceu {0}!').replaceAll('{0}', '${boss['name']}')} ' : '🏆 '}${tr('Andar {0} vencido!').replaceAll('{0}', '$floor')}';
+      } else {
+        final after = FactoryRun.endRun(factory, run);
+        saveFactory(after);
+        note = tr('A corrida acabou no andar {0}: +{1} moedas. Recorde: andar {2}.')
+            .replaceAll('{0}', '$floor')
+            .replaceAll('{1}', '${(after['last'] as Map)['coins']}')
+            .replaceAll('{2}', '${after['best']}');
+      }
+      if (mounted) {
+        setState(() {
+          _endNote = note;
+          _next = null;
+        });
+      }
+      return;
+    }
+    if (kind == 'tower') {
       final won = _battle?.winner == 0;
       final after = GymChallenge.streakResult(UserData.instance.league, '$kind', won);
       UserData.instance.update({'league': after});
@@ -365,13 +425,19 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
                     foeName: _foeName,
                     foeTrainer: _foeTrainer,
                     intro: true,
-                    music: GymChallenge.musicOf(_foeLeader),
+                    music: _challenge?['boss'] is Map
+                        ? GymChallenge.musicFor('${_challenge!['boss']['name']}', '${_challenge!['boss']['kind']}', '${_challenge!['boss']['region']}')
+                        : GymChallenge.musicOf(_foeLeader),
                     endNote: _endNote,
                     next: _next,
+                    wild: _challenge?['wild'] == true,
                     canAgain: !const ['league', 'tower', 'factory'].contains(_challenge?['kind']),
                     onFinish: (foeTrainer) {
                       final b = _battle;
-                      if (b != null && b.members != null && b.seed != null) BattleLog.add(BattleLog.record(b, foeName: _foeName, foeTrainer: foeTrainer));
+                      // A Factory fica fora do histórico: o replay não refaz as bolsas da corrida.
+                      if (b != null && b.members != null && b.seed != null && _challenge?['kind'] != 'factory') {
+                        BattleLog.add(BattleLog.record(b, foeName: _foeName, foeTrainer: foeTrainer));
+                      }
                       _finishChallenge();
                     },
                     onAgain: _again,
@@ -380,8 +446,8 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
                       else { _battle?.dispose(); setState(() => _battle = null); }
                     },
                   ),
-                  if (_next != null && _challenge?['kind'] == 'factory' && _lastMine.isNotEmpty && _lastTheirs.isNotEmpty)
-                    _FactorySwap(mine: _lastMine, theirs: _lastTheirs, onSwap: (swap) => _nextStreak(swap)),
+                  if (_challenge?['kind'] == 'factory' && _endNote.isNotEmpty && _factoryData != null && currentFactory()['run'] != null)
+                    FactoryAfter(key: ValueKey('after-$_key'), run: Map<String, dynamic>.from(currentFactory()['run'] as Map), data: _factoryData!, onNext: _factoryFloor),
                 ],
               )
             : _preview != null
@@ -405,7 +471,6 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
         _endNote = '';
         _next = null;
         _lastMine = p.ma.length == p.a.length ? first(p.ma) : p.ma;
-        _lastTheirs = p.mb;
         _key++;
       });
     }
@@ -478,12 +543,16 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        DropdownButtonFormField<int>(initialValue: _count, decoration: deco('Formato'), items: const [DropdownMenuItem(value: 1, child: Text('Individual')), DropdownMenuItem(value: 2, child: Text('Dupla')), DropdownMenuItem(value: 3, child: Text('Tripla'))], onChanged: _busy ? null : (v) => setState(() => _count = v!)),
-        if (_count > 1) CheckboxListTile(contentPadding: EdgeInsets.zero, title: const Text('Jogar com parceiros NPC'), subtitle: const Text('Desmarcado: você controla todos os Pokémon.'), value: _npcPartner, onChanged: _busy ? null : (v) => setState(() => _npcPartner = v!)),
+        if (!_isFactory) DropdownButtonFormField<int>(initialValue: _count, decoration: deco('Formato'), items: const [DropdownMenuItem(value: 1, child: Text('Individual')), DropdownMenuItem(value: 2, child: Text('Dupla')), DropdownMenuItem(value: 3, child: Text('Tripla'))], onChanged: _busy ? null : (v) => setState(() => _count = v!)),
+        if (_count > 1 && !_isFactory) CheckboxListTile(contentPadding: EdgeInsets.zero, title: const Text('Jogar com parceiros NPC'), subtitle: const Text('Desmarcado: você controla todos os Pokémon.'), value: _npcPartner, onChanged: _busy ? null : (v) => setState(() => _npcPartner = v!)),
         const SizedBox(height: 12),
-        Text('Nível máximo 50. Batalha por turnos como nos jogos: seu time contra o de um amigo (ou um aleatório), com o computador jogando pelo outro lado.',
+        Text(
+            _isFactory
+                ? 'Battle Factory: sem nível máximo. Batalha por turnos como nos jogos, com o computador jogando pelo outro lado.'
+                : 'Nível máximo 50. Batalha por turnos como nos jogos: seu time contra o de um amigo (ou um aleatório), com o computador jogando pelo outro lado.',
             style: TextStyle(color: c.muted, fontSize: 13)),
         const SizedBox(height: 14),
+        if (!_isFactory)
           DropdownButtonFormField<int>(
             initialValue: _mine,
             isExpanded: true,
@@ -515,6 +584,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
         ),
         if (_leader != null) ...[const SizedBox(height: 10), _LeaderCard(leader: _leader!)],
         if (_streak != null) ...[const SizedBox(height: 10), _StreakCard(kind: _streak!)],
+        if (_isFactory) ...[const SizedBox(height: 10), FactoryHub(onBattle: _factoryFloor, busy: _busy || _hit == null)],
         if (_leader != null && GymChallenge.regionOf(_regions, _leader!.id) != null) ...[
           const SizedBox(height: 10),
           ListenableBuilder(
@@ -533,7 +603,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
           const SizedBox(height: 6),
           const Text('Fácil: o computador ataca ao acaso, sem trocar nem usar itens.\nNormal: IVs e EVs aleatórios.\nDifícil: sets competitivos.'),
         ],
-        if (_friend != _random && _leader == null && _streak == null) ...[
+        if (_friend != _random && _leader == null && _streak == null && !_isFactory) ...[
           const SizedBox(height: 12),
           if (_friendTeams == null)
             const Center(child: CircularProgressIndicator())
@@ -553,6 +623,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
             'O computador joga pelo adversário. Golpes com PP, precisão, prioridade, crítico, status, mudanças de atributo e clima.',
             style: TextStyle(color: c.muted, fontSize: 12)),
         const SizedBox(height: 14),
+        if (!_isFactory)
         PillButton(
           label: _busy ? tr('Preparando...') : '⚔️ ${tr('Começar batalha')}',
           expand: true,
@@ -570,7 +641,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
   }
 }
 
-/// Torre de Batalha / Battle Factory: como funciona e o seu recorde.
+/// Torre de Batalha: como funciona e o seu recorde.
 class _StreakCard extends StatelessWidget {
   final String kind;
   const _StreakCard({required this.kind});
@@ -584,70 +655,13 @@ class _StreakCard extends StatelessWidget {
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(16)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        m.Text(kind == 'tower' ? '🗼 ${tr('Torre de Batalha')}' : '🏭 ${tr('Battle Factory')}', style: TextStyle(color: c.text, fontWeight: FontWeight.w900)),
+        m.Text('🗼 ${tr('Torre de Batalha')}', style: TextStyle(color: c.text, fontWeight: FontWeight.w900)),
         Text(
-            kind == 'tower'
-                ? 'Seu time contra adversários aleatórios em sequência; a partir da 4ª vitória eles usam sets competitivos. Perdeu, a sequência acaba.'
-                : 'Você recebe 6 Pokémon emprestados. A cada vitória pode trocar um deles por um do adversário. Perdeu, a sequência acaba.',
+            'Seu time contra adversários aleatórios em sequência; a partir da 4ª vitória eles usam sets competitivos. Perdeu, a sequência acaba.',
             style: TextStyle(color: c.muted, fontSize: 12)),
         const SizedBox(height: 4),
         m.Text(tr('Recorde: {0} vitórias seguidas').replaceAll('{0}', '$best'), style: TextStyle(color: c.text, fontWeight: FontWeight.w800, fontSize: 13)),
       ]),
-    );
-  }
-}
-
-/// Factory: depois de vencer, troca um Pokémon seu por um do adversário (ou segue igual).
-class _FactorySwap extends StatefulWidget {
-  final List<Member> mine, theirs;
-  final void Function(({int give, int take}) swap) onSwap;
-  const _FactorySwap({required this.mine, required this.theirs, required this.onSwap});
-
-  @override
-  State<_FactorySwap> createState() => _FactorySwapState();
-}
-
-class _FactorySwapState extends State<_FactorySwap> {
-  int? _give, _take;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = SiteColors.of(context);
-    Widget row(List<Member> list, int? value, void Function(int?) set, String prefix) => Wrap(spacing: 4, runSpacing: 4, children: [
-          for (final (i, member) in list.indexed)
-            InkWell(
-              key: ValueKey('$prefix-$i'),
-              borderRadius: BorderRadius.circular(12),
-              onTap: () => setState(() => set(value == i ? null : i)),
-              child: Container(
-                padding: const EdgeInsets.all(2),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  color: value == i ? const Color(0x33F59E0B) : null,
-                  border: Border.all(color: value == i ? const Color(0xFFF59E0B) : Colors.transparent, width: 2),
-                ),
-                child: SizedBox.square(dimension: 44, child: PokemonSprite(member.$1, fill: 0.95)),
-              ),
-            ),
-        ]);
-    return Card(
-      key: const ValueKey('factory-swap'),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          m.Text('🏭 ${tr('Trocar um Pokémon')}', style: TextStyle(color: c.text, fontWeight: FontWeight.w900)),
-          Text('Escolha um do adversário e um seu para trocar, ou siga com o mesmo time.', style: TextStyle(color: c.muted, fontSize: 12)),
-          const SizedBox(height: 6),
-          row(widget.theirs, _take, (v) => _take = v, 'take'),
-          const SizedBox(height: 6),
-          row(widget.mine, _give, (v) => _give = v, 'give'),
-          const SizedBox(height: 8),
-          FilledButton(
-            onPressed: _give == null || _take == null ? null : () => widget.onSwap((give: _give!, take: _take!)),
-            child: m.Text('⇄ ${tr('Trocar e seguir')}'),
-          ),
-        ]),
-      ),
     );
   }
 }
@@ -795,6 +809,9 @@ class BattleView extends StatefulWidget {
   final String endNote;
   final ({String label, VoidCallback onTap})? next;
   final bool canAgain;
+
+  /// Pokémon selvagem (Battle Factory): sem treinador do outro lado.
+  final bool wild;
   const BattleView(
       {super.key,
       required this.battle,
@@ -810,7 +827,8 @@ class BattleView extends StatefulWidget {
       this.music = 'battle_music',
       this.endNote = '',
       this.next,
-      this.canAgain = true});
+      this.canAgain = true,
+      this.wild = false});
 
   @override
   State<BattleView> createState() => BattleViewState();
@@ -857,7 +875,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
   Future<void> _onlineQueue = Future.value();
 
   /// Os treinadores da abertura: o seu (de costas) e o do adversário.
-  late final Trainer? _coach = widget.foeTrainer != null ? Trainers.byId(widget.foeTrainer) : Trainers.random();
+  late final Trainer? _coach = widget.wild ? null : widget.foeTrainer != null ? Trainers.byId(widget.foeTrainer) : Trainers.random();
   late final Trainer? _myTrainer = Trainers.mine;
   bool _introOn = false;
   bool _finished = false;
@@ -937,15 +955,25 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
     await _wait(1100);
     if (!mounted) return;
     final who = widget.foeName.isNotEmpty ? widget.foeName : _coach?.name ?? tr('O adversário');
-    setState(() {
-      _text = tr('{0} enviou {1}!').replaceAll('{0}', who).replaceAll('{1}', _b.active(1).name);
-      _foeGone = true;
-      _ball[1] = 'throw';
-    });
-    BattleSounds.play('throw');
-    await _wait(520);
-    if (!mounted) return;
-    await _release(1);
+    if (widget.wild) {
+      // Selvagem: ele já está ali, sem Poké Ball.
+      setState(() {
+        _foeGone = true;
+        _poke[1] = '';
+        _text = tr('Um {0} selvagem apareceu!').replaceAll('{0}', _b.active(1).name);
+      });
+      await _wait(900);
+    } else {
+      setState(() {
+        _text = tr('{0} enviou {1}!').replaceAll('{0}', who).replaceAll('{1}', _b.active(1).name);
+        _foeGone = true;
+        _ball[1] = 'throw';
+      });
+      BattleSounds.play('throw');
+      await _wait(520);
+      if (!mounted) return;
+      await _release(1);
+    }
     if (!mounted) return;
     setState(() => _text = tr('Vai, {0}!').replaceAll('{0}', _b.active(0).name));
     for (var f = 1; f < 5; f++) {
@@ -1639,6 +1667,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                   TextButton(onPressed: () => setState(() => _menu = 'main'), child: const Text('Voltar')),
                 ]),
                 for (final it in battleItems)
+                  if (it.count > 0 || (_b.bags[0][it.slug] ?? 0) > 0)
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     enabled: [for (var i = 0; i < _b.teams[0].length; i++) i].any((i) => _b.canUseItem(0, it.slug, i)),
@@ -1650,7 +1679,13 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                         width: 40, height: 40, filterQuality: FilterQuality.none, errorBuilder: (_, __, ___) => const SizedBox(width: 40)),
                     // Nome do item como no jogo (não traduz).
                     title: m.Text(it.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text(it.revive ? tr('Revive com metade do HP') : tr('Recupera {0} de HP').replaceAll('{0}', '${it.heal}')),
+                    subtitle: Text(it.revive
+                        ? tr('Revive com metade do HP')
+                        : it.heal >= 9999
+                            ? tr('Recupera todo o HP')
+                            : _b.healPct
+                                ? tr('Recupera {0}% do HP').replaceAll('{0}', '${((const {'potion': 0.25, 'super-potion': 0.5, 'hyper-potion': 0.75}[it.slug] ?? 0) * 100).round()}')
+                                : tr('Recupera {0} de HP').replaceAll('{0}', '${it.heal}')),
                     trailing: m.Text('×${_b.bags[0][it.slug] ?? 0}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
                   ),
               ],

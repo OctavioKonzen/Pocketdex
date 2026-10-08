@@ -358,3 +358,70 @@ test('Every database form resolves to a simulator species instead of a generic f
   const records = JSON.parse(readFileSync(new URL('../../assets/database/pokemon.json', import.meta.url)));
   for (const record of records) assert.ok(sim.species(record.name).name, record.name);
 });
+
+test('Battle Factory: level above 50 only with levelCap 100, and stat bonuses past the IV/EV limits', () => {
+  const stats = extra => {
+    const game = create([mon('Pikachu', ['thunderbolt'], extra)], [mon('Pikachu', ['thunderbolt'])]);
+    try {
+      const p = game.state.sides[0].team[0];
+      return [p.maxHp, p.hp, p.spe];
+    } finally {sim.dispose(game.handle);}
+  };
+  const capped = stats({set: {species: 'Pikachu', moves: ['thunderbolt'], level: 80}});
+  const free = stats({set: {species: 'Pikachu', moves: ['thunderbolt'], level: 80}, levelCap: 100});
+  const bonus = stats({set: {species: 'Pikachu', moves: ['thunderbolt'], level: 80}, levelCap: 100, bonus: {hp: 50, spe: 40}});
+  assert.deepEqual(capped, [110, 110, 110]);
+  assert.ok(free[0] > capped[0]);
+  assert.deepEqual(bonus, [free[0] + 50, free[1] + 50, free[2] + 40]);
+});
+
+test('Bag per side: a wild Pokémon (Battle Factory) can have no items', () => {
+  const game = sim.create({teams: [[mon('Pikachu', ['thunderbolt'])], [mon('Pikachu', ['thunderbolt'])]], seed: [1, 2, 3, 4], bags: [null, {potion: 0, 'super-potion': 0, 'hyper-potion': 0, revive: 0}]});
+  try {
+    assert.deepEqual(game.state.bags[0], {potion: 3, 'super-potion': 2, 'hyper-potion': 1, 'max-potion': 0, revive: 1});
+    assert.deepEqual(game.state.bags[1], {potion: 0, 'super-potion': 0, 'hyper-potion': 0, 'max-potion': 0, revive: 0});
+  } finally {sim.dispose(game.handle);}
+});
+
+test('Battle Factory: no level cap, percent boosts from extra items, HP kept between floors', () => {
+  const base = {set: {species: 'Pikachu', moves: ['thunderbolt'], level: 300}, levelCap: 'none'};
+  const game = sim.create({teams: [[{...base, boost: {spe: .1}, hpRatio: .5}, {...base, hpRatio: 0}], [mon('Pikachu', ['thunderbolt'])]], seed: [1, 2, 3, 4]});
+  const plain = sim.create({teams: [[base], [mon('Pikachu', ['thunderbolt'])]], seed: [1, 2, 3, 4]});
+  try {
+    const p = game.state.sides[0].team, q = plain.state.sides[0].team[0];
+    assert.ok(q.maxHp > 600);
+    assert.equal(p[0].spe, Math.floor(q.spe * 1.1));
+    assert.equal(p[0].hp, Math.ceil(q.maxHp / 2));
+    assert.equal(p[1].hp, 0);
+    assert.deepEqual(game.state.sides[0].switchOptions, []);
+  } finally {sim.dispose(game.handle); sim.dispose(plain.handle);}
+});
+
+test('Battle Factory: a fainted Pokémon carried over counts as fainted (battle ends, Revive works)', () => {
+  const weak = {set: {species: 'Magikarp', moves: ['splash'], level: 5}, levelCap: 'none'};
+  const strong = {set: {species: 'Mewtwo', moves: ['psystrike'], level: 100}, levelCap: 100};
+  const lost = sim.create({teams: [[weak, {...weak, hpRatio: 0}], [strong]], seed: [1, 2, 3, 4]});
+  try {
+    const end = sim.choose(lost.handle, [move(0), move(0)]);
+    assert.equal(end.state.winner, 1);
+  } finally {sim.dispose(lost.handle);}
+  const game = sim.create({teams: [[{...weak, set: {...weak.set, level: 100}}, {...weak, hpRatio: 0}], [{set: {species: 'Blissey', moves: ['splash'], level: 5}}]], seed: [1, 2, 3, 4], healPct: true});
+  try {
+    const revived = sim.choose(game.handle, [{kind: 'item', item: 'revive', index: 1}, move(0)]);
+    assert.ok(revived.state.sides[0].team[1].hp > 0);
+    assert.deepEqual(revived.state.sides[0].switchOptions, [1]);
+  } finally {sim.dispose(game.handle);}
+});
+
+test('Battle Factory: potions heal a share of max HP (healPct) and Max Potion heals everything', () => {
+  const big = {set: {species: 'Blissey', moves: ['splash'], level: 300}, levelCap: 'none', hpRatio: .1};
+  const game = sim.create({teams: [[big], [{set: {species: 'Magikarp', moves: ['splash'], level: 5}}]], seed: [1, 2, 3, 4], healPct: true, bags: [{'max-potion': 1}, null]});
+  try {
+    const before = game.state.sides[0].team[0];
+    const potion = sim.choose(game.handle, [{kind: 'item', item: 'potion', index: 0}, move(0)]);
+    assert.equal(potion.state.sides[0].team[0].hp - before.hp, Math.ceil(before.maxHp * .25));
+    const max = sim.choose(game.handle, [{kind: 'item', item: 'max-potion', index: 0}, move(0)]);
+    assert.equal(max.state.sides[0].team[0].hp, before.maxHp);
+    assert.equal(max.state.bags[0]['max-potion'], 0);
+  } finally {sim.dispose(game.handle);}
+});

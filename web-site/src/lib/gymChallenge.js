@@ -2,11 +2,12 @@
 // (lib/services/gym_challenge.dart):
 //   badges: {região: [id do líder]}   insígnias (líderes de ginásio e kahunas vencidos)
 //   hall: [{region, at, team: [id do Pokémon], trainer}]   Hall da Fama (Liga vencida)
-//   tower, factory: {best, streak}   Torre de Batalha e Battle Factory
+//   tower: {best, streak}   Torre de Batalha
+//   factory: {best, coins, owned, shinies, run}   Battle Factory (lib/factoryRun.js)
 // A Liga (Elite Four e o Campeão em sequência) fica liberada com 8 insígnias
 // da região (ou todas, se a região tem menos de 8, como os 4 kahunas de Alola).
 
-export const emptyLeague = () => ({ badges: {}, hall: [], tower: { best: 0, streak: 0 }, factory: { best: 0, streak: 0 } })
+export const emptyLeague = () => ({ badges: {}, hall: [], tower: { best: 0, streak: 0 }, factory: { best: 0, coins: 0, owned: [], shinies: [], run: null } })
 
 /** Quem dá insígnia na região (líderes de ginásio e kahunas). */
 export const regionGyms = (region) => region.leaders.filter((l) => l.kind === 'gym' || l.kind === 'kahuna')
