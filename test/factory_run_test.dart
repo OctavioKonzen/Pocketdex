@@ -38,7 +38,7 @@ void main() {
     expect(run['encounter'], isNull);
     expect(run['route'], {'floor': 1, 'biome': 'grass', 'options': [{'kind': 'trainer'}]});
     expect(FactoryRun.chooseNode(run, data, 0)['encounter'], {
-      'kind': 'trainer', 'foes': [{'id': 859, 'level': 2, 'iv': 0, 'ev': 3}, {'id': 273, 'level': 2, 'iv': 0, 'ev': 3}], 'trainerSeed': 500729487, 'scene': 'grass',
+      'kind': 'trainer', 'foes': [{'id': 868, 'level': 2, 'iv': 0, 'ev': 3}, {'id': 280, 'level': 2, 'iv': 0, 'ev': 3}], 'trainerSeed': 500729487, 'scene': 'grass',
     });
   });
 
@@ -270,5 +270,28 @@ void main() {
     final trainer = TurnBattle(await TurnBattleSetup.mons([(25, set(['thunderbolt']))], (row) => '${row['name']}'), c, League.seededRandom(3), startBags: [{'master-ball': 1}, null]);
     addTearDown(trainer.dispose);
     expect(trainer.canUseItem(0, 'master-ball', 0), isFalse);
+  });
+
+  test('evoluídos só a partir do nível em que evoluem: abaixo dele, a forma anterior (igual ao site)', () {
+    expect([FactoryRun.minLevelOf(data, 252), FactoryRun.minLevelOf(data, 253), FactoryRun.minLevelOf(data, 254)], [1, 16, 36]);
+    expect([FactoryRun.devolve(data, 254, 2), FactoryRun.devolve(data, 254, 20), FactoryRun.devolve(data, 254, 40)], [252, 253, 254]);
+    expect(FactoryRun.minLevelOf(data, 26), 25);
+    var state = 8;
+    double rand() {
+      final (v, s) = FactoryRun.nextRandom(state);
+      state = s;
+      return v;
+    }
+
+    for (var floor = 1; floor <= 30; floor++) {
+      for (final node in [{'kind': 'wild', 'biome': 'forest'}, {'kind': 'trainer'}, {'kind': 'ace'}]) {
+        for (final f in FactoryRun.encounterFor(data, floor, rand, null, false, node)['foes'] as List) {
+          expect(f['level'] as int, greaterThanOrEqualTo(FactoryRun.minLevelOf(data, f['id'] as int)));
+        }
+      }
+      for (final f in FactoryRun.encounterFor(data, floor, rand, null, true)['foes'] as List) {
+        expect(f['level'] as int, greaterThanOrEqualTo(FactoryRun.minLevelOf(data, f['id'] as int)));
+      }
+    }
   });
 }

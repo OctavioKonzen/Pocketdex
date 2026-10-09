@@ -347,6 +347,40 @@ class FactoryRun {
     return team.length > cap ? team.sublist(team.length - cap) : team;
   }
 
+  /// Nível de quem evolui por item (pedra), sem nível no jogo: a partir dele já aparece evoluído.
+  static const itemEvolutionLevel = 20;
+  static final _preCache = Expando<Map<int, List<int>>>();
+
+  /// De quem cada espécie evolui: espécie → [pré-evolução, nível (0: por item)]. A primeira que aparecer. Igual ao site.
+  static Map<int, List<int>> _preEvolutions(FactoryData data) => _preCache[data] ??= () {
+        final out = <int, List<int>>{};
+        // Em ordem de id, como o site (Object.entries).
+        for (final from in data.evolutions.keys.toList()..sort()) {
+          for (final x in data.evolutions[from]!) {
+            out.putIfAbsent(_int(x[0]), () => [from, _int(x[1])]);
+          }
+        }
+        return out;
+      }();
+
+  /// O nível mínimo em que a espécie (ou forma) aparece: o nível de cada evolução até ela.
+  static int minLevelOf(FactoryData data, int id) {
+    final pre = _preEvolutions(data)[data.forms[id] ?? id];
+    if (pre == null) return 1;
+    return math.max(pre[1] == 0 ? itemEvolutionLevel : pre[1], minLevelOf(data, pre[0]));
+  }
+
+  /// Abaixo do nível em que evolui, volta para a forma anterior (um Sceptile nível 2 é um Treecko). Igual ao site.
+  static int devolve(FactoryData data, int id, int level) {
+    var out = id;
+    for (var guard = 0; guard < 4 && minLevelOf(data, out) > level; guard++) {
+      final pre = _preEvolutions(data)[data.forms[out] ?? out];
+      if (pre == null) break;
+      out = pre[0];
+    }
+    return out;
+  }
+
   /// Nível de um chefe: quem é mais forte que as espécies do andar vem com nível menor.
   static int _bossLevel(FactoryData data, int floor, int id, int lvl) => math.max(2, (lvl * _pow15(math.min(1, speciesBudget(floor) / data.bstOf(id)))).round());
 
@@ -567,20 +601,25 @@ class FactoryRun {
   static Json encounterFor(FactoryData data, int floor, double Function() rand, [Json? boss, bool wild = false, Json? node]) {
     final level = math.max(2, foeLevelAt(floor) + (rand() * 2).floor());
     final iv = foeIvsAt(floor), ev = foeEvsAt(floor), boost = foeBoostAt(floor);
-    Json foe(int id, int lvl, [Json extra = const {}]) => {'id': id, 'level': math.max(2, lvl), 'iv': iv, 'ev': ev, if (boost != 0) 'boost': boost, ...extra};
+    // Evoluídos só a partir do nível em que evoluem (abaixo dele, a forma anterior).
+    Json foe(int id, int lvl, [Json extra = const {}]) =>
+        {'id': devolve(data, id, math.max(2, lvl)), 'level': math.max(2, lvl), 'iv': iv, 'ev': ev, if (boost != 0) 'boost': boost, ...extra};
     if (wild) {
       // Chefe sem treinador: dá para capturar; a Mega deixa a Mega Pedra.
       final r = rand();
       final strong = {'iv': math.max(31, iv), 'ev': (ev * 1.25).round()};
       int id;
       Json extra;
-      if (r < 0.4) {
-        final species = data.megas.keys.toList()..sort();
-        id = _pick(species, rand);
+      // Mega e Gigantamax só dos que já chegaram ao nível em que evoluem; senão, um lendário.
+      bool fits(int sid) => minLevelOf(data, sid) <= _bossLevel(data, floor, sid, level + 3);
+      final megas = (data.megas.keys.toList()..sort()).where(fits).toList();
+      final gmax = data.gmax.where(fits).toList();
+      if (r < 0.4 && megas.isNotEmpty) {
+        id = _pick(megas, rand);
         final stone = _pick(data.megas[id]!, rand)[0] as String;
         extra = {'item': stone, 'gimmick': 'mega', 'title': 'mega'};
-      } else if (r < 0.7) {
-        id = _pick(data.gmax, rand);
+      } else if (r >= 0.4 && r < 0.7 && gmax.isNotEmpty) {
+        id = _pick(gmax, rand);
         extra = {'gimmick': 'dmax', 'title': 'gmax'};
       } else {
         final legends = [for (final e in data.species.entries) if (_int(e.value[2]) == 1 || _int(e.value[2]) == 2) e.key];
@@ -608,7 +647,8 @@ class FactoryRun {
     // Nos primeiros andares, nada de Fantasma (imune aos golpes Normal que os iniciais têm no começo).
     final entries = [
       for (final e in data.species.entries)
-        if (floor >= 8 || !(e.value.length > 4 && (e.value[4] as List).contains('ghost'))) (id: e.key, bst: _int(e.value[1]), rarity: _int(e.value[2]))
+        if ((floor >= 8 || !(e.value.length > 4 && (e.value[4] as List).contains('ghost'))) && minLevelOf(data, e.key) <= level)
+          (id: e.key, bst: _int(e.value[1]), rarity: _int(e.value[2]))
     ];
     final budget = speciesBudget(floor);
     int pick(List<({int id, int bst, int rarity})> pool) {

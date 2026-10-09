@@ -5,14 +5,14 @@ import {
   HELD_BOOST, levelTo, MAX_TEAM, memberOf, movesAt, nextFloor, nextRandom, overflowPoints, pokemonPrice, runCoins, setMainItem, shopPrice,
   SHINY_BOOST, SHINY_CHANCE, START_BAG, START_BALLS, startersOf, buyShiny, shinyPrice, unlockShiny, claimStarter, freePick, canEvolveWith, teachMove,
   equipFromStash, gimmicksOf, setGimmick, storyLine, startRun, takeCard, teamDown, applyBagItem, winFloor, chooseNode, routeOptions, routeCities,
-  captureFor, factoryOf, BIOMES, isBattleNode, skipCapture, FORKS, ROUTE_LENGTH, BALL_TIERS, HEAL_TIERS, tierPick,
+  captureFor, factoryOf, BIOMES, isBattleNode, skipCapture, FORKS, ROUTE_LENGTH, BALL_TIERS, HEAL_TIERS, tierPick, minLevelOf, devolve,
 } from './factoryRun'
 
 const data = JSON.parse(readFileSync(new URL('../../../assets/database/factory.json', import.meta.url), 'utf8'))
 const moves = Object.fromEntries(JSON.parse(readFileSync(new URL('../../../assets/database/moves.json', import.meta.url), 'utf8')).map((m) => [m.name, { ...m, category: m.damage_class }]))
 const forms = Object.fromEntries(JSON.parse(readFileSync(new URL('../../../assets/database/pokemon.json', import.meta.url), 'utf8')).map((p) => [p.id, p]))
 const ROUTE_42 = { floor: 1, biome: 'grass', options: [{ kind: 'trainer' }] }
-const ENCOUNTER_42 = { kind: 'trainer', foes: [{ id: 859, level: 2, iv: 0, ev: 3 }, { id: 273, level: 2, iv: 0, ev: 3 }], trainerSeed: 500729487, scene: 'grass' }
+const ENCOUNTER_42 = { kind: 'trainer', foes: [{ id: 868, level: 2, iv: 0, ev: 3 }, { id: 280, level: 2, iv: 0, ev: 3 }], trainerSeed: 500729487, scene: 'grass' }
 const seq = (values) => { let i = 0; return () => values[i++ % values.length] }
 
 describe('Battle Factory (roguelike)', () => {
@@ -158,6 +158,23 @@ describe('Battle Factory (roguelike)', () => {
     expect(shopPrice({ ...run, floor: 50 }, 'poke-ball')).toBeGreaterThan(shopPrice({ ...run, floor: 1 }, 'poke-ball'))
     const high = { ...run, team: [{ ...run.team[0], level: 60 }] }
     expect(shopPrice(high, 'rare-candy')).toBeGreaterThan(shopPrice(run, 'rare-candy') * 5)
+  })
+
+  it('evoluídos só a partir do nível em que evoluem: abaixo dele, a forma anterior (nada de Sceptile nível 2)', () => {
+    expect([minLevelOf(data, 252), minLevelOf(data, 253), minLevelOf(data, 254)]).toEqual([1, 16, 36])
+    expect([devolve(data, 254, 2), devolve(data, 254, 20), devolve(data, 254, 40)]).toEqual([252, 253, 254])
+    // Por pedra: a partir do nível 20 (e nunca antes da forma anterior).
+    expect(minLevelOf(data, 26)).toBe(25)
+    let state = 8
+    const rand = () => { const [v, s] = nextRandom(state); state = s; return v }
+    const red = data.bosses.find((b) => b.game === 'Ruby/Sapphire') ?? data.bosses[0]
+    for (let floor = 1; floor <= 40; floor++) {
+      for (const node of [{ kind: 'wild', biome: 'forest' }, { kind: 'trainer' }, { kind: 'ace' }]) {
+        for (const f of encounterFor(data, floor, rand, null, false, node).foes) expect(f.level).toBeGreaterThanOrEqual(minLevelOf(data, f.id))
+      }
+      for (const leader of red.leaders) for (const f of encounterFor(data, floor, rand, { ...leader, region: red.region, game: red.game }).foes) expect(f.level).toBeGreaterThanOrEqual(minLevelOf(data, f.id))
+      for (const f of encounterFor(data, floor, rand, null, true).foes) expect(f.level).toBeGreaterThanOrEqual(minLevelOf(data, f.id))
+    }
   })
 
   it('loja: bolas e remédios melhores ficam mais comuns conforme o andar', () => {

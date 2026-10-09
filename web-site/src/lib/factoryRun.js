@@ -296,6 +296,36 @@ export function bossTeam(boss, floor) {
 /** Força (total de atributos) das espécies do andar: mais fortes conforme sobe (depois do andar 60, qualquer uma). */
 export const speciesBudget = (floor) => 290 + floor * 7
 
+/** Nível de quem evolui por item (pedra), sem nível no jogo: a partir dele já aparece evoluído. */
+export const ITEM_EVOLUTION_LEVEL = 20
+const preCache = new WeakMap()
+/** De quem cada espécie evolui: espécie → [pré-evolução, nível (0: por item)]. A primeira que aparecer. */
+function preEvolutions(data) {
+  let out = preCache.get(data)
+  if (!out) {
+    out = new Map()
+    for (const [from, list] of Object.entries(data.evolutions)) for (const [to, level] of list) if (!out.has(to)) out.set(to, [Number(from), level])
+    preCache.set(data, out)
+  }
+  return out
+}
+/** O nível mínimo em que a espécie (ou forma) aparece: o nível de cada evolução até ela (por item: ITEM_EVOLUTION_LEVEL). */
+export function minLevelOf(data, id) {
+  const pre = preEvolutions(data).get(data.forms?.[id] ?? id)
+  if (!pre) return 1
+  return Math.max(pre[1] || ITEM_EVOLUTION_LEVEL, minLevelOf(data, pre[0]))
+}
+/** Abaixo do nível em que evolui, volta para a forma anterior (um Sceptile nível 2 é um Treecko), como nos jogos. */
+export function devolve(data, id, level) {
+  let out = id
+  for (let guard = 0; guard < 4 && minLevelOf(data, out) > level; guard++) {
+    const pre = preEvolutions(data).get(data.forms?.[out] ?? out)
+    if (!pre) break
+    out = pre[0]
+  }
+  return out
+}
+
 /** Nível de um chefe: quem é mais forte que as espécies do andar vem com nível menor. */
 const bossLevel = (data, floor, id, lvl) => Math.max(2, Math.round(lvl * pow15(Math.min(1, speciesBudget(floor) / (speciesOf(data, id)?.[1] ?? 400)))))
 
@@ -484,19 +514,23 @@ export function chooseNode(run, data, index) {
 export function encounterFor(data, floor, rand, boss = null, wild = false, node = null) {
   const level = Math.max(2, foeLevelAt(floor) + Math.floor(rand() * 2))
   const iv = foeIvsAt(floor), ev = foeEvsAt(floor), boost = foeBoostAt(floor)
-  const foe = (id, lvl, extra = {}) => ({ id, level: Math.max(2, lvl), iv, ev, ...(boost ? { boost } : {}), ...extra })
+  // Evoluídos só a partir do nível em que evoluem (abaixo dele, a forma anterior).
+  const foe = (id, lvl, extra = {}) => ({ id: devolve(data, id, Math.max(2, lvl)), level: Math.max(2, lvl), iv, ev, ...(boost ? { boost } : {}), ...extra })
   if (wild) {
     // Chefe sem treinador: dá para capturar; a Mega deixa a Mega Pedra.
     const r = rand()
     const strong = { iv: Math.max(31, iv), ev: Math.round(ev * 1.25) }
     let id, extra
-    if (r < 0.4) {
-      const species = Object.keys(data.megas).map(Number).sort((a, b) => a - b)
-      id = pickOne(species, rand)
+    // Mega e Gigantamax só dos que já chegaram ao nível em que evoluem; senão, um lendário.
+    const fits = (sid) => minLevelOf(data, sid) <= bossLevel(data, floor, sid, level + 3)
+    const megas = Object.keys(data.megas).map(Number).sort((a, b) => a - b).filter(fits)
+    const gmax = data.gmax.filter(fits)
+    if (r < 0.4 && megas.length) {
+      id = pickOne(megas, rand)
       const [stone] = pickOne(data.megas[id], rand)
       extra = { item: stone, gimmick: 'mega', title: 'mega' }
-    } else if (r < 0.7) {
-      id = pickOne(data.gmax, rand)
+    } else if (r >= 0.4 && r < 0.7 && gmax.length) {
+      id = pickOne(gmax, rand)
       extra = { gimmick: 'dmax', title: 'gmax' }
     } else {
       const legends = Object.entries(data.species).filter(([, info]) => info[2] === 1 || info[2] === 2).map(([k]) => Number(k))
@@ -518,7 +552,7 @@ export function encounterFor(data, floor, rand, boss = null, wild = false, node 
   const kind = node?.kind ?? (rand() < 0.35 ? 'trainer' : 'wild')
   // Nos primeiros andares, nada de Fantasma (imune aos golpes Normal que os iniciais têm no começo).
   const entries = Object.entries(data.species)
-    .filter(([, info]) => floor >= 8 || !info[4]?.includes('ghost'))
+    .filter(([id, info]) => (floor >= 8 || !info[4]?.includes('ghost')) && minLevelOf(data, Number(id)) <= level)
     .map(([id, [, bst, rarity]]) => ({ id: Number(id), bst, rarity }))
   const budget = speciesBudget(floor)
   const pick = (pool) => {
