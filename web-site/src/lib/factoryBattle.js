@@ -33,6 +33,8 @@ export async function factoryBattle(run) {
   // Selvagem: as Poké Balls da Bolsa funcionam (captureFor: a taxa de captura de cada um).
   const battle = newBattle(a, b, seededRandom(seed >>> 0), { ai: 'normal', seed: seed >>> 0, bags: bagsFor(run), healPct: true, capture: captureFor(run, data) })
   battle.members = { mine, theirs }
+  // O cenário: o lugar do andar (cidade, floresta, caverna, mar...).
+  battle.scene = run.encounter.scene ?? run.encounter.biome ?? 'grass'
   battle.factoryOrder = order
   return battle
 }

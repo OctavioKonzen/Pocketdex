@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import PokeIcon from './PokeIcon'
 import Sprite from './Sprite'
+import { BattleBackground } from './BattleScene'
 import { TrainerSprite } from './Trainer'
 import { Button, SearchInput } from './ui'
 import { getFactoryData, shinyPath, spriteUrl } from '../lib/data'
@@ -436,22 +437,6 @@ function stepOf(p) {
   return null
 }
 
-/** As cores do campo em cada bioma: [céu, chão, base escura, base clara] (o campo da batalha é o 'grass'). */
-const FIELD_COLORS = {
-  grass: ['#b9e6bd', '#edf9c8', '#7eba62', '#a9d57b'],
-  forest: ['#9fd39a', '#d3ebb4', '#4f8a3c', '#6fae4f'],
-  water: ['#9fdcff', '#d6f1ff', '#3b82c4', '#60a5e0'],
-  cave: ['#8d8173', '#c4b8a6', '#6b5f52', '#8a7d6d'],
-  mountain: ['#c9d3dc', '#e7e2d4', '#8f8a80', '#aba497'],
-  volcano: ['#f3b38a', '#f7d9b5', '#b4532a', '#d0743e'],
-  city: ['#c7d2fe', '#e9edf7', '#94a3b8', '#b6c2d1'],
-  snow: ['#dbeafe', '#f8fafc', '#a5c3dd', '#cfe0ef'],
-  tower: ['#c4b5fd', '#e9e3ff', '#7c6ba8', '#9d8cc9'],
-  sky: ['#bae6fd', '#f0f9ff', '#cbd5e1', '#e2e8f0'],
-  center: ['#fbcfe8', '#fdf2f8', '#f472b6', '#f9a8d4'],
-  over: ['#94a3b8', '#cbd5e1', '#64748b', '#94a3b8'],
-}
-
 /** A largura de um elemento (os sprites de treinador são em px). */
 function useWidth() {
   const [width, setWidth] = useState(640)
@@ -465,20 +450,11 @@ function useWidth() {
   return [ref, width]
 }
 
-/** O campo da batalha (as mesmas faixas e as duas bases), nas cores do bioma. */
+/** O campo da batalha (o mesmo cenário dela), no lugar em que você está. */
 function Field({ biome = 'grass', fieldRef, children, testid }) {
-  const [top, bottom, dark, light] = FIELD_COLORS[biome] ?? FIELD_COLORS.grass
   return (
     <div ref={fieldRef} className="relative aspect-[16/10] overflow-hidden rounded-t-2xl border-4 border-b-0 border-slate-800 sm:aspect-[16/9]" data-testid={testid}>
-      <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 160 100" preserveAspectRatio="none" aria-hidden="true">
-        <defs><linearGradient id={`factory-${biome}`} x1="0" y1="0" x2="0" y2="1"><stop stopColor={top} /><stop offset="1" stopColor={bottom} /></linearGradient></defs>
-        <rect width="160" height="100" fill={`url(#factory-${biome})`} />
-        {Array.from({ length: 50 }, (_, i) => <rect key={i} y={i * 2} width="160" height="0.4" fill="#fff" opacity="0.25" />)}
-        <ellipse cx="120" cy="45" rx="32" ry="8" fill={dark} />
-        <ellipse cx="120" cy="44" rx="29" ry="6" fill={light} />
-        <ellipse cx="38" cy="91" rx="42" ry="12" fill={dark} />
-        <ellipse cx="38" cy="89" rx="39" ry="9" fill={light} />
-      </svg>
+      <BattleBackground scene={biome} />
       {children}
     </div>
   )
@@ -514,7 +490,7 @@ function MenuButton({ children, sub, onClick, disabled = false, testid, active =
 }
 
 /** A moldura da batalha: o campo, a barra da corrida (dinheiro, Bolsa e time) e a caixa de texto com o menu. */
-function BattleFrame({ field, run, byId, text, menu, wideMenu = false }) {
+function BattleFrame({ field, run, byId, text, menu, wideMenu = false, panel = null }) {
   return (
     <div className="select-none">
       {field}
@@ -539,11 +515,15 @@ function BattleFrame({ field, run, byId, text, menu, wideMenu = false }) {
           </span>
         </div>
       )}
-      <div className="flex min-h-36 flex-col gap-2 rounded-b-2xl border-4 border-slate-800 bg-slate-800 p-2 sm:flex-row">
-        <div className="min-h-20 flex-1 space-y-1 rounded-xl border-4 border-amber-600 bg-white px-4 py-3 text-left text-base font-bold text-slate-900 sm:text-lg" data-testid="factory-text">
-          {text}
+      <div className="flex min-h-36 flex-col gap-2 rounded-b-2xl border-4 border-slate-800 bg-slate-800 p-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="min-h-20 flex-1 space-y-1 rounded-xl border-4 border-amber-600 bg-white px-4 py-3 text-left text-base font-bold text-slate-900 sm:text-lg" data-testid="factory-text">
+            {text}
+          </div>
+          {menu && <div className={`grid content-start gap-1 rounded-xl border-4 border-slate-600 bg-white p-2 ${wideMenu ? 'sm:w-96' : 'grid-cols-2 sm:w-72'}`}>{menu}</div>}
         </div>
-        {menu && <div className={`grid content-start gap-1 rounded-xl border-4 border-slate-600 bg-white p-2 ${wideMenu ? 'sm:w-96' : 'grid-cols-2 sm:w-72'}`}>{menu}</div>}
+        {/* A loja, a Bolsa e o time abrem aqui dentro (a mesma tela). */}
+        {panel && <div className="factory-panel max-h-[60vh] overflow-y-auto rounded-xl border-4 border-slate-600 bg-white p-2 text-slate-900">{panel}</div>}
       </div>
     </div>
   )
@@ -583,9 +563,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     </div>
   )
   const extras = run && (panel === 'bag' || panel === 'team') && (
-    <div className="mt-3 rounded-2xl bg-card p-3 shadow">
-      {panel === 'bag' ? <BagPanel run={run} byId={byId} save={save} open /> : <TeamPanel run={run} data={data} byId={byId} save={save} open />}
-    </div>
+    panel === 'bag' ? <BagPanel run={run} byId={byId} save={save} open /> : <TeamPanel run={run} data={data} byId={byId} save={save} open />
   )
   const tools = (
     <>
@@ -620,7 +598,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     const event = p.event
     const shown = p.center || p.joy ? nurse : [p.drop, p.reward].filter(Boolean).length ? <img src={itemIcon(p.drop ?? p.reward)} alt="" className="pixelated w-1/2" onError={hide} /> : null
     field = (
-      <Field biome={p.center ? 'center' : 'grass'} fieldRef={fieldRef} testid="factory-result">
+      <Field biome={p.center ? 'center' : run.scene ?? 'grass'} fieldRef={fieldRef} testid="factory-result">
         {shown && <FarStand>{shown}</FarStand>}
         {!shown && event && <FarStand><span className="text-7xl">{event.kind === 'money' ? '💰' : event.kind === 'berries' ? '🍒' : event.kind === 'tutor' ? '📀' : '🎁'}</span></FarStand>}
         {lead && <FieldMon mon={lead} byId={byId} back />}
@@ -658,7 +636,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       saveFactory({ ...meta, run: out })
     }
     field = (
-      <Field fieldRef={fieldRef} testid="factory-capture">
+      <Field biome={run.scene ?? 'grass'} fieldRef={fieldRef} testid="factory-capture">
         <FieldMon mon={mon} byId={byId} />
         {lead && <FieldMon mon={lead} byId={byId} back />}
       </Field>
@@ -679,7 +657,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     ) : <MenuButton onClick={() => keep(null)} testid="factory-continue">{t('CONTINUAR')}</MenuButton>
   } else if (step === 'cards') {
     field = (
-      <Field fieldRef={fieldRef} testid="factory-cards">
+      <Field biome={run.scene ?? 'grass'} fieldRef={fieldRef} testid="factory-cards">
         <div className="absolute inset-0 grid grid-cols-3 items-center gap-2 p-3 sm:gap-4 sm:p-6">
           {p.cards.map((c) => (
             <button key={c} type="button" data-testid={`card-${c}`} onClick={() => save(takeCard(run, c, data))}
@@ -714,7 +692,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     )
     if (!panel) {
       below = (
-        <div className="mt-3 space-y-2 rounded-2xl bg-card p-3 shadow">
+        <div className="space-y-2">
           <p className="text-xs text-muted">{t('Para quem é a compra (bolas e itens da Bolsa vão para a Bolsa):')}</p>
           <div className="flex flex-wrap gap-1">{run.team.map((m, i) => <MonChip key={i} mon={m} byId={byId} selected={pick === i} onClick={() => setTarget(i)} testid={`target-${i}`} />)}</div>
           <div className="grid gap-2 sm:grid-cols-2">
@@ -830,14 +808,11 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
 
   return (
     <section data-testid="factory-screen">
-      <BattleFrame field={field} run={run} byId={byId} text={text} menu={menu} wideMenu={wideMenu} />
-      {unlocked != null && (
-        <p className="mt-2 rounded-xl bg-amber-500/15 p-2 text-sm font-bold" data-testid="factory-shiny-unlocked">
-          ✨ {t('{0} shiny liberado para começar as próximas corridas!').replace('{0}', name(unlocked))}
-        </p>
-      )}
-      {below}
-      {extras}
+      <BattleFrame field={field} run={run} byId={byId} wideMenu={wideMenu} menu={menu} panel={below || extras || null}
+        text={<>
+          {text}
+          {unlocked != null && <p className="text-sm text-amber-600" data-testid="factory-shiny-unlocked">✨ {t('{0} shiny liberado para começar as próximas corridas!').replace('{0}', name(unlocked))}</p>}
+        </>} />
       {links}
     </section>
   )

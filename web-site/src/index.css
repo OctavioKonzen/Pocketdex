@@ -32,6 +32,18 @@
   color-scheme: light;
 }
 
+/* Painéis dentro da moldura branca da batalha (loja, Bolsa, time da Battle Factory): sempre claros. */
+.factory-panel {
+  --bg: #f1f5f9;
+  --surface: #e2e8f0;
+  --card: #f8fafc;
+  --text: #0f172a;
+  --muted: #64748b;
+  --line: #cbd5e1;
+  color: var(--text);
+  color-scheme: light;
+}
+
 /* min-height (e não height) para o menu fixo no topo acompanhar a página inteira. */
 html,
 body,

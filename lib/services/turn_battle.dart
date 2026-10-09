@@ -400,6 +400,9 @@ class TurnBattle {
   /// Battle Factory: as poções curam uma parte do HP máximo (o nível não tem limite).
   final bool healPct;
 
+  /// O cenário (lib/widgets/battle_scene.dart): 'grass' é o campo de sempre; a Battle Factory usa o lugar do andar.
+  String scene = 'grass';
+
   /// Battle Factory, selvagem: dá para jogar Poké Balls ({rates, dusk}; o motor faz a conta). captured: pegou.
   final Map<String, dynamic>? capture;
   int? captured;

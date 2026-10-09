@@ -442,11 +442,17 @@ export function chooseNode(run, data, index) {
   const out = { ...run, route: null }
   const rand = dice(out)
   if (isBattleNode(node)) {
-    out.encounter = encounterFor(data, out.floor, rand, node.kind === 'boss' ? bossOf(data, out) : null, node.kind === 'wildboss', node)
+    // O cenário da batalha: o bioma do selvagem, a cidade do ginásio, a Liga (torre) ou a rota.
+    const city = node.kind === 'boss' && atCity(data, run)
+    const scene = node.biome ?? (city ? (bossOf(data, run).kind === 'gym' ? 'city' : 'tower') : run.route.biome ?? 'grass')
+    out.scene = scene
+    out.encounter = { ...encounterFor(data, out.floor, rand, node.kind === 'boss' ? bossOf(data, out) : null, node.kind === 'wildboss', node), scene }
     return out
   }
   out.floor += 1
-  if (node.kind === 'mart') out.pending = { mart: true, shop: pickShop(rand, data, 10) }
+  // O cenário de onde você está (Poké Mart e Centro na cidade).
+  out.scene = node.kind === 'mart' ? 'city' : node.kind === 'center' ? 'center' : run.route.biome ?? 'grass'
+  if (node.kind === 'mart') out.pending = { mart: true, shop: pickShop(rand, data, run.floor, 10) }
   else if (node.kind === 'center') {
     out.team = out.team.map((m) => ({ ...m, hp: 1 }))
     out.pending = { center: true }
@@ -454,8 +460,9 @@ export function chooseNode(run, data, index) {
     const kind = pickOne(EVENTS, rand)
     const event = { kind }
     if (kind === 'items') {
-      event.item = pickOne(['potion', 'super-potion', 'poke-ball', 'great-ball', 'revive'], rand)
-      event.count = event.item === 'revive' ? 1 : 2
+      // Bolas ou remédios, melhores conforme o andar.
+      event.item = rand() < 0.5 ? tierPick(BALL_TIERS, run.floor, 25, rand) : tierPick(HEAL_TIERS.slice(0, 3), run.floor, 20, rand)
+      event.count = 2
       out.bag = { ...out.bag, [event.item]: (out.bag[event.item] ?? 0) + event.count }
     } else if (kind === 'money') {
       event.money = Math.round(60 * priceScale(out.floor - 1) * (0.5 + rand()))
@@ -635,7 +642,7 @@ export function winFloor(run, data, after = {}) {
     capture: after.captured && (kind === 'wild' || kind === 'wildboss') ? foes[0] : null,
     cards: kind === 'boss' ? pickCards(rand) : null,
     // A loja da cidade: chegando nela, logo antes do chefe (no resto da rota, os Poké Marts do mapa).
-    shop: kind !== 'boss' || !CITY_KINDS.includes(run.encounter.boss.kind) ? (atCity(data, out) && !inLeague(data, out) ? pickShop(rand, data) : null) : null,
+    shop: kind !== 'boss' || !CITY_KINDS.includes(run.encounter.boss.kind) ? (atCity(data, out) && !inLeague(data, out) ? pickShop(rand, data, run.floor) : null) : null,
   }
   out.encounter = null
   return out
@@ -654,11 +661,39 @@ function pickCards(rand) {
 /** Alguém do time (ou guardado) já tem esse item. */
 const hasItem = (run, id) => (run.stash ?? []).includes(id) || run.team.some((m) => m.item === id || (m.extras ?? []).includes(id))
 
-function pickShop(rand, data, size = 8) {
-  const ids = Object.keys(SHOP).filter((id) => !BALL_IDS.includes(id))
-  // Sempre Poké Ball, uma bola melhor e um remédio; a Master Ball é rara.
-  const out = ['poke-ball', pickOne(BALL_IDS.slice(1, -1), rand), pickOne(['potion', 'super-potion', 'hyper-potion', 'max-potion', 'revive'], rand)]
-  if (rand() < 0.03) out.push('master-ball')
+/** As bolas e os remédios em escada (do pior ao melhor) e as bolas especiais. */
+export const BALL_TIERS = ['poke-ball', 'great-ball', 'ultra-ball']
+export const HEAL_TIERS = ['potion', 'super-potion', 'hyper-potion', 'max-potion']
+export const SPECIAL_BALLS = ['quick-ball', 'net-ball', 'dusk-ball', 'timer-ball']
+
+/**
+ * Um item da escada: conforme o andar, os melhores ficam mais prováveis (um
+ * degrau a cada `step` andares; o de baixo nunca some de vez). Bolas: Great
+ * Ball em destaque no andar 25 e Ultra Ball no 50; remédios: um degrau a cada 20.
+ */
+export function tierPick(list, floor, step, rand) {
+  const p = Math.min(list.length - 1, floor / step)
+  const weights = list.map((_, i) => Math.max(0.08, 1 - Math.abs(i - p)))
+  let roll = rand() * weights.reduce((a, b) => a + b, 0)
+  for (let i = 0; i < list.length; i++) {
+    roll -= weights[i]
+    if (roll < 0) return list[i]
+  }
+  return list[list.length - 1]
+}
+
+function pickShop(rand, data, floor, size = 8) {
+  const out = []
+  const add = (id) => { if (!out.includes(id)) out.push(id) }
+  // Dois tipos de bola (melhores conforme o andar), às vezes uma especial; a Master Ball é rara (um pouco menos lá em cima).
+  for (let k = 0; k < 4 && out.length < 2; k++) add(tierPick(BALL_TIERS, floor, 25, rand))
+  if (floor >= 5 && rand() < 0.6) add(pickOne(SPECIAL_BALLS, rand))
+  if (rand() < Math.min(0.08, 0.01 + floor / 1500)) add('master-ball')
+  // Dois remédios (melhores conforme o andar) e, às vezes, Revive.
+  const before = out.length
+  for (let k = 0; k < 4 && out.length < before + 2; k++) add(tierPick(HEAL_TIERS, floor, 20, rand))
+  if (rand() < 0.5) add('revive')
+  const ids = Object.keys(SHOP).filter((id) => !BALL_IDS.includes(id) && !HEAL_TIERS.includes(id) && id !== 'revive')
   // TM e pedra de evolução, às vezes.
   if (data.tms?.length && rand() < 0.6) out.push(`tm:${pickOne(data.tms, rand)}`)
   if (data.stones?.length && rand() < 0.45) out.push(`evo:${pickOne(data.stones, rand)}`)

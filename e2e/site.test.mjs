@@ -421,11 +421,11 @@ try {
   await page.getByTestId('factory-map').waitFor({ timeout: 30000 })
   await page.getByTestId('map-node-0').click()
   await page.getByTestId('battle-text').waitFor({ timeout: 60000 })
-  // Fugir acaba a corrida: "Continuar" troca a batalha pela tela da corrida (o fim dela) e volta ao começo.
+  // Fugir acaba a corrida: a batalha vira a tela da corrida (o fim dela) e volta ao começo.
   page.once('dialog', (d) => d.accept())
   await page.getByRole('button', { name: '▸ FUGIR' }).click({ timeout: 30000 })
-  await page.getByRole('button', { name: /Continuar/ }).click({ timeout: 30000 })
-  await page.getByTestId('factory-over').waitFor({ timeout: 15000 })
+  // A batalha vira sozinha a tela da corrida (aqui, o fim dela).
+  await page.getByTestId('factory-over').waitFor({ timeout: 30000 })
   await page.getByTestId('factory-over-exit').click()
   await expectHealthy()
 

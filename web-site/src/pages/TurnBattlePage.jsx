@@ -22,6 +22,7 @@ import { teamMembers } from '../lib/teamBattle'
 import { fxPlan, moveAnim, SELF_KINDS } from '../lib/moveAnim'
 import { active, damageRange, fieldConditions, monDetails, lockedMove, canGimmick, canUseItem, effectLabel, forfeit, HEAL_SHARE, ITEMS, lineOf, MAX_MOVES, maxPower, moveEffect, newBattle, playTurn, replace, startBattle, STAT_NAMES, switchMatchup, usableMoves, weaknesses, Z_MOVES, zPower } from '../lib/turnBattle'
 import Sprite from '../components/Sprite'
+import { BattleBackground } from '../components/BattleScene'
 import { TrainerBack, TrainerSprite } from '../components/Trainer'
 import { randomTrainer, useMyTrainer, useTrainers } from '../lib/trainers'
 import { battleRecord } from '../lib/battleLog'
@@ -480,21 +481,6 @@ const BattleSprite = forwardRef(function BattleSprite({ mon, id, back, fainted, 
     </div>
   )
 })
-
-/** Campo clássico: cores planas, faixas horizontais e duas bases de grama. */
-function BattleBackground({weather=''}) {
-  const palettes={rain:['#a1bac4','#d6e3d6'],sun:['#ffe4a1','#e8f6b6'],sand:['#d1bd96','#eee2ad'],hail:['#bacbd8','#eef5e3'],snow:['#bacbd8','#eef5e3']}
-  const [top,bottom]=palettes[weather] || ['#b9e6bd','#edf9c8']
-  return <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 160 100" preserveAspectRatio="none" aria-hidden="true">
-    <defs><linearGradient id="classic-grass" x1="0" y1="0" x2="0" y2="1"><stop stopColor={top}/><stop offset="1" stopColor={bottom}/></linearGradient></defs>
-    <rect width="160" height="100" fill="url(#classic-grass)"/>
-    {Array.from({length:50},(_,i)=><rect key={i} y={i*2} width="160" height="0.4" fill="#fff" opacity="0.25"/>)}
-    <ellipse cx="120" cy="45" rx="32" ry="8" fill="#7eba62"/>
-    <ellipse cx="120" cy="44" rx="29" ry="6" fill="#a9d57b"/>
-    <ellipse cx="38" cy="91" rx="42" ry="12" fill="#7eba62"/>
-    <ellipse cx="38" cy="89" rx="39" ry="9" fill="#a9d57b"/>
-  </svg>
-}
 
 /** O clima caindo por cima do campo (chuva, areia, granizo, neve) ou o brilho do sol. */
 function WeatherFx({ weather }) {
@@ -1040,7 +1026,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         className="battle-field relative aspect-[16/10] overflow-hidden sm:aspect-[16/9] rounded-t-2xl border-4 border-b-0 border-slate-800"
         style={{ background: '#9fdcff' }}
       >
-        <BattleBackground weather={shown.weather} />
+        <BattleBackground weather={shown.weather} scene={battle.scene ?? 'grass'} />
         <div className={`absolute top-[6%] left-[4%] w-[46%] max-w-[260px] transition-opacity ${intro && poke[1] === 'hidden' ? 'opacity-0' : ''}`}>
           <button type="button" className="block w-full cursor-pointer text-left" onClick={() => setInspect(1)} aria-label={t('Ver detalhes do adversário')} data-testid="inspect-foe">
             <InfoBox mon={foe} hp={shown.hp[1][shown.active[1]]} status={shown.status[1][shown.active[1]]} dmax={shown.dmax[1]} boosts={shown.boosts[1]} hpTestId={online ? "online-hp-" + (1 - online.side) : undefined} />
@@ -1085,14 +1071,18 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
       </Modal>
       {/* Texto e menus */}
       <div className="flex min-h-36 flex-col gap-2 rounded-b-2xl border-4 border-slate-800 bg-slate-800 p-2 sm:flex-row">
-        <button
-          type="button"
-          onClick={() => skip.current?.()}
-          className="min-h-20 flex-1 cursor-pointer rounded-xl border-4 border-amber-600 bg-white px-4 py-3 text-left text-lg font-bold text-slate-900"
-          data-testid="battle-text"
-        >
-          {!busy && online?.message ? t(online.message) : text}
-        </button>
+        {/* Bolsa e troca abrem aqui dentro, no lugar do texto (como nos jogos). */}
+        {!(waiting && (menu === 'bag' || menu === 'party')) && (
+          <button
+            type="button"
+            onClick={() => skip.current?.()}
+            className="min-h-20 flex-1 cursor-pointer rounded-xl border-4 border-amber-600 bg-white px-4 py-3 text-left text-lg font-bold text-slate-900"
+            data-testid="battle-text"
+          >
+            {!busy && online?.message ? t(online.message) : text}
+            {!busy && battle.winner != null && endNote && <span className="mt-1 block text-base" data-testid="end-note">{endNote}</span>}
+          </button>
+        )}
         {waiting && online?.waitForSwitch && <Button onClick={() => online.onAction({ kind: 'wait', index: 0 })}>Aguardar troca do amigo</Button>}
         {waiting && !locked && !online?.waitForSwitch && menu === 'main' && !battle.needSwitch && (
           <div className="grid grid-cols-2 gap-1.5 rounded-xl border-4 border-slate-600 bg-white p-2 sm:w-72">
@@ -1149,120 +1139,115 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
             </MenuButton>
           </div>
         )}
-      </div>
-
-      {waiting && menu === 'bag' && (
-        <div className="mt-3 rounded-2xl bg-card p-3 shadow">
-          <div className="mb-2 flex items-center justify-between">
-            <b>{t('Bolsa')}</b>
-            <button type="button" onClick={() => setMenu('main')} className="cursor-pointer text-sm text-muted hover:text-text">
-              Voltar
-            </button>
-          </div>
-          <div className="grid gap-2 sm:grid-cols-2" data-testid="bag">
-            {ITEMS.filter((it) => it.count > 0 || (battle.bags[0][it.slug] ?? 0) > 0).map((it) => {
-              const left = battle.bags[0][it.slug] ?? 0
-              const usableOn = battle.sides[0].team.some((_, i) => canUseItem(battle, 0, it.slug, i))
-              return (
-                <button
-                  key={it.slug}
-                  type="button"
-                  disabled={!usableOn}
-                  data-testid={`bag-${it.slug}`}
-                  // A bola vai direto no selvagem; os remédios perguntam em quem.
-                  onClick={() => (it.ball ? throwBall(it.slug) : (setItem(it.slug), setMenu('party')))}
-                  className="flex cursor-pointer items-center gap-3 rounded-xl bg-surface p-2 text-left disabled:cursor-default disabled:opacity-50"
-                >
-                  <img src={spriteUrl(`items/${it.slug}.png`)} alt="" className="pixelated h-10 w-10" />
-                  <div className="min-w-0 flex-1">
-                    <div className="font-bold" data-no-translate>
-                      {it.name}
-                    </div>
-                    <div className="text-xs text-muted">
-                      {it.ball
-                        ? t('Jogar no Pokémon selvagem')
-                        : it.revive
-                        ? t('Revive com metade do HP')
-                        : it.heal >= 9999
-                          ? t('Recupera todo o HP')
-                          : battle.healPct
-                            ? t('Recupera {0}% do HP').replace('{0}', Math.round(HEAL_SHARE[it.slug] * 100))
-                            : t('Recupera {0} de HP').replace('{0}', it.heal)}
-                    </div>
-                  </div>
-                  <span className="font-black tabular-nums">{`×${left}`}</span>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {waiting && menu === 'party' && (
-        <div className="mt-3 rounded-2xl bg-card p-3 shadow">
-          <div className="mb-2 flex items-center justify-between">
-            <b>{battle.needSwitch ? t('Escolha o próximo Pokémon') : item ? t('Usar em qual Pokémon?') : t('Trocar de Pokémon')}</b>
-            {!battle.needSwitch && (
-              <button type="button" onClick={() => (item ? (setItem(null), setMenu('bag')) : setMenu('main'))} className="cursor-pointer text-sm text-muted hover:text-text">
+        {waiting && menu === 'bag' && (
+          <div className="max-h-[70vh] w-full overflow-y-auto rounded-xl border-4 border-slate-600 bg-white p-2 text-slate-900">
+            <div className="mb-2 flex items-center justify-between">
+              <b>{t('Bolsa')}</b>
+              <button type="button" onClick={() => setMenu('main')} className="cursor-pointer text-sm text-slate-500 hover:text-slate-900">
                 Voltar
               </button>
-            )}
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2" data-testid="bag">
+              {ITEMS.filter((it) => it.count > 0 || (battle.bags[0][it.slug] ?? 0) > 0).map((it) => {
+                const left = battle.bags[0][it.slug] ?? 0
+                const usableOn = battle.sides[0].team.some((_, i) => canUseItem(battle, 0, it.slug, i))
+                return (
+                  <button
+                    key={it.slug}
+                    type="button"
+                    disabled={!usableOn}
+                    data-testid={`bag-${it.slug}`}
+                    // A bola vai direto no selvagem; os remédios perguntam em quem.
+                    onClick={() => (it.ball ? throwBall(it.slug) : (setItem(it.slug), setMenu('party')))}
+                    className="flex cursor-pointer items-center gap-3 rounded-xl bg-slate-100 p-2 text-left disabled:cursor-default disabled:opacity-50"
+                  >
+                    <img src={spriteUrl(`items/${it.slug}.png`)} alt="" className="pixelated h-10 w-10" />
+                    <div className="min-w-0 flex-1">
+                      <div className="font-bold" data-no-translate>
+                        {it.name}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {it.ball
+                          ? t('Jogar no Pokémon selvagem')
+                          : it.revive
+                          ? t('Revive com metade do HP')
+                          : it.heal >= 9999
+                            ? t('Recupera todo o HP')
+                            : battle.healPct
+                              ? t('Recupera {0}% do HP').replace('{0}', Math.round(HEAL_SHARE[it.slug] * 100))
+                              : t('Recupera {0} de HP').replace('{0}', it.heal)}
+                      </div>
+                    </div>
+                    <span className="font-black tabular-nums">{`×${left}`}</span>
+                  </button>
+                )
+              })}
+            </div>
           </div>
-          {!item && <Weak mon={rival} list={foeWeak} className="mb-2" />}
-          <div className="grid gap-2 sm:grid-cols-2" data-testid="party">
-            {battle.sides[0].team.map((m, i) => {
-              const isActive = i === battle.sides[0].active
-              const match = !item && m.hp > 0 ? switchMatchup(hit, m, rival, typeEff) : null
-              return (
-                <button
-                  key={i}
-                  type="button"
-                  disabled={item ? !canUseItem(battle, 0, item, i) : battle.sides[0].switchOptions ? !battle.sides[0].switchOptions.includes(i) : m.hp <= 0 || isActive}
-                  onClick={() => choose(i)}
-                  className={`flex cursor-pointer items-center gap-2 rounded-xl bg-surface p-2 text-left disabled:cursor-default disabled:opacity-50 ${isActive ? 'ring-2 ring-sky-500' : ''}`}
-                >
-                  <PokeIcon id={m.id} shiny={m.shiny} className="h-12 w-12" />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5 font-bold">
-                      <span className="truncate">{m.name}</span>
-                      {m.status && m.hp > 0 && (
-                        <span className="shrink-0 rounded px-1 text-[10px] font-black text-white" style={{ background: STATUS_BADGE[m.status] }}>
-                          {m.status.toUpperCase()}
-                        </span>
+        )}
+        {waiting && menu === 'party' && (
+          <div className="max-h-[70vh] w-full overflow-y-auto rounded-xl border-4 border-slate-600 bg-white p-2 text-slate-900">
+            <div className="mb-2 flex items-center justify-between">
+              <b>{battle.needSwitch ? t('Escolha o próximo Pokémon') : item ? t('Usar em qual Pokémon?') : t('Trocar de Pokémon')}</b>
+              {!battle.needSwitch && (
+                <button type="button" onClick={() => (item ? (setItem(null), setMenu('bag')) : setMenu('main'))} className="cursor-pointer text-sm text-slate-500 hover:text-slate-900">
+                  Voltar
+                </button>
+              )}
+            </div>
+            {!item && <Weak mon={rival} list={foeWeak} className="mb-2" />}
+            <div className="grid gap-2 sm:grid-cols-2" data-testid="party">
+              {battle.sides[0].team.map((m, i) => {
+                const isActive = i === battle.sides[0].active
+                const match = !item && m.hp > 0 ? switchMatchup(hit, m, rival, typeEff) : null
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    disabled={item ? !canUseItem(battle, 0, item, i) : battle.sides[0].switchOptions ? !battle.sides[0].switchOptions.includes(i) : m.hp <= 0 || isActive}
+                    onClick={() => choose(i)}
+                    className={`flex cursor-pointer items-center gap-2 rounded-xl bg-slate-100 p-2 text-left disabled:cursor-default disabled:opacity-50 ${isActive ? 'ring-2 ring-sky-500' : ''}`}
+                  >
+                    <PokeIcon id={m.id} shiny={m.shiny} className="h-12 w-12" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 font-bold">
+                        <span className="truncate">{m.name}</span>
+                        {m.status && m.hp > 0 && (
+                          <span className="shrink-0 rounded px-1 text-[10px] font-black text-white" style={{ background: STATUS_BADGE[m.status] }}>
+                            {m.status.toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+                      <HpBar hp={m.hp} max={m.maxHp} />
+                      <div className="text-xs text-slate-500 tabular-nums">{m.hp > 0 ? `${m.hp}/${m.maxHp}` : t('Desmaiado')}</div>
+                      {match && (
+                        <div className="mt-1 flex flex-wrap gap-1 text-[10px] font-bold" data-testid="matchup">
+                          {match.attack != null && <EffectTag eff={match.attack} prefix={t('Ataca')} />}
+                          <DefenseTag mult={match.defense} />
+                        </div>
                       )}
                     </div>
-                    <HpBar hp={m.hp} max={m.maxHp} />
-                    <div className="text-xs text-muted tabular-nums">{m.hp > 0 ? `${m.hp}/${m.maxHp}` : t('Desmaiado')}</div>
-                    {match && (
-                      <div className="mt-1 flex flex-wrap gap-1 text-[10px] font-bold" data-testid="matchup">
-                        {match.attack != null && <EffectTag eff={match.attack} prefix={t('Ataca')} />}
-                        <DefenseTag mult={match.defense} />
-                      </div>
-                    )}
-                  </div>
-                </button>
-              )
-            })}
+                  </button>
+                )
+              })}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+        {!busy && battle.winner != null && (
+          <div className="flex w-full flex-col gap-2 sm:w-72">
+            {next && <Button color="linear-gradient(90deg,#F59E0B,#DC2626)" onClick={next.onClick}>
+              {next.label}
+            </Button>}
+            {!online && onAgain && <Button color="linear-gradient(90deg,#DC2626,#9333EA)" onClick={onAgain}>
+              Batalhar de novo
+            </Button>}
+            <Button color="#546E7A" onClick={onExit}>
+              {online ? 'Sair' : 'Trocar os times'}
+            </Button>
+          </div>
+        )}
+      </div>
 
-      {!busy && battle.winner != null && endNote && (
-        <p className="mt-4 rounded-xl bg-card p-3 text-center font-bold" data-testid="end-note">{endNote}</p>
-      )}
-      {!busy && battle.winner != null && (
-        <div className="mt-4 flex flex-wrap justify-center gap-3">
-          {next && <Button color="linear-gradient(90deg,#F59E0B,#DC2626)" onClick={next.onClick}>
-            {next.label}
-          </Button>}
-          {!online && onAgain && <Button color="linear-gradient(90deg,#DC2626,#9333EA)" onClick={onAgain}>
-            Batalhar de novo
-          </Button>}
-          <Button color="#546E7A" onClick={onExit}>
-            {online ? 'Sair' : 'Trocar os times'}
-          </Button>
-        </div>
-      )}
     </div>
   )
 }
@@ -1593,8 +1578,10 @@ export default function TurnBattlePage() {
         saveFactory(after)
         endNote = t('A corrida acabou no andar {0}: +{1} moedas. Recorde: andar {2}.').replace('{0}', run.floor).replace('{1}', after.last.coins).replace('{2}', after.best)
       }
-      // "Continuar": a tela da corrida no lugar da batalha (resultado, captura, carta, loja e mapa).
+      // A batalha vira a tela da corrida sozinha (resultado, Enfermeira Joy, captura, carta, loja e mapa), no mesmo lugar.
       setGame((g) => (g ? { ...g, endNote, next: { label: `${t('Continuar')} →`, onClick: openFactory } } : g))
+      const key = game.key
+      setTimeout(() => setGame((g) => (g && !g.factory && g.key === key ? { factory: true, key: key + 1 } : g)), 1800)
       return
     }
     if (challenge?.kind === 'tower') {

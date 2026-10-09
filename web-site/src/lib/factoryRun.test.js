@@ -5,14 +5,14 @@ import {
   HELD_BOOST, levelTo, MAX_TEAM, memberOf, movesAt, nextFloor, nextRandom, overflowPoints, pokemonPrice, runCoins, setMainItem, shopPrice,
   SHINY_BOOST, SHINY_CHANCE, START_BAG, START_BALLS, startersOf, buyShiny, shinyPrice, unlockShiny, claimStarter, freePick, canEvolveWith, teachMove,
   equipFromStash, gimmicksOf, setGimmick, storyLine, startRun, takeCard, teamDown, applyBagItem, winFloor, chooseNode, routeOptions, routeCities,
-  captureFor, factoryOf, BIOMES, isBattleNode, skipCapture, FORKS, ROUTE_LENGTH,
+  captureFor, factoryOf, BIOMES, isBattleNode, skipCapture, FORKS, ROUTE_LENGTH, BALL_TIERS, HEAL_TIERS, tierPick,
 } from './factoryRun'
 
 const data = JSON.parse(readFileSync(new URL('../../../assets/database/factory.json', import.meta.url), 'utf8'))
 const moves = Object.fromEntries(JSON.parse(readFileSync(new URL('../../../assets/database/moves.json', import.meta.url), 'utf8')).map((m) => [m.name, { ...m, category: m.damage_class }]))
 const forms = Object.fromEntries(JSON.parse(readFileSync(new URL('../../../assets/database/pokemon.json', import.meta.url), 'utf8')).map((p) => [p.id, p]))
 const ROUTE_42 = { floor: 1, biome: 'grass', options: [{ kind: 'trainer' }] }
-const ENCOUNTER_42 = { kind: 'trainer', foes: [{ id: 859, level: 2, iv: 0, ev: 3 }, { id: 273, level: 2, iv: 0, ev: 3 }], trainerSeed: 500729487 }
+const ENCOUNTER_42 = { kind: 'trainer', foes: [{ id: 859, level: 2, iv: 0, ev: 3 }, { id: 273, level: 2, iv: 0, ev: 3 }], trainerSeed: 500729487, scene: 'grass' }
 const seq = (values) => { let i = 0; return () => values[i++ % values.length] }
 
 describe('Battle Factory (roguelike)', () => {
@@ -146,20 +146,35 @@ describe('Battle Factory (roguelike)', () => {
     let run = startRun(emptyFactory(), data, 1, 5)
     run = { ...run, floor: 9, leg: 1, boss: { region: data.bosses.findIndex((b) => b.game === 'Red/Blue'), step: 1 }, encounter: { kind: 'trainer', foes: [{ id: 19, level: 12, iv: 0, ev: 0 }] } }
     const after = winFloor(run, data)
-    expect(after.pending.shop).toContain('poke-ball')
+    // Vários tipos de bola e de remédio.
+    const balls = after.pending.shop.filter((id) => BALL_TIERS.includes(id))
+    const heals = after.pending.shop.filter((id) => HEAL_TIERS.includes(id))
+    expect(balls.length).toBe(2)
+    expect(heals.length).toBe(2)
     expect(after.pending.cards).toBe(null)
-    let shop = { ...after, money: 100000 }
-    shop = buyItem(shop, 'poke-ball', 0, data)
-    expect(shop.bag['poke-ball']).toBe(START_BALLS + 1)
-    const better = after.pending.shop[1]
-    expect(['great-ball', 'ultra-ball', 'quick-ball', 'net-ball', 'dusk-ball', 'timer-ball']).toContain(better)
-    expect(buyItem(shop, better, 0, data).bag[better]).toBe(1)
-    const potion = after.pending.shop[2]
-    expect(buyItem(shop, potion, 0, data).bag[potion]).toBe((shop.bag[potion] ?? 0) + 1)
+    const shop = { ...after, money: 100000 }
+    for (const id of [...balls, ...heals]) expect(buyItem(shop, id, 0, data).bag[id]).toBe((shop.bag[id] ?? 0) + 1)
     // Preços sobem com o andar; o Rare Candy também com o nível do time.
     expect(shopPrice({ ...run, floor: 50 }, 'poke-ball')).toBeGreaterThan(shopPrice({ ...run, floor: 1 }, 'poke-ball'))
     const high = { ...run, team: [{ ...run.team[0], level: 60 }] }
     expect(shopPrice(high, 'rare-candy')).toBeGreaterThan(shopPrice(run, 'rare-candy') * 5)
+  })
+
+  it('loja: bolas e remédios melhores ficam mais comuns conforme o andar', () => {
+    let state = 4
+    const rand = () => { const [v, s] = nextRandom(state); state = s; return v }
+    const count = (list, floor, step) => {
+      const out = Object.fromEntries(list.map((id) => [id, 0]))
+      for (let i = 0; i < 3000; i++) out[tierPick(list, floor, step, rand)]++
+      return out
+    }
+    const early = count(BALL_TIERS, 1, 25), mid = count(BALL_TIERS, 25, 25), late = count(BALL_TIERS, 60, 25)
+    expect(early['poke-ball']).toBeGreaterThan(early['great-ball'])
+    expect(early['ultra-ball']).toBeGreaterThan(0)
+    expect(mid['great-ball']).toBeGreaterThan(mid['poke-ball'])
+    expect(late['ultra-ball']).toBeGreaterThan(late['great-ball'])
+    const heals = count(HEAL_TIERS, 70, 20)
+    expect(heals['max-potion']).toBeGreaterThan(heals.potion)
   })
 
   it('itens sem limite: um é o principal; os outros dão uma porcentagem bem menor no atributo certo', () => {

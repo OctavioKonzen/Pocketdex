@@ -508,13 +508,20 @@ class FactoryRun {
     final out = _copy(run)..['route'] = null;
     final rand = _dice(out);
     final floor = _int(out['floor']);
+    final routeBiomeNow = '${run['route']?['biome'] ?? 'grass'}';
     if (isBattleNode(node)) {
-      out['encounter'] = encounterFor(data, floor, rand, node['kind'] == 'boss' ? bossOf(data, out) : null, node['kind'] == 'wildboss', node);
+      // O cenário da batalha: o bioma do selvagem, a cidade do ginásio, a Liga (torre) ou a rota.
+      final city = node['kind'] == 'boss' && atCity(data, run);
+      final scene = (node['biome'] as String?) ?? (city ? (bossOf(data, run)['kind'] == 'gym' ? 'city' : 'tower') : routeBiomeNow);
+      out['scene'] = scene;
+      out['encounter'] = {...encounterFor(data, floor, rand, node['kind'] == 'boss' ? bossOf(data, out) : null, node['kind'] == 'wildboss', node), 'scene': scene};
       return out;
     }
     out['floor'] = floor + 1;
+    // O cenário de onde você está (Poké Mart e Centro na cidade).
+    out['scene'] = node['kind'] == 'mart' ? 'city' : node['kind'] == 'center' ? 'center' : routeBiomeNow;
     if (node['kind'] == 'mart') {
-      out['pending'] = {'mart': true, 'shop': _pickShop(rand, data, 10)};
+      out['pending'] = {'mart': true, 'shop': _pickShop(rand, data, floor, 10)};
     } else if (node['kind'] == 'center') {
       out['team'] = [for (final m in teamOf(out)) {...m, 'hp': 1}];
       out['pending'] = {'center': true};
@@ -522,9 +529,10 @@ class FactoryRun {
       final kind = _pick(events, rand);
       final event = <String, dynamic>{'kind': kind};
       if (kind == 'items') {
-        final item = _pick(const ['potion', 'super-potion', 'poke-ball', 'great-ball', 'revive'], rand);
+        // Bolas ou remédios, melhores conforme o andar.
+        final item = rand() < 0.5 ? tierPick(ballTiers, floor, 25, rand) : tierPick(healTiers.sublist(0, 3), floor, 20, rand);
         event['item'] = item;
-        event['count'] = item == 'revive' ? 1 : 2;
+        event['count'] = 2;
         final bag = Map<String, dynamic>.from(out['bag'] as Map);
         bag[item] = ((bag[item] as num?) ?? 0).toInt() + (event['count'] as int);
         out['bag'] = bag;
@@ -758,7 +766,7 @@ class FactoryRun {
     final cardsPick = kind == 'boss' ? _pickCards(rand) : null;
     // A loja da cidade: chegando nela, logo antes do chefe (no resto da rota, os Poké Marts do mapa).
     final cityWin = kind == 'boss' && _cityKinds.contains(run['encounter']['boss']['kind']);
-    final shopPick = !cityWin && atCity(data, out) && !_inLeague(data, out) ? _pickShop(rand, data) : null;
+    final shopPick = !cityWin && atCity(data, out) && !_inLeague(data, out) ? _pickShop(rand, data, _int(run['floor'])) : null;
     out['pending'] = {
       'exp': exp, 'money': money, 'levels': levels, 'joy': joy, 'drop': drop, 'story': story, 'reward': reward,
       'capture': captured && (kind == 'wild' || kind == 'wildboss') ? foes.first : null,
@@ -783,11 +791,46 @@ class FactoryRun {
   static bool _hasItem(Json run, String id) =>
       ((run['stash'] as List?) ?? const []).contains(id) || teamOf(run).any((m) => m['item'] == id || ((m['extras'] as List?) ?? const []).contains(id));
 
-  static List<String> _pickShop(double Function() rand, FactoryData data, [int size = 8]) {
-    final ids = [for (final id in shop.keys) if (!ballIds.contains(id)) id];
-    // Sempre Poké Ball, uma bola melhor e um remédio; a Master Ball é rara.
-    final out = ['poke-ball', _pick(ballIds.sublist(1, ballIds.length - 1), rand), _pick(const ['potion', 'super-potion', 'hyper-potion', 'max-potion', 'revive'], rand)];
-    if (rand() < 0.03) out.add('master-ball');
+  /// As bolas e os remédios em escada (do pior ao melhor) e as bolas especiais.
+  static const ballTiers = ['poke-ball', 'great-ball', 'ultra-ball'];
+  static const healTiers = ['potion', 'super-potion', 'hyper-potion', 'max-potion'];
+  static const specialBalls = ['quick-ball', 'net-ball', 'dusk-ball', 'timer-ball'];
+
+  /// Um item da escada: conforme o andar, os melhores ficam mais prováveis (um degrau a cada [step] andares). Igual ao site.
+  static String tierPick(List<String> list, int floor, int step, double Function() rand) {
+    final p = math.min(list.length - 1, floor / step);
+    final weights = <double>[for (var i = 0; i < list.length; i++) math.max(0.08, 1 - (i - p).abs()).toDouble()];
+    var total = 0.0;
+    for (final w in weights) {
+      total += w;
+    }
+    var roll = rand() * total;
+    for (var i = 0; i < list.length; i++) {
+      roll -= weights[i];
+      if (roll < 0) return list[i];
+    }
+    return list.last;
+  }
+
+  static List<String> _pickShop(double Function() rand, FactoryData data, int floor, [int size = 8]) {
+    final out = <String>[];
+    void add(String id) {
+      if (!out.contains(id)) out.add(id);
+    }
+
+    // Dois tipos de bola (melhores conforme o andar), às vezes uma especial; a Master Ball é rara.
+    for (var k = 0; k < 4 && out.length < 2; k++) {
+      add(tierPick(ballTiers, floor, 25, rand));
+    }
+    if (floor >= 5 && rand() < 0.6) add(_pick(specialBalls, rand));
+    if (rand() < math.min(0.08, 0.01 + floor / 1500)) add('master-ball');
+    // Dois remédios (melhores conforme o andar) e, às vezes, Revive.
+    final before = out.length;
+    for (var k = 0; k < 4 && out.length < before + 2; k++) {
+      add(tierPick(healTiers, floor, 20, rand));
+    }
+    if (rand() < 0.5) add('revive');
+    final ids = [for (final id in shop.keys) if (!ballIds.contains(id) && !healTiers.contains(id) && id != 'revive') id];
     // TM e pedra de evolução, às vezes.
     if (data.tms.isNotEmpty && rand() < 0.6) out.add('tm:${_pick(data.tms, rand)}');
     if (data.stones.isNotEmpty && rand() < 0.45) out.add('evo:${_pick(data.stones, rand)}');

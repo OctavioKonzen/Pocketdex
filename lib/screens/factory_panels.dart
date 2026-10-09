@@ -22,6 +22,7 @@ import '../services/trainers.dart';
 import '../services/turn_battle.dart';
 import '../services/user_data.dart';
 import '../utils/site_ui.dart';
+import '../widgets/battle_scene.dart';
 import '../widgets/pokemon_sprite.dart';
 import '../widgets/trainer_sprite.dart';
 import 'turn_battle_screen.dart' show battleMonName;
@@ -58,7 +59,9 @@ Future<(TurnBattle, List<int>)> factoryBattle(Json run) async {
   final battle = TurnBattle(a, b, League.seededRandom(seed), startBags: FactoryRun.bagsFor(run), healPct: true, capture: FactoryRun.captureFor(run, data))
     ..ai = 'normal'
     ..seed = seed
-    ..members = (mine: BattleLog.toRecord(mine), theirs: BattleLog.toRecord(theirs));
+    ..members = (mine: BattleLog.toRecord(mine), theirs: BattleLog.toRecord(theirs))
+    // O cenário: o lugar do andar (cidade, floresta, caverna, mar...).
+    ..scene = '${run['encounter']?['scene'] ?? run['encounter']?['biome'] ?? 'grass'}';
   return (battle, order);
 }
 
@@ -625,6 +628,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
   int _target = 0;
   int? _unlocked;
   String? _panel; // embaixo do menu: 'bag' | 'team' (na loja, a lista de compras)
+  Widget? _framePanel; // o que abre dentro da moldura (lista da loja, Bolsa ou time)
 
   static const _border = Color(0xFF1E293B);
   static const _ink = Color(0xFF0F172A);
@@ -685,7 +689,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
             decoration: BoxDecoration(border: Border.all(color: _border, width: 4)),
             child: LayoutBuilder(builder: (context, box) {
               final w = box.maxWidth, h = box.maxHeight;
-              return Stack(children: [Positioned.fill(child: CustomPaint(painter: _FactoryFieldPainter(biome))), ...children(w, h)]);
+              return Stack(children: [Positioned.fill(child: CustomPaint(painter: BattleScenePainter(scene: biome))), ...children(w, h)]);
             }),
           ),
         ),
@@ -777,6 +781,37 @@ class _FactoryScreenState extends State<FactoryScreen> {
     ]);
   }
 
+  /// A lista da loja (dentro da moldura): para quem é a compra e os itens.
+  Widget _shopList(BuildContext context, Json run, Json p, FactoryData data) {
+    final c = SiteColors.of(context);
+    final team = FactoryRun.teamOf(run);
+    final target = min(_target, team.length - 1);
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text(tr('Para quem é a compra (bolas e itens da Bolsa vão para a Bolsa):'), style: TextStyle(color: c.muted, fontSize: 12)),
+          const SizedBox(height: 4),
+          Wrap(spacing: 6, runSpacing: 6, children: [
+            for (var i = 0; i < team.length; i++) _mon(context, team[i], name: _name(team[i]['id']), selected: target == i, onTap: () => setState(() => _target = i)),
+          ]),
+          for (final id in p['shop'] as List)
+            ListTile(
+              key: ValueKey('shop-$id'),
+              contentPadding: EdgeInsets.zero,
+              leading: _itemIcon('$id', 32),
+              title: Text(_itemName('$id'), style: TextStyle(fontWeight: FontWeight.bold, color: c.text)),
+              subtitle: Text(FactoryRun.shopOwned(run, '$id') ? tr('Você já tem') : _help('$id'), style: TextStyle(color: c.muted, fontSize: 12)),
+              trailing: TextButton(
+                key: ValueKey('buy-$id'),
+                onPressed: (run['money'] as num) < FactoryRun.shopPrice(run, '$id') ||
+                        FactoryRun.shopOwned(run, '$id') ||
+                        ('$id'.startsWith('evo:') && FactoryRun.canEvolveWith(data, team[target], '$id'.substring(4)).isEmpty)
+                    ? null
+                    : () => _save(FactoryRun.buyItem(run, '$id', target, data)),
+                child: Text('💰${FactoryRun.shopPrice(run, '$id')}'),
+              ),
+            ),
+        ]);
+  }
+
   /// A moldura: o campo, a barra e a caixa de texto com o menu (igual à batalha).
   Widget _frame({required Widget field, Json? run, required List<Widget> text, Widget? menu}) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         field,
@@ -803,6 +838,16 @@ class _FactoryScreenState extends State<FactoryScreen> {
                 child: menu,
               ),
             ],
+            // A loja, a Bolsa e o time abrem aqui dentro (a mesma tela).
+            if (_framePanel != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                key: const ValueKey('factory-panel'),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: SiteColors.of(context).card, border: Border.all(color: const Color(0xFF475569), width: 4), borderRadius: BorderRadius.circular(12)),
+                child: _framePanel,
+              ),
+            ],
           ]),
         ),
       ]);
@@ -826,7 +871,11 @@ class _FactoryScreenState extends State<FactoryScreen> {
       _menuButton(tr('TIME'), () => setState(() => _panel = _panel == 'team' ? null : 'team'), key: const ValueKey('factory-menu-team'), active: _panel == 'team'),
     ];
     Widget frame;
-    Widget? below;
+    _framePanel = _panel == 'bag' || _panel == 'team'
+        ? _BagAndItems(run: run, data: data, names: _names, onSave: _save, only: _panel)
+        : step == 'shop'
+            ? _shopList(context, run, p!, data)
+            : null;
     if (step == 'result') {
       frame = _resultFrame(run, p!, lead);
     } else if (step == 'capture') {
@@ -834,7 +883,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
     } else if (step == 'cards') {
       frame = _frame(
         run: run,
-        field: _field('grass', key: const ValueKey('factory-cards'), (w, h) => [
+        field: _field('${run['scene'] ?? 'grass'}', key: const ValueKey('factory-cards'), (w, h) => [
               Positioned.fill(
                 child: Padding(
                   padding: EdgeInsets.symmetric(horizontal: w * 0.03, vertical: h * 0.08),
@@ -876,7 +925,6 @@ class _FactoryScreenState extends State<FactoryScreen> {
         text: [Text('🃏 ${tr('Escolha uma carta de bônus')}')],
       );
     } else if (step == 'shop') {
-      final target = min(_target, team.length - 1);
       frame = _frame(
         run: run,
         field: _field('city', key: const ValueKey('factory-shop'), (w, h) => [
@@ -921,32 +969,6 @@ class _FactoryScreenState extends State<FactoryScreen> {
           }, key: const ValueKey('factory-continue')),
         ]),
       );
-      if (_panel == null) {
-        below = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Text(tr('Para quem é a compra (bolas e itens da Bolsa vão para a Bolsa):'), style: TextStyle(color: c.muted, fontSize: 12)),
-          const SizedBox(height: 4),
-          Wrap(spacing: 6, runSpacing: 6, children: [
-            for (var i = 0; i < team.length; i++) _mon(context, team[i], name: _name(team[i]['id']), selected: target == i, onTap: () => setState(() => _target = i)),
-          ]),
-          for (final id in p!['shop'] as List)
-            ListTile(
-              key: ValueKey('shop-$id'),
-              contentPadding: EdgeInsets.zero,
-              leading: _itemIcon('$id', 32),
-              title: Text(_itemName('$id'), style: TextStyle(fontWeight: FontWeight.bold, color: c.text)),
-              subtitle: Text(FactoryRun.shopOwned(run, '$id') ? tr('Você já tem') : _help('$id'), style: TextStyle(color: c.muted, fontSize: 12)),
-              trailing: TextButton(
-                key: ValueKey('buy-$id'),
-                onPressed: (run['money'] as num) < FactoryRun.shopPrice(run, '$id') ||
-                        FactoryRun.shopOwned(run, '$id') ||
-                        ('$id'.startsWith('evo:') && FactoryRun.canEvolveWith(data, team[target], '$id'.substring(4)).isEmpty)
-                    ? null
-                    : () => _save(FactoryRun.buyItem(run, '$id', target, data)),
-                child: Text('💰${FactoryRun.shopPrice(run, '$id')}'),
-              ),
-            ),
-        ]);
-      }
     } else if (p == null && run['route'] != null) {
       frame = _mapFrame(run, data, lead, tools);
     } else if (p == null && run['encounter'] != null) {
@@ -959,7 +981,6 @@ class _FactoryScreenState extends State<FactoryScreen> {
     } else {
       frame = _frame(run: run, field: _field('grass', (w, h) => const []), text: const [Text('...')]);
     }
-    if (_panel == 'bag' || _panel == 'team') below = _BagAndItems(run: run, data: data, names: _names, onSave: _save, only: _panel);
     return Column(key: const ValueKey('factory-screen'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       frame,
       if (_unlocked != null)
@@ -969,13 +990,6 @@ class _FactoryScreenState extends State<FactoryScreen> {
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(color: const Color(0x26F59E0B), borderRadius: BorderRadius.circular(12)),
           child: Text('✨ ${tr('{0} shiny liberado para começar as próximas corridas!').replaceAll('{0}', _name(_unlocked))}', style: TextStyle(fontWeight: FontWeight.bold, color: c.text)),
-        ),
-      if (below != null)
-        Container(
-          margin: const EdgeInsets.only(top: 10),
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(color: c.card, borderRadius: BorderRadius.circular(16), border: Border.all(color: c.line)),
-          child: below,
         ),
       Wrap(alignment: WrapAlignment.spaceBetween, children: [
         TextButton(onPressed: widget.onExit, child: Text('← ${tr('Sair (a corrida fica salva)')}')),
@@ -1023,7 +1037,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
     final eventIcon = {'money': '💰', 'berries': '🍒', 'tutor': '📀'}[event?['kind']] ?? '🎁';
     return _frame(
       run: run,
-      field: _field(p['center'] == true ? 'center' : 'grass', key: const ValueKey('factory-result'), (w, h) => [
+      field: _field(p['center'] == true ? 'center' : '${run['scene'] ?? 'grass'}', key: const ValueKey('factory-result'), (w, h) => [
             if (p['center'] == true || p['joy'] == true)
               _far(_trainerImage('sd-nurse', w * 0.32), w, h)
             else if (items.isNotEmpty)
@@ -1073,7 +1087,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
 
     return _frame(
       run: run,
-      field: _field('grass', key: const ValueKey('factory-capture'), (w, h) => [_fieldMon(foe, w, h), if (lead != null) _fieldMon(lead, w, h, back: true)]),
+      field: _field('${run['scene'] ?? 'grass'}', key: const ValueKey('factory-capture'), (w, h) => [_fieldMon(foe, w, h), if (lead != null) _fieldMon(lead, w, h, back: true)]),
       text: [
         Text('${shiny ? '✨ ' : ''}${tr('Pegou! {0} foi capturado!').replaceAll('{0}', _name(foe['id']))} Nv. ${foe['level']}'),
         if (shiny) _small(tr('É shiny! (+10% em todos os atributos)'), color: const Color(0xFFD97706)),
@@ -1182,42 +1196,3 @@ class _FactoryScreenState extends State<FactoryScreen> {
   }
 }
 
-/// O campo da batalha nas cores de cada bioma (o 'grass' é o da batalha). Igual ao site.
-class _FactoryFieldPainter extends CustomPainter {
-  const _FactoryFieldPainter(this.biome);
-  final String biome;
-  static const _colors = <String, List<int>>{
-    'grass': [0xFFB9E6BD, 0xFFEDF9C8, 0xFF7EBA62, 0xFFA9D57B],
-    'forest': [0xFF9FD39A, 0xFFD3EBB4, 0xFF4F8A3C, 0xFF6FAE4F],
-    'water': [0xFF9FDCFF, 0xFFD6F1FF, 0xFF3B82C4, 0xFF60A5E0],
-    'cave': [0xFF8D8173, 0xFFC4B8A6, 0xFF6B5F52, 0xFF8A7D6D],
-    'mountain': [0xFFC9D3DC, 0xFFE7E2D4, 0xFF8F8A80, 0xFFABA497],
-    'volcano': [0xFFF3B38A, 0xFFF7D9B5, 0xFFB4532A, 0xFFD0743E],
-    'city': [0xFFC7D2FE, 0xFFE9EDF7, 0xFF94A3B8, 0xFFB6C2D1],
-    'snow': [0xFFDBEAFE, 0xFFF8FAFC, 0xFFA5C3DD, 0xFFCFE0EF],
-    'tower': [0xFFC4B5FD, 0xFFE9E3FF, 0xFF7C6BA8, 0xFF9D8CC9],
-    'sky': [0xFFBAE6FD, 0xFFF0F9FF, 0xFFCBD5E1, 0xFFE2E8F0],
-    'center': [0xFFFBCFE8, 0xFFFDF2F8, 0xFFF472B6, 0xFFF9A8D4],
-    'over': [0xFF94A3B8, 0xFFCBD5E1, 0xFF64748B, 0xFF94A3B8],
-  };
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final c = (_colors[biome] ?? _colors['grass']!).map(Color.new).toList();
-    final rect = Offset.zero & size;
-    canvas.drawRect(rect, Paint()..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [c[0], c[1]]).createShader(rect));
-    final sx = size.width / 160, sy = size.height / 100;
-    for (var i = 0; i < 50; i++) {
-      canvas.drawRect(Rect.fromLTWH(0, i * 2 * sy, size.width, 0.4 * sy), Paint()..color = const Color(0x40FFFFFF));
-    }
-    void base(double cx, double cy, double rx, double ry, Color color) =>
-        canvas.drawOval(Rect.fromCenter(center: Offset(cx * sx, cy * sy), width: rx * 2 * sx, height: ry * 2 * sy), Paint()..color = color);
-    base(120, 45, 32, 8, c[2]);
-    base(120, 44, 29, 6, c[3]);
-    base(38, 91, 42, 12, c[2]);
-    base(38, 89, 39, 9, c[3]);
-  }
-
-  @override
-  bool shouldRepaint(_FactoryFieldPainter old) => old.biome != biome;
-}

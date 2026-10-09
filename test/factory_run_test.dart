@@ -38,7 +38,7 @@ void main() {
     expect(run['encounter'], isNull);
     expect(run['route'], {'floor': 1, 'biome': 'grass', 'options': [{'kind': 'trainer'}]});
     expect(FactoryRun.chooseNode(run, data, 0)['encounter'], {
-      'kind': 'trainer', 'foes': [{'id': 859, 'level': 2, 'iv': 0, 'ev': 3}, {'id': 273, 'level': 2, 'iv': 0, 'ev': 3}], 'trainerSeed': 500729487,
+      'kind': 'trainer', 'foes': [{'id': 859, 'level': 2, 'iv': 0, 'ev': 3}, {'id': 273, 'level': 2, 'iv': 0, 'ev': 3}], 'trainerSeed': 500729487, 'scene': 'grass',
     });
   });
 
