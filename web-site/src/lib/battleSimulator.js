@@ -8,7 +8,7 @@ export function simulatorInput(mon) {
 }
 export function initializeSimulator(battle) {
   const seed = Array.from({length: 4}, () => Math.floor(battle.random() * 65536))
-  const created = engine().create({teams: battle.sides.map(s => s.team.map(simulatorInput)), seed, mode: battle.mode, controllers: battle.controllers, rules: battle.rules ?? [], ...(battle.startBags ? {bags: battle.startBags} : {}), ...(battle.healPct ? {healPct: true} : {})})
+  const created = engine().create({teams: battle.sides.map(s => s.team.map(simulatorInput)), seed, mode: battle.mode, controllers: battle.controllers, rules: battle.rules ?? [], ...(battle.startBags ? {bags: battle.startBags} : {}), ...(battle.healPct ? {healPct: true} : {}), ...(battle.capture ? {capture: battle.capture} : {})})
   battle.simulator = {handle: created.handle, state: created.state, opening: created.events}
   syncSimulator(battle, created)
 }
@@ -21,6 +21,7 @@ export function syncSimulator(battle, result) {
   battle.simulator.state = state
   battle.turn = state.turn
   battle.winner = state.winner
+  battle.captured = state.captured ?? null
   battle.terrain = state.terrain
   battle.weather = weatherIds[state.weather] ?? ''
   battle.bags = state.bags

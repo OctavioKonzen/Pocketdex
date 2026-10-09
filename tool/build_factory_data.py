@@ -1,10 +1,10 @@
 """Dados da Battle Factory (o modo de subir andares com um inicial).
 
 Saída: assets/database/factory.json
-  {"species": {id: [xp base, total de atributos, raridade, [EVs que dá: hp, atk, def, spa, spd, spe], [tipos]]},
+  {"species": {id: [xp base, total de atributos, raridade, [EVs que dá: hp, atk, def, spa, spd, spe], [tipos], taxa de captura]},
    "evolutions": {id: [[evolui para, nível], ...]},
    "starters": [ids dos iniciais grátis],
-   "bosses": [{"region", "game", "leaders": [{"name", "trainer", "kind", "id", "team": [ids], "pool": [ids]}]}],
+   "bosses": [{"region", "game", "leaders": [{"name", "trainer", "kind", "id", "city", "team": [ids], "pool": [ids]}]}],
    "forms": {id da forma: espécie},
    "megas": {espécie: [[Mega Pedra, id da Mega]]}, "gmax": [espécies com G-Max],
    "zcrystals": {tipo: Cristal Z}, "tms": [golpes de TM], "stones": [itens de evolução],
@@ -27,7 +27,7 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from factory_stories import STORIES  # noqa: E402
+from factory_stories import CITIES, STORIES  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB = os.path.join(ROOT, 'assets', 'database')
@@ -107,6 +107,27 @@ def boss_story(game, usable, sprites):
     return [e for _, _, e in middle] + elites + champions[-1:]
 
 
+def add_cities(region, story):
+    """A cidade de cada chefe (tool/factory_stories.py, CITIES): o ginásio do
+    líder; rival e vilões, a do próximo líder; Elite Four e Campeão, a Liga."""
+    table = CITIES[region]
+
+    def own(leader):
+        if leader['kind'] in ('elite', 'champion'):
+            return table['league']
+        if leader['kind'] != 'gym':
+            return None
+        key = re.sub(r'^sd-|-gen\d+$', '', leader['trainer'] or leader['id'].split('-', 1)[1])
+        if key not in table:
+            print('sem cidade:', region, key)
+        return table.get(key, table['league'])
+
+    city = table['league']
+    for leader in reversed(story):
+        city = own(leader) or city
+        leader['city'] = city
+
+
 def main():
     pokemon = {p['id']: p for p in load('pokemon') if p['is_default'] and p['id'] <= MAX_SPECIES}
     species = {s['id']: s for s in load('species') if s['id'] <= MAX_SPECIES}
@@ -117,7 +138,7 @@ def main():
             continue
         bst = sum(stat[0] for stat in p['stats'])
         rarity = 1 if s['is_legendary'] else 2 if s['is_mythical'] else 3 if s['is_baby'] else 0
-        out_species[sid] = [p['base_experience'] or 50, bst, rarity, [stat[1] for stat in p['stats']], p['types']]
+        out_species[sid] = [p['base_experience'] or 50, bst, rarity, [stat[1] for stat in p['stats']], p['types'], s['capture_rate']]
     evolutions = {}
 
     def walk(node):
@@ -149,6 +170,7 @@ def main():
     for game in load('official_teams'):
         story = boss_story(game, usable, sprites)
         if story:
+            add_cities(game['region'], story)
             bosses.append({'region': game['region'], 'game': game['name'], 'leaders': story})
     # Mega: espécie -> [[Mega Pedra (nome do item como no sprite), id da forma Mega]].
     item_files = {re.sub(r'[^a-z0-9]', '', f[:-4]): f[:-4] for f in os.listdir(os.path.join(DB, 'sprites', 'items')) if f.endswith('.png') and '--' not in f}

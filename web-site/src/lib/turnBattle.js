@@ -88,18 +88,33 @@ export const ITEMS = [
   // Só na Battle Factory (comprada na loja): cura todo o HP.
   { slug: 'max-potion', name: 'Max Potion', heal: 9999, count: 0 },
   { slug: 'revive', name: 'Revive', revive: true, count: 1 },
+  // Só na Battle Factory, contra selvagens (a chance de cada uma está no motor).
+  { slug: 'poke-ball', name: 'Poké Ball', ball: true, count: 0 },
+  { slug: 'great-ball', name: 'Great Ball', ball: true, count: 0 },
+  { slug: 'ultra-ball', name: 'Ultra Ball', ball: true, count: 0 },
+  { slug: 'quick-ball', name: 'Quick Ball', ball: true, count: 0 },
+  { slug: 'net-ball', name: 'Net Ball', ball: true, count: 0 },
+  { slug: 'dusk-ball', name: 'Dusk Ball', ball: true, count: 0 },
+  { slug: 'timer-ball', name: 'Timer Ball', ball: true, count: 0 },
+  { slug: 'master-ball', name: 'Master Ball', ball: true, count: 0 },
 ]
 const newBag = () => Object.fromEntries(ITEMS.map((i) => [i.slug, i.count]))
 const itemOf = (slug) => ITEMS.find((i) => i.slug === slug)
 /** Battle Factory (healPct): quanto cada poção cura do HP máximo. */
 export const HEAL_SHARE = { potion: 0.25, 'super-potion': 0.5, 'hyper-potion': 0.75, 'max-potion': 1 }
 
-/** Dá para usar o item nesse Pokémon? (poção: vivo e ferido; Revive: desmaiado). */
+/** Dá para usar o item nesse Pokémon? (poção: vivo e ferido; Revive: desmaiado; bola: o selvagem de pé). */
 export function canUseItem(battle, side, slug, index) {
   const item = itemOf(slug)
+  if (item?.ball) return canThrow(battle, slug)
   const mon = battle.sides[side].team[index]
   if (!item || !mon || !(battle.bags[side][slug] > 0)) return false
   return item.revive ? mon.hp <= 0 : mon.hp > 0 && mon.hp < mon.maxHp
+}
+
+/** Dá para jogar a bola? Só no Pokémon selvagem da Battle Factory (battle.capture), ainda de pé. */
+export function canThrow(battle, slug) {
+  return Boolean(battle.capture && battle.simulator && battle.bags[0][slug] > 0 && active(battle, 1)?.hp > 0)
 }
 
 /** Nova batalha. teams: [meus Pokémon, os do computador]; random: () => [0, 1). */
@@ -117,6 +132,9 @@ export function newBattle(mine, theirs, random, options = {}) {
     startBags: options.bags ?? null,
     // Battle Factory: as poções curam uma parte do HP máximo (o nível não tem limite).
     healPct: Boolean(options.healPct),
+    // Battle Factory, selvagem: dá para jogar Poké Balls ({rates, dusk}; o motor faz a conta). captured: pegou.
+    capture: options.capture ?? null,
+    captured: null,
     turn: 1,
     // Semente da batalha (para o replay) e as suas jogadas (logTurn).
     seed: options.seed ?? null,
@@ -1032,6 +1050,9 @@ export const LINES = {
   usedItem: ['Você usou {1} em {0}!', 'O adversário usou {1} em {0}!'],
   healed: ['{0} recuperou {1} de HP!', '{0} inimigo recuperou {1} de HP!'],
   revived: ['{0} voltou à batalha!', '{0} inimigo voltou à batalha!'],
+  threwBall: 'Você jogou uma {1}!',
+  caught: ['', 'Pegou! {0} foi capturado!'],
+  brokeFree: ['', 'Ah, não! {0} escapou da bola!'],
   burned: ['{0} foi queimado!', '{0} inimigo foi queimado!'],
   paralyzed: ['{0} foi paralisado! Talvez não consiga se mover!', '{0} inimigo foi paralisado! Talvez não consiga se mover!'],
   poisoned: ['{0} foi envenenado!', '{0} inimigo foi envenenado!'],

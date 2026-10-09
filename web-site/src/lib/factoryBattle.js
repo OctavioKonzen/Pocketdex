@@ -4,7 +4,7 @@
 
 import { battleMons } from './battleSetup'
 import { getFactoryData, getMoves, getPokemonById, getSpecies } from './data'
-import { bagsFor, battleOrder, foeMember, memberOf, movesAt } from './factoryRun'
+import { bagsFor, battleOrder, captureFor, foeMember, memberOf, movesAt } from './factoryRun'
 import { seededRandom } from './league'
 import { newBattle } from './turnBattle'
 
@@ -30,20 +30,23 @@ export async function factoryBattle(run) {
   const [a, b] = await Promise.all([battleMons(mine), battleMons(theirs)])
   if (!a.length || !b.length) throw new Error('Não foi possível montar a batalha do andar.')
   const seed = run.seed ^ (run.floor * 2654435761)
-  const battle = newBattle(a, b, seededRandom(seed >>> 0), { ai: 'normal', seed: seed >>> 0, bags: bagsFor(run), healPct: true })
+  // Selvagem: as Poké Balls da Bolsa funcionam (captureFor: a taxa de captura de cada um).
+  const battle = newBattle(a, b, seededRandom(seed >>> 0), { ai: 'normal', seed: seed >>> 0, bags: bagsFor(run), healPct: true, capture: captureFor(run, data) })
   battle.members = { mine, theirs }
+  // O cenário: o lugar do andar (cidade, floresta, caverna, mar...).
+  battle.scene = run.encounter.scene ?? run.encounter.biome ?? 'grass'
   battle.factoryOrder = order
   return battle
 }
 
-/** Como o time terminou a batalha (para winFloor): a parte do HP de cada um, na ordem da corrida, e a Bolsa. */
+/** Como o time terminou a batalha (para winFloor): a parte do HP de cada um, na ordem da corrida, a Bolsa e se capturou o selvagem. */
 export function factoryAfter(battle, run) {
   const hp = run.team.map((m) => m.hp ?? 1)
   battle.factoryOrder?.forEach((teamIndex, slot) => {
     const mon = battle.sides[0].team[slot]
     if (mon) hp[teamIndex] = mon.maxHp ? Math.round((Math.max(0, mon.hp) / mon.maxHp) * 1000) / 1000 : 0
   })
-  return { hp, bag: { ...battle.bags[0] } }
+  return { hp, bag: { ...battle.bags[0] }, captured: battle.captured != null }
 }
 
 /** Quem é o adversário do andar: o chefe (nome, treinador e música) ou um selvagem (sem treinador). */

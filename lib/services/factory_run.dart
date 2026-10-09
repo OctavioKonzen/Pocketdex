@@ -2,7 +2,10 @@
 //
 // Battle Factory, um roguelike com a história de cada região: na primeira vez
 // um inicial grátis (de qualquer geração), os outros se compram com moedas.
-// Andares sem fim com selvagens (captura com Poké Ball) e treinadores; a cada
+// Andares sem fim pelo mapa (de cidade em cidade): em cada andar, 2 ou 3
+// caminhos (selvagem do bioma da rota, com captura na batalha e uma chance
+// para cada bola; treinador; treinador forte com item; Poké Mart; Centro
+// Pokémon; evento); a cada
 // 10 andares um chefe da história (líderes, rival e vilões, Elite Four e
 // Campeão de um jogo sorteado; depois, outra região); nos andares 5, 15, 25...
 // às vezes um chefe sem treinador (Mega, Gigantamax ou lendário). Sem cura
@@ -22,14 +25,14 @@ import 'package:flutter/services.dart' show rootBundle;
 typedef Json = Map<String, dynamic>;
 
 class FactoryData {
-  /// id → [xp base, total de atributos, raridade (0 comum, 1 lendário, 2 mítico, 3 bebê), [EVs que dá], [tipos]].
+  /// id → [xp base, total de atributos, raridade (0 comum, 1 lendário, 2 mítico, 3 bebê), [EVs que dá], [tipos], taxa de captura].
   final Map<int, List> species;
 
   /// id → [[evolui para, nível, item?], ...] (com item: só usando o item, como as pedras).
   final Map<int, List<List>> evolutions;
   final List<int> starters;
 
-  /// Chefes por jogo, na ordem da história: [{region, game, leaders: [{id, name, trainer, kind, team, pool}]}].
+  /// Chefes por jogo, na ordem da história: [{region, game, leaders: [{id, name, trainer, kind, city, team, pool}]}].
   final List<Json> bosses;
 
   /// Formas regionais dos chefes: id da forma → espécie.
@@ -48,7 +51,10 @@ class FactoryData {
       this.tms = const [], this.stones = const [], this.stories = const {}]);
 
   static Future<FactoryData>? _loading;
-  static Future<FactoryData> load() => _loading ??= rootBundle.loadString('assets/database/factory.json').then((t) => parse(jsonDecode(t) as Json));
+
+  /// Os dados já carregados (as telas abrem sem esperar de novo).
+  static FactoryData? loaded;
+  static Future<FactoryData> load() => _loading ??= rootBundle.loadString('assets/database/factory.json').then((t) => loaded = parse(jsonDecode(t) as Json));
 
   static FactoryData parse(Json j) {
     final species = {for (final e in (j['species'] as Map).entries) int.parse('${e.key}'): e.value as List};
@@ -94,9 +100,12 @@ class FactoryRun {
     'Jolly', 'Naive', 'Modest', 'Mild', 'Quiet', 'Bashful', 'Rash', 'Calm', 'Gentle', 'Sassy', 'Careful', 'Quirky'];
   static const maxTeam = 6, startLevel = 5, startBalls = 5, bossEvery = 10;
 
+  /// As Poké Balls (a chance de cada uma está no motor de batalha: BALLS em tool/battle-engine/engine.mjs).
+  static const ballIds = ['poke-ball', 'great-ball', 'ultra-ball', 'quick-ball', 'net-ball', 'dusk-ball', 'timer-ball', 'master-ball'];
+
   /// A Bolsa do começo da corrida (os itens gastos na batalha não voltam).
-  static const startBag = {'potion': 4, 'super-potion': 1, 'hyper-potion': 0, 'max-potion': 0, 'revive': 1};
-  static const bagItems = ['potion', 'super-potion', 'hyper-potion', 'max-potion', 'revive'];
+  static const startBag = {'poke-ball': startBalls, 'potion': 4, 'super-potion': 1, 'hyper-potion': 0, 'max-potion': 0, 'revive': 1};
+  static const bagItems = [...ballIds, 'potion', 'super-potion', 'hyper-potion', 'max-potion', 'revive'];
 
   /// Quanto cada item da Bolsa cura (parte do HP máximo; igual na batalha: healPct do motor).
   static const healShare = {'potion': 0.25, 'super-potion': 0.5, 'hyper-potion': 0.75, 'max-potion': 1.0};
@@ -168,7 +177,9 @@ class FactoryRun {
 
   /// Preço no 1º andar (priceScale aumenta com o andar). A ordem é a do site.
   static final shop = <String, int>{
-    'poke-ball': 50,
+    'poke-ball': 50, 'great-ball': 120, 'ultra-ball': 250, 'quick-ball': 200, 'net-ball': 150, 'dusk-ball': 150, 'timer-ball': 150,
+    // Rara na loja (3%): sempre captura.
+    'master-ball': 5000,
     'potion': 40, 'super-potion': 90, 'hyper-potion': 160, 'max-potion': 300, 'revive': 180,
     'rare-candy': 120,
     for (final k in vitamins.keys) k: 90,
@@ -201,7 +212,18 @@ class FactoryRun {
   // ------------------------------------------------------------ meta
 
   static Json empty() => {'best': 0, 'coins': 0, 'owned': <int>[], 'shinies': <int>[], 'run': null};
-  static Json of(Map? league) => {...empty(), ...?(league?['factory'] is Map ? _copy(Map<String, dynamic>.from(league!['factory'] as Map)) : null)};
+  static Json of(Map? league) {
+    final out = {...empty(), ...?(league?['factory'] is Map ? _copy(Map<String, dynamic>.from(league!['factory'] as Map)) : null)};
+    // Corridas antigas: as Poké Balls ficavam fora da Bolsa (run.balls).
+    final run = out['run'];
+    if (run is Map && run['balls'] != null) {
+      final r = Map<String, dynamic>.from(run)..remove('balls');
+      final bag = Map<String, dynamic>.from((r['bag'] as Map?) ?? const {});
+      bag['poke-ball'] = ((bag['poke-ball'] as num?) ?? 0).toInt() + _int(run['balls']);
+      out['run'] = r..['bag'] = bag;
+    }
+    return out;
+  }
 
   static int pokemonPrice(int bst) => math.max(20, ((_pow15(math.max(0, bst - 250).toDouble()) / 10 / 5).round() * 5));
 
@@ -320,14 +342,229 @@ class FactoryRun {
     for (var i = 0; team.length < want && pool.isNotEmpty; i++) {
       team.add(i < extra.length ? extra[i] : pool[(i - extra.length) % pool.length]);
     }
-    return team;
+    // Antes do andar 10, times pequenos, como no começo dos jogos: fica o mais forte.
+    final cap = floor < 10 ? 1 + floor ~/ 4 : maxTeam;
+    return team.length > cap ? team.sublist(team.length - cap) : team;
   }
 
   /// Nível de um chefe: quem é mais forte que as espécies do andar vem com nível menor.
   static int _bossLevel(FactoryData data, int floor, int id, int lvl) => math.max(2, (lvl * _pow15(math.min(1, speciesBudget(floor) / data.bstOf(id)))).round());
 
-  /// O que aparece no andar: chefe da história, chefe sem treinador (wild: Mega, Gigantamax ou lendário), selvagem ou treinador. Igual ao site.
-  static Json encounterFor(FactoryData data, int floor, double Function() rand, [Json? boss, bool wild = false]) {
+  // ------------------------------------------------------------ mapa
+
+  /// Biomas das rotas: os tipos dos Pokémon selvagens que aparecem nelas. Igual ao site.
+  static const biomes = <String, List<String>>{
+    'grass': ['normal', 'grass', 'bug', 'flying'],
+    'forest': ['bug', 'grass', 'poison', 'fairy'],
+    'water': ['water', 'ice', 'flying'],
+    'cave': ['rock', 'ground', 'dark', 'poison'],
+    'mountain': ['rock', 'fighting', 'ground', 'steel', 'dragon'],
+    'volcano': ['fire', 'rock', 'ground'],
+    'city': ['electric', 'steel', 'psychic', 'normal'],
+    'snow': ['ice', 'water'],
+    'tower': ['ghost', 'psychic', 'dark'],
+    'sky': ['flying', 'dragon', 'fairy'],
+  };
+  static final biomeIds = biomes.keys.toList();
+  static const _typeBiome = {
+    'normal': 'grass', 'fire': 'volcano', 'water': 'water', 'grass': 'forest', 'electric': 'city', 'ice': 'snow', 'fighting': 'mountain', 'poison': 'forest',
+    'ground': 'mountain', 'flying': 'sky', 'psychic': 'tower', 'bug': 'forest', 'rock': 'cave', 'ghost': 'tower', 'dragon': 'sky', 'dark': 'cave', 'steel': 'mountain', 'fairy': 'sky',
+  };
+
+  /// Na Dusk Ball (3×): as rotas escuras.
+  static const darkBiomes = ['cave', 'tower'];
+
+  /// Os chefes de cidade (líder no ginásio dele; Elite Four e Campeão na Liga). Rival e vilões aparecem na rota.
+  static const _cityKinds = ['gym', 'elite', 'champion'];
+
+  /// Andares de rota antes de cada cidade; onde a rota se divide (só ali dá para escolher); chance do rival em cada andar.
+  static const routeLength = 9, forks = [1, 4, 7], ambushChance = 0.3;
+
+  static List _leaders(FactoryData data, Json run) => data.bosses[_int(run['boss']['region'])]['leaders'] as List;
+
+  /// O próximo chefe de cidade (pula rival e vilões): o destino da rota. Igual ao site.
+  static Json targetOf(FactoryData data, Json run) {
+    final leaders = _leaders(data, run);
+    var step = _int(run['boss']['step']);
+    while (step < leaders.length - 1 && !_cityKinds.contains(leaders[step]['kind'])) {
+      step++;
+    }
+    return {'step': step, ...Map<String, dynamic>.from(leaders[step] as Map)};
+  }
+
+  /// Já está na Liga: depois da primeira da Elite Four, as lutas vêm uma atrás da outra.
+  static bool _inLeague(FactoryData data, Json run) {
+    final leaders = _leaders(data, run);
+    final step = _int(run['boss']['step']);
+    return step > 0 && ['elite', 'champion'].contains(leaders[step]['kind']) && leaders[step - 1]['kind'] == 'elite';
+  }
+
+  /// Onde está na rota: 0 é o primeiro andar depois da última cidade (run.leg); routeLength é a cidade.
+  static int routePos(Json run) {
+    final floor = _int(run['floor']);
+    return floor - ((run['leg'] as num?)?.toInt() ?? floor - (floor - 1) % 10);
+  }
+
+  /// Chegou na cidade (ou na Liga): o chefe dela é o próximo andar.
+  static bool atCity(FactoryData data, Json run) =>
+      _cityKinds.contains(bossOf(data, run)['kind']) && (_inLeague(data, run) || routePos(run) >= routeLength);
+
+  /// O bioma da rota até a próxima cidade: o do tipo do ginásio; para a Liga, um fixo da região. Igual ao site.
+  static String routeBiome(FactoryData data, Json run) {
+    final boss = targetOf(data, run);
+    if (boss['kind'] == 'gym') {
+      final count = <String, int>{};
+      for (final id in boss['team'] as List) {
+        for (final t in (data.speciesOf(_int(id))?.elementAtOrNull(4) as List?) ?? const []) {
+          count['$t'] = (count['$t'] ?? 0) + 1;
+        }
+      }
+      final keys = count.keys.toList();
+      // Ordenação estável (como a do site).
+      final order = [for (var i = 0; i < keys.length; i++) i]..sort((a, b) {
+          final d = count[keys[b]]!.compareTo(count[keys[a]]!);
+          return d != 0 ? d : a.compareTo(b);
+        });
+      final top = order.isEmpty ? null : _typeBiome[keys[order.first]];
+      if (top != null) return top;
+    }
+    return biomeIds[(_int(run['boss']['region']) * 7 + _int(boss['step']) * 3) % biomeIds.length];
+  }
+
+  /// Os pontos do mapa (o peso de cada um nas bifurcações). O Centro Pokémon é raro.
+  static const nodeWeights = [('wild', 34), ('trainer', 28), ('ace', 12), ('mart', 10), ('event', 11), ('center', 5)];
+  static const _battleNodes = ['wild', 'trainer', 'ace', 'boss', 'wildboss'];
+  static bool isBattleNode(Map? node) => _battleNodes.contains(node?['kind']);
+
+  /// O que tem no andar: o chefe da cidade (na Liga, um atrás do outro), o rival e os vilões em qualquer andar da
+  /// rota, o caminho que segue (um ponto só) ou, nas bifurcações, 2 ou 3 caminhos. Igual ao site.
+  static Json routeOptions(Json run, FactoryData data, double Function() rand) {
+    final floor = _int(run['floor']);
+    final biome = routeBiome(data, run);
+    final pos = routePos(run);
+    final boss = bossOf(data, run);
+    Json only(Json node) => {'floor': floor, 'biome': biome, 'options': [node]};
+    if (atCity(data, run)) return only({'kind': 'boss'});
+    if (!_cityKinds.contains(boss['kind'])) {
+      // Rival e vilões: quantos ainda faltam antes da cidade e quantos andares de rota sobram.
+      final leaders = _leaders(data, run);
+      final step = _int(run['boss']['step']);
+      var pending = 0;
+      while (step + pending < leaders.length && !_cityKinds.contains(leaders[step + pending]['kind'])) {
+        pending++;
+      }
+      if (routeLength - pos <= pending || (pos >= 2 && rand() < ambushChance)) return only({'kind': 'boss'});
+    }
+    String wildBiome() => rand() < 0.7 ? biome : _pick(biomeIds, rand);
+    if (!forks.contains(pos)) {
+      final r = rand();
+      return only(r < 0.55 ? {'kind': 'wild', 'biome': wildBiome()} : r < 0.9 || floor <= 2 ? {'kind': 'trainer'} : {'kind': 'event'});
+    }
+    final options = <Json>[rand() < 0.55 ? {'kind': 'wild', 'biome': wildBiome()} : {'kind': 'trainer'}];
+    final count = floor <= 2 ? 2 : 3;
+    final allowed = [for (final w in nodeWeights) if (floor > 2 || w.$1 == 'wild' || w.$1 == 'trainer') w];
+    final total = allowed.fold(0, (int sum, w) => sum + w.$2);
+    for (var guard = 0; options.length < count && guard < 20; guard++) {
+      var roll = rand() * total;
+      var kind = allowed.first.$1;
+      for (final w in allowed) {
+        roll -= w.$2;
+        if (roll < 0) {
+          kind = w.$1;
+          break;
+        }
+      }
+      final node = kind == 'wild' ? {'kind': kind, 'biome': wildBiome()} : {'kind': kind};
+      if (options.any((o) => o['kind'] == node['kind'] && o['biome'] == node['biome'])) continue;
+      options.add(node);
+    }
+    if (pos == forks[1] && rand() < wildBossChance) options[options.length - 1] = {'kind': 'wildboss'};
+    return {'floor': floor, 'biome': biome, 'options': options};
+  }
+
+  /// A cidade da rota (o destino) e a de onde ela começa (null no começo de uma região). Na Liga, as duas são a Liga.
+  static ({String? from, String to}) routeCities(FactoryData data, Json run) {
+    final leaders = _leaders(data, run);
+    final to = '${targetOf(data, run)['city'] ?? ''}';
+    if (_inLeague(data, run)) return (from: to, to: to);
+    var k = _int(run['boss']['step']) - 1;
+    while (k >= 0 && !_cityKinds.contains(leaders[k]['kind'])) {
+      k--;
+    }
+    return (from: k >= 0 ? leaders[k]['city'] as String? : null, to: to);
+  }
+
+  /// O que o treinador forte deixa (sempre): bolas e remédios na Bolsa, os de segurar guardados.
+  static final aceRewards = ['great-ball', 'ultra-ball', 'hyper-potion', 'max-potion', 'revive', 'move-tutor', ...heldBoost.keys];
+
+  /// Os eventos do mapa.
+  static const events = ['items', 'money', 'berries', 'tutor'];
+
+  /// Escolhe o caminho: batalha (o encontro do andar) ou, sem batalha, Poké Mart, Centro Pokémon e eventos. Igual ao site.
+  static Json chooseNode(Json run, FactoryData data, int index) {
+    final options = (run['route']?['options'] as List?) ?? const [];
+    if (index < 0 || index >= options.length || run['encounter'] != null || run['pending'] != null) return run;
+    final node = Map<String, dynamic>.from(options[index] as Map);
+    final out = _copy(run)..['route'] = null;
+    final rand = _dice(out);
+    final floor = _int(out['floor']);
+    final routeBiomeNow = '${run['route']?['biome'] ?? 'grass'}';
+    if (isBattleNode(node)) {
+      // O cenário da batalha: o bioma do selvagem, a cidade do ginásio, a Liga (torre) ou a rota.
+      final city = node['kind'] == 'boss' && atCity(data, run);
+      final scene = (node['biome'] as String?) ?? (city ? (bossOf(data, run)['kind'] == 'gym' ? 'city' : 'tower') : routeBiomeNow);
+      out['scene'] = scene;
+      out['encounter'] = {...encounterFor(data, floor, rand, node['kind'] == 'boss' ? bossOf(data, out) : null, node['kind'] == 'wildboss', node), 'scene': scene};
+      return out;
+    }
+    out['floor'] = floor + 1;
+    // O cenário de onde você está (Poké Mart e Centro na cidade).
+    out['scene'] = node['kind'] == 'mart' ? 'city' : node['kind'] == 'center' ? 'center' : routeBiomeNow;
+    if (node['kind'] == 'mart') {
+      out['pending'] = {'mart': true, 'shop': _pickShop(rand, data, floor, 10)};
+    } else if (node['kind'] == 'center') {
+      out['team'] = [for (final m in teamOf(out)) {...m, 'hp': 1}];
+      out['pending'] = {'center': true};
+    } else {
+      final kind = _pick(events, rand);
+      final event = <String, dynamic>{'kind': kind};
+      if (kind == 'items') {
+        // Bolas ou remédios, melhores conforme o andar.
+        final item = rand() < 0.5 ? tierPick(ballTiers, floor, 25, rand) : tierPick(healTiers.sublist(0, 3), floor, 20, rand);
+        event['item'] = item;
+        event['count'] = 2;
+        final bag = Map<String, dynamic>.from(out['bag'] as Map);
+        bag[item] = ((bag[item] as num?) ?? 0).toInt() + (event['count'] as int);
+        out['bag'] = bag;
+      } else if (kind == 'money') {
+        event['money'] = (60 * priceScale(floor) * (0.5 + rand())).round();
+        out['money'] = _int(out['money']) + (event['money'] as int);
+      } else if (kind == 'berries') {
+        out['team'] = [for (final m in teamOf(out)) hpOf(m) > 0 ? {...m, 'hp': math.min(1, _round3(hpOf(m) + 0.3))} : m];
+      } else {
+        final t = Map<String, dynamic>.from((out['tokens'] as Map?) ?? const {});
+        t['move-tutor'] = ((t['move-tutor'] as num?) ?? 0).toInt() + 1;
+        out['tokens'] = t;
+      }
+      out['pending'] = {'event': event};
+    }
+    return out;
+  }
+
+  /// A captura na batalha (input.capture do motor): só com selvagens. Igual ao site.
+  static Json? captureFor(Json run, FactoryData data) {
+    final encounter = run['encounter'] as Map?;
+    final kind = encounter?['kind'];
+    if (kind != 'wild' && kind != 'wildboss') return null;
+    return {
+      'rates': [for (final f in foesOf(run)) ((data.speciesOf(_int(f['id']))?.elementAtOrNull(5) as num?) ?? 45).toInt()],
+      'dusk': darkBiomes.contains(encounter?['biome']),
+    };
+  }
+
+  /// O que aparece no andar: chefe da história, chefe sem treinador (wild: Mega, Gigantamax ou lendário), selvagem ou treinador.
+  /// node: o caminho escolhido no mapa (selvagem do bioma, treinador ou treinador forte). Igual ao site.
+  static Json encounterFor(FactoryData data, int floor, double Function() rand, [Json? boss, bool wild = false, Json? node]) {
     final level = math.max(2, foeLevelAt(floor) + (rand() * 2).floor());
     final iv = foeIvsAt(floor), ev = foeEvsAt(floor), boost = foeBoostAt(floor);
     Json foe(int id, int lvl, [Json extra = const {}]) => {'id': id, 'level': math.max(2, lvl), 'iv': iv, 'ev': ev, if (boost != 0) 'boost': boost, ...extra};
@@ -355,7 +592,8 @@ class FactoryRun {
     }
     if (boss != null) {
       // Os times dos chefes são de Pokémon evoluídos: quem é mais forte que as espécies do andar vem com nível menor.
-      final bonus = const {'gym': 2, 'rival': 2, 'villain': 3, 'elite': 4, 'champion': 5}[boss['kind']] ?? 2;
+      // Antes do andar 10, sem o bônus de nível (o rival aparece cedo, como no começo dos jogos).
+      final bonus = floor < 10 ? 0 : const {'gym': 2, 'rival': 2, 'villain': 3, 'elite': 4, 'champion': 5}[boss['kind']] ?? 2;
       final team = bossTeam(boss, floor);
       int levelOf(int id, int i) => _bossLevel(data, floor, id, level + bonus + (i == team.length - 1 ? 1 : 0));
 
@@ -366,7 +604,7 @@ class FactoryRun {
       };
     }
     // Lendários só aparecem como chefes (wild).
-    final kind = rand() < 0.35 ? 'trainer' : 'wild';
+    final kind = (node?['kind'] as String?) ?? (rand() < 0.35 ? 'trainer' : 'wild');
     // Nos primeiros andares, nada de Fantasma (imune aos golpes Normal que os iniciais têm no começo).
     final entries = [
       for (final e in data.species.entries)
@@ -384,40 +622,42 @@ class FactoryRun {
     }
 
     final common = [for (final p in entries) if (p.rarity == 0 || p.rarity == 3) p];
-    if (kind == 'trainer') {
-      final count = math.min(maxTeam, 1 + floor ~/ 12 + (rand() < 0.3 ? 1 : 0));
+    if (kind == 'trainer' || kind == 'ace') {
+      // O treinador forte: um Pokémon a mais, 2 níveis acima, mais EVs; sempre deixa um item.
+      final ace = kind == 'ace';
+      final count = math.min(maxTeam, 1 + floor ~/ 12 + (rand() < 0.3 ? 1 : 0) + (ace ? 1 : 0));
+      final Json extra = ace ? {'iv': math.max(iv, 20), 'ev': (ev * 1.15).round()} : const {};
       final foes = <Json>[];
       for (var i = 0; i < count; i++) {
         final id = pick(common);
-        foes.add(foe(id, level - (rand() * 3).floor()));
+        foes.add(foe(id, level + (ace ? 2 : 0) - (rand() * 3).floor(), extra));
       }
-      return {'kind': kind, 'foes': foes, 'trainerSeed': (rand() * 1e9).floor()};
+      return {'kind': kind, 'foes': foes, 'trainerSeed': (rand() * 1e9).floor(), if (ace) 'reward': _pick(aceRewards, rand)};
     }
-    final id = pick(common);
-    return {'kind': kind, 'foes': [foe(id, level, rand() < shinyChance ? {'shiny': true} : const {})]};
-  }
-
-  static Json _encounterOf(Json run, FactoryData data, double Function() rand) {
-    final floor = _int(run['floor']);
-    if (floor % bossEvery == 0) return encounterFor(data, floor, rand, bossOf(data, run));
-    final wild = floor % bossEvery == 5 && rand() < wildBossChance;
-    return encounterFor(data, floor, rand, null, wild);
+    // Selvagem: os do bioma da rota (se não tiver nenhum do tamanho certo, qualquer um).
+    final types = biomes[node?['biome']];
+    final local = types == null ? common : [for (final p in common) if (((data.species[p.id]?.elementAtOrNull(4) as List?) ?? const []).any(types.contains)) p];
+    final id = pick(local.isNotEmpty ? local : common);
+    return {
+      'kind': kind, 'foes': [foe(id, level, rand() < shinyChance ? {'shiny': true} : const {})],
+      if (node?['biome'] != null) 'biome': node!['biome'],
+    };
   }
 
   static Json? startRun(Json factory, FactoryData data, int id, int seed, [bool shiny = false]) {
     if (!startersOf(factory, data).contains(id) || (shiny && !shiniesOf(factory).contains(id))) return null;
     final run = <String, dynamic>{
-      'seed': seed & 0xFFFFFFFF, 'floor': 1, 'money': 0, 'defeated': 0, 'bosses': 0, 'balls': startBalls, 'bag': {...startBag},
+      'seed': seed & 0xFFFFFFFF, 'floor': 1, 'money': 0, 'defeated': 0, 'bosses': 0, 'bag': {...startBag},
       'team': <Json>[], 'teamBoost': _zero(), 'mult': {'money': 1, 'exp': 1, 'shop': 1}, 'cards': <String>[], 'boss': {'region': 0, 'step': 0}, 'played': <String>[],
       'tms': <String, dynamic>{}, 'tokens': {'move-tutor': 0, 'move-reminder': 0}, 'stash': <String>[], 'dmax': false, 'tera': false,
-      'encounter': null, 'pending': null,
+      'leg': 1, 'route': null, 'encounter': null, 'pending': null,
     };
     final rand = _dice(run);
     // O inicial vem com IVs bons (15 a 31).
     run['team'] = [newMon(id, startLevel, rand, 15, shiny)];
     run['boss'] = {'region': (rand() * data.bosses.length).floor(), 'step': 0};
     run['played'] = [data.bosses[_int(run['boss']['region'])]['region']];
-    run['encounter'] = _encounterOf(run, data, rand);
+    run['route'] = routeOptions(run, data, rand);
     return run;
   }
 
@@ -426,6 +666,7 @@ class FactoryRun {
   static double _mult(Json run, String k) => ((run['mult'] as Map)[k] as num).toDouble();
   static double hpOf(Map mon) => ((mon['hp'] as num?) ?? 1).toDouble();
   static Map<String, int> bagOf(Json run) => {for (final id in bagItems) id: (((run['bag'] as Map?)?[id] as num?) ?? 0).toInt()};
+  static Json? routeOf(Json run) => run['route'] == null ? null : Map<String, dynamic>.from(run['route'] as Map);
 
   /// O próximo chefe: depois do Campeão, a história de outra região (uma que ainda não saiu). Igual ao site.
   static (Json, List<String>) _nextBoss(Json run, FactoryData data, double Function() rand) {
@@ -447,8 +688,9 @@ class FactoryRun {
   static String storyLine(FactoryData data, String region, String key, [String name = '']) => (data.stories[region]?[key] ?? '').replaceFirst('{0}', name);
 
   /// Venceu o andar. hp: a parte do HP de cada um do time (na ordem da
-  /// corrida) no fim da batalha; bag: a Bolsa que sobrou. Igual ao site.
-  static Json winFloor(Json run, FactoryData data, {List<double>? hp, Map<String, int>? bag}) {
+  /// corrida) no fim da batalha; bag: a Bolsa que sobrou; captured: capturou o
+  /// selvagem na batalha (entra no time). Igual ao site.
+  static Json winFloor(Json run, FactoryData data, {List<double>? hp, Map<String, int>? bag, bool captured = false}) {
     final out = _copy(run);
     final team0 = teamOf(out);
     out['team'] = [for (var i = 0; i < team0.length; i++) {...team0[i], 'hp': hp != null && i < hp.length ? hp[i] : hpOf(team0[i])}];
@@ -456,8 +698,8 @@ class FactoryRun {
     final rand = _dice(out);
     final kind = run['encounter']['kind'] as String;
     final foes = foesOf(run);
-    final factor = kind == 'boss' || kind == 'wildboss' || kind == 'trainer' ? 1.5 : 1.0;
-    final moneyFactor = kind == 'boss' || kind == 'wildboss' ? 3 : kind == 'trainer' ? 2 : 1;
+    final factor = kind == 'ace' ? 1.75 : kind == 'boss' || kind == 'wildboss' || kind == 'trainer' ? 1.5 : 1.0;
+    final moneyFactor = kind == 'boss' || kind == 'wildboss' ? 3 : kind == 'ace' ? 2.5 : kind == 'trainer' ? 2 : 1;
     var money = 0;
     final evs = _zero();
     for (final f in foes) {
@@ -485,12 +727,13 @@ class FactoryRun {
     out['team'] = team;
     out['money'] = _int(out['money']) + money;
     out['defeated'] = _int(out['defeated']) + foes.length;
-    final cleared = _int(out['floor']);
-    out['floor'] = cleared + 1;
+    out['floor'] = _int(out['floor']) + 1;
     String? drop, story;
     if (kind == 'boss' || kind == 'wildboss') out['bosses'] = ((out['bosses'] as num?) ?? 0).toInt() + 1;
     if (kind == 'boss') {
       final beaten = run['encounter']['boss'] as Map;
+      // Venceu o chefe da cidade (ou da Liga): começa a rota seguinte.
+      if (_cityKinds.contains(beaten['kind'])) out['leg'] = out['floor'];
       final (boss, played) = _nextBoss(out, data, rand);
       // Acabou a história da região: o fim dela e o começo da próxima.
       if (boss['step'] == 0) {
@@ -507,14 +750,26 @@ class FactoryRun {
     // A Mega deixa a Mega Pedra (derrotando ou capturando).
     if (kind == 'wildboss' && foes.first['item'] != null && !_hasItem(out, '${foes.first['item']}')) drop = '${foes.first['item']}';
     if (drop != null) out['stash'] = [...((out['stash'] as List?) ?? const []), drop];
+    // O treinador forte deixa um item: bolas e remédios na Bolsa, ficha de Move Tutor, os de segurar guardados.
+    final reward = kind == 'ace' ? run['encounter']['reward'] as String? : null;
+    if (reward != null && bagItems.contains(reward)) {
+      (out['bag'] as Map)[reward] = (((out['bag'] as Map)[reward] as num?) ?? 0).toInt() + 1;
+    } else if (reward != null && tokens.contains(reward)) {
+      final t = Map<String, dynamic>.from((out['tokens'] as Map?) ?? const {});
+      t[reward] = ((t[reward] as num?) ?? 0).toInt() + 1;
+      out['tokens'] = t;
+    } else if (reward != null) {
+      out['stash'] = [...((out['stash'] as List?) ?? const []), reward];
+    }
     final joy = rand() < joyChance;
     if (joy) out['team'] = [for (final m in teamOf(out)) {...m, 'hp': 1}];
     final cardsPick = kind == 'boss' ? _pickCards(rand) : null;
-    // A loja: garantida a cada 5 andares (logo antes de cada chefe e no meio) e com 20% de chance nos outros.
-    final shopPick = cleared % 5 == 4 || rand() < 0.2 ? _pickShop(rand, data) : null;
+    // A loja da cidade: chegando nela, logo antes do chefe (no resto da rota, os Poké Marts do mapa).
+    final cityWin = kind == 'boss' && _cityKinds.contains(run['encounter']['boss']['kind']);
+    final shopPick = !cityWin && atCity(data, out) && !_inLeague(data, out) ? _pickShop(rand, data, _int(run['floor'])) : null;
     out['pending'] = {
-      'exp': exp, 'money': money, 'levels': levels, 'joy': joy, 'drop': drop, 'story': story,
-      'capture': kind == 'wild' || kind == 'wildboss' ? foes.first : null,
+      'exp': exp, 'money': money, 'levels': levels, 'joy': joy, 'drop': drop, 'story': story, 'reward': reward,
+      'capture': captured && (kind == 'wild' || kind == 'wildboss') ? foes.first : null,
       'cards': cardsPick,
       'shop': shopPick,
     };
@@ -536,13 +791,50 @@ class FactoryRun {
   static bool _hasItem(Json run, String id) =>
       ((run['stash'] as List?) ?? const []).contains(id) || teamOf(run).any((m) => m['item'] == id || ((m['extras'] as List?) ?? const []).contains(id));
 
-  static List<String> _pickShop(double Function() rand, FactoryData data) {
-    final ids = [for (final id in shop.keys) if (id != 'poke-ball') id];
-    final out = ['poke-ball', _pick(const ['potion', 'super-potion', 'hyper-potion', 'max-potion', 'revive'], rand)];
+  /// As bolas e os remédios em escada (do pior ao melhor) e as bolas especiais.
+  static const ballTiers = ['poke-ball', 'great-ball', 'ultra-ball'];
+  static const healTiers = ['potion', 'super-potion', 'hyper-potion', 'max-potion'];
+  static const specialBalls = ['quick-ball', 'net-ball', 'dusk-ball', 'timer-ball'];
+
+  /// Um item da escada: conforme o andar, os melhores ficam mais prováveis (um degrau a cada [step] andares). Igual ao site.
+  static String tierPick(List<String> list, int floor, int step, double Function() rand) {
+    final p = math.min(list.length - 1, floor / step);
+    final weights = <double>[for (var i = 0; i < list.length; i++) math.max(0.08, 1 - (i - p).abs()).toDouble()];
+    var total = 0.0;
+    for (final w in weights) {
+      total += w;
+    }
+    var roll = rand() * total;
+    for (var i = 0; i < list.length; i++) {
+      roll -= weights[i];
+      if (roll < 0) return list[i];
+    }
+    return list.last;
+  }
+
+  static List<String> _pickShop(double Function() rand, FactoryData data, int floor, [int size = 8]) {
+    final out = <String>[];
+    void add(String id) {
+      if (!out.contains(id)) out.add(id);
+    }
+
+    // Dois tipos de bola (melhores conforme o andar), às vezes uma especial; a Master Ball é rara.
+    for (var k = 0; k < 4 && out.length < 2; k++) {
+      add(tierPick(ballTiers, floor, 25, rand));
+    }
+    if (floor >= 5 && rand() < 0.6) add(_pick(specialBalls, rand));
+    if (rand() < math.min(0.08, 0.01 + floor / 1500)) add('master-ball');
+    // Dois remédios (melhores conforme o andar) e, às vezes, Revive.
+    final before = out.length;
+    for (var k = 0; k < 4 && out.length < before + 2; k++) {
+      add(tierPick(healTiers, floor, 20, rand));
+    }
+    if (rand() < 0.5) add('revive');
+    final ids = [for (final id in shop.keys) if (!ballIds.contains(id) && !healTiers.contains(id) && id != 'revive') id];
     // TM e pedra de evolução, às vezes.
     if (data.tms.isNotEmpty && rand() < 0.6) out.add('tm:${_pick(data.tms, rand)}');
     if (data.stones.isNotEmpty && rand() < 0.45) out.add('evo:${_pick(data.stones, rand)}');
-    while (out.length < 8) {
+    while (out.length < size) {
       final id = _pick(ids, rand);
       if (!out.contains(id)) out.add(id);
     }
@@ -551,12 +843,11 @@ class FactoryRun {
 
   static Json? pendingOf(Json run) => run['pending'] == null ? null : Map<String, dynamic>.from(run['pending'] as Map);
 
-  /// Captura o selvagem derrotado com uma Poké Ball (replace: posição a trocar com o time cheio).
+  /// O Pokémon capturado na batalha entra no time (replace: posição a trocar com o time cheio).
   static Json capture(Json run, [int? replace]) {
     final foe = pendingOf(run)?['capture'];
-    if (foe == null || !(((run['balls'] as num?) ?? 0) > 0)) return run;
+    if (foe == null) return run;
     final out = _copy(run);
-    out['balls'] = _int(out['balls']) - 1;
     final rand = _dice(out);
     final mon = newMon(_int(foe['id']), _int(foe['level']), rand, 0, foe['shiny'] == true);
     final team = teamOf(out);
@@ -572,6 +863,7 @@ class FactoryRun {
     return out;
   }
 
+  /// Solta o capturado (o time está cheio e você não quer trocar ninguém).
   static Json skipCapture(Json run) {
     if (run['pending'] == null) return run;
     final out = _copy(run);
@@ -590,7 +882,11 @@ class FactoryRun {
       out['teamBoost'] = {for (final s in stats) s: _round3(((boost[s] as num?) ?? 0) + (card.team![s] ?? 0))};
     }
     if (card.mult != null) (out['mult'] as Map)[card.mult!] = math.max(0.4, _round3(_mult(out, card.mult!) + card.by));
-    if (card.balls > 0) out['balls'] = _int(out['balls']) + card.balls;
+    if (card.balls > 0) {
+      final bag = Map<String, dynamic>.from(out['bag'] as Map);
+      bag['poke-ball'] = ((bag['poke-ball'] as num?) ?? 0).toInt() + card.balls;
+      out['bag'] = bag;
+    }
     if (card.heal) {
       out['team'] = [for (final m in teamOf(out)) {...m, 'hp': 1}];
       final bag = Map<String, dynamic>.from(out['bag'] as Map);
@@ -628,7 +924,6 @@ class FactoryRun {
     if (!((pendingOf(run)?['shop'] as List?)?.contains(id) ?? false) || (run['money'] as num) < price || shopOwned(run, id)) return null;
     final out = _copy(run);
     out['money'] = _int(out['money']) - price;
-    if (id == 'poke-ball') return out..['balls'] = _int(out['balls']) + 1;
     if (id == 'dynamax-band') return out..['dmax'] = true;
     if (id == 'tera-orb') return out..['tera'] = true;
     if (tokens.contains(id)) {
@@ -780,9 +1075,12 @@ class FactoryRun {
   /// O time inteiro desmaiado (não dá para seguir).
   static bool teamDown(Json run) => teamOf(run).every((m) => !(hpOf(m) > 0));
 
+  /// Sai da loja (ou não tinha): os caminhos do próximo andar no mapa.
   static Json nextFloor(Json run, FactoryData data) {
-    final out = _copy(run)..['pending'] = null;
-    out['encounter'] = _encounterOf(out, data, _dice(out));
+    final out = _copy(run)
+      ..['pending'] = null
+      ..['encounter'] = null;
+    out['route'] = routeOptions(out, data, _dice(out));
     return out;
   }
 

@@ -7342,5 +7342,320 @@
   "en": "{0} came out shiny!",
   "fr": "{0} est chromatique !",
   "es": "¡{0} salió variocolor!"
+ },
+ "Jogar no Pokémon selvagem": {
+  "en": "Throw at the wild Pokémon",
+  "fr": "Lancer sur le Pokémon sauvage",
+  "es": "Lanzar al Pokémon salvaje"
+ },
+ "Você jogou uma {1}!": {
+  "en": "You threw a {1}!",
+  "fr": "Vous lancez une {1} !",
+  "es": "¡Lanzaste una {1}!"
+ },
+ "Pegou! {0} foi capturado!": {
+  "en": "Gotcha! {0} was caught!",
+  "fr": "Et hop ! {0} est attrapé !",
+  "es": "¡Ya está! ¡{0} fue capturado!"
+ },
+ "Ah, não! {0} escapou da bola!": {
+  "en": "Oh no! {0} broke free!",
+  "fr": "Oh non ! {0} s’est libéré !",
+  "es": "¡Oh, no! ¡{0} se ha escapado!"
+ },
+ "Floresta": {
+  "en": "Forest",
+  "fr": "Forêt",
+  "es": "Bosque"
+ },
+ "Mar": {
+  "en": "Sea",
+  "fr": "Mer",
+  "es": "Mar"
+ },
+ "Caverna": {
+  "en": "Cave",
+  "fr": "Grotte",
+  "es": "Cueva"
+ },
+ "Montanha": {
+  "en": "Mountain",
+  "fr": "Montagne",
+  "es": "Montaña"
+ },
+ "Vulcão": {
+  "en": "Volcano",
+  "fr": "Volcan",
+  "es": "Volcán"
+ },
+ "Cidade": {
+  "en": "City",
+  "fr": "Ville",
+  "es": "Ciudad"
+ },
+ "Torre": {
+  "en": "Tower",
+  "fr": "Tour",
+  "es": "Torre"
+ },
+ "Céu": {
+  "en": "Sky",
+  "fr": "Ciel",
+  "es": "Cielo"
+ },
+ "Pokémon selvagem": {
+  "en": "Wild Pokémon",
+  "fr": "Pokémon sauvage",
+  "es": "Pokémon salvaje"
+ },
+ "Treinador forte": {
+  "en": "Strong trainer",
+  "fr": "Dresseur fort",
+  "es": "Entrenador fuerte"
+ },
+ "Centro Pokémon": {
+  "en": "Pokémon Center",
+  "fr": "Centre Pokémon",
+  "es": "Centro Pokémon"
+ },
+ "Evento": {
+  "en": "Event",
+  "fr": "Événement",
+  "es": "Evento"
+ },
+ "Chefe sem treinador": {
+  "en": "Boss without a trainer",
+  "fr": "Boss sans dresseur",
+  "es": "Jefe sin entrenador"
+ },
+ "Chefe": {
+  "en": "Boss",
+  "fr": "Boss",
+  "es": "Jefe"
+ },
+ "Dá para capturar: jogue a bola antes de ele desmaiar.": {
+  "en": "You can catch it: throw the ball before it faints.",
+  "fr": "Capturable : lancez la Ball avant qu’il ne soit K.O.",
+  "es": "Se puede capturar: lanza la Ball antes de que se debilite."
+ },
+ "Dinheiro em dobro.": {
+  "en": "Double money.",
+  "fr": "Argent doublé.",
+  "es": "Dinero doble."
+ },
+ "Um Pokémon a mais e mais forte; sempre deixa um item.": {
+  "en": "One more Pokémon and stronger; always drops an item.",
+  "fr": "Un Pokémon de plus et plus fort ; laisse toujours un objet.",
+  "es": "Un Pokémon más y más fuerte; siempre deja un objeto."
+ },
+ "Uma loja maior (sem batalha, sem XP).": {
+  "en": "A bigger shop (no battle, no XP).",
+  "fr": "Une boutique plus grande (sans combat, sans XP).",
+  "es": "Una tienda más grande (sin combate, sin PE)."
+ },
+ "Cura o time todo, até quem desmaiou (sem batalha).": {
+  "en": "Heals the whole team, even fainted ones (no battle).",
+  "fr": "Soigne toute l’équipe, même les K.O. (sans combat).",
+  "es": "Cura a todo el equipo, incluso a los debilitados (sin combate)."
+ },
+ "Itens, dinheiro, frutas ou uma ficha de Move Tutor (sem batalha).": {
+  "en": "Items, money, berries or a Move Tutor ticket (no battle).",
+  "fr": "Objets, argent, baies ou un ticket de Move Tutor (sans combat).",
+  "es": "Objetos, dinero, bayas o un ticket de Move Tutor (sin combate)."
+ },
+ "Uma Mega, um Gigantamax ou um lendário. Dá para capturar.": {
+  "en": "A Mega, a Gigantamax or a legendary. You can catch it.",
+  "fr": "Un Méga, un Gigamax ou un légendaire. Capturable.",
+  "es": "Una Mega, un Gigamax o un legendario. Se puede capturar."
+ },
+ "Você achou {1}× {0} no caminho!": {
+  "en": "You found {1}× {0} on the way!",
+  "fr": "Vous avez trouvé {1}× {0} en chemin !",
+  "es": "¡Encontraste {1}× {0} en el camino!"
+ },
+ "Um treinador perdeu 💰{0} e não voltou para buscar.": {
+  "en": "A trainer dropped 💰{0} and never came back for it.",
+  "fr": "Un dresseur a perdu 💰{0} et n’est jamais revenu.",
+  "es": "Un entrenador perdió 💰{0} y no volvió a buscarlo."
+ },
+ "Frutas no caminho: o time recuperou 30% do HP.": {
+  "en": "Berries on the way: the team recovered 30% HP.",
+  "fr": "Des baies en chemin : l’équipe récupère 30 % de PV.",
+  "es": "Bayas en el camino: el equipo recuperó un 30% de PS."
+ },
+ "Um velho professor te deu uma ficha de Move Tutor.": {
+  "en": "An old professor gave you a Move Tutor ticket.",
+  "fr": "Un vieux professeur vous a donné un ticket de Move Tutor.",
+  "es": "Un viejo profesor te dio un ticket de Move Tutor."
+ },
+ "Andar {0}": {
+  "en": "Floor {0}",
+  "fr": "Étage {0}",
+  "es": "Piso {0}"
+ },
+ "Sair (a corrida fica salva)": {
+  "en": "Leave (the run is saved)",
+  "fr": "Quitter (la partie est sauvegardée)",
+  "es": "Salir (la partida queda guardada)"
+ },
+ "Desistir da corrida? A pontuação vira moedas.": {
+  "en": "Give up the run? The score turns into coins.",
+  "fr": "Abandonner la partie ? Le score devient des pièces.",
+  "es": "¿Abandonar la partida? La puntuación se convierte en monedas."
+ },
+ "A corrida acabou": {
+  "en": "The run is over",
+  "fr": "La partie est terminée",
+  "es": "La partida terminó"
+ },
+ "Andar {0} · +{1} moedas": {
+  "en": "Floor {0} · +{1} coins",
+  "fr": "Étage {0} · +{1} pièces",
+  "es": "Piso {0} · +{1} monedas"
+ },
+ "Centro Pokémon: o seu time foi curado!": {
+  "en": "Pokémon Center: your team was healed!",
+  "fr": "Centre Pokémon : votre équipe est soignée !",
+  "es": "Centro Pokémon: ¡tu equipo se curó!"
+ },
+ "Ganhou {0}!": {
+  "en": "You got {0}!",
+  "fr": "Vous obtenez {0} !",
+  "es": "¡Conseguiste {0}!"
+ },
+ "Soltar": {
+  "en": "Release",
+  "fr": "Relâcher",
+  "es": "Liberar"
+ },
+ "Para quem é a compra (bolas e itens da Bolsa vão para a Bolsa):": {
+  "en": "Who is the purchase for (balls and Bag items go to the Bag):",
+  "fr": "Pour qui est l’achat (Balls et objets du Sac vont dans le Sac) :",
+  "es": "Para quién es la compra (las Balls y objetos de la Mochila van a la Mochila):"
+ },
+ "Rota para {0}": {
+  "en": "Route to {0}",
+  "fr": "Route vers {0}",
+  "es": "Ruta a {0}"
+ },
+ "Chefe em {0}:": {
+  "en": "Boss in {0}:",
+  "fr": "Boss à {0} :",
+  "es": "Jefe en {0}:"
+ },
+ "Escolha o caminho": {
+  "en": "Choose the path",
+  "fr": "Choisissez le chemin",
+  "es": "Elige el camino"
+ },
+ "O chefe espera": {
+  "en": "The boss awaits",
+  "fr": "Le boss vous attend",
+  "es": "El jefe te espera"
+ },
+ "Rota": {
+  "en": "Route",
+  "fr": "Route",
+  "es": "Ruta"
+ },
+ "Continuar a corrida": {
+  "en": "Continue the run",
+  "fr": "Continuer la partie",
+  "es": "Continuar la partida"
+ },
+ "Para capturar os selvagens (jogue na batalha)": {
+  "en": "To catch wild Pokémon (throw it in battle)",
+  "fr": "Pour capturer les sauvages (à lancer en combat)",
+  "es": "Para capturar salvajes (lánzala en combate)"
+ },
+ "Captura 1,5× melhor": {
+  "en": "Catches 1.5× better",
+  "fr": "Capture 1,5× mieux",
+  "es": "Captura 1,5× mejor"
+ },
+ "Captura 2× melhor": {
+  "en": "Catches 2× better",
+  "fr": "Capture 2× mieux",
+  "es": "Captura 2× mejor"
+ },
+ "5× melhor no primeiro turno": {
+  "en": "5× better on the first turn",
+  "fr": "5× mieux au premier tour",
+  "es": "5× mejor en el primer turno"
+ },
+ "3,5× melhor em Água e Inseto": {
+  "en": "3.5× better on Water and Bug",
+  "fr": "3,5× mieux sur Eau et Insecte",
+  "es": "3,5× mejor en Agua y Bicho"
+ },
+ "3× melhor em cavernas e torres": {
+  "en": "3× better in caves and towers",
+  "fr": "3× mieux dans les grottes et tours",
+  "es": "3× mejor en cuevas y torres"
+ },
+ "Melhora a cada turno (até 4×)": {
+  "en": "Gets better every turn (up to 4×)",
+  "fr": "S’améliore à chaque tour (jusqu’à 4×)",
+  "es": "Mejora cada turno (hasta 4×)"
+ },
+ "Captura sempre": {
+  "en": "Always catches",
+  "fr": "Capture à coup sûr",
+  "es": "Captura siempre"
+ },
+ "Um roguelike sem fim com a história de cada região: escolha um inicial no nível 5 e siga o mapa de cidade em cidade. Em cada andar você escolhe o caminho: Pokémon selvagem do bioma da rota (capture jogando a bola na batalha, antes de ele desmaiar; cada bola tem a sua chance), treinador, treinador forte (sempre deixa um item), Poké Mart, Centro Pokémon (raro) ou um evento. A cada 10 andares, na cidade, vem um chefe da história: líderes de ginásio, rival e vilões (com times cada vez maiores), a Elite Four e o Campeão; nos andares 5, 15, 25... pode aparecer uma Mega, um Gigantamax ou um lendário. O time não é curado entre os andares (só com a Bolsa, a loja, o Centro Pokémon ou, com 5% de chance, a Enfermeira Joy). Sem limite de nível, IVs, EVs ou itens; shiny é 1 em 4096. Perdeu: a pontuação vira moedas para comprar Pokémon e começar com eles.": {
+  "en": "An endless roguelike with the story of each region: pick a starter at level 5 and follow the map from city to city. On each floor you choose the path: a wild Pokémon from the route’s biome (catch it by throwing a ball in battle before it faints; each ball has its own chance), a trainer, a strong trainer (always drops an item), a Poké Mart, a Pokémon Center (rare) or an event. Every 10 floors, in the city, a story boss arrives: gym leaders, the rival and villains (with ever bigger teams), the Elite Four and the Champion; on floors 5, 15, 25... a Mega, a Gigantamax or a legendary may appear. The team is not healed between floors (only with the Bag, the shop, the Pokémon Center or, with a 5% chance, Nurse Joy). No limit on level, IVs, EVs or items; shiny is 1 in 4096. Lose: the score turns into coins to buy Pokémon and start with them.",
+  "fr": "Un roguelike sans fin avec l’histoire de chaque région : choisissez un starter niveau 5 et suivez la carte de ville en ville. À chaque étage, vous choisissez le chemin : un Pokémon sauvage du biome de la route (capturez-le en lançant une Ball en combat avant qu’il ne soit K.O. ; chaque Ball a sa chance), un dresseur, un dresseur fort (laisse toujours un objet), une Boutique Pokémon, un Centre Pokémon (rare) ou un événement. Tous les 10 étages, en ville, arrive un boss de l’histoire : champions d’arène, le rival et les méchants (avec des équipes toujours plus grandes), le Conseil 4 et le Maître ; aux étages 5, 15, 25... peut apparaître un Méga, un Gigamax ou un légendaire. L’équipe n’est pas soignée entre les étages (seulement avec le Sac, la boutique, le Centre Pokémon ou, avec 5 % de chance, l’Infirmière Joëlle). Pas de limite de niveau, d’IV, d’EV ou d’objets ; un chromatique sort 1 fois sur 4096. Perdu : le score devient des pièces pour acheter des Pokémon et commencer avec eux.",
+  "es": "Un roguelike sin fin con la historia de cada región: elige un inicial al nivel 5 y sigue el mapa de ciudad en ciudad. En cada piso eliges el camino: un Pokémon salvaje del bioma de la ruta (captúralo lanzando una Ball en combate antes de que se debilite; cada Ball tiene su probabilidad), un entrenador, un entrenador fuerte (siempre deja un objeto), una Tienda Pokémon, un Centro Pokémon (raro) o un evento. Cada 10 pisos, en la ciudad, llega un jefe de la historia: líderes de gimnasio, el rival y los villanos (con equipos cada vez más grandes), el Alto Mando y el Campeón; en los pisos 5, 15, 25... puede aparecer una Mega, un Gigamax o un legendario. El equipo no se cura entre pisos (solo con la Mochila, la tienda, el Centro Pokémon o, con un 5% de probabilidad, la Enfermera Joy). Sin límite de nivel, IV, EV ni objetos; el variocolor sale 1 de cada 4096. Si pierdes: la puntuación se convierte en monedas para comprar Pokémon y empezar con ellos."
+ },
+ "TIME": {
+  "en": "TEAM",
+  "fr": "ÉQUIPE",
+  "es": "EQUIPO"
+ },
+ "COMPRAR": {
+  "en": "BUY",
+  "fr": "ACHETER",
+  "es": "COMPRAR"
+ },
+ "CONTINUAR": {
+  "en": "CONTINUE",
+  "fr": "CONTINUER",
+  "es": "CONTINUAR"
+ },
+ "SOLTAR": {
+  "en": "RELEASE",
+  "fr": "RELÂCHER",
+  "es": "LIBERAR"
+ },
+ "VOLTAR": {
+  "en": "BACK",
+  "fr": "RETOUR",
+  "es": "VOLVER"
+ },
+ "Nada da Bolsa para usar agora.": {
+  "en": "Nothing in the Bag to use now.",
+  "fr": "Rien à utiliser dans le Sac pour l’instant.",
+  "es": "Nada de la Mochila para usar ahora."
+ },
+ "O caminho se divide: escolha por onde ir": {
+  "en": "The path splits: choose where to go",
+  "fr": "Le chemin se divise : choisissez par où aller",
+  "es": "El camino se divide: elige por dónde ir"
+ },
+ "O caminho segue.": {
+  "en": "The path goes on.",
+  "fr": "Le chemin continue.",
+  "es": "El camino sigue."
+ },
+ "{0} apareceu no caminho!": {
+  "en": "{0} appeared on the path!",
+  "fr": "{0} apparaît sur le chemin !",
+  "es": "¡{0} apareció en el camino!"
+ },
+ "SEGUIR": {
+  "en": "GO ON",
+  "fr": "AVANCER",
+  "es": "SEGUIR"
  }
 }

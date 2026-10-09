@@ -417,7 +417,16 @@ try {
   await page.getByTestId('factory-hub').waitFor({ timeout: 30000 })
   await page.getByTestId('starter-4').click({ timeout: 30000 })
   await page.getByTestId('factory-start').click()
+  // O mapa: escolhe o caminho do 1º andar (no começo, sempre uma batalha).
+  await page.getByTestId('factory-map').waitFor({ timeout: 30000 })
+  await page.getByTestId('map-node-0').click()
   await page.getByTestId('battle-text').waitFor({ timeout: 60000 })
+  // Fugir acaba a corrida: a batalha vira a tela da corrida (o fim dela) e volta ao começo.
+  page.once('dialog', (d) => d.accept())
+  await page.getByRole('button', { name: '▸ FUGIR' }).click({ timeout: 30000 })
+  // A batalha vira sozinha a tela da corrida (aqui, o fim dela).
+  await page.getByTestId('factory-over').waitFor({ timeout: 30000 })
+  await page.getByTestId('factory-over-exit').click()
   await expectHealthy()
 
   step = 'batalha: quem vence'

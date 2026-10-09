@@ -88,3 +88,65 @@ STORIES = {
         'end': 'A Grande Cratera ficou em silêncio. Um portal abriu no fundo dela para outra região.',
     },
 }
+
+# As cidades do mapa da corrida: o líder (o nome do treinador, sem o "sd-" e o
+# "-genN" do sprite) -> a cidade do ginásio (ou da prova, em Alola). Os
+# chefes que não são de ginásio (rival, vilões) aparecem na cidade do próximo
+# líder; a Elite Four e o Campeão, na Liga (league). Nomes próprios: não traduzir.
+CITIES = {
+    'Kanto': {
+        'league': 'Indigo Plateau',
+        'brock': 'Pewter City', 'misty': 'Cerulean City', 'lt-surge': 'Vermilion City', 'erika': 'Celadon City',
+        'koga': 'Fuchsia City', 'janine': 'Fuchsia City', 'sabrina': 'Saffron City', 'blaine': 'Cinnabar Island',
+        'giovanni': 'Viridian City', 'champion-blue': 'Viridian City', 'blue': 'Viridian City',
+    },
+    'Johto': {
+        'league': 'Indigo Plateau',
+        'falkner': 'Violet City', 'bugsy': 'Azalea Town', 'whitney': 'Goldenrod City', 'morty': 'Ecruteak City',
+        'chuck': 'Cianwood City', 'jasmine': 'Olivine City', 'pryce': 'Mahogany Town', 'clair': 'Blackthorn City',
+        'brock': 'Pewter City', 'misty': 'Cerulean City', 'lt-surge': 'Vermilion City', 'erika': 'Celadon City',
+        'janine': 'Fuchsia City', 'sabrina': 'Saffron City', 'blaine': 'Seafoam Islands', 'champion-blue': 'Viridian City',
+        'blue': 'Viridian City',
+    },
+    'Hoenn': {
+        'league': 'Ever Grande City',
+        'roxanne': 'Rustboro City', 'brawly': 'Dewford Town', 'wattson': 'Mauville City', 'flannery': 'Lavaridge Town',
+        'norman': 'Petalburg City', 'winona': 'Fortree City', 'tate-liza': 'Mossdeep City', 'wallace': 'Sootopolis City',
+        'juan': 'Sootopolis City',
+    },
+    'Sinnoh': {
+        'league': 'Pokémon League',
+        'roark': 'Oreburgh City', 'gardenia': 'Eterna City', 'fantina': 'Hearthome City', 'maylene': 'Veilstone City',
+        'wake': 'Pastoria City', 'byron': 'Canalave City', 'candice': 'Snowpoint City', 'volkner': 'Sunyshore City',
+    },
+    'Unova': {
+        'league': 'Pokémon League',
+        'chili': 'Striaton City', 'cilan': 'Striaton City', 'cress': 'Striaton City', 'lenora': 'Nacrene City',
+        'burgh': 'Castelia City', 'elesa': 'Nimbasa City', 'clay': 'Driftveil City', 'skyla': 'Mistralton City',
+        'brycen': 'Icirrus City', 'drayden': 'Opelucid City', 'iris': 'Opelucid City', 'cheren': 'Aspertia City',
+        'roxie': 'Virbank City', 'marlon': 'Humilau City',
+    },
+    'Kalos': {
+        'league': 'Pokémon League',
+        'viola': 'Santalune City', 'grant': 'Cyllage City', 'korrina': 'Shalour City', 'ramos': 'Coumarine City',
+        'clemont': 'Lumiose City', 'valerie': 'Laverre City', 'olympia': 'Anistar City', 'wulfric': 'Snowbelle City',
+    },
+    'Alola': {
+        'league': 'Mount Lanakila',
+        'ilima': 'Verdant Cavern', 'hala': 'Iki Town', 'lana': 'Brooklet Hill', 'kiawe': 'Wela Volcano Park',
+        'mallow': 'Lush Jungle', 'olivia': 'Ruins of Life', 'sophocles': 'Hokulani Observatory', 'acerola': 'Thrifty Megamart',
+        'molayne': 'Hokulani Observatory', 'nanu': 'Malie City', 'mina': 'Seafolk Village', 'hapu': 'Vast Poni Canyon',
+        'kahili': 'Mount Lanakila',
+    },
+    'Galar': {
+        'league': 'Wyndon',
+        'milo': 'Turffield', 'nessa': 'Hulbury', 'kabu': 'Motostoke', 'bea': 'Stow-on-Side', 'allister': 'Stow-on-Side',
+        'opal': 'Ballonlea', 'bede': 'Ballonlea', 'gordie': 'Circhester', 'melony': 'Circhester', 'piers': 'Spikemuth',
+        'marnie': 'Spikemuth', 'raihan': 'Hammerlocke',
+    },
+    'Paldea': {
+        'league': 'Pokémon League',
+        'katy': 'Cortondo', 'brassius': 'Artazon', 'iono': 'Levincia', 'kofu': 'Cascarrafa', 'larry': 'Medali',
+        'ryme': 'Montenevera', 'tulip': 'Alfornada', 'grusha': 'Glaseado',
+    },
+}

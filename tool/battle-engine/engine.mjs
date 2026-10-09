@@ -136,6 +136,11 @@ function configure(game) {
   game.battle.onEvent('PocketDexItem', game.battle.format, function (pokemon) {
     const action = game.pendingItems[pokemon.side.n];
     if (!action) return;
+    if (BALLS[action.item]) {
+      throwBall(game, this, pokemon, action.item);
+      game.pendingItems[pokemon.side.n] = null;
+      return;
+    }
     const target = pokemon.side.pokemon.find(p => originalIndex(p) === action.index);
     const fixed = {potion: 20, 'super-potion': 60, 'hyper-potion': 120, 'max-potion': 1e9, revive: 0}[action.item];
     // Battle Factory (healPct): cura uma parte do HP máximo (o nível não tem limite).
@@ -158,6 +163,44 @@ function configure(game) {
     this.add('pocketdexheal', target, action.item, target.hp - previousHp);
     game.pendingItems[pokemon.side.n] = null;
   });
+}
+
+/**
+ * Battle Factory (input.capture: Pokémon selvagem): as Poké Balls e quanto
+ * cada uma ajuda (como nos jogos). Quick Ball: 5× no 1º turno; Net Ball: 3,5×
+ * em Água ou Inseto; Dusk Ball: 3× em cavernas (capture.dusk); Timer Ball:
+ * sobe a cada turno (até 4×); Master Ball: sempre captura.
+ */
+export const BALLS = {
+  'poke-ball': () => 1, 'great-ball': () => 1.5, 'ultra-ball': () => 2, 'master-ball': () => 255,
+  'quick-ball': (battle) => (battle.turn <= 1 ? 5 : 1),
+  'net-ball': (battle, foe) => (foe.hasType(['Water', 'Bug']) ? 3.5 : 1),
+  'dusk-ball': (battle, foe, capture) => (capture.dusk ? 3 : 1),
+  'timer-ball': (battle) => Math.min(4, 1 + (battle.turn * 1229) / 4096),
+};
+const BALL_NAMES = {'poke-ball': 'Poké Ball', 'great-ball': 'Great Ball', 'ultra-ball': 'Ultra Ball', 'master-ball': 'Master Ball', 'quick-ball': 'Quick Ball', 'net-ball': 'Net Ball', 'dusk-ball': 'Dusk Ball', 'timer-ball': 'Timer Ball'};
+
+/**
+ * Joga a bola no selvagem (a conta dos jogos da 6ª geração em diante):
+ * a = (3·HPmáx − 2·HP) × taxa de captura × bola ÷ (3·HPmáx) × status
+ * (dormindo ou congelado 2,5×; paralisado, envenenado ou queimado 1,5×).
+ * São 4 sorteios de (a/255)^¼: passou nos 4, capturou (cada um é um balanço).
+ */
+function throwBall(game, battle, pokemon, ball) {
+  const foe = battle.sides[1 - pokemon.side.n].active[0];
+  game.bags[pokemon.side.n][ball]--;
+  const rate = Number(game.capture.rates?.[originalIndex(foe)] ?? 45);
+  const status = ['slp', 'frz'].includes(foe.status) ? 2.5 : foe.status ? 1.5 : 1;
+  const a = ((3 * foe.maxhp - 2 * foe.hp) * rate * BALLS[ball](battle, foe, game.capture)) / (3 * foe.maxhp) * status;
+  const chance = Math.min(1, a / 255) ** 0.25;
+  let shakes = 0;
+  while (shakes < 4 && (a >= 255 || battle.random() < chance)) shakes++;
+  const caught = shakes === 4;
+  battle.add('pocketdexball', foe, ball, String(Math.min(3, shakes)), caught ? 'caught' : 'free');
+  if (caught) {
+    game.captured = originalIndex(foe);
+    battle.win(pokemon.side);
+  }
 }
 
 /**
@@ -204,6 +247,7 @@ function snapshot(game) {
     pseudoWeather: Object.keys(b.field.pseudoWeather),
     mode: b.gameType,
     bags: game.bags,
+    captured: game.captured ?? null,
     sides: b.sides.map(side => ({
       slots: slotsFor(game, side),
       actives: side.active.map(p => p ? originalIndex(p) : -1),
@@ -397,7 +441,14 @@ function eventsFor(game, lines) {
       if (kind === 'pocketdexitem') say('usedItem', target, {potion: 'Potion', 'super-potion': 'Super Potion', 'hyper-potion': 'Hyper Potion', revive: 'Revive'}[value]);
       else if (value === 'revive') say('revived', target);
       else say('healed', target, Number(extra));
+    } else if (kind === 'pocketdexball') {
+      const index = Number(actor.split(': ')[1]?.slice(2));
+      const target = {side, name: game.teams[side][index].name || game.teams[side][index].set.species};
+      say('threwBall', {side: 1 - side, name: ''}, BALL_NAMES[value]);
+      events.push({t: 'ball', side, ball: value, shakes: Number(extra), caught: parts[5] === 'caught'});
+      say(parts[5] === 'caught' ? 'caught' : 'brokeFree', target);
     } else if (kind === 'message') say('sim', actor);
+    else if (kind === 'win' && game.captured != null) continue;
     else if (kind === 'win') say(actor === game.battle.sides[0].name ? 'win' : 'lose');
     else if (kind === 'tie') say('draw');
   }
@@ -420,6 +471,12 @@ function command(game, sideIndex, action, slot = 0) {
   if (action.kind === 'item') {
     if (side.activeRequest?.forceSwitch?.[slot]) throw new Error('Escolha outro Pokémon');
     if (game.battle.gameType !== 'singles') throw new Error('Use os itens equipados neste formato');
+    if (BALLS[action.item]) {
+      // Só no Pokémon selvagem (input.capture), ainda de pé.
+      const foe = game.battle.sides[1 - sideIndex].active[0];
+      if (!game.capture || sideIndex !== 0 || !(game.bags[sideIndex][action.item] > 0) || !foe || foe.fainted) throw new Error('Não dá para capturar este Pokémon');
+      return {item: action};
+    }
     const target = side.pokemon.find(p => originalIndex(p) === action.index);
     if (!target || !(game.bags[sideIndex][action.item] > 0) || (action.item === 'revive' ? !target.fainted : target.fainted || target.hp >= target.maxhp)) throw new Error('Item inválido');
     return {item: action};
@@ -536,7 +593,7 @@ export const PocketDexSim = {
     // Regras opcionais (convite online): Sleep Clause (só um Pokémon dormindo por vez).
     const ruleset = (input.rules ?? []).includes('sleep') ? ['Sleep Clause Mod'] : [];
     const battle = new Battle({format: {...formats, gameType: mode, playerCount: mode === 'multi' ? 4 : 2, ruleset}, seed: input.seed});
-    const game = {battle, teams: input.teams, controllers: input.controllers, cursor: 0, used: input.teams.map(() => ({mega: false, tera: false})), pendingItems: input.teams.map(() => null), bags: input.teams.map((_, side) => ({potion: 3, 'super-potion': 2, 'hyper-potion': 1, 'max-potion': 0, revive: 1, ...(input.bags?.[side] ?? {})})), healPct: Boolean(input.healPct)};
+    const game = {battle, teams: input.teams, controllers: input.controllers, cursor: 0, used: input.teams.map(() => ({mega: false, tera: false})), pendingItems: input.teams.map(() => null), bags: input.teams.map((_, side) => ({potion: 3, 'super-potion': 2, 'hyper-potion': 1, 'max-potion': 0, revive: 1, ...(input.bags?.[side] ?? {})})), healPct: Boolean(input.healPct), capture: input.capture ?? null, captured: null};
     input.teams.forEach((team, side) => battle.setPlayer(`p${side + 1}`, {name: ['Você', 'Adversário', 'Aliado', 'Aliado adversário'][side], team: team.map(setFor)}));
     configure(game);
     // A espécie do começo de cada Pokémon: mudou depois, é forma de batalha.
