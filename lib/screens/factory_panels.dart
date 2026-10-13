@@ -536,6 +536,44 @@ class _FactoryHubState extends State<FactoryHub> {
           ],
         ),
         ExpansionTile(
+          key: const ValueKey('factory-achievements'),
+          tilePadding: EdgeInsets.zero,
+          title: Text(
+              '🏆 ${tr('Conquistas')} (${((factory['achievements'] as List?) ?? const []).length}/${FactoryRun.achievements.length})',
+              style: TextStyle(fontWeight: FontWeight.bold, color: c.text)),
+          children: [
+            Text(tr('Cada conquista dá moedas uma vez.'), style: TextStyle(color: c.muted, fontSize: 12)),
+            for (final e in FactoryRun.achievements.entries)
+              () {
+                final done = ((factory['achievements'] as List?) ?? const []).contains(e.key);
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Text('${done ? '🏆' : '🔒'} ${tr(e.value.label)} · 🪙${e.value.coins}',
+                      style: TextStyle(color: done ? c.text : c.muted, fontWeight: done ? FontWeight.bold : FontWeight.normal, fontSize: 13)),
+                );
+              }(),
+          ],
+        ),
+        if (((factory['hall'] as List?) ?? const []).isNotEmpty)
+          ExpansionTile(
+            key: const ValueKey('factory-hall'),
+            tilePadding: EdgeInsets.zero,
+            title: Text('👑 ${tr('Hall da Fama')}', style: TextStyle(fontWeight: FontWeight.bold, color: c.text)),
+            children: [
+              for (final h in factory['hall'] as List)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(tr('Campeão no andar {0}').replaceAll('{0}', '${h['floor']}'), style: TextStyle(color: c.text, fontWeight: FontWeight.bold, fontSize: 12)),
+                    Wrap(spacing: 4, children: [
+                      for (final m in h['team'] as List)
+                        SizedBox(width: 40, height: 40, child: PokemonSprite((m['id'] as num).toInt(), shiny: m['shiny'] == true, fill: 0.9)),
+                    ]),
+                  ]),
+                ),
+            ],
+          ),
+        ExpansionTile(
           key: const ValueKey('factory-shiny-shop'),
           tilePadding: EdgeInsets.zero,
           title: Text('✨ ${tr('Inicial shiny')}', style: TextStyle(fontWeight: FontWeight.bold, color: c.text)),
@@ -659,6 +697,7 @@ const _nodeInfo = <String, (String, String, String)>{
   'mart': ('🛒', 'Poké Mart', 'Uma loja maior (sem batalha, sem XP).'),
   'center': ('🏥', 'Centro Pokémon', 'Cura o time todo, até quem desmaiou (sem batalha).'),
   'event': ('❓', 'Evento', 'Itens, dinheiro, frutas ou uma ficha de Move Tutor (sem batalha).'),
+  'trade': ('🔁', 'Troca', 'Alguém da rota troca um Pokémon com você: o que vem chega 3 níveis acima (com o item de quem foi).'),
   'wildboss': ('🐉', 'Chefe sem treinador', 'Uma Mega, um Gigantamax ou um lendário. Dá para capturar.'),
   'boss': ('👑', 'Chefe', ''),
 };
@@ -688,6 +727,7 @@ String? _stepOf(Map? p) {
   if (p['seen'] != true && (p['exp'] != null || p['center'] == true || p['event'] != null)) return 'result';
   if (p['capture'] != null) return 'capture';
   if (p['cards'] != null) return 'cards';
+  if (p['trade'] != null) return 'trade';
   if (p['shop'] != null) return 'shop';
   return null;
 }
@@ -710,6 +750,9 @@ class _FactoryScreenState extends State<FactoryScreen> {
   Map<int, String> _names = const {};
   int _target = 0;
   int? _unlocked;
+
+  /// Conquistas novas desta tela (com as moedas).
+  final List<String> _earned = [];
   String? _panel; // embaixo do menu: 'bag' | 'team' (na loja, a lista de compras)
   Widget? _framePanel; // o que abre dentro da moldura (lista da loja, Bolsa ou time)
 
@@ -743,6 +786,14 @@ class _FactoryScreenState extends State<FactoryScreen> {
     if (id == 'move-reminder') return tr('Lembra um golpe do nível (uma vez)');
     if (id == 'dynamax-band') return tr('Libera o Dynamax (e o Gigantamax) para o time');
     if (id == 'tera-orb') return tr('Libera a Terastalização para o time');
+    if (id == 'escape-rope') {
+      return tr('Se perder uma batalha, o time foge com {0}% do HP e a corrida continua (gasta uma)').replaceAll('{0}', '${(FactoryRun.escapeHp * 100).round()}');
+    }
+    if (id == 'lucky-egg') {
+      return tr('Quem segura ganha +{0}% de XP (como extra, +{1}%)')
+          .replaceAll('{0}', '${((FactoryRun.luckyEgg.held - 1) * 100).round()}')
+          .replaceAll('{1}', '${((FactoryRun.luckyEgg.extra - 1) * 100).round()}');
+    }
     if (id == 'exp-share') return tr('O time todo ganha XP (quem não lutou, a metade)');
     if (id == 'revive') return tr('Revive com metade do HP');
     final share = FactoryRun.healShare[id];
@@ -943,8 +994,15 @@ class _FactoryScreenState extends State<FactoryScreen> {
     final c = SiteColors.of(context);
     final data = _data;
     if (data == null) return const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator()));
-    final factory = currentFactory();
+    var factory = currentFactory();
     if (factory['run'] == null) return _over(factory);
+    // Conquistas novas (com as moedas) e o Hall da Fama, conforme a corrida anda.
+    final (progressed, earned) = FactoryRun.progress(factory, Map<String, dynamic>.from(factory['run'] as Map));
+    if (!identical(progressed, factory)) {
+      factory = progressed;
+      _earned.addAll(earned);
+      WidgetsBinding.instance.addPostFrameCallback((_) => mounted ? setState(() => saveFactory(progressed)) : null);
+    }
     final run = Map<String, dynamic>.from(factory['run'] as Map);
     final team = FactoryRun.teamOf(run);
     final lead = team.where((m) => FactoryRun.hpOf(m) > 0).firstOrNull ?? team.firstOrNull;
@@ -964,6 +1022,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
       frame = _resultFrame(run, p!, lead);
     } else if (step == 'capture') {
       frame = _captureFrame(run, p!, lead);
+    } else if (step == 'trade') {
+      frame = _tradeFrame(run, p!, lead, data);
     } else if (step == 'cards') {
       frame = _frame(
         run: run,
@@ -1067,6 +1127,15 @@ class _FactoryScreenState extends State<FactoryScreen> {
     }
     return Column(key: const ValueKey('factory-screen'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       frame,
+      for (final id in _earned)
+        Container(
+          key: ValueKey('achievement-$id'),
+          margin: const EdgeInsets.only(top: 8),
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(color: const Color(0x26F59E0B), borderRadius: BorderRadius.circular(12)),
+          child: Text('🏆 ${tr('Conquista: {0}').replaceAll('{0}', tr(FactoryRun.achievements[id]!.label))} (+🪙${FactoryRun.achievements[id]!.coins})',
+              style: TextStyle(fontWeight: FontWeight.bold, color: c.text)),
+        ),
       if (_unlocked != null)
         Container(
           key: const ValueKey('factory-shiny-unlocked'),
@@ -1155,6 +1224,29 @@ class _FactoryScreenState extends State<FactoryScreen> {
   }
 
   /// Capturou na batalha: entra no time (com o time cheio, escolhe quem sai ou solta).
+  /// Troca: escolhe quem dar; o oferecido vem tradeLevels níveis acima, com o item de quem foi.
+  Widget _tradeFrame(Json run, Json p, Map? lead, FactoryData data) {
+    final team = FactoryRun.teamOf(run);
+    final offer = p['trade'] as Map;
+    final shiny = offer['shiny'] == true;
+    return _frame(
+      run: run,
+      field: _field('${run['scene'] ?? 'grass'}', key: const ValueKey('factory-trade'), (w, h) => [_fieldMon(offer, w, h), if (lead != null) _fieldMon(lead, w, h, back: true)]),
+      text: [
+        Text('🔁 ${tr('Um treinador quer trocar o {0} dele com você!').replaceAll('{0}', '${shiny ? '✨ ' : ''}${_name(offer['id'])}')}'),
+        _small(tr('Quem você der vai embora; o {0} vem {1} níveis acima, com o item de quem foi.')
+            .replaceAll('{0}', _name(offer['id']))
+            .replaceAll('{1}', '${FactoryRun.tradeLevels}')),
+      ],
+      menu: _menuGrid([
+        for (var i = 0; i < team.length; i++)
+          _menuButton(_name(team[i]['id']), () => _save(FactoryRun.tradeMon(run, i, data)),
+              sub: 'Nv. ${team[i]['level']} → ${(team[i]['level'] as num).toInt() + FactoryRun.tradeLevels}', key: ValueKey('trade-$i')),
+        _menuButton(tr('NÃO TROCAR'), () => _save(FactoryRun.skipTrade(run)), key: const ValueKey('trade-skip')),
+      ]),
+    );
+  }
+
   Widget _captureFrame(Json run, Json p, Map? lead) {
     final team = FactoryRun.teamOf(run);
     final foe = p['capture'] as Map;

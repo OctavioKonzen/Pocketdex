@@ -124,7 +124,15 @@ export const HELD_BOOST = {
   'life-orb': { atk: 0.03, spa: 0.03 }, 'expert-belt': { atk: 0.02, spa: 0.02 }, 'muscle-band': { atk: 0.02 }, 'wise-glasses': { spa: 0.02 },
   leftovers: { hp: 0.04 }, 'sitrus-berry': { hp: 0.03 }, 'assault-vest': { spd: 0.05 }, 'rocky-helmet': { def: 0.04 },
   eviolite: { def: 0.04, spd: 0.04 }, 'focus-sash': { hp: 0.02, def: 0.01, spd: 0.01 }, 'quick-claw': { spe: 0.03 },
+  'shell-bell': { hp: 0.02 }, 'black-sludge': { hp: 0.03 }, 'weakness-policy': { atk: 0.02, spa: 0.02 }, 'lum-berry': { hp: 0.02 },
+  'scope-lens': { atk: 0.02, spa: 0.02 }, 'bright-powder': { spe: 0.02 }, 'air-balloon': { spe: 0.02 }, 'heavy-duty-boots': { def: 0.01, spd: 0.01 },
+  'kings-rock': { atk: 0.02 },
+  // Lucky Egg: sem atributo; quem segura ganha mais XP (LUCKY_EGG).
+  'lucky-egg': {},
 }
+/** Lucky Egg: XP a mais para quem segura (como extra, menos). */
+export const LUCKY_EGG = { held: 1.5, extra: 1.2 }
+const eggOf = (m) => (m.item === 'lucky-egg' ? LUCKY_EGG.held : (m.extras ?? []).includes('lucky-egg') ? LUCKY_EGG.extra : 1)
 /** Vitaminas: EVs sem limite. Bottle Cap: IVs sem limite (em todos). */
 export const VITAMINS = { 'hp-up': 'hp', protein: 'atk', iron: 'def', calcium: 'spa', zinc: 'spd', carbos: 'spe' }
 export const VITAMIN_EVS = 24
@@ -141,6 +149,7 @@ export const SHOP = {
   ...Object.fromEntries(Object.keys(HELD_BOOST).map((k) => [k, 250])),
   // Serviços e chaves das mecânicas.
   'move-tutor': 300, 'move-reminder': 150, 'dynamax-band': 2500, 'tera-orb': 2500,
+  'escape-rope': 450,
   // Exp. Share: o time todo ganha XP (quem não lutou, a metade).
   'exp-share': 800,
 }
@@ -150,7 +159,9 @@ export const EVO_PRICE = 400
 /** Fichas de serviço (gastas ao ensinar um golpe). */
 export const TOKENS = ['move-tutor', 'move-reminder']
 /** Itens que vão para a Bolsa (não precisam de um Pokémon). */
-export const BAG_ITEMS = [...BALL_IDS, ...Object.keys(START_BAG).filter((k) => !BALL_IDS.includes(k))]
+/** Escape Rope: se perder uma batalha, o time foge com pouco HP (ESCAPE_HP) em vez de a corrida acabar. */
+export const ESCAPE_HP = 0.1
+export const BAG_ITEMS = [...BALL_IDS, ...Object.keys(START_BAG).filter((k) => !BALL_IDS.includes(k)), 'escape-rope']
 
 /** Cartas de bônus (depois de cada chefe, escolhe 1 de 3). */
 export const CARDS = {
@@ -336,7 +347,7 @@ export function expShares(run, data, foe, fought, factor = 1) {
   return run.team.map((m, i) => {
     if (!(m.hp > 0)) return 0
     const share = !fought || fought.includes(i) ? 1 : run.expShare ? EXP_SHARE : 0
-    return share ? Math.floor(expFor(base, foe.level, m.level, factor * run.mult.exp) * share) : 0
+    return share ? Math.floor(expFor(base, foe.level, m.level, factor * run.mult.exp) * share * eggOf(m)) : 0
   })
 }
 
@@ -509,7 +520,7 @@ export function routeBiome(data, run) {
 }
 
 /** Os pontos do mapa (o peso de cada um nas bifurcações). O Centro Pokémon é raro. */
-export const NODE_WEIGHTS = [['wild', 34], ['trainer', 28], ['ace', 12], ['mart', 10], ['event', 11], ['center', 5]]
+export const NODE_WEIGHTS = [['wild', 34], ['trainer', 28], ['ace', 12], ['mart', 10], ['event', 11], ['center', 5], ['trade', 8]]
 const BATTLE_NODES = ['wild', 'trainer', 'ace', 'boss', 'wildboss']
 export const isBattleNode = (node) => BATTLE_NODES.includes(node?.kind)
 
@@ -565,7 +576,7 @@ export function routeCities(data, run) {
 }
 
 /** O que o treinador forte deixa (sempre): bolas e remédios vão para a Bolsa, os itens de segurar ficam guardados. */
-export const ACE_REWARDS = ['great-ball', 'ultra-ball', 'hyper-potion', 'max-potion', 'revive', 'move-tutor', ...Object.keys(HELD_BOOST)]
+export const ACE_REWARDS = ['great-ball', 'ultra-ball', 'hyper-potion', 'max-potion', 'revive', 'move-tutor', 'escape-rope', ...Object.keys(HELD_BOOST)]
 /** Os eventos do mapa. */
 export const EVENTS = ['items', 'money', 'berries', 'tutor']
 
@@ -592,7 +603,11 @@ export function chooseNode(run, data, index) {
   // O cenário de onde você está (Poké Mart e Centro na cidade).
   out.scene = node.kind === 'mart' ? 'city' : node.kind === 'center' ? 'center' : run.route.biome ?? 'grass'
   if (node.kind === 'mart') out.pending = { mart: true, shop: pickShop(rand, data, run.floor, 10) }
-  else if (node.kind === 'center') {
+  else if (node.kind === 'trade') {
+    // Troca: alguém da rota oferece um Pokémon (você escolhe quem dar; ele vem TRADE_LEVELS acima).
+    const offer = encounterFor(data, out.floor, rand, null, false, { kind: 'wild', biome: run.route?.biome }).foes[0]
+    out.pending = { trade: { id: offer.id, ...(offer.shiny ? { shiny: true } : {}) } }
+  } else if (node.kind === 'center') {
     out.team = out.team.map((m) => ({ ...m, hp: 1 }))
     out.pending = { center: true }
   } else {
@@ -736,7 +751,8 @@ export function storyLine(data, region, key, name = '') {
  * às vezes, a Enfermeira Joy (pending).
  */
 export function winFloor(run, data, after = {}) {
-  const out = { ...run, team: run.team.map((m, i) => ({ ...m, hp: after.hp?.[i] ?? m.hp ?? 1 })), bag: { ...(after.bag ?? run.bag) } }
+  // A Escape Rope não entra na batalha: fica a da Bolsa.
+  const out = { ...run, team: run.team.map((m, i) => ({ ...m, hp: after.hp?.[i] ?? m.hp ?? 1 })), bag: { ...(after.bag ?? run.bag), 'escape-rope': run.bag['escape-rope'] ?? 0 } }
   const rand = dice(out)
   const { kind, foes } = run.encounter
   const factor = expFactor(kind)
@@ -767,8 +783,18 @@ export function winFloor(run, data, after = {}) {
   out.floor += 1
   let drop = null, story = null
   if (kind === 'boss' || kind === 'wildboss') out.bosses = (out.bosses ?? 0) + 1
+  let champion = false
   if (kind === 'boss') {
     const beaten = run.encounter.boss
+    // As conquistas (progress): insígnias, ginásio só com o inicial, Campeões.
+    if (beaten.kind === 'gym') {
+      out.badges = (run.badges ?? 0) + 1
+      if (run.team.length === 1) out.soloGym = true
+    }
+    if (beaten.kind === 'champion') {
+      out.champions = (run.champions ?? 0) + 1
+      champion = true
+    }
     // Venceu o chefe da cidade (ou da Liga): começa a rota seguinte.
     if (CITY_KINDS.includes(beaten.kind)) out.leg = out.floor
     const [boss, played] = nextBoss(out, data, rand)
@@ -792,7 +818,7 @@ export function winFloor(run, data, after = {}) {
   const joy = rand() < JOY_CHANCE
   if (joy) out.team = out.team.map((m) => ({ ...m, hp: 1 }))
   out.pending = {
-    exp, gains, money, levels, joy, drop, story, reward,
+    exp, gains, money, levels, joy, drop, story, reward, ...(champion ? { champion: true } : {}),
     capture: after.captured && (kind === 'wild' || kind === 'wildboss') ? foes[0] : null,
     cards: kind === 'boss' ? pickCards(rand) : null,
     // A loja da cidade: chegando nela, logo antes do chefe (no resto da rota, os Poké Marts do mapa).
@@ -872,6 +898,76 @@ export function capture(run, replace = null) {
 }
 /** Solta o capturado (o time está cheio e você não quer trocar ninguém). */
 export const skipCapture = (run) => (run.pending ? { ...run, pending: { ...run.pending, capture: null } } : run)
+
+/** A troca: quem está na posição index vai e vem o oferecido, TRADE_LEVELS níveis acima (evolui se der), com o item dele. */
+export const TRADE_LEVELS = 3
+export function tradeMon(run, index, data) {
+  const offer = run.pending?.trade
+  const mon = run.team[index]
+  if (!offer || !mon) return run
+  const out = { ...run, team: [...run.team], pending: { ...run.pending, trade: null }, trades: (run.trades ?? 0) + 1 }
+  const rand = dice(out)
+  const fresh = newMon(devolve(data, offer.id, mon.level), mon.level, rand, 10, Boolean(offer.shiny))
+  const [grown] = levelTo(fresh, mon.level + TRADE_LEVELS, data, rand)
+  out.team[index] = { ...grown, item: mon.item ?? null, extras: mon.extras ?? [] }
+  return out
+}
+/** Recusa a troca. */
+export const skipTrade = (run) => (run.pending ? { ...run, pending: { ...run.pending, trade: null } } : run)
+
+/**
+ * Perdeu a batalha com uma Escape Rope na Bolsa: gasta ela e o time foge com
+ * pouco HP (ESCAPE_HP), no mesmo andar, com o mapa de novo. after = {hp, bag}
+ * da batalha (factoryAfter). null sem a corda (a corrida acaba).
+ */
+export function escapeRope(run, data, after = {}) {
+  if (!((run.bag?.['escape-rope'] ?? 0) > 0)) return null
+  const bag = { ...run.bag, ...(after.bag ?? {}), 'escape-rope': run.bag['escape-rope'] - 1 }
+  const out = { ...run, bag, team: run.team.map((m, i) => ({ ...m, hp: Math.max(after.hp?.[i] ?? 0, ESCAPE_HP) })), encounter: null, pending: null, ropes: (run.ropes ?? 0) + 1 }
+  out.route = routeOptions(out, data, dice(out))
+  return out
+}
+
+/**
+ * Conquistas da Battle Factory: cada uma dá moedas uma vez só (fica na conta).
+ * Olham o estado da corrida (progress).
+ */
+export const ACHIEVEMENTS = {
+  badge: { label: 'Primeira insígnia', coins: 50, done: (r) => (r.badges ?? 0) >= 1 },
+  badges8: { label: '8 insígnias numa corrida', coins: 300, done: (r) => (r.badges ?? 0) >= 8 },
+  solo: { label: 'Vencer um ginásio só com o inicial', coins: 250, done: (r) => Boolean(r.soloGym) },
+  champion: { label: 'Vencer um Campeão (Hall da Fama)', coins: 600, done: (r) => (r.champions ?? 0) >= 1 },
+  champion2: { label: 'Vencer o Campeão de duas regiões', coins: 1500, done: (r) => (r.champions ?? 0) >= 2 },
+  floor25: { label: 'Chegar ao andar 25', coins: 100, done: (r) => r.floor > 25 },
+  floor50: { label: 'Chegar ao andar 50', coins: 300, done: (r) => r.floor > 50 },
+  floor100: { label: 'Chegar ao andar 100', coins: 1000, done: (r) => r.floor > 100 },
+  full: { label: 'Time completo (6 Pokémon)', coins: 80, done: (r) => r.team.length >= MAX_TEAM },
+  shiny: { label: 'Um shiny no time', coins: 200, done: (r) => r.team.some((m) => m.shiny) },
+  level50: { label: 'Um Pokémon no nível 50', coins: 150, done: (r) => r.team.some((m) => m.level >= 50) },
+  level100: { label: 'Um Pokémon no nível 100', coins: 400, done: (r) => r.team.some((m) => m.level >= 100) },
+  trade: { label: 'Fazer uma troca', coins: 40, done: (r) => (r.trades ?? 0) >= 1 },
+  rope: { label: 'Escapar com a Escape Rope', coins: 40, done: (r) => (r.ropes ?? 0) >= 1 },
+}
+
+/**
+ * As conquistas novas da corrida (com as moedas delas) e o Hall da Fama (o
+ * time que venceu o Campeão, um registro por vitória). Devolve [factory, ids novos].
+ */
+export function progress(factory, run) {
+  if (!run) return [factory, []]
+  const have = factory.achievements ?? []
+  const earned = Object.keys(ACHIEVEMENTS).filter((id) => !have.includes(id) && ACHIEVEMENTS[id].done(run))
+  let out = factory
+  if (earned.length) out = { ...out, achievements: [...have, ...earned], coins: out.coins + earned.reduce((sum, id) => sum + ACHIEVEMENTS[id].coins, 0) }
+  if (run.pending?.champion) {
+    const key = `${run.seed}-${run.floor}`
+    if (!(out.hall ?? []).some((h) => h.key === key)) {
+      const entry = { key, floor: run.floor - 1, champions: run.champions ?? 1, team: run.team.map((m) => ({ id: m.id, level: m.level, ...(m.shiny ? { shiny: true } : {}) })) }
+      out = { ...out, hall: [entry, ...(out.hall ?? [])].slice(0, 20) }
+    }
+  }
+  return [out, earned]
+}
 
 /** Escolhe a carta de bônus. */
 export function takeCard(run, id, data) {

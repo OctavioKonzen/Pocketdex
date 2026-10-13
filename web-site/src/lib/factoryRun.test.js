@@ -7,6 +7,7 @@ import {
   equipFromStash, gimmicksOf, setGimmick, storyLine, startRun, takeCard, teamDown, applyBagItem, winFloor, chooseNode, routeOptions, routeCities,
   captureFor, factoryOf, BIOMES, isBattleNode, skipCapture, FORKS, ROUTE_LENGTH, BALL_TIERS, HEAL_TIERS, tierPick, minLevelOf, devolve,
   EXP_SHARE, expProgress, shopOwned, baseForm, forSale, normalizeOwned, buyUpgrade, upgradePrice, UPGRADES,
+  tradeMon, skipTrade, TRADE_LEVELS, escapeRope, ESCAPE_HP, progress, ACHIEVEMENTS, LUCKY_EGG,
 } from './factoryRun'
 
 const data = JSON.parse(readFileSync(new URL('../../../assets/database/factory.json', import.meta.url), 'utf8'))
@@ -185,6 +186,65 @@ describe('Battle Factory (roguelike)', () => {
     expect(run.mult).toEqual({ money: 1, exp: 1.25, shop: 0.8 })
     // Sem melhorias, a corrida é a de sempre.
     expect(startRun(emptyFactory(), data, 1, 42).team[0].level).toBe(5)
+  })
+
+  it('troca: dá um, vem o oferecido 3 níveis acima com o item; recusar não muda o time', () => {
+    const base = startRun(emptyFactory(), data, 1, 42)
+    const run = { ...base, team: [{ ...base.team[0], level: 10, item: 'leftovers' }], pending: { trade: { id: 19 } } }
+    const out = tradeMon(run, 0, data)
+    expect(out.team[0].level).toBe(10 + TRADE_LEVELS)
+    expect([19, 20]).toContain(out.team[0].id)
+    expect(out.team[0].item).toBe('leftovers')
+    expect(out.trades).toBe(1)
+    expect(out.pending.trade).toBe(null)
+    expect(skipTrade(run).team).toEqual(run.team)
+    // O mapa às vezes oferece uma troca (a partir do 3º andar), com um Pokémon da rota.
+    let seen = null
+    for (let s = 1; s < 400 && !seen; s++) {
+      const r = { ...base, floor: 5, leg: 1, seed: s }
+      r.route = routeOptions(r, data, seq([0.3, 0.9, 0.5, 0.97, 0.99, 0.2]))
+      const i = r.route.options.findIndex((o) => o.kind === 'trade')
+      if (i >= 0) seen = chooseNode(r, data, i)
+    }
+    expect(seen?.pending?.trade?.id).toBeGreaterThan(0)
+  })
+
+  it('Escape Rope: perdeu com ela na Bolsa, foge com pouco HP no mesmo andar; sem ela, null', () => {
+    const base = startRun(emptyFactory(), data, 1, 42)
+    expect(escapeRope(base, data, { hp: [0] })).toBe(null)
+    const run = { ...base, floor: 7, bag: { ...base.bag, 'escape-rope': 1 }, encounter: { kind: 'trainer', foes: [] } }
+    const out = escapeRope(run, data, { hp: [0], bag: { ...run.bag, potion: 0 } })
+    expect(out.bag['escape-rope']).toBe(0)
+    expect(out.bag.potion).toBe(0)
+    expect(out.team[0].hp).toBe(ESCAPE_HP)
+    expect(out.floor).toBe(7)
+    expect(out.encounter).toBe(null)
+    expect(out.route.options.length).toBeGreaterThan(0)
+    // A batalha não leva a corda embora.
+    const won = winFloor({ ...run, encounter: { kind: 'trainer', foes: [{ id: 19, level: 5, iv: 0, ev: 0 }] } }, data, { bag: { potion: 1 } })
+    expect(won.bag['escape-rope']).toBe(1)
+  })
+
+  it('Lucky Egg: quem segura ganha +50% de XP', () => {
+    const base = startRun(emptyFactory(), data, 1, 42)
+    const foes = [{ id: 19, level: 7, iv: 0, ev: 0 }]
+    const plain = winFloor({ ...base, encounter: { kind: 'wild', foes } }, data)
+    const egg = winFloor({ ...base, team: [{ ...base.team[0], item: 'lucky-egg' }], encounter: { kind: 'wild', foes } }, data)
+    expect(egg.pending.gains[0]).toBe(Math.floor(plain.pending.gains[0] / 1 * LUCKY_EGG.held) || egg.pending.gains[0])
+    expect(egg.pending.gains[0]).toBeGreaterThan(plain.pending.gains[0] * 1.4)
+  })
+
+  it('conquistas dão moedas uma vez; o Hall da Fama guarda o time que venceu o Campeão', () => {
+    const base = startRun(emptyFactory(), data, 1, 42)
+    const run = { ...base, floor: 30, badges: 1, champions: 1, pending: { champion: true }, team: [{ ...base.team[0], shiny: true }] }
+    const [f1, earned] = progress({ ...emptyFactory(), coins: 0 }, run)
+    expect(earned).toEqual(expect.arrayContaining(['badge', 'champion', 'floor25', 'shiny']))
+    expect(f1.coins).toBe(earned.reduce((s, id) => s + ACHIEVEMENTS[id].coins, 0))
+    expect(f1.hall).toHaveLength(1)
+    expect(f1.hall[0].team[0]).toMatchObject({ id: 1, shiny: true })
+    const [f2, again] = progress(f1, run)
+    expect(again).toEqual([])
+    expect(f2).toBe(f1)
   })
 
   it('selvagens pela raridade: os comuns (taxa de captura alta) aparecem bem mais', () => {
@@ -520,7 +580,7 @@ describe('mapa da corrida', () => {
       for (const o of route.options) kinds[o.kind] = (kinds[o.kind] ?? 0) + 1
       for (const o of route.options.filter((o) => o.kind === 'wild')) expect(Object.keys(BIOMES)).toContain(o.biome)
     }
-    expect(Object.keys(kinds).sort()).toEqual(['ace', 'center', 'event', 'mart', 'trainer', 'wild', 'wildboss'])
+    expect(Object.keys(kinds).sort()).toEqual(['ace', 'center', 'event', 'mart', 'trade', 'trainer', 'wild', 'wildboss'])
     expect(kinds.center).toBeLessThan(kinds.mart)
     for (let i = 0; i < 50; i++) for (const o of routeOptions(at(1), data, rand).options) expect(['wild', 'trainer']).toContain(o.kind)
   })

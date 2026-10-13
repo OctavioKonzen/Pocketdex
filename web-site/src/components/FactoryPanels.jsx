@@ -18,6 +18,7 @@ import {
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, MAX_TEAM, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shinyPrice, shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, takeCard, teachMove, teamDown, applyBagItem, unlockShiny, VITAMIN_EVS, VITAMINS,
   buyShiny, forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade,
+  tradeMon, skipTrade, TRADE_LEVELS, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP,
 } from '../lib/factoryRun'
 import { t } from '../lib/i18n'
 import { prettyName } from '../lib/pokemon'
@@ -378,6 +379,35 @@ export function FactoryHub({ onContinue, busy }) {
         </div>
       </details>
 
+      <details className="rounded-2xl bg-bg p-3" data-testid="factory-achievements">
+        <summary className="cursor-pointer font-bold">🏆 {t('Conquistas')} ({(factory.achievements ?? []).length}/{Object.keys(ACHIEVEMENTS).length})</summary>
+        <p className="my-2 text-xs text-muted">{t('Cada conquista dá moedas uma vez.')}</p>
+        <div className="grid gap-1 sm:grid-cols-2">
+          {Object.entries(ACHIEVEMENTS).map(([id, a]) => {
+            const done = (factory.achievements ?? []).includes(id)
+            return (
+              <p key={id} className={`rounded-lg px-2 py-1 text-xs ${done ? 'bg-amber-500/15 font-bold' : 'bg-card text-muted'}`}>
+                {done ? '🏆' : '🔒'} {t(a.label)} · 🪙{a.coins}
+              </p>
+            )
+          })}
+        </div>
+      </details>
+
+      {(factory.hall ?? []).length > 0 && (
+        <details className="rounded-2xl bg-bg p-3" data-testid="factory-hall">
+          <summary className="cursor-pointer font-bold">👑 {t('Hall da Fama')}</summary>
+          <div className="mt-2 space-y-2">
+            {factory.hall.map((h) => (
+              <div key={h.key} className="rounded-xl bg-card p-2">
+                <p className="text-xs font-bold">{t('Campeão no andar {0}').replace('{0}', h.floor)}</p>
+                <div className="mt-1 flex flex-wrap gap-1">{h.team.map((m, i) => <MonChip key={i} mon={m} byId={byId} />)}</div>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+
       <details className="rounded-2xl bg-bg p-3" data-testid="factory-shiny-shop">
         <summary className="cursor-pointer font-bold">✨ {t('Inicial shiny')}</summary>
         <p className="my-2 text-xs text-muted">{t('Shiny tem +10% em todos os atributos. Capture um inicial shiny na corrida para liberar o shiny dele, ou transforme com moedas (bem caro).')}</p>
@@ -457,6 +487,7 @@ const NODE_INFO = {
   mart: { icon: '🛒', label: 'Poké Mart', help: 'Uma loja maior (sem batalha, sem XP).' },
   center: { icon: '🏥', label: 'Centro Pokémon', help: 'Cura o time todo, até quem desmaiou (sem batalha).' },
   event: { icon: '❓', label: 'Evento', help: 'Itens, dinheiro, frutas ou uma ficha de Move Tutor (sem batalha).' },
+  trade: { icon: '🔁', label: 'Troca', help: 'Alguém da rota troca um Pokémon com você: o que vem chega 3 níveis acima (com o item de quem foi).' },
   wildboss: { icon: '🐉', label: 'Chefe sem treinador', help: 'Uma Mega, um Gigantamax ou um lendário. Dá para capturar.' },
   boss: { icon: '👑', label: 'Chefe', help: '' },
 }
@@ -474,6 +505,7 @@ function stepOf(p) {
   if (!p.seen && (p.exp != null || p.center || p.event)) return 'result'
   if (p.capture) return 'capture'
   if (p.cards) return 'cards'
+  if (p.trade) return 'trade'
   if (p.shop) return 'shop'
   return null
 }
@@ -586,6 +618,15 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
   const [panel, setPanel] = useState(null) // embaixo do menu: 'bag' | 'team' (na loja, a lista de compras)
   const [unlocked, setUnlocked] = useState(null)
   const [target, setTarget] = useState(0)
+  // Conquistas novas (com as moedas) e o Hall da Fama, conforme a corrida anda.
+  const [earned, setEarned] = useState([])
+  useEffect(() => {
+    if (!factory.run) return
+    const [next, ids] = progress(factory, factory.run)
+    if (next === factory) return
+    saveFactory(next)
+    if (ids.length) setEarned((list) => [...list, ...ids])
+  }, [factory])
   const run = factory.run
   if (!data) return <p className="text-sm text-muted">...</p>
   const name = (id) => t(prettyName(byId?.get(id)?.name ?? ''))
@@ -711,6 +752,28 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       </Field>
     )
     text = <p>🃏 {t('Escolha uma carta de bônus')}</p>
+  } else if (step === 'trade') {
+    // Troca: escolhe quem dar; o oferecido vem TRADE_LEVELS níveis acima, com o item de quem foi.
+    const offer = p.trade
+    field = (
+      <Field biome={run.scene ?? 'grass'} fieldRef={fieldRef} testid="factory-trade">
+        <FieldMon mon={offer} byId={byId} />
+        {lead && <FieldMon mon={lead} byId={byId} back />}
+      </Field>
+    )
+    text = (
+      <>
+        <p>🔁 {t('Um treinador quer trocar o {0} dele com você!').replace('{0}', `${offer.shiny ? '✨ ' : ''}${name(offer.id)}`)}</p>
+        <p className="text-sm">{t('Quem você der vai embora; o {0} vem {1} níveis acima, com o item de quem foi.').replace('{0}', name(offer.id)).replace('{1}', TRADE_LEVELS)}</p>
+      </>
+    )
+    wideMenu = true
+    menu = (
+      <>
+        {run.team.map((m, i) => <MenuButton key={i} onClick={() => save(tradeMon(run, i, data))} testid={`trade-${i}`} sub={`Nv. ${m.level} → ${m.level + TRADE_LEVELS}`}>{name(m.id)}</MenuButton>)}
+        <MenuButton onClick={() => save(skipTrade(run))} testid="trade-skip">{t('NÃO TROCAR')}</MenuButton>
+      </>
+    )
   } else if (step === 'shop') {
     const pick = Math.min(target, run.team.length - 1)
     field = (
@@ -853,6 +916,11 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         text={<>
           {text}
           {unlocked != null && <p className="text-sm text-amber-600" data-testid="factory-shiny-unlocked">✨ {t('{0} shiny liberado para começar as próximas corridas!').replace('{0}', name(unlocked))}</p>}
+          {earned.map((id) => (
+            <p key={id} className="text-sm text-amber-600" data-testid={`achievement-${id}`}>
+              🏆 {t('Conquista: {0}').replace('{0}', t(ACHIEVEMENTS[id].label))} (+🪙{ACHIEVEMENTS[id].coins})
+            </p>
+          ))}
         </>} />
       {links}
     </section>
@@ -878,6 +946,8 @@ function itemHelp(id) {
   if (id === 'move-reminder') return t('Lembra um golpe do nível (uma vez)')
   if (id === 'dynamax-band') return t('Libera o Dynamax (e o Gigantamax) para o time')
   if (id === 'tera-orb') return t('Libera a Terastalização para o time')
+  if (id === 'escape-rope') return t('Se perder uma batalha, o time foge com {0}% do HP e a corrida continua (gasta uma)').replace('{0}', Math.round(ESCAPE_HP * 100))
+  if (id === 'lucky-egg') return t('Quem segura ganha +{0}% de XP (como extra, +{1}%)').replace('{0}', Math.round((LUCKY_EGG.held - 1) * 100)).replace('{1}', Math.round((LUCKY_EGG.extra - 1) * 100))
   if (id === 'exp-share') return t('O time todo ganha XP (quem não lutou, a metade)')
   if (id === 'revive') return t('Revive com metade do HP')
   if (HEAL_SHARE[id]) return HEAL_SHARE[id] >= 1 ? t('Recupera todo o HP') : t('Recupera {0}% do HP').replace('{0}', Math.round(HEAL_SHARE[id] * 100))

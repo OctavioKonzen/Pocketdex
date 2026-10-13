@@ -347,12 +347,21 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
         final boss = run['encounter']['boss'] as Map?;
         note = '${boss != null ? '🏅 ${tr('Você venceu {0}!').replaceAll('{0}', '${boss['name']}')} ' : '🏆 '}${tr('Andar {0} vencido!').replaceAll('{0}', '$floor')}';
       } else {
-        final after = FactoryRun.endRun(factory, run);
-        saveFactory(after);
-        note = tr('A corrida acabou no andar {0}: +{1} moedas. Recorde: andar {2}.')
-            .replaceAll('{0}', '$floor')
-            .replaceAll('{1}', '${(after['last'] as Map)['coins']}')
-            .replaceAll('{2}', '${after['best']}');
+        // Com uma Escape Rope na Bolsa, o time foge (pouco HP) e a corrida continua.
+        final data = _factoryData ??= await FactoryData.load();
+        final lost = factoryAfter(_battle!, _factoryOrder, run);
+        final escaped = FactoryRun.escapeRope(run, data, hp: lost.hp, bag: lost.bag);
+        if (escaped != null) {
+          saveFactory({...factory, 'run': escaped});
+          note = '🪢 ${tr('Escape Rope! O time fugiu com pouco HP e a corrida continua.')}';
+        } else {
+          final after = FactoryRun.endRun(factory, run);
+          saveFactory(after);
+          note = tr('A corrida acabou no andar {0}: +{1} moedas. Recorde: andar {2}.')
+              .replaceAll('{0}', '$floor')
+              .replaceAll('{1}', '${(after['last'] as Map)['coins']}')
+              .replaceAll('{2}', '${after['best']}');
+        }
       }
       if (mounted) {
         setState(() {

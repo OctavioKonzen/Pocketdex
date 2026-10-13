@@ -105,7 +105,10 @@ class FactoryRun {
 
   /// A Bolsa do começo da corrida (os itens gastos na batalha não voltam).
   static const startBag = {'poke-ball': startBalls, 'potion': 4, 'super-potion': 1, 'hyper-potion': 0, 'max-potion': 0, 'revive': 1};
-  static const bagItems = [...ballIds, 'potion', 'super-potion', 'hyper-potion', 'max-potion', 'revive'];
+  static const bagItems = [...ballIds, 'potion', 'super-potion', 'hyper-potion', 'max-potion', 'revive', 'escape-rope'];
+
+  /// Escape Rope: se perder uma batalha, o time foge com pouco HP em vez de a corrida acabar.
+  static const escapeHp = 0.1;
 
   /// Quanto cada item da Bolsa cura (parte do HP máximo; igual na batalha: healPct do motor).
   static const healShare = {'potion': 0.25, 'super-potion': 0.5, 'hyper-potion': 0.75, 'max-potion': 1.0};
@@ -171,6 +174,11 @@ class FactoryRun {
     'life-orb': {'atk': 0.03, 'spa': 0.03}, 'expert-belt': {'atk': 0.02, 'spa': 0.02}, 'muscle-band': {'atk': 0.02}, 'wise-glasses': {'spa': 0.02},
     'leftovers': {'hp': 0.04}, 'sitrus-berry': {'hp': 0.03}, 'assault-vest': {'spd': 0.05}, 'rocky-helmet': {'def': 0.04},
     'eviolite': {'def': 0.04, 'spd': 0.04}, 'focus-sash': {'hp': 0.02, 'def': 0.01, 'spd': 0.01}, 'quick-claw': {'spe': 0.03},
+    'shell-bell': {'hp': 0.02}, 'black-sludge': {'hp': 0.03}, 'weakness-policy': {'atk': 0.02, 'spa': 0.02}, 'lum-berry': {'hp': 0.02},
+    'scope-lens': {'atk': 0.02, 'spa': 0.02}, 'bright-powder': {'spe': 0.02}, 'air-balloon': {'spe': 0.02}, 'heavy-duty-boots': {'def': 0.01, 'spd': 0.01},
+    'kings-rock': {'atk': 0.02},
+    // Lucky Egg: sem atributo; quem segura ganha mais XP (luckyEgg).
+    'lucky-egg': {},
   };
   static const vitamins = {'hp-up': 'hp', 'protein': 'atk', 'iron': 'def', 'calcium': 'spa', 'zinc': 'spd', 'carbos': 'spe'};
   static const vitaminEvs = 24, bottleCapIvs = 3;
@@ -187,6 +195,7 @@ class FactoryRun {
     for (final k in heldBoost.keys) k: 250,
     // Serviços e chaves das mecânicas.
     'move-tutor': 300, 'move-reminder': 150, 'dynamax-band': 2500, 'tera-orb': 2500,
+    'escape-rope': 450,
     // Exp. Share: o time todo ganha XP (quem não lutou, a metade).
     'exp-share': 800,
   };
@@ -378,6 +387,10 @@ class FactoryRun {
   /// Exp. Share: quem não lutou ganha essa parte do XP (e os EVs).
   static const expShare = 0.5;
 
+  /// Lucky Egg: XP a mais para quem segura (como extra, menos). Igual ao site.
+  static const luckyEgg = (held: 1.5, extra: 1.2);
+  static double _eggOf(Map m) => m['item'] == 'lucky-egg' ? luckyEgg.held : ((m['extras'] as List?) ?? const []).contains('lucky-egg') ? luckyEgg.extra : 1.0;
+
   /// O XP de um derrotado para cada um do time (posição na corrida): fought = quem lutou contra ele; sem fought, todos de pé.
   static List<int> expShares(Json run, FactoryData data, Map foe, List<int>? fought, [double factor = 1]) {
     final base = _int(data.speciesOf(_int(foe['id']))?[0] ?? 60);
@@ -387,7 +400,7 @@ class FactoryRun {
         () {
           if (!(hpOf(team[i]) > 0)) return 0;
           final share = fought == null || fought.contains(i) ? 1.0 : run['expShare'] == true ? expShare : 0.0;
-          return share == 0 ? 0 : (expFor(base, _int(foe['level']), _int(team[i]['level']), factor * _mult(run, 'exp')) * share).floor();
+          return share == 0 ? 0 : (expFor(base, _int(foe['level']), _int(team[i]['level']), factor * _mult(run, 'exp')) * share * _eggOf(team[i])).floor();
         }(),
     ];
   }
@@ -573,7 +586,7 @@ class FactoryRun {
   }
 
   /// Os pontos do mapa (o peso de cada um nas bifurcações). O Centro Pokémon é raro.
-  static const nodeWeights = [('wild', 34), ('trainer', 28), ('ace', 12), ('mart', 10), ('event', 11), ('center', 5)];
+  static const nodeWeights = [('wild', 34), ('trainer', 28), ('ace', 12), ('mart', 10), ('event', 11), ('center', 5), ('trade', 8)];
   static const _battleNodes = ['wild', 'trainer', 'ace', 'boss', 'wildboss'];
   static bool isBattleNode(Map? node) => _battleNodes.contains(node?['kind']);
 
@@ -637,7 +650,7 @@ class FactoryRun {
   }
 
   /// O que o treinador forte deixa (sempre): bolas e remédios na Bolsa, os de segurar guardados.
-  static final aceRewards = ['great-ball', 'ultra-ball', 'hyper-potion', 'max-potion', 'revive', 'move-tutor', ...heldBoost.keys];
+  static final aceRewards = ['great-ball', 'ultra-ball', 'hyper-potion', 'max-potion', 'revive', 'move-tutor', 'escape-rope', ...heldBoost.keys];
 
   /// Os eventos do mapa.
   static const events = ['items', 'money', 'berries', 'tutor'];
@@ -664,6 +677,10 @@ class FactoryRun {
     out['scene'] = node['kind'] == 'mart' ? 'city' : node['kind'] == 'center' ? 'center' : routeBiomeNow;
     if (node['kind'] == 'mart') {
       out['pending'] = {'mart': true, 'shop': _pickShop(rand, data, floor, 10)};
+    } else if (node['kind'] == 'trade') {
+      // Troca: alguém da rota oferece um Pokémon (você escolhe quem dar; ele vem tradeLevels acima).
+      final offer = (encounterFor(data, floor + 1, rand, null, false, {'kind': 'wild', 'biome': run['route']?['biome']})['foes'] as List).first as Map;
+      out['pending'] = {'trade': {'id': offer['id'], if (offer['shiny'] == true) 'shiny': true}};
     } else if (node['kind'] == 'center') {
       out['team'] = [for (final m in teamOf(out)) {...m, 'hp': 1}];
       out['pending'] = {'center': true};
@@ -850,7 +867,8 @@ class FactoryRun {
     final out = _copy(run);
     final team0 = teamOf(out);
     out['team'] = [for (var i = 0; i < team0.length; i++) {...team0[i], 'hp': hp != null && i < hp.length ? hp[i] : hpOf(team0[i])}];
-    out['bag'] = {...(bag ?? Map<String, dynamic>.from(run['bag'] as Map))};
+    // A Escape Rope não entra na batalha: fica a da Bolsa.
+    out['bag'] = {...(bag ?? Map<String, dynamic>.from(run['bag'] as Map)), 'escape-rope': ((run['bag'] as Map)['escape-rope'] as num?)?.toInt() ?? 0};
     final rand = _dice(out);
     final kind = run['encounter']['kind'] as String;
     final foes = foesOf(run);
@@ -889,8 +907,18 @@ class FactoryRun {
     out['floor'] = _int(out['floor']) + 1;
     String? drop, story;
     if (kind == 'boss' || kind == 'wildboss') out['bosses'] = ((out['bosses'] as num?) ?? 0).toInt() + 1;
+    var champion = false;
     if (kind == 'boss') {
       final beaten = run['encounter']['boss'] as Map;
+      // As conquistas (progress): insígnias, ginásio só com o inicial, Campeões.
+      if (beaten['kind'] == 'gym') {
+        out['badges'] = ((run['badges'] as num?) ?? 0).toInt() + 1;
+        if ((run['team'] as List).length == 1) out['soloGym'] = true;
+      }
+      if (beaten['kind'] == 'champion') {
+        out['champions'] = ((run['champions'] as num?) ?? 0).toInt() + 1;
+        champion = true;
+      }
       // Venceu o chefe da cidade (ou da Liga): começa a rota seguinte.
       if (_cityKinds.contains(beaten['kind'])) out['leg'] = out['floor'];
       final (boss, played) = _nextBoss(out, data, rand);
@@ -928,6 +956,7 @@ class FactoryRun {
     final shopPick = !cityWin && atCity(data, out) && !_inLeague(data, out) ? _pickShop(rand, data, _int(run['floor'])) : null;
     out['pending'] = {
       'exp': exp, 'gains': gains, 'money': money, 'levels': levels, 'joy': joy, 'drop': drop, 'story': story, 'reward': reward,
+      if (champion) 'champion': true,
       'capture': captured && (kind == 'wild' || kind == 'wildboss') ? foes.first : null,
       'cards': cardsPick,
       'shop': shopPick,
@@ -1042,6 +1071,91 @@ class FactoryRun {
     final out = _copy(run);
     (out['pending'] as Map)['capture'] = null;
     return out;
+  }
+
+  /// A troca: quem está na posição index vai e vem o oferecido, tradeLevels níveis acima (evolui se der), com o item dele. Igual ao site.
+  static const tradeLevels = 3;
+  static Json tradeMon(Json run, int index, FactoryData data) {
+    final offer = pendingOf(run)?['trade'] as Map?;
+    final team = teamOf(run);
+    if (offer == null || index < 0 || index >= team.length) return run;
+    final mon = team[index];
+    final out = _copy(run);
+    (out['pending'] as Map)['trade'] = null;
+    out['trades'] = ((run['trades'] as num?) ?? 0).toInt() + 1;
+    final rand = _dice(out);
+    final level = _int(mon['level']);
+    final fresh = newMon(devolve(data, _int(offer['id']), level), level, rand, 10, offer['shiny'] == true);
+    final (grown, _) = levelTo(fresh, level + tradeLevels, data, rand);
+    team[index] = {...grown, 'item': mon['item'], 'extras': mon['extras'] ?? <String>[]};
+    out['team'] = team;
+    return out;
+  }
+
+  /// Recusa a troca.
+  static Json skipTrade(Json run) {
+    if (run['pending'] == null) return run;
+    final out = _copy(run);
+    (out['pending'] as Map)['trade'] = null;
+    return out;
+  }
+
+  /// Perdeu com uma Escape Rope na Bolsa: gasta ela e o time foge com pouco HP (escapeHp), no mesmo andar, com o mapa
+  /// de novo. hp e bag: como a batalha terminou (factoryAfter). null sem a corda. Igual ao site.
+  static Json? escapeRope(Json run, FactoryData data, {List<double>? hp, Map<String, int>? bag}) {
+    final ropes = (((run['bag'] as Map?)?['escape-rope'] as num?) ?? 0).toInt();
+    if (ropes <= 0) return null;
+    final out = _copy(run);
+    out['bag'] = {...Map<String, dynamic>.from(run['bag'] as Map), ...?bag, 'escape-rope': ropes - 1};
+    final team = teamOf(run);
+    out['team'] = [for (var i = 0; i < team.length; i++) {...team[i], 'hp': math.max(hp != null && i < hp.length ? hp[i] : 0.0, escapeHp)}];
+    out['encounter'] = null;
+    out['pending'] = null;
+    out['ropes'] = ((run['ropes'] as num?) ?? 0).toInt() + 1;
+    out['route'] = routeOptions(out, data, _dice(out));
+    return out;
+  }
+
+  /// Conquistas da Battle Factory: cada uma dá moedas uma vez só (fica na conta). Igual ao site.
+  static final achievements = <String, ({String label, int coins, bool Function(Json run) done})>{
+    'badge': (label: 'Primeira insígnia', coins: 50, done: (r) => _n(r, 'badges') >= 1),
+    'badges8': (label: '8 insígnias numa corrida', coins: 300, done: (r) => _n(r, 'badges') >= 8),
+    'solo': (label: 'Vencer um ginásio só com o inicial', coins: 250, done: (r) => r['soloGym'] == true),
+    'champion': (label: 'Vencer um Campeão (Hall da Fama)', coins: 600, done: (r) => _n(r, 'champions') >= 1),
+    'champion2': (label: 'Vencer o Campeão de duas regiões', coins: 1500, done: (r) => _n(r, 'champions') >= 2),
+    'floor25': (label: 'Chegar ao andar 25', coins: 100, done: (r) => _n(r, 'floor') > 25),
+    'floor50': (label: 'Chegar ao andar 50', coins: 300, done: (r) => _n(r, 'floor') > 50),
+    'floor100': (label: 'Chegar ao andar 100', coins: 1000, done: (r) => _n(r, 'floor') > 100),
+    'full': (label: 'Time completo (6 Pokémon)', coins: 80, done: (r) => teamOf(r).length >= maxTeam),
+    'shiny': (label: 'Um shiny no time', coins: 200, done: (r) => teamOf(r).any((m) => m['shiny'] == true)),
+    'level50': (label: 'Um Pokémon no nível 50', coins: 150, done: (r) => teamOf(r).any((m) => _int(m['level']) >= 50)),
+    'level100': (label: 'Um Pokémon no nível 100', coins: 400, done: (r) => teamOf(r).any((m) => _int(m['level']) >= 100)),
+    'trade': (label: 'Fazer uma troca', coins: 40, done: (r) => _n(r, 'trades') >= 1),
+    'rope': (label: 'Escapar com a Escape Rope', coins: 40, done: (r) => _n(r, 'ropes') >= 1),
+  };
+  static int _n(Json r, String k) => ((r[k] as num?) ?? 0).toInt();
+
+  /// As conquistas novas da corrida (com as moedas delas) e o Hall da Fama (o time que venceu o Campeão). Igual ao site.
+  static (Json, List<String>) progress(Json factory, Json? run) {
+    if (run == null) return (factory, const []);
+    final have = [for (final x in (factory['achievements'] as List?) ?? const []) '$x'];
+    final earned = [for (final e in achievements.entries) if (!have.contains(e.key) && e.value.done(run)) e.key];
+    var out = factory;
+    if (earned.isNotEmpty) {
+      out = {...out, 'achievements': [...have, ...earned], 'coins': _int(out['coins']) + earned.fold<int>(0, (s, id) => s + achievements[id]!.coins)};
+    }
+    if (pendingOf(run)?['champion'] == true) {
+      final key = '${run['seed']}-${run['floor']}';
+      final hall = [for (final h in (out['hall'] as List?) ?? const []) Map<String, dynamic>.from(h as Map)];
+      if (!hall.any((h) => h['key'] == key)) {
+        final entry = {
+          'key': key, 'floor': _int(run['floor']) - 1, 'champions': _n(run, 'champions') == 0 ? 1 : _n(run, 'champions'),
+          'team': [for (final m in teamOf(run)) {'id': m['id'], 'level': m['level'], if (m['shiny'] == true) 'shiny': true}],
+        };
+        out = {...out, 'hall': [entry, ...hall].take(20).toList()};
+      }
+    }
+    return (out, earned);
   }
 
   static Json takeCard(Json run, String id, FactoryData data) {

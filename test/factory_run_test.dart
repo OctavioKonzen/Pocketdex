@@ -101,6 +101,30 @@ void main() {
     expect(FactoryRun.upgradePrice({...FactoryRun.empty(), 'upgrades': {'level': 1}}, 'level'), 455);
   });
 
+  test('troca, Escape Rope e conquistas (iguais ao site)', () {
+    final base = FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!;
+    final first = FactoryRun.teamOf(base).first;
+    final run = {...base, 'team': [{...first, 'level': 10, 'item': 'leftovers'}], 'pending': {'trade': {'id': 19}}};
+    final traded = FactoryRun.teamOf(FactoryRun.tradeMon(run, 0, data)).first;
+    expect(traded['id'], 19);
+    expect(traded['level'], 13);
+    expect(traded['ivs'], {'hp': 20, 'atk': 15, 'def': 29, 'spa': 26, 'spd': 16, 'spe': 14});
+    expect(traded['nature'], 'Serious');
+    expect(traded['item'], 'leftovers');
+    expect(FactoryRun.escapeRope(base, data, hp: [0]), isNull);
+    final escaped = FactoryRun.escapeRope({...base, 'floor': 7, 'bag': {...base['bag'] as Map, 'escape-rope': 1}}, data, hp: [0])!;
+    expect(escaped['route'], {'floor': 7, 'biome': 'grass', 'options': [{'kind': 'wild', 'biome': 'grass'}]});
+    expect(FactoryRun.teamOf(escaped).first['hp'], FactoryRun.escapeHp);
+    expect(escaped['bag']['escape-rope'], 0);
+    final (f1, earned) = FactoryRun.progress(
+        {...FactoryRun.empty(), 'coins': 0}, {...base, 'floor': 30, 'badges': 1, 'champions': 1, 'pending': {'champion': true}});
+    expect(earned, containsAll(['badge', 'champion', 'floor25']));
+    expect((f1['hall'] as List), hasLength(1));
+    final (f2, again) = FactoryRun.progress(f1, {...base, 'floor': 30, 'badges': 1, 'champions': 1, 'pending': {'champion': true}});
+    expect(again, isEmpty);
+    expect(identical(f1, f2), isTrue);
+  });
+
   test('XP só para quem lutou; com o Exp. Share, a metade para o resto do time (igual ao site)', () {
     final base = FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!;
     final first = FactoryRun.teamOf(base).first;

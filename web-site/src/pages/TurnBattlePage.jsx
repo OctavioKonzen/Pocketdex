@@ -31,7 +31,7 @@ import {simulatorTargets} from '../lib/battleSimulator'
 import {newPartyBattle, playPartyTurn, describeEvents} from '../lib/partyBattle'
 import { FactoryHub, FactoryScreen, saveFactory } from '../components/FactoryPanels'
 import { expBarOf, factoryAfter, factoryBattle, factoryFoe } from '../lib/factoryBattle'
-import { endRun, factoryOf, winFloor } from '../lib/factoryRun'
+import { endRun, escapeRope, factoryOf, winFloor } from '../lib/factoryRun'
 import { getFactoryData } from '../lib/data'
 
 const CARD = 'rounded-2xl bg-card p-5 shadow'
@@ -1633,9 +1633,17 @@ export default function TurnBattlePage() {
           ? `🏅 ${t('Você venceu {0}!').replace('{0}', run.encounter.boss.name)} ${t('Andar {0} vencido!').replace('{0}', run.floor)}`
           : `🏆 ${t('Andar {0} vencido!').replace('{0}', run.floor)}`
       } else {
-        const after = endRun(factory, run)
-        saveFactory(after)
-        endNote = t('A corrida acabou no andar {0}: +{1} moedas. Recorde: andar {2}.').replace('{0}', run.floor).replace('{1}', after.last.coins).replace('{2}', after.best)
+        // Com uma Escape Rope na Bolsa, o time foge (pouco HP) e a corrida continua.
+        const data = await getFactoryData()
+        const escaped = escapeRope(run, data, factoryAfter(game.battle, run))
+        if (escaped) {
+          saveFactory({ ...factory, run: escaped })
+          endNote = `🪢 ${t('Escape Rope! O time fugiu com pouco HP e a corrida continua.')}`
+        } else {
+          const after = endRun(factory, run)
+          saveFactory(after)
+          endNote = t('A corrida acabou no andar {0}: +{1} moedas. Recorde: andar {2}.').replace('{0}', run.floor).replace('{1}', after.last.coins).replace('{2}', after.best)
+        }
       }
       // A batalha vira a tela da corrida sozinha (resultado, Enfermeira Joy, captura, carta, loja e mapa), no mesmo lugar.
       setGame((g) => (g ? { ...g, endNote, next: { label: `${t('Continuar')} →`, onClick: openFactory } } : g))

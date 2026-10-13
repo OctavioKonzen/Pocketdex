@@ -7752,5 +7752,130 @@
   "en": "Only the first form of each one (evolving comes from playing). Stronger ones cost more. Once bought, it shows up among your starters. 1 in 4096 chance of being shiny.",
   "fr": "Seulement la première forme de chacun (l'évolution vient en jouant). Les plus forts coûtent plus cher. Une fois acheté, il apparaît parmi vos starters. 1 chance sur 4096 d'être chromatique.",
   "es": "Solo la primera forma de cada uno (la evolución llega jugando). Los más fuertes cuestan más. Comprado, aparece entre los iniciales. 1 probabilidad entre 4096 de ser variocolor."
+ },
+ "Troca": {
+  "en": "Trade",
+  "fr": "Échange",
+  "es": "Intercambio"
+ },
+ "Alguém da rota troca um Pokémon com você: o que vem chega 3 níveis acima (com o item de quem foi).": {
+  "en": "Someone on the route trades a Pokémon with you: the one you get arrives 3 levels higher (with the item of the one who left).",
+  "fr": "Quelqu'un sur la route échange un Pokémon avec vous : celui que vous recevez arrive 3 niveaux plus haut (avec l'objet de celui qui part).",
+  "es": "Alguien de la ruta te cambia un Pokémon: el que llega viene 3 niveles más alto (con el objeto del que se fue)."
+ },
+ "Um treinador quer trocar o {0} dele com você!": {
+  "en": "A trainer wants to trade their {0} with you!",
+  "fr": "Un dresseur veut échanger son {0} avec vous !",
+  "es": "¡Un entrenador quiere cambiarte su {0}!"
+ },
+ "Quem você der vai embora; o {0} vem {1} níveis acima, com o item de quem foi.": {
+  "en": "The one you give leaves; {0} comes {1} levels higher, with the item of the one who left.",
+  "fr": "Celui que vous donnez s'en va ; {0} arrive {1} niveaux plus haut, avec l'objet de celui qui part.",
+  "es": "El que des se va; {0} llega {1} niveles más alto, con el objeto del que se fue."
+ },
+ "NÃO TROCAR": {
+  "en": "DON'T TRADE",
+  "fr": "NE PAS ÉCHANGER",
+  "es": "NO CAMBIAR"
+ },
+ "Conquista: {0}": {
+  "en": "Achievement: {0}",
+  "fr": "Succès : {0}",
+  "es": "Logro: {0}"
+ },
+ "Cada conquista dá moedas uma vez.": {
+  "en": "Each achievement gives coins once.",
+  "fr": "Chaque succès donne des pièces une seule fois.",
+  "es": "Cada logro da monedas una vez."
+ },
+ "Campeão no andar {0}": {
+  "en": "Champion on floor {0}",
+  "fr": "Champion à l'étage {0}",
+  "es": "Campeón en el piso {0}"
+ },
+ "Se perder uma batalha, o time foge com {0}% do HP e a corrida continua (gasta uma)": {
+  "en": "If you lose a battle, the team flees with {0}% HP and the run goes on (uses one)",
+  "fr": "Si vous perdez un combat, l'équipe fuit avec {0} % de PV et la partie continue (en utilise une)",
+  "es": "Si pierdes un combate, el equipo huye con el {0}% de PS y la partida sigue (gasta una)"
+ },
+ "Quem segura ganha +{0}% de XP (como extra, +{1}%)": {
+  "en": "The holder gains +{0}% EXP (as an extra, +{1}%)",
+  "fr": "Le porteur gagne +{0} % d'Exp. (en extra, +{1} %)",
+  "es": "Quien lo lleva gana +{0}% de Exp. (como extra, +{1}%)"
+ },
+ "Escape Rope! O time fugiu com pouco HP e a corrida continua.": {
+  "en": "Escape Rope! The team fled with little HP and the run goes on.",
+  "fr": "Corde Sortie ! L'équipe a fui avec peu de PV et la partie continue.",
+  "es": "¡Cuerda Huida! El equipo huyó con pocos PS y la partida sigue."
+ },
+ "Primeira insígnia": {
+  "en": "First badge",
+  "fr": "Premier badge",
+  "es": "Primera medalla"
+ },
+ "8 insígnias numa corrida": {
+  "en": "8 badges in one run",
+  "fr": "8 badges en une partie",
+  "es": "8 medallas en una partida"
+ },
+ "Vencer um ginásio só com o inicial": {
+  "en": "Beat a gym with only your starter",
+  "fr": "Battre une arène avec seulement votre starter",
+  "es": "Vencer un gimnasio solo con el inicial"
+ },
+ "Vencer um Campeão (Hall da Fama)": {
+  "en": "Beat a Champion (Hall of Fame)",
+  "fr": "Battre un Maître (Panthéon)",
+  "es": "Vencer a un Campeón (Hall de la Fama)"
+ },
+ "Vencer o Campeão de duas regiões": {
+  "en": "Beat the Champion of two regions",
+  "fr": "Battre le Maître de deux régions",
+  "es": "Vencer al Campeón de dos regiones"
+ },
+ "Chegar ao andar 25": {
+  "en": "Reach floor 25",
+  "fr": "Atteindre l'étage 25",
+  "es": "Llegar al piso 25"
+ },
+ "Chegar ao andar 50": {
+  "en": "Reach floor 50",
+  "fr": "Atteindre l'étage 50",
+  "es": "Llegar al piso 50"
+ },
+ "Chegar ao andar 100": {
+  "en": "Reach floor 100",
+  "fr": "Atteindre l'étage 100",
+  "es": "Llegar al piso 100"
+ },
+ "Time completo (6 Pokémon)": {
+  "en": "Full team (6 Pokémon)",
+  "fr": "Équipe complète (6 Pokémon)",
+  "es": "Equipo completo (6 Pokémon)"
+ },
+ "Um shiny no time": {
+  "en": "A shiny on the team",
+  "fr": "Un chromatique dans l'équipe",
+  "es": "Un variocolor en el equipo"
+ },
+ "Um Pokémon no nível 50": {
+  "en": "A Pokémon at level 50",
+  "fr": "Un Pokémon au niveau 50",
+  "es": "Un Pokémon al nivel 50"
+ },
+ "Um Pokémon no nível 100": {
+  "en": "A Pokémon at level 100",
+  "fr": "Un Pokémon au niveau 100",
+  "es": "Un Pokémon al nivel 100"
+ },
+ "Fazer uma troca": {
+  "en": "Make a trade",
+  "fr": "Faire un échange",
+  "es": "Hacer un intercambio"
+ },
+ "Escapar com a Escape Rope": {
+  "en": "Escape with an Escape Rope",
+  "fr": "S'échapper avec une Corde Sortie",
+  "es": "Escapar con la Cuerda Huida"
  }
 }
