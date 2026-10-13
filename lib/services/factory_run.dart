@@ -550,7 +550,7 @@ class FactoryRun {
 
   /// Os lugares possíveis da rota até o ginásio de cada tipo (um deles por rota).
   static const _typeBiomes = {
-    'normal': ['grass', 'city'], 'fire': ['volcano', 'desert'], 'water': ['water', 'beach', 'underwater'], 'grass': ['forest', 'grass', 'swamp'],
+    'normal': ['grass', 'city'], 'fire': ['volcano', 'desert'], 'water': ['water', 'beach'], 'grass': ['forest', 'grass', 'swamp'],
     'electric': ['city', 'sewer'], 'ice': ['snow', 'icecave'], 'fighting': ['mountain', 'cave'], 'poison': ['swamp', 'sewer', 'forest'],
     'ground': ['desert', 'mountain', 'cave'], 'flying': ['sky', 'grass', 'beach'], 'psychic': ['tower', 'city'], 'bug': ['forest', 'grass'],
     'rock': ['cave', 'mountain', 'desert'], 'ghost': ['tower'], 'dragon': ['sky', 'mountain'], 'dark': ['cave', 'tower', 'sewer'],
@@ -596,7 +596,68 @@ class FactoryRun {
       _cityKinds.contains(bossOf(data, run)['kind']) && (_inLeague(data, run) || routePos(run) >= routeLength);
 
   /// O bioma da rota até a próxima cidade: o do tipo do ginásio; para a Liga, um fixo da região. Igual ao site.
+  /// As equipes vilãs (pelo nome de quem aparece nos jogos). Enquanto o próximo chefe é um vilão, a rota é a base da
+  /// equipe dele: só capangas, com os Pokémon da equipe (teamPokemon). Igual ao site.
+  static const villainTeams = <String, String>{
+    'Giovanni': 'rocket', 'Executiva': 'rocket', 'Executivo': 'rocket', 'Proton': 'rocket', 'Ariana': 'rocket', 'Archer': 'rocket', 'Petrel': 'rocket',
+    'Archie': 'aqua', 'Shelly': 'aqua', 'Matt': 'aqua', 'Maxie': 'magma', 'Tabitha': 'magma', 'Courtney': 'magma',
+    'Mars': 'galactic', 'Cyrus': 'galactic', 'Jupiter': 'galactic', 'Saturn': 'galactic', 'N': 'plasma', 'Zinzolin': 'plasma', 'Colress': 'plasma', 'Ghetsis': 'plasma',
+    'Lysandre': 'flare', 'Bryony': 'flare', 'Mable': 'flare', 'Plumeria': 'skull', 'Guzma': 'skull', 'Faba': 'aether', 'Soliera': 'aether', 'Dulse': 'aether',
+    'Giacomo': 'star', 'Ortega': 'star',
+  };
+  static String villainTeam(Object? name) => villainTeams['$name'] ?? 'rocket';
+
+  /// Os Pokémon dos capangas de cada equipe (os evoluídos só a partir do nível em que evoluem).
+  static const teamPokemon = <String, List<int>>{
+    'rocket': [19, 20, 23, 24, 41, 42, 109, 110, 88, 89, 52, 53, 96, 97, 198, 228, 229],
+    'aqua': [318, 319, 261, 262, 72, 73, 41, 42, 320, 340],
+    'magma': [322, 323, 261, 262, 218, 219, 41, 42, 324, 74, 75],
+    'galactic': [431, 432, 434, 435, 41, 42, 169, 198, 436, 437],
+    'plasma': [509, 510, 504, 505, 551, 552, 559, 560, 519, 520, 524],
+    'flare': [667, 668, 659, 660, 686, 687, 228, 229, 674],
+    'skull': [757, 758, 451, 452, 41, 42, 88, 89, 742, 743],
+    'aether': [79, 80, 96, 97, 436, 437, 137, 233, 122],
+    'star': [198, 430, 41, 42, 559, 560, 434, 435, 109, 110, 966],
+  };
+
+  /// O tipo do líder de ginásio (o que mais aparece no time dele): o ginásio dele tem o cenário desse tipo.
+  static String leaderType(FactoryData data, Map boss) {
+    final count = <String, int>{};
+    for (final id in (boss['team'] as List?) ?? const []) {
+      for (final t in (data.speciesOf(_int(id))?.elementAtOrNull(4) as List?) ?? const []) {
+        count['$t'] = (count['$t'] ?? 0) + 1;
+      }
+    }
+    final keys = count.keys.toList();
+    final order = [for (var i = 0; i < keys.length; i++) i]..sort((a, b) {
+        final d = count[keys[b]]!.compareTo(count[keys[a]]!);
+        return d != 0 ? d : a.compareTo(b);
+      });
+    return order.isEmpty ? 'normal' : keys[order.first];
+  }
+
+  /// O cenário da luta com o chefe: o líder no ginásio do tipo dele, a Elite Four na Liga, o Campeão na sala dele (uma
+  /// por região) e o vilão na base da equipe. Igual ao site.
+  static String bossScene(FactoryData data, Map? boss, [String fallback = 'grass']) {
+    if (boss == null) return fallback;
+    switch (boss['kind']) {
+      case 'gym':
+        final full = data.bosses.expand((g) => g['leaders'] as List).cast<Map>().where((l) => l['id'] == boss['id']).firstOrNull;
+        return 'gym-${full != null ? leaderType(data, full) : 'normal'}';
+      case 'champion':
+        return 'champion-${'${boss['region'] ?? ''}'.toLowerCase()}';
+      case 'elite':
+        return 'league';
+      case 'villain':
+        return 'base-${villainTeam(boss['name'])}';
+    }
+    return fallback;
+  }
+
   static String routeBiome(FactoryData data, Json run) {
+    // A caminho de um vilão: a base da equipe dele.
+    final now = bossOf(data, run);
+    if (now['kind'] == 'villain') return 'base-${villainTeam(now['name'])}';
     final boss = targetOf(data, run);
     if (boss['kind'] == 'gym') {
       final count = <String, int>{};
@@ -642,15 +703,19 @@ class FactoryRun {
       }
       if (routeLength - pos <= pending || (pos >= 2 && rand() < ambushChance)) return only({'kind': 'boss'});
     }
-    // Os selvagens são do lugar da rota (o cenário da batalha é ele).
-    String wildBiome() => biome;
+    // Os selvagens são do lugar da rota (o cenário da batalha é ele). Na base de uma equipe vilã, só capangas.
+    final base = biome.startsWith('base-');
+    Json wild() => base ? {'kind': 'trainer'} : {'kind': 'wild', 'biome': biome};
     if (!forks.contains(pos)) {
       final r = rand();
-      return only(r < 0.55 ? {'kind': 'wild', 'biome': wildBiome()} : r < 0.9 || floor <= 2 ? {'kind': 'trainer'} : {'kind': 'event'});
+      return only(r < 0.55 ? wild() : r < 0.9 || floor <= 2 ? {'kind': 'trainer'} : {'kind': 'event'});
     }
-    final options = <Json>[rand() < 0.55 ? {'kind': 'wild', 'biome': wildBiome()} : {'kind': 'trainer'}];
+    final options = <Json>[rand() < 0.55 ? wild() : {'kind': 'trainer'}];
     final count = floor <= 2 ? 2 : 3;
-    final allowed = [for (final w in nodeWeights) if (floor > 2 || w.$1 == 'wild' || w.$1 == 'trainer') w];
+    final allowed = [
+      for (final w in nodeWeights)
+        if ((floor > 2 || w.$1 == 'wild' || w.$1 == 'trainer') && !(base && const ['wild', 'mart', 'trade'].contains(w.$1))) w
+    ];
     final total = allowed.fold(0, (int sum, w) => sum + w.$2);
     for (var guard = 0; options.length < count && guard < 20; guard++) {
       var roll = rand() * total;
@@ -662,11 +727,13 @@ class FactoryRun {
           break;
         }
       }
-      final node = kind == 'wild' ? {'kind': kind, 'biome': wildBiome()} : {'kind': kind};
+      final node = kind == 'wild' ? wild() : <String, dynamic>{'kind': kind};
       if (options.any((o) => o['kind'] == node['kind'] && o['biome'] == node['biome'])) continue;
       options.add(node);
     }
-    if (pos == forks[1] && rand() < wildBossChance) options[options.length - 1] = {'kind': 'wildboss'};
+    // No mar, um dos caminhos é mergulhar (o selvagem do fundo do mar).
+    if (biome == 'water' && !options.any((o) => o['biome'] == 'underwater')) options[options.length - 1] = {'kind': 'wild', 'biome': 'underwater'};
+    if (pos == forks[1] && rand() < wildBossChance && !base) options[options.length - 1] = {'kind': 'wildboss'};
     return {'floor': floor, 'biome': biome, 'options': options};
   }
 
@@ -840,17 +907,25 @@ class FactoryRun {
       final ace = kind == 'ace';
       final count = math.min(maxTeam, 1 + floor ~/ 12 + (rand() < 0.3 ? 1 : 0) + (ace ? 1 : 0));
       final Json extra = ace ? {'iv': math.max(iv, 20), 'ev': (ev * 1.15).round()} : const {};
+      // Na base de uma equipe vilã: capangas com os Pokémon da equipe.
+      final nodeBiome = '${node?['biome'] ?? ''}';
+      final grunt = nodeBiome.startsWith('base-') ? nodeBiome.substring(5) : null;
+      final gruntPool = grunt == null ? null : teamPokemon[grunt];
       final foes = <Json>[];
       for (var i = 0; i < count; i++) {
-        final id = pick(common, true);
+        final id = gruntPool != null ? _pick(gruntPool, rand) : pick(common, true);
         foes.add(foe(id, level + (ace ? 2 : 0) - (rand() * 3).floor(), extra));
       }
       // O mais forte do treinador forte segura um item de verdade (a partir do andar 15).
       if (ace && floor >= 15) foes.last['item'] = _pick(foeItems, rand);
-      return {'kind': kind, 'foes': foes, 'trainerSeed': (rand() * 1e9).floor(), if (ace) 'reward': _pick(aceRewards, rand)};
+      return {'kind': kind, 'foes': foes, 'trainerSeed': (rand() * 1e9).floor(), if (ace) 'reward': _pick(aceRewards, rand), if (grunt != null) 'grunt': grunt};
     }
-    // Selvagem: os do lugar da rota aparecem bem mais.
-    final id = pick(common);
+    // Selvagem: só os que vivem no lugar (o habitat de cada espécie: dos locais de encontro dos jogos; no fundo do mar,
+    // só quem vive debaixo d'água); sem habitat nos dados, pelos tipos do lugar; sem nenhum, qualquer um.
+    final place = node?['biome'];
+    final lives = place == null ? const <({int id, int bst, int rarity, int rate})>[] : [for (final p in common) if (((data.species[p.id]?.elementAtOrNull(6) as List?) ?? const []).contains(place)) p];
+    final native = lives.isNotEmpty ? lives : types == null ? const <({int id, int bst, int rarity, int rate})>[] : [for (final p in common) if (local(p.id)) p];
+    final id = pick(native.isNotEmpty ? native : common);
     return {
       'kind': kind, 'foes': [foe(id, level, rand() < shinyChance * _shinyRate(node) ? {'shiny': true} : const {})],
       if (node?['biome'] != null) 'biome': node!['biome'],
@@ -1168,6 +1243,29 @@ class FactoryRun {
     var roll = ((mixed * 2246822519) & 0xFFFFFFFF) / 4294967296;
     for (final (weather, chance) in table) {
       if (roll < chance) return weather;
+      roll -= chance;
+    }
+    return '';
+  }
+
+  /// O efeito de cada lugar (chances): terrenos de verdade, os efeitos do lugar que ferem ou curam por turno e, no céu,
+  /// ventos fortes (Delta Stream). Os ginásios têm o terreno do tipo. Igual ao site.
+  static const sceneField = <String, List<(String, double)>>{
+    'cave': [('diamonds', 0.3)], 'mountain': [('rockfall', 0.25)], 'volcano': [('ashes', 0.4)], 'swamp': [('miasma', 0.35)], 'sewer': [('miasma', 0.25)],
+    'icecave': [('chill', 0.35)], 'snow': [('chill', 0.2)], 'tower': [('haunt', 0.35), ('psychic', 0.15)], 'underwater': [('current', 0.4)], 'water': [('current', 0.15)],
+    'grass': [('grassy', 0.2)], 'forest': [('grassy', 0.3), ('misty', 0.1)], 'city': [('electric', 0.25)], 'beach': [('misty', 0.1)], 'sky': [('wind', 0.3)],
+    'gym-grass': [('grassy', 0.6)], 'gym-electric': [('electric', 0.6)], 'gym-psychic': [('psychic', 0.6)], 'gym-fairy': [('misty', 0.6)], 'gym-ghost': [('haunt', 0.6)],
+    'gym-rock': [('rockfall', 0.4)], 'gym-fire': [('ashes', 0.4)], 'gym-poison': [('miasma', 0.4)], 'gym-ice': [('chill', 0.4)], 'gym-water': [('current', 0.4)],
+  };
+
+  /// O efeito com que a batalha do andar começa ('' sem efeito): pelo lugar, sempre o mesmo para a mesma corrida e andar.
+  static String fieldOf(Json run, String scene) {
+    final table = sceneField[scene];
+    if (table == null) return '';
+    final mixed = (_int(run['seed'] ?? 0) ^ ((_int(run['floor']) * 69069) & 0xFFFFFFFF)) & 0xFFFFFFFF;
+    var roll = ((mixed * 2654435761) & 0xFFFFFFFF) / 4294967296;
+    for (final (effect, chance) in table) {
+      if (roll < chance) return effect;
       roll -= chance;
     }
     return '';

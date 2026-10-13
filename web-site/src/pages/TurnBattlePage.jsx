@@ -534,8 +534,12 @@ const BattleSprite = forwardRef(function BattleSprite({ mon, id, back, fainted, 
 })
 
 /** O clima caindo por cima do campo (chuva, areia, granizo, neve) ou o brilho do sol. */
-function WeatherFx({ weather }) {
+function WeatherFx({ weather, terrain = '', place = '' }) {
   return (
+    <>
+    {/* Terreno: o chão muda de cor e brilha. Efeito do lugar: diamantes, pedras e cinzas caindo, névoa, frio, aura, correnteza. */}
+    {terrain && <div className={`terrain-layer terrain-${terrain}`} aria-hidden="true" data-testid="terrain-fx" />}
+    {place && <div className={`place-layer place-${place} pointer-events-none absolute inset-0`} aria-hidden="true" data-testid="place-fx" />}
     <div className="pointer-events-none absolute inset-0 transition-opacity duration-700" style={{ opacity: weather ? 1 : 0 }} aria-hidden="true">
       {weather === 'rain' && (
         <>
@@ -547,13 +551,15 @@ function WeatherFx({ weather }) {
       {weather === 'sand' && <div className="weather-layer weather-sand absolute inset-0" />}
       {weather === 'hail' && <div className="weather-layer weather-hail absolute inset-0" />}
       {weather === 'snow' && <div className="weather-layer weather-snow absolute inset-0" />}
+      {weather === 'wind' && <div className="weather-layer weather-wind absolute inset-0" />}
     </div>
+    </>
   )
 }
 
 /** Onde fica o meio de cada Pokémon no campo (em %), para as animações dos golpes. */
 const CENTER = [
-  { x: 24, y: 70 },
+  { x: 24, y: 60 },
   { x: 76, y: 26 },
 ]
 /** Golpes corpo a corpo: quem ataca vai até o alvo. */
@@ -716,11 +722,14 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
     form: battle.sides.map((s) => s.team[s.active].id),
     dmax: battle.sides.map((s) => s.team[s.active].dmax > 0),
     weather: battle.weather,
+    terrain: battle.terrain ?? '',
+    place: battle.place ?? '',
     boosts: battle.sides.map((s) => boostsOf(s.team[s.active])),
     tera: battle.sides.map((s) => teraOf(s.team[s.active])),
   }))
   const [text, setText] = useState(() => (foeName ? t('{0} quer batalhar!').replace('{0}', foeName) : t('Um treinador quer batalhar!')))
   const [busy, setBusy] = useState(false)
+  const [ability, setAbility] = useState(null) // a faixa da habilidade em ação ({side, name, ability})
   const [menu, setMenu] = useState(() => battle.needSwitch ? 'party' : 'main') // main | fight | party | bag
   const actionBusy = useRef(false)
   const [item, setItem] = useState(null) // item da Bolsa escolhido (falta escolher em quem)
@@ -856,6 +865,12 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
           }))
         if (e.key === 'statsReset') setShown((s) => ({ ...s, boosts: [{}, {}] }))
         if (e.key === 'crit') setFlash((n) => n + 1)
+        // Habilidade em ação: a faixa do lado do Pokémon, como nos jogos.
+        if (e.key === 'abilityShow' && (who === 0 || who === 1)) {
+          const shownAbility = { side: who, name: e.args[0].name, ability: e.args[1], k: Date.now() }
+          setAbility(shownAbility)
+          setTimeout(() => setAbility((a) => (a?.k === shownAbility.k ? null : a)), 2200)
+        }
         const line = format(e)
         if (!line) continue
         setText(line)
@@ -928,12 +943,20 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         // O cenário muda com o clima (céu, chão, chuva caindo...).
         setShown((s) => ({ ...s, weather: e.weather }))
         await wait(600)
+      } else if (e.t === 'terrain') {
+        // Terreno (do lugar ou de um golpe): o chão do campo muda.
+        setShown((s) => ({ ...s, terrain: e.terrain }))
+        await wait(500)
+      } else if (e.t === 'place') {
+        // O efeito do lugar (Battle Factory): diamantes caindo, névoa tóxica...
+        setShown((s) => ({ ...s, place: e.place }))
+        await wait(500)
       }
     }
     } finally {
       actionBusy.current = false
       if (live.current) {
-        setShown({active:battle.sides.map(s=>s.active),hp:battle.sides.map(s=>s.team.map(m=>m.hp)),status:battle.sides.map(s=>s.team.map(m=>m.status)),fainted:battle.sides.map(s=>s.team[s.active].hp<=0),form:battle.sides.map(s=>{const mon=s.team[s.active];return mon.dmax>0?mon.gmax??mon.id:mon.id}),dmax:battle.sides.map(s=>s.team[s.active].dmax>0),weather:battle.weather,boosts:battle.sides.map(s=>boostsOf(s.team[s.active])),tera:battle.sides.map(s=>teraOf(s.team[s.active]))})
+        setShown({active:battle.sides.map(s=>s.active),hp:battle.sides.map(s=>s.team.map(m=>m.hp)),status:battle.sides.map(s=>s.team.map(m=>m.status)),fainted:battle.sides.map(s=>s.team[s.active].hp<=0),form:battle.sides.map(s=>{const mon=s.team[s.active];return mon.dmax>0?mon.gmax??mon.id:mon.id}),dmax:battle.sides.map(s=>s.team[s.active].dmax>0),weather:battle.weather,terrain:battle.terrain??'',place:battle.place??'',boosts:battle.sides.map(s=>boostsOf(s.team[s.active])),tera:battle.sides.map(s=>teraOf(s.team[s.active]))})
         setEffect(null)
         skip.current = null
         setBusy(false)
@@ -1100,7 +1123,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
             </div>
           )}
         </div>
-        <div className="absolute bottom-[12%] left-[1%] w-[58%]">
+        <div className="absolute bottom-[22%] left-[1%] w-[58%]">
           <PlatformBase scene={scene} side="mine" scale={battleScale(byId?.get(shown.form[0] ?? me.id)?.height)} />
           <div className={`poke-${poke[0] || 'shown'}`}>
             <BattleSprite ref={sprites[0]} mon={me} id={shown.form[0] ?? me.id} dmax={shown.dmax[0]} tera={shown.tera[0]} back fainted={shown.fainted[0]} byId={byId} />
@@ -1112,7 +1135,14 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
             <TrainerBack trainer={myTrainer} frame={intro.back} box={fieldHeight(field) * 0.62} />
           </div>
         )}
-        <WeatherFx weather={shown.weather} />
+        <WeatherFx weather={shown.weather} terrain={shown.terrain} place={shown.place} />
+        {/* A habilidade em ação: a faixa sai do lado do Pokémon (o adversário à direita, o seu à esquerda), como nos jogos. */}
+        {ability && (
+          <div key={ability.k} className={`ability-banner absolute z-20 ${ability.side === 1 ? 'ability-banner-1 right-0 top-[30%] rounded-l-lg' : 'ability-banner-0 left-0 bottom-[34%] rounded-r-lg'} bw-box px-3 py-1 text-white`} data-testid="ability-banner">
+            <p className="bw-text text-[10px] font-bold leading-tight opacity-90 sm:text-xs" data-no-translate>{ability.name}</p>
+            <p className="bw-text text-sm font-black leading-tight sm:text-base" data-no-translate>{ability.ability}</p>
+          </div>
+        )}
         {effect && <MoveFx key={effect.key} plan={effect.plan} color={effect.color} />}
         {flash > 0 && <div key={`flash-${flash}`} className="battle-flash pointer-events-none absolute inset-0 bg-white" />}
         <div className={`absolute right-0 bottom-[24%] w-[50%] max-w-[300px] transition-opacity ${intro && poke[0] === 'hidden' ? 'opacity-0' : ''}`}>

@@ -897,6 +897,11 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
 
   /// Clima na tela (o cenário muda com ele).
   late String _weather = widget.battle.weather;
+  late String _terrain = widget.battle.terrain;
+  late String _place = widget.battle.place;
+
+  /// A faixa da habilidade em ação (como nos jogos): (lado, Pokémon, habilidade).
+  (int, String, String)? _ability;
   late String _text = widget.foeName.isNotEmpty ? tr('{0} quer batalhar!').replaceAll('{0}', widget.foeName) : tr('Um treinador quer batalhar!');
   bool _busy = false;
   String _menu = 'main'; // main | fight | party | bag
@@ -1177,6 +1182,15 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
           await _wait(300);
         case 'text':
           if (e.key == 'crit') setState(() => _flash++);
+          // Habilidade em ação: a faixa do lado do Pokémon, como nos jogos.
+          if (e.key == 'abilityShow' && e.args.length > 1 && e.args.first is (int, String)) {
+            final who = e.args.first as (int, String);
+            final shown = (who.$1, who.$2, '${e.args[1]}');
+            setState(() => _ability = shown);
+            Future.delayed(const Duration(milliseconds: 2200), () {
+              if (mounted && identical(_ability, shown)) setState(() => _ability = null);
+            });
+          }
           // Estágio do atributo na caixa de HP, junto com o texto (o fim do turno confere com o motor).
           final by = _boostText[e.key];
           final who = e.args.isNotEmpty && e.args.first is (int, String) ? (e.args.first as (int, String)).$1 : -1;
@@ -1248,6 +1262,14 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
           // O cenário muda com o clima (céu, chão, chuva caindo...).
           setState(() => _weather = e.type);
           await _wait(600);
+        case 'terrain':
+          // Terreno (do lugar ou de um golpe): o chão do campo muda.
+          setState(() => _terrain = e.type);
+          await _wait(500);
+        case 'place':
+          // O efeito do lugar (Battle Factory): diamantes caindo, névoa tóxica...
+          setState(() => _place = e.type);
+          await _wait(500);
         case 'ball':
           // Battle Factory: a bola no selvagem; ele entra nela, ela balança (até 3 vezes) e pega ou abre.
           BattleSounds.play('throw');
@@ -1298,6 +1320,8 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
           _tera[side] = _teraOf(_b.active(side));
         }
         _weather = _b.weather;
+        _terrain = _b.terrain;
+        _place = _b.place;
         _fx = null;
         _skip = null;
         _busy = false;
@@ -1638,7 +1662,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                         ),
                       Positioned(
                           left: w * 0.01,
-                          bottom: h * 0.12,
+                          bottom: h * 0.22,
                           width: w * 0.58,
                           height: w * 0.58,
                           child: Stack(clipBehavior: Clip.none, fit: StackFit.expand, children: [
@@ -1648,7 +1672,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                                 child: _Sprite(key: _sprites[0], mon: me, id: _form[0] ?? me.id, dmax: _dmax[0], tera: _tera[0], back: true, fainted: _fainted[0])),
                           ])),
                       if (_ball[0] != null)
-                        Positioned(left: w * 0.01, bottom: h * 0.12, width: w * 0.58, height: w * 0.58, child: _Ball(side: 0, phase: _ball[0]!)),
+                        Positioned(left: w * 0.01, bottom: h * 0.22, width: w * 0.58, height: w * 0.58, child: _Ball(side: 0, phase: _ball[0]!)),
                       if (_introOn && _myTrainer != null)
                         Positioned(
                           left: w * 0.02,
@@ -1673,7 +1697,34 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                                   onTap: () => _inspect(0),
                                   child: _InfoBox(mon: me, hp: _hp[0][_active[0]], status: _status[0][_active[0]], dmax: _dmax[0], boosts: _boosts[0], mine: true, bw: true,
                                       exp: expBarOf(_b, _active[0], _hp[1]))))),
-                      Positioned.fill(child: _WeatherFx(_weather)),
+                      Positioned.fill(child: _WeatherFx(_weather, terrain: _terrain, place: _place)),
+                      // A habilidade em ação: a faixa sai do lado do Pokémon (o adversário à direita, o seu à esquerda).
+                      if (_ability != null)
+                        Positioned(
+                          key: ValueKey(('ability', _ability)),
+                          right: _ability!.$1 == 1 ? 0 : null,
+                          left: _ability!.$1 == 0 ? 0 : null,
+                          top: _ability!.$1 == 1 ? h * 0.30 : null,
+                          bottom: _ability!.$1 == 0 ? h * 0.34 : null,
+                          child: TweenAnimationBuilder<double>(
+                            tween: Tween(begin: 1, end: 0),
+                            duration: const Duration(milliseconds: 260),
+                            builder: (context, v, child) => FractionalTranslation(translation: Offset(_ability!.$1 == 1 ? v : -v, 0), child: child),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF5B5B5B), Color(0xFF2C2C2C)]),
+                                border: Border.all(color: const Color(0xFF181818), width: 2),
+                                borderRadius: _ability!.$1 == 1 ? const BorderRadius.horizontal(left: Radius.circular(8)) : const BorderRadius.horizontal(right: Radius.circular(8)),
+                              ),
+                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                                // Nomes como no jogo (não traduz).
+                                m.Text(_ability!.$2, style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold, shadows: _bwShadow)),
+                                m.Text(_ability!.$3, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900, shadows: _bwShadow)),
+                              ]),
+                            ),
+                          ),
+                        ),
                       if (_fx != null) _MoveFx(key: ValueKey(('fx', _fx!.$3)), plan: _fx!.$1, color: _fx!.$2, w: w, h: h),
                       if (_flash > 0) _Flash(key: ValueKey(('flash', _flash))),
                       // A mensagem dentro da tela, embaixo, como nos jogos (tocar passa o texto).
@@ -1925,8 +1976,12 @@ class _MenuButton extends StatelessWidget {
 /// O clima caindo por cima do campo (chuva, areia, granizo, neve) ou o brilho
 /// do sol. Igual ao site (index.css, .weather-*).
 class _WeatherFx extends StatefulWidget {
-  const _WeatherFx(this.weather);
+  const _WeatherFx(this.weather, {this.terrain = '', this.place = ''});
   final String weather;
+
+  /// Terreno (o chão muda de cor e brilha) e o efeito do lugar (diamantes, pedras e cinzas caindo, névoa, frio, aura,
+  /// correnteza). Igual ao site (index.css, .terrain-* e .place-*).
+  final String terrain, place;
   @override
   State<_WeatherFx> createState() => _WeatherFxState();
 }
@@ -1948,7 +2003,7 @@ class _WeatherFxState extends State<_WeatherFx> with SingleTickerProviderStateMi
 
   /// Só anima com clima (e sem "reduzir animações" no celular).
   void _sync() {
-    if (widget.weather.isNotEmpty) {
+    if (widget.weather.isNotEmpty || widget.terrain.isNotEmpty || widget.place.isNotEmpty) {
       if (!_clock.isAnimating) _clock.repeat();
     } else {
       _clock.stop();
@@ -1965,16 +2020,12 @@ class _WeatherFxState extends State<_WeatherFx> with SingleTickerProviderStateMi
   Widget build(BuildContext context) {
     final still = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
     return IgnorePointer(
-      child: AnimatedOpacity(
-        opacity: widget.weather.isEmpty ? 0 : 1,
-        duration: const Duration(milliseconds: 700),
-        child: RepaintBoundary(
-          child: AnimatedBuilder(
-            animation: _clock,
-            builder: (context, _) => CustomPaint(
-              painter: _WeatherPainter(widget.weather, still ? 0 : _clock.value * 6),
-              size: Size.infinite,
-            ),
+      child: RepaintBoundary(
+        child: AnimatedBuilder(
+          animation: _clock,
+          builder: (context, _) => CustomPaint(
+            painter: _WeatherPainter(widget.weather, still ? 0 : _clock.value * 6, terrain: widget.terrain, place: widget.place),
+            size: Size.infinite,
           ),
         ),
       ),
@@ -1984,9 +2035,56 @@ class _WeatherFxState extends State<_WeatherFx> with SingleTickerProviderStateMi
 
 /// Desenha as partículas do clima no tempo [t] (segundos, volta a cada 6).
 class _WeatherPainter extends CustomPainter {
-  const _WeatherPainter(this.weather, this.t);
-  final String weather;
+  const _WeatherPainter(this.weather, this.t, {this.terrain = '', this.place = ''});
+  final String weather, terrain, place;
   final double t;
+
+  /// O terreno: a metade de baixo do campo na cor dele, pulsando.
+  void _terrain(Canvas canvas, Size size) {
+    final color = const {'grassy': Color(0xFF4ADE80), 'electric': Color(0xFFFACC15), 'misty': Color(0xFFF472B6), 'psychic': Color(0xFFC084FC)}[terrain];
+    if (color == null) return;
+    final pulse = 0.75 + 0.25 * cos(t * pi * 2 / 2.4);
+    final rect = Rect.fromLTWH(0, size.height * 0.45, size.width, size.height * 0.55);
+    canvas.drawRect(rect, Paint()..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, color.withValues(alpha: 0.45 * pulse)]).createShader(rect));
+  }
+
+  /// O efeito do lugar: partículas simples (caindo, de lado ou flutuando).
+  void _place(Canvas canvas, Size size) {
+    final w = size.width, h = size.height;
+    switch (place) {
+      case 'miasma' || 'haunt':
+        final color = place == 'miasma' ? const Color(0xFFA855F7) : const Color(0xFFA78BFA);
+        for (var i = 0; i < 4; i++) {
+          final c = Offset((_hash(i, 1) + 0.04 * sin(t + i)) * w, (0.2 + 0.7 * _hash(i, 2)) * h);
+          canvas.drawCircle(c, w * (0.12 + 0.08 * _hash(i, 3)), Paint()..shader = RadialGradient(colors: [color.withValues(alpha: 0.32), Colors.transparent]).createShader(Rect.fromCircle(center: c, radius: w * 0.2)));
+        }
+        return;
+      case 'current' || 'chill':
+        final paint = Paint()
+          ..color = (place == 'current' ? const Color(0xFFBAE6FD) : const Color(0xFFE0F2FE)).withValues(alpha: 0.65)
+          ..strokeWidth = 1.3
+          ..strokeCap = StrokeCap.round;
+        for (var i = 0; i < 24; i++) {
+          final x = ((_hash(i, 1) + t * (place == 'current' ? 0.5 : 0.8)) % 1.0) * w;
+          final y = _hash(i, 2) * h;
+          canvas.drawLine(Offset(x, y), Offset(x + w * 0.05, y + (place == 'current' ? sin(t * 3 + i) * 3 : 0)), paint);
+        }
+        return;
+      case 'diamonds' || 'rockfall' || 'ashes':
+        if (place == 'ashes') canvas.drawRect(Offset.zero & size, Paint()..color = const Color(0x26783214));
+        for (var i = 0; i < 36; i++) {
+          final speed = place == 'ashes' ? 0.2 : place == 'rockfall' ? 1.1 : 0.7;
+          final y = ((_hash(i, 1) + t * speed * (0.75 + 0.5 * _hash(i, 3))) % 1.0) * h;
+          final x = (_hash(i, 2) + (place == 'ashes' ? y / h * 0.1 : 0)) % 1.0 * w;
+          if (place == 'diamonds') {
+            final s = 2.5 + 2 * _hash(i, 4);
+            canvas.drawPath(Path()..moveTo(x, y - s)..lineTo(x + s * 0.7, y)..lineTo(x, y + s)..lineTo(x - s * 0.7, y)..close(), Paint()..color = const Color(0xFFE0F2FE));
+          } else {
+            canvas.drawCircle(Offset(x, y), place == 'rockfall' ? 2.5 + 1.5 * _hash(i, 4) : 1.6, Paint()..color = place == 'rockfall' ? const Color(0xFF857A6A) : (i.isEven ? const Color(0xFFFB923C) : const Color(0xFF78716C)));
+          }
+        }
+    }
+  }
 
   /// Posição fixa (0 a 1) de cada partícula, sem sorteio a cada quadro.
   static double _hash(int i, int k) {
@@ -1997,6 +2095,21 @@ class _WeatherPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
+    _terrain(canvas, size);
+    _place(canvas, size);
+    if (weather == 'wind') {
+      // Ventos fortes (Delta Stream): riscos brancos passando de lado.
+      final paint = Paint()
+        ..color = const Color(0x99FFFFFF)
+        ..strokeWidth = 1.4
+        ..strokeCap = StrokeCap.round;
+      for (var i = 0; i < 26; i++) {
+        final x = (1 - (_hash(i, 1) + t * 1.6) % 1.0) * w;
+        final y = _hash(i, 2) * h;
+        canvas.drawLine(Offset(x, y), Offset(x + w * (0.06 + 0.06 * _hash(i, 3)), y), paint);
+      }
+      return;
+    }
     if (weather == 'sun') {
       // Brilho do sol pulsando no canto.
       final glow = 0.8 + 0.2 * cos(t * pi * 2 / 3);
@@ -2041,7 +2154,7 @@ class _WeatherPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_WeatherPainter old) => old.t != t || old.weather != weather;
+  bool shouldRepaint(_WeatherPainter old) => old.t != t || old.weather != weather || old.terrain != terrain || old.place != place;
 }
 
 class _Sprite extends StatefulWidget {

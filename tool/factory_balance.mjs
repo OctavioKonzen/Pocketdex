@@ -37,11 +37,12 @@ function battle(run) {
   const mine = order.map((i) => engineMon(F.memberOf(run, run.team[i], movesOf(run.team[i].id, run.team[i].level))))
   const theirs = run.encounter.foes.map((f) => engineMon(F.foeMember(f, movesOf(f.id, f.level))))
   const capture = F.captureFor(run, data)
-  // O clima do lugar, como no jogo (ginásio e Liga sem clima).
-  const boss = run.encounter.boss?.kind
-  const scene = boss === 'gym' ? 'gym' : boss === 'elite' || boss === 'champion' ? 'league' : run.encounter.scene ?? 'grass'
-  const weather = F.weatherOf(run, scene)
-  const game = sim.create({ teams: [mine, theirs], seed: [run.seed & 0xffff, run.floor, 3, 4], bags: F.bagsFor(run), healPct: true, ...(capture ? { capture } : {}), ...(weather ? { weather } : {}) })
+  // O cenário, o clima e o efeito do lugar, como no jogo.
+  const scene = F.bossScene(data, run.encounter.boss, run.encounter.scene ?? 'grass')
+  const place = F.fieldOf(run, scene)
+  const weather = F.weatherOf(run, scene) || (place === 'wind' ? 'wind' : '')
+  const field = place === 'wind' ? '' : place
+  const game = sim.create({ teams: [mine, theirs], seed: [run.seed & 0xffff, run.floor, 3, 4], bags: F.bagsFor(run), healPct: true, ...(capture ? { capture } : {}), ...(weather ? { weather } : {}), ...(field ? { field } : {}) })
   // Vale capturar? Com vaga no time ou mais forte que o mais fraco.
   const foe0 = run.encounter.foes[0]
   const weakest = Math.min(...run.team.map(strength))

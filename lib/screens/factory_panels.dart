@@ -60,14 +60,17 @@ Future<(TurnBattle, List<int>)> factoryBattle(Json run) async {
   // Selvagem: as Poké Balls da Bolsa funcionam (captureFor: a taxa de captura de cada um).
   // O cenário: o lugar do andar (cidade, floresta, caverna, mar...).
   // Líder de ginásio no ginásio, Elite Four e Campeão na Liga.
-  final scene = switch (run['encounter']?['boss']?['kind']) {
-    'gym' => 'gym',
-    'elite' || 'champion' => 'league',
-    _ => '${run['encounter']?['scene'] ?? run['encounter']?['biome'] ?? 'grass'}',
-  };
+  // O líder no ginásio do tipo dele, a Elite Four na Liga, o Campeão na sala dele e o vilão na base da equipe.
+  final scene = FactoryRun.bossScene(data, run['encounter']?['boss'] as Map?, '${run['encounter']?['scene'] ?? run['encounter']?['biome'] ?? 'grass'}');
   // E o clima do lugar (sol no deserto, chuva no mar, neve na caverna de gelo...).
+  // E o efeito do lugar (terreno, chuva de diamantes, aura sombria...; no céu, ventos fortes).
+  final place = FactoryRun.fieldOf(run, scene);
   final battle = TurnBattle(a, b, League.seededRandom(seed),
-      startBags: FactoryRun.bagsFor(run), healPct: true, capture: FactoryRun.captureFor(run, data), startWeather: FactoryRun.weatherOf(run, scene))
+      startBags: FactoryRun.bagsFor(run),
+      healPct: true,
+      capture: FactoryRun.captureFor(run, data),
+      startWeather: FactoryRun.weatherOf(run, scene).isNotEmpty ? FactoryRun.weatherOf(run, scene) : (place == 'wind' ? 'wind' : ''),
+      startField: place == 'wind' ? '' : place)
     ..ai = 'normal'
     ..seed = seed
     ..members = (mine: BattleLog.toRecord(mine), theirs: BattleLog.toRecord(theirs))
@@ -117,14 +120,27 @@ double? expBarOf(TurnBattle battle, int slot, List<int> foeHp) {
   return (hp: hp, bag: {for (final id in FactoryRun.bagItems) id: battle.bags[0][id] ?? 0}, captured: battle.captured != null, fought: fought);
 }
 
+/// Os capangas de cada equipe vilã (homem e mulher). Igual ao site.
+const _gruntTrainers = {
+  'rocket': ['sd-rocketgrunt', 'sd-rocketgruntf'], 'aqua': ['sd-aquagrunt', 'sd-aquagruntf'], 'magma': ['sd-magmagrunt', 'sd-magmagruntf'],
+  'galactic': ['sd-galacticgrunt', 'sd-galacticgruntf'], 'plasma': ['sd-plasmagrunt', 'sd-plasmagruntf'], 'flare': ['sd-flaregrunt', 'sd-flaregruntf'],
+  'skull': ['sd-skullgrunt', 'sd-skullgruntf'], 'aether': ['sd-aetheremployee', 'sd-aetheremployeef'], 'star': ['sd-stargrunt-s', 'sd-stargruntf-s'],
+};
+
 /// Quem é o adversário do andar: o chefe (nome, treinador e música) ou um selvagem (sem treinador).
 ({String foeName, String? foeTrainer, Json challenge}) factoryFoe(Json run) {
   final encounter = run['encounter'] as Map;
   final boss = encounter['boss'] as Map?;
   final kind = encounter['kind'];
+  // Na base de uma equipe vilã, o capanga dela.
+  final grunt = _gruntTrainers[encounter['grunt']];
   return (
     foeName: '${boss?['name'] ?? ''}',
-    foeTrainer: (boss?['trainer'] as String?)?.isNotEmpty == true ? boss!['trainer'] as String : null,
+    foeTrainer: (boss?['trainer'] as String?)?.isNotEmpty == true
+        ? boss!['trainer'] as String
+        : grunt != null
+            ? grunt[((encounter['trainerSeed'] as num?)?.toInt() ?? 0) % 2]
+            : null,
     challenge: {'kind': 'factory', 'wild': kind == 'wild' || kind == 'wildboss', if (boss != null) 'boss': Map<String, dynamic>.from(boss)},
   );
 }
@@ -810,6 +826,16 @@ const _biomeInfo = <String, (String, String, Color)>{
   'sewer': ('Esgoto', '🚰', Color(0xFF475569)),
   'icecave': ('Caverna de gelo', '🧊', Color(0xFF0891B2)),
   'desert': ('Deserto', '🏜️', Color(0xFFB45309)),
+  // As bases das equipes vilãs (só capangas).
+  'base-rocket': ('Base da Equipe Rocket', '🏴', Color(0xFFB91C1C)),
+  'base-aqua': ('Base da Equipe Aqua', '🏴', Color(0xFF1D4ED8)),
+  'base-magma': ('Base da Equipe Magma', '🏴', Color(0xFFC2410C)),
+  'base-galactic': ('Base da Equipe Galáctica', '🏴', Color(0xFF0E7490)),
+  'base-plasma': ('Castelo da Equipe Plasma', '🏴', Color(0xFF1E40AF)),
+  'base-flare': ('Laboratório da Equipe Flare', '🏴', Color(0xFFDC2626)),
+  'base-skull': ('Base da Equipe Skull', '🏴', Color(0xFF6B21A8)),
+  'base-aether': ('Paraíso Aether', '🏴', Color(0xFFCA8A04)),
+  'base-star': ('Base da Equipe Estrela', '🏴', Color(0xFFDB2777)),
 };
 
 /// Cada ponto do mapa: símbolo, nome e o que tem nele.
@@ -963,7 +989,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
   Widget _fieldMon(Map mon, double w, double h, {bool back = false}) {
     final sprite = StageMon(id: (mon['id'] as num).toInt(), shiny: mon['shiny'] == true, back: back, scene: _scene);
     return back
-        ? Positioned(left: w * 0.01, bottom: h * 0.12, width: w * 0.58, height: w * 0.58, child: sprite)
+        ? Positioned(left: w * 0.01, bottom: h * 0.22, width: w * 0.58, height: w * 0.58, child: sprite)
         : Positioned(right: w * 0.11, bottom: h * foeBottom(_scene), width: w * 0.26, height: w * 0.26, child: sprite);
   }
 
@@ -1524,7 +1550,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
           ? _townMap(route, options, pos, cities.from, cities.to, '${boss['region']} · ${boss['game']}', me,
               widget.busy ? null : pick, (node) => FactoryRun.isBattleNode(node) && down)
           // O líder espera no ginásio da cidade; a Elite Four e o Campeão, na Liga (nunca no meio da rota).
-          : _field(meeting && _cityKinds.contains(boss['kind']) ? (boss['kind'] == 'gym' ? 'gym' : 'league') : '${route['biome']}', key: const ValueKey('factory-map'), (w, h) {
+          : _field(meeting && _cityKinds.contains(boss['kind']) ? FactoryRun.bossScene(data, boss, '${route['biome']}') : '${route['biome']}', key: const ValueKey('factory-map'), (w, h) {
         double x(int k) => w * (0.08 + k / end * 0.84);
         final y = h * 0.34;
         return [
@@ -1595,7 +1621,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
               final b = _biomeInfo[node['biome']];
               final isBoss = node['kind'] == 'boss';
               return _menuButton(
-                '${options.length == 1 && !isBoss ? '${tr('SEGUIR')}: ' : ''}${b?.$2 ?? info.$1} ${isBoss ? '${boss['name']}' : tr(info.$2)}${b != null ? ' · ${tr(b.$1)}' : ''}',
+                '${options.length == 1 && !isBoss ? '${tr('SEGUIR')}: ' : ''}${node['biome'] == 'underwater' && route['biome'] != 'underwater' ? '🤿 ${tr('MERGULHAR')}: ' : ''}${b?.$2 ?? info.$1} ${isBoss ? '${boss['name']}' : tr(info.$2)}${b != null ? ' · ${tr(b.$1)}' : ''}',
                 widget.busy || (FactoryRun.isBattleNode(node) && down) ? null : () => pick(k),
                 sub: isBoss ? '${_bossKind(boss['kind'])}${ambush ? '' : ' · ${cities.to}'}' : tr(info.$3),
                 key: ValueKey('map-node-$k'),

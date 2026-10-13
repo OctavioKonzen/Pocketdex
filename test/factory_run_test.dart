@@ -139,6 +139,28 @@ void main() {
     expect(FactoryRun.buyItem(bought, 'town-map', 0, data), isNull);
   });
 
+  test('base da equipe vilã: só capangas com os Pokémon da equipe; cenário de cada chefe (igual ao site)', () {
+    final run = {...FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!, 'floor': 23, 'leg': 3, 'boss': {'region': 0, 'step': 11}};
+    expect(FactoryRun.routeBiome(data, run), 'base-rocket');
+    var state = 11;
+    double rand() {
+      final (v, s) = FactoryRun.nextRandom(state);
+      state = s;
+      return v;
+    }
+    for (var i = 0; i < 30; i++) {
+      final route = FactoryRun.routeOptions({...run, 'floor': 21 + (i % 8)}, data, rand);
+      expect((route['options'] as List).any((o) => ['wild', 'mart', 'trade', 'wildboss'].contains(o['kind'])), isFalse);
+    }
+    final grunt = FactoryRun.encounterFor(data, 23, rand, null, false, {'kind': 'trainer', 'biome': 'base-rocket'});
+    expect(grunt['grunt'], 'rocket');
+    final brock = (data.bosses[0]['leaders'] as List).cast<Map>().firstWhere((l) => l['id'] == 'kanto-brock');
+    expect(FactoryRun.bossScene(data, {...brock, 'region': 'Kanto'}), 'gym-rock');
+    expect(FactoryRun.bossScene(data, {'kind': 'champion', 'region': 'Kanto'}), 'champion-kanto');
+    expect(FactoryRun.bossScene(data, {'kind': 'villain', 'name': 'Archie'}), 'base-aqua');
+    expect(FactoryRun.bossScene(data, null, 'forest'), 'forest');
+  });
+
   test('troca, Escape Rope e conquistas (iguais ao site)', () {
     final base = FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!;
     final first = FactoryRun.teamOf(base).first;
@@ -339,13 +361,13 @@ void main() {
       expect(FactoryRun.routeOptions(on(12, step, 12), data, seq([0.5]))['options'], [{'kind': 'boss'}]);
     }
     expect(FactoryRun.routeCities(data, on(12, first + 1, 12)), (from: 'Indigo Plateau', to: 'Indigo Plateau'));
-    // Os tipos do lugar aparecem bem mais (os outros ainda aparecem).
+    // Selvagem: só quem vive no lugar (o habitat dele, dos locais de encontro dos jogos).
     var local = 0;
     for (var i = 0; i < 100; i++) {
       final water = FactoryRun.encounterFor(data, 20, rand, null, false, {'kind': 'wild', 'biome': 'water'});
-      if ((data.species[water['foes'][0]['id']]![4] as List).any(FactoryRun.biomes['water']!.contains)) local++;
+      if ((data.species[water['foes'][0]['id']]![6] as List).contains('water')) local++;
     }
-    expect(local, greaterThan(60));
+    expect(local, 100);
     final cave = {...at(20), 'encounter': {'kind': 'wild', 'biome': 'cave', 'foes': [{'id': 74, 'level': 20}]}};
     expect(FactoryRun.captureFor(cave, data), {'rates': [255], 'dusk': true});
     final ace = FactoryRun.encounterFor(data, 30, rand, null, false, {'kind': 'ace'});

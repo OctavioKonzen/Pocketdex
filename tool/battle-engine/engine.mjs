@@ -79,6 +79,48 @@ function setFor(mon, index) {
   return {...set, species: speciesFor(set.species).name, ability, moves: set.moves.map(id), name: `pd${index}`, level: Math.min(mon.levelCap === 'none' ? 9999 : mon.levelCap === 100 ? 100 : 50, Math.max(1, set.level || 50)), gigantamax: Boolean(mon.gmax), teraType: title(mon.teraType || set.teraType || '')};
 }
 
+/**
+ * Efeitos de lugar da Battle Factory (como a chuva de diamantes do Mt. Moon): no fim de cada turno, ferem (1/16 do HP)
+ * quem não é dos tipos imunes ou curam (1/16) quem é dos tipos do lugar.
+ */
+const PLACE_EFFECTS = {
+  diamonds: {name: 'a chuva de diamantes', hurt: true, types: ['Rock', 'Steel', 'Ground']},
+  rockfall: {name: 'o desmoronamento', hurt: true, types: ['Rock', 'Ground', 'Steel']},
+  ashes: {name: 'as cinzas ardentes', hurt: true, types: ['Fire']},
+  miasma: {name: 'a névoa tóxica', hurt: true, types: ['Poison', 'Steel']},
+  chill: {name: 'o frio cortante', hurt: true, types: ['Ice']},
+  haunt: {name: 'a aura sombria', hurt: false, types: ['Ghost', 'Dark']},
+  current: {name: 'a correnteza', hurt: false, types: ['Water']},
+};
+const placeEffects = {};
+function placeEffect(key, dex) {
+  const effect = makePlaceEffect(key);
+  // O simulador procura os efeitos do campo pelo id: registra o nosso.
+  dex.conditions.conditionCache.set(effect.id, effect);
+  return effect;
+}
+function makePlaceEffect(key) {
+  if (placeEffects[key]) return placeEffects[key];
+  const def = PLACE_EFFECTS[key];
+  const Condition = Dex.conditions.get('gravity').constructor;
+  placeEffects[key] = new Condition({
+    name: `PocketDex ${key}`, effectType: 'Condition',
+    onResidualOrder: 5,
+    onResidual(pokemon) {
+      if (!pokemon.hp || pokemon.fainted) return;
+      const has = pokemon.getTypes().some(t => def.types.includes(t));
+      if (def.hurt && !has) {
+        this.add('pocketdexplace', pokemon, key, 'hurt');
+        this.damage(pokemon.baseMaxhp / 16, pokemon, null, placeEffects[key]);
+      } else if (!def.hurt && has && pokemon.hp < pokemon.maxhp) {
+        this.add('pocketdexplace', pokemon, key, 'heal');
+        this.heal(pokemon.baseMaxhp / 16, pokemon, null, placeEffects[key]);
+      }
+    },
+  });
+  return placeEffects[key];
+}
+
 function configure(game) {
   const canZMove = game.battle.actions.canZMove.bind(game.battle.actions);
   game.battle.actions.canZMove = pokemon => game.teams[pokemon.side.n][originalIndex(pokemon)].gimmick === 'z' ? canZMove(pokemon) : undefined;
@@ -345,6 +387,7 @@ function eventsFor(game, lines) {
       } else if (!POTIONS.includes(fromItem.toLowerCase()) && !parts.includes('[silent]')) {
         if (fromItem && !/Berry$/.test(fromItem)) say('healedBy', label(side), fromItem);
         else if (fromAbility) say('healedBy', label(side), fromAbility);
+        else if (from === 'Grassy Terrain' || from === 'grassyterrain') say('healedBy', label(side), 'Grassy Terrain');
         else if (from === 'drain' && of) say('drained', of);
         else if (!from && !lines.slice(lineIndex + 1).some(l => l.startsWith('|pocketdexheal|'))) say('healedMove', label(side));
       }
@@ -409,7 +452,8 @@ function eventsFor(game, lines) {
       const mon = game.teams[side][active[side]];
       events.push({t: 'dmax', side, on: kind === '-start', id: kind === '-start' ? mon.gmax || mon.id : mon.id});
     } else if (kind === '-weather' && value !== '[upkeep]') {
-      const weather = {RainDance: 'rain', SunnyDay: 'sun', Sandstorm: 'sand', Hail: 'hail', Snow: 'snow'}[actor] || '';
+      const weather = {RainDance: 'rain', SunnyDay: 'sun', Sandstorm: 'sand', Hail: 'hail', Snow: 'snow', DeltaStream: 'wind'}[actor] || '';
+      if (actor === 'DeltaStream') say('windStart');
       // Drizzle, Drought, Sand Stream, Snow Warning: mostra a habilidade e o clima que começou.
       if (fromAbility && of) say('abilityShow', of, fromAbility);
       const text = WEATHER_TEXT[actor] || '';
@@ -431,6 +475,19 @@ function eventsFor(game, lines) {
       say(by ? `${up ? 'statUp' : 'statDown'}${by > 1 ? by : ''}` : up ? 'statMax' : 'statMin', label(side), value);
     } else if (kind === '-setboost' && Number(extra) === 6) say('statUp3', label(side), value);
     else if (kind === '-clearallboost') say('statsReset');
+    else if ((kind === '-fieldstart' || kind === '-fieldend') && /Terrain$/.test(actor ?? '')) {
+      // Terreno (o do lugar ou de um golpe): o chão do campo muda.
+      const terrain = {'Grassy Terrain': 'grassy', 'Electric Terrain': 'electric', 'Misty Terrain': 'misty', 'Psychic Terrain': 'psychic'}[actor.replace(/^move: /, '')] ?? '';
+      events.push({t: 'terrain', terrain: kind === '-fieldstart' ? terrain : ''});
+      say(kind === '-fieldstart' ? `${terrain}TerrainStart` : `${terrain}TerrainEnd`);
+    } else if (kind === '-fieldstart' && actor?.startsWith('PocketDex: ')) {
+      const key = actor.slice(11);
+      events.push({t: 'place', place: key});
+      say(`${key}Start`);
+    } else if (kind === 'pocketdexplace') {
+      // O efeito do lugar no fim do turno: fere ou cura (a barra mexe na linha seguinte).
+      say(extra === 'heal' ? 'placeHeal' : 'placeHurt', label(side), PLACE_EFFECTS[value]?.name ?? value);
+    }
     else if (['-start', '-end', '-activate', '-sidestart', '-sideend', '-fieldstart', '-fieldend', '-boost', '-unboost', '-setboost', '-clearboost', '-clearallboost', '-prepare', 'cant', '-item', '-enditem', '-ability', '-transform'].includes(kind)) {
       const subject = side >= 0 ? label(side).name : 'Campo';
       const effect = value?.replace(/^move: /, '') || extra || '';
@@ -598,11 +655,22 @@ export const PocketDexSim = {
     configure(game);
     // O clima do lugar (Battle Factory: sol no deserto, chuva no mar, neve na caverna de gelo...): já começa assim e fica até
     // um golpe ou uma habilidade trocar. Uma habilidade que já mudou o clima ao entrar (Drizzle...) vale mais.
-    const [startWeather, weatherName] = {rain: ['raindance', 'RainDance'], sun: ['sunnyday', 'SunnyDay'], sand: ['sandstorm', 'Sandstorm'], snow: ['snowscape', 'Snow']}[input.weather] ?? [];
+    const [startWeather, weatherName] = {rain: ['raindance', 'RainDance'], sun: ['sunnyday', 'SunnyDay'], sand: ['sandstorm', 'Sandstorm'], snow: ['snowscape', 'Snow'], wind: ['deltastream', 'DeltaStream']}[input.weather] ?? [];
     if (startWeather && !battle.field.weather) {
       battle.field.weather = startWeather;
       battle.field.weatherState = {id: startWeather, duration: 0};
       battle.add('-weather', weatherName);
+    }
+    // O efeito do lugar (input.field): um terreno de verdade (Grassy, Electric, Misty, Psychic) ou um efeito próprio do
+    // lugar (PLACE_EFFECTS: a chuva de diamantes na caverna fere quem não é Pedra, a aura sombria cura Fantasma...).
+    const terrain = {grassy: 'grassyterrain', electric: 'electricterrain', misty: 'mistyterrain', psychic: 'psychicterrain'}[input.field];
+    if (terrain && !battle.field.terrain) {
+      battle.field.terrain = terrain;
+      battle.field.terrainState = {id: terrain, duration: 0};
+      battle.add('-fieldstart', `move: ${Dex.conditions.get(terrain).name}`);
+    } else if (PLACE_EFFECTS[input.field]) {
+      battle.field.addPseudoWeather(placeEffect(input.field, battle.dex), 'debug');
+      battle.add('-fieldstart', `PocketDex: ${input.field}`);
     }
     // A espécie do começo de cada Pokémon: mudou depois, é forma de batalha.
     game.startSpecies = battle.sides.map((side) => Object.fromEntries(side.pokemon.map((p) => [originalIndex(p), p.species.name])));

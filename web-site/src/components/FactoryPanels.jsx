@@ -20,7 +20,7 @@ import {
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, MAX_TEAM, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shinyPrice, shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, takeCard, teachMove, teamDown, applyBagItem, unlockShiny, VITAMIN_EVS, VITAMINS,
   buyShiny, forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade,
-  tradeMon, skipTrade, TRADE_LEVELS, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, blindPick,
+  tradeMon, skipTrade, TRADE_LEVELS, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, blindPick, bossScene,
 } from '../lib/factoryRun'
 import { t } from '../lib/i18n'
 import { prettyName } from '../lib/pokemon'
@@ -540,6 +540,16 @@ const BIOME_INFO = {
   sewer: { label: 'Esgoto', icon: '🚰', color: '#475569' },
   icecave: { label: 'Caverna de gelo', icon: '🧊', color: '#0891b2' },
   desert: { label: 'Deserto', icon: '🏜️', color: '#b45309' },
+  // As bases das equipes vilãs (só capangas).
+  'base-rocket': { label: 'Base da Equipe Rocket', icon: '🏴', color: '#b91c1c' },
+  'base-aqua': { label: 'Base da Equipe Aqua', icon: '🏴', color: '#1d4ed8' },
+  'base-magma': { label: 'Base da Equipe Magma', icon: '🏴', color: '#c2410c' },
+  'base-galactic': { label: 'Base da Equipe Galáctica', icon: '🏴', color: '#0e7490' },
+  'base-plasma': { label: 'Castelo da Equipe Plasma', icon: '🏴', color: '#1e40af' },
+  'base-flare': { label: 'Laboratório da Equipe Flare', icon: '🏴', color: '#dc2626' },
+  'base-skull': { label: 'Base da Equipe Skull', icon: '🏴', color: '#6b21a8' },
+  'base-aether': { label: 'Paraíso Aether', icon: '🏴', color: '#ca8a04' },
+  'base-star': { label: 'Base da Equipe Estrela', icon: '🏴', color: '#db2777' },
 }
 /** Cada ponto do mapa: símbolo, nome e o que tem nele. */
 const NODE_INFO = {
@@ -605,7 +615,7 @@ function FieldMon({ mon, byId, back = false, scene }) {
   if (!p) return null
   const scale = battleScale(p.height)
   return (
-    <div className={back ? 'absolute bottom-[12%] left-[1%] w-[58%]' : 'absolute right-[11%] w-[26%]'} style={back ? undefined : { bottom: `${foeBottom(battleScene(scene)) * 100}%` }}>
+    <div className={back ? 'absolute bottom-[22%] left-[1%] w-[58%]' : 'absolute right-[11%] w-[26%]'} style={back ? undefined : { bottom: `${foeBottom(battleScene(scene)) * 100}%` }}>
       <PlatformBase scene={battleScene(scene)} side={back ? 'mine' : 'foe'} scale={scale} />
       <div className="aspect-square w-full" style={{ transform: `scale(${scale})`, transformOrigin: '50% 100%' }}>
         <Sprite key={`${p.id}-${mon.shiny}`} path={mon.shiny ? shinyPath(p.sprite) : p.sprite} box={p.box} fill={0.95} align="bottom" back={back} battle alt={p.name} />
@@ -1037,7 +1047,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     const x = (k) => 8 + (k / (ROUTE_LENGTH + 1)) * 84
     const END = ROUTE_LENGTH + 1
     const fork = route.options.length > 1
-    const meetScene = meeting && CITY_KIND_SET.has(boss.kind) ? (boss.kind === 'gym' ? 'gym' : 'league') : route.biome
+    // O líder no ginásio do tipo dele, a Elite Four na Liga, o Campeão na sala dele; rival e vilões na rota (o vilão, na base da equipe).
+    const meetScene = meeting && CITY_KIND_SET.has(boss.kind) ? bossScene(data, boss, route.biome) : route.biome
     // Sem o Mapa: nada do mapa e, na bifurcação, segue às cegas.
     const hasMap = Boolean(run.townMap)
     field = fork && hasMap ? (
@@ -1113,7 +1124,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
           return (
             <MenuButton key={k} testid={`map-node-${k}`} disabled={busy || (isBattleNode(node) && down)} onClick={() => pickNode(k)}
               sub={node.kind === 'boss' ? `${bossKindLabel(boss.kind)}${CITY_KIND_SET.has(boss.kind) ? ` · ${to}` : ''}` : t(info.help)}>
-              {route.options.length === 1 && node.kind !== 'boss' ? `${t('SEGUIR')}: ` : ''}{b ? b.icon : info.icon} {node.kind === 'boss' ? <span data-no-translate>{boss.name}</span> : t(info.label)}{b ? ` · ${t(b.label)}` : ''}
+              {route.options.length === 1 && node.kind !== 'boss' ? `${t('SEGUIR')}: ` : ''}{node.biome === 'underwater' && route.biome !== 'underwater' ? `🤿 ${t('MERGULHAR')}: ` : ''}{b ? b.icon : info.icon} {node.kind === 'boss' ? <span data-no-translate>{boss.name}</span> : t(info.label)}{b ? ` · ${t(b.label)}` : ''}
             </MenuButton>
           )
         })}

@@ -160,7 +160,12 @@ export const PLATFORMS = {
  * Pokémon) e a versão de cada clima (sprites/battle-weather/<lugar>-sun/rain/sand/snow.webp):
  * Sunny Day, Rain Dance... mudam o cenário. Igual ao app.
  */
-export const SCENE_IMAGES = ['grass', 'forest', 'water', 'beach', 'underwater', 'swamp', 'sewer', 'cave', 'icecave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky', 'tower', 'gym', 'league', 'center']
+/** Os ginásios (um por tipo: o do líder), as salas dos Campeões (uma por região) e as bases das equipes vilãs. Igual ao app. */
+export const GYM_TYPES = ['normal', 'fire', 'water', 'grass', 'electric', 'ice', 'fighting', 'poison', 'ground', 'flying', 'psychic', 'bug', 'rock', 'ghost', 'dragon', 'dark', 'steel', 'fairy']
+export const CHAMPION_REGIONS = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos', 'alola', 'galar', 'paldea']
+export const VILLAIN_BASES = ['rocket', 'aqua', 'magma', 'galactic', 'plasma', 'flare', 'skull', 'aether', 'star']
+const INDOOR = [...GYM_TYPES.map((t) => `gym-${t}`), ...CHAMPION_REGIONS.map((r) => `champion-${r}`), ...VILLAIN_BASES.map((b) => `base-${b}`)]
+export const SCENE_IMAGES = ['grass', 'forest', 'water', 'beach', 'underwater', 'swamp', 'sewer', 'cave', 'icecave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky', 'tower', 'gym', 'league', 'center', ...INDOOR]
 const usable = (scene) => (SCENE_IMAGES.includes(scene) || SCENE_COLORS[scene] ? scene : 'grass')
 /** O clima na imagem (o granizo usa a de neve). */
 const WEATHER_IMAGE = { sun: 'sun', rain: 'rain', sand: 'sand', hail: 'snow', snow: 'snow' }
@@ -188,7 +193,7 @@ export const battleScale = (height) => Math.min(1, Math.max(0.3, Math.sqrt((heig
  */
 export const GROUND_FEET = { grass: 0.487, forest: 0.506, water: 0.487, beach: 0.508, underwater: 0.527, swamp: 0.487, sewer: 0.54, cave: 0.519, icecave: 0.519, mountain: 0.492, desert: 0.495, volcano: 0.5, snow: 0.487, city: 0.548, sky: 0.45, tower: 0.527, gym: 0.527, league: 0.527, center: 0.527 }
 /** A distância do pé do adversário até a borda de baixo do campo (fração), para o "bottom" da caixa dele. */
-export const foeBottom = (scene) => 1 - (GROUND_FEET[scene] ?? 0.45)
+export const foeBottom = (scene) => 1 - (GROUND_FEET[scene] ?? (INDOOR.includes(scene) ? 0.527 : 0.45))
 
 /** Largura da base (fração da caixa do Pokémon) pelo tamanho dele: centralizada nele e do tamanho dele. Igual ao app. */
 export const baseWidth = (scale) => 0.55 + 0.85 * scale

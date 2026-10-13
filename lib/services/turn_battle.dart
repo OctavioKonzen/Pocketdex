@@ -248,6 +248,28 @@ class BattleEvent {
         type = '',
         category = '',
         slug = '';
+  /// Terreno novo em [type] (grassy | electric | misty | psychic; '' = acabou).
+  const BattleEvent.terrain(this.type)
+      : t = 'terrain',
+        key = '',
+        args = const [],
+        side = -1,
+        value = 0,
+        index = 0,
+        category = '',
+        slug = '';
+
+  /// Efeito do lugar da Battle Factory em [type] (diamonds | rockfall | ashes | miasma | chill | haunt | current).
+  const BattleEvent.place(this.type)
+      : t = 'place',
+        key = '',
+        args = const [],
+        side = -1,
+        value = 0,
+        index = 0,
+        category = '',
+        slug = '';
+
   /// Clima novo em [type] (rain | sun | sand | hail | snow; '' = acabou).
   const BattleEvent.weather(this.type)
       : t = 'weather',
@@ -356,7 +378,7 @@ BattleItem? _itemOf(String slug) => battleItems.where((i) => i.slug == slug).fir
 
 class TurnBattle {
   TurnBattle(List<BattleMon> mine, List<BattleMon> theirs, this.random,
-      {this.mode = 'singles', this.controllers, this.rules = const [], this.startBags, this.healPct = false, this.capture, this.startWeather = ''})
+      {this.mode = 'singles', this.controllers, this.rules = const [], this.startBags, this.healPct = false, this.capture, this.startWeather = '', this.startField = ''})
       : teams = [mine, theirs] {
     for (final mon in [...mine, ...theirs]) {
       mon
@@ -381,6 +403,7 @@ class TurnBattle {
         if (healPct) 'healPct': true,
         if (capture != null) 'capture': capture,
         if (startWeather.isNotEmpty) 'weather': startWeather,
+        if (startField.isNotEmpty) 'field': startField,
       }]);
       _simHandle = created['handle'] as int;
       _opening = _simSync(created);
@@ -404,6 +427,9 @@ class TurnBattle {
 
   /// Battle Factory: o clima do lugar no começo (sol no deserto, chuva no mar...). Igual ao site.
   final String startWeather;
+
+  /// Battle Factory: o efeito do lugar no começo (terreno ou o efeito próprio dele). Igual ao site.
+  final String startField;
 
   /// O cenário (lib/widgets/battle_scene.dart): a Battle Factory usa o lugar do andar; '' (batalha comum) sorteia um dos que têm imagem.
   String scene = '';
@@ -460,7 +486,10 @@ class TurnBattle {
     turn = state['turn'] as int;
     winner = state['winner'] as int?;
     captured = state['captured'] as int?;
-    weather = const {'raindance': 'rain', 'sunnyday': 'sun', 'sandstorm': 'sand', 'hail': 'hail', 'snow': 'snow'}[state['weather']] ?? '';
+    weather = const {'raindance': 'rain', 'sunnyday': 'sun', 'sandstorm': 'sand', 'hail': 'hail', 'snow': 'snow', 'snowscape': 'snow', 'deltastream': 'wind'}[state['weather']] ?? '';
+    // Terreno e o efeito de lugar da Battle Factory (pocketdex<efeito>) no campo.
+    terrain = const {'grassyterrain': 'grassy', 'electricterrain': 'electric', 'mistyterrain': 'misty', 'psychicterrain': 'psychic'}[state['terrain']] ?? '';
+    place = [for (final id in (state['pseudoWeather'] as List?) ?? const []) '$id'].where((id) => id.startsWith('pocketdex')).firstOrNull?.substring(9) ?? '';
     for (var side = 0; side < 2; side++) {
       final s = state['sides'][side] as Map;
       activeIndex[side] = s['active'] as int;
@@ -524,6 +553,8 @@ class TurnBattle {
       case 'tera': return BattleEvent.tera(side, e['type'] as String);
       case 'dmax': return BattleEvent.dmax(side, e['on'] == true ? 1 : 0, e['id'] as int);
       case 'weather': return BattleEvent.weather(e['weather'] as String);
+      case 'terrain': return BattleEvent.terrain(e['terrain'] as String);
+      case 'place': return BattleEvent.place(e['place'] as String);
       case 'ball': return BattleEvent.ball(side, e['ball'] as String, e['shakes'] as int, e['caught'] == true ? 1 : 0);
       default: return BattleEvent.text(e['key'] as String, [for (final dynamic arg in e['args'] as List) arg is Map ? (arg['side'] as int, arg['name'] as String) : arg as Object]);
     }
@@ -569,7 +600,7 @@ class TurnBattle {
   }
 
   // Visão da partida sem restaurar HP, formas ou status.
-  TurnBattle._view(this.teams, this.random) : mode = 'singles', controllers = null, rules = const [], startBags = null, healPct = false, capture = null, startWeather = '';
+  TurnBattle._view(this.teams, this.random) : mode = 'singles', controllers = null, rules = const [], startBags = null, healPct = false, capture = null, startWeather = '', startField = '';
   TurnBattle viewFor(int side) {
     final order = [side, 1 - side];
     final view = TurnBattle._view([for (final s in order) teams[s]], random);
@@ -606,6 +637,10 @@ class TurnBattle {
   /// Clima (rain | sun | sand | hail | snow; '' = nenhum) e turnos que faltam.
   String weather = '';
   int weatherTurns = 0;
+
+  /// Terreno (grassy | electric | misty | psychic) e o efeito do lugar da Battle Factory ('' = nenhum).
+  String terrain = '';
+  String place = '';
 
   /// Começa um clima (5 turnos). Se já estava, o golpe de [side] falha.
   void _setWeather(String w, List<BattleEvent> events, [int side = -1]) {
@@ -818,6 +853,9 @@ class TurnBattle {
     'mist': 'Mist', 'luckychant': 'Lucky Chant', 'trickroom': 'Trick Room', 'gravity': 'Gravity', 'magicroom': 'Magic Room',
     'wonderroom': 'Wonder Room', 'electricterrain': 'Electric Terrain', 'grassyterrain': 'Grassy Terrain',
     'mistyterrain': 'Misty Terrain', 'psychicterrain': 'Psychic Terrain',
+    // Os efeitos de lugar da Battle Factory.
+    'pocketdexdiamonds': 'Chuva de diamantes', 'pocketdexrockfall': 'Desmoronamento', 'pocketdexashes': 'Cinzas ardentes',
+    'pocketdexmiasma': 'Névoa tóxica', 'pocketdexchill': 'Frio cortante', 'pocketdexhaunt': 'Aura sombria', 'pocketdexcurrent': 'Correnteza',
   };
 
   /// O campo em textos curtos: [o seu lado, o do adversário, o campo todo]. Igual ao site.
@@ -1658,6 +1696,26 @@ class TurnBattle {
     'snowGo': 'A neve continua.',
     'snowEnd': 'A neve parou.',
     'hurtSand': ['{0} foi atingido pela tempestade de areia!', '{0} inimigo foi atingido pela tempestade de areia!'],
+    'windStart': 'Ventos fortes começaram a soprar!',
+    // Terrenos (do lugar ou de um golpe).
+    'grassyTerrainStart': 'A grama cresceu no campo de batalha!',
+    'grassyTerrainEnd': 'A grama do campo sumiu.',
+    'electricTerrainStart': 'Uma corrente elétrica percorre o campo de batalha!',
+    'electricTerrainEnd': 'A eletricidade do campo sumiu.',
+    'mistyTerrainStart': 'Uma névoa cobriu o campo de batalha!',
+    'mistyTerrainEnd': 'A névoa do campo sumiu.',
+    'psychicTerrainStart': 'O campo de batalha ficou estranho!',
+    'psychicTerrainEnd': 'O campo voltou ao normal.',
+    // Os efeitos de lugar da Battle Factory (como a chuva de diamantes do Mt. Moon).
+    'diamondsStart': 'Diamantes começaram a cair do teto da caverna!',
+    'rockfallStart': 'Pedras começaram a rolar da montanha!',
+    'ashesStart': 'Cinzas ardentes caem do vulcão!',
+    'miasmaStart': 'Uma névoa tóxica cobre o lugar!',
+    'chillStart': 'Um frio cortante toma conta do lugar!',
+    'hauntStart': 'Uma aura sombria envolve o lugar!',
+    'currentStart': 'Uma correnteza forte passa pelo campo!',
+    'placeHurt': ['{0} sofreu com {1}!', '{0} inimigo sofreu com {1}!'],
+    'placeHeal': ['{0} recuperou HP com {1}!', '{0} inimigo recuperou HP com {1}!'],
     'hurtHail': ['{0} foi atingido pelo granizo!', '{0} inimigo foi atingido pelo granizo!'],
     // Itens e habilidades (motor do Showdown).
     'abilityShow': ['{1} de {0}!', '{1} de {0} inimigo!'],

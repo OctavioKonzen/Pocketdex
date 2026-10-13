@@ -128,9 +128,79 @@ def add_cities(region, story):
         leader['city'] = city
 
 
+# Onde cada espécie vive (os lugares das rotas da Battle Factory): pelos locais de encontro dos jogos (o nome do lugar
+# e o jeito de encontrar: surf, vara de pesca, mergulho...), o habitat da Pokédex (1ª a 3ª geração), a forma e, se
+# nada disso disser, os tipos. No fundo do mar só quem vive debaixo d'água (mergulho, ou peixes e bichos de
+# tentáculos que são de Água).
+WATER_METHODS = {'surf', 'old-rod', 'good-rod', 'super-rod', 'super-rod-spots', 'surf-spots', 'overworld-water', 'wanderer-water',
+                 'bubbling-spots', 'roaming-water', 'chase-water', 'feebas-tile-fishing', 'sos-from-bubbling-spot'}
+PLACE_WORDS = [
+    ('sewer', ['sewer']),
+    ('icecave', ['ice-cave', 'icy-cave', 'ice-path', 'seafoam', 'frost-cavern', 'frozen-cave', 'glacier-cave']),
+    ('cave', ['cave', 'tunnel', 'cavern', 'grotto', 'chamber', 'ruins', 'underground', 'mine', 'burrow', 'mt-moon', 'den', 'hollow']),
+    ('snow', ['snow', 'ice', 'frost', 'glacier', 'frozen', 'icy', 'freez', 'crown-tundra']),
+    ('volcano', ['volcan', 'fiery', 'magma', 'lava', 'stark', 'flame', 'mt-chimney', 'mt-pyre-summit', 'reversal']),
+    ('tower', ['tower', 'cemetery', 'graveyard', 'chateau', 'haunted', 'pyre', 'spirit', 'grave', 'mansion', 'ghost']),
+    ('swamp', ['marsh', 'swamp', 'bog', 'mire', 'wetland']),
+    ('desert', ['desert', 'dune', 'wasteland', 'sand']),
+    ('forest', ['forest', 'woods', 'jungle', 'grove', 'orchard', 'garden', 'wood']),
+    ('beach', ['beach', 'shore', 'coast', 'seaside', 'cove', 'harbor', 'island']),
+    ('mountain', ['mountain', 'mt-', 'mount-', 'peak', 'summit', 'cliff', 'crag', 'pillar', 'canyon']),
+    ('city', ['city', 'town', 'power-plant', 'factory', 'castle', 'hotel', 'mall', 'department', 'building', 'lab']),
+]
+HABITAT_PLACES = {'grassland': ['grass'], 'forest': ['forest'], 'waters-edge': ['beach', 'water'], 'mountain': ['mountain'], 'sea': ['water'],
+                  'urban': ['city'], 'cave': ['cave'], 'rough-terrain': ['mountain', 'desert']}
+TYPE_PLACES = {'normal': ['grass', 'city'], 'fire': ['volcano', 'desert'], 'water': ['water', 'beach'], 'grass': ['forest', 'grass'], 'electric': ['city'],
+               'ice': ['snow', 'icecave'], 'fighting': ['mountain', 'city'], 'poison': ['swamp', 'sewer'], 'ground': ['desert', 'cave'], 'flying': ['sky', 'grass'],
+               'psychic': ['tower', 'city'], 'bug': ['forest'], 'rock': ['cave', 'mountain'], 'ghost': ['tower'], 'dragon': ['sky', 'mountain'],
+               'dark': ['cave', 'tower'], 'steel': ['mountain', 'city'], 'fairy': ['forest', 'sky']}
+ORDER = ['grass', 'forest', 'water', 'beach', 'underwater', 'swamp', 'sewer', 'cave', 'icecave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky', 'tower']
+
+
+def habitats(sid, s, p, encounters):
+    places = set()
+    types = p['types']
+    deep = 'water' in types and s.get('shape') in ('fish', 'tentacles', 'squiggle') and bool({'water2', 'water3', 'water1'} & set(s.get('egg_groups') or []))
+    for area, _game, method, *_ in encounters.get(str(sid), []):
+        if method == 'seaweed':
+            places.add('underwater')
+            continue
+        if method in WATER_METHODS:
+            places.add('water')
+            if deep:
+                places.add('underwater')
+            continue
+        if method in ('gift', 'gift-egg', 'npc-trade', 'max-raid', 'dynamax-adventure', 'static', 'snag', 'snag-rematch', 'island-scan', 'pokeflute'):
+            continue
+        name = area.lower()
+        place = next((b for b, words in PLACE_WORDS if any(w in name for w in words)), 'grass')
+        if method in ('overworld-flying', 'overworld-flying-special', 'sky-ambush'):
+            place = 'sky'
+        places.add(place)
+    for b in HABITAT_PLACES.get(s.get('habitat') or '', []):
+        places.add(b)
+    if deep:
+        places.add('underwater')
+    # Quem voa (asas e tipo Voador) também aparece no céu.
+    if 'flying' in types and s.get('shape') in ('wings', 'bug-wings'):
+        places.add('sky')
+    if not places:
+        for t in types:
+            places.update(TYPE_PLACES.get(t, []))
+    # Peixes e bichos de tentáculos só na água (os "overworld" dos jogos novos punham alguns na grama da rota).
+    if deep:
+        places &= {'water', 'underwater', 'beach', 'swamp', 'icecave', 'cave', 'sewer'}
+        places |= {'water'}
+    # Fundo do mar: só quem vive debaixo d'água.
+    if 'underwater' in places and not deep and not any(m[2] == 'seaweed' for m in encounters.get(str(sid), [])):
+        places.discard('underwater')
+    return [b for b in ORDER if b in places] or ['grass']
+
+
 def main():
     pokemon = {p['id']: p for p in load('pokemon') if p['is_default'] and p['id'] <= MAX_SPECIES}
     species = {s['id']: s for s in load('species') if s['id'] <= MAX_SPECIES}
+    encounters = load('encounters')
     out_species = {}
     for sid, s in species.items():
         p = pokemon.get(sid)
@@ -138,7 +208,7 @@ def main():
             continue
         bst = sum(stat[0] for stat in p['stats'])
         rarity = 1 if s['is_legendary'] else 2 if s['is_mythical'] else 3 if s['is_baby'] else 0
-        out_species[sid] = [p['base_experience'] or 50, bst, rarity, [stat[1] for stat in p['stats']], p['types'], s['capture_rate']]
+        out_species[sid] = [p['base_experience'] or 50, bst, rarity, [stat[1] for stat in p['stats']], p['types'], s['capture_rate'], habitats(sid, s, p, encounters)]
     evolutions = {}
 
     def walk(node):

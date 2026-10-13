@@ -481,12 +481,61 @@ export const ROUTE_TYPE_WEIGHT = 8
 export const ROUTE_TYPE_TRAINER = 3
 /** Os lugares possíveis da rota até o ginásio de cada tipo (um deles por rota). */
 const TYPE_BIOMES = {
-  normal: ['grass', 'city'], fire: ['volcano', 'desert'], water: ['water', 'beach', 'underwater'], grass: ['forest', 'grass', 'swamp'],
+  normal: ['grass', 'city'], fire: ['volcano', 'desert'], water: ['water', 'beach'], grass: ['forest', 'grass', 'swamp'],
   electric: ['city', 'sewer'], ice: ['snow', 'icecave'], fighting: ['mountain', 'cave'], poison: ['swamp', 'sewer', 'forest'],
   ground: ['desert', 'mountain', 'cave'], flying: ['sky', 'grass', 'beach'], psychic: ['tower', 'city'], bug: ['forest', 'grass'],
   rock: ['cave', 'mountain', 'desert'], ghost: ['tower'], dragon: ['sky', 'mountain'], dark: ['cave', 'tower', 'sewer'],
   steel: ['mountain', 'city', 'cave'], fairy: ['sky', 'forest'],
 }
+/**
+ * As equipes vilãs (pelo nome de quem aparece nos jogos). Enquanto o próximo
+ * chefe é um vilão, a rota é a base da equipe dele: só capangas, com os
+ * Pokémon da equipe (TEAM_POKEMON); os executivos e o chefe aparecem ao longo
+ * da história. Igual ao app.
+ */
+export const VILLAIN_TEAMS = {
+  Giovanni: 'rocket', Executiva: 'rocket', Executivo: 'rocket', Proton: 'rocket', Ariana: 'rocket', Archer: 'rocket', Petrel: 'rocket',
+  Archie: 'aqua', Shelly: 'aqua', Matt: 'aqua', Maxie: 'magma', Tabitha: 'magma', Courtney: 'magma',
+  Mars: 'galactic', Cyrus: 'galactic', Jupiter: 'galactic', Saturn: 'galactic', N: 'plasma', Zinzolin: 'plasma', Colress: 'plasma', Ghetsis: 'plasma',
+  Lysandre: 'flare', Bryony: 'flare', Mable: 'flare', Plumeria: 'skull', Guzma: 'skull', Faba: 'aether', Soliera: 'aether', Dulse: 'aether',
+  Giacomo: 'star', Ortega: 'star',
+}
+export const villainTeam = (name) => VILLAIN_TEAMS[name] ?? 'rocket'
+/** Os Pokémon dos capangas de cada equipe (os evoluídos só a partir do nível em que evoluem). */
+export const TEAM_POKEMON = {
+  rocket: [19, 20, 23, 24, 41, 42, 109, 110, 88, 89, 52, 53, 96, 97, 198, 228, 229],
+  aqua: [318, 319, 261, 262, 72, 73, 41, 42, 320, 340],
+  magma: [322, 323, 261, 262, 218, 219, 41, 42, 324, 74, 75],
+  galactic: [431, 432, 434, 435, 41, 42, 169, 198, 436, 437],
+  plasma: [509, 510, 504, 505, 551, 552, 559, 560, 519, 520, 524],
+  flare: [667, 668, 659, 660, 686, 687, 228, 229, 674],
+  skull: [757, 758, 451, 452, 41, 42, 88, 89, 742, 743],
+  aether: [79, 80, 96, 97, 436, 437, 137, 233, 122],
+  star: [198, 430, 41, 42, 559, 560, 434, 435, 109, 110, 966],
+}
+/** O tipo do líder de ginásio (o que mais aparece no time dele): o ginásio dele tem o cenário desse tipo. */
+export function leaderType(data, boss) {
+  const count = {}
+  for (const id of boss.team ?? []) for (const t of speciesOf(data, id)?.[4] ?? []) count[t] = (count[t] ?? 0) + 1
+  return Object.keys(count).sort((a, b) => count[b] - count[a])[0] ?? 'normal'
+}
+/**
+ * O cenário da luta com o chefe: o líder no ginásio do tipo dele, a Elite Four
+ * na Liga, o Campeão na sala dele (uma por região) e o vilão na base da equipe.
+ * boss: o chefe do encontro ({id, kind, region, name}); fallback: o lugar da rota.
+ */
+export function bossScene(data, boss, fallback = 'grass') {
+  if (!boss) return fallback
+  if (boss.kind === 'gym') {
+    const full = data.bosses.flatMap((g) => g.leaders).find((l) => l.id === boss.id)
+    return `gym-${full ? leaderType(data, full) : 'normal'}`
+  }
+  if (boss.kind === 'champion') return `champion-${String(boss.region ?? '').toLowerCase()}`
+  if (boss.kind === 'elite') return 'league'
+  if (boss.kind === 'villain') return `base-${villainTeam(boss.name)}`
+  return fallback
+}
+
 /** Na Dusk Ball (3×): os lugares escuros. */
 export const DARK_BIOMES = ['cave', 'tower', 'icecave', 'sewer', 'underwater']
 
@@ -527,6 +576,9 @@ export function atCity(data, run) {
  * aparece no time do líder); para a Liga, um fixo da região.
  */
 export function routeBiome(data, run) {
+  // A caminho de um vilão: a base da equipe dele.
+  const now = bossOf(data, run)
+  if (now.kind === 'villain') return `base-${villainTeam(now.name)}`
   const boss = targetOf(data, run)
   if (boss.kind === 'gym') {
     const count = {}
@@ -564,24 +616,27 @@ export function routeOptions(run, data, rand) {
     while (run.boss.step + pending < leaders.length && !CITY_KINDS.includes(leaders[run.boss.step + pending].kind)) pending++
     if (ROUTE_LENGTH - pos <= pending || (pos >= 2 && rand() < AMBUSH_CHANCE)) return { floor: run.floor, biome, options: [{ kind: 'boss' }] }
   }
-  // Os selvagens são do lugar da rota (o cenário da batalha é ele).
-  const wildBiome = () => biome
+  // Os selvagens são do lugar da rota (o cenário da batalha é ele). Na base de uma equipe vilã, só capangas.
+  const base = biome.startsWith('base-')
+  const wild = () => (base ? { kind: 'trainer' } : { kind: 'wild', biome })
   if (!FORKS.includes(pos)) {
     const r = rand()
-    return { floor: run.floor, biome, options: [r < 0.55 ? { kind: 'wild', biome: wildBiome() } : r < 0.9 || run.floor <= 2 ? { kind: 'trainer' } : { kind: 'event' }] }
+    return { floor: run.floor, biome, options: [r < 0.55 ? wild() : r < 0.9 || run.floor <= 2 ? { kind: 'trainer' } : { kind: 'event' }] }
   }
-  const options = [rand() < 0.55 ? { kind: 'wild', biome: wildBiome() } : { kind: 'trainer' }]
+  const options = [rand() < 0.55 ? wild() : { kind: 'trainer' }]
   const count = run.floor <= 2 ? 2 : 3
-  const allowed = NODE_WEIGHTS.filter(([kind]) => run.floor > 2 || kind === 'wild' || kind === 'trainer')
+  const allowed = NODE_WEIGHTS.filter(([kind]) => (run.floor > 2 || kind === 'wild' || kind === 'trainer') && !(base && ['wild', 'mart', 'trade'].includes(kind)))
   const total = allowed.reduce((sum, [, w]) => sum + w, 0)
   for (let guard = 0; options.length < count && guard < 20; guard++) {
     let roll = rand() * total
     const [kind] = allowed.find(([, w]) => (roll -= w) < 0) ?? allowed[0]
-    const node = kind === 'wild' ? { kind, biome: wildBiome() } : { kind }
+    const node = kind === 'wild' ? wild() : { kind }
     if (options.some((o) => o.kind === node.kind && o.biome === node.biome)) continue
     options.push(node)
   }
-  if (pos === FORKS[1] && rand() < WILD_BOSS_CHANCE) options[options.length - 1] = { kind: 'wildboss' }
+  // No mar, um dos caminhos é mergulhar (o selvagem do fundo do mar).
+  if (biome === 'water' && !options.some((o) => o.biome === 'underwater')) options[options.length - 1] = { kind: 'wild', biome: 'underwater' }
+  if (pos === FORKS[1] && rand() < WILD_BOSS_CHANCE && !base) options[options.length - 1] = { kind: 'wildboss' }
   return { floor: run.floor, biome, options }
 }
 
@@ -717,13 +772,19 @@ export function encounterFor(data, floor, rand, boss = null, wild = false, node 
     const ace = kind === 'ace'
     const count = Math.min(MAX_TEAM, 1 + Math.floor(floor / 12) + (rand() < 0.3 ? 1 : 0) + (ace ? 1 : 0))
     const extra = ace ? { iv: Math.max(iv, 20), ev: Math.round(ev * 1.15) } : {}
-    const foes = Array.from({ length: count }, () => foe(pick(common, true), level + (ace ? 2 : 0) - Math.floor(rand() * 3), extra))
+    // Na base de uma equipe vilã: capangas com os Pokémon da equipe.
+    const grunt = node?.biome?.startsWith('base-') ? node.biome.slice(5) : null
+    const choose = grunt && TEAM_POKEMON[grunt] ? () => pickOne(TEAM_POKEMON[grunt], rand) : () => pick(common, true)
+    const foes = Array.from({ length: count }, () => foe(choose(), level + (ace ? 2 : 0) - Math.floor(rand() * 3), extra))
     // O mais forte do treinador forte segura um item de verdade (a partir do andar 15).
     if (ace && floor >= 15) foes[foes.length - 1].item = pickOne(FOE_ITEMS, rand)
-    return { kind, foes, trainerSeed: Math.floor(rand() * 1e9), ...(ace ? { reward: pickOne(ACE_REWARDS, rand) } : {}) }
+    return { kind, foes, trainerSeed: Math.floor(rand() * 1e9), ...(ace ? { reward: pickOne(ACE_REWARDS, rand) } : {}), ...(grunt ? { grunt } : {}) }
   }
-  // Selvagem: os do lugar da rota aparecem bem mais.
-  const id = pick(common)
+  // Selvagem: só os que vivem no lugar (o habitat de cada espécie: dos locais de encontro dos jogos; no fundo do mar,
+  // só quem vive debaixo d'água); sem habitat nos dados, pelos tipos do lugar; sem nenhum, qualquer um.
+  const lives = node?.biome ? common.filter((p) => data.species[p.id]?.[6]?.includes(node.biome)) : []
+  const native = lives.length ? lives : types ? common.filter(local) : []
+  const id = pick(native.length ? native : common)
   return { kind, foes: [foe(id, level, rand() < SHINY_CHANCE * (node?.shiny ?? 1) ? { shiny: true } : {})], ...(node?.biome ? { biome: node.biome } : {}) }
 }
 
@@ -968,6 +1029,32 @@ export function weatherOf(run, scene) {
   let roll = (Math.imul(((run.seed ?? 0) ^ (run.floor * 40503)) | 0, 2246822519) >>> 0) / 4294967296
   for (const [weather, chance] of table) {
     if (roll < chance) return weather
+    roll -= chance
+  }
+  return ''
+}
+
+/**
+ * O efeito de cada lugar (chances): terrenos de verdade (grama na floresta, eletricidade na cidade, névoa, psíquico) e
+ * os efeitos do lugar que ferem quem não é do tipo (chuva de diamantes na caverna, cinzas no vulcão, névoa tóxica no
+ * pântano, frio na caverna de gelo, desmoronamento na montanha) ou curam quem é (aura sombria na torre, correnteza no
+ * fundo do mar); no céu, ventos fortes (Delta Stream). Os ginásios têm o terreno do tipo. Igual ao app.
+ */
+export const SCENE_FIELD = {
+  cave: [['diamonds', 0.3]], mountain: [['rockfall', 0.25]], volcano: [['ashes', 0.4]], swamp: [['miasma', 0.35]], sewer: [['miasma', 0.25]],
+  icecave: [['chill', 0.35]], snow: [['chill', 0.2]], tower: [['haunt', 0.35], ['psychic', 0.15]], underwater: [['current', 0.4]], water: [['current', 0.15]],
+  grass: [['grassy', 0.2]], forest: [['grassy', 0.3], ['misty', 0.1]], city: [['electric', 0.25]], beach: [['misty', 0.1]], sky: [['wind', 0.3]],
+  'gym-grass': [['grassy', 0.6]], 'gym-electric': [['electric', 0.6]], 'gym-psychic': [['psychic', 0.6]], 'gym-fairy': [['misty', 0.6]], 'gym-ghost': [['haunt', 0.6]],
+  'gym-rock': [['rockfall', 0.4]], 'gym-fire': [['ashes', 0.4]], 'gym-poison': [['miasma', 0.4]], 'gym-ice': [['chill', 0.4]], 'gym-water': [['current', 0.4]],
+}
+
+/** O efeito com que a batalha do andar começa ('' sem efeito): pelo lugar, sempre o mesmo para a mesma corrida e andar. */
+export function fieldOf(run, scene) {
+  const table = SCENE_FIELD[scene]
+  if (!table) return ''
+  let roll = (Math.imul(((run.seed ?? 0) ^ (run.floor * 69069)) | 0, 2654435761 | 0) >>> 0) / 4294967296
+  for (const [effect, chance] of table) {
+    if (roll < chance) return effect
     roll -= chance
   }
   return ''
