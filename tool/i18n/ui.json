@@ -7692,5 +7692,65 @@
   "en": "Desert",
   "fr": "Désert",
   "es": "Desierto"
+ },
+ "Melhorias permanentes": {
+  "en": "Permanent upgrades",
+  "fr": "Améliorations permanentes",
+  "es": "Mejoras permanentes"
+ },
+ "Compradas com moedas, valem em todas as próximas corridas. Cada nível custa mais.": {
+  "en": "Bought with coins, they apply to every future run. Each level costs more.",
+  "fr": "Achetées avec des pièces, elles valent pour toutes les prochaines parties. Chaque niveau coûte plus cher.",
+  "es": "Compradas con monedas, valen en todas las próximas partidas. Cada nivel cuesta más."
+ },
+ "No máximo": {
+  "en": "Maxed out",
+  "fr": "Au maximum",
+  "es": "Al máximo"
+ },
+ "Treino: o inicial começa {0} nível acima": {
+  "en": "Training: the starter begins {0} level(s) higher",
+  "fr": "Entraînement : le starter commence {0} niveau(x) plus haut",
+  "es": "Entrenamiento: el inicial empieza {0} nivel(es) más alto"
+ },
+ "Genética: IVs mínimos do inicial +{0}": {
+  "en": "Genetics: starter's minimum IVs +{0}",
+  "fr": "Génétique : IV minimum du starter +{0}",
+  "es": "Genética: IV mínimos del inicial +{0}"
+ },
+ "Começa com +{0} Poké Ball": {
+  "en": "Start with +{0} Poké Ball",
+  "fr": "Commence avec +{0} Poké Ball",
+  "es": "Empieza con +{0} Poké Ball"
+ },
+ "Começa com +{0} Potion": {
+  "en": "Start with +{0} Potion",
+  "fr": "Commence avec +{0} Potion",
+  "es": "Empieza con +{0} Potion"
+ },
+ "Começa com +{0} Revive": {
+  "en": "Start with +{0} Revive",
+  "fr": "Commence avec +{0} Revive",
+  "es": "Empieza con +{0} Revive"
+ },
+ "Começa com +{0} de dinheiro": {
+  "en": "Start with +{0} money",
+  "fr": "Commence avec +{0} d'argent",
+  "es": "Empieza con +{0} de dinero"
+ },
+ "Loja {0}% mais barata": {
+  "en": "Shop {0}% cheaper",
+  "fr": "Boutique {0} % moins chère",
+  "es": "Tienda {0}% más barata"
+ },
+ "+{0}% de XP": {
+  "en": "+{0}% EXP",
+  "fr": "+{0} % d'Exp.",
+  "es": "+{0}% de Exp."
+ },
+ "Só a primeira forma de cada um (a evolução vem jogando). Os mais fortes custam mais. Comprado, ele aparece entre os iniciais. Tem 1 chance em 4096 de vir shiny.": {
+  "en": "Only the first form of each one (evolving comes from playing). Stronger ones cost more. Once bought, it shows up among your starters. 1 in 4096 chance of being shiny.",
+  "fr": "Seulement la première forme de chacun (l'évolution vient en jouant). Les plus forts coûtent plus cher. Une fois acheté, il apparaît parmi vos starters. 1 chance sur 4096 d'être chromatique.",
+  "es": "Solo la primera forma de cada uno (la evolución llega jugando). Los más fuertes cuestan más. Comprado, aparece entre los iniciales. 1 probabilidad entre 4096 de ser variocolor."
  }
 }

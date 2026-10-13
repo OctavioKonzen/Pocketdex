@@ -409,14 +409,21 @@ class _FactoryHubState extends State<FactoryHub> {
     final c = SiteColors.of(context);
     final data = _data;
     if (data == null) return const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator()));
-    final factory = currentFactory();
+    var factory = currentFactory();
+    // Contas antigas que compraram uma forma evoluída: ficam com a primeira forma dela.
+    final fixed = FactoryRun.normalizeOwned(factory, data);
+    if (!identical(fixed, factory)) {
+      factory = fixed;
+      WidgetsBinding.instance.addPostFrameCallback((_) => mounted ? _save(fixed) : null);
+    }
     final run = factory['run'] == null ? null : Map<String, dynamic>.from(factory['run'] as Map);
     final owned = [for (final x in factory['owned'] as List) (x as num).toInt()];
     final shinies = FactoryRun.shiniesOf(factory);
     final q = _query.trim().toLowerCase();
     final shopList = ([
       for (final e in data.species.entries)
-        if (!owned.contains(e.key) && (q.isEmpty || (_names[e.key] ?? '').contains(q)))
+        // Só a primeira forma está à venda (a evolução vem jogando).
+        if (FactoryRun.forSale(data, e.key) && !owned.contains(e.key) && (q.isEmpty || (_names[e.key] ?? '').contains(q)))
           (id: e.key, price: FactoryRun.pokemonPrice((e.value[1] as num).toInt()))
     ]..sort((a, b) => a.price != b.price ? a.price.compareTo(b.price) : a.id.compareTo(b.id)))
         .take(24)
@@ -496,6 +503,39 @@ class _FactoryHubState extends State<FactoryHub> {
         ],
         const SizedBox(height: 12),
         ExpansionTile(
+          key: const ValueKey('factory-upgrades'),
+          tilePadding: EdgeInsets.zero,
+          initiallyExpanded: run == null,
+          title: Text('⬆️ ${tr('Melhorias permanentes')}', style: TextStyle(fontWeight: FontWeight.bold, color: c.text)),
+          children: [
+            Text(tr('Compradas com moedas, valem em todas as próximas corridas. Cada nível custa mais.'), style: TextStyle(color: c.muted, fontSize: 12)),
+            for (final e in FactoryRun.upgrades.entries)
+              () {
+                final level = FactoryRun.upgradeLevel(factory, e.key);
+                final price = FactoryRun.upgradePrice(factory, e.key);
+                final value = price == null ? FactoryRun.upgradeValue(factory, e.key) : (level + 1) * e.value.per;
+                return ListTile(
+                  key: ValueKey('upgrade-${e.key}'),
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(tr(e.value.label).replaceAll('{0}', '$value'), style: TextStyle(color: c.text, fontSize: 13, fontWeight: FontWeight.bold)),
+                  subtitle: Text('${'★' * level}${'☆' * (e.value.max - level)} · ${price == null ? tr('No máximo') : '🪙 $price'}',
+                      style: TextStyle(color: c.muted, fontSize: 12)),
+                  trailing: price == null
+                      ? null
+                      : TextButton(
+                          onPressed: coins < price
+                              ? null
+                              : () {
+                                  final next = FactoryRun.buyUpgrade(factory, e.key);
+                                  if (next != null) _save(next);
+                                },
+                          child: const Text('Comprar'),
+                        ),
+                );
+              }(),
+          ],
+        ),
+        ExpansionTile(
           key: const ValueKey('factory-shiny-shop'),
           tilePadding: EdgeInsets.zero,
           title: Text('✨ ${tr('Inicial shiny')}', style: TextStyle(fontWeight: FontWeight.bold, color: c.text)),
@@ -525,7 +565,7 @@ class _FactoryHubState extends State<FactoryHub> {
           tilePadding: EdgeInsets.zero,
           title: Text('🪙 ${tr('Comprar Pokémon com moedas')}', style: TextStyle(fontWeight: FontWeight.bold, color: c.text)),
           children: [
-            Text(tr('Os mais fortes custam mais. Comprado, ele aparece entre os iniciais (sempre no nível 5). Tem 1 chance em 4096 de vir shiny.'),
+            Text(tr('Só a primeira forma de cada um (a evolução vem jogando). Os mais fortes custam mais. Comprado, ele aparece entre os iniciais. Tem 1 chance em 4096 de vir shiny.'),
                 style: TextStyle(color: c.muted, fontSize: 12)),
             if (FactoryRun.freePick(factory))
               Text(tr('Primeiro escolha o seu inicial grátis.'), style: const TextStyle(color: Color(0xFFF59E0B), fontWeight: FontWeight.bold, fontSize: 12)),

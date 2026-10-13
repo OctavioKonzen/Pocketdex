@@ -17,7 +17,7 @@ import {
   BAG_ITEMS, bossOf, FORKS, ROUTE_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, MAX_TEAM, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shinyPrice, shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, takeCard, teachMove, teamDown, applyBagItem, unlockShiny, VITAMIN_EVS, VITAMINS,
-  buyShiny,
+  buyShiny, forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade,
 } from '../lib/factoryRun'
 import { t } from '../lib/i18n'
 import { prettyName } from '../lib/pokemon'
@@ -282,10 +282,18 @@ export function FactoryHub({ onContinue, busy }) {
     const q = query.trim().toLowerCase()
     return Object.entries(data.species)
       .map(([id, [, bst]]) => ({ id: Number(id), bst, price: pokemonPrice(bst), name: byId.get(Number(id))?.name ?? '' }))
-      .filter((p) => !factory.owned.includes(p.id) && (!q || p.name.includes(q)))
+      // Só a primeira forma está à venda (a evolução vem jogando).
+      .filter((p) => forSale(data, p.id) && !factory.owned.includes(p.id) && (!q || p.name.includes(q)))
       .sort((a, b) => a.price - b.price || a.id - b.id)
       .slice(0, 24)
   }, [data, byId, query, factory.owned])
+
+  // Contas antigas que compraram uma forma evoluída: ficam com a primeira forma dela.
+  useEffect(() => {
+    if (!data) return
+    const fixed = normalizeOwned(factory, data)
+    if (fixed !== factory) saveFactory(fixed)
+  }, [data, factory])
 
   if (!data) return <p className="text-sm text-muted">...</p>
   return (
@@ -343,6 +351,33 @@ export function FactoryHub({ onContinue, busy }) {
         </div>
       )}
 
+      <details className="rounded-2xl bg-bg p-3" data-testid="factory-upgrades" open={!run}>
+        <summary className="cursor-pointer font-bold">⬆️ {t('Melhorias permanentes')}</summary>
+        <p className="my-2 text-xs text-muted">{t('Compradas com moedas, valem em todas as próximas corridas. Cada nível custa mais.')}</p>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {Object.entries(UPGRADES).map(([id, up]) => {
+            const level = upgradeLevel(factory, id)
+            const price = upgradePrice(factory, id)
+            const next = (level + 1) * up.per
+            return (
+              <div key={id} className="flex items-center gap-2 rounded-xl bg-card p-2 text-xs" data-testid={`upgrade-${id}`}>
+                <div className="min-w-0 flex-1">
+                  <p className="font-bold">{t(up.label).replace('{0}', price == null ? upgradeValue(factory, id) : next)}</p>
+                  <p className="text-muted">
+                    {'★'.repeat(level)}{'☆'.repeat(up.max - level)} · {price == null ? t('No máximo') : `🪙 ${price}`}
+                  </p>
+                </div>
+                {price != null && (
+                  <Button disabled={factory.coins < price} onClick={() => { const n = buyUpgrade(factory, id); if (n) saveFactory(n) }}>
+                    {t('Comprar')}
+                  </Button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </details>
+
       <details className="rounded-2xl bg-bg p-3" data-testid="factory-shiny-shop">
         <summary className="cursor-pointer font-bold">✨ {t('Inicial shiny')}</summary>
         <p className="my-2 text-xs text-muted">{t('Shiny tem +10% em todos os atributos. Capture um inicial shiny na corrida para liberar o shiny dele, ou transforme com moedas (bem caro).')}</p>
@@ -367,7 +402,7 @@ export function FactoryHub({ onContinue, busy }) {
 
       <details className="rounded-2xl bg-bg p-3">
         <summary className="cursor-pointer font-bold">🪙 {t('Comprar Pokémon com moedas')}</summary>
-        <p className="my-2 text-xs text-muted">{t('Os mais fortes custam mais. Comprado, ele aparece entre os iniciais (sempre no nível 5). Tem 1 chance em 4096 de vir shiny.')}</p>
+        <p className="my-2 text-xs text-muted">{t('Só a primeira forma de cada um (a evolução vem jogando). Os mais fortes custam mais. Comprado, ele aparece entre os iniciais. Tem 1 chance em 4096 de vir shiny.')}</p>
         {freePick(factory) && <p className="mb-2 text-xs font-bold text-amber-500">{t('Primeiro escolha o seu inicial grátis.')}</p>}
         {lucky && <p className="mb-2 rounded-lg bg-amber-500/15 p-2 text-sm font-bold">✨ {t('{0} veio shiny!').replace('{0}', t(prettyName(byId?.get(lucky)?.name ?? '')))}</p>}
         <SearchInput value={query} onChange={setQuery} placeholder={t('Buscar Pokémon')} />

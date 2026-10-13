@@ -79,6 +79,28 @@ void main() {
     }
   });
 
+  test('só a primeira forma à venda; contas antigas ficam com a primeira; melhorias permanentes (igual ao site)', () {
+    expect(FactoryRun.baseForm(data, 6), 4);
+    expect(FactoryRun.forSale(data, 6), isFalse);
+    final rich = {...FactoryRun.empty(), 'owned': [1], 'coins': 99999};
+    expect(FactoryRun.buyPokemon(rich, data, 6), isNull);
+    expect(FactoryRun.normalizeOwned({...FactoryRun.empty(), 'owned': [1, 6, 5, 3], 'shinies': [6]}, data), containsPair('owned', [1, 4]));
+    var f = rich;
+    for (final id in FactoryRun.upgrades.keys) {
+      while (FactoryRun.upgradePrice(f, id) != null) {
+        f = FactoryRun.buyUpgrade(f, id)!;
+      }
+    }
+    final run = FactoryRun.startRun(f, data, 1, 42)!;
+    expect(FactoryRun.teamOf(run).first['level'], 10);
+    expect(run['money'], 500);
+    expect(run['bag']['revive'], 4);
+    expect(run['mult'], {'money': 1, 'exp': 1.25, 'shop': 0.8});
+    // O mesmo preço do site.
+    expect(FactoryRun.upgradePrice(FactoryRun.empty(), 'level'), 150);
+    expect(FactoryRun.upgradePrice({...FactoryRun.empty(), 'upgrades': {'level': 1}}, 'level'), 455);
+  });
+
   test('XP só para quem lutou; com o Exp. Share, a metade para o resto do time (igual ao site)', () {
     final base = FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!;
     final first = FactoryRun.teamOf(base).first;
