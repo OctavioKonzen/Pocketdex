@@ -6,7 +6,7 @@ import {
   SHINY_BOOST, SHINY_CHANCE, START_BAG, START_BALLS, startersOf, buyShiny, shinyPrice, unlockShiny, claimStarter, freePick, canEvolveWith, teachMove,
   equipFromStash, gimmicksOf, setGimmick, storyLine, startRun, takeCard, teamDown, applyBagItem, winFloor, chooseNode, routeOptions, routeCities,
   captureFor, factoryOf, BIOMES, isBattleNode, skipCapture, FORKS, ROUTE_LENGTH, BALL_TIERS, HEAL_TIERS, tierPick, minLevelOf, devolve,
-  EXP_SHARE, expProgress, shopOwned,
+  EXP_SHARE, expProgress, shopOwned, baseForm, forSale, normalizeOwned, buyUpgrade, upgradePrice, UPGRADES,
 } from './factoryRun'
 
 const data = JSON.parse(readFileSync(new URL('../../../assets/database/factory.json', import.meta.url), 'utf8'))
@@ -153,6 +153,38 @@ describe('Battle Factory (roguelike)', () => {
     expect(expProgress({ level: 5, exp: expAt(5) })).toBe(0)
     expect(expProgress({ level: 5, exp: (expAt(5) + expAt(6)) / 2 })).toBe(0.5)
     expect(expProgress({ level: 5, exp: expAt(5) }, 9999)).toBe(1)
+  })
+
+  it('só a primeira forma está à venda; contas com forma evoluída ficam com a primeira; melhorias permanentes', () => {
+    expect(baseForm(data, 6)).toBe(4)
+    expect(baseForm(data, 26)).toBe(172)
+    expect(forSale(data, 4)).toBe(true)
+    expect(forSale(data, 6)).toBe(false)
+    const rich = { ...emptyFactory(), owned: [1], coins: 99999 }
+    expect(buyPokemon(rich, data, 6)).toBe(null)
+    expect(buyPokemon(rich, data, 4).owned).toEqual([1, 4])
+    const old = { ...emptyFactory(), owned: [1, 6, 5, 3], shinies: [6] }
+    expect(normalizeOwned(old, data)).toMatchObject({ owned: [1, 4], shinies: [4] })
+    const ok = { ...emptyFactory(), owned: [1, 4] }
+    expect(normalizeOwned(ok, data)).toBe(ok)
+    // Melhorias: cada nível mais caro, até o máximo; valem na próxima corrida.
+    let f = { ...rich }
+    const p1 = upgradePrice(f, 'level')
+    f = buyUpgrade(f, 'level')
+    expect(upgradePrice(f, 'level')).toBeGreaterThan(p1)
+    expect(f.coins).toBe(99999 - p1)
+    for (const id of Object.keys(UPGRADES)) while (upgradePrice(f, id) != null) f = buyUpgrade(f, id)
+    expect(buyUpgrade(f, 'level')).toBe(null)
+    const run = startRun(f, data, 1, 42)
+    expect(run.team[0].level).toBe(START_BALLS + 5)
+    expect(Math.min(...Object.values(run.team[0].ivs))).toBeGreaterThanOrEqual(30)
+    expect(run.bag['poke-ball']).toBe(START_BALLS + 5)
+    expect(run.bag.potion).toBe(START_BAG.potion + 5)
+    expect(run.bag.revive).toBe(START_BAG.revive + 3)
+    expect(run.money).toBe(500)
+    expect(run.mult).toEqual({ money: 1, exp: 1.25, shop: 0.8 })
+    // Sem melhorias, a corrida é a de sempre.
+    expect(startRun(emptyFactory(), data, 1, 42).team[0].level).toBe(5)
   })
 
   it('selvagens pela raridade: os comuns (taxa de captura alta) aparecem bem mais', () => {

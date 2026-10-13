@@ -168,7 +168,7 @@ export const CARDS = {
 
 // ------------------------------------------------------------ meta (entre corridas)
 
-export const emptyFactory = () => ({ best: 0, coins: 0, owned: [], shinies: [], run: null })
+export const emptyFactory = () => ({ best: 0, coins: 0, owned: [], shinies: [], upgrades: {}, run: null })
 /** Na primeira vez escolhe um inicial grátis; depois só os que tem (os outros se compram). */
 export const freePick = (factory) => !(factory.owned?.length)
 export function factoryOf(league) {
@@ -193,10 +193,36 @@ export function claimStarter(factory, data, id) {
   return { ...factory, owned: [id] }
 }
 
+/** A primeira forma da linha evolutiva (Charizard → Charmander, Pikachu → Pichu). */
+export function baseForm(data, id) {
+  let out = id
+  for (let guard = 0; guard < 4; guard++) {
+    const pre = preEvolutions(data).get(out)
+    if (!pre) break
+    out = pre[0]
+  }
+  return out
+}
+
+/** Só a primeira forma está à venda: a evolução vem jogando. */
+export const forSale = (data, id) => Boolean(data.species[id]) && baseForm(data, id) === id
+
+/**
+ * Contas antigas (que compraram uma forma evoluída): ficam com a primeira
+ * forma dela, sem repetir (o shiny também). Devolve a mesma Factory se não mudou nada.
+ */
+export function normalizeOwned(factory, data) {
+  const fix = (list) => [...new Set((list ?? []).map((id) => baseForm(data, id)))]
+  const owned = fix(factory.owned)
+  const shinies = fix(factory.shinies)
+  const same = (a, b) => a.length === (b ?? []).length && a.every((x, i) => x === b[i])
+  return same(owned, factory.owned) && same(shinies, factory.shinies) ? factory : { ...factory, owned, shinies }
+}
+
 /** Compra um Pokémon com as moedas (null se não dá). roll (0 a 1): 1 em 4096 de vir shiny. */
 export function buyPokemon(factory, data, id, roll = 1) {
   const info = data.species[id]
-  if (!info || factory.owned.includes(id) || freePick(factory)) return null
+  if (!info || !forSale(data, id) || factory.owned.includes(id) || freePick(factory)) return null
   const price = pokemonPrice(info[1])
   if (factory.coins < price) return null
   const shinies = factory.shinies ?? []
@@ -221,6 +247,37 @@ export function unlockShiny(factory, data, mon) {
   const shinies = factory.shinies ?? []
   if (!mon?.shiny || shinies.includes(mon.id) || !(data.starters.includes(mon.id) || factory.owned.includes(mon.id))) return factory
   return { ...factory, shinies: [...shinies, mon.id] }
+}
+
+/**
+ * Melhorias permanentes (compradas com moedas antes da corrida, valem em todas
+ * as próximas). Cada nível custa mais (upgradePrice): dá para ficar mais forte
+ * aos poucos, sem deixar o começo fácil.
+ */
+export const UPGRADES = {
+  level: { label: 'Treino: o inicial começa {0} nível acima', per: 1, max: 5, base: 150 },
+  ivs: { label: 'Genética: IVs mínimos do inicial +{0}', per: 3, max: 5, base: 120 },
+  balls: { label: 'Começa com +{0} Poké Ball', per: 1, max: 5, base: 60 },
+  potions: { label: 'Começa com +{0} Potion', per: 1, max: 5, base: 60 },
+  revive: { label: 'Começa com +{0} Revive', per: 1, max: 3, base: 200 },
+  money: { label: 'Começa com +{0} de dinheiro', per: 100, max: 5, base: 100 },
+  shop: { label: 'Loja {0}% mais barata', per: 4, max: 5, base: 250 },
+  exp: { label: '+{0}% de XP', per: 5, max: 5, base: 250 },
+}
+export const upgradeLevel = (factory, id) => factory.upgrades?.[id] ?? 0
+/** O bônus da melhoria no nível dela (nível × por nível). */
+export const upgradeValue = (factory, id) => upgradeLevel(factory, id) * UPGRADES[id].per
+/** Preço do próximo nível (null no máximo). */
+export function upgradePrice(factory, id) {
+  const level = upgradeLevel(factory, id)
+  const up = UPGRADES[id]
+  return !up || level >= up.max ? null : Math.round((up.base * (level + 1) ** 1.6) / 5) * 5
+}
+/** Compra o próximo nível da melhoria (null se não dá). */
+export function buyUpgrade(factory, id) {
+  const price = upgradePrice(factory, id)
+  if (price == null || factory.coins < price) return null
+  return { ...factory, coins: factory.coins - price, upgrades: { ...factory.upgrades, [id]: upgradeLevel(factory, id) + 1 } }
 }
 
 /** Moedas que a corrida rende: 5 por andar vencido, 2 por Pokémon derrotado e 25 por chefe. */
@@ -634,14 +691,17 @@ export function encounterFor(data, floor, rand, boss = null, wild = false, node 
 /** Começa uma corrida com o inicial escolhido (um dos grátis ou comprado). */
 export function startRun(factory, data, id, seed, shiny = false) {
   if (!startersOf(factory, data).includes(id) || (shiny && !(factory.shinies ?? []).includes(id))) return null
+  // As melhorias compradas com moedas.
+  const up = (k) => upgradeValue(factory, k)
+  const bag = { ...START_BAG, 'poke-ball': START_BAG['poke-ball'] + up('balls'), potion: START_BAG.potion + up('potions'), revive: START_BAG.revive + up('revive') }
   const run = {
-    seed: seed >>> 0, floor: 1, money: 0, defeated: 0, bosses: 0, bag: { ...START_BAG },
-    team: [], teamBoost: zero(), mult: { money: 1, exp: 1, shop: 1 }, cards: [], boss: { region: 0, step: 0 }, played: [],
+    seed: seed >>> 0, floor: 1, money: up('money'), defeated: 0, bosses: 0, bag,
+    team: [], teamBoost: zero(), mult: { money: 1, exp: round3(1 + up('exp') / 100), shop: round3(1 - up('shop') / 100) }, cards: [], boss: { region: 0, step: 0 }, played: [],
     tms: {}, tokens: { 'move-tutor': 0, 'move-reminder': 0 }, stash: [], dmax: false, tera: false, expShare: false, leg: 1, route: null, encounter: null, pending: null,
   }
   const rand = dice(run)
-  // O inicial vem com IVs bons (15 a 31).
-  run.team = [newMon(id, START_LEVEL, rand, 15, shiny)]
+  // O inicial vem com IVs bons (15 a 31; com a Genética, mais).
+  run.team = [newMon(id, START_LEVEL + up('level'), rand, Math.min(31, 15 + up('ivs')), shiny)]
   run.boss = { region: Math.floor(rand() * data.bosses.length), step: 0 }
   run.played = [data.bosses[run.boss.region].region]
   run.route = routeOptions(run, data, rand)

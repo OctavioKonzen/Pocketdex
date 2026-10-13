@@ -213,7 +213,7 @@ class FactoryRun {
 
   // ------------------------------------------------------------ meta
 
-  static Json empty() => {'best': 0, 'coins': 0, 'owned': <int>[], 'shinies': <int>[], 'run': null};
+  static Json empty() => {'best': 0, 'coins': 0, 'owned': <int>[], 'shinies': <int>[], 'upgrades': <String, int>{}, 'run': null};
   static Json of(Map? league) {
     final out = {...empty(), ...?(league?['factory'] is Map ? _copy(Map<String, dynamic>.from(league!['factory'] as Map)) : null)};
     // Corridas antigas: as Poké Balls ficavam fora da Bolsa (run.balls).
@@ -242,11 +242,74 @@ class FactoryRun {
     return {...factory, 'owned': [id]};
   }
 
+  /// A primeira forma da linha evolutiva (Charizard → Charmander, Pikachu → Pichu). Igual ao site.
+  static int baseForm(FactoryData data, int id) {
+    var out = id;
+    for (var guard = 0; guard < 4; guard++) {
+      final pre = _preEvolutions(data)[out];
+      if (pre == null) break;
+      out = pre[0];
+    }
+    return out;
+  }
+
+  /// Só a primeira forma está à venda: a evolução vem jogando.
+  static bool forSale(FactoryData data, int id) => data.species[id] != null && baseForm(data, id) == id;
+
+  /// Contas antigas (que compraram uma forma evoluída): ficam com a primeira forma dela, sem repetir (o shiny também).
+  /// Devolve a mesma Factory se não mudou nada. Igual ao site.
+  static Json normalizeOwned(Json factory, FactoryData data) {
+    List<int> fix(List<int> list) {
+      final out = <int>[];
+      for (final id in list) {
+        final b = baseForm(data, id);
+        if (!out.contains(b)) out.add(b);
+      }
+      return out;
+    }
+
+    final owned = fix(ownedOf(factory)), shinies = fix(shiniesOf(factory));
+    bool same(List<int> a, List<int> b) => a.length == b.length && [for (var i = 0; i < a.length; i++) a[i] == b[i]].every((x) => x);
+    return same(owned, ownedOf(factory)) && same(shinies, shiniesOf(factory)) ? factory : {...factory, 'owned': owned, 'shinies': shinies};
+  }
+
+  /// Melhorias permanentes (compradas com moedas antes da corrida): nome, quanto por nível, máximo e preço base. Igual ao site.
+  static const upgrades = <String, ({String label, int per, int max, int base})>{
+    'level': (label: 'Treino: o inicial começa {0} nível acima', per: 1, max: 5, base: 150),
+    'ivs': (label: 'Genética: IVs mínimos do inicial +{0}', per: 3, max: 5, base: 120),
+    'balls': (label: 'Começa com +{0} Poké Ball', per: 1, max: 5, base: 60),
+    'potions': (label: 'Começa com +{0} Potion', per: 1, max: 5, base: 60),
+    'revive': (label: 'Começa com +{0} Revive', per: 1, max: 3, base: 200),
+    'money': (label: 'Começa com +{0} de dinheiro', per: 100, max: 5, base: 100),
+    'shop': (label: 'Loja {0}% mais barata', per: 4, max: 5, base: 250),
+    'exp': (label: '+{0}% de XP', per: 5, max: 5, base: 250),
+  };
+  static int upgradeLevel(Json factory, String id) => (((factory['upgrades'] as Map?)?[id] as num?) ?? 0).toInt();
+  static int upgradeValue(Json factory, String id) => upgradeLevel(factory, id) * upgrades[id]!.per;
+
+  /// Preço do próximo nível (null no máximo).
+  static int? upgradePrice(Json factory, String id) {
+    final up = upgrades[id];
+    final level = upgradeLevel(factory, id);
+    if (up == null || level >= up.max) return null;
+    return (up.base * math.pow(level + 1, 1.6) / 5).round() * 5;
+  }
+
+  /// Compra o próximo nível da melhoria (null se não dá).
+  static Json? buyUpgrade(Json factory, String id) {
+    final price = upgradePrice(factory, id);
+    if (price == null || _int(factory['coins']) < price) return null;
+    return {
+      ...factory, 'coins': _int(factory['coins']) - price,
+      'upgrades': {...Map<String, dynamic>.from((factory['upgrades'] as Map?) ?? const {}), id: upgradeLevel(factory, id) + 1},
+    };
+  }
+
   /// Compra um Pokémon com as moedas (null se não dá). roll (0 a 1): 1 em 4096 de vir shiny.
   static Json? buyPokemon(Json factory, FactoryData data, int id, [double roll = 1]) {
     final info = data.species[id];
     final owned = ownedOf(factory);
-    if (info == null || owned.contains(id) || freePick(factory)) return null;
+    if (info == null || !forSale(data, id) || owned.contains(id) || freePick(factory)) return null;
     final price = pokemonPrice(_int(info[1]));
     if ((factory['coins'] as num) < price) return null;
     final shinies = shiniesOf(factory);
@@ -735,15 +798,19 @@ class FactoryRun {
 
   static Json? startRun(Json factory, FactoryData data, int id, int seed, [bool shiny = false]) {
     if (!startersOf(factory, data).contains(id) || (shiny && !shiniesOf(factory).contains(id))) return null;
+    // As melhorias compradas com moedas.
+    int up(String k) => upgradeValue(factory, k);
     final run = <String, dynamic>{
-      'seed': seed & 0xFFFFFFFF, 'floor': 1, 'money': 0, 'defeated': 0, 'bosses': 0, 'bag': {...startBag},
-      'team': <Json>[], 'teamBoost': _zero(), 'mult': {'money': 1, 'exp': 1, 'shop': 1}, 'cards': <String>[], 'boss': {'region': 0, 'step': 0}, 'played': <String>[],
+      'seed': seed & 0xFFFFFFFF, 'floor': 1, 'money': up('money'), 'defeated': 0, 'bosses': 0,
+      'bag': {...startBag, 'poke-ball': startBag['poke-ball']! + up('balls'), 'potion': startBag['potion']! + up('potions'), 'revive': startBag['revive']! + up('revive')},
+      'team': <Json>[], 'teamBoost': _zero(), 'mult': {'money': 1, 'exp': _round3(1 + up('exp') / 100), 'shop': _round3(1 - up('shop') / 100)},
+      'cards': <String>[], 'boss': {'region': 0, 'step': 0}, 'played': <String>[],
       'tms': <String, dynamic>{}, 'tokens': {'move-tutor': 0, 'move-reminder': 0}, 'stash': <String>[], 'dmax': false, 'tera': false, 'expShare': false,
       'leg': 1, 'route': null, 'encounter': null, 'pending': null,
     };
     final rand = _dice(run);
-    // O inicial vem com IVs bons (15 a 31).
-    run['team'] = [newMon(id, startLevel, rand, 15, shiny)];
+    // O inicial vem com IVs bons (15 a 31; com a Genética, mais).
+    run['team'] = [newMon(id, startLevel + up('level'), rand, math.min(31, 15 + up('ivs')), shiny)];
     run['boss'] = {'region': (rand() * data.bosses.length).floor(), 'step': 0};
     run['played'] = [data.bosses[_int(run['boss']['region'])]['region']];
     run['route'] = routeOptions(run, data, rand);
