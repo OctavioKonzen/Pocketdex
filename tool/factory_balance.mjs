@@ -1,12 +1,16 @@
 // Balanceamento da Battle Factory: corridas inteiras no motor de verdade
 // (tool/battle-engine/engine.mjs), com a IA do computador jogando pelo seu
-// time (e jogando a bola nos selvagens fracos) e um jogador simples entre os
-// andares (caminho no mapa, cartas, loja, Bolsa).
+// time (e jogando a bola nos selvagens fracos) e um jogador entre os andares
+// como quem joga: caminho no mapa (sorteando de novo quando não serve), cartas,
+// loja, Bolsa, itens guardados no melhor, trocas e o mais fraco abrindo as
+// batalhas fáceis para treinar.
 // Mostra até onde as corridas chegam e como o nível do time acompanha o dos
 // adversários (web-site/src/lib/factoryRun.js).
 //
 // Uso: node tool/factory_balance.mjs [corridas=12] [andar máximo=200]
 //      START_FLOOR=100 node tool/factory_balance.mjs   (começa no andar com um time pronto)
+//      UPGRADES=2 node tool/factory_balance.mjs        (com até 2 níveis de cada melhoria permanente, como quem já jogou)
+//      NO_TRAIN=1 node tool/factory_balance.mjs        (sem pôr o mais fraco para abrir as batalhas fáceis)
 
 import { readFileSync } from 'node:fs'
 import { PocketDexSim as sim } from './battle-engine/engine.mjs'
@@ -79,6 +83,21 @@ function battle(run) {
 function strength(m) { return (data.species[m.id]?.[1] ?? 300) * m.level }
 const balls = (run) => F.BALL_IDS.reduce((sum, id) => sum + (run.bag[id] ?? 0), 0)
 
+/**
+ * Treinar: numa batalha fácil (selvagem ou treinador) o mais fraco abre, se não
+ * estiver muito abaixo dos adversários; nas outras, o mais forte.
+ */
+function pickLead(run) {
+  const alive = [...run.team.keys()].filter((i) => (run.team[i].hp ?? 1) > 0.5)
+  if (!alive.length) return run
+  const foe = Math.max(...run.encounter.foes.map((f) => f.level))
+  const easy = ['wild', 'trainer'].includes(run.encounter.kind)
+  const weakest = [...alive].sort((a, b) => run.team[a].level - run.team[b].level)[0]
+  if (process.env.NO_TRAIN) return run
+  if (easy && alive.length >= 3 && run.team[weakest].level >= foe) return F.setLead(run, weakest)
+  return F.setLead(run, [...alive].sort((a, b) => strength(run.team[b]) - strength(run.team[a]))[0])
+}
+
 /** O caminho no mapa: Centro com o time mal, loja com dinheiro, treinador forte com o time inteiro, selvagem com vaga no time. */
 function choosePath(run) {
   const options = run.route.options
@@ -90,10 +109,18 @@ function choosePath(run) {
     run.money > 600 * F.priceScale(run.floor) ? 'mart' : null,
     hurt < 0.2 ? 'ace' : null,
     run.team.length < F.MAX_TEAM ? 'wild' : null,
-    'trainer', 'wild', 'event', 'ace', 'wildboss', 'mart', 'center', 'boss',
+    'trainer', 'wild', 'event', 'trade', 'ace', 'wildboss', 'mart', 'center', 'boss',
   ]
   for (const kind of order) if (kind && has(kind) >= 0) return has(kind)
   return 0
+}
+
+/** Sorteia o caminho de novo quando o time está mal e não tem Centro (ou está bem e só tem coisa fraca). */
+function maybeReroll(run) {
+  const kinds = run.route.options.map((o) => o.kind)
+  const hurt = run.team.reduce((sum, m) => sum + (1 - (m.hp ?? 1)), 0) / run.team.length
+  if ((run.rerolls ?? 0) > 0 && kinds.length > 1 && hurt > 0.5 && !kinds.includes('center')) return F.rerollRoute(run, data) ?? run
+  return run
 }
 
 /** O que um jogador simples faz entre os andares. */
@@ -107,6 +134,12 @@ function between(run) {
       run = strength(foe) > strength(run.team[weakest]) * 1.1 ? F.capture(run, weakest) : F.skipCapture(run)
     }
   } else run = F.skipCapture(run)
+  // Troca: dá o mais fraco se o oferecido (3 níveis acima) for mais forte.
+  if (run.pending.trade) {
+    const weakest = [...run.team.keys()].sort((a, b) => strength(run.team[a]) - strength(run.team[b]))[0]
+    const offer = { id: run.pending.trade.id, level: run.team[weakest].level + F.TRADE_LEVELS }
+    run = strength(offer) > strength(run.team[weakest]) ? F.tradeMon(run, weakest, data) : F.skipTrade(run)
+  }
   if (run.pending.cards) {
     const down = run.team.filter((m) => !(m.hp > 0)).length
     const want = [down >= 2 ? 'heal' : null, balls(run) < 2 ? 'balls' : null, 'atk', 'hp', 'exp', 'level', 'def', 'spe', 'money', 'sale', 'heal', 'balls']
@@ -129,6 +162,11 @@ function between(run) {
     const vit = shop.find((id) => F.VITAMINS[id] || id === 'bottle-cap')
     if (vit && buy(vit, best)) continue
     break
+  }
+  // Os itens guardados (dos treinadores fortes): no mais forte que ainda não segura nada (senão, no mais forte).
+  while ((run.stash ?? []).length) {
+    const order = [...run.team.keys()].sort((a, b) => strength(run.team[b]) - strength(run.team[a]))
+    run = F.equipFromStash(run, 0, order.find((i) => !run.team[i].item) ?? order[0])
   }
   // Bolsa fora da batalha: Revive em quem desmaiou, poção em quem está abaixo da metade.
   for (const [i, m] of run.team.entries()) {
@@ -170,15 +208,20 @@ const results = []
 const checkpoints = {}
 for (let r = 0; r < runs; r++) {
   const starter = data.starters[r % data.starters.length]
-  let run = F.startRun(F.emptyFactory(), data, starter, 1000 + r * 7919)
+  // Melhorias permanentes (UPGRADES níveis de cada), como quem já jogou algumas corridas.
+  let meta = { ...F.emptyFactory(), coins: 1e9 }
+  for (const id of Object.keys(F.UPGRADES)) for (let k = 0; k < Number(process.env.UPGRADES ?? 0); k++) meta = F.buyUpgrade(meta, id) ?? meta
+  let run = F.startRun(meta, data, starter, 1000 + r * 7919)
   if (startFloor > 1) run = preparedRun(run, startFloor, r)
   while (run.floor <= maxFloor) {
+    run = maybeReroll(run)
     run = F.chooseNode(run, data, choosePath(run))
     // Sem batalha (Poké Mart, Centro, evento): o que tiver para fazer e o próximo andar.
     if (!run.encounter) {
       run = between(run)
       continue
     }
+    run = pickLead(run)
     const { won, after } = battle(run)
     if (!won) break
     const floor = run.floor

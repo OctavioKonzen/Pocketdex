@@ -22,7 +22,8 @@ import { teamMembers } from '../lib/teamBattle'
 import { fxPlan, moveAnim, SELF_KINDS } from '../lib/moveAnim'
 import { active, damageRange, fieldConditions, monDetails, lockedMove, canGimmick, canUseItem, effectLabel, forfeit, HEAL_SHARE, ITEMS, lineOf, MAX_MOVES, maxPower, moveEffect, newBattle, playTurn, replace, startBattle, STAT_NAMES, switchMatchup, usableMoves, weaknesses, Z_MOVES, zPower } from '../lib/turnBattle'
 import Sprite from '../components/Sprite'
-import { BattleBackground, battleScene, sceneOfBoss } from '../components/BattleScene'
+import BwBag from '../components/BwBag'
+import { BattleBackground, battleScale, battleScene, PlatformBase, sceneOfBoss } from '../components/BattleScene'
 import { TrainerBack, TrainerSprite } from '../components/Trainer'
 import { randomTrainer, useMyTrainer, useTrainers } from '../lib/trainers'
 import { battleRecord } from '../lib/battleLog'
@@ -512,13 +513,6 @@ function TeraCrown({ color }) {
   )
 }
 
-/**
- * O tamanho na batalha pela altura do Pokémon (decímetros), como nos jogos:
- * um Joltik bem pequeno, um Pikachu pequeno, um Charizard quase do tamanho do
- * espaço e os gigantes (Wailord, Gigantamax) ocupando tudo. Igual ao app.
- */
-export const battleScale = (height) => Math.min(1, Math.max(0.3, Math.sqrt((height ?? 10) / 20)))
-
 const BattleSprite = forwardRef(function BattleSprite({ mon, id, back, fainted, dmax, tera = '', byId }, ref) {
   const p = byId?.get(id) ?? byId?.get(mon.id)
   const teraColor = tera ? typeColor(tera) : null
@@ -730,6 +724,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   const [menu, setMenu] = useState(() => battle.needSwitch ? 'party' : 'main') // main | fight | party | bag
   const actionBusy = useRef(false)
   const [item, setItem] = useState(null) // item da Bolsa escolhido (falta escolher em quem)
+  const [bagPick, setBagPick] = useState(null) // o item tocado na Bolsa (mostra a ajuda)
   const [gimmickPick, setGimmickPick] = useState(null)
   const skip = useRef(null)
   const sprites = [useRef(null), useRef(null)]
@@ -999,6 +994,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
 
   const me = battle.sides[0].team[shown.active[0]]
   const foe = battle.sides[1].team[shown.active[1]]
+  const scene = battleScene(battle.scene, battle.seed ?? battle.turn)
   const current = active(battle, 0)
   const usable = usableMoves(current)
   const waiting = !busy && !online?.locked && battle.winner == null
@@ -1085,7 +1081,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         data-layout="bw"
       >
         {/* Como no Black & White: o adversário lá atrás à direita (menor), o seu de costas na frente à esquerda (grande, cortado pela caixa do texto). */}
-        <BattleBackground weather={shown.weather} scene={battleScene(battle.scene, battle.seed ?? battle.turn)} layout="bw" />
+        <BattleBackground weather={shown.weather} scene={scene} layout="bw" />
         <div className={`absolute top-[5%] left-0 w-[50%] max-w-[300px] transition-opacity ${intro && poke[1] === 'hidden' ? 'opacity-0' : ''}`}>
           <button type="button" className="block w-full cursor-pointer text-left" onClick={() => setInspect(1)} aria-label={t('Ver detalhes do adversário')} data-testid="inspect-foe">
             <InfoBox bw mon={foe} hp={shown.hp[1][shown.active[1]]} status={shown.status[1][shown.active[1]]} dmax={shown.dmax[1]} boosts={shown.boosts[1]} hpTestId={online ? "online-hp-" + (1 - online.side) : undefined} />
@@ -1093,6 +1089,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         </div>
         {/* O inimigo fica mais longe: menor e com os pés na frente do meio da plataforma (pisando nela, como o seu). */}
         <div className="absolute right-[11%] bottom-[57%] w-[26%]">
+          <PlatformBase scene={scene} side="foe" scale={battleScale(byId?.get(shown.form[1] ?? foe.id)?.height)} />
           <div className={`poke-${poke[1] || 'shown'}`}>
             <BattleSprite ref={sprites[1]} mon={foe} id={shown.form[1] ?? foe.id} dmax={shown.dmax[1]} tera={shown.tera[1]} fainted={shown.fainted[1]} byId={byId} />
           </div>
@@ -1104,6 +1101,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
           )}
         </div>
         <div className="absolute bottom-[12%] left-[1%] w-[58%]">
+          <PlatformBase scene={scene} side="mine" scale={battleScale(byId?.get(shown.form[0] ?? me.id)?.height)} />
           <div className={`poke-${poke[0] || 'shown'}`}>
             <BattleSprite ref={sprites[0]} mon={me} id={shown.form[0] ?? me.id} dmax={shown.dmax[0]} tera={shown.tera[0]} back fainted={shown.fainted[0]} byId={byId} />
           </div>
@@ -1199,50 +1197,38 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
           </div>
         )}
         {waiting && menu === 'bag' && (
-          <div className="max-h-[70vh] w-full overflow-y-auto rounded-xl border-4 border-slate-600 bg-white p-2 text-slate-900">
-            <div className="mb-2 flex items-center justify-between">
-              <b>{t('Bolsa')}</b>
-              <button type="button" onClick={() => setMenu('main')} className="cursor-pointer text-sm text-slate-500 hover:text-slate-900">
-                Voltar
-              </button>
-            </div>
-            <div className="grid gap-2 sm:grid-cols-2" data-testid="bag">
-              {ITEMS.filter((it) => it.count > 0 || (battle.bags[0][it.slug] ?? 0) > 0).map((it) => {
-                const left = battle.bags[0][it.slug] ?? 0
-                const usableOn = battle.sides[0].team.some((_, i) => canUseItem(battle, 0, it.slug, i))
-                return (
-                  <button
-                    key={it.slug}
-                    type="button"
-                    disabled={!usableOn}
-                    data-testid={`bag-${it.slug}`}
-                    // A bola vai direto no selvagem; os remédios perguntam em quem.
-                    onClick={() => (it.ball ? throwBall(it.slug) : (setItem(it.slug), setMenu('party')))}
-                    className="flex cursor-pointer items-center gap-3 rounded-xl bg-slate-100 p-2 text-left disabled:cursor-default disabled:opacity-50"
-                  >
-                    <img src={spriteUrl(`items/${it.slug}.png`)} alt="" className="pixelated h-10 w-10" />
-                    <div className="min-w-0 flex-1">
-                      <div className="font-bold" data-no-translate>
-                        {it.name}
-                      </div>
-                      <div className="text-xs text-slate-500">
-                        {it.ball
-                          ? t('Jogar no Pokémon selvagem')
-                          : it.revive
-                          ? t('Revive com metade do HP')
-                          : it.heal >= 9999
-                            ? t('Recupera todo o HP')
-                            : battle.healPct
-                              ? t('Recupera {0}% do HP').replace('{0}', Math.round(HEAL_SHARE[it.slug] * 100))
-                              : t('Recupera {0} de HP').replace('{0}', it.heal)}
-                      </div>
-                    </div>
-                    <span className="font-black tabular-nums">{`×${left}`}</span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
+          // A Bolsa do Black & White, em bolsos: remédios e Poké Balls.
+          <BwBag
+            testid="bag"
+            onClose={() => setMenu('main')}
+            selected={bagPick}
+            onSelect={setBagPick}
+            pockets={[
+              { id: 'medicine', label: 'Remédios', img: 'potion', ball: false },
+              { id: 'balls', label: 'Poké Balls', img: 'poke-ball', ball: true },
+            ].map((pocket) => ({
+              ...pocket,
+              items: ITEMS.filter((it) => Boolean(it.ball) === pocket.ball && (battle.bags[0][it.slug] ?? 0) > 0).map((it) => ({
+                id: it.slug,
+                name: it.name,
+                count: battle.bags[0][it.slug] ?? 0,
+                icon: spriteUrl(`items/${it.slug}.png`),
+                help: it.ball
+                  ? t('Jogar no Pokémon selvagem')
+                  : it.revive
+                    ? t('Revive com metade do HP')
+                    : it.heal >= 9999
+                      ? t('Recupera todo o HP')
+                      : battle.healPct
+                        ? t('Recupera {0}% do HP').replace('{0}', Math.round(HEAL_SHARE[it.slug] * 100))
+                        : t('Recupera {0} de HP').replace('{0}', it.heal),
+                disabled: !battle.sides[0].team.some((_, i) => canUseItem(battle, 0, it.slug, i)),
+                use: it.ball ? t('JOGAR') : t('USAR'),
+                // A bola vai direto no selvagem; os remédios perguntam em quem.
+                onUse: () => (setBagPick(null), it.ball ? throwBall(it.slug) : (setItem(it.slug), setMenu('party'))),
+              })),
+            }))}
+          />
         )}
         {waiting && menu === 'party' && (
           <div className="max-h-[70vh] w-full overflow-y-auto rounded-xl border-4 border-slate-600 bg-white p-2 text-slate-900">

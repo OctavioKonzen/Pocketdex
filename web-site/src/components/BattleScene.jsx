@@ -156,8 +156,9 @@ export const PLATFORMS = {
 
 /**
  * Os lugares que têm imagem (sprites/battle/<lugar>.webp, feitas por
- * tool/battle_backgrounds.py, com as bases desenhadas) e a versão de cada clima
- * (<lugar>-sun/rain/sand/snow.webp): Sunny Day, Rain Dance... mudam o cenário. Igual ao app.
+ * tool/battle_backgrounds.py, sem as bases: PlatformBase põe uma embaixo de cada
+ * Pokémon) e a versão de cada clima (sprites/battle-weather/<lugar>-sun/rain/sand/snow.webp):
+ * Sunny Day, Rain Dance... mudam o cenário. Igual ao app.
  */
 export const SCENE_IMAGES = ['grass', 'forest', 'water', 'beach', 'underwater', 'swamp', 'sewer', 'cave', 'icecave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky', 'tower', 'gym', 'league', 'center']
 const usable = (scene) => (SCENE_IMAGES.includes(scene) || SCENE_COLORS[scene] ? scene : 'grass')
@@ -173,6 +174,35 @@ export function battleScene(scene, seed) {
 /** Líder de ginásio no ginásio; Elite Four e Campeão na Liga. */
 export const sceneOfBoss = (kind) => (kind === 'gym' ? 'gym' : kind === 'elite' || kind === 'champion' || kind === 'league' ? 'league' : null)
 
+/**
+ * O tamanho na batalha pela altura do Pokémon (decímetros), como nos jogos:
+ * um Joltik bem pequeno, um Pikachu pequeno, um Charizard quase do tamanho do
+ * espaço e os gigantes (Wailord, Gigantamax) ocupando tudo. Igual ao app.
+ */
+export const battleScale = (height) => Math.min(1, Math.max(0.3, Math.sqrt((height ?? 10) / 20)))
+
+/** Largura da base (fração da caixa do Pokémon) pelo tamanho dele: centralizada nele e do tamanho dele. Igual ao app. */
+export const baseWidth = (scale) => 0.55 + 0.85 * scale
+
+/**
+ * A base embaixo do Pokémon (sprites/battle/<lugar>-base-<foe|mine>.webp, com a
+ * cor do chão do lugar): o meio dela nos pés dele e a largura pelo tamanho
+ * dele. Fica dentro da caixa (quadrada) do Pokémon, antes dele.
+ */
+export function PlatformBase({ scene, side, scale = 1 }) {
+  if (!SCENE_IMAGES.includes(scene)) return null
+  return (
+    <img
+      src={spriteUrl(`battle/${scene}-base-${side}.webp`)}
+      alt=""
+      aria-hidden="true"
+      className="pixelated pointer-events-none absolute left-1/2 max-w-none"
+      style={{ width: `${baseWidth(scale) * 100}%`, bottom: '2.5%', transform: 'translate(-50%, 50%)' }}
+      data-testid={`base-${side}`}
+    />
+  )
+}
+
 export function BattleBackground({ weather = '', scene = 'grass', layout = 'classic' }) {
   const { foe, mine } = PLATFORMS[layout] ?? PLATFORMS.classic
   if (layout === 'bw' && SCENE_IMAGES.includes(scene)) {
@@ -182,7 +212,7 @@ export function BattleBackground({ weather = '', scene = 'grass', layout = 'clas
       <div className="pointer-events-none absolute inset-0" aria-hidden="true" data-scene={scene} data-weather={sky ?? ''}>
         <img src={spriteUrl(`battle/${scene}.webp`)} alt="" className="pixelated absolute inset-0 h-full w-full object-fill" />
         {Object.values(WEATHER_IMAGE).filter((w, i, all) => all.indexOf(w) === i).map((w) => (
-          <img key={w} src={spriteUrl(`battle/${scene}-${w}.webp`)} alt="" loading="lazy" className="pixelated absolute inset-0 h-full w-full object-fill transition-opacity duration-700" style={{ opacity: sky === w ? 1 : 0 }} />
+          <img key={w} src={spriteUrl(`battle-weather/${scene}-${w}.webp`)} alt="" loading="lazy" className="pixelated absolute inset-0 h-full w-full object-fill transition-opacity duration-700" style={{ opacity: sky === w ? 1 : 0 }} />
         ))}
       </div>
     )

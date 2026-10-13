@@ -389,3 +389,19 @@ describe('dano estimado no botão do golpe', () => {
     expect(damageRange(hitter, {}, def, { slug: 'growl', category: 'status' })).toBe(null)
   })
 })
+
+describe('itens da Battle Factory na batalha', () => {
+  it('os itens dos chefes e do time têm o efeito de verdade (Life Orb tira HP de quem usa, Leftovers cura)', async () => {
+    const { foeMember } = await import('./factoryRun')
+    const { simulatorDispose } = await import('./battleSimulator')
+    const [machamp, snorlax] = await battleMons([
+      foeMember({ id: 68, level: 50, iv: 31, ev: 0, item: 'life-orb' }, ['karate-chop']),
+      foeMember({ id: 143, level: 50, iv: 31, ev: 0, item: 'leftovers' }, ['harden']),
+    ])
+    const b = newBattle([machamp], [snorlax], seededRandom(7))
+    try {
+      const keys = [...startBattle(b), ...playTurn(b, { move: 0 }, () => ({ rolls: [[1]], eff: 1 }))].filter((e) => e.t === 'text').map((e) => e.key)
+      expect(keys).toEqual(expect.arrayContaining(['hurtBy', 'healedBy']))
+    } finally { simulatorDispose(b) }
+  }, 30000)
+})

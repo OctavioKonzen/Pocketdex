@@ -279,19 +279,41 @@ class FactoryRun {
 
     final owned = fix(ownedOf(factory)), shinies = fix(shiniesOf(factory));
     bool same(List<int> a, List<int> b) => a.length == b.length && [for (var i = 0; i < a.length; i++) a[i] == b[i]].every((x) => x);
-    return same(owned, ownedOf(factory)) && same(shinies, shiniesOf(factory)) ? factory : {...factory, 'owned': owned, 'shinies': shinies};
+    if (same(owned, ownedOf(factory)) && same(shinies, shiniesOf(factory))) return factory;
+    // Devolve as moedas: a diferença para a primeira forma (ou tudo, se a primeira forma já era dele).
+    int price(int id) => pokemonPrice(_int(data.species[id]?[1] ?? 0));
+    var refund = 0;
+    final kept = <int>[];
+    final before = ownedOf(factory);
+    for (final id in before) {
+      final base = baseForm(data, id);
+      if (id == base) {
+        kept.add(id);
+        continue;
+      }
+      refund += kept.contains(base) || before.contains(base) ? price(id) : price(id) - price(base);
+      kept.add(base);
+    }
+    final r = math.max(0, refund);
+    return {...factory, 'owned': owned, 'shinies': shinies, 'coins': _int(factory['coins'] ?? 0) + r, 'refunded': r};
   }
 
   /// Melhorias permanentes (compradas com moedas antes da corrida): nome, quanto por nível, máximo e preço base. Igual ao site.
-  static const upgrades = <String, ({String label, int per, int max, int base})>{
-    'level': (label: 'Treino: o inicial começa {0} nível acima', per: 1, max: 5, base: 150),
-    'ivs': (label: 'Genética: IVs mínimos do inicial +{0}', per: 3, max: 5, base: 120),
-    'balls': (label: 'Começa com +{0} Poké Ball', per: 1, max: 5, base: 60),
-    'potions': (label: 'Começa com +{0} Potion', per: 1, max: 5, base: 60),
-    'revive': (label: 'Começa com +{0} Revive', per: 1, max: 3, base: 200),
-    'money': (label: 'Começa com +{0} de dinheiro', per: 100, max: 5, base: 100),
-    'shop': (label: 'Loja {0}% mais barata', per: 4, max: 5, base: 250),
-    'exp': (label: '+{0}% de XP', per: 5, max: 5, base: 250),
+  /// offset: o que se soma ao valor mostrado (shiny: 1 + nível = quantas vezes mais comum).
+  static const upgrades = <String, ({String label, int per, int max, int base, int offset})>{
+    'level': (label: 'Treino: o inicial começa {0} nível acima', per: 1, max: 5, base: 150, offset: 0),
+    'ivs': (label: 'Genética: IVs mínimos do inicial +{0}', per: 3, max: 5, base: 120, offset: 0),
+    'balls': (label: 'Começa com +{0} Poké Ball', per: 1, max: 5, base: 60, offset: 0),
+    'potions': (label: 'Começa com +{0} Potion', per: 1, max: 5, base: 60, offset: 0),
+    'revive': (label: 'Começa com +{0} Revive', per: 1, max: 3, base: 200, offset: 0),
+    'money': (label: 'Começa com +{0} de dinheiro', per: 100, max: 5, base: 100, offset: 0),
+    'shop': (label: 'Loja {0}% mais barata', per: 4, max: 5, base: 250, offset: 0),
+    'exp': (label: '+{0}% de XP', per: 5, max: 5, base: 250, offset: 0),
+    // As que mudam o jeito de jogar.
+    'expShare': (label: 'Começa com o Exp. Share', per: 1, max: 1, base: 1200, offset: 0),
+    'cards': (label: 'Uma carta a mais para escolher depois de cada chefe', per: 1, max: 1, base: 2000, offset: 0),
+    'reroll': (label: '{0}× por corrida: sortear o caminho de novo', per: 1, max: 2, base: 700, offset: 0),
+    'shiny': (label: 'Shiny {0}× mais comum', per: 1, max: 3, base: 900, offset: 1),
   };
   static int upgradeLevel(Json factory, String id) => (((factory['upgrades'] as Map?)?[id] as num?) ?? 0).toInt();
   static int upgradeValue(Json factory, String id) => upgradeLevel(factory, id) * upgrades[id]!.per;
@@ -389,6 +411,15 @@ class FactoryRun {
 
   /// Lucky Egg: XP a mais para quem segura (como extra, menos). Igual ao site.
   static const luckyEgg = (held: 1.5, extra: 1.2);
+
+  /// Os itens que os chefes e o treinador forte seguram (efeito de verdade na batalha). Igual ao site.
+  static const foeItems = [
+    'leftovers', 'sitrus-berry', 'life-orb', 'choice-band', 'choice-specs', 'choice-scarf', 'focus-sash', 'assault-vest', 'rocky-helmet',
+    'expert-belt', 'lum-berry', 'weakness-policy', 'scope-lens', 'air-balloon',
+  ];
+
+  /// Quantas vezes mais comum o shiny está (melhoria "shiny"), vindo do caminho escolhido.
+  static double _shinyRate(Map? node) => ((node?['shiny'] as num?) ?? 1).toDouble();
   static double _eggOf(Map m) => m['item'] == 'lucky-egg' ? luckyEgg.held : ((m['extras'] as List?) ?? const []).contains('lucky-egg') ? luckyEgg.extra : 1.0;
 
   /// O XP de um derrotado para cada um do time (posição na corrida): fought = quem lutou contra ele; sem fought, todos de pé.
@@ -669,7 +700,10 @@ class FactoryRun {
       final city = node['kind'] == 'boss' && atCity(data, run);
       final scene = (node['biome'] as String?) ?? (city ? (bossOf(data, run)['kind'] == 'gym' ? 'city' : 'tower') : routeBiomeNow);
       out['scene'] = scene;
-      out['encounter'] = {...encounterFor(data, floor, rand, node['kind'] == 'boss' ? bossOf(data, out) : null, node['kind'] == 'wildboss', {...node, 'biome': scene}), 'scene': scene};
+      out['encounter'] = {
+        ...encounterFor(data, floor, rand, node['kind'] == 'boss' ? bossOf(data, out) : null, node['kind'] == 'wildboss', {...node, 'biome': scene, 'shiny': run['shinyRate'] ?? 1}),
+        'scene': scene,
+      };
       return out;
     }
     out['floor'] = floor + 1;
@@ -679,7 +713,7 @@ class FactoryRun {
       out['pending'] = {'mart': true, 'shop': _pickShop(rand, data, floor, 10)};
     } else if (node['kind'] == 'trade') {
       // Troca: alguém da rota oferece um Pokémon (você escolhe quem dar; ele vem tradeLevels acima).
-      final offer = (encounterFor(data, floor + 1, rand, null, false, {'kind': 'wild', 'biome': run['route']?['biome']})['foes'] as List).first as Map;
+      final offer = (encounterFor(data, floor + 1, rand, null, false, {'kind': 'wild', 'biome': run['route']?['biome'], 'shiny': run['shinyRate'] ?? 1})['foes'] as List).first as Map;
       out['pending'] = {'trade': {'id': offer['id'], if (offer['shiny'] == true) 'shiny': true}};
     } else if (node['kind'] == 'center') {
       out['team'] = [for (final m in teamOf(out)) {...m, 'hp': 1}];
@@ -752,7 +786,7 @@ class FactoryRun {
         extra = {'title': 'legend'};
       }
       final lvl = _bossLevel(data, floor, id, level + 3);
-      return {'kind': 'wildboss', 'foes': [foe(id, lvl, {...strong, ...extra, if (rand() < shinyChance) 'shiny': true})]};
+      return {'kind': 'wildboss', 'foes': [foe(id, lvl, {...strong, ...extra, if (rand() < shinyChance * _shinyRate(node)) 'shiny': true})]};
     }
     if (boss != null) {
       // Os times dos chefes são de Pokémon evoluídos: quem é mais forte que as espécies do andar vem com nível menor.
@@ -762,6 +796,12 @@ class FactoryRun {
       int levelOf(int id, int i) => _bossLevel(data, floor, id, level + bonus + (i == team.length - 1 ? 1 : 0));
 
       final foes = [for (var i = 0; i < team.length; i++) foe(team[i], levelOf(team[i], i), {'iv': math.max(31, iv), 'ev': (ev * 1.25).round()})];
+      // A partir do andar 10, cada Pokémon do chefe segura um item de verdade (Leftovers, Life Orb, Choice...).
+      if (floor >= 10) {
+        for (final f in foes) {
+          f['item'] = _pick(foeItems, rand);
+        }
+      }
       return {
         'kind': 'boss', 'foes': foes,
         'boss': {'id': boss['id'], 'name': boss['name'], 'trainer': boss['trainer'], 'kind': boss['kind'], 'region': boss['region'], 'game': boss['game']},
@@ -803,12 +843,14 @@ class FactoryRun {
         final id = pick(common, true);
         foes.add(foe(id, level + (ace ? 2 : 0) - (rand() * 3).floor(), extra));
       }
+      // O mais forte do treinador forte segura um item de verdade (a partir do andar 15).
+      if (ace && floor >= 15) foes.last['item'] = _pick(foeItems, rand);
       return {'kind': kind, 'foes': foes, 'trainerSeed': (rand() * 1e9).floor(), if (ace) 'reward': _pick(aceRewards, rand)};
     }
     // Selvagem: os do lugar da rota aparecem bem mais.
     final id = pick(common);
     return {
-      'kind': kind, 'foes': [foe(id, level, rand() < shinyChance ? {'shiny': true} : const {})],
+      'kind': kind, 'foes': [foe(id, level, rand() < shinyChance * _shinyRate(node) ? {'shiny': true} : const {})],
       if (node?['biome'] != null) 'biome': node!['biome'],
     };
   }
@@ -822,7 +864,10 @@ class FactoryRun {
       'bag': {...startBag, 'poke-ball': startBag['poke-ball']! + up('balls'), 'potion': startBag['potion']! + up('potions'), 'revive': startBag['revive']! + up('revive')},
       'team': <Json>[], 'teamBoost': _zero(), 'mult': {'money': 1, 'exp': _round3(1 + up('exp') / 100), 'shop': _round3(1 - up('shop') / 100)},
       'cards': <String>[], 'boss': {'region': 0, 'step': 0}, 'played': <String>[],
-      'tms': <String, dynamic>{}, 'tokens': {'move-tutor': 0, 'move-reminder': 0}, 'stash': <String>[], 'dmax': false, 'tera': false, 'expShare': false,
+      if (up('cards') > 0) 'cardCount': 3 + up('cards'),
+      if (up('reroll') > 0) 'rerolls': up('reroll'),
+      if (up('shiny') > 0) 'shinyRate': 1 + up('shiny'),
+      'tms': <String, dynamic>{}, 'tokens': {'move-tutor': 0, 'move-reminder': 0}, 'stash': <String>[], 'dmax': false, 'tera': false, 'expShare': up('expShare') > 0,
       'leg': 1, 'route': null, 'encounter': null, 'pending': null,
     };
     final rand = _dice(run);
@@ -950,7 +995,7 @@ class FactoryRun {
     }
     final joy = rand() < joyChance;
     if (joy) out['team'] = [for (final m in teamOf(out)) {...m, 'hp': 1}];
-    final cardsPick = kind == 'boss' ? _pickCards(rand) : null;
+    final cardsPick = kind == 'boss' ? _pickCards(rand, ((run['cardCount'] as num?) ?? 3).toInt()) : null;
     // A loja da cidade: chegando nela, logo antes do chefe (no resto da rota, os Poké Marts do mapa).
     final cityWin = kind == 'boss' && _cityKinds.contains(run['encounter']['boss']['kind']);
     final shopPick = !cityWin && atCity(data, out) && !_inLeague(data, out) ? _pickShop(rand, data, _int(run['floor'])) : null;
@@ -965,10 +1010,10 @@ class FactoryRun {
     return out;
   }
 
-  static List<String> _pickCards(double Function() rand) {
+  static List<String> _pickCards(double Function() rand, [int count = 3]) {
     final ids = cards.keys.toList();
     final out = <String>[];
-    while (out.length < 3) {
+    while (out.length < count) {
       final id = _pick(ids, rand);
       if (!out.contains(id)) out.add(id);
     }
@@ -1092,7 +1137,24 @@ class FactoryRun {
     return out;
   }
 
+  /// Sorteia os caminhos do andar de novo (melhoria "reroll": algumas vezes por corrida). null se não dá. Igual ao site.
+  static Json? rerollRoute(Json run, FactoryData data) {
+    final left = ((run['rerolls'] as num?) ?? 0).toInt();
+    if (left <= 0 || run['route'] == null || run['encounter'] != null || run['pending'] != null) return null;
+    final out = _copy(run)..['rerolls'] = left - 1;
+    out['route'] = routeOptions(out, data, _dice(out));
+    return out;
+  }
+
   /// Recusa a troca.
+  /// Quem abre a batalha: passa o Pokémon da posição para a frente do time (para treinar os mais fracos). Igual ao site.
+  static Json setLead(Json run, int index) {
+    final team = teamOf(run);
+    if (index <= 0 || index >= team.length) return run;
+    final mon = team.removeAt(index);
+    return {...run, 'team': [mon, ...team]};
+  }
+
   static Json skipTrade(Json run) {
     if (run['pending'] == null) return run;
     final out = _copy(run);

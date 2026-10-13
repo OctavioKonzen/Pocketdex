@@ -7,7 +7,7 @@ import {
   equipFromStash, gimmicksOf, setGimmick, storyLine, startRun, takeCard, teamDown, applyBagItem, winFloor, chooseNode, routeOptions, routeCities,
   captureFor, factoryOf, BIOMES, isBattleNode, skipCapture, FORKS, ROUTE_LENGTH, BALL_TIERS, HEAL_TIERS, tierPick, minLevelOf, devolve,
   EXP_SHARE, expProgress, shopOwned, baseForm, forSale, normalizeOwned, buyUpgrade, upgradePrice, UPGRADES,
-  tradeMon, skipTrade, TRADE_LEVELS, escapeRope, ESCAPE_HP, progress, ACHIEVEMENTS, LUCKY_EGG,
+  tradeMon, skipTrade, TRADE_LEVELS, escapeRope, ESCAPE_HP, progress, ACHIEVEMENTS, LUCKY_EGG, rerollRoute, FOE_ITEMS,
 } from './factoryRun'
 
 const data = JSON.parse(readFileSync(new URL('../../../assets/database/factory.json', import.meta.url), 'utf8'))
@@ -245,6 +245,30 @@ describe('Battle Factory (roguelike)', () => {
     const [f2, again] = progress(f1, run)
     expect(again).toEqual([])
     expect(f2).toBe(f1)
+  })
+
+  it('devolve moedas na troca para a primeira forma; melhorias que mudam o jogo; chefes com itens', () => {
+    const price = (id) => pokemonPrice(data.species[id][1])
+    const fixed = normalizeOwned({ ...emptyFactory(), coins: 0, owned: [1, 6, 5, 4] }, data)
+    expect(fixed.owned).toEqual([1, 4])
+    expect(fixed.coins).toBe(price(6) + price(5))
+    expect(normalizeOwned({ ...emptyFactory(), coins: 10, owned: [1, 6] }, data).coins).toBe(10 + price(6) - price(4))
+    // Exp. Share, carta a mais, sorteio de novo e shiny.
+    let f = { ...emptyFactory(), coins: 999999, owned: [1] }
+    for (const id of ['expShare', 'cards', 'reroll', 'shiny']) while (upgradePrice(f, id) != null) f = buyUpgrade(f, id)
+    const run = startRun(f, data, 1, 42)
+    expect(run.expShare).toBe(true)
+    expect(run.cardCount).toBe(4)
+    expect(run.rerolls).toBe(2)
+    expect(run.shinyRate).toBe(4)
+    const again = rerollRoute(run, data)
+    expect(again.rerolls).toBe(1)
+    expect(rerollRoute({ ...run, rerolls: 0 }, data)).toBe(null)
+    // Os chefes (a partir do andar 10) seguram itens de verdade.
+    let state = 5
+    const rand = () => { const [v, s] = nextRandom(state); state = s; return v }
+    const boss = encounterFor(data, 20, rand, bossOf(data, startRun(emptyFactory(), data, 1, 42)))
+    expect(boss.foes.every((x) => FOE_ITEMS.includes(x.item))).toBe(true)
   })
 
   it('selvagens pela raridade: os comuns (taxa de captura alta) aparecem bem mais', () => {

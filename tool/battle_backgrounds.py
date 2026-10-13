@@ -7,7 +7,11 @@ adversário lá atrás à direita, a sua grande na frente à esquerda).
 
 Cada lugar sai em 5 versões: sem clima e com sol, chuva, areia e neve
 (granizo usa a de neve), porque golpes como Sunny Day e Rain Dance mudam o
-cenário: assets/database/sprites/battle/<lugar>.webp e <lugar>-<clima>.webp.
+cenário: assets/database/sprites/battle/<lugar>.webp e
+assets/database/sprites/battle-weather/<lugar>-<clima>.webp (fora do APK: o app
+baixa do site quando o clima muda; sem internet, fica a normal).
+As bases ficam à parte (<lugar>-base-foe.webp e <lugar>-base-mine.webp): o site e
+o app desenham uma embaixo de cada Pokémon, do tamanho dele.
 
 Uso: python3 tool/battle_backgrounds.py [lugar ...]          (sem nada: todos)
      SHEET=folha.png python3 tool/battle_backgrounds.py      (+ folha com todos)
@@ -27,6 +31,7 @@ from PIL import Image, ImageDraw, ImageFilter
 
 W, H = 800, 597
 OUT = os.path.join(os.path.dirname(__file__), '..', 'assets', 'database', 'sprites', 'battle')
+OUT_WEATHER = os.path.join(os.path.dirname(__file__), '..', 'assets', 'database', 'sprites', 'battle-weather')
 FOE = (0.761, 0.393, 0.241, 0.066)
 MINE = (0.462, 0.80, 0.525, 0.20)
 HORIZON = int(H * 0.36)
@@ -732,14 +737,39 @@ def pixelate(im, w=''):
     small = small.quantize(colors=COLORS, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert('RGB')
     a = np.asarray(small, np.float32)
     big = np.zeros((H, W, 3), np.float32)
-    # As bases na resolução da tela (cada anel um degrau de pixel), com o tom do clima.
-    tone = {'rain': np.array([0.85, 0.88, 0.95]), 'sun': np.array([1.05, 1.0, 0.92]), 'sand': np.array([1.0, 0.95, 0.85]), 'snow': np.array([1.0, 1.02, 1.06])}.get(w, 1)
-    for spec in (FOE, MINE):
-        a = put_small(a, spec, tone)
     return Image.fromarray(np.clip(a, 0, 255).astype(np.uint8))
 
 
-def put_small(a, spec, tone):
+def base_sprite(scene_im, spec):
+    """A base sozinha (fundo transparente), em pixel, com a cor do chão do lugar: o site e o app a
+    desenham embaixo de cada Pokémon, centralizada nele e do tamanho dele."""
+    a = np.asarray(scene_im, np.float32)
+    h, w = a.shape[:2]
+    cx, cy, rx, ry = spec
+    X, Y, RX, RY = cx * w, cy * h, rx * w, ry * h
+    ys = slice(int(max(0, Y - RY * 1.3)), int(min(h, Y + RY * 1.3)))
+    xs = slice(int(max(0, X - RX * 1.1)), int(min(w, X + RX * 1.1)))
+    ground_c = a[ys, xs].reshape(-1, 3).mean(axis=0)
+    RX, RY = round(RX), round(RY)
+    thick = max(2, round(RY * 0.16))
+    bw, bh = RX * 2 + 4, RY * 2 + thick + 4
+    canvas = np.zeros((bh, bw, 4), np.float32)
+    # Desenha numa cópia (com transparência) usando o mesmo put_small, centrada.
+    rgb_ = np.zeros((bh, bw, 3), np.float32)
+    alpha = np.zeros((bh, bw), np.float32)
+    spec2 = ((RX + 2) / bw, (RY + 2) / bh, RX / bw, RY / bh)
+    black = put_small(np.zeros((bh, bw, 3), np.float32), spec2, 1, ground_c)
+    white = put_small(np.full((bh, bw, 3), 255, np.float32), spec2, 1, ground_c)
+    # Transparência pela diferença entre o fundo preto e o branco.
+    alpha = 1 - (white - black).mean(axis=2) / 255
+    alpha = np.clip(alpha, 0, 1)
+    rgb_ = np.where(alpha[..., None] > 0.01, black / np.maximum(alpha[..., None], 0.01), 0)
+    canvas[..., :3] = np.clip(rgb_, 0, 255)
+    canvas[..., 3] = np.round(alpha * 255)
+    return Image.fromarray(canvas.astype(np.uint8), 'RGBA')
+
+
+def put_small(a, spec, tone, ground_c=None):
     """Uma base em pixel: sombra no chão, espessura (a borda de baixo mais escura), um pouco da cor do chão em volta e os anéis."""
     h, w = a.shape[:2]
     cx, cy, rx, ry = spec
@@ -747,7 +777,8 @@ def put_small(a, spec, tone):
     # A cor do chão logo em volta (para a base combinar com o lugar).
     ys = slice(int(max(0, Y - RY * 1.3)), int(min(h, Y + RY * 1.3)))
     xs = slice(int(max(0, X - RX * 1.1)), int(min(w, X + RX * 1.1)))
-    ground_c = a[ys, xs].reshape(-1, 3).mean(axis=0)
+    if ground_c is None:
+        ground_c = a[ys, xs].reshape(-1, 3).mean(axis=0)
     thick = max(2, round(RY * 0.16))
     im = Image.new('RGBA', (w, h), (0, 0, 0, 0))
     d = ImageDraw.Draw(im)
@@ -784,9 +815,15 @@ def main():
     names = sys.argv[1:] or list(SCENES)
     weathers = [''] + (WEATHERS if os.environ.get('WEATHERS', '1') != '0' else [])
     os.makedirs(OUT, exist_ok=True)
+    os.makedirs(OUT_WEATHER, exist_ok=True)
     for name in names:
         for w in weathers:
-            pixelate(render(name, w, bases=False), w).save(os.path.join(OUT, f"{name}{'-' + w if w else ''}.webp"), 'WEBP', lossless=True, method=6)
+            im = pixelate(render(name, w, bases=False), w)
+            im.save(os.path.join(OUT_WEATHER, f'{name}-{w}.webp') if w else os.path.join(OUT, f'{name}.webp'), 'WEBP', lossless=True, method=6)
+            if not w:
+                # As bases: a de longe (do adversário) e a de perto (a sua), cada uma com a sua perspectiva.
+                for side, spec in (('foe', FOE), ('mine', MINE)):
+                    base_sprite(im, spec).save(os.path.join(OUT, f'{name}-base-{side}.webp'), 'WEBP', lossless=True, method=6)
         print(name, flush=True)
     sheet = os.environ.get('SHEET')
     if sheet:
@@ -794,7 +831,7 @@ def main():
         rows = [(n, w) for n in names for w in weathers] if len(names) <= 3 else [(n, '') for n in names]
         out = Image.new('RGB', (tw * cols, th * math.ceil(len(rows) / cols)), 'black')
         for i, (n, w) in enumerate(rows):
-            im = Image.open(os.path.join(OUT, f"{n}{'-' + w if w else ''}.webp")).convert('RGB').resize((tw, th), Image.NEAREST)
+            im = Image.open(os.path.join(OUT_WEATHER, f'{n}-{w}.webp') if w else os.path.join(OUT, f'{n}.webp')).convert('RGB').resize((tw, th), Image.NEAREST)
             ImageDraw.Draw(im).text((6, 4), f'{n} {w}', fill='white')
             out.paste(im, ((i % cols) * tw, (i // cols) * th))
         out.save(sheet)

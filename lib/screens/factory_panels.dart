@@ -23,6 +23,7 @@ import '../services/turn_battle.dart';
 import '../services/user_data.dart';
 import '../utils/site_ui.dart';
 import '../widgets/battle_scene.dart';
+import '../widgets/bw_bag.dart';
 import '../widgets/pokemon_sprite.dart';
 import '../widgets/trainer_sprite.dart';
 import 'turn_battle_screen.dart' show battleMonName;
@@ -276,8 +277,103 @@ class _BagAndItemsState extends State<_BagAndItems> {
     if (next != null) widget.onSave(next);
   }
 
+  /// O que falta escolher em quem: ('bag', item), ('stash', posição) ou ('teach', '').
+  (String, String)? _using;
+
+  /// A Bolsa como no Black & White, em bolsos: remédios em quem está ferido, Revive em quem desmaiou, segurar os itens
+  /// guardados e ensinar os TMs. Igual ao site (BagPanel).
+  Widget _bwBag(BuildContext context) {
+    final run = widget.run;
+    final team = FactoryRun.teamOf(run);
+    final bag = FactoryRun.bagOf(run);
+    final items = <String, List<BagEntry>>{'items': [], 'medicine': [], 'balls': [], 'tms': [], 'key': []};
+    void using(String kind, String id) => setState(() => _using = (kind, id));
+    for (final id in FactoryRun.bagItems) {
+      if ((bag[id] ?? 0) <= 0) continue;
+      final pocket = id.endsWith('-ball') ? 'balls' : id == 'revive' || FactoryRun.healShare.containsKey(id) ? 'medicine' : 'items';
+      final usable = pocket == 'medicine' && [for (var i = 0; i < team.length; i++) i].any((i) => FactoryRun.applyBagItem(run, id, i) != null);
+      items[pocket]!.add(BagEntry(
+          id: id,
+          name: prettySlug(id),
+          count: bag[id],
+          icon: id,
+          help: _FactoryScreenState._help(id),
+          onUse: pocket == 'medicine' ? () => using('bag', id) : null,
+          disabled: !usable));
+    }
+    final stash = [for (final x in (run['stash'] as List?) ?? const []) '$x'];
+    for (var k = 0; k < stash.length; k++) {
+      items['items']!.add(BagEntry(
+          id: 'stash:$k',
+          name: _itemName(stash[k]),
+          icon: stash[k],
+          help: '${_FactoryScreenState._help(stash[k])} ${tr('(guardado: escolha quem segura)')}',
+          use: tr('SEGURAR'),
+          onUse: () => using('stash', '$k')));
+    }
+    for (final e in ((run['tms'] as Map?) ?? const {}).entries) {
+      if ((e.value as num) > 0) {
+        items['tms']!.add(BagEntry(
+            id: 'tm:${e.key}', name: _itemName('tm:${e.key}'), count: (e.value as num).toInt(), icon: 'tm-normal',
+            help: _FactoryScreenState._help('tm:${e.key}'), use: tr('ENSINAR'), onUse: () => using('teach', '')));
+      }
+    }
+    for (final e in ((run['tokens'] as Map?) ?? const {}).entries) {
+      if ((e.value as num) > 0) {
+        items['tms']!.add(BagEntry(
+            id: '${e.key}', name: prettySlug('${e.key}'), count: (e.value as num).toInt(), icon: 'tm-normal',
+            help: _FactoryScreenState._help('${e.key}'), use: tr('ENSINAR'), onUse: () => using('teach', '')));
+      }
+    }
+    for (final (flag, id) in const [('dmax', 'dynamax-band'), ('tera', 'tera-orb'), ('expShare', 'exp-share')]) {
+      if (run[flag] == true) items['key']!.add(BagEntry(id: id, name: prettySlug(id), icon: id, help: _FactoryScreenState._help(id)));
+    }
+    final u = _using;
+    return BwBag(
+      testKey: 'factory-bag',
+      onSelect: (_) => setState(() => _using = null),
+      pockets: [
+        BagPocket(id: 'items', label: 'Itens', img: 'leftovers', items: items['items']!),
+        BagPocket(id: 'medicine', label: 'Remédios', img: 'potion', items: items['medicine']!),
+        BagPocket(id: 'balls', label: 'Poké Balls', img: 'poke-ball', items: items['balls']!),
+        BagPocket(id: 'tms', label: 'TMs e golpes', img: 'tm-normal', items: items['tms']!),
+        BagPocket(id: 'key', label: 'Itens-chave', img: 'key-stone', items: items['key']!),
+      ],
+      below: u == null
+          ? null
+          : Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                Text(tr('Em qual Pokémon?'), style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Wrap(spacing: 6, runSpacing: 6, children: [
+                  for (var i = 0; i < team.length; i++)
+                    _mon(context, team[i],
+                        key: ValueKey('bag-target-$i'),
+                        name: battleMonName({'name': widget.names[(team[i]['id'] as num).toInt()] ?? ''}),
+                        onTap: u.$1 == 'bag' && FactoryRun.applyBagItem(run, u.$2, i) == null
+                            ? null
+                            : () {
+                                setState(() => _using = null);
+                                if (u.$1 == 'bag') {
+                                  final next = FactoryRun.applyBagItem(run, u.$2, i);
+                                  if (next != null) widget.onSave(next);
+                                } else if (u.$1 == 'stash') {
+                                  widget.onSave(FactoryRun.equipFromStash(run, int.parse(u.$2), i));
+                                } else {
+                                  _teach(i);
+                                }
+                              }),
+                ]),
+              ]),
+            ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (widget.only == 'bag') return _bwBag(context);
     final c = SiteColors.of(context);
     final run = widget.run;
     final team = FactoryRun.teamOf(run);
@@ -354,6 +450,11 @@ class _BagAndItemsState extends State<_BagAndItems> {
               padding: const EdgeInsets.only(top: 6),
               child: Wrap(spacing: 6, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
                 SizedBox(width: 32, height: 32, child: PokemonSprite((team[i]['id'] as num).toInt(), shiny: team[i]['shiny'] == true, fill: 0.9)),
+                // Quem abre a batalha (para treinar os mais fracos).
+                if (i == 0)
+                  Chip(label: Text(tr('Abre a batalha')), backgroundColor: const Color(0x3310B981))
+                else
+                  ActionChip(key: ValueKey('lead-$i'), label: Text('⬆ ${tr('Primeiro na batalha')}'), onPressed: () => widget.onSave(FactoryRun.setLead(run, i))),
                 if (team[i]['item'] != null) Chip(label: Text('★ ${_itemName('${team[i]['item']}')}'), backgroundColor: const Color(0x33F59E0B)),
                 for (var k = 0; k < ((team[i]['extras'] as List?) ?? const []).length; k++)
                   ActionChip(label: Text(_itemName('${(team[i]['extras'] as List)[k]}')), onPressed: () => widget.onSave(FactoryRun.setMainItem(run, i, k))),
@@ -446,6 +547,20 @@ class _FactoryHubState extends State<FactoryHub> {
             const SizedBox(height: 4),
             Text('${tr('Recorde: andar {0}').replaceAll('{0}', '${factory['best']}')} · 🪙 $coins ${tr('moedas')}',
                 style: TextStyle(fontWeight: FontWeight.bold, color: c.text)),
+            if (((factory['refunded'] as num?) ?? 0) > 0)
+              Container(
+                key: const ValueKey('factory-refunded'),
+                margin: const EdgeInsets.only(top: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(color: const Color(0x26F59E0B), borderRadius: BorderRadius.circular(8)),
+                child: Row(children: [
+                  Expanded(
+                      child: Text(
+                          '🪙 ${tr('Agora só a primeira forma fica à venda: devolvemos {0} moedas dos evoluídos que você tinha comprado.').replaceAll('{0}', '${factory['refunded']}')}',
+                          style: TextStyle(fontWeight: FontWeight.bold, color: c.text, fontSize: 12))),
+                  TextButton(onPressed: () => _save({...factory, 'refunded': 0}), child: Text(tr('OK'))),
+                ]),
+              ),
             if (last != null && run == null)
               Text(tr('Última corrida: andar {0}, +{1} moedas.').replaceAll('{0}', '${last['floor']}').replaceAll('{1}', '${last['coins']}'),
                   style: TextStyle(color: c.muted, fontSize: 12)),
@@ -513,7 +628,7 @@ class _FactoryHubState extends State<FactoryHub> {
               () {
                 final level = FactoryRun.upgradeLevel(factory, e.key);
                 final price = FactoryRun.upgradePrice(factory, e.key);
-                final value = price == null ? FactoryRun.upgradeValue(factory, e.key) : (level + 1) * e.value.per;
+                final value = e.value.offset + (price == null ? FactoryRun.upgradeValue(factory, e.key) : (level + 1) * e.value.per);
                 return ListTile(
                   key: ValueKey('upgrade-${e.key}'),
                   contentPadding: EdgeInsets.zero,
@@ -814,33 +929,46 @@ class _FactoryScreenState extends State<FactoryScreen> {
 
   // ------------------------------------------------------------ a moldura da batalha
 
-  /// O campo da batalha (as mesmas faixas e as duas bases), nas cores do bioma.
+  /// O lugar do campo que está sendo desenhado (os Pokémon e quem está de pé ficam na base com a cor dele).
+  String _scene = 'grass';
+
+  /// O campo da batalha, no mesmo tamanho (4:3, como no Black & White) e com o mesmo cenário dela, no lugar em que você está.
   Widget _field(String biome, List<Widget> Function(double w, double h) children, {Key? key}) => ClipRRect(
         key: key,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
         child: AspectRatio(
-          aspectRatio: 16 / 11,
+          aspectRatio: 4 / 3,
           child: DecoratedBox(
-            decoration: BoxDecoration(border: Border.all(color: _border, width: 4)),
+            decoration: BoxDecoration(border: Border.all(color: _border, width: 4), color: const Color(0xFF9FDCFF)),
             child: LayoutBuilder(builder: (context, box) {
               final w = box.maxWidth, h = box.maxHeight;
-              return Stack(children: [Positioned.fill(child: CustomPaint(painter: BattleScenePainter(scene: biome))), ...children(w, h)]);
+              _scene = battleScene(biome, 0);
+              return Stack(children: [Positioned.fill(child: BattleBackdrop(scene: _scene)), ...children(w, h)]);
             }),
           ),
         ),
       );
 
-  /// Um Pokémon no campo: o seu de costas (embaixo, à esquerda) ou de frente na base de cima.
+  /// Um Pokémon no campo, no mesmo lugar da batalha: o seu de costas (grande, na frente à esquerda) ou de frente lá
+  /// atrás à direita, do tamanho dele (pela altura) e em cima da base dele.
   Widget _fieldMon(Map mon, double w, double h, {bool back = false}) {
-    final sprite = PokemonSprite((mon['id'] as num).toInt(), shiny: mon['shiny'] == true, fill: 0.95, alignBottom: true, back: back);
+    final sprite = StageMon(id: (mon['id'] as num).toInt(), shiny: mon['shiny'] == true, back: back, scene: _scene);
     return back
-        ? Positioned(left: w * 0.06, bottom: h * 0.05, width: w * 0.36, height: w * 0.36, child: sprite)
-        : Positioned(right: w * 0.12, bottom: h * 0.53, width: w * 0.26, height: w * 0.26, child: sprite);
+        ? Positioned(left: w * 0.01, bottom: h * 0.12, width: w * 0.58, height: w * 0.58, child: sprite)
+        : Positioned(right: w * 0.11, bottom: h * 0.57, width: w * 0.26, height: w * 0.26, child: sprite);
   }
 
-  /// Alguém de pé na base de cima (Enfermeira Joy, o chefe, um item...).
-  Widget _far(Widget child, double w, double h) =>
-      Positioned(right: w * 0.06, bottom: h * 0.53, width: w * 0.36, height: w * 0.36, child: Align(alignment: Alignment.bottomCenter, child: child));
+  /// Alguém de pé na base de lá de trás (Enfermeira Joy, o chefe, um item...).
+  Widget _far(Widget child, double w, double h) => Positioned(
+      right: w * 0.06,
+      bottom: h * 0.57,
+      width: w * 0.36,
+      height: w * 0.36,
+      child: Stack(clipBehavior: Clip.none, fit: StackFit.expand, children: [
+        // Uma base do tamanho de um Pokémon médio (Snorlax tem 21 dm; 13 dm dá ~0,8).
+        PlatformBase(scene: _scene, side: 'foe', id: 0),
+        Align(alignment: Alignment.bottomCenter, child: child),
+      ]));
 
   Widget _trainerImage(String id, double size) => Image.asset('assets/database/sprites/trainers/$id.png',
       height: size, fit: BoxFit.contain, alignment: Alignment.bottomCenter, filterQuality: FilterQuality.none, errorBuilder: (_, __, ___) => const SizedBox());
@@ -1307,9 +1435,13 @@ class _FactoryScreenState extends State<FactoryScreen> {
           decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.85), borderRadius: BorderRadius.circular(4)),
           child: Text(text, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: _ink)),
         );
+    final fork = options.length > 1;
     return _frame(
       run: run,
-      field: _field('${route['biome']}', key: const ValueKey('factory-map'), (w, h) {
+      field: fork
+          ? _townMap(route, options, pos, cities.from, cities.to, '${boss['region']} · ${boss['game']}', me,
+              widget.busy ? null : pick, (node) => FactoryRun.isBattleNode(node) && down)
+          : _field('${route['biome']}', key: const ValueKey('factory-map'), (w, h) {
         double x(int k) => w * (0.08 + k / end * 0.84);
         final y = h * 0.34;
         return [
@@ -1339,6 +1471,17 @@ class _FactoryScreenState extends State<FactoryScreen> {
       }),
       text: [
         if (intro.isNotEmpty) _small('📖 $intro'),
+        // Ao entrar na rota: de onde sai, o lugar e para onde vai, com uma frase do lugar.
+        if (pos == 0 && !meeting)
+          Text(
+              '🧭 ${tr('Você sai de {0} e entra em {1}, rumo a {2}.').replaceAll('{0}', cities.from ?? tr('casa')).replaceAll('{1}', tr(biome.$1)).replaceAll('{2}', cities.to)} '
+              '${tr(_routeFlavor['${route['biome']}'] ?? _routeFlavor['grass']!)}',
+              key: const ValueKey('factory-route-story'),
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+        if (meeting && boss['kind'] == 'rival')
+          _small('💬 ${tr(_rivalLines[((run['floor'] as num).toInt() + (run['seed'] as num).toInt()) % _rivalLines.length])}'),
+        if (meeting && boss['kind'] == 'villain')
+          _small('💬 ${tr(_villainLines[((run['floor'] as num).toInt() + (run['seed'] as num).toInt()) % _villainLines.length])}'),
         if (ambush) ...[
           Text(tr('{0} apareceu no caminho!').replaceAll('{0}', '${boss['name']}')),
           _small(FactoryRun.storyLine(data, region, '${boss['kind']}', '${boss['name']}')),
@@ -1365,10 +1508,198 @@ class _FactoryScreenState extends State<FactoryScreen> {
                 key: ValueKey('map-node-$k'),
               );
             }),
+          if (((run['rerolls'] as num?) ?? 0) > 0 && !meeting)
+            _menuButton('🎲 ${tr('SORTEAR O CAMINHO DE NOVO')}', widget.busy ? null : () => _save(FactoryRun.rerollRoute(run, data)),
+                sub: tr('Restam {0} nesta corrida').replaceAll('{0}', '${run['rerolls']}'), key: const ValueKey('factory-reroll')),
         ]),
         _menuGrid(tools),
       ]),
     );
   }
+
+  /// O mapa da cidade (como o Town Map do Black & White) na bifurcação: a rota da cidade de onde veio até a do chefe,
+  /// você no andar de agora e os caminhos abrindo na frente; toque num caminho para ir por ele. Igual ao site (TownMap).
+  Widget _townMap(Json route, List<Json> options, int pos, String? from, String to, String title, Trainer? me, void Function(int)? onPick,
+      bool Function(Json) blocked) {
+    const end = FactoryRun.routeLength + 1;
+    final here = pos + 1;
+    return ClipRRect(
+      key: const ValueKey('factory-map'),
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      child: AspectRatio(
+        aspectRatio: 4 / 3,
+        child: DecoratedBox(
+          decoration: BoxDecoration(border: Border.all(color: _border, width: 4), color: const Color(0xFF1D3F8F)),
+          child: LayoutBuilder(builder: (context, box) {
+            final w = box.maxWidth, h = box.maxHeight;
+            // Em unidades de 160 × 120, como o site.
+            final sx = w / 160, sy = h / 120;
+            const y0 = 64.0, left = 14.0;
+            final hx = left + here / end * 70, ox = hx + 30;
+            double x(int k) => k <= here ? left + k / end * 70 : ox + 14 + (k - here - 1) / max(1, end - here - 1) * (160 - 14 - ox - 14);
+            final n = options.length;
+            final ys = [for (var k = 0; k < n; k++) y0 + (k - (n - 1) / 2) * min(30.0, 84 / n)];
+            Widget sign(String text) => Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.9), borderRadius: BorderRadius.circular(4)),
+                  child: Text(text, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: _ink)),
+                );
+            return Stack(clipBehavior: Clip.none, children: [
+              Positioned.fill(child: CustomPaint(painter: _TownMapPainter(here: here, end: end, x: x, y0: y0, ox: ox, ys: ys, sx: sx, sy: sy))),
+              Positioned(
+                left: 0,
+                right: 0,
+                top: 0,
+                child: Container(
+                  color: const Color(0xCC0F172A),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  child: Row(children: [
+                    Expanded(child: Text('🗺️ $title', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12))),
+                    Text(tr('O caminho se divide'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12)),
+                  ]),
+                ),
+              ),
+              Positioned(left: x(0) * sx - 14, top: (y0 + 8) * sy, child: sign('🏠 ${from ?? tr('Início')}')),
+              Positioned(right: w - x(end) * sx - 14, top: (y0 + 8) * sy, child: sign('👑 $to')),
+              if (me != null) Positioned(left: x(here) * sx - w * 0.06, top: (y0 + 2) * sy - w * 0.12, child: TrainerSprite(me, box: w * 0.12)),
+              // Os caminhos: botões no próprio mapa.
+              for (var k = 0; k < n; k++)
+                Positioned(
+                  left: ox * sx,
+                  top: ys[k] * sy,
+                  child: FractionalTranslation(
+                    translation: const Offset(-0.5, -0.5),
+                    child: Builder(builder: (context) {
+                      final node = options[k];
+                      final info = _nodeInfo[node['kind']] ?? _nodeInfo['wild']!;
+                      final b = _biomeInfo[node['biome']];
+                      final off = onPick == null || blocked(node);
+                      return Opacity(
+                        opacity: off ? 0.5 : 1,
+                        child: Material(
+                          key: ValueKey('map-pin-$k'),
+                          color: const Color(0xE61E3A8A),
+                          shape: const StadiumBorder(side: BorderSide(color: Colors.white, width: 2)),
+                          elevation: 4,
+                          child: InkWell(
+                            customBorder: const StadiumBorder(),
+                            onTap: off ? null : () => onPick(k),
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(2, 2, 8, 2),
+                              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                CircleAvatar(radius: 12, backgroundColor: Colors.white, child: Text(b?.$2 ?? info.$1, style: const TextStyle(fontSize: 13))),
+                                const SizedBox(width: 4),
+                                Text(tr(info.$2), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11)),
+                              ]),
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+            ]);
+          }),
+        ),
+      ),
+    );
+  }
 }
 
+/// As linhas do mapa: a rota (o que já passou mais claro), os caminhos da bifurcação, os andares e as cidades.
+class _TownMapPainter extends CustomPainter {
+  _TownMapPainter({required this.here, required this.end, required this.x, required this.y0, required this.ox, required this.ys, required this.sx, required this.sy});
+  final int here, end;
+  final double Function(int) x;
+  final double y0, ox, sx, sy;
+  final List<double> ys;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // A grade do Town Map.
+    final grid = Paint()..color = const Color(0x14FFFFFF);
+    for (var gx = 0.0; gx < size.width; gx += 12) {
+      canvas.drawLine(Offset(gx, 0), Offset(gx, size.height), grid);
+    }
+    for (var gy = 0.0; gy < size.height; gy += 12) {
+      canvas.drawLine(Offset(0, gy), Offset(size.width, gy), grid);
+    }
+    Offset at(double px, double py) => Offset(px * sx, py * sy);
+    final done = Paint()
+      ..color = const Color(0xFFFDE68A)
+      ..strokeWidth = 3 * sy
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(at(x(0), y0), at(x(here), y0), done);
+    final ahead = Paint()
+      ..color = const Color(0xFF93C5FD)
+      ..strokeWidth = 3 * sy;
+    // Tracejado até a cidade do chefe.
+    for (var px = ox + 14; px < x(end); px += 5) {
+      canvas.drawLine(at(px, y0), at(min(px + 3, x(end)), y0), ahead);
+    }
+    final branch = Paint()
+      ..color = const Color(0xFFFBBF24)
+      ..strokeWidth = 2 * sy
+      ..style = PaintingStyle.stroke;
+    for (final y in ys) {
+      final path = Path()
+        ..moveTo(x(here) * sx, y0 * sy)
+        ..cubicTo((x(here) + 12) * sx, y0 * sy, (ox - 12) * sx, y * sy, ox * sx, y * sy)
+        ..cubicTo((ox + 8) * sx, y * sy, (ox + 6) * sx, y0 * sy, (ox + 14) * sx, y0 * sy);
+      canvas.drawPath(path, branch);
+    }
+    for (var k = 0; k <= end; k++) {
+      final c = at(x(k), y0);
+      if (k == 0 || k == end) {
+        final r = RRect.fromRectAndRadius(Rect.fromCenter(center: c, width: 10 * sx, height: 10 * sy), const Radius.circular(3));
+        canvas.drawRRect(r, Paint()..color = const Color(0xFFEF4444));
+        canvas.drawRRect(r, Paint()
+          ..color = Colors.white
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5);
+      } else {
+        canvas.drawCircle(c, 2.4 * sy, Paint()..color = k < here ? const Color(0xFFFDE68A) : const Color(0xFFBFDBFE));
+        canvas.drawCircle(c, 2.4 * sy, Paint()
+          ..color = const Color(0xFF1E3A8A)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _TownMapPainter old) => old.here != here || old.ys.length != ys.length || old.sx != sx;
+}
+
+/// Ao entrar na rota: uma frase do lugar. Igual ao site.
+const _routeFlavor = {
+  'grass': 'O vento balança o mato alto: tem Pokémon por toda parte.',
+  'forest': 'As árvores fecham o céu; algo se mexe entre as folhas.',
+  'water': 'As ondas batem forte; os Pokémon de Água estão agitados.',
+  'beach': 'A areia esquenta os pés e o mar brilha ao longe.',
+  'underwater': 'Tudo fica azul e silencioso lá embaixo.',
+  'swamp': 'O pântano cheira a veneno e a lama prende os passos.',
+  'sewer': 'Canos pingando e olhos brilhando no escuro.',
+  'cave': 'Está escuro e frio; ecos vêm do fundo da caverna.',
+  'icecave': 'O gelo estala sob os pés; cuidado para não escorregar.',
+  'mountain': 'O caminho sobe pelas pedras; o ar fica mais fino.',
+  'desert': 'O sol queima e a areia apaga as pegadas.',
+  'volcano': 'O chão treme e a lava borbulha por perto.',
+  'snow': 'A neve cai sem parar e cobre o caminho.',
+  'city': 'Ruas cheias de treinadores querendo um desafio.',
+  'sky': 'Nuvens por todo lado: só os que voam passam por aqui.',
+  'tower': 'Velas acesas e um frio estranho: dizem que a torre é assombrada.',
+};
+
+/// O rival e os vilões antes da luta. Igual ao site.
+const _rivalLines = [
+  'Achou que ia passar sem me enfrentar? Mostre o que aprendeu!',
+  'Treinei sem parar desde a última vez. Agora é a minha vez de ganhar!',
+  'O seu time melhorou... mas o meu também!',
+  'Só um de nós vai chegar ao Campeão. Vamos decidir aqui!',
+];
+const _villainLines = [
+  'Os seus Pokémon seriam muito úteis para os nossos planos...',
+  'Saia do caminho, criança! Não temos tempo para heróis.',
+  'Ninguém atrapalha a nossa equipe e sai ileso!',
+];

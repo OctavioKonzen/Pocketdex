@@ -130,6 +130,8 @@ export const HELD_BOOST = {
   // Lucky Egg: sem atributo; quem segura ganha mais XP (LUCKY_EGG).
   'lucky-egg': {},
 }
+/** Os itens que os chefes e o treinador forte seguram (efeito de verdade na batalha). */
+export const FOE_ITEMS = ['leftovers', 'sitrus-berry', 'life-orb', 'choice-band', 'choice-specs', 'choice-scarf', 'focus-sash', 'assault-vest', 'rocky-helmet', 'expert-belt', 'lum-berry', 'weakness-policy', 'scope-lens', 'air-balloon']
 /** Lucky Egg: XP a mais para quem segura (como extra, menos). */
 export const LUCKY_EGG = { held: 1.5, extra: 1.2 }
 const eggOf = (m) => (m.item === 'lucky-egg' ? LUCKY_EGG.held : (m.extras ?? []).includes('lucky-egg') ? LUCKY_EGG.extra : 1)
@@ -227,7 +229,18 @@ export function normalizeOwned(factory, data) {
   const owned = fix(factory.owned)
   const shinies = fix(factory.shinies)
   const same = (a, b) => a.length === (b ?? []).length && a.every((x, i) => x === b[i])
-  return same(owned, factory.owned) && same(shinies, factory.shinies) ? factory : { ...factory, owned, shinies }
+  if (same(owned, factory.owned) && same(shinies, factory.shinies)) return factory
+  // Devolve as moedas: a diferença para a primeira forma (ou tudo, se a primeira forma já era dele).
+  const price = (id) => pokemonPrice(data.species[id]?.[1] ?? 0)
+  let refund = 0
+  const kept = []
+  for (const id of factory.owned ?? []) {
+    const base = baseForm(data, id)
+    if (id === base) { kept.push(id); continue }
+    refund += kept.includes(base) || (factory.owned ?? []).includes(base) ? price(id) : price(id) - price(base)
+    kept.push(base)
+  }
+  return { ...factory, owned, shinies, coins: (factory.coins ?? 0) + Math.max(0, refund), refunded: Math.max(0, refund) }
 }
 
 /** Compra um Pokémon com as moedas (null se não dá). roll (0 a 1): 1 em 4096 de vir shiny. */
@@ -274,6 +287,11 @@ export const UPGRADES = {
   money: { label: 'Começa com +{0} de dinheiro', per: 100, max: 5, base: 100 },
   shop: { label: 'Loja {0}% mais barata', per: 4, max: 5, base: 250 },
   exp: { label: '+{0}% de XP', per: 5, max: 5, base: 250 },
+  // As que mudam o jeito de jogar.
+  expShare: { label: 'Começa com o Exp. Share', per: 1, max: 1, base: 1200 },
+  cards: { label: 'Uma carta a mais para escolher depois de cada chefe', per: 1, max: 1, base: 2000 },
+  reroll: { label: '{0}× por corrida: sortear o caminho de novo', per: 1, max: 2, base: 700 },
+  shiny: { label: 'Shiny {0}× mais comum', per: 1, max: 3, base: 900, offset: 1 },
 }
 export const upgradeLevel = (factory, id) => factory.upgrades?.[id] ?? 0
 /** O bônus da melhoria no nível dela (nível × por nível). */
@@ -596,7 +614,7 @@ export function chooseNode(run, data, index) {
     const city = node.kind === 'boss' && atCity(data, run)
     const scene = node.biome ?? (city ? (bossOf(data, run).kind === 'gym' ? 'city' : 'tower') : run.route.biome ?? 'grass')
     out.scene = scene
-    out.encounter = { ...encounterFor(data, out.floor, rand, node.kind === 'boss' ? bossOf(data, out) : null, node.kind === 'wildboss', { ...node, biome: scene }), scene }
+    out.encounter = { ...encounterFor(data, out.floor, rand, node.kind === 'boss' ? bossOf(data, out) : null, node.kind === 'wildboss', { ...node, biome: scene, shiny: run.shinyRate ?? 1 }), scene }
     return out
   }
   out.floor += 1
@@ -605,7 +623,7 @@ export function chooseNode(run, data, index) {
   if (node.kind === 'mart') out.pending = { mart: true, shop: pickShop(rand, data, run.floor, 10) }
   else if (node.kind === 'trade') {
     // Troca: alguém da rota oferece um Pokémon (você escolhe quem dar; ele vem TRADE_LEVELS acima).
-    const offer = encounterFor(data, out.floor, rand, null, false, { kind: 'wild', biome: run.route?.biome }).foes[0]
+    const offer = encounterFor(data, out.floor, rand, null, false, { kind: 'wild', biome: run.route?.biome, shiny: run.shinyRate ?? 1 }).foes[0]
     out.pending = { trade: { id: offer.id, ...(offer.shiny ? { shiny: true } : {}) } }
   } else if (node.kind === 'center') {
     out.team = out.team.map((m) => ({ ...m, hp: 1 }))
@@ -661,7 +679,7 @@ export function encounterFor(data, floor, rand, boss = null, wild = false, node 
       id = pickOne(legends, rand)
       extra = { title: 'legend' }
     }
-    return { kind: 'wildboss', foes: [foe(id, bossLevel(data, floor, id, level + 3), { ...strong, ...extra, ...(rand() < SHINY_CHANCE ? { shiny: true } : {}) })] }
+    return { kind: 'wildboss', foes: [foe(id, bossLevel(data, floor, id, level + 3), { ...strong, ...extra, ...(rand() < SHINY_CHANCE * (node?.shiny ?? 1) ? { shiny: true } : {}) })] }
   }
   if (boss) {
     // Os times dos chefes são de Pokémon evoluídos: quem é mais forte que as espécies do andar vem com nível menor.
@@ -670,6 +688,8 @@ export function encounterFor(data, floor, rand, boss = null, wild = false, node 
     const team = bossTeam(boss, floor)
     const levelOf = (id, i) => bossLevel(data, floor, id, level + bonus + (i === team.length - 1 ? 1 : 0))
     const foes = team.map((id, i) => foe(id, levelOf(id, i), { iv: Math.max(31, iv), ev: Math.round(ev * 1.25) }))
+    // A partir do andar 10, cada Pokémon do chefe segura um item de verdade (Leftovers, Life Orb, Choice...).
+    if (floor >= 10) for (const f of foes) f.item = pickOne(FOE_ITEMS, rand)
     return { kind: 'boss', foes, boss: { id: boss.id, name: boss.name, trainer: boss.trainer, kind: boss.kind, region: boss.region, game: boss.game } }
   }
   // Lendários só aparecem como chefes (wild).
@@ -696,11 +716,13 @@ export function encounterFor(data, floor, rand, boss = null, wild = false, node 
     const count = Math.min(MAX_TEAM, 1 + Math.floor(floor / 12) + (rand() < 0.3 ? 1 : 0) + (ace ? 1 : 0))
     const extra = ace ? { iv: Math.max(iv, 20), ev: Math.round(ev * 1.15) } : {}
     const foes = Array.from({ length: count }, () => foe(pick(common, true), level + (ace ? 2 : 0) - Math.floor(rand() * 3), extra))
+    // O mais forte do treinador forte segura um item de verdade (a partir do andar 15).
+    if (ace && floor >= 15) foes[foes.length - 1].item = pickOne(FOE_ITEMS, rand)
     return { kind, foes, trainerSeed: Math.floor(rand() * 1e9), ...(ace ? { reward: pickOne(ACE_REWARDS, rand) } : {}) }
   }
   // Selvagem: os do lugar da rota aparecem bem mais.
   const id = pick(common)
-  return { kind, foes: [foe(id, level, rand() < SHINY_CHANCE ? { shiny: true } : {})], ...(node?.biome ? { biome: node.biome } : {}) }
+  return { kind, foes: [foe(id, level, rand() < SHINY_CHANCE * (node?.shiny ?? 1) ? { shiny: true } : {})], ...(node?.biome ? { biome: node.biome } : {}) }
 }
 
 /** Começa uma corrida com o inicial escolhido (um dos grátis ou comprado). */
@@ -712,7 +734,8 @@ export function startRun(factory, data, id, seed, shiny = false) {
   const run = {
     seed: seed >>> 0, floor: 1, money: up('money'), defeated: 0, bosses: 0, bag,
     team: [], teamBoost: zero(), mult: { money: 1, exp: round3(1 + up('exp') / 100), shop: round3(1 - up('shop') / 100) }, cards: [], boss: { region: 0, step: 0 }, played: [],
-    tms: {}, tokens: { 'move-tutor': 0, 'move-reminder': 0 }, stash: [], dmax: false, tera: false, expShare: false, leg: 1, route: null, encounter: null, pending: null,
+    ...(up('cards') ? { cardCount: 3 + up('cards') } : {}), ...(up('reroll') ? { rerolls: up('reroll') } : {}), ...(up('shiny') ? { shinyRate: 1 + up('shiny') } : {}),
+    tms: {}, tokens: { 'move-tutor': 0, 'move-reminder': 0 }, stash: [], dmax: false, tera: false, expShare: up('expShare') > 0, leg: 1, route: null, encounter: null, pending: null,
   }
   const rand = dice(run)
   // O inicial vem com IVs bons (15 a 31; com a Genética, mais).
@@ -820,7 +843,7 @@ export function winFloor(run, data, after = {}) {
   out.pending = {
     exp, gains, money, levels, joy, drop, story, reward, ...(champion ? { champion: true } : {}),
     capture: after.captured && (kind === 'wild' || kind === 'wildboss') ? foes[0] : null,
-    cards: kind === 'boss' ? pickCards(rand) : null,
+    cards: kind === 'boss' ? pickCards(rand, run.cardCount ?? 3) : null,
     // A loja da cidade: chegando nela, logo antes do chefe (no resto da rota, os Poké Marts do mapa).
     shop: kind !== 'boss' || !CITY_KINDS.includes(run.encounter.boss.kind) ? (atCity(data, out) && !inLeague(data, out) ? pickShop(rand, data, run.floor) : null) : null,
   }
@@ -828,10 +851,10 @@ export function winFloor(run, data, after = {}) {
   return out
 }
 
-function pickCards(rand) {
+function pickCards(rand, count = 3) {
   const ids = Object.keys(CARDS)
   const out = []
-  while (out.length < 3) {
+  while (out.length < count) {
     const id = pickOne(ids, rand)
     if (!out.includes(id)) out.push(id)
   }
@@ -912,8 +935,24 @@ export function tradeMon(run, index, data) {
   out.team[index] = { ...grown, item: mon.item ?? null, extras: mon.extras ?? [] }
   return out
 }
+/** Sorteia os caminhos do andar de novo (melhoria "reroll": algumas vezes por corrida). null se não dá. */
+export function rerollRoute(run, data) {
+  if (!((run.rerolls ?? 0) > 0) || !run.route || run.encounter || run.pending) return null
+  const out = { ...run, rerolls: run.rerolls - 1 }
+  out.route = routeOptions(out, data, dice(out))
+  return out
+}
+
 /** Recusa a troca. */
 export const skipTrade = (run) => (run.pending ? { ...run, pending: { ...run.pending, trade: null } } : run)
+
+/** Quem abre a batalha: passa o Pokémon da posição para a frente do time (para treinar os mais fracos). Igual ao app. */
+export function setLead(run, index) {
+  if (!(index > 0) || !run.team[index]) return run
+  const team = [...run.team]
+  const [mon] = team.splice(index, 1)
+  return { ...run, team: [mon, ...team] }
+}
 
 /**
  * Perdeu a batalha com uma Escape Rope na Bolsa: gasta ela e o time foge com

@@ -447,3 +447,16 @@ body {
   60% { transform: translate(-50%, -10%) scale(1.25); filter: brightness(3); opacity: 1; }
   100% { transform: translate(-50%, -10%) scale(1.6); filter: brightness(5); opacity: 0; }
 }
+/* A Bolsa do Black & White: azul com bolinhas, abas brancas. */
+.bw-bag {
+  background-color: #2563c9;
+  background-image: radial-gradient(circle at 8px 8px, rgba(255, 255, 255, 0.14) 3px, transparent 3.5px);
+  background-size: 16px 16px;
+}
+.bw-bag-row { box-shadow: 0 2px 0 rgba(0, 0, 0, 0.35); }
+/* O Town Map do Black & White: azul escuro com a grade. */
+.town-map {
+  background-color: #1d3f8f;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 12px 12px;
+}

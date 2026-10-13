@@ -101,6 +101,35 @@ void main() {
     expect(FactoryRun.upgradePrice({...FactoryRun.empty(), 'upgrades': {'level': 1}}, 'level'), 455);
   });
 
+  test('devolve moedas na troca para a primeira forma; melhorias que mudam o jogo; chefes com itens (igual ao site)', () {
+    int price(int id) => FactoryRun.pokemonPrice(data.species[id]![1] as int);
+    final fixed = FactoryRun.normalizeOwned({...FactoryRun.empty(), 'coins': 0, 'owned': [1, 6, 5, 4]}, data);
+    expect(fixed['owned'], [1, 4]);
+    expect(fixed['coins'], price(6) + price(5));
+    expect(FactoryRun.normalizeOwned({...FactoryRun.empty(), 'coins': 10, 'owned': [1, 6]}, data)['coins'], 10 + price(6) - price(4));
+    var f = {...FactoryRun.empty(), 'coins': 999999, 'owned': [1]};
+    for (final id in ['expShare', 'cards', 'reroll', 'shiny']) {
+      while (FactoryRun.upgradePrice(f, id) != null) {
+        f = FactoryRun.buyUpgrade(f, id)!;
+      }
+    }
+    final run = FactoryRun.startRun(f, data, 1, 42)!;
+    expect(run['expShare'], true);
+    expect(run['cardCount'], 4);
+    expect(run['rerolls'], 2);
+    expect(run['shinyRate'], 4);
+    expect(FactoryRun.rerollRoute(run, data)!['rerolls'], 1);
+    expect(FactoryRun.rerollRoute({...run, 'rerolls': 0}, data), isNull);
+    var state = 5;
+    double rand() {
+      final (v, s) = FactoryRun.nextRandom(state);
+      state = s;
+      return v;
+    }
+    final boss = FactoryRun.encounterFor(data, 20, rand, FactoryRun.bossOf(data, FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!));
+    expect((boss['foes'] as List).every((x) => FactoryRun.foeItems.contains(x['item'])), isTrue);
+  });
+
   test('troca, Escape Rope e conquistas (iguais ao site)', () {
     final base = FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!;
     final first = FactoryRun.teamOf(base).first;
