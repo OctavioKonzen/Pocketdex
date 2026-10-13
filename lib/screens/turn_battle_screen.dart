@@ -1498,15 +1498,15 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                       Positioned(
                           // O inimigo fica mais longe: menor e com os pés na
                           // frente do meio da plataforma (pisando nela, como o seu).
-                          right: w * 0.10,
+                          right: w * 0.11,
                           bottom: h * 0.57,
-                          width: w * 0.28,
-                          height: w * 0.28,
+                          width: w * 0.26,
+                          height: w * 0.26,
                           child: _PokeOut(
                               state: _poke[1],
                               child: _Sprite(key: _sprites[1], mon: foe, id: _form[1] ?? foe.id, dmax: _dmax[1], tera: _tera[1], fainted: _fainted[1]))),
                       if (_ball[1] != null)
-                        Positioned(right: w * 0.10, bottom: h * 0.57, width: w * 0.28, height: w * 0.28, child: _Ball(side: 1, phase: _ball[1]!)),
+                        Positioned(right: w * 0.11, bottom: h * 0.57, width: w * 0.26, height: w * 0.26, child: _Ball(side: 1, phase: _ball[1]!)),
                       if (_introOn && _coach != null)
                         Positioned(
                           right: w * 0.07,
@@ -1522,15 +1522,15 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                           ),
                         ),
                       Positioned(
-                          left: w * 0.06,
-                          bottom: h * 0.13,
-                          width: w * 0.46,
-                          height: w * 0.46,
+                          left: w * 0.01,
+                          bottom: h * 0.12,
+                          width: w * 0.58,
+                          height: w * 0.58,
                           child: _PokeOut(
                               state: _poke[0],
                               child: _Sprite(key: _sprites[0], mon: me, id: _form[0] ?? me.id, dmax: _dmax[0], tera: _tera[0], back: true, fainted: _fainted[0]))),
                       if (_ball[0] != null)
-                        Positioned(left: w * 0.06, bottom: h * 0.13, width: w * 0.46, height: w * 0.46, child: _Ball(side: 0, phase: _ball[0]!)),
+                        Positioned(left: w * 0.01, bottom: h * 0.12, width: w * 0.58, height: w * 0.58, child: _Ball(side: 0, phase: _ball[0]!)),
                       if (_introOn && _myTrainer != null)
                         Positioned(
                           left: w * 0.02,

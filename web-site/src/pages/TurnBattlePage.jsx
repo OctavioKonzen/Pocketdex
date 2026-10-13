@@ -1092,7 +1092,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
           </button>
         </div>
         {/* O inimigo fica mais longe: menor e com os pés na frente do meio da plataforma (pisando nela, como o seu). */}
-        <div className="absolute right-[10%] bottom-[57%] w-[28%]">
+        <div className="absolute right-[11%] bottom-[57%] w-[26%]">
           <div className={`poke-${poke[1] || 'shown'}`}>
             <BattleSprite ref={sprites[1]} mon={foe} id={shown.form[1] ?? foe.id} dmax={shown.dmax[1]} tera={shown.tera[1]} fainted={shown.fainted[1]} byId={byId} />
           </div>
@@ -1103,7 +1103,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
             </div>
           )}
         </div>
-        <div className="absolute bottom-[13%] left-[6%] w-[46%]">
+        <div className="absolute bottom-[12%] left-[1%] w-[58%]">
           <div className={`poke-${poke[0] || 'shown'}`}>
             <BattleSprite ref={sprites[0]} mon={me} id={shown.form[0] ?? me.id} dmax={shown.dmax[0]} tera={shown.tera[0]} back fainted={shown.fainted[0]} byId={byId} />
           </div>
