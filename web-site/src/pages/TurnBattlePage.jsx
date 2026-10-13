@@ -517,7 +517,7 @@ function TeraCrown({ color }) {
  * um Joltik bem pequeno, um Pikachu pequeno, um Charizard quase do tamanho do
  * espaço e os gigantes (Wailord, Gigantamax) ocupando tudo. Igual ao app.
  */
-export const battleScale = (height) => Math.min(1, Math.max(0.42, Math.sqrt((height ?? 10) / 20)))
+export const battleScale = (height) => Math.min(1, Math.max(0.3, Math.sqrt((height ?? 10) / 20)))
 
 const BattleSprite = forwardRef(function BattleSprite({ mon, id, back, fainted, dmax, tera = '', byId }, ref) {
   const p = byId?.get(id) ?? byId?.get(mon.id)

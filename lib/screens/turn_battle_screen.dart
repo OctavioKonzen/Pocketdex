@@ -2030,7 +2030,7 @@ class _Sprite extends StatefulWidget {
 
 /// O tamanho na batalha pela altura do Pokémon (decímetros), como nos jogos: um Joltik bem pequeno, um Charizard quase do
 /// tamanho do espaço e os gigantes ocupando tudo. Igual ao site (battleScale).
-double battleScale(num? height) => sqrt((height ?? 10) / 20).clamp(0.42, 1.0).toDouble();
+double battleScale(num? height) => sqrt((height ?? 10) / 20).clamp(0.3, 1.0).toDouble();
 
 /// As alturas já lidas do banco (id → decímetros).
 final _heights = <int, num>{};
