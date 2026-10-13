@@ -120,9 +120,9 @@ class FactoryRun {
   static double _round3(num n) => (n * 1000).round() / 1000;
   // Potências com multiplicação e raiz: o mesmo resultado do site.
   static double _pow15(double x) => x * math.sqrt(x);
-  static double _pow14(double x) {
-    final x2 = x * x, x4 = x2 * x2, x8 = x4 * x4;
-    return x8 * x4 * x2;
+  static double _pow8(double x) {
+    final x2 = x * x, x4 = x2 * x2;
+    return x4 * x4;
   }
 
   static int _int(Object? v) => (v as num).toInt();
@@ -187,6 +187,8 @@ class FactoryRun {
     for (final k in heldBoost.keys) k: 250,
     // Serviços e chaves das mecânicas.
     'move-tutor': 300, 'move-reminder': 150, 'dynamax-band': 2500, 'tera-orb': 2500,
+    // Exp. Share: o time todo ganha XP (quem não lutou, a metade).
+    'exp-share': 800,
   };
 
   /// Preço base de um TM ("tm:<golpe>") e de uma pedra de evolução ("evo:<item>").
@@ -305,9 +307,36 @@ class FactoryRun {
 
   /// XP de derrotar um adversário (a conta está no site). Igual ao site.
   static int expFor(int baseExp, int foeLevel, int level, [double factor = 1]) {
-    final scale = math.min(50.0, _pow14((foeLevel + 10) / (level + 10)));
+    final scale = math.min(30.0, _pow8((2 * foeLevel + 10) / (foeLevel + level + 10)));
     final species = math.min(1.6, math.max(0.6, math.sqrt(baseExp / 100)));
-    return (3.5 * foeLevel * foeLevel * species * scale * factor).floor();
+    return (6 * foeLevel * foeLevel * species * scale * factor).floor() + 1;
+  }
+
+  /// Exp. Share: quem não lutou ganha essa parte do XP (e os EVs).
+  static const expShare = 0.5;
+
+  /// O XP de um derrotado para cada um do time (posição na corrida): fought = quem lutou contra ele; sem fought, todos de pé.
+  static List<int> expShares(Json run, FactoryData data, Map foe, List<int>? fought, [double factor = 1]) {
+    final base = _int(data.speciesOf(_int(foe['id']))?[0] ?? 60);
+    final team = teamOf(run);
+    return [
+      for (var i = 0; i < team.length; i++)
+        () {
+          if (!(hpOf(team[i]) > 0)) return 0;
+          final share = fought == null || fought.contains(i) ? 1.0 : run['expShare'] == true ? expShare : 0.0;
+          return share == 0 ? 0 : (expFor(base, _int(foe['level']), _int(team[i]['level']), factor * _mult(run, 'exp')) * share).floor();
+        }(),
+    ];
+  }
+
+  /// O fator de XP do tipo de andar (treinadores e chefes dão mais).
+  static double expFactor(String? kind) => kind == 'ace' ? 1.75 : kind == 'boss' || kind == 'wildboss' || kind == 'trainer' ? 1.5 : 1.0;
+
+  /// A barra de XP: quanto do nível atual já foi (0 a 1), com o XP a mais (extra).
+  static double expProgress(Map mon, [int extra = 0]) {
+    final level = _int(mon['level']);
+    final from = expAt(level), to = expAt(level + 1);
+    return ((((mon['exp'] as num?) ?? from) + extra - from) / (to - from)).clamp(0.0, 1.0).toDouble();
   }
 
   static (Json, int, int?) _gainExp(Json mon, int exp, FactoryData data, double Function() rand) {
@@ -347,18 +376,58 @@ class FactoryRun {
     return team.length > cap ? team.sublist(team.length - cap) : team;
   }
 
+  /// Nível de quem evolui por item (pedra), sem nível no jogo: a partir dele já aparece evoluído.
+  static const itemEvolutionLevel = 20;
+  static final _preCache = Expando<Map<int, List<int>>>();
+
+  /// De quem cada espécie evolui: espécie → [pré-evolução, nível (0: por item)]. A primeira que aparecer. Igual ao site.
+  static Map<int, List<int>> _preEvolutions(FactoryData data) => _preCache[data] ??= () {
+        final out = <int, List<int>>{};
+        // Em ordem de id, como o site (Object.entries).
+        for (final from in data.evolutions.keys.toList()..sort()) {
+          for (final x in data.evolutions[from]!) {
+            out.putIfAbsent(_int(x[0]), () => [from, _int(x[1])]);
+          }
+        }
+        return out;
+      }();
+
+  /// O nível mínimo em que a espécie (ou forma) aparece: o nível de cada evolução até ela.
+  static int minLevelOf(FactoryData data, int id) {
+    final pre = _preEvolutions(data)[data.forms[id] ?? id];
+    if (pre == null) return 1;
+    return math.max(pre[1] == 0 ? itemEvolutionLevel : pre[1], minLevelOf(data, pre[0]));
+  }
+
+  /// Abaixo do nível em que evolui, volta para a forma anterior (um Sceptile nível 2 é um Treecko). Igual ao site.
+  static int devolve(FactoryData data, int id, int level) {
+    var out = id;
+    for (var guard = 0; guard < 4 && minLevelOf(data, out) > level; guard++) {
+      final pre = _preEvolutions(data)[data.forms[out] ?? out];
+      if (pre == null) break;
+      out = pre[0];
+    }
+    return out;
+  }
+
   /// Nível de um chefe: quem é mais forte que as espécies do andar vem com nível menor.
   static int _bossLevel(FactoryData data, int floor, int id, int lvl) => math.max(2, (lvl * _pow15(math.min(1, speciesBudget(floor) / data.bstOf(id)))).round());
 
   // ------------------------------------------------------------ mapa
 
-  /// Biomas das rotas: os tipos dos Pokémon selvagens que aparecem nelas. Igual ao site.
+  /// Os lugares das rotas (cada um é também o cenário da batalha) e os tipos que mais aparecem neles. Igual ao site.
   static const biomes = <String, List<String>>{
     'grass': ['normal', 'grass', 'bug', 'flying'],
     'forest': ['bug', 'grass', 'poison', 'fairy'],
-    'water': ['water', 'ice', 'flying'],
+    'water': ['water', 'flying'],
+    'beach': ['water', 'ground', 'flying', 'rock'],
+    'underwater': ['water'],
+    'swamp': ['poison', 'water', 'grass', 'bug'],
+    'sewer': ['poison', 'dark', 'electric', 'normal'],
     'cave': ['rock', 'ground', 'dark', 'poison'],
+    'icecave': ['ice', 'rock', 'water'],
     'mountain': ['rock', 'fighting', 'ground', 'steel', 'dragon'],
+    'desert': ['ground', 'rock', 'fire', 'bug'],
     'volcano': ['fire', 'rock', 'ground'],
     'city': ['electric', 'steel', 'psychic', 'normal'],
     'snow': ['ice', 'water'],
@@ -366,13 +435,21 @@ class FactoryRun {
     'sky': ['flying', 'dragon', 'fairy'],
   };
   static final biomeIds = biomes.keys.toList();
-  static const _typeBiome = {
-    'normal': 'grass', 'fire': 'volcano', 'water': 'water', 'grass': 'forest', 'electric': 'city', 'ice': 'snow', 'fighting': 'mountain', 'poison': 'forest',
-    'ground': 'mountain', 'flying': 'sky', 'psychic': 'tower', 'bug': 'forest', 'rock': 'cave', 'ghost': 'tower', 'dragon': 'sky', 'dark': 'cave', 'steel': 'mountain', 'fairy': 'sky',
+
+  /// Quanto a mais aparecem os tipos do lugar (selvagens; treinadores).
+  static const routeTypeWeight = 8, routeTypeTrainer = 3;
+
+  /// Os lugares possíveis da rota até o ginásio de cada tipo (um deles por rota).
+  static const _typeBiomes = {
+    'normal': ['grass', 'city'], 'fire': ['volcano', 'desert'], 'water': ['water', 'beach', 'underwater'], 'grass': ['forest', 'grass', 'swamp'],
+    'electric': ['city', 'sewer'], 'ice': ['snow', 'icecave'], 'fighting': ['mountain', 'cave'], 'poison': ['swamp', 'sewer', 'forest'],
+    'ground': ['desert', 'mountain', 'cave'], 'flying': ['sky', 'grass', 'beach'], 'psychic': ['tower', 'city'], 'bug': ['forest', 'grass'],
+    'rock': ['cave', 'mountain', 'desert'], 'ghost': ['tower'], 'dragon': ['sky', 'mountain'], 'dark': ['cave', 'tower', 'sewer'],
+    'steel': ['mountain', 'city', 'cave'], 'fairy': ['sky', 'forest'],
   };
 
-  /// Na Dusk Ball (3×): as rotas escuras.
-  static const darkBiomes = ['cave', 'tower'];
+  /// Na Dusk Ball (3×): os lugares escuros.
+  static const darkBiomes = ['cave', 'tower', 'icecave', 'sewer', 'underwater'];
 
   /// Os chefes de cidade (líder no ginásio dele; Elite Four e Campeão na Liga). Rival e vilões aparecem na rota.
   static const _cityKinds = ['gym', 'elite', 'champion'];
@@ -425,8 +502,9 @@ class FactoryRun {
           final d = count[keys[b]]!.compareTo(count[keys[a]]!);
           return d != 0 ? d : a.compareTo(b);
         });
-      final top = order.isEmpty ? null : _typeBiome[keys[order.first]];
-      if (top != null) return top;
+      // Um dos lugares do tipo, o mesmo na rota inteira (pela semente e o começo da rota).
+      final list = order.isEmpty ? null : _typeBiomes[keys[order.first]];
+      if (list != null) return list[(_imul((run['leg'] as num?)?.toInt() ?? 1, 2654435761) ^ _int(run['seed'])) % list.length];
     }
     return biomeIds[(_int(run['boss']['region']) * 7 + _int(boss['step']) * 3) % biomeIds.length];
   }
@@ -455,7 +533,8 @@ class FactoryRun {
       }
       if (routeLength - pos <= pending || (pos >= 2 && rand() < ambushChance)) return only({'kind': 'boss'});
     }
-    String wildBiome() => rand() < 0.7 ? biome : _pick(biomeIds, rand);
+    // Os selvagens são do lugar da rota (o cenário da batalha é ele).
+    String wildBiome() => biome;
     if (!forks.contains(pos)) {
       final r = rand();
       return only(r < 0.55 ? {'kind': 'wild', 'biome': wildBiome()} : r < 0.9 || floor <= 2 ? {'kind': 'trainer'} : {'kind': 'event'});
@@ -514,7 +593,7 @@ class FactoryRun {
       final city = node['kind'] == 'boss' && atCity(data, run);
       final scene = (node['biome'] as String?) ?? (city ? (bossOf(data, run)['kind'] == 'gym' ? 'city' : 'tower') : routeBiomeNow);
       out['scene'] = scene;
-      out['encounter'] = {...encounterFor(data, floor, rand, node['kind'] == 'boss' ? bossOf(data, out) : null, node['kind'] == 'wildboss', node), 'scene': scene};
+      out['encounter'] = {...encounterFor(data, floor, rand, node['kind'] == 'boss' ? bossOf(data, out) : null, node['kind'] == 'wildboss', {...node, 'biome': scene}), 'scene': scene};
       return out;
     }
     out['floor'] = floor + 1;
@@ -567,20 +646,25 @@ class FactoryRun {
   static Json encounterFor(FactoryData data, int floor, double Function() rand, [Json? boss, bool wild = false, Json? node]) {
     final level = math.max(2, foeLevelAt(floor) + (rand() * 2).floor());
     final iv = foeIvsAt(floor), ev = foeEvsAt(floor), boost = foeBoostAt(floor);
-    Json foe(int id, int lvl, [Json extra = const {}]) => {'id': id, 'level': math.max(2, lvl), 'iv': iv, 'ev': ev, if (boost != 0) 'boost': boost, ...extra};
+    // Evoluídos só a partir do nível em que evoluem (abaixo dele, a forma anterior).
+    Json foe(int id, int lvl, [Json extra = const {}]) =>
+        {'id': devolve(data, id, math.max(2, lvl)), 'level': math.max(2, lvl), 'iv': iv, 'ev': ev, if (boost != 0) 'boost': boost, ...extra};
     if (wild) {
       // Chefe sem treinador: dá para capturar; a Mega deixa a Mega Pedra.
       final r = rand();
       final strong = {'iv': math.max(31, iv), 'ev': (ev * 1.25).round()};
       int id;
       Json extra;
-      if (r < 0.4) {
-        final species = data.megas.keys.toList()..sort();
-        id = _pick(species, rand);
+      // Mega e Gigantamax só dos que já chegaram ao nível em que evoluem; senão, um lendário.
+      bool fits(int sid) => minLevelOf(data, sid) <= _bossLevel(data, floor, sid, level + 3);
+      final megas = (data.megas.keys.toList()..sort()).where(fits).toList();
+      final gmax = data.gmax.where(fits).toList();
+      if (r < 0.4 && megas.isNotEmpty) {
+        id = _pick(megas, rand);
         final stone = _pick(data.megas[id]!, rand)[0] as String;
         extra = {'item': stone, 'gimmick': 'mega', 'title': 'mega'};
-      } else if (r < 0.7) {
-        id = _pick(data.gmax, rand);
+      } else if (r >= 0.4 && r < 0.7 && gmax.isNotEmpty) {
+        id = _pick(gmax, rand);
         extra = {'gimmick': 'dmax', 'title': 'gmax'};
       } else {
         final legends = [for (final e in data.species.entries) if (_int(e.value[2]) == 1 || _int(e.value[2]) == 2) e.key];
@@ -608,17 +692,24 @@ class FactoryRun {
     // Nos primeiros andares, nada de Fantasma (imune aos golpes Normal que os iniciais têm no começo).
     final entries = [
       for (final e in data.species.entries)
-        if (floor >= 8 || !(e.value.length > 4 && (e.value[4] as List).contains('ghost'))) (id: e.key, bst: _int(e.value[1]), rarity: _int(e.value[2]))
+        if ((floor >= 8 || !(e.value.length > 4 && (e.value[4] as List).contains('ghost'))) && minLevelOf(data, e.key) <= level)
+          (id: e.key, bst: _int(e.value[1]), rarity: _int(e.value[2]), rate: _int(e.value.elementAtOrNull(5) ?? 45))
     ];
     final budget = speciesBudget(floor);
-    int pick(List<({int id, int bst, int rarity})> pool) {
+    // A chance de cada espécie segue a raridade dela (a taxa de captura); os treinadores com menos diferença (raiz).
+    // Os tipos do lugar aparecem bem mais (routeTypeWeight; nos treinadores, routeTypeTrainer).
+    final types = biomes[node?['biome']];
+    bool local(int id) => types != null && ((data.species[id]?.elementAtOrNull(4) as List?) ?? const []).any(types.contains);
+    int pick(List<({int id, int bst, int rarity, int rate})> pool, [bool trainer = false]) {
       final fit = [for (final p in pool) if (p.bst <= budget && p.bst >= math.min(budget, 600) - 160) p];
-      if (fit.isNotEmpty) return _pick(fit, rand).id;
       final near = [...pool]..sort((a, b) {
           final d = (a.bst - budget).abs().compareTo((b.bst - budget).abs());
           return d != 0 ? d : a.id.compareTo(b.id);
         });
-      return _pick(near.take(20).toList(), rand).id;
+      final list = fit.isNotEmpty ? fit : near.take(20).toList();
+      return _pickWeighted(list, [
+        for (final p in list) trainer ? math.sqrt(p.rate) * (local(p.id) ? routeTypeTrainer : 1) : p.rate.toDouble() * (local(p.id) ? routeTypeWeight : 1)
+      ], rand).id;
     }
 
     final common = [for (final p in entries) if (p.rarity == 0 || p.rarity == 3) p];
@@ -629,15 +720,13 @@ class FactoryRun {
       final Json extra = ace ? {'iv': math.max(iv, 20), 'ev': (ev * 1.15).round()} : const {};
       final foes = <Json>[];
       for (var i = 0; i < count; i++) {
-        final id = pick(common);
+        final id = pick(common, true);
         foes.add(foe(id, level + (ace ? 2 : 0) - (rand() * 3).floor(), extra));
       }
       return {'kind': kind, 'foes': foes, 'trainerSeed': (rand() * 1e9).floor(), if (ace) 'reward': _pick(aceRewards, rand)};
     }
-    // Selvagem: os do bioma da rota (se não tiver nenhum do tamanho certo, qualquer um).
-    final types = biomes[node?['biome']];
-    final local = types == null ? common : [for (final p in common) if (((data.species[p.id]?.elementAtOrNull(4) as List?) ?? const []).any(types.contains)) p];
-    final id = pick(local.isNotEmpty ? local : common);
+    // Selvagem: os do lugar da rota aparecem bem mais.
+    final id = pick(common);
     return {
       'kind': kind, 'foes': [foe(id, level, rand() < shinyChance ? {'shiny': true} : const {})],
       if (node?['biome'] != null) 'biome': node!['biome'],
@@ -649,7 +738,7 @@ class FactoryRun {
     final run = <String, dynamic>{
       'seed': seed & 0xFFFFFFFF, 'floor': 1, 'money': 0, 'defeated': 0, 'bosses': 0, 'bag': {...startBag},
       'team': <Json>[], 'teamBoost': _zero(), 'mult': {'money': 1, 'exp': 1, 'shop': 1}, 'cards': <String>[], 'boss': {'region': 0, 'step': 0}, 'played': <String>[],
-      'tms': <String, dynamic>{}, 'tokens': {'move-tutor': 0, 'move-reminder': 0}, 'stash': <String>[], 'dmax': false, 'tera': false,
+      'tms': <String, dynamic>{}, 'tokens': {'move-tutor': 0, 'move-reminder': 0}, 'stash': <String>[], 'dmax': false, 'tera': false, 'expShare': false,
       'leg': 1, 'route': null, 'encounter': null, 'pending': null,
     };
     final rand = _dice(run);
@@ -690,7 +779,7 @@ class FactoryRun {
   /// Venceu o andar. hp: a parte do HP de cada um do time (na ordem da
   /// corrida) no fim da batalha; bag: a Bolsa que sobrou; captured: capturou o
   /// selvagem na batalha (entra no time). Igual ao site.
-  static Json winFloor(Json run, FactoryData data, {List<double>? hp, Map<String, int>? bag, bool captured = false}) {
+  static Json winFloor(Json run, FactoryData data, {List<double>? hp, Map<String, int>? bag, bool captured = false, List<List<int>>? fought}) {
     final out = _copy(run);
     final team0 = teamOf(out);
     out['team'] = [for (var i = 0; i < team0.length; i++) {...team0[i], 'hp': hp != null && i < hp.length ? hp[i] : hpOf(team0[i])}];
@@ -698,29 +787,32 @@ class FactoryRun {
     final rand = _dice(out);
     final kind = run['encounter']['kind'] as String;
     final foes = foesOf(run);
-    final factor = kind == 'ace' ? 1.75 : kind == 'boss' || kind == 'wildboss' || kind == 'trainer' ? 1.5 : 1.0;
+    final factor = expFactor(kind);
     final moneyFactor = kind == 'boss' || kind == 'wildboss' ? 3 : kind == 'ace' ? 2.5 : kind == 'trainer' ? 2 : 1;
     var money = 0;
-    final evs = _zero();
-    for (final f in foes) {
+    // XP e EVs de cada derrotado: para quem lutou contra ele (fought[j]: posições na corrida) e, com o Exp. Share, para o resto do time.
+    final team = teamOf(out);
+    final gains = List.filled(team.length, 0);
+    final evs = [for (final _ in team) _zero()];
+    for (var j = 0; j < foes.length; j++) {
+      final f = foes[j];
       money += ((_int(f['level']) * 6 + 10) * moneyFactor * _mult(out, 'money') * earlyMoney(_int(run['floor']))).floor();
       final yields = (data.speciesOf(_int(f['id'])))?.elementAtOrNull(3) as List? ?? const [0, 0, 0, 0, 0, 0];
-      for (var i = 0; i < stats.length; i++) {
-        evs[stats[i]] = (evs[stats[i]] as int) + _int(yields[i]) * 3;
+      final shares = expShares(out, data, f, fought != null && j < fought.length ? fought[j] : null, factor);
+      for (var i = 0; i < team.length; i++) {
+        if (shares[i] == 0) continue;
+        gains[i] += shares[i];
+        for (var k = 0; k < stats.length; k++) {
+          evs[i][stats[k]] = (evs[i][stats[k]] as int) + _int(yields[k]) * 3;
+        }
       }
     }
     final levels = <Json>[];
-    var exp = 0;
-    final team = teamOf(out);
+    final exp = gains.fold(0, math.max);
     for (var i = 0; i < team.length; i++) {
       final m = team[i];
-      if (!(hpOf(m) > 0)) continue;
-      var gained = 0;
-      for (final f in foes) {
-        gained += expFor(_int(data.speciesOf(_int(f['id']))?[0] ?? 60), _int(f['level']), _int(m['level']), factor * _mult(out, 'exp'));
-      }
-      exp = math.max(exp, gained);
-      final (mon, from, evolved) = _gainExp({...m, 'evs': _add(m['evs'] as Map?, evs)}, gained, data, rand);
+      if (gains[i] == 0) continue;
+      final (mon, from, evolved) = _gainExp({...m, 'evs': _add(m['evs'] as Map?, evs[i])}, gains[i], data, rand);
       if (_int(mon['level']) > from || evolved != null) levels.add({'index': i, 'from': from, 'to': mon['level'], 'evolved': evolved});
       team[i] = mon;
     }
@@ -768,7 +860,7 @@ class FactoryRun {
     final cityWin = kind == 'boss' && _cityKinds.contains(run['encounter']['boss']['kind']);
     final shopPick = !cityWin && atCity(data, out) && !_inLeague(data, out) ? _pickShop(rand, data, _int(run['floor'])) : null;
     out['pending'] = {
-      'exp': exp, 'money': money, 'levels': levels, 'joy': joy, 'drop': drop, 'story': story, 'reward': reward,
+      'exp': exp, 'gains': gains, 'money': money, 'levels': levels, 'joy': joy, 'drop': drop, 'story': story, 'reward': reward,
       'capture': captured && (kind == 'wild' || kind == 'wildboss') ? foes.first : null,
       'cards': cardsPick,
       'shop': shopPick,
@@ -797,6 +889,20 @@ class FactoryRun {
   static const specialBalls = ['quick-ball', 'net-ball', 'dusk-ball', 'timer-ball'];
 
   /// Um item da escada: conforme o andar, os melhores ficam mais prováveis (um degrau a cada [step] andares). Igual ao site.
+  /// Um da lista, com a chance de cada um proporcional ao peso. Igual ao site.
+  static T _pickWeighted<T>(List<T> list, List<double> weights, double Function() rand) {
+    var total = 0.0;
+    for (final w in weights) {
+      total += w;
+    }
+    var roll = rand() * total;
+    for (var i = 0; i < list.length; i++) {
+      roll -= weights[i];
+      if (roll < 0) return list[i];
+    }
+    return list.last;
+  }
+
   static String tierPick(List<String> list, int floor, int step, double Function() rand) {
     final p = math.min(list.length - 1, floor / step);
     final weights = <double>[for (var i = 0; i < list.length; i++) math.max(0.08, 1 - (i - p).abs()).toDouble()];
@@ -915,7 +1021,7 @@ class FactoryRun {
       [for (final e in data.evolutions[_int(mon['id'])] ?? const <List>[]) if (e.length > 2 && e[2] == item) e[0] as int];
 
   /// Dynamax Band e Tera Orb são uma vez só.
-  static bool shopOwned(Json run, String id) => (id == 'dynamax-band' && run['dmax'] == true) || (id == 'tera-orb' && run['tera'] == true);
+  static bool shopOwned(Json run, String id) => (id == 'dynamax-band' && run['dmax'] == true) || (id == 'tera-orb' && run['tera'] == true) || (id == 'exp-share' && run['expShare'] == true);
 
   /// Compra um item da loja (index: o Pokémon que recebe; itens da Bolsa e Poké Ball não precisam). null se não dá.
   static Json? buyItem(Json run, String id, int index, FactoryData data) {
@@ -926,6 +1032,7 @@ class FactoryRun {
     out['money'] = _int(out['money']) - price;
     if (id == 'dynamax-band') return out..['dmax'] = true;
     if (id == 'tera-orb') return out..['tera'] = true;
+    if (id == 'exp-share') return out..['expShare'] = true;
     if (tokens.contains(id)) {
       final t = Map<String, dynamic>.from((out['tokens'] as Map?) ?? const {});
       t[id] = ((t[id] as num?) ?? 0).toInt() + 1;

@@ -407,6 +407,12 @@ const BIOME_INFO = {
   snow: { label: 'Neve', icon: '❄️', color: '#38bdf8' },
   tower: { label: 'Torre', icon: '👻', color: '#7c3aed' },
   sky: { label: 'Céu', icon: '☁️', color: '#0ea5e9' },
+  beach: { label: 'Praia', icon: '🏖️', color: '#d97706' },
+  underwater: { label: 'Fundo do mar', icon: '🐠', color: '#1e40af' },
+  swamp: { label: 'Pântano', icon: '🪵', color: '#4d7c0f' },
+  sewer: { label: 'Esgoto', icon: '🚰', color: '#475569' },
+  icecave: { label: 'Caverna de gelo', icon: '🧊', color: '#0891b2' },
+  desert: { label: 'Deserto', icon: '🏜️', color: '#b45309' },
 }
 /** Cada ponto do mapa: símbolo, nome e o que tem nele. */
 const NODE_INFO = {
@@ -837,6 +843,7 @@ function itemHelp(id) {
   if (id === 'move-reminder') return t('Lembra um golpe do nível (uma vez)')
   if (id === 'dynamax-band') return t('Libera o Dynamax (e o Gigantamax) para o time')
   if (id === 'tera-orb') return t('Libera a Terastalização para o time')
+  if (id === 'exp-share') return t('O time todo ganha XP (quem não lutou, a metade)')
   if (id === 'revive') return t('Revive com metade do HP')
   if (HEAL_SHARE[id]) return HEAL_SHARE[id] >= 1 ? t('Recupera todo o HP') : t('Recupera {0}% do HP').replace('{0}', Math.round(HEAL_SHARE[id] * 100))
   if (id === 'rare-candy') return t('+1 nível')

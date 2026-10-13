@@ -275,7 +275,7 @@ try {
   await page2.getByRole('button', { name: 'Aceitar e entrar', exact: true }).click()
   await page.getByTestId('online-hp-0').waitFor({ timeout: 30000 })
   await page2.getByTestId('online-hp-0').waitFor({ timeout: 30000 })
-  assert.equal(await page.locator('.battle-field').getByText('Nv.50', { exact: true }).count(), 2, 'ambos os lados usam no máximo nível 50')
+  assert.equal(await page.locator('.battle-field').getByText('Lv50', { exact: true }).count(), 2, 'ambos os lados usam no máximo nível 50')
   const beforeOnline = await page.getByTestId('online-hp-0').innerText()
   await page.locator('.battle-field').waitFor({ timeout: 30000 })
   await page.getByRole('button', { name: '▸ LUTAR', exact: true }).click()

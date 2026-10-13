@@ -22,7 +22,7 @@ import { teamMembers } from '../lib/teamBattle'
 import { fxPlan, moveAnim, SELF_KINDS } from '../lib/moveAnim'
 import { active, damageRange, fieldConditions, monDetails, lockedMove, canGimmick, canUseItem, effectLabel, forfeit, HEAL_SHARE, ITEMS, lineOf, MAX_MOVES, maxPower, moveEffect, newBattle, playTurn, replace, startBattle, STAT_NAMES, switchMatchup, usableMoves, weaknesses, Z_MOVES, zPower } from '../lib/turnBattle'
 import Sprite from '../components/Sprite'
-import { BattleBackground } from '../components/BattleScene'
+import { BattleBackground, battleScene, sceneOfBoss } from '../components/BattleScene'
 import { TrainerBack, TrainerSprite } from '../components/Trainer'
 import { randomTrainer, useMyTrainer, useTrainers } from '../lib/trainers'
 import { battleRecord } from '../lib/battleLog'
@@ -30,7 +30,7 @@ import { playSound, soundOf, startMusic, stopMusic } from '../lib/battleSound'
 import {simulatorTargets} from '../lib/battleSimulator'
 import {newPartyBattle, playPartyTurn, describeEvents} from '../lib/partyBattle'
 import { FactoryHub, FactoryScreen, saveFactory } from '../components/FactoryPanels'
-import { factoryAfter, factoryBattle, factoryFoe } from '../lib/factoryBattle'
+import { expBarOf, factoryAfter, factoryBattle, factoryFoe } from '../lib/factoryBattle'
 import { endRun, factoryOf, winFloor } from '../lib/factoryRun'
 import { getFactoryData } from '../lib/data'
 
@@ -335,14 +335,37 @@ function Setup({ onStart, onFactory, onFactoryRun }) {
   )
 }
 
-function HpBar({ hp, max }) {
+function HpBar({ hp, max, bw = false }) {
   const pct = Math.max(0, Math.min(100, (hp / max) * 100))
   const color = pct > 50 ? '#22c55e' : pct > 20 ? '#eab308' : '#ef4444'
+  if (bw) {
+    // Como no Black & White: "HP" num selo e a barra fina em cima do fundo escuro.
+    return (
+      <div className="flex items-center" data-testid="hp-bar">
+        <span className="rounded-l-sm bg-[#f8b830] px-1 text-[9px] leading-[11px] font-black text-[#5a3a00]">HP</span>
+        <div className="h-[7px] flex-1 overflow-hidden rounded-r-sm border border-[#202020] bg-[#384838]">
+          <div className="h-full transition-[width] duration-700 ease-out" style={{ width: `${pct}%`, background: `linear-gradient(${color} 60%, rgba(0,0,0,.25) 60%)`, backgroundColor: color }} />
+        </div>
+      </div>
+    )
+  }
   return (
     <div className="flex items-center gap-1.5">
       <span className="text-[10px] font-black text-amber-600">HP</span>
       <div className="h-2 flex-1 overflow-hidden rounded-sm border border-slate-700 bg-slate-700">
         <div className="h-full rounded-full transition-[width] duration-700 ease-out" style={{ width: `${pct}%`, background: color }} />
+      </div>
+    </div>
+  )
+}
+
+/** A barra de XP (azul, embaixo da vida, só no seu), como nos jogos. */
+function ExpBar({ value }) {
+  return (
+    <div className="mt-0.5 flex items-center" data-testid="exp-bar">
+      <span className="pr-1 text-[8px] leading-[9px] font-black text-[#7ec8ff]">EXP</span>
+      <div className="h-[4px] flex-1 overflow-hidden rounded-sm bg-[#202830]">
+        <div className="h-full bg-[#38a8f8] transition-[width] duration-1000 ease-out" style={{ width: `${Math.round(value * 100)}%` }} />
       </div>
     </div>
   )
@@ -414,7 +437,33 @@ function MonDetails({ battle, side, mon }) {
   )
 }
 
-function InfoBox({ mon, hp, mine, status, dmax, boosts, hpTestId }) {
+function InfoBox({ mon, hp, mine, status, dmax, boosts, hpTestId, exp = null, bw = false }) {
+  if (bw) {
+    // Caixa do Black & White: escura, encostada na borda (a do adversário em cima à esquerda, a sua à direita), com o XP embaixo da vida.
+    return (
+      <div className={`bw-box w-full px-2 pt-0.5 pb-1 text-white ${mine ? 'rounded-l-xl pl-3' : 'rounded-r-xl pr-3'}`}>
+        <div className="bw-text flex items-baseline gap-1 text-[12px] font-bold sm:text-sm">
+          <span className="truncate">{mon.name}</span>
+          {mon.terastal && (
+            <span className="shrink-0 rounded px-1 text-[9px] font-black uppercase" style={{ background: typeColor(mon.teraType) }} data-testid="tera-badge">
+              {`Tera ${mon.teraType}`}
+            </span>
+          )}
+          {dmax && <span className="shrink-0 rounded bg-rose-600 px-1 text-[9px] font-black">DMAX</span>}
+          {status && (
+            <span className="shrink-0 rounded px-1 text-[9px] font-black" style={{ background: STATUS_BADGE[status] }} data-testid="status-badge">
+              {status.toUpperCase()}
+            </span>
+          )}
+          <span className="ml-auto shrink-0 text-[11px] sm:text-xs">{`Lv${mon.level}`}</span>
+        </div>
+        <HpBar hp={hp} max={mon.maxHp} bw />
+        <BoostTags boosts={boosts} />
+        {(mine || hpTestId) && <div data-testid={hpTestId} className="bw-text text-right text-[11px] leading-tight font-bold tabular-nums sm:text-xs">{`${hp}/${mon.maxHp}`}</div>}
+        {exp != null && <ExpBar value={exp} />}
+      </div>
+    )
+  }
   return (
     <div className="w-full rounded-sm border-2 border-slate-800 bg-[#fffde0] px-2 py-1 font-mono text-slate-900 shadow-[2px_2px_0_#52634a]">
       <div className="flex items-baseline justify-between gap-1 text-xs font-black">
@@ -463,11 +512,19 @@ function TeraCrown({ color }) {
   )
 }
 
+/**
+ * O tamanho na batalha pela altura do Pokémon (decímetros), como nos jogos:
+ * um Joltik bem pequeno, um Pikachu pequeno, um Charizard quase do tamanho do
+ * espaço e os gigantes (Wailord, Gigantamax) ocupando tudo. Igual ao app.
+ */
+export const battleScale = (height) => Math.min(1, Math.max(0.3, Math.sqrt((height ?? 10) / 20)))
+
 const BattleSprite = forwardRef(function BattleSprite({ mon, id, back, fainted, dmax, tera = '', byId }, ref) {
   const p = byId?.get(id) ?? byId?.get(mon.id)
   const teraColor = tera ? typeColor(tera) : null
+  const scale = battleScale(p?.height)
   return (
-    <div className={`aspect-square w-full transition-all duration-500 ${fainted ? 'translate-y-10 opacity-0' : ''}`}>
+    <div className={`aspect-square w-full transition-all duration-500 ${fainted ? 'translate-y-10 opacity-0' : ''}`} style={{ transform: `scale(${scale})`, transformOrigin: '50% 100%' }} data-scale={scale}>
       <div
         className="h-full w-full origin-bottom transition-transform duration-700"
         // Dinamax: gigante; o do adversário (lá no alto do campo) cresce menos e desce um pouco, para não passar do topo.
@@ -1023,17 +1080,19 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
       {/* Campo */}
       <div
         ref={field}
-        className="battle-field relative aspect-[16/10] overflow-hidden sm:aspect-[16/9] rounded-t-2xl border-4 border-b-0 border-slate-800"
+        className="battle-field relative aspect-[4/3] overflow-hidden rounded-t-2xl border-4 border-b-0 border-slate-800"
         style={{ background: '#9fdcff' }}
+        data-layout="bw"
       >
-        <BattleBackground weather={shown.weather} scene={battle.scene ?? 'grass'} />
-        <div className={`absolute top-[6%] left-[4%] w-[46%] max-w-[260px] transition-opacity ${intro && poke[1] === 'hidden' ? 'opacity-0' : ''}`}>
+        {/* Como no Black & White: o adversário lá atrás à direita (menor), o seu de costas na frente à esquerda (grande, cortado pela caixa do texto). */}
+        <BattleBackground weather={shown.weather} scene={battleScene(battle.scene, battle.seed ?? battle.turn)} layout="bw" />
+        <div className={`absolute top-[5%] left-0 w-[50%] max-w-[300px] transition-opacity ${intro && poke[1] === 'hidden' ? 'opacity-0' : ''}`}>
           <button type="button" className="block w-full cursor-pointer text-left" onClick={() => setInspect(1)} aria-label={t('Ver detalhes do adversário')} data-testid="inspect-foe">
-            <InfoBox mon={foe} hp={shown.hp[1][shown.active[1]]} status={shown.status[1][shown.active[1]]} dmax={shown.dmax[1]} boosts={shown.boosts[1]} hpTestId={online ? "online-hp-" + (1 - online.side) : undefined} />
+            <InfoBox bw mon={foe} hp={shown.hp[1][shown.active[1]]} status={shown.status[1][shown.active[1]]} dmax={shown.dmax[1]} boosts={shown.boosts[1]} hpTestId={online ? "online-hp-" + (1 - online.side) : undefined} />
           </button>
         </div>
         {/* O inimigo fica mais longe: menor e com os pés na frente do meio da plataforma (pisando nela, como o seu). */}
-        <div className="absolute right-[11%] bottom-[53%] w-[25%]">
+        <div className="absolute right-[11%] bottom-[57%] w-[26%]">
           <div className={`poke-${poke[1] || 'shown'}`}>
             <BattleSprite ref={sprites[1]} mon={foe} id={shown.form[1] ?? foe.id} dmax={shown.dmax[1]} tera={shown.tera[1]} fainted={shown.fainted[1]} byId={byId} />
           </div>
@@ -1044,7 +1103,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
             </div>
           )}
         </div>
-        <div className="absolute bottom-[5%] left-[7%] w-[33%]">
+        <div className="absolute bottom-[12%] left-[1%] w-[58%]">
           <div className={`poke-${poke[0] || 'shown'}`}>
             <BattleSprite ref={sprites[0]} mon={me} id={shown.form[0] ?? me.id} dmax={shown.dmax[0]} tera={shown.tera[0]} back fainted={shown.fainted[0]} byId={byId} />
           </div>
@@ -1058,11 +1117,22 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         <WeatherFx weather={shown.weather} />
         {effect && <MoveFx key={effect.key} plan={effect.plan} color={effect.color} />}
         {flash > 0 && <div key={`flash-${flash}`} className="battle-flash pointer-events-none absolute inset-0 bg-white" />}
-        <div className={`absolute right-[4%] bottom-[8%] w-[46%] max-w-[260px] transition-opacity ${intro && poke[0] === 'hidden' ? 'opacity-0' : ''}`}>
+        <div className={`absolute right-0 bottom-[24%] w-[50%] max-w-[300px] transition-opacity ${intro && poke[0] === 'hidden' ? 'opacity-0' : ''}`}>
           <button type="button" className="block w-full cursor-pointer text-left" onClick={() => setInspect(0)} aria-label={t('Ver detalhes do seu Pokémon')} data-testid="inspect-me">
-            <InfoBox mon={me} hp={shown.hp[0][shown.active[0]]} status={shown.status[0][shown.active[0]]} dmax={shown.dmax[0]} boosts={shown.boosts[0]} mine hpTestId={online ? "online-hp-" + online.side : undefined} />
+            <InfoBox bw mon={me} hp={shown.hp[0][shown.active[0]]} status={shown.status[0][shown.active[0]]} dmax={shown.dmax[0]} boosts={shown.boosts[0]} mine hpTestId={online ? "online-hp-" + online.side : undefined}
+              exp={expBarOf(battle, shown.active[0], shown.hp[1])} />
           </button>
         </div>
+        {/* A mensagem dentro da tela, embaixo, como nos jogos (tocar passa o texto). */}
+        <button
+          type="button"
+          onClick={() => skip.current?.()}
+          className="bw-message absolute inset-x-[1.5%] bottom-[1.5%] h-[21%] cursor-pointer overflow-y-auto rounded-lg px-3 py-1.5 text-left text-sm leading-snug font-bold text-white sm:px-4 sm:text-lg"
+          data-testid="battle-text"
+        >
+          {!busy && online?.message ? t(online.message) : text}
+          {!busy && battle.winner != null && endNote && <span className="mt-1 block text-xs sm:text-base" data-testid="end-note">{endNote}</span>}
+        </button>
       </div>
 
       <FieldBar battle={battle} />
@@ -1070,22 +1140,11 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         {inspect != null && <MonDetails battle={battle} side={inspect} mon={inspect === 1 ? foe : me} />}
       </Modal>
       {/* Texto e menus */}
-      <div className="flex min-h-36 flex-col gap-2 rounded-b-2xl border-4 border-slate-800 bg-slate-800 p-2 sm:flex-row">
-        {/* Bolsa e troca abrem aqui dentro, no lugar do texto (como nos jogos). */}
-        {!(waiting && (menu === 'bag' || menu === 'party')) && (
-          <button
-            type="button"
-            onClick={() => skip.current?.()}
-            className="min-h-20 flex-1 cursor-pointer rounded-xl border-4 border-amber-600 bg-white px-4 py-3 text-left text-lg font-bold text-slate-900"
-            data-testid="battle-text"
-          >
-            {!busy && online?.message ? t(online.message) : text}
-            {!busy && battle.winner != null && endNote && <span className="mt-1 block text-base" data-testid="end-note">{endNote}</span>}
-          </button>
-        )}
+      <div className="flex min-h-24 flex-col gap-2 rounded-b-2xl border-4 border-slate-800 bg-slate-800 p-2">
+        {/* Embaixo da tela, como a tela de baixo do DS: o menu, a Bolsa e a troca. */}
         {waiting && online?.waitForSwitch && <Button onClick={() => online.onAction({ kind: 'wait', index: 0 })}>Aguardar troca do amigo</Button>}
         {waiting && !locked && !online?.waitForSwitch && menu === 'main' && !battle.needSwitch && (
-          <div className="grid grid-cols-2 gap-1.5 rounded-xl border-4 border-slate-600 bg-white p-2 sm:w-72">
+          <div className="grid grid-cols-2 gap-1.5 rounded-xl border-4 border-slate-600 bg-white p-2">
             <MenuButton onClick={() => (usable.length ? setMenu('fight') : fight(-1))}>LUTAR</MenuButton>
             <MenuButton disabled={Boolean(online)} onClick={() => setMenu('bag')}>BOLSA</MenuButton>
             <MenuButton onClick={() => (setItem(null), setMenu('party'))}>POKÉMON</MenuButton>
@@ -1093,7 +1152,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
           </div>
         )}
         {waiting && !locked && menu === 'fight' && (
-          <div className="grid grid-cols-2 gap-1.5 rounded-xl border-4 border-slate-600 bg-white p-2 sm:w-96" data-testid="moves">
+          <div className="grid grid-cols-2 gap-1.5 rounded-xl border-4 border-slate-600 bg-white p-2" data-testid="moves">
             <Weak mon={rival} list={foeWeak} />
             {options.map(([kind, label]) => (
               <button
@@ -1649,7 +1708,8 @@ export default function TurnBattlePage() {
       ) : (
         <Battle
           key={game.key}
-          battle={game.battle}
+          // O lugar: o ginásio do líder, a Liga (Elite Four e Campeão) ou o da Battle Factory.
+          battle={Object.assign(game.battle, { scene: game.battle.scene ?? sceneOfBoss(challenge?.kind) ?? undefined })}
           foeName={game.foeName}
           foeTrainer={game.foeTrainer}
           hit={hit}

@@ -36,9 +36,9 @@ void main() {
     expect(run['team'][0]['nature'], 'Docile');
     expect(run['boss'], {'region': 11, 'step': 0});
     expect(run['encounter'], isNull);
-    expect(run['route'], {'floor': 1, 'biome': 'grass', 'options': [{'kind': 'trainer'}]});
+    expect(run['route'], {'floor': 1, 'biome': 'city', 'options': [{'kind': 'trainer'}]});
     expect(FactoryRun.chooseNode(run, data, 0)['encounter'], {
-      'kind': 'trainer', 'foes': [{'id': 859, 'level': 2, 'iv': 0, 'ev': 3}, {'id': 273, 'level': 2, 'iv': 0, 'ev': 3}], 'trainerSeed': 500729487, 'scene': 'grass',
+      'kind': 'trainer', 'foes': [{'id': 915, 'level': 2, 'iv': 0, 'ev': 3}, {'id': 287, 'level': 2, 'iv': 0, 'ev': 3}], 'trainerSeed': 500729487, 'scene': 'city',
     });
   });
 
@@ -77,6 +77,26 @@ void main() {
     for (var i = 0; i < expected.length; i++) {
       expect(jsonEncode(out[i]), jsonEncode(expected[i]), reason: 'andar ${i + 1}');
     }
+  });
+
+  test('XP só para quem lutou; com o Exp. Share, a metade para o resto do time (igual ao site)', () {
+    final base = FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!;
+    final first = FactoryRun.teamOf(base).first;
+    final run = {
+      ...base,
+      'team': [first, {...first, 'id': 4}, {...first, 'id': 7, 'hp': 0.0}],
+      'encounter': {'kind': 'wild', 'foes': [{'id': 19, 'level': 7, 'iv': 0, 'ev': 0}, {'id': 16, 'level': 7, 'iv': 0, 'ev': 0}]},
+    };
+    int e(int id, int lvl) => FactoryRun.expFor(data.species[id]![0] as int, 7, lvl);
+    final after = FactoryRun.winFloor(run, data, fought: [[0], [0, 1]]);
+    expect(FactoryRun.pendingOf(after)!['gains'], [e(19, 5) + e(16, 5), e(16, 5), 0]);
+    expect(FactoryRun.winFloor(run, data, fought: [[0], [0]])['pending']['gains'][1], 0);
+    final shared = FactoryRun.buyItem({...run, 'money': 99999, 'pending': {'shop': ['exp-share']}}, 'exp-share', 0, data)!;
+    expect(shared['expShare'], true);
+    final half = FactoryRun.winFloor({...shared, 'encounter': run['encounter']}, data, fought: [[0], [0]]);
+    expect(half['pending']['gains'][1], (e(19, 5) * FactoryRun.expShare).floor() + (e(16, 5) * FactoryRun.expShare).floor());
+    expect(FactoryRun.expProgress({'level': 5, 'exp': 125}), 0);
+    expect(FactoryRun.expProgress({'level': 5, 'exp': 125}, 9999), 1);
   });
 
   test('venceu: XP só para quem está de pé; HP continua; o capturado na batalha entra no time; shiny libera o inicial shiny', () {
@@ -235,8 +255,13 @@ void main() {
       expect(FactoryRun.routeOptions(on(12, step, 12), data, seq([0.5]))['options'], [{'kind': 'boss'}]);
     }
     expect(FactoryRun.routeCities(data, on(12, first + 1, 12)), (from: 'Indigo Plateau', to: 'Indigo Plateau'));
-    final water = FactoryRun.encounterFor(data, 20, rand, null, false, {'kind': 'wild', 'biome': 'water'});
-    expect((data.species[water['foes'][0]['id']]![4] as List).any(FactoryRun.biomes['water']!.contains), isTrue);
+    // Os tipos do lugar aparecem bem mais (os outros ainda aparecem).
+    var local = 0;
+    for (var i = 0; i < 100; i++) {
+      final water = FactoryRun.encounterFor(data, 20, rand, null, false, {'kind': 'wild', 'biome': 'water'});
+      if ((data.species[water['foes'][0]['id']]![4] as List).any(FactoryRun.biomes['water']!.contains)) local++;
+    }
+    expect(local, greaterThan(60));
     final cave = {...at(20), 'encounter': {'kind': 'wild', 'biome': 'cave', 'foes': [{'id': 74, 'level': 20}]}};
     expect(FactoryRun.captureFor(cave, data), {'rates': [255], 'dusk': true});
     final ace = FactoryRun.encounterFor(data, 30, rand, null, false, {'kind': 'ace'});
@@ -270,5 +295,28 @@ void main() {
     final trainer = TurnBattle(await TurnBattleSetup.mons([(25, set(['thunderbolt']))], (row) => '${row['name']}'), c, League.seededRandom(3), startBags: [{'master-ball': 1}, null]);
     addTearDown(trainer.dispose);
     expect(trainer.canUseItem(0, 'master-ball', 0), isFalse);
+  });
+
+  test('evoluídos só a partir do nível em que evoluem: abaixo dele, a forma anterior (igual ao site)', () {
+    expect([FactoryRun.minLevelOf(data, 252), FactoryRun.minLevelOf(data, 253), FactoryRun.minLevelOf(data, 254)], [1, 16, 36]);
+    expect([FactoryRun.devolve(data, 254, 2), FactoryRun.devolve(data, 254, 20), FactoryRun.devolve(data, 254, 40)], [252, 253, 254]);
+    expect(FactoryRun.minLevelOf(data, 26), 25);
+    var state = 8;
+    double rand() {
+      final (v, s) = FactoryRun.nextRandom(state);
+      state = s;
+      return v;
+    }
+
+    for (var floor = 1; floor <= 30; floor++) {
+      for (final node in [{'kind': 'wild', 'biome': 'forest'}, {'kind': 'trainer'}, {'kind': 'ace'}]) {
+        for (final f in FactoryRun.encounterFor(data, floor, rand, null, false, node)['foes'] as List) {
+          expect(f['level'] as int, greaterThanOrEqualTo(FactoryRun.minLevelOf(data, f['id'] as int)));
+        }
+      }
+      for (final f in FactoryRun.encounterFor(data, floor, rand, null, true)['foes'] as List) {
+        expect(f['level'] as int, greaterThanOrEqualTo(FactoryRun.minLevelOf(data, f['id'] as int)));
+      }
+    }
   });
 }

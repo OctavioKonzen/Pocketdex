@@ -61,18 +61,55 @@ Future<(TurnBattle, List<int>)> factoryBattle(Json run) async {
     ..seed = seed
     ..members = (mine: BattleLog.toRecord(mine), theirs: BattleLog.toRecord(theirs))
     // O cenário: o lugar do andar (cidade, floresta, caverna, mar...).
-    ..scene = '${run['encounter']?['scene'] ?? run['encounter']?['biome'] ?? 'grass'}';
+    // Líder de ginásio no ginásio, Elite Four e Campeão na Liga.
+    ..scene = switch (run['encounter']?['boss']?['kind']) {
+      'gym' => 'gym',
+      'elite' || 'champion' => 'league',
+      _ => '${run['encounter']?['scene'] ?? run['encounter']?['biome'] ?? 'grass'}',
+    };
+  // A barra de XP: quem lutou ganha tudo; com o Exp. Share, o resto a metade.
+  final kind = run['encounter']?['kind'] as String?;
+  battle.expBar = (
+    mons: [for (final i in order) (level: (team[i]['level'] as num).toInt(), exp: (team[i]['exp'] as num).toInt())],
+    table: [
+      for (final f in FactoryRun.foesOf(run))
+        () {
+          final all = FactoryRun.expShares(run, data, f, null, FactoryRun.expFactor(kind));
+          return [for (final i in order) all[i]];
+        }(),
+    ],
+    share: run['expShare'] == true ? FactoryRun.expShare : 0.0,
+  );
   return (battle, order);
 }
 
-/// Como o time terminou a batalha (para winFloor): a parte do HP de cada um, na ordem da corrida, a Bolsa e se capturou o selvagem.
-({List<double> hp, Map<String, int> bag, bool captured}) factoryAfter(TurnBattle battle, List<int> order, Json run) {
+/// A barra de XP de quem está na posição (slot) da batalha (0 a 1), com o que já ganhou (foeHp: o HP na tela de cada adversário). null fora da Factory. Igual ao site.
+double? expBarOf(TurnBattle battle, int slot, List<int> foeHp) {
+  final bar = battle.expBar;
+  if (bar == null || slot >= bar.mons.length) return null;
+  var extra = 0;
+  for (var j = 0; j < bar.table.length; j++) {
+    final hp = j < foeHp.length ? foeHp[j] : battle.teams[1][j].hp;
+    if (hp > 0 && battle.captured != j) continue;
+    final row = bar.table[j];
+    extra += (battle.fought[j]?.contains(slot) ?? false) ? row[slot] : (row[slot] * bar.share).floor();
+  }
+  final mon = bar.mons[slot];
+  return FactoryRun.expProgress({'level': mon.level, 'exp': mon.exp}, extra);
+}
+
+/// Como o time terminou a batalha (para winFloor): a parte do HP de cada um, na ordem da corrida, a Bolsa, se capturou o selvagem e quem lutou contra cada adversário.
+({List<double> hp, Map<String, int> bag, bool captured, List<List<int>> fought}) factoryAfter(TurnBattle battle, List<int> order, Json run) {
   final hp = [for (final m in FactoryRun.teamOf(run)) FactoryRun.hpOf(m)];
   for (var slot = 0; slot < order.length && slot < battle.teams[0].length; slot++) {
     final mon = battle.teams[0][slot];
     hp[order[slot]] = mon.maxHp > 0 ? ((mon.hp < 0 ? 0 : mon.hp) / mon.maxHp * 1000).round() / 1000 : 0;
   }
-  return (hp: hp, bag: {for (final id in FactoryRun.bagItems) id: battle.bags[0][id] ?? 0}, captured: battle.captured != null);
+  // Quem lutou contra cada adversário (posições na corrida), para o XP.
+  final fought = [
+    for (var j = 0; j < FactoryRun.foesOf(run).length; j++) [for (final slot in battle.fought[j] ?? const <int>[]) slot < order.length ? order[slot] : slot],
+  ];
+  return (hp: hp, bag: {for (final id in FactoryRun.bagItems) id: battle.bags[0][id] ?? 0}, captured: battle.captured != null, fought: fought);
 }
 
 /// Quem é o adversário do andar: o chefe (nome, treinador e música) ou um selvagem (sem treinador).
@@ -566,6 +603,12 @@ const _biomeInfo = <String, (String, String, Color)>{
   'snow': ('Neve', '❄️', Color(0xFF38BDF8)),
   'tower': ('Torre', '👻', Color(0xFF7C3AED)),
   'sky': ('Céu', '☁️', Color(0xFF0EA5E9)),
+  'beach': ('Praia', '🏖️', Color(0xFFD97706)),
+  'underwater': ('Fundo do mar', '🐠', Color(0xFF1E40AF)),
+  'swamp': ('Pântano', '🪵', Color(0xFF4D7C0F)),
+  'sewer': ('Esgoto', '🚰', Color(0xFF475569)),
+  'icecave': ('Caverna de gelo', '🧊', Color(0xFF0891B2)),
+  'desert': ('Deserto', '🏜️', Color(0xFFB45309)),
 };
 
 /// Cada ponto do mapa: símbolo, nome e o que tem nele.
@@ -660,6 +703,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
     if (id == 'move-reminder') return tr('Lembra um golpe do nível (uma vez)');
     if (id == 'dynamax-band') return tr('Libera o Dynamax (e o Gigantamax) para o time');
     if (id == 'tera-orb') return tr('Libera a Terastalização para o time');
+    if (id == 'exp-share') return tr('O time todo ganha XP (quem não lutou, a metade)');
     if (id == 'revive') return tr('Revive com metade do HP');
     final share = FactoryRun.healShare[id];
     if (share != null) return share >= 1 ? tr('Recupera todo o HP') : tr('Recupera {0}% do HP').replaceAll('{0}', '${(share * 100).round()}');

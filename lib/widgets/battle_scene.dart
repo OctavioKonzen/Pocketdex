@@ -8,9 +8,48 @@
 
 import 'package:flutter/material.dart';
 
-class BattleScenePainter extends CustomPainter {
-  const BattleScenePainter({this.scene = 'grass', this.weather = ''});
+/// Os lugares que têm imagem (sprites/battle/<lugar>.webp, feitas por tool/battle_backgrounds.py, com as bases desenhadas) e a
+/// versão de cada clima (<lugar>-sun/rain/sand/snow.webp): Sunny Day, Rain Dance... mudam o cenário. Igual ao site.
+const sceneImages = ['grass', 'forest', 'water', 'beach', 'underwater', 'swamp', 'sewer', 'cave', 'icecave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky', 'tower', 'gym', 'league', 'center'];
+String _usable(String scene) => sceneImages.contains(scene) || BattleScenePainter.colors.containsKey(scene) ? scene : 'grass';
+
+/// O clima na imagem (o granizo usa a de neve).
+const _weatherImage = {'sun': 'sun', 'rain': 'rain', 'sand': 'sand', 'hail': 'snow', 'snow': 'snow'};
+const _outdoor = ['grass', 'forest', 'water', 'beach', 'swamp', 'cave', 'icecave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky'];
+/// O cenário da batalha: o do lugar (a rota da Battle Factory, o ginásio, a Liga) ou, numa batalha comum, um sorteado. Igual ao site.
+String battleScene(String scene, int? seed) => _usable(scene.isNotEmpty ? scene : _outdoor[(seed ?? 0).abs() % _outdoor.length]);
+
+/// Líder de ginásio no ginásio; Elite Four e Campeão na Liga.
+String? sceneOfBoss(String? kind) => kind == 'gym' ? 'gym' : kind == 'elite' || kind == 'champion' || kind == 'league' ? 'league' : null;
+
+/// As bases dos dois lados (cx, cy, rx, ry) no campo (160 × 100). bw: como no
+/// Black & White, iguais às das imagens; senão, o campo de antes.
+const _platforms = {
+  false: ([120.0, 45.0, 32.0, 8.0], [38.0, 91.0, 42.0, 12.0]),
+  true: ([122.0, 40.0, 38.0, 6.5], [74.0, 80.0, 84.0, 20.0]),
+};
+
+/// O fundo da batalha no estilo Black & White: a imagem do lugar (se tiver) ou o desenho com as bases nos mesmos lugares.
+class BattleBackdrop extends StatelessWidget {
+  const BattleBackdrop({super.key, required this.scene, this.weather = ''});
   final String scene, weather;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!sceneImages.contains(scene)) return CustomPaint(painter: BattleScenePainter(scene: scene, weather: weather, bw: true), size: Size.infinite);
+    // A versão do clima (quem chama troca com AnimatedSwitcher quando o golpe muda o clima).
+    final sky = _weatherImage[weather];
+    return Image.asset('assets/database/sprites/battle/$scene${sky == null ? '' : '-$sky'}.webp',
+        // Pixel art (256×192, como no DS): ampliada sem suavizar.
+        fit: BoxFit.fill, width: double.infinity, height: double.infinity, filterQuality: FilterQuality.none,
+        errorBuilder: (_, __, ___) => CustomPaint(painter: BattleScenePainter(scene: scene, weather: weather, bw: true), size: Size.infinite));
+  }
+}
+
+class BattleScenePainter extends CustomPainter {
+  const BattleScenePainter({this.scene = 'grass', this.weather = '', this.bw = false});
+  final String scene, weather;
+  final bool bw;
 
   /// As cores de cada lugar: [céu, chão, base escura, base clara]. 'grass' é o campo de sempre.
   static const colors = <String, List<int>>{
@@ -142,12 +181,13 @@ class BattleScenePainter extends CustomPainter {
     for (var i = 0; i < 50; i++) {
       box(0, i * 2.0, 160, 0.4, fill(0xFFFFFFFF, 0.2));
     }
-    oval(120, 45, 32, 8, Paint()..color = c[2]);
-    oval(120, 44, 29, 6, Paint()..color = c[3]);
-    oval(38, 91, 42, 12, Paint()..color = c[2]);
-    oval(38, 89, 39, 9, Paint()..color = c[3]);
+    final (foe, mine) = _platforms[bw]!;
+    for (final p in [foe, mine]) {
+      oval(p[0], p[1], p[2], p[3], Paint()..color = c[2]);
+      oval(p[0], p[1] - p[3] * 0.15, p[2] * 0.91, p[3] * 0.75, Paint()..color = c[3]);
+    }
   }
 
   @override
-  bool shouldRepaint(BattleScenePainter old) => old.scene != scene || old.weather != weather;
+  bool shouldRepaint(BattleScenePainter old) => old.scene != scene || old.weather != weather || old.bw != bw;
 }

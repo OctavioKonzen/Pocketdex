@@ -154,6 +154,7 @@ export function newBattle(mine, theirs, random, options = {}) {
     // Quem acabou de entrar fica pelo menos dois turnos antes de o computador trocar.
     battle.cpuSwitchTurn = battle.turn
   }
+  markFought(battle)
   return battle
 }
 
@@ -826,7 +827,19 @@ function logTurn(battle, action, events) {
     const i = battle.sides[0].active
     battle.kos = { ...battle.kos, [i]: (battle.kos?.[i] ?? 0) + 1 }
   }
+  markFought(battle)
   return events
+}
+
+/**
+ * Quem lutou contra cada adversário (fought[posição dele] = as suas posições
+ * que estiveram em campo junto com ele): na Battle Factory, só eles ganham o
+ * XP de derrotá-lo (sem Exp. Share), como nos jogos.
+ */
+export function markFought(battle) {
+  const foe = battle.sides[1].active, mine = battle.sides[0].active
+  const list = ((battle.fought ??= {})[foe] ??= [])
+  if (!list.includes(mine)) list.push(mine)
 }
 
 export function playTurn(battle, action, hit) {

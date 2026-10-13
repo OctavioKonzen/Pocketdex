@@ -156,6 +156,8 @@ def main():
             # Filtros da Pokédex: status base, habilidades e lendário/mítico.
             'stats': [v for v, _ in p['stats']],
             'abilities': [a for a, _ in p['abilities']],
+            # Altura (decímetros): o tamanho dele na batalha.
+            'height': p['height'],
             # Exclusivos de uma versão: {jogo: versão} ("só em Red").
             'only': exclusives.get(str(p['id']), {}),
             'tag': ('mythical' if s['is_mythical'] else 'legendary' if s['is_legendary'] else 'baby' if s['is_baby'] else None) if s else None,

@@ -4,6 +4,8 @@
 // torre, nuvens. O clima (chuva, sol...) muda as cores do céu e do chão.
 // Igual ao app (lib/widgets/battle_scene.dart).
 
+import { spriteUrl } from '../lib/data'
+
 /** As cores de cada lugar: [céu, chão, base escura, base clara]. 'grass' é o campo de sempre. */
 export const SCENE_COLORS = {
   grass: ['#b9e6bd', '#edf9c8', '#7eba62', '#a9d57b'],
@@ -141,7 +143,50 @@ function Scenery({ scene }) {
 }
 
 /** O campo da batalha no lugar (scene) e no clima (weather). */
-export function BattleBackground({ weather = '', scene = 'grass' }) {
+/**
+ * As bases dos dois lados: [cx, cy, rx, ry] no campo (160 × 100). 'bw': como
+ * no Black & White (a do adversário lá atrás à direita, a sua grande na frente
+ * à esquerda, cortada pela caixa do texto); 'classic': o campo de antes.
+ */
+export const PLATFORMS = {
+  classic: { foe: [120, 45, 32, 8], mine: [38, 91, 42, 12] },
+  // Iguais às das imagens dos cenários (sprites/battle/<lugar>.webp).
+  bw: { foe: [122, 40, 38, 6.5], mine: [74, 80, 84, 20] },
+}
+
+/**
+ * Os lugares que têm imagem (sprites/battle/<lugar>.webp, feitas por
+ * tool/battle_backgrounds.py, com as bases desenhadas) e a versão de cada clima
+ * (<lugar>-sun/rain/sand/snow.webp): Sunny Day, Rain Dance... mudam o cenário. Igual ao app.
+ */
+export const SCENE_IMAGES = ['grass', 'forest', 'water', 'beach', 'underwater', 'swamp', 'sewer', 'cave', 'icecave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky', 'tower', 'gym', 'league', 'center']
+const usable = (scene) => (SCENE_IMAGES.includes(scene) || SCENE_COLORS[scene] ? scene : 'grass')
+/** O clima na imagem (o granizo usa a de neve). */
+const WEATHER_IMAGE = { sun: 'sun', rain: 'rain', sand: 'sand', hail: 'snow', snow: 'snow' }
+/** Batalha comum (sem lugar): um destes, sorteado pela semente. */
+const OUTDOOR = ['grass', 'forest', 'water', 'beach', 'swamp', 'cave', 'icecave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky']
+/** O cenário da batalha: o do lugar (a rota da Battle Factory, o ginásio, a Liga) ou, numa batalha comum, um sorteado. Igual ao app. */
+export function battleScene(scene, seed) {
+  return usable(scene || OUTDOOR[Math.abs(Number(seed) || 0) % OUTDOOR.length])
+}
+
+/** Líder de ginásio no ginásio; Elite Four e Campeão na Liga. */
+export const sceneOfBoss = (kind) => (kind === 'gym' ? 'gym' : kind === 'elite' || kind === 'champion' || kind === 'league' ? 'league' : null)
+
+export function BattleBackground({ weather = '', scene = 'grass', layout = 'classic' }) {
+  const { foe, mine } = PLATFORMS[layout] ?? PLATFORMS.classic
+  if (layout === 'bw' && SCENE_IMAGES.includes(scene)) {
+    // A do clima por cima da normal, aparecendo devagar quando o golpe muda o clima.
+    const sky = WEATHER_IMAGE[weather]
+    return (
+      <div className="pointer-events-none absolute inset-0" aria-hidden="true" data-scene={scene} data-weather={sky ?? ''}>
+        <img src={spriteUrl(`battle/${scene}.webp`)} alt="" className="pixelated absolute inset-0 h-full w-full object-fill" />
+        {Object.values(WEATHER_IMAGE).filter((w, i, all) => all.indexOf(w) === i).map((w) => (
+          <img key={w} src={spriteUrl(`battle/${scene}-${w}.webp`)} alt="" loading="lazy" className="pixelated absolute inset-0 h-full w-full object-fill transition-opacity duration-700" style={{ opacity: sky === w ? 1 : 0 }} />
+        ))}
+      </div>
+    )
+  }
   const [skyTop, ground, dark, light] = SCENE_COLORS[scene] ?? SCENE_COLORS.grass
   const [top, bottom] = WEATHER_COLORS[weather] ?? [skyTop, ground]
   const id = `scene-${scene}-${weather || 'clear'}`
@@ -156,10 +201,12 @@ export function BattleBackground({ weather = '', scene = 'grass' }) {
       <rect width="160" height="100" fill={`url(#${id})`} />
       <Scenery scene={scene} />
       {Array.from({ length: 50 }, (_, i) => <rect key={i} y={i * 2} width="160" height="0.4" fill="#fff" opacity="0.2" />)}
-      <ellipse cx="120" cy="45" rx="32" ry="8" fill={dark} />
-      <ellipse cx="120" cy="44" rx="29" ry="6" fill={light} />
-      <ellipse cx="38" cy="91" rx="42" ry="12" fill={dark} />
-      <ellipse cx="38" cy="89" rx="39" ry="9" fill={light} />
+      {[foe, mine].map(([cx, cy, rx, ry]) => (
+        <g key={cx}>
+          <ellipse cx={cx} cy={cy} rx={rx} ry={ry} fill={dark} />
+          <ellipse cx={cx} cy={cy - ry * 0.15} rx={rx * 0.91} ry={ry * 0.75} fill={light} />
+        </g>
+      ))}
     </svg>
   )
 }
