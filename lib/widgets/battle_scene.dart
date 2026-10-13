@@ -8,21 +8,25 @@
 
 import 'package:flutter/material.dart';
 
-/// Os lugares que têm imagem (sprites/battle/<lugar>.webp, com as bases desenhadas): os mandados prontos ficam em KEEP; os
-/// outros são feitos por tool/battle_backgrounds.py no mesmo formato. Igual ao site.
-const sceneImages = ['grass', 'forest', 'water', 'beach', 'underwater', 'swamp', 'sewer', 'cave', 'icecave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky', 'tower', 'gym', 'league', 'center'];
+/// Os lugares que têm imagem (sprites/battle/<lugar>.webp, com as bases desenhadas): as mandadas pelo usuário. Igual ao site.
+const sceneImages = ['grass', 'forest', 'cave', 'icecave', 'snow', 'city'];
+
+/// Sem imagem ainda: o lugar parecido que tem (ou que é desenhado aqui).
+const _fallback = {'icecave': 'snow', 'beach': 'water', 'underwater': 'water', 'swamp': 'forest', 'sewer': 'city', 'desert': 'mountain', 'gym': 'city', 'league': 'tower'};
+String _usable(String scene) =>
+    sceneImages.contains(scene) || BattleScenePainter.colors.containsKey(scene) ? scene : _usable(_fallback[scene] ?? 'grass');
 const _outdoor = ['grass', 'forest', 'water', 'beach', 'swamp', 'cave', 'icecave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky'];
 const _variants = {
   'water': ['water', 'beach', 'underwater'], 'forest': ['forest', 'swamp'], 'snow': ['snow', 'icecave'],
   'city': ['city', 'sewer'], 'mountain': ['mountain', 'desert'], 'cave': ['cave', 'icecave'],
 };
 
-/// O cenário da batalha: o do lugar (com as variações, pela semente) ou, numa batalha comum, um sorteado. Igual ao site.
+/// O cenário da batalha: o do lugar (com as variações, pela semente) ou, numa batalha comum, um sorteado; sem imagem, o parecido. Igual ao site.
 String battleScene(String scene, int? seed) {
   final n = (seed ?? 0).abs();
-  if (scene.isEmpty) return _outdoor[n % _outdoor.length];
+  if (scene.isEmpty) return _usable(_outdoor[n % _outdoor.length]);
   final list = _variants[scene];
-  return list == null ? scene : list[n % list.length];
+  return _usable(list == null ? scene : list[n % list.length]);
 }
 
 /// Líder de ginásio no ginásio; Elite Four e Campeão na Liga.

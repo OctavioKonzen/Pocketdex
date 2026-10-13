@@ -156,23 +156,22 @@ export const PLATFORMS = {
   bw: { foe: [122, 40, 38, 6.5], mine: [74, 80, 84, 20] },
 }
 
-/**
- * Os lugares que têm imagem (sprites/battle/<lugar>.webp, com as bases
- * desenhadas): os mandados prontos ficam em KEEP de tool/battle_backgrounds.py; os outros são feitos por
- * tool/battle_backgrounds.py no mesmo formato. Igual ao app.
- */
-export const SCENE_IMAGES = ['grass', 'forest', 'water', 'beach', 'underwater', 'swamp', 'sewer', 'cave', 'icecave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky', 'tower', 'gym', 'league', 'center']
+/** Os lugares que têm imagem (sprites/battle/<lugar>.webp, com as bases desenhadas): as mandadas pelo usuário. Igual ao app. */
+export const SCENE_IMAGES = ['grass', 'forest', 'cave', 'icecave', 'snow', 'city']
+/** Sem imagem ainda: o lugar parecido que tem (ou que é desenhado aqui). */
+const FALLBACK = { icecave: 'snow', beach: 'water', underwater: 'water', swamp: 'forest', sewer: 'city', desert: 'mountain', gym: 'city', league: 'tower' }
+const usable = (scene) => (SCENE_IMAGES.includes(scene) || SCENE_COLORS[scene] ? scene : usable(FALLBACK[scene] ?? 'grass'))
 /** Batalha comum (sem lugar): um destes, sorteado pela semente. */
 const OUTDOOR = ['grass', 'forest', 'water', 'beach', 'swamp', 'cave', 'icecave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky']
 /** As variações de cada lugar da Battle Factory (pela semente do andar): o mar pode ser praia ou fundo do mar, a floresta um pântano... */
 const VARIANTS = { water: ['water', 'beach', 'underwater'], forest: ['forest', 'swamp'], snow: ['snow', 'icecave'], city: ['city', 'sewer'], mountain: ['mountain', 'desert'], cave: ['cave', 'icecave'] }
 
-/** O cenário da batalha: o do lugar (com as variações) ou, numa batalha comum, um sorteado. Igual ao app. */
+/** O cenário da batalha: o do lugar (com as variações) ou, numa batalha comum, um sorteado; sem imagem, o parecido. Igual ao app. */
 export function battleScene(scene, seed) {
   const n = Math.abs(Number(seed) || 0)
-  if (!scene) return OUTDOOR[n % OUTDOOR.length]
+  if (!scene) return usable(OUTDOOR[n % OUTDOOR.length])
   const list = VARIANTS[scene]
-  return list ? list[n % list.length] : scene
+  return usable(list ? list[n % list.length] : scene)
 }
 
 /** Líder de ginásio no ginásio; Elite Four e Campeão na Liga. */
