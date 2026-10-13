@@ -8,11 +8,25 @@
 
 import 'package:flutter/material.dart';
 
-/// Os lugares que têm imagem (sprites/battle/<lugar>.webp, com as bases desenhadas); os outros são desenhados aqui. Igual ao site.
-const sceneImages = ['snow', 'city', 'cave'];
+/// Os lugares que têm imagem (sprites/battle/<lugar>.webp, com as bases desenhadas): os mandados prontos ficam em KEEP; os
+/// outros são feitos por tool/battle_backgrounds.py no mesmo formato. Igual ao site.
+const sceneImages = ['grass', 'forest', 'water', 'beach', 'underwater', 'swamp', 'sewer', 'cave', 'icecave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky', 'tower', 'gym', 'league', 'center'];
+const _outdoor = ['grass', 'forest', 'water', 'beach', 'swamp', 'cave', 'icecave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky'];
+const _variants = {
+  'water': ['water', 'beach', 'underwater'], 'forest': ['forest', 'swamp'], 'snow': ['snow', 'icecave'],
+  'city': ['city', 'sewer'], 'mountain': ['mountain', 'desert'], 'cave': ['cave', 'icecave'],
+};
 
-/// O cenário de uma batalha comum (sem lugar): um dos que têm imagem, sorteado pela semente da batalha.
-String sceneForSeed(int? seed) => sceneImages[(seed ?? 0).abs() % sceneImages.length];
+/// O cenário da batalha: o do lugar (com as variações, pela semente) ou, numa batalha comum, um sorteado. Igual ao site.
+String battleScene(String scene, int? seed) {
+  final n = (seed ?? 0).abs();
+  if (scene.isEmpty) return _outdoor[n % _outdoor.length];
+  final list = _variants[scene];
+  return list == null ? scene : list[n % list.length];
+}
+
+/// Líder de ginásio no ginásio; Elite Four e Campeão na Liga.
+String? sceneOfBoss(String? kind) => kind == 'gym' ? 'gym' : kind == 'elite' || kind == 'champion' || kind == 'league' ? 'league' : null;
 
 /// As bases dos dois lados (cx, cy, rx, ry) no campo (160 × 100). bw: como no
 /// Black & White, iguais às das imagens; senão, o campo de antes.

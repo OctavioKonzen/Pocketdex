@@ -22,7 +22,7 @@ import { teamMembers } from '../lib/teamBattle'
 import { fxPlan, moveAnim, SELF_KINDS } from '../lib/moveAnim'
 import { active, damageRange, fieldConditions, monDetails, lockedMove, canGimmick, canUseItem, effectLabel, forfeit, HEAL_SHARE, ITEMS, lineOf, MAX_MOVES, maxPower, moveEffect, newBattle, playTurn, replace, startBattle, STAT_NAMES, switchMatchup, usableMoves, weaknesses, Z_MOVES, zPower } from '../lib/turnBattle'
 import Sprite from '../components/Sprite'
-import { BattleBackground, sceneForSeed } from '../components/BattleScene'
+import { BattleBackground, battleScene, sceneOfBoss } from '../components/BattleScene'
 import { TrainerBack, TrainerSprite } from '../components/Trainer'
 import { randomTrainer, useMyTrainer, useTrainers } from '../lib/trainers'
 import { battleRecord } from '../lib/battleLog'
@@ -1077,7 +1077,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         data-layout="bw"
       >
         {/* Como no Black & White: o adversário lá atrás à direita (menor), o seu de costas na frente à esquerda (grande, cortado pela caixa do texto). */}
-        <BattleBackground weather={shown.weather} scene={battle.scene ?? sceneForSeed(battle.seed ?? battle.turn)} layout="bw" />
+        <BattleBackground weather={shown.weather} scene={battleScene(battle.scene, battle.seed ?? battle.turn)} layout="bw" />
         <div className={`absolute top-[5%] left-0 w-[50%] max-w-[300px] transition-opacity ${intro && poke[1] === 'hidden' ? 'opacity-0' : ''}`}>
           <button type="button" className="block w-full cursor-pointer text-left" onClick={() => setInspect(1)} aria-label={t('Ver detalhes do adversário')} data-testid="inspect-foe">
             <InfoBox bw mon={foe} hp={shown.hp[1][shown.active[1]]} status={shown.status[1][shown.active[1]]} dmax={shown.dmax[1]} boosts={shown.boosts[1]} hpTestId={online ? "online-hp-" + (1 - online.side) : undefined} />
@@ -1700,7 +1700,8 @@ export default function TurnBattlePage() {
       ) : (
         <Battle
           key={game.key}
-          battle={game.battle}
+          // O lugar: o ginásio do líder, a Liga (Elite Four e Campeão) ou o da Battle Factory.
+          battle={Object.assign(game.battle, { scene: game.battle.scene ?? sceneOfBoss(challenge?.kind) ?? undefined })}
           foeName={game.foeName}
           foeTrainer={game.foeTrainer}
           hit={hit}

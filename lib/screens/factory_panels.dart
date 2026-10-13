@@ -61,7 +61,12 @@ Future<(TurnBattle, List<int>)> factoryBattle(Json run) async {
     ..seed = seed
     ..members = (mine: BattleLog.toRecord(mine), theirs: BattleLog.toRecord(theirs))
     // O cenário: o lugar do andar (cidade, floresta, caverna, mar...).
-    ..scene = '${run['encounter']?['scene'] ?? run['encounter']?['biome'] ?? 'grass'}';
+    // Líder de ginásio no ginásio, Elite Four e Campeão na Liga.
+    ..scene = switch (run['encounter']?['boss']?['kind']) {
+      'gym' => 'gym',
+      'elite' || 'champion' => 'league',
+      _ => '${run['encounter']?['scene'] ?? run['encounter']?['biome'] ?? 'grass'}',
+    };
   // A barra de XP: quem lutou ganha tudo; com o Exp. Share, o resto a metade.
   final kind = run['encounter']?['kind'] as String?;
   battle.expBar = (

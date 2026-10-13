@@ -34,7 +34,9 @@ export async function factoryBattle(run) {
   const battle = newBattle(a, b, seededRandom(seed >>> 0), { ai: 'normal', seed: seed >>> 0, bags: bagsFor(run), healPct: true, capture: captureFor(run, data) })
   battle.members = { mine, theirs }
   // O cenário: o lugar do andar (cidade, floresta, caverna, mar...).
-  battle.scene = run.encounter.scene ?? run.encounter.biome ?? 'grass'
+  // Líder de ginásio no ginásio, Elite Four e Campeão na Liga.
+  const boss = run.encounter.boss?.kind
+  battle.scene = boss === 'gym' ? 'gym' : boss === 'elite' || boss === 'champion' ? 'league' : run.encounter.scene ?? run.encounter.biome ?? 'grass'
   battle.factoryOrder = order
   // A barra de XP (expBarOf): o XP de cada um agora e quanto cada adversário derrubado dá para cada um (quem lutou: tudo; com o Exp. Share, o resto: a metade).
   battle.expBar = {

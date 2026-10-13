@@ -156,11 +156,27 @@ export const PLATFORMS = {
   bw: { foe: [122, 40, 38, 6.5], mine: [74, 80, 84, 20] },
 }
 
-/** Os lugares que têm imagem (sprites/battle/<lugar>.webp, com as bases desenhadas); os outros são desenhados aqui. Igual ao app. */
-export const SCENE_IMAGES = ['snow', 'city', 'cave']
+/**
+ * Os lugares que têm imagem (sprites/battle/<lugar>.webp, com as bases
+ * desenhadas): os mandados prontos ficam em KEEP de tool/battle_backgrounds.py; os outros são feitos por
+ * tool/battle_backgrounds.py no mesmo formato. Igual ao app.
+ */
+export const SCENE_IMAGES = ['grass', 'forest', 'water', 'beach', 'underwater', 'swamp', 'sewer', 'cave', 'icecave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky', 'tower', 'gym', 'league', 'center']
+/** Batalha comum (sem lugar): um destes, sorteado pela semente. */
+const OUTDOOR = ['grass', 'forest', 'water', 'beach', 'swamp', 'cave', 'icecave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky']
+/** As variações de cada lugar da Battle Factory (pela semente do andar): o mar pode ser praia ou fundo do mar, a floresta um pântano... */
+const VARIANTS = { water: ['water', 'beach', 'underwater'], forest: ['forest', 'swamp'], snow: ['snow', 'icecave'], city: ['city', 'sewer'], mountain: ['mountain', 'desert'], cave: ['cave', 'icecave'] }
 
-/** O cenário de uma batalha comum (sem lugar): um dos que têm imagem, sorteado pela semente da batalha. */
-export const sceneForSeed = (seed) => SCENE_IMAGES[Math.abs(Number(seed) || 0) % SCENE_IMAGES.length]
+/** O cenário da batalha: o do lugar (com as variações) ou, numa batalha comum, um sorteado. Igual ao app. */
+export function battleScene(scene, seed) {
+  const n = Math.abs(Number(seed) || 0)
+  if (!scene) return OUTDOOR[n % OUTDOOR.length]
+  const list = VARIANTS[scene]
+  return list ? list[n % list.length] : scene
+}
+
+/** Líder de ginásio no ginásio; Elite Four e Campeão na Liga. */
+export const sceneOfBoss = (kind) => (kind === 'gym' ? 'gym' : kind === 'elite' || kind === 'champion' || kind === 'league' ? 'league' : null)
 
 export function BattleBackground({ weather = '', scene = 'grass', layout = 'classic' }) {
   const { foe, mine } = PLATFORMS[layout] ?? PLATFORMS.classic

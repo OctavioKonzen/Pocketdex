@@ -431,6 +431,8 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
   @override
   Widget build(BuildContext context) {
     final battle = _battle;
+    // O lugar: o ginásio do líder ou a Liga (Elite Four e Campeão); a Battle Factory já vem com o dela.
+    if (battle != null && battle.scene.isEmpty) battle.scene = sceneOfBoss(_challenge?['kind'] as String?) ?? '';
     return Scaffold(
       appBar: AppBar(title: const Text('Batalha')),
       body: ReadableWidth(
@@ -1478,7 +1480,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                       Positioned.fill(
                         child: AnimatedSwitcher(
                           duration: const Duration(milliseconds: 800),
-                          child: BattleBackdrop(key: ValueKey(_weather), scene: _b.scene.isEmpty ? sceneForSeed(_b.seed) : _b.scene, weather: _weather),
+                          child: BattleBackdrop(key: ValueKey(_weather), scene: battleScene(_b.scene, _b.seed), weather: _weather),
                         ),
                       ),
                       // Como no Black & White: o adversário lá atrás à direita (menor), o seu de costas na frente à esquerda (grande, cortado pela caixa do texto).
