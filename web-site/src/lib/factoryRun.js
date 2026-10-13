@@ -154,6 +154,8 @@ export const SHOP = {
   'escape-rope': 450,
   // Exp. Share: o time todo ganha XP (quem não lutou, a metade).
   'exp-share': 800,
+  // Mapa (Town Map): mostra o mapa da rota e deixa escolher o caminho nas bifurcações (sem ele, vai às cegas).
+  'town-map': 200,
 }
 /** Preço base de um TM ("tm:<golpe>") e de uma pedra de evolução ("evo:<item>"). */
 export const TM_PRICE = 220
@@ -620,7 +622,7 @@ export function chooseNode(run, data, index) {
   out.floor += 1
   // O cenário de onde você está (Poké Mart e Centro na cidade).
   out.scene = node.kind === 'mart' ? 'city' : node.kind === 'center' ? 'center' : run.route.biome ?? 'grass'
-  if (node.kind === 'mart') out.pending = { mart: true, shop: pickShop(rand, data, run.floor, 10) }
+  if (node.kind === 'mart') out.pending = { mart: true, shop: pickShop(rand, data, run.floor, 10, Boolean(run.townMap)) }
   else if (node.kind === 'trade') {
     // Troca: alguém da rota oferece um Pokémon (você escolhe quem dar; ele vem TRADE_LEVELS acima).
     const offer = encounterFor(data, out.floor, rand, null, false, { kind: 'wild', biome: run.route?.biome, shiny: run.shinyRate ?? 1 }).foes[0]
@@ -845,7 +847,7 @@ export function winFloor(run, data, after = {}) {
     capture: after.captured && (kind === 'wild' || kind === 'wildboss') ? foes[0] : null,
     cards: kind === 'boss' ? pickCards(rand, run.cardCount ?? 3) : null,
     // A loja da cidade: chegando nela, logo antes do chefe (no resto da rota, os Poké Marts do mapa).
-    shop: kind !== 'boss' || !CITY_KINDS.includes(run.encounter.boss.kind) ? (atCity(data, out) && !inLeague(data, out) ? pickShop(rand, data, run.floor) : null) : null,
+    shop: kind !== 'boss' || !CITY_KINDS.includes(run.encounter.boss.kind) ? (atCity(data, out) && !inLeague(data, out) ? pickShop(rand, data, run.floor, 8, Boolean(run.townMap)) : null) : null,
   }
   out.encounter = null
   return out
@@ -885,7 +887,7 @@ export function tierPick(list, floor, step, rand) {
   return list[list.length - 1]
 }
 
-function pickShop(rand, data, floor, size = 8) {
+function pickShop(rand, data, floor, size = 8, hasMap = false) {
   const out = []
   const add = (id) => { if (!out.includes(id)) out.push(id) }
   // Dois tipos de bola (melhores conforme o andar), às vezes uma especial; a Master Ball é rara (um pouco menos lá em cima).
@@ -896,7 +898,9 @@ function pickShop(rand, data, floor, size = 8) {
   const before = out.length
   for (let k = 0; k < 4 && out.length < before + 2; k++) add(tierPick(HEAL_TIERS, floor, 20, rand))
   if (rand() < 0.5) add('revive')
-  const ids = Object.keys(SHOP).filter((id) => !BALL_IDS.includes(id) && !HEAL_TIERS.includes(id) && id !== 'revive')
+  // O Mapa aparece fácil (até ser comprado).
+  if (!hasMap && rand() < TOWN_MAP_CHANCE) add('town-map')
+  const ids = Object.keys(SHOP).filter((id) => !BALL_IDS.includes(id) && !HEAL_TIERS.includes(id) && id !== 'revive' && id !== 'town-map')
   // TM e pedra de evolução, às vezes.
   if (data.tms?.length && rand() < 0.6) out.push(`tm:${pickOne(data.tms, rand)}`)
   if (data.stones?.length && rand() < 0.45) out.push(`evo:${pickOne(data.stones, rand)}`)
@@ -944,6 +948,43 @@ export function rerollRoute(run, data) {
 }
 
 /** Recusa a troca. */
+/**
+ * O clima de cada lugar (chances): sol e areia no deserto, chuva no mar e no
+ * pântano, neve na neve e na caverna de gelo, sol no vulcão; às vezes sol ou
+ * chuva na grama, na floresta e na cidade. Lugares fechados (caverna, esgoto,
+ * torre, ginásio, Liga) sem clima. Igual ao app.
+ */
+export const SCENE_WEATHER = {
+  desert: [['sand', 0.45], ['sun', 0.25]], volcano: [['sun', 0.6]], snow: [['snow', 0.65]], icecave: [['snow', 0.5]],
+  beach: [['sun', 0.35], ['rain', 0.15]], water: [['rain', 0.35], ['sun', 0.15]], swamp: [['rain', 0.45]],
+  grass: [['sun', 0.15], ['rain', 0.15]], forest: [['rain', 0.2], ['sun', 0.1]], mountain: [['sand', 0.15], ['snow', 0.15], ['sun', 0.1]],
+  sky: [['sun', 0.2], ['rain', 0.2]], city: [['rain', 0.12], ['sun', 0.12]],
+}
+
+/** O clima com que a batalha do andar começa ('' sem clima): pelo lugar, sempre o mesmo para a mesma corrida e andar. */
+export function weatherOf(run, scene) {
+  const table = SCENE_WEATHER[scene]
+  if (!table) return ''
+  let roll = (Math.imul(((run.seed ?? 0) ^ (run.floor * 40503)) | 0, 2246822519) >>> 0) / 4294967296
+  for (const [weather, chance] of table) {
+    if (roll < chance) return weather
+    roll -= chance
+  }
+  return ''
+}
+
+/** Chance de o Mapa estar na loja (até ser comprado). */
+export const TOWN_MAP_CHANCE = 0.75
+
+/**
+ * Sem o Mapa, na bifurcação você não vê os caminhos: segue por um deles às
+ * cegas (sempre o mesmo para a mesma corrida e andar). Igual ao app.
+ */
+export function blindPick(run) {
+  const n = run.route?.options?.length ?? 1
+  return (Math.imul(((run.seed ?? 0) ^ (run.floor * 2654435761)) | 0, 1597334677) >>> 0) % n
+}
+
 export const skipTrade = (run) => (run.pending ? { ...run, pending: { ...run.pending, trade: null } } : run)
 
 /** Quem abre a batalha: passa o Pokémon da posição para a frente do time (para treinar os mais fracos). Igual ao app. */
@@ -1044,7 +1085,7 @@ export function canEvolveWith(data, mon, item) {
 
 /** Se o item já foi comprado/é inútil agora (Dynamax Band e Tera Orb são uma vez só). */
 export function shopOwned(run, id) {
-  return (id === 'dynamax-band' && run.dmax) || (id === 'tera-orb' && run.tera) || (id === 'exp-share' && Boolean(run.expShare))
+  return (id === 'dynamax-band' && run.dmax) || (id === 'tera-orb' && run.tera) || (id === 'exp-share' && Boolean(run.expShare)) || (id === 'town-map' && Boolean(run.townMap))
 }
 
 /** Compra um item da loja (index: o Pokémon que recebe; itens da Bolsa e Poké Ball não precisam). null se não dá. */
@@ -1057,6 +1098,7 @@ export function buyItem(run, id, index, data) {
   if (id === 'dynamax-band') return { ...out, dmax: true }
   if (id === 'tera-orb') return { ...out, tera: true }
   if (id === 'exp-share') return { ...out, expShare: true }
+  if (id === 'town-map') return { ...out, townMap: true }
   if (TOKENS.includes(id)) return { ...out, tokens: { ...out.tokens, [id]: (out.tokens?.[id] ?? 0) + 1 } }
   if (id.startsWith('tm:')) {
     const move = id.slice(3)

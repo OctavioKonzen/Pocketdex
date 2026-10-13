@@ -19,6 +19,14 @@
   --text: #ffffff;
   --muted: #bdbdbd;
   --line: #4a4a4a;
+  /* A caixa de diálogo da batalha e da Battle Factory: escura no tema escuro. */
+  --dlg-bg: linear-gradient(#4d4d4d, #2e2e2e);
+  --dlg-text: #ffffff;
+  --dlg-sub: #cbd5e1;
+  --dlg-border: #1a1a1a;
+  --dlg-inner: #7a7a7a;
+  --dlg-hover: rgba(255, 255, 255, 0.14);
+  --dlg-shadow: 1px 1px 0 #000;
   color-scheme: dark;
 }
 
@@ -29,6 +37,14 @@
   --text: #111111;
   --muted: #616161;
   --line: #e0e0e0;
+  /* ...e branca no tema claro. */
+  --dlg-bg: #ffffff;
+  --dlg-text: #0f172a;
+  --dlg-sub: #64748b;
+  --dlg-border: #334155;
+  --dlg-inner: #cbd5e1;
+  --dlg-hover: #fef3c7;
+  --dlg-shadow: none;
   color-scheme: light;
 }
 
@@ -276,11 +292,23 @@ body {
 }
 .bw-text { text-shadow: 1px 1px 0 #000, 0 1px 0 #000; }
 .bw-message {
-  background: linear-gradient(#4d4d4d, #2e2e2e);
-  border: 3px solid #1a1a1a;
-  box-shadow: inset 0 0 0 2px #7a7a7a, inset 0 0 0 4px #262626;
-  text-shadow: 1px 1px 0 #000;
+  background: var(--dlg-bg);
+  color: var(--dlg-text);
+  border: 3px solid var(--dlg-border);
+  box-shadow: inset 0 0 0 2px var(--dlg-inner);
+  text-shadow: var(--dlg-shadow);
 }
+/* As caixas de texto e de menu (fora do campo), no tema. */
+.dlg-box {
+  background: var(--dlg-bg);
+  color: var(--dlg-text);
+  border-color: var(--dlg-border) !important;
+  box-shadow: inset 0 0 0 2px var(--dlg-inner);
+}
+.dlg-sub { color: var(--dlg-sub); }
+.dlg-btn { color: var(--dlg-text); }
+.dlg-btn:hover:not(:disabled),
+.dlg-btn.active { background: var(--dlg-hover); }
 .fx-emoji {
   position: absolute;
   translate: -50% -50%;
@@ -460,3 +488,15 @@ body {
   background-image: linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
   background-size: 12px 12px;
 }
+/* O time do Black & White: fundo azul-petróleo com listras, cartões azuis; o escolhido laranja. */
+.bw-party {
+  background-color: #1f6f78;
+  background-image: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0 10px, transparent 10px 20px);
+}
+.bw-party-title { background: #0f3d44; border: 2px solid #0b2a2f; }
+.bw-party-slot { background: linear-gradient(#7fd3f0, #4aa8d8); border-color: #0f3d5c; color: #0f172a; }
+.bw-party-slot.lead { background: linear-gradient(#a5e9b0, #5cc07a); }
+.bw-party-slot.selected,
+.bw-party-slot:hover:not(:disabled) { background: linear-gradient(#ffd27a, #f59e0b); }
+/* O que abre por cima do campo (Bolsa, time, loja): ocupa o campo todo e rola por dentro. */
+.field-overlay { position: absolute; inset: 0; z-index: 30; overflow-y: auto; }

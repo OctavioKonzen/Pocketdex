@@ -1460,6 +1460,107 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
     // Efetividade (como nos jogos): nos golpes, nas fraquezas do inimigo e na troca.
     final rival = _b.active(1);
     final foeWeak = TurnBattle.weaknesses(rival.types, allTypes, widget.typeEff);
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    // A Bolsa e o time abrem por cima do campo (a mesma tela, como no jogo; dá para jogar com o celular de lado).
+    final Widget? fieldPanel = waiting && _menu == 'bag'
+        ? BwBag(
+                testKey: 'bag',
+                onClose: () => setState(() => _menu = 'main'),
+                pockets: [
+                  for (final (id, label, img, ball) in const [('medicine', 'Remédios', 'potion', false), ('balls', 'Poké Balls', 'poke-ball', true)])
+                    BagPocket(id: id, label: label, img: img, items: [
+                      for (final it in battleItems)
+                        if (it.ball == ball && (_b.bags[0][it.slug] ?? 0) > 0)
+                          BagEntry(
+                            id: it.slug,
+                            name: it.name,
+                            count: _b.bags[0][it.slug] ?? 0,
+                            icon: it.slug,
+                            help: it.ball
+                                ? tr('Jogar no Pokémon selvagem')
+                                : it.revive
+                                    ? tr('Revive com metade do HP')
+                                    : it.heal >= 9999
+                                        ? tr('Recupera todo o HP')
+                                        : _b.healPct
+                                            ? tr('Recupera {0}% do HP').replaceAll('{0}', '${((const {'potion': 0.25, 'super-potion': 0.5, 'hyper-potion': 0.75}[it.slug] ?? 0) * 100).round()}')
+                                            : tr('Recupera {0} de HP').replaceAll('{0}', '${it.heal}'),
+                            disabled: ![for (var i = 0; i < _b.teams[0].length; i++) i].any((i) => _b.canUseItem(0, it.slug, i)),
+                            use: it.ball ? tr('JOGAR') : tr('USAR'),
+                            // A bola vai direto no selvagem; os remédios perguntam em quem.
+                            onUse: () => it.ball
+                                ? _throwBall(it.slug)
+                                : setState(() {
+                                    _item = it.slug;
+                                    _menu = 'party';
+                                  }),
+                          ),
+                    ]),
+                ],
+              )
+        : waiting && _menu == 'party'
+            ? Container(
+                // A tela do time do Black & White.
+                color: const Color(0xFF1F6F78),
+                padding: const EdgeInsets.all(10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(children: [
+                      Expanded(
+                        child: Text(
+                            _b.needSwitch
+                                ? 'Escolha o próximo Pokémon'
+                                : _item != null
+                                    ? 'Usar em qual Pokémon?'
+                                    : 'Trocar de Pokémon',
+                            style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.white)),
+                      ),
+                      if (!_b.needSwitch)
+                        TextButton(
+                            onPressed: () => setState(() {
+                                  _menu = _item != null ? 'bag' : 'main';
+                                  _item = null;
+                                }),
+                            child: const Text('Voltar')),
+                    ]),
+                    if (_item == null) _Weak(rival, foeWeak),
+                    for (final (i, mon) in _b.teams[0].indexed)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(colors: i == _b.activeIndex[0] ? const [Color(0xFFA5E9B0), Color(0xFF5CC07A)] : const [Color(0xFF7FD3F0), Color(0xFF4AA8D8)], begin: Alignment.topCenter, end: Alignment.bottomCenter),
+                          border: Border.all(color: const Color(0xFF0F3D5C), width: 2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Material(type: MaterialType.transparency, child: ListTile(
+                        textColor: const Color(0xFF0F172A),
+                        key: ValueKey('battle-single-switch-$i'),
+                        contentPadding: EdgeInsets.zero,
+                        enabled: _item != null ? _b.canUseItem(0, _item!, i) : _b.canSwitch(0, i),
+                        onTap: () => _choose(i),
+                        leading: SizedBox.square(dimension: 44, child: PokemonSprite(mon.id, shiny: mon.shiny, fill: 0.95)),
+                        title: Row(children: [
+                          Flexible(child: m.Text(mon.name, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold))),
+                          if (mon.status.isNotEmpty && mon.hp > 0) ...[const SizedBox(width: 6), _StatusBadge(mon.status)],
+                        ]),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _HpBar(hp: mon.hp, max: mon.maxHp),
+                            mon.hp > 0
+                                ? m.Text('${mon.hp}/${mon.maxHp}', style: const TextStyle(fontSize: 12))
+                                : const Text('Desmaiado', style: TextStyle(fontSize: 12)),
+                            if (_item == null && mon.hp > 0) _matchup(TurnBattle.switchMatchup(widget.hit, mon, rival, widget.typeEff)),
+                          ],
+                        ),
+                        trailing: i == _b.activeIndex[0] ? const Icon(Icons.check_circle, color: Color(0xFF0F3D5C)) : null,
+                      ))),
+                  ],
+                ),
+              )
+            : null;
     // A mecânica do set (montador) ativa sozinha no primeiro ataque, como nos
     // jogos: o menu já mostra os Z-Moves / Max Moves que vão sair.
     final selected = _selectedGimmick;
@@ -1510,7 +1611,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                           // O inimigo fica mais longe: menor e com os pés na
                           // frente do meio da plataforma (pisando nela, como o seu).
                           right: w * 0.11,
-                          bottom: h * 0.57,
+                          bottom: h * foeBottom(scene),
                           width: w * 0.26,
                           height: w * 0.26,
                           child: Stack(clipBehavior: Clip.none, fit: StackFit.expand, children: [
@@ -1520,11 +1621,11 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                                 child: _Sprite(key: _sprites[1], mon: foe, id: _form[1] ?? foe.id, dmax: _dmax[1], tera: _tera[1], fainted: _fainted[1])),
                           ])),
                       if (_ball[1] != null)
-                        Positioned(right: w * 0.11, bottom: h * 0.57, width: w * 0.26, height: w * 0.26, child: _Ball(side: 1, phase: _ball[1]!)),
+                        Positioned(right: w * 0.11, bottom: h * foeBottom(scene), width: w * 0.26, height: w * 0.26, child: _Ball(side: 1, phase: _ball[1]!)),
                       if (_introOn && _coach != null)
                         Positioned(
                           right: w * 0.07,
-                          bottom: h * 0.57,
+                          bottom: h * foeBottom(scene),
                           width: w * 0.34,
                           height: w * 0.34,
                           child: AnimatedSlide(
@@ -1586,21 +1687,25 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                           onTap: () { if (_skip != null && !_skip!.isCompleted) _skip!.complete(); },
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF4D4D4D), Color(0xFF2E2E2E)]),
-                              border: Border.all(color: const Color(0xFF1A1A1A), width: 3),
-                              borderRadius: BorderRadius.circular(8),
-                              boxShadow: const [BoxShadow(color: Color(0xFF7A7A7A), spreadRadius: -2, blurRadius: 0)],
-                            ),
+                            // A caixa de diálogo no tema: escura no tema escuro, branca no claro (igual ao site).
+                            decoration: dark
+                                ? BoxDecoration(
+                                    gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF4D4D4D), Color(0xFF2E2E2E)]),
+                                    border: Border.all(color: const Color(0xFF1A1A1A), width: 3),
+                                    borderRadius: BorderRadius.circular(8),
+                                    boxShadow: const [BoxShadow(color: Color(0xFF7A7A7A), spreadRadius: -2, blurRadius: 0)],
+                                  )
+                                : BoxDecoration(color: Colors.white, border: Border.all(color: const Color(0xFF334155), width: 3), borderRadius: BorderRadius.circular(8)),
                             alignment: Alignment.topLeft,
                             child: SingleChildScrollView(
                               // Já traduzido (nomes e golpes não mudam).
                               child: m.Text(!_busy && widget.online != null ? tr(widget.online!.message) : _text,
-                                  style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.25, fontWeight: FontWeight.bold, shadows: _bwShadow)),
+                                  style: TextStyle(color: dark ? Colors.white : const Color(0xFF0F172A), fontSize: 14, height: 1.25, fontWeight: FontWeight.bold, shadows: dark ? _bwShadow : null)),
                             ),
                           ),
                         ),
                       ),
+                      if (fieldPanel != null) Positioned.fill(child: SingleChildScrollView(key: const ValueKey('battle-panel'), child: fieldPanel)),
                     ],
                   ),
                 );
@@ -1751,98 +1856,6 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                 const SizedBox(height: 6),
                 Row(children: [_MenuButton('Voltar', () => setState(() => _menu = 'main'))]),
               ],
-            if (waiting && _menu == 'bag') ...[
-              const SizedBox(height: 12),
-              // A Bolsa do Black & White, em bolsos: remédios e Poké Balls.
-              BwBag(
-                testKey: 'bag',
-                onClose: () => setState(() => _menu = 'main'),
-                pockets: [
-                  for (final (id, label, img, ball) in const [('medicine', 'Remédios', 'potion', false), ('balls', 'Poké Balls', 'poke-ball', true)])
-                    BagPocket(id: id, label: label, img: img, items: [
-                      for (final it in battleItems)
-                        if (it.ball == ball && (_b.bags[0][it.slug] ?? 0) > 0)
-                          BagEntry(
-                            id: it.slug,
-                            name: it.name,
-                            count: _b.bags[0][it.slug] ?? 0,
-                            icon: it.slug,
-                            help: it.ball
-                                ? tr('Jogar no Pokémon selvagem')
-                                : it.revive
-                                    ? tr('Revive com metade do HP')
-                                    : it.heal >= 9999
-                                        ? tr('Recupera todo o HP')
-                                        : _b.healPct
-                                            ? tr('Recupera {0}% do HP').replaceAll('{0}', '${((const {'potion': 0.25, 'super-potion': 0.5, 'hyper-potion': 0.75}[it.slug] ?? 0) * 100).round()}')
-                                            : tr('Recupera {0} de HP').replaceAll('{0}', '${it.heal}'),
-                            disabled: ![for (var i = 0; i < _b.teams[0].length; i++) i].any((i) => _b.canUseItem(0, it.slug, i)),
-                            use: it.ball ? tr('JOGAR') : tr('USAR'),
-                            // A bola vai direto no selvagem; os remédios perguntam em quem.
-                            onUse: () => it.ball
-                                ? _throwBall(it.slug)
-                                : setState(() {
-                                    _item = it.slug;
-                                    _menu = 'party';
-                                  }),
-                          ),
-                    ]),
-                ],
-              ),
-            ],
-            if (waiting && _menu == 'party') ...[
-              const SizedBox(height: 12),
-              SiteCard(
-                padding: const EdgeInsets.all(10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(children: [
-                      Expanded(
-                        child: Text(
-                            _b.needSwitch
-                                ? 'Escolha o próximo Pokémon'
-                                : _item != null
-                                    ? 'Usar em qual Pokémon?'
-                                    : 'Trocar de Pokémon',
-                            style: const TextStyle(fontWeight: FontWeight.bold)),
-                      ),
-                      if (!_b.needSwitch)
-                        TextButton(
-                            onPressed: () => setState(() {
-                                  _menu = _item != null ? 'bag' : 'main';
-                                  _item = null;
-                                }),
-                            child: const Text('Voltar')),
-                    ]),
-                    if (_item == null) _Weak(rival, foeWeak),
-                    for (final (i, mon) in _b.teams[0].indexed)
-                      ListTile(
-                        key: ValueKey('battle-single-switch-$i'),
-                        contentPadding: EdgeInsets.zero,
-                        enabled: _item != null ? _b.canUseItem(0, _item!, i) : _b.canSwitch(0, i),
-                        onTap: () => _choose(i),
-                        leading: SizedBox.square(dimension: 44, child: PokemonSprite(mon.id, shiny: mon.shiny, fill: 0.95)),
-                        title: Row(children: [
-                          Flexible(child: m.Text(mon.name, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold))),
-                          if (mon.status.isNotEmpty && mon.hp > 0) ...[const SizedBox(width: 6), _StatusBadge(mon.status)],
-                        ]),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _HpBar(hp: mon.hp, max: mon.maxHp),
-                            mon.hp > 0
-                                ? m.Text('${mon.hp}/${mon.maxHp}', style: const TextStyle(fontSize: 12))
-                                : const Text('Desmaiado', style: TextStyle(fontSize: 12)),
-                            if (_item == null && mon.hp > 0) _matchup(TurnBattle.switchMatchup(widget.hit, mon, rival, widget.typeEff)),
-                          ],
-                        ),
-                        trailing: i == _b.activeIndex[0] ? const Icon(Icons.check_circle, color: Color(0xFF0EA5E9)) : null,
-                      ),
-                  ],
-                ),
-              ),
-            ],
             if (!_busy && _b.winner != null && widget.endNote.isNotEmpty) ...[
               const SizedBox(height: 14),
               Container(
@@ -1889,20 +1902,24 @@ class _MenuButton extends StatelessWidget {
   const _MenuButton(this.label, this.onTap);
 
   @override
-  Widget build(BuildContext context) => Expanded(
+  Widget build(BuildContext context) {
+    // No tema: escuro no tema escuro, branco no claro (igual ao site).
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Expanded(
         child: Material(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
+          color: dark ? const Color(0xFF3A3A3A) : Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: BorderSide(color: dark ? const Color(0xFF7A7A7A) : Colors.transparent)),
           child: InkWell(
             borderRadius: BorderRadius.circular(10),
             onTap: onTap,
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-              child: Opacity(opacity: onTap == null ? 0.4 : 1, child: Text(label, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.w900))),
+              child: Opacity(opacity: onTap == null ? 0.4 : 1, child: Text(label, textAlign: TextAlign.center, style: TextStyle(color: dark ? Colors.white : const Color(0xFF0F172A), fontWeight: FontWeight.w900))),
             ),
           ),
         ),
       );
+  }
 }
 
 /// O clima caindo por cima do campo (chuva, areia, granizo, neve) ou o brilho

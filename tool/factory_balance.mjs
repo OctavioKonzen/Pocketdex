@@ -37,7 +37,11 @@ function battle(run) {
   const mine = order.map((i) => engineMon(F.memberOf(run, run.team[i], movesOf(run.team[i].id, run.team[i].level))))
   const theirs = run.encounter.foes.map((f) => engineMon(F.foeMember(f, movesOf(f.id, f.level))))
   const capture = F.captureFor(run, data)
-  const game = sim.create({ teams: [mine, theirs], seed: [run.seed & 0xffff, run.floor, 3, 4], bags: F.bagsFor(run), healPct: true, ...(capture ? { capture } : {}) })
+  // O clima do lugar, como no jogo (ginásio e Liga sem clima).
+  const boss = run.encounter.boss?.kind
+  const scene = boss === 'gym' ? 'gym' : boss === 'elite' || boss === 'champion' ? 'league' : run.encounter.scene ?? 'grass'
+  const weather = F.weatherOf(run, scene)
+  const game = sim.create({ teams: [mine, theirs], seed: [run.seed & 0xffff, run.floor, 3, 4], bags: F.bagsFor(run), healPct: true, ...(capture ? { capture } : {}), ...(weather ? { weather } : {}) })
   // Vale capturar? Com vaga no time ou mais forte que o mais fraco.
   const foe0 = run.encounter.foes[0]
   const weakest = Math.min(...run.team.map(strength))
@@ -119,7 +123,7 @@ function choosePath(run) {
 function maybeReroll(run) {
   const kinds = run.route.options.map((o) => o.kind)
   const hurt = run.team.reduce((sum, m) => sum + (1 - (m.hp ?? 1)), 0) / run.team.length
-  if ((run.rerolls ?? 0) > 0 && kinds.length > 1 && hurt > 0.5 && !kinds.includes('center')) return F.rerollRoute(run, data) ?? run
+  if (run.townMap && (run.rerolls ?? 0) > 0 && kinds.length > 1 && hurt > 0.5 && !kinds.includes('center')) return F.rerollRoute(run, data) ?? run
   return run
 }
 
@@ -155,6 +159,7 @@ function between(run) {
     if (down() > run.bag.revive && shop.includes('revive') && buy('revive')) continue
     if (potions < 3 && ['hyper-potion', 'super-potion', 'max-potion', 'potion'].some((id) => shop.includes(id) && buy(id))) continue
     if (balls(run) < 3 && ['ultra-ball', 'great-ball', 'poke-ball'].some((id) => shop.includes(id) && buy(id))) continue
+    if (shop.includes('town-map') && !run.townMap && buy('town-map')) continue
     if (shop.includes('exp-share') && !run.expShare && buy('exp-share')) continue
     if (shop.includes('rare-candy') && buy('rare-candy', lowest)) continue
     const held = shop.find((id) => F.HELD_BOOST[id])
@@ -215,7 +220,8 @@ for (let r = 0; r < runs; r++) {
   if (startFloor > 1) run = preparedRun(run, startFloor, r)
   while (run.floor <= maxFloor) {
     run = maybeReroll(run)
-    run = F.chooseNode(run, data, choosePath(run))
+    // Sem o Mapa, a bifurcação vai às cegas (como no jogo).
+    run = F.chooseNode(run, data, run.townMap || run.route.options.length < 2 ? choosePath(run) : F.blindPick(run))
     // Sem batalha (Poké Mart, Centro, evento): o que tiver para fazer e o próximo andar.
     if (!run.encounter) {
       run = between(run)

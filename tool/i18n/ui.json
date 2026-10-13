@@ -7926,5 +7926,13 @@
  "{0}× por corrida: sortear o caminho de novo": {"en": "{0}× per run: reroll the path", "fr": "{0}× par course : retirer le chemin", "es": "{0}× por partida: sortear el camino de nuevo"},
  "Shiny {0}× mais comum": {"en": "Shiny {0}× more common", "fr": "Shiny {0}× plus fréquent", "es": "Shiny {0}× más común"},
  "Abre a batalha": {"en": "Leads the battle", "fr": "Ouvre le combat", "es": "Abre el combate"},
- "Primeiro na batalha": {"en": "Lead the battle", "fr": "Premier au combat", "es": "Primero en el combate"}
+ "Primeiro na batalha": {"en": "Lead the battle", "fr": "Premier au combat", "es": "Primero en el combate"},
+ "O caminho se divide, mas sem o Mapa você não sabe para onde cada um vai. Compre um Mapa na loja!": {"en": "The path splits, but without a Map you don't know where each one goes. Buy a Map at the shop!", "fr": "Le chemin se divise, mais sans Carte vous ne savez pas où chacun mène. Achetez une Carte au magasin !", "es": "El camino se divide, pero sin el Mapa no sabes adónde va cada uno. ¡Compra un Mapa en la tienda!"},
+ "Sem o Mapa: um dos caminhos, às cegas.": {"en": "No Map: one of the paths, blindly.", "fr": "Sans Carte : un des chemins, à l'aveugle.", "es": "Sin el Mapa: uno de los caminos, a ciegas."},
+ "Mostra o mapa da rota e deixa escolher o caminho nas bifurcações (sem ele, vai às cegas)": {"en": "Shows the route map and lets you choose the path at forks (without it, you go blindly)", "fr": "Montre la carte de la route et permet de choisir le chemin aux bifurcations (sans elle, à l'aveugle)", "es": "Muestra el mapa de la ruta y permite elegir el camino en las bifurcaciones (sin él, vas a ciegas)"},
+ "Quem vai segurar?": {"en": "Who will hold it?", "fr": "Qui va le tenir ?", "es": "¿Quién lo llevará?"},
+ "Ensinar a quem?": {"en": "Teach whom?", "fr": "Apprendre à qui ?", "es": "¿Enseñar a quién?"},
+ "Time cheio: escolha quem sai para {0} entrar.": {"en": "Team full: choose who leaves so {0} can join.", "fr": "Équipe complète : choisissez qui part pour que {0} entre.", "es": "Equipo lleno: elige quién sale para que entre {0}."},
+ "Quem você dá em troca do {0}?": {"en": "Who do you give for {0}?", "fr": "Qui donnez-vous en échange de {0} ?", "es": "¿A quién das a cambio de {0}?"},
+ "TROCAR": {"en": "TRADE", "fr": "ÉCHANGER", "es": "CAMBIAR"}
 }

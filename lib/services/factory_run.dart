@@ -198,6 +198,8 @@ class FactoryRun {
     'escape-rope': 450,
     // Exp. Share: o time todo ganha XP (quem não lutou, a metade).
     'exp-share': 800,
+    // Mapa (Town Map): mostra o mapa da rota e deixa escolher o caminho nas bifurcações (sem ele, vai às cegas).
+    'town-map': 200,
   };
 
   /// Preço base de um TM ("tm:<golpe>") e de uma pedra de evolução ("evo:<item>").
@@ -710,7 +712,7 @@ class FactoryRun {
     // O cenário de onde você está (Poké Mart e Centro na cidade).
     out['scene'] = node['kind'] == 'mart' ? 'city' : node['kind'] == 'center' ? 'center' : routeBiomeNow;
     if (node['kind'] == 'mart') {
-      out['pending'] = {'mart': true, 'shop': _pickShop(rand, data, floor, 10)};
+      out['pending'] = {'mart': true, 'shop': _pickShop(rand, data, floor, 10, run['townMap'] == true)};
     } else if (node['kind'] == 'trade') {
       // Troca: alguém da rota oferece um Pokémon (você escolhe quem dar; ele vem tradeLevels acima).
       final offer = (encounterFor(data, floor + 1, rand, null, false, {'kind': 'wild', 'biome': run['route']?['biome'], 'shiny': run['shinyRate'] ?? 1})['foes'] as List).first as Map;
@@ -998,7 +1000,7 @@ class FactoryRun {
     final cardsPick = kind == 'boss' ? _pickCards(rand, ((run['cardCount'] as num?) ?? 3).toInt()) : null;
     // A loja da cidade: chegando nela, logo antes do chefe (no resto da rota, os Poké Marts do mapa).
     final cityWin = kind == 'boss' && _cityKinds.contains(run['encounter']['boss']['kind']);
-    final shopPick = !cityWin && atCity(data, out) && !_inLeague(data, out) ? _pickShop(rand, data, _int(run['floor'])) : null;
+    final shopPick = !cityWin && atCity(data, out) && !_inLeague(data, out) ? _pickShop(rand, data, _int(run['floor']), 8, run['townMap'] == true) : null;
     out['pending'] = {
       'exp': exp, 'gains': gains, 'money': money, 'levels': levels, 'joy': joy, 'drop': drop, 'story': story, 'reward': reward,
       if (champion) 'champion': true,
@@ -1059,7 +1061,7 @@ class FactoryRun {
     return list.last;
   }
 
-  static List<String> _pickShop(double Function() rand, FactoryData data, int floor, [int size = 8]) {
+  static List<String> _pickShop(double Function() rand, FactoryData data, int floor, [int size = 8, bool hasMap = false]) {
     final out = <String>[];
     void add(String id) {
       if (!out.contains(id)) out.add(id);
@@ -1077,7 +1079,9 @@ class FactoryRun {
       add(tierPick(healTiers, floor, 20, rand));
     }
     if (rand() < 0.5) add('revive');
-    final ids = [for (final id in shop.keys) if (!ballIds.contains(id) && !healTiers.contains(id) && id != 'revive') id];
+    // O Mapa aparece fácil (até ser comprado).
+    if (!hasMap && rand() < townMapChance) add('town-map');
+    final ids = [for (final id in shop.keys) if (!ballIds.contains(id) && !healTiers.contains(id) && id != 'revive' && id != 'town-map') id];
     // TM e pedra de evolução, às vezes.
     if (data.tms.isNotEmpty && rand() < 0.6) out.add('tm:${_pick(data.tms, rand)}');
     if (data.stones.isNotEmpty && rand() < 0.45) out.add('evo:${_pick(data.stones, rand)}');
@@ -1147,6 +1151,39 @@ class FactoryRun {
   }
 
   /// Recusa a troca.
+  /// O clima de cada lugar (chances): sol e areia no deserto, chuva no mar e no pântano, neve na neve e na caverna de gelo,
+  /// sol no vulcão; às vezes sol ou chuva na grama, na floresta e na cidade. Lugares fechados sem clima. Igual ao site.
+  static const sceneWeather = <String, List<(String, double)>>{
+    'desert': [('sand', 0.45), ('sun', 0.25)], 'volcano': [('sun', 0.6)], 'snow': [('snow', 0.65)], 'icecave': [('snow', 0.5)],
+    'beach': [('sun', 0.35), ('rain', 0.15)], 'water': [('rain', 0.35), ('sun', 0.15)], 'swamp': [('rain', 0.45)],
+    'grass': [('sun', 0.15), ('rain', 0.15)], 'forest': [('rain', 0.2), ('sun', 0.1)], 'mountain': [('sand', 0.15), ('snow', 0.15), ('sun', 0.1)],
+    'sky': [('sun', 0.2), ('rain', 0.2)], 'city': [('rain', 0.12), ('sun', 0.12)],
+  };
+
+  /// O clima com que a batalha do andar começa ('' sem clima): pelo lugar, sempre o mesmo para a mesma corrida e andar.
+  static String weatherOf(Json run, String scene) {
+    final table = sceneWeather[scene];
+    if (table == null) return '';
+    final mixed = (_int(run['seed'] ?? 0) ^ ((_int(run['floor']) * 40503) & 0xFFFFFFFF)) & 0xFFFFFFFF;
+    var roll = ((mixed * 2246822519) & 0xFFFFFFFF) / 4294967296;
+    for (final (weather, chance) in table) {
+      if (roll < chance) return weather;
+      roll -= chance;
+    }
+    return '';
+  }
+
+  /// Chance de o Mapa estar na loja (até ser comprado).
+  static const townMapChance = 0.75;
+
+  /// Sem o Mapa, na bifurcação você não vê os caminhos: segue por um deles às cegas (sempre o mesmo para a mesma corrida e
+  /// andar). Igual ao site (blindPick).
+  static int blindPick(Json run) {
+    final n = ((run['route'] as Map?)?['options'] as List?)?.length ?? 1;
+    final mixed = (_int(run['seed'] ?? 0) ^ ((_int(run['floor']) * 2654435761) & 0xFFFFFFFF)) & 0xFFFFFFFF;
+    return ((mixed * 1597334677) & 0xFFFFFFFF) % n;
+  }
+
   /// Quem abre a batalha: passa o Pokémon da posição para a frente do time (para treinar os mais fracos). Igual ao site.
   static Json setLead(Json run, int index) {
     final team = teamOf(run);
@@ -1264,7 +1301,7 @@ class FactoryRun {
       [for (final e in data.evolutions[_int(mon['id'])] ?? const <List>[]) if (e.length > 2 && e[2] == item) e[0] as int];
 
   /// Dynamax Band e Tera Orb são uma vez só.
-  static bool shopOwned(Json run, String id) => (id == 'dynamax-band' && run['dmax'] == true) || (id == 'tera-orb' && run['tera'] == true) || (id == 'exp-share' && run['expShare'] == true);
+  static bool shopOwned(Json run, String id) => (id == 'dynamax-band' && run['dmax'] == true) || (id == 'tera-orb' && run['tera'] == true) || (id == 'exp-share' && run['expShare'] == true) || (id == 'town-map' && run['townMap'] == true);
 
   /// Compra um item da loja (index: o Pokémon que recebe; itens da Bolsa e Poké Ball não precisam). null se não dá.
   static Json? buyItem(Json run, String id, int index, FactoryData data) {
@@ -1276,6 +1313,7 @@ class FactoryRun {
     if (id == 'dynamax-band') return out..['dmax'] = true;
     if (id == 'tera-orb') return out..['tera'] = true;
     if (id == 'exp-share') return out..['expShare'] = true;
+    if (id == 'town-map') return out..['townMap'] = true;
     if (tokens.contains(id)) {
       final t = Map<String, dynamic>.from((out['tokens'] as Map?) ?? const {});
       t[id] = ((t[id] as num?) ?? 0).toInt() + 1;

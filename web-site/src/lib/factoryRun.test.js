@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import {
-  battleOrder, bossOf, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, foeLevelAt, foeMember,
+  battleOrder, blindPick, bossOf, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, foeLevelAt, foeMember,
   HELD_BOOST, levelTo, MAX_TEAM, memberOf, movesAt, nextFloor, nextRandom, overflowPoints, pokemonPrice, runCoins, setMainItem, shopPrice,
   SHINY_BOOST, SHINY_CHANCE, START_BAG, START_BALLS, startersOf, buyShiny, shinyPrice, unlockShiny, claimStarter, freePick, canEvolveWith, teachMove,
   equipFromStash, gimmicksOf, setGimmick, storyLine, startRun, takeCard, teamDown, applyBagItem, winFloor, chooseNode, routeOptions, routeCities,
@@ -269,6 +269,15 @@ describe('Battle Factory (roguelike)', () => {
     const rand = () => { const [v, s] = nextRandom(state); state = s; return v }
     const boss = encounterFor(data, 20, rand, bossOf(data, startRun(emptyFactory(), data, 1, 42)))
     expect(boss.foes.every((x) => FOE_ITEMS.includes(x.item))).toBe(true)
+  })
+
+  it('Mapa: aparece fácil na loja até ser comprado; sem ele, a bifurcação vai às cegas (igual ao app)', () => {
+    const cases = [[42, 2, 3], [123456789, 5, 2], [2147483647, 9, 3], [7, 100, 3]]
+    expect(cases.map(([seed, floor, n]) => blindPick({ seed, floor, route: { options: Array(n).fill({}) } }))).toEqual([1, 0, 1, 2])
+    const run = { ...startRun(emptyFactory(), data, 1, 42), money: 9999, pending: { shop: ['town-map'] } }
+    const bought = buyItem(run, 'town-map', 0, data)
+    expect(bought.townMap).toBe(true)
+    expect(buyItem(bought, 'town-map', 0, data)).toBe(null)
   })
 
   it('selvagens pela raridade: os comuns (taxa de captura alta) aparecem bem mais', () => {

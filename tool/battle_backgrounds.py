@@ -54,6 +54,8 @@ def mix(a, b, t):
 
 # O céu de cada lugar (o primeiro degradê que ele pinta): os climas trocam só ele.
 SKY = []
+# Onde começa o chão de cada lugar (o último ground() desenhado: o piso onde os Pokémon pisam).
+FLOOR = []
 
 
 def vgrad(stops, y0=0, y1=H):
@@ -147,6 +149,7 @@ def mountains(a, seed, y, amp, top, bottom, haze=None, haze_k=0.0, rough=0.5, st
 
 def ground(a, top, far, near, seed, stretch=4.0, tex=0.14, cells=10, spots=None):
     """O chão do horizonte (top) até embaixo, com textura esticada (perspectiva) e manchas."""
+    FLOOR.append(top)
     g = vgrad([(0, far), (1, near)], top, H)
     n1 = noise(cells, seed, 5, stretch) - 0.5
     n2 = noise(cells * 4, seed + 1, 3, stretch * 1.6) - 0.5
@@ -714,8 +717,15 @@ SCENES = {
 }
 
 
+def foe_feet(top):
+    """Onde ficam os pés do adversário (fração da altura): um pouco para dentro do chão do lugar, nunca no horizonte
+    (a base não pode parecer voando). Igual a GROUND_FEET no site e no app."""
+    return round((top + (H - top) * 0.2) / H, 3)
+
+
 def render(name, w='', bases=True):
     SKY.clear()
+    FLOOR.clear()
     a, info = SCENES[name]()
     if w:
         a = weather(a, w, info)
@@ -740,12 +750,14 @@ def pixelate(im, w=''):
     return Image.fromarray(np.clip(a, 0, 255).astype(np.uint8))
 
 
-def base_sprite(scene_im, spec):
+def base_sprite(scene_im, spec, feet=None):
     """A base sozinha (fundo transparente), em pixel, com a cor do chão do lugar: o site e o app a
     desenham embaixo de cada Pokémon, centralizada nele e do tamanho dele."""
     a = np.asarray(scene_im, np.float32)
     h, w = a.shape[:2]
     cx, cy, rx, ry = spec
+    if feet is not None:
+        cy = feet
     X, Y, RX, RY = cx * w, cy * h, rx * w, ry * h
     ys = slice(int(max(0, Y - RY * 1.3)), int(min(h, Y + RY * 1.3)))
     xs = slice(int(max(0, X - RX * 1.1)), int(min(w, X + RX * 1.1)))
@@ -786,7 +798,8 @@ def put_small(a, spec, tone, ground_c=None):
     shadow = Image.new('RGBA', (w, h), (0, 0, 0, 0))
     ImageDraw.Draw(shadow).ellipse([X - RX * 1.04, Y - RY * 0.7 + thick, X + RX * 1.04, Y + RY * 1.08 + thick], fill=(0, 0, 0, 120))
     shadow = shadow.filter(ImageFilter.GaussianBlur(2))
-    blend_k = 0.28
+    # Bem misturada com a cor do chão: a base é um pedaço do chão do lugar (como no Black & White), não um disco solto.
+    blend_k = 0.5
     def col(c):
         c = mix(np.array(c, np.float32), ground_c, blend_k)
         return tuple(int(v) for v in np.clip(c * tone, 0, 255))
@@ -816,15 +829,18 @@ def main():
     weathers = [''] + (WEATHERS if os.environ.get('WEATHERS', '1') != '0' else [])
     os.makedirs(OUT, exist_ok=True)
     os.makedirs(OUT_WEATHER, exist_ok=True)
+    feet = {}
     for name in names:
         for w in weathers:
             im = pixelate(render(name, w, bases=False), w)
+            if not w:
+                feet[name] = foe_feet(FLOOR[-1]) if FLOOR else 0.45
             im.save(os.path.join(OUT_WEATHER, f'{name}-{w}.webp') if w else os.path.join(OUT, f'{name}.webp'), 'WEBP', lossless=True, method=6)
             if not w:
                 # As bases: a de longe (do adversário) e a de perto (a sua), cada uma com a sua perspectiva.
                 for side, spec in (('foe', FOE), ('mine', MINE)):
-                    base_sprite(im, spec).save(os.path.join(OUT, f'{name}-base-{side}.webp'), 'WEBP', lossless=True, method=6)
-        print(name, flush=True)
+                    base_sprite(im, spec, feet[name] if side == 'foe' else None).save(os.path.join(OUT, f'{name}-base-{side}.webp'), 'WEBP', lossless=True, method=6)
+        print(name, feet[name], flush=True)
     sheet = os.environ.get('SHEET')
     if sheet:
         cols, tw, th = 4, PIXEL[0], PIXEL[1]

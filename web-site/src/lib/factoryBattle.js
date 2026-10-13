@@ -4,7 +4,7 @@
 
 import { battleMons } from './battleSetup'
 import { getFactoryData, getMoves, getPokemonById, getSpecies } from './data'
-import { bagsFor, battleOrder, captureFor, EXP_SHARE, expFactor, expProgress, expShares, foeMember, memberOf, movesAt } from './factoryRun'
+import { bagsFor, battleOrder, captureFor, weatherOf, EXP_SHARE, expFactor, expProgress, expShares, foeMember, memberOf, movesAt } from './factoryRun'
 import { seededRandom } from './league'
 import { newBattle } from './turnBattle'
 
@@ -31,12 +31,15 @@ export async function factoryBattle(run) {
   if (!a.length || !b.length) throw new Error('Não foi possível montar a batalha do andar.')
   const seed = run.seed ^ (run.floor * 2654435761)
   // Selvagem: as Poké Balls da Bolsa funcionam (captureFor: a taxa de captura de cada um).
-  const battle = newBattle(a, b, seededRandom(seed >>> 0), { ai: 'normal', seed: seed >>> 0, bags: bagsFor(run), healPct: true, capture: captureFor(run, data) })
-  battle.members = { mine, theirs }
   // O cenário: o lugar do andar (cidade, floresta, caverna, mar...).
   // Líder de ginásio no ginásio, Elite Four e Campeão na Liga.
   const boss = run.encounter.boss?.kind
-  battle.scene = boss === 'gym' ? 'gym' : boss === 'elite' || boss === 'champion' ? 'league' : run.encounter.scene ?? run.encounter.biome ?? 'grass'
+  const scene = boss === 'gym' ? 'gym' : boss === 'elite' || boss === 'champion' ? 'league' : run.encounter.scene ?? run.encounter.biome ?? 'grass'
+  // E o clima do lugar (sol no deserto, chuva no mar, neve na caverna de gelo...).
+  const weather = weatherOf(run, scene)
+  const battle = newBattle(a, b, seededRandom(seed >>> 0), { ai: 'normal', seed: seed >>> 0, bags: bagsFor(run), healPct: true, capture: captureFor(run, data), weather })
+  battle.members = { mine, theirs }
+  battle.scene = scene
   battle.factoryOrder = order
   // A barra de XP (expBarOf): o XP de cada um agora e quanto cada adversário derrubado dá para cada um (quem lutou: tudo; com o Exp. Share, o resto: a metade).
   battle.expBar = {

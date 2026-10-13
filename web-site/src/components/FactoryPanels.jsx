@@ -8,8 +8,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import PokeIcon from './PokeIcon'
 import Sprite from './Sprite'
-import { BattleBackground, battleScale, battleScene, PlatformBase } from './BattleScene'
+import { BattleBackground, battleScale, battleScene, foeBottom, PlatformBase } from './BattleScene'
 import BwBag from './BwBag'
+import BwParty from './BwParty'
 import { TrainerSprite } from './Trainer'
 import { Button, SearchInput } from './ui'
 import { getFactoryData, shinyPath, spriteUrl } from '../lib/data'
@@ -19,7 +20,7 @@ import {
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, MAX_TEAM, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shinyPrice, shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, takeCard, teachMove, teamDown, applyBagItem, unlockShiny, VITAMIN_EVS, VITAMINS,
   buyShiny, forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade,
-  tradeMon, skipTrade, TRADE_LEVELS, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead,
+  tradeMon, skipTrade, TRADE_LEVELS, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, blindPick,
 } from '../lib/factoryRun'
 import { t } from '../lib/i18n'
 import { prettyName } from '../lib/pokemon'
@@ -141,7 +142,7 @@ function BagPanel({ run, byId, save, onClose }) {
   for (const [token, n] of Object.entries(run.tokens ?? {})) {
     if (n > 0) items.tms.push({ id: token, name: prettySlug(token), count: n, icon: itemIcon(token), help: itemHelp(token), use: t('ENSINAR'), onUse: () => setUsing({ kind: 'teach' }) })
   }
-  for (const [flag, id] of [['dmax', 'dynamax-band'], ['tera', 'tera-orb'], ['expShare', 'exp-share']]) {
+  for (const [flag, id] of [['townMap', 'town-map'], ['dmax', 'dynamax-band'], ['tera', 'tera-orb'], ['expShare', 'exp-share']]) {
     if (run[flag]) items.key.push({ id, name: prettySlug(id), icon: itemIcon(id), help: itemHelp(id) })
   }
   const pockets = BAG_POCKETS.map((p) => ({ ...p, items: items[p.id] }))
@@ -152,23 +153,32 @@ function BagPanel({ run, byId, save, onClose }) {
     setUsing(null)
     setSelected(null)
   }
-  return (
-    <BwBag pockets={pockets} onClose={onClose} selected={selected} onSelect={(id) => { setSelected(id); setUsing(null) }} testid="factory-bag">
-      {using && (
-        <div className="rounded-lg border-2 border-slate-800 bg-white p-2 text-xs font-bold text-slate-900">
-          <p>{t('Em qual Pokémon?')}</p>
-          <div className="mt-1 flex flex-wrap gap-1">
-            {run.team.map((m, i) => (
-              <MonChip key={i} mon={m} byId={byId} testid={`bag-target-${i}`}
-                onClick={using.kind !== 'bag' || applyBagItem(run, using.id, i) ? () => pick(i) : null} />
-            ))}
-          </div>
-        </div>
-      )}
-      {teaching != null && <div className="rounded-lg bg-white p-2 text-slate-900"><MoveTeacher run={run} index={teaching} save={save} onClose={() => setTeaching(null)} /></div>}
-    </BwBag>
-  )
+  if (teaching != null) {
+    return (
+      <div className="p-2">
+        <OverlayClose title={`📀 ${t('Ensinar golpe')}`} onClose={() => setTeaching(null)} />
+        <MoveTeacher run={run} index={teaching} save={save} onClose={() => setTeaching(null)} />
+      </div>
+    )
+  }
+  // Escolher em quem: a tela do time do Black & White, no mesmo lugar.
+  if (using) {
+    return (
+      <BwParty
+        title={using.kind === 'stash' ? t('Quem vai segurar?') : using.kind === 'teach' ? t('Ensinar a quem?') : t('Usar em qual Pokémon?')}
+        team={partyOf(run, byId)}
+        testid="bag-target"
+        disabled={(i) => using.kind === 'bag' && !applyBagItem(run, using.id, i)}
+        onPick={pick}
+        onCancel={() => setUsing(null)}
+      />
+    )
+  }
+  return <BwBag pockets={pockets} onClose={onClose} selected={selected} onSelect={(id) => { setSelected(id); setUsing(null) }} testid="factory-bag" />
 }
+
+/** O time da corrida para a tela do time (BwParty). */
+const partyOf = (run, byId) => run.team.map((m) => ({ id: m.id, shiny: m.shiny, name: t(prettyName(byId?.get(m.id)?.name ?? '')), level: m.level, hp: m.hp ?? 1, sub: m.item ? itemName(m.item) : undefined }))
 
 /**
  * O time: o item principal de cada um (efeito de verdade) e os extras
@@ -595,7 +605,7 @@ function FieldMon({ mon, byId, back = false, scene }) {
   if (!p) return null
   const scale = battleScale(p.height)
   return (
-    <div className={back ? 'absolute bottom-[12%] left-[1%] w-[58%]' : 'absolute right-[11%] bottom-[57%] w-[26%]'}>
+    <div className={back ? 'absolute bottom-[12%] left-[1%] w-[58%]' : 'absolute right-[11%] w-[26%]'} style={back ? undefined : { bottom: `${foeBottom(battleScene(scene)) * 100}%` }}>
       <PlatformBase scene={battleScene(scene)} side={back ? 'mine' : 'foe'} scale={scale} />
       <div className="aspect-square w-full" style={{ transform: `scale(${scale})`, transformOrigin: '50% 100%' }}>
         <Sprite key={`${p.id}-${mon.shiny}`} path={mon.shiny ? shinyPath(p.sprite) : p.sprite} box={p.box} fill={0.95} align="bottom" back={back} battle alt={p.name} />
@@ -607,7 +617,7 @@ function FieldMon({ mon, byId, back = false, scene }) {
 /** Alguém de pé na base de cima (Enfermeira Joy, o chefe, os vendedores...). */
 function FarStand({ children, scene }) {
   return (
-    <div className="absolute right-[6%] bottom-[57%] flex w-[36%] items-end justify-center">
+    <div className="absolute right-[6%] flex w-[36%] items-end justify-center" style={{ bottom: `${foeBottom(battleScene(scene)) * 100}%` }}>
       {scene && <PlatformBase scene={battleScene(scene)} side="foe" scale={0.8} />}
       <div className="relative flex w-full items-end justify-center">{children}</div>
     </div>
@@ -618,9 +628,9 @@ function FarStand({ children, scene }) {
 function MenuButton({ children, sub, onClick, disabled = false, testid, active = false }) {
   return (
     <button type="button" onClick={onClick} disabled={disabled} data-testid={testid}
-      className={`cursor-pointer rounded-lg px-2 py-2 text-left text-slate-900 hover:bg-amber-100 disabled:cursor-default disabled:opacity-40 ${active ? 'bg-amber-100' : ''}`}>
+      className={`dlg-btn cursor-pointer rounded-lg px-2 py-2 text-left disabled:cursor-default disabled:opacity-40 ${active ? 'active' : ''}`}>
       <span className="block font-black">▸ {children}</span>
-      {sub && <span className="block pl-3 text-[11px] font-semibold leading-tight text-slate-500">{sub}</span>}
+      {sub && <span className="dlg-sub block pl-3 text-[11px] font-semibold leading-tight">{sub}</span>}
     </button>
   )
 }
@@ -719,11 +729,25 @@ function TownMap({ route, pos, from, to, title, me, width, fieldRef, onPick, blo
   )
 }
 
+/** O título e o "fechar" do que abre por cima do campo. */
+function OverlayClose({ title, onClose }) {
+  return (
+    <div className="sticky top-0 z-10 -mx-2 -mt-2 mb-2 flex items-center justify-between gap-2 bg-slate-900 px-3 py-1.5 text-sm font-black text-white">
+      <span className="truncate">{title}</span>
+      <button type="button" onClick={onClose} className="cursor-pointer rounded bg-red-600 px-2" aria-label={t('Fechar')} data-testid="overlay-close">✕</button>
+    </div>
+  )
+}
+
 /** A moldura da batalha: o campo, a barra da corrida (dinheiro, Bolsa e time) e a caixa de texto com o menu. */
 function BattleFrame({ field, run, byId, text, menu, wideMenu = false, panel = null }) {
   return (
     <div className="select-none">
-      {field}
+      {/* A Bolsa, o time, a loja e a troca abrem por cima do campo (a mesma tela, como no jogo; dá para jogar com o celular de lado). */}
+      <div className="relative">
+        {field}
+        {panel && <div className="field-overlay factory-overlay rounded-t-2xl border-4 border-b-0 border-slate-800 bg-bg text-text" data-testid="factory-panel">{panel}</div>}
+      </div>
       {run && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-x-4 border-slate-800 bg-slate-700 px-2 py-1 text-xs font-bold text-white" data-testid="factory-bar">
           <span>🏭 {t('Andar {0}').replace('{0}', run.floor)}</span>
@@ -747,13 +771,11 @@ function BattleFrame({ field, run, byId, text, menu, wideMenu = false, panel = n
       )}
       <div className="flex min-h-36 flex-col gap-2 rounded-b-2xl border-4 border-slate-800 bg-slate-800 p-2">
         <div className="flex flex-col gap-2 sm:flex-row">
-          <div className="min-h-20 flex-1 space-y-1 rounded-xl border-4 border-amber-600 bg-white px-4 py-3 text-left text-base font-bold text-slate-900 sm:text-lg" data-testid="factory-text">
+          <div className="dlg-box min-h-20 flex-1 space-y-1 rounded-xl border-4 px-4 py-3 text-left text-base font-bold sm:text-lg" data-testid="factory-text">
             {text}
           </div>
-          {menu && <div className={`grid content-start gap-1 rounded-xl border-4 border-slate-600 bg-white p-2 ${wideMenu ? 'sm:w-96' : 'grid-cols-2 sm:w-72'}`}>{menu}</div>}
+          {menu && <div className={`dlg-box grid content-start gap-1 rounded-xl border-4 p-2 ${wideMenu ? 'sm:w-96' : 'grid-cols-2 sm:w-72'}`}>{menu}</div>}
         </div>
-        {/* A loja, a Bolsa e o time abrem aqui dentro (a mesma tela). */}
-        {panel && <div className="factory-panel max-h-[60vh] overflow-y-auto rounded-xl border-4 border-slate-600 bg-white p-2 text-slate-900">{panel}</div>}
       </div>
     </div>
   )
@@ -802,7 +824,14 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     </div>
   )
   const extras = run && (panel === 'bag' || panel === 'team') && (
-    panel === 'bag' ? <BagPanel run={run} byId={byId} save={save} onClose={() => setPanel(null)} /> : <TeamPanel run={run} data={data} byId={byId} save={save} open />
+    panel === 'bag' ? (
+      <BagPanel run={run} byId={byId} save={save} onClose={() => setPanel(null)} />
+    ) : (
+      <div className="p-2">
+        <OverlayClose onClose={() => setPanel(null)} title={`🧩 ${t('Time: itens, golpes e mecânicas')}`} />
+        <TeamPanel run={run} data={data} byId={byId} save={save} open />
+      </div>
+    )
   )
   const tools = (
     <>
@@ -820,7 +849,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
           text={<>
             <p>{t('A corrida acabou')}</p>
             {factory.last && <p className="text-sm">{t('Andar {0} · +{1} moedas').replace('{0}', factory.last.floor).replace('{1}', factory.last.coins)}</p>}
-            <p className="text-sm text-slate-500">{t('Recorde: andar {0}').replace('{0}', factory.best)} · 🪙 {factory.coins} {t('moedas')}</p>
+            <p className="dlg-sub text-sm">{t('Recorde: andar {0}').replace('{0}', factory.best)} · 🪙 {factory.coins} {t('moedas')}</p>
           </>}
           menu={<MenuButton onClick={onExit} testid="factory-over-exit">{t('VOLTAR')}</MenuButton>}
         />
@@ -883,16 +912,19 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     )
     text = (
       <>
-        <p>{mon.shiny ? '✨ ' : ''}{t('Pegou! {0} foi capturado!').replace('{0}', name(mon.id))} <span className="text-slate-500">Nv. {mon.level}</span></p>
+        <p>{mon.shiny ? '✨ ' : ''}{t('Pegou! {0} foi capturado!').replace('{0}', name(mon.id))} <span className="dlg-sub">Nv. {mon.level}</span></p>
         {mon.shiny && <p className="text-sm text-amber-600">{t('É shiny! (+10% em todos os atributos)')}</p>}
         {full && <p className="text-sm">{t('Time cheio: escolha quem sai.')}</p>}
       </>
     )
-    wideMenu = full
+    // Time cheio: a tela do time do Black & White, por cima do campo, para escolher quem sai.
+    if (full && !panel) {
+      below = <BwParty title={t('Time cheio: escolha quem sai para {0} entrar.').replace('{0}', name(mon.id))} team={partyOf(run, byId)} testid="replace" onPick={keep} onCancel={() => save(skipCapture(run))} cancelLabel={t('SOLTAR')} />
+    }
     menu = full ? (
       <>
-        {run.team.map((m, i) => <MenuButton key={i} onClick={() => keep(i)} testid={`replace-${i}`} sub={`Nv. ${m.level}`}>{name(m.id)}</MenuButton>)}
-        <MenuButton onClick={() => save(skipCapture(run))}>{t('SOLTAR')}</MenuButton>
+        <MenuButton onClick={() => save(skipCapture(run))} testid="factory-release">{t('SOLTAR')}</MenuButton>
+        {tools}
       </>
     ) : <MenuButton onClick={() => keep(null)} testid="factory-continue">{t('CONTINUAR')}</MenuButton>
   } else if (step === 'cards') {
@@ -925,10 +957,17 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         <p className="text-sm">{t('Quem você der vai embora; o {0} vem {1} níveis acima, com o item de quem foi.').replace('{0}', name(offer.id)).replace('{1}', TRADE_LEVELS)}</p>
       </>
     )
-    wideMenu = true
+    // Quem dar: a tela do time, por cima do campo.
+    if (panel === 'trade') {
+      below = (
+        <BwParty title={t('Quem você dá em troca do {0}?').replace('{0}', name(offer.id))} testid="trade"
+          team={partyOf(run, byId).map((m, i) => ({ ...m, sub: `Lv${run.team[i].level} → Lv${run.team[i].level + TRADE_LEVELS}` }))}
+          onPick={(i) => { setPanel(null); save(tradeMon(run, i, data)) }} onCancel={() => setPanel(null)} />
+      )
+    }
     menu = (
       <>
-        {run.team.map((m, i) => <MenuButton key={i} onClick={() => save(tradeMon(run, i, data))} testid={`trade-${i}`} sub={`Nv. ${m.level} → ${m.level + TRADE_LEVELS}`}>{name(m.id)}</MenuButton>)}
+        <MenuButton onClick={() => setPanel(panel === 'trade' ? null : 'trade')} active={panel === 'trade'} testid="trade-open">{t('TROCAR')}</MenuButton>
         <MenuButton onClick={() => save(skipTrade(run))} testid="trade-skip">{t('NÃO TROCAR')}</MenuButton>
       </>
     )
@@ -944,17 +983,18 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         <div className="absolute left-3 top-2 rounded-lg bg-white/80 px-2 py-0.5 text-sm font-black text-slate-900">🛒 Poké Mart</div>
       </Field>
     )
-    text = <p>{t('Bem-vindo! Do que você precisa?')} <span className="text-slate-500">💰{run.money}</span></p>
+    text = <p>{t('Bem-vindo! Do que você precisa?')} <span className="dlg-sub">💰{run.money}</span></p>
     menu = (
       <>
-        <MenuButton onClick={() => setPanel(null)} active={!panel}>{t('COMPRAR')}</MenuButton>
+        <MenuButton onClick={() => setPanel(panel === 'buy' ? null : 'buy')} active={panel === 'buy'} testid="factory-menu-buy">{t('COMPRAR')}</MenuButton>
         {tools}
         <MenuButton onClick={() => { setPanel(null); save({ ...run, pending: { ...p, shop: null } }) }} testid="factory-continue">{t('CONTINUAR')}</MenuButton>
       </>
     )
-    if (!panel) {
+    if (panel === 'buy') {
       below = (
-        <div className="space-y-2">
+        <div className="space-y-2 p-2">
+          <OverlayClose onClose={() => setPanel(null)} title={`🛒 Poké Mart · 💰${run.money}`} />
           <p className="text-xs text-muted">{t('Para quem é a compra (bolas e itens da Bolsa vão para a Bolsa):')}</p>
           <div className="flex flex-wrap gap-1">{run.team.map((m, i) => <MonChip key={i} mon={m} byId={byId} selected={pick === i} onClick={() => setTarget(i)} testid={`target-${i}`} />)}</div>
           <div className="grid gap-2 sm:grid-cols-2">
@@ -997,15 +1037,19 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     const x = (k) => 8 + (k / (ROUTE_LENGTH + 1)) * 84
     const END = ROUTE_LENGTH + 1
     const fork = route.options.length > 1
-    field = fork ? (
+    const meetScene = meeting && CITY_KIND_SET.has(boss.kind) ? (boss.kind === 'gym' ? 'gym' : 'league') : route.biome
+    // Sem o Mapa: nada do mapa e, na bifurcação, segue às cegas.
+    const hasMap = Boolean(run.townMap)
+    field = fork && hasMap ? (
       <TownMap route={route} pos={pos} from={from} to={to} title={`${boss.region} · ${boss.game}`} me={me} width={width} fieldRef={fieldRef}
         onPick={busy ? null : pickNode} blocked={(node) => isBattleNode(node) && down} />
     ) : (
-      <Field biome={route.biome} fieldRef={fieldRef} testid="factory-map">
+      // O líder espera no ginásio da cidade; a Elite Four e o Campeão, na Liga (nunca no meio da rota).
+      <Field biome={meetScene} fieldRef={fieldRef} testid="factory-map">
         <div className="absolute left-3 top-2 rounded-lg bg-white/85 px-2 py-0.5 text-xs font-black text-slate-900 sm:text-sm">
           <span data-no-translate>{boss.region} · {boss.game}</span> · {biome.icon} {t('Rota para {0}').replace('{0}', to)}
         </div>
-        <div className="absolute inset-x-0 top-[34%] h-0">
+        {hasMap && <div className="absolute inset-x-0 top-[34%] h-0" data-testid="route-strip">
           <div className="absolute h-2 rounded-full bg-amber-800/60" style={{ left: `${x(0)}%`, right: `${100 - x(END)}%` }} />
           {/* As cidades nas pontas; cada andar da rota é um ponto (os das bifurcações em forma de losango). */}
           {Array.from({ length: END + 1 }, (_, k) => {
@@ -1022,9 +1066,9 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
               <TrainerSprite trainer={me} box={width * 0.14} />
             </span>
           )}
-        </div>
-        {coach && meeting && <FarStand scene={route.biome}><TrainerSprite trainer={coach} box={width * 0.24} /></FarStand>}
-        {lead && <FieldMon mon={lead} byId={byId} back scene={route.biome} />}
+        </div>}
+        {coach && meeting && <FarStand scene={meetScene}><TrainerSprite trainer={coach} box={width * 0.24} /></FarStand>}
+        {lead && <FieldMon mon={lead} byId={byId} back scene={meetScene} />}
       </Field>
     )
     text = (
@@ -1049,16 +1093,21 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
             <p className="text-sm font-semibold">{storyLine(data, boss.region, boss.kind, boss.name)}</p>
           </>
         ) : (
-          <p>{route.options.length > 1 ? t('O caminho se divide: escolha por onde ir') : t('O caminho segue.')}</p>
+          <p>{!fork ? t('O caminho segue.') : hasMap ? t('O caminho se divide: escolha por onde ir') : t('O caminho se divide, mas sem o Mapa você não sabe para onde cada um vai. Compre um Mapa na loja!')}</p>
         )}
-        <p className="text-sm text-slate-600">{t('Chefe em {0}:').replace('{0}', to)} <b data-no-translate>{target.name}</b> · {bossKindLabel(target.kind)}</p>
+        <p className="dlg-sub text-sm">{t('Chefe em {0}:').replace('{0}', to)} <b data-no-translate>{target.name}</b> · {bossKindLabel(target.kind)}</p>
         {down && <p className="text-sm text-red-600">{t('O time todo está desmaiado: use um Revive ou desista.')}</p>}
       </>
     )
     wideMenu = true
     menu = (
       <>
-        {route.options.map((node, k) => {
+        {fork && !hasMap && (
+          <MenuButton testid="map-node-blind" disabled={busy} onClick={() => pickNode(blindPick(run))} sub={t('Sem o Mapa: um dos caminhos, às cegas.')}>
+            {t('SEGUIR')} ❓
+          </MenuButton>
+        )}
+        {(hasMap || !fork) && route.options.map((node, k) => {
           const info = NODE_INFO[node.kind]
           const b = node.biome ? BIOME_INFO[node.biome] : null
           return (
@@ -1068,7 +1117,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
             </MenuButton>
           )
         })}
-        {(run.rerolls ?? 0) > 0 && !meeting && (
+        {(run.rerolls ?? 0) > 0 && !meeting && hasMap && (
           <MenuButton testid="factory-reroll" disabled={busy} onClick={() => { const next = rerollRoute(run, data); if (next) save(next) }} sub={t('Restam {0} nesta corrida').replace('{0}', run.rerolls)}>
             🎲 {t('SORTEAR O CAMINHO DE NOVO')}
           </MenuButton>
@@ -1124,6 +1173,7 @@ function itemHelp(id) {
   if (id === 'escape-rope') return t('Se perder uma batalha, o time foge com {0}% do HP e a corrida continua (gasta uma)').replace('{0}', Math.round(ESCAPE_HP * 100))
   if (id === 'lucky-egg') return t('Quem segura ganha +{0}% de XP (como extra, +{1}%)').replace('{0}', Math.round((LUCKY_EGG.held - 1) * 100)).replace('{1}', Math.round((LUCKY_EGG.extra - 1) * 100))
   if (id === 'exp-share') return t('O time todo ganha XP (quem não lutou, a metade)')
+  if (id === 'town-map') return t('Mostra o mapa da rota e deixa escolher o caminho nas bifurcações (sem ele, vai às cegas)')
   if (id === 'revive') return t('Revive com metade do HP')
   if (HEAL_SHARE[id]) return HEAL_SHARE[id] >= 1 ? t('Recupera todo o HP') : t('Recupera {0}% do HP').replace('{0}', Math.round(HEAL_SHARE[id] * 100))
   if (id === 'rare-candy') return t('+1 nível')

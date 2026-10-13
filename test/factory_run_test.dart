@@ -130,6 +130,15 @@ void main() {
     expect((boss['foes'] as List).every((x) => FactoryRun.foeItems.contains(x['item'])), isTrue);
   });
 
+  test('Mapa: aparece fácil na loja até ser comprado; sem ele, a bifurcação vai às cegas (igual ao site)', () {
+    final cases = [(42, 2, 3), (123456789, 5, 2), (2147483647, 9, 3), (7, 100, 3)];
+    expect([for (final (seed, floor, n) in cases) FactoryRun.blindPick({'seed': seed, 'floor': floor, 'route': {'options': List.filled(n, {})}})], [1, 0, 1, 2]);
+    final run = {...FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!, 'money': 9999, 'pending': {'shop': ['town-map']}};
+    final bought = FactoryRun.buyItem(run, 'town-map', 0, data)!;
+    expect(bought['townMap'], true);
+    expect(FactoryRun.buyItem(bought, 'town-map', 0, data), isNull);
+  });
+
   test('troca, Escape Rope e conquistas (iguais ao site)', () {
     final base = FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!;
     final first = FactoryRun.teamOf(base).first;

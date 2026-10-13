@@ -30,7 +30,7 @@ export default function BwBag({ pockets, onClose, pocket: start, onPocket, selec
   const go = (d) => open(shown[(at + d + shown.length) % shown.length])
   const picked = current?.items.find((it) => it.id === selected)
   return (
-    <div className="bw-bag overflow-hidden rounded-xl border-4 border-slate-900 text-white" data-testid={testid}>
+    <div className="bw-bag flex min-h-full flex-col overflow-hidden rounded-xl border-4 border-slate-900 text-white" data-testid={testid}>
       {/* No celular: os bolsos em abas em cima. */}
       <div className="flex gap-1 px-2 pt-2 sm:hidden">
         {shown.map((p) => (
@@ -40,7 +40,7 @@ export default function BwBag({ pockets, onClose, pocket: start, onPocket, selec
           </button>
         ))}
       </div>
-      <div className="flex min-h-48 gap-2 p-2">
+      <div className="flex min-h-48 flex-1 gap-2 p-2">
         {/* A bolsa, com o bolso de agora aceso. */}
         <div className="hidden w-28 shrink-0 flex-col items-center justify-center gap-2 sm:flex">
           <span className="text-6xl drop-shadow">🎒</span>

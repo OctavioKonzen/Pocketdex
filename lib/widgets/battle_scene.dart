@@ -42,6 +42,13 @@ const _platforms = {
 /// tamanho do espaço e os gigantes ocupando tudo. Igual ao site (battleScale).
 double battleScale(num? height) => sqrt((height ?? 10) / 20).clamp(0.3, 1.0).toDouble();
 
+/// Onde ficam os pés do adversário em cada lugar (fração da altura do campo): um pouco para dentro do chão de cada cenário
+/// (tool/battle_backgrounds.py, foe_feet), para a base dele ficar no chão e não voando. Igual ao site.
+const groundFeet = <String, double>{'grass': 0.487, 'forest': 0.506, 'water': 0.487, 'beach': 0.508, 'underwater': 0.527, 'swamp': 0.487, 'sewer': 0.54, 'cave': 0.519, 'icecave': 0.519, 'mountain': 0.492, 'desert': 0.495, 'volcano': 0.5, 'snow': 0.487, 'city': 0.548, 'sky': 0.45, 'tower': 0.527, 'gym': 0.527, 'league': 0.527, 'center': 0.527};
+
+/// A distância do pé do adversário até a borda de baixo do campo (fração), para o "bottom" da caixa dele.
+double foeBottom(String scene) => 1 - (groundFeet[scene] ?? 0.45);
+
 /// Largura da base (fração da caixa do Pokémon) pelo tamanho dele. Igual ao site (baseWidth).
 double baseWidth(double scale) => 0.55 + 0.85 * scale;
 

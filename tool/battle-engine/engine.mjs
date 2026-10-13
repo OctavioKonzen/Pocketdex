@@ -596,6 +596,14 @@ export const PocketDexSim = {
     const game = {battle, teams: input.teams, controllers: input.controllers, cursor: 0, used: input.teams.map(() => ({mega: false, tera: false})), pendingItems: input.teams.map(() => null), bags: input.teams.map((_, side) => ({potion: 3, 'super-potion': 2, 'hyper-potion': 1, 'max-potion': 0, revive: 1, ...(input.bags?.[side] ?? {})})), healPct: Boolean(input.healPct), capture: input.capture ?? null, captured: null};
     input.teams.forEach((team, side) => battle.setPlayer(`p${side + 1}`, {name: ['Você', 'Adversário', 'Aliado', 'Aliado adversário'][side], team: team.map(setFor)}));
     configure(game);
+    // O clima do lugar (Battle Factory: sol no deserto, chuva no mar, neve na caverna de gelo...): já começa assim e fica até
+    // um golpe ou uma habilidade trocar. Uma habilidade que já mudou o clima ao entrar (Drizzle...) vale mais.
+    const [startWeather, weatherName] = {rain: ['raindance', 'RainDance'], sun: ['sunnyday', 'SunnyDay'], sand: ['sandstorm', 'Sandstorm'], snow: ['snowscape', 'Snow']}[input.weather] ?? [];
+    if (startWeather && !battle.field.weather) {
+      battle.field.weather = startWeather;
+      battle.field.weatherState = {id: startWeather, duration: 0};
+      battle.add('-weather', weatherName);
+    }
     // A espécie do começo de cada Pokémon: mudou depois, é forma de batalha.
     game.startSpecies = battle.sides.map((side) => Object.fromEntries(side.pokemon.map((p) => [originalIndex(p), p.species.name])));
     const handle = nextHandle++;

@@ -356,7 +356,7 @@ BattleItem? _itemOf(String slug) => battleItems.where((i) => i.slug == slug).fir
 
 class TurnBattle {
   TurnBattle(List<BattleMon> mine, List<BattleMon> theirs, this.random,
-      {this.mode = 'singles', this.controllers, this.rules = const [], this.startBags, this.healPct = false, this.capture})
+      {this.mode = 'singles', this.controllers, this.rules = const [], this.startBags, this.healPct = false, this.capture, this.startWeather = ''})
       : teams = [mine, theirs] {
     for (final mon in [...mine, ...theirs]) {
       mon
@@ -380,6 +380,7 @@ class TurnBattle {
         if (startBags != null) 'bags': startBags,
         if (healPct) 'healPct': true,
         if (capture != null) 'capture': capture,
+        if (startWeather.isNotEmpty) 'weather': startWeather,
       }]);
       _simHandle = created['handle'] as int;
       _opening = _simSync(created);
@@ -400,6 +401,9 @@ class TurnBattle {
 
   /// Battle Factory: as poções curam uma parte do HP máximo (o nível não tem limite).
   final bool healPct;
+
+  /// Battle Factory: o clima do lugar no começo (sol no deserto, chuva no mar...). Igual ao site.
+  final String startWeather;
 
   /// O cenário (lib/widgets/battle_scene.dart): a Battle Factory usa o lugar do andar; '' (batalha comum) sorteia um dos que têm imagem.
   String scene = '';
@@ -565,7 +569,7 @@ class TurnBattle {
   }
 
   // Visão da partida sem restaurar HP, formas ou status.
-  TurnBattle._view(this.teams, this.random) : mode = 'singles', controllers = null, rules = const [], startBags = null, healPct = false, capture = null;
+  TurnBattle._view(this.teams, this.random) : mode = 'singles', controllers = null, rules = const [], startBags = null, healPct = false, capture = null, startWeather = '';
   TurnBattle viewFor(int side) {
     final order = [side, 1 - side];
     final view = TurnBattle._view([for (final s in order) teams[s]], random);

@@ -135,6 +135,8 @@ export function newBattle(mine, theirs, random, options = {}) {
     // Battle Factory, selvagem: dá para jogar Poké Balls ({rates, dusk}; o motor faz a conta). captured: pegou.
     capture: options.capture ?? null,
     captured: null,
+    // Battle Factory: o clima do lugar no começo (sol no deserto, chuva no mar...).
+    startWeather: options.weather || '',
     turn: 1,
     // Semente da batalha (para o replay) e as suas jogadas (logTurn).
     seed: options.seed ?? null,
