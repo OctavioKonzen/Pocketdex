@@ -223,6 +223,12 @@ for (let r = 0; r < runs; r++) {
     run = maybeReroll(run)
     // Sem o Mapa, a bifurcação vai às cegas (como no jogo).
     run = F.chooseNode(run, data, run.townMap || run.route.options.length < 2 ? choosePath(run) : F.blindPick(run))
+    // Escolha na rota: ajuda se sobra dinheiro, entra na caverna e segue o Pokémon ferido se o time está bem.
+    const choice = run.pending?.choice
+    if (choice) {
+      const healthy = run.team.filter((m) => (m.hp ?? 1) > 0.5).length >= Math.ceil(run.team.length / 2)
+      run = F.resolveChoice(run, data, choice.kind === 'help' ? run.money >= choice.cost * 3 : choice.kind === 'secret' || healthy)
+    }
     // Sem batalha (Poké Mart, Centro, evento): o que tiver para fazer e o próximo andar.
     if (!run.encounter) {
       run = between(run)

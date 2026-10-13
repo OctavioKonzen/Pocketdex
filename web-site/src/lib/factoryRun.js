@@ -634,9 +634,14 @@ export function routeOptions(run, data, rand) {
     if (options.some((o) => o.kind === node.kind && o.biome === node.biome)) continue
     options.push(node)
   }
+  // Na rota para a Liga, o lendário da região espera num dos caminhos.
+  if (pos === FORKS[1] && !base && targetOf(data, run).kind === 'elite') {
+    const legend = regionLegend(data, run)
+    if (legend != null) options[options.length - 1] = { kind: 'wildboss', legend }
+  }
   // No mar, um dos caminhos é mergulhar (o selvagem do fundo do mar).
   if (biome === 'water' && !options.some((o) => o.biome === 'underwater')) options[options.length - 1] = { kind: 'wild', biome: 'underwater' }
-  if (pos === FORKS[1] && rand() < WILD_BOSS_CHANCE && !base) options[options.length - 1] = { kind: 'wildboss' }
+  if (pos === FORKS[1] && !options.some((o) => o.legend) && rand() < WILD_BOSS_CHANCE && !base) options[options.length - 1] = { kind: 'wildboss' }
   return { floor: run.floor, biome, options }
 }
 
@@ -654,6 +659,8 @@ export function routeCities(data, run) {
 export const ACE_REWARDS = ['great-ball', 'ultra-ball', 'hyper-potion', 'max-potion', 'revive', 'move-tutor', 'escape-rope', ...Object.keys(HELD_BOOST)]
 /** Os eventos do mapa. */
 export const EVENTS = ['items', 'money', 'berries', 'tutor']
+/** Chance de o evento ser uma escolha (CHOICE_EVENTS). */
+export const CHOICE_CHANCE = 0.4
 
 /**
  * Escolhe o caminho: batalha (o encontro do andar) ou, sem batalha, o Poké
@@ -672,6 +679,17 @@ export function chooseNode(run, data, index) {
     const scene = node.biome ?? (city ? (bossOf(data, run).kind === 'gym' ? 'city' : 'tower') : run.route.biome ?? 'grass')
     out.scene = scene
     out.encounter = { ...encounterFor(data, out.floor, rand, node.kind === 'boss' ? bossOf(data, out) : null, node.kind === 'wildboss', { ...node, biome: scene, shiny: run.shinyRate ?? 1 }), scene }
+    // O rival leva o inicial que tem vantagem sobre o seu (no lugar do inicial dele ou do mais forte).
+    const counter = node.kind === 'boss' && out.encounter.boss?.kind === 'rival' ? rivalStarter(data, run.starter) : null
+    if (counter != null) {
+      const lines = data.starters.flatMap((id) => starterLine(data, id))
+      const foes = [...out.encounter.foes]
+      const found = foes.findIndex((f) => lines.includes(f.id))
+      const slot = found >= 0 ? found : foes.length - 1
+      const line = starterLine(data, counter)
+      foes[slot] = { ...foes[slot], id: devolve(data, line[line.length - 1], foes[slot].level) }
+      out.encounter = { ...out.encounter, foes }
+    }
     return out
   }
   out.floor += 1
@@ -685,6 +703,10 @@ export function chooseNode(run, data, index) {
   } else if (node.kind === 'center') {
     out.team = out.team.map((m) => ({ ...m, hp: 1 }))
     out.pending = { center: true }
+  } else if (rand() < CHOICE_CHANCE) {
+    // Uma escolha na rota: ajudar alguém, seguir um Pokémon ferido ou entrar numa caverna secreta.
+    const kind = pickOne(CHOICE_EVENTS, rand)
+    out.pending = { choice: { kind, ...(kind === 'help' ? { cost: Math.round(80 * priceScale(out.floor - 1)) } : {}) } }
   } else {
     const kind = pickOne(EVENTS, rand)
     const event = { kind }
@@ -724,7 +746,11 @@ export function encounterFor(data, floor, rand, boss = null, wild = false, node 
     const fits = (sid) => minLevelOf(data, sid) <= bossLevel(data, floor, sid, level + 3)
     const megas = Object.keys(data.megas).map(Number).sort((a, b) => a - b).filter(fits)
     const gmax = data.gmax.filter(fits)
-    if (r < 0.4 && megas.length) {
+    if (node?.legend != null) {
+      // O lendário da região (na rota para a Liga).
+      id = node.legend
+      extra = { title: 'legend' }
+    } else if (r < 0.4 && megas.length) {
       id = pickOne(megas, rand)
       const [stone] = pickOne(data.megas[id], rand)
       extra = { item: stone, gimmick: 'mega', title: 'mega' }
@@ -784,7 +810,9 @@ export function encounterFor(data, floor, rand, boss = null, wild = false, node 
   // só quem vive debaixo d'água); sem habitat nos dados, pelos tipos do lugar; sem nenhum, qualquer um.
   const lives = node?.biome ? common.filter((p) => data.species[p.id]?.[6]?.includes(node.biome)) : []
   const native = lives.length ? lives : types ? common.filter(local) : []
-  const id = pick(native.length ? native : common)
+  // Seguindo o Pokémon ferido: um raro do lugar (taxa de captura baixa).
+  const rare = node?.rare ? (native.length ? native : common).filter((p) => p.rate <= 75) : []
+  const id = pick(rare.length ? rare : native.length ? native : common)
   return { kind, foes: [foe(id, level, rand() < SHINY_CHANCE * (node?.shiny ?? 1) ? { shiny: true } : {})], ...(node?.biome ? { biome: node.biome } : {}) }
 }
 
@@ -799,6 +827,8 @@ export function startRun(factory, data, id, seed, shiny = false) {
     team: [], teamBoost: zero(), mult: { money: 1, exp: round3(1 + up('exp') / 100), shop: round3(1 - up('shop') / 100) }, cards: [], boss: { region: 0, step: 0 }, played: [],
     ...(up('cards') ? { cardCount: 3 + up('cards') } : {}), ...(up('reroll') ? { rerolls: up('reroll') } : {}), ...(up('shiny') ? { shinyRate: 1 + up('shiny') } : {}),
     tms: {}, tokens: { 'move-tutor': 0, 'move-reminder': 0 }, stash: [], dmax: false, tera: false, expShare: up('expShare') > 0, leg: 1, route: null, encounter: null, pending: null,
+    // O inicial (o rival escolhe o que tem vantagem sobre ele).
+    starter: id,
   }
   const rand = dice(run)
   // O inicial vem com IVs bons (15 a 31; com a Genética, mais).
@@ -806,6 +836,7 @@ export function startRun(factory, data, id, seed, shiny = false) {
   run.boss = { region: Math.floor(rand() * data.bosses.length), step: 0 }
   run.played = [data.bosses[run.boss.region].region]
   run.route = routeOptions(run, data, rand)
+  run.mission = newMission(run, data, rand)
   return run
 }
 
@@ -881,6 +912,8 @@ export function winFloor(run, data, after = {}) {
       out.champions = (run.champions ?? 0) + 1
       champion = true
     }
+    // O rival: as falas mudam conforme ele perde.
+    if (beaten.kind === 'rival') out.rivalWins = (run.rivalWins ?? 0) + 1
     // Venceu o chefe da cidade (ou da Liga): começa a rota seguinte.
     if (CITY_KINDS.includes(beaten.kind)) out.leg = out.floor
     const [boss, played] = nextBoss(out, data, rand)
@@ -901,6 +934,23 @@ export function winFloor(run, data, after = {}) {
   if (reward && BAG_ITEMS.includes(reward)) out.bag[reward] = (out.bag[reward] ?? 0) + 1
   else if (reward && TOKENS.includes(reward)) out.tokens = { ...out.tokens, [reward]: (out.tokens?.[reward] ?? 0) + 1 }
   else if (reward) out.stash = [...(out.stash ?? []), reward]
+  // A missão da rota: os derrotados (e o capturado) do tipo contam; completa, dá dinheiro e um item.
+  let mission = null
+  if (run.mission && run.mission.done < run.mission.need) {
+    const m = run.mission
+    const fits = (f) => (speciesOf(data, f.id)?.[4] ?? []).includes(m.type)
+    const add = m.kind === 'grunts' ? (run.encounter.grunt ? 1 : 0) : m.kind === 'defeat' ? foes.filter(fits).length : after.captured && fits(foes[0]) ? 1 : 0
+    if (add) {
+      out.mission = { ...m, done: Math.min(m.need, m.done + add) }
+      if (out.mission.done >= m.need) {
+        const item = pickOne(ACE_REWARDS, rand)
+        const cash = Math.round(MISSION_MONEY * priceScale(run.floor))
+        giveItem(out, item)
+        out.money += cash
+        mission = { ...out.mission, item, money: cash }
+      }
+    }
+  }
   const joy = rand() < JOY_CHANCE
   if (joy) out.team = out.team.map((m) => ({ ...m, hp: 1 }))
   out.pending = {
@@ -909,6 +959,9 @@ export function winFloor(run, data, after = {}) {
     cards: kind === 'boss' ? pickCards(rand, run.cardCount ?? 3) : null,
     // A loja da cidade: chegando nela, logo antes do chefe (no resto da rota, os Poké Marts do mapa).
     shop: kind !== 'boss' || !CITY_KINDS.includes(run.encounter.boss.kind) ? (atCity(data, out) && !inLeague(data, out) ? pickShop(rand, data, run.floor, 8, Boolean(run.townMap)) : null) : null,
+    // O chefe que acabou de perder (as falas depois da luta) e a missão completa.
+    ...(kind === 'boss' ? { beat: { kind: run.encounter.boss.kind, name: run.encounter.boss.name, region: run.encounter.boss.region } } : {}),
+    ...(mission ? { mission } : {}),
   }
   out.encounter = null
   return out
@@ -1058,6 +1111,98 @@ export function fieldOf(run, scene) {
     roll -= chance
   }
   return ''
+}
+
+/**
+ * Os lendários de cada região: as pistas aparecem ao longo da história e, na
+ * rota para a Liga, um deles espera (dá para capturar). Igual ao app.
+ */
+export const REGION_LEGENDS = {
+  Kanto: [150, 144, 145, 146], Johto: [249, 250, 243, 244, 245], Hoenn: [382, 383, 384, 380, 381], Sinnoh: [483, 484, 487, 480, 481, 482],
+  Unova: [643, 644, 646, 638, 639, 640], Kalos: [716, 717, 718], Alola: [791, 792, 800, 785], Galar: [888, 889, 890], Paldea: [1007, 1008, 1001, 1002],
+}
+/** O lendário da região da corrida (sempre o mesmo para a mesma corrida e região). */
+export function regionLegend(data, run) {
+  const list = REGION_LEGENDS[data.bosses[run.boss.region].region] ?? []
+  return list.length ? list[((run.seed >>> 0) + run.boss.region) % list.length] : null
+}
+
+/** A linha evolutiva de um inicial: [ele, a 1ª evolução, a 2ª]. */
+export function starterLine(data, id) {
+  const line = [id]
+  for (let k = 0; k < 2; k++) {
+    const next = data.evolutions[line[line.length - 1]]?.[0]?.[0]
+    if (next == null) break
+    line.push(next)
+  }
+  return line
+}
+/** O inicial que tem vantagem sobre o seu (Grama → Fogo → Água → Grama), da mesma geração; null se o seu não é um inicial. */
+export function rivalStarter(data, starter) {
+  const i = data.starters.indexOf(starter)
+  if (i < 0) return null
+  return data.starters[i - (i % 3) + ((i % 3) + 1) % 3]
+}
+
+/**
+ * Missão da rota: derrotar 3 de um tipo do lugar ou capturar 1 (na base de uma
+ * equipe vilã, derrotar 3 capangas). Completa, dá dinheiro e um item.
+ */
+export const MISSION_MONEY = 150
+export function newMission(run, data, rand) {
+  const biome = routeBiome(data, run)
+  if (biome.startsWith('base-')) return { leg: run.leg ?? 1, kind: 'grunts', type: '', need: 3, done: 0 }
+  const types = BIOMES[biome] ?? ['normal']
+  const type = pickOne(types, rand)
+  return rand() < 0.6 ? { leg: run.leg ?? 1, kind: 'defeat', type, need: 3, done: 0 } : { leg: run.leg ?? 1, kind: 'catch', type, need: 1, done: 0 }
+}
+
+/**
+ * Escolhas na rota (eventos com escolha): ajudar alguém (paga e ganha um item),
+ * seguir um Pokémon ferido (selvagem raro) ou entrar numa caverna secreta
+ * (com Flash, sempre acha algo). accept: aceitou. Igual ao app.
+ */
+export const CHOICE_EVENTS = ['help', 'follow', 'secret']
+export function resolveChoice(run, data, accept) {
+  const choice = run.pending?.choice
+  if (!choice) return run
+  const out = { ...run, pending: null }
+  const rand = dice(out)
+  if (!accept) {
+    out.pending = { event: { kind: 'declined' } }
+    return out
+  }
+  if (choice.kind === 'help') {
+    if (out.money < choice.cost) {
+      out.pending = { event: { kind: 'declined' } }
+      return out
+    }
+    out.money -= choice.cost
+    const item = pickOne(ACE_REWARDS, rand)
+    giveItem(out, item)
+    out.pending = { event: { kind: 'helped', item } }
+  } else if (choice.kind === 'follow') {
+    // O Pokémon ferido leva a um selvagem raro do lugar (a batalha é neste andar).
+    out.floor -= 1
+    const scene = out.scene ?? 'grass'
+    out.encounter = { ...encounterFor(data, out.floor, rand, null, false, { kind: 'wild', biome: scene, rare: true, shiny: run.shinyRate ?? 1 }), scene }
+  } else {
+    const found = run.flash || rand() < 0.5
+    if (found) {
+      const item = pickOne(ACE_REWARDS, rand)
+      const money = Math.round(80 * priceScale(out.floor - 1))
+      giveItem(out, item)
+      out.money += money
+      out.pending = { event: { kind: 'secretFound', item, money } }
+    } else out.pending = { event: { kind: 'secretEmpty' } }
+  }
+  return out
+}
+/** Um item ganho: bolas e remédios na Bolsa, ficha de Move Tutor, os de segurar guardados. */
+function giveItem(out, item) {
+  if (BAG_ITEMS.includes(item)) out.bag = { ...out.bag, [item]: (out.bag[item] ?? 0) + 1 }
+  else if (TOKENS.includes(item)) out.tokens = { ...out.tokens, [item]: (out.tokens?.[item] ?? 0) + 1 }
+  else out.stash = [...(out.stash ?? []), item]
 }
 
 /** Chance de o Mapa estar na loja (até ser comprado). */
@@ -1310,7 +1455,10 @@ export const teamDown = (run) => run.team.every((m) => !((m.hp ?? 1) > 0))
 /** Sai da loja (ou não tinha): os caminhos do próximo andar no mapa. */
 export function nextFloor(run, data) {
   const out = { ...run, pending: null, encounter: null }
-  out.route = routeOptions(out, data, dice(out))
+  const rand = dice(out)
+  out.route = routeOptions(out, data, rand)
+  // Começo de uma rota nova: a missão dela.
+  if (routePos(out) === 0 && !atCity(data, out) && run.mission?.leg !== (out.leg ?? 1)) out.mission = newMission(out, data, rand)
   return out
 }
 

@@ -8,13 +8,14 @@ import {
   captureFor, factoryOf, BIOMES, isBattleNode, skipCapture, FORKS, ROUTE_LENGTH, BALL_TIERS, HEAL_TIERS, tierPick, minLevelOf, devolve,
   EXP_SHARE, expProgress, shopOwned, baseForm, forSale, normalizeOwned, buyUpgrade, upgradePrice, UPGRADES,
   tradeMon, skipTrade, TRADE_LEVELS, escapeRope, ESCAPE_HP, progress, ACHIEVEMENTS, LUCKY_EGG, rerollRoute, FOE_ITEMS,
+  regionLegend, REGION_LEGENDS, rivalStarter, starterLine, newMission, resolveChoice, MISSION_MONEY,
 } from './factoryRun'
 
 const data = JSON.parse(readFileSync(new URL('../../../assets/database/factory.json', import.meta.url), 'utf8'))
 const moves = Object.fromEntries(JSON.parse(readFileSync(new URL('../../../assets/database/moves.json', import.meta.url), 'utf8')).map((m) => [m.name, { ...m, category: m.damage_class }]))
 const forms = Object.fromEntries(JSON.parse(readFileSync(new URL('../../../assets/database/pokemon.json', import.meta.url), 'utf8')).map((p) => [p.id, p]))
 const ROUTE_42 = { floor: 1, biome: 'city', options: [{ kind: 'trainer' }] }
-const ENCOUNTER_42 = { kind: 'trainer', foes: [{ id: 915, level: 2, iv: 0, ev: 3 }, { id: 287, level: 2, iv: 0, ev: 3 }], trainerSeed: 500729487, scene: 'city' }
+const ENCOUNTER_42 = { kind: 'trainer', foes: [{ id: 287, level: 3, iv: 0, ev: 3 }], trainerSeed: 500729487, scene: 'city' }
 const seq = (values) => { let i = 0; return () => values[i++ % values.length] }
 
 describe('Battle Factory (roguelike)', () => {
@@ -29,7 +30,7 @@ describe('Battle Factory (roguelike)', () => {
     expect(run.floor).toBe(1)
     // Mesma semente, mesma corrida (e o mesmo que o app sorteia: test/factory_run_test.dart).
     expect(startRun(f, data, 1, 42)).toEqual(run)
-    expect(run.seed).toBe(3599190471)
+    expect(run.seed).toBe(2967354801)
     expect(run.team[0].ivs).toEqual({ hp: 25, atk: 22, def: 29, spa: 26, spd: 17, spe: 23 })
     expect(run.team[0].nature).toBe('Docile')
     expect(run.boss).toEqual({ region: 11, step: 0 })
@@ -715,6 +716,11 @@ describe('mapa da corrida', () => {
     expect(center.team.map((m) => m.hp)).toEqual([1, 1])
     for (let seed = 0; seed < 20; seed++) {
       const ev = chooseNode({ ...base, seed, route: { floor: 4, options: [{ kind: 'event' }] } }, data, 0)
+      // Às vezes, uma escolha (ajudar, seguir um Pokémon ferido, caverna secreta).
+      if (ev.pending.choice) {
+        expect(['help', 'follow', 'secret']).toContain(ev.pending.choice.kind)
+        continue
+      }
       const { kind } = ev.pending.event
       if (kind === 'items') expect(ev.bag[ev.pending.event.item]).toBe((base.bag[ev.pending.event.item] ?? 0) + ev.pending.event.count)
       if (kind === 'money') expect(ev.money).toBeGreaterThan(0)
@@ -731,5 +737,40 @@ describe('mapa da corrida', () => {
     const f = factoryOf({ factory: { ...emptyFactory(), run } })
     expect(f.run.balls).toBeUndefined()
     expect(f.run.bag['poke-ball']).toBe(START_BALLS + 7)
+  })
+
+  it('história: rival com o inicial de vantagem, lendário da região, missão da rota e escolhas', () => {
+    expect(starterLine(data, 1)).toEqual([1, 2, 3])
+    expect([rivalStarter(data, 1), rivalStarter(data, 4), rivalStarter(data, 7), rivalStarter(data, 19)]).toEqual([4, 7, 1, null])
+    const base = startRun(emptyFactory(), data, 1, 42)
+    expect(base.starter).toBe(1)
+    expect(REGION_LEGENDS[data.bosses[base.boss.region].region]).toContain(regionLegend(data, base))
+    expect(['defeat', 'catch']).toContain(base.mission.kind)
+    expect(base.mission.leg).toBe(1)
+    const red = data.bosses.findIndex((b) => b.game === 'Red/Blue')
+    const step = (kind) => ({ region: red, step: data.bosses[red].leaders.findIndex((l) => l.kind === kind) })
+    expect(newMission({ ...base, boss: step('villain') }, data, () => 0.5).kind).toBe('grunts')
+    // O rival leva o inicial que vence o seu (Bulbasaur → a linha do Charmander).
+    const rival = chooseNode({ ...base, boss: step('rival'), floor: 9, route: { floor: 9, biome: 'grass', options: [{ kind: 'boss' }] } }, data, 0)
+    expect(rival.encounter.foes.some((f) => [4, 5, 6].includes(f.id))).toBe(true)
+    // Missão: o terceiro Normal derrotado completa (dinheiro e item).
+    const run = { ...base, money: 0, mission: { leg: 1, kind: 'defeat', type: 'normal', need: 3, done: 2 }, encounter: { kind: 'trainer', foes: [{ id: 19, level: 5, iv: 0, ev: 0 }] } }
+    const won = winFloor(run, data, { bag: { potion: 1 } })
+    expect(won.mission.done).toBe(3)
+    expect(won.pending.mission.money).toBeGreaterThanOrEqual(MISSION_MONEY)
+    expect(won.money).toBeGreaterThanOrEqual(won.pending.mission.money)
+    expect(winFloor({ ...run, mission: { ...run.mission, type: 'fire' } }, data, {}).mission.done).toBe(2)
+    // Escolhas.
+    const at = { ...base, money: 1000, floor: 4, scene: 'grass' }
+    expect(resolveChoice({ ...at, pending: { choice: { kind: 'help', cost: 100 } } }, data, false).pending.event.kind).toBe('declined')
+    const helped = resolveChoice({ ...at, pending: { choice: { kind: 'help', cost: 100 } } }, data, true)
+    expect(helped.money).toBe(900)
+    expect(helped.pending.event.kind).toBe('helped')
+    expect(resolveChoice({ ...at, money: 10, pending: { choice: { kind: 'help', cost: 100 } } }, data, true).money).toBe(10)
+    expect(resolveChoice({ ...at, flash: true, pending: { choice: { kind: 'secret' } } }, data, true).pending.event.kind).toBe('secretFound')
+    const follow = resolveChoice({ ...at, pending: { choice: { kind: 'follow' } } }, data, true)
+    expect(follow.floor).toBe(3)
+    expect(follow.encounter.kind).toBe('wild')
+    expect(data.species[follow.encounter.foes[0].id][5]).toBeLessThanOrEqual(75)
   })
 })
