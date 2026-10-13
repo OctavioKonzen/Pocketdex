@@ -407,6 +407,12 @@ const BIOME_INFO = {
   snow: { label: 'Neve', icon: '❄️', color: '#38bdf8' },
   tower: { label: 'Torre', icon: '👻', color: '#7c3aed' },
   sky: { label: 'Céu', icon: '☁️', color: '#0ea5e9' },
+  beach: { label: 'Praia', icon: '🏖️', color: '#d97706' },
+  underwater: { label: 'Fundo do mar', icon: '🐠', color: '#1e40af' },
+  swamp: { label: 'Pântano', icon: '🪵', color: '#4d7c0f' },
+  sewer: { label: 'Esgoto', icon: '🚰', color: '#475569' },
+  icecave: { label: 'Caverna de gelo', icon: '🧊', color: '#0891b2' },
+  desert: { label: 'Deserto', icon: '🏜️', color: '#b45309' },
 }
 /** Cada ponto do mapa: símbolo, nome e o que tem nele. */
 const NODE_INFO = {

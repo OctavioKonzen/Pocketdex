@@ -16,18 +16,8 @@ String _usable(String scene) => sceneImages.contains(scene) || BattleScenePainte
 /// O clima na imagem (o granizo usa a de neve).
 const _weatherImage = {'sun': 'sun', 'rain': 'rain', 'sand': 'sand', 'hail': 'snow', 'snow': 'snow'};
 const _outdoor = ['grass', 'forest', 'water', 'beach', 'swamp', 'cave', 'icecave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky'];
-const _variants = {
-  'water': ['water', 'beach', 'underwater'], 'forest': ['forest', 'swamp'], 'snow': ['snow', 'icecave'],
-  'city': ['city', 'sewer'], 'mountain': ['mountain', 'desert'], 'cave': ['cave', 'icecave'],
-};
-
-/// O cenário da batalha: o do lugar (com as variações, pela semente) ou, numa batalha comum, um sorteado; sem imagem, o parecido. Igual ao site.
-String battleScene(String scene, int? seed) {
-  final n = (seed ?? 0).abs();
-  if (scene.isEmpty) return _usable(_outdoor[n % _outdoor.length]);
-  final list = _variants[scene];
-  return _usable(list == null ? scene : list[n % list.length]);
-}
+/// O cenário da batalha: o do lugar (a rota da Battle Factory, o ginásio, a Liga) ou, numa batalha comum, um sorteado. Igual ao site.
+String battleScene(String scene, int? seed) => _usable(scene.isNotEmpty ? scene : _outdoor[(seed ?? 0).abs() % _outdoor.length]);
 
 /// Líder de ginásio no ginásio; Elite Four e Campeão na Liga.
 String? sceneOfBoss(String? kind) => kind == 'gym' ? 'gym' : kind == 'elite' || kind == 'champion' || kind == 'league' ? 'league' : null;
@@ -50,7 +40,8 @@ class BattleBackdrop extends StatelessWidget {
     // A versão do clima (quem chama troca com AnimatedSwitcher quando o golpe muda o clima).
     final sky = _weatherImage[weather];
     return Image.asset('assets/database/sprites/battle/$scene${sky == null ? '' : '-$sky'}.webp',
-        fit: BoxFit.fill, width: double.infinity, height: double.infinity, filterQuality: FilterQuality.medium,
+        // Pixel art (256×192, como no DS): ampliada sem suavizar.
+        fit: BoxFit.fill, width: double.infinity, height: double.infinity, filterQuality: FilterQuality.none,
         errorBuilder: (_, __, ___) => CustomPaint(painter: BattleScenePainter(scene: scene, weather: weather, bw: true), size: Size.infinite));
   }
 }

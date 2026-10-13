@@ -12,8 +12,8 @@ import {
 const data = JSON.parse(readFileSync(new URL('../../../assets/database/factory.json', import.meta.url), 'utf8'))
 const moves = Object.fromEntries(JSON.parse(readFileSync(new URL('../../../assets/database/moves.json', import.meta.url), 'utf8')).map((m) => [m.name, { ...m, category: m.damage_class }]))
 const forms = Object.fromEntries(JSON.parse(readFileSync(new URL('../../../assets/database/pokemon.json', import.meta.url), 'utf8')).map((p) => [p.id, p]))
-const ROUTE_42 = { floor: 1, biome: 'grass', options: [{ kind: 'trainer' }] }
-const ENCOUNTER_42 = { kind: 'trainer', foes: [{ id: 868, level: 2, iv: 0, ev: 3 }, { id: 278, level: 2, iv: 0, ev: 3 }], trainerSeed: 500729487, scene: 'grass' }
+const ROUTE_42 = { floor: 1, biome: 'city', options: [{ kind: 'trainer' }] }
+const ENCOUNTER_42 = { kind: 'trainer', foes: [{ id: 915, level: 2, iv: 0, ev: 3 }, { id: 287, level: 2, iv: 0, ev: 3 }], trainerSeed: 500729487, scene: 'city' }
 const seq = (values) => { let i = 0; return () => values[i++ % values.length] }
 
 describe('Battle Factory (roguelike)', () => {
@@ -520,13 +520,18 @@ describe('mapa da corrida', () => {
     expect(winFloor({ ...before, floor: 5 }, data).pending.shop).toBe(null)
   })
 
-  it('selvagem do bioma: os tipos dele; Dusk Ball nas rotas escuras', () => {
+  it('selvagem do lugar: os tipos dele aparecem bem mais (os outros ainda aparecem); Dusk Ball nos lugares escuros', () => {
     let state = 9
     const rand = () => { const [v, s] = nextRandom(state); state = s; return v }
-    for (let i = 0; i < 100; i++) {
-      const e = encounterFor(data, 20, rand, null, false, { kind: 'wild', biome: 'water' })
-      expect(e.kind).toBe('wild')
-      expect(data.species[e.foes[0].id][4].some((t) => BIOMES.water.includes(t))).toBe(true)
+    for (const [biome, min] of [['water', 60], ['forest', 60]]) {
+      let local = 0
+      for (let i = 0; i < 100; i++) {
+        const e = encounterFor(data, 20, rand, null, false, { kind: 'wild', biome })
+        expect(e.kind).toBe('wild')
+        if (data.species[e.foes[0].id][4].some((t) => BIOMES[biome].includes(t))) local++
+      }
+      expect(local).toBeGreaterThan(min)
+      expect(local).toBeLessThan(100)
     }
     const run = { ...runAt(20), encounter: { kind: 'wild', biome: 'cave', foes: [{ id: 74, level: 20 }] } }
     expect(captureFor(run, data)).toEqual({ rates: [255], dusk: true })

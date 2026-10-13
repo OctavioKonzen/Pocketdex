@@ -7662,5 +7662,35 @@
   "en": "The whole team gains EXP (half for those who didn't battle)",
   "fr": "Toute l’équipe gagne de l’Exp. (la moitié pour ceux qui n’ont pas combattu)",
   "es": "Todo el equipo gana Exp. (la mitad para quien no luchó)"
+ },
+ "Praia": {
+  "en": "Beach",
+  "fr": "Plage",
+  "es": "Playa"
+ },
+ "Fundo do mar": {
+  "en": "Seafloor",
+  "fr": "Fond marin",
+  "es": "Fondo del mar"
+ },
+ "Pântano": {
+  "en": "Swamp",
+  "fr": "Marais",
+  "es": "Pantano"
+ },
+ "Esgoto": {
+  "en": "Sewer",
+  "fr": "Égouts",
+  "es": "Alcantarilla"
+ },
+ "Caverna de gelo": {
+  "en": "Ice cave",
+  "fr": "Grotte de glace",
+  "es": "Cueva de hielo"
+ },
+ "Deserto": {
+  "en": "Desert",
+  "fr": "Désert",
+  "es": "Desierto"
  }
 }

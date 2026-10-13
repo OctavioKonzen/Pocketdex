@@ -36,9 +36,9 @@ void main() {
     expect(run['team'][0]['nature'], 'Docile');
     expect(run['boss'], {'region': 11, 'step': 0});
     expect(run['encounter'], isNull);
-    expect(run['route'], {'floor': 1, 'biome': 'grass', 'options': [{'kind': 'trainer'}]});
+    expect(run['route'], {'floor': 1, 'biome': 'city', 'options': [{'kind': 'trainer'}]});
     expect(FactoryRun.chooseNode(run, data, 0)['encounter'], {
-      'kind': 'trainer', 'foes': [{'id': 868, 'level': 2, 'iv': 0, 'ev': 3}, {'id': 278, 'level': 2, 'iv': 0, 'ev': 3}], 'trainerSeed': 500729487, 'scene': 'grass',
+      'kind': 'trainer', 'foes': [{'id': 915, 'level': 2, 'iv': 0, 'ev': 3}, {'id': 287, 'level': 2, 'iv': 0, 'ev': 3}], 'trainerSeed': 500729487, 'scene': 'city',
     });
   });
 
@@ -255,8 +255,13 @@ void main() {
       expect(FactoryRun.routeOptions(on(12, step, 12), data, seq([0.5]))['options'], [{'kind': 'boss'}]);
     }
     expect(FactoryRun.routeCities(data, on(12, first + 1, 12)), (from: 'Indigo Plateau', to: 'Indigo Plateau'));
-    final water = FactoryRun.encounterFor(data, 20, rand, null, false, {'kind': 'wild', 'biome': 'water'});
-    expect((data.species[water['foes'][0]['id']]![4] as List).any(FactoryRun.biomes['water']!.contains), isTrue);
+    // Os tipos do lugar aparecem bem mais (os outros ainda aparecem).
+    var local = 0;
+    for (var i = 0; i < 100; i++) {
+      final water = FactoryRun.encounterFor(data, 20, rand, null, false, {'kind': 'wild', 'biome': 'water'});
+      if ((data.species[water['foes'][0]['id']]![4] as List).any(FactoryRun.biomes['water']!.contains)) local++;
+    }
+    expect(local, greaterThan(60));
     final cave = {...at(20), 'encounter': {'kind': 'wild', 'biome': 'cave', 'foes': [{'id': 74, 'level': 20}]}};
     expect(FactoryRun.captureFor(cave, data), {'rates': [255], 'dusk': true});
     final ace = FactoryRun.encounterFor(data, 30, rand, null, false, {'kind': 'ace'});

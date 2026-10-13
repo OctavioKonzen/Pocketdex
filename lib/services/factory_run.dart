@@ -415,13 +415,19 @@ class FactoryRun {
 
   // ------------------------------------------------------------ mapa
 
-  /// Biomas das rotas: os tipos dos Pokémon selvagens que aparecem nelas. Igual ao site.
+  /// Os lugares das rotas (cada um é também o cenário da batalha) e os tipos que mais aparecem neles. Igual ao site.
   static const biomes = <String, List<String>>{
     'grass': ['normal', 'grass', 'bug', 'flying'],
     'forest': ['bug', 'grass', 'poison', 'fairy'],
-    'water': ['water', 'ice', 'flying'],
+    'water': ['water', 'flying'],
+    'beach': ['water', 'ground', 'flying', 'rock'],
+    'underwater': ['water'],
+    'swamp': ['poison', 'water', 'grass', 'bug'],
+    'sewer': ['poison', 'dark', 'electric', 'normal'],
     'cave': ['rock', 'ground', 'dark', 'poison'],
+    'icecave': ['ice', 'rock', 'water'],
     'mountain': ['rock', 'fighting', 'ground', 'steel', 'dragon'],
+    'desert': ['ground', 'rock', 'fire', 'bug'],
     'volcano': ['fire', 'rock', 'ground'],
     'city': ['electric', 'steel', 'psychic', 'normal'],
     'snow': ['ice', 'water'],
@@ -429,13 +435,21 @@ class FactoryRun {
     'sky': ['flying', 'dragon', 'fairy'],
   };
   static final biomeIds = biomes.keys.toList();
-  static const _typeBiome = {
-    'normal': 'grass', 'fire': 'volcano', 'water': 'water', 'grass': 'forest', 'electric': 'city', 'ice': 'snow', 'fighting': 'mountain', 'poison': 'forest',
-    'ground': 'mountain', 'flying': 'sky', 'psychic': 'tower', 'bug': 'forest', 'rock': 'cave', 'ghost': 'tower', 'dragon': 'sky', 'dark': 'cave', 'steel': 'mountain', 'fairy': 'sky',
+
+  /// Quanto a mais aparecem os tipos do lugar (selvagens; treinadores).
+  static const routeTypeWeight = 8, routeTypeTrainer = 3;
+
+  /// Os lugares possíveis da rota até o ginásio de cada tipo (um deles por rota).
+  static const _typeBiomes = {
+    'normal': ['grass', 'city'], 'fire': ['volcano', 'desert'], 'water': ['water', 'beach', 'underwater'], 'grass': ['forest', 'grass', 'swamp'],
+    'electric': ['city', 'sewer'], 'ice': ['snow', 'icecave'], 'fighting': ['mountain', 'cave'], 'poison': ['swamp', 'sewer', 'forest'],
+    'ground': ['desert', 'mountain', 'cave'], 'flying': ['sky', 'grass', 'beach'], 'psychic': ['tower', 'city'], 'bug': ['forest', 'grass'],
+    'rock': ['cave', 'mountain', 'desert'], 'ghost': ['tower'], 'dragon': ['sky', 'mountain'], 'dark': ['cave', 'tower', 'sewer'],
+    'steel': ['mountain', 'city', 'cave'], 'fairy': ['sky', 'forest'],
   };
 
-  /// Na Dusk Ball (3×): as rotas escuras.
-  static const darkBiomes = ['cave', 'tower'];
+  /// Na Dusk Ball (3×): os lugares escuros.
+  static const darkBiomes = ['cave', 'tower', 'icecave', 'sewer', 'underwater'];
 
   /// Os chefes de cidade (líder no ginásio dele; Elite Four e Campeão na Liga). Rival e vilões aparecem na rota.
   static const _cityKinds = ['gym', 'elite', 'champion'];
@@ -488,8 +502,9 @@ class FactoryRun {
           final d = count[keys[b]]!.compareTo(count[keys[a]]!);
           return d != 0 ? d : a.compareTo(b);
         });
-      final top = order.isEmpty ? null : _typeBiome[keys[order.first]];
-      if (top != null) return top;
+      // Um dos lugares do tipo, o mesmo na rota inteira (pela semente e o começo da rota).
+      final list = order.isEmpty ? null : _typeBiomes[keys[order.first]];
+      if (list != null) return list[(_imul((run['leg'] as num?)?.toInt() ?? 1, 2654435761) ^ _int(run['seed'])) % list.length];
     }
     return biomeIds[(_int(run['boss']['region']) * 7 + _int(boss['step']) * 3) % biomeIds.length];
   }
@@ -518,7 +533,8 @@ class FactoryRun {
       }
       if (routeLength - pos <= pending || (pos >= 2 && rand() < ambushChance)) return only({'kind': 'boss'});
     }
-    String wildBiome() => rand() < 0.7 ? biome : _pick(biomeIds, rand);
+    // Os selvagens são do lugar da rota (o cenário da batalha é ele).
+    String wildBiome() => biome;
     if (!forks.contains(pos)) {
       final r = rand();
       return only(r < 0.55 ? {'kind': 'wild', 'biome': wildBiome()} : r < 0.9 || floor <= 2 ? {'kind': 'trainer'} : {'kind': 'event'});
@@ -577,7 +593,7 @@ class FactoryRun {
       final city = node['kind'] == 'boss' && atCity(data, run);
       final scene = (node['biome'] as String?) ?? (city ? (bossOf(data, run)['kind'] == 'gym' ? 'city' : 'tower') : routeBiomeNow);
       out['scene'] = scene;
-      out['encounter'] = {...encounterFor(data, floor, rand, node['kind'] == 'boss' ? bossOf(data, out) : null, node['kind'] == 'wildboss', node), 'scene': scene};
+      out['encounter'] = {...encounterFor(data, floor, rand, node['kind'] == 'boss' ? bossOf(data, out) : null, node['kind'] == 'wildboss', {...node, 'biome': scene}), 'scene': scene};
       return out;
     }
     out['floor'] = floor + 1;
@@ -681,6 +697,9 @@ class FactoryRun {
     ];
     final budget = speciesBudget(floor);
     // A chance de cada espécie segue a raridade dela (a taxa de captura); os treinadores com menos diferença (raiz).
+    // Os tipos do lugar aparecem bem mais (routeTypeWeight; nos treinadores, routeTypeTrainer).
+    final types = biomes[node?['biome']];
+    bool local(int id) => types != null && ((data.species[id]?.elementAtOrNull(4) as List?) ?? const []).any(types.contains);
     int pick(List<({int id, int bst, int rarity, int rate})> pool, [bool trainer = false]) {
       final fit = [for (final p in pool) if (p.bst <= budget && p.bst >= math.min(budget, 600) - 160) p];
       final near = [...pool]..sort((a, b) {
@@ -688,7 +707,9 @@ class FactoryRun {
           return d != 0 ? d : a.id.compareTo(b.id);
         });
       final list = fit.isNotEmpty ? fit : near.take(20).toList();
-      return _pickWeighted(list, [for (final p in list) trainer ? math.sqrt(p.rate) : p.rate.toDouble()], rand).id;
+      return _pickWeighted(list, [
+        for (final p in list) trainer ? math.sqrt(p.rate) * (local(p.id) ? routeTypeTrainer : 1) : p.rate.toDouble() * (local(p.id) ? routeTypeWeight : 1)
+      ], rand).id;
     }
 
     final common = [for (final p in entries) if (p.rarity == 0 || p.rarity == 3) p];
@@ -704,10 +725,8 @@ class FactoryRun {
       }
       return {'kind': kind, 'foes': foes, 'trainerSeed': (rand() * 1e9).floor(), if (ace) 'reward': _pick(aceRewards, rand)};
     }
-    // Selvagem: os do bioma da rota (se não tiver nenhum do tamanho certo, qualquer um).
-    final types = biomes[node?['biome']];
-    final local = types == null ? common : [for (final p in common) if (((data.species[p.id]?.elementAtOrNull(4) as List?) ?? const []).any(types.contains)) p];
-    final id = pick(local.isNotEmpty ? local : common);
+    // Selvagem: os do lugar da rota aparecem bem mais.
+    final id = pick(common);
     return {
       'kind': kind, 'foes': [foe(id, level, rand() < shinyChance ? {'shiny': true} : const {})],
       if (node?['biome'] != null) 'biome': node!['biome'],

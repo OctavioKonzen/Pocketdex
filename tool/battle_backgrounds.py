@@ -1,5 +1,6 @@
 """Cenários da batalha desenhados por código, no estilo das imagens de
-referência do usuário: 4:3, horizonte por volta de 1/3 da altura, profundidade
+referência do usuário e em pixel art como no Black & White (256×192, a tela
+do DS, com poucas cores; o site e o app ampliam sem suavizar): 4:3, horizonte por volta de 1/3 da altura, profundidade
 (o que está longe mais claro e desfocado, o que está perto mais escuro e
 detalhado) e as duas bases azuis com anéis pixelados nos mesmos lugares (a do
 adversário lá atrás à direita, a sua grande na frente à esquerda).
@@ -29,6 +30,9 @@ OUT = os.path.join(os.path.dirname(__file__), '..', 'assets', 'database', 'sprit
 FOE = (0.761, 0.393, 0.241, 0.066)
 MINE = (0.462, 0.80, 0.525, 0.20)
 HORIZON = int(H * 0.36)
+# A pixel art: o tamanho da tela do DS e quantas cores.
+PIXEL = (256, 192)
+COLORS = 72
 WEATHERS = ['sun', 'rain', 'sand', 'snow']
 
 
@@ -705,13 +709,14 @@ SCENES = {
 }
 
 
-def render(name, w=''):
+def render(name, w='', bases=True):
     SKY.clear()
     a, info = SCENES[name]()
     if w:
         a = weather(a, w, info)
-    for spec in (FOE, MINE):
-        a = platform(a, spec)
+    if bases:
+        for spec in (FOE, MINE):
+            a = platform(a, spec)
     if w == 'rain':
         a = a * 0.92
     elif w == 'sun':
@@ -721,21 +726,55 @@ def render(name, w=''):
     return finish(a, info.get('seed', 1))
 
 
+def pixelate(im, w=''):
+    """Reduz para a tela do DS com poucas cores (sem pontilhado) e desenha as bases já em pixel: vira pixel art."""
+    small = im.resize(PIXEL, Image.BOX)
+    small = small.quantize(colors=COLORS, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert('RGB')
+    a = np.asarray(small, np.float32)
+    big = np.zeros((H, W, 3), np.float32)
+    # As bases na resolução da tela (cada anel um degrau de pixel), com o tom do clima.
+    tone = {'rain': np.array([0.85, 0.88, 0.95]), 'sun': np.array([1.05, 1.0, 0.92]), 'sand': np.array([1.0, 0.95, 0.85]), 'snow': np.array([1.0, 1.02, 1.06])}.get(w, 1)
+    for spec in (FOE, MINE):
+        a = put_small(a, spec, tone)
+    return Image.fromarray(np.clip(a, 0, 255).astype(np.uint8))
+
+
+def put_small(a, spec, tone):
+    h, w = a.shape[:2]
+    im = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    cx, cy, rx, ry = spec
+    X, Y, RX, RY = cx * w, cy * h, rx * w, ry * h
+    edge, mid, center, outline = (34, 92, 156), (58, 136, 202), (140, 204, 248), (22, 62, 116)
+    d.ellipse([X - RX, Y - RY, X + RX, Y + RY], fill=outline + (255,))
+    rings = 14
+    for k in range(rings):
+        t = k / (rings - 1)
+        f = 1 - t * 0.97
+        c = mix(np.array(edge, np.float32), np.array(mid, np.float32), t / 0.6) if t < 0.6 else mix(np.array(mid, np.float32), np.array(center, np.float32), (t - 0.6) / 0.4)
+        c = np.clip(c * tone, 0, 255)
+        oy = -RY * 0.05 * t
+        d.ellipse([X - (RX - 1) * f, Y + oy - (RY - 1) * f, X + (RX - 1) * f, Y + oy + (RY - 1) * f], fill=tuple(int(v) for v in c) + (255,))
+    arr = np.asarray(im, np.float32)
+    m = arr[..., 3:] / 255
+    return a * (1 - m) + arr[..., :3] * m
+
+
 def main():
     names = sys.argv[1:] or list(SCENES)
     weathers = [''] + (WEATHERS if os.environ.get('WEATHERS', '1') != '0' else [])
     os.makedirs(OUT, exist_ok=True)
     for name in names:
         for w in weathers:
-            render(name, w).save(os.path.join(OUT, f"{name}{'-' + w if w else ''}.webp"), 'WEBP', quality=78, method=6)
+            pixelate(render(name, w, bases=False), w).save(os.path.join(OUT, f"{name}{'-' + w if w else ''}.webp"), 'WEBP', lossless=True, method=6)
         print(name, flush=True)
     sheet = os.environ.get('SHEET')
     if sheet:
-        cols, tw, th = 4, W // 3, H // 3
+        cols, tw, th = 4, PIXEL[0], PIXEL[1]
         rows = [(n, w) for n in names for w in weathers] if len(names) <= 3 else [(n, '') for n in names]
         out = Image.new('RGB', (tw * cols, th * math.ceil(len(rows) / cols)), 'black')
         for i, (n, w) in enumerate(rows):
-            im = Image.open(os.path.join(OUT, f"{n}{'-' + w if w else ''}.webp")).resize((tw, th))
+            im = Image.open(os.path.join(OUT, f"{n}{'-' + w if w else ''}.webp")).convert('RGB').resize((tw, th), Image.NEAREST)
             ImageDraw.Draw(im).text((6, 4), f'{n} {w}', fill='white')
             out.paste(im, ((i % cols) * tw, (i // cols) * th))
         out.save(sheet)

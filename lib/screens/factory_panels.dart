@@ -603,6 +603,12 @@ const _biomeInfo = <String, (String, String, Color)>{
   'snow': ('Neve', '❄️', Color(0xFF38BDF8)),
   'tower': ('Torre', '👻', Color(0xFF7C3AED)),
   'sky': ('Céu', '☁️', Color(0xFF0EA5E9)),
+  'beach': ('Praia', '🏖️', Color(0xFFD97706)),
+  'underwater': ('Fundo do mar', '🐠', Color(0xFF1E40AF)),
+  'swamp': ('Pântano', '🪵', Color(0xFF4D7C0F)),
+  'sewer': ('Esgoto', '🚰', Color(0xFF475569)),
+  'icecave': ('Caverna de gelo', '🧊', Color(0xFF0891B2)),
+  'desert': ('Deserto', '🏜️', Color(0xFFB45309)),
 };
 
 /// Cada ponto do mapa: símbolo, nome e o que tem nele.

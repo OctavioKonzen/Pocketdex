@@ -165,15 +165,9 @@ const usable = (scene) => (SCENE_IMAGES.includes(scene) || SCENE_COLORS[scene] ?
 const WEATHER_IMAGE = { sun: 'sun', rain: 'rain', sand: 'sand', hail: 'snow', snow: 'snow' }
 /** Batalha comum (sem lugar): um destes, sorteado pela semente. */
 const OUTDOOR = ['grass', 'forest', 'water', 'beach', 'swamp', 'cave', 'icecave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky']
-/** As variações de cada lugar da Battle Factory (pela semente do andar): o mar pode ser praia ou fundo do mar, a floresta um pântano... */
-const VARIANTS = { water: ['water', 'beach', 'underwater'], forest: ['forest', 'swamp'], snow: ['snow', 'icecave'], city: ['city', 'sewer'], mountain: ['mountain', 'desert'], cave: ['cave', 'icecave'] }
-
-/** O cenário da batalha: o do lugar (com as variações) ou, numa batalha comum, um sorteado; sem imagem, o parecido. Igual ao app. */
+/** O cenário da batalha: o do lugar (a rota da Battle Factory, o ginásio, a Liga) ou, numa batalha comum, um sorteado. Igual ao app. */
 export function battleScene(scene, seed) {
-  const n = Math.abs(Number(seed) || 0)
-  if (!scene) return usable(OUTDOOR[n % OUTDOOR.length])
-  const list = VARIANTS[scene]
-  return usable(list ? list[n % list.length] : scene)
+  return usable(scene || OUTDOOR[Math.abs(Number(seed) || 0) % OUTDOOR.length])
 }
 
 /** Líder de ginásio no ginásio; Elite Four e Campeão na Liga. */
@@ -186,9 +180,9 @@ export function BattleBackground({ weather = '', scene = 'grass', layout = 'clas
     const sky = WEATHER_IMAGE[weather]
     return (
       <div className="pointer-events-none absolute inset-0" aria-hidden="true" data-scene={scene} data-weather={sky ?? ''}>
-        <img src={spriteUrl(`battle/${scene}.webp`)} alt="" className="absolute inset-0 h-full w-full object-fill" />
+        <img src={spriteUrl(`battle/${scene}.webp`)} alt="" className="pixelated absolute inset-0 h-full w-full object-fill" />
         {Object.values(WEATHER_IMAGE).filter((w, i, all) => all.indexOf(w) === i).map((w) => (
-          <img key={w} src={spriteUrl(`battle/${scene}-${w}.webp`)} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-fill transition-opacity duration-700" style={{ opacity: sky === w ? 1 : 0 }} />
+          <img key={w} src={spriteUrl(`battle/${scene}-${w}.webp`)} alt="" loading="lazy" className="pixelated absolute inset-0 h-full w-full object-fill transition-opacity duration-700" style={{ opacity: sky === w ? 1 : 0 }} />
         ))}
       </div>
     )
