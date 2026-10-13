@@ -21,6 +21,7 @@ import {
   shinyPrice, shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, takeCard, teachMove, teamDown, applyBagItem, unlockShiny, VITAMIN_EVS, VITAMINS,
   buyShiny, forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade,
   tradeMon, skipTrade, TRADE_LEVELS, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, blindPick, bossScene,
+  resolveChoice, regionLegend, leaderType, villainTeam,
 } from '../lib/factoryRun'
 import { t } from '../lib/i18n'
 import { prettyName } from '../lib/pokemon'
@@ -569,11 +570,93 @@ const EVENT_TEXT = {
   money: 'Um treinador perdeu 💰{0} e não voltou para buscar.',
   berries: 'Frutas no caminho: o time recuperou 30% do HP.',
   tutor: 'Um velho professor te deu uma ficha de Move Tutor.',
+  declined: 'Você seguiu o seu caminho.',
+  helped: 'O treinador agradeceu e te deu {0}!',
+  secretFound: 'Na caverna secreta: {0} e 💰{1}!',
+  secretEmpty: 'A caverna estava vazia... e escura demais para procurar.',
 }
+const EVENT_ICON = { money: '💰', berries: '🍒', tutor: '📀', declined: '👣', helped: '🤝', secretFound: '💎', secretEmpty: '🕳️' }
+/** O texto de um evento do mapa (com o item, o dinheiro ou a quantidade). */
+function eventText(event) {
+  const item = itemName(event.item ?? '')
+  if (event.kind === 'money') return t(EVENT_TEXT.money).replace('{0}', event.money)
+  if (event.kind === 'secretFound') return t(EVENT_TEXT.secretFound).replace('{0}', item).replace('{1}', event.money)
+  return t(EVENT_TEXT[event.kind]).replace('{0}', item).replace('{1}', event.count ?? '')
+}
+/** As escolhas da rota: o que aparece, o ícone e os botões. */
+const CHOICE_INFO = {
+  help: { icon: '🙋', text: 'Um treinador perdeu as Poké Balls e pede ajuda: dar 💰{0} para ele?', yes: 'AJUDAR', no: 'RECUSAR' },
+  follow: { icon: '🐾', text: 'Um Pokémon ferido foge para dentro do mato. Seguir ele?', yes: 'SEGUIR', no: 'DEIXAR' },
+  secret: { icon: '🕳️', text: 'Uma entrada escondida entre as pedras: entrar na caverna secreta?', yes: 'ENTRAR', no: 'NÃO ENTRAR' },
+}
+/** A missão da rota. */
+const MISSION_TEXT = {
+  defeat: 'Derrote {0} Pokémon do tipo {1}',
+  catch: 'Capture um Pokémon do tipo {1}',
+  grunts: 'Derrote {0} capangas da base',
+}
+function missionText(m) {
+  return t(MISSION_TEXT[m.kind]).replace('{0}', m.need).replace('{1}', m.type ? m.type[0].toUpperCase() + m.type.slice(1) : '')
+}
+/** As pistas do lendário da região, conforme a história anda (a última: na rota para a Liga). */
+const LEGEND_CLUES = [
+  'Os moradores falam de um Pokémon lendário que vive nesta região...',
+  'Pegadas enormes no caminho: algo muito poderoso passou por aqui.',
+  'Um velho conta que o lendário só aparece para quem chega perto da Liga.',
+  'O ar está pesado: o lendário espera num dos caminhos para a Liga!',
+]
+/** O líder antes da luta, pelo tipo do ginásio. */
+const LEADER_LINES = {
+  normal: 'Força bruta e simplicidade: o meu time não tem fraquezas escondidas!',
+  fire: 'As chamas do meu ginásio vão testar a sua coragem!',
+  water: 'Vamos ver se você aguenta a força da correnteza!',
+  grass: 'A natureza tem paciência... e raízes fortes. Prepare-se!',
+  electric: 'Sente o choque? É a energia do meu ginásio!',
+  ice: 'Frio e calma: assim se vence uma batalha.',
+  fighting: 'Treino todo dia desde o nascer do sol. Mostre a sua garra!',
+  poison: 'Um passo em falso e o veneno decide a luta.',
+  ground: 'Pise firme: aqui o chão é meu aliado!',
+  flying: 'Vamos ver se você consegue acompanhar o vento!',
+  psychic: 'Eu já vi como esta batalha termina... mas venha mesmo assim.',
+  bug: 'Pequenos, mas espertos: os insetos sempre surpreendem!',
+  rock: 'Duro como pedra: o meu time não cede!',
+  ghost: 'Hehe... os meus Pokémon adoram visitas.',
+  dragon: 'Os dragões só respeitam quem é forte de verdade!',
+  dark: 'Nas sombras, quem ataca primeiro vence.',
+  steel: 'Aço polido e estratégia: nenhum golpe passa fácil.',
+  fairy: 'Encanto e poder: não se engane com a aparência!',
+}
+/** Depois da luta: o líder entrega a insígnia, o rival reage (conforme perde), o vilão foge. */
+const BEAT_LINES = {
+  gym: 'Você venceu de forma justa. Esta insígnia é sua!',
+  elite: 'Impressionante... siga em frente: o próximo da Elite espera.',
+  champion: 'Você é o novo Campeão! O seu nome vai para o Hall da Fama.',
+  villain: 'Isso não acaba aqui! Os nossos planos continuam...',
+}
+const RIVAL_BEAT = [
+  'Hmpf... foi sorte! Da próxima vez eu ganho.',
+  'De novo?! Vou treinar em dobro, pode esperar.',
+  'Você ficou forte de verdade... mas eu não desisto.',
+  'Tudo bem, você é melhor. Te espero na Liga!',
+]
+/** O plano de cada equipe vilã (contado quando ela aparece). */
+const VILLAIN_PLANS = {
+  rocket: 'A Equipe Rocket quer roubar Pokémon raros e dominar o mundo!',
+  aqua: 'A Equipe Aqua quer despertar o lendário e cobrir a terra com o mar!',
+  magma: 'A Equipe Magma quer secar os mares e aumentar a terra firme!',
+  galactic: 'A Equipe Galáctica quer apagar o mundo e criar um novo, sem espírito!',
+  plasma: 'A Equipe Plasma quer separar os Pokémon de todos os treinadores!',
+  flare: 'A Equipe Flare quer um mundo belo... só para eles!',
+  skull: 'A Equipe Skull só quer bagunça e roubar Pokémon por aí!',
+  aether: 'A Fundação Aether esconde segredos sobre as Ultra Beasts!',
+  star: 'A Equipe Star tem os próprios motivos... prove que merece saber!',
+}
+const LEGEND_INFO = { icon: '🌟', label: 'Lendário', help: 'O lendário da região espera aqui. Dá para capturar.' }
 
 /** O passo da tela depois do andar: o que ainda falta ver ou escolher (ou nada: o mapa). */
 function stepOf(p) {
   if (!p) return null
+  if (p.choice) return 'choice'
   if (!p.seen && (p.exp != null || p.center || p.event)) return 'result'
   if (p.capture) return 'capture'
   if (p.cards) return 'cards'
@@ -724,7 +807,7 @@ function TownMap({ route, pos, from, to, title, me, width, fieldRef, onPick, blo
       )}
       {/* Os caminhos: botões no próprio mapa. */}
       {route.options.map((node, k) => {
-        const info = NODE_INFO[node.kind]
+        const info = node.legend != null ? LEGEND_INFO : NODE_INFO[node.kind]
         const b = node.biome ? BIOME_INFO[node.biome] : null
         return (
           <button key={k} type="button" disabled={!onPick || blocked(node)} onClick={() => onPick(k)} data-testid={`map-pin-${k}`}
@@ -879,7 +962,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     field = (
       <Field biome={here} fieldRef={fieldRef} testid="factory-result">
         {shown && <FarStand scene={here}>{shown}</FarStand>}
-        {!shown && event && <FarStand scene={here}><span className="text-7xl">{event.kind === 'money' ? '💰' : event.kind === 'berries' ? '🍒' : event.kind === 'tutor' ? '📀' : '🎁'}</span></FarStand>}
+        {!shown && event && <FarStand scene={here}><span className="text-7xl">{EVENT_ICON[event.kind] ?? '🎁'}</span></FarStand>}
         {lead && <FieldMon mon={lead} byId={byId} back scene={here} />}
       </Field>
     )
@@ -888,7 +971,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         {p.center ? (
           <p data-testid="factory-center">🏥 {t('Centro Pokémon: o seu time foi curado!')}</p>
         ) : event ? (
-          <p data-testid="factory-event">{t(EVENT_TEXT[event.kind]).replace('{0}', event.kind === 'money' ? event.money : itemName(event.item ?? '')).replace('{1}', event.count ?? '')}</p>
+          <p data-testid="factory-event">{eventText(event)}</p>
         ) : (
           <>
             <p>🏆 {t('Andar vencido!')} +{p.exp} XP · +💰{p.money}</p>
@@ -899,10 +982,51 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         )}
         {p.joy && <p className="text-sm" data-testid="factory-joy">💗 {t('A Enfermeira Joy apareceu e curou o time todo!')}</p>}
         {[p.drop, p.reward].filter(Boolean).map((id) => <p key={id} className="text-sm" data-testid="factory-drop">🎁 {t('Ganhou {0}!').replace('{0}', itemName(id))}</p>)}
+        {p.beat && (
+          <p className="text-sm italic" data-testid="factory-beat-line">
+            💬 <span data-no-translate>{p.beat.name}</span>: {t(p.beat.kind === 'rival' ? RIVAL_BEAT[Math.min(RIVAL_BEAT.length, run.rivalWins ?? 1) - 1] : BEAT_LINES[p.beat.kind] ?? BEAT_LINES.gym)}
+          </p>
+        )}
+        {p.mission && (
+          <p className="text-sm text-amber-600" data-testid="factory-mission-done">
+            📋 {t('Missão cumprida: {0}!').replace('{0}', missionText(p.mission))} +💰{p.mission.money} · 🎁 {itemName(p.mission.item)}
+          </p>
+        )}
         {p.story && p.story.split('\n\n').map((line, k) => <p key={k} className="text-sm font-semibold" data-testid="factory-story-end">📖 {line}</p>)}
       </>
     )
     menu = <MenuButton onClick={() => save({ ...run, pending: { ...p, seen: true } })} testid="factory-continue">{t('CONTINUAR')}</MenuButton>
+  } else if (step === 'choice') {
+    // Uma escolha na rota: aceitar ou seguir o caminho.
+    const choice = p.choice
+    const info = CHOICE_INFO[choice.kind]
+    const poor = choice.kind === 'help' && run.money < choice.cost
+    const decide = (accept) => {
+      const next = resolveChoice(run, data, accept)
+      if (next.encounter) {
+        saveFactory({ ...factoryOf(useStore.getState().league), run: next })
+        onBattle(next)
+      } else save(next)
+    }
+    field = (
+      <Field biome={run.scene ?? 'grass'} fieldRef={fieldRef} testid="factory-choice">
+        <FarStand scene={run.scene ?? 'grass'}><span className="text-7xl">{info.icon}</span></FarStand>
+        {lead && <FieldMon mon={lead} byId={byId} back scene={run.scene} />}
+      </Field>
+    )
+    text = (
+      <>
+        <p data-testid={`factory-choice-${choice.kind}`}>{info.icon} {t(info.text).replace('{0}', choice.cost ?? '')}</p>
+        {choice.kind === 'secret' && !run.flash && <p className="dlg-sub text-sm">{t('Está escuro lá dentro: sem Flash, pode não achar nada.')}</p>}
+        {poor && <p className="text-sm text-red-600">{t('Você não tem dinheiro suficiente.')}</p>}
+      </>
+    )
+    menu = (
+      <>
+        <MenuButton onClick={() => decide(true)} disabled={busy || poor || (choice.kind === 'follow' && teamDown(run))} testid="choice-yes">{t(info.yes)}</MenuButton>
+        <MenuButton onClick={() => decide(false)} disabled={busy} testid="choice-no">{t(info.no)}</MenuButton>
+      </>
+    )
   } else if (step === 'capture') {
     const mon = p.capture
     const full = run.team.length >= MAX_TEAM
@@ -1037,6 +1161,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     const meeting = route.options.length === 1 && route.options[0].kind === 'boss'
     const coach = trainers?.find((x) => x.id === boss.trainer) ?? null
     const intro = run.boss.step === 0 && pos === 0 ? storyLine(data, boss.region, 'intro') : ''
+    const legend = regionLegend(data, run)
     const pickNode = (index) => {
       const next = chooseNode(run, data, index)
       if (next === run) return
@@ -1091,8 +1216,17 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
             {' '}{t(ROUTE_FLAVOR[route.biome] ?? ROUTE_FLAVOR.grass)}
           </p>
         )}
-        {meeting && boss.kind === 'rival' && <p className="text-sm italic" data-testid="factory-rival-line">💬 {t(RIVAL_LINES[(run.floor + run.seed) % RIVAL_LINES.length])}</p>}
-        {meeting && boss.kind === 'villain' && <p className="text-sm italic">💬 {t(VILLAIN_LINES[(run.floor + run.seed) % VILLAIN_LINES.length])}</p>}
+        {pos === 0 && !meeting && legend != null && (
+          <p className="text-sm" data-testid="factory-legend-clue">🌟 {t(LEGEND_CLUES[target.kind === 'elite' ? LEGEND_CLUES.length - 1 : Math.min(LEGEND_CLUES.length - 2, run.badges ?? 0)])}</p>
+        )}
+        {meeting && boss.kind === 'rival' && <p className="text-sm italic" data-testid="factory-rival-line">💬 {t(RIVAL_LINES[Math.min(RIVAL_LINES.length - 1, run.rivalWins ?? 0)])}</p>}
+        {meeting && boss.kind === 'villain' && (
+          <>
+            <p className="text-sm italic">💬 {t(VILLAIN_LINES[(run.floor + run.seed) % VILLAIN_LINES.length])}</p>
+            <p className="text-sm italic" data-testid="factory-villain-plan">💬 {t(VILLAIN_PLANS[villainTeam(boss.name)] ?? VILLAIN_PLANS.rocket)}</p>
+          </>
+        )}
+        {meeting && boss.kind === 'gym' && <p className="text-sm italic" data-testid="factory-leader-line">💬 <span data-no-translate>{boss.name}</span>: {t(LEADER_LINES[leaderType(data, boss)] ?? LEADER_LINES.normal)}</p>}
         {meeting && (boss.kind === 'rival' || boss.kind === 'villain') ? (
           <>
             <p>{t('{0} apareceu no caminho!').replace('{0}', boss.name)}</p>
@@ -1105,6 +1239,11 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
           </>
         ) : (
           <p>{!fork ? t('O caminho segue.') : hasMap ? t('O caminho se divide: escolha por onde ir') : t('O caminho se divide, mas sem o Mapa você não sabe para onde cada um vai. Compre um Mapa na loja!')}</p>
+        )}
+        {run.mission && run.mission.leg === (run.leg ?? 1) && (
+          <p className="text-sm" data-testid="factory-mission">
+            📋 {t('Missão')}: {missionText(run.mission)} ({run.mission.done}/{run.mission.need}){run.mission.done >= run.mission.need ? ' ✔' : ''}
+          </p>
         )}
         <p className="dlg-sub text-sm">{t('Chefe em {0}:').replace('{0}', to)} <b data-no-translate>{target.name}</b> · {bossKindLabel(target.kind)}</p>
         {down && <p className="text-sm text-red-600">{t('O time todo está desmaiado: use um Revive ou desista.')}</p>}
@@ -1119,7 +1258,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
           </MenuButton>
         )}
         {(hasMap || !fork) && route.options.map((node, k) => {
-          const info = NODE_INFO[node.kind]
+          const info = node.legend != null ? LEGEND_INFO : NODE_INFO[node.kind]
           const b = node.biome ? BIOME_INFO[node.biome] : null
           return (
             <MenuButton key={k} testid={`map-node-${k}`} disabled={busy || (isBattleNode(node) && down)} onClick={() => pickNode(k)}

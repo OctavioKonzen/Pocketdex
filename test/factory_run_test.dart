@@ -31,14 +31,14 @@ void main() {
     expect(run['bag']['poke-ball'], 5);
     expect(jsonEncode(FactoryRun.startRun(f, data, 1, 42)), jsonEncode(run));
     // O mesmo que o site sorteia (web-site/src/lib/factoryRun.test.js): a corrida continua de um no outro.
-    expect(run['seed'], 3599190471);
+    expect(run['seed'], 2967354801);
     expect(run['team'][0]['ivs'], {'hp': 25, 'atk': 22, 'def': 29, 'spa': 26, 'spd': 17, 'spe': 23});
     expect(run['team'][0]['nature'], 'Docile');
     expect(run['boss'], {'region': 11, 'step': 0});
     expect(run['encounter'], isNull);
     expect(run['route'], {'floor': 1, 'biome': 'city', 'options': [{'kind': 'trainer'}]});
     expect(FactoryRun.chooseNode(run, data, 0)['encounter'], {
-      'kind': 'trainer', 'foes': [{'id': 915, 'level': 2, 'iv': 0, 'ev': 3}, {'id': 287, 'level': 2, 'iv': 0, 'ev': 3}], 'trainerSeed': 500729487, 'scene': 'city',
+      'kind': 'trainer', 'foes': [{'id': 287, 'level': 3, 'iv': 0, 'ev': 3}], 'trainerSeed': 500729487, 'scene': 'city',
     });
   });
 
@@ -168,12 +168,12 @@ void main() {
     final traded = FactoryRun.teamOf(FactoryRun.tradeMon(run, 0, data)).first;
     expect(traded['id'], 19);
     expect(traded['level'], 13);
-    expect(traded['ivs'], {'hp': 20, 'atk': 15, 'def': 29, 'spa': 26, 'spd': 16, 'spe': 14});
-    expect(traded['nature'], 'Serious');
+    expect(traded['ivs'], {'hp': 29, 'atk': 26, 'def': 16, 'spa': 14, 'spd': 21, 'spe': 25});
+    expect(traded['nature'], 'Modest');
     expect(traded['item'], 'leftovers');
     expect(FactoryRun.escapeRope(base, data, hp: [0]), isNull);
     final escaped = FactoryRun.escapeRope({...base, 'floor': 7, 'bag': {...base['bag'] as Map, 'escape-rope': 1}}, data, hp: [0])!;
-    expect(escaped['route'], {'floor': 7, 'biome': 'grass', 'options': [{'kind': 'wild', 'biome': 'grass'}]});
+    expect(escaped['route'], {'floor': 7, 'biome': 'grass', 'options': [{'kind': 'trainer'}]});
     expect(FactoryRun.teamOf(escaped).first['hp'], FactoryRun.escapeHp);
     expect(escaped['bag']['escape-rope'], 0);
     final (f1, earned) = FactoryRun.progress(
@@ -424,5 +424,48 @@ void main() {
         expect(f['level'] as int, greaterThanOrEqualTo(FactoryRun.minLevelOf(data, f['id'] as int)));
       }
     }
+  });
+
+  test('história: rival com o inicial de vantagem, lendário da região, missão da rota e escolhas (igual ao site)', () {
+    expect(FactoryRun.starterLine(data, 1), [1, 2, 3]);
+    expect([FactoryRun.rivalStarter(data, 1), FactoryRun.rivalStarter(data, 4), FactoryRun.rivalStarter(data, 7), FactoryRun.rivalStarter(data, 19)], [4, 7, 1, null]);
+    final base = FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!;
+    expect(base['starter'], 1);
+    expect(FactoryRun.regionLegends[data.bosses[base['boss']['region'] as int]['region']], contains(FactoryRun.regionLegend(data, base)));
+    expect(['defeat', 'catch'], contains(base['mission']['kind']));
+    expect(base['mission']['leg'], 1);
+    final red = data.bosses.indexWhere((b) => b['game'] == 'Red/Blue');
+    Json step(String kind) => {'region': red, 'step': (data.bosses[red]['leaders'] as List).indexWhere((l) => l['kind'] == kind)};
+    expect(FactoryRun.newMission({...base, 'boss': step('villain')}, data, () => 0.5)['kind'], 'grunts');
+    final rival = FactoryRun.chooseNode({
+      ...base,
+      'boss': step('rival'),
+      'floor': 9,
+      'route': {'floor': 9, 'biome': 'grass', 'options': [{'kind': 'boss'}]},
+    }, data, 0);
+    expect((rival['encounter']['foes'] as List).any((f) => [4, 5, 6].contains(f['id'])), isTrue);
+    final run = {
+      ...base,
+      'money': 0,
+      'mission': {'leg': 1, 'kind': 'defeat', 'type': 'normal', 'need': 3, 'done': 2},
+      'encounter': {'kind': 'trainer', 'foes': [{'id': 19, 'level': 5, 'iv': 0, 'ev': 0}]},
+    };
+    final won = FactoryRun.winFloor(run, data, bag: {'potion': 1});
+    expect(won['mission']['done'], 3);
+    expect(won['pending']['mission']['money'] as int, greaterThanOrEqualTo(FactoryRun.missionMoney));
+    expect(won['money'] as int, greaterThanOrEqualTo(won['pending']['mission']['money'] as int));
+    expect(FactoryRun.winFloor({...run, 'mission': {...run['mission'] as Map, 'type': 'fire'}}, data)['mission']['done'], 2);
+    final at = {...base, 'money': 1000, 'floor': 4, 'scene': 'grass'};
+    Json help(Json r) => {...r, 'pending': {'choice': {'kind': 'help', 'cost': 100}}};
+    expect(FactoryRun.resolveChoice(help(at), data, false)['pending']['event']['kind'], 'declined');
+    final helped = FactoryRun.resolveChoice(help(at), data, true);
+    expect(helped['money'], 900);
+    expect(helped['pending']['event']['kind'], 'helped');
+    expect(FactoryRun.resolveChoice(help({...at, 'money': 10}), data, true)['money'], 10);
+    expect(FactoryRun.resolveChoice({...at, 'flash': true, 'pending': {'choice': {'kind': 'secret'}}}, data, true)['pending']['event']['kind'], 'secretFound');
+    final follow = FactoryRun.resolveChoice({...at, 'pending': {'choice': {'kind': 'follow'}}}, data, true);
+    expect(follow['floor'], 3);
+    expect(follow['encounter']['kind'], 'wild');
+    expect(data.species[follow['encounter']['foes'][0]['id']]![5] as num, lessThanOrEqualTo(75));
   });
 }

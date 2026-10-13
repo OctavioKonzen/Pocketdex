@@ -731,9 +731,14 @@ class FactoryRun {
       if (options.any((o) => o['kind'] == node['kind'] && o['biome'] == node['biome'])) continue;
       options.add(node);
     }
+    // Na rota para a Liga, o lendário da região espera num dos caminhos.
+    if (pos == forks[1] && !base && targetOf(data, run)['kind'] == 'elite') {
+      final legend = regionLegend(data, run);
+      if (legend != null) options[options.length - 1] = {'kind': 'wildboss', 'legend': legend};
+    }
     // No mar, um dos caminhos é mergulhar (o selvagem do fundo do mar).
     if (biome == 'water' && !options.any((o) => o['biome'] == 'underwater')) options[options.length - 1] = {'kind': 'wild', 'biome': 'underwater'};
-    if (pos == forks[1] && rand() < wildBossChance && !base) options[options.length - 1] = {'kind': 'wildboss'};
+    if (pos == forks[1] && !options.any((o) => o['legend'] != null) && rand() < wildBossChance && !base) options[options.length - 1] = {'kind': 'wildboss'};
     return {'floor': floor, 'biome': biome, 'options': options};
   }
 
@@ -755,6 +760,105 @@ class FactoryRun {
   /// Os eventos do mapa.
   static const events = ['items', 'money', 'berries', 'tutor'];
 
+  /// Chance de o evento ser uma escolha (choiceEvents).
+  static const choiceChance = 0.4;
+
+  /// Escolhas na rota: ajudar alguém (paga e ganha um item), seguir um Pokémon ferido (selvagem raro) ou entrar numa
+  /// caverna secreta (com Flash, sempre acha algo). Igual ao site.
+  static const choiceEvents = ['help', 'follow', 'secret'];
+
+  /// Os lendários de cada região: as pistas aparecem ao longo da história e, na rota para a Liga, um deles espera.
+  static const regionLegends = <String, List<int>>{
+    'Kanto': [150, 144, 145, 146], 'Johto': [249, 250, 243, 244, 245], 'Hoenn': [382, 383, 384, 380, 381], 'Sinnoh': [483, 484, 487, 480, 481, 482],
+    'Unova': [643, 644, 646, 638, 639, 640], 'Kalos': [716, 717, 718], 'Alola': [791, 792, 800, 785], 'Galar': [888, 889, 890], 'Paldea': [1007, 1008, 1001, 1002],
+  };
+
+  /// O lendário da região da corrida (sempre o mesmo para a mesma corrida e região).
+  static int? regionLegend(FactoryData data, Json run) {
+    final list = regionLegends['${data.bosses[_int(run['boss']['region'])]['region']}'] ?? const <int>[];
+    return list.isEmpty ? null : list[((_int(run['seed']) & 0xFFFFFFFF) + _int(run['boss']['region'])) % list.length];
+  }
+
+  /// A linha evolutiva de um inicial: [ele, a 1ª evolução, a 2ª].
+  static List<int> starterLine(FactoryData data, int id) {
+    final line = [id];
+    for (var k = 0; k < 2; k++) {
+      final next = data.evolutions[line.last]?.firstOrNull?.first;
+      if (next == null) break;
+      line.add(_int(next));
+    }
+    return line;
+  }
+
+  /// O inicial que tem vantagem sobre o seu (Grama → Fogo → Água → Grama), da mesma geração; null se o seu não é um inicial.
+  static int? rivalStarter(FactoryData data, Object? starter) {
+    final i = data.starters.indexOf(_int(starter ?? -1));
+    if (i < 0) return null;
+    return data.starters[i - (i % 3) + ((i % 3) + 1) % 3];
+  }
+
+  /// Missão da rota: derrotar 3 de um tipo do lugar ou capturar 1 (na base de uma equipe vilã, derrotar 3 capangas).
+  static const missionMoney = 150;
+  static Json newMission(Json run, FactoryData data, double Function() rand) {
+    final biome = routeBiome(data, run);
+    final leg = _int(run['leg'] ?? 1);
+    if (biome.startsWith('base-')) return {'leg': leg, 'kind': 'grunts', 'type': '', 'need': 3, 'done': 0};
+    final type = _pick(biomes[biome] ?? const ['normal'], rand);
+    return rand() < 0.6 ? {'leg': leg, 'kind': 'defeat', 'type': type, 'need': 3, 'done': 0} : {'leg': leg, 'kind': 'catch', 'type': type, 'need': 1, 'done': 0};
+  }
+
+  /// Um item ganho: bolas e remédios na Bolsa, ficha de Move Tutor, os de segurar guardados.
+  static void _giveItem(Json out, String item) {
+    if (bagItems.contains(item)) {
+      final bag = Map<String, dynamic>.from(out['bag'] as Map);
+      bag[item] = ((bag[item] as num?) ?? 0).toInt() + 1;
+      out['bag'] = bag;
+    } else if (tokens.contains(item)) {
+      final t = Map<String, dynamic>.from((out['tokens'] as Map?) ?? const {});
+      t[item] = ((t[item] as num?) ?? 0).toInt() + 1;
+      out['tokens'] = t;
+    } else {
+      out['stash'] = [...((out['stash'] as List?) ?? const []), item];
+    }
+  }
+
+  /// Resolve a escolha da rota (accept: aceitou). Igual ao site.
+  static Json resolveChoice(Json run, FactoryData data, bool accept) {
+    final choice = pendingOf(run)?['choice'] as Map?;
+    if (choice == null) return run;
+    final out = _copy(run)..['pending'] = null;
+    final rand = _dice(out);
+    if (!accept) return out..['pending'] = {'event': {'kind': 'declined'}};
+    if (choice['kind'] == 'help') {
+      final cost = _int(choice['cost']);
+      if (_int(out['money']) < cost) return out..['pending'] = {'event': {'kind': 'declined'}};
+      out['money'] = _int(out['money']) - cost;
+      final item = _pick(aceRewards, rand);
+      _giveItem(out, item);
+      out['pending'] = {'event': {'kind': 'helped', 'item': item}};
+    } else if (choice['kind'] == 'follow') {
+      // O Pokémon ferido leva a um selvagem raro do lugar (a batalha é neste andar).
+      out['floor'] = _int(out['floor']) - 1;
+      final scene = '${out['scene'] ?? 'grass'}';
+      out['encounter'] = {
+        ...encounterFor(data, _int(out['floor']), rand, null, false, {'kind': 'wild', 'biome': scene, 'rare': true, 'shiny': run['shinyRate'] ?? 1}),
+        'scene': scene,
+      };
+    } else {
+      final found = run['flash'] == true || rand() < 0.5;
+      if (found) {
+        final item = _pick(aceRewards, rand);
+        final money = (80 * priceScale(_int(out['floor']) - 1)).round();
+        _giveItem(out, item);
+        out['money'] = _int(out['money']) + money;
+        out['pending'] = {'event': {'kind': 'secretFound', 'item': item, 'money': money}};
+      } else {
+        out['pending'] = {'event': {'kind': 'secretEmpty'}};
+      }
+    }
+    return out;
+  }
+
   /// Escolhe o caminho: batalha (o encontro do andar) ou, sem batalha, Poké Mart, Centro Pokémon e eventos. Igual ao site.
   static Json chooseNode(Json run, FactoryData data, int index) {
     final options = (run['route']?['options'] as List?) ?? const [];
@@ -773,6 +877,17 @@ class FactoryRun {
         ...encounterFor(data, floor, rand, node['kind'] == 'boss' ? bossOf(data, out) : null, node['kind'] == 'wildboss', {...node, 'biome': scene, 'shiny': run['shinyRate'] ?? 1}),
         'scene': scene,
       };
+      // O rival leva o inicial que tem vantagem sobre o seu (no lugar do inicial dele ou do mais forte).
+      final counter = node['kind'] == 'boss' && out['encounter']['boss']?['kind'] == 'rival' ? rivalStarter(data, run['starter']) : null;
+      if (counter != null) {
+        final lines = [for (final id in data.starters) ...starterLine(data, id)];
+        final foes = foesOf(out);
+        final found = foes.indexWhere((f) => lines.contains(_int(f['id'])));
+        final slot = found >= 0 ? found : foes.length - 1;
+        final line = starterLine(data, counter);
+        foes[slot] = {...foes[slot], 'id': devolve(data, line.last, _int(foes[slot]['level']))};
+        out['encounter'] = {...out['encounter'] as Map<String, dynamic>, 'foes': foes};
+      }
       return out;
     }
     out['floor'] = floor + 1;
@@ -787,6 +902,12 @@ class FactoryRun {
     } else if (node['kind'] == 'center') {
       out['team'] = [for (final m in teamOf(out)) {...m, 'hp': 1}];
       out['pending'] = {'center': true};
+    } else if (rand() < choiceChance) {
+      // Uma escolha na rota: ajudar alguém, seguir um Pokémon ferido ou entrar numa caverna secreta.
+      final kind = _pick(choiceEvents, rand);
+      out['pending'] = {
+        'choice': {'kind': kind, if (kind == 'help') 'cost': (80 * priceScale(floor)).round()},
+      };
     } else {
       final kind = _pick(events, rand);
       final event = <String, dynamic>{'kind': kind};
@@ -842,7 +963,11 @@ class FactoryRun {
       bool fits(int sid) => minLevelOf(data, sid) <= _bossLevel(data, floor, sid, level + 3);
       final megas = (data.megas.keys.toList()..sort()).where(fits).toList();
       final gmax = data.gmax.where(fits).toList();
-      if (r < 0.4 && megas.isNotEmpty) {
+      if (node?['legend'] != null) {
+        // O lendário da região (na rota para a Liga).
+        id = _int(node!['legend']);
+        extra = {'title': 'legend'};
+      } else if (r < 0.4 && megas.isNotEmpty) {
         id = _pick(megas, rand);
         final stone = _pick(data.megas[id]!, rand)[0] as String;
         extra = {'item': stone, 'gimmick': 'mega', 'title': 'mega'};
@@ -925,7 +1050,9 @@ class FactoryRun {
     final place = node?['biome'];
     final lives = place == null ? const <({int id, int bst, int rarity, int rate})>[] : [for (final p in common) if (((data.species[p.id]?.elementAtOrNull(6) as List?) ?? const []).contains(place)) p];
     final native = lives.isNotEmpty ? lives : types == null ? const <({int id, int bst, int rarity, int rate})>[] : [for (final p in common) if (local(p.id)) p];
-    final id = pick(native.isNotEmpty ? native : common);
+    // Seguindo o Pokémon ferido: um raro do lugar (taxa de captura baixa).
+    final rare = node?['rare'] == true ? [for (final p in (native.isNotEmpty ? native : common)) if (p.rate <= 75) p] : const <({int id, int bst, int rarity, int rate})>[];
+    final id = pick(rare.isNotEmpty ? rare : native.isNotEmpty ? native : common);
     return {
       'kind': kind, 'foes': [foe(id, level, rand() < shinyChance * _shinyRate(node) ? {'shiny': true} : const {})],
       if (node?['biome'] != null) 'biome': node!['biome'],
@@ -946,6 +1073,8 @@ class FactoryRun {
       if (up('shiny') > 0) 'shinyRate': 1 + up('shiny'),
       'tms': <String, dynamic>{}, 'tokens': {'move-tutor': 0, 'move-reminder': 0}, 'stash': <String>[], 'dmax': false, 'tera': false, 'expShare': up('expShare') > 0,
       'leg': 1, 'route': null, 'encounter': null, 'pending': null,
+      // O inicial (o rival escolhe o que tem vantagem sobre ele).
+      'starter': id,
     };
     final rand = _dice(run);
     // O inicial vem com IVs bons (15 a 31; com a Genética, mais).
@@ -953,6 +1082,7 @@ class FactoryRun {
     run['boss'] = {'region': (rand() * data.bosses.length).floor(), 'step': 0};
     run['played'] = [data.bosses[_int(run['boss']['region'])]['region']];
     run['route'] = routeOptions(run, data, rand);
+    run['mission'] = newMission(run, data, rand);
     return run;
   }
 
@@ -1041,6 +1171,8 @@ class FactoryRun {
         out['champions'] = ((run['champions'] as num?) ?? 0).toInt() + 1;
         champion = true;
       }
+      // O rival: as falas mudam conforme ele perde.
+      if (beaten['kind'] == 'rival') out['rivalWins'] = ((run['rivalWins'] as num?) ?? 0).toInt() + 1;
       // Venceu o chefe da cidade (ou da Liga): começa a rota seguinte.
       if (_cityKinds.contains(beaten['kind'])) out['leg'] = out['floor'];
       final (boss, played) = _nextBoss(out, data, rand);
@@ -1070,6 +1202,30 @@ class FactoryRun {
     } else if (reward != null) {
       out['stash'] = [...((out['stash'] as List?) ?? const []), reward];
     }
+    // A missão da rota: os derrotados (e o capturado) do tipo contam; completa, dá dinheiro e um item.
+    Json? mission;
+    final m = run['mission'] as Map?;
+    if (m != null && _int(m['done']) < _int(m['need'])) {
+      bool fits(Map f) => ((data.speciesOf(_int(f['id']))?.elementAtOrNull(4) as List?) ?? const []).contains(m['type']);
+      final add = m['kind'] == 'grunts'
+          ? (run['encounter']['grunt'] != null ? 1 : 0)
+          : m['kind'] == 'defeat'
+              ? foes.where(fits).length
+              : captured && fits(foes.first)
+                  ? 1
+                  : 0;
+      if (add > 0) {
+        final next = {...Map<String, dynamic>.from(m), 'done': math.min(_int(m['need']), _int(m['done']) + add)};
+        out['mission'] = next;
+        if (_int(next['done']) >= _int(m['need'])) {
+          final item = _pick(aceRewards, rand);
+          final cash = (missionMoney * priceScale(_int(run['floor']))).round();
+          _giveItem(out, item);
+          out['money'] = _int(out['money']) + cash;
+          mission = {...next, 'item': item, 'money': cash};
+        }
+      }
+    }
     final joy = rand() < joyChance;
     if (joy) out['team'] = [for (final m in teamOf(out)) {...m, 'hp': 1}];
     final cardsPick = kind == 'boss' ? _pickCards(rand, ((run['cardCount'] as num?) ?? 3).toInt()) : null;
@@ -1082,6 +1238,10 @@ class FactoryRun {
       'capture': captured && (kind == 'wild' || kind == 'wildboss') ? foes.first : null,
       'cards': cardsPick,
       'shop': shopPick,
+      // O chefe que acabou de perder (as falas depois da luta) e a missão completa.
+      if (kind == 'boss')
+        'beat': {'kind': run['encounter']['boss']['kind'], 'name': run['encounter']['boss']['name'], 'region': run['encounter']['boss']['region']},
+      if (mission != null) 'mission': mission,
     };
     out['encounter'] = null;
     return out;
@@ -1566,7 +1726,10 @@ class FactoryRun {
     final out = _copy(run)
       ..['pending'] = null
       ..['encounter'] = null;
-    out['route'] = routeOptions(out, data, _dice(out));
+    final rand = _dice(out);
+    out['route'] = routeOptions(out, data, rand);
+    // Começo de uma rota nova: a missão dela.
+    if (routePos(out) == 0 && !atCity(data, out) && run['mission']?['leg'] != _int(out['leg'] ?? 1)) out['mission'] = newMission(out, data, rand);
     return out;
   }
 
