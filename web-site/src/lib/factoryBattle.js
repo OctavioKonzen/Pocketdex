@@ -4,7 +4,7 @@
 
 import { battleMons } from './battleSetup'
 import { getFactoryData, getMoves, getPokemonById, getSpecies } from './data'
-import { bagsFor, battleOrder, captureFor, EXP_SHARE, expFactor, expProgress, expShares, foeMember, memberOf, movesAt } from './factoryRun'
+import { bagsFor, battleOrder, bossScene, captureFor, fieldOf, weatherOf, EXP_SHARE, expFactor, expProgress, expShares, foeMember, memberOf, movesAt } from './factoryRun'
 import { seededRandom } from './league'
 import { newBattle } from './turnBattle'
 
@@ -31,12 +31,18 @@ export async function factoryBattle(run) {
   if (!a.length || !b.length) throw new Error('Não foi possível montar a batalha do andar.')
   const seed = run.seed ^ (run.floor * 2654435761)
   // Selvagem: as Poké Balls da Bolsa funcionam (captureFor: a taxa de captura de cada um).
-  const battle = newBattle(a, b, seededRandom(seed >>> 0), { ai: 'normal', seed: seed >>> 0, bags: bagsFor(run), healPct: true, capture: captureFor(run, data) })
-  battle.members = { mine, theirs }
   // O cenário: o lugar do andar (cidade, floresta, caverna, mar...).
   // Líder de ginásio no ginásio, Elite Four e Campeão na Liga.
-  const boss = run.encounter.boss?.kind
-  battle.scene = boss === 'gym' ? 'gym' : boss === 'elite' || boss === 'champion' ? 'league' : run.encounter.scene ?? run.encounter.biome ?? 'grass'
+  // O líder no ginásio do tipo dele, a Elite Four na Liga, o Campeão na sala dele e o vilão na base da equipe.
+  const scene = bossScene(data, run.encounter.boss, run.encounter.scene ?? run.encounter.biome ?? 'grass')
+  // E o clima do lugar (sol no deserto, chuva no mar, neve na caverna de gelo...).
+  // E o efeito do lugar (terreno, chuva de diamantes, aura sombria...; no céu, ventos fortes).
+  const place = fieldOf(run, scene)
+  const weather = weatherOf(run, scene) || (place === 'wind' ? 'wind' : '')
+  const field = place === 'wind' ? '' : place
+  const battle = newBattle(a, b, seededRandom(seed >>> 0), { ai: 'normal', seed: seed >>> 0, bags: bagsFor(run), healPct: true, capture: captureFor(run, data), weather, field })
+  battle.members = { mine, theirs }
+  battle.scene = scene
   battle.factoryOrder = order
   // A barra de XP (expBarOf): o XP de cada um agora e quanto cada adversário derrubado dá para cada um (quem lutou: tudo; com o Exp. Share, o resto: a metade).
   battle.expBar = {
@@ -72,11 +78,19 @@ export function factoryAfter(battle, run) {
 }
 
 /** Quem é o adversário do andar: o chefe (nome, treinador e música) ou um selvagem (sem treinador). */
+/** Os capangas de cada equipe vilã (homem e mulher). Igual ao app. */
+export const GRUNT_TRAINERS = {
+  rocket: ['sd-rocketgrunt', 'sd-rocketgruntf'], aqua: ['sd-aquagrunt', 'sd-aquagruntf'], magma: ['sd-magmagrunt', 'sd-magmagruntf'],
+  galactic: ['sd-galacticgrunt', 'sd-galacticgruntf'], plasma: ['sd-plasmagrunt', 'sd-plasmagruntf'], flare: ['sd-flaregrunt', 'sd-flaregruntf'],
+  skull: ['sd-skullgrunt', 'sd-skullgruntf'], aether: ['sd-aetheremployee', 'sd-aetheremployeef'], star: ['sd-stargrunt-s', 'sd-stargruntf-s'],
+}
+
 export function factoryFoe(run) {
-  const { kind, boss } = run.encounter
+  const { kind, boss, grunt, trainerSeed } = run.encounter
   return {
     foeName: boss?.name ?? '',
-    foeTrainer: boss?.trainer || null,
+    // Na base de uma equipe vilã, o capanga dela.
+    foeTrainer: boss?.trainer || (grunt ? GRUNT_TRAINERS[grunt]?.[(trainerSeed ?? 0) % 2] : null) || null,
     challenge: { kind: 'factory', wild: kind === 'wild' || kind === 'wildboss', ...(boss ? { boss } : {}) },
   }
 }

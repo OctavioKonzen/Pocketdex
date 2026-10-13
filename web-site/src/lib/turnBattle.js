@@ -135,6 +135,10 @@ export function newBattle(mine, theirs, random, options = {}) {
     // Battle Factory, selvagem: dá para jogar Poké Balls ({rates, dusk}; o motor faz a conta). captured: pegou.
     capture: options.capture ?? null,
     captured: null,
+    // Battle Factory: o clima do lugar no começo (sol no deserto, chuva no mar...).
+    startWeather: options.weather || '',
+    // E o efeito do lugar (terreno ou o efeito próprio dele).
+    startField: options.field || '',
     turn: 1,
     // Semente da batalha (para o replay) e as suas jogadas (logTurn).
     seed: options.seed ?? null,
@@ -319,6 +323,9 @@ export const FIELD_NAMES = {
   mist: 'Mist', luckychant: 'Lucky Chant', trickroom: 'Trick Room', gravity: 'Gravity', magicroom: 'Magic Room',
   wonderroom: 'Wonder Room', electricterrain: 'Electric Terrain', grassyterrain: 'Grassy Terrain',
   mistyterrain: 'Misty Terrain', psychicterrain: 'Psychic Terrain',
+  // Os efeitos de lugar da Battle Factory.
+  pocketdexdiamonds: 'Chuva de diamantes', pocketdexrockfall: 'Desmoronamento', pocketdexashes: 'Cinzas ardentes',
+  pocketdexmiasma: 'Névoa tóxica', pocketdexchill: 'Frio cortante', pocketdexhaunt: 'Aura sombria', pocketdexcurrent: 'Correnteza',
 }
 
 /** O campo em textos curtos: [[o seu lado], [o do adversário], [o campo todo]]. */
@@ -1115,6 +1122,26 @@ export const LINES = {
   snowGo: 'A neve continua.',
   snowEnd: 'A neve parou.',
   hurtSand: ['{0} foi atingido pela tempestade de areia!', '{0} inimigo foi atingido pela tempestade de areia!'],
+  windStart: 'Ventos fortes começaram a soprar!',
+  // Terrenos (do lugar ou de um golpe).
+  grassyTerrainStart: 'A grama cresceu no campo de batalha!',
+  grassyTerrainEnd: 'A grama do campo sumiu.',
+  electricTerrainStart: 'Uma corrente elétrica percorre o campo de batalha!',
+  electricTerrainEnd: 'A eletricidade do campo sumiu.',
+  mistyTerrainStart: 'Uma névoa cobriu o campo de batalha!',
+  mistyTerrainEnd: 'A névoa do campo sumiu.',
+  psychicTerrainStart: 'O campo de batalha ficou estranho!',
+  psychicTerrainEnd: 'O campo voltou ao normal.',
+  // Os efeitos de lugar da Battle Factory (como a chuva de diamantes do Mt. Moon).
+  diamondsStart: 'Diamantes começaram a cair do teto da caverna!',
+  rockfallStart: 'Pedras começaram a rolar da montanha!',
+  ashesStart: 'Cinzas ardentes caem do vulcão!',
+  miasmaStart: 'Uma névoa tóxica cobre o lugar!',
+  chillStart: 'Um frio cortante toma conta do lugar!',
+  hauntStart: 'Uma aura sombria envolve o lugar!',
+  currentStart: 'Uma correnteza forte passa pelo campo!',
+  placeHurt: ['{0} sofreu com {1}!', '{0} inimigo sofreu com {1}!'],
+  placeHeal: ['{0} recuperou HP com {1}!', '{0} inimigo recuperou HP com {1}!'],
   hurtHail: ['{0} foi atingido pelo granizo!', '{0} inimigo foi atingido pelo granizo!'],
   // Itens e habilidades (motor do Showdown).
   abilityShow: ['{1} de {0}!', '{1} de {0} inimigo!'],

@@ -6,12 +6,26 @@
 // torre, nuvens. O clima muda as cores do céu e do chão. Igual ao site
 // (web-site/src/components/BattleScene.jsx).
 
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
-/// Os lugares que têm imagem (sprites/battle/<lugar>.webp, feitas por tool/battle_backgrounds.py, com as bases desenhadas) e a
-/// versão de cada clima (<lugar>-sun/rain/sand/snow.webp): Sunny Day, Rain Dance... mudam o cenário. Igual ao site.
-const sceneImages = ['grass', 'forest', 'water', 'beach', 'underwater', 'swamp', 'sewer', 'cave', 'icecave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky', 'tower', 'gym', 'league', 'center'];
+import '../services/local_database.dart';
+import 'pokemon_sprite.dart';
+
+/// Os lugares que têm imagem (sprites/battle/<lugar>.webp, feitas por tool/battle_backgrounds.py, sem as bases: PlatformBase
+/// põe uma embaixo de cada Pokémon) e a versão de cada clima (sprites/battle-weather/<lugar>-sun/rain/sand/snow.webp, no
+/// site): Sunny Day, Rain Dance... mudam o cenário. Igual ao site.
+/// Os ginásios (um por tipo: o do líder), as salas dos Campeões (uma por região) e as bases das equipes vilãs. Igual ao site.
+const gymTypes = ['normal', 'fire', 'water', 'grass', 'electric', 'ice', 'fighting', 'poison', 'ground', 'flying', 'psychic', 'bug', 'rock', 'ghost', 'dragon', 'dark', 'steel', 'fairy'];
+const championRegions = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos', 'alola', 'galar', 'paldea'];
+const villainBases = ['rocket', 'aqua', 'magma', 'galactic', 'plasma', 'flare', 'skull', 'aether', 'star'];
+final _indoor = [for (final t in gymTypes) 'gym-$t', for (final r in championRegions) 'champion-$r', for (final b in villainBases) 'base-$b'];
+final sceneImages = ['grass', 'forest', 'water', 'beach', 'underwater', 'swamp', 'sewer', 'cave', 'icecave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky', 'tower', 'gym', 'league', 'center', ..._indoor];
 String _usable(String scene) => sceneImages.contains(scene) || BattleScenePainter.colors.containsKey(scene) ? scene : 'grass';
+
+/// De onde vêm as versões do clima (o site; não vão no APK).
+const weatherSite = 'https://octaviokonzen.github.io/Pocketdex';
 
 /// O clima na imagem (o granizo usa a de neve).
 const _weatherImage = {'sun': 'sun', 'rain': 'rain', 'sand': 'sand', 'hail': 'snow', 'snow': 'snow'};
@@ -29,6 +43,113 @@ const _platforms = {
   true: ([122.0, 40.0, 38.0, 6.5], [74.0, 80.0, 84.0, 20.0]),
 };
 
+/// O tamanho na batalha pela altura do Pokémon (decímetros), como nos jogos: um Joltik bem pequeno, um Charizard quase do
+/// tamanho do espaço e os gigantes ocupando tudo. Igual ao site (battleScale).
+double battleScale(num? height) => sqrt((height ?? 10) / 20).clamp(0.3, 1.0).toDouble();
+
+/// Onde ficam os pés do adversário em cada lugar (fração da altura do campo): um pouco para dentro do chão de cada cenário
+/// (tool/battle_backgrounds.py, foe_feet), para a base dele ficar no chão e não voando. Igual ao site.
+const groundFeet = <String, double>{'grass': 0.487, 'forest': 0.506, 'water': 0.487, 'beach': 0.508, 'underwater': 0.527, 'swamp': 0.487, 'sewer': 0.54, 'cave': 0.519, 'icecave': 0.519, 'mountain': 0.492, 'desert': 0.495, 'volcano': 0.5, 'snow': 0.487, 'city': 0.548, 'sky': 0.45, 'tower': 0.527, 'gym': 0.527, 'league': 0.527, 'center': 0.527};
+
+/// A distância do pé do adversário até a borda de baixo do campo (fração), para o "bottom" da caixa dele.
+double foeBottom(String scene) => 1 - (groundFeet[scene] ?? (_indoor.contains(scene) ? 0.527 : 0.45));
+
+/// Largura da base (fração da caixa do Pokémon) pelo tamanho dele. Igual ao site (baseWidth).
+double baseWidth(double scale) => 0.55 + 0.85 * scale;
+
+/// As alturas já lidas do banco (id → decímetros).
+final battleHeights = <int, num>{};
+
+/// Lê a altura de quem vai aparecer (a forma: Mega, Gigantamax...) e avisa quando chegar.
+void loadBattleHeight(int id, VoidCallback onLoaded) {
+  if (battleHeights.containsKey(id)) return;
+  LocalDatabase.instance.pokemonRow(id).then((row) {
+    final h = row?['height'] as num?;
+    if (h == null) return;
+    battleHeights[id] = h;
+    onLoaded();
+  });
+}
+
+/// A proporção (altura/largura) das imagens das bases (sprites/battle/<lugar>-base-<foe|mine>.webp).
+const _baseAspect = {'foe': 32 / 128, 'mine': 86 / 272};
+
+/// A base embaixo do Pokémon (com a cor do chão do lugar): o meio dela nos pés dele e a largura pelo tamanho dele. Vai
+/// dentro da caixa (quadrada) do Pokémon, num Stack sem cortar, antes dele. Igual ao site (PlatformBase).
+class PlatformBase extends StatefulWidget {
+  const PlatformBase({super.key, required this.scene, required this.side, required this.id});
+  final String scene, side;
+  final int id;
+
+  @override
+  State<PlatformBase> createState() => _PlatformBaseState();
+}
+
+class _PlatformBaseState extends State<PlatformBase> {
+  @override
+  void initState() {
+    super.initState();
+    loadBattleHeight(widget.id, () => mounted ? setState(() {}) : null);
+  }
+
+  @override
+  void didUpdateWidget(covariant PlatformBase old) {
+    super.didUpdateWidget(old);
+    if (old.id != widget.id) loadBattleHeight(widget.id, () => mounted ? setState(() {}) : null);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!sceneImages.contains(widget.scene)) return const SizedBox.shrink();
+    return LayoutBuilder(builder: (context, box) {
+      final size = box.maxWidth;
+      final w = size * baseWidth(battleScale(battleHeights[widget.id]));
+      final h = w * _baseAspect[widget.side]!;
+      return Stack(clipBehavior: Clip.none, children: [
+        Positioned(
+          key: ValueKey('base-${widget.side}'),
+          left: (size - w) / 2,
+          top: size * 0.975 - h / 2,
+          width: w,
+          height: h,
+          child: Image.asset('assets/database/sprites/battle/${widget.scene}-base-${widget.side}.webp',
+              fit: BoxFit.fill, filterQuality: FilterQuality.none, errorBuilder: (_, __, ___) => const SizedBox()),
+        ),
+      ]);
+    });
+  }
+}
+
+/// Um Pokémon parado no campo (as telas da Battle Factory): do tamanho dele (pela altura), em cima da base dele, no
+/// mesmo lugar da batalha. Vai num Positioned quadrado.
+class StageMon extends StatefulWidget {
+  const StageMon({super.key, required this.id, this.shiny = false, this.back = false, required this.scene});
+  final int id;
+  final bool shiny, back;
+  final String scene;
+
+  @override
+  State<StageMon> createState() => _StageMonState();
+}
+
+class _StageMonState extends State<StageMon> {
+  @override
+  void initState() {
+    super.initState();
+    loadBattleHeight(widget.id, () => mounted ? setState(() {}) : null);
+  }
+
+  @override
+  Widget build(BuildContext context) => Stack(clipBehavior: Clip.none, fit: StackFit.expand, children: [
+        PlatformBase(scene: widget.scene, side: widget.back ? 'mine' : 'foe', id: widget.id),
+        Transform.scale(
+          scale: battleScale(battleHeights[widget.id]),
+          alignment: Alignment.bottomCenter,
+          child: PokemonSprite(widget.id, shiny: widget.shiny, back: widget.back, fill: 0.95, alignBottom: true, battle: true),
+        ),
+      ]);
+}
+
 /// O fundo da batalha no estilo Black & White: a imagem do lugar (se tiver) ou o desenho com as bases nos mesmos lugares.
 class BattleBackdrop extends StatelessWidget {
   const BattleBackdrop({super.key, required this.scene, this.weather = ''});
@@ -39,10 +160,20 @@ class BattleBackdrop extends StatelessWidget {
     if (!sceneImages.contains(scene)) return CustomPaint(painter: BattleScenePainter(scene: scene, weather: weather, bw: true), size: Size.infinite);
     // A versão do clima (quem chama troca com AnimatedSwitcher quando o golpe muda o clima).
     final sky = _weatherImage[weather];
-    return Image.asset('assets/database/sprites/battle/$scene${sky == null ? '' : '-$sky'}.webp',
-        // Pixel art (256×192, como no DS): ampliada sem suavizar.
+    // Pixel art (256×192, como no DS): ampliada sem suavizar.
+    final base = Image.asset('assets/database/sprites/battle/$scene.webp',
         fit: BoxFit.fill, width: double.infinity, height: double.infinity, filterQuality: FilterQuality.none,
         errorBuilder: (_, __, ___) => CustomPaint(painter: BattleScenePainter(scene: scene, weather: weather, bw: true), size: Size.infinite));
+    if (sky == null) return base;
+    // As versões do clima não vão no APK (fica menor): vêm do site; até chegar (ou sem internet), a normal.
+    return Stack(fit: StackFit.expand, children: [
+      base,
+      Image.network('$weatherSite/sprites/battle-weather/$scene-$sky.webp',
+          fit: BoxFit.fill,
+          filterQuality: FilterQuality.none,
+          frameBuilder: (_, child, frame, sync) => AnimatedOpacity(opacity: frame == null ? 0 : 1, duration: const Duration(milliseconds: 600), child: child),
+          errorBuilder: (_, __, ___) => const SizedBox.shrink()),
+    ]);
   }
 }
 

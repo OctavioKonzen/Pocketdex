@@ -2,13 +2,15 @@
 import '../../../assets/database/battle_engine.js'
 
 const engine = () => globalThis.PocketDexSim
-const weatherIds = {raindance: 'rain', sunnyday: 'sun', sandstorm: 'sand', hail: 'hail', snow: 'snow'}
+const weatherIds = {raindance: 'rain', sunnyday: 'sun', sandstorm: 'sand', hail: 'hail', snow: 'snow', snowscape: 'snow', deltastream: 'wind'}
+// Terreno e o efeito de lugar da Battle Factory (pocketdex<efeito>) no campo.
+const terrainIds = {grassyterrain: 'grassy', electricterrain: 'electric', mistyterrain: 'misty', psychicterrain: 'psychic'}
 export function simulatorInput(mon) {
   return {...mon.simulation, id: mon.orig?.id ?? mon.id, name: mon.name, mega: mon.mega, gmax: mon.gmax, teraType: mon.teraType, gimmick: mon.gimmick, noDmax: mon.noDmax}
 }
 export function initializeSimulator(battle) {
   const seed = Array.from({length: 4}, () => Math.floor(battle.random() * 65536))
-  const created = engine().create({teams: battle.sides.map(s => s.team.map(simulatorInput)), seed, mode: battle.mode, controllers: battle.controllers, rules: battle.rules ?? [], ...(battle.startBags ? {bags: battle.startBags} : {}), ...(battle.healPct ? {healPct: true} : {}), ...(battle.capture ? {capture: battle.capture} : {})})
+  const created = engine().create({teams: battle.sides.map(s => s.team.map(simulatorInput)), seed, mode: battle.mode, controllers: battle.controllers, rules: battle.rules ?? [], ...(battle.startBags ? {bags: battle.startBags} : {}), ...(battle.healPct ? {healPct: true} : {}), ...(battle.capture ? {capture: battle.capture} : {}), ...(battle.startWeather ? {weather: battle.startWeather} : {}), ...(battle.startField ? {field: battle.startField} : {})})
   battle.simulator = {handle: created.handle, state: created.state, opening: created.events}
   syncSimulator(battle, created)
 }
@@ -24,6 +26,8 @@ export function syncSimulator(battle, result) {
   battle.captured = state.captured ?? null
   battle.terrain = state.terrain
   battle.weather = weatherIds[state.weather] ?? ''
+  battle.terrain = terrainIds[state.terrain] ?? ''
+  battle.place = (state.pseudoWeather ?? []).find((id) => id.startsWith('pocketdex'))?.slice(9) ?? ''
   battle.bags = state.bags
   battle.forceSwitch = state.sides.map(s => s.forceSwitch)
   battle.needSwitch = state.winner == null && state.sides[0].forceSwitch

@@ -101,6 +101,90 @@ void main() {
     expect(FactoryRun.upgradePrice({...FactoryRun.empty(), 'upgrades': {'level': 1}}, 'level'), 455);
   });
 
+  test('devolve moedas na troca para a primeira forma; melhorias que mudam o jogo; chefes com itens (igual ao site)', () {
+    int price(int id) => FactoryRun.pokemonPrice(data.species[id]![1] as int);
+    final fixed = FactoryRun.normalizeOwned({...FactoryRun.empty(), 'coins': 0, 'owned': [1, 6, 5, 4]}, data);
+    expect(fixed['owned'], [1, 4]);
+    expect(fixed['coins'], price(6) + price(5));
+    expect(FactoryRun.normalizeOwned({...FactoryRun.empty(), 'coins': 10, 'owned': [1, 6]}, data)['coins'], 10 + price(6) - price(4));
+    var f = {...FactoryRun.empty(), 'coins': 999999, 'owned': [1]};
+    for (final id in ['expShare', 'cards', 'reroll', 'shiny']) {
+      while (FactoryRun.upgradePrice(f, id) != null) {
+        f = FactoryRun.buyUpgrade(f, id)!;
+      }
+    }
+    final run = FactoryRun.startRun(f, data, 1, 42)!;
+    expect(run['expShare'], true);
+    expect(run['cardCount'], 4);
+    expect(run['rerolls'], 2);
+    expect(run['shinyRate'], 4);
+    expect(FactoryRun.rerollRoute(run, data)!['rerolls'], 1);
+    expect(FactoryRun.rerollRoute({...run, 'rerolls': 0}, data), isNull);
+    var state = 5;
+    double rand() {
+      final (v, s) = FactoryRun.nextRandom(state);
+      state = s;
+      return v;
+    }
+    final boss = FactoryRun.encounterFor(data, 20, rand, FactoryRun.bossOf(data, FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!));
+    expect((boss['foes'] as List).every((x) => FactoryRun.foeItems.contains(x['item'])), isTrue);
+  });
+
+  test('Mapa: aparece fácil na loja até ser comprado; sem ele, a bifurcação vai às cegas (igual ao site)', () {
+    final cases = [(42, 2, 3), (123456789, 5, 2), (2147483647, 9, 3), (7, 100, 3)];
+    expect([for (final (seed, floor, n) in cases) FactoryRun.blindPick({'seed': seed, 'floor': floor, 'route': {'options': List.filled(n, {})}})], [1, 0, 1, 2]);
+    final run = {...FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!, 'money': 9999, 'pending': {'shop': ['town-map']}};
+    final bought = FactoryRun.buyItem(run, 'town-map', 0, data)!;
+    expect(bought['townMap'], true);
+    expect(FactoryRun.buyItem(bought, 'town-map', 0, data), isNull);
+  });
+
+  test('base da equipe vilã: só capangas com os Pokémon da equipe; cenário de cada chefe (igual ao site)', () {
+    final run = {...FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!, 'floor': 23, 'leg': 3, 'boss': {'region': 0, 'step': 11}};
+    expect(FactoryRun.routeBiome(data, run), 'base-rocket');
+    var state = 11;
+    double rand() {
+      final (v, s) = FactoryRun.nextRandom(state);
+      state = s;
+      return v;
+    }
+    for (var i = 0; i < 30; i++) {
+      final route = FactoryRun.routeOptions({...run, 'floor': 21 + (i % 8)}, data, rand);
+      expect((route['options'] as List).any((o) => ['wild', 'mart', 'trade', 'wildboss'].contains(o['kind'])), isFalse);
+    }
+    final grunt = FactoryRun.encounterFor(data, 23, rand, null, false, {'kind': 'trainer', 'biome': 'base-rocket'});
+    expect(grunt['grunt'], 'rocket');
+    final brock = (data.bosses[0]['leaders'] as List).cast<Map>().firstWhere((l) => l['id'] == 'kanto-brock');
+    expect(FactoryRun.bossScene(data, {...brock, 'region': 'Kanto'}), 'gym-rock');
+    expect(FactoryRun.bossScene(data, {'kind': 'champion', 'region': 'Kanto'}), 'champion-kanto');
+    expect(FactoryRun.bossScene(data, {'kind': 'villain', 'name': 'Archie'}), 'base-aqua');
+    expect(FactoryRun.bossScene(data, null, 'forest'), 'forest');
+  });
+
+  test('troca, Escape Rope e conquistas (iguais ao site)', () {
+    final base = FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!;
+    final first = FactoryRun.teamOf(base).first;
+    final run = {...base, 'team': [{...first, 'level': 10, 'item': 'leftovers'}], 'pending': {'trade': {'id': 19}}};
+    final traded = FactoryRun.teamOf(FactoryRun.tradeMon(run, 0, data)).first;
+    expect(traded['id'], 19);
+    expect(traded['level'], 13);
+    expect(traded['ivs'], {'hp': 20, 'atk': 15, 'def': 29, 'spa': 26, 'spd': 16, 'spe': 14});
+    expect(traded['nature'], 'Serious');
+    expect(traded['item'], 'leftovers');
+    expect(FactoryRun.escapeRope(base, data, hp: [0]), isNull);
+    final escaped = FactoryRun.escapeRope({...base, 'floor': 7, 'bag': {...base['bag'] as Map, 'escape-rope': 1}}, data, hp: [0])!;
+    expect(escaped['route'], {'floor': 7, 'biome': 'grass', 'options': [{'kind': 'wild', 'biome': 'grass'}]});
+    expect(FactoryRun.teamOf(escaped).first['hp'], FactoryRun.escapeHp);
+    expect(escaped['bag']['escape-rope'], 0);
+    final (f1, earned) = FactoryRun.progress(
+        {...FactoryRun.empty(), 'coins': 0}, {...base, 'floor': 30, 'badges': 1, 'champions': 1, 'pending': {'champion': true}});
+    expect(earned, containsAll(['badge', 'champion', 'floor25']));
+    expect((f1['hall'] as List), hasLength(1));
+    final (f2, again) = FactoryRun.progress(f1, {...base, 'floor': 30, 'badges': 1, 'champions': 1, 'pending': {'champion': true}});
+    expect(again, isEmpty);
+    expect(identical(f1, f2), isTrue);
+  });
+
   test('XP só para quem lutou; com o Exp. Share, a metade para o resto do time (igual ao site)', () {
     final base = FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!;
     final first = FactoryRun.teamOf(base).first;
@@ -277,13 +361,13 @@ void main() {
       expect(FactoryRun.routeOptions(on(12, step, 12), data, seq([0.5]))['options'], [{'kind': 'boss'}]);
     }
     expect(FactoryRun.routeCities(data, on(12, first + 1, 12)), (from: 'Indigo Plateau', to: 'Indigo Plateau'));
-    // Os tipos do lugar aparecem bem mais (os outros ainda aparecem).
+    // Selvagem: só quem vive no lugar (o habitat dele, dos locais de encontro dos jogos).
     var local = 0;
     for (var i = 0; i < 100; i++) {
       final water = FactoryRun.encounterFor(data, 20, rand, null, false, {'kind': 'wild', 'biome': 'water'});
-      if ((data.species[water['foes'][0]['id']]![4] as List).any(FactoryRun.biomes['water']!.contains)) local++;
+      if ((data.species[water['foes'][0]['id']]![6] as List).contains('water')) local++;
     }
-    expect(local, greaterThan(60));
+    expect(local, 100);
     final cave = {...at(20), 'encounter': {'kind': 'wild', 'biome': 'cave', 'foes': [{'id': 74, 'level': 20}]}};
     expect(FactoryRun.captureFor(cave, data), {'rates': [255], 'dusk': true});
     final ace = FactoryRun.encounterFor(data, 30, rand, null, false, {'kind': 'ace'});

@@ -7,7 +7,11 @@ adversário lá atrás à direita, a sua grande na frente à esquerda).
 
 Cada lugar sai em 5 versões: sem clima e com sol, chuva, areia e neve
 (granizo usa a de neve), porque golpes como Sunny Day e Rain Dance mudam o
-cenário: assets/database/sprites/battle/<lugar>.webp e <lugar>-<clima>.webp.
+cenário: assets/database/sprites/battle/<lugar>.webp e
+assets/database/sprites/battle-weather/<lugar>-<clima>.webp (fora do APK: o app
+baixa do site quando o clima muda; sem internet, fica a normal).
+As bases ficam à parte (<lugar>-base-foe.webp e <lugar>-base-mine.webp): o site e
+o app desenham uma embaixo de cada Pokémon, do tamanho dele.
 
 Uso: python3 tool/battle_backgrounds.py [lugar ...]          (sem nada: todos)
      SHEET=folha.png python3 tool/battle_backgrounds.py      (+ folha com todos)
@@ -27,6 +31,7 @@ from PIL import Image, ImageDraw, ImageFilter
 
 W, H = 800, 597
 OUT = os.path.join(os.path.dirname(__file__), '..', 'assets', 'database', 'sprites', 'battle')
+OUT_WEATHER = os.path.join(os.path.dirname(__file__), '..', 'assets', 'database', 'sprites', 'battle-weather')
 FOE = (0.761, 0.393, 0.241, 0.066)
 MINE = (0.462, 0.80, 0.525, 0.20)
 HORIZON = int(H * 0.36)
@@ -49,6 +54,8 @@ def mix(a, b, t):
 
 # O céu de cada lugar (o primeiro degradê que ele pinta): os climas trocam só ele.
 SKY = []
+# Onde começa o chão de cada lugar (o último ground() desenhado: o piso onde os Pokémon pisam).
+FLOOR = []
 
 
 def vgrad(stops, y0=0, y1=H):
@@ -142,6 +149,7 @@ def mountains(a, seed, y, amp, top, bottom, haze=None, haze_k=0.0, rough=0.5, st
 
 def ground(a, top, far, near, seed, stretch=4.0, tex=0.14, cells=10, spots=None):
     """O chão do horizonte (top) até embaixo, com textura esticada (perspectiva) e manchas."""
+    FLOOR.append(top)
     g = vgrad([(0, far), (1, near)], top, H)
     n1 = noise(cells, seed, 5, stretch) - 0.5
     n2 = noise(cells * 4, seed + 1, 3, stretch * 1.6) - 0.5
@@ -709,8 +717,221 @@ SCENES = {
 }
 
 
+# ------------------------------------------------------------ ginásios (um por tipo: o do líder), salas dos Campeões e bases dos vilões
+
+# Tipo do ginásio: [parede em cima, parede embaixo, chão longe, chão perto, cor de destaque].
+GYM_TYPES = {
+    'normal': ['3a3226', '8a7a5c', 'd8c8a0', 'a08a62', 'f0e0b8'], 'fire': ['2a0806', '7a2010', 'a0402a', '5a1c10', 'ff9a3a'],
+    'water': ['06223e', '1a5a8e', '5ab0e0', '2a6aa8', '9ae0ff'], 'grass': ['0e2a12', '2e6a2a', '8ac862', '4a8a3a', 'b8f08a'],
+    'electric': ['141428', '3a3a5a', 'c8c070', '8a8240', 'ffe84a'], 'ice': ['1a3050', '6a9ac8', 'd8eeff', '8ab8e0', 'ffffff'],
+    'fighting': ['2a1a10', '6a4226', 'c89a5a', '8a6232', 'e04a3a'], 'poison': ['1e0e2a', '5a2a6a', '9a6aaa', '5a3a6a', 'd07aff'],
+    'ground': ['2a1a0a', '7a5a32', 'd8b070', 'a07a42', 'f0d090'], 'flying': ['3a6aa8', 'a8d0f0', 'e8f4ff', 'a8c8e8', 'ffffff'],
+    'psychic': ['2a0e2a', '7a3a7a', 'e0a0d0', 'a06a9a', 'ff8ae0'], 'bug': ['1a2208', '4a5a1a', 'a8b05a', '6a7a2a', 'e0f04a'],
+    'rock': ['1e1a16', '5a5046', 'a89a86', '6a6052', 'd0c4b0'], 'ghost': ['0a0614', '2a1a3e', '4a3a6a', '1e1630', 'a07aff'],
+    'dragon': ['0e0a2a', '2e2a6a', '6a5aa0', '342a6a', 'ff6a4a'], 'dark': ['060608', '1e1e26', '3a3a46', '16161e', 'c04a6a'],
+    'steel': ['1a2026', '5a6670', 'b8c4cc', '7a868e', 'e8f0f4'], 'fairy': ['3a1a2e', 'c07aa0', 'ffd8ea', 'e8a8c8', 'ffffff'],
+}
+
+
+def gym_decor(t, accent, rnd):
+    """O que tem na parede e nos cantos de cada ginásio (pelo tipo)."""
+    A = tuple(int(v) for v in accent)
+    Y1 = HORIZON + 30
+
+    def fn(d):
+        if t == 'fire':
+            for x in range(40, W, 120):
+                d.rectangle([x - 10, Y1 - 60, x + 10, Y1], fill=(60, 40, 30, 255))
+                d.polygon([(x - 18, Y1 - 60), (x, Y1 - 110), (x + 18, Y1 - 60)], fill=(255, 120, 40, 255))
+                d.polygon([(x - 8, Y1 - 60), (x, Y1 - 88), (x + 8, Y1 - 60)], fill=(255, 220, 90, 255))
+        elif t == 'water':
+            for k in range(6):
+                y = 60 + k * 26
+                d.arc([-40, y - 20, W + 40, y + 20], 0, 180, fill=A + (120,), width=3)
+        elif t == 'grass':
+            for _ in range(40):
+                x, y, r = rnd.uniform(0, W), rnd.uniform(20, Y1 - 10), rnd.uniform(10, 26)
+                d.ellipse([x - r, y - r * 0.6, x + r, y + r * 0.6], fill=(60 + rnd.randrange(60), 140 + rnd.randrange(60), 60, 255))
+            for x in range(0, W, 60):
+                d.line([(x, 0), (x + rnd.uniform(-20, 20), Y1)], fill=(40, 100, 40, 255), width=3)
+        elif t == 'electric':
+            for x in range(60, W, 140):
+                d.polygon([(x, 30), (x + 30, 30), (x + 10, 90), (x + 34, 90), (x - 10, 170), (x + 4, 110), (x - 18, 110)], fill=A + (255,))
+            for y in (40, Y1 - 30):
+                d.line([(0, y), (W, y)], fill=(80, 220, 255, 200), width=3)
+        elif t == 'ice':
+            for x in range(0, W, 26):
+                h = rnd.uniform(30, 90)
+                d.polygon([(x, 0), (x + 13, h), (x + 26, 0)], fill=(220, 240, 255, 230))
+            for x in (90, 320, 520, 720):
+                d.polygon([(x - 26, Y1), (x, Y1 - 120), (x + 26, Y1)], fill=(190, 230, 255, 220))
+        elif t == 'fighting':
+            for x in range(0, W, 80):
+                d.line([(x, 0), (x, Y1)], fill=(60, 36, 20, 255), width=4)
+            for x in (150, 650):
+                d.rectangle([x - 30, 20, x + 30, 150], fill=A + (255,))
+                d.ellipse([x - 16, 60, x + 16, 92], fill=(250, 240, 220, 255))
+        elif t == 'poison':
+            for _ in range(60):
+                x, y, r = rnd.uniform(0, W), rnd.uniform(10, Y1), rnd.uniform(4, 14)
+                d.ellipse([x - r, y - r, x + r, y + r], outline=A + (200,), width=2)
+        elif t == 'ground':
+            for k, y in enumerate(range(30, Y1, 22)):
+                d.rectangle([0, y, W, y + 10], fill=(120 + k * 8, 90 + k * 6, 50 + k * 4, 160))
+        elif t == 'flying':
+            for x in range(40, W, 190):
+                d.rounded_rectangle([x, 30, x + 140, Y1 - 30], radius=60, fill=(140, 200, 250, 255), outline=(255, 255, 255, 255), width=6)
+                d.ellipse([x + 20, 80, x + 100, 120], fill=(255, 255, 255, 230))
+        elif t == 'psychic':
+            for x in (200, 600):
+                for r in range(10, 90, 14):
+                    d.ellipse([x - r, 110 - r, x + r, 110 + r], outline=A + (150,), width=3)
+            for _ in range(40):
+                x, y = rnd.uniform(0, W), rnd.uniform(10, Y1)
+                d.polygon([(x, y - 6), (x + 2, y - 2), (x + 6, y), (x + 2, y + 2), (x, y + 6), (x - 2, y + 2), (x - 6, y), (x - 2, y - 2)], fill=(255, 230, 255, 220))
+        elif t == 'bug':
+            for x in range(0, W + 40, 40):
+                for y in range(0, Y1, 46):
+                    o = 20 if (y // 46) % 2 else 0
+                    cx, cy = x + o, y
+                    d.polygon([(cx - 18, cy), (cx - 9, cy - 16), (cx + 9, cy - 16), (cx + 18, cy), (cx + 9, cy + 16), (cx - 9, cy + 16)], outline=A + (140,), width=2)
+        elif t == 'rock':
+            for _ in range(14):
+                x, y, r = rnd.uniform(0, W), Y1 - rnd.uniform(0, 30), rnd.uniform(20, 46)
+                d.polygon([(x - r, y), (x - r * 0.6, y - r), (x + r * 0.3, y - r * 1.2), (x + r, y - r * 0.4), (x + r * 0.9, y)], fill=(110 + rnd.randrange(40), 100, 90, 255))
+        elif t == 'ghost':
+            for x in range(50, W, 110):
+                d.rectangle([x - 5, Y1 - 40, x + 5, Y1], fill=(220, 210, 190, 255))
+                d.ellipse([x - 6, Y1 - 56, x + 6, Y1 - 38], fill=(160, 220, 255, 255))
+            for _ in range(20):
+                x, y, r = rnd.uniform(0, W), rnd.uniform(20, Y1 - 60), rnd.uniform(6, 12)
+                d.ellipse([x - r, y - r, x + r, y + r], fill=A + (120,))
+        elif t == 'dragon':
+            for x in (120, 680):
+                d.polygon([(x - 34, 20), (x + 34, 20), (x + 34, 170), (x, 150), (x - 34, 170)], fill=A + (255,))
+                d.polygon([(x - 14, 60), (x, 44), (x + 14, 60), (x, 110)], fill=(250, 220, 120, 255))
+        elif t == 'dark':
+            d.ellipse([W * 0.5 - 50, 30, W * 0.5 + 50, 130], fill=(240, 236, 220, 255))
+            d.ellipse([W * 0.5 - 24, 24, W * 0.5 + 70, 120], fill=(14, 14, 20, 255))
+        elif t == 'steel':
+            for x in range(0, W, 100):
+                for y in range(0, Y1, 60):
+                    d.rectangle([x + 4, y + 4, x + 96, y + 56], outline=(140, 150, 160, 255), width=2)
+                    for cx, cy in ((x + 10, y + 10), (x + 90, y + 10), (x + 10, y + 50), (x + 90, y + 50)):
+                        d.ellipse([cx - 3, cy - 3, cx + 3, cy + 3], fill=(200, 210, 220, 255))
+        elif t == 'fairy':
+            for _ in range(30):
+                x, y, r = rnd.uniform(0, W), rnd.uniform(10, Y1 - 10), rnd.uniform(6, 14)
+                d.ellipse([x - r, y - r * 0.8, x, y + r * 0.2], fill=(255, 150, 200, 220))
+                d.ellipse([x, y - r * 0.8, x + r, y + r * 0.2], fill=(255, 150, 200, 220))
+                d.polygon([(x - r, y - r * 0.1), (x + r, y - r * 0.1), (x, y + r)], fill=(255, 150, 200, 220))
+        else:
+            for x in range(60, W, 170):
+                d.rectangle([x - 14, 0, x + 14, Y1], fill=A + (180,))
+    return fn
+
+
+def gym_scene(t):
+    def make():
+        wall_top, wall_bottom, far, near, accent = [rgb(c) for c in GYM_TYPES[t]]
+        rnd = random.Random(sum(map(ord, t)))
+        a = vgrad([(0, wall_top), (1, wall_bottom)], 0, HORIZON + 30)
+        a = layer(a, gym_decor(t, accent, rnd))
+        for x in (160, 400, 640):
+            a = glow(a, x, 20, 60, (255, 250, 230), 0.5)
+        a = ground(a, HORIZON + 30, far, near, 300 + len(t), 6, 0.08)
+        # A arena: a faixa na entrada e o círculo do meio na cor do tipo.
+        A = tuple(int(v) for v in accent)
+        a = layer(a, lambda d: (d.rectangle([0, HORIZON + 30, W, HORIZON + 37], fill=A + (255,)),
+                                d.ellipse([W * 0.34, H * 0.53, W * 0.66, H * 0.66], outline=A + (220,), width=5),
+                                d.line([(W * 0.5, HORIZON + 37), (W * 0.5, H)], fill=A + (150,), width=3)), 0.7)
+        a = reflect(a, HORIZON + 30, HORIZON + 90, 0.14, 6)
+        return a, {'outdoor': False, 'seed': 300 + len(t)}
+    return make
+
+
+# Sala do Campeão de cada região: [parede em cima, parede embaixo, chão longe, chão perto, tapete, detalhe].
+CHAMPIONS = {
+    'kanto': ['1a0606', '5a1a1a', '6a3a2a', '2a140e', 'b0202a', 'f0c060'], 'johto': ['060e2a', '1a2a6a', '3a4a7a', '141a3a', '2a4ab0', 'f0d070'],
+    'hoenn': ['062420', '1a5a4a', '3a7a6a', '143a30', '1a8a7a', 'a0f0e0'], 'sinnoh': ['14141e', '4a4a5a', '8a8a9a', '3a3a46', '5a4ab0', 'e0e0f0'],
+    'unova': ['0a0a0a', '3a3a3a', 'd8d8d8', '6a6a6a', '1a1a1a', 'ffffff'], 'kalos': ['0a1430', '2a3a7a', '9aa8d0', '3a4a7a', '2a5ab0', 'e8d8a0'],
+    'alola': ['2a5a8a', 'a8d8e8', 'e8d8a8', 'a89a6a', '2a9a6a', 'ffd060'], 'galar': ['100a2a', '3a2a7a', '4a8a3a', '1e3a1a', 'b02a4a', 'f0f0ff'],
+    'paldea': ['2a0a1a', '7a2a3a', 'e8b070', 'a06a3a', 'e0601a', 'a060e0'],
+}
+
+
+def champion_scene(region):
+    def make():
+        top, bottom, far, near, carpet, gold = [rgb(c) for c in CHAMPIONS[region]]
+        G = tuple(int(v) for v in gold)
+        a = vgrad([(0, top), (1, bottom)], 0, HORIZON + 30)
+        a = glow(a, W * 0.5, 40, 200, tuple(int(v) for v in gold), 0.35)
+        for x in (40, 170, 590, 720):
+            a = layer(a, lambda d, x=x: (d.rectangle([x, 20, x + 36, HORIZON + 34], fill=G + (255,)), d.rectangle([x - 8, 10, x + 44, 26], fill=G + (255,)),
+                                         d.rectangle([x + 6, 26, x + 12, HORIZON + 30], fill=(255, 255, 255, 120))))
+        a = layer(a, lambda d: (d.polygon([(W * 0.5 - 70, 40), (W * 0.5 + 70, 40), (W * 0.5 + 54, 150), (W * 0.5, 170), (W * 0.5 - 54, 150)], fill=tuple(int(v) for v in carpet) + (255,)),
+                                d.ellipse([W * 0.5 - 24, 70, W * 0.5 + 24, 118], outline=G + (255,), width=5)))
+        a = ground(a, HORIZON + 30, far, near, 400 + len(region), 6, 0.06)
+        a = reflect(a, HORIZON + 30, HORIZON + 120, 0.22, 4)
+        a = put(a, vgrad([(0, carpet * 1.1), (1, carpet * 0.7)], HORIZON + 30, H), mask(lambda d: d.polygon([(W * 0.44, HORIZON + 30), (W * 0.56, HORIZON + 30), (W * 0.84, H), (W * 0.16, H)], fill=255), 1))
+        a = layer(a, lambda d: [d.line([(W * 0.44, HORIZON + 30), (W * 0.16, H)], fill=G + (255,), width=3), d.line([(W * 0.56, HORIZON + 30), (W * 0.84, H)], fill=G + (255,), width=3)])
+        a = motes(a, 410 + len(region), 40, (0, 0, W, H * 0.6), tuple(int(v) for v in gold), 2, 1.5)
+        return a, {'outdoor': False, 'seed': 400 + len(region)}
+    return make
+
+
+# Base de cada equipe vilã: [parede em cima, parede embaixo, chão longe, chão perto, cor da equipe, segunda cor].
+BASES = {
+    'rocket': ['0e0e12', '3a3a42', '5a5a62', '22222a', 'd02020', 'f0f0f0'], 'aqua': ['04142a', '0e3a6a', '2a5a8a', '0e2a4a', '2a8ae0', 'ffffff'],
+    'magma': ['1e0604', '5a1a0e', '6a3a2a', '2a120a', 'e04a1a', '2a2a2a'], 'galactic': ['0a1018', '2a3a4a', '8a9aa8', '3a4652', '4ad0e0', 'e0e8f0'],
+    'plasma': ['0e1220', '3a4260', '6a7290', '2a3048', '2a5ad0', 'e0e0f0'], 'flare': ['1a0606', '4a1010', '3a2a2a', '160a0a', 'ff4020', 'f0b030'],
+    'skull': ['14101a', '3a2e46', '5a5262', '22202a', 'a0a0a8', 'e04ab0'], 'aether': ['b8c8d8', 'f0f4f8', 'f8f8f8', 'c8d0d8', 'e0b040', 'ffffff'],
+    'star': ['1a1030', '4a2a6a', 'b07a4a', '6a4a2a', 'ff5ac0', 'ffd040'],
+}
+
+
+def base_scene(team):
+    def make():
+        top, bottom, far, near, color, second = [rgb(c) for c in BASES[team]]
+        C, S = tuple(int(v) for v in color), tuple(int(v) for v in second)
+        rnd = random.Random(500 + len(team))
+        a = vgrad([(0, top), (1, bottom)], 0, HORIZON + 30)
+        # Painéis na parede, luzes e as faixas da equipe (com o símbolo: um losango com um círculo).
+        a = layer(a, lambda d: [d.rectangle([x + 3, y + 3, x + 77, y + 47], outline=tuple(int(v * 1.4) for v in top) + (255,), width=2) for x in range(0, W, 80) for y in range(0, HORIZON + 10, 50)])
+        for x in (200, 600):
+            a = layer(a, lambda d, x=x: (d.rectangle([x - 46, 18, x + 46, 160], fill=C + (255,)), d.polygon([(x, 50), (x + 30, 88), (x, 126), (x - 30, 88)], fill=S + (255,)),
+                                         d.ellipse([x - 12, 76, x + 12, 100], fill=C + (255,))))
+        for x in range(40, W, 120):
+            a = glow(a, x, HORIZON + 10, 18, C, 0.6)
+        a = ground(a, HORIZON + 30, far, near, 500 + len(team), 6, 0.08)
+        # O chão em placas e uma faixa da equipe.
+        a = layer(a, lambda d: [d.line([(W * 0.5 + (x - W * 0.5) * 0.2, HORIZON + 30), (x, H)], fill=tuple(int(v * 0.8) for v in near) + (255,), width=2) for x in range(-300, W + 340, 110)]
+                  + [d.line([(0, y), (W, y)], fill=tuple(int(v * 0.8) for v in near) + (255,), width=2) for y in (HORIZON + 46, HORIZON + 80, HORIZON + 140, HORIZON + 230)]
+                  + [d.rectangle([0, HORIZON + 30, W, HORIZON + 36], fill=C + (255,))])
+        a = reflect(a, HORIZON + 30, HORIZON + 90, 0.16, 5)
+        if team in ('aqua', 'magma'):
+            a = motes(a, 520, 40, (0, 0, W, HORIZON), (120, 200, 255) if team == 'aqua' else (255, 140, 60), 2.5, 1.5)
+        return a, {'outdoor': False, 'seed': 500 + len(team)}
+    return make
+
+
+for _t in GYM_TYPES:
+    SCENES[f'gym-{_t}'] = gym_scene(_t)
+for _r in CHAMPIONS:
+    SCENES[f'champion-{_r}'] = champion_scene(_r)
+for _b in BASES:
+    SCENES[f'base-{_b}'] = base_scene(_b)
+
+
+def foe_feet(top):
+    """Onde ficam os pés do adversário (fração da altura): um pouco para dentro do chão do lugar, nunca no horizonte
+    (a base não pode parecer voando). Igual a GROUND_FEET no site e no app."""
+    return round((top + (H - top) * 0.2) / H, 3)
+
+
 def render(name, w='', bases=True):
     SKY.clear()
+    FLOOR.clear()
     a, info = SCENES[name]()
     if w:
         a = weather(a, w, info)
@@ -732,14 +953,41 @@ def pixelate(im, w=''):
     small = small.quantize(colors=COLORS, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert('RGB')
     a = np.asarray(small, np.float32)
     big = np.zeros((H, W, 3), np.float32)
-    # As bases na resolução da tela (cada anel um degrau de pixel), com o tom do clima.
-    tone = {'rain': np.array([0.85, 0.88, 0.95]), 'sun': np.array([1.05, 1.0, 0.92]), 'sand': np.array([1.0, 0.95, 0.85]), 'snow': np.array([1.0, 1.02, 1.06])}.get(w, 1)
-    for spec in (FOE, MINE):
-        a = put_small(a, spec, tone)
     return Image.fromarray(np.clip(a, 0, 255).astype(np.uint8))
 
 
-def put_small(a, spec, tone):
+def base_sprite(scene_im, spec, feet=None):
+    """A base sozinha (fundo transparente), em pixel, com a cor do chão do lugar: o site e o app a
+    desenham embaixo de cada Pokémon, centralizada nele e do tamanho dele."""
+    a = np.asarray(scene_im, np.float32)
+    h, w = a.shape[:2]
+    cx, cy, rx, ry = spec
+    if feet is not None:
+        cy = feet
+    X, Y, RX, RY = cx * w, cy * h, rx * w, ry * h
+    ys = slice(int(max(0, Y - RY * 1.3)), int(min(h, Y + RY * 1.3)))
+    xs = slice(int(max(0, X - RX * 1.1)), int(min(w, X + RX * 1.1)))
+    ground_c = a[ys, xs].reshape(-1, 3).mean(axis=0)
+    RX, RY = round(RX), round(RY)
+    thick = max(2, round(RY * 0.16))
+    bw, bh = RX * 2 + 4, RY * 2 + thick + 4
+    canvas = np.zeros((bh, bw, 4), np.float32)
+    # Desenha numa cópia (com transparência) usando o mesmo put_small, centrada.
+    rgb_ = np.zeros((bh, bw, 3), np.float32)
+    alpha = np.zeros((bh, bw), np.float32)
+    spec2 = ((RX + 2) / bw, (RY + 2) / bh, RX / bw, RY / bh)
+    black = put_small(np.zeros((bh, bw, 3), np.float32), spec2, 1, ground_c)
+    white = put_small(np.full((bh, bw, 3), 255, np.float32), spec2, 1, ground_c)
+    # Transparência pela diferença entre o fundo preto e o branco.
+    alpha = 1 - (white - black).mean(axis=2) / 255
+    alpha = np.clip(alpha, 0, 1)
+    rgb_ = np.where(alpha[..., None] > 0.01, black / np.maximum(alpha[..., None], 0.01), 0)
+    canvas[..., :3] = np.clip(rgb_, 0, 255)
+    canvas[..., 3] = np.round(alpha * 255)
+    return Image.fromarray(canvas.astype(np.uint8), 'RGBA')
+
+
+def put_small(a, spec, tone, ground_c=None):
     """Uma base em pixel: sombra no chão, espessura (a borda de baixo mais escura), um pouco da cor do chão em volta e os anéis."""
     h, w = a.shape[:2]
     cx, cy, rx, ry = spec
@@ -747,7 +995,8 @@ def put_small(a, spec, tone):
     # A cor do chão logo em volta (para a base combinar com o lugar).
     ys = slice(int(max(0, Y - RY * 1.3)), int(min(h, Y + RY * 1.3)))
     xs = slice(int(max(0, X - RX * 1.1)), int(min(w, X + RX * 1.1)))
-    ground_c = a[ys, xs].reshape(-1, 3).mean(axis=0)
+    if ground_c is None:
+        ground_c = a[ys, xs].reshape(-1, 3).mean(axis=0)
     thick = max(2, round(RY * 0.16))
     im = Image.new('RGBA', (w, h), (0, 0, 0, 0))
     d = ImageDraw.Draw(im)
@@ -755,7 +1004,8 @@ def put_small(a, spec, tone):
     shadow = Image.new('RGBA', (w, h), (0, 0, 0, 0))
     ImageDraw.Draw(shadow).ellipse([X - RX * 1.04, Y - RY * 0.7 + thick, X + RX * 1.04, Y + RY * 1.08 + thick], fill=(0, 0, 0, 120))
     shadow = shadow.filter(ImageFilter.GaussianBlur(2))
-    blend_k = 0.28
+    # Bem misturada com a cor do chão: a base é um pedaço do chão do lugar (como no Black & White), não um disco solto.
+    blend_k = 0.5
     def col(c):
         c = mix(np.array(c, np.float32), ground_c, blend_k)
         return tuple(int(v) for v in np.clip(c * tone, 0, 255))
@@ -784,17 +1034,26 @@ def main():
     names = sys.argv[1:] or list(SCENES)
     weathers = [''] + (WEATHERS if os.environ.get('WEATHERS', '1') != '0' else [])
     os.makedirs(OUT, exist_ok=True)
+    os.makedirs(OUT_WEATHER, exist_ok=True)
+    feet = {}
     for name in names:
         for w in weathers:
-            pixelate(render(name, w, bases=False), w).save(os.path.join(OUT, f"{name}{'-' + w if w else ''}.webp"), 'WEBP', lossless=True, method=6)
-        print(name, flush=True)
+            im = pixelate(render(name, w, bases=False), w)
+            if not w:
+                feet[name] = foe_feet(FLOOR[-1]) if FLOOR else 0.45
+            im.save(os.path.join(OUT_WEATHER, f'{name}-{w}.webp') if w else os.path.join(OUT, f'{name}.webp'), 'WEBP', lossless=True, method=6)
+            if not w:
+                # As bases: a de longe (do adversário) e a de perto (a sua), cada uma com a sua perspectiva.
+                for side, spec in (('foe', FOE), ('mine', MINE)):
+                    base_sprite(im, spec, feet[name] if side == 'foe' else None).save(os.path.join(OUT, f'{name}-base-{side}.webp'), 'WEBP', lossless=True, method=6)
+        print(name, feet[name], flush=True)
     sheet = os.environ.get('SHEET')
     if sheet:
         cols, tw, th = 4, PIXEL[0], PIXEL[1]
         rows = [(n, w) for n in names for w in weathers] if len(names) <= 3 else [(n, '') for n in names]
         out = Image.new('RGB', (tw * cols, th * math.ceil(len(rows) / cols)), 'black')
         for i, (n, w) in enumerate(rows):
-            im = Image.open(os.path.join(OUT, f"{n}{'-' + w if w else ''}.webp")).convert('RGB').resize((tw, th), Image.NEAREST)
+            im = Image.open(os.path.join(OUT_WEATHER, f'{n}-{w}.webp') if w else os.path.join(OUT, f'{n}.webp')).convert('RGB').resize((tw, th), Image.NEAREST)
             ImageDraw.Draw(im).text((6, 4), f'{n} {w}', fill='white')
             out.paste(im, ((i % cols) * tw, (i // cols) * th))
         out.save(sheet)

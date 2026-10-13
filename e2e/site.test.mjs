@@ -381,15 +381,17 @@ try {
       // Uma vez, cura com uma Potion da Bolsa (quando já perdeu vida).
       if (!healed) {
         await page.getByRole('button', { name: '▸ BOLSA' }).click()
-        const potion = page.getByTestId('bag').getByRole('button', { name: /^Potion/ })
-        if (await potion.isEnabled()) {
+        // A Bolsa do Black & White: tocar no item mostra a ajuda e o "USAR".
+        await page.getByTestId('bag-item-potion').click()
+        const use = page.getByTestId('bag-use')
+        if (await use.isEnabled()) {
           healed = true
-          await potion.click()
+          await use.click()
           await page.getByTestId('party').locator('button:not([disabled])').first().click()
           await page.getByText(/recuperou \d+ de HP/).waitFor({ timeout: 15000 })
           continue
         }
-        await page.getByTestId('bag').locator('..').getByRole('button', { name: 'Voltar' }).click()
+        await page.getByTestId('bag').getByRole('button', { name: 'Fechar' }).click()
       }
       await page.getByRole('button', { name: '▸ LUTAR' }).click()
       await page.getByTestId('moves').locator('button[data-no-translate]:not([disabled])').first().click()
