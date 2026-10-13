@@ -21,8 +21,6 @@ export const SCENE_COLORS = {
   center: ['#fbcfe8', '#fdf2f8', '#f472b6', '#f9a8d4'],
   over: ['#94a3b8', '#cbd5e1', '#64748b', '#94a3b8'],
 }
-/** Na imagem, o clima muda o tom (chuva mais escura, sol mais quente...). */
-const WEATHER_FILTER = { rain: 'brightness(.8) saturate(.8)', sun: 'brightness(1.12) sepia(.25)', sand: 'sepia(.45)', hail: 'brightness(1.05) saturate(.7)', snow: 'brightness(1.05) saturate(.7)' }
 const WEATHER_COLORS = { rain: ['#a1bac4', '#d6e3d6'], sun: ['#ffe4a1', '#e8f6b6'], sand: ['#d1bd96', '#eee2ad'], hail: ['#bacbd8', '#eef5e3'], snow: ['#bacbd8', '#eef5e3'] }
 
 /** O que tem no lugar, atrás das bases (coordenadas do campo: 160 × 100). */
@@ -156,11 +154,15 @@ export const PLATFORMS = {
   bw: { foe: [122, 40, 38, 6.5], mine: [74, 80, 84, 20] },
 }
 
-/** Os lugares que têm imagem (sprites/battle/<lugar>.webp, com as bases desenhadas): as mandadas pelo usuário. Igual ao app. */
-export const SCENE_IMAGES = ['grass', 'forest', 'cave', 'icecave', 'snow', 'city']
-/** Sem imagem ainda: o lugar parecido que tem (ou que é desenhado aqui). */
-const FALLBACK = { icecave: 'snow', beach: 'water', underwater: 'water', swamp: 'forest', sewer: 'city', desert: 'mountain', gym: 'city', league: 'tower' }
-const usable = (scene) => (SCENE_IMAGES.includes(scene) || SCENE_COLORS[scene] ? scene : usable(FALLBACK[scene] ?? 'grass'))
+/**
+ * Os lugares que têm imagem (sprites/battle/<lugar>.webp, feitas por
+ * tool/battle_backgrounds.py, com as bases desenhadas) e a versão de cada clima
+ * (<lugar>-sun/rain/sand/snow.webp): Sunny Day, Rain Dance... mudam o cenário. Igual ao app.
+ */
+export const SCENE_IMAGES = ['grass', 'forest', 'water', 'beach', 'underwater', 'swamp', 'sewer', 'cave', 'icecave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky', 'tower', 'gym', 'league', 'center']
+const usable = (scene) => (SCENE_IMAGES.includes(scene) || SCENE_COLORS[scene] ? scene : 'grass')
+/** O clima na imagem (o granizo usa a de neve). */
+const WEATHER_IMAGE = { sun: 'sun', rain: 'rain', sand: 'sand', hail: 'snow', snow: 'snow' }
 /** Batalha comum (sem lugar): um destes, sorteado pela semente. */
 const OUTDOOR = ['grass', 'forest', 'water', 'beach', 'swamp', 'cave', 'icecave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky']
 /** As variações de cada lugar da Battle Factory (pela semente do andar): o mar pode ser praia ou fundo do mar, a floresta um pântano... */
@@ -180,15 +182,15 @@ export const sceneOfBoss = (kind) => (kind === 'gym' ? 'gym' : kind === 'elite' 
 export function BattleBackground({ weather = '', scene = 'grass', layout = 'classic' }) {
   const { foe, mine } = PLATFORMS[layout] ?? PLATFORMS.classic
   if (layout === 'bw' && SCENE_IMAGES.includes(scene)) {
+    // A do clima por cima da normal, aparecendo devagar quando o golpe muda o clima.
+    const sky = WEATHER_IMAGE[weather]
     return (
-      <img
-        src={spriteUrl(`battle/${scene}.webp`)}
-        alt=""
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 h-full w-full object-fill"
-        style={WEATHER_FILTER[weather] ? { filter: WEATHER_FILTER[weather] } : undefined}
-        data-scene={scene}
-      />
+      <div className="pointer-events-none absolute inset-0" aria-hidden="true" data-scene={scene} data-weather={sky ?? ''}>
+        <img src={spriteUrl(`battle/${scene}.webp`)} alt="" className="absolute inset-0 h-full w-full object-fill" />
+        {Object.values(WEATHER_IMAGE).filter((w, i, all) => all.indexOf(w) === i).map((w) => (
+          <img key={w} src={spriteUrl(`battle/${scene}-${w}.webp`)} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-fill transition-opacity duration-700" style={{ opacity: sky === w ? 1 : 0 }} />
+        ))}
+      </div>
     )
   }
   const [skyTop, ground, dark, light] = SCENE_COLORS[scene] ?? SCENE_COLORS.grass

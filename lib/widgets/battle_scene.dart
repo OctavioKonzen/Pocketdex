@@ -8,13 +8,13 @@
 
 import 'package:flutter/material.dart';
 
-/// Os lugares que têm imagem (sprites/battle/<lugar>.webp, com as bases desenhadas): as mandadas pelo usuário. Igual ao site.
-const sceneImages = ['grass', 'forest', 'cave', 'icecave', 'snow', 'city'];
+/// Os lugares que têm imagem (sprites/battle/<lugar>.webp, feitas por tool/battle_backgrounds.py, com as bases desenhadas) e a
+/// versão de cada clima (<lugar>-sun/rain/sand/snow.webp): Sunny Day, Rain Dance... mudam o cenário. Igual ao site.
+const sceneImages = ['grass', 'forest', 'water', 'beach', 'underwater', 'swamp', 'sewer', 'cave', 'icecave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky', 'tower', 'gym', 'league', 'center'];
+String _usable(String scene) => sceneImages.contains(scene) || BattleScenePainter.colors.containsKey(scene) ? scene : 'grass';
 
-/// Sem imagem ainda: o lugar parecido que tem (ou que é desenhado aqui).
-const _fallback = {'icecave': 'snow', 'beach': 'water', 'underwater': 'water', 'swamp': 'forest', 'sewer': 'city', 'desert': 'mountain', 'gym': 'city', 'league': 'tower'};
-String _usable(String scene) =>
-    sceneImages.contains(scene) || BattleScenePainter.colors.containsKey(scene) ? scene : _usable(_fallback[scene] ?? 'grass');
+/// O clima na imagem (o granizo usa a de neve).
+const _weatherImage = {'sun': 'sun', 'rain': 'rain', 'sand': 'sand', 'hail': 'snow', 'snow': 'snow'};
 const _outdoor = ['grass', 'forest', 'water', 'beach', 'swamp', 'cave', 'icecave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky'];
 const _variants = {
   'water': ['water', 'beach', 'underwater'], 'forest': ['forest', 'swamp'], 'snow': ['snow', 'icecave'],
@@ -39,15 +39,6 @@ const _platforms = {
   true: ([122.0, 40.0, 38.0, 6.5], [74.0, 80.0, 84.0, 20.0]),
 };
 
-/// Na imagem, o clima muda o tom (chuva mais escura, sol mais quente...).
-const _weatherTint = <String, Color>{
-  'rain': Color(0x55102030),
-  'sun': Color(0x33FFB020),
-  'sand': Color(0x44C8A060),
-  'hail': Color(0x33E0F0FF),
-  'snow': Color(0x33E0F0FF),
-};
-
 /// O fundo da batalha no estilo Black & White: a imagem do lugar (se tiver) ou o desenho com as bases nos mesmos lugares.
 class BattleBackdrop extends StatelessWidget {
   const BattleBackdrop({super.key, required this.scene, this.weather = ''});
@@ -56,10 +47,10 @@ class BattleBackdrop extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!sceneImages.contains(scene)) return CustomPaint(painter: BattleScenePainter(scene: scene, weather: weather, bw: true), size: Size.infinite);
-    final tint = _weatherTint[weather];
-    return Image.asset('assets/database/sprites/battle/$scene.webp',
+    // A versão do clima (quem chama troca com AnimatedSwitcher quando o golpe muda o clima).
+    final sky = _weatherImage[weather];
+    return Image.asset('assets/database/sprites/battle/$scene${sky == null ? '' : '-$sky'}.webp',
         fit: BoxFit.fill, width: double.infinity, height: double.infinity, filterQuality: FilterQuality.medium,
-        color: tint, colorBlendMode: tint == null ? null : BlendMode.srcATop,
         errorBuilder: (_, __, ___) => CustomPaint(painter: BattleScenePainter(scene: scene, weather: weather, bw: true), size: Size.infinite));
   }
 }
