@@ -7657,5 +7657,10 @@
   "en": "GO ON",
   "fr": "AVANCER",
   "es": "SEGUIR"
+ },
+ "O time todo ganha XP (quem não lutou, a metade)": {
+  "en": "The whole team gains EXP (half for those who didn't battle)",
+  "fr": "Toute l’équipe gagne de l’Exp. (la moitié pour ceux qui n’ont pas combattu)",
+  "es": "Todo el equipo gana Exp. (la mitad para quien no luchó)"
  }
 }

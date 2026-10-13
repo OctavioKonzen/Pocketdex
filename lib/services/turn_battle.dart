@@ -386,6 +386,7 @@ class TurnBattle {
       // Quem acabou de entrar fica pelo menos dois turnos antes de o computador trocar.
       cpuSwitchTurn = turn;
     }
+    markFought();
   }
 
   int? _simHandle;
@@ -400,8 +401,8 @@ class TurnBattle {
   /// Battle Factory: as poções curam uma parte do HP máximo (o nível não tem limite).
   final bool healPct;
 
-  /// O cenário (lib/widgets/battle_scene.dart): 'grass' é o campo de sempre; a Battle Factory usa o lugar do andar.
-  String scene = 'grass';
+  /// O cenário (lib/widgets/battle_scene.dart): a Battle Factory usa o lugar do andar; '' (batalha comum) sorteia um dos que têm imagem.
+  String scene = '';
 
   /// Battle Factory, selvagem: dá para jogar Poké Balls ({rates, dusk}; o motor faz a conta). captured: pegou.
   final Map<String, dynamic>? capture;
@@ -1366,6 +1367,9 @@ class TurnBattle {
   /// site ({move, gimmick} · {switch} · {item, target} · {replace}): com a
   /// semente e os times, a batalha inteira se repete igual (battle_log.dart).
   int? seed;
+
+  /// Battle Factory: a barra de XP (expBarOf em factory_panels.dart): o nível e o XP de cada um agora, quanto cada adversário derrubado dá para cada um e a parte do Exp. Share.
+  ({List<({int level, int exp})> mons, List<List<int>> table, double share})? expBar;
   final List<Map<String, dynamic>> actions = [];
 
   /// Derrubados por cada Pokémon seu (posição no time), para o histórico.
@@ -1380,7 +1384,18 @@ class TurnBattle {
       if (e.t != 'faint' || e.side != 1) continue;
       kos[activeIndex[0]] = (kos[activeIndex[0]] ?? 0) + 1;
     }
+    markFought();
     return events;
+  }
+
+  /// Quem lutou contra cada adversário (fought[posição dele] = as suas posições
+  /// que estiveram em campo junto com ele): na Battle Factory, só eles ganham o
+  /// XP de derrotá-lo (sem Exp. Share), como nos jogos. Igual ao site.
+  final Map<int, List<int>> fought = {};
+
+  void markFought() {
+    final list = fought.putIfAbsent(activeIndex[1], () => []);
+    if (!list.contains(activeIndex[0])) list.add(activeIndex[0]);
   }
 
   List<BattleEvent> playTurn(BattleHit hit, {int? move, String? gimmick, int? switchTo, String? item, int? target}) => _logTurn(

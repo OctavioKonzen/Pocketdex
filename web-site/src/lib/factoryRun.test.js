@@ -6,13 +6,14 @@ import {
   SHINY_BOOST, SHINY_CHANCE, START_BAG, START_BALLS, startersOf, buyShiny, shinyPrice, unlockShiny, claimStarter, freePick, canEvolveWith, teachMove,
   equipFromStash, gimmicksOf, setGimmick, storyLine, startRun, takeCard, teamDown, applyBagItem, winFloor, chooseNode, routeOptions, routeCities,
   captureFor, factoryOf, BIOMES, isBattleNode, skipCapture, FORKS, ROUTE_LENGTH, BALL_TIERS, HEAL_TIERS, tierPick, minLevelOf, devolve,
+  EXP_SHARE, expProgress, shopOwned,
 } from './factoryRun'
 
 const data = JSON.parse(readFileSync(new URL('../../../assets/database/factory.json', import.meta.url), 'utf8'))
 const moves = Object.fromEntries(JSON.parse(readFileSync(new URL('../../../assets/database/moves.json', import.meta.url), 'utf8')).map((m) => [m.name, { ...m, category: m.damage_class }]))
 const forms = Object.fromEntries(JSON.parse(readFileSync(new URL('../../../assets/database/pokemon.json', import.meta.url), 'utf8')).map((p) => [p.id, p]))
 const ROUTE_42 = { floor: 1, biome: 'grass', options: [{ kind: 'trainer' }] }
-const ENCOUNTER_42 = { kind: 'trainer', foes: [{ id: 868, level: 2, iv: 0, ev: 3 }, { id: 280, level: 2, iv: 0, ev: 3 }], trainerSeed: 500729487, scene: 'grass' }
+const ENCOUNTER_42 = { kind: 'trainer', foes: [{ id: 868, level: 2, iv: 0, ev: 3 }, { id: 278, level: 2, iv: 0, ev: 3 }], trainerSeed: 500729487, scene: 'grass' }
 const seq = (values) => { let i = 0; return () => values[i++ % values.length] }
 
 describe('Battle Factory (roguelike)', () => {
@@ -123,8 +124,48 @@ describe('Battle Factory (roguelike)', () => {
 
   it('XP: mais para quem está abaixo do adversário, bem menos para quem está acima', () => {
     expect(expFor(100, 20, 10)).toBeGreaterThan(expFor(100, 20, 20))
-    expect(expFor(100, 20, 30)).toBeLessThan(expFor(100, 20, 20) / 5)
+    expect(expFor(100, 20, 30)).toBeLessThan(expFor(100, 20, 20) / 4)
     expect(expFor(100, 20, 20)).toBeGreaterThan(expAt(21) - expAt(20))
+  })
+
+  it('XP só para quem lutou contra o adversário; com o Exp. Share, o resto do time ganha a metade (e os EVs)', () => {
+    const base = startRun(emptyFactory(), data, 1, 42)
+    const team = [base.team[0], { ...base.team[0], id: 4 }, { ...base.team[0], id: 7, hp: 0 }]
+    const foes = [{ id: 19, level: 7, iv: 0, ev: 0 }, { id: 16, level: 7, iv: 0, ev: 0 }]
+    const run = { ...base, team, encounter: { kind: 'wild', foes } }
+    // O 1º lutou contra os dois, o 2º só contra o segundo; o 3º desmaiado não ganha.
+    const after = winFloor(run, data, { fought: [[0], [0, 1]] })
+    const e = (id, lvl) => expFor(data.species[id][0], 7, lvl, 1)
+    expect(after.pending.gains).toEqual([e(19, 5) + e(16, 5), e(16, 5), 0])
+    expect(after.team[1].evs.spe).toBe(data.species[16][3][5] * 3)
+    // 5 níveis acima de um nível 7 ainda ganha XP.
+    expect(expFor(data.species[19][0], 7, 12)).toBeGreaterThan(30)
+    // Sem Exp. Share, quem não lutou fica sem nada.
+    const alone = winFloor(run, data, { fought: [[0], [0]] })
+    expect(alone.pending.gains[1]).toBe(0)
+    expect(alone.team[1].evs).toEqual(team[1].evs)
+    // Com o Exp. Share (da loja), a metade.
+    const shared = buyItem({ ...run, money: 99999, pending: { shop: ['exp-share'] } }, 'exp-share', 0, data)
+    expect(shared.expShare).toBe(true)
+    expect(shopOwned(shared, 'exp-share')).toBe(true)
+    const half = winFloor({ ...shared, encounter: run.encounter }, data, { fought: [[0], [0]] })
+    expect(half.pending.gains[1]).toBe(Math.floor(e(19, 5) * EXP_SHARE) + Math.floor(e(16, 5) * EXP_SHARE))
+    expect(expProgress({ level: 5, exp: expAt(5) })).toBe(0)
+    expect(expProgress({ level: 5, exp: (expAt(5) + expAt(6)) / 2 })).toBe(0.5)
+    expect(expProgress({ level: 5, exp: expAt(5) }, 9999)).toBe(1)
+  })
+
+  it('selvagens pela raridade: os comuns (taxa de captura alta) aparecem bem mais', () => {
+    let seed = 7
+    const rand = () => { const [v, s] = nextRandom(seed); seed = s; return v }
+    const count = { common: 0, rare: 0 }
+    for (let i = 0; i < 600; i++) {
+      const id = encounterFor(data, 6, rand, null, false, { kind: 'wild' }).foes[0].id
+      const rate = data.species[id][5]
+      if (rate >= 190) count.common++
+      else if (rate <= 45) count.rare++
+    }
+    expect(count.common).toBeGreaterThan(count.rare * 3)
   })
 
   it('time cheio (6): captura trocando um, ou deixa passar', () => {

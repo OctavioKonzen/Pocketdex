@@ -66,7 +66,7 @@ const addStats = (a, b) => Object.fromEntries(STATS.map((s) => [s, (a?.[s] ?? 0)
 const round3 = (n) => Math.round(n * 1000) / 1000
 // Potências com multiplicação e raiz (dão o mesmo resultado no app, em Dart).
 const pow15 = (x) => x * Math.sqrt(x)
-const pow14 = (x) => { const x2 = x * x, x4 = x2 * x2, x8 = x4 * x4; return x8 * x4 * x2 }
+const pow8 = (x) => { const x2 = x * x, x4 = x2 * x2; return x4 * x4 }
 
 /** XP total para chegar ao nível (crescimento médio, n³). */
 export const expAt = (level) => level ** 3
@@ -87,6 +87,15 @@ function dice(run) {
   }
 }
 const pickOne = (list, rand) => list[Math.floor(rand() * list.length)]
+/** Um da lista, com a chance de cada um proporcional ao peso. */
+function pickWeighted(list, weights, rand) {
+  let roll = rand() * weights.reduce((a, b) => a + b, 0)
+  for (let i = 0; i < list.length; i++) {
+    roll -= weights[i]
+    if (roll < 0) return list[i]
+  }
+  return list[list.length - 1]
+}
 
 // ------------------------------------------------------------ dificuldade
 
@@ -132,6 +141,8 @@ export const SHOP = {
   ...Object.fromEntries(Object.keys(HELD_BOOST).map((k) => [k, 250])),
   // Serviços e chaves das mecânicas.
   'move-tutor': 300, 'move-reminder': 150, 'dynamax-band': 2500, 'tera-orb': 2500,
+  // Exp. Share: o time todo ganha XP (quem não lutou, a metade).
+  'exp-share': 800,
 }
 /** Preço base de um TM ("tm:<golpe>") e de uma pedra de evolução ("evo:<item>"). */
 export const TM_PRICE = 220
@@ -248,15 +259,37 @@ export function levelTo(mon, level, data, rand) {
 
 /**
  * XP de derrotar um adversário. No mesmo nível, um adversário comum (XP base
- * 100) dá ~1,2 nível. Quem está abaixo dele ganha bem mais (até 50×: quem
- * acabou de ser capturado alcança o time rápido) e quem está acima, bem menos
- * ((F+10)/(L+10))^14: com 1 a 6 adversários por andar, o time fica perto do
- * nível dos andares (até ~15% acima) em vez de disparar.
+ * 100) dá ~1 nível. Quem está abaixo dele ganha mais (até 30×: quem acabou de
+ * ser capturado alcança o time rápido) e quem está acima, menos
+ * ((2F+10)/(F+L+10))^8: 5 níveis acima de um nível 7, ainda ~1/3. Só quem
+ * lutou contra ele ganha (ou o time todo, metade, com o Exp. Share).
  */
 export function expFor(baseExp, foeLevel, level, factor = 1) {
-  const scale = Math.min(50, pow14((foeLevel + 10) / (level + 10)))
+  const scale = Math.min(30, pow8((2 * foeLevel + 10) / (foeLevel + level + 10)))
   const species = Math.min(1.6, Math.max(0.6, Math.sqrt(baseExp / 100)))
-  return Math.floor(3.5 * foeLevel * foeLevel * species * scale * factor)
+  return Math.floor(6 * foeLevel * foeLevel * species * scale * factor) + 1
+}
+
+/** Exp. Share: quem não lutou ganha essa parte do XP (e os EVs). */
+export const EXP_SHARE = 0.5
+
+/** O XP de um derrotado para cada um do time (posição na corrida): fought = quem lutou contra ele; sem fought, todos de pé. */
+export function expShares(run, data, foe, fought, factor = 1) {
+  const base = speciesOf(data, foe.id)?.[0] ?? 60
+  return run.team.map((m, i) => {
+    if (!(m.hp > 0)) return 0
+    const share = !fought || fought.includes(i) ? 1 : run.expShare ? EXP_SHARE : 0
+    return share ? Math.floor(expFor(base, foe.level, m.level, factor * run.mult.exp) * share) : 0
+  })
+}
+
+/** O fator de XP do tipo de andar (treinadores e chefes dão mais). */
+export const expFactor = (kind) => (kind === 'ace' ? 1.75 : kind === 'boss' || kind === 'wildboss' || kind === 'trainer' ? 1.5 : 1)
+
+/** A barra de XP: quanto do nível atual já foi (0 a 1), com o XP a mais (extra). */
+export function expProgress(mon, extra = 0) {
+  const from = expAt(mon.level), to = expAt(mon.level + 1)
+  return Math.max(0, Math.min(1, ((mon.exp ?? from) + extra - from) / (to - from)))
 }
 
 /** Ganha XP: sobe os níveis que der. */
@@ -553,11 +586,14 @@ export function encounterFor(data, floor, rand, boss = null, wild = false, node 
   // Nos primeiros andares, nada de Fantasma (imune aos golpes Normal que os iniciais têm no começo).
   const entries = Object.entries(data.species)
     .filter(([id, info]) => (floor >= 8 || !info[4]?.includes('ghost')) && minLevelOf(data, Number(id)) <= level)
-    .map(([id, [, bst, rarity]]) => ({ id: Number(id), bst, rarity }))
+    .map(([id, [, bst, rarity, , , rate]]) => ({ id: Number(id), bst, rarity, rate: rate ?? 45 }))
   const budget = speciesBudget(floor)
-  const pick = (pool) => {
+  // A chance de cada espécie segue a raridade dela (a taxa de captura dos jogos: Pidgey 255 aparece muito, Dratini 45 pouco, Beldum 3 quase nunca);
+  // os treinadores escolhem com menos diferença (raiz da taxa).
+  const pick = (pool, trainer = false) => {
     const fit = pool.filter((p) => p.bst <= budget && p.bst >= Math.min(budget, 600) - 160)
-    return pickOne(fit.length ? fit : [...pool].sort((a, b) => Math.abs(a.bst - budget) - Math.abs(b.bst - budget)).slice(0, 20), rand).id
+    const list = fit.length ? fit : [...pool].sort((a, b) => Math.abs(a.bst - budget) - Math.abs(b.bst - budget)).slice(0, 20)
+    return pickWeighted(list, list.map((p) => (trainer ? Math.sqrt(p.rate) : p.rate)), rand).id
   }
   const common = entries.filter((p) => p.rarity === 0 || p.rarity === 3)
   if (kind === 'trainer' || kind === 'ace') {
@@ -565,7 +601,7 @@ export function encounterFor(data, floor, rand, boss = null, wild = false, node 
     const ace = kind === 'ace'
     const count = Math.min(MAX_TEAM, 1 + Math.floor(floor / 12) + (rand() < 0.3 ? 1 : 0) + (ace ? 1 : 0))
     const extra = ace ? { iv: Math.max(iv, 20), ev: Math.round(ev * 1.15) } : {}
-    const foes = Array.from({ length: count }, () => foe(pick(common), level + (ace ? 2 : 0) - Math.floor(rand() * 3), extra))
+    const foes = Array.from({ length: count }, () => foe(pick(common, true), level + (ace ? 2 : 0) - Math.floor(rand() * 3), extra))
     return { kind, foes, trainerSeed: Math.floor(rand() * 1e9), ...(ace ? { reward: pickOne(ACE_REWARDS, rand) } : {}) }
   }
   // Selvagem: os do bioma da rota (se não tiver nenhum do tamanho certo, qualquer um).
@@ -581,7 +617,7 @@ export function startRun(factory, data, id, seed, shiny = false) {
   const run = {
     seed: seed >>> 0, floor: 1, money: 0, defeated: 0, bosses: 0, bag: { ...START_BAG },
     team: [], teamBoost: zero(), mult: { money: 1, exp: 1, shop: 1 }, cards: [], boss: { region: 0, step: 0 }, played: [],
-    tms: {}, tokens: { 'move-tutor': 0, 'move-reminder': 0 }, stash: [], dmax: false, tera: false, leg: 1, route: null, encounter: null, pending: null,
+    tms: {}, tokens: { 'move-tutor': 0, 'move-reminder': 0 }, stash: [], dmax: false, tera: false, expShare: false, leg: 1, route: null, encounter: null, pending: null,
   }
   const rand = dice(run)
   // O inicial vem com IVs bons (15 a 31).
@@ -623,22 +659,26 @@ export function winFloor(run, data, after = {}) {
   const out = { ...run, team: run.team.map((m, i) => ({ ...m, hp: after.hp?.[i] ?? m.hp ?? 1 })), bag: { ...(after.bag ?? run.bag) } }
   const rand = dice(out)
   const { kind, foes } = run.encounter
-  const factor = kind === 'ace' ? 1.75 : kind === 'boss' || kind === 'wildboss' || kind === 'trainer' ? 1.5 : 1
+  const factor = expFactor(kind)
   const moneyFactor = kind === 'boss' || kind === 'wildboss' ? 3 : kind === 'ace' ? 2.5 : kind === 'trainer' ? 2 : 1
   let money = 0
-  const evs = zero()
-  for (const f of foes) {
+  // XP e EVs de cada derrotado: para quem lutou contra ele (after.fought[j]: posições na corrida) e, com o Exp. Share, para o resto do time.
+  const gains = out.team.map(() => 0)
+  const evs = out.team.map(() => zero())
+  foes.forEach((f, j) => {
     money += Math.floor((f.level * 6 + 10) * moneyFactor * out.mult.money * earlyMoney(run.floor))
     const yields = speciesOf(data, f.id)?.[3] ?? [0, 0, 0, 0, 0, 0]
-    STATS.forEach((s, i) => { evs[s] += yields[i] * 3 })
-  }
+    expShares(out, data, f, after.fought?.[j], factor).forEach((e, i) => {
+      if (!e) return
+      gains[i] += e
+      STATS.forEach((s, k) => { evs[i][s] += yields[k] * 3 })
+    })
+  })
   const levels = []
-  let exp = 0
+  const exp = Math.max(0, ...gains)
   out.team = out.team.map((m, index) => {
-    if (!(m.hp > 0)) return m
-    const gained = foes.reduce((sum, f) => sum + expFor(speciesOf(data, f.id)?.[0] ?? 60, f.level, m.level, factor * out.mult.exp), 0)
-    exp = Math.max(exp, gained)
-    const r = gainExp({ ...m, evs: addStats(m.evs, evs) }, gained, data, rand)
+    if (!gains[index]) return m
+    const r = gainExp({ ...m, evs: addStats(m.evs, evs[index]) }, gains[index], data, rand)
     if (r.mon.level > r.from || r.evolved) levels.push({ index, from: r.from, to: r.mon.level, evolved: r.evolved })
     return r.mon
   })
@@ -672,7 +712,7 @@ export function winFloor(run, data, after = {}) {
   const joy = rand() < JOY_CHANCE
   if (joy) out.team = out.team.map((m) => ({ ...m, hp: 1 }))
   out.pending = {
-    exp, money, levels, joy, drop, story, reward,
+    exp, gains, money, levels, joy, drop, story, reward,
     capture: after.captured && (kind === 'wild' || kind === 'wildboss') ? foes[0] : null,
     cards: kind === 'boss' ? pickCards(rand) : null,
     // A loja da cidade: chegando nela, logo antes do chefe (no resto da rota, os Poké Marts do mapa).
@@ -789,7 +829,7 @@ export function canEvolveWith(data, mon, item) {
 
 /** Se o item já foi comprado/é inútil agora (Dynamax Band e Tera Orb são uma vez só). */
 export function shopOwned(run, id) {
-  return (id === 'dynamax-band' && run.dmax) || (id === 'tera-orb' && run.tera)
+  return (id === 'dynamax-band' && run.dmax) || (id === 'tera-orb' && run.tera) || (id === 'exp-share' && Boolean(run.expShare))
 }
 
 /** Compra um item da loja (index: o Pokémon que recebe; itens da Bolsa e Poké Ball não precisam). null se não dá. */
@@ -801,6 +841,7 @@ export function buyItem(run, id, index, data) {
   if (BAG_ITEMS.includes(id)) return { ...out, bag: { ...out.bag, [id]: (out.bag[id] ?? 0) + 1 } }
   if (id === 'dynamax-band') return { ...out, dmax: true }
   if (id === 'tera-orb') return { ...out, tera: true }
+  if (id === 'exp-share') return { ...out, expShare: true }
   if (TOKENS.includes(id)) return { ...out, tokens: { ...out.tokens, [id]: (out.tokens?.[id] ?? 0) + 1 } }
   if (id.startsWith('tm:')) {
     const move = id.slice(3)

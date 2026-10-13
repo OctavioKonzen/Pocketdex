@@ -120,9 +120,9 @@ class FactoryRun {
   static double _round3(num n) => (n * 1000).round() / 1000;
   // Potências com multiplicação e raiz: o mesmo resultado do site.
   static double _pow15(double x) => x * math.sqrt(x);
-  static double _pow14(double x) {
-    final x2 = x * x, x4 = x2 * x2, x8 = x4 * x4;
-    return x8 * x4 * x2;
+  static double _pow8(double x) {
+    final x2 = x * x, x4 = x2 * x2;
+    return x4 * x4;
   }
 
   static int _int(Object? v) => (v as num).toInt();
@@ -187,6 +187,8 @@ class FactoryRun {
     for (final k in heldBoost.keys) k: 250,
     // Serviços e chaves das mecânicas.
     'move-tutor': 300, 'move-reminder': 150, 'dynamax-band': 2500, 'tera-orb': 2500,
+    // Exp. Share: o time todo ganha XP (quem não lutou, a metade).
+    'exp-share': 800,
   };
 
   /// Preço base de um TM ("tm:<golpe>") e de uma pedra de evolução ("evo:<item>").
@@ -305,9 +307,36 @@ class FactoryRun {
 
   /// XP de derrotar um adversário (a conta está no site). Igual ao site.
   static int expFor(int baseExp, int foeLevel, int level, [double factor = 1]) {
-    final scale = math.min(50.0, _pow14((foeLevel + 10) / (level + 10)));
+    final scale = math.min(30.0, _pow8((2 * foeLevel + 10) / (foeLevel + level + 10)));
     final species = math.min(1.6, math.max(0.6, math.sqrt(baseExp / 100)));
-    return (3.5 * foeLevel * foeLevel * species * scale * factor).floor();
+    return (6 * foeLevel * foeLevel * species * scale * factor).floor() + 1;
+  }
+
+  /// Exp. Share: quem não lutou ganha essa parte do XP (e os EVs).
+  static const expShare = 0.5;
+
+  /// O XP de um derrotado para cada um do time (posição na corrida): fought = quem lutou contra ele; sem fought, todos de pé.
+  static List<int> expShares(Json run, FactoryData data, Map foe, List<int>? fought, [double factor = 1]) {
+    final base = _int(data.speciesOf(_int(foe['id']))?[0] ?? 60);
+    final team = teamOf(run);
+    return [
+      for (var i = 0; i < team.length; i++)
+        () {
+          if (!(hpOf(team[i]) > 0)) return 0;
+          final share = fought == null || fought.contains(i) ? 1.0 : run['expShare'] == true ? expShare : 0.0;
+          return share == 0 ? 0 : (expFor(base, _int(foe['level']), _int(team[i]['level']), factor * _mult(run, 'exp')) * share).floor();
+        }(),
+    ];
+  }
+
+  /// O fator de XP do tipo de andar (treinadores e chefes dão mais).
+  static double expFactor(String? kind) => kind == 'ace' ? 1.75 : kind == 'boss' || kind == 'wildboss' || kind == 'trainer' ? 1.5 : 1.0;
+
+  /// A barra de XP: quanto do nível atual já foi (0 a 1), com o XP a mais (extra).
+  static double expProgress(Map mon, [int extra = 0]) {
+    final level = _int(mon['level']);
+    final from = expAt(level), to = expAt(level + 1);
+    return ((((mon['exp'] as num?) ?? from) + extra - from) / (to - from)).clamp(0.0, 1.0).toDouble();
   }
 
   static (Json, int, int?) _gainExp(Json mon, int exp, FactoryData data, double Function() rand) {
@@ -648,17 +677,18 @@ class FactoryRun {
     final entries = [
       for (final e in data.species.entries)
         if ((floor >= 8 || !(e.value.length > 4 && (e.value[4] as List).contains('ghost'))) && minLevelOf(data, e.key) <= level)
-          (id: e.key, bst: _int(e.value[1]), rarity: _int(e.value[2]))
+          (id: e.key, bst: _int(e.value[1]), rarity: _int(e.value[2]), rate: _int(e.value.elementAtOrNull(5) ?? 45))
     ];
     final budget = speciesBudget(floor);
-    int pick(List<({int id, int bst, int rarity})> pool) {
+    // A chance de cada espécie segue a raridade dela (a taxa de captura); os treinadores com menos diferença (raiz).
+    int pick(List<({int id, int bst, int rarity, int rate})> pool, [bool trainer = false]) {
       final fit = [for (final p in pool) if (p.bst <= budget && p.bst >= math.min(budget, 600) - 160) p];
-      if (fit.isNotEmpty) return _pick(fit, rand).id;
       final near = [...pool]..sort((a, b) {
           final d = (a.bst - budget).abs().compareTo((b.bst - budget).abs());
           return d != 0 ? d : a.id.compareTo(b.id);
         });
-      return _pick(near.take(20).toList(), rand).id;
+      final list = fit.isNotEmpty ? fit : near.take(20).toList();
+      return _pickWeighted(list, [for (final p in list) trainer ? math.sqrt(p.rate) : p.rate.toDouble()], rand).id;
     }
 
     final common = [for (final p in entries) if (p.rarity == 0 || p.rarity == 3) p];
@@ -669,7 +699,7 @@ class FactoryRun {
       final Json extra = ace ? {'iv': math.max(iv, 20), 'ev': (ev * 1.15).round()} : const {};
       final foes = <Json>[];
       for (var i = 0; i < count; i++) {
-        final id = pick(common);
+        final id = pick(common, true);
         foes.add(foe(id, level + (ace ? 2 : 0) - (rand() * 3).floor(), extra));
       }
       return {'kind': kind, 'foes': foes, 'trainerSeed': (rand() * 1e9).floor(), if (ace) 'reward': _pick(aceRewards, rand)};
@@ -689,7 +719,7 @@ class FactoryRun {
     final run = <String, dynamic>{
       'seed': seed & 0xFFFFFFFF, 'floor': 1, 'money': 0, 'defeated': 0, 'bosses': 0, 'bag': {...startBag},
       'team': <Json>[], 'teamBoost': _zero(), 'mult': {'money': 1, 'exp': 1, 'shop': 1}, 'cards': <String>[], 'boss': {'region': 0, 'step': 0}, 'played': <String>[],
-      'tms': <String, dynamic>{}, 'tokens': {'move-tutor': 0, 'move-reminder': 0}, 'stash': <String>[], 'dmax': false, 'tera': false,
+      'tms': <String, dynamic>{}, 'tokens': {'move-tutor': 0, 'move-reminder': 0}, 'stash': <String>[], 'dmax': false, 'tera': false, 'expShare': false,
       'leg': 1, 'route': null, 'encounter': null, 'pending': null,
     };
     final rand = _dice(run);
@@ -730,7 +760,7 @@ class FactoryRun {
   /// Venceu o andar. hp: a parte do HP de cada um do time (na ordem da
   /// corrida) no fim da batalha; bag: a Bolsa que sobrou; captured: capturou o
   /// selvagem na batalha (entra no time). Igual ao site.
-  static Json winFloor(Json run, FactoryData data, {List<double>? hp, Map<String, int>? bag, bool captured = false}) {
+  static Json winFloor(Json run, FactoryData data, {List<double>? hp, Map<String, int>? bag, bool captured = false, List<List<int>>? fought}) {
     final out = _copy(run);
     final team0 = teamOf(out);
     out['team'] = [for (var i = 0; i < team0.length; i++) {...team0[i], 'hp': hp != null && i < hp.length ? hp[i] : hpOf(team0[i])}];
@@ -738,29 +768,32 @@ class FactoryRun {
     final rand = _dice(out);
     final kind = run['encounter']['kind'] as String;
     final foes = foesOf(run);
-    final factor = kind == 'ace' ? 1.75 : kind == 'boss' || kind == 'wildboss' || kind == 'trainer' ? 1.5 : 1.0;
+    final factor = expFactor(kind);
     final moneyFactor = kind == 'boss' || kind == 'wildboss' ? 3 : kind == 'ace' ? 2.5 : kind == 'trainer' ? 2 : 1;
     var money = 0;
-    final evs = _zero();
-    for (final f in foes) {
+    // XP e EVs de cada derrotado: para quem lutou contra ele (fought[j]: posições na corrida) e, com o Exp. Share, para o resto do time.
+    final team = teamOf(out);
+    final gains = List.filled(team.length, 0);
+    final evs = [for (final _ in team) _zero()];
+    for (var j = 0; j < foes.length; j++) {
+      final f = foes[j];
       money += ((_int(f['level']) * 6 + 10) * moneyFactor * _mult(out, 'money') * earlyMoney(_int(run['floor']))).floor();
       final yields = (data.speciesOf(_int(f['id'])))?.elementAtOrNull(3) as List? ?? const [0, 0, 0, 0, 0, 0];
-      for (var i = 0; i < stats.length; i++) {
-        evs[stats[i]] = (evs[stats[i]] as int) + _int(yields[i]) * 3;
+      final shares = expShares(out, data, f, fought != null && j < fought.length ? fought[j] : null, factor);
+      for (var i = 0; i < team.length; i++) {
+        if (shares[i] == 0) continue;
+        gains[i] += shares[i];
+        for (var k = 0; k < stats.length; k++) {
+          evs[i][stats[k]] = (evs[i][stats[k]] as int) + _int(yields[k]) * 3;
+        }
       }
     }
     final levels = <Json>[];
-    var exp = 0;
-    final team = teamOf(out);
+    final exp = gains.fold(0, math.max);
     for (var i = 0; i < team.length; i++) {
       final m = team[i];
-      if (!(hpOf(m) > 0)) continue;
-      var gained = 0;
-      for (final f in foes) {
-        gained += expFor(_int(data.speciesOf(_int(f['id']))?[0] ?? 60), _int(f['level']), _int(m['level']), factor * _mult(out, 'exp'));
-      }
-      exp = math.max(exp, gained);
-      final (mon, from, evolved) = _gainExp({...m, 'evs': _add(m['evs'] as Map?, evs)}, gained, data, rand);
+      if (gains[i] == 0) continue;
+      final (mon, from, evolved) = _gainExp({...m, 'evs': _add(m['evs'] as Map?, evs[i])}, gains[i], data, rand);
       if (_int(mon['level']) > from || evolved != null) levels.add({'index': i, 'from': from, 'to': mon['level'], 'evolved': evolved});
       team[i] = mon;
     }
@@ -808,7 +841,7 @@ class FactoryRun {
     final cityWin = kind == 'boss' && _cityKinds.contains(run['encounter']['boss']['kind']);
     final shopPick = !cityWin && atCity(data, out) && !_inLeague(data, out) ? _pickShop(rand, data, _int(run['floor'])) : null;
     out['pending'] = {
-      'exp': exp, 'money': money, 'levels': levels, 'joy': joy, 'drop': drop, 'story': story, 'reward': reward,
+      'exp': exp, 'gains': gains, 'money': money, 'levels': levels, 'joy': joy, 'drop': drop, 'story': story, 'reward': reward,
       'capture': captured && (kind == 'wild' || kind == 'wildboss') ? foes.first : null,
       'cards': cardsPick,
       'shop': shopPick,
@@ -837,6 +870,20 @@ class FactoryRun {
   static const specialBalls = ['quick-ball', 'net-ball', 'dusk-ball', 'timer-ball'];
 
   /// Um item da escada: conforme o andar, os melhores ficam mais prováveis (um degrau a cada [step] andares). Igual ao site.
+  /// Um da lista, com a chance de cada um proporcional ao peso. Igual ao site.
+  static T _pickWeighted<T>(List<T> list, List<double> weights, double Function() rand) {
+    var total = 0.0;
+    for (final w in weights) {
+      total += w;
+    }
+    var roll = rand() * total;
+    for (var i = 0; i < list.length; i++) {
+      roll -= weights[i];
+      if (roll < 0) return list[i];
+    }
+    return list.last;
+  }
+
   static String tierPick(List<String> list, int floor, int step, double Function() rand) {
     final p = math.min(list.length - 1, floor / step);
     final weights = <double>[for (var i = 0; i < list.length; i++) math.max(0.08, 1 - (i - p).abs()).toDouble()];
@@ -955,7 +1002,7 @@ class FactoryRun {
       [for (final e in data.evolutions[_int(mon['id'])] ?? const <List>[]) if (e.length > 2 && e[2] == item) e[0] as int];
 
   /// Dynamax Band e Tera Orb são uma vez só.
-  static bool shopOwned(Json run, String id) => (id == 'dynamax-band' && run['dmax'] == true) || (id == 'tera-orb' && run['tera'] == true);
+  static bool shopOwned(Json run, String id) => (id == 'dynamax-band' && run['dmax'] == true) || (id == 'tera-orb' && run['tera'] == true) || (id == 'exp-share' && run['expShare'] == true);
 
   /// Compra um item da loja (index: o Pokémon que recebe; itens da Bolsa e Poké Ball não precisam). null se não dá.
   static Json? buyItem(Json run, String id, int index, FactoryData data) {
@@ -966,6 +1013,7 @@ class FactoryRun {
     out['money'] = _int(out['money']) - price;
     if (id == 'dynamax-band') return out..['dmax'] = true;
     if (id == 'tera-orb') return out..['tera'] = true;
+    if (id == 'exp-share') return out..['expShare'] = true;
     if (tokens.contains(id)) {
       final t = Map<String, dynamic>.from((out['tokens'] as Map?) ?? const {});
       t[id] = ((t[id] as num?) ?? 0).toInt() + 1;

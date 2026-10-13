@@ -38,7 +38,7 @@ void main() {
     expect(run['encounter'], isNull);
     expect(run['route'], {'floor': 1, 'biome': 'grass', 'options': [{'kind': 'trainer'}]});
     expect(FactoryRun.chooseNode(run, data, 0)['encounter'], {
-      'kind': 'trainer', 'foes': [{'id': 868, 'level': 2, 'iv': 0, 'ev': 3}, {'id': 280, 'level': 2, 'iv': 0, 'ev': 3}], 'trainerSeed': 500729487, 'scene': 'grass',
+      'kind': 'trainer', 'foes': [{'id': 868, 'level': 2, 'iv': 0, 'ev': 3}, {'id': 278, 'level': 2, 'iv': 0, 'ev': 3}], 'trainerSeed': 500729487, 'scene': 'grass',
     });
   });
 
@@ -77,6 +77,26 @@ void main() {
     for (var i = 0; i < expected.length; i++) {
       expect(jsonEncode(out[i]), jsonEncode(expected[i]), reason: 'andar ${i + 1}');
     }
+  });
+
+  test('XP só para quem lutou; com o Exp. Share, a metade para o resto do time (igual ao site)', () {
+    final base = FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!;
+    final first = FactoryRun.teamOf(base).first;
+    final run = {
+      ...base,
+      'team': [first, {...first, 'id': 4}, {...first, 'id': 7, 'hp': 0.0}],
+      'encounter': {'kind': 'wild', 'foes': [{'id': 19, 'level': 7, 'iv': 0, 'ev': 0}, {'id': 16, 'level': 7, 'iv': 0, 'ev': 0}]},
+    };
+    int e(int id, int lvl) => FactoryRun.expFor(data.species[id]![0] as int, 7, lvl);
+    final after = FactoryRun.winFloor(run, data, fought: [[0], [0, 1]]);
+    expect(FactoryRun.pendingOf(after)!['gains'], [e(19, 5) + e(16, 5), e(16, 5), 0]);
+    expect(FactoryRun.winFloor(run, data, fought: [[0], [0]])['pending']['gains'][1], 0);
+    final shared = FactoryRun.buyItem({...run, 'money': 99999, 'pending': {'shop': ['exp-share']}}, 'exp-share', 0, data)!;
+    expect(shared['expShare'], true);
+    final half = FactoryRun.winFloor({...shared, 'encounter': run['encounter']}, data, fought: [[0], [0]]);
+    expect(half['pending']['gains'][1], (e(19, 5) * FactoryRun.expShare).floor() + (e(16, 5) * FactoryRun.expShare).floor());
+    expect(FactoryRun.expProgress({'level': 5, 'exp': 125}), 0);
+    expect(FactoryRun.expProgress({'level': 5, 'exp': 125}, 9999), 1);
   });
 
   test('venceu: XP só para quem está de pé; HP continua; o capturado na batalha entra no time; shiny libera o inicial shiny', () {

@@ -343,7 +343,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
       if (_battle?.winner == 0) {
         final data = _factoryData ??= await FactoryData.load();
         final after = factoryAfter(_battle!, _factoryOrder, run);
-        saveFactory({...factory, 'run': FactoryRun.winFloor(run, data, hp: after.hp, bag: after.bag, captured: after.captured)});
+        saveFactory({...factory, 'run': FactoryRun.winFloor(run, data, hp: after.hp, bag: after.bag, captured: after.captured, fought: after.fought)});
         final boss = run['encounter']['boss'] as Map?;
         note = '${boss != null ? '🏅 ${tr('Você venceu {0}!').replaceAll('{0}', '${boss['name']}')} ' : '🏆 '}${tr('Andar {0} vencido!').replaceAll('{0}', '$floor')}';
       } else {
@@ -1460,7 +1460,8 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
         ClipRRect(
           borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
           child: AspectRatio(
-            aspectRatio: 16 / 11,
+            // Como a tela do DS (4:3).
+            aspectRatio: 4 / 3,
             child: DecoratedBox(
               decoration: BoxDecoration(border: Border.all(color: border, width: 4), color: const Color(0xFF9FDCFF)),
               child: LayoutBuilder(builder: (context, box) {
@@ -1477,36 +1478,37 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                       Positioned.fill(
                         child: AnimatedSwitcher(
                           duration: const Duration(milliseconds: 800),
-                          child: CustomPaint(key: ValueKey(_weather), painter: BattleScenePainter(scene: _b.scene, weather: _weather), size: Size.infinite),
+                          child: BattleBackdrop(key: ValueKey(_weather), scene: _b.scene.isEmpty ? sceneForSeed(_b.seed) : _b.scene, weather: _weather),
                         ),
                       ),
+                      // Como no Black & White: o adversário lá atrás à direita (menor), o seu de costas na frente à esquerda (grande, cortado pela caixa do texto).
                       Positioned(
-                          left: w * 0.03,
+                          left: 0,
                           top: h * 0.05,
-                          width: w * 0.48,
+                          width: w * 0.5,
                           child: AnimatedOpacity(
                               opacity: _introOn && _poke[1] == 'hidden' ? 0 : 1,
                               duration: const Duration(milliseconds: 200),
                               child: GestureDetector(
                                   key: const ValueKey('inspect-foe'),
                                   onTap: () => _inspect(1),
-                                  child: _InfoBox(mon: foe, hp: _hp[1][_active[1]], status: _status[1][_active[1]], dmax: _dmax[1], boosts: _boosts[1])))),
+                                  child: _InfoBox(mon: foe, hp: _hp[1][_active[1]], status: _status[1][_active[1]], dmax: _dmax[1], boosts: _boosts[1], bw: true)))),
                       Positioned(
                           // O inimigo fica mais longe: menor e com os pés na
                           // frente do meio da plataforma (pisando nela, como o seu).
-                          right: w * 0.12,
-                          bottom: h * 0.53,
-                          width: w * 0.26,
-                          height: w * 0.26,
+                          right: w * 0.10,
+                          bottom: h * 0.57,
+                          width: w * 0.28,
+                          height: w * 0.28,
                           child: _PokeOut(
                               state: _poke[1],
                               child: _Sprite(key: _sprites[1], mon: foe, id: _form[1] ?? foe.id, dmax: _dmax[1], tera: _tera[1], fainted: _fainted[1]))),
                       if (_ball[1] != null)
-                        Positioned(right: w * 0.12, bottom: h * 0.53, width: w * 0.26, height: w * 0.26, child: _Ball(side: 1, phase: _ball[1]!)),
+                        Positioned(right: w * 0.10, bottom: h * 0.57, width: w * 0.28, height: w * 0.28, child: _Ball(side: 1, phase: _ball[1]!)),
                       if (_introOn && _coach != null)
                         Positioned(
-                          right: w * 0.08,
-                          bottom: h * 0.53,
+                          right: w * 0.07,
+                          bottom: h * 0.57,
                           width: w * 0.34,
                           height: w * 0.34,
                           child: AnimatedSlide(
@@ -1519,14 +1521,14 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                         ),
                       Positioned(
                           left: w * 0.06,
-                          bottom: h * 0.05,
-                          width: w * 0.36,
-                          height: w * 0.36,
+                          bottom: h * 0.09,
+                          width: w * 0.46,
+                          height: w * 0.46,
                           child: _PokeOut(
                               state: _poke[0],
                               child: _Sprite(key: _sprites[0], mon: me, id: _form[0] ?? me.id, dmax: _dmax[0], tera: _tera[0], back: true, fainted: _fainted[0]))),
                       if (_ball[0] != null)
-                        Positioned(left: w * 0.06, bottom: h * 0.05, width: w * 0.36, height: w * 0.36, child: _Ball(side: 0, phase: _ball[0]!)),
+                        Positioned(left: w * 0.06, bottom: h * 0.09, width: w * 0.46, height: w * 0.46, child: _Ball(side: 0, phase: _ball[0]!)),
                       if (_introOn && _myTrainer != null)
                         Positioned(
                           left: w * 0.02,
@@ -1540,8 +1542,8 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                           ),
                         ),
                       Positioned(
-                          right: w * 0.03,
-                          bottom: h * 0.06,
+                          right: 0,
+                          bottom: h * 0.24,
                           width: w * 0.5,
                           child: AnimatedOpacity(
                               opacity: _introOn && _poke[0] == 'hidden' ? 0 : 1,
@@ -1549,10 +1551,37 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                               child: GestureDetector(
                                   key: const ValueKey('inspect-me'),
                                   onTap: () => _inspect(0),
-                                  child: _InfoBox(mon: me, hp: _hp[0][_active[0]], status: _status[0][_active[0]], dmax: _dmax[0], boosts: _boosts[0], mine: true)))),
+                                  child: _InfoBox(mon: me, hp: _hp[0][_active[0]], status: _status[0][_active[0]], dmax: _dmax[0], boosts: _boosts[0], mine: true, bw: true,
+                                      exp: expBarOf(_b, _active[0], _hp[1]))))),
                       Positioned.fill(child: _WeatherFx(_weather)),
                       if (_fx != null) _MoveFx(key: ValueKey(('fx', _fx!.$3)), plan: _fx!.$1, color: _fx!.$2, w: w, h: h),
                       if (_flash > 0) _Flash(key: ValueKey(('flash', _flash))),
+                      // A mensagem dentro da tela, embaixo, como nos jogos (tocar passa o texto).
+                      Positioned(
+                        left: w * 0.015,
+                        right: w * 0.015,
+                        bottom: h * 0.015,
+                        height: h * 0.21,
+                        child: GestureDetector(
+                          key: const ValueKey('battle-text'),
+                          onTap: () { if (_skip != null && !_skip!.isCompleted) _skip!.complete(); },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF4D4D4D), Color(0xFF2E2E2E)]),
+                              border: Border.all(color: const Color(0xFF1A1A1A), width: 3),
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: const [BoxShadow(color: Color(0xFF7A7A7A), spreadRadius: -2, blurRadius: 0)],
+                            ),
+                            alignment: Alignment.topLeft,
+                            child: SingleChildScrollView(
+                              // Já traduzido (nomes e golpes não mudam).
+                              child: m.Text(!_busy && widget.online != null ? tr(widget.online!.message) : _text,
+                                  style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.25, fontWeight: FontWeight.bold, shadows: _bwShadow)),
+                            ),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 );
@@ -1568,22 +1597,8 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Bolsa e troca abrem aqui dentro, no lugar do texto (como nos jogos).
-              if (!(waiting && (_menu == 'bag' || _menu == 'party')))
-              GestureDetector(
-                onTap: () { if (_skip != null && !_skip!.isCompleted) _skip!.complete(); },
-                child: Container(
-                  constraints: const BoxConstraints(minHeight: 72),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: const Color(0xFFD97706), width: 4),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  // Já traduzido (nomes e golpes não mudam).
-                  child: m.Text(!_busy && widget.online != null ? tr(widget.online!.message) : _text, style: const TextStyle(color: Color(0xFF0F172A), fontSize: 16, fontWeight: FontWeight.bold)),
-                ),
-              ),
+              // Embaixo da tela, como a tela de baixo do DS: o menu, a Bolsa e a troca (o texto fica dentro da tela).
+              if (!waiting) const SizedBox(height: 48),
               if (waiting && (widget.online?.waitForSwitch ?? false))
                 FilledButton(onPressed: () => widget.online!.onAction({'kind': 'wait', 'index': 0}), child: const Text('Aguardar troca do amigo')),
               if (waiting && !(widget.online?.waitForSwitch ?? false) && _menu == 'main' && !_b.needSwitch) ...[
@@ -2508,14 +2523,70 @@ class _FxPainter extends CustomPainter {
   bool shouldRepaint(_FxPainter old) => true;
 }
 
+/// A sombra do texto no estilo Black & White.
+const _bwShadow = [Shadow(color: Colors.black, offset: Offset(1, 1))];
+
+/// A barra de XP (azul, embaixo da vida, só no seu), como nos jogos.
+class _ExpBar extends StatelessWidget {
+  final double value;
+  const _ExpBar(this.value);
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        key: const ValueKey('exp-bar'),
+        padding: const EdgeInsets.only(top: 2),
+        child: Row(children: [
+          const m.Text('EXP', style: TextStyle(color: Color(0xFF7EC8FF), fontSize: 8, fontWeight: FontWeight.w900, shadows: [])),
+          const SizedBox(width: 3),
+          Expanded(
+            child: Container(
+              height: 4,
+              decoration: BoxDecoration(color: const Color(0xFF202830), borderRadius: BorderRadius.circular(2)),
+              alignment: Alignment.centerLeft,
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(end: value.clamp(0.0, 1.0)),
+                duration: const Duration(milliseconds: 1000),
+                curve: Curves.easeOut,
+                builder: (context, v, _) => FractionallySizedBox(widthFactor: v, heightFactor: 1, child: const ColoredBox(color: Color(0xFF38A8F8))),
+              ),
+            ),
+          ),
+        ]),
+      );
+}
+
 class _HpBar extends StatelessWidget {
   final int hp, max;
-  const _HpBar({required this.hp, required this.max});
+  final bool bw;
+  const _HpBar({required this.hp, required this.max, this.bw = false});
 
   @override
   Widget build(BuildContext context) {
     final pct = (hp / max).clamp(0.0, 1.0);
     final color = pct > 0.5 ? const Color(0xFF22C55E) : (pct > 0.2 ? const Color(0xFFEAB308) : const Color(0xFFEF4444));
+    if (bw) {
+      // Como no Black & White: "HP" num selo e a barra fina em cima do fundo escuro.
+      return Row(children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 3),
+          decoration: const BoxDecoration(color: Color(0xFFF8B830), borderRadius: BorderRadius.horizontal(left: Radius.circular(2))),
+          child: const m.Text('HP', style: TextStyle(color: Color(0xFF5A3A00), fontSize: 9, height: 1.2, fontWeight: FontWeight.w900, shadows: [])),
+        ),
+        Expanded(
+          child: Container(
+            height: 7,
+            decoration: BoxDecoration(color: const Color(0xFF384838), border: Border.all(color: const Color(0xFF202020))),
+            alignment: Alignment.centerLeft,
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(end: pct),
+              duration: const Duration(milliseconds: 700),
+              curve: Curves.easeOut,
+              builder: (context, v, _) => FractionallySizedBox(widthFactor: v, heightFactor: 1, child: ColoredBox(color: color)),
+            ),
+          ),
+        ),
+      ]);
+    }
     return Row(children: [
       const m.Text('HP', style: TextStyle(color: Color(0xFFD97706), fontSize: 10, fontWeight: FontWeight.w900)),
       const SizedBox(width: 4),
@@ -2855,10 +2926,64 @@ class _InfoBox extends StatelessWidget {
   final bool mine, dmax;
   final String status;
   final Map<String, int> boosts;
-  const _InfoBox({required this.mon, required this.hp, this.mine = false, this.status = '', this.dmax = false, this.boosts = const {}});
+
+  /// Black & White: caixa escura encostada na borda, com o XP (exp: 0 a 1) embaixo da vida.
+  final bool bw;
+  final double? exp;
+  const _InfoBox({required this.mon, required this.hp, this.mine = false, this.status = '', this.dmax = false, this.boosts = const {}, this.bw = false, this.exp});
 
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) => bw ? _bwBox() : _classic();
+
+  Widget _bwBox() => Container(
+        padding: EdgeInsets.fromLTRB(mine ? 12 : 8, 2, mine ? 8 : 12, 4),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF5B5B5B), Color(0xFF3A3A3A), Color(0xFF2C2C2C)], stops: [0, 0.45, 1]),
+          border: Border.all(color: const Color(0xFF181818), width: 2),
+          borderRadius: mine ? const BorderRadius.horizontal(left: Radius.circular(12)) : const BorderRadius.horizontal(right: Radius.circular(12)),
+        ),
+        child: DefaultTextStyle.merge(
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, shadows: _bwShadow),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(children: [
+                Expanded(child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: m.Text(mon.name, maxLines: 1, style: const TextStyle(fontSize: 13)))),
+                const SizedBox(width: 4),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 110),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerRight,
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      if (mon.terastal) ...[_Tag('TERA ${mon.teraType.toUpperCase()}', getColorForType(mon.teraType)), const SizedBox(width: 4)],
+                      if (dmax) ...[const _Tag('DMAX', Color(0xFFE11D48)), const SizedBox(width: 4)],
+                      if (status.isNotEmpty) ...[_StatusBadge(status), const SizedBox(width: 4)],
+                      m.Text('Lv${mon.level}', style: const TextStyle(fontSize: 12)),
+                    ]),
+                  ),
+                ),
+              ]),
+              _HpBar(hp: hp, max: mon.maxHp, bw: true),
+              if (boosts.entries.any((b) => b.value != 0 && _boostShort.containsKey(b.key)))
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Wrap(alignment: WrapAlignment.end, spacing: 2, runSpacing: 2, children: [
+                    for (final b in boosts.entries)
+                      if (b.value != 0 && _boostShort.containsKey(b.key))
+                        _Tag('${tr(_boostShort[b.key]!)} ${b.value > 0 ? '+' : '−'}${b.value.abs()}',
+                            b.value > 0 ? const Color(0xFF059669) : const Color(0xFFE11D48)),
+                  ]),
+                ),
+              if (mine) m.Text('$hp/${mon.maxHp}', textAlign: TextAlign.right, style: const TextStyle(fontSize: 12, height: 1.1)),
+              if (exp != null) _ExpBar(exp!),
+            ],
+          ),
+        ),
+      );
+
+  Widget _classic() => Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           color: const Color(0xFFFFFDE0),

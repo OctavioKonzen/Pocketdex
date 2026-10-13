@@ -39,6 +39,10 @@ function battle(run) {
   const weakest = Math.min(...run.team.map(strength))
   const wantCatch = capture && (run.team.length < F.MAX_TEAM || strength(foe0) > weakest * 1.1)
   let state = game.state
+  // Quem lutou contra cada adversário (para o XP).
+  const fought = run.encounter.foes.map(() => [])
+  const mark = () => { const list = fought[state.sides[1].active]; const mine = order[state.sides[0].active]; if (list && !list.includes(mine)) list.push(mine) }
+  mark()
   try {
     for (let turn = 0; turn < 400 && state.winner == null; turn++) {
       const actions = [0, 1].map((side) => {
@@ -58,6 +62,7 @@ function battle(run) {
         return sim.recommend(game.handle, side).actions[0]
       })
       state = sim.choose(game.handle, actions).state
+      mark()
     }
   } catch (error) {
     if (process.env.DEBUG) console.error('erro na batalha:', error.message)
@@ -68,7 +73,7 @@ function battle(run) {
   const hp = [...run.team.map((m) => m.hp)]
   order.forEach((teamIndex, slot) => { const p = state.sides[0].team[slot]; hp[teamIndex] = p.hp / p.maxHp })
   if (process.env.DEBUG && state.winner !== 0) console.error(`andar ${run.floor}: perdeu para ${run.encounter.kind} ${run.encounter.foes.map((f) => `${pokemon[f.id].name}:${f.level}`).join(' ')} (turnos ${state.turn})`)
-  return { won: state.winner === 0, after: { hp, bag: state.bags[0], captured: state.captured != null } }
+  return { won: state.winner === 0, after: { hp, bag: state.bags[0], captured: state.captured != null, fought } }
 }
 
 function strength(m) { return (data.species[m.id]?.[1] ?? 300) * m.level }
@@ -117,6 +122,7 @@ function between(run) {
     if (down() > run.bag.revive && shop.includes('revive') && buy('revive')) continue
     if (potions < 3 && ['hyper-potion', 'super-potion', 'max-potion', 'potion'].some((id) => shop.includes(id) && buy(id))) continue
     if (balls(run) < 3 && ['ultra-ball', 'great-ball', 'poke-ball'].some((id) => shop.includes(id) && buy(id))) continue
+    if (shop.includes('exp-share') && !run.expShare && buy('exp-share')) continue
     if (shop.includes('rare-candy') && buy('rare-candy', lowest)) continue
     const held = shop.find((id) => F.HELD_BOOST[id])
     if (held && buy(held, best)) continue
