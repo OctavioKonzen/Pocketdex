@@ -512,11 +512,19 @@ function TeraCrown({ color }) {
   )
 }
 
+/**
+ * O tamanho na batalha pela altura do Pokémon (decímetros), como nos jogos:
+ * um Joltik bem pequeno, um Pikachu pequeno, um Charizard quase do tamanho do
+ * espaço e os gigantes (Wailord, Gigantamax) ocupando tudo. Igual ao app.
+ */
+export const battleScale = (height) => Math.min(1, Math.max(0.42, Math.sqrt((height ?? 10) / 20)))
+
 const BattleSprite = forwardRef(function BattleSprite({ mon, id, back, fainted, dmax, tera = '', byId }, ref) {
   const p = byId?.get(id) ?? byId?.get(mon.id)
   const teraColor = tera ? typeColor(tera) : null
+  const scale = battleScale(p?.height)
   return (
-    <div className={`aspect-square w-full transition-all duration-500 ${fainted ? 'translate-y-10 opacity-0' : ''}`}>
+    <div className={`aspect-square w-full transition-all duration-500 ${fainted ? 'translate-y-10 opacity-0' : ''}`} style={{ transform: `scale(${scale})`, transformOrigin: '50% 100%' }} data-scale={scale}>
       <div
         className="h-full w-full origin-bottom transition-transform duration-700"
         // Dinamax: gigante; o do adversário (lá no alto do campo) cresce menos e desce um pouco, para não passar do topo.
@@ -1095,7 +1103,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
             </div>
           )}
         </div>
-        <div className="absolute bottom-[9%] left-[6%] w-[46%]">
+        <div className="absolute bottom-[13%] left-[6%] w-[46%]">
           <div className={`poke-${poke[0] || 'shown'}`}>
             <BattleSprite ref={sprites[0]} mon={me} id={shown.form[0] ?? me.id} dmax={shown.dmax[0]} tera={shown.tera[0]} back fainted={shown.fainted[0]} byId={byId} />
           </div>

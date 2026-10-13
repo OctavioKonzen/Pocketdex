@@ -1523,14 +1523,14 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                         ),
                       Positioned(
                           left: w * 0.06,
-                          bottom: h * 0.09,
+                          bottom: h * 0.13,
                           width: w * 0.46,
                           height: w * 0.46,
                           child: _PokeOut(
                               state: _poke[0],
                               child: _Sprite(key: _sprites[0], mon: me, id: _form[0] ?? me.id, dmax: _dmax[0], tera: _tera[0], back: true, fainted: _fainted[0]))),
                       if (_ball[0] != null)
-                        Positioned(left: w * 0.06, bottom: h * 0.09, width: w * 0.46, height: w * 0.46, child: _Ball(side: 0, phase: _ball[0]!)),
+                        Positioned(left: w * 0.06, bottom: h * 0.13, width: w * 0.46, height: w * 0.46, child: _Ball(side: 0, phase: _ball[0]!)),
                       if (_introOn && _myTrainer != null)
                         Positioned(
                           left: w * 0.02,
@@ -2028,6 +2028,13 @@ class _Sprite extends StatefulWidget {
   State<_Sprite> createState() => _SpriteState();
 }
 
+/// O tamanho na batalha pela altura do Pokémon (decímetros), como nos jogos: um Joltik bem pequeno, um Charizard quase do
+/// tamanho do espaço e os gigantes ocupando tudo. Igual ao site (battleScale).
+double battleScale(num? height) => sqrt((height ?? 10) / 20).clamp(0.42, 1.0).toDouble();
+
+/// As alturas já lidas do banco (id → decímetros).
+final _heights = <int, num>{};
+
 class _SpriteState extends State<_Sprite> with TickerProviderStateMixin {
   late final _lunge = AnimationController(vsync: this, duration: const Duration(milliseconds: 450));
   late final _hurt = AnimationController(vsync: this, duration: const Duration(milliseconds: 520));
@@ -2040,11 +2047,24 @@ class _SpriteState extends State<_Sprite> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     if (widget.tera.isNotEmpty) _shine.repeat();
+    _loadHeight();
+  }
+
+  /// A altura de quem está na tela (a forma: Mega, Gigantamax...).
+  void _loadHeight() {
+    final id = widget.id;
+    if (_heights.containsKey(id)) return;
+    LocalDatabase.instance.pokemonRow(id).then((row) {
+      final h = row?['height'] as num?;
+      if (h == null || !mounted) return;
+      setState(() => _heights[id] = h);
+    });
   }
 
   @override
   void didUpdateWidget(covariant _Sprite old) {
     super.didUpdateWidget(old);
+    if (old.id != widget.id) _loadHeight();
     if (widget.tera.isNotEmpty && !_shine.isAnimating) _shine.repeat();
     if (widget.tera.isEmpty && _shine.isAnimating) _shine.stop();
   }
@@ -2106,7 +2126,8 @@ class _SpriteState extends State<_Sprite> with TickerProviderStateMixin {
               offset: Offset(0, widget.dmax && !widget.back ? 0.06 : 0),
               duration: const Duration(milliseconds: 700),
               child: AnimatedScale(
-              scale: widget.dmax ? (widget.back ? 1.35 : 1.15) : 1,
+              // O tamanho dele (pela altura) e, no Dinamax, gigante.
+              scale: battleScale(_heights[widget.id]) * (widget.dmax ? (widget.back ? 1.35 : 1.15) : 1),
               alignment: Alignment.bottomCenter,
               duration: const Duration(milliseconds: 700),
               child: Stack(

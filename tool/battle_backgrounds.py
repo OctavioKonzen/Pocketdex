@@ -740,24 +740,44 @@ def pixelate(im, w=''):
 
 
 def put_small(a, spec, tone):
+    """Uma base em pixel: sombra no chão, espessura (a borda de baixo mais escura), um pouco da cor do chão em volta e os anéis."""
     h, w = a.shape[:2]
-    im = Image.new('RGBA', (w, h), (0, 0, 0, 0))
-    d = ImageDraw.Draw(im)
     cx, cy, rx, ry = spec
     X, Y, RX, RY = cx * w, cy * h, rx * w, ry * h
-    edge, mid, center, outline = (34, 92, 156), (58, 136, 202), (140, 204, 248), (22, 62, 116)
-    d.ellipse([X - RX, Y - RY, X + RX, Y + RY], fill=outline + (255,))
+    # A cor do chão logo em volta (para a base combinar com o lugar).
+    ys = slice(int(max(0, Y - RY * 1.3)), int(min(h, Y + RY * 1.3)))
+    xs = slice(int(max(0, X - RX * 1.1)), int(min(w, X + RX * 1.1)))
+    ground_c = a[ys, xs].reshape(-1, 3).mean(axis=0)
+    thick = max(2, round(RY * 0.16))
+    im = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    # Sombra no chão (um pouco maior e mais embaixo).
+    shadow = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+    ImageDraw.Draw(shadow).ellipse([X - RX * 1.04, Y - RY * 0.7 + thick, X + RX * 1.04, Y + RY * 1.08 + thick], fill=(0, 0, 0, 120))
+    shadow = shadow.filter(ImageFilter.GaussianBlur(2))
+    blend_k = 0.28
+    def col(c):
+        c = mix(np.array(c, np.float32), ground_c, blend_k)
+        return tuple(int(v) for v in np.clip(c * tone, 0, 255))
+    edge, mid, center, outline, lip = (34, 92, 156), (58, 136, 202), (140, 204, 248), (22, 62, 116), (16, 44, 86)
+    # Espessura: a "lateral" da base, embaixo.
+    d.ellipse([X - RX, Y - RY + thick, X + RX, Y + RY + thick], fill=col(lip) + (255,))
+    d.ellipse([X - RX, Y - RY, X + RX, Y + RY], fill=col(outline) + (255,))
     rings = 14
     for k in range(rings):
         t = k / (rings - 1)
         f = 1 - t * 0.97
         c = mix(np.array(edge, np.float32), np.array(mid, np.float32), t / 0.6) if t < 0.6 else mix(np.array(mid, np.float32), np.array(center, np.float32), (t - 0.6) / 0.4)
-        c = np.clip(c * tone, 0, 255)
         oy = -RY * 0.05 * t
-        d.ellipse([X - (RX - 1) * f, Y + oy - (RY - 1) * f, X + (RX - 1) * f, Y + oy + (RY - 1) * f], fill=tuple(int(v) for v in c) + (255,))
-    arr = np.asarray(im, np.float32)
-    m = arr[..., 3:] / 255
-    return a * (1 - m) + arr[..., :3] * m
+        d.ellipse([X - (RX - 1) * f, Y + oy - (RY - 1) * f, X + (RX - 1) * f, Y + oy + (RY - 1) * f], fill=col(c) + (255,))
+    # Brilho na borda de trás (a luz vem de cima).
+    d.arc([X - RX + 1, Y - RY + 1, X + RX - 1, Y + RY - 1], 195, 345, fill=col((170, 220, 255)) + (110,), width=1)
+    out = a
+    for layer_im in (shadow, im):
+        arr = np.asarray(layer_im, np.float32)
+        m = arr[..., 3:] / 255
+        out = out * (1 - m) + arr[..., :3] * m
+    return out
 
 
 def main():
