@@ -9,6 +9,7 @@ import {
   EXP_SHARE, expProgress, shopOwned, baseForm, forSale, normalizeOwned, buyUpgrade, upgradePrice, UPGRADES,
   tradeMon, skipTrade, TRADE_LEVELS, escapeRope, ESCAPE_HP, progress, ACHIEVEMENTS, LUCKY_EGG, rerollRoute, FOE_ITEMS,
   regionLegend, REGION_LEGENDS, rivalStarter, starterLine, newMission, resolveChoice, MISSION_MONEY,
+  HM_BADGES, cutPath, nodeBlocked, dexOf, dexRewardFor, DEX_REWARDS, leaveDaycare, takeDaycare, DAYCARE_EGG, EGG_IVS, rematchBoss,
 } from './factoryRun'
 
 const data = JSON.parse(readFileSync(new URL('../../../assets/database/factory.json', import.meta.url), 'utf8'))
@@ -767,10 +768,57 @@ describe('mapa da corrida', () => {
     expect(helped.money).toBe(900)
     expect(helped.pending.event.kind).toBe('helped')
     expect(resolveChoice({ ...at, money: 10, pending: { choice: { kind: 'help', cost: 100 } } }, data, true).money).toBe(10)
-    expect(resolveChoice({ ...at, flash: true, pending: { choice: { kind: 'secret' } } }, data, true).pending.event.kind).toBe('secretFound')
+    expect(resolveChoice({ ...at, hms: ['flash'], pending: { choice: { kind: 'secret' } } }, data, true).pending.event.kind).toBe('secretFound')
     const follow = resolveChoice({ ...at, pending: { choice: { kind: 'follow' } } }, data, true)
     expect(follow.floor).toBe(3)
     expect(follow.encounter.kind).toBe('wild')
     expect(data.species[follow.encounter.foes[0].id][5]).toBeLessThanOrEqual(75)
+  })
+
+  it('jogabilidade: MOs pelas insígnias, Pokédex da corrida, Creche com ovo, revanche do Campeão', () => {
+    const base = startRun(emptyFactory(), data, 1, 42)
+    expect(HM_BADGES).toEqual({ 1: 'cut', 2: 'flash', 3: 'surf' })
+    // Surf: sem ele, não mergulha; blindPick pula o caminho bloqueado.
+    const sea = { ...base, route: { floor: 2, biome: 'water', options: [{ kind: 'wild', biome: 'underwater' }, { kind: 'trainer' }] } }
+    expect(nodeBlocked(sea, sea.route.options[0])).toBe(true)
+    expect(chooseNode(sea, data, 0)).toBe(sea)
+    expect(blindPick(sea)).toBe(1)
+    expect(nodeBlocked({ ...sea, hms: ['surf'] }, sea.route.options[0])).toBe(false)
+    // Cut: um caminho escondido por rota.
+    expect(cutPath(sea)).toBe(null)
+    const cut = cutPath({ ...sea, hms: ['cut'] })
+    expect(cut.route.options.at(-1)).toEqual({ kind: 'wild', biome: 'water', rare: true, cut: true })
+    expect(cutPath(cut)).toBe(null)
+    // Pokédex da corrida: o inicial já conta; a 5ª espécie dá o prêmio.
+    expect(dexOf(base)).toEqual([1])
+    const four = { ...base, dex: [1, 2, 3, 4] }
+    expect(dexRewardFor(four, 4)).toBe(null)
+    expect(dexRewardFor(four, 19)).toEqual(DEX_REWARDS[0])
+    const caught = capture({ ...four, money: 0, pending: { capture: { id: 19, level: 5 } } })
+    expect(caught.dex).toEqual([1, 2, 3, 4, 19])
+    expect(caught.money).toBe(DEX_REWARDS[0].money)
+    expect(caught.bag[DEX_REWARDS[0].item]).toBe((base.bag[DEX_REWARDS[0].item] ?? 0) + DEX_REWARDS[0].count)
+    // Creche: um nível por andar e, depois de DAYCARE_EGG andares, um ovo com IVs bons.
+    const two = { ...base, team: [base.team[0], { ...base.team[0], id: 19, level: 10 }] }
+    expect(leaveDaycare(base, 0)).toBe(null)
+    const left = leaveDaycare(two, 1)
+    expect(left.team.length).toBe(1)
+    const back = takeDaycare({ ...left, floor: left.floor + DAYCARE_EGG }, data)
+    expect(back.team[1].level).toBe(10 + DAYCARE_EGG)
+    expect(back.pending.capture).toEqual({ id: 19, level: 5, egg: true })
+    const egg = capture(back)
+    expect(Math.min(...Object.values(egg.team[2].ivs))).toBeGreaterThanOrEqual(EGG_IVS)
+    expect(takeDaycare({ ...left, floor: left.floor + 1 }, data).pending).toBe(left.pending)
+    // Revanche: o Campeão vencido vem na primeira bifurcação e some depois de vencido.
+    const red = data.bosses.findIndex((b) => b.game === 'Red/Blue')
+    const re = { ...base, rematch: { region: red } }
+    expect(rematchBoss(data, re).kind).toBe('champion')
+    const fight = chooseNode({ ...re, route: { floor: 2, biome: 'grass', options: [{ kind: 'rematch' }] } }, data, 0)
+    expect(fight.encounter.kind).toBe('rematch')
+    expect(fight.encounter.boss.kind).toBe('champion')
+    const won = winFloor(fight, data, {})
+    expect(won.rematch).toBe(null)
+    expect(won.rematches).toBe(1)
+    expect(won.boss).toEqual(fight.boss)
   })
 })

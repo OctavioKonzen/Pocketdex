@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -462,10 +463,64 @@ void main() {
     expect(helped['money'], 900);
     expect(helped['pending']['event']['kind'], 'helped');
     expect(FactoryRun.resolveChoice(help({...at, 'money': 10}), data, true)['money'], 10);
-    expect(FactoryRun.resolveChoice({...at, 'flash': true, 'pending': {'choice': {'kind': 'secret'}}}, data, true)['pending']['event']['kind'], 'secretFound');
+    expect(FactoryRun.resolveChoice({...at, 'hms': ['flash'], 'pending': {'choice': {'kind': 'secret'}}}, data, true)['pending']['event']['kind'], 'secretFound');
     final follow = FactoryRun.resolveChoice({...at, 'pending': {'choice': {'kind': 'follow'}}}, data, true);
     expect(follow['floor'], 3);
     expect(follow['encounter']['kind'], 'wild');
     expect(data.species[follow['encounter']['foes'][0]['id']]![5] as num, lessThanOrEqualTo(75));
+  });
+
+  test('jogabilidade: MOs pelas insígnias, Pokédex da corrida, Creche com ovo, revanche do Campeão (igual ao site)', () {
+    final base = FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!;
+    expect(FactoryRun.hmBadges, {1: 'cut', 2: 'flash', 3: 'surf'});
+    final sea = {
+      ...base,
+      'route': {
+        'floor': 2,
+        'biome': 'water',
+        'options': [{'kind': 'wild', 'biome': 'underwater'}, {'kind': 'trainer'}],
+      },
+    };
+    final dive = (sea['route'] as Map)['options'][0] as Map;
+    expect(FactoryRun.nodeBlocked(sea, dive), isTrue);
+    expect(identical(FactoryRun.chooseNode(sea, data, 0), sea), isTrue);
+    expect(FactoryRun.blindPick(sea), 1);
+    expect(FactoryRun.nodeBlocked({...sea, 'hms': ['surf']}, dive), isFalse);
+    expect(FactoryRun.cutPath(sea), isNull);
+    final cut = FactoryRun.cutPath({...sea, 'hms': ['cut']})!;
+    expect((cut['route']['options'] as List).last, {'kind': 'wild', 'biome': 'water', 'rare': true, 'cut': true});
+    expect(FactoryRun.cutPath(cut), isNull);
+    expect(FactoryRun.dexOf(base), [1]);
+    final four = {...base, 'dex': [1, 2, 3, 4]};
+    expect(FactoryRun.dexRewardFor(four, 4), isNull);
+    expect(FactoryRun.dexRewardFor(four, 19), FactoryRun.dexRewards[0]);
+    final caught = FactoryRun.capture({...four, 'money': 0, 'pending': {'capture': {'id': 19, 'level': 5}}});
+    expect(caught['dex'], [1, 2, 3, 4, 19]);
+    expect(caught['money'], FactoryRun.dexRewards[0]['money']);
+    final item = '${FactoryRun.dexRewards[0]['item']}';
+    expect(caught['bag'][item], ((base['bag'][item] as num?) ?? 0) + (FactoryRun.dexRewards[0]['count'] as int));
+    final first = FactoryRun.teamOf(base).first;
+    final two = {...base, 'team': [first, {...first, 'id': 19, 'level': 10}]};
+    expect(FactoryRun.leaveDaycare(base, 0), isNull);
+    final left = FactoryRun.leaveDaycare(two, 1)!;
+    expect((left['team'] as List).length, 1);
+    final back = FactoryRun.takeDaycare({...left, 'floor': (left['floor'] as int) + FactoryRun.daycareEgg}, data)!;
+    expect(FactoryRun.teamOf(back)[1]['level'], 10 + FactoryRun.daycareEgg);
+    expect(back['pending']['capture'], {'id': 19, 'level': 5, 'egg': true});
+    final egg = FactoryRun.capture(back);
+    expect((FactoryRun.teamOf(egg)[2]['ivs'] as Map).values.cast<int>().reduce(min), greaterThanOrEqualTo(FactoryRun.eggIvs));
+    final red = data.bosses.indexWhere((b) => b['game'] == 'Red/Blue');
+    final re = {...base, 'rematch': {'region': red}};
+    expect(FactoryRun.rematchBoss(data, re)['kind'], 'champion');
+    final fight = FactoryRun.chooseNode({
+      ...re,
+      'route': {'floor': 2, 'biome': 'grass', 'options': [{'kind': 'rematch'}]},
+    }, data, 0);
+    expect(fight['encounter']['kind'], 'rematch');
+    expect(fight['encounter']['boss']['kind'], 'champion');
+    final won = FactoryRun.winFloor(fight, data);
+    expect(won['rematch'], isNull);
+    expect(won['rematches'], 1);
+    expect(won['boss'], fight['boss']);
   });
 }

@@ -372,7 +372,7 @@ export function expShares(run, data, foe, fought, factor = 1) {
 }
 
 /** O fator de XP do tipo de andar (treinadores e chefes dão mais). */
-export const expFactor = (kind) => (kind === 'ace' ? 1.75 : kind === 'boss' || kind === 'wildboss' || kind === 'trainer' ? 1.5 : 1)
+export const expFactor = (kind) => (kind === 'ace' || kind === 'rematch' ? 1.75 : kind === 'boss' || kind === 'wildboss' || kind === 'trainer' ? 1.5 : 1)
 
 /** A barra de XP: quanto do nível atual já foi (0 a 1), com o XP a mais (extra). */
 export function expProgress(mon, extra = 0) {
@@ -593,7 +593,7 @@ export function routeBiome(data, run) {
 
 /** Os pontos do mapa (o peso de cada um nas bifurcações). O Centro Pokémon é raro. */
 export const NODE_WEIGHTS = [['wild', 34], ['trainer', 28], ['ace', 12], ['mart', 10], ['event', 11], ['center', 5], ['trade', 8]]
-const BATTLE_NODES = ['wild', 'trainer', 'ace', 'boss', 'wildboss']
+const BATTLE_NODES = ['wild', 'trainer', 'ace', 'boss', 'wildboss', 'rematch']
 export const isBattleNode = (node) => BATTLE_NODES.includes(node?.kind)
 
 /**
@@ -642,6 +642,8 @@ export function routeOptions(run, data, rand) {
   // No mar, um dos caminhos é mergulhar (o selvagem do fundo do mar).
   if (biome === 'water' && !options.some((o) => o.biome === 'underwater')) options[options.length - 1] = { kind: 'wild', biome: 'underwater' }
   if (pos === FORKS[1] && !options.some((o) => o.legend) && rand() < WILD_BOSS_CHANCE && !base) options[options.length - 1] = { kind: 'wildboss' }
+  // Depois de virar Campeão: o Campeão vencido quer revanche (num dos caminhos da primeira bifurcação).
+  if (run.rematch && pos === FORKS[0] && !base) options[options.length - 1] = { kind: 'rematch' }
   return { floor: run.floor, biome, options }
 }
 
@@ -670,7 +672,7 @@ export const CHOICE_CHANCE = 0.4
  */
 export function chooseNode(run, data, index) {
   const node = run.route?.options?.[index]
-  if (!node || run.encounter || run.pending) return run
+  if (!node || run.encounter || run.pending || nodeBlocked(run, node)) return run
   const out = { ...run, route: null }
   const rand = dice(out)
   if (isBattleNode(node)) {
@@ -679,6 +681,16 @@ export function chooseNode(run, data, index) {
     const scene = node.biome ?? (city ? (bossOf(data, run).kind === 'gym' ? 'city' : 'tower') : run.route.biome ?? 'grass')
     out.scene = scene
     out.encounter = { ...encounterFor(data, out.floor, rand, node.kind === 'boss' ? bossOf(data, out) : null, node.kind === 'wildboss', { ...node, biome: scene, shiny: run.shinyRate ?? 1 }), scene }
+    // A revanche: o Campeão vencido, com o time do andar de agora (e mais forte).
+    if (node.kind === 'rematch') {
+      const champ = rematchBoss(data, run)
+      out.encounter = { ...encounterFor(data, out.floor + REMATCH_FLOORS, rand, champ), kind: 'rematch', scene }
+    }
+    // Dupla de treinadores: dois treinadores juntos (os dois times na mesma batalha).
+    if (node.kind === 'trainer' && !scene.startsWith('base-') && rand() < DOUBLE_CHANCE) {
+      const second = encounterFor(data, out.floor, rand, null, false, { ...node, biome: scene, shiny: run.shinyRate ?? 1 })
+      out.encounter = { ...out.encounter, foes: [...out.encounter.foes, ...second.foes], pair: true }
+    }
     // O rival leva o inicial que tem vantagem sobre o seu (no lugar do inicial dele ou do mais forte).
     const counter = node.kind === 'boss' && out.encounter.boss?.kind === 'rival' ? rivalStarter(data, run.starter) : null
     if (counter != null) {
@@ -873,7 +885,7 @@ export function winFloor(run, data, after = {}) {
   const rand = dice(out)
   const { kind, foes } = run.encounter
   const factor = expFactor(kind)
-  const moneyFactor = kind === 'boss' || kind === 'wildboss' ? 3 : kind === 'ace' ? 2.5 : kind === 'trainer' ? 2 : 1
+  const moneyFactor = kind === 'boss' || kind === 'wildboss' || kind === 'rematch' ? 3 : kind === 'ace' ? 2.5 : kind === 'trainer' ? 2 : 1
   let money = 0
   // XP e EVs de cada derrotado: para quem lutou contra ele (after.fought[j]: posições na corrida) e, com o Exp. Share, para o resto do time.
   const gains = out.team.map(() => 0)
@@ -900,17 +912,28 @@ export function winFloor(run, data, after = {}) {
   out.floor += 1
   let drop = null, story = null
   if (kind === 'boss' || kind === 'wildboss') out.bosses = (out.bosses ?? 0) + 1
-  let champion = false
+  let champion = false, hm = null
+  // Venceu a revanche: o Campeão some (até o próximo).
+  if (kind === 'rematch') {
+    out.rematch = null
+    out.rematches = (run.rematches ?? 0) + 1
+  }
   if (kind === 'boss') {
     const beaten = run.encounter.boss
     // As conquistas (progress): insígnias, ginásio só com o inicial, Campeões.
     if (beaten.kind === 'gym') {
       out.badges = (run.badges ?? 0) + 1
       if (run.team.length === 1) out.soloGym = true
+      // As MOs vêm com as insígnias (Cut, Flash e Surf).
+      hm = HM_BADGES[out.badges] ?? null
+      if (hm && !hasHm(run, hm)) out.hms = [...(run.hms ?? []), hm]
+      else hm = null
     }
     if (beaten.kind === 'champion') {
       out.champions = (run.champions ?? 0) + 1
       champion = true
+      // O Campeão vencido vai querer revanche na região seguinte.
+      out.rematch = { region: run.boss.region }
     }
     // O rival: as falas mudam conforme ele perde.
     if (beaten.kind === 'rival') out.rivalWins = (run.rivalWins ?? 0) + 1
@@ -962,6 +985,7 @@ export function winFloor(run, data, after = {}) {
     // O chefe que acabou de perder (as falas depois da luta) e a missão completa.
     ...(kind === 'boss' ? { beat: { kind: run.encounter.boss.kind, name: run.encounter.boss.name, region: run.encounter.boss.region } } : {}),
     ...(mission ? { mission } : {}),
+    ...(hm ? { hm } : {}),
   }
   out.encounter = null
   return out
@@ -1031,12 +1055,87 @@ export function capture(run, replace = null) {
   if (!foe) return run
   const out = { ...run, team: [...run.team], pending: { ...run.pending, capture: null } }
   const rand = dice(out)
-  const mon = newMon(foe.id, foe.level, rand, 0, Boolean(foe.shiny))
+  const mon = newMon(foe.id, foe.level, rand, foe.egg ? EGG_IVS : 0, Boolean(foe.shiny))
   if (out.team.length < MAX_TEAM) out.team.push(mon)
   else if (replace != null && replace >= 0 && replace < out.team.length) out.team[replace] = mon
   else return run
+  addDex(out, foe.id)
   return out
 }
+
+/**
+ * A Pokédex da corrida: quem você já teve (o inicial, os capturados, os
+ * trocados e os chocados). A cada marca, um prêmio.
+ */
+export const DEX_REWARDS = [
+  { at: 5, item: 'great-ball', count: 3, money: 200 },
+  { at: 10, item: 'ultra-ball', count: 3, money: 400 },
+  { at: 15, item: 'max-potion', count: 2, money: 700 },
+  { at: 20, item: 'revive', count: 3, money: 1000 },
+  { at: 30, item: 'master-ball', count: 1, money: 2000 },
+]
+export const dexOf = (run) => run.dex ?? (run.starter != null ? [run.starter] : [])
+/** O prêmio que entrar com id daria (null se ele já está na Pokédex ou não chega numa marca). */
+export function dexRewardFor(run, id) {
+  const dex = dexOf(run)
+  if (dex.includes(id)) return null
+  return DEX_REWARDS.find((r) => r.at === dex.length + 1) ?? null
+}
+function addDex(out, id) {
+  const reward = dexRewardFor(out, id)
+  if (dexOf(out).includes(id)) return
+  out.dex = [...dexOf(out), id]
+  if (!reward) return
+  out.bag = { ...out.bag, [reward.item]: (out.bag[reward.item] ?? 0) + reward.count }
+  out.money += reward.money
+}
+
+/** As MOs (HMs): vêm com a 1ª, a 2ª e a 3ª insígnia. Cut abre um caminho escondido; Flash ilumina cavernas; Surf deixa mergulhar. */
+export const HM_BADGES = { 1: 'cut', 2: 'flash', 3: 'surf' }
+export const hasHm = (run, hm) => (run.hms ?? []).includes(hm)
+/** Sem Surf, não dá para mergulhar. */
+export const nodeBlocked = (run, node) => node?.biome === 'underwater' && run.route?.biome !== 'underwater' && !hasHm(run, 'surf')
+/** Cut: uma vez por rota, corta a árvore e abre um caminho escondido (um selvagem raro do lugar). null se não dá. */
+export function cutPath(run) {
+  const route = run.route
+  if (!hasHm(run, 'cut') || !route || route.options.length < 2 || run.encounter || run.pending || run.cutLeg === (run.leg ?? 1)) return null
+  return { ...run, cutLeg: run.leg ?? 1, route: { ...route, options: [...route.options, { kind: 'wild', biome: route.biome, rare: true, cut: true }] } }
+}
+
+/** Dupla de treinadores: chance de um treinador vir acompanhado. */
+export const DOUBLE_CHANCE = 0.2
+/** A revanche: o Campeão vencido vem com o time de alguns andares à frente. */
+export const REMATCH_FLOORS = 5
+export function rematchBoss(data, run) {
+  const game = data.bosses[run.rematch?.region ?? run.boss.region]
+  const champ = game.leaders.find((l) => l.kind === 'champion') ?? game.leaders[game.leaders.length - 1]
+  return { region: game.region, game: game.game, ...champ }
+}
+
+/**
+ * A Creche (na cidade): deixa um Pokémon, ele ganha um nível por andar; buscando
+ * depois de DAYCARE_EGG andares, vem junto um ovo (a forma básica dele, com IVs bons).
+ */
+export const DAYCARE_EGG = 4
+export const EGG_IVS = 20
+export const EGG_LEVEL = 5
+export function leaveDaycare(run, index) {
+  if (run.daycare || run.team.length < 2 || !run.team[index]) return null
+  const team = run.team.filter((_, i) => i !== index)
+  return { ...run, team, daycare: { mon: run.team[index], floor: run.floor } }
+}
+export function takeDaycare(run, data) {
+  const care = run.daycare
+  if (!care || run.team.length >= MAX_TEAM) return null
+  const out = { ...run, daycare: null }
+  const rand = dice(out)
+  const steps = Math.max(0, run.floor - care.floor)
+  const [grown] = levelTo(care.mon, care.mon.level + steps, data, rand)
+  out.team = [...run.team, grown]
+  if (steps >= DAYCARE_EGG) out.pending = { ...(run.pending ?? {}), capture: { id: baseForm(data, care.mon.id), level: EGG_LEVEL, egg: true } }
+  return out
+}
+
 /** Solta o capturado (o time está cheio e você não quer trocar ninguém). */
 export const skipCapture = (run) => (run.pending ? { ...run, pending: { ...run.pending, capture: null } } : run)
 
@@ -1051,6 +1150,7 @@ export function tradeMon(run, index, data) {
   const fresh = newMon(devolve(data, offer.id, mon.level), mon.level, rand, 10, Boolean(offer.shiny))
   const [grown] = levelTo(fresh, mon.level + TRADE_LEVELS, data, rand)
   out.team[index] = { ...grown, item: mon.item ?? null, extras: mon.extras ?? [] }
+  addDex(out, grown.id)
   return out
 }
 /** Sorteia os caminhos do andar de novo (melhoria "reroll": algumas vezes por corrida). null se não dá. */
@@ -1187,7 +1287,7 @@ export function resolveChoice(run, data, accept) {
     const scene = out.scene ?? 'grass'
     out.encounter = { ...encounterFor(data, out.floor, rand, null, false, { kind: 'wild', biome: scene, rare: true, shiny: run.shinyRate ?? 1 }), scene }
   } else {
-    const found = run.flash || rand() < 0.5
+    const found = hasHm(run, 'flash') || rand() < 0.5
     if (found) {
       const item = pickOne(ACE_REWARDS, rand)
       const money = Math.round(80 * priceScale(out.floor - 1))
@@ -1214,7 +1314,10 @@ export const TOWN_MAP_CHANCE = 0.75
  */
 export function blindPick(run) {
   const n = run.route?.options?.length ?? 1
-  return (Math.imul(((run.seed ?? 0) ^ (run.floor * 2654435761)) | 0, 1597334677) >>> 0) % n
+  const first = (Math.imul(((run.seed ?? 0) ^ (run.floor * 2654435761)) | 0, 1597334677) >>> 0) % n
+  // Sem Surf, não mergulha: o próximo caminho.
+  for (let k = 0; k < n; k++) if (!nodeBlocked(run, run.route?.options?.[(first + k) % n])) return (first + k) % n
+  return first
 }
 
 export const skipTrade = (run) => (run.pending ? { ...run, pending: { ...run.pending, trade: null } } : run)

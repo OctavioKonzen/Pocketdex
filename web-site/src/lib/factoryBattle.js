@@ -3,6 +3,7 @@
 // Igual ao app (FactoryBattle em lib/services/factory_run.dart).
 
 import { battleMons } from './battleSetup'
+import { t } from './i18n'
 import { getFactoryData, getMoves, getPokemonById, getSpecies } from './data'
 import { bagsFor, battleOrder, bossScene, captureFor, fieldOf, weatherOf, EXP_SHARE, expFactor, expProgress, expShares, foeMember, memberOf, movesAt } from './factoryRun'
 import { seededRandom } from './league'
@@ -86,9 +87,10 @@ export const GRUNT_TRAINERS = {
 }
 
 export function factoryFoe(run) {
-  const { kind, boss, grunt, trainerSeed } = run.encounter
+  const { kind, boss, grunt, trainerSeed, pair } = run.encounter
   return {
-    foeName: boss?.name ?? '',
+    // Dupla de treinadores: os dois juntos.
+    foeName: boss?.name ?? (pair ? t('Dupla de treinadores') : ''),
     // Na base de uma equipe vilã, o capanga dela.
     foeTrainer: boss?.trainer || (grunt ? GRUNT_TRAINERS[grunt]?.[(trainerSeed ?? 0) % 2] : null) || null,
     challenge: { kind: 'factory', wild: kind === 'wild' || kind === 'wildboss', ...(boss ? { boss } : {}) },
