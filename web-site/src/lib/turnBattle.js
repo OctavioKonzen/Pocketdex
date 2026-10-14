@@ -318,6 +318,21 @@ export function damageRange(hit, att, def, move, weather = '') {
   return [Math.floor((low * 100) / def.maxHp), Math.floor((high * 100) / def.maxHp)]
 }
 
+/** Golpes que sempre acertam crítico. */
+const ALWAYS_CRIT = ['frost-breath', 'storm-throw', 'wicked-blow', 'surging-strikes', 'flower-trick', 'zippy-zap']
+const plain = (x) => String(x ?? '').toLowerCase().replace(/[^a-z0-9]/g, '')
+/**
+ * A chance de crítico do golpe (em %), como no jogo: o estágio do golpe
+ * (Slash, Stone Edge...), Scope Lens / Razor Claw e Super Luck. null nos de status.
+ */
+export function critChance(mon, move) {
+  if (!move || move.category === 'status') return null
+  if (ALWAYS_CRIT.includes(move.slug)) return 100
+  const item = plain(mon?.item ?? mon?.simulation?.set?.item)
+  const stage = (move.rules?.c ?? 0) + (['scopelens', 'razorclaw'].includes(item) ? 1 : 0) + (plain(mon?.ability) === 'superluck' ? 1 : 0)
+  return Math.round(CRIT_CHANCE[Math.min(3, stage)] * 1000) / 10
+}
+
 /** Nomes das condições do campo (armadilhas, telas, Trick Room...): os do jogo, sem traduzir. */
 export const FIELD_NAMES = {
   stealthrock: 'Stealth Rock', spikes: 'Spikes', toxicspikes: 'Toxic Spikes', stickyweb: 'Sticky Web', gmaxsteelsurge: 'Steelsurge',

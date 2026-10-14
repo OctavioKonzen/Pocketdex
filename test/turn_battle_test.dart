@@ -508,6 +508,15 @@ void main() {
     expect([40, 50, 60, 70, 100, 140, 150].map((p) => TurnBattle.maxPower(p, 'fire')), [90, 100, 110, 120, 130, 140, 150]);
     expect([40, 100, 150].map((p) => TurnBattle.maxPower(p, 'fighting')), [70, 90, 100]);
   });
+  test('chance de crítico (igual ao site): normal 4,2%; Slash 12,5%; Super Luck soma; Frost Breath sempre; status não tem', () {
+    final slash = _move('slash', 'normal', 70, 100, 20, 0, {'c': 1});
+    expect(TurnBattle.critChance(_mon(1, 'A', ['normal'], 100, 50, []), _move('tackle', 'normal', 40, 100, 35)), 4.2);
+    expect(TurnBattle.critChance(_mon(1, 'A', ['normal'], 100, 50, []), slash), 12.5);
+    expect(TurnBattle.critChance(_mon(1, 'A', ['normal'], 100, 50, [], ability: 'Super Luck'), slash), 50);
+    expect(TurnBattle.critChance(_mon(1, 'A', ['normal'], 100, 50, [])..simulationItem = 'Scope Lens', slash), 50);
+    expect(TurnBattle.critChance(_mon(1, 'A', ['normal'], 100, 50, []), _move('frost-breath', 'ice', 60, 90, 10, 0, null, 'special')), 100);
+    expect(TurnBattle.critChance(_mon(1, 'A', ['normal'], 100, 50, []), _move('growl', 'normal', 0, 100, 40, 0, null, 'status')), isNull);
+  });
 }
 
 const _kinds = [

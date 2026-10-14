@@ -20,7 +20,7 @@ import { usePokemonIndex } from '../lib/pokemonIndex'
 import { useStore } from '../lib/store'
 import { teamMembers } from '../lib/teamBattle'
 import { fxPlan, moveAnim, SELF_KINDS } from '../lib/moveAnim'
-import { active, damageRange, fieldConditions, monDetails, lockedMove, canGimmick, canUseItem, effectLabel, forfeit, HEAL_SHARE, ITEMS, lineOf, MAX_MOVES, maxPower, moveEffect, newBattle, playTurn, replace, startBattle, STAT_NAMES, switchMatchup, usableMoves, weaknesses, Z_MOVES, zPower } from '../lib/turnBattle'
+import { active, critChance, damageRange, fieldConditions, monDetails, lockedMove, canGimmick, canUseItem, effectLabel, forfeit, HEAL_SHARE, ITEMS, lineOf, MAX_MOVES, maxPower, moveEffect, newBattle, playTurn, replace, startBattle, STAT_NAMES, switchMatchup, usableMoves, weaknesses, Z_MOVES, zPower } from '../lib/turnBattle'
 import Sprite from '../components/Sprite'
 import BwBag from '../components/BwBag'
 import BwSummary, { summaryOf } from '../components/BwSummary'
@@ -1420,6 +1420,8 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
                   {(z || max) && <div className="truncate text-[10px] font-bold opacity-90">{`${m.name} · ${t('Poder')} ${z ? zPower(m.power) : maxPower(m.power, m.type)}`}</div>}
                   <div className="flex items-center justify-between gap-1 text-[11px] font-semibold">
                     <span className="opacity-90">{`PP ${m.pp}/${m.maxPp}`}</span>
+                    {/* A chance de crítico (dano 1,5×). */}
+                    {!z && !max && critChance(current, m) != null && <span className="tabular-nums opacity-90" title={t('Chance de crítico')} data-testid="crit-chance">💥{critChance(current, m)}%</span>}
                     {(() => {
                       const range = !z && !max ? damageRange(hit, current, rival, m, shown.weather) : null
                       return range && <span className="tabular-nums opacity-95" data-testid="damage-range">{range[0] === range[1] ? `${range[0]}%` : `${range[0]}–${range[1]}%`}</span>

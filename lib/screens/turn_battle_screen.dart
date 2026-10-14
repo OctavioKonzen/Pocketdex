@@ -2027,6 +2027,14 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                                           ? '${tr('Poder')} ${selected == 'z' && !maxed ? TurnBattle.zPower(mv.power) : TurnBattle.maxPower(mv.power, mv.type)}'
                                           : 'PP ${mv.pp}/${mv.maxPp}',
                                       style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                                  // A chance de crítico (dano 1,5×).
+                                  if (!maxed && !(selected == 'z' && _b.canGimmick(0, 'z', i)))
+                                    if (TurnBattle.critChance(current, mv) case final c?)
+                                      Padding(
+                                        padding: const EdgeInsets.only(left: 6),
+                                        child: m.Text('💥${c == c.roundToDouble() ? c.toInt() : c}%',
+                                            key: ValueKey('crit-chance-$i'), style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                                      ),
                                   // Dano estimado (em % da vida do adversário).
                                   if (!maxed && !(selected == 'z' && _b.canGimmick(0, 'z', i)))
                                     if (TurnBattle.damageRange(widget.hit, current, rival, mv, _weather) case final r?)

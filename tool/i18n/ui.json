@@ -8223,5 +8223,6 @@
  "Caverna venenosa": {"en": "Poison cave", "fr": "Grotte toxique", "es": "Cueva venenosa"},
  "O calor sobe do chão e rios de lava iluminam as paredes.": {"en": "Heat rises from the ground and rivers of lava light up the walls.", "fr": "La chaleur monte du sol et des rivières de lave éclairent les parois.", "es": "El calor sube del suelo y ríos de lava iluminan las paredes."},
  "Uma névoa roxa cobre o chão; melhor não respirar fundo.": {"en": "A purple mist covers the ground; better not breathe deeply.", "fr": "Une brume violette couvre le sol ; mieux vaut ne pas respirer fort.", "es": "Una niebla morada cubre el suelo; mejor no respirar hondo."},
- "A água bate nas pedras e ecoa por toda a caverna.": {"en": "Water crashes on the rocks and echoes through the cave.", "fr": "L'eau frappe les rochers et résonne dans toute la grotte.", "es": "El agua golpea las rocas y resuena por toda la cueva."}
+ "A água bate nas pedras e ecoa por toda a caverna.": {"en": "Water crashes on the rocks and echoes through the cave.", "fr": "L'eau frappe les rochers et résonne dans toute la grotte.", "es": "El agua golpea las rocas y resuena por toda la cueva."},
+ "Chance de crítico": {"en": "Critical hit chance", "fr": "Chance de coup critique", "es": "Probabilidad de crítico"}
 }

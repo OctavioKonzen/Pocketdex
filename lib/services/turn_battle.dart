@@ -859,6 +859,20 @@ class TurnBattle {
 
   /// Dano estimado de um golpe em % da vida máxima do alvo (mínimo e máximo),
   /// a mesma conta da batalha (sem crítico); null para golpe de status. Igual ao site.
+  /// Golpes que sempre acertam crítico.
+  static const _alwaysCrit = ['frost-breath', 'storm-throw', 'wicked-blow', 'surging-strikes', 'flower-trick', 'zippy-zap'];
+  static String _plain(Object? x) => '${x ?? ''}'.toLowerCase().replaceAll(RegExp('[^a-z0-9]'), '');
+
+  /// A chance de crítico do golpe (em %), como no jogo: o estágio do golpe (Slash, Stone Edge...), Scope Lens /
+  /// Razor Claw e Super Luck. null nos de status. Igual ao site.
+  static double? critChance(BattleMon mon, BattleMove move) {
+    if (move.category == 'status') return null;
+    if (_alwaysCrit.contains(move.slug)) return 100;
+    final item = _plain(mon.simulationItem);
+    final stage = ((move.rules?['c'] as num?)?.toInt() ?? 0) + (const ['scopelens', 'razorclaw'].contains(item) ? 1 : 0) + (_plain(mon.simulationAbility ?? mon.ability) == 'superluck' ? 1 : 0);
+    return (_critChance[min(3, stage)] * 1000).round() / 10;
+  }
+
   static ({int low, int high})? damageRange(BattleHit hit, BattleMon att, BattleMon def, BattleMove move, [String weather = '']) {
     if (move.category == 'status' || def.maxHp <= 0) return null;
     final r = hit(att, def, move.slug, false, null, weather);
