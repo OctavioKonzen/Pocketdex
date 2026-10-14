@@ -485,38 +485,44 @@ const BASE_BRANCHES = [
  * de cada melhoria saem MINOR_LENGTH nós do tema do ramo ("atk~1"...), cada um
  * com um nível só e um efeito que se sente na corrida: atributos, itens na
  * Bolsa, XP e dinheiro, nível e IVs do inicial, dinheiro no começo, desconto
- * na loja e cura depois de cada vitória. O último da trilha é o nó-chave (o
- * dobro do efeito). O texto, o nome e o símbolo são os da melhoria grande do
+ * na loja, cura depois de cada vitória, fichas de golpe, Sitrus Berry e
+ * sortear o caminho. A cada 4 nós vem um nó-chave (o dobro do efeito). O texto, o nome e o símbolo são os da melhoria grande do
  * mesmo efeito (MINOR_BASE). Igual ao app.
  */
-export const MINOR_LENGTH = 4
+export const MINOR_LENGTH = 8
+/** A cada quantos nós vem um nó-chave (o dobro do efeito). */
+export const KEYSTONE_EVERY = 4
+/** O máximo de níveis a mais no inicial pelos nós da trilha. */
+export const MAX_START_LEVEL = 15
 export const MINOR_FX = {
-  Sobrevivência: [['heal', 'hp'], ['boost', 'hp'], ['bag', 'potion'], ['boost', 'def'], ['bag', 'revive'], ['boost', 'spd']],
-  Captura: [['bag', 'poke-ball'], ['bag', 'great-ball'], ['bag', 'ultra-ball'], ['bag', 'quick-ball']],
-  Treino: [['level', 'start'], ['mult', 'exp'], ['ivs', 'start'], ['boost', 'spe']],
-  Combate: [['boost', 'atk'], ['boost', 'spa'], ['boost', 'spe'], ['boostAll', 'all']],
-  Exploração: [['mult', 'money'], ['heal', 'hp'], ['bag', 'escape-rope'], ['boost', 'spe']],
+  Sobrevivência: [['heal', 'hp'], ['boost', 'hp'], ['bag', 'potion'], ['boost', 'def'], ['bag', 'revive'], ['boost', 'spd'], ['bag', 'super-potion'], ['stash', 'sitrus-berry']],
+  Captura: [['bag', 'poke-ball'], ['bag', 'great-ball'], ['bag', 'ultra-ball'], ['bag', 'quick-ball'], ['bag', 'net-ball'], ['bag', 'dusk-ball']],
+  Treino: [['level', 'start'], ['mult', 'exp'], ['ivs', 'start'], ['boost', 'spe'], ['token', 'move-tutor'], ['token', 'move-reminder']],
+  Combate: [['boost', 'atk'], ['boost', 'spa'], ['boost', 'spe'], ['boostAll', 'all'], ['boost', 'def'], ['boost', 'spd']],
+  Exploração: [['mult', 'money'], ['heal', 'hp'], ['bag', 'escape-rope'], ['boost', 'spe'], ['reroll', 'route']],
   Comércio: [['money', 'start'], ['mult', 'money'], ['discount', 'shop'], ['coins', 'all']],
-  Poder: [['boostAll', 'all'], ['boost', 'atk'], ['boost', 'spa']],
+  Poder: [['boostAll', 'all'], ['boost', 'atk'], ['boost', 'spa'], ['stash', 'life-orb']],
 }
 /** Quanto cada nó dá (o nó-chave, o dobro). */
 export const MINOR_PER = {
-  boost: 2, boostAll: 1, mult: 5, coins: 5, level: 1, ivs: 2, money: 150, discount: 2, heal: 2,
-  'bag:poke-ball': 3, 'bag:great-ball': 2, 'bag:ultra-ball': 1, 'bag:quick-ball': 2, 'bag:potion': 2, 'bag:revive': 1, 'bag:escape-rope': 1,
+  boost: 2, boostAll: 1, mult: 5, coins: 5, level: 1, ivs: 2, money: 150, discount: 2, heal: 2, token: 1, stash: 1, reroll: 1,
+  'bag:poke-ball': 3, 'bag:great-ball': 2, 'bag:ultra-ball': 1, 'bag:quick-ball': 2, 'bag:net-ball': 2, 'bag:dusk-ball': 2,
+  'bag:potion': 2, 'bag:super-potion': 1, 'bag:revive': 1, 'bag:escape-rope': 1,
 }
 /** A melhoria grande que dá o texto, o nome e o símbolo de cada efeito pequeno. */
 export const MINOR_BASE = {
   'boost:hp': 'hpBoost', 'boost:atk': 'atk', 'boost:def': 'def', 'boost:spa': 'spa', 'boost:spd': 'spd', 'boost:spe': 'speBoost',
   'boostAll:all': 'allStats', 'mult:exp': 'expPlus', 'mult:money': 'loot', 'coins:all': 'bonusCoins',
   'bag:potion': 'potions', 'bag:revive': 'revive', 'bag:poke-ball': 'balls', 'bag:great-ball': 'greatBalls', 'bag:ultra-ball': 'ultraBalls',
-  'bag:quick-ball': 'quickBalls', 'bag:escape-rope': 'rope',
+  'bag:quick-ball': 'quickBalls', 'bag:escape-rope': 'rope', 'bag:net-ball': 'netBalls', 'bag:dusk-ball': 'duskBalls', 'bag:super-potion': 'superPotions',
+  'token:move-tutor': 'tutor', 'token:move-reminder': 'reminder', 'stash:sitrus-berry': 'sitrus', 'stash:life-orb': 'lifeOrb', 'reroll:route': 'reroll',
   'level:start': 'level', 'ivs:start': 'ivs', 'money:start': 'money', 'discount:shop': 'shop', 'heal:hp': 'victoryHeal',
 }
 /** A melhoria grande de um nó pequeno ("atk~3" → "atk"), ou ele mesmo. */
 export const minorOf = (id) => id.split('~')[0]
 export const isMinor = (id) => id.includes('~')
 /** O nó-chave: o último da trilha (o dobro do efeito). */
-export const isKeystone = (id) => id.endsWith(`~${MINOR_LENGTH}`)
+export const isKeystone = (id) => isMinor(id) && Number(id.split('~')[1]) % KEYSTONE_EVERY === 0
 export const UPGRADE_BRANCHES = BASE_BRANCHES.map(([icon, branch, ids]) => {
   const fx = MINOR_FX[branch]
   const list = []
@@ -525,7 +531,7 @@ export const UPGRADE_BRANCHES = BASE_BRANCHES.map(([icon, branch, ids]) => {
     for (let k = 1; k <= MINOR_LENGTH; k++) {
       const id = `${parent}~${k}`
       const [kind, arg] = fx[(i + k - 1) % fx.length]
-      const key = k === MINOR_LENGTH ? 2 : 1
+      const key = k % KEYSTONE_EVERY === 0 ? 2 : 1
       const base = Math.round((UPGRADES[parent].base * 0.4 + 120 * k) / 10) * 10 * key
       UPGRADES[id] = { label: UPGRADES[MINOR_BASE[`${kind}:${arg}`]].label, per: (MINOR_PER[`${kind}:${arg}`] ?? MINOR_PER[kind]) * key, max: 1, base }
       UPGRADE_FX[id] = [kind, arg]
@@ -1350,7 +1356,7 @@ export function startRun(factory, data, id, seed, shiny = false, options = {}) {
   const run = {
     seed: seed >>> 0, floor: 1, money: up('money') + fxTotal(factory, 'money'), defeated: 0, bosses: 0, bag,
     team: [], teamBoost: zero(), mult: { money: 1, exp: round3(1 + up('exp') / 100), shop: round3(1 - Math.min(MAX_DISCOUNT, up('shop') + fxTotal(factory, 'discount')) / 100) }, cards: [], boss: { region: 0, step: 0 }, played: [],
-    ...(up('cards') ? { cardCount: 3 + up('cards') } : {}), ...(up('reroll') ? { rerolls: up('reroll') } : {}), ...(up('shiny') ? { shinyRate: 1 + up('shiny') } : {}),
+    ...(up('cards') ? { cardCount: 3 + up('cards') } : {}), ...(up('reroll') + fxTotal(factory, 'reroll') ? { rerolls: up('reroll') + fxTotal(factory, 'reroll') } : {}), ...(up('shiny') ? { shinyRate: 1 + up('shiny') } : {}),
     tms: {}, tokens: { 'move-tutor': 0, 'move-reminder': 0 }, stash: [], dmax: up('dmax') > 0, tera: up('tera') > 0, expShare: up('expShare') > 0, leg: 1, route: null, encounter: null, pending: null,
     ...(up('map') ? { townMap: true } : {}),
     // Cura depois de cada vitória (% do HP de quem está de pé).
@@ -1377,7 +1383,7 @@ export function startRun(factory, data, id, seed, shiny = false, options = {}) {
   if (options.rule === 'noItems') run.bag = Object.fromEntries(Object.keys(run.bag).map((k) => [k, 0]))
   const rand = dice(run)
   // O inicial vem com IVs bons (15 a 31; com a Genética, mais).
-  run.team = [newMon(id, START_LEVEL + up('level') + fxTotal(factory, 'level'), rand, Math.min(31, 15 + up('ivs') + fxTotal(factory, 'ivs')), shiny)]
+  run.team = [newMon(id, START_LEVEL + up('level') + Math.min(MAX_START_LEVEL, fxTotal(factory, 'level')), rand, Math.min(31, 15 + up('ivs') + fxTotal(factory, 'ivs')), shiny)]
   run.boss = { region: Math.floor(rand() * data.bosses.length), step: 0 }
   run.played = [data.bosses[run.boss.region].region]
   run.route = routeOptions(run, data, rand)
