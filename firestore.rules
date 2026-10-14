@@ -465,6 +465,14 @@ service cloud.firestore {
       allow delete: if signedIn(uid);
     }
 
+    // Corrida da semana da Battle Factory ({week} = segunda-feira): o andar alcançado, só sobe.
+    match /factoryWeek/{week}/scores/{uid} {
+      allow read: if request.auth != null;
+      allow create: if validScore(uid, 2000);
+      allow update: if validScore(uid, 2000) && request.resource.data.score >= resource.data.score;
+      allow delete: if signedIn(uid);
+    }
+
     // Desafio do dia ({day} = "AAAA-MM-DD"): uma tentativa por dia.
     match /daily/{day}/scores/{uid} {
       allow read: if request.auth != null;

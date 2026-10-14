@@ -4,10 +4,11 @@ original para cada região (líderes, Elite Four e kahunas) e cada campeão.
 
 Saída: assets/database/sounds/<nome>.mp3 (o site copia com o resto do banco).
 
-Uso: pip install lameenc numpy && python3 tool/build_battle_sounds.py
+Uso: pip install lameenc numpy && python3 tool/build_battle_sounds.py [nomes]
 """
 
 import os
+import sys
 
 import lameenc
 import numpy as np
@@ -150,6 +151,16 @@ def sfx_heal():
         s = triangle(freq(m), 0.08) * env(int(RATE * 0.08), 0.002, 0.03) * 0.6
         parts.append(s)
     return seq(parts)
+
+
+def sfx_shiny():
+    """Brilho do shiny (original): estrelinhas descendo rápidas e um cintilar no fim."""
+    stars = []
+    for i, m in enumerate([96, 100, 103, 108, 103, 108, 112]):
+        n = int(RATE * 0.045)
+        stars.append(triangle(freq(m), 0.045) * decay(n, 6) * (0.55 - i * 0.03))
+    shimmer = (pulse(freq(108), 0.25, 0.125) + 0.5 * noise(0.25, seed=7, step=2)) * decay(int(RATE * 0.25), 4) * 0.18
+    return seq(stars + [shimmer])
 
 
 def sfx_select():
@@ -396,8 +407,15 @@ def main():
         'statdown': sfx_statdown(),
         'heal': sfx_heal(),
         'select': sfx_select(),
+        'shiny': sfx_shiny(),
         'victory': sfx_victory(),
     }
+    # Só alguns (ex.: python3 tool/build_battle_sounds.py shiny): sem gerar as músicas de novo.
+    only = sys.argv[1:]
+    if only:
+        for name in only:
+            save(name, sounds[name])
+        return
     total = 0
     for name, sig in sounds.items():
         total += save(name, sig)

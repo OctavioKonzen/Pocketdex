@@ -378,7 +378,8 @@ class AuthService extends ChangeNotifier {
         for (final key in {..._boardKeys(), ...weeks, ...days}) {
           refs
             ..add(_db.collection('weekly').doc(key).collection('scores').doc(uid))
-            ..add(_db.collection('daily').doc(key).collection('scores').doc(uid));
+            ..add(_db.collection('daily').doc(key).collection('scores').doc(uid))
+            ..add(_db.collection('factoryWeek').doc(key).collection('scores').doc(uid));
         }
         for (var i = 0; i < refs.length; i += 400) {
           final part = refs.sublist(i, i + 400 > refs.length ? refs.length : i + 400);

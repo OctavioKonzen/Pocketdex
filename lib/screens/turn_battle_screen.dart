@@ -346,7 +346,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
       if (_battle?.winner == 0) {
         final data = _factoryData ??= await FactoryData.load();
         final after = factoryAfter(_battle!, _factoryOrder, run);
-        saveFactory({...factory, 'run': FactoryRun.winFloor(run, data, hp: after.hp, bag: after.bag, captured: after.captured, fought: after.fought, gained: after.gained, ball: after.ball)});
+        saveFactory({...factory, 'run': FactoryRun.winFloor(run, data, hp: after.hp, bag: after.bag, captured: after.captured, fought: after.fought, gained: after.gained, ball: after.ball, night: FactoryRun.clockOf().night)});
         // Uma tela de vitória só: a do resultado do andar (XP, níveis, dinheiro), logo depois.
         note = '';
       } else {
@@ -971,6 +971,15 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
 
   /// O chefe já falou ao mandar o último Pokémon (só uma vez).
   bool _lastWords = false;
+
+  /// O impacto do golpe (onde, a cor do tipo, contador) e a cor do último golpe que acertou.
+  (Point<double>, Color, int)? _impact;
+  int _impactKey = 0;
+  Color? _lastHit;
+
+  /// O brilho de quem é shiny ao entrar (lado, contador).
+  (int, int)? _shine;
+  int _shineCount = 0;
   int _morphCount = 0;
 
   /// Como nos jogos: a aura envolve o Pokémon, ele muda no meio dela e ela some.
@@ -1025,7 +1034,8 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
   final List<String?> _ball = [null, null];
 
   /// Qual Poké Ball cada lado jogou (o sprite dela, como no Black & White).
-  final List<String> _ballKind = ['poke-ball', 'poke-ball'];
+  // A sua Poké Ball: a escolhida na loja de cosméticos da Battle Factory (senão, a Poké Ball).
+  final List<String> _ballKind = ['${currentFactory()['ball'] ?? 'poke-ball'}', 'poke-ball'];
 
   @override
   void initState() {
@@ -1086,6 +1096,16 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
     });
     await _wait(420);
     if (mounted) setState(() => _poke[side] = '');
+    await _sparkleIfShiny(side);
+  }
+
+  /// Shiny entrando: estrelinhas em volta dele e o som de brilho, como nos jogos.
+  Future<void> _sparkleIfShiny(int side) async {
+    if (!mounted || !_b.teams[side][_active[side]].shiny) return;
+    BattleSounds.play('shiny', volume: 0.7);
+    setState(() => _shine = (side, ++_shineCount));
+    await _wait(900);
+    if (mounted) setState(() => _shine = null);
   }
 
   /// A abertura: os treinadores aparecem, lançam a Poké Ball e os Pokémon saem.
@@ -1108,6 +1128,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
         _poke[1] = '';
         _text = tr('Um {0} selvagem apareceu!').replaceAll('{0}', _b.active(1).name);
       });
+      await _sparkleIfShiny(1);
       await _wait(900);
     } else {
       setState(() {
@@ -1269,6 +1290,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
           final plan = fxPlan(kind, e.type, e.side, _centerOf(e.side), _centerOf(1 - e.side), entry is List ? '${entry[1]}' : null, variant);
           if (!selfKinds.contains(kind)) _sprites[e.side].currentState?.lunge(dash: contactKinds.contains(kind));
           setState(() => _fx = (plan, getColorForType(e.type), ++_fxKey));
+          if (e.category != 'status') _lastHit = getColorForType(e.type);
           if (plan.shake) _shake.forward(from: 0);
           if (plan.flash) _wait(250).then((_) => mounted ? setState(() => _flash++) : null);
           await _wait(plan.duration + 80);
@@ -1321,6 +1343,12 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
           _skip = null;
         case 'hp':
           _sprites[e.side].currentState?.hurt();
+          // O impacto do golpe na cor do tipo, bem onde ele acerta (só quando perde HP depois de um ataque). Igual ao site.
+          final hit = _lastHit;
+          if (hit != null && e.value < _hp[e.side][_active[e.side]]) {
+            _lastHit = null;
+            setState(() => _impact = (_centerOf(e.side), hit, ++_impactKey));
+          }
           setState(() => _hp[e.side][_active[e.side]] = e.value);
           // Espera piscar e a barra de HP descer.
           await _wait(550);
@@ -1766,6 +1794,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                                 state: _poke[1],
                                 child: _Sprite(key: _sprites[1], mon: foe, id: _form[1] ?? foe.id, dmax: _dmax[1], tera: _tera[1], fainted: _fainted[1])),
                             if (_morph?.$1 == 1) Positioned.fill(child: _Morph(key: ValueKey(('morph', _morph!.$3)), kind: _morph!.$2, type: foe.teraType)),
+                            if (_shine?.$1 == 1) Positioned.fill(child: _Sparkles(key: ValueKey(('shine', _shine!.$2)))),
                           ])),
                       if (_ball[1] != null)
                         Positioned(right: w * 0.11, bottom: h * foeBottom(scene), width: w * 0.26, height: w * 0.26, child: _Ball(side: 1, phase: _ball[1]!, kind: _ballKind[1])),
@@ -1794,6 +1823,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                                 state: _poke[0],
                                 child: _Sprite(key: _sprites[0], mon: me, id: _form[0] ?? me.id, dmax: _dmax[0], tera: _tera[0], back: true, fainted: _fainted[0])),
                             if (_morph?.$1 == 0) Positioned.fill(child: _Morph(key: ValueKey(('morph', _morph!.$3)), kind: _morph!.$2, type: me.teraType)),
+                            if (_shine?.$1 == 0) Positioned.fill(child: _Sparkles(key: ValueKey(('shine', _shine!.$2)))),
                           ])),
                       if (_ball[0] != null)
                         Positioned(left: w * 0.01, bottom: h * 0.22, width: w * 0.58, height: w * 0.58, child: _Ball(side: 0, phase: _ball[0]!, kind: _ballKind[0])),
@@ -1849,6 +1879,15 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                           ),
                         ),
                       if (_fx != null) _MoveFx(key: ValueKey(('fx', _fx!.$3)), plan: _fx!.$1, color: _fx!.$2, w: w, h: h),
+                      if (_impact != null)
+                        Positioned(
+                          key: ValueKey(('impact', _impact!.$3)),
+                          left: _impact!.$1.x / 100 * w - w * 0.11,
+                          top: _impact!.$1.y / 100 * h - w * 0.11,
+                          width: w * 0.22,
+                          height: w * 0.22,
+                          child: _Impact(color: _impact!.$2),
+                        ),
                       if (_flash > 0) _Flash(key: ValueKey(('flash', _flash))),
                       // A mensagem dentro da tela, embaixo, como nos jogos (tocar passa o texto).
                       Positioned(
@@ -2701,6 +2740,65 @@ class _GimmickButton extends StatelessWidget {
       ),
     );
   }
+}
+
+/// O impacto do golpe: um clarão redondo na cor do tipo, com um anel abrindo e sumindo.
+class _Impact extends StatelessWidget {
+  const _Impact({required this.color});
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: 1),
+          duration: const Duration(milliseconds: 420),
+          curve: Curves.easeOut,
+          builder: (context, t, _) => Opacity(
+            opacity: (t < 0.6 ? 1.0 : (1 - t) / 0.4).clamp(0.0, 1.0),
+            child: Transform.scale(
+              scale: 0.2 + 1.1 * t,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(colors: [Colors.white, color, color.withValues(alpha: 0)], stops: const [0, 0.35, 0.7]),
+                  border: Border.all(color: color, width: 4 - 3 * t),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+}
+
+/// O brilho do shiny: estrelinhas abrindo em volta do Pokémon e sumindo.
+class _Sparkles extends StatelessWidget {
+  const _Sparkles({super.key});
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: 1),
+          duration: const Duration(milliseconds: 900),
+          builder: (context, t, _) => LayoutBuilder(builder: (context, box) {
+            final c = Offset(box.maxWidth / 2, box.maxHeight * 0.6);
+            final r = box.maxWidth * (0.15 + 0.35 * t);
+            return Stack(children: [
+              for (var k = 0; k < 8; k++)
+                Positioned(
+                  left: c.dx + cos(k / 8 * 2 * pi + t * 2) * r - 9,
+                  top: c.dy + sin(k / 8 * 2 * pi + t * 2) * r * 0.8 - 9,
+                  child: Opacity(
+                    opacity: (t < 0.7 ? 1.0 : (1 - t) / 0.3).clamp(0.0, 1.0),
+                    child: Transform.scale(
+                      scale: 0.6 + 0.6 * sin(t * pi * 3 + k).abs(),
+                      child: const m.Text('✦', style: TextStyle(fontSize: 18, color: Color(0xFFFDE68A), shadows: [Shadow(color: Colors.white, blurRadius: 6)])),
+                    ),
+                  ),
+                ),
+            ]);
+          }),
+        ),
+      );
 }
 
 /// A aura da transformação em volta do Pokémon: Mega (arco-íris girando e se

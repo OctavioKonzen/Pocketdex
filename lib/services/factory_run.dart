@@ -420,6 +420,35 @@ class FactoryRun {
         'item': null, 'extras': <String>[], 'hp': 1,
       };
 
+  /// Habilidades fora da batalha (como nos jogos), de quem as tem no time: Pickup acha itens depois das batalhas;
+  /// Intimidate (em quem vai na frente) às vezes espanta os selvagens; Synchronize (em quem vai na frente) passa a Nature
+  /// para o capturado. Igual ao site.
+  static const pickup = [52, 53, 190, 424, 216, 231, 263, 264, 417, 446, 506, 659, 660, 674, 702, 819, 820];
+  static const intimidate = [23, 24, 58, 59, 128, 130, 209, 210, 234, 237, 262, 284, 303, 373, 397, 398, 403, 404, 405, 507, 508, 551, 552, 553, 559, 560, 667, 668, 727];
+  static const synchronize = [63, 64, 65, 151, 177, 178, 196, 197, 280, 281, 282];
+  static const pickupChance = 0.12, intimidateChance = 0.5;
+  static const pickupItems = ['potion', 'poke-ball', 'super-potion', 'great-ball', 'revive', 'hyper-potion', 'ultra-ball'];
+
+  /// Quem vai na frente (o primeiro de pé na batalha).
+  static Json? _leadOf(Json run) {
+    final order = battleOrder(run);
+    return order.isEmpty ? null : teamOf(run)[order.first];
+  }
+
+  /// Amizade: quem está no time ganha um ponto a cada andar vencido; com friendEvolve, os que evoluem por amizade
+  /// evoluem (Eevee: Espeon de dia, Umbreon à noite, pelo relógio). Igual ao site.
+  static const friendEvolve = 10;
+  static const friendEvos = <int, Object>{
+    133: [196, 197], 42: 169, 113: 242, 172: 25, 173: 35, 174: 39, 175: 176, 298: 183, 406: 315, 427: 428, 433: 358, 440: 113,
+    446: 143, 447: 448, 527: 528, 541: 542, 772: 773, 872: 873,
+  };
+  static List<int> _friendTargets(int id) => switch (friendEvos[id]) { final List l => l.cast<int>(), final int v => [v], _ => const [] };
+
+  /// Eventos raros na rota (a partir do andar rareFloor): chuva de meteoros (Clefairy, com mais chance de shiny) e um
+  /// Pokémon mítico. Igual ao site.
+  static const rareFloor = 8, rareChance = 0.04;
+  static const mythics = [151, 251, 385, 386, 490, 491, 492, 494, 647, 648, 719, 720, 721, 801, 802, 807, 893];
+
   /// Sobe para o nível (com as evoluções que ele alcançar): (mon, evoluiu para).
   static (Json, int?) levelTo(Json mon, int level, FactoryData data, double Function() rand) {
     var out = {...mon, 'level': math.max(1, level)};
@@ -427,7 +456,13 @@ class FactoryRun {
     int? evolved;
     for (var guard = 0; guard < 3; guard++) {
       // Evoluções por item (pedras) só com o item: canEvolveWith/buyItem.
-      final options = [for (final e in data.evolutions[_int(out['id'])] ?? const <List>[]) if (e.length < 3 && (out['level'] as int) >= (e[1] as int)) e];
+      // As por amizade (friendEvos) não são por nível (a Eevee, só por pedra ou amizade).
+      final id = _int(out['id']);
+      final friends = friendEvos.containsKey(id) ? (id == 133 ? null : _friendTargets(id)) : const <int>[];
+      final options = [
+        for (final e in data.evolutions[id] ?? const <List>[])
+          if (e.length < 3 && (out['level'] as int) >= (e[1] as int) && friends != null && !friends.contains(e[0])) e
+      ];
       if (options.isEmpty) break;
       final to = _pick(options, rand)[0] as int;
       out = {...out, 'id': to};
@@ -818,7 +853,17 @@ class FactoryRun {
       if (!inside && floor >= rivalFloor && pos >= 2 && !base && boss['kind'] == 'gym' && run['rivalLeg'] != legOf(run) && rivalBoss(data, run) != null && rand() < rivalChance) {
         return only({'kind': 'rival'});
       }
+      // Evento raro: chuva de meteoros (Clefairy) ou um Pokémon mítico.
+      if (!inside && !base && floor >= rareFloor && rand() < rareChance) {
+        final available = [for (final id in mythics) if (data.species.containsKey(id)) id];
+        final meteor = rand() < 0.5;
+        if (meteor || available.isNotEmpty) {
+          return only(meteor ? {'kind': 'wild', 'biome': biome, 'meteor': true} : {'kind': 'wildboss', 'legend': _pick(available, rand), 'mythic': true});
+        }
+      }
       final r = rand();
+      // Intimidate em quem vai na frente: às vezes os selvagens fogem (vem um treinador no lugar).
+      if (r < 0.55 && !base && intimidate.contains(_leadOf(run)?['id']) && rand() < intimidateChance) return only({'kind': 'trainer'});
       return only(r < 0.55 ? wild() : r < 0.9 || floor <= 2 ? {'kind': 'trainer'} : {'kind': 'event'});
     }
     final options = <Json>[rand() < 0.55 ? wild() : {'kind': 'trainer'}];
@@ -1093,6 +1138,8 @@ class FactoryRun {
     final encounter = run['encounter'] as Map?;
     final kind = encounter?['kind'];
     if (kind != 'wild' && kind != 'wildboss') return null;
+    // Nuzlocke: um capturado por rota.
+    if (run['nuzlocke'] == true && run['caughtLeg'] == legOf(run)) return null;
     return {
       'rates': [for (final f in foesOf(run)) ((data.speciesOf(_int(f['id']))?.elementAtOrNull(5) as num?) ?? 45).toInt()],
       'dusk': darkBiomes.contains(encounter?['biome']),
@@ -1118,9 +1165,9 @@ class FactoryRun {
       final megas = (data.megas.keys.toList()..sort()).where(fits).toList();
       final gmax = data.gmax.where(fits).toList();
       if (node?['legend'] != null) {
-        // O lendário da região (na rota para a Liga).
+        // O lendário da região (na rota para a Liga) ou o mítico (evento raro).
         id = _int(node!['legend']);
-        extra = {'title': 'legend'};
+        extra = {'title': 'legend', if (node['mythic'] == true) 'mythic': true};
       } else if (r < 0.4 && megas.isNotEmpty) {
         id = _pick(megas, rand);
         final stone = _pick(data.megas[id]!, rand)[0] as String;
@@ -1209,15 +1256,19 @@ class FactoryRun {
     final native = lives.isNotEmpty ? lives : types == null ? const <({int id, int bst, int rarity, int rate})>[] : [for (final p in common) if (local(p.id)) p];
     // Seguindo o Pokémon ferido: um raro do lugar (taxa de captura baixa).
     final rare = node?['rare'] == true ? [for (final p in (native.isNotEmpty ? native : common)) if (p.rate <= 75) p] : const <({int id, int bst, int rarity, int rate})>[];
-    final id = pick(rare.isNotEmpty ? rare : native.isNotEmpty ? native : common);
+    // Chuva de meteoros: um Clefairy (da linha dele, pelo nível), com mais chance de ser shiny.
+    final meteor = node?['meteor'] == true;
+    final id = meteor ? devolve(data, 36, level) : pick(rare.isNotEmpty ? rare : native.isNotEmpty ? native : common);
     return {
-      'kind': kind, 'foes': [foe(id, level, rand() < shinyChance * _shinyRate(node) ? {'shiny': true} : const {})],
+      'kind': kind, 'foes': [foe(id, level, rand() < shinyChance * _shinyRate(node) * (meteor ? 8 : 1) ? {'shiny': true} : const {})],
       if (node?['biome'] != null) 'biome': node!['biome'],
+      if (meteor) 'meteor': true,
     };
   }
 
-  static Json? startRun(Json factory, FactoryData data, int id, int seed, [bool shiny = false]) {
-    if (!startersOf(factory, data).contains(id) || (shiny && !shiniesOf(factory).contains(id))) return null;
+  static Json? startRun(Json factory, FactoryData data, int id, int seed, {bool shiny = false, bool nuzlocke = false, String? weekly, String? rule}) {
+    // Na corrida da semana, o inicial é o da semana (o mesmo para todos).
+    if (weekly == null && (!startersOf(factory, data).contains(id) || (shiny && !shiniesOf(factory).contains(id)))) return null;
     // As melhorias compradas com moedas.
     int up(String k) => upgradeValue(factory, k);
     final run = <String, dynamic>{
@@ -1232,7 +1283,13 @@ class FactoryRun {
       'leg': 1, 'route': null, 'encounter': null, 'pending': null,
       // O inicial (o rival escolhe o que tem vantagem sobre ele).
       'starter': id,
+      // Nuzlocke: quem desmaia vai embora e só um capturado por rota.
+      if (nuzlocke) 'nuzlocke': true,
+      // A corrida da semana (a semana e a regra dela).
+      if (weekly != null) ...{'weekly': weekly, 'rule': rule ?? 'normal'},
     };
+    // Regra da semana "sem itens": começa com a Bolsa vazia.
+    if (rule == 'noItems') run['bag'] = {for (final k in (run['bag'] as Map).keys) k: 0};
     final rand = _dice(run);
     // O inicial vem com IVs bons (15 a 31; com a Genética, mais).
     run['team'] = [newMon(id, startLevel + up('level'), rand, math.min(31, 15 + up('ivs')), shiny)];
@@ -1272,7 +1329,8 @@ class FactoryRun {
   /// Venceu o andar. hp: a parte do HP de cada um do time (na ordem da
   /// corrida) no fim da batalha; bag: a Bolsa que sobrou; captured: capturou o
   /// selvagem na batalha (entra no time). Igual ao site.
-  static Json winFloor(Json run, FactoryData data, {List<double>? hp, Map<String, int>? bag, bool captured = false, List<List<int>>? fought, List<int>? gained, String? ball}) {
+  static Json winFloor(Json run, FactoryData data,
+      {List<double>? hp, Map<String, int>? bag, bool captured = false, List<List<int>>? fought, List<int>? gained, String? ball, bool night = false}) {
     final out = _copy(run);
     final team0 = teamOf(out);
     out['team'] = [for (var i = 0; i < team0.length; i++) {...team0[i], 'hp': hp != null && i < hp.length ? hp[i] : hpOf(team0[i])}];
@@ -1316,6 +1374,35 @@ class FactoryRun {
       if (_int(mon['level']) > from || evolved != null) levels.add({'index': i, 'from': from, 'to': mon['level'], 'evolved': evolved});
       team[i] = mon;
     }
+    // Amizade: quem está de pé ganha um ponto; com friendEvolve, os que evoluem por amizade evoluem.
+    for (var i = 0; i < team.length; i++) {
+      final m = team[i];
+      if (hpOf(m) <= 0) continue;
+      final friendship = _int(m['friendship'] ?? 0) + 1;
+      final to = friendEvos[_int(m['id'])];
+      if (to == null || friendship < friendEvolve) {
+        team[i] = {...m, 'friendship': friendship};
+        continue;
+      }
+      final id = to is List ? to[night ? 1 : 0] as int : to as int;
+      out['friendEvos'] = ((out['friendEvos'] as num?) ?? 0).toInt() + 1;
+      levels.add({'index': i, 'from': m['level'], 'to': m['level'], 'evolved': id, 'friend': true});
+      team[i] = {...m, 'id': id, 'friendship': friendship};
+    }
+    // Pickup: quem tem acha um item de vez em quando (melhor conforme o andar).
+    final picked = <Json>[];
+    for (final m in team) {
+      if (hpOf(m) > 0 && pickup.contains(_int(m['id'])) && rand() < pickupChance) {
+        final item = pickupItems[math.min(pickupItems.length - 1, (rand() * math.min(pickupItems.length.toDouble(), 2 + _int(run['floor']) / 10)).floor())];
+        final bagNow = Map<String, dynamic>.from(out['bag'] as Map);
+        out['bag'] = {...bagNow, item: ((bagNow[item] as num?) ?? 0).toInt() + 1};
+        picked.add({'id': m['id'], 'item': item});
+      }
+    }
+    // Nuzlocke: quem desmaiou vai embora (para sempre).
+    final lost = run['nuzlocke'] == true ? [for (final m in team) if (hpOf(m) <= 0) m['id']] : const [];
+    if (lost.isNotEmpty && lost.length < team.length) team.removeWhere((m) => hpOf(m) <= 0);
+    if (run['encounter']['meteor'] == true) out['meteors'] = ((run['meteors'] as num?) ?? 0).toInt() + 1;
     out['team'] = team;
     out['money'] = _int(out['money']) + money;
     out['defeated'] = _int(out['defeated']) + foes.length;
@@ -1426,6 +1513,8 @@ class FactoryRun {
     out['pending'] = {
       'exp': exp, 'gains': gains, 'money': money, 'levels': levels, 'joy': joy, 'drop': drop, 'story': story, 'reward': reward,
       if (champion) 'champion': true,
+      if (picked.isNotEmpty) 'picked': picked,
+      if (lost.isNotEmpty) 'lost': lost,
       'capture': captured && (kind == 'wild' || kind == 'wildboss') ? foes.first : null,
       // A Poké Ball em que ele foi capturado (o sprite dela na tela da captura). Igual ao site.
       if (captured && ball != null) 'ball': ball,
@@ -1529,7 +1618,13 @@ class FactoryRun {
     if (foe == null) return run;
     final out = _copy(run);
     final rand = _dice(out);
-    final mon = newMon(_int(foe['id']), _int(foe['level']), rand, foe['egg'] == true ? eggIvs : 0, foe['shiny'] == true);
+    var mon = newMon(_int(foe['id']), _int(foe['level']), rand, foe['egg'] == true ? eggIvs : 0, foe['shiny'] == true);
+    // Synchronize em quem vai na frente: metade das vezes, o capturado vem com a Nature dele.
+    final lead = _leadOf(run);
+    if (foe['egg'] != true && lead != null && synchronize.contains(_int(lead['id'])) && rand() < 0.5) mon = {...mon, 'nature': lead['nature']};
+    if (foe['mythic'] == true) out['mythics'] = ((run['mythics'] as num?) ?? 0).toInt() + 1;
+    // Nuzlocke: só um capturado por rota.
+    if (run['nuzlocke'] == true && foe['egg'] != true) out['caughtLeg'] = legOf(run);
     final team = teamOf(out);
     if (team.length < maxTeam) {
       team.add(mon);
@@ -1848,6 +1943,14 @@ class FactoryRun {
     'level100': (label: 'Um Pokémon no nível 100', coins: 400, done: (r) => teamOf(r).any((m) => _int(m['level']) >= 100)),
     'trade': (label: 'Fazer uma troca', coins: 40, done: (r) => _n(r, 'trades') >= 1),
     'rope': (label: 'Escapar com a Escape Rope', coins: 40, done: (r) => _n(r, 'ropes') >= 1),
+    'dungeon': (label: 'Vencer o chefe de um lugar (esgoto, casa assombrada...)', coins: 120, done: (r) => _n(r, 'dungeons') >= 1),
+    'dungeon5': (label: 'Vencer 5 lugares numa corrida', coins: 400, done: (r) => _n(r, 'dungeons') >= 5),
+    'rival3': (label: 'Vencer o rival de surpresa 3 vezes', coins: 150, done: (r) => _n(r, 'rivalRaces') >= 3),
+    'dex30': (label: '30 na Pokédex da corrida', coins: 300, done: (r) => dexOf(r).length >= 30),
+    'friend': (label: 'Evoluir um Pokémon pela amizade', coins: 150, done: (r) => _n(r, 'friendEvos') >= 1),
+    'mythic': (label: 'Capturar um Pokémon mítico', coins: 500, done: (r) => _n(r, 'mythics') >= 1),
+    'meteor': (label: 'Ver uma chuva de meteoros', coins: 100, done: (r) => _n(r, 'meteors') >= 1),
+    'nuzlocke': (label: 'Ganhar uma insígnia no Nuzlocke', coins: 300, done: (r) => r['nuzlocke'] == true && _n(r, 'badges') >= 1),
   };
   static int _n(Json r, String k) => ((r[k] as num?) ?? 0).toInt();
 
@@ -2114,6 +2217,45 @@ class FactoryRun {
   }
 
   /// Perdeu: a corrida acaba; a pontuação vira moedas e o recorde fica salvo.
+  /// A corrida da semana (o torneio entre amigos): a mesma semente, o mesmo inicial e uma regra para todo mundo na semana
+  /// ({week}: a segunda-feira, "AAAA-MM-DD"); o ranking é o andar alcançado. Igual ao site.
+  static const weeklyRules = ['normal', 'nuzlocke', 'noItems'];
+  static ({String week, int seed, int starter, String rule}) weeklyOf(FactoryData data, String week) {
+    var h = 2166136261;
+    for (final ch in week.codeUnits) {
+      h = ((h ^ ch) * 16777619) & 0xFFFFFFFF;
+    }
+    return (week: week, seed: h, starter: data.starters[h % data.starters.length], rule: weeklyRules[(h >> 8) % weeklyRules.length]);
+  }
+
+  static Json? startWeekly(Json factory, FactoryData data, String week) {
+    final w = weeklyOf(data, week);
+    return startRun(factory, data, w.starter, w.seed, weekly: week, rule: w.rule, nuzlocke: w.rule == 'nuzlocke');
+  }
+
+  /// A loja de cosméticos (com as moedas da Factory): a Poké Ball que você joga nas batalhas e a moldura da caixa de texto.
+  /// Igual ao site.
+  static const cosmeticBalls = {
+    'premier-ball': 300, 'luxury-ball': 600, 'heal-ball': 300, 'friend-ball': 400, 'love-ball': 500, 'moon-ball': 500,
+    'fast-ball': 400, 'dusk-ball': 400, 'dream-ball': 1000, 'beast-ball': 1200, 'cherish-ball': 1500,
+  };
+  static const cosmeticFrames = {'gold': 500, 'crystal': 600, 'night': 400, 'sakura': 600};
+  static bool hasCosmetic(Json factory, String kind, String id) => ((factory['cosmetics']?[kind] as List?) ?? const []).contains(id);
+
+  /// Compra (com moedas) e já usa; null sem moedas ou se não existe.
+  static Json? buyCosmetic(Json factory, String kind, String id) {
+    final price = (kind == 'ball' ? cosmeticBalls : cosmeticFrames)[id];
+    if (price == null || hasCosmetic(factory, kind, id) || _int(factory['coins']) < price) return null;
+    final cosmetics = {...Map<String, dynamic>.from((factory['cosmetics'] as Map?) ?? const {}), kind: [...((factory['cosmetics']?[kind] as List?) ?? const []), id]};
+    return {...factory, 'coins': _int(factory['coins']) - price, 'cosmetics': cosmetics, kind == 'ball' ? 'ball' : 'frame': id};
+  }
+
+  /// Usa um que já tem (null volta para o padrão).
+  static Json equipCosmetic(Json factory, String kind, String? id) {
+    if (id != null && !hasCosmetic(factory, kind, id)) return factory;
+    return {...factory, kind == 'ball' ? 'ball' : 'frame': id};
+  }
+
   static Json endRun(Json factory, Json run) {
     final coins = runCoins(run);
     return {
@@ -2121,7 +2263,7 @@ class FactoryRun {
       'coins': _int(factory['coins']) + coins,
       'best': math.max(_int(factory['best']), _int(run['floor']) - 1),
       'run': null,
-      'last': {'floor': _int(run['floor']) - 1, 'coins': coins},
+      'last': {'floor': _int(run['floor']) - 1, 'coins': coins, if (run['weekly'] != null) 'weekly': run['weekly']},
     };
   }
 

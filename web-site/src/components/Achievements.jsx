@@ -1,6 +1,8 @@
 // Medalhas conquistadas no jogo, na Pokédex e nos times (as mesmas do app).
 
 import { achievementsOf } from '../lib/achievements'
+import { ACHIEVEMENTS as FACTORY_ACHIEVEMENTS, factoryOf } from '../lib/factoryRun'
+import { t } from '../lib/i18n'
 import { useStore } from '../lib/store'
 
 export default function Achievements() {
@@ -8,7 +10,13 @@ export default function Achievements() {
   const rankedRecord = useStore((s) => s.rankedRecord)
   const favorites = useStore((s) => s.favorites)
   const teams = useStore((s) => s.teams)
-  const list = achievementsOf({ stats, rankedRecord, favorites, teams })
+  const league = useStore((s) => s.league)
+  // As da Battle Factory (as mesmas da tela dela), junto com as outras.
+  const factory = factoryOf(league)
+  const factoryList = Object.entries(FACTORY_ACHIEVEMENTS).map(([id, a]) => ({
+    id: `factory-${id}`, icon: '🏭', title: t(a.label), text: `Battle Factory · 🪙${a.coins}`, unlocked: (factory.achievements ?? []).includes(id),
+  }))
+  const list = [...achievementsOf({ stats, rankedRecord, favorites, teams }), ...factoryList]
   const unlocked = list.filter((a) => a.unlocked).length
   return (
     <div className="rounded-2xl bg-card p-5 shadow">

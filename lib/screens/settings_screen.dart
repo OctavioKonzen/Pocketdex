@@ -12,6 +12,7 @@ import '../providers/theme_provider.dart';
 import '../services/push_service.dart';
 import '../services/account_sync.dart';
 import '../services/achievements.dart';
+import '../services/factory_run.dart';
 import '../services/app_settings.dart';
 import '../services/auth_service.dart';
 import '../services/daily_pokemon.dart';
@@ -329,12 +330,19 @@ class _AchievementsCard extends StatelessWidget {
       listenable: UserData.instance,
       builder: (context, _) {
         final data = UserData.instance;
-        final list = Achievements.of(
-          stats: data.stats,
-          rankedRecord: data.rankedRecord,
-          favorites: data.favorites,
-          teams: data.teams,
-        );
+        // As da Battle Factory (as mesmas da tela dela), junto com as outras. Igual ao site.
+        final factory = FactoryRun.of(data.league);
+        final have = (factory['achievements'] as List?) ?? const [];
+        final list = [
+          ...Achievements.of(
+            stats: data.stats,
+            rankedRecord: data.rankedRecord,
+            favorites: data.favorites,
+            teams: data.teams,
+          ),
+          for (final e in FactoryRun.achievements.entries)
+            Achievement('factory-${e.key}', '🏭', tr(e.value.label), 'Battle Factory · 🪙${e.value.coins}', have.contains(e.key)),
+        ];
         final unlocked = list.where((a) => a.unlocked).length;
         return SiteCard(
           child: Column(

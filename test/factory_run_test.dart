@@ -651,4 +651,48 @@ void main() {
     expect(run['dungeon'], isNull);
     expect(FactoryRun.routeOf(run)!['options'], [{'kind': 'boss'}]);
   });
+
+  test('ideias: amizade (Eevee de dia e à noite), Pickup, Synchronize e Nuzlocke (igual ao site)', () {
+    Json base([int seed = 42]) => {
+          ...FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!,
+          'seed': seed,
+          'encounter': {'kind': 'trainer', 'foes': [{'id': 19, 'level': 5, 'iv': 0, 'ev': 0}]},
+        };
+    final first = FactoryRun.teamOf(base()).first;
+    final eevee = {...base(), 'team': [{...first, 'id': 133, 'friendship': FactoryRun.friendEvolve - 1}]};
+    expect(FactoryRun.teamOf(FactoryRun.winFloor(eevee, data)).first['id'], 196);
+    expect(FactoryRun.teamOf(FactoryRun.winFloor(eevee, data, night: true)).first['id'], 197);
+    expect(FactoryRun.levelTo({...first, 'id': 133}, 40, data, () => 0).$1['id'], 133);
+    var found = 0;
+    for (var seed = 1; seed < 60; seed++) {
+      final r = FactoryRun.winFloor({...base(seed), 'team': [{...first, 'id': FactoryRun.pickup.first}]}, data);
+      if (FactoryRun.pendingOf(r)!['picked'] != null) found++;
+    }
+    expect(found, greaterThan(0));
+    final nuz = FactoryRun.startRun(FactoryRun.empty(), data, 1, 42, nuzlocke: true)!;
+    final two = {...nuz, 'team': [first, {...first, 'id': 7, 'hp': 0}], 'encounter': {'kind': 'trainer', 'foes': [{'id': 19, 'level': 5, 'iv': 0, 'ev': 0}]}};
+    final after = FactoryRun.winFloor(two, data, hp: [1, 0]);
+    expect([for (final m in FactoryRun.teamOf(after)) m['id']], [first['id']]);
+    expect(FactoryRun.pendingOf(after)!['lost'], [7]);
+    final wild = {...nuz, 'encounter': {'kind': 'wild', 'foes': [{'id': 19, 'level': 5}]}};
+    expect(FactoryRun.captureFor(wild, data), isNotNull);
+    expect(FactoryRun.captureFor({...wild, 'caughtLeg': FactoryRun.legOf(wild)}, data), isNull);
+  });
+
+  test('corrida da semana e cosméticos (igual ao site)', () {
+    final a = FactoryRun.weeklyOf(data, '2026-10-12');
+    expect(a, FactoryRun.weeklyOf(data, '2026-10-12'));
+    // Os mesmos do site (src/lib/factoryRun.js weeklyOf).
+    expect([a.seed, a.starter, a.rule], [1283409593, 656, 'normal']);
+    final b = FactoryRun.weeklyOf(data, '2026-10-19');
+    expect([b.seed, b.starter, b.rule], [1367297688, 152, 'nuzlocke']);
+    final run = FactoryRun.startWeekly(FactoryRun.empty(), data, '2026-10-12')!;
+    expect(run['weekly'], '2026-10-12');
+    expect(FactoryRun.teamOf(run).first['id'], a.starter);
+    final rich = {...FactoryRun.empty(), 'coins': 2000};
+    final bought = FactoryRun.buyCosmetic(rich, 'ball', 'luxury-ball')!;
+    expect([bought['coins'], bought['ball']], [2000 - FactoryRun.cosmeticBalls['luxury-ball']!, 'luxury-ball']);
+    expect(FactoryRun.buyCosmetic(bought, 'ball', 'luxury-ball'), isNull);
+    expect(FactoryRun.equipCosmetic(bought, 'ball', null)['ball'], isNull);
+  });
 }

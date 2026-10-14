@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import {
+  weeklyOf, startWeekly, buyCosmetic, equipCosmetic, COSMETIC_BALLS,
+  FRIEND_EVOLVE, PICKUP, SYNCHRONIZE, legOf,
   DUNGEONS, DUNGEON_LENGTH, townShop, townCenter, townHub, biomesLinked,
   isDoubleBattle,
   DOUBLE_FLOOR,
@@ -951,5 +953,65 @@ describe('cidade e lugares perto dela', () => {
     expect(biomesLinked('cave', 'water')).toBe(false)
     expect(biomesLinked('cave', 'mountain')).toBe(true)
     expect(biomesLinked('grass', 'water')).toBe(true)
+  })
+})
+
+describe('ideias: amizade, habilidades fora da batalha, Nuzlocke', () => {
+  const base = () => ({ ...startRun(emptyFactory(), data, 1, 42), encounter: { kind: 'trainer', foes: [{ id: 19, level: 5, iv: 0, ev: 0 }] } })
+  it('amizade: a cada andar vencido; com FRIEND_EVOLVE, evolui (Eevee: Espeon de dia, Umbreon à noite)', () => {
+    const run = { ...base(), team: [{ ...base().team[0], id: 133, friendship: FRIEND_EVOLVE - 1 }] }
+    const day = winFloor(run, data, { night: false })
+    expect(day.team[0].id).toBe(196)
+    expect(day.pending.levels.some((l) => l.friend && l.evolved === 196)).toBe(true)
+    expect(winFloor(run, data, { night: true }).team[0].id).toBe(197)
+    expect(winFloor({ ...run, team: [{ ...run.team[0], friendship: 0 }] }, data).team[0].friendship).toBe(1)
+    // A Eevee não evolui sozinha pelo nível.
+    expect(levelTo({ ...run.team[0], friendship: 0 }, 40, data, () => 0)[0].id).toBe(133)
+  })
+  it('Pickup acha itens; Synchronize passa a Nature; Nuzlocke: quem desmaia vai embora e um capturado por rota', () => {
+    let found = 0
+    for (let seed = 1; seed < 60; seed++) {
+      const r = winFloor({ ...base(), seed, team: [{ ...base().team[0], id: PICKUP[0] }] }, data)
+      if (r.pending.picked) found++
+    }
+    expect(found).toBeGreaterThan(0)
+    const lead = { ...base().team[0], id: SYNCHRONIZE[0], nature: 'Modest' }
+    let same = 0
+    for (let seed = 1; seed < 40; seed++) {
+      const caught = capture({ ...base(), seed, team: [lead], pending: { capture: { id: 19, level: 5 } } })
+      if (caught.team[1].nature === 'Modest') same++
+    }
+    expect(same).toBeGreaterThan(10)
+    const nuz = { ...startRun(emptyFactory(), data, 1, 42, false, { nuzlocke: true }) }
+    expect(nuz.nuzlocke).toBe(true)
+    const two = { ...nuz, team: [nuz.team[0], { ...nuz.team[0], id: 7, hp: 0 }], encounter: { kind: 'trainer', foes: [{ id: 19, level: 5, iv: 0, ev: 0 }] } }
+    const after = winFloor(two, data, { hp: [1, 0] })
+    expect(after.team.map((m) => m.id)).toEqual([nuz.team[0].id])
+    expect(after.pending.lost).toEqual([7])
+    const wild = { ...nuz, encounter: { kind: 'wild', foes: [{ id: 19, level: 5 }] } }
+    expect(captureFor(wild, data)).not.toBe(null)
+    expect(captureFor({ ...wild, caughtLeg: legOf(wild) }, data)).toBe(null)
+  })
+})
+
+describe('corrida da semana e cosméticos', () => {
+  it('a mesma semente, o mesmo inicial e a mesma regra para todos na semana', () => {
+    const a = weeklyOf(data, '2026-10-12'), b = weeklyOf(data, '2026-10-12'), c = weeklyOf(data, '2026-10-19')
+    expect(a).toEqual(b)
+    expect([a.seed, a.starter, a.rule]).not.toEqual([c.seed, c.starter, c.rule])
+    const run = startWeekly(emptyFactory(), data, '2026-10-12')
+    expect(run.weekly).toBe('2026-10-12')
+    expect(run.team[0].id).toBe(a.starter)
+    if (a.rule === 'noItems') expect(Object.values(run.bag).every((n) => n === 0)).toBe(true)
+  })
+  it('cosméticos: compra com moedas e usa a Poké Ball escolhida', () => {
+    const rich = { ...emptyFactory(), coins: 2000 }
+    const bought = buyCosmetic(rich, 'ball', 'luxury-ball')
+    expect(bought.coins).toBe(2000 - COSMETIC_BALLS['luxury-ball'])
+    expect(bought.ball).toBe('luxury-ball')
+    expect(buyCosmetic(bought, 'ball', 'luxury-ball')).toBe(null)
+    expect(buyCosmetic({ ...emptyFactory(), coins: 10 }, 'ball', 'luxury-ball')).toBe(null)
+    expect(equipCosmetic(bought, 'ball', null).ball).toBe(null)
+    expect(equipCosmetic(bought, 'ball', 'cherish-ball')).toBe(bought)
   })
 })

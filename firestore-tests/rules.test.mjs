@@ -46,6 +46,10 @@ await check('ler ranking sem login', getDocs(collection(anon, 'ranking')), false
 await check('semana cria', setDoc(doc(A, 'weekly', '2026-09-21', 'scores', 'alice'), { name: 'Ash Ketchum', score: 30, avatar: null }), true)
 await check('semana sobe', setDoc(doc(A, 'weekly', '2026-09-21', 'scores', 'alice'), { name: 'Ash Ketchum', score: 40, avatar: null }), true)
 await check('semana desce', setDoc(doc(A, 'weekly', '2026-09-21', 'scores', 'alice'), { name: 'Ash Ketchum', score: 10, avatar: null }), false)
+await check('Factory da semana cria', setDoc(doc(A, 'factoryWeek', '2026-09-21', 'scores', 'alice'), { name: 'Ash Ketchum', score: 12, avatar: null }), true)
+await check('Factory da semana sobe', setDoc(doc(A, 'factoryWeek', '2026-09-21', 'scores', 'alice'), { name: 'Ash Ketchum', score: 20, avatar: null }), true)
+await check('Factory da semana desce', setDoc(doc(A, 'factoryWeek', '2026-09-21', 'scores', 'alice'), { name: 'Ash Ketchum', score: 5, avatar: null }), false)
+await check('Factory da semana de outro', setDoc(doc(A, 'factoryWeek', '2026-09-21', 'scores', 'bob'), { name: 'Ash Ketchum', score: 5, avatar: null }), false)
 
 const daily = { name: 'Ash Ketchum', score: 4357, correct: 4, seconds: 31, avatar: 25, updatedAt: serverTimestamp() }
 await check('desafio cria', setDoc(doc(A, 'daily', '2026-09-25', 'scores', 'alice'), daily), true)
