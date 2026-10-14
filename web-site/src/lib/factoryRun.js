@@ -291,9 +291,42 @@ export const UPGRADES = {
   exp: { label: '+{0}% de XP', per: 5, max: 5, base: 250 },
   // As que mudam o jeito de jogar.
   expShare: { label: 'Começa com o Exp. Share', per: 1, max: 1, base: 1200 },
-  cards: { label: 'Uma carta a mais para escolher depois de cada chefe', per: 1, max: 1, base: 2000 },
   reroll: { label: '{0}× por corrida: sortear o caminho de novo', per: 1, max: 2, base: 700 },
+  cards: { label: 'Uma carta a mais para escolher depois de cada chefe', per: 1, max: 1, base: 2000 },
   shiny: { label: 'Shiny {0}× mais comum', per: 1, max: 3, base: 900, offset: 1 },
+}
+/**
+ * A árvore de melhorias: cada ramo começa numa raiz e o resto pede a anterior
+ * num nível (needs), um andar recorde (best) e quantos Pokémon você já tem
+ * para começar (owned). Cada nível a mais pede 3 andares a mais de recorde.
+ */
+export const UPGRADE_TREE = {
+  ivs: { needs: ['level', 2], best: 8 },
+  exp: { needs: ['ivs', 2], best: 12 },
+  expShare: { needs: ['exp', 3], best: 20, owned: 3 },
+  revive: { needs: ['potions', 2], best: 6 },
+  shiny: { needs: ['balls', 3], best: 15, owned: 5 },
+  shop: { needs: ['money', 2], best: 6 },
+  reroll: { needs: ['shop', 2], best: 15 },
+  cards: { needs: ['reroll', 1], best: 25, owned: 8 },
+}
+/** Os ramos da árvore, na ordem (da raiz para a ponta). */
+export const UPGRADE_BRANCHES = [
+  ['🎓', 'Treino', ['level', 'ivs', 'exp', 'expShare']],
+  ['🧪', 'Sobrevivência', ['potions', 'revive']],
+  ['🎯', 'Captura', ['balls', 'shiny']],
+  ['💰', 'Comércio', ['money', 'shop', 'reroll', 'cards']],
+]
+export const UPGRADE_LEVEL_BEST = 3
+/** O que falta para comprar o próximo nível: [{kind: 'up', id, level} | {kind: 'best', floor} | {kind: 'owned', count}] (vazio: pode). */
+export function upgradeNeeds(factory, id) {
+  const node = UPGRADE_TREE[id] ?? {}
+  const out = []
+  if (node.needs && upgradeLevel(factory, node.needs[0]) < node.needs[1]) out.push({ kind: 'up', id: node.needs[0], level: node.needs[1] })
+  const best = (node.best ?? 0) + UPGRADE_LEVEL_BEST * upgradeLevel(factory, id)
+  if ((factory.best ?? 0) < best) out.push({ kind: 'best', floor: best })
+  if (node.owned && (factory.owned?.length ?? 0) < node.owned) out.push({ kind: 'owned', count: node.owned })
+  return out
 }
 export const upgradeLevel = (factory, id) => factory.upgrades?.[id] ?? 0
 /** O bônus da melhoria no nível dela (nível × por nível). */
@@ -307,7 +340,7 @@ export function upgradePrice(factory, id) {
 /** Compra o próximo nível da melhoria (null se não dá). */
 export function buyUpgrade(factory, id) {
   const price = upgradePrice(factory, id)
-  if (price == null || factory.coins < price) return null
+  if (price == null || factory.coins < price || upgradeNeeds(factory, id).length) return null
   return { ...factory, coins: factory.coins - price, upgrades: { ...factory.upgrades, [id]: upgradeLevel(factory, id) + 1 } }
 }
 
@@ -714,7 +747,8 @@ export function chooseNode(run, data, index, clock = null) {
   }
   out.floor += 1
   // O cenário de onde você está (Poké Mart e Centro na cidade).
-  out.scene = node.kind === 'mart' ? 'city' : node.kind === 'center' ? 'center' : run.route.biome ?? 'grass'
+  // Na rota não tem Poké Mart nem Centro: o vendedor ambulante e quem cura ficam no próprio lugar.
+  out.scene = run.route.biome ?? 'grass'
   if (node.kind === 'mart') out.pending = { mart: true, shop: pickShop(rand, data, run.floor, 10, Boolean(run.townMap)) }
   else if (node.kind === 'trade') {
     // Troca: alguém da rota oferece um Pokémon (você escolhe quem dar; ele vem TRADE_LEVELS acima).
@@ -908,6 +942,8 @@ export function winFloor(run, data, after = {}) {
       STATS.forEach((s, k) => { evs[i][s] += yields[k] * 3 })
     })
   })
+  // O XP que cada um já ganhou na luta (a batalha dá na hora, ao derrubar cada adversário): vale esse.
+  if (after.gained) after.gained.forEach((g, i) => { if (i < gains.length) gains[i] = g })
   const levels = []
   const exp = Math.max(0, ...gains)
   out.team = out.team.map((m, index) => {
@@ -1195,6 +1231,15 @@ export function placeMusic(scene = '') {
   const group = Object.keys(PLACE_MUSIC).find((g) => PLACE_MUSIC[g].includes(scene))
   return group ? `place_${group}` : 'battle_music'
 }
+/**
+ * Quem cura fora da cidade (a Enfermeira Joy só fica no Centro Pokémon da
+ * cidade): um por andar, sempre o mesmo para a mesma corrida e andar. Igual ao app.
+ */
+export const HEALERS = [['sd-pokemonbreederf', 'Pokémon Breeder'], ['sd-doctor', 'Doctor'], ['sd-pokemonrangerf', 'Pokémon Ranger'], ['sd-aromalady', 'Aroma Lady']]
+export const healerOf = (run) => HEALERS[((run.seed ?? 0) + run.floor) % HEALERS.length]
+/** Os lugares da cidade (onde ficam o Poké Mart e a Enfermeira Joy). */
+export const inTown = (scene) => scene === 'city' || scene === 'center' || scene === 'tower' || String(scene).startsWith('gym-') || String(scene).startsWith('champion-')
+
 /** As estações (como no Black & White: mudam a cada mês) e a noite (pelo relógio de verdade). */
 export const SEASONS = ['spring', 'summer', 'autumn', 'winter']
 /** Os tipos que aparecem mais em cada estação e à noite. */

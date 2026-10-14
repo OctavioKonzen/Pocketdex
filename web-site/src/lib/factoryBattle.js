@@ -5,7 +5,7 @@
 import { battleMons } from './battleSetup'
 import { t } from './i18n'
 import { getFactoryData, getMoves, getPokemonById, getSpecies } from './data'
-import { bagsFor, battleOrder, bossScene, captureFor, clockOf, fieldOf, weatherOf, EXP_SHARE, expFactor, expProgress, expShares, foeMember, memberOf, movesAt } from './factoryRun'
+import { bagsFor, battleOrder, bossScene, captureFor, clockOf, fieldOf, weatherOf, EXP_SHARE, expAt, expFactor, expProgress, expShares, foeMember, memberOf, movesAt } from './factoryRun'
 import { seededRandom } from './league'
 import { newBattle } from './turnBattle'
 
@@ -42,16 +42,17 @@ export async function factoryBattle(run) {
   // No inverno (a estação de verdade), neva nos lugares abertos.
   const weather = weatherOf(run, scene, clockOf().season) || (place === 'wind' ? 'wind' : '')
   const field = place === 'wind' ? '' : place
-  const battle = newBattle(a, b, seededRandom(seed >>> 0), { ai: 'normal', seed: seed >>> 0, bags: bagsFor(run), healPct: true, capture: captureFor(run, data), weather, field })
-  battle.members = { mine, theirs }
-  battle.scene = scene
-  battle.factoryOrder = order
-  // A barra de XP (expBarOf): o XP de cada um agora e quanto cada adversário derrubado dá para cada um (quem lutou: tudo; com o Exp. Share, o resto: a metade).
-  battle.expBar = {
+  // A barra de XP (expBarOf) e o XP na hora: o XP de cada um agora e quanto cada adversário derrubado dá para cada um (quem lutou: tudo; com o Exp. Share, o resto: a metade).
+  const expBar = {
     mons: order.map((i) => ({ level: run.team[i].level, exp: run.team[i].exp })),
     table: run.encounter.foes.map((f) => { const all = expShares(run, data, f, null, expFactor(run.encounter.kind)); return order.map((i) => all[i]) }),
     share: run.expShare ? EXP_SHARE : 0,
   }
+  const battle = newBattle(a, b, seededRandom(seed >>> 0), { ai: 'normal', seed: seed >>> 0, bags: bagsFor(run), healPct: true, capture: captureFor(run, data), weather, field, exp: expBar })
+  battle.members = { mine, theirs }
+  battle.scene = scene
+  battle.factoryOrder = order
+  battle.expBar = expBar
   return battle
 }
 
@@ -64,7 +65,12 @@ export function expBarOf(battle, slot, foeHp) {
     if ((foeHp?.[j] ?? battle.sides[1].team[j]?.hp) > 0 && battle.captured !== j) return
     extra += battle.fought?.[j]?.includes(slot) ? row[slot] : Math.floor(row[slot] * bar.share)
   })
-  return expProgress(bar.mons[slot], extra)
+  // Passou de nível na luta: a barra no nível novo.
+  const mon = bar.mons[slot]
+  const total = (mon.exp ?? expAt(mon.level)) + extra
+  let level = mon.level
+  while (total >= expAt(level + 1)) level++
+  return expProgress({ level, exp: total })
 }
 
 /** Como o time terminou a batalha (para winFloor): a parte do HP de cada um, na ordem da corrida, a Bolsa, se capturou o selvagem e quem lutou contra cada adversário. */
@@ -76,7 +82,10 @@ export function factoryAfter(battle, run) {
   })
   // Quem lutou contra cada adversário (posições na corrida), para o XP.
   const fought = run.encounter.foes.map((_, j) => (battle.fought?.[j] ?? []).map((slot) => battle.factoryOrder?.[slot] ?? slot))
-  return { hp, bag: { ...battle.bags[0] }, captured: battle.captured != null, fought }
+  // O XP que cada um ganhou na luta (o motor deu na hora), na ordem da corrida.
+  const gained = battle.expNow ? run.team.map(() => 0) : null
+  if (gained) Object.entries(battle.expNow.gained ?? {}).forEach(([slot, exp]) => { gained[battle.factoryOrder?.[Number(slot)] ?? Number(slot)] += exp })
+  return { hp, bag: { ...battle.bags[0] }, captured: battle.captured != null, fought, ...(gained ? { gained } : {}) }
 }
 
 /** Quem é o adversário do andar: o chefe (nome, treinador e música) ou um selvagem (sem treinador). */

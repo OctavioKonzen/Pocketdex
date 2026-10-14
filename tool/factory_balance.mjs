@@ -215,7 +215,7 @@ const checkpoints = {}
 for (let r = 0; r < runs; r++) {
   const starter = data.starters[r % data.starters.length]
   // Melhorias permanentes (UPGRADES níveis de cada), como quem já jogou algumas corridas.
-  let meta = { ...F.emptyFactory(), coins: 1e9 }
+  let meta = { ...F.emptyFactory(), coins: 1e9, best: 999, owned: [...data.starters] }
   for (const id of Object.keys(F.UPGRADES)) for (let k = 0; k < Number(process.env.UPGRADES ?? 0); k++) meta = F.buyUpgrade(meta, id) ?? meta
   let run = F.startRun(meta, data, starter, 1000 + r * 7919)
   if (startFloor > 1) run = preparedRun(run, startFloor, r)

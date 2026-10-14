@@ -68,7 +68,7 @@ export function soundOf(event, lastEffect) {
   if (event.t === 'faint') return 'faint'
   if (event.t === 'heal') return 'heal'
   if (event.t === 'text') {
-    if (/^statUp/.test(event.key ?? '')) return 'statup'
+    if (/^statUp/.test(event.key ?? '') || event.key === 'levelUp') return 'statup'
     if (/^statDown/.test(event.key ?? '')) return 'statdown'
   }
   return null

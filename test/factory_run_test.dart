@@ -86,7 +86,7 @@ void main() {
     final rich = {...FactoryRun.empty(), 'owned': [1], 'coins': 99999};
     expect(FactoryRun.buyPokemon(rich, data, 6), isNull);
     expect(FactoryRun.normalizeOwned({...FactoryRun.empty(), 'owned': [1, 6, 5, 3], 'shinies': [6]}, data), containsPair('owned', [1, 4]));
-    var f = rich;
+    var f = {...rich, 'best': 999, 'owned': [1, 4, 7, 152, 155, 158, 252, 255]};
     for (final id in FactoryRun.upgrades.keys) {
       while (FactoryRun.upgradePrice(f, id) != null) {
         f = FactoryRun.buyUpgrade(f, id)!;
@@ -108,8 +108,8 @@ void main() {
     expect(fixed['owned'], [1, 4]);
     expect(fixed['coins'], price(6) + price(5));
     expect(FactoryRun.normalizeOwned({...FactoryRun.empty(), 'coins': 10, 'owned': [1, 6]}, data)['coins'], 10 + price(6) - price(4));
-    var f = {...FactoryRun.empty(), 'coins': 999999, 'owned': [1]};
-    for (final id in ['expShare', 'cards', 'reroll', 'shiny']) {
+    var f = {...FactoryRun.empty(), 'coins': 999999, 'best': 999, 'owned': [1, 4, 7, 152, 155, 158, 252, 255]};
+    for (final id in FactoryRun.upgrades.keys) {
       while (FactoryRun.upgradePrice(f, id) != null) {
         f = FactoryRun.buyUpgrade(f, id)!;
       }
@@ -562,5 +562,22 @@ void main() {
     for (final b in FactoryRun.biomeIds) {
       expect(FactoryRun.placeMusic(b), isNot('battle_music'));
     }
+  });
+
+  test('árvore de melhorias (igual ao site)', () {
+    final f = {...FactoryRun.empty(), 'coins': 99999};
+    expect(FactoryRun.upgradeNeeds(f, 'level'), isEmpty);
+    expect(FactoryRun.upgradeNeeds(f, 'ivs'), [
+      {'kind': 'up', 'id': 'level', 'level': 2},
+      {'kind': 'best', 'floor': 8},
+    ]);
+    expect(FactoryRun.buyUpgrade(f, 'ivs'), isNull);
+    var g = FactoryRun.buyUpgrade(f, 'level')!;
+    expect(FactoryRun.upgradeNeeds(g, 'level'), [{'kind': 'best', 'floor': 3}]);
+    g = FactoryRun.buyUpgrade({...g, 'best': 3}, 'level')!;
+    expect(FactoryRun.buyUpgrade({...g, 'best': 7}, 'ivs'), isNull);
+    expect(FactoryRun.buyUpgrade({...g, 'best': 8}, 'ivs')!['upgrades']['ivs'], 1);
+    expect(FactoryRun.upgradeNeeds({...g, 'best': 99, 'upgrades': {'reroll': 1}}, 'cards'), [{'kind': 'owned', 'count': 8}]);
+    expect([for (final b in FactoryRun.upgradeBranches) ...b.$3]..sort(), FactoryRun.upgrades.keys.toList()..sort());
   });
 }

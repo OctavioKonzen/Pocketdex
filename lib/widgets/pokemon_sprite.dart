@@ -197,7 +197,8 @@ class _AnimatedSprite extends StatelessWidget {
       final whole = fitScale.floorToDouble();
       final pixelScale = longest > 0 ? (whole >= 1 && whole >= 0.85 * fitScale ? whole : fitScale) / dpr : null;
       const quality = FilterQuality.none;
-      final left = side / 2 - inner / 2 - shift(dx, wr);
+      // Na horizontal, o quadro típico sempre no meio da caixa (em cima do centro da base, na batalha).
+      final left = side / 2 - inner / 2 - dx * inner;
       // Na batalha, quem pula ou flutua no meio da animação desce o "pé" para
       // pisar na plataforma.
       final foot = widget.battle && widget.alignBottom ? source.foot * inner : 0.0;

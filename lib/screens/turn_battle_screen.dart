@@ -344,7 +344,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
       if (_battle?.winner == 0) {
         final data = _factoryData ??= await FactoryData.load();
         final after = factoryAfter(_battle!, _factoryOrder, run);
-        saveFactory({...factory, 'run': FactoryRun.winFloor(run, data, hp: after.hp, bag: after.bag, captured: after.captured, fought: after.fought)});
+        saveFactory({...factory, 'run': FactoryRun.winFloor(run, data, hp: after.hp, bag: after.bag, captured: after.captured, fought: after.fought, gained: after.gained)});
         final boss = run['encounter']['boss'] as Map?;
         note = '${boss != null ? '🏅 ${tr('Você venceu {0}!').replaceAll('{0}', '${boss['name']}')} ' : '🏆 '}${tr('Andar {0} vencido!').replaceAll('{0}', '$floor')}';
       } else {
@@ -446,7 +446,12 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Batalha')),
       body: ReadableWidth(
-        child: _factoryScreen
+        // A troca entre a tela da corrida e a batalha: um fade curto (sem pulo seco).
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          child: KeyedSubtree(
+            key: ValueKey(_factoryScreen ? 'factory-$_key' : battle != null && _hit != null ? 'battle-$_key' : 'setup'),
+            child: _factoryScreen
             ? ListView(padding: const EdgeInsets.all(12), children: [
                 FactoryScreen(
                   key: ValueKey('factory-$_key'),
@@ -476,6 +481,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
                     endNote: _endNote,
                     next: _next,
                     wild: _challenge?['wild'] == true,
+                    keepMine: _challenge?['kind'] == 'factory',
                     // A tela VS: o líder da Jornada ou o chefe da Battle Factory.
                     vs: _foeLeader != null
                         ? {'name': _foeLeader!.name, 'kind': _foeLeader!.kind}
@@ -502,6 +508,8 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
             : _preview != null
                 ? _previewView(context, _preview!)
                 : _setup(context),
+          ),
+        ),
       ),
     );
   }
@@ -864,6 +872,9 @@ class BattleView extends StatefulWidget {
 
   /// O chefe ({name, kind}): a tela VS antes da luta, como no Black & White.
   final Map? vs;
+
+  /// Battle Factory: o seu Pokémon já está em campo (veio da tela da corrida): sem o treinador e a Poké Ball do seu lado.
+  final bool keepMine;
   const BattleView(
       {super.key,
       required this.battle,
@@ -881,7 +892,8 @@ class BattleView extends StatefulWidget {
       this.next,
       this.canAgain = true,
       this.wild = false,
-      this.vs});
+      this.vs,
+      this.keepMine = false});
 
   @override
   State<BattleView> createState() => BattleViewState();
@@ -979,7 +991,8 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
         if (!_introOn || (e.t != 'switch' && e.key != 'go' && e.key != 'foeSent')) e
     ];
     if (_introOn) {
-      _poke.setAll(0, ['hidden', 'hidden']);
+      _poke.setAll(0, [widget.keepMine ? '' : 'hidden', 'hidden']);
+      if (widget.keepMine) _meGone = true;
       _busy = true;
       _runIntro().then((_) {
         if (!mounted) return;
@@ -1042,6 +1055,10 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
       await _release(1);
     }
     if (!mounted) return;
+    if (widget.keepMine) {
+      setState(() => _introOn = false);
+      return;
+    }
     setState(() => _text = tr('Vai, {0}!').replaceAll('{0}', _b.active(0).name));
     for (var f = 1; f < 5; f++) {
       setState(() => _backFrame = f);
@@ -1641,6 +1658,8 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                           child: BattleBackdrop(key: ValueKey(_weather), scene: scene, weather: _weather),
                         ),
                       ),
+                      // Clima, terreno e efeito do lugar fazem parte do cenário: atrás dos Pokémon e das caixas.
+                      Positioned.fill(child: _WeatherFx(_weather, terrain: _terrain, place: _place)),
                       if (_vsOn)
                         Positioned.fill(
                           child: _VsSplash(
@@ -1680,16 +1699,16 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                         Positioned(right: w * 0.11, bottom: h * foeBottom(scene), width: w * 0.26, height: w * 0.26, child: _Ball(side: 1, phase: _ball[1]!)),
                       if (_introOn && _coach != null)
                         Positioned(
-                          right: w * 0.07,
+                          right: w * 0.0,
                           bottom: h * foeBottom(scene),
-                          width: w * 0.34,
-                          height: w * 0.34,
+                          width: w * 0.48,
+                          height: w * 0.48,
                           child: AnimatedSlide(
                             key: const ValueKey('foe-trainer'),
                             offset: _foeGone ? const Offset(1.6, 0) : Offset.zero,
                             duration: const Duration(milliseconds: 520),
                             curve: Curves.easeIn,
-                            child: TrainerSprite(_coach, box: w * 0.34),
+                            child: TrainerSprite(_coach, box: w * 0.48),
                           ),
                         ),
                       Positioned(
@@ -1705,7 +1724,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                           ])),
                       if (_ball[0] != null)
                         Positioned(left: w * 0.01, bottom: h * 0.22, width: w * 0.58, height: w * 0.58, child: _Ball(side: 0, phase: _ball[0]!)),
-                      if (_introOn && _myTrainer != null)
+                      if (_introOn && _myTrainer != null && !widget.keepMine)
                         Positioned(
                           left: w * 0.02,
                           bottom: 0,
@@ -1729,7 +1748,6 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                                   onTap: () => _inspect(0),
                                   child: _InfoBox(mon: me, hp: _hp[0][_active[0]], status: _status[0][_active[0]], dmax: _dmax[0], boosts: _boosts[0], mine: true, bw: true,
                                       exp: expBarOf(_b, _active[0], _hp[1]))))),
-                      Positioned.fill(child: _WeatherFx(_weather, terrain: _terrain, place: _place)),
                       // A habilidade em ação: a faixa sai do lado do Pokémon (o adversário à direita, o seu à esquerda).
                       if (_ability != null)
                         Positioned(
@@ -2087,7 +2105,8 @@ class _WeatherPainter extends CustomPainter {
       case 'miasma' || 'haunt':
         final color = place == 'miasma' ? const Color(0xFFA855F7) : const Color(0xFFA78BFA);
         for (var i = 0; i < 4; i++) {
-          final c = Offset((_hash(i, 1) + 0.04 * sin(t + i)) * w, (0.2 + 0.7 * _hash(i, 2)) * h);
+          // No chão do cenário.
+          final c = Offset((_hash(i, 1) + 0.04 * sin(t + i)) * w, (0.6 + 0.35 * _hash(i, 2)) * h);
           canvas.drawCircle(c, w * (0.12 + 0.08 * _hash(i, 3)), Paint()..shader = RadialGradient(colors: [color.withValues(alpha: 0.32), Colors.transparent]).createShader(Rect.fromCircle(center: c, radius: w * 0.2)));
         }
         return;
@@ -2098,7 +2117,8 @@ class _WeatherPainter extends CustomPainter {
           ..strokeCap = StrokeCap.round;
         for (var i = 0; i < 24; i++) {
           final x = ((_hash(i, 1) + t * (place == 'current' ? 0.5 : 0.8)) % 1.0) * w;
-          final y = _hash(i, 2) * h;
+          // A correnteza no chão (na água); o frio pelo ar.
+          final y = (place == 'current' ? 0.5 + 0.5 * _hash(i, 2) : _hash(i, 2)) * h;
           canvas.drawLine(Offset(x, y), Offset(x + w * 0.05, y + (place == 'current' ? sin(t * 3 + i) * 3 : 0)), paint);
         }
         return;
@@ -2116,12 +2136,16 @@ class _WeatherPainter extends CustomPainter {
             Paint()..shader = const RadialGradient(colors: [Color(0x73B48C50), Colors.transparent]).createShader(Rect.fromCircle(center: c, radius: w * 0.5)));
         return;
       case 'storm':
-        canvas.drawRect(Offset.zero & size, Paint()..color = const Color(0x261E1E3C));
-        // Um raio de vez em quando (a cada 3 s).
-        if (t % 3 > 2.65) canvas.drawRect(Offset.zero & size, Paint()..color = const Color(0x8CFFFFDC));
+        // No céu do cenário: nuvens escuras e um clarão de vez em quando (a cada 3 s).
+        final sky = Rect.fromLTWH(0, 0, w, h * 0.5);
+        canvas.drawRect(sky, Paint()..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0x401E1E3C), Colors.transparent]).createShader(sky));
+        if (t % 3 > 2.65) {
+          canvas.drawRect(sky, Paint()..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0x8CFFFFDC), Colors.transparent]).createShader(sky));
+        }
         return;
       case 'aurora':
-        final rect = Offset.zero & size;
+        // No céu do cenário.
+        final rect = Rect.fromLTWH(0, 0, w, h * 0.5);
         canvas.drawRect(rect, Paint()..shader = LinearGradient(
               begin: Alignment(-1 + sin(t * 0.5), -1),
               end: Alignment(1 + sin(t * 0.5), 0.2),

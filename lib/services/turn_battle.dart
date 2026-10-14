@@ -39,7 +39,9 @@ class BattleMega {
 
 class BattleMon {
   final String name;
-  final int level;
+
+  /// O nível (na Battle Factory pode subir durante a luta: o motor dá o XP na hora).
+  int level;
   final List<BattleMove> moves;
   final bool shiny;
   final List<BattleMove> _initialMoves;
@@ -378,7 +380,7 @@ BattleItem? _itemOf(String slug) => battleItems.where((i) => i.slug == slug).fir
 
 class TurnBattle {
   TurnBattle(List<BattleMon> mine, List<BattleMon> theirs, this.random,
-      {this.mode = 'singles', this.controllers, this.rules = const [], this.startBags, this.healPct = false, this.capture, this.startWeather = '', this.startField = ''})
+      {this.mode = 'singles', this.controllers, this.rules = const [], this.startBags, this.healPct = false, this.capture, this.startWeather = '', this.startField = '', this.startExp})
       : teams = [mine, theirs] {
     for (final mon in [...mine, ...theirs]) {
       mon
@@ -404,6 +406,7 @@ class TurnBattle {
         if (capture != null) 'capture': capture,
         if (startWeather.isNotEmpty) 'weather': startWeather,
         if (startField.isNotEmpty) 'field': startField,
+        if (startExp != null) 'exp': startExp,
       }]);
       _simHandle = created['handle'] as int;
       _opening = _simSync(created);
@@ -427,6 +430,12 @@ class TurnBattle {
 
   /// Battle Factory: o clima do lugar no começo (sol no deserto, chuva no mar...). Igual ao site.
   final String startWeather;
+
+  /// Battle Factory: o XP de cada adversário entra na hora ({mons, table, share}; o motor sobe o nível durante a luta).
+  final Map<String, dynamic>? startExp;
+
+  /// Battle Factory: o XP de agora, vindo do motor ({mons: [{level, exp}], gained: {posição: XP ganho}}).
+  Map<String, dynamic>? expNow;
 
   /// Battle Factory: o efeito do lugar no começo (terreno ou o efeito próprio dele). Igual ao site.
   final String startField;
@@ -486,6 +495,13 @@ class TurnBattle {
     turn = state['turn'] as int;
     winner = state['winner'] as int?;
     captured = state['captured'] as int?;
+    // Battle Factory: o XP de agora (o motor dá na hora) e quem lutou contra cada adversário.
+    if (state['exp'] != null) {
+      expNow = Map<String, dynamic>.from(state['exp'] as Map);
+      fought
+        ..clear()
+        ..addAll({for (final e in ((state['fought'] as Map?) ?? const {}).entries) int.parse('${e.key}'): [for (final i in e.value as List) i as int]});
+    }
     weather = const {'raindance': 'rain', 'sunnyday': 'sun', 'sandstorm': 'sand', 'hail': 'hail', 'snow': 'snow', 'snowscape': 'snow', 'deltastream': 'wind'}[state['weather']] ?? '';
     // Terreno e o efeito de lugar da Battle Factory (pocketdex<efeito>) no campo.
     terrain = const {'grassyterrain': 'grassy', 'electricterrain': 'electric', 'mistyterrain': 'misty', 'psychicterrain': 'psychic'}[state['terrain']] ?? '';
@@ -503,6 +519,7 @@ class TurnBattle {
           mon.id = mon.mega!.id;
           mon.calc = mon.mega!.calc;
         } else mon.id = (p['formId'] as int?) ?? mon._orig.id;
+        mon.level = (p['level'] as int?) ?? mon.level;
         mon.hp = p['hp'] as int;
         mon.maxHp = p['maxHp'] as int;
         mon.spe = p['spe'] as int;
@@ -535,7 +552,11 @@ class TurnBattle {
       }
     }
     needSwitch = winner == null && forceSwitch[0];
-    return [for (final dynamic raw in result['events'] as List) _simEvent(Map<String, dynamic>.from(raw as Map))];
+    // O XP e o nível (Battle Factory) já vêm com o texto deles; a tela usa o estado.
+    return [
+      for (final dynamic raw in result['events'] as List)
+        if (!const ['exp', 'level'].contains((raw as Map)['t'])) _simEvent(Map<String, dynamic>.from(raw))
+    ];
   }
 
   static BattleEvent _simEvent(Map<String, dynamic> e) {
@@ -600,7 +621,7 @@ class TurnBattle {
   }
 
   // Visão da partida sem restaurar HP, formas ou status.
-  TurnBattle._view(this.teams, this.random) : mode = 'singles', controllers = null, rules = const [], startBags = null, healPct = false, capture = null, startWeather = '', startField = '';
+  TurnBattle._view(this.teams, this.random) : mode = 'singles', controllers = null, rules = const [], startBags = null, healPct = false, capture = null, startWeather = '', startField = '', startExp = null;
   TurnBattle viewFor(int side) {
     final order = [side, 1 - side];
     final view = TurnBattle._view([for (final s in order) teams[s]], random);
@@ -1437,6 +1458,8 @@ class TurnBattle {
   final Map<int, List<int>> fought = {};
 
   void markFought() {
+    // Na Battle Factory com o motor, quem lutou com quem vem dele (o XP é dado na hora).
+    if (expNow != null) return;
     final list = fought.putIfAbsent(activeIndex[1], () => []);
     if (!list.contains(activeIndex[0])) list.add(activeIndex[0]);
   }
@@ -1720,6 +1743,10 @@ class TurnBattle {
     'stormStart': 'Uma tempestade de raios cai sobre o campo!',
     'auroraStart': 'Uma aurora colorida brilha no céu!',
     'placeHurt': ['{0} sofreu com {1}!', '{0} inimigo sofreu com {1}!'],
+    // Battle Factory: o XP na hora e a subida de nível durante a luta.
+    'gainExp': ['{0} ganhou {1} de XP!', '{0} inimigo ganhou {1} de XP!'],
+    'gainExpShare': 'O resto do time ganhou XP com o Exp. Share!',
+    'levelUp': ['{0} subiu para o nível {1}!', '{0} inimigo subiu para o nível {1}!'],
     'placeHeal': ['{0} recuperou HP com {1}!', '{0} inimigo recuperou HP com {1}!'],
     'hurtHail': ['{0} foi atingido pelo granizo!', '{0} inimigo foi atingido pelo granizo!'],
     // Itens e habilidades (motor do Showdown).
