@@ -5,8 +5,11 @@ CITIES: a cidade de destino de cada rota (o "city" dos chefes) →
     [lugar da rota, nome da rota, lugar no caminho, [lugares da cidade]]
   - lugar da rota: o cenário (e os selvagens) dos 10 andares até a cidade (o
     10º é o chefe da rota). Pode ser caverna quando ela é o caminho no jogo
-    (Victory Road, Rock Tunnel, Ice Path); as outras são opcionais. Nunca mar: a água começa pela praia (praia → mar →
-    fundo do mar → caverna aquática, cada um um lugar de 10 andares);
+    (Victory Road, Rock Tunnel, Ice Path); as outras são opcionais. A água começa sempre pela praia (praia → mar →
+    fundo do mar → caverna aquática, cada um um lugar de 10 andares). Uma rota
+    de mar ("water") começa pela praia e depois vira mar (o fundo do mar é
+    opcional). As cavernas no caminho ("cave") combinam com a rota: no gelo, de
+    gelo; no pântano, venenosa; no vulcão, de lava; no mar, aquática;
   - lugar no caminho: [nome, cenário] ou None. Aparece numa bifurcação da rota:
     10 andares e um chefe; depois volta para a rota no mesmo andar;
   - lugares da cidade: [[nome, cenário], ...], só coisas de cidade (esgoto,
@@ -27,11 +30,11 @@ CITIES = {
                      [['Rocket Game Corner', 'city'], ['Rocket Hideout', 'base-rocket'], ['Celadon Department Store', 'city']]],
     'Fuchsia City': ['grass', 'Route 12 · Route 15', ['Safari Zone', 'swamp'], [['Fuchsia Beach', 'beach']]],
     'Saffron City': ['city', 'Route 7 · Route 8', ['Power Plant', 'plant'], [['Silph Co.', 'base-rocket'], ['Fighting Dojo', 'temple']]],
-    'Cinnabar Island': ['beach', 'Route 19 · Route 20', ['Seafoam Islands', 'icecave'],
+    'Cinnabar Island': ['water', 'Route 19 · Route 20', ['Seafoam Islands', 'icecave'],
                         [['Pokémon Mansion', 'ruins'], ['Cinnabar Lab', 'plant'], ['Cinnabar Beach', 'beach']]],
     'Viridian City': ['beach', 'Route 21 · Route 1', None, []],
     'Indigo Plateau': ['cave', 'Route 23 · Victory Road', ['Cerulean Cave', 'cave'], []],
-    'Seafoam Islands': ['beach', 'Route 20', ['Seafoam Islands', 'icecave'], [['Seafoam Beach', 'beach']]],
+    'Seafoam Islands': ['water', 'Route 20', ['Seafoam Islands', 'icecave'], [['Seafoam Beach', 'beach']]],
     # Johto
     'Violet City': ['grass', 'Route 29 · Route 30 · Route 31', ['Dark Cave', 'cave'], [['Sprout Tower', 'tower'], ['Ruins of Alph', 'ruins']]],
     'Azalea Town': ['grass', 'Route 32 · Route 33', ['Union Cave', 'cave'], [['Slowpoke Well', 'sewer']]],
@@ -39,18 +42,18 @@ CITIES = {
                        [['Goldenrod Tunnel', 'sewer'], ['Radio Tower', 'base-rocket'], ['Goldenrod Department Store', 'city']]],
     'Ecruteak City': ['grass', 'Route 35 · Route 36 · Route 37', ['National Park', 'flowers'], [['Burned Tower', 'tower'], ['Bell Tower', 'tower']]],
     'Olivine City': ['beach', 'Route 38 · Route 39', None, [['Glitter Lighthouse', 'tower'], ['Olivine Beach', 'beach']]],
-    'Cianwood City': ['beach', 'Route 40 · Route 41', ['Whirl Islands', 'cave'], [['Cianwood Beach', 'beach']]],
+    'Cianwood City': ['water', 'Route 40 · Route 41', ['Whirl Islands', 'cave'], [['Cianwood Beach', 'beach']]],
     'Mahogany Town': ['grass', 'Route 42', ['Mt. Mortar', 'cave'], [['Rocket Hideout', 'base-rocket']]],
     'Blackthorn City': ['icecave', 'Route 44 · Ice Path', ['Lake of Rage', 'swamp'], [["Dragon's Den", 'temple']]],
     # Hoenn
     'Rustboro City': ['grass', 'Route 101 · Route 102 · Route 104', ['Petalburg Woods', 'forest'], [['Devon Corporation', 'plant'], ["Trainers' School", 'city']]],
-    'Dewford Town': ['beach', 'Route 105 · Route 106', ['Granite Cave', 'cave'], [['Dewford Beach', 'beach']]],
+    'Dewford Town': ['water', 'Route 105 · Route 106', ['Granite Cave', 'cave'], [['Dewford Beach', 'beach']]],
     'Mauville City': ['beach', 'Route 109 · Route 110', ['New Mauville', 'plant'], [['Mauville Game Corner', 'city']]],
-    'Lavaridge Town': ['mountain', 'Route 111 · Route 112', ['Fiery Path', 'volcano'], [['Lavaridge Herb Shop', 'city']]],
+    'Lavaridge Town': ['mountain', 'Route 111 · Route 112', ['Fiery Path', 'lavacave'], [['Lavaridge Herb Shop', 'city']]],
     'Petalburg City': ['desert', 'Route 111 · Route 102', ['Mirage Tower', 'tower'], []],
     'Fortree City': ['forest', 'Route 119', ['Weather Institute', 'plant'], []],
-    'Mossdeep City': ['beach', 'Route 124 · Route 125', ['Shoal Cave', 'icecave'], [['Space Center', 'base-magma'], ['Mossdeep Beach', 'beach']]],
-    'Sootopolis City': ['beach', 'Route 126 · Route 127', ['Seafloor Cavern', 'cave'], [['Cave of Origin', 'temple']]],
+    'Mossdeep City': ['water', 'Route 124 · Route 125', ['Shoal Cave', 'icecave'], [['Space Center', 'base-magma'], ['Mossdeep Beach', 'beach']]],
+    'Sootopolis City': ['water', 'Route 126 · Route 127', ['Seafloor Cavern', 'cave'], [['Cave of Origin', 'temple']]],
     'Ever Grande City': ['cave', 'Victory Road', ['Sky Pillar', 'tower'], []],
     # Sinnoh
     'Oreburgh City': ['grass', 'Route 201 · Route 202 · Route 203', ['Oreburgh Gate', 'cave'], [['Oreburgh Mining Museum', 'ruins']]],
@@ -59,7 +62,7 @@ CITIES = {
     'Veilstone City': ['mountain', 'Route 209 · Route 210 · Route 215', ['Lost Tower', 'tower'],
                        [['Galactic HQ', 'base-galactic'], ['Veilstone Department Store', 'city'], ['Veilstone Game Corner', 'city']]],
     'Pastoria City': ['swamp', 'Route 213 · Route 214', ['Ruin Maniac Cave', 'cave'], [['Valor Lakefront', 'beach']]],
-    'Canalave City': ['beach', 'Route 218', ['Iron Island', 'cave'], [['Canalave Library', 'ruins'], ['Canalave Harbor', 'beach']]],
+    'Canalave City': ['water', 'Route 218', ['Iron Island', 'cave'], [['Canalave Library', 'ruins'], ['Canalave Harbor', 'beach']]],
     'Snowpoint City': ['snow', 'Route 216 · Route 217', ['Lake Acuity', 'snow'], [['Snowpoint Temple', 'temple'], ['Snowpoint Harbor', 'beach']]],
     'Sunyshore City': ['beach', 'Route 222', None, [['Vista Lighthouse', 'tower'], ['Sunyshore Beach', 'beach']]],
     'Sinnoh:Pokémon League': ['cave', 'Victory Road', ['Spear Pillar', 'temple'], []],
@@ -95,7 +98,7 @@ CITIES = {
     'Lush Jungle': ['grass', 'Route 8', ['Lush Jungle', 'forest'], []],
     'Malie City': ['city', 'Route 10 · Route 11', ['Blush Mountain', 'plant'], [['Malie Garden', 'flowers'], ['Malie Library', 'ruins']]],
     'Hokulani Observatory': ['mountain', 'Mount Hokulani', None, [['Hokulani Observatory', 'plant']]],
-    'Seafolk Village': ['beach', 'Route 15', None, [['Seafolk Village Pier', 'beach']]],
+    'Seafolk Village': ['water', 'Route 15', None, [['Seafolk Village Pier', 'beach']]],
     'Vast Poni Canyon': ['mountain', 'Poni Plains', ['Vast Poni Canyon', 'cave'], []],
     'Mount Lanakila': ['snow', 'Route 17 · Mount Lanakila', ['Mount Lanakila', 'icecave'], []],
     # Galar

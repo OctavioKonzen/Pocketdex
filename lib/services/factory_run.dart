@@ -623,6 +623,9 @@ class FactoryRun {
     'dunes': ['ground', 'dark', 'ghost', 'bug'],
     'bamboo': ['grass', 'fighting', 'bug', 'dark'],
     'temple': ['psychic', 'fighting', 'dragon', 'ghost'],
+    'lavacave': ['fire', 'rock', 'ground'],
+    'poisoncave': ['poison', 'dark', 'bug'],
+    'seacave': ['water', 'rock'],
   };
   static final biomeIds = biomes.keys.toList();
 
@@ -639,7 +642,7 @@ class FactoryRun {
   };
 
   /// Na Dusk Ball (3×): os lugares escuros.
-  static const darkBiomes = ['cave', 'tower', 'icecave', 'sewer', 'underwater'];
+  static const darkBiomes = ['cave', 'tower', 'icecave', 'sewer', 'underwater', 'lavacave', 'poisoncave', 'seacave'];
 
   /// Os chefes de cidade (líder no ginásio dele; Elite Four e Campeão na Liga). Rival e vilões aparecem na rota.
   static const _cityKinds = ['gym', 'elite', 'champion'];
@@ -684,10 +687,10 @@ class FactoryRun {
   /// As regiões de lugares que se ligam (a rota seguinte começa num lugar que faz sentido depois da anterior: da caverna
   /// não se vai direto para o mar). Grama e cidade se ligam a tudo. Igual ao site.
   static const biomeZones = [
-    ['grass', 'flowers', 'forest', 'bamboo', 'swamp', 'city', 'plant', 'ruins', 'temple', 'sky'],
-    ['beach', 'water', 'underwater', 'swamp', 'grass', 'city'],
-    ['mountain', 'cave', 'icecave', 'crystal', 'volcano', 'snow', 'sky', 'temple', 'ruins'],
-    ['desert', 'dunes', 'volcano', 'ruins', 'beach'],
+    ['grass', 'flowers', 'forest', 'bamboo', 'swamp', 'city', 'plant', 'ruins', 'temple', 'sky', 'poisoncave'],
+    ['beach', 'water', 'underwater', 'swamp', 'grass', 'city', 'seacave'],
+    ['mountain', 'cave', 'icecave', 'crystal', 'volcano', 'snow', 'sky', 'temple', 'ruins', 'lavacave'],
+    ['desert', 'dunes', 'volcano', 'ruins', 'beach', 'lavacave'],
     ['city', 'sewer', 'tower', 'plant'],
   ];
   /// O id de um lugar pelo nome ("Mt. Moon" → "mt-moon").
@@ -707,14 +710,23 @@ class FactoryRun {
     return (
       biome: '${row[0]}',
       name: '${row[1]}',
-      side: _placeOf(row[2]),
+      side: switch (_placeOf(row[2])) { final p? => (id: p.id, name: p.name, scene: _caveScene(p.scene, '${row[0]}')), _ => null },
       towns: [for (final t in (row.length > 3 ? row[3] as List? : null) ?? const []) _placeOf(t)!],
     );
   }
 
   /// A água, em ordem (não dá para pular): da praia (a rota ou a da cidade) para o mar, dele para o fundo do mar e
   /// dali para a caverna aquática. Cada um é um lugar de 10 andares com um chefe; vencendo, dá para seguir ou voltar.
-  static const waterChain = [('beach', 'Praia', 'beach'), ('sea', 'Mar', 'water'), ('deep', 'Fundo do mar', 'underwater'), ('seacave', 'Caverna aquática', 'cave')];
+  static const waterChain = [('beach', 'Praia', 'beach'), ('sea', 'Mar', 'water'), ('deep', 'Fundo do mar', 'underwater'), ('seacave', 'Caverna aquática', 'seacave')];
+
+  /// Numa rota de mar, os primeiros andares são a praia (a água começa por ela); depois, o mar.
+  static const shore = 5;
+
+  /// A caverna combina com o lugar em volta: no gelo, de gelo; no pântano, venenosa; no vulcão, de lava; no mar, aquática.
+  static const caveOf = {
+    'snow': 'icecave', 'icecave': 'icecave', 'swamp': 'poisoncave', 'volcano': 'lavacave', 'beach': 'seacave', 'water': 'seacave', 'underwater': 'seacave',
+  };
+  static String _caveScene(String scene, String around) => scene == 'cave' ? caveOf[around] ?? 'cave' : scene;
 
   /// O lugar da água depois deste cenário (null se não tem: a caverna aquática é o fim).
   static ({String id, String name, String scene})? waterNext(Object? scene) {
@@ -845,7 +857,7 @@ class FactoryRun {
     if (run['dungeon'] != null) return '${run['dungeon']['scene']}';
     // A rota do jogo (o mapa da região, tool/factory_routes.py).
     final info = routeInfo(data, run);
-    if (info != null) return info.biome;
+    if (info != null) return info.biome == 'water' && routePos(run) < shore ? 'beach' : info.biome;
     final boss = targetOf(data, run);
     if (boss['kind'] == 'gym') {
       final count = <String, int>{};
@@ -986,7 +998,9 @@ class FactoryRun {
       }
       if (boss['kind'] == 'villain') options.add({'kind': 'dungeon', 'place': 'base', 'scene': 'base-${villainTeam(boss['name'])}'});
     } else {
-      if (pos == forks[1]) add(waterNext(biome));
+      // Numa rota de praia, o mar é opcional; numa rota de mar, o fundo do mar.
+      final sea = info?.biome == 'water';
+      if (pos == forks[sea ? 2 : 1]) add(waterNext(biome));
       if (pos == forks[2]) add(info?.side);
     }
     return {'floor': floor, 'biome': biome, if (city) 'town': true, 'options': options};
@@ -1912,7 +1926,7 @@ class FactoryRun {
   /// O clima de cada lugar (chances): sol e areia no deserto, chuva no mar e no pântano, neve na neve e na caverna de gelo,
   /// sol no vulcão; às vezes sol ou chuva na grama, na floresta e na cidade. Lugares fechados sem clima. Igual ao site.
   static const sceneWeather = <String, List<(String, double)>>{
-    'desert': [('sand', 0.45), ('sun', 0.25)], 'volcano': [('sun', 0.6)], 'snow': [('snow', 0.65)], 'icecave': [('snow', 0.5)],
+    'desert': [('sand', 0.45), ('sun', 0.25)], 'volcano': [('sun', 0.6)], 'snow': [('snow', 0.65)], 'icecave': [('snow', 0.5)], 'lavacave': [('sun', 0.4)], 'seacave': [('rain', 0.2)],
     'beach': [('sun', 0.35), ('rain', 0.15)], 'water': [('rain', 0.35), ('sun', 0.15)], 'swamp': [('rain', 0.45)],
     'grass': [('sun', 0.15), ('rain', 0.15)], 'forest': [('rain', 0.2), ('sun', 0.1)], 'mountain': [('sand', 0.15), ('snow', 0.15), ('sun', 0.1)],
     'sky': [('sun', 0.2), ('rain', 0.2)], 'city': [('rain', 0.12), ('sun', 0.12)],
@@ -1922,7 +1936,7 @@ class FactoryRun {
   /// A música de cada lugar (selvagens e treinadores da rota; os chefes têm a deles): temas originais por grupo. Igual ao site.
   static const placeMusicGroups = {
     'field': ['grass', 'flowers', 'bamboo'], 'forest': ['forest', 'swamp'], 'sea': ['water', 'beach', 'underwater'],
-    'cave': ['cave', 'icecave', 'crystal', 'sewer'], 'mountain': ['mountain', 'snow', 'ruins', 'temple', 'sky'], 'desert': ['desert', 'dunes', 'volcano'],
+    'cave': ['cave', 'icecave', 'crystal', 'sewer', 'lavacave', 'poisoncave', 'seacave'], 'mountain': ['mountain', 'snow', 'ruins', 'temple', 'sky'], 'desert': ['desert', 'dunes', 'volcano'],
     'city': ['city', 'plant'], 'spooky': ['tower'],
   };
   static String placeMusic(String scene) {
@@ -1974,7 +1988,7 @@ class FactoryRun {
     'icecave': [('chill', 0.35), ('aurora', 0.1)], 'snow': [('chill', 0.2), ('aurora', 0.2)], 'tower': [('haunt', 0.35), ('psychic', 0.15)], 'underwater': [('current', 0.4)], 'water': [('current', 0.15)],
     'grass': [('grassy', 0.2)], 'forest': [('grassy', 0.3), ('misty', 0.1)], 'city': [('electric', 0.25)], 'beach': [('misty', 0.1)], 'sky': [('wind', 0.3), ('storm', 0.15)],
     'desert': [('quicksand', 0.2)], 'ruins': [('psychic', 0.2), ('haunt', 0.15)], 'flowers': [('spores', 0.3), ('misty', 0.15)], 'plant': [('storm', 0.35), ('electric', 0.25)],
-    'crystal': [('diamonds', 0.4)], 'dunes': [('quicksand', 0.35), ('haunt', 0.1)], 'bamboo': [('spores', 0.2), ('grassy', 0.2)], 'temple': [('psychic', 0.3)],
+    'crystal': [('diamonds', 0.4)], 'lavacave': [('ashes', 0.4)], 'poisoncave': [('miasma', 0.4)], 'seacave': [('current', 0.3)], 'dunes': [('quicksand', 0.35), ('haunt', 0.1)], 'bamboo': [('spores', 0.2), ('grassy', 0.2)], 'temple': [('psychic', 0.3)],
     'gym-grass': [('grassy', 0.6)], 'gym-electric': [('electric', 0.6)], 'gym-psychic': [('psychic', 0.6)], 'gym-fairy': [('misty', 0.6)], 'gym-ghost': [('haunt', 0.6)],
     'gym-rock': [('rockfall', 0.4)], 'gym-fire': [('ashes', 0.4)], 'gym-poison': [('miasma', 0.4)], 'gym-ice': [('chill', 0.4)], 'gym-water': [('current', 0.4)],
   };

@@ -532,6 +532,68 @@ def icecave():
     return a, {'outdoor': False, 'seed': 100}
 
 
+def lavacave():
+    """Caverna de lava (Fiery Path, Wela...): pedra escura, rios de lava e brasas no ar."""
+    a = vgrad([(0, rgb('120404')), (1, rgb('4a1408'))], 0, HORIZON + 50)
+    a = mountains(a, 401, HORIZON + 20, 120, rgb('3a1a12'), rgb('1a0a06'), rgb('2a0e06'), 0.25, 0.8, 10, freq=1.3)
+    rnd = random.Random(402)
+    a = layer(a, lambda d: [d.polygon([(x, -5), (x + w, -5), (x + w / 2 + rnd.uniform(-5, 5), rnd.uniform(40, 140))], fill=(34, 14, 10, 255)) for x, w in [(x, rnd.uniform(20, 44)) for x in range(-10, W, 30)]])
+    # A boca da caverna brilhando com a lava lá no fundo.
+    a = glow(a, W * 0.57, HORIZON - 30, 150, (255, 110, 30), 0.7)
+    a = put(a, rgb('ff7a1a'), mask(lambda d: d.ellipse([W * 0.44, HORIZON - 90, W * 0.70, HORIZON + 20], fill=255), 22) * 0.55)
+    a = ground(a, HORIZON + 24, rgb('4a2a20'), rgb('1e0e0a'), 403, 4, 0.2, spots=(rgb('2a1410'), 0.5))
+    # Rios de lava cortando o chão.
+    for y0, x0, x1 in ((HORIZON + 36, -20, W * 0.48), (HORIZON + 70, W * 0.62, W + 20), (H * 0.86, -20, W * 0.35)):
+        a = glow(a, (x0 + x1) / 2, y0, 90, (255, 90, 20), 0.45)
+        a = put(a, rgb('ff8a1e'), mask(lambda d, y0=y0, x0=x0, x1=x1: d.polygon([(x0, y0), (x1, y0 - 6), (x1, y0 + 8), (x0, y0 + 14)], fill=255), 3) * 0.95)
+        a = put(a, rgb('ffe07a'), mask(lambda d, y0=y0, x0=x0, x1=x1: d.line([(x0, y0 + 5), (x1, y0 + 1)], fill=255, width=3), 1) * 0.8)
+    a = rocks(a, 404, 8, HORIZON + 26, H * 0.6, rgb('3a2018'), rgb('6a3a26'), rgb('120806'), 10, 34)
+    a = motes(a, 405, 70, (0, 0, W, H), (255, 160, 60), 2.0, 1.0)
+    return a, {'outdoor': False, 'seed': 400}
+
+
+def poisoncave():
+    """Caverna venenosa (perto de pântanos): paredes roxas, poças de veneno e névoa tóxica."""
+    a = vgrad([(0, rgb('0c0614')), (1, rgb('2a1a3a'))], 0, HORIZON + 50)
+    a = mountains(a, 411, HORIZON + 20, 120, rgb('3a2a4a'), rgb('1a1226'), rgb('140c20'), 0.2, 0.8, 10, freq=1.3)
+    rnd = random.Random(412)
+    a = layer(a, lambda d: [d.polygon([(x, -5), (x + w, -5), (x + w / 2 + rnd.uniform(-5, 5), rnd.uniform(40, 150))], fill=(30, 20, 40, 255)) for x, w in [(x, rnd.uniform(20, 44)) for x in range(-10, W, 30)]])
+    a = put(a, rgb('06030a'), mask(lambda d: d.ellipse([W * 0.42, HORIZON - 120, W * 0.72, HORIZON + 30], fill=255), 18) * 0.85)
+    # Cogumelos brilhando nas paredes.
+    for x, y, s in ((90, HORIZON + 14, 26), (760, HORIZON + 8, 30), (330, HORIZON - 2, 16), (610, HORIZON + 4, 18)):
+        a = glow(a, x, y - s, s * 2.2, (200, 90, 255), 0.6)
+        a = layer(a, lambda d, x=x, y=y, s=s: (d.rectangle([x - s * 0.12, y - s, x + s * 0.12, y], fill=(220, 200, 230, 255)), d.pieslice([x - s * 0.6, y - s * 1.5, x + s * 0.6, y - s * 0.5], 180, 360, fill=(190, 80, 230, 255))))
+    a = ground(a, HORIZON + 24, rgb('4a3a52'), rgb('1e1626'), 413, 4, 0.2, spots=(rgb('2e2238'), 0.5))
+    # Poças de veneno.
+    for x0, x1, y in ((W * 0.08, W * 0.36, HORIZON + 44), (W * 0.58, W * 0.92, HORIZON + 80), (W * 0.2, W * 0.5, H * 0.9)):
+        a = put(a, rgb('7a2aa8'), mask(lambda d, x0=x0, x1=x1, y=y: d.ellipse([x0, y - 10, x1, y + 10], fill=255), 3) * 0.9)
+        a = put(a, rgb('c87aff'), mask(lambda d, x0=x0, x1=x1, y=y: d.ellipse([x0 + 20, y - 5, x1 - 30, y + 2], fill=255), 2) * 0.5)
+    a = rocks(a, 414, 8, HORIZON + 26, H * 0.6, rgb('3c3048'), rgb('5c4a6e'), rgb('0c0812'), 10, 34)
+    fog = noise(6, 415, 3, 3)
+    a = put(a, rgb('9a5ac8'), np.clip((fog - 0.45) * 1.4, 0, 1) * 0.35)
+    a = motes(a, 416, 50, (0, HORIZON, W, H), (200, 120, 255), 1.8, 1.2)
+    return a, {'outdoor': False, 'seed': 410}
+
+
+def seacave():
+    """Caverna aquática (Seafloor Cavern, Whirl Islands...): pedra molhada, água até o meio e luz azul."""
+    a = vgrad([(0, rgb('041018')), (1, rgb('0e3448'))], 0, HORIZON + 50)
+    a = mountains(a, 421, HORIZON + 20, 120, rgb('1a3a4a'), rgb('0a1c26'), rgb('08202c'), 0.2, 0.8, 10, freq=1.3)
+    rnd = random.Random(422)
+    a = layer(a, lambda d: [d.polygon([(x, -5), (x + w, -5), (x + w / 2 + rnd.uniform(-5, 5), rnd.uniform(40, 150))], fill=(18, 36, 46, 255)) for x, w in [(x, rnd.uniform(20, 44)) for x in range(-10, W, 30)]])
+    # A luz do mar entrando pela abertura.
+    a = glow(a, W * 0.57, HORIZON - 50, 160, (80, 200, 230), 0.55)
+    a = put(a, rgb('3ab0d0'), mask(lambda d: d.ellipse([W * 0.44, HORIZON - 110, W * 0.70, HORIZON + 10], fill=255), 22) * 0.45)
+    a = ground(a, HORIZON + 24, rgb('2e5060'), rgb('122630'), 423, 4, 0.2, spots=(rgb('1c3a46'), 0.5))
+    # A água cobrindo boa parte do chão (com reflexo).
+    a = put(a, rgb('1a6a8e'), mask(lambda d: d.polygon([(0, HORIZON + 30), (W, HORIZON + 40), (W, H * 0.62), (0, H * 0.7)], fill=255), 4) * 0.85)
+    a = reflect(a, HORIZON + 30, HORIZON + 120, 0.3, 3)
+    a = layer(a, lambda d: [d.line([(x, y), (x + rnd.uniform(30, 90), y)], fill=(150, 220, 240, 150), width=2) for x, y in [(rnd.uniform(0, W), rnd.uniform(HORIZON + 34, H * 0.66)) for _ in range(30)]], 0.6)
+    a = rocks(a, 424, 8, H * 0.6, H * 0.9, rgb('2c4654'), rgb('4e7484'), rgb('08141a'), 10, 34)
+    a = motes(a, 425, 50, (0, 0, W, H * 0.7), (140, 220, 255), 1.6, 1.2)
+    return a, {'outdoor': False, 'seed': 420}
+
+
 def mountain():
     a = vgrad([(0, rgb('3f7ec8')), (1, rgb('d4e8f8'))], 0, HORIZON)
     a = layer(a, lambda d: [d.ellipse([x - 110, y - 16, x + 110, y + 16], fill=(255, 255, 255, 150)) for x, y in ((180, 40), (560, 60))], 14)
@@ -880,6 +942,7 @@ SCENES = {
     'cave': cave, 'icecave': icecave, 'mountain': mountain, 'desert': desert, 'volcano': volcano, 'snow': snow, 'city': city,
     'sky': sky, 'tower': tower, 'gym': gym, 'league': league, 'center': center,
     'ruins': ruins, 'flowers': flowers, 'plant': plant, 'crystal': crystal, 'dunes': dunes, 'bamboo': bamboo, 'temple': temple,
+    'lavacave': lavacave, 'poisoncave': poisoncave, 'seacave': seacave,
 }
 
 

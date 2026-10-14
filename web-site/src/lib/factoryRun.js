@@ -548,6 +548,9 @@ export const BIOMES = {
   dunes: ['ground', 'dark', 'ghost', 'bug'],
   bamboo: ['grass', 'fighting', 'bug', 'dark'],
   temple: ['psychic', 'fighting', 'dragon', 'ghost'],
+  lavacave: ['fire', 'rock', 'ground'],
+  poisoncave: ['poison', 'dark', 'bug'],
+  seacave: ['water', 'rock'],
 }
 export const BIOME_IDS = Object.keys(BIOMES)
 /** Quanto a mais aparecem os tipos do lugar (selvagens; nos treinadores, ROUTE_TYPE_TRAINER). */
@@ -611,7 +614,7 @@ export function bossScene(data, boss, fallback = 'grass') {
 }
 
 /** Na Dusk Ball (3×): os lugares escuros. */
-export const DARK_BIOMES = ['cave', 'tower', 'icecave', 'sewer', 'underwater']
+export const DARK_BIOMES = ['cave', 'tower', 'icecave', 'sewer', 'underwater', 'lavacave', 'poisoncave', 'seacave']
 
 /** Os chefes de cidade (líder no ginásio dele; Elite Four e Campeão na Liga). Rival e vilões aparecem na rota. */
 const CITY_KINDS = ['gym', 'elite', 'champion']
@@ -664,7 +667,7 @@ export function routeBiome(data, run) {
   if (run.dungeon) return run.dungeon.scene
   // A rota do jogo (o mapa da região, tool/factory_routes.py).
   const info = routeInfo(data, run)
-  if (info) return info.biome
+  if (info) return info.biome === 'water' && routePos(run) < SHORE ? 'beach' : info.biome
   const boss = targetOf(data, run)
   if (boss.kind === 'gym') {
     const count = {}
@@ -692,7 +695,8 @@ export function routeInfo(data, run) {
   const region = data.bosses[run.boss.region].region
   const city = targetOf(data, run).city ?? ''
   const row = data.routes?.cities?.[`${region}:${city}`] ?? data.routes?.cities?.[city]
-  return row ? { biome: row[0], name: row[1], side: placeOf(row[2]), towns: (row[3] ?? []).map(placeOf) } : null
+  const side = placeOf(row?.[2])
+  return row ? { biome: row[0], name: row[1], side: side && { ...side, scene: caveScene(side.scene, row[0]) }, towns: (row[3] ?? []).map(placeOf) } : null
 }
 
 /**
@@ -700,7 +704,12 @@ export function routeInfo(data, run) {
  * o mar, dele para o fundo do mar e dali para a caverna aquática. Cada um é um
  * lugar de 10 andares com um chefe; vencendo, dá para seguir para o próximo ou voltar.
  */
-export const WATER_CHAIN = [['beach', 'Praia', 'beach'], ['sea', 'Mar', 'water'], ['deep', 'Fundo do mar', 'underwater'], ['seacave', 'Caverna aquática', 'cave']]
+export const WATER_CHAIN = [['beach', 'Praia', 'beach'], ['sea', 'Mar', 'water'], ['deep', 'Fundo do mar', 'underwater'], ['seacave', 'Caverna aquática', 'seacave']]
+/** Numa rota de mar, os primeiros andares são a praia (a água começa por ela); depois, o mar. */
+export const SHORE = FORKS[1] + 1
+/** A caverna combina com o lugar em volta: no gelo, de gelo; no pântano, venenosa; no vulcão, de lava; no mar, aquática. */
+export const CAVE_OF = { snow: 'icecave', icecave: 'icecave', swamp: 'poisoncave', volcano: 'lavacave', beach: 'seacave', water: 'seacave', underwater: 'seacave' }
+const caveScene = (scene, around) => (scene === 'cave' ? CAVE_OF[around] ?? 'cave' : scene)
 /** O lugar da água depois deste cenário (null se não tem: a caverna aquática é o fim). */
 export function waterNext(scene) {
   const k = WATER_CHAIN.findIndex(([, , s]) => s === scene)
@@ -730,10 +739,10 @@ function leavePlace(run, out) {
  * cidade se ligam a tudo. Igual ao app.
  */
 export const BIOME_ZONES = [
-  ['grass', 'flowers', 'forest', 'bamboo', 'swamp', 'city', 'plant', 'ruins', 'temple', 'sky'],
-  ['beach', 'water', 'underwater', 'swamp', 'grass', 'city'],
-  ['mountain', 'cave', 'icecave', 'crystal', 'volcano', 'snow', 'sky', 'temple', 'ruins'],
-  ['desert', 'dunes', 'volcano', 'ruins', 'beach'],
+  ['grass', 'flowers', 'forest', 'bamboo', 'swamp', 'city', 'plant', 'ruins', 'temple', 'sky', 'poisoncave'],
+  ['beach', 'water', 'underwater', 'swamp', 'grass', 'city', 'seacave'],
+  ['mountain', 'cave', 'icecave', 'crystal', 'volcano', 'snow', 'sky', 'temple', 'ruins', 'lavacave'],
+  ['desert', 'dunes', 'volcano', 'ruins', 'beach', 'lavacave'],
   ['city', 'sewer', 'tower', 'plant'],
 ]
 export const biomesLinked = (a, b) => !a || a === b || a === 'grass' || a === 'city' || b === 'grass' || b === 'city' || BIOME_ZONES.some((z) => z.includes(a) && z.includes(b))
@@ -858,7 +867,9 @@ export function routeOptions(run, data, rand) {
     for (const place of info?.towns ?? []) add(place)
     if (boss.kind === 'villain') options.push({ kind: 'dungeon', place: 'base', scene: `base-${villainTeam(boss.name)}` })
   } else {
-    if (pos === FORKS[1]) add(waterNext(biome))
+    // Numa rota de praia, o mar é opcional; numa rota de mar, o fundo do mar.
+    const sea = info?.biome === 'water'
+    if (pos === FORKS[sea ? 2 : 1]) add(waterNext(biome))
     if (pos === FORKS[2]) add(info?.side)
   }
   return { floor: run.floor, biome, ...(city ? { town: true } : {}), options }
@@ -1505,7 +1516,7 @@ export function rerollRoute(run, data) {
  * torre, ginásio, Liga) sem clima. Igual ao app.
  */
 export const SCENE_WEATHER = {
-  desert: [['sand', 0.45], ['sun', 0.25]], volcano: [['sun', 0.6]], snow: [['snow', 0.65]], icecave: [['snow', 0.5]],
+  desert: [['sand', 0.45], ['sun', 0.25]], volcano: [['sun', 0.6]], snow: [['snow', 0.65]], icecave: [['snow', 0.5]], lavacave: [['sun', 0.4]], seacave: [['rain', 0.2]],
   beach: [['sun', 0.35], ['rain', 0.15]], water: [['rain', 0.35], ['sun', 0.15]], swamp: [['rain', 0.45]],
   grass: [['sun', 0.15], ['rain', 0.15]], forest: [['rain', 0.2], ['sun', 0.1]], mountain: [['sand', 0.15], ['snow', 0.15], ['sun', 0.1]],
   sky: [['sun', 0.2], ['rain', 0.2]], city: [['rain', 0.12], ['sun', 0.12]],
@@ -1514,7 +1525,7 @@ export const SCENE_WEATHER = {
 /** A música de cada lugar (selvagens e treinadores da rota; os chefes têm a deles): temas originais por grupo. Igual ao app. */
 export const PLACE_MUSIC = {
   field: ['grass', 'flowers', 'bamboo'], forest: ['forest', 'swamp'], sea: ['water', 'beach', 'underwater'],
-  cave: ['cave', 'icecave', 'crystal', 'sewer'], mountain: ['mountain', 'snow', 'ruins', 'temple', 'sky'], desert: ['desert', 'dunes', 'volcano'],
+  cave: ['cave', 'icecave', 'crystal', 'sewer', 'lavacave', 'poisoncave', 'seacave'], mountain: ['mountain', 'snow', 'ruins', 'temple', 'sky'], desert: ['desert', 'dunes', 'volcano'],
   city: ['city', 'plant'], spooky: ['tower'],
 }
 export function placeMusic(scene = '') {
@@ -1567,7 +1578,7 @@ export const SCENE_FIELD = {
   icecave: [['chill', 0.35], ['aurora', 0.1]], snow: [['chill', 0.2], ['aurora', 0.2]], tower: [['haunt', 0.35], ['psychic', 0.15]], underwater: [['current', 0.4]], water: [['current', 0.15]],
   grass: [['grassy', 0.2]], forest: [['grassy', 0.3], ['misty', 0.1]], city: [['electric', 0.25]], beach: [['misty', 0.1]], sky: [['wind', 0.3], ['storm', 0.15]],
   desert: [['quicksand', 0.2]], ruins: [['psychic', 0.2], ['haunt', 0.15]], flowers: [['spores', 0.3], ['misty', 0.15]], plant: [['storm', 0.35], ['electric', 0.25]],
-  crystal: [['diamonds', 0.4]], dunes: [['quicksand', 0.35], ['haunt', 0.1]], bamboo: [['spores', 0.2], ['grassy', 0.2]], temple: [['psychic', 0.3]],
+  crystal: [['diamonds', 0.4]], lavacave: [['ashes', 0.4]], poisoncave: [['miasma', 0.4]], seacave: [['current', 0.3]], dunes: [['quicksand', 0.35], ['haunt', 0.1]], bamboo: [['spores', 0.2], ['grassy', 0.2]], temple: [['psychic', 0.3]],
   'gym-grass': [['grassy', 0.6]], 'gym-electric': [['electric', 0.6]], 'gym-psychic': [['psychic', 0.6]], 'gym-fairy': [['misty', 0.6]], 'gym-ghost': [['haunt', 0.6]],
   'gym-rock': [['rockfall', 0.4]], 'gym-fire': [['ashes', 0.4]], 'gym-poison': [['miasma', 0.4]], 'gym-ice': [['chill', 0.4]], 'gym-water': [['current', 0.4]],
 }

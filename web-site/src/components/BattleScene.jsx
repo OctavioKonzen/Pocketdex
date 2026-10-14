@@ -165,7 +165,7 @@ export const GYM_TYPES = ['normal', 'fire', 'water', 'grass', 'electric', 'ice',
 export const CHAMPION_REGIONS = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos', 'alola', 'galar', 'paldea']
 export const VILLAIN_BASES = ['rocket', 'aqua', 'magma', 'galactic', 'plasma', 'flare', 'skull', 'aether', 'star']
 const INDOOR = [...GYM_TYPES.map((t) => `gym-${t}`), ...CHAMPION_REGIONS.map((r) => `champion-${r}`), ...VILLAIN_BASES.map((b) => `base-${b}`)]
-export const SCENE_IMAGES = ['grass', 'forest', 'water', 'beach', 'underwater', 'swamp', 'sewer', 'cave', 'icecave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky', 'tower', 'gym', 'league', 'center', 'ruins', 'flowers', 'plant', 'crystal', 'dunes', 'bamboo', 'temple', ...INDOOR]
+export const SCENE_IMAGES = ['grass', 'forest', 'water', 'beach', 'underwater', 'swamp', 'sewer', 'cave', 'icecave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky', 'tower', 'gym', 'league', 'center', 'ruins', 'flowers', 'plant', 'crystal', 'dunes', 'bamboo', 'temple', 'lavacave', 'poisoncave', 'seacave', ...INDOOR]
 const usable = (scene) => (SCENE_IMAGES.includes(scene) || SCENE_COLORS[scene] ? scene : 'grass')
 /** Os lugares abertos que escurecem à noite (o deserto à noite já é noite). */
 const NIGHT_SCENES = ['grass', 'forest', 'water', 'beach', 'swamp', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky', 'ruins', 'flowers', 'bamboo']
@@ -174,7 +174,7 @@ export const isNight = (date = new Date()) => date.getHours() >= 19 || date.getH
 /** O clima na imagem (o granizo usa a de neve). */
 const WEATHER_IMAGE = { sun: 'sun', rain: 'rain', sand: 'sand', hail: 'snow', snow: 'snow' }
 /** Batalha comum (sem lugar): um destes, sorteado pela semente. */
-const OUTDOOR = ['grass', 'forest', 'water', 'beach', 'swamp', 'cave', 'icecave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky', 'ruins', 'flowers', 'dunes', 'bamboo']
+const OUTDOOR = ['grass', 'forest', 'water', 'beach', 'swamp', 'cave', 'icecave', 'lavacave', 'poisoncave', 'seacave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky', 'ruins', 'flowers', 'dunes', 'bamboo']
 /** O cenário da batalha: o do lugar (a rota da Battle Factory, o ginásio, a Liga) ou, numa batalha comum, um sorteado. Igual ao app. */
 export function battleScene(scene, seed) {
   return usable(scene || OUTDOOR[Math.abs(Number(seed) || 0) % OUTDOOR.length])
@@ -195,7 +195,7 @@ export const battleScale = (height) => Math.min(1, Math.max(0.3, Math.sqrt((heig
  * um pouco para dentro do chão de cada cenário (tool/battle_backgrounds.py,
  * foe_feet), para a base dele ficar no chão e não voando. Igual ao app.
  */
-export const GROUND_FEET = { grass: 0.487, forest: 0.506, water: 0.487, beach: 0.508, underwater: 0.527, swamp: 0.487, sewer: 0.54, cave: 0.519, icecave: 0.519, mountain: 0.492, desert: 0.495, volcano: 0.5, snow: 0.487, city: 0.548, sky: 0.45, tower: 0.527, gym: 0.527, league: 0.527, center: 0.527, ruins: 0.497, flowers: 0.487, plant: 0.532, crystal: 0.522, dunes: 0.497, bamboo: 0.527, temple: 0.54 }
+export const GROUND_FEET = { grass: 0.487, forest: 0.506, water: 0.487, beach: 0.508, underwater: 0.527, swamp: 0.487, sewer: 0.54, cave: 0.519, icecave: 0.519, mountain: 0.492, desert: 0.495, volcano: 0.5, snow: 0.487, city: 0.548, sky: 0.45, tower: 0.527, gym: 0.527, league: 0.527, center: 0.527, ruins: 0.497, flowers: 0.487, plant: 0.532, crystal: 0.522, dunes: 0.497, bamboo: 0.527, temple: 0.54, lavacave: 0.519, poisoncave: 0.519, seacave: 0.519 }
 /** A distância do pé do adversário até a borda de baixo do campo (fração), para o "bottom" da caixa dele. */
 export const foeBottom = (scene) => 1 - (GROUND_FEET[scene] ?? (INDOOR.includes(scene) ? 0.527 : 0.45))
 

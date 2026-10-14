@@ -666,11 +666,11 @@ void main() {
   test('a água em ordem: praia → mar → fundo do mar → caverna aquática; vencendo, segue ou volta (igual ao site)', () {
     expect(FactoryRun.waterNext('beach'), (id: 'sea', name: 'Mar', scene: 'water'));
     expect(FactoryRun.waterNext('water')!.id, 'deep');
-    expect(FactoryRun.waterNext('underwater')!.id, 'seacave');
-    expect(FactoryRun.waterNext('cave'), isNull);
-    final red = data.bosses.indexWhere((b) => b['game'] == 'Red/Blue');
-    final blaine = (data.bosses[red]['leaders'] as List).indexWhere((l) => l['name'] == 'Blaine');
-    final start = {...FactoryRun.startRun(FactoryRun.empty(), data, 4, 3)!, 'leg': 1, 'boss': {'region': red, 'step': blaine}, 'hms': ['surf']};
+    expect(FactoryRun.waterNext('underwater'), (id: 'seacave', name: 'Caverna aquática', scene: 'seacave'));
+    expect(FactoryRun.waterNext('seacave'), isNull);
+    final gs = data.bosses.indexWhere((b) => b['game'] == 'Gold/Silver');
+    final jasmine = (data.bosses[gs]['leaders'] as List).indexWhere((l) => l['name'] == 'Jasmine');
+    final start = {...FactoryRun.startRun(FactoryRun.empty(), data, 4, 3)!, 'leg': 1, 'boss': {'region': gs, 'step': jasmine}, 'hms': ['surf']};
     const f = FactoryRun.forks;
     var run = FactoryRun.nextFloor({...start, 'floor': 1 + f[1]}, data);
     expect(FactoryRun.routeOf(run)!['biome'], 'beach');
@@ -694,6 +694,24 @@ void main() {
     expect(FactoryRun.routePos(run), f[1]);
     expect(FactoryRun.townHub(data, run), isFalse);
     expect(run['places'], ['sea', 'deep']);
+  });
+
+  test('rota de mar: começa pela praia e vira mar; o fundo do mar é opcional; as cavernas combinam com o lugar (igual ao site)', () {
+    final red = data.bosses.indexWhere((b) => b['game'] == 'Red/Blue');
+    int step(int region, String name) => (data.bosses[region]['leaders'] as List).indexWhere((l) => l['name'] == name);
+    Json at(int floor, String name) => {...FactoryRun.startRun(FactoryRun.empty(), data, 4, 3)!, 'leg': 1, 'floor': floor, 'boss': {'region': red, 'step': step(red, name)}, 'hms': ['surf']};
+    expect(FactoryRun.routeBiome(data, at(1, 'Blaine')), 'beach');
+    expect(FactoryRun.routeBiome(data, at(FactoryRun.shore, 'Blaine')), 'beach');
+    expect(FactoryRun.routeBiome(data, at(1 + FactoryRun.shore, 'Blaine')), 'water');
+    const f = FactoryRun.forks;
+    expect((FactoryRun.routeOf(FactoryRun.nextFloor(at(1 + f[1], 'Blaine'), data))!['options'] as List).any((o) => o['place'] == 'sea'), isFalse);
+    expect(FactoryRun.routeOf(FactoryRun.nextFloor(at(1 + f[2], 'Blaine'), data))!['options'], contains(equals({'kind': 'dungeon', 'place': 'deep', 'scene': 'underwater'})));
+    final sinnoh = data.bosses.indexWhere((b) => b['game'] == 'Diamond/Pearl');
+    final wake = {...FactoryRun.startRun(FactoryRun.empty(), data, 4, 3)!, 'boss': {'region': sinnoh, 'step': step(sinnoh, 'Wake')}};
+    expect(FactoryRun.routeInfo(data, wake)!.side, (id: 'ruin-maniac-cave', name: 'Ruin Maniac Cave', scene: 'poisoncave'));
+    expect(FactoryRun.routeInfo(data, at(1, 'Blaine'))!.side!.scene, 'icecave');
+    expect(FactoryRun.routeInfo(data, at(1, 'Brock'))!.side!.scene, 'forest');
+    expect(FactoryRun.caveOf['volcano'], 'lavacave');
   });
 
   test('o rival no começo (antes do andar 10) vem com um Pokémon só, sem IVs e EVs a mais (igual ao site)', () {

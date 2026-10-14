@@ -8218,5 +8218,10 @@
  "{0} andares e um chefe; depois volta para a cidade, no mesmo andar.": {"en": "{0} floors and a boss; then back to the city, on the same floor.", "fr": "{0} étages et un boss ; puis retour en ville, au même étage.", "es": "{0} pisos y un jefe; después vuelves a la ciudad, en el mismo piso."},
  "{0} andares e um chefe; depois volta para a rota, no mesmo andar.": {"en": "{0} floors and a boss; then back to the route, on the same floor.", "fr": "{0} étages et un boss ; puis retour sur la route, au même étage.", "es": "{0} pisos y un jefe; después vuelves a la ruta, en el mismo piso."},
  "Caverna aquática": {"en": "Sea cave", "fr": "Grotte marine", "es": "Cueva marina"},
- "Sai da água e volta para onde você entrou.": {"en": "Leave the water and go back to where you came in.", "fr": "Quittez l'eau et revenez là où vous êtes entré.", "es": "Sal del agua y vuelve a donde entraste."}
+ "Sai da água e volta para onde você entrou.": {"en": "Leave the water and go back to where you came in.", "fr": "Quittez l'eau et revenez là où vous êtes entré.", "es": "Sal del agua y vuelve a donde entraste."},
+ "Caverna de lava": {"en": "Lava cave", "fr": "Grotte de lave", "es": "Cueva de lava"},
+ "Caverna venenosa": {"en": "Poison cave", "fr": "Grotte toxique", "es": "Cueva venenosa"},
+ "O calor sobe do chão e rios de lava iluminam as paredes.": {"en": "Heat rises from the ground and rivers of lava light up the walls.", "fr": "La chaleur monte du sol et des rivières de lave éclairent les parois.", "es": "El calor sube del suelo y ríos de lava iluminan las paredes."},
+ "Uma névoa roxa cobre o chão; melhor não respirar fundo.": {"en": "A purple mist covers the ground; better not breathe deeply.", "fr": "Une brume violette couvre le sol ; mieux vaut ne pas respirer fort.", "es": "Una niebla morada cubre el suelo; mejor no respirar hondo."},
+ "A água bate nas pedras e ecoa por toda a caverna.": {"en": "Water crashes on the rocks and echoes through the cave.", "fr": "L'eau frappe les rochers et résonne dans toute la grotte.", "es": "El agua golpea las rocas y resuena por toda la cueva."}
 }

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   weeklyOf, startWeekly, buyCosmetic, equipCosmetic, COSMETIC_BALLS,
   FRIEND_EVOLVE, PICKUP, SYNCHRONIZE, legOf,
-  placeInfo, routeInfo, dungeonPos, routePos, DUNGEON_LENGTH, CITY_BOSS, waterNext, RIVAL_FLOOR, targetOf, rivalBoss, townShop, townCenter, townHub, biomesLinked,
+  placeInfo, routeInfo, SHORE, CAVE_OF, dungeonPos, routePos, DUNGEON_LENGTH, CITY_BOSS, waterNext, RIVAL_FLOOR, targetOf, rivalBoss, townShop, townCenter, townHub, biomesLinked,
   isDoubleBattle,
   DOUBLE_FLOOR,
   battleOrder, blindPick, bossOf, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, foeLevelAt, foeMember,
@@ -972,12 +972,12 @@ describe('cidade e lugares perto dela', () => {
   it('a água em ordem: praia → mar → fundo do mar → caverna aquática; vencendo um, segue ou volta; só a rota leva para a cidade', () => {
     expect(waterNext('beach')).toEqual({ id: 'sea', name: 'Mar', scene: 'water' })
     expect(waterNext('water').id).toBe('deep')
-    expect(waterNext('underwater').id).toBe('seacave')
-    expect(waterNext('cave')).toBe(null)
-    const red = data.bosses.findIndex((b) => b.game === 'Red/Blue')
-    // A rota até Cinnabar Island é de praia: o mar é um lugar na bifurcação (precisa de Surf).
-    const start = { ...startRun(emptyFactory(), data, 4, 3), leg: 1, boss: { region: red, step: data.bosses[red].leaders.findIndex((l) => l.name === 'Blaine') }, hms: ['surf'] }
-    expect(targetOf(data, start).city).toBe('Cinnabar Island')
+    expect(waterNext('underwater')).toEqual({ id: 'seacave', name: 'Caverna aquática', scene: 'seacave' })
+    expect(waterNext('seacave')).toBe(null)
+    const gs = data.bosses.findIndex((b) => b.game === 'Gold/Silver')
+    // A rota até Olivine City é de praia: o mar é um lugar opcional na bifurcação (precisa de Surf).
+    const start = { ...startRun(emptyFactory(), data, 4, 3), leg: 1, boss: { region: gs, step: data.bosses[gs].leaders.findIndex((l) => l.name === 'Jasmine') }, hms: ['surf'] }
+    expect(targetOf(data, start).city).toBe('Olivine City')
     let run = nextFloor({ ...start, floor: 1 + FORKS[1] }, data)
     expect(run.route.biome).toBe('beach')
     const k = run.route.options.findIndex((o) => o.kind === 'dungeon')
@@ -999,6 +999,26 @@ describe('cidade e lugares perto dela', () => {
     expect(routePos(run)).toBe(FORKS[1])
     expect(townHub(data, run)).toBe(false)
     expect(run.places).toEqual(['sea', 'deep'])
+  })
+
+  it('rota de mar: começa pela praia e vira mar; o fundo do mar é opcional; as cavernas combinam com o lugar', () => {
+    const red = data.bosses.findIndex((b) => b.game === 'Red/Blue')
+    const at = (floor, name) => ({ ...startRun(emptyFactory(), data, 4, 3), leg: 1, floor, boss: { region: red, step: data.bosses[red].leaders.findIndex((l) => l.name === name) }, hms: ['surf'] })
+    // Até Cinnabar Island: praia nos primeiros andares, depois o mar.
+    expect(routeBiome(data, at(1, 'Blaine'))).toBe('beach')
+    expect(routeBiome(data, at(SHORE, 'Blaine'))).toBe('beach')
+    expect(routeBiome(data, at(1 + SHORE, 'Blaine'))).toBe('water')
+    expect(nextFloor(at(1 + FORKS[1], 'Blaine'), data).route.options.some((o) => o.place === 'sea')).toBe(false)
+    const deep = nextFloor(at(1 + FORKS[2], 'Blaine'), data).route.options
+    expect(deep).toContainEqual({ kind: 'dungeon', place: 'deep', scene: 'underwater' })
+    // A caverna no caminho combina com a rota: no pântano, venenosa; no mar, aquática; numa de grama, normal.
+    const sinnoh = data.bosses.findIndex((b) => b.game === 'Diamond/Pearl')
+    const wake = { ...startRun(emptyFactory(), data, 4, 3), boss: { region: sinnoh, step: data.bosses[sinnoh].leaders.findIndex((l) => l.name === 'Wake') } }
+    expect(routeInfo(data, wake).side).toEqual({ id: 'ruin-maniac-cave', name: 'Ruin Maniac Cave', scene: 'poisoncave' })
+    expect(routeInfo(data, at(1, 'Blaine')).side.scene).toBe('icecave')
+    expect(routeInfo(data, at(1, 'Brock')).side.scene).toBe('forest')
+    expect(CAVE_OF.volcano).toBe('lavacave')
+    for (const scene of ['lavacave', 'poisoncave', 'seacave']) expect(BIOMES[scene].length).toBeGreaterThan(0)
   })
 
   it('o mapa do jogo: a rota até Pewter City; o lugar no caminho (Viridian Forest) tem 10 andares sem desvio e volta no mesmo andar da rota', () => {
