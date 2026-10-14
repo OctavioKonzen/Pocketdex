@@ -347,10 +347,11 @@ class FactoryRun {
     'sash': (label: 'Começa com uma Focus Sash guardada', per: 1, max: 1, base: 1500, offset: 0),
     'ultraBalls': (label: 'Começa com +{0} Ultra Ball', per: 1, max: 3, base: 400, offset: 0),
     'masterBall': (label: 'Começa com +{0} Master Ball', per: 1, max: 1, base: 6000, offset: 0),
-    'quickBalls': (label: 'Começa com +{0} Quick Ball', per: 1, max: 3, base: 300, offset: 0),
-    'netBalls': (label: 'Começa com +{0} Net Ball', per: 1, max: 3, base: 250, offset: 0),
-    'timerBalls': (label: 'Começa com +{0} Timer Ball', per: 1, max: 3, base: 250, offset: 0),
-    'duskBalls': (label: 'Começa com +{0} Dusk Ball', per: 1, max: 3, base: 250, offset: 0),
+    // Captura mais fácil (toda Poké Ball): a taxa de captura sobe.
+    'quickBalls': (label: 'Captura {0}% mais fácil', per: 8, max: 3, base: 300, offset: 0),
+    'netBalls': (label: 'Captura {0}% mais fácil', per: 8, max: 3, base: 250, offset: 0),
+    'timerBalls': (label: 'Captura {0}% mais fácil', per: 8, max: 3, base: 250, offset: 0),
+    'duskBalls': (label: 'Captura {0}% mais fácil', per: 8, max: 3, base: 250, offset: 0),
     'expPlus': (label: 'Mais +{0}% de XP', per: 3, max: 5, base: 500, offset: 0),
     'luckyEgg': (label: 'Começa com o Lucky Egg guardado', per: 1, max: 1, base: 1500, offset: 0),
     'hpBoost': (label: 'Vigor: +{0}% de HP no time', per: 1, max: 10, base: 200, offset: 0),
@@ -397,10 +398,10 @@ class FactoryRun {
     'sash': ('stash', 'focus-sash'),
     'ultraBalls': ('bag', 'ultra-ball'),
     'masterBall': ('bag', 'master-ball'),
-    'quickBalls': ('bag', 'quick-ball'),
-    'netBalls': ('bag', 'net-ball'),
-    'timerBalls': ('bag', 'timer-ball'),
-    'duskBalls': ('bag', 'dusk-ball'),
+    'quickBalls': ('catch', 'rate'),
+    'netBalls': ('catch', 'rate'),
+    'timerBalls': ('catch', 'rate'),
+    'duskBalls': ('catch', 'rate'),
     'expPlus': ('mult', 'exp'),
     'luckyEgg': ('stash', 'lucky-egg'),
     'hpBoost': ('boost', 'hp'),
@@ -524,18 +525,18 @@ class FactoryRun {
   static const maxStartLevel = 15;
   static const minorFx = <String, List<(String, String)>>{
     'Sobrevivência': [('heal', 'hp'), ('boost', 'hp'), ('bag', 'potion'), ('boost', 'def'), ('bag', 'revive'), ('boost', 'spd'), ('bag', 'super-potion'), ('stash', 'sitrus-berry')],
-    'Captura': [('bag', 'poke-ball'), ('bag', 'great-ball'), ('bag', 'ultra-ball'), ('bag', 'quick-ball'), ('bag', 'net-ball'), ('bag', 'dusk-ball')],
+    'Captura': [('bag', 'poke-ball'), ('catch', 'rate'), ('bag', 'great-ball'), ('catch', 'rate'), ('bag', 'ultra-ball'), ('catch', 'rate')],
     'Treino': [('level', 'start'), ('mult', 'exp'), ('ivs', 'start'), ('boost', 'spe'), ('token', 'move-tutor'), ('token', 'move-reminder')],
     'Combate': [('boost', 'atk'), ('boost', 'spa'), ('boost', 'spe'), ('boostAll', 'all'), ('boost', 'def'), ('boost', 'spd')],
-    'Exploração': [('mult', 'money'), ('heal', 'hp'), ('bag', 'escape-rope'), ('boost', 'spe'), ('reroll', 'route')],
+    'Exploração': [('mult', 'money'), ('heal', 'hp'), ('mult', 'exp'), ('boost', 'spe'), ('reroll', 'route')],
     'Comércio': [('money', 'start'), ('mult', 'money'), ('discount', 'shop'), ('coins', 'all')],
     'Poder': [('boostAll', 'all'), ('boost', 'atk'), ('boost', 'spa'), ('stash', 'life-orb')],
   };
 
   /// Quanto cada nó dá (o nó-chave, o dobro).
   static const minorPer = {
-    'boost': 2, 'boostAll': 1, 'mult': 5, 'coins': 5, 'level': 1, 'ivs': 2, 'money': 150, 'discount': 2, 'heal': 2, 'token': 1, 'stash': 1, 'reroll': 1,
-    'bag:poke-ball': 3, 'bag:great-ball': 2, 'bag:ultra-ball': 1, 'bag:quick-ball': 2, 'bag:net-ball': 2, 'bag:dusk-ball': 2,
+    'boost': 2, 'boostAll': 1, 'mult': 5, 'coins': 5, 'level': 1, 'ivs': 2, 'money': 150, 'discount': 2, 'heal': 2, 'token': 1, 'stash': 1, 'reroll': 1, 'catch': 5,
+    'bag:poke-ball': 3, 'bag:great-ball': 2, 'bag:ultra-ball': 1,
     'bag:potion': 2, 'bag:super-potion': 1, 'bag:revive': 1, 'bag:escape-rope': 1,
   };
 
@@ -544,7 +545,7 @@ class FactoryRun {
     'boost:hp': 'hpBoost', 'boost:atk': 'atk', 'boost:def': 'def', 'boost:spa': 'spa', 'boost:spd': 'spd', 'boost:spe': 'speBoost',
     'boostAll:all': 'allStats', 'mult:exp': 'expPlus', 'mult:money': 'loot', 'coins:all': 'bonusCoins',
     'bag:potion': 'potions', 'bag:revive': 'revive', 'bag:poke-ball': 'balls', 'bag:great-ball': 'greatBalls', 'bag:ultra-ball': 'ultraBalls',
-    'bag:quick-ball': 'quickBalls', 'bag:escape-rope': 'rope', 'bag:net-ball': 'netBalls', 'bag:dusk-ball': 'duskBalls', 'bag:super-potion': 'superPotions',
+    'bag:quick-ball': 'quickBalls', 'bag:escape-rope': 'rope', 'bag:super-potion': 'superPotions', 'catch:rate': 'quickBalls',
     'token:move-tutor': 'tutor', 'token:move-reminder': 'reminder', 'stash:sitrus-berry': 'sitrus', 'stash:life-orb': 'lifeOrb', 'reroll:route': 'reroll',
     'level:start': 'level', 'ivs:start': 'ivs', 'money:start': 'money', 'discount:shop': 'shop', 'heal:hp': 'victoryHeal',
   };
@@ -567,6 +568,9 @@ class FactoryRun {
 
   /// O máximo de cura depois de cada vitória e de desconto na loja.
   static const maxWinHeal = 50, maxDiscount = 50;
+
+  /// O máximo de captura mais fácil (% a mais na taxa).
+  static const maxCatch = 150;
 
   static final _tree = _buildTree();
   static final upgrades = _tree.upgrades;
@@ -1538,6 +1542,7 @@ class FactoryRun {
     return {
       'rates': [for (final f in foesOf(run)) ((data.speciesOf(_int(f['id']))?.elementAtOrNull(5) as num?) ?? 45).toInt()],
       'dusk': darkBiomes.contains(encounter?['biome']),
+      if (run['catchBonus'] != null) 'bonus': run['catchBonus'],
     };
   }
 
@@ -1701,6 +1706,8 @@ class FactoryRun {
       if (up('map') > 0) 'townMap': true,
       // Cura depois de cada vitória (% do HP de quem está de pé).
       if (fxTotal(factory, 'heal') > 0) 'winHeal': math.min(maxWinHeal, fxTotal(factory, 'heal')),
+      // Captura mais fácil (% a mais na taxa de captura, com qualquer Poké Ball).
+      if (fxTotal(factory, 'catch') > 0) 'catchBonus': math.min(maxCatch, fxTotal(factory, 'catch')),
       // O inicial (o rival escolhe o que tem vantagem sobre ele).
       'starter': id,
       // Nuzlocke: quem desmaia vai embora e só um capturado por rota.

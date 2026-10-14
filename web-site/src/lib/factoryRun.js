@@ -314,10 +314,11 @@ export const UPGRADES = {
   sash: { label: 'Começa com uma Focus Sash guardada', per: 1, max: 1, base: 1500 },
   ultraBalls: { label: 'Começa com +{0} Ultra Ball', per: 1, max: 3, base: 400 },
   masterBall: { label: 'Começa com +{0} Master Ball', per: 1, max: 1, base: 6000 },
-  quickBalls: { label: 'Começa com +{0} Quick Ball', per: 1, max: 3, base: 300 },
-  netBalls: { label: 'Começa com +{0} Net Ball', per: 1, max: 3, base: 250 },
-  timerBalls: { label: 'Começa com +{0} Timer Ball', per: 1, max: 3, base: 250 },
-  duskBalls: { label: 'Começa com +{0} Dusk Ball', per: 1, max: 3, base: 250 },
+  // Captura mais fácil (toda Poké Ball): a taxa de captura sobe.
+  quickBalls: { label: 'Captura {0}% mais fácil', per: 8, max: 3, base: 300 },
+  netBalls: { label: 'Captura {0}% mais fácil', per: 8, max: 3, base: 250 },
+  timerBalls: { label: 'Captura {0}% mais fácil', per: 8, max: 3, base: 250 },
+  duskBalls: { label: 'Captura {0}% mais fácil', per: 8, max: 3, base: 250 },
   expPlus: { label: 'Mais +{0}% de XP', per: 3, max: 5, base: 500 },
   luckyEgg: { label: 'Começa com o Lucky Egg guardado', per: 1, max: 1, base: 1500 },
   hpBoost: { label: 'Vigor: +{0}% de HP no time', per: 1, max: 10, base: 200 },
@@ -367,10 +368,10 @@ export const UPGRADE_FX = {
   sash: ['stash', 'focus-sash'],
   ultraBalls: ['bag', 'ultra-ball'],
   masterBall: ['bag', 'master-ball'],
-  quickBalls: ['bag', 'quick-ball'],
-  netBalls: ['bag', 'net-ball'],
-  timerBalls: ['bag', 'timer-ball'],
-  duskBalls: ['bag', 'dusk-ball'],
+  quickBalls: ['catch', 'rate'],
+  netBalls: ['catch', 'rate'],
+  timerBalls: ['catch', 'rate'],
+  duskBalls: ['catch', 'rate'],
   expPlus: ['mult', 'exp'],
   luckyEgg: ['stash', 'lucky-egg'],
   hpBoost: ['boost', 'hp'],
@@ -496,17 +497,17 @@ export const KEYSTONE_EVERY = 4
 export const MAX_START_LEVEL = 15
 export const MINOR_FX = {
   Sobrevivência: [['heal', 'hp'], ['boost', 'hp'], ['bag', 'potion'], ['boost', 'def'], ['bag', 'revive'], ['boost', 'spd'], ['bag', 'super-potion'], ['stash', 'sitrus-berry']],
-  Captura: [['bag', 'poke-ball'], ['bag', 'great-ball'], ['bag', 'ultra-ball'], ['bag', 'quick-ball'], ['bag', 'net-ball'], ['bag', 'dusk-ball']],
+  Captura: [['bag', 'poke-ball'], ['catch', 'rate'], ['bag', 'great-ball'], ['catch', 'rate'], ['bag', 'ultra-ball'], ['catch', 'rate']],
   Treino: [['level', 'start'], ['mult', 'exp'], ['ivs', 'start'], ['boost', 'spe'], ['token', 'move-tutor'], ['token', 'move-reminder']],
   Combate: [['boost', 'atk'], ['boost', 'spa'], ['boost', 'spe'], ['boostAll', 'all'], ['boost', 'def'], ['boost', 'spd']],
-  Exploração: [['mult', 'money'], ['heal', 'hp'], ['bag', 'escape-rope'], ['boost', 'spe'], ['reroll', 'route']],
+  Exploração: [['mult', 'money'], ['heal', 'hp'], ['mult', 'exp'], ['boost', 'spe'], ['reroll', 'route']],
   Comércio: [['money', 'start'], ['mult', 'money'], ['discount', 'shop'], ['coins', 'all']],
   Poder: [['boostAll', 'all'], ['boost', 'atk'], ['boost', 'spa'], ['stash', 'life-orb']],
 }
 /** Quanto cada nó dá (o nó-chave, o dobro). */
 export const MINOR_PER = {
-  boost: 2, boostAll: 1, mult: 5, coins: 5, level: 1, ivs: 2, money: 150, discount: 2, heal: 2, token: 1, stash: 1, reroll: 1,
-  'bag:poke-ball': 3, 'bag:great-ball': 2, 'bag:ultra-ball': 1, 'bag:quick-ball': 2, 'bag:net-ball': 2, 'bag:dusk-ball': 2,
+  boost: 2, boostAll: 1, mult: 5, coins: 5, level: 1, ivs: 2, money: 150, discount: 2, heal: 2, token: 1, stash: 1, reroll: 1, catch: 5,
+  'bag:poke-ball': 3, 'bag:great-ball': 2, 'bag:ultra-ball': 1,
   'bag:potion': 2, 'bag:super-potion': 1, 'bag:revive': 1, 'bag:escape-rope': 1,
 }
 /** A melhoria grande que dá o texto, o nome e o símbolo de cada efeito pequeno. */
@@ -514,7 +515,7 @@ export const MINOR_BASE = {
   'boost:hp': 'hpBoost', 'boost:atk': 'atk', 'boost:def': 'def', 'boost:spa': 'spa', 'boost:spd': 'spd', 'boost:spe': 'speBoost',
   'boostAll:all': 'allStats', 'mult:exp': 'expPlus', 'mult:money': 'loot', 'coins:all': 'bonusCoins',
   'bag:potion': 'potions', 'bag:revive': 'revive', 'bag:poke-ball': 'balls', 'bag:great-ball': 'greatBalls', 'bag:ultra-ball': 'ultraBalls',
-  'bag:quick-ball': 'quickBalls', 'bag:escape-rope': 'rope', 'bag:net-ball': 'netBalls', 'bag:dusk-ball': 'duskBalls', 'bag:super-potion': 'superPotions',
+  'bag:quick-ball': 'quickBalls', 'bag:escape-rope': 'rope', 'bag:super-potion': 'superPotions', 'catch:rate': 'quickBalls',
   'token:move-tutor': 'tutor', 'token:move-reminder': 'reminder', 'stash:sitrus-berry': 'sitrus', 'stash:life-orb': 'lifeOrb', 'reroll:route': 'reroll',
   'level:start': 'level', 'ivs:start': 'ivs', 'money:start': 'money', 'discount:shop': 'shop', 'heal:hp': 'victoryHeal',
 }
@@ -545,6 +546,8 @@ export const UPGRADE_BRANCHES = BASE_BRANCHES.map(([icon, branch, ids]) => {
 export const fxTotal = (factory, kind) => Object.entries(UPGRADE_FX).reduce((n, [k, [fx]]) => n + (fx === kind ? upgradeValue(factory, k) : 0), 0)
 /** O máximo de cura depois de cada vitória e de desconto na loja. */
 export const MAX_WIN_HEAL = 50
+/** O máximo de captura mais fácil (% a mais na taxa). */
+export const MAX_CATCH = 150
 export const MAX_DISCOUNT = 50
 export const UPGRADE_LEVEL_BEST = 3
 /** O que falta para comprar o próximo nível: [{kind: 'up', id, level} | {kind: 'best', floor} | {kind: 'owned', count}] (vazio: pode). */
@@ -1361,6 +1364,8 @@ export function startRun(factory, data, id, seed, shiny = false, options = {}) {
     ...(up('map') ? { townMap: true } : {}),
     // Cura depois de cada vitória (% do HP de quem está de pé).
     ...(fxTotal(factory, 'heal') ? { winHeal: Math.min(MAX_WIN_HEAL, fxTotal(factory, 'heal')) } : {}),
+    // Captura mais fácil (% a mais na taxa de captura, com qualquer Poké Ball).
+    ...(fxTotal(factory, 'catch') ? { catchBonus: Math.min(MAX_CATCH, fxTotal(factory, 'catch')) } : {}),
     // O inicial (o rival escolhe o que tem vantagem sobre ele).
     starter: id,
     // Nuzlocke: quem desmaia vai embora e só um capturado por rota.
@@ -2338,7 +2343,7 @@ export function captureFor(run, data) {
   if (kind !== 'wild' && kind !== 'wildboss') return null
   // Nuzlocke: um capturado por rota.
   if (run.nuzlocke && run.caughtLeg === legOf(run)) return null
-  return { rates: foes.map((f) => speciesOf(data, f.id)?.[5] ?? 45), dusk: DARK_BIOMES.includes(biome) }
+  return { rates: foes.map((f) => speciesOf(data, f.id)?.[5] ?? 45), dusk: DARK_BIOMES.includes(biome), ...(run.catchBonus ? { bonus: run.catchBonus } : {}) }
 }
 
 /** A ordem na batalha: quem está de pé primeiro (o primeiro entra em campo). Posições no time da corrida. */

@@ -459,10 +459,10 @@ test('Battle Factory: a failed throw spends the ball and the turn; balls only wo
 });
 
 test('Battle Factory: better balls, low HP and status catch more often', () => {
-  const rate = (ball, extra = {}) => {
+  const rate = (ball, extra = {}, bonus = 0) => {
     let caught = 0;
     for (let i = 0; i < 60; i++) {
-      const game = sim.create({teams: [[mon('Pikachu', ['splash'])], [{set: {species: 'Rattata', moves: ['splash'], level: 50}, ...extra}]], seed: [i, 7, 3, 9], capture: {rates: [60]}, bags: [{[ball]: 1}, null]});
+      const game = sim.create({teams: [[mon('Pikachu', ['splash'])], [{set: {species: 'Rattata', moves: ['splash'], level: 50}, ...extra}]], seed: [i, 7, 3, 9], capture: {rates: [60], bonus}, bags: [{[ball]: 1}, null]});
       try {
         if (sim.choose(game.handle, [{kind: 'item', item: ball, index: 0}, move(0)]).state.captured != null) caught++;
       } finally {sim.dispose(game.handle);}
@@ -473,6 +473,8 @@ test('Battle Factory: better balls, low HP and status catch more often', () => {
   assert.ok(ultra > poke, `ultra ${ultra} > poke ${poke}`);
   assert.ok(weak > poke, `weak ${weak} > poke ${poke}`);
   assert.ok(rate('quick-ball') > ultra);
+  // A captura mais fácil da árvore de melhorias (capture.bonus: % a mais na taxa).
+  assert.ok(rate('poke-ball', {}, 100) > poke, 'bônus de captura');
 });
 
 test('Mega X ou Y pela pedra: o evento traz a forma certa', () => {

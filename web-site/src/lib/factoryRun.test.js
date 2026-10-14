@@ -224,10 +224,12 @@ describe('Battle Factory (roguelike)', () => {
     const all = buyAll({ ...f, coins: 9999999 }, Object.keys(UPGRADES))
     const big = startRun(all, data, 1, 42)
     expect(big.teamBoost).toEqual({ hp: 0.82, atk: 1.28, def: 1.2, spa: 1.32, spd: 1.18, spe: 1.6 })
-    expect(big.mult).toEqual({ money: 2.7, exp: 2.25, shop: 0.52 })
-    expect([big.bag['poke-ball'], big.bag['great-ball'], big.bag['ultra-ball'], big.bag.potion, big.bag.revive, big.bag['escape-rope']]).toEqual([52, 35, 19, 35, 18, 19])
+    expect(big.mult).toEqual({ money: 2.7, exp: 3.1, shop: 0.52 })
+    expect([big.bag['poke-ball'], big.bag['great-ball'], big.bag['ultra-ball'], big.bag.potion, big.bag.revive, big.bag['escape-rope']]).toEqual([52, 35, 17, 35, 18, 2])
     // Os efeitos que mudam a corrida: dinheiro no começo, cura depois de cada vitória, nível e IVs do inicial.
-    expect([big.money, big.winHeal, big.team[0].level, Math.min(...Object.values(big.team[0].ivs)), big.rerolls, big.stash.length]).toEqual([2900, 50, 25, 31, 18, 50])
+    expect([big.money, big.winHeal, big.team[0].level, Math.min(...Object.values(big.team[0].ivs)), big.rerolls, big.stash.length, big.catchBonus]).toEqual([2900, 50, 25, 31, 18, 50, 150])
+    // A captura mais fácil vai para a batalha (o motor multiplica a taxa de captura).
+    expect(captureFor({ ...big, encounter: { kind: 'wild', foes: [{ id: 16 }] } }, data)).toMatchObject({ bonus: 150 })
     expect(big.tokens).toEqual({ 'move-tutor': 20, 'move-reminder': 18 })
     expect(endRun(all, { ...big, floor: 11, defeated: 0, bosses: 0 }).last.coins).toBe(140)
     // A cura depois da vitória: só em quem está de pé, até o HP cheio.

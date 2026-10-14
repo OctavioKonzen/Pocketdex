@@ -309,7 +309,8 @@ const BALL_NAMES = {'poke-ball': 'Poké Ball', 'great-ball': 'Great Ball', 'ultr
 function throwBall(game, battle, pokemon, ball) {
   const foe = battle.sides[1 - pokemon.side.n].active[0];
   game.bags[pokemon.side.n][ball]--;
-  const rate = Number(game.capture.rates?.[originalIndex(foe)] ?? 45);
+  // capture.bonus: a captura mais fácil da árvore de melhorias (% a mais na taxa).
+  const rate = Number(game.capture.rates?.[originalIndex(foe)] ?? 45) * (1 + Number(game.capture.bonus ?? 0) / 100);
   const status = ['slp', 'frz'].includes(foe.status) ? 2.5 : foe.status ? 1.5 : 1;
   // O nível conta: os de nível baixo (até 20) são mais fáceis (como na 8ª geração) e os de nível
   // acima do seu Pokémon em campo, bem mais difíceis (como em Scarlet/Violet). O HP já conta na conta.
