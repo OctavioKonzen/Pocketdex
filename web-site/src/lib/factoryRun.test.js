@@ -215,16 +215,27 @@ describe('Battle Factory (roguelike)', () => {
     expect([run.townMap, run.dmax, run.tera]).toEqual([true, true, true])
     expect(endRun(f, { ...run, floor: 11, defeated: 0, bosses: 0 }).last.coins).toBe(100)
     expect(upgradeNeeds({ ...emptyFactory(), best: 999 }, 'tera')).toContainEqual({ kind: 'up', id: 'dmax', level: 1 })
-    // Os nós pequenos: 8 de cada melhoria, em trilha (cada um pede o anterior); comprando tudo, os bônus somam.
-    expect(Object.keys(UPGRADES).filter((k) => k.includes('~')).length).toBe(62 * 8)
+    // A trilha: 4 nós de cada melhoria (cada um pede o anterior; o último é o nó-chave, o dobro); comprando tudo, os bônus somam.
+    expect(Object.keys(UPGRADES).filter((k) => k.includes('~')).length).toBe(63 * 4)
+    expect([UPGRADES['atk~1'].per, UPGRADES['atk~4'].per]).toEqual([2, 2])
+    expect([UPGRADES['level~1'].per, UPGRADES['level~4'].per, UPGRADES['level~4'].max]).toEqual([1, 4, 1])
     expect(upgradeNeeds({ ...f, upgrades: { ...f.upgrades, 'atk~2': 0 } }, 'atk~3')).toContainEqual({ kind: 'up', id: 'atk~2', level: 1 })
     expect(UPGRADE_TREE['atk~1']).toEqual({ needs: ['atk', 1], best: 7 })
     const all = buyAll({ ...f, coins: 9999999 }, Object.keys(UPGRADES))
     const big = startRun(all, data, 1, 42)
-    expect(big.teamBoost).toEqual({ hp: 0.83, atk: 0.76, def: 0.74, spa: 0.75, spd: 0.73, spe: 1.01 })
-    expect(big.mult).toEqual({ money: 2.15, exp: 1.94, shop: 0.8 })
-    expect([big.bag['poke-ball'], big.bag['great-ball'], big.bag.potion, big.bag['escape-rope']]).toEqual([22, 16, 29, 23])
-    expect(endRun(all, { ...big, floor: 11, defeated: 0, bosses: 0 }).last.coins).toBe(124)
+    expect(big.teamBoost).toEqual({ hp: 0.61, atk: 0.99, def: 0.63, spa: 0.95, spd: 0.61, spe: 1.15 })
+    expect(big.mult).toEqual({ money: 2.1, exp: 2, shop: 0.66 })
+    expect([big.bag['poke-ball'], big.bag['great-ball'], big.bag['ultra-ball'], big.bag.potion, big.bag.revive, big.bag['escape-rope']]).toEqual([43, 25, 14, 25, 14, 12])
+    // Os efeitos que mudam a corrida: dinheiro no começo, cura depois de cada vitória, nível e IVs do inicial.
+    expect([big.money, big.winHeal, big.team[0].level, Math.min(...Object.values(big.team[0].ivs))]).toEqual([1700, 50, 23, 31])
+    expect(endRun(all, { ...big, floor: 11, defeated: 0, bosses: 0 }).last.coins).toBe(120)
+    // A cura depois da vitória: só em quem está de pé, até o HP cheio.
+    const healRun = { ...big, team: [{ ...big.team[0], hp: 0.3 }, { ...big.team[0], hp: 0 }, { ...big.team[0], hp: 0.8 }], encounter: { kind: 'wild', foes: [{ id: 16, level: 3, iv: 0, ev: 0 }] } }
+    expect(winFloor(healRun, data, { hp: [0.3, 0, 0.8], fought: [[0]] }).team.map((m) => m.hp)).toEqual([0.8, 0, 1])
+    // Os nós que saíram da árvore (eram 8 por melhoria): as moedas voltam.
+    const stale = normalizeOwned({ ...all, coins: 0, upgrades: { ...all.upgrades, 'atk~7': 1, 'atk~8': 1 } }, data)
+    expect(stale.upgrades['atk~7']).toBe(undefined)
+    expect(stale.coins).toBe(Math.round((200 * 0.25 + 60 * 7) / 10) * 10 + Math.round((200 * 0.25 + 60 * 8) / 10) * 10)
     // Sem melhorias, a corrida é a de sempre.
     expect(startRun(emptyFactory(), data, 1, 42).team[0].level).toBe(5)
   })

@@ -19,7 +19,7 @@ import {
   BAG_ITEMS, bossOf, unequipItem, ROUTE_LENGTH, CITY_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, MAX_TEAM, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shinyPrice, shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, takeCard, teachMove, teamDown, applyBagItem, unlockShiny, VITAMIN_EVS, VITAMINS,
-  buyShiny, forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor,
+  buyShiny, forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor, isKeystone,
   tradeMon, skipTrade, TRADE_LEVELS, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, bossScene,
   resolveChoice, regionLegend, leaderType, villainTeam, rivalBoss, placeInfo, routeInfo, DUNGEON_LENGTH, dungeonPos, townShop, townCenter,
   weeklyOf, startWeekly, COSMETIC_BALLS, COSMETIC_FRAMES, hasCosmetic, buyCosmetic, equipCosmetic,
@@ -584,7 +584,7 @@ const UPGRADE_NAMES = {
   band: 'Choice Band', scarf: 'Choice Scarf', specs: 'Choice Specs', lifeOrb: 'Life Orb', vest: 'Assault Vest', helmet: 'Rocky Helmet',
   quickClaw: 'Quick Claw', balloon: 'Air Balloon', brightPowder: 'Bright Powder', boots: 'Heavy-Duty Boots', kingsRock: 'King\'s Rock', loot: 'Recompensas',
   expertBelt: 'Expert Belt', bonusCoins: 'Tesouro', policy: 'Weakness Policy', muscleBand: 'Muscle Band', wiseGlasses: 'Wise Glasses', shellBell: 'Shell Bell',
-  scopeLens: 'Scope Lens', eviolite: 'Eviolite',
+  scopeLens: 'Scope Lens', eviolite: 'Eviolite', victoryHeal: 'Recuperação',
 }
 /** Os biomas das rotas: nome, símbolo e as cores do caminho no mapa. */
 const BIOME_INFO = {
@@ -672,7 +672,7 @@ const UPGRADE_ICONS = {
   luckyEgg: '🥚', hpBoost: '❤️', speBoost: '💨', tutor: '📜', reminder: '🧠', atk: '⚔️', spa: '🔮', def: '🛡️',
   spd: '🔰', allStats: '👑', band: '🎀', scarf: '🧣', specs: '👓', lifeOrb: '🟠', vest: '🦺', helmet: '⛑️',
   quickClaw: '🦅', balloon: '🎈', brightPowder: '💫', boots: '👢', kingsRock: '🪨', loot: '💵', expertBelt: '🥋', bonusCoins: '🏆',
-  policy: '📋', muscleBand: '💪', wiseGlasses: '🤓', shellBell: '🐚', scopeLens: '🔭', eviolite: '💠',
+  policy: '📋', muscleBand: '💪', wiseGlasses: '🤓', shellBell: '🐚', scopeLens: '🔭', eviolite: '💠', victoryHeal: '💚',
 }
 /** A cor de cada ramo (as linhas e os círculos comprados), na ordem de UPGRADE_BRANCHES. */
 const BRANCH_COLORS = ['#22c55e', '#38bdf8', '#f59e0b', '#ef4444', '#a855f7', '#eab308', '#ec4899']
@@ -791,12 +791,14 @@ function SkillTree({ factory }) {
               const state = stateOf(n.id)
               const sel = n.id === id
               const minor = isMinor(n.id)
-              const r = minor ? 11 : 24
+              // O nó-chave (o último da trilha): maior e com o contorno dourado.
+              const keystone = isKeystone(n.id)
+              const r = keystone ? 17 : minor ? 11 : 24
               return (
                 <g key={n.id} onClick={() => setPicked(n.id)} className="cursor-pointer" data-testid={`upgrade-${n.id}`} role="button" aria-label={t(UPGRADE_NAMES[upgradeKey(n.id)])}>
                   {state === 'have' && <circle cx={n.pos[0]} cy={n.pos[1]} r={r + 7} fill={b.color} opacity="0.25" />}
-                  <circle cx={n.pos[0]} cy={n.pos[1]} r={sel ? r + 4 : r} fill={state === 'have' ? b.color : '#111827'} stroke={sel ? '#fde047' : state === 'locked' ? '#334155' : state === 'open' ? '#f8fafc' : b.color} strokeWidth={sel ? 5 : minor ? 2 : 3} opacity={state === 'locked' ? 0.55 : 1} />
-                  <text x={n.pos[0]} y={n.pos[1] + (minor ? 4 : 7)} textAnchor="middle" fontSize={minor ? 11 : 20} opacity={state === 'locked' ? 0.5 : 1}>{state === 'locked' && !minor ? '🔒' : UPGRADE_ICONS[upgradeKey(n.id)]}</text>
+                  <circle cx={n.pos[0]} cy={n.pos[1]} r={sel ? r + 4 : r} fill={state === 'have' ? b.color : '#111827'} stroke={sel ? '#fde047' : keystone ? '#f59e0b' : state === 'locked' ? '#334155' : state === 'open' ? '#f8fafc' : b.color} strokeWidth={sel ? 5 : keystone ? 4 : minor ? 2 : 3} opacity={state === 'locked' ? 0.55 : 1} />
+                  <text x={n.pos[0]} y={n.pos[1] + (minor ? 4 : 7)} textAnchor="middle" fontSize={keystone ? 15 : minor ? 11 : 20} opacity={state === 'locked' ? 0.5 : 1}>{state === 'locked' && !minor ? '🔒' : UPGRADE_ICONS[upgradeKey(n.id)]}</text>
                   {/* O nível (comprado/máximo), num selo embaixo (só nas melhorias grandes). */}
                   {!minor && (
                     <>
@@ -820,7 +822,7 @@ function SkillTree({ factory }) {
       <div className="flex items-center gap-2 rounded-xl border-2 border-amber-400/60 bg-card p-2 text-xs" data-testid="upgrade-detail">
         <span className="text-2xl">{UPGRADE_ICONS[key]}</span>
         <div className="min-w-0 flex-1">
-          <p className="font-black">{t(UPGRADE_NAMES[key])}{isMinor(id) ? ` · ${t('nó pequeno')}` : ''}</p>
+          <p className="font-black">{t(UPGRADE_NAMES[key])}{isKeystone(id) ? ` · ${t('nó-chave')}` : isMinor(id) ? ` · ${t('nó pequeno')}` : ''}</p>
           <p className="font-bold">{t(up.label).replace('{0}', price == null ? (up.offset ?? 0) + upgradeValue(factory, id) : next)}</p>
           <p className="text-muted">{'★'.repeat(level)}{'☆'.repeat(up.max - level)} · {price == null ? t('No máximo') : `🪙 ${price}`}</p>
           {needs.map((n) => (
