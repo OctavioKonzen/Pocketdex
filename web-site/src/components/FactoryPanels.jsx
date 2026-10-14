@@ -379,9 +379,9 @@ export function FactoryHub({ onContinue, busy }) {
   return (
     <div className="space-y-4" data-testid="factory-hub">
       <div className="rounded-2xl bg-bg p-3 text-sm">
-        <p className="font-black">🏭 {t('Battle Factory')}</p>
+        <p className="font-black">🎲 {t('Pokelike')}</p>
         <p className="text-muted">
-          {t('Um roguelike sem fim com a história de cada região: escolha um inicial no nível 5 e siga o mapa de cidade em cidade. Em cada andar você escolhe o caminho: Pokémon selvagem do bioma da rota (capture jogando a bola na batalha, antes de ele desmaiar; cada bola tem a sua chance), treinador, treinador forte (sempre deixa um item), Poké Mart, Centro Pokémon (raro) ou um evento. A cada 10 andares, na cidade, vem um chefe da história: líderes de ginásio, rival e vilões (com times cada vez maiores), a Elite Four e o Campeão; nos andares 5, 15, 25... pode aparecer uma Mega, um Gigantamax ou um lendário. O time não é curado entre os andares (só com a Bolsa, a loja, o Centro Pokémon ou, com 5% de chance, a Enfermeira Joy). Sem limite de nível, IVs, EVs ou itens; shiny é 1 em 4096. Perdeu: a pontuação vira moedas para comprar Pokémon e começar com eles.')}
+          {t('Um roguelike sem fim pela história de cada região: escolha um inicial no nível 5 e viaje de cidade em cidade, como nos jogos. Cada rota tem 10 andares e um chefe no último; depois vem a cidade, com 10 andares, o Poké Mart, o Centro Pokémon, a Creche e o líder no fim. Nas bifurcações você escolhe o caminho ou entra num lugar (cavernas, florestas, o mar, esgotos, museus...): 10 andares, um chefe e você volta para o andar em que entrou. Capture jogando a bola na batalha; nos lugares sem treinadores, até o chefe dá para capturar. O time não é curado entre os andares. Sem limite de nível, IVs, EVs ou itens; shiny é 1 em 4096. Perdeu: os andares viram moedas para comprar Pokémon e melhorias.')}
         </p>
         <p className="mt-1 font-bold">
           {t('Recorde: andar {0}').replace('{0}', factory.best)} · 🪙 {factory.coins} {t('moedas')}
@@ -436,7 +436,7 @@ export function FactoryHub({ onContinue, busy }) {
               onContinue()
             }}
           >
-            🏭 {t('Começar a corrida')}
+            🎲 {t('Começar a corrida')}
           </Button>
         </div>
       )}
@@ -477,44 +477,9 @@ export function FactoryHub({ onContinue, busy }) {
       </details>
 
       <details className="rounded-2xl bg-bg p-3" data-testid="factory-upgrades" open={!run}>
-        <summary className="cursor-pointer font-bold">⬆️ {t('Árvore de melhorias')}</summary>
+        <summary className="cursor-pointer font-bold">⬆️ {t('Árvore de melhorias')} <span className="text-xs text-muted" data-testid="upgrades-progress">★ {Object.keys(UPGRADES).reduce((n, id) => n + upgradeLevel(factory, id), 0)}/{Object.values(UPGRADES).reduce((n, u) => n + u.max, 0)}</span></summary>
         <p className="my-2 text-xs text-muted">{t('Compradas com moedas, valem em todas as próximas corridas. Cada ramo começa na raiz; para avançar, a anterior, um andar recorde e Pokémon para começar.')}</p>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {UPGRADE_BRANCHES.map(([icon, branch, ids]) => (
-            <div key={branch} className="rounded-xl bg-card p-2" data-testid={`branch-${ids[0]}`}>
-              <p className="mb-1 text-sm font-black">{icon} {t(branch)}</p>
-              {ids.map((id, k) => {
-                const up = UPGRADES[id]
-                const level = upgradeLevel(factory, id)
-                const price = upgradePrice(factory, id)
-                const next = (up.offset ?? 0) + (level + 1) * up.per
-                const needs = price == null ? [] : upgradeNeeds(factory, id)
-                const locked = level === 0 && needs.some((n) => n.kind === 'up')
-                return (
-                  <div key={id}>
-                    {k > 0 && <p className={`pl-4 text-center text-xs leading-3 ${upgradeLevel(factory, ids[k - 1]) ? 'text-amber-500' : 'text-muted'}`}>│</p>}
-                    <div className={`flex items-center gap-2 rounded-lg border-2 p-2 text-xs ${level ? 'border-amber-400 bg-amber-500/10' : locked ? 'border-dashed border-slate-500/40 opacity-70' : 'border-slate-500/40'}`} data-testid={`upgrade-${id}`}>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-bold">{locked ? '🔒 ' : ''}{t(up.label).replace('{0}', price == null ? (up.offset ?? 0) + upgradeValue(factory, id) : next)}</p>
-                        <p className="text-muted">{'★'.repeat(level)}{'☆'.repeat(up.max - level)} · {price == null ? t('No máximo') : `🪙 ${price}`}</p>
-                        {needs.map((n) => (
-                          <p key={n.kind} className="text-[11px] text-red-500" data-testid={`need-${id}-${n.kind}`}>
-                            ✖ {n.kind === 'up' ? t('{0} no nível {1}').replace('{0}', t(UPGRADE_NAMES[n.id])).replace('{1}', n.level) : n.kind === 'best' ? t('Chegar ao andar {0} (recorde: {1})').replace('{0}', n.floor).replace('{1}', factory.best ?? 0) : t('Ter {0} Pokémon para começar (tem {1})').replace('{0}', n.count).replace('{1}', factory.owned?.length ?? 0)}
-                          </p>
-                        ))}
-                      </div>
-                      {price != null && (
-                        <Button disabled={factory.coins < price || needs.length > 0} onClick={() => { const n = buyUpgrade(factory, id); if (n) saveFactory(n) }}>
-                          {t('Comprar')}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          ))}
-        </div>
+        <SkillTree factory={factory} />
       </details>
 
       <details className="rounded-2xl bg-bg p-3" data-testid="factory-achievements">
@@ -608,6 +573,7 @@ export function FactoryHub({ onContinue, busy }) {
 const UPGRADE_NAMES = {
   level: 'Treino', ivs: 'Genética', exp: 'XP extra', expShare: 'Exp. Share', potions: 'Potions', revive: 'Revives',
   balls: 'Poké Balls', shiny: 'Shiny', money: 'Dinheiro', shop: 'Desconto', reroll: 'Sortear caminho', cards: 'Carta a mais',
+  greatBalls: 'Great Balls', rope: 'Escape Rope', coins: 'Moedas', map: 'Mapa', dmax: 'Dynamax Band', tera: 'Tera Orb',
 }
 /** Os biomas das rotas: nome, símbolo e as cores do caminho no mapa. */
 const BIOME_INFO = {
@@ -664,6 +630,7 @@ const NODE_INFO = {
   rematch: { icon: '🏆', label: 'Revanche do Campeão', help: 'O Campeão que você venceu quer revanche: time mais forte, prêmio maior.' },
   rival: { icon: '⚔️', label: 'Rival', help: 'O seu rival te seguiu pela rota: quer ver quem ficou mais forte (prêmio maior).' },
   leave: { icon: '↩️', label: 'Voltar', help: 'Sai da água e volta para onde você entrou.' },
+  area: { icon: '👑', label: 'Chefe do lugar', help: 'O Pokémon mais forte daqui (sem treinador): dá para capturar.' },
   dboss: { icon: '💀', label: 'Chefe', help: '' },
 }
 /** As MOs: o nome (do jogo, sem traduzir) e o que fazem na corrida. */
@@ -685,6 +652,99 @@ const EVENT_TEXT = {
   secretEmpty: 'A caverna estava vazia... e escura demais para procurar.',
 }
 const EVENT_ICON = { money: '💰', berries: '🍒', tutor: '📀', declined: '👣', helped: '🤝', secretFound: '💎', secretEmpty: '🕳️' }
+/** O símbolo de cada melhoria (no círculo da árvore). */
+const UPGRADE_ICONS = {
+  level: '🎓', ivs: '🧬', exp: '✨', expShare: '📡', potions: '🧪', revive: '💖', rope: '🪢', balls: '⚪', greatBalls: '🔵', shiny: '🌟',
+  money: '💰', shop: '🏷️', coins: '🪙', map: '🗺️', reroll: '🎲', cards: '🃏', dmax: '🔴', tera: '💎',
+}
+/** A cor de cada ramo (as linhas e os círculos comprados). */
+const BRANCH_COLORS = ['#22c55e', '#38bdf8', '#f59e0b', '#a855f7', '#eab308', '#ef4444']
+/** A ordem dos ramos no leque (os mais longos no meio). */
+const FAN = ['Sobrevivência', 'Captura', 'Treino', 'Exploração', 'Comércio', 'Poder']
+/** As posições (num quadro de 460×300): os ramos saem de um centro embaixo, em leque; cada nível um pouco mais longe. Igual ao app. */
+const TREE = { w: 460, h: 300, cx: 230, cy: 285, first: 92, step: 50 }
+function skillTreeLayout(branches = UPGRADE_BRANCHES) {
+  const order = [...branches].sort((a, b) => FAN.indexOf(a[1]) - FAN.indexOf(b[1]))
+  return order.map(([icon, branch, ids], b) => {
+    const angle = ((170 - (160 * b) / Math.max(1, order.length - 1)) * Math.PI) / 180
+    const at = (d) => [TREE.cx + Math.cos(angle) * d, TREE.cy - Math.sin(angle) * d]
+    const nodes = ids.map((id, k) => ({ id, pos: at(TREE.first + k * TREE.step) }))
+    // O nome do ramo em cima da ponta (dentro do quadro).
+    const [lx, ly] = nodes[nodes.length - 1].pos
+    return { icon, branch, ids, color: BRANCH_COLORS[b % BRANCH_COLORS.length], nodes, label: [Math.min(TREE.w - 55, Math.max(55, lx)), ly - 24] }
+  })
+}
+
+/**
+ * A árvore de melhorias em leque (como as árvores de habilidade dos jogos): os
+ * ramos saem do centro, cada círculo é uma melhoria (comprada: colorida; para
+ * comprar: branca; bloqueada: cinza com cadeado). Tocando, abre o que ela faz e o
+ * botão de comprar. Igual ao app.
+ */
+function SkillTree({ factory }) {
+  const layout = skillTreeLayout()
+  const firstOpen = layout.flatMap((b) => b.ids).find((id) => upgradePrice(factory, id) != null && !upgradeNeeds(factory, id).length)
+  const [picked, setPicked] = useState(null)
+  const id = picked ?? firstOpen ?? 'level'
+  const up = UPGRADES[id]
+  const level = upgradeLevel(factory, id)
+  const price = upgradePrice(factory, id)
+  const next = (up.offset ?? 0) + (level + 1) * up.per
+  const needs = price == null ? [] : upgradeNeeds(factory, id)
+  const stateOf = (u) => (upgradeLevel(factory, u) ? 'have' : upgradeNeeds(factory, u).some((n) => n.kind === 'up') ? 'locked' : 'open')
+  return (
+    <div className="space-y-2" data-testid="skill-tree">
+      <svg viewBox={`0 0 ${TREE.w} ${TREE.h}`} className="w-full rounded-xl bg-slate-950" role="img" aria-label={t('Árvore de melhorias')}>
+        {layout.map((b) => (
+          <g key={b.branch}>
+            {b.nodes.map((n, k) => {
+              const [x1, y1] = k ? b.nodes[k - 1].pos : [TREE.cx, TREE.cy]
+              const lit = upgradeLevel(factory, n.id) > 0
+              return <line key={n.id} x1={x1} y1={y1} x2={n.pos[0]} y2={n.pos[1]} stroke={lit ? b.color : '#475569'} strokeWidth={lit ? 3 : 2} />
+            })}
+            <text x={b.label[0]} y={b.label[1]} textAnchor="middle" fontSize="10" fontWeight="900" fill={b.color}>{b.icon} {t(b.branch)}</text>
+          </g>
+        ))}
+        <circle cx={TREE.cx} cy={TREE.cy} r="10" fill="#f8fafc" />
+        {layout.map((b) => b.nodes.map((n) => {
+          const u = UPGRADES[n.id]
+          const lv = upgradeLevel(factory, n.id)
+          const state = stateOf(n.id)
+          const sel = n.id === id
+          return (
+            <g key={n.id} onClick={() => setPicked(n.id)} className="cursor-pointer" data-testid={`upgrade-${n.id}`} role="button" aria-label={t(UPGRADE_NAMES[n.id])}>
+              <circle cx={n.pos[0]} cy={n.pos[1]} r={sel ? 18 : 16} fill={state === 'have' ? b.color : '#1e293b'} stroke={sel ? '#fde047' : state === 'locked' ? '#475569' : '#e2e8f0'} strokeWidth={sel ? 3 : 2} opacity={state === 'locked' ? 0.55 : 1} />
+              <text x={n.pos[0]} y={n.pos[1] + 5} textAnchor="middle" fontSize="14">{state === 'locked' ? '🔒' : UPGRADE_ICONS[n.id]}</text>
+              {/* O nível (comprado/máximo), num selo embaixo à direita. */}
+              <rect x={n.pos[0] + 7} y={n.pos[1] + 7} width="18" height="10" rx="5" fill="#0f172a" stroke={b.color} strokeWidth="1" />
+              <text x={n.pos[0] + 16} y={n.pos[1] + 15} textAnchor="middle" fontSize="7" fontWeight="800" fill="#e2e8f0">{lv}/{u.max}</text>
+            </g>
+          )
+        }))}
+      </svg>
+      {/* O que a melhoria escolhida faz, o que falta e o botão de comprar. */}
+      <div className="flex items-center gap-2 rounded-xl border-2 border-amber-400/60 bg-card p-2 text-xs" data-testid="upgrade-detail">
+        <span className="text-2xl">{UPGRADE_ICONS[id]}</span>
+        <div className="min-w-0 flex-1">
+          <p className="font-black">{t(UPGRADE_NAMES[id])}</p>
+          <p className="font-bold">{t(up.label).replace('{0}', price == null ? (up.offset ?? 0) + upgradeValue(factory, id) : next)}</p>
+          <p className="text-muted">{'★'.repeat(level)}{'☆'.repeat(up.max - level)} · {price == null ? t('No máximo') : `🪙 ${price}`}</p>
+          {needs.map((n) => (
+            <p key={n.kind} className="text-[11px] text-red-500" data-testid={`need-${id}-${n.kind}`}>
+              ✖ {n.kind === 'up' ? t('{0} no nível {1}').replace('{0}', t(UPGRADE_NAMES[n.id])).replace('{1}', n.level) : n.kind === 'best' ? t('Chegar ao andar {0} (recorde: {1})').replace('{0}', n.floor).replace('{1}', factory.best ?? 0) : t('Ter {0} Pokémon para começar (tem {1})').replace('{0}', n.count).replace('{1}', factory.owned?.length ?? 0)}
+            </p>
+          ))}
+        </div>
+        {price != null && (
+          <Button disabled={factory.coins < price || needs.length > 0} onClick={() => { const n = buyUpgrade(factory, id); if (n) saveFactory(n) }} data-testid="upgrade-buy">
+            {t('Comprar')}
+          </Button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 /** O texto de um evento do mapa (com o item, o dinheiro ou a quantidade). */
 function eventText(event) {
   const item = itemName(event.item ?? '')
@@ -1157,7 +1217,7 @@ function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, 
       </div>
       {run && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-x-4 border-slate-800 bg-slate-700 px-2 py-1 text-xs font-bold text-white" style={theme ? { background: `linear-gradient(90deg, ${theme}, #334155 70%)` } : undefined} data-testid="factory-bar">
-          <span>🏭 {t('Andar {0}').replace('{0}', run.floor)}</span>
+          <span>🎲 {t('Andar {0}').replace('{0}', run.floor)}</span>
           <span>💰 {run.money}</span>
           <span title={t('Pokédex da corrida')} data-testid="factory-dex">📖 {dexOf(run).length}</span>
           {data && <Badges data={data} run={run} />}
@@ -1645,7 +1705,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         ))}
         {(hasMap || !fork) && route.options.map((node, k) => {
           if (node.kind === 'dungeon') return placeButton(node, k)
-          const info = node.mythic ? NODE_INFO.mythic : node.meteor ? NODE_INFO.meteor : node.legend != null ? LEGEND_INFO : node.cut ? CUT_INFO : NODE_INFO[node.kind]
+          const info = node.area ? NODE_INFO.area : node.mythic ? NODE_INFO.mythic : node.meteor ? NODE_INFO.meteor : node.legend != null ? LEGEND_INFO : node.cut ? CUT_INFO : NODE_INFO[node.kind]
           const b = node.biome && !node.cut ? BIOME_INFO[node.biome] : null
           const noSurf = nodeBlocked(run, node)
           return (

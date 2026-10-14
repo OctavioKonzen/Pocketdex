@@ -92,20 +92,20 @@ void main() {
   test('só a primeira forma à venda; contas antigas ficam com a primeira; melhorias permanentes (igual ao site)', () {
     expect(FactoryRun.baseForm(data, 6), 4);
     expect(FactoryRun.forSale(data, 6), isFalse);
-    final rich = {...FactoryRun.empty(), 'owned': [1], 'coins': 99999};
+    final rich = {...FactoryRun.empty(), 'owned': [1], 'coins': 999999};
     expect(FactoryRun.buyPokemon(rich, data, 6), isNull);
     expect(FactoryRun.normalizeOwned({...FactoryRun.empty(), 'owned': [1, 6, 5, 3], 'shinies': [6]}, data), containsPair('owned', [1, 4]));
     var f = {...rich, 'best': 999, 'owned': [1, 4, 7, 152, 155, 158, 252, 255]};
-    for (final id in FactoryRun.upgrades.keys) {
-      while (FactoryRun.upgradePrice(f, id) != null) {
-        f = FactoryRun.buyUpgrade(f, id)!;
-      }
-    }
+    f = _buyAll(f);
     final run = FactoryRun.startRun(f, data, 1, 42)!;
     expect(FactoryRun.teamOf(run).first['level'], 10);
     expect(run['money'], 500);
     expect(run['bag']['revive'], 4);
     expect(run['mult'], {'money': 1, 'exp': 1.25, 'shop': 0.8});
+    // Os ramos novos: Great Balls, Escape Rope, Mapa, Dynamax Band, Tera Orb e moedas a mais no fim.
+    expect([run['bag']['great-ball'], run['bag']['escape-rope'], run['townMap'], run['dmax'], run['tera']], [3, 2, true, true, true]);
+    expect(((FactoryRun.endRun(f, {...run, 'floor': 11, 'defeated': 0, 'bosses': 0})['last']) as Map)['coins'], 75);
+    expect(FactoryRun.upgradeNeeds({...FactoryRun.empty(), 'best': 999}, 'tera'), contains(equals({'kind': 'up', 'id': 'dmax', 'level': 1})));
     // O mesmo preço do site.
     expect(FactoryRun.upgradePrice(FactoryRun.empty(), 'level'), 150);
     expect(FactoryRun.upgradePrice({...FactoryRun.empty(), 'upgrades': {'level': 1}}, 'level'), 455);
@@ -118,11 +118,7 @@ void main() {
     expect(fixed['coins'], price(6) + price(5));
     expect(FactoryRun.normalizeOwned({...FactoryRun.empty(), 'coins': 10, 'owned': [1, 6]}, data)['coins'], 10 + price(6) - price(4));
     var f = {...FactoryRun.empty(), 'coins': 999999, 'best': 999, 'owned': [1, 4, 7, 152, 155, 158, 252, 255]};
-    for (final id in FactoryRun.upgrades.keys) {
-      while (FactoryRun.upgradePrice(f, id) != null) {
-        f = FactoryRun.buyUpgrade(f, id)!;
-      }
-    }
+    f = _buyAll(f);
     final run = FactoryRun.startRun(f, data, 1, 42)!;
     expect(run['expShare'], true);
     expect(run['cardCount'], 4);
@@ -714,6 +710,24 @@ void main() {
     expect(FactoryRun.caveOf['volcano'], 'lavacave');
   });
 
+  test('lugar sem treinadores: só selvagens e o chefe é um selvagem forte, capturável (igual ao site)', () {
+    final red = data.bosses.indexWhere((b) => b['game'] == 'Red/Blue');
+    final start = {...FactoryRun.startRun(FactoryRun.empty(), data, 4, 3)!, 'leg': 1, 'boss': {'region': red, 'step': 1}, 'dungeon': {'place': 'seacave', 'scene': 'seacave', 'start': 30}};
+    for (var k = 0; k < 30; k++) {
+      final o = (FactoryRun.routeOptions({...start, 'floor': 31 + k % 8}, data, () => (k % 10) / 10)['options'] as List).first;
+      expect(['wild', 'event'], contains(o['kind']));
+    }
+    var run = FactoryRun.nextFloor({...start, 'floor': 39}, data);
+    expect(FactoryRun.routeOf(run)!['options'], [{'kind': 'wildboss', 'area': true}]);
+    run = FactoryRun.chooseNode(run, data, 0);
+    expect(run['encounter']['kind'], 'wildboss');
+    expect(run['encounter']['area'], true);
+    expect(((run['encounter']['foes'] as List).first as Map)['iv'], greaterThanOrEqualTo(31));
+    final won = FactoryRun.winFloor(run, data, captured: true);
+    expect(won['dungeon'], isNull);
+    expect(won['pending']['capture'], isNotNull);
+  });
+
   test('o rival no começo (antes do andar 10) vem com um Pokémon só, sem IVs e EVs a mais (igual ao site)', () {
     final red = data.bosses.indexWhere((b) => b['game'] == 'Red/Blue');
     final run = {...FactoryRun.startRun(FactoryRun.empty(), data, 4, 3)!, 'floor': 5, 'boss': {'region': red, 'step': 0}};
@@ -798,4 +812,16 @@ void main() {
     expect(FactoryRun.routeOf(rope)!['options'], hasLength(1));
     expect(FactoryRun.routeInfo(data, {...start, 'boss': {'region': red, 'step': 2}})!.side!.name, 'Mt. Moon');
   });
+}
+
+/// Compra todas as melhorias (em várias passadas: umas pedem outras), enquanto dá.
+Map<String, dynamic> _buyAll(Map<String, dynamic> f) {
+  for (var pass = 0; pass < 6; pass++) {
+    for (final id in FactoryRun.upgrades.keys) {
+      for (var next = FactoryRun.buyUpgrade(f, id); next != null; next = FactoryRun.buyUpgrade(f, id)) {
+        f = next;
+      }
+    }
+  }
+  return f;
 }

@@ -25,6 +25,12 @@ const ROUTE_42 = { floor: 1, biome: 'grass', options: [{ kind: 'trainer' }] }
 const ENCOUNTER_42 = { kind: 'trainer', foes: [{ id: 276, level: 3, iv: 0, ev: 3 }], trainerSeed: 500729487, scene: 'grass' }
 const seq = (values) => { let i = 0; return () => values[i++ % values.length] }
 
+/** Compra todas as melhorias (em várias passadas: umas pedem outras), enquanto dá. */
+function buyAll(f) {
+  for (let pass = 0; pass < 6; pass++) for (const id of Object.keys(UPGRADES)) for (let next = buyUpgrade(f, id); next; next = buyUpgrade(f, id)) f = next
+  return f
+}
+
 describe('Battle Factory (roguelike)', () => {
   it('começa com um inicial grátis no nível 5, 5 Poké Balls e a Bolsa; os outros só comprando', () => {
     const f = emptyFactory()
@@ -181,12 +187,12 @@ describe('Battle Factory (roguelike)', () => {
     const ok = { ...emptyFactory(), owned: [1, 4] }
     expect(normalizeOwned(ok, data)).toBe(ok)
     // Melhorias: cada nível mais caro, até o máximo; valem na próxima corrida.
-    let f = { ...rich, best: 999, owned: [1, 4, 7, 152, 155, 158, 252, 255] }
+    let f = { ...rich, coins: 999999, best: 999, owned: [1, 4, 7, 152, 155, 158, 252, 255] }
     const p1 = upgradePrice(f, 'level')
     f = buyUpgrade(f, 'level')
     expect(upgradePrice(f, 'level')).toBeGreaterThan(p1)
-    expect(f.coins).toBe(99999 - p1)
-    for (const id of Object.keys(UPGRADES)) while (upgradePrice(f, id) != null) f = buyUpgrade(f, id)
+    expect(f.coins).toBe(999999 - p1)
+    f = buyAll(f)
     expect(buyUpgrade(f, 'level')).toBe(null)
     const run = startRun(f, data, 1, 42)
     expect(run.team[0].level).toBe(START_BALLS + 5)
@@ -196,6 +202,12 @@ describe('Battle Factory (roguelike)', () => {
     expect(run.bag.revive).toBe(START_BAG.revive + 3)
     expect(run.money).toBe(500)
     expect(run.mult).toEqual({ money: 1, exp: 1.25, shop: 0.8 })
+    // Os ramos novos: Great Balls, Escape Rope, Mapa, Dynamax Band, Tera Orb e moedas a mais no fim.
+    expect(run.bag['great-ball']).toBe(3)
+    expect(run.bag['escape-rope']).toBe(2)
+    expect([run.townMap, run.dmax, run.tera]).toEqual([true, true, true])
+    expect(endRun(f, { ...run, floor: 11, defeated: 0, bosses: 0 }).last.coins).toBe(75)
+    expect(upgradeNeeds({ ...emptyFactory(), best: 999 }, 'tera')).toContainEqual({ kind: 'up', id: 'dmax', level: 1 })
     // Sem melhorias, a corrida é a de sempre.
     expect(startRun(emptyFactory(), data, 1, 42).team[0].level).toBe(5)
   })
@@ -267,7 +279,7 @@ describe('Battle Factory (roguelike)', () => {
     expect(normalizeOwned({ ...emptyFactory(), coins: 10, owned: [1, 6] }, data).coins).toBe(10 + price(6) - price(4))
     // Exp. Share, carta a mais, sorteio de novo e shiny.
     let f = { ...emptyFactory(), coins: 999999, best: 999, owned: [1, 4, 7, 152, 155, 158, 252, 255] }
-    for (const id of Object.keys(UPGRADES)) while (upgradePrice(f, id) != null) f = buyUpgrade(f, id)
+    f = buyAll(f)
     const run = startRun(f, data, 1, 42)
     expect(run.expShare).toBe(true)
     expect(run.cardCount).toBe(4)
@@ -1058,6 +1070,21 @@ describe('cidade e lugares perto dela', () => {
     expect(rope.route.options).toHaveLength(1)
     // A rota seguinte (até Cerulean City): Mt. Moon no caminho.
     expect(routeInfo(data, { ...start, boss: { region: red, step: 2 } }).side.name).toBe('Mt. Moon')
+  })
+
+  it('lugar sem treinadores (mar, cavernas de gelo, lava...): só selvagens e o chefe é um selvagem forte, capturável', () => {
+    const red = data.bosses.findIndex((b) => b.game === 'Red/Blue')
+    const start = { ...startRun(emptyFactory(), data, 4, 3), leg: 1, boss: { region: red, step: 1 }, dungeon: { place: 'seacave', scene: 'seacave', start: 30 } }
+    for (let k = 0; k < 30; k++) expect(['wild', 'event']).toContain(routeOptions({ ...start, floor: 31 + (k % 8) }, data, () => (k % 10) / 10).options[0].kind)
+    let run = nextFloor({ ...start, floor: 39 }, data)
+    expect(run.route.options).toEqual([{ kind: 'wildboss', area: true }])
+    run = chooseNode(run, data, 0)
+    expect(run.encounter).toMatchObject({ kind: 'wildboss', area: true })
+    expect(run.encounter.foes[0].iv).toBeGreaterThanOrEqual(31)
+    // Vencendo (ou capturando), sai do lugar.
+    const won = winFloor(run, data, { captured: true })
+    expect(won.dungeon).toBe(null)
+    expect(won.pending.capture).toBeTruthy()
   })
 
   it('o rival no começo (antes do andar 10) vem com um Pokémon só, sem IVs e EVs a mais', () => {

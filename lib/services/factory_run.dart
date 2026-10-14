@@ -320,6 +320,12 @@ class FactoryRun {
     'reroll': (label: '{0}× por corrida: sortear o caminho de novo', per: 1, max: 2, base: 700, offset: 0),
     'cards': (label: 'Uma carta a mais para escolher depois de cada chefe', per: 1, max: 1, base: 2000, offset: 0),
     'shiny': (label: 'Shiny {0}× mais comum', per: 1, max: 3, base: 900, offset: 1),
+    'greatBalls': (label: 'Começa com +{0} Great Ball', per: 1, max: 3, base: 250, offset: 0),
+    'rope': (label: 'Começa com +{0} Escape Rope', per: 1, max: 2, base: 500, offset: 0),
+    'coins': (label: '+{0}% de moedas no fim da corrida', per: 10, max: 5, base: 400, offset: 0),
+    'map': (label: 'Começa com o Mapa da Cidade', per: 1, max: 1, base: 900, offset: 0),
+    'dmax': (label: 'Começa com a Dynamax Band', per: 1, max: 1, base: 2500, offset: 0),
+    'tera': (label: 'Começa com a Tera Orb', per: 1, max: 1, base: 3000, offset: 0),
   };
 
   /// A árvore de melhorias: cada ramo começa numa raiz e o resto pede a anterior num nível (needs), um andar recorde
@@ -329,18 +335,26 @@ class FactoryRun {
     'exp': (needs: ('ivs', 2), best: 12, owned: 0),
     'expShare': (needs: ('exp', 3), best: 20, owned: 3),
     'revive': (needs: ('potions', 2), best: 6, owned: 0),
-    'shiny': (needs: ('balls', 3), best: 15, owned: 5),
     'shop': (needs: ('money', 2), best: 6, owned: 0),
-    'reroll': (needs: ('shop', 2), best: 15, owned: 0),
+    'coins': (needs: ('shop', 2), best: 12, owned: 0),
+    'greatBalls': (needs: ('balls', 2), best: 10, owned: 0),
+    'shiny': (needs: ('greatBalls', 2), best: 15, owned: 5),
+    'rope': (needs: ('revive', 1), best: 12, owned: 0),
+    'map': (needs: null, best: 10, owned: 0),
+    'reroll': (needs: ('map', 1), best: 15, owned: 0),
     'cards': (needs: ('reroll', 1), best: 25, owned: 8),
+    'dmax': (needs: null, best: 20, owned: 4),
+    'tera': (needs: ('dmax', 1), best: 30, owned: 6),
   };
 
   /// Os ramos da árvore, na ordem (da raiz para a ponta).
   static const upgradeBranches = [
     ('🎓', 'Treino', ['level', 'ivs', 'exp', 'expShare']),
-    ('🧪', 'Sobrevivência', ['potions', 'revive']),
-    ('🎯', 'Captura', ['balls', 'shiny']),
-    ('💰', 'Comércio', ['money', 'shop', 'reroll', 'cards']),
+    ('🧪', 'Sobrevivência', ['potions', 'revive', 'rope']),
+    ('🎯', 'Captura', ['balls', 'greatBalls', 'shiny']),
+    ('💰', 'Comércio', ['money', 'shop', 'coins']),
+    ('🧭', 'Exploração', ['map', 'reroll', 'cards']),
+    ('⚡', 'Poder', ['dmax', 'tera']),
   ];
   static const upgradeLevelBest = 3;
 
@@ -722,6 +736,9 @@ class FactoryRun {
   /// Numa rota de mar, os primeiros andares são a praia (a água começa por ela); depois, o mar.
   static const shore = 5;
 
+  /// Os lugares sem treinadores: só selvagens, e o chefe é um selvagem forte de lá (dá para capturar).
+  static const wildOnly = ['water', 'underwater', 'seacave', 'icecave', 'lavacave', 'poisoncave', 'crystal'];
+
   /// A caverna combina com o lugar em volta: no gelo, de gelo; no pântano, venenosa; no vulcão, de lava; no mar, aquática.
   static const caveOf = {
     'snow': 'icecave', 'icecave': 'icecave', 'swamp': 'poisoncave', 'volcano': 'lavacave', 'beach': 'seacave', 'water': 'seacave', 'underwater': 'seacave',
@@ -910,8 +927,13 @@ class FactoryRun {
         ],
       };
     }
+    // Lugares sem treinadores (mar, fundo do mar, cavernas de gelo, lava, veneno, cristal): só selvagens, e o chefe é um
+    // selvagem forte (dá para capturar).
+    final onlyWild = inside && wildOnly.contains(biome);
     // Num lugar (esgoto, base vilã...): no último andar, o chefe (na base, o vilão).
-    if (inside && pos >= dungeonLength - 1) return only({'kind': run['dungeon']['place'] == 'base' ? 'boss' : 'dboss'});
+    if (inside && pos >= dungeonLength - 1) {
+      return only(onlyWild ? {'kind': 'wildboss', 'area': true} : {'kind': run['dungeon']['place'] == 'base' ? 'boss' : 'dboss'});
+    }
     // O último andar da cidade: o líder (com a equipe vilã na cidade, primeiro a base dela).
     if (city && pos >= cityBoss) {
       return only(boss['kind'] == 'villain' ? {'kind': 'dungeon', 'place': 'base', 'scene': 'base-${villainTeam(boss['name'])}'} : {'kind': 'boss'});
@@ -949,7 +971,8 @@ class FactoryRun {
       }
       final r = rand();
       // Intimidate em quem vai na frente: às vezes os selvagens fogem (vem um treinador no lugar).
-      if (r < 0.55 && !base && intimidate.contains(_leadOf(run)?['id']) && rand() < intimidateChance) return only({'kind': 'trainer'});
+      if (r < 0.55 && !base && !onlyWild && intimidate.contains(_leadOf(run)?['id']) && rand() < intimidateChance) return only({'kind': 'trainer'});
+      if (onlyWild) return only(r < 0.9 ? wild() : {'kind': 'event'});
       return only(r < 0.55 ? wild() : r < 0.9 || floor <= 2 ? {'kind': 'trainer'} : {'kind': 'event'});
     }
     final options = <Json>[rand() < 0.55 ? wild() : {'kind': 'trainer'}];
@@ -1269,6 +1292,19 @@ class FactoryRun {
     // Evoluídos só a partir do nível em que evoluem (abaixo dele, a forma anterior).
     Json foe(int id, int lvl, [Json extra = const {}]) =>
         {'id': devolve(data, id, math.max(2, lvl)), 'level': math.max(2, lvl), 'iv': iv, 'ev': ev, if (boost != 0) 'boost': boost, ...extra};
+    // O chefe de um lugar sem treinadores (mar, cavernas de gelo, lava...): o Pokémon forte de lá, raro e acima do nível
+    // (dá para capturar).
+    if (wild && node?['area'] == true) {
+      final f = Map<String, dynamic>.from(
+          (encounterFor(data, floor + 3, rand, null, false, {'kind': 'wild', 'biome': node!['biome'], 'rare': true, 'shiny': node['shiny']})['foes'] as List).first as Map);
+      return {
+        'kind': 'wildboss',
+        'area': true,
+        'foes': [
+          {...f, 'iv': math.max(31, _int(f['iv'])), 'ev': (_int(f['ev']) * 1.25).round()}
+        ],
+      };
+    }
     if (wild) {
       // Chefe sem treinador: dá para capturar; a Mega deixa a Mega Pedra.
       final r = rand();
@@ -1393,14 +1429,19 @@ class FactoryRun {
     int up(String k) => upgradeValue(factory, k);
     final run = <String, dynamic>{
       'seed': seed & 0xFFFFFFFF, 'floor': 1, 'money': up('money'), 'defeated': 0, 'bosses': 0,
-      'bag': {...startBag, 'poke-ball': startBag['poke-ball']! + up('balls'), 'potion': startBag['potion']! + up('potions'), 'revive': startBag['revive']! + up('revive')},
+      'bag': {
+        ...startBag, 'poke-ball': startBag['poke-ball']! + up('balls'), 'potion': startBag['potion']! + up('potions'), 'revive': startBag['revive']! + up('revive'),
+        if (up('greatBalls') > 0) 'great-ball': up('greatBalls'),
+        if (up('rope') > 0) 'escape-rope': up('rope'),
+      },
       'team': <Json>[], 'teamBoost': _zero(), 'mult': {'money': 1, 'exp': _round3(1 + up('exp') / 100), 'shop': _round3(1 - up('shop') / 100)},
       'cards': <String>[], 'boss': {'region': 0, 'step': 0}, 'played': <String>[],
       if (up('cards') > 0) 'cardCount': 3 + up('cards'),
       if (up('reroll') > 0) 'rerolls': up('reroll'),
       if (up('shiny') > 0) 'shinyRate': 1 + up('shiny'),
-      'tms': <String, dynamic>{}, 'tokens': {'move-tutor': 0, 'move-reminder': 0}, 'stash': <String>[], 'dmax': false, 'tera': false, 'expShare': up('expShare') > 0,
+      'tms': <String, dynamic>{}, 'tokens': {'move-tutor': 0, 'move-reminder': 0}, 'stash': <String>[], 'dmax': up('dmax') > 0, 'tera': up('tera') > 0, 'expShare': up('expShare') > 0,
       'leg': 1, 'route': null, 'encounter': null, 'pending': null,
+      if (up('map') > 0) 'townMap': true,
       // O inicial (o rival escolhe o que tem vantagem sobre ele).
       'starter': id,
       // Nuzlocke: quem desmaia vai embora e só um capturado por rota.
@@ -1534,7 +1575,7 @@ class FactoryRun {
     // Venceu a revanche: o Campeão some (até o próximo).
     if (kind == 'rival') out['rivalRaces'] = ((run['rivalRaces'] as num?) ?? 0).toInt() + 1;
     // Venceu o chefe do lugar (ou o vilão na base): volta para a cidade.
-    if (run['dungeon'] != null && (kind == 'dboss' || kind == 'boss')) {
+    if (run['dungeon'] != null && (kind == 'dboss' || kind == 'boss' || run['encounter']['area'] == true)) {
       out['dungeons'] = ((run['dungeons'] as num?) ?? 0).toInt() + 1;
       final place = run['dungeon']['place'];
       if (place != 'base') out['places'] = [...(run['places'] as List? ?? const []), place];
@@ -2386,7 +2427,8 @@ class FactoryRun {
   }
 
   static Json endRun(Json factory, Json run) {
-    final coins = runCoins(run);
+    // A melhoria de moedas soma uma porcentagem ao que a corrida rendeu.
+    final coins = (runCoins(run) * (1 + upgradeValue(factory, 'coins') / 100)).round();
     return {
       ...factory,
       'coins': _int(factory['coins']) + coins,

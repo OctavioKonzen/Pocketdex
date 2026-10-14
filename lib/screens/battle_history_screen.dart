@@ -114,7 +114,7 @@ class _HallOfFame extends StatelessWidget {
   const _HallOfFame();
 
   static List<(String, int)> get _records => [
-        for (final (name, key) in const [('Torre de Batalha', 'tower'), ('Battle Factory', 'factory')])
+        for (final (name, key) in const [('Torre de Batalha', 'tower'), ('Pokelike', 'factory')])
           if (((UserData.instance.league[key] as Map?)?['best'] as num? ?? 0) > 0) (name, ((UserData.instance.league[key] as Map)['best'] as num).toInt()),
       ];
   static List<Map> get _hall => [for (final h in UserData.instance.league['hall'] as List) if (h is Map) h];

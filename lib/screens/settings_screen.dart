@@ -341,7 +341,7 @@ class _AchievementsCard extends StatelessWidget {
             teams: data.teams,
           ),
           for (final e in FactoryRun.achievements.entries)
-            Achievement('factory-${e.key}', '🏭', tr(e.value.label), 'Battle Factory · 🪙${e.value.coins}', have.contains(e.key)),
+            Achievement('factory-${e.key}', '🎲', tr(e.value.label), 'Pokelike · 🪙${e.value.coins}', have.contains(e.key)),
         ];
         final unlocked = list.where((a) => a.unlocked).length;
         return SiteCard(

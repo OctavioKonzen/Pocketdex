@@ -607,7 +607,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
         const SizedBox(height: 12),
         Text(
             _isFactory
-                ? 'Battle Factory: sem nível máximo. Batalha por turnos como nos jogos, com o computador jogando pelo outro lado.'
+                ? 'Pokelike: sem nível máximo. Batalha por turnos como nos jogos, com o computador jogando pelo outro lado.'
                 : 'Nível máximo 50. Batalha por turnos como nos jogos: seu time contra o de um amigo (ou um aleatório), com o computador jogando pelo outro lado.',
             style: TextStyle(color: c.muted, fontSize: 13)),
         const SizedBox(height: 14),
@@ -627,7 +627,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
           items: [
             const DropdownMenuItem(value: _random, child: Text('🎲 Time aleatório')),
             DropdownMenuItem(value: _tower, child: m.Text('🗼 ${tr('Torre de Batalha')}')),
-            DropdownMenuItem(value: _factory, child: m.Text('🏭 ${tr('Battle Factory')}')),
+            DropdownMenuItem(value: _factory, child: m.Text('🎲 ${tr('Pokelike')}')),
             for (final f in friends) DropdownMenuItem(value: f.uid, child: m.Text(f.name)),
             // Desafio dos Líderes: um cabeçalho por região.
             for (final r in _regions) ...[
@@ -1016,7 +1016,14 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
   Future<void> _onlineQueue = Future.value();
 
   /// Os treinadores da abertura: o seu (de costas) e o do adversário.
-  late final Trainer? _coach = widget.wild ? null : widget.foeTrainer != null ? Trainers.byId(widget.foeTrainer) : Trainers.random();
+  // "generic:<semente>": um treinador comum (de rota), nunca um líder ou um personagem importante.
+  late final Trainer? _coach = widget.wild
+      ? null
+      : widget.foeTrainer?.startsWith('generic:') == true
+          ? Trainers.generic(int.tryParse(widget.foeTrainer!.substring(8)) ?? 0)
+          : widget.foeTrainer != null
+              ? Trainers.byId(widget.foeTrainer)
+              : Trainers.random();
   late final Trainer? _myTrainer = Trainers.mine;
 
   /// A tela VS antes da luta contra um chefe (só no começo); tocar pula.
@@ -2022,6 +2029,13 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13)),
                                 Row(children: [
+                                  // PP, crítico e dano diminuem juntos se não couberem (tela estreita).
+                                  Flexible(
+                                    flex: 6,
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment: Alignment.centerLeft,
+                                      child: Row(mainAxisSize: MainAxisSize.min, children: [
                                   m.Text(
                                       mv.category != 'status' && ((selected == 'z' && _b.canGimmick(0, 'z', i)) || maxed)
                                           ? '${tr('Poder')} ${selected == 'z' && !maxed ? TurnBattle.zPower(mv.power) : TurnBattle.maxPower(mv.power, mv.type)}'
@@ -2043,6 +2057,9 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                                         child: m.Text(r.low == r.high ? '${r.low}%' : '${r.low}–${r.high}%',
                                             key: ValueKey('damage-range-$i'), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
                                       ),
+                                      ]),
+                                    ),
+                                  ),
                                   const Spacer(),
                                   // A efetividade diminui se não couber (tela estreita).
                                   Flexible(
@@ -2079,7 +2096,8 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                 child: m.Text(widget.endNote, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w800)),
               ),
             ],
-            if (!_busy && _b.winner != null && widget.online == null && widget.next != null) ...[
+            // Battle Factory (keepMine): vencendo, a tela do andar abre sozinha (uma confirmação só: a do resultado).
+            if (!_busy && _b.winner != null && widget.online == null && widget.next != null && !(widget.keepMine && _b.winner == 0)) ...[
               const SizedBox(height: 14),
               PillButton(
                 key: const ValueKey('next-challenger'),
@@ -2089,7 +2107,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                 onPressed: widget.next!.onTap,
               ),
             ],
-            if (!_busy && _b.winner != null && widget.online == null) ...[
+            if (!_busy && _b.winner != null && widget.online == null && !(widget.keepMine && _b.winner == 0)) ...[
               if (widget.canAgain) ...[
               const SizedBox(height: 14),
               PillButton(

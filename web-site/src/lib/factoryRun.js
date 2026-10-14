@@ -294,6 +294,12 @@ export const UPGRADES = {
   reroll: { label: '{0}× por corrida: sortear o caminho de novo', per: 1, max: 2, base: 700 },
   cards: { label: 'Uma carta a mais para escolher depois de cada chefe', per: 1, max: 1, base: 2000 },
   shiny: { label: 'Shiny {0}× mais comum', per: 1, max: 3, base: 900, offset: 1 },
+  greatBalls: { label: 'Começa com +{0} Great Ball', per: 1, max: 3, base: 250 },
+  rope: { label: 'Começa com +{0} Escape Rope', per: 1, max: 2, base: 500 },
+  coins: { label: '+{0}% de moedas no fim da corrida', per: 10, max: 5, base: 400 },
+  map: { label: 'Começa com o Mapa da Cidade', per: 1, max: 1, base: 900 },
+  dmax: { label: 'Começa com a Dynamax Band', per: 1, max: 1, base: 2500 },
+  tera: { label: 'Começa com a Tera Orb', per: 1, max: 1, base: 3000 },
 }
 /**
  * A árvore de melhorias: cada ramo começa numa raiz e o resto pede a anterior
@@ -305,17 +311,25 @@ export const UPGRADE_TREE = {
   exp: { needs: ['ivs', 2], best: 12 },
   expShare: { needs: ['exp', 3], best: 20, owned: 3 },
   revive: { needs: ['potions', 2], best: 6 },
-  shiny: { needs: ['balls', 3], best: 15, owned: 5 },
   shop: { needs: ['money', 2], best: 6 },
-  reroll: { needs: ['shop', 2], best: 15 },
+  coins: { needs: ['shop', 2], best: 12 },
+  greatBalls: { needs: ['balls', 2], best: 10 },
+  shiny: { needs: ['greatBalls', 2], best: 15, owned: 5 },
+  rope: { needs: ['revive', 1], best: 12 },
+  map: { best: 10 },
+  reroll: { needs: ['map', 1], best: 15 },
   cards: { needs: ['reroll', 1], best: 25, owned: 8 },
+  dmax: { best: 20, owned: 4 },
+  tera: { needs: ['dmax', 1], best: 30, owned: 6 },
 }
 /** Os ramos da árvore, na ordem (da raiz para a ponta). */
 export const UPGRADE_BRANCHES = [
   ['🎓', 'Treino', ['level', 'ivs', 'exp', 'expShare']],
-  ['🧪', 'Sobrevivência', ['potions', 'revive']],
-  ['🎯', 'Captura', ['balls', 'shiny']],
-  ['💰', 'Comércio', ['money', 'shop', 'reroll', 'cards']],
+  ['🧪', 'Sobrevivência', ['potions', 'revive', 'rope']],
+  ['🎯', 'Captura', ['balls', 'greatBalls', 'shiny']],
+  ['💰', 'Comércio', ['money', 'shop', 'coins']],
+  ['🧭', 'Exploração', ['map', 'reroll', 'cards']],
+  ['⚡', 'Poder', ['dmax', 'tera']],
 ]
 export const UPGRADE_LEVEL_BEST = 3
 /** O que falta para comprar o próximo nível: [{kind: 'up', id, level} | {kind: 'best', floor} | {kind: 'owned', count}] (vazio: pode). */
@@ -707,6 +721,8 @@ export function routeInfo(data, run) {
 export const WATER_CHAIN = [['beach', 'Praia', 'beach'], ['sea', 'Mar', 'water'], ['deep', 'Fundo do mar', 'underwater'], ['seacave', 'Caverna aquática', 'seacave']]
 /** Numa rota de mar, os primeiros andares são a praia (a água começa por ela); depois, o mar. */
 export const SHORE = FORKS[1] + 1
+/** Os lugares sem treinadores: só selvagens, e o chefe é um selvagem forte de lá (dá para capturar). */
+export const WILD_ONLY = ['water', 'underwater', 'seacave', 'icecave', 'lavacave', 'poisoncave', 'crystal']
 /** A caverna combina com o lugar em volta: no gelo, de gelo; no pântano, venenosa; no vulcão, de lava; no mar, aquática. */
 export const CAVE_OF = { snow: 'icecave', icecave: 'icecave', swamp: 'poisoncave', volcano: 'lavacave', beach: 'seacave', water: 'seacave', underwater: 'seacave' }
 const caveScene = (scene, around) => (scene === 'cave' ? CAVE_OF[around] ?? 'cave' : scene)
@@ -801,8 +817,10 @@ export function routeOptions(run, data, rand) {
     const next = waterNext(run.dungeon.scene)
     return { floor: run.floor, biome, options: [{ kind: 'dungeon', place: next.id, scene: next.scene, deeper: true }, { kind: 'leave' }] }
   }
+  // Lugares sem treinadores (mar, fundo do mar, cavernas de gelo, lava, veneno, cristal): só selvagens, e o chefe é um selvagem forte (dá para capturar).
+  const wildOnly = inside && WILD_ONLY.includes(biome)
   // Num lugar (esgoto, base vilã...): no último andar, o chefe (na base, o vilão).
-  if (inside && pos >= DUNGEON_LENGTH - 1) return only({ kind: run.dungeon.place === 'base' ? 'boss' : 'dboss' })
+  if (inside && pos >= DUNGEON_LENGTH - 1) return only(wildOnly ? { kind: 'wildboss', area: true } : { kind: run.dungeon.place === 'base' ? 'boss' : 'dboss' })
   // O último andar da cidade: o líder (com a equipe vilã na cidade, primeiro a base dela).
   if (city && pos >= CITY_BOSS) return only(boss.kind === 'villain' ? { kind: 'dungeon', place: 'base', scene: `base-${villainTeam(boss.name)}` } : { kind: 'boss' })
   if (atCity(data, run)) return only({ kind: 'boss' })
@@ -833,7 +851,8 @@ export function routeOptions(run, data, rand) {
     }
     const r = rand()
     // Intimidate em quem vai na frente: às vezes os selvagens fogem (vem um treinador no lugar).
-    if (r < 0.55 && !base && INTIMIDATE.includes(leadOf(run)?.id) && rand() < INTIMIDATE_CHANCE) return only({ kind: 'trainer' })
+    if (r < 0.55 && !base && !wildOnly && INTIMIDATE.includes(leadOf(run)?.id) && rand() < INTIMIDATE_CHANCE) return only({ kind: 'trainer' })
+    if (wildOnly) return only(r < 0.9 ? wild() : { kind: 'event' })
     return only(r < 0.55 ? wild() : r < 0.9 || run.floor <= 2 ? { kind: 'trainer' } : { kind: 'event' })
   }
   const options = [rand() < 0.55 ? wild() : { kind: 'trainer' }]
@@ -1005,6 +1024,11 @@ export function encounterFor(data, floor, rand, boss = null, wild = false, node 
   const iv = foeIvsAt(floor), ev = foeEvsAt(floor), boost = foeBoostAt(floor)
   // Evoluídos só a partir do nível em que evoluem (abaixo dele, a forma anterior).
   const foe = (id, lvl, extra = {}) => ({ id: devolve(data, id, Math.max(2, lvl)), level: Math.max(2, lvl), iv, ev, ...(boost ? { boost } : {}), ...extra })
+  // O chefe de um lugar sem treinadores (mar, cavernas de gelo, lava...): o Pokémon forte de lá, raro e acima do nível (dá para capturar).
+  if (wild && node?.area) {
+    const f = encounterFor(data, floor + 3, rand, null, false, { kind: 'wild', biome: node.biome, rare: true, shiny: node.shiny }).foes[0]
+    return { kind: 'wildboss', area: true, foes: [{ ...f, iv: Math.max(31, f.iv), ev: Math.round(f.ev * 1.25) }] }
+  }
   if (wild) {
     // Chefe sem treinador: dá para capturar; a Mega deixa a Mega Pedra.
     const r = rand()
@@ -1097,11 +1121,14 @@ export function startRun(factory, data, id, seed, shiny = false, options = {}) {
   // As melhorias compradas com moedas.
   const up = (k) => upgradeValue(factory, k)
   const bag = { ...START_BAG, 'poke-ball': START_BAG['poke-ball'] + up('balls'), potion: START_BAG.potion + up('potions'), revive: START_BAG.revive + up('revive') }
+  if (up('greatBalls')) bag['great-ball'] = up('greatBalls')
+  if (up('rope')) bag['escape-rope'] = up('rope')
   const run = {
     seed: seed >>> 0, floor: 1, money: up('money'), defeated: 0, bosses: 0, bag,
     team: [], teamBoost: zero(), mult: { money: 1, exp: round3(1 + up('exp') / 100), shop: round3(1 - up('shop') / 100) }, cards: [], boss: { region: 0, step: 0 }, played: [],
     ...(up('cards') ? { cardCount: 3 + up('cards') } : {}), ...(up('reroll') ? { rerolls: up('reroll') } : {}), ...(up('shiny') ? { shinyRate: 1 + up('shiny') } : {}),
-    tms: {}, tokens: { 'move-tutor': 0, 'move-reminder': 0 }, stash: [], dmax: false, tera: false, expShare: up('expShare') > 0, leg: 1, route: null, encounter: null, pending: null,
+    tms: {}, tokens: { 'move-tutor': 0, 'move-reminder': 0 }, stash: [], dmax: up('dmax') > 0, tera: up('tera') > 0, expShare: up('expShare') > 0, leg: 1, route: null, encounter: null, pending: null,
+    ...(up('map') ? { townMap: true } : {}),
     // O inicial (o rival escolhe o que tem vantagem sobre ele).
     starter: id,
     // Nuzlocke: quem desmaia vai embora e só um capturado por rota.
@@ -1211,7 +1238,7 @@ export function winFloor(run, data, after = {}) {
   // Venceu a revanche: o Campeão some (até o próximo).
   if (kind === 'rival') out.rivalRaces = (run.rivalRaces ?? 0) + 1
   // Venceu o chefe do lugar (ou o vilão na base): volta para a cidade.
-  if (run.dungeon && (kind === 'dboss' || kind === 'boss')) {
+  if (run.dungeon && (kind === 'dboss' || kind === 'boss' || run.encounter.area)) {
     out.dungeons = (run.dungeons ?? 0) + 1
     if (run.dungeon.place !== 'base') out.places = [...(run.places ?? []), run.dungeon.place]
     // Num lugar da água, dá para seguir para o próximo (o mar depois da praia...); nos outros, volta.
@@ -2013,7 +2040,8 @@ export function equipCosmetic(factory, kind, id) {
 
 /** Perdeu: a corrida acaba; a pontuação vira moedas e o recorde fica salvo. */
 export function endRun(factory, run) {
-  const coins = runCoins(run)
+  // A melhoria de moedas soma uma porcentagem ao que a corrida rendeu.
+  const coins = Math.round(runCoins(run) * (1 + upgradeValue(factory, 'coins') / 100))
   return { ...factory, coins: factory.coins + coins, best: Math.max(factory.best, run.floor - 1), run: null, last: { floor: run.floor - 1, coins, ...(run.weekly ? { weekly: run.weekly } : {}) } }
 }
 
