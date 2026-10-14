@@ -14,7 +14,7 @@ export default function Achievements() {
   // As da Battle Factory (as mesmas da tela dela), junto com as outras.
   const factory = factoryOf(league)
   const factoryList = Object.entries(FACTORY_ACHIEVEMENTS).map(([id, a]) => ({
-    id: `factory-${id}`, icon: '🏭', title: t(a.label), text: `Battle Factory · 🪙${a.coins}`, unlocked: (factory.achievements ?? []).includes(id),
+    id: `factory-${id}`, icon: '🎲', title: t(a.label), text: `Pokelike · 🪙${a.coins}`, unlocked: (factory.achievements ?? []).includes(id),
   }))
   const list = [...achievementsOf({ stats, rankedRecord, favorites, teams }), ...factoryList]
   const unlocked = list.filter((a) => a.unlocked).length

@@ -30,7 +30,7 @@ function HallOfFame() {
   const hall = league?.hall ?? []
   const records = [
     ['Torre de Batalha', league?.tower],
-    ['Battle Factory', league?.factory],
+    ['Pokelike', league?.factory],
   ].filter(([, r]) => r?.best > 0)
   if (!hall.length && !records.length) return null
   return (

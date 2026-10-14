@@ -181,7 +181,10 @@ const _gruntTrainers = {
         ? boss!['trainer'] as String
         : grunt != null
             ? grunt[((encounter['trainerSeed'] as num?)?.toInt() ?? 0) % 2]
-            : null,
+            // Os outros treinadores: uma classe comum (Youngster, Hiker...), nunca um líder ou um personagem importante.
+            : kind == 'wild' || kind == 'wildboss'
+                ? null
+                : 'generic:${(encounter['trainerSeed'] as num?)?.toInt() ?? 0}',
     challenge: {'kind': 'factory', 'wild': kind == 'wild' || kind == 'wildboss', if (boss != null) 'boss': Map<String, dynamic>.from(boss)},
   );
 }
@@ -784,9 +787,9 @@ class _FactoryHubState extends State<FactoryHub> {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(16)),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('🏭 Battle Factory', style: TextStyle(fontWeight: FontWeight.w900, color: c.text)),
+            Text('🎲 Pokelike', style: TextStyle(fontWeight: FontWeight.w900, color: c.text)),
             Text(
-              'Um roguelike sem fim com a história de cada região: escolha um inicial no nível 5 e siga o mapa de cidade em cidade. Em cada andar você escolhe o caminho: Pokémon selvagem do bioma da rota (capture jogando a bola na batalha, antes de ele desmaiar; cada bola tem a sua chance), treinador, treinador forte (sempre deixa um item), Poké Mart, Centro Pokémon (raro) ou um evento. A cada 10 andares, na cidade, vem um chefe da história: líderes de ginásio, rival e vilões (com times cada vez maiores), a Elite Four e o Campeão; nos andares 5, 15, 25... pode aparecer uma Mega, um Gigantamax ou um lendário. O time não é curado entre os andares (só com a Bolsa, a loja, o Centro Pokémon ou, com 5% de chance, a Enfermeira Joy). Sem limite de nível, IVs, EVs ou itens; shiny é 1 em 4096. Perdeu: a pontuação vira moedas para comprar Pokémon e começar com eles.',
+              'Um roguelike sem fim pela história de cada região: escolha um inicial no nível 5 e viaje de cidade em cidade, como nos jogos. Cada rota tem 10 andares e um chefe no último; depois vem a cidade, com 10 andares, o Poké Mart, o Centro Pokémon, a Creche e o líder no fim. Nas bifurcações você escolhe o caminho ou entra num lugar (cavernas, florestas, o mar, esgotos, museus...): 10 andares, um chefe e você volta para o andar em que entrou. Capture jogando a bola na batalha; nos lugares sem treinadores, até o chefe dá para capturar. O time não é curado entre os andares. Sem limite de nível, IVs, EVs ou itens; shiny é 1 em 4096. Perdeu: os andares viram moedas para comprar Pokémon e melhorias.',
               style: TextStyle(color: c.muted, fontSize: 13),
             ),
             const SizedBox(height: 4),
@@ -858,7 +861,7 @@ class _FactoryHubState extends State<FactoryHub> {
           ),
           PillButton(
             key: const ValueKey('factory-start'),
-            label: '🏭 ${tr('Começar a corrida')}',
+            label: '🎲 ${tr('Começar a corrida')}',
             onPressed: widget.busy || _pick == null
                 ? null
                 : () {
@@ -877,76 +880,15 @@ class _FactoryHubState extends State<FactoryHub> {
           key: const ValueKey('factory-upgrades'),
           tilePadding: EdgeInsets.zero,
           initiallyExpanded: run == null,
-          title: Text('⬆️ ${tr('Árvore de melhorias')}', style: TextStyle(fontWeight: FontWeight.bold, color: c.text)),
+          title: Text(
+              '⬆️ ${tr('Árvore de melhorias')}  ★ ${FactoryRun.upgrades.keys.fold(0, (n, id) => n + FactoryRun.upgradeLevel(factory, id))}/${FactoryRun.upgrades.values.fold(0, (n, u) => n + u.max)}',
+              style: TextStyle(fontWeight: FontWeight.bold, color: c.text)),
           children: [
             Text(tr('Compradas com moedas, valem em todas as próximas corridas. Cada ramo começa na raiz; para avançar, a anterior, um andar recorde e Pokémon para começar.'),
                 style: TextStyle(color: c.muted, fontSize: 12)),
             const SizedBox(height: 6),
-            // Cada ramo: da raiz para a ponta, ligados por uma linha; os bloqueados com cadeado e o que falta. Igual ao site.
-            for (final (icon, branch, ids) in FactoryRun.upgradeBranches)
-              Container(
-                key: ValueKey('branch-${ids.first}'),
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: c.card, borderRadius: BorderRadius.circular(12)),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  Text('$icon ${tr(branch)}', style: TextStyle(fontWeight: FontWeight.w900, color: c.text)),
-                  for (final (k, id) in ids.indexed) ...[
-                    if (k > 0)
-                      Center(
-                          child: Text('│',
-                              style: TextStyle(height: 1, color: FactoryRun.upgradeLevel(factory, ids[k - 1]) > 0 ? const Color(0xFFF59E0B) : c.muted))),
-                    () {
-                      final up = FactoryRun.upgrades[id]!;
-                      final level = FactoryRun.upgradeLevel(factory, id);
-                      final price = FactoryRun.upgradePrice(factory, id);
-                      final value = up.offset + (price == null ? FactoryRun.upgradeValue(factory, id) : (level + 1) * up.per);
-                      final needs = price == null ? const <Json>[] : FactoryRun.upgradeNeeds(factory, id);
-                      final locked = level == 0 && needs.any((n) => n['kind'] == 'up');
-                      String needText(Json n) => switch (n['kind']) {
-                            'up' => tr('{0} no nível {1}').replaceAll('{0}', tr(_upgradeNames[n['id']] ?? '')).replaceAll('{1}', '${n['level']}'),
-                            'best' => tr('Chegar ao andar {0} (recorde: {1})').replaceAll('{0}', '${n['floor']}').replaceAll('{1}', '${factory['best'] ?? 0}'),
-                            _ => tr('Ter {0} Pokémon para começar (tem {1})')
-                                .replaceAll('{0}', '${n['count']}')
-                                .replaceAll('{1}', '${((factory['owned'] as List?) ?? const []).length}'),
-                          };
-                      return Opacity(
-                        opacity: locked ? 0.7 : 1,
-                        child: Container(
-                          key: ValueKey('upgrade-$id'),
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: level > 0 ? const Color(0x1AF59E0B) : null,
-                            border: Border.all(color: level > 0 ? const Color(0xFFFBBF24) : c.muted.withValues(alpha: 0.4), width: 2),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(children: [
-                            Expanded(
-                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                Text('${locked ? '🔒 ' : ''}${tr(up.label).replaceAll('{0}', '$value')}',
-                                    style: TextStyle(color: c.text, fontSize: 13, fontWeight: FontWeight.bold)),
-                                Text('${'★' * level}${'☆' * (up.max - level)} · ${price == null ? tr('No máximo') : '🪙 $price'}',
-                                    style: TextStyle(color: c.muted, fontSize: 12)),
-                                for (final n in needs) Text('✖ ${needText(n)}', style: const TextStyle(color: Color(0xFFEF4444), fontSize: 11)),
-                              ]),
-                            ),
-                            if (price != null)
-                              TextButton(
-                                onPressed: coins < price || needs.isNotEmpty
-                                    ? null
-                                    : () {
-                                        final next = FactoryRun.buyUpgrade(factory, id);
-                                        if (next != null) _save(next);
-                                      },
-                                child: Text(tr('Comprar')),
-                              ),
-                          ]),
-                        ),
-                      );
-                    }(),
-                  ],
-                ]),
-              ),
+            // A árvore em leque: tocando num círculo, abre o que ele faz e o botão de comprar. Igual ao site.
+            _SkillTree(factory: factory, onBuy: _save),
           ],
         ),
         ExpansionTile(
@@ -1142,8 +1084,17 @@ const _biomeInfo = <String, (String, String, Color)>{
 
 /// O nome curto de cada melhoria (nos requisitos da árvore). Igual ao site.
 const _upgradeNames = {
-  'level': 'Treino', 'ivs': 'Genética', 'exp': 'XP extra', 'expShare': 'Exp. Share', 'potions': 'Potions', 'revive': 'Revives',
-  'balls': 'Poké Balls', 'shiny': 'Shiny', 'money': 'Dinheiro', 'shop': 'Desconto', 'reroll': 'Sortear caminho', 'cards': 'Carta a mais',
+  'level': 'Treino', 'ivs': 'Genética', 'balls': 'Poké Balls', 'potions': 'Potions', 'revive': 'Revives', 'money': 'Dinheiro',
+  'shop': 'Desconto', 'exp': 'XP extra', 'expShare': 'Exp. Share', 'reroll': 'Sortear caminho', 'cards': 'Carta a mais', 'shiny': 'Shiny',
+  'greatBalls': 'Great Balls', 'rope': 'Escape Rope', 'coins': 'Moedas', 'map': 'Mapa', 'dmax': 'Dynamax Band', 'tera': 'Tera Orb',
+  'superPotions': 'Super Potions', 'hyperPotions': 'Hyper Potions', 'maxPotions': 'Max Potions', 'sitrus': 'Sitrus Berry', 'lum': 'Lum Berry', 'leftovers': 'Leftovers',
+  'sash': 'Focus Sash', 'ultraBalls': 'Ultra Balls', 'masterBall': 'Master Ball', 'quickBalls': 'Quick Balls', 'netBalls': 'Net Balls', 'timerBalls': 'Timer Balls',
+  'duskBalls': 'Dusk Balls', 'expPlus': 'XP avançado', 'luckyEgg': 'Lucky Egg', 'hpBoost': 'Vigor', 'speBoost': 'Agilidade', 'tutor': 'Move Tutor',
+  'reminder': 'Move Reminder', 'atk': 'Força', 'spa': 'Foco', 'def': 'Couraça', 'spd': 'Escudo', 'allStats': 'Mestre',
+  'band': 'Choice Band', 'scarf': 'Choice Scarf', 'specs': 'Choice Specs', 'lifeOrb': 'Life Orb', 'vest': 'Assault Vest', 'helmet': 'Rocky Helmet',
+  'quickClaw': 'Quick Claw', 'balloon': 'Air Balloon', 'brightPowder': 'Bright Powder', 'boots': 'Heavy-Duty Boots', 'kingsRock': 'King\'s Rock', 'loot': 'Recompensas',
+  'expertBelt': 'Expert Belt', 'bonusCoins': 'Tesouro', 'policy': 'Weakness Policy', 'muscleBand': 'Muscle Band', 'wiseGlasses': 'Wise Glasses', 'shellBell': 'Shell Bell',
+  'scopeLens': 'Scope Lens', 'eviolite': 'Eviolite',
 };
 
 /// Cada ponto do mapa: símbolo, nome e o que tem nele.
@@ -1162,6 +1113,7 @@ const _nodeInfo = <String, (String, String, String)>{
   'rematch': ('🏆', 'Revanche do Campeão', 'O Campeão que você venceu quer revanche: time mais forte, prêmio maior.'),
   'rival': ('⚔️', 'Rival', 'O seu rival te seguiu pela rota: quer ver quem ficou mais forte (prêmio maior).'),
   'leave': ('↩️', 'Voltar', 'Sai da água e volta para onde você entrou.'),
+  'area': ('👑', 'Chefe do lugar', 'O Pokémon mais forte daqui (sem treinador): dá para capturar.'),
   'dboss': ('💀', 'Chefe', ''),
 };
 
@@ -1434,7 +1386,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
         border: const Border.symmetric(vertical: BorderSide(color: _border, width: 4)),
       ),
       child: Wrap(spacing: 8, runSpacing: 2, crossAxisAlignment: WrapCrossAlignment.center, children: [
-        Text('🏭 ${tr('Andar {0}').replaceAll('{0}', '${run['floor']}')}', style: style),
+        Text('🎲 ${tr('Andar {0}').replaceAll('{0}', '${run['floor']}')}', style: style),
         Text('💰 ${run['money']}', style: style),
         Text('📖 ${FactoryRun.dexOf(run).length}', key: const ValueKey('factory-dex'), style: style),
         if (_data != null) _badges(_data!, run),
@@ -2462,7 +2414,9 @@ class _FactoryScreenState extends State<FactoryScreen> {
               Builder(builder: (context) {
                 final node = options[k];
                 if (node['kind'] == 'dungeon') return placeButton(k);
-                final info = node['mythic'] == true
+                final info = node['area'] == true
+                    ? _nodeInfo['area']!
+                    : node['mythic'] == true
                     ? _nodeInfo['mythic']!
                     : node['meteor'] == true
                         ? _nodeInfo['meteor']!
@@ -2842,3 +2796,288 @@ const _helpTopics = [
   ('🏙️', 'Cidades e lugares', 'A cada rota de 10 andares você chega numa cidade: ginásio, Poké Mart, Centro Pokémon e Creche. Perto dela há um lugar com 10 andares e um chefe; depois, de volta à cidade.'),
   ('💞', 'Amizade e habilidades', 'Quem fica no time ganha amizade e alguns evoluem por ela. Pickup acha itens, Intimidate espanta selvagens e Synchronize passa a Nature para o capturado.'),
 ];
+
+/// O símbolo de cada melhoria (no círculo da árvore). Igual ao site.
+const _upgradeIcons = {
+  'level': '🎓', 'ivs': '🧬', 'balls': '⚪', 'potions': '🧪', 'revive': '💖', 'money': '💰', 'shop': '🏷️', 'exp': '✨',
+  'expShare': '📡', 'reroll': '🎲', 'cards': '🃏', 'shiny': '🌟', 'greatBalls': '🔵', 'rope': '🪢', 'coins': '🪙', 'map': '🗺️',
+  'dmax': '🔴', 'tera': '💎', 'superPotions': '💧', 'hyperPotions': '🧴', 'maxPotions': '🍶', 'sitrus': '🍋', 'lum': '🫐', 'leftovers': '🍎',
+  'sash': '🎗️', 'ultraBalls': '🟡', 'masterBall': '🟣', 'quickBalls': '⚡', 'netBalls': '🕸️', 'timerBalls': '⏱️', 'duskBalls': '🌑', 'expPlus': '🌠',
+  'luckyEgg': '🥚', 'hpBoost': '❤️', 'speBoost': '💨', 'tutor': '📜', 'reminder': '🧠', 'atk': '⚔️', 'spa': '🔮', 'def': '🛡️',
+  'spd': '🔰', 'allStats': '👑', 'band': '🎀', 'scarf': '🧣', 'specs': '👓', 'lifeOrb': '🟠', 'vest': '🦺', 'helmet': '⛑️',
+  'quickClaw': '🦅', 'balloon': '🎈', 'brightPowder': '💫', 'boots': '👢', 'kingsRock': '🪨', 'loot': '💵', 'expertBelt': '🥋', 'bonusCoins': '🏆',
+  'policy': '📋', 'muscleBand': '💪', 'wiseGlasses': '🤓', 'shellBell': '🐚', 'scopeLens': '🔭', 'eviolite': '💠',
+};
+
+/// A cor de cada ramo (as linhas e os círculos comprados), na ordem de upgradeBranches. Igual ao site.
+const _branchColors = [Color(0xFF22C55E), Color(0xFF38BDF8), Color(0xFFF59E0B), Color(0xFFEF4444), Color(0xFFA855F7), Color(0xFFEAB308), Color(0xFFEC4899)];
+
+/// O quadro da árvore (960×620): os ramos saem de um centro embaixo, em leque (de 200° a −20°). Igual ao site.
+const _treeW = 960.0, _treeH = 620.0, _treeCx = 480.0, _treeCy = 480.0, _treeFirst = 140.0, _treeStep = 105.0, _treeFrom = 200.0, _treeTo = -20.0;
+
+/// As posições (árvore radial): cada ramo ganha um pedaço do leque do tamanho das pontas dele; cada melhoria fica no
+/// meio do pedaço do pai, mais longe do centro a cada nível. Igual ao site (skillTreeLayout).
+List<({String icon, String name, List<String> ids, Color color, List<({String id, String? parent, Offset pos})> nodes})> _skillTreeLayout() {
+  String? parentOf(String id) => FactoryRun.upgradeTree[id]?.needs?.$1;
+  List<String> kids(String id, List<String> ids) => [for (final k in ids) if (parentOf(k) == id) k];
+  int tips(String id, List<String> ids) {
+    final c = kids(id, ids);
+    return c.isEmpty ? 1 : c.fold(0, (n, k) => n + tips(k, ids));
+  }
+
+  double rad(double d) => d * pi / 180;
+  final total = FactoryRun.upgradeBranches.fold(0, (n, b) => n + tips(b.$3.first, b.$3));
+  final out = <({String icon, String name, List<String> ids, Color color, List<({String id, String? parent, Offset pos})> nodes})>[];
+  var start = rad(_treeFrom);
+  for (final (b, branch) in FactoryRun.upgradeBranches.indexed) {
+    final (icon, name, ids) = branch;
+    final nodes = <({String id, String? parent, Offset pos})>[];
+    void place(String id, double a, double z, int depth, String? parent) {
+      final m = (a + z) / 2;
+      final r = _treeFirst + depth * _treeStep;
+      nodes.add((id: id, parent: parent, pos: Offset(_treeCx + cos(m) * r, _treeCy - sin(m) * r)));
+      var x = a;
+      for (final k in kids(id, ids)) {
+        final span = (z - a) * tips(k, ids) / tips(id, ids);
+        place(k, x, x + span, depth + 1, id);
+        x += span;
+      }
+    }
+
+    final span = (rad(_treeTo) - rad(_treeFrom)) * tips(ids.first, ids) / total;
+    place(ids.first, start, start + span, 0, null);
+    start += span;
+    out.add((icon: icon, name: name, ids: ids, color: _branchColors[b % _branchColors.length], nodes: nodes));
+  }
+  return out;
+}
+
+/// A árvore de melhorias em leque (como as árvores de habilidade dos jogos): os ramos saem do centro e se dividem;
+/// cada círculo é uma melhoria (comprada: colorida; para comprar: contorno do ramo; bloqueada: cinza com cadeado).
+/// Arraste para andar e use pinça (ou + e −) para o zoom. Tocando, abre o que ela faz, o que falta e o botão de
+/// comprar. Igual ao site (SkillTree).
+class _SkillTree extends StatefulWidget {
+  final Json factory;
+  final void Function(Json) onBuy;
+  const _SkillTree({required this.factory, required this.onBuy});
+
+  @override
+  State<_SkillTree> createState() => _SkillTreeState();
+}
+
+class _SkillTreeState extends State<_SkillTree> {
+  String? _picked;
+  final _view = TransformationController();
+  double? _width;
+
+  @override
+  void dispose() {
+    _view.dispose();
+    super.dispose();
+  }
+
+  /// Começa centrada embaixo (o centro da árvore), no tamanho que cabe na largura.
+  void _fit(double width, double height) {
+    if (_width == width) return;
+    _width = width;
+    final s = max(0.4, width / _treeW * 1.4);
+    _view.value = Matrix4.identity()
+      ..translateByDouble(-(_treeW * s - width) / 2, -(_treeH * s - height), 0, 1)
+      ..scaleByDouble(s, s, 1, 1);
+  }
+
+  void _zoom(double by) {
+    final m = _view.value.clone();
+    final s = m.getMaxScaleOnAxis();
+    final next = (s * by).clamp(0.3, 2.0);
+    _view.value = m..scaleByDouble(next / s, next / s, 1, 1);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = SiteColors.of(context);
+    final f = widget.factory;
+    final layout = _skillTreeLayout();
+    final posOf = {for (final b in layout) for (final n in b.nodes) n.id: n.pos};
+    String state(String id) => FactoryRun.upgradeLevel(f, id) > 0
+        ? 'have'
+        : FactoryRun.upgradeNeeds(f, id).any((n) => n['kind'] == 'up')
+            ? 'locked'
+            : 'open';
+    final firstOpen = layout.expand((b) => b.ids).where((id) => FactoryRun.upgradePrice(f, id) != null && FactoryRun.upgradeNeeds(f, id).isEmpty).firstOrNull;
+    final id = _picked ?? firstOpen ?? 'level';
+    final up = FactoryRun.upgrades[id]!;
+    final level = FactoryRun.upgradeLevel(f, id);
+    final price = FactoryRun.upgradePrice(f, id);
+    final value = up.offset + (price == null ? FactoryRun.upgradeValue(f, id) : (level + 1) * up.per);
+    final needs = price == null ? const <Json>[] : FactoryRun.upgradeNeeds(f, id);
+    final coins = ((f['coins'] as num?) ?? 0).toInt();
+    String needText(Json n) => switch (n['kind']) {
+          'up' => tr('{0} no nível {1}').replaceAll('{0}', tr(_upgradeNames[n['id']] ?? '')).replaceAll('{1}', '${n['level']}'),
+          'best' => tr('Chegar ao andar {0} (recorde: {1})').replaceAll('{0}', '${n['floor']}').replaceAll('{1}', '${f['best'] ?? 0}'),
+          _ => tr('Ter {0} Pokémon para começar (tem {1})').replaceAll('{0}', '${n['count']}').replaceAll('{1}', '${((f['owned'] as List?) ?? const []).length}'),
+        };
+    final tree = SizedBox(
+      width: _treeW,
+      height: _treeH,
+      child: Stack(clipBehavior: Clip.none, children: [
+        Positioned.fill(
+          child: CustomPaint(
+            painter: _TreeLines([
+              for (final b in layout)
+                for (final n in b.nodes)
+                  (from: n.parent == null ? const Offset(_treeCx, _treeCy) : posOf[n.parent]!, to: n.pos, color: FactoryRun.upgradeLevel(f, n.id) > 0 ? b.color : null),
+            ], const Offset(_treeCx, _treeCy)),
+          ),
+        ),
+        for (final b in layout)
+          Positioned(
+            left: b.nodes.first.pos.dx - 90,
+            width: 180,
+            top: b.nodes.first.pos.dy + 26,
+            child: Text(
+                '${b.icon} ${tr(b.name)} ${b.ids.fold(0, (n, k) => n + FactoryRun.upgradeLevel(f, k))}/${b.ids.fold(0, (n, k) => n + FactoryRun.upgrades[k]!.max)}',
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                style: TextStyle(color: b.color, fontWeight: FontWeight.w900, fontSize: 13)),
+          ),
+        for (final b in layout)
+          for (final n in b.nodes)
+            () {
+              final st = state(n.id);
+              final sel = n.id == id;
+              final r = sel ? 19.0 : 16.0;
+              return Positioned(
+                left: n.pos.dx - r,
+                top: n.pos.dy - r,
+                child: GestureDetector(
+                  key: ValueKey('upgrade-${n.id}'),
+                  onTap: () => setState(() => _picked = n.id),
+                  child: Opacity(
+                    opacity: st == 'locked' ? 0.5 : 1,
+                    child: Stack(clipBehavior: Clip.none, children: [
+                      Container(
+                        width: r * 2,
+                        height: r * 2,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: st == 'have' ? b.color : const Color(0xFF1E293B),
+                          border: Border.all(color: sel ? const Color(0xFFFDE047) : st == 'locked' ? const Color(0xFF475569) : b.color, width: sel ? 4 : 2),
+                        ),
+                        child: Text(st == 'locked' ? '🔒' : _upgradeIcons[n.id] ?? '⬆️', style: const TextStyle(fontSize: 15)),
+                      ),
+                      // O nível (comprado/máximo), num selo embaixo à direita.
+                      Positioned(
+                        left: r + 8,
+                        top: r + 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 3),
+                          decoration: BoxDecoration(color: const Color(0xFF0F172A), borderRadius: BorderRadius.circular(6), border: Border.all(color: b.color)),
+                          child: Text('${FactoryRun.upgradeLevel(f, n.id)}/${FactoryRun.upgrades[n.id]!.max}',
+                              style: const TextStyle(color: Color(0xFFE2E8F0), fontSize: 8, fontWeight: FontWeight.w800)),
+                        ),
+                      ),
+                    ]),
+                  ),
+                ),
+              );
+            }(),
+      ]),
+    );
+    return Column(key: const ValueKey('skill-tree'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      SizedBox(
+        height: 360,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: ColoredBox(
+            color: const Color(0xFF020617),
+            child: LayoutBuilder(builder: (context, box) {
+              _fit(box.maxWidth, box.maxHeight);
+              return Stack(children: [
+                InteractiveViewer(
+                  transformationController: _view,
+                  constrained: false,
+                  minScale: 0.3,
+                  maxScale: 2,
+                  boundaryMargin: const EdgeInsets.all(200),
+                  child: tree,
+                ),
+                Positioned(
+                  right: 6,
+                  top: 6,
+                  child: Row(children: [
+                    for (final (label, by) in [('−', 1 / 1.25), ('+', 1.25)])
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4),
+                        child: Material(
+                          color: const Color(0xFF1E293B),
+                          shape: const CircleBorder(),
+                          child: InkWell(
+                            key: ValueKey('tree-zoom-$label'),
+                            customBorder: const CircleBorder(),
+                            onTap: () => _zoom(by),
+                            child: SizedBox(width: 32, height: 32, child: Center(child: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900)))),
+                          ),
+                        ),
+                      ),
+                  ]),
+                ),
+              ]);
+            }),
+          ),
+        ),
+      ),
+      const SizedBox(height: 8),
+      // O que a melhoria escolhida faz, o que falta e o botão de comprar.
+      Container(
+        key: const ValueKey('upgrade-detail'),
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(color: c.card, border: Border.all(color: const Color(0x99FBBF24), width: 2), borderRadius: BorderRadius.circular(12)),
+        child: Row(children: [
+          Text(_upgradeIcons[id] ?? '⬆️', style: const TextStyle(fontSize: 24)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(tr(_upgradeNames[id] ?? id), style: TextStyle(color: c.text, fontWeight: FontWeight.w900, fontSize: 13)),
+              Text(tr(up.label).replaceAll('{0}', '$value'), style: TextStyle(color: c.text, fontSize: 12, fontWeight: FontWeight.bold)),
+              Text('${'★' * min(level, 10)}${'☆' * min(up.max - level, 10)} · ${price == null ? tr('No máximo') : '🪙 $price'}', style: TextStyle(color: c.muted, fontSize: 12)),
+              for (final n in needs) Text('✖ ${needText(n)}', style: const TextStyle(color: Color(0xFFEF4444), fontSize: 11)),
+            ]),
+          ),
+          if (price != null)
+            TextButton(
+              key: const ValueKey('upgrade-buy'),
+              onPressed: coins < price || needs.isNotEmpty
+                  ? null
+                  : () {
+                      final next = FactoryRun.buyUpgrade(f, id);
+                      if (next != null) widget.onBuy(next);
+                    },
+              child: Text(tr('Comprar')),
+            ),
+        ]),
+      ),
+    ]);
+  }
+}
+
+/// As linhas da árvore (acesas na cor do ramo quando a melhoria foi comprada) e o centro.
+class _TreeLines extends CustomPainter {
+  final List<({Offset from, Offset to, Color? color})> lines;
+  final Offset center;
+  _TreeLines(this.lines, this.center);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    for (final l in lines) {
+      canvas.drawLine(l.from, l.to, Paint()
+        ..color = l.color ?? const Color(0xFF334155)
+        ..strokeWidth = l.color != null ? 4 : 2);
+    }
+    canvas.drawCircle(center, 14, Paint()..color = const Color(0xFFF8FAFC));
+  }
+
+  @override
+  bool shouldRepaint(_TreeLines old) => true;
+}

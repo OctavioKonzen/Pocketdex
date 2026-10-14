@@ -20,13 +20,13 @@ import { usePokemonIndex } from '../lib/pokemonIndex'
 import { useStore } from '../lib/store'
 import { teamMembers } from '../lib/teamBattle'
 import { fxPlan, moveAnim, SELF_KINDS } from '../lib/moveAnim'
-import { active, damageRange, fieldConditions, monDetails, lockedMove, canGimmick, canUseItem, effectLabel, forfeit, HEAL_SHARE, ITEMS, lineOf, MAX_MOVES, maxPower, moveEffect, newBattle, playTurn, replace, startBattle, STAT_NAMES, switchMatchup, usableMoves, weaknesses, Z_MOVES, zPower } from '../lib/turnBattle'
+import { active, critChance, damageRange, fieldConditions, monDetails, lockedMove, canGimmick, canUseItem, effectLabel, forfeit, HEAL_SHARE, ITEMS, lineOf, MAX_MOVES, maxPower, moveEffect, newBattle, playTurn, replace, startBattle, STAT_NAMES, switchMatchup, usableMoves, weaknesses, Z_MOVES, zPower } from '../lib/turnBattle'
 import Sprite from '../components/Sprite'
 import BwBag from '../components/BwBag'
 import BwSummary, { summaryOf } from '../components/BwSummary'
 import { BattleBackground, battleScale, battleScene, foeBottom, PlatformBase, sceneOfBoss } from '../components/BattleScene'
 import { TrainerBack, TrainerSprite } from '../components/Trainer'
-import { randomTrainer, useMyTrainer, useTrainers } from '../lib/trainers'
+import { genericTrainer, randomTrainer, useMyTrainer, useTrainers } from '../lib/trainers'
 import { battleRecord } from '../lib/battleLog'
 import { playSound, soundOf, startMusic, stopMusic } from '../lib/battleSound'
 import {simulatorTargets} from '../lib/battleSimulator'
@@ -276,7 +276,7 @@ function Setup({ onStart, onFactory, onFactoryRun }) {
         <select aria-label="Adversário" value={friend} onChange={(e) => pickFriend(e.target.value)} className={SELECT} data-no-translate>
           <option value={RANDOM}>{t('🎲 Time aleatório')}</option>
           <option value={TOWER}>{`🗼 ${t('Torre de Batalha')}`}</option>
-          <option value={FACTORY}>{`🏭 ${t('Battle Factory')}`}</option>
+          <option value={FACTORY}>{`🎲 ${t('Pokelike')}`}</option>
           {friends.length > 0 && (
             <optgroup label={t('Amigos')}>
               {friends.map((f) => (
@@ -726,7 +726,8 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   const trainers = useTrainers()
   const [foeCoach] = useState(() => foeTrainer)
   // Pokémon selvagem (Battle Factory): sem treinador do outro lado.
-  const coach = wild ? null : (typeof foeCoach === 'string' ? trainers?.find((x) => x.id === foeCoach) : foeCoach) ?? randomOnce(trainers, myTrainer?.id, battle)
+  // "generic:<semente>": um treinador comum (de rota), nunca um líder ou um personagem importante.
+  const coach = wild ? null : (typeof foeCoach === 'string' ? (foeCoach.startsWith('generic:') ? genericTrainer(trainers, Number(foeCoach.slice(8))) : trainers?.find((x) => x.id === foeCoach)) : foeCoach) ?? randomOnce(trainers, myTrainer?.id, battle)
   // A abertura (treinadores e Poké Balls) só no começo de uma batalha nova.
   // keepMine (Battle Factory): o seu Pokémon já está em campo (veio da tela da corrida): sem o treinador e a Poké Ball do seu lado.
   const [intro, setIntro] = useState(() => (!online && battle.turn <= 1 ? { foe: 'in', me: keepMine ? 'gone' : 'in', back: 0 } : null))
@@ -1420,6 +1421,8 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
                   {(z || max) && <div className="truncate text-[10px] font-bold opacity-90">{`${m.name} · ${t('Poder')} ${z ? zPower(m.power) : maxPower(m.power, m.type)}`}</div>}
                   <div className="flex items-center justify-between gap-1 text-[11px] font-semibold">
                     <span className="opacity-90">{`PP ${m.pp}/${m.maxPp}`}</span>
+                    {/* A chance de crítico (dano 1,5×). */}
+                    {!z && !max && critChance(current, m) != null && <span className="tabular-nums opacity-90" title={t('Chance de crítico')} data-testid="crit-chance">💥{critChance(current, m)}%</span>}
                     {(() => {
                       const range = !z && !max ? damageRange(hit, current, rival, m, shown.weather) : null
                       return range && <span className="tabular-nums opacity-95" data-testid="damage-range">{range[0] === range[1] ? `${range[0]}%` : `${range[0]}–${range[1]}%`}</span>
@@ -1449,7 +1452,8 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
             </MenuButton>
           </div>
         )}
-        {!busy && battle.winner != null && (
+        {/* Battle Factory (keepMine): vencendo, a tela do andar abre sozinha (uma confirmação só: a do resultado). */}
+        {!busy && battle.winner != null && !(keepMine && battle.winner === 0) && (
           <div className="flex w-full flex-col gap-2 sm:w-72">
             {next && <Button color="linear-gradient(90deg,#F59E0B,#DC2626)" onClick={next.onClick}>
               {next.label}
@@ -1885,7 +1889,7 @@ export default function TurnBattlePage() {
         title="Batalha"
         subtitle={
           factoryMode || game?.factory || challenge?.kind === 'factory'
-            ? 'Battle Factory: sem nível máximo. Batalha por turnos como nos jogos, com o computador jogando pelo outro lado.'
+            ? 'Pokelike: sem nível máximo. Batalha por turnos como nos jogos, com o computador jogando pelo outro lado.'
             : 'Nível máximo 50. Batalha por turnos como nos jogos: seu time contra o de um amigo (ou um aleatório), com o computador jogando pelo outro lado.'
         }
       />

@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { battleMons, pickMoves } from './battleSetup'
 import { seededRandom } from './league'
-import { active, cpuMove, cpuPlan, canGimmick, canUseItem, effectLabel, lineOf, maxPower, moveEffect, newBattle, playTurn, replace, startBattle, switchMatchup, usableMoves, weaknesses, zPower } from './turnBattle'
+import { active, critChance, cpuMove, cpuPlan, canGimmick, canUseItem, effectLabel, lineOf, maxPower, moveEffect, newBattle, playTurn, replace, startBattle, switchMatchup, usableMoves, weaknesses, zPower } from './turnBattle'
 
 beforeAll(() => {
   vi.stubGlobal('fetch', async (url) => {
@@ -404,4 +404,16 @@ describe('itens da Battle Factory na batalha', () => {
       expect(keys).toEqual(expect.arrayContaining(['hurtBy', 'healedBy']))
     } finally { simulatorDispose(b) }
   }, 30000)
+})
+
+describe('chance de crítico', () => {
+  it('como no jogo: normal 4,2%; Slash 12,5%; com Scope Lens e Super Luck, 50%; Frost Breath sempre; status não tem', () => {
+    const slash = { slug: 'slash', category: 'physical', rules: { c: 1 } }
+    expect(critChance({}, { slug: 'tackle', category: 'physical' })).toBe(4.2)
+    expect(critChance({}, slash)).toBe(12.5)
+    expect(critChance({ ability: 'Super Luck', simulation: { set: { item: 'Scope Lens' } } }, slash)).toBe(100)
+    expect(critChance({ ability: 'Super Luck' }, slash)).toBe(50)
+    expect(critChance({}, { slug: 'frost-breath', category: 'special' })).toBe(100)
+    expect(critChance({}, { slug: 'growl', category: 'status' })).toBe(null)
+  })
 })

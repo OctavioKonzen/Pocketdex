@@ -135,6 +135,11 @@ final screens = <String, Widget Function()>{
         'shop': ['poke-ball', 'ultra-ball', 'max-potion', 'rare-candy', 'protein', 'choice-band', 'bottle-cap']}),
   'Battle Factory (mapa)': () => _factory(null, {'floor': 14, 'biome': 'water', 'options': [{'kind': 'wild', 'biome': 'water'}, {'kind': 'ace'}, {'kind': 'center'}]}),
   'Battle Factory (chefe)': () => _factory(null, {'floor': 20, 'biome': 'cave', 'options': [{'kind': 'boss'}]}),
+  // A tela inicial com a árvore de melhorias em leque (algumas compradas).
+  'Battle Factory (árvore)': () {
+    saveFactory({'best': 30, 'coins': 5000, 'owned': [1, 4, 7, 25, 133, 152], 'shinies': [], 'run': null, 'upgrades': {'level': 5, 'ivs': 2, 'potions': 3, 'revive': 1, 'balls': 2, 'map': 1}});
+    return Scaffold(body: ListView(padding: const EdgeInsets.all(12), children: [FactoryHub(onContinue: () {}, busy: false)]));
+  },
   'Battle Factory (cidade)': () => _factory(null, {'floor': 10, 'biome': 'city', 'town': true, 'options': [{'kind': 'boss'}, {'kind': 'dungeon', 'place': 'sewer', 'scene': 'sewer'}]}),
   'Login': () => const LoginScreen(),
   'Pokémon (Charizard)': () => const PokemonDetailScreen(initialPokemonId: 6),
@@ -164,6 +169,11 @@ Widget _factory(Map<String, dynamic>? pending, [Map<String, dynamic>? route]) {
 // (largura, altura, escala do texto)
 // Telas que abrem algo antes de conferir (ex.: a folha de filtros).
 final actions = <String, Future<void> Function(WidgetTester)>{
+  // A árvore de melhorias (mais embaixo na tela).
+  'Battle Factory (árvore)': (tester) async {
+    await tester.ensureVisible(find.byKey(const ValueKey('skill-tree')));
+    await tester.pump(const Duration(milliseconds: 300));
+  },
   // A loja aberta (a lista de compras por cima do campo).
   'Battle Factory (loja)': (tester) async {
     final buy = find.byKey(const ValueKey('factory-menu-buy'));

@@ -320,27 +320,180 @@ class FactoryRun {
     'reroll': (label: '{0}× por corrida: sortear o caminho de novo', per: 1, max: 2, base: 700, offset: 0),
     'cards': (label: 'Uma carta a mais para escolher depois de cada chefe', per: 1, max: 1, base: 2000, offset: 0),
     'shiny': (label: 'Shiny {0}× mais comum', per: 1, max: 3, base: 900, offset: 1),
+    'greatBalls': (label: 'Começa com +{0} Great Ball', per: 1, max: 3, base: 250, offset: 0),
+    'rope': (label: 'Começa com +{0} Escape Rope', per: 1, max: 2, base: 500, offset: 0),
+    'coins': (label: '+{0}% de moedas no fim da corrida', per: 10, max: 5, base: 400, offset: 0),
+    'map': (label: 'Começa com o Mapa da Cidade', per: 1, max: 1, base: 900, offset: 0),
+    'dmax': (label: 'Começa com a Dynamax Band', per: 1, max: 1, base: 2500, offset: 0),
+    'tera': (label: 'Começa com a Tera Orb', per: 1, max: 1, base: 3000, offset: 0),
+    // A árvore grande: itens na Bolsa, itens guardados, bônus no time, XP e dinheiro, fichas (upgradeFx diz o efeito).
+    'superPotions': (label: 'Começa com +{0} Super Potion', per: 1, max: 3, base: 150, offset: 0),
+    'hyperPotions': (label: 'Começa com +{0} Hyper Potion', per: 1, max: 3, base: 300, offset: 0),
+    'maxPotions': (label: 'Começa com +{0} Max Potion', per: 1, max: 2, base: 600, offset: 0),
+    'sitrus': (label: 'Começa com uma Sitrus Berry guardada', per: 1, max: 1, base: 800, offset: 0),
+    'lum': (label: 'Começa com uma Lum Berry guardada', per: 1, max: 1, base: 900, offset: 0),
+    'leftovers': (label: 'Começa com Leftovers guardado', per: 1, max: 1, base: 1200, offset: 0),
+    'sash': (label: 'Começa com uma Focus Sash guardada', per: 1, max: 1, base: 1500, offset: 0),
+    'ultraBalls': (label: 'Começa com +{0} Ultra Ball', per: 1, max: 3, base: 400, offset: 0),
+    'masterBall': (label: 'Começa com +{0} Master Ball', per: 1, max: 1, base: 6000, offset: 0),
+    'quickBalls': (label: 'Começa com +{0} Quick Ball', per: 1, max: 3, base: 300, offset: 0),
+    'netBalls': (label: 'Começa com +{0} Net Ball', per: 1, max: 3, base: 250, offset: 0),
+    'timerBalls': (label: 'Começa com +{0} Timer Ball', per: 1, max: 3, base: 250, offset: 0),
+    'duskBalls': (label: 'Começa com +{0} Dusk Ball', per: 1, max: 3, base: 250, offset: 0),
+    'expPlus': (label: 'Mais +{0}% de XP', per: 3, max: 5, base: 500, offset: 0),
+    'luckyEgg': (label: 'Começa com o Lucky Egg guardado', per: 1, max: 1, base: 1500, offset: 0),
+    'hpBoost': (label: 'Vigor: +{0}% de HP no time', per: 1, max: 10, base: 200, offset: 0),
+    'speBoost': (label: 'Agilidade: +{0}% de Velocidade no time', per: 1, max: 10, base: 250, offset: 0),
+    'tutor': (label: 'Começa com +{0} ficha de Move Tutor', per: 1, max: 3, base: 400, offset: 0),
+    'reminder': (label: 'Começa com +{0} ficha de Move Reminder', per: 1, max: 3, base: 250, offset: 0),
+    'atk': (label: 'Força: +{0}% de Ataque no time', per: 1, max: 10, base: 200, offset: 0),
+    'spa': (label: 'Foco: +{0}% de Ataque Especial no time', per: 1, max: 10, base: 200, offset: 0),
+    'def': (label: 'Couraça: +{0}% de Defesa no time', per: 1, max: 10, base: 200, offset: 0),
+    'spd': (label: 'Escudo: +{0}% de Defesa Especial no time', per: 1, max: 10, base: 200, offset: 0),
+    'allStats': (label: 'Mestre: +{0}% em todos os atributos do time', per: 1, max: 5, base: 1500, offset: 0),
+    'band': (label: 'Começa com uma Choice Band guardada', per: 1, max: 1, base: 1200, offset: 0),
+    'scarf': (label: 'Começa com uma Choice Scarf guardada', per: 1, max: 1, base: 1500, offset: 0),
+    'specs': (label: 'Começa com Choice Specs guardado', per: 1, max: 1, base: 1200, offset: 0),
+    'lifeOrb': (label: 'Começa com uma Life Orb guardada', per: 1, max: 1, base: 1500, offset: 0),
+    'vest': (label: 'Começa com um Assault Vest guardado', per: 1, max: 1, base: 1300, offset: 0),
+    'helmet': (label: 'Começa com um Rocky Helmet guardado', per: 1, max: 1, base: 1000, offset: 0),
+    'quickClaw': (label: 'Começa com uma Quick Claw guardada', per: 1, max: 1, base: 900, offset: 0),
+    'balloon': (label: 'Começa com um Air Balloon guardado', per: 1, max: 1, base: 900, offset: 0),
+    'brightPowder': (label: 'Começa com um Bright Powder guardado', per: 1, max: 1, base: 1000, offset: 0),
+    'boots': (label: 'Começa com Heavy-Duty Boots guardadas', per: 1, max: 1, base: 900, offset: 0),
+    'kingsRock': (label: 'Começa com uma King\'s Rock guardada', per: 1, max: 1, base: 1000, offset: 0),
+    'loot': (label: 'Treinadores pagam +{0}% de dinheiro', per: 5, max: 5, base: 300, offset: 0),
+    'expertBelt': (label: 'Começa com uma Expert Belt guardada', per: 1, max: 1, base: 1200, offset: 0),
+    'bonusCoins': (label: 'Mais +{0}% de moedas no fim da corrida', per: 10, max: 5, base: 900, offset: 0),
+    'policy': (label: 'Começa com uma Weakness Policy guardada', per: 1, max: 1, base: 1500, offset: 0),
+    'muscleBand': (label: 'Começa com uma Muscle Band guardada', per: 1, max: 1, base: 1000, offset: 0),
+    'wiseGlasses': (label: 'Começa com Wise Glasses guardado', per: 1, max: 1, base: 1000, offset: 0),
+    'shellBell': (label: 'Começa com um Shell Bell guardado', per: 1, max: 1, base: 1100, offset: 0),
+    'scopeLens': (label: 'Começa com uma Scope Lens guardada', per: 1, max: 1, base: 1600, offset: 0),
+    'eviolite': (label: 'Começa com um Eviolite guardado', per: 1, max: 1, base: 1600, offset: 0),
+  };
+
+  /// O efeito das melhorias da árvore grande, aplicado no começo da corrida: ('bag', item), ('stash', item), ('token',
+  /// ficha), ('boost', atributo), ('boostAll', _), ('mult', 'exp' | 'money') e ('coins', _). Igual ao site.
+  static const upgradeFx = <String, (String, String)>{
+    'superPotions': ('bag', 'super-potion'),
+    'hyperPotions': ('bag', 'hyper-potion'),
+    'maxPotions': ('bag', 'max-potion'),
+    'sitrus': ('stash', 'sitrus-berry'),
+    'lum': ('stash', 'lum-berry'),
+    'leftovers': ('stash', 'leftovers'),
+    'sash': ('stash', 'focus-sash'),
+    'ultraBalls': ('bag', 'ultra-ball'),
+    'masterBall': ('bag', 'master-ball'),
+    'quickBalls': ('bag', 'quick-ball'),
+    'netBalls': ('bag', 'net-ball'),
+    'timerBalls': ('bag', 'timer-ball'),
+    'duskBalls': ('bag', 'dusk-ball'),
+    'expPlus': ('mult', 'exp'),
+    'luckyEgg': ('stash', 'lucky-egg'),
+    'hpBoost': ('boost', 'hp'),
+    'speBoost': ('boost', 'spe'),
+    'tutor': ('token', 'move-tutor'),
+    'reminder': ('token', 'move-reminder'),
+    'atk': ('boost', 'atk'),
+    'spa': ('boost', 'spa'),
+    'def': ('boost', 'def'),
+    'spd': ('boost', 'spd'),
+    'allStats': ('boostAll', 'all'),
+    'band': ('stash', 'choice-band'),
+    'scarf': ('stash', 'choice-scarf'),
+    'specs': ('stash', 'choice-specs'),
+    'lifeOrb': ('stash', 'life-orb'),
+    'vest': ('stash', 'assault-vest'),
+    'helmet': ('stash', 'rocky-helmet'),
+    'quickClaw': ('stash', 'quick-claw'),
+    'balloon': ('stash', 'air-balloon'),
+    'brightPowder': ('stash', 'bright-powder'),
+    'boots': ('stash', 'heavy-duty-boots'),
+    'kingsRock': ('stash', 'kings-rock'),
+    'loot': ('mult', 'money'),
+    'expertBelt': ('stash', 'expert-belt'),
+    'bonusCoins': ('coins', 'all'),
+    'policy': ('stash', 'weakness-policy'),
+    'muscleBand': ('stash', 'muscle-band'),
+    'wiseGlasses': ('stash', 'wise-glasses'),
+    'shellBell': ('stash', 'shell-bell'),
+    'scopeLens': ('stash', 'scope-lens'),
+    'eviolite': ('stash', 'eviolite'),
   };
 
   /// A árvore de melhorias: cada ramo começa numa raiz e o resto pede a anterior num nível (needs), um andar recorde
   /// (best) e quantos Pokémon você já tem para começar (owned). Cada nível a mais pede 3 andares a mais de recorde. Igual ao site.
   static const upgradeTree = <String, ({(String, int)? needs, int best, int owned})>{
     'ivs': (needs: ('level', 2), best: 8, owned: 0),
+    'revive': (needs: ('potions', 2), best: 6, owned: 0),
+    'shop': (needs: ('money', 2), best: 6, owned: 0),
     'exp': (needs: ('ivs', 2), best: 12, owned: 0),
     'expShare': (needs: ('exp', 3), best: 20, owned: 3),
-    'revive': (needs: ('potions', 2), best: 6, owned: 0),
-    'shiny': (needs: ('balls', 3), best: 15, owned: 5),
-    'shop': (needs: ('money', 2), best: 6, owned: 0),
-    'reroll': (needs: ('shop', 2), best: 15, owned: 0),
+    'reroll': (needs: ('map', 1), best: 15, owned: 0),
     'cards': (needs: ('reroll', 1), best: 25, owned: 8),
+    'shiny': (needs: ('greatBalls', 2), best: 15, owned: 5),
+    'greatBalls': (needs: ('balls', 2), best: 10, owned: 0),
+    'rope': (needs: ('revive', 1), best: 12, owned: 0),
+    'coins': (needs: ('shop', 2), best: 12, owned: 0),
+    'map': (needs: null, best: 10, owned: 0),
+    'dmax': (needs: null, best: 20, owned: 4),
+    'tera': (needs: ('dmax', 1), best: 30, owned: 6),
+    'superPotions': (needs: ('potions', 2), best: 6, owned: 0),
+    'hyperPotions': (needs: ('superPotions', 2), best: 14, owned: 0),
+    'maxPotions': (needs: ('hyperPotions', 2), best: 24, owned: 0),
+    'sitrus': (needs: ('superPotions', 1), best: 10, owned: 0),
+    'lum': (needs: ('sitrus', 1), best: 16, owned: 0),
+    'leftovers': (needs: ('revive', 2), best: 15, owned: 0),
+    'sash': (needs: ('rope', 1), best: 22, owned: 0),
+    'ultraBalls': (needs: ('greatBalls', 2), best: 18, owned: 0),
+    'masterBall': (needs: ('ultraBalls', 3), best: 40, owned: 10),
+    'quickBalls': (needs: ('balls', 3), best: 12, owned: 0),
+    'netBalls': (needs: ('quickBalls', 1), best: 14, owned: 0),
+    'timerBalls': (needs: ('netBalls', 1), best: 18, owned: 0),
+    'duskBalls': (needs: ('quickBalls', 1), best: 14, owned: 0),
+    'expPlus': (needs: ('exp', 5), best: 25, owned: 0),
+    'luckyEgg': (needs: ('expShare', 1), best: 30, owned: 0),
+    'hpBoost': (needs: ('ivs', 2), best: 10, owned: 0),
+    'speBoost': (needs: ('hpBoost', 3), best: 15, owned: 0),
+    'tutor': (needs: ('level', 2), best: 10, owned: 0),
+    'reminder': (needs: ('tutor', 1), best: 12, owned: 0),
+    'atk': (needs: null, best: 5, owned: 0),
+    'spa': (needs: ('atk', 2), best: 8, owned: 0),
+    'def': (needs: ('atk', 2), best: 8, owned: 0),
+    'spd': (needs: ('def', 2), best: 12, owned: 0),
+    'allStats': (needs: ('spd', 5), best: 30, owned: 6),
+    'band': (needs: ('atk', 5), best: 20, owned: 0),
+    'scarf': (needs: ('band', 1), best: 30, owned: 0),
+    'specs': (needs: ('spa', 5), best: 20, owned: 0),
+    'lifeOrb': (needs: ('spa', 3), best: 25, owned: 0),
+    'vest': (needs: ('spd', 3), best: 25, owned: 0),
+    'helmet': (needs: ('def', 3), best: 18, owned: 0),
+    'quickClaw': (needs: ('map', 1), best: 12, owned: 0),
+    'balloon': (needs: ('quickClaw', 1), best: 18, owned: 0),
+    'brightPowder': (needs: ('balloon', 1), best: 24, owned: 0),
+    'boots': (needs: ('map', 1), best: 14, owned: 0),
+    'kingsRock': (needs: ('boots', 1), best: 20, owned: 0),
+    'loot': (needs: ('money', 2), best: 8, owned: 0),
+    'expertBelt': (needs: ('loot', 3), best: 20, owned: 0),
+    'bonusCoins': (needs: ('coins', 5), best: 35, owned: 0),
+    'policy': (needs: ('dmax', 1), best: 25, owned: 0),
+    'muscleBand': (needs: ('dmax', 1), best: 22, owned: 0),
+    'wiseGlasses': (needs: ('muscleBand', 1), best: 24, owned: 0),
+    'shellBell': (needs: ('wiseGlasses', 1), best: 28, owned: 0),
+    'scopeLens': (needs: ('tera', 1), best: 32, owned: 0),
+    'eviolite': (needs: ('tera', 1), best: 34, owned: 0),
   };
 
   /// Os ramos da árvore, na ordem (da raiz para a ponta).
   static const upgradeBranches = [
-    ('🎓', 'Treino', ['level', 'ivs', 'exp', 'expShare']),
-    ('🧪', 'Sobrevivência', ['potions', 'revive']),
-    ('🎯', 'Captura', ['balls', 'shiny']),
-    ('💰', 'Comércio', ['money', 'shop', 'reroll', 'cards']),
+    ('🧪', 'Sobrevivência', ['potions', 'revive', 'rope', 'sash', 'leftovers', 'superPotions', 'hyperPotions', 'maxPotions', 'sitrus', 'lum']),
+    ('🎯', 'Captura', ['balls', 'greatBalls', 'shiny', 'ultraBalls', 'masterBall', 'quickBalls', 'netBalls', 'timerBalls', 'duskBalls']),
+    ('🎓', 'Treino', ['level', 'ivs', 'exp', 'expShare', 'luckyEgg', 'expPlus', 'hpBoost', 'speBoost', 'tutor', 'reminder']),
+    ('⚔️', 'Combate', ['atk', 'spa', 'specs', 'lifeOrb', 'def', 'spd', 'allStats', 'vest', 'helmet', 'band', 'scarf']),
+    ('🧭', 'Exploração', ['map', 'reroll', 'cards', 'quickClaw', 'balloon', 'brightPowder', 'boots', 'kingsRock']),
+    ('💰', 'Comércio', ['money', 'shop', 'coins', 'bonusCoins', 'loot', 'expertBelt']),
+    ('⚡', 'Poder', ['dmax', 'tera', 'scopeLens', 'eviolite', 'policy', 'muscleBand', 'wiseGlasses', 'shellBell']),
   ];
   static const upgradeLevelBest = 3;
 
@@ -722,6 +875,9 @@ class FactoryRun {
   /// Numa rota de mar, os primeiros andares são a praia (a água começa por ela); depois, o mar.
   static const shore = 5;
 
+  /// Os lugares sem treinadores: só selvagens, e o chefe é um selvagem forte de lá (dá para capturar).
+  static const wildOnly = ['water', 'underwater', 'seacave', 'icecave', 'lavacave', 'poisoncave', 'crystal'];
+
   /// A caverna combina com o lugar em volta: no gelo, de gelo; no pântano, venenosa; no vulcão, de lava; no mar, aquática.
   static const caveOf = {
     'snow': 'icecave', 'icecave': 'icecave', 'swamp': 'poisoncave', 'volcano': 'lavacave', 'beach': 'seacave', 'water': 'seacave', 'underwater': 'seacave',
@@ -910,8 +1066,13 @@ class FactoryRun {
         ],
       };
     }
+    // Lugares sem treinadores (mar, fundo do mar, cavernas de gelo, lava, veneno, cristal): só selvagens, e o chefe é um
+    // selvagem forte (dá para capturar).
+    final onlyWild = inside && wildOnly.contains(biome);
     // Num lugar (esgoto, base vilã...): no último andar, o chefe (na base, o vilão).
-    if (inside && pos >= dungeonLength - 1) return only({'kind': run['dungeon']['place'] == 'base' ? 'boss' : 'dboss'});
+    if (inside && pos >= dungeonLength - 1) {
+      return only(onlyWild ? {'kind': 'wildboss', 'area': true} : {'kind': run['dungeon']['place'] == 'base' ? 'boss' : 'dboss'});
+    }
     // O último andar da cidade: o líder (com a equipe vilã na cidade, primeiro a base dela).
     if (city && pos >= cityBoss) {
       return only(boss['kind'] == 'villain' ? {'kind': 'dungeon', 'place': 'base', 'scene': 'base-${villainTeam(boss['name'])}'} : {'kind': 'boss'});
@@ -949,7 +1110,8 @@ class FactoryRun {
       }
       final r = rand();
       // Intimidate em quem vai na frente: às vezes os selvagens fogem (vem um treinador no lugar).
-      if (r < 0.55 && !base && intimidate.contains(_leadOf(run)?['id']) && rand() < intimidateChance) return only({'kind': 'trainer'});
+      if (r < 0.55 && !base && !onlyWild && intimidate.contains(_leadOf(run)?['id']) && rand() < intimidateChance) return only({'kind': 'trainer'});
+      if (onlyWild) return only(r < 0.9 ? wild() : {'kind': 'event'});
       return only(r < 0.55 ? wild() : r < 0.9 || floor <= 2 ? {'kind': 'trainer'} : {'kind': 'event'});
     }
     final options = <Json>[rand() < 0.55 ? wild() : {'kind': 'trainer'}];
@@ -1269,6 +1431,19 @@ class FactoryRun {
     // Evoluídos só a partir do nível em que evoluem (abaixo dele, a forma anterior).
     Json foe(int id, int lvl, [Json extra = const {}]) =>
         {'id': devolve(data, id, math.max(2, lvl)), 'level': math.max(2, lvl), 'iv': iv, 'ev': ev, if (boost != 0) 'boost': boost, ...extra};
+    // O chefe de um lugar sem treinadores (mar, cavernas de gelo, lava...): o Pokémon forte de lá, raro e acima do nível
+    // (dá para capturar).
+    if (wild && node?['area'] == true) {
+      final f = Map<String, dynamic>.from(
+          (encounterFor(data, floor + 3, rand, null, false, {'kind': 'wild', 'biome': node!['biome'], 'rare': true, 'shiny': node['shiny']})['foes'] as List).first as Map);
+      return {
+        'kind': 'wildboss',
+        'area': true,
+        'foes': [
+          {...f, 'iv': math.max(31, _int(f['iv'])), 'ev': (_int(f['ev']) * 1.25).round()}
+        ],
+      };
+    }
     if (wild) {
       // Chefe sem treinador: dá para capturar; a Mega deixa a Mega Pedra.
       final r = rand();
@@ -1393,14 +1568,19 @@ class FactoryRun {
     int up(String k) => upgradeValue(factory, k);
     final run = <String, dynamic>{
       'seed': seed & 0xFFFFFFFF, 'floor': 1, 'money': up('money'), 'defeated': 0, 'bosses': 0,
-      'bag': {...startBag, 'poke-ball': startBag['poke-ball']! + up('balls'), 'potion': startBag['potion']! + up('potions'), 'revive': startBag['revive']! + up('revive')},
+      'bag': {
+        ...startBag, 'poke-ball': startBag['poke-ball']! + up('balls'), 'potion': startBag['potion']! + up('potions'), 'revive': startBag['revive']! + up('revive'),
+        if (up('greatBalls') > 0) 'great-ball': up('greatBalls'),
+        if (up('rope') > 0) 'escape-rope': up('rope'),
+      },
       'team': <Json>[], 'teamBoost': _zero(), 'mult': {'money': 1, 'exp': _round3(1 + up('exp') / 100), 'shop': _round3(1 - up('shop') / 100)},
       'cards': <String>[], 'boss': {'region': 0, 'step': 0}, 'played': <String>[],
       if (up('cards') > 0) 'cardCount': 3 + up('cards'),
       if (up('reroll') > 0) 'rerolls': up('reroll'),
       if (up('shiny') > 0) 'shinyRate': 1 + up('shiny'),
-      'tms': <String, dynamic>{}, 'tokens': {'move-tutor': 0, 'move-reminder': 0}, 'stash': <String>[], 'dmax': false, 'tera': false, 'expShare': up('expShare') > 0,
+      'tms': <String, dynamic>{}, 'tokens': {'move-tutor': 0, 'move-reminder': 0}, 'stash': <String>[], 'dmax': up('dmax') > 0, 'tera': up('tera') > 0, 'expShare': up('expShare') > 0,
       'leg': 1, 'route': null, 'encounter': null, 'pending': null,
+      if (up('map') > 0) 'townMap': true,
       // O inicial (o rival escolhe o que tem vantagem sobre ele).
       'starter': id,
       // Nuzlocke: quem desmaia vai embora e só um capturado por rota.
@@ -1409,6 +1589,26 @@ class FactoryRun {
       if (weekly != null) ...{'weekly': weekly, 'rule': rule ?? 'normal'},
     };
     // Regra da semana "sem itens": começa com a Bolsa vazia.
+    // A árvore grande: itens, bônus, XP, dinheiro e fichas (na ordem das melhorias). Igual ao site.
+    for (final e in upgradeFx.entries) {
+      final v = up(e.key);
+      if (v == 0) continue;
+      final (kind, arg) = e.value;
+      switch (kind) {
+        case 'bag':
+          run['bag'] = {...Map<String, dynamic>.from(run['bag'] as Map), arg: (((run['bag'] as Map)[arg] as num?) ?? 0).toInt() + v};
+        case 'stash':
+          run['stash'] = [...run['stash'] as List, arg];
+        case 'token':
+          run['tokens'] = {...Map<String, dynamic>.from(run['tokens'] as Map), arg: (((run['tokens'] as Map)[arg] as num?) ?? 0).toInt() + v};
+        case 'boost':
+          run['teamBoost'] = {...Map<String, dynamic>.from(run['teamBoost'] as Map), arg: _round3(((run['teamBoost'] as Map)[arg] as num) + v / 100)};
+        case 'boostAll':
+          run['teamBoost'] = {for (final st in stats) st: _round3(((run['teamBoost'] as Map)[st] as num) + v / 100)};
+        case 'mult':
+          run['mult'] = {...Map<String, dynamic>.from(run['mult'] as Map), arg: _round3(((run['mult'] as Map)[arg] as num) + v / 100)};
+      }
+    }
     if (rule == 'noItems') run['bag'] = {for (final k in (run['bag'] as Map).keys) k: 0};
     final rand = _dice(run);
     // O inicial vem com IVs bons (15 a 31; com a Genética, mais).
@@ -1534,7 +1734,7 @@ class FactoryRun {
     // Venceu a revanche: o Campeão some (até o próximo).
     if (kind == 'rival') out['rivalRaces'] = ((run['rivalRaces'] as num?) ?? 0).toInt() + 1;
     // Venceu o chefe do lugar (ou o vilão na base): volta para a cidade.
-    if (run['dungeon'] != null && (kind == 'dboss' || kind == 'boss')) {
+    if (run['dungeon'] != null && (kind == 'dboss' || kind == 'boss' || run['encounter']['area'] == true)) {
       out['dungeons'] = ((run['dungeons'] as num?) ?? 0).toInt() + 1;
       final place = run['dungeon']['place'];
       if (place != 'base') out['places'] = [...(run['places'] as List? ?? const []), place];
@@ -2386,7 +2586,8 @@ class FactoryRun {
   }
 
   static Json endRun(Json factory, Json run) {
-    final coins = runCoins(run);
+    // A melhoria de moedas soma uma porcentagem ao que a corrida rendeu.
+    final coins = (runCoins(run) * (1 + (upgradeValue(factory, 'coins') + upgradeValue(factory, 'bonusCoins')) / 100)).round();
     return {
       ...factory,
       'coins': _int(factory['coins']) + coins,

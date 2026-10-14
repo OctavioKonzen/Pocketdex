@@ -72,6 +72,40 @@ class Trainers {
     return i < list.length ? list[i] : null;
   }
 
+  /// As classes de treinador comuns (Youngster, Hiker, Swimmer...): os treinadores de rota usam só estas (nunca um
+  /// líder de ginásio ou um personagem importante). Igual ao site.
+  static const _genericClasses = {
+    'acetrainer', 'acetrainercouple', 'acetrainerf', 'acetrainersnow', 'acetrainersnowf', 'aromalady', 'artist', 'backpacker', 'backpackerf', 'baker',
+    'ballguy', 'battlegirl', 'beauty', 'bellhop', 'biker', 'birdkeeper', 'blackbelt', 'boarder', 'bugcatcher', 'burglar',
+    'butler', 'cabbie', 'cafemaster', 'cameraman', 'camper', 'chef', 'clerk', 'clerkf', 'clown', 'collector',
+    'cook', 'courier', 'cowgirl', 'cyclist', 'cyclistf', 'dancer', 'delinquent', 'depotagent', 'doctor', 'doubleteam',
+    'dragontamer', 'fairytalegirl', 'firebreather', 'firefighter', 'fisherman', 'freediver', 'furisodegirl-black', 'furisodegirl-blue', 'furisodegirl-pink', 'furisodegirl-white',
+    'gambler', 'garcon', 'gardener', 'gentleman', 'golfer', 'guitarist', 'harlequin', 'hiker', 'hooligans', 'hoopster',
+    'idol', 'infielder', 'janitor', 'jogger', 'juggler', 'kimonogirl', 'lady', 'lass', 'linebacker', 'madame',
+    'maid', 'medium', 'musician', 'ninjaboy', 'nurseryaide', 'officeworker', 'officeworkerf', 'owner', 'parasollady', 'picnicker',
+    'pilot', 'pokefan', 'pokefanf', 'pokekid', 'pokemaniac', 'pokemonbreeder', 'pokemonbreederf', 'pokemonranger', 'pokemonrangerf', 'policeman',
+    'postman', 'preschooler', 'preschoolerf', 'preschoolers', 'psychic', 'psychicf', 'punkgirl', 'punkguy', 'railstaff', 'rancher',
+    'reporter', 'richboy', 'risingstar', 'risingstarf', 'rollerskater', 'rollerskaterf', 'roughneck', 'ruffian', 'ruinmaniac', 'sailor',
+    'schoolboy', 'schoolgirl', 'schoolkid', 'schoolkidf', 'scientist', 'scientistf', 'scubadiver', 'sightseer', 'sightseerf', 'sisandbro',
+    'skier', 'skierf', 'skytrainer', 'skytrainerf', 'smasher', 'streetthug', 'striker', 'supernerd', 'surfer', 'swimmer',
+    'swimmerf', 'teacher', 'tourist', 'touristf', 'touristf2', 'tuber', 'tuberf', 'twins', 'veteran', 'veteranf',
+    'waiter', 'waitress', 'worker', 'workerice', 'youngathlete', 'youngathletef', 'youngcouple', 'youngn', 'youngster',
+  };
+  static const _namedTitles = {'Líder de Ginásio', 'Elite Four', 'Treinador', 'Treinadora', 'Rival', 'Cérebro da Frente', 'Campeão', 'Campeã', 'Equipe Rocket', 'Recruta', 'Equipe Plasma', 'Team Rocket', 'Chefe da Equipe Rocket', 'Chefe do Metrô', 'Professor'};
+
+  /// É um treinador comum (de classe), não um personagem com nome?
+  static bool isGeneric(Trainer t) =>
+      t.back == null &&
+      (t.title == 'Pokémon Showdown'
+          ? t.id.startsWith('sd-') && _genericClasses.contains(t.id.substring(3).replaceFirst(RegExp(r'-(gen\d+\w*|\w*\d+)$'), ''))
+          : !_namedTitles.contains(t.title));
+
+  /// Um treinador comum, sempre o mesmo para a mesma semente (o andar).
+  static Trainer? generic(int seed) {
+    final options = list.where(isGeneric).toList();
+    return options.isEmpty ? null : options[seed.abs() % options.length];
+  }
+
   /// Um treinador para o computador (não repete o seu, e não é um dos jogáveis).
   static Trainer? random([Random? rng]) {
     final options = list.where((t) => t.back == null && t.id != UserData.instance.trainer).toList();

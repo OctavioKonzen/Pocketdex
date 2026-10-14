@@ -105,8 +105,8 @@ export function factoryFoe(run) {
   return {
     // Dupla de treinadores: os dois juntos.
     foeName: boss?.name ?? (pair ? t('Dupla de treinadores') : ''),
-    // Na base de uma equipe vilã, o capanga dela.
-    foeTrainer: boss?.trainer || (grunt ? GRUNT_TRAINERS[grunt]?.[(trainerSeed ?? 0) % 2] : null) || null,
+    // Na base de uma equipe vilã, o capanga dela; os outros treinadores, uma classe comum (Youngster, Hiker...), nunca um líder.
+    foeTrainer: boss?.trainer || (grunt ? GRUNT_TRAINERS[grunt]?.[(trainerSeed ?? 0) % 2] : null) || (kind === 'wild' || kind === 'wildboss' ? null : `generic:${trainerSeed ?? 0}`),
     challenge: { kind: 'factory', wild: kind === 'wild' || kind === 'wildboss', ...(boss ? { boss } : {}) },
   }
 }
