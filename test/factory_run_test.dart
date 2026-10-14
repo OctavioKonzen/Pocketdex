@@ -105,24 +105,43 @@ void main() {
     // A árvore grande: bônus no time (atributo + Mestre), itens guardados, Bolsa e fichas. Igual ao site.
     expect(run['teamBoost'], {'hp': 0.15, 'atk': 0.15, 'def': 0.15, 'spa': 0.15, 'spd': 0.15, 'spe': 0.15});
     expect(run['stash'], containsAll(['leftovers', 'lucky-egg']));
-    expect((run['stash'] as List).length, FactoryRun.upgradeFx.values.where((v) => v.$1 == 'stash').length);
+    expect((run['stash'] as List).length, FactoryRun.upgradeFx.entries.where((e) => e.value.$1 == 'stash' && !e.key.contains('~')).length);
     expect([run['bag']['ultra-ball'], run['bag']['master-ball'], run['bag']['max-potion']], [3, 1, 2]);
     expect(run['tokens'], {'move-tutor': 3, 'move-reminder': 3});
     // Os ramos novos: Great Balls, Escape Rope, Mapa, Dynamax Band, Tera Orb e moedas a mais no fim.
     expect([run['bag']['great-ball'], run['bag']['escape-rope'], run['townMap'], run['dmax'], run['tera']], [3, 2, true, true, true]);
     expect(((FactoryRun.endRun(f, {...run, 'floor': 11, 'defeated': 0, 'bosses': 0})['last']) as Map)['coins'], 100);
     expect(FactoryRun.upgradeNeeds({...FactoryRun.empty(), 'best': 999}, 'tera'), contains(equals({'kind': 'up', 'id': 'dmax', 'level': 1})));
-    // Os nós pequenos: 8 de cada melhoria, em trilha (cada um pede o anterior); comprando tudo, os bônus somam (igual ao site).
-    expect(FactoryRun.upgrades.keys.where((k) => k.contains('~')).length, 62 * 8);
+    // A trilha: 8 nós de cada melhoria (cada um pede o anterior; a cada 4, um nó-chave com o dobro); comprando tudo, os bônus somam (igual ao site).
+    expect(FactoryRun.upgrades.keys.where((k) => k.contains('~')).length, 63 * 8);
+    expect([FactoryRun.upgrades['atk~1']!.per, FactoryRun.upgrades['atk~4']!.per], [2, 2]);
+    expect([FactoryRun.upgrades['level~1']!.per, FactoryRun.upgrades['level~4']!.per, FactoryRun.upgrades['level~4']!.max], [1, 4, 1]);
     expect(FactoryRun.upgradeNeeds({...f, 'upgrades': {...f['upgrades'] as Map, 'atk~2': 0}}, 'atk~3'), contains(equals({'kind': 'up', 'id': 'atk~2', 'level': 1})));
     expect(FactoryRun.upgradeTree['atk~1']!.needs, ('atk', 1));
     expect(FactoryRun.upgradeTree['atk~1']!.best, 7);
     final all = _buyAll({...f, 'coins': 9999999}, FactoryRun.upgrades.keys);
     final big = FactoryRun.startRun(all, data, 1, 42)!;
-    expect(big['teamBoost'], {'hp': 0.83, 'atk': 0.76, 'def': 0.74, 'spa': 0.75, 'spd': 0.73, 'spe': 1.01});
-    expect(big['mult'], {'money': 2.15, 'exp': 1.94, 'shop': 0.8});
-    expect([big['bag']['poke-ball'], big['bag']['great-ball'], big['bag']['potion'], big['bag']['escape-rope']], [22, 16, 29, 23]);
-    expect(((FactoryRun.endRun(all, {...big, 'floor': 11, 'defeated': 0, 'bosses': 0})['last']) as Map)['coins'], 124);
+    expect(big['teamBoost'], {'hp': 0.82, 'atk': 1.28, 'def': 1.2, 'spa': 1.32, 'spd': 1.18, 'spe': 1.6});
+    expect(big['mult'], {'money': 2.7, 'exp': 2.25, 'shop': 0.52});
+    final bag = big['bag'] as Map;
+    expect([bag['poke-ball'], bag['great-ball'], bag['ultra-ball'], bag['potion'], bag['revive'], bag['escape-rope']], [52, 35, 19, 35, 18, 19]);
+    // Os efeitos que mudam a corrida: dinheiro no começo, cura depois de cada vitória, nível e IVs do inicial.
+    final starter = (big['team'] as List).first as Map;
+    expect([big['money'], big['winHeal'], starter['level'], (starter['ivs'] as Map).values.cast<num>().reduce(min), big['rerolls'], (big['stash'] as List).length],
+        [2900, 50, 25, 31, 18, 50]);
+    expect(big['tokens'], {'move-tutor': 20, 'move-reminder': 18});
+    expect(((FactoryRun.endRun(all, {...big, 'floor': 11, 'defeated': 0, 'bosses': 0})['last']) as Map)['coins'], 140);
+    // A cura depois da vitória: só em quem está de pé, até o HP cheio.
+    final healRun = {
+      ...big,
+      'team': [{...starter, 'hp': 0.3}, {...starter, 'hp': 0.0}, {...starter, 'hp': 0.8}],
+      'encounter': {'kind': 'wild', 'foes': [{'id': 16, 'level': 3, 'iv': 0, 'ev': 0}]},
+    };
+    expect([for (final m in FactoryRun.winFloor(healRun, data, hp: [0.3, 0, 0.8], fought: [[0]])['team'] as List) (m as Map)['hp']], [0.8, 0, 1]);
+    // Um nó que saiu da árvore: as moedas voltam.
+    final stale = FactoryRun.normalizeOwned({...all, 'coins': 0, 'upgrades': {...all['upgrades'] as Map, 'atk~9': 1}}, data);
+    expect((stale['upgrades'] as Map).containsKey('atk~9'), isFalse);
+    expect(stale['coins'], ((200 * 0.25 + 60 * 9) / 10).round() * 10);
     // O mesmo preço do site.
     expect(FactoryRun.upgradePrice(FactoryRun.empty(), 'level'), 150);
     expect(FactoryRun.upgradePrice({...FactoryRun.empty(), 'upgrades': {'level': 1}}, 'level'), 455);

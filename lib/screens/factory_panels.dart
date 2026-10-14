@@ -1133,7 +1133,7 @@ const _upgradeNames = {
   'band': 'Choice Band', 'scarf': 'Choice Scarf', 'specs': 'Choice Specs', 'lifeOrb': 'Life Orb', 'vest': 'Assault Vest', 'helmet': 'Rocky Helmet',
   'quickClaw': 'Quick Claw', 'balloon': 'Air Balloon', 'brightPowder': 'Bright Powder', 'boots': 'Heavy-Duty Boots', 'kingsRock': 'King\'s Rock', 'loot': 'Recompensas',
   'expertBelt': 'Expert Belt', 'bonusCoins': 'Tesouro', 'policy': 'Weakness Policy', 'muscleBand': 'Muscle Band', 'wiseGlasses': 'Wise Glasses', 'shellBell': 'Shell Bell',
-  'scopeLens': 'Scope Lens', 'eviolite': 'Eviolite',
+  'scopeLens': 'Scope Lens', 'eviolite': 'Eviolite', 'victoryHeal': 'Recuperação',
 };
 
 /// Cada ponto do mapa: símbolo, nome e o que tem nele.
@@ -2852,7 +2852,7 @@ const _upgradeIcons = {
   'luckyEgg': '🥚', 'hpBoost': '❤️', 'speBoost': '💨', 'tutor': '📜', 'reminder': '🧠', 'atk': '⚔️', 'spa': '🔮', 'def': '🛡️',
   'spd': '🔰', 'allStats': '👑', 'band': '🎀', 'scarf': '🧣', 'specs': '👓', 'lifeOrb': '🟠', 'vest': '🦺', 'helmet': '⛑️',
   'quickClaw': '🦅', 'balloon': '🎈', 'brightPowder': '💫', 'boots': '👢', 'kingsRock': '🪨', 'loot': '💵', 'expertBelt': '🥋', 'bonusCoins': '🏆',
-  'policy': '📋', 'muscleBand': '💪', 'wiseGlasses': '🤓', 'shellBell': '🐚', 'scopeLens': '🔭', 'eviolite': '💠',
+  'policy': '📋', 'muscleBand': '💪', 'wiseGlasses': '🤓', 'shellBell': '🐚', 'scopeLens': '🔭', 'eviolite': '💠', 'victoryHeal': '💚',
 };
 
 /// A cor de cada ramo (as linhas e os círculos comprados), na ordem de upgradeBranches. Igual ao site.
@@ -3044,7 +3044,9 @@ class _SkillTreeState extends State<_SkillTree> {
               final st = state(n.id);
               final sel = n.id == id;
               final minor = FactoryRun.isMinor(n.id);
-              final base = minor ? 11.0 : 24.0;
+              // O nó-chave (o último da trilha): maior e com o contorno dourado.
+              final keystone = FactoryRun.isKeystone(n.id);
+              final base = keystone ? 17.0 : minor ? 11.0 : 24.0;
               final r = sel ? base + 4 : base;
               return Positioned(
                 left: n.pos.dx - r - 7,
@@ -3071,14 +3073,16 @@ class _SkillTreeState extends State<_SkillTree> {
                           border: Border.all(
                               color: sel
                                   ? const Color(0xFFFDE047)
-                                  : st == 'locked'
+                                  : keystone
+                                      ? const Color(0xFFF59E0B)
+                                      : st == 'locked'
                                       ? const Color(0xFF334155)
                                       : st == 'open'
                                           ? const Color(0xFFF8FAFC)
                                           : b.color,
-                              width: sel ? 5 : minor ? 2 : 3),
+                              width: sel ? 5 : keystone ? 4 : minor ? 2 : 3),
                         ),
-                        child: Text(st == 'locked' && !minor ? '🔒' : _upgradeIcons[_upgradeKey(n.id)] ?? '⬆️', style: TextStyle(fontSize: minor ? 10 : 19)),
+                        child: Text(st == 'locked' && !minor ? '🔒' : _upgradeIcons[_upgradeKey(n.id)] ?? '⬆️', style: TextStyle(fontSize: keystone ? 14 : minor ? 10 : 19)),
                       ),
                       // O nível (comprado/máximo), num selo embaixo (só nas melhorias grandes).
                       if (!minor)
@@ -3169,7 +3173,7 @@ class _SkillTreeState extends State<_SkillTree> {
           const SizedBox(width: 8),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('${tr(_upgradeNames[_upgradeKey(id)] ?? id)}${FactoryRun.isMinor(id) ? ' · ${tr('nó pequeno')}' : ''}',
+              Text('${tr(_upgradeNames[_upgradeKey(id)] ?? id)}${FactoryRun.isKeystone(id) ? ' · ${tr('nó-chave')}' : FactoryRun.isMinor(id) ? ' · ${tr('nó pequeno')}' : ''}',
                   style: TextStyle(color: c.text, fontWeight: FontWeight.w900, fontSize: 13)),
               Text(tr(up.label).replaceAll('{0}', '$value'), style: TextStyle(color: c.text, fontSize: 12, fontWeight: FontWeight.bold)),
               Text('${'★' * min(level, 10)}${'☆' * min(up.max - level, 10)} · ${price == null ? tr('No máximo') : '🪙 $price'}', style: TextStyle(color: c.muted, fontSize: 12)),

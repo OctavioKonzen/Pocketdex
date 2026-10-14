@@ -274,6 +274,17 @@ class FactoryRun {
   /// Contas antigas (que compraram uma forma evoluída): ficam com a primeira forma dela, sem repetir (o shiny também).
   /// Devolve a mesma Factory se não mudou nada. Igual ao site.
   static Json normalizeOwned(Json factory, FactoryData data) {
+    // Os nós da trilha que saíram da árvore (eram 8 por melhoria, agora 4): as moedas voltam (o preço de quando foram comprados).
+    final ups = Map<String, dynamic>.from((factory['upgrades'] as Map?) ?? const {});
+    final gone = [for (final k in ups.keys) if (!upgrades.containsKey(k)) k];
+    var back = 0;
+    for (final k in gone) {
+      final parent = upgrades[minorOf(k)];
+      if (((ups[k] as num?) ?? 0) > 0 && parent != null) back += ((parent.base * 0.25 + 60 * (int.tryParse(k.split('~').last) ?? 0)) / 10).round() * 10;
+    }
+    if (gone.isNotEmpty) {
+      factory = {...factory, 'upgrades': {for (final e in ups.entries) if (upgrades.containsKey(e.key)) e.key: e.value}, 'coins': _int(factory['coins'] ?? 0) + back, 'refunded': back};
+    }
     List<int> fix(List<int> list) {
       final out = <int>[];
       for (final id in list) {
@@ -301,7 +312,7 @@ class FactoryRun {
       kept.add(base);
     }
     final r = math.max(0, refund);
-    return {...factory, 'owned': owned, 'shinies': shinies, 'coins': _int(factory['coins'] ?? 0) + r, 'refunded': r};
+    return {...factory, 'owned': owned, 'shinies': shinies, 'coins': _int(factory['coins'] ?? 0) + r, 'refunded': r + back};
   }
 
   /// Melhorias permanentes (compradas com moedas antes da corrida): nome, quanto por nível, máximo e preço base. Igual ao site.
@@ -371,6 +382,7 @@ class FactoryRun {
     'shellBell': (label: 'Começa com um Shell Bell guardado', per: 1, max: 1, base: 1100, offset: 0),
     'scopeLens': (label: 'Começa com uma Scope Lens guardada', per: 1, max: 1, base: 1600, offset: 0),
     'eviolite': (label: 'Começa com um Eviolite guardado', per: 1, max: 1, base: 1600, offset: 0),
+    'victoryHeal': (label: 'Depois de cada vitória, o time recupera {0}% do HP', per: 4, max: 3, base: 900, offset: 0),
   };
 
   /// O efeito das melhorias da árvore grande, aplicado no começo da corrida: ('bag', item), ('stash', item), ('token',
@@ -420,6 +432,7 @@ class FactoryRun {
     'shellBell': ('stash', 'shell-bell'),
     'scopeLens': ('stash', 'scope-lens'),
     'eviolite': ('stash', 'eviolite'),
+    'victoryHeal': ('heal', 'hp'),
   };
 
   /// A árvore de melhorias: cada ramo começa numa raiz e o resto pede a anterior num nível (needs), um andar recorde
@@ -483,11 +496,12 @@ class FactoryRun {
     'shellBell': (needs: ('wiseGlasses', 1), best: 28, owned: 0),
     'scopeLens': (needs: ('tera', 1), best: 32, owned: 0),
     'eviolite': (needs: ('tera', 1), best: 34, owned: 0),
+    'victoryHeal': (needs: ('revive', 1), best: 10, owned: 0),
   };
 
   /// Os ramos da árvore, na ordem (da raiz para a ponta).
   static const _baseBranches = [
-    ('🧪', 'Sobrevivência', ['potions', 'revive', 'rope', 'sash', 'leftovers', 'superPotions', 'hyperPotions', 'maxPotions', 'sitrus', 'lum']),
+    ('🧪', 'Sobrevivência', ['potions', 'revive', 'rope', 'sash', 'leftovers', 'victoryHeal', 'superPotions', 'hyperPotions', 'maxPotions', 'sitrus', 'lum']),
     ('🎯', 'Captura', ['balls', 'greatBalls', 'shiny', 'ultraBalls', 'masterBall', 'quickBalls', 'netBalls', 'timerBalls', 'duskBalls']),
     ('🎓', 'Treino', ['level', 'ivs', 'exp', 'expShare', 'luckyEgg', 'expPlus', 'hpBoost', 'speBoost', 'tutor', 'reminder']),
     ('⚔️', 'Combate', ['atk', 'spa', 'specs', 'lifeOrb', 'def', 'spd', 'allStats', 'vest', 'helmet', 'band', 'scarf']),
@@ -496,31 +510,63 @@ class FactoryRun {
     ('⚡', 'Poder', ['dmax', 'tera', 'scopeLens', 'eviolite', 'policy', 'muscleBand', 'wiseGlasses', 'shellBell']),
   ];
 
-  /// Os nós pequenos da árvore (como nas árvores de habilidade dos jogos): de cada melhoria sai uma trilha de
-  /// [minorLength] nós do tema do ramo ("atk~1", "atk~2"...), cada um com um nível só, pedindo o anterior e um recorde
-  /// um pouco maior. O efeito é um dos de [upgradeFx]; o texto, o da melhoria grande do mesmo efeito ([minorBase]). Igual ao site.
+  /// Os nós da trilha de cada melhoria (como nas árvores de habilidade dos jogos): de cada melhoria saem [minorLength] nós
+  /// do tema do ramo ("atk~1"...), cada um com um nível só e um efeito que se sente na corrida: atributos, itens na Bolsa,
+  /// XP e dinheiro, nível e IVs do inicial, dinheiro no começo, desconto na loja, cura depois de cada vitória, fichas de
+  /// golpe, Sitrus Berry e sortear o caminho. A cada 4 nós vem um nó-chave (o dobro do efeito). O texto, o nome e o símbolo são os da melhoria grande do mesmo efeito
+  /// ([minorBase]). Igual ao site.
   static const minorLength = 8;
+
+  /// A cada quantos nós vem um nó-chave (o dobro do efeito).
+  static const keystoneEvery = 4;
+
+  /// O máximo de níveis a mais no inicial pelos nós da trilha.
+  static const maxStartLevel = 15;
   static const minorFx = <String, List<(String, String)>>{
-    'Sobrevivência': [('boost', 'hp'), ('bag', 'potion'), ('boost', 'def'), ('boost', 'spd')],
-    'Captura': [('bag', 'poke-ball'), ('bag', 'great-ball'), ('bag', 'quick-ball'), ('bag', 'net-ball'), ('bag', 'dusk-ball'), ('bag', 'timer-ball')],
-    'Treino': [('mult', 'exp'), ('boost', 'hp'), ('boost', 'spe')],
-    'Combate': [('boost', 'atk'), ('boost', 'spa'), ('boost', 'def'), ('boost', 'spd'), ('boost', 'spe')],
-    'Exploração': [('mult', 'money'), ('boost', 'spe'), ('bag', 'escape-rope')],
-    'Comércio': [('mult', 'money'), ('coins', 'all')],
-    'Poder': [('boostAll', 'all'), ('boost', 'atk'), ('boost', 'spa')],
+    'Sobrevivência': [('heal', 'hp'), ('boost', 'hp'), ('bag', 'potion'), ('boost', 'def'), ('bag', 'revive'), ('boost', 'spd'), ('bag', 'super-potion'), ('stash', 'sitrus-berry')],
+    'Captura': [('bag', 'poke-ball'), ('bag', 'great-ball'), ('bag', 'ultra-ball'), ('bag', 'quick-ball'), ('bag', 'net-ball'), ('bag', 'dusk-ball')],
+    'Treino': [('level', 'start'), ('mult', 'exp'), ('ivs', 'start'), ('boost', 'spe'), ('token', 'move-tutor'), ('token', 'move-reminder')],
+    'Combate': [('boost', 'atk'), ('boost', 'spa'), ('boost', 'spe'), ('boostAll', 'all'), ('boost', 'def'), ('boost', 'spd')],
+    'Exploração': [('mult', 'money'), ('heal', 'hp'), ('bag', 'escape-rope'), ('boost', 'spe'), ('reroll', 'route')],
+    'Comércio': [('money', 'start'), ('mult', 'money'), ('discount', 'shop'), ('coins', 'all')],
+    'Poder': [('boostAll', 'all'), ('boost', 'atk'), ('boost', 'spa'), ('stash', 'life-orb')],
+  };
+
+  /// Quanto cada nó dá (o nó-chave, o dobro).
+  static const minorPer = {
+    'boost': 2, 'boostAll': 1, 'mult': 5, 'coins': 5, 'level': 1, 'ivs': 2, 'money': 150, 'discount': 2, 'heal': 2, 'token': 1, 'stash': 1, 'reroll': 1,
+    'bag:poke-ball': 3, 'bag:great-ball': 2, 'bag:ultra-ball': 1, 'bag:quick-ball': 2, 'bag:net-ball': 2, 'bag:dusk-ball': 2,
+    'bag:potion': 2, 'bag:super-potion': 1, 'bag:revive': 1, 'bag:escape-rope': 1,
   };
 
   /// A melhoria grande que dá o texto, o nome e o símbolo de cada efeito pequeno.
   static const minorBase = {
     'boost:hp': 'hpBoost', 'boost:atk': 'atk', 'boost:def': 'def', 'boost:spa': 'spa', 'boost:spd': 'spd', 'boost:spe': 'speBoost',
     'boostAll:all': 'allStats', 'mult:exp': 'expPlus', 'mult:money': 'loot', 'coins:all': 'bonusCoins',
-    'bag:potion': 'potions', 'bag:poke-ball': 'balls', 'bag:great-ball': 'greatBalls', 'bag:quick-ball': 'quickBalls', 'bag:net-ball': 'netBalls',
-    'bag:dusk-ball': 'duskBalls', 'bag:timer-ball': 'timerBalls', 'bag:escape-rope': 'rope',
+    'bag:potion': 'potions', 'bag:revive': 'revive', 'bag:poke-ball': 'balls', 'bag:great-ball': 'greatBalls', 'bag:ultra-ball': 'ultraBalls',
+    'bag:quick-ball': 'quickBalls', 'bag:escape-rope': 'rope', 'bag:net-ball': 'netBalls', 'bag:dusk-ball': 'duskBalls', 'bag:super-potion': 'superPotions',
+    'token:move-tutor': 'tutor', 'token:move-reminder': 'reminder', 'stash:sitrus-berry': 'sitrus', 'stash:life-orb': 'lifeOrb', 'reroll:route': 'reroll',
+    'level:start': 'level', 'ivs:start': 'ivs', 'money:start': 'money', 'discount:shop': 'shop', 'heal:hp': 'victoryHeal',
   };
 
   /// A melhoria grande de um nó pequeno ("atk~3" → "atk"), ou ele mesmo.
   static String minorOf(String id) => id.split('~').first;
   static bool isMinor(String id) => id.contains('~');
+
+  /// O nó-chave: o último da trilha (o dobro do efeito).
+  static bool isKeystone(String id) => isMinor(id) && (int.tryParse(id.split('~').last) ?? 1) % keystoneEvery == 0;
+
+  /// A soma das melhorias de um efeito (nível do inicial, desconto, cura...).
+  static int fxTotal(Json factory, String kind) {
+    var n = 0;
+    for (final e in upgradeFx.entries) {
+      if (e.value.$1 == kind) n += upgradeValue(factory, e.key);
+    }
+    return n;
+  }
+
+  /// O máximo de cura depois de cada vitória e de desconto na loja.
+  static const maxWinHeal = 50, maxDiscount = 50;
 
   static final _tree = _buildTree();
   static final upgrades = _tree.upgrades;
@@ -545,12 +591,12 @@ class FactoryRun {
         for (var k = 1; k <= minorLength; k++) {
           final id = '$parent~$k';
           final (kind, arg) = kinds[(i + k - 1) % kinds.length];
-          final percent = kind == 'mult' || kind == 'coins';
+          final key = k % keystoneEvery == 0 ? 2 : 1;
           ups[id] = (
             label: _baseUpgrades[minorBase['$kind:$arg']]!.label,
-            per: percent ? 2 : 1,
+            per: (minorPer['$kind:$arg'] ?? minorPer[kind]!) * key,
             max: 1,
-            base: ((_baseUpgrades[parent]!.base * 0.25 + 60 * k) / 10).round() * 10,
+            base: ((_baseUpgrades[parent]!.base * 0.4 + 120 * k) / 10).round() * 10 * key,
             offset: 0,
           );
           fx[id] = (kind, arg);
@@ -1639,20 +1685,22 @@ class FactoryRun {
     // As melhorias compradas com moedas.
     int up(String k) => upgradeValue(factory, k);
     final run = <String, dynamic>{
-      'seed': seed & 0xFFFFFFFF, 'floor': 1, 'money': up('money'), 'defeated': 0, 'bosses': 0,
+      'seed': seed & 0xFFFFFFFF, 'floor': 1, 'money': up('money') + fxTotal(factory, 'money'), 'defeated': 0, 'bosses': 0,
       'bag': {
         ...startBag, 'poke-ball': startBag['poke-ball']! + up('balls'), 'potion': startBag['potion']! + up('potions'), 'revive': startBag['revive']! + up('revive'),
         if (up('greatBalls') > 0) 'great-ball': up('greatBalls'),
         if (up('rope') > 0) 'escape-rope': up('rope'),
       },
-      'team': <Json>[], 'teamBoost': _zero(), 'mult': {'money': 1, 'exp': _round3(1 + up('exp') / 100), 'shop': _round3(1 - up('shop') / 100)},
+      'team': <Json>[], 'teamBoost': _zero(), 'mult': {'money': 1, 'exp': _round3(1 + up('exp') / 100), 'shop': _round3(1 - math.min(maxDiscount, up('shop') + fxTotal(factory, 'discount')) / 100)},
       'cards': <String>[], 'boss': {'region': 0, 'step': 0}, 'played': <String>[],
       if (up('cards') > 0) 'cardCount': 3 + up('cards'),
-      if (up('reroll') > 0) 'rerolls': up('reroll'),
+      if (up('reroll') + fxTotal(factory, 'reroll') > 0) 'rerolls': up('reroll') + fxTotal(factory, 'reroll'),
       if (up('shiny') > 0) 'shinyRate': 1 + up('shiny'),
       'tms': <String, dynamic>{}, 'tokens': {'move-tutor': 0, 'move-reminder': 0}, 'stash': <String>[], 'dmax': up('dmax') > 0, 'tera': up('tera') > 0, 'expShare': up('expShare') > 0,
       'leg': 1, 'route': null, 'encounter': null, 'pending': null,
       if (up('map') > 0) 'townMap': true,
+      // Cura depois de cada vitória (% do HP de quem está de pé).
+      if (fxTotal(factory, 'heal') > 0) 'winHeal': math.min(maxWinHeal, fxTotal(factory, 'heal')),
       // O inicial (o rival escolhe o que tem vantagem sobre ele).
       'starter': id,
       // Nuzlocke: quem desmaia vai embora e só um capturado por rota.
@@ -1684,7 +1732,7 @@ class FactoryRun {
     if (rule == 'noItems') run['bag'] = {for (final k in (run['bag'] as Map).keys) k: 0};
     final rand = _dice(run);
     // O inicial vem com IVs bons (15 a 31; com a Genética, mais).
-    run['team'] = [newMon(id, startLevel + up('level'), rand, math.min(31, 15 + up('ivs')), shiny)];
+    run['team'] = [newMon(id, startLevel + up('level') + math.min(maxStartLevel, fxTotal(factory, 'level')), rand, math.min(31, 15 + up('ivs') + fxTotal(factory, 'ivs')), shiny)];
     run['boss'] = {'region': (rand() * data.bosses.length).floor(), 'step': 0};
     run['played'] = [data.bosses[_int(run['boss']['region'])]['region']];
     run['route'] = routeOptions(run, data, rand);
@@ -1725,7 +1773,10 @@ class FactoryRun {
       {List<double>? hp, Map<String, int>? bag, bool captured = false, List<List<int>>? fought, List<int>? gained, String? ball, bool night = false}) {
     final out = _copy(run);
     final team0 = teamOf(out);
-    out['team'] = [for (var i = 0; i < team0.length; i++) {...team0[i], 'hp': hp != null && i < hp.length ? hp[i] : hpOf(team0[i])}];
+    // Depois de cada vitória, a cura da árvore (só em quem está de pé).
+    final winHeal = ((run['winHeal'] as num?) ?? 0).toInt();
+    double healed(double h) => h > 0 && winHeal > 0 ? math.min(1.0, _round3(h + winHeal / 100)) : h;
+    out['team'] = [for (var i = 0; i < team0.length; i++) {...team0[i], 'hp': healed(hp != null && i < hp.length ? hp[i] : hpOf(team0[i]))}];
     // A Escape Rope não entra na batalha: fica a da Bolsa.
     out['bag'] = {...(bag ?? Map<String, dynamic>.from(run['bag'] as Map)), 'escape-rope': ((run['bag'] as Map)['escape-rope'] as num?)?.toInt() ?? 0};
     final rand = _dice(out);

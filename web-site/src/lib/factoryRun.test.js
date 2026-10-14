@@ -206,7 +206,7 @@ describe('Battle Factory (roguelike)', () => {
     expect(run.teamBoost).toEqual({ hp: 0.15, atk: 0.15, def: 0.15, spa: 0.15, spd: 0.15, spe: 0.15 })
     expect(run.stash).toContain('leftovers')
     expect(run.stash).toContain('lucky-egg')
-    expect(run.stash.length).toBe(Object.values(UPGRADE_FX).filter(([kind]) => kind === 'stash').length)
+    expect(run.stash.length).toBe(Object.entries(UPGRADE_FX).filter(([k, [kind]]) => kind === 'stash' && !k.includes('~')).length)
     expect([run.bag['ultra-ball'], run.bag['master-ball'], run.bag['max-potion']]).toEqual([3, 1, 2])
     expect(run.tokens).toEqual({ 'move-tutor': 3, 'move-reminder': 3 })
     // Os ramos novos: Great Balls, Escape Rope, Mapa, Dynamax Band, Tera Orb e moedas a mais no fim.
@@ -215,16 +215,28 @@ describe('Battle Factory (roguelike)', () => {
     expect([run.townMap, run.dmax, run.tera]).toEqual([true, true, true])
     expect(endRun(f, { ...run, floor: 11, defeated: 0, bosses: 0 }).last.coins).toBe(100)
     expect(upgradeNeeds({ ...emptyFactory(), best: 999 }, 'tera')).toContainEqual({ kind: 'up', id: 'dmax', level: 1 })
-    // Os nós pequenos: 8 de cada melhoria, em trilha (cada um pede o anterior); comprando tudo, os bônus somam.
-    expect(Object.keys(UPGRADES).filter((k) => k.includes('~')).length).toBe(62 * 8)
+    // A trilha: 8 nós de cada melhoria (cada um pede o anterior; a cada 4, um nó-chave com o dobro); comprando tudo, os bônus somam.
+    expect(Object.keys(UPGRADES).filter((k) => k.includes('~')).length).toBe(63 * 8)
+    expect([UPGRADES['atk~1'].per, UPGRADES['atk~4'].per]).toEqual([2, 2])
+    expect([UPGRADES['level~1'].per, UPGRADES['level~4'].per, UPGRADES['level~4'].max]).toEqual([1, 4, 1])
     expect(upgradeNeeds({ ...f, upgrades: { ...f.upgrades, 'atk~2': 0 } }, 'atk~3')).toContainEqual({ kind: 'up', id: 'atk~2', level: 1 })
     expect(UPGRADE_TREE['atk~1']).toEqual({ needs: ['atk', 1], best: 7 })
     const all = buyAll({ ...f, coins: 9999999 }, Object.keys(UPGRADES))
     const big = startRun(all, data, 1, 42)
-    expect(big.teamBoost).toEqual({ hp: 0.83, atk: 0.76, def: 0.74, spa: 0.75, spd: 0.73, spe: 1.01 })
-    expect(big.mult).toEqual({ money: 2.15, exp: 1.94, shop: 0.8 })
-    expect([big.bag['poke-ball'], big.bag['great-ball'], big.bag.potion, big.bag['escape-rope']]).toEqual([22, 16, 29, 23])
-    expect(endRun(all, { ...big, floor: 11, defeated: 0, bosses: 0 }).last.coins).toBe(124)
+    expect(big.teamBoost).toEqual({ hp: 0.82, atk: 1.28, def: 1.2, spa: 1.32, spd: 1.18, spe: 1.6 })
+    expect(big.mult).toEqual({ money: 2.7, exp: 2.25, shop: 0.52 })
+    expect([big.bag['poke-ball'], big.bag['great-ball'], big.bag['ultra-ball'], big.bag.potion, big.bag.revive, big.bag['escape-rope']]).toEqual([52, 35, 19, 35, 18, 19])
+    // Os efeitos que mudam a corrida: dinheiro no começo, cura depois de cada vitória, nível e IVs do inicial.
+    expect([big.money, big.winHeal, big.team[0].level, Math.min(...Object.values(big.team[0].ivs)), big.rerolls, big.stash.length]).toEqual([2900, 50, 25, 31, 18, 50])
+    expect(big.tokens).toEqual({ 'move-tutor': 20, 'move-reminder': 18 })
+    expect(endRun(all, { ...big, floor: 11, defeated: 0, bosses: 0 }).last.coins).toBe(140)
+    // A cura depois da vitória: só em quem está de pé, até o HP cheio.
+    const healRun = { ...big, team: [{ ...big.team[0], hp: 0.3 }, { ...big.team[0], hp: 0 }, { ...big.team[0], hp: 0.8 }], encounter: { kind: 'wild', foes: [{ id: 16, level: 3, iv: 0, ev: 0 }] } }
+    expect(winFloor(healRun, data, { hp: [0.3, 0, 0.8], fought: [[0]] }).team.map((m) => m.hp)).toEqual([0.8, 0, 1])
+    // Um nó que saiu da árvore: as moedas voltam.
+    const stale = normalizeOwned({ ...all, coins: 0, upgrades: { ...all.upgrades, 'atk~9': 1 } }, data)
+    expect(stale.upgrades['atk~9']).toBe(undefined)
+    expect(stale.coins).toBe(Math.round((200 * 0.25 + 60 * 9) / 10) * 10)
     // Sem melhorias, a corrida é a de sempre.
     expect(startRun(emptyFactory(), data, 1, 42).team[0].level).toBe(5)
   })

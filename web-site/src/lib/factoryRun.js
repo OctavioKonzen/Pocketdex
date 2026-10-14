@@ -227,6 +227,10 @@ export const forSale = (data, id) => Boolean(data.species[id]) && baseForm(data,
  * forma dela, sem repetir (o shiny também). Devolve a mesma Factory se não mudou nada.
  */
 export function normalizeOwned(factory, data) {
+  // Os nós da trilha que saíram da árvore (eram 8 por melhoria, agora 4): as moedas voltam (o preço de quando foram comprados).
+  const gone = Object.keys(factory.upgrades ?? {}).filter((k) => !UPGRADES[k])
+  const back = gone.reduce((n, k) => n + (factory.upgrades[k] > 0 && UPGRADES[minorOf(k)] ? Math.round((UPGRADES[minorOf(k)].base * 0.25 + 60 * Number(k.split('~')[1])) / 10) * 10 : 0), 0)
+  if (gone.length) factory = { ...factory, upgrades: Object.fromEntries(Object.entries(factory.upgrades).filter(([k]) => UPGRADES[k])), coins: (factory.coins ?? 0) + back, refunded: back }
   const fix = (list) => [...new Set((list ?? []).map((id) => baseForm(data, id)))]
   const owned = fix(factory.owned)
   const shinies = fix(factory.shinies)
@@ -242,7 +246,7 @@ export function normalizeOwned(factory, data) {
     refund += kept.includes(base) || (factory.owned ?? []).includes(base) ? price(id) : price(id) - price(base)
     kept.push(base)
   }
-  return { ...factory, owned, shinies, coins: (factory.coins ?? 0) + Math.max(0, refund), refunded: Math.max(0, refund) }
+  return { ...factory, owned, shinies, coins: (factory.coins ?? 0) + Math.max(0, refund), refunded: Math.max(0, refund) + back }
 }
 
 /** Compra um Pokémon com as moedas (null se não dá). roll (0 a 1): 1 em 4096 de vir shiny. */
@@ -345,6 +349,7 @@ export const UPGRADES = {
   shellBell: { label: 'Começa com um Shell Bell guardado', per: 1, max: 1, base: 1100 },
   scopeLens: { label: 'Começa com uma Scope Lens guardada', per: 1, max: 1, base: 1600 },
   eviolite: { label: 'Começa com um Eviolite guardado', per: 1, max: 1, base: 1600 },
+  victoryHeal: { label: 'Depois de cada vitória, o time recupera {0}% do HP', per: 4, max: 3, base: 900 },
 }
 /**
  * O efeito das melhorias da árvore grande, aplicado no começo da corrida:
@@ -397,6 +402,7 @@ export const UPGRADE_FX = {
   shellBell: ['stash', 'shell-bell'],
   scopeLens: ['stash', 'scope-lens'],
   eviolite: ['stash', 'eviolite'],
+  victoryHeal: ['heal', 'hp'],
 }
 /**
  * A árvore de melhorias: cada ramo começa numa raiz e o resto pede a anterior
@@ -462,10 +468,11 @@ export const UPGRADE_TREE = {
   shellBell: { needs: ['wiseGlasses', 1], best: 28 },
   scopeLens: { needs: ['tera', 1], best: 32 },
   eviolite: { needs: ['tera', 1], best: 34 },
+  victoryHeal: { needs: ['revive', 1], best: 10 },
 }
 /** Os ramos da árvore, na ordem (da raiz para a ponta). */
 const BASE_BRANCHES = [
-  ['🧪', 'Sobrevivência', ['potions', 'revive', 'rope', 'sash', 'leftovers', 'superPotions', 'hyperPotions', 'maxPotions', 'sitrus', 'lum']],
+  ['🧪', 'Sobrevivência', ['potions', 'revive', 'rope', 'sash', 'leftovers', 'victoryHeal', 'superPotions', 'hyperPotions', 'maxPotions', 'sitrus', 'lum']],
   ['🎯', 'Captura', ['balls', 'greatBalls', 'shiny', 'ultraBalls', 'masterBall', 'quickBalls', 'netBalls', 'timerBalls', 'duskBalls']],
   ['🎓', 'Treino', ['level', 'ivs', 'exp', 'expShare', 'luckyEgg', 'expPlus', 'hpBoost', 'speBoost', 'tutor', 'reminder']],
   ['⚔️', 'Combate', ['atk', 'spa', 'specs', 'lifeOrb', 'def', 'spd', 'allStats', 'vest', 'helmet', 'band', 'scarf']],
@@ -474,32 +481,48 @@ const BASE_BRANCHES = [
   ['⚡', 'Poder', ['dmax', 'tera', 'scopeLens', 'eviolite', 'policy', 'muscleBand', 'wiseGlasses', 'shellBell']],
 ]
 /**
- * Os nós pequenos da árvore (como nas árvores de habilidade dos jogos): de cada
- * melhoria sai uma trilha de MINOR_LENGTH nós do tema do ramo ("atk~1",
- * "atk~2"...), cada um com um nível só, pedindo o anterior e um recorde um
- * pouco maior. O efeito é um dos de UPGRADE_FX; o texto, o da melhoria grande
- * do mesmo efeito (MINOR_BASE). Igual ao app.
+ * Os nós da trilha de cada melhoria (como nas árvores de habilidade dos jogos):
+ * de cada melhoria saem MINOR_LENGTH nós do tema do ramo ("atk~1"...), cada um
+ * com um nível só e um efeito que se sente na corrida: atributos, itens na
+ * Bolsa, XP e dinheiro, nível e IVs do inicial, dinheiro no começo, desconto
+ * na loja, cura depois de cada vitória, fichas de golpe, Sitrus Berry e
+ * sortear o caminho. A cada 4 nós vem um nó-chave (o dobro do efeito). O texto, o nome e o símbolo são os da melhoria grande do
+ * mesmo efeito (MINOR_BASE). Igual ao app.
  */
 export const MINOR_LENGTH = 8
+/** A cada quantos nós vem um nó-chave (o dobro do efeito). */
+export const KEYSTONE_EVERY = 4
+/** O máximo de níveis a mais no inicial pelos nós da trilha. */
+export const MAX_START_LEVEL = 15
 export const MINOR_FX = {
-  Sobrevivência: [['boost', 'hp'], ['bag', 'potion'], ['boost', 'def'], ['boost', 'spd']],
-  Captura: [['bag', 'poke-ball'], ['bag', 'great-ball'], ['bag', 'quick-ball'], ['bag', 'net-ball'], ['bag', 'dusk-ball'], ['bag', 'timer-ball']],
-  Treino: [['mult', 'exp'], ['boost', 'hp'], ['boost', 'spe']],
-  Combate: [['boost', 'atk'], ['boost', 'spa'], ['boost', 'def'], ['boost', 'spd'], ['boost', 'spe']],
-  Exploração: [['mult', 'money'], ['boost', 'spe'], ['bag', 'escape-rope']],
-  Comércio: [['mult', 'money'], ['coins', 'all']],
-  Poder: [['boostAll', 'all'], ['boost', 'atk'], ['boost', 'spa']],
+  Sobrevivência: [['heal', 'hp'], ['boost', 'hp'], ['bag', 'potion'], ['boost', 'def'], ['bag', 'revive'], ['boost', 'spd'], ['bag', 'super-potion'], ['stash', 'sitrus-berry']],
+  Captura: [['bag', 'poke-ball'], ['bag', 'great-ball'], ['bag', 'ultra-ball'], ['bag', 'quick-ball'], ['bag', 'net-ball'], ['bag', 'dusk-ball']],
+  Treino: [['level', 'start'], ['mult', 'exp'], ['ivs', 'start'], ['boost', 'spe'], ['token', 'move-tutor'], ['token', 'move-reminder']],
+  Combate: [['boost', 'atk'], ['boost', 'spa'], ['boost', 'spe'], ['boostAll', 'all'], ['boost', 'def'], ['boost', 'spd']],
+  Exploração: [['mult', 'money'], ['heal', 'hp'], ['bag', 'escape-rope'], ['boost', 'spe'], ['reroll', 'route']],
+  Comércio: [['money', 'start'], ['mult', 'money'], ['discount', 'shop'], ['coins', 'all']],
+  Poder: [['boostAll', 'all'], ['boost', 'atk'], ['boost', 'spa'], ['stash', 'life-orb']],
+}
+/** Quanto cada nó dá (o nó-chave, o dobro). */
+export const MINOR_PER = {
+  boost: 2, boostAll: 1, mult: 5, coins: 5, level: 1, ivs: 2, money: 150, discount: 2, heal: 2, token: 1, stash: 1, reroll: 1,
+  'bag:poke-ball': 3, 'bag:great-ball': 2, 'bag:ultra-ball': 1, 'bag:quick-ball': 2, 'bag:net-ball': 2, 'bag:dusk-ball': 2,
+  'bag:potion': 2, 'bag:super-potion': 1, 'bag:revive': 1, 'bag:escape-rope': 1,
 }
 /** A melhoria grande que dá o texto, o nome e o símbolo de cada efeito pequeno. */
 export const MINOR_BASE = {
   'boost:hp': 'hpBoost', 'boost:atk': 'atk', 'boost:def': 'def', 'boost:spa': 'spa', 'boost:spd': 'spd', 'boost:spe': 'speBoost',
   'boostAll:all': 'allStats', 'mult:exp': 'expPlus', 'mult:money': 'loot', 'coins:all': 'bonusCoins',
-  'bag:potion': 'potions', 'bag:poke-ball': 'balls', 'bag:great-ball': 'greatBalls', 'bag:quick-ball': 'quickBalls', 'bag:net-ball': 'netBalls',
-  'bag:dusk-ball': 'duskBalls', 'bag:timer-ball': 'timerBalls', 'bag:escape-rope': 'rope',
+  'bag:potion': 'potions', 'bag:revive': 'revive', 'bag:poke-ball': 'balls', 'bag:great-ball': 'greatBalls', 'bag:ultra-ball': 'ultraBalls',
+  'bag:quick-ball': 'quickBalls', 'bag:escape-rope': 'rope', 'bag:net-ball': 'netBalls', 'bag:dusk-ball': 'duskBalls', 'bag:super-potion': 'superPotions',
+  'token:move-tutor': 'tutor', 'token:move-reminder': 'reminder', 'stash:sitrus-berry': 'sitrus', 'stash:life-orb': 'lifeOrb', 'reroll:route': 'reroll',
+  'level:start': 'level', 'ivs:start': 'ivs', 'money:start': 'money', 'discount:shop': 'shop', 'heal:hp': 'victoryHeal',
 }
 /** A melhoria grande de um nó pequeno ("atk~3" → "atk"), ou ele mesmo. */
 export const minorOf = (id) => id.split('~')[0]
 export const isMinor = (id) => id.includes('~')
+/** O nó-chave: o último da trilha (o dobro do efeito). */
+export const isKeystone = (id) => isMinor(id) && Number(id.split('~')[1]) % KEYSTONE_EVERY === 0
 export const UPGRADE_BRANCHES = BASE_BRANCHES.map(([icon, branch, ids]) => {
   const fx = MINOR_FX[branch]
   const list = []
@@ -508,8 +531,9 @@ export const UPGRADE_BRANCHES = BASE_BRANCHES.map(([icon, branch, ids]) => {
     for (let k = 1; k <= MINOR_LENGTH; k++) {
       const id = `${parent}~${k}`
       const [kind, arg] = fx[(i + k - 1) % fx.length]
-      const percent = kind === 'mult' || kind === 'coins'
-      UPGRADES[id] = { label: UPGRADES[MINOR_BASE[`${kind}:${arg}`]].label, per: percent ? 2 : 1, max: 1, base: Math.round((UPGRADES[parent].base * 0.25 + 60 * k) / 10) * 10 }
+      const key = k % KEYSTONE_EVERY === 0 ? 2 : 1
+      const base = Math.round((UPGRADES[parent].base * 0.4 + 120 * k) / 10) * 10 * key
+      UPGRADES[id] = { label: UPGRADES[MINOR_BASE[`${kind}:${arg}`]].label, per: (MINOR_PER[`${kind}:${arg}`] ?? MINOR_PER[kind]) * key, max: 1, base }
       UPGRADE_FX[id] = [kind, arg]
       UPGRADE_TREE[id] = { needs: [k === 1 ? parent : `${parent}~${k - 1}`, 1], best: (UPGRADE_TREE[parent]?.best ?? 0) + 2 * k }
       list.push(id)
@@ -517,6 +541,11 @@ export const UPGRADE_BRANCHES = BASE_BRANCHES.map(([icon, branch, ids]) => {
   })
   return [icon, branch, list]
 })
+/** A soma das melhorias de um efeito (nível do inicial, desconto, cura...). */
+export const fxTotal = (factory, kind) => Object.entries(UPGRADE_FX).reduce((n, [k, [fx]]) => n + (fx === kind ? upgradeValue(factory, k) : 0), 0)
+/** O máximo de cura depois de cada vitória e de desconto na loja. */
+export const MAX_WIN_HEAL = 50
+export const MAX_DISCOUNT = 50
 export const UPGRADE_LEVEL_BEST = 3
 /** O que falta para comprar o próximo nível: [{kind: 'up', id, level} | {kind: 'best', floor} | {kind: 'owned', count}] (vazio: pode). */
 export function upgradeNeeds(factory, id) {
@@ -1325,11 +1354,13 @@ export function startRun(factory, data, id, seed, shiny = false, options = {}) {
   if (up('greatBalls')) bag['great-ball'] = up('greatBalls')
   if (up('rope')) bag['escape-rope'] = up('rope')
   const run = {
-    seed: seed >>> 0, floor: 1, money: up('money'), defeated: 0, bosses: 0, bag,
-    team: [], teamBoost: zero(), mult: { money: 1, exp: round3(1 + up('exp') / 100), shop: round3(1 - up('shop') / 100) }, cards: [], boss: { region: 0, step: 0 }, played: [],
-    ...(up('cards') ? { cardCount: 3 + up('cards') } : {}), ...(up('reroll') ? { rerolls: up('reroll') } : {}), ...(up('shiny') ? { shinyRate: 1 + up('shiny') } : {}),
+    seed: seed >>> 0, floor: 1, money: up('money') + fxTotal(factory, 'money'), defeated: 0, bosses: 0, bag,
+    team: [], teamBoost: zero(), mult: { money: 1, exp: round3(1 + up('exp') / 100), shop: round3(1 - Math.min(MAX_DISCOUNT, up('shop') + fxTotal(factory, 'discount')) / 100) }, cards: [], boss: { region: 0, step: 0 }, played: [],
+    ...(up('cards') ? { cardCount: 3 + up('cards') } : {}), ...(up('reroll') + fxTotal(factory, 'reroll') ? { rerolls: up('reroll') + fxTotal(factory, 'reroll') } : {}), ...(up('shiny') ? { shinyRate: 1 + up('shiny') } : {}),
     tms: {}, tokens: { 'move-tutor': 0, 'move-reminder': 0 }, stash: [], dmax: up('dmax') > 0, tera: up('tera') > 0, expShare: up('expShare') > 0, leg: 1, route: null, encounter: null, pending: null,
     ...(up('map') ? { townMap: true } : {}),
+    // Cura depois de cada vitória (% do HP de quem está de pé).
+    ...(fxTotal(factory, 'heal') ? { winHeal: Math.min(MAX_WIN_HEAL, fxTotal(factory, 'heal')) } : {}),
     // O inicial (o rival escolhe o que tem vantagem sobre ele).
     starter: id,
     // Nuzlocke: quem desmaia vai embora e só um capturado por rota.
@@ -1352,7 +1383,7 @@ export function startRun(factory, data, id, seed, shiny = false, options = {}) {
   if (options.rule === 'noItems') run.bag = Object.fromEntries(Object.keys(run.bag).map((k) => [k, 0]))
   const rand = dice(run)
   // O inicial vem com IVs bons (15 a 31; com a Genética, mais).
-  run.team = [newMon(id, START_LEVEL + up('level'), rand, Math.min(31, 15 + up('ivs')), shiny)]
+  run.team = [newMon(id, START_LEVEL + up('level') + Math.min(MAX_START_LEVEL, fxTotal(factory, 'level')), rand, Math.min(31, 15 + up('ivs') + fxTotal(factory, 'ivs')), shiny)]
   run.boss = { region: Math.floor(rand() * data.bosses.length), step: 0 }
   run.played = [data.bosses[run.boss.region].region]
   run.route = routeOptions(run, data, rand)
@@ -1389,7 +1420,9 @@ export function storyLine(data, region, key, name = '') {
  */
 export function winFloor(run, data, after = {}) {
   // A Escape Rope não entra na batalha: fica a da Bolsa.
-  const out = { ...run, team: run.team.map((m, i) => ({ ...m, hp: after.hp?.[i] ?? m.hp ?? 1 })), bag: { ...(after.bag ?? run.bag), 'escape-rope': run.bag['escape-rope'] ?? 0 } }
+  // Depois de cada vitória, a cura da árvore (só em quem está de pé).
+  const healed = (hp) => (hp > 0 && run.winHeal ? Math.min(1, round3(hp + run.winHeal / 100)) : hp)
+  const out = { ...run, team: run.team.map((m, i) => ({ ...m, hp: healed(after.hp?.[i] ?? m.hp ?? 1) })), bag: { ...(after.bag ?? run.bag), 'escape-rope': run.bag['escape-rope'] ?? 0 } }
   const rand = dice(out)
   const { kind, foes } = run.encounter
   const factor = expFactor(kind)
