@@ -16,16 +16,16 @@ import { Button, SearchInput } from './ui'
 import { getFactoryData, shinyPath, spriteUrl } from '../lib/data'
 import { learnsetOf, movesFor } from '../lib/factoryBattle'
 import {
-  BAG_ITEMS, bossOf, FORKS, unequipItem, ROUTE_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
+  BAG_ITEMS, bossOf, unequipItem, ROUTE_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, MAX_TEAM, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shinyPrice, shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, takeCard, teachMove, teamDown, applyBagItem, unlockShiny, VITAMIN_EVS, VITAMINS,
   buyShiny, forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES,
   tradeMon, skipTrade, TRADE_LEVELS, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, bossScene,
-  resolveChoice, regionLegend, leaderType, villainTeam, rivalBoss,
+  resolveChoice, regionLegend, leaderType, villainTeam, rivalBoss, DUNGEONS, DUNGEON_LENGTH, dungeonPos, townShop, townCenter,
   cutPath, nodeBlocked, hasHm, clockOf, healerOf, inTown, DARK_BIOMES, dexOf, dexRewardFor, leaveDaycare, takeDaycare, DAYCARE_EGG,
 } from '../lib/factoryRun'
 import { t } from '../lib/i18n'
-import { prettyName } from '../lib/pokemon'
+import { prettyName, typeColor } from '../lib/pokemon'
 import { usePokemonIndex } from '../lib/pokemonIndex'
 import { prettySlug } from '../lib/teamSets'
 import { useStore } from '../lib/store'
@@ -696,13 +696,6 @@ const VILLAIN_PLANS = {
 }
 /** A estação e a hora (do relógio de quem joga): mudam os Pokémon que aparecem e o clima. */
 const SEASON_LABEL = { spring: '🌸 Primavera', summer: '☀️ Verão', autumn: '🍂 Outono', winter: '❄️ Inverno' }
-/** Sem o Mapa: cada caminho só dá uma pista do que tem (com o Mapa, você vê tudo). */
-const PATH_HINTS = {
-  wild: '🌿 Barulho no mato...', trainer: '👣 Pegadas de treinador...', ace: '💪 Pegadas firmes e fundas...', mart: '🎒 Alguém com uma mochila grande...',
-  center: '⛺ Fumaça de fogueira...', event: '✨ Algo brilhando no chão...', trade: '🔁 Alguém acenando de longe...', wildboss: '⚠️ Um rugido forte...',
-  rematch: '🏆 Um treinador famoso por perto...', rival: '⚔️ Alguém conhecido te seguindo...',
-}
-const pathHint = (node) => (node.legend != null ? '🌟 Uma presença enorme...' : node.cut ? '🌳 Um caminho escondido...' : node.biome === 'underwater' ? '🌊 Água funda...' : PATH_HINTS[node.kind] ?? '❓')
 const LEGEND_INFO = { icon: '🌟', label: 'Lendário', help: 'O lendário da região espera aqui. Dá para capturar.' }
 
 /** O passo da tela depois do andar: o que ainda falta ver ou escolher (ou nada: o mapa). */
@@ -783,12 +776,34 @@ function EvolutionFx({ from, to, byId }) {
 const preEvolution = (data, id) => Number(Object.keys(data?.evolutions ?? {}).find((k) => data.evolutions[k].some((e) => e[0] === id))) || null
 
 /** Alguém de pé na base de cima (Enfermeira Joy, o chefe, os vendedores...). */
-function FarStand({ children, scene }) {
+function FarStand({ children, scene, plain = false }) {
   return (
     <div className="absolute right-[6%] flex w-[36%] items-end justify-center" style={{ bottom: `${foeBottom(battleScene(scene)) * 100}%` }}>
-      {scene && <PlatformBase scene={battleScene(scene)} side="foe" scale={0.8} />}
+      {scene && !plain && <PlatformBase scene={battleScene(scene)} side="foe" scale={0.8} />}
       <div className="relative flex w-full items-end justify-center">{children}</div>
     </div>
+  )
+}
+
+/** O nome de cada equipe vilã (nomes dos jogos). */
+const TEAM_NAMES = {
+  rocket: 'Equipe Rocket', aqua: 'Equipe Aqua', magma: 'Equipe Magma', galactic: 'Equipe Galáctica', plasma: 'Equipe Plasma',
+  flare: 'Equipe Flare', skull: 'Equipe Skull', aether: 'Fundação Aether', star: 'Equipe Star',
+}
+
+/**
+ * As falas uma de cada vez, no mesmo lugar (a caixa não cresce), como nos jogos:
+ * tocar passa para a próxima (▼). Sem falas, o texto de fallback. Igual ao app.
+ */
+function Dialogue({ lines, fallback = null }) {
+  const [k, setK] = useState(0)
+  if (!lines.length) return fallback ? <p>{fallback}</p> : null
+  const last = k >= lines.length - 1
+  return (
+    <button type="button" onClick={() => !last && setK(k + 1)} className={`block w-full text-left ${last ? 'cursor-default' : 'cursor-pointer'}`} data-testid="factory-dialogue">
+      <span className="block min-h-[3.2em]">{lines[Math.min(k, lines.length - 1)]}</span>
+      {!last && <span className="dlg-sub block animate-pulse text-right text-xs">▼ {k + 1}/{lines.length}</span>}
+    </button>
   )
 }
 
@@ -921,7 +936,29 @@ function OverlayClose({ title, onClose }) {
 }
 
 /** A moldura da batalha: o campo, a barra da corrida (dinheiro, Bolsa e time) e a caixa de texto com o menu. */
-function BattleFrame({ field, run, byId, text, menu, wideMenu = false, panel = null }) {
+/**
+ * As insígnias da região de agora: uma por líder de ginásio, na cor do tipo
+ * dele; as ganhas acesas, as que faltam apagadas. Igual ao app.
+ */
+function Badges({ data, run }) {
+  const leaders = data.bosses[run.boss.region]?.leaders ?? []
+  const gyms = leaders.map((l, k) => [l, k]).filter(([l]) => l.kind === 'gym')
+  if (!gyms.length) return null
+  return (
+    <span className="flex items-center gap-0.5 rounded bg-slate-900/50 px-1 py-0.5" data-testid="factory-badges" title={t('Insígnias')}>
+      {gyms.map(([l, k]) => {
+        const won = k < run.boss.step
+        return (
+          <span key={k} title={`${t('Insígnia de {0}').replace('{0}', l.name)}${won ? '' : ` (${t('falta')})`}`} data-testid={won ? 'badge-won' : 'badge-missing'}
+            className={`inline-block h-3.5 w-3.5 rotate-45 rounded-[3px] border ${won ? 'border-white shadow-[0_0_4px_#fff8]' : 'border-white/30 opacity-40'}`}
+            style={{ background: won ? typeColor(leaderType(data, l)) : 'transparent' }} />
+        )
+      })}
+    </span>
+  )
+}
+
+function BattleFrame({ field, run, byId, data = null, text, menu, wideMenu = false, panel = null }) {
   return (
     <div className="select-none">
       {/* A Bolsa, o time, a loja e a troca abrem por cima do campo (a mesma tela, como no jogo; dá para jogar com o celular de lado). */}
@@ -934,6 +971,7 @@ function BattleFrame({ field, run, byId, text, menu, wideMenu = false, panel = n
           <span>🏭 {t('Andar {0}').replace('{0}', run.floor)}</span>
           <span>💰 {run.money}</span>
           <span title={t('Pokédex da corrida')} data-testid="factory-dex">📖 {dexOf(run).length}</span>
+          {data && <Badges data={data} run={run} />}
           {(run.hms ?? []).map((hm) => <span key={hm} title={HM_INFO[hm]?.name}>{HM_INFO[hm]?.icon}</span>)}
           {run.daycare && <span title={t('Creche')}>🏡</span>}
           {BAG_ITEMS.filter((id) => run.bag[id] > 0).map((id) => (
@@ -1048,6 +1086,28 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
   const [healerSprite, healerName] = run ? (town ? ['sd-nurse', 'Enfermeira Joy'] : healerOf(run)) : ['sd-nurse', '']
   const nurse = <img src={spriteUrl(`trainers/${healerSprite}.png`)} alt="" className="pixelated w-full object-contain object-bottom" style={{ maxHeight: width * 0.42 }} />
   let field, text, menu, below = null, wideMenu = false
+  // A Creche (um lugar da cidade, separado do Poké Mart): quem fica e o ovo.
+  const daycareView = () => {
+      const care = run.daycare
+      const steps = care ? Math.max(0, run.floor - care.floor) : 0
+      return care ? (
+        <div className="space-y-2 p-2" data-testid="daycare">
+          <OverlayClose onClose={() => setPanel(null)} title={`🏡 ${t('Creche')}`} />
+          <div className="flex items-center gap-2 rounded-xl bg-surface p-2">
+            <PokeIcon id={care.mon.id} shiny={Boolean(care.mon.shiny)} className="h-12 w-12" />
+            <div className="min-w-0 flex-1 text-sm">
+              <p className="font-bold" data-no-translate>{name(care.mon.id)} · Nv. {care.mon.level} → {care.mon.level + steps}</p>
+              <p className="text-xs text-muted">{steps >= DAYCARE_EGG ? t('Tem um ovo esperando por você!') : t('Mais {0} andares e aparece um ovo.').replace('{0}', DAYCARE_EGG - steps)}</p>
+            </div>
+            <Button data-testid="daycare-take" disabled={run.team.length >= MAX_TEAM} onClick={() => { setPanel(null); save(takeDaycare(run, data)) }}>{t('BUSCAR')}</Button>
+          </div>
+          {run.team.length >= MAX_TEAM && <p className="text-xs text-red-600">{t('Time cheio: abra espaço para buscar.')}</p>}
+        </div>
+      ) : (
+        <BwParty title={t('Creche: quem fica? Ganha um nível por andar e, depois de {0} andares, aparece um ovo.').replace('{0}', DAYCARE_EGG)} team={partyOf(run, byId)} testid="daycare"
+          disabled={() => run.team.length < 2} onPick={(i) => { setPanel(null); save(leaveDaycare(run, i)) }} onCancel={() => setPanel(null)} />
+      )
+  }
 
   if (step === 'result') {
     const event = p.event
@@ -1224,9 +1284,10 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     // O Poké Mart só na cidade; na rota, o vendedor ambulante (vende o mesmo), no próprio lugar.
     const vendor = Boolean(p.mart)
     field = vendor ? (
+      // O vendedor aparece no próprio lugar (o cenário não muda e não tem as plataformas da batalha).
       <Field biome={run.scene ?? 'grass'} fieldRef={fieldRef} testid="factory-shop">
-        <FarStand scene={run.scene ?? 'grass'}><img src={spriteUrl('trainers/sd-backpacker.png')} alt="" className="pixelated object-contain object-bottom" style={{ height: width * 0.42 }} /></FarStand>
-        {lead && <FieldMon mon={lead} byId={byId} back scene={run.scene} />}
+        <FarStand scene={run.scene ?? 'grass'} plain><img src={spriteUrl('trainers/sd-backpacker.png')} alt="" className="pixelated object-contain object-bottom" style={{ height: width * 0.42 }} /></FarStand>
+        {me && <div className="absolute bottom-[6%] left-[10%]"><TrainerSprite trainer={me} box={width * 0.32} /></div>}
         <div className="absolute left-3 top-2 rounded-lg bg-white/80 px-2 py-0.5 text-sm font-black text-slate-900">🎒 {t('Vendedor ambulante')}</div>
       </Field>
     ) : (
@@ -1243,32 +1304,10 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     menu = (
       <>
         <MenuButton onClick={() => setPanel(panel === 'buy' ? null : 'buy')} active={panel === 'buy'} testid="factory-menu-buy">{t('COMPRAR')}</MenuButton>
-        {!vendor && <MenuButton onClick={() => setPanel(panel === 'daycare' ? null : 'daycare')} active={panel === 'daycare'} testid="factory-menu-daycare">{t('CRECHE')}</MenuButton>}
         {tools}
         <MenuButton onClick={() => { setPanel(null); save({ ...run, pending: { ...p, shop: null } }) }} testid="factory-continue">{t('CONTINUAR')}</MenuButton>
       </>
     )
-    if (panel === 'daycare') {
-      const care = run.daycare
-      const steps = care ? Math.max(0, run.floor - care.floor) : 0
-      below = care ? (
-        <div className="space-y-2 p-2" data-testid="daycare">
-          <OverlayClose onClose={() => setPanel(null)} title={`🏡 ${t('Creche')}`} />
-          <div className="flex items-center gap-2 rounded-xl bg-surface p-2">
-            <PokeIcon id={care.mon.id} shiny={Boolean(care.mon.shiny)} className="h-12 w-12" />
-            <div className="min-w-0 flex-1 text-sm">
-              <p className="font-bold" data-no-translate>{name(care.mon.id)} · Nv. {care.mon.level} → {care.mon.level + steps}</p>
-              <p className="text-xs text-muted">{steps >= DAYCARE_EGG ? t('Tem um ovo esperando por você!') : t('Mais {0} andares e aparece um ovo.').replace('{0}', DAYCARE_EGG - steps)}</p>
-            </div>
-            <Button data-testid="daycare-take" disabled={run.team.length >= MAX_TEAM} onClick={() => { setPanel(null); save(takeDaycare(run, data)) }}>{t('BUSCAR')}</Button>
-          </div>
-          {run.team.length >= MAX_TEAM && <p className="text-xs text-red-600">{t('Time cheio: abra espaço para buscar.')}</p>}
-        </div>
-      ) : (
-        <BwParty title={t('Creche: quem fica? Ganha um nível por andar e, depois de {0} andares, aparece um ovo.').replace('{0}', DAYCARE_EGG)} team={partyOf(run, byId)} testid="daycare"
-          disabled={() => run.team.length < 2} onPick={(i) => { setPanel(null); save(leaveDaycare(run, i)) }} onCancel={() => setPanel(null)} />
-      )
-    }
     if (panel === 'buy') {
       below = (
         <div className="space-y-2 p-2">
@@ -1302,7 +1341,10 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     const biome = BIOME_INFO[route.biome] ?? BIOME_INFO.grass
     const pos = Math.min(ROUTE_LENGTH, routePos(run))
     const down = teamDown(run)
-    const meeting = route.options.length === 1 && route.options[0].kind === 'boss'
+    // Na cidade (o ginásio, o Poké Mart, o Centro, a Creche e o lugar perto dela) ou dentro de um lugar (10 andares e um chefe).
+    const town = Boolean(route.town)
+    const inside = run.dungeon ? DUNGEONS[run.dungeon.place] ?? { name: t('Base da {0}').replace('{0}', TEAM_NAMES[villainTeam(boss.name)] ?? 'Equipe Rocket'), scene: run.dungeon.scene } : null
+    const meeting = !town && route.options.length === 1 && route.options[0].kind === 'boss'
     // O rival de surpresa no meio da rota.
     const rival = route.options.length === 1 && route.options[0].kind === 'rival' ? rivalBoss(data, run) : null
     const coach = trainers?.find((x) => x.id === (rival ?? boss).trainer) ?? null
@@ -1315,15 +1357,14 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       saveFactory({ ...factoryOf(useStore.getState().league), run: next })
       if (next.encounter) onBattle(next)
     }
-    // A rota no campo: da cidade de onde veio (esquerda) até a do chefe (direita); você no andar de agora.
-    const x = (k) => 8 + (k / (ROUTE_LENGTH + 1)) * 84
-    const END = ROUTE_LENGTH + 1
-    const fork = route.options.length > 1
+    const fork = !town && route.options.length > 1
     // O líder no ginásio do tipo dele, a Elite Four na Liga, o Campeão na sala dele; rival e vilões na rota (o vilão, na base da equipe).
-    const meetScene = meeting && CITY_KIND_SET.has(boss.kind) ? bossScene(data, boss, route.biome) : route.biome
+    const meetScene = town ? 'city' : meeting && CITY_KIND_SET.has(boss.kind) ? bossScene(data, boss, route.biome) : route.biome
     // Sem o Mapa: nada do mapa e, na bifurcação, segue às cegas.
     const hasMap = Boolean(run.townMap) || (hasHm(run, 'flash') && DARK_BIOMES.includes(route.biome))
-    const cut = !meeting ? cutPath(run) : null
+    const cut = !meeting && !town ? cutPath(run) : null
+    // O andar (pequeno, num canto): na rota, até a cidade; num lugar, até o chefe dele.
+    const floorTag = inside ? `${dungeonPos(run) + 1}/${DUNGEON_LENGTH}` : town ? null : `${pos + 1}/${ROUTE_LENGTH + 1}`
     field = fork && hasMap ? (
       <TownMap route={route} pos={pos} from={from} to={to} title={`${boss.region} · ${boss.game}`} me={me} width={width} fieldRef={fieldRef}
         onPick={busy ? null : pickNode} blocked={(node) => (isBattleNode(node) && down) || nodeBlocked(run, node)} />
@@ -1331,108 +1372,93 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       // O líder espera no ginásio da cidade; a Elite Four e o Campeão, na Liga (nunca no meio da rota).
       <Field biome={meetScene} fieldRef={fieldRef} testid="factory-map">
         <div className="absolute left-3 top-2 rounded-lg bg-white/85 px-2 py-0.5 text-xs font-black text-slate-900 sm:text-sm">
-          <span data-no-translate>{boss.region} · {boss.game}</span> · {biome.icon} {t('Rota para {0}').replace('{0}', to)}
+          {town ? <span data-no-translate>🏙️ {to}</span>
+            : inside ? <>{biome.icon} {t(inside.name)}</>
+            : <><span data-no-translate>{boss.region} · {boss.game}</span> · {biome.icon} {t('Rota para {0}').replace('{0}', to)}</>}
         </div>
-        {/* A rota (com ou sem o Mapa): de onde veio, você no andar de agora e a cidade do chefe. */}
-        <div className="absolute inset-x-0 top-[34%] h-0" data-testid="route-strip">
-          <div className="absolute h-2 rounded-full bg-amber-800/60" style={{ left: `${x(0)}%`, right: `${100 - x(END)}%` }} />
-          {/* As cidades nas pontas; cada andar da rota é um ponto (os das bifurcações em forma de losango). */}
-          {Array.from({ length: END + 1 }, (_, k) => {
-            const end = k === 0 || k === END
-            const fork = !end && FORKS.includes(k - 1)
-            return (
-              <span key={k} className={`absolute -translate-x-1/2 border-2 border-slate-800 ${end ? '-mt-2 h-6 w-6 rounded-full bg-amber-400' : fork ? `-mt-1.5 h-5 w-5 rotate-45 ${k - 1 < pos ? 'bg-white' : 'bg-sky-300'}` : `-mt-1 h-4 w-4 rounded-full ${k - 1 < pos ? 'bg-white' : 'bg-white/40'}`}`} style={{ left: `${x(k)}%` }} />
-            )
-          })}
-          <span className="absolute mt-4 -translate-x-1/2 rounded bg-white/85 px-1 text-[10px] font-bold text-slate-900 sm:text-xs" style={{ left: `${x(0)}%` }} data-no-translate>🏠 {from ?? t('Início')}</span>
-          <span className="absolute mt-4 -translate-x-1/2 rounded bg-white/85 px-1 text-[10px] font-bold text-slate-900 sm:text-xs" style={{ left: `${x(END)}%` }} data-no-translate>👑 {to}</span>
-          {me && (
-            <span className="absolute -translate-x-1/2 -translate-y-full transition-all duration-700" style={{ left: `${x(pos + 1)}%` }}>
-              <TrainerSprite trainer={me} box={width * 0.2} />
-            </span>
-          )}
-        </div>
+        {floorTag && <span className="absolute right-3 top-2 rounded bg-slate-900/70 px-1.5 text-[10px] font-black text-white sm:text-xs" data-testid="route-floor">{floorTag}</span>}
         {coach && (meeting || rival) && <FarStand scene={meetScene}><TrainerSprite trainer={coach} box={width * 0.4} /></FarStand>}
-        {lead && <FieldMon mon={lead} byId={byId} back scene={meetScene} />}
+        {town && me && <div className="absolute bottom-[8%] left-1/2 -translate-x-1/2"><TrainerSprite trainer={me} box={width * 0.3} /></div>}
+        {!town && lead && <FieldMon mon={lead} byId={byId} back scene={meetScene} />}
       </Field>
     )
+    // As falas (uma por vez, tocando para passar, como nos jogos).
+    const lines = [
+      intro && `📖 ${intro}`,
+      !town && !inside && pos === 0 && !meeting && `🧭 ${t('Você sai de {0} e entra em {1}, rumo a {2}.').replace('{0}', from ?? t('casa')).replace('{1}', t(biome.label)).replace('{2}', to)} ${t(ROUTE_FLAVOR[route.biome] ?? ROUTE_FLAVOR.grass)}`,
+      !town && !inside && pos === 0 && !meeting && legend != null && `🌟 ${t(LEGEND_CLUES[target.kind === 'elite' ? LEGEND_CLUES.length - 1 : Math.min(LEGEND_CLUES.length - 2, run.badges ?? 0)])}`,
+      inside && dungeonPos(run) === 0 && `🕳️ ${t('Você entrou: {0} andares e um chefe no fim. Depois, de volta para a cidade.').replace('{0}', DUNGEON_LENGTH)}`,
+      meeting && boss.kind === 'rival' && `💬 ${boss.name}: ${t(RIVAL_LINES[Math.min(RIVAL_LINES.length - 1, run.rivalWins ?? 0)])}`,
+      meeting && boss.kind === 'villain' && `💬 ${boss.name}: ${t(VILLAIN_LINES[(run.floor + run.seed) % VILLAIN_LINES.length])}`,
+      meeting && boss.kind === 'villain' && `💬 ${t(VILLAIN_PLANS[villainTeam(boss.name)] ?? VILLAIN_PLANS.rocket)}`,
+      meeting && boss.kind === 'gym' && `💬 ${boss.name}: ${t(LEADER_LINES[leaderType(data, boss)] ?? LEADER_LINES.normal)}`,
+      meeting && (boss.kind === 'rival' || boss.kind === 'villain') && t('{0} apareceu no caminho!').replace('{0}', boss.name),
+      meeting && !(boss.kind === 'rival' || boss.kind === 'villain') && t('O chefe espera'),
+      meeting && storyLine(data, boss.region, boss.kind, boss.name),
+      rival && `💬 ${rival.name}: ${t(RIVAL_RACE_LINES[(run.rivalRaces ?? 0) % RIVAL_RACE_LINES.length])}`,
+      rival && t('{0} apareceu no caminho!').replace('{0}', rival.name),
+      town && boss.kind === 'villain' && `💬 ${t('A {0} tomou conta da cidade! O líder do ginásio só volta quando ela for embora.').replace('{0}', TEAM_NAMES[villainTeam(boss.name)] ?? 'Equipe Rocket')}`,
+      town && boss.kind !== 'villain' && t('Bem-vindo a {0}! O ginásio, o Poké Mart, o Centro Pokémon e a Creche ficam aqui.').replace('{0}', to),
+    ].filter(Boolean)
     text = (
       <>
-        {intro && <p className="text-sm font-semibold">📖 {intro}</p>}
-        {pos === 0 && !meeting && (
-          <p className="text-sm font-semibold" data-testid="factory-route-story">
-            🧭 {t('Você sai de {0} e entra em {1}, rumo a {2}.').replace('{0}', from ?? t('casa')).replace('{1}', t(biome.label)).replace('{2}', to)}
-            {' '}{t(ROUTE_FLAVOR[route.biome] ?? ROUTE_FLAVOR.grass)}
-          </p>
-        )}
-        {pos === 0 && !meeting && legend != null && (
-          <p className="text-sm" data-testid="factory-legend-clue">🌟 {t(LEGEND_CLUES[target.kind === 'elite' ? LEGEND_CLUES.length - 1 : Math.min(LEGEND_CLUES.length - 2, run.badges ?? 0)])}</p>
-        )}
-        {meeting && boss.kind === 'rival' && <p className="text-sm italic" data-testid="factory-rival-line">💬 {t(RIVAL_LINES[Math.min(RIVAL_LINES.length - 1, run.rivalWins ?? 0)])}</p>}
-        {meeting && boss.kind === 'villain' && (
-          <>
-            <p className="text-sm italic">💬 {t(VILLAIN_LINES[(run.floor + run.seed) % VILLAIN_LINES.length])}</p>
-            <p className="text-sm italic" data-testid="factory-villain-plan">💬 {t(VILLAIN_PLANS[villainTeam(boss.name)] ?? VILLAIN_PLANS.rocket)}</p>
-          </>
-        )}
-        {meeting && boss.kind === 'gym' && <p className="text-sm italic" data-testid="factory-leader-line">💬 <span data-no-translate>{boss.name}</span>: {t(LEADER_LINES[leaderType(data, boss)] ?? LEADER_LINES.normal)}</p>}
-        {meeting && (boss.kind === 'rival' || boss.kind === 'villain') ? (
-          <>
-            <p>{t('{0} apareceu no caminho!').replace('{0}', boss.name)}</p>
-            <p className="text-sm font-semibold">{storyLine(data, boss.region, boss.kind, boss.name)}</p>
-          </>
-        ) : meeting ? (
-          <>
-            <p>{t('O chefe espera')}</p>
-            <p className="text-sm font-semibold">{storyLine(data, boss.region, boss.kind, boss.name)}</p>
-          </>
-        ) : rival ? (
-          <>
-            <p className="text-sm italic" data-testid="factory-rival-race">💬 <span data-no-translate>{rival.name}</span>: {t(RIVAL_RACE_LINES[(run.rivalRaces ?? 0) % RIVAL_RACE_LINES.length])}</p>
-            <p>{t('{0} apareceu no caminho!').replace('{0}', rival.name)}</p>
-          </>
-        ) : (
-          <p>{!fork ? t('O caminho segue.') : hasMap ? t('O caminho se divide: escolha por onde ir') : t('O caminho se divide! Sem o Mapa, só dá para ouvir e olhar de longe: escolha por uma pista (o Mapa mostra tudo).')}</p>
-        )}
+        <Dialogue key={`${run.floor}-${run.dungeon?.place ?? ''}-${route.options.map((o) => o.kind).join()}`} lines={lines}
+          fallback={town ? null : !fork ? t('O caminho segue.') : hasMap ? t('O caminho se divide: escolha por onde ir') : t('O caminho se divide! Sem o Mapa, você não sabe aonde cada caminho leva.')} />
         {run.mission && run.mission.leg === (run.leg ?? 1) && (
           <p className="text-sm" data-testid="factory-mission">
             📋 {t('Missão')}: {missionText(run.mission)} ({run.mission.done}/{run.mission.need}){run.mission.done >= run.mission.need ? ' ✔' : ''}
           </p>
         )}
         <p className="dlg-sub text-xs" data-testid="factory-clock">
-          {t(SEASON_LABEL[clock.season])} · {clock.night ? `🌙 ${t('Noite: mais Fantasma e Sombrio')}` : `🌤️ ${t('Dia')}`}
+          {t(SEASON_LABEL[clock.season])} · {clock.night ? `🌙 ${t('Noite: mais Fantasma e Sombrio')}` : `🌤️ ${t('Dia')}`} · {t('Chefe em {0}:').replace('{0}', to)} <b data-no-translate>{target.name}</b>
         </p>
-        <p className="dlg-sub text-sm">{t('Chefe em {0}:').replace('{0}', to)} <b data-no-translate>{target.name}</b> · {bossKindLabel(target.kind)}</p>
         {down && <p className="text-sm text-red-600">{t('O time todo está desmaiado: use um Revive ou desista.')}</p>}
       </>
     )
     wideMenu = true
     menu = (
       <>
-        {/* Sem o Mapa: dá para ir por qualquer caminho, mas só com uma pista do que tem. */}
+        {/* Sem o Mapa: dá para seguir em frente ou pegar outro caminho, sem saber aonde ele leva. */}
         {fork && !hasMap && route.options.map((node, k) => (
-          <MenuButton key={k} testid={`map-node-${k}`} disabled={busy || nodeBlocked(run, node)} onClick={() => pickNode(k)}
-            sub={nodeBlocked(run, node) ? t('Precisa da MO Surf (3ª insígnia).') : t(pathHint(node))}>
-            🧭 {t('CAMINHO {0}').replace('{0}', k + 1)}
+          <MenuButton key={k} testid={`map-node-${k}`} disabled={busy || nodeBlocked(run, node) || (isBattleNode(node) && down)} onClick={() => pickNode(k)}
+            sub={nodeBlocked(run, node) ? t('Precisa da MO Surf (3ª insígnia).') : k === 0 ? t('Continuar por onde você está') : t('Não dá para saber aonde ele leva (o Mapa mostra)')}>
+            {k === 0 ? `➡️ ${t('SEGUIR EM FRENTE')}` : `↗️ ${t('OUTRO CAMINHO')}${route.options.length > 2 ? ` ${k}` : ''}`}
           </MenuButton>
         ))}
         {(hasMap || !fork) && route.options.map((node, k) => {
+          if (node.kind === 'dungeon') {
+            const place = node.place === 'base' ? { name: t('Base da {0}').replace('{0}', TEAM_NAMES[villainTeam(boss.name)] ?? 'Equipe Rocket') } : DUNGEONS[node.place]
+            return (
+              <MenuButton key={k} testid={`map-node-${k}`} disabled={busy || down} onClick={() => pickNode(k)}
+                sub={node.place === 'base' ? t('A equipe vilã está na cidade: {0} andares e o chefe dela no fim.').replace('{0}', DUNGEON_LENGTH) : t('{0} andares e um chefe; depois volta para a cidade.').replace('{0}', DUNGEON_LENGTH)}>
+                {(BIOME_INFO[node.scene] ?? biome).icon} {t(place.name)}
+              </MenuButton>
+            )
+          }
           const info = node.legend != null ? LEGEND_INFO : node.cut ? CUT_INFO : NODE_INFO[node.kind]
           const b = node.biome && !node.cut ? BIOME_INFO[node.biome] : null
           const noSurf = nodeBlocked(run, node)
           return (
             <MenuButton key={k} testid={`map-node-${k}`} disabled={busy || (isBattleNode(node) && down) || noSurf} onClick={() => pickNode(k)}
-              sub={noSurf ? t('Precisa da MO Surf (3ª insígnia).') : node.kind === 'boss' ? `${bossKindLabel(boss.kind)}${CITY_KIND_SET.has(boss.kind) ? ` · ${to}` : ''}` : t(info.help)}>
-              {route.options.length === 1 && node.kind !== 'boss' && node.kind !== 'rival' ? `${t('SEGUIR')}: ` : ''}{node.biome === 'underwater' && route.biome !== 'underwater' ? `🤿 ${t('MERGULHAR')}: ` : ''}{b ? b.icon : info.icon} {node.kind === 'boss' || (node.kind === 'rival' && rival) ? <span data-no-translate>{(node.kind === 'rival' ? rival : boss).name}</span> : t(info.label)}{b ? ` · ${t(b.label)}` : ''}
+              sub={noSurf ? t('Precisa da MO Surf (3ª insígnia).') : node.kind === 'boss' ? `${bossKindLabel(boss.kind)}${CITY_KIND_SET.has(boss.kind) ? ` · ${to}` : ''}` : node.kind === 'dboss' ? t('O chefe do lugar: vencendo, volta para a cidade.') : t(info.help)}>
+              {route.options.length === 1 && !['boss', 'rival', 'dboss'].includes(node.kind) ? `${t('SEGUIR')}: ` : ''}{node.biome === 'underwater' && route.biome !== 'underwater' ? `🤿 ${t('MERGULHAR')}: ` : ''}{town && node.kind === 'boss' ? '🏟️' : b ? b.icon : info.icon} {node.kind === 'boss' || (node.kind === 'rival' && rival) ? <span data-no-translate>{(node.kind === 'rival' ? rival : boss).name}</span> : t(info.label)}{b ? ` · ${t(b.label)}` : ''}
             </MenuButton>
           )
         })}
+        {/* Na cidade: o Poké Mart, o Centro Pokémon e a Creche (cada um no seu lugar). */}
+        {town && (
+          <div className="grid grid-cols-3 gap-1">
+            <MenuButton testid="town-mart" disabled={busy} onClick={() => save(townShop(run))}>🛒 Poké Mart</MenuButton>
+            <MenuButton testid="town-center" disabled={busy} onClick={() => save(townCenter(run))}>🏥 {t('CENTRO')}</MenuButton>
+            <MenuButton testid="town-daycare" disabled={busy} onClick={() => setPanel(panel === 'daycare' ? null : 'daycare')} active={panel === 'daycare'}>🏡 {t('CRECHE')}</MenuButton>
+          </div>
+        )}
         {cut && hasMap && (
           <MenuButton testid="factory-cut" disabled={busy} onClick={() => save(cut)} sub={t(HM_INFO.cut.help)}>
             ✂️ {t('USAR {0}').replace('{0}', 'Cut')}
           </MenuButton>
         )}
-        {(run.rerolls ?? 0) > 0 && !meeting && hasMap && (
+        {(run.rerolls ?? 0) > 0 && !meeting && !town && hasMap && (
           <MenuButton testid="factory-reroll" disabled={busy} onClick={() => { const next = rerollRoute(run, data); if (next) save(next) }} sub={t('Restam {0} nesta corrida').replace('{0}', run.rerolls)}>
             🎲 {t('SORTEAR O CAMINHO DE NOVO')}
           </MenuButton>
@@ -1440,6 +1466,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         <div className="grid grid-cols-2">{tools}</div>
       </>
     )
+    if (town && panel === 'daycare') below = daycareView()
   } else if (!p && run.encounter) {
     field = <Field biome={run.scene} fieldRef={fieldRef}>{lead && <FieldMon mon={lead} byId={byId} back scene={run.scene} />}</Field>
     text = <p>{t('Lutar no andar {0}').replace('{0}', run.floor)}</p>
@@ -1451,7 +1478,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
 
   return (
     <section data-testid="factory-screen">
-      <BattleFrame field={field} run={run} byId={byId} wideMenu={wideMenu} menu={menu} panel={below || extras || null}
+      <BattleFrame field={field} run={run} byId={byId} data={data} wideMenu={wideMenu} menu={menu} panel={below || extras || null}
         text={<>
           {text}
           {unlocked != null && <p className="text-sm text-amber-600" data-testid="factory-shiny-unlocked">✨ {t('{0} shiny liberado para começar as próximas corridas!').replace('{0}', name(unlocked))}</p>}

@@ -21,6 +21,7 @@ import '../services/team_sets.dart';
 import '../services/trainers.dart';
 import '../services/turn_battle.dart';
 import '../services/user_data.dart';
+import '../utils/pokemon_colors.dart';
 import '../utils/site_ui.dart';
 import '../widgets/battle_scene.dart';
 import '../widgets/bw_bag.dart';
@@ -934,21 +935,6 @@ const _biomeInfo = <String, (String, String, Color)>{
   'base-star': ('Base da Equipe Estrela', '🏴', Color(0xFFDB2777)),
 };
 
-/// Sem o Mapa: cada caminho só dá uma pista do que tem (com o Mapa, você vê tudo). Igual ao site.
-const _pathHints = {
-  'wild': '🌿 Barulho no mato...', 'trainer': '👣 Pegadas de treinador...', 'ace': '💪 Pegadas firmes e fundas...',
-  'mart': '🎒 Alguém com uma mochila grande...', 'center': '⛺ Fumaça de fogueira...', 'event': '✨ Algo brilhando no chão...',
-  'trade': '🔁 Alguém acenando de longe...', 'wildboss': '⚠️ Um rugido forte...', 'rematch': '🏆 Um treinador famoso por perto...',
-  'rival': '⚔️ Alguém conhecido te seguindo...',
-};
-String _pathHint(Map node) => node['legend'] != null
-    ? '🌟 Uma presença enorme...'
-    : node['cut'] == true
-        ? '🌳 Um caminho escondido...'
-        : node['biome'] == 'underwater'
-            ? '🌊 Água funda...'
-            : _pathHints[node['kind']] ?? '❓';
-
 /// O nome curto de cada melhoria (nos requisitos da árvore). Igual ao site.
 const _upgradeNames = {
   'level': 'Treino', 'ivs': 'Genética', 'exp': 'XP extra', 'expShare': 'Exp. Share', 'potions': 'Potions', 'revive': 'Revives',
@@ -1205,14 +1191,15 @@ class _FactoryScreenState extends State<FactoryScreen> {
   }
 
   /// Alguém de pé na base de lá de trás (Enfermeira Joy, o chefe, um item...).
-  Widget _far(Widget child, double w, double h) => Positioned(
+  /// plain: sem a base (o vendedor no próprio lugar, fora da batalha).
+  Widget _far(Widget child, double w, double h, {bool plain = false}) => Positioned(
       right: w * 0.06,
       bottom: h * foeBottom(_scene),
       width: w * 0.36,
       height: w * 0.36,
       child: Stack(clipBehavior: Clip.none, fit: StackFit.expand, children: [
         // Uma base do tamanho de um Pokémon médio (Snorlax tem 21 dm; 13 dm dá ~0,8).
-        PlatformBase(scene: _scene, side: 'foe', id: 0),
+        if (!plain) PlatformBase(scene: _scene, side: 'foe', id: 0),
         Align(alignment: Alignment.bottomCenter, child: child),
       ]));
 
@@ -1231,6 +1218,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
         Text('🏭 ${tr('Andar {0}').replaceAll('{0}', '${run['floor']}')}', style: style),
         Text('💰 ${run['money']}', style: style),
         Text('📖 ${FactoryRun.dexOf(run).length}', key: const ValueKey('factory-dex'), style: style),
+        if (_data != null) _badges(_data!, run),
         for (final hm in (run['hms'] as List? ?? const [])) Text(_hmInfo[hm]?.$2 ?? '', style: style),
         if (run['daycare'] != null) const Text('🏡', style: style),
         for (final id in FactoryRun.bagItems)
@@ -1251,6 +1239,42 @@ class _FactoryScreenState extends State<FactoryScreen> {
               ),
             ]),
         ]),
+      ]),
+    );
+  }
+
+  /// As insígnias da região de agora: uma por líder de ginásio, na cor do tipo dele; as ganhas acesas, as que faltam
+  /// apagadas. Igual ao site.
+  Widget _badges(FactoryData data, Json run) {
+    final leaders = (data.bosses[(run['boss']['region'] as num).toInt()]['leaders'] as List).cast<Map>();
+    final step = (run['boss']['step'] as num).toInt();
+    final gyms = [for (var k = 0; k < leaders.length; k++) if (leaders[k]['kind'] == 'gym') k];
+    if (gyms.isEmpty) return const SizedBox.shrink();
+    return Container(
+      key: const ValueKey('factory-badges'),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      decoration: BoxDecoration(color: const Color(0x800F172A), borderRadius: BorderRadius.circular(4)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        for (final k in gyms)
+          Tooltip(
+            message: tr('Insígnia de {0}').replaceAll('{0}', '${leaders[k]['name']}'),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: Transform.rotate(
+                angle: pi / 4,
+                child: Container(
+                  key: ValueKey(k < step ? 'badge-won' : 'badge-missing'),
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: k < step ? getColorForType(FactoryRun.leaderType(data, leaders[k])) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(2),
+                    border: Border.all(color: k < step ? Colors.white : Colors.white30),
+                  ),
+                ),
+              ),
+            ),
+          ),
       ]),
     );
   }
@@ -1298,30 +1322,70 @@ class _FactoryScreenState extends State<FactoryScreen> {
     final c = SiteColors.of(context);
     final team = FactoryRun.teamOf(run);
     final target = min(_target, team.length - 1);
+    // Compacto (cabe no celular, por cima do campo): o alvo numa fileira de ícones e cada item numa linha.
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Text(tr('Para quem é a compra (bolas e itens da Bolsa vão para a Bolsa):'), style: TextStyle(color: c.muted, fontSize: 12)),
-          const SizedBox(height: 4),
-          Wrap(spacing: 6, runSpacing: 6, children: [
-            for (var i = 0; i < team.length; i++) _mon(context, team[i], name: _name(team[i]['id']), selected: target == i, onTap: () => setState(() => _target = i)),
-          ]),
-          for (final id in p['shop'] as List)
-            ListTile(
-              key: ValueKey('shop-$id'),
-              contentPadding: EdgeInsets.zero,
-              leading: _itemIcon('$id', 32),
-              title: Text(_itemName('$id'), style: TextStyle(fontWeight: FontWeight.bold, color: c.text)),
-              subtitle: Text(FactoryRun.shopOwned(run, '$id') ? tr('Você já tem') : _help('$id'), style: TextStyle(color: c.muted, fontSize: 12)),
-              trailing: TextButton(
-                key: ValueKey('buy-$id'),
-                onPressed: (run['money'] as num) < FactoryRun.shopPrice(run, '$id') ||
-                        FactoryRun.shopOwned(run, '$id') ||
-                        ('$id'.startsWith('evo:') && FactoryRun.canEvolveWith(data, team[target], '$id'.substring(4)).isEmpty)
-                    ? null
-                    : () => _save(FactoryRun.buyItem(run, '$id', target, data)),
-                child: Text('💰${FactoryRun.shopPrice(run, '$id')}'),
+      Text(tr('Para quem é a compra (bolas e itens da Bolsa vão para a Bolsa):'), style: TextStyle(color: c.muted, fontSize: 11)),
+      const SizedBox(height: 4),
+      SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(children: [
+          for (var i = 0; i < team.length; i++)
+            Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: InkWell(
+                key: ValueKey('target-$i'),
+                borderRadius: BorderRadius.circular(10),
+                onTap: () => setState(() => _target = i),
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: c.surface,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: target == i ? const Color(0xFFFBBF24) : Colors.transparent, width: 2),
+                  ),
+                  child: Opacity(
+                    opacity: FactoryRun.hpOf(team[i]) > 0 ? 1 : 0.45,
+                    child: PokemonSprite((team[i]['id'] as num).toInt(), shiny: team[i]['shiny'] == true, fill: 0.9),
+                  ),
+                ),
               ),
             ),
-        ]);
+          const SizedBox(width: 4),
+          Text('${_name(team[target]['id'])} · Nv. ${team[target]['level']}', style: TextStyle(color: c.text, fontSize: 12, fontWeight: FontWeight.bold)),
+        ]),
+      ),
+      const SizedBox(height: 6),
+      for (final id in p['shop'] as List)
+        Container(
+          key: ValueKey('shop-$id'),
+          margin: const EdgeInsets.only(bottom: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(10)),
+          child: Row(children: [
+            _itemIcon('$id', 26),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                Text(_itemName('$id'), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.bold, color: c.text, fontSize: 13)),
+                Text(FactoryRun.shopOwned(run, '$id') ? tr('Você já tem') : _help('$id'),
+                    maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: c.muted, fontSize: 11, height: 1.2)),
+              ]),
+            ),
+            const SizedBox(width: 4),
+            FilledButton(
+              key: ValueKey('buy-$id'),
+              style: FilledButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 8)),
+              onPressed: (run['money'] as num) < FactoryRun.shopPrice(run, '$id') ||
+                      FactoryRun.shopOwned(run, '$id') ||
+                      ('$id'.startsWith('evo:') && FactoryRun.canEvolveWith(data, team[target], '$id'.substring(4)).isEmpty)
+                  ? null
+                  : () => _save(FactoryRun.buyItem(run, '$id', target, data)),
+              child: Text('💰${FactoryRun.shopPrice(run, '$id')}', style: const TextStyle(fontSize: 12)),
+            ),
+          ]),
+        ),
+    ]);
   }
 
   /// A caixa de diálogo no tema: escura no tema escuro, branca no claro (igual ao site).
@@ -1443,7 +1507,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
                     _overlayHeader('${p?['mart'] == true ? '🎒 ${tr('Vendedor ambulante')}' : '🛒 Poké Mart'} · 💰${run['money']}', close),
                     Padding(padding: const EdgeInsets.all(8), child: _shopList(context, run, p!, data)),
                   ])
-                : step == 'shop' && _panel == 'daycare'
+                // A Creche: um lugar da cidade (separado do Poké Mart).
+                : p == null && _panel == 'daycare'
                     ? _daycarePanel(run, data, close)
                     : null;
     if (step == 'result') {
@@ -1499,13 +1564,15 @@ class _FactoryScreenState extends State<FactoryScreen> {
         text: [Text('🃏 ${tr('Escolha uma carta de bônus')}')],
       );
     } else if (step == 'shop' && p!['mart'] == true) {
-      // Na rota: o vendedor ambulante (vende o mesmo que o Poké Mart), no próprio lugar. Igual ao site.
+      // Na rota: o vendedor ambulante (vende o mesmo que o Poké Mart), no próprio lugar: o cenário não muda e não tem
+      // as bases da batalha. Igual ao site.
       final scene = '${run['scene'] ?? 'grass'}';
+      final me = Trainers.mine;
       frame = _frame(
         run: run,
         field: _field(scene, key: const ValueKey('factory-shop'), (w, h) => [
-              _far(_trainerImage('sd-backpacker', w * 0.42), w, h),
-              if (lead != null) _fieldMon(lead, w, h, back: true),
+              _far(_trainerImage('sd-backpacker', w * 0.42), w, h, plain: true),
+              if (me != null) Positioned(left: w * 0.1, bottom: h * 0.06, child: TrainerSprite(me, box: w * 0.32)),
               Positioned(
                 left: 10,
                 top: 6,
@@ -1564,8 +1631,6 @@ class _FactoryScreenState extends State<FactoryScreen> {
         text: [Text('${tr('Bem-vindo! Do que você precisa?')} 💰${run['money']}')],
         menu: _menuGrid([
           _menuButton(tr('COMPRAR'), () => setState(() => _panel = _panel == 'buy' ? null : 'buy'), active: _panel == 'buy', key: const ValueKey('factory-menu-buy')),
-          _menuButton(tr('CRECHE'), () => setState(() => _panel = _panel == 'daycare' ? null : 'daycare'),
-              active: _panel == 'daycare', key: const ValueKey('factory-menu-daycare')),
           ...tools,
           _menuButton(tr('CONTINUAR'), () {
             _panel = null;
@@ -1891,7 +1956,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
     );
   }
 
-  /// O mapa: a rota no campo (da cidade de onde veio até a do chefe; você no andar de agora) e os caminhos no menu.
+  /// O mapa: o lugar de agora no campo (o andar, pequeno, num canto) e os caminhos no menu. Na cidade, o ginásio, o
+  /// Poké Mart, o Centro, a Creche e o lugar perto dela; dentro de um lugar, os andares dele até o chefe. Igual ao site.
   Widget _mapFrame(Json run, FactoryData data, Map? lead, List<Widget> tools) {
     final boss = FactoryRun.bossOf(data, run);
     final target = FactoryRun.targetOf(data, run);
@@ -1901,7 +1967,11 @@ class _FactoryScreenState extends State<FactoryScreen> {
     final biome = _biomeInfo[route['biome']] ?? _biomeInfo['grass']!;
     final pos = min(FactoryRun.routeLength, FactoryRun.routePos(run));
     final down = FactoryRun.teamDown(run);
-    final meeting = options.length == 1 && options.first['kind'] == 'boss';
+    final town = route['town'] == true;
+    final dungeon = run['dungeon'] as Map?;
+    final teamName = _teamNames[FactoryRun.villainTeam(boss['name'])] ?? 'Equipe Rocket';
+    final insideName = dungeon == null ? null : dungeon['place'] == 'base' ? tr('Base da {0}').replaceAll('{0}', teamName) : tr(FactoryRun.dungeons['${dungeon['place']}']?.name ?? '');
+    final meeting = !town && options.length == 1 && options.first['kind'] == 'boss';
     final ambush = meeting && (boss['kind'] == 'rival' || boss['kind'] == 'villain');
     // O rival de surpresa no meio da rota.
     final rival = options.length == 1 && options.first['kind'] == 'rival' ? FactoryRun.rivalBoss(data, run) : null;
@@ -1912,7 +1982,6 @@ class _FactoryScreenState extends State<FactoryScreen> {
     final legend = FactoryRun.regionLegend(data, run);
     final clock = FactoryRun.clockOf();
     final mission = run['mission'] as Map?;
-    const end = FactoryRun.routeLength + 1;
     void pick(int k) {
       final next = FactoryRun.chooseNode(run, data, k, FactoryRun.clockOf());
       if (identical(next, run)) return;
@@ -1925,129 +1994,166 @@ class _FactoryScreenState extends State<FactoryScreen> {
           decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.85), borderRadius: BorderRadius.circular(4)),
           child: Text(text, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: _ink)),
         );
-    final fork = options.length > 1;
+    final fork = !town && options.length > 1;
     // Sem o Mapa: nada do mapa e, na bifurcação, segue às cegas.
     final hasMap = run['townMap'] == true || (FactoryRun.hasHm(run, 'flash') && FactoryRun.darkBiomes.contains(route['biome']));
-    final cut = !meeting ? FactoryRun.cutPath(run) : null;
+    final cut = !meeting && !town ? FactoryRun.cutPath(run) : null;
+    // O andar (pequeno, num canto): na rota, até a cidade; num lugar, até o chefe dele.
+    final floorTag = dungeon != null
+        ? '${FactoryRun.dungeonPos(run) + 1}/${FactoryRun.dungeonLength}'
+        : town
+            ? null
+            : '${pos + 1}/${FactoryRun.routeLength + 1}';
+    final scene = town
+        ? 'city'
+        : meeting && _cityKinds.contains(boss['kind'])
+            ? FactoryRun.bossScene(data, boss, '${route['biome']}')
+            : '${route['biome']}';
+    // As falas (uma por vez, tocando para passar, como nos jogos).
+    final lines = <String>[
+      if (intro.isNotEmpty) '📖 $intro',
+      if (!town && dungeon == null && pos == 0 && !meeting)
+        '🧭 ${tr('Você sai de {0} e entra em {1}, rumo a {2}.').replaceAll('{0}', cities.from ?? tr('casa')).replaceAll('{1}', tr(biome.$1)).replaceAll('{2}', cities.to)} '
+            '${tr(_routeFlavor['${route['biome']}'] ?? _routeFlavor['grass']!)}',
+      if (!town && dungeon == null && pos == 0 && !meeting && legend != null)
+        '🌟 ${tr(_legendClues[target['kind'] == 'elite' ? _legendClues.length - 1 : min(_legendClues.length - 2, ((run['badges'] as num?) ?? 0).toInt())])}',
+      if (dungeon != null && FactoryRun.dungeonPos(run) == 0)
+        '🕳️ ${tr('Você entrou: {0} andares e um chefe no fim. Depois, de volta para a cidade.').replaceAll('{0}', '${FactoryRun.dungeonLength}')}',
+      if (meeting && boss['kind'] == 'rival') '💬 ${boss['name']}: ${tr(_rivalLines[min(_rivalLines.length - 1, ((run['rivalWins'] as num?) ?? 0).toInt())])}',
+      if (meeting && boss['kind'] == 'villain') ...[
+        '💬 ${boss['name']}: ${tr(_villainLines[((run['floor'] as num).toInt() + (run['seed'] as num).toInt()) % _villainLines.length])}',
+        '💬 ${tr(_villainPlans[FactoryRun.villainTeam(boss['name'])] ?? _villainPlans['rocket']!)}',
+      ],
+      if (meeting && boss['kind'] == 'gym') '💬 ${boss['name']}: ${tr(_leaderLines[FactoryRun.leaderType(data, boss)] ?? _leaderLines['normal']!)}',
+      if (ambush) tr('{0} apareceu no caminho!').replaceAll('{0}', '${boss['name']}'),
+      if (meeting && !ambush) tr('O chefe espera'),
+      if (meeting) FactoryRun.storyLine(data, region, '${boss['kind']}', '${boss['name']}'),
+      if (rival != null) ...[
+        '💬 ${rival['name']}: ${tr(_rivalRaceLines[((run['rivalRaces'] as num?) ?? 0).toInt() % _rivalRaceLines.length])}',
+        tr('{0} apareceu no caminho!').replaceAll('{0}', '${rival['name']}'),
+      ],
+      if (town && boss['kind'] == 'villain') '💬 ${tr('A {0} tomou conta da cidade! O líder do ginásio só volta quando ela for embora.').replaceAll('{0}', teamName)}',
+      if (town && boss['kind'] != 'villain') tr('Bem-vindo a {0}! O ginásio, o Poké Mart, o Centro Pokémon e a Creche ficam aqui.').replaceAll('{0}', cities.to),
+    ];
     return _frame(
       run: run,
       field: fork && hasMap
           ? _townMap(route, options, pos, cities.from, cities.to, '${boss['region']} · ${boss['game']}', me,
               widget.busy ? null : pick, (node) => (FactoryRun.isBattleNode(node) && down) || FactoryRun.nodeBlocked(run, node))
           // O líder espera no ginásio da cidade; a Elite Four e o Campeão, na Liga (nunca no meio da rota).
-          : _field(meeting && _cityKinds.contains(boss['kind']) ? FactoryRun.bossScene(data, boss, '${route['biome']}') : '${route['biome']}', key: const ValueKey('factory-map'), (w, h) {
-        double x(int k) => w * (0.08 + k / end * 0.84);
-        final y = h * 0.34;
-        return [
-          Positioned(left: 8, top: 6, right: 8, child: Align(alignment: Alignment.topLeft, child: sign('${boss['region']} · ${boss['game']} · ${biome.$2} ${tr('Rota para {0}').replaceAll('{0}', cities.to)}'))),
-          // A rota (com ou sem o Mapa): de onde veio, você no andar de agora e a cidade do chefe.
-          Positioned(left: x(0), width: x(end) - x(0), top: y - 3, height: 6, child: Container(decoration: BoxDecoration(color: const Color(0x998B4513), borderRadius: BorderRadius.circular(3)))),
-          // As cidades nas pontas; cada andar da rota é um ponto (os das bifurcações em forma de losango).
-          for (var k = 0; k <= end; k++)
-            Builder(builder: (context) {
-              final city = k == 0 || k == end;
-              final fork = !city && FactoryRun.forks.contains(k - 1);
-              final size = city ? 18.0 : fork ? 13.0 : 12.0;
-              final box = Container(
-                decoration: BoxDecoration(
-                  shape: fork ? BoxShape.rectangle : BoxShape.circle,
-                  border: Border.all(color: _border, width: 2),
-                  color: city ? const Color(0xFFFBBF24) : k - 1 < pos ? Colors.white : fork ? const Color(0xFF7DD3FC) : Colors.white54,
-                ),
-              );
-              return Positioned(left: x(k) - size / 2, top: y - size / 2, width: size, height: size, child: fork ? Transform.rotate(angle: pi / 4, child: box) : box);
+          : _field(scene, key: const ValueKey('factory-map'), (w, h) {
+              return [
+                Positioned(
+                    left: 8,
+                    top: 6,
+                    right: 48,
+                    child: Align(
+                        alignment: Alignment.topLeft,
+                        child: sign(town
+                            ? '🏙️ ${cities.to}'
+                            : insideName != null
+                                ? '${biome.$2} $insideName'
+                                : '${boss['region']} · ${boss['game']} · ${biome.$2} ${tr('Rota para {0}').replaceAll('{0}', cities.to)}'))),
+                if (floorTag != null)
+                  Positioned(
+                    right: 8,
+                    top: 6,
+                    child: Container(
+                      key: const ValueKey('route-floor'),
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                      decoration: BoxDecoration(color: const Color(0xB30F172A), borderRadius: BorderRadius.circular(4)),
+                      child: Text(floorTag, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white)),
+                    ),
+                  ),
+                if (coach != null && (meeting || rival != null)) _far(TrainerSprite(coach, box: w * 0.4), w, h),
+                if (town && me != null) Positioned(left: w * 0.35, bottom: h * 0.08, child: TrainerSprite(me, box: w * 0.3)),
+                if (!town && lead != null) _fieldMon(lead, w, h, back: true),
+              ];
             }),
-          Positioned(left: x(0) - 4, top: y + 10, child: sign('🏠 ${cities.from ?? tr('Início')}')),
-          Positioned(right: w - x(end) - 4, top: y + 10, child: sign('👑 ${cities.to}')),
-          if (me != null) Positioned(left: x(pos + 1) - w * 0.1, top: y - w * 0.2, child: TrainerSprite(me, box: w * 0.2)),
-          if (coach != null && (meeting || rival != null)) _far(TrainerSprite(coach, box: w * 0.4), w, h),
-          if (lead != null) _fieldMon(lead, w, h, back: true),
-        ];
-      }),
       text: [
-        if (intro.isNotEmpty) _small('📖 $intro'),
-        // Ao entrar na rota: de onde sai, o lugar e para onde vai, com uma frase do lugar.
-        if (pos == 0 && !meeting)
-          Text(
-              '🧭 ${tr('Você sai de {0} e entra em {1}, rumo a {2}.').replaceAll('{0}', cities.from ?? tr('casa')).replaceAll('{1}', tr(biome.$1)).replaceAll('{2}', cities.to)} '
-              '${tr(_routeFlavor['${route['biome']}'] ?? _routeFlavor['grass']!)}',
-              key: const ValueKey('factory-route-story'),
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-        if (pos == 0 && !meeting && legend != null)
-          Text(
-              '🌟 ${tr(_legendClues[target['kind'] == 'elite' ? _legendClues.length - 1 : min(_legendClues.length - 2, ((run['badges'] as num?) ?? 0).toInt())])}',
-              key: const ValueKey('factory-legend-clue'),
-              style: const TextStyle(fontSize: 13)),
-        if (meeting && boss['kind'] == 'rival')
-          _small('💬 ${tr(_rivalLines[min(_rivalLines.length - 1, ((run['rivalWins'] as num?) ?? 0).toInt())])}'),
-        if (meeting && boss['kind'] == 'villain') ...[
-          _small('💬 ${tr(_villainLines[((run['floor'] as num).toInt() + (run['seed'] as num).toInt()) % _villainLines.length])}'),
-          Text('💬 ${tr(_villainPlans[FactoryRun.villainTeam(boss['name'])] ?? _villainPlans['rocket']!)}',
-              key: const ValueKey('factory-villain-plan'), style: const TextStyle(fontSize: 13, fontStyle: FontStyle.italic)),
-        ],
-        if (meeting && boss['kind'] == 'gym')
-          Text('💬 ${boss['name']}: ${tr(_leaderLines[FactoryRun.leaderType(data, boss)] ?? _leaderLines['normal']!)}',
-              key: const ValueKey('factory-leader-line'), style: const TextStyle(fontSize: 13, fontStyle: FontStyle.italic)),
-        if (ambush) ...[
-          Text(tr('{0} apareceu no caminho!').replaceAll('{0}', '${boss['name']}')),
-          _small(FactoryRun.storyLine(data, region, '${boss['kind']}', '${boss['name']}')),
-        ] else if (meeting) ...[
-          Text(tr('O chefe espera')),
-          _small(FactoryRun.storyLine(data, region, '${boss['kind']}', '${boss['name']}')),
-        ] else if (rival != null) ...[
-          Text('💬 ${rival['name']}: ${tr(_rivalRaceLines[((run['rivalRaces'] as num?) ?? 0).toInt() % _rivalRaceLines.length])}',
-              key: const ValueKey('factory-rival-race'), style: const TextStyle(fontSize: 13, fontStyle: FontStyle.italic)),
-          Text(tr('{0} apareceu no caminho!').replaceAll('{0}', '${rival['name']}')),
-        ] else
-          Text(!fork
-              ? tr('O caminho segue.')
-              : hasMap
-                  ? tr('O caminho se divide: escolha por onde ir')
-                  : tr('O caminho se divide! Sem o Mapa, só dá para ouvir e olhar de longe: escolha por uma pista (o Mapa mostra tudo).')),
+        _Dialogue(
+          key: ValueKey('dlg-${run['floor']}-${dungeon?['place'] ?? ''}-${options.map((o) => o['kind']).join()}'),
+          lines: lines,
+          fallback: town
+              ? null
+              : !fork
+                  ? tr('O caminho segue.')
+                  : hasMap
+                      ? tr('O caminho se divide: escolha por onde ir')
+                      : tr('O caminho se divide! Sem o Mapa, você não sabe aonde cada caminho leva.'),
+          sub: _dlgSub,
+        ),
         if (mission != null && mission['leg'] == (run['leg'] ?? 1))
           Text(
               '📋 ${tr('Missão')}: ${_mission(mission)} (${mission['done']}/${mission['need']})${(mission['done'] as num) >= (mission['need'] as num) ? ' ✔' : ''}',
               key: const ValueKey('factory-mission'),
               style: const TextStyle(fontSize: 13)),
         Text(
-            '${tr(_seasonLabel[clock.season] ?? '')} · ${clock.night ? '🌙 ${tr('Noite: mais Fantasma e Sombrio')}' : '🌤️ ${tr('Dia')}'}',
+            '${tr(_seasonLabel[clock.season] ?? '')} · ${clock.night ? '🌙 ${tr('Noite: mais Fantasma e Sombrio')}' : '🌤️ ${tr('Dia')}'} · '
+            '${tr('Chefe em {0}:').replaceAll('{0}', cities.to)} ${target['name']}',
             key: const ValueKey('factory-clock'),
             style: TextStyle(fontSize: 11, color: _dlgSub)),
-        _small('${tr('Chefe em {0}:').replaceAll('{0}', cities.to)} ${target['name']} · ${_bossKind(target['kind'])}', color: _dlgSub),
         if (down) _small(tr('O time todo está desmaiado: use um Revive ou desista.'), color: const Color(0xFFDC2626)),
       ],
       menu: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         _menuGrid(wide: true, [
-          // Sem o Mapa: dá para ir por qualquer caminho, mas só com uma pista do que tem. Igual ao site.
+          // Sem o Mapa: dá para seguir em frente ou pegar outro caminho, sem saber aonde ele leva. Igual ao site.
           if (fork && !hasMap)
             for (var k = 0; k < options.length; k++)
-              _menuButton('🧭 ${tr('CAMINHO {0}').replaceAll('{0}', '${k + 1}')}',
-                  widget.busy || FactoryRun.nodeBlocked(run, options[k]) ? null : () => pick(k),
-                  sub: FactoryRun.nodeBlocked(run, options[k]) ? tr('Precisa da MO Surf (3ª insígnia).') : tr(_pathHint(options[k])),
+              _menuButton(k == 0 ? '➡️ ${tr('SEGUIR EM FRENTE')}' : '↗️ ${tr('OUTRO CAMINHO')}${options.length > 2 ? ' $k' : ''}',
+                  widget.busy || FactoryRun.nodeBlocked(run, options[k]) || (FactoryRun.isBattleNode(options[k]) && down) ? null : () => pick(k),
+                  sub: FactoryRun.nodeBlocked(run, options[k])
+                      ? tr('Precisa da MO Surf (3ª insígnia).')
+                      : k == 0
+                          ? tr('Continuar por onde você está')
+                          : tr('Não dá para saber aonde ele leva (o Mapa mostra)'),
                   key: ValueKey('map-node-$k')),
           if (hasMap || !fork)
-          for (var k = 0; k < options.length; k++)
-            Builder(builder: (context) {
-              final node = options[k];
-              final info = node['legend'] != null ? _legendInfo : node['cut'] == true ? _cutInfo : _nodeInfo[node['kind']] ?? _nodeInfo['wild']!;
-              final b = node['cut'] == true ? null : _biomeInfo[node['biome']];
-              final isBoss = node['kind'] == 'boss';
-              final foeName = isBoss ? '${boss['name']}' : node['kind'] == 'rival' && rival != null ? '${rival['name']}' : null;
-              final noSurf = FactoryRun.nodeBlocked(run, node);
-              return _menuButton(
-                '${options.length == 1 && foeName == null ? '${tr('SEGUIR')}: ' : ''}${node['biome'] == 'underwater' && route['biome'] != 'underwater' ? '🤿 ${tr('MERGULHAR')}: ' : ''}${b?.$2 ?? info.$1} ${foeName ?? tr(info.$2)}${b != null ? ' · ${tr(b.$1)}' : ''}',
-                widget.busy || (FactoryRun.isBattleNode(node) && down) || noSurf ? null : () => pick(k),
-                sub: noSurf ? tr('Precisa da MO Surf (3ª insígnia).') : isBoss ? '${_bossKind(boss['kind'])}${ambush ? '' : ' · ${cities.to}'}' : tr(info.$3),
-                key: ValueKey('map-node-$k'),
-              );
-            }),
+            for (var k = 0; k < options.length; k++)
+              Builder(builder: (context) {
+                final node = options[k];
+                if (node['kind'] == 'dungeon') {
+                  final base = node['place'] == 'base';
+                  final name = base ? tr('Base da {0}').replaceAll('{0}', teamName) : tr(FactoryRun.dungeons['${node['place']}']?.name ?? '');
+                  return _menuButton('${(_biomeInfo[node['scene']] ?? biome).$2} $name', widget.busy || down ? null : () => pick(k),
+                      sub: base
+                          ? tr('A equipe vilã está na cidade: {0} andares e o chefe dela no fim.').replaceAll('{0}', '${FactoryRun.dungeonLength}')
+                          : tr('{0} andares e um chefe; depois volta para a cidade.').replaceAll('{0}', '${FactoryRun.dungeonLength}'),
+                      key: ValueKey('map-node-$k'));
+                }
+                final info = node['legend'] != null ? _legendInfo : node['cut'] == true ? _cutInfo : _nodeInfo[node['kind']] ?? _nodeInfo['wild']!;
+                final b = node['cut'] == true ? null : _biomeInfo[node['biome']];
+                final isBoss = node['kind'] == 'boss';
+                final foeName = isBoss ? '${boss['name']}' : node['kind'] == 'rival' && rival != null ? '${rival['name']}' : null;
+                final noSurf = FactoryRun.nodeBlocked(run, node);
+                return _menuButton(
+                  '${options.length == 1 && foeName == null && node['kind'] != 'dboss' ? '${tr('SEGUIR')}: ' : ''}${node['biome'] == 'underwater' && route['biome'] != 'underwater' ? '🤿 ${tr('MERGULHAR')}: ' : ''}${town && isBoss ? '🏟️' : b?.$2 ?? info.$1} ${foeName ?? tr(info.$2)}${b != null ? ' · ${tr(b.$1)}' : ''}',
+                  widget.busy || (FactoryRun.isBattleNode(node) && down) || noSurf ? null : () => pick(k),
+                  sub: noSurf
+                      ? tr('Precisa da MO Surf (3ª insígnia).')
+                      : isBoss
+                          ? '${_bossKind(boss['kind'])}${ambush ? '' : ' · ${cities.to}'}'
+                          : node['kind'] == 'dboss'
+                              ? tr('O chefe do lugar: vencendo, volta para a cidade.')
+                              : tr(info.$3),
+                  key: ValueKey('map-node-$k'),
+                );
+              }),
           if (cut != null && hasMap)
             _menuButton('✂️ ${tr('USAR {0}').replaceAll('{0}', 'Cut')}', widget.busy ? null : () => _save(cut),
                 sub: tr(_hmInfo['cut']!.$3), key: const ValueKey('factory-cut')),
-          if (((run['rerolls'] as num?) ?? 0) > 0 && !meeting && hasMap)
+          if (((run['rerolls'] as num?) ?? 0) > 0 && !meeting && !town && hasMap)
             _menuButton('🎲 ${tr('SORTEAR O CAMINHO DE NOVO')}', widget.busy ? null : () => _save(FactoryRun.rerollRoute(run, data)),
                 sub: tr('Restam {0} nesta corrida').replaceAll('{0}', '${run['rerolls']}'), key: const ValueKey('factory-reroll')),
         ]),
+        // Na cidade: o Poké Mart, o Centro Pokémon e a Creche (cada um no seu lugar). Igual ao site.
+        if (town)
+          _menuGrid([
+            _menuButton('🛒 Poké Mart', widget.busy ? null : () => _save(FactoryRun.townShop(run)), key: const ValueKey('town-mart')),
+            _menuButton('🏥 ${tr('CENTRO')}', widget.busy ? null : () => _save(FactoryRun.townCenter(run)), key: const ValueKey('town-center')),
+            _menuButton('🏡 ${tr('CRECHE')}', widget.busy ? null : () => setState(() => _panel = _panel == 'daycare' ? null : 'daycare'),
+                active: _panel == 'daycare', key: const ValueKey('town-daycare')),
+          ]),
         _menuGrid(tools),
       ]),
     );
@@ -2325,4 +2431,42 @@ class _EvolutionFxState extends State<_EvolutionFx> with SingleTickerProviderSta
           },
         ),
       );
+}
+
+/// O nome de cada equipe vilã (nomes dos jogos). Igual ao site.
+const _teamNames = {
+  'rocket': 'Equipe Rocket', 'aqua': 'Equipe Aqua', 'magma': 'Equipe Magma', 'galactic': 'Equipe Galáctica', 'plasma': 'Equipe Plasma',
+  'flare': 'Equipe Flare', 'skull': 'Equipe Skull', 'aether': 'Fundação Aether', 'star': 'Equipe Star',
+};
+
+/// As falas uma de cada vez, no mesmo lugar (a caixa não cresce), como nos jogos: tocar passa para a próxima (▼). Sem
+/// falas, o texto de fallback. Igual ao site.
+class _Dialogue extends StatefulWidget {
+  const _Dialogue({super.key, required this.lines, this.fallback, required this.sub});
+  final List<String> lines;
+  final String? fallback;
+  final Color sub;
+
+  @override
+  State<_Dialogue> createState() => _DialogueState();
+}
+
+class _DialogueState extends State<_Dialogue> {
+  int _k = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final lines = widget.lines;
+    if (lines.isEmpty) return widget.fallback == null ? const SizedBox.shrink() : Text(widget.fallback!);
+    final last = _k >= lines.length - 1;
+    return GestureDetector(
+      key: const ValueKey('factory-dialogue'),
+      behavior: HitTestBehavior.opaque,
+      onTap: last ? null : () => setState(() => _k++),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        ConstrainedBox(constraints: const BoxConstraints(minHeight: 44), child: Text(lines[min(_k, lines.length - 1)])),
+        if (!last) Text('▼ ${_k + 1}/${lines.length}', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, color: widget.sub)),
+      ]),
+    );
+  }
 }

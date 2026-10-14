@@ -703,7 +703,7 @@ const VS_KIND = {
 function VsSplash({ me, coach, vs, onSkip }) {
   const [label, color] = VS_KIND[vs.kind] ?? VS_KIND.gym
   return (
-    <button type="button" className="vs-splash absolute inset-0 z-30 cursor-pointer overflow-hidden bg-slate-950/70" onClick={onSkip} data-testid="vs-splash" aria-label={t('Pular')}>
+    <button type="button" className="vs-splash absolute inset-0 z-50 cursor-pointer overflow-hidden bg-slate-950" onClick={onSkip} data-testid="vs-splash" aria-label={t('Pular')}>
       <div className="vs-band vs-band-foe absolute inset-x-0 top-[10%] h-[36%]" style={{ background: `linear-gradient(100deg, transparent 8%, ${color} 8%, ${color} 92%, transparent 92%)` }} />
       <div className="vs-band vs-band-me absolute inset-x-0 bottom-[10%] h-[36%]" style={{ background: 'linear-gradient(100deg, transparent 8%, #1e293b 8%, #1e293b 92%, transparent 92%)' }} />
       <div className="vs-foe absolute right-[10%] top-[10%] flex h-[36%] items-center gap-3">

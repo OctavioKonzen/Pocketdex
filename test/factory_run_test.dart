@@ -51,6 +51,14 @@ void main() {
     Object? n(Object? v) => v is double && v == v.roundToDouble() ? v.toInt() : v;
     for (var i = 0; i < 40; i++) {
       final options = [for (final o in FactoryRun.routeOf(run)!['options'] as List) Map<String, dynamic>.from(o as Map)];
+      // Na cidade: compra no Poké Mart dela antes de escolher (o ginásio ou o lugar perto dela).
+      if (FactoryRun.routeOf(run)!['town'] == true) {
+        run = FactoryRun.townShop({...run, 'money': (run['money'] as int) + 500});
+        for (final id in FactoryRun.pendingOf(run)!['shop'] as List) {
+          run = FactoryRun.buyItem(run, '$id', 0, data) ?? run;
+        }
+        run = {...run, 'pending': null};
+      }
       run = FactoryRun.chooseNode(run, data, i % options.length);
       final encounter = run['encounter'] == null ? null : Map<String, dynamic>.from(run['encounter'] as Map);
       final foes = FactoryRun.foesOf(run);
@@ -58,6 +66,7 @@ void main() {
         final team = FactoryRun.teamOf(run);
         run = FactoryRun.winFloor(run, data, hp: [for (var k = 0; k < team.length; k++) k == 0 ? 0.7 : 1.0], captured: i % 3 == 0);
       }
+      run = {...run, 'pending': FactoryRun.pendingOf(run) ?? <String, dynamic>{}};
       if (FactoryRun.pendingOf(run)!['capture'] != null) run = FactoryRun.capture(run, FactoryRun.teamOf(run).length >= FactoryRun.maxTeam ? 1 : null);
       if (FactoryRun.pendingOf(run)!['cards'] != null) run = FactoryRun.takeCard(run, '${(FactoryRun.pendingOf(run)!['cards'] as List).first}', data);
       run = {...run, 'money': (run['money'] as int) + 500};
@@ -141,8 +150,13 @@ void main() {
   });
 
   test('base da equipe vilã: só capangas com os Pokémon da equipe; cenário de cada chefe (igual ao site)', () {
-    final run = {...FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!, 'floor': 23, 'leg': 3, 'boss': {'region': 0, 'step': 11}};
+    // A base é um lugar da cidade (com a equipe vilã na cidade): na rota, o lugar do ginásio.
+    final run = {
+      ...FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!,
+      'floor': 23, 'leg': 3, 'boss': {'region': 0, 'step': 11}, 'dungeon': {'place': 'base', 'scene': 'base-rocket', 'start': 21},
+    };
     expect(FactoryRun.routeBiome(data, run), 'base-rocket');
+    expect(FactoryRun.routeBiome(data, {...run, 'dungeon': null}), isNot('base-rocket'));
     var state = 11;
     double rand() {
       final (v, s) = FactoryRun.nextRandom(state);
@@ -150,7 +164,7 @@ void main() {
       return v;
     }
     for (var i = 0; i < 30; i++) {
-      final route = FactoryRun.routeOptions({...run, 'floor': 21 + (i % 8)}, data, rand);
+      final route = FactoryRun.routeOptions({...run, 'floor': 21 + (i % 9)}, data, rand);
       expect((route['options'] as List).any((o) => ['wild', 'mart', 'trade', 'wildboss'].contains(o['kind'])), isFalse);
     }
     final grunt = FactoryRun.encounterFor(data, 23, rand, null, false, {'kind': 'trainer', 'biome': 'base-rocket'});
@@ -437,7 +451,9 @@ void main() {
     expect(base['mission']['leg'], 1);
     final red = data.bosses.indexWhere((b) => b['game'] == 'Red/Blue');
     Json step(String kind) => {'region': red, 'step': (data.bosses[red]['leaders'] as List).indexWhere((l) => l['kind'] == kind)};
-    expect(FactoryRun.newMission({...base, 'boss': step('villain')}, data, () => 0.5)['kind'], 'grunts');
+    expect(
+        FactoryRun.newMission({...base, 'boss': step('villain'), 'dungeon': {'place': 'base', 'scene': 'base-rocket', 'start': 1}}, data, () => 0.5)['kind'],
+        'grunts');
     final rival = FactoryRun.chooseNode({
       ...base,
       'boss': step('rival'),
@@ -608,5 +624,31 @@ void main() {
     expect(FactoryRun.isDoubleBattle(run(FactoryRun.doubleFloor - 1, true, 0.5)), isFalse);
     expect(FactoryRun.isDoubleBattle(run(FactoryRun.doubleFloor, false, 0.5)), isFalse);
     expect(FactoryRun.isDoubleBattle(run(FactoryRun.doubleFloor, true, 0)), isFalse);
+  });
+
+  test('cidade: o ginásio e um lugar com batalha perto (10 andares e um chefe; depois volta para a cidade); Poké Mart e Centro (igual ao site)', () {
+    final red = data.bosses.indexWhere((b) => b['game'] == 'Red/Blue');
+    var run = FactoryRun.nextFloor({...FactoryRun.startRun(FactoryRun.empty(), data, 4, 3)!, 'floor': 10, 'leg': 1, 'boss': {'region': red, 'step': 1}}, data);
+    final route = FactoryRun.routeOf(run)!;
+    expect(route['town'], isTrue);
+    final place = '${run['town']['place']}';
+    expect(route['options'], [
+      {'kind': 'boss'},
+      {'kind': 'dungeon', 'place': place, 'scene': FactoryRun.dungeons[place]!.scene},
+    ]);
+    expect(FactoryRun.pendingOf(FactoryRun.townShop(run))!['shop'], run['town']['shop']);
+    expect(FactoryRun.teamOf(FactoryRun.townCenter({...run, 'team': [for (final m in FactoryRun.teamOf(run)) {...m, 'hp': 0}]})).every((m) => m['hp'] == 1), isTrue);
+    // Entra no lugar: os andares dele (sem o líder), o chefe no último e a volta para a cidade.
+    run = FactoryRun.chooseNode(run, data, 1);
+    expect(run['dungeon']['place'], place);
+    expect(FactoryRun.atCity(data, run), isFalse);
+    expect(FactoryRun.routeOf(run)!['options'].any((o) => o['kind'] == 'boss'), isFalse);
+    run = FactoryRun.nextFloor({...run, 'floor': (run['floor'] as num).toInt() + FactoryRun.dungeonLength - 1}, data);
+    expect(FactoryRun.routeOf(run)!['options'], [{'kind': 'dboss'}]);
+    run = FactoryRun.chooseNode(run, data, 0);
+    expect(run['encounter']['kind'], 'dboss');
+    run = FactoryRun.nextFloor(FactoryRun.winFloor(run, data), data);
+    expect(run['dungeon'], isNull);
+    expect(FactoryRun.routeOf(run)!['options'], [{'kind': 'boss'}]);
   });
 }

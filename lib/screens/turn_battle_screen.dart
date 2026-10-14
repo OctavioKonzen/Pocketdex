@@ -1741,16 +1741,6 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                       ),
                       // Clima, terreno e efeito do lugar fazem parte do cenário: atrás dos Pokémon e das caixas.
                       Positioned.fill(child: _WeatherFx(_weather, terrain: _terrain, place: _place)),
-                      if (_vsOn)
-                        Positioned.fill(
-                          child: _VsSplash(
-                            vs: widget.vs!,
-                            me: _myTrainer,
-                            coach: _coach,
-                            width: w,
-                            onSkip: () => _vsSkip.isCompleted ? null : _vsSkip.complete(),
-                          ),
-                        ),
                       // Como no Black & White: o adversário lá atrás à direita (menor), o seu de costas na frente à esquerda (grande, cortado pela caixa do texto).
                       Positioned(
                           left: 0,
@@ -1894,6 +1884,17 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                         Positioned.fill(
                             key: const ValueKey('battle-panel'),
                             child: _menu == 'bag' ? fieldPanel : SingleChildScrollView(child: fieldPanel)),
+                      // A tela VS por cima de tudo: só os dois treinadores (o resto some até ela acabar).
+                      if (_vsOn)
+                        Positioned.fill(
+                          child: _VsSplash(
+                            vs: widget.vs!,
+                            me: _myTrainer,
+                            coach: _coach,
+                            width: w,
+                            onSkip: () => _vsSkip.isCompleted ? null : _vsSkip.complete(),
+                          ),
+                        ),
                     ],
                   ),
                 );
@@ -3571,7 +3572,7 @@ class _VsSplash extends StatelessWidget {
       key: const ValueKey('vs-splash'),
       onTap: onSkip,
       child: ColoredBox(
-        color: const Color(0xB3020617),
+        color: const Color(0xFF020617),
         child: LayoutBuilder(builder: (context, box) {
           final band = box.maxHeight * 0.36;
           return Stack(children: [
