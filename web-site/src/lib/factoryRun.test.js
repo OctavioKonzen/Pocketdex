@@ -9,14 +9,15 @@ import {
   EXP_SHARE, expProgress, shopOwned, baseForm, forSale, normalizeOwned, buyUpgrade, upgradePrice, UPGRADES,
   tradeMon, skipTrade, TRADE_LEVELS, escapeRope, ESCAPE_HP, progress, ACHIEVEMENTS, LUCKY_EGG, rerollRoute, FOE_ITEMS,
   regionLegend, REGION_LEGENDS, rivalStarter, starterLine, newMission, resolveChoice, MISSION_MONEY,
+  clockOf, weatherOf, fieldOf, SEASON_TYPES, BIOME_IDS, SCENE_FIELD,
   HM_BADGES, cutPath, nodeBlocked, dexOf, dexRewardFor, DEX_REWARDS, leaveDaycare, takeDaycare, DAYCARE_EGG, EGG_IVS, rematchBoss,
 } from './factoryRun'
 
 const data = JSON.parse(readFileSync(new URL('../../../assets/database/factory.json', import.meta.url), 'utf8'))
 const moves = Object.fromEntries(JSON.parse(readFileSync(new URL('../../../assets/database/moves.json', import.meta.url), 'utf8')).map((m) => [m.name, { ...m, category: m.damage_class }]))
 const forms = Object.fromEntries(JSON.parse(readFileSync(new URL('../../../assets/database/pokemon.json', import.meta.url), 'utf8')).map((p) => [p.id, p]))
-const ROUTE_42 = { floor: 1, biome: 'city', options: [{ kind: 'trainer' }] }
-const ENCOUNTER_42 = { kind: 'trainer', foes: [{ id: 287, level: 3, iv: 0, ev: 3 }], trainerSeed: 500729487, scene: 'city' }
+const ROUTE_42 = { floor: 1, biome: 'grass', options: [{ kind: 'trainer' }] }
+const ENCOUNTER_42 = { kind: 'trainer', foes: [{ id: 276, level: 3, iv: 0, ev: 3 }], trainerSeed: 500729487, scene: 'grass' }
 const seq = (values) => { let i = 0; return () => values[i++ % values.length] }
 
 describe('Battle Factory (roguelike)', () => {
@@ -820,5 +821,35 @@ describe('mapa da corrida', () => {
     expect(won.rematch).toBe(null)
     expect(won.rematches).toBe(1)
     expect(won.boss).toEqual(fight.boss)
+  })
+
+  it('lugares novos, noite e estações (pelo relógio) e os efeitos novos', () => {
+    for (const b of ['ruins', 'flowers', 'plant', 'crystal', 'dunes', 'bamboo', 'temple']) {
+      expect(BIOME_IDS).toContain(b)
+      expect(Object.values(data.species).some((s) => s[6].includes(b))).toBe(true)
+    }
+    expect(clockOf(new Date(2026, 0, 10, 21))).toEqual({ night: true, season: 'spring' })
+    expect(clockOf(new Date(2026, 3, 10, 12))).toEqual({ night: false, season: 'winter' })
+    expect(clockOf(new Date(2026, 9, 13, 5))).toEqual({ night: true, season: 'summer' })
+    expect(SEASON_TYPES.winter).toEqual(['ice'])
+    // No inverno neva no campo (em algum andar); fora do inverno, nunca neve no campo.
+    const base = startRun(emptyFactory(), data, 1, 42)
+    const floors = Array.from({ length: 40 }, (_, k) => ({ ...base, floor: k + 1 }))
+    expect(floors.some((r) => weatherOf(r, 'grass', 'winter') === 'snow')).toBe(true)
+    expect(floors.some((r) => weatherOf(r, 'grass', 'summer') === 'snow')).toBe(false)
+    expect(weatherOf(base, 'grass')).toBe(weatherOf(base, 'grass', 'summer'))
+    for (const effect of ['spores', 'quicksand', 'storm', 'aurora']) expect(Object.values(SCENE_FIELD).flat().some(([e]) => e === effect)).toBe(true)
+    expect(floors.some((r) => fieldOf(r, 'flowers') === 'spores')).toBe(true)
+    // À noite, mais Fantasma e Sombrio (o mesmo andar, com e sem a noite).
+    const ghosts = (night) => {
+      let n = 0
+      for (let seed = 1; seed <= 60; seed++) {
+        const run = { ...startRun(emptyFactory(), data, 1, seed), floor: 20, route: { floor: 20, biome: 'grass', options: [{ kind: 'trainer' }] } }
+        const out = chooseNode(run, data, 0, night ? { night: true, season: 'spring' } : null)
+        n += out.encounter.foes.filter((f) => data.species[f.id][4].some((t) => t === 'ghost' || t === 'dark')).length
+      }
+      return n
+    }
+    expect(ghosts(true)).toBeGreaterThan(ghosts(false))
   })
 })

@@ -136,8 +136,14 @@ WATER_METHODS = {'surf', 'old-rod', 'good-rod', 'super-rod', 'super-rod-spots', 
                  'bubbling-spots', 'roaming-water', 'chase-water', 'feebas-tile-fishing', 'sos-from-bubbling-spot'}
 PLACE_WORDS = [
     ('sewer', ['sewer']),
+    ('plant', ['power-plant', 'generator', 'power-station']),
+    ('crystal', ['crystal', 'quarry', 'gem', 'mine']),
+    ('ruins', ['ruins', 'ruin', 'tomb', 'alph', 'relic', 'ancient']),
+    ('temple', ['temple', 'shrine', 'sanctuary', 'spear-pillar', 'sky-pillar', 'altar', 'dragonspiral']),
+    ('bamboo', ['bamboo']),
+    ('flowers', ['flower', 'meadow', 'floaroma', 'blossom', 'petal']),
     ('icecave', ['ice-cave', 'icy-cave', 'ice-path', 'seafoam', 'frost-cavern', 'frozen-cave', 'glacier-cave']),
-    ('cave', ['cave', 'tunnel', 'cavern', 'grotto', 'chamber', 'ruins', 'underground', 'mine', 'burrow', 'mt-moon', 'den', 'hollow']),
+    ('cave', ['cave', 'tunnel', 'cavern', 'grotto', 'chamber', 'underground', 'burrow', 'mt-moon', 'den', 'hollow']),
     ('snow', ['snow', 'ice', 'frost', 'glacier', 'frozen', 'icy', 'freez', 'crown-tundra']),
     ('volcano', ['volcan', 'fiery', 'magma', 'lava', 'stark', 'flame', 'mt-chimney', 'mt-pyre-summit', 'reversal']),
     ('tower', ['tower', 'cemetery', 'graveyard', 'chateau', 'haunted', 'pyre', 'spirit', 'grave', 'mansion', 'ghost']),
@@ -146,7 +152,7 @@ PLACE_WORDS = [
     ('forest', ['forest', 'woods', 'jungle', 'grove', 'orchard', 'garden', 'wood']),
     ('beach', ['beach', 'shore', 'coast', 'seaside', 'cove', 'harbor', 'island']),
     ('mountain', ['mountain', 'mt-', 'mount-', 'peak', 'summit', 'cliff', 'crag', 'pillar', 'canyon']),
-    ('city', ['city', 'town', 'power-plant', 'factory', 'castle', 'hotel', 'mall', 'department', 'building', 'lab']),
+    ('city', ['city', 'town', 'factory', 'castle', 'hotel', 'mall', 'department', 'building', 'lab']),
 ]
 HABITAT_PLACES = {'grassland': ['grass'], 'forest': ['forest'], 'waters-edge': ['beach', 'water'], 'mountain': ['mountain'], 'sea': ['water'],
                   'urban': ['city'], 'cave': ['cave'], 'rough-terrain': ['mountain', 'desert']}
@@ -154,7 +160,19 @@ TYPE_PLACES = {'normal': ['grass', 'city'], 'fire': ['volcano', 'desert'], 'wate
                'ice': ['snow', 'icecave'], 'fighting': ['mountain', 'city'], 'poison': ['swamp', 'sewer'], 'ground': ['desert', 'cave'], 'flying': ['sky', 'grass'],
                'psychic': ['tower', 'city'], 'bug': ['forest'], 'rock': ['cave', 'mountain'], 'ghost': ['tower'], 'dragon': ['sky', 'mountain'],
                'dark': ['cave', 'tower'], 'steel': ['mountain', 'city'], 'fairy': ['forest', 'sky']}
-ORDER = ['grass', 'forest', 'water', 'beach', 'underwater', 'swamp', 'sewer', 'cave', 'icecave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky', 'tower']
+ORDER = ['grass', 'forest', 'water', 'beach', 'underwater', 'swamp', 'sewer', 'cave', 'icecave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky', 'tower',
+         'ruins', 'flowers', 'plant', 'crystal', 'dunes', 'bamboo', 'temple']
+# Os lugares novos também a partir dos de sempre (pelo tipo): quem vive no deserto e é de Terra, Sombrio, Fantasma ou
+# Inseto também vive nas dunas à noite; os de Grama/Fada/Inseto do campo e da floresta, no campo de flores; e assim por diante.
+DERIVED = [
+    ('dunes', {'desert'}, {'ground', 'dark', 'ghost', 'bug', 'rock'}),
+    ('flowers', {'grass', 'forest'}, {'fairy', 'grass', 'bug'}),
+    ('bamboo', {'forest', 'grass', 'mountain'}, {'grass', 'fighting', 'bug', 'dark'}),
+    ('plant', {'city', 'sewer'}, {'electric', 'steel'}),
+    ('crystal', {'cave', 'icecave', 'mountain'}, {'rock', 'steel', 'fairy', 'psychic', 'ice'}),
+    ('ruins', {'cave', 'desert', 'mountain', 'tower'}, {'rock', 'psychic', 'ghost', 'ground'}),
+    ('temple', {'tower', 'mountain', 'city'}, {'psychic', 'fighting', 'dragon', 'ghost'}),
+]
 
 
 def habitats(sid, s, p, encounters):
@@ -191,6 +209,9 @@ def habitats(sid, s, p, encounters):
     if deep:
         places &= {'water', 'underwater', 'beach', 'swamp', 'icecave', 'cave', 'sewer'}
         places |= {'water'}
+    for place, near, kinds in DERIVED:
+        if places & near and set(types) & kinds and not deep:
+            places.add(place)
     # Fundo do mar: só quem vive debaixo d'água.
     if 'underwater' in places and not deep and not any(m[2] == 'seaweed' for m in encounters.get(str(sid), [])):
         places.discard('underwater')

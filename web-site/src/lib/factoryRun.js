@@ -474,6 +474,13 @@ export const BIOMES = {
   snow: ['ice', 'water'],
   tower: ['ghost', 'psychic', 'dark'],
   sky: ['flying', 'dragon', 'fairy'],
+  ruins: ['rock', 'psychic', 'ground', 'ghost'],
+  flowers: ['fairy', 'grass', 'bug', 'normal'],
+  plant: ['electric', 'steel'],
+  crystal: ['rock', 'steel', 'fairy', 'psychic'],
+  dunes: ['ground', 'dark', 'ghost', 'bug'],
+  bamboo: ['grass', 'fighting', 'bug', 'dark'],
+  temple: ['psychic', 'fighting', 'dragon', 'ghost'],
 }
 export const BIOME_IDS = Object.keys(BIOMES)
 /** Quanto a mais aparecem os tipos do lugar (selvagens; nos treinadores, ROUTE_TYPE_TRAINER). */
@@ -481,11 +488,11 @@ export const ROUTE_TYPE_WEIGHT = 8
 export const ROUTE_TYPE_TRAINER = 3
 /** Os lugares possíveis da rota até o ginásio de cada tipo (um deles por rota). */
 const TYPE_BIOMES = {
-  normal: ['grass', 'city'], fire: ['volcano', 'desert'], water: ['water', 'beach'], grass: ['forest', 'grass', 'swamp'],
-  electric: ['city', 'sewer'], ice: ['snow', 'icecave'], fighting: ['mountain', 'cave'], poison: ['swamp', 'sewer', 'forest'],
-  ground: ['desert', 'mountain', 'cave'], flying: ['sky', 'grass', 'beach'], psychic: ['tower', 'city'], bug: ['forest', 'grass'],
-  rock: ['cave', 'mountain', 'desert'], ghost: ['tower'], dragon: ['sky', 'mountain'], dark: ['cave', 'tower', 'sewer'],
-  steel: ['mountain', 'city', 'cave'], fairy: ['sky', 'forest'],
+  normal: ['grass', 'city', 'flowers'], fire: ['volcano', 'desert'], water: ['water', 'beach'], grass: ['forest', 'grass', 'swamp', 'bamboo', 'flowers'],
+  electric: ['city', 'sewer', 'plant'], ice: ['snow', 'icecave'], fighting: ['mountain', 'cave', 'bamboo', 'temple'], poison: ['swamp', 'sewer', 'forest'],
+  ground: ['desert', 'mountain', 'cave', 'dunes'], flying: ['sky', 'grass', 'beach'], psychic: ['tower', 'city', 'temple', 'ruins'], bug: ['forest', 'grass', 'flowers'],
+  rock: ['cave', 'mountain', 'desert', 'ruins', 'crystal'], ghost: ['tower', 'ruins', 'dunes'], dragon: ['sky', 'mountain', 'temple'], dark: ['cave', 'tower', 'sewer', 'dunes'],
+  steel: ['mountain', 'city', 'cave', 'plant', 'crystal'], fairy: ['sky', 'forest', 'flowers'],
 }
 /**
  * As equipes vilãs (pelo nome de quem aparece nos jogos). Enquanto o próximo
@@ -670,7 +677,7 @@ export const CHOICE_CHANCE = 0.4
  * os eventos (itens, dinheiro, frutas que curam um pouco, ficha de Move Tutor).
  * Os sem batalha também contam como um andar (sem XP nem dinheiro).
  */
-export function chooseNode(run, data, index) {
+export function chooseNode(run, data, index, clock = null) {
   const node = run.route?.options?.[index]
   if (!node || run.encounter || run.pending || nodeBlocked(run, node)) return run
   const out = { ...run, route: null }
@@ -680,7 +687,8 @@ export function chooseNode(run, data, index) {
     const city = node.kind === 'boss' && atCity(data, run)
     const scene = node.biome ?? (city ? (bossOf(data, run).kind === 'gym' ? 'city' : 'tower') : run.route.biome ?? 'grass')
     out.scene = scene
-    out.encounter = { ...encounterFor(data, out.floor, rand, node.kind === 'boss' ? bossOf(data, out) : null, node.kind === 'wildboss', { ...node, biome: scene, shiny: run.shinyRate ?? 1 }), scene }
+    const when = clock ? { night: clock.night, season: clock.season } : {}
+    out.encounter = { ...encounterFor(data, out.floor, rand, node.kind === 'boss' ? bossOf(data, out) : null, node.kind === 'wildboss', { ...node, biome: scene, shiny: run.shinyRate ?? 1, ...when }), scene }
     // A revanche: o Campeão vencido, com o time do andar de agora (e mais forte).
     if (node.kind === 'rematch') {
       const champ = rematchBoss(data, run)
@@ -688,7 +696,7 @@ export function chooseNode(run, data, index) {
     }
     // Dupla de treinadores: dois treinadores juntos (os dois times na mesma batalha).
     if (node.kind === 'trainer' && !scene.startsWith('base-') && rand() < DOUBLE_CHANCE) {
-      const second = encounterFor(data, out.floor, rand, null, false, { ...node, biome: scene, shiny: run.shinyRate ?? 1 })
+      const second = encounterFor(data, out.floor, rand, null, false, { ...node, biome: scene, shiny: run.shinyRate ?? 1, ...when })
       out.encounter = { ...out.encounter, foes: [...out.encounter.foes, ...second.foes], pair: true }
     }
     // O rival leva o inicial que tem vantagem sobre o seu (no lugar do inicial dele ou do mais forte).
@@ -797,7 +805,8 @@ export function encounterFor(data, floor, rand, boss = null, wild = false, node 
   // A chance de cada espécie segue a raridade dela (a taxa de captura dos jogos: Pidgey 255 aparece muito, Dratini 45 pouco, Beldum 3 quase nunca);
   // os treinadores escolhem com menos diferença (raiz da taxa).
   // Os tipos do lugar aparecem bem mais (ROUTE_TYPE_WEIGHT; nos treinadores, ROUTE_TYPE_TRAINER).
-  const types = BIOMES[node?.biome]
+  // À noite, mais Fantasma e Sombrio; em cada estação, os tipos dela (node.night, node.season: o relógio de quem joga).
+  const types = BIOMES[node?.biome] && [...BIOMES[node.biome], ...(node.night ? NIGHT_TYPES : []), ...(SEASON_TYPES[node.season] ?? [])]
   const local = (p) => Boolean(types && (data.species[p.id]?.[4] ?? []).some((t) => types.includes(t)))
   const pick = (pool, trainer = false) => {
     const fit = pool.filter((p) => p.bst <= budget && p.bst >= Math.min(budget, 600) - 160)
@@ -1173,11 +1182,24 @@ export const SCENE_WEATHER = {
   beach: [['sun', 0.35], ['rain', 0.15]], water: [['rain', 0.35], ['sun', 0.15]], swamp: [['rain', 0.45]],
   grass: [['sun', 0.15], ['rain', 0.15]], forest: [['rain', 0.2], ['sun', 0.1]], mountain: [['sand', 0.15], ['snow', 0.15], ['sun', 0.1]],
   sky: [['sun', 0.2], ['rain', 0.2]], city: [['rain', 0.12], ['sun', 0.12]],
+  ruins: [['sand', 0.2], ['sun', 0.15]], flowers: [['sun', 0.25], ['rain', 0.1]], dunes: [['sand', 0.3]], bamboo: [['rain', 0.2], ['sun', 0.1]],
+}
+/** As estações (como no Black & White: mudam a cada mês) e a noite (pelo relógio de verdade). */
+export const SEASONS = ['spring', 'summer', 'autumn', 'winter']
+/** Os tipos que aparecem mais em cada estação e à noite. */
+export const SEASON_TYPES = { spring: ['grass', 'fairy'], summer: ['fire', 'water'], autumn: ['bug', 'ground'], winter: ['ice'] }
+export const NIGHT_TYPES = ['ghost', 'dark']
+/** No inverno, neva nos lugares abertos. */
+export const WINTER_SNOW = ['grass', 'forest', 'flowers', 'bamboo', 'mountain', 'city', 'ruins', 'beach']
+/** A hora e a estação de agora: noite das 19h às 6h; a estação pelo mês (jan primavera, fev verão, mar outono, abr inverno...). */
+export function clockOf(date = new Date()) {
+  const hour = date.getHours()
+  return { night: hour >= 19 || hour < 6, season: SEASONS[date.getMonth() % 4] }
 }
 
 /** O clima com que a batalha do andar começa ('' sem clima): pelo lugar, sempre o mesmo para a mesma corrida e andar. */
-export function weatherOf(run, scene) {
-  const table = SCENE_WEATHER[scene]
+export function weatherOf(run, scene, season = null) {
+  const table = season === 'winter' && WINTER_SNOW.includes(scene) ? [['snow', 0.35], ...(SCENE_WEATHER[scene] ?? [])] : SCENE_WEATHER[scene]
   if (!table) return ''
   let roll = (Math.imul(((run.seed ?? 0) ^ (run.floor * 40503)) | 0, 2246822519) >>> 0) / 4294967296
   for (const [weather, chance] of table) {
@@ -1195,8 +1217,10 @@ export function weatherOf(run, scene) {
  */
 export const SCENE_FIELD = {
   cave: [['diamonds', 0.3]], mountain: [['rockfall', 0.25]], volcano: [['ashes', 0.4]], swamp: [['miasma', 0.35]], sewer: [['miasma', 0.25]],
-  icecave: [['chill', 0.35]], snow: [['chill', 0.2]], tower: [['haunt', 0.35], ['psychic', 0.15]], underwater: [['current', 0.4]], water: [['current', 0.15]],
-  grass: [['grassy', 0.2]], forest: [['grassy', 0.3], ['misty', 0.1]], city: [['electric', 0.25]], beach: [['misty', 0.1]], sky: [['wind', 0.3]],
+  icecave: [['chill', 0.35], ['aurora', 0.1]], snow: [['chill', 0.2], ['aurora', 0.2]], tower: [['haunt', 0.35], ['psychic', 0.15]], underwater: [['current', 0.4]], water: [['current', 0.15]],
+  grass: [['grassy', 0.2]], forest: [['grassy', 0.3], ['misty', 0.1]], city: [['electric', 0.25]], beach: [['misty', 0.1]], sky: [['wind', 0.3], ['storm', 0.15]],
+  desert: [['quicksand', 0.2]], ruins: [['psychic', 0.2], ['haunt', 0.15]], flowers: [['spores', 0.3], ['misty', 0.15]], plant: [['storm', 0.35], ['electric', 0.25]],
+  crystal: [['diamonds', 0.4]], dunes: [['quicksand', 0.35], ['haunt', 0.1]], bamboo: [['spores', 0.2], ['grassy', 0.2]], temple: [['psychic', 0.3]],
   'gym-grass': [['grassy', 0.6]], 'gym-electric': [['electric', 0.6]], 'gym-psychic': [['psychic', 0.6]], 'gym-fairy': [['misty', 0.6]], 'gym-ghost': [['haunt', 0.6]],
   'gym-rock': [['rockfall', 0.4]], 'gym-fire': [['ashes', 0.4]], 'gym-poison': [['miasma', 0.4]], 'gym-ice': [['chill', 0.4]], 'gym-water': [['current', 0.4]],
 }

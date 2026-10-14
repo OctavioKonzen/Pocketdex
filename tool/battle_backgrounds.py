@@ -710,10 +710,176 @@ def center():
     return a, {'outdoor': False, 'seed': 190}
 
 
+def ruins():
+    """Ruínas antigas: colunas quebradas, blocos com inscrições e areia no chão."""
+    a = vgrad([(0, rgb('c87a4a')), (0.6, rgb('eab47a')), (1, rgb('f6dcb0'))], 0, HORIZON)
+    a = glow(a, W * 0.78, 60, 60, (255, 230, 190), 0.8)
+    a = mountains(a, 201, HORIZON - 4, 46, rgb('b08a68'), rgb('8a6a4e'), rgb('e0c098'), 0.45, 0.4, 14, 1.6, blur=2)
+    rnd = random.Random(202)
+
+    def column(d, x, y, h, w, broken):
+        stone, light, dark = (196, 172, 136, 255), (226, 206, 170, 255), (120, 100, 76, 255)
+        top = y - h
+        d.rectangle([x - w * 0.6, y - w * 0.3, x + w * 0.6, y], fill=dark)
+        d.rectangle([x - w / 2, top, x + w / 2, y - w * 0.3], fill=stone)
+        d.rectangle([x - w / 2, top, x - w * 0.25, y - w * 0.3], fill=light)
+        for k in range(1, 4):
+            d.line([(x - w / 2 + k * w / 4, top + 4), (x - w / 2 + k * w / 4, y - w * 0.3)], fill=dark, width=1)
+        if broken:
+            d.polygon([(x - w / 2, top), (x + w / 2, top), (x + w * 0.2, top - w * 0.4), (x - w * 0.1, top - w * 0.1)], fill=stone)
+        else:
+            d.rectangle([x - w * 0.7, top - w * 0.3, x + w * 0.7, top], fill=light)
+    a = layer(a, lambda d: [column(d, x, HORIZON + 10, h, w, b) for x, h, w, b in ((90, 150, 34, False), (230, 90, 26, True), (560, 120, 28, True), (720, 170, 38, False), (420, 60, 20, True))], 0.6)
+    a = layer(a, lambda d: d.rectangle([60, HORIZON - 150, 760, HORIZON - 132], fill=(210, 186, 150, 200)), 1)
+    a = ground(a, HORIZON + 8, rgb('e6c48e'), rgb('a07a4c'), 203, 6, 0.14, spots=(rgb('b89a72'), 0.4))
+    # Blocos caídos com inscrições.
+    blocks = [(rnd.uniform(0, W), rnd.uniform(HORIZON + 30, H * 0.62), rnd.uniform(18, 44)) for _ in range(7)]
+    a = layer(a, lambda d: [(d.rectangle([x, y - s * 0.7, x + s * 1.4, y], fill=(176, 150, 112, 255)), d.rectangle([x, y - s * 0.7, x + s * 1.4, y - s * 0.55], fill=(214, 192, 154, 255)),
+                            [d.ellipse([x + 4 + k * s * 0.3, y - s * 0.42, x + 8 + k * s * 0.3, y - s * 0.3], outline=(110, 86, 60, 255)) for k in range(4)]) for x, y, s in blocks])
+    a = motes(a, 204, 30, (0, HORIZON - 60, W, H * 0.7), (255, 230, 180), 1.8, 1.2)
+    return a, {'outdoor': True, 'seed': 200}
+
+
+def flowers():
+    """Campo de flores: colinas suaves cobertas de flores coloridas."""
+    a = vgrad([(0, rgb('5a9ae0')), (0.6, rgb('a8d4ff')), (1, rgb('f2f6ff'))], 0, HORIZON)
+    a = layer(a, lambda d: [d.ellipse([x - 80, y - 16, x + 80, y + 16], fill=(255, 255, 255, 170)) for x, y in ((150, 50), (470, 30), (700, 70))], 12)
+    a = mountains(a, 211, HORIZON - 10, 40, rgb('8fcf7a'), rgb('6aae5a'), rgb('c8ecc0'), 0.5, 0.3, 18, 1.4, blur=2)
+    a = ground(a, HORIZON, rgb('9ad47a'), rgb('4e9a3e'), 212, 5, 0.12)
+    rnd = random.Random(213)
+    cols = [(255, 120, 170), (255, 220, 90), (255, 255, 255), (190, 130, 255), (255, 150, 90)]
+    pts = [(rnd.uniform(0, W), rnd.uniform(HORIZON + 4, H), rnd.choice(cols)) for _ in range(1800)]
+
+    def bloom(d):
+        for x, y, c in sorted(pts, key=lambda p: p[1]):
+            r = 1 + (y - HORIZON) / (H - HORIZON) * 5
+            d.ellipse([x - r, y - r * 0.7, x + r, y + r * 0.7], fill=c + (255,))
+            d.ellipse([x - r * 0.3, y - r * 0.25, x + r * 0.3, y + r * 0.25], fill=(255, 240, 120, 255))
+    a = blades(a, 214, 700, HORIZON + 10, H + 10, [rgb('3f8a34'), rgb('5aa844'), rgb('8ad066')])
+    a = layer(a, bloom)
+    a = motes(a, 215, 40, (0, HORIZON - 80, W, H * 0.7), (255, 200, 230), 2.2, 1.0)
+    return a, {'outdoor': True, 'seed': 210}
+
+
+def plant():
+    """Usina elétrica: máquinas, cabos e faíscas, com luz amarela."""
+    a = vgrad([(0, rgb('14161e')), (1, rgb('3a3e4e'))], 0, HORIZON + 40)
+    rnd = random.Random(221)
+
+    def machines(d):
+        for x in range(-20, W, 120):
+            h = rnd.uniform(90, 170)
+            d.rectangle([x, HORIZON + 30 - h, x + 96, HORIZON + 30], fill=(70, 74, 86, 255))
+            d.rectangle([x, HORIZON + 30 - h, x + 96, HORIZON + 38 - h], fill=(110, 116, 130, 255))
+            for k in range(3):
+                d.rectangle([x + 10 + k * 28, HORIZON + 50 - h, x + 28 + k * 28, HORIZON + 62 - h], fill=(250, 220, 60, 255) if rnd.random() < 0.6 else (60, 200, 255, 255))
+            d.ellipse([x + 30, HORIZON - 20, x + 66, HORIZON + 16], outline=(150, 156, 170, 255), width=4)
+        for y in (40, 70):
+            d.line([(0, y), (W, y + 20)], fill=(40, 42, 50, 255), width=5)
+    a = layer(a, machines)
+    for x, y in ((180, 100), (520, 80), (690, 130)):
+        a = glow(a, x, y, 40, (255, 230, 80), 0.7)
+    a = layer(a, lambda d: [d.line([(x, y), (x + rnd.uniform(-20, 20), y + 14), (x + rnd.uniform(-20, 20), y + 28)], fill=(255, 250, 160, 255), width=2) for x, y in ((180, 100), (520, 80), (690, 130))])
+    a = ground(a, HORIZON + 34, rgb('5a5e6c'), rgb('24262e'), 222, 6, 0.1)
+    # Faixas de aviso e grade no chão.
+    a = layer(a, lambda d: [d.line([(W * 0.5 + (x - W * 0.5) * 0.3, HORIZON + 34), (x, H)], fill=(80, 84, 96, 160), width=2) for x in range(-300, W + 300, 90)] +
+              [d.polygon([(x, H - 22), (x + 30, H - 22), (x + 50, H), (x + 20, H)], fill=(240, 200, 40, 255)) for x in range(-20, W, 60)], 0.4)
+    a = motes(a, 223, 40, (0, 0, W, H * 0.7), (255, 240, 120), 2, 1)
+    return a, {'outdoor': False, 'seed': 220}
+
+
+def crystal():
+    """Mina de cristal: túnel escuro com cristais coloridos brilhando e trilhos."""
+    a = vgrad([(0, rgb('0c0818')), (1, rgb('2a1e44'))], 0, HORIZON + 50)
+    a = mountains(a, 231, HORIZON + 20, 110, rgb('3a2a56'), rgb('1e1630'), rgb('140e22'), 0.2, 0.7, 10, freq=1.2)
+    a = put(a, rgb('06040c'), mask(lambda d: d.rounded_rectangle([W * 0.4, HORIZON - 90, W * 0.6, HORIZON + 30], radius=40, fill=255), 10) * 0.9)
+    rnd = random.Random(232)
+    gems = [(x, rnd.uniform(HORIZON - 30, HORIZON + 50), rnd.uniform(40, 90), rnd.choice([(90, 210, 255), (255, 90, 200), (160, 100, 255), (80, 240, 160)])) for x in (30, 140, 250, 560, 660, 770)]
+    gems += [(rnd.uniform(0, W), rnd.uniform(HORIZON + 60, H * 0.62), rnd.uniform(20, 36), rnd.choice([(90, 210, 255), (255, 90, 200), (160, 100, 255)])) for _ in range(5)]
+    for x, y, sz, c in gems:
+        a = glow(a, x, y - sz * 0.5, sz * 1.4, c, 0.55)
+    a = ground(a, HORIZON + 26, rgb('4a3a66'), rgb('1c1428'), 233, 4, 0.2)
+    # Trilhos da mina.
+    a = layer(a, lambda d: [d.line([(W * 0.5 + k * 30, HORIZON + 26), (W * 0.5 + k * 260, H)], fill=(120, 110, 130, 255), width=4) for k in (-1, 1)] +
+              [d.line([(W * 0.5 - 30 - t * 230, HORIZON + 26 + t * (H - HORIZON - 26)), (W * 0.5 + 30 + t * 230, HORIZON + 26 + t * (H - HORIZON - 26))], fill=(90, 64, 44, 255), width=int(2 + t * 6)) for t in [i / 9 for i in range(1, 10)]])
+
+    def shards(d):
+        for x, y, sz, c in gems:
+            for k in (-1, 0, 1):
+                d.polygon([(x + k * sz * 0.35, y), (x + k * sz * 0.35 - sz * 0.14, y - sz * 0.45), (x + k * sz * 0.5, y - sz * (1.1 - abs(k) * 0.4)), (x + k * sz * 0.35 + sz * 0.14, y - sz * 0.45)], fill=c + (255,))
+                d.line([(x + k * sz * 0.35, y), (x + k * sz * 0.5, y - sz * (1.1 - abs(k) * 0.4))], fill=(255, 255, 255, 220), width=2)
+    a = layer(a, shards)
+    a = motes(a, 234, 25, (0, 0, W, H * 0.7), (220, 180, 255), 1.8, 1.2)
+    return a, {'outdoor': False, 'seed': 230}
+
+
+def dunes():
+    """Deserto à noite: dunas azuladas, lua grande e céu estrelado."""
+    a = vgrad([(0, rgb('060a24')), (0.7, rgb('1e2a5a')), (1, rgb('46507e'))], 0, HORIZON)
+    a = stars(a, 241, 140, HORIZON - 10)
+    a = moon(a, W * 0.25, 70, 34, (250, 246, 220))
+    a = glow(a, W * 0.25, 70, 90, (200, 200, 255), 0.35)
+    a = mountains(a, 242, HORIZON - 4, 40, rgb('3a3e6a'), rgb('2a2e54'), rgb('50567e'), 0.4, 0.3, 18, 1.4, blur=2)
+    a = mountains(a, 243, HORIZON + 10, 26, rgb('5a5a86'), rgb('3a3a62'), None, 0, 0.3, 16, 2.0)
+    a = ground(a, HORIZON + 8, rgb('6a6a94'), rgb('2e2e52'), 244, 7, 0.12)
+    rnd = random.Random(245)
+    a = layer(a, lambda d: [d.arc([x, y - s * 0.1, x + s, y + s * 0.1], 190, 350, fill=(150, 150, 200, 110), width=2) for x, y, s in [(rnd.uniform(-40, W), rnd.uniform(HORIZON + 10, H), rnd.uniform(40, 160)) for _ in range(50)]], 0.8)
+    a = rocks(a, 246, 4, HORIZON + 30, H * 0.6, rgb('4a4a70'), rgb('6a6a96'), rgb('1a1a30'), 6, 18)
+    a = motes(a, 247, 20, (0, HORIZON - 40, W, H * 0.7), (170, 200, 255), 1.6, 1.0)
+    return a, {'outdoor': True, 'seed': 240}
+
+
+def bamboo():
+    """Bambuzal: troncos verdes altos, luz filtrada e folhas caindo."""
+    a = vgrad([(0, rgb('cfe8b0')), (1, rgb('8ab86a'))], 0, HORIZON + 30)
+    rnd = random.Random(251)
+
+    def stalks(d, n, wmin, wmax, cols, y, edges=False):
+        for _ in range(n):
+            x, w = (rnd.choice([rnd.uniform(-20, 70), rnd.uniform(W - 90, W)]) if edges else rnd.uniform(-10, W + 10)), rnd.uniform(wmin, wmax)
+            c = rnd.choice(cols)
+            d.rectangle([x, -5, x + w, y], fill=c + (255,))
+            d.rectangle([x, -5, x + w * 0.3, y], fill=tuple(min(255, v + 30) for v in c) + (255,))
+            for yy in range(int(rnd.uniform(0, 60)), int(y), int(rnd.uniform(50, 80))):
+                d.rectangle([x - 1, yy, x + w + 1, yy + 3], fill=tuple(max(0, v - 40) for v in c) + (255,))
+    a = layer(a, lambda d: stalks(d, 40, 6, 12, [(130, 170, 90), (150, 190, 100)], HORIZON + 20), 1.5)
+    a = layer(a, lambda d: stalks(d, 18, 12, 22, [(80, 140, 60), (100, 160, 70)], HORIZON + 40), 0.5)
+    a = ground(a, HORIZON + 30, rgb('8aa45a'), rgb('4a6a2e'), 252, 5, 0.16, spots=(rgb('a08a5a'), 0.3))
+    a = layer(a, lambda d: stalks(d, 4, 30, 44, [(60, 120, 50), (70, 130, 56)], H, True), 0)
+    a = layer(a, lambda d: [d.ellipse([x - 8, y - 2, x + 8, y + 2], fill=(110, 170, 70, 230)) for x, y in [(rnd.uniform(0, W), rnd.uniform(0, H)) for _ in range(60)]])
+    a = blades(a, 253, 500, HORIZON + 30, H + 10, [rgb('4a7a32'), rgb('6a9a44'), rgb('8ab85a')])
+    a = motes(a, 254, 40, (0, 0, W, H * 0.7), (255, 250, 200), 2.2, 1.2)
+    return a, {'outdoor': True, 'seed': 250}
+
+
+def temple():
+    """Templo antigo: escadaria, colunas e incenso, com luz dourada."""
+    a = vgrad([(0, rgb('2a1a10')), (1, rgb('6a3a1e'))], 0, HORIZON + 40)
+    a = glow(a, W * 0.5, HORIZON - 40, 160, (255, 190, 90), 0.55)
+    # Portal e altar no fundo.
+    a = layer(a, lambda d: (d.rectangle([W * 0.36, HORIZON - 150, W * 0.64, HORIZON + 20], fill=(80, 40, 24, 255)), d.rectangle([W * 0.33, HORIZON - 168, W * 0.67, HORIZON - 148], fill=(180, 60, 40, 255)),
+                            d.rectangle([W * 0.30, HORIZON - 184, W * 0.70, HORIZON - 172], fill=(150, 46, 30, 255)), d.rectangle([W * 0.44, HORIZON - 70, W * 0.56, HORIZON + 20], fill=(255, 210, 120, 255))))
+    for x in (60, 170, 630, 740):
+        a = layer(a, lambda d, x=x: (d.rectangle([x, HORIZON - 200, x + 34, HORIZON + 40], fill=(150, 50, 36, 255)), d.rectangle([x, HORIZON - 200, x + 10, HORIZON + 40], fill=(190, 80, 56, 255)),
+                                     d.rectangle([x - 8, HORIZON + 30, x + 42, HORIZON + 44], fill=(90, 70, 60, 255))))
+    a = ground(a, HORIZON + 40, rgb('a88466'), rgb('5a3e2c'), 261, 3, 0.1)
+    # Ladrilhos.
+    a = layer(a, lambda d: [d.line([(0, y), (W, y)], fill=(80, 56, 40, 140), width=2) for y in range(HORIZON + 60, H, 40)] + [d.line([(W * 0.5 + (x - W * 0.5) * 0.25, HORIZON + 40), (x, H)], fill=(80, 56, 40, 140), width=2) for x in range(-200, W + 240, 120)], 0.5)
+    # Lanternas e incenso.
+    for x in (250, 550):
+        a = glow(a, x, HORIZON + 6, 30, (255, 200, 110), 0.7)
+        a = layer(a, lambda d, x=x: (d.rectangle([x - 10, HORIZON - 14, x + 10, HORIZON + 14], fill=(255, 220, 150, 255)), d.rectangle([x - 12, HORIZON - 18, x + 12, HORIZON - 14], fill=(60, 30, 20, 255))))
+    fog = noise(6, 262, 3, 3)
+    a = put(a, rgb('e8d8c8'), np.clip((fog - 0.5) * 1.2, 0, 1) * 0.25)
+    a = motes(a, 263, 30, (0, 0, W, H * 0.7), (255, 220, 160), 2, 1.5)
+    return a, {'outdoor': False, 'seed': 260}
+
+
 SCENES = {
     'grass': grass, 'forest': forest, 'water': water, 'beach': beach, 'underwater': underwater, 'swamp': swamp, 'sewer': sewer,
     'cave': cave, 'icecave': icecave, 'mountain': mountain, 'desert': desert, 'volcano': volcano, 'snow': snow, 'city': city,
     'sky': sky, 'tower': tower, 'gym': gym, 'league': league, 'center': center,
+    'ruins': ruins, 'flowers': flowers, 'plant': plant, 'crystal': crystal, 'dunes': dunes, 'bamboo': bamboo, 'temple': temple,
 }
 
 

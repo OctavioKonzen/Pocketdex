@@ -5,7 +5,7 @@
 import { battleMons } from './battleSetup'
 import { t } from './i18n'
 import { getFactoryData, getMoves, getPokemonById, getSpecies } from './data'
-import { bagsFor, battleOrder, bossScene, captureFor, fieldOf, weatherOf, EXP_SHARE, expFactor, expProgress, expShares, foeMember, memberOf, movesAt } from './factoryRun'
+import { bagsFor, battleOrder, bossScene, captureFor, clockOf, fieldOf, weatherOf, EXP_SHARE, expFactor, expProgress, expShares, foeMember, memberOf, movesAt } from './factoryRun'
 import { seededRandom } from './league'
 import { newBattle } from './turnBattle'
 
@@ -39,7 +39,8 @@ export async function factoryBattle(run) {
   // E o clima do lugar (sol no deserto, chuva no mar, neve na caverna de gelo...).
   // E o efeito do lugar (terreno, chuva de diamantes, aura sombria...; no céu, ventos fortes).
   const place = fieldOf(run, scene)
-  const weather = weatherOf(run, scene) || (place === 'wind' ? 'wind' : '')
+  // No inverno (a estação de verdade), neva nos lugares abertos.
+  const weather = weatherOf(run, scene, clockOf().season) || (place === 'wind' ? 'wind' : '')
   const field = place === 'wind' ? '' : place
   const battle = newBattle(a, b, seededRandom(seed >>> 0), { ai: 'normal', seed: seed >>> 0, bags: bagsFor(run), healPct: true, capture: captureFor(run, data), weather, field })
   battle.members = { mine, theirs }
