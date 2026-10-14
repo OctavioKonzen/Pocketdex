@@ -136,6 +136,65 @@ function makePlaceEffect(key) {
   return placeEffects[key];
 }
 
+// Battle Factory (input.exp): o XP de cada adversário derrubado entra na hora, como nos jogos: quem lutou contra ele
+// ganha tudo e, com o Exp. Share, o resto do time ganha a metade; subindo de nível, os atributos crescem na hora.
+// exp = {mons: [{level, exp}] (por posição), table: [[XP para cada posição]] (por adversário), share}.
+function markFought(game) {
+  if (!game.exp) return;
+  const foe = game.battle.sides[1].active[0], mine = game.battle.sides[0].active[0];
+  if (!foe || !mine || foe.fainted) return;
+  const list = (game.fought[originalIndex(foe)] ??= []);
+  if (!list.includes(originalIndex(mine))) list.push(originalIndex(mine));
+}
+function levelUp(game, pokemon, level) {
+  const before = game.battle.spreadModify(pokemon.species.baseStats, pokemon.set);
+  pokemon.set.level = level;
+  pokemon.level = level;
+  const after = game.battle.spreadModify(pokemon.species.baseStats, pokemon.set);
+  for (const stat of Object.keys(after)) {
+    const gain = after[stat] - before[stat];
+    if (stat === 'hp') {
+      pokemon.maxhp += gain;
+      pokemon.baseMaxhp += gain;
+      if (pokemon.hp > 0) pokemon.hp += gain;
+    } else {
+      pokemon.storedStats[stat] += gain;
+      pokemon.baseStoredStats[stat] += gain;
+    }
+  }
+}
+function giveExp(game) {
+  const exp = game.exp;
+  if (!exp) return;
+  for (const foe of game.battle.sides[1].pokemon) {
+    const j = originalIndex(foe);
+    if (exp.given[j] || !(foe.fainted || game.captured === j)) continue;
+    exp.given[j] = true;
+    const fought = game.fought[j] ?? [];
+    let shared = false;
+    for (const mon of game.battle.sides[0].pokemon) {
+      const i = originalIndex(mon);
+      const now = exp.mons[i];
+      if (!now || mon.fainted || !(mon.hp > 0)) continue;
+      const full = fought.includes(i);
+      const gained = full ? exp.table[j]?.[i] ?? 0 : Math.floor((exp.table[j]?.[i] ?? 0) * exp.share);
+      if (!gained) continue;
+      now.exp += gained;
+      exp.gained[i] = (exp.gained[i] ?? 0) + gained;
+      if (full) game.battle.add('pocketdexexp', mon, gained);
+      else shared = true;
+      let level = now.level;
+      while (now.exp >= (level + 1) ** 3) level++;
+      if (level > now.level) {
+        levelUp(game, mon, level);
+        now.level = level;
+        game.battle.add('pocketdexlevel', mon, level);
+      }
+    }
+    if (shared) game.battle.add('pocketdexexpshare');
+  }
+}
+
 function configure(game) {
   const canZMove = game.battle.actions.canZMove.bind(game.battle.actions);
   game.battle.actions.canZMove = pokemon => game.teams[pokemon.side.n][originalIndex(pokemon)].gimmick === 'z' ? canZMove(pokemon) : undefined;
@@ -305,6 +364,8 @@ function snapshot(game) {
     mode: b.gameType,
     bags: game.bags,
     captured: game.captured ?? null,
+    // Battle Factory: o XP de cada um (nível e XP de agora, quanto ganhou) e quem lutou contra cada adversário.
+    ...(game.exp ? {exp: {mons: game.exp.mons, gained: game.exp.gained}, fought: game.fought} : {}),
     sides: b.sides.map(side => ({
       slots: slotsFor(game, side),
       actives: side.active.map(p => p ? originalIndex(p) : -1),
@@ -320,7 +381,7 @@ function snapshot(game) {
       conditions: Object.fromEntries(Object.entries(side.sideConditions).map(([id, c]) => [id, c.layers ?? c.duration ?? 0])),
       used: {mega: game.used[side.n].mega, dmax: Boolean(side.dynamaxUsed), z: Boolean(side.zMoveUsed), tera: game.used[side.n].tera},
       team: [...side.pokemon].sort((a, c) => originalIndex(a) - originalIndex(c)).map(p => ({
-        index: originalIndex(p), hp: p.hp, maxHp: p.maxhp, status: p.status, boosts: {...p.boosts},
+        index: originalIndex(p), level: p.level, hp: p.hp, maxHp: p.maxhp, status: p.status, boosts: {...p.boosts},
         species: p.species.name, formId: formIdOf(game, p), types: p.getTypes(), ability: Dex.abilities.get(p.ability).name,
         item: Dex.items.get(p.item).name, stats: {...p.baseStoredStats}, spe: p.baseStoredStats.spe, actionSpeed: p.getActionSpeed(), tera: p.terastallized || '',
         dmax: p.volatiles.dynamax ? Math.max(0, p.volatiles.dynamax.duration ?? 3) : 0,
@@ -499,6 +560,15 @@ function eventsFor(game, lines) {
       const key = actor.slice(11);
       events.push({t: 'place', place: key});
       say(`${key}Start`);
+    } else if (kind === 'pocketdexexp') {
+      // XP na hora (Battle Factory) e a subida de nível, com o barulho e a barra.
+      events.push({t: 'exp', side, index: actorIndex, exp: Number(value)});
+      say('gainExp', label(side), Number(value));
+    } else if (kind === 'pocketdexexpshare') {
+      say('gainExpShare');
+    } else if (kind === 'pocketdexlevel') {
+      events.push({t: 'level', side, index: actorIndex, level: Number(value)});
+      say('levelUp', label(side), Number(value));
     } else if (kind === 'pocketdexplace') {
       // O efeito do lugar no fim do turno: fere ou cura (a barra mexe na linha seguinte).
       say(extra === 'heal' ? 'placeHeal' : 'placeHurt', label(side), PLACE_EFFECTS[value]?.name ?? value);
@@ -687,6 +757,12 @@ export const PocketDexSim = {
       battle.field.addPseudoWeather(placeEffect(input.field, battle.dex), 'debug');
       battle.add('-fieldstart', `PocketDex: ${input.field}`);
     }
+    // O XP na hora (Battle Factory): quem está em campo junto lutou contra o adversário.
+    if (input.exp) {
+      game.exp = {mons: input.exp.mons.map(m => ({...m})), table: input.exp.table, share: input.exp.share ?? 0, given: {}, gained: {}};
+      game.fought = {};
+      markFought(game);
+    }
     // A espécie do começo de cada Pokémon: mudou depois, é forma de batalha.
     game.startSpecies = battle.sides.map((side) => Object.fromEntries(side.pokemon.map((p) => [originalIndex(p), p.species.name])));
     const handle = nextHandle++;
@@ -727,6 +803,9 @@ export const PocketDexSim = {
         throw new Error(error);
       }
     }
+    // XP dos derrubados (antes de marcar quem entrou agora) e quem lutou com quem.
+    giveExp(game);
+    markFought(game);
     return result(game);
   },
   inspect(handle) { return result(games.get(handle)); },

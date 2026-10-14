@@ -166,7 +166,8 @@ export default function Sprite(props) {
         style={{
           width: `${side * 100}%`,
           height: `${side * 100}%`,
-          left: `${(0.5 - side / 2 - shift(dx, wr)) * 100}%`,
+          // Na horizontal, o quadro típico sempre no meio da caixa (em cima do centro da base, na batalha).
+          left: `${(0.5 - side / 2 - dx * side) * 100}%`,
           top: `${top * 100}%`,
         }}
       >

@@ -139,6 +139,8 @@ export function newBattle(mine, theirs, random, options = {}) {
     startWeather: options.weather || '',
     // E o efeito do lugar (terreno ou o efeito próprio dele).
     startField: options.field || '',
+    // Battle Factory: o XP de cada adversário entra na hora (o motor sobe o nível durante a luta).
+    startExp: options.exp ?? null,
     turn: 1,
     // Semente da batalha (para o replay) e as suas jogadas (logTurn).
     seed: options.seed ?? null,
@@ -845,6 +847,8 @@ function logTurn(battle, action, events) {
  * XP de derrotá-lo (sem Exp. Share), como nos jogos.
  */
 export function markFought(battle) {
+  // Na Battle Factory com o motor, quem lutou com quem vem dele (o XP é dado na hora).
+  if (battle.expNow) return
   const foe = battle.sides[1].active, mine = battle.sides[0].active
   const list = ((battle.fought ??= {})[foe] ??= [])
   if (!list.includes(mine)) list.push(mine)
@@ -1146,6 +1150,10 @@ export const LINES = {
   stormStart: 'Uma tempestade de raios cai sobre o campo!',
   auroraStart: 'Uma aurora colorida brilha no céu!',
   placeHurt: ['{0} sofreu com {1}!', '{0} inimigo sofreu com {1}!'],
+  // Battle Factory: o XP na hora e a subida de nível durante a luta.
+  gainExp: ['{0} ganhou {1} de XP!', '{0} inimigo ganhou {1} de XP!'],
+  gainExpShare: 'O resto do time ganhou XP com o Exp. Share!',
+  levelUp: ['{0} subiu para o nível {1}!', '{0} inimigo subiu para o nível {1}!'],
   placeHeal: ['{0} recuperou HP com {1}!', '{0} inimigo recuperou HP com {1}!'],
   hurtHail: ['{0} foi atingido pelo granizo!', '{0} inimigo foi atingido pelo granizo!'],
   // Itens e habilidades (motor do Showdown).

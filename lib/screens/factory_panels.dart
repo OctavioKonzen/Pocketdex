@@ -65,21 +65,9 @@ Future<(TurnBattle, List<int>)> factoryBattle(Json run) async {
   // E o clima do lugar (sol no deserto, chuva no mar, neve na caverna de gelo...).
   // E o efeito do lugar (terreno, chuva de diamantes, aura sombria...; no céu, ventos fortes).
   final place = FactoryRun.fieldOf(run, scene);
-  final battle = TurnBattle(a, b, League.seededRandom(seed),
-      startBags: FactoryRun.bagsFor(run),
-      healPct: true,
-      capture: FactoryRun.captureFor(run, data),
-      startWeather: FactoryRun.weatherOf(run, scene, FactoryRun.clockOf().season).isNotEmpty
-          ? FactoryRun.weatherOf(run, scene, FactoryRun.clockOf().season)
-          : (place == 'wind' ? 'wind' : ''),
-      startField: place == 'wind' ? '' : place)
-    ..ai = 'normal'
-    ..seed = seed
-    ..members = (mine: BattleLog.toRecord(mine), theirs: BattleLog.toRecord(theirs))
-    ..scene = scene;
-  // A barra de XP: quem lutou ganha tudo; com o Exp. Share, o resto a metade.
+  // A barra de XP e o XP na hora: quem lutou ganha tudo; com o Exp. Share, o resto a metade.
   final kind = run['encounter']?['kind'] as String?;
-  battle.expBar = (
+  final expBar = (
     mons: [for (final i in order) (level: (team[i]['level'] as num).toInt(), exp: (team[i]['exp'] as num).toInt())],
     table: [
       for (final f in FactoryRun.foesOf(run))
@@ -90,6 +78,24 @@ Future<(TurnBattle, List<int>)> factoryBattle(Json run) async {
     ],
     share: run['expShare'] == true ? FactoryRun.expShare : 0.0,
   );
+  final battle = TurnBattle(a, b, League.seededRandom(seed),
+      startBags: FactoryRun.bagsFor(run),
+      healPct: true,
+      capture: FactoryRun.captureFor(run, data),
+      startWeather: FactoryRun.weatherOf(run, scene, FactoryRun.clockOf().season).isNotEmpty
+          ? FactoryRun.weatherOf(run, scene, FactoryRun.clockOf().season)
+          : (place == 'wind' ? 'wind' : ''),
+      startField: place == 'wind' ? '' : place,
+      startExp: {
+        'mons': [for (final m in expBar.mons) {'level': m.level, 'exp': m.exp}],
+        'table': expBar.table,
+        'share': expBar.share,
+      })
+    ..ai = 'normal'
+    ..seed = seed
+    ..members = (mine: BattleLog.toRecord(mine), theirs: BattleLog.toRecord(theirs))
+    ..scene = scene;
+  battle.expBar = expBar;
   return (battle, order);
 }
 
@@ -104,12 +110,18 @@ double? expBarOf(TurnBattle battle, int slot, List<int> foeHp) {
     final row = bar.table[j];
     extra += (battle.fought[j]?.contains(slot) ?? false) ? row[slot] : (row[slot] * bar.share).floor();
   }
+  // Passou de nível na luta: a barra no nível novo.
   final mon = bar.mons[slot];
-  return FactoryRun.expProgress({'level': mon.level, 'exp': mon.exp}, extra);
+  final total = mon.exp + extra;
+  var level = mon.level;
+  while (total >= FactoryRun.expAt(level + 1)) {
+    level++;
+  }
+  return FactoryRun.expProgress({'level': level, 'exp': total});
 }
 
 /// Como o time terminou a batalha (para winFloor): a parte do HP de cada um, na ordem da corrida, a Bolsa, se capturou o selvagem e quem lutou contra cada adversário.
-({List<double> hp, Map<String, int> bag, bool captured, List<List<int>> fought}) factoryAfter(TurnBattle battle, List<int> order, Json run) {
+({List<double> hp, Map<String, int> bag, bool captured, List<List<int>> fought, List<int>? gained}) factoryAfter(TurnBattle battle, List<int> order, Json run) {
   final hp = [for (final m in FactoryRun.teamOf(run)) FactoryRun.hpOf(m)];
   for (var slot = 0; slot < order.length && slot < battle.teams[0].length; slot++) {
     final mon = battle.teams[0][slot];
@@ -119,7 +131,18 @@ double? expBarOf(TurnBattle battle, int slot, List<int> foeHp) {
   final fought = [
     for (var j = 0; j < FactoryRun.foesOf(run).length; j++) [for (final slot in battle.fought[j] ?? const <int>[]) slot < order.length ? order[slot] : slot],
   ];
-  return (hp: hp, bag: {for (final id in FactoryRun.bagItems) id: battle.bags[0][id] ?? 0}, captured: battle.captured != null, fought: fought);
+  // O XP que cada um ganhou na luta (o motor deu na hora), na ordem da corrida.
+  final now = battle.expNow;
+  List<int>? gained;
+  if (now != null) {
+    gained = List.filled(FactoryRun.teamOf(run).length, 0);
+    for (final e in ((now['gained'] as Map?) ?? const {}).entries) {
+      final slot = int.parse('${e.key}');
+      final i = slot < order.length ? order[slot] : slot;
+      if (i < gained.length) gained[i] += (e.value as num).toInt();
+    }
+  }
+  return (hp: hp, bag: {for (final id in FactoryRun.bagItems) id: battle.bags[0][id] ?? 0}, captured: battle.captured != null, fought: fought, gained: gained);
 }
 
 /// Os capangas de cada equipe vilã (homem e mulher). Igual ao site.
@@ -648,33 +671,76 @@ class _FactoryHubState extends State<FactoryHub> {
           key: const ValueKey('factory-upgrades'),
           tilePadding: EdgeInsets.zero,
           initiallyExpanded: run == null,
-          title: Text('⬆️ ${tr('Melhorias permanentes')}', style: TextStyle(fontWeight: FontWeight.bold, color: c.text)),
+          title: Text('⬆️ ${tr('Árvore de melhorias')}', style: TextStyle(fontWeight: FontWeight.bold, color: c.text)),
           children: [
-            Text(tr('Compradas com moedas, valem em todas as próximas corridas. Cada nível custa mais.'), style: TextStyle(color: c.muted, fontSize: 12)),
-            for (final e in FactoryRun.upgrades.entries)
-              () {
-                final level = FactoryRun.upgradeLevel(factory, e.key);
-                final price = FactoryRun.upgradePrice(factory, e.key);
-                final value = e.value.offset + (price == null ? FactoryRun.upgradeValue(factory, e.key) : (level + 1) * e.value.per);
-                return ListTile(
-                  key: ValueKey('upgrade-${e.key}'),
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(tr(e.value.label).replaceAll('{0}', '$value'), style: TextStyle(color: c.text, fontSize: 13, fontWeight: FontWeight.bold)),
-                  subtitle: Text('${'★' * level}${'☆' * (e.value.max - level)} · ${price == null ? tr('No máximo') : '🪙 $price'}',
-                      style: TextStyle(color: c.muted, fontSize: 12)),
-                  trailing: price == null
-                      ? null
-                      : TextButton(
-                          onPressed: coins < price
-                              ? null
-                              : () {
-                                  final next = FactoryRun.buyUpgrade(factory, e.key);
-                                  if (next != null) _save(next);
-                                },
-                          child: const Text('Comprar'),
+            Text(tr('Compradas com moedas, valem em todas as próximas corridas. Cada ramo começa na raiz; para avançar, a anterior, um andar recorde e Pokémon para começar.'),
+                style: TextStyle(color: c.muted, fontSize: 12)),
+            const SizedBox(height: 6),
+            // Cada ramo: da raiz para a ponta, ligados por uma linha; os bloqueados com cadeado e o que falta. Igual ao site.
+            for (final (icon, branch, ids) in FactoryRun.upgradeBranches)
+              Container(
+                key: ValueKey('branch-${ids.first}'),
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: c.card, borderRadius: BorderRadius.circular(12)),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  Text('$icon ${tr(branch)}', style: TextStyle(fontWeight: FontWeight.w900, color: c.text)),
+                  for (final (k, id) in ids.indexed) ...[
+                    if (k > 0)
+                      Center(
+                          child: Text('│',
+                              style: TextStyle(height: 1, color: FactoryRun.upgradeLevel(factory, ids[k - 1]) > 0 ? const Color(0xFFF59E0B) : c.muted))),
+                    () {
+                      final up = FactoryRun.upgrades[id]!;
+                      final level = FactoryRun.upgradeLevel(factory, id);
+                      final price = FactoryRun.upgradePrice(factory, id);
+                      final value = up.offset + (price == null ? FactoryRun.upgradeValue(factory, id) : (level + 1) * up.per);
+                      final needs = price == null ? const <Json>[] : FactoryRun.upgradeNeeds(factory, id);
+                      final locked = level == 0 && needs.any((n) => n['kind'] == 'up');
+                      String needText(Json n) => switch (n['kind']) {
+                            'up' => tr('{0} no nível {1}').replaceAll('{0}', tr(_upgradeNames[n['id']] ?? '')).replaceAll('{1}', '${n['level']}'),
+                            'best' => tr('Chegar ao andar {0} (recorde: {1})').replaceAll('{0}', '${n['floor']}').replaceAll('{1}', '${factory['best'] ?? 0}'),
+                            _ => tr('Ter {0} Pokémon para começar (tem {1})')
+                                .replaceAll('{0}', '${n['count']}')
+                                .replaceAll('{1}', '${((factory['owned'] as List?) ?? const []).length}'),
+                          };
+                      return Opacity(
+                        opacity: locked ? 0.7 : 1,
+                        child: Container(
+                          key: ValueKey('upgrade-$id'),
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: level > 0 ? const Color(0x1AF59E0B) : null,
+                            border: Border.all(color: level > 0 ? const Color(0xFFFBBF24) : c.muted.withValues(alpha: 0.4), width: 2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(children: [
+                            Expanded(
+                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                Text('${locked ? '🔒 ' : ''}${tr(up.label).replaceAll('{0}', '$value')}',
+                                    style: TextStyle(color: c.text, fontSize: 13, fontWeight: FontWeight.bold)),
+                                Text('${'★' * level}${'☆' * (up.max - level)} · ${price == null ? tr('No máximo') : '🪙 $price'}',
+                                    style: TextStyle(color: c.muted, fontSize: 12)),
+                                for (final n in needs) Text('✖ ${needText(n)}', style: const TextStyle(color: Color(0xFFEF4444), fontSize: 11)),
+                              ]),
+                            ),
+                            if (price != null)
+                              TextButton(
+                                onPressed: coins < price || needs.isNotEmpty
+                                    ? null
+                                    : () {
+                                        final next = FactoryRun.buyUpgrade(factory, id);
+                                        if (next != null) _save(next);
+                                      },
+                                child: Text(tr('Comprar')),
+                              ),
+                          ]),
                         ),
-                );
-              }(),
+                      );
+                    }(),
+                  ],
+                ]),
+              ),
           ],
         ),
         ExpansionTile(
@@ -848,13 +914,19 @@ const _biomeInfo = <String, (String, String, Color)>{
   'base-star': ('Base da Equipe Estrela', '🏴', Color(0xFFDB2777)),
 };
 
+/// O nome curto de cada melhoria (nos requisitos da árvore). Igual ao site.
+const _upgradeNames = {
+  'level': 'Treino', 'ivs': 'Genética', 'exp': 'XP extra', 'expShare': 'Exp. Share', 'potions': 'Potions', 'revive': 'Revives',
+  'balls': 'Poké Balls', 'shiny': 'Shiny', 'money': 'Dinheiro', 'shop': 'Desconto', 'reroll': 'Sortear caminho', 'cards': 'Carta a mais',
+};
+
 /// Cada ponto do mapa: símbolo, nome e o que tem nele.
 const _nodeInfo = <String, (String, String, String)>{
   'wild': ('🌿', 'Pokémon selvagem', 'Dá para capturar: jogue a bola antes de ele desmaiar.'),
   'trainer': ('🧢', 'Treinador', 'Dinheiro em dobro.'),
   'ace': ('💪', 'Treinador forte', 'Um Pokémon a mais e mais forte; sempre deixa um item.'),
-  'mart': ('🛒', 'Poké Mart', 'Uma loja maior (sem batalha, sem XP).'),
-  'center': ('🏥', 'Centro Pokémon', 'Cura o time todo, até quem desmaiou (sem batalha).'),
+  'mart': ('🎒', 'Vendedor ambulante', 'Vende o mesmo que o Poké Mart (sem batalha, sem XP).'),
+  'center': ('⛺', 'Parada para descanso', 'Alguém do caminho cura o time todo, até quem desmaiou (sem batalha).'),
   'event': ('❓', 'Evento', 'Itens, dinheiro, frutas ou uma ficha de Move Tutor (sem batalha).'),
   'trade': ('🔁', 'Troca', 'Alguém da rota troca um Pokémon com você: o que vem chega 3 níveis acima (com o item de quem foi).'),
   'wildboss': ('🐉', 'Chefe sem treinador', 'Uma Mega, um Gigantamax ou um lendário. Dá para capturar.'),
@@ -1332,7 +1404,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
               ])
             : step == 'shop' && _panel == 'buy'
                 ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                    _overlayHeader('🛒 Poké Mart · 💰${run['money']}', close),
+                    _overlayHeader('${p?['mart'] == true ? '🎒 ${tr('Vendedor ambulante')}' : '🛒 Poké Mart'} · 💰${run['money']}', close),
                     Padding(padding: const EdgeInsets.all(8), child: _shopList(context, run, p!, data)),
                   ])
                 : step == 'shop' && _panel == 'daycare'
@@ -1390,6 +1462,34 @@ class _FactoryScreenState extends State<FactoryScreen> {
             ]),
         text: [Text('🃏 ${tr('Escolha uma carta de bônus')}')],
       );
+    } else if (step == 'shop' && p!['mart'] == true) {
+      // Na rota: o vendedor ambulante (vende o mesmo que o Poké Mart), no próprio lugar. Igual ao site.
+      final scene = '${run['scene'] ?? 'grass'}';
+      frame = _frame(
+        run: run,
+        field: _field(scene, key: const ValueKey('factory-shop'), (w, h) => [
+              _far(_trainerImage('sd-backpacker', w * 0.42), w, h),
+              if (lead != null) _fieldMon(lead, w, h, back: true),
+              Positioned(
+                left: 10,
+                top: 6,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.85), borderRadius: BorderRadius.circular(8)),
+                  child: Text('🎒 ${tr('Vendedor ambulante')}', style: const TextStyle(fontWeight: FontWeight.w900, color: _ink, fontSize: 13)),
+                ),
+              ),
+            ]),
+        text: [Text('${tr('Um vendedor ambulante! Tenho o mesmo que o Poké Mart. Do que você precisa?')} 💰${run['money']}')],
+        menu: _menuGrid([
+          _menuButton(tr('COMPRAR'), () => setState(() => _panel = _panel == 'buy' ? null : 'buy'), active: _panel == 'buy', key: const ValueKey('factory-menu-buy')),
+          ...tools,
+          _menuButton(tr('CONTINUAR'), () {
+            _panel = null;
+            _save({...run, 'pending': {...p, 'shop': null}});
+          }, key: const ValueKey('factory-continue')),
+        ]),
+      );
     } else if (step == 'shop') {
       frame = _frame(
         run: run,
@@ -1399,8 +1499,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
                 right: 0,
                 bottom: h * 0.22,
                 child: Row(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [
-                  _trainerImage('sd-clerk', w * 0.34),
-                  _trainerImage('sd-clerkf', w * 0.34),
+                  _trainerImage('sd-clerk', w * 0.4),
+                  _trainerImage('sd-clerkf', w * 0.4),
                 ]),
               ),
               Positioned(
@@ -1518,25 +1618,29 @@ class _FactoryScreenState extends State<FactoryScreen> {
     final evoFrom = evoTo == null ? null : _data?.evolutions.entries.where((e) => e.value.any((x) => x[0] == evoTo)).firstOrNull?.key;
     final beat = p['beat'] as Map?;
     final mission = p['mission'] as Map?;
+    // A Enfermeira Joy só na cidade; na rota, quem cura é alguém do caminho (Pokémon Breeder, Doctor...). Igual ao site.
+    final town = FactoryRun.inTown('${run['scene'] ?? 'grass'}');
+    final (healerSprite, healerName) = town ? ('sd-nurse', 'Enfermeira Joy') : FactoryRun.healerOf(run);
     return _frame(
       run: run,
-      field: _field(p['center'] == true ? 'center' : '${run['scene'] ?? 'grass'}', key: const ValueKey('factory-result'), (w, h) => [
+      field: _field('${run['scene'] ?? 'grass'}', key: const ValueKey('factory-result'), (w, h) => [
             if (p['center'] == true || p['joy'] == true)
-              _far(_trainerImage('sd-nurse', w * 0.32), w, h)
+              _far(_trainerImage(healerSprite, w * 0.42), w, h)
             else if (items.isNotEmpty)
               _far(_itemIcon(items.first, w * 0.16), w, h)
             else if (event != null)
               _far(Text(eventIcon, style: TextStyle(fontSize: w * 0.12)), w, h),
             if (lead != null) _fieldMon(lead, w, h, back: true),
             if (evoTo != null && evoFrom != null)
-              Positioned(left: w * 0.29, top: h * 0.12, width: w * 0.42, height: w * 0.42, child: _EvolutionFx(from: evoFrom, to: evoTo)),
+              Positioned.fill(child: _EvolutionFx(from: evoFrom, to: evoTo)),
           ]),
       text: [
         if (evoTo != null && evoFrom != null)
           Text('✨ ${tr('{0} evoluiu para {1}!').replaceAll('{0}', _name(evoFrom)).replaceAll('{1}', _name(evoTo))}',
               key: const ValueKey('factory-evolved'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFD97706))),
         if (p['center'] == true)
-          Text('🏥 ${tr('Centro Pokémon: o seu time foi curado!')}', key: const ValueKey('factory-center'))
+          Text(town ? '🏥 ${tr('Centro Pokémon: o seu time foi curado!')}' : '⛺ ${tr('{0} cuidou do seu time: todos curados!').replaceAll('{0}', healerName)}',
+              key: const ValueKey('factory-center'))
         else if (event != null)
           Text(
               tr(_eventText['${event['kind']}'] ?? '')
@@ -1549,7 +1653,9 @@ class _FactoryScreenState extends State<FactoryScreen> {
             if ((l['index'] as num).toInt() < team.length)
               _small('${_name(team[(l['index'] as num).toInt()]['id'])}: Nv. ${l['from']} → ${l['to']}${l['evolved'] != null ? ' · ${tr('evoluiu!')}' : ''}'),
         ],
-        if (p['joy'] == true) Text('💗 ${tr('A Enfermeira Joy apareceu e curou o time todo!')}', key: const ValueKey('factory-joy'), style: const TextStyle(fontSize: 13)),
+        if (p['joy'] == true)
+          Text('💗 ${town ? tr('A Enfermeira Joy apareceu e curou o time todo!') : tr('{0} apareceu e curou o time todo!').replaceAll('{0}', healerName)}',
+              key: const ValueKey('factory-joy'), style: const TextStyle(fontSize: 13)),
         for (final id in items) Text('🎁 ${tr('Ganhou {0}!').replaceAll('{0}', _itemName(id))}', key: ValueKey('factory-drop-$id'), style: const TextStyle(fontSize: 13)),
         if (beat != null)
           Text(
@@ -1812,8 +1918,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
             }),
           if (hasMap) Positioned(left: x(0) - 4, top: y + 10, child: sign('🏠 ${cities.from ?? tr('Início')}')),
           if (hasMap) Positioned(right: w - x(end) - 4, top: y + 10, child: sign('👑 ${cities.to}')),
-          if (me != null && hasMap) Positioned(left: x(pos + 1) - w * 0.07, top: y - w * 0.14, child: TrainerSprite(me, box: w * 0.14)),
-          if (coach != null && meeting) _far(TrainerSprite(coach, box: w * 0.26), w, h),
+          if (me != null && hasMap) Positioned(left: x(pos + 1) - w * 0.1, top: y - w * 0.2, child: TrainerSprite(me, box: w * 0.2)),
+          if (coach != null && meeting) _far(TrainerSprite(coach, box: w * 0.4), w, h),
           if (lead != null) _fieldMon(lead, w, h, back: true),
         ];
       }),
@@ -1941,7 +2047,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
               ),
               Positioned(left: x(0) * sx - 14, top: (y0 + 8) * sy, child: sign('🏠 ${from ?? tr('Início')}')),
               Positioned(right: w - x(end) * sx - 14, top: (y0 + 8) * sy, child: sign('👑 $to')),
-              if (me != null) Positioned(left: x(here) * sx - w * 0.06, top: (y0 + 2) * sy - w * 0.12, child: TrainerSprite(me, box: w * 0.12)),
+              if (me != null) Positioned(left: x(here) * sx - w * 0.085, top: (y0 + 2) * sy - w * 0.17, child: TrainerSprite(me, box: w * 0.17)),
               // Os caminhos: botões no próprio mapa.
               for (var k = 0; k < n; k++)
                 Positioned(
@@ -2105,7 +2211,8 @@ class _EvolutionFx extends StatefulWidget {
 }
 
 class _EvolutionFxState extends State<_EvolutionFx> with SingleTickerProviderStateMixin {
-  late final AnimationController _clock = AnimationController(vsync: this, duration: const Duration(milliseconds: 2600))..forward();
+  // 2,6 s da evolução (frações até 0,62) e mais um pouco mostrando a forma nova antes de a tela voltar.
+  late final AnimationController _clock = AnimationController(vsync: this, duration: const Duration(milliseconds: 4200))..forward();
 
   /// As trocas (fração do tempo): cada vez mais perto uma da outra; a partir de 0.8, só a nova.
   static const _flips = [0.2, 0.25, 0.35, 0.42, 0.5, 0.55, 0.61, 0.65, 0.7, 0.73, 0.77, 0.8];
@@ -2122,20 +2229,43 @@ class _EvolutionFxState extends State<_EvolutionFx> with SingleTickerProviderSta
         child: AnimatedBuilder(
           animation: _clock,
           builder: (context, _) {
-            final v = _clock.value;
+            final all = _clock.value;
+            // v: o andamento da evolução (0 a 1 nos primeiros 2,6 s).
+            final v = (all / 0.62).clamp(0.0, 1.0);
             final showNew = _flips.where((f) => v >= f).length.isOdd || v >= 0.8;
             const white = ColorFilter.matrix([0, 0, 0, 0, 255, 0, 0, 0, 0, 255, 0, 0, 0, 0, 255, 0, 0, 0, 1, 0]);
             final glow = v < 0.8 ? v / 0.8 : 1 - (v - 0.8) / 0.2;
-            return Stack(fit: StackFit.expand, children: [
-              Opacity(
-                opacity: glow.clamp(0, 1),
-                child: const DecoratedBox(
-                    decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [Color(0xE6FFFFFF), Color(0x66FDE047), Colors.transparent]))),
+            // A tela escurece (entra rápido e sai no fim) e o Pokémon gira no meio, cada vez mais rápido.
+            final stage = all < 0.08 ? all / 0.08 : all > 0.82 ? 1 - (all - 0.82) / 0.18 : 1.0;
+            final spin = v < 0.8 ? Curves.easeIn.transform(v / 0.8) * 10 * pi : 0.0;
+            final sprite = v >= 1
+                ? PokemonSprite(widget.to, fill: 0.9, battle: true)
+                : ColorFiltered(colorFilter: white, child: PokemonSprite(showNew ? widget.to : widget.from, fill: 0.9, battle: true));
+            return Opacity(
+              opacity: stage.clamp(0.0, 1.0),
+              child: DecoratedBox(
+                decoration: const BoxDecoration(gradient: RadialGradient(colors: [Color(0xBF1E293B), Color(0xF2020617)])),
+                child: LayoutBuilder(builder: (context, box) {
+                  final size = box.maxWidth * 0.55;
+                  return Center(
+                    child: SizedBox.square(
+                      dimension: size,
+                      child: Stack(clipBehavior: Clip.none, fit: StackFit.expand, children: [
+                        Transform.scale(
+                          scale: 1.3,
+                          child: Opacity(
+                            opacity: glow.clamp(0, 1),
+                            child: const DecoratedBox(
+                                decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [Color(0xE6FFFFFF), Color(0x66FDE047), Colors.transparent]))),
+                          ),
+                        ),
+                        Transform(alignment: Alignment.center, transform: Matrix4.rotationY(spin), child: sprite),
+                      ]),
+                    ),
+                  );
+                }),
               ),
-              v >= 1
-                  ? PokemonSprite(widget.to, fill: 0.9, alignBottom: true, battle: true)
-                  : ColorFiltered(colorFilter: white, child: PokemonSprite(showNew ? widget.to : widget.from, fill: 0.9, alignBottom: true, battle: true)),
-            ]);
+            );
           },
         ),
       );

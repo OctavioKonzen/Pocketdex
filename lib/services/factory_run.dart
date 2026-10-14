@@ -313,10 +313,45 @@ class FactoryRun {
     'exp': (label: '+{0}% de XP', per: 5, max: 5, base: 250, offset: 0),
     // As que mudam o jeito de jogar.
     'expShare': (label: 'Começa com o Exp. Share', per: 1, max: 1, base: 1200, offset: 0),
-    'cards': (label: 'Uma carta a mais para escolher depois de cada chefe', per: 1, max: 1, base: 2000, offset: 0),
     'reroll': (label: '{0}× por corrida: sortear o caminho de novo', per: 1, max: 2, base: 700, offset: 0),
+    'cards': (label: 'Uma carta a mais para escolher depois de cada chefe', per: 1, max: 1, base: 2000, offset: 0),
     'shiny': (label: 'Shiny {0}× mais comum', per: 1, max: 3, base: 900, offset: 1),
   };
+
+  /// A árvore de melhorias: cada ramo começa numa raiz e o resto pede a anterior num nível (needs), um andar recorde
+  /// (best) e quantos Pokémon você já tem para começar (owned). Cada nível a mais pede 3 andares a mais de recorde. Igual ao site.
+  static const upgradeTree = <String, ({(String, int)? needs, int best, int owned})>{
+    'ivs': (needs: ('level', 2), best: 8, owned: 0),
+    'exp': (needs: ('ivs', 2), best: 12, owned: 0),
+    'expShare': (needs: ('exp', 3), best: 20, owned: 3),
+    'revive': (needs: ('potions', 2), best: 6, owned: 0),
+    'shiny': (needs: ('balls', 3), best: 15, owned: 5),
+    'shop': (needs: ('money', 2), best: 6, owned: 0),
+    'reroll': (needs: ('shop', 2), best: 15, owned: 0),
+    'cards': (needs: ('reroll', 1), best: 25, owned: 8),
+  };
+
+  /// Os ramos da árvore, na ordem (da raiz para a ponta).
+  static const upgradeBranches = [
+    ('🎓', 'Treino', ['level', 'ivs', 'exp', 'expShare']),
+    ('🧪', 'Sobrevivência', ['potions', 'revive']),
+    ('🎯', 'Captura', ['balls', 'shiny']),
+    ('💰', 'Comércio', ['money', 'shop', 'reroll', 'cards']),
+  ];
+  static const upgradeLevelBest = 3;
+
+  /// O que falta para comprar o próximo nível: [{kind: up, id, level} | {kind: best, floor} | {kind: owned, count}] (vazio: pode).
+  static List<Json> upgradeNeeds(Json factory, String id) {
+    final node = upgradeTree[id];
+    final out = <Json>[];
+    final needs = node?.needs;
+    if (needs != null && upgradeLevel(factory, needs.$1) < needs.$2) out.add({'kind': 'up', 'id': needs.$1, 'level': needs.$2});
+    final best = (node?.best ?? 0) + upgradeLevelBest * upgradeLevel(factory, id);
+    if (_int(factory['best'] ?? 0) < best) out.add({'kind': 'best', 'floor': best});
+    final owned = node?.owned ?? 0;
+    if (owned > 0 && ((factory['owned'] as List?)?.length ?? 0) < owned) out.add({'kind': 'owned', 'count': owned});
+    return out;
+  }
   static int upgradeLevel(Json factory, String id) => (((factory['upgrades'] as Map?)?[id] as num?) ?? 0).toInt();
   static int upgradeValue(Json factory, String id) => upgradeLevel(factory, id) * upgrades[id]!.per;
 
@@ -331,7 +366,7 @@ class FactoryRun {
   /// Compra o próximo nível da melhoria (null se não dá).
   static Json? buyUpgrade(Json factory, String id) {
     final price = upgradePrice(factory, id);
-    if (price == null || _int(factory['coins']) < price) return null;
+    if (price == null || _int(factory['coins']) < price || upgradeNeeds(factory, id).isNotEmpty) return null;
     return {
       ...factory, 'coins': _int(factory['coins']) - price,
       'upgrades': {...Map<String, dynamic>.from((factory['upgrades'] as Map?) ?? const {}), id: upgradeLevel(factory, id) + 1},
@@ -916,7 +951,8 @@ class FactoryRun {
     }
     out['floor'] = floor + 1;
     // O cenário de onde você está (Poké Mart e Centro na cidade).
-    out['scene'] = node['kind'] == 'mart' ? 'city' : node['kind'] == 'center' ? 'center' : routeBiomeNow;
+    // Na rota não tem Poké Mart nem Centro: o vendedor ambulante e quem cura ficam no próprio lugar.
+    out['scene'] = routeBiomeNow;
     if (node['kind'] == 'mart') {
       out['pending'] = {'mart': true, 'shop': _pickShop(rand, data, floor, 10, run['townMap'] == true)};
     } else if (node['kind'] == 'trade') {
@@ -1142,7 +1178,7 @@ class FactoryRun {
   /// Venceu o andar. hp: a parte do HP de cada um do time (na ordem da
   /// corrida) no fim da batalha; bag: a Bolsa que sobrou; captured: capturou o
   /// selvagem na batalha (entra no time). Igual ao site.
-  static Json winFloor(Json run, FactoryData data, {List<double>? hp, Map<String, int>? bag, bool captured = false, List<List<int>>? fought}) {
+  static Json winFloor(Json run, FactoryData data, {List<double>? hp, Map<String, int>? bag, bool captured = false, List<List<int>>? fought, List<int>? gained}) {
     final out = _copy(run);
     final team0 = teamOf(out);
     out['team'] = [for (var i = 0; i < team0.length; i++) {...team0[i], 'hp': hp != null && i < hp.length ? hp[i] : hpOf(team0[i])}];
@@ -1169,6 +1205,12 @@ class FactoryRun {
         for (var k = 0; k < stats.length; k++) {
           evs[i][stats[k]] = (evs[i][stats[k]] as int) + _int(yields[k]) * 3;
         }
+      }
+    }
+    // O XP que cada um já ganhou na luta (a batalha dá na hora, ao derrubar cada adversário): vale esse. Igual ao site.
+    if (gained != null) {
+      for (var i = 0; i < gained.length && i < gains.length; i++) {
+        gains[i] = gained[i];
       }
     }
     final levels = <Json>[];
@@ -1549,6 +1591,13 @@ class FactoryRun {
     final group = placeMusicGroups.entries.where((e) => e.value.contains(scene)).firstOrNull?.key;
     return group != null ? 'place_$group' : 'battle_music';
   }
+
+  /// Quem cura fora da cidade (a Enfermeira Joy só fica no Centro Pokémon da cidade): um por andar. Igual ao site.
+  static const healers = [('sd-pokemonbreederf', 'Pokémon Breeder'), ('sd-doctor', 'Doctor'), ('sd-pokemonrangerf', 'Pokémon Ranger'), ('sd-aromalady', 'Aroma Lady')];
+  static (String, String) healerOf(Json run) => healers[(_int(run['seed'] ?? 0) + _int(run['floor'])) % healers.length];
+
+  /// Os lugares da cidade (onde ficam o Poké Mart e a Enfermeira Joy).
+  static bool inTown(String scene) => scene == 'city' || scene == 'center' || scene == 'tower' || scene.startsWith('gym-') || scene.startsWith('champion-');
 
   /// As estações (como no Black & White: mudam a cada mês) e a noite (pelo relógio de verdade). Igual ao site.
   static const seasons = ['spring', 'summer', 'autumn', 'winter'];

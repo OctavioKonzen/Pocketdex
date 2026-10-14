@@ -141,7 +141,7 @@ class BattleSounds {
       case 'heal':
         return 'heal';
       case 'text':
-        if (e.key.startsWith('statUp')) return 'statup';
+        if (e.key.startsWith('statUp') || e.key == 'levelUp') return 'statup';
         if (e.key.startsWith('statDown')) return 'statdown';
     }
     return null;

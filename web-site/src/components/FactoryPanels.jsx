@@ -19,10 +19,10 @@ import {
   BAG_ITEMS, bossOf, FORKS, ROUTE_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, MAX_TEAM, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shinyPrice, shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, takeCard, teachMove, teamDown, applyBagItem, unlockShiny, VITAMIN_EVS, VITAMINS,
-  buyShiny, forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade,
+  buyShiny, forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES,
   tradeMon, skipTrade, TRADE_LEVELS, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, blindPick, bossScene,
   resolveChoice, regionLegend, leaderType, villainTeam,
-  cutPath, nodeBlocked, hasHm, clockOf, DARK_BIOMES, dexOf, dexRewardFor, leaveDaycare, takeDaycare, DAYCARE_EGG,
+  cutPath, nodeBlocked, hasHm, clockOf, healerOf, inTown, DARK_BIOMES, dexOf, dexRewardFor, leaveDaycare, takeDaycare, DAYCARE_EGG,
 } from '../lib/factoryRun'
 import { t } from '../lib/i18n'
 import { prettyName } from '../lib/pokemon'
@@ -417,29 +417,43 @@ export function FactoryHub({ onContinue, busy }) {
       )}
 
       <details className="rounded-2xl bg-bg p-3" data-testid="factory-upgrades" open={!run}>
-        <summary className="cursor-pointer font-bold">⬆️ {t('Melhorias permanentes')}</summary>
-        <p className="my-2 text-xs text-muted">{t('Compradas com moedas, valem em todas as próximas corridas. Cada nível custa mais.')}</p>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {Object.entries(UPGRADES).map(([id, up]) => {
-            const level = upgradeLevel(factory, id)
-            const price = upgradePrice(factory, id)
-            const next = (up.offset ?? 0) + (level + 1) * up.per
-            return (
-              <div key={id} className="flex items-center gap-2 rounded-xl bg-card p-2 text-xs" data-testid={`upgrade-${id}`}>
-                <div className="min-w-0 flex-1">
-                  <p className="font-bold">{t(up.label).replace('{0}', price == null ? (up.offset ?? 0) + upgradeValue(factory, id) : next)}</p>
-                  <p className="text-muted">
-                    {'★'.repeat(level)}{'☆'.repeat(up.max - level)} · {price == null ? t('No máximo') : `🪙 ${price}`}
-                  </p>
-                </div>
-                {price != null && (
-                  <Button disabled={factory.coins < price} onClick={() => { const n = buyUpgrade(factory, id); if (n) saveFactory(n) }}>
-                    {t('Comprar')}
-                  </Button>
-                )}
-              </div>
-            )
-          })}
+        <summary className="cursor-pointer font-bold">⬆️ {t('Árvore de melhorias')}</summary>
+        <p className="my-2 text-xs text-muted">{t('Compradas com moedas, valem em todas as próximas corridas. Cada ramo começa na raiz; para avançar, a anterior, um andar recorde e Pokémon para começar.')}</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {UPGRADE_BRANCHES.map(([icon, branch, ids]) => (
+            <div key={branch} className="rounded-xl bg-card p-2" data-testid={`branch-${ids[0]}`}>
+              <p className="mb-1 text-sm font-black">{icon} {t(branch)}</p>
+              {ids.map((id, k) => {
+                const up = UPGRADES[id]
+                const level = upgradeLevel(factory, id)
+                const price = upgradePrice(factory, id)
+                const next = (up.offset ?? 0) + (level + 1) * up.per
+                const needs = price == null ? [] : upgradeNeeds(factory, id)
+                const locked = level === 0 && needs.some((n) => n.kind === 'up')
+                return (
+                  <div key={id}>
+                    {k > 0 && <p className={`pl-4 text-center text-xs leading-3 ${upgradeLevel(factory, ids[k - 1]) ? 'text-amber-500' : 'text-muted'}`}>│</p>}
+                    <div className={`flex items-center gap-2 rounded-lg border-2 p-2 text-xs ${level ? 'border-amber-400 bg-amber-500/10' : locked ? 'border-dashed border-slate-500/40 opacity-70' : 'border-slate-500/40'}`} data-testid={`upgrade-${id}`}>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold">{locked ? '🔒 ' : ''}{t(up.label).replace('{0}', price == null ? (up.offset ?? 0) + upgradeValue(factory, id) : next)}</p>
+                        <p className="text-muted">{'★'.repeat(level)}{'☆'.repeat(up.max - level)} · {price == null ? t('No máximo') : `🪙 ${price}`}</p>
+                        {needs.map((n) => (
+                          <p key={n.kind} className="text-[11px] text-red-500" data-testid={`need-${id}-${n.kind}`}>
+                            ✖ {n.kind === 'up' ? t('{0} no nível {1}').replace('{0}', t(UPGRADE_NAMES[n.id])).replace('{1}', n.level) : n.kind === 'best' ? t('Chegar ao andar {0} (recorde: {1})').replace('{0}', n.floor).replace('{1}', factory.best ?? 0) : t('Ter {0} Pokémon para começar (tem {1})').replace('{0}', n.count).replace('{1}', factory.owned?.length ?? 0)}
+                          </p>
+                        ))}
+                      </div>
+                      {price != null && (
+                        <Button disabled={factory.coins < price || needs.length > 0} onClick={() => { const n = buyUpgrade(factory, id); if (n) saveFactory(n) }}>
+                          {t('Comprar')}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ))}
         </div>
       </details>
 
@@ -524,6 +538,11 @@ export function FactoryHub({ onContinue, busy }) {
   )
 }
 
+/** O nome curto de cada melhoria (nos requisitos da árvore). */
+const UPGRADE_NAMES = {
+  level: 'Treino', ivs: 'Genética', exp: 'XP extra', expShare: 'Exp. Share', potions: 'Potions', revive: 'Revives',
+  balls: 'Poké Balls', shiny: 'Shiny', money: 'Dinheiro', shop: 'Desconto', reroll: 'Sortear caminho', cards: 'Carta a mais',
+}
 /** Os biomas das rotas: nome, símbolo e as cores do caminho no mapa. */
 const BIOME_INFO = {
   grass: { label: 'Campo', icon: '🌾', color: '#65a30d' },
@@ -565,8 +584,8 @@ const NODE_INFO = {
   wild: { icon: '🌿', label: 'Pokémon selvagem', help: 'Dá para capturar: jogue a bola antes de ele desmaiar.' },
   trainer: { icon: '🧢', label: 'Treinador', help: 'Dinheiro em dobro.' },
   ace: { icon: '💪', label: 'Treinador forte', help: 'Um Pokémon a mais e mais forte; sempre deixa um item.' },
-  mart: { icon: '🛒', label: 'Poké Mart', help: 'Uma loja maior (sem batalha, sem XP).' },
-  center: { icon: '🏥', label: 'Centro Pokémon', help: 'Cura o time todo, até quem desmaiou (sem batalha).' },
+  mart: { icon: '🎒', label: 'Vendedor ambulante', help: 'Vende o mesmo que o Poké Mart (sem batalha, sem XP).' },
+  center: { icon: '⛺', label: 'Parada para descanso', help: 'Alguém do caminho cura o time todo, até quem desmaiou (sem batalha).' },
   event: { icon: '❓', label: 'Evento', help: 'Itens, dinheiro, frutas ou uma ficha de Move Tutor (sem batalha).' },
   trade: { icon: '🔁', label: 'Troca', help: 'Alguém da rota troca um Pokémon com você: o que vem chega 3 níveis acima (com o item de quem foi).' },
   wildboss: { icon: '🐉', label: 'Chefe sem treinador', help: 'Uma Mega, um Gigantamax ou um lendário. Dá para capturar.' },
@@ -734,11 +753,14 @@ function EvolutionFx({ from, to, byId }) {
     const p = byId?.get(id)
     return p ? <div className={`absolute inset-0 ${cls}`}><Sprite path={p.sprite} box={p.box} fill={0.9} align="bottom" battle alt={p.name} /></div> : null
   }
+  // A tela escurece e o Pokémon fica grande no meio, girando e piscando até virar a forma nova; depois a tela volta.
   return (
-    <div className="evo-fx absolute left-1/2 top-[12%] aspect-square w-[42%] -translate-x-1/2" data-testid="evolution-fx">
-      <div className="evo-glow absolute inset-0 rounded-full" />
-      {sprite(from, 'evo-from')}
-      {sprite(to, 'evo-to')}
+    <div className="evo-stage pointer-events-none absolute inset-0 z-30 flex items-center justify-center" data-testid="evolution-fx">
+      <div className="evo-glow absolute aspect-square w-[70%] rounded-full" />
+      <div className="evo-spin relative aspect-square w-[55%]">
+        {sprite(from, 'evo-from')}
+        {sprite(to, 'evo-to')}
+      </div>
     </div>
   )
 }
@@ -847,7 +869,7 @@ function TownMap({ route, pos, from, to, title, me, width, fieldRef, onPick, blo
       <span className="absolute -translate-x-1/2 rounded bg-white/90 px-1 text-[10px] font-bold text-slate-900 sm:text-xs" style={{ left: `${(x(END) / W) * 100}%`, top: `${((y0 + 8) / H) * 100}%` }} data-no-translate>👑 {to}</span>
       {me && (
         <span className="absolute -translate-x-1/2 -translate-y-full" style={{ left: `${(x(here) / W) * 100}%`, top: `${((y0 + 2) / H) * 100}%` }}>
-          <TrainerSprite trainer={me} box={width * 0.12} />
+          <TrainerSprite trainer={me} box={width * 0.17} />
         </span>
       )}
       {/* Os caminhos: botões no próprio mapa. */}
@@ -1000,12 +1022,15 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
 
   const p = run.pending
   const step = stepOf(p)
-  const nurse = <img src={spriteUrl('trainers/sd-nurse.png')} alt="" className="pixelated w-full object-contain object-bottom" style={{ maxHeight: width * 0.3 }} />
+  // A Enfermeira Joy só na cidade; na rota, quem cura é alguém do caminho (Pokémon Breeder, Doctor...).
+  const town = run && inTown(run.scene ?? 'grass')
+  const [healerSprite, healerName] = run ? (town ? ['sd-nurse', 'Enfermeira Joy'] : healerOf(run)) : ['sd-nurse', '']
+  const nurse = <img src={spriteUrl(`trainers/${healerSprite}.png`)} alt="" className="pixelated w-full object-contain object-bottom" style={{ maxHeight: width * 0.42 }} />
   let field, text, menu, below = null, wideMenu = false
 
   if (step === 'result') {
     const event = p.event
-    const here = p.center ? 'center' : run.scene ?? 'grass'
+    const here = run.scene ?? 'grass'
     const shown = p.center || p.joy ? nurse : [p.drop, p.reward].filter(Boolean).length ? <img src={itemIcon(p.drop ?? p.reward)} alt="" className="pixelated w-1/2" onError={hide} /> : null
     // A primeira evolução do andar, com a animação dos jogos.
     const evo = p.levels?.find((l) => l.evolved)
@@ -1022,7 +1047,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       <>
         {evo && evoFrom && <p className="text-sm font-semibold text-amber-600" data-testid="factory-evolved" data-no-translate>✨ {t('{0} evoluiu para {1}!').replace('{0}', name(evoFrom)).replace('{1}', name(evo.evolved))}</p>}
         {p.center ? (
-          <p data-testid="factory-center">🏥 {t('Centro Pokémon: o seu time foi curado!')}</p>
+          <p data-testid="factory-center">{town ? `🏥 ${t('Centro Pokémon: o seu time foi curado!')}` : <>⛺ {t('{0} cuidou do seu time: todos curados!').replace('{0}', healerName)}</>}</p>
         ) : event ? (
           <p data-testid="factory-event">{eventText(event)}</p>
         ) : (
@@ -1033,7 +1058,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
             ))}
           </>
         )}
-        {p.joy && <p className="text-sm" data-testid="factory-joy">💗 {t('A Enfermeira Joy apareceu e curou o time todo!')}</p>}
+        {p.joy && <p className="text-sm" data-testid="factory-joy">💗 {town ? t('A Enfermeira Joy apareceu e curou o time todo!') : t('{0} apareceu e curou o time todo!').replace('{0}', healerName)}</p>}
         {[p.drop, p.reward].filter(Boolean).map((id) => <p key={id} className="text-sm" data-testid="factory-drop">🎁 {t('Ganhou {0}!').replace('{0}', itemName(id))}</p>)}
         {p.beat && (
           <p className="text-sm italic" data-testid="factory-beat-line">
@@ -1172,21 +1197,29 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     )
   } else if (step === 'shop') {
     const pick = Math.min(target, run.team.length - 1)
-    field = (
+    // O Poké Mart só na cidade; na rota, o vendedor ambulante (vende o mesmo), no próprio lugar.
+    const vendor = Boolean(p.mart)
+    field = vendor ? (
+      <Field biome={run.scene ?? 'grass'} fieldRef={fieldRef} testid="factory-shop">
+        <FarStand scene={run.scene ?? 'grass'}><img src={spriteUrl('trainers/sd-backpacker.png')} alt="" className="pixelated object-contain object-bottom" style={{ height: width * 0.42 }} /></FarStand>
+        {lead && <FieldMon mon={lead} byId={byId} back scene={run.scene} />}
+        <div className="absolute left-3 top-2 rounded-lg bg-white/80 px-2 py-0.5 text-sm font-black text-slate-900">🎒 {t('Vendedor ambulante')}</div>
+      </Field>
+    ) : (
       <Field biome="city" fieldRef={fieldRef} testid="factory-shop">
         <div className="absolute inset-x-0 bottom-[22%] flex items-end justify-center gap-1">
-          <img src={spriteUrl('trainers/sd-clerk.png')} alt="" className="pixelated object-contain object-bottom" style={{ height: width * 0.32 }} />
-          <img src={spriteUrl('trainers/sd-clerkf.png')} alt="" className="pixelated object-contain object-bottom" style={{ height: width * 0.32 }} />
+          <img src={spriteUrl('trainers/sd-clerk.png')} alt="" className="pixelated object-contain object-bottom" style={{ height: width * 0.4 }} />
+          <img src={spriteUrl('trainers/sd-clerkf.png')} alt="" className="pixelated object-contain object-bottom" style={{ height: width * 0.4 }} />
         </div>
         <div className="absolute inset-x-0 bottom-0 h-[26%] border-t-[6px] border-amber-400 bg-gradient-to-b from-amber-600 to-amber-800" />
         <div className="absolute left-3 top-2 rounded-lg bg-white/80 px-2 py-0.5 text-sm font-black text-slate-900">🛒 Poké Mart</div>
       </Field>
     )
-    text = <p>{t('Bem-vindo! Do que você precisa?')} <span className="dlg-sub">💰{run.money}</span></p>
+    text = <p>{vendor ? t('Um vendedor ambulante! Tenho o mesmo que o Poké Mart. Do que você precisa?') : t('Bem-vindo! Do que você precisa?')} <span className="dlg-sub">💰{run.money}</span></p>
     menu = (
       <>
         <MenuButton onClick={() => setPanel(panel === 'buy' ? null : 'buy')} active={panel === 'buy'} testid="factory-menu-buy">{t('COMPRAR')}</MenuButton>
-        <MenuButton onClick={() => setPanel(panel === 'daycare' ? null : 'daycare')} active={panel === 'daycare'} testid="factory-menu-daycare">{t('CRECHE')}</MenuButton>
+        {!vendor && <MenuButton onClick={() => setPanel(panel === 'daycare' ? null : 'daycare')} active={panel === 'daycare'} testid="factory-menu-daycare">{t('CRECHE')}</MenuButton>}
         {tools}
         <MenuButton onClick={() => { setPanel(null); save({ ...run, pending: { ...p, shop: null } }) }} testid="factory-continue">{t('CONTINUAR')}</MenuButton>
       </>
@@ -1215,7 +1248,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     if (panel === 'buy') {
       below = (
         <div className="space-y-2 p-2">
-          <OverlayClose onClose={() => setPanel(null)} title={`🛒 Poké Mart · 💰${run.money}`} />
+          <OverlayClose onClose={() => setPanel(null)} title={`${vendor ? `🎒 ${t('Vendedor ambulante')}` : '🛒 Poké Mart'} · 💰${run.money}`} />
           <p className="text-xs text-muted">{t('Para quem é a compra (bolas e itens da Bolsa vão para a Bolsa):')}</p>
           <div className="flex flex-wrap gap-1">{run.team.map((m, i) => <MonChip key={i} mon={m} byId={byId} selected={pick === i} onClick={() => setTarget(i)} testid={`target-${i}`} />)}</div>
           <div className="grid gap-2 sm:grid-cols-2">
@@ -1288,11 +1321,11 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
           <span className="absolute mt-4 -translate-x-1/2 rounded bg-white/85 px-1 text-[10px] font-bold text-slate-900 sm:text-xs" style={{ left: `${x(END)}%` }} data-no-translate>👑 {to}</span>
           {me && (
             <span className="absolute -translate-x-1/2 -translate-y-full transition-all duration-700" style={{ left: `${x(pos + 1)}%` }}>
-              <TrainerSprite trainer={me} box={width * 0.14} />
+              <TrainerSprite trainer={me} box={width * 0.2} />
             </span>
           )}
         </div>}
-        {coach && meeting && <FarStand scene={meetScene}><TrainerSprite trainer={coach} box={width * 0.24} /></FarStand>}
+        {coach && meeting && <FarStand scene={meetScene}><TrainerSprite trainer={coach} box={width * 0.4} /></FarStand>}
         {lead && <FieldMon mon={lead} byId={byId} back scene={meetScene} />}
       </Field>
     )

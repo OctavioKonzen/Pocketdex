@@ -534,12 +534,15 @@ const BattleSprite = forwardRef(function BattleSprite({ mon, id, back, fainted, 
 })
 
 /** O clima caindo por cima do campo (chuva, areia, granizo, neve) ou o brilho do sol. */
+/** Onde fica cada efeito do lugar no cenário. */
+const PLACE_ZONE = { miasma: 'ground', haunt: 'ground', current: 'ground', quicksand: 'ground', aurora: 'sky', storm: 'sky' }
 function WeatherFx({ weather, terrain = '', place = '' }) {
   return (
     <>
     {/* Terreno: o chão muda de cor e brilha. Efeito do lugar: diamantes, pedras e cinzas caindo, névoa, frio, aura, correnteza. */}
     {terrain && <div className={`terrain-layer terrain-${terrain}`} aria-hidden="true" data-testid="terrain-fx" />}
-    {place && <div className={`place-layer place-${place} pointer-events-none absolute inset-0`} aria-hidden="true" data-testid="place-fx" />}
+    {/* No cenário: no chão (névoa, correnteza, areia), no céu (aurora, tempestade) ou caindo por trás dos Pokémon. */}
+    {place && <div className={`place-layer place-${place} place-${PLACE_ZONE[place] ?? 'all'} pointer-events-none absolute`} aria-hidden="true" data-testid="place-fx" />}
     <div className="pointer-events-none absolute inset-0 transition-opacity duration-700" style={{ opacity: weather ? 1 : 0 }} aria-hidden="true">
       {weather === 'rain' && (
         <>
@@ -719,7 +722,7 @@ function VsSplash({ me, coach, vs, onSkip }) {
   )
 }
 
-function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain, onFinish, online = null, music = 'battle_music', endNote = '', next = null, wild = false, vs = null }) {
+function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain, onFinish, online = null, music = 'battle_music', endNote = '', next = null, wild = false, vs = null, keepMine = false }) {
   const byId = usePokemonIndex()
   // Os treinadores: o seu (de costas, lançando a Poké Ball) e o do adversário.
   const myTrainer = useMyTrainer()
@@ -728,12 +731,13 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   // Pokémon selvagem (Battle Factory): sem treinador do outro lado.
   const coach = wild ? null : (typeof foeCoach === 'string' ? trainers?.find((x) => x.id === foeCoach) : foeCoach) ?? randomOnce(trainers, myTrainer?.id, battle)
   // A abertura (treinadores e Poké Balls) só no começo de uma batalha nova.
-  const [intro, setIntro] = useState(() => (!online && battle.turn <= 1 ? { foe: 'in', me: 'in', back: 0 } : null))
+  // keepMine (Battle Factory): o seu Pokémon já está em campo (veio da tela da corrida): sem o treinador e a Poké Ball do seu lado.
+  const [intro, setIntro] = useState(() => (!online && battle.turn <= 1 ? { foe: 'in', me: keepMine ? 'gone' : 'in', back: 0 } : null))
   // A tela VS antes da luta contra um chefe (só no começo).
   const [vsOn, setVsOn] = useState(() => Boolean(vs?.name) && !online && battle.turn <= 1)
   const vsDone = useRef(null)
   // Cada Pokémon: '' na tela, 'hidden' dentro da Poké Ball, 'release' saindo, 'recall' voltando.
-  const [poke, setPoke] = useState(() => (!online && battle.turn <= 1 ? ['hidden', 'hidden'] : ['', '']))
+  const [poke, setPoke] = useState(() => (!online && battle.turn <= 1 ? [keepMine ? '' : 'hidden', 'hidden'] : ['', '']))
   const [ball, setBall] = useState([null, null]) // 'throw' | 'open' | Battle Factory: 'catch' | 'still' | 'shake' | 'caught'
   // Detalhes do Pokémon tocado (0: o seu, 1: o adversário).
   const [inspect, setInspect] = useState(null)
@@ -831,6 +835,10 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
       await release(1)
     }
     if (!live.current) return
+    if (keepMine) {
+      setIntro(null)
+      return
+    }
     setText(t('Vai, {0}!').replace('{0}', mine.name))
     for (let f = 1; f < 5; f++) {
       setIntro((i) => ({ ...i, back: f }))
@@ -1127,7 +1135,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   }
 
   return (
-    <div className="mx-auto max-w-3xl select-none">
+    <div className="screen-fade mx-auto max-w-3xl select-none">
       {/* Campo */}
       <div
         ref={field}
@@ -1137,6 +1145,8 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
       >
         {/* Como no Black & White: o adversário lá atrás à direita (menor), o seu de costas na frente à esquerda (grande, cortado pela caixa do texto). */}
         <BattleBackground weather={shown.weather} scene={scene} layout="bw" />
+        {/* Clima, terreno e efeito do lugar fazem parte do cenário: atrás dos Pokémon e das caixas. */}
+        <WeatherFx weather={shown.weather} terrain={shown.terrain} place={shown.place} />
         {vsOn && <VsSplash me={myTrainer} coach={coach} vs={vs} onSkip={() => vsDone.current?.()} />}
         <div className={`absolute top-[5%] left-0 w-[50%] max-w-[300px] transition-opacity ${intro && poke[1] === 'hidden' ? 'opacity-0' : ''}`}>
           <button type="button" className="block w-full cursor-pointer text-left" onClick={() => setInspect(1)} aria-label={t('Ver detalhes do adversário')} data-testid="inspect-foe">
@@ -1152,7 +1162,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
           {ball[1] && <PokeBall side={1} phase={ball[1]} />}
           {intro && coach && (
             <div className={`trainer-foe absolute inset-x-0 bottom-0 flex justify-center ${intro.foe === 'out' ? 'trainer-leave-1' : ''}`} data-testid="foe-trainer">
-              <TrainerSprite trainer={coach} box={fieldWidth(field) * 0.34} />
+              <TrainerSprite trainer={coach} box={fieldWidth(field) * 0.48} />
             </div>
           )}
         </div>
@@ -1163,12 +1173,11 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
           </div>
           {ball[0] && <PokeBall side={0} phase={ball[0]} />}
         </div>
-        {intro && myTrainer && (
+        {intro && intro.me !== 'gone' && myTrainer && (
           <div className={`absolute bottom-0 left-[2%] ${intro.me === 'out' ? 'trainer-leave-0' : ''}`} data-testid="my-trainer">
             <TrainerBack trainer={myTrainer} frame={intro.back} box={fieldHeight(field) * 0.62} />
           </div>
         )}
-        <WeatherFx weather={shown.weather} terrain={shown.terrain} place={shown.place} />
         {/* A habilidade em ação: a faixa sai do lado do Pokémon (o adversário à direita, o seu à esquerda), como nos jogos. */}
         {ability && (
           <div key={ability.k} className={`ability-banner absolute z-20 ${ability.side === 1 ? 'ability-banner-1 right-0 top-[30%] rounded-l-lg' : 'ability-banner-0 left-0 bottom-[34%] rounded-r-lg'} bw-box px-3 py-1 text-white`} data-testid="ability-banner">
@@ -1760,7 +1769,7 @@ export default function TurnBattlePage() {
       {game?.factory ? (
         <>
           {factoryError && <p className="text-sm font-bold text-red-500">{t(factoryError)}</p>}
-          <FactoryScreen key={game.key} onBattle={factoryFloor} onExit={() => setGame(null)} busy={factoryBusy} />
+          <div key={`factory-${game.key}`} className="screen-fade"><FactoryScreen key={game.key} onBattle={factoryFloor} onExit={() => setGame(null)} busy={factoryBusy} /></div>
         </>
       ) : !game || !hit ? (
         <Setup onFactory={setFactoryMode} onFactoryRun={openFactory} onStart={(battle, foeName, foeTrainer = null, challenge = null) => setGame({ battle, foeName, foeTrainer, challenge, key: 1 })} />
@@ -1775,6 +1784,7 @@ export default function TurnBattlePage() {
           onExit={() => setGame(null)}
           onAgain={['league', 'tower', 'factory'].includes(challenge?.kind) ? null : again}
           // Na Battle Factory, sem chefe: a música do lugar.
+          keepMine={challenge?.kind === 'factory'}
           vs={foeLeader ?? (VS_KIND[challenge?.boss?.kind] ? challenge.boss : null)}
           music={!foeLeader && !challenge?.boss && challenge?.kind === 'factory' ? placeMusic(game.battle.scene) : musicOf(foeLeader ?? challenge?.boss)}
           wild={Boolean(challenge?.wild)}

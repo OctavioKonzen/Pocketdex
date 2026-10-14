@@ -10,7 +10,7 @@ export function simulatorInput(mon) {
 }
 export function initializeSimulator(battle) {
   const seed = Array.from({length: 4}, () => Math.floor(battle.random() * 65536))
-  const created = engine().create({teams: battle.sides.map(s => s.team.map(simulatorInput)), seed, mode: battle.mode, controllers: battle.controllers, rules: battle.rules ?? [], ...(battle.startBags ? {bags: battle.startBags} : {}), ...(battle.healPct ? {healPct: true} : {}), ...(battle.capture ? {capture: battle.capture} : {}), ...(battle.startWeather ? {weather: battle.startWeather} : {}), ...(battle.startField ? {field: battle.startField} : {})})
+  const created = engine().create({teams: battle.sides.map(s => s.team.map(simulatorInput)), seed, mode: battle.mode, controllers: battle.controllers, rules: battle.rules ?? [], ...(battle.startBags ? {bags: battle.startBags} : {}), ...(battle.healPct ? {healPct: true} : {}), ...(battle.capture ? {capture: battle.capture} : {}), ...(battle.startWeather ? {weather: battle.startWeather} : {}), ...(battle.startField ? {field: battle.startField} : {}), ...(battle.startExp ? {exp: battle.startExp} : {})})
   battle.simulator = {handle: created.handle, state: created.state, opening: created.events}
   syncSimulator(battle, created)
 }
@@ -29,6 +29,11 @@ export function syncSimulator(battle, result) {
   battle.terrain = terrainIds[state.terrain] ?? ''
   battle.place = (state.pseudoWeather ?? []).find((id) => id.startsWith('pocketdex'))?.slice(9) ?? ''
   battle.bags = state.bags
+  // Battle Factory: o XP de agora (o motor dá na hora) e quem lutou contra cada adversário.
+  if (state.exp) {
+    battle.expNow = state.exp
+    battle.fought = Object.fromEntries(Object.entries(state.fought ?? {}).map(([j, list]) => [Number(j), list]))
+  }
   battle.forceSwitch = state.sides.map(s => s.forceSwitch)
   battle.needSwitch = state.winner == null && state.sides[0].forceSwitch
   for (let side = 0; side < 2; side++) {
@@ -44,7 +49,7 @@ export function syncSimulator(battle, result) {
         mon.base = mon.mega.base
         mon.side = {...mon.mega.side}
       } else mon.id = p.formId ?? mon.orig?.id ?? mon.id
-      Object.assign(mon, {hp: p.hp, maxHp: p.maxHp, spe: p.spe, effectiveSpe: p.actionSpeed, types: p.types.map(t => t.toLowerCase()), status: p.status, boosts: p.boosts, ability: p.ability, terastal: Boolean(p.tera), dmax: p.dmax})
+      Object.assign(mon, {level: p.level ?? mon.level, hp: p.hp, maxHp: p.maxHp, spe: p.spe, effectiveSpe: p.actionSpeed, types: p.types.map(t => t.toLowerCase()), status: p.status, boosts: p.boosts, ability: p.ability, terastal: Boolean(p.tera), dmax: p.dmax})
       if (mon.side) mon.side = {...mon.side, item: p.item, ability: p.ability, terastallized: Boolean(p.tera), teraType: p.tera.toLowerCase()}
       const requestMoves = s.slots?.find(slot => slot.index === p.index)?.request?.moves ?? (p.index === s.active ? s.request?.moves : null)
       const slots = requestMoves?.length ? requestMoves : p.moves

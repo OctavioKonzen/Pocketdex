@@ -9,7 +9,7 @@ import {
   EXP_SHARE, expProgress, shopOwned, baseForm, forSale, normalizeOwned, buyUpgrade, upgradePrice, UPGRADES,
   tradeMon, skipTrade, TRADE_LEVELS, escapeRope, ESCAPE_HP, progress, ACHIEVEMENTS, LUCKY_EGG, rerollRoute, FOE_ITEMS,
   regionLegend, REGION_LEGENDS, rivalStarter, starterLine, newMission, resolveChoice, MISSION_MONEY,
-  clockOf, weatherOf, fieldOf, placeMusic, SEASON_TYPES, BIOME_IDS, SCENE_FIELD,
+  clockOf, weatherOf, fieldOf, placeMusic, upgradeNeeds, UPGRADE_BRANCHES, SEASON_TYPES, BIOME_IDS, SCENE_FIELD,
   HM_BADGES, cutPath, nodeBlocked, dexOf, dexRewardFor, DEX_REWARDS, leaveDaycare, takeDaycare, DAYCARE_EGG, EGG_IVS, rematchBoss,
 } from './factoryRun'
 
@@ -172,7 +172,7 @@ describe('Battle Factory (roguelike)', () => {
     const ok = { ...emptyFactory(), owned: [1, 4] }
     expect(normalizeOwned(ok, data)).toBe(ok)
     // Melhorias: cada nível mais caro, até o máximo; valem na próxima corrida.
-    let f = { ...rich }
+    let f = { ...rich, best: 999, owned: [1, 4, 7, 152, 155, 158, 252, 255] }
     const p1 = upgradePrice(f, 'level')
     f = buyUpgrade(f, 'level')
     expect(upgradePrice(f, 'level')).toBeGreaterThan(p1)
@@ -257,8 +257,8 @@ describe('Battle Factory (roguelike)', () => {
     expect(fixed.coins).toBe(price(6) + price(5))
     expect(normalizeOwned({ ...emptyFactory(), coins: 10, owned: [1, 6] }, data).coins).toBe(10 + price(6) - price(4))
     // Exp. Share, carta a mais, sorteio de novo e shiny.
-    let f = { ...emptyFactory(), coins: 999999, owned: [1] }
-    for (const id of ['expShare', 'cards', 'reroll', 'shiny']) while (upgradePrice(f, id) != null) f = buyUpgrade(f, id)
+    let f = { ...emptyFactory(), coins: 999999, best: 999, owned: [1, 4, 7, 152, 155, 158, 252, 255] }
+    for (const id of Object.keys(UPGRADES)) while (upgradePrice(f, id) != null) f = buyUpgrade(f, id)
     const run = startRun(f, data, 1, 42)
     expect(run.expShare).toBe(true)
     expect(run.cardCount).toBe(4)
@@ -860,5 +860,19 @@ describe('mapa da corrida', () => {
     expect(placeMusic('base-rocket')).toBe('place_city')
     expect(placeMusic('gym-fire')).toBe('battle_music')
     for (const b of BIOME_IDS) expect(placeMusic(b)).not.toBe('battle_music')
+  })
+
+  it('árvore de melhorias: a anterior, o andar recorde e os Pokémon pedem para avançar', () => {
+    const f = { ...emptyFactory(), coins: 99999 }
+    expect(upgradeNeeds(f, 'level')).toEqual([])
+    expect(upgradeNeeds(f, 'ivs')).toEqual([{ kind: 'up', id: 'level', level: 2 }, { kind: 'best', floor: 8 }])
+    expect(buyUpgrade(f, 'ivs')).toBe(null)
+    let g = buyUpgrade(f, 'level')
+    expect(upgradeNeeds(g, 'level')).toEqual([{ kind: 'best', floor: 3 }])
+    g = buyUpgrade({ ...g, best: 3 }, 'level')
+    expect(buyUpgrade({ ...g, best: 7 }, 'ivs')).toBe(null)
+    expect(buyUpgrade({ ...g, best: 8 }, 'ivs').upgrades.ivs).toBe(1)
+    expect(upgradeNeeds({ ...g, best: 99, upgrades: { reroll: 1 } }, 'cards')).toEqual([{ kind: 'owned', count: 8 }])
+    expect(UPGRADE_BRANCHES.flatMap((b) => b[2]).sort()).toEqual(Object.keys(UPGRADES).sort())
   })
 })
