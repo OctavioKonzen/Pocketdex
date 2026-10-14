@@ -80,7 +80,9 @@ export async function battleMons(members) {
     // A Mega da forma dele, se existir (Tatsugiri Droopy → Mega Tatsugiri Droopy).
     const stoneForm = battleItems.mega?.[itemId]
     const ownMega = `${byId.get(f.id)?.name}-mega`
-    const megaForm = stoneForm ? (forms.find((x) => x.name === ownMega) ?? forms.find((x) => x.name === stoneForm) ?? null) : null
+    // Pedra de uma Mega com letra (Charizardite X/Y, Lucarionite Z): é essa; senão, a Mega da forma dele.
+    const lettered = /-mega-[xyz]$/.test(stoneForm ?? '')
+    const megaForm = stoneForm ? ((!lettered && forms.find((x) => x.name === ownMega)) || forms.find((x) => x.name === stoneForm) || null) : null
     out.push({
       id: f.id,
       name: t(prettyName(byId.get(f.id)?.name ?? f.form.name)),

@@ -1968,7 +1968,9 @@ class TurnBattleSetup {
       final stoneForm = megaStones[itemId];
       final megaRow = stoneForm == null
           ? null
-          : forms.where((r) => r['name'] == '${row['name']}-mega').firstOrNull ?? forms.where((r) => r['name'] == stoneForm).firstOrNull;
+          // Pedra de uma Mega com letra (Charizardite X/Y, Lucarionite Z): é essa; senão, a Mega da forma dele.
+          : (RegExp(r'-mega-[xyz]$').hasMatch('$stoneForm') ? null : forms.where((r) => r['name'] == '${row['name']}-mega').firstOrNull) ??
+              forms.where((r) => r['name'] == stoneForm).firstOrNull;
       BattleMega? mega;
       if (megaRow != null) {
         final megaCalc = await TeamBattle.calcPokemon(data, (megaRow['id'] as int, {...?m.$2, 'ability': ''}));

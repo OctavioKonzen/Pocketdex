@@ -184,15 +184,26 @@ describe('batalha por turnos', () => {
     expect(tatsugiri.mega?.id).toBe(10323)
   }, 30000)
 
+  it('montador: com Lucarionite e Lucarionite Z, as duas Megas aparecem (Mega e Mega Z)', async () => {
+    const { megaOptions, megaLabel } = await import('./formItems')
+    const byId = new Map([[448, { id: 448, name: 'lucario', species: 448 }], [10059, { id: 10059, name: 'lucario-mega', species: 448 }], [10310, { id: 10310, name: 'lucario-mega-z', species: 448 }]])
+    const options = megaOptions(byId.get(448), byId, { mega: { lucarionite: 'lucario-mega', lucarionitez: 'lucario-mega-z' } })
+    expect(options.map((o) => megaLabel(o.form))).toEqual(['Mega', 'Mega Z'])
+  })
+
   it('Mega X ou Y pela pedra (Charizard e Mewtwo)', async () => {
     const mons = await battleMons([
       { id: 6, set: { level: 50, item: 'charizardite-x', moves: ['flamethrower'] } },
       { id: 6, set: { level: 50, item: 'charizardite-y', moves: ['flamethrower'] } },
       { id: 150, set: { level: 50, item: 'mewtwonite-x', moves: ['psychic'] } },
       { id: 150, set: { level: 50, item: 'Mewtwonite Y', moves: ['psychic'] } },
+      { id: 448, set: { level: 50, item: 'lucarionite', moves: ['aura-sphere'] } },
+      { id: 448, set: { level: 50, item: 'lucarionite-z', moves: ['aura-sphere'] } },
+      { id: 359, set: { level: 50, item: 'absolite-z', moves: ['night-slash'] } },
+      { id: 445, set: { level: 50, item: 'garchompite-z', moves: ['earthquake'] } },
     ])
-    expect(mons.map((m) => m.mega?.id)).toEqual([10034, 10035, 10043, 10044])
-    expect(mons.map((m) => m.mega?.name)).toEqual(['Mega Charizard X', 'Mega Charizard Y', 'Mega Mewtwo X', 'Mega Mewtwo Y'])
+    expect(mons.map((m) => m.mega?.id)).toEqual([10034, 10035, 10043, 10044, 10059, 10310, 10307, 10309])
+    expect(mons.slice(0, 6).map((m) => m.mega?.name)).toEqual(['Mega Charizard X', 'Mega Charizard Y', 'Mega Mewtwo X', 'Mega Mewtwo Y', 'Mega Lucario', 'Mega Lucario Z'])
   }, 30000)
 
   it('escolhe os golpes: os do set e, se faltar, um de cada tipo', () => {
