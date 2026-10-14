@@ -17,6 +17,7 @@ import 'package:flutter/material.dart' as m show Text;
 import '../i18n/i18n.dart';
 import '../i18n/text.dart';
 import '../services/damage_calc.dart';
+import '../services/auth_service.dart';
 import '../services/friends_service.dart';
 import '../services/league.dart';
 import '../services/team_battle.dart';
@@ -1026,8 +1027,13 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
               : Trainers.random();
   late final Trainer? _myTrainer = Trainers.mine;
 
-  /// A tela VS antes da luta contra um chefe (só no começo); tocar pula.
-  late bool _vsOn = widget.intro && widget.vs?['name'] != null && _vsKinds.containsKey(widget.vs?['kind']);
+  /// A tela VS no começo de toda batalha (chefe, treinador, selvagem e online), com o nome de quem joga; tocar pula.
+  late bool _vsOn = (widget.intro || widget.online != null) && widget.battle.turn <= 1;
+  late final Map _vsInfo = widget.vs?['name'] != null && _vsKinds.containsKey(widget.vs?['kind'])
+      ? widget.vs!
+      : widget.wild
+          ? {'kind': 'wild', 'name': widget.battle.teams[1][widget.battle.activeIndex[1]].name}
+          : {'kind': widget.online != null ? 'online' : 'trainer', 'name': widget.foeName.isNotEmpty ? widget.foeName : _coach?.name ?? tr('Treinador')};
   final _vsSkip = Completer<void>();
   bool _introOn = false;
   bool _finished = false;
@@ -1056,6 +1062,8 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
     _summary = null;
     final online = widget.online;
     if (online != null) {
+      // Online (sem a abertura): a tela VS some sozinha (ou com um toque).
+      if (_vsOn) Future.any([_wait(2000), _vsSkip.future]).then((_) => mounted ? setState(() => _vsOn = false) : null);
       // Replay: a primeira rodada (o começo da batalha) também passa na tela.
       if (online.replay) {
         _busy = true;
@@ -1118,7 +1126,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
   /// A abertura: os treinadores aparecem, lançam a Poké Ball e os Pokémon saem.
   Future<void> _runIntro() async {
     if (_vsOn) {
-      await Future.any([_wait(2200), _vsSkip.future]);
+      await Future.any([_wait(widget.vs?['name'] != null ? 2200 : 1600), _vsSkip.future]);
       if (!mounted) return;
       setState(() => _vsOn = false);
     }
@@ -1934,9 +1942,11 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                       if (_vsOn)
                         Positioned.fill(
                           child: _VsSplash(
-                            vs: widget.vs!,
+                            vs: _vsInfo,
                             me: _myTrainer,
-                            coach: _coach,
+                            myName: _myName(),
+                            foeMon: widget.wild ? widget.battle.teams[1][widget.battle.activeIndex[1]] : null,
+                            coach: widget.wild ? null : _coach,
                             width: w,
                             onSkip: () => _vsSkip.isCompleted ? null : _vsSkip.complete(),
                           ),
@@ -3672,19 +3682,28 @@ const _vsKinds = <String, (String, Color)>{
   'champion': ('Campeão', Color(0xFFEAB308)),
   'rival': ('Rival', Color(0xFF2563EB)),
   'villain': ('Vilão', Color(0xFFDC2626)),
+  // Toda batalha tem a tela VS: treinador comum, Pokémon selvagem e online.
+  'trainer': ('Treinador', Color(0xFF0D9488)),
+  'wild': ('Pokémon selvagem', Color(0xFF16A34A)),
+  'online': ('Online', Color(0xFF0284C7)),
 };
+
+/// O nome do jogador cadastrado (a conta), senão "Você".
+String _myName() => AuthService.instance.user?.name ?? tr('Você');
 
 /// A tela VS (como no Black & White): as faixas entram dos lados, os treinadores e o nome do chefe; toque para pular.
 class _VsSplash extends StatelessWidget {
-  const _VsSplash({required this.vs, required this.me, required this.coach, required this.width, required this.onSkip});
+  const _VsSplash({required this.vs, required this.me, required this.myName, this.foeMon, required this.coach, required this.width, required this.onSkip});
   final Map vs;
   final Trainer? me, coach;
+  final String myName;
+  final BattleMon? foeMon;
   final double width;
   final VoidCallback onSkip;
 
   @override
   Widget build(BuildContext context) {
-    final (label, color) = _vsKinds[vs['kind']] ?? _vsKinds['gym']!;
+    final (label, color) = _vsKinds[vs['kind']] ?? _vsKinds['trainer']!;
     Widget slide(Widget child, {required bool fromRight, int delay = 0}) => TweenAnimationBuilder<double>(
           tween: Tween(begin: 1, end: 0),
           duration: Duration(milliseconds: 450 + delay),
@@ -3713,13 +3732,30 @@ class _VsSplash extends StatelessWidget {
                       Text('${vs['name']}', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: width * 0.05)),
                     ]),
                     const SizedBox(width: 8),
-                    if (coach != null) TrainerSprite(coach!, box: band * 0.9),
+                    if (coach != null)
+                      TrainerSprite(coach!, box: band * 0.9)
+                    else if (foeMon != null)
+                      SizedBox(width: band * 0.9, height: band * 0.9, child: PokemonSprite(foeMon!.id, shiny: foeMon!.shiny, fill: 0.9)),
                   ]),
                   fromRight: true,
                   delay: 150),
             ),
-            if (me != null)
-              Positioned(left: box.maxWidth * 0.08, bottom: box.maxHeight * 0.1, height: band, child: slide(TrainerSprite(me!, box: band * 0.9, flip: true), fromRight: false, delay: 150)),
+            Positioned(
+              left: box.maxWidth * 0.08,
+              bottom: box.maxHeight * 0.1,
+              height: band,
+              child: slide(
+                  Row(mainAxisSize: MainAxisSize.min, children: [
+                    if (me != null) TrainerSprite(me!, box: band * 0.9, flip: true),
+                    const SizedBox(width: 8),
+                    Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(tr('Treinador').toUpperCase(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11)),
+                      Text(myName, key: const ValueKey('vs-my-name'), style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: width * 0.05)),
+                    ]),
+                  ]),
+                  fromRight: false,
+                  delay: 150),
+            ),
             Center(
               child: TweenAnimationBuilder<double>(
                 tween: Tween(begin: 0, end: 1),

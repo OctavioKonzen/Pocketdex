@@ -533,8 +533,13 @@ function eventsFor(game, lines) {
     else if (kind === '-terastallize') { game.used[side].tera = true; events.push({t: 'tera', side, type: value.toLowerCase()}); }
     else if (kind === '-mega') {
       game.used[side].mega = true;
-      const mon = game.teams[side][active[side]];
-      if (mon.mega) events.push({t: 'mega', side, id: mon.mega.id});
+      // Quem megaevoluiu (pdN) e a forma pela pedra que ele segura (X ou Y).
+      const index = Number.isInteger(actorIndex) ? actorIndex : active[side];
+      const mon = game.teams[side][index];
+      const stone = Dex.items.get(extra)?.megaStone;
+      const form = typeof stone === 'string' ? stone : stone?.[value] ?? Object.values(stone ?? {})[0];
+      const id = (form && FORMS[form.toLowerCase().replace(/[^a-z0-9]/g, '')]) || mon?.mega?.id;
+      if (mon?.mega && id) events.push({t: 'mega', side, id});
     } else if ((kind === '-start' || kind === '-end') && value === 'Dynamax') {
       const mon = game.teams[side][active[side]];
       events.push({t: 'dmax', side, on: kind === '-start', id: kind === '-start' ? mon.gmax || mon.id : mon.id});

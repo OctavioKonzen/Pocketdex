@@ -306,7 +306,7 @@ class FactoryRun {
 
   /// Melhorias permanentes (compradas com moedas antes da corrida): nome, quanto por nível, máximo e preço base. Igual ao site.
   /// offset: o que se soma ao valor mostrado (shiny: 1 + nível = quantas vezes mais comum).
-  static const upgrades = <String, ({String label, int per, int max, int base, int offset})>{
+  static const _baseUpgrades = <String, ({String label, int per, int max, int base, int offset})>{
     'level': (label: 'Treino: o inicial começa {0} nível acima', per: 1, max: 5, base: 150, offset: 0),
     'ivs': (label: 'Genética: IVs mínimos do inicial +{0}', per: 3, max: 5, base: 120, offset: 0),
     'balls': (label: 'Começa com +{0} Poké Ball', per: 1, max: 5, base: 60, offset: 0),
@@ -375,7 +375,7 @@ class FactoryRun {
 
   /// O efeito das melhorias da árvore grande, aplicado no começo da corrida: ('bag', item), ('stash', item), ('token',
   /// ficha), ('boost', atributo), ('boostAll', _), ('mult', 'exp' | 'money') e ('coins', _). Igual ao site.
-  static const upgradeFx = <String, (String, String)>{
+  static const _baseFx = <String, (String, String)>{
     'superPotions': ('bag', 'super-potion'),
     'hyperPotions': ('bag', 'hyper-potion'),
     'maxPotions': ('bag', 'max-potion'),
@@ -424,7 +424,7 @@ class FactoryRun {
 
   /// A árvore de melhorias: cada ramo começa numa raiz e o resto pede a anterior num nível (needs), um andar recorde
   /// (best) e quantos Pokémon você já tem para começar (owned). Cada nível a mais pede 3 andares a mais de recorde. Igual ao site.
-  static const upgradeTree = <String, ({(String, int)? needs, int best, int owned})>{
+  static const _baseTree = <String, ({(String, int)? needs, int best, int owned})>{
     'ivs': (needs: ('level', 2), best: 8, owned: 0),
     'revive': (needs: ('potions', 2), best: 6, owned: 0),
     'shop': (needs: ('money', 2), best: 6, owned: 0),
@@ -486,7 +486,7 @@ class FactoryRun {
   };
 
   /// Os ramos da árvore, na ordem (da raiz para a ponta).
-  static const upgradeBranches = [
+  static const _baseBranches = [
     ('🧪', 'Sobrevivência', ['potions', 'revive', 'rope', 'sash', 'leftovers', 'superPotions', 'hyperPotions', 'maxPotions', 'sitrus', 'lum']),
     ('🎯', 'Captura', ['balls', 'greatBalls', 'shiny', 'ultraBalls', 'masterBall', 'quickBalls', 'netBalls', 'timerBalls', 'duskBalls']),
     ('🎓', 'Treino', ['level', 'ivs', 'exp', 'expShare', 'luckyEgg', 'expPlus', 'hpBoost', 'speBoost', 'tutor', 'reminder']),
@@ -495,6 +495,74 @@ class FactoryRun {
     ('💰', 'Comércio', ['money', 'shop', 'coins', 'bonusCoins', 'loot', 'expertBelt']),
     ('⚡', 'Poder', ['dmax', 'tera', 'scopeLens', 'eviolite', 'policy', 'muscleBand', 'wiseGlasses', 'shellBell']),
   ];
+
+  /// Os nós pequenos da árvore (como nas árvores de habilidade dos jogos): de cada melhoria sai uma trilha de
+  /// [minorLength] nós do tema do ramo ("atk~1", "atk~2"...), cada um com um nível só, pedindo o anterior e um recorde
+  /// um pouco maior. O efeito é um dos de [upgradeFx]; o texto, o da melhoria grande do mesmo efeito ([minorBase]). Igual ao site.
+  static const minorLength = 8;
+  static const minorFx = <String, List<(String, String)>>{
+    'Sobrevivência': [('boost', 'hp'), ('bag', 'potion'), ('boost', 'def'), ('boost', 'spd')],
+    'Captura': [('bag', 'poke-ball'), ('bag', 'great-ball'), ('bag', 'quick-ball'), ('bag', 'net-ball'), ('bag', 'dusk-ball'), ('bag', 'timer-ball')],
+    'Treino': [('mult', 'exp'), ('boost', 'hp'), ('boost', 'spe')],
+    'Combate': [('boost', 'atk'), ('boost', 'spa'), ('boost', 'def'), ('boost', 'spd'), ('boost', 'spe')],
+    'Exploração': [('mult', 'money'), ('boost', 'spe'), ('bag', 'escape-rope')],
+    'Comércio': [('mult', 'money'), ('coins', 'all')],
+    'Poder': [('boostAll', 'all'), ('boost', 'atk'), ('boost', 'spa')],
+  };
+
+  /// A melhoria grande que dá o texto, o nome e o símbolo de cada efeito pequeno.
+  static const minorBase = {
+    'boost:hp': 'hpBoost', 'boost:atk': 'atk', 'boost:def': 'def', 'boost:spa': 'spa', 'boost:spd': 'spd', 'boost:spe': 'speBoost',
+    'boostAll:all': 'allStats', 'mult:exp': 'expPlus', 'mult:money': 'loot', 'coins:all': 'bonusCoins',
+    'bag:potion': 'potions', 'bag:poke-ball': 'balls', 'bag:great-ball': 'greatBalls', 'bag:quick-ball': 'quickBalls', 'bag:net-ball': 'netBalls',
+    'bag:dusk-ball': 'duskBalls', 'bag:timer-ball': 'timerBalls', 'bag:escape-rope': 'rope',
+  };
+
+  /// A melhoria grande de um nó pequeno ("atk~3" → "atk"), ou ele mesmo.
+  static String minorOf(String id) => id.split('~').first;
+  static bool isMinor(String id) => id.contains('~');
+
+  static final _tree = _buildTree();
+  static final upgrades = _tree.upgrades;
+  static final upgradeFx = _tree.fx;
+  static final upgradeTree = _tree.tree;
+  static final upgradeBranches = _tree.branches;
+
+  static ({
+    Map<String, ({String label, int per, int max, int base, int offset})> upgrades,
+    Map<String, (String, String)> fx,
+    Map<String, ({(String, int)? needs, int best, int owned})> tree,
+    List<(String, String, List<String>)> branches,
+  }) _buildTree() {
+    final ups = {..._baseUpgrades}, fx = {..._baseFx}, tree = {..._baseTree};
+    final branches = <(String, String, List<String>)>[];
+    for (final (icon, branch, ids) in _baseBranches) {
+      final kinds = minorFx[branch]!;
+      final list = <String>[];
+      for (var i = 0; i < ids.length; i++) {
+        final parent = ids[i];
+        list.add(parent);
+        for (var k = 1; k <= minorLength; k++) {
+          final id = '$parent~$k';
+          final (kind, arg) = kinds[(i + k - 1) % kinds.length];
+          final percent = kind == 'mult' || kind == 'coins';
+          ups[id] = (
+            label: _baseUpgrades[minorBase['$kind:$arg']]!.label,
+            per: percent ? 2 : 1,
+            max: 1,
+            base: ((_baseUpgrades[parent]!.base * 0.25 + 60 * k) / 10).round() * 10,
+            offset: 0,
+          );
+          fx[id] = (kind, arg);
+          tree[id] = (needs: (k == 1 ? parent : '$parent~${k - 1}', 1), best: (_baseTree[parent]?.best ?? 0) + 2 * k, owned: 0);
+          list.add(id);
+        }
+      }
+      branches.add((icon, branch, list));
+    }
+    return (upgrades: ups, fx: fx, tree: tree, branches: branches);
+  }
+
   static const upgradeLevelBest = 3;
 
   /// O que falta para comprar o próximo nível: [{kind: up, id, level} | {kind: best, floor} | {kind: owned, count}] (vazio: pode).
@@ -1337,6 +1405,10 @@ class FactoryRun {
           'kind': 'dboss',
           'scene': scene,
         };
+        // O mais forte dele usa uma mecânica: Mega, Gigantamax ou Tera.
+        final foes = [...(out['encounter']['foes'] as List)];
+        foes[foes.length - 1] = bossGimmick(data, Map<String, dynamic>.from(foes.last as Map), rand);
+        out['encounter'] = {...out['encounter'] as Map, 'foes': foes};
       }
       // O rival de surpresa: o time dele no andar de agora (não conta como o da história).
       if (node['kind'] == 'rival') {
@@ -1440,7 +1512,7 @@ class FactoryRun {
         'kind': 'wildboss',
         'area': true,
         'foes': [
-          {...f, 'iv': math.max(31, _int(f['iv'])), 'ev': (_int(f['ev']) * 1.25).round()}
+          bossGimmick(data, {...f, 'iv': math.max(31, _int(f['iv'])), 'ev': (_int(f['ev']) * 1.25).round()}, rand)
         ],
       };
     }
@@ -2587,7 +2659,12 @@ class FactoryRun {
 
   static Json endRun(Json factory, Json run) {
     // A melhoria de moedas soma uma porcentagem ao que a corrida rendeu.
-    final coins = (runCoins(run) * (1 + (upgradeValue(factory, 'coins') + upgradeValue(factory, 'bonusCoins')) / 100)).round();
+    // Moedas a mais: a melhoria Moedas e todas as de efeito 'coins' (Tesouro e os nós pequenos).
+    var bonus = upgradeValue(factory, 'coins');
+    for (final e in upgradeFx.entries) {
+      if (e.value.$1 == 'coins') bonus += upgradeValue(factory, e.key);
+    }
+    final coins = (runCoins(run) * (1 + bonus / 100)).round();
     return {
       ...factory,
       'coins': _int(factory['coins']) + coins,
@@ -2703,6 +2780,17 @@ class FactoryRun {
       );
   }
 
+  /// Os tipos para o Terastal dos chefes dos lugares.
+  static const teraTypes = ['normal', 'fire', 'water', 'grass', 'electric', 'ice', 'fighting', 'poison', 'ground', 'flying', 'psychic', 'bug', 'rock', 'ghost', 'dragon', 'dark', 'steel', 'fairy'];
+
+  /// Os chefes dos lugares (fim da rota, cavernas, mar...): Mega (se ele tiver), senão Gigantamax (se tiver), senão Tera de um tipo ao acaso.
+  static Json bossGimmick(FactoryData data, Json f, double Function() rand) {
+    final megas = data.megas[_int(f['id'])] ?? const [];
+    if (megas.isNotEmpty) return {...f, 'item': _pick(megas, rand)[0], 'gimmick': 'mega'};
+    if (data.gmax.contains(_int(f['id']))) return {...f, 'gimmick': 'dmax'};
+    return {...f, 'gimmick': 'tera', 'tera': _pick(teraTypes, rand)};
+  }
+
   /// Um adversário do andar como membro de time.
   static (int, Json) foeMember(Json foe, List<String> moveList) {
     final ivs = {for (final s in stats) s: foe['iv']}, evs = {for (final s in stats) s: foe['ev'] ?? 0};
@@ -2716,6 +2804,7 @@ class FactoryRun {
         if (foe['shiny'] == true) 'shiny': true,
         if (foe['item'] != null) 'item': foe['item'],
         if (foe['gimmick'] != null) 'gimmick': foe['gimmick'],
+        if (foe['tera'] != null) 'tera': foe['tera'],
       }
     );
   }

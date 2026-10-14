@@ -206,6 +206,33 @@ Widget _itemIcon(String id, [double size = 28]) {
       width: size, height: size, filterQuality: FilterQuality.none, errorBuilder: (_, __, ___) => SizedBox(width: size, height: size));
 }
 
+/// O que cada item segurado faz na batalha (como nos jogos). Igual ao site.
+const _heldEffect = {
+  'choice-band': 'Ataque ×1,5, mas só usa o primeiro golpe escolhido até trocar',
+  'choice-specs': 'Ataque Especial ×1,5, mas só usa o primeiro golpe escolhido até trocar',
+  'choice-scarf': 'Velocidade ×1,5, mas só usa o primeiro golpe escolhido até trocar',
+  'life-orb': 'Golpes 30% mais fortes; perde 10% do HP a cada ataque',
+  'expert-belt': 'Golpes super efetivos 20% mais fortes',
+  'muscle-band': 'Golpes físicos 10% mais fortes',
+  'wise-glasses': 'Golpes especiais 10% mais fortes',
+  'leftovers': 'Recupera 1/16 do HP no fim de cada turno',
+  'sitrus-berry': 'Com metade do HP ou menos, come e recupera 1/4 do HP',
+  'assault-vest': 'Defesa Especial ×1,5, mas só pode usar golpes de ataque',
+  'rocky-helmet': 'Quem acerta um golpe de contato perde 1/6 do HP',
+  'eviolite': 'Defesa e Defesa Especial ×1,5 se ele ainda pode evoluir',
+  'focus-sash': 'Com o HP cheio, aguenta com 1 de HP um golpe que o derrubaria',
+  'quick-claw': '20% de chance de agir primeiro no turno',
+  'shell-bell': 'Recupera 1/8 do dano que causa',
+  'black-sludge': 'Tipo Veneno recupera 1/16 do HP por turno; os outros perdem 1/8',
+  'weakness-policy': 'Levou um golpe super efetivo: Ataque e Ataque Especial +2',
+  'lum-berry': 'Cura qualquer problema de status (uma vez)',
+  'scope-lens': 'Mais chance de acerto crítico (+1 nível)',
+  'bright-powder': 'Golpes do adversário erram 10% mais',
+  'air-balloon': 'Flutua: imune a golpes de Terra até levar um golpe',
+  'heavy-duty-boots': 'Não sofre dano das armadilhas do campo (Stealth Rock, Spikes...)',
+  'kings-rock': 'Golpes de dano têm 10% de chance de fazer o adversário recuar',
+};
+
 const _gimmickLabel = {'mega': 'Mega', 'z': 'Z-Move', 'dmax': 'Dynamax', 'tera': 'Tera'};
 
 Widget _hpBar(BuildContext context, double hp) {
@@ -634,6 +661,7 @@ class _BagAndItemsState extends State<_BagAndItems> {
             ]),
             if (_item != null) ...[
               const SizedBox(height: 6),
+              if (_FactoryScreenState._help(_item!).isNotEmpty) Text(_FactoryScreenState._help(_item!), style: TextStyle(color: c.muted, fontSize: 12)),
               Wrap(spacing: 6, runSpacing: 6, children: [
                 for (var i = 0; i < team.length; i++)
                   _mon(context, team[i], name: battleMonName({'name': widget.names[(team[i]['id'] as num).toInt()] ?? ''}),
@@ -664,6 +692,11 @@ class _BagAndItemsState extends State<_BagAndItems> {
               for (var k = 0; k < stash.length; k++)
                 ChoiceChip(avatar: _itemIcon(stash[k], 20), label: Text(_itemName(stash[k])), selected: _stash == k, onSelected: (_) => setState(() => _stash = k)),
             ]),
+            if (_stash != null && _FactoryScreenState._help(stash[_stash!]).isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Text(_FactoryScreenState._help(stash[_stash!]), key: const ValueKey('stash-help'), style: TextStyle(color: c.muted, fontSize: 12)),
+              ),
             if (_stash != null)
               Wrap(spacing: 6, runSpacing: 6, children: [
                 for (var i = 0; i < team.length; i++)
@@ -713,6 +746,12 @@ class _BagAndItemsState extends State<_BagAndItems> {
                     onChanged: (g) => widget.onSave(FactoryRun.setGimmick(run, i, g ?? 'none')),
                   ),
                 if (canTeach) TextButton(key: ValueKey('teach-$i'), onPressed: () => _teach(i), child: Text('📀 ${tr('Ensinar golpe')}')),
+                // O que o item principal faz (como nos jogos).
+                if (team[i]['item'] != null && _FactoryScreenState._help('${team[i]['item']}').isNotEmpty)
+                  SizedBox(
+                    width: double.infinity,
+                    child: Text('★ ${_FactoryScreenState._help('${team[i]['item']}')}', key: ValueKey('item-help-$i'), style: TextStyle(color: c.muted, fontSize: 11)),
+                  ),
               ]),
             ),
         ],
@@ -1314,9 +1353,13 @@ class _FactoryScreenState extends State<FactoryScreen> {
     if (id == 'bottle-cap') return tr('+{0} IVs em todos os atributos, sem limite').replaceAll('{0}', '${FactoryRun.bottleCapIvs}');
     final boost = FactoryRun.heldBoost[id];
     if (boost != null) {
-      return tr('Segura o item; se já tem um, vira extra ({0})')
+      final extra = tr('Segura o item; se já tem um, vira extra ({0})')
           .replaceAll('{0}', [for (final e in boost.entries) '+${(e.value * 100).round()}% ${_statLabel[e.key]}'].join(', '));
+      return _heldEffect[id] != null ? '${tr(_heldEffect[id]!)}. $extra' : extra;
     }
+    // Mega Pedras e Cristais Z (drops dos chefes).
+    if (RegExp(r'-z$').hasMatch(id)) return tr('Cristal Z: um golpe do tipo dele vira Movimento Z (uma vez por batalha)');
+    if (RegExp(r'ite(-[xy])?$').hasMatch(id) && id != 'eviolite') return tr('Mega Pedra: o Pokémon dela megaevolui (uma vez por batalha)');
     return '';
   }
 
@@ -1612,8 +1655,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
                 Text(_itemName('$id'), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.bold, color: c.text, fontSize: 13)),
-                Text(FactoryRun.shopOwned(run, '$id') ? tr('Você já tem') : _help('$id'),
-                    maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: c.muted, fontSize: 11, height: 1.2)),
+                // O que o item faz (inteiro: a linha cresce).
+                Text(FactoryRun.shopOwned(run, '$id') ? tr('Você já tem') : _help('$id'), style: TextStyle(color: c.muted, fontSize: 11, height: 1.2)),
               ]),
             ),
             const SizedBox(width: 4),
@@ -2019,7 +2062,10 @@ class _FactoryScreenState extends State<FactoryScreen> {
         if (p['joy'] == true)
           Text('💗 ${town ? tr('A Enfermeira Joy apareceu e curou o time todo!') : tr('{0} apareceu e curou o time todo!').replaceAll('{0}', healerName)}',
               key: const ValueKey('factory-joy'), style: const TextStyle(fontSize: 13)),
-        for (final id in items) Text('🎁 ${tr('Ganhou {0}!').replaceAll('{0}', _itemName(id))}', key: ValueKey('factory-drop-$id'), style: const TextStyle(fontSize: 13)),
+        for (final id in items) ...[
+          Text('🎁 ${tr('Ganhou {0}!').replaceAll('{0}', _itemName(id))}', key: ValueKey('factory-drop-$id'), style: const TextStyle(fontSize: 13)),
+          if (_help(id).isNotEmpty) Text(_help(id), textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, color: Color(0xFF475569))),
+        ],
         if (beat != null)
           Text(
               '💬 ${beat['name']}: ${tr(beat['kind'] == 'rival' ? _rivalBeat[min(_rivalBeat.length, ((run['rivalWins'] as num?) ?? 1).toInt()) - 1] : _beatLines[beat['kind']] ?? _beatLines['gym']!)}',
@@ -2812,22 +2858,43 @@ const _upgradeIcons = {
 /// A cor de cada ramo (as linhas e os círculos comprados), na ordem de upgradeBranches. Igual ao site.
 const _branchColors = [Color(0xFF22C55E), Color(0xFF38BDF8), Color(0xFFF59E0B), Color(0xFFEF4444), Color(0xFFA855F7), Color(0xFFEAB308), Color(0xFFEC4899)];
 
-/// O quadro da árvore (960×620): os ramos saem de um centro embaixo, em leque (de 200° a −20°). Igual ao site.
-const _treeW = 960.0, _treeH = 620.0, _treeCx = 480.0, _treeCy = 480.0, _treeFirst = 140.0, _treeStep = 105.0, _treeFrom = 200.0, _treeTo = -20.0;
+/// A árvore em círculo (como as árvores de habilidade dos jogos): os ramos saem do centro para todos os lados. Igual ao site.
+const _treeFirst = 190.0, _treeStep = 70.0, _treePad = 230.0, _treeFrom = 90.0, _treeTo = -270.0;
 
-/// As posições (árvore radial): cada ramo ganha um pedaço do leque do tamanho das pontas dele; cada melhoria fica no
+/// A melhoria grande que dá nome e símbolo (os nós pequenos usam os da melhoria do mesmo efeito).
+String _upgradeKey(String id) {
+  if (!FactoryRun.isMinor(id)) return id;
+  final fx = FactoryRun.upgradeFx[id]!;
+  return FactoryRun.minorBase['${fx.$1}:${fx.$2}']!;
+}
+
+typedef _TreeBranch = ({String icon, String name, List<String> ids, Color color, List<({String id, String? parent, Offset pos})> nodes, double mid});
+
+/// As posições (árvore radial): cada ramo ganha um pedaço do círculo do tamanho das pontas dele; cada melhoria fica no
 /// meio do pedaço do pai, mais longe do centro a cada nível. Igual ao site (skillTreeLayout).
-List<({String icon, String name, List<String> ids, Color color, List<({String id, String? parent, Offset pos})> nodes})> _skillTreeLayout() {
+final _treeLayout = _skillTreeLayout();
+({List<_TreeBranch> branches, double size, double radius}) _skillTreeLayout() {
   String? parentOf(String id) => FactoryRun.upgradeTree[id]?.needs?.$1;
-  List<String> kids(String id, List<String> ids) => [for (final k in ids) if (parentOf(k) == id) k];
-  int tips(String id, List<String> ids) {
-    final c = kids(id, ids);
-    return c.isEmpty ? 1 : c.fold(0, (n, k) => n + tips(k, ids));
+  final kidsOf = <String, List<String>>{};
+  for (final b in FactoryRun.upgradeBranches) {
+    for (final id in b.$3) {
+      final p = parentOf(id);
+      if (p != null) (kidsOf[p] ??= []).add(id);
+    }
   }
-
+  final tipsMemo = <String, int>{};
+  int tips(String id) => tipsMemo[id] ??= () {
+        final n = (kidsOf[id] ?? const []).fold(0, (n, k) => n + tips(k));
+        return n == 0 ? 1 : n;
+      }();
+  int depthOf(String id) => parentOf(id) == null ? 0 : 1 + depthOf(parentOf(id)!);
+  final maxDepth = FactoryRun.upgradeBranches.expand((b) => b.$3).map(depthOf).reduce(max);
+  final radius = _treeFirst + maxDepth * _treeStep;
+  final size = 2 * (radius + _treePad);
+  final c = size / 2;
   double rad(double d) => d * pi / 180;
-  final total = FactoryRun.upgradeBranches.fold(0, (n, b) => n + tips(b.$3.first, b.$3));
-  final out = <({String icon, String name, List<String> ids, Color color, List<({String id, String? parent, Offset pos})> nodes})>[];
+  final total = FactoryRun.upgradeBranches.fold(0, (n, b) => n + tips(b.$3.first));
+  final out = <_TreeBranch>[];
   var start = rad(_treeFrom);
   for (final (b, branch) in FactoryRun.upgradeBranches.indexed) {
     final (icon, name, ids) = branch;
@@ -2835,21 +2902,21 @@ List<({String icon, String name, List<String> ids, Color color, List<({String id
     void place(String id, double a, double z, int depth, String? parent) {
       final m = (a + z) / 2;
       final r = _treeFirst + depth * _treeStep;
-      nodes.add((id: id, parent: parent, pos: Offset(_treeCx + cos(m) * r, _treeCy - sin(m) * r)));
+      nodes.add((id: id, parent: parent, pos: Offset(c + cos(m) * r, c - sin(m) * r)));
       var x = a;
-      for (final k in kids(id, ids)) {
-        final span = (z - a) * tips(k, ids) / tips(id, ids);
+      for (final k in kidsOf[id] ?? const <String>[]) {
+        final span = (z - a) * tips(k) / tips(id);
         place(k, x, x + span, depth + 1, id);
         x += span;
       }
     }
 
-    final span = (rad(_treeTo) - rad(_treeFrom)) * tips(ids.first, ids) / total;
+    final span = (rad(_treeTo) - rad(_treeFrom)) * tips(ids.first) / total;
     place(ids.first, start, start + span, 0, null);
+    out.add((icon: icon, name: name, ids: ids, color: _branchColors[b % _branchColors.length], nodes: nodes, mid: start + span / 2));
     start += span;
-    out.add((icon: icon, name: name, ids: ids, color: _branchColors[b % _branchColors.length], nodes: nodes));
   }
-  return out;
+  return (branches: out, size: size, radius: radius);
 }
 
 /// A árvore de melhorias em leque (como as árvores de habilidade dos jogos): os ramos saem do centro e se dividem;
@@ -2876,20 +2943,21 @@ class _SkillTreeState extends State<_SkillTree> {
     super.dispose();
   }
 
-  /// Começa centrada embaixo (o centro da árvore), no tamanho que cabe na largura.
+  /// Começa no centro da árvore, num zoom em que se vê bastante dela.
   void _fit(double width, double height) {
     if (_width == width) return;
     _width = width;
-    final s = max(0.4, width / _treeW * 1.4);
+    final size = _treeLayout.size;
+    const s = 0.4;
     _view.value = Matrix4.identity()
-      ..translateByDouble(-(_treeW * s - width) / 2, -(_treeH * s - height), 0, 1)
+      ..translateByDouble(-(size * s - width) / 2, -(size * s - height) / 2, 0, 1)
       ..scaleByDouble(s, s, 1, 1);
   }
 
   void _zoom(double by) {
     final m = _view.value.clone();
     final s = m.getMaxScaleOnAxis();
-    final next = (s * by).clamp(0.3, 2.0);
+    final next = (s * by).clamp(0.15, 2.0);
     _view.value = m..scaleByDouble(next / s, next / s, 1, 1);
   }
 
@@ -2897,7 +2965,8 @@ class _SkillTreeState extends State<_SkillTree> {
   Widget build(BuildContext context) {
     final c = SiteColors.of(context);
     final f = widget.factory;
-    final layout = _skillTreeLayout();
+    final layout = _treeLayout.branches;
+    final size = _treeLayout.size, center = Offset(size / 2, size / 2);
     final posOf = {for (final b in layout) for (final n in b.nodes) n.id: n.pos};
     String state(String id) => FactoryRun.upgradeLevel(f, id) > 0
         ? 'have'
@@ -2913,71 +2982,107 @@ class _SkillTreeState extends State<_SkillTree> {
     final needs = price == null ? const <Json>[] : FactoryRun.upgradeNeeds(f, id);
     final coins = ((f['coins'] as num?) ?? 0).toInt();
     String needText(Json n) => switch (n['kind']) {
-          'up' => tr('{0} no nível {1}').replaceAll('{0}', tr(_upgradeNames[n['id']] ?? '')).replaceAll('{1}', '${n['level']}'),
+          'up' => tr('{0} no nível {1}').replaceAll('{0}', tr(_upgradeNames[_upgradeKey('${n['id']}')] ?? '')).replaceAll('{1}', '${n['level']}'),
           'best' => tr('Chegar ao andar {0} (recorde: {1})').replaceAll('{0}', '${n['floor']}').replaceAll('{1}', '${f['best'] ?? 0}'),
           _ => tr('Ter {0} Pokémon para começar (tem {1})').replaceAll('{0}', '${n['count']}').replaceAll('{1}', '${((f['owned'] as List?) ?? const []).length}'),
         };
+    final spent = ((f['upgrades'] as Map?) ?? const {}).values.fold(0, (n, v) => n + (v as num).toInt());
+    final all = FactoryRun.upgrades.values.fold(0, (n, u) => n + u.max);
     final tree = SizedBox(
-      width: _treeW,
-      height: _treeH,
+      width: size,
+      height: size,
       child: Stack(clipBehavior: Clip.none, children: [
         Positioned.fill(
           child: CustomPaint(
             painter: _TreeLines([
               for (final b in layout)
                 for (final n in b.nodes)
-                  (from: n.parent == null ? const Offset(_treeCx, _treeCy) : posOf[n.parent]!, to: n.pos, color: FactoryRun.upgradeLevel(f, n.id) > 0 ? b.color : null),
-            ], const Offset(_treeCx, _treeCy)),
+                  (from: n.parent == null ? center : posOf[n.parent]!, to: n.pos, color: FactoryRun.upgradeLevel(f, n.id) > 0 ? b.color : null, minor: FactoryRun.isMinor(n.id)),
+            ], center, _treeLayout.radius),
           ),
         ),
+        // O centro: os pontos gastos na árvore toda.
+        Positioned(
+          left: center.dx - 54,
+          top: center.dy - 54,
+          child: Container(
+            width: 108,
+            height: 108,
+            decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFF0F172A), border: Border.all(color: const Color(0xFFFDE047), width: 4)),
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              const Text('⭐', style: TextStyle(fontSize: 28)),
+              Text('$spent/$all', style: const TextStyle(color: Color(0xFFFDE047), fontWeight: FontWeight.w900, fontSize: 14)),
+            ]),
+          ),
+        ),
+        // O nome do ramo e os pontos, na borda, no meio do pedaço dele.
         for (final b in layout)
           Positioned(
-            left: b.nodes.first.pos.dx - 90,
-            width: 180,
-            top: b.nodes.first.pos.dy + 26,
-            child: Text(
-                '${b.icon} ${tr(b.name)} ${b.ids.fold(0, (n, k) => n + FactoryRun.upgradeLevel(f, k))}/${b.ids.fold(0, (n, k) => n + FactoryRun.upgrades[k]!.max)}',
+            left: center.dx + cos(b.mid) * (_treeLayout.radius + 55) - 220,
+            width: 440,
+            top: center.dy - sin(b.mid) * (_treeLayout.radius + 55) - 20,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                '${b.icon} ${tr(b.name)} · ${b.ids.fold(0, (n, k) => n + FactoryRun.upgradeLevel(f, k))}/${b.ids.fold(0, (n, k) => n + FactoryRun.upgrades[k]!.max)}',
                 textAlign: TextAlign.center,
                 maxLines: 1,
-                style: TextStyle(color: b.color, fontWeight: FontWeight.w900, fontSize: 13)),
+                  style: TextStyle(color: b.color, fontWeight: FontWeight.w900, fontSize: 30, shadows: const [Shadow(color: Color(0xFF05070D), blurRadius: 6)])),
+            ),
           ),
         for (final b in layout)
           for (final n in b.nodes)
             () {
               final st = state(n.id);
               final sel = n.id == id;
-              final r = sel ? 19.0 : 16.0;
+              final minor = FactoryRun.isMinor(n.id);
+              final base = minor ? 11.0 : 24.0;
+              final r = sel ? base + 4 : base;
               return Positioned(
-                left: n.pos.dx - r,
-                top: n.pos.dy - r,
+                left: n.pos.dx - r - 7,
+                top: n.pos.dy - r - 7,
                 child: GestureDetector(
                   key: ValueKey('upgrade-${n.id}'),
                   onTap: () => setState(() => _picked = n.id),
                   child: Opacity(
-                    opacity: st == 'locked' ? 0.5 : 1,
-                    child: Stack(clipBehavior: Clip.none, children: [
+                    opacity: st == 'locked' ? 0.55 : 1,
+                    child: Stack(clipBehavior: Clip.none, alignment: Alignment.center, children: [
+                      // Comprado: brilha na cor do ramo.
+                      Container(
+                        width: r * 2 + 14,
+                        height: r * 2 + 14,
+                        decoration: BoxDecoration(shape: BoxShape.circle, color: st == 'have' ? b.color.withValues(alpha: 0.25) : Colors.transparent),
+                      ),
                       Container(
                         width: r * 2,
                         height: r * 2,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: st == 'have' ? b.color : const Color(0xFF1E293B),
-                          border: Border.all(color: sel ? const Color(0xFFFDE047) : st == 'locked' ? const Color(0xFF475569) : b.color, width: sel ? 4 : 2),
+                          color: st == 'have' ? b.color : const Color(0xFF111827),
+                          border: Border.all(
+                              color: sel
+                                  ? const Color(0xFFFDE047)
+                                  : st == 'locked'
+                                      ? const Color(0xFF334155)
+                                      : st == 'open'
+                                          ? const Color(0xFFF8FAFC)
+                                          : b.color,
+                              width: sel ? 5 : minor ? 2 : 3),
                         ),
-                        child: Text(st == 'locked' ? '🔒' : _upgradeIcons[n.id] ?? '⬆️', style: const TextStyle(fontSize: 15)),
+                        child: Text(st == 'locked' && !minor ? '🔒' : _upgradeIcons[_upgradeKey(n.id)] ?? '⬆️', style: TextStyle(fontSize: minor ? 10 : 19)),
                       ),
-                      // O nível (comprado/máximo), num selo embaixo à direita.
-                      Positioned(
-                        left: r + 8,
-                        top: r + 8,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 3),
-                          decoration: BoxDecoration(color: const Color(0xFF0F172A), borderRadius: BorderRadius.circular(6), border: Border.all(color: b.color)),
-                          child: Text('${FactoryRun.upgradeLevel(f, n.id)}/${FactoryRun.upgrades[n.id]!.max}',
-                              style: const TextStyle(color: Color(0xFFE2E8F0), fontSize: 8, fontWeight: FontWeight.w800)),
+                      // O nível (comprado/máximo), num selo embaixo (só nas melhorias grandes).
+                      if (!minor)
+                        Positioned(
+                          top: r * 2 + 3,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5),
+                            decoration: BoxDecoration(color: const Color(0xFF0F172A), borderRadius: BorderRadius.circular(8), border: Border.all(color: b.color, width: 1.5)),
+                            child: Text('${FactoryRun.upgradeLevel(f, n.id)}/${FactoryRun.upgrades[n.id]!.max}',
+                                style: const TextStyle(color: Color(0xFFF8FAFC), fontSize: 10, fontWeight: FontWeight.w900)),
+                          ),
                         ),
-                      ),
                     ]),
                   ),
                 ),
@@ -2987,20 +3092,21 @@ class _SkillTreeState extends State<_SkillTree> {
     );
     return Column(key: const ValueKey('skill-tree'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       SizedBox(
-        height: 360,
+        height: 440,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          child: ColoredBox(
-            color: const Color(0xFF020617),
+          child: DecoratedBox(
+            decoration: const BoxDecoration(
+                gradient: RadialGradient(colors: [Color(0xFF1E1B4B), Color(0xFF0B1020), Color(0xFF05070D)], stops: [0, 0.55, 1])),
             child: LayoutBuilder(builder: (context, box) {
               _fit(box.maxWidth, box.maxHeight);
               return Stack(children: [
                 InteractiveViewer(
                   transformationController: _view,
                   constrained: false,
-                  minScale: 0.3,
+                  minScale: 0.15,
                   maxScale: 2,
-                  boundaryMargin: const EdgeInsets.all(200),
+                  boundaryMargin: const EdgeInsets.all(300),
                   child: tree,
                 ),
                 Positioned(
@@ -3035,11 +3141,12 @@ class _SkillTreeState extends State<_SkillTree> {
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(color: c.card, border: Border.all(color: const Color(0x99FBBF24), width: 2), borderRadius: BorderRadius.circular(12)),
         child: Row(children: [
-          Text(_upgradeIcons[id] ?? '⬆️', style: const TextStyle(fontSize: 24)),
+          Text(_upgradeIcons[_upgradeKey(id)] ?? '⬆️', style: const TextStyle(fontSize: 24)),
           const SizedBox(width: 8),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(tr(_upgradeNames[id] ?? id), style: TextStyle(color: c.text, fontWeight: FontWeight.w900, fontSize: 13)),
+              Text('${tr(_upgradeNames[_upgradeKey(id)] ?? id)}${FactoryRun.isMinor(id) ? ' · ${tr('nó pequeno')}' : ''}',
+                  style: TextStyle(color: c.text, fontWeight: FontWeight.w900, fontSize: 13)),
               Text(tr(up.label).replaceAll('{0}', '$value'), style: TextStyle(color: c.text, fontSize: 12, fontWeight: FontWeight.bold)),
               Text('${'★' * min(level, 10)}${'☆' * min(up.max - level, 10)} · ${price == null ? tr('No máximo') : '🪙 $price'}', style: TextStyle(color: c.muted, fontSize: 12)),
               for (final n in needs) Text('✖ ${needText(n)}', style: const TextStyle(color: Color(0xFFEF4444), fontSize: 11)),
@@ -3062,20 +3169,28 @@ class _SkillTreeState extends State<_SkillTree> {
   }
 }
 
-/// As linhas da árvore (acesas na cor do ramo quando a melhoria foi comprada) e o centro.
+/// As linhas da árvore (acesas na cor do ramo quando a melhoria foi comprada) e os anéis de fundo.
 class _TreeLines extends CustomPainter {
-  final List<({Offset from, Offset to, Color? color})> lines;
+  final List<({Offset from, Offset to, Color? color, bool minor})> lines;
   final Offset center;
-  _TreeLines(this.lines, this.center);
+  final double radius;
+  _TreeLines(this.lines, this.center, this.radius);
 
   @override
   void paint(Canvas canvas, Size size) {
+    final ring = Paint()
+      ..color = const Color(0xFF1E293B)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    for (var k = 1; k <= 5; k++) {
+      canvas.drawCircle(center, radius * k / 5, ring);
+    }
     for (final l in lines) {
       canvas.drawLine(l.from, l.to, Paint()
-        ..color = l.color ?? const Color(0xFF334155)
-        ..strokeWidth = l.color != null ? 4 : 2);
+        ..color = l.color ?? const Color(0xB3334155)
+        ..strokeCap = StrokeCap.round
+        ..strokeWidth = l.color != null ? 5 : l.minor ? 2 : 3);
     }
-    canvas.drawCircle(center, 14, Paint()..color = const Color(0xFFF8FAFC));
   }
 
   @override

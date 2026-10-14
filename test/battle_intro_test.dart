@@ -84,6 +84,11 @@ void main() {
     }
 
     await tester.pump(const Duration(milliseconds: 100));
+    // Primeiro a tela VS (toda batalha tem), com o nome de quem joga; some sozinha.
+    expect(find.byKey(const ValueKey('vs-splash')), findsOneWidget);
+    expect(find.byKey(const ValueKey('vs-my-name')), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 1700));
+    expect(find.byKey(const ValueKey('vs-splash')), findsNothing);
     expect(find.byType(TrainerSprite), findsOneWidget);
     expect(find.byType(TrainerBack), findsOneWidget);
     expect(find.text('LUTAR'), findsNothing);

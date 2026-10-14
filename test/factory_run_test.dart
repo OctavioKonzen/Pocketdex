@@ -112,6 +112,17 @@ void main() {
     expect([run['bag']['great-ball'], run['bag']['escape-rope'], run['townMap'], run['dmax'], run['tera']], [3, 2, true, true, true]);
     expect(((FactoryRun.endRun(f, {...run, 'floor': 11, 'defeated': 0, 'bosses': 0})['last']) as Map)['coins'], 100);
     expect(FactoryRun.upgradeNeeds({...FactoryRun.empty(), 'best': 999}, 'tera'), contains(equals({'kind': 'up', 'id': 'dmax', 'level': 1})));
+    // Os nós pequenos: 8 de cada melhoria, em trilha (cada um pede o anterior); comprando tudo, os bônus somam (igual ao site).
+    expect(FactoryRun.upgrades.keys.where((k) => k.contains('~')).length, 62 * 8);
+    expect(FactoryRun.upgradeNeeds({...f, 'upgrades': {...f['upgrades'] as Map, 'atk~2': 0}}, 'atk~3'), contains(equals({'kind': 'up', 'id': 'atk~2', 'level': 1})));
+    expect(FactoryRun.upgradeTree['atk~1']!.needs, ('atk', 1));
+    expect(FactoryRun.upgradeTree['atk~1']!.best, 7);
+    final all = _buyAll({...f, 'coins': 9999999}, FactoryRun.upgrades.keys);
+    final big = FactoryRun.startRun(all, data, 1, 42)!;
+    expect(big['teamBoost'], {'hp': 0.83, 'atk': 0.76, 'def': 0.74, 'spa': 0.75, 'spd': 0.73, 'spe': 1.01});
+    expect(big['mult'], {'money': 2.15, 'exp': 1.94, 'shop': 0.8});
+    expect([big['bag']['poke-ball'], big['bag']['great-ball'], big['bag']['potion'], big['bag']['escape-rope']], [22, 16, 29, 23]);
+    expect(((FactoryRun.endRun(all, {...big, 'floor': 11, 'defeated': 0, 'bosses': 0})['last']) as Map)['coins'], 124);
     // O mesmo preço do site.
     expect(FactoryRun.upgradePrice(FactoryRun.empty(), 'level'), 150);
     expect(FactoryRun.upgradePrice({...FactoryRun.empty(), 'upgrades': {'level': 1}}, 'level'), 455);
@@ -729,9 +740,24 @@ void main() {
     expect(run['encounter']['kind'], 'wildboss');
     expect(run['encounter']['area'], true);
     expect(((run['encounter']['foes'] as List).first as Map)['iv'], greaterThanOrEqualTo(31));
+    expect(['mega', 'dmax', 'tera'], contains(((run['encounter']['foes'] as List).first as Map)['gimmick']));
     final won = FactoryRun.winFloor(run, data, captured: true);
     expect(won['dungeon'], isNull);
     expect(won['pending']['capture'], isNotNull);
+  });
+
+  test('chefes dos lugares usam Mega (a pedra dele), Gigantamax ou Tera (igual ao site)', () {
+    expect(FactoryRun.bossGimmick(data, {'id': 6}, () => 0.99), containsPair('item', 'charizardite-y'));
+    expect(FactoryRun.bossGimmick(data, {'id': 6}, () => 0.99)['gimmick'], 'mega');
+    expect(FactoryRun.bossGimmick(data, {'id': 12}, () => 0), {'id': 12, 'gimmick': 'dmax'});
+    expect(FactoryRun.bossGimmick(data, {'id': 16}, () => 0.99), {'id': 16, 'gimmick': 'tera', 'tera': 'fairy'});
+    final set = FactoryRun.foeMember({'id': 16, 'level': 30, 'iv': 31, 'gimmick': 'tera', 'tera': 'fairy'}, ['tackle']).$2;
+    expect(set['tera'], 'fairy');
+    final red = data.bosses.indexWhere((b) => b['game'] == 'Red/Blue');
+    final start = {...FactoryRun.startRun(FactoryRun.empty(), data, 4, 3)!, 'floor': 29, 'leg': 3, 'boss': {'region': red, 'step': 3}};
+    final run = FactoryRun.chooseNode({...start, 'route': {'options': [{'kind': 'dboss'}], 'biome': 'grass'}}, data, 0);
+    expect(run['encounter']['kind'], 'dboss');
+    expect(['mega', 'dmax', 'tera'], contains(((run['encounter']['foes'] as List).last as Map)['gimmick']));
   });
 
   test('o rival no começo (antes do andar 10) vem com um Pokémon só, sem IVs e EVs a mais (igual ao site)', () {
@@ -821,9 +847,9 @@ void main() {
 }
 
 /// Compra todas as melhorias (em várias passadas: umas pedem outras), enquanto dá.
-Map<String, dynamic> _buyAll(Map<String, dynamic> f) {
+Map<String, dynamic> _buyAll(Map<String, dynamic> f, [Iterable<String>? ids]) {
   for (var pass = 0; pass < 6; pass++) {
-    for (final id in FactoryRun.upgrades.keys) {
+    for (final id in ids ?? FactoryRun.upgrades.keys.where((k) => !k.contains('~'))) {
       for (var next = FactoryRun.buyUpgrade(f, id); next != null; next = FactoryRun.buyUpgrade(f, id)) {
         f = next;
       }

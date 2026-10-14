@@ -464,7 +464,7 @@ export const UPGRADE_TREE = {
   eviolite: { needs: ['tera', 1], best: 34 },
 }
 /** Os ramos da árvore, na ordem (da raiz para a ponta). */
-export const UPGRADE_BRANCHES = [
+const BASE_BRANCHES = [
   ['🧪', 'Sobrevivência', ['potions', 'revive', 'rope', 'sash', 'leftovers', 'superPotions', 'hyperPotions', 'maxPotions', 'sitrus', 'lum']],
   ['🎯', 'Captura', ['balls', 'greatBalls', 'shiny', 'ultraBalls', 'masterBall', 'quickBalls', 'netBalls', 'timerBalls', 'duskBalls']],
   ['🎓', 'Treino', ['level', 'ivs', 'exp', 'expShare', 'luckyEgg', 'expPlus', 'hpBoost', 'speBoost', 'tutor', 'reminder']],
@@ -473,6 +473,50 @@ export const UPGRADE_BRANCHES = [
   ['💰', 'Comércio', ['money', 'shop', 'coins', 'bonusCoins', 'loot', 'expertBelt']],
   ['⚡', 'Poder', ['dmax', 'tera', 'scopeLens', 'eviolite', 'policy', 'muscleBand', 'wiseGlasses', 'shellBell']],
 ]
+/**
+ * Os nós pequenos da árvore (como nas árvores de habilidade dos jogos): de cada
+ * melhoria sai uma trilha de MINOR_LENGTH nós do tema do ramo ("atk~1",
+ * "atk~2"...), cada um com um nível só, pedindo o anterior e um recorde um
+ * pouco maior. O efeito é um dos de UPGRADE_FX; o texto, o da melhoria grande
+ * do mesmo efeito (MINOR_BASE). Igual ao app.
+ */
+export const MINOR_LENGTH = 8
+export const MINOR_FX = {
+  Sobrevivência: [['boost', 'hp'], ['bag', 'potion'], ['boost', 'def'], ['boost', 'spd']],
+  Captura: [['bag', 'poke-ball'], ['bag', 'great-ball'], ['bag', 'quick-ball'], ['bag', 'net-ball'], ['bag', 'dusk-ball'], ['bag', 'timer-ball']],
+  Treino: [['mult', 'exp'], ['boost', 'hp'], ['boost', 'spe']],
+  Combate: [['boost', 'atk'], ['boost', 'spa'], ['boost', 'def'], ['boost', 'spd'], ['boost', 'spe']],
+  Exploração: [['mult', 'money'], ['boost', 'spe'], ['bag', 'escape-rope']],
+  Comércio: [['mult', 'money'], ['coins', 'all']],
+  Poder: [['boostAll', 'all'], ['boost', 'atk'], ['boost', 'spa']],
+}
+/** A melhoria grande que dá o texto, o nome e o símbolo de cada efeito pequeno. */
+export const MINOR_BASE = {
+  'boost:hp': 'hpBoost', 'boost:atk': 'atk', 'boost:def': 'def', 'boost:spa': 'spa', 'boost:spd': 'spd', 'boost:spe': 'speBoost',
+  'boostAll:all': 'allStats', 'mult:exp': 'expPlus', 'mult:money': 'loot', 'coins:all': 'bonusCoins',
+  'bag:potion': 'potions', 'bag:poke-ball': 'balls', 'bag:great-ball': 'greatBalls', 'bag:quick-ball': 'quickBalls', 'bag:net-ball': 'netBalls',
+  'bag:dusk-ball': 'duskBalls', 'bag:timer-ball': 'timerBalls', 'bag:escape-rope': 'rope',
+}
+/** A melhoria grande de um nó pequeno ("atk~3" → "atk"), ou ele mesmo. */
+export const minorOf = (id) => id.split('~')[0]
+export const isMinor = (id) => id.includes('~')
+export const UPGRADE_BRANCHES = BASE_BRANCHES.map(([icon, branch, ids]) => {
+  const fx = MINOR_FX[branch]
+  const list = []
+  ids.forEach((parent, i) => {
+    list.push(parent)
+    for (let k = 1; k <= MINOR_LENGTH; k++) {
+      const id = `${parent}~${k}`
+      const [kind, arg] = fx[(i + k - 1) % fx.length]
+      const percent = kind === 'mult' || kind === 'coins'
+      UPGRADES[id] = { label: UPGRADES[MINOR_BASE[`${kind}:${arg}`]].label, per: percent ? 2 : 1, max: 1, base: Math.round((UPGRADES[parent].base * 0.25 + 60 * k) / 10) * 10 }
+      UPGRADE_FX[id] = [kind, arg]
+      UPGRADE_TREE[id] = { needs: [k === 1 ? parent : `${parent}~${k - 1}`, 1], best: (UPGRADE_TREE[parent]?.best ?? 0) + 2 * k }
+      list.push(id)
+    }
+  })
+  return [icon, branch, list]
+})
 export const UPGRADE_LEVEL_BEST = 3
 /** O que falta para comprar o próximo nível: [{kind: 'up', id, level} | {kind: 'best', floor} | {kind: 'owned', count}] (vazio: pode). */
 export function upgradeNeeds(factory, id) {
@@ -1096,6 +1140,10 @@ export function chooseNode(run, data, index, clock = null) {
     // O chefe do lugar: um treinador forte do lugar, alguns andares à frente (sempre deixa um item).
     if (node.kind === 'dboss') {
       out.encounter = { ...encounterFor(data, out.floor + 3, rand, null, false, { kind: 'ace', biome: scene, shiny: run.shinyRate ?? 1 }), kind: 'dboss', scene }
+      // O mais forte dele usa uma mecânica: Mega, Gigantamax ou Tera.
+      const foes = [...out.encounter.foes]
+      foes[foes.length - 1] = bossGimmick(data, foes[foes.length - 1], rand)
+      out.encounter = { ...out.encounter, foes }
     }
     // O rival de surpresa: o time dele no andar de agora (não conta como o da história).
     if (node.kind === 'rival') {
@@ -1155,6 +1203,17 @@ export function chooseNode(run, data, index, clock = null) {
   return out
 }
 
+/** Os tipos para o Terastal dos chefes dos lugares. */
+export const TERA_TYPES = ['normal', 'fire', 'water', 'grass', 'electric', 'ice', 'fighting', 'poison', 'ground', 'flying', 'psychic', 'bug', 'rock', 'ghost', 'dragon', 'dark', 'steel', 'fairy']
+
+/** Os chefes dos lugares (fim da rota, cavernas, mar...): Mega (se ele tiver), senão Gigantamax (se tiver), senão Tera de um tipo ao acaso. */
+export function bossGimmick(data, f, rand) {
+  const megas = data.megas?.[f.id] ?? []
+  if (megas.length) return { ...f, item: pickOne(megas, rand)[0], gimmick: 'mega' }
+  if ((data.gmax ?? []).includes(f.id)) return { ...f, gimmick: 'dmax' }
+  return { ...f, gimmick: 'tera', tera: pickOne(TERA_TYPES, rand) }
+}
+
 /**
  * O que aparece no andar: chefe da história (a cada 10), chefe sem treinador
  * (wild: Mega, Gigantamax ou lendário), selvagem ou treinador. node: o
@@ -1169,7 +1228,7 @@ export function encounterFor(data, floor, rand, boss = null, wild = false, node 
   // O chefe de um lugar sem treinadores (mar, cavernas de gelo, lava...): o Pokémon forte de lá, raro e acima do nível (dá para capturar).
   if (wild && node?.area) {
     const f = encounterFor(data, floor + 3, rand, null, false, { kind: 'wild', biome: node.biome, rare: true, shiny: node.shiny }).foes[0]
-    return { kind: 'wildboss', area: true, foes: [{ ...f, iv: Math.max(31, f.iv), ev: Math.round(f.ev * 1.25) }] }
+    return { kind: 'wildboss', area: true, foes: [bossGimmick(data, { ...f, iv: Math.max(31, f.iv), ev: Math.round(f.ev * 1.25) }, rand)] }
   }
   if (wild) {
     // Chefe sem treinador: dá para capturar; a Mega deixa a Mega Pedra.
@@ -2194,7 +2253,9 @@ export function equipCosmetic(factory, kind, id) {
 /** Perdeu: a corrida acaba; a pontuação vira moedas e o recorde fica salvo. */
 export function endRun(factory, run) {
   // A melhoria de moedas soma uma porcentagem ao que a corrida rendeu.
-  const coins = Math.round(runCoins(run) * (1 + (upgradeValue(factory, 'coins') + upgradeValue(factory, 'bonusCoins')) / 100))
+  // Moedas a mais: a melhoria Moedas e todas as de efeito 'coins' (Tesouro e os nós pequenos).
+  const bonus = Object.entries(UPGRADE_FX).reduce((n, [k, [kind]]) => n + (kind === 'coins' ? upgradeValue(factory, k) : 0), upgradeValue(factory, 'coins'))
+  const coins = Math.round(runCoins(run) * (1 + bonus / 100))
   return { ...factory, coins: factory.coins + coins, best: Math.max(factory.best, run.floor - 1), run: null, last: { floor: run.floor - 1, coins, ...(run.weekly ? { weekly: run.weekly } : {}) } }
 }
 
@@ -2293,6 +2354,7 @@ export function foeMember(foe, moveList) {
       ...(foe.shiny ? { shiny: true } : {}),
       ...(foe.item ? { item: foe.item } : {}),
       ...(foe.gimmick ? { gimmick: foe.gimmick } : {}),
+      ...(foe.tera ? { tera: foe.tera } : {}),
     },
   }
 }
