@@ -1554,6 +1554,16 @@ export function setMainItem(run, index, extra) {
   return { ...run, team }
 }
 
+/** Tira o item (extra: a posição de um extra; sem ela, o principal) e guarda: dá para equipar em outro. Igual ao app. */
+export function unequipItem(run, index, extra = null) {
+  const mon = run.team[index]
+  const id = extra == null ? mon?.item : mon?.extras?.[extra]
+  if (!id) return run
+  const team = [...run.team]
+  team[index] = extra == null ? { ...mon, item: null } : { ...mon, extras: mon.extras.filter((_, k) => k !== extra) }
+  return { ...run, team, stash: [...(run.stash ?? []), id] }
+}
+
 /** Usa um item da Bolsa fora da batalha (poção em quem está ferido, Revive em quem desmaiou). null se não dá. */
 export function applyBagItem(run, id, index) {
   const mon = run.team[index]

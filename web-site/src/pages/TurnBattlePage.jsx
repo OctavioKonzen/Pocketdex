@@ -1689,9 +1689,8 @@ export default function TurnBattlePage() {
         const data = await getFactoryData()
         const next = winFloor(run, data, factoryAfter(game.battle, run))
         saveFactory({ ...factory, run: next })
-        endNote = run.encounter.boss
-          ? `🏅 ${t('Você venceu {0}!').replace('{0}', run.encounter.boss.name)} ${t('Andar {0} vencido!').replace('{0}', run.floor)}`
-          : `🏆 ${t('Andar {0} vencido!').replace('{0}', run.floor)}`
+        // Uma tela de vitória só: a do resultado do andar (XP, níveis, dinheiro), logo depois.
+        endNote = ''
       } else {
         // Com uma Escape Rope na Bolsa, o time foge (pouco HP) e a corrida continua.
         const data = await getFactoryData()
@@ -1708,7 +1707,7 @@ export default function TurnBattlePage() {
       // A batalha vira a tela da corrida sozinha (resultado, Enfermeira Joy, captura, carta, loja e mapa), no mesmo lugar.
       setGame((g) => (g ? { ...g, endNote, next: { label: `${t('Continuar')} →`, onClick: openFactory } } : g))
       const key = game.key
-      setTimeout(() => setGame((g) => (g && !g.factory && g.key === key ? { factory: true, key: key + 1 } : g)), 1800)
+      setTimeout(() => setGame((g) => (g && !g.factory && g.key === key ? { factory: true, key: key + 1 } : g)), won ? 700 : 1800)
       return
     }
     if (challenge?.kind === 'tower') {

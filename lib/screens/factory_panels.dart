@@ -505,9 +505,25 @@ class _BagAndItemsState extends State<_BagAndItems> {
                   Chip(label: Text(tr('Abre a batalha')), backgroundColor: const Color(0x3310B981))
                 else
                   ActionChip(key: ValueKey('lead-$i'), label: Text('⬆ ${tr('Primeiro na batalha')}'), onPressed: () => widget.onSave(FactoryRun.setLead(run, i))),
-                if (team[i]['item'] != null) Chip(label: Text('★ ${_itemName('${team[i]['item']}')}'), backgroundColor: const Color(0x33F59E0B)),
+                // O item (principal ★ e extras): tocar no extra o deixa principal; ✕ tira e guarda (para equipar em outro).
+                if (team[i]['item'] != null)
+                  InputChip(
+                    key: ValueKey('unequip-$i'),
+                    label: Text('★ ${_itemName('${team[i]['item']}')}'),
+                    backgroundColor: const Color(0x33F59E0B),
+                    deleteIcon: const Icon(Icons.close, size: 16, color: Color(0xFFEF4444)),
+                    deleteButtonTooltipMessage: tr('Tirar o item'),
+                    onDeleted: () => widget.onSave(FactoryRun.unequipItem(run, i)),
+                  ),
                 for (var k = 0; k < ((team[i]['extras'] as List?) ?? const []).length; k++)
-                  ActionChip(label: Text(_itemName('${(team[i]['extras'] as List)[k]}')), onPressed: () => widget.onSave(FactoryRun.setMainItem(run, i, k))),
+                  InputChip(
+                    key: ValueKey('unequip-$i-$k'),
+                    label: Text(_itemName('${(team[i]['extras'] as List)[k]}')),
+                    onPressed: () => widget.onSave(FactoryRun.setMainItem(run, i, k)),
+                    deleteIcon: const Icon(Icons.close, size: 16, color: Color(0xFFEF4444)),
+                    deleteButtonTooltipMessage: tr('Tirar o item'),
+                    onDeleted: () => widget.onSave(FactoryRun.unequipItem(run, i, k)),
+                  ),
                 if (FactoryRun.gimmicksOf(widget.data, run, team[i]).isNotEmpty)
                   DropdownButton<String>(
                     value: FactoryRun.gimmickOf(widget.data, run, team[i]).isEmpty ? 'none' : FactoryRun.gimmickOf(widget.data, run, team[i]),
@@ -913,6 +929,20 @@ const _biomeInfo = <String, (String, String, Color)>{
   'base-aether': ('Paraíso Aether', '🏴', Color(0xFFCA8A04)),
   'base-star': ('Base da Equipe Estrela', '🏴', Color(0xFFDB2777)),
 };
+
+/// Sem o Mapa: cada caminho só dá uma pista do que tem (com o Mapa, você vê tudo). Igual ao site.
+const _pathHints = {
+  'wild': '🌿 Barulho no mato...', 'trainer': '👣 Pegadas de treinador...', 'ace': '💪 Pegadas firmes e fundas...',
+  'mart': '🎒 Alguém com uma mochila grande...', 'center': '⛺ Fumaça de fogueira...', 'event': '✨ Algo brilhando no chão...',
+  'trade': '🔁 Alguém acenando de longe...', 'wildboss': '⚠️ Um rugido forte...', 'rematch': '🏆 Um treinador famoso por perto...',
+};
+String _pathHint(Map node) => node['legend'] != null
+    ? '🌟 Uma presença enorme...'
+    : node['cut'] == true
+        ? '🌳 Um caminho escondido...'
+        : node['biome'] == 'underwater'
+            ? '🌊 Água funda...'
+            : _pathHints[node['kind']] ?? '❓';
 
 /// O nome curto de cada melhoria (nos requisitos da árvore). Igual ao site.
 const _upgradeNames = {
@@ -1898,10 +1928,9 @@ class _FactoryScreenState extends State<FactoryScreen> {
         final y = h * 0.34;
         return [
           Positioned(left: 8, top: 6, right: 8, child: Align(alignment: Alignment.topLeft, child: sign('${boss['region']} · ${boss['game']} · ${biome.$2} ${tr('Rota para {0}').replaceAll('{0}', cities.to)}'))),
-          // A rota (só com o Mapa): da cidade de onde veio até a do chefe, você no andar de agora.
-          if (hasMap) Positioned(left: x(0), width: x(end) - x(0), top: y - 3, height: 6, child: Container(decoration: BoxDecoration(color: const Color(0x998B4513), borderRadius: BorderRadius.circular(3)))),
+          // A rota (com ou sem o Mapa): de onde veio, você no andar de agora e a cidade do chefe.
+          Positioned(left: x(0), width: x(end) - x(0), top: y - 3, height: 6, child: Container(decoration: BoxDecoration(color: const Color(0x998B4513), borderRadius: BorderRadius.circular(3)))),
           // As cidades nas pontas; cada andar da rota é um ponto (os das bifurcações em forma de losango).
-          if (hasMap)
           for (var k = 0; k <= end; k++)
             Builder(builder: (context) {
               final city = k == 0 || k == end;
@@ -1916,9 +1945,9 @@ class _FactoryScreenState extends State<FactoryScreen> {
               );
               return Positioned(left: x(k) - size / 2, top: y - size / 2, width: size, height: size, child: fork ? Transform.rotate(angle: pi / 4, child: box) : box);
             }),
-          if (hasMap) Positioned(left: x(0) - 4, top: y + 10, child: sign('🏠 ${cities.from ?? tr('Início')}')),
-          if (hasMap) Positioned(right: w - x(end) - 4, top: y + 10, child: sign('👑 ${cities.to}')),
-          if (me != null && hasMap) Positioned(left: x(pos + 1) - w * 0.1, top: y - w * 0.2, child: TrainerSprite(me, box: w * 0.2)),
+          Positioned(left: x(0) - 4, top: y + 10, child: sign('🏠 ${cities.from ?? tr('Início')}')),
+          Positioned(right: w - x(end) - 4, top: y + 10, child: sign('👑 ${cities.to}')),
+          if (me != null) Positioned(left: x(pos + 1) - w * 0.1, top: y - w * 0.2, child: TrainerSprite(me, box: w * 0.2)),
           if (coach != null && meeting) _far(TrainerSprite(coach, box: w * 0.4), w, h),
           if (lead != null) _fieldMon(lead, w, h, back: true),
         ];
@@ -1958,7 +1987,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
               ? tr('O caminho segue.')
               : hasMap
                   ? tr('O caminho se divide: escolha por onde ir')
-                  : tr('O caminho se divide, mas sem o Mapa você não sabe para onde cada um vai. Compre um Mapa na loja!')),
+                  : tr('O caminho se divide! Sem o Mapa, só dá para ouvir e olhar de longe: escolha por uma pista (o Mapa mostra tudo).')),
         if (mission != null && mission['leg'] == (run['leg'] ?? 1))
           Text(
               '📋 ${tr('Missão')}: ${_mission(mission)} (${mission['done']}/${mission['need']})${(mission['done'] as num) >= (mission['need'] as num) ? ' ✔' : ''}',
@@ -1973,9 +2002,13 @@ class _FactoryScreenState extends State<FactoryScreen> {
       ],
       menu: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         _menuGrid(wide: true, [
+          // Sem o Mapa: dá para ir por qualquer caminho, mas só com uma pista do que tem. Igual ao site.
           if (fork && !hasMap)
-            _menuButton('${tr('SEGUIR')} ❓', widget.busy ? null : () => pick(FactoryRun.blindPick(run)),
-                sub: tr('Sem o Mapa: um dos caminhos, às cegas.'), key: const ValueKey('map-node-blind')),
+            for (var k = 0; k < options.length; k++)
+              _menuButton('🧭 ${tr('CAMINHO {0}').replaceAll('{0}', '${k + 1}')}',
+                  widget.busy || FactoryRun.nodeBlocked(run, options[k]) ? null : () => pick(k),
+                  sub: FactoryRun.nodeBlocked(run, options[k]) ? tr('Precisa da MO Surf (3ª insígnia).') : tr(_pathHint(options[k])),
+                  key: ValueKey('map-node-$k')),
           if (hasMap || !fork)
           for (var k = 0; k < options.length; k++)
             Builder(builder: (context) {

@@ -8110,5 +8110,20 @@
  "O resto do time ganhou XP com o Exp. Share!": {"en": "The rest of the team gained XP from the Exp. Share!", "fr": "Le reste de l'équipe gagne de l'XP grâce au Multi Exp !", "es": "¡El resto del equipo ganó XP con el Repartir Exp.!"},
  "{0} subiu para o nível {1}!": {"en": "{0} grew to level {1}!", "fr": "{0} monte au niveau {1} !", "es": "¡{0} subió al nivel {1}!"},
  "{0} inimigo subiu para o nível {1}!": {"en": "The foe's {0} grew to level {1}!", "fr": "{0} ennemi monte au niveau {1} !", "es": "¡{0} enemigo subió al nivel {1}!"},
- "Enfermeira Joy": {"en": "Nurse Joy", "fr": "Infirmière Joëlle", "es": "Enfermera Joy"}
+ "Enfermeira Joy": {"en": "Nurse Joy", "fr": "Infirmière Joëlle", "es": "Enfermera Joy"},
+ "Tirar o item": {"en": "Remove item", "fr": "Retirer l'objet", "es": "Quitar el objeto"},
+ "CAMINHO {0}": {"en": "PATH {0}", "fr": "CHEMIN {0}", "es": "CAMINO {0}"},
+ "O caminho se divide! Sem o Mapa, só dá para ouvir e olhar de longe: escolha por uma pista (o Mapa mostra tudo).": {"en": "The path splits! Without the Map you can only listen and look from afar: pick by a hint (the Map shows everything).", "fr": "Le chemin se divise ! Sans la Carte, on ne peut qu'écouter et regarder de loin : choisissez selon un indice (la Carte montre tout).", "es": "¡El camino se divide! Sin el Mapa solo puedes escuchar y mirar de lejos: elige por una pista (el Mapa lo muestra todo)."},
+ "🌿 Barulho no mato...": {"en": "🌿 Rustling in the grass...", "fr": "🌿 Du bruit dans les herbes...", "es": "🌿 Ruido en la hierba..."},
+ "👣 Pegadas de treinador...": {"en": "👣 A trainer's footprints...", "fr": "👣 Des traces de dresseur...", "es": "👣 Huellas de entrenador..."},
+ "💪 Pegadas firmes e fundas...": {"en": "💪 Deep, firm footprints...", "fr": "💪 Des traces profondes et fermes...", "es": "💪 Huellas firmes y profundas..."},
+ "🎒 Alguém com uma mochila grande...": {"en": "🎒 Someone with a big backpack...", "fr": "🎒 Quelqu'un avec un gros sac...", "es": "🎒 Alguien con una mochila grande..."},
+ "⛺ Fumaça de fogueira...": {"en": "⛺ Campfire smoke...", "fr": "⛺ De la fumée de feu de camp...", "es": "⛺ Humo de fogata..."},
+ "✨ Algo brilhando no chão...": {"en": "✨ Something shining on the ground...", "fr": "✨ Quelque chose brille par terre...", "es": "✨ Algo brillando en el suelo..."},
+ "🔁 Alguém acenando de longe...": {"en": "🔁 Someone waving from afar...", "fr": "🔁 Quelqu'un fait signe au loin...", "es": "🔁 Alguien saludando de lejos..."},
+ "⚠️ Um rugido forte...": {"en": "⚠️ A loud roar...", "fr": "⚠️ Un rugissement puissant...", "es": "⚠️ Un rugido fuerte..."},
+ "🏆 Um treinador famoso por perto...": {"en": "🏆 A famous trainer nearby...", "fr": "🏆 Un dresseur célèbre tout près...", "es": "🏆 Un entrenador famoso cerca..."},
+ "🌟 Uma presença enorme...": {"en": "🌟 A huge presence...", "fr": "🌟 Une présence immense...", "es": "🌟 Una presencia enorme..."},
+ "🌳 Um caminho escondido...": {"en": "🌳 A hidden path...", "fr": "🌳 Un chemin caché...", "es": "🌳 Un camino oculto..."},
+ "🌊 Água funda...": {"en": "🌊 Deep water...", "fr": "🌊 De l'eau profonde...", "es": "🌊 Agua profunda..."}
 }

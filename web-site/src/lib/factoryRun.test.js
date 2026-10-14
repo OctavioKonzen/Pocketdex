@@ -9,7 +9,7 @@ import {
   EXP_SHARE, expProgress, shopOwned, baseForm, forSale, normalizeOwned, buyUpgrade, upgradePrice, UPGRADES,
   tradeMon, skipTrade, TRADE_LEVELS, escapeRope, ESCAPE_HP, progress, ACHIEVEMENTS, LUCKY_EGG, rerollRoute, FOE_ITEMS,
   regionLegend, REGION_LEGENDS, rivalStarter, starterLine, newMission, resolveChoice, MISSION_MONEY,
-  clockOf, weatherOf, fieldOf, placeMusic, upgradeNeeds, UPGRADE_BRANCHES, SEASON_TYPES, BIOME_IDS, SCENE_FIELD,
+  clockOf, weatherOf, fieldOf, placeMusic, upgradeNeeds, UPGRADE_BRANCHES, unequipItem, SEASON_TYPES, BIOME_IDS, SCENE_FIELD,
   HM_BADGES, cutPath, nodeBlocked, dexOf, dexRewardFor, DEX_REWARDS, leaveDaycare, takeDaycare, DAYCARE_EGG, EGG_IVS, rematchBoss,
 } from './factoryRun'
 
@@ -874,5 +874,18 @@ describe('mapa da corrida', () => {
     expect(buyUpgrade({ ...g, best: 8 }, 'ivs').upgrades.ivs).toBe(1)
     expect(upgradeNeeds({ ...g, best: 99, upgrades: { reroll: 1 } }, 'cards')).toEqual([{ kind: 'owned', count: 8 }])
     expect(UPGRADE_BRANCHES.flatMap((b) => b[2]).sort()).toEqual(Object.keys(UPGRADES).sort())
+  })
+
+  it('tirar o item equipado: vai para os guardados e dá para equipar em outro', () => {
+    const base = startRun(emptyFactory(), data, 1, 42)
+    const run = { ...base, team: [{ ...base.team[0], item: 'leftovers', extras: ['life-orb'] }, { ...base.team[0], item: null, extras: [] }], stash: [] }
+    const off = unequipItem(run, 0)
+    expect(off.team[0].item).toBe(null)
+    expect(off.stash).toEqual(['leftovers'])
+    const extra = unequipItem(off, 0, 0)
+    expect(extra.team[0].extras).toEqual([])
+    expect(extra.stash).toEqual(['leftovers', 'life-orb'])
+    expect(equipFromStash(extra, 0, 1).team[1].item).toBe('leftovers')
+    expect(unequipItem(run, 1)).toBe(run)
   })
 })

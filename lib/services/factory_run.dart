@@ -1841,6 +1841,23 @@ class FactoryRun {
   }
 
   /// Troca o item principal pelo extra da posição (o principal volta para os extras).
+  /// Tira o item (extra: a posição de um extra; sem ela, o principal) e guarda: dá para equipar em outro. Igual ao site.
+  static Json unequipItem(Json run, int index, [int? extra]) {
+    final team = teamOf(run);
+    if (index < 0 || index >= team.length) return run;
+    final mon = team[index];
+    final extras = [for (final x in (mon['extras'] as List?) ?? const []) '$x'];
+    final id = extra == null ? mon['item'] as String? : (extra >= 0 && extra < extras.length ? extras[extra] : null);
+    if (id == null) return run;
+    if (extra == null) {
+      team[index] = {...mon, 'item': null};
+    } else {
+      extras.removeAt(extra);
+      team[index] = {...mon, 'extras': extras};
+    }
+    return {...run, 'team': team, 'stash': [...(run['stash'] as List? ?? const []), id]};
+  }
+
   static Json setMainItem(Json run, int index, int extra) {
     final team = teamOf(run);
     if (index < 0 || index >= team.length) return run;

@@ -580,4 +580,25 @@ void main() {
     expect(FactoryRun.upgradeNeeds({...g, 'best': 99, 'upgrades': {'reroll': 1}}, 'cards'), [{'kind': 'owned', 'count': 8}]);
     expect([for (final b in FactoryRun.upgradeBranches) ...b.$3]..sort(), FactoryRun.upgrades.keys.toList()..sort());
   });
+
+  test('tirar o item equipado (igual ao site)', () {
+    final base = FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!;
+    final first = FactoryRun.teamOf(base).first;
+    final run = {
+      ...base,
+      'team': [
+        {...first, 'item': 'leftovers', 'extras': ['life-orb']},
+        {...first, 'item': null, 'extras': <String>[]},
+      ],
+      'stash': <String>[],
+    };
+    final off = FactoryRun.unequipItem(run, 0);
+    expect(FactoryRun.teamOf(off)[0]['item'], isNull);
+    expect(off['stash'], ['leftovers']);
+    final extra = FactoryRun.unequipItem(off, 0, 0);
+    expect(FactoryRun.teamOf(extra)[0]['extras'], isEmpty);
+    expect(extra['stash'], ['leftovers', 'life-orb']);
+    expect(FactoryRun.teamOf(FactoryRun.equipFromStash(extra, 0, 1))[1]['item'], 'leftovers');
+    expect(identical(FactoryRun.unequipItem(run, 1), run), isTrue);
+  });
 }
