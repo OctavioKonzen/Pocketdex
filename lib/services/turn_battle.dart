@@ -110,6 +110,9 @@ class BattleMon {
         teraType = teraType ?? (types.isEmpty ? '' : types.first),
         _orig = (id: id, types: types, spe: spe, maxHp: maxHp, calc: calc, mega: mega, ability: ability);
 
+  /// O Pokémon de antes da Mega (ou da forma que mudou na batalha).
+  int get baseId => _orig.id;
+
   /// Volta ao original (antes da Mega, Terastal e Dinamax).
   void restore() {
     id = _orig.id;

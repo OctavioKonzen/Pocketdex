@@ -32,6 +32,7 @@ import '../utils/site_ui.dart';
 import '../utils/string_extensions.dart';
 import '../utils/team_analysis.dart' show allTypes;
 import '../widgets/pokemon_sprite.dart';
+import '../services/animated_sprites.dart';
 import '../widgets/trainer_sprite.dart';
 import '../services/trainers.dart';
 import '../services/battle_log.dart';
@@ -1786,17 +1787,6 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                       Positioned.fill(child: _WeatherFx(_weather, terrain: _terrain, place: _place)),
                       // Como no Black & White: o adversário lá atrás à direita (menor), o seu de costas na frente à esquerda (grande, cortado pela caixa do texto).
                       Positioned(
-                          left: 0,
-                          top: h * 0.05,
-                          width: w * 0.5,
-                          child: AnimatedOpacity(
-                              opacity: _introOn && _poke[1] == 'hidden' ? 0 : 1,
-                              duration: const Duration(milliseconds: 200),
-                              child: GestureDetector(
-                                  key: const ValueKey('inspect-foe'),
-                                  onTap: () => _inspect(1),
-                                  child: _InfoBox(mon: foe, hp: _hp[1][_active[1]], status: _status[1][_active[1]], dmax: _dmax[1], boosts: _boosts[1], bw: true)))),
-                      Positioned(
                           // O inimigo fica mais longe: menor e com os pés na
                           // frente do meio da plataforma (pisando nela, como o seu).
                           right: w * 0.11,
@@ -1854,6 +1844,18 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                             child: TrainerBack(_myTrainer, frame: _backFrame, height: h * 0.62),
                           ),
                         ),
+                      // As caixas de vida ficam sempre por cima dos Pokémon (como nos jogos): um Pokémon grande não cobre a vida.
+                      Positioned(
+                          left: 0,
+                          top: h * 0.05,
+                          width: w * 0.5,
+                          child: AnimatedOpacity(
+                              opacity: _introOn && _poke[1] == 'hidden' ? 0 : 1,
+                              duration: const Duration(milliseconds: 200),
+                              child: GestureDetector(
+                                  key: const ValueKey('inspect-foe'),
+                                  onTap: () => _inspect(1),
+                                  child: _InfoBox(mon: foe, hp: _hp[1][_active[1]], status: _status[1][_active[1]], dmax: _dmax[1], boosts: _boosts[1], bw: true)))),
                       Positioned(
                           right: 0,
                           bottom: h * 0.255,
@@ -2479,7 +2481,10 @@ class _SpriteState extends State<_Sprite> with TickerProviderStateMixin {
               duration: const Duration(milliseconds: 700),
               child: AnimatedScale(
               // O tamanho dele (pela altura) e, no Dinamax, gigante.
-              scale: battleScale(battleHeights[widget.id]) * (widget.dmax ? (widget.back ? 1.35 : 1.15) : 1),
+              // A Mega (ou outra forma) com o mesmo tamanho de pixel da forma de antes: uma mais larga não encolhe.
+              scale: battleScale(battleHeights[widget.id]) *
+                  (widget.dmax ? (widget.back ? 1.35 : 1.15) : 1) *
+                  (widget.dmax || widget.id == widget.mon.baseId ? 1 : AnimatedSprites.instance.pixelRatio(widget.mon.baseId, widget.id, shiny: widget.mon.shiny, back: widget.back)),
               alignment: Alignment.bottomCenter,
               duration: const Duration(milliseconds: 700),
               child: Stack(
@@ -3318,27 +3323,138 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
     } catch (e) { setState(() { _error = e is StateError ? e.message : 'Não foi possível executar estas ações. Escolha novamente.'; _choices.clear(); }); }
   }
   String _trainer(String controller) => controller == _uid ? tr('Você') : '${widget.online?.names[controller] ?? 'NPC'}';
-  Widget _field() => AspectRatio(aspectRatio:(_count==3?1:16/10)/MediaQuery.textScalerOf(context).scale(1).clamp(1,2),child: Container(
-    decoration:BoxDecoration(border:Border.all(color:const Color(0xFF1E293B),width:4)),
-    child:LayoutBuilder(builder:(context,constraints) {
-      final w=constraints.maxWidth,h=constraints.maxHeight;
-      Widget sprites(int side) => Positioned(left:side==_side?w*0.01:null,right:side==_side?null:w*0.01,bottom:h*(side==_side ? 0.05 : 0.52),width:w*0.45,
-        child:Row(key:ValueKey('battle-sprites-$side'),crossAxisAlignment:CrossAxisAlignment.end,children:[for(final slot in (_b.simulatorState!['sides'][side]['slots'] as List).cast<Map>())
-          if((slot['index'] as int)>=0) Expanded(child:AspectRatio(aspectRatio:1,child:Builder(builder:(_) {
-            final mon=_b.teams[side][slot['index'] as int];
-            return _Sprite(mon:mon,id:mon.dmax>0?mon.gmax??mon.id:mon.id,dmax:mon.dmax>0,tera:_teraOf(mon),back:side==_side,fainted:mon.hp<=0);
-          }))),
-        ]));
-      Widget info(int side) => Positioned(left:side==_side?null:w*0.03,right:side==_side?w*0.03:null,top:side==_side?null:h*0.04,bottom:side==_side?h*0.04:null,width:w*0.45,
-        child:Column(key:ValueKey('battle-info-$side'),children:[for(final slot in (_b.simulatorState!['sides'][side]['slots'] as List).cast<Map>())
-          if((slot['index'] as int)>=0) Padding(padding:const EdgeInsets.only(bottom:2),child:Builder(builder:(_) {
-            final mon=_b.teams[side][slot['index'] as int];
-            return Semantics(label:'${_trainer(_b.controllers![side][slot['slot'] as int])} · ${mon.name}',child:FittedBox(fit:BoxFit.scaleDown,child:SizedBox(width:210,child:_InfoBox(mon:mon,hp:mon.hp,mine:side==_side,status:mon.status,dmax:mon.dmax>0))));
-          })),
-        ]));
-      return Stack(clipBehavior:Clip.hardEdge,children:[Positioned.fill(child:CustomPaint(painter:BattleScenePainter(weather:_b.weather))),sprites(1-_side),sprites(_side),info(1-_side),info(_side)]);
-    }),
-  ));
+  /// O campo da dupla/trio, como na batalha normal (e no Black & White): o cenário do lugar, os adversários lá atrás
+  /// à direita em plataformas, os seus de costas na frente à esquerda (maiores) e as caixas de vida no estilo BW
+  /// (as dos adversários no alto à esquerda, as suas embaixo à direita: nenhuma cobre um Pokémon).
+  Widget _field() {
+    final scene = battleScene(_b.scene, _b.seed);
+    List<Map> live(int side) => [for (final slot in (_b.simulatorState!['sides'][side]['slots'] as List).cast<Map>()) if ((slot['index'] as int) >= 0) slot];
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      child: AspectRatio(
+        aspectRatio: _count == 3 ? 1 : 4 / 3,
+        child: DecoratedBox(
+          decoration: BoxDecoration(border: Border.all(color: const Color(0xFF1E293B), width: 4), color: const Color(0xFF9FDCFF)),
+          child: LayoutBuilder(builder: (context, constraints) {
+            final w = constraints.maxWidth, h = constraints.maxHeight;
+            Widget mon(int side, Map slot) {
+              final mon = _b.teams[side][slot['index'] as int];
+              final id = mon.dmax > 0 ? mon.gmax ?? mon.id : mon.id;
+              return Expanded(
+                child: AspectRatio(
+                  aspectRatio: 1,
+                  child: Stack(clipBehavior: Clip.none, fit: StackFit.expand, children: [
+                    PlatformBase(scene: scene, side: side == _side ? 'mine' : 'foe', id: id),
+                    _Sprite(mon: mon, id: id, dmax: mon.dmax > 0, tera: _teraOf(mon), back: side == _side, fainted: mon.hp <= 0),
+                  ]),
+                ),
+              );
+            }
+
+            // Os adversários: lá atrás, à direita, pisando no chão do cenário.
+            final foes = live(1 - _side), mine = live(_side);
+            final foeW = w * (_count == 3 ? 0.66 : 0.58), myW = w * (_count == 3 ? 0.8 : 0.64);
+            Widget info(int side) {
+              final mineSide = side == _side;
+              return Positioned(
+                left: mineSide ? null : 0,
+                right: mineSide ? 0 : null,
+                top: mineSide ? null : h * 0.02,
+                bottom: mineSide ? h * 0.02 : null,
+                width: w * (_count == 3 ? 0.38 : 0.44),
+                child: Column(key: ValueKey('battle-info-$side'), children: [
+                  for (final slot in live(side))
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 2),
+                      child: Builder(builder: (_) {
+                        final mon = _b.teams[side][slot['index'] as int];
+                        return Semantics(
+                            label: '${_trainer(_b.controllers![side][slot['slot'] as int])} · ${mon.name}',
+                            child: FittedBox(fit: BoxFit.scaleDown, child: SizedBox(width: 210, child: _InfoBox(mon: mon, hp: mon.hp, mine: mineSide, status: mon.status, dmax: mon.dmax > 0, bw: true))));
+                      }),
+                    ),
+                ]),
+              );
+            }
+
+            return Stack(clipBehavior: Clip.hardEdge, children: [
+              Positioned.fill(child: BattleBackdrop(scene: scene, weather: _b.weather)),
+              Positioned(
+                right: 0,
+                bottom: h * 0.5,
+                width: foeW,
+                height: foeW / max(2, _count),
+                child: Row(key: ValueKey('battle-sprites-${1 - _side}'), crossAxisAlignment: CrossAxisAlignment.end, children: [for (final slot in foes) mon(1 - _side, slot)]),
+              ),
+              // Os seus: de costas, na frente, maiores.
+              Positioned(
+                left: 0,
+                bottom: 0,
+                width: myW,
+                height: myW / max(2, _count),
+                child: Row(key: ValueKey('battle-sprites-$_side'), crossAxisAlignment: CrossAxisAlignment.end, children: [for (final slot in mine) mon(_side, slot)]),
+              ),
+              // As caixas de vida por cima dos Pokémon.
+              info(1 - _side),
+              info(_side),
+            ]);
+          }),
+        ),
+      ),
+    );
+  }
+
+  /// A narração do turno, uma frase de cada vez (como na batalha normal).
+  String _line = '';
+  List<BattleEvent>? _narrated;
+  Timer? _narration;
+
+  void _narrate(List<BattleEvent> events) {
+    if (identical(events, _narrated)) return;
+    _narrated = events;
+    _narration?.cancel();
+    final lines = [
+      for (final e in events.where((e) => e.t == 'text'))
+        () {
+          final (line, args) = TurnBattle.lineOf(e);
+          var value = tr(line);
+          for (var i = 0; i < args.length; i++) {
+            value = value.replaceFirst('{$i}', args[i]);
+          }
+          return value;
+        }(),
+    ];
+    if (lines.isEmpty) return;
+    var k = 0;
+    _line = lines.first;
+    _narration = Timer.periodic(const Duration(milliseconds: 1100), (timer) {
+      if (!mounted || ++k >= lines.length) {
+        timer.cancel();
+        return;
+      }
+      setState(() => _line = lines[k]);
+    });
+  }
+
+  @override
+  void dispose() {
+    _narration?.cancel();
+    super.dispose();
+  }
+
+  /// A caixa de texto (escura, como a da batalha normal).
+  Widget _textBox(String text) => Container(
+        key: const ValueKey('battle-text'),
+        constraints: const BoxConstraints(minHeight: 52),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF4D4D4D), Color(0xFF2E2E2E)]),
+          border: Border.all(color: const Color(0xFF1A1A1A), width: 3),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: m.Text(text, style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.25, fontWeight: FontWeight.bold, shadows: _bwShadow)),
+      );
+
   Widget _button(String label, String sub, Color color, Key key, VoidCallback? onTap, {Color text = Colors.white}) => Material(
         color: color,
         borderRadius: BorderRadius.circular(10),
@@ -3422,7 +3538,7 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
         ]);
       }
     }
-    return Card(color: const Color(0xFF1E293B), child: Padding(padding: const EdgeInsets.all(8), child: DefaultTextStyle.merge(style: const TextStyle(color: Colors.white), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+    return Padding(padding: const EdgeInsets.only(top: 6), child: Padding(padding: EdgeInsets.zero, child: DefaultTextStyle.merge(style: const TextStyle(color: Colors.white), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       for (final slot in chosen) m.Text('✓ ${_describe(slot)}', style: const TextStyle(fontSize: 12, color: Colors.white70)),
       if (chosen.isNotEmpty) const SizedBox(height: 6),
       body,
@@ -3432,21 +3548,32 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
   @override
   Widget build(BuildContext context) {
     final events = widget.online?.events ?? _events;
+    _narrate(events);
     WidgetsBinding.instance.addPostFrameCallback((_) { if (mounted) _autoLocked(); });
+    final status = widget.online?.message ?? (_b.winner != null ? _b.winner == -1 ? 'Empate!' : _b.winner == _side ? 'Você venceu!' : 'A equipe adversária venceu!' : '${tr('Turno')} ${_b.turn}');
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       _field(),
-      const SizedBox(height: 8),
-      Text(widget.online?.message ?? (_b.winner != null ? _b.winner == -1 ? 'Empate!' : _b.winner == _side ? 'Você venceu!' : 'A equipe adversária venceu!' : '${tr('Turno')} ${_b.turn}'), style: const TextStyle(fontWeight: FontWeight.bold)),
-      if (_b.winner == null && _pending.isNotEmpty) _panel(),
-      const Text('A reserva é compartilhada pela equipe. Os itens equipados mantêm seus efeitos.', style: TextStyle(fontSize: 12)),
-      if (_error != null) Text(_error!, style: const TextStyle(color: Colors.redAccent)),
-      if (_b.winner == null && _pending.isEmpty) FilledButton(onPressed: _locked ? null : _send, child: const Text('Continuar')),
-      ConstrainedBox(constraints: const BoxConstraints(maxHeight: 180), child: SingleChildScrollView(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [for (final e in events.where((e) => e.t == 'text')) Builder(builder: (_) {
-        final (line, args) = TurnBattle.lineOf(e); var value = tr(line);
-        for (var i = 0; i < args.length; i++) { value = value.replaceFirst('{$i}', args[i]); }
-        return m.Text(value, style: const TextStyle(fontSize: 12));
-      })]))),
-      Wrap(spacing: 10, children: [TextButton(onPressed: widget.online?.onClose ?? widget.onExit, child: Text(widget.online == null ? 'Voltar' : 'Desistir')), if (widget.online == null && _b.winner != null) TextButton(onPressed: widget.onAgain, child: const Text('Batalhar de novo'))]),
+      // Embaixo do campo, como a tela de baixo do DS: o texto do turno e as escolhas.
+      Container(
+        padding: const EdgeInsets.all(8),
+        decoration: const BoxDecoration(color: Color(0xFF1E293B), borderRadius: BorderRadius.vertical(bottom: Radius.circular(16))),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          // A frase do turno (narrada uma de cada vez); sem frase, o turno (ou quem venceu).
+          _textBox(_line.isNotEmpty && (_b.winner == null || _narration?.isActive == true) ? _line : status),
+          if (_line.isNotEmpty && (_b.winner == null || _narration?.isActive == true))
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: m.Text(status, key: const ValueKey('battle-turn'), style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
+            ),
+          if (_b.winner == null && _pending.isNotEmpty) _panel(),
+          if (_error != null) Text(_error!, style: const TextStyle(color: Colors.redAccent)),
+          if (_b.winner == null && _pending.isEmpty) FilledButton(onPressed: _locked ? null : _send, child: const Text('Continuar')),
+          Wrap(spacing: 10, children: [
+            TextButton(onPressed: widget.online?.onClose ?? widget.onExit, child: Text(widget.online == null ? 'Voltar' : 'Desistir')),
+            if (widget.online == null && _b.winner != null) TextButton(onPressed: widget.onAgain, child: const Text('Batalhar de novo')),
+          ]),
+        ]),
+      ),
     ]);
   }
 }

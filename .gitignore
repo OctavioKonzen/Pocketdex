@@ -50,3 +50,5 @@ app.*.map.json
 /tool/battle-engine/node_modules/
 /test/fixtures/battle_move_reference.json
 /docs/battle-move-verification.json
+# Motor e dados publicados para o app baixar (tool/build_ota.py)
+/web-site/public/ota/

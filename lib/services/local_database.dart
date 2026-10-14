@@ -10,6 +10,7 @@
 
 import 'dart:convert';
 import 'package:flutter/services.dart' show rootBundle;
+import 'ota_update.dart';
 import '../i18n/i18n.dart';
 import '../utils/app_images.dart';
 
@@ -23,6 +24,8 @@ class LocalDatabase {
 
   Future<dynamic> _table(String name) {
     return _tables.putIfAbsent(name, () async {
+      // Os arquivos que podem vir pela rede (OtaUpdate: regras dos golpes e itens da batalha).
+      if (OtaUpdate.files.contains('$name.json')) return OtaUpdate.load('$name.json', json.decode);
       final raw = await rootBundle.loadString('assets/database/$name.json');
       return json.decode(raw);
     });
