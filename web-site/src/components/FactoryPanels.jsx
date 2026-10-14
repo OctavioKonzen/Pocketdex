@@ -19,7 +19,7 @@ import {
   BAG_ITEMS, bossOf, unequipItem, ROUTE_LENGTH, CITY_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, MAX_TEAM, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shinyPrice, shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, takeCard, teachMove, teamDown, applyBagItem, unlockShiny, VITAMIN_EVS, VITAMINS,
-  buyShiny, forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE,
+  buyShiny, forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor,
   tradeMon, skipTrade, TRADE_LEVELS, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, bossScene,
   resolveChoice, regionLegend, leaderType, villainTeam, rivalBoss, placeInfo, routeInfo, DUNGEON_LENGTH, dungeonPos, townShop, townCenter,
   weeklyOf, startWeekly, COSMETIC_BALLS, COSMETIC_FRAMES, hasCosmetic, buyCosmetic, equipCosmetic,
@@ -212,12 +212,13 @@ function TeamPanel({ run, data, byId, save, open = false }) {
           <p className="font-bold">🎁 {t('Itens guardados (toque e escolha quem segura)')}</p>
           <div className="mt-1 flex flex-wrap gap-1">
             {run.stash.map((id, k) => (
-              <button key={k} type="button" onClick={() => setStashItem(k)} aria-pressed={stashItem === k}
+              <button key={k} type="button" onClick={() => setStashItem(k)} aria-pressed={stashItem === k} title={itemHelp(id)}
                 className={`flex items-center gap-1 rounded-lg bg-bg px-2 py-1 font-bold ring-2 ${stashItem === k ? 'ring-amber-500' : 'ring-transparent'}`} data-no-translate>
                 <img src={itemIcon(id)} alt="" className="pixelated h-6 w-6" onError={hide} />{itemName(id)}
               </button>
             ))}
           </div>
+          {stashItem != null && itemHelp(run.stash[stashItem]) && <p className="mt-1 text-muted" data-testid="stash-help">{itemHelp(run.stash[stashItem])}</p>}
           {stashItem != null && (
             <div className="mt-1 flex flex-wrap gap-1">
               {run.team.map((m, i) => <MonChip key={i} mon={m} byId={byId} onClick={() => { save(equipFromStash(run, stashItem, i)); setStashItem(null) }} testid={`equip-${i}`} />)}
@@ -259,6 +260,8 @@ function TeamPanel({ run, data, byId, save, open = false }) {
             )}
             {canTeach && <Button onClick={() => setTeaching(i)} data-testid={`teach-${i}`}>📀 {t('Ensinar golpe')}</Button>}
             {teaching === i && <MoveTeacher run={run} index={i} save={save} onClose={() => setTeaching(null)} />}
+            {/* O que o item principal faz (como nos jogos). */}
+            {m.item && itemHelp(m.item) && <p className="w-full pl-9 text-[11px] text-muted" data-testid={`item-help-${i}`}>★ {itemHelp(m.item)}</p>}
           </div>
         )
       })}
@@ -673,18 +676,27 @@ const UPGRADE_ICONS = {
 }
 /** A cor de cada ramo (as linhas e os círculos comprados), na ordem de UPGRADE_BRANCHES. */
 const BRANCH_COLORS = ['#22c55e', '#38bdf8', '#f59e0b', '#ef4444', '#a855f7', '#eab308', '#ec4899']
-/** O quadro da árvore (960×620): os ramos saem de um centro embaixo, em leque (de 200° a −20°). Igual ao app. */
-const TREE = { w: 960, h: 620, cx: 480, cy: 480, first: 140, step: 105, from: 200, to: -20 }
+/** A árvore em círculo (como as árvores de habilidade dos jogos): os ramos saem do centro para todos os lados. Igual ao app. */
+const TREE = { first: 190, step: 70, pad: 230, from: 90, to: -270 }
+/** A melhoria grande que dá nome e símbolo (os nós pequenos usam os da melhoria do mesmo efeito). */
+const upgradeKey = (id) => (isMinor(id) ? MINOR_BASE[UPGRADE_FX[id].join(':')] : id)
 /**
- * As posições (árvore radial): cada ramo ganha um pedaço do leque do tamanho
+ * As posições (árvore radial): cada ramo ganha um pedaço do círculo do tamanho
  * das pontas dele; cada melhoria fica no meio do pedaço do pai, mais longe do
  * centro a cada nível. Igual ao app.
  */
 function skillTreeLayout() {
   const parentOf = (id) => UPGRADE_TREE[id]?.needs?.[0] ?? null
-  const kids = (id, ids) => ids.filter((k) => parentOf(k) === id)
-  const tips = (id, ids) => { const c = kids(id, ids); return c.length ? c.reduce((n, k) => n + tips(k, ids), 0) : 1 }
-  const total = UPGRADE_BRANCHES.reduce((n, [, , ids]) => n + tips(ids[0], ids), 0)
+  const kidsOf = {}
+  for (const [, , ids] of UPGRADE_BRANCHES) for (const id of ids) { const p = parentOf(id); if (p) (kidsOf[p] ??= []).push(id) }
+  const tipsMemo = {}
+  const tips = (id) => (tipsMemo[id] ??= (kidsOf[id] ?? []).reduce((n, k) => n + tips(k), 0) || 1)
+  const depthOf = (id) => (parentOf(id) ? 1 + depthOf(parentOf(id)) : 0)
+  const maxDepth = Math.max(...UPGRADE_BRANCHES.flatMap(([, , ids]) => ids.map(depthOf)))
+  const radius = TREE.first + maxDepth * TREE.step
+  const size = 2 * (radius + TREE.pad)
+  const c = size / 2
+  const total = UPGRADE_BRANCHES.reduce((n, [, , ids]) => n + tips(ids[0]), 0)
   const rad = (d) => (d * Math.PI) / 180
   const out = []
   let start = rad(TREE.from)
@@ -694,33 +706,34 @@ function skillTreeLayout() {
     const place = (id, a, z, depth, parent) => {
       const m = (a + z) / 2
       const r = TREE.first + depth * TREE.step
-      nodes.push({ id, parent, pos: [TREE.cx + Math.cos(m) * r, TREE.cy - Math.sin(m) * r] })
+      nodes.push({ id, parent, pos: [c + Math.cos(m) * r, c - Math.sin(m) * r], angle: m })
       let x = a
-      for (const k of kids(id, ids)) {
-        const span = ((z - a) * tips(k, ids)) / tips(id, ids)
+      for (const k of kidsOf[id] ?? []) {
+        const span = ((z - a) * tips(k)) / tips(id)
         place(k, x, x + span, depth + 1, id)
         x += span
       }
     }
-    const span = ((rad(TREE.to) - rad(TREE.from)) * tips(ids[0], ids)) / total
+    const span = ((rad(TREE.to) - rad(TREE.from)) * tips(ids[0])) / total
     place(ids[0], start, start + span, 0, null)
+    out.push({ icon, branch, ids, color, nodes, mid: start + span / 2 })
     start += span
-    out.push({ icon, branch, ids, color, nodes })
   })
-  return out
+  return { branches: out, size, c, radius }
 }
 
 /**
- * A árvore de melhorias em leque (como as árvores de habilidade dos jogos): os
- * ramos saem do centro, cada círculo é uma melhoria (comprada: colorida; para
- * comprar: branca; bloqueada: cinza com cadeado). Tocando, abre o que ela faz e o
- * botão de comprar. Igual ao app.
+ * A árvore de melhorias (como as árvores de habilidade dos jogos): fundo escuro,
+ * os ramos saem do centro em todas as direções; os círculos grandes são as
+ * melhorias (com o selo do nível), os pequenos são os nós da trilha delas.
+ * Comprado: aceso na cor do ramo; para comprar: contorno claro; bloqueado:
+ * apagado. Tocando, abre o que faz e o botão de comprar. Igual ao app.
  */
 function SkillTree({ factory }) {
-  const layout = skillTreeLayout()
+  const { branches: layout, size, c, radius } = useMemo(() => skillTreeLayout(), [])
   const firstOpen = layout.flatMap((b) => b.ids).find((id) => upgradePrice(factory, id) != null && !upgradeNeeds(factory, id).length)
   const [picked, setPicked] = useState(null)
-  const [zoom, setZoom] = useState(0.7)
+  const [zoom, setZoom] = useState(0.4)
   const box = useRef(null)
   const id = picked ?? firstOpen ?? 'level'
   const up = UPGRADES[id]
@@ -730,29 +743,37 @@ function SkillTree({ factory }) {
   const needs = price == null ? [] : upgradeNeeds(factory, id)
   const stateOf = (u) => (upgradeLevel(factory, u) ? 'have' : upgradeNeeds(factory, u).some((n) => n.kind === 'up') ? 'locked' : 'open')
   const posOf = Object.fromEntries(layout.flatMap((b) => b.nodes.map((n) => [n.id, n.pos])))
-  // Começa centrada embaixo (o centro da árvore); dá para arrastar a barra e dar zoom.
+  const spent = Object.values(factory.upgrades ?? {}).reduce((n, v) => n + v, 0)
+  const all = Object.values(UPGRADES).reduce((n, u) => n + u.max, 0)
+  // Começa no centro da árvore; dá para arrastar e dar zoom.
   useEffect(() => {
     const el = box.current
-    if (el) { el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2; el.scrollTop = el.scrollHeight }
+    if (el) { el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2; el.scrollTop = (el.scrollHeight - el.clientHeight) / 2 }
   }, [zoom])
+  const key = upgradeKey(id)
   return (
     <div className="space-y-2" data-testid="skill-tree">
       <div className="relative">
-        <div ref={box} className="max-h-[26rem] overflow-auto rounded-xl bg-slate-950">
-          <svg width={TREE.w * zoom} height={TREE.h * zoom} viewBox={`0 0 ${TREE.w} ${TREE.h}`} role="img" aria-label={t('Árvore de melhorias')}>
+        <div ref={box} className="max-h-[34rem] overflow-auto rounded-xl" style={{ background: 'radial-gradient(circle at center, #1e1b4b 0%, #0b1020 55%, #05070d 100%)' }}>
+          <svg width={size * zoom} height={size * zoom} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={t('Árvore de melhorias')}>
+            {/* Anéis de fundo (a distância do centro). */}
+            {[1, 2, 3, 4, 5].map((k) => <circle key={`ring-${k}`} cx={c} cy={c} r={(k * (size / 2 - TREE.pad)) / 5} fill="none" stroke="#1e293b" strokeWidth="2" strokeDasharray="6 10" />)}
             {layout.map((b) => b.nodes.map((n) => {
-              const [x1, y1] = n.parent ? posOf[n.parent] : [TREE.cx, TREE.cy]
+              const [x1, y1] = n.parent ? posOf[n.parent] : [c, c]
               const lit = upgradeLevel(factory, n.id) > 0
-              return <line key={`l-${n.id}`} x1={x1} y1={y1} x2={n.pos[0]} y2={n.pos[1]} stroke={lit ? b.color : '#334155'} strokeWidth={lit ? 4 : 2} />
+              return <line key={`l-${n.id}`} x1={x1} y1={y1} x2={n.pos[0]} y2={n.pos[1]} stroke={lit ? b.color : '#334155'} strokeOpacity={lit ? 1 : 0.7} strokeWidth={lit ? 5 : isMinor(n.id) ? 2 : 3} strokeLinecap="round" />
             }))}
-            <circle cx={TREE.cx} cy={TREE.cy} r="14" fill="#f8fafc" />
+            <circle cx={c} cy={c} r="54" fill="#0f172a" stroke="#fde047" strokeWidth="4" />
+            <text x={c} y={c - 4} textAnchor="middle" fontSize="30">⭐</text>
+            <text x={c} y={c + 30} textAnchor="middle" fontSize="15" fontWeight="900" fill="#fde047">{spent}/{all}</text>
             {layout.map((b) => {
-              const [rx, ry] = b.nodes[0].pos
-              const have = b.ids.reduce((n, k) => n + upgradeLevel(factory, k), 0)
-              const all = b.ids.reduce((n, k) => n + UPGRADES[k].max, 0)
+              const have = b.ids.reduce((k, u) => k + upgradeLevel(factory, u), 0)
+              const total = b.ids.reduce((k, u) => k + UPGRADES[u].max, 0)
+              // O nome do ramo e os pontos, na borda, no meio do pedaço dele.
+              const r = radius + 55
               return (
-                <text key={`t-${b.branch}`} x={rx} y={ry + 40} textAnchor="middle" fontSize="13" fontWeight="900" fill={b.color}>
-                  {b.icon} {t(b.branch)} {have}/{all}
+                <text key={`t-${b.branch}`} x={c + Math.cos(b.mid) * r} y={c - Math.sin(b.mid) * r + 10} textAnchor="middle" fontSize="30" fontWeight="900" fill={b.color} stroke="#05070d" strokeWidth="6" paintOrder="stroke">
+                  {b.icon} {t(b.branch)} · {have}/{total}
                 </text>
               )
             })}
@@ -761,33 +782,40 @@ function SkillTree({ factory }) {
               const lv = upgradeLevel(factory, n.id)
               const state = stateOf(n.id)
               const sel = n.id === id
+              const minor = isMinor(n.id)
+              const r = minor ? 11 : 24
               return (
-                <g key={n.id} onClick={() => setPicked(n.id)} className="cursor-pointer" data-testid={`upgrade-${n.id}`} role="button" aria-label={t(UPGRADE_NAMES[n.id])}>
-                  <circle cx={n.pos[0]} cy={n.pos[1]} r={sel ? 19 : 16} fill={state === 'have' ? b.color : '#1e293b'} stroke={sel ? '#fde047' : state === 'locked' ? '#475569' : b.color} strokeWidth={sel ? 4 : 2} opacity={state === 'locked' ? 0.5 : 1} />
-                  <text x={n.pos[0]} y={n.pos[1] + 5} textAnchor="middle" fontSize="15">{state === 'locked' ? '🔒' : UPGRADE_ICONS[n.id]}</text>
-                  {/* O nível (comprado/máximo), num selo embaixo à direita. */}
-                  <rect x={n.pos[0] + 8} y={n.pos[1] + 8} width="22" height="12" rx="6" fill="#0f172a" stroke={b.color} strokeWidth="1" />
-                  <text x={n.pos[0] + 19} y={n.pos[1] + 17} textAnchor="middle" fontSize="8" fontWeight="800" fill="#e2e8f0">{lv}/{u.max}</text>
+                <g key={n.id} onClick={() => setPicked(n.id)} className="cursor-pointer" data-testid={`upgrade-${n.id}`} role="button" aria-label={t(UPGRADE_NAMES[upgradeKey(n.id)])}>
+                  {state === 'have' && <circle cx={n.pos[0]} cy={n.pos[1]} r={r + 7} fill={b.color} opacity="0.25" />}
+                  <circle cx={n.pos[0]} cy={n.pos[1]} r={sel ? r + 4 : r} fill={state === 'have' ? b.color : '#111827'} stroke={sel ? '#fde047' : state === 'locked' ? '#334155' : state === 'open' ? '#f8fafc' : b.color} strokeWidth={sel ? 5 : minor ? 2 : 3} opacity={state === 'locked' ? 0.55 : 1} />
+                  <text x={n.pos[0]} y={n.pos[1] + (minor ? 4 : 7)} textAnchor="middle" fontSize={minor ? 11 : 20} opacity={state === 'locked' ? 0.5 : 1}>{state === 'locked' && !minor ? '🔒' : UPGRADE_ICONS[upgradeKey(n.id)]}</text>
+                  {/* O nível (comprado/máximo), num selo embaixo (só nas melhorias grandes). */}
+                  {!minor && (
+                    <>
+                      <rect x={n.pos[0] - 15} y={n.pos[1] + r - 4} width="30" height="15" rx="7.5" fill="#0f172a" stroke={b.color} strokeWidth="1.5" />
+                      <text x={n.pos[0]} y={n.pos[1] + r + 7} textAnchor="middle" fontSize="10" fontWeight="900" fill="#f8fafc">{lv}/{u.max}</text>
+                    </>
+                  )}
                 </g>
               )
             }))}
           </svg>
         </div>
         <div className="absolute right-2 top-2 flex gap-1">
-          <button type="button" className="h-8 w-8 cursor-pointer rounded-full bg-slate-800 font-black text-white" onClick={() => setZoom((z) => Math.max(0.4, Math.round((z - 0.15) * 100) / 100))} aria-label={t('Diminuir')} data-testid="tree-zoom-out">−</button>
-          <button type="button" className="h-8 w-8 cursor-pointer rounded-full bg-slate-800 font-black text-white" onClick={() => setZoom((z) => Math.min(1.6, Math.round((z + 0.15) * 100) / 100))} aria-label={t('Aumentar')} data-testid="tree-zoom-in">+</button>
+          <button type="button" className="h-8 w-8 cursor-pointer rounded-full bg-slate-800 font-black text-white" onClick={() => setZoom((z) => Math.max(0.2, Math.round((z - 0.1) * 100) / 100))} aria-label={t('Diminuir')} data-testid="tree-zoom-out">−</button>
+          <button type="button" className="h-8 w-8 cursor-pointer rounded-full bg-slate-800 font-black text-white" onClick={() => setZoom((z) => Math.min(1.5, Math.round((z + 0.1) * 100) / 100))} aria-label={t('Aumentar')} data-testid="tree-zoom-in">+</button>
         </div>
       </div>
       {/* O que a melhoria escolhida faz, o que falta e o botão de comprar. */}
       <div className="flex items-center gap-2 rounded-xl border-2 border-amber-400/60 bg-card p-2 text-xs" data-testid="upgrade-detail">
-        <span className="text-2xl">{UPGRADE_ICONS[id]}</span>
+        <span className="text-2xl">{UPGRADE_ICONS[key]}</span>
         <div className="min-w-0 flex-1">
-          <p className="font-black">{t(UPGRADE_NAMES[id])}</p>
+          <p className="font-black">{t(UPGRADE_NAMES[key])}{isMinor(id) ? ` · ${t('nó pequeno')}` : ''}</p>
           <p className="font-bold">{t(up.label).replace('{0}', price == null ? (up.offset ?? 0) + upgradeValue(factory, id) : next)}</p>
           <p className="text-muted">{'★'.repeat(level)}{'☆'.repeat(up.max - level)} · {price == null ? t('No máximo') : `🪙 ${price}`}</p>
           {needs.map((n) => (
             <p key={n.kind} className="text-[11px] text-red-500" data-testid={`need-${id}-${n.kind}`}>
-              ✖ {n.kind === 'up' ? t('{0} no nível {1}').replace('{0}', t(UPGRADE_NAMES[n.id])).replace('{1}', n.level) : n.kind === 'best' ? t('Chegar ao andar {0} (recorde: {1})').replace('{0}', n.floor).replace('{1}', factory.best ?? 0) : t('Ter {0} Pokémon para começar (tem {1})').replace('{0}', n.count).replace('{1}', factory.owned?.length ?? 0)}
+              ✖ {n.kind === 'up' ? t('{0} no nível {1}').replace('{0}', t(UPGRADE_NAMES[upgradeKey(n.id)])).replace('{1}', n.level) : n.kind === 'best' ? t('Chegar ao andar {0} (recorde: {1})').replace('{0}', n.floor).replace('{1}', factory.best ?? 0) : t('Ter {0} Pokémon para começar (tem {1})').replace('{0}', n.count).replace('{1}', factory.owned?.length ?? 0)}
             </p>
           ))}
         </div>
@@ -1453,7 +1481,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         {p.picked?.map((x, k) => <p key={k} className="text-sm" data-testid="factory-pickup">🎒 {t('{0} achou {1} (Pickup)!').replace('{0}', name(x.id)).replace('{1}', itemName(x.item))}</p>)}
         {p.lost?.map((id) => <p key={id} className="text-sm text-red-600" data-testid="factory-lost">🕯️ {t('Nuzlocke: {0} desmaiou e foi embora.').replace('{0}', name(id))}</p>)}
         {p.joy && <p className="text-sm" data-testid="factory-joy">💗 {town ? t('A Enfermeira Joy apareceu e curou o time todo!') : t('{0} apareceu e curou o time todo!').replace('{0}', healerName)}</p>}
-        {[p.drop, p.reward].filter(Boolean).map((id) => <p key={id} className="text-sm" data-testid="factory-drop">🎁 {t('Ganhou {0}!').replace('{0}', itemName(id))}</p>)}
+        {[p.drop, p.reward].filter(Boolean).map((id) => <p key={id} className="text-sm" data-testid="factory-drop">🎁 {t('Ganhou {0}!').replace('{0}', itemName(id))}{itemHelp(id) && <span className="block text-xs text-muted">{itemHelp(id)}</span>}</p>)}
         {p.beat && (
           <p className="text-sm italic" data-testid="factory-beat-line">
             💬 <span data-no-translate>{p.beat.name}</span>: {t(p.beat.kind === 'rival' ? RIVAL_BEAT[Math.min(RIVAL_BEAT.length, run.rivalWins ?? 1) - 1] : BEAT_LINES[p.beat.kind] ?? BEAT_LINES.gym)}
@@ -1829,6 +1857,33 @@ const BALL_HELP = {
   'timer-ball': 'Melhora a cada turno (até 4×)',
 }
 
+/** O que cada item segurado faz na batalha (como nos jogos). */
+const HELD_EFFECT = {
+  'choice-band': 'Ataque ×1,5, mas só usa o primeiro golpe escolhido até trocar',
+  'choice-specs': 'Ataque Especial ×1,5, mas só usa o primeiro golpe escolhido até trocar',
+  'choice-scarf': 'Velocidade ×1,5, mas só usa o primeiro golpe escolhido até trocar',
+  'life-orb': 'Golpes 30% mais fortes; perde 10% do HP a cada ataque',
+  'expert-belt': 'Golpes super efetivos 20% mais fortes',
+  'muscle-band': 'Golpes físicos 10% mais fortes',
+  'wise-glasses': 'Golpes especiais 10% mais fortes',
+  'leftovers': 'Recupera 1/16 do HP no fim de cada turno',
+  'sitrus-berry': 'Com metade do HP ou menos, come e recupera 1/4 do HP',
+  'assault-vest': 'Defesa Especial ×1,5, mas só pode usar golpes de ataque',
+  'rocky-helmet': 'Quem acerta um golpe de contato perde 1/6 do HP',
+  'eviolite': 'Defesa e Defesa Especial ×1,5 se ele ainda pode evoluir',
+  'focus-sash': 'Com o HP cheio, aguenta com 1 de HP um golpe que o derrubaria',
+  'quick-claw': '20% de chance de agir primeiro no turno',
+  'shell-bell': 'Recupera 1/8 do dano que causa',
+  'black-sludge': 'Tipo Veneno recupera 1/16 do HP por turno; os outros perdem 1/8',
+  'weakness-policy': 'Levou um golpe super efetivo: Ataque e Ataque Especial +2',
+  'lum-berry': 'Cura qualquer problema de status (uma vez)',
+  'scope-lens': 'Mais chance de acerto crítico (+1 nível)',
+  'bright-powder': 'Golpes do adversário erram 10% mais',
+  'air-balloon': 'Flutua: imune a golpes de Terra até levar um golpe',
+  'heavy-duty-boots': 'Não sofre dano das armadilhas do campo (Stealth Rock, Spikes...)',
+  'kings-rock': 'Golpes de dano têm 10% de chance de fazer o adversário recuar',
+}
+
 function itemHelp(id) {
   if (id === 'master-ball') return t('Captura sempre')
   if (BALL_HELP[id]) return t(BALL_HELP[id])
@@ -1849,7 +1904,11 @@ function itemHelp(id) {
   if (id === 'bottle-cap') return t('+{0} IVs em todos os atributos, sem limite').replace('{0}', BOTTLE_CAP_IVS)
   if (HELD_BOOST[id]) {
     const boost = Object.entries(HELD_BOOST[id]).map(([s, v]) => `+${Math.round(v * 100)}% ${STAT_LABEL[s]}`).join(', ')
-    return t('Segura o item; se já tem um, vira extra ({0})').replace('{0}', boost)
+    const extra = t('Segura o item; se já tem um, vira extra ({0})').replace('{0}', boost)
+    return HELD_EFFECT[id] ? `${t(HELD_EFFECT[id])}. ${extra}` : extra
   }
+  // Mega Pedras e Cristais Z (drops dos chefes).
+  if (/-z$/.test(id)) return t('Cristal Z: um golpe do tipo dele vira Movimento Z (uma vez por batalha)')
+  if (/ite(-[xy])?$/.test(id) && id !== 'eviolite') return t('Mega Pedra: o Pokémon dela megaevolui (uma vez por batalha)')
   return ''
 }

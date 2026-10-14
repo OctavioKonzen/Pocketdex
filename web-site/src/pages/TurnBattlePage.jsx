@@ -698,10 +698,14 @@ export function Battle(props) {
 /** As cores da tela VS de cada chefe (líder, Elite Four, Campeão, rival, vilão). */
 const VS_KIND = {
   gym: ['Líder de ginásio', '#f97316'], elite: ['Elite Four', '#7c3aed'], champion: ['Campeão', '#eab308'], rival: ['Rival', '#2563eb'], villain: ['Vilão', '#dc2626'],
+  // Toda batalha tem a tela VS: treinador comum, Pokémon selvagem e online.
+  trainer: ['Treinador', '#0d9488'], wild: ['Pokémon selvagem', '#16a34a'], online: ['Online', '#0284c7'],
 }
+/** O nome do jogador cadastrado (a conta), senão "Você". */
+const useMyName = () => useAuth((s) => s.user?.name) || t('Você')
 /** A tela VS (como no Black & White): as faixas entram dos lados, os treinadores e o nome do chefe; toque para pular. */
-function VsSplash({ me, coach, vs, onSkip }) {
-  const [label, color] = VS_KIND[vs.kind] ?? VS_KIND.gym
+function VsSplash({ me, coach, vs, myName, foeMon = null, onSkip }) {
+  const [label, color] = VS_KIND[vs.kind] ?? VS_KIND.trainer
   return (
     <button type="button" className="vs-splash absolute inset-0 z-50 cursor-pointer overflow-hidden bg-slate-950" onClick={onSkip} data-testid="vs-splash" aria-label={t('Pular')}>
       <div className="vs-band vs-band-foe absolute inset-x-0 top-[10%] h-[36%]" style={{ background: `linear-gradient(100deg, transparent 8%, ${color} 8%, ${color} 92%, transparent 92%)` }} />
@@ -711,9 +715,15 @@ function VsSplash({ me, coach, vs, onSkip }) {
           <span className="block text-xs uppercase sm:text-sm">{t(label)}</span>
           <span className="block text-xl sm:text-3xl" data-no-translate>{vs.name}</span>
         </span>
-        {coach && <TrainerSprite trainer={coach} box={120} />}
+        {coach ? <TrainerSprite trainer={coach} box={120} /> : foeMon && <PokeIcon id={foeMon.id} shiny={Boolean(foeMon.shiny)} className="h-28 w-28" />}
       </div>
-      <div className="vs-me absolute bottom-[10%] left-[10%] flex h-[36%] items-center">{me && <TrainerSprite trainer={me} box={120} flip />}</div>
+      <div className="vs-me absolute bottom-[10%] left-[10%] flex h-[36%] items-center gap-3">
+        {me && <TrainerSprite trainer={me} box={120} flip />}
+        <span className="font-black leading-tight text-white drop-shadow">
+          <span className="block text-xs uppercase sm:text-sm">{t('Treinador')}</span>
+          <span className="block text-xl sm:text-3xl" data-no-translate data-testid="vs-my-name">{myName}</span>
+        </span>
+      </div>
       <span className="vs-text absolute inset-0 grid place-items-center text-6xl font-black italic text-white sm:text-8xl">VS</span>
     </button>
   )
@@ -732,8 +742,20 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   // keepMine (Battle Factory): o seu Pokémon já está em campo (veio da tela da corrida): sem o treinador e a Poké Ball do seu lado.
   const [intro, setIntro] = useState(() => (!online && battle.turn <= 1 ? { foe: 'in', me: keepMine ? 'gone' : 'in', back: 0 } : null))
   // A tela VS antes da luta contra um chefe (só no começo).
-  const [vsOn, setVsOn] = useState(() => Boolean(vs?.name) && !online && battle.turn <= 1)
+  // A tela VS no começo de toda batalha (chefe, treinador, selvagem e online), com o nome de quem joga.
+  const [vsOn, setVsOn] = useState(() => battle.turn <= 1)
   const vsDone = useRef(null)
+  const myName = useMyName()
+  const vsInfo = vs?.name ? vs : wild
+    ? { kind: 'wild', name: active(battle, 1).name }
+    : { kind: online ? 'online' : 'trainer', name: foeName || coach?.name || t('Treinador') }
+  // Online (sem a abertura): a tela VS some sozinha (ou com um toque).
+  useEffect(() => {
+    if (!vsOn || !online) return
+    vsDone.current = () => setVsOn(false)
+    const id = setTimeout(() => setVsOn(false), 2000)
+    return () => clearTimeout(id)
+  }, [vsOn, online])
   // Cada Pokémon: '' na tela, 'hidden' dentro da Poké Ball, 'release' saindo, 'recall' voltando.
   const [poke, setPoke] = useState(() => (!online && battle.turn <= 1 ? [keepMine ? '' : 'hidden', 'hidden'] : ['', '']))
   const [ball, setBall] = useState([null, null]) // 'throw' | 'open' | Battle Factory: 'catch' | 'still' | 'shake' | 'caught'
@@ -842,7 +864,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   const runIntro = async () => {
     if (vsOn) {
       // Espera a tela VS (ou o toque para pular).
-      await Promise.race([wait(2200), new Promise((resolve) => (vsDone.current = resolve))])
+      await Promise.race([wait(vs?.name ? 2200 : 1600), new Promise((resolve) => (vsDone.current = resolve))])
       setVsOn(false)
     }
     await wait(700)
@@ -1215,7 +1237,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         <BattleBackground weather={shown.weather} scene={scene} layout="bw" />
         {/* Clima, terreno e efeito do lugar fazem parte do cenário: atrás dos Pokémon e das caixas. */}
         <WeatherFx weather={shown.weather} terrain={shown.terrain} place={shown.place} />
-        {vsOn && <VsSplash me={myTrainer} coach={coach} vs={vs} onSkip={() => vsDone.current?.()} />}
+        {vsOn && <VsSplash me={myTrainer} coach={coach} vs={vsInfo} myName={myName} foeMon={wild ? active(battle, 1) : null} onSkip={() => vsDone.current?.()} />}
         <div className={`absolute top-[5%] left-0 w-[50%] max-w-[300px] transition-opacity ${intro && poke[1] === 'hidden' ? 'opacity-0' : ''}`}>
           <button type="button" className="block w-full cursor-pointer text-left" onClick={() => setInspect(1)} aria-label={t('Ver detalhes do adversário')} data-testid="inspect-foe">
             <InfoBox bw mon={foe} hp={shown.hp[1][shown.active[1]]} status={shown.status[1][shown.active[1]]} dmax={shown.dmax[1]} boosts={shown.boosts[1]} hpTestId={online ? "online-hp-" + (1 - online.side) : undefined} />
@@ -1541,7 +1563,7 @@ function Weak({ mon, list, className = '' }) {
   )
 }
 
-export function MultiBattle({battle, onExit, onAgain, onFinish, online = null}) {
+export function MultiBattle({battle, onExit, onAgain, onFinish, online = null, foeName = ''}) {
   const byId = usePokemonIndex()
   const uid = online?.uid || 'me'
   const side = battle.controllers.findIndex(team => team.includes(uid))
@@ -1556,6 +1578,11 @@ export function MultiBattle({battle, onExit, onAgain, onFinish, online = null}) 
   const [error,setError] = useState('')
   const [history,setHistory] = useState([])
   const [,redraw] = useState(0)
+  // A tela VS no começo (duplas/trios e online também), com o nome de quem joga.
+  const [vsOn,setVsOn] = useState(() => state.turn <= 1)
+  const myTrainer = useMyTrainer()
+  const myName = useMyName()
+  useEffect(()=>{if(!vsOn)return;const id=setTimeout(()=>setVsOn(false),1600);return()=>clearTimeout(id)},[vsOn])
   const choicePhase = JSON.stringify([state.turn, online?.round, own.wait, owned.map(slot => [slot.slot, slot.index, slot.forceSwitch, slot.pass])])
   useEffect(()=>{setChoices({});setAim(null);setGimmickOn(false);setError('')},[choicePhase])
   const forced = own.slots.some(slot=>slot.forceSwitch)
@@ -1640,6 +1667,7 @@ export function MultiBattle({battle, onExit, onAgain, onFinish, online = null}) 
   return <section className="mx-auto max-w-3xl space-y-2">
     <div className="battle-field relative aspect-[16/10] overflow-hidden border-4 border-slate-800" data-testid="multi-battle-field" style={{aspectRatio:count===3?'1':'16 / 10',minHeight:count===3?'22rem':'14rem'}}>
       <BattleBackground weather={battle.weather} scene={battle.scene || undefined}/>{sprites(1-side)}{sprites(side)}{info(1-side)}{info(side)}<WeatherFx weather={battle.weather}/>
+      {vsOn && <VsSplash me={myTrainer} coach={null} vs={{kind: online ? 'online' : 'trainer', name: foeName || t('Adversários')}} myName={myName} onSkip={()=>setVsOn(false)}/>}
     </div>
     <p className="rounded-xl bg-card p-3 font-bold" data-testid="multi-turn" data-turn={state.turn} data-round={online?.round ?? state.turn}>{online?.message || (state.winner != null ? state.winner === -1 ? 'Empate!' : state.winner === side ? 'Você venceu!' : 'A equipe adversária venceu!' : `${t('Turno')} ${state.turn}`)}</p>
     {state.winner == null && pending.length > 0 && <div className="space-y-2 rounded-xl border-4 border-slate-800 bg-slate-800 p-2 text-white" data-testid="multi-actions">

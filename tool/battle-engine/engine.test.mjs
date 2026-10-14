@@ -474,3 +474,15 @@ test('Battle Factory: better balls, low HP and status catch more often', () => {
   assert.ok(weak > poke, `weak ${weak} > poke ${poke}`);
   assert.ok(rate('quick-ball') > ultra);
 });
+
+test('Mega X ou Y pela pedra: o evento traz a forma certa', () => {
+  for (const [species, item, form] of [['Charizard', 'Charizardite X', 'Charizard-Mega-X'], ['Charizard', 'Charizardite Y', 'Charizard-Mega-Y'], ['Mewtwo', 'Mewtwonite X', 'Mewtwo-Mega-X'], ['Mewtwo', 'Mewtwonite Y', 'Mewtwo-Mega-Y']]) {
+    const game = create([mon('Pikachu', ['thunderbolt']), mon(species, ['tackle'], {gimmick: 'mega', mega: {id: -1}, set: {species, moves: ['tackle'], level: 50, item}})], [mon('Blissey', ['splash'])]);
+    try {
+      sim.choose(game.handle, [{kind: 'switch', index: 1}, move(0)]);
+      const result = sim.choose(game.handle, [{kind: 'move', index: 0, gimmick: 'mega'}, move(0)]);
+      assert.equal(result.state.sides[0].team[1].species, form);
+      assert.ok(result.events.some(e => e.t === 'mega' && e.side === 0));
+    } finally {sim.dispose(game.handle);}
+  }
+});

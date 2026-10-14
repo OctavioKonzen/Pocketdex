@@ -184,6 +184,17 @@ describe('batalha por turnos', () => {
     expect(tatsugiri.mega?.id).toBe(10323)
   }, 30000)
 
+  it('Mega X ou Y pela pedra (Charizard e Mewtwo)', async () => {
+    const mons = await battleMons([
+      { id: 6, set: { level: 50, item: 'charizardite-x', moves: ['flamethrower'] } },
+      { id: 6, set: { level: 50, item: 'charizardite-y', moves: ['flamethrower'] } },
+      { id: 150, set: { level: 50, item: 'mewtwonite-x', moves: ['psychic'] } },
+      { id: 150, set: { level: 50, item: 'Mewtwonite Y', moves: ['psychic'] } },
+    ])
+    expect(mons.map((m) => m.mega?.id)).toEqual([10034, 10035, 10043, 10044])
+    expect(mons.map((m) => m.mega?.name)).toEqual(['Mega Charizard X', 'Mega Charizard Y', 'Mega Mewtwo X', 'Mega Mewtwo Y'])
+  }, 30000)
+
   it('escolhe os golpes: os do set e, se faltar, um de cada tipo', () => {
     const moves = {
       flamethrower: { type: 'fire', category: 'special', power: 90, accuracy: 100 },
