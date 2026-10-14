@@ -9,7 +9,7 @@ import {
   EXP_SHARE, expProgress, shopOwned, baseForm, forSale, normalizeOwned, buyUpgrade, upgradePrice, UPGRADES,
   tradeMon, skipTrade, TRADE_LEVELS, escapeRope, ESCAPE_HP, progress, ACHIEVEMENTS, LUCKY_EGG, rerollRoute, FOE_ITEMS,
   regionLegend, REGION_LEGENDS, rivalStarter, starterLine, newMission, resolveChoice, MISSION_MONEY,
-  clockOf, weatherOf, fieldOf, SEASON_TYPES, BIOME_IDS, SCENE_FIELD,
+  clockOf, weatherOf, fieldOf, placeMusic, SEASON_TYPES, BIOME_IDS, SCENE_FIELD,
   HM_BADGES, cutPath, nodeBlocked, dexOf, dexRewardFor, DEX_REWARDS, leaveDaycare, takeDaycare, DAYCARE_EGG, EGG_IVS, rematchBoss,
 } from './factoryRun'
 
@@ -851,5 +851,14 @@ describe('mapa da corrida', () => {
       return n
     }
     expect(ghosts(true)).toBeGreaterThan(ghosts(false))
+  })
+
+  it('a música de cada lugar (os chefes têm a deles)', () => {
+    expect(placeMusic('grass')).toBe('place_field')
+    expect(placeMusic('crystal')).toBe('place_cave')
+    expect(placeMusic('tower')).toBe('place_spooky')
+    expect(placeMusic('base-rocket')).toBe('place_city')
+    expect(placeMusic('gym-fire')).toBe('battle_music')
+    for (const b of BIOME_IDS) expect(placeMusic(b)).not.toBe('battle_music')
   })
 })

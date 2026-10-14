@@ -458,12 +458,31 @@ body {
 @keyframes place-rise { to { background-position: 20px -140px; } }
 @keyframes place-flash { 0%, 100% { background-color: transparent; } 88% { background-color: rgb(255 255 220 / 0.55); } 91% { background-color: transparent; } }
 @keyframes place-aurora { 50% { background-position: 100% 0; } }
+/* A tela VS (antes da luta contra um chefe): as faixas entram dos lados e o VS aparece. */
+.vs-band-foe { animation: vs-from-right 0.45s ease-out both; }
+.vs-band-me { animation: vs-from-left 0.45s ease-out both; }
+.vs-foe { animation: vs-from-right 0.5s 0.15s ease-out both; }
+.vs-me { animation: vs-from-left 0.5s 0.15s ease-out both; }
+.vs-text { animation: vs-pop 0.5s 0.5s ease-out both; text-shadow: 0 0 12px #f59e0b, 0 4px 0 #7c2d12; }
+@keyframes vs-from-right { from { transform: translateX(110%); } }
+@keyframes vs-from-left { from { transform: translateX(-110%); } }
+@keyframes vs-pop { from { transform: scale(3); opacity: 0; } 70% { transform: scale(0.9); opacity: 1; } }
+/* A evolução: as duas formas brancas piscando, cada vez mais rápido, e a nova aparece com brilho. */
+.evo-from, .evo-to { filter: brightness(0) invert(1) drop-shadow(0 0 6px #fff); }
+.evo-from { animation: evo-from 2.6s ease-in forwards; }
+.evo-to { animation: evo-to 2.6s ease-in forwards; }
+.evo-glow { background: radial-gradient(circle, rgb(255 255 255 / 0.9), rgb(253 224 71 / 0.4) 40%, transparent 70%); animation: evo-glow 2.6s ease-in forwards; }
+@keyframes evo-from { 0%, 20% { opacity: 1; } 25% { opacity: 0; } 35% { opacity: 1; } 42% { opacity: 0; } 50% { opacity: 1; } 55% { opacity: 0; } 61% { opacity: 1; } 65% { opacity: 0; } 70% { opacity: 1; } 73% { opacity: 0; } 77% { opacity: 1; } 80%, 100% { opacity: 0; } }
+@keyframes evo-to { 0%, 20% { opacity: 0; } 25% { opacity: 1; } 35% { opacity: 0; } 42% { opacity: 1; } 50% { opacity: 0; } 55% { opacity: 1; } 61% { opacity: 0; } 65% { opacity: 1; } 70% { opacity: 0; } 73% { opacity: 1; } 77% { opacity: 0; } 80% { opacity: 1; filter: brightness(0) invert(1); } 100% { opacity: 1; filter: none; } }
+@keyframes evo-glow { 0% { opacity: 0; transform: scale(0.6); } 80% { opacity: 1; transform: scale(1.2); } 100% { opacity: 0; transform: scale(1.6); } }
 @keyframes place-fall { to { background-position: 0 120px; } }
 @keyframes place-ash { to { background-position: 30px 120px, 0 0; } }
 @keyframes place-drift { 50% { transform: translateX(4%); opacity: 0.7; } }
 @keyframes place-current { to { background-position: 180px 0; } }
 @media (prefers-reduced-motion: reduce) {
-  .weather-layer, .weather-sun, .terrain-layer, .place-layer { animation: none; }
+  .weather-layer, .weather-sun, .terrain-layer, .place-layer, .vs-band, .vs-foe, .vs-me, .vs-text, .evo-from, .evo-to, .evo-glow { animation: none; }
+  .evo-from { opacity: 0; }
+  .evo-to { filter: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .battle-idle { animation: none; }
