@@ -434,6 +434,9 @@ class TurnBattle {
   /// Battle Factory: o XP de cada adversário entra na hora ({mons, table, share}; o motor sobe o nível durante a luta).
   final Map<String, dynamic>? startExp;
 
+  /// Battle Factory: a Poké Ball em que o selvagem foi capturado.
+  String? capturedBall;
+
   /// Battle Factory: o XP de agora, vindo do motor ({mons: [{level, exp}], gained: {posição: XP ganho}}).
   Map<String, dynamic>? expNow;
 
@@ -495,6 +498,7 @@ class TurnBattle {
     turn = state['turn'] as int;
     winner = state['winner'] as int?;
     captured = state['captured'] as int?;
+    capturedBall = state['capturedBall'] as String?;
     // Battle Factory: o XP de agora (o motor dá na hora) e quem lutou contra cada adversário.
     if (state['exp'] != null) {
       expNow = Map<String, dynamic>.from(state['exp'] as Map);

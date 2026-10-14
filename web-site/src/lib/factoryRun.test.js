@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import {
+  isDoubleBattle,
+  DOUBLE_FLOOR,
   battleOrder, blindPick, bossOf, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, foeLevelAt, foeMember,
   HELD_BOOST, levelTo, MAX_TEAM, memberOf, movesAt, nextFloor, nextRandom, overflowPoints, pokemonPrice, runCoins, setMainItem, shopPrice,
   SHINY_BOOST, SHINY_CHANCE, START_BAG, START_BALLS, startersOf, buyShiny, shinyPrice, unlockShiny, claimStarter, freePick, canEvolveWith, teachMove,
@@ -609,6 +611,8 @@ describe('roteiro igual ao app', () => {
     if (process.env.UPDATE_FACTORY_TRACE) writeFileSync(url, JSON.stringify(trace) + '\n')
     expect(trace).toEqual(JSON.parse(readFileSync(url, 'utf8')))
     expect(trace.some((t) => t[8] === 'boss')).toBe(true)
+    // O rival aparece de surpresa na rota (fora os da história).
+    expect(trace.some((t) => t[8] === 'rival')).toBe(true)
     for (const kind of ['mart', 'event', 'ace']) expect(trace.some((t) => t[7].some((o) => o.startsWith(kind)))).toBe(true)
   })
 })
@@ -887,5 +891,15 @@ describe('mapa da corrida', () => {
     expect(extra.stash).toEqual(['leftovers', 'life-orb'])
     expect(equipFromStash(extra, 0, 1).team[1].item).toBe('leftovers')
     expect(unequipItem(run, 1)).toBe(run)
+  })
+})
+
+describe('batalhas duplas', () => {
+  it('a dupla de treinadores luta em dupla a partir do andar DOUBLE_FLOOR, com 2 de pé', () => {
+    const run = { floor: DOUBLE_FLOOR, encounter: { pair: true }, team: [{ hp: 1 }, { hp: 0.5 }] }
+    expect(isDoubleBattle(run)).toBe(true)
+    expect(isDoubleBattle({ ...run, floor: DOUBLE_FLOOR - 1 })).toBe(false)
+    expect(isDoubleBattle({ ...run, encounter: {} })).toBe(false)
+    expect(isDoubleBattle({ ...run, team: [{ hp: 1 }, { hp: 0 }] })).toBe(false)
   })
 })

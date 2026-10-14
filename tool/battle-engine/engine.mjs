@@ -141,10 +141,12 @@ function makePlaceEffect(key) {
 // exp = {mons: [{level, exp}] (por posição), table: [[XP para cada posição]] (por adversário), share}.
 function markFought(game) {
   if (!game.exp) return;
-  const foe = game.battle.sides[1].active[0], mine = game.battle.sides[0].active[0];
-  if (!foe || !mine || foe.fainted) return;
-  const list = (game.fought[originalIndex(foe)] ??= []);
-  if (!list.includes(originalIndex(mine))) list.push(originalIndex(mine));
+  // Todos os que estão em campo (na dupla, os dois de cada lado).
+  for (const foe of game.battle.sides[1].active) {
+    if (!foe || foe.fainted) continue;
+    const list = (game.fought[originalIndex(foe)] ??= []);
+    for (const mine of game.battle.sides[0].active) if (mine && !list.includes(originalIndex(mine))) list.push(originalIndex(mine));
+  }
 }
 function levelUp(game, pokemon, level) {
   const before = game.battle.spreadModify(pokemon.species.baseStats, pokemon.set);
@@ -315,6 +317,7 @@ function throwBall(game, battle, pokemon, ball) {
   battle.add('pocketdexball', foe, ball, String(Math.min(3, shakes)), caught ? 'caught' : 'free');
   if (caught) {
     game.captured = originalIndex(foe);
+    game.capturedBall = ball;
     battle.win(pokemon.side);
   }
 }
@@ -364,6 +367,7 @@ function snapshot(game) {
     mode: b.gameType,
     bags: game.bags,
     captured: game.captured ?? null,
+    capturedBall: game.capturedBall ?? null,
     // Battle Factory: o XP de cada um (nível e XP de agora, quanto ganhou) e quem lutou contra cada adversário.
     ...(game.exp ? {exp: {mons: game.exp.mons, gained: game.exp.gained}, fought: game.fought} : {}),
     sides: b.sides.map(side => ({

@@ -8125,5 +8125,11 @@
  "🏆 Um treinador famoso por perto...": {"en": "🏆 A famous trainer nearby...", "fr": "🏆 Un dresseur célèbre tout près...", "es": "🏆 Un entrenador famoso cerca..."},
  "🌟 Uma presença enorme...": {"en": "🌟 A huge presence...", "fr": "🌟 Une présence immense...", "es": "🌟 Una presencia enorme..."},
  "🌳 Um caminho escondido...": {"en": "🌳 A hidden path...", "fr": "🌳 Un chemin caché...", "es": "🌳 Un camino oculto..."},
- "🌊 Água funda...": {"en": "🌊 Deep water...", "fr": "🌊 De l'eau profonde...", "es": "🌊 Agua profunda..."}
+ "🌊 Água funda...": {"en": "🌊 Deep water...", "fr": "🌊 De l'eau profonde...", "es": "🌊 Agua profunda..."},
+ "Sem efeito": {"en": "No effect", "fr": "Aucun effet", "es": "Sin efecto"},
+ "O seu rival te seguiu pela rota: quer ver quem ficou mais forte (prêmio maior).": {"en": "Your rival followed you down the route: they want to see who got stronger (bigger prize).", "fr": "Votre rival vous a suivi sur la route : il veut voir qui est devenu le plus fort (meilleure récompense).", "es": "Tu rival te siguió por la ruta: quiere ver quién se ha hecho más fuerte (mayor premio)."},
+ "⚔️ Alguém conhecido te seguindo...": {"en": "⚔️ Someone familiar is following you...", "fr": "⚔️ Quelqu'un de familier vous suit...", "es": "⚔️ Alguien conocido te está siguiendo..."},
+ "Ei! Te alcancei! Vamos ver quem treinou mais desde a última vez!": {"en": "Hey! Caught up with you! Let's see who trained more since last time!", "fr": "Hé ! Je t'ai rattrapé ! Voyons qui s'est le plus entraîné depuis la dernière fois !", "es": "¡Eh! ¡Te alcancé! ¡Veamos quién entrenó más desde la última vez!"},
+ "Você de novo? Ótimo, eu estava te procurando!": {"en": "You again? Great, I was looking for you!", "fr": "Encore toi ? Parfait, je te cherchais !", "es": "¿Tú otra vez? ¡Genial, te estaba buscando!"},
+ "Não vou deixar você chegar no próximo ginásio sem uma revanche!": {"en": "I won't let you reach the next gym without a rematch!", "fr": "Je ne te laisserai pas atteindre la prochaine arène sans revanche !", "es": "¡No te dejaré llegar al próximo gimnasio sin una revancha!"}
 }

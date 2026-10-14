@@ -405,7 +405,7 @@ export function expShares(run, data, foe, fought, factor = 1) {
 }
 
 /** O fator de XP do tipo de andar (treinadores e chefes dão mais). */
-export const expFactor = (kind) => (kind === 'ace' || kind === 'rematch' ? 1.75 : kind === 'boss' || kind === 'wildboss' || kind === 'trainer' ? 1.5 : 1)
+export const expFactor = (kind) => (kind === 'ace' || kind === 'rematch' || kind === 'rival' ? 1.75 : kind === 'boss' || kind === 'wildboss' || kind === 'trainer' ? 1.5 : 1)
 
 /** A barra de XP: quanto do nível atual já foi (0 a 1), com o XP a mais (extra). */
 export function expProgress(mon, extra = 0) {
@@ -587,6 +587,9 @@ export const ROUTE_LENGTH = 9
 export const FORKS = [1, 4, 7]
 /** Chance do rival (ou de um vilão) aparecer em cada andar da rota (a partir do 3º: dá tempo de treinar um pouco). */
 export const AMBUSH_CHANCE = 0.3
+/** O rival aparece bastante: de surpresa na rota (fora os da história), no máximo uma vez por rota, a partir do andar RIVAL_FLOOR. */
+export const RIVAL_CHANCE = 0.2
+export const RIVAL_FLOOR = 5
 
 /** O próximo chefe de cidade (pula rival e vilões): o destino da rota. */
 export function targetOf(data, run) {
@@ -633,7 +636,7 @@ export function routeBiome(data, run) {
 
 /** Os pontos do mapa (o peso de cada um nas bifurcações). O Centro Pokémon é raro. */
 export const NODE_WEIGHTS = [['wild', 34], ['trainer', 28], ['ace', 12], ['mart', 10], ['event', 11], ['center', 5], ['trade', 8]]
-const BATTLE_NODES = ['wild', 'trainer', 'ace', 'boss', 'wildboss', 'rematch']
+const BATTLE_NODES = ['wild', 'trainer', 'ace', 'boss', 'wildboss', 'rematch', 'rival']
 export const isBattleNode = (node) => BATTLE_NODES.includes(node?.kind)
 
 /**
@@ -660,6 +663,10 @@ export function routeOptions(run, data, rand) {
   const base = biome.startsWith('base-')
   const wild = () => (base ? { kind: 'trainer' } : { kind: 'wild', biome })
   if (!FORKS.includes(pos)) {
+    // O rival te seguiu: aparece de surpresa (uma vez por rota, só no caminho para um ginásio).
+    if (run.floor >= RIVAL_FLOOR && pos >= 2 && !base && boss.kind === 'gym' && run.rivalLeg !== legOf(run) && rivalBoss(data, run) && rand() < RIVAL_CHANCE) {
+      return { floor: run.floor, biome, options: [{ kind: 'rival' }] }
+    }
     const r = rand()
     return { floor: run.floor, biome, options: [r < 0.55 ? wild() : r < 0.9 || run.floor <= 2 ? { kind: 'trainer' } : { kind: 'event' }] }
   }
@@ -727,13 +734,18 @@ export function chooseNode(run, data, index, clock = null) {
       const champ = rematchBoss(data, run)
       out.encounter = { ...encounterFor(data, out.floor + REMATCH_FLOORS, rand, champ), kind: 'rematch', scene }
     }
+    // O rival de surpresa: o time dele no andar de agora (não conta como o da história).
+    if (node.kind === 'rival') {
+      out.encounter = { ...encounterFor(data, out.floor, rand, rivalBoss(data, run)), kind: 'rival', scene }
+      out.rivalLeg = legOf(run)
+    }
     // Dupla de treinadores: dois treinadores juntos (os dois times na mesma batalha).
     if (node.kind === 'trainer' && !scene.startsWith('base-') && rand() < DOUBLE_CHANCE) {
       const second = encounterFor(data, out.floor, rand, null, false, { ...node, biome: scene, shiny: run.shinyRate ?? 1, ...when })
       out.encounter = { ...out.encounter, foes: [...out.encounter.foes, ...second.foes], pair: true }
     }
     // O rival leva o inicial que tem vantagem sobre o seu (no lugar do inicial dele ou do mais forte).
-    const counter = node.kind === 'boss' && out.encounter.boss?.kind === 'rival' ? rivalStarter(data, run.starter) : null
+    const counter = (node.kind === 'boss' || node.kind === 'rival') && out.encounter.boss?.kind === 'rival' ? rivalStarter(data, run.starter) : null
     if (counter != null) {
       const lines = data.starters.flatMap((id) => starterLine(data, id))
       const foes = [...out.encounter.foes]
@@ -928,7 +940,7 @@ export function winFloor(run, data, after = {}) {
   const rand = dice(out)
   const { kind, foes } = run.encounter
   const factor = expFactor(kind)
-  const moneyFactor = kind === 'boss' || kind === 'wildboss' || kind === 'rematch' ? 3 : kind === 'ace' ? 2.5 : kind === 'trainer' ? 2 : 1
+  const moneyFactor = kind === 'boss' || kind === 'wildboss' || kind === 'rematch' || kind === 'rival' ? 3 : kind === 'ace' ? 2.5 : kind === 'trainer' ? 2 : 1
   let money = 0
   // XP e EVs de cada derrotado: para quem lutou contra ele (after.fought[j]: posições na corrida) e, com o Exp. Share, para o resto do time.
   const gains = out.team.map(() => 0)
@@ -959,6 +971,7 @@ export function winFloor(run, data, after = {}) {
   if (kind === 'boss' || kind === 'wildboss') out.bosses = (out.bosses ?? 0) + 1
   let champion = false, hm = null
   // Venceu a revanche: o Campeão some (até o próximo).
+  if (kind === 'rival') out.rivalRaces = (run.rivalRaces ?? 0) + 1
   if (kind === 'rematch') {
     out.rematch = null
     out.rematches = (run.rematches ?? 0) + 1
@@ -1024,11 +1037,13 @@ export function winFloor(run, data, after = {}) {
   out.pending = {
     exp, gains, money, levels, joy, drop, story, reward, ...(champion ? { champion: true } : {}),
     capture: after.captured && (kind === 'wild' || kind === 'wildboss') ? foes[0] : null,
+    // A Poké Ball em que ele foi capturado (o sprite dela na tela da captura).
+    ...(after.captured && after.ball ? { ball: after.ball } : {}),
     cards: kind === 'boss' ? pickCards(rand, run.cardCount ?? 3) : null,
     // A loja da cidade: chegando nela, logo antes do chefe (no resto da rota, os Poké Marts do mapa).
     shop: kind !== 'boss' || !CITY_KINDS.includes(run.encounter.boss.kind) ? (atCity(data, out) && !inLeague(data, out) ? pickShop(rand, data, run.floor, 8, Boolean(run.townMap)) : null) : null,
     // O chefe que acabou de perder (as falas depois da luta) e a missão completa.
-    ...(kind === 'boss' ? { beat: { kind: run.encounter.boss.kind, name: run.encounter.boss.name, region: run.encounter.boss.region } } : {}),
+    ...(kind === 'boss' || kind === 'rival' ? { beat: { kind: run.encounter.boss.kind, name: run.encounter.boss.name, region: run.encounter.boss.region } } : {}),
     ...(mission ? { mission } : {}),
     ...(hm ? { hm } : {}),
   }
@@ -1149,8 +1164,23 @@ export function cutPath(run) {
 
 /** Dupla de treinadores: chance de um treinador vir acompanhado. */
 export const DOUBLE_CHANCE = 0.2
+/** A partir deste andar, a dupla de treinadores é batalha dupla de verdade (2 contra 2), se você tem 2 de pé. */
+export const DOUBLE_FLOOR = 15
+export const isDoubleBattle = (run) => Boolean(run.encounter?.pair) && run.floor >= DOUBLE_FLOOR && run.team.filter((m) => (m.hp ?? 1) > 0).length >= 2
 /** A revanche: o Campeão vencido vem com o time de alguns andares à frente. */
 export const REMATCH_FLOORS = 5
+/** O começo da rota de agora (o andar depois da última cidade). */
+export const legOf = (run) => run.floor - routePos(run)
+
+/** O rival da região que aparece de surpresa: o último que você já enfrentou na história (ou o primeiro). null se a região não tem rival. */
+export function rivalBoss(data, run) {
+  const game = data.bosses[run.boss.region]
+  const rivals = game.leaders.map((l, k) => [l, k]).filter(([l]) => l.kind === 'rival')
+  if (!rivals.length) return null
+  const met = rivals.filter(([, k]) => k < run.boss.step)
+  return { region: game.region, game: game.game, ...(met.length ? met[met.length - 1] : rivals[0])[0] }
+}
+
 export function rematchBoss(data, run) {
   const game = data.bosses[run.rematch?.region ?? run.boss.region]
   const champ = game.leaders.find((l) => l.kind === 'champion') ?? game.leaders[game.leaders.length - 1]
