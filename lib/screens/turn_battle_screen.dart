@@ -1645,7 +1645,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
   }
 
   Widget _battleBody(BuildContext context) {
-    if (_b.mode != 'singles') return _MultiBattleView(battle: _b, online: widget.online, onExit: widget.onExit, onAgain: widget.onAgain, onFinish: widget.onFinish);
+    if (_b.mode != 'singles') return _MultiBattleView(battle: _b, typeEff: widget.typeEff, online: widget.online, onExit: widget.onExit, onAgain: widget.onAgain, onFinish: widget.onFinish);
     final me = _b.teams[0][_active[0]];
     final foe = _b.teams[1][_active[1]];
     final current = _b.active(0);
@@ -3205,7 +3205,10 @@ class _MultiBattleView extends StatefulWidget {
   final OnlineBattleControl? online;
   final VoidCallback onExit, onAgain;
   final void Function(String? foeTrainer)? onFinish;
-  const _MultiBattleView({required this.battle, this.online, required this.onExit, required this.onAgain, this.onFinish});
+
+  /// Eficácia de um tipo contra os tipos de quem defende (para as fraquezas e os golpes, como na batalha normal).
+  final double Function(String, List<String>) typeEff;
+  const _MultiBattleView({required this.battle, required this.typeEff, this.online, required this.onExit, required this.onAgain, this.onFinish});
   @override
   State<_MultiBattleView> createState() => _MultiBattleViewState();
 }
@@ -3455,13 +3458,14 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
         child: m.Text(text, style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.25, fontWeight: FontWeight.bold, shadows: _bwShadow)),
       );
 
-  Widget _button(String label, String sub, Color color, Key key, VoidCallback? onTap, {Color text = Colors.white}) => Material(
+  Widget _button(String label, String sub, Color color, Key key, VoidCallback? onTap, {Color text = Colors.white, List<Widget> tags = const []}) => Material(
         color: color,
         borderRadius: BorderRadius.circular(10),
         child: InkWell(key: key, borderRadius: BorderRadius.circular(10), onTap: onTap,
           child: Padding(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             m.Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: text, fontWeight: FontWeight.w900, fontSize: 13)),
             if (sub.isNotEmpty) m.Text(sub, style: TextStyle(color: text.withValues(alpha: 0.75), fontSize: 11)),
+            if (tags.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 3), child: Wrap(spacing: 3, runSpacing: 3, children: tags)),
           ]))),
       );
   Widget _grid(List<Widget> children, {int columns = 2}) => LayoutBuilder(builder: (context, constraints) => Wrap(spacing: 6, runSpacing: 6, children: [
@@ -3490,7 +3494,15 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
             if (row(ally).isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 6), child: _grid(columns: _count, [
               for (final target in row(ally))
                 _button('${target['name']}', '${tr(ally ? 'Aliado' : 'Adversário')} · ${(target['slot'] as int) + 1}', ally ? const Color(0xFFE0F2FE) : const Color(0xFFFFE4E6),
-                    ValueKey('battle-target-${target['loc']}'), _locked ? null : () => _commit(slot, {..._aim!, 'target': target['loc']}), text: const Color(0xFF0F172A)),
+                    ValueKey('battle-target-${target['loc']}'), _locked ? null : () => _commit(slot, {..._aim!, 'target': target['loc']}), text: const Color(0xFF0F172A),
+                    // Como o golpe pega nele (Super efetivo ×2, Pouco efetivo ×½...).
+                    tags: [
+                      if (index < mon.moves.length && mon.moves[index].power > 0 && mon.moves[index].category != 'status')
+                        () {
+                          final who = _b.teams[target['side'] as int][target['index'] as int];
+                          return _EffectTag(widget.typeEff(mon.moves[index].type, who.terastal && who.teraType.isNotEmpty ? [who.teraType] : who.types));
+                        }(),
+                    ]),
             ])),
         ]);
       } else {
@@ -3506,7 +3518,15 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
         // Pokémon que outro já escolheu para entrar não aparece de novo.
         final taken = {for (final c in _choices.values) if (c['kind'] == 'switch') c['index']};
         final options = [for (final i in slot['switchOptions'] as List) if (!taken.contains(i)) i as int];
+        // Os adversários em campo (as fraquezas e a eficácia de cada golpe contra cada um, como na batalha normal).
+        final foes = [
+          for (final s in (_b.simulatorState!['sides'][1 - _side]['slots'] as List).cast<Map>())
+            if ((s['index'] as int) >= 0 && _b.teams[1 - _side][s['index'] as int].hp > 0) _b.teams[1 - _side][s['index'] as int],
+        ];
+        List<String> typesOf(BattleMon foe) => foe.terastal && foe.teraType.isNotEmpty ? [foe.teraType] : foe.types;
         body = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          if (slot['forceSwitch'] != true)
+            for (final foe in foes) _Weak(foe, TurnBattle.weaknesses(typesOf(foe), allTypes, widget.typeEff), dark: true),
           m.Text(slot['forceSwitch'] == true ? '${tr('Quem entra no lugar de')} ${mon.name}? $step' : '${tr('O que')} ${mon.name} ${tr('vai fazer?')} $step', style: const TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           if (slot['forceSwitch'] != true) Container(
@@ -3516,7 +3536,18 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
             child: _grid([
               for (final (i, move) in moves.indexed)
                 _button('${move['move']}', 'PP ${move['pp'] ?? '—'}/${i < mon.moves.length ? mon.moves[i].maxPp : move['pp'] ?? '—'}', getColorForType(i < mon.moves.length ? mon.moves[i].type : 'normal'),
-                    ValueKey('battle-move-$position-$i'), _locked || move['disabled'] == true || move['pp'] == 0 ? null : () => _chooseMove(slot, i)),
+                    ValueKey('battle-move-$position-$i'), _locked || move['disabled'] == true || move['pp'] == 0 ? null : () => _chooseMove(slot, i),
+                    // Como pega em cada adversário (golpe de dano): "Pidgey ×2", "Oddish ×½"...
+                    tags: i < mon.moves.length && mon.moves[i].power > 0 && mon.moves[i].category != 'status'
+                        ? [
+                            for (final foe in foes)
+                              () {
+                                final eff = widget.typeEff(mon.moves[i].type, typesOf(foe));
+                                final label = TurnBattle.effectLabel(eff) ?? 'Efetivo';
+                                return _Tag('${foe.name.length > 9 ? foe.name.substring(0, 9) : foe.name} ${eff == 0 ? '✕' : '×${_times(eff)}'}', _effectColors[label]!);
+                              }(),
+                          ]
+                        : const []),
             ]),
           ),
           if (slot['forceSwitch'] != true && available) Padding(padding: const EdgeInsets.only(top: 6), child: Align(alignment: Alignment.centerLeft, child: FilledButton(
