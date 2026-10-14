@@ -1084,9 +1084,17 @@ const _biomeInfo = <String, (String, String, Color)>{
 
 /// O nome curto de cada melhoria (nos requisitos da árvore). Igual ao site.
 const _upgradeNames = {
-  'level': 'Treino', 'ivs': 'Genética', 'exp': 'XP extra', 'expShare': 'Exp. Share', 'potions': 'Potions', 'revive': 'Revives',
-  'balls': 'Poké Balls', 'shiny': 'Shiny', 'money': 'Dinheiro', 'shop': 'Desconto', 'reroll': 'Sortear caminho', 'cards': 'Carta a mais',
+  'level': 'Treino', 'ivs': 'Genética', 'balls': 'Poké Balls', 'potions': 'Potions', 'revive': 'Revives', 'money': 'Dinheiro',
+  'shop': 'Desconto', 'exp': 'XP extra', 'expShare': 'Exp. Share', 'reroll': 'Sortear caminho', 'cards': 'Carta a mais', 'shiny': 'Shiny',
   'greatBalls': 'Great Balls', 'rope': 'Escape Rope', 'coins': 'Moedas', 'map': 'Mapa', 'dmax': 'Dynamax Band', 'tera': 'Tera Orb',
+  'superPotions': 'Super Potions', 'hyperPotions': 'Hyper Potions', 'maxPotions': 'Max Potions', 'sitrus': 'Sitrus Berry', 'lum': 'Lum Berry', 'leftovers': 'Leftovers',
+  'sash': 'Focus Sash', 'ultraBalls': 'Ultra Balls', 'masterBall': 'Master Ball', 'quickBalls': 'Quick Balls', 'netBalls': 'Net Balls', 'timerBalls': 'Timer Balls',
+  'duskBalls': 'Dusk Balls', 'expPlus': 'XP avançado', 'luckyEgg': 'Lucky Egg', 'hpBoost': 'Vigor', 'speBoost': 'Agilidade', 'tutor': 'Move Tutor',
+  'reminder': 'Move Reminder', 'atk': 'Força', 'spa': 'Foco', 'def': 'Couraça', 'spd': 'Escudo', 'allStats': 'Mestre',
+  'band': 'Choice Band', 'scarf': 'Choice Scarf', 'specs': 'Choice Specs', 'lifeOrb': 'Life Orb', 'vest': 'Assault Vest', 'helmet': 'Rocky Helmet',
+  'quickClaw': 'Quick Claw', 'balloon': 'Air Balloon', 'brightPowder': 'Bright Powder', 'boots': 'Heavy-Duty Boots', 'kingsRock': 'King\'s Rock', 'loot': 'Recompensas',
+  'expertBelt': 'Expert Belt', 'bonusCoins': 'Tesouro', 'policy': 'Weakness Policy', 'muscleBand': 'Muscle Band', 'wiseGlasses': 'Wise Glasses', 'shellBell': 'Shell Bell',
+  'scopeLens': 'Scope Lens', 'eviolite': 'Eviolite',
 };
 
 /// Cada ponto do mapa: símbolo, nome e o que tem nele.
@@ -2791,17 +2799,63 @@ const _helpTopics = [
 
 /// O símbolo de cada melhoria (no círculo da árvore). Igual ao site.
 const _upgradeIcons = {
-  'level': '🎓', 'ivs': '🧬', 'exp': '✨', 'expShare': '📡', 'potions': '🧪', 'revive': '💖', 'rope': '🪢', 'balls': '⚪', 'greatBalls': '🔵',
-  'shiny': '🌟', 'money': '💰', 'shop': '🏷️', 'coins': '🪙', 'map': '🗺️', 'reroll': '🎲', 'cards': '🃏', 'dmax': '🔴', 'tera': '💎',
+  'level': '🎓', 'ivs': '🧬', 'balls': '⚪', 'potions': '🧪', 'revive': '💖', 'money': '💰', 'shop': '🏷️', 'exp': '✨',
+  'expShare': '📡', 'reroll': '🎲', 'cards': '🃏', 'shiny': '🌟', 'greatBalls': '🔵', 'rope': '🪢', 'coins': '🪙', 'map': '🗺️',
+  'dmax': '🔴', 'tera': '💎', 'superPotions': '💧', 'hyperPotions': '🧴', 'maxPotions': '🍶', 'sitrus': '🍋', 'lum': '🫐', 'leftovers': '🍎',
+  'sash': '🎗️', 'ultraBalls': '🟡', 'masterBall': '🟣', 'quickBalls': '⚡', 'netBalls': '🕸️', 'timerBalls': '⏱️', 'duskBalls': '🌑', 'expPlus': '🌠',
+  'luckyEgg': '🥚', 'hpBoost': '❤️', 'speBoost': '💨', 'tutor': '📜', 'reminder': '🧠', 'atk': '⚔️', 'spa': '🔮', 'def': '🛡️',
+  'spd': '🔰', 'allStats': '👑', 'band': '🎀', 'scarf': '🧣', 'specs': '👓', 'lifeOrb': '🟠', 'vest': '🦺', 'helmet': '⛑️',
+  'quickClaw': '🦅', 'balloon': '🎈', 'brightPowder': '💫', 'boots': '👢', 'kingsRock': '🪨', 'loot': '💵', 'expertBelt': '🥋', 'bonusCoins': '🏆',
+  'policy': '📋', 'muscleBand': '💪', 'wiseGlasses': '🤓', 'shellBell': '🐚', 'scopeLens': '🔭', 'eviolite': '💠',
 };
 
-/// A cor de cada ramo (as linhas e os círculos comprados) e a ordem no leque (os mais longos no meio). Igual ao site.
-const _branchColors = [Color(0xFF22C55E), Color(0xFF38BDF8), Color(0xFFF59E0B), Color(0xFFA855F7), Color(0xFFEAB308), Color(0xFFEF4444)];
-const _fan = ['Sobrevivência', 'Captura', 'Treino', 'Exploração', 'Comércio', 'Poder'];
+/// A cor de cada ramo (as linhas e os círculos comprados), na ordem de upgradeBranches. Igual ao site.
+const _branchColors = [Color(0xFF22C55E), Color(0xFF38BDF8), Color(0xFFF59E0B), Color(0xFFEF4444), Color(0xFFA855F7), Color(0xFFEAB308), Color(0xFFEC4899)];
 
-/// A árvore de melhorias em leque (como as árvores de habilidade dos jogos), num quadro de 460×300: os ramos saem do
-/// centro embaixo; cada círculo é uma melhoria (comprada: colorida; para comprar: branca; bloqueada: cinza com
-/// cadeado). Tocando, abre o que ela faz, o que falta e o botão de comprar. Igual ao site (SkillTree).
+/// O quadro da árvore (960×620): os ramos saem de um centro embaixo, em leque (de 200° a −20°). Igual ao site.
+const _treeW = 960.0, _treeH = 620.0, _treeCx = 480.0, _treeCy = 480.0, _treeFirst = 140.0, _treeStep = 105.0, _treeFrom = 200.0, _treeTo = -20.0;
+
+/// As posições (árvore radial): cada ramo ganha um pedaço do leque do tamanho das pontas dele; cada melhoria fica no
+/// meio do pedaço do pai, mais longe do centro a cada nível. Igual ao site (skillTreeLayout).
+List<({String icon, String name, List<String> ids, Color color, List<({String id, String? parent, Offset pos})> nodes})> _skillTreeLayout() {
+  String? parentOf(String id) => FactoryRun.upgradeTree[id]?.needs?.$1;
+  List<String> kids(String id, List<String> ids) => [for (final k in ids) if (parentOf(k) == id) k];
+  int tips(String id, List<String> ids) {
+    final c = kids(id, ids);
+    return c.isEmpty ? 1 : c.fold(0, (n, k) => n + tips(k, ids));
+  }
+
+  double rad(double d) => d * pi / 180;
+  final total = FactoryRun.upgradeBranches.fold(0, (n, b) => n + tips(b.$3.first, b.$3));
+  final out = <({String icon, String name, List<String> ids, Color color, List<({String id, String? parent, Offset pos})> nodes})>[];
+  var start = rad(_treeFrom);
+  for (final (b, branch) in FactoryRun.upgradeBranches.indexed) {
+    final (icon, name, ids) = branch;
+    final nodes = <({String id, String? parent, Offset pos})>[];
+    void place(String id, double a, double z, int depth, String? parent) {
+      final m = (a + z) / 2;
+      final r = _treeFirst + depth * _treeStep;
+      nodes.add((id: id, parent: parent, pos: Offset(_treeCx + cos(m) * r, _treeCy - sin(m) * r)));
+      var x = a;
+      for (final k in kids(id, ids)) {
+        final span = (z - a) * tips(k, ids) / tips(id, ids);
+        place(k, x, x + span, depth + 1, id);
+        x += span;
+      }
+    }
+
+    final span = (rad(_treeTo) - rad(_treeFrom)) * tips(ids.first, ids) / total;
+    place(ids.first, start, start + span, 0, null);
+    start += span;
+    out.add((icon: icon, name: name, ids: ids, color: _branchColors[b % _branchColors.length], nodes: nodes));
+  }
+  return out;
+}
+
+/// A árvore de melhorias em leque (como as árvores de habilidade dos jogos): os ramos saem do centro e se dividem;
+/// cada círculo é uma melhoria (comprada: colorida; para comprar: contorno do ramo; bloqueada: cinza com cadeado).
+/// Arraste para andar e use pinça (ou + e −) para o zoom. Tocando, abre o que ela faz, o que falta e o botão de
+/// comprar. Igual ao site (SkillTree).
 class _SkillTree extends StatefulWidget {
   final Json factory;
   final void Function(Json) onBuy;
@@ -2813,27 +2867,44 @@ class _SkillTree extends StatefulWidget {
 
 class _SkillTreeState extends State<_SkillTree> {
   String? _picked;
+  final _view = TransformationController();
+  double? _width;
+
+  @override
+  void dispose() {
+    _view.dispose();
+    super.dispose();
+  }
+
+  /// Começa centrada embaixo (o centro da árvore), no tamanho que cabe na largura.
+  void _fit(double width, double height) {
+    if (_width == width) return;
+    _width = width;
+    final s = max(0.4, width / _treeW * 1.4);
+    _view.value = Matrix4.identity()
+      ..translateByDouble(-(_treeW * s - width) / 2, -(_treeH * s - height), 0, 1)
+      ..scaleByDouble(s, s, 1, 1);
+  }
+
+  void _zoom(double by) {
+    final m = _view.value.clone();
+    final s = m.getMaxScaleOnAxis();
+    final next = (s * by).clamp(0.3, 2.0);
+    _view.value = m..scaleByDouble(next / s, next / s, 1, 1);
+  }
 
   @override
   Widget build(BuildContext context) {
     final c = SiteColors.of(context);
     final f = widget.factory;
-    final order = [...FactoryRun.upgradeBranches]..sort((a, b) => _fan.indexOf(a.$2).compareTo(_fan.indexOf(b.$2)));
-    final branches = [
-      for (var b = 0; b < order.length; b++)
-        () {
-          final angle = (170 - 160 * b / max(1, order.length - 1)) * pi / 180;
-          Offset at(double d) => Offset(230 + cos(angle) * d, 285 - sin(angle) * d);
-          final pos = [for (var k = 0; k < order[b].$3.length; k++) at(92 + k * 50.0)];
-          return (icon: order[b].$1, name: order[b].$2, ids: order[b].$3, color: _branchColors[b % _branchColors.length], pos: pos);
-        }(),
-    ];
+    final layout = _skillTreeLayout();
+    final posOf = {for (final b in layout) for (final n in b.nodes) n.id: n.pos};
     String state(String id) => FactoryRun.upgradeLevel(f, id) > 0
         ? 'have'
         : FactoryRun.upgradeNeeds(f, id).any((n) => n['kind'] == 'up')
             ? 'locked'
             : 'open';
-    final firstOpen = branches.expand((b) => b.ids).where((id) => FactoryRun.upgradePrice(f, id) != null && FactoryRun.upgradeNeeds(f, id).isEmpty).firstOrNull;
+    final firstOpen = layout.expand((b) => b.ids).where((id) => FactoryRun.upgradePrice(f, id) != null && FactoryRun.upgradeNeeds(f, id).isEmpty).firstOrNull;
     final id = _picked ?? firstOpen ?? 'level';
     final up = FactoryRun.upgrades[id]!;
     final level = FactoryRun.upgradeLevel(f, id);
@@ -2846,77 +2917,116 @@ class _SkillTreeState extends State<_SkillTree> {
           'best' => tr('Chegar ao andar {0} (recorde: {1})').replaceAll('{0}', '${n['floor']}').replaceAll('{1}', '${f['best'] ?? 0}'),
           _ => tr('Ter {0} Pokémon para começar (tem {1})').replaceAll('{0}', '${n['count']}').replaceAll('{1}', '${((f['owned'] as List?) ?? const []).length}'),
         };
-    return Column(key: const ValueKey('skill-tree'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      AspectRatio(
-        aspectRatio: 460 / 300,
-        child: LayoutBuilder(builder: (context, box) {
-          final s = box.maxWidth / 460;
-          return Container(
-            decoration: BoxDecoration(color: const Color(0xFF020617), borderRadius: BorderRadius.circular(12)),
-            child: Stack(clipBehavior: Clip.none, children: [
-              Positioned.fill(
-                child: CustomPaint(
-                  painter: _TreeLines([
-                    for (final b in branches)
-                      for (var k = 0; k < b.ids.length; k++)
-                        (from: (k == 0 ? const Offset(230, 285) : b.pos[k - 1]) * s, to: b.pos[k] * s, color: FactoryRun.upgradeLevel(f, b.ids[k]) > 0 ? b.color : null),
-                  ], const Offset(230, 285) * s),
-                ),
-              ),
-              for (final b in branches)
-                Positioned(
-                  left: (min(405.0, max(55.0, b.pos.last.dx)) - 60) * s,
-                  width: 120 * s,
-                  top: (b.pos.last.dy - 34) * s,
-                  child: Text('${b.icon} ${tr(b.name)}',
-                      textAlign: TextAlign.center, maxLines: 1, style: TextStyle(color: b.color, fontWeight: FontWeight.w900, fontSize: 10 * s)),
-                ),
-              for (final b in branches)
-                for (var k = 0; k < b.ids.length; k++)
-                  () {
-                    final u = b.ids[k];
-                    final st = state(u);
-                    final sel = u == id;
-                    final r = (sel ? 18 : 16) * s;
-                    return Positioned(
-                      left: b.pos[k].dx * s - r,
-                      top: b.pos[k].dy * s - r,
-                      child: GestureDetector(
-                        key: ValueKey('upgrade-$u'),
-                        onTap: () => setState(() => _picked = u),
-                        child: Opacity(
-                          opacity: st == 'locked' ? 0.55 : 1,
-                          child: Stack(clipBehavior: Clip.none, children: [
-                            Container(
-                              width: r * 2,
-                              height: r * 2,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: st == 'have' ? b.color : const Color(0xFF1E293B),
-                                border: Border.all(color: sel ? const Color(0xFFFDE047) : st == 'locked' ? const Color(0xFF475569) : const Color(0xFFE2E8F0), width: (sel ? 3 : 2) * s),
-                              ),
-                              child: Text(st == 'locked' ? '🔒' : _upgradeIcons[u] ?? '⬆️', style: TextStyle(fontSize: 14 * s)),
-                            ),
-                            // O nível (comprado/máximo), num selo embaixo à direita.
-                            Positioned(
-                              left: r + 7 * s,
-                              top: r + 7 * s,
-                              child: Container(
-                                padding: EdgeInsets.symmetric(horizontal: 3 * s),
-                                decoration: BoxDecoration(color: const Color(0xFF0F172A), borderRadius: BorderRadius.circular(5 * s), border: Border.all(color: b.color)),
-                                child: Text('${FactoryRun.upgradeLevel(f, u)}/${FactoryRun.upgrades[u]!.max}',
-                                    style: TextStyle(color: const Color(0xFFE2E8F0), fontSize: 7 * s, fontWeight: FontWeight.w800)),
-                              ),
-                            ),
-                          ]),
+    final tree = SizedBox(
+      width: _treeW,
+      height: _treeH,
+      child: Stack(clipBehavior: Clip.none, children: [
+        Positioned.fill(
+          child: CustomPaint(
+            painter: _TreeLines([
+              for (final b in layout)
+                for (final n in b.nodes)
+                  (from: n.parent == null ? const Offset(_treeCx, _treeCy) : posOf[n.parent]!, to: n.pos, color: FactoryRun.upgradeLevel(f, n.id) > 0 ? b.color : null),
+            ], const Offset(_treeCx, _treeCy)),
+          ),
+        ),
+        for (final b in layout)
+          Positioned(
+            left: b.nodes.first.pos.dx - 90,
+            width: 180,
+            top: b.nodes.first.pos.dy + 26,
+            child: Text(
+                '${b.icon} ${tr(b.name)} ${b.ids.fold(0, (n, k) => n + FactoryRun.upgradeLevel(f, k))}/${b.ids.fold(0, (n, k) => n + FactoryRun.upgrades[k]!.max)}',
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                style: TextStyle(color: b.color, fontWeight: FontWeight.w900, fontSize: 13)),
+          ),
+        for (final b in layout)
+          for (final n in b.nodes)
+            () {
+              final st = state(n.id);
+              final sel = n.id == id;
+              final r = sel ? 19.0 : 16.0;
+              return Positioned(
+                left: n.pos.dx - r,
+                top: n.pos.dy - r,
+                child: GestureDetector(
+                  key: ValueKey('upgrade-${n.id}'),
+                  onTap: () => setState(() => _picked = n.id),
+                  child: Opacity(
+                    opacity: st == 'locked' ? 0.5 : 1,
+                    child: Stack(clipBehavior: Clip.none, children: [
+                      Container(
+                        width: r * 2,
+                        height: r * 2,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: st == 'have' ? b.color : const Color(0xFF1E293B),
+                          border: Border.all(color: sel ? const Color(0xFFFDE047) : st == 'locked' ? const Color(0xFF475569) : b.color, width: sel ? 4 : 2),
+                        ),
+                        child: Text(st == 'locked' ? '🔒' : _upgradeIcons[n.id] ?? '⬆️', style: const TextStyle(fontSize: 15)),
+                      ),
+                      // O nível (comprado/máximo), num selo embaixo à direita.
+                      Positioned(
+                        left: r + 8,
+                        top: r + 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 3),
+                          decoration: BoxDecoration(color: const Color(0xFF0F172A), borderRadius: BorderRadius.circular(6), border: Border.all(color: b.color)),
+                          child: Text('${FactoryRun.upgradeLevel(f, n.id)}/${FactoryRun.upgrades[n.id]!.max}',
+                              style: const TextStyle(color: Color(0xFFE2E8F0), fontSize: 8, fontWeight: FontWeight.w800)),
                         ),
                       ),
-                    );
-                  }(),
-            ]),
-          );
-        }),
+                    ]),
+                  ),
+                ),
+              );
+            }(),
+      ]),
+    );
+    return Column(key: const ValueKey('skill-tree'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      SizedBox(
+        height: 360,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: ColoredBox(
+            color: const Color(0xFF020617),
+            child: LayoutBuilder(builder: (context, box) {
+              _fit(box.maxWidth, box.maxHeight);
+              return Stack(children: [
+                InteractiveViewer(
+                  transformationController: _view,
+                  constrained: false,
+                  minScale: 0.3,
+                  maxScale: 2,
+                  boundaryMargin: const EdgeInsets.all(200),
+                  child: tree,
+                ),
+                Positioned(
+                  right: 6,
+                  top: 6,
+                  child: Row(children: [
+                    for (final (label, by) in [('−', 1 / 1.25), ('+', 1.25)])
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4),
+                        child: Material(
+                          color: const Color(0xFF1E293B),
+                          shape: const CircleBorder(),
+                          child: InkWell(
+                            key: ValueKey('tree-zoom-$label'),
+                            customBorder: const CircleBorder(),
+                            onTap: () => _zoom(by),
+                            child: SizedBox(width: 32, height: 32, child: Center(child: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900)))),
+                          ),
+                        ),
+                      ),
+                  ]),
+                ),
+              ]);
+            }),
+          ),
+        ),
       ),
       const SizedBox(height: 8),
       // O que a melhoria escolhida faz, o que falta e o botão de comprar.
@@ -2931,7 +3041,7 @@ class _SkillTreeState extends State<_SkillTree> {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(tr(_upgradeNames[id] ?? id), style: TextStyle(color: c.text, fontWeight: FontWeight.w900, fontSize: 13)),
               Text(tr(up.label).replaceAll('{0}', '$value'), style: TextStyle(color: c.text, fontSize: 12, fontWeight: FontWeight.bold)),
-              Text('${'★' * level}${'☆' * (up.max - level)} · ${price == null ? tr('No máximo') : '🪙 $price'}', style: TextStyle(color: c.muted, fontSize: 12)),
+              Text('${'★' * min(level, 10)}${'☆' * min(up.max - level, 10)} · ${price == null ? tr('No máximo') : '🪙 $price'}', style: TextStyle(color: c.muted, fontSize: 12)),
               for (final n in needs) Text('✖ ${needText(n)}', style: const TextStyle(color: Color(0xFFEF4444), fontSize: 11)),
             ]),
           ),
@@ -2962,10 +3072,10 @@ class _TreeLines extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     for (final l in lines) {
       canvas.drawLine(l.from, l.to, Paint()
-        ..color = l.color ?? const Color(0xFF475569)
-        ..strokeWidth = l.color != null ? 3 : 2);
+        ..color = l.color ?? const Color(0xFF334155)
+        ..strokeWidth = l.color != null ? 4 : 2);
     }
-    canvas.drawCircle(center, 10 * size.width / 460, Paint()..color = const Color(0xFFF8FAFC));
+    canvas.drawCircle(center, 14, Paint()..color = const Color(0xFFF8FAFC));
   }
 
   @override

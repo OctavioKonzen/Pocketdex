@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   weeklyOf, startWeekly, buyCosmetic, equipCosmetic, COSMETIC_BALLS,
   FRIEND_EVOLVE, PICKUP, SYNCHRONIZE, legOf,
-  placeInfo, routeInfo, SHORE, CAVE_OF, dungeonPos, routePos, DUNGEON_LENGTH, CITY_BOSS, waterNext, RIVAL_FLOOR, targetOf, rivalBoss, townShop, townCenter, townHub, biomesLinked,
+  placeInfo, routeInfo, UPGRADE_FX, SHORE, CAVE_OF, dungeonPos, routePos, DUNGEON_LENGTH, CITY_BOSS, waterNext, RIVAL_FLOOR, targetOf, rivalBoss, townShop, townCenter, townHub, biomesLinked,
   isDoubleBattle,
   DOUBLE_FLOOR,
   battleOrder, blindPick, bossOf, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, foeLevelAt, foeMember,
@@ -187,7 +187,7 @@ describe('Battle Factory (roguelike)', () => {
     const ok = { ...emptyFactory(), owned: [1, 4] }
     expect(normalizeOwned(ok, data)).toBe(ok)
     // Melhorias: cada nível mais caro, até o máximo; valem na próxima corrida.
-    let f = { ...rich, coins: 999999, best: 999, owned: [1, 4, 7, 152, 155, 158, 252, 255] }
+    let f = { ...rich, coins: 999999, best: 999, owned: [1, 4, 7, 152, 155, 158, 252, 255, 387, 390] }
     const p1 = upgradePrice(f, 'level')
     f = buyUpgrade(f, 'level')
     expect(upgradePrice(f, 'level')).toBeGreaterThan(p1)
@@ -201,12 +201,19 @@ describe('Battle Factory (roguelike)', () => {
     expect(run.bag.potion).toBe(START_BAG.potion + 5)
     expect(run.bag.revive).toBe(START_BAG.revive + 3)
     expect(run.money).toBe(500)
-    expect(run.mult).toEqual({ money: 1, exp: 1.25, shop: 0.8 })
+    expect(run.mult).toEqual({ money: 1.25, exp: 1.4, shop: 0.8 })
+    // A árvore grande: bônus no time (atributo + Mestre), itens guardados, Bolsa e fichas.
+    expect(run.teamBoost).toEqual({ hp: 0.15, atk: 0.15, def: 0.15, spa: 0.15, spd: 0.15, spe: 0.15 })
+    expect(run.stash).toContain('leftovers')
+    expect(run.stash).toContain('lucky-egg')
+    expect(run.stash.length).toBe(Object.values(UPGRADE_FX).filter(([kind]) => kind === 'stash').length)
+    expect([run.bag['ultra-ball'], run.bag['master-ball'], run.bag['max-potion']]).toEqual([3, 1, 2])
+    expect(run.tokens).toEqual({ 'move-tutor': 3, 'move-reminder': 3 })
     // Os ramos novos: Great Balls, Escape Rope, Mapa, Dynamax Band, Tera Orb e moedas a mais no fim.
     expect(run.bag['great-ball']).toBe(3)
     expect(run.bag['escape-rope']).toBe(2)
     expect([run.townMap, run.dmax, run.tera]).toEqual([true, true, true])
-    expect(endRun(f, { ...run, floor: 11, defeated: 0, bosses: 0 }).last.coins).toBe(75)
+    expect(endRun(f, { ...run, floor: 11, defeated: 0, bosses: 0 }).last.coins).toBe(100)
     expect(upgradeNeeds({ ...emptyFactory(), best: 999 }, 'tera')).toContainEqual({ kind: 'up', id: 'dmax', level: 1 })
     // Sem melhorias, a corrida é a de sempre.
     expect(startRun(emptyFactory(), data, 1, 42).team[0].level).toBe(5)

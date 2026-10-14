@@ -300,6 +300,103 @@ export const UPGRADES = {
   map: { label: 'Começa com o Mapa da Cidade', per: 1, max: 1, base: 900 },
   dmax: { label: 'Começa com a Dynamax Band', per: 1, max: 1, base: 2500 },
   tera: { label: 'Começa com a Tera Orb', per: 1, max: 1, base: 3000 },
+  // A árvore grande: itens na Bolsa, itens guardados, bônus no time, XP e dinheiro, fichas (UPGRADE_FX diz o efeito).
+  superPotions: { label: 'Começa com +{0} Super Potion', per: 1, max: 3, base: 150 },
+  hyperPotions: { label: 'Começa com +{0} Hyper Potion', per: 1, max: 3, base: 300 },
+  maxPotions: { label: 'Começa com +{0} Max Potion', per: 1, max: 2, base: 600 },
+  sitrus: { label: 'Começa com uma Sitrus Berry guardada', per: 1, max: 1, base: 800 },
+  lum: { label: 'Começa com uma Lum Berry guardada', per: 1, max: 1, base: 900 },
+  leftovers: { label: 'Começa com Leftovers guardado', per: 1, max: 1, base: 1200 },
+  sash: { label: 'Começa com uma Focus Sash guardada', per: 1, max: 1, base: 1500 },
+  ultraBalls: { label: 'Começa com +{0} Ultra Ball', per: 1, max: 3, base: 400 },
+  masterBall: { label: 'Começa com +{0} Master Ball', per: 1, max: 1, base: 6000 },
+  quickBalls: { label: 'Começa com +{0} Quick Ball', per: 1, max: 3, base: 300 },
+  netBalls: { label: 'Começa com +{0} Net Ball', per: 1, max: 3, base: 250 },
+  timerBalls: { label: 'Começa com +{0} Timer Ball', per: 1, max: 3, base: 250 },
+  duskBalls: { label: 'Começa com +{0} Dusk Ball', per: 1, max: 3, base: 250 },
+  expPlus: { label: 'Mais +{0}% de XP', per: 3, max: 5, base: 500 },
+  luckyEgg: { label: 'Começa com o Lucky Egg guardado', per: 1, max: 1, base: 1500 },
+  hpBoost: { label: 'Vigor: +{0}% de HP no time', per: 1, max: 10, base: 200 },
+  speBoost: { label: 'Agilidade: +{0}% de Velocidade no time', per: 1, max: 10, base: 250 },
+  tutor: { label: 'Começa com +{0} ficha de Move Tutor', per: 1, max: 3, base: 400 },
+  reminder: { label: 'Começa com +{0} ficha de Move Reminder', per: 1, max: 3, base: 250 },
+  atk: { label: 'Força: +{0}% de Ataque no time', per: 1, max: 10, base: 200 },
+  spa: { label: 'Foco: +{0}% de Ataque Especial no time', per: 1, max: 10, base: 200 },
+  def: { label: 'Couraça: +{0}% de Defesa no time', per: 1, max: 10, base: 200 },
+  spd: { label: 'Escudo: +{0}% de Defesa Especial no time', per: 1, max: 10, base: 200 },
+  allStats: { label: 'Mestre: +{0}% em todos os atributos do time', per: 1, max: 5, base: 1500 },
+  band: { label: 'Começa com uma Choice Band guardada', per: 1, max: 1, base: 1200 },
+  scarf: { label: 'Começa com uma Choice Scarf guardada', per: 1, max: 1, base: 1500 },
+  specs: { label: 'Começa com Choice Specs guardado', per: 1, max: 1, base: 1200 },
+  lifeOrb: { label: 'Começa com uma Life Orb guardada', per: 1, max: 1, base: 1500 },
+  vest: { label: 'Começa com um Assault Vest guardado', per: 1, max: 1, base: 1300 },
+  helmet: { label: 'Começa com um Rocky Helmet guardado', per: 1, max: 1, base: 1000 },
+  quickClaw: { label: 'Começa com uma Quick Claw guardada', per: 1, max: 1, base: 900 },
+  balloon: { label: 'Começa com um Air Balloon guardado', per: 1, max: 1, base: 900 },
+  brightPowder: { label: 'Começa com um Bright Powder guardado', per: 1, max: 1, base: 1000 },
+  boots: { label: 'Começa com Heavy-Duty Boots guardadas', per: 1, max: 1, base: 900 },
+  kingsRock: { label: 'Começa com uma King\'s Rock guardada', per: 1, max: 1, base: 1000 },
+  loot: { label: 'Treinadores pagam +{0}% de dinheiro', per: 5, max: 5, base: 300 },
+  expertBelt: { label: 'Começa com uma Expert Belt guardada', per: 1, max: 1, base: 1200 },
+  bonusCoins: { label: 'Mais +{0}% de moedas no fim da corrida', per: 10, max: 5, base: 900 },
+  policy: { label: 'Começa com uma Weakness Policy guardada', per: 1, max: 1, base: 1500 },
+  muscleBand: { label: 'Começa com uma Muscle Band guardada', per: 1, max: 1, base: 1000 },
+  wiseGlasses: { label: 'Começa com Wise Glasses guardado', per: 1, max: 1, base: 1000 },
+  shellBell: { label: 'Começa com um Shell Bell guardado', per: 1, max: 1, base: 1100 },
+  scopeLens: { label: 'Começa com uma Scope Lens guardada', per: 1, max: 1, base: 1600 },
+  eviolite: { label: 'Começa com um Eviolite guardado', per: 1, max: 1, base: 1600 },
+}
+/**
+ * O efeito das melhorias da árvore grande, aplicado no começo da corrida:
+ * ['bag', item] (+nível na Bolsa), ['stash', item] (guardado para segurar),
+ * ['token', ficha], ['boost', atributo] (+nível% no time), ['boostAll'],
+ * ['mult', 'exp' | 'money'] (+valor%) e ['coins'] (+valor% de moedas no fim).
+ */
+export const UPGRADE_FX = {
+  superPotions: ['bag', 'super-potion'],
+  hyperPotions: ['bag', 'hyper-potion'],
+  maxPotions: ['bag', 'max-potion'],
+  sitrus: ['stash', 'sitrus-berry'],
+  lum: ['stash', 'lum-berry'],
+  leftovers: ['stash', 'leftovers'],
+  sash: ['stash', 'focus-sash'],
+  ultraBalls: ['bag', 'ultra-ball'],
+  masterBall: ['bag', 'master-ball'],
+  quickBalls: ['bag', 'quick-ball'],
+  netBalls: ['bag', 'net-ball'],
+  timerBalls: ['bag', 'timer-ball'],
+  duskBalls: ['bag', 'dusk-ball'],
+  expPlus: ['mult', 'exp'],
+  luckyEgg: ['stash', 'lucky-egg'],
+  hpBoost: ['boost', 'hp'],
+  speBoost: ['boost', 'spe'],
+  tutor: ['token', 'move-tutor'],
+  reminder: ['token', 'move-reminder'],
+  atk: ['boost', 'atk'],
+  spa: ['boost', 'spa'],
+  def: ['boost', 'def'],
+  spd: ['boost', 'spd'],
+  allStats: ['boostAll', 'all'],
+  band: ['stash', 'choice-band'],
+  scarf: ['stash', 'choice-scarf'],
+  specs: ['stash', 'choice-specs'],
+  lifeOrb: ['stash', 'life-orb'],
+  vest: ['stash', 'assault-vest'],
+  helmet: ['stash', 'rocky-helmet'],
+  quickClaw: ['stash', 'quick-claw'],
+  balloon: ['stash', 'air-balloon'],
+  brightPowder: ['stash', 'bright-powder'],
+  boots: ['stash', 'heavy-duty-boots'],
+  kingsRock: ['stash', 'kings-rock'],
+  loot: ['mult', 'money'],
+  expertBelt: ['stash', 'expert-belt'],
+  bonusCoins: ['coins', 'all'],
+  policy: ['stash', 'weakness-policy'],
+  muscleBand: ['stash', 'muscle-band'],
+  wiseGlasses: ['stash', 'wise-glasses'],
+  shellBell: ['stash', 'shell-bell'],
+  scopeLens: ['stash', 'scope-lens'],
+  eviolite: ['stash', 'eviolite'],
 }
 /**
  * A árvore de melhorias: cada ramo começa numa raiz e o resto pede a anterior
@@ -308,28 +405,73 @@ export const UPGRADES = {
  */
 export const UPGRADE_TREE = {
   ivs: { needs: ['level', 2], best: 8 },
-  exp: { needs: ['ivs', 2], best: 12 },
-  expShare: { needs: ['exp', 3], best: 20, owned: 3 },
   revive: { needs: ['potions', 2], best: 6 },
   shop: { needs: ['money', 2], best: 6 },
-  coins: { needs: ['shop', 2], best: 12 },
-  greatBalls: { needs: ['balls', 2], best: 10 },
-  shiny: { needs: ['greatBalls', 2], best: 15, owned: 5 },
-  rope: { needs: ['revive', 1], best: 12 },
-  map: { best: 10 },
+  exp: { needs: ['ivs', 2], best: 12 },
+  expShare: { needs: ['exp', 3], best: 20, owned: 3 },
   reroll: { needs: ['map', 1], best: 15 },
   cards: { needs: ['reroll', 1], best: 25, owned: 8 },
+  shiny: { needs: ['greatBalls', 2], best: 15, owned: 5 },
+  greatBalls: { needs: ['balls', 2], best: 10 },
+  rope: { needs: ['revive', 1], best: 12 },
+  coins: { needs: ['shop', 2], best: 12 },
+  map: { best: 10 },
   dmax: { best: 20, owned: 4 },
   tera: { needs: ['dmax', 1], best: 30, owned: 6 },
+  superPotions: { needs: ['potions', 2], best: 6 },
+  hyperPotions: { needs: ['superPotions', 2], best: 14 },
+  maxPotions: { needs: ['hyperPotions', 2], best: 24 },
+  sitrus: { needs: ['superPotions', 1], best: 10 },
+  lum: { needs: ['sitrus', 1], best: 16 },
+  leftovers: { needs: ['revive', 2], best: 15 },
+  sash: { needs: ['rope', 1], best: 22 },
+  ultraBalls: { needs: ['greatBalls', 2], best: 18 },
+  masterBall: { needs: ['ultraBalls', 3], best: 40, owned: 10 },
+  quickBalls: { needs: ['balls', 3], best: 12 },
+  netBalls: { needs: ['quickBalls', 1], best: 14 },
+  timerBalls: { needs: ['netBalls', 1], best: 18 },
+  duskBalls: { needs: ['quickBalls', 1], best: 14 },
+  expPlus: { needs: ['exp', 5], best: 25 },
+  luckyEgg: { needs: ['expShare', 1], best: 30 },
+  hpBoost: { needs: ['ivs', 2], best: 10 },
+  speBoost: { needs: ['hpBoost', 3], best: 15 },
+  tutor: { needs: ['level', 2], best: 10 },
+  reminder: { needs: ['tutor', 1], best: 12 },
+  atk: { best: 5 },
+  spa: { needs: ['atk', 2], best: 8 },
+  def: { needs: ['atk', 2], best: 8 },
+  spd: { needs: ['def', 2], best: 12 },
+  allStats: { needs: ['spd', 5], best: 30, owned: 6 },
+  band: { needs: ['atk', 5], best: 20 },
+  scarf: { needs: ['band', 1], best: 30 },
+  specs: { needs: ['spa', 5], best: 20 },
+  lifeOrb: { needs: ['spa', 3], best: 25 },
+  vest: { needs: ['spd', 3], best: 25 },
+  helmet: { needs: ['def', 3], best: 18 },
+  quickClaw: { needs: ['map', 1], best: 12 },
+  balloon: { needs: ['quickClaw', 1], best: 18 },
+  brightPowder: { needs: ['balloon', 1], best: 24 },
+  boots: { needs: ['map', 1], best: 14 },
+  kingsRock: { needs: ['boots', 1], best: 20 },
+  loot: { needs: ['money', 2], best: 8 },
+  expertBelt: { needs: ['loot', 3], best: 20 },
+  bonusCoins: { needs: ['coins', 5], best: 35 },
+  policy: { needs: ['dmax', 1], best: 25 },
+  muscleBand: { needs: ['dmax', 1], best: 22 },
+  wiseGlasses: { needs: ['muscleBand', 1], best: 24 },
+  shellBell: { needs: ['wiseGlasses', 1], best: 28 },
+  scopeLens: { needs: ['tera', 1], best: 32 },
+  eviolite: { needs: ['tera', 1], best: 34 },
 }
 /** Os ramos da árvore, na ordem (da raiz para a ponta). */
 export const UPGRADE_BRANCHES = [
-  ['🎓', 'Treino', ['level', 'ivs', 'exp', 'expShare']],
-  ['🧪', 'Sobrevivência', ['potions', 'revive', 'rope']],
-  ['🎯', 'Captura', ['balls', 'greatBalls', 'shiny']],
-  ['💰', 'Comércio', ['money', 'shop', 'coins']],
-  ['🧭', 'Exploração', ['map', 'reroll', 'cards']],
-  ['⚡', 'Poder', ['dmax', 'tera']],
+  ['🧪', 'Sobrevivência', ['potions', 'revive', 'rope', 'sash', 'leftovers', 'superPotions', 'hyperPotions', 'maxPotions', 'sitrus', 'lum']],
+  ['🎯', 'Captura', ['balls', 'greatBalls', 'shiny', 'ultraBalls', 'masterBall', 'quickBalls', 'netBalls', 'timerBalls', 'duskBalls']],
+  ['🎓', 'Treino', ['level', 'ivs', 'exp', 'expShare', 'luckyEgg', 'expPlus', 'hpBoost', 'speBoost', 'tutor', 'reminder']],
+  ['⚔️', 'Combate', ['atk', 'spa', 'specs', 'lifeOrb', 'def', 'spd', 'allStats', 'vest', 'helmet', 'band', 'scarf']],
+  ['🧭', 'Exploração', ['map', 'reroll', 'cards', 'quickClaw', 'balloon', 'brightPowder', 'boots', 'kingsRock']],
+  ['💰', 'Comércio', ['money', 'shop', 'coins', 'bonusCoins', 'loot', 'expertBelt']],
+  ['⚡', 'Poder', ['dmax', 'tera', 'scopeLens', 'eviolite', 'policy', 'muscleBand', 'wiseGlasses', 'shellBell']],
 ]
 export const UPGRADE_LEVEL_BEST = 3
 /** O que falta para comprar o próximo nível: [{kind: 'up', id, level} | {kind: 'best', floor} | {kind: 'owned', count}] (vazio: pode). */
@@ -1135,6 +1277,17 @@ export function startRun(factory, data, id, seed, shiny = false, options = {}) {
     ...(options.nuzlocke ? { nuzlocke: true } : {}),
     // A corrida da semana (a semana e a regra dela).
     ...(options.weekly ? { weekly: options.weekly, rule: options.rule ?? 'normal' } : {}),
+  }
+  // A árvore grande: itens, bônus, XP, dinheiro e fichas (na ordem das melhorias).
+  for (const [k, [kind, arg]] of Object.entries(UPGRADE_FX)) {
+    const v = up(k)
+    if (!v) continue
+    if (kind === 'bag') run.bag = { ...run.bag, [arg]: (run.bag[arg] ?? 0) + v }
+    else if (kind === 'stash') run.stash = [...run.stash, arg]
+    else if (kind === 'token') run.tokens = { ...run.tokens, [arg]: (run.tokens[arg] ?? 0) + v }
+    else if (kind === 'boost') run.teamBoost = { ...run.teamBoost, [arg]: round3(run.teamBoost[arg] + v / 100) }
+    else if (kind === 'boostAll') run.teamBoost = Object.fromEntries(STATS.map((st) => [st, round3(run.teamBoost[st] + v / 100)]))
+    else if (kind === 'mult') run.mult = { ...run.mult, [arg]: round3(run.mult[arg] + v / 100) }
   }
   // Regra da semana "sem itens": começa com a Bolsa vazia.
   if (options.rule === 'noItems') run.bag = Object.fromEntries(Object.keys(run.bag).map((k) => [k, 0]))
@@ -2041,7 +2194,7 @@ export function equipCosmetic(factory, kind, id) {
 /** Perdeu: a corrida acaba; a pontuação vira moedas e o recorde fica salvo. */
 export function endRun(factory, run) {
   // A melhoria de moedas soma uma porcentagem ao que a corrida rendeu.
-  const coins = Math.round(runCoins(run) * (1 + upgradeValue(factory, 'coins') / 100))
+  const coins = Math.round(runCoins(run) * (1 + (upgradeValue(factory, 'coins') + upgradeValue(factory, 'bonusCoins')) / 100))
   return { ...factory, coins: factory.coins + coins, best: Math.max(factory.best, run.floor - 1), run: null, last: { floor: run.floor - 1, coins, ...(run.weekly ? { weekly: run.weekly } : {}) } }
 }
 

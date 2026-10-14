@@ -95,16 +95,22 @@ void main() {
     final rich = {...FactoryRun.empty(), 'owned': [1], 'coins': 999999};
     expect(FactoryRun.buyPokemon(rich, data, 6), isNull);
     expect(FactoryRun.normalizeOwned({...FactoryRun.empty(), 'owned': [1, 6, 5, 3], 'shinies': [6]}, data), containsPair('owned', [1, 4]));
-    var f = {...rich, 'best': 999, 'owned': [1, 4, 7, 152, 155, 158, 252, 255]};
+    var f = {...rich, 'best': 999, 'owned': [1, 4, 7, 152, 155, 158, 252, 255, 387, 390]};
     f = _buyAll(f);
     final run = FactoryRun.startRun(f, data, 1, 42)!;
     expect(FactoryRun.teamOf(run).first['level'], 10);
     expect(run['money'], 500);
     expect(run['bag']['revive'], 4);
-    expect(run['mult'], {'money': 1, 'exp': 1.25, 'shop': 0.8});
+    expect(run['mult'], {'money': 1.25, 'exp': 1.4, 'shop': 0.8});
+    // A árvore grande: bônus no time (atributo + Mestre), itens guardados, Bolsa e fichas. Igual ao site.
+    expect(run['teamBoost'], {'hp': 0.15, 'atk': 0.15, 'def': 0.15, 'spa': 0.15, 'spd': 0.15, 'spe': 0.15});
+    expect(run['stash'], containsAll(['leftovers', 'lucky-egg']));
+    expect((run['stash'] as List).length, FactoryRun.upgradeFx.values.where((v) => v.$1 == 'stash').length);
+    expect([run['bag']['ultra-ball'], run['bag']['master-ball'], run['bag']['max-potion']], [3, 1, 2]);
+    expect(run['tokens'], {'move-tutor': 3, 'move-reminder': 3});
     // Os ramos novos: Great Balls, Escape Rope, Mapa, Dynamax Band, Tera Orb e moedas a mais no fim.
     expect([run['bag']['great-ball'], run['bag']['escape-rope'], run['townMap'], run['dmax'], run['tera']], [3, 2, true, true, true]);
-    expect(((FactoryRun.endRun(f, {...run, 'floor': 11, 'defeated': 0, 'bosses': 0})['last']) as Map)['coins'], 75);
+    expect(((FactoryRun.endRun(f, {...run, 'floor': 11, 'defeated': 0, 'bosses': 0})['last']) as Map)['coins'], 100);
     expect(FactoryRun.upgradeNeeds({...FactoryRun.empty(), 'best': 999}, 'tera'), contains(equals({'kind': 'up', 'id': 'dmax', 'level': 1})));
     // O mesmo preço do site.
     expect(FactoryRun.upgradePrice(FactoryRun.empty(), 'level'), 150);

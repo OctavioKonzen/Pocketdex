@@ -19,7 +19,7 @@ import {
   BAG_ITEMS, bossOf, unequipItem, ROUTE_LENGTH, CITY_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, MAX_TEAM, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shinyPrice, shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, takeCard, teachMove, teamDown, applyBagItem, unlockShiny, VITAMIN_EVS, VITAMINS,
-  buyShiny, forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES,
+  buyShiny, forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE,
   tradeMon, skipTrade, TRADE_LEVELS, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, bossScene,
   resolveChoice, regionLegend, leaderType, villainTeam, rivalBoss, placeInfo, routeInfo, DUNGEON_LENGTH, dungeonPos, townShop, townCenter,
   weeklyOf, startWeekly, COSMETIC_BALLS, COSMETIC_FRAMES, hasCosmetic, buyCosmetic, equipCosmetic,
@@ -571,9 +571,17 @@ export function FactoryHub({ onContinue, busy }) {
 
 /** O nome curto de cada melhoria (nos requisitos da árvore). */
 const UPGRADE_NAMES = {
-  level: 'Treino', ivs: 'Genética', exp: 'XP extra', expShare: 'Exp. Share', potions: 'Potions', revive: 'Revives',
-  balls: 'Poké Balls', shiny: 'Shiny', money: 'Dinheiro', shop: 'Desconto', reroll: 'Sortear caminho', cards: 'Carta a mais',
+  level: 'Treino', ivs: 'Genética', balls: 'Poké Balls', potions: 'Potions', revive: 'Revives', money: 'Dinheiro',
+  shop: 'Desconto', exp: 'XP extra', expShare: 'Exp. Share', reroll: 'Sortear caminho', cards: 'Carta a mais', shiny: 'Shiny',
   greatBalls: 'Great Balls', rope: 'Escape Rope', coins: 'Moedas', map: 'Mapa', dmax: 'Dynamax Band', tera: 'Tera Orb',
+  superPotions: 'Super Potions', hyperPotions: 'Hyper Potions', maxPotions: 'Max Potions', sitrus: 'Sitrus Berry', lum: 'Lum Berry', leftovers: 'Leftovers',
+  sash: 'Focus Sash', ultraBalls: 'Ultra Balls', masterBall: 'Master Ball', quickBalls: 'Quick Balls', netBalls: 'Net Balls', timerBalls: 'Timer Balls',
+  duskBalls: 'Dusk Balls', expPlus: 'XP avançado', luckyEgg: 'Lucky Egg', hpBoost: 'Vigor', speBoost: 'Agilidade', tutor: 'Move Tutor',
+  reminder: 'Move Reminder', atk: 'Força', spa: 'Foco', def: 'Couraça', spd: 'Escudo', allStats: 'Mestre',
+  band: 'Choice Band', scarf: 'Choice Scarf', specs: 'Choice Specs', lifeOrb: 'Life Orb', vest: 'Assault Vest', helmet: 'Rocky Helmet',
+  quickClaw: 'Quick Claw', balloon: 'Air Balloon', brightPowder: 'Bright Powder', boots: 'Heavy-Duty Boots', kingsRock: 'King\'s Rock', loot: 'Recompensas',
+  expertBelt: 'Expert Belt', bonusCoins: 'Tesouro', policy: 'Weakness Policy', muscleBand: 'Muscle Band', wiseGlasses: 'Wise Glasses', shellBell: 'Shell Bell',
+  scopeLens: 'Scope Lens', eviolite: 'Eviolite',
 }
 /** Os biomas das rotas: nome, símbolo e as cores do caminho no mapa. */
 const BIOME_INFO = {
@@ -654,25 +662,52 @@ const EVENT_TEXT = {
 const EVENT_ICON = { money: '💰', berries: '🍒', tutor: '📀', declined: '👣', helped: '🤝', secretFound: '💎', secretEmpty: '🕳️' }
 /** O símbolo de cada melhoria (no círculo da árvore). */
 const UPGRADE_ICONS = {
-  level: '🎓', ivs: '🧬', exp: '✨', expShare: '📡', potions: '🧪', revive: '💖', rope: '🪢', balls: '⚪', greatBalls: '🔵', shiny: '🌟',
-  money: '💰', shop: '🏷️', coins: '🪙', map: '🗺️', reroll: '🎲', cards: '🃏', dmax: '🔴', tera: '💎',
+  level: '🎓', ivs: '🧬', balls: '⚪', potions: '🧪', revive: '💖', money: '💰', shop: '🏷️', exp: '✨',
+  expShare: '📡', reroll: '🎲', cards: '🃏', shiny: '🌟', greatBalls: '🔵', rope: '🪢', coins: '🪙', map: '🗺️',
+  dmax: '🔴', tera: '💎', superPotions: '💧', hyperPotions: '🧴', maxPotions: '🍶', sitrus: '🍋', lum: '🫐', leftovers: '🍎',
+  sash: '🎗️', ultraBalls: '🟡', masterBall: '🟣', quickBalls: '⚡', netBalls: '🕸️', timerBalls: '⏱️', duskBalls: '🌑', expPlus: '🌠',
+  luckyEgg: '🥚', hpBoost: '❤️', speBoost: '💨', tutor: '📜', reminder: '🧠', atk: '⚔️', spa: '🔮', def: '🛡️',
+  spd: '🔰', allStats: '👑', band: '🎀', scarf: '🧣', specs: '👓', lifeOrb: '🟠', vest: '🦺', helmet: '⛑️',
+  quickClaw: '🦅', balloon: '🎈', brightPowder: '💫', boots: '👢', kingsRock: '🪨', loot: '💵', expertBelt: '🥋', bonusCoins: '🏆',
+  policy: '📋', muscleBand: '💪', wiseGlasses: '🤓', shellBell: '🐚', scopeLens: '🔭', eviolite: '💠',
 }
-/** A cor de cada ramo (as linhas e os círculos comprados). */
-const BRANCH_COLORS = ['#22c55e', '#38bdf8', '#f59e0b', '#a855f7', '#eab308', '#ef4444']
-/** A ordem dos ramos no leque (os mais longos no meio). */
-const FAN = ['Sobrevivência', 'Captura', 'Treino', 'Exploração', 'Comércio', 'Poder']
-/** As posições (num quadro de 460×300): os ramos saem de um centro embaixo, em leque; cada nível um pouco mais longe. Igual ao app. */
-const TREE = { w: 460, h: 300, cx: 230, cy: 285, first: 92, step: 50 }
-function skillTreeLayout(branches = UPGRADE_BRANCHES) {
-  const order = [...branches].sort((a, b) => FAN.indexOf(a[1]) - FAN.indexOf(b[1]))
-  return order.map(([icon, branch, ids], b) => {
-    const angle = ((170 - (160 * b) / Math.max(1, order.length - 1)) * Math.PI) / 180
-    const at = (d) => [TREE.cx + Math.cos(angle) * d, TREE.cy - Math.sin(angle) * d]
-    const nodes = ids.map((id, k) => ({ id, pos: at(TREE.first + k * TREE.step) }))
-    // O nome do ramo em cima da ponta (dentro do quadro).
-    const [lx, ly] = nodes[nodes.length - 1].pos
-    return { icon, branch, ids, color: BRANCH_COLORS[b % BRANCH_COLORS.length], nodes, label: [Math.min(TREE.w - 55, Math.max(55, lx)), ly - 24] }
+/** A cor de cada ramo (as linhas e os círculos comprados), na ordem de UPGRADE_BRANCHES. */
+const BRANCH_COLORS = ['#22c55e', '#38bdf8', '#f59e0b', '#ef4444', '#a855f7', '#eab308', '#ec4899']
+/** O quadro da árvore (960×620): os ramos saem de um centro embaixo, em leque (de 200° a −20°). Igual ao app. */
+const TREE = { w: 960, h: 620, cx: 480, cy: 480, first: 140, step: 105, from: 200, to: -20 }
+/**
+ * As posições (árvore radial): cada ramo ganha um pedaço do leque do tamanho
+ * das pontas dele; cada melhoria fica no meio do pedaço do pai, mais longe do
+ * centro a cada nível. Igual ao app.
+ */
+function skillTreeLayout() {
+  const parentOf = (id) => UPGRADE_TREE[id]?.needs?.[0] ?? null
+  const kids = (id, ids) => ids.filter((k) => parentOf(k) === id)
+  const tips = (id, ids) => { const c = kids(id, ids); return c.length ? c.reduce((n, k) => n + tips(k, ids), 0) : 1 }
+  const total = UPGRADE_BRANCHES.reduce((n, [, , ids]) => n + tips(ids[0], ids), 0)
+  const rad = (d) => (d * Math.PI) / 180
+  const out = []
+  let start = rad(TREE.from)
+  UPGRADE_BRANCHES.forEach(([icon, branch, ids], b) => {
+    const color = BRANCH_COLORS[b % BRANCH_COLORS.length]
+    const nodes = []
+    const place = (id, a, z, depth, parent) => {
+      const m = (a + z) / 2
+      const r = TREE.first + depth * TREE.step
+      nodes.push({ id, parent, pos: [TREE.cx + Math.cos(m) * r, TREE.cy - Math.sin(m) * r] })
+      let x = a
+      for (const k of kids(id, ids)) {
+        const span = ((z - a) * tips(k, ids)) / tips(id, ids)
+        place(k, x, x + span, depth + 1, id)
+        x += span
+      }
+    }
+    const span = ((rad(TREE.to) - rad(TREE.from)) * tips(ids[0], ids)) / total
+    place(ids[0], start, start + span, 0, null)
+    start += span
+    out.push({ icon, branch, ids, color, nodes })
   })
+  return out
 }
 
 /**
@@ -685,6 +720,8 @@ function SkillTree({ factory }) {
   const layout = skillTreeLayout()
   const firstOpen = layout.flatMap((b) => b.ids).find((id) => upgradePrice(factory, id) != null && !upgradeNeeds(factory, id).length)
   const [picked, setPicked] = useState(null)
+  const [zoom, setZoom] = useState(0.7)
+  const box = useRef(null)
   const id = picked ?? firstOpen ?? 'level'
   const up = UPGRADES[id]
   const level = upgradeLevel(factory, id)
@@ -692,36 +729,55 @@ function SkillTree({ factory }) {
   const next = (up.offset ?? 0) + (level + 1) * up.per
   const needs = price == null ? [] : upgradeNeeds(factory, id)
   const stateOf = (u) => (upgradeLevel(factory, u) ? 'have' : upgradeNeeds(factory, u).some((n) => n.kind === 'up') ? 'locked' : 'open')
+  const posOf = Object.fromEntries(layout.flatMap((b) => b.nodes.map((n) => [n.id, n.pos])))
+  // Começa centrada embaixo (o centro da árvore); dá para arrastar a barra e dar zoom.
+  useEffect(() => {
+    const el = box.current
+    if (el) { el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2; el.scrollTop = el.scrollHeight }
+  }, [zoom])
   return (
     <div className="space-y-2" data-testid="skill-tree">
-      <svg viewBox={`0 0 ${TREE.w} ${TREE.h}`} className="w-full rounded-xl bg-slate-950" role="img" aria-label={t('Árvore de melhorias')}>
-        {layout.map((b) => (
-          <g key={b.branch}>
-            {b.nodes.map((n, k) => {
-              const [x1, y1] = k ? b.nodes[k - 1].pos : [TREE.cx, TREE.cy]
+      <div className="relative">
+        <div ref={box} className="max-h-[26rem] overflow-auto rounded-xl bg-slate-950">
+          <svg width={TREE.w * zoom} height={TREE.h * zoom} viewBox={`0 0 ${TREE.w} ${TREE.h}`} role="img" aria-label={t('Árvore de melhorias')}>
+            {layout.map((b) => b.nodes.map((n) => {
+              const [x1, y1] = n.parent ? posOf[n.parent] : [TREE.cx, TREE.cy]
               const lit = upgradeLevel(factory, n.id) > 0
-              return <line key={n.id} x1={x1} y1={y1} x2={n.pos[0]} y2={n.pos[1]} stroke={lit ? b.color : '#475569'} strokeWidth={lit ? 3 : 2} />
+              return <line key={`l-${n.id}`} x1={x1} y1={y1} x2={n.pos[0]} y2={n.pos[1]} stroke={lit ? b.color : '#334155'} strokeWidth={lit ? 4 : 2} />
+            }))}
+            <circle cx={TREE.cx} cy={TREE.cy} r="14" fill="#f8fafc" />
+            {layout.map((b) => {
+              const [rx, ry] = b.nodes[0].pos
+              const have = b.ids.reduce((n, k) => n + upgradeLevel(factory, k), 0)
+              const all = b.ids.reduce((n, k) => n + UPGRADES[k].max, 0)
+              return (
+                <text key={`t-${b.branch}`} x={rx} y={ry + 40} textAnchor="middle" fontSize="13" fontWeight="900" fill={b.color}>
+                  {b.icon} {t(b.branch)} {have}/{all}
+                </text>
+              )
             })}
-            <text x={b.label[0]} y={b.label[1]} textAnchor="middle" fontSize="10" fontWeight="900" fill={b.color}>{b.icon} {t(b.branch)}</text>
-          </g>
-        ))}
-        <circle cx={TREE.cx} cy={TREE.cy} r="10" fill="#f8fafc" />
-        {layout.map((b) => b.nodes.map((n) => {
-          const u = UPGRADES[n.id]
-          const lv = upgradeLevel(factory, n.id)
-          const state = stateOf(n.id)
-          const sel = n.id === id
-          return (
-            <g key={n.id} onClick={() => setPicked(n.id)} className="cursor-pointer" data-testid={`upgrade-${n.id}`} role="button" aria-label={t(UPGRADE_NAMES[n.id])}>
-              <circle cx={n.pos[0]} cy={n.pos[1]} r={sel ? 18 : 16} fill={state === 'have' ? b.color : '#1e293b'} stroke={sel ? '#fde047' : state === 'locked' ? '#475569' : '#e2e8f0'} strokeWidth={sel ? 3 : 2} opacity={state === 'locked' ? 0.55 : 1} />
-              <text x={n.pos[0]} y={n.pos[1] + 5} textAnchor="middle" fontSize="14">{state === 'locked' ? '🔒' : UPGRADE_ICONS[n.id]}</text>
-              {/* O nível (comprado/máximo), num selo embaixo à direita. */}
-              <rect x={n.pos[0] + 7} y={n.pos[1] + 7} width="18" height="10" rx="5" fill="#0f172a" stroke={b.color} strokeWidth="1" />
-              <text x={n.pos[0] + 16} y={n.pos[1] + 15} textAnchor="middle" fontSize="7" fontWeight="800" fill="#e2e8f0">{lv}/{u.max}</text>
-            </g>
-          )
-        }))}
-      </svg>
+            {layout.map((b) => b.nodes.map((n) => {
+              const u = UPGRADES[n.id]
+              const lv = upgradeLevel(factory, n.id)
+              const state = stateOf(n.id)
+              const sel = n.id === id
+              return (
+                <g key={n.id} onClick={() => setPicked(n.id)} className="cursor-pointer" data-testid={`upgrade-${n.id}`} role="button" aria-label={t(UPGRADE_NAMES[n.id])}>
+                  <circle cx={n.pos[0]} cy={n.pos[1]} r={sel ? 19 : 16} fill={state === 'have' ? b.color : '#1e293b'} stroke={sel ? '#fde047' : state === 'locked' ? '#475569' : b.color} strokeWidth={sel ? 4 : 2} opacity={state === 'locked' ? 0.5 : 1} />
+                  <text x={n.pos[0]} y={n.pos[1] + 5} textAnchor="middle" fontSize="15">{state === 'locked' ? '🔒' : UPGRADE_ICONS[n.id]}</text>
+                  {/* O nível (comprado/máximo), num selo embaixo à direita. */}
+                  <rect x={n.pos[0] + 8} y={n.pos[1] + 8} width="22" height="12" rx="6" fill="#0f172a" stroke={b.color} strokeWidth="1" />
+                  <text x={n.pos[0] + 19} y={n.pos[1] + 17} textAnchor="middle" fontSize="8" fontWeight="800" fill="#e2e8f0">{lv}/{u.max}</text>
+                </g>
+              )
+            }))}
+          </svg>
+        </div>
+        <div className="absolute right-2 top-2 flex gap-1">
+          <button type="button" className="h-8 w-8 cursor-pointer rounded-full bg-slate-800 font-black text-white" onClick={() => setZoom((z) => Math.max(0.4, Math.round((z - 0.15) * 100) / 100))} aria-label={t('Diminuir')} data-testid="tree-zoom-out">−</button>
+          <button type="button" className="h-8 w-8 cursor-pointer rounded-full bg-slate-800 font-black text-white" onClick={() => setZoom((z) => Math.min(1.6, Math.round((z + 0.15) * 100) / 100))} aria-label={t('Aumentar')} data-testid="tree-zoom-in">+</button>
+        </div>
+      </div>
       {/* O que a melhoria escolhida faz, o que falta e o botão de comprar. */}
       <div className="flex items-center gap-2 rounded-xl border-2 border-amber-400/60 bg-card p-2 text-xs" data-testid="upgrade-detail">
         <span className="text-2xl">{UPGRADE_ICONS[id]}</span>
