@@ -2926,7 +2926,10 @@ final _treeLayout = _skillTreeLayout();
 class _SkillTree extends StatefulWidget {
   final Json factory;
   final void Function(Json) onBuy;
-  const _SkillTree({required this.factory, required this.onBuy});
+
+  /// Em tela cheia (a árvore ocupa a tela toda; o botão ✕ fecha).
+  final bool full;
+  const _SkillTree({required this.factory, required this.onBuy, this.full = false});
 
   @override
   State<_SkillTree> createState() => _SkillTreeState();
@@ -2952,6 +2955,11 @@ class _SkillTreeState extends State<_SkillTree> {
     _view.value = Matrix4.identity()
       ..translateByDouble(-(size * s - width) / 2, -(size * s - height) / 2, 0, 1)
       ..scaleByDouble(s, s, 1, 1);
+  }
+
+  /// A árvore em tela cheia (as compras feitas nela valem aqui também).
+  void _openFull() {
+    Navigator.of(context).push(MaterialPageRoute<void>(fullscreenDialog: true, builder: (_) => _FullSkillTree(factory: widget.factory, onBuy: widget.onBuy)));
   }
 
   void _zoom(double by) {
@@ -3090,10 +3098,9 @@ class _SkillTreeState extends State<_SkillTree> {
             }(),
       ]),
     );
-    return Column(key: const ValueKey('skill-tree'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      SizedBox(
-        height: 440,
-        child: ClipRRect(
+    Widget sized(Widget child) => widget.full ? Expanded(child: child) : SizedBox(height: 440, child: child);
+    return Column(key: ValueKey(widget.full ? 'skill-tree-full' : 'skill-tree'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      sized(ClipRRect(
           borderRadius: BorderRadius.circular(12),
           child: DecoratedBox(
             decoration: const BoxDecoration(
@@ -3127,6 +3134,23 @@ class _SkillTreeState extends State<_SkillTree> {
                           ),
                         ),
                       ),
+                    // Tela cheia (abre a árvore na tela toda; nela, fecha).
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4),
+                      child: Material(
+                        color: const Color(0xFF1E293B),
+                        shape: const CircleBorder(),
+                        child: InkWell(
+                          key: ValueKey(widget.full ? 'tree-full-close' : 'tree-full'),
+                          customBorder: const CircleBorder(),
+                          onTap: widget.full ? () => Navigator.of(context).pop() : _openFull,
+                          child: SizedBox(
+                              width: 32,
+                              height: 32,
+                              child: Icon(widget.full ? Icons.close : Icons.fullscreen, color: Colors.white, size: 20, semanticLabel: tr(widget.full ? 'Fechar' : 'Tela cheia'))),
+                        ),
+                      ),
+                    ),
                   ]),
                 ),
               ]);
@@ -3167,6 +3191,38 @@ class _SkillTreeState extends State<_SkillTree> {
       ),
     ]);
   }
+}
+
+/// A árvore de melhorias na tela toda.
+class _FullSkillTree extends StatefulWidget {
+  final Json factory;
+  final void Function(Json) onBuy;
+  const _FullSkillTree({required this.factory, required this.onBuy});
+
+  @override
+  State<_FullSkillTree> createState() => _FullSkillTreeState();
+}
+
+class _FullSkillTreeState extends State<_FullSkillTree> {
+  late Json _factory = widget.factory;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        backgroundColor: const Color(0xFF05070D),
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(8),
+            child: _SkillTree(
+              factory: _factory,
+              full: true,
+              onBuy: (next) {
+                setState(() => _factory = next);
+                widget.onBuy(next);
+              },
+            ),
+          ),
+        ),
+      );
 }
 
 /// As linhas da árvore (acesas na cor do ramo quando a melhoria foi comprada) e os anéis de fundo.

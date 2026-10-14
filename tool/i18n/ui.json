@@ -8361,5 +8361,6 @@
  "Mega Pedra: o Pokémon dela megaevolui (uma vez por batalha)": {"en": "Mega Stone: its Pokémon can Mega Evolve (once per battle)", "fr": "Méga-Gemme : son Pokémon peut méga-évoluer (une fois par combat)", "es": "Megapiedra: su Pokémon puede megaevolucionar (una vez por combate)"},
  "Online": {"en": "Online", "fr": "En ligne", "es": "En línea"},
  "Adversários": {"en": "Opponents", "fr": "Adversaires", "es": "Rivales"},
- "nó pequeno": {"en": "small node", "fr": "petit nœud", "es": "nodo pequeño"}
+ "nó pequeno": {"en": "small node", "fr": "petit nœud", "es": "nodo pequeño"},
+ "Tela cheia": {"en": "Full screen", "fr": "Plein écran", "es": "Pantalla completa"}
 }

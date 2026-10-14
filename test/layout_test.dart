@@ -140,6 +140,10 @@ final screens = <String, Widget Function()>{
     saveFactory({'best': 30, 'coins': 5000, 'owned': [1, 4, 7, 25, 133, 152], 'shinies': [], 'run': null, 'upgrades': {'level': 5, 'ivs': 2, 'potions': 3, 'revive': 1, 'balls': 2, 'map': 1}});
     return Scaffold(body: ListView(padding: const EdgeInsets.all(12), children: [FactoryHub(onContinue: () {}, busy: false)]));
   },
+  'Battle Factory (árvore em tela cheia)': () {
+    saveFactory({'best': 30, 'coins': 5000, 'owned': [1, 4, 7, 25, 133, 152], 'shinies': [], 'run': null, 'upgrades': {'level': 5, 'ivs': 2, 'potions': 3, 'revive': 1, 'balls': 2, 'map': 1}});
+    return Scaffold(body: ListView(padding: const EdgeInsets.all(12), children: [FactoryHub(onContinue: () {}, busy: false)]));
+  },
   'Battle Factory (cidade)': () => _factory(null, {'floor': 10, 'biome': 'city', 'town': true, 'options': [{'kind': 'boss'}, {'kind': 'dungeon', 'place': 'sewer', 'scene': 'sewer'}]}),
   'Login': () => const LoginScreen(),
   'Pokémon (Charizard)': () => const PokemonDetailScreen(initialPokemonId: 6),
@@ -173,6 +177,16 @@ final actions = <String, Future<void> Function(WidgetTester)>{
   'Battle Factory (árvore)': (tester) async {
     await tester.ensureVisible(find.byKey(const ValueKey('skill-tree')));
     await tester.pump(const Duration(milliseconds: 300));
+  },
+  // A árvore na tela toda (o botão de tela cheia).
+  'Battle Factory (árvore em tela cheia)': (tester) async {
+    await tester.ensureVisible(find.byKey(const ValueKey('skill-tree')));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byKey(const ValueKey('tree-full')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byKey(const ValueKey('skill-tree-full')), findsOneWidget);
+    expect(find.byKey(const ValueKey('tree-full-close')), findsOneWidget);
   },
   // A loja aberta (a lista de compras por cima do campo).
   'Battle Factory (loja)': (tester) async {

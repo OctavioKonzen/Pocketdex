@@ -734,6 +734,14 @@ function SkillTree({ factory }) {
   const firstOpen = layout.flatMap((b) => b.ids).find((id) => upgradePrice(factory, id) != null && !upgradeNeeds(factory, id).length)
   const [picked, setPicked] = useState(null)
   const [zoom, setZoom] = useState(0.4)
+  // Tela cheia: a árvore ocupa a tela toda (Esc ou ✕ fecha).
+  const [full, setFull] = useState(false)
+  useEffect(() => {
+    if (!full) return
+    const close = (e) => e.key === 'Escape' && setFull(false)
+    window.addEventListener('keydown', close)
+    return () => window.removeEventListener('keydown', close)
+  }, [full])
   const box = useRef(null)
   const id = picked ?? firstOpen ?? 'level'
   const up = UPGRADES[id]
@@ -749,12 +757,12 @@ function SkillTree({ factory }) {
   useEffect(() => {
     const el = box.current
     if (el) { el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2; el.scrollTop = (el.scrollHeight - el.clientHeight) / 2 }
-  }, [zoom])
+  }, [zoom, full])
   const key = upgradeKey(id)
   return (
-    <div className="space-y-2" data-testid="skill-tree">
-      <div className="relative">
-        <div ref={box} className="max-h-[34rem] overflow-auto rounded-xl" style={{ background: 'radial-gradient(circle at center, #1e1b4b 0%, #0b1020 55%, #05070d 100%)' }}>
+    <div className={full ? 'fixed inset-0 z-50 flex flex-col gap-2 bg-[#05070d] p-2' : 'space-y-2'} data-testid="skill-tree">
+      <div className={full ? 'relative min-h-0 flex-1' : 'relative'}>
+        <div ref={box} className={`${full ? 'h-full' : 'max-h-[34rem]'} overflow-auto rounded-xl`} style={{ background: 'radial-gradient(circle at center, #1e1b4b 0%, #0b1020 55%, #05070d 100%)' }}>
           <svg width={size * zoom} height={size * zoom} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={t('Árvore de melhorias')}>
             {/* Anéis de fundo (a distância do centro). */}
             {[1, 2, 3, 4, 5].map((k) => <circle key={`ring-${k}`} cx={c} cy={c} r={(k * (size / 2 - TREE.pad)) / 5} fill="none" stroke="#1e293b" strokeWidth="2" strokeDasharray="6 10" />)}
@@ -804,6 +812,8 @@ function SkillTree({ factory }) {
         <div className="absolute right-2 top-2 flex gap-1">
           <button type="button" className="h-8 w-8 cursor-pointer rounded-full bg-slate-800 font-black text-white" onClick={() => setZoom((z) => Math.max(0.2, Math.round((z - 0.1) * 100) / 100))} aria-label={t('Diminuir')} data-testid="tree-zoom-out">−</button>
           <button type="button" className="h-8 w-8 cursor-pointer rounded-full bg-slate-800 font-black text-white" onClick={() => setZoom((z) => Math.min(1.5, Math.round((z + 0.1) * 100) / 100))} aria-label={t('Aumentar')} data-testid="tree-zoom-in">+</button>
+          {/* Tela cheia (abre a árvore na tela toda; nela, fecha). */}
+          <button type="button" className="h-8 w-8 cursor-pointer rounded-full bg-slate-800 font-black text-white" onClick={() => setFull((f) => !f)} aria-label={t(full ? 'Fechar' : 'Tela cheia')} data-testid={full ? 'tree-full-close' : 'tree-full'}>{full ? '✕' : '⛶'}</button>
         </div>
       </div>
       {/* O que a melhoria escolhida faz, o que falta e o botão de comprar. */}
