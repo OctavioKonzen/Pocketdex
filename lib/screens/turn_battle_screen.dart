@@ -345,8 +345,8 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
         final data = _factoryData ??= await FactoryData.load();
         final after = factoryAfter(_battle!, _factoryOrder, run);
         saveFactory({...factory, 'run': FactoryRun.winFloor(run, data, hp: after.hp, bag: after.bag, captured: after.captured, fought: after.fought, gained: after.gained)});
-        final boss = run['encounter']['boss'] as Map?;
-        note = '${boss != null ? '🏅 ${tr('Você venceu {0}!').replaceAll('{0}', '${boss['name']}')} ' : '🏆 '}${tr('Andar {0} vencido!').replaceAll('{0}', '$floor')}';
+        // Uma tela de vitória só: a do resultado do andar (XP, níveis, dinheiro), logo depois.
+        note = '';
       } else {
         // Com uma Escape Rope na Bolsa, o time foge (pouco HP) e a corrida continua.
         final data = _factoryData ??= await FactoryData.load();
@@ -372,7 +372,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
         });
         // A batalha vira sozinha a tela da corrida (resultado, Enfermeira Joy, captura, loja e mapa), no mesmo lugar.
         final key = _key;
-        Future<void>.delayed(const Duration(milliseconds: 1800), () {
+        Future<void>.delayed(Duration(milliseconds: _battle?.winner == 0 ? 700 : 1800), () {
           if (mounted && !_factoryScreen && _key == key && _battle != null) _openFactory();
         });
       }

@@ -16,11 +16,11 @@ import { Button, SearchInput } from './ui'
 import { getFactoryData, shinyPath, spriteUrl } from '../lib/data'
 import { learnsetOf, movesFor } from '../lib/factoryBattle'
 import {
-  BAG_ITEMS, bossOf, FORKS, ROUTE_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
+  BAG_ITEMS, bossOf, FORKS, unequipItem, ROUTE_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, MAX_TEAM, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shinyPrice, shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, takeCard, teachMove, teamDown, applyBagItem, unlockShiny, VITAMIN_EVS, VITAMINS,
   buyShiny, forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES,
-  tradeMon, skipTrade, TRADE_LEVELS, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, blindPick, bossScene,
+  tradeMon, skipTrade, TRADE_LEVELS, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, bossScene,
   resolveChoice, regionLegend, leaderType, villainTeam,
   cutPath, nodeBlocked, hasHm, clockOf, healerOf, inTown, DARK_BIOMES, dexOf, dexRewardFor, leaveDaycare, takeDaycare, DAYCARE_EGG,
 } from '../lib/factoryRun'
@@ -225,11 +225,18 @@ function TeamPanel({ run, data, byId, save, open = false }) {
                 ⬆ {t('Primeiro na batalha')}
               </button>
             )}
-            {m.item && <span className="rounded-lg bg-amber-500/20 px-2 py-1 font-bold" data-no-translate>★ {itemName(m.item)}</span>}
+            {/* O item (principal ★ e extras): tocar no extra o deixa principal; ✕ tira e guarda (para equipar em outro). */}
+            {m.item && (
+              <span className="inline-flex items-center gap-1 rounded-lg bg-amber-500/20 py-1 pl-2 pr-1 font-bold" data-no-translate>
+                ★ {itemName(m.item)}
+                <button type="button" onClick={() => save(unequipItem(run, i))} className="cursor-pointer rounded px-1 text-red-500 hover:bg-red-500/20" aria-label={t('Tirar o item')} data-testid={`unequip-${i}`}>✕</button>
+              </span>
+            )}
             {(m.extras ?? []).map((id, k) => (
-              <button key={k} type="button" onClick={() => save(setMainItem(run, i, k))} className="cursor-pointer rounded-lg bg-card px-2 py-1 hover:ring-2 hover:ring-amber-500" data-no-translate>
-                {itemName(id)}
-              </button>
+              <span key={k} className="inline-flex items-center gap-1 rounded-lg bg-card py-1 pl-2 pr-1" data-no-translate>
+                <button type="button" onClick={() => save(setMainItem(run, i, k))} className="cursor-pointer hover:text-amber-500">{itemName(id)}</button>
+                <button type="button" onClick={() => save(unequipItem(run, i, k))} className="cursor-pointer rounded px-1 text-red-500 hover:bg-red-500/20" aria-label={t('Tirar o item')} data-testid={`unequip-${i}-${k}`}>✕</button>
+              </span>
             ))}
             {options.length > 0 && (
               <select aria-label={t('Mecânica')} value={gimmickOf(data, run, m) || 'none'} onChange={(e) => save(setGimmick(run, i, e.target.value))}
@@ -688,6 +695,13 @@ const VILLAIN_PLANS = {
 }
 /** A estação e a hora (do relógio de quem joga): mudam os Pokémon que aparecem e o clima. */
 const SEASON_LABEL = { spring: '🌸 Primavera', summer: '☀️ Verão', autumn: '🍂 Outono', winter: '❄️ Inverno' }
+/** Sem o Mapa: cada caminho só dá uma pista do que tem (com o Mapa, você vê tudo). */
+const PATH_HINTS = {
+  wild: '🌿 Barulho no mato...', trainer: '👣 Pegadas de treinador...', ace: '💪 Pegadas firmes e fundas...', mart: '🎒 Alguém com uma mochila grande...',
+  center: '⛺ Fumaça de fogueira...', event: '✨ Algo brilhando no chão...', trade: '🔁 Alguém acenando de longe...', wildboss: '⚠️ Um rugido forte...',
+  rematch: '🏆 Um treinador famoso por perto...',
+}
+const pathHint = (node) => (node.legend != null ? '🌟 Uma presença enorme...' : node.cut ? '🌳 Um caminho escondido...' : node.biome === 'underwater' ? '🌊 Água funda...' : PATH_HINTS[node.kind] ?? '❓')
 const LEGEND_INFO = { icon: '🌟', label: 'Lendário', help: 'O lendário da região espera aqui. Dá para capturar.' }
 
 /** O passo da tela depois do andar: o que ainda falta ver ou escolher (ou nada: o mapa). */
@@ -1307,7 +1321,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         <div className="absolute left-3 top-2 rounded-lg bg-white/85 px-2 py-0.5 text-xs font-black text-slate-900 sm:text-sm">
           <span data-no-translate>{boss.region} · {boss.game}</span> · {biome.icon} {t('Rota para {0}').replace('{0}', to)}
         </div>
-        {hasMap && <div className="absolute inset-x-0 top-[34%] h-0" data-testid="route-strip">
+        {/* A rota (com ou sem o Mapa): de onde veio, você no andar de agora e a cidade do chefe. */}
+        <div className="absolute inset-x-0 top-[34%] h-0" data-testid="route-strip">
           <div className="absolute h-2 rounded-full bg-amber-800/60" style={{ left: `${x(0)}%`, right: `${100 - x(END)}%` }} />
           {/* As cidades nas pontas; cada andar da rota é um ponto (os das bifurcações em forma de losango). */}
           {Array.from({ length: END + 1 }, (_, k) => {
@@ -1324,7 +1339,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
               <TrainerSprite trainer={me} box={width * 0.2} />
             </span>
           )}
-        </div>}
+        </div>
         {coach && meeting && <FarStand scene={meetScene}><TrainerSprite trainer={coach} box={width * 0.4} /></FarStand>}
         {lead && <FieldMon mon={lead} byId={byId} back scene={meetScene} />}
       </Field>
@@ -1360,7 +1375,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
             <p className="text-sm font-semibold">{storyLine(data, boss.region, boss.kind, boss.name)}</p>
           </>
         ) : (
-          <p>{!fork ? t('O caminho segue.') : hasMap ? t('O caminho se divide: escolha por onde ir') : t('O caminho se divide, mas sem o Mapa você não sabe para onde cada um vai. Compre um Mapa na loja!')}</p>
+          <p>{!fork ? t('O caminho segue.') : hasMap ? t('O caminho se divide: escolha por onde ir') : t('O caminho se divide! Sem o Mapa, só dá para ouvir e olhar de longe: escolha por uma pista (o Mapa mostra tudo).')}</p>
         )}
         {run.mission && run.mission.leg === (run.leg ?? 1) && (
           <p className="text-sm" data-testid="factory-mission">
@@ -1377,11 +1392,13 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     wideMenu = true
     menu = (
       <>
-        {fork && !hasMap && (
-          <MenuButton testid="map-node-blind" disabled={busy} onClick={() => pickNode(blindPick(run))} sub={t('Sem o Mapa: um dos caminhos, às cegas.')}>
-            {t('SEGUIR')} ❓
+        {/* Sem o Mapa: dá para ir por qualquer caminho, mas só com uma pista do que tem. */}
+        {fork && !hasMap && route.options.map((node, k) => (
+          <MenuButton key={k} testid={`map-node-${k}`} disabled={busy || nodeBlocked(run, node)} onClick={() => pickNode(k)}
+            sub={nodeBlocked(run, node) ? t('Precisa da MO Surf (3ª insígnia).') : t(pathHint(node))}>
+            🧭 {t('CAMINHO {0}').replace('{0}', k + 1)}
           </MenuButton>
-        )}
+        ))}
         {(hasMap || !fork) && route.options.map((node, k) => {
           const info = node.legend != null ? LEGEND_INFO : node.cut ? CUT_INFO : NODE_INFO[node.kind]
           const b = node.biome && !node.cut ? BIOME_INFO[node.biome] : null
