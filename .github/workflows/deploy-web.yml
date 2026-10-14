@@ -41,6 +41,8 @@ jobs:
           bash ../tool/build_battle_engine.sh
           pip install pillow
           npm run data
+          # O motor e os dados que o app baixa sem APK novo (lib/services/ota_update.dart).
+          python3 ../tool/build_ota.py
 
       - run: npm ci
       - run: npm run lint

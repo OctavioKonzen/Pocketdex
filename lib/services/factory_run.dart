@@ -20,7 +20,7 @@
 import 'dart:convert';
 import 'dart:math' as math;
 
-import 'package:flutter/services.dart' show rootBundle;
+import 'ota_update.dart';
 
 typedef Json = Map<String, dynamic>;
 
@@ -57,7 +57,8 @@ class FactoryData {
 
   /// Os dados já carregados (as telas abrem sem esperar de novo).
   static FactoryData? loaded;
-  static Future<FactoryData> load() => _loading ??= rootBundle.loadString('assets/database/factory.json').then((t) => loaded = parse(jsonDecode(t) as Json));
+  /// Os dados do Pokelike: os baixados pela rede (OtaUpdate) ou os do APK.
+  static Future<FactoryData> load() => _loading ??= OtaUpdate.load('factory.json', (t) => loaded = parse(jsonDecode(t) as Json));
 
   static FactoryData parse(Json j) {
     final species = {for (final e in (j['species'] as Map).entries) int.parse('${e.key}'): e.value as List};

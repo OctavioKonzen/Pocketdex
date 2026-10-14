@@ -26,10 +26,13 @@ import 'package:pocket_dex/widgets/chat_bubble.dart';
 import 'package:pocket_dex/services/animated_sprites.dart';
 import 'package:pocket_dex/i18n/i18n.dart';
 import 'package:pocket_dex/services/app_settings.dart';
+import 'package:pocket_dex/services/ota_update.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Dados salvos no aparelho (favoritos, times, treinos, tema, recordes e idioma).
+  // A versão do motor da batalha e dos dados baixada pela rede (se tiver), antes de qualquer batalha.
+  await OtaUpdate.init();
   await Future.wait([UserData.instance.load(), SpriteBoxes.load(), I18n.load(), AppSettings.instance.load(), ChatBubble.instance.load(), AnimatedSprites.instance.load(), Trainers.load()]);
   // Tabela Pokémon → espécie (para converter times/treinos da conta) em
   // segundo plano, sem atrasar a abertura do app.
@@ -46,6 +49,8 @@ Future<void> main() async {
     // Avisos de amigos e batalhas no celular (push).
     PushService.instance.start();
   }
+  // Motor da batalha e dados novos pela rede (valem na próxima abertura do app).
+  OtaUpdate.check();
   runApp(
     MultiProvider(
       providers: [
