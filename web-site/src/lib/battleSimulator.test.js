@@ -39,6 +39,17 @@ describe('shared simulator integration', () => {
       expect(used.some(name=>/roost/i.test(name))).toBe(false)
     } finally {simulatorDispose(b)}
   })
+  it('poção no Pokémon do banco (não está em campo) cura', () => {
+    const b=newBattle([mon('Mew',['splash']),mon('Mewtwo',['splash'],{simulation:{set:{species:'Mewtwo',moves:['splash'],level:50},hpRatio:0.4}})],[mon('Mew',['splash'])],seed())
+    try {
+      startBattle(b)
+      const before=b.sides[0].team[1].hp
+      expect(before).toBeLessThan(b.sides[0].team[1].maxHp)
+      playTurn(b,{item:'potion',target:1},hit)
+      expect(b.sides[0].team[1].hp).toBeGreaterThan(before)
+      expect(b.bags[0].potion).toBe(2)
+    } finally {simulatorDispose(b)}
+  })
   it('NPC bag use does not stall offline combat and uses its only action', () => {
     const b=newBattle([mon('Mew',['seismictoss','recover'])],[mon('Mew',['seismictoss'])],seed())
     // Seismic Toss tira 50: o NPC só usa poção quando está com pouco HP e desmaiaria neste turno.

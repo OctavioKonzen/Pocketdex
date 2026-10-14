@@ -471,7 +471,13 @@ describe('Battle Factory (roguelike)', () => {
     expect(after.played).toEqual([game.region, data.bosses[after.boss.region].region])
     expect(after.pending.story).toContain(storyLine(data, game.region, 'end'))
     expect(after.pending.story).toContain(storyLine(data, data.bosses[after.boss.region].region, 'intro'))
-    expect(Object.values(data.zcrystals)).toContain(after.stash[0])
+    // Cristal Z só dos chefes de Alola.
+    if (game.region === 'Alola') expect(Object.values(data.zcrystals)).toContain(after.stash[0])
+    else expect(Object.values(data.zcrystals)).not.toContain(after.stash?.[0])
+    const alola = data.bosses.findIndex((b) => b.region === 'Alola')
+    let inAlola = { ...startRun(emptyFactory(), data, 4, 3), floor: 10, boss: { region: alola, step: data.bosses[alola].leaders.length - 1 } }
+    inAlola = winFloor(chooseNode(nextFloor(inAlola, data), data, 0), data)
+    expect(Object.values(data.zcrystals)).toContain(inAlola.stash[0])
     for (const region of new Set(data.bosses.map((b) => b.region))) {
       for (const key of ['intro', 'gym', 'rival', 'villain', 'elite', 'champion', 'end']) expect(storyLine(data, region, key, 'X').length).toBeGreaterThan(20)
     }

@@ -277,7 +277,9 @@ function configure(game) {
       target.hp = Math.max(1, Math.floor(target.maxhp / 2));
       target.side.pokemonLeft++;
       this.add('-heal', target, target.getHealth);
-    } else this.heal(item, target, pokemon, {id: action.item, name: action.item, effectType: 'Item'});
+    } else if (target.isActive) this.heal(item, target, pokemon, {id: action.item, name: action.item, effectType: 'Item'});
+    // No banco: o heal do simulador só cura quem está em campo.
+    else target.heal(item, pokemon, {id: action.item, name: action.item, effectType: 'Item'});
     this.add('pocketdexheal', target, action.item, target.hp - previousHp);
     game.pendingItems[pokemon.side.n] = null;
   });
@@ -302,17 +304,22 @@ const BALL_NAMES = {'poke-ball': 'Poké Ball', 'great-ball': 'Great Ball', 'ultr
  * Joga a bola no selvagem (a conta dos jogos da 6ª geração em diante):
  * a = (3·HPmáx − 2·HP) × taxa de captura × bola ÷ (3·HPmáx) × status
  * (dormindo ou congelado 2,5×; paralisado, envenenado ou queimado 1,5×).
- * São 4 sorteios de (a/255)^¼: passou nos 4, capturou (cada um é um balanço).
+ * São 4 sorteios de (a/255)^¼: passou nos 4, capturou (cada um é um balanço). A Master Ball sempre captura.
  */
 function throwBall(game, battle, pokemon, ball) {
   const foe = battle.sides[1 - pokemon.side.n].active[0];
   game.bags[pokemon.side.n][ball]--;
   const rate = Number(game.capture.rates?.[originalIndex(foe)] ?? 45);
   const status = ['slp', 'frz'].includes(foe.status) ? 2.5 : foe.status ? 1.5 : 1;
-  const a = ((3 * foe.maxhp - 2 * foe.hp) * rate * BALLS[ball](battle, foe, game.capture)) / (3 * foe.maxhp) * status;
+  // O nível conta: os de nível baixo (até 20) são mais fáceis (como na 8ª geração) e os de nível
+  // acima do seu Pokémon em campo, bem mais difíceis (como em Scarlet/Violet). O HP já conta na conta.
+  const mine = pokemon.side.active[0] ?? pokemon;
+  const low = foe.level < 20 ? (30 - foe.level) / 10 : 1;
+  const above = foe.level > mine.level ? Math.max(0.15, (mine.level / foe.level) ** 3) : 1;
+  const a = ((3 * foe.maxhp - 2 * foe.hp) * rate * BALLS[ball](battle, foe, game.capture)) / (3 * foe.maxhp) * status * low * above;
   const chance = Math.min(1, a / 255) ** 0.25;
   let shakes = 0;
-  while (shakes < 4 && (a >= 255 || battle.random() < chance)) shakes++;
+  while (shakes < 4 && (a >= 255 || ball === 'master-ball' || battle.random() < chance)) shakes++;
   const caught = shakes === 4;
   battle.add('pocketdexball', foe, ball, String(Math.min(3, shakes)), caught ? 'caught' : 'free');
   if (caught) {

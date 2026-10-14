@@ -23,6 +23,7 @@ import { fxPlan, moveAnim, SELF_KINDS } from '../lib/moveAnim'
 import { active, damageRange, fieldConditions, monDetails, lockedMove, canGimmick, canUseItem, effectLabel, forfeit, HEAL_SHARE, ITEMS, lineOf, MAX_MOVES, maxPower, moveEffect, newBattle, playTurn, replace, startBattle, STAT_NAMES, switchMatchup, usableMoves, weaknesses, Z_MOVES, zPower } from '../lib/turnBattle'
 import Sprite from '../components/Sprite'
 import BwBag from '../components/BwBag'
+import BwSummary, { summaryOf } from '../components/BwSummary'
 import { BattleBackground, battleScale, battleScene, foeBottom, PlatformBase, sceneOfBoss } from '../components/BattleScene'
 import { TrainerBack, TrainerSprite } from '../components/Trainer'
 import { randomTrainer, useMyTrainer, useTrainers } from '../lib/trainers'
@@ -560,7 +561,7 @@ function WeatherFx({ weather, terrain = '', place = '' }) {
   )
 }
 
-/** Onde fica o meio de cada Pokémon no campo (em %), para as animações dos golpes. */
+/** Onde fica o meio de cada Pokémon no campo (em %), se não der para medir na tela (centerOf). */
 const CENTER = [
   { x: 24, y: 60 },
   { x: 76, y: 26 },
@@ -756,18 +757,25 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
     boosts: battle.sides.map((s) => boostsOf(s.team[s.active])),
     tera: battle.sides.map((s) => teraOf(s.team[s.active])),
   }))
-  const [text, setText] = useState(() => (foeName ? t('{0} quer batalhar!').replace('{0}', foeName) : t('Um treinador quer batalhar!')))
+  const [text, setText] = useState(() => (wild ? t('Um {0} selvagem apareceu!').replace('{0}', active(battle, 1).name) : foeName ? t('{0} quer batalhar!').replace('{0}', foeName) : t('Um treinador quer batalhar!')))
   const [busy, setBusy] = useState(false)
   const [ability, setAbility] = useState(null) // a faixa da habilidade em ação ({side, name, ability})
   const [menu, setMenu] = useState(() => battle.needSwitch ? 'party' : 'main') // main | fight | party | bag
   const actionBusy = useRef(false)
   const [item, setItem] = useState(null) // item da Bolsa escolhido (falta escolher em quem)
+  // Na tela do time: o tocado (com as opções TROCAR / DADOS) e os dados abertos.
+  const [partyPick, setPartyPick] = useState(null)
+  const [summary, setSummary] = useState(null)
   const [bagPick, setBagPick] = useState(null) // o item tocado na Bolsa (mostra a ajuda)
   const [gimmickPick, setGimmickPick] = useState(null)
   const skip = useRef(null)
   const sprites = [useRef(null), useRef(null)]
   const [effect, setEffect] = useState(null) // {plan, color} da animação do golpe
   const [flash, setFlash] = useState(0)
+  // A transformação em andamento (Mega, Dynamax, Tera): a aura em volta do Pokémon.
+  const [morph, setMorph] = useState(null)
+  // O chefe já falou ao mandar o último Pokémon (só uma vez).
+  const lastWords = useRef(false)
   const effectKey = useRef(0)
   const field = useRef(null)
   // A animação de cada golpe (estilo, símbolo e variação).
@@ -790,6 +798,13 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   }, [])
 
   const shownRef = useRef(shown)
+  // O meio do corpo de quem está em campo (em % do campo), medido na tela: os golpes saem dele e
+  // acertam o outro, seja ele pequeno ou grande (escala pela altura, Dinamax, plataforma do lugar).
+  const centerOf = (side) => {
+    const box = sprites[side].current?.getBoundingClientRect(), all = field.current?.getBoundingClientRect()
+    if (!box?.width || !all?.width) return CENTER[side]
+    return { x: ((box.left + box.width / 2 - all.left) / all.width) * 100, y: ((box.top + box.height * (side === 0 ? 0.6 : 0.55) - all.top) / all.height) * 100 }
+  }
   shownRef.current = shown
   const coachRef = useRef(coach)
   coachRef.current = coach
@@ -872,7 +887,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         const self = rules?.t === 'self' || rules?.h
         const [kind, icon, variant] =
           entry ?? (e.category === 'status' ? [self ? 'boost' : 'status', null, 0] : [moveAnim(e.slug, e.type, e.category), null, 0])
-        const plan = fxPlan(kind, e.type, e.side, CENTER[e.side], CENTER[1 - e.side], icon, variant)
+        const plan = fxPlan(kind, e.type, e.side, centerOf(e.side), centerOf(1 - e.side), icon, variant)
         if (!SELF_KINDS.has(kind)) pulse(sprites[e.side].current, CONTACT.has(kind) ? `battle-dash-${e.side}` : `battle-lunge-${e.side}`, 450)
         setEffect({ plan, color: typeColor(e.type), key: ++effectKey.current })
         if (plan.shake) pulse(field.current, 'battle-shake', 650)
@@ -908,6 +923,9 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
           const shownAbility = { side: who, name: e.args[0].name, ability: e.args[1], k: Date.now() }
           setAbility(shownAbility)
           setTimeout(() => setAbility((a) => (a?.k === shownAbility.k ? null : a)), 2200)
+          // Como no Black & White: só a faixa (sem repetir "Habilidade de Fulano!" na caixa de texto).
+          await wait(900)
+          continue
         }
         const line = format(e)
         if (!line) continue
@@ -925,6 +943,18 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
       } else if (e.t === 'faint') {
         setShown((s) => ({ ...s, fainted: s.fainted.map((f, i) => (i === e.side ? true : f)) }))
       } else if (e.t === 'switch') {
+        // Personagem importante (chefe com tela VS): fala no meio da batalha, como nos jogos, quando manda o último Pokémon.
+        if (e.side === 1 && vs?.name && !lastWords.current && battle.sides[1].team.length > 1
+          && !battle.sides[1].team.some((_, k) => k !== e.index && shownRef.current.hp[1][k] > 0)) {
+          lastWords.current = true
+          setText(`${vs.name}: ${t(LAST_LINES[(vs.name.length + battle.sides[1].team.length) % LAST_LINES.length])}`)
+          await new Promise((resolve) => {
+            const id = setTimeout(resolve, 1800)
+            skip.current = () => (clearTimeout(id), resolve())
+          })
+          skip.current = null
+          if (!live.current) return
+        }
         // Volta para a Poké Ball (se não desmaiou) e o outro sai dela.
         const gone = shownRef.current.fainted[e.side]
         if (!gone && shownRef.current.active[e.side] !== e.index) {
@@ -944,20 +974,32 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         }))
         await release(e.side)
       } else if (e.t === 'mega') {
+        // Como nos jogos: a aura envolve o Pokémon, ele muda no meio dela e ela some.
+        setMorph({ side: e.side, kind: 'mega', n: Date.now() })
+        await wait(700)
         setFlash((n) => n + 1)
         setShown((s) => ({ ...s, form: s.form.map((f, i) => (i === e.side ? e.id : f)) }))
-        await wait(500)
+        await wait(650)
+        setMorph(null)
       } else if (e.t === 'form') {
         // Forma que muda na batalha (Aegislash, Mimikyu, Darmanitan, Palafin...).
         setShown((s) => ({ ...s, form: s.form.map((f, i) => (i === e.side && !s.dmax[i] ? e.id : f)) }))
         await wait(400)
       } else if (e.t === 'dmax') {
+        if (e.on) {
+          setMorph({ side: e.side, kind: 'dmax', n: Date.now() })
+          await wait(700)
+        }
         setShown((s) => ({ ...s, form: s.form.map((f, i) => (i === e.side ? e.id : f)), dmax: s.dmax.map((d, i) => (i === e.side ? e.on : d)) }))
-        await wait(700)
+        await wait(e.on ? 650 : 700)
+        if (e.on) setMorph(null)
       } else if (e.t === 'tera') {
+        setMorph({ side: e.side, kind: 'tera', n: Date.now(), type: e.type || 'normal' })
+        await wait(700)
         setFlash((n) => n + 1)
         setShown((s) => ({ ...s, tera: s.tera.map((x, i) => (i === e.side ? e.type || 'normal' : x)) }))
-        await wait(700)
+        await wait(650)
+        setMorph(null)
       } else if (e.t === 'ball') {
         // Battle Factory: a bola no selvagem; ele entra nela, ela balança (até 3 vezes) e pega ou abre.
         playSound('throw')
@@ -1114,6 +1156,8 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   const choose = (i) => {
     if (actionBusy.current || busy || online?.locked) return
     setGimmickPick(null)
+    setPartyPick(null)
+    setSummary(null)
     if (online) return online.onAction({ kind: 'switch', index: i })
     if (item) {
       setItem(null)
@@ -1158,6 +1202,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
           <div className={`poke-${poke[1] || 'shown'}`}>
             <BattleSprite ref={sprites[1]} mon={foe} id={shown.form[1] ?? foe.id} dmax={shown.dmax[1]} tera={shown.tera[1]} fainted={shown.fainted[1]} byId={byId} />
           </div>
+          {morph?.side === 1 && <Morph key={morph.n} kind={morph.kind} type={morph.type} />}
           {ball[1] && <PokeBall side={1} phase={ball[1]} kind={ballKind[1]} />}
           {intro && coach && (
             <div className={`trainer-foe absolute inset-x-0 bottom-0 flex justify-center ${intro.foe === 'out' ? 'trainer-leave-1' : ''}`} data-testid="foe-trainer">
@@ -1170,6 +1215,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
           <div className={`poke-${poke[0] || 'shown'}`}>
             <BattleSprite ref={sprites[0]} mon={me} id={shown.form[0] ?? me.id} dmax={shown.dmax[0]} tera={shown.tera[0]} back fainted={shown.fainted[0]} byId={byId} />
           </div>
+          {morph?.side === 0 && <Morph key={morph.n} kind={morph.kind} type={morph.type} />}
           {ball[0] && <PokeBall side={0} phase={ball[0]} kind={ballKind[0]} />}
         </div>
         {intro && intro.me !== 'gone' && myTrainer && (
@@ -1232,14 +1278,22 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
                 disabled: !battle.sides[0].team.some((_, i) => canUseItem(battle, 0, it.slug, i)),
                 use: it.ball ? t('JOGAR') : t('USAR'),
                 // A bola vai direto no selvagem; os remédios perguntam em quem.
-                onUse: () => (setBagPick(null), it.ball ? throwBall(it.slug) : (setItem(it.slug), setMenu('party'))),
+                onUse: () => (setBagPick(null), it.ball ? throwBall(it.slug) : (setItem(it.slug), setPartyPick(null), setSummary(null), setMenu('party'))),
               })),
             }))}
           /></div>
         )}
-        {waiting && menu === 'party' && (
+        {waiting && menu === 'party' && summary != null && (
+          // Os dados do Pokémon (como no jogo).
+          <div className="field-overlay overflow-y-auto">
+            <BwSummary data={summaryOf(battle, 0, summary)} onBack={() => setSummary(null)}
+              onSwitch={!item && (battle.sides[0].switchOptions ? battle.sides[0].switchOptions.includes(summary) : battle.sides[0].team[summary].hp > 0 && summary !== battle.sides[0].active)
+                ? () => { const i = summary; setSummary(null); setPartyPick(null); choose(i) } : null} />
+          </div>
+        )}
+        {waiting && menu === 'party' && summary == null && (
           // A tela do time do Black & White, por cima do campo.
-          <div className="bw-party field-overlay p-2">
+          <div className="bw-party field-overlay overflow-y-auto p-2">
             <div className="bw-party-title mb-2 flex items-center justify-between gap-2 rounded-lg px-3 py-1.5 text-sm font-black text-white">
               <span>{battle.needSwitch ? t('Escolha o próximo Pokémon') : item ? t('Usar em qual Pokémon?') : t('Trocar de Pokémon')}</span>
               {!battle.needSwitch && (
@@ -1253,13 +1307,16 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
               {battle.sides[0].team.map((m, i) => {
                 const isActive = i === battle.sides[0].active
                 const match = !item && m.hp > 0 ? switchMatchup(hit, m, rival, typeEff) : null
+                const off = item ? !canUseItem(battle, 0, item, i) : battle.sides[0].switchOptions ? !battle.sides[0].switchOptions.includes(i) : m.hp <= 0 || isActive
                 return (
                   <button
                     key={i}
                     type="button"
-                    disabled={item ? !canUseItem(battle, 0, item, i) : battle.sides[0].switchOptions ? !battle.sides[0].switchOptions.includes(i) : m.hp <= 0 || isActive}
-                    onClick={() => choose(i)}
-                    className={`bw-party-slot flex min-w-0 cursor-pointer items-center gap-1.5 rounded-xl border-2 p-1.5 text-left disabled:cursor-default disabled:opacity-50 ${isActive ? 'lead' : ''}`}
+                    data-testid={`party-${i}`}
+                    // Trocando: tocar mostra as opções (TROCAR, DADOS), como no jogo; com um item, usa direto.
+                    disabled={item ? off : false}
+                    onClick={() => (item ? choose(i) : setPartyPick(partyPick === i ? null : i))}
+                    className={`bw-party-slot flex min-w-0 cursor-pointer items-center gap-1.5 rounded-xl border-2 p-1.5 text-left disabled:cursor-default disabled:opacity-50 ${!item && off ? 'opacity-60' : ''} ${partyPick === i ? 'selected' : isActive ? 'lead' : ''}`}
                   >
                     <PokeIcon id={m.id} shiny={m.shiny} className="h-10 w-10 shrink-0 sm:h-12 sm:w-12" />
                     <div className="min-w-0 flex-1">
@@ -1284,6 +1341,16 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
                 )
               })}
             </div>
+            {partyPick != null && !item && (() => {
+              const off = battle.sides[0].switchOptions ? !battle.sides[0].switchOptions.includes(partyPick) : battle.sides[0].team[partyPick].hp <= 0 || partyPick === battle.sides[0].active
+              return (
+                <div className="mt-2 grid grid-cols-3 gap-1.5 rounded-lg bg-slate-900/60 p-1.5 text-sm font-black text-white" data-testid="party-actions">
+                  <button type="button" disabled={off} onClick={() => { const i = partyPick; setPartyPick(null); choose(i) }} className="cursor-pointer rounded bg-green-600 py-1 disabled:opacity-40" data-testid="party-pick">{t('TROCAR')}</button>
+                  <button type="button" onClick={() => setSummary(partyPick)} className="cursor-pointer rounded bg-blue-600 py-1" data-testid="party-info">{t('DADOS')}</button>
+                  <button type="button" onClick={() => setPartyPick(null)} className="cursor-pointer rounded bg-slate-500 py-1" data-testid="party-close">{t('CANCELAR')}</button>
+                </div>
+              )
+            })()}
           </div>
         )}
       </div>
@@ -1300,25 +1367,14 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
           <div className="grid grid-cols-2 dlg-box gap-1.5 rounded-xl border-4 p-2">
             <MenuButton onClick={() => (usable.length ? setMenu('fight') : fight(-1))}>LUTAR</MenuButton>
             <MenuButton disabled={Boolean(online)} onClick={() => setMenu('bag')}>BOLSA</MenuButton>
-            <MenuButton onClick={() => (setItem(null), setMenu('party'))}>POKÉMON</MenuButton>
+            <MenuButton onClick={() => (setItem(null), setPartyPick(null), setSummary(null), setMenu('party'))}>POKÉMON</MenuButton>
             <MenuButton onClick={run}>FUGIR</MenuButton>
           </div>
         )}
         {waiting && !locked && menu === 'fight' && (
           <div className="grid grid-cols-2 dlg-box gap-1.5 rounded-xl border-4 p-2" data-testid="moves">
             <Weak mon={rival} list={foeWeak} />
-            {options.map(([kind, label]) => (
-              <button
-                key={kind}
-                type="button"
-                onClick={() => setGimmickPick(selected === kind ? null : { id: current.id, kind })}
-                aria-pressed={selected === kind}
-                className={`cursor-pointer rounded-lg border-2 px-2 py-1 text-sm font-black uppercase ${selected === kind ? 'border-fuchsia-600 bg-gradient-to-r from-fuchsia-500 via-amber-400 to-sky-500 text-white' : 'border-slate-300 bg-slate-100 text-slate-500'}`}
-                data-testid={kind}
-              >
-                {`${t(label)} ${kind === 'tera' ? current.teraType : ''} ${selected === kind ? '✓' : ''}`}
-              </button>
-            ))}
+            <div className="relative col-span-2 grid grid-cols-2 gap-1.5">
             {current.moves.map((m, i) => {
               const eff = moveEffect(hit, current, rival, m)
               const z = selected === 'z' && canGimmick(battle, 0, 'z', i)
@@ -1346,6 +1402,21 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
                 </button>
               )
             })}
+            {/* A mecânica (Mega, Z, Dynamax, Tera): o botão redondo no meio dos 4 golpes; ligado, ativa no ataque. */}
+            {options.map(([kind, label]) => (
+              <button
+                key={kind}
+                type="button"
+                onClick={() => setGimmickPick(selected === kind ? null : { id: current.id, kind })}
+                aria-pressed={selected === kind}
+                aria-label={`${t(label)}${kind === 'tera' ? ` ${current.teraType}` : ''}`}
+                className={`gimmick-button gimmick-${kind} absolute left-1/2 top-1/2 z-10 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border-[3px] text-xs font-black ${selected === kind ? 'on text-white' : ''}`}
+                data-testid={kind}
+              >
+                {{ mega: 'MEGA', dmax: 'MAX', tera: 'TERA', z: 'Z' }[kind]}{selected === kind ? ' ✓' : ''}
+              </button>
+            ))}
+            </div>
             <MenuButton onClick={() => setMenu('main')} className="col-span-2 text-sm">
               Voltar
             </MenuButton>
@@ -1366,6 +1437,22 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         )}
       </div>
 
+    </div>
+  )
+}
+
+/** O que o chefe diz ao mandar o último Pokémon (igual ao app). */
+const LAST_LINES = [
+  'Ainda não acabou! Este é o meu último Pokémon!',
+  'Você é bom... mas agora eu vou com tudo!',
+  'Meu parceiro mais forte vai decidir esta batalha!',
+]
+
+/** A aura da transformação em volta do Pokémon: Mega (arco-íris), Dynamax (vermelha) e Tera (cristais na cor do tipo). Igual ao app. */
+function Morph({ kind, type }) {
+  return (
+    <div className={`morph morph-${kind} pointer-events-none absolute inset-0`} style={kind === 'tera' ? { '--tera': typeColor(type) } : undefined} data-testid="morph">
+      <span className="morph-ring" /><span className="morph-ring r2" /><span className="morph-ring r3" />
     </div>
   )
 }

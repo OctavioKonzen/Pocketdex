@@ -8131,5 +8131,13 @@
  "⚔️ Alguém conhecido te seguindo...": {"en": "⚔️ Someone familiar is following you...", "fr": "⚔️ Quelqu'un de familier vous suit...", "es": "⚔️ Alguien conocido te está siguiendo..."},
  "Ei! Te alcancei! Vamos ver quem treinou mais desde a última vez!": {"en": "Hey! Caught up with you! Let's see who trained more since last time!", "fr": "Hé ! Je t'ai rattrapé ! Voyons qui s'est le plus entraîné depuis la dernière fois !", "es": "¡Eh! ¡Te alcancé! ¡Veamos quién entrenó más desde la última vez!"},
  "Você de novo? Ótimo, eu estava te procurando!": {"en": "You again? Great, I was looking for you!", "fr": "Encore toi ? Parfait, je te cherchais !", "es": "¿Tú otra vez? ¡Genial, te estaba buscando!"},
- "Não vou deixar você chegar no próximo ginásio sem uma revanche!": {"en": "I won't let you reach the next gym without a rematch!", "fr": "Je ne te laisserai pas atteindre la prochaine arène sans revanche !", "es": "¡No te dejaré llegar al próximo gimnasio sin una revancha!"}
+ "Não vou deixar você chegar no próximo ginásio sem uma revanche!": {"en": "I won't let you reach the next gym without a rematch!", "fr": "Je ne te laisserai pas atteindre la prochaine arène sans revanche !", "es": "¡No te dejaré llegar al próximo gimnasio sin una revancha!"},
+ "Ainda não acabou! Este é o meu último Pokémon!": {"en": "It's not over yet! This is my last Pokémon!", "fr": "Ce n'est pas fini ! C'est mon dernier Pokémon !", "es": "¡Aún no ha terminado! ¡Este es mi último Pokémon!"},
+ "Você é bom... mas agora eu vou com tudo!": {"en": "You're good... but now I'm going all out!", "fr": "Tu es fort... mais maintenant je donne tout !", "es": "Eres bueno... ¡pero ahora voy con todo!"},
+ "Meu parceiro mais forte vai decidir esta batalha!": {"en": "My strongest partner will decide this battle!", "fr": "Mon partenaire le plus fort va décider de ce combat !", "es": "¡Mi compañero más fuerte decidirá esta batalla!"},
+ "At. Esp.": {"en": "Sp. Atk", "fr": "Att. Spé.", "es": "At. Esp."},
+ "Def. Esp.": {"en": "Sp. Def", "fr": "Déf. Spé.", "es": "Def. Esp."},
+ "DADOS": {"en": "SUMMARY", "fr": "RÉSUMÉ", "es": "DATOS"},
+ "CANCELAR": {"en": "CANCEL", "fr": "ANNULER", "es": "CANCELAR"},
+ "Movimento Z": {"en": "Z-Move", "fr": "Capacité Z", "es": "Movimiento Z"}
 }

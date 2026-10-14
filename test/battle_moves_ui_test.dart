@@ -98,6 +98,12 @@ void main() {
     await finishAnimations();
     expect(battle.needSwitch,isTrue);
     final replacement=find.byKey(const ValueKey('battle-single-switch-1')); await tester.ensureVisible(replacement); await tester.tap(replacement); await tester.pump();
+    // Como no jogo: tocar mostra TROCAR / DADOS; DADOS abre o resumo.
+    final info=find.byKey(const ValueKey('battle-single-switch-info')); await tester.ensureVisible(info); await tester.tap(info); await tester.pump();
+    expect(find.byKey(const ValueKey('bw-summary')),findsOneWidget);
+    final back=find.byKey(const ValueKey('bw-summary-back')); await tester.ensureVisible(back); await tester.tap(back); await tester.pump();
+    await tester.ensureVisible(replacement); await tester.tap(replacement); await tester.pump();
+    final pick=find.byKey(const ValueKey('battle-single-switch-pick')); await tester.ensureVisible(pick); await tester.tap(pick); await tester.pump();
     await finishAnimations();
     expect(battle.needSwitch,isFalse); expect(battle.activeIndex[0],1); expect(battle.turn,2);
     await tester.ensureVisible(fight); await tester.tap(fight); await tester.pump();
