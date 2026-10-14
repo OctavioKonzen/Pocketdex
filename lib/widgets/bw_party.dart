@@ -23,8 +23,9 @@ class PartySlot {
   final String status;
 }
 
-class BwParty extends StatelessWidget {
-  const BwParty({super.key, required this.team, required this.onPick, this.title, this.disabled, this.onCancel, this.cancelLabel, this.testKey = 'bw-party', this.active, this.header});
+class BwParty extends StatefulWidget {
+  const BwParty(
+      {super.key, required this.team, required this.onPick, this.title, this.disabled, this.onCancel, this.cancelLabel, this.testKey = 'bw-party', this.active, this.header, this.onInfo, this.pickLabel});
   final List<PartySlot> team;
   final ValueChanged<int> onPick;
   final String? title;
@@ -39,17 +40,74 @@ class BwParty extends StatelessWidget {
   /// Algo embaixo do título (ex.: as fraquezas do adversário).
   final Widget? header;
 
+  /// Como no jogo: tocando num Pokémon aparecem as opções (pickLabel, DADOS e CANCELAR); DADOS chama onInfo.
+  final ValueChanged<int>? onInfo;
+  final String? pickLabel;
+
+  @override
+  State<BwParty> createState() => _BwPartyState();
+}
+
+class _BwPartyState extends State<BwParty> {
+  /// O tocado (com as opções embaixo).
+  int? _picked;
+  List<PartySlot> get team => widget.team;
+  String get testKey => widget.testKey;
+
   static const _ink = Color(0xFF0F172A);
+
+  @override
+  void didUpdateWidget(covariant BwParty old) {
+    super.didUpdateWidget(old);
+    if (_picked != null && _picked! >= team.length) _picked = null;
+  }
+
+  void _tap(int i) {
+    if (widget.onInfo == null) return widget.onPick(i);
+    setState(() => _picked = _picked == i ? null : i);
+  }
+
+  Widget _actions(int i) {
+    final off = widget.disabled?.call(i) ?? false;
+    Widget button(String label, Color color, VoidCallback? onTap, String key) => Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3),
+            child: FilledButton(
+              key: ValueKey('$testKey-$key'),
+              style: FilledButton.styleFrom(backgroundColor: color, visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 4)),
+              onPressed: onTap,
+              child: Text(label, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12)),
+            ),
+          ),
+        );
+    return Container(
+      key: ValueKey('$testKey-actions'),
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(color: const Color(0xFF0F3D44), borderRadius: BorderRadius.circular(8)),
+      child: Row(children: [
+        button(widget.pickLabel ?? tr('TROCAR'), const Color(0xFF16A34A), off ? null : () { setState(() => _picked = null); widget.onPick(i); }, 'pick'),
+        button(tr('DADOS'), const Color(0xFF2563EB), () => widget.onInfo!(i), 'info'),
+        button(tr('CANCELAR'), const Color(0xFF64748B), () => setState(() => _picked = null), 'close'),
+      ]),
+    );
+  }
 
   Color _hpColor(double hp) => hp > 0.5 ? const Color(0xFF34D399) : hp > 0.2 ? const Color(0xFFFBBF24) : const Color(0xFFEF4444);
 
   Widget _slot(int i) {
     final m = team[i];
-    final off = disabled?.call(i) ?? false;
+    // Com as opções (onInfo), dá para ver os dados até de quem não pode ser escolhido.
+    final off = (widget.disabled?.call(i) ?? false) && widget.onInfo == null;
+    final dim = widget.disabled?.call(i) ?? false;
     final hp = m.hp.clamp(0.0, 1.0);
-    final colors = i == (active ?? 0) ? const [Color(0xFFA5E9B0), Color(0xFF5CC07A)] : const [Color(0xFF7FD3F0), Color(0xFF4AA8D8)];
+    final colors = i == _picked
+        ? const [Color(0xFFFDBA74), Color(0xFFF97316)]
+        : i == (widget.active ?? 0)
+            ? const [Color(0xFFA5E9B0), Color(0xFF5CC07A)]
+            : const [Color(0xFF7FD3F0), Color(0xFF4AA8D8)];
     return Opacity(
-      opacity: off ? 0.45 : 1,
+      opacity: dim ? 0.55 : 1,
       child: Material(
         key: ValueKey('$testKey-$i'),
         borderRadius: BorderRadius.circular(12),
@@ -61,7 +119,7 @@ class BwParty extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
           ),
           child: InkWell(
-            onTap: off ? null : () => onPick(i),
+            onTap: off ? null : () => _tap(i),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
               child: Row(children: [
@@ -120,14 +178,14 @@ class BwParty extends StatelessWidget {
         padding: const EdgeInsets.all(8),
         color: const Color(0xFF1F6F78),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          if (title != null)
+          if (widget.title != null)
             Container(
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(color: const Color(0xFF0F3D44), border: Border.all(color: const Color(0xFF0B2A2F), width: 2), borderRadius: BorderRadius.circular(8)),
-              child: Text(title!, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900)),
+              child: Text(widget.title!, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900)),
             ),
-          if (header != null) Padding(padding: const EdgeInsets.only(bottom: 6), child: header),
+          if (widget.header != null) Padding(padding: const EdgeInsets.only(bottom: 6), child: widget.header),
           for (var r = 0; r < team.length; r += 2)
             Padding(
               padding: const EdgeInsets.only(bottom: 6),
@@ -137,14 +195,15 @@ class BwParty extends StatelessWidget {
                 Expanded(child: r + 1 < team.length ? _slot(r + 1) : const SizedBox()),
               ]),
             ),
-          if (onCancel != null)
+          if (_picked != null) _actions(_picked!),
+          if (widget.onCancel != null)
             Align(
               alignment: Alignment.centerRight,
               child: FilledButton(
                 key: ValueKey('$testKey-cancel'),
                 style: FilledButton.styleFrom(backgroundColor: const Color(0xFFDC2626), visualDensity: VisualDensity.compact),
-                onPressed: onCancel,
-                child: Text('✕ ${cancelLabel ?? tr('Voltar')}', style: const TextStyle(fontWeight: FontWeight.w900)),
+                onPressed: widget.onCancel,
+                child: Text('✕ ${widget.cancelLabel ?? tr('Voltar')}', style: const TextStyle(fontWeight: FontWeight.w900)),
               ),
             ),
         ]),

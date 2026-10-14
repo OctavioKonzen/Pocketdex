@@ -1002,9 +1002,9 @@ export function winFloor(run, data, after = {}) {
     if (boss.step === 0) story = `${storyLine(data, beaten.region, 'end')}\n\n${storyLine(data, data.bosses[boss.region].region, 'intro')}`
     out.boss = boss
     out.played = played
-    // O chefe deixa o Cristal Z do tipo do Pokémon mais forte dele.
+    // Em Alola (onde existem os Z-Moves), o chefe deixa o Cristal Z do tipo do Pokémon mais forte dele.
     const ace = foes[foes.length - 1]
-    const crystal = data.zcrystals?.[speciesOf(data, ace.id)?.[4]?.[0]]
+    const crystal = run.encounter.boss.region === 'Alola' ? data.zcrystals?.[speciesOf(data, ace.id)?.[4]?.[0]] : null
     if (crystal && !hasItem(out, crystal)) drop = crystal
   }
   // A Mega deixa a Mega Pedra (derrotando ou capturando).

@@ -42,6 +42,7 @@ import 'factory_panels.dart';
 import '../widgets/battle_scene.dart';
 import '../widgets/bw_bag.dart';
 import '../widgets/bw_party.dart';
+import '../widgets/bw_summary.dart';
 
 /// Um time para a batalha: nome e membros (id + set).
 class BattleTeam {
@@ -928,16 +929,76 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
 
   /// A faixa da habilidade em ação (como nos jogos): (lado, Pokémon, habilidade).
   (int, String, String)? _ability;
-  late String _text = widget.foeName.isNotEmpty ? tr('{0} quer batalhar!').replaceAll('{0}', widget.foeName) : tr('Um treinador quer batalhar!');
+  late String _text = widget.wild ? tr('Um {0} selvagem apareceu!').replaceAll('{0}', widget.battle.active(1).name) : widget.foeName.isNotEmpty ? tr('{0} quer batalhar!').replaceAll('{0}', widget.foeName) : tr('Um treinador quer batalhar!');
   bool _busy = false;
   String _menu = 'main'; // main | fight | party | bag
   String? _item; // item da Bolsa escolhido (falta escolher em quem)
+  int? _summary; // os dados de quem (na tela do time)
+
+  /// Os dados de um Pokémon do seu time (o motor dá os atributos, a habilidade e o item).
+  SummaryData _summaryOf(int i) {
+    final mon = _b.teams[0][i];
+    final team = (_b.simulatorState?['sides'] as List?)?.first?['team'] as List?;
+    final st = team != null && i < team.length ? team[i] as Map : null;
+    final stMoves = (st?['moves'] as List?)?.cast<Map>() ?? const [];
+    return SummaryData(
+      id: mon.id,
+      shiny: mon.shiny,
+      name: mon.name,
+      level: mon.level,
+      hp: mon.hp,
+      maxHp: mon.maxHp,
+      status: mon.status,
+      types: [for (final t in (st?['types'] as List?) ?? mon.types) '$t'.toLowerCase()],
+      ability: '${st?['ability'] ?? mon.ability}',
+      item: '${st?['item'] ?? mon.simulationItem ?? ''}',
+      stats: {for (final e in ((st?['stats'] as Map?) ?? const {}).entries) if (e.key != 'hp') '${e.key}': (e.value as num).toInt()},
+      boosts: {for (final e in mon.boosts.entries) e.key: e.value},
+      moves: [
+        for (var k = 0; k < mon.moves.length; k++)
+          SummaryMove(mon.moves[k].name, mon.moves[k].type, ((k < stMoves.length ? stMoves[k]['pp'] : null) as num?)?.toInt() ?? mon.moves[k].pp,
+              ((k < stMoves.length ? stMoves[k]['maxPp'] : null) as num?)?.toInt() ?? mon.moves[k].maxPp),
+      ],
+    );
+  }
   String? _gimmickPick;
   int? _gimmickMon;
   late final _shake = AnimationController(vsync: this, duration: const Duration(milliseconds: 650));
   int _flash = 0;
+
+  /// A transformação em andamento (lado, 'mega' | 'dmax' | 'tera', contador): a aura em volta do Pokémon.
+  (int, String, int)? _morph;
+
+  /// O chefe já falou ao mandar o último Pokémon (só uma vez).
+  bool _lastWords = false;
+  int _morphCount = 0;
+
+  /// Como nos jogos: a aura envolve o Pokémon, ele muda no meio dela e ela some.
+  Future<void> _transform(int side, String kind, VoidCallback change) async {
+    setState(() => _morph = (side, kind, ++_morphCount));
+    BattleSounds.play('throw', volume: 0.5);
+    await _wait(700);
+    if (!mounted) return;
+    setState(() {
+      _flash++;
+      change();
+    });
+    await _wait(650);
+    if (mounted) setState(() => _morph = null);
+  }
   Completer<void>? _skip;
   final _sprites = [GlobalKey<_SpriteState>(), GlobalKey<_SpriteState>()];
+
+  /// O meio do corpo de quem está em campo (em % do campo): os golpes saem dele e acertam o outro,
+  /// seja ele pequeno ou grande (pela altura, como o sprite é desenhado), no Dinamax e na plataforma do lugar.
+  Point<double> _centerOf(int side) {
+    final id = _form[side] ?? _b.active(side).id;
+    final scale = battleScale(battleHeights[id]) * (_dmax[side] ? (side == 0 ? 1.35 : 1.15) : 1);
+    // O campo é 4:3 (altura = 0,75 da largura); o sprite fica embaixo e no meio da caixa dele.
+    if (side == 0) return Point(30, 100 - 22 - 0.58 / 0.75 * 100 * 0.95 * 0.42 * scale);
+    final scene = battleScene(_b.scene, _b.seed);
+    return Point(76, 100 - foeBottom(scene) * 100 - 0.26 / 0.75 * 100 * 0.95 * 0.45 * scale);
+  }
   (FxPlan, Color, int)? _fx; // animação do golpe na tela
   int _fxKey = 0;
 
@@ -975,6 +1036,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
     LocalDatabase.instance.moveAnims().then((t) => _anims = t).catchError((_) => <String, dynamic>{});
     // Começo: as habilidades de clima de quem entrou (Drizzle, Drought...).
     _menu = _b.needSwitch ? 'party' : 'main';
+    _summary = null;
     final online = widget.online;
     if (online != null) {
       // Replay: a primeira rodada (o começo da batalha) também passa na tela.
@@ -1204,7 +1266,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                   ? (self ? 'boost' : 'status')
                   : moveAnim(e.slug, e.type, e.category);
           final variant = entry is List ? (entry[2] as num).toInt() : 0;
-          final plan = fxPlan(kind, e.type, e.side, _center[e.side], _center[1 - e.side], entry is List ? '${entry[1]}' : null, variant);
+          final plan = fxPlan(kind, e.type, e.side, _centerOf(e.side), _centerOf(1 - e.side), entry is List ? '${entry[1]}' : null, variant);
           if (!selfKinds.contains(kind)) _sprites[e.side].currentState?.lunge(dash: contactKinds.contains(kind));
           setState(() => _fx = (plan, getColorForType(e.type), ++_fxKey));
           if (plan.shake) _shake.forward(from: 0);
@@ -1233,6 +1295,9 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
             Future.delayed(const Duration(milliseconds: 2200), () {
               if (mounted && identical(_ability, shown)) setState(() => _ability = null);
             });
+            // Como no Black & White: só a faixa (sem repetir "Habilidade de Fulano!" na caixa de texto).
+            await _wait(900);
+            continue;
           }
           // Estágio do atributo na caixa de HP, junto com o texto (o fim do turno confere com o motor).
           final by = _boostText[e.key];
@@ -1262,6 +1327,18 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
         case 'faint':
           setState(() => _fainted[e.side] = true);
         case 'switch':
+          // Personagem importante (chefe com tela VS): fala no meio da batalha, como nos jogos,
+          // quando manda o último Pokémon.
+          if (e.side == 1 && widget.vs != null && !_lastWords && _b.teams[1].length > 1 &&
+              [for (var k = 0; k < _b.teams[1].length; k++) if (k != e.value && _hp[1][k] > 0) k].isEmpty) {
+            _lastWords = true;
+            final name = '${widget.vs!['name'] ?? widget.foeName}';
+            setState(() => _text = '$name: ${tr(_lastLines[(name.length + _b.teams[1].length) % _lastLines.length])}');
+            _skip = Completer<void>();
+            await Future.any([_wait(1800), _skip!.future]);
+            _skip = null;
+            if (!mounted) return;
+          }
           // Volta para a Poké Ball (se não desmaiou) e o outro sai dela.
           if (!_fainted[e.side] && _active[e.side] != e.value) {
             BattleSounds.play('recall');
@@ -1280,27 +1357,27 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
           });
           await _release(e.side);
         case 'mega':
-          setState(() {
-            _flash++;
-            _form[e.side] = e.value;
-          });
-          await _wait(500);
+          await _transform(e.side, 'mega', () => _form[e.side] = e.value);
         case 'form':
           // Forma que muda na batalha (Aegislash, Mimikyu, Darmanitan, Palafin...).
           if (!_dmax[e.side]) setState(() => _form[e.side] = e.value);
           await _wait(400);
         case 'dmax':
-          setState(() {
-            _form[e.side] = e.value;
-            _dmax[e.side] = e.index == 1;
-          });
-          await _wait(700);
+          // Entrando no Dynamax: a aura vermelha; saindo, só volta ao normal.
+          if (e.index == 1) {
+            await _transform(e.side, 'dmax', () {
+              _form[e.side] = e.value;
+              _dmax[e.side] = true;
+            });
+          } else {
+            setState(() {
+              _form[e.side] = e.value;
+              _dmax[e.side] = false;
+            });
+            await _wait(700);
+          }
         case 'tera':
-          setState(() {
-            _flash++;
-            _tera[e.side] = e.type.isEmpty ? 'normal' : e.type;
-          });
-          await _wait(700);
+          await _transform(e.side, 'tera', () => _tera[e.side] = e.type.isEmpty ? 'normal' : e.type);
         case 'weather':
           // O cenário muda com o clima (céu, chão, chuva caindo...).
           setState(() => _weather = e.type);
@@ -1372,6 +1449,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
         _skip = null;
         _busy = false;
         _menu = _b.needSwitch ? 'party' : 'main';
+        _summary = null;
         if (_b.needSwitch) _text = tr('Escolha o próximo Pokémon.');
       });
       // Acabou: vai para o histórico (só as batalhas contra o computador).
@@ -1499,6 +1577,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
         _busy = false;
         _fx = null;
         _menu = _b.needSwitch ? 'party' : 'main';
+        _summary = null;
         _text = tr('Não foi possível executar esta ação. Escolha novamente.');
       });
     }
@@ -1565,10 +1644,26 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                                 : setState(() {
                                     _item = it.slug;
                                     _menu = 'party';
+                                    _summary = null;
                                   }),
                           ),
                     ]),
                 ],
+              )
+        : waiting && _menu == 'party' && _summary != null
+            // Os dados do Pokémon (como no jogo).
+            ? SingleChildScrollView(
+                child: BwSummary(
+                  _summaryOf(_summary!),
+                  onBack: () => setState(() => _summary = null),
+                  onSwitch: _item == null && _b.canSwitch(0, _summary!)
+                      ? () {
+                          final i = _summary!;
+                          setState(() => _summary = null);
+                          _choose(i);
+                        }
+                      : null,
+                ),
               )
         : waiting && _menu == 'party'
             // A tela do time do Black & White (compacta, em 2 colunas), por cima do campo.
@@ -1599,6 +1694,9 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                 ],
                 disabled: (i) => !(_item != null ? _b.canUseItem(0, _item!, i) : _b.canSwitch(0, i)),
                 onPick: _choose,
+                // Trocando: tocar mostra as opções (TROCAR, DADOS), como no jogo.
+                onInfo: _item == null ? (i) => setState(() => _summary = i) : null,
+                pickLabel: tr('TROCAR'),
                 onCancel: _b.needSwitch
                     ? null
                     : () => setState(() {
@@ -1677,6 +1775,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                             _PokeOut(
                                 state: _poke[1],
                                 child: _Sprite(key: _sprites[1], mon: foe, id: _form[1] ?? foe.id, dmax: _dmax[1], tera: _tera[1], fainted: _fainted[1])),
+                            if (_morph?.$1 == 1) Positioned.fill(child: _Morph(key: ValueKey(('morph', _morph!.$3)), kind: _morph!.$2, type: foe.teraType)),
                           ])),
                       if (_ball[1] != null)
                         Positioned(right: w * 0.11, bottom: h * foeBottom(scene), width: w * 0.26, height: w * 0.26, child: _Ball(side: 1, phase: _ball[1]!, kind: _ballKind[1])),
@@ -1704,6 +1803,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                             _PokeOut(
                                 state: _poke[0],
                                 child: _Sprite(key: _sprites[0], mon: me, id: _form[0] ?? me.id, dmax: _dmax[0], tera: _tera[0], back: true, fainted: _fainted[0])),
+                            if (_morph?.$1 == 0) Positioned.fill(child: _Morph(key: ValueKey(('morph', _morph!.$3)), kind: _morph!.$2, type: me.teraType)),
                           ])),
                       if (_ball[0] != null)
                         Positioned(left: w * 0.01, bottom: h * 0.22, width: w * 0.58, height: w * 0.58, child: _Ball(side: 0, phase: _ball[0]!, kind: _ballKind[0])),
@@ -1721,7 +1821,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                         ),
                       Positioned(
                           right: 0,
-                          bottom: h * 0.24,
+                          bottom: h * 0.255,
                           width: w * 0.5,
                           child: AnimatedOpacity(
                               opacity: _introOn && _poke[0] == 'hidden' ? 0 : 1,
@@ -1833,6 +1933,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                       () => setState(() {
                             _item = null;
                             _menu = 'party';
+                            _summary = null;
                           })),
                   const SizedBox(width: 6),
                   _MenuButton('FUGIR', _run),
@@ -1841,38 +1942,9 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
               if (waiting && _menu == 'fight') ...[
                 const SizedBox(height: 8),
                 _Weak(rival, foeWeak, dark: true),
-                for (final option in _gimmickOptions)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: Material(
-                      borderRadius: BorderRadius.circular(8),
-                      clipBehavior: Clip.antiAlias,
-                      child: Ink(
-                        decoration: BoxDecoration(
-                          gradient: selected == option.$1 ? const LinearGradient(colors: [Color(0xFFD946EF), Color(0xFFFBBF24), Color(0xFF0EA5E9)]) : null,
-                          color: selected == option.$1 ? null : const Color(0xFFF1F5F9),
-                          border: Border.all(color: selected == option.$1 ? const Color(0xFFC026D3) : const Color(0xFFCBD5E1), width: 2),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: InkWell(
-                          key: ValueKey(option.$1),
-                          onTap: () => setState(() {
-                            _gimmickPick = selected == option.$1 ? null : option.$1;
-                            _gimmickMon = current.id;
-                          }),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 6),
-                            child: Text(
-                              '${tr(option.$2).toUpperCase()}${option.$1 == 'tera' ? ' ${current.teraType}' : ''}${selected == option.$1 ? ' ✓' : ''}',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: selected == option.$1 ? Colors.white : const Color(0xFF64748B)),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                GridView(
+                // A mecânica (Mega, Z, Dynamax, Tera): o botão redondo no meio dos 4 golpes; ligado, ativa no ataque.
+                Stack(alignment: Alignment.center, children: [
+                  GridView(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   // Altura pelas duas linhas de texto (cresce com o texto maior).
@@ -1941,6 +2013,12 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                       ),
                   ],
                 ),
+                  for (final option in _gimmickOptions) _GimmickButton(key: ValueKey(option.$1), kind: option.$1, label: tr(option.$2), on: selected == option.$1,
+                      onTap: () => setState(() {
+                            _gimmickPick = selected == option.$1 ? null : option.$1;
+                            _gimmickMon = current.id;
+                          })),
+                ]),
                 const SizedBox(height: 6),
                 Row(children: [_MenuButton('Voltar', () => setState(() => _menu = 'main'))]),
               ],
@@ -2576,8 +2654,128 @@ class _TeraCrownPainter extends CustomPainter {
   bool shouldRepaint(_TeraCrownPainter old) => old.color != color;
 }
 
-/// Onde fica o meio de cada Pokémon no campo (em %).
-const _center = [Point<double>(24, 69), Point<double>(75, 25)];
+/// O que o chefe diz ao mandar o último Pokémon (igual ao site).
+const _lastLines = [
+  'Ainda não acabou! Este é o meu último Pokémon!',
+  'Você é bom... mas agora eu vou com tudo!',
+  'Meu parceiro mais forte vai decidir esta batalha!',
+];
+
+/// O botão redondo da mecânica, no meio dos golpes (aceso quando ligado).
+class _GimmickButton extends StatelessWidget {
+  const _GimmickButton({super.key, required this.kind, required this.label, required this.on, required this.onTap});
+  final String kind, label;
+  final bool on;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = switch (kind) {
+      'mega' => const [Color(0xFFD946EF), Color(0xFFFBBF24), Color(0xFF0EA5E9)],
+      'dmax' => const [Color(0xFFEF4444), Color(0xFFBE185D)],
+      'tera' => const [Color(0xFF67E8F9), Color(0xFFA78BFA)],
+      _ => const [Color(0xFFFBBF24), Color(0xFFF59E0B)],
+    };
+    final short = const {'mega': 'MEGA', 'dmax': 'MAX', 'tera': 'TERA', 'z': 'Z'}[kind] ?? kind.toUpperCase();
+    return Semantics(
+      button: true,
+      label: label,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          width: 58,
+          height: 58,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: on ? SweepGradient(colors: [...colors, colors.first]) : null,
+            color: on ? null : const Color(0xFF334155),
+            border: Border.all(color: on ? Colors.white : colors.first, width: 3),
+            boxShadow: [if (on) BoxShadow(color: colors.first.withValues(alpha: 0.8), blurRadius: 14, spreadRadius: 2), const BoxShadow(color: Colors.black45, blurRadius: 4)],
+          ),
+          child: m.Text(on ? '$short ✓' : short,
+              textAlign: TextAlign.center, style: TextStyle(color: on ? Colors.white : colors.first, fontWeight: FontWeight.w900, fontSize: short.length > 3 ? 12 : 16, shadows: const [Shadow(blurRadius: 2)])),
+        ),
+      ),
+    );
+  }
+}
+
+/// A aura da transformação em volta do Pokémon: Mega (arco-íris girando e se
+/// fechando), Dynamax (vermelha, crescendo) e Tera (cristais na cor do tipo).
+class _Morph extends StatelessWidget {
+  const _Morph({super.key, required this.kind, this.type = ''});
+  final String kind, type;
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: 1),
+          duration: const Duration(milliseconds: 1350),
+          builder: (context, t, _) => CustomPaint(painter: _MorphPainter(kind, t, kind == 'tera' ? getColorForType(type.isEmpty ? 'normal' : type) : null)),
+        ),
+      );
+}
+
+class _MorphPainter extends CustomPainter {
+  _MorphPainter(this.kind, this.t, this.tint);
+  final String kind;
+  final double t;
+  final Color? tint;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = Offset(size.width / 2, size.height * 0.55);
+    final r = size.shortestSide * 0.5;
+    // Fecha até a metade (o Pokémon muda) e abre de novo.
+    final close = t < 0.5 ? 1 - t * 2 : (t - 0.5) * 2;
+    final fade = t < 0.85 ? 1.0 : (1 - t) / 0.15;
+    final colors = switch (kind) {
+      'mega' => const [Color(0xFFF472B6), Color(0xFFFBBF24), Color(0xFF34D399), Color(0xFF60A5FA), Color(0xFFA78BFA), Color(0xFFF472B6)],
+      'dmax' => const [Color(0xFFEF4444), Color(0xFFF472B6), Color(0xFFB91C1C), Color(0xFFEF4444)],
+      _ => [tint ?? Colors.white, Colors.white, tint ?? Colors.white],
+    };
+    // O brilho no meio.
+    canvas.drawCircle(
+        c,
+        r * (0.55 + 0.45 * (1 - close)),
+        Paint()
+          ..shader = RadialGradient(colors: [colors[1].withValues(alpha: 0.75 * fade), colors[0].withValues(alpha: 0)]).createShader(Rect.fromCircle(center: c, radius: r)));
+    // Os anéis girando.
+    for (var k = 0; k < 3; k++) {
+      final rr = r * (0.35 + 0.75 * close) * (1 - k * 0.18);
+      canvas.drawCircle(
+          c,
+          rr,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 3.0 + k
+            ..shader = SweepGradient(colors: colors, transform: GradientRotation(t * 12 + k)).createShader(Rect.fromCircle(center: c, radius: rr))
+            ..color = Colors.white.withValues(alpha: fade));
+    }
+    // As faíscas (Mega e Dynamax) ou os cristais (Tera) indo para o centro e voltando.
+    final paint = Paint()..color = colors[kind == 'tera' ? 0 : 1].withValues(alpha: fade);
+    for (var k = 0; k < 10; k++) {
+      final a = k / 10 * 2 * pi + t * 3;
+      final p = c + Offset(cos(a), sin(a)) * (r * (0.25 + 0.9 * close));
+      if (kind == 'tera') {
+        final path = Path()
+          ..moveTo(p.dx, p.dy - 7)
+          ..lineTo(p.dx + 4, p.dy)
+          ..lineTo(p.dx, p.dy + 7)
+          ..lineTo(p.dx - 4, p.dy)
+          ..close();
+        canvas.drawPath(path, paint);
+      } else {
+        canvas.drawCircle(p, 3, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_MorphPainter old) => old.t != t;
+}
 
 /// Clarão branco (crítico, relâmpago, meteoro).
 class _Flash extends StatelessWidget {

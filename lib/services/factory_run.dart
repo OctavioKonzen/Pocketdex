@@ -1278,10 +1278,10 @@ class FactoryRun {
       }
       out['boss'] = boss;
       out['played'] = played;
-      // O chefe deixa o Cristal Z do tipo do Pokémon mais forte dele.
+      // Em Alola (onde existem os Z-Moves), o chefe deixa o Cristal Z do tipo do Pokémon mais forte dele.
       final ace = foes.last;
       final types = data.speciesOf(_int(ace['id']))?.elementAtOrNull(4) as List?;
-      final crystal = types == null || types.isEmpty ? null : data.zcrystals['${types.first}'];
+      final crystal = types == null || types.isEmpty || run['encounter']['boss']['region'] != 'Alola' ? null : data.zcrystals['${types.first}'];
       if (crystal != null && !_hasItem(out, crystal)) drop = crystal;
     }
     // A Mega deixa a Mega Pedra (derrotando ou capturando).

@@ -396,7 +396,12 @@ try {
       await page.getByRole('button', { name: '▸ LUTAR' }).click()
       await page.getByTestId('moves').locator('button[data-no-translate]:not([disabled])').first().click()
     } else if (await page.getByTestId('party').isVisible()) {
-      await page.getByTestId('party').locator('button:not([disabled])').first().click()
+      // Como no jogo: tocar no Pokémon mostra TROCAR / DADOS.
+      const slots = page.getByTestId('party').locator('button')
+      for (let k = 0; k < await slots.count(); k++) {
+        await slots.nth(k).click()
+        if (await page.getByTestId('party-pick').isEnabled()) { await page.getByTestId('party-pick').click(); break }
+      }
     } else await page.getByTestId('battle-text').click()
     await page.waitForTimeout(150)
   }
