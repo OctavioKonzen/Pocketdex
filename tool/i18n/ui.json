@@ -8365,5 +8365,10 @@
  "Tela cheia": {"en": "Full screen", "fr": "Plein écran", "es": "Pantalla completa"},
  "Recuperação": {"en": "Recovery", "fr": "Récupération", "es": "Recuperación"},
  "nó-chave": {"en": "keystone", "fr": "nœud clé", "es": "nodo clave"},
- "Depois de cada vitória, o time recupera {0}% do HP": {"en": "After each win, the team recovers {0}% HP", "fr": "Après chaque victoire, l'équipe récupère {0} % des PV", "es": "Tras cada victoria, el equipo recupera un {0} % de PS"}
+ "Depois de cada vitória, o time recupera {0}% do HP": {"en": "After each win, the team recovers {0}% HP", "fr": "Après chaque victoire, l'équipe récupère {0} % des PV", "es": "Tras cada victoria, el equipo recupera un {0} % de PS"},
+ "Captura {0}% mais fácil": {"en": "Catching {0}% easier", "fr": "Capture {0} % plus facile", "es": "Captura un {0} % más fácil"},
+ "Mão firme": {"en": "Steady Hand", "fr": "Main sûre", "es": "Mano firme"},
+ "Mira certeira": {"en": "Sharp Aim", "fr": "Visée précise", "es": "Puntería"},
+ "Paciência": {"en": "Patience", "fr": "Patience", "es": "Paciencia"},
+ "Isca": {"en": "Bait", "fr": "Appât", "es": "Cebo"}
 }

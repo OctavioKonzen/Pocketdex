@@ -122,13 +122,15 @@ void main() {
     final all = _buyAll({...f, 'coins': 9999999}, FactoryRun.upgrades.keys);
     final big = FactoryRun.startRun(all, data, 1, 42)!;
     expect(big['teamBoost'], {'hp': 0.82, 'atk': 1.28, 'def': 1.2, 'spa': 1.32, 'spd': 1.18, 'spe': 1.6});
-    expect(big['mult'], {'money': 2.7, 'exp': 2.25, 'shop': 0.52});
+    expect(big['mult'], {'money': 2.7, 'exp': 3.1, 'shop': 0.52});
     final bag = big['bag'] as Map;
-    expect([bag['poke-ball'], bag['great-ball'], bag['ultra-ball'], bag['potion'], bag['revive'], bag['escape-rope']], [52, 35, 19, 35, 18, 19]);
+    expect([bag['poke-ball'], bag['great-ball'], bag['ultra-ball'], bag['potion'], bag['revive'], bag['escape-rope']], [52, 35, 17, 35, 18, 2]);
     // Os efeitos que mudam a corrida: dinheiro no começo, cura depois de cada vitória, nível e IVs do inicial.
     final starter = (big['team'] as List).first as Map;
-    expect([big['money'], big['winHeal'], starter['level'], (starter['ivs'] as Map).values.cast<num>().reduce(min), big['rerolls'], (big['stash'] as List).length],
-        [2900, 50, 25, 31, 18, 50]);
+    expect([big['money'], big['winHeal'], starter['level'], (starter['ivs'] as Map).values.cast<num>().reduce(min), big['rerolls'], (big['stash'] as List).length, big['catchBonus']],
+        [2900, 50, 25, 31, 18, 50, 150]);
+    // A captura mais fácil vai para a batalha (o motor multiplica a taxa de captura).
+    expect(FactoryRun.captureFor({...big, 'encounter': {'kind': 'wild', 'foes': [{'id': 16}]}}, data)!['bonus'], 150);
     expect(big['tokens'], {'move-tutor': 20, 'move-reminder': 18});
     expect(((FactoryRun.endRun(all, {...big, 'floor': 11, 'defeated': 0, 'bosses': 0})['last']) as Map)['coins'], 140);
     // A cura depois da vitória: só em quem está de pé, até o HP cheio.
