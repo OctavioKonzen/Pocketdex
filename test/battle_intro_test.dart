@@ -38,6 +38,54 @@ void main() {
     }
   });
 
+  testWidgets('selvagem do Pokelike: a tela VS com o Pokémon selvagem', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2220);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final battle = await tester.runAsync(() async {
+      final me = await TurnBattleSetup.mons([(25, <String, dynamic>{'moves': ['swift', 'protect']})], (row) => '${row['name']}');
+      final npc = await TurnBattleSetup.mons([(74, <String, dynamic>{'moves': ['splash']})], (row) => '${row['name']}');
+      return TurnBattle(me, npc, Random(3).nextDouble);
+    });
+    addTearDown(battle!.dispose);
+    await tester.pumpWidget(RepaintBoundary(
+      key: const ValueKey('preview'),
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: BattleView(
+                battle: battle,
+                hit: (_, _, _, _, [power, weather = '']) => null,
+                typeEff: (_, _) => 1,
+                foeName: '',
+                foeTrainer: 'brock',
+                intro: true,
+                wild: true,
+                keepMine: true,
+                onAgain: () {},
+                onExit: () {}),
+          ),
+        ),
+      ),
+    ));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byKey(const ValueKey('vs-splash')), findsOneWidget);
+    expect(find.text('POKÉMON SELVAGEM'), findsOneWidget);
+    if (Platform.environment['BATTLE_SHOTS'] != null) {
+      await tester.pump(const Duration(milliseconds: 900));
+      final boundary = tester.renderObject<RenderRepaintBoundary>(find.byKey(const ValueKey('preview')));
+      await tester.runAsync(() async {
+        final image = await boundary.toImage(pixelRatio: 1);
+        final png = await image.toByteData(format: ui.ImageByteFormat.png);
+        File('${Platform.environment['BATTLE_SHOTS']}/0-vs-selvagem.png').writeAsBytesSync(png!.buffer.asUint8List());
+      });
+    }
+    await tester.pump(const Duration(milliseconds: 1700));
+    expect(find.byKey(const ValueKey('vs-splash')), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('abertura: treinadores, Poké Ball e depois o menu', (tester) async {
     tester.view.physicalSize = const Size(1080, 2220);
     tester.view.devicePixelRatio = 3;

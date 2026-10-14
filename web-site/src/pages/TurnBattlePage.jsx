@@ -21,7 +21,7 @@ import { useStore } from '../lib/store'
 import { teamMembers } from '../lib/teamBattle'
 import { fxPlan, moveAnim, SELF_KINDS } from '../lib/moveAnim'
 import { active, critChance, damageRange, fieldConditions, monDetails, lockedMove, canGimmick, canUseItem, effectLabel, forfeit, HEAL_SHARE, ITEMS, lineOf, MAX_MOVES, maxPower, moveEffect, newBattle, playTurn, replace, startBattle, STAT_NAMES, switchMatchup, usableMoves, weaknesses, Z_MOVES, zPower } from '../lib/turnBattle'
-import Sprite from '../components/Sprite'
+import Sprite, { pixelRatio } from '../components/Sprite'
 import BwBag from '../components/BwBag'
 import BwSummary, { summaryOf } from '../components/BwSummary'
 import { BattleBackground, battleScale, battleScene, foeBottom, PlatformBase, sceneOfBoss } from '../components/BattleScene'
@@ -517,7 +517,9 @@ function TeraCrown({ color }) {
 const BattleSprite = forwardRef(function BattleSprite({ mon, id, back, fainted, dmax, tera = '', byId }, ref) {
   const p = byId?.get(id) ?? byId?.get(mon.id)
   const teraColor = tera ? typeColor(tera) : null
-  const scale = battleScale(p?.height)
+  // A Mega (ou outra forma) com o mesmo tamanho de pixel da forma de antes: uma mais larga não encolhe.
+  const base = byId?.get(mon.orig?.id ?? mon.id)
+  const scale = battleScale(p?.height) * (!dmax && base && p && base.id !== p.id ? pixelRatio(base.sprite, p.sprite, back) : 1)
   return (
     <div className={`aspect-square w-full transition-all duration-500 ${fainted ? 'translate-y-10 opacity-0' : ''}`} style={{ transform: `scale(${scale})`, transformOrigin: '50% 100%' }} data-scale={scale}>
       <div
@@ -1238,7 +1240,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         {/* Clima, terreno e efeito do lugar fazem parte do cenário: atrás dos Pokémon e das caixas. */}
         <WeatherFx weather={shown.weather} terrain={shown.terrain} place={shown.place} />
         {vsOn && <VsSplash me={myTrainer} coach={coach} vs={vsInfo} myName={myName} foeMon={wild ? active(battle, 1) : null} onSkip={() => vsDone.current?.()} />}
-        <div className={`absolute top-[5%] left-0 w-[50%] max-w-[300px] transition-opacity ${intro && poke[1] === 'hidden' ? 'opacity-0' : ''}`}>
+        <div className={`absolute z-20 top-[5%] left-0 w-[50%] max-w-[300px] transition-opacity ${intro && poke[1] === 'hidden' ? 'opacity-0' : ''}`}>
           <button type="button" className="block w-full cursor-pointer text-left" onClick={() => setInspect(1)} aria-label={t('Ver detalhes do adversário')} data-testid="inspect-foe">
             <InfoBox bw mon={foe} hp={shown.hp[1][shown.active[1]]} status={shown.status[1][shown.active[1]]} dmax={shown.dmax[1]} boosts={shown.boosts[1]} hpTestId={online ? "online-hp-" + (1 - online.side) : undefined} />
           </button>
@@ -1282,7 +1284,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         {effect && <MoveFx key={effect.key} plan={effect.plan} color={effect.color} />}
         {impact && <span key={impact.n} className="move-impact pointer-events-none absolute z-20" style={{ left: `${impact.x}%`, top: `${impact.y}%`, '--c': impact.color }} data-testid="move-impact" />}
         {flash > 0 && <div key={`flash-${flash}`} className="battle-flash pointer-events-none absolute inset-0 bg-white" />}
-        <div className={`absolute right-0 bottom-[24%] w-[50%] max-w-[300px] transition-opacity ${intro && poke[0] === 'hidden' ? 'opacity-0' : ''}`}>
+        <div className={`absolute z-20 right-0 bottom-[24%] w-[50%] max-w-[300px] transition-opacity ${intro && poke[0] === 'hidden' ? 'opacity-0' : ''}`}>
           <button type="button" className="block w-full cursor-pointer text-left" onClick={() => setInspect(0)} aria-label={t('Ver detalhes do seu Pokémon')} data-testid="inspect-me">
             <InfoBox bw mon={me} hp={shown.hp[0][shown.active[0]]} status={shown.status[0][shown.active[0]]} dmax={shown.dmax[0]} boosts={shown.boosts[0]} mine hpTestId={online ? "online-hp-" + online.side : undefined}
               exp={expBarOf(battle, shown.active[0], shown.hp[1])} />

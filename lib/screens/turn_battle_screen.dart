@@ -32,6 +32,7 @@ import '../utils/site_ui.dart';
 import '../utils/string_extensions.dart';
 import '../utils/team_analysis.dart' show allTypes;
 import '../widgets/pokemon_sprite.dart';
+import '../services/animated_sprites.dart';
 import '../widgets/trainer_sprite.dart';
 import '../services/trainers.dart';
 import '../services/battle_log.dart';
@@ -1786,17 +1787,6 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                       Positioned.fill(child: _WeatherFx(_weather, terrain: _terrain, place: _place)),
                       // Como no Black & White: o adversário lá atrás à direita (menor), o seu de costas na frente à esquerda (grande, cortado pela caixa do texto).
                       Positioned(
-                          left: 0,
-                          top: h * 0.05,
-                          width: w * 0.5,
-                          child: AnimatedOpacity(
-                              opacity: _introOn && _poke[1] == 'hidden' ? 0 : 1,
-                              duration: const Duration(milliseconds: 200),
-                              child: GestureDetector(
-                                  key: const ValueKey('inspect-foe'),
-                                  onTap: () => _inspect(1),
-                                  child: _InfoBox(mon: foe, hp: _hp[1][_active[1]], status: _status[1][_active[1]], dmax: _dmax[1], boosts: _boosts[1], bw: true)))),
-                      Positioned(
                           // O inimigo fica mais longe: menor e com os pés na
                           // frente do meio da plataforma (pisando nela, como o seu).
                           right: w * 0.11,
@@ -1854,6 +1844,18 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                             child: TrainerBack(_myTrainer, frame: _backFrame, height: h * 0.62),
                           ),
                         ),
+                      // As caixas de vida ficam sempre por cima dos Pokémon (como nos jogos): um Pokémon grande não cobre a vida.
+                      Positioned(
+                          left: 0,
+                          top: h * 0.05,
+                          width: w * 0.5,
+                          child: AnimatedOpacity(
+                              opacity: _introOn && _poke[1] == 'hidden' ? 0 : 1,
+                              duration: const Duration(milliseconds: 200),
+                              child: GestureDetector(
+                                  key: const ValueKey('inspect-foe'),
+                                  onTap: () => _inspect(1),
+                                  child: _InfoBox(mon: foe, hp: _hp[1][_active[1]], status: _status[1][_active[1]], dmax: _dmax[1], boosts: _boosts[1], bw: true)))),
                       Positioned(
                           right: 0,
                           bottom: h * 0.255,
@@ -2479,7 +2481,10 @@ class _SpriteState extends State<_Sprite> with TickerProviderStateMixin {
               duration: const Duration(milliseconds: 700),
               child: AnimatedScale(
               // O tamanho dele (pela altura) e, no Dinamax, gigante.
-              scale: battleScale(battleHeights[widget.id]) * (widget.dmax ? (widget.back ? 1.35 : 1.15) : 1),
+              // A Mega (ou outra forma) com o mesmo tamanho de pixel da forma de antes: uma mais larga não encolhe.
+              scale: battleScale(battleHeights[widget.id]) *
+                  (widget.dmax ? (widget.back ? 1.35 : 1.15) : 1) *
+                  (widget.dmax || widget.id == widget.mon.baseId ? 1 : AnimatedSprites.instance.pixelRatio(widget.mon.baseId, widget.id, shiny: widget.mon.shiny, back: widget.back)),
               alignment: Alignment.bottomCenter,
               duration: const Duration(milliseconds: 700),
               child: Stack(

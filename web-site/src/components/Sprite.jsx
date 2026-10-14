@@ -96,6 +96,21 @@ export function animatedOf(path, set, back) {
  *               acompanha a animação quadro a quadro
  * @param crystal cor do Tera Type: o corpo fica cristalizado (facetas e reflexo)
  */
+/**
+ * Quanto o sprite [toPath] tem que crescer para ter o mesmo tamanho de pixel
+ * de [fromPath] (cada sprite é ajustado para a mesma caixa: uma Mega mais
+ * larga, como a Kangaskhan com o filhote do lado, encolheria). Só cresce, até
+ * 1,6×. Igual ao app (AnimatedSprites.pixelRatio).
+ */
+export function pixelRatio(fromPath, toPath, back = false) {
+  const side = (path) => {
+    const a = path && animated ? animatedOf(path, animated, back) : null
+    return a?.size ? Math.max(...a.size) / (a.fit?.[0] ?? 1) : 0
+  }
+  const a = side(fromPath), b = side(toPath)
+  return a > 0 && b > 0 ? Math.min(1.6, Math.max(1, b / a)) : 1
+}
+
 export default function Sprite(props) {
   const on = usePrefs((s) => s.animatedSprites)
   const sets = useAnimated()

@@ -12,6 +12,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter/services.dart' show rootBundle;
@@ -123,5 +124,21 @@ class AnimatedSprites {
       if (_bw.have[front]!.contains(id) && !_bw.still[front]!.contains(id)) return null;
     }
     return _bw.source(kind, id);
+  }
+
+  /// Quanto [to] tem que crescer para ter o mesmo tamanho de pixel de [from]
+  /// (cada sprite é ajustado para a mesma caixa: uma Mega mais larga, como a
+  /// Kangaskhan com o filhote do lado, encolheria). Só cresce, até 1,6×.
+  double pixelRatio(int from, int to, {bool shiny = false, bool back = false}) {
+    final kind = _kind(shiny, back);
+    double side(int id) {
+      final wh = _bw.size[kind]![id];
+      if (wh == null) return 0;
+      return max(wh[0], wh[1]) / (_bw.fit[kind]![id]?.first ?? 1);
+    }
+
+    final a = side(from), b = side(to);
+    if (a <= 0 || b <= 0) return 1;
+    return (b / a).clamp(1.0, 1.6).toDouble();
   }
 }
