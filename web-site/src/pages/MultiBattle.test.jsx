@@ -24,3 +24,16 @@ describe('botões dos golpes em dupla e tripla',()=>{
     } finally {simulatorDispose(b)}
   })
 })
+describe('cenário da batalha dupla',()=>{
+  it('usa o lugar do mapa (a imagem BW, com plataforma), como a de um contra um',()=>{
+    const b=newPartyBattle({me:Array.from({length:6},mon),npc3:Array.from({length:6},mon)},['me','me','npc3','npc3'],2,()=>0.25)
+    try {
+      b.scene='cave'
+      const html=renderToStaticMarkup(<MultiBattle battle={b} onExit={()=>{}} onAgain={()=>{}}/>)
+      expect(html).toContain('data-scene="cave"')
+      expect(html).toContain('battle/cave.webp')
+      expect(html).toContain('battle/cave-base-foe.webp')
+      expect(html).toContain('battle/cave-base-mine.webp')
+    } finally {simulatorDispose(b)}
+  })
+})
