@@ -27,7 +27,8 @@ export function megaOptions(pokemon, byId, battleItems) {
     seen.add(stone)
     // A Mega da forma dele (Tatsugiri Droopy → Mega Tatsugiri Droopy), se existir.
     const own = `${pokemon.name}-mega`
-    out.push({ stone, form: forms.has(own) ? own : form })
+    // Uma Mega com letra (X, Y, Z: Lucarionite Z) é sempre a da pedra.
+    out.push({ stone, form: forms.has(own) && !/-mega-[xyz]$/.test(form) ? own : form })
   }
   return out
 }

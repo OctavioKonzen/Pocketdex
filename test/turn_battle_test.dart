@@ -7,6 +7,7 @@ import 'package:pocket_dex/services/damage_calc.dart';
 import 'package:pocket_dex/services/league.dart';
 import 'package:pocket_dex/services/local_database.dart';
 import 'package:pocket_dex/services/move_anim.dart';
+import 'package:pocket_dex/services/form_items.dart';
 import 'package:pocket_dex/services/turn_battle.dart';
 
 // Batalha de mentira (dano simples, sem a calculadora), a mesma do site
@@ -355,6 +356,22 @@ void main() {
     expect(charizard.moves.first.pp, 15);
     expect(charizard.moves.first.category, 'special');
     expect(charizard.mega, isNull); // sem a Mega Pedra não megaevolui
+  });
+
+  test('Mega X, Y e Z pela pedra (Charizard, Mewtwo, Lucario, Absol, Garchomp; igual ao site)', () async {
+    final mons = await TurnBattleSetup.mons([
+      (6, {'level': 50, 'item': 'charizardite-x', 'moves': ['flamethrower']}),
+      (150, {'level': 50, 'item': 'mewtwonite-y', 'moves': ['psychic']}),
+      (448, {'level': 50, 'item': 'lucarionite', 'moves': ['aura-sphere']}),
+      (448, {'level': 50, 'item': 'lucarionite-z', 'moves': ['aura-sphere']}),
+      (359, {'level': 50, 'item': 'absolite-z', 'moves': ['night-slash']}),
+      (445, {'level': 50, 'item': 'garchompite-z', 'moves': ['earthquake']}),
+    ], (row) => '${row['name']}');
+    expect([for (final m in mons) m.mega?.id], [10034, 10044, 10059, 10310, 10307, 10309]);
+    final options = megaOptions('lucario', {'lucario', 'lucario-mega', 'lucario-mega-z'}, {
+      'mega': {'lucarionite': 'lucario-mega', 'lucarionitez': 'lucario-mega-z'}
+    });
+    expect([for (final o in options) megaLabel(o.form)], ['Mega', 'Mega Z']);
   });
 
   test('mecânicas com as regras dos jogos (igual ao site)', () async {

@@ -22,7 +22,8 @@ List<({String stone, String form})> megaOptions(String name, Set<String> forms, 
     final stone = '${e.key}', form = '${e.value}';
     if (!forms.contains(form) || !seen.add(stone)) continue;
     // A Mega da forma dele (Tatsugiri Droopy → Mega Tatsugiri Droopy), se existir.
-    out.add((stone: stone, form: forms.contains('$name-mega') ? '$name-mega' : form));
+    // Uma Mega com letra (X, Y, Z: Lucarionite Z) é sempre a da pedra.
+    out.add((stone: stone, form: forms.contains('$name-mega') && !RegExp(r'-mega-[xyz]$').hasMatch(form) ? '$name-mega' : form));
   }
   return out;
 }
