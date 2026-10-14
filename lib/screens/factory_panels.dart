@@ -1512,6 +1512,10 @@ class _FactoryScreenState extends State<FactoryScreen> {
     final event = p['event'] as Map?;
     final items = [p['drop'], p['reward']].whereType<String>().toList();
     final eventIcon = _eventIcon[event?['kind']] ?? '🎁';
+    // A primeira evolução do andar, com a animação dos jogos.
+    final evo = (p['levels'] as List? ?? const []).cast<Map>().where((l) => l['evolved'] != null).firstOrNull;
+    final evoTo = (evo?['evolved'] as num?)?.toInt();
+    final evoFrom = evoTo == null ? null : _data?.evolutions.entries.where((e) => e.value.any((x) => x[0] == evoTo)).firstOrNull?.key;
     final beat = p['beat'] as Map?;
     final mission = p['mission'] as Map?;
     return _frame(
@@ -1524,8 +1528,13 @@ class _FactoryScreenState extends State<FactoryScreen> {
             else if (event != null)
               _far(Text(eventIcon, style: TextStyle(fontSize: w * 0.12)), w, h),
             if (lead != null) _fieldMon(lead, w, h, back: true),
+            if (evoTo != null && evoFrom != null)
+              Positioned(left: w * 0.29, top: h * 0.12, width: w * 0.42, height: w * 0.42, child: _EvolutionFx(from: evoFrom, to: evoTo)),
           ]),
       text: [
+        if (evoTo != null && evoFrom != null)
+          Text('✨ ${tr('{0} evoluiu para {1}!').replaceAll('{0}', _name(evoFrom)).replaceAll('{1}', _name(evoTo))}',
+              key: const ValueKey('factory-evolved'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFD97706))),
         if (p['center'] == true)
           Text('🏥 ${tr('Centro Pokémon: o seu time foi curado!')}', key: const ValueKey('factory-center'))
         else if (event != null)
@@ -2084,3 +2093,50 @@ const _villainLines = [
   'Saia do caminho, criança! Não temos tempo para heróis.',
   'Ninguém atrapalha a nossa equipe e sai ileso!',
 ];
+
+/// A evolução, como nos jogos: o Pokémon fica branco e pisca alternando com a forma nova, cada vez mais rápido, até ela
+/// aparecer com brilho. Igual ao site (EvolutionFx).
+class _EvolutionFx extends StatefulWidget {
+  const _EvolutionFx({required this.from, required this.to});
+  final int from, to;
+
+  @override
+  State<_EvolutionFx> createState() => _EvolutionFxState();
+}
+
+class _EvolutionFxState extends State<_EvolutionFx> with SingleTickerProviderStateMixin {
+  late final AnimationController _clock = AnimationController(vsync: this, duration: const Duration(milliseconds: 2600))..forward();
+
+  /// As trocas (fração do tempo): cada vez mais perto uma da outra; a partir de 0.8, só a nova.
+  static const _flips = [0.2, 0.25, 0.35, 0.42, 0.5, 0.55, 0.61, 0.65, 0.7, 0.73, 0.77, 0.8];
+
+  @override
+  void dispose() {
+    _clock.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+        key: const ValueKey('evolution-fx'),
+        child: AnimatedBuilder(
+          animation: _clock,
+          builder: (context, _) {
+            final v = _clock.value;
+            final showNew = _flips.where((f) => v >= f).length.isOdd || v >= 0.8;
+            const white = ColorFilter.matrix([0, 0, 0, 0, 255, 0, 0, 0, 0, 255, 0, 0, 0, 0, 255, 0, 0, 0, 1, 0]);
+            final glow = v < 0.8 ? v / 0.8 : 1 - (v - 0.8) / 0.2;
+            return Stack(fit: StackFit.expand, children: [
+              Opacity(
+                opacity: glow.clamp(0, 1),
+                child: const DecoratedBox(
+                    decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [Color(0xE6FFFFFF), Color(0x66FDE047), Colors.transparent]))),
+              ),
+              v >= 1
+                  ? PokemonSprite(widget.to, fill: 0.9, alignBottom: true, battle: true)
+                  : ColorFiltered(colorFilter: white, child: PokemonSprite(showNew ? widget.to : widget.from, fill: 0.9, alignBottom: true, battle: true)),
+            ]);
+          },
+        ),
+      );
+}

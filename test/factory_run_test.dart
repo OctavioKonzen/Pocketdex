@@ -553,4 +553,14 @@ void main() {
 
     expect(ghosts(true), greaterThan(ghosts(false)));
   });
+
+  test('a música de cada lugar (igual ao site)', () {
+    expect(FactoryRun.placeMusic('grass'), 'place_field');
+    expect(FactoryRun.placeMusic('crystal'), 'place_cave');
+    expect(FactoryRun.placeMusic('base-rocket'), 'place_city');
+    expect(FactoryRun.placeMusic('gym-fire'), 'battle_music');
+    for (final b in FactoryRun.biomeIds) {
+      expect(FactoryRun.placeMusic(b), isNot('battle_music'));
+    }
+  });
 }

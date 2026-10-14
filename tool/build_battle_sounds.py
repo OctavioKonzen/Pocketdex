@@ -303,6 +303,18 @@ CHAMPION_THEMES = {
     'geeta': (63, 'harmonic', [0, 3, 5, 4], 172, 0.125, 'pulse'),
 }
 
+# Os lugares da Battle Factory, cada grupo com o seu tema original (selvagens e treinadores da rota).
+PLACE_THEMES = {
+    'field': (67, 'major', [0, 3, 4, 0], 150, 0.5),
+    'forest': (62, 'dorian', [0, 3, 0, 4], 140, 0.25),
+    'sea': (65, 'mixolydian', [0, 4, 3, 0], 146, 0.5),
+    'cave': (60, 'phrygian', [0, 1, 0, 6], 136, 0.125),
+    'mountain': (64, 'dorian', [0, 6, 3, 4], 154, 0.25),
+    'desert': (62, 'harmonic', [0, 1, 0, 6], 148, 0.25),
+    'city': (67, 'minor', [0, 5, 6, 4], 160, 0.25),
+    'spooky': (63, 'harmonic', [0, 1, 5, 4], 132, 0.125),
+}
+
 
 def compose(name, tonic, mode, progression, climax=False):
     """Melodia e acordes originais (128 colcheias) a partir de motivos gerados:
@@ -364,6 +376,9 @@ def theme_tracks():
     for champion, (tonic, mode, prog, bpm, duty, voice) in CHAMPION_THEMES.items():
         lead, chords = compose(champion, tonic, mode, prog, climax=True)
         out[f'champion_{champion}'] = music(lead, chords, bpm, duty=duty, voice=voice, drive=voice == 'pulse')
+    for place, (tonic, mode, prog, bpm, duty) in PLACE_THEMES.items():
+        lead, chords = compose(f'place-{place}', tonic, mode, prog)
+        out[f'place_{place}'] = music(lead, chords, bpm, duty=duty)
     return out
 
 

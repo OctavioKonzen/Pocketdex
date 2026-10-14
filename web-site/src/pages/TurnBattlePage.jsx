@@ -32,7 +32,7 @@ import {simulatorTargets} from '../lib/battleSimulator'
 import {newPartyBattle, playPartyTurn, describeEvents} from '../lib/partyBattle'
 import { FactoryHub, FactoryScreen, saveFactory } from '../components/FactoryPanels'
 import { expBarOf, factoryAfter, factoryBattle, factoryFoe } from '../lib/factoryBattle'
-import { endRun, escapeRope, factoryOf, winFloor } from '../lib/factoryRun'
+import { endRun, escapeRope, factoryOf, placeMusic, winFloor } from '../lib/factoryRun'
 import { getFactoryData } from '../lib/data'
 
 const CARD = 'rounded-2xl bg-card p-5 shadow'
@@ -695,7 +695,31 @@ function PokeBall({ side, phase }) {
 export function Battle(props) {
   return props.battle.mode && props.battle.mode !== 'singles' ? <MultiBattle {...props} /> : <SingleBattle {...props} />
 }
-function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain, onFinish, online = null, music = 'battle_music', endNote = '', next = null, wild = false }) {
+/** As cores da tela VS de cada chefe (líder, Elite Four, Campeão, rival, vilão). */
+const VS_KIND = {
+  gym: ['Líder de ginásio', '#f97316'], elite: ['Elite Four', '#7c3aed'], champion: ['Campeão', '#eab308'], rival: ['Rival', '#2563eb'], villain: ['Vilão', '#dc2626'],
+}
+/** A tela VS (como no Black & White): as faixas entram dos lados, os treinadores e o nome do chefe; toque para pular. */
+function VsSplash({ me, coach, vs, onSkip }) {
+  const [label, color] = VS_KIND[vs.kind] ?? VS_KIND.gym
+  return (
+    <button type="button" className="vs-splash absolute inset-0 z-30 cursor-pointer overflow-hidden bg-slate-950/70" onClick={onSkip} data-testid="vs-splash" aria-label={t('Pular')}>
+      <div className="vs-band vs-band-foe absolute inset-x-0 top-[10%] h-[36%]" style={{ background: `linear-gradient(100deg, transparent 8%, ${color} 8%, ${color} 92%, transparent 92%)` }} />
+      <div className="vs-band vs-band-me absolute inset-x-0 bottom-[10%] h-[36%]" style={{ background: 'linear-gradient(100deg, transparent 8%, #1e293b 8%, #1e293b 92%, transparent 92%)' }} />
+      <div className="vs-foe absolute right-[10%] top-[10%] flex h-[36%] items-center gap-3">
+        <span className="text-right font-black leading-tight text-white drop-shadow">
+          <span className="block text-xs uppercase sm:text-sm">{t(label)}</span>
+          <span className="block text-xl sm:text-3xl" data-no-translate>{vs.name}</span>
+        </span>
+        {coach && <TrainerSprite trainer={coach} box={120} />}
+      </div>
+      <div className="vs-me absolute bottom-[10%] left-[10%] flex h-[36%] items-center">{me && <TrainerSprite trainer={me} box={120} flip />}</div>
+      <span className="vs-text absolute inset-0 grid place-items-center text-6xl font-black italic text-white sm:text-8xl">VS</span>
+    </button>
+  )
+}
+
+function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain, onFinish, online = null, music = 'battle_music', endNote = '', next = null, wild = false, vs = null }) {
   const byId = usePokemonIndex()
   // Os treinadores: o seu (de costas, lançando a Poké Ball) e o do adversário.
   const myTrainer = useMyTrainer()
@@ -705,6 +729,9 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   const coach = wild ? null : (typeof foeCoach === 'string' ? trainers?.find((x) => x.id === foeCoach) : foeCoach) ?? randomOnce(trainers, myTrainer?.id, battle)
   // A abertura (treinadores e Poké Balls) só no começo de uma batalha nova.
   const [intro, setIntro] = useState(() => (!online && battle.turn <= 1 ? { foe: 'in', me: 'in', back: 0 } : null))
+  // A tela VS antes da luta contra um chefe (só no começo).
+  const [vsOn, setVsOn] = useState(() => Boolean(vs?.name) && !online && battle.turn <= 1)
+  const vsDone = useRef(null)
   // Cada Pokémon: '' na tela, 'hidden' dentro da Poké Ball, 'release' saindo, 'recall' voltando.
   const [poke, setPoke] = useState(() => (!online && battle.turn <= 1 ? ['hidden', 'hidden'] : ['', '']))
   const [ball, setBall] = useState([null, null]) // 'throw' | 'open' | Battle Factory: 'catch' | 'still' | 'shake' | 'caught'
@@ -779,6 +806,11 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
 
   /** A abertura: os treinadores aparecem, lançam a Poké Ball e os Pokémon saem. */
   const runIntro = async () => {
+    if (vsOn) {
+      // Espera a tela VS (ou o toque para pular).
+      await Promise.race([wait(2200), new Promise((resolve) => (vsDone.current = resolve))])
+      setVsOn(false)
+    }
     await wait(700)
     if (!foeName && coachRef.current) setText(t('{0} quer batalhar!').replace('{0}', coachRef.current.name))
     await wait(1100)
@@ -1105,6 +1137,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
       >
         {/* Como no Black & White: o adversário lá atrás à direita (menor), o seu de costas na frente à esquerda (grande, cortado pela caixa do texto). */}
         <BattleBackground weather={shown.weather} scene={scene} layout="bw" />
+        {vsOn && <VsSplash me={myTrainer} coach={coach} vs={vs} onSkip={() => vsDone.current?.()} />}
         <div className={`absolute top-[5%] left-0 w-[50%] max-w-[300px] transition-opacity ${intro && poke[1] === 'hidden' ? 'opacity-0' : ''}`}>
           <button type="button" className="block w-full cursor-pointer text-left" onClick={() => setInspect(1)} aria-label={t('Ver detalhes do adversário')} data-testid="inspect-foe">
             <InfoBox bw mon={foe} hp={shown.hp[1][shown.active[1]]} status={shown.status[1][shown.active[1]]} dmax={shown.dmax[1]} boosts={shown.boosts[1]} hpTestId={online ? "online-hp-" + (1 - online.side) : undefined} />
@@ -1741,7 +1774,9 @@ export default function TurnBattlePage() {
           hit={hit}
           onExit={() => setGame(null)}
           onAgain={['league', 'tower', 'factory'].includes(challenge?.kind) ? null : again}
-          music={musicOf(foeLeader ?? challenge?.boss)}
+          // Na Battle Factory, sem chefe: a música do lugar.
+          vs={foeLeader ?? (VS_KIND[challenge?.boss?.kind] ? challenge.boss : null)}
+          music={!foeLeader && !challenge?.boss && challenge?.kind === 'factory' ? placeMusic(game.battle.scene) : musicOf(foeLeader ?? challenge?.boss)}
           wild={Boolean(challenge?.wild)}
           endNote={game.endNote}
           next={game.next}

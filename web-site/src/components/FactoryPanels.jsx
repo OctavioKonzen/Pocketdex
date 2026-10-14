@@ -725,6 +725,26 @@ function FieldMon({ mon, byId, back = false, scene }) {
   )
 }
 
+/**
+ * A evolução, como nos jogos: o Pokémon fica branco e pisca alternando com a
+ * forma nova, cada vez mais rápido, até ela aparecer com brilho.
+ */
+function EvolutionFx({ from, to, byId }) {
+  const sprite = (id, cls) => {
+    const p = byId?.get(id)
+    return p ? <div className={`absolute inset-0 ${cls}`}><Sprite path={p.sprite} box={p.box} fill={0.9} align="bottom" battle alt={p.name} /></div> : null
+  }
+  return (
+    <div className="evo-fx absolute left-1/2 top-[12%] aspect-square w-[42%] -translate-x-1/2" data-testid="evolution-fx">
+      <div className="evo-glow absolute inset-0 rounded-full" />
+      {sprite(from, 'evo-from')}
+      {sprite(to, 'evo-to')}
+    </div>
+  )
+}
+/** Quem evolui para id (a forma anterior), pelos dados da Factory. */
+const preEvolution = (data, id) => Number(Object.keys(data?.evolutions ?? {}).find((k) => data.evolutions[k].some((e) => e[0] === id))) || null
+
 /** Alguém de pé na base de cima (Enfermeira Joy, o chefe, os vendedores...). */
 function FarStand({ children, scene }) {
   return (
@@ -987,15 +1007,20 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     const event = p.event
     const here = p.center ? 'center' : run.scene ?? 'grass'
     const shown = p.center || p.joy ? nurse : [p.drop, p.reward].filter(Boolean).length ? <img src={itemIcon(p.drop ?? p.reward)} alt="" className="pixelated w-1/2" onError={hide} /> : null
+    // A primeira evolução do andar, com a animação dos jogos.
+    const evo = p.levels?.find((l) => l.evolved)
+    const evoFrom = evo ? preEvolution(data, evo.evolved) : null
     field = (
       <Field biome={here} fieldRef={fieldRef} testid="factory-result">
         {shown && <FarStand scene={here}>{shown}</FarStand>}
         {!shown && event && <FarStand scene={here}><span className="text-7xl">{EVENT_ICON[event.kind] ?? '🎁'}</span></FarStand>}
         {lead && <FieldMon mon={lead} byId={byId} back scene={here} />}
+        {evo && evoFrom && <EvolutionFx from={evoFrom} to={evo.evolved} byId={byId} />}
       </Field>
     )
     text = (
       <>
+        {evo && evoFrom && <p className="text-sm font-semibold text-amber-600" data-testid="factory-evolved" data-no-translate>✨ {t('{0} evoluiu para {1}!').replace('{0}', name(evoFrom)).replace('{1}', name(evo.evolved))}</p>}
         {p.center ? (
           <p data-testid="factory-center">🏥 {t('Centro Pokémon: o seu time foi curado!')}</p>
         ) : event ? (

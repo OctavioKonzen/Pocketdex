@@ -469,10 +469,19 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
                     intro: true,
                     music: _challenge?['boss'] is Map
                         ? GymChallenge.musicFor('${_challenge!['boss']['name']}', '${_challenge!['boss']['kind']}', '${_challenge!['boss']['region']}')
-                        : GymChallenge.musicOf(_foeLeader),
+                        // Na Battle Factory, sem chefe: a música do lugar.
+                        : _challenge?['kind'] == 'factory' && _foeLeader == null
+                            ? FactoryRun.placeMusic(battle.scene)
+                            : GymChallenge.musicOf(_foeLeader),
                     endNote: _endNote,
                     next: _next,
                     wild: _challenge?['wild'] == true,
+                    // A tela VS: o líder da Jornada ou o chefe da Battle Factory.
+                    vs: _foeLeader != null
+                        ? {'name': _foeLeader!.name, 'kind': _foeLeader!.kind}
+                        : _challenge?['boss'] is Map
+                            ? _challenge!['boss'] as Map
+                            : null,
                     canAgain: !const ['league', 'tower', 'factory'].contains(_challenge?['kind']),
                     onFinish: (foeTrainer) {
                       final b = _battle;
@@ -852,6 +861,9 @@ class BattleView extends StatefulWidget {
 
   /// Pokémon selvagem (Battle Factory): sem treinador do outro lado.
   final bool wild;
+
+  /// O chefe ({name, kind}): a tela VS antes da luta, como no Black & White.
+  final Map? vs;
   const BattleView(
       {super.key,
       required this.battle,
@@ -868,7 +880,8 @@ class BattleView extends StatefulWidget {
       this.endNote = '',
       this.next,
       this.canAgain = true,
-      this.wild = false});
+      this.wild = false,
+      this.vs});
 
   @override
   State<BattleView> createState() => BattleViewState();
@@ -922,6 +935,10 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
   /// Os treinadores da abertura: o seu (de costas) e o do adversário.
   late final Trainer? _coach = widget.wild ? null : widget.foeTrainer != null ? Trainers.byId(widget.foeTrainer) : Trainers.random();
   late final Trainer? _myTrainer = Trainers.mine;
+
+  /// A tela VS antes da luta contra um chefe (só no começo); tocar pula.
+  late bool _vsOn = widget.intro && widget.vs?['name'] != null && _vsKinds.containsKey(widget.vs?['kind']);
+  final _vsSkip = Completer<void>();
   bool _introOn = false;
   bool _finished = false;
   bool _foeGone = false, _meGone = false;
@@ -994,6 +1011,11 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
 
   /// A abertura: os treinadores aparecem, lançam a Poké Ball e os Pokémon saem.
   Future<void> _runIntro() async {
+    if (_vsOn) {
+      await Future.any([_wait(2200), _vsSkip.future]);
+      if (!mounted) return;
+      setState(() => _vsOn = false);
+    }
     await _wait(700);
     if (!mounted) return;
     if (widget.foeName.isEmpty && _coach != null) setState(() => _text = tr('{0} quer batalhar!').replaceAll('{0}', _coach.name));
@@ -1619,6 +1641,16 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                           child: BattleBackdrop(key: ValueKey(_weather), scene: scene, weather: _weather),
                         ),
                       ),
+                      if (_vsOn)
+                        Positioned.fill(
+                          child: _VsSplash(
+                            vs: widget.vs!,
+                            me: _myTrainer,
+                            coach: _coach,
+                            width: w,
+                            onSkip: () => _vsSkip.isCompleted ? null : _vsSkip.complete(),
+                          ),
+                        ),
                       // Como no Black & White: o adversário lá atrás à direita (menor), o seu de costas na frente à esquerda (grande, cortado pela caixa do texto).
                       Positioned(
                           left: 0,
@@ -3293,6 +3325,83 @@ class _Weak extends StatelessWidget {
             style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: dark ? Colors.white : null)),
         for (final w in list) _Tag('${w.type.toUpperCase()} ×${_times(w.mult)}', getColorForType(w.type)),
       ]),
+    );
+  }
+}
+
+/// As cores da tela VS de cada chefe (líder, Elite Four, Campeão, rival, vilão). Igual ao site.
+const _vsKinds = <String, (String, Color)>{
+  'gym': ('Líder de ginásio', Color(0xFFF97316)),
+  'elite': ('Elite Four', Color(0xFF7C3AED)),
+  'champion': ('Campeão', Color(0xFFEAB308)),
+  'rival': ('Rival', Color(0xFF2563EB)),
+  'villain': ('Vilão', Color(0xFFDC2626)),
+};
+
+/// A tela VS (como no Black & White): as faixas entram dos lados, os treinadores e o nome do chefe; toque para pular.
+class _VsSplash extends StatelessWidget {
+  const _VsSplash({required this.vs, required this.me, required this.coach, required this.width, required this.onSkip});
+  final Map vs;
+  final Trainer? me, coach;
+  final double width;
+  final VoidCallback onSkip;
+
+  @override
+  Widget build(BuildContext context) {
+    final (label, color) = _vsKinds[vs['kind']] ?? _vsKinds['gym']!;
+    Widget slide(Widget child, {required bool fromRight, int delay = 0}) => TweenAnimationBuilder<double>(
+          tween: Tween(begin: 1, end: 0),
+          duration: Duration(milliseconds: 450 + delay),
+          curve: Interval(delay / (450 + delay), 1, curve: Curves.easeOut),
+          builder: (context, v, child) => FractionalTranslation(translation: Offset((fromRight ? 1.1 : -1.1) * v, 0), child: child),
+          child: child,
+        );
+    return GestureDetector(
+      key: const ValueKey('vs-splash'),
+      onTap: onSkip,
+      child: ColoredBox(
+        color: const Color(0xB3020617),
+        child: LayoutBuilder(builder: (context, box) {
+          final band = box.maxHeight * 0.36;
+          return Stack(children: [
+            Positioned(left: 0, right: 0, top: box.maxHeight * 0.1, height: band, child: slide(Transform(transform: Matrix4.skewX(-0.18), child: ColoredBox(color: color)), fromRight: true)),
+            Positioned(left: 0, right: 0, bottom: box.maxHeight * 0.1, height: band, child: slide(Transform(transform: Matrix4.skewX(-0.18), child: const ColoredBox(color: Color(0xFF1E293B))), fromRight: false)),
+            Positioned(
+              right: box.maxWidth * 0.08,
+              top: box.maxHeight * 0.1,
+              height: band,
+              child: slide(
+                  Row(mainAxisSize: MainAxisSize.min, children: [
+                    Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [
+                      Text(tr(label).toUpperCase(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11)),
+                      Text('${vs['name']}', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: width * 0.05)),
+                    ]),
+                    const SizedBox(width: 8),
+                    if (coach != null) TrainerSprite(coach!, box: band * 0.9),
+                  ]),
+                  fromRight: true,
+                  delay: 150),
+            ),
+            if (me != null)
+              Positioned(left: box.maxWidth * 0.08, bottom: box.maxHeight * 0.1, height: band, child: slide(TrainerSprite(me!, box: band * 0.9, flip: true), fromRight: false, delay: 150)),
+            Center(
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: 1),
+                duration: const Duration(milliseconds: 1000),
+                curve: const Interval(0.5, 1, curve: Curves.easeOutBack),
+                builder: (context, v, child) => Opacity(opacity: v.clamp(0, 1), child: Transform.scale(scale: 3 - 2 * v, child: child)),
+                child: Text('VS',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontStyle: FontStyle.italic,
+                        fontSize: width * 0.16,
+                        shadows: const [Shadow(color: Color(0xFFF59E0B), blurRadius: 12), Shadow(color: Color(0xFF7C2D12), offset: Offset(0, 4))])),
+              ),
+            ),
+          ]);
+        }),
+      ),
     );
   }
 }

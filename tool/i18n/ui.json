@@ -8080,5 +8080,7 @@
  "🍂 Outono": {"en": "🍂 Autumn", "fr": "🍂 Automne", "es": "🍂 Otoño"},
  "❄️ Inverno": {"en": "❄️ Winter", "fr": "❄️ Hiver", "es": "❄️ Invierno"},
  "Noite: mais Fantasma e Sombrio": {"en": "Night: more Ghost and Dark", "fr": "Nuit : plus de Spectre et Ténèbres", "es": "Noche: más Fantasma y Siniestro"},
- "Dia": {"en": "Day", "fr": "Jour", "es": "Día"}
+ "Dia": {"en": "Day", "fr": "Jour", "es": "Día"},
+ "Pular": {"en": "Skip", "fr": "Passer", "es": "Saltar"},
+ "{0} evoluiu para {1}!": {"en": "{0} evolved into {1}!", "fr": "{0} a évolué en {1} !", "es": "¡{0} evolucionó a {1}!"}
 }

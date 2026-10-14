@@ -1538,6 +1538,18 @@ class FactoryRun {
     'ruins': [('sand', 0.2), ('sun', 0.15)], 'flowers': [('sun', 0.25), ('rain', 0.1)], 'dunes': [('sand', 0.3)], 'bamboo': [('rain', 0.2), ('sun', 0.1)],
   };
 
+  /// A música de cada lugar (selvagens e treinadores da rota; os chefes têm a deles): temas originais por grupo. Igual ao site.
+  static const placeMusicGroups = {
+    'field': ['grass', 'flowers', 'bamboo'], 'forest': ['forest', 'swamp'], 'sea': ['water', 'beach', 'underwater'],
+    'cave': ['cave', 'icecave', 'crystal', 'sewer'], 'mountain': ['mountain', 'snow', 'ruins', 'temple', 'sky'], 'desert': ['desert', 'dunes', 'volcano'],
+    'city': ['city', 'plant'], 'spooky': ['tower'],
+  };
+  static String placeMusic(String scene) {
+    if (scene.startsWith('base-')) return 'place_city';
+    final group = placeMusicGroups.entries.where((e) => e.value.contains(scene)).firstOrNull?.key;
+    return group != null ? 'place_$group' : 'battle_music';
+  }
+
   /// As estações (como no Black & White: mudam a cada mês) e a noite (pelo relógio de verdade). Igual ao site.
   static const seasons = ['spring', 'summer', 'autumn', 'winter'];
 
