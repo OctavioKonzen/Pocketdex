@@ -1663,12 +1663,17 @@ export function MultiBattle({battle, onExit, onAgain, onFinish, online = null, f
       </div>
     })}
   </div>
-  const sprites = teamSide => <div className={`absolute z-10 grid w-[45%] items-end ${teamSide===side?'bottom-[5%] left-[1%]':'bottom-[52%] right-[1%]'}`} style={{gridTemplateColumns:`repeat(${count},minmax(0,1fr))`}}>
-    {fieldSlots(teamSide).map(slot=>{const mon=battle.sides[teamSide].team[slot.index];return <BattleSprite key={slot.slot} mon={mon} id={mon.dmax && mon.gmax || mon.id} back={teamSide===side} fainted={mon.hp<=0} dmax={mon.dmax>0} tera={teraOf(mon)} byId={byId}/>})}
+  // O cenário do lugar (o mesmo do mapa, como na batalha de um contra um), com a plataforma embaixo de cada um.
+  const scene = battleScene(battle.scene, battle.seed ?? 0)
+  const sprites = teamSide => <div className={`absolute z-10 grid items-end ${teamSide===side?`bottom-0 left-0 ${count===3?'w-[80%]':'w-[64%]'}`:`bottom-[50%] right-0 ${count===3?'w-[66%]':'w-[58%]'}`}`} style={{gridTemplateColumns:`repeat(${count},minmax(0,1fr))`}} data-testid={`multi-sprites-${teamSide}`}>
+    {fieldSlots(teamSide).map(slot=>{const mon=battle.sides[teamSide].team[slot.index],id=mon.dmax && mon.gmax || mon.id;return <div key={slot.slot} className="relative">
+      <PlatformBase scene={scene} side={teamSide===side?'mine':'foe'} scale={battleScale(byId?.get(id)?.height)}/>
+      <BattleSprite mon={mon} id={id} back={teamSide===side} fainted={mon.hp<=0} dmax={mon.dmax>0} tera={teraOf(mon)} byId={byId}/>
+    </div>})}
   </div>
   return <section className="mx-auto max-w-3xl space-y-2">
-    <div className="battle-field relative aspect-[16/10] overflow-hidden border-4 border-slate-800" data-testid="multi-battle-field" style={{aspectRatio:count===3?'1':'16 / 10',minHeight:count===3?'22rem':'14rem'}}>
-      <BattleBackground weather={battle.weather} scene={battle.scene || undefined}/>{sprites(1-side)}{sprites(side)}{info(1-side)}{info(side)}<WeatherFx weather={battle.weather}/>
+    <div className="battle-field relative aspect-[4/3] overflow-hidden border-4 border-slate-800" data-testid="multi-battle-field" data-layout="bw" style={{aspectRatio:count===3?'1':'4 / 3',background:'#9fdcff'}}>
+      <BattleBackground weather={battle.weather} scene={scene} layout="bw"/>{sprites(1-side)}{sprites(side)}{info(1-side)}{info(side)}<WeatherFx weather={battle.weather}/>
       {vsOn && <VsSplash me={myTrainer} coach={null} vs={{kind: online ? 'online' : 'trainer', name: foeName || t('Adversários')}} myName={myName} onSkip={()=>setVsOn(false)}/>}
     </div>
     <p className="rounded-xl bg-card p-3 font-bold" data-testid="multi-turn" data-turn={state.turn} data-round={online?.round ?? state.turn}>{online?.message || (state.winner != null ? state.winner === -1 ? 'Empate!' : state.winner === side ? 'Você venceu!' : 'A equipe adversária venceu!' : `${t('Turno')} ${state.turn}`)}</p>
