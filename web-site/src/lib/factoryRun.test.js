@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   weeklyOf, startWeekly, buyCosmetic, equipCosmetic, COSMETIC_BALLS,
   FRIEND_EVOLVE, PICKUP, SYNCHRONIZE, legOf,
-  DUNGEONS, DUNGEON_LENGTH, townShop, townCenter, townHub, biomesLinked,
+  placeInfo, routeInfo, dungeonPos, routePos, DUNGEON_LENGTH, CITY_BOSS, waterNext, RIVAL_FLOOR, targetOf, rivalBoss, townShop, townCenter, townHub, biomesLinked,
   isDoubleBattle,
   DOUBLE_FLOOR,
   battleOrder, blindPick, bossOf, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, foeLevelAt, foeMember,
@@ -73,11 +73,11 @@ describe('Battle Factory (roguelike)', () => {
     let run = startRun(emptyFactory(), data, 4, 3)
     const red = data.bosses.findIndex((b) => b.game === 'Red/Blue')
     const region = data.bosses[red]
-    run = nextFloor({ ...run, floor: 10, leg: 1, boss: { region: red, step: 1 } }, data)
-    // Na cidade: o ginásio e o lugar com batalha perto dela (10 andares e um chefe; depois volta para a cidade).
+    // O 10º andar da rota é o chefe dela; o líder fica no último andar da cidade.
+    expect(nextFloor({ ...run, floor: ROUTE_LENGTH, leg: 1, boss: { region: red, step: 1 } }, data).route.options).toEqual([{ kind: 'dboss' }])
+    run = nextFloor({ ...run, floor: 1 + CITY_BOSS, leg: 1, boss: { region: red, step: 1 } }, data)
     expect(run.route.town).toBe(true)
-    expect(run.route.options[0]).toEqual({ kind: 'boss' })
-    expect(run.route.options[1]).toEqual({ kind: 'dungeon', place: run.town.place, scene: DUNGEONS[run.town.place].scene })
+    expect(run.route.options).toEqual([{ kind: 'boss' }])
     expect(run.town.shop.length).toBeGreaterThan(4)
     run = chooseNode(run, data, 0)
     expect(run.encounter.kind).toBe('boss')
@@ -86,7 +86,7 @@ describe('Battle Factory (roguelike)', () => {
     const won = winFloor(run, data)
     expect(won.boss).toEqual({ region: red, step: 2 })
     // Venceu o líder: começa a rota seguinte.
-    expect(won.leg).toBe(11)
+    expect(won.leg).toBe(2 + CITY_BOSS)
     expect(won.bosses).toBe(1)
     expect(won.pending.cards).toHaveLength(3)
     expect(won.pending.capture).toBe(null)
@@ -351,7 +351,7 @@ describe('Battle Factory (roguelike)', () => {
 
   it('o Poké Mart da cidade (o estoque dela), com Poké Balls e itens da Bolsa; o Centro Pokémon cura', () => {
     let run = startRun(emptyFactory(), data, 1, 5)
-    run = { ...run, floor: 9, leg: 1, boss: { region: data.bosses.findIndex((b) => b.game === 'Red/Blue'), step: 1 }, encounter: { kind: 'trainer', foes: [{ id: 19, level: 12, iv: 0, ev: 0 }] } }
+    run = { ...run, floor: CITY_BOSS, leg: 1, boss: { region: data.bosses.findIndex((b) => b.game === 'Red/Blue'), step: 1 }, encounter: { kind: 'trainer', foes: [{ id: 19, level: 12, iv: 0, ev: 0 }] } }
     const won = winFloor(run, data)
     // Chegando na cidade não abre a loja sozinha: ela é um lugar da cidade.
     expect(won.pending.shop).toBe(null)
@@ -601,12 +601,12 @@ describe('Battle Factory (roguelike)', () => {
   })
 })
 
-// O mesmo roteiro no app (test/factory_run_test.dart): 40 andares com chefes, captura, carta e loja.
+// O mesmo roteiro no app (test/factory_run_test.dart): 80 andares com chefes, captura, carta e loja.
 // Para gerar de novo: UPDATE_FACTORY_TRACE=1 npx vitest run src/lib/factoryRun.test.js
 function factoryTrace(F, data) {
   let run = F.startRun(F.emptyFactory(), data, 7, 2024)
   const out = []
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 80; i++) {
     const options = run.route.options
     // Na cidade: compra no Poké Mart dela antes de escolher (o ginásio ou o lugar perto dela).
     if (run.route.town) {
@@ -632,7 +632,7 @@ function factoryTrace(F, data) {
 }
 
 describe('roteiro igual ao app', () => {
-  it('40 andares dão o mesmo resultado que test/fixtures/factory_trace.json', async () => {
+  it('80 andares dão o mesmo resultado que test/fixtures/factory_trace.json', async () => {
     const F = await import('./factoryRun')
     const trace = factoryTrace(F, data)
     const url = new URL('../../../test/fixtures/factory_trace.json', import.meta.url)
@@ -667,13 +667,14 @@ describe('mapa da corrida', () => {
     const at = (floor, leg = 1) => ({ ...runAt(floor), leg, boss: { region: red, step: 1 } })
     for (let pos = 0; pos < ROUTE_LENGTH; pos++) {
       const route = routeOptions(at(11 + pos, 11), data, rand)
-      expect(route.options.length).toBe(FORKS.includes(pos) ? 3 : 1)
+      // Na última bifurcação, a entrada do lugar no caminho (Viridian Forest, a caminho de Pewter City).
+      expect(route.options.length).toBe(FORKS.includes(pos) ? (pos === FORKS[2] ? 4 : 3) : 1)
     }
     for (let i = 0; i < 600; i++) {
       const route = routeOptions(at(1 + FORKS[i % 3]), data, rand)
-      expect(route.options.length).toBe(1 + FORKS[i % 3] <= 2 ? 2 : 3)
+      expect(route.options.length).toBe((1 + FORKS[i % 3] <= 2 ? 2 : 3) + (i % 3 === 2 ? 1 : 0))
       expect(route.options.some(isBattleNode)).toBe(true)
-      for (const o of route.options) kinds[o.kind] = (kinds[o.kind] ?? 0) + 1
+      for (const o of route.options.filter((o) => o.kind !== 'dungeon')) kinds[o.kind] = (kinds[o.kind] ?? 0) + 1
       for (const o of route.options.filter((o) => o.kind === 'wild')) expect(Object.keys(BIOMES)).toContain(o.biome)
     }
     expect(Object.keys(kinds).sort()).toEqual(['ace', 'center', 'event', 'mart', 'trade', 'trainer', 'wild', 'wildboss'])
@@ -690,22 +691,22 @@ describe('mapa da corrida', () => {
     expect(routeOptions(at(3, 0), data, seq([0.1, 0.5])).options).toEqual([{ kind: 'boss' }])
     expect(routeOptions(at(1, 0), data, seq([0.1, 0.5])).options[0].kind).not.toBe('boss')
     expect(routeOptions(at(1, 0), data, seq([0.9, 0.5])).options[0].kind).not.toBe('boss')
-    expect(routeOptions(at(9, 0), data, seq([0.9, 0.5])).options).toEqual([{ kind: 'boss' }])
-    // Dois rivais seguidos (Blue, Blue antes da Misty): os dois cabem antes da cidade.
+    expect(routeOptions(at(CITY_BOSS, 0), data, seq([0.9, 0.5])).options).toEqual([{ kind: 'boss' }])
+    // Dois rivais seguidos (Blue, Blue antes da Misty): os dois cabem antes do líder.
     const twice = leaders.findIndex((l, i) => l.kind === 'rival' && leaders[i + 1]?.kind === 'rival')
-    expect(routeOptions(at(8, twice), data, seq([0.9, 0.5])).options).toEqual([{ kind: 'boss' }])
+    expect(routeOptions(at(CITY_BOSS - 1, twice), data, seq([0.9, 0.5])).options).toEqual([{ kind: 'boss' }])
     // Na rota até o ginásio, o líder só aparece na cidade dele.
     expect(routeOptions(at(9, 1), data, seq([0.1, 0.5])).options[0].kind).not.toBe('boss')
     // A Elite Four: a primeira no fim da Victory Road; as outras e o Campeão, uma atrás da outra.
     const first = leaders.findIndex((l) => l.kind === 'elite')
     expect(routeOptions(at(5, first), data, seq([0.1, 0.5])).options[0].kind).not.toBe('boss')
-    expect(routeOptions(at(10, first), data, seq([0.5])).options).toEqual([{ kind: 'boss' }])
+    expect(routeOptions(at(1 + CITY_BOSS, first), data, seq([0.5])).options).toEqual([{ kind: 'boss' }])
     for (let step = first + 1; step < leaders.length; step++) expect(routeOptions(at(12, step, 12), data, seq([0.5])).options).toEqual([{ kind: 'boss' }])
     expect(routeCities(data, at(12, first + 1, 12))).toEqual({ from: 'Indigo Plateau', to: 'Indigo Plateau' })
-    // A loja na chegada só na Liga (nas cidades com ginásio, o Poké Mart é um lugar da cidade).
-    const before = { ...at(9, 1), encounter: { kind: 'trainer', foes: [{ id: 19, level: 9, iv: 0, ev: 0 }] } }
+    // A loja não abre sozinha: o Poké Mart é um lugar da cidade (também na da Liga).
+    const before = { ...at(CITY_BOSS, 1), encounter: { kind: 'trainer', foes: [{ id: 19, level: 9, iv: 0, ev: 0 }] } }
     expect(winFloor(before, data).pending.shop).toBe(null)
-    expect(winFloor({ ...before, boss: { region: red, step: first } }, data).pending.shop).not.toBe(null)
+    expect(winFloor({ ...before, boss: { region: red, step: first } }, data).pending.shop).toBe(null)
   })
 
   it('selvagem do lugar: só quem vive nele (nada fora do bioma; no fundo do mar, só quem vive debaixo d’água); Dusk Ball nos lugares escuros', () => {
@@ -934,25 +935,118 @@ describe('batalhas duplas', () => {
 })
 
 describe('cidade e lugares perto dela', () => {
-  it('o ginásio só na cidade; o lugar tem 10 andares e um chefe e depois volta para a cidade; a rota seguinte se liga à anterior', () => {
+  it('rota (10 andares, chefe no último) → cidade (10 andares, líder no último); na cidade, só lugares de cidade, dá para entrar em mais de um', () => {
     const red = data.bosses.findIndex((b) => b.game === 'Red/Blue')
-    let run = nextFloor({ ...startRun(emptyFactory(), data, 4, 3), floor: 10, leg: 1, boss: { region: red, step: 1 } }, data)
+    const start = { ...startRun(emptyFactory(), data, 4, 3), leg: 1, boss: { region: red, step: data.bosses[red].leaders.findIndex((l) => l.name === 'Erika') } }
+    expect(targetOf(data, start).city).toBe('Celadon City')
+    // O primeiro andar da cidade: o Poké Mart, o Centro e a Creche ficam nela.
+    let run = nextFloor({ ...start, floor: 1 + ROUTE_LENGTH }, data)
     expect(townHub(data, run)).toBe(true)
-    run = chooseNode(run, data, 1)
-    expect(run.dungeon.place).toBe(run.town.place)
+    expect(run.route.town).toBe(true)
+    expect(run.route.biome).toBe('city')
+    // Na bifurcação da cidade, os lugares dela (do jogo), nunca floresta ou caverna.
+    run = nextFloor({ ...run, floor: 1 + ROUTE_LENGTH + FORKS[0] }, data)
+    const places = run.route.options.filter((o) => o.kind === 'dungeon').map((o) => o.place)
+    expect(places).toEqual(['rocket-game-corner', 'rocket-hideout', 'celadon-department-store'])
+    run = chooseNode(run, data, run.route.options.findIndex((o) => o.place === 'rocket-hideout'))
     expect(townHub(data, run)).toBe(false)
-    expect(run.route.options.some((o) => o.kind === 'boss')).toBe(false)
+    expect(run.route.biome).toBe('base-rocket')
     run = nextFloor({ ...run, floor: run.floor + DUNGEON_LENGTH - 1 }, data)
     expect(run.route.options).toEqual([{ kind: 'dboss' }])
-    run = chooseNode(run, data, 0)
-    expect(run.encounter.kind).toBe('dboss')
-    run = nextFloor(winFloor(run, data), data)
-    expect(run.dungeon).toBe(null)
+    run = nextFloor(winFloor(chooseNode(run, data, 0), data), data)
+    // De volta ao mesmo andar da cidade; na próxima bifurcação, os que faltam.
+    expect(routePos(run)).toBe(ROUTE_LENGTH + FORKS[0])
+    expect(run.route.options).toHaveLength(1)
+    run = nextFloor({ ...run, floor: run.floor + FORKS[1] - FORKS[0] }, data)
+    expect(run.route.options.filter((o) => o.kind === 'dungeon').map((o) => o.place)).toEqual(['rocket-game-corner', 'celadon-department-store'])
+    // O último andar da cidade: o líder.
+    run = nextFloor({ ...run, floor: run.floor + CITY_BOSS - ROUTE_LENGTH - FORKS[1] }, data)
+    expect(routePos(run)).toBe(CITY_BOSS)
     expect(run.route.options).toEqual([{ kind: 'boss' }])
-    // Da caverna não se vai direto para o mar; grama e cidade se ligam a tudo.
-    expect(biomesLinked('cave', 'water')).toBe(false)
-    expect(biomesLinked('cave', 'mountain')).toBe(true)
-    expect(biomesLinked('grass', 'water')).toBe(true)
+    const won = winFloor(chooseNode(run, data, 0), data)
+    expect(won.leg).toBe(won.floor)
+    expect(won.places).toBe(undefined)
+    expect(won.detour).toBe(undefined)
+  })
+
+  it('a água em ordem: praia → mar → fundo do mar → caverna aquática; vencendo um, segue ou volta; só a rota leva para a cidade', () => {
+    expect(waterNext('beach')).toEqual({ id: 'sea', name: 'Mar', scene: 'water' })
+    expect(waterNext('water').id).toBe('deep')
+    expect(waterNext('underwater').id).toBe('seacave')
+    expect(waterNext('cave')).toBe(null)
+    const red = data.bosses.findIndex((b) => b.game === 'Red/Blue')
+    // A rota até Cinnabar Island é de praia: o mar é um lugar na bifurcação (precisa de Surf).
+    const start = { ...startRun(emptyFactory(), data, 4, 3), leg: 1, boss: { region: red, step: data.bosses[red].leaders.findIndex((l) => l.name === 'Blaine') }, hms: ['surf'] }
+    expect(targetOf(data, start).city).toBe('Cinnabar Island')
+    let run = nextFloor({ ...start, floor: 1 + FORKS[1] }, data)
+    expect(run.route.biome).toBe('beach')
+    const k = run.route.options.findIndex((o) => o.kind === 'dungeon')
+    expect(run.route.options[k]).toEqual({ kind: 'dungeon', place: 'sea', scene: 'water' })
+    expect(nodeBlocked({ ...run, hms: [] }, run.route.options[k])).toBe(true)
+    run = chooseNode(run, data, k)
+    run = nextFloor({ ...run, floor: run.floor + DUNGEON_LENGTH - 1 }, data)
+    run = nextFloor(winFloor(chooseNode(run, data, 0), data), data)
+    // Venceu o chefe do mar: mergulhar (fundo do mar) ou voltar.
+    expect(run.route.options).toEqual([{ kind: 'dungeon', place: 'deep', scene: 'underwater', deeper: true }, { kind: 'leave' }])
+    run = chooseNode(run, data, 0)
+    expect(run.dungeon.entry).toBe(1 + FORKS[1])
+    expect(run.route.biome).toBe('underwater')
+    run = nextFloor({ ...run, floor: run.floor + DUNGEON_LENGTH - 1 }, data)
+    run = nextFloor(winFloor(chooseNode(run, data, 0), data), data)
+    run = chooseNode(run, data, 1)
+    // De volta para a rota, no andar em que entrou na água (não vai para a cidade).
+    expect(run.dungeon).toBe(null)
+    expect(routePos(run)).toBe(FORKS[1])
+    expect(townHub(data, run)).toBe(false)
+    expect(run.places).toEqual(['sea', 'deep'])
+  })
+
+  it('o mapa do jogo: a rota até Pewter City; o lugar no caminho (Viridian Forest) tem 10 andares sem desvio e volta no mesmo andar da rota', () => {
+    const red = data.bosses.findIndex((b) => b.game === 'Red/Blue')
+    const start = { ...startRun(emptyFactory(), data, 4, 3), boss: { region: red, step: 1 } }
+    expect(routeInfo(data, start).name).toBe('Route 1 · Route 2')
+    expect(routeCities(data, { ...start, boss: { region: red, step: 0 } }).from).toBe('Pallet Town')
+    let run = nextFloor({ ...start, floor: 1 + FORKS[2] }, data)
+    expect(routePos(run)).toBe(FORKS[2])
+    expect(run.route.biome).toBe('grass')
+    const k = run.route.options.findIndex((o) => o.kind === 'dungeon')
+    expect(run.route.options[k]).toEqual({ kind: 'dungeon', place: 'viridian-forest', scene: 'forest' })
+    run = chooseNode(run, data, k)
+    expect(run.dungeon).toEqual({ place: 'viridian-forest', scene: 'forest', start: 1 + FORKS[2] })
+    expect(placeInfo(data, run, 'viridian-forest').name).toBe('Viridian Forest')
+    // Dentro do lugar: sem desvio (um caminho por andar) até o chefe no 10º.
+    for (let i = 0; i < DUNGEON_LENGTH - 1; i++) {
+      expect(dungeonPos(run)).toBe(i)
+      expect(run.route.options).toHaveLength(1)
+      expect(run.route.biome).toBe('forest')
+      run = nextFloor({ ...run, floor: run.floor + 1 }, data)
+    }
+    expect(run.route.options).toEqual([{ kind: 'dboss' }])
+    run = chooseNode(run, data, 0)
+    run = nextFloor(winFloor(run, data), data)
+    // De volta na rota, no mesmo andar em que entrou, sem outro desvio; o lugar não aparece de novo.
+    expect(run.dungeon).toBe(null)
+    expect(routePos(run)).toBe(FORKS[2])
+    expect(legOf(run)).toBe(1)
+    expect(run.route.options).toHaveLength(1)
+    expect(run.places).toEqual(['viridian-forest'])
+    expect(routeOptions({ ...run, back: null }, data, () => 0.5).options.some((o) => o.kind === 'dungeon')).toBe(false)
+    // A Escape Rope também leva de volta para o andar da rota.
+    let rope = chooseNode(nextFloor({ ...start, floor: 1 + FORKS[2], bag: { 'escape-rope': 1 } }, data), data, k)
+    rope = escapeRope({ ...rope, floor: rope.floor + 3 }, data)
+    expect(routePos(rope)).toBe(FORKS[2])
+    expect(rope.route.options).toHaveLength(1)
+    // A rota seguinte (até Cerulean City): Mt. Moon no caminho.
+    expect(routeInfo(data, { ...start, boss: { region: red, step: 2 } }).side.name).toBe('Mt. Moon')
+  })
+
+  it('o rival no começo (antes do andar 10) vem com um Pokémon só, sem IVs e EVs a mais', () => {
+    const red = data.bosses.findIndex((b) => b.game === 'Red/Blue')
+    const run = { ...startRun(emptyFactory(), data, 4, 3), floor: 5, boss: { region: red, step: 0 } }
+    const foes = encounterFor(data, 5, () => 0.5, rivalBoss(data, run)).foes
+    expect(foes).toHaveLength(1)
+    expect(foes[0].iv).toBeLessThan(31)
+    expect(RIVAL_FLOOR).toBeGreaterThanOrEqual(10)
   })
 })
 

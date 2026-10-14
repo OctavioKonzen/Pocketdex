@@ -615,15 +615,18 @@ export const DARK_BIOMES = ['cave', 'tower', 'icecave', 'sewer', 'underwater']
 
 /** Os chefes de cidade (líder no ginásio dele; Elite Four e Campeão na Liga). Rival e vilões aparecem na rota. */
 const CITY_KINDS = ['gym', 'elite', 'champion']
-/** Andares de rota antes de cada cidade (o 10º é o chefe dela). */
-export const ROUTE_LENGTH = 9
+/** Andares da rota (o 10º é o chefe dela); depois, os andares da cidade (o último é o líder). */
+export const ROUTE_LENGTH = 10
+export const CITY_LENGTH = 10
+/** O andar do líder: o último da cidade (posição desde o começo da rota). */
+export const CITY_BOSS = ROUTE_LENGTH + CITY_LENGTH - 1
 /** Onde a rota se divide (posição na rota, a partir de 0): só ali dá para escolher o caminho. */
 export const FORKS = [1, 4, 7]
 /** Chance do rival (ou de um vilão) aparecer em cada andar da rota (a partir do 3º: dá tempo de treinar um pouco). */
 export const AMBUSH_CHANCE = 0.3
 /** O rival aparece bastante: de surpresa na rota (fora os da história), no máximo uma vez por rota, a partir do andar RIVAL_FLOOR. */
 export const RIVAL_CHANCE = 0.2
-export const RIVAL_FLOOR = 5
+export const RIVAL_FLOOR = 12
 
 /** O próximo chefe de cidade (pula rival e vilões): o destino da rota. */
 export function targetOf(data, run) {
@@ -640,12 +643,16 @@ const inLeague = (data, run) => {
   return run.boss.step > 0 && ['elite', 'champion'].includes(leaders[run.boss.step].kind) && prev?.kind === 'elite'
 }
 
-/** Onde está na rota: 0 é o primeiro andar depois da última cidade (run.leg); ROUTE_LENGTH é a cidade. */
-export const routePos = (run) => run.floor - (run.leg ?? run.floor - ((run.floor - 1) % 10))
+/**
+ * Onde está: 0 é o primeiro andar da rota depois da última cidade (run.leg);
+ * de ROUTE_LENGTH em diante, a cidade (CITY_BOSS é o líder). Os andares feitos
+ * num lugar (run.detour) não contam: depois dele, você volta para o andar em que entrou.
+ */
+export const routePos = (run) => run.floor - (run.leg ?? run.floor - ((run.floor - 1) % (ROUTE_LENGTH + CITY_LENGTH))) - (run.detour ?? 0)
 
-/** Chegou na cidade (ou na Liga): o chefe dela é o próximo andar (dentro de um lugar perto dela, não). */
+/** Chegou no líder (o último andar da cidade) ou na Liga: o chefe dela é o próximo andar (dentro de um lugar, não). */
 export function atCity(data, run) {
-  return !run.dungeon && CITY_KINDS.includes(bossOf(data, run).kind) && (inLeague(data, run) || routePos(run) >= ROUTE_LENGTH)
+  return !run.dungeon && CITY_KINDS.includes(bossOf(data, run).kind) && (inLeague(data, run) || routePos(run) >= CITY_BOSS)
 }
 
 /**
@@ -655,6 +662,9 @@ export function atCity(data, run) {
 export function routeBiome(data, run) {
   // Dentro de um lugar (esgoto, casa assombrada, base da equipe vilã...): o cenário dele.
   if (run.dungeon) return run.dungeon.scene
+  // A rota do jogo (o mapa da região, tool/factory_routes.py).
+  const info = routeInfo(data, run)
+  if (info) return info.biome
   const boss = targetOf(data, run)
   if (boss.kind === 'gym') {
     const count = {}
@@ -667,6 +677,51 @@ export function routeBiome(data, run) {
     if (list) return list[((Math.imul(run.leg ?? 1, 2654435761 | 0) ^ run.seed) >>> 0) % list.length]
   }
   return BIOME_IDS[(run.boss.region * 7 + boss.step * 3) % BIOME_IDS.length]
+}
+
+/** O id de um lugar pelo nome ("Mt. Moon" → "mt-moon"). */
+const placeId = (name) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+const placeOf = (row) => (row ? { id: placeId(row[0]), name: row[0], scene: row[1] } : null)
+
+/**
+ * A rota até a próxima cidade, como nos jogos (tool/factory_routes.py): o
+ * lugar dela, o nome, o lugar no caminho (side) e os da cidade (towns: esgoto,
+ * museu, a praia dela...). null se a cidade não estiver no mapa. Igual ao app.
+ */
+export function routeInfo(data, run) {
+  const region = data.bosses[run.boss.region].region
+  const city = targetOf(data, run).city ?? ''
+  const row = data.routes?.cities?.[`${region}:${city}`] ?? data.routes?.cities?.[city]
+  return row ? { biome: row[0], name: row[1], side: placeOf(row[2]), towns: (row[3] ?? []).map(placeOf) } : null
+}
+
+/**
+ * A água, em ordem (não dá para pular): da praia (a rota ou a da cidade) para
+ * o mar, dele para o fundo do mar e dali para a caverna aquática. Cada um é um
+ * lugar de 10 andares com um chefe; vencendo, dá para seguir para o próximo ou voltar.
+ */
+export const WATER_CHAIN = [['beach', 'Praia', 'beach'], ['sea', 'Mar', 'water'], ['deep', 'Fundo do mar', 'underwater'], ['seacave', 'Caverna aquática', 'cave']]
+/** O lugar da água depois deste cenário (null se não tem: a caverna aquática é o fim). */
+export function waterNext(scene) {
+  const k = WATER_CHAIN.findIndex(([, , s]) => s === scene)
+  return k >= 0 && k < WATER_CHAIN.length - 1 ? { id: WATER_CHAIN[k + 1][0], name: WATER_CHAIN[k + 1][1], scene: WATER_CHAIN[k + 1][2] } : null
+}
+
+/** O nome e o cenário de um lugar (os genéricos, os da água ou os do mapa da região). */
+export function placeInfo(data, run, id) {
+  if (DUNGEONS[id]) return DUNGEONS[id]
+  const water = WATER_CHAIN.find(([w]) => w === id)
+  if (water) return { name: water[1], scene: water[2] }
+  const info = routeInfo(data, run)
+  return [info?.side, ...(info?.towns ?? [])].find((p) => p?.id === id) ?? { name: id, scene: 'cave' }
+}
+
+/** Sai do lugar (venceu o chefe ou usou a Escape Rope): volta para o andar em que entrou (na rota ou na cidade). */
+function leavePlace(run, out) {
+  const start = run.dungeon.entry ?? run.dungeon.start
+  out.back = routePos({ ...run, floor: start })
+  out.detour = (run.detour ?? 0) + out.floor - start
+  out.dungeon = null
 }
 
 /**
@@ -704,11 +759,9 @@ export const DUNGEON_IDS = Object.keys(DUNGEONS)
 /** O andar do lugar (0 a DUNGEON_LENGTH − 1; o último é o do chefe). */
 export const dungeonPos = (run) => (run.dungeon ? run.floor - run.dungeon.start : -1)
 
-/** Na cidade (fora da Liga): o centro com o ginásio, o Poké Mart, o Centro Pokémon, a Creche e o lugar perto dela. */
+/** Nos andares da cidade (fora da Liga): o Poké Mart, o Centro Pokémon, a Creche e os lugares dela; o líder no último. */
 export function townHub(data, run) {
-  if (run.dungeon || inLeague(data, run) || routePos(run) < ROUTE_LENGTH) return false
-  const kind = bossOf(data, run).kind
-  return kind === 'gym' || kind === 'villain'
+  return !run.dungeon && !inLeague(data, run) && routePos(run) >= ROUTE_LENGTH
 }
 
 /** Os pontos do mapa (o peso de cada um nas bifurcações). O Centro Pokémon é raro. */
@@ -717,60 +770,67 @@ const BATTLE_NODES = ['wild', 'trainer', 'ace', 'boss', 'wildboss', 'rematch', '
 export const isBattleNode = (node) => BATTLE_NODES.includes(node?.kind)
 
 /**
- * O que tem no andar. Na cidade, o líder dela (na Liga, a Elite Four e o
- * Campeão um atrás do outro). Na rota, o rival e os vilões podem aparecer em
- * qualquer andar (sempre antes de chegar na cidade). Fora isso, o caminho
- * segue (um ponto só: selvagem, treinador ou um evento) e só nas bifurcações
- * (FORKS) dá para escolher entre 2 ou 3 caminhos, sempre com uma batalha; na
- * do meio, às vezes um chefe sem treinador. No começo da corrida, só batalhas comuns.
+ * O que tem no andar. A rota tem ROUTE_LENGTH andares (o último é o chefe
+ * dela); depois vem a cidade, com CITY_LENGTH andares (o último é o líder; na
+ * Liga, a Elite Four e o Campeão um atrás do outro). O rival da história pode
+ * aparecer em qualquer andar antes do líder. Fora isso, o caminho segue (um
+ * ponto só) e só nas bifurcações (FORKS, na rota e na cidade) dá para escolher
+ * entre 2 ou 3 caminhos, sempre com uma batalha, ou entrar num lugar: na rota,
+ * o lugar no caminho (Mt. Moon...) e o mar depois da praia; na cidade, os
+ * lugares dela (esgoto, museu, a praia...). Num lugar não há desvio: 10
+ * andares e o chefe; depois, de volta ao andar em que entrou (sem bifurcação).
  */
 export function routeOptions(run, data, rand) {
-  const biome = routeBiome(data, run)
   const boss = bossOf(data, run)
-  // Num lugar (esgoto, base vilã...): os andares dele; no último, o chefe (na base, o vilão).
   const inside = Boolean(run.dungeon)
+  const city = !inside && townHub(data, run)
+  const biome = city ? 'city' : routeBiome(data, run)
   const pos = inside ? dungeonPos(run) : routePos(run)
-  if (inside && pos >= DUNGEON_LENGTH - 1) return { floor: run.floor, biome, options: [{ kind: run.dungeon.place === 'base' ? 'boss' : 'dboss' }] }
-  // Na cidade: o ginásio e o lugar perto dela (com a equipe vilã na cidade, primeiro a base dela; o líder não está).
-  if (townHub(data, run)) {
-    const place = run.town?.place
-    const options = boss.kind === 'villain'
-      ? [{ kind: 'dungeon', place: 'base', scene: `base-${villainTeam(boss.name)}` }]
-      : [{ kind: 'boss' }, ...(place && !run.town.done?.includes(place) ? [{ kind: 'dungeon', place, scene: DUNGEONS[place].scene }] : [])]
-    return { floor: run.floor, biome: 'city', town: true, options }
+  const only = (node) => ({ floor: run.floor, biome, ...(city ? { town: true } : {}), options: [node] })
+  // Venceu o chefe de um lugar da água: segue para o próximo (o mar depois da praia...) ou volta.
+  if (inside && run.dungeon.cleared) {
+    const next = waterNext(run.dungeon.scene)
+    return { floor: run.floor, biome, options: [{ kind: 'dungeon', place: next.id, scene: next.scene, deeper: true }, { kind: 'leave' }] }
   }
-  if (atCity(data, run)) return { floor: run.floor, biome, options: [{ kind: 'boss' }] }
+  // Num lugar (esgoto, base vilã...): no último andar, o chefe (na base, o vilão).
+  if (inside && pos >= DUNGEON_LENGTH - 1) return only({ kind: run.dungeon.place === 'base' ? 'boss' : 'dboss' })
+  // O último andar da cidade: o líder (com a equipe vilã na cidade, primeiro a base dela).
+  if (city && pos >= CITY_BOSS) return only(boss.kind === 'villain' ? { kind: 'dungeon', place: 'base', scene: `base-${villainTeam(boss.name)}` } : { kind: 'boss' })
+  if (atCity(data, run)) return only({ kind: 'boss' })
+  // O último andar da rota: o chefe dela.
+  if (!inside && !city && pos === ROUTE_LENGTH - 1) return only({ kind: 'dboss' })
   if (!inside && boss.kind === 'rival') {
-    // O rival da história: quantos ainda faltam antes da cidade e quantos andares de rota sobram (os vilões ficam na cidade).
+    // O rival da história: quantos ainda faltam e quantos andares livres sobram até o líder (sem os chefes).
     const leaders = data.bosses[run.boss.region].leaders
     let pending = 0
     while (run.boss.step + pending < leaders.length && leaders[run.boss.step + pending].kind === 'rival') pending++
-    if (ROUTE_LENGTH - pos <= pending || (pos >= 2 && rand() < AMBUSH_CHANCE)) return { floor: run.floor, biome, options: [{ kind: 'boss' }] }
+    const free = CITY_BOSS - pos - (pos < ROUTE_LENGTH - 1 ? 1 : 0)
+    if (free <= pending || (pos >= 2 && rand() < AMBUSH_CHANCE)) return only({ kind: 'boss' })
   }
-  // Os selvagens são do lugar da rota (o cenário da batalha é ele). Na base de uma equipe vilã, só capangas.
+  // Os selvagens são do lugar (o cenário da batalha é ele). Na base de uma equipe vilã, só capangas.
   const base = biome.startsWith('base-')
   const wild = () => (base ? { kind: 'trainer' } : { kind: 'wild', biome })
-  if (!FORKS.includes(pos)) {
+  // Só a rota e a cidade se dividem (num lugar, não; nem no andar em que você voltou de um lugar).
+  if (inside || !FORKS.includes(pos % ROUTE_LENGTH) || run.back === pos) {
     // O rival te seguiu: aparece de surpresa (uma vez por rota, só no caminho para um ginásio).
-    if (!inside && run.floor >= RIVAL_FLOOR && pos >= 2 && !base && boss.kind === 'gym' && run.rivalLeg !== legOf(run) && rivalBoss(data, run) && rand() < RIVAL_CHANCE) {
-      return { floor: run.floor, biome, options: [{ kind: 'rival' }] }
+    if (!inside && !city && run.floor >= RIVAL_FLOOR && pos >= 2 && !base && boss.kind === 'gym' && run.rivalLeg !== legOf(run) && rivalBoss(data, run) && rand() < RIVAL_CHANCE) {
+      return only({ kind: 'rival' })
     }
     // Evento raro: chuva de meteoros (à noite, Clefairy) ou um Pokémon mítico.
-    if (!inside && !base && run.floor >= RARE_FLOOR && rand() < RARE_CHANCE) {
+    if (!inside && !city && !base && run.floor >= RARE_FLOOR && rand() < RARE_CHANCE) {
       const mythics = MYTHICS.filter((id) => data.species[id])
       const meteor = rand() < 0.5
-      if (meteor || mythics.length) {
-        return { floor: run.floor, biome, options: [meteor ? { kind: 'wild', biome, meteor: true } : { kind: 'wildboss', legend: pickOne(mythics, rand), mythic: true }] }
-      }
+      if (meteor || mythics.length) return only(meteor ? { kind: 'wild', biome, meteor: true } : { kind: 'wildboss', legend: pickOne(mythics, rand), mythic: true })
     }
     const r = rand()
     // Intimidate em quem vai na frente: às vezes os selvagens fogem (vem um treinador no lugar).
-    if (r < 0.55 && !base && INTIMIDATE.includes(leadOf(run)?.id) && rand() < INTIMIDATE_CHANCE) return { floor: run.floor, biome, options: [{ kind: 'trainer' }] }
-    return { floor: run.floor, biome, options: [r < 0.55 ? wild() : r < 0.9 || run.floor <= 2 ? { kind: 'trainer' } : { kind: 'event' }] }
+    if (r < 0.55 && !base && INTIMIDATE.includes(leadOf(run)?.id) && rand() < INTIMIDATE_CHANCE) return only({ kind: 'trainer' })
+    return only(r < 0.55 ? wild() : r < 0.9 || run.floor <= 2 ? { kind: 'trainer' } : { kind: 'event' })
   }
   const options = [rand() < 0.55 ? wild() : { kind: 'trainer' }]
   const count = run.floor <= 2 ? 2 : 3
-  const allowed = NODE_WEIGHTS.filter(([kind]) => (run.floor > 2 || kind === 'wild' || kind === 'trainer') && !(base && ['wild', 'mart', 'trade'].includes(kind)) && !(inside && ['mart', 'trade', 'center'].includes(kind)))
+  // Na cidade, o Poké Mart e o Centro ficam nela (não no caminho).
+  const allowed = NODE_WEIGHTS.filter(([kind]) => (run.floor > 2 || kind === 'wild' || kind === 'trainer') && !(city && ['mart', 'center'].includes(kind)))
   const total = allowed.reduce((sum, [, w]) => sum + w, 0)
   for (let guard = 0; options.length < count && guard < 20; guard++) {
     let roll = rand() * total
@@ -779,17 +839,29 @@ export function routeOptions(run, data, rand) {
     if (options.some((o) => o.kind === node.kind && o.biome === node.biome)) continue
     options.push(node)
   }
-  // Na rota para a Liga, o lendário da região espera num dos caminhos.
-  if (!inside && pos === FORKS[1] && !base && targetOf(data, run).kind === 'elite') {
-    const legend = regionLegend(data, run)
-    if (legend != null) options[options.length - 1] = { kind: 'wildboss', legend }
+  if (!city) {
+    // Na rota para a Liga, o lendário da região espera num dos caminhos.
+    if (pos === FORKS[1] && targetOf(data, run).kind === 'elite') {
+      const legend = regionLegend(data, run)
+      if (legend != null) options[options.length - 1] = { kind: 'wildboss', legend }
+    }
+    if (pos === FORKS[1] && !options.some((o) => o.legend) && rand() < WILD_BOSS_CHANCE) options[options.length - 1] = { kind: 'wildboss' }
+    // Depois de virar Campeão: o Campeão vencido quer revanche (num dos caminhos da primeira bifurcação).
+    if (run.rematch && pos === FORKS[0]) options[options.length - 1] = { kind: 'rematch' }
   }
-  // No mar, um dos caminhos é mergulhar (o selvagem do fundo do mar).
-  if (biome === 'water' && !options.some((o) => o.biome === 'underwater')) options[options.length - 1] = { kind: 'wild', biome: 'underwater' }
-  if (!inside && pos === FORKS[1] && !options.some((o) => o.legend) && rand() < WILD_BOSS_CHANCE && !base) options[options.length - 1] = { kind: 'wildboss' }
-  // Depois de virar Campeão: o Campeão vencido quer revanche (num dos caminhos da primeira bifurcação).
-  if (!inside && run.rematch && pos === FORKS[0] && !base) options[options.length - 1] = { kind: 'rematch' }
-  return { floor: run.floor, biome, options }
+  // Os lugares (enquanto não forem vencidos nesta rota): na cidade, os dela (e a base vilã, se a equipe estiver lá);
+  // na rota, o mar (numa rota de praia) e o lugar no caminho (Mt. Moon, Rock Tunnel...).
+  const info = routeInfo(data, run)
+  const done = run.places ?? []
+  const add = (place) => { if (place && !done.includes(place.id)) options.push({ kind: 'dungeon', place: place.id, scene: place.scene }) }
+  if (city) {
+    for (const place of info?.towns ?? []) add(place)
+    if (boss.kind === 'villain') options.push({ kind: 'dungeon', place: 'base', scene: `base-${villainTeam(boss.name)}` })
+  } else {
+    if (pos === FORKS[1]) add(waterNext(biome))
+    if (pos === FORKS[2]) add(info?.side)
+  }
+  return { floor: run.floor, biome, ...(city ? { town: true } : {}), options }
 }
 
 /** A cidade da rota (o destino) e a de onde ela começa (null no começo de uma região). Na Liga, as duas são a Liga. */
@@ -799,7 +871,10 @@ export function routeCities(data, run) {
   if (inLeague(data, run)) return { from: to, to }
   let k = run.boss.step - 1
   while (k >= 0 && !CITY_KINDS.includes(leaders[k].kind)) k--
-  return { from: k >= 0 ? leaders[k].city ?? null : null, to }
+  // No começo da região: a cidade inicial do jogo (Pallet Town, New Bark Town...).
+  const game = data.bosses[run.boss.region]
+  const start = data.routes?.start?.[game.game] ?? data.routes?.start?.[game.region] ?? null
+  return { from: k >= 0 ? leaders[k].city ?? null : start, to }
 }
 
 /** O que o treinador forte deixa (sempre): bolas e remédios vão para a Bolsa, os itens de segurar ficam guardados. */
@@ -819,10 +894,17 @@ export function chooseNode(run, data, index, clock = null) {
   const node = run.route?.options?.[index]
   if (!node || run.encounter || run.pending || nodeBlocked(run, node)) return run
   const out = { ...run, route: null }
-  // Entra no lugar perto da cidade (esgoto, casa assombrada, base vilã...): 10 andares e o chefe dele; depois volta para a cidade.
+  // Entra num lugar (Mt. Moon, esgoto, base vilã, a praia...): 10 andares e o chefe dele; depois volta para o andar em que entrou.
+  // Da praia para o mar (e assim por diante), a volta continua sendo para onde você entrou na água.
   if (node.kind === 'dungeon') {
     out.leg = run.leg ?? legOf(run)
-    out.dungeon = { place: node.place, scene: node.scene, start: run.floor }
+    out.dungeon = { place: node.place, scene: node.scene, start: run.floor, ...(run.dungeon ? { entry: run.dungeon.entry ?? run.dungeon.start } : {}) }
+    out.route = routeOptions(out, data, dice(out))
+    return out
+  }
+  // Sai da água (depois de vencer o chefe do lugar): de volta para onde entrou.
+  if (node.kind === 'leave') {
+    if (run.dungeon) leavePlace(run, out)
     out.route = routeOptions(out, data, dice(out))
     return out
   }
@@ -942,10 +1024,13 @@ export function encounterFor(data, floor, rand, boss = null, wild = false, node 
   if (boss) {
     // Os times dos chefes são de Pokémon evoluídos: quem é mais forte que as espécies do andar vem com nível menor.
     // Antes do andar 10, sem o bônus de nível (o rival aparece cedo, como no começo dos jogos).
-    const bonus = floor < 10 ? 0 : { gym: 2, rival: 2, villain: 3, elite: 4, champion: 5 }[boss.kind] ?? 2
-    const team = bossTeam(boss, floor)
-    const levelOf = (id, i) => bossLevel(data, floor, id, level + bonus + (i === team.length - 1 ? 1 : 0))
-    const foes = team.map((id, i) => foe(id, levelOf(id, i), { iv: Math.max(31, iv), ev: Math.round(ev * 1.25) }))
+    // Antes do andar 10, o rival vem só com um Pokémon, sem IVs e EVs a mais (como no começo dos jogos).
+    const early = floor < 10
+    const bonus = early ? 0 : { gym: 2, rival: 2, villain: 3, elite: 4, champion: 5 }[boss.kind] ?? 2
+    const full = bossTeam(boss, floor)
+    const team = early && boss.kind === 'rival' ? full.slice(-1) : full
+    const levelOf = (id, i) => bossLevel(data, floor, id, level + bonus + (i === team.length - 1 && !early ? 1 : 0))
+    const foes = team.map((id, i) => foe(id, levelOf(id, i), early ? {} : { iv: Math.max(31, iv), ev: Math.round(ev * 1.25) }))
     // A partir do andar 10, cada Pokémon do chefe segura um item de verdade (Leftovers, Life Orb, Choice...).
     if (floor >= 10) for (const f of foes) f.item = pickOne(FOE_ITEMS, rand)
     return { kind: 'boss', foes, boss: { id: boss.id, name: boss.name, trainer: boss.trainer, kind: boss.kind, region: boss.region, game: boss.game } }
@@ -1116,9 +1201,11 @@ export function winFloor(run, data, after = {}) {
   if (kind === 'rival') out.rivalRaces = (run.rivalRaces ?? 0) + 1
   // Venceu o chefe do lugar (ou o vilão na base): volta para a cidade.
   if (run.dungeon && (kind === 'dboss' || kind === 'boss')) {
-    out.dungeon = null
     out.dungeons = (run.dungeons ?? 0) + 1
-    if (run.town) out.town = { ...run.town, done: [...(run.town.done ?? []), run.dungeon.place] }
+    if (run.dungeon.place !== 'base') out.places = [...(run.places ?? []), run.dungeon.place]
+    // Num lugar da água, dá para seguir para o próximo (o mar depois da praia...); nos outros, volta.
+    if (run.dungeon.place !== 'base' && waterNext(run.dungeon.scene)) out.dungeon = { ...run.dungeon, cleared: true }
+    else leavePlace(run, out)
   }
   if (kind === 'rematch') {
     out.rematch = null
@@ -1147,6 +1234,9 @@ export function winFloor(run, data, after = {}) {
     if (CITY_KINDS.includes(beaten.kind)) {
       out.prevBiome = routeBiome(data, { ...run, dungeon: null })
       out.leg = out.floor
+      delete out.detour
+      delete out.back
+      delete out.places
       out.town = null
     }
     const [boss, played] = nextBoss(out, data, rand)
@@ -1313,7 +1403,8 @@ function addDex(out, id) {
 export const HM_BADGES = { 1: 'cut', 2: 'flash', 3: 'surf' }
 export const hasHm = (run, hm) => (run.hms ?? []).includes(hm)
 /** Sem Surf, não dá para mergulhar. */
-export const nodeBlocked = (run, node) => node?.biome === 'underwater' && run.route?.biome !== 'underwater' && !hasHm(run, 'surf')
+export const nodeBlocked = (run, node) =>
+  ((node?.biome === 'underwater' && run.route?.biome !== 'underwater') || (node?.kind === 'dungeon' && ['water', 'underwater'].includes(node.scene))) && !hasHm(run, 'surf')
 /** Cut: uma vez por rota, corta a árvore e abre um caminho escondido (um selvagem raro do lugar). null se não dá. */
 export function cutPath(run) {
   const route = run.route
@@ -1340,7 +1431,7 @@ export function townCenter(run) {
 }
 
 /** O começo da rota de agora (o andar depois da última cidade). */
-export const legOf = (run) => run.floor - routePos(run)
+export const legOf = (run) => run.floor - routePos(run) - (run.detour ?? 0)
 
 /** O rival da região que aparece de surpresa: o último que você já enfrentou na história (ou o primeiro). null se a região não tem rival. */
 export function rivalBoss(data, run) {
@@ -1619,8 +1710,8 @@ export function escapeRope(run, data, after = {}) {
   if (!((run.bag?.['escape-rope'] ?? 0) > 0)) return null
   const bag = { ...run.bag, ...(after.bag ?? {}), 'escape-rope': run.bag['escape-rope'] - 1 }
   const out = { ...run, bag, team: run.team.map((m, i) => ({ ...m, hp: Math.max(after.hp?.[i] ?? 0, ESCAPE_HP) })), encounter: null, pending: null, ropes: (run.ropes ?? 0) + 1 }
-  // Dentro de um lugar (esgoto, base vilã...), a corda leva de volta para a cidade.
-  if (run.dungeon) out.dungeon = null
+  // Dentro de um lugar (esgoto, base vilã...), a corda leva de volta para onde você entrou (a rota ou a cidade).
+  if (run.dungeon) leavePlace(run, out)
   out.route = routeOptions(out, data, dice(out))
   return out
 }
@@ -1861,7 +1952,7 @@ export function nextFloor(run, data) {
   const rand = dice(out)
   // Chegou na cidade: o estoque do Poké Mart dela e o lugar com batalha perto dela.
   if (townHub(data, out) && out.town?.leg !== legOf(out)) {
-    out.town = { leg: legOf(out), shop: pickShop(rand, data, out.floor, 8, Boolean(run.townMap)), place: pickOne(DUNGEON_IDS, rand), done: [] }
+    out.town = { leg: legOf(out), shop: pickShop(rand, data, out.floor, 8, Boolean(run.townMap)) }
   }
   out.route = routeOptions(out, data, rand)
   // Começo de uma rota nova: a missão dela.
