@@ -352,10 +352,13 @@ export async function saveUserData(uid, data) {
 //   ranking/{uid}                   → { name, score, avatar }   recorde do Ranked
 //   weekly/{segunda}/scores/{uid}   → { name, score, avatar }   melhor da semana
 //   daily/{dia}/scores/{uid}        → { name, score, correct, seconds, avatar }
+//   factoryWeek/{segunda}/scores/{uid} → { name, score, avatar }   andar da corrida da semana (Factory)
 
 /** Caminho da coleção de cada ranking: 'all' | 'week' | 'day'. */
 function boardPath(board, key) {
   if (board === 'week') return ['weekly', key, 'scores']
+  // A corrida da semana da Battle Factory (o andar alcançado).
+  if (board === 'factory') return ['factoryWeek', key, 'scores']
   if (board === 'day') return ['daily', key, 'scores']
   return ['ranking']
 }
@@ -369,10 +372,10 @@ export async function saveRanking(uid, name, score, avatar = null) {
 }
 
 /** Guarda a pontuação da semana, se for maior que a já guardada. */
-export async function saveWeekly(uid, name, week, score, avatar = null) {
+export async function saveWeekly(uid, name, week, score, avatar = null, board = 'week') {
   if (score <= 0) return
   const { db, doc, getDoc, setDoc, serverTimestamp } = await firebase()
-  const ref = doc(db, 'weekly', week, 'scores', uid)
+  const ref = doc(db, ...boardPath(board, week), uid)
   const current = await getDoc(ref)
   if (current.exists() && current.data().score >= score) return
   await setDoc(ref, { name, score, avatar, updatedAt: serverTimestamp() })
@@ -839,7 +842,7 @@ export async function deleteAccount({ password, weeks = [], days = [], confirmed
   await Promise.all([...keys].map((k) => quiet(deleteDoc(doc(db, 'usernames', k)))))
   const refs = [doc(db, 'ranking', uid)]
   for (const key of new Set([...boardKeys(), ...weeks, ...days])) {
-    refs.push(doc(db, 'weekly', key, 'scores', uid), doc(db, 'daily', key, 'scores', uid))
+    refs.push(doc(db, 'weekly', key, 'scores', uid), doc(db, 'daily', key, 'scores', uid), doc(db, 'factoryWeek', key, 'scores', uid))
   }
   for (let i = 0; i < refs.length; i += 400) {
     const batch = writeBatch(db)

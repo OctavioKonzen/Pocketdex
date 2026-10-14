@@ -29,6 +29,9 @@ class AccountSync {
   FirebaseFirestore get _db => FirebaseFirestore.instance;
 
   String? _uid;
+
+  /// Quem está conectado (null sem conta).
+  String? get uid => _uid;
   StreamSubscription? _remote;
   Timer? _timer;
   final Set<String> _dirty = {};
@@ -177,11 +180,13 @@ class AccountSync {
   }
 
   // ---------------------------------------------------------------- ranking
-  //   board: 'all' (geral), 'week' (semana) ou 'day' (desafio do dia)
+  //   board: 'all' (geral), 'week' (semana), 'day' (desafio do dia) ou 'factory' (corrida da semana da Factory)
 
   CollectionReference<Map<String, dynamic>> _board(String board, String key) => switch (board) {
         'week' => _db.collection('weekly').doc(key).collection('scores'),
         'day' => _db.collection('daily').doc(key).collection('scores'),
+        // A corrida da semana da Battle Factory (o andar alcançado).
+        'factory' => _db.collection('factoryWeek').doc(key).collection('scores'),
         _ => _db.collection('ranking'),
       };
 
@@ -212,11 +217,11 @@ class AccountSync {
   }
 
   /// Guarda a pontuação da semana, se for maior que a já guardada.
-  Future<void> saveWeekly(String week, int score) async {
+  Future<void> saveWeekly(String week, int score, [String board = 'week']) async {
     final uid = _uid, name = _auth.user?.name;
     if (uid == null || name == null || score <= 0) return;
     try {
-      final ref = _board('week', week).doc(uid);
+      final ref = _board(board, week).doc(uid);
       final current = await ref.get();
       if (current.exists && ((current.data()?['score'] as num?) ?? 0) >= score) return;
       await ref.set({'name': name, 'score': score, 'avatar': _data.avatar, 'updatedAt': FieldValue.serverTimestamp()});

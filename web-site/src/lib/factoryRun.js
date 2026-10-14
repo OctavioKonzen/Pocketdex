@@ -363,13 +363,47 @@ export function newMon(id, level, rand, minIv = 0, shiny = false) {
 }
 
 /** Sobe para o nível (com as evoluções que ele alcançar). Devolve [mon, evoluiu para]. */
+/**
+ * Habilidades fora da batalha (como nos jogos), de quem as tem no time:
+ * Pickup acha itens depois das batalhas; Intimidate (em quem vai na frente)
+ * às vezes espanta os selvagens; Synchronize (em quem vai na frente) passa a
+ * Nature para o capturado. Igual ao app.
+ */
+export const PICKUP = [52, 53, 190, 424, 216, 231, 263, 264, 417, 446, 506, 659, 660, 674, 702, 819, 820]
+export const INTIMIDATE = [23, 24, 58, 59, 128, 130, 209, 210, 234, 237, 262, 284, 303, 373, 397, 398, 403, 404, 405, 507, 508, 551, 552, 553, 559, 560, 667, 668, 727]
+export const SYNCHRONIZE = [63, 64, 65, 151, 177, 178, 196, 197, 280, 281, 282]
+export const PICKUP_CHANCE = 0.12
+export const PICKUP_ITEMS = ['potion', 'poke-ball', 'super-potion', 'great-ball', 'revive', 'hyper-potion', 'ultra-ball']
+export const INTIMIDATE_CHANCE = 0.5
+/** Quem vai na frente (o primeiro de pé na batalha). */
+const leadOf = (run) => run.team[battleOrder(run)[0]]
+
+/**
+ * Amizade: quem está no time ganha um ponto a cada andar vencido; com
+ * FRIEND_EVOLVE, os que evoluem por amizade evoluem (Eevee: Espeon de dia,
+ * Umbreon à noite, pelo relógio). Igual ao app.
+ */
+export const FRIEND_EVOLVE = 10
+export const FRIEND_EVOS = {
+  133: [196, 197], 42: 169, 113: 242, 172: 25, 173: 35, 174: 39, 175: 176, 298: 183, 406: 315, 427: 428, 433: 358, 440: 113,
+  446: 143, 447: 448, 527: 528, 541: 542, 772: 773, 872: 873,
+}
+const friendTargets = (id) => [FRIEND_EVOS[id]].flat()
+
+/** Eventos raros na rota (a partir do andar RARE_FLOOR): chuva de meteoros (Clefairy, com mais chance de shiny) e um Pokémon mítico. */
+export const RARE_FLOOR = 8
+export const RARE_CHANCE = 0.04
+export const MYTHICS = [151, 251, 385, 386, 490, 491, 492, 494, 647, 648, 719, 720, 721, 801, 802, 807, 893]
+
 export function levelTo(mon, level, data, rand) {
   let out = { ...mon, level: Math.max(1, level) }
   out.exp = Math.max(out.exp, expAt(out.level))
   let evolved = null
   for (let guard = 0; guard < 3; guard++) {
     // Evoluções por item (pedras) só com o item: canEvolveWith/buyItem.
-    const options = (data.evolutions[out.id] ?? []).filter(([, at, item]) => !item && out.level >= at)
+    // As por amizade (FRIEND_EVOS) não são por nível (a Eevee, só por pedra ou amizade).
+    const friends = FRIEND_EVOS[out.id] ? (out.id === 133 ? null : friendTargets(out.id)) : []
+    const options = (data.evolutions[out.id] ?? []).filter(([to, at, item]) => !item && out.level >= at && friends && !friends.includes(to))
     if (!options.length) break
     const [to] = pickOne(options, rand)
     out = { ...out, id: to }
@@ -721,7 +755,17 @@ export function routeOptions(run, data, rand) {
     if (!inside && run.floor >= RIVAL_FLOOR && pos >= 2 && !base && boss.kind === 'gym' && run.rivalLeg !== legOf(run) && rivalBoss(data, run) && rand() < RIVAL_CHANCE) {
       return { floor: run.floor, biome, options: [{ kind: 'rival' }] }
     }
+    // Evento raro: chuva de meteoros (à noite, Clefairy) ou um Pokémon mítico.
+    if (!inside && !base && run.floor >= RARE_FLOOR && rand() < RARE_CHANCE) {
+      const mythics = MYTHICS.filter((id) => data.species[id])
+      const meteor = rand() < 0.5
+      if (meteor || mythics.length) {
+        return { floor: run.floor, biome, options: [meteor ? { kind: 'wild', biome, meteor: true } : { kind: 'wildboss', legend: pickOne(mythics, rand), mythic: true }] }
+      }
+    }
     const r = rand()
+    // Intimidate em quem vai na frente: às vezes os selvagens fogem (vem um treinador no lugar).
+    if (r < 0.55 && !base && INTIMIDATE.includes(leadOf(run)?.id) && rand() < INTIMIDATE_CHANCE) return { floor: run.floor, biome, options: [{ kind: 'trainer' }] }
     return { floor: run.floor, biome, options: [r < 0.55 ? wild() : r < 0.9 || run.floor <= 2 ? { kind: 'trainer' } : { kind: 'event' }] }
   }
   const options = [rand() < 0.55 ? wild() : { kind: 'trainer' }]
@@ -878,9 +922,9 @@ export function encounterFor(data, floor, rand, boss = null, wild = false, node 
     const megas = Object.keys(data.megas).map(Number).sort((a, b) => a - b).filter(fits)
     const gmax = data.gmax.filter(fits)
     if (node?.legend != null) {
-      // O lendário da região (na rota para a Liga).
+      // O lendário da região (na rota para a Liga) ou o mítico (evento raro).
       id = node.legend
-      extra = { title: 'legend' }
+      extra = { title: 'legend', ...(node.mythic ? { mythic: true } : {}) }
     } else if (r < 0.4 && megas.length) {
       id = pickOne(megas, rand)
       const [stone] = pickOne(data.megas[id], rand)
@@ -944,13 +988,16 @@ export function encounterFor(data, floor, rand, boss = null, wild = false, node 
   const native = lives.length ? lives : types ? common.filter(local) : []
   // Seguindo o Pokémon ferido: um raro do lugar (taxa de captura baixa).
   const rare = node?.rare ? (native.length ? native : common).filter((p) => p.rate <= 75) : []
-  const id = pick(rare.length ? rare : native.length ? native : common)
-  return { kind, foes: [foe(id, level, rand() < SHINY_CHANCE * (node?.shiny ?? 1) ? { shiny: true } : {})], ...(node?.biome ? { biome: node.biome } : {}) }
+  // Chuva de meteoros: um Clefairy (da linha dele, pelo nível), com mais chance de ser shiny.
+  const id = node?.meteor ? devolve(data, 36, level) : pick(rare.length ? rare : native.length ? native : common)
+  const shinyRate = SHINY_CHANCE * (node?.shiny ?? 1) * (node?.meteor ? 8 : 1)
+  return { kind, foes: [foe(id, level, rand() < shinyRate ? { shiny: true } : {})], ...(node?.biome ? { biome: node.biome } : {}), ...(node?.meteor ? { meteor: true } : {}) }
 }
 
 /** Começa uma corrida com o inicial escolhido (um dos grátis ou comprado). */
-export function startRun(factory, data, id, seed, shiny = false) {
-  if (!startersOf(factory, data).includes(id) || (shiny && !(factory.shinies ?? []).includes(id))) return null
+export function startRun(factory, data, id, seed, shiny = false, options = {}) {
+  // Na corrida da semana, o inicial é o da semana (o mesmo para todos).
+  if (!options.weekly && (!startersOf(factory, data).includes(id) || (shiny && !(factory.shinies ?? []).includes(id)))) return null
   // As melhorias compradas com moedas.
   const up = (k) => upgradeValue(factory, k)
   const bag = { ...START_BAG, 'poke-ball': START_BAG['poke-ball'] + up('balls'), potion: START_BAG.potion + up('potions'), revive: START_BAG.revive + up('revive') }
@@ -961,7 +1008,13 @@ export function startRun(factory, data, id, seed, shiny = false) {
     tms: {}, tokens: { 'move-tutor': 0, 'move-reminder': 0 }, stash: [], dmax: false, tera: false, expShare: up('expShare') > 0, leg: 1, route: null, encounter: null, pending: null,
     // O inicial (o rival escolhe o que tem vantagem sobre ele).
     starter: id,
+    // Nuzlocke: quem desmaia vai embora e só um capturado por rota.
+    ...(options.nuzlocke ? { nuzlocke: true } : {}),
+    // A corrida da semana (a semana e a regra dela).
+    ...(options.weekly ? { weekly: options.weekly, rule: options.rule ?? 'normal' } : {}),
   }
+  // Regra da semana "sem itens": começa com a Bolsa vazia.
+  if (options.rule === 'noItems') run.bag = Object.fromEntries(Object.keys(run.bag).map((k) => [k, 0]))
   const rand = dice(run)
   // O inicial vem com IVs bons (15 a 31; com a Genética, mais).
   run.team = [newMon(id, START_LEVEL + up('level'), rand, Math.min(31, 15 + up('ivs')), shiny)]
@@ -1029,6 +1082,30 @@ export function winFloor(run, data, after = {}) {
     if (r.mon.level > r.from || r.evolved) levels.push({ index, from: r.from, to: r.mon.level, evolved: r.evolved })
     return r.mon
   })
+  // Amizade: quem está de pé ganha um ponto; com FRIEND_EVOLVE, os que evoluem por amizade evoluem.
+  out.team = out.team.map((m, index) => {
+    if (!((m.hp ?? 1) > 0)) return m
+    const friendship = (m.friendship ?? 0) + 1
+    const to = FRIEND_EVOS[m.id]
+    if (to == null || friendship < FRIEND_EVOLVE) return { ...m, friendship }
+    const id = Array.isArray(to) ? to[after.night ? 1 : 0] : to
+    out.friendEvos = (out.friendEvos ?? 0) + 1
+    levels.push({ index, from: m.level, to: m.level, evolved: id, friend: true })
+    return { ...m, id, friendship }
+  })
+  // Pickup: quem tem acha um item de vez em quando (melhor conforme o andar).
+  const picked = []
+  for (const m of out.team) {
+    if ((m.hp ?? 1) > 0 && PICKUP.includes(m.id) && rand() < PICKUP_CHANCE) {
+      const item = PICKUP_ITEMS[Math.min(PICKUP_ITEMS.length - 1, Math.floor(rand() * Math.min(PICKUP_ITEMS.length, 2 + run.floor / 10)))]
+      out.bag = { ...out.bag, [item]: (out.bag[item] ?? 0) + 1 }
+      picked.push({ id: m.id, item })
+    }
+  }
+  // Nuzlocke: quem desmaiou vai embora (para sempre).
+  const lost = run.nuzlocke ? out.team.filter((m) => !((m.hp ?? 1) > 0)).map((m) => m.id) : []
+  if (lost.length && lost.length < out.team.length) out.team = out.team.filter((m) => (m.hp ?? 1) > 0)
+  if (run.encounter.meteor) out.meteors = (run.meteors ?? 0) + 1
   out.money += money
   out.defeated += foes.length
   out.floor += 1
@@ -1111,6 +1188,7 @@ export function winFloor(run, data, after = {}) {
   if (joy) out.team = out.team.map((m) => ({ ...m, hp: 1 }))
   out.pending = {
     exp, gains, money, levels, joy, drop, story, reward, ...(champion ? { champion: true } : {}),
+    ...(picked.length ? { picked } : {}), ...(lost.length ? { lost } : {}),
     capture: after.captured && (kind === 'wild' || kind === 'wildboss') ? foes[0] : null,
     // A Poké Ball em que ele foi capturado (o sprite dela na tela da captura).
     ...(after.captured && after.ball ? { ball: after.ball } : {}),
@@ -1190,7 +1268,13 @@ export function capture(run, replace = null) {
   if (!foe) return run
   const out = { ...run, team: [...run.team], pending: { ...run.pending, capture: null } }
   const rand = dice(out)
-  const mon = newMon(foe.id, foe.level, rand, foe.egg ? EGG_IVS : 0, Boolean(foe.shiny))
+  let mon = newMon(foe.id, foe.level, rand, foe.egg ? EGG_IVS : 0, Boolean(foe.shiny))
+  // Synchronize em quem vai na frente: metade das vezes, o capturado vem com a Nature dele.
+  const lead = leadOf(run)
+  if (!foe.egg && lead && SYNCHRONIZE.includes(lead.id) && rand() < 0.5) mon = { ...mon, nature: lead.nature }
+  if (foe.mythic) out.mythics = (run.mythics ?? 0) + 1
+  // Nuzlocke: só um capturado por rota.
+  if (run.nuzlocke && !foe.egg) out.caughtLeg = legOf(run)
   if (out.team.length < MAX_TEAM) out.team.push(mon)
   else if (replace != null && replace >= 0 && replace < out.team.length) out.team[replace] = mon
   else return run
@@ -1560,6 +1644,14 @@ export const ACHIEVEMENTS = {
   level100: { label: 'Um Pokémon no nível 100', coins: 400, done: (r) => r.team.some((m) => m.level >= 100) },
   trade: { label: 'Fazer uma troca', coins: 40, done: (r) => (r.trades ?? 0) >= 1 },
   rope: { label: 'Escapar com a Escape Rope', coins: 40, done: (r) => (r.ropes ?? 0) >= 1 },
+  dungeon: { label: 'Vencer o chefe de um lugar (esgoto, casa assombrada...)', coins: 120, done: (r) => (r.dungeons ?? 0) >= 1 },
+  dungeon5: { label: 'Vencer 5 lugares numa corrida', coins: 400, done: (r) => (r.dungeons ?? 0) >= 5 },
+  rival3: { label: 'Vencer o rival de surpresa 3 vezes', coins: 150, done: (r) => (r.rivalRaces ?? 0) >= 3 },
+  dex30: { label: '30 na Pokédex da corrida', coins: 300, done: (r) => dexOf(r).length >= 30 },
+  friend: { label: 'Evoluir um Pokémon pela amizade', coins: 150, done: (r) => (r.friendEvos ?? 0) >= 1 },
+  mythic: { label: 'Capturar um Pokémon mítico', coins: 500, done: (r) => (r.mythics ?? 0) >= 1 },
+  meteor: { label: 'Ver uma chuva de meteoros', coins: 100, done: (r) => (r.meteors ?? 0) >= 1 },
+  nuzlocke: { label: 'Ganhar uma insígnia no Nuzlocke', coins: 300, done: (r) => Boolean(r.nuzlocke) && (r.badges ?? 0) >= 1 },
 }
 
 /**
@@ -1777,10 +1869,50 @@ export function nextFloor(run, data) {
   return out
 }
 
+/**
+ * A corrida da semana (o torneio entre amigos): a mesma semente, o mesmo
+ * inicial e uma regra para todo mundo na semana ({week}: a segunda-feira,
+ * "AAAA-MM-DD"); o ranking é o andar alcançado. Igual ao app.
+ */
+export const WEEKLY_RULES = ['normal', 'nuzlocke', 'noItems']
+export function weeklyOf(data, week) {
+  let h = 2166136261
+  for (const ch of String(week)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0
+  return { week, seed: h >>> 0, starter: data.starters[h % data.starters.length], rule: WEEKLY_RULES[(h >>> 8) % WEEKLY_RULES.length] }
+}
+export function startWeekly(factory, data, week) {
+  const w = weeklyOf(data, week)
+  return startRun(factory, data, w.starter, w.seed, false, { weekly: week, rule: w.rule, nuzlocke: w.rule === 'nuzlocke' })
+}
+
+/**
+ * A loja de cosméticos (com as moedas da Factory): a Poké Ball que você joga
+ * nas batalhas e a moldura da caixa de texto. Igual ao app.
+ */
+export const COSMETIC_BALLS = {
+  'premier-ball': 300, 'luxury-ball': 600, 'heal-ball': 300, 'friend-ball': 400, 'love-ball': 500, 'moon-ball': 500,
+  'fast-ball': 400, 'dusk-ball': 400, 'dream-ball': 1000, 'beast-ball': 1200, 'cherish-ball': 1500,
+}
+export const COSMETIC_FRAMES = { gold: 500, crystal: 600, night: 400, sakura: 600 }
+const cosmeticPrice = (kind, id) => (kind === 'ball' ? COSMETIC_BALLS : COSMETIC_FRAMES)[id]
+export const hasCosmetic = (factory, kind, id) => (factory.cosmetics?.[kind] ?? []).includes(id)
+/** Compra (com moedas) e já usa; null sem moedas ou se não existe. */
+export function buyCosmetic(factory, kind, id) {
+  const price = cosmeticPrice(kind, id)
+  if (price == null || hasCosmetic(factory, kind, id) || factory.coins < price) return null
+  const cosmetics = { ...(factory.cosmetics ?? {}), [kind]: [...(factory.cosmetics?.[kind] ?? []), id] }
+  return { ...factory, coins: factory.coins - price, cosmetics, [kind === 'ball' ? 'ball' : 'frame']: id }
+}
+/** Usa um que já tem (null volta para o padrão). */
+export function equipCosmetic(factory, kind, id) {
+  if (id != null && !hasCosmetic(factory, kind, id)) return factory
+  return { ...factory, [kind === 'ball' ? 'ball' : 'frame']: id }
+}
+
 /** Perdeu: a corrida acaba; a pontuação vira moedas e o recorde fica salvo. */
 export function endRun(factory, run) {
   const coins = runCoins(run)
-  return { ...factory, coins: factory.coins + coins, best: Math.max(factory.best, run.floor - 1), run: null, last: { floor: run.floor - 1, coins } }
+  return { ...factory, coins: factory.coins + coins, best: Math.max(factory.best, run.floor - 1), run: null, last: { floor: run.floor - 1, coins, ...(run.weekly ? { weekly: run.weekly } : {}) } }
 }
 
 // ------------------------------------------------------------ para a batalha
@@ -1827,6 +1959,8 @@ export function bagsFor(run) {
 export function captureFor(run, data) {
   const { kind, foes, biome } = run.encounter ?? {}
   if (kind !== 'wild' && kind !== 'wildboss') return null
+  // Nuzlocke: um capturado por rota.
+  if (run.nuzlocke && run.caughtLeg === legOf(run)) return null
   return { rates: foes.map((f) => speciesOf(data, f.id)?.[5] ?? 45), dusk: DARK_BIOMES.includes(biome) }
 }
 

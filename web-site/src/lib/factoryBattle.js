@@ -88,7 +88,8 @@ export function factoryAfter(battle, run) {
   // O XP que cada um ganhou na luta (o motor deu na hora), na ordem da corrida.
   const gained = battle.expNow ? run.team.map(() => 0) : null
   if (gained) Object.entries(battle.expNow.gained ?? {}).forEach(([slot, exp]) => { gained[battle.factoryOrder?.[Number(slot)] ?? Number(slot)] += exp })
-  return { hp, bag: { ...battle.bags[0] }, captured: battle.captured != null, fought, ...(gained ? { gained } : {}), ...(battle.capturedBall ? { ball: battle.capturedBall } : {}) }
+  // A hora (pelo relógio): a Eevee evolui pela amizade em Espeon de dia e Umbreon à noite.
+  return { hp, bag: { ...battle.bags[0] }, captured: battle.captured != null, fought, night: clockOf().night, ...(gained ? { gained } : {}), ...(battle.capturedBall ? { ball: battle.capturedBall } : {}) }
 }
 
 /** Quem é o adversário do andar: o chefe (nome, treinador e música) ou um selvagem (sem treinador). */

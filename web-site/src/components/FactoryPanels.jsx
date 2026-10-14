@@ -22,6 +22,7 @@ import {
   buyShiny, forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES,
   tradeMon, skipTrade, TRADE_LEVELS, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, bossScene,
   resolveChoice, regionLegend, leaderType, villainTeam, rivalBoss, DUNGEONS, DUNGEON_LENGTH, dungeonPos, townShop, townCenter,
+  weeklyOf, startWeekly, COSMETIC_BALLS, COSMETIC_FRAMES, hasCosmetic, buyCosmetic, equipCosmetic,
   cutPath, nodeBlocked, hasHm, clockOf, healerOf, inTown, DARK_BIOMES, dexOf, dexRewardFor, leaveDaycare, takeDaycare, DAYCARE_EGG,
 } from '../lib/factoryRun'
 import { t } from '../lib/i18n'
@@ -29,10 +30,21 @@ import { prettyName, typeColor } from '../lib/pokemon'
 import { usePokemonIndex } from '../lib/pokemonIndex'
 import { prettySlug } from '../lib/teamSets'
 import { useStore } from '../lib/store'
+import { saveWeekly, useAuth, watchRanking } from '../lib/auth'
+import { weekKey } from '../lib/league'
 import { useMyTrainer, useTrainers } from '../lib/trainers'
 
 /** Salva a Factory (meta e corrida) na conta. */
-export const saveFactory = (factory) => useStore.getState().updateLeague((l) => ({ ...l, factory }))
+export const saveFactory = (factory) => {
+  // Acabou a corrida da semana: o andar vai para o ranking dela (uma vez, com a conta conectada).
+  const last = factory?.last
+  if (last?.weekly && !last.posted) {
+    factory = { ...factory, last: { ...last, posted: true } }
+    const user = useAuth.getState().user
+    if (user?.uid && user.name && last.floor > 0) saveWeekly(user.uid, user.name, last.weekly, last.floor, useStore.getState().avatar, 'factory').catch(() => {})
+  }
+  useStore.getState().updateLeague((l) => ({ ...l, factory }))
+}
 // Só nos testes com os emuladores: deixa o teste montar uma corrida (por exemplo, numa bifurcação).
 if (import.meta.env.VITE_EMULATORS && typeof window !== 'undefined') window.__factory = { saveFactory, get: () => factoryOf(useStore.getState().league) }
 export const useFactory = () => factoryOf(useStore((s) => s.league))
@@ -339,6 +351,8 @@ export function FactoryHub({ onContinue, busy }) {
   const data = useFactoryData()
   const byId = usePokemonIndex()
   const [pick, setPick] = useState(null)
+  // Nuzlocke: quem desmaia vai embora e só um capturado por rota.
+  const [nuzlocke, setNuzlocke] = useState(false)
   const [query, setQuery] = useState('')
   const [lucky, setLucky] = useState(null)
   const run = factory.run
@@ -407,12 +421,16 @@ export function FactoryHub({ onContinue, busy }) {
               ),
             ])}
           </div>
+          <label className="flex items-center gap-2 text-sm font-semibold" data-testid="factory-nuzlocke">
+            <input type="checkbox" checked={nuzlocke} onChange={(e) => setNuzlocke(e.target.checked)} />
+            🕯️ {t('Modo Nuzlocke: quem desmaia vai embora e só um capturado por rota')}
+          </label>
           <Button
             data-testid="factory-start"
             disabled={busy || pick == null}
             onClick={() => {
               const meta = claimStarter(factory, data, pick.id)
-              const next = startRun(meta, data, pick.id, Math.floor(Math.random() * 2 ** 31), pick.shiny)
+              const next = startRun(meta, data, pick.id, Math.floor(Math.random() * 2 ** 31), pick.shiny, { nuzlocke })
               if (!next) return
               saveFactory({ ...meta, run: next })
               onContinue()
@@ -422,6 +440,41 @@ export function FactoryHub({ onContinue, busy }) {
           </Button>
         </div>
       )}
+
+      {!run && <WeeklyCard factory={factory} data={data} byId={byId} onContinue={onContinue} />}
+
+      <details className="rounded-2xl bg-bg p-3" data-testid="factory-cosmetics">
+        <summary className="cursor-pointer font-bold">🎨 {t('Loja de cosméticos')}</summary>
+        <p className="my-2 text-xs text-muted">{t('Com as moedas: a Poké Ball que você joga nas batalhas e a moldura da caixa de texto.')}</p>
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+          {Object.entries(COSMETIC_BALLS).map(([id, price]) => {
+            const have = hasCosmetic(factory, 'ball', id)
+            const using = factory.ball === id
+            return (
+              <button key={id} type="button" data-testid={`cosmetic-${id}`} disabled={!have && factory.coins < price}
+                onClick={() => saveFactory(have ? equipCosmetic(factory, 'ball', using ? null : id) : buyCosmetic(factory, 'ball', id) ?? factory)}
+                className={`flex cursor-pointer flex-col items-center rounded-xl border-2 p-1 text-[11px] font-bold disabled:opacity-40 ${using ? 'border-amber-400 bg-amber-500/15' : 'border-transparent bg-card'}`}>
+                <img src={spriteUrl(`items/${id}.png`)} alt="" className="pixelated h-8 w-8" />
+                <span data-no-translate>{prettySlug(id)}</span>
+                <span className="text-muted">{using ? `✓ ${t('Usando')}` : have ? t('Usar') : `🪙 ${price}`}</span>
+              </button>
+            )
+          })}
+        </div>
+        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {Object.entries(COSMETIC_FRAMES).map(([id, price]) => {
+            const have = hasCosmetic(factory, 'frame', id)
+            const using = factory.frame === id
+            return (
+              <button key={id} type="button" data-testid={`frame-${id}`} disabled={!have && factory.coins < price}
+                onClick={() => saveFactory(have ? equipCosmetic(factory, 'frame', using ? null : id) : buyCosmetic(factory, 'frame', id) ?? factory)}
+                className={`frame-${id} dlg-box cursor-pointer rounded-xl border-4 p-2 text-xs font-bold disabled:opacity-40 ${using ? 'ring-2 ring-amber-400' : ''}`}>
+                {t(FRAME_NAMES[id])} · {using ? `✓ ${t('Usando')}` : have ? t('Usar') : `🪙 ${price}`}
+              </button>
+            )
+          })}
+        </div>
+      </details>
 
       <details className="rounded-2xl bg-bg p-3" data-testid="factory-upgrades" open={!run}>
         <summary className="cursor-pointer font-bold">⬆️ {t('Árvore de melhorias')}</summary>
@@ -484,9 +537,15 @@ export function FactoryHub({ onContinue, busy }) {
           <summary className="cursor-pointer font-bold">👑 {t('Hall da Fama')}</summary>
           <div className="mt-2 space-y-2">
             {factory.hall.map((h) => (
-              <div key={h.key} className="rounded-xl bg-card p-2">
-                <p className="text-xs font-bold">{t('Campeão no andar {0}').replace('{0}', h.floor)}</p>
-                <div className="mt-1 flex flex-wrap gap-1">{h.team.map((m, i) => <MonChip key={i} mon={m} byId={byId} />)}</div>
+              // A foto do time campeão (no cenário do Campeão), como a tela do Hall da Fama dos jogos.
+              <div key={h.key} className="overflow-hidden rounded-xl border-4 border-amber-300 bg-card shadow" data-testid="hall-photo">
+                <div className="relative aspect-[3/1]">
+                  <BattleBackground scene={battleScene('champion-kanto')} layout="bw" />
+                  <div className="absolute inset-x-0 bottom-1 flex items-end justify-center gap-1">
+                    {h.team.map((m, i) => <PokeIcon key={i} id={m.id} shiny={Boolean(m.shiny)} className="h-12 w-12 drop-shadow sm:h-16 sm:w-16" />)}
+                  </div>
+                </div>
+                <p className="px-2 py-1 text-xs font-bold">👑 {t('Campeão no andar {0}').replace('{0}', h.floor)} · {h.team.map((m) => `Nv. ${m.level}`).join(' · ')}</p>
               </div>
             ))}
           </div>
@@ -596,6 +655,8 @@ const NODE_INFO = {
   event: { icon: '❓', label: 'Evento', help: 'Itens, dinheiro, frutas ou uma ficha de Move Tutor (sem batalha).' },
   trade: { icon: '🔁', label: 'Troca', help: 'Alguém da rota troca um Pokémon com você: o que vem chega 3 níveis acima (com o item de quem foi).' },
   wildboss: { icon: '🐉', label: 'Chefe sem treinador', help: 'Uma Mega, um Gigantamax ou um lendário. Dá para capturar.' },
+  meteor: { icon: '☄️', label: 'Chuva de meteoros', help: 'Um Clefairy apareceu com os meteoros (mais chance de shiny).' },
+  mythic: { icon: '✨', label: 'Pokémon mítico', help: 'Um Pokémon mítico, raríssimo. Dá para capturar.' },
   boss: { icon: '👑', label: 'Chefe', help: '' },
   rematch: { icon: '🏆', label: 'Revanche do Campeão', help: 'O Campeão que você venceu quer revanche: time mais forte, prêmio maior.' },
   rival: { icon: '⚔️', label: 'Rival', help: 'O seu rival te seguiu pela rota: quer ver quem ficou mais forte (prêmio maior).' },
@@ -785,6 +846,124 @@ function FarStand({ children, scene, plain = false }) {
   )
 }
 
+/** A cor de cada região (o tema dela na barra da corrida). Igual ao app. */
+const REGION_THEME = {
+  Kanto: '#b91c1c', Johto: '#a16207', Hoenn: '#15803d', Sinnoh: '#1d4ed8', Unova: '#3f3f46', Kalos: '#0369a1', Alola: '#ea580c', Galar: '#7e22ce', Paldea: '#be123c',
+}
+
+/**
+ * O mapa da região: as cidades da história, na ordem, acendendo conforme você
+ * ganha as insígnias (a de agora piscando). Igual ao app.
+ */
+function RegionMap({ data, run, onClose }) {
+  const game = data.bosses[run.boss.region]
+  const cities = []
+  game.leaders.forEach((l, k) => {
+    if (!l.city) return
+    const last = cities[cities.length - 1]
+    if (last?.city === l.city) last.steps.push(k)
+    else cities.push({ city: l.city, steps: [k], kind: l.kind })
+  })
+  const color = REGION_THEME[game.region] ?? '#334155'
+  return (
+    <div className="space-y-2 p-2" data-testid="region-map">
+      <OverlayClose onClose={onClose} title={`🗺️ ${game.region} · ${game.game}`} />
+      <div className="relative rounded-xl p-3" style={{ background: `linear-gradient(135deg, ${color}33, #0f172a22)` }}>
+        <div className="absolute bottom-6 left-7 top-6 w-1 rounded bg-slate-500/40" />
+        {cities.map((c, i) => {
+          const done = c.steps.every((k) => k < run.boss.step)
+          const here = !done && c.steps.some((k) => k >= run.boss.step) && (i === 0 || cities[i - 1].steps.every((k) => k < run.boss.step))
+          return (
+            <div key={i} className="relative flex items-center gap-3 py-1" data-testid={done ? 'city-lit' : here ? 'city-here' : 'city-dark'}>
+              <span className={`z-10 inline-block h-5 w-5 rounded-full border-2 ${done ? 'border-amber-300 bg-amber-400 shadow-[0_0_8px_#fbbf24]' : here ? 'animate-pulse border-white bg-sky-400' : 'border-slate-500 bg-slate-700'}`} />
+              <span className={`text-sm font-bold ${done ? '' : 'text-muted'}`} data-no-translate>{c.city}</span>
+              {here && <span className="text-xs text-sky-500">◀ {t('você está indo para cá')}</span>}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/** A ajuda para quem está começando: tipos, clima, efeitos, status, mecânicas e captura. Igual ao app. */
+const HELP = [
+  ['🔥', 'Tipos', 'Cada golpe tem um tipo. Contra um tipo fraco a ele, causa o dobro (super efetivo); contra um que resiste, a metade. Alguns tipos são imunes (Normal não acerta Fantasma). A tabela de tipos fica na Enciclopédia.'],
+  ['🌦️', 'Clima', 'Sol fortalece Fogo e enfraquece Água; chuva faz o contrário; areia e neve machucam quem não é do tipo certo a cada turno. Alguns lugares já têm clima.'],
+  ['🌿', 'Terrenos e efeitos do lugar', 'Terrenos (Grassy, Electric, Psychic, Misty) mudam o poder de alguns golpes. Alguns lugares têm efeitos próprios, como ventos fortes ou névoa tóxica.'],
+  ['💤', 'Status', 'Queimado perde HP e bate mais fraco; envenenado perde HP; paralisado fica lento e às vezes não se mexe; dormindo e congelado não atacam. Status ajuda a capturar.'],
+  ['✨', 'Mega, Z, Dynamax e Tera', 'Com o item certo, o botão no meio dos golpes ativa a mecânica uma vez por batalha: Mega Evolução, Movimento Z (só em Alola), Dynamax (Dynamax Band) e Terastal (Tera Orb).'],
+  ['🎯', 'Captura', 'Quanto menos HP e com status, mais fácil. Selvagens de nível baixo são mais fáceis; de nível acima do seu Pokémon, bem mais difíceis. Bolas melhores ajudam.'],
+  ['🏙️', 'Cidades e lugares', 'A cada rota de 10 andares você chega numa cidade: ginásio, Poké Mart, Centro Pokémon e Creche. Perto dela há um lugar com 10 andares e um chefe; depois, de volta à cidade.'],
+  ['💞', 'Amizade e habilidades', 'Quem fica no time ganha amizade e alguns evoluem por ela. Pickup acha itens, Intimidate espanta selvagens e Synchronize passa a Nature para o capturado.'],
+]
+function HelpPanel({ onClose }) {
+  return (
+    <div className="space-y-2 p-2" data-testid="help-panel">
+      <OverlayClose onClose={onClose} title={`❓ ${t('Ajuda')}`} />
+      {HELP.map(([icon, title, text]) => (
+        <div key={title} className="rounded-xl bg-card p-2">
+          <p className="text-sm font-bold">{icon} {t(title)}</p>
+          <p className="text-xs text-muted">{t(text)}</p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/** As molduras da caixa de texto (loja de cosméticos). */
+const FRAME_NAMES = { gold: 'Dourada', crystal: 'Cristal', night: 'Noite', sakura: 'Sakura' }
+/** As regras da corrida da semana. */
+const WEEKLY_RULE_TEXT = {
+  normal: 'Sem regra especial: chegue o mais longe que puder.',
+  nuzlocke: 'Nuzlocke: quem desmaia vai embora e só um capturado por rota.',
+  noItems: 'Sem itens: a corrida começa com a Bolsa vazia.',
+}
+
+/**
+ * A corrida da semana (o torneio entre amigos): a mesma semente, o mesmo
+ * inicial e a mesma regra para todo mundo; o ranking é o andar alcançado.
+ */
+function WeeklyCard({ factory, data, byId, onContinue }) {
+  const week = weekKey()
+  const w = weeklyOf(data, week)
+  const [list, setList] = useState([])
+  const user = useAuth((a) => a.user)
+  useEffect(() => {
+    if (!user) return undefined
+    let stop = null, live = true
+    watchRanking(10, 'factory', week, (rows) => live && setList(rows), () => {}).then((s) => (live ? (stop = s) : s?.()))
+    return () => { live = false; stop?.() }
+  }, [user, week])
+  return (
+    <div className="space-y-2 rounded-2xl bg-bg p-3" data-testid="factory-weekly">
+      <p className="font-bold">🏆 {t('Corrida da semana')}</p>
+      <div className="flex items-center gap-2">
+        <PokeIcon id={w.starter} className="h-12 w-12" />
+        <div className="min-w-0 flex-1 text-sm">
+          <p className="font-bold" data-no-translate>{t(prettyName(byId?.get(w.starter)?.name ?? ''))}</p>
+          <p className="text-xs text-muted">{t(WEEKLY_RULE_TEXT[w.rule])}</p>
+          <p className="text-xs text-muted">{t('A mesma corrida para todo mundo nesta semana: veja quem chega mais longe.')}</p>
+        </div>
+        <Button data-testid="factory-weekly-start" onClick={() => { const next = startWeekly(factory, data, week); if (next) { saveFactory({ ...factory, run: next }); onContinue() } }}>{t('Jogar')}</Button>
+      </div>
+      {user ? (
+        <ol className="space-y-0.5 text-xs" data-testid="factory-weekly-ranking">
+          {list.map((row, k) => (
+            <li key={row.uid} className={`flex justify-between rounded px-2 py-0.5 ${row.uid === user.uid ? 'bg-amber-500/15 font-bold' : 'bg-card'}`}>
+              <span data-no-translate>{k + 1}. {row.name}</span>
+              <span>{t('Andar {0}').replace('{0}', row.score)}</span>
+            </li>
+          ))}
+          {!list.length && <li className="text-muted">{t('Ninguém jogou ainda nesta semana.')}</li>}
+        </ol>
+      ) : (
+        <p className="text-xs text-muted">{t('Entre na conta para aparecer no ranking.')}</p>
+      )}
+    </div>
+  )
+}
+
 /** O nome de cada equipe vilã (nomes dos jogos). */
 const TEAM_NAMES = {
   rocket: 'Equipe Rocket', aqua: 'Equipe Aqua', magma: 'Equipe Magma', galactic: 'Equipe Galáctica', plasma: 'Equipe Plasma',
@@ -958,7 +1137,9 @@ function Badges({ data, run }) {
   )
 }
 
-function BattleFrame({ field, run, byId, data = null, text, menu, wideMenu = false, panel = null }) {
+function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, wideMenu = false, panel = null }) {
+  // A moldura comprada na loja de cosméticos e a cor da região (o tema dela na barra).
+  const theme = data && run ? REGION_THEME[data.bosses[run.boss.region]?.region] : null
   return (
     <div className="select-none">
       {/* A Bolsa, o time, a loja e a troca abrem por cima do campo (a mesma tela, como no jogo; dá para jogar com o celular de lado). */}
@@ -967,7 +1148,7 @@ function BattleFrame({ field, run, byId, data = null, text, menu, wideMenu = fal
         {panel && <div className="field-overlay factory-overlay rounded-t-2xl border-4 border-b-0 border-slate-800 bg-bg text-text" data-testid="factory-panel">{panel}</div>}
       </div>
       {run && (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-x-4 border-slate-800 bg-slate-700 px-2 py-1 text-xs font-bold text-white" data-testid="factory-bar">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-x-4 border-slate-800 bg-slate-700 px-2 py-1 text-xs font-bold text-white" style={theme ? { background: `linear-gradient(90deg, ${theme}, #334155 70%)` } : undefined} data-testid="factory-bar">
           <span>🏭 {t('Andar {0}').replace('{0}', run.floor)}</span>
           <span>💰 {run.money}</span>
           <span title={t('Pokédex da corrida')} data-testid="factory-dex">📖 {dexOf(run).length}</span>
@@ -993,7 +1174,7 @@ function BattleFrame({ field, run, byId, data = null, text, menu, wideMenu = fal
       )}
       <div className="flex min-h-36 flex-col gap-2 rounded-b-2xl border-4 border-slate-800 bg-slate-800 p-2">
         <div className="flex flex-col gap-2 sm:flex-row">
-          <div className="dlg-box min-h-20 flex-1 space-y-1 rounded-xl border-4 px-4 py-3 text-left text-base font-bold sm:text-lg" data-testid="factory-text">
+          <div className={`dlg-box min-h-20 flex-1 space-y-1 rounded-xl border-4 px-4 py-3 text-left text-base font-bold sm:text-lg ${frame ? `frame-${frame}` : ''}`} data-testid="factory-text">
             {text}
           </div>
           {menu && <div className={`dlg-box grid content-start gap-1 rounded-xl border-4 p-2 ${wideMenu ? 'sm:w-96' : 'grid-cols-2 sm:w-72'}`}>{menu}</div>}
@@ -1045,8 +1226,12 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       </button>
     </div>
   )
-  const extras = run && (panel === 'bag' || panel === 'team') && (
-    panel === 'bag' ? (
+  const extras = run && (panel === 'bag' || panel === 'team' || panel === 'region' || panel === 'help') && (
+    panel === 'region' ? (
+      <RegionMap data={data} run={run} onClose={() => setPanel(null)} />
+    ) : panel === 'help' ? (
+      <HelpPanel onClose={() => setPanel(null)} />
+    ) : panel === 'bag' ? (
       <BagPanel run={run} byId={byId} save={save} onClose={() => setPanel(null)} />
     ) : (
       <div className="p-2">
@@ -1059,6 +1244,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     <>
       <MenuButton onClick={() => setPanel(panel === 'bag' ? null : 'bag')} active={panel === 'bag'} testid="factory-menu-bag">{t('BOLSA')}</MenuButton>
       <MenuButton onClick={() => setPanel(panel === 'team' ? null : 'team')} active={panel === 'team'} testid="factory-menu-team">{t('TIME')}</MenuButton>
+      <MenuButton onClick={() => setPanel(panel === 'region' ? null : 'region')} active={panel === 'region'} testid="factory-menu-region">🗺️ {t('MAPA DA REGIÃO')}</MenuButton>
+      <MenuButton onClick={() => setPanel(panel === 'help' ? null : 'help')} active={panel === 'help'} testid="factory-menu-help">❓ {t('AJUDA')}</MenuButton>
     </>
   )
 
@@ -1134,11 +1321,13 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         ) : (
           <>
             <p>🏆 {t('Andar vencido!')} +{p.exp} XP · +💰{p.money}</p>
-            {p.levels?.map((l) => (
-              <p key={l.index} className="text-sm" data-no-translate>{name(run.team[l.index]?.id)}: Nv. {l.from} → {l.to}{l.evolved ? ` · ${t('evoluiu!')}` : ''}</p>
+            {p.levels?.map((l, k) => (
+              <p key={k} className="text-sm" data-no-translate>{l.friend ? `💞 ${name(l.evolved)}: ${t('evoluiu pela amizade!')}` : `${name(run.team[l.index]?.id)}: Nv. ${l.from} → ${l.to}${l.evolved ? ` · ${t('evoluiu!')}` : ''}`}</p>
             ))}
           </>
         )}
+        {p.picked?.map((x, k) => <p key={k} className="text-sm" data-testid="factory-pickup">🎒 {t('{0} achou {1} (Pickup)!').replace('{0}', name(x.id)).replace('{1}', itemName(x.item))}</p>)}
+        {p.lost?.map((id) => <p key={id} className="text-sm text-red-600" data-testid="factory-lost">🕯️ {t('Nuzlocke: {0} desmaiou e foi embora.').replace('{0}', name(id))}</p>)}
         {p.joy && <p className="text-sm" data-testid="factory-joy">💗 {town ? t('A Enfermeira Joy apareceu e curou o time todo!') : t('{0} apareceu e curou o time todo!').replace('{0}', healerName)}</p>}
         {[p.drop, p.reward].filter(Boolean).map((id) => <p key={id} className="text-sm" data-testid="factory-drop">🎁 {t('Ganhou {0}!').replace('{0}', itemName(id))}</p>)}
         {p.beat && (
@@ -1379,6 +1568,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         {floorTag && <span className="absolute right-3 top-2 rounded bg-slate-900/70 px-1.5 text-[10px] font-black text-white sm:text-xs" data-testid="route-floor">{floorTag}</span>}
         {coach && (meeting || rival) && <FarStand scene={meetScene}><TrainerSprite trainer={coach} box={width * 0.4} /></FarStand>}
         {town && me && <div className="absolute bottom-[8%] left-1/2 -translate-x-1/2"><TrainerSprite trainer={me} box={width * 0.3} /></div>}
+        {/* Quem vai na frente acompanha você na cidade (como o Pokémon que segue o treinador). */}
+        {town && lead && <div className="absolute bottom-[8%] left-[57%] w-[18%]" data-testid="follower"><PokeIcon id={lead.id} shiny={Boolean(lead.shiny)} className="w-full" /></div>}
         {!town && lead && <FieldMon mon={lead} byId={byId} back scene={meetScene} />}
       </Field>
     )
@@ -1397,6 +1588,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       meeting && storyLine(data, boss.region, boss.kind, boss.name),
       rival && `💬 ${rival.name}: ${t(RIVAL_RACE_LINES[(run.rivalRaces ?? 0) % RIVAL_RACE_LINES.length])}`,
       rival && t('{0} apareceu no caminho!').replace('{0}', rival.name),
+      route.options.length === 1 && route.options[0].meteor && `☄️ ${t('Uma chuva de meteoros! Algo caiu bem perto daqui...')}`,
+      route.options.length === 1 && route.options[0].mythic && `✨ ${t('Uma presença misteriosa... um Pokémon mítico está aqui!')}`,
       town && boss.kind === 'villain' && `💬 ${t('A {0} tomou conta da cidade! O líder do ginásio só volta quando ela for embora.').replace('{0}', TEAM_NAMES[villainTeam(boss.name)] ?? 'Equipe Rocket')}`,
       town && boss.kind !== 'villain' && t('Bem-vindo a {0}! O ginásio, o Poké Mart, o Centro Pokémon e a Creche ficam aqui.').replace('{0}', to),
     ].filter(Boolean)
@@ -1435,7 +1628,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
               </MenuButton>
             )
           }
-          const info = node.legend != null ? LEGEND_INFO : node.cut ? CUT_INFO : NODE_INFO[node.kind]
+          const info = node.mythic ? NODE_INFO.mythic : node.meteor ? NODE_INFO.meteor : node.legend != null ? LEGEND_INFO : node.cut ? CUT_INFO : NODE_INFO[node.kind]
           const b = node.biome && !node.cut ? BIOME_INFO[node.biome] : null
           const noSurf = nodeBlocked(run, node)
           return (
@@ -1478,7 +1671,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
 
   return (
     <section data-testid="factory-screen">
-      <BattleFrame field={field} run={run} byId={byId} data={data} wideMenu={wideMenu} menu={menu} panel={below || extras || null}
+      <BattleFrame field={field} run={run} byId={byId} data={data} frame={factory.frame} wideMenu={wideMenu} menu={menu} panel={below || extras || null}
         text={<>
           {text}
           {unlocked != null && <p className="text-sm text-amber-600" data-testid="factory-shiny-unlocked">✨ {t('{0} shiny liberado para começar as próximas corridas!').replace('{0}', name(unlocked))}</p>}

@@ -737,7 +737,8 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   const [poke, setPoke] = useState(() => (!online && battle.turn <= 1 ? [keepMine ? '' : 'hidden', 'hidden'] : ['', '']))
   const [ball, setBall] = useState([null, null]) // 'throw' | 'open' | Battle Factory: 'catch' | 'still' | 'shake' | 'caught'
   // Qual Poké Ball cada lado jogou (o sprite dela).
-  const [ballKind, setBallKind] = useState(['poke-ball', 'poke-ball'])
+  // A sua Poké Ball: a escolhida na loja de cosméticos da Battle Factory (senão, a Poké Ball).
+  const [ballKind, setBallKind] = useState(() => [factoryOf(useStore.getState().league).ball || 'poke-ball', 'poke-ball'])
   // Detalhes do Pokémon tocado (0: o seu, 1: o adversário).
   const [inspect, setInspect] = useState(null)
   const setSide = (setter, side, value) => setter((list) => list.map((x, i) => (i === side ? value : x)))
@@ -774,6 +775,11 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   const [flash, setFlash] = useState(0)
   // A transformação em andamento (Mega, Dynamax, Tera): a aura em volta do Pokémon.
   const [morph, setMorph] = useState(null)
+  // O brilho de quem é shiny ao entrar.
+  const [shine, setShine] = useState(null)
+  // O impacto do golpe (na cor do tipo) e a cor do último golpe que acertou.
+  const [impact, setImpact] = useState(null)
+  const lastHit = useRef(null)
   // O chefe já falou ao mandar o último Pokémon (só uma vez).
   const lastWords = useRef(false)
   const effectKey = useRef(0)
@@ -819,6 +825,16 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
     setSide(setPoke, side, 'release')
     await wait(420)
     setSide(setPoke, side, '')
+    await sparkleIfShiny(side)
+  }
+  /** Shiny entrando: estrelinhas em volta dele e o som de brilho, como nos jogos. */
+  const sparkleIfShiny = async (side) => {
+    const mon = battle.sides[side].team[shownRef.current.active[side]]
+    if (!mon?.shiny) return
+    playSound('shiny', 0.7)
+    setShine({ side, n: Date.now() })
+    await wait(900)
+    setShine(null)
   }
 
   /** A abertura: os treinadores aparecem, lançam a Poké Ball e os Pokémon saem. */
@@ -839,6 +855,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
       // Selvagem: ele já está ali, sem Poké Ball.
       setSide(setPoke, 1, '')
       setText(t('Um {0} selvagem apareceu!').replace('{0}', foeMon.name))
+      await sparkleIfShiny(1)
       await wait(900)
     } else {
       setText(t('{0} enviou {1}!').replace('{0}', foeName || coachRef.current?.name || t('O adversário')).replace('{1}', foeMon.name))
@@ -890,6 +907,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         const plan = fxPlan(kind, e.type, e.side, centerOf(e.side), centerOf(1 - e.side), icon, variant)
         if (!SELF_KINDS.has(kind)) pulse(sprites[e.side].current, CONTACT.has(kind) ? `battle-dash-${e.side}` : `battle-lunge-${e.side}`, 450)
         setEffect({ plan, color: typeColor(e.type), key: ++effectKey.current })
+        if (e.category !== 'status') lastHit.current = typeColor(e.type)
         if (plan.shake) pulse(field.current, 'battle-shake', 650)
         if (plan.flash) setTimeout(() => live.current && setFlash((n) => n + 1), 250)
         await wait(plan.duration + 80)
@@ -937,6 +955,12 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         skip.current = null
       } else if (e.t === 'hp') {
         pulse(sprites[e.side].current, 'battle-hurt', 520)
+        // O impacto do golpe na cor do tipo, bem onde ele acerta (só quando perde HP depois de um ataque).
+        if (lastHit.current && e.hp < shownRef.current.hp[e.side][shownRef.current.active[e.side]]) {
+          const at = centerOf(e.side)
+          setImpact({ ...at, color: lastHit.current, n: Date.now() })
+          lastHit.current = null
+        }
         setShown((s) => ({ ...s, hp: s.hp.map((side, i) => (i === e.side ? side.map((hp, j) => (j === s.active[i] ? e.hp : hp)) : side)) }))
         // Espera piscar e a barra de HP descer.
         await wait(550)
@@ -1203,6 +1227,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
             <BattleSprite ref={sprites[1]} mon={foe} id={shown.form[1] ?? foe.id} dmax={shown.dmax[1]} tera={shown.tera[1]} fainted={shown.fainted[1]} byId={byId} />
           </div>
           {morph?.side === 1 && <Morph key={morph.n} kind={morph.kind} type={morph.type} />}
+          {shine?.side === 1 && <Sparkles key={shine.n} />}
           {ball[1] && <PokeBall side={1} phase={ball[1]} kind={ballKind[1]} />}
           {intro && coach && (
             <div className={`trainer-foe absolute inset-x-0 bottom-0 flex justify-center ${intro.foe === 'out' ? 'trainer-leave-1' : ''}`} data-testid="foe-trainer">
@@ -1216,6 +1241,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
             <BattleSprite ref={sprites[0]} mon={me} id={shown.form[0] ?? me.id} dmax={shown.dmax[0]} tera={shown.tera[0]} back fainted={shown.fainted[0]} byId={byId} />
           </div>
           {morph?.side === 0 && <Morph key={morph.n} kind={morph.kind} type={morph.type} />}
+          {shine?.side === 0 && <Sparkles key={shine.n} />}
           {ball[0] && <PokeBall side={0} phase={ball[0]} kind={ballKind[0]} />}
         </div>
         {intro && intro.me !== 'gone' && myTrainer && (
@@ -1231,6 +1257,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
           </div>
         )}
         {effect && <MoveFx key={effect.key} plan={effect.plan} color={effect.color} />}
+        {impact && <span key={impact.n} className="move-impact pointer-events-none absolute z-20" style={{ left: `${impact.x}%`, top: `${impact.y}%`, '--c': impact.color }} data-testid="move-impact" />}
         {flash > 0 && <div key={`flash-${flash}`} className="battle-flash pointer-events-none absolute inset-0 bg-white" />}
         <div className={`absolute right-0 bottom-[24%] w-[50%] max-w-[300px] transition-opacity ${intro && poke[0] === 'hidden' ? 'opacity-0' : ''}`}>
           <button type="button" className="block w-full cursor-pointer text-left" onClick={() => setInspect(0)} aria-label={t('Ver detalhes do seu Pokémon')} data-testid="inspect-me">
@@ -1437,6 +1464,17 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         )}
       </div>
 
+    </div>
+  )
+}
+
+/** O brilho do shiny: estrelinhas abrindo em volta do Pokémon e sumindo (igual ao app). */
+function Sparkles() {
+  return (
+    <div className="pointer-events-none absolute inset-0" data-testid="shiny-sparkles">
+      {Array.from({ length: 8 }, (_, k) => (
+        <span key={k} className="shiny-star absolute left-1/2 top-[60%] text-lg text-amber-200" style={{ '--a': `${k * 45}deg` }}>✦</span>
+      ))}
     </div>
   )
 }
