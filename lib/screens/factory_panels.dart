@@ -135,7 +135,8 @@ const _gruntTrainers = {
   // Na base de uma equipe vilã, o capanga dela.
   final grunt = _gruntTrainers[encounter['grunt']];
   return (
-    foeName: '${boss?['name'] ?? ''}',
+    // Dupla de treinadores: os dois juntos.
+    foeName: '${boss?['name'] ?? (encounter['pair'] == true ? tr('Dupla de treinadores') : '')}',
     foeTrainer: (boss?['trainer'] as String?)?.isNotEmpty == true
         ? boss!['trainer'] as String
         : grunt != null
@@ -849,7 +850,16 @@ const _nodeInfo = <String, (String, String, String)>{
   'trade': ('🔁', 'Troca', 'Alguém da rota troca um Pokémon com você: o que vem chega 3 níveis acima (com o item de quem foi).'),
   'wildboss': ('🐉', 'Chefe sem treinador', 'Uma Mega, um Gigantamax ou um lendário. Dá para capturar.'),
   'boss': ('👑', 'Chefe', ''),
+  'rematch': ('🏆', 'Revanche do Campeão', 'O Campeão que você venceu quer revanche: time mais forte, prêmio maior.'),
 };
+
+/// As MOs: o nome (do jogo, sem traduzir), o ícone e o que fazem na corrida. Igual ao site.
+const _hmInfo = <String, (String, String, String)>{
+  'cut': ('Cut', '✂️', 'Uma vez por rota, corta uma árvore e abre um caminho escondido (um selvagem raro).'),
+  'flash': ('Flash', '💡', 'Ilumina cavernas, esgotos e torres: dá para ver os caminhos sem o Mapa, e a caverna secreta sempre tem algo.'),
+  'surf': ('Surf', '🌊', 'Deixa mergulhar no mar (o caminho para o fundo do mar).'),
+};
+const _cutInfo = ('🌳', 'Caminho escondido', 'Aberto com Cut: um selvagem raro do lugar.');
 const _eventText = {
   'items': 'Você achou {1}× {0} no caminho!',
   'money': 'Um treinador perdeu 💰{0} e não voltou para buscar.',
@@ -1101,6 +1111,9 @@ class _FactoryScreenState extends State<FactoryScreen> {
       child: Wrap(spacing: 8, runSpacing: 2, crossAxisAlignment: WrapCrossAlignment.center, children: [
         Text('🏭 ${tr('Andar {0}').replaceAll('{0}', '${run['floor']}')}', style: style),
         Text('💰 ${run['money']}', style: style),
+        Text('📖 ${FactoryRun.dexOf(run).length}', key: const ValueKey('factory-dex'), style: style),
+        for (final hm in (run['hms'] as List? ?? const [])) Text(_hmInfo[hm]?.$2 ?? '', style: style),
+        if (run['daycare'] != null) const Text('🏡', style: style),
         for (final id in FactoryRun.bagItems)
           if ((bag[id] ?? 0) > 0) Row(mainAxisSize: MainAxisSize.min, children: [_itemIcon(id, 18), Text('×${bag[id]}', style: style)]),
         Row(mainAxisSize: MainAxisSize.min, children: [
@@ -1311,7 +1324,9 @@ class _FactoryScreenState extends State<FactoryScreen> {
                     _overlayHeader('🛒 Poké Mart · 💰${run['money']}', close),
                     Padding(padding: const EdgeInsets.all(8), child: _shopList(context, run, p!, data)),
                   ])
-                : null;
+                : step == 'shop' && _panel == 'daycare'
+                    ? _daycarePanel(run, data, close)
+                    : null;
     if (step == 'result') {
       frame = _resultFrame(run, p!, lead);
     } else if (step == 'choice') {
@@ -1402,6 +1417,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
         text: [Text('${tr('Bem-vindo! Do que você precisa?')} 💰${run['money']}')],
         menu: _menuGrid([
           _menuButton(tr('COMPRAR'), () => setState(() => _panel = _panel == 'buy' ? null : 'buy'), active: _panel == 'buy', key: const ValueKey('factory-menu-buy')),
+          _menuButton(tr('CRECHE'), () => setState(() => _panel = _panel == 'daycare' ? null : 'daycare'),
+              active: _panel == 'daycare', key: const ValueKey('factory-menu-daycare')),
           ...tools,
           _menuButton(tr('CONTINUAR'), () {
             _panel = null;
@@ -1519,6 +1536,11 @@ class _FactoryScreenState extends State<FactoryScreen> {
               '💬 ${beat['name']}: ${tr(beat['kind'] == 'rival' ? _rivalBeat[min(_rivalBeat.length, ((run['rivalWins'] as num?) ?? 1).toInt()) - 1] : _beatLines[beat['kind']] ?? _beatLines['gym']!)}',
               key: const ValueKey('factory-beat-line'),
               style: const TextStyle(fontSize: 13, fontStyle: FontStyle.italic)),
+        if (p['hm'] != null && _hmInfo[p['hm']] != null)
+          Text(
+              '${_hmInfo[p['hm']]!.$2} ${tr('Com a insígnia, você ganhou a MO {0}!').replaceAll('{0}', _hmInfo[p['hm']]!.$1)} ${tr(_hmInfo[p['hm']]!.$3)}',
+              key: const ValueKey('factory-hm'),
+              style: const TextStyle(fontSize: 13, color: Color(0xFFD97706))),
         if (mission != null)
           Text('📋 ${tr('Missão cumprida: {0}!').replaceAll('{0}', _mission(mission))} +💰${mission['money']} · 🎁 ${_itemName('${mission['item']}')}',
               key: const ValueKey('factory-mission-done'), style: const TextStyle(fontSize: 13, color: Color(0xFFD97706))),
@@ -1602,6 +1624,59 @@ class _FactoryScreenState extends State<FactoryScreen> {
     );
   }
 
+  /// A Creche (na cidade): deixar um Pokémon ou buscar o que ficou (com o ovo). Igual ao site.
+  Widget _daycarePanel(Json run, FactoryData data, VoidCallback close) {
+    final care = run['daycare'] as Map?;
+    final full = FactoryRun.teamOf(run).length >= FactoryRun.maxTeam;
+    if (care == null) {
+      return BwParty(
+        testKey: 'daycare',
+        title: tr('Creche: quem fica? Ganha um nível por andar e, depois de {0} andares, aparece um ovo.').replaceAll('{0}', '${FactoryRun.daycareEgg}'),
+        team: _party(run),
+        disabled: (_) => FactoryRun.teamOf(run).length < 2,
+        onPick: (i) {
+          _panel = null;
+          _save(FactoryRun.leaveDaycare(run, i));
+        },
+        onCancel: close,
+      );
+    }
+    final mon = care['mon'] as Map;
+    final steps = max(0, (run['floor'] as num).toInt() - (care['floor'] as num).toInt());
+    final c = SiteColors.of(context);
+    return Column(key: const ValueKey('daycare'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      _overlayHeader('🏡 ${tr('Creche')}', close),
+      Padding(
+        padding: const EdgeInsets.all(8),
+        child: Row(children: [
+          SizedBox(width: 48, height: 48, child: PokemonSprite((mon['id'] as num).toInt(), shiny: mon['shiny'] == true, fill: 0.9)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${_name(mon['id'])} · Nv. ${mon['level']} → ${(mon['level'] as num).toInt() + steps}', style: TextStyle(fontWeight: FontWeight.bold, color: c.text)),
+              Text(
+                  steps >= FactoryRun.daycareEgg
+                      ? tr('Tem um ovo esperando por você!')
+                      : tr('Mais {0} andares e aparece um ovo.').replaceAll('{0}', '${FactoryRun.daycareEgg - steps}'),
+                  style: TextStyle(fontSize: 12, color: c.muted)),
+              if (full) Text(tr('Time cheio: abra espaço para buscar.'), style: const TextStyle(fontSize: 12, color: Color(0xFFDC2626))),
+            ]),
+          ),
+          FilledButton(
+            key: const ValueKey('daycare-take'),
+            onPressed: full
+                ? null
+                : () {
+                    _panel = null;
+                    _save(FactoryRun.takeDaycare(run, data));
+                  },
+            child: Text(tr('BUSCAR')),
+          ),
+        ]),
+      ),
+    ]);
+  }
+
   Widget _captureFrame(Json run, Json p, Map? lead) {
     final team = FactoryRun.teamOf(run);
     final foe = p['capture'] as Map;
@@ -1631,7 +1706,16 @@ class _FactoryScreenState extends State<FactoryScreen> {
       run: run,
       field: _field('${run['scene'] ?? 'grass'}', key: const ValueKey('factory-capture'), (w, h) => [_fieldMon(foe, w, h), if (lead != null) _fieldMon(lead, w, h, back: true)]),
       text: [
-        Text('${shiny ? '✨ ' : ''}${tr('Pegou! {0} foi capturado!').replaceAll('{0}', _name(foe['id']))} Nv. ${foe['level']}'),
+        Text('${shiny ? '✨ ' : ''}${tr(foe['egg'] == true ? 'O ovo da Creche chocou: é um {0}!' : 'Pegou! {0} foi capturado!').replaceAll('{0}', _name(foe['id']))} Nv. ${foe['level']}'),
+        if (!FactoryRun.dexOf(run).contains((foe['id'] as num).toInt()))
+          Builder(builder: (context) {
+            final reward = FactoryRun.dexRewardFor(run, (foe['id'] as num).toInt());
+            return Text(
+                '📖 ${tr('Novo na Pokédex da corrida ({0})').replaceAll('{0}', '${FactoryRun.dexOf(run).length + 1}')}'
+                '${reward != null ? ' · 🎁 ${reward['count']}× ${_itemName('${reward['item']}')} +💰${reward['money']}' : ''}',
+                key: const ValueKey('factory-dex-new'),
+                style: const TextStyle(fontSize: 13));
+          }),
         if (shiny) _small(tr('É shiny! (+10% em todos os atributos)'), color: const Color(0xFFD97706)),
         if (full) _small(tr('Time cheio: escolha quem sai.')),
       ],
@@ -1674,12 +1758,13 @@ class _FactoryScreenState extends State<FactoryScreen> {
         );
     final fork = options.length > 1;
     // Sem o Mapa: nada do mapa e, na bifurcação, segue às cegas.
-    final hasMap = run['townMap'] == true;
+    final hasMap = run['townMap'] == true || (FactoryRun.hasHm(run, 'flash') && FactoryRun.darkBiomes.contains(route['biome']));
+    final cut = !meeting ? FactoryRun.cutPath(run) : null;
     return _frame(
       run: run,
       field: fork && hasMap
           ? _townMap(route, options, pos, cities.from, cities.to, '${boss['region']} · ${boss['game']}', me,
-              widget.busy ? null : pick, (node) => FactoryRun.isBattleNode(node) && down)
+              widget.busy ? null : pick, (node) => (FactoryRun.isBattleNode(node) && down) || FactoryRun.nodeBlocked(run, node))
           // O líder espera no ginásio da cidade; a Elite Four e o Campeão, na Liga (nunca no meio da rota).
           : _field(meeting && _cityKinds.contains(boss['kind']) ? FactoryRun.bossScene(data, boss, '${route['biome']}') : '${route['biome']}', key: const ValueKey('factory-map'), (w, h) {
         double x(int k) => w * (0.08 + k / end * 0.84);
@@ -1764,16 +1849,20 @@ class _FactoryScreenState extends State<FactoryScreen> {
           for (var k = 0; k < options.length; k++)
             Builder(builder: (context) {
               final node = options[k];
-              final info = node['legend'] != null ? _legendInfo : _nodeInfo[node['kind']] ?? _nodeInfo['wild']!;
-              final b = _biomeInfo[node['biome']];
+              final info = node['legend'] != null ? _legendInfo : node['cut'] == true ? _cutInfo : _nodeInfo[node['kind']] ?? _nodeInfo['wild']!;
+              final b = node['cut'] == true ? null : _biomeInfo[node['biome']];
               final isBoss = node['kind'] == 'boss';
+              final noSurf = FactoryRun.nodeBlocked(run, node);
               return _menuButton(
                 '${options.length == 1 && !isBoss ? '${tr('SEGUIR')}: ' : ''}${node['biome'] == 'underwater' && route['biome'] != 'underwater' ? '🤿 ${tr('MERGULHAR')}: ' : ''}${b?.$2 ?? info.$1} ${isBoss ? '${boss['name']}' : tr(info.$2)}${b != null ? ' · ${tr(b.$1)}' : ''}',
-                widget.busy || (FactoryRun.isBattleNode(node) && down) ? null : () => pick(k),
-                sub: isBoss ? '${_bossKind(boss['kind'])}${ambush ? '' : ' · ${cities.to}'}' : tr(info.$3),
+                widget.busy || (FactoryRun.isBattleNode(node) && down) || noSurf ? null : () => pick(k),
+                sub: noSurf ? tr('Precisa da MO Surf (3ª insígnia).') : isBoss ? '${_bossKind(boss['kind'])}${ambush ? '' : ' · ${cities.to}'}' : tr(info.$3),
                 key: ValueKey('map-node-$k'),
               );
             }),
+          if (cut != null && hasMap)
+            _menuButton('✂️ ${tr('USAR {0}').replaceAll('{0}', 'Cut')}', widget.busy ? null : () => _save(cut),
+                sub: tr(_hmInfo['cut']!.$3), key: const ValueKey('factory-cut')),
           if (((run['rerolls'] as num?) ?? 0) > 0 && !meeting && hasMap)
             _menuButton('🎲 ${tr('SORTEAR O CAMINHO DE NOVO')}', widget.busy ? null : () => _save(FactoryRun.rerollRoute(run, data)),
                 sub: tr('Restam {0} nesta corrida').replaceAll('{0}', '${run['rerolls']}'), key: const ValueKey('factory-reroll')),
@@ -1837,8 +1926,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
                     translation: const Offset(-0.5, -0.5),
                     child: Builder(builder: (context) {
                       final node = options[k];
-                      final info = node['legend'] != null ? _legendInfo : _nodeInfo[node['kind']] ?? _nodeInfo['wild']!;
-                      final b = _biomeInfo[node['biome']];
+                      final info = node['legend'] != null ? _legendInfo : node['cut'] == true ? _cutInfo : _nodeInfo[node['kind']] ?? _nodeInfo['wild']!;
+                      final b = node['cut'] == true ? null : _biomeInfo[node['biome']];
                       final off = onPick == null || blocked(node);
                       return Opacity(
                         opacity: off ? 0.5 : 1,

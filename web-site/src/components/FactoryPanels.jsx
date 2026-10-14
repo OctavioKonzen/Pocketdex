@@ -22,6 +22,7 @@ import {
   buyShiny, forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade,
   tradeMon, skipTrade, TRADE_LEVELS, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, blindPick, bossScene,
   resolveChoice, regionLegend, leaderType, villainTeam,
+  cutPath, nodeBlocked, hasHm, DARK_BIOMES, dexOf, dexRewardFor, leaveDaycare, takeDaycare, DAYCARE_EGG,
 } from '../lib/factoryRun'
 import { t } from '../lib/i18n'
 import { prettyName } from '../lib/pokemon'
@@ -563,7 +564,15 @@ const NODE_INFO = {
   trade: { icon: '🔁', label: 'Troca', help: 'Alguém da rota troca um Pokémon com você: o que vem chega 3 níveis acima (com o item de quem foi).' },
   wildboss: { icon: '🐉', label: 'Chefe sem treinador', help: 'Uma Mega, um Gigantamax ou um lendário. Dá para capturar.' },
   boss: { icon: '👑', label: 'Chefe', help: '' },
+  rematch: { icon: '🏆', label: 'Revanche do Campeão', help: 'O Campeão que você venceu quer revanche: time mais forte, prêmio maior.' },
 }
+/** As MOs: o nome (do jogo, sem traduzir) e o que fazem na corrida. */
+const HM_INFO = {
+  cut: { name: 'Cut', icon: '✂️', help: 'Uma vez por rota, corta uma árvore e abre um caminho escondido (um selvagem raro).' },
+  flash: { name: 'Flash', icon: '💡', help: 'Ilumina cavernas, esgotos e torres: dá para ver os caminhos sem o Mapa, e a caverna secreta sempre tem algo.' },
+  surf: { name: 'Surf', icon: '🌊', help: 'Deixa mergulhar no mar (o caminho para o fundo do mar).' },
+}
+const CUT_INFO = { icon: '🌳', label: 'Caminho escondido', help: 'Aberto com Cut: um selvagem raro do lugar.' }
 const CITY_KIND_SET = new Set(['gym', 'elite', 'champion'])
 const EVENT_TEXT = {
   items: 'Você achou {1}× {0} no caminho!',
@@ -807,8 +816,8 @@ function TownMap({ route, pos, from, to, title, me, width, fieldRef, onPick, blo
       )}
       {/* Os caminhos: botões no próprio mapa. */}
       {route.options.map((node, k) => {
-        const info = node.legend != null ? LEGEND_INFO : NODE_INFO[node.kind]
-        const b = node.biome ? BIOME_INFO[node.biome] : null
+        const info = node.legend != null ? LEGEND_INFO : node.cut ? CUT_INFO : NODE_INFO[node.kind]
+        const b = node.biome && !node.cut ? BIOME_INFO[node.biome] : null
         return (
           <button key={k} type="button" disabled={!onPick || blocked(node)} onClick={() => onPick(k)} data-testid={`map-pin-${k}`}
             className="absolute flex -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center gap-1 rounded-full border-2 border-white bg-blue-900/90 py-0.5 pl-0.5 pr-2 text-[10px] font-black text-white shadow-lg hover:bg-amber-500 disabled:cursor-default disabled:opacity-50 sm:text-xs"
@@ -845,6 +854,9 @@ function BattleFrame({ field, run, byId, text, menu, wideMenu = false, panel = n
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-x-4 border-slate-800 bg-slate-700 px-2 py-1 text-xs font-bold text-white" data-testid="factory-bar">
           <span>🏭 {t('Andar {0}').replace('{0}', run.floor)}</span>
           <span>💰 {run.money}</span>
+          <span title={t('Pokédex da corrida')} data-testid="factory-dex">📖 {dexOf(run).length}</span>
+          {(run.hms ?? []).map((hm) => <span key={hm} title={HM_INFO[hm]?.name}>{HM_INFO[hm]?.icon}</span>)}
+          {run.daycare && <span title={t('Creche')}>🏡</span>}
           {BAG_ITEMS.filter((id) => run.bag[id] > 0).map((id) => (
             <span key={id} className="inline-flex items-center" data-no-translate title={prettySlug(id)}>
               <img src={spriteUrl(`items/${id}.png`)} alt="" className="pixelated h-5 w-5" />×{run.bag[id]}
@@ -987,6 +999,11 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
             💬 <span data-no-translate>{p.beat.name}</span>: {t(p.beat.kind === 'rival' ? RIVAL_BEAT[Math.min(RIVAL_BEAT.length, run.rivalWins ?? 1) - 1] : BEAT_LINES[p.beat.kind] ?? BEAT_LINES.gym)}
           </p>
         )}
+        {p.hm && (
+          <p className="text-sm text-amber-600" data-testid="factory-hm">
+            {HM_INFO[p.hm].icon} {t('Com a insígnia, você ganhou a MO {0}!').replace('{0}', HM_INFO[p.hm].name)} {t(HM_INFO[p.hm].help)}
+          </p>
+        )}
         {p.mission && (
           <p className="text-sm text-amber-600" data-testid="factory-mission-done">
             📋 {t('Missão cumprida: {0}!').replace('{0}', missionText(p.mission))} +💰{p.mission.money} · 🎁 {itemName(p.mission.item)}
@@ -1030,6 +1047,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
   } else if (step === 'capture') {
     const mon = p.capture
     const full = run.team.length >= MAX_TEAM
+    const dexReward = dexRewardFor(run, mon.id)
     const keep = (replace) => {
       const next = capture(run, replace)
       if (next === run) return
@@ -1046,7 +1064,13 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     )
     text = (
       <>
-        <p>{mon.shiny ? '✨ ' : ''}{t('Pegou! {0} foi capturado!').replace('{0}', name(mon.id))} <span className="dlg-sub">Nv. {mon.level}</span></p>
+        <p>{mon.shiny ? '✨ ' : ''}{(mon.egg ? t('O ovo da Creche chocou: é um {0}!') : t('Pegou! {0} foi capturado!')).replace('{0}', name(mon.id))} <span className="dlg-sub">Nv. {mon.level}</span></p>
+        {!dexOf(run).includes(mon.id) && (
+          <p className="text-sm" data-testid="factory-dex-new">
+            📖 {t('Novo na Pokédex da corrida ({0})').replace('{0}', dexOf(run).length + 1)}
+            {dexReward && <> · 🎁 {dexReward.count}× {itemName(dexReward.item)} +💰{dexReward.money}</>}
+          </p>
+        )}
         {mon.shiny && <p className="text-sm text-amber-600">{t('É shiny! (+10% em todos os atributos)')}</p>}
         {full && <p className="text-sm">{t('Time cheio: escolha quem sai.')}</p>}
       </>
@@ -1121,10 +1145,32 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     menu = (
       <>
         <MenuButton onClick={() => setPanel(panel === 'buy' ? null : 'buy')} active={panel === 'buy'} testid="factory-menu-buy">{t('COMPRAR')}</MenuButton>
+        <MenuButton onClick={() => setPanel(panel === 'daycare' ? null : 'daycare')} active={panel === 'daycare'} testid="factory-menu-daycare">{t('CRECHE')}</MenuButton>
         {tools}
         <MenuButton onClick={() => { setPanel(null); save({ ...run, pending: { ...p, shop: null } }) }} testid="factory-continue">{t('CONTINUAR')}</MenuButton>
       </>
     )
+    if (panel === 'daycare') {
+      const care = run.daycare
+      const steps = care ? Math.max(0, run.floor - care.floor) : 0
+      below = care ? (
+        <div className="space-y-2 p-2" data-testid="daycare">
+          <OverlayClose onClose={() => setPanel(null)} title={`🏡 ${t('Creche')}`} />
+          <div className="flex items-center gap-2 rounded-xl bg-surface p-2">
+            <PokeIcon id={care.mon.id} shiny={Boolean(care.mon.shiny)} className="h-12 w-12" />
+            <div className="min-w-0 flex-1 text-sm">
+              <p className="font-bold" data-no-translate>{name(care.mon.id)} · Nv. {care.mon.level} → {care.mon.level + steps}</p>
+              <p className="text-xs text-muted">{steps >= DAYCARE_EGG ? t('Tem um ovo esperando por você!') : t('Mais {0} andares e aparece um ovo.').replace('{0}', DAYCARE_EGG - steps)}</p>
+            </div>
+            <Button data-testid="daycare-take" disabled={run.team.length >= MAX_TEAM} onClick={() => { setPanel(null); save(takeDaycare(run, data)) }}>{t('BUSCAR')}</Button>
+          </div>
+          {run.team.length >= MAX_TEAM && <p className="text-xs text-red-600">{t('Time cheio: abra espaço para buscar.')}</p>}
+        </div>
+      ) : (
+        <BwParty title={t('Creche: quem fica? Ganha um nível por andar e, depois de {0} andares, aparece um ovo.').replace('{0}', DAYCARE_EGG)} team={partyOf(run, byId)} testid="daycare"
+          disabled={() => run.team.length < 2} onPick={(i) => { setPanel(null); save(leaveDaycare(run, i)) }} onCancel={() => setPanel(null)} />
+      )
+    }
     if (panel === 'buy') {
       below = (
         <div className="space-y-2 p-2">
@@ -1175,10 +1221,11 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     // O líder no ginásio do tipo dele, a Elite Four na Liga, o Campeão na sala dele; rival e vilões na rota (o vilão, na base da equipe).
     const meetScene = meeting && CITY_KIND_SET.has(boss.kind) ? bossScene(data, boss, route.biome) : route.biome
     // Sem o Mapa: nada do mapa e, na bifurcação, segue às cegas.
-    const hasMap = Boolean(run.townMap)
+    const hasMap = Boolean(run.townMap) || (hasHm(run, 'flash') && DARK_BIOMES.includes(route.biome))
+    const cut = !meeting ? cutPath(run) : null
     field = fork && hasMap ? (
       <TownMap route={route} pos={pos} from={from} to={to} title={`${boss.region} · ${boss.game}`} me={me} width={width} fieldRef={fieldRef}
-        onPick={busy ? null : pickNode} blocked={(node) => isBattleNode(node) && down} />
+        onPick={busy ? null : pickNode} blocked={(node) => (isBattleNode(node) && down) || nodeBlocked(run, node)} />
     ) : (
       // O líder espera no ginásio da cidade; a Elite Four e o Campeão, na Liga (nunca no meio da rota).
       <Field biome={meetScene} fieldRef={fieldRef} testid="factory-map">
@@ -1258,15 +1305,21 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
           </MenuButton>
         )}
         {(hasMap || !fork) && route.options.map((node, k) => {
-          const info = node.legend != null ? LEGEND_INFO : NODE_INFO[node.kind]
-          const b = node.biome ? BIOME_INFO[node.biome] : null
+          const info = node.legend != null ? LEGEND_INFO : node.cut ? CUT_INFO : NODE_INFO[node.kind]
+          const b = node.biome && !node.cut ? BIOME_INFO[node.biome] : null
+          const noSurf = nodeBlocked(run, node)
           return (
-            <MenuButton key={k} testid={`map-node-${k}`} disabled={busy || (isBattleNode(node) && down)} onClick={() => pickNode(k)}
-              sub={node.kind === 'boss' ? `${bossKindLabel(boss.kind)}${CITY_KIND_SET.has(boss.kind) ? ` · ${to}` : ''}` : t(info.help)}>
+            <MenuButton key={k} testid={`map-node-${k}`} disabled={busy || (isBattleNode(node) && down) || noSurf} onClick={() => pickNode(k)}
+              sub={noSurf ? t('Precisa da MO Surf (3ª insígnia).') : node.kind === 'boss' ? `${bossKindLabel(boss.kind)}${CITY_KIND_SET.has(boss.kind) ? ` · ${to}` : ''}` : t(info.help)}>
               {route.options.length === 1 && node.kind !== 'boss' ? `${t('SEGUIR')}: ` : ''}{node.biome === 'underwater' && route.biome !== 'underwater' ? `🤿 ${t('MERGULHAR')}: ` : ''}{b ? b.icon : info.icon} {node.kind === 'boss' ? <span data-no-translate>{boss.name}</span> : t(info.label)}{b ? ` · ${t(b.label)}` : ''}
             </MenuButton>
           )
         })}
+        {cut && hasMap && (
+          <MenuButton testid="factory-cut" disabled={busy} onClick={() => save(cut)} sub={t(HM_INFO.cut.help)}>
+            ✂️ {t('USAR {0}').replace('{0}', 'Cut')}
+          </MenuButton>
+        )}
         {(run.rerolls ?? 0) > 0 && !meeting && hasMap && (
           <MenuButton testid="factory-reroll" disabled={busy} onClick={() => { const next = rerollRoute(run, data); if (next) save(next) }} sub={t('Restam {0} nesta corrida').replace('{0}', run.rerolls)}>
             🎲 {t('SORTEAR O CAMINHO DE NOVO')}

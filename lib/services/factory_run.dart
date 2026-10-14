@@ -439,7 +439,7 @@ class FactoryRun {
   }
 
   /// O fator de XP do tipo de andar (treinadores e chefes dão mais).
-  static double expFactor(String? kind) => kind == 'ace' ? 1.75 : kind == 'boss' || kind == 'wildboss' || kind == 'trainer' ? 1.5 : 1.0;
+  static double expFactor(String? kind) => kind == 'ace' || kind == 'rematch' ? 1.75 : kind == 'boss' || kind == 'wildboss' || kind == 'trainer' ? 1.5 : 1.0;
 
   /// A barra de XP: quanto do nível atual já foi (0 a 1), com o XP a mais (extra).
   static double expProgress(Map mon, [int extra = 0]) {
@@ -681,7 +681,7 @@ class FactoryRun {
 
   /// Os pontos do mapa (o peso de cada um nas bifurcações). O Centro Pokémon é raro.
   static const nodeWeights = [('wild', 34), ('trainer', 28), ('ace', 12), ('mart', 10), ('event', 11), ('center', 5), ('trade', 8)];
-  static const _battleNodes = ['wild', 'trainer', 'ace', 'boss', 'wildboss'];
+  static const _battleNodes = ['wild', 'trainer', 'ace', 'boss', 'wildboss', 'rematch'];
   static bool isBattleNode(Map? node) => _battleNodes.contains(node?['kind']);
 
   /// O que tem no andar: o chefe da cidade (na Liga, um atrás do outro), o rival e os vilões em qualquer andar da
@@ -739,6 +739,8 @@ class FactoryRun {
     // No mar, um dos caminhos é mergulhar (o selvagem do fundo do mar).
     if (biome == 'water' && !options.any((o) => o['biome'] == 'underwater')) options[options.length - 1] = {'kind': 'wild', 'biome': 'underwater'};
     if (pos == forks[1] && !options.any((o) => o['legend'] != null) && rand() < wildBossChance && !base) options[options.length - 1] = {'kind': 'wildboss'};
+    // Depois de virar Campeão: o Campeão vencido quer revanche (num dos caminhos da primeira bifurcação).
+    if (run['rematch'] != null && pos == forks[0] && !base) options[options.length - 1] = {'kind': 'rematch'};
     return {'floor': floor, 'biome': biome, 'options': options};
   }
 
@@ -845,7 +847,7 @@ class FactoryRun {
         'scene': scene,
       };
     } else {
-      final found = run['flash'] == true || rand() < 0.5;
+      final found = hasHm(run, 'flash') || rand() < 0.5;
       if (found) {
         final item = _pick(aceRewards, rand);
         final money = (80 * priceScale(_int(out['floor']) - 1)).round();
@@ -864,6 +866,7 @@ class FactoryRun {
     final options = (run['route']?['options'] as List?) ?? const [];
     if (index < 0 || index >= options.length || run['encounter'] != null || run['pending'] != null) return run;
     final node = Map<String, dynamic>.from(options[index] as Map);
+    if (nodeBlocked(run, node)) return run;
     final out = _copy(run)..['route'] = null;
     final rand = _dice(out);
     final floor = _int(out['floor']);
@@ -877,6 +880,19 @@ class FactoryRun {
         ...encounterFor(data, floor, rand, node['kind'] == 'boss' ? bossOf(data, out) : null, node['kind'] == 'wildboss', {...node, 'biome': scene, 'shiny': run['shinyRate'] ?? 1}),
         'scene': scene,
       };
+      // A revanche: o Campeão vencido, com o time do andar de agora (e mais forte).
+      if (node['kind'] == 'rematch') {
+        out['encounter'] = {...encounterFor(data, floor + rematchFloors, rand, rematchBoss(data, run)), 'kind': 'rematch', 'scene': scene};
+      }
+      // Dupla de treinadores: dois treinadores juntos (os dois times na mesma batalha).
+      if (node['kind'] == 'trainer' && !scene.startsWith('base-') && rand() < doubleChance) {
+        final second = encounterFor(data, floor, rand, null, false, {...node, 'biome': scene, 'shiny': run['shinyRate'] ?? 1});
+        out['encounter'] = {
+          ...out['encounter'] as Map<String, dynamic>,
+          'foes': [...out['encounter']['foes'] as List, ...second['foes'] as List],
+          'pair': true,
+        };
+      }
       // O rival leva o inicial que tem vantagem sobre o seu (no lugar do inicial dele ou do mais forte).
       final counter = node['kind'] == 'boss' && out['encounter']['boss']?['kind'] == 'rival' ? rivalStarter(data, run['starter']) : null;
       if (counter != null) {
@@ -1125,7 +1141,7 @@ class FactoryRun {
     final kind = run['encounter']['kind'] as String;
     final foes = foesOf(run);
     final factor = expFactor(kind);
-    final moneyFactor = kind == 'boss' || kind == 'wildboss' ? 3 : kind == 'ace' ? 2.5 : kind == 'trainer' ? 2 : 1;
+    final moneyFactor = kind == 'boss' || kind == 'wildboss' || kind == 'rematch' ? 3 : kind == 'ace' ? 2.5 : kind == 'trainer' ? 2 : 1;
     var money = 0;
     // XP e EVs de cada derrotado: para quem lutou contra ele (fought[j]: posições na corrida) e, com o Exp. Share, para o resto do time.
     final team = teamOf(out);
@@ -1160,16 +1176,31 @@ class FactoryRun {
     String? drop, story;
     if (kind == 'boss' || kind == 'wildboss') out['bosses'] = ((out['bosses'] as num?) ?? 0).toInt() + 1;
     var champion = false;
+    String? hm;
+    // Venceu a revanche: o Campeão some (até o próximo).
+    if (kind == 'rematch') {
+      out['rematch'] = null;
+      out['rematches'] = ((run['rematches'] as num?) ?? 0).toInt() + 1;
+    }
     if (kind == 'boss') {
       final beaten = run['encounter']['boss'] as Map;
       // As conquistas (progress): insígnias, ginásio só com o inicial, Campeões.
       if (beaten['kind'] == 'gym') {
         out['badges'] = ((run['badges'] as num?) ?? 0).toInt() + 1;
         if ((run['team'] as List).length == 1) out['soloGym'] = true;
+        // As MOs vêm com as insígnias (Cut, Flash e Surf).
+        hm = hmBadges[out['badges']];
+        if (hm != null && !hasHm(run, hm)) {
+          out['hms'] = [...(run['hms'] as List? ?? const []), hm];
+        } else {
+          hm = null;
+        }
       }
       if (beaten['kind'] == 'champion') {
         out['champions'] = ((run['champions'] as num?) ?? 0).toInt() + 1;
         champion = true;
+        // O Campeão vencido vai querer revanche na região seguinte.
+        out['rematch'] = {'region': run['boss']['region']};
       }
       // O rival: as falas mudam conforme ele perde.
       if (beaten['kind'] == 'rival') out['rivalWins'] = ((run['rivalWins'] as num?) ?? 0).toInt() + 1;
@@ -1242,6 +1273,7 @@ class FactoryRun {
       if (kind == 'boss')
         'beat': {'kind': run['encounter']['boss']['kind'], 'name': run['encounter']['boss']['name'], 'region': run['encounter']['boss']['region']},
       if (mission != null) 'mission': mission,
+      if (hm != null) 'hm': hm,
     };
     out['encounter'] = null;
     return out;
@@ -1335,7 +1367,7 @@ class FactoryRun {
     if (foe == null) return run;
     final out = _copy(run);
     final rand = _dice(out);
-    final mon = newMon(_int(foe['id']), _int(foe['level']), rand, 0, foe['shiny'] == true);
+    final mon = newMon(_int(foe['id']), _int(foe['level']), rand, foe['egg'] == true ? eggIvs : 0, foe['shiny'] == true);
     final team = teamOf(out);
     if (team.length < maxTeam) {
       team.add(mon);
@@ -1346,6 +1378,104 @@ class FactoryRun {
     }
     out['team'] = team;
     (out['pending'] as Map)['capture'] = null;
+    _addDex(out, _int(foe['id']));
+    return out;
+  }
+
+  /// A Pokédex da corrida: quem você já teve (o inicial, os capturados, os trocados e os chocados). A cada marca, um prêmio.
+  /// Igual ao site.
+  static const dexRewards = <Json>[
+    {'at': 5, 'item': 'great-ball', 'count': 3, 'money': 200},
+    {'at': 10, 'item': 'ultra-ball', 'count': 3, 'money': 400},
+    {'at': 15, 'item': 'max-potion', 'count': 2, 'money': 700},
+    {'at': 20, 'item': 'revive', 'count': 3, 'money': 1000},
+    {'at': 30, 'item': 'master-ball', 'count': 1, 'money': 2000},
+  ];
+  static List<int> dexOf(Json run) =>
+      run['dex'] != null ? [for (final id in run['dex'] as List) _int(id)] : (run['starter'] != null ? [_int(run['starter'])] : <int>[]);
+
+  /// O prêmio que entrar com id daria (null se ele já está na Pokédex ou não chega numa marca).
+  static Json? dexRewardFor(Json run, int id) {
+    final dex = dexOf(run);
+    if (dex.contains(id)) return null;
+    return dexRewards.where((r) => r['at'] == dex.length + 1).firstOrNull;
+  }
+
+  static void _addDex(Json out, int id) {
+    final reward = dexRewardFor(out, id);
+    if (dexOf(out).contains(id)) return;
+    out['dex'] = [...dexOf(out), id];
+    if (reward == null) return;
+    final bag = Map<String, dynamic>.from(out['bag'] as Map);
+    bag['${reward['item']}'] = ((bag[reward['item']] as num?) ?? 0).toInt() + (reward['count'] as int);
+    out['bag'] = bag;
+    out['money'] = _int(out['money']) + (reward['money'] as int);
+  }
+
+  /// As MOs (HMs): vêm com a 1ª, a 2ª e a 3ª insígnia. Cut abre um caminho escondido; Flash ilumina cavernas; Surf deixa
+  /// mergulhar. Igual ao site.
+  static const hmBadges = {1: 'cut', 2: 'flash', 3: 'surf'};
+  static bool hasHm(Json run, String hm) => (run['hms'] as List? ?? const []).contains(hm);
+
+  /// Sem Surf, não dá para mergulhar.
+  static bool nodeBlocked(Json run, Map? node) =>
+      node?['biome'] == 'underwater' && (run['route'] as Map?)?['biome'] != 'underwater' && !hasHm(run, 'surf');
+
+  /// Cut: uma vez por rota, corta a árvore e abre um caminho escondido (um selvagem raro do lugar). null se não dá.
+  static Json? cutPath(Json run) {
+    final route = run['route'] as Map?;
+    final options = route?['options'] as List? ?? const [];
+    if (!hasHm(run, 'cut') || route == null || options.length < 2 || run['encounter'] != null || run['pending'] != null) return null;
+    if (run['cutLeg'] == (run['leg'] ?? 1)) return null;
+    return {
+      ...run,
+      'cutLeg': run['leg'] ?? 1,
+      'route': {
+        ...Map<String, dynamic>.from(route),
+        'options': [...options, {'kind': 'wild', 'biome': route['biome'], 'rare': true, 'cut': true}],
+      },
+    };
+  }
+
+  /// Dupla de treinadores: chance de um treinador vir acompanhado.
+  static const doubleChance = 0.2;
+
+  /// A revanche: o Campeão vencido vem com o time de alguns andares à frente.
+  static const rematchFloors = 5;
+  static Json rematchBoss(FactoryData data, Json run) {
+    final game = data.bosses[_int(run['rematch']?['region'] ?? run['boss']['region'])];
+    final leaders = (game['leaders'] as List).cast<Map>();
+    final champ = leaders.where((l) => l['kind'] == 'champion').firstOrNull ?? leaders.last;
+    return {'region': game['region'], 'game': game['game'], ...Map<String, dynamic>.from(champ)};
+  }
+
+  /// A Creche (na cidade): deixa um Pokémon, ele ganha um nível por andar; buscando depois de daycareEgg andares, vem junto
+  /// um ovo (a forma básica dele, com IVs bons). Igual ao site.
+  static const daycareEgg = 4;
+  static const eggIvs = 20;
+  static const eggLevel = 5;
+  static Json? leaveDaycare(Json run, int index) {
+    final team = teamOf(run);
+    if (run['daycare'] != null || team.length < 2 || index < 0 || index >= team.length) return null;
+    final mon = team.removeAt(index);
+    return {...run, 'team': team, 'daycare': {'mon': mon, 'floor': run['floor']}};
+  }
+
+  static Json? takeDaycare(Json run, FactoryData data) {
+    final care = run['daycare'] as Map?;
+    if (care == null || teamOf(run).length >= maxTeam) return null;
+    final out = _copy(run)..['daycare'] = null;
+    final rand = _dice(out);
+    final steps = math.max(0, _int(run['floor']) - _int(care['floor']));
+    final mon = Map<String, dynamic>.from(care['mon'] as Map);
+    final (grown, _) = levelTo(mon, _int(mon['level']) + steps, data, rand);
+    out['team'] = [...teamOf(run), grown];
+    if (steps >= daycareEgg) {
+      out['pending'] = {
+        ...Map<String, dynamic>.from(run['pending'] as Map? ?? const {}),
+        'capture': {'id': baseForm(data, _int(mon['id'])), 'level': eggLevel, 'egg': true},
+      };
+    }
     return out;
   }
 
@@ -1373,6 +1503,7 @@ class FactoryRun {
     final (grown, _) = levelTo(fresh, level + tradeLevels, data, rand);
     team[index] = {...grown, 'item': mon['item'], 'extras': mon['extras'] ?? <String>[]};
     out['team'] = team;
+    _addDex(out, _int(grown['id']));
     return out;
   }
 
@@ -1439,7 +1570,13 @@ class FactoryRun {
   static int blindPick(Json run) {
     final n = ((run['route'] as Map?)?['options'] as List?)?.length ?? 1;
     final mixed = (_int(run['seed'] ?? 0) ^ ((_int(run['floor']) * 2654435761) & 0xFFFFFFFF)) & 0xFFFFFFFF;
-    return ((mixed * 1597334677) & 0xFFFFFFFF) % n;
+    final first = ((mixed * 1597334677) & 0xFFFFFFFF) % n;
+    // Sem Surf, não mergulha: o próximo caminho.
+    final options = (run['route'] as Map?)?['options'] as List?;
+    for (var k = 0; k < n; k++) {
+      if (!nodeBlocked(run, options?[(first + k) % n] as Map?)) return (first + k) % n;
+    }
+    return first;
   }
 
   /// Quem abre a batalha: passa o Pokémon da posição para a frente do time (para treinar os mais fracos). Igual ao site.
