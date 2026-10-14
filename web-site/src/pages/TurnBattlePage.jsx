@@ -681,15 +681,11 @@ function randomOnce(list, mine, battle) {
 }
 
 /** A Poké Ball: lançada até a plataforma ('throw') ou abrindo nela ('open'). */
-function PokeBall({ side, phase }) {
+/** A Poké Ball na batalha: o sprite dela (do jogo, em pixel art), de cada tipo (Great Ball, Ultra Ball...). */
+function PokeBall({ side, phase, kind = 'poke-ball' }) {
   return (
     <div className={`pokeball-${phase}-${side} pointer-events-none absolute bottom-[8%] left-1/2 w-[18%]`} data-testid={`pokeball-${side}`} aria-hidden="true">
-      <svg viewBox="0 0 20 20" className="block w-full">
-        <circle cx="10" cy="10" r="9" fill="#fff" stroke="#1f2937" strokeWidth="1.6" />
-        <path d="M1 10a9 9 0 0 1 18 0z" fill="#e3350d" stroke="#1f2937" strokeWidth="1.6" />
-        <rect x="1" y="9.2" width="18" height="1.6" fill="#1f2937" />
-        <circle cx="10" cy="10" r="2.8" fill="#fff" stroke="#1f2937" strokeWidth="1.4" />
-      </svg>
+      <img src={spriteUrl(`items/${kind}.png`)} alt="" className="pixelated block w-full" draggable={false} />
     </div>
   )
 }
@@ -739,6 +735,8 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   // Cada Pokémon: '' na tela, 'hidden' dentro da Poké Ball, 'release' saindo, 'recall' voltando.
   const [poke, setPoke] = useState(() => (!online && battle.turn <= 1 ? [keepMine ? '' : 'hidden', 'hidden'] : ['', '']))
   const [ball, setBall] = useState([null, null]) // 'throw' | 'open' | Battle Factory: 'catch' | 'still' | 'shake' | 'caught'
+  // Qual Poké Ball cada lado jogou (o sprite dela).
+  const [ballKind, setBallKind] = useState(['poke-ball', 'poke-ball'])
   // Detalhes do Pokémon tocado (0: o seu, 1: o adversário).
   const [inspect, setInspect] = useState(null)
   const setSide = (setter, side, value) => setter((list) => list.map((x, i) => (i === side ? value : x)))
@@ -963,6 +961,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
       } else if (e.t === 'ball') {
         // Battle Factory: a bola no selvagem; ele entra nela, ela balança (até 3 vezes) e pega ou abre.
         playSound('throw')
+        setSide(setBallKind, 1, e.ball || 'poke-ball')
         setSide(setBall, 1, 'catch')
         await wait(520)
         playSound('recall')
@@ -1159,7 +1158,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
           <div className={`poke-${poke[1] || 'shown'}`}>
             <BattleSprite ref={sprites[1]} mon={foe} id={shown.form[1] ?? foe.id} dmax={shown.dmax[1]} tera={shown.tera[1]} fainted={shown.fainted[1]} byId={byId} />
           </div>
-          {ball[1] && <PokeBall side={1} phase={ball[1]} />}
+          {ball[1] && <PokeBall side={1} phase={ball[1]} kind={ballKind[1]} />}
           {intro && coach && (
             <div className={`trainer-foe absolute inset-x-0 bottom-0 flex justify-center ${intro.foe === 'out' ? 'trainer-leave-1' : ''}`} data-testid="foe-trainer">
               <TrainerSprite trainer={coach} box={fieldWidth(field) * 0.48} />
@@ -1171,7 +1170,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
           <div className={`poke-${poke[0] || 'shown'}`}>
             <BattleSprite ref={sprites[0]} mon={me} id={shown.form[0] ?? me.id} dmax={shown.dmax[0]} tera={shown.tera[0]} back fainted={shown.fainted[0]} byId={byId} />
           </div>
-          {ball[0] && <PokeBall side={0} phase={ball[0]} />}
+          {ball[0] && <PokeBall side={0} phase={ball[0]} kind={ballKind[0]} />}
         </div>
         {intro && intro.me !== 'gone' && myTrainer && (
           <div className={`absolute bottom-0 left-[2%] ${intro.me === 'out' ? 'trainer-leave-0' : ''}`} data-testid="my-trainer">
@@ -1413,7 +1412,7 @@ function Weak({ mon, list, className = '' }) {
   )
 }
 
-export function MultiBattle({battle, onExit, onAgain, online = null}) {
+export function MultiBattle({battle, onExit, onAgain, onFinish, online = null}) {
   const byId = usePokemonIndex()
   const uid = online?.uid || 'me'
   const side = battle.controllers.findIndex(team => team.includes(uid))
@@ -1494,6 +1493,9 @@ export function MultiBattle({battle, onExit, onAgain, online = null}) {
     return `${mon.name}: ${t(c.kind === 'shift' ? 'trocar de posição' : 'passar')}`
   }
   const trainer = controller => controller === uid ? 'Você' : online?.names?.[controller] || 'NPC'
+  // Acabou (Battle Factory: o andar): avisa uma vez.
+  const finished = useRef(false)
+  useEffect(()=>{if(state.winner != null && !online && !finished.current){finished.current=true;onFinish?.(null)}},[state.winner, online, onFinish])
   const fieldSlots = teamSide => state.sides[teamSide].slots.filter(slot=>slot.index>=0)
   const info = teamSide => <div className={`absolute z-20 w-[45%] space-y-1 ${teamSide===side?'bottom-[4%] right-[3%]':'top-[4%] left-[3%]'}`}>
     {fieldSlots(teamSide).map(slot=>{
@@ -1508,7 +1510,7 @@ export function MultiBattle({battle, onExit, onAgain, online = null}) {
   </div>
   return <section className="mx-auto max-w-3xl space-y-2">
     <div className="battle-field relative aspect-[16/10] overflow-hidden border-4 border-slate-800" data-testid="multi-battle-field" style={{aspectRatio:count===3?'1':'16 / 10',minHeight:count===3?'22rem':'14rem'}}>
-      <BattleBackground weather={battle.weather}/>{sprites(1-side)}{sprites(side)}{info(1-side)}{info(side)}<WeatherFx weather={battle.weather}/>
+      <BattleBackground weather={battle.weather} scene={battle.scene || undefined}/>{sprites(1-side)}{sprites(side)}{info(1-side)}{info(side)}<WeatherFx weather={battle.weather}/>
     </div>
     <p className="rounded-xl bg-card p-3 font-bold" data-testid="multi-turn" data-turn={state.turn} data-round={online?.round ?? state.turn}>{online?.message || (state.winner != null ? state.winner === -1 ? 'Empate!' : state.winner === side ? 'Você venceu!' : 'A equipe adversária venceu!' : `${t('Turno')} ${state.turn}`)}</p>
     {state.winner == null && pending.length > 0 && <div className="space-y-2 rounded-xl border-4 border-slate-800 bg-slate-800 p-2 text-white" data-testid="multi-actions">

@@ -21,7 +21,7 @@ import {
   shinyPrice, shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, takeCard, teachMove, teamDown, applyBagItem, unlockShiny, VITAMIN_EVS, VITAMINS,
   buyShiny, forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES,
   tradeMon, skipTrade, TRADE_LEVELS, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, bossScene,
-  resolveChoice, regionLegend, leaderType, villainTeam,
+  resolveChoice, regionLegend, leaderType, villainTeam, rivalBoss,
   cutPath, nodeBlocked, hasHm, clockOf, healerOf, inTown, DARK_BIOMES, dexOf, dexRewardFor, leaveDaycare, takeDaycare, DAYCARE_EGG,
 } from '../lib/factoryRun'
 import { t } from '../lib/i18n'
@@ -598,6 +598,7 @@ const NODE_INFO = {
   wildboss: { icon: '🐉', label: 'Chefe sem treinador', help: 'Uma Mega, um Gigantamax ou um lendário. Dá para capturar.' },
   boss: { icon: '👑', label: 'Chefe', help: '' },
   rematch: { icon: '🏆', label: 'Revanche do Campeão', help: 'O Campeão que você venceu quer revanche: time mais forte, prêmio maior.' },
+  rival: { icon: '⚔️', label: 'Rival', help: 'O seu rival te seguiu pela rota: quer ver quem ficou mais forte (prêmio maior).' },
 }
 /** As MOs: o nome (do jogo, sem traduzir) e o que fazem na corrida. */
 const HM_INFO = {
@@ -699,7 +700,7 @@ const SEASON_LABEL = { spring: '🌸 Primavera', summer: '☀️ Verão', autumn
 const PATH_HINTS = {
   wild: '🌿 Barulho no mato...', trainer: '👣 Pegadas de treinador...', ace: '💪 Pegadas firmes e fundas...', mart: '🎒 Alguém com uma mochila grande...',
   center: '⛺ Fumaça de fogueira...', event: '✨ Algo brilhando no chão...', trade: '🔁 Alguém acenando de longe...', wildboss: '⚠️ Um rugido forte...',
-  rematch: '🏆 Um treinador famoso por perto...',
+  rematch: '🏆 Um treinador famoso por perto...', rival: '⚔️ Alguém conhecido te seguindo...',
 }
 const pathHint = (node) => (node.legend != null ? '🌟 Uma presença enorme...' : node.cut ? '🌳 Um caminho escondido...' : node.biome === 'underwater' ? '🌊 Água funda...' : PATH_HINTS[node.kind] ?? '❓')
 const LEGEND_INFO = { icon: '🌟', label: 'Lendário', help: 'O lendário da região espera aqui. Dá para capturar.' }
@@ -829,6 +830,12 @@ const ROUTE_FLAVOR = {
   temple: 'Incenso e silêncio: o templo guarda Pokémon antigos.',
 }
 /** O rival e os vilões antes da luta. */
+/** O rival de surpresa na rota (fora os da história). */
+const RIVAL_RACE_LINES = [
+  'Ei! Te alcancei! Vamos ver quem treinou mais desde a última vez!',
+  'Você de novo? Ótimo, eu estava te procurando!',
+  'Não vou deixar você chegar no próximo ginásio sem uma revanche!',
+]
 const RIVAL_LINES = [
   'Achou que ia passar sem me enfrentar? Mostre o que aprendeu!',
   'Treinei sem parar desde a última vez. Agora é a minha vez de ganhar!',
@@ -1138,7 +1145,10 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     }
     field = (
       <Field biome={run.scene ?? 'grass'} fieldRef={fieldRef} testid="factory-capture">
-        <FieldMon mon={mon} byId={byId} scene={run.scene} />
+        {/* Capturado: ele está dentro da Poké Ball (na base dele), não mais no campo. Do ovo da Creche, ele mesmo. */}
+        {mon.egg ? <FieldMon mon={mon} byId={byId} scene={run.scene} /> : (
+          <FarStand scene={run.scene ?? 'grass'}><img src={spriteUrl(`items/${p.ball ?? 'poke-ball'}.png`)} alt="" className="pixelated w-[22%]" data-testid="captured-ball" /></FarStand>
+        )}
         {lead && <FieldMon mon={lead} byId={byId} back scene={run.scene} />}
       </Field>
     )
@@ -1293,7 +1303,9 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     const pos = Math.min(ROUTE_LENGTH, routePos(run))
     const down = teamDown(run)
     const meeting = route.options.length === 1 && route.options[0].kind === 'boss'
-    const coach = trainers?.find((x) => x.id === boss.trainer) ?? null
+    // O rival de surpresa no meio da rota.
+    const rival = route.options.length === 1 && route.options[0].kind === 'rival' ? rivalBoss(data, run) : null
+    const coach = trainers?.find((x) => x.id === (rival ?? boss).trainer) ?? null
     const intro = run.boss.step === 0 && pos === 0 ? storyLine(data, boss.region, 'intro') : ''
     const legend = regionLegend(data, run)
     const clock = clockOf()
@@ -1340,7 +1352,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
             </span>
           )}
         </div>
-        {coach && meeting && <FarStand scene={meetScene}><TrainerSprite trainer={coach} box={width * 0.4} /></FarStand>}
+        {coach && (meeting || rival) && <FarStand scene={meetScene}><TrainerSprite trainer={coach} box={width * 0.4} /></FarStand>}
         {lead && <FieldMon mon={lead} byId={byId} back scene={meetScene} />}
       </Field>
     )
@@ -1374,6 +1386,11 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
             <p>{t('O chefe espera')}</p>
             <p className="text-sm font-semibold">{storyLine(data, boss.region, boss.kind, boss.name)}</p>
           </>
+        ) : rival ? (
+          <>
+            <p className="text-sm italic" data-testid="factory-rival-race">💬 <span data-no-translate>{rival.name}</span>: {t(RIVAL_RACE_LINES[(run.rivalRaces ?? 0) % RIVAL_RACE_LINES.length])}</p>
+            <p>{t('{0} apareceu no caminho!').replace('{0}', rival.name)}</p>
+          </>
         ) : (
           <p>{!fork ? t('O caminho segue.') : hasMap ? t('O caminho se divide: escolha por onde ir') : t('O caminho se divide! Sem o Mapa, só dá para ouvir e olhar de longe: escolha por uma pista (o Mapa mostra tudo).')}</p>
         )}
@@ -1406,7 +1423,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
           return (
             <MenuButton key={k} testid={`map-node-${k}`} disabled={busy || (isBattleNode(node) && down) || noSurf} onClick={() => pickNode(k)}
               sub={noSurf ? t('Precisa da MO Surf (3ª insígnia).') : node.kind === 'boss' ? `${bossKindLabel(boss.kind)}${CITY_KIND_SET.has(boss.kind) ? ` · ${to}` : ''}` : t(info.help)}>
-              {route.options.length === 1 && node.kind !== 'boss' ? `${t('SEGUIR')}: ` : ''}{node.biome === 'underwater' && route.biome !== 'underwater' ? `🤿 ${t('MERGULHAR')}: ` : ''}{b ? b.icon : info.icon} {node.kind === 'boss' ? <span data-no-translate>{boss.name}</span> : t(info.label)}{b ? ` · ${t(b.label)}` : ''}
+              {route.options.length === 1 && node.kind !== 'boss' && node.kind !== 'rival' ? `${t('SEGUIR')}: ` : ''}{node.biome === 'underwater' && route.biome !== 'underwater' ? `🤿 ${t('MERGULHAR')}: ` : ''}{b ? b.icon : info.icon} {node.kind === 'boss' || (node.kind === 'rival' && rival) ? <span data-no-translate>{(node.kind === 'rival' ? rival : boss).name}</span> : t(info.label)}{b ? ` · ${t(b.label)}` : ''}
             </MenuButton>
           )
         })}

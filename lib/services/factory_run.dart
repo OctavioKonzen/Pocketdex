@@ -474,7 +474,7 @@ class FactoryRun {
   }
 
   /// O fator de XP do tipo de andar (treinadores e chefes dão mais).
-  static double expFactor(String? kind) => kind == 'ace' || kind == 'rematch' ? 1.75 : kind == 'boss' || kind == 'wildboss' || kind == 'trainer' ? 1.5 : 1.0;
+  static double expFactor(String? kind) => kind == 'ace' || kind == 'rematch' || kind == 'rival' ? 1.75 : kind == 'boss' || kind == 'wildboss' || kind == 'trainer' ? 1.5 : 1.0;
 
   /// A barra de XP: quanto do nível atual já foi (0 a 1), com o XP a mais (extra).
   static double expProgress(Map mon, [int extra = 0]) {
@@ -607,6 +607,8 @@ class FactoryRun {
 
   /// Andares de rota antes de cada cidade; onde a rota se divide (só ali dá para escolher); chance do rival em cada andar.
   static const routeLength = 9, forks = [1, 4, 7], ambushChance = 0.3;
+  /// O rival aparece bastante: de surpresa na rota (fora os da história), no máximo uma vez por rota, a partir do andar rivalFloor.
+  static const rivalChance = 0.2, rivalFloor = 5;
 
   static List _leaders(FactoryData data, Json run) => data.bosses[_int(run['boss']['region'])]['leaders'] as List;
 
@@ -723,7 +725,7 @@ class FactoryRun {
 
   /// Os pontos do mapa (o peso de cada um nas bifurcações). O Centro Pokémon é raro.
   static const nodeWeights = [('wild', 34), ('trainer', 28), ('ace', 12), ('mart', 10), ('event', 11), ('center', 5), ('trade', 8)];
-  static const _battleNodes = ['wild', 'trainer', 'ace', 'boss', 'wildboss', 'rematch'];
+  static const _battleNodes = ['wild', 'trainer', 'ace', 'boss', 'wildboss', 'rematch', 'rival'];
   static bool isBattleNode(Map? node) => _battleNodes.contains(node?['kind']);
 
   /// O que tem no andar: o chefe da cidade (na Liga, um atrás do outro), o rival e os vilões em qualquer andar da
@@ -749,6 +751,10 @@ class FactoryRun {
     final base = biome.startsWith('base-');
     Json wild() => base ? {'kind': 'trainer'} : {'kind': 'wild', 'biome': biome};
     if (!forks.contains(pos)) {
+      // O rival te seguiu: aparece de surpresa (uma vez por rota, só no caminho para um ginásio).
+      if (floor >= rivalFloor && pos >= 2 && !base && boss['kind'] == 'gym' && run['rivalLeg'] != legOf(run) && rivalBoss(data, run) != null && rand() < rivalChance) {
+        return only({'kind': 'rival'});
+      }
       final r = rand();
       return only(r < 0.55 ? wild() : r < 0.9 || floor <= 2 ? {'kind': 'trainer'} : {'kind': 'event'});
     }
@@ -927,6 +933,11 @@ class FactoryRun {
       if (node['kind'] == 'rematch') {
         out['encounter'] = {...encounterFor(data, floor + rematchFloors, rand, rematchBoss(data, run)), 'kind': 'rematch', 'scene': scene};
       }
+      // O rival de surpresa: o time dele no andar de agora (não conta como o da história).
+      if (node['kind'] == 'rival') {
+        out['encounter'] = {...encounterFor(data, floor, rand, rivalBoss(data, run)), 'kind': 'rival', 'scene': scene};
+        out['rivalLeg'] = legOf(run);
+      }
       // Dupla de treinadores: dois treinadores juntos (os dois times na mesma batalha).
       if (node['kind'] == 'trainer' && !scene.startsWith('base-') && rand() < doubleChance) {
         final second = encounterFor(data, floor, rand, null, false, {...node, 'biome': scene, 'shiny': run['shinyRate'] ?? 1, ...when});
@@ -937,7 +948,7 @@ class FactoryRun {
         };
       }
       // O rival leva o inicial que tem vantagem sobre o seu (no lugar do inicial dele ou do mais forte).
-      final counter = node['kind'] == 'boss' && out['encounter']['boss']?['kind'] == 'rival' ? rivalStarter(data, run['starter']) : null;
+      final counter = (node['kind'] == 'boss' || node['kind'] == 'rival') && out['encounter']['boss']?['kind'] == 'rival' ? rivalStarter(data, run['starter']) : null;
       if (counter != null) {
         final lines = [for (final id in data.starters) ...starterLine(data, id)];
         final foes = foesOf(out);
@@ -1178,7 +1189,7 @@ class FactoryRun {
   /// Venceu o andar. hp: a parte do HP de cada um do time (na ordem da
   /// corrida) no fim da batalha; bag: a Bolsa que sobrou; captured: capturou o
   /// selvagem na batalha (entra no time). Igual ao site.
-  static Json winFloor(Json run, FactoryData data, {List<double>? hp, Map<String, int>? bag, bool captured = false, List<List<int>>? fought, List<int>? gained}) {
+  static Json winFloor(Json run, FactoryData data, {List<double>? hp, Map<String, int>? bag, bool captured = false, List<List<int>>? fought, List<int>? gained, String? ball}) {
     final out = _copy(run);
     final team0 = teamOf(out);
     out['team'] = [for (var i = 0; i < team0.length; i++) {...team0[i], 'hp': hp != null && i < hp.length ? hp[i] : hpOf(team0[i])}];
@@ -1188,7 +1199,7 @@ class FactoryRun {
     final kind = run['encounter']['kind'] as String;
     final foes = foesOf(run);
     final factor = expFactor(kind);
-    final moneyFactor = kind == 'boss' || kind == 'wildboss' || kind == 'rematch' ? 3 : kind == 'ace' ? 2.5 : kind == 'trainer' ? 2 : 1;
+    final moneyFactor = kind == 'boss' || kind == 'wildboss' || kind == 'rematch' || kind == 'rival' ? 3 : kind == 'ace' ? 2.5 : kind == 'trainer' ? 2 : 1;
     var money = 0;
     // XP e EVs de cada derrotado: para quem lutou contra ele (fought[j]: posições na corrida) e, com o Exp. Share, para o resto do time.
     final team = teamOf(out);
@@ -1231,6 +1242,7 @@ class FactoryRun {
     var champion = false;
     String? hm;
     // Venceu a revanche: o Campeão some (até o próximo).
+    if (kind == 'rival') out['rivalRaces'] = ((run['rivalRaces'] as num?) ?? 0).toInt() + 1;
     if (kind == 'rematch') {
       out['rematch'] = null;
       out['rematches'] = ((run['rematches'] as num?) ?? 0).toInt() + 1;
@@ -1320,10 +1332,12 @@ class FactoryRun {
       'exp': exp, 'gains': gains, 'money': money, 'levels': levels, 'joy': joy, 'drop': drop, 'story': story, 'reward': reward,
       if (champion) 'champion': true,
       'capture': captured && (kind == 'wild' || kind == 'wildboss') ? foes.first : null,
+      // A Poké Ball em que ele foi capturado (o sprite dela na tela da captura). Igual ao site.
+      if (captured && ball != null) 'ball': ball,
       'cards': cardsPick,
       'shop': shopPick,
       // O chefe que acabou de perder (as falas depois da luta) e a missão completa.
-      if (kind == 'boss')
+      if (kind == 'boss' || kind == 'rival')
         'beat': {'kind': run['encounter']['boss']['kind'], 'name': run['encounter']['boss']['name'], 'region': run['encounter']['boss']['region']},
       if (mission != null) 'mission': mission,
       if (hm != null) 'hm': hm,
@@ -1493,8 +1507,28 @@ class FactoryRun {
   /// Dupla de treinadores: chance de um treinador vir acompanhado.
   static const doubleChance = 0.2;
 
+  /// A partir deste andar, a dupla de treinadores é batalha dupla de verdade (2 contra 2), se você tem 2 de pé. Igual ao site.
+  static const doubleFloor = 15;
+  static bool isDoubleBattle(Json run) =>
+      run['encounter']?['pair'] == true && _int(run['floor']) >= doubleFloor && teamOf(run).where((m) => hpOf(m) > 0).length >= 2;
+
   /// A revanche: o Campeão vencido vem com o time de alguns andares à frente.
   static const rematchFloors = 5;
+  /// O começo da rota de agora (o andar depois da última cidade).
+  static int legOf(Json run) => _int(run['floor']) - routePos(run);
+
+  /// O rival da região que aparece de surpresa: o último que você já enfrentou na história (ou o primeiro). null se a região
+  /// não tem rival. Igual ao site.
+  static Json? rivalBoss(FactoryData data, Json run) {
+    final game = data.bosses[_int(run['boss']['region'])];
+    final leaders = (game['leaders'] as List).cast<Map>();
+    final step = _int(run['boss']['step']);
+    final rivals = [for (var k = 0; k < leaders.length; k++) if (leaders[k]['kind'] == 'rival') k];
+    if (rivals.isEmpty) return null;
+    final met = rivals.where((k) => k < step).toList();
+    return {'region': game['region'], 'game': game['game'], ...Map<String, dynamic>.from(leaders[met.isNotEmpty ? met.last : rivals.first])};
+  }
+
   static Json rematchBoss(FactoryData data, Json run) {
     final game = data.bosses[_int(run['rematch']?['region'] ?? run['boss']['region'])];
     final leaders = (game['leaders'] as List).cast<Map>();

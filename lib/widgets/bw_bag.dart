@@ -30,7 +30,10 @@ Widget _icon(String id, double size) => Image.asset('assets/database/sprites/ite
     width: size, height: size, filterQuality: FilterQuality.none, errorBuilder: (_, __, ___) => SizedBox(width: size, height: size));
 
 class BwBag extends StatefulWidget {
-  const BwBag({super.key, required this.pockets, this.onClose, this.below, this.onSelect, this.testKey = 'bw-bag'});
+  const BwBag({super.key, required this.pockets, this.onClose, this.below, this.onSelect, this.testKey = 'bw-bag', this.fill = false});
+
+  /// Ocupa a altura toda (dentro do campo da batalha): as abas e a barra de baixo fixas, a lista rola no meio.
+  final bool fill;
   final List<BagPocket> pockets;
   final VoidCallback? onClose;
 
@@ -57,6 +60,9 @@ class _BwBagState extends State<BwBag> {
         _selected = null;
         widget.onSelect?.call(null);
       });
+
+  /// Com fill, o meio rola e ocupa o que sobra; sem, cresce com o conteúdo.
+  Widget _fillOrNot(Widget child) => widget.fill ? Expanded(child: SingleChildScrollView(child: child)) : child;
 
   @override
   Widget build(BuildContext context) {
@@ -92,7 +98,7 @@ class _BwBagState extends State<BwBag> {
                 ),
             ]),
           ),
-          Padding(
+          _fillOrNot(Padding(
             padding: const EdgeInsets.all(8),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               if (current.items.isEmpty)
@@ -151,7 +157,7 @@ class _BwBagState extends State<BwBag> {
                 ),
               if (widget.below != null) Padding(padding: const EdgeInsets.only(top: 6), child: widget.below),
             ]),
-          ),
+          )),
           // A barra de baixo: « BOLSO » e fechar.
           Container(
             color: _dark,

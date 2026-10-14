@@ -24,6 +24,7 @@ export function syncSimulator(battle, result) {
   battle.turn = state.turn
   battle.winner = state.winner
   battle.captured = state.captured ?? null
+  battle.capturedBall = state.capturedBall ?? null
   battle.terrain = state.terrain
   battle.weather = weatherIds[state.weather] ?? ''
   battle.terrain = terrainIds[state.terrain] ?? ''

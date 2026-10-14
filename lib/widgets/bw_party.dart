@@ -12,16 +12,19 @@ import '../i18n/i18n.dart';
 import 'pokemon_sprite.dart';
 
 class PartySlot {
-  const PartySlot({required this.id, this.shiny = false, required this.name, required this.level, this.hp = 1, this.sub});
+  const PartySlot({required this.id, this.shiny = false, required this.name, required this.level, this.hp = 1, this.sub, this.status = ''});
   final int id, level;
   final bool shiny;
   final String name;
   final double hp;
   final String? sub;
+
+  /// O status (PAR, SLP...), se tiver.
+  final String status;
 }
 
 class BwParty extends StatelessWidget {
-  const BwParty({super.key, required this.team, required this.onPick, this.title, this.disabled, this.onCancel, this.cancelLabel, this.testKey = 'bw-party'});
+  const BwParty({super.key, required this.team, required this.onPick, this.title, this.disabled, this.onCancel, this.cancelLabel, this.testKey = 'bw-party', this.active, this.header});
   final List<PartySlot> team;
   final ValueChanged<int> onPick;
   final String? title;
@@ -29,6 +32,12 @@ class BwParty extends StatelessWidget {
   final VoidCallback? onCancel;
   final String? cancelLabel;
   final String testKey;
+
+  /// O que está em campo (o cartão verde, como no jogo); sem ele, o primeiro.
+  final int? active;
+
+  /// Algo embaixo do título (ex.: as fraquezas do adversário).
+  final Widget? header;
 
   static const _ink = Color(0xFF0F172A);
 
@@ -38,7 +47,7 @@ class BwParty extends StatelessWidget {
     final m = team[i];
     final off = disabled?.call(i) ?? false;
     final hp = m.hp.clamp(0.0, 1.0);
-    final colors = i == 0 ? const [Color(0xFFA5E9B0), Color(0xFF5CC07A)] : const [Color(0xFF7FD3F0), Color(0xFF4AA8D8)];
+    final colors = i == (active ?? 0) ? const [Color(0xFFA5E9B0), Color(0xFF5CC07A)] : const [Color(0xFF7FD3F0), Color(0xFF4AA8D8)];
     return Opacity(
       opacity: off ? 0.45 : 1,
       child: Material(
@@ -69,6 +78,12 @@ class BwParty extends StatelessWidget {
                     Row(children: [
                       // Nome do Pokémon como no jogo (não traduz).
                       Expanded(child: Text(m.name, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _ink, fontWeight: FontWeight.w900, fontSize: 12))),
+                      if (m.status.isNotEmpty && hp > 0)
+                        Container(
+                            margin: const EdgeInsets.only(right: 3),
+                            padding: const EdgeInsets.symmetric(horizontal: 3),
+                            decoration: BoxDecoration(color: const Color(0xFF7C3AED), borderRadius: BorderRadius.circular(3)),
+                            child: Text(m.status.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900))),
                       Text('Lv${m.level}', style: const TextStyle(color: _ink, fontWeight: FontWeight.w900, fontSize: 11)),
                     ]),
                     const SizedBox(height: 2),
@@ -112,6 +127,7 @@ class BwParty extends StatelessWidget {
               decoration: BoxDecoration(color: const Color(0xFF0F3D44), border: Border.all(color: const Color(0xFF0B2A2F), width: 2), borderRadius: BorderRadius.circular(8)),
               child: Text(title!, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900)),
             ),
+          if (header != null) Padding(padding: const EdgeInsets.only(bottom: 6), child: header),
           for (var r = 0; r < team.length; r += 2)
             Padding(
               padding: const EdgeInsets.only(bottom: 6),

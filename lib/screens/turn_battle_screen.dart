@@ -41,6 +41,7 @@ import '../services/factory_run.dart';
 import 'factory_panels.dart';
 import '../widgets/battle_scene.dart';
 import '../widgets/bw_bag.dart';
+import '../widgets/bw_party.dart';
 
 /// Um time para a batalha: nome e membros (id + set).
 class BattleTeam {
@@ -344,7 +345,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
       if (_battle?.winner == 0) {
         final data = _factoryData ??= await FactoryData.load();
         final after = factoryAfter(_battle!, _factoryOrder, run);
-        saveFactory({...factory, 'run': FactoryRun.winFloor(run, data, hp: after.hp, bag: after.bag, captured: after.captured, fought: after.fought, gained: after.gained)});
+        saveFactory({...factory, 'run': FactoryRun.winFloor(run, data, hp: after.hp, bag: after.bag, captured: after.captured, fought: after.fought, gained: after.gained, ball: after.ball)});
         // Uma tela de vitória só: a do resultado do andar (XP, níveis, dinheiro), logo depois.
         note = '';
       } else {
@@ -962,6 +963,9 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
   /// A Poké Ball de cada lado: 'throw' (lançada) ou 'open' (abrindo na plataforma).
   final List<String?> _ball = [null, null];
 
+  /// Qual Poké Ball cada lado jogou (o sprite dela, como no Black & White).
+  final List<String> _ballKind = ['poke-ball', 'poke-ball'];
+
   @override
   void initState() {
     super.initState();
@@ -1312,7 +1316,10 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
         case 'ball':
           // Battle Factory: a bola no selvagem; ele entra nela, ela balança (até 3 vezes) e pega ou abre.
           BattleSounds.play('throw');
-          setState(() => _ball[1] = 'catch');
+          setState(() {
+            _ballKind[1] = e.slug.isNotEmpty ? e.slug : 'poke-ball';
+            _ball[1] = 'catch';
+          });
           await _wait(520);
           if (!mounted) return;
           BattleSounds.play('recall');
@@ -1515,7 +1522,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
   }
 
   Widget _battleBody(BuildContext context) {
-    if (_b.mode != 'singles') return _MultiBattleView(battle: _b, online: widget.online, onExit: widget.onExit, onAgain: widget.onAgain);
+    if (_b.mode != 'singles') return _MultiBattleView(battle: _b, online: widget.online, onExit: widget.onExit, onAgain: widget.onAgain, onFinish: widget.onFinish);
     final me = _b.teams[0][_active[0]];
     final foe = _b.teams[1][_active[1]];
     final current = _b.active(0);
@@ -1528,6 +1535,8 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
     final Widget? fieldPanel = waiting && _menu == 'bag'
         ? BwBag(
                 testKey: 'bag',
+                // Cabe no campo: as abas e a barra de baixo fixas, a lista rola.
+                fill: true,
                 onClose: () => setState(() => _menu = 'main'),
                 pockets: [
                   for (final (id, label, img, ball) in const [('medicine', 'Remédios', 'potion', false), ('balls', 'Poké Balls', 'poke-ball', true)])
@@ -1562,66 +1571,40 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                 ],
               )
         : waiting && _menu == 'party'
-            ? Container(
-                // A tela do time do Black & White.
-                color: const Color(0xFF1F6F78),
-                padding: const EdgeInsets.all(10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(children: [
-                      Expanded(
-                        child: Text(
-                            _b.needSwitch
-                                ? 'Escolha o próximo Pokémon'
-                                : _item != null
-                                    ? 'Usar em qual Pokémon?'
-                                    : 'Trocar de Pokémon',
-                            style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.white)),
-                      ),
-                      if (!_b.needSwitch)
-                        TextButton(
-                            onPressed: () => setState(() {
-                                  _menu = _item != null ? 'bag' : 'main';
-                                  _item = null;
-                                }),
-                            child: const Text('Voltar')),
-                    ]),
-                    if (_item == null) _Weak(rival, foeWeak),
-                    for (final (i, mon) in _b.teams[0].indexed)
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 6),
-                        padding: const EdgeInsets.symmetric(horizontal: 6),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(colors: i == _b.activeIndex[0] ? const [Color(0xFFA5E9B0), Color(0xFF5CC07A)] : const [Color(0xFF7FD3F0), Color(0xFF4AA8D8)], begin: Alignment.topCenter, end: Alignment.bottomCenter),
-                          border: Border.all(color: const Color(0xFF0F3D5C), width: 2),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Material(type: MaterialType.transparency, child: ListTile(
-                        textColor: const Color(0xFF0F172A),
-                        key: ValueKey('battle-single-switch-$i'),
-                        contentPadding: EdgeInsets.zero,
-                        enabled: _item != null ? _b.canUseItem(0, _item!, i) : _b.canSwitch(0, i),
-                        onTap: () => _choose(i),
-                        leading: SizedBox.square(dimension: 44, child: PokemonSprite(mon.id, shiny: mon.shiny, fill: 0.95)),
-                        title: Row(children: [
-                          Flexible(child: m.Text(mon.name, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold))),
-                          if (mon.status.isNotEmpty && mon.hp > 0) ...[const SizedBox(width: 6), _StatusBadge(mon.status)],
-                        ]),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _HpBar(hp: mon.hp, max: mon.maxHp),
-                            mon.hp > 0
-                                ? m.Text('${mon.hp}/${mon.maxHp}', style: const TextStyle(fontSize: 12))
-                                : const Text('Desmaiado', style: TextStyle(fontSize: 12)),
-                            if (_item == null && mon.hp > 0) _matchup(TurnBattle.switchMatchup(widget.hit, mon, rival, widget.typeEff)),
-                          ],
-                        ),
-                        trailing: i == _b.activeIndex[0] ? const Icon(Icons.check_circle, color: Color(0xFF0F3D5C)) : null,
-                      ))),
-                  ],
-                ),
+            // A tela do time do Black & White (compacta, em 2 colunas), por cima do campo.
+            ? BwParty(
+                testKey: 'battle-single-switch',
+                title: _b.needSwitch
+                    ? tr('Escolha o próximo Pokémon')
+                    : _item != null
+                        ? tr('Usar em qual Pokémon?')
+                        : tr('Trocar de Pokémon'),
+                header: _item == null ? _Weak(rival, foeWeak) : null,
+                active: _b.activeIndex[0],
+                team: [
+                  for (final mon in _b.teams[0])
+                    PartySlot(
+                      id: mon.id,
+                      shiny: mon.shiny,
+                      name: mon.name,
+                      level: mon.level,
+                      hp: mon.maxHp > 0 ? mon.hp / mon.maxHp : 0,
+                      status: mon.status,
+                      sub: mon.hp <= 0
+                          ? tr('Desmaiado')
+                          : _item == null
+                              ? '${mon.hp}/${mon.maxHp} · ${_matchupText(TurnBattle.switchMatchup(widget.hit, mon, rival, widget.typeEff))}'
+                              : '${mon.hp}/${mon.maxHp}',
+                    ),
+                ],
+                disabled: (i) => !(_item != null ? _b.canUseItem(0, _item!, i) : _b.canSwitch(0, i)),
+                onPick: _choose,
+                onCancel: _b.needSwitch
+                    ? null
+                    : () => setState(() {
+                          _menu = _item != null ? 'bag' : 'main';
+                          _item = null;
+                        }),
               )
             : null;
     // A mecânica do set (montador) ativa sozinha no primeiro ataque, como nos
@@ -1696,7 +1679,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                                 child: _Sprite(key: _sprites[1], mon: foe, id: _form[1] ?? foe.id, dmax: _dmax[1], tera: _tera[1], fainted: _fainted[1])),
                           ])),
                       if (_ball[1] != null)
-                        Positioned(right: w * 0.11, bottom: h * foeBottom(scene), width: w * 0.26, height: w * 0.26, child: _Ball(side: 1, phase: _ball[1]!)),
+                        Positioned(right: w * 0.11, bottom: h * foeBottom(scene), width: w * 0.26, height: w * 0.26, child: _Ball(side: 1, phase: _ball[1]!, kind: _ballKind[1])),
                       if (_introOn && _coach != null)
                         Positioned(
                           right: w * 0.0,
@@ -1723,7 +1706,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                                 child: _Sprite(key: _sprites[0], mon: me, id: _form[0] ?? me.id, dmax: _dmax[0], tera: _tera[0], back: true, fainted: _fainted[0])),
                           ])),
                       if (_ball[0] != null)
-                        Positioned(left: w * 0.01, bottom: h * 0.22, width: w * 0.58, height: w * 0.58, child: _Ball(side: 0, phase: _ball[0]!)),
+                        Positioned(left: w * 0.01, bottom: h * 0.22, width: w * 0.58, height: w * 0.58, child: _Ball(side: 0, phase: _ball[0]!, kind: _ballKind[0])),
                       if (_introOn && _myTrainer != null && !widget.keepMine)
                         Positioned(
                           left: w * 0.02,
@@ -1806,7 +1789,11 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                           ),
                         ),
                       ),
-                      if (fieldPanel != null) Positioned.fill(child: SingleChildScrollView(key: const ValueKey('battle-panel'), child: fieldPanel)),
+                      // A Bolsa ocupa o campo inteiro (a lista rola por dentro); o time rola se não couber.
+                      if (fieldPanel != null)
+                        Positioned.fill(
+                            key: const ValueKey('battle-panel'),
+                            child: _menu == 'bag' ? fieldPanel : SingleChildScrollView(child: fieldPanel)),
                     ],
                   ),
                 );
@@ -2431,7 +2418,18 @@ class _PokeOut extends StatelessWidget {
 class _Ball extends StatelessWidget {
   final int side;
   final String phase;
-  const _Ball({required this.side, required this.phase});
+
+  /// A Poké Ball (o sprite do item: poke-ball, great-ball...).
+  final String kind;
+  const _Ball({required this.side, required this.phase, this.kind = 'poke-ball'});
+
+  /// O sprite da bola, em pixel art; com glow, brilha (abrindo).
+  Widget _sprite([double glow = 0]) => Image.asset('assets/database/sprites/items/$kind.png',
+      fit: BoxFit.contain,
+      filterQuality: FilterQuality.none,
+      color: glow > 0 ? Colors.white.withValues(alpha: (glow * 0.8).clamp(0, 1)) : null,
+      colorBlendMode: glow > 0 ? BlendMode.srcATop : null,
+      errorBuilder: (_, __, ___) => const CustomPaint(painter: _BallPainter()));
 
   @override
   Widget build(BuildContext context) {
@@ -2457,7 +2455,7 @@ class _Ball extends StatelessWidget {
                   child: Transform.rotate(
                     alignment: Alignment.bottomCenter,
                     angle: phase == 'shake' ? sin(t * 2 * pi) * 0.38 : 0,
-                    child: const CustomPaint(painter: _BallPainter()),
+                    child: _sprite(),
                   ),
                 ),
               ),
@@ -2472,7 +2470,7 @@ class _Ball extends StatelessWidget {
                 height: size,
                 child: Opacity(
                   opacity: t < 0.6 ? 1 : (1 - (t - 0.6) / 0.4).clamp(0, 1),
-                  child: Transform.scale(scale: 1 + 0.6 * t, child: CustomPaint(painter: _BallPainter(glow: t))),
+                  child: Transform.scale(scale: 1 + 0.6 * t, child: _sprite(t)),
                 ),
               ),
             ]);
@@ -2491,7 +2489,7 @@ class _Ball extends StatelessWidget {
               top: pos.dy,
               width: size,
               height: size,
-              child: Transform.rotate(angle: (side == 0 || phase == 'catch' ? -1 : 1) * t * 4 * pi, child: const CustomPaint(painter: _BallPainter())),
+              child: Transform.rotate(angle: (side == 0 || phase == 'catch' ? -1 : 1) * t * 4 * pi, child: _sprite()),
             ),
           ]);
         },
@@ -2500,9 +2498,9 @@ class _Ball extends StatelessWidget {
   }
 }
 
+/// A bola desenhada (só se o sprite não carregar).
 class _BallPainter extends CustomPainter {
-  final double glow;
-  const _BallPainter({this.glow = 0});
+  const _BallPainter();
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -2520,12 +2518,10 @@ class _BallPainter extends CustomPainter {
       ..drawLine(Offset(c.dx - r * 0.9, c.dy), Offset(c.dx + r * 0.9, c.dy), edge)
       ..drawCircle(c, r * 0.28, Paint()..color = Colors.white)
       ..drawCircle(c, r * 0.28, edge..strokeWidth = r * 0.12);
-    // Abrindo: a luz branca de dentro.
-    if (glow > 0) canvas.drawCircle(c, r, Paint()..color = Colors.white.withValues(alpha: (glow * 1.4).clamp(0, 0.9)));
   }
 
   @override
-  bool shouldRepaint(_BallPainter old) => old.glow != glow;
+  bool shouldRepaint(_BallPainter old) => false;
 }
 
 /// A coroa de cristal do Terastal na cor do Tera Type (igual ao site, TeraCrown).
@@ -2870,7 +2866,8 @@ class _MultiBattleView extends StatefulWidget {
   final TurnBattle battle;
   final OnlineBattleControl? online;
   final VoidCallback onExit, onAgain;
-  const _MultiBattleView({required this.battle, this.online, required this.onExit, required this.onAgain});
+  final void Function(String? foeTrainer)? onFinish;
+  const _MultiBattleView({required this.battle, this.online, required this.onExit, required this.onAgain, this.onFinish});
   @override
   State<_MultiBattleView> createState() => _MultiBattleViewState();
 }
@@ -2881,6 +2878,7 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
   bool _gimmickOn = false;
   List<BattleEvent> _events = [];
   String? _error;
+  bool _finished = false;
   TurnBattle get _b => widget.battle;
   String get _uid => widget.online?.uid ?? 'me';
   int get _side => _b.controllers!.indexWhere((team) => team.contains(_uid));
@@ -2982,6 +2980,8 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
         events.addAll(PartyBattle.play(_b, [waiting]));
       }
       setState(() { _events = events; _choices.clear(); _error = null; });
+      // Acabou (Factory em dupla): avisa uma vez só.
+      if (_b.winner != null && !_finished) { _finished = true; widget.onFinish?.call(null); }
     } catch (e) { setState(() { _error = e is StateError ? e.message : 'Não foi possível executar estas ações. Escolha novamente.'; _choices.clear(); }); }
   }
   String _trainer(String controller) => controller == _uid ? tr('Você') : '${widget.online?.names[controller] ?? 'NPC'}';
@@ -3301,36 +3301,25 @@ class _Tag extends StatelessWidget {
 /// "Super efetivo ×2", "Pouco efetivo ×½", "Não afeta"... (nada para golpe de status).
 class _EffectTag extends StatelessWidget {
   final double? eff;
-  final String? prefix;
-  const _EffectTag(this.eff, {this.prefix});
+  const _EffectTag(this.eff);
 
   @override
   Widget build(BuildContext context) {
     final label = TurnBattle.effectLabel(eff);
     if (label == null) return const SizedBox.shrink();
     final mult = eff == 0 || eff == 1 ? '' : ' ×${_times(eff!)}';
-    return _Tag('${prefix == null ? '' : '${tr(prefix!)}: '}${tr(label)}$mult', _effectColors[label]!);
+    return _Tag('${tr(label)}$mult', _effectColors[label]!);
   }
 }
 
-/// Na troca: quanto ele bate no inimigo e quanto sofre com os tipos dele.
-Widget _matchup(({double? attack, double defense}) m) {
-  final d = m.defense;
-  final (label, color) = d == 0
-      ? ('Imune', const Color(0xFF15803D))
-      : d < 1
-          ? ('Resiste', const Color(0xFF15803D))
-          : d > 1
-              ? ('Fraco', const Color(0xFFB91C1C))
-              : ('Neutro', const Color(0xFF475569));
-  return Padding(
-    padding: const EdgeInsets.only(top: 4),
-    child: Wrap(spacing: 4, runSpacing: 4, children: [
-      if (m.attack != null) _EffectTag(m.attack, prefix: 'Ataca'),
-      _Tag('${tr('Recebe')}: ${tr(label)}${d == 0 || d == 1 ? '' : ' ×${_times(d)}'}', color),
-    ]),
-  );
+/// A troca em texto curto (no cartão do time): ⚔ como ele ataca o adversário · 🛡 como recebe.
+String _matchupText(({double? attack, double defense}) m) {
+  final d = m.defense, a = m.attack;
+  final take = d == 0 ? tr('Imune') : d < 1 ? tr('Resiste') : d > 1 ? '${tr('Fraco')} ×${_times(d)}' : tr('Neutro');
+  final hit = a == null ? '' : a == 0 ? tr('Sem efeito') : a < 1 ? tr('Pouco efetivo') : a > 1 ? tr('Super efetivo') : tr('Efetivo');
+  return [if (hit.isNotEmpty) '⚔ $hit', '🛡 $take'].join(' · ');
 }
+
 
 /// Fraquezas do inimigo (tipos que causam ×2 ou ×4).
 class _Weak extends StatelessWidget {

@@ -601,4 +601,12 @@ void main() {
     expect(FactoryRun.teamOf(FactoryRun.equipFromStash(extra, 0, 1))[1]['item'], 'leftovers');
     expect(identical(FactoryRun.unequipItem(run, 1), run), isTrue);
   });
+
+  test('batalhas duplas a partir do andar doubleFloor, com 2 de pé (igual ao site)', () {
+    Map<String, dynamic> run(int floor, bool pair, double hp) => {'floor': floor, 'encounter': {'pair': pair}, 'team': [{'hp': 1}, {'hp': hp}]};
+    expect(FactoryRun.isDoubleBattle(run(FactoryRun.doubleFloor, true, 0.5)), isTrue);
+    expect(FactoryRun.isDoubleBattle(run(FactoryRun.doubleFloor - 1, true, 0.5)), isFalse);
+    expect(FactoryRun.isDoubleBattle(run(FactoryRun.doubleFloor, false, 0.5)), isFalse);
+    expect(FactoryRun.isDoubleBattle(run(FactoryRun.doubleFloor, true, 0)), isFalse);
+  });
 }

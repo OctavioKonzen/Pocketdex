@@ -5,7 +5,7 @@
 import { battleMons } from './battleSetup'
 import { t } from './i18n'
 import { getFactoryData, getMoves, getPokemonById, getSpecies } from './data'
-import { bagsFor, battleOrder, bossScene, captureFor, clockOf, fieldOf, weatherOf, EXP_SHARE, expAt, expFactor, expProgress, expShares, foeMember, memberOf, movesAt } from './factoryRun'
+import { bagsFor, battleOrder, bossScene, captureFor, clockOf, fieldOf, isDoubleBattle, weatherOf, EXP_SHARE, expAt, expFactor, expProgress, expShares, foeMember, memberOf, movesAt } from './factoryRun'
 import { seededRandom } from './league'
 import { newBattle } from './turnBattle'
 
@@ -48,7 +48,10 @@ export async function factoryBattle(run) {
     table: run.encounter.foes.map((f) => { const all = expShares(run, data, f, null, expFactor(run.encounter.kind)); return order.map((i) => all[i]) }),
     share: run.expShare ? EXP_SHARE : 0,
   }
-  const battle = newBattle(a, b, seededRandom(seed >>> 0), { ai: 'normal', seed: seed >>> 0, bags: bagsFor(run), healPct: true, capture: captureFor(run, data), weather, field, exp: expBar })
+  // Dupla de treinadores a partir do andar DOUBLE_FLOOR: batalha dupla (2 contra 2).
+  const doubles = isDoubleBattle(run)
+  const battle = newBattle(a, b, seededRandom(seed >>> 0), { ai: 'normal', seed: seed >>> 0, bags: bagsFor(run), healPct: true, capture: captureFor(run, data), weather, field, exp: expBar,
+    ...(doubles ? { mode: 'doubles', controllers: [['me', 'me'], ['npc1', 'npc2']] } : {}) })
   battle.members = { mine, theirs }
   battle.scene = scene
   battle.factoryOrder = order
@@ -85,7 +88,7 @@ export function factoryAfter(battle, run) {
   // O XP que cada um ganhou na luta (o motor deu na hora), na ordem da corrida.
   const gained = battle.expNow ? run.team.map(() => 0) : null
   if (gained) Object.entries(battle.expNow.gained ?? {}).forEach(([slot, exp]) => { gained[battle.factoryOrder?.[Number(slot)] ?? Number(slot)] += exp })
-  return { hp, bag: { ...battle.bags[0] }, captured: battle.captured != null, fought, ...(gained ? { gained } : {}) }
+  return { hp, bag: { ...battle.bags[0] }, captured: battle.captured != null, fought, ...(gained ? { gained } : {}), ...(battle.capturedBall ? { ball: battle.capturedBall } : {}) }
 }
 
 /** Quem é o adversário do andar: o chefe (nome, treinador e música) ou um selvagem (sem treinador). */

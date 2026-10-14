@@ -78,7 +78,11 @@ Future<(TurnBattle, List<int>)> factoryBattle(Json run) async {
     ],
     share: run['expShare'] == true ? FactoryRun.expShare : 0.0,
   );
+  // A partir de certos andares, a dupla de treinadores luta em batalha dupla.
+  final doubles = FactoryRun.isDoubleBattle(run);
   final battle = TurnBattle(a, b, League.seededRandom(seed),
+      mode: doubles ? 'doubles' : 'singles',
+      controllers: doubles ? const [['me', 'me'], ['npc1', 'npc2']] : null,
       startBags: FactoryRun.bagsFor(run),
       healPct: true,
       capture: FactoryRun.captureFor(run, data),
@@ -121,7 +125,7 @@ double? expBarOf(TurnBattle battle, int slot, List<int> foeHp) {
 }
 
 /// Como o time terminou a batalha (para winFloor): a parte do HP de cada um, na ordem da corrida, a Bolsa, se capturou o selvagem e quem lutou contra cada adversário.
-({List<double> hp, Map<String, int> bag, bool captured, List<List<int>> fought, List<int>? gained}) factoryAfter(TurnBattle battle, List<int> order, Json run) {
+({List<double> hp, Map<String, int> bag, bool captured, List<List<int>> fought, List<int>? gained, String? ball}) factoryAfter(TurnBattle battle, List<int> order, Json run) {
   final hp = [for (final m in FactoryRun.teamOf(run)) FactoryRun.hpOf(m)];
   for (var slot = 0; slot < order.length && slot < battle.teams[0].length; slot++) {
     final mon = battle.teams[0][slot];
@@ -142,7 +146,7 @@ double? expBarOf(TurnBattle battle, int slot, List<int> foeHp) {
       if (i < gained.length) gained[i] += (e.value as num).toInt();
     }
   }
-  return (hp: hp, bag: {for (final id in FactoryRun.bagItems) id: battle.bags[0][id] ?? 0}, captured: battle.captured != null, fought: fought, gained: gained);
+  return (hp: hp, bag: {for (final id in FactoryRun.bagItems) id: battle.bags[0][id] ?? 0}, captured: battle.captured != null, fought: fought, gained: gained, ball: battle.capturedBall);
 }
 
 /// Os capangas de cada equipe vilã (homem e mulher). Igual ao site.
@@ -935,6 +939,7 @@ const _pathHints = {
   'wild': '🌿 Barulho no mato...', 'trainer': '👣 Pegadas de treinador...', 'ace': '💪 Pegadas firmes e fundas...',
   'mart': '🎒 Alguém com uma mochila grande...', 'center': '⛺ Fumaça de fogueira...', 'event': '✨ Algo brilhando no chão...',
   'trade': '🔁 Alguém acenando de longe...', 'wildboss': '⚠️ Um rugido forte...', 'rematch': '🏆 Um treinador famoso por perto...',
+  'rival': '⚔️ Alguém conhecido te seguindo...',
 };
 String _pathHint(Map node) => node['legend'] != null
     ? '🌟 Uma presença enorme...'
@@ -962,6 +967,7 @@ const _nodeInfo = <String, (String, String, String)>{
   'wildboss': ('🐉', 'Chefe sem treinador', 'Uma Mega, um Gigantamax ou um lendário. Dá para capturar.'),
   'boss': ('👑', 'Chefe', ''),
   'rematch': ('🏆', 'Revanche do Campeão', 'O Campeão que você venceu quer revanche: time mais forte, prêmio maior.'),
+  'rival': ('⚔️', 'Rival', 'O seu rival te seguiu pela rota: quer ver quem ficou mais forte (prêmio maior).'),
 };
 
 /// As MOs: o nome (do jogo, sem traduzir), o ícone e o que fazem na corrida. Igual ao site.
@@ -1860,7 +1866,11 @@ class _FactoryScreenState extends State<FactoryScreen> {
     }
     return _frame(
       run: run,
-      field: _field('${run['scene'] ?? 'grass'}', key: const ValueKey('factory-capture'), (w, h) => [_fieldMon(foe, w, h), if (lead != null) _fieldMon(lead, w, h, back: true)]),
+      // Capturado: ele está dentro da Poké Ball (na base dele), não mais no campo. Do ovo da Creche, ele mesmo. Igual ao site.
+      field: _field('${run['scene'] ?? 'grass'}', key: const ValueKey('factory-capture'), (w, h) => [
+            foe['egg'] == true ? _fieldMon(foe, w, h) : _far(KeyedSubtree(key: const ValueKey('captured-ball'), child: _itemIcon('${p['ball'] ?? 'poke-ball'}', w * 0.08)), w, h),
+            if (lead != null) _fieldMon(lead, w, h, back: true),
+          ]),
       text: [
         Text('${shiny ? '✨ ' : ''}${tr(foe['egg'] == true ? 'O ovo da Creche chocou: é um {0}!' : 'Pegou! {0} foi capturado!').replaceAll('{0}', _name(foe['id']))} Nv. ${foe['level']}'),
         if (!FactoryRun.dexOf(run).contains((foe['id'] as num).toInt()))
@@ -1893,8 +1903,10 @@ class _FactoryScreenState extends State<FactoryScreen> {
     final down = FactoryRun.teamDown(run);
     final meeting = options.length == 1 && options.first['kind'] == 'boss';
     final ambush = meeting && (boss['kind'] == 'rival' || boss['kind'] == 'villain');
+    // O rival de surpresa no meio da rota.
+    final rival = options.length == 1 && options.first['kind'] == 'rival' ? FactoryRun.rivalBoss(data, run) : null;
     final me = Trainers.mine;
-    final coach = Trainers.byId('${boss['trainer'] ?? ''}');
+    final coach = Trainers.byId('${(rival ?? boss)['trainer'] ?? ''}');
     final region = '${boss['region']}';
     final intro = run['boss']['step'] == 0 && pos == 0 ? FactoryRun.storyLine(data, region, 'intro') : '';
     final legend = FactoryRun.regionLegend(data, run);
@@ -1948,7 +1960,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
           Positioned(left: x(0) - 4, top: y + 10, child: sign('🏠 ${cities.from ?? tr('Início')}')),
           Positioned(right: w - x(end) - 4, top: y + 10, child: sign('👑 ${cities.to}')),
           if (me != null) Positioned(left: x(pos + 1) - w * 0.1, top: y - w * 0.2, child: TrainerSprite(me, box: w * 0.2)),
-          if (coach != null && meeting) _far(TrainerSprite(coach, box: w * 0.4), w, h),
+          if (coach != null && (meeting || rival != null)) _far(TrainerSprite(coach, box: w * 0.4), w, h),
           if (lead != null) _fieldMon(lead, w, h, back: true),
         ];
       }),
@@ -1982,6 +1994,10 @@ class _FactoryScreenState extends State<FactoryScreen> {
         ] else if (meeting) ...[
           Text(tr('O chefe espera')),
           _small(FactoryRun.storyLine(data, region, '${boss['kind']}', '${boss['name']}')),
+        ] else if (rival != null) ...[
+          Text('💬 ${rival['name']}: ${tr(_rivalRaceLines[((run['rivalRaces'] as num?) ?? 0).toInt() % _rivalRaceLines.length])}',
+              key: const ValueKey('factory-rival-race'), style: const TextStyle(fontSize: 13, fontStyle: FontStyle.italic)),
+          Text(tr('{0} apareceu no caminho!').replaceAll('{0}', '${rival['name']}')),
         ] else
           Text(!fork
               ? tr('O caminho segue.')
@@ -2016,9 +2032,10 @@ class _FactoryScreenState extends State<FactoryScreen> {
               final info = node['legend'] != null ? _legendInfo : node['cut'] == true ? _cutInfo : _nodeInfo[node['kind']] ?? _nodeInfo['wild']!;
               final b = node['cut'] == true ? null : _biomeInfo[node['biome']];
               final isBoss = node['kind'] == 'boss';
+              final foeName = isBoss ? '${boss['name']}' : node['kind'] == 'rival' && rival != null ? '${rival['name']}' : null;
               final noSurf = FactoryRun.nodeBlocked(run, node);
               return _menuButton(
-                '${options.length == 1 && !isBoss ? '${tr('SEGUIR')}: ' : ''}${node['biome'] == 'underwater' && route['biome'] != 'underwater' ? '🤿 ${tr('MERGULHAR')}: ' : ''}${b?.$2 ?? info.$1} ${isBoss ? '${boss['name']}' : tr(info.$2)}${b != null ? ' · ${tr(b.$1)}' : ''}',
+                '${options.length == 1 && foeName == null ? '${tr('SEGUIR')}: ' : ''}${node['biome'] == 'underwater' && route['biome'] != 'underwater' ? '🤿 ${tr('MERGULHAR')}: ' : ''}${b?.$2 ?? info.$1} ${foeName ?? tr(info.$2)}${b != null ? ' · ${tr(b.$1)}' : ''}',
                 widget.busy || (FactoryRun.isBattleNode(node) && down) || noSurf ? null : () => pick(k),
                 sub: noSurf ? tr('Precisa da MO Surf (3ª insígnia).') : isBoss ? '${_bossKind(boss['kind'])}${ambush ? '' : ' · ${cities.to}'}' : tr(info.$3),
                 key: ValueKey('map-node-$k'),
@@ -2221,6 +2238,12 @@ const _routeFlavor = {
 };
 
 /// O rival e os vilões antes da luta. Igual ao site.
+/// O rival de surpresa na rota (fora os da história). Igual ao site.
+const _rivalRaceLines = [
+  'Ei! Te alcancei! Vamos ver quem treinou mais desde a última vez!',
+  'Você de novo? Ótimo, eu estava te procurando!',
+  'Não vou deixar você chegar no próximo ginásio sem uma revanche!',
+];
 const _rivalLines = [
   'Achou que ia passar sem me enfrentar? Mostre o que aprendeu!',
   'Treinei sem parar desde a última vez. Agora é a minha vez de ganhar!',
