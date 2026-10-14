@@ -69,7 +69,9 @@ Future<(TurnBattle, List<int>)> factoryBattle(Json run) async {
       startBags: FactoryRun.bagsFor(run),
       healPct: true,
       capture: FactoryRun.captureFor(run, data),
-      startWeather: FactoryRun.weatherOf(run, scene).isNotEmpty ? FactoryRun.weatherOf(run, scene) : (place == 'wind' ? 'wind' : ''),
+      startWeather: FactoryRun.weatherOf(run, scene, FactoryRun.clockOf().season).isNotEmpty
+          ? FactoryRun.weatherOf(run, scene, FactoryRun.clockOf().season)
+          : (place == 'wind' ? 'wind' : ''),
       startField: place == 'wind' ? '' : place)
     ..ai = 'normal'
     ..seed = seed
@@ -827,6 +829,13 @@ const _biomeInfo = <String, (String, String, Color)>{
   'sewer': ('Esgoto', '🚰', Color(0xFF475569)),
   'icecave': ('Caverna de gelo', '🧊', Color(0xFF0891B2)),
   'desert': ('Deserto', '🏜️', Color(0xFFB45309)),
+  'ruins': ('Ruínas', '🏛️', Color(0xFFA16207)),
+  'flowers': ('Campo de flores', '🌸', Color(0xFFDB2777)),
+  'plant': ('Usina', '⚡', Color(0xFFCA8A04)),
+  'crystal': ('Mina de cristal', '💎', Color(0xFF7C3AED)),
+  'dunes': ('Deserto à noite', '🌙', Color(0xFF4338CA)),
+  'bamboo': ('Bambuzal', '🎋', Color(0xFF4D7C0F)),
+  'temple': ('Templo', '⛩️', Color(0xFFB91C1C)),
   // As bases das equipes vilãs (só capangas).
   'base-rocket': ('Base da Equipe Rocket', '🏴', Color(0xFFB91C1C)),
   'base-aqua': ('Base da Equipe Aqua', '🏴', Color(0xFF1D4ED8)),
@@ -946,6 +955,8 @@ const _villainPlans = {
   'aether': 'A Fundação Aether esconde segredos sobre as Ultra Beasts!',
   'star': 'A Equipe Star tem os próprios motivos... prove que merece saber!',
 };
+/// A estação e a hora (do relógio de quem joga): mudam os Pokémon que aparecem e o clima. Igual ao site.
+const _seasonLabel = {'spring': '🌸 Primavera', 'summer': '☀️ Verão', 'autumn': '🍂 Outono', 'winter': '❄️ Inverno'};
 const _legendInfo = ('🌟', 'Lendário', 'O lendário da região espera aqui. Dá para capturar.');
 const _ballHelp = {
   'poke-ball': 'Para capturar os selvagens (jogue na batalha)',
@@ -1742,10 +1753,11 @@ class _FactoryScreenState extends State<FactoryScreen> {
     final region = '${boss['region']}';
     final intro = run['boss']['step'] == 0 && pos == 0 ? FactoryRun.storyLine(data, region, 'intro') : '';
     final legend = FactoryRun.regionLegend(data, run);
+    final clock = FactoryRun.clockOf();
     final mission = run['mission'] as Map?;
     const end = FactoryRun.routeLength + 1;
     void pick(int k) {
-      final next = FactoryRun.chooseNode(run, data, k);
+      final next = FactoryRun.chooseNode(run, data, k, FactoryRun.clockOf());
       if (identical(next, run)) return;
       setState(() => saveFactory({...currentFactory(), 'run': next}));
       if (next['encounter'] != null) widget.onBattle(next);
@@ -1837,6 +1849,10 @@ class _FactoryScreenState extends State<FactoryScreen> {
               '📋 ${tr('Missão')}: ${_mission(mission)} (${mission['done']}/${mission['need']})${(mission['done'] as num) >= (mission['need'] as num) ? ' ✔' : ''}',
               key: const ValueKey('factory-mission'),
               style: const TextStyle(fontSize: 13)),
+        Text(
+            '${tr(_seasonLabel[clock.season] ?? '')} · ${clock.night ? '🌙 ${tr('Noite: mais Fantasma e Sombrio')}' : '🌤️ ${tr('Dia')}'}',
+            key: const ValueKey('factory-clock'),
+            style: TextStyle(fontSize: 11, color: _dlgSub)),
         _small('${tr('Chefe em {0}:').replaceAll('{0}', cities.to)} ${target['name']} · ${_bossKind(target['kind'])}', color: _dlgSub),
         if (down) _small(tr('O time todo está desmaiado: use um Revive ou desista.'), color: const Color(0xFFDC2626)),
       ],
@@ -2047,6 +2063,13 @@ const _routeFlavor = {
   'city': 'Ruas cheias de treinadores querendo um desafio.',
   'sky': 'Nuvens por todo lado: só os que voam passam por aqui.',
   'tower': 'Velas acesas e um frio estranho: dizem que a torre é assombrada.',
+  'ruins': 'Colunas quebradas e inscrições antigas: dizem que algo dorme aqui.',
+  'flowers': 'Um mar de flores balança com o vento; o pólen deixa tudo sonolento.',
+  'plant': 'Máquinas zumbem e faíscas pulam dos cabos: cuidado com os raios.',
+  'crystal': 'Cristais brilham nas paredes da mina; às vezes eles caem do teto.',
+  'dunes': 'A lua ilumina as dunas e a areia engole os passos.',
+  'bamboo': 'Os bambus estalam ao vento e a luz entra em faixas.',
+  'temple': 'Incenso e silêncio: o templo guarda Pokémon antigos.',
 };
 
 /// O rival e os vilões antes da luta. Igual ao site.

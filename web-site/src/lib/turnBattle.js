@@ -326,6 +326,7 @@ export const FIELD_NAMES = {
   // Os efeitos de lugar da Battle Factory.
   pocketdexdiamonds: 'Chuva de diamantes', pocketdexrockfall: 'Desmoronamento', pocketdexashes: 'Cinzas ardentes',
   pocketdexmiasma: 'Névoa tóxica', pocketdexchill: 'Frio cortante', pocketdexhaunt: 'Aura sombria', pocketdexcurrent: 'Correnteza',
+  pocketdexspores: 'Esporos', pocketdexquicksand: 'Areia movediça', pocketdexstorm: 'Tempestade', pocketdexaurora: 'Aurora',
 }
 
 /** O campo em textos curtos: [[o seu lado], [o do adversário], [o campo todo]]. */
@@ -1140,6 +1141,10 @@ export const LINES = {
   chillStart: 'Um frio cortante toma conta do lugar!',
   hauntStart: 'Uma aura sombria envolve o lugar!',
   currentStart: 'Uma correnteza forte passa pelo campo!',
+  sporesStart: 'Esporos sonolentos flutuam pelo campo!',
+  quicksandStart: 'O chão virou areia movediça!',
+  stormStart: 'Uma tempestade de raios cai sobre o campo!',
+  auroraStart: 'Uma aurora colorida brilha no céu!',
   placeHurt: ['{0} sofreu com {1}!', '{0} inimigo sofreu com {1}!'],
   placeHeal: ['{0} recuperou HP com {1}!', '{0} inimigo recuperou HP com {1}!'],
   hurtHail: ['{0} foi atingido pelo granizo!', '{0} inimigo foi atingido pelo granizo!'],

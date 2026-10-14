@@ -37,9 +37,9 @@ void main() {
     expect(run['team'][0]['nature'], 'Docile');
     expect(run['boss'], {'region': 11, 'step': 0});
     expect(run['encounter'], isNull);
-    expect(run['route'], {'floor': 1, 'biome': 'city', 'options': [{'kind': 'trainer'}]});
+    expect(run['route'], {'floor': 1, 'biome': 'grass', 'options': [{'kind': 'trainer'}]});
     expect(FactoryRun.chooseNode(run, data, 0)['encounter'], {
-      'kind': 'trainer', 'foes': [{'id': 287, 'level': 3, 'iv': 0, 'ev': 3}], 'trainerSeed': 500729487, 'scene': 'city',
+      'kind': 'trainer', 'foes': [{'id': 276, 'level': 3, 'iv': 0, 'ev': 3}], 'trainerSeed': 500729487, 'scene': 'grass',
     });
   });
 
@@ -174,7 +174,7 @@ void main() {
     expect(traded['item'], 'leftovers');
     expect(FactoryRun.escapeRope(base, data, hp: [0]), isNull);
     final escaped = FactoryRun.escapeRope({...base, 'floor': 7, 'bag': {...base['bag'] as Map, 'escape-rope': 1}}, data, hp: [0])!;
-    expect(escaped['route'], {'floor': 7, 'biome': 'grass', 'options': [{'kind': 'trainer'}]});
+    expect(escaped['route'], {'floor': 7, 'biome': 'flowers', 'options': [{'kind': 'trainer'}]});
     expect(FactoryRun.teamOf(escaped).first['hp'], FactoryRun.escapeHp);
     expect(escaped['bag']['escape-rope'], 0);
     final (f1, earned) = FactoryRun.progress(
@@ -522,5 +522,35 @@ void main() {
     expect(won['rematch'], isNull);
     expect(won['rematches'], 1);
     expect(won['boss'], fight['boss']);
+  });
+
+  test('lugares novos, noite e estações (pelo relógio) e os efeitos novos (igual ao site)', () {
+    for (final b in ['ruins', 'flowers', 'plant', 'crystal', 'dunes', 'bamboo', 'temple']) {
+      expect(FactoryRun.biomeIds, contains(b));
+      expect(data.species.values.any((s) => (s[6] as List).contains(b)), isTrue);
+    }
+    expect(FactoryRun.clockOf(DateTime(2026, 1, 10, 21)), (night: true, season: 'spring'));
+    expect(FactoryRun.clockOf(DateTime(2026, 4, 10, 12)), (night: false, season: 'winter'));
+    expect(FactoryRun.clockOf(DateTime(2026, 10, 13, 5)), (night: true, season: 'summer'));
+    final base = FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!;
+    final floors = [for (var k = 0; k < 40; k++) {...base, 'floor': k + 1}];
+    expect(floors.any((r) => FactoryRun.weatherOf(r, 'grass', 'winter') == 'snow'), isTrue);
+    expect(floors.any((r) => FactoryRun.weatherOf(r, 'grass', 'summer') == 'snow'), isFalse);
+    expect(floors.any((r) => FactoryRun.fieldOf(r, 'flowers') == 'spores'), isTrue);
+    int ghosts(bool night) {
+      var n = 0;
+      for (var seed = 1; seed <= 60; seed++) {
+        final run = {
+          ...FactoryRun.startRun(FactoryRun.empty(), data, 1, seed)!,
+          'floor': 20,
+          'route': {'floor': 20, 'biome': 'grass', 'options': [{'kind': 'trainer'}]},
+        };
+        final out = FactoryRun.chooseNode(run, data, 0, night ? (night: true, season: 'spring') : null);
+        n += (out['encounter']['foes'] as List).where((f) => (data.species[f['id']]![4] as List).any((t) => t == 'ghost' || t == 'dark')).length;
+      }
+      return n;
+    }
+
+    expect(ghosts(true), greaterThan(ghosts(false)));
   });
 }

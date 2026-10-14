@@ -22,7 +22,7 @@ import {
   buyShiny, forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade,
   tradeMon, skipTrade, TRADE_LEVELS, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, blindPick, bossScene,
   resolveChoice, regionLegend, leaderType, villainTeam,
-  cutPath, nodeBlocked, hasHm, DARK_BIOMES, dexOf, dexRewardFor, leaveDaycare, takeDaycare, DAYCARE_EGG,
+  cutPath, nodeBlocked, hasHm, clockOf, DARK_BIOMES, dexOf, dexRewardFor, leaveDaycare, takeDaycare, DAYCARE_EGG,
 } from '../lib/factoryRun'
 import { t } from '../lib/i18n'
 import { prettyName } from '../lib/pokemon'
@@ -542,6 +542,13 @@ const BIOME_INFO = {
   sewer: { label: 'Esgoto', icon: '🚰', color: '#475569' },
   icecave: { label: 'Caverna de gelo', icon: '🧊', color: '#0891b2' },
   desert: { label: 'Deserto', icon: '🏜️', color: '#b45309' },
+  ruins: { label: 'Ruínas', icon: '🏛️', color: '#a16207' },
+  flowers: { label: 'Campo de flores', icon: '🌸', color: '#db2777' },
+  plant: { label: 'Usina', icon: '⚡', color: '#ca8a04' },
+  crystal: { label: 'Mina de cristal', icon: '💎', color: '#7c3aed' },
+  dunes: { label: 'Deserto à noite', icon: '🌙', color: '#4338ca' },
+  bamboo: { label: 'Bambuzal', icon: '🎋', color: '#4d7c0f' },
+  temple: { label: 'Templo', icon: '⛩️', color: '#b91c1c' },
   // As bases das equipes vilãs (só capangas).
   'base-rocket': { label: 'Base da Equipe Rocket', icon: '🏴', color: '#b91c1c' },
   'base-aqua': { label: 'Base da Equipe Aqua', icon: '🏴', color: '#1d4ed8' },
@@ -660,6 +667,8 @@ const VILLAIN_PLANS = {
   aether: 'A Fundação Aether esconde segredos sobre as Ultra Beasts!',
   star: 'A Equipe Star tem os próprios motivos... prove que merece saber!',
 }
+/** A estação e a hora (do relógio de quem joga): mudam os Pokémon que aparecem e o clima. */
+const SEASON_LABEL = { spring: '🌸 Primavera', summer: '☀️ Verão', autumn: '🍂 Outono', winter: '❄️ Inverno' }
 const LEGEND_INFO = { icon: '🌟', label: 'Lendário', help: 'O lendário da região espera aqui. Dá para capturar.' }
 
 /** O passo da tela depois do andar: o que ainda falta ver ou escolher (ou nada: o mapa). */
@@ -755,6 +764,13 @@ const ROUTE_FLAVOR = {
   city: 'Ruas cheias de treinadores querendo um desafio.',
   sky: 'Nuvens por todo lado: só os que voam passam por aqui.',
   tower: 'Velas acesas e um frio estranho: dizem que a torre é assombrada.',
+  ruins: 'Colunas quebradas e inscrições antigas: dizem que algo dorme aqui.',
+  flowers: 'Um mar de flores balança com o vento; o pólen deixa tudo sonolento.',
+  plant: 'Máquinas zumbem e faíscas pulam dos cabos: cuidado com os raios.',
+  crystal: 'Cristais brilham nas paredes da mina; às vezes eles caem do teto.',
+  dunes: 'A lua ilumina as dunas e a areia engole os passos.',
+  bamboo: 'Os bambus estalam ao vento e a luz entra em faixas.',
+  temple: 'Incenso e silêncio: o templo guarda Pokémon antigos.',
 }
 /** O rival e os vilões antes da luta. */
 const RIVAL_LINES = [
@@ -1208,8 +1224,9 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     const coach = trainers?.find((x) => x.id === boss.trainer) ?? null
     const intro = run.boss.step === 0 && pos === 0 ? storyLine(data, boss.region, 'intro') : ''
     const legend = regionLegend(data, run)
+    const clock = clockOf()
     const pickNode = (index) => {
-      const next = chooseNode(run, data, index)
+      const next = chooseNode(run, data, index, clockOf())
       if (next === run) return
       saveFactory({ ...factoryOf(useStore.getState().league), run: next })
       if (next.encounter) onBattle(next)
@@ -1292,6 +1309,9 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
             📋 {t('Missão')}: {missionText(run.mission)} ({run.mission.done}/{run.mission.need}){run.mission.done >= run.mission.need ? ' ✔' : ''}
           </p>
         )}
+        <p className="dlg-sub text-xs" data-testid="factory-clock">
+          {t(SEASON_LABEL[clock.season])} · {clock.night ? `🌙 ${t('Noite: mais Fantasma e Sombrio')}` : `🌤️ ${t('Dia')}`}
+        </p>
         <p className="dlg-sub text-sm">{t('Chefe em {0}:').replace('{0}', to)} <b data-no-translate>{target.name}</b> · {bossKindLabel(target.kind)}</p>
         {down && <p className="text-sm text-red-600">{t('O time todo está desmaiado: use um Revive ou desista.')}</p>}
       </>

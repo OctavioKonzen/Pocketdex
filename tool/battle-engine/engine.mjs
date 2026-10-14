@@ -91,6 +91,12 @@ const PLACE_EFFECTS = {
   chill: {name: 'o frio cortante', hurt: true, types: ['Ice']},
   haunt: {name: 'a aura sombria', hurt: false, types: ['Ghost', 'Dark']},
   current: {name: 'a correnteza', hurt: false, types: ['Water']},
+  // Os efeitos com chance: esporos (adormece quem não é de Grama), areia movediça (−Velocidade de quem não voa nem é de
+  // Terra), tempestade (raio em quem não é Elétrico) e aurora (cura os de Gelo).
+  spores: {name: 'os esporos', mode: 'sleep', chance: 8, types: ['Grass']},
+  quicksand: {name: 'a areia movediça', mode: 'slow', chance: 3, types: ['Ground', 'Flying']},
+  storm: {name: 'a tempestade', hurt: true, chance: 4, power: 8, types: ['Electric', 'Ground']},
+  aurora: {name: 'a aurora', hurt: false, types: ['Ice']},
 };
 const placeEffects = {};
 function placeEffect(key, dex) {
@@ -109,9 +115,18 @@ function makePlaceEffect(key) {
     onResidual(pokemon) {
       if (!pokemon.hp || pokemon.fainted) return;
       const has = pokemon.getTypes().some(t => def.types.includes(t));
-      if (def.hurt && !has) {
+      // Os de chance: só às vezes (1 em def.chance), e só em quem não é dos tipos protegidos.
+      if (def.chance && (has || !this.randomChance(1, def.chance))) return;
+      if (def.mode === 'sleep') {
+        if (!pokemon.status) pokemon.trySetStatus('slp', null, placeEffects[key]);
+      } else if (def.mode === 'slow') {
+        if (!pokemon.hasAbility('levitate')) {
+          this.add('pocketdexplace', pokemon, key, 'hurt');
+          this.boost({spe: -1}, pokemon, null, placeEffects[key]);
+        }
+      } else if (def.hurt && !has) {
         this.add('pocketdexplace', pokemon, key, 'hurt');
-        this.damage(pokemon.baseMaxhp / 16, pokemon, null, placeEffects[key]);
+        this.damage(pokemon.baseMaxhp / (def.power ?? 16), pokemon, null, placeEffects[key]);
       } else if (!def.hurt && has && pokemon.hp < pokemon.maxhp) {
         this.add('pocketdexplace', pokemon, key, 'heal');
         this.heal(pokemon.baseMaxhp / 16, pokemon, null, placeEffects[key]);

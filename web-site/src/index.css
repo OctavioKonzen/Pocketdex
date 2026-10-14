@@ -447,6 +447,17 @@ body {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='40'%3E%3Cg stroke='%23bae6fd' stroke-opacity='.6' stroke-width='1.2' fill='none'%3E%3Cpath d='M2 10q10-6 20 0t20 0'/%3E%3Cpath d='M46 30q10-6 20 0t20 0'/%3E%3C/g%3E%3C/svg%3E");
   background-size: 90px 40px; animation: place-current 1.2s linear infinite;
 }
+.place-spores {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='70' height='70'%3E%3Cg fill='%23d9f99d' fill-opacity='.8'%3E%3Ccircle cx='10' cy='12' r='2'/%3E%3Ccircle cx='44' cy='30' r='1.6'/%3E%3Ccircle cx='26' cy='56' r='2.2'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 70px 70px; animation: place-rise 3s linear infinite;
+}
+.place-quicksand { background: radial-gradient(ellipse at 50% 85%, rgb(180 140 80 / 0.45), transparent 55%); animation: place-drift 2.5s ease-in-out infinite; }
+.place-storm { background: linear-gradient(rgb(30 30 60 / 0.25), rgb(30 30 60 / 0.1)); animation: place-flash 3s steps(1) infinite; }
+.place-aurora { background: linear-gradient(170deg, rgb(52 211 153 / 0.3), transparent 30%, rgb(129 140 248 / 0.25) 45%, transparent 60%); background-size: 200% 100%; animation: place-aurora 6s ease-in-out infinite; }
+.night-tint { background: rgb(16 24 72 / 0.35); mix-blend-mode: multiply; pointer-events: none; }
+@keyframes place-rise { to { background-position: 20px -140px; } }
+@keyframes place-flash { 0%, 100% { background-color: transparent; } 88% { background-color: rgb(255 255 220 / 0.55); } 91% { background-color: transparent; } }
+@keyframes place-aurora { 50% { background-position: 100% 0; } }
 @keyframes place-fall { to { background-position: 0 120px; } }
 @keyframes place-ash { to { background-position: 30px 120px, 0 0; } }
 @keyframes place-drift { 50% { transform: translateX(4%); opacity: 0.7; } }

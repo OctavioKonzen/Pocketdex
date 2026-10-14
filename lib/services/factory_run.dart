@@ -542,6 +542,13 @@ class FactoryRun {
     'snow': ['ice', 'water'],
     'tower': ['ghost', 'psychic', 'dark'],
     'sky': ['flying', 'dragon', 'fairy'],
+    'ruins': ['rock', 'psychic', 'ground', 'ghost'],
+    'flowers': ['fairy', 'grass', 'bug', 'normal'],
+    'plant': ['electric', 'steel'],
+    'crystal': ['rock', 'steel', 'fairy', 'psychic'],
+    'dunes': ['ground', 'dark', 'ghost', 'bug'],
+    'bamboo': ['grass', 'fighting', 'bug', 'dark'],
+    'temple': ['psychic', 'fighting', 'dragon', 'ghost'],
   };
   static final biomeIds = biomes.keys.toList();
 
@@ -550,11 +557,11 @@ class FactoryRun {
 
   /// Os lugares possíveis da rota até o ginásio de cada tipo (um deles por rota).
   static const _typeBiomes = {
-    'normal': ['grass', 'city'], 'fire': ['volcano', 'desert'], 'water': ['water', 'beach'], 'grass': ['forest', 'grass', 'swamp'],
-    'electric': ['city', 'sewer'], 'ice': ['snow', 'icecave'], 'fighting': ['mountain', 'cave'], 'poison': ['swamp', 'sewer', 'forest'],
-    'ground': ['desert', 'mountain', 'cave'], 'flying': ['sky', 'grass', 'beach'], 'psychic': ['tower', 'city'], 'bug': ['forest', 'grass'],
-    'rock': ['cave', 'mountain', 'desert'], 'ghost': ['tower'], 'dragon': ['sky', 'mountain'], 'dark': ['cave', 'tower', 'sewer'],
-    'steel': ['mountain', 'city', 'cave'], 'fairy': ['sky', 'forest'],
+    'normal': ['grass', 'city', 'flowers'], 'fire': ['volcano', 'desert'], 'water': ['water', 'beach'], 'grass': ['forest', 'grass', 'swamp', 'bamboo', 'flowers'],
+    'electric': ['city', 'sewer', 'plant'], 'ice': ['snow', 'icecave'], 'fighting': ['mountain', 'cave', 'bamboo', 'temple'], 'poison': ['swamp', 'sewer', 'forest'],
+    'ground': ['desert', 'mountain', 'cave', 'dunes'], 'flying': ['sky', 'grass', 'beach'], 'psychic': ['tower', 'city', 'temple', 'ruins'], 'bug': ['forest', 'grass', 'flowers'],
+    'rock': ['cave', 'mountain', 'desert', 'ruins', 'crystal'], 'ghost': ['tower', 'ruins', 'dunes'], 'dragon': ['sky', 'mountain', 'temple'], 'dark': ['cave', 'tower', 'sewer', 'dunes'],
+    'steel': ['mountain', 'city', 'cave', 'plant', 'crystal'], 'fairy': ['sky', 'forest', 'flowers'],
   };
 
   /// Na Dusk Ball (3×): os lugares escuros.
@@ -862,7 +869,7 @@ class FactoryRun {
   }
 
   /// Escolhe o caminho: batalha (o encontro do andar) ou, sem batalha, Poké Mart, Centro Pokémon e eventos. Igual ao site.
-  static Json chooseNode(Json run, FactoryData data, int index) {
+  static Json chooseNode(Json run, FactoryData data, int index, [({bool night, String season})? clock]) {
     final options = (run['route']?['options'] as List?) ?? const [];
     if (index < 0 || index >= options.length || run['encounter'] != null || run['pending'] != null) return run;
     final node = Map<String, dynamic>.from(options[index] as Map);
@@ -876,8 +883,9 @@ class FactoryRun {
       final city = node['kind'] == 'boss' && atCity(data, run);
       final scene = (node['biome'] as String?) ?? (city ? (bossOf(data, run)['kind'] == 'gym' ? 'city' : 'tower') : routeBiomeNow);
       out['scene'] = scene;
+      final when = clock == null ? const <String, dynamic>{} : {'night': clock.night, 'season': clock.season};
       out['encounter'] = {
-        ...encounterFor(data, floor, rand, node['kind'] == 'boss' ? bossOf(data, out) : null, node['kind'] == 'wildboss', {...node, 'biome': scene, 'shiny': run['shinyRate'] ?? 1}),
+        ...encounterFor(data, floor, rand, node['kind'] == 'boss' ? bossOf(data, out) : null, node['kind'] == 'wildboss', {...node, 'biome': scene, 'shiny': run['shinyRate'] ?? 1, ...when}),
         'scene': scene,
       };
       // A revanche: o Campeão vencido, com o time do andar de agora (e mais forte).
@@ -886,7 +894,7 @@ class FactoryRun {
       }
       // Dupla de treinadores: dois treinadores juntos (os dois times na mesma batalha).
       if (node['kind'] == 'trainer' && !scene.startsWith('base-') && rand() < doubleChance) {
-        final second = encounterFor(data, floor, rand, null, false, {...node, 'biome': scene, 'shiny': run['shinyRate'] ?? 1});
+        final second = encounterFor(data, floor, rand, null, false, {...node, 'biome': scene, 'shiny': run['shinyRate'] ?? 1, ...when});
         out['encounter'] = {
           ...out['encounter'] as Map<String, dynamic>,
           'foes': [...out['encounter']['foes'] as List, ...second['foes'] as List],
@@ -1028,7 +1036,10 @@ class FactoryRun {
     final budget = speciesBudget(floor);
     // A chance de cada espécie segue a raridade dela (a taxa de captura); os treinadores com menos diferença (raiz).
     // Os tipos do lugar aparecem bem mais (routeTypeWeight; nos treinadores, routeTypeTrainer).
-    final types = biomes[node?['biome']];
+    // À noite, mais Fantasma e Sombrio; em cada estação, os tipos dela (node.night, node.season: o relógio de quem joga).
+    final types = biomes[node?['biome']] == null
+        ? null
+        : [...biomes[node!['biome']]!, if (node['night'] == true) ...nightTypes, ...?seasonTypes[node['season']]];
     bool local(int id) => types != null && ((data.species[id]?.elementAtOrNull(4) as List?) ?? const []).any(types.contains);
     int pick(List<({int id, int bst, int rarity, int rate})> pool, [bool trainer = false]) {
       final fit = [for (final p in pool) if (p.bst <= budget && p.bst >= math.min(budget, 600) - 160) p];
@@ -1524,11 +1535,28 @@ class FactoryRun {
     'beach': [('sun', 0.35), ('rain', 0.15)], 'water': [('rain', 0.35), ('sun', 0.15)], 'swamp': [('rain', 0.45)],
     'grass': [('sun', 0.15), ('rain', 0.15)], 'forest': [('rain', 0.2), ('sun', 0.1)], 'mountain': [('sand', 0.15), ('snow', 0.15), ('sun', 0.1)],
     'sky': [('sun', 0.2), ('rain', 0.2)], 'city': [('rain', 0.12), ('sun', 0.12)],
+    'ruins': [('sand', 0.2), ('sun', 0.15)], 'flowers': [('sun', 0.25), ('rain', 0.1)], 'dunes': [('sand', 0.3)], 'bamboo': [('rain', 0.2), ('sun', 0.1)],
   };
 
+  /// As estações (como no Black & White: mudam a cada mês) e a noite (pelo relógio de verdade). Igual ao site.
+  static const seasons = ['spring', 'summer', 'autumn', 'winter'];
+
+  /// Os tipos que aparecem mais em cada estação e à noite.
+  static const seasonTypes = {'spring': ['grass', 'fairy'], 'summer': ['fire', 'water'], 'autumn': ['bug', 'ground'], 'winter': ['ice']};
+  static const nightTypes = ['ghost', 'dark'];
+
+  /// No inverno, neva nos lugares abertos.
+  static const winterSnow = ['grass', 'forest', 'flowers', 'bamboo', 'mountain', 'city', 'ruins', 'beach'];
+
+  /// A hora e a estação de agora: noite das 19h às 6h; a estação pelo mês (jan primavera, fev verão, mar outono, abr inverno...).
+  static ({bool night, String season}) clockOf([DateTime? date]) {
+    final now = date ?? DateTime.now();
+    return (night: now.hour >= 19 || now.hour < 6, season: seasons[(now.month - 1) % 4]);
+  }
+
   /// O clima com que a batalha do andar começa ('' sem clima): pelo lugar, sempre o mesmo para a mesma corrida e andar.
-  static String weatherOf(Json run, String scene) {
-    final table = sceneWeather[scene];
+  static String weatherOf(Json run, String scene, [String? season]) {
+    final table = season == 'winter' && winterSnow.contains(scene) ? [('snow', 0.35), ...?sceneWeather[scene]] : sceneWeather[scene];
     if (table == null) return '';
     final mixed = (_int(run['seed'] ?? 0) ^ ((_int(run['floor']) * 40503) & 0xFFFFFFFF)) & 0xFFFFFFFF;
     var roll = ((mixed * 2246822519) & 0xFFFFFFFF) / 4294967296;
@@ -1543,8 +1571,10 @@ class FactoryRun {
   /// ventos fortes (Delta Stream). Os ginásios têm o terreno do tipo. Igual ao site.
   static const sceneField = <String, List<(String, double)>>{
     'cave': [('diamonds', 0.3)], 'mountain': [('rockfall', 0.25)], 'volcano': [('ashes', 0.4)], 'swamp': [('miasma', 0.35)], 'sewer': [('miasma', 0.25)],
-    'icecave': [('chill', 0.35)], 'snow': [('chill', 0.2)], 'tower': [('haunt', 0.35), ('psychic', 0.15)], 'underwater': [('current', 0.4)], 'water': [('current', 0.15)],
-    'grass': [('grassy', 0.2)], 'forest': [('grassy', 0.3), ('misty', 0.1)], 'city': [('electric', 0.25)], 'beach': [('misty', 0.1)], 'sky': [('wind', 0.3)],
+    'icecave': [('chill', 0.35), ('aurora', 0.1)], 'snow': [('chill', 0.2), ('aurora', 0.2)], 'tower': [('haunt', 0.35), ('psychic', 0.15)], 'underwater': [('current', 0.4)], 'water': [('current', 0.15)],
+    'grass': [('grassy', 0.2)], 'forest': [('grassy', 0.3), ('misty', 0.1)], 'city': [('electric', 0.25)], 'beach': [('misty', 0.1)], 'sky': [('wind', 0.3), ('storm', 0.15)],
+    'desert': [('quicksand', 0.2)], 'ruins': [('psychic', 0.2), ('haunt', 0.15)], 'flowers': [('spores', 0.3), ('misty', 0.15)], 'plant': [('storm', 0.35), ('electric', 0.25)],
+    'crystal': [('diamonds', 0.4)], 'dunes': [('quicksand', 0.35), ('haunt', 0.1)], 'bamboo': [('spores', 0.2), ('grassy', 0.2)], 'temple': [('psychic', 0.3)],
     'gym-grass': [('grassy', 0.6)], 'gym-electric': [('electric', 0.6)], 'gym-psychic': [('psychic', 0.6)], 'gym-fairy': [('misty', 0.6)], 'gym-ghost': [('haunt', 0.6)],
     'gym-rock': [('rockfall', 0.4)], 'gym-fire': [('ashes', 0.4)], 'gym-poison': [('miasma', 0.4)], 'gym-ice': [('chill', 0.4)], 'gym-water': [('current', 0.4)],
   };

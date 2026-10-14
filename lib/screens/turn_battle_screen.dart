@@ -2070,6 +2070,32 @@ class _WeatherPainter extends CustomPainter {
           canvas.drawLine(Offset(x, y), Offset(x + w * 0.05, y + (place == 'current' ? sin(t * 3 + i) * 3 : 0)), paint);
         }
         return;
+      case 'spores':
+        // Esporos subindo devagar.
+        for (var i = 0; i < 24; i++) {
+          final y = (1 - (_hash(i, 1) + t * 0.15) % 1.0) * h;
+          final x = (_hash(i, 2) + 0.03 * sin(t + i)) * w;
+          canvas.drawCircle(Offset(x, y), 1.4 + 1.2 * _hash(i, 3), Paint()..color = const Color(0xCCD9F99D));
+        }
+        return;
+      case 'quicksand':
+        final c = Offset(w * 0.5, h * 0.85);
+        canvas.drawOval(Rect.fromCenter(center: c, width: w * (0.9 + 0.05 * sin(t * 2)), height: h * 0.3),
+            Paint()..shader = const RadialGradient(colors: [Color(0x73B48C50), Colors.transparent]).createShader(Rect.fromCircle(center: c, radius: w * 0.5)));
+        return;
+      case 'storm':
+        canvas.drawRect(Offset.zero & size, Paint()..color = const Color(0x261E1E3C));
+        // Um raio de vez em quando (a cada 3 s).
+        if (t % 3 > 2.65) canvas.drawRect(Offset.zero & size, Paint()..color = const Color(0x8CFFFFDC));
+        return;
+      case 'aurora':
+        final rect = Offset.zero & size;
+        canvas.drawRect(rect, Paint()..shader = LinearGradient(
+              begin: Alignment(-1 + sin(t * 0.5), -1),
+              end: Alignment(1 + sin(t * 0.5), 0.2),
+              colors: const [Color(0x4D34D399), Colors.transparent, Color(0x40818CF8), Colors.transparent],
+              stops: const [0, 0.3, 0.45, 0.6]).createShader(rect));
+        return;
       case 'diamonds' || 'rockfall' || 'ashes':
         if (place == 'ashes') canvas.drawRect(Offset.zero & size, Paint()..color = const Color(0x26783214));
         for (var i = 0; i < 36; i++) {
