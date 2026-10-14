@@ -21,7 +21,7 @@ const gymTypes = ['normal', 'fire', 'water', 'grass', 'electric', 'ice', 'fighti
 const championRegions = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos', 'alola', 'galar', 'paldea'];
 const villainBases = ['rocket', 'aqua', 'magma', 'galactic', 'plasma', 'flare', 'skull', 'aether', 'star'];
 final _indoor = [for (final t in gymTypes) 'gym-$t', for (final r in championRegions) 'champion-$r', for (final b in villainBases) 'base-$b'];
-final sceneImages = ['grass', 'forest', 'water', 'beach', 'underwater', 'swamp', 'sewer', 'cave', 'icecave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky', 'tower', 'gym', 'league', 'center', 'ruins', 'flowers', 'plant', 'crystal', 'dunes', 'bamboo', 'temple', ..._indoor];
+final sceneImages = ['grass', 'forest', 'water', 'beach', 'underwater', 'swamp', 'sewer', 'cave', 'icecave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky', 'tower', 'gym', 'league', 'center', 'ruins', 'flowers', 'plant', 'crystal', 'dunes', 'bamboo', 'temple', 'lavacave', 'poisoncave', 'seacave', ..._indoor];
 String _usable(String scene) => sceneImages.contains(scene) || BattleScenePainter.colors.containsKey(scene) ? scene : 'grass';
 
 /// De onde vêm as versões do clima (o site; não vão no APK).
@@ -29,7 +29,7 @@ const weatherSite = 'https://octaviokonzen.github.io/Pocketdex';
 
 /// O clima na imagem (o granizo usa a de neve).
 const _weatherImage = {'sun': 'sun', 'rain': 'rain', 'sand': 'sand', 'hail': 'snow', 'snow': 'snow'};
-const _outdoor = ['grass', 'forest', 'water', 'beach', 'swamp', 'cave', 'icecave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky', 'ruins', 'flowers', 'dunes', 'bamboo'];
+const _outdoor = ['grass', 'forest', 'water', 'beach', 'swamp', 'cave', 'icecave', 'lavacave', 'poisoncave', 'seacave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky', 'ruins', 'flowers', 'dunes', 'bamboo'];
 /// O cenário da batalha: o do lugar (a rota da Battle Factory, o ginásio, a Liga) ou, numa batalha comum, um sorteado. Igual ao site.
 String battleScene(String scene, int? seed) => _usable(scene.isNotEmpty ? scene : _outdoor[(seed ?? 0).abs() % _outdoor.length]);
 
@@ -49,7 +49,7 @@ double battleScale(num? height) => sqrt((height ?? 10) / 20).clamp(0.3, 1.0).toD
 
 /// Onde ficam os pés do adversário em cada lugar (fração da altura do campo): um pouco para dentro do chão de cada cenário
 /// (tool/battle_backgrounds.py, foe_feet), para a base dele ficar no chão e não voando. Igual ao site.
-const groundFeet = <String, double>{'grass': 0.487, 'forest': 0.506, 'water': 0.487, 'beach': 0.508, 'underwater': 0.527, 'swamp': 0.487, 'sewer': 0.54, 'cave': 0.519, 'icecave': 0.519, 'mountain': 0.492, 'desert': 0.495, 'volcano': 0.5, 'snow': 0.487, 'city': 0.548, 'sky': 0.45, 'tower': 0.527, 'gym': 0.527, 'league': 0.527, 'center': 0.527, 'ruins': 0.497, 'flowers': 0.487, 'plant': 0.532, 'crystal': 0.522, 'dunes': 0.497, 'bamboo': 0.527, 'temple': 0.54};
+const groundFeet = <String, double>{'grass': 0.487, 'forest': 0.506, 'water': 0.487, 'beach': 0.508, 'underwater': 0.527, 'swamp': 0.487, 'sewer': 0.54, 'cave': 0.519, 'icecave': 0.519, 'mountain': 0.492, 'desert': 0.495, 'volcano': 0.5, 'snow': 0.487, 'city': 0.548, 'sky': 0.45, 'tower': 0.527, 'gym': 0.527, 'league': 0.527, 'center': 0.527, 'ruins': 0.497, 'flowers': 0.487, 'plant': 0.532, 'crystal': 0.522, 'dunes': 0.497, 'bamboo': 0.527, 'temple': 0.54, 'lavacave': 0.519, 'poisoncave': 0.519, 'seacave': 0.519};
 
 /// A distância do pé do adversário até a borda de baixo do campo (fração), para o "bottom" da caixa dele.
 double foeBottom(String scene) => 1 - (groundFeet[scene] ?? (_indoor.contains(scene) ? 0.527 : 0.45));

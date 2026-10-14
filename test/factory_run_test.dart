@@ -43,13 +43,13 @@ void main() {
     });
   });
 
-  test('40 andares iguais ao site (test/fixtures/factory_trace.json): mapa, chefes, captura, carta e loja', () {
+  test('80 andares iguais ao site (test/fixtures/factory_trace.json): mapa, chefes, captura, carta e loja', () {
     final expected = jsonDecode(File('test/fixtures/factory_trace.json').readAsStringSync()) as List;
     var run = FactoryRun.startRun(FactoryRun.empty(), data, 7, 2024)!;
     final out = [];
     // 1.0 no Dart é 1 no site.
     Object? n(Object? v) => v is double && v == v.roundToDouble() ? v.toInt() : v;
-    for (var i = 0; i < 40; i++) {
+    for (var i = 0; i < 80; i++) {
       final options = [for (final o in FactoryRun.routeOf(run)!['options'] as List) Map<String, dynamic>.from(o as Map)];
       // Na cidade: compra no Poké Mart dela antes de escolher (o ginásio ou o lugar perto dela).
       if (FactoryRun.routeOf(run)!['town'] == true) {
@@ -188,7 +188,7 @@ void main() {
     expect(traded['item'], 'leftovers');
     expect(FactoryRun.escapeRope(base, data, hp: [0]), isNull);
     final escaped = FactoryRun.escapeRope({...base, 'floor': 7, 'bag': {...base['bag'] as Map, 'escape-rope': 1}}, data, hp: [0])!;
-    expect(escaped['route'], {'floor': 7, 'biome': 'flowers', 'options': [{'kind': 'trainer'}]});
+    expect(escaped['route'], {'floor': 7, 'biome': 'grass', 'options': [{'kind': 'trainer'}]});
     expect(FactoryRun.teamOf(escaped).first['hp'], FactoryRun.escapeHp);
     expect(escaped['bag']['escape-rope'], 0);
     final (f1, earned) = FactoryRun.progress(
@@ -362,14 +362,17 @@ void main() {
 
     for (var pos = 0; pos < FactoryRun.routeLength; pos++) {
       final options = FactoryRun.routeOptions(on(11 + pos, 1, 11), data, rand)['options'] as List;
-      expect(options, hasLength(FactoryRun.forks.contains(pos) ? 3 : 1));
+      // Na última bifurcação, a entrada do lugar no caminho (Viridian Forest, a caminho de Pewter City).
+      expect(options, hasLength(FactoryRun.forks.contains(pos) ? (pos == FactoryRun.forks[2] ? 4 : 3) : 1));
       expect(options.any((o) => FactoryRun.isBattleNode(o as Map)), isTrue);
     }
-    expect(FactoryRun.routeOptions(on(10, 1), data, rand)['options'], [{'kind': 'boss'}]);
+    // O 10º andar da rota é o chefe dela; o líder fica no último andar da cidade.
+    expect(FactoryRun.routeOptions(on(FactoryRun.routeLength, 1), data, rand)['options'], [{'kind': 'dboss'}]);
+    expect(FactoryRun.routeOptions(on(1 + FactoryRun.cityBoss, 1), data, rand)['options'], [{'kind': 'boss'}]);
     // O rival: em qualquer andar da rota; no último, sempre. Liga: a Elite Four e o Campeão em sequência.
     expect(FactoryRun.routeOptions(on(3, 0), data, seq([0.1, 0.5]))['options'], [{'kind': 'boss'}]);
     expect((FactoryRun.routeOptions(on(1, 0), data, seq([0.9, 0.5]))['options'] as List).first['kind'], isNot('boss'));
-    expect(FactoryRun.routeOptions(on(9, 0), data, seq([0.9, 0.5]))['options'], [{'kind': 'boss'}]);
+    expect(FactoryRun.routeOptions(on(FactoryRun.cityBoss, 0), data, seq([0.9, 0.5]))['options'], [{'kind': 'boss'}]);
     final first = leaders.indexWhere((l) => l['kind'] == 'elite');
     expect((FactoryRun.routeOptions(on(5, first), data, seq([0.1, 0.5]))['options'] as List).first['kind'], isNot('boss'));
     for (var step = first + 1; step < leaders.length; step++) {
@@ -626,30 +629,98 @@ void main() {
     expect(FactoryRun.isDoubleBattle(run(FactoryRun.doubleFloor, true, 0)), isFalse);
   });
 
-  test('cidade: o ginásio e um lugar com batalha perto (10 andares e um chefe; depois volta para a cidade); Poké Mart e Centro (igual ao site)', () {
+  test('rota (10 andares, chefe no último) → cidade (10 andares, líder no último); só lugares de cidade, dá para entrar em mais de um (igual ao site)', () {
     final red = data.bosses.indexWhere((b) => b['game'] == 'Red/Blue');
-    var run = FactoryRun.nextFloor({...FactoryRun.startRun(FactoryRun.empty(), data, 4, 3)!, 'floor': 10, 'leg': 1, 'boss': {'region': red, 'step': 1}}, data);
-    final route = FactoryRun.routeOf(run)!;
-    expect(route['town'], isTrue);
-    final place = '${run['town']['place']}';
-    expect(route['options'], [
-      {'kind': 'boss'},
-      {'kind': 'dungeon', 'place': place, 'scene': FactoryRun.dungeons[place]!.scene},
-    ]);
+    final erika = (data.bosses[red]['leaders'] as List).indexWhere((l) => l['name'] == 'Erika');
+    final start = {...FactoryRun.startRun(FactoryRun.empty(), data, 4, 3)!, 'leg': 1, 'boss': {'region': red, 'step': erika}};
+    const r = FactoryRun.routeLength, f = FactoryRun.forks;
+    var run = FactoryRun.nextFloor({...start, 'floor': 1 + r}, data);
+    expect(FactoryRun.townHub(data, run), isTrue);
+    expect(FactoryRun.routeOf(run)!['town'], isTrue);
+    expect(FactoryRun.routeOf(run)!['biome'], 'city');
     expect(FactoryRun.pendingOf(FactoryRun.townShop(run))!['shop'], run['town']['shop']);
     expect(FactoryRun.teamOf(FactoryRun.townCenter({...run, 'team': [for (final m in FactoryRun.teamOf(run)) {...m, 'hp': 0}]})).every((m) => m['hp'] == 1), isTrue);
-    // Entra no lugar: os andares dele (sem o líder), o chefe no último e a volta para a cidade.
-    run = FactoryRun.chooseNode(run, data, 1);
-    expect(run['dungeon']['place'], place);
-    expect(FactoryRun.atCity(data, run), isFalse);
-    expect(FactoryRun.routeOf(run)!['options'].any((o) => o['kind'] == 'boss'), isFalse);
-    run = FactoryRun.nextFloor({...run, 'floor': (run['floor'] as num).toInt() + FactoryRun.dungeonLength - 1}, data);
+    run = FactoryRun.nextFloor({...run, 'floor': 1 + r + f[0]}, data);
+    List places(Json run) => [for (final o in FactoryRun.routeOf(run)!['options'] as List) if (o['kind'] == 'dungeon') o['place']];
+    expect(places(run), ['rocket-game-corner', 'rocket-hideout', 'celadon-department-store']);
+    final options = FactoryRun.routeOf(run)!['options'] as List;
+    run = FactoryRun.chooseNode(run, data, options.indexWhere((o) => o['place'] == 'rocket-hideout'));
+    expect(FactoryRun.townHub(data, run), isFalse);
+    expect(FactoryRun.routeOf(run)!['biome'], 'base-rocket');
+    run = FactoryRun.nextFloor({...run, 'floor': (run['floor'] as int) + FactoryRun.dungeonLength - 1}, data);
     expect(FactoryRun.routeOf(run)!['options'], [{'kind': 'dboss'}]);
-    run = FactoryRun.chooseNode(run, data, 0);
-    expect(run['encounter']['kind'], 'dboss');
-    run = FactoryRun.nextFloor(FactoryRun.winFloor(run, data), data);
-    expect(run['dungeon'], isNull);
+    run = FactoryRun.nextFloor(FactoryRun.winFloor(FactoryRun.chooseNode(run, data, 0), data), data);
+    expect(FactoryRun.routePos(run), r + f[0]);
+    expect(FactoryRun.routeOf(run)!['options'], hasLength(1));
+    run = FactoryRun.nextFloor({...run, 'floor': (run['floor'] as int) + f[1] - f[0]}, data);
+    expect(places(run), ['rocket-game-corner', 'celadon-department-store']);
+    run = FactoryRun.nextFloor({...run, 'floor': (run['floor'] as int) + FactoryRun.cityBoss - r - f[1]}, data);
+    expect(FactoryRun.routePos(run), FactoryRun.cityBoss);
     expect(FactoryRun.routeOf(run)!['options'], [{'kind': 'boss'}]);
+    final won = FactoryRun.winFloor(FactoryRun.chooseNode(run, data, 0), data);
+    expect(won['leg'], won['floor']);
+    expect(won.containsKey('places'), isFalse);
+    expect(won.containsKey('detour'), isFalse);
+  });
+
+  test('a água em ordem: praia → mar → fundo do mar → caverna aquática; vencendo, segue ou volta (igual ao site)', () {
+    expect(FactoryRun.waterNext('beach'), (id: 'sea', name: 'Mar', scene: 'water'));
+    expect(FactoryRun.waterNext('water')!.id, 'deep');
+    expect(FactoryRun.waterNext('underwater'), (id: 'seacave', name: 'Caverna aquática', scene: 'seacave'));
+    expect(FactoryRun.waterNext('seacave'), isNull);
+    final gs = data.bosses.indexWhere((b) => b['game'] == 'Gold/Silver');
+    final jasmine = (data.bosses[gs]['leaders'] as List).indexWhere((l) => l['name'] == 'Jasmine');
+    final start = {...FactoryRun.startRun(FactoryRun.empty(), data, 4, 3)!, 'leg': 1, 'boss': {'region': gs, 'step': jasmine}, 'hms': ['surf']};
+    const f = FactoryRun.forks;
+    var run = FactoryRun.nextFloor({...start, 'floor': 1 + f[1]}, data);
+    expect(FactoryRun.routeOf(run)!['biome'], 'beach');
+    final options = FactoryRun.routeOf(run)!['options'] as List;
+    final k = options.indexWhere((o) => o['kind'] == 'dungeon');
+    expect(options[k], {'kind': 'dungeon', 'place': 'sea', 'scene': 'water'});
+    expect(FactoryRun.nodeBlocked({...run, 'hms': []}, options[k] as Map), isTrue);
+    run = FactoryRun.chooseNode(run, data, k);
+    run = FactoryRun.nextFloor({...run, 'floor': (run['floor'] as int) + FactoryRun.dungeonLength - 1}, data);
+    run = FactoryRun.nextFloor(FactoryRun.winFloor(FactoryRun.chooseNode(run, data, 0), data), data);
+    expect(FactoryRun.routeOf(run)!['options'], [
+      {'kind': 'dungeon', 'place': 'deep', 'scene': 'underwater', 'deeper': true},
+      {'kind': 'leave'},
+    ]);
+    run = FactoryRun.chooseNode(run, data, 0);
+    expect(run['dungeon']['entry'], 1 + f[1]);
+    run = FactoryRun.nextFloor({...run, 'floor': (run['floor'] as int) + FactoryRun.dungeonLength - 1}, data);
+    run = FactoryRun.nextFloor(FactoryRun.winFloor(FactoryRun.chooseNode(run, data, 0), data), data);
+    run = FactoryRun.chooseNode(run, data, 1);
+    expect(run['dungeon'], isNull);
+    expect(FactoryRun.routePos(run), f[1]);
+    expect(FactoryRun.townHub(data, run), isFalse);
+    expect(run['places'], ['sea', 'deep']);
+  });
+
+  test('rota de mar: começa pela praia e vira mar; o fundo do mar é opcional; as cavernas combinam com o lugar (igual ao site)', () {
+    final red = data.bosses.indexWhere((b) => b['game'] == 'Red/Blue');
+    int step(int region, String name) => (data.bosses[region]['leaders'] as List).indexWhere((l) => l['name'] == name);
+    Json at(int floor, String name) => {...FactoryRun.startRun(FactoryRun.empty(), data, 4, 3)!, 'leg': 1, 'floor': floor, 'boss': {'region': red, 'step': step(red, name)}, 'hms': ['surf']};
+    expect(FactoryRun.routeBiome(data, at(1, 'Blaine')), 'beach');
+    expect(FactoryRun.routeBiome(data, at(FactoryRun.shore, 'Blaine')), 'beach');
+    expect(FactoryRun.routeBiome(data, at(1 + FactoryRun.shore, 'Blaine')), 'water');
+    const f = FactoryRun.forks;
+    expect((FactoryRun.routeOf(FactoryRun.nextFloor(at(1 + f[1], 'Blaine'), data))!['options'] as List).any((o) => o['place'] == 'sea'), isFalse);
+    expect(FactoryRun.routeOf(FactoryRun.nextFloor(at(1 + f[2], 'Blaine'), data))!['options'], contains(equals({'kind': 'dungeon', 'place': 'deep', 'scene': 'underwater'})));
+    final sinnoh = data.bosses.indexWhere((b) => b['game'] == 'Diamond/Pearl');
+    final wake = {...FactoryRun.startRun(FactoryRun.empty(), data, 4, 3)!, 'boss': {'region': sinnoh, 'step': step(sinnoh, 'Wake')}};
+    expect(FactoryRun.routeInfo(data, wake)!.side, (id: 'ruin-maniac-cave', name: 'Ruin Maniac Cave', scene: 'poisoncave'));
+    expect(FactoryRun.routeInfo(data, at(1, 'Blaine'))!.side!.scene, 'icecave');
+    expect(FactoryRun.routeInfo(data, at(1, 'Brock'))!.side!.scene, 'forest');
+    expect(FactoryRun.caveOf['volcano'], 'lavacave');
+  });
+
+  test('o rival no começo (antes do andar 10) vem com um Pokémon só, sem IVs e EVs a mais (igual ao site)', () {
+    final red = data.bosses.indexWhere((b) => b['game'] == 'Red/Blue');
+    final run = {...FactoryRun.startRun(FactoryRun.empty(), data, 4, 3)!, 'floor': 5, 'boss': {'region': red, 'step': 0}};
+    final foes = FactoryRun.encounterFor(data, 5, () => 0.5, FactoryRun.rivalBoss(data, run))['foes'] as List;
+    expect(foes, hasLength(1));
+    expect(foes.first['iv'], lessThan(31));
+    expect(FactoryRun.rivalFloor, greaterThanOrEqualTo(10));
   });
 
   test('ideias: amizade (Eevee de dia e à noite), Pickup, Synchronize e Nuzlocke (igual ao site)', () {
@@ -694,5 +765,37 @@ void main() {
     expect([bought['coins'], bought['ball']], [2000 - FactoryRun.cosmeticBalls['luxury-ball']!, 'luxury-ball']);
     expect(FactoryRun.buyCosmetic(bought, 'ball', 'luxury-ball'), isNull);
     expect(FactoryRun.equipCosmetic(bought, 'ball', null)['ball'], isNull);
+  });
+
+  test('mapa do jogo: Viridian Forest no caminho para Pewter City; 10 andares sem desvio e volta no mesmo andar da rota (igual ao site)', () {
+    final red = data.bosses.indexWhere((b) => b['game'] == 'Red/Blue');
+    final start = {...FactoryRun.startRun(FactoryRun.empty(), data, 4, 3)!, 'boss': {'region': red, 'step': 1}};
+    expect(FactoryRun.routeInfo(data, start)!.name, 'Route 1 · Route 2');
+    expect(FactoryRun.routeCities(data, {...start, 'boss': {'region': red, 'step': 0}}).from, 'Pallet Town');
+    final fork = FactoryRun.forks[2];
+    var run = FactoryRun.nextFloor({...start, 'floor': 1 + fork}, data);
+    expect(FactoryRun.routePos(run), fork);
+    final options = FactoryRun.routeOf(run)!['options'] as List;
+    final k = options.indexWhere((o) => o['kind'] == 'dungeon');
+    expect(options[k], {'kind': 'dungeon', 'place': 'viridian-forest', 'scene': 'forest'});
+    run = FactoryRun.chooseNode(run, data, k);
+    expect(run['dungeon'], {'place': 'viridian-forest', 'scene': 'forest', 'start': 1 + fork});
+    for (var i = 0; i < FactoryRun.dungeonLength - 1; i++) {
+      expect(FactoryRun.dungeonPos(run), i);
+      expect(FactoryRun.routeOf(run)!['options'], hasLength(1));
+      run = FactoryRun.nextFloor({...run, 'floor': (run['floor'] as int) + 1}, data);
+    }
+    expect(FactoryRun.routeOf(run)!['options'], [{'kind': 'dboss'}]);
+    run = FactoryRun.nextFloor(FactoryRun.winFloor(FactoryRun.chooseNode(run, data, 0), data), data);
+    expect(run['dungeon'], isNull);
+    expect(FactoryRun.routePos(run), fork);
+    expect(FactoryRun.legOf(run), 1);
+    expect(FactoryRun.routeOf(run)!['options'], hasLength(1));
+    expect(run['places'], ['viridian-forest']);
+    var rope = FactoryRun.chooseNode(FactoryRun.nextFloor({...start, 'floor': 1 + fork, 'bag': {'escape-rope': 1}}, data), data, k);
+    rope = FactoryRun.escapeRope({...rope, 'floor': (rope['floor'] as int) + 3}, data)!;
+    expect(FactoryRun.routePos(rope), fork);
+    expect(FactoryRun.routeOf(rope)!['options'], hasLength(1));
+    expect(FactoryRun.routeInfo(data, {...start, 'boss': {'region': red, 'step': 2}})!.side!.name, 'Mt. Moon');
   });
 }

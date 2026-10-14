@@ -8,7 +8,8 @@ Saída: assets/database/factory.json
    "forms": {id da forma: espécie},
    "megas": {espécie: [[Mega Pedra, id da Mega]]}, "gmax": [espécies com G-Max],
    "zcrystals": {tipo: Cristal Z}, "tms": [golpes de TM], "stones": [itens de evolução],
-   "stories": {região: {intro, gym, rival, villain, elite, champion, end}} (tool/factory_stories.py)}
+   "stories": {região: {intro, gym, rival, villain, elite, champion, end}} (tool/factory_stories.py),
+   "routes": {cities: {cidade: [lugar, rota, lugar no caminho, [lugares da cidade]]}, start: {região: cidade}} (tool/factory_routes.py)}
 raridade: 0 comum, 1 lendário, 2 mítico, 3 bebê.
 Evoluções que não são por nível (pedra, troca, amizade...) ganham um nível
 fixo para o time poder evoluir no modo.
@@ -28,6 +29,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from factory_stories import CITIES, STORIES  # noqa: E402
+from factory_routes import CITIES as ROUTE_CITIES, START as ROUTE_START  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB = os.path.join(ROOT, 'assets', 'database')
@@ -287,7 +289,8 @@ def main():
     tms = sorted({m[0] for p in records.values() for m in p['moves'] if m[1] == 'machine' and m[0] in move_info and (move_info[m[0]].get('power') or 0) >= 50})
     stones = sorted({e[2] for es in evolutions.values() for e in es if len(e) > 2})
     data = {'species': out_species, 'evolutions': evolutions, 'starters': STARTERS, 'bosses': bosses, 'forms': forms,
-            'megas': megas, 'gmax': gmax, 'zcrystals': zcrystals, 'tms': tms, 'stones': stones, 'stories': STORIES}
+            'megas': megas, 'gmax': gmax, 'zcrystals': zcrystals, 'tms': tms, 'stones': stones, 'stories': STORIES,
+            'routes': {'cities': ROUTE_CITIES, 'start': ROUTE_START}}
     with open(os.path.join(DB, 'factory.json'), 'w', encoding='utf-8') as f:
         json.dump(data, f, separators=(',', ':'))
         f.write('\n')

@@ -1117,6 +1117,9 @@ const _biomeInfo = <String, (String, String, Color)>{
   'swamp': ('Pântano', '🪵', Color(0xFF4D7C0F)),
   'sewer': ('Esgoto', '🚰', Color(0xFF475569)),
   'icecave': ('Caverna de gelo', '🧊', Color(0xFF0891B2)),
+  'lavacave': ('Caverna de lava', '🌋', Color(0xFFC2410C)),
+  'poisoncave': ('Caverna venenosa', '🍄', Color(0xFF7E22CE)),
+  'seacave': ('Caverna aquática', '🐚', Color(0xFF0E7490)),
   'desert': ('Deserto', '🏜️', Color(0xFFB45309)),
   'ruins': ('Ruínas', '🏛️', Color(0xFFA16207)),
   'flowers': ('Campo de flores', '🌸', Color(0xFFDB2777)),
@@ -1158,6 +1161,8 @@ const _nodeInfo = <String, (String, String, String)>{
   'boss': ('👑', 'Chefe', ''),
   'rematch': ('🏆', 'Revanche do Campeão', 'O Campeão que você venceu quer revanche: time mais forte, prêmio maior.'),
   'rival': ('⚔️', 'Rival', 'O seu rival te seguiu pela rota: quer ver quem ficou mais forte (prêmio maior).'),
+  'leave': ('↩️', 'Voltar', 'Sai da água e volta para onde você entrou.'),
+  'dboss': ('💀', 'Chefe', ''),
 };
 
 /// As MOs: o nome (do jogo, sem traduzir), o ícone e o que fazem na corrida. Igual ao site.
@@ -2270,12 +2275,20 @@ class _FactoryScreenState extends State<FactoryScreen> {
     final route = FactoryRun.routeOf(run)!;
     final options = [for (final o in route['options'] as List) Map<String, dynamic>.from(o as Map)];
     final biome = _biomeInfo[route['biome']] ?? _biomeInfo['grass']!;
-    final pos = min(FactoryRun.routeLength, FactoryRun.routePos(run));
+    final pos = FactoryRun.routePos(run);
     final down = FactoryRun.teamDown(run);
     final town = route['town'] == true;
     final dungeon = run['dungeon'] as Map?;
     final teamName = _teamNames[FactoryRun.villainTeam(boss['name'])] ?? 'Equipe Rocket';
-    final insideName = dungeon == null ? null : dungeon['place'] == 'base' ? tr('Base da {0}').replaceAll('{0}', teamName) : tr(FactoryRun.dungeons['${dungeon['place']}']?.name ?? '');
+    final baseName = tr('Base da {0}').replaceAll('{0}', teamName);
+    String placeName(Object? id) => tr(FactoryRun.placeInfo(data, run, '$id').name);
+    final insideName = dungeon == null ? null : dungeon['place'] == 'base' ? baseName : placeName(dungeon['place']);
+    // O lugar no caminho (Mt. Moon...) volta para a rota; o da cidade, para a cidade.
+    // Saindo de um lugar, você volta para o andar em que entrou (na rota ou na cidade).
+    final entered = dungeon != null ? FactoryRun.routePos({...run, 'floor': dungeon['entry'] ?? dungeon['start']}) : pos;
+    final backTo = entered >= FactoryRun.routeLength ? tr('a cidade, no mesmo andar') : tr('a rota, no mesmo andar');
+    // O nome da rota do jogo (Route 1 · Route 2...).
+    final routeName = FactoryRun.routeInfo(data, run)?.name;
     final meeting = !town && options.length == 1 && options.first['kind'] == 'boss';
     final ambush = meeting && (boss['kind'] == 'rival' || boss['kind'] == 'villain');
     // O rival de surpresa no meio da rota.
@@ -2300,15 +2313,31 @@ class _FactoryScreenState extends State<FactoryScreen> {
           child: Text(text, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: _ink)),
         );
     final fork = !town && options.length > 1;
+    // A entrada de um lugar: a base vilã (na cidade), os lugares da cidade, o lugar no caminho ou o próximo da água.
+    Widget placeButton(int k) {
+      final node = options[k];
+      final base = node['place'] == 'base';
+      return _menuButton('🕳️ ${(_biomeInfo[node['scene']] ?? biome).$2} ${base ? baseName : placeName(node['place'])}', widget.busy || down || FactoryRun.nodeBlocked(run, node) ? null : () => pick(k),
+          sub: FactoryRun.nodeBlocked(run, node)
+              ? tr('Precisa da MO Surf (3ª insígnia).')
+              : base
+                  ? tr('A equipe vilã está na cidade: {0} andares e o chefe dela no fim.').replaceAll('{0}', '${FactoryRun.dungeonLength}')
+                  : node['deeper'] == true
+                      ? tr('Mais {0} andares e um chefe.').replaceAll('{0}', '${FactoryRun.dungeonLength}')
+                      : town
+                          ? tr('{0} andares e um chefe; depois volta para a cidade, no mesmo andar.').replaceAll('{0}', '${FactoryRun.dungeonLength}')
+                          : tr('{0} andares e um chefe; depois volta para a rota, no mesmo andar.').replaceAll('{0}', '${FactoryRun.dungeonLength}'),
+          key: ValueKey('map-node-$k'));
+    }
     // Sem o Mapa: nada do mapa e, na bifurcação, segue às cegas.
     final hasMap = run['townMap'] == true || (FactoryRun.hasHm(run, 'flash') && FactoryRun.darkBiomes.contains(route['biome']));
     final cut = !meeting && !town ? FactoryRun.cutPath(run) : null;
     // O andar (pequeno, num canto): na rota, até a cidade; num lugar, até o chefe dele.
     final floorTag = dungeon != null
-        ? '${FactoryRun.dungeonPos(run) + 1}/${FactoryRun.dungeonLength}'
+        ? '${min(FactoryRun.dungeonLength, FactoryRun.dungeonPos(run) + 1)}/${FactoryRun.dungeonLength}'
         : town
-            ? null
-            : '${pos + 1}/${FactoryRun.routeLength + 1}';
+            ? '${min(FactoryRun.cityLength, pos - FactoryRun.routeLength + 1)}/${FactoryRun.cityLength}'
+            : '${pos + 1}/${FactoryRun.routeLength}';
     final scene = town
         ? 'city'
         : meeting && _cityKinds.contains(boss['kind'])
@@ -2323,7 +2352,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
       if (!town && dungeon == null && pos == 0 && !meeting && legend != null)
         '🌟 ${tr(_legendClues[target['kind'] == 'elite' ? _legendClues.length - 1 : min(_legendClues.length - 2, ((run['badges'] as num?) ?? 0).toInt())])}',
       if (dungeon != null && FactoryRun.dungeonPos(run) == 0)
-        '🕳️ ${tr('Você entrou: {0} andares e um chefe no fim. Depois, de volta para a cidade.').replaceAll('{0}', '${FactoryRun.dungeonLength}')}',
+        '🕳️ ${tr('Você entrou em {0}: {1} andares, sem desvios, e um chefe no fim. Depois, de volta para {2}.').replaceAll('{0}', insideName ?? '').replaceAll('{1}', '${FactoryRun.dungeonLength}').replaceAll('{2}', backTo)}',
       if (meeting && boss['kind'] == 'rival') '💬 ${boss['name']}: ${tr(_rivalLines[min(_rivalLines.length - 1, ((run['rivalWins'] as num?) ?? 0).toInt())])}',
       if (meeting && boss['kind'] == 'villain') ...[
         '💬 ${boss['name']}: ${tr(_villainLines[((run['floor'] as num).toInt() + (run['seed'] as num).toInt()) % _villainLines.length])}',
@@ -2340,13 +2369,15 @@ class _FactoryScreenState extends State<FactoryScreen> {
       if (options.length == 1 && options.first['meteor'] == true) '☄️ ${tr('Uma chuva de meteoros! Algo caiu bem perto daqui...')}',
       if (options.length == 1 && options.first['mythic'] == true) '✨ ${tr('Uma presença misteriosa... um Pokémon mítico está aqui!')}',
       if (town && boss['kind'] == 'villain') '💬 ${tr('A {0} tomou conta da cidade! O líder do ginásio só volta quando ela for embora.').replaceAll('{0}', teamName)}',
-      if (town && boss['kind'] != 'villain') tr('Bem-vindo a {0}! O ginásio, o Poké Mart, o Centro Pokémon e a Creche ficam aqui.').replaceAll('{0}', cities.to),
+      if (town && pos == FactoryRun.routeLength && boss['kind'] != 'villain')
+        tr('Bem-vindo a {0}! O Poké Mart, o Centro Pokémon e a Creche ficam aqui; o líder espera no último andar da cidade.').replaceAll('{0}', cities.to),
+      if (dungeon != null && dungeon['cleared'] == true) '🌊 ${tr('Você venceu o chefe daqui! Dá para seguir mais fundo ou voltar.')}',
     ];
     return _frame(
       run: run,
       field: fork && hasMap
-          ? _townMap(route, options, pos, cities.from, cities.to, '${boss['region']} · ${boss['game']}', me,
-              widget.busy ? null : pick, (node) => (FactoryRun.isBattleNode(node) && down) || FactoryRun.nodeBlocked(run, node))
+          ? _townMap(route, options, pos % FactoryRun.routeLength, cities.from, cities.to, '${boss['region']} · ${boss['game']}', me,
+              widget.busy ? null : pick, (node) => (FactoryRun.isBattleNode(node) && down) || FactoryRun.nodeBlocked(run, node), placeName)
           // O líder espera no ginásio da cidade; a Elite Four e o Campeão, na Liga (nunca no meio da rota).
           : _field(scene, key: const ValueKey('factory-map'), (w, h) {
               return [
@@ -2360,9 +2391,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
                             ? '🏙️ ${cities.to}'
                             : insideName != null
                                 ? '${biome.$2} $insideName'
-                                : '${boss['region']} · ${boss['game']} · ${biome.$2} ${tr('Rota para {0}').replaceAll('{0}', cities.to)}'))),
-                if (floorTag != null)
-                  Positioned(
+                                : '${boss['region']} · ${boss['game']} · ${biome.$2} ${routeName != null ? '$routeName → ${cities.to}' : tr('Rota para {0}').replaceAll('{0}', cities.to)}'))),
+                Positioned(
                     right: 8,
                     top: 6,
                     child: Container(
@@ -2416,7 +2446,10 @@ class _FactoryScreenState extends State<FactoryScreen> {
           // Sem o Mapa: dá para seguir em frente ou pegar outro caminho, sem saber aonde ele leva. Igual ao site.
           if (fork && !hasMap)
             for (var k = 0; k < options.length; k++)
-              _menuButton(k == 0 ? '➡️ ${tr('SEGUIR EM FRENTE')}' : '↗️ ${tr('OUTRO CAMINHO')}${options.length > 2 ? ' $k' : ''}',
+              if (options[k]['kind'] == 'dungeon')
+                placeButton(k)
+              else
+                _menuButton(k == 0 ? '➡️ ${tr('SEGUIR EM FRENTE')}' : '↗️ ${tr('OUTRO CAMINHO')}${options.length > 2 ? ' $k' : ''}',
                   widget.busy || FactoryRun.nodeBlocked(run, options[k]) || (FactoryRun.isBattleNode(options[k]) && down) ? null : () => pick(k),
                   sub: FactoryRun.nodeBlocked(run, options[k])
                       ? tr('Precisa da MO Surf (3ª insígnia).')
@@ -2428,15 +2461,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
             for (var k = 0; k < options.length; k++)
               Builder(builder: (context) {
                 final node = options[k];
-                if (node['kind'] == 'dungeon') {
-                  final base = node['place'] == 'base';
-                  final name = base ? tr('Base da {0}').replaceAll('{0}', teamName) : tr(FactoryRun.dungeons['${node['place']}']?.name ?? '');
-                  return _menuButton('${(_biomeInfo[node['scene']] ?? biome).$2} $name', widget.busy || down ? null : () => pick(k),
-                      sub: base
-                          ? tr('A equipe vilã está na cidade: {0} andares e o chefe dela no fim.').replaceAll('{0}', '${FactoryRun.dungeonLength}')
-                          : tr('{0} andares e um chefe; depois volta para a cidade.').replaceAll('{0}', '${FactoryRun.dungeonLength}'),
-                      key: ValueKey('map-node-$k'));
-                }
+                if (node['kind'] == 'dungeon') return placeButton(k);
                 final info = node['mythic'] == true
                     ? _nodeInfo['mythic']!
                     : node['meteor'] == true
@@ -2458,7 +2483,9 @@ class _FactoryScreenState extends State<FactoryScreen> {
                       : isBoss
                           ? '${_bossKind(boss['kind'])}${ambush ? '' : ' · ${cities.to}'}'
                           : node['kind'] == 'dboss'
-                              ? tr('O chefe do lugar: vencendo, volta para a cidade.')
+                              ? dungeon != null
+                                  ? tr('O chefe do lugar: vencendo, volta para {0}.').replaceAll('{0}', backTo)
+                                  : tr('O chefe da rota: vencendo, você chega em {0}.').replaceAll('{0}', cities.to)
                               : tr(info.$3),
                   key: ValueKey('map-node-$k'),
                 );
@@ -2486,7 +2513,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
   /// O mapa da cidade (como o Town Map do Black & White) na bifurcação: a rota da cidade de onde veio até a do chefe,
   /// você no andar de agora e os caminhos abrindo na frente; toque num caminho para ir por ele. Igual ao site (TownMap).
   Widget _townMap(Json route, List<Json> options, int pos, String? from, String to, String title, Trainer? me, void Function(int)? onPick,
-      bool Function(Json) blocked) {
+      bool Function(Json) blocked, String Function(Object?) placeName) {
     const end = FactoryRun.routeLength + 1;
     final here = pos + 1;
     return ClipRRect(
@@ -2537,7 +2564,13 @@ class _FactoryScreenState extends State<FactoryScreen> {
                     translation: const Offset(-0.5, -0.5),
                     child: Builder(builder: (context) {
                       final node = options[k];
-                      final info = node['legend'] != null ? _legendInfo : node['cut'] == true ? _cutInfo : _nodeInfo[node['kind']] ?? _nodeInfo['wild']!;
+                      final info = node['kind'] == 'dungeon'
+                          ? ((_biomeInfo[node['scene']] ?? _biomeInfo['cave']!).$2, placeName(node['place']), '')
+                          : node['legend'] != null
+                              ? _legendInfo
+                              : node['cut'] == true
+                                  ? _cutInfo
+                                  : _nodeInfo[node['kind']] ?? _nodeInfo['wild']!;
                       final b = node['cut'] == true ? null : _biomeInfo[node['biome']];
                       final off = onPick == null || blocked(node);
                       return Opacity(
@@ -2651,6 +2684,9 @@ const _routeFlavor = {
   'sewer': 'Canos pingando e olhos brilhando no escuro.',
   'cave': 'Está escuro e frio; ecos vêm do fundo da caverna.',
   'icecave': 'O gelo estala sob os pés; cuidado para não escorregar.',
+  'lavacave': 'O calor sobe do chão e rios de lava iluminam as paredes.',
+  'poisoncave': 'Uma névoa roxa cobre o chão; melhor não respirar fundo.',
+  'seacave': 'A água bate nas pedras e ecoa por toda a caverna.',
   'mountain': 'O caminho sobe pelas pedras; o ar fica mais fino.',
   'desert': 'O sol queima e a areia apaga as pegadas.',
   'volcano': 'O chão treme e a lava borbulha por perto.',

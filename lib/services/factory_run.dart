@@ -46,9 +46,12 @@ class FactoryData {
 
   /// A história de cada região (tool/factory_stories.py).
   final Map<String, Map<String, String>> stories;
+
+  /// O mapa de cada região (tool/factory_routes.py): {cities: {cidade: [lugar, rota, lugar no caminho, lugar da cidade]}, start: {região: cidade}}.
+  final Json routes;
   const FactoryData(this.species, this.evolutions, this.starters,
       [this.bosses = const [], this.forms = const {}, this.megas = const {}, this.gmax = const [], this.zcrystals = const {},
-      this.tms = const [], this.stones = const [], this.stories = const {}]);
+      this.tms = const [], this.stones = const [], this.stories = const {}, this.routes = const {}]);
 
   static Future<FactoryData>? _loading;
 
@@ -84,6 +87,7 @@ class FactoryData {
         for (final e in ((j['stories'] as Map?) ?? const {}).entries)
           '${e.key}': {for (final x in (e.value as Map).entries) '${x.key}': '${x.value}'}
       },
+      Map<String, dynamic>.from((j['routes'] as Map?) ?? const {}),
     );
   }
 
@@ -619,6 +623,9 @@ class FactoryRun {
     'dunes': ['ground', 'dark', 'ghost', 'bug'],
     'bamboo': ['grass', 'fighting', 'bug', 'dark'],
     'temple': ['psychic', 'fighting', 'dragon', 'ghost'],
+    'lavacave': ['fire', 'rock', 'ground'],
+    'poisoncave': ['poison', 'dark', 'bug'],
+    'seacave': ['water', 'rock'],
   };
   static final biomeIds = biomes.keys.toList();
 
@@ -635,15 +642,16 @@ class FactoryRun {
   };
 
   /// Na Dusk Ball (3×): os lugares escuros.
-  static const darkBiomes = ['cave', 'tower', 'icecave', 'sewer', 'underwater'];
+  static const darkBiomes = ['cave', 'tower', 'icecave', 'sewer', 'underwater', 'lavacave', 'poisoncave', 'seacave'];
 
   /// Os chefes de cidade (líder no ginásio dele; Elite Four e Campeão na Liga). Rival e vilões aparecem na rota.
   static const _cityKinds = ['gym', 'elite', 'champion'];
 
-  /// Andares de rota antes de cada cidade; onde a rota se divide (só ali dá para escolher); chance do rival em cada andar.
-  static const routeLength = 9, forks = [1, 4, 7], ambushChance = 0.3;
+  /// Andares da rota (o 10º é o chefe dela) e da cidade (o último é o líder); onde a rota (e a cidade) se divide (só
+  /// ali dá para escolher); chance do rival em cada andar.
+  static const routeLength = 10, cityLength = 10, cityBoss = routeLength + cityLength - 1, forks = [1, 4, 7], ambushChance = 0.3;
   /// O rival aparece bastante: de surpresa na rota (fora os da história), no máximo uma vez por rota, a partir do andar rivalFloor.
-  static const rivalChance = 0.2, rivalFloor = 5;
+  static const rivalChance = 0.2, rivalFloor = 12;
 
   static List _leaders(FactoryData data, Json run) => data.bosses[_int(run['boss']['region'])]['leaders'] as List;
 
@@ -664,25 +672,90 @@ class FactoryRun {
     return step > 0 && ['elite', 'champion'].contains(leaders[step]['kind']) && leaders[step - 1]['kind'] == 'elite';
   }
 
-  /// Onde está na rota: 0 é o primeiro andar depois da última cidade (run.leg); routeLength é a cidade.
+  /// Onde está: 0 é o primeiro andar da rota depois da última cidade (run.leg); de routeLength em diante, a cidade
+  /// (cityBoss é o líder). Os andares feitos num lugar (run.detour) não contam: depois dele, você volta para o andar em
+  /// que entrou.
   static int routePos(Json run) {
     final floor = _int(run['floor']);
-    return floor - ((run['leg'] as num?)?.toInt() ?? floor - (floor - 1) % 10);
+    return floor - ((run['leg'] as num?)?.toInt() ?? floor - (floor - 1) % (routeLength + cityLength)) - _n(run, 'detour');
   }
 
-  /// Chegou na cidade (ou na Liga): o chefe dela é o próximo andar.
+  /// Chegou no líder (o último andar da cidade) ou na Liga: o chefe dela é o próximo andar (dentro de um lugar, não).
   static bool atCity(FactoryData data, Json run) =>
-      run['dungeon'] == null && _cityKinds.contains(bossOf(data, run)['kind']) && (_inLeague(data, run) || routePos(run) >= routeLength);
+      run['dungeon'] == null && _cityKinds.contains(bossOf(data, run)['kind']) && (_inLeague(data, run) || routePos(run) >= cityBoss);
 
   /// As regiões de lugares que se ligam (a rota seguinte começa num lugar que faz sentido depois da anterior: da caverna
   /// não se vai direto para o mar). Grama e cidade se ligam a tudo. Igual ao site.
   static const biomeZones = [
-    ['grass', 'flowers', 'forest', 'bamboo', 'swamp', 'city', 'plant', 'ruins', 'temple', 'sky'],
-    ['beach', 'water', 'underwater', 'swamp', 'grass', 'city'],
-    ['mountain', 'cave', 'icecave', 'crystal', 'volcano', 'snow', 'sky', 'temple', 'ruins'],
-    ['desert', 'dunes', 'volcano', 'ruins', 'beach'],
+    ['grass', 'flowers', 'forest', 'bamboo', 'swamp', 'city', 'plant', 'ruins', 'temple', 'sky', 'poisoncave'],
+    ['beach', 'water', 'underwater', 'swamp', 'grass', 'city', 'seacave'],
+    ['mountain', 'cave', 'icecave', 'crystal', 'volcano', 'snow', 'sky', 'temple', 'ruins', 'lavacave'],
+    ['desert', 'dunes', 'volcano', 'ruins', 'beach', 'lavacave'],
     ['city', 'sewer', 'tower', 'plant'],
   ];
+  /// O id de um lugar pelo nome ("Mt. Moon" → "mt-moon").
+  static String _placeId(String name) => name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');
+  static ({String id, String name, String scene})? _placeOf(Object? row) =>
+      row is List ? (id: _placeId('${row[0]}'), name: '${row[0]}', scene: '${row[1]}') : null;
+
+  /// A rota até a próxima cidade, como nos jogos (tool/factory_routes.py): o lugar dela, o nome, o lugar no caminho
+  /// (side) e os da cidade (towns: esgoto, museu, a praia dela...). null se a cidade não estiver no mapa. Igual ao site.
+  static ({String biome, String name, ({String id, String name, String scene})? side, List<({String id, String name, String scene})> towns})?
+      routeInfo(FactoryData data, Json run) {
+    final region = data.bosses[_int(run['boss']['region'])]['region'];
+    final city = '${targetOf(data, run)['city'] ?? ''}';
+    final cities = (data.routes['cities'] as Map?) ?? const {};
+    final row = (cities['$region:$city'] ?? cities[city]) as List?;
+    if (row == null) return null;
+    return (
+      biome: '${row[0]}',
+      name: '${row[1]}',
+      side: switch (_placeOf(row[2])) { final p? => (id: p.id, name: p.name, scene: _caveScene(p.scene, '${row[0]}')), _ => null },
+      towns: [for (final t in (row.length > 3 ? row[3] as List? : null) ?? const []) _placeOf(t)!],
+    );
+  }
+
+  /// A água, em ordem (não dá para pular): da praia (a rota ou a da cidade) para o mar, dele para o fundo do mar e
+  /// dali para a caverna aquática. Cada um é um lugar de 10 andares com um chefe; vencendo, dá para seguir ou voltar.
+  static const waterChain = [('beach', 'Praia', 'beach'), ('sea', 'Mar', 'water'), ('deep', 'Fundo do mar', 'underwater'), ('seacave', 'Caverna aquática', 'seacave')];
+
+  /// Numa rota de mar, os primeiros andares são a praia (a água começa por ela); depois, o mar.
+  static const shore = 5;
+
+  /// A caverna combina com o lugar em volta: no gelo, de gelo; no pântano, venenosa; no vulcão, de lava; no mar, aquática.
+  static const caveOf = {
+    'snow': 'icecave', 'icecave': 'icecave', 'swamp': 'poisoncave', 'volcano': 'lavacave', 'beach': 'seacave', 'water': 'seacave', 'underwater': 'seacave',
+  };
+  static String _caveScene(String scene, String around) => scene == 'cave' ? caveOf[around] ?? 'cave' : scene;
+
+  /// O lugar da água depois deste cenário (null se não tem: a caverna aquática é o fim).
+  static ({String id, String name, String scene})? waterNext(Object? scene) {
+    final k = waterChain.indexWhere((w) => w.$3 == scene);
+    return k >= 0 && k < waterChain.length - 1 ? (id: waterChain[k + 1].$1, name: waterChain[k + 1].$2, scene: waterChain[k + 1].$3) : null;
+  }
+
+  /// O nome e o cenário de um lugar (os genéricos, os da água ou os do mapa da região).
+  static ({String name, String scene}) placeInfo(FactoryData data, Json run, String id) {
+    final generic = dungeons[id];
+    if (generic != null) return (name: generic.name, scene: generic.scene);
+    for (final w in waterChain) {
+      if (w.$1 == id) return (name: w.$2, scene: w.$3);
+    }
+    final info = routeInfo(data, run);
+    for (final p in [info?.side, ...?info?.towns]) {
+      if (p != null && p.id == id) return (name: p.name, scene: p.scene);
+    }
+    return (name: id, scene: 'cave');
+  }
+
+  /// Sai do lugar (venceu o chefe ou usou a Escape Rope): volta para o andar em que entrou (na rota ou na cidade).
+  static void _leavePlace(Json run, Json out) {
+    final start = _int(run['dungeon']['entry'] ?? run['dungeon']['start']);
+    out['back'] = routePos({...run, 'floor': start});
+    out['detour'] = _n(run, 'detour') + _int(out['floor']) - start;
+    out['dungeon'] = null;
+  }
+
   static bool biomesLinked(Object? a, String b) =>
       a == null || a == b || a == 'grass' || a == 'city' || b == 'grass' || b == 'city' || biomeZones.any((z) => z.contains(a) && z.contains(b));
 
@@ -705,12 +778,8 @@ class FactoryRun {
   /// O andar do lugar (0 a dungeonLength − 1; o último é o do chefe).
   static int dungeonPos(Json run) => run['dungeon'] == null ? -1 : _int(run['floor']) - _int(run['dungeon']['start']);
 
-  /// Na cidade (fora da Liga): o centro com o ginásio, o Poké Mart, o Centro Pokémon, a Creche e o lugar perto dela.
-  static bool townHub(FactoryData data, Json run) {
-    if (run['dungeon'] != null || _inLeague(data, run) || routePos(run) < routeLength) return false;
-    final kind = bossOf(data, run)['kind'];
-    return kind == 'gym' || kind == 'villain';
-  }
+  /// Nos andares da cidade (fora da Liga): o Poké Mart, o Centro Pokémon, a Creche e os lugares dela; o líder no último.
+  static bool townHub(FactoryData data, Json run) => run['dungeon'] == null && !_inLeague(data, run) && routePos(run) >= routeLength;
 
   /// Na cidade: entra no Poké Mart (o estoque dela; CONTINUAR volta para a cidade). Igual ao site.
   static Json townShop(Json run) {
@@ -786,6 +855,9 @@ class FactoryRun {
   static String routeBiome(FactoryData data, Json run) {
     // Dentro de um lugar (esgoto, casa assombrada, base da equipe vilã...): o cenário dele.
     if (run['dungeon'] != null) return '${run['dungeon']['scene']}';
+    // A rota do jogo (o mapa da região, tool/factory_routes.py).
+    final info = routeInfo(data, run);
+    if (info != null) return info.biome == 'water' && routePos(run) < shore ? 'beach' : info.biome;
     final boss = targetOf(data, run);
     if (boss['kind'] == 'gym') {
       final count = <String, int>{};
@@ -814,47 +886,61 @@ class FactoryRun {
   static const _battleNodes = ['wild', 'trainer', 'ace', 'boss', 'wildboss', 'rematch', 'rival', 'dboss'];
   static bool isBattleNode(Map? node) => _battleNodes.contains(node?['kind']);
 
-  /// O que tem no andar: o chefe da cidade (na Liga, um atrás do outro), o rival e os vilões em qualquer andar da
-  /// rota, o caminho que segue (um ponto só) ou, nas bifurcações, 2 ou 3 caminhos. Igual ao site.
+  /// O que tem no andar. A rota tem routeLength andares (o último é o chefe dela); depois vem a cidade, com cityLength
+  /// andares (o último é o líder; na Liga, a Elite Four e o Campeão um atrás do outro). O rival da história pode
+  /// aparecer em qualquer andar antes do líder. Fora isso, o caminho segue (um ponto só) e só nas bifurcações (na rota
+  /// e na cidade) dá para escolher entre 2 ou 3 caminhos ou entrar num lugar. Num lugar não há desvio. Igual ao site.
   static Json routeOptions(Json run, FactoryData data, double Function() rand) {
     final floor = _int(run['floor']);
-    final biome = routeBiome(data, run);
     final boss = bossOf(data, run);
-    // Num lugar (esgoto, base vilã...): os andares dele; no último, o chefe (na base, o vilão).
     final inside = run['dungeon'] != null;
+    final city = !inside && townHub(data, run);
+    final biome = city ? 'city' : routeBiome(data, run);
     final pos = inside ? dungeonPos(run) : routePos(run);
-    Json only(Json node) => {'floor': floor, 'biome': biome, 'options': [node]};
+    Json only(Json node) => {'floor': floor, 'biome': biome, if (city) 'town': true, 'options': [node]};
+    // Venceu o chefe de um lugar da água: segue para o próximo (o mar depois da praia...) ou volta.
+    if (inside && run['dungeon']['cleared'] == true) {
+      final next = waterNext(run['dungeon']['scene'])!;
+      return {
+        'floor': floor,
+        'biome': biome,
+        'options': [
+          {'kind': 'dungeon', 'place': next.id, 'scene': next.scene, 'deeper': true},
+          {'kind': 'leave'},
+        ],
+      };
+    }
+    // Num lugar (esgoto, base vilã...): no último andar, o chefe (na base, o vilão).
     if (inside && pos >= dungeonLength - 1) return only({'kind': run['dungeon']['place'] == 'base' ? 'boss' : 'dboss'});
-    // Na cidade: o ginásio e o lugar perto dela (com a equipe vilã na cidade, primeiro a base dela; o líder não está).
-    if (townHub(data, run)) {
-      final place = run['town']?['place'] as String?;
-      final done = (run['town']?['done'] as List?) ?? const [];
-      final options = boss['kind'] == 'villain'
-          ? <Json>[{'kind': 'dungeon', 'place': 'base', 'scene': 'base-${villainTeam(boss['name'])}'}]
-          : <Json>[{'kind': 'boss'}, if (place != null && !done.contains(place)) {'kind': 'dungeon', 'place': place, 'scene': dungeons[place]!.scene}];
-      return {'floor': floor, 'biome': 'city', 'town': true, 'options': options};
+    // O último andar da cidade: o líder (com a equipe vilã na cidade, primeiro a base dela).
+    if (city && pos >= cityBoss) {
+      return only(boss['kind'] == 'villain' ? {'kind': 'dungeon', 'place': 'base', 'scene': 'base-${villainTeam(boss['name'])}'} : {'kind': 'boss'});
     }
     if (atCity(data, run)) return only({'kind': 'boss'});
+    // O último andar da rota: o chefe dela.
+    if (!inside && !city && pos == routeLength - 1) return only({'kind': 'dboss'});
     if (!inside && boss['kind'] == 'rival') {
-      // O rival da história: quantos ainda faltam antes da cidade e quantos andares de rota sobram (os vilões ficam na cidade).
+      // O rival da história: quantos ainda faltam e quantos andares livres sobram até o líder (sem os chefes).
       final leaders = _leaders(data, run);
       final step = _int(run['boss']['step']);
       var pending = 0;
       while (step + pending < leaders.length && leaders[step + pending]['kind'] == 'rival') {
         pending++;
       }
-      if (routeLength - pos <= pending || (pos >= 2 && rand() < ambushChance)) return only({'kind': 'boss'});
+      final free = cityBoss - pos - (pos < routeLength - 1 ? 1 : 0);
+      if (free <= pending || (pos >= 2 && rand() < ambushChance)) return only({'kind': 'boss'});
     }
-    // Os selvagens são do lugar da rota (o cenário da batalha é ele). Na base de uma equipe vilã, só capangas.
+    // Os selvagens são do lugar (o cenário da batalha é ele). Na base de uma equipe vilã, só capangas.
     final base = biome.startsWith('base-');
     Json wild() => base ? {'kind': 'trainer'} : {'kind': 'wild', 'biome': biome};
-    if (!forks.contains(pos)) {
+    // Só a rota e a cidade se dividem (num lugar, não; nem no andar em que você voltou de um lugar).
+    if (inside || !forks.contains(pos % routeLength) || run['back'] == pos) {
       // O rival te seguiu: aparece de surpresa (uma vez por rota, só no caminho para um ginásio).
-      if (!inside && floor >= rivalFloor && pos >= 2 && !base && boss['kind'] == 'gym' && run['rivalLeg'] != legOf(run) && rivalBoss(data, run) != null && rand() < rivalChance) {
+      if (!inside && !city && floor >= rivalFloor && pos >= 2 && !base && boss['kind'] == 'gym' && run['rivalLeg'] != legOf(run) && rivalBoss(data, run) != null && rand() < rivalChance) {
         return only({'kind': 'rival'});
       }
       // Evento raro: chuva de meteoros (Clefairy) ou um Pokémon mítico.
-      if (!inside && !base && floor >= rareFloor && rand() < rareChance) {
+      if (!inside && !city && !base && floor >= rareFloor && rand() < rareChance) {
         final available = [for (final id in mythics) if (data.species.containsKey(id)) id];
         final meteor = rand() < 0.5;
         if (meteor || available.isNotEmpty) {
@@ -868,12 +954,10 @@ class FactoryRun {
     }
     final options = <Json>[rand() < 0.55 ? wild() : {'kind': 'trainer'}];
     final count = floor <= 2 ? 2 : 3;
+    // Na cidade, o Poké Mart e o Centro ficam nela (não no caminho).
     final allowed = [
       for (final w in nodeWeights)
-        if ((floor > 2 || w.$1 == 'wild' || w.$1 == 'trainer') &&
-            !(base && const ['wild', 'mart', 'trade'].contains(w.$1)) &&
-            !(inside && const ['mart', 'trade', 'center'].contains(w.$1)))
-          w
+        if ((floor > 2 || w.$1 == 'wild' || w.$1 == 'trainer') && !(city && const ['mart', 'center'].contains(w.$1))) w
     ];
     final total = allowed.fold(0, (int sum, w) => sum + w.$2);
     for (var guard = 0; options.length < count && guard < 20; guard++) {
@@ -890,19 +974,36 @@ class FactoryRun {
       if (options.any((o) => o['kind'] == node['kind'] && o['biome'] == node['biome'])) continue;
       options.add(node);
     }
-    // Na rota para a Liga, o lendário da região espera num dos caminhos.
-    if (!inside && pos == forks[1] && !base && targetOf(data, run)['kind'] == 'elite') {
-      final legend = regionLegend(data, run);
-      if (legend != null) options[options.length - 1] = {'kind': 'wildboss', 'legend': legend};
+    if (!city) {
+      // Na rota para a Liga, o lendário da região espera num dos caminhos.
+      if (pos == forks[1] && targetOf(data, run)['kind'] == 'elite') {
+        final legend = regionLegend(data, run);
+        if (legend != null) options[options.length - 1] = {'kind': 'wildboss', 'legend': legend};
+      }
+      if (pos == forks[1] && !options.any((o) => o['legend'] != null) && rand() < wildBossChance) options[options.length - 1] = {'kind': 'wildboss'};
+      // Depois de virar Campeão: o Campeão vencido quer revanche (num dos caminhos da primeira bifurcação).
+      if (run['rematch'] != null && pos == forks[0]) options[options.length - 1] = {'kind': 'rematch'};
     }
-    // No mar, um dos caminhos é mergulhar (o selvagem do fundo do mar).
-    if (biome == 'water' && !options.any((o) => o['biome'] == 'underwater')) options[options.length - 1] = {'kind': 'wild', 'biome': 'underwater'};
-    if (!inside && pos == forks[1] && !options.any((o) => o['legend'] != null) && rand() < wildBossChance && !base) {
-      options[options.length - 1] = {'kind': 'wildboss'};
+    // Os lugares (enquanto não forem vencidos nesta rota): na cidade, os dela (e a base vilã, se a equipe estiver lá);
+    // na rota, o mar (numa rota de praia) e o lugar no caminho (Mt. Moon, Rock Tunnel...).
+    final info = routeInfo(data, run);
+    final done = (run['places'] as List?) ?? const [];
+    void add(({String id, String name, String scene})? place) {
+      if (place != null && !done.contains(place.id)) options.add({'kind': 'dungeon', 'place': place.id, 'scene': place.scene});
     }
-    // Depois de virar Campeão: o Campeão vencido quer revanche (num dos caminhos da primeira bifurcação).
-    if (!inside && run['rematch'] != null && pos == forks[0] && !base) options[options.length - 1] = {'kind': 'rematch'};
-    return {'floor': floor, 'biome': biome, 'options': options};
+
+    if (city) {
+      for (final place in info?.towns ?? const <({String id, String name, String scene})>[]) {
+        add(place);
+      }
+      if (boss['kind'] == 'villain') options.add({'kind': 'dungeon', 'place': 'base', 'scene': 'base-${villainTeam(boss['name'])}'});
+    } else {
+      // Numa rota de praia, o mar é opcional; numa rota de mar, o fundo do mar.
+      final sea = info?.biome == 'water';
+      if (pos == forks[sea ? 2 : 1]) add(waterNext(biome));
+      if (pos == forks[2]) add(info?.side);
+    }
+    return {'floor': floor, 'biome': biome, if (city) 'town': true, 'options': options};
   }
 
   /// A cidade da rota (o destino) e a de onde ela começa (null no começo de uma região). Na Liga, as duas são a Liga.
@@ -914,7 +1015,10 @@ class FactoryRun {
     while (k >= 0 && !_cityKinds.contains(leaders[k]['kind'])) {
       k--;
     }
-    return (from: k >= 0 ? leaders[k]['city'] as String? : null, to: to);
+    // No começo da região: a cidade inicial do jogo (Pallet Town, New Bark Town...).
+    final game = data.bosses[_int(run['boss']['region'])];
+    final start = (data.routes['start'] as Map?) ?? const {};
+    return (from: k >= 0 ? leaders[k]['city'] as String? : (start[game['game']] ?? start[game['region']]) as String?, to: to);
   }
 
   /// O que o treinador forte deixa (sempre): bolas e remédios na Bolsa, os de segurar guardados.
@@ -1032,7 +1136,18 @@ class FactoryRun {
     // Entra no lugar perto da cidade (esgoto, casa assombrada, base vilã...): 10 andares e o chefe dele; depois volta para a cidade.
     if (node['kind'] == 'dungeon') {
       out['leg'] = run['leg'] ?? legOf(run);
-      out['dungeon'] = {'place': node['place'], 'scene': node['scene'], 'start': run['floor']};
+      out['dungeon'] = {
+        'place': node['place'],
+        'scene': node['scene'],
+        'start': run['floor'],
+        if (run['dungeon'] != null) 'entry': run['dungeon']['entry'] ?? run['dungeon']['start'],
+      };
+      out['route'] = routeOptions(out, data, _dice(out));
+      return out;
+    }
+    // Sai da água (depois de vencer o chefe do lugar): de volta para onde entrou.
+    if (node['kind'] == 'leave') {
+      if (run['dungeon'] != null) _leavePlace(run, out);
       out['route'] = routeOptions(out, data, _dice(out));
       return out;
     }
@@ -1186,11 +1301,16 @@ class FactoryRun {
     if (boss != null) {
       // Os times dos chefes são de Pokémon evoluídos: quem é mais forte que as espécies do andar vem com nível menor.
       // Antes do andar 10, sem o bônus de nível (o rival aparece cedo, como no começo dos jogos).
-      final bonus = floor < 10 ? 0 : const {'gym': 2, 'rival': 2, 'villain': 3, 'elite': 4, 'champion': 5}[boss['kind']] ?? 2;
-      final team = bossTeam(boss, floor);
-      int levelOf(int id, int i) => _bossLevel(data, floor, id, level + bonus + (i == team.length - 1 ? 1 : 0));
+      // Antes do andar 10, o rival vem só com um Pokémon, sem IVs e EVs a mais (como no começo dos jogos).
+      final early = floor < 10;
+      final bonus = early ? 0 : const {'gym': 2, 'rival': 2, 'villain': 3, 'elite': 4, 'champion': 5}[boss['kind']] ?? 2;
+      final full = bossTeam(boss, floor);
+      final team = early && boss['kind'] == 'rival' ? full.sublist(full.length - 1) : full;
+      int levelOf(int id, int i) => _bossLevel(data, floor, id, level + bonus + (i == team.length - 1 && !early ? 1 : 0));
 
-      final foes = [for (var i = 0; i < team.length; i++) foe(team[i], levelOf(team[i], i), {'iv': math.max(31, iv), 'ev': (ev * 1.25).round()})];
+      final foes = [
+        for (var i = 0; i < team.length; i++) foe(team[i], levelOf(team[i], i), early ? const <String, dynamic>{} : {'iv': math.max(31, iv), 'ev': (ev * 1.25).round()})
+      ];
       // A partir do andar 10, cada Pokémon do chefe segura um item de verdade (Leftovers, Life Orb, Choice...).
       if (floor >= 10) {
         for (final f in foes) {
@@ -1415,10 +1535,14 @@ class FactoryRun {
     if (kind == 'rival') out['rivalRaces'] = ((run['rivalRaces'] as num?) ?? 0).toInt() + 1;
     // Venceu o chefe do lugar (ou o vilão na base): volta para a cidade.
     if (run['dungeon'] != null && (kind == 'dboss' || kind == 'boss')) {
-      out['dungeon'] = null;
       out['dungeons'] = ((run['dungeons'] as num?) ?? 0).toInt() + 1;
-      if (run['town'] != null) {
-        out['town'] = {...Map<String, dynamic>.from(run['town'] as Map), 'done': [...(run['town']['done'] as List? ?? const []), run['dungeon']['place']]};
+      final place = run['dungeon']['place'];
+      if (place != 'base') out['places'] = [...(run['places'] as List? ?? const []), place];
+      // Num lugar da água, dá para seguir para o próximo (o mar depois da praia...); nos outros, volta.
+      if (place != 'base' && waterNext(run['dungeon']['scene']) != null) {
+        out['dungeon'] = {...Map<String, dynamic>.from(run['dungeon'] as Map), 'cleared': true};
+      } else {
+        _leavePlace(run, out);
       }
     }
     if (kind == 'rematch') {
@@ -1451,6 +1575,9 @@ class FactoryRun {
       if (_cityKinds.contains(beaten['kind'])) {
         out['prevBiome'] = routeBiome(data, {...run, 'dungeon': null});
         out['leg'] = out['floor'];
+        out.remove('detour');
+        out.remove('back');
+        out.remove('places');
         out['town'] = null;
       }
       final (boss, played) = _nextBoss(out, data, rand);
@@ -1676,7 +1803,9 @@ class FactoryRun {
 
   /// Sem Surf, não dá para mergulhar.
   static bool nodeBlocked(Json run, Map? node) =>
-      node?['biome'] == 'underwater' && (run['route'] as Map?)?['biome'] != 'underwater' && !hasHm(run, 'surf');
+      ((node?['biome'] == 'underwater' && (run['route'] as Map?)?['biome'] != 'underwater') ||
+          (node?['kind'] == 'dungeon' && const ['water', 'underwater'].contains(node?['scene']))) &&
+      !hasHm(run, 'surf');
 
   /// Cut: uma vez por rota, corta a árvore e abre um caminho escondido (um selvagem raro do lugar). null se não dá.
   static Json? cutPath(Json run) {
@@ -1705,7 +1834,7 @@ class FactoryRun {
   /// A revanche: o Campeão vencido vem com o time de alguns andares à frente.
   static const rematchFloors = 5;
   /// O começo da rota de agora (o andar depois da última cidade).
-  static int legOf(Json run) => _int(run['floor']) - routePos(run);
+  static int legOf(Json run) => _int(run['floor']) - routePos(run) - _n(run, 'detour');
 
   /// O rival da região que aparece de surpresa: o último que você já enfrentou na história (ou o primeiro). null se a região
   /// não tem rival. Igual ao site.
@@ -1797,7 +1926,7 @@ class FactoryRun {
   /// O clima de cada lugar (chances): sol e areia no deserto, chuva no mar e no pântano, neve na neve e na caverna de gelo,
   /// sol no vulcão; às vezes sol ou chuva na grama, na floresta e na cidade. Lugares fechados sem clima. Igual ao site.
   static const sceneWeather = <String, List<(String, double)>>{
-    'desert': [('sand', 0.45), ('sun', 0.25)], 'volcano': [('sun', 0.6)], 'snow': [('snow', 0.65)], 'icecave': [('snow', 0.5)],
+    'desert': [('sand', 0.45), ('sun', 0.25)], 'volcano': [('sun', 0.6)], 'snow': [('snow', 0.65)], 'icecave': [('snow', 0.5)], 'lavacave': [('sun', 0.4)], 'seacave': [('rain', 0.2)],
     'beach': [('sun', 0.35), ('rain', 0.15)], 'water': [('rain', 0.35), ('sun', 0.15)], 'swamp': [('rain', 0.45)],
     'grass': [('sun', 0.15), ('rain', 0.15)], 'forest': [('rain', 0.2), ('sun', 0.1)], 'mountain': [('sand', 0.15), ('snow', 0.15), ('sun', 0.1)],
     'sky': [('sun', 0.2), ('rain', 0.2)], 'city': [('rain', 0.12), ('sun', 0.12)],
@@ -1807,7 +1936,7 @@ class FactoryRun {
   /// A música de cada lugar (selvagens e treinadores da rota; os chefes têm a deles): temas originais por grupo. Igual ao site.
   static const placeMusicGroups = {
     'field': ['grass', 'flowers', 'bamboo'], 'forest': ['forest', 'swamp'], 'sea': ['water', 'beach', 'underwater'],
-    'cave': ['cave', 'icecave', 'crystal', 'sewer'], 'mountain': ['mountain', 'snow', 'ruins', 'temple', 'sky'], 'desert': ['desert', 'dunes', 'volcano'],
+    'cave': ['cave', 'icecave', 'crystal', 'sewer', 'lavacave', 'poisoncave', 'seacave'], 'mountain': ['mountain', 'snow', 'ruins', 'temple', 'sky'], 'desert': ['desert', 'dunes', 'volcano'],
     'city': ['city', 'plant'], 'spooky': ['tower'],
   };
   static String placeMusic(String scene) {
@@ -1859,7 +1988,7 @@ class FactoryRun {
     'icecave': [('chill', 0.35), ('aurora', 0.1)], 'snow': [('chill', 0.2), ('aurora', 0.2)], 'tower': [('haunt', 0.35), ('psychic', 0.15)], 'underwater': [('current', 0.4)], 'water': [('current', 0.15)],
     'grass': [('grassy', 0.2)], 'forest': [('grassy', 0.3), ('misty', 0.1)], 'city': [('electric', 0.25)], 'beach': [('misty', 0.1)], 'sky': [('wind', 0.3), ('storm', 0.15)],
     'desert': [('quicksand', 0.2)], 'ruins': [('psychic', 0.2), ('haunt', 0.15)], 'flowers': [('spores', 0.3), ('misty', 0.15)], 'plant': [('storm', 0.35), ('electric', 0.25)],
-    'crystal': [('diamonds', 0.4)], 'dunes': [('quicksand', 0.35), ('haunt', 0.1)], 'bamboo': [('spores', 0.2), ('grassy', 0.2)], 'temple': [('psychic', 0.3)],
+    'crystal': [('diamonds', 0.4)], 'lavacave': [('ashes', 0.4)], 'poisoncave': [('miasma', 0.4)], 'seacave': [('current', 0.3)], 'dunes': [('quicksand', 0.35), ('haunt', 0.1)], 'bamboo': [('spores', 0.2), ('grassy', 0.2)], 'temple': [('psychic', 0.3)],
     'gym-grass': [('grassy', 0.6)], 'gym-electric': [('electric', 0.6)], 'gym-psychic': [('psychic', 0.6)], 'gym-fairy': [('misty', 0.6)], 'gym-ghost': [('haunt', 0.6)],
     'gym-rock': [('rockfall', 0.4)], 'gym-fire': [('ashes', 0.4)], 'gym-poison': [('miasma', 0.4)], 'gym-ice': [('chill', 0.4)], 'gym-water': [('current', 0.4)],
   };
@@ -1921,8 +2050,8 @@ class FactoryRun {
     out['encounter'] = null;
     out['pending'] = null;
     out['ropes'] = ((run['ropes'] as num?) ?? 0).toInt() + 1;
-    // Dentro de um lugar (esgoto, base vilã...), a corda leva de volta para a cidade.
-    if (run['dungeon'] != null) out['dungeon'] = null;
+    // Dentro de um lugar (esgoto, base vilã...), a corda leva de volta para onde você entrou (a rota ou a cidade).
+    if (run['dungeon'] != null) _leavePlace(run, out);
     out['route'] = routeOptions(out, data, _dice(out));
     return out;
   }
@@ -2208,7 +2337,7 @@ class FactoryRun {
     final rand = _dice(out);
     // Chegou na cidade: o estoque do Poké Mart dela e o lugar com batalha perto dela.
     if (townHub(data, out) && out['town']?['leg'] != legOf(out)) {
-      out['town'] = {'leg': legOf(out), 'shop': _pickShop(rand, data, _int(out['floor']), 8, run['townMap'] == true), 'place': _pick(dungeonIds, rand), 'done': <String>[]};
+      out['town'] = {'leg': legOf(out), 'shop': _pickShop(rand, data, _int(out['floor']), 8, run['townMap'] == true)};
     }
     out['route'] = routeOptions(out, data, rand);
     // Começo de uma rota nova: a missão dela.
