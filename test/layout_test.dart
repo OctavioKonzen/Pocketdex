@@ -135,6 +135,7 @@ final screens = <String, Widget Function()>{
         'shop': ['poke-ball', 'ultra-ball', 'max-potion', 'rare-candy', 'protein', 'choice-band', 'bottle-cap']}),
   'Battle Factory (mapa)': () => _factory(null, {'floor': 14, 'biome': 'water', 'options': [{'kind': 'wild', 'biome': 'water'}, {'kind': 'ace'}, {'kind': 'center'}]}),
   'Battle Factory (chefe)': () => _factory(null, {'floor': 20, 'biome': 'cave', 'options': [{'kind': 'boss'}]}),
+  'Battle Factory (cidade)': () => _factory(null, {'floor': 10, 'biome': 'city', 'town': true, 'options': [{'kind': 'boss'}, {'kind': 'dungeon', 'place': 'sewer', 'scene': 'sewer'}]}),
   'Login': () => const LoginScreen(),
   'Pokémon (Charizard)': () => const PokemonDetailScreen(initialPokemonId: 6),
   'Status do Pokémon': () => const PokemonDetailScreen(initialPokemonId: 6),
@@ -163,6 +164,13 @@ Widget _factory(Map<String, dynamic>? pending, [Map<String, dynamic>? route]) {
 // (largura, altura, escala do texto)
 // Telas que abrem algo antes de conferir (ex.: a folha de filtros).
 final actions = <String, Future<void> Function(WidgetTester)>{
+  // A loja aberta (a lista de compras por cima do campo).
+  'Battle Factory (loja)': (tester) async {
+    final buy = find.byKey(const ValueKey('factory-menu-buy'));
+    await tester.ensureVisible(buy);
+    await tester.tap(buy);
+    await tester.pump();
+  },
   // Espera o Pokémon sair da Pokébola (para a foto mostrar ele no lugar).
   'Pokémon (Charizard)': (tester) async {
     for (var i = 0; i < 10; i++) {

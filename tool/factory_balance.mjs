@@ -131,6 +131,8 @@ function maybeReroll(run) {
 /** O que um jogador simples faz entre os andares. */
 function between(run) {
   const p = run.pending
+  // Entrou num lugar perto da cidade (sem pendência): já tem os caminhos dele.
+  if (!p) return run
   if (p.capture) {
     const foe = { id: p.capture.id, level: p.capture.level }
     if (run.team.length < F.MAX_TEAM) run = F.capture(run)
@@ -221,6 +223,14 @@ for (let r = 0; r < runs; r++) {
   if (startFloor > 1) run = preparedRun(run, startFloor, r)
   while (run.floor <= maxFloor) {
     run = maybeReroll(run)
+    // Na cidade: cura no Centro e compra no Poké Mart dela antes de escolher (o ginásio ou o lugar perto dela).
+    if (run.route.town) {
+      run = F.townCenter(run)
+      run = { ...run, pending: null }
+      run = between(F.townShop(run))
+      run = { ...run, pending: null }
+      run = { ...run, route: F.routeOptions(run, data, () => 0.5) }
+    }
     // Sem o Mapa, a bifurcação vai às cegas (como no jogo).
     run = F.chooseNode(run, data, run.townMap || run.route.options.length < 2 ? choosePath(run) : F.blindPick(run))
     // Escolha na rota: ajuda se sobra dinheiro, entra na caverna e segue o Pokémon ferido se o time está bem.
