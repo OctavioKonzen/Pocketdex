@@ -1900,7 +1900,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
         run: run,
         field: _field(scene, key: const ValueKey('factory-shop'), (w, h) => [
               _far(_trainerImage('sd-backpacker', w * 0.42), w, h, plain: true),
-              if (me != null) Positioned(left: w * 0.1, bottom: h * 0.06, child: TrainerSprite(me, box: w * 0.32)),
+              // Acima da caixa de texto (que fica dentro do campo, como na batalha).
+              if (me != null) Positioned(left: w * 0.08, bottom: h * 0.23, child: TrainerSprite(me, box: w * 0.4)),
               Positioned(
                 left: 10,
                 top: 6,
@@ -2432,13 +2433,13 @@ class _FactoryScreenState extends State<FactoryScreen> {
                     ),
                   ),
                 if (coach != null && (meeting || rival != null)) _far(TrainerSprite(coach, box: w * 0.4), w, h),
-                if (town && me != null) Positioned(left: w * 0.35, bottom: h * 0.08, child: TrainerSprite(me, box: w * 0.3)),
+                if (town && me != null) Positioned(left: w * 0.35, bottom: h * 0.23, child: TrainerSprite(me, box: w * 0.3)),
                 // Quem vai na frente acompanha você na cidade (como o Pokémon que segue o treinador). Igual ao site.
                 if (town && lead != null)
                   Positioned(
                       key: const ValueKey('follower'),
                       left: w * 0.57,
-                      bottom: h * 0.08,
+                      bottom: h * 0.23,
                       width: w * 0.18,
                       height: w * 0.18,
                       child: PokemonSprite((lead['id'] as num).toInt(), shiny: lead['shiny'] == true, fill: 0.95, alignBottom: true)),

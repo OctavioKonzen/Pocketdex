@@ -133,6 +133,10 @@ final screens = <String, Widget Function()>{
   'Battle Factory (captura)': () => _factory({'exp': 120, 'money': 80, 'seen': true, 'levels': [], 'joy': false, 'capture': {'id': 4, 'level': 12, 'iv': 0, 'ev': 0, 'shiny': true}, 'cards': null, 'shop': null}),
   'Battle Factory (loja)': () => _factory({'exp': 120, 'money': 80, 'seen': true, 'levels': [], 'joy': false, 'capture': null, 'cards': null,
         'shop': ['poke-ball', 'ultra-ball', 'max-potion', 'rare-candy', 'protein', 'choice-band', 'bottle-cap']}),
+  // Fora da cidade: o vendedor ambulante (o mesmo que o Poké Mart) e quem cura no caminho (no lugar do Centro).
+  'Battle Factory (vendedor na rota)': () => _factory({'mart': true, 'shop': ['poke-ball', 'great-ball', 'potion', 'super-potion', 'revive', 'escape-rope']}),
+  'Battle Factory (vendedor na rota, comprando)': () => _factory({'mart': true, 'shop': ['poke-ball', 'great-ball', 'potion', 'super-potion', 'revive', 'escape-rope']}),
+  'Battle Factory (cura na rota)': () => _factory({'center': true}),
   'Battle Factory (mapa)': () => _factory(null, {'floor': 14, 'biome': 'water', 'options': [{'kind': 'wild', 'biome': 'water'}, {'kind': 'ace'}, {'kind': 'center'}]}),
   'Battle Factory (chefe)': () => _factory(null, {'floor': 20, 'biome': 'cave', 'options': [{'kind': 'boss'}]}),
   // A tela inicial com a árvore de melhorias em leque (algumas compradas).
@@ -187,6 +191,13 @@ final actions = <String, Future<void> Function(WidgetTester)>{
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.byKey(const ValueKey('skill-tree-full')), findsOneWidget);
     expect(find.byKey(const ValueKey('tree-full-close')), findsOneWidget);
+  },
+  'Battle Factory (vendedor na rota, comprando)': (tester) async {
+    final buy = find.byKey(const ValueKey('factory-menu-buy'));
+    await tester.ensureVisible(buy);
+    await tester.tap(buy);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
   },
   // A loja aberta (a lista de compras por cima do campo).
   'Battle Factory (loja)': (tester) async {
