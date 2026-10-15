@@ -41,3 +41,35 @@ describe('cenário da batalha dupla',()=>{
     } finally {simulatorDispose(b)}
   })
 })
+describe('dupla igual à batalha normal',()=>{
+  // Com os golpes já lidos (para o dano estimado).
+  const withMoves=()=>({...mon(),moves:['swift','recover','helpinghand','protect'].map(slug=>({...globalThis.PocketDexSim.move(slug),pp:10,maxPp:10}))})
+  it('BOLSA e FUGIR funcionam; os golpes e os alvos mostram o dano estimado',()=>{
+    const b=newPartyBattle({me:Array.from({length:6},withMoves),npc3:Array.from({length:6},withMoves)},['me','me','npc3','npc3'],2,()=>0.25)
+    try {
+      const menu=renderToStaticMarkup(<MultiBattle battle={b} onExit={()=>{}} onAgain={()=>{}}/>)
+      expect(menu).toMatch(/<button[^>]*data-testid="battle-bag"/)
+      expect(menu).not.toMatch(/<button[^>]*disabled=""[^>]*data-testid="battle-bag"/)
+      expect(menu).not.toMatch(/<button[^>]*disabled=""[^>]*data-testid="battle-run"/)
+      // O dano em cada adversário (Swift), com o "hit" da batalha.
+      const hit=()=>({eff:1,rolls:[[10,12]]})
+      const html=renderToStaticMarkup(<MultiBattle battle={b} hit={hit} onExit={()=>{}} onAgain={()=>{}} startMenu="fight"/>)
+      expect(html).toContain('data-testid="damage-range-0-0-0"')
+      expect(html).toMatch(/damage-range-0-0-0"><span[^>]*>\d+–\d+%/)
+      // Online: a Bolsa fica apagada (como na batalha normal).
+      const online=renderToStaticMarkup(<MultiBattle battle={b} online={{uid:'me',names:{},locked:false,onAction(){},onClose(){}}} onExit={()=>{}} onAgain={()=>{}}/>)
+      expect(online).toMatch(/<button[^>]*disabled=""[^>]*data-testid="battle-bag"/)
+    } finally {simulatorDispose(b)}
+  })
+  it('o motor aceita a Potion de um enquanto o outro ataca',()=>{
+    const b=newPartyBattle({me:Array.from({length:6},mon),npc3:Array.from({length:6},mon)},['me','me','npc3','npc3'],2,()=>0.25)
+    try {
+      simulatorTurn(b,[[{kind:'move',index:0,target:0},{kind:'move',index:0,target:0}],[{kind:'move',index:0,target:0},{kind:'move',index:0,target:0}]])
+      const hurt=b.sides[0].team.findIndex(m=>m.hp>0&&m.hp<m.maxHp)
+      expect(hurt).toBeGreaterThanOrEqual(0)
+      const potions=b.bags[0].potion
+      simulatorTurn(b,[[{kind:'item',item:'potion',index:hurt},{kind:'move',index:3}],[{kind:'move',index:3},{kind:'move',index:3}]])
+      expect(b.bags[0].potion).toBe(potions-1)
+    } finally {simulatorDispose(b)}
+  })
+})

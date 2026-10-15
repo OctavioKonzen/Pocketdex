@@ -5,7 +5,7 @@
 // bônus, a loja com "Continuar" e o mapa com os caminhos de cada andar (Bolsa,
 // itens, golpes e mecânicas em todos). Igual ao app (lib/screens/factory_panels.dart).
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import PokeIcon from './PokeIcon'
 import Sprite from './Sprite'
 import { BattleBackground, battleScale, battleScene, farPerson, foeBottom, nearPerson, PlatformBase } from './BattleScene'
@@ -1196,6 +1196,56 @@ function MenuButton({ children, sub, onClick, disabled = false, testid, active =
   )
 }
 
+/**
+ * Os botões de baixo da corrida como os da batalha: cada um sempre no mesmo lugar, sem rolar. O que não cabe na caixa
+ * vai para a página seguinte (◀ 1/2 ▶ embaixo), com as fileiras inteiras (nunca um botão cortado). Igual ao app.
+ */
+function PagedMenu({ children, wide = false }) {
+  const box = useRef(null)
+  const grid = useRef(null)
+  const [pages, setPages] = useState([])
+  const [page, setPage] = useState(0)
+  const nav = 30
+  useLayoutEffect(() => {
+    const b = box.current, g = grid.current
+    if (!b || !g) return
+    const limit = b.clientHeight - nav
+    const items = [...g.children].map((el) => [el.offsetTop, el.offsetTop + el.offsetHeight]).sort((x, y) => x[0] - y[0])
+    const total = g.scrollHeight
+    let next = []
+    if (total <= b.clientHeight + 0.5 || !items.length || !(limit > 0)) next = [[0, total]]
+    else {
+      let start = 0, end = 0
+      for (const [top, bottom] of items) {
+        if (bottom - start > limit + 0.5 && end > start) { next.push([start, end]); start = top }
+        end = Math.max(end, bottom)
+      }
+      next.push([start, Math.max(end, start)])
+    }
+    const at = Math.min(page, next.length - 1)
+    // Fora da página: não dá para tocar nem chegar pelo teclado.
+    for (const el of g.children) el.inert = next.length > 1 && (el.offsetTop < next[at][0] - 0.5 || el.offsetTop + el.offsetHeight > next[at][1] + 0.5)
+    if (JSON.stringify(next) !== JSON.stringify(pages)) setPages(next)
+  })
+  const paged = pages.length > 1
+  const at = Math.min(page, Math.max(0, pages.length - 1))
+  const [start, end] = paged ? pages[at] : [0, 0]
+  return (
+    <div ref={box} className="flex h-full flex-col">
+      <div className="relative overflow-hidden" style={{ height: paged ? Math.min(end - start, 9999) : '100%' }}>
+        <div ref={grid} className={`relative grid content-start gap-1 ${wide ? '' : 'grid-cols-2'}`} style={{ transform: `translateY(${-start}px)` }}>{children}</div>
+      </div>
+      {paged && (
+        <div className="mt-auto flex h-[30px] shrink-0 items-center justify-center gap-4 font-black">
+          <button type="button" className="cursor-pointer px-2 disabled:opacity-30" disabled={at === 0} onClick={() => setPage(at - 1)} data-testid="factory-menu-prev" aria-label={t('Anterior')}>◀</button>
+          <span className="text-xs tabular-nums" data-testid="factory-menu-page">{at + 1}/{pages.length}</span>
+          <button type="button" className="cursor-pointer px-2 disabled:opacity-30" disabled={at === pages.length - 1} onClick={() => setPage(at + 1)} data-testid="factory-menu-next" aria-label={t('Próxima')}>▶</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 /** Ao entrar na rota: uma frase do lugar. */
 const ROUTE_FLAVOR = {
   grass: 'O vento balança o mato alto: tem Pokémon por toda parte.',
@@ -1382,8 +1432,9 @@ function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, 
         </div>
       )}
       {/* A tela de baixo: da altura da tela de baixo da batalha (nada muda de tamanho entre a corrida e a batalha). */}
-      <div className="h-[15.5rem] overflow-y-auto rounded-b-2xl border-4 border-slate-800 bg-slate-800 p-2" data-testid="factory-bottom">
-        {menu && <div className={`dlg-box grid content-start gap-1 rounded-xl border-4 p-2 ${wideMenu ? '' : 'grid-cols-2'}`}>{menu}</div>}
+      {/* Os botões ficam sempre nos mesmos lugares (como na batalha): o que não cabe vai para a próxima página (◀ ▶). */}
+      <div className="h-[15.5rem] rounded-b-2xl border-4 border-slate-800 bg-slate-800 p-2" data-testid="factory-bottom">
+        {menu && <div className="dlg-box h-full rounded-xl border-4 p-2"><PagedMenu key={field?.props?.testid ?? ''} wide={wideMenu}>{menu}</PagedMenu></div>}
       </div>
     </div>
   )

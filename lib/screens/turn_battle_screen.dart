@@ -1641,7 +1641,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
   }
 
   Widget _battleBody(BuildContext context) {
-    if (_b.mode != 'singles') return _MultiBattleView(battle: _b, typeEff: widget.typeEff, online: widget.online, onExit: widget.onExit, onAgain: widget.onAgain, onFinish: widget.onFinish);
+    if (_b.mode != 'singles') return _MultiBattleView(battle: _b, hit: widget.hit, typeEff: widget.typeEff, online: widget.online, onExit: widget.onExit, onAgain: widget.onAgain, onFinish: widget.onFinish);
     final me = _b.teams[0][_active[0]];
     final foe = _b.teams[1][_active[1]];
     final current = _b.active(0);
@@ -1662,15 +1662,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                             name: it.name,
                             count: _b.bags[0][it.slug] ?? 0,
                             icon: it.slug,
-                            help: it.ball
-                                ? tr('Jogar no Pokémon selvagem')
-                                : it.revive
-                                    ? tr('Revive com metade do HP')
-                                    : it.heal >= 9999
-                                        ? tr('Recupera todo o HP')
-                                        : _b.healPct
-                                            ? tr('Recupera {0}% do HP').replaceAll('{0}', '${((const {'potion': 0.25, 'super-potion': 0.5, 'hyper-potion': 0.75}[it.slug] ?? 0) * 100).round()}')
-                                            : tr('Recupera {0} de HP').replaceAll('{0}', '${it.heal}'),
+                            help: _itemHelp(it, _b.healPct),
                             disabled: ![for (var i = 0; i < _b.teams[0].length; i++) i].any((i) => _b.canUseItem(0, it.slug, i)),
                             use: it.ball ? tr('JOGAR') : tr('USAR'),
                             // A bola vai direto no selvagem; os remédios perguntam em quem.
@@ -1834,7 +1826,8 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                             offset: _meGone ? const Offset(-1.3, 0) : Offset.zero,
                             duration: const Duration(milliseconds: 520),
                             curve: Curves.easeIn,
-                            child: TrainerBack(_myTrainer, frame: _backFrame, height: h * 0.62),
+                            // Na frente de tudo (mais perto que o seu Pokémon): a mesma escala de uma pessoa, um pouco maior pela perspectiva.
+                            child: TrainerBack(_myTrainer, frame: _backFrame, height: nearPerson(w) * 0.94),
                           ),
                         ),
                       // As caixas de vida ficam sempre por cima dos Pokémon (como nos jogos): um Pokémon grande não cobre a vida.
@@ -2279,7 +2272,8 @@ Widget _menuGrid(List<Widget> buttons) => Column(children: [
         if (row > 0) const SizedBox(height: 6),
         Expanded(
           child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Expanded(child: pair[0]),
+            // Sempre as duas fileiras (cada botão no seu lugar), mesmo com menos de 4.
+            Expanded(child: pair.isNotEmpty ? pair[0] : const SizedBox()),
             const SizedBox(width: 6),
             Expanded(child: pair.length > 1 ? pair[1] : const SizedBox()),
           ]),
@@ -2337,6 +2331,17 @@ double battleBottomHeight(BuildContext context) => _BottomScreen.height(context)
 double battleBarHeight(BuildContext context) => MediaQuery.textScalerOf(context).scale(15) + 12;
 
 /// O menu apagado (enquanto o turno acontece ou é a vez do outro).
+/// O que o item da Bolsa faz (na caixa de texto, ao tocar nele). Igual ao site.
+String _itemHelp(BattleItem it, bool healPct) => it.ball
+    ? tr('Jogar no Pokémon selvagem')
+    : it.revive
+        ? tr('Revive com metade do HP')
+        : it.heal >= 9999
+            ? tr('Recupera todo o HP')
+            : healPct
+                ? tr('Recupera {0}% do HP').replaceAll('{0}', '${((const {'potion': 0.25, 'super-potion': 0.5, 'hyper-potion': 0.75}[it.slug] ?? 0) * 100).round()}')
+                : tr('Recupera {0} de HP').replaceAll('{0}', '${it.heal}');
+
 Widget _idleMenu() => _menuGrid([for (final label in ['LUTAR', 'BOLSA', 'POKÉMON', 'FUGIR']) _MenuButton(label, null)]);
 
 /// Os 4 golpes (2 por linha), iguais na batalha normal e na dupla/tripla: a altura pelas duas linhas de texto
@@ -2356,7 +2361,7 @@ Widget moveGrid(BuildContext context, List<Widget> children) => GridView(
 /// O botão de golpe (e de alvo): a cor do tipo, o nome em cima; embaixo o PP/crítico/dano à esquerda e a eficácia
 /// à direita (os dois diminuem se não couberem). O mesmo na batalha normal e na dupla/tripla.
 class _MoveButton extends StatelessWidget {
-  const _MoveButton({this.inkKey, required this.label, required this.color, required this.onTap, this.details = const [], this.effect, this.faded = false});
+  const _MoveButton({this.inkKey, required this.label, required this.color, required this.onTap, this.details = const [], this.effect, this.faded = false, this.wide = false});
   final Key? inkKey;
   final String label;
   final Color color;
@@ -2364,6 +2369,9 @@ class _MoveButton extends StatelessWidget {
   final List<Widget> details;
   final Widget? effect;
   final bool faded;
+
+  /// Na dupla: o nome e o PP em cima e, embaixo, a linha inteira para como o golpe pega em cada adversário.
+  final bool wide;
 
   @override
   Widget build(BuildContext context) => Material(
@@ -2378,7 +2386,22 @@ class _MoveButton extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
-              children: [
+              children: wide
+                  ? [
+                      // Em cima o nome e o PP; embaixo como pega em cada adversário e o resto (a chance de crítico).
+                      Row(children: [
+                        Expanded(child: m.Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13))),
+                        if (details.isNotEmpty) details.first,
+                      ]),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Row(mainAxisSize: MainAxisSize.min, children: [?effect, ...details.skip(1)])),
+                      ),
+                    ]
+                  : [
                 m.Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13)),
                 Row(children: [
                   Flexible(
@@ -2392,7 +2415,7 @@ class _MoveButton extends StatelessWidget {
                       child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerRight, child: effect),
                     ),
                 ]),
-              ],
+                    ],
             ),
           ),
         ),
@@ -3441,7 +3464,10 @@ class _MultiBattleView extends StatefulWidget {
 
   /// Eficácia de um tipo contra os tipos de quem defende (para as fraquezas e os golpes, como na batalha normal).
   final double Function(String, List<String>) typeEff;
-  const _MultiBattleView({required this.battle, required this.typeEff, this.online, required this.onExit, required this.onAgain, this.onFinish});
+
+  /// O dano de um golpe (para o dano estimado nos golpes, como na batalha normal).
+  final BattleHit hit;
+  const _MultiBattleView({required this.battle, required this.hit, required this.typeEff, this.online, required this.onExit, required this.onAgain, this.onFinish});
   @override
   State<_MultiBattleView> createState() => _MultiBattleViewState();
 }
@@ -3469,7 +3495,7 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
   void didUpdateWidget(covariant _MultiBattleView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (_choicePhase(oldWidget.battle) != _choicePhase(_b) || oldWidget.online?.round != widget.online?.round) {
-      _choices.clear(); _aim = null; _gimmickOn = false; _error = null; _menu = 'main';
+      _choices.clear(); _aim = null; _gimmickOn = false; _error = null; _menu = 'main'; _item = null; _bagPick = null;
     }
   }
   Map<String, dynamic>? _automatic(Map slot) => _own['wait'] == true
@@ -3499,6 +3525,8 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
     _menu = 'main';
     _partyPick = null;
     _summary = null;
+    _bagPick = null;
+    _item = null;
     if (_pending.every((p) => _choices.containsKey(p['slot']))) {
       _send();
     } else {
@@ -3525,7 +3553,10 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
           return;
         }
         if (_menu != 'main') {
-          _menu = 'main';
+          // Do time escolhendo em quem usar o item: volta para a Bolsa.
+          _menu = _menu == 'party' && _item != null ? 'bag' : 'main';
+          _item = null;
+          _bagPick = null;
           _gimmickOn = false;
           _partyPick = null;
           _summary = null;
@@ -3805,7 +3836,11 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
       return '${tr('Em quem')} ${mon.name} ${tr('vai usar')} ${index < moves.length ? moves[index]['move'] : ''}?$step';
     }
     if (current['forceSwitch'] == true) return '${tr('Quem entra no lugar de')} ${mon.name}?$step';
-    if (_menu == 'party') return '${tr('Escolha um Pokémon.')}$step';
+    if (_menu == 'bag') {
+      final picked = _pockets().expand((p) => p.items).where((it) => it.id == _bagPick).firstOrNull;
+      return picked != null ? '${picked.name}: ${picked.help}' : '${tr('Escolha um item.')}$step';
+    }
+    if (_menu == 'party') return '${tr(_item != null ? 'Usar em qual Pokémon?' : 'Escolha um Pokémon.')}$step';
     return '${tr('O que')} ${mon.name} ${tr('vai fazer?')}$step';
   }
 
@@ -3821,8 +3856,13 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
     final slot = _pending.where((slot) => !_choices.containsKey(slot['slot'])).firstOrNull;
     if (slot == null || _aim != null) return null;
     final forced = slot['forceSwitch'] == true;
+    // A Bolsa abre no mesmo lugar (a descrição do item vai para a caixa de texto).
+    if (!forced && _menu == 'bag') {
+      return BwBag(testKey: 'bag', fill: true, external: true, onSelect: (id) => setState(() => _bagPick = id), pockets: _pockets());
+    }
     if (!forced && _menu != 'party') return null;
     final position = slot['slot'] as int, options = _switchOptions(slot);
+    final item = forced ? null : _item;
     // Os dados (como na batalha normal).
     if (_summary != null) {
       return SingleChildScrollView(child: BwSummary(summaryOf(_b, _side, _summary!), onBack: () => setState(() => _summary = null)));
@@ -3846,14 +3886,70 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
             sub: mon.hp <= 0 ? tr('Desmaiado') : '${mon.hp}/${mon.maxHp}',
           ),
       ],
-      disabled: (i) => _locked || !options.contains(i),
-      onPick: (i) => _commit(slot, {'kind': 'switch', 'index': i}),
-      pickLabel: tr('TROCAR'),
+      disabled: (i) => _locked || (item != null ? !_canItem(item, i) : !options.contains(i)),
+      onPick: (i) => _commit(slot, item != null ? {'kind': 'item', 'item': item, 'index': i} : {'kind': 'switch', 'index': i}),
+      pickLabel: tr(item != null ? 'USAR' : 'TROCAR'),
     );
   }
 
   /// O tocado na tela do time e os dados abertos.
   int? _partyPick, _summary;
+
+  /// A Bolsa (como na batalha normal): o item tocado e o escolhido para usar (aí o time pergunta em quem).
+  String? _bagPick, _item;
+
+  /// Quantos ainda tem do item (tirando o que outro Pokémon seu já vai usar neste turno).
+  int _left(String slug) => (_b.bags[_side][slug] ?? 0) - _choices.values.where((c) => c['kind'] == 'item' && c['item'] == slug).length;
+
+  bool _canItem(String slug, int index) =>
+      _left(slug) > 0 &&
+      _b.canUseItem(_side, slug, index) &&
+      // Reviver o mesmo duas vezes no turno: não.
+      !(slug == 'revive' && _choices.values.any((c) => c['kind'] == 'item' && c['item'] == 'revive' && c['index'] == index));
+
+  /// Os remédios da Bolsa (na dupla não tem captura).
+  List<BagPocket> _pockets() => [
+        BagPocket(id: 'medicine', label: 'Remédios', img: 'potion', items: [
+          for (final it in battleItems)
+            if (!it.ball && _left(it.slug) > 0)
+              BagEntry(
+                id: it.slug,
+                name: it.name,
+                count: _left(it.slug),
+                icon: it.slug,
+                help: _itemHelp(it, _b.healPct),
+                disabled: ![for (var i = 0; i < _b.teams[_side].length; i++) i].any((i) => _canItem(it.slug, i)),
+                use: tr('USAR'),
+                onUse: () => setState(() {
+                  _item = it.slug;
+                  _menu = 'party';
+                  _bagPick = null;
+                  _partyPick = null;
+                  _summary = null;
+                }),
+              ),
+        ]),
+      ];
+
+  /// Fugir (como na batalha normal): conta como derrota.
+  Future<void> _run() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        content: const Text('Fugir da batalha? Conta como derrota.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Fugir')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    if (widget.online != null) {
+      widget.online!.onClose();
+    } else {
+      _play(_b.forfeit());
+    }
+  }
 
   /// Embaixo da tela, como na batalha normal e nos mesmos lugares: em cima a informação (fraquezas, quem já
   /// escolheu), no meio a grade (menu, golpes, alvos) e embaixo o Voltar.
@@ -3887,7 +3983,17 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
               label: '${target['name']}',
               color: ally ? const Color(0xFF0369A1) : const Color(0xFFB91C1C),
               onTap: _locked ? null : () => _commit(slot, {..._aim!, 'target': target['loc']}),
-              details: [m.Text('${tr(ally ? 'Aliado' : 'Adversário')} · ${(target['slot'] as int) + 1}', style: const TextStyle(color: Colors.white70, fontSize: 11))],
+              details: [
+                m.Text('${tr(ally ? 'Aliado' : 'Adversário')} · ${(target['slot'] as int) + 1}', style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                // O dano estimado neste alvo (em % da vida dele), como na batalha normal.
+                if (index < mon.moves.length)
+                  if (TurnBattle.damageRange(widget.hit, mon, _b.teams[target['side'] as int][target['index'] as int], mon.moves[index], _b.weather) case final r?)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 6),
+                      child: m.Text(r.low == r.high ? '${r.low}%' : '${r.low}–${r.high}%',
+                          key: ValueKey('damage-range-target-${target['loc']}'), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
+                    ),
+              ],
               effect: index < mon.moves.length && mon.moves[index].power > 0 && mon.moves[index].category != 'status'
                   ? _EffectTag(widget.typeEff(mon.moves[index].type, typesOf(_b.teams[target['side'] as int][target['index'] as int])))
                   : null,
@@ -3896,9 +4002,9 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
     } else if (menu == 'main') {
       grid = _menuGrid([
         _MenuButton(key: const ValueKey('battle-fight'), 'LUTAR', _locked ? null : () => setState(() => _menu = 'fight')),
-        const _MenuButton('BOLSA', null),
-        _MenuButton(key: const ValueKey('battle-party'), 'POKÉMON', _locked ? null : () => setState(() => _menu = 'party')),
-        const _MenuButton('FUGIR', null),
+        _MenuButton(key: const ValueKey('battle-bag'), 'BOLSA', _locked || widget.online != null ? null : () => setState(() { _menu = 'bag'; _bagPick = null; _item = null; })),
+        _MenuButton(key: const ValueKey('battle-party'), 'POKÉMON', _locked ? null : () => setState(() { _menu = 'party'; _item = null; })),
+        _MenuButton(key: const ValueKey('battle-run'), 'FUGIR', _locked ? null : _run),
       ]);
     } else if (menu == 'fight') {
       final mechanic = mon.gimmick;
@@ -3921,12 +4027,13 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
             for (final (i, move) in moves.indexed)
               _MoveButton(
                 inkKey: ValueKey('battle-move-$position-$i'),
+                wide: true,
                 label: '${move['move']}',
                 color: getColorForType(i < mon.moves.length ? mon.moves[i].type : 'normal'),
                 faded: move['pp'] == 0,
                 onTap: _locked || move['disabled'] == true || move['pp'] == 0 ? null : () => _chooseMove(slot, i),
                 details: [
-                  m.Text('PP ${move['pp'] ?? '—'}/${i < mon.moves.length ? mon.moves[i].maxPp : move['pp'] ?? '—'}', style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                  m.Text('${move['pp'] ?? '—'}/${i < mon.moves.length ? mon.moves[i].maxPp : move['pp'] ?? '—'}', style: const TextStyle(color: Colors.white70, fontSize: 11)),
                   // A chance de crítico (dano 1,5×), como na batalha normal.
                   if (i < mon.moves.length)
                     if (TurnBattle.critChance(mon, mon.moves[i]) case final c?)
@@ -3944,7 +4051,11 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
                             child: () {
                               final eff = widget.typeEff(mon.moves[i].type, typesOf(foe));
                               final label = TurnBattle.effectLabel(eff) ?? 'Efetivo';
-                              return _Tag('${foe.name.length > 9 ? foe.name.substring(0, 9) : foe.name} ${eff == 0 ? '✕' : '×${_times(eff)}'}', _effectColors[label]!);
+                              // E o dano estimado em cada um (em % da vida dele), como na batalha normal.
+                              final r = TurnBattle.damageRange(widget.hit, mon, foe, mon.moves[i], _b.weather);
+                              final damage = r == null || eff == 0 ? '' : ' ${r.low == r.high ? '${r.low}' : '${r.low}–${r.high}'}%';
+                              return _Tag('${foe.name.length > 8 ? foe.name.substring(0, 8) : foe.name} ${eff == 0 ? '✕' : '×${_times(eff)}'}$damage', _effectColors[label]!,
+                                  key: ValueKey('damage-range-$position-$i-${foes.indexOf(foe)}'));
                             }(),
                           ),
                       ])
@@ -3961,20 +4072,32 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
               on: _gimmickOn,
               onTap: () => setState(() => _gimmickOn = !_gimmickOn)),
       ]);
+    } else if (menu == 'bag') {
+      // Tocou num item: USAR e CANCELAR nos botões fixos (como na batalha normal).
+      final picked = _pockets().expand((p) => p.items).where((it) => it.id == _bagPick).firstOrNull;
+      grid = picked == null
+          ? null
+          : _menuGrid([
+              _MenuButton(key: const ValueKey('bag-use'), picked.use ?? tr('USAR'), picked.disabled || _locked ? null : picked.onUse),
+              _MenuButton(key: const ValueKey('bag-cancel'), tr('CANCELAR'), () => setState(() => _bagPick = null)),
+            ]);
     } else {
       // A troca abre por cima do campo (a tela do time); tocou num Pokémon: as opções nos botões fixos (como no jogo).
       final options = _switchOptions(slot);
+      final item = forced ? null : _item;
       if (foes.isNotEmpty) info = _Weak(foes.first, TurnBattle.weaknesses(typesOf(foes.first), allTypes, widget.typeEff), dark: true);
       final pick = _partyPick;
       grid = pick == null
           ? null
           : _menuGrid([
-              _MenuButton(key: ValueKey('battle-switch-$position-pick'), tr('TROCAR'), _locked || !options.contains(pick) ? null : () => _commit(slot, {'kind': 'switch', 'index': pick})),
+              item != null
+                  ? _MenuButton(key: ValueKey('battle-switch-$position-pick'), tr('USAR'), _locked || !_canItem(item, pick) ? null : () => _commit(slot, {'kind': 'item', 'item': item, 'index': pick}))
+                  : _MenuButton(key: ValueKey('battle-switch-$position-pick'), tr('TROCAR'), _locked || !options.contains(pick) ? null : () => _commit(slot, {'kind': 'switch', 'index': pick})),
               _MenuButton(key: ValueKey('battle-switch-$position-info'), tr('DADOS'), () => setState(() => _summary = pick)),
               _MenuButton(key: ValueKey('battle-switch-$position-close'), tr('CANCELAR'), () => setState(() => _partyPick = null)),
             ]);
     }
-    final canBack = !_locked && (_aim != null || menu == 'fight' || menu == 'party' && !forced || chosen.isNotEmpty && (menu == 'main' || forced));
+    final canBack = !_locked && (_aim != null || menu == 'fight' || menu == 'bag' || menu == 'party' && !forced || chosen.isNotEmpty && (menu == 'main' || forced));
     return (info: info, grid: grid, footer: canBack ? _MenuButton(key: const ValueKey('battle-back'), 'Voltar', _back) : null);
   }
 
@@ -4007,7 +4130,7 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
           grid: panel.grid,
           footer: panel.footer,
           // As outras escolhas: embaixo dos botões fixos (no fim, como na batalha normal; a Factory abre a tela do andar sozinha).
-          extra: more || end || widget.online != null
+          extra: more || end
               ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                   if (more) FilledButton(onPressed: _locked ? null : _send, child: const Text('Continuar')),
                   if (end) ...[
@@ -4015,7 +4138,6 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
                     const SizedBox(height: 8),
                     OutlinedButton(onPressed: widget.onExit, child: const Text('Sair')),
                   ],
-                  if (widget.online != null) OutlinedButton(onPressed: widget.online!.onClose, child: const Text('Desistir')),
                 ])
               : null,
         );
@@ -4200,7 +4322,7 @@ String _times(double x) => x == 0.25 ? '¼' : x == 0.5 ? '½' : x == x.roundToDo
 class _Tag extends StatelessWidget {
   final String text;
   final Color color;
-  const _Tag(this.text, this.color);
+  const _Tag(this.text, this.color, {super.key});
 
   @override
   Widget build(BuildContext context) => Container(
