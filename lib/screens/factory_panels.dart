@@ -1405,7 +1405,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
         // Uma base do tamanho de um Pokémon médio (Snorlax tem 21 dm; 13 dm dá ~0,8).
         if (!plain) PlatformBase(scene: _scene, side: 'foe', id: 0),
         // Pode passar da base (os treinadores ficam da altura do treinador de lá na batalha).
-        OverflowBox(alignment: Alignment.bottomCenter, maxWidth: w * 0.6, maxHeight: w * 0.6, child: child),
+        OverflowBox(alignment: Alignment.bottomCenter, minWidth: 0, minHeight: 0, maxWidth: w * 0.6, maxHeight: w * 0.6, child: child),
       ]));
 
   /// Alguém lá atrás (vendedor, Enfermeira...) da altura de uma pessoa perto dos Pokémon.
