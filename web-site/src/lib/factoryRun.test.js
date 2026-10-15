@@ -32,6 +32,12 @@ function buyAll(f, ids = Object.keys(UPGRADES).filter((k) => !k.includes('~'))) 
 }
 
 describe('Battle Factory (roguelike)', () => {
+  it('dupla de treinadores salva com os dois times inteiros: fica com 3 de cada (a batalha aceita 6)', () => {
+    const foes = Array.from({ length: 11 }, (_, i) => ({ id: 1 + i, level: 40 }))
+    const fixed = normalizeOwned({ ...emptyFactory(), run: { ...startRun(emptyFactory(), data, 1, 42), encounter: { kind: 'trainer', foes, pair: true } } }, data)
+    expect(fixed.run.encounter.foes.map((f) => f.id)).toEqual([1, 2, 3, 9, 10, 11])
+  })
+
   it('começa com um inicial grátis no nível 5, 5 Poké Balls e a Bolsa; os outros só comprando', () => {
     const f = emptyFactory()
     expect(startRun(f, data, 150, 1)).toBe(null)

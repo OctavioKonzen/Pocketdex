@@ -1604,7 +1604,9 @@ export function MultiBattle({battle, hit = null, onExit, onAgain, onFinish, onli
   const choicePhase = JSON.stringify([state.turn, online?.round, own.wait, owned.map(slot => [slot.slot, slot.index, slot.forceSwitch, slot.pass])])
   useEffect(()=>{setChoices({});setAim(null);setGimmickOn(false);setError('');setMenu(startMenu);setItem(null);setBagPick(null)},[choicePhase, startMenu])
   const forced = own.slots.some(slot=>slot.forceSwitch)
-  const automatic = slot => own.wait ? {kind:'wait',index:0} : slot.pass || forced && !slot.forceSwitch ? {kind:'pass',index:0} : slot.locked && !forced ? {kind:'move',index:0,gimmick:'none'} : null
+  // Desmaiou e não sobrou ninguém para entrar (o outro já chamou o último do banco): a posição fica vazia. Igual ao app.
+  const noBench = slot => slot.forceSwitch && !choices[slot.slot] && !(slot.switchOptions ?? []).some(i => !Object.values(choices).some(c => c.kind === 'switch' && c.index === i))
+  const automatic = slot => own.wait ? {kind:'wait',index:0} : slot.pass || forced && !slot.forceSwitch || noBench(slot) ? {kind:'pass',index:0} : slot.locked && !forced ? {kind:'move',index:0,gimmick:'none'} : null
   const locked = Boolean(online?.locked) || state.winner != null || playing
   const pending = owned.filter(slot => !automatic(slot))
   const current = pending.find(slot => !choices[slot.slot])

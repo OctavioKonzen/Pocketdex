@@ -286,6 +286,14 @@ class FactoryRun {
     if (gone.isNotEmpty) {
       factory = {...factory, 'upgrades': {for (final e in ups.entries) if (upgrades.containsKey(e.key)) e.key: e.value}, 'coins': _int(factory['coins'] ?? 0) + back, 'refunded': back};
     }
+    // A dupla de treinadores salva com mais de 6 (os dois times inteiros): a batalha não começava. Fica com 3 de cada.
+    final encounter = (factory['run'] as Map?)?['encounter'] as Map?;
+    final pairFoes = encounter?['pair'] == true ? encounter!['foes'] as List : const [];
+    if (pairFoes.length > 2 * pairTeam) {
+      final run = Map<String, dynamic>.from(factory['run'] as Map);
+      run['encounter'] = {...encounter!, 'foes': [...pairFoes.take(pairTeam), ...pairFoes.skip(pairFoes.length - pairTeam)]};
+      factory = {...factory, 'run': run};
+    }
     List<int> fix(List<int> list) {
       final out = <int>[];
       for (final id in list) {
@@ -1471,7 +1479,8 @@ class FactoryRun {
         final second = encounterFor(data, floor, rand, null, false, {...node, 'biome': scene, 'shiny': run['shinyRate'] ?? 1, ...when});
         out['encounter'] = {
           ...out['encounter'] as Map<String, dynamic>,
-          'foes': [...out['encounter']['foes'] as List, ...second['foes'] as List],
+          // Até 3 de cada (a batalha tem no máximo 6 de cada lado).
+          'foes': [...(out['encounter']['foes'] as List).take(pairTeam), ...(second['foes'] as List).take(pairTeam)],
           'pair': true,
         };
       }
@@ -2159,6 +2168,9 @@ class FactoryRun {
 
   /// A partir deste andar, a dupla de treinadores é batalha dupla de verdade (2 contra 2), se você tem 2 de pé. Igual ao site.
   static const doubleFloor = 15;
+
+  /// Na dupla de treinadores, quantos de cada um (os dois juntos: no máximo 6, o limite da batalha). Igual ao site.
+  static const pairTeam = 3;
   static bool isDoubleBattle(Json run) =>
       run['encounter']?['pair'] == true && _int(run['floor']) >= doubleFloor && teamOf(run).where((m) => hpOf(m) > 0).length >= 2;
 

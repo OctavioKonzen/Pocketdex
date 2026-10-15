@@ -865,6 +865,13 @@ void main() {
     expect(FactoryRun.routeOf(rope)!['options'], hasLength(1));
     expect(FactoryRun.routeInfo(data, {...start, 'boss': {'region': red, 'step': 2}})!.side!.name, 'Mt. Moon');
   });
+
+  test('dupla de treinadores salva com os dois times inteiros: fica com 3 de cada (a batalha aceita 6)', () {
+    final foes = [for (var i = 0; i < 11; i++) {'id': 1 + i, 'level': 40}];
+    final run = {...FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!, 'encounter': {'kind': 'trainer', 'foes': foes, 'pair': true}};
+    final fixed = FactoryRun.normalizeOwned({...FactoryRun.empty(), 'run': run}, data);
+    expect([for (final f in FactoryRun.foesOf(fixed['run'] as Map<String, dynamic>)) f['id']], [1, 2, 3, 9, 10, 11]);
+  });
 }
 
 /// Compra todas as melhorias (em várias passadas: umas pedem outras), enquanto dá.

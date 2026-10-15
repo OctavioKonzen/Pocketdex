@@ -3501,6 +3501,8 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
   Map<String, dynamic>? _automatic(Map slot) => _own['wait'] == true
       ? {'kind': 'wait', 'index': 0}
       : slot['pass'] == true || _forced && slot['forceSwitch'] != true ? {'kind': 'pass', 'index': 0}
+      // Desmaiou e não sobrou ninguém para entrar (o outro já chamou o último do banco): a posição fica vazia. Igual ao site.
+      : slot['forceSwitch'] == true && !_choices.containsKey(slot['slot']) && _switchOptions(slot).isEmpty ? {'kind': 'pass', 'index': 0}
       : slot['locked'] != null && !_forced ? {'kind': 'move', 'index': 0, 'gimmick': 'none'} : null;
   // Golpe em sequência (Outrage, recarga...) em todos os seus: joga sozinho.
   String? _autoSent;
@@ -3847,7 +3849,7 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
   /// Quem pode entrar no lugar (quem outro já escolheu para entrar não aparece de novo).
   List<int> _switchOptions(Map slot) {
     final taken = {for (final c in _choices.values) if (c['kind'] == 'switch') c['index']};
-    return [for (final i in slot['switchOptions'] as List) if (!taken.contains(i)) i as int];
+    return [for (final i in (slot['switchOptions'] as List?) ?? const []) if (!taken.contains(i)) i as int];
   }
 
   /// A tela do time do Black & White por cima do campo (a mesma da batalha normal).

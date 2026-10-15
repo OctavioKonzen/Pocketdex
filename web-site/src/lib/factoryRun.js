@@ -231,6 +231,9 @@ export function normalizeOwned(factory, data) {
   const gone = Object.keys(factory.upgrades ?? {}).filter((k) => !UPGRADES[k])
   const back = gone.reduce((n, k) => n + (factory.upgrades[k] > 0 && UPGRADES[minorOf(k)] ? Math.round((UPGRADES[minorOf(k)].base * 0.25 + 60 * Number(k.split('~')[1])) / 10) * 10 : 0), 0)
   if (gone.length) factory = { ...factory, upgrades: Object.fromEntries(Object.entries(factory.upgrades).filter(([k]) => UPGRADES[k])), coins: (factory.coins ?? 0) + back, refunded: back }
+  // A dupla de treinadores salva com mais de 6 (os dois times inteiros): a batalha não começava. Fica com 3 de cada.
+  const pairFoes = factory.run?.encounter?.pair ? factory.run.encounter.foes ?? [] : []
+  if (pairFoes.length > 2 * PAIR_TEAM) factory = { ...factory, run: { ...factory.run, encounter: { ...factory.run.encounter, foes: [...pairFoes.slice(0, PAIR_TEAM), ...pairFoes.slice(-PAIR_TEAM)] } } }
   const fix = (list) => [...new Set((list ?? []).map((id) => baseForm(data, id)))]
   const owned = fix(factory.owned)
   const shinies = fix(factory.shinies)
@@ -1185,7 +1188,8 @@ export function chooseNode(run, data, index, clock = null) {
     // Dupla de treinadores: dois treinadores juntos (os dois times na mesma batalha).
     if (node.kind === 'trainer' && !scene.startsWith('base-') && rand() < DOUBLE_CHANCE) {
       const second = encounterFor(data, out.floor, rand, null, false, { ...node, biome: scene, shiny: run.shinyRate ?? 1, ...when })
-      out.encounter = { ...out.encounter, foes: [...out.encounter.foes, ...second.foes], pair: true }
+      // Até 3 de cada (a batalha tem no máximo 6 de cada lado).
+      out.encounter = { ...out.encounter, foes: [...out.encounter.foes.slice(0, PAIR_TEAM), ...second.foes.slice(0, PAIR_TEAM)], pair: true }
     }
     // O rival leva o inicial que tem vantagem sobre o seu (no lugar do inicial dele ou do mais forte).
     const counter = (node.kind === 'boss' || node.kind === 'rival') && out.encounter.boss?.kind === 'rival' ? rivalStarter(data, run.starter) : null
@@ -1702,6 +1706,8 @@ export function cutPath(run) {
 
 /** Dupla de treinadores: chance de um treinador vir acompanhado. */
 export const DOUBLE_CHANCE = 0.2
+/** Na dupla de treinadores, quantos de cada um (os dois juntos: no máximo 6, o limite da batalha). Igual ao app. */
+export const PAIR_TEAM = 3
 /** A partir deste andar, a dupla de treinadores é batalha dupla de verdade (2 contra 2), se você tem 2 de pé. */
 export const DOUBLE_FLOOR = 15
 export const isDoubleBattle = (run) => Boolean(run.encounter?.pair) && run.floor >= DOUBLE_FLOOR && run.team.filter((m) => (m.hp ?? 1) > 0).length >= 2
