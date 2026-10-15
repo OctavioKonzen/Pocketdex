@@ -8,10 +8,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import PokeIcon from './PokeIcon'
 import Sprite from './Sprite'
-import { BattleBackground, battleScale, battleScene, foeBottom, PlatformBase } from './BattleScene'
+import { BattleBackground, battleScale, battleScene, farPerson, foeBottom, nearPerson, PlatformBase } from './BattleScene'
 import BwBag from './BwBag'
 import BwParty from './BwParty'
-import { TrainerSprite } from './Trainer'
+import { TRAINER_ADULT_PX, TrainerSprite } from './Trainer'
 import { Button, SearchInput } from './ui'
 import { getFactoryData, shinyPath, spriteUrl } from '../lib/data'
 import { learnsetOf, movesFor } from '../lib/factoryBattle'
@@ -989,13 +989,15 @@ function Field({ biome = 'grass', fieldRef, children, testid }) {
  * (grande, na frente à esquerda) ou de frente lá atrás à direita, do tamanho
  * dele (pela altura) e em cima da base dele.
  */
-function FieldMon({ mon, byId, back = false, scene }) {
+function FieldMon({ mon, byId, back = false, follower = false, scene }) {
   const p = byId?.get(mon.id)
   if (!p) return null
   const scale = battleScale(p.height)
+  // follower: andando com você na cidade (de frente, do tamanho dele perto de você, sem base).
+  const place = follower ? 'absolute bottom-[23%] left-[42%] w-[58%]' : back ? 'absolute bottom-[22%] left-[1%] w-[58%]' : 'absolute right-[11%] w-[26%]'
   return (
-    <div className={back ? 'absolute bottom-[22%] left-[1%] w-[58%]' : 'absolute right-[11%] w-[26%]'} style={back ? undefined : { bottom: `${foeBottom(battleScene(scene)) * 100}%` }}>
-      <PlatformBase scene={battleScene(scene)} side={back ? 'mine' : 'foe'} scale={scale} />
+    <div className={place} style={back || follower ? undefined : { bottom: `${foeBottom(battleScene(scene)) * 100}%` }} data-testid={follower ? 'follower' : undefined}>
+      {!follower && <PlatformBase scene={battleScene(scene)} side={back ? 'mine' : 'foe'} scale={scale} />}
       <div className="aspect-square w-full" style={{ transform: `scale(${scale})`, transformOrigin: '50% 100%' }}>
         <Sprite key={`${p.id}-${mon.shiny}`} path={mon.shiny ? shinyPath(p.sprite) : p.sprite} box={p.box} fill={0.95} align="bottom" back={back} battle alt={p.name} />
       </div>
@@ -1027,13 +1029,12 @@ function EvolutionFx({ from, to, byId }) {
 const preEvolution = (data, id) => Number(Object.keys(data?.evolutions ?? {}).find((k) => data.evolutions[k].some((e) => e[0] === id))) || null
 
 /** Alguém de pé na base de cima (Enfermeira Joy, o chefe, os vendedores...). */
-/** O tamanho dos treinadores no campo (largura w), o mesmo em toda tela. Igual ao app.
- * Lá atrás (o treinador inimigo, o vendedor, a Enfermeira): a figura com ~35% da largura. */
-export const foeTrainerBox = (w) => w * 0.48
-/** Os sprites parados de 80 px (vendedor, Enfermeira...): a figura ocupa ~94% da imagem. */
-const farTrainer = (w) => w * 0.37
-/** O seu treinador, na frente: maior que quem está lá atrás, na rota e na cidade. */
-const myTrainerBox = (w) => w * 0.56
+/** Alguém lá atrás (vendedor, Enfermeira...) da altura de uma pessoa perto dos Pokémon. Igual ao app. */
+function FarPerson({ id, trainers, width }) {
+  const t = trainers?.find((x) => x.id === id)
+  if (t) return <TrainerSprite trainer={t} height={farPerson(width)} />
+  return <img src={spriteUrl(`trainers/${id}.png`)} alt="" className="pixelated max-w-none object-contain object-bottom" style={{ height: (farPerson(width) * 80) / TRAINER_ADULT_PX }} />
+}
 
 function FarStand({ children, scene, plain = false }) {
   return (
@@ -1475,7 +1476,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
   // A Enfermeira Joy só na cidade; na rota, quem cura é alguém do caminho (Pokémon Breeder, Doctor...).
   const town = run && inTown(run.scene ?? 'grass')
   const [healerSprite, healerName] = run ? (town ? ['sd-nurse', 'Enfermeira Joy'] : healerOf(run)) : ['sd-nurse', '']
-  const nurse = <img src={spriteUrl(`trainers/${healerSprite}.png`)} alt="" className="pixelated max-w-none object-contain object-bottom" style={{ height: farTrainer(width) }} />
+  const nurse = <FarPerson id={healerSprite} trainers={trainers} width={width} />
   let field, text, menu, below = null, wideMenu = false
   // A Creche (um lugar da cidade, separado do Poké Mart): quem fica e o ovo.
   const daycareView = () => {
@@ -1679,8 +1680,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     field = vendor ? (
       // O vendedor aparece no próprio lugar (o cenário não muda e não tem as plataformas da batalha).
       <Field biome={run.scene ?? 'grass'} fieldRef={fieldRef} testid="factory-shop">
-        <FarStand scene={run.scene ?? 'grass'} plain><img src={spriteUrl('trainers/sd-backpacker.png')} alt="" className="pixelated max-w-none object-contain object-bottom" style={{ height: farTrainer(width) }} /></FarStand>
-        {me && <div className="absolute bottom-[23%] left-[4%]"><TrainerSprite trainer={me} box={myTrainerBox(width)} /></div>}
+        <FarStand scene={run.scene ?? 'grass'} plain><FarPerson id="sd-backpacker" trainers={trainers} width={width} /></FarStand>
+        {me && <div className="absolute bottom-[23%] left-[6%] flex"><TrainerSprite trainer={me} height={nearPerson(width)} /></div>}
         <div className="absolute left-3 top-2 rounded-lg bg-white/80 px-2 py-0.5 text-sm font-black text-slate-900">🎒 {t('Vendedor ambulante')}</div>
       </Field>
     ) : (
@@ -1776,10 +1777,10 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
             : <><span data-no-translate>{boss.region} · {boss.game}</span> · {biome.icon} {routeName ? <span data-no-translate>{routeName} → {to}</span> : t('Rota para {0}').replace('{0}', to)}</>}
         </div>
         {floorTag && <span className="absolute right-3 top-2 rounded bg-slate-900/70 px-1.5 text-[10px] font-black text-white sm:text-xs" data-testid="route-floor">{floorTag}</span>}
-        {coach && (meeting || rival) && <FarStand scene={meetScene}><TrainerSprite trainer={coach} box={foeTrainerBox(width)} /></FarStand>}
-        {town && me && <div className="absolute bottom-[23%] left-[18%]"><TrainerSprite trainer={me} box={myTrainerBox(width)} /></div>}
+        {coach && (meeting || rival) && <FarStand scene={meetScene}><TrainerSprite trainer={coach} height={farPerson(width)} /></FarStand>}
+        {town && me && <div className="absolute bottom-[23%] left-[2%] flex"><TrainerSprite trainer={me} height={nearPerson(width)} /></div>}
         {/* Quem vai na frente acompanha você na cidade (como o Pokémon que segue o treinador). */}
-        {town && lead && <div className="absolute bottom-[23%] left-[60%] w-[26%]" data-testid="follower"><PokeIcon id={lead.id} shiny={Boolean(lead.shiny)} className="w-full" /></div>}
+        {town && lead && <FieldMon mon={lead} byId={byId} follower scene={run.scene} />}
         {!town && lead && <FieldMon mon={lead} byId={byId} back scene={meetScene} />}
       </Field>
     )

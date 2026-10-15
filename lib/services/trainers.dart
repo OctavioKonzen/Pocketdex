@@ -23,7 +23,10 @@ class Trainer {
   /// Costas lançando a Poké Ball: largura e altura de cada quadro e quantos (null: não tem).
   final ({int width, int height, int frames})? back;
 
-  const Trainer({required this.id, required this.name, required this.title, required this.size, required this.frames, this.scale = 1, this.back});
+  /// Onde ficam os pés no quadro (px de cima; tool/trainer_figures.py). Sem: o fim do quadro.
+  final int? feet;
+
+  const Trainer({required this.id, required this.name, required this.title, required this.size, required this.frames, this.scale = 1, this.back, this.feet});
 
   String get front => 'assets/database/sprites/trainers/$id.png';
   String get backPath => 'assets/database/sprites/trainers/${id}_back.png';
@@ -38,6 +41,7 @@ class Trainer {
       frames: (j['frames'] as num).toInt(),
       scale: (j['scale'] as num?)?.toDouble() ?? 1,
       back: b == null ? null : (width: (b['width'] as num).toInt(), height: (b['height'] as num).toInt(), frames: (b['frames'] as num).toInt()),
+      feet: ((j['fig'] as List?)?.last as num?)?.toInt(),
     );
   }
 }
