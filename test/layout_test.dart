@@ -203,23 +203,23 @@ final actions = <String, Future<void> Function(WidgetTester)>{
     }
   },
   'Batalha por turnos': (tester) async {
-    for (var i = 0; i < 30 && find.text('LUTAR').evaluate().isEmpty; i++) {
+    for (var i = 0; i < 30 && find.byKey(const ValueKey('battle-fight')).evaluate().isEmpty; i++) {
       await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
       await tester.pump(const Duration(milliseconds: 300));
     }
-    if (find.text('LUTAR').evaluate().isEmpty) return;
-    await tester.tap(find.text('LUTAR'));
+    if (find.byKey(const ValueKey('battle-fight')).evaluate().isEmpty) return;
+    await tester.tap(find.byKey(const ValueKey('battle-fight')));
     await tester.pump(const Duration(milliseconds: 300));
     // Um turno inteiro, com as animações dos golpes; depois o menu de golpes de novo.
     await tester.tap(find.textContaining('PP ').first);
-    for (var i = 0; i < 40 && find.text('LUTAR').evaluate().isEmpty; i++) {
+    for (var i = 0; i < 40 && find.byKey(const ValueKey('battle-fight')).evaluate().isEmpty; i++) {
       await tester.pump(const Duration(milliseconds: 250));
     }
     // Deixa carregar o sprite de quem entrou.
     await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
     await tester.pump(const Duration(milliseconds: 600));
-    if (find.text('LUTAR').evaluate().isNotEmpty) {
-      await tester.tap(find.text('LUTAR'));
+    if (find.byKey(const ValueKey('battle-fight')).evaluate().isNotEmpty) {
+      await tester.tap(find.byKey(const ValueKey('battle-fight')));
       await tester.pump(const Duration(milliseconds: 300));
     }
   },

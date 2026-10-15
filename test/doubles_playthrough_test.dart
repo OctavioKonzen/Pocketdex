@@ -142,10 +142,16 @@ void main() {
         switches++;
         if (switches == 1) await shot('6-substituicao');
         final keys = [for (final e in partySlots().evaluate()) (e.widget.key as ValueKey).value as String];
+        // Toca no Pokémon (as opções aparecem nos botões de baixo) e em TROCAR; até achar um que pode entrar.
         for (final key in keys) {
           if (find.byKey(ValueKey(key)).evaluate().isEmpty) break;
           await tester.tap(find.byKey(ValueKey(key)), warnIfMissed: false);
           await tester.pump();
+          final pick = find.byKey(ValueKey('${key.substring(0, key.lastIndexOf('-'))}-pick'));
+          if (pick.evaluate().isNotEmpty) {
+            await tester.tap(pick, warnIfMissed: false);
+            await tester.pump();
+          }
         }
       } else {
         await shot('erro');

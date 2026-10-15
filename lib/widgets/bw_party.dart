@@ -25,7 +25,7 @@ class PartySlot {
 
 class BwParty extends StatefulWidget {
   const BwParty(
-      {super.key, required this.team, required this.onPick, this.title, this.disabled, this.onCancel, this.cancelLabel, this.testKey = 'bw-party', this.active, this.header, this.onInfo, this.pickLabel});
+      {super.key, required this.team, required this.onPick, this.title, this.disabled, this.onCancel, this.cancelLabel, this.testKey = 'bw-party', this.active, this.header, this.onInfo, this.pickLabel, this.fill = false, this.selected, this.onSelect});
   final List<PartySlot> team;
   final ValueChanged<int> onPick;
   final String? title;
@@ -43,6 +43,14 @@ class BwParty extends StatefulWidget {
   /// Como no jogo: tocando num Pokémon aparecem as opções (pickLabel, DADOS e CANCELAR); DADOS chama onInfo.
   final ValueChanged<int>? onInfo;
   final String? pickLabel;
+
+  /// Na batalha (como no jogo): os 6 ocupam exatamente a tela (3 linhas × 2 colunas, sem rolar); o título vai para a
+  /// caixa de texto e as opções (TROCAR, DADOS, CANCELAR) para os botões fixos de baixo.
+  final bool fill;
+
+  /// Com [onSelect], quem foi tocado fica com quem chama (as opções ficam lá fora).
+  final int? selected;
+  final ValueChanged<int>? onSelect;
 
   @override
   State<BwParty> createState() => _BwPartyState();
@@ -63,6 +71,7 @@ class _BwPartyState extends State<BwParty> {
   }
 
   void _tap(int i) {
+    if (widget.onSelect != null) return widget.onSelect!(i);
     if (widget.onInfo == null) return widget.onPick(i);
     setState(() => _picked = _picked == i ? null : i);
   }
@@ -98,10 +107,10 @@ class _BwPartyState extends State<BwParty> {
   Widget _slot(int i) {
     final m = team[i];
     // Com as opções (onInfo), dá para ver os dados até de quem não pode ser escolhido.
-    final off = (widget.disabled?.call(i) ?? false) && widget.onInfo == null;
+    final off = (widget.disabled?.call(i) ?? false) && widget.onInfo == null && widget.onSelect == null;
     final dim = widget.disabled?.call(i) ?? false;
     final hp = m.hp.clamp(0.0, 1.0);
-    final colors = i == _picked
+    final colors = i == (widget.onSelect != null ? widget.selected : _picked)
         ? const [Color(0xFFFDBA74), Color(0xFFF97316)]
         : i == (widget.active ?? 0)
             ? const [Color(0xFFA5E9B0), Color(0xFF5CC07A)]
@@ -122,7 +131,7 @@ class _BwPartyState extends State<BwParty> {
             onTap: off ? null : () => _tap(i),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-              child: Row(children: [
+              child: _fitted(Row(children: [
                 SizedBox(
                     width: 38,
                     height: 38,
@@ -164,7 +173,7 @@ class _BwPartyState extends State<BwParty> {
                         overflow: TextOverflow.ellipsis, style: const TextStyle(color: _ink, fontSize: 10, fontWeight: FontWeight.bold)),
                   ]),
                 ),
-              ]),
+              ])),
             ),
           ),
         ),
@@ -172,8 +181,31 @@ class _BwPartyState extends State<BwParty> {
     );
   }
 
+  /// No modo da batalha o cartão ocupa a célula dele: o conteúdo centraliza (e diminui, se não couber).
+  Widget _fitted(Widget row) => widget.fill
+      ? LayoutBuilder(builder: (context, box) => FittedBox(fit: BoxFit.scaleDown, child: SizedBox(width: box.maxWidth, child: row)))
+      : row;
+
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) => widget.fill
+      ? Container(
+          key: ValueKey(testKey),
+          padding: const EdgeInsets.all(6),
+          color: const Color(0xFF1F6F78),
+          child: Column(children: [
+            for (var r = 0; r < team.length || r < 6; r += 2) ...[
+              if (r > 0) const SizedBox(height: 6),
+              Expanded(
+                child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  Expanded(child: r < team.length ? _slot(r) : const SizedBox()),
+                  const SizedBox(width: 6),
+                  Expanded(child: r + 1 < team.length ? _slot(r + 1) : const SizedBox()),
+                ]),
+              ),
+            ],
+          ]),
+        )
+      : Container(
         key: ValueKey(testKey),
         padding: const EdgeInsets.all(8),
         color: const Color(0xFF1F6F78),

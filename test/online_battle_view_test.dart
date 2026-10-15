@@ -44,7 +44,7 @@ void main() {
     }
     expect(find.byWidgetPredicate((w) => w is PokemonSprite && w.id == 9 && w.back), findsOneWidget);
     expect(find.byWidgetPredicate((w) => w is PokemonSprite && w.id == 6 && !w.back), findsOneWidget);
-    await tester.tap(find.text('LUTAR')); await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('battle-fight'))); await tester.pump();
     await tester.tap(find.text('Tackle')); await tester.pump();
     expect(chosen, {'kind': 'move', 'index': 0, 'gimmick': 'none'});
     expect(canonical.active(1).hp, 100);
@@ -55,7 +55,7 @@ void main() {
     await tester.pumpWidget(screen(round: 1, events: [const BattleEvent.hp(0, 75)]));
     await tester.pump(); await tester.pump(const Duration(seconds: 1)); await tester.pump();
     expect(find.text('75/100'), findsOneWidget);
-    expect(find.text('LUTAR'), findsOneWidget);
+    expect(find.byKey(const ValueKey('battle-fight')), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
@@ -108,7 +108,7 @@ void main() {
             message: 'Escolha', waitForSwitch: false, onAction: (a) => chosen = a, onClose: () {}),
         ))))));
       await tester.pump();
-      await tester.tap(find.text('LUTAR')); await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('battle-fight'))); await tester.pump();
       for (final other in ['mega', 'tera', 'dmax', 'z'].where((other) => other != kind)) {
         expect(find.byKey(ValueKey(other)), findsNothing);
       }
