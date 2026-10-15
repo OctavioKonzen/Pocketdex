@@ -29,7 +29,7 @@ import '../widgets/bw_bag.dart';
 import '../widgets/bw_party.dart';
 import '../widgets/pokemon_sprite.dart';
 import '../widgets/trainer_sprite.dart';
-import 'turn_battle_screen.dart' show battleMonName;
+import 'turn_battle_screen.dart' show battleMonName, battleBarHeight, battleBottomHeight;
 
 /// A Factory da conta (meta e corrida).
 Json currentFactory() => FactoryRun.of(UserData.instance.league);
@@ -1416,7 +1416,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
     const style = TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12);
     return Container(
       key: const ValueKey('factory-bar'),
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       // A cor da região (o tema dela na barra). Igual ao site.
       decoration: BoxDecoration(
         color: const Color(0xFF334155),
@@ -1428,7 +1428,12 @@ class _FactoryScreenState extends State<FactoryScreen> {
               ], stops: const [0, 0.7]),
         border: const Border.symmetric(vertical: BorderSide(color: _border, width: 4)),
       ),
-      child: Wrap(spacing: 8, runSpacing: 2, crossAxisAlignment: WrapCrossAlignment.center, children: [
+      // Uma linha só, da altura da faixa da batalha (rola de lado se não couber): nada muda de tamanho.
+      height: battleBarHeight(context),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(children: [
+          for (final w in <Widget>[
         Text('🎲 ${tr('Andar {0}').replaceAll('{0}', '${run['floor']}')}', style: style),
         Text('💰 ${run['money']}', style: style),
         Text('📖 ${FactoryRun.dexOf(run).length}', key: const ValueKey('factory-dex'), style: style),
@@ -1440,7 +1445,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
         Row(mainAxisSize: MainAxisSize.min, children: [
           for (final m in FactoryRun.teamOf(run))
             Column(mainAxisSize: MainAxisSize.min, children: [
-              Opacity(opacity: FactoryRun.hpOf(m) > 0 ? 1 : 0.4, child: SizedBox(width: 26, height: 26, child: PokemonSprite((m['id'] as num).toInt(), shiny: m['shiny'] == true, fill: 0.9))),
+              Opacity(opacity: FactoryRun.hpOf(m) > 0 ? 1 : 0.4, child: SizedBox(width: 20, height: 20, child: PokemonSprite((m['id'] as num).toInt(), shiny: m['shiny'] == true, fill: 0.9))),
               Container(
                 width: 22,
                 height: 3,
@@ -1453,7 +1458,10 @@ class _FactoryScreenState extends State<FactoryScreen> {
               ),
             ]),
         ]),
-      ]),
+          ])
+            Padding(padding: const EdgeInsets.only(right: 8), child: w),
+        ]),
+      ),
     );
   }
 
@@ -1718,58 +1726,66 @@ class _FactoryScreenState extends State<FactoryScreen> {
   /// A moldura: o campo, a barra e a caixa de texto com o menu (igual à batalha). A Bolsa, o time, a loja e a troca
   /// abrem por cima do campo (a mesma tela, como no jogo; dá para jogar com o celular de lado).
   Widget _frame({required Widget field, Json? run, required List<Widget> text, Widget? menu}) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Stack(children: [
-          // Sem corte seco: a tela do lugar troca com um fade (mapa, loja, resultado...).
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 350),
-            switchInCurve: Curves.easeOut,
-            switchOutCurve: Curves.easeIn,
-            layoutBuilder: (current, previous) => Stack(alignment: Alignment.topCenter, children: [...previous, ?current]),
-            child: field,
-          ),
-          if (_framePanel != null)
-            Positioned.fill(
-              // A Bolsa, o time e a loja aparecem subindo de leve (sem surgir de uma vez).
-              child: TweenAnimationBuilder<double>(
-                key: ValueKey('panel-$_panel'),
-                tween: Tween(begin: 0, end: 1),
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeOutCubic,
-                builder: (context, v, child) => Opacity(opacity: v, child: Transform.translate(offset: Offset(0, (1 - v) * 16), child: child)),
-                child: ClipRRect(
-                key: const ValueKey('factory-panel'),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                child: Container(
-                  decoration: BoxDecoration(color: SiteColors.of(context).card, border: Border.all(color: _border, width: 4)),
-                  child: SingleChildScrollView(child: _framePanel),
+        // A mesma tela da batalha: o campo (4:3) com a fala dentro dele, embaixo, no mesmo lugar e do mesmo tamanho.
+        LayoutBuilder(builder: (context, box) {
+          final w = box.maxWidth, h = w * 3 / 4;
+          return Stack(children: [
+            // Sem corte seco: a tela do lugar troca com um fade (mapa, loja, resultado...).
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 350),
+              switchInCurve: Curves.easeOut,
+              switchOutCurve: Curves.easeIn,
+              layoutBuilder: (current, previous) => Stack(alignment: Alignment.topCenter, children: [...previous, ?current]),
+              child: field,
+            ),
+            Positioned(
+              left: w * 0.015,
+              right: w * 0.015,
+              bottom: h * 0.015,
+              height: h * 0.21,
+              child: _PagedText(
+                key: const ValueKey('factory-text'),
+                // A moldura comprada na loja de cosméticos (por cima da caixa no tema).
+                decoration: (currentFactory()['frame'] is String
+                        ? _dlgBox().copyWith(border: Border.all(color: _frameColors[currentFactory()['frame']]?.$1 ?? _border, width: 3))
+                        : _dlgBox())
+                    .copyWith(borderRadius: BorderRadius.circular(8)),
+                style: TextStyle(color: _dlgText, fontSize: 14, height: 1.25, fontWeight: FontWeight.bold),
+                children: text,
+              ),
+            ),
+            if (_framePanel != null)
+              Positioned.fill(
+                // A Bolsa, o time e a loja aparecem subindo de leve (sem surgir de uma vez).
+                child: TweenAnimationBuilder<double>(
+                  key: ValueKey('panel-$_panel'),
+                  tween: Tween(begin: 0, end: 1),
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, v, child) => Opacity(opacity: v, child: Transform.translate(offset: Offset(0, (1 - v) * 16), child: child)),
+                  child: ClipRRect(
+                    key: const ValueKey('factory-panel'),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                    child: Container(
+                      decoration: BoxDecoration(color: SiteColors.of(context).card, border: Border.all(color: _border, width: 4)),
+                      child: SingleChildScrollView(child: _framePanel),
+                    ),
+                  ),
                 ),
               ),
-              ),
-            ),
-        ]),
-        if (run != null) _bar(run),
+          ]);
+        }),
+        // A faixa (da altura da faixa da batalha) e a tela de baixo (da altura da tela de baixo da batalha).
+        if (run != null)
+          _bar(run)
+        else
+          Container(height: battleBarHeight(context), decoration: const BoxDecoration(color: Color(0xFF334155), border: Border.symmetric(vertical: BorderSide(color: _border, width: 4)))),
         Container(
+          key: const ValueKey('factory-bottom'),
+          height: battleBottomHeight(context),
           padding: const EdgeInsets.all(8),
           decoration: const BoxDecoration(color: _border, borderRadius: BorderRadius.vertical(bottom: Radius.circular(16))),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Container(
-              key: const ValueKey('factory-text'),
-              constraints: const BoxConstraints(minHeight: 72),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              // A moldura comprada na loja de cosméticos (por cima da caixa no tema).
-              decoration: currentFactory()['frame'] is String
-                  ? _dlgBox().copyWith(border: Border.all(color: _frameColors[currentFactory()['frame']]?.$1 ?? _border, width: 4))
-                  : _dlgBox(),
-              child: DefaultTextStyle.merge(
-                style: TextStyle(color: _dlgText, fontSize: 15, fontWeight: FontWeight.bold),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: text),
-              ),
-            ),
-            if (menu != null) ...[
-              const SizedBox(height: 8),
-              Container(padding: const EdgeInsets.all(6), decoration: _dlgBox(), child: menu),
-            ],
-          ]),
+          child: menu == null ? null : SingleChildScrollView(child: Container(padding: const EdgeInsets.all(6), decoration: _dlgBox(), child: menu)),
         ),
       ]);
 
@@ -3334,4 +3350,63 @@ class _TreePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_TreePainter old) => old.picked != picked || old.spent != spent || !identical(old.nodes, nodes);
+}
+
+
+/// A caixa de texto da corrida (a mesma da batalha): sempre do mesmo tamanho; o que não cabe vem em partes (tocar passa
+/// para a próxima parte, com a setinha ▼ no canto, como nos jogos).
+class _PagedText extends StatefulWidget {
+  const _PagedText({super.key, required this.children, required this.decoration, required this.style});
+  final List<Widget> children;
+  final BoxDecoration decoration;
+  final TextStyle style;
+
+  @override
+  State<_PagedText> createState() => _PagedTextState();
+}
+
+class _PagedTextState extends State<_PagedText> {
+  final _scroll = ScrollController();
+  bool _more = false;
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _check() {
+    if (!mounted || !_scroll.hasClients) return;
+    final more = _scroll.offset < _scroll.position.maxScrollExtent - 1;
+    if (more != _more) setState(() => _more = more);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    WidgetsBinding.instance.addPostFrameCallback((_) => _check());
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: () {
+        if (!_scroll.hasClients || !_more) return;
+        // A próxima parte: uma "página" (as linhas inteiras que cabem na caixa).
+        final line = MediaQuery.textScalerOf(context).scale(widget.style.fontSize ?? 14) * (widget.style.height ?? 1.25);
+        final page = max(line, (_scroll.position.viewportDimension / line).floor() * line);
+        _scroll.animateTo(min(_scroll.offset + page, _scroll.position.maxScrollExtent), duration: const Duration(milliseconds: 200), curve: Curves.easeOut).then((_) => _check());
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: widget.decoration,
+        child: Stack(children: [
+          Positioned.fill(
+            child: SingleChildScrollView(
+              controller: _scroll,
+              physics: const NeverScrollableScrollPhysics(),
+              child: DefaultTextStyle.merge(style: widget.style, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: widget.children)),
+            ),
+          ),
+          if (_more) Positioned(right: 0, bottom: 0, child: Text('▼', key: const ValueKey('factory-text-more'), style: TextStyle(fontSize: 12, color: widget.style.color))),
+        ]),
+      ),
+    );
+  }
 }

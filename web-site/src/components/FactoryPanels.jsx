@@ -1339,10 +1339,16 @@ function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, 
       <div className="relative">
         {/* Sem corte seco: a tela do lugar troca com um fade (mapa, loja, resultado...). */}
         <div key={field?.props?.testid ?? ''} className="page-in">{field}</div>
+        {/* A fala dentro da tela, embaixo, no mesmo lugar e do mesmo tamanho da batalha (o que não cabe: tocar passa). */}
+        <div className={`dlg-box absolute inset-x-[1.5%] bottom-[1.5%] z-20 h-[21%] cursor-pointer space-y-1 overflow-hidden rounded-lg border-4 px-3 py-1.5 text-left text-sm leading-snug font-bold sm:px-4 sm:text-lg ${frame ? `frame-${frame}` : ''}`}
+          data-testid="factory-text" onClick={(e) => { const el = e.currentTarget; el.scrollTop = el.scrollTop + el.clientHeight >= el.scrollHeight - 1 ? 0 : el.scrollTop + el.clientHeight - 8 }}>
+          {text}
+        </div>
         {panel && <div key={panel?.key ?? panel?.props?.testid ?? 'panel'} className="field-overlay factory-overlay panel-in rounded-t-2xl border-4 border-b-0 border-slate-800 bg-bg text-text" data-testid="factory-panel">{panel}</div>}
       </div>
+      {!run && <div className="h-7 border-x-4 border-slate-800 bg-slate-700" />}
       {run && (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-x-4 border-slate-800 bg-slate-700 px-2 py-1 text-xs font-bold text-white" style={theme ? { background: `linear-gradient(90deg, ${theme}, #334155 70%)` } : undefined} data-testid="factory-bar">
+        <div className="flex h-7 items-center gap-x-3 overflow-x-auto whitespace-nowrap border-x-4 border-slate-800 bg-slate-700 px-2 text-xs font-bold text-white" style={theme ? { background: `linear-gradient(90deg, ${theme}, #334155 70%)` } : undefined} data-testid="factory-bar">
           <span>🎲 {t('Andar {0}').replace('{0}', run.floor)}</span>
           <span>💰 {run.money}</span>
           <span title={t('Pokédex da corrida')} data-testid="factory-dex">📖 {dexOf(run).length}</span>
@@ -1357,7 +1363,7 @@ function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, 
           <span className="ml-auto flex gap-0.5">
             {run.team.map((m, i) => (
               <span key={i} className="flex flex-col items-center" title={t(prettyName(byId?.get(m.id)?.name ?? ''))}>
-                <PokeIcon id={m.id} shiny={Boolean(m.shiny)} className={`h-7 w-7 ${(m.hp ?? 1) > 0 ? '' : 'opacity-40 grayscale'}`} />
+                <PokeIcon id={m.id} shiny={Boolean(m.shiny)} className={`h-5 w-5 ${(m.hp ?? 1) > 0 ? '' : 'opacity-40 grayscale'}`} />
                 <span className="block h-1 w-6 overflow-hidden rounded bg-slate-900">
                   <span className={`block h-full ${(m.hp ?? 1) > 0.5 ? 'bg-emerald-400' : (m.hp ?? 1) > 0.2 ? 'bg-amber-400' : 'bg-red-500'}`} style={{ width: `${Math.max(0, Math.min(1, m.hp ?? 1)) * 100}%` }} />
                 </span>
@@ -1366,13 +1372,9 @@ function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, 
           </span>
         </div>
       )}
-      <div className="flex min-h-36 flex-col gap-2 rounded-b-2xl border-4 border-slate-800 bg-slate-800 p-2">
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <div className={`dlg-box min-h-20 flex-1 space-y-1 rounded-xl border-4 px-4 py-3 text-left text-base font-bold sm:text-lg ${frame ? `frame-${frame}` : ''}`} data-testid="factory-text">
-            {text}
-          </div>
-          {menu && <div className={`dlg-box grid content-start gap-1 rounded-xl border-4 p-2 ${wideMenu ? 'sm:w-96' : 'grid-cols-2 sm:w-72'}`}>{menu}</div>}
-        </div>
+      {/* A tela de baixo: da altura da tela de baixo da batalha (nada muda de tamanho entre a corrida e a batalha). */}
+      <div className="h-[15.5rem] overflow-y-auto rounded-b-2xl border-4 border-slate-800 bg-slate-800 p-2" data-testid="factory-bottom">
+        {menu && <div className={`dlg-box grid content-start gap-1 rounded-xl border-4 p-2 ${wideMenu ? '' : 'grid-cols-2'}`}>{menu}</div>}
       </div>
     </div>
   )

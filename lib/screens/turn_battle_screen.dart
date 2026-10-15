@@ -2330,6 +2330,11 @@ class _BottomScreen extends StatelessWidget {
       ]);
 }
 
+/// A altura da tela de baixo da batalha (com a borda) e a da faixa entre o campo e ela: a corrida usa as mesmas, para
+/// nada mudar de tamanho nem de lugar entre a corrida e a batalha.
+double battleBottomHeight(BuildContext context) => _BottomScreen.height(context) + 16;
+double battleBarHeight(BuildContext context) => MediaQuery.textScalerOf(context).scale(15) + 12;
+
 /// O menu apagado (enquanto o turno acontece ou é a vez do outro).
 Widget _idleMenu() => _menuGrid([for (final label in ['LUTAR', 'BOLSA', 'POKÉMON', 'FUGIR']) _MenuButton(label, null)]);
 
@@ -4042,7 +4047,7 @@ class _FieldBar extends StatelessWidget {
     return Container(
       key: const ValueKey('field-bar'),
       color: const Color(0xFF334155),
-      height: MediaQuery.textScalerOf(context).scale(15) + 12,
+      height: battleBarHeight(context),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
