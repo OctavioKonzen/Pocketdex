@@ -743,8 +743,9 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   // keepMine (Battle Factory): o seu Pokémon já está em campo (veio da tela da corrida): sem o treinador e a Poké Ball do seu lado.
   const [intro, setIntro] = useState(() => (!online && battle.turn <= 1 ? { foe: 'in', me: keepMine ? 'gone' : 'in', back: 0 } : null))
   // A tela VS antes da luta contra um chefe (só no começo).
-  // A tela VS no começo de toda batalha (chefe, treinador, selvagem e online), com o nome de quem joga.
-  const [vsOn, setVsOn] = useState(() => battle.turn <= 1)
+  // A tela VS no começo da batalha contra treinador, chefe e online, com o nome de quem joga. Contra Pokémon selvagem
+  // não tem (ele aparece direto, como nos jogos). Igual ao app.
+  const [vsOn, setVsOn] = useState(() => battle.turn <= 1 && !wild)
   const vsDone = useRef(null)
   const myName = useMyName()
   const vsInfo = vs?.name ? vs : wild
@@ -1604,7 +1605,9 @@ export function MultiBattle({battle, hit = null, onExit, onAgain, onFinish, onli
   const choicePhase = JSON.stringify([state.turn, online?.round, own.wait, owned.map(slot => [slot.slot, slot.index, slot.forceSwitch, slot.pass])])
   useEffect(()=>{setChoices({});setAim(null);setGimmickOn(false);setError('');setMenu(startMenu);setItem(null);setBagPick(null)},[choicePhase, startMenu])
   const forced = own.slots.some(slot=>slot.forceSwitch)
-  const automatic = slot => own.wait ? {kind:'wait',index:0} : slot.pass || forced && !slot.forceSwitch ? {kind:'pass',index:0} : slot.locked && !forced ? {kind:'move',index:0,gimmick:'none'} : null
+  // Desmaiou e não sobrou ninguém para entrar (o outro já chamou o último do banco): a posição fica vazia. Igual ao app.
+  const noBench = slot => slot.forceSwitch && !choices[slot.slot] && !(slot.switchOptions ?? []).some(i => !Object.values(choices).some(c => c.kind === 'switch' && c.index === i))
+  const automatic = slot => own.wait ? {kind:'wait',index:0} : slot.pass || forced && !slot.forceSwitch || noBench(slot) ? {kind:'pass',index:0} : slot.locked && !forced ? {kind:'move',index:0,gimmick:'none'} : null
   const locked = Boolean(online?.locked) || state.winner != null || playing
   const pending = owned.filter(slot => !automatic(slot))
   const current = pending.find(slot => !choices[slot.slot])
