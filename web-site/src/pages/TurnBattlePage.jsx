@@ -1170,6 +1170,32 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   const typeEff = (type, types) => (typeData ? damageTaken(types, typeData)[type] : 1)
   const rival = active(battle, 1)
   const foeWeak = typeData ? weaknesses(rival.types, ALL_TYPES, typeEff) : []
+  const bagPockets = [
+    { id: 'medicine', label: 'Remédios', img: 'potion', ball: false },
+    { id: 'balls', label: 'Poké Balls', img: 'poke-ball', ball: true },
+  ].map((pocket) => ({
+    ...pocket,
+    items: ITEMS.filter((it) => Boolean(it.ball) === pocket.ball && (battle.bags[0][it.slug] ?? 0) > 0).map((it) => ({
+      id: it.slug,
+      name: it.name,
+      count: battle.bags[0][it.slug] ?? 0,
+      icon: spriteUrl(`items/${it.slug}.png`),
+      help: it.ball
+        ? t('Jogar no Pokémon selvagem')
+        : it.revive
+          ? t('Revive com metade do HP')
+          : it.heal >= 9999
+            ? t('Recupera todo o HP')
+            : battle.healPct
+              ? t('Recupera {0}% do HP').replace('{0}', Math.round(HEAL_SHARE[it.slug] * 100))
+              : t('Recupera {0} de HP').replace('{0}', it.heal),
+      disabled: !battle.sides[0].team.some((_, i) => canUseItem(battle, 0, it.slug, i)),
+      use: it.ball ? t('JOGAR') : t('USAR'),
+      // A bola vai direto no selvagem; os remédios perguntam em quem.
+      onUse: () => (setBagPick(null), it.ball ? throwBall(it.slug) : (setItem(it.slug), setPartyPick(null), setSummary(null), setMenu('party'))),
+    })),
+  }))
+  const bagPicked = bagPockets.flatMap((p) => p.items).find((it) => it.id === bagPick)
 
   const options = [
     ['mega', 'Mega Evolução'],
@@ -1299,6 +1325,8 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         {/* A mensagem dentro da tela, embaixo, como nos jogos (tocar passa o texto). */}
         <BattleDialog boxRef={dialogRef} onSkip={() => skip.current?.()}
           text={!busy && online?.message ? t(online.message)
+            // A Bolsa: a descrição do item tocado (ou a pergunta) na caixa.
+            : waiting && menu === 'bag' ? (bagPicked ? `${bagPicked.name}: ${bagPicked.help}` : t('Escolha um item.'))
             // O time aberto: a pergunta dele na caixa (como no jogo).
             : waiting && menu === 'party' && summary == null ? (battle.needSwitch ? t('Escolha o próximo Pokémon') : item ? t('Usar em qual Pokémon?') : t('Escolha um Pokémon.'))
             // Hora de escolher (como no jogo e na dupla): "O que Charizard vai fazer?".
@@ -1307,38 +1335,9 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
             : !busy && battle.winner != null && endNote ? `${text} ${endNote}` : text} />
         {/* A Bolsa e o time abrem por cima do campo (a mesma tela, como no jogo; dá para jogar com o celular de lado). */}
         {waiting && menu === 'bag' && (
-          // A Bolsa do Black & White, em bolsos: remédios e Poké Balls.
-          <div className="field-overlay"><BwBag
-            testid="bag"
-            onClose={() => setMenu('main')}
-            selected={bagPick}
-            onSelect={setBagPick}
-            pockets={[
-              { id: 'medicine', label: 'Remédios', img: 'potion', ball: false },
-              { id: 'balls', label: 'Poké Balls', img: 'poke-ball', ball: true },
-            ].map((pocket) => ({
-              ...pocket,
-              items: ITEMS.filter((it) => Boolean(it.ball) === pocket.ball && (battle.bags[0][it.slug] ?? 0) > 0).map((it) => ({
-                id: it.slug,
-                name: it.name,
-                count: battle.bags[0][it.slug] ?? 0,
-                icon: spriteUrl(`items/${it.slug}.png`),
-                help: it.ball
-                  ? t('Jogar no Pokémon selvagem')
-                  : it.revive
-                    ? t('Revive com metade do HP')
-                    : it.heal >= 9999
-                      ? t('Recupera todo o HP')
-                      : battle.healPct
-                        ? t('Recupera {0}% do HP').replace('{0}', Math.round(HEAL_SHARE[it.slug] * 100))
-                        : t('Recupera {0} de HP').replace('{0}', it.heal),
-                disabled: !battle.sides[0].team.some((_, i) => canUseItem(battle, 0, it.slug, i)),
-                use: it.ball ? t('JOGAR') : t('USAR'),
-                // A bola vai direto no selvagem; os remédios perguntam em quem.
-                onUse: () => (setBagPick(null), it.ball ? throwBall(it.slug) : (setItem(it.slug), setPartyPick(null), setSummary(null), setMenu('party'))),
-              })),
-            }))}
-          /></div>
+          // A Bolsa do Black & White, em bolsos: em cima da caixa de texto (a descrição do item aparece nela); USAR e
+          // Voltar nos botões fixos de baixo.
+          <div className="panel-in absolute inset-x-0 top-0 bottom-[22.5%] z-30"><BwBag testid="bag" external selected={bagPick} onSelect={setBagPick} pockets={bagPockets} /></div>
         )}
         {waiting && menu === 'party' && summary != null && (
           // Os dados do Pokémon (como no jogo).
@@ -1374,6 +1373,12 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         info={waiting && !locked && (menu === 'fight' || menu === 'party' && !item) ? <Weak mon={rival} list={foeWeak} /> : null}
         grid={waiting && online?.waitForSwitch
           ? null
+          : waiting && menu === 'bag' && bagPicked
+            // Tocou num item: USAR (ou JOGAR) e CANCELAR nos botões fixos.
+            ? <MenuGrid>
+                <MenuButton testId="bag-use" disabled={bagPicked.disabled} onClick={() => bagPicked.onUse(bagPicked)}>{bagPicked.use ?? t('USAR')}</MenuButton>
+                <MenuButton testId="bag-cancel" onClick={() => setBagPick(null)}>CANCELAR</MenuButton>
+              </MenuGrid>
           : waiting && menu === 'party' && summary == null && partyPick != null && !item
             // Tocou num Pokémon do time: as opções nos botões fixos (como no jogo).
             ? <MenuGrid>
@@ -1432,6 +1437,8 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
                 </div>
               : null}
         footer={waiting && !locked && menu === 'fight' ? <MenuButton onClick={() => setMenu('main')} className="h-full w-full text-sm">Voltar</MenuButton>
+          : waiting && menu === 'bag'
+            ? <MenuButton testId="bag-close" onClick={() => { setBagPick(null); setMenu('main') }} className="h-full w-full text-sm">Voltar</MenuButton>
           : waiting && menu === 'party' && summary == null && !battle.needSwitch
             ? <MenuButton testId="party-back" onClick={() => { setPartyPick(null); if (item) { setItem(null); setMenu('bag') } else setMenu('main') }} className="h-full w-full text-sm">Voltar</MenuButton> : null}
         // As outras escolhas: embaixo dos botões fixos.
@@ -1886,7 +1893,7 @@ function BattleDialog({ text, onSkip, boxRef }) {
 /** A tela do time na batalha (como no jogo): os 6 cabem exatamente na tela (3 linhas × 2 colunas, sem rolar), em cima da caixa de texto. */
 function PartyGrid({ team, active, picked, disabled, dim, onTap, testPrefix, badge }) {
   return (
-    <div className="bw-party absolute inset-x-0 top-0 bottom-[22.5%] z-30 p-1.5" data-testid={`${testPrefix}-screen`}>
+    <div className="bw-party panel-in absolute inset-x-0 top-0 bottom-[22.5%] z-30 p-1.5" data-testid={`${testPrefix}-screen`}>
       <div className="grid h-full grid-cols-2 grid-rows-3 gap-1.5" data-testid={testPrefix}>
         {team.map((m, i) => (
           <button key={i} type="button" data-testid={`${testPrefix}-${i}`} disabled={disabled?.(i)} onClick={() => onTap(i)}

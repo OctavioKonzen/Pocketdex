@@ -1719,16 +1719,31 @@ class _FactoryScreenState extends State<FactoryScreen> {
   /// abrem por cima do campo (a mesma tela, como no jogo; dá para jogar com o celular de lado).
   Widget _frame({required Widget field, Json? run, required List<Widget> text, Widget? menu}) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Stack(children: [
-          field,
+          // Sem corte seco: a tela do lugar troca com um fade (mapa, loja, resultado...).
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 350),
+            switchInCurve: Curves.easeOut,
+            switchOutCurve: Curves.easeIn,
+            layoutBuilder: (current, previous) => Stack(alignment: Alignment.topCenter, children: [...previous, ?current]),
+            child: field,
+          ),
           if (_framePanel != null)
             Positioned.fill(
-              child: ClipRRect(
+              // A Bolsa, o time e a loja aparecem subindo de leve (sem surgir de uma vez).
+              child: TweenAnimationBuilder<double>(
+                key: ValueKey('panel-$_panel'),
+                tween: Tween(begin: 0, end: 1),
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+                builder: (context, v, child) => Opacity(opacity: v, child: Transform.translate(offset: Offset(0, (1 - v) * 16), child: child)),
+                child: ClipRRect(
                 key: const ValueKey('factory-panel'),
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                 child: Container(
                   decoration: BoxDecoration(color: SiteColors.of(context).card, border: Border.all(color: _border, width: 4)),
                   child: SingleChildScrollView(child: _framePanel),
                 ),
+              ),
               ),
             ),
         ]),
@@ -2861,6 +2876,9 @@ const _branchColors = [Color(0xFF22C55E), Color(0xFF38BDF8), Color(0xFFF59E0B), 
 /// A árvore em círculo (como as árvores de habilidade dos jogos): os ramos saem do centro para todos os lados. Igual ao site.
 const _treeFirst = 190.0, _treeStep = 70.0, _treePad = 230.0, _treeFrom = 90.0, _treeTo = -270.0;
 
+/// A distância mínima entre os centros de dois nós vizinhos do mesmo anel (o maior círculo, com o brilho e o selo).
+const _treeGap = 66.0;
+
 /// A melhoria grande que dá nome e símbolo (os nós pequenos usam os da melhoria do mesmo efeito).
 String _upgradeKey(String id) {
   if (!FactoryRun.isMinor(id)) return id;
@@ -2887,22 +2905,16 @@ final _treeLayout = _skillTreeLayout();
         final n = (kidsOf[id] ?? const []).fold(0, (n, k) => n + tips(k));
         return n == 0 ? 1 : n;
       }();
-  int depthOf(String id) => parentOf(id) == null ? 0 : 1 + depthOf(parentOf(id)!);
-  final maxDepth = FactoryRun.upgradeBranches.expand((b) => b.$3).map(depthOf).reduce(max);
-  final radius = _treeFirst + maxDepth * _treeStep;
-  final size = 2 * (radius + _treePad);
-  final c = size / 2;
   double rad(double d) => d * pi / 180;
   final total = FactoryRun.upgradeBranches.fold(0, (n, b) => n + tips(b.$3.first));
-  final out = <_TreeBranch>[];
+  // 1º: o ângulo de cada um (o meio do pedaço do pai) e o nível (a distância do centro).
+  final angles = <({int branch, String id, String? parent, double angle, int depth})>[];
+  final mids = <double>[];
   var start = rad(_treeFrom);
   for (final (b, branch) in FactoryRun.upgradeBranches.indexed) {
-    final (icon, name, ids) = branch;
-    final nodes = <({String id, String? parent, Offset pos})>[];
+    final ids = branch.$3;
     void place(String id, double a, double z, int depth, String? parent) {
-      final m = (a + z) / 2;
-      final r = _treeFirst + depth * _treeStep;
-      nodes.add((id: id, parent: parent, pos: Offset(c + cos(m) * r, c - sin(m) * r)));
+      angles.add((branch: b, id: id, parent: parent, angle: (a + z) / 2, depth: depth));
       var x = a;
       for (final k in kidsOf[id] ?? const <String>[]) {
         final span = (z - a) * tips(k) / tips(id);
@@ -2913,8 +2925,39 @@ final _treeLayout = _skillTreeLayout();
 
     final span = (rad(_treeTo) - rad(_treeFrom)) * tips(ids.first) / total;
     place(ids.first, start, start + span, 0, null);
-    out.add((icon: icon, name: name, ids: ids, color: _branchColors[b % _branchColors.length], nodes: nodes, mid: start + span / 2));
+    mids.add(start + span / 2);
     start += span;
+  }
+  // 2º: o raio de cada anel, grande o bastante para os vizinhos do mesmo anel não encostarem (nada um em cima do outro).
+  final maxDepth = angles.map((n) => n.depth).reduce(max);
+  final radii = <double>[];
+  for (var d = 0; d <= maxDepth; d++) {
+    final ring = [for (final n in angles) if (n.depth == d) n.angle]..sort();
+    var gap = 2 * pi;
+    for (var k = 0; k < ring.length; k++) {
+      final next = k + 1 < ring.length ? ring[k + 1] : ring.first + 2 * pi;
+      if (ring.length > 1) gap = min(gap, (next - ring[k]).abs());
+    }
+    final need = ring.length > 1 ? _treeGap / (2 * sin(min(gap, pi) / 2)) : 0.0;
+    radii.add(max(d == 0 ? _treeFirst : radii[d - 1] + _treeStep, need));
+  }
+  final radius = radii.last;
+  final size = 2 * (radius + _treePad);
+  final c = size / 2;
+  final out = <_TreeBranch>[];
+  for (final (b, branch) in FactoryRun.upgradeBranches.indexed) {
+    final (icon, name, ids) = branch;
+    out.add((
+      icon: icon,
+      name: name,
+      ids: ids,
+      color: _branchColors[b % _branchColors.length],
+      nodes: [
+        for (final n in angles)
+          if (n.branch == b) (id: n.id, parent: n.parent, pos: Offset(c + cos(n.angle) * radii[n.depth], c - sin(n.angle) * radii[n.depth])),
+      ],
+      mid: mids[b],
+    ));
   }
   return (branches: out, size: size, radius: radius);
 }
@@ -2946,8 +2989,21 @@ class _SkillTreeState extends State<_SkillTree> {
     super.dispose();
   }
 
+  Size _box = Size.zero;
+
+  /// Leva a árvore até o nó (no zoom de agora), para quem escolhe pela lista.
+  void _focus(String id) {
+    final pos = {for (final b in _treeLayout.branches) for (final n in b.nodes) n.id: n.pos}[id];
+    if (pos == null || _box.isEmpty) return;
+    final s = _view.value.getMaxScaleOnAxis();
+    _view.value = Matrix4.identity()
+      ..translateByDouble(_box.width / 2 - pos.dx * s, _box.height / 2 - pos.dy * s, 0, 1)
+      ..scaleByDouble(s, s, 1, 1);
+  }
+
   /// Começa no centro da árvore, num zoom em que se vê bastante dela.
   void _fit(double width, double height) {
+    _box = Size(width, height);
     if (_width == width) return;
     _width = width;
     final size = _treeLayout.size;
@@ -2995,112 +3051,48 @@ class _SkillTreeState extends State<_SkillTree> {
           _ => tr('Ter {0} Pokémon para começar (tem {1})').replaceAll('{0}', '${n['count']}').replaceAll('{1}', '${((f['owned'] as List?) ?? const []).length}'),
         };
     final spent = ((f['upgrades'] as Map?) ?? const {}).values.fold(0, (n, v) => n + (v as num).toInt());
+    final buyable = [
+      for (final k in layout.expand((b) => b.ids))
+        if (FactoryRun.upgradePrice(f, k) case final p? when p <= coins && FactoryRun.upgradeNeeds(f, k).isEmpty) (k, p),
+    ]..sort((a, b) => a.$2.compareTo(b.$2));
     final all = FactoryRun.upgrades.values.fold(0, (n, u) => n + u.max);
-    final tree = SizedBox(
-      width: size,
-      height: size,
-      child: Stack(clipBehavior: Clip.none, children: [
-        Positioned.fill(
-          child: CustomPaint(
-            painter: _TreeLines([
-              for (final b in layout)
-                for (final n in b.nodes)
-                  (from: n.parent == null ? center : posOf[n.parent]!, to: n.pos, color: FactoryRun.upgradeLevel(f, n.id) > 0 ? b.color : null, minor: FactoryRun.isMinor(n.id)),
-            ], center, _treeLayout.radius),
+    // A árvore toda num desenho só (rápido de arrastar e dar zoom; antes eram centenas de widgets). Tocar escolhe o nó
+    // mais perto do dedo.
+    final nodes = [
+      for (final b in layout)
+        for (final n in b.nodes)
+          (
+            id: n.id,
+            pos: n.pos,
+            from: n.parent == null ? center : posOf[n.parent]!,
+            color: b.color,
+            state: state(n.id),
+            minor: FactoryRun.isMinor(n.id),
+            keystone: FactoryRun.isKeystone(n.id),
+            icon: _upgradeIcons[_upgradeKey(n.id)] ?? '⬆️',
+            badge: FactoryRun.isMinor(n.id) ? '' : '${FactoryRun.upgradeLevel(f, n.id)}/${FactoryRun.upgrades[n.id]!.max}',
           ),
+    ];
+    final labels = [
+      for (final b in layout)
+        (
+          pos: Offset(center.dx + cos(b.mid) * (_treeLayout.radius + 55), center.dy - sin(b.mid) * (_treeLayout.radius + 55)),
+          text: '${b.icon} ${tr(b.name)} · ${b.ids.fold(0, (n, k) => n + FactoryRun.upgradeLevel(f, k))}/${b.ids.fold(0, (n, k) => n + FactoryRun.upgrades[k]!.max)}',
+          color: b.color,
         ),
-        // O centro: os pontos gastos na árvore toda.
-        Positioned(
-          left: center.dx - 54,
-          top: center.dy - 54,
-          child: Container(
-            width: 108,
-            height: 108,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFF0F172A), border: Border.all(color: const Color(0xFFFDE047), width: 4)),
-            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              const Text('⭐', style: TextStyle(fontSize: 28)),
-              Text('$spent/$all', style: const TextStyle(color: Color(0xFFFDE047), fontWeight: FontWeight.w900, fontSize: 14)),
-            ]),
-          ),
+    ];
+    final tree = GestureDetector(
+      key: const ValueKey('skill-tree-canvas'),
+      onTapUp: (d) {
+        final hit = nodes.map((n) => (n.id, (n.pos - d.localPosition).distance)).reduce((a, b) => a.$2 <= b.$2 ? a : b);
+        if (hit.$2 <= 34) setState(() => _picked = hit.$1);
+      },
+      child: RepaintBoundary(
+        child: CustomPaint(
+          size: Size(size, size),
+          painter: _TreePainter(nodes: nodes, labels: labels, center: center, radius: _treeLayout.radius, picked: id, spent: '$spent/$all'),
         ),
-        // O nome do ramo e os pontos, na borda, no meio do pedaço dele.
-        for (final b in layout)
-          Positioned(
-            left: center.dx + cos(b.mid) * (_treeLayout.radius + 55) - 220,
-            width: 440,
-            top: center.dy - sin(b.mid) * (_treeLayout.radius + 55) - 20,
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                '${b.icon} ${tr(b.name)} · ${b.ids.fold(0, (n, k) => n + FactoryRun.upgradeLevel(f, k))}/${b.ids.fold(0, (n, k) => n + FactoryRun.upgrades[k]!.max)}',
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                  style: TextStyle(color: b.color, fontWeight: FontWeight.w900, fontSize: 30, shadows: const [Shadow(color: Color(0xFF05070D), blurRadius: 6)])),
-            ),
-          ),
-        for (final b in layout)
-          for (final n in b.nodes)
-            () {
-              final st = state(n.id);
-              final sel = n.id == id;
-              final minor = FactoryRun.isMinor(n.id);
-              // O nó-chave (o último da trilha): maior e com o contorno dourado.
-              final keystone = FactoryRun.isKeystone(n.id);
-              final base = keystone ? 17.0 : minor ? 11.0 : 24.0;
-              final r = sel ? base + 4 : base;
-              return Positioned(
-                left: n.pos.dx - r - 7,
-                top: n.pos.dy - r - 7,
-                child: GestureDetector(
-                  key: ValueKey('upgrade-${n.id}'),
-                  onTap: () => setState(() => _picked = n.id),
-                  child: Opacity(
-                    opacity: st == 'locked' ? 0.55 : 1,
-                    child: Stack(clipBehavior: Clip.none, alignment: Alignment.center, children: [
-                      // Comprado: brilha na cor do ramo.
-                      Container(
-                        width: r * 2 + 14,
-                        height: r * 2 + 14,
-                        decoration: BoxDecoration(shape: BoxShape.circle, color: st == 'have' ? b.color.withValues(alpha: 0.25) : Colors.transparent),
-                      ),
-                      Container(
-                        width: r * 2,
-                        height: r * 2,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: st == 'have' ? b.color : const Color(0xFF111827),
-                          border: Border.all(
-                              color: sel
-                                  ? const Color(0xFFFDE047)
-                                  : keystone
-                                      ? const Color(0xFFF59E0B)
-                                      : st == 'locked'
-                                      ? const Color(0xFF334155)
-                                      : st == 'open'
-                                          ? const Color(0xFFF8FAFC)
-                                          : b.color,
-                              width: sel ? 5 : keystone ? 4 : minor ? 2 : 3),
-                        ),
-                        child: Text(st == 'locked' && !minor ? '🔒' : _upgradeIcons[_upgradeKey(n.id)] ?? '⬆️', style: TextStyle(fontSize: keystone ? 14 : minor ? 10 : 19)),
-                      ),
-                      // O nível (comprado/máximo), num selo embaixo (só nas melhorias grandes).
-                      if (!minor)
-                        Positioned(
-                          top: r * 2 + 3,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 5),
-                            decoration: BoxDecoration(color: const Color(0xFF0F172A), borderRadius: BorderRadius.circular(8), border: Border.all(color: b.color, width: 1.5)),
-                            child: Text('${FactoryRun.upgradeLevel(f, n.id)}/${FactoryRun.upgrades[n.id]!.max}',
-                                style: const TextStyle(color: Color(0xFFF8FAFC), fontSize: 10, fontWeight: FontWeight.w900)),
-                          ),
-                        ),
-                    ]),
-                  ),
-                ),
-              );
-            }(),
-      ]),
+      ),
     );
     Widget sized(Widget child) => widget.full ? Expanded(child: child) : SizedBox(height: 440, child: child);
     return Column(key: ValueKey(widget.full ? 'skill-tree-full' : 'skill-tree'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -3163,6 +3155,29 @@ class _SkillTreeState extends State<_SkillTree> {
         ),
       ),
       const SizedBox(height: 8),
+      // Prático: o que dá para comprar agora (do mais barato), sem procurar na árvore; tocar leva até ele.
+      if (buyable.isNotEmpty) ...[
+        SizedBox(
+          height: 36,
+          child: ListView(key: const ValueKey('upgrade-buyable'), scrollDirection: Axis.horizontal, children: [
+            Center(child: Text('${tr('Dá para comprar')}: ', style: TextStyle(color: c.muted, fontSize: 12, fontWeight: FontWeight.bold))),
+            for (final (k, p) in buyable)
+              Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: ActionChip(
+                  key: ValueKey('buyable-$k'),
+                  visualDensity: VisualDensity.compact,
+                  label: Text('${_upgradeIcons[_upgradeKey(k)] ?? '⬆️'} ${tr(_upgradeNames[_upgradeKey(k)] ?? k)} · 🪙$p', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+                  onPressed: () {
+                    setState(() => _picked = k);
+                    _focus(k);
+                  },
+                ),
+              ),
+          ]),
+        ),
+        const SizedBox(height: 6),
+      ],
       // O que a melhoria escolhida faz, o que falta e o botão de comprar.
       Container(
         key: const ValueKey('upgrade-detail'),
@@ -3229,12 +3244,25 @@ class _FullSkillTreeState extends State<_FullSkillTree> {
       );
 }
 
-/// As linhas da árvore (acesas na cor do ramo quando a melhoria foi comprada) e os anéis de fundo.
-class _TreeLines extends CustomPainter {
-  final List<({Offset from, Offset to, Color? color, bool minor})> lines;
+typedef _TreeNode = ({String id, Offset pos, Offset from, Color color, String state, bool minor, bool keystone, String icon, String badge});
+
+/// A árvore inteira num desenho só: os anéis, as linhas (acesas na cor do ramo quando compradas), o centro, os nomes
+/// dos ramos e os nós (comprado: aceso; para comprar: contorno claro; bloqueado: apagado com cadeado; nó-chave dourado).
+class _TreePainter extends CustomPainter {
+  _TreePainter({required this.nodes, required this.labels, required this.center, required this.radius, required this.picked, required this.spent});
+  final List<_TreeNode> nodes;
+  final List<({Offset pos, String text, Color color})> labels;
   final Offset center;
   final double radius;
-  _TreeLines(this.lines, this.center, this.radius);
+  final String picked, spent;
+
+  /// Os símbolos já medidos (o mesmo emoji em vários nós).
+  static final _icons = <String, TextPainter>{};
+  static TextPainter _text(String text, double size, {Color color = Colors.white, FontWeight weight = FontWeight.normal}) => _icons.putIfAbsent(
+      '$text|$size|${color.toARGB32()}|${weight.value}',
+      () => TextPainter(text: TextSpan(text: text, style: TextStyle(fontSize: size, color: color, fontWeight: weight)), textDirection: TextDirection.ltr)..layout());
+
+  void _centered(Canvas canvas, TextPainter t, Offset at) => t.paint(canvas, at - Offset(t.width / 2, t.height / 2));
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -3245,14 +3273,65 @@ class _TreeLines extends CustomPainter {
     for (var k = 1; k <= 5; k++) {
       canvas.drawCircle(center, radius * k / 5, ring);
     }
-    for (final l in lines) {
-      canvas.drawLine(l.from, l.to, Paint()
-        ..color = l.color ?? const Color(0xB3334155)
+    for (final n in nodes) {
+      final lit = n.state == 'have';
+      canvas.drawLine(n.from, n.pos, Paint()
+        ..color = lit ? n.color : const Color(0xB3334155)
         ..strokeCap = StrokeCap.round
-        ..strokeWidth = l.color != null ? 5 : l.minor ? 2 : 3);
+        ..strokeWidth = lit ? 5 : n.minor ? 2 : 3);
+    }
+    // O centro: os pontos gastos na árvore toda.
+    canvas.drawCircle(center, 54, Paint()..color = const Color(0xFF0F172A));
+    canvas.drawCircle(center, 54, Paint()
+      ..color = const Color(0xFFFDE047)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4);
+    _centered(canvas, _text('⭐', 28), center - const Offset(0, 12));
+    _centered(canvas, _text(spent, 14, color: const Color(0xFFFDE047), weight: FontWeight.w900), center + const Offset(0, 22));
+    for (final l in labels) {
+      final t = TextPainter(
+          text: TextSpan(text: l.text, style: TextStyle(color: l.color, fontSize: 30, fontWeight: FontWeight.w900, shadows: const [Shadow(color: Color(0xFF05070D), blurRadius: 6)])),
+          textDirection: TextDirection.ltr)
+        ..layout();
+      _centered(canvas, t, l.pos);
+    }
+    for (final n in nodes) {
+      final sel = n.id == picked;
+      final base = n.keystone ? 17.0 : n.minor ? 11.0 : 24.0;
+      final r = sel ? base + 4 : base;
+      final locked = n.state == 'locked';
+      final alpha = locked ? 0.55 : 1.0;
+      if (n.state == 'have') canvas.drawCircle(n.pos, r + 7, Paint()..color = n.color.withValues(alpha: 0.25));
+      canvas.drawCircle(n.pos, r, Paint()..color = (n.state == 'have' ? n.color : const Color(0xFF111827)).withValues(alpha: alpha));
+      final border = sel
+          ? const Color(0xFFFDE047)
+          : n.keystone
+              ? const Color(0xFFF59E0B)
+              : locked
+                  ? const Color(0xFF334155)
+                  : n.state == 'open'
+                      ? const Color(0xFFF8FAFC)
+                      : n.color;
+      canvas.drawCircle(n.pos, r, Paint()
+        ..color = border.withValues(alpha: alpha)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = sel ? 5 : n.keystone ? 4 : n.minor ? 2 : 3);
+      _centered(canvas, _text(locked && !n.minor ? '🔒' : n.icon, n.keystone ? 14 : n.minor ? 10 : 19), n.pos);
+      // O nível (comprado/máximo), num selo embaixo (só nas melhorias grandes).
+      if (n.badge.isNotEmpty) {
+        final t = _text(n.badge, 10, weight: FontWeight.w900);
+        final box = Rect.fromCenter(center: n.pos + Offset(0, r + 4 + t.height / 2), width: t.width + 10, height: t.height + 2);
+        final rr = RRect.fromRectAndRadius(box, const Radius.circular(8));
+        canvas.drawRRect(rr, Paint()..color = const Color(0xFF0F172A));
+        canvas.drawRRect(rr, Paint()
+          ..color = n.color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5);
+        _centered(canvas, t, box.center);
+      }
     }
   }
 
   @override
-  bool shouldRepaint(_TreeLines old) => true;
+  bool shouldRepaint(_TreePainter old) => old.picked != picked || old.spent != spent || !identical(old.nodes, nodes);
 }

@@ -677,7 +677,8 @@ const UPGRADE_ICONS = {
 /** A cor de cada ramo (as linhas e os círculos comprados), na ordem de UPGRADE_BRANCHES. */
 const BRANCH_COLORS = ['#22c55e', '#38bdf8', '#f59e0b', '#ef4444', '#a855f7', '#eab308', '#ec4899']
 /** A árvore em círculo (como as árvores de habilidade dos jogos): os ramos saem do centro para todos os lados. Igual ao app. */
-const TREE = { first: 190, step: 70, pad: 230, from: 90, to: -270 }
+// gap: a distância mínima entre os centros de dois nós vizinhos do mesmo anel (o maior círculo, com o brilho e o selo).
+const TREE = { first: 190, step: 70, pad: 230, from: 90, to: -270, gap: 66 }
 /** A melhoria grande que dá nome e símbolo (os nós pequenos usam os da melhoria do mesmo efeito). */
 const upgradeKey = (id) => (isMinor(id) ? MINOR_BASE[UPGRADE_FX[id].join(':')] : id)
 /**
@@ -685,28 +686,21 @@ const upgradeKey = (id) => (isMinor(id) ? MINOR_BASE[UPGRADE_FX[id].join(':')] :
  * das pontas dele; cada melhoria fica no meio do pedaço do pai, mais longe do
  * centro a cada nível. Igual ao app.
  */
-function skillTreeLayout() {
+export function skillTreeLayout() {
   const parentOf = (id) => UPGRADE_TREE[id]?.needs?.[0] ?? null
   const kidsOf = {}
   for (const [, , ids] of UPGRADE_BRANCHES) for (const id of ids) { const p = parentOf(id); if (p) (kidsOf[p] ??= []).push(id) }
   const tipsMemo = {}
   const tips = (id) => (tipsMemo[id] ??= (kidsOf[id] ?? []).reduce((n, k) => n + tips(k), 0) || 1)
-  const depthOf = (id) => (parentOf(id) ? 1 + depthOf(parentOf(id)) : 0)
-  const maxDepth = Math.max(...UPGRADE_BRANCHES.flatMap(([, , ids]) => ids.map(depthOf)))
-  const radius = TREE.first + maxDepth * TREE.step
-  const size = 2 * (radius + TREE.pad)
-  const c = size / 2
   const total = UPGRADE_BRANCHES.reduce((n, [, , ids]) => n + tips(ids[0]), 0)
   const rad = (d) => (d * Math.PI) / 180
-  const out = []
+  // 1º: o ângulo de cada um (o meio do pedaço do pai) e o nível (a distância do centro).
+  const angles = []
+  const mids = []
   let start = rad(TREE.from)
-  UPGRADE_BRANCHES.forEach(([icon, branch, ids], b) => {
-    const color = BRANCH_COLORS[b % BRANCH_COLORS.length]
-    const nodes = []
+  UPGRADE_BRANCHES.forEach(([, , ids], b) => {
     const place = (id, a, z, depth, parent) => {
-      const m = (a + z) / 2
-      const r = TREE.first + depth * TREE.step
-      nodes.push({ id, parent, pos: [c + Math.cos(m) * r, c - Math.sin(m) * r], angle: m })
+      angles.push({ branch: b, id, parent, angle: (a + z) / 2, depth })
       let x = a
       for (const k of kidsOf[id] ?? []) {
         const span = ((z - a) * tips(k)) / tips(id)
@@ -716,9 +710,26 @@ function skillTreeLayout() {
     }
     const span = ((rad(TREE.to) - rad(TREE.from)) * tips(ids[0])) / total
     place(ids[0], start, start + span, 0, null)
-    out.push({ icon, branch, ids, color, nodes, mid: start + span / 2 })
+    mids.push(start + span / 2)
     start += span
   })
+  // 2º: o raio de cada anel, grande o bastante para os vizinhos do mesmo anel não encostarem (nada um em cima do outro).
+  const maxDepth = Math.max(...angles.map((n) => n.depth))
+  const radii = []
+  for (let d = 0; d <= maxDepth; d++) {
+    const ring = angles.filter((n) => n.depth === d).map((n) => n.angle).sort((x, y) => x - y)
+    let gap = 2 * Math.PI
+    ring.forEach((a, k) => { if (ring.length > 1) gap = Math.min(gap, Math.abs((k + 1 < ring.length ? ring[k + 1] : ring[0] + 2 * Math.PI) - a)) })
+    const need = ring.length > 1 ? TREE.gap / (2 * Math.sin(Math.min(gap, Math.PI) / 2)) : 0
+    radii.push(Math.max(d === 0 ? TREE.first : radii[d - 1] + TREE.step, need))
+  }
+  const radius = radii[maxDepth]
+  const size = 2 * (radius + TREE.pad)
+  const c = size / 2
+  const out = UPGRADE_BRANCHES.map(([icon, branch, ids], b) => ({
+    icon, branch, ids, color: BRANCH_COLORS[b % BRANCH_COLORS.length], mid: mids[b],
+    nodes: angles.filter((n) => n.branch === b).map((n) => ({ id: n.id, parent: n.parent, angle: n.angle, pos: [c + Math.cos(n.angle) * radii[n.depth], c - Math.sin(n.angle) * radii[n.depth]] })),
+  }))
   return { branches: out, size, c, radius }
 }
 
@@ -759,6 +770,12 @@ function SkillTree({ factory }) {
     if (el) { el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2; el.scrollTop = (el.scrollHeight - el.clientHeight) / 2 }
   }, [zoom, full])
   const key = upgradeKey(id)
+  const buyable = layout.flatMap((b) => b.ids).map((k) => [k, upgradePrice(factory, k)]).filter(([k, p]) => p != null && p <= (factory.coins ?? 0) && !upgradeNeeds(factory, k).length).sort((a, b) => a[1] - b[1])
+  // Leva a árvore até o nó (no zoom de agora), para quem escolhe pela lista.
+  const focus = (k) => {
+    const el = box.current, pos = posOf[k]
+    if (el && pos) { el.scrollLeft = pos[0] * zoom - el.clientWidth / 2; el.scrollTop = pos[1] * zoom - el.clientHeight / 2 }
+  }
   return (
     <div className={full ? 'fixed inset-0 z-50 flex flex-col gap-2 bg-[#05070d] p-2' : 'space-y-2'} data-testid="skill-tree">
       <div className={full ? 'relative min-h-0 flex-1' : 'relative'}>
@@ -818,6 +835,18 @@ function SkillTree({ factory }) {
           <button type="button" className="h-8 w-8 cursor-pointer rounded-full bg-slate-800 font-black text-white" onClick={() => setFull((f) => !f)} aria-label={t(full ? 'Fechar' : 'Tela cheia')} data-testid={full ? 'tree-full-close' : 'tree-full'}>{full ? '✕' : '⛶'}</button>
         </div>
       </div>
+      {/* Prático: o que dá para comprar agora (do mais barato), sem procurar na árvore; tocar leva até ele. */}
+      {buyable.length > 0 && (
+        <div className="flex items-center gap-1.5 overflow-x-auto whitespace-nowrap pb-1 text-xs" data-testid="upgrade-buyable">
+          <span className="font-bold text-muted">{t('Dá para comprar')}:</span>
+          {buyable.map(([k, p]) => (
+            <button key={k} type="button" className="cursor-pointer rounded-full border border-amber-400/60 bg-card px-2 py-1 font-extrabold" data-testid={`buyable-${k}`}
+              onClick={() => { setPicked(k); focus(k) }}>
+              {UPGRADE_ICONS[upgradeKey(k)]} {t(UPGRADE_NAMES[upgradeKey(k)])} · 🪙{p}
+            </button>
+          ))}
+        </div>
+      )}
       {/* O que a melhoria escolhida faz, o que falta e o botão de comprar. */}
       <div className="flex items-center gap-2 rounded-xl border-2 border-amber-400/60 bg-card p-2 text-xs" data-testid="upgrade-detail">
         <span className="text-2xl">{UPGRADE_ICONS[key]}</span>
@@ -1308,8 +1337,9 @@ function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, 
     <div className="select-none">
       {/* A Bolsa, o time, a loja e a troca abrem por cima do campo (a mesma tela, como no jogo; dá para jogar com o celular de lado). */}
       <div className="relative">
-        {field}
-        {panel && <div className="field-overlay factory-overlay rounded-t-2xl border-4 border-b-0 border-slate-800 bg-bg text-text" data-testid="factory-panel">{panel}</div>}
+        {/* Sem corte seco: a tela do lugar troca com um fade (mapa, loja, resultado...). */}
+        <div key={field?.props?.testid ?? ''} className="page-in">{field}</div>
+        {panel && <div key={panel?.key ?? panel?.props?.testid ?? 'panel'} className="field-overlay factory-overlay panel-in rounded-t-2xl border-4 border-b-0 border-slate-800 bg-bg text-text" data-testid="factory-panel">{panel}</div>}
       </div>
       {run && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-x-4 border-slate-800 bg-slate-700 px-2 py-1 text-xs font-bold text-white" style={theme ? { background: `linear-gradient(90deg, ${theme}, #334155 70%)` } : undefined} data-testid="factory-bar">

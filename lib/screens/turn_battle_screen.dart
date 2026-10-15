@@ -452,7 +452,14 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
       body: ReadableWidth(
         // A troca entre a tela da corrida e a batalha: um fade curto (sem pulo seco).
         child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
+          duration: const Duration(milliseconds: 450),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          // Sem corte seco: a tela que sai some e a que entra aparece crescendo de leve.
+          transitionBuilder: (child, animation) => FadeTransition(
+            opacity: animation,
+            child: ScaleTransition(scale: Tween(begin: 0.96, end: 1.0).animate(animation), child: child),
+          ),
           child: KeyedSubtree(
             key: ValueKey(_factoryScreen ? 'factory-$_key' : battle != null && _hit != null ? 'battle-$_key' : 'setup'),
             child: _factoryScreen
@@ -945,6 +952,9 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
 
   /// O tocado na tela do time (as opções TROCAR / DADOS / CANCELAR ficam nos botões de baixo).
   int? _partyPick;
+
+  /// O item tocado na Bolsa (USAR fica nos botões de baixo).
+  String? _bagPick;
   String? _gimmickPick;
   int? _gimmickMon;
   late final _shake = AnimationController(vsync: this, duration: const Duration(milliseconds: 650));
@@ -1641,13 +1651,8 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
     final foeWeak = TurnBattle.weaknesses(rival.types, allTypes, widget.typeEff);
     final dark = Theme.of(context).brightness == Brightness.dark;
     // A Bolsa e o time abrem por cima do campo (a mesma tela, como no jogo; dá para jogar com o celular de lado).
-    final Widget? fieldPanel = waiting && _menu == 'bag'
-        ? BwBag(
-                testKey: 'bag',
-                // Cabe no campo: as abas e a barra de baixo fixas, a lista rola.
-                fill: true,
-                onClose: () => setState(() => _menu = 'main'),
-                pockets: [
+    // A Bolsa: em cima da caixa de texto (a descrição do item aparece nela); USAR e Voltar nos botões fixos de baixo.
+    final bagPockets = <BagPocket>[
                   for (final (id, label, img, ball) in const [('medicine', 'Remédios', 'potion', false), ('balls', 'Poké Balls', 'poke-ball', true)])
                     BagPocket(id: id, label: label, img: img, items: [
                       for (final it in battleItems)
@@ -1678,7 +1683,15 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                                   }),
                           ),
                     ]),
-                ],
+                ];
+    final bagPicked = bagPockets.expand((p) => p.items).where((it) => it.id == _bagPick).firstOrNull;
+    final Widget? fieldPanel = waiting && _menu == 'bag'
+        ? BwBag(
+                testKey: 'bag',
+                fill: true,
+                external: true,
+                onSelect: (id) => setState(() => _bagPick = id),
+                pockets: bagPockets,
               )
         : waiting && _menu == 'party' && _summary != null
             // Os dados do Pokémon (como no jogo).
@@ -1902,6 +1915,9 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                           // Já traduzido (nomes e golpes não mudam).
                           text: !_busy && widget.online != null
                               ? tr(widget.online!.message)
+                              // A Bolsa: a descrição do item tocado (ou a pergunta) na caixa.
+                              : waiting && _menu == 'bag'
+                                  ? (bagPicked != null ? '${bagPicked.name}: ${bagPicked.help}' : tr('Escolha um item.'))
                               // O time aberto: a pergunta dele na caixa (como no jogo).
                               : waiting && _menu == 'party' && _summary == null
                                   ? (_b.needSwitch ? tr('Escolha o próximo Pokémon') : _item != null ? tr('Usar em qual Pokémon?') : tr('Escolha um Pokémon.'))
@@ -1922,8 +1938,8 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                             left: 0,
                             right: 0,
                             top: 0,
-                            bottom: _menu == 'party' && _summary == null ? h * 0.225 : 0,
-                            child: _menu == 'bag' || _summary == null ? fieldPanel : SingleChildScrollView(child: fieldPanel)),
+                            bottom: _menu == 'bag' || _menu == 'party' && _summary == null ? h * 0.225 : 0,
+                            child: _Appear(key: ValueKey(_menu), child: _menu == 'bag' || _summary == null ? fieldPanel : SingleChildScrollView(child: fieldPanel))),
                       // A tela VS por cima de tudo: só os dois treinadores (o resto some até ela acabar).
                       if (_vsOn)
                         Positioned.fill(
@@ -1959,7 +1975,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                               setState(() => _menu = 'fight');
                             }
                           }),
-                          _MenuButton('BOLSA', widget.online == null ? () => setState(() => _menu = 'bag') : null),
+                          _MenuButton('BOLSA', widget.online == null ? () => setState(() { _menu = 'bag'; _bagPick = null; }) : null),
                           _MenuButton(
                               'POKÉMON',
                               () => setState(() {
@@ -1970,6 +1986,12 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                                   })),
                           _MenuButton('FUGIR', _run),
                         ])
+                      : _menu == 'bag' && bagPicked != null
+                          // Tocou num item: USAR (ou JOGAR) e CANCELAR nos botões fixos.
+                          ? _menuGrid([
+                              _MenuButton(key: const ValueKey('bag-use'), bagPicked.use ?? tr('USAR'), bagPicked.disabled ? null : bagPicked.onUse),
+                              _MenuButton(key: const ValueKey('bag-cancel'), tr('CANCELAR'), () => setState(() => _bagPick = null)),
+                            ])
                       : _menu == 'party' && _partyPick != null
                           // Tocou num Pokémon do time: as opções (como no jogo).
                           ? _menuGrid([
@@ -2030,6 +2052,11 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                           : null,
           footer: waiting && _menu == 'fight'
               ? _MenuButton('Voltar', () => setState(() => _menu = 'main'))
+              : waiting && _menu == 'bag'
+                  ? _MenuButton(key: const ValueKey('bag-close'), 'Voltar', () => setState(() {
+                        _menu = 'main';
+                        _bagPick = null;
+                      }))
               : waiting && _menu == 'party' && _summary == null && !_b.needSwitch
                   ? _MenuButton(
                       key: const ValueKey('battle-single-switch-cancel'),
@@ -2135,6 +2162,21 @@ SummaryData summaryOf(TurnBattle b, int side, int i) {
       ],
     );
   }
+
+/// O que abre por cima do campo (a Bolsa, o time) aparece subindo de leve e clareando, em vez de surgir de uma vez.
+class _Appear extends StatelessWidget {
+  const _Appear({super.key, required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        builder: (context, v, child) => Opacity(opacity: v, child: Transform.translate(offset: Offset(0, (1 - v) * 16), child: child)),
+        child: child,
+      );
+}
 
 /// O estilo das falas na caixa de texto (o mesmo para medir e para mostrar).
 const _dialogStyle = TextStyle(fontSize: 14, height: 1.25, fontWeight: FontWeight.bold);
@@ -3736,7 +3778,7 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
                 ),
               ),
               // A troca abre por cima do campo, em cima da caixa de texto (a pergunta aparece nela), como na batalha normal.
-              if (panel != null) Positioned(key: const ValueKey('battle-panel'), left: 0, right: 0, top: 0, bottom: _summary != null ? 0 : h * 0.225, child: panel),
+              if (panel != null) Positioned(key: const ValueKey('battle-panel'), left: 0, right: 0, top: 0, bottom: _summary != null ? 0 : h * 0.225, child: _Appear(child: panel)),
             ]);
           }),
         ),

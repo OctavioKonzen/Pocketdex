@@ -397,7 +397,7 @@ try {
           await page.getByText(/recuperou \d+ de HP/).waitFor({ timeout: 15000 })
           continue
         }
-        await page.getByTestId('bag').getByRole('button', { name: 'Fechar' }).click()
+        await page.getByTestId('bag-close').click()
       }
       await page.getByRole('button', { name: '▸ LUTAR' }).click()
       await page.getByTestId('moves').locator('button[data-no-translate]:not([disabled])').first().click()

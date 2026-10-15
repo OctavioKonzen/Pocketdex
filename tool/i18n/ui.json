@@ -8371,5 +8371,8 @@
  "Mira certeira": {"en": "Sharp Aim", "fr": "Visée précise", "es": "Puntería"},
  "Paciência": {"en": "Patience", "fr": "Patience", "es": "Paciencia"},
  "Isca": {"en": "Bait", "fr": "Appât", "es": "Cebo"},
- "Ninguém no banco para entrar.": {"en": "No one on the bench to send in.", "fr": "Personne en réserve pour entrer.", "es": "No hay nadie en el banco para entrar."}
+ "Ninguém no banco para entrar.": {"en": "No one on the bench to send in.", "fr": "Personne en réserve pour entrer.", "es": "No hay nadie en el banco para entrar."},
+ "Escolha um item.": {"en": "Choose an item.", "fr": "Choisissez un objet.", "es": "Elige un objeto."},
+ "Escolha um Pokémon.": {"en": "Choose a Pokémon.", "fr": "Choisissez un Pokémon.", "es": "Elige un Pokémon."},
+ "Dá para comprar": {"en": "Can buy now", "fr": "Achetable", "es": "Se puede comprar"}
 }
