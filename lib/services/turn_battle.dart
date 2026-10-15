@@ -155,26 +155,30 @@ class BattleEvent {
   final List<Object> args;
   final int side, value, index;
   final String type, category, slug;
+  /// Em dupla/tripla: a posição em campo de quem é o evento (0, 1, 2) e quem é no time; -1 sem.
+  final int pos, at;
   BattleEvent.viewFor(BattleEvent event, int viewer)
       : t = event.t, key = event.key,
         side = event.side < 0 ? event.side : event.side == viewer ? 0 : 1,
-        value = event.value, index = event.index, type = event.type, category = event.category, slug = event.slug,
+        value = event.value, index = event.index, pos = event.pos, at = event.at, type = event.type, category = event.category, slug = event.slug,
         args = [for (final v in event.args) v is (int, String) ? (v.$1 == viewer ? 0 : 1, v.$2) : v];
   const BattleEvent.text(this.key, this.args)
       : t = 'text',
+        pos = -1,
+        at = -1,
         side = -1,
         value = 0,
         index = 0,
         type = '',
         category = '',
         slug = '';
-  const BattleEvent.attack(this.side, this.type, this.category, this.slug)
+  const BattleEvent.attack(this.side, this.type, this.category, this.slug, {this.pos = -1, this.at = -1})
       : t = 'attack',
         key = '',
         args = const [],
         value = 0,
         index = 0;
-  const BattleEvent.miss(this.side)
+  const BattleEvent.miss(this.side, {this.pos = -1, this.at = -1})
       : t = 'miss',
         key = '',
         args = const [],
@@ -183,7 +187,7 @@ class BattleEvent {
         type = '',
         category = '',
         slug = '';
-  const BattleEvent.hp(this.side, this.value)
+  const BattleEvent.hp(this.side, this.value, {this.pos = -1, this.at = -1})
       : t = 'hp',
         key = '',
         args = const [],
@@ -191,7 +195,7 @@ class BattleEvent {
         type = '',
         category = '',
         slug = '';
-  const BattleEvent.switched(this.side, this.value)
+  const BattleEvent.switched(this.side, this.value, {this.pos = -1, this.at = -1})
       : t = 'switch',
         key = '',
         args = const [],
@@ -199,7 +203,7 @@ class BattleEvent {
         type = '',
         category = '',
         slug = '';
-  const BattleEvent.faint(this.side)
+  const BattleEvent.faint(this.side, {this.pos = -1, this.at = -1})
       : t = 'faint',
         key = '',
         args = const [],
@@ -208,7 +212,7 @@ class BattleEvent {
         type = '',
         category = '',
         slug = '';
-  const BattleEvent.status(this.side, this.type)
+  const BattleEvent.status(this.side, this.type, {this.pos = -1, this.at = -1})
       : t = 'status',
         key = '',
         args = const [],
@@ -220,6 +224,8 @@ class BattleEvent {
   /// Forma que mudou na batalha (Stance Change, Disguise, Zen Mode...): [value] é o id da forma.
   const BattleEvent.form(this.side, this.value)
       : t = 'form',
+        pos = -1,
+        at = -1,
         key = '',
         args = const [],
         index = 0,
@@ -228,6 +234,8 @@ class BattleEvent {
         slug = '';
   const BattleEvent.mega(this.side, this.value)
       : t = 'mega',
+        pos = -1,
+        at = -1,
         key = '',
         args = const [],
         index = 0,
@@ -238,6 +246,8 @@ class BattleEvent {
   /// Terastalizou no tipo [type].
   const BattleEvent.tera(this.side, this.type)
       : t = 'tera',
+        pos = -1,
+        at = -1,
         key = '',
         args = const [],
         value = 0,
@@ -248,6 +258,8 @@ class BattleEvent {
   /// Dinamax: começou ([index] 1) ou acabou (0); a forma (Gigantamax) em [value].
   const BattleEvent.dmax(this.side, this.index, this.value)
       : t = 'dmax',
+        pos = -1,
+        at = -1,
         key = '',
         args = const [],
         type = '',
@@ -256,6 +268,8 @@ class BattleEvent {
   /// Terreno novo em [type] (grassy | electric | misty | psychic; '' = acabou).
   const BattleEvent.terrain(this.type)
       : t = 'terrain',
+        pos = -1,
+        at = -1,
         key = '',
         args = const [],
         side = -1,
@@ -267,6 +281,8 @@ class BattleEvent {
   /// Efeito do lugar da Battle Factory em [type] (diamonds | rockfall | ashes | miasma | chill | haunt | current).
   const BattleEvent.place(this.type)
       : t = 'place',
+        pos = -1,
+        at = -1,
         key = '',
         args = const [],
         side = -1,
@@ -278,6 +294,8 @@ class BattleEvent {
   /// Clima novo em [type] (rain | sun | sand | hail | snow; '' = acabou).
   const BattleEvent.weather(this.type)
       : t = 'weather',
+        pos = -1,
+        at = -1,
         key = '',
         args = const [],
         side = -1,
@@ -285,7 +303,7 @@ class BattleEvent {
         index = 0,
         category = '',
         slug = '';
-  const BattleEvent.heal(this.side, this.index, this.value)
+  const BattleEvent.heal(this.side, this.index, this.value, {this.pos = -1, this.at = -1})
       : t = 'heal',
         key = '',
         args = const [],
@@ -295,6 +313,8 @@ class BattleEvent {
   /// Battle Factory: a bola [slug] no selvagem [side]; [value] balanços (até 3); [index] 1 = capturou.
   const BattleEvent.ball(this.side, this.slug, this.value, this.index)
       : t = 'ball',
+        pos = -1,
+        at = -1,
         key = '',
         args = const [],
         type = '',
@@ -567,15 +587,15 @@ class TurnBattle {
   }
 
   static BattleEvent _simEvent(Map<String, dynamic> e) {
-    final side = (e['side'] as int?) ?? 0;
+    final side = (e['side'] as int?) ?? 0, pos = (e['pos'] as int?) ?? -1, at = (e['at'] as int?) ?? -1;
     switch (e['t']) {
-      case 'hp': return BattleEvent.hp(side, e['hp'] as int);
-      case 'switch': return BattleEvent.switched(side, e['index'] as int);
-      case 'faint': return BattleEvent.faint(side);
-      case 'attack': return BattleEvent.attack(side, e['type'] as String, e['category'] as String, e['slug'] as String);
-      case 'miss': return BattleEvent.miss(side);
-      case 'status': return BattleEvent.status(side, e['status'] as String);
-      case 'heal': return BattleEvent.heal(side, e['index'] as int, e['hp'] as int);
+      case 'hp': return BattleEvent.hp(side, e['hp'] as int, pos: pos, at: at);
+      case 'switch': return BattleEvent.switched(side, e['index'] as int, pos: pos, at: at);
+      case 'faint': return BattleEvent.faint(side, pos: pos, at: at);
+      case 'attack': return BattleEvent.attack(side, e['type'] as String, e['category'] as String, e['slug'] as String, pos: pos, at: at);
+      case 'miss': return BattleEvent.miss(side, pos: pos, at: at);
+      case 'status': return BattleEvent.status(side, e['status'] as String, pos: pos, at: at);
+      case 'heal': return BattleEvent.heal(side, e['index'] as int, e['hp'] as int, pos: pos, at: at);
       case 'mega': return BattleEvent.mega(side, e['id'] as int);
       case 'form': return BattleEvent.form(side, e['id'] as int);
       case 'tera': return BattleEvent.tera(side, e['type'] as String);

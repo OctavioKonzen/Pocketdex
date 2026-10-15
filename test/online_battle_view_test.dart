@@ -76,8 +76,11 @@ void main() {
         onAgain:(){},onExit:(){}, online: OnlineBattleControl(uid:'alice',round:0,events:const [],locked:false,message:'Escolha',waitForSwitch:false,onAction:(_){},onClose:(){}),
       ))))));
       await tester.pump();
-      // Só o painel do jogador (posição 1), com os golpes e as trocas em botões.
+      // Só o painel do jogador (posição 1): LUTAR abre os golpes, POKÉMON as trocas (como na batalha normal).
+      await tester.tap(find.byKey(const ValueKey('battle-fight'))); await tester.pump();
       expect(find.byKey(const ValueKey('battle-move-0-0')),findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('battle-back'))); await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('battle-party'))); await tester.pump();
       expect(find.byWidgetPredicate((w) => w.key is ValueKey && '${(w.key as ValueKey).value}'.startsWith('battle-switch-0-')),findsWidgets);
       expect(find.byWidgetPredicate((w) => w.key is ValueKey && RegExp(r'^battle-(move|switch)-[12]-').hasMatch('${(w.key as ValueKey).value}')),findsNothing);
       expect(tester.takeException(),isNull);

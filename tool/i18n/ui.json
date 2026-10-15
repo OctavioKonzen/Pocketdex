@@ -8370,5 +8370,6 @@
  "Mão firme": {"en": "Steady Hand", "fr": "Main sûre", "es": "Mano firme"},
  "Mira certeira": {"en": "Sharp Aim", "fr": "Visée précise", "es": "Puntería"},
  "Paciência": {"en": "Patience", "fr": "Patience", "es": "Paciencia"},
- "Isca": {"en": "Bait", "fr": "Appât", "es": "Cebo"}
+ "Isca": {"en": "Bait", "fr": "Appât", "es": "Cebo"},
+ "Ninguém no banco para entrar.": {"en": "No one on the bench to send in.", "fr": "Personne en réserve pour entrer.", "es": "No hay nadie en el banco para entrar."}
 }
