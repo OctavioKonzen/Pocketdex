@@ -38,7 +38,7 @@ void main() {
     }
   });
 
-  testWidgets('selvagem do Pokelike: a tela VS com o Pokémon selvagem', (tester) async {
+  testWidgets('selvagem do Pokelike: sem a tela VS', (tester) async {
     tester.view.physicalSize = const Size(1080, 2220);
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
@@ -69,20 +69,11 @@ void main() {
         ),
       ),
     ));
+    // Contra Pokémon selvagem não tem a tela VS: ele aparece direto.
     await tester.pump(const Duration(milliseconds: 100));
-    expect(find.byKey(const ValueKey('vs-splash')), findsOneWidget);
-    expect(find.text('POKÉMON SELVAGEM'), findsOneWidget);
-    if (Platform.environment['BATTLE_SHOTS'] != null) {
-      await tester.pump(const Duration(milliseconds: 900));
-      final boundary = tester.renderObject<RenderRepaintBoundary>(find.byKey(const ValueKey('preview')));
-      await tester.runAsync(() async {
-        final image = await boundary.toImage(pixelRatio: 1);
-        final png = await image.toByteData(format: ui.ImageByteFormat.png);
-        File('${Platform.environment['BATTLE_SHOTS']}/0-vs-selvagem.png').writeAsBytesSync(png!.buffer.asUint8List());
-      });
-    }
-    await tester.pump(const Duration(milliseconds: 1700));
     expect(find.byKey(const ValueKey('vs-splash')), findsNothing);
+    expect(find.text('POKÉMON SELVAGEM'), findsNothing);
+    await tester.pump(const Duration(seconds: 6));
     await tester.pumpWidget(const SizedBox());
   });
 

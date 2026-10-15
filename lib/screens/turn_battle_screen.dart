@@ -1020,8 +1020,9 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
               : Trainers.random();
   late final Trainer? _myTrainer = Trainers.mine;
 
-  /// A tela VS no começo de toda batalha (chefe, treinador, selvagem e online), com o nome de quem joga; tocar pula.
-  late bool _vsOn = (widget.intro || widget.online != null) && widget.battle.turn <= 1;
+  /// A tela VS no começo da batalha contra treinador, chefe e online, com o nome de quem joga; tocar pula. Contra
+  /// Pokémon selvagem não tem (ele aparece direto, como nos jogos). Igual ao site.
+  late bool _vsOn = (widget.intro || widget.online != null) && widget.battle.turn <= 1 && !widget.wild;
   late final Map _vsInfo = widget.vs?['name'] != null && _vsKinds.containsKey(widget.vs?['kind'])
       ? widget.vs!
       : widget.wild

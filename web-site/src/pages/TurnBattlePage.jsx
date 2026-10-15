@@ -743,8 +743,9 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   // keepMine (Battle Factory): o seu Pokémon já está em campo (veio da tela da corrida): sem o treinador e a Poké Ball do seu lado.
   const [intro, setIntro] = useState(() => (!online && battle.turn <= 1 ? { foe: 'in', me: keepMine ? 'gone' : 'in', back: 0 } : null))
   // A tela VS antes da luta contra um chefe (só no começo).
-  // A tela VS no começo de toda batalha (chefe, treinador, selvagem e online), com o nome de quem joga.
-  const [vsOn, setVsOn] = useState(() => battle.turn <= 1)
+  // A tela VS no começo da batalha contra treinador, chefe e online, com o nome de quem joga. Contra Pokémon selvagem
+  // não tem (ele aparece direto, como nos jogos). Igual ao app.
+  const [vsOn, setVsOn] = useState(() => battle.turn <= 1 && !wild)
   const vsDone = useRef(null)
   const myName = useMyName()
   const vsInfo = vs?.name ? vs : wild
