@@ -1672,7 +1672,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       // O vendedor aparece no próprio lugar (o cenário não muda e não tem as plataformas da batalha).
       <Field biome={run.scene ?? 'grass'} fieldRef={fieldRef} testid="factory-shop">
         <FarStand scene={run.scene ?? 'grass'} plain><img src={spriteUrl('trainers/sd-backpacker.png')} alt="" className="pixelated object-contain object-bottom" style={{ height: width * 0.42 }} /></FarStand>
-        {me && <div className="absolute bottom-[6%] left-[10%]"><TrainerSprite trainer={me} box={width * 0.32} /></div>}
+        {me && <div className="absolute bottom-[23%] left-[8%]"><TrainerSprite trainer={me} box={width * 0.4} /></div>}
         <div className="absolute left-3 top-2 rounded-lg bg-white/80 px-2 py-0.5 text-sm font-black text-slate-900">🎒 {t('Vendedor ambulante')}</div>
       </Field>
     ) : (
@@ -1769,9 +1769,9 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         </div>
         {floorTag && <span className="absolute right-3 top-2 rounded bg-slate-900/70 px-1.5 text-[10px] font-black text-white sm:text-xs" data-testid="route-floor">{floorTag}</span>}
         {coach && (meeting || rival) && <FarStand scene={meetScene}><TrainerSprite trainer={coach} box={width * 0.4} /></FarStand>}
-        {town && me && <div className="absolute bottom-[8%] left-1/2 -translate-x-1/2"><TrainerSprite trainer={me} box={width * 0.3} /></div>}
+        {town && me && <div className="absolute bottom-[23%] left-1/2 -translate-x-1/2"><TrainerSprite trainer={me} box={width * 0.3} /></div>}
         {/* Quem vai na frente acompanha você na cidade (como o Pokémon que segue o treinador). */}
-        {town && lead && <div className="absolute bottom-[8%] left-[57%] w-[18%]" data-testid="follower"><PokeIcon id={lead.id} shiny={Boolean(lead.shiny)} className="w-full" /></div>}
+        {town && lead && <div className="absolute bottom-[23%] left-[57%] w-[18%]" data-testid="follower"><PokeIcon id={lead.id} shiny={Boolean(lead.shiny)} className="w-full" /></div>}
         {!town && lead && <FieldMon mon={lead} byId={byId} back scene={meetScene} />}
       </Field>
     )
