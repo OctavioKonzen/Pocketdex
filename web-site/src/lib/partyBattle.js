@@ -30,7 +30,9 @@ export function groupActions(battle, submissions) {
     const actions = simulatorRecommend(battle, side, {controlledSlots,
       reservedSwitches: choices.filter(c => c.kind === 'switch').map(c => c.index),
       reservedMechanics: choices.map(c => c.gimmick).filter(Boolean)})
-    for (const choice of choices) actions[choice.seat % controllers.length] = choice
+    // Lado esperando (o outro está substituindo quem desmaiou): uma ação só, "esperar".
+    if (actions.length === 1 && actions[0].kind === 'wait') return actions
+    for (const choice of choices) if (choice.seat % controllers.length < actions.length) actions[choice.seat % controllers.length] = choice
     return actions
   })
 }

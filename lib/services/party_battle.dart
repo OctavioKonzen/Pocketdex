@@ -54,7 +54,15 @@ class PartyBattle {
         'reservedSwitches': [for (final c in choices) if (c['kind'] == 'switch') c['index']],
         'reservedMechanics': [for (final c in choices) if (c['gimmick'] != null && c['gimmick'] != '' && c['gimmick'] != 'none') c['gimmick']],
       });
-      for (final choice in choices) { actions[(choice['seat'] as int) % count] = choice; }
+      // Lado esperando (o outro está substituindo quem desmaiou): uma ação só, "esperar".
+      if (actions.length == 1 && actions.first['kind'] == 'wait') {
+        all.add(actions);
+        continue;
+      }
+      for (final choice in choices) {
+        final slot = (choice['seat'] as int) % count;
+        if (slot < actions.length) actions[slot] = choice;
+      }
       all.add(actions);
     }
     return battle.playGroupTurn(all);
