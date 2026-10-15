@@ -15,7 +15,8 @@ const PocketIcon = ({ p, size = 'h-6 w-6' }) => (p.img ? <img src={spriteUrl(`it
  * Tocar num item mostra a ajuda; onUse(item) faz o que ele faz (quem chama pergunta em quem).
  * children: aparece embaixo da lista (por exemplo, escolher em quem usar).
  */
-export default function BwBag({ pockets, onClose, pocket: start, onPocket, selected, onSelect, children, testid = 'bw-bag' }) {
+// external: na batalha (como no jogo), a descrição vai para a caixa de texto e USAR para os botões fixos de baixo.
+export default function BwBag({ pockets, onClose, pocket: start, onPocket, selected, onSelect, children, testid = 'bw-bag', external = false }) {
   // Todos os bolsos aparecem (como no jogo), mesmo vazios.
   const shown = pockets
   // Abre no primeiro bolso com alguma coisa.
@@ -72,7 +73,7 @@ export default function BwBag({ pockets, onClose, pocket: start, onPocket, selec
           ) : (
             <p className="rounded-lg bg-white/15 p-2 text-sm font-bold">{t('Nada neste bolso.')}</p>
           )}
-          {picked && (
+          {picked && !external && (
             <div className="rounded-lg border-2 border-slate-800 bg-white p-2 text-xs font-semibold text-slate-900" data-testid={`${testid}-help`}>
               <p>{picked.help}</p>
               {picked.onUse && (

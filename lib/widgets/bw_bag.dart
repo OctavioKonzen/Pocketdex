@@ -30,7 +30,10 @@ Widget _icon(String id, double size) => Image.asset('assets/database/sprites/ite
     width: size, height: size, filterQuality: FilterQuality.none, errorBuilder: (_, __, ___) => SizedBox(width: size, height: size));
 
 class BwBag extends StatefulWidget {
-  const BwBag({super.key, required this.pockets, this.onClose, this.below, this.onSelect, this.testKey = 'bw-bag', this.fill = false});
+  const BwBag({super.key, required this.pockets, this.onClose, this.below, this.onSelect, this.testKey = 'bw-bag', this.fill = false, this.external = false});
+
+  /// Na batalha (como no jogo): a descrição vai para a caixa de texto e USAR para os botões fixos de baixo.
+  final bool external;
 
   /// Ocupa a altura toda (dentro do campo da batalha): as abas e a barra de baixo fixas, a lista rola no meio.
   final bool fill;
@@ -136,7 +139,7 @@ class _BwBagState extends State<BwBag> {
                     ),
                   ),
                 ),
-              if (picked != null)
+              if (picked != null && !widget.external)
                 Container(
                   key: ValueKey('${widget.testKey}-help'),
                   padding: const EdgeInsets.all(8),

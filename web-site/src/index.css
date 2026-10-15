@@ -480,8 +480,15 @@ body {
 @keyframes evo-to { 0%, 20% { opacity: 0; } 25% { opacity: 1; } 35% { opacity: 0; } 42% { opacity: 1; } 50% { opacity: 0; } 55% { opacity: 1; } 61% { opacity: 0; } 65% { opacity: 1; } 70% { opacity: 0; } 73% { opacity: 1; } 77% { opacity: 0; } 80% { opacity: 1; filter: brightness(0) invert(1); } 100% { opacity: 1; filter: none; } }
 @keyframes evo-glow { 0% { opacity: 0; transform: scale(0.6); } 80% { opacity: 1; transform: scale(1.2); } 100% { opacity: 0; transform: scale(1.6); } }
 /* A troca entre a tela da corrida e a batalha: um fade curto. */
-.screen-fade { animation: screen-fade 0.3s ease-out both; }
-@keyframes screen-fade { from { opacity: 0; } }
+.screen-fade { animation: screen-fade 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes screen-fade { from { opacity: 0; transform: scale(0.96); } }
+/* O que abre por cima do campo (a Bolsa, o time, a loja) aparece subindo de leve, em vez de surgir de uma vez. */
+.panel-in { animation: panel-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes panel-in { from { opacity: 0; transform: translateY(16px); } }
+/* A troca de página e de tela do lugar: um fade curto (sem corte seco). */
+.page-in { animation: page-in 0.3s ease-out both; }
+@keyframes page-in { from { opacity: 0; transform: translateY(8px); } }
+@media (prefers-reduced-motion: reduce) { .screen-fade, .panel-in, .page-in { animation: none; } }
 .place-layer { mix-blend-mode: screen; opacity: 0.8; }
 .place-all { inset: 0; }
 .place-ground { inset: 48% 0 0 0; -webkit-mask-image: linear-gradient(transparent, #000 35%); mask-image: linear-gradient(transparent, #000 35%); }

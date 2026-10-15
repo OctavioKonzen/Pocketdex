@@ -14,7 +14,7 @@ describe('botões dos golpes em dupla e tripla',()=>{
         // Como na batalha normal: primeiro o menu (LUTAR / POKÉMON); LUTAR abre os golpes.
         const menu=renderToStaticMarkup(<MultiBattle battle={b} onExit={()=>{}} onAgain={()=>{}}/>)
         expect(menu).toContain('data-testid="multi-menu"');expect(menu).not.toContain('data-testid="multi-moves"')
-        expect(menu).toMatch(new RegExp(`data-testid="multi-text"[^>]*>[^<]*Mew[^<]*\\(1/${count}\\)`))
+        expect(menu).toMatch(new RegExp(`data-testid="battle-text"[^>]*>[^<]*Mew[^<]*\\(1/${count}\\)`))
         const html=renderToStaticMarkup(<MultiBattle battle={b} onExit={()=>{}} onAgain={()=>{}} startMenu="fight"/>)
         // Só o painel do primeiro Pokémon (1/count); os outros vêm depois.
         expect((html.match(/data-testid="multi-moves"/g)||[])).toHaveLength(1)

@@ -4,7 +4,7 @@ import {simulatorDispose} from '../lib/battleSimulator'
 // aleatório), com o computador jogando pelo outro lado. O motor fica em
 // lib/turnBattle.js e os Pokémon são montados em lib/battleSetup.js.
 
-import { forwardRef, useEffect, useMemo, useRef, useState } from 'react'
+import { forwardRef, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import PokeIcon from '../components/PokeIcon'
 import { Button, Empty, Icon, Modal, PageHeader, TypeBadge } from '../components/ui'
@@ -399,10 +399,10 @@ const STATUS_BADGE = { brn: '#EE8130', par: '#C9A400', psn: '#A33EA1', tox: '#7B
 /** Armadilhas, telas e efeitos do campo (como no Showdown), em cima do texto. */
 function FieldBar({ battle }) {
   const [mine, theirs, all] = fieldConditions(battle)
-  if (!mine.length && !theirs.length && !all.length) return null
   const chips = (list, color) => list.map((x) => <span key={x} className="rounded-full px-2 py-0.5 text-[11px] font-bold text-white" style={{ background: color }}>{x}</span>)
   return (
-    <div className="flex flex-wrap items-center gap-1 border-x-4 border-slate-800 bg-slate-700 px-2 py-1" data-testid="field-bar" data-no-translate>
+    // Sempre a mesma altura (uma linha que rola de lado): aparecer um efeito não empurra a tela de baixo.
+    <div className="flex h-7 items-center gap-1 overflow-x-auto whitespace-nowrap border-x-4 border-slate-800 bg-slate-700 px-2" data-testid="field-bar" data-no-translate>
       {theirs.length > 0 && <span className="text-[11px] font-bold text-slate-300">{t('Adversário')}:</span>}
       {chips(theirs, '#b45309')}
       {mine.length > 0 && <span className="text-[11px] font-bold text-slate-300">{t('Você')}:</span>}
@@ -795,6 +795,8 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   const [bagPick, setBagPick] = useState(null) // o item tocado na Bolsa (mostra a ajuda)
   const [gimmickPick, setGimmickPick] = useState(null)
   const skip = useRef(null)
+  // A caixa de texto (para dividir as falas que não cabem).
+  const dialogRef = useRef(null)
   const sprites = [useRef(null), useRef(null)]
   const [effect, setEffect] = useState(null) // {plan, color} da animação do golpe
   const [flash, setFlash] = useState(0)
@@ -972,12 +974,16 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         }
         const line = format(e)
         if (!line) continue
-        setText(line)
-        await new Promise((resolve) => {
-          const id = setTimeout(resolve, STEP_MS)
-          skip.current = () => (clearTimeout(id), resolve())
-        })
-        skip.current = null
+        // Não cabe na caixa: em partes, uma depois da outra (como nos jogos; a caixa não aumenta).
+        for (const page of dialogPages(line, dialogRef.current)) {
+          if (!live.current) return
+          setText(page)
+          await new Promise((resolve) => {
+            const id = setTimeout(resolve, STEP_MS)
+            skip.current = () => (clearTimeout(id), resolve())
+          })
+          skip.current = null
+        }
       } else if (e.t === 'hp') {
         pulse(sprites[e.side].current, 'battle-hurt', 520)
         // O impacto do golpe na cor do tipo, bem onde ele acerta (só quando perde HP depois de um ataque).
@@ -1164,6 +1170,32 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   const typeEff = (type, types) => (typeData ? damageTaken(types, typeData)[type] : 1)
   const rival = active(battle, 1)
   const foeWeak = typeData ? weaknesses(rival.types, ALL_TYPES, typeEff) : []
+  const bagPockets = [
+    { id: 'medicine', label: 'Remédios', img: 'potion', ball: false },
+    { id: 'balls', label: 'Poké Balls', img: 'poke-ball', ball: true },
+  ].map((pocket) => ({
+    ...pocket,
+    items: ITEMS.filter((it) => Boolean(it.ball) === pocket.ball && (battle.bags[0][it.slug] ?? 0) > 0).map((it) => ({
+      id: it.slug,
+      name: it.name,
+      count: battle.bags[0][it.slug] ?? 0,
+      icon: spriteUrl(`items/${it.slug}.png`),
+      help: it.ball
+        ? t('Jogar no Pokémon selvagem')
+        : it.revive
+          ? t('Revive com metade do HP')
+          : it.heal >= 9999
+            ? t('Recupera todo o HP')
+            : battle.healPct
+              ? t('Recupera {0}% do HP').replace('{0}', Math.round(HEAL_SHARE[it.slug] * 100))
+              : t('Recupera {0} de HP').replace('{0}', it.heal),
+      disabled: !battle.sides[0].team.some((_, i) => canUseItem(battle, 0, it.slug, i)),
+      use: it.ball ? t('JOGAR') : t('USAR'),
+      // A bola vai direto no selvagem; os remédios perguntam em quem.
+      onUse: () => (setBagPick(null), it.ball ? throwBall(it.slug) : (setItem(it.slug), setPartyPick(null), setSummary(null), setMenu('party'))),
+    })),
+  }))
+  const bagPicked = bagPockets.flatMap((p) => p.items).find((it) => it.id === bagPick)
 
   const options = [
     ['mega', 'Mega Evolução'],
@@ -1291,49 +1323,21 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
           </button>
         </div>
         {/* A mensagem dentro da tela, embaixo, como nos jogos (tocar passa o texto). */}
-        <button
-          type="button"
-          onClick={() => skip.current?.()}
-          className="bw-message absolute inset-x-[1.5%] bottom-[1.5%] h-[21%] cursor-pointer overflow-y-auto rounded-lg px-3 py-1.5 text-left text-sm leading-snug font-bold sm:px-4 sm:text-lg"
-          data-testid="battle-text"
-        >
-          {!busy && online?.message ? t(online.message) : text}
-          {!busy && battle.winner != null && endNote && <span className="mt-1 block text-xs sm:text-base" data-testid="end-note">{endNote}</span>}
-        </button>
+        <BattleDialog boxRef={dialogRef} onSkip={() => skip.current?.()}
+          text={!busy && online?.message ? t(online.message)
+            // A Bolsa: a descrição do item tocado (ou a pergunta) na caixa.
+            : waiting && menu === 'bag' ? (bagPicked ? `${bagPicked.name}: ${bagPicked.help}` : t('Escolha um item.'))
+            // O time aberto: a pergunta dele na caixa (como no jogo).
+            : waiting && menu === 'party' && summary == null ? (battle.needSwitch ? t('Escolha o próximo Pokémon') : item ? t('Usar em qual Pokémon?') : t('Escolha um Pokémon.'))
+            // Hora de escolher (como no jogo e na dupla): "O que Charizard vai fazer?".
+            : waiting && !locked && (menu === 'main' || menu === 'fight') && !battle.needSwitch ? `${t('O que')} ${current.name} ${t('vai fazer?')}`
+            // No fim, o recado do resultado também vem na caixa (em partes, se precisar).
+            : !busy && battle.winner != null && endNote ? `${text} ${endNote}` : text} />
         {/* A Bolsa e o time abrem por cima do campo (a mesma tela, como no jogo; dá para jogar com o celular de lado). */}
         {waiting && menu === 'bag' && (
-          // A Bolsa do Black & White, em bolsos: remédios e Poké Balls.
-          <div className="field-overlay"><BwBag
-            testid="bag"
-            onClose={() => setMenu('main')}
-            selected={bagPick}
-            onSelect={setBagPick}
-            pockets={[
-              { id: 'medicine', label: 'Remédios', img: 'potion', ball: false },
-              { id: 'balls', label: 'Poké Balls', img: 'poke-ball', ball: true },
-            ].map((pocket) => ({
-              ...pocket,
-              items: ITEMS.filter((it) => Boolean(it.ball) === pocket.ball && (battle.bags[0][it.slug] ?? 0) > 0).map((it) => ({
-                id: it.slug,
-                name: it.name,
-                count: battle.bags[0][it.slug] ?? 0,
-                icon: spriteUrl(`items/${it.slug}.png`),
-                help: it.ball
-                  ? t('Jogar no Pokémon selvagem')
-                  : it.revive
-                    ? t('Revive com metade do HP')
-                    : it.heal >= 9999
-                      ? t('Recupera todo o HP')
-                      : battle.healPct
-                        ? t('Recupera {0}% do HP').replace('{0}', Math.round(HEAL_SHARE[it.slug] * 100))
-                        : t('Recupera {0} de HP').replace('{0}', it.heal),
-                disabled: !battle.sides[0].team.some((_, i) => canUseItem(battle, 0, it.slug, i)),
-                use: it.ball ? t('JOGAR') : t('USAR'),
-                // A bola vai direto no selvagem; os remédios perguntam em quem.
-                onUse: () => (setBagPick(null), it.ball ? throwBall(it.slug) : (setItem(it.slug), setPartyPick(null), setSummary(null), setMenu('party'))),
-              })),
-            }))}
-          /></div>
+          // A Bolsa do Black & White, em bolsos: em cima da caixa de texto (a descrição do item aparece nela); USAR e
+          // Voltar nos botões fixos de baixo.
+          <div className="panel-in absolute inset-x-0 top-0 bottom-[22.5%] z-30"><BwBag testid="bag" external selected={bagPick} onSelect={setBagPick} pockets={bagPockets} /></div>
         )}
         {waiting && menu === 'party' && summary != null && (
           // Os dados do Pokémon (como no jogo).
@@ -1344,66 +1348,19 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
           </div>
         )}
         {waiting && menu === 'party' && summary == null && (
-          // A tela do time do Black & White, por cima do campo.
-          <div className="bw-party field-overlay overflow-y-auto p-2">
-            <div className="bw-party-title mb-2 flex items-center justify-between gap-2 rounded-lg px-3 py-1.5 text-sm font-black text-white">
-              <span>{battle.needSwitch ? t('Escolha o próximo Pokémon') : item ? t('Usar em qual Pokémon?') : t('Trocar de Pokémon')}</span>
-              {!battle.needSwitch && (
-                <button type="button" onClick={() => (item ? (setItem(null), setMenu('bag')) : setMenu('main'))} className="cursor-pointer rounded bg-red-600 px-2 text-white" data-testid="party-back">
-                  ✕ {t('Voltar')}
-                </button>
-              )}
-            </div>
-            {!item && <Weak mon={rival} list={foeWeak} className="mb-2" />}
-            <div className="grid grid-cols-2 gap-1.5 sm:gap-2" data-testid="party">
-              {battle.sides[0].team.map((m, i) => {
-                const isActive = i === battle.sides[0].active
-                const match = !item && m.hp > 0 ? switchMatchup(hit, m, rival, typeEff) : null
-                const off = item ? !canUseItem(battle, 0, item, i) : battle.sides[0].switchOptions ? !battle.sides[0].switchOptions.includes(i) : m.hp <= 0 || isActive
-                return (
-                  <button
-                    key={i}
-                    type="button"
-                    data-testid={`party-${i}`}
-                    // Trocando: tocar mostra as opções (TROCAR, DADOS), como no jogo; com um item, usa direto.
-                    disabled={item ? off : false}
-                    onClick={() => (item ? choose(i) : setPartyPick(partyPick === i ? null : i))}
-                    className={`bw-party-slot flex min-w-0 cursor-pointer items-center gap-1.5 rounded-xl border-2 p-1.5 text-left disabled:cursor-default disabled:opacity-50 ${!item && off ? 'opacity-60' : ''} ${partyPick === i ? 'selected' : isActive ? 'lead' : ''}`}
-                  >
-                    <PokeIcon id={m.id} shiny={m.shiny} className="h-10 w-10 shrink-0 sm:h-12 sm:w-12" />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 font-bold">
-                        <span className="truncate">{m.name}</span>
-                        {m.status && m.hp > 0 && (
-                          <span className="shrink-0 rounded px-1 text-[10px] font-black text-white" style={{ background: STATUS_BADGE[m.status] }}>
-                            {m.status.toUpperCase()}
-                          </span>
-                        )}
-                      </div>
-                      <HpBar hp={m.hp} max={m.maxHp} />
-                      <div className="text-xs font-bold tabular-nums opacity-80">{m.hp > 0 ? `${m.hp}/${m.maxHp}` : t('Desmaiado')}</div>
-                      {match && (
-                        <div className="mt-1 flex flex-wrap gap-1 text-[10px] font-bold" data-testid="matchup">
-                          {match.attack != null && <EffectTag eff={match.attack} prefix={t('Ataca')} />}
-                          <DefenseTag mult={match.defense} />
-                        </div>
-                      )}
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-            {partyPick != null && !item && (() => {
-              const off = battle.sides[0].switchOptions ? !battle.sides[0].switchOptions.includes(partyPick) : battle.sides[0].team[partyPick].hp <= 0 || partyPick === battle.sides[0].active
-              return (
-                <div className="mt-2 grid grid-cols-3 gap-1.5 rounded-lg bg-slate-900/60 p-1.5 text-sm font-black text-white" data-testid="party-actions">
-                  <button type="button" disabled={off} onClick={() => { const i = partyPick; setPartyPick(null); choose(i) }} className="cursor-pointer rounded bg-green-600 py-1 disabled:opacity-40" data-testid="party-pick">{t('TROCAR')}</button>
-                  <button type="button" onClick={() => setSummary(partyPick)} className="cursor-pointer rounded bg-blue-600 py-1" data-testid="party-info">{t('DADOS')}</button>
-                  <button type="button" onClick={() => setPartyPick(null)} className="cursor-pointer rounded bg-slate-500 py-1" data-testid="party-close">{t('CANCELAR')}</button>
-                </div>
-              )
-            })()}
-          </div>
+          // A tela do time do Black & White: os 6 cabem exatamente na tela, em cima da caixa de texto (a pergunta aparece
+          // nela); tocou num Pokémon, as opções ficam nos botões fixos de baixo (como no jogo).
+          <PartyGrid team={battle.sides[0].team} active={battle.sides[0].active} picked={item ? null : partyPick} testPrefix="party"
+            disabled={(i) => item ? !canUseItem(battle, 0, item, i) : false}
+            dim={(i, m) => !item && (battle.sides[0].switchOptions ? !battle.sides[0].switchOptions.includes(i) : m.hp <= 0 || i === battle.sides[0].active)}
+            onTap={(i) => (item ? choose(i) : setPartyPick(i))}
+            badge={(m) => {
+              const match = !item && m.hp > 0 ? switchMatchup(hit, m, rival, typeEff) : null
+              return match && <span className="flex gap-1 text-[10px] font-bold" data-testid="matchup">
+                {match.attack != null && <EffectTag eff={match.attack} prefix={t('Ataca')} />}
+                <DefenseTag mult={match.defense} />
+              </span>
+            }} />
         )}
       </div>
 
@@ -1411,22 +1368,34 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
       <Modal open={inspect != null} onClose={() => setInspect(null)} title={inspect === 1 ? foe.name : me.name}>
         {inspect != null && <MonDetails battle={battle} side={inspect} mon={inspect === 1 ? foe : me} />}
       </Modal>
-      {/* Texto e menus */}
-      <div className="flex min-h-24 flex-col gap-2 rounded-b-2xl border-4 border-slate-800 bg-slate-800 p-2">
-        {/* Embaixo da tela, como a tela de baixo do DS: o menu, a Bolsa e a troca. */}
-        {waiting && online?.waitForSwitch && <Button onClick={() => online.onAction({ kind: 'wait', index: 0 })}>Aguardar troca do amigo</Button>}
-        {waiting && !locked && !online?.waitForSwitch && menu === 'main' && !battle.needSwitch && (
-          <div className="grid grid-cols-2 dlg-box gap-1.5 rounded-xl border-4 p-2">
-            <MenuButton onClick={() => (usable.length ? setMenu('fight') : fight(-1))}>LUTAR</MenuButton>
-            <MenuButton disabled={Boolean(online)} onClick={() => setMenu('bag')}>BOLSA</MenuButton>
-            <MenuButton onClick={() => (setItem(null), setPartyPick(null), setSummary(null), setMenu('party'))}>POKÉMON</MenuButton>
-            <MenuButton onClick={run}>FUGIR</MenuButton>
-          </div>
-        )}
-        {waiting && !locked && menu === 'fight' && (
-          <div className="grid grid-cols-2 dlg-box gap-1.5 rounded-xl border-4 p-2" data-testid="moves">
-            <Weak mon={rival} list={foeWeak} />
-            <div className="relative col-span-2 grid grid-cols-2 gap-1.5">
+      {/* Texto e menus: a tela de baixo (como no DS), sempre do mesmo tamanho e cada coisa no seu lugar. */}
+      <BottomScreen
+        info={waiting && !locked && (menu === 'fight' || menu === 'party' && !item) ? <Weak mon={rival} list={foeWeak} /> : null}
+        grid={waiting && online?.waitForSwitch
+          ? null
+          : waiting && menu === 'bag' && bagPicked
+            // Tocou num item: USAR (ou JOGAR) e CANCELAR nos botões fixos.
+            ? <MenuGrid>
+                <MenuButton testId="bag-use" disabled={bagPicked.disabled} onClick={() => bagPicked.onUse(bagPicked)}>{bagPicked.use ?? t('USAR')}</MenuButton>
+                <MenuButton testId="bag-cancel" onClick={() => setBagPick(null)}>CANCELAR</MenuButton>
+              </MenuGrid>
+          : waiting && menu === 'party' && summary == null && partyPick != null && !item
+            // Tocou num Pokémon do time: as opções nos botões fixos (como no jogo).
+            ? <MenuGrid>
+                <MenuButton testId="party-pick" disabled={battle.sides[0].switchOptions ? !battle.sides[0].switchOptions.includes(partyPick) : battle.sides[0].team[partyPick].hp <= 0 || partyPick === battle.sides[0].active}
+                  onClick={() => { const i = partyPick; setPartyPick(null); choose(i) }}>TROCAR</MenuButton>
+                <MenuButton testId="party-info" onClick={() => setSummary(partyPick)}>DADOS</MenuButton>
+                <MenuButton testId="party-close" onClick={() => setPartyPick(null)}>CANCELAR</MenuButton>
+              </MenuGrid>
+          : waiting && !locked && !online?.waitForSwitch && menu === 'main' && !battle.needSwitch
+            ? <MenuGrid>
+                <MenuButton onClick={() => (usable.length ? setMenu('fight') : fight(-1))}>LUTAR</MenuButton>
+                <MenuButton disabled={Boolean(online)} onClick={() => setMenu('bag')}>BOLSA</MenuButton>
+                <MenuButton onClick={() => (setItem(null), setPartyPick(null), setSummary(null), setMenu('party'))}>POKÉMON</MenuButton>
+                <MenuButton onClick={run}>FUGIR</MenuButton>
+              </MenuGrid>
+            : waiting && !locked && menu === 'fight'
+              ? <div className="relative grid h-full grid-cols-2 grid-rows-2 gap-1.5" data-testid="moves">
             {current.moves.map((m, i) => {
               const eff = moveEffect(hit, current, rival, m)
               const z = selected === 'z' && canGimmick(battle, 0, 'z', i)
@@ -1465,15 +1434,17 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
                 {{ mega: 'MEGA', dmax: 'MAX', tera: 'TERA', z: 'Z' }[kind]}{selected === kind ? ' ✓' : ''}
               </button>
             ))}
-            </div>
-            <MenuButton onClick={() => setMenu('main')} className="col-span-2 text-sm">
-              Voltar
-            </MenuButton>
-          </div>
-        )}
-        {/* Battle Factory (keepMine): vencendo, a tela do andar abre sozinha (uma confirmação só: a do resultado). */}
-        {!busy && battle.winner != null && !(keepMine && battle.winner === 0) && (
-          <div className="flex w-full flex-col gap-2 sm:w-72">
+                </div>
+              : null}
+        footer={waiting && !locked && menu === 'fight' ? <MenuButton onClick={() => setMenu('main')} className="h-full w-full text-sm">Voltar</MenuButton>
+          : waiting && menu === 'bag'
+            ? <MenuButton testId="bag-close" onClick={() => { setBagPick(null); setMenu('main') }} className="h-full w-full text-sm">Voltar</MenuButton>
+          : waiting && menu === 'party' && summary == null && !battle.needSwitch
+            ? <MenuButton testId="party-back" onClick={() => { setPartyPick(null); if (item) { setItem(null); setMenu('bag') } else setMenu('main') }} className="h-full w-full text-sm">Voltar</MenuButton> : null}
+        // As outras escolhas: embaixo dos botões fixos.
+        extra={waiting && online?.waitForSwitch ? <Button onClick={() => online.onAction({ kind: 'wait', index: 0 })}>Aguardar troca do amigo</Button>
+          : !busy && battle.winner != null && !(keepMine && battle.winner === 0) ? (
+          <div className="flex w-full flex-col gap-2">
             {next && <Button color="linear-gradient(90deg,#F59E0B,#DC2626)" onClick={next.onClick}>
               {next.label}
             </Button>}
@@ -1484,8 +1455,8 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
               {online ? 'Sair' : 'Trocar os times'}
             </Button>
           </div>
-        )}
-      </div>
+        ) : null}
+      />
 
     </div>
   )
@@ -1549,7 +1520,7 @@ const fraction = (x) => ({ 0.25: '¼', 0.5: '½' })[x] ?? String(x)
 function Weak({ mon, list, className = '' }) {
   if (!mon || !list.length) return null
   return (
-    <div className={`col-span-2 flex flex-wrap items-center gap-1 text-[11px] font-bold text-slate-700 ${className}`} data-testid="weak">
+    <div className={`col-span-2 flex items-center gap-1 whitespace-nowrap text-[11px] font-bold text-slate-700 ${className}`} data-testid="weak">
       <span>{t('{0} é fraco contra:').replace('{0}', mon.name)}</span>
       {list.map((w) => (
         <span key={w.type} className="rounded px-1 py-px font-black text-white uppercase" style={{ background: typeColor(w.type) }}>
@@ -1580,6 +1551,10 @@ export function MultiBattle({battle, onExit, onAgain, onFinish, online = null, f
   // O turno na tela, uma ação de cada vez: a frase, a vida e quem está em cada posição como a tela mostra agora.
   const [shown,setShown] = useState(null)
   const skip = useRef(null)
+  // A caixa de texto (para dividir as falas que não cabem), o tocado na tela do time e os dados abertos.
+  const dialogRef = useRef(null)
+  const [partyPick,setPartyPick] = useState(null)
+  const [summary,setSummary] = useState(null)
   const timers = useRef(new Set())
   useEffect(()=>()=>{for(const id of timers.current) clearTimeout(id)},[])
   const wait = ms => new Promise(resolve=>{const id=setTimeout(()=>{timers.current.delete(id);resolve()},ms);timers.current.add(id);skip.current=()=>{clearTimeout(id);timers.current.delete(id);resolve()}})
@@ -1597,8 +1572,11 @@ export function MultiBattle({battle, onExit, onAgain, onFinish, online = null, f
     for (const e of events) {
       const index = at(e)
       if (e.t === 'text') {
-        show(()=>({text: format(e)}))
-        await wait(e.key === 'turnOrder' ? 1600 : 1000)
+        // Não cabe na caixa: em partes, uma depois da outra (como nos jogos; a caixa não aumenta).
+        for (const page of dialogPages(format(e), dialogRef.current)) {
+          show(()=>({text: page}))
+          await wait(e.key === 'turnOrder' ? 1600 : 1000)
+        }
       } else if ((e.t === 'hp' || e.t === 'heal') && (index >= 0 || e.index >= 0)) {
         const i = index >= 0 ? index : e.index
         show(v=>({hp: v.hp.map((r,s)=>s===e.side ? r.map((hp,k)=>k===i ? e.hp : hp) : r)}))
@@ -1667,7 +1645,7 @@ export function MultiBattle({battle, onExit, onAgain, onFinish, online = null, f
   // Fecha a escolha deste Pokémon; depois do último, manda o turno (como no Showdown).
   const commit = (slot, choice) => {
     const next = {...choices,[slot.slot]:choice}
-    setAim(null);setGimmickOn(false);setMenu(startMenu)
+    setAim(null);setGimmickOn(false);setMenu(startMenu);setPartyPick(null);setSummary(null)
     if (pending.every(p => next[p.slot])) send(next)
     else setChoices(next)
   }
@@ -1681,7 +1659,7 @@ export function MultiBattle({battle, onExit, onAgain, onFinish, online = null, f
   }
   const back = () => {
     if (aim) {setAim(null);return}
-    if (menu !== 'main') {setMenu('main');setGimmickOn(false);return}
+    if (menu !== 'main') {setMenu('main');setGimmickOn(false);setPartyPick(null);setSummary(null);return}
     const last = [...pending].reverse().find(slot => choices[slot.slot])
     if (last) setChoices(old => {const next={...old};delete next[last.slot];return next})
     setGimmickOn(false)
@@ -1728,33 +1706,14 @@ export function MultiBattle({battle, onExit, onAgain, onFinish, online = null, f
   // Online travado (aguardando o amigo, partida encerrada...): a mensagem da partida na caixa de texto, sem menu.
   const choosing = state.winner == null && pending.length > 0 && !playing && Boolean(current) && !online?.locked
   const view = current?.forceSwitch ? 'party' : menu
-  const canBack = !locked && (Boolean(aim) || view === 'fight' || pending.some(slot=>choices[slot.slot]) && (view === 'main' || Boolean(current?.forceSwitch)))
+  const canBack = !locked && (Boolean(aim) || view === 'fight' || view === 'party' && !current?.forceSwitch || pending.some(slot=>choices[slot.slot]) && (view === 'main' || Boolean(current?.forceSwitch)))
   // A tela do time do Black & White por cima do campo (a mesma da batalha normal).
+  // A tela do time (a mesma da batalha normal): os 6 cabem exatamente na tela; tocou num Pokémon, as opções nos botões fixos.
   const party = choosing && !aim && view === 'party' && (()=>{
-    const slot=current, options=switchOptions(slot), foe=foesOnField[0]
-    return <div className="bw-party field-overlay overflow-y-auto p-2" data-testid={`battle-switch-${slot.slot}`}>
-      <div className="bw-party-title mb-2 flex items-center justify-between gap-2 rounded-lg px-3 py-1.5 text-sm font-black text-white">
-        <span>{slot.forceSwitch ? t('Escolha o próximo Pokémon') : t('Trocar de Pokémon')}</span>
-        {!slot.forceSwitch && <button type="button" onClick={()=>setMenu('main')} className="cursor-pointer rounded bg-red-600 px-2 text-white" data-testid="party-back">✕ {t('Voltar')}</button>}
-      </div>
-      {foe && typeData && <Weak mon={foe} list={weaknesses(typesOf(foe), ALL_TYPES, typeEff)} className="mb-2"/>}
-      <div className="grid grid-cols-2 gap-1.5 sm:gap-2" data-testid="party">
-        {battle.sides[side].team.map((m,i)=>{
-          const off = locked || !options.includes(i)
-          return <button key={i} type="button" data-testid={`battle-switch-${slot.slot}-${i}`} disabled={off} onClick={()=>commit(slot,{kind:'switch',index:i})}
-            className={`bw-party-slot flex min-w-0 cursor-pointer items-center gap-1.5 rounded-xl border-2 p-1.5 text-left disabled:cursor-default disabled:opacity-50 ${i === slot.index ? 'lead' : ''}`}>
-            <PokeIcon id={m.id} shiny={m.shiny} className="h-10 w-10 shrink-0 sm:h-12 sm:w-12"/>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5 font-bold"><span className="truncate">{m.name}</span>
-                {m.status && m.hp > 0 && <span className="shrink-0 rounded px-1 text-[10px] font-black text-white" style={{ background: STATUS_BADGE[m.status] }}>{m.status.toUpperCase()}</span>}
-              </div>
-              <HpBar hp={m.hp} max={m.maxHp}/>
-              <div className="text-xs font-bold tabular-nums opacity-80">{m.hp > 0 ? `${m.hp}/${m.maxHp}` : t('Desmaiado')}</div>
-            </div>
-          </button>
-        })}
-      </div>
-    </div>
+    const slot=current, options=switchOptions(slot)
+    if (summary != null) return <div className="field-overlay"><BwSummary data={summaryOf(battle, side, summary)} onBack={() => setSummary(null)} /></div>
+    return <PartyGrid team={battle.sides[side].team} active={slot.index} picked={partyPick} testPrefix={`battle-switch-${slot.slot}`}
+      dim={(i) => !options.includes(i)} onTap={(i) => setPartyPick(i)} />
   })()
   const status = online?.message || (state.winner != null ? state.winner === -1 ? 'Empate!' : state.winner === side ? 'Você venceu!' : 'A equipe adversária venceu!' : `${t('Turno')} ${state.turn}`)
   // A pergunta na caixa de texto enquanto escolhe ("O que Pikachu vai fazer?").
@@ -1763,6 +1722,7 @@ export function MultiBattle({battle, onExit, onAgain, onFinish, online = null, f
     const mon = battle.sides[side].team[current.index], step = pending.length > 1 ? ` (${pending.indexOf(current)+1}/${pending.length})` : ''
     if (aim) return `${t('Em quem')} ${mon.name} ${t('vai usar')} ${current.request?.moves?.[aim.choice.index]?.move ?? ''}?${step}`
     if (current.forceSwitch) return `${t('Quem entra no lugar de')} ${mon.name}?${step}`
+    if (menu === 'party') return `${t('Escolha um Pokémon.')}${step}`
     return `${t('O que')} ${mon.name} ${t('vai fazer?')}${step}`
   })()
   return <section className="mx-auto max-w-3xl space-y-2">
@@ -1770,26 +1730,25 @@ export function MultiBattle({battle, onExit, onAgain, onFinish, online = null, f
     <div className="battle-field relative aspect-[4/3] overflow-hidden rounded-t-2xl border-4 border-b-0 border-slate-800" data-testid="multi-battle-field" data-layout="bw" style={{background:'#9fdcff'}}>
       <BattleBackground weather={battle.weather} scene={scene} layout="bw"/>{sprites(1-side)}{sprites(side)}{info(1-side)}{info(side)}<WeatherFx weather={battle.weather}/>
       {/* A mensagem dentro da tela, embaixo, como na batalha normal (tocar passa o texto). */}
-      <button type="button" className="dlg-box absolute inset-x-[1.5%] bottom-[1.5%] z-30 h-[21%] overflow-auto rounded-lg border-4 px-3 py-1.5 text-left font-bold" data-testid="multi-text" onClick={()=>skip.current?.()}>
-        {shown ? shown.text : choosing ? prompt : status}
-      </button>
+      {/* Todo texto na caixa (o erro também); se não couber, em partes. */}
+      <BattleDialog boxRef={dialogRef} onSkip={()=>skip.current?.()} text={shown ? shown.text : (error || online?.error) ? (error || online.error) : choosing ? prompt : status}/>
       {party}
       {vsOn && <VsSplash me={myTrainer} coach={null} vs={{kind: online ? 'online' : 'trainer', name: foeName || t('Adversários')}} myName={myName} onSkip={()=>setVsOn(false)}/>}
     </div>
-    {/* Embaixo da tela, igual à batalha normal: o menu, os golpes, os alvos (a troca abre por cima do campo). */}
-    <div className="flex min-h-24 flex-col gap-2 rounded-b-2xl border-4 border-slate-800 bg-slate-800 p-2 text-white" data-testid="multi-actions" data-turn={state.turn} data-round={online?.round ?? state.turn} data-playing={playing ? 1 : 0}>
-      {choosing && pending.some(slot=>choices[slot.slot]) && <ul className="space-y-0.5 text-xs text-slate-300" data-testid="multi-chosen">{pending.filter(slot=>choices[slot.slot]).map(slot=><li key={slot.slot}>✓ {describe(slot)}</li>)}</ul>}
-      {choosing && (()=>{
+    {/* Embaixo da tela: a mesma tela de baixo da batalha normal (do mesmo tamanho, cada coisa no seu lugar). */}
+    {(()=>{
+      const slots = choosing ? (()=>{
         const slot=current, mon=battle.sides[side].team[slot.index], req=slot.request
         const mechanic=mon.gimmick
         const reserved=Object.values(choices).some(c=>c.gimmick===mechanic)
         const available=mechanic==='mega'?req?.canMegaEvo:mechanic==='tera'?req?.canTerastallize:mechanic==='dmax'?req?.canDynamax:mechanic==='z'?req?.canZMove?.some(Boolean):false
-        const back_ = canBack && <MenuButton onClick={back} className="col-span-2 text-sm" testId="battle-back">Voltar</MenuButton>
+        const footer = canBack ? <MenuButton onClick={back} className="h-full w-full text-sm" testId="battle-back">Voltar</MenuButton> : null
         if (aim) {
           const targets=simulatorTargets(battle,side,slot.slot,aim.choice.index,aim.choice.gimmick).targets
           const move=mon.moves[aim.choice.index]
           const row=ally=>targets.filter(target=>!!target.ally===ally).sort((a,b)=>a.slot-b.slot)
-          return <div className="grid grid-cols-2 dlg-box gap-1.5 rounded-xl border-4 p-2" data-testid="multi-targets">
+          // Os alvos com o mesmo botão dos golpes: os adversários em vermelho, o aliado em azul.
+          return {footer, grid: <div className="grid h-full auto-rows-[calc(50%-0.1875rem)] grid-cols-2 gap-1.5 overflow-y-auto" data-testid="multi-targets">
             {[false,true].flatMap(ally=>row(ally)).map(target=>{
               const who=battle.sides[target.side]?.team[target.index]
               return <MoveButton key={target.loc} testId={`battle-target-${target.loc}`} disabled={locked} onClick={()=>commit(slot,{...aim.choice,target:target.loc})}
@@ -1798,12 +1757,12 @@ export function MultiBattle({battle, onExit, onAgain, onFinish, online = null, f
                 {move && move.power > 0 && move.category !== 'status' && who && <EffectTag eff={typeEff(move.type, typesOf(who))}/>}
               </MoveButton>
             })}
-            {back_}
-          </div>
+          </div>}
         }
-        if (view === 'fight') return <div className="grid grid-cols-2 dlg-box gap-1.5 rounded-xl border-4 p-2" data-testid="multi-moves" aria-label={`Golpes de ${mon.name} ${slot.slot+1}`}>
-          {foesOnField.map(foe=><Weak key={foe.name+foe.id} mon={foe} list={typeData ? weaknesses(typesOf(foe), ALL_TYPES, typeEff) : []}/>)}
-          <div className="relative col-span-2 grid grid-cols-2 gap-1.5">
+        if (view === 'fight') return {footer,
+          // As fraquezas de cada adversário em campo, na linha de cima.
+          info: <div className="space-y-0.5">{foesOnField.map(foe=><Weak key={foe.name+foe.id} mon={foe} list={typeData ? weaknesses(typesOf(foe), ALL_TYPES, typeEff) : []}/>)}</div>,
+          grid: <div className="relative grid h-full grid-cols-2 grid-rows-2 gap-1.5" data-testid="multi-moves" aria-label={`Golpes de ${mon.name} ${slot.slot+1}`}>
             {(req?.moves || []).map((m,index)=>{
               const move=mon.moves[index]
               return <MoveButton key={`move${index}`} testId={`battle-move-${slot.slot}-${index}`} disabled={locked || m.disabled || m.pp===0}
@@ -1818,37 +1777,153 @@ export function MultiBattle({battle, onExit, onAgain, onFinish, online = null, f
             {available && !reserved && <button type="button" onClick={()=>setGimmickOn(v=>!v)} aria-pressed={gimmickOn} disabled={locked}
               className={`gimmick-button gimmick-${mechanic} absolute left-1/2 top-1/2 z-10 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border-[3px] text-xs font-black ${gimmickOn ? 'on text-white' : ''}`}
               data-testid={mechanic}>{{ mega: 'MEGA', dmax: 'MAX', tera: 'TERA', z: 'Z' }[mechanic]}{gimmickOn ? ' ✓' : ''}</button>}
-          </div>
-          {back_}
-        </div>
-        if (view === 'party') return (slot.canShift || slot.forceSwitch && !switchOptions(slot).length || back_) ? <div className="grid grid-cols-2 dlg-box gap-1.5 rounded-xl border-4 p-2">
-          {slot.canShift && <MenuButton onClick={()=>commit(slot,{kind:'shift',index:0})} disabled={locked} className="col-span-2 text-sm">Trocar posição com o centro</MenuButton>}
-          {slot.forceSwitch && !switchOptions(slot).length && <MenuButton onClick={()=>commit(slot,{kind:'pass',index:0})} disabled={locked} className="col-span-2 text-sm">Sem reservas: passar</MenuButton>}
-          {slot.forceSwitch && back_}
-        </div> : null
-        return <div className="grid grid-cols-2 dlg-box gap-1.5 rounded-xl border-4 p-2" data-testid="multi-menu">
-          <MenuButton onClick={()=>setMenu('fight')} disabled={locked} testId="battle-fight">LUTAR</MenuButton>
-          <MenuButton disabled>BOLSA</MenuButton>
-          <MenuButton onClick={()=>setMenu('party')} disabled={locked} testId="battle-party">POKÉMON</MenuButton>
-          <MenuButton disabled>FUGIR</MenuButton>
-          {back_}
-        </div>
-      })()}
-      {!choosing && <div className="h-12"/>}
-    </div>
-    <p className="text-xs text-muted">A reserva é compartilhada pela equipe. Os itens equipados mantêm seus efeitos.</p>
-    {(error || online?.error) && <p role="alert" className="text-red-400">{error || online.error}</p>}
-    {state.winner==null && pending.length===0 && !playing && <Button className="w-full" disabled={locked} onClick={()=>send()}>Continuar</Button>}
+          </div>}
+        if (view === 'party') {
+          const options = switchOptions(slot)
+          return {footer,
+            info: foesOnField[0] && typeData ? <Weak mon={foesOnField[0]} list={weaknesses(typesOf(foesOnField[0]), ALL_TYPES, typeEff)}/> : null,
+            // Tocou num Pokémon: as opções nos botões fixos (como no jogo).
+            grid: partyPick != null && summary == null ? <MenuGrid>
+              <MenuButton testId={`battle-switch-${slot.slot}-pick`} disabled={locked || !options.includes(partyPick)} onClick={()=>commit(slot,{kind:'switch',index:partyPick})}>TROCAR</MenuButton>
+              <MenuButton testId={`battle-switch-${slot.slot}-info`} onClick={()=>setSummary(partyPick)}>DADOS</MenuButton>
+              <MenuButton testId={`battle-switch-${slot.slot}-close`} onClick={()=>setPartyPick(null)}>CANCELAR</MenuButton>
+            </MenuGrid> : null,
+            // O que a tela do time não tem: embaixo dos botões fixos.
+            extra: (slot.canShift || slot.forceSwitch && !options.length) ? <>
+              {slot.canShift && <Button disabled={locked} onClick={()=>commit(slot,{kind:'shift',index:0})}>{t('Trocar posição com o centro')}</Button>}
+              {slot.forceSwitch && !options.length && <Button disabled={locked} onClick={()=>commit(slot,{kind:'pass',index:0})}>{t('Sem reservas: passar')}</Button>}
+            </> : null}
+        }
+        return {footer,
+          // Quem já escolheu (e o quê), na linha de cima.
+          info: pending.some(slot=>choices[slot.slot]) ? <ul className="space-y-0.5 text-xs text-slate-300" data-testid="multi-chosen">{pending.filter(slot=>choices[slot.slot]).map(slot=><li key={slot.slot}>✓ {describe(slot)}</li>)}</ul> : null,
+          grid: <MenuGrid testId="multi-menu">
+            <MenuButton onClick={()=>setMenu('fight')} disabled={locked} testId="battle-fight">LUTAR</MenuButton>
+            <MenuButton disabled>BOLSA</MenuButton>
+            <MenuButton onClick={()=>setMenu('party')} disabled={locked} testId="battle-party">POKÉMON</MenuButton>
+            <MenuButton disabled>FUGIR</MenuButton>
+          </MenuGrid>}
+      })() : {}
+      const more = state.winner==null && pending.length===0 && !playing && !online?.locked
+      const end = !online && state.winner!=null && !playing && !onFinish
+      return <BottomScreen testId="multi-actions" data-turn={state.turn} data-round={online?.round ?? state.turn} data-playing={playing ? 1 : 0}
+        info={slots.info} grid={slots.grid} footer={slots.footer}
+        // As outras escolhas: embaixo dos botões fixos (no fim, como na batalha normal; a Factory abre a tela do andar sozinha).
+        extra={(slots.extra || more || end || online) ? <>
+          {slots.extra}
+          {more && <Button disabled={locked} onClick={()=>send()}>Continuar</Button>}
+          {end && <><Button color="linear-gradient(90deg,#DC2626,#9333EA)" onClick={onAgain}>Batalhar de novo</Button><Button color="#546E7A" onClick={onExit}>Sair</Button></>}
+          {online && <Button color="#546E7A" onClick={online.onClose}>Desistir</Button>}
+        </> : null}/>
+    })()}
     <div className="max-h-44 overflow-auto rounded-xl bg-card p-3 text-sm" aria-live="polite">{(online?.events?describeEvents(online.events):history).map((line,index)=><p key={index}>{line}</p>)}</div>
-    <div className="flex gap-3"><Button onClick={online?.onClose || onExit}>{online?'Desistir':'Sair'}</Button>{!online && state.winner!=null && !playing && <Button onClick={onAgain}>Batalhar de novo</Button>}</div>
   </section>
+}
+
+/**
+ * A tela de baixo da batalha (como a do DS), a mesma na normal e na dupla/tripla: sempre do mesmo tamanho e cada coisa
+ * no seu lugar — em cima a linha de informação (fraquezas, quem já escolheu), no meio a grade 2×2 (o menu ou os golpes,
+ * no mesmo lugar) e embaixo o Voltar. Nada empurra nada. No fim da batalha, os botões do resultado.
+ */
+function BottomScreen({ info, grid, footer, extra, testId = 'battle-bottom', ...rest }) {
+  return (
+    <>
+      <div className="flex h-[15.5rem] flex-col gap-1.5 rounded-b-2xl border-4 border-slate-800 bg-slate-800 p-2 text-white" data-testid={testId} {...rest}>
+        <div className="h-10 shrink-0 overflow-x-auto overflow-y-hidden" data-testid="battle-bottom-info">{info}</div>
+        {/* Sem nada para escolher agora: o menu fica no lugar dele, apagado (os botões não somem nem mudam de lugar). */}
+        <div className="h-[8.5rem] shrink-0" data-testid="battle-bottom-grid">{grid ?? <IdleMenu />}</div>
+        <div className="h-10 shrink-0" data-testid="battle-bottom-footer">{footer}</div>
+      </div>
+      {/* Outras escolhas (Continuar, Batalhar de novo, Sair...): embaixo dos botões fixos, sem mexer neles. */}
+      {extra && <div className="mt-2 flex w-full flex-col gap-2" data-testid="battle-extra">{extra}</div>}
+    </>
+  )
+}
+
+/** O menu apagado (enquanto o turno acontece ou é a vez do outro). */
+function IdleMenu() {
+  return <div aria-hidden="true" className="h-full"><MenuGrid>{['LUTAR', 'BOLSA', 'POKÉMON', 'FUGIR'].map(label => <MenuButton key={label} disabled>{label}</MenuButton>)}</MenuGrid></div>
+}
+
+/** Divide a fala em partes que cabem na caixa de texto (como nos jogos: a caixa não aumenta; o resto vem depois). */
+function dialogPages(text, box) {
+  if (!box || !text || typeof document === 'undefined') return [text]
+  const style = getComputedStyle(box)
+  const width = box.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)
+  const height = box.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom)
+  if (!(width > 0 && height > 0)) return [text]
+  const probe = document.createElement('div')
+  Object.assign(probe.style, { position: 'absolute', visibility: 'hidden', left: '-9999px', top: '0', width: `${width}px`, font: style.font, lineHeight: style.lineHeight, letterSpacing: style.letterSpacing, whiteSpace: 'normal', overflowWrap: 'break-word' })
+  document.body.appendChild(probe)
+  const fits = part => { probe.textContent = part; return probe.scrollHeight <= height + 1 }
+  const pages = []
+  if (fits(text)) pages.push(text)
+  else {
+    let page = ''
+    for (const word of text.split(' ')) {
+      const next = page ? `${page} ${word}` : word
+      if (!page || fits(next)) page = next
+      else { pages.push(page); page = word }
+    }
+    if (page) pages.push(page)
+  }
+  probe.remove()
+  return pages
+}
+
+/** A caixa de texto da batalha (a mesma na normal e na dupla): sempre do mesmo tamanho; toda fala aparece nela e, se não couber, em partes (tocar passa para a próxima parte; na última, passa a fala). */
+function BattleDialog({ text, onSkip, boxRef }) {
+  const own = useRef(null)
+  const ref = boxRef ?? own
+  const [pages, setPages] = useState([text])
+  const [page, setPage] = useState(0)
+  useLayoutEffect(() => { setPages(dialogPages(text, ref.current)); setPage(0) }, [text, ref])
+  const shown = pages[Math.min(page, pages.length - 1)] ?? text
+  const more = page < pages.length - 1
+  return (
+    <button ref={ref} type="button" onClick={() => (more ? setPage(page + 1) : onSkip?.())}
+      className="bw-message absolute inset-x-[1.5%] bottom-[1.5%] z-30 h-[21%] cursor-pointer overflow-hidden rounded-lg px-3 py-1.5 text-left text-sm leading-snug font-bold sm:px-4 sm:text-lg"
+      data-testid="battle-text">
+      {shown}
+      {more && <span className="absolute right-2 bottom-1 animate-pulse text-xs" data-testid="battle-text-more">▼</span>}
+    </button>
+  )
+}
+
+/** A tela do time na batalha (como no jogo): os 6 cabem exatamente na tela (3 linhas × 2 colunas, sem rolar), em cima da caixa de texto. */
+function PartyGrid({ team, active, picked, disabled, dim, onTap, testPrefix, badge }) {
+  return (
+    <div className="bw-party panel-in absolute inset-x-0 top-0 bottom-[22.5%] z-30 p-1.5" data-testid={`${testPrefix}-screen`}>
+      <div className="grid h-full grid-cols-2 grid-rows-3 gap-1.5" data-testid={testPrefix}>
+        {team.map((m, i) => (
+          <button key={i} type="button" data-testid={`${testPrefix}-${i}`} disabled={disabled?.(i)} onClick={() => onTap(i)}
+            className={`bw-party-slot flex min-h-0 min-w-0 cursor-pointer items-center gap-1.5 overflow-hidden rounded-xl border-2 p-1 text-left disabled:cursor-default disabled:opacity-50 ${dim?.(i, m) ? 'opacity-60' : ''} ${picked === i ? 'selected' : i === active ? 'lead' : ''}`}>
+            <PokeIcon id={m.id} shiny={m.shiny} className="h-9 w-9 shrink-0 sm:h-12 sm:w-12" />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 text-sm font-bold">
+                <span className="truncate">{m.name}</span>
+                {m.status && m.hp > 0 && <span className="shrink-0 rounded px-1 text-[10px] font-black text-white" style={{ background: STATUS_BADGE[m.status] }}>{m.status.toUpperCase()}</span>}
+              </div>
+              <HpBar hp={m.hp} max={m.maxHp} />
+              <div className="flex items-center gap-1 text-[11px] font-bold tabular-nums opacity-80"><span>{m.hp > 0 ? `${m.hp}/${m.maxHp}` : t('Desmaiado')}</span>{badge?.(m, i)}</div>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/** O menu (LUTAR, BOLSA / POKÉMON, FUGIR) em 2×2, no mesmo lugar dos golpes. */
+function MenuGrid({ children, testId }) {
+  return <div className="dlg-box grid h-full grid-cols-2 grid-rows-2 gap-1.5 rounded-xl border-4 p-1.5 [&>button]:h-full" data-testid={testId}>{children}</div>
 }
 
 /** O botão de golpe (e de alvo): o mesmo na batalha normal e na dupla/tripla. */
 function MoveButton({ label, note, color, disabled = false, onClick, testId, children }) {
   return (
     <button type="button" disabled={disabled} onClick={onClick} data-testid={testId}
-      className="cursor-pointer rounded-lg px-2 py-1.5 text-left text-white disabled:cursor-default disabled:opacity-40"
+      className="h-full min-h-0 cursor-pointer overflow-hidden rounded-lg px-2 py-1 text-left text-white disabled:cursor-default disabled:opacity-40"
       style={{ background: color }} data-no-translate>
       <div className="truncate text-sm font-black">{label}</div>
       {note && <div className="truncate text-[10px] font-bold opacity-90">{note}</div>}

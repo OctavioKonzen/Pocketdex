@@ -452,7 +452,14 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
       body: ReadableWidth(
         // A troca entre a tela da corrida e a batalha: um fade curto (sem pulo seco).
         child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
+          duration: const Duration(milliseconds: 450),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          // Sem corte seco: a tela que sai some e a que entra aparece crescendo de leve.
+          transitionBuilder: (child, animation) => FadeTransition(
+            opacity: animation,
+            child: ScaleTransition(scale: Tween(begin: 0.96, end: 1.0).animate(animation), child: child),
+          ),
           child: KeyedSubtree(
             key: ValueKey(_factoryScreen ? 'factory-$_key' : battle != null && _hit != null ? 'battle-$_key' : 'setup'),
             child: _factoryScreen
@@ -931,6 +938,9 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
 
   /// A faixa da habilidade em ação (como nos jogos): (lado, Pokémon, habilidade).
   (int, String, String)? _ability;
+  /// O tamanho de dentro da caixa de texto (para dividir as falas que não cabem).
+  Size _dialogSize = Size.zero;
+  TextScaler _dialogScale = TextScaler.noScaling;
   late String _text = widget.wild ? tr('Um {0} selvagem apareceu!').replaceAll('{0}', widget.battle.active(1).name) : widget.foeName.isNotEmpty ? tr('{0} quer batalhar!').replaceAll('{0}', widget.foeName) : tr('Um treinador quer batalhar!');
   bool _busy = false;
   String _menu = 'main'; // main | fight | party | bag
@@ -938,31 +948,13 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
   int? _summary; // os dados de quem (na tela do time)
 
   /// Os dados de um Pokémon do seu time (o motor dá os atributos, a habilidade e o item).
-  SummaryData _summaryOf(int i) {
-    final mon = _b.teams[0][i];
-    final team = (_b.simulatorState?['sides'] as List?)?.first?['team'] as List?;
-    final st = team != null && i < team.length ? team[i] as Map : null;
-    final stMoves = (st?['moves'] as List?)?.cast<Map>() ?? const [];
-    return SummaryData(
-      id: mon.id,
-      shiny: mon.shiny,
-      name: mon.name,
-      level: mon.level,
-      hp: mon.hp,
-      maxHp: mon.maxHp,
-      status: mon.status,
-      types: [for (final t in (st?['types'] as List?) ?? mon.types) '$t'.toLowerCase()],
-      ability: '${st?['ability'] ?? mon.ability}',
-      item: '${st?['item'] ?? mon.simulationItem ?? ''}',
-      stats: {for (final e in ((st?['stats'] as Map?) ?? const {}).entries) if (e.key != 'hp') '${e.key}': (e.value as num).toInt()},
-      boosts: {for (final e in mon.boosts.entries) e.key: e.value},
-      moves: [
-        for (var k = 0; k < mon.moves.length; k++)
-          SummaryMove(mon.moves[k].name, mon.moves[k].type, ((k < stMoves.length ? stMoves[k]['pp'] : null) as num?)?.toInt() ?? mon.moves[k].pp,
-              ((k < stMoves.length ? stMoves[k]['maxPp'] : null) as num?)?.toInt() ?? mon.moves[k].maxPp),
-      ],
-    );
-  }
+  SummaryData _summaryOf(int i) => summaryOf(_b, 0, i);
+
+  /// O tocado na tela do time (as opções TROCAR / DADOS / CANCELAR ficam nos botões de baixo).
+  int? _partyPick;
+
+  /// O item tocado na Bolsa (USAR fica nos botões de baixo).
+  String? _bagPick;
   String? _gimmickPick;
   int? _gimmickMon;
   late final _shake = AnimationController(vsync: this, duration: const Duration(milliseconds: 650));
@@ -1353,10 +1345,14 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
           }
           final line = _format(e);
           if (line.isEmpty) continue;
-          setState(() => _text = line);
-          _skip = Completer<void>();
-          await Future.any([_wait(_step.inMilliseconds), _skip!.future]);
-          _skip = null;
+          // Não cabe na caixa: em partes, uma depois da outra (como nos jogos; a caixa não aumenta).
+          for (final page in dialogPages(line, _dialogSize, _dialogScale)) {
+            if (!mounted) return;
+            setState(() => _text = page);
+            _skip = Completer<void>();
+            await Future.any([_wait(_step.inMilliseconds), _skip!.future]);
+            _skip = null;
+          }
         case 'hp':
           _sprites[e.side].currentState?.hurt();
           // O impacto do golpe na cor do tipo, bem onde ele acerta (só quando perde HP depois de um ataque). Igual ao site.
@@ -1593,7 +1589,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
   }
   void _choose(int i) {
     if (_busy || widget.online?.locked == true || _b.winner != null) return;
-    setState(() { _gimmickPick = null; _gimmickMon = null; });
+    setState(() { _gimmickPick = null; _gimmickMon = null; _partyPick = null; });
     if (widget.online != null) { widget.online!.onAction({'kind': 'switch', 'index': i}); return; }
     final item = _item;
     if (item != null) {
@@ -1655,13 +1651,8 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
     final foeWeak = TurnBattle.weaknesses(rival.types, allTypes, widget.typeEff);
     final dark = Theme.of(context).brightness == Brightness.dark;
     // A Bolsa e o time abrem por cima do campo (a mesma tela, como no jogo; dá para jogar com o celular de lado).
-    final Widget? fieldPanel = waiting && _menu == 'bag'
-        ? BwBag(
-                testKey: 'bag',
-                // Cabe no campo: as abas e a barra de baixo fixas, a lista rola.
-                fill: true,
-                onClose: () => setState(() => _menu = 'main'),
-                pockets: [
+    // A Bolsa: em cima da caixa de texto (a descrição do item aparece nela); USAR e Voltar nos botões fixos de baixo.
+    final bagPockets = <BagPocket>[
                   for (final (id, label, img, ball) in const [('medicine', 'Remédios', 'potion', false), ('balls', 'Poké Balls', 'poke-ball', true)])
                     BagPocket(id: id, label: label, img: img, items: [
                       for (final it in battleItems)
@@ -1692,7 +1683,15 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                                   }),
                           ),
                     ]),
-                ],
+                ];
+    final bagPicked = bagPockets.expand((p) => p.items).where((it) => it.id == _bagPick).firstOrNull;
+    final Widget? fieldPanel = waiting && _menu == 'bag'
+        ? BwBag(
+                testKey: 'bag',
+                fill: true,
+                external: true,
+                onSelect: (id) => setState(() => _bagPick = id),
+                pockets: bagPockets,
               )
         : waiting && _menu == 'party' && _summary != null
             // Os dados do Pokémon (como no jogo).
@@ -1711,14 +1710,13 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
               )
         : waiting && _menu == 'party'
             // A tela do time do Black & White (compacta, em 2 colunas), por cima do campo.
+            // Os 6 cabem exatamente na tela (como no jogo); o título vai para a caixa de texto e as opções para os
+            // botões fixos de baixo.
             ? BwParty(
                 testKey: 'battle-single-switch',
-                title: _b.needSwitch
-                    ? tr('Escolha o próximo Pokémon')
-                    : _item != null
-                        ? tr('Usar em qual Pokémon?')
-                        : tr('Trocar de Pokémon'),
-                header: _item == null ? _Weak(rival, foeWeak) : null,
+                fill: true,
+                selected: _partyPick,
+                onSelect: _item == null ? (i) => setState(() => _partyPick = i) : null,
                 active: _b.activeIndex[0],
                 team: [
                   for (final mon in _b.teams[0])
@@ -1741,12 +1739,6 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                 // Trocando: tocar mostra as opções (TROCAR, DADOS), como no jogo.
                 onInfo: _item == null ? (i) => setState(() => _summary = i) : null,
                 pickLabel: tr('TROCAR'),
-                onCancel: _b.needSwitch
-                    ? null
-                    : () => setState(() {
-                          _menu = _item != null ? 'bag' : 'main';
-                          _item = null;
-                        }),
               )
             : null;
     // A mecânica do set (montador) ativa sozinha no primeiro ataque, como nos
@@ -1912,34 +1904,42 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                         right: w * 0.015,
                         bottom: h * 0.015,
                         height: h * 0.21,
-                        child: GestureDetector(
+                        child: _DialogBox(
                           key: const ValueKey('battle-text'),
+                          dark: dark,
+                          onSize: (size) {
+                            _dialogSize = size;
+                            _dialogScale = MediaQuery.textScalerOf(context);
+                          },
                           onTap: () { if (_skip != null && !_skip!.isCompleted) _skip!.complete(); },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            // A caixa de diálogo no tema: escura no tema escuro, branca no claro (igual ao site).
-                            decoration: dark
-                                ? BoxDecoration(
-                                    gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF4D4D4D), Color(0xFF2E2E2E)]),
-                                    border: Border.all(color: const Color(0xFF1A1A1A), width: 3),
-                                    borderRadius: BorderRadius.circular(8),
-                                    boxShadow: const [BoxShadow(color: Color(0xFF7A7A7A), spreadRadius: -2, blurRadius: 0)],
-                                  )
-                                : BoxDecoration(color: Colors.white, border: Border.all(color: const Color(0xFF334155), width: 3), borderRadius: BorderRadius.circular(8)),
-                            alignment: Alignment.topLeft,
-                            child: SingleChildScrollView(
-                              // Já traduzido (nomes e golpes não mudam).
-                              child: m.Text(!_busy && widget.online != null ? tr(widget.online!.message) : _text,
-                                  style: TextStyle(color: dark ? Colors.white : const Color(0xFF0F172A), fontSize: 14, height: 1.25, fontWeight: FontWeight.bold, shadows: dark ? _bwShadow : null)),
-                            ),
-                          ),
+                          // Já traduzido (nomes e golpes não mudam).
+                          text: !_busy && widget.online != null
+                              ? tr(widget.online!.message)
+                              // A Bolsa: a descrição do item tocado (ou a pergunta) na caixa.
+                              : waiting && _menu == 'bag'
+                                  ? (bagPicked != null ? '${bagPicked.name}: ${bagPicked.help}' : tr('Escolha um item.'))
+                              // O time aberto: a pergunta dele na caixa (como no jogo).
+                              : waiting && _menu == 'party' && _summary == null
+                                  ? (_b.needSwitch ? tr('Escolha o próximo Pokémon') : _item != null ? tr('Usar em qual Pokémon?') : tr('Escolha um Pokémon.'))
+                              // Hora de escolher (como no jogo e na dupla): "O que Charizard vai fazer?".
+                              : waiting && (_menu == 'main' || _menu == 'fight') && !_b.needSwitch
+                                  ? '${tr('O que')} ${current.name} ${tr('vai fazer?')}'
+                                  // No fim, o recado do resultado também vem na caixa (em partes, se precisar).
+                                  : !_busy && _b.winner != null && widget.endNote.isNotEmpty
+                                      ? '$_text ${widget.endNote}'
+                                      : _text,
                         ),
                       ),
                       // A Bolsa ocupa o campo inteiro (a lista rola por dentro); o time rola se não couber.
                       if (fieldPanel != null)
-                        Positioned.fill(
+                        // O time fica em cima da caixa de texto (a fala "Escolha um Pokémon" aparece nela).
+                        Positioned(
                             key: const ValueKey('battle-panel'),
-                            child: _menu == 'bag' ? fieldPanel : SingleChildScrollView(child: fieldPanel)),
+                            left: 0,
+                            right: 0,
+                            top: 0,
+                            bottom: _menu == 'bag' || _menu == 'party' && _summary == null ? h * 0.225 : 0,
+                            child: _Appear(key: ValueKey(_menu), child: _menu == 'bag' || _summary == null ? fieldPanel : SingleChildScrollView(child: fieldPanel))),
                       // A tela VS por cima de tudo: só os dois treinadores (o resto some até ela acabar).
                       if (_vsOn)
                         Positioned.fill(
@@ -1961,48 +1961,47 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
           ),
         ),
         _FieldBar(conditions: _b.fieldConditions()),
-        // Texto e menus
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: const BoxDecoration(color: border, borderRadius: BorderRadius.vertical(bottom: Radius.circular(16))),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Embaixo da tela, como a tela de baixo do DS: o menu, a Bolsa e a troca (o texto fica dentro da tela).
-              if (!waiting) const SizedBox(height: 48),
-              if (waiting && (widget.online?.waitForSwitch ?? false))
-                FilledButton(onPressed: () => widget.online!.onAction({'kind': 'wait', 'index': 0}), child: const Text('Aguardar troca do amigo')),
-              if (waiting && !(widget.online?.waitForSwitch ?? false) && _menu == 'main' && !_b.needSwitch) ...[
-                const SizedBox(height: 8),
-                Row(children: [
-                  _MenuButton('LUTAR', () {
-                    if (TurnBattle.usableMoves(current).isEmpty) {
-                      _fight(-1);
-                    } else {
-                      setState(() => _menu = 'fight');
-                    }
-                  }),
-                  const SizedBox(width: 6),
-                  _MenuButton('BOLSA', widget.online == null ? () => setState(() => _menu = 'bag') : null),
-                ]),
-                const SizedBox(height: 6),
-                Row(children: [
-                  _MenuButton(
-                      'POKÉMON',
-                      () => setState(() {
-                            _item = null;
-                            _menu = 'party';
-                            _summary = null;
-                          })),
-                  const SizedBox(width: 6),
-                  _MenuButton('FUGIR', _run),
-                ]),
-              ],
-              if (waiting && _menu == 'fight') ...[
-                const SizedBox(height: 8),
-                _Weak(rival, foeWeak, dark: true),
-                // A mecânica (Mega, Z, Dynamax, Tera): o botão redondo no meio dos 4 golpes; ligado, ativa no ataque.
-                Stack(alignment: Alignment.center, children: [
+        // Texto e menus: a tela de baixo (como no DS), sempre do mesmo tamanho e com lugar fixo para cada coisa.
+        _BottomScreen(
+          info: waiting && (_menu == 'fight' || _menu == 'party' && _item == null) ? _Weak(rival, foeWeak, dark: true) : null,
+          grid: !waiting || (widget.online?.waitForSwitch ?? false)
+              ? null
+              : _menu == 'main' && !_b.needSwitch
+                      ? _menuGrid([
+                          _MenuButton(key: const ValueKey('battle-fight'), 'LUTAR', () {
+                            if (TurnBattle.usableMoves(current).isEmpty) {
+                              _fight(-1);
+                            } else {
+                              setState(() => _menu = 'fight');
+                            }
+                          }),
+                          _MenuButton('BOLSA', widget.online == null ? () => setState(() { _menu = 'bag'; _bagPick = null; }) : null),
+                          _MenuButton(
+                              'POKÉMON',
+                              () => setState(() {
+                                    _item = null;
+                                    _menu = 'party';
+                                    _summary = null;
+                                    _partyPick = null;
+                                  })),
+                          _MenuButton('FUGIR', _run),
+                        ])
+                      : _menu == 'bag' && bagPicked != null
+                          // Tocou num item: USAR (ou JOGAR) e CANCELAR nos botões fixos.
+                          ? _menuGrid([
+                              _MenuButton(key: const ValueKey('bag-use'), bagPicked.use ?? tr('USAR'), bagPicked.disabled ? null : bagPicked.onUse),
+                              _MenuButton(key: const ValueKey('bag-cancel'), tr('CANCELAR'), () => setState(() => _bagPick = null)),
+                            ])
+                      : _menu == 'party' && _partyPick != null
+                          // Tocou num Pokémon do time: as opções (como no jogo).
+                          ? _menuGrid([
+                              _MenuButton(key: const ValueKey('battle-single-switch-pick'), tr('TROCAR'), _b.canSwitch(0, _partyPick!) ? () => _choose(_partyPick!) : null),
+                              _MenuButton(key: const ValueKey('battle-single-switch-info'), tr('DADOS'), () => setState(() => _summary = _partyPick)),
+                              _MenuButton(key: const ValueKey('battle-single-switch-close'), tr('CANCELAR'), () => setState(() => _partyPick = null)),
+                            ])
+                      : _menu == 'fight'
+                          // A mecânica (Mega, Z, Dynamax, Tera): o botão redondo no meio dos 4 golpes; ligado, ativa no ataque.
+                          ? Stack(alignment: Alignment.center, children: [
                   moveGrid(context, [
                     for (final (i, mv) in current.moves.indexed)
                       _MoveButton(
@@ -2049,19 +2048,30 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                             _gimmickPick = selected == option.$1 ? null : option.$1;
                             _gimmickMon = current.id;
                           })),
-                ]),
-                const SizedBox(height: 6),
-                Row(children: [_MenuButton('Voltar', () => setState(() => _menu = 'main'))]),
-              ],
-            if (!_busy && _b.winner != null && widget.endNote.isNotEmpty) ...[
-              const SizedBox(height: 14),
-              Container(
-                key: const ValueKey('end-note'),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: SiteColors.of(context).surface, borderRadius: BorderRadius.circular(14)),
-                child: m.Text(widget.endNote, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w800)),
-              ),
-            ],
+                ])
+                          : null,
+          footer: waiting && _menu == 'fight'
+              ? _MenuButton('Voltar', () => setState(() => _menu = 'main'))
+              : waiting && _menu == 'bag'
+                  ? _MenuButton(key: const ValueKey('bag-close'), 'Voltar', () => setState(() {
+                        _menu = 'main';
+                        _bagPick = null;
+                      }))
+              : waiting && _menu == 'party' && _summary == null && !_b.needSwitch
+                  ? _MenuButton(
+                      key: const ValueKey('battle-single-switch-cancel'),
+                      'Voltar',
+                      () => setState(() {
+                            _menu = _item != null ? 'bag' : 'main';
+                            _item = null;
+                            _partyPick = null;
+                          }))
+                  : null,
+          extra: waiting && (widget.online?.waitForSwitch ?? false)
+              ? FilledButton(onPressed: () => widget.online!.onAction({'kind': 'wait', 'index': 0}), child: const Text('Aguardar troca do amigo'))
+              : !_busy && _b.winner != null
+              ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            // O recado do resultado (endNote) aparece na caixa de texto.
             // Battle Factory (keepMine): vencendo, a tela do andar abre sozinha (uma confirmação só: a do resultado).
             if (!_busy && _b.winner != null && widget.online == null && widget.next != null && !(widget.keepMine && _b.winner == 0)) ...[
               const SizedBox(height: 14),
@@ -2086,8 +2096,8 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
               const SizedBox(height: 8),
               OutlinedButton(onPressed: widget.onExit, child: Text(widget.foeName.isEmpty ? 'Trocar os times' : 'Sair')),
             ],
-            ],
-          ),
+                ])
+              : null,
         ),
       ],
     );
@@ -2103,22 +2113,225 @@ class _MenuButton extends StatelessWidget {
   Widget build(BuildContext context) {
     // No tema: escuro no tema escuro, branco no claro (igual ao site).
     final dark = Theme.of(context).brightness == Brightness.dark;
-    return Expanded(
+    // Ocupa o lugar dela na tela de baixo (a grade do menu ou a linha do Voltar).
+    return SizedBox.expand(
         child: Material(
           color: dark ? const Color(0xFF3A3A3A) : Colors.white,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: BorderSide(color: dark ? const Color(0xFF7A7A7A) : Colors.transparent)),
           child: InkWell(
             borderRadius: BorderRadius.circular(10),
             onTap: onTap,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-              child: Opacity(opacity: onTap == null ? 0.4 : 1, child: Text(label, textAlign: TextAlign.center, style: TextStyle(color: dark ? Colors.white : const Color(0xFF0F172A), fontWeight: FontWeight.w900))),
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Opacity(opacity: onTap == null ? 0.4 : 1, child: Text(label, textAlign: TextAlign.center, style: TextStyle(color: dark ? Colors.white : const Color(0xFF0F172A), fontWeight: FontWeight.w900))),
+                ),
+              ),
             ),
           ),
         ),
       );
   }
 }
+
+/// Os dados de um Pokémon (a tela de resumo, como no jogo). Na normal e na dupla.
+SummaryData summaryOf(TurnBattle b, int side, int i) {
+    final mon = b.teams[side][i];
+    final team = (b.simulatorState?['sides'] as List?)?[side]?['team'] as List?;
+    final st = team != null && i < team.length ? team[i] as Map : null;
+    final stMoves = (st?['moves'] as List?)?.cast<Map>() ?? const [];
+    return SummaryData(
+      id: mon.id,
+      shiny: mon.shiny,
+      name: mon.name,
+      level: mon.level,
+      hp: mon.hp,
+      maxHp: mon.maxHp,
+      status: mon.status,
+      types: [for (final t in (st?['types'] as List?) ?? mon.types) '$t'.toLowerCase()],
+      ability: '${st?['ability'] ?? mon.ability}',
+      item: '${st?['item'] ?? mon.simulationItem ?? ''}',
+      stats: {for (final e in ((st?['stats'] as Map?) ?? const {}).entries) if (e.key != 'hp') '${e.key}': (e.value as num).toInt()},
+      boosts: {for (final e in mon.boosts.entries) e.key: e.value},
+      moves: [
+        for (var k = 0; k < mon.moves.length; k++)
+          SummaryMove(mon.moves[k].name, mon.moves[k].type, ((k < stMoves.length ? stMoves[k]['pp'] : null) as num?)?.toInt() ?? mon.moves[k].pp,
+              ((k < stMoves.length ? stMoves[k]['maxPp'] : null) as num?)?.toInt() ?? mon.moves[k].maxPp),
+      ],
+    );
+  }
+
+/// O que abre por cima do campo (a Bolsa, o time) aparece subindo de leve e clareando, em vez de surgir de uma vez.
+class _Appear extends StatelessWidget {
+  const _Appear({super.key, required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        builder: (context, v, child) => Opacity(opacity: v, child: Transform.translate(offset: Offset(0, (1 - v) * 16), child: child)),
+        child: child,
+      );
+}
+
+/// O estilo das falas na caixa de texto (o mesmo para medir e para mostrar).
+const _dialogStyle = TextStyle(fontSize: 14, height: 1.25, fontWeight: FontWeight.bold);
+
+/// O tamanho da letra da caixa: o do celular, mas sempre cabendo duas linhas (como nos jogos).
+TextScaler dialogScaler(Size box, TextScaler scaler) =>
+    box.isEmpty ? scaler : TextScaler.linear(min(scaler.scale(14) / 14, box.height / (2 * 14 * 1.25 + 1)));
+
+/// Divide a fala em partes que cabem na caixa de texto (como nos jogos: a caixa não aumenta; o resto vem depois).
+List<String> dialogPages(String text, Size box, TextScaler scaler) {
+  if (box.isEmpty || text.isEmpty) return [text];
+  scaler = dialogScaler(box, scaler);
+  bool fits(String part) {
+    final painter = TextPainter(text: TextSpan(text: part, style: _dialogStyle), textDirection: TextDirection.ltr, textScaler: scaler)..layout(maxWidth: box.width);
+    return painter.height <= box.height + 0.5;
+  }
+  if (fits(text)) return [text];
+  final pages = <String>[];
+  var page = '';
+  for (final word in text.split(' ')) {
+    final next = page.isEmpty ? word : '$page $word';
+    if (page.isEmpty || fits(next)) {
+      page = next;
+    } else {
+      pages.add(page);
+      page = word;
+    }
+  }
+  if (page.isNotEmpty) pages.add(page);
+  return pages;
+}
+
+/// A caixa de texto da batalha (a mesma na normal e na dupla): sempre do mesmo tamanho; toda fala aparece nela e,
+/// se não couber, em partes (tocar passa para a próxima parte; na última, passa a fala).
+class _DialogBox extends StatefulWidget {
+  const _DialogBox({super.key, required this.text, required this.dark, this.onTap, this.onSize});
+  final String text;
+  final bool dark;
+  final VoidCallback? onTap;
+  final ValueChanged<Size>? onSize;
+
+  @override
+  State<_DialogBox> createState() => _DialogBoxState();
+}
+
+class _DialogBoxState extends State<_DialogBox> {
+  int _page = 0;
+
+  @override
+  void didUpdateWidget(covariant _DialogBox old) {
+    super.didUpdateWidget(old);
+    if (old.text != widget.text) _page = 0;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = widget.dark;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      // A caixa de diálogo no tema: escura no tema escuro, branca no claro (igual ao site).
+      decoration: dark
+          ? BoxDecoration(
+              gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF4D4D4D), Color(0xFF2E2E2E)]),
+              border: Border.all(color: const Color(0xFF1A1A1A), width: 3),
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: const [BoxShadow(color: Color(0xFF7A7A7A), spreadRadius: -2, blurRadius: 0)],
+            )
+          : BoxDecoration(color: Colors.white, border: Border.all(color: const Color(0xFF334155), width: 3), borderRadius: BorderRadius.circular(8)),
+      child: LayoutBuilder(builder: (context, box) {
+        final size = Size(box.maxWidth, box.maxHeight);
+        widget.onSize?.call(size);
+        final pages = dialogPages(widget.text, size, MediaQuery.textScalerOf(context));
+        final page = min(_page, pages.length - 1);
+        final more = page < pages.length - 1;
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => more ? setState(() => _page = page + 1) : widget.onTap?.call(),
+          child: Stack(children: [
+            Positioned.fill(
+              child: ClipRect(
+                child: Align(
+                  alignment: Alignment.topLeft,
+                  child: m.Text(pages[page], textScaler: dialogScaler(size, MediaQuery.textScalerOf(context)), style: _dialogStyle.copyWith(color: dark ? Colors.white : const Color(0xFF0F172A), shadows: dark ? _bwShadow : null)),
+                ),
+              ),
+            ),
+            // Tem mais: a setinha piscando no canto, como nos jogos.
+            if (more) Positioned(right: 0, bottom: 0, child: m.Text('▼', key: const ValueKey('battle-text-more'), style: TextStyle(fontSize: 12, color: dark ? Colors.white : const Color(0xFF0F172A)))),
+          ]),
+        );
+      }),
+    );
+  }
+}
+
+/// O menu da batalha (LUTAR, BOLSA / POKÉMON, FUGIR) em 2×2, no mesmo lugar dos golpes.
+Widget _menuGrid(List<Widget> buttons) => Column(children: [
+      for (final (row, pair) in [buttons.take(2).toList(), buttons.skip(2).take(2).toList()].indexed) ...[
+        if (row > 0) const SizedBox(height: 6),
+        Expanded(
+          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Expanded(child: pair[0]),
+            const SizedBox(width: 6),
+            Expanded(child: pair.length > 1 ? pair[1] : const SizedBox()),
+          ]),
+        ),
+      ],
+    ]);
+
+/// A tela de baixo da batalha (como a do DS), a mesma na normal e na dupla/tripla: sempre do mesmo tamanho e cada
+/// coisa no seu lugar — em cima a linha de informação (fraquezas, quem já escolheu), no meio a grade 2×2 (o menu ou
+/// os golpes, no mesmo lugar) e embaixo o Voltar. Nada empurra nada. No fim da batalha, os botões do resultado.
+class _BottomScreen extends StatelessWidget {
+  const _BottomScreen({this.info, this.grid, this.footer, this.extra});
+  final Widget? info, grid, footer;
+
+  /// Outras escolhas (Continuar, Batalhar de novo, Sair...): embaixo dos botões fixos, sem mexer neles.
+  final Widget? extra;
+
+  static double infoHeight(BuildContext context) => MediaQuery.textScalerOf(context).scale(17) * 2 + 6;
+  static double gridHeight(BuildContext context) => (12 + MediaQuery.textScalerOf(context).scale(18) + MediaQuery.textScalerOf(context).scale(19)) * 2 + 6;
+  static double footerHeight(BuildContext context) => MediaQuery.textScalerOf(context).scale(20) + 24;
+  static double height(BuildContext context) => infoHeight(context) + 6 + gridHeight(context) + 6 + footerHeight(context);
+
+  @override
+  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Container(
+          key: const ValueKey('battle-bottom'),
+          padding: const EdgeInsets.all(8),
+          decoration: const BoxDecoration(color: Color(0xFF1E293B), borderRadius: BorderRadius.vertical(bottom: Radius.circular(16))),
+          child: SizedBox(
+            height: height(context),
+            child: DefaultTextStyle.merge(
+              style: const TextStyle(color: Colors.white),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                SizedBox(
+                  key: const ValueKey('battle-bottom-info'),
+                  height: infoHeight(context),
+                  child: info == null ? null : Align(alignment: Alignment.centerLeft, child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: info)),
+                ),
+                const SizedBox(height: 6),
+                // Sem nada para escolher agora: o menu fica no lugar dele, apagado (os botões não somem nem mudam de lugar).
+                SizedBox(key: const ValueKey('battle-bottom-grid'), height: gridHeight(context), child: grid ?? _idleMenu()),
+                const SizedBox(height: 6),
+                SizedBox(key: const ValueKey('battle-bottom-footer'), height: footerHeight(context), child: footer),
+              ]),
+            ),
+          ),
+        ),
+        if (extra != null) Padding(key: const ValueKey('battle-extra'), padding: const EdgeInsets.only(top: 10), child: extra),
+      ]);
+}
+
+/// O menu apagado (enquanto o turno acontece ou é a vez do outro).
+Widget _idleMenu() => _menuGrid([for (final label in ['LUTAR', 'BOLSA', 'POKÉMON', 'FUGIR']) _MenuButton(label, null)]);
 
 /// Os 4 golpes (2 por linha), iguais na batalha normal e na dupla/tripla: a altura pelas duas linhas de texto
 /// (cresce com o texto maior).
@@ -3278,6 +3491,8 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
     _aim = null;
     _gimmickOn = false;
     _menu = 'main';
+    _partyPick = null;
+    _summary = null;
     if (_pending.every((p) => _choices.containsKey(p['slot']))) {
       _send();
     } else {
@@ -3306,23 +3521,14 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
         if (_menu != 'main') {
           _menu = 'main';
           _gimmickOn = false;
+          _partyPick = null;
+          _summary = null;
           return;
         }
         final last = _pending.reversed.where((slot) => _choices.containsKey(slot['slot'])).firstOrNull;
         if (last != null) _choices.remove(last['slot']);
         _gimmickOn = false;
       });
-  String _describe(Map slot) {
-    final c = _choices[slot['slot'] as int]!, mon = _b.teams[_side][slot['index'] as int];
-    if (c['kind'] == 'move') {
-      final moves = ((slot['request'] as Map?)?['moves'] as List?)?.cast<Map>() ?? [];
-      final target = (_b.targets(_side, slot['slot'] as int, c['index'] as int, '${c['gimmick']}')['targets'] as List).cast<Map>().where((t) => t['loc'] == c['target']).firstOrNull;
-      final gimmick = const {'mega': 'Mega', 'tera': 'Terastal', 'dmax': 'Dynamax', 'z': 'Z-Move'}[c['gimmick']];
-      return '${mon.name}: ${(c['index'] as int) < moves.length ? moves[c['index'] as int]['move'] : ''}${gimmick != null ? ' ($gimmick)' : ''}${target != null ? ' → ${target['name']}' : ''}';
-    }
-    if (c['kind'] == 'switch') return '${mon.name} ⇄ ${_b.teams[_side][c['index'] as int].name}';
-    return '${mon.name}: ${tr(c['kind'] == 'shift' ? 'trocar de posição' : 'passar')}';
-  }
   void _send() {
     final owned = _slots.where((slot) => _b.controllers![_side][slot['slot'] as int] == _uid);
     final submitted = [for (final slot in owned) {'seat': _side * _count + (slot['slot'] as int), ..._picked(slot)!}];
@@ -3356,6 +3562,9 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
   ({Map<(int, int), int> hp, Map<(int, int), String> status, List<List<int>> slots})? _shown;
   bool _playing = false;
   String _text = '';
+  /// O tamanho de dentro da caixa de texto (para dividir as falas que não cabem).
+  Size _dialogSize = Size.zero;
+  TextScaler _dialogScale = TextScaler.noScaling;
   List<BattleEvent>? _played;
   Completer<void>? _skip;
   final _timers = <Timer>{};
@@ -3418,8 +3627,12 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
       final at = _at(e);
       switch (e.t) {
         case 'text':
-          setState(() => _text = _format(e));
-          await _wait(e.key == 'turnOrder' ? 1600 : 1000);
+          // Não cabe na caixa: em partes, uma depois da outra (como nos jogos; a caixa não aumenta).
+          for (final page in dialogPages(_format(e), _dialogSize, _dialogScale)) {
+            if (!mounted) return;
+            setState(() => _text = page);
+            await _wait(e.key == 'turnOrder' ? 1600 : 1000);
+          }
         case 'attack':
           if (at >= 0 && e.category != 'status') _key(e.side, at).currentState?.lunge();
           await _wait(450);
@@ -3551,30 +3764,21 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
                 right: w * 0.015,
                 bottom: h * 0.015,
                 height: h * 0.21,
-                child: GestureDetector(
+                child: _DialogBox(
                   key: const ValueKey('battle-text'),
+                  dark: dark,
+                  text: text,
+                  onSize: (size) {
+                            _dialogSize = size;
+                            _dialogScale = MediaQuery.textScalerOf(context);
+                          },
                   onTap: () {
                     if (_skip != null && !_skip!.isCompleted) _skip!.complete();
                   },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    alignment: Alignment.topLeft,
-                    decoration: dark
-                        ? BoxDecoration(
-                            gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF4D4D4D), Color(0xFF2E2E2E)]),
-                            border: Border.all(color: const Color(0xFF1A1A1A), width: 3),
-                            borderRadius: BorderRadius.circular(8),
-                          )
-                        : BoxDecoration(color: Colors.white, border: Border.all(color: const Color(0xFF334155), width: 3), borderRadius: BorderRadius.circular(8)),
-                    child: SingleChildScrollView(
-                      child: m.Text(text,
-                          style: TextStyle(color: dark ? Colors.white : const Color(0xFF0F172A), fontSize: 14, height: 1.25, fontWeight: FontWeight.bold, shadows: dark ? _bwShadow : null)),
-                    ),
-                  ),
                 ),
               ),
-              // A troca abre por cima do campo, como na batalha normal.
-              if (panel != null) Positioned.fill(key: const ValueKey('battle-panel'), child: SingleChildScrollView(child: panel)),
+              // A troca abre por cima do campo, em cima da caixa de texto (a pergunta aparece nela), como na batalha normal.
+              if (panel != null) Positioned(key: const ValueKey('battle-panel'), left: 0, right: 0, top: 0, bottom: _summary != null ? 0 : h * 0.225, child: _Appear(child: panel)),
             ]);
           }),
         ),
@@ -3595,6 +3799,7 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
       return '${tr('Em quem')} ${mon.name} ${tr('vai usar')} ${index < moves.length ? moves[index]['move'] : ''}?$step';
     }
     if (current['forceSwitch'] == true) return '${tr('Quem entra no lugar de')} ${mon.name}?$step';
+    if (_menu == 'party') return '${tr('Escolha um Pokémon.')}$step';
     return '${tr('O que')} ${mon.name} ${tr('vai fazer?')}$step';
   }
 
@@ -3612,14 +3817,16 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
     final forced = slot['forceSwitch'] == true;
     if (!forced && _menu != 'party') return null;
     final position = slot['slot'] as int, options = _switchOptions(slot);
-    final foe = [
-      for (final s in (_b.simulatorState!['sides'][1 - _side]['slots'] as List).cast<Map>())
-        if ((s['index'] as int) >= 0 && _b.teams[1 - _side][s['index'] as int].hp > 0) _b.teams[1 - _side][s['index'] as int],
-    ].firstOrNull;
+    // Os dados (como na batalha normal).
+    if (_summary != null) {
+      return SingleChildScrollView(child: BwSummary(summaryOf(_b, _side, _summary!), onBack: () => setState(() => _summary = null)));
+    }
+    // Os 6 cabem exatamente na tela (como no jogo); a pergunta vai para a caixa de texto e as opções para os botões de baixo.
     return BwParty(
       testKey: 'battle-switch-$position',
-      title: forced ? tr('Escolha o próximo Pokémon') : tr('Trocar de Pokémon'),
-      header: foe == null ? null : _Weak(foe, TurnBattle.weaknesses(foe.terastal && foe.teraType.isNotEmpty ? [foe.teraType] : foe.types, allTypes, widget.typeEff)),
+      fill: true,
+      selected: _partyPick,
+      onSelect: (i) => setState(() => _partyPick = i),
       active: slot['index'] as int,
       team: [
         for (final mon in _b.teams[_side])
@@ -3636,16 +3843,19 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
       disabled: (i) => _locked || !options.contains(i),
       onPick: (i) => _commit(slot, {'kind': 'switch', 'index': i}),
       pickLabel: tr('TROCAR'),
-      onCancel: forced ? null : () => setState(() => _menu = 'main'),
     );
   }
 
-  /// Embaixo da tela, como na batalha normal: o menu, os golpes, os alvos e a troca.
-  Widget _panel() {
+  /// O tocado na tela do time e os dados abertos.
+  int? _partyPick, _summary;
+
+  /// Embaixo da tela, como na batalha normal e nos mesmos lugares: em cima a informação (fraquezas, quem já
+  /// escolheu), no meio a grade (menu, golpes, alvos) e embaixo o Voltar.
+  ({Widget? info, Widget? grid, Widget? footer}) _panel() {
     final pending = _pending;
     final current = pending.where((slot) => !_choices.containsKey(slot['slot'])).firstOrNull;
     final chosen = pending.where((slot) => _choices.containsKey(slot['slot'])).toList();
-    if (current == null) return const SizedBox.shrink();
+    if (current == null) return (info: null, grid: null, footer: null);
     final slot = current, position = slot['slot'] as int, mon = _b.teams[_side][slot['index'] as int];
     final req = slot['request'] as Map?;
     final moves = (req?['moves'] as List?)?.cast<Map>() ?? [];
@@ -3656,14 +3866,14 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
     List<String> typesOf(BattleMon foe) => foe.terastal && foe.teraType.isNotEmpty ? [foe.teraType] : foe.types;
     final forced = slot['forceSwitch'] == true;
     final menu = forced ? 'party' : _menu;
-    final children = <Widget>[];
+    Widget? info, grid;
     if (_aim != null) {
       // Em quem: os adversários (e o aliado), com como o golpe pega em cada um.
       final index = _aim!['index'] as int;
       final targets = (_b.targets(_side, position, index, '${_aim!['gimmick']}')['targets'] as List).cast<Map>();
       List<Map> row(bool ally) => targets.where((t) => (t['ally'] == true) == ally).toList()..sort((a, b) => (a['slot'] as int).compareTo(b['slot'] as int));
       // Os alvos com o mesmo botão dos golpes: os adversários em vermelho, o aliado em azul.
-      children.add(moveGrid(context, [
+      grid = SingleChildScrollView(child: moveGrid(context, [
         for (final ally in [false, true])
           for (final target in row(ally))
             _MoveButton(
@@ -3678,18 +3888,11 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
             ),
       ]));
     } else if (menu == 'main') {
-      children.addAll([
-        Row(children: [
-          _MenuButton(key: const ValueKey('battle-fight'), 'LUTAR', _locked ? null : () => setState(() => _menu = 'fight')),
-          const SizedBox(width: 6),
-          const _MenuButton('BOLSA', null),
-        ]),
-        const SizedBox(height: 6),
-        Row(children: [
-          _MenuButton(key: const ValueKey('battle-party'), 'POKÉMON', _locked ? null : () => setState(() => _menu = 'party')),
-          const SizedBox(width: 6),
-          const _MenuButton('FUGIR', null),
-        ]),
+      grid = _menuGrid([
+        _MenuButton(key: const ValueKey('battle-fight'), 'LUTAR', _locked ? null : () => setState(() => _menu = 'fight')),
+        const _MenuButton('BOLSA', null),
+        _MenuButton(key: const ValueKey('battle-party'), 'POKÉMON', _locked ? null : () => setState(() => _menu = 'party')),
+        const _MenuButton('FUGIR', null),
       ]);
     } else if (menu == 'fight') {
       final mechanic = mon.gimmick;
@@ -3702,10 +3905,10 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
       };
       final reserved = _choices.values.any((c) => c['gimmick'] == mechanic);
       // As fraquezas de cada adversário em campo e, em cada golpe, como pega em cada um (como na batalha normal).
-      for (final foe in foes) {
-        children.add(_Weak(foe, TurnBattle.weaknesses(typesOf(foe), allTypes, widget.typeEff), dark: true));
-      }
-      children.add(Stack(alignment: Alignment.center, children: [
+      info = Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+        for (final foe in foes) _Weak(foe, TurnBattle.weaknesses(typesOf(foe), allTypes, widget.typeEff), dark: true),
+      ]);
+      grid = Stack(alignment: Alignment.center, children: [
         Container(
           key: ValueKey('battle-moves-$position'),
           child: moveGrid(context, [
@@ -3751,31 +3954,22 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
               label: mechanic == 'dmax' && mon.gmax != null ? 'Gigantamax' : const {'mega': 'Mega', 'tera': 'Terastal', 'dmax': 'Dynamax', 'z': 'Z-Move'}[mechanic] ?? mechanic,
               on: _gimmickOn,
               onTap: () => setState(() => _gimmickOn = !_gimmickOn)),
-      ]));
+      ]);
     } else {
-      // A troca abre por cima do campo (a tela do time, como na batalha normal); aqui só o que ela não tem.
+      // A troca abre por cima do campo (a tela do time); tocou num Pokémon: as opções nos botões fixos (como no jogo).
       final options = _switchOptions(slot);
-      if (slot['canShift'] == true) {
-        children.add(Row(children: [_MenuButton(key: ValueKey('battle-shift-$position'), tr('Trocar posição com o centro'), _locked ? null : () => _commit(slot, {'kind': 'shift', 'index': 0}))]));
-      }
-      if (forced && options.isEmpty) {
-        children.add(Row(children: [_MenuButton(key: ValueKey('battle-pass-$position'), tr('Sem reservas: passar'), _locked ? null : () => _commit(slot, {'kind': 'pass', 'index': 0}))]));
-      }
+      if (foes.isNotEmpty) info = _Weak(foes.first, TurnBattle.weaknesses(typesOf(foes.first), allTypes, widget.typeEff), dark: true);
+      final pick = _partyPick;
+      grid = pick == null
+          ? null
+          : _menuGrid([
+              _MenuButton(key: ValueKey('battle-switch-$position-pick'), tr('TROCAR'), _locked || !options.contains(pick) ? null : () => _commit(slot, {'kind': 'switch', 'index': pick})),
+              _MenuButton(key: ValueKey('battle-switch-$position-info'), tr('DADOS'), () => setState(() => _summary = pick)),
+              _MenuButton(key: ValueKey('battle-switch-$position-close'), tr('CANCELAR'), () => setState(() => _partyPick = null)),
+            ]);
     }
-    final canBack = !_locked && (_aim != null || menu == 'fight' || chosen.isNotEmpty && (menu == 'main' || forced));
-    return DefaultTextStyle.merge(
-      style: const TextStyle(color: Colors.white),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        // Quem já escolheu (e o quê), como uma fila.
-        for (final s in chosen) m.Text('✓ ${_describe(s)}', style: const TextStyle(fontSize: 12, color: Colors.white70)),
-        if (chosen.isNotEmpty) const SizedBox(height: 6),
-        ...children,
-        if (canBack) ...[
-          const SizedBox(height: 6),
-          Row(children: [_MenuButton(key: const ValueKey('battle-back'), 'Voltar', _back)]),
-        ],
-      ]),
-    );
+    final canBack = !_locked && (_aim != null || menu == 'fight' || menu == 'party' && !forced || chosen.isNotEmpty && (menu == 'main' || forced));
+    return (info: info, grid: grid, footer: canBack ? _MenuButton(key: const ValueKey('battle-back'), 'Voltar', _back) : null);
   }
 
   @override
@@ -3792,29 +3986,34 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
     final status = widget.online?.message ?? (_b.winner != null ? _b.winner == -1 ? 'Empate!' : _b.winner == _side ? 'Você venceu!' : 'A equipe adversária venceu!' : '${tr('Turno')} ${_b.turn}');
     // Online travado (aguardando o amigo, partida encerrada...): a mensagem da partida na caixa de texto, sem menu.
     final choosing = !_playing && _b.winner == null && _pending.isNotEmpty && widget.online?.locked != true;
-    final text = _playing ? _text : choosing ? _prompt() : status;
+    // Todo texto na caixa de texto (o erro também).
+    final text = _playing ? _text : _error ?? (choosing ? _prompt() : status);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       _field(text.isEmpty ? status : text, _partyPanel()),
       _FieldBar(conditions: _b.fieldConditions()),
-      // Embaixo do campo, como a tela de baixo do DS e igual à batalha normal: o menu, os golpes e as escolhas.
-      Container(
-        padding: const EdgeInsets.all(8),
-        decoration: const BoxDecoration(color: Color(0xFF1E293B), borderRadius: BorderRadius.vertical(bottom: Radius.circular(16))),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          if (!choosing) const SizedBox(height: 48),
-          if (choosing) ...[const SizedBox(height: 8), _panel()],
-          if (_error != null) Text(_error!, style: const TextStyle(color: Colors.redAccent)),
-          if (!_playing && _b.winner == null && _pending.isEmpty && widget.online?.locked != true) FilledButton(onPressed: _locked ? null : _send, child: const Text('Continuar')),
-          if (widget.online != null) TextButton(onPressed: widget.online!.onClose, child: const Text('Desistir')),
-          // No fim, como na batalha normal (a Battle Factory abre a tela do andar sozinha).
-          if (widget.online == null && _b.winner != null && !_playing && widget.onFinish == null) ...[
-            const SizedBox(height: 14),
-            PillButton(label: tr('Batalhar de novo'), expand: true, gradient: const LinearGradient(colors: [Color(0xFFDC2626), Color(0xFF9333EA)]), onPressed: widget.onAgain),
-            const SizedBox(height: 8),
-            OutlinedButton(onPressed: widget.onExit, child: const Text('Sair')),
-          ],
-        ]),
-      ),
+      // Embaixo do campo: a mesma tela de baixo da batalha normal (do mesmo tamanho, cada coisa no seu lugar).
+      Builder(builder: (context) {
+        final panel = choosing ? _panel() : (info: null, grid: null, footer: null);
+        final more = !_playing && _b.winner == null && _pending.isEmpty && widget.online?.locked != true;
+        final end = widget.online == null && _b.winner != null && !_playing && widget.onFinish == null;
+        return _BottomScreen(
+          info: panel.info,
+          grid: panel.grid,
+          footer: panel.footer,
+          // As outras escolhas: embaixo dos botões fixos (no fim, como na batalha normal; a Factory abre a tela do andar sozinha).
+          extra: more || end || widget.online != null
+              ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  if (more) FilledButton(onPressed: _locked ? null : _send, child: const Text('Continuar')),
+                  if (end) ...[
+                    PillButton(label: tr('Batalhar de novo'), expand: true, gradient: const LinearGradient(colors: [Color(0xFFDC2626), Color(0xFF9333EA)]), onPressed: widget.onAgain),
+                    const SizedBox(height: 8),
+                    OutlinedButton(onPressed: widget.onExit, child: const Text('Sair')),
+                  ],
+                  if (widget.online != null) OutlinedButton(onPressed: widget.online!.onClose, child: const Text('Desistir')),
+                ])
+              : null,
+        );
+      }),
     ]);
   }
 }
@@ -3833,24 +4032,31 @@ class _FieldBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final [mine, theirs, all] = conditions;
-    if (mine.isEmpty && theirs.isEmpty && all.isEmpty) return const SizedBox.shrink();
     Widget chip(String text, Color color) => Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
           decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(99)),
           child: m.Text(text, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
         );
     const label = TextStyle(color: Color(0xFFCBD5E1), fontSize: 11, fontWeight: FontWeight.w800);
+    // Sempre a mesma altura (uma linha que rola de lado): aparecer um efeito não empurra a tela de baixo.
     return Container(
       key: const ValueKey('field-bar'),
       color: const Color(0xFF334155),
+      height: MediaQuery.textScalerOf(context).scale(15) + 12,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: Wrap(spacing: 4, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
-        if (theirs.isNotEmpty) const Text('Adversário:', style: label),
-        for (final x in theirs) chip(x, const Color(0xFFB45309)),
-        if (mine.isNotEmpty) const Text('Você:', style: label),
-        for (final x in mine) chip(x, const Color(0xFF0369A1)),
-        for (final x in all) chip(x, const Color(0xFF7C3AED)),
-      ]),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(children: [
+          for (final w in [
+            if (theirs.isNotEmpty) const Text('Adversário:', style: label),
+            for (final x in theirs) chip(x, const Color(0xFFB45309)),
+            if (mine.isNotEmpty) const Text('Você:', style: label),
+            for (final x in mine) chip(x, const Color(0xFF0369A1)),
+            for (final x in all) chip(x, const Color(0xFF7C3AED)),
+          ])
+            Padding(padding: const EdgeInsets.only(right: 4), child: w),
+        ]),
+      ),
     );
   }
 }

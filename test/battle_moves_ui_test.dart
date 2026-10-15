@@ -89,11 +89,11 @@ void main() {
     });
     addTearDown(battle!.dispose);
     await tester.pumpWidget(MaterialApp(home:Scaffold(body:SingleChildScrollView(child:BattleView(battle:battle,hit:(_,_,_,_,[power,weather=''])=>null,typeEff:(_,_)=>1,foeName:'NPC',onAgain:(){},onExit:(){})))));
-    expect(find.text('LUTAR'),findsNothing);
+    expect(find.byKey(const ValueKey('battle-fight')),findsNothing);
     expect(battle.turn,1);
     Future<void> finishAnimations() async {for(var i=0;i<90;i++) {await tester.pump(const Duration(milliseconds:500));} expect(tester.takeException(),isNull);}
     await finishAnimations();
-    final fight=find.text('LUTAR'); await tester.ensureVisible(fight); await tester.tap(fight); await tester.pump();
+    final fight=find.byKey(const ValueKey('battle-fight')); await tester.ensureVisible(fight); await tester.tap(fight); await tester.pump();
     final move=find.byKey(const ValueKey('battle-single-move-0')); await tester.ensureVisible(move);
     await tester.tap(move); await tester.tap(move,warnIfMissed:false); await tester.pump();
     await finishAnimations();
@@ -109,7 +109,7 @@ void main() {
     expect(battle.needSwitch,isFalse); expect(battle.activeIndex[0],1); expect(battle.turn,2);
     await tester.ensureVisible(fight); await tester.tap(fight); await tester.pump();
     await tester.ensureVisible(move); await tester.tap(move); await tester.pump(); await finishAnimations();
-    expect(battle.turn,3); expect(find.text('LUTAR'),findsOneWidget);
+    expect(battle.turn,3); expect(find.byKey(const ValueKey('battle-fight')),findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
   for (final (count,scale) in [(2,1.0),(3,1.0),(3,1.3)]) {
@@ -204,7 +204,6 @@ void main() {
     expect(find.text('O que Mew vai fazer? (2/2)'), findsOneWidget);
     await tap('battle-fight');
     expect(find.byKey(const ValueKey('battle-move-1-0')), findsOneWidget);
-    expect(find.textContaining('✓ Mew: Psychic'), findsOneWidget);
     await tap('battle-back');
     await tap('battle-back');
     await tap('battle-fight');
@@ -235,12 +234,17 @@ void main() {
       ];
     });
     final sizes=<String,Size>{};
-    Size arena() => tester.getSize(find.byType(BattleBackdrop).first);
+    // Lugar fixo: a arena, a caixa de texto, a tela de baixo e cada parte dela (como num jogo oficial).
+    final places=<String,List<Rect>>{};
+    Size arena() {
+      places[sizes.length.toString()]=[for(final k in ['battle-text','battle-bottom','battle-bottom-grid','battle-bottom-footer']) tester.getRect(find.byKey(ValueKey(k)))];
+      return tester.getSize(find.byType(BattleBackdrop).first);
+    }
     for(final (k,battle) in battles!.indexed) {
       await tester.pumpWidget(MaterialApp(home:Scaffold(body:SingleChildScrollView(child:BattleView(key:ValueKey(k),battle:battle,hit:(_,_,_,_,[power,weather=''])=>null,typeEff:(_,_)=>1,foeName:'NPC',onAgain:(){},onExit:(){})))));
-      for(var i=0;i<90 && find.text('LUTAR').evaluate().isEmpty;i++) { await tester.pump(const Duration(milliseconds:500)); }
+      for(var i=0;i<90 && find.byKey(const ValueKey('battle-fight')).evaluate().isEmpty;i++) { await tester.pump(const Duration(milliseconds:500)); }
       sizes['menu $k']=arena();
-      await tester.tap(find.text('LUTAR')); await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('battle-fight'))); await tester.pump();
       sizes['golpes $k']=arena();
       // O mesmo botão de golpe (altura e largura) na normal e na dupla/tripla.
       final move=find.byKey(ValueKey(k==0?'battle-single-move-0':'battle-move-0-0'));
@@ -258,5 +262,6 @@ void main() {
     final field=sizes['menu 0']!;
     for(final e in sizes.entries.where((e)=>!e.key.startsWith('botão'))) { expect(e.value,field,reason:'arena (${e.key})'); }
     for(final k in [1,2]) { expect(sizes['botão $k'],sizes['botão 0'],reason:'botão de golpe ($k)'); }
+    for(final e in places.entries) { expect(e.value,places.values.first,reason:'texto e botões no mesmo lugar (${e.key})'); }
   });
 }

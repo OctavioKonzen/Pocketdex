@@ -384,6 +384,12 @@ function ScrollToTop() {
   return null
 }
 
+/** A troca de página: um fade curto (sem corte seco). */
+function PageFade({ children }) {
+  const { pathname } = useLocation()
+  return <div key={pathname} className="page-in">{children}</div>
+}
+
 export default function App() {
   const [search, setSearch] = useState('')
   const theme = useResolvedTheme(useStore((s) => s.theme))
@@ -408,6 +414,7 @@ export default function App() {
           <main className="mx-auto max-w-[1920px] px-4 py-5 sm:px-6">
             <PageBoundary>
               <Suspense fallback={<Loader />}>
+                <PageFade>
                 <Routes>
                   <Route path="/" element={<PokedexPage />} />
                   <Route path="/favoritos" element={<FavoritesPage />} />
@@ -444,6 +451,7 @@ export default function App() {
                   <Route path="/amigos/draft/:id" element={<DraftPage />} />
                   <Route path="*" element={<PokedexPage />} />
                 </Routes>
+                </PageFade>
               </Suspense>
             </PageBoundary>
           </main>

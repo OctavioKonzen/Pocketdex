@@ -139,7 +139,7 @@ void main() {
     expect(find.byKey(const ValueKey('vs-splash')), findsNothing);
     expect(find.byType(TrainerSprite), findsOneWidget);
     expect(find.byType(TrainerBack), findsOneWidget);
-    expect(find.text('LUTAR'), findsNothing);
+    expect(find.byKey(const ValueKey('battle-fight')), findsNothing);
     await shot('1-treinadores');
     await tester.pump(const Duration(milliseconds: 1000));
     expect(find.text('Brock quer batalhar!'), findsOneWidget);
@@ -155,7 +155,7 @@ void main() {
     // Os treinadores saíram e o menu abriu.
     expect(find.byType(TrainerSprite), findsNothing);
     expect(find.byType(TrainerBack), findsNothing);
-    expect(find.text('LUTAR'), findsOneWidget);
+    expect(find.byKey(const ValueKey('battle-fight')), findsOneWidget);
     await shot('4-batalha');
     await tester.pumpWidget(const SizedBox());
   });
