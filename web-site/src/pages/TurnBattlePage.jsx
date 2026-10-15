@@ -31,7 +31,7 @@ import { battleRecord } from '../lib/battleLog'
 import { playSound, soundOf, startMusic, stopMusic } from '../lib/battleSound'
 import {simulatorTargets} from '../lib/battleSimulator'
 import {newPartyBattle, playPartyTurn, describeEvents} from '../lib/partyBattle'
-import { FactoryHub, FactoryScreen, saveFactory } from '../components/FactoryPanels'
+import { FactoryHub, FactoryScreen, saveFactory, foeTrainerBox } from '../components/FactoryPanels'
 import { expBarOf, factoryAfter, factoryBattle, factoryFoe } from '../lib/factoryBattle'
 import { endRun, escapeRope, factoryOf, placeMusic, winFloor } from '../lib/factoryRun'
 import { getFactoryData } from '../lib/data'
@@ -1288,7 +1288,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
           {ball[1] && <PokeBall side={1} phase={ball[1]} kind={ballKind[1]} />}
           {intro && coach && (
             <div className={`trainer-foe absolute inset-x-0 bottom-0 flex justify-center ${intro.foe === 'out' ? 'trainer-leave-1' : ''}`} data-testid="foe-trainer">
-              <TrainerSprite trainer={coach} box={fieldWidth(field) * 0.48} />
+              <TrainerSprite trainer={coach} box={foeTrainerBox(fieldWidth(field))} />
             </div>
           )}
         </div>
