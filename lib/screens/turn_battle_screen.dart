@@ -2003,51 +2003,22 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                 _Weak(rival, foeWeak, dark: true),
                 // A mecânica (Mega, Z, Dynamax, Tera): o botão redondo no meio dos 4 golpes; ligado, ativa no ataque.
                 Stack(alignment: Alignment.center, children: [
-                  GridView(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  // Altura pelas duas linhas de texto (cresce com o texto maior).
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 6,
-                    crossAxisSpacing: 6,
-                    mainAxisExtent: 12 + MediaQuery.textScalerOf(context).scale(18) + MediaQuery.textScalerOf(context).scale(19),
-                  ),
-                  children: [
+                  moveGrid(context, [
                     for (final (i, mv) in current.moves.indexed)
-                      Material(
-                        color: getColorForType(mv.type).withAlpha(mv.pp > 0 ? 255 : 100),
-                        borderRadius: BorderRadius.circular(10),
-                        child: InkWell(
-                          key: ValueKey('battle-single-move-$i'),
-                          borderRadius: BorderRadius.circular(10),
-                          onTap: mv.pp > 0 && !mv.disabled ? () => _fight(i) : null,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                // Com Z-Move / Dinamax: o nome do golpe especial (o poder dele no lugar do PP).
-                                m.Text(
-                                    mv.category == 'status'
-                                        ? mv.name
-                                        : selected == 'z' && _b.canGimmick(0, 'z', i)
-                                            ? TurnBattle.zMoves[mv.type]!
-                                            : maxed
-                                                ? TurnBattle.maxMoves[mv.type]!
-                                                : mv.name,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13)),
-                                Row(children: [
-                                  // PP, crítico e dano diminuem juntos se não couberem (tela estreita).
-                                  Flexible(
-                                    flex: 6,
-                                    child: FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      alignment: Alignment.centerLeft,
-                                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      _MoveButton(
+                        inkKey: ValueKey('battle-single-move-$i'),
+                        color: getColorForType(mv.type),
+                        faded: mv.pp <= 0,
+                        onTap: mv.pp > 0 && !mv.disabled ? () => _fight(i) : null,
+                        // Com Z-Move / Dinamax: o nome do golpe especial (o poder dele no lugar do PP).
+                        label: mv.category == 'status'
+                            ? mv.name
+                            : selected == 'z' && _b.canGimmick(0, 'z', i)
+                                ? TurnBattle.zMoves[mv.type]!
+                                : maxed
+                                    ? TurnBattle.maxMoves[mv.type]!
+                                    : mv.name,
+                        details: [
                                   m.Text(
                                       mv.category != 'status' && ((selected == 'z' && _b.canGimmick(0, 'z', i)) || maxed)
                                           ? '${tr('Poder')} ${selected == 'z' && !maxed ? TurnBattle.zPower(mv.power) : TurnBattle.maxPower(mv.power, mv.type)}'
@@ -2069,27 +2040,10 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                                         child: m.Text(r.low == r.high ? '${r.low}%' : '${r.low}–${r.high}%',
                                             key: ValueKey('damage-range-$i'), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
                                       ),
-                                      ]),
-                                    ),
-                                  ),
-                                  const Spacer(),
-                                  // A efetividade diminui se não couber (tela estreita).
-                                  Flexible(
-                                    flex: 4,
-                                    child: FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      alignment: Alignment.centerRight,
-                                      child: _EffectTag(TurnBattle.moveEffect(widget.hit, current, rival, mv)),
-                                    ),
-                                  ),
-                                ]),
-                              ],
-                            ),
-                          ),
-                        ),
+                        ],
+                        effect: _EffectTag(TurnBattle.moveEffect(widget.hit, current, rival, mv)),
                       ),
-                  ],
-                ),
+                  ]),
                   for (final option in _gimmickOptions) _GimmickButton(key: ValueKey(option.$1), kind: option.$1, label: tr(option.$2), on: selected == option.$1,
                       onTap: () => setState(() {
                             _gimmickPick = selected == option.$1 ? null : option.$1;
@@ -2164,6 +2118,66 @@ class _MenuButton extends StatelessWidget {
         ),
       );
   }
+}
+
+/// Os 4 golpes (2 por linha), iguais na batalha normal e na dupla/tripla: a altura pelas duas linhas de texto
+/// (cresce com o texto maior).
+Widget moveGrid(BuildContext context, List<Widget> children) => GridView(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 6,
+        crossAxisSpacing: 6,
+        mainAxisExtent: 12 + MediaQuery.textScalerOf(context).scale(18) + MediaQuery.textScalerOf(context).scale(19),
+      ),
+      children: children,
+    );
+
+/// O botão de golpe (e de alvo): a cor do tipo, o nome em cima; embaixo o PP/crítico/dano à esquerda e a eficácia
+/// à direita (os dois diminuem se não couberem). O mesmo na batalha normal e na dupla/tripla.
+class _MoveButton extends StatelessWidget {
+  const _MoveButton({this.inkKey, required this.label, required this.color, required this.onTap, this.details = const [], this.effect, this.faded = false});
+  final Key? inkKey;
+  final String label;
+  final Color color;
+  final VoidCallback? onTap;
+  final List<Widget> details;
+  final Widget? effect;
+  final bool faded;
+
+  @override
+  Widget build(BuildContext context) => Material(
+        color: color.withAlpha(faded || onTap == null ? 100 : 255),
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          key: inkKey,
+          borderRadius: BorderRadius.circular(10),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                m.Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13)),
+                Row(children: [
+                  Flexible(
+                    flex: 6,
+                    child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Row(mainAxisSize: MainAxisSize.min, children: details)),
+                  ),
+                  const Spacer(),
+                  if (effect != null)
+                    Flexible(
+                      flex: 4,
+                      child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerRight, child: effect),
+                    ),
+                ]),
+              ],
+            ),
+          ),
+        ),
+      );
 }
 
 /// O clima caindo por cima do campo (chuva, areia, granizo, neve) ou o brilho
@@ -3454,7 +3468,7 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
   /// O campo da dupla/trio, como na batalha normal (e no Black & White): o cenário do lugar, os adversários lá atrás
   /// à direita em plataformas, os seus de costas na frente à esquerda (maiores), as caixas de vida no estilo BW
   /// (as dos adversários no alto à esquerda, as suas embaixo à direita) e a caixa de texto dentro da tela, embaixo.
-  Widget _field(String text) {
+  Widget _field(String text, [Widget? panel]) {
     final scene = battleScene(_b.scene, _b.seed);
     final dark = Theme.of(context).brightness == Brightness.dark;
     List<int> live(int side) => [
@@ -3463,8 +3477,9 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
         ];
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      // Sempre do mesmo tamanho da batalha normal (4:3), em dupla e em tripla.
       child: AspectRatio(
-        aspectRatio: _count == 3 ? 1 : 4 / 3,
+        aspectRatio: 4 / 3,
         child: DecoratedBox(
           decoration: BoxDecoration(border: Border.all(color: const Color(0xFF1E293B), width: 4), color: const Color(0xFF9FDCFF)),
           child: LayoutBuilder(builder: (context, constraints) {
@@ -3492,7 +3507,7 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
                 right: mineSide ? 0 : null,
                 top: mineSide ? null : h * 0.02,
                 bottom: mineSide ? h * 0.235 : null,
-                width: w * (_count == 3 ? 0.34 : mineSide ? 0.38 : 0.44),
+                width: w * (_count == 3 ? 0.3 : mineSide ? 0.38 : 0.44),
                 child: Column(key: ValueKey('battle-info-$side'), mainAxisSize: MainAxisSize.min, children: [
                   for (final (pos, index) in live(side).indexed)
                     Padding(
@@ -3515,7 +3530,7 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
               // Os adversários: lá atrás, à direita, pisando no chão do cenário.
               Positioned(
                 right: 0,
-                bottom: h * (_count == 3 ? 0.62 : 0.55),
+                bottom: h * (_count == 3 ? 0.66 : 0.55),
                 width: foeW,
                 height: foeW / max(2, _count),
                 child: Row(key: ValueKey('battle-sprites-${1 - _side}'), crossAxisAlignment: CrossAxisAlignment.end, children: [for (final index in foes) mon(1 - _side, index)]),
@@ -3558,26 +3573,14 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
                   ),
                 ),
               ),
+              // A troca abre por cima do campo, como na batalha normal.
+              if (panel != null) Positioned.fill(key: const ValueKey('battle-panel'), child: SingleChildScrollView(child: panel)),
             ]);
           }),
         ),
       ),
     );
   }
-
-  Widget _button(String label, String sub, Color color, Key key, VoidCallback? onTap, {Color text = Colors.white, List<Widget> tags = const []}) => Material(
-        color: onTap == null ? color.withAlpha(110) : color,
-        borderRadius: BorderRadius.circular(10),
-        child: InkWell(key: key, borderRadius: BorderRadius.circular(10), onTap: onTap,
-          child: Padding(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            m.Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: text, fontWeight: FontWeight.w900, fontSize: 13)),
-            if (sub.isNotEmpty) m.Text(sub, style: TextStyle(color: text.withValues(alpha: 0.75), fontSize: 11)),
-            if (tags.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 3), child: Wrap(spacing: 3, runSpacing: 3, children: tags)),
-          ]))),
-      );
-  Widget _grid(List<Widget> children, {int columns = 2}) => LayoutBuilder(builder: (context, constraints) => Wrap(spacing: 6, runSpacing: 6, children: [
-        for (final c in children) SizedBox(width: (constraints.maxWidth - 6 * (columns - 1)) / columns, child: c),
-      ]));
 
   /// A pergunta na caixa de texto enquanto escolhe (como na batalha normal: "O que Pikachu vai fazer?").
   String _prompt() {
@@ -3593,6 +3596,48 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
     }
     if (current['forceSwitch'] == true) return '${tr('Quem entra no lugar de')} ${mon.name}?$step';
     return '${tr('O que')} ${mon.name} ${tr('vai fazer?')}$step';
+  }
+
+  /// Quem pode entrar no lugar (quem outro já escolheu para entrar não aparece de novo).
+  List<int> _switchOptions(Map slot) {
+    final taken = {for (final c in _choices.values) if (c['kind'] == 'switch') c['index']};
+    return [for (final i in slot['switchOptions'] as List) if (!taken.contains(i)) i as int];
+  }
+
+  /// A tela do time do Black & White por cima do campo (a mesma da batalha normal).
+  Widget? _partyPanel() {
+    if (_playing || _b.winner != null) return null;
+    final slot = _pending.where((slot) => !_choices.containsKey(slot['slot'])).firstOrNull;
+    if (slot == null || _aim != null) return null;
+    final forced = slot['forceSwitch'] == true;
+    if (!forced && _menu != 'party') return null;
+    final position = slot['slot'] as int, options = _switchOptions(slot);
+    final foe = [
+      for (final s in (_b.simulatorState!['sides'][1 - _side]['slots'] as List).cast<Map>())
+        if ((s['index'] as int) >= 0 && _b.teams[1 - _side][s['index'] as int].hp > 0) _b.teams[1 - _side][s['index'] as int],
+    ].firstOrNull;
+    return BwParty(
+      testKey: 'battle-switch-$position',
+      title: forced ? tr('Escolha o próximo Pokémon') : tr('Trocar de Pokémon'),
+      header: foe == null ? null : _Weak(foe, TurnBattle.weaknesses(foe.terastal && foe.teraType.isNotEmpty ? [foe.teraType] : foe.types, allTypes, widget.typeEff)),
+      active: slot['index'] as int,
+      team: [
+        for (final mon in _b.teams[_side])
+          PartySlot(
+            id: mon.id,
+            shiny: mon.shiny,
+            name: mon.name,
+            level: mon.level,
+            hp: mon.maxHp > 0 ? mon.hp / mon.maxHp : 0,
+            status: mon.status,
+            sub: mon.hp <= 0 ? tr('Desmaiado') : '${mon.hp}/${mon.maxHp}',
+          ),
+      ],
+      disabled: (i) => _locked || !options.contains(i),
+      onPick: (i) => _commit(slot, {'kind': 'switch', 'index': i}),
+      pickLabel: tr('TROCAR'),
+      onCancel: forced ? null : () => setState(() => _menu = 'main'),
+    );
   }
 
   /// Embaixo da tela, como na batalha normal: o menu, os golpes, os alvos e a troca.
@@ -3617,21 +3662,21 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
       final index = _aim!['index'] as int;
       final targets = (_b.targets(_side, position, index, '${_aim!['gimmick']}')['targets'] as List).cast<Map>();
       List<Map> row(bool ally) => targets.where((t) => (t['ally'] == true) == ally).toList()..sort((a, b) => (a['slot'] as int).compareTo(b['slot'] as int));
-      for (final ally in [false, true]) {
-        if (row(ally).isEmpty) continue;
-        children.add(Padding(padding: const EdgeInsets.only(bottom: 6), child: _grid(columns: _count, [
+      // Os alvos com o mesmo botão dos golpes: os adversários em vermelho, o aliado em azul.
+      children.add(moveGrid(context, [
+        for (final ally in [false, true])
           for (final target in row(ally))
-            _button('${target['name']}', '${tr(ally ? 'Aliado' : 'Adversário')} · ${(target['slot'] as int) + 1}', ally ? const Color(0xFF0369A1) : const Color(0xFFB91C1C),
-                ValueKey('battle-target-${target['loc']}'), _locked ? null : () => _commit(slot, {..._aim!, 'target': target['loc']}),
-                tags: [
-                  if (index < mon.moves.length && mon.moves[index].power > 0 && mon.moves[index].category != 'status')
-                    () {
-                      final who = _b.teams[target['side'] as int][target['index'] as int];
-                      return _EffectTag(widget.typeEff(mon.moves[index].type, typesOf(who)));
-                    }(),
-                ]),
-        ])));
-      }
+            _MoveButton(
+              inkKey: ValueKey('battle-target-${target['loc']}'),
+              label: '${target['name']}',
+              color: ally ? const Color(0xFF0369A1) : const Color(0xFFB91C1C),
+              onTap: _locked ? null : () => _commit(slot, {..._aim!, 'target': target['loc']}),
+              details: [m.Text('${tr(ally ? 'Aliado' : 'Adversário')} · ${(target['slot'] as int) + 1}', style: const TextStyle(color: Colors.white70, fontSize: 11))],
+              effect: index < mon.moves.length && mon.moves[index].power > 0 && mon.moves[index].category != 'status'
+                  ? _EffectTag(widget.typeEff(mon.moves[index].type, typesOf(_b.teams[target['side'] as int][target['index'] as int])))
+                  : null,
+            ),
+      ]));
     } else if (menu == 'main') {
       children.addAll([
         Row(children: [
@@ -3663,20 +3708,39 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
       children.add(Stack(alignment: Alignment.center, children: [
         Container(
           key: ValueKey('battle-moves-$position'),
-          child: _grid([
+          child: moveGrid(context, [
             for (final (i, move) in moves.indexed)
-              _button('${move['move']}', 'PP ${move['pp'] ?? '—'}/${i < mon.moves.length ? mon.moves[i].maxPp : move['pp'] ?? '—'}', getColorForType(i < mon.moves.length ? mon.moves[i].type : 'normal'),
-                  ValueKey('battle-move-$position-$i'), _locked || move['disabled'] == true || move['pp'] == 0 ? null : () => _chooseMove(slot, i),
-                  tags: i < mon.moves.length && mon.moves[i].power > 0 && mon.moves[i].category != 'status'
-                      ? [
-                          for (final foe in foes)
-                            () {
+              _MoveButton(
+                inkKey: ValueKey('battle-move-$position-$i'),
+                label: '${move['move']}',
+                color: getColorForType(i < mon.moves.length ? mon.moves[i].type : 'normal'),
+                faded: move['pp'] == 0,
+                onTap: _locked || move['disabled'] == true || move['pp'] == 0 ? null : () => _chooseMove(slot, i),
+                details: [
+                  m.Text('PP ${move['pp'] ?? '—'}/${i < mon.moves.length ? mon.moves[i].maxPp : move['pp'] ?? '—'}', style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                  // A chance de crítico (dano 1,5×), como na batalha normal.
+                  if (i < mon.moves.length)
+                    if (TurnBattle.critChance(mon, mon.moves[i]) case final c?)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 6),
+                        child: m.Text('💥${c == c.roundToDouble() ? c.toInt() : c}%', style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                      ),
+                ],
+                // Como pega em cada adversário: "Pidgey ×2", "Oddish ×½"...
+                effect: i < mon.moves.length && mon.moves[i].power > 0 && mon.moves[i].category != 'status' && foes.isNotEmpty
+                    ? Row(mainAxisSize: MainAxisSize.min, children: [
+                        for (final foe in foes)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 3),
+                            child: () {
                               final eff = widget.typeEff(mon.moves[i].type, typesOf(foe));
                               final label = TurnBattle.effectLabel(eff) ?? 'Efetivo';
                               return _Tag('${foe.name.length > 9 ? foe.name.substring(0, 9) : foe.name} ${eff == 0 ? '✕' : '×${_times(eff)}'}', _effectColors[label]!);
                             }(),
-                        ]
-                      : const []),
+                          ),
+                      ])
+                    : null,
+              ),
           ]),
         ),
         // A mecânica (Mega, Z, Dynamax, Tera): o botão redondo no meio dos golpes, como na batalha normal.
@@ -3689,21 +3753,16 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
               onTap: () => setState(() => _gimmickOn = !_gimmickOn)),
       ]));
     } else {
-      // A troca: quem está no banco (quem outro já escolheu para entrar não aparece de novo).
-      final taken = {for (final c in _choices.values) if (c['kind'] == 'switch') c['index']};
-      final options = [for (final i in slot['switchOptions'] as List) if (!taken.contains(i)) i as int];
-      children.add(_grid([
-        for (final i in options)
-          _button('${tr(slot['revival'] == true ? 'Reviver' : '')} ${_b.teams[_side][i].name}'.trim(), '${_b.teams[_side][i].hp}/${_b.teams[_side][i].maxHp}', const Color(0xFF334155),
-              ValueKey('battle-switch-$position-$i'), _locked ? null : () => _commit(slot, {'kind': 'switch', 'index': i})),
-        if (slot['canShift'] == true) _button(tr('Trocar posição com o centro'), '', const Color(0xFF334155), ValueKey('battle-shift-$position'), _locked ? null : () => _commit(slot, {'kind': 'shift', 'index': 0})),
-        if (forced && options.isEmpty) _button(tr('Sem reservas: passar'), '', const Color(0xFF334155), ValueKey('battle-pass-$position'), _locked ? null : () => _commit(slot, {'kind': 'pass', 'index': 0})),
-      ]));
-      if (options.isEmpty && slot['canShift'] != true && !forced) {
-        children.add(const Padding(padding: EdgeInsets.all(8), child: Text('Ninguém no banco para entrar.', style: TextStyle(color: Colors.white70))));
+      // A troca abre por cima do campo (a tela do time, como na batalha normal); aqui só o que ela não tem.
+      final options = _switchOptions(slot);
+      if (slot['canShift'] == true) {
+        children.add(Row(children: [_MenuButton(key: ValueKey('battle-shift-$position'), tr('Trocar posição com o centro'), _locked ? null : () => _commit(slot, {'kind': 'shift', 'index': 0}))]));
+      }
+      if (forced && options.isEmpty) {
+        children.add(Row(children: [_MenuButton(key: ValueKey('battle-pass-$position'), tr('Sem reservas: passar'), _locked ? null : () => _commit(slot, {'kind': 'pass', 'index': 0}))]));
       }
     }
-    final canBack = !_locked && (_aim != null || (_menu != 'main' && !forced) || chosen.isNotEmpty);
+    final canBack = !_locked && (_aim != null || menu == 'fight' || chosen.isNotEmpty && (menu == 'main' || forced));
     return DefaultTextStyle.merge(
       style: const TextStyle(color: Colors.white),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -3731,24 +3790,29 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
     }
     WidgetsBinding.instance.addPostFrameCallback((_) { if (mounted) _autoLocked(); });
     final status = widget.online?.message ?? (_b.winner != null ? _b.winner == -1 ? 'Empate!' : _b.winner == _side ? 'Você venceu!' : 'A equipe adversária venceu!' : '${tr('Turno')} ${_b.turn}');
-    final choosing = !_playing && _b.winner == null && _pending.isNotEmpty;
+    // Online travado (aguardando o amigo, partida encerrada...): a mensagem da partida na caixa de texto, sem menu.
+    final choosing = !_playing && _b.winner == null && _pending.isNotEmpty && widget.online?.locked != true;
     final text = _playing ? _text : choosing ? _prompt() : status;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      _field(text.isEmpty ? status : text),
-      // Embaixo do campo, como a tela de baixo do DS: o menu e as escolhas.
+      _field(text.isEmpty ? status : text, _partyPanel()),
+      _FieldBar(conditions: _b.fieldConditions()),
+      // Embaixo do campo, como a tela de baixo do DS e igual à batalha normal: o menu, os golpes e as escolhas.
       Container(
         padding: const EdgeInsets.all(8),
         decoration: const BoxDecoration(color: Color(0xFF1E293B), borderRadius: BorderRadius.vertical(bottom: Radius.circular(16))),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          m.Text(status, key: const ValueKey('battle-turn'), style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 6),
-          if (choosing) _panel(),
+          if (!choosing) const SizedBox(height: 48),
+          if (choosing) ...[const SizedBox(height: 8), _panel()],
           if (_error != null) Text(_error!, style: const TextStyle(color: Colors.redAccent)),
           if (!_playing && _b.winner == null && _pending.isEmpty && widget.online?.locked != true) FilledButton(onPressed: _locked ? null : _send, child: const Text('Continuar')),
-          Wrap(spacing: 10, children: [
-            TextButton(onPressed: widget.online?.onClose ?? widget.onExit, child: Text(widget.online == null ? 'Sair' : 'Desistir')),
-            if (widget.online == null && _b.winner != null && !_playing) TextButton(onPressed: widget.onAgain, child: const Text('Batalhar de novo')),
-          ]),
+          if (widget.online != null) TextButton(onPressed: widget.online!.onClose, child: const Text('Desistir')),
+          // No fim, como na batalha normal (a Battle Factory abre a tela do andar sozinha).
+          if (widget.online == null && _b.winner != null && !_playing && widget.onFinish == null) ...[
+            const SizedBox(height: 14),
+            PillButton(label: tr('Batalhar de novo'), expand: true, gradient: const LinearGradient(colors: [Color(0xFFDC2626), Color(0xFF9333EA)]), onPressed: widget.onAgain),
+            const SizedBox(height: 8),
+            OutlinedButton(onPressed: widget.onExit, child: const Text('Sair')),
+          ],
         ]),
       ),
     ]);

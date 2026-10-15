@@ -86,6 +86,9 @@ void main() {
       });
     }
 
+    // Os Pokémon na tela do time (a mesma da batalha normal): battle-switch-<posição>-<índice>.
+    final slotKey = RegExp(r'^battle-switch-\d-\d+$');
+    Finder partySlots() => find.byWidgetPredicate((w) => w.key is ValueKey && slotKey.hasMatch('${(w.key as ValueKey).value}'));
     Finder byPrefix(String prefix) => find.byWidgetPredicate((w) => w.key is ValueKey && '${(w.key as ValueKey).value}'.startsWith(prefix));
     Future<void> tap(Finder f) async {
       await tester.ensureVisible(f.first);
@@ -100,7 +103,7 @@ void main() {
     // Depois de cada escolha: se o turno começou (o menu some), mostra a ordem e cada ação até acabar.
     Future<void> afterChoice() async {
       await tester.pump(const Duration(milliseconds: 50));
-      if (visible('battle-fight') || byPrefix('battle-switch-').evaluate().isNotEmpty) return;
+      if (visible('battle-fight') || partySlots().evaluate().isNotEmpty) return;
       turns++;
       if (turns == 1) await shot('3-ordem');
       log.add('T$turns: ${boxText()}');
@@ -134,11 +137,16 @@ void main() {
           if (targets == 1) await shot('2-alvo');
           await tap(byPrefix('battle-target-'));
         }
-      } else if (byPrefix('battle-switch-').evaluate().isNotEmpty) {
-        // Desmaiou: quem entra no lugar.
+      } else if (partySlots().evaluate().isNotEmpty) {
+        // Desmaiou: quem entra no lugar (toca nos do time até um que pode entrar).
         switches++;
         if (switches == 1) await shot('6-substituicao');
-        await tap(byPrefix('battle-switch-'));
+        final keys = [for (final e in partySlots().evaluate()) (e.widget.key as ValueKey).value as String];
+        for (final key in keys) {
+          if (find.byKey(ValueKey(key)).evaluate().isEmpty) break;
+          await tester.tap(find.byKey(ValueKey(key)), warnIfMissed: false);
+          await tester.pump();
+        }
       } else {
         await shot('erro');
         fail('sem menu nem troca no turno ${battle.turn}: ${boxText()}');

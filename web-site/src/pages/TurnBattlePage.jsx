@@ -1432,18 +1432,14 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
               const z = selected === 'z' && canGimmick(battle, 0, 'z', i)
               const max = maxed && m.category !== 'status'
               return (
-                <button
+                <MoveButton
                   key={m.slug}
-                  type="button"
                   disabled={m.pp <= 0 || m.disabled}
                   onClick={() => fight(i)}
-                  className="cursor-pointer rounded-lg px-2 py-1.5 text-left text-white disabled:cursor-default disabled:opacity-40"
-                  style={{ background: typeColor(m.type) }}
-                  data-no-translate
+                  color={typeColor(m.type)}
+                  label={z ? Z_MOVES[m.type] : max ? MAX_MOVES[m.type] : m.name}
+                  note={(z || max) ? `${m.name} · ${t('Poder')} ${z ? zPower(m.power) : maxPower(m.power, m.type)}` : null}
                 >
-                  <div className="truncate text-sm font-black">{z ? Z_MOVES[m.type] : max ? MAX_MOVES[m.type] : m.name}</div>
-                  {(z || max) && <div className="truncate text-[10px] font-bold opacity-90">{`${m.name} · ${t('Poder')} ${z ? zPower(m.power) : maxPower(m.power, m.type)}`}</div>}
-                  <div className="flex items-center justify-between gap-1 text-[11px] font-semibold">
                     <span className="opacity-90">{`PP ${m.pp}/${m.maxPp}`}</span>
                     {/* A chance de crítico (dano 1,5×). */}
                     {!z && !max && critChance(current, m) != null && <span className="tabular-nums opacity-90" title={t('Chance de crítico')} data-testid="crit-chance">💥{critChance(current, m)}%</span>}
@@ -1452,8 +1448,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
                       return range && <span className="tabular-nums opacity-95" data-testid="damage-range">{range[0] === range[1] ? `${range[0]}%` : `${range[0]}–${range[1]}%`}</span>
                     })()}
                     <EffectTag eff={eff} />
-                  </div>
-                </button>
+                </MoveButton>
               )
             })}
             {/* A mecânica (Mega, Z, Dynamax, Tera): o botão redondo no meio dos 4 golpes; ligado, ativa no ataque. */}
@@ -1723,6 +1718,44 @@ export function MultiBattle({battle, onExit, onAgain, onFinish, online = null, f
       <BattleSprite mon={mon} id={id} back={teamSide===side} fainted={hpOf(teamSide,slot.index)<=0} dmax={mon.dmax>0} tera={teraOf(mon)} byId={byId}/>
     </div>})}
   </div>
+  // As fraquezas e a eficácia (como na batalha normal).
+  const [typeData, setTypeData] = useState(null)
+  useEffect(() => { getTypes().then(setTypeData).catch(() => {}) }, [])
+  const typeEff = (type, types) => (typeData ? damageTaken(types, typeData)[type] : 1)
+  const typesOf = mon => mon.terastal && mon.teraType ? [mon.teraType] : mon.types
+  const foesOnField = state.sides[1-side].slots.filter(slot=>slot.index>=0).map(slot=>battle.sides[1-side].team[slot.index]).filter(mon=>mon.hp>0)
+  const switchOptions = slot => {const taken=new Set(Object.values(choices).filter(c=>c.kind==='switch').map(c=>c.index));return slot.switchOptions.filter(index=>!taken.has(index))}
+  // Online travado (aguardando o amigo, partida encerrada...): a mensagem da partida na caixa de texto, sem menu.
+  const choosing = state.winner == null && pending.length > 0 && !playing && Boolean(current) && !online?.locked
+  const view = current?.forceSwitch ? 'party' : menu
+  const canBack = !locked && (Boolean(aim) || view === 'fight' || pending.some(slot=>choices[slot.slot]) && (view === 'main' || Boolean(current?.forceSwitch)))
+  // A tela do time do Black & White por cima do campo (a mesma da batalha normal).
+  const party = choosing && !aim && view === 'party' && (()=>{
+    const slot=current, options=switchOptions(slot), foe=foesOnField[0]
+    return <div className="bw-party field-overlay overflow-y-auto p-2" data-testid={`battle-switch-${slot.slot}`}>
+      <div className="bw-party-title mb-2 flex items-center justify-between gap-2 rounded-lg px-3 py-1.5 text-sm font-black text-white">
+        <span>{slot.forceSwitch ? t('Escolha o próximo Pokémon') : t('Trocar de Pokémon')}</span>
+        {!slot.forceSwitch && <button type="button" onClick={()=>setMenu('main')} className="cursor-pointer rounded bg-red-600 px-2 text-white" data-testid="party-back">✕ {t('Voltar')}</button>}
+      </div>
+      {foe && typeData && <Weak mon={foe} list={weaknesses(typesOf(foe), ALL_TYPES, typeEff)} className="mb-2"/>}
+      <div className="grid grid-cols-2 gap-1.5 sm:gap-2" data-testid="party">
+        {battle.sides[side].team.map((m,i)=>{
+          const off = locked || !options.includes(i)
+          return <button key={i} type="button" data-testid={`battle-switch-${slot.slot}-${i}`} disabled={off} onClick={()=>commit(slot,{kind:'switch',index:i})}
+            className={`bw-party-slot flex min-w-0 cursor-pointer items-center gap-1.5 rounded-xl border-2 p-1.5 text-left disabled:cursor-default disabled:opacity-50 ${i === slot.index ? 'lead' : ''}`}>
+            <PokeIcon id={m.id} shiny={m.shiny} className="h-10 w-10 shrink-0 sm:h-12 sm:w-12"/>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 font-bold"><span className="truncate">{m.name}</span>
+                {m.status && m.hp > 0 && <span className="shrink-0 rounded px-1 text-[10px] font-black text-white" style={{ background: STATUS_BADGE[m.status] }}>{m.status.toUpperCase()}</span>}
+              </div>
+              <HpBar hp={m.hp} max={m.maxHp}/>
+              <div className="text-xs font-bold tabular-nums opacity-80">{m.hp > 0 ? `${m.hp}/${m.maxHp}` : t('Desmaiado')}</div>
+            </div>
+          </button>
+        })}
+      </div>
+    </div>
+  })()
   const status = online?.message || (state.winner != null ? state.winner === -1 ? 'Empate!' : state.winner === side ? 'Você venceu!' : 'A equipe adversária venceu!' : `${t('Turno')} ${state.turn}`)
   // A pergunta na caixa de texto enquanto escolhe ("O que Pikachu vai fazer?").
   const prompt = (()=>{
@@ -1733,70 +1766,76 @@ export function MultiBattle({battle, onExit, onAgain, onFinish, online = null, f
     return `${t('O que')} ${mon.name} ${t('vai fazer?')}${step}`
   })()
   return <section className="mx-auto max-w-3xl space-y-2">
-    <div className="battle-field relative aspect-[4/3] overflow-hidden border-4 border-slate-800" data-testid="multi-battle-field" data-layout="bw" style={{aspectRatio:count===3?'1':'4 / 3',background:'#9fdcff'}}>
+    {/* Sempre do mesmo tamanho da batalha normal (4:3), em dupla e em tripla. */}
+    <div className="battle-field relative aspect-[4/3] overflow-hidden rounded-t-2xl border-4 border-b-0 border-slate-800" data-testid="multi-battle-field" data-layout="bw" style={{background:'#9fdcff'}}>
       <BattleBackground weather={battle.weather} scene={scene} layout="bw"/>{sprites(1-side)}{sprites(side)}{info(1-side)}{info(side)}<WeatherFx weather={battle.weather}/>
       {/* A mensagem dentro da tela, embaixo, como na batalha normal (tocar passa o texto). */}
       <button type="button" className="dlg-box absolute inset-x-[1.5%] bottom-[1.5%] z-30 h-[21%] overflow-auto rounded-lg border-4 px-3 py-1.5 text-left font-bold" data-testid="multi-text" onClick={()=>skip.current?.()}>
-        {shown ? shown.text : state.winner == null && pending.length > 0 && current ? prompt : status}
+        {shown ? shown.text : choosing ? prompt : status}
       </button>
+      {party}
       {vsOn && <VsSplash me={myTrainer} coach={null} vs={{kind: online ? 'online' : 'trainer', name: foeName || t('Adversários')}} myName={myName} onSkip={()=>setVsOn(false)}/>}
     </div>
-    <p className="rounded-xl bg-card p-3 font-bold" data-testid="multi-turn" data-turn={state.turn} data-round={online?.round ?? state.turn}>{status}</p>
-    {state.winner == null && pending.length > 0 && !playing && <div className="space-y-2 rounded-xl border-4 border-slate-800 bg-slate-800 p-2 text-white" data-testid="multi-actions">
-      {pending.some(slot=>choices[slot.slot]) && <ul className="space-y-0.5 text-xs text-slate-300" data-testid="multi-chosen">{pending.filter(slot=>choices[slot.slot]).map(slot=><li key={slot.slot}>✓ {describe(slot)}</li>)}</ul>}
-      {current ? (()=>{
+    {/* Embaixo da tela, igual à batalha normal: o menu, os golpes, os alvos (a troca abre por cima do campo). */}
+    <div className="flex min-h-24 flex-col gap-2 rounded-b-2xl border-4 border-slate-800 bg-slate-800 p-2 text-white" data-testid="multi-actions" data-turn={state.turn} data-round={online?.round ?? state.turn} data-playing={playing ? 1 : 0}>
+      {choosing && pending.some(slot=>choices[slot.slot]) && <ul className="space-y-0.5 text-xs text-slate-300" data-testid="multi-chosen">{pending.filter(slot=>choices[slot.slot]).map(slot=><li key={slot.slot}>✓ {describe(slot)}</li>)}</ul>}
+      {choosing && (()=>{
         const slot=current, mon=battle.sides[side].team[slot.index], req=slot.request
         const mechanic=mon.gimmick
         const reserved=Object.values(choices).some(c=>c.gimmick===mechanic)
         const available=mechanic==='mega'?req?.canMegaEvo:mechanic==='tera'?req?.canTerastallize:mechanic==='dmax'?req?.canDynamax:mechanic==='z'?req?.canZMove?.some(Boolean):false
-        // Pokémon que outro já escolheu para entrar não aparece de novo.
-        const taken=new Set(Object.values(choices).filter(c=>c.kind==='switch').map(c=>c.index))
+        const back_ = canBack && <MenuButton onClick={back} className="col-span-2 text-sm" testId="battle-back">Voltar</MenuButton>
         if (aim) {
           const targets=simulatorTargets(battle,side,slot.slot,aim.choice.index,aim.choice.gimmick).targets
-          const row=ally=>targets.filter(t=>!!t.ally===ally).sort((a,b)=>a.slot-b.slot)
-          return <div className="space-y-2">
-            {[false,true].map(ally=>row(ally).length>0 && <div key={String(ally)} className="grid gap-1.5" style={{gridTemplateColumns:`repeat(${count},minmax(0,1fr))`}}>
-              {row(ally).map(target=><button key={target.loc} type="button" data-testid={`battle-target-${target.loc}`} disabled={locked}
-                onClick={()=>commit(slot,{...aim.choice,target:target.loc})}
-                className={`rounded-lg border-2 px-2 py-2 text-sm font-black text-slate-900 ${ally?'border-sky-400 bg-sky-100':'border-rose-400 bg-rose-100'}`}>
-                <span className="block text-[10px] font-bold text-slate-500">{t(ally?'Aliado':'Adversário')} · {target.slot+1}</span>{target.name}
-              </button>)}
-            </div>)}
+          const move=mon.moves[aim.choice.index]
+          const row=ally=>targets.filter(target=>!!target.ally===ally).sort((a,b)=>a.slot-b.slot)
+          return <div className="grid grid-cols-2 dlg-box gap-1.5 rounded-xl border-4 p-2" data-testid="multi-targets">
+            {[false,true].flatMap(ally=>row(ally)).map(target=>{
+              const who=battle.sides[target.side]?.team[target.index]
+              return <MoveButton key={target.loc} testId={`battle-target-${target.loc}`} disabled={locked} onClick={()=>commit(slot,{...aim.choice,target:target.loc})}
+                color={target.ally?'#0369a1':'#b91c1c'} label={target.name}>
+                <span className="opacity-90">{`${t(target.ally?'Aliado':'Adversário')} · ${target.slot+1}`}</span>
+                {move && move.power > 0 && move.category !== 'status' && who && <EffectTag eff={typeEff(move.type, typesOf(who))}/>}
+              </MoveButton>
+            })}
+            {back_}
           </div>
         }
-        const view = slot.forceSwitch ? 'party' : menu
-        if (view === 'main') return <div className="grid grid-cols-2 gap-1.5" data-testid="multi-menu">
-          <MenuButton onClick={()=>setMenu('fight')} disabled={locked}>LUTAR</MenuButton>
-          <MenuButton disabled>BOLSA</MenuButton>
-          <MenuButton onClick={()=>setMenu('party')} disabled={locked}>POKÉMON</MenuButton>
-          <MenuButton disabled>FUGIR</MenuButton>
-        </div>
-        return <div className="space-y-2">
-          {view === 'fight' && <div className="grid grid-cols-2 dlg-box gap-1.5 rounded-xl border-4 p-2" data-testid="multi-moves" aria-label={`Golpes de ${mon.name} ${slot.slot+1}`}>
+        if (view === 'fight') return <div className="grid grid-cols-2 dlg-box gap-1.5 rounded-xl border-4 p-2" data-testid="multi-moves" aria-label={`Golpes de ${mon.name} ${slot.slot+1}`}>
+          {foesOnField.map(foe=><Weak key={foe.name+foe.id} mon={foe} list={typeData ? weaknesses(typesOf(foe), ALL_TYPES, typeEff) : []}/>)}
+          <div className="relative col-span-2 grid grid-cols-2 gap-1.5">
             {(req?.moves || []).map((m,index)=>{
               const move=mon.moves[index]
-              return <button key={`move${index}`} type="button" data-testid={`battle-move-${slot.slot}-${index}`} disabled={locked || m.disabled || m.pp===0}
-                onClick={()=>chooseMove(slot,index)}
-                className="rounded-lg border-2 border-transparent px-2 py-2 text-left text-white disabled:opacity-40"
-                style={{background:typeColor(move?.type || 'normal')}}>
-                <span className="block text-sm font-black" data-no-translate>{m.move}</span>
-                <span className="text-xs">PP {m.pp ?? '—'}/{move?.maxPp ?? m.pp ?? '—'}</span>
-              </button>
+              return <MoveButton key={`move${index}`} testId={`battle-move-${slot.slot}-${index}`} disabled={locked || m.disabled || m.pp===0}
+                onClick={()=>chooseMove(slot,index)} color={typeColor(move?.type || 'normal')} label={m.move}>
+                <span className="opacity-90">{`PP ${m.pp ?? '—'}/${move?.maxPp ?? m.pp ?? '—'}`}</span>
+                {move && critChance(mon, move) != null && <span className="tabular-nums opacity-90" title={t('Chance de crítico')}>💥{critChance(mon, move)}%</span>}
+                {/* Como pega em cada adversário: "Pidgey ×2", "Oddish ×½"... */}
+                {move && move.power > 0 && move.category !== 'status' && <span className="flex gap-0.5">{foesOnField.map(foe=><EffectTag key={foe.name+foe.id} eff={typeEff(move.type, typesOf(foe))}/>)}</span>}
+              </MoveButton>
             })}
-          </div>}
-          {view === 'fight' && available && <button type="button" className={`rounded-lg px-3 py-2 font-bold text-white disabled:opacity-40 ${gimmickOn?'bg-violet-500 ring-2 ring-amber-300':'bg-violet-700'}`} disabled={locked || reserved} aria-pressed={gimmickOn} onClick={()=>setGimmickOn(v=>!v)}>{mechanic==='dmax' && mon.gmax?'Gigantamax':{mega:'Mega',tera:'Terastal',dmax:'Dynamax',z:'Z-Move'}[mechanic]}{gimmickOn?' ✓':''}</button>}
-          {view === 'party' && <div className="space-y-1" aria-label={`Troca de ${mon.name} ${slot.slot+1}`}>
-            <p className="text-xs font-bold text-slate-300">{t(slot.forceSwitch ? 'POKÉMON' : 'TROCAR (gasta a ação)')}</p>
-            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
-              {slot.switchOptions.filter(index=>!taken.has(index)).map(index=>{const other=battle.sides[side].team[index];return <button key={`switch${index}`} type="button" data-testid={`battle-switch-${slot.slot}-${index}`} disabled={locked} onClick={()=>commit(slot,{kind:'switch',index})} className="rounded-lg bg-slate-700 px-2 py-1.5 text-left text-sm font-bold hover:bg-slate-600">{slot.revival?`${t('Reviver')} `:''}{other.name}<span className="block text-[10px] text-slate-300">{`${other.hp}/${other.maxHp}`}</span></button>})}
-              {slot.canShift && <button type="button" disabled={locked} onClick={()=>commit(slot,{kind:'shift',index:0})} className="rounded-lg bg-slate-700 px-2 py-1.5 text-sm font-bold">{t('Trocar posição com o centro')}</button>}
-              {slot.forceSwitch && !slot.switchOptions.filter(index=>!taken.has(index)).length && <button type="button" disabled={locked} onClick={()=>commit(slot,{kind:'pass',index:0})} className="rounded-lg bg-slate-700 px-2 py-1.5 text-sm font-bold">{t('Sem reservas: passar')}</button>}
-            </div>
-          </div>}
+            {/* A mecânica (Mega, Z, Dynamax, Tera): o botão redondo no meio dos golpes, como na batalha normal. */}
+            {available && !reserved && <button type="button" onClick={()=>setGimmickOn(v=>!v)} aria-pressed={gimmickOn} disabled={locked}
+              className={`gimmick-button gimmick-${mechanic} absolute left-1/2 top-1/2 z-10 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border-[3px] text-xs font-black ${gimmickOn ? 'on text-white' : ''}`}
+              data-testid={mechanic}>{{ mega: 'MEGA', dmax: 'MAX', tera: 'TERA', z: 'Z' }[mechanic]}{gimmickOn ? ' ✓' : ''}</button>}
+          </div>
+          {back_}
         </div>
-      })() : <p>{t(online?.locked ? 'Aguardando os outros jogadores…' : 'Enviando…')}</p>}
-      {(aim || (menu !== 'main' && !current?.forceSwitch) || pending.some(slot=>choices[slot.slot])) && !locked && <button type="button" data-testid="battle-back" onClick={back} className="rounded-lg bg-slate-600 px-3 py-1.5 text-sm font-bold">{t('◂ Voltar')}</button>}
-    </div>}
+        if (view === 'party') return (slot.canShift || slot.forceSwitch && !switchOptions(slot).length || back_) ? <div className="grid grid-cols-2 dlg-box gap-1.5 rounded-xl border-4 p-2">
+          {slot.canShift && <MenuButton onClick={()=>commit(slot,{kind:'shift',index:0})} disabled={locked} className="col-span-2 text-sm">Trocar posição com o centro</MenuButton>}
+          {slot.forceSwitch && !switchOptions(slot).length && <MenuButton onClick={()=>commit(slot,{kind:'pass',index:0})} disabled={locked} className="col-span-2 text-sm">Sem reservas: passar</MenuButton>}
+          {slot.forceSwitch && back_}
+        </div> : null
+        return <div className="grid grid-cols-2 dlg-box gap-1.5 rounded-xl border-4 p-2" data-testid="multi-menu">
+          <MenuButton onClick={()=>setMenu('fight')} disabled={locked} testId="battle-fight">LUTAR</MenuButton>
+          <MenuButton disabled>BOLSA</MenuButton>
+          <MenuButton onClick={()=>setMenu('party')} disabled={locked} testId="battle-party">POKÉMON</MenuButton>
+          <MenuButton disabled>FUGIR</MenuButton>
+          {back_}
+        </div>
+      })()}
+      {!choosing && <div className="h-12"/>}
+    </div>
     <p className="text-xs text-muted">A reserva é compartilhada pela equipe. Os itens equipados mantêm seus efeitos.</p>
     {(error || online?.error) && <p role="alert" className="text-red-400">{error || online.error}</p>}
     {state.winner==null && pending.length===0 && !playing && <Button className="w-full" disabled={locked} onClick={()=>send()}>Continuar</Button>}
@@ -1805,9 +1844,22 @@ export function MultiBattle({battle, onExit, onAgain, onFinish, online = null, f
   </section>
 }
 
-function MenuButton({ children, onClick, className = '', disabled = false }) {
+/** O botão de golpe (e de alvo): o mesmo na batalha normal e na dupla/tripla. */
+function MoveButton({ label, note, color, disabled = false, onClick, testId, children }) {
   return (
-    <button type="button" onClick={onClick} disabled={disabled} className={`disabled:cursor-default disabled:opacity-40 dlg-btn cursor-pointer rounded-lg px-2 py-2 text-left font-black whitespace-nowrap ${className}`}>
+    <button type="button" disabled={disabled} onClick={onClick} data-testid={testId}
+      className="cursor-pointer rounded-lg px-2 py-1.5 text-left text-white disabled:cursor-default disabled:opacity-40"
+      style={{ background: color }} data-no-translate>
+      <div className="truncate text-sm font-black">{label}</div>
+      {note && <div className="truncate text-[10px] font-bold opacity-90">{note}</div>}
+      <div className="flex items-center justify-between gap-1 text-[11px] font-semibold">{children}</div>
+    </button>
+  )
+}
+
+function MenuButton({ children, onClick, className = '', disabled = false, testId }) {
+  return (
+    <button type="button" onClick={onClick} disabled={disabled} data-testid={testId} className={`disabled:cursor-default disabled:opacity-40 dlg-btn cursor-pointer rounded-lg px-2 py-2 text-left font-black whitespace-nowrap ${className}`}>
       {`▸ ${t(children)}`}
     </button>
   )

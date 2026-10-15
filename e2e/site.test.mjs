@@ -319,20 +319,26 @@ try {
     await page2.getByRole('button',{name:'Aceitar e entrar',exact:true}).click()
     for (const p of [page,page2]) {
       await p.getByTestId('multi-battle-field').waitFor({timeout:30000})
-      assert.equal(await p.getByTestId('multi-moves').count(),1,'cada amigo controla somente sua posição')
+      // Como na batalha normal: primeiro o menu (LUTAR / POKÉMON), só da posição de cada amigo.
+      await p.getByTestId('battle-fight').waitFor({timeout:30000})
+      assert.equal(await p.getByTestId('multi-menu').count(),1,'cada amigo controla somente sua posição')
     }
     // Como no Showdown: golpe (e alvo, se precisar); depois do último Pokémon a ação vai sozinha.
     const act=async (p)=>{
-      await p.getByTestId('multi-moves').getByRole('button').first().click()
+      await p.getByTestId('battle-fight').click()
+      assert.equal(await p.getByTestId('multi-moves').count(),1,'os golpes de um Pokémon por vez')
+      await p.locator('[data-testid^="battle-move-"]').first().click()
       await p.waitForTimeout(300)
       const target=p.locator('[data-testid^="battle-target-"]')
       if (await target.count()) await target.first().click()
     }
     await act(page)
     await page.getByText('Você já enviou sua ação. Aguardando seu amigo…',{exact:true}).waitFor({timeout:15000})
-    assert.equal(await page2.getByTestId('multi-turn').getAttribute('data-turn'),'1','NPCs aguardam os dois amigos')
+    assert.equal(await page2.getByTestId('multi-actions').getAttribute('data-turn'),'1','NPCs aguardam os dois amigos')
     await act(page2)
-    for (const p of [page,page2]) await p.waitForFunction(()=>Number(document.querySelector('[data-testid="multi-turn"]')?.dataset.round)>0,null,{timeout:30000})
+    for (const p of [page,page2]) await p.waitForFunction(()=>Number(document.querySelector('[data-testid="multi-actions"]')?.dataset.round)>0,null,{timeout:30000})
+    // O turno na tela, uma ação de cada vez; depois volta o menu.
+    for (const p of [page,page2]) await p.waitForFunction(()=>document.querySelector('[data-testid="multi-actions"]')?.dataset.playing==='0',null,{timeout:60000})
     const field=await page.locator('[data-testid^="multi-hp-"]').allTextContents()
     assert.deepEqual(await page2.locator('[data-testid^="multi-hp-"]').allTextContents(),field,'amigos calculam o mesmo turno com NPCs')
     await page.reload()

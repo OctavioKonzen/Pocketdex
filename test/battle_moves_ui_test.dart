@@ -13,6 +13,7 @@ import 'package:pocket_dex/services/party_battle.dart';
 import 'package:pocket_dex/services/turn_battle.dart';
 import 'package:pocket_dex/services/damage_calc.dart';
 import 'package:pocket_dex/widgets/pokemon_sprite.dart';
+import 'package:pocket_dex/widgets/battle_scene.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -221,5 +222,41 @@ void main() {
     expect(find.text('O que Mew vai fazer? (1/2)'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
+  });
+  testWidgets('Arena do mesmo tamanho e os mesmos botões na batalha normal, dupla e tripla', (tester) async {
+    tester.view.physicalSize=const Size(1080,2220); tester.view.devicePixelRatio=3;
+    addTearDown(tester.view.reset);
+    final battles=await tester.runAsync(() async {
+      Future<List<BattleMon>> team() => TurnBattleSetup.mons([for(var i=0;i<6;i++) (151,<String,dynamic>{'moves':['swift','recover','helping-hand','protect']})],(row)=>'Mew');
+      return [
+        TurnBattle(await team(),await team(),Random(3).nextDouble),
+        PartyBattle.create({'me':await team(),'npc3':await team()},['me','me','npc3','npc3'],2,Random(3).nextDouble),
+        PartyBattle.create({'me':await team(),'npc3':await team()},['me','me','me','npc3','npc3','npc3'],3,Random(3).nextDouble),
+      ];
+    });
+    final sizes=<String,Size>{};
+    Size arena() => tester.getSize(find.byType(BattleBackdrop).first);
+    for(final (k,battle) in battles!.indexed) {
+      await tester.pumpWidget(MaterialApp(home:Scaffold(body:SingleChildScrollView(child:BattleView(key:ValueKey(k),battle:battle,hit:(_,_,_,_,[power,weather=''])=>null,typeEff:(_,_)=>1,foeName:'NPC',onAgain:(){},onExit:(){})))));
+      for(var i=0;i<90 && find.text('LUTAR').evaluate().isEmpty;i++) { await tester.pump(const Duration(milliseconds:500)); }
+      sizes['menu $k']=arena();
+      await tester.tap(find.text('LUTAR')); await tester.pump();
+      sizes['golpes $k']=arena();
+      // O mesmo botão de golpe (altura e largura) na normal e na dupla/tripla.
+      final move=find.byKey(ValueKey(k==0?'battle-single-move-0':'battle-move-0-0'));
+      sizes['botão $k']=tester.getSize(move);
+      if(k>0) {
+        await tester.tap(find.byKey(const ValueKey('battle-back'))); await tester.pump();
+        await tester.tap(find.byKey(const ValueKey('battle-party'))); await tester.pump();
+        sizes['troca $k']=arena();
+        expect(find.byKey(const ValueKey('battle-switch-0')),findsOneWidget,reason:'a mesma tela do time da normal');
+      }
+      expect(tester.takeException(),isNull);
+      await tester.pumpWidget(const SizedBox());
+      battle.dispose();
+    }
+    final field=sizes['menu 0']!;
+    for(final e in sizes.entries.where((e)=>!e.key.startsWith('botão'))) { expect(e.value,field,reason:'arena (${e.key})'); }
+    for(final k in [1,2]) { expect(sizes['botão $k'],sizes['botão 0'],reason:'botão de golpe ($k)'); }
   });
 }
