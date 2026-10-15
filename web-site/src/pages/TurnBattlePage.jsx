@@ -24,12 +24,12 @@ import { active, critChance, damageRange, fieldConditions, monDetails, lockedMov
 import Sprite, { pixelRatio } from '../components/Sprite'
 import BwBag from '../components/BwBag'
 import BwSummary, { summaryOf } from '../components/BwSummary'
-import { BattleBackground, battleScale, battleScene, farPerson, foeBottom, PlatformBase, sceneOfBoss } from '../components/BattleScene'
+import { BattleBackground, battleScale, battleScene, farPerson, foeBottom, nearPerson, PlatformBase, sceneOfBoss } from '../components/BattleScene'
 import { TrainerBack, TrainerSprite } from '../components/Trainer'
 import { genericTrainer, randomTrainer, useMyTrainer, useTrainers } from '../lib/trainers'
 import { battleRecord } from '../lib/battleLog'
 import { playSound, soundOf, startMusic, stopMusic } from '../lib/battleSound'
-import {simulatorTargets} from '../lib/battleSimulator'
+import {simulatorTargets, simulatorTurn} from '../lib/battleSimulator'
 import {newPartyBattle, playPartyTurn, describeEvents} from '../lib/partyBattle'
 import { FactoryHub, FactoryScreen, saveFactory } from '../components/FactoryPanels'
 import { expBarOf, factoryAfter, factoryBattle, factoryFoe } from '../lib/factoryBattle'
@@ -672,7 +672,6 @@ function pulse(el, cls, ms) {
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 /** Altura e largura do campo na tela (para o tamanho dos treinadores). */
-const fieldHeight = (field) => field.current?.clientHeight || 300
 const fieldWidth = (field) => field.current?.clientWidth || 480
 
 // Um treinador sorteado por batalha (o mesmo enquanto ela durar).
@@ -1180,15 +1179,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
       name: it.name,
       count: battle.bags[0][it.slug] ?? 0,
       icon: spriteUrl(`items/${it.slug}.png`),
-      help: it.ball
-        ? t('Jogar no Pokémon selvagem')
-        : it.revive
-          ? t('Revive com metade do HP')
-          : it.heal >= 9999
-            ? t('Recupera todo o HP')
-            : battle.healPct
-              ? t('Recupera {0}% do HP').replace('{0}', Math.round(HEAL_SHARE[it.slug] * 100))
-              : t('Recupera {0} de HP').replace('{0}', it.heal),
+      help: itemHelp(it, battle.healPct),
       disabled: !battle.sides[0].team.some((_, i) => canUseItem(battle, 0, it.slug, i)),
       use: it.ball ? t('JOGAR') : t('USAR'),
       // A bola vai direto no selvagem; os remédios perguntam em quem.
@@ -1303,7 +1294,8 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         </div>
         {intro && intro.me !== 'gone' && myTrainer && (
           <div className={`absolute bottom-0 left-[2%] ${intro.me === 'out' ? 'trainer-leave-0' : ''}`} data-testid="my-trainer">
-            <TrainerBack trainer={myTrainer} frame={intro.back} box={fieldHeight(field) * 0.62} />
+            {/* Na frente de tudo (mais perto que o seu Pokémon): a mesma escala de uma pessoa, um pouco maior pela perspectiva. */}
+            <TrainerBack trainer={myTrainer} frame={intro.back} box={nearPerson(fieldWidth(field)) * 0.94} />
           </div>
         )}
         {/* A habilidade em ação: a faixa sai do lado do Pokémon (o adversário à direita, o seu à esquerda), como nos jogos. */}
@@ -1531,7 +1523,7 @@ function Weak({ mon, list, className = '' }) {
   )
 }
 
-export function MultiBattle({battle, onExit, onAgain, onFinish, online = null, foeName = '', startMenu = 'main'}) {
+export function MultiBattle({battle, hit = null, onExit, onAgain, onFinish, online = null, foeName = '', startMenu = 'main'}) {
   const byId = usePokemonIndex()
   const uid = online?.uid || 'me'
   const side = battle.controllers.findIndex(team => team.includes(uid))
@@ -1555,6 +1547,9 @@ export function MultiBattle({battle, onExit, onAgain, onFinish, online = null, f
   const dialogRef = useRef(null)
   const [partyPick,setPartyPick] = useState(null)
   const [summary,setSummary] = useState(null)
+  // A Bolsa (como na batalha normal): o item tocado e o escolhido para usar (aí o time pergunta em quem).
+  const [bagPick,setBagPick] = useState(null)
+  const [item,setItem] = useState(null)
   const timers = useRef(new Set())
   useEffect(()=>()=>{for(const id of timers.current) clearTimeout(id)},[])
   const wait = ms => new Promise(resolve=>{const id=setTimeout(()=>{timers.current.delete(id);resolve()},ms);timers.current.add(id);skip.current=()=>{clearTimeout(id);timers.current.delete(id);resolve()}})
@@ -1607,7 +1602,7 @@ export function MultiBattle({battle, onExit, onAgain, onFinish, online = null, f
   const myName = useMyName()
   useEffect(()=>{if(!vsOn)return;const id=setTimeout(()=>setVsOn(false),1600);return()=>clearTimeout(id)},[vsOn])
   const choicePhase = JSON.stringify([state.turn, online?.round, own.wait, owned.map(slot => [slot.slot, slot.index, slot.forceSwitch, slot.pass])])
-  useEffect(()=>{setChoices({});setAim(null);setGimmickOn(false);setError('');setMenu(startMenu)},[choicePhase, startMenu])
+  useEffect(()=>{setChoices({});setAim(null);setGimmickOn(false);setError('');setMenu(startMenu);setItem(null);setBagPick(null)},[choicePhase, startMenu])
   const forced = own.slots.some(slot=>slot.forceSwitch)
   const automatic = slot => own.wait ? {kind:'wait',index:0} : slot.pass || forced && !slot.forceSwitch ? {kind:'pass',index:0} : slot.locked && !forced ? {kind:'move',index:0,gimmick:'none'} : null
   const locked = Boolean(online?.locked) || state.winner != null || playing
@@ -1645,7 +1640,7 @@ export function MultiBattle({battle, onExit, onAgain, onFinish, online = null, f
   // Fecha a escolha deste Pokémon; depois do último, manda o turno (como no Showdown).
   const commit = (slot, choice) => {
     const next = {...choices,[slot.slot]:choice}
-    setAim(null);setGimmickOn(false);setMenu(startMenu);setPartyPick(null);setSummary(null)
+    setAim(null);setGimmickOn(false);setMenu(startMenu);setPartyPick(null);setSummary(null);setItem(null);setBagPick(null)
     if (pending.every(p => next[p.slot])) send(next)
     else setChoices(next)
   }
@@ -1659,7 +1654,8 @@ export function MultiBattle({battle, onExit, onAgain, onFinish, online = null, f
   }
   const back = () => {
     if (aim) {setAim(null);return}
-    if (menu !== 'main') {setMenu('main');setGimmickOn(false);setPartyPick(null);setSummary(null);return}
+    // Do time escolhendo em quem usar o item: volta para a Bolsa.
+    if (menu !== 'main') {setMenu(menu === 'party' && item ? 'bag' : 'main');setItem(null);setBagPick(null);setGimmickOn(false);setPartyPick(null);setSummary(null);return}
     const last = [...pending].reverse().find(slot => choices[slot.slot])
     if (last) setChoices(old => {const next={...old};delete next[last.slot];return next})
     setGimmickOn(false)
@@ -1672,6 +1668,7 @@ export function MultiBattle({battle, onExit, onAgain, onFinish, online = null, f
       return `${mon.name}: ${slot.request?.moves?.[c.index]?.move ?? ''}${c.gimmick ? ` (${c.gimmick === 'dmax' ? 'Dynamax' : c.gimmick === 'z' ? 'Z-Move' : c.gimmick === 'tera' ? 'Terastal' : 'Mega'})` : ''}${target ? ` → ${target.name}` : ''}`
     }
     if (c.kind === 'switch') return `${mon.name} ⇄ ${battle.sides[side].team[c.index].name}`
+    if (c.kind === 'item') return `${mon.name}: ${ITEMS.find(it=>it.slug===c.item)?.name ?? c.item} → ${battle.sides[side].team[c.index].name}`
     return `${mon.name}: ${t(c.kind === 'shift' ? 'trocar de posição' : 'passar')}`
   }
   const trainer = controller => controller === uid ? 'Você' : online?.names?.[controller] || 'NPC'
@@ -1702,19 +1699,37 @@ export function MultiBattle({battle, onExit, onAgain, onFinish, online = null, f
   const typeEff = (type, types) => (typeData ? damageTaken(types, typeData)[type] : 1)
   const typesOf = mon => mon.terastal && mon.teraType ? [mon.teraType] : mon.types
   const foesOnField = state.sides[1-side].slots.filter(slot=>slot.index>=0).map(slot=>battle.sides[1-side].team[slot.index]).filter(mon=>mon.hp>0)
+  // Quantos ainda tem do item (tirando o que outro Pokémon seu já vai usar neste turno). Na dupla não tem captura.
+  const left = slug => (battle.bags?.[side]?.[slug] ?? 0) - Object.values(choices).filter(c=>c.kind==='item' && c.item===slug).length
+  const canItem = (slug, i) => left(slug) > 0 && canUseItem(battle, side, slug, i) && !(slug === 'revive' && Object.values(choices).some(c=>c.kind==='item' && c.item==='revive' && c.index===i))
+  const bagPockets = [{id: 'medicine', label: 'Remédios', img: 'potion', items: ITEMS.filter(it=>!it.ball && left(it.slug) > 0).map(it=>({
+    id: it.slug, name: it.name, count: left(it.slug), icon: spriteUrl(`items/${it.slug}.png`), help: itemHelp(it, battle.healPct),
+    disabled: !battle.sides[side].team.some((_, i) => canItem(it.slug, i)), use: t('USAR'),
+    onUse: () => {setItem(it.slug);setBagPick(null);setPartyPick(null);setSummary(null);setMenu('party')},
+  }))}]
+  const bagPicked = bagPockets[0].items.find(it=>it.id===bagPick)
+  // Fugir (como na batalha normal): conta como derrota.
+  const run = () => {
+    if (!window.confirm(t('Fugir da batalha? Conta como derrota.'))) return
+    if (online) online.onClose()
+    // O motor encerra a partida (a tela usa o estado dele) e a fala de quem fugiu.
+    else {const events = [{t: 'text', key: 'ran', args: []}, ...(simulatorTurn(battle, [{kind: 'forfeit'}]) ?? [])];redraw(x=>x+1);play(events)}
+  }
   const switchOptions = slot => {const taken=new Set(Object.values(choices).filter(c=>c.kind==='switch').map(c=>c.index));return slot.switchOptions.filter(index=>!taken.has(index))}
   // Online travado (aguardando o amigo, partida encerrada...): a mensagem da partida na caixa de texto, sem menu.
   const choosing = state.winner == null && pending.length > 0 && !playing && Boolean(current) && !online?.locked
   const view = current?.forceSwitch ? 'party' : menu
-  const canBack = !locked && (Boolean(aim) || view === 'fight' || view === 'party' && !current?.forceSwitch || pending.some(slot=>choices[slot.slot]) && (view === 'main' || Boolean(current?.forceSwitch)))
+  const canBack = !locked && (Boolean(aim) || view === 'fight' || view === 'bag' || view === 'party' && !current?.forceSwitch || pending.some(slot=>choices[slot.slot]) && (view === 'main' || Boolean(current?.forceSwitch)))
   // A tela do time do Black & White por cima do campo (a mesma da batalha normal).
   // A tela do time (a mesma da batalha normal): os 6 cabem exatamente na tela; tocou num Pokémon, as opções nos botões fixos.
   const party = choosing && !aim && view === 'party' && (()=>{
     const slot=current, options=switchOptions(slot)
     if (summary != null) return <div className="field-overlay"><BwSummary data={summaryOf(battle, side, summary)} onBack={() => setSummary(null)} /></div>
     return <PartyGrid team={battle.sides[side].team} active={slot.index} picked={partyPick} testPrefix={`battle-switch-${slot.slot}`}
-      dim={(i) => !options.includes(i)} onTap={(i) => setPartyPick(i)} />
+      dim={(i) => (item ? !canItem(item, i) : !options.includes(i))} onTap={(i) => setPartyPick(i)} />
   })()
+  // A Bolsa abre no mesmo lugar (a descrição do item vai para a caixa de texto).
+  const bag = choosing && !aim && view === 'bag' && <div className="panel-in absolute inset-x-0 top-0 bottom-[22.5%] z-30"><BwBag testid="bag" external selected={bagPick} onSelect={setBagPick} pockets={bagPockets} /></div>
   const status = online?.message || (state.winner != null ? state.winner === -1 ? 'Empate!' : state.winner === side ? 'Você venceu!' : 'A equipe adversária venceu!' : `${t('Turno')} ${state.turn}`)
   // A pergunta na caixa de texto enquanto escolhe ("O que Pikachu vai fazer?").
   const prompt = (()=>{
@@ -1722,7 +1737,8 @@ export function MultiBattle({battle, onExit, onAgain, onFinish, online = null, f
     const mon = battle.sides[side].team[current.index], step = pending.length > 1 ? ` (${pending.indexOf(current)+1}/${pending.length})` : ''
     if (aim) return `${t('Em quem')} ${mon.name} ${t('vai usar')} ${current.request?.moves?.[aim.choice.index]?.move ?? ''}?${step}`
     if (current.forceSwitch) return `${t('Quem entra no lugar de')} ${mon.name}?${step}`
-    if (menu === 'party') return `${t('Escolha um Pokémon.')}${step}`
+    if (menu === 'bag') return bagPicked ? `${bagPicked.name}: ${bagPicked.help}` : `${t('Escolha um item.')}${step}`
+    if (menu === 'party') return `${t(item ? 'Usar em qual Pokémon?' : 'Escolha um Pokémon.')}${step}`
     return `${t('O que')} ${mon.name} ${t('vai fazer?')}${step}`
   })()
   return <section className="mx-auto max-w-3xl space-y-2">
@@ -1732,7 +1748,7 @@ export function MultiBattle({battle, onExit, onAgain, onFinish, online = null, f
       {/* A mensagem dentro da tela, embaixo, como na batalha normal (tocar passa o texto). */}
       {/* Todo texto na caixa (o erro também); se não couber, em partes. */}
       <BattleDialog boxRef={dialogRef} onSkip={()=>skip.current?.()} text={shown ? shown.text : (error || online?.error) ? (error || online.error) : choosing ? prompt : status}/>
-      {party}
+      {party}{bag}
       {vsOn && <VsSplash me={myTrainer} coach={null} vs={{kind: online ? 'online' : 'trainer', name: foeName || t('Adversários')}} myName={myName} onSkip={()=>setVsOn(false)}/>}
     </div>
     {/* Embaixo da tela: a mesma tela de baixo da batalha normal (do mesmo tamanho, cada coisa no seu lugar). */}
@@ -1754,6 +1770,9 @@ export function MultiBattle({battle, onExit, onAgain, onFinish, online = null, f
               return <MoveButton key={target.loc} testId={`battle-target-${target.loc}`} disabled={locked} onClick={()=>commit(slot,{...aim.choice,target:target.loc})}
                 color={target.ally?'#0369a1':'#b91c1c'} label={target.name}>
                 <span className="opacity-90">{`${t(target.ally?'Aliado':'Adversário')} · ${target.slot+1}`}</span>
+                {/* O dano estimado neste alvo (em % da vida dele), como na batalha normal. */}
+                {(()=>{const range = hit && move && who ? damageRange(hit, mon, who, move, battle.weather) : null
+                  return range && <span className="tabular-nums font-black" data-testid={`damage-range-target-${target.loc}`}>{range[0] === range[1] ? `${range[0]}%` : `${range[0]}–${range[1]}%`}</span>})()}
                 {move && move.power > 0 && move.category !== 'status' && who && <EffectTag eff={typeEff(move.type, typesOf(who))}/>}
               </MoveButton>
             })}
@@ -1769,8 +1788,13 @@ export function MultiBattle({battle, onExit, onAgain, onFinish, online = null, f
                 onClick={()=>chooseMove(slot,index)} color={typeColor(move?.type || 'normal')} label={m.move}>
                 <span className="opacity-90">{`PP ${m.pp ?? '—'}/${move?.maxPp ?? m.pp ?? '—'}`}</span>
                 {move && critChance(mon, move) != null && <span className="tabular-nums opacity-90" title={t('Chance de crítico')}>💥{critChance(mon, move)}%</span>}
-                {/* Como pega em cada adversário: "Pidgey ×2", "Oddish ×½"... */}
-                {move && move.power > 0 && move.category !== 'status' && <span className="flex gap-0.5">{foesOnField.map(foe=><EffectTag key={foe.name+foe.id} eff={typeEff(move.type, typesOf(foe))}/>)}</span>}
+                {/* Como pega em cada adversário e o dano estimado em cada um (em % da vida dele), como na batalha normal. */}
+                {move && move.power > 0 && move.category !== 'status' && <span className="flex gap-0.5">{foesOnField.map((foe,k)=>{
+                  const range = hit ? damageRange(hit, mon, foe, move, battle.weather) : null
+                  return <span key={foe.name+foe.id} className="flex items-center gap-0.5" data-testid={`damage-range-${slot.slot}-${index}-${k}`}>
+                    {range && <span className="tabular-nums font-black">{range[0] === range[1] ? `${range[0]}%` : `${range[0]}–${range[1]}%`}</span>}
+                    <EffectTag eff={typeEff(move.type, typesOf(foe))}/>
+                  </span>})}</span>}
               </MoveButton>
             })}
             {/* A mecânica (Mega, Z, Dynamax, Tera): o botão redondo no meio dos golpes, como na batalha normal. */}
@@ -1778,13 +1802,21 @@ export function MultiBattle({battle, onExit, onAgain, onFinish, online = null, f
               className={`gimmick-button gimmick-${mechanic} absolute left-1/2 top-1/2 z-10 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border-[3px] text-xs font-black ${gimmickOn ? 'on text-white' : ''}`}
               data-testid={mechanic}>{{ mega: 'MEGA', dmax: 'MAX', tera: 'TERA', z: 'Z' }[mechanic]}{gimmickOn ? ' ✓' : ''}</button>}
           </div>}
+        if (view === 'bag') return {footer,
+          // Tocou num item: USAR e CANCELAR nos botões fixos (como na batalha normal).
+          grid: bagPicked ? <MenuGrid>
+            <MenuButton testId="bag-use" disabled={locked || bagPicked.disabled} onClick={bagPicked.onUse}>{bagPicked.use}</MenuButton>
+            <MenuButton testId="bag-cancel" onClick={()=>setBagPick(null)}>CANCELAR</MenuButton>
+          </MenuGrid> : null}
         if (view === 'party') {
           const options = switchOptions(slot)
           return {footer,
             info: foesOnField[0] && typeData ? <Weak mon={foesOnField[0]} list={weaknesses(typesOf(foesOnField[0]), ALL_TYPES, typeEff)}/> : null,
             // Tocou num Pokémon: as opções nos botões fixos (como no jogo).
             grid: partyPick != null && summary == null ? <MenuGrid>
-              <MenuButton testId={`battle-switch-${slot.slot}-pick`} disabled={locked || !options.includes(partyPick)} onClick={()=>commit(slot,{kind:'switch',index:partyPick})}>TROCAR</MenuButton>
+              {item && !slot.forceSwitch
+                ? <MenuButton testId={`battle-switch-${slot.slot}-pick`} disabled={locked || !canItem(item, partyPick)} onClick={()=>commit(slot,{kind:'item',item,index:partyPick})}>USAR</MenuButton>
+                : <MenuButton testId={`battle-switch-${slot.slot}-pick`} disabled={locked || !options.includes(partyPick)} onClick={()=>commit(slot,{kind:'switch',index:partyPick})}>TROCAR</MenuButton>}
               <MenuButton testId={`battle-switch-${slot.slot}-info`} onClick={()=>setSummary(partyPick)}>DADOS</MenuButton>
               <MenuButton testId={`battle-switch-${slot.slot}-close`} onClick={()=>setPartyPick(null)}>CANCELAR</MenuButton>
             </MenuGrid> : null,
@@ -1799,9 +1831,9 @@ export function MultiBattle({battle, onExit, onAgain, onFinish, online = null, f
           info: pending.some(slot=>choices[slot.slot]) ? <ul className="space-y-0.5 text-xs text-slate-300" data-testid="multi-chosen">{pending.filter(slot=>choices[slot.slot]).map(slot=><li key={slot.slot}>✓ {describe(slot)}</li>)}</ul> : null,
           grid: <MenuGrid testId="multi-menu">
             <MenuButton onClick={()=>setMenu('fight')} disabled={locked} testId="battle-fight">LUTAR</MenuButton>
-            <MenuButton disabled>BOLSA</MenuButton>
-            <MenuButton onClick={()=>setMenu('party')} disabled={locked} testId="battle-party">POKÉMON</MenuButton>
-            <MenuButton disabled>FUGIR</MenuButton>
+            <MenuButton onClick={()=>{setItem(null);setBagPick(null);setMenu('bag')}} disabled={locked || Boolean(online)} testId="battle-bag">BOLSA</MenuButton>
+            <MenuButton onClick={()=>{setItem(null);setMenu('party')}} disabled={locked} testId="battle-party">POKÉMON</MenuButton>
+            <MenuButton onClick={run} disabled={locked} testId="battle-run">FUGIR</MenuButton>
           </MenuGrid>}
       })() : {}
       const more = state.winner==null && pending.length===0 && !playing && !online?.locked
@@ -1809,11 +1841,10 @@ export function MultiBattle({battle, onExit, onAgain, onFinish, online = null, f
       return <BottomScreen testId="multi-actions" data-turn={state.turn} data-round={online?.round ?? state.turn} data-playing={playing ? 1 : 0}
         info={slots.info} grid={slots.grid} footer={slots.footer}
         // As outras escolhas: embaixo dos botões fixos (no fim, como na batalha normal; a Factory abre a tela do andar sozinha).
-        extra={(slots.extra || more || end || online) ? <>
+        extra={(slots.extra || more || end) ? <>
           {slots.extra}
           {more && <Button disabled={locked} onClick={()=>send()}>Continuar</Button>}
           {end && <><Button color="linear-gradient(90deg,#DC2626,#9333EA)" onClick={onAgain}>Batalhar de novo</Button><Button color="#546E7A" onClick={onExit}>Sair</Button></>}
-          {online && <Button color="#546E7A" onClick={online.onClose}>Desistir</Button>}
         </> : null}/>
     })()}
     <div className="max-h-44 overflow-auto rounded-xl bg-card p-3 text-sm" aria-live="polite">{(online?.events?describeEvents(online.events):history).map((line,index)=><p key={index}>{line}</p>)}</div>
@@ -1917,6 +1948,14 @@ function PartyGrid({ team, active, picked, disabled, dim, onTap, testPrefix, bad
 /** O menu (LUTAR, BOLSA / POKÉMON, FUGIR) em 2×2, no mesmo lugar dos golpes. */
 function MenuGrid({ children, testId }) {
   return <div className="dlg-box grid h-full grid-cols-2 grid-rows-2 gap-1.5 rounded-xl border-4 p-1.5 [&>button]:h-full" data-testid={testId}>{children}</div>
+}
+
+/** O que o item da Bolsa faz (na caixa de texto, ao tocar nele). Igual ao app. */
+function itemHelp(it, healPct) {
+  if (it.ball) return t('Jogar no Pokémon selvagem')
+  if (it.revive) return t('Revive com metade do HP')
+  if (it.heal >= 9999) return t('Recupera todo o HP')
+  return healPct ? t('Recupera {0}% do HP').replace('{0}', Math.round(HEAL_SHARE[it.slug] * 100)) : t('Recupera {0} de HP').replace('{0}', it.heal)
 }
 
 /** O botão de golpe (e de alvo): o mesmo na batalha normal e na dupla/tripla. */

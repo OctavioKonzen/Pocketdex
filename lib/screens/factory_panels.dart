@@ -1605,17 +1605,18 @@ class _FactoryScreenState extends State<FactoryScreen> {
 
   /// Os botões em duas colunas (ou um embaixo do outro).
   Widget _menuGrid(List<Widget> items, {bool wide = false}) {
-    if (wide) return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [for (final i in items) Padding(padding: const EdgeInsets.only(bottom: 4), child: i)]);
+    if (wide) return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [for (final i in items) _MenuRow(child: Padding(padding: const EdgeInsets.only(bottom: 4), child: i))]);
     return Column(children: [
       for (var k = 0; k < items.length; k += 2)
-        Padding(
+        _MenuRow(
+          child: Padding(
           padding: const EdgeInsets.only(bottom: 4),
           child: Row(children: [
             Expanded(child: items[k]),
             const SizedBox(width: 4),
             Expanded(child: k + 1 < items.length ? items[k + 1] : const SizedBox()),
           ]),
-        ),
+        )),
     ]);
   }
 
@@ -1792,7 +1793,14 @@ class _FactoryScreenState extends State<FactoryScreen> {
           height: battleBottomHeight(context),
           padding: const EdgeInsets.all(8),
           decoration: const BoxDecoration(color: _border, borderRadius: BorderRadius.vertical(bottom: Radius.circular(16))),
-          child: menu == null ? null : SingleChildScrollView(child: Container(padding: const EdgeInsets.all(6), decoration: _dlgBox(), child: menu)),
+          // Os botões ficam sempre nos mesmos lugares (como na batalha): o que não cabe vai para a próxima página (◀ ▶).
+          child: menu == null
+              ? null
+              : Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: _dlgBox(),
+                  child: _PagedMenu(key: ValueKey(('menu', field.key)), color: _dlgText, child: menu is _MenuRow ? menu : _MenuRow(child: menu)),
+                ),
         ),
       ]);
 
@@ -3417,5 +3425,141 @@ class _PagedTextState extends State<_PagedText> {
         ]),
       ),
     );
+  }
+}
+
+
+/// Uma fileira de botões do menu de baixo: fica inteira numa página do [_PagedMenu] (nunca cortada no meio).
+class _MenuRow extends StatefulWidget {
+  const _MenuRow({required this.child});
+  final Widget child;
+
+  @override
+  State<_MenuRow> createState() => _MenuRowState();
+}
+
+class _MenuRowState extends State<_MenuRow> {
+  _PagedMenuState? _menu;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final menu = context.findAncestorStateOfType<_PagedMenuState>();
+    if (menu != _menu) {
+      _menu?._rows.remove(this);
+      _menu = menu?.._rows.add(this);
+    }
+  }
+
+  @override
+  void dispose() {
+    _menu?._rows.remove(this);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+
+/// Os botões de baixo da corrida como os da batalha: cada um sempre no mesmo lugar, sem rolar. O que não cabe na
+/// caixa vai para a página seguinte (◀ 1/2 ▶ embaixo), com as fileiras ([_MenuRow]) inteiras. Igual ao site.
+class _PagedMenu extends StatefulWidget {
+  const _PagedMenu({super.key, required this.child, required this.color});
+  final Widget child;
+  final Color color;
+
+  @override
+  State<_PagedMenu> createState() => _PagedMenuState();
+}
+
+class _PagedMenuState extends State<_PagedMenu> {
+  final _rows = <_MenuRowState>{};
+  final _content = GlobalKey();
+  List<(double, double)> _pages = const [];
+  int _page = 0;
+  double _limit = 0;
+  static const _nav = 30.0;
+
+  /// Mede as fileiras e divide em páginas que cabem na caixa (o resto fica para a próxima).
+  void _measure() {
+    if (!mounted) return;
+    final content = _content.currentContext?.findRenderObject() as RenderBox?;
+    if (content == null || !content.hasSize) return;
+    final total = content.size.height;
+    // Só as fileiras de dentro (uma fileira que tem outras dentro não conta).
+    final parents = {for (final row in _rows) row.context.findAncestorStateOfType<_MenuRowState>()};
+    final rows = <(double, double)>[
+      for (final row in _rows)
+        if (!parents.contains(row) && row.mounted)
+          if (row.context.findRenderObject() case final RenderBox box when box.attached && box.hasSize)
+            () {
+            final top = box.localToGlobal(Offset.zero, ancestor: content).dy;
+            return (top, top + box.size.height);
+          }(),
+    ]..sort((a, b) => a.$1.compareTo(b.$1));
+    final pages = <(double, double)>[];
+    if (total <= _limit + _nav + 0.5 || rows.isEmpty) {
+      pages.add((0, total));
+    } else {
+      var start = 0.0, end = 0.0;
+      for (final (top, bottom) in rows) {
+        if (bottom - start > _limit + 0.5 && end > start) {
+          pages.add((start, end));
+          start = top;
+        }
+        end = max(end, bottom);
+      }
+      pages.add((start, max(end, start)));
+    }
+    bool same(List<(double, double)> a, List<(double, double)> b) =>
+        a.length == b.length && [for (var i = 0; i < a.length; i++) (a[i].$1 - b[i].$1).abs() < 0.5 && (a[i].$2 - b[i].$2).abs() < 0.5].every((x) => x);
+    if (!same(pages, _pages)) setState(() => _pages = pages);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
+    return LayoutBuilder(builder: (context, box) {
+      _limit = box.maxHeight - _nav;
+      final paged = _pages.length > 1;
+      final page = paged ? _pages[min(_page, _pages.length - 1)] : null;
+      final content = KeyedSubtree(key: _content, child: widget.child);
+      final arrow = TextStyle(color: widget.color, fontWeight: FontWeight.w900, fontSize: 16);
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        // Só a página de agora (o resto fica cortado e não dá para tocar).
+        SizedBox(
+          height: page == null ? box.maxHeight : min(page.$2 - page.$1, _limit),
+          child: ClipRect(
+            child: OverflowBox(
+              alignment: Alignment.topCenter,
+              minHeight: 0,
+              maxHeight: double.infinity,
+              child: Transform.translate(offset: Offset(0, -(page?.$1 ?? 0)), child: content),
+            ),
+          ),
+        ),
+        if (paged) ...[
+          const Spacer(),
+          SizedBox(
+            height: _nav,
+            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              IconButton(
+                key: const ValueKey('factory-menu-prev'),
+                onPressed: _page > 0 ? () => setState(() => _page--) : null,
+                padding: EdgeInsets.zero,
+                icon: Text('◀', style: arrow.copyWith(color: _page > 0 ? widget.color : widget.color.withValues(alpha: 0.3))),
+              ),
+              Text('${min(_page, _pages.length - 1) + 1}/${_pages.length}', key: const ValueKey('factory-menu-page'), style: arrow.copyWith(fontSize: 12)),
+              IconButton(
+                key: const ValueKey('factory-menu-next'),
+                onPressed: _page < _pages.length - 1 ? () => setState(() => _page++) : null,
+                padding: EdgeInsets.zero,
+                icon: Text('▶', style: arrow.copyWith(color: _page < _pages.length - 1 ? widget.color : widget.color.withValues(alpha: 0.3))),
+              ),
+            ]),
+          ),
+        ],
+      ]);
+    });
   }
 }

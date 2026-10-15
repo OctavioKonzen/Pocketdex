@@ -161,3 +161,37 @@ test('locked second-turn moves retain their automatic target in doubles', () => 
     sim.choose(g.handle,[actions,sim.recommend(g.handle,1).actions]);
   } finally {sim.dispose(g.handle);}
 });
+
+test('Doubles: a Pokémon uses its turn for a Bag item while its partner attacks', () => {
+  const g = sim.create({mode: 'doubles', seed: [1,2,3,4], teams: [[mon('Mew',['splash']), mon('Charizard',['flamethrower']), mon('Pikachu',['splash'])], [mon('Snorlax',['tackle']), mon('Blissey',['splash'])]], bags: [{potion: 1, revive: 1}]});
+  try {
+    // Machuca o Mew primeiro (o Snorlax ataca).
+    let next = sim.choose(g.handle, [[attack(), attack(0, 1)], [attack(0, 1), attack()]]);
+    const hurt = next.state.sides[0].team[0].hp;
+    assert.ok(hurt < next.state.sides[0].team[0].maxHp);
+    // O Mew usa a Potion nele mesmo; o Charizard ataca.
+    const foeHp = next.state.sides[1].team[0].hp;
+    next = sim.choose(g.handle, [[{kind: 'item', item: 'potion', index: 0}, attack(0, 1)], [attack(0, 2), attack()]]);
+    assert.ok(next.log.some(line => line.includes('pocketdexitem')));
+    assert.ok(next.state.sides[0].team[0].hp > hurt, 'a Potion curou');
+    assert.ok(next.state.sides[1].team[0].hp < foeHp, 'o parceiro atacou');
+    assert.equal(next.bags?.[0]?.potion ?? next.state.bags?.[0]?.potion, 0);
+    // Sem Potion: não dá de novo; a escolha do turno continua valendo.
+    assert.throws(() => sim.choose(g.handle, [[{kind: 'item', item: 'potion', index: 0}, attack(0, 1)], [attack(), attack()]]), /Item inválido/);
+    // Dois no mesmo turno com um só item: não.
+    assert.throws(() => sim.choose(g.handle, [[{kind: 'item', item: 'revive', index: 2}, {kind: 'item', item: 'revive', index: 2}], [attack(), attack()]]), /Item inválido/);
+    assert.equal(sim.inspect(g.handle).state.turn, next.state.turn);
+  } finally { sim.dispose(g.handle); }
+});
+
+test('Doubles: Curse from a non-Ghost needs no target (it is on itself)', () => {
+  const g = sim.create({mode: 'doubles', seed: [1,2,3,4], teams: [[mon('Snorlax',['curse']), mon('Gengar',['curse'])], [mon('Rattata',['tackle']), mon('Pidgey',['tackle'])]]});
+  try {
+    const own = sim.targets(g.handle, 0, 0, 0);
+    assert.equal(own.automatic, true);
+    assert.equal(own.targets.length, 0);
+    assert.equal(sim.targets(g.handle, 0, 1, 0).automatic, false);
+    const next = sim.choose(g.handle, [[attack(0, 0), attack(0, 1)], [attack(0, 1), attack(0, 1)]]);
+    assert.equal(next.state.turn, 2);
+  } finally { sim.dispose(g.handle); }
+});

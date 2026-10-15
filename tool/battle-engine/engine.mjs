@@ -252,11 +252,17 @@ function configure(game) {
   }
   game.battle.makeRequest('move');
   game.battle.onEvent('PocketDexItem', game.battle.format, function (pokemon) {
-    const action = game.pendingItems[pokemon.side.n];
+    // Na única: uma ação do lado; na dupla/tripla: uma por posição (quem usa o turno para o item).
+    const pending = game.pendingItems[pokemon.side.n];
+    const action = pending?.kind ? pending : pending?.[pokemon.position];
     if (!action) return;
+    const done = () => {
+      if (pending.kind) game.pendingItems[pokemon.side.n] = null;
+      else delete pending[pokemon.position];
+    };
     if (BALLS[action.item]) {
       throwBall(game, this, pokemon, action.item);
-      game.pendingItems[pokemon.side.n] = null;
+      done();
       return;
     }
     const target = pokemon.side.pokemon.find(p => originalIndex(p) === action.index);
@@ -281,7 +287,7 @@ function configure(game) {
     // No banco: o heal do simulador só cura quem está em campo.
     else target.heal(item, pokemon, {id: action.item, name: action.item, effectType: 'Item'});
     this.add('pocketdexheal', target, action.item, target.hp - previousHp);
-    game.pendingItems[pokemon.side.n] = null;
+    done();
   });
 }
 
@@ -631,8 +637,8 @@ function command(game, sideIndex, action, slot = 0) {
   if (action.kind === 'shift') return 'shift';
   if (action.kind === 'item') {
     if (side.activeRequest?.forceSwitch?.[slot]) throw new Error('Escolha outro Pokémon');
-    if (game.battle.gameType !== 'singles') throw new Error('Use os itens equipados neste formato');
     if (BALLS[action.item]) {
+      if (game.battle.gameType !== 'singles') throw new Error('Não dá para capturar este Pokémon');
       // Só no Pokémon selvagem (input.capture), ainda de pé.
       const foe = game.battle.sides[1 - sideIndex].active[0];
       if (!game.capture || sideIndex !== 0 || !(game.bags[sideIndex][action.item] > 0) || !foe || foe.fainted) throw new Error('Não dá para capturar este Pokémon');
@@ -739,7 +745,9 @@ export const PocketDexSim = {
     const base = Dex.moves.get(req?.moves[index]?.id);
     const transformed = gimmick === 'dmax' || pokemon.volatiles.dynamax ? game.battle.actions.getMaxMove(base, pokemon) : gimmick === 'z' ? req?.canZMove?.[index]?.move : null;
     const move = transformed ? Dex.moves.get(transformed) : base;
-    return {targets: targetsFor(game, pokemon, move.id), automatic: !game.battle.actions.targetTypeChoices(move.target)};
+    // O alvo de verdade deste Pokémon (Curse de quem não é Fantasma: nele mesmo, sem escolher).
+    const target = transformed ? move.target : move.nonGhostTarget && !pokemon.hasType('Ghost') ? move.nonGhostTarget : move.target;
+    return {targets: targetsFor(game, pokemon, move.id, target), automatic: !game.battle.actions.targetTypeChoices(target)};
   },
   recommend(handle, side, options) {
     const game = games.get(handle);
@@ -801,12 +809,42 @@ export const PocketDexSim = {
       if (game.battle.sides[side].activeRequest?.wait) return command(game, side, choices[0]);
       if (choices.length !== game.battle.sides[side].active.length) throw new Error('Escolha uma ação para cada Pokémon ativo');
       const result = choices.map((a, slot) => command(game, side, a, slot));
-      return result.length === 1 ? result[0] : result.join(', ');
+      if (result.length === 1) return result[0];
+      // Dupla/tripla: quem usa um item da Bolsa gasta o turno dele (como nos jogos); os outros escolhem normal.
+      const items = {};
+      result.forEach((r, slot) => { if (r && typeof r === 'object') items[slot] = r.item; });
+      if (!Object.keys(items).length) return result.join(', ');
+      const need = {};
+      for (const a of Object.values(items)) need[a.item] = (need[a.item] ?? 0) + 1;
+      if (Object.entries(need).some(([item, n]) => !(game.bags[side][item] >= n))) throw new Error('Item inválido');
+      const revived = Object.values(items).filter(a => a.item === 'revive').map(a => a.index);
+      if (new Set(revived).size !== revived.length) throw new Error('Item inválido');
+      return {items, choice: result.map(r => (r && typeof r === 'object' ? 'pass' : r)).join(', ')};
     });
     // Validate both choices before committing the turn. Roll back the first
     // choice if the second is rejected, leaving the current request intact.
     for (let side = 0; side < game.teams.length; side++) {
       if (!commands[side]) continue;
+      if (commands[side].items) {
+        // O "pass" de quem usa o item vira a ação do item (antes dos golpes, como na única).
+        const s = game.battle.sides[side], items = commands[side].items, pass = s.choosePass;
+        game.pendingItems[side] = {...items};
+        s.choosePass = function () {
+          const index = this.getChoiceIndex(true);
+          if (this.requestState !== 'move' || !items[index]) return pass.call(this);
+          this.choice.actions.push({choice: 'event', event: 'PocketDexItem', pokemon: this.active[index], order: 102});
+          return true;
+        };
+        let ok;
+        try { ok = game.battle.choose(`p${side + 1}`, commands[side].choice); } finally { s.choosePass = pass; }
+        if (!ok) {
+          const error = s.choice.error || 'Ação inválida';
+          for (const x of game.battle.sides) x.clearChoice();
+          game.pendingItems = game.teams.map(() => null);
+          throw new Error(error);
+        }
+        continue;
+      }
       if (typeof commands[side] === 'object') {
         const s = game.battle.sides[side];
         game.pendingItems[side] = commands[side].item;
