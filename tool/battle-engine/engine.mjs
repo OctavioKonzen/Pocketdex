@@ -442,16 +442,18 @@ function eventsFor(game, lines) {
     const side = sideOf(actor);
     const actorIndex = Number(actor?.split(': ')[1]?.slice(2));
     actorSide = side; actorPokemon = actorIndex;
+    // Em dupla/tripla: a posição em campo (p1a → 0, p1b → 1) e quem é no time (a tela mostra um evento de cada vez).
+    const at = Number.isInteger(actorIndex) ? {pos: Math.max(0, 'abc'.indexOf(actor.split(': ')[0].slice(2, 3))), at: actorIndex} : {};
     revealFrom(game, kind, actor, value, fromAbility, fromItem, tag('of'));
     if (kind === 'switch' || kind === 'drag') {
       const index = Number(actor.split(': ')[1]?.slice(2));
       if (!Number.isInteger(index)) continue;
       active[side] = index;
-      events.push({t: 'switch', side, index});
+      events.push({t: 'switch', side, index, ...at});
       say(side ? 'foeSent' : 'go', label(side));
     } else if (kind === 'move') {
       const m = PocketDexSim.move(value);
-      if (m) events.push({t: 'attack', side, type: m.type, category: m.category, slug: m.slug});
+      if (m) events.push({t: 'attack', side, type: m.type, category: m.category, slug: m.slug, ...at});
       say('used', label(side), value);
     } else if (kind === '-damage' || kind === '-heal') {
       const index = Number(actor.split(': ')[1]?.slice(2));
@@ -479,16 +481,16 @@ function eventsFor(game, lines) {
         else if (from === 'drain' && of) say('drained', of);
         else if (!from && !lines.slice(lineIndex + 1).some(l => l.startsWith('|pocketdexheal|'))) say('healedMove', label(side));
       }
-      if (index !== active[side] && Number.isInteger(index)) events.push({t: 'heal', side, index, hp: health(value)});
-      else events.push({t: 'hp', side, hp: health(value)});
+      if (index !== active[side] && Number.isInteger(index)) events.push({t: 'heal', side, index, hp: health(value), ...at});
+      else events.push({t: 'hp', side, hp: health(value), ...at});
     } else if (kind === 'faint') {
-      events.push({t: 'faint', side});
+      events.push({t: 'faint', side, ...at});
       say('fainted', label(side));
     } else if (kind === '-status') {
-      events.push({t: 'status', side, status: value});
+      events.push({t: 'status', side, status: value, ...at});
       say({brn: 'burned', par: 'paralyzed', psn: 'poisoned', tox: 'badlyPoisoned', slp: 'fellAsleep', frz: 'frozen'}[value] || 'failed', label(side));
     } else if (kind === '-curestatus') {
-      events.push({t: 'status', side, status: ''});
+      events.push({t: 'status', side, status: '', ...at});
       if (value === 'slp' && parts.includes('[msg]')) say('woke', label(side));
       else if (value === 'frz' && parts.includes('[msg]')) say('thawed', label(side));
       else if (fromItem || fromAbility) say('statusCured', label(side), fromItem || fromAbility);
@@ -524,7 +526,7 @@ function eventsFor(game, lines) {
     else if (kind === '-start' && /^(protosynthesis|quarkdrive)(atk|def|spa|spd|spe)$/.test(value)) say('paradoxBoost', label(side), value.slice(-3));
     else if (kind === '-end' && ['Protosynthesis', 'Quark Drive'].includes(value)) continue;
     else if (kind === '-end' && value === 'confusion') say('confusionEnd', label(side));
-    else if (kind === '-miss') { events.push({t: 'miss', side}); say('missed', label(side)); }
+    else if (kind === '-miss') { events.push({t: 'miss', side, ...at}); say('missed', label(side)); }
     else if (kind === '-immune') say('noEffect', label(side));
     else if (kind === '-crit') say('crit');
     else if (kind === '-supereffective') say('super');

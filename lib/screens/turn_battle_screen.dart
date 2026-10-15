@@ -2143,7 +2143,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
 class _MenuButton extends StatelessWidget {
   final String label;
   final VoidCallback? onTap;
-  const _MenuButton(this.label, this.onTap);
+  const _MenuButton(this.label, this.onTap, {super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -3214,10 +3214,10 @@ class _MultiBattleView extends StatefulWidget {
 }
 class _MultiBattleViewState extends State<_MultiBattleView> {
   final Map<int, Map<String, dynamic>> _choices = {};
-  // Como no Showdown: um Pokémon por vez; golpe com alvo abre a escolha do alvo.
+  // Como na batalha normal: o menu (LUTAR / POKÉMON), os golpes e, no golpe com alvo, em quem usar.
+  String _menu = 'main';
   Map<String, dynamic>? _aim;
   bool _gimmickOn = false;
-  List<BattleEvent> _events = [];
   String? _error;
   bool _finished = false;
   TurnBattle get _b => widget.battle;
@@ -3227,7 +3227,7 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
   Map get _own => _b.simulatorState!['sides'][_side] as Map;
   List<Map> get _slots => (_own['slots'] as List).cast<Map>();
   bool get _forced => _slots.any((slot) => slot['forceSwitch'] == true);
-  bool get _locked => widget.online?.locked == true || _b.winner != null;
+  bool get _locked => widget.online?.locked == true || _b.winner != null || _playing;
   String _choicePhase(TurnBattle battle) {
     final state = battle.simulatorState!;
     return jsonEncode([state['turn'], for (final side in state['sides'] as List) [side['wait'], for (final slot in side['slots'] as List) [slot['slot'], slot['index'], slot['forceSwitch'], slot['pass']]]]);
@@ -3236,7 +3236,7 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
   void didUpdateWidget(covariant _MultiBattleView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (_choicePhase(oldWidget.battle) != _choicePhase(_b) || oldWidget.online?.round != widget.online?.round) {
-      _choices.clear(); _aim = null; _gimmickOn = false; _error = null;
+      _choices.clear(); _aim = null; _gimmickOn = false; _error = null; _menu = 'main';
     }
   }
   Map<String, dynamic>? _automatic(Map slot) => _own['wait'] == true
@@ -3258,11 +3258,12 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
   Map<String, dynamic>? _picked(Map slot) => _automatic(slot) ?? _choices[slot['slot'] as int];
   List<Map> get _owned => _slots.where((slot) => _b.controllers![_side][slot['slot'] as int] == _uid).toList();
   List<Map> get _pending => _owned.where((slot) => _automatic(slot) == null).toList();
-  // Fecha a escolha deste Pokémon; depois do último, manda o turno (como no Showdown).
+  // Fecha a escolha deste Pokémon; depois do último, o turno acontece (na ordem da velocidade, como nos jogos).
   void _commit(Map slot, Map<String, dynamic> choice) {
     _choices[slot['slot'] as int] = choice;
     _aim = null;
     _gimmickOn = false;
+    _menu = 'main';
     if (_pending.every((p) => _choices.containsKey(p['slot']))) {
       _send();
     } else {
@@ -3282,9 +3283,15 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
     }
     _commit(slot, {'kind': 'move', 'index': index, 'gimmick': gimmick, 'target': targets.firstOrNull?['loc'] ?? 0});
   }
+  // Voltar: do alvo para os golpes, dos golpes para o menu, do menu para o Pokémon anterior.
   void _back() => setState(() {
         if (_aim != null) {
           _aim = null;
+          return;
+        }
+        if (_menu != 'main') {
+          _menu = 'main';
+          _gimmickOn = false;
           return;
         }
         final last = _pending.reversed.where((slot) => _choices.containsKey(slot['slot'])).firstOrNull;
@@ -3309,6 +3316,8 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
     if (switches.toSet().length != switches.length) { setState(() { _error = 'Escolha Pokémon diferentes para as substituições.'; _choices.clear(); }); return; }
     final action = <String, dynamic>{'kind': 'team', 'choices': submitted};
     if (widget.online != null) { setState(() {}); widget.online!.onAction(action); return; }
+    // Como estava antes do turno: a tela mostra cada ação na ordem (a vida descendo em quem levou o golpe).
+    final before = _snapshot();
     try {
       final events = PartyBattle.play(_b, [action], order: true);
       for (var attempt = 0; attempt < 12 && _b.winner == null; attempt++) {
@@ -3320,18 +3329,138 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
         final waiting = {'kind': 'team', 'choices': [for (final s in slots) if (_b.controllers![_side][s['slot'] as int] == _uid) {'seat': _side * _count + (s['slot'] as int), 'kind': state['wait'] == true ? 'wait' : 'pass', 'index': 0}]};
         events.addAll(PartyBattle.play(_b, [waiting]));
       }
-      setState(() { _events = events; _choices.clear(); _error = null; });
-      // Acabou (Factory em dupla): avisa uma vez só.
-      if (_b.winner != null && !_finished) { _finished = true; widget.onFinish?.call(null); }
+      _choices.clear();
+      _error = null;
+      _play(events, before);
     } catch (e) { setState(() { _error = e is StateError ? e.message : 'Não foi possível executar estas ações. Escolha novamente.'; _choices.clear(); }); }
   }
   String _trainer(String controller) => controller == _uid ? tr('Você') : '${widget.online?.names[controller] ?? 'NPC'}';
+
+  // ---- O turno na tela, uma ação de cada vez (como na batalha normal) ----
+
+  /// Durante o turno: a vida, o status e quem está em cada posição como a tela mostra agora (null: o estado do motor).
+  ({Map<(int, int), int> hp, Map<(int, int), String> status, List<List<int>> slots})? _shown;
+  bool _playing = false;
+  String _text = '';
+  List<BattleEvent>? _played;
+  Completer<void>? _skip;
+  final _timers = <Timer>{};
+  final _keys = <(int, int), GlobalKey<_SpriteState>>{};
+  GlobalKey<_SpriteState> _key(int side, int index) => _keys.putIfAbsent((side, index), GlobalKey<_SpriteState>.new);
+
+  ({Map<(int, int), int> hp, Map<(int, int), String> status, List<List<int>> slots}) _snapshot() => (
+        hp: {for (final side in [0, 1]) for (final (i, mon) in _b.teams[side].indexed) (side, i): mon.hp},
+        status: {for (final side in [0, 1]) for (final (i, mon) in _b.teams[side].indexed) (side, i): mon.status},
+        slots: [for (final side in [0, 1]) [for (final slot in (_b.simulatorState!['sides'][side]['slots'] as List).cast<Map>()) slot['index'] as int]],
+      );
+  int _hpOf(int side, int index) => _shown?.hp[(side, index)] ?? _b.teams[side][index].hp;
+  String _statusOf(int side, int index) => _shown?.status[(side, index)] ?? _b.teams[side][index].status;
+
+  /// Espera (tocar na caixa de texto passa).
+  Future<void> _wait(int ms) {
+    final done = Completer<void>();
+    _skip = done;
+    late final Timer timer;
+    timer = Timer(Duration(milliseconds: ms), () {
+      _timers.remove(timer);
+      if (!done.isCompleted) done.complete();
+    });
+    _timers.add(timer);
+    return done.future;
+  }
+
+  String _format(BattleEvent e) {
+    final (line, args) = TurnBattle.lineOf(e);
+    var text = tr(line);
+    for (var i = 0; i < args.length; i++) {
+      text = text.replaceFirst('{$i}', statNames.containsValue(args[i]) ? tr(args[i]) : args[i]);
+    }
+    return text;
+  }
+
+  /// Quem é no time o Pokémon da posição [pos] (pelo que a tela mostra).
+  int _at(BattleEvent e) {
+    if (e.at >= 0) return e.at;
+    if (e.side < 0 || e.side > 1) return -1;
+    final slots = _shown?.slots[e.side];
+    return slots != null && e.pos >= 0 && e.pos < slots.length ? slots[e.pos] : -1;
+  }
+
+  /// O turno: primeiro a ordem (pela velocidade e prioridade), depois cada golpe, a vida descendo, os desmaios e as trocas.
+  Future<void> _play(List<BattleEvent> events, [({Map<(int, int), int> hp, Map<(int, int), String> status, List<List<int>> slots})? before]) async {
+    _played = events;
+    setState(() {
+      _playing = true;
+      _shown = before;
+      _menu = 'main';
+    });
+    String? lastEffect;
+    for (final e in events) {
+      if (!mounted) return;
+      if (e.t == 'text' && (e.key == 'super' || e.key == 'weak')) lastEffect = e.key;
+      final sound = BattleSounds.of(e, lastEffect);
+      if (sound != null) BattleSounds.play(sound);
+      if (e.t == 'hp') lastEffect = null;
+      final at = _at(e);
+      switch (e.t) {
+        case 'text':
+          setState(() => _text = _format(e));
+          await _wait(e.key == 'turnOrder' ? 1600 : 1000);
+        case 'attack':
+          if (at >= 0 && e.category != 'status') _key(e.side, at).currentState?.lunge();
+          await _wait(450);
+        case 'hp' || 'heal':
+          final index = at >= 0 ? at : e.index;
+          if (_shown != null && index >= 0) {
+            if (e.value < _hpOf(e.side, index)) _key(e.side, index).currentState?.hurt();
+            setState(() => _shown!.hp[(e.side, index)] = e.value);
+          }
+          await _wait(600);
+        case 'faint':
+          if (_shown != null && at >= 0) setState(() => _shown!.hp[(e.side, at)] = 0);
+          await _wait(500);
+        case 'status':
+          if (_shown != null && at >= 0) setState(() => _shown!.status[(e.side, at)] = e.type);
+        case 'switch':
+          if (_shown != null && e.pos >= 0 && e.pos < _shown!.slots[e.side].length) setState(() => _shown!.slots[e.side][e.pos] = e.value);
+          await _wait(500);
+        case 'miss':
+          await _wait(300);
+        default:
+          await _wait(300);
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _playing = false;
+      _shown = null;
+      _text = '';
+    });
+    // Acabou (Factory em dupla): avisa uma vez só, depois de mostrar o turno.
+    if (_b.winner != null && !_finished && widget.online == null) {
+      _finished = true;
+      widget.onFinish?.call(null);
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final timer in _timers) {
+      timer.cancel();
+    }
+    super.dispose();
+  }
+
   /// O campo da dupla/trio, como na batalha normal (e no Black & White): o cenário do lugar, os adversários lá atrás
-  /// à direita em plataformas, os seus de costas na frente à esquerda (maiores) e as caixas de vida no estilo BW
-  /// (as dos adversários no alto à esquerda, as suas embaixo à direita: nenhuma cobre um Pokémon).
-  Widget _field() {
+  /// à direita em plataformas, os seus de costas na frente à esquerda (maiores), as caixas de vida no estilo BW
+  /// (as dos adversários no alto à esquerda, as suas embaixo à direita) e a caixa de texto dentro da tela, embaixo.
+  Widget _field(String text) {
     final scene = battleScene(_b.scene, _b.seed);
-    List<Map> live(int side) => [for (final slot in (_b.simulatorState!['sides'][side]['slots'] as List).cast<Map>()) if ((slot['index'] as int) >= 0) slot];
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    List<int> live(int side) => [
+          for (final index in _shown?.slots[side] ?? [for (final slot in (_b.simulatorState!['sides'][side]['slots'] as List).cast<Map>()) slot['index'] as int])
+            if (index >= 0) index,
+        ];
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
       child: AspectRatio(
@@ -3340,40 +3469,41 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
           decoration: BoxDecoration(border: Border.all(color: const Color(0xFF1E293B), width: 4), color: const Color(0xFF9FDCFF)),
           child: LayoutBuilder(builder: (context, constraints) {
             final w = constraints.maxWidth, h = constraints.maxHeight;
-            Widget mon(int side, Map slot) {
-              final mon = _b.teams[side][slot['index'] as int];
+            Widget mon(int side, int index) {
+              final mon = _b.teams[side][index];
               final id = mon.dmax > 0 ? mon.gmax ?? mon.id : mon.id;
               return Expanded(
                 child: AspectRatio(
                   aspectRatio: 1,
                   child: Stack(clipBehavior: Clip.none, fit: StackFit.expand, children: [
                     PlatformBase(scene: scene, side: side == _side ? 'mine' : 'foe', id: id),
-                    _Sprite(mon: mon, id: id, dmax: mon.dmax > 0, tera: _teraOf(mon), back: side == _side, fainted: mon.hp <= 0),
+                    _Sprite(key: _key(side, index), mon: mon, id: id, dmax: mon.dmax > 0, tera: _teraOf(mon), back: side == _side, fainted: _hpOf(side, index) <= 0),
                   ]),
                 ),
               );
             }
 
-            // Os adversários: lá atrás, à direita, pisando no chão do cenário.
             final foes = live(1 - _side), mine = live(_side);
-            final foeW = w * (_count == 3 ? 0.66 : 0.58), myW = w * (_count == 3 ? 0.8 : 0.64);
+            final foeW = w * (_count == 3 ? 0.66 : 0.58), myW = w * (_count == 3 ? 0.66 : 0.64);
             Widget info(int side) {
               final mineSide = side == _side;
               return Positioned(
                 left: mineSide ? null : 0,
                 right: mineSide ? 0 : null,
                 top: mineSide ? null : h * 0.02,
-                bottom: mineSide ? h * 0.02 : null,
-                width: w * (_count == 3 ? 0.38 : 0.44),
-                child: Column(key: ValueKey('battle-info-$side'), children: [
-                  for (final slot in live(side))
+                bottom: mineSide ? h * 0.235 : null,
+                width: w * (_count == 3 ? 0.34 : mineSide ? 0.38 : 0.44),
+                child: Column(key: ValueKey('battle-info-$side'), mainAxisSize: MainAxisSize.min, children: [
+                  for (final (pos, index) in live(side).indexed)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 2),
                       child: Builder(builder: (_) {
-                        final mon = _b.teams[side][slot['index'] as int];
+                        final mon = _b.teams[side][index];
                         return Semantics(
-                            label: '${_trainer(_b.controllers![side][slot['slot'] as int])} · ${mon.name}',
-                            child: FittedBox(fit: BoxFit.scaleDown, child: SizedBox(width: 210, child: _InfoBox(mon: mon, hp: mon.hp, mine: mineSide, status: mon.status, dmax: mon.dmax > 0, bw: true))));
+                            label: '${_trainer(_b.controllers![side][min(pos, _count - 1)])} · ${mon.name}',
+                            child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: SizedBox(width: 210, child: _InfoBox(mon: mon, hp: _hpOf(side, index), mine: mineSide, status: _statusOf(side, index), dmax: mon.dmax > 0, bw: true))));
                       }),
                     ),
                 ]),
@@ -3382,24 +3512,52 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
 
             return Stack(clipBehavior: Clip.hardEdge, children: [
               Positioned.fill(child: BattleBackdrop(scene: scene, weather: _b.weather)),
+              // Os adversários: lá atrás, à direita, pisando no chão do cenário.
               Positioned(
                 right: 0,
-                bottom: h * 0.5,
+                bottom: h * (_count == 3 ? 0.62 : 0.55),
                 width: foeW,
                 height: foeW / max(2, _count),
-                child: Row(key: ValueKey('battle-sprites-${1 - _side}'), crossAxisAlignment: CrossAxisAlignment.end, children: [for (final slot in foes) mon(1 - _side, slot)]),
+                child: Row(key: ValueKey('battle-sprites-${1 - _side}'), crossAxisAlignment: CrossAxisAlignment.end, children: [for (final index in foes) mon(1 - _side, index)]),
               ),
-              // Os seus: de costas, na frente, maiores.
+              // Os seus: de costas, na frente, maiores (a caixa do texto corta embaixo, como nos jogos).
               Positioned(
                 left: 0,
-                bottom: 0,
+                bottom: h * (_count == 3 ? 0.25 : 0.19),
                 width: myW,
                 height: myW / max(2, _count),
-                child: Row(key: ValueKey('battle-sprites-$_side'), crossAxisAlignment: CrossAxisAlignment.end, children: [for (final slot in mine) mon(_side, slot)]),
+                child: Row(key: ValueKey('battle-sprites-$_side'), crossAxisAlignment: CrossAxisAlignment.end, children: [for (final index in mine) mon(_side, index)]),
               ),
-              // As caixas de vida por cima dos Pokémon.
               info(1 - _side),
               info(_side),
+              // A mensagem dentro da tela, embaixo (tocar passa o texto).
+              Positioned(
+                left: w * 0.015,
+                right: w * 0.015,
+                bottom: h * 0.015,
+                height: h * 0.21,
+                child: GestureDetector(
+                  key: const ValueKey('battle-text'),
+                  onTap: () {
+                    if (_skip != null && !_skip!.isCompleted) _skip!.complete();
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    alignment: Alignment.topLeft,
+                    decoration: dark
+                        ? BoxDecoration(
+                            gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF4D4D4D), Color(0xFF2E2E2E)]),
+                            border: Border.all(color: const Color(0xFF1A1A1A), width: 3),
+                            borderRadius: BorderRadius.circular(8),
+                          )
+                        : BoxDecoration(color: Colors.white, border: Border.all(color: const Color(0xFF334155), width: 3), borderRadius: BorderRadius.circular(8)),
+                    child: SingleChildScrollView(
+                      child: m.Text(text,
+                          style: TextStyle(color: dark ? Colors.white : const Color(0xFF0F172A), fontSize: 14, height: 1.25, fontWeight: FontWeight.bold, shadows: dark ? _bwShadow : null)),
+                    ),
+                  ),
+                ),
+              ),
             ]);
           }),
         ),
@@ -3407,62 +3565,11 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
     );
   }
 
-  /// A narração do turno, uma frase de cada vez (como na batalha normal).
-  String _line = '';
-  List<BattleEvent>? _narrated;
-  Timer? _narration;
-
-  void _narrate(List<BattleEvent> events) {
-    if (identical(events, _narrated)) return;
-    _narrated = events;
-    _narration?.cancel();
-    final lines = [
-      for (final e in events.where((e) => e.t == 'text'))
-        () {
-          final (line, args) = TurnBattle.lineOf(e);
-          var value = tr(line);
-          for (var i = 0; i < args.length; i++) {
-            value = value.replaceFirst('{$i}', args[i]);
-          }
-          return value;
-        }(),
-    ];
-    if (lines.isEmpty) return;
-    var k = 0;
-    _line = lines.first;
-    _narration = Timer.periodic(const Duration(milliseconds: 1100), (timer) {
-      if (!mounted || ++k >= lines.length) {
-        timer.cancel();
-        return;
-      }
-      setState(() => _line = lines[k]);
-    });
-  }
-
-  @override
-  void dispose() {
-    _narration?.cancel();
-    super.dispose();
-  }
-
-  /// A caixa de texto (escura, como a da batalha normal).
-  Widget _textBox(String text) => Container(
-        key: const ValueKey('battle-text'),
-        constraints: const BoxConstraints(minHeight: 52),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF4D4D4D), Color(0xFF2E2E2E)]),
-          border: Border.all(color: const Color(0xFF1A1A1A), width: 3),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: m.Text(text, style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.25, fontWeight: FontWeight.bold, shadows: _bwShadow)),
-      );
-
   Widget _button(String label, String sub, Color color, Key key, VoidCallback? onTap, {Color text = Colors.white, List<Widget> tags = const []}) => Material(
-        color: color,
+        color: onTap == null ? color.withAlpha(110) : color,
         borderRadius: BorderRadius.circular(10),
         child: InkWell(key: key, borderRadius: BorderRadius.circular(10), onTap: onTap,
-          child: Padding(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child: Padding(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             m.Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: text, fontWeight: FontWeight.w900, fontSize: 13)),
             if (sub.isNotEmpty) m.Text(sub, style: TextStyle(color: text.withValues(alpha: 0.75), fontSize: 11)),
             if (tags.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 3), child: Wrap(spacing: 3, runSpacing: 3, children: tags)),
@@ -3471,137 +3578,176 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
   Widget _grid(List<Widget> children, {int columns = 2}) => LayoutBuilder(builder: (context, constraints) => Wrap(spacing: 6, runSpacing: 6, children: [
         for (final c in children) SizedBox(width: (constraints.maxWidth - 6 * (columns - 1)) / columns, child: c),
       ]));
+
+  /// A pergunta na caixa de texto enquanto escolhe (como na batalha normal: "O que Pikachu vai fazer?").
+  String _prompt() {
+    final pending = _pending;
+    final current = pending.where((slot) => !_choices.containsKey(slot['slot'])).firstOrNull;
+    if (current == null) return widget.online?.locked == true ? tr('Aguardando os outros jogadores…') : '';
+    final mon = _b.teams[_side][current['index'] as int];
+    final step = pending.length > 1 ? ' (${pending.indexOf(current) + 1}/${pending.length})' : '';
+    if (_aim != null) {
+      final moves = ((current['request'] as Map?)?['moves'] as List?)?.cast<Map>() ?? [];
+      final index = _aim!['index'] as int;
+      return '${tr('Em quem')} ${mon.name} ${tr('vai usar')} ${index < moves.length ? moves[index]['move'] : ''}?$step';
+    }
+    if (current['forceSwitch'] == true) return '${tr('Quem entra no lugar de')} ${mon.name}?$step';
+    return '${tr('O que')} ${mon.name} ${tr('vai fazer?')}$step';
+  }
+
+  /// Embaixo da tela, como na batalha normal: o menu, os golpes, os alvos e a troca.
   Widget _panel() {
     final pending = _pending;
     final current = pending.where((slot) => !_choices.containsKey(slot['slot'])).firstOrNull;
     final chosen = pending.where((slot) => _choices.containsKey(slot['slot'])).toList();
-    Widget body;
-    if (current == null) {
-      body = Text(widget.online?.locked == true ? 'Aguardando os outros jogadores…' : 'Enviando…');
+    if (current == null) return const SizedBox.shrink();
+    final slot = current, position = slot['slot'] as int, mon = _b.teams[_side][slot['index'] as int];
+    final req = slot['request'] as Map?;
+    final moves = (req?['moves'] as List?)?.cast<Map>() ?? [];
+    final foes = [
+      for (final s in (_b.simulatorState!['sides'][1 - _side]['slots'] as List).cast<Map>())
+        if ((s['index'] as int) >= 0 && _b.teams[1 - _side][s['index'] as int].hp > 0) _b.teams[1 - _side][s['index'] as int],
+    ];
+    List<String> typesOf(BattleMon foe) => foe.terastal && foe.teraType.isNotEmpty ? [foe.teraType] : foe.types;
+    final forced = slot['forceSwitch'] == true;
+    final menu = forced ? 'party' : _menu;
+    final children = <Widget>[];
+    if (_aim != null) {
+      // Em quem: os adversários (e o aliado), com como o golpe pega em cada um.
+      final index = _aim!['index'] as int;
+      final targets = (_b.targets(_side, position, index, '${_aim!['gimmick']}')['targets'] as List).cast<Map>();
+      List<Map> row(bool ally) => targets.where((t) => (t['ally'] == true) == ally).toList()..sort((a, b) => (a['slot'] as int).compareTo(b['slot'] as int));
+      for (final ally in [false, true]) {
+        if (row(ally).isEmpty) continue;
+        children.add(Padding(padding: const EdgeInsets.only(bottom: 6), child: _grid(columns: _count, [
+          for (final target in row(ally))
+            _button('${target['name']}', '${tr(ally ? 'Aliado' : 'Adversário')} · ${(target['slot'] as int) + 1}', ally ? const Color(0xFF0369A1) : const Color(0xFFB91C1C),
+                ValueKey('battle-target-${target['loc']}'), _locked ? null : () => _commit(slot, {..._aim!, 'target': target['loc']}),
+                tags: [
+                  if (index < mon.moves.length && mon.moves[index].power > 0 && mon.moves[index].category != 'status')
+                    () {
+                      final who = _b.teams[target['side'] as int][target['index'] as int];
+                      return _EffectTag(widget.typeEff(mon.moves[index].type, typesOf(who)));
+                    }(),
+                ]),
+        ])));
+      }
+    } else if (menu == 'main') {
+      children.addAll([
+        Row(children: [
+          _MenuButton(key: const ValueKey('battle-fight'), 'LUTAR', _locked ? null : () => setState(() => _menu = 'fight')),
+          const SizedBox(width: 6),
+          const _MenuButton('BOLSA', null),
+        ]),
+        const SizedBox(height: 6),
+        Row(children: [
+          _MenuButton(key: const ValueKey('battle-party'), 'POKÉMON', _locked ? null : () => setState(() => _menu = 'party')),
+          const SizedBox(width: 6),
+          const _MenuButton('FUGIR', null),
+        ]),
+      ]);
+    } else if (menu == 'fight') {
+      final mechanic = mon.gimmick;
+      final available = switch (mechanic) {
+        'mega' => req?['canMegaEvo'] == true,
+        'tera' => req?['canTerastallize'] != null && req?['canTerastallize'] != false,
+        'dmax' => req?['canDynamax'] == true,
+        'z' => req?['canZMove'] is List && (req!['canZMove'] as List).any((z) => z != null),
+        _ => false,
+      };
+      final reserved = _choices.values.any((c) => c['gimmick'] == mechanic);
+      // As fraquezas de cada adversário em campo e, em cada golpe, como pega em cada um (como na batalha normal).
+      for (final foe in foes) {
+        children.add(_Weak(foe, TurnBattle.weaknesses(typesOf(foe), allTypes, widget.typeEff), dark: true));
+      }
+      children.add(Stack(alignment: Alignment.center, children: [
+        Container(
+          key: ValueKey('battle-moves-$position'),
+          child: _grid([
+            for (final (i, move) in moves.indexed)
+              _button('${move['move']}', 'PP ${move['pp'] ?? '—'}/${i < mon.moves.length ? mon.moves[i].maxPp : move['pp'] ?? '—'}', getColorForType(i < mon.moves.length ? mon.moves[i].type : 'normal'),
+                  ValueKey('battle-move-$position-$i'), _locked || move['disabled'] == true || move['pp'] == 0 ? null : () => _chooseMove(slot, i),
+                  tags: i < mon.moves.length && mon.moves[i].power > 0 && mon.moves[i].category != 'status'
+                      ? [
+                          for (final foe in foes)
+                            () {
+                              final eff = widget.typeEff(mon.moves[i].type, typesOf(foe));
+                              final label = TurnBattle.effectLabel(eff) ?? 'Efetivo';
+                              return _Tag('${foe.name.length > 9 ? foe.name.substring(0, 9) : foe.name} ${eff == 0 ? '✕' : '×${_times(eff)}'}', _effectColors[label]!);
+                            }(),
+                        ]
+                      : const []),
+          ]),
+        ),
+        // A mecânica (Mega, Z, Dynamax, Tera): o botão redondo no meio dos golpes, como na batalha normal.
+        if (available && !reserved)
+          _GimmickButton(
+              key: ValueKey('battle-gimmick-$position'),
+              kind: mechanic,
+              label: mechanic == 'dmax' && mon.gmax != null ? 'Gigantamax' : const {'mega': 'Mega', 'tera': 'Terastal', 'dmax': 'Dynamax', 'z': 'Z-Move'}[mechanic] ?? mechanic,
+              on: _gimmickOn,
+              onTap: () => setState(() => _gimmickOn = !_gimmickOn)),
+      ]));
     } else {
-      final slot = current, position = slot['slot'] as int, mon = _b.teams[_side][slot['index'] as int];
-      final req = slot['request'] as Map?;
-      final moves = (req?['moves'] as List?)?.cast<Map>() ?? [];
-      final step = '(${pending.indexOf(slot) + 1}/${pending.length})';
-      if (_aim != null) {
-        final index = _aim!['index'] as int;
-        final targets = (_b.targets(_side, position, index, '${_aim!['gimmick']}')['targets'] as List).cast<Map>();
-        List<Map> row(bool ally) => targets.where((t) => (t['ally'] == true) == ally).toList()..sort((a, b) => (a['slot'] as int).compareTo(b['slot'] as int));
-        body = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          m.Text('${tr('Em quem')} ${mon.name} ${tr('vai usar')} ${index < moves.length ? moves[index]['move'] : ''}? $step', style: const TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          for (final ally in [false, true])
-            if (row(ally).isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 6), child: _grid(columns: _count, [
-              for (final target in row(ally))
-                _button('${target['name']}', '${tr(ally ? 'Aliado' : 'Adversário')} · ${(target['slot'] as int) + 1}', ally ? const Color(0xFFE0F2FE) : const Color(0xFFFFE4E6),
-                    ValueKey('battle-target-${target['loc']}'), _locked ? null : () => _commit(slot, {..._aim!, 'target': target['loc']}), text: const Color(0xFF0F172A),
-                    // Como o golpe pega nele (Super efetivo ×2, Pouco efetivo ×½...).
-                    tags: [
-                      if (index < mon.moves.length && mon.moves[index].power > 0 && mon.moves[index].category != 'status')
-                        () {
-                          final who = _b.teams[target['side'] as int][target['index'] as int];
-                          return _EffectTag(widget.typeEff(mon.moves[index].type, who.terastal && who.teraType.isNotEmpty ? [who.teraType] : who.types));
-                        }(),
-                    ]),
-            ])),
-        ]);
-      } else {
-        final mechanic = mon.gimmick;
-        final available = switch (mechanic) {
-          'mega' => req?['canMegaEvo'] == true,
-          'tera' => req?['canTerastallize'] != null && req?['canTerastallize'] != false,
-          'dmax' => req?['canDynamax'] == true,
-          'z' => req?['canZMove'] is List && (req!['canZMove'] as List).any((z) => z != null),
-          _ => false,
-        };
-        final reserved = _choices.values.any((c) => c['gimmick'] == mechanic);
-        // Pokémon que outro já escolheu para entrar não aparece de novo.
-        final taken = {for (final c in _choices.values) if (c['kind'] == 'switch') c['index']};
-        final options = [for (final i in slot['switchOptions'] as List) if (!taken.contains(i)) i as int];
-        // Os adversários em campo (as fraquezas e a eficácia de cada golpe contra cada um, como na batalha normal).
-        final foes = [
-          for (final s in (_b.simulatorState!['sides'][1 - _side]['slots'] as List).cast<Map>())
-            if ((s['index'] as int) >= 0 && _b.teams[1 - _side][s['index'] as int].hp > 0) _b.teams[1 - _side][s['index'] as int],
-        ];
-        List<String> typesOf(BattleMon foe) => foe.terastal && foe.teraType.isNotEmpty ? [foe.teraType] : foe.types;
-        body = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          if (slot['forceSwitch'] != true)
-            for (final foe in foes) _Weak(foe, TurnBattle.weaknesses(typesOf(foe), allTypes, widget.typeEff), dark: true),
-          m.Text(slot['forceSwitch'] == true ? '${tr('Quem entra no lugar de')} ${mon.name}? $step' : '${tr('O que')} ${mon.name} ${tr('vai fazer?')} $step', style: const TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          if (slot['forceSwitch'] != true) Container(
-            key: ValueKey('battle-moves-$position'),
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(color: Colors.white, border: Border.all(color: const Color(0xFF475569), width: 4), borderRadius: BorderRadius.circular(12)),
-            child: _grid([
-              for (final (i, move) in moves.indexed)
-                _button('${move['move']}', 'PP ${move['pp'] ?? '—'}/${i < mon.moves.length ? mon.moves[i].maxPp : move['pp'] ?? '—'}', getColorForType(i < mon.moves.length ? mon.moves[i].type : 'normal'),
-                    ValueKey('battle-move-$position-$i'), _locked || move['disabled'] == true || move['pp'] == 0 ? null : () => _chooseMove(slot, i),
-                    // Como pega em cada adversário (golpe de dano): "Pidgey ×2", "Oddish ×½"...
-                    tags: i < mon.moves.length && mon.moves[i].power > 0 && mon.moves[i].category != 'status'
-                        ? [
-                            for (final foe in foes)
-                              () {
-                                final eff = widget.typeEff(mon.moves[i].type, typesOf(foe));
-                                final label = TurnBattle.effectLabel(eff) ?? 'Efetivo';
-                                return _Tag('${foe.name.length > 9 ? foe.name.substring(0, 9) : foe.name} ${eff == 0 ? '✕' : '×${_times(eff)}'}', _effectColors[label]!);
-                              }(),
-                          ]
-                        : const []),
-            ]),
-          ),
-          if (slot['forceSwitch'] != true && available) Padding(padding: const EdgeInsets.only(top: 6), child: Align(alignment: Alignment.centerLeft, child: FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: _gimmickOn ? const Color(0xFF8B5CF6) : const Color(0xFF6D28D9)),
-            onPressed: _locked || reserved ? null : () => setState(() => _gimmickOn = !_gimmickOn),
-            child: Text('${mechanic == 'dmax' && mon.gmax != null ? 'Gigantamax' : const {'mega': 'Mega', 'tera': 'Terastal', 'dmax': 'Dynamax', 'z': 'Z-Move'}[mechanic]}${_gimmickOn ? ' ✓' : ''}')))),
-          if (options.isNotEmpty || slot['canShift'] == true || slot['forceSwitch'] == true) ...[
-            const SizedBox(height: 8),
-            Text(slot['forceSwitch'] == true ? 'POKÉMON' : 'TROCAR (gasta a ação)', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white70)),
-            const SizedBox(height: 4),
-            _grid([
-              for (final i in options)
-                _button('${tr(slot['revival'] == true ? 'Reviver' : '')} ${_b.teams[_side][i].name}'.trim(), '${_b.teams[_side][i].hp}/${_b.teams[_side][i].maxHp}', const Color(0xFF334155),
-                    ValueKey('battle-switch-$position-$i'), _locked ? null : () => _commit(slot, {'kind': 'switch', 'index': i})),
-              if (slot['canShift'] == true) _button(tr('Trocar posição com o centro'), '', const Color(0xFF334155), ValueKey('battle-shift-$position'), _locked ? null : () => _commit(slot, {'kind': 'shift', 'index': 0})),
-              if (slot['forceSwitch'] == true && options.isEmpty) _button(tr('Sem reservas: passar'), '', const Color(0xFF334155), ValueKey('battle-pass-$position'), _locked ? null : () => _commit(slot, {'kind': 'pass', 'index': 0})),
-            ]),
-          ],
-        ]);
+      // A troca: quem está no banco (quem outro já escolheu para entrar não aparece de novo).
+      final taken = {for (final c in _choices.values) if (c['kind'] == 'switch') c['index']};
+      final options = [for (final i in slot['switchOptions'] as List) if (!taken.contains(i)) i as int];
+      children.add(_grid([
+        for (final i in options)
+          _button('${tr(slot['revival'] == true ? 'Reviver' : '')} ${_b.teams[_side][i].name}'.trim(), '${_b.teams[_side][i].hp}/${_b.teams[_side][i].maxHp}', const Color(0xFF334155),
+              ValueKey('battle-switch-$position-$i'), _locked ? null : () => _commit(slot, {'kind': 'switch', 'index': i})),
+        if (slot['canShift'] == true) _button(tr('Trocar posição com o centro'), '', const Color(0xFF334155), ValueKey('battle-shift-$position'), _locked ? null : () => _commit(slot, {'kind': 'shift', 'index': 0})),
+        if (forced && options.isEmpty) _button(tr('Sem reservas: passar'), '', const Color(0xFF334155), ValueKey('battle-pass-$position'), _locked ? null : () => _commit(slot, {'kind': 'pass', 'index': 0})),
+      ]));
+      if (options.isEmpty && slot['canShift'] != true && !forced) {
+        children.add(const Padding(padding: EdgeInsets.all(8), child: Text('Ninguém no banco para entrar.', style: TextStyle(color: Colors.white70))));
       }
     }
-    return Padding(padding: const EdgeInsets.only(top: 6), child: Padding(padding: EdgeInsets.zero, child: DefaultTextStyle.merge(style: const TextStyle(color: Colors.white), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      for (final slot in chosen) m.Text('✓ ${_describe(slot)}', style: const TextStyle(fontSize: 12, color: Colors.white70)),
-      if (chosen.isNotEmpty) const SizedBox(height: 6),
-      body,
-      if ((_aim != null || chosen.isNotEmpty) && !_locked) Align(alignment: Alignment.centerLeft, child: TextButton(key: const ValueKey('battle-back'), onPressed: _back, child: const Text('◂ Voltar'))),
-    ]))));
+    final canBack = !_locked && (_aim != null || (_menu != 'main' && !forced) || chosen.isNotEmpty);
+    return DefaultTextStyle.merge(
+      style: const TextStyle(color: Colors.white),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        // Quem já escolheu (e o quê), como uma fila.
+        for (final s in chosen) m.Text('✓ ${_describe(s)}', style: const TextStyle(fontSize: 12, color: Colors.white70)),
+        if (chosen.isNotEmpty) const SizedBox(height: 6),
+        ...children,
+        if (canBack) ...[
+          const SizedBox(height: 6),
+          Row(children: [_MenuButton(key: const ValueKey('battle-back'), 'Voltar', _back)]),
+        ],
+      ]),
+    );
   }
+
   @override
   Widget build(BuildContext context) {
-    final events = widget.online?.events ?? _events;
-    _narrate(events);
+    // Online: as ações do turno chegam prontas; a tela mostra uma de cada vez também.
+    final online = widget.online?.events;
+    if (online != null && online.isNotEmpty && !identical(online, _played) && !_playing) {
+      _played = online;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _play(online);
+      });
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) { if (mounted) _autoLocked(); });
     final status = widget.online?.message ?? (_b.winner != null ? _b.winner == -1 ? 'Empate!' : _b.winner == _side ? 'Você venceu!' : 'A equipe adversária venceu!' : '${tr('Turno')} ${_b.turn}');
+    final choosing = !_playing && _b.winner == null && _pending.isNotEmpty;
+    final text = _playing ? _text : choosing ? _prompt() : status;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      _field(),
-      // Embaixo do campo, como a tela de baixo do DS: o texto do turno e as escolhas.
+      _field(text.isEmpty ? status : text),
+      // Embaixo do campo, como a tela de baixo do DS: o menu e as escolhas.
       Container(
         padding: const EdgeInsets.all(8),
         decoration: const BoxDecoration(color: Color(0xFF1E293B), borderRadius: BorderRadius.vertical(bottom: Radius.circular(16))),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          // A frase do turno (narrada uma de cada vez); sem frase, o turno (ou quem venceu).
-          _textBox(_line.isNotEmpty && (_b.winner == null || _narration?.isActive == true) ? _line : status),
-          if (_line.isNotEmpty && (_b.winner == null || _narration?.isActive == true))
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: m.Text(status, key: const ValueKey('battle-turn'), style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
-            ),
-          if (_b.winner == null && _pending.isNotEmpty) _panel(),
+          m.Text(status, key: const ValueKey('battle-turn'), style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 6),
+          if (choosing) _panel(),
           if (_error != null) Text(_error!, style: const TextStyle(color: Colors.redAccent)),
-          if (_b.winner == null && _pending.isEmpty) FilledButton(onPressed: _locked ? null : _send, child: const Text('Continuar')),
+          if (!_playing && _b.winner == null && _pending.isEmpty && widget.online?.locked != true) FilledButton(onPressed: _locked ? null : _send, child: const Text('Continuar')),
           Wrap(spacing: 10, children: [
-            TextButton(onPressed: widget.online?.onClose ?? widget.onExit, child: Text(widget.online == null ? 'Voltar' : 'Desistir')),
-            if (widget.online == null && _b.winner != null) TextButton(onPressed: widget.onAgain, child: const Text('Batalhar de novo')),
+            TextButton(onPressed: widget.online?.onClose ?? widget.onExit, child: Text(widget.online == null ? 'Sair' : 'Desistir')),
+            if (widget.online == null && _b.winner != null && !_playing) TextButton(onPressed: widget.onAgain, child: const Text('Batalhar de novo')),
           ]),
         ]),
       ),

@@ -144,7 +144,17 @@ void main() {
         final previous=battle.turn;
         // Como no Showdown: um Pokémon por vez; depois do último, o turno vai sozinho.
         for(var position=0;position<count;position++) {
+          // Como na batalha normal: LUTAR abre os golpes.
+          final fight=find.byKey(const ValueKey('battle-fight'));
+          await tester.ensureVisible(fight); await tester.tap(fight); await tester.pump();
           for(var move=0;move<4;move++) expect(find.byKey(ValueKey('battle-move-$position-$move')), findsOneWidget);
+          if(turn==0&&position==0) {
+            await tester.runAsync(() async {
+              final image=await boundary.toImage(pixelRatio:1.5);
+              final png=await image.toByteData(format:ui.ImageByteFormat.png);
+              File('build/battle-ui-shots/classic-$count${scale==1?'':'-large'}-fight.png').writeAsBytesSync(png!.buffer.asUint8List());
+            });
+          }
           for(var other=position+1;other<count;other++) { expect(find.byKey(ValueKey('battle-move-$other-0')), findsNothing);}
           expect(find.textContaining('(${position+1}/$count)'), findsOneWidget);
           final button=find.byKey(ValueKey('battle-move-$position-0'));
@@ -153,6 +163,10 @@ void main() {
           if(position<count-1) expect(battle.turn,previous);
         }
         expect(battle.turn,greaterThan(previous));
+        // O turno na tela, uma ação de cada vez; depois volta o menu.
+        expect(find.byKey(const ValueKey('battle-fight')), findsNothing);
+        await tester.pump(const Duration(seconds:60));
+        expect(find.byKey(const ValueKey('battle-fight')), findsOneWidget);
         expect(tester.takeException(),isNull);
       }
       await tester.pumpWidget(const SizedBox());
@@ -174,6 +188,8 @@ void main() {
     await tester.pump(const Duration(milliseconds:300));
     Future<void> tap(String key) async { final f=find.byKey(ValueKey(key)); await tester.ensureVisible(f); await tester.tap(f); await tester.pump(); }
     final turn=battle.turn;
+    expect(find.text('O que Mew vai fazer? (1/2)'), findsOneWidget);
+    await tap('battle-fight');
     await tap('battle-move-0-0');
     // Psychic: escolhe o alvo (2 adversários e o aliado).
     expect(find.byKey(const ValueKey('battle-move-0-0')), findsNothing);
@@ -183,16 +199,26 @@ void main() {
     await tap('battle-move-0-0');
     final foe=find.byWidgetPredicate((w) => w.key is ValueKey && '${(w.key as ValueKey).value}'.startsWith('battle-target-')).first;
     await tester.ensureVisible(foe); await tester.tap(foe); await tester.pump();
-    // Próximo Pokémon; o primeiro aparece como escolhido e dá para voltar.
+    // Próximo Pokémon (o menu de novo); o primeiro aparece como escolhido e dá para voltar.
+    expect(find.text('O que Mew vai fazer? (2/2)'), findsOneWidget);
+    await tap('battle-fight');
     expect(find.byKey(const ValueKey('battle-move-1-0')), findsOneWidget);
     expect(find.textContaining('✓ Mew: Psychic'), findsOneWidget);
     await tap('battle-back');
+    await tap('battle-back');
+    await tap('battle-fight');
     expect(find.byKey(const ValueKey('battle-move-0-0')), findsOneWidget);
     expect(battle.turn, turn);
     for (final position in [0, 1]) {
+      if (position > 0) await tap('battle-fight');
       await tap('battle-move-$position-1');
     }
     expect(battle.turn, greaterThan(turn));
+    // A ordem do turno (pela velocidade) aparece primeiro, depois cada ação.
+    await tester.pump();
+    expect(find.textContaining('→'), findsOneWidget);
+    await tester.pump(const Duration(seconds:60));
+    expect(find.text('O que Mew vai fazer? (1/2)'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });
