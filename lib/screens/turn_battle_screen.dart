@@ -1806,7 +1806,8 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                             offset: _foeGone ? const Offset(1.6, 0) : Offset.zero,
                             duration: const Duration(milliseconds: 520),
                             curve: Curves.easeIn,
-                            child: TrainerSprite(_coach, box: foeTrainerBox(w)),
+                            // Da altura de uma pessoa ao lado do Pokémon dele (a mesma escala).
+                            child: Align(alignment: Alignment.bottomCenter, child: TrainerSprite(_coach, height: farPerson(w))),
                           ),
                         ),
                       Positioned(
@@ -2333,16 +2334,6 @@ class _BottomScreen extends StatelessWidget {
 /// A altura da tela de baixo da batalha (com a borda) e a da faixa entre o campo e ela: a corrida usa as mesmas, para
 /// nada mudar de tamanho nem de lugar entre a corrida e a batalha.
 double battleBottomHeight(BuildContext context) => _BottomScreen.height(context) + 16;
-/// O tamanho dos treinadores no campo (largura [w]), o mesmo em toda tela. Igual ao site.
-/// Lá atrás (o treinador inimigo, o vendedor, a Enfermeira): a figura com ~35% da largura.
-double foeTrainerBox(double w) => w * 0.48;
-
-/// Os sprites parados de 80 px (vendedor, Enfermeira...): a figura ocupa ~94% da imagem; a mesma altura do treinador de lá.
-double farTrainer(double w) => w * 0.37;
-
-/// O seu treinador, na frente: maior que quem está lá atrás (~40% da largura), na rota e na cidade.
-double myTrainerBox(double w) => w * 0.56;
-
 double battleBarHeight(BuildContext context) => MediaQuery.textScalerOf(context).scale(15) + 12;
 
 /// O menu apagado (enquanto o turno acontece ou é a vez do outro).

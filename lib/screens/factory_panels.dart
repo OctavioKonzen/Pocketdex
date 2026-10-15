@@ -29,7 +29,7 @@ import '../widgets/bw_bag.dart';
 import '../widgets/bw_party.dart';
 import '../widgets/pokemon_sprite.dart';
 import '../widgets/trainer_sprite.dart';
-import 'turn_battle_screen.dart' show battleMonName, battleBarHeight, battleBottomHeight, farTrainer, foeTrainerBox, myTrainerBox;
+import 'turn_battle_screen.dart' show battleMonName, battleBarHeight, battleBottomHeight;
 
 /// A Factory da conta (meta e corrida).
 Json currentFactory() => FactoryRun.of(UserData.instance.league);
@@ -1408,6 +1408,12 @@ class _FactoryScreenState extends State<FactoryScreen> {
         OverflowBox(alignment: Alignment.bottomCenter, maxWidth: w * 0.6, maxHeight: w * 0.6, child: child),
       ]));
 
+  /// Alguém lá atrás (vendedor, Enfermeira...) da altura de uma pessoa perto dos Pokémon.
+  Widget _farPerson(String id, double w) {
+    final t = Trainers.byId(id);
+    return t != null ? TrainerSprite(t, height: farPerson(w)) : _trainerImage(id, farPerson(w) * 80 / trainerAdultPx);
+  }
+
   Widget _trainerImage(String id, double size) => Image.asset('assets/database/sprites/trainers/$id.png',
       height: size, fit: BoxFit.contain, alignment: Alignment.bottomCenter, filterQuality: FilterQuality.none, errorBuilder: (_, __, ___) => const SizedBox());
 
@@ -1900,9 +1906,9 @@ class _FactoryScreenState extends State<FactoryScreen> {
       frame = _frame(
         run: run,
         field: _field(scene, key: const ValueKey('factory-shop'), (w, h) => [
-              _far(_trainerImage('sd-backpacker', farTrainer(w)), w, h, plain: true),
+              _far(_farPerson('sd-backpacker', w), w, h, plain: true),
               // Acima da caixa de texto (que fica dentro do campo, como na batalha).
-              if (me != null) Positioned(left: w * 0.04, bottom: h * 0.23, child: TrainerSprite(me, box: myTrainerBox(w))),
+              if (me != null) Positioned(left: w * 0.06, bottom: h * 0.23, child: TrainerSprite(me, height: nearPerson(w))),
               Positioned(
                 left: 10,
                 top: 6,
@@ -2056,7 +2062,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
       run: run,
       field: _field('${run['scene'] ?? 'grass'}', key: const ValueKey('factory-result'), (w, h) => [
             if (p['center'] == true || p['joy'] == true)
-              _far(_trainerImage(healerSprite, farTrainer(w)), w, h)
+              _far(_farPerson(healerSprite, w), w, h)
             else if (items.isNotEmpty)
               _far(_itemIcon(items.first, w * 0.16), w, h)
             else if (event != null)
@@ -2433,17 +2439,18 @@ class _FactoryScreenState extends State<FactoryScreen> {
                       child: Text(floorTag, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white)),
                     ),
                   ),
-                if (coach != null && (meeting || rival != null)) _far(TrainerSprite(coach, box: foeTrainerBox(w)), w, h),
-                if (town && me != null) Positioned(left: w * 0.18, bottom: h * 0.23, child: TrainerSprite(me, box: myTrainerBox(w))),
+                if (coach != null && (meeting || rival != null)) _far(TrainerSprite(coach, height: farPerson(w)), w, h),
+                if (town && me != null) Positioned(left: w * 0.02, bottom: h * 0.23, child: TrainerSprite(me, height: nearPerson(w))),
                 // Quem vai na frente acompanha você na cidade (como o Pokémon que segue o treinador). Igual ao site.
                 if (town && lead != null)
                   Positioned(
                       key: const ValueKey('follower'),
-                      left: w * 0.6,
+                      // Do tamanho dele perto de você (a mesma escala da batalha).
+                      left: w * 0.42,
                       bottom: h * 0.23,
-                      width: w * 0.26,
-                      height: w * 0.26,
-                      child: PokemonSprite((lead['id'] as num).toInt(), shiny: lead['shiny'] == true, fill: 0.95, alignBottom: true)),
+                      width: w * 0.58,
+                      height: w * 0.58,
+                      child: StageMon(id: (lead['id'] as num).toInt(), shiny: lead['shiny'] == true, base: false, scene: _scene)),
                 if (!town && lead != null) _fieldMon(lead, w, h, back: true),
               ];
             }),

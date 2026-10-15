@@ -47,6 +47,12 @@ const _platforms = {
 /// tamanho do espaço e os gigantes ocupando tudo. Igual ao site (battleScale).
 double battleScale(num? height) => sqrt((height ?? 10) / 20).clamp(0.3, 1.0).toDouble();
 
+/// A altura de uma pessoa (~16 dm) na mesma escala dos Pokémon, num campo de largura [w]: lá atrás (a caixa do Pokémon
+/// de lá tem w*0,26) e na frente (a do seu, w*0,58). Treinador, vendedor e Enfermeira ficam do tamanho certo perto
+/// de um Pikachu ou de um Charizard. Igual ao site.
+double farPerson(double w) => w * 0.26 * 0.95 * battleScale(16);
+double nearPerson(double w) => w * 0.58 * 0.95 * battleScale(16);
+
 /// Onde ficam os pés do adversário em cada lugar (fração da altura do campo): um pouco para dentro do chão de cada cenário
 /// (tool/battle_backgrounds.py, foe_feet), para a base dele ficar no chão e não voando. Igual ao site.
 const groundFeet = <String, double>{'grass': 0.487, 'forest': 0.506, 'water': 0.487, 'beach': 0.508, 'underwater': 0.527, 'swamp': 0.487, 'sewer': 0.54, 'cave': 0.519, 'icecave': 0.519, 'mountain': 0.492, 'desert': 0.495, 'volcano': 0.5, 'snow': 0.487, 'city': 0.548, 'sky': 0.45, 'tower': 0.527, 'gym': 0.527, 'league': 0.527, 'center': 0.527, 'ruins': 0.497, 'flowers': 0.487, 'plant': 0.532, 'crystal': 0.522, 'dunes': 0.497, 'bamboo': 0.527, 'temple': 0.54, 'lavacave': 0.519, 'poisoncave': 0.519, 'seacave': 0.519};
@@ -123,9 +129,12 @@ class _PlatformBaseState extends State<PlatformBase> {
 /// Um Pokémon parado no campo (as telas da Battle Factory): do tamanho dele (pela altura), em cima da base dele, no
 /// mesmo lugar da batalha. Vai num Positioned quadrado.
 class StageMon extends StatefulWidget {
-  const StageMon({super.key, required this.id, this.shiny = false, this.back = false, required this.scene});
+  const StageMon({super.key, required this.id, this.shiny = false, this.back = false, this.base = true, required this.scene});
   final int id;
   final bool shiny, back;
+
+  /// Com a base embaixo (fora da batalha, andando com você: sem).
+  final bool base;
   final String scene;
 
   @override
@@ -141,7 +150,7 @@ class _StageMonState extends State<StageMon> {
 
   @override
   Widget build(BuildContext context) => Stack(clipBehavior: Clip.none, fit: StackFit.expand, children: [
-        PlatformBase(scene: widget.scene, side: widget.back ? 'mine' : 'foe', id: widget.id),
+        if (widget.base) PlatformBase(scene: widget.scene, side: widget.back ? 'mine' : 'foe', id: widget.id),
         Transform.scale(
           scale: battleScale(battleHeights[widget.id]),
           alignment: Alignment.bottomCenter,

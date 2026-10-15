@@ -191,6 +191,14 @@ export const sceneOfBoss = (kind) => (kind === 'gym' ? 'gym' : kind === 'elite' 
 export const battleScale = (height) => Math.min(1, Math.max(0.3, Math.sqrt((height ?? 10) / 20)))
 
 /**
+ * A altura de uma pessoa (~16 dm) na mesma escala dos Pokémon, num campo de
+ * largura w: lá atrás (a caixa do Pokémon de lá tem w*0,26) e na frente (a do
+ * seu, w*0,58). Igual ao app.
+ */
+export const farPerson = (w) => w * 0.26 * 0.95 * battleScale(16)
+export const nearPerson = (w) => w * 0.58 * 0.95 * battleScale(16)
+
+/**
  * Onde ficam os pés do adversário em cada lugar (fração da altura do campo):
  * um pouco para dentro do chão de cada cenário (tool/battle_backgrounds.py,
  * foe_feet), para a base dele ficar no chão e não voando. Igual ao app.

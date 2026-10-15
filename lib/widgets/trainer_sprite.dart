@@ -32,12 +32,17 @@ Widget _frameOf(String asset, {required int frame, required int frames, required
   return flip ? Transform.flip(flipX: true, child: cropped) : cropped;
 }
 
+/// Quantos px tem um adulto em pé nos sprites (com [Trainer.scale]): a mediana dos dois pacotes (tool/trainer_figures.py).
+const trainerAdultPx = 73.0;
+
 /// A frente animada, apoiada embaixo numa caixa de [box] px (um quadro de 96 px cabe nela).
+/// Com [height]: desenhado para um adulto ter [height] px (uma criança fica menor), com os pés na base do widget.
 class TrainerSprite extends StatefulWidget {
   final Trainer trainer;
   final double box;
+  final double? height;
   final bool flip, still;
-  const TrainerSprite(this.trainer, {super.key, this.box = 96, this.flip = false, this.still = false});
+  const TrainerSprite(this.trainer, {super.key, this.box = 96, this.height, this.flip = false, this.still = false});
 
   @override
   State<TrainerSprite> createState() => _TrainerSpriteState();
@@ -82,12 +87,9 @@ class _TrainerSpriteState extends State<TrainerSprite> with SingleTickerProvider
   @override
   Widget build(BuildContext context) {
     final t = widget.trainer;
-    final k = widget.box / 96 * t.scale;
-    return SizedBox.square(
-      dimension: widget.box,
-      child: Align(
-        alignment: Alignment.bottomCenter,
-        child: AnimatedBuilder(
+    final height = widget.height;
+    final k = height != null ? height / trainerAdultPx * t.scale : widget.box / 96 * t.scale;
+    final sprite = AnimatedBuilder(
           animation: _clock,
           builder: (context, _) {
             final ms = _clock.value * _cycle.inMilliseconds;
@@ -101,9 +103,17 @@ class _TrainerSpriteState extends State<TrainerSprite> with SingleTickerProvider
               child: sprite,
             );
           },
-        ),
-      ),
-    );
+        );
+    if (height != null) {
+      // Só até os pés: o vazio embaixo do desenho fica de fora (os pés pisam onde o widget termina).
+      final side = t.size * k;
+      return SizedBox(
+        width: side,
+        height: (t.feet ?? t.size) * k,
+        child: OverflowBox(alignment: Alignment.topCenter, minHeight: side, maxHeight: side, child: sprite),
+      );
+    }
+    return SizedBox.square(dimension: widget.box, child: Align(alignment: Alignment.bottomCenter, child: sprite));
   }
 }
 

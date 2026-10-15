@@ -12,23 +12,28 @@ import { Button, Modal, SearchInput } from './ui'
 /** Pixels na tela por pixel do sprite, para a caixa `box` (quadro de 96 px cabe nela). */
 const unit = (box) => box / 96
 
+/** Quantos px tem um adulto em pé nos sprites (com `scale`): a mediana dos dois pacotes (tool/trainer_figures.py). Igual ao app. */
+export const TRAINER_ADULT_PX = 73
+
 /**
  * A frente animada: os quadros da tira passam em loop (com uma pausa no
  * primeiro), apoiada embaixo e centralizada numa caixa de `box` px.
  * @param flip virado para a direita (o seu lado, quando não tem costas)
  */
-export function TrainerSprite({ trainer, box = 96, flip = false, still = false, className = '', style }) {
+export function TrainerSprite({ trainer, box = 96, height, flip = false, still = false, className = '', style }) {
   if (!trainer) return null
-  const k = unit(box) * (trainer.scale ?? 1)
+  // Com `height`: um adulto fica com `height` px (uma criança, menor) e o fim do widget é onde ficam os pés.
+  const k = (height ? height / TRAINER_ADULT_PX : unit(box)) * (trainer.scale ?? 1)
   const side = trainer.size * k
+  const outer = height ? { width: side, height: (trainer.fig?.[1] ?? trainer.size) * k } : { width: box, height: box }
   const frames = still ? 1 : trainer.frames
   // Sem quadros de animação: respira de leve (trainer-idle, index.css).
   const idle = !still && trainer.frames <= 1
   return (
-    <span className={`relative inline-block ${className}`} style={{ width: box, height: box, ...style }} aria-label={trainer.name} role="img">
+    <span className={`relative inline-block ${className}`} style={{ ...outer, ...style }} aria-label={trainer.name} role="img">
       <span className={`absolute inset-0 ${idle ? 'trainer-idle' : ''}`} data-idle={idle ? '' : undefined}>
       <span
-        className="pixelated absolute bottom-0 left-1/2"
+        className={`pixelated absolute left-1/2 ${height ? 'top-0' : 'bottom-0'}`}
         style={{
           width: side,
           height: side,
