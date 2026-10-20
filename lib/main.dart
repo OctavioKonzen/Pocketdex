@@ -1,0 +1,221 @@
+// lib/main.dart
+import 'services/trainers.dart';
+import 'services/push_service.dart';
+import 'services/battle_sounds.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:pocket_dex/providers/favorites_provider.dart';
+import 'package:pocket_dex/providers/theme_provider.dart';
+import 'package:pocket_dex/screens/home_screen.dart';
+import 'package:pocket_dex/screens/web_shell.dart';
+import 'package:pocket_dex/widgets/pokeball_background.dart';
+import 'package:pocket_dex/utils/site_ui.dart';
+import 'package:provider/provider.dart';
+import 'package:pocket_dex/utils/responsive.dart';
+import 'package:pocket_dex/screens/login_screen.dart';
+import 'package:pocket_dex/services/account_format.dart';
+import 'package:pocket_dex/services/account_sync.dart';
+import 'package:pocket_dex/services/auth_service.dart';
+import 'package:pocket_dex/services/friends_service.dart';
+import 'package:pocket_dex/services/firebase_setup.dart';
+import 'package:pocket_dex/services/daily_pokemon.dart';
+import 'package:pocket_dex/services/daily_widget.dart';
+import 'package:pocket_dex/services/daily_reminder.dart';
+import 'package:pocket_dex/services/user_data.dart';
+import 'package:pocket_dex/widgets/pokemon_sprite.dart';
+import 'package:pocket_dex/widgets/chat_bubble.dart';
+import 'package:pocket_dex/services/animated_sprites.dart';
+import 'package:pocket_dex/i18n/i18n.dart';
+import 'package:pocket_dex/services/app_settings.dart';
+import 'package:pocket_dex/services/ota_update.dart';
+import 'package:pocket_dex/services/deep_links.dart';
+import 'package:pocket_dex/services/offline_notice.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // No celular o app fica sempre em pé (a batalha e a Factory não cabem
+  // deitadas); no tablet gira à vontade.
+  final view = WidgetsBinding.instance.platformDispatcher.views.first;
+  if (!kIsWeb && view.physicalSize.shortestSide / view.devicePixelRatio < 600) {
+    await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  }
+  // Dados salvos no aparelho (favoritos, times, treinos, tema, recordes e idioma).
+  // A versão do motor da batalha e dos dados baixada pela rede (se tiver), antes de qualquer batalha.
+  await OtaUpdate.init();
+  await Future.wait([UserData.instance.load(), SpriteBoxes.load(), I18n.load(), AppSettings.instance.load(), ChatBubble.instance.load(), AnimatedSprites.instance.load(), Trainers.load()]);
+  // Tabela Pokémon → espécie (para converter times/treinos da conta) em
+  // segundo plano, sem atrasar a abertura do app.
+  AccountFormat.init();
+  // Lembrete do desafio do dia (se ligado): refaz a agenda dos próximos dias.
+  DailyReminder.instance.reschedule();
+  DailyPokemon.instance.reschedule();
+  DailyWidget.update();
+  // Login e sincronização com a conta (a mesma do site).
+  if (await initFirebase()) {
+    AccountSync.instance.start();
+    FriendsService.instance.start();
+    AuthService.instance.start();
+    // Avisos de amigos e batalhas no celular (push).
+    PushService.instance.start();
+  }
+  // Links do site (time, replay, desafio) abertos no app.
+  DeepLinks.start();
+  // Sem internet: avisa o que fica faltando.
+  OfflineNotice.check();
+  // Motor da batalha e dados novos pela rede (valem na próxima abertura do app).
+  OtaUpdate.check();
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: AuthService.instance),
+        ChangeNotifierProvider.value(value: AppSettings.instance),
+        ChangeNotifierProvider(create: (context) => FavoritesProvider()),
+        ChangeNotifierProvider(create: (context) => ThemeProvider()),
+      ],
+      child: const MyApp(),
+    ),
+  );
+}
+
+ThemeData siteTheme(SiteColors c, Brightness brightness) {
+  final scheme = ColorScheme.fromSeed(seedColor: const Color(0xFF2196F3), brightness: brightness).copyWith(
+    primary: const Color(0xFF2196F3),
+    onPrimary: Colors.white,
+    secondary: const Color(0xFF26A69A),
+    surface: c.surface,
+    onSurface: c.text,
+  );
+  return ThemeData(
+    useMaterial3: true,
+    brightness: brightness,
+    colorScheme: scheme,
+    // As telas são transparentes: o fundo (cor + Pokébola girando) vem da
+    // transição de tela (lib/widgets/pokeball_background.dart).
+    scaffoldBackgroundColor: Colors.transparent,
+    pageTransitionsTheme: const PageTransitionsTheme(builders: {
+      TargetPlatform.android: PokeballPageTransitions(),
+      TargetPlatform.iOS: PokeballPageTransitions(),
+      TargetPlatform.linux: PokeballPageTransitions(),
+      TargetPlatform.macOS: PokeballPageTransitions(),
+      TargetPlatform.windows: PokeballPageTransitions(),
+      TargetPlatform.fuchsia: PokeballPageTransitions(),
+    }),
+    cardColor: c.card,
+    canvasColor: c.bg,
+    hintColor: c.muted,
+    dividerColor: c.line,
+    appBarTheme: AppBarTheme(
+      backgroundColor: c.surface,
+      foregroundColor: c.text,
+      surfaceTintColor: Colors.transparent,
+      elevation: 4,
+      scrolledUnderElevation: 4,
+      shadowColor: Colors.black54,
+      titleTextStyle: TextStyle(color: c.text, fontSize: 20, fontWeight: FontWeight.bold),
+      iconTheme: IconThemeData(color: c.text),
+    ),
+    cardTheme: CardThemeData(
+      color: c.card,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+    ),
+    bottomSheetTheme: BottomSheetThemeData(backgroundColor: c.card, surfaceTintColor: Colors.transparent),
+    dialogTheme: DialogThemeData(backgroundColor: c.card, surfaceTintColor: Colors.transparent),
+    snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
+    textTheme: ThemeData(brightness: brightness).textTheme.apply(bodyColor: c.text, displayColor: c.text),
+  );
+}
+
+/// Sem login aparece a tela de entrar; logado, vai direto para o app.
+class AuthGate extends StatelessWidget {
+  final Widget child;
+  const AuthGate({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final status = context.watch<AuthService>().status;
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      child: switch (status) {
+        AuthStatus.disabled || AuthStatus.signedIn => KeyedSubtree(key: const ValueKey('app'), child: child),
+        AuthStatus.loading => const _Splash(),
+        _ => const LoginScreen(key: ValueKey('login')),
+      },
+    );
+  }
+}
+
+class _Splash extends StatelessWidget {
+  const _Splash();
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        body: Center(child: Image.asset('assets/images/poke_logo.png', height: 96)),
+      );
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
+
+    // Trocar o idioma redesenha o app inteiro no idioma novo.
+    return ValueListenableBuilder<String>(
+      valueListenable: I18n.current,
+      builder: (context, language, _) => MaterialApp(
+      key: ValueKey(language),
+      title: 'PocketDex',
+      // Mesmas cores do site (claro e escuro).
+      theme: siteTheme(SiteColors.light, Brightness.light),
+      darkTheme: siteTheme(SiteColors.dark, Brightness.dark),
+      themeMode: themeProvider.themeMode,
+      scrollBehavior: const AppScrollBehavior(),
+      navigatorKey: ChatBubble.instance.navigatorKey,
+      // A música da batalha pausa quando outra tela abre por cima.
+      navigatorObservers: [BattleSounds.routes],
+      // Tamanho do texto escolhido nas Configurações (por cima do do aparelho).
+      builder: (context, child) => ListenableBuilder(
+        listenable: AppSettings.instance,
+        builder: (context, _) {
+          final media = MediaQuery.of(context);
+          final scale = AppSettings.instance.textScale;
+          return MediaQuery(
+            data: scale == 1 ? media : media.copyWith(textScaler: _ScaledText(media.textScaler, scale)),
+            child: ChatBubbleLayer(child: WebFrame(child: child!)),
+          );
+        },
+      ),
+      // No PC o site abre direto na Pokédex, com navegação no topo.
+      home: AuthGate(
+        child: Builder(
+          builder: (context) =>
+              Responsive.isWide(context) ? const WebShell() : const HomeScreen(),
+        ),
+      ),
+      debugShowCheckedModeBanner: false,
+      ),
+    );
+  }
+}
+
+/// Escala do aparelho vezes a escolhida no app.
+class _ScaledText extends TextScaler {
+  final TextScaler base;
+  final double factor;
+  const _ScaledText(this.base, this.factor);
+
+  @override
+  double scale(double fontSize) => base.scale(fontSize) * factor;
+
+  // ignore: deprecated_member_use
+  @override
+  double get textScaleFactor => base.scale(14) / 14 * factor;
+
+  @override
+  bool operator ==(Object other) => other is _ScaledText && other.base == base && other.factor == factor;
+
+  @override
+  int get hashCode => Object.hash(base, factor);
+}
