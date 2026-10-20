@@ -1,0 +1,171 @@
+name: App Android (APK)
+
+# Gera o APK do app e publica em GitHub Releases, com a versão do
+# contador de lançamentos publicados (35 → 0.3.5). Só roda quando pedido (Actions →
+# App Android (APK) → Run workflow): mesclar na main não publica APK. O app
+# A versão avança uma vez por APK publicado, com passagem de 9 para 0.
+# confere essa página ao abrir e oferece a atualização; o site tem o botão
+# de download. (Que o app compila é conferido em todo PR, em checks.yml.)
+#
+# Precisa destes secrets (Settings → Secrets and variables → Actions):
+#   ANDROID_KEYSTORE_BASE64   chave de assinatura (.jks) em base64
+#   ANDROID_KEYSTORE_PASSWORD senha da chave
+#   ANDROID_KEY_ALIAS         apelido da chave
+#   ANDROID_KEY_PASSWORD      senha do apelido
+#   GOOGLE_SERVICES_JSON      conteúdo do google-services.json (Firebase)
+# Sem eles o APK é gerado só como teste (confere que o app compila) e não é
+# publicado.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Versão e secrets
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          GOOGLE_SERVICES: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          python3 -m unittest discover -s tool -p 'test_apk_version.py'
+          python3 -m unittest discover -s tool -p 'test_cleanup_old_apks.py'
+          LATEST_TAG=$(gh release view --json tagName --jq .tagName)
+          PREVIOUS_VERSION=$(gh api "repos/$GITHUB_REPOSITORY/contents/pubspec.yaml?ref=$LATEST_TAG" --jq .content | base64 --decode | sed -n 's/^version: *//p')
+          CURRENT_VERSION=$(sed -n 's/^version: *//p' pubspec.yaml)
+          PUBLISHED_COUNT=$(python3 tool/cleanup_old_apks.py --count)
+          FULL_VERSION=$(python3 tool/next_apk_version.py "$PUBLISHED_COUNT" "$CURRENT_VERSION" "$PREVIOUS_VERSION" --write)
+          VERSION="${FULL_VERSION%+*}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if [ "$(gh release view "apk-$VERSION" --json isDraft --jq .isDraft 2>/dev/null || true)" = 'false' ]; then
+            echo "A versão $VERSION já está publicada."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+          if [ "$GITHUB_REF" = 'refs/heads/main' ] && [ -n "$KEYSTORE" ] && [ -n "$GOOGLE_SERVICES" ]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Faltam os secrets da chave de assinatura ou do google-services.json: o APK é gerado só como teste e não é publicado."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-python@v5
+        if: steps.check.outputs.skip == 'false'
+        with:
+          python-version: '3.12'
+
+      - uses: actions/setup-java@v4
+        if: steps.check.outputs.skip == 'false'
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: subosito/flutter-action@v2
+        if: steps.check.outputs.skip == 'false'
+        with:
+          channel: stable
+          cache: true
+
+      - uses: actions/setup-node@v4
+        if: steps.check.outputs.skip == 'false'
+        with:
+          node-version: 22
+
+      - name: Conferir o app antes de gerar (análise e testes)
+        if: steps.check.outputs.skip == 'false'
+        run: |
+          bash tool/build_battle_engine.sh
+          flutter pub get
+          bash tool/build_quickjs_test.sh
+          export LIBQUICKJSC_TEST_PATH="$PWD/build/quickjs-test/libquickjs_c_bridge_plugin.so"
+          flutter analyze --no-fatal-infos
+          flutter test
+
+      - name: Imagens da interface de batalha
+        if: steps.check.outputs.skip == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: battle-layout-preview-${{ steps.check.outputs.version }}
+          path: build/battle-ui-shots
+          if-no-files-found: ignore
+
+      - name: Gerar APK assinado
+        if: steps.check.outputs.skip == 'false'
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          GOOGLE_SERVICES: ${{ secrets.GOOGLE_SERVICES_JSON }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE" ]; then
+            echo "$KEYSTORE" | base64 -d > "$RUNNER_TEMP/pocketdex.jks"
+            export ANDROID_KEYSTORE_PATH="$RUNNER_TEMP/pocketdex.jks"
+          fi
+          if [ -n "$GOOGLE_SERVICES" ]; then
+            printf '%s' "$GOOGLE_SERVICES" > android/app/google-services.json
+          fi
+          flutter pub get
+          # Os testes foram executados na etapa anterior.
+          # Artes menores só no APK (o site continua com as grandes).
+          pip install pillow
+          python3 tool/shrink_app_images.py
+          # Um APK por tipo de celular (bem menor que um com os dois):
+          # PocketDex.apk para 64 bits (quase todos) e outro para os de 32 bits.
+          flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk PocketDex.apk
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk PocketDex_32bits.apk
+          ls -lh PocketDex*.apk
+
+      - name: Publicar versão
+        if: steps.check.outputs.skip == 'false' && steps.check.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.check.outputs.version }}
+        run: |
+          NOTES=$(git log -1 --pretty=%B)
+          if ! git diff --quiet -- pubspec.yaml README.md; then
+            # O main tem um commit só, no nome do dono: a versão nova entra
+            # nele (sem commit a mais). O main pode ter andado enquanto o APK
+            # era gerado: a mudança da versão vai por cima do main de agora.
+            git diff -- pubspec.yaml README.md > "$RUNNER_TEMP/version.patch"
+            git fetch origin main
+            BASE=$(git rev-parse origin/main)
+            git checkout -q -f "$BASE"
+            git apply "$RUNNER_TEMP/version.patch"
+            git add pubspec.yaml README.md
+            export GIT_AUTHOR_NAME=OctavioKonzen GIT_COMMITTER_NAME=OctavioKonzen
+            export GIT_AUTHOR_EMAIL=131984455+OctavioKonzen@users.noreply.github.com GIT_COMMITTER_EMAIL=131984455+OctavioKonzen@users.noreply.github.com
+            NEW=$(git commit-tree "$(git write-tree)" -m "$(git log -1 --pretty=%B "$BASE")")
+            git push --force-with-lease="main:$BASE" origin "$NEW:refs/heads/main"
+            git checkout -q "$NEW"
+          fi
+          # O nome fixo PocketDex.apk deixa o link
+          # releases/latest/download/PocketDex.apk sempre apontando para a última.
+          # Só o PocketDex.apk entra ao criar a versão: o app 1.3.x baixa o
+          # primeiro APK da lista, e ele tem que ser o de 64 bits.
+          # O rascunho permite repetir um upload que falhou sem contar outro
+          # lançamento ou substituir a versão atual por uma publicação incompleta.
+          TAG="apk-$VERSION"
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" PocketDex.apk PocketDex_32bits.apk --clobber
+          else
+            gh release create "$TAG" PocketDex.apk PocketDex_32bits.apk --draft \
+              --target "$(git rev-parse HEAD)" --title "PocketDex $VERSION" --notes "$NOTES"
+          fi
+          gh release edit "$TAG" --draft=false --latest
+          python3 tool/cleanup_old_apks.py

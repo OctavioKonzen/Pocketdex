@@ -1,0 +1,176 @@
+name: Conferência
+
+# Confere o app, o site e as regras do Firestore em todo pull request (e em
+# pushes fora da main). Assim um erro aparece antes de virar APK ou site.
+
+on:
+  pull_request:
+  push:
+    branches-ignore: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app:
+    name: App (Flutter)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: bash tool/build_battle_engine.sh
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: bash tool/build_quickjs_test.sh
+      - run: flutter analyze --no-fatal-infos
+      - run: flutter test
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: battle-layout-preview
+          path: build/battle-ui-shots
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        with:
+          name: battle-move-verification
+          path: docs/battle-move-verification.json
+
+  # Quando o pull request mexe no Android (código nativo, widget) ou nos
+  # pacotes, compila um APK de teste: o erro aparece antes de ir para a main.
+  apk:
+    name: APK de teste
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Mudou algo do Android?
+        id: changed
+        run: |
+          if git diff --name-only "origin/${{ github.base_ref }}...HEAD" | grep -qE '^(android/|pubspec\.(yaml|lock)$)'; then
+            echo "android=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "android=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-java@v4
+        if: steps.changed.outputs.android == 'true'
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: subosito/flutter-action@v2
+        if: steps.changed.outputs.android == 'true'
+        with:
+          channel: stable
+          cache: true
+      - if: steps.changed.outputs.android == 'true'
+        run: |
+          bash tool/build_battle_engine.sh
+          flutter pub get
+          flutter build apk --debug --target-platform android-arm64
+
+  site:
+    name: Site (React)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web-site
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web-site/package-lock.json
+      - name: Gerar dados do site (Python)
+        run: |
+          bash ../tool/build_battle_engine.sh
+          pip install pillow
+          npm run data
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+
+  rules:
+    name: Regras do Firestore
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: firestore-tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: firestore-tests/package-lock.json
+      - run: npm ci
+      - run: npm test
+
+  e2e:
+    name: Site com login (emuladores)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Gerar o site ligado aos emuladores
+        working-directory: web-site
+        run: |
+          bash ../tool/build_battle_engine.sh
+          pip install pillow
+          npm run data
+          npm ci
+          VITE_EMULATORS=1 npm run build
+      - name: Instalar o teste
+        working-directory: e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Limpeza do banco (apaga tudo de contas excluídas)
+        run: |
+          (cd tool/cleanup && npm ci)
+          cd e2e && npx firebase emulators:exec --only auth,firestore --project pocketdex-ffb4d "node ../tool/cleanup/cleanup.test.mjs"
+      - name: Notificações no celular (o que mudou vira aviso)
+        run: |
+          (cd tool/notify && npm ci)
+          cd e2e && npx firebase emulators:exec --only firestore --project pocketdex-ffb4d "node ../tool/notify/notify.test.mjs"
+      - name: Criar conta, abrir as páginas, sair e entrar
+        working-directory: e2e
+        run: |
+          (cd ../web-site && npx vite preview --port 4175 &)
+          for i in $(seq 30); do curl -sf http://localhost:4175/Pocketdex/ >/dev/null && break; sleep 2; done
+          npm test
+      - name: Print da falha
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-falha
+          path: e2e/falha.png
+          if-no-files-found: ignore
