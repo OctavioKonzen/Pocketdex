@@ -310,29 +310,53 @@ O **mapa** de rotas e cidades da história de cada região. Em cada bifurcação
 
 As batalhas da corrida usam a mesma tela das outras. Contra Pokémon selvagem a BOLSA tem Poké Balls para capturar, e o XP vai para quem lutou (ou para todos com o Exp. Share). Os Pokémon sobem de nível e evoluem.
 
-#### Battle Factory: cidade, loja e cura
+#### Battle Factory: cidade
 
 <table>
   <tr><th>📱 App</th><th>💻 Site</th></tr>
   <tr>
-    <td align="center" valign="top"><img src="docs/screenshots/app-factory-cidade.jpg" width="220" alt="App: Cidade" /><br/><img src="docs/screenshots/app-factory-loja.jpg" width="220" alt="App: Poké Mart" /><br/><img src="docs/screenshots/app-factory-cura.jpg" width="220" alt="App: Cura na rota" /></td>
-    <td align="center" valign="top"><i>Só no app</i></td>
+    <td align="center" valign="top"><img src="docs/screenshots/app-factory-cidade.jpg" width="220" alt="App: Cidade" /></td>
+    <td align="center" valign="top"><img src="docs/screenshots/site-factory-cidade.jpg" width="560" alt="Site: Cidade" /></td>
   </tr>
 </table>
 
-Nas cidades ficam o **Poké Mart**, o **Centro Pokémon** e a **Creche**; na rota aparecem lugares de cura e vendedores. No site são as mesmas telas.
+Chegando numa cidade, você escolhe o que fazer: o **Poké Mart**, o **Centro Pokémon** (cura o time todo de graça), a **Creche**, o mapa da região e o **chefe** da cidade (líder, rival ou vilão), que espera no último andar.
 
-#### Battle Factory: resultado
+#### Battle Factory: Poké Mart
+
+<table>
+  <tr><th>📱 App</th><th>💻 Site</th></tr>
+  <tr>
+    <td align="center" valign="top"><img src="docs/screenshots/app-factory-loja.jpg" width="220" alt="App: Poké Mart" /></td>
+    <td align="center" valign="top"><img src="docs/screenshots/site-factory-loja.jpg" width="560" alt="Site: Poké Mart" /></td>
+  </tr>
+</table>
+
+A loja da cidade (e o vendedor ambulante na rota): Poké Balls, Poções, Revive, itens para equipar, pedras de evolução, TMs e mais, pagos com o dinheiro ganho nas batalhas.
+
+#### Battle Factory: cura na rota
+
+<table>
+  <tr><th>📱 App</th><th>💻 Site</th></tr>
+  <tr>
+    <td align="center" valign="top"><img src="docs/screenshots/app-factory-cura.jpg" width="220" alt="App: Cura na rota" /></td>
+    <td align="center" valign="top"><img src="docs/screenshots/site-factory-cura.jpg" width="560" alt="Site: Cura na rota" /></td>
+  </tr>
+</table>
+
+Fora da cidade o time não é curado entre os andares. Às vezes aparece no caminho alguém que cura todo mundo, como o Pokémon Breeder ou a Enfermeira Joy.
+
+#### Battle Factory: resultado do andar
 
 <table>
   <tr><th>📱 App</th><th>💻 Site</th></tr>
   <tr>
     <td align="center" valign="top"><img src="docs/screenshots/app-factory-resultado.jpg" width="220" alt="App: Resultado" /></td>
-    <td align="center" valign="top"><i>Só no app</i></td>
+    <td align="center" valign="top"><img src="docs/screenshots/site-factory-resultado.jpg" width="560" alt="Site: Resultado" /></td>
   </tr>
 </table>
 
-No fim da corrida aparecem os andares vencidos, as moedas ganhas e o time que chegou até ali. No site é a mesma tela.
+Depois de cada vitória: o XP e o dinheiro ganhos, quem subiu de nível ou evoluiu, os itens achados e a missão da rota.
 
 ---
 
