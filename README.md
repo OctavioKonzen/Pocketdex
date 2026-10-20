@@ -18,124 +18,172 @@
 ## 📑 Sumário
 
 - [Telas principais](#-telas-principais)
-  - [Início e Pokédex](#início-e-pokédex) · [Pokémon](#pokémon) · [Times](#times) · [Jogo](#jogo-quem-é-esse-pokémon) · [Centro de Batalha](#centro-de-batalha) · [Treino](#treino) · [Enciclopédia](#enciclopédia) · [Amigos](#amigos) · [Conquistas e Configurações](#conquistas-e-configurações)
+  - [Pokédex](#pokédex) · [Início (app)](#início-app) · [Pokémon](#pokémon) · [Times](#times) · [Montador de time](#montador-de-time) · [Jogo (Quem é esse Pokémon?)](#jogo-quem-é-esse-pokémon) · [Centro de Batalha](#centro-de-batalha) · [Calculadora de dano](#calculadora-de-dano) · [Treino](#treino) · [Enciclopédia](#enciclopédia) · [Amigos](#amigos) · [Conquistas](#conquistas) · [Configurações](#configurações)
 - [Modos de batalha](#-modos-de-batalha)
-  - [Como a batalha funciona](#como-a-batalha-funciona) · [Individual](#individual-1-contra-1) · [Dupla e tripla](#dupla-e-tripla) · [Contra o computador](#contra-o-computador) · [Online com amigos](#online-com-amigos) · [Draft](#draft) · [Jornada, Torre e Battle Factory](#jornada-torre-de-batalha-e-battle-factory-pokelike)
+  - [Como a batalha funciona](#como-a-batalha-funciona) · [Individual (1 contra 1)](#individual-1-contra-1) · [Escolhendo o golpe](#escolhendo-o-golpe) · [Dupla e tripla](#dupla-e-tripla) · [Golpes na dupla](#golpes-na-dupla) · [Contra o computador](#contra-o-computador) · [Online com amigos](#online-com-amigos) · [Draft](#draft) · [Jornada, Torre de Batalha e Battle Factory (Pokelike)](#jornada-torre-de-batalha-e-battle-factory-pokelike)
 - [Apoie o projeto](#-apoie-o-projeto) · [Ferramentas](#️-ferramentas-usadas) · [Como usar](#-como-usar) · [Como rodar o código](#-como-rodar-o-código) · [Créditos](#-créditos)
 
-> As imagens do app são do celular (Android) e as do site são do computador. As telas são as mesmas nos dois: mesmo visual, mesmas regras e mesma conta.
+> Cada tela aparece com a print do app (celular Android) à esquerda e a do site (computador) à direita, e a explicação logo embaixo. As telas são as mesmas nos dois: mesmo visual, mesmas regras e mesma conta.
 
 ---
 
 ## 🧭 Telas principais
 
-### Início e Pokédex
-
-O **Início** do app tem a busca, o **Pokémon do dia** (com o grito) e os atalhos para todas as áreas. A **Pokédex** lista os 1025 Pokémon com Megas, formas regionais e outras formas, sprites animados no estilo Black & White (normais e shiny) e filtros por geração, jogo, tipo, status e mais. No site, a Pokédex é a página inicial e os atalhos ficam na barra de cima.
+### Pokédex
 
 <table>
   <tr><th>📱 App</th><th>💻 Site</th></tr>
   <tr>
-    <td align="center"><img src="docs/screenshots/app-inicio.jpg" width="200" alt="App: app-inicio" /> <img src="docs/screenshots/app-pokedex.jpg" width="200" alt="App: app-pokedex" /></td>
-    <td align="center"><img src="docs/screenshots/site-inicio.jpg" width="520" alt="Site: site-inicio" /></td>
+    <td align="center" valign="top"><img src="docs/screenshots/app-pokedex.jpg" width="220" alt="App: Pokédex" /></td>
+    <td align="center" valign="top"><img src="docs/screenshots/site-inicio.jpg" width="560" alt="Site: Pokédex" /></td>
   </tr>
 </table>
+
+A **Pokédex** lista os 1025 Pokémon com Megas, formas regionais e outras formas, sprites animados no estilo Black & White (normais e shiny) e filtros por geração, jogo, tipo, status e mais. No topo fica o **Pokémon do dia**, com o grito. No site, a Pokédex é a página inicial e os atalhos para as outras áreas ficam na barra de cima.
+
+### Início (app)
+
+<table>
+  <tr><th>📱 App</th><th>💻 Site</th></tr>
+  <tr>
+    <td align="center" valign="top"><img src="docs/screenshots/app-inicio.jpg" width="220" alt="App: Início" /></td>
+    <td align="center" valign="top"><i>Só no app</i></td>
+  </tr>
+</table>
+
+No app, o **Início** tem a busca, o Pokémon do dia e os atalhos para todas as áreas (no site, esses atalhos são a barra de cima).
 
 ### Pokémon
 
-A ficha de cada Pokémon: tipos, grito, forma shiny, descrição, altura, peso, gênero e grupos de ovo, **status base**, **evolução**, **golpes** (por nível, TM, tutor e ovo), **habilidades** (inclusive a oculta) e a aba **Jogos**, que mostra em quais jogos ele aparece e onde encontrar.
-
 <table>
   <tr><th>📱 App</th><th>💻 Site</th></tr>
   <tr>
-    <td align="center"><img src="docs/screenshots/app-pokemon.jpg" width="200" alt="App: app-pokemon" /></td>
-    <td align="center"><img src="docs/screenshots/site-pokemon.jpg" width="520" alt="Site: site-pokemon" /></td>
+    <td align="center" valign="top"><img src="docs/screenshots/app-pokemon.jpg" width="220" alt="App: Charizard" /></td>
+    <td align="center" valign="top"><img src="docs/screenshots/site-pokemon.jpg" width="560" alt="Site: Charizard" /></td>
   </tr>
 </table>
+
+A ficha de cada Pokémon: tipos, grito, forma shiny, outras formas (Mega, Gigantamax...), descrição, altura, peso, gênero e grupos de ovo, **status base**, **evolução**, **golpes** (por nível, TM, tutor e ovo), **habilidades** (inclusive a oculta) e a aba **Jogos**, que mostra em quais jogos ele aparece e onde encontrar.
 
 ### Times
 
-Monte times de até 6 Pokémon com golpes, item, habilidade, Nature, EVs, IVs, Tera Type e a mecânica de cada um (Mega, Z-Move, Dynamax/Gigantamax ou Tera). O montador mostra fraquezas, cobertura de tipos e uma nota do time, e sugere quem completa a equipe. Dá para compartilhar por link, código ou texto do Pokémon Showdown, publicar na **Comunidade** e ver os **Times dos personagens** (líderes, Elite Four, campeões, rivais e vilões de cada jogo, da 1ª à 9ª geração).
+<table>
+  <tr><th>📱 App</th><th>💻 Site</th></tr>
+  <tr>
+    <td align="center" valign="top"><img src="docs/screenshots/app-times.jpg" width="220" alt="App: Times" /></td>
+    <td align="center" valign="top"><img src="docs/screenshots/site-times.jpg" width="560" alt="Site: Times" /></td>
+  </tr>
+</table>
+
+A lista dos seus times, sincronizada com a conta. Daqui você cria um time novo, **importa** um time (link, código ou texto do Pokémon Showdown) e abre os **Times da comunidade** (times publicados por outros jogadores, com nota) e os **Times dos personagens** (líderes, Elite Four, campeões, rivais e vilões de cada jogo, da 1ª à 9ª geração).
+
+### Montador de time
 
 <table>
   <tr><th>📱 App</th><th>💻 Site</th></tr>
   <tr>
-    <td align="center"><img src="docs/screenshots/app-times.jpg" width="200" alt="App: app-times" /> <img src="docs/screenshots/app-montador.jpg" width="200" alt="App: app-montador" /></td>
-    <td align="center"><img src="docs/screenshots/site-times.jpg" width="520" alt="Site: site-times" /></td>
+    <td align="center" valign="top"><img src="docs/screenshots/app-montador.jpg" width="220" alt="App: Montador" /></td>
+    <td align="center" valign="top"><img src="docs/screenshots/site-montador.jpg" width="560" alt="Site: Montador" /></td>
   </tr>
 </table>
+
+Monte times de até 6 Pokémon com golpes, item, habilidade, Nature, EVs, IVs, Tera Type e a mecânica de cada um (Mega, Z-Move, Dynamax/Gigantamax ou Tera). A **análise do time** mostra fraquezas, defesa forte, cobertura de ataque e a nota da comunidade, e sugere quem completa a equipe. Dá para compartilhar por link, código ou texto do Showdown.
 
 ### Jogo (Quem é esse Pokémon?)
 
-Adivinhe o Pokémon entre 4 opções, pela **silhueta**, pelo **grito**, pela **descrição** ou pelos **tipos**. Tem o modo normal (3 vidas), o **Ranked** (5 segundos por Pokémon, vale ranking), o **Desafio do dia** (os mesmos 10 Pokémon para todo mundo) e desafios entre amigos, com rankings geral, da semana e do dia.
-
 <table>
   <tr><th>📱 App</th><th>💻 Site</th></tr>
   <tr>
-    <td align="center"><img src="docs/screenshots/app-jogo.jpg" width="200" alt="App: app-jogo" /></td>
-    <td align="center"><img src="docs/screenshots/site-jogo.jpg" width="520" alt="Site: site-jogo" /></td>
+    <td align="center" valign="top"><img src="docs/screenshots/app-jogo.jpg" width="220" alt="App: Jogo" /></td>
+    <td align="center" valign="top"><img src="docs/screenshots/site-jogo.jpg" width="560" alt="Site: Jogo" /></td>
   </tr>
 </table>
+
+Adivinhe o Pokémon entre 4 opções, pela **silhueta**, pelo **grito**, pela **descrição** ou pelos **tipos**. Tem o modo normal (3 vidas), o **Ranked** (5 segundos por Pokémon, vale ranking), o **Desafio do dia** (os mesmos 10 Pokémon para todo mundo) e desafios entre amigos, com rankings geral, da semana e do dia.
 
 ### Centro de Batalha
 
+<table>
+  <tr><th>📱 App</th><th>💻 Site</th></tr>
+  <tr>
+    <td align="center" valign="top"><img src="docs/screenshots/app-centro.jpg" width="220" alt="App: Centro de Batalha" /></td>
+    <td align="center" valign="top"><img src="docs/screenshots/site-centro.jpg" width="560" alt="Site: Centro de Batalha" /></td>
+  </tr>
+</table>
+
 O ponto de partida das batalhas (veja os [modos de batalha](#-modos-de-batalha)) e as ferramentas para preparar o time: **Calculadora de dano**, **Quem vence?** (quem ganha um contra um), **Faixas de velocidade**, **Comparar Pokémon**, **Tabela de tipos** e **Tera Raids**.
+
+### Calculadora de dano
 
 <table>
   <tr><th>📱 App</th><th>💻 Site</th></tr>
   <tr>
-    <td align="center"><img src="docs/screenshots/app-centro.jpg" width="200" alt="App: app-centro" /> <img src="docs/screenshots/app-dano.jpg" width="200" alt="App: app-dano" /></td>
-    <td align="center"><img src="docs/screenshots/site-centro.jpg" width="520" alt="Site: site-centro" /></td>
+    <td align="center" valign="top"><img src="docs/screenshots/app-dano.jpg" width="220" alt="App: Calculadora de dano" /></td>
+    <td align="center" valign="top"><img src="docs/screenshots/site-dano.jpg" width="560" alt="Site: Calculadora de dano" /></td>
   </tr>
 </table>
+
+Escolha o atacante e o defensor (com item, habilidade, Nature, EVs, IVs, Tera e boosts) e o campo (clima, terreno, telas). A calculadora mostra quanto cada golpe tira, em % e em HP, e quantos golpes precisa para derrubar. As contas são as mesmas do Pokémon Showdown, no app e no site.
 
 ### Treino
 
-Ferramentas de criação: **Guia de Natures**, **Breeding** (parceiros compatíveis), **Golpes de ovo** (quem passa o golpe), **Contador de EVs**, **Calculadora de IVs**, **Contador de shiny** e o acompanhamento de **Nuzlocke**.
-
 <table>
   <tr><th>📱 App</th><th>💻 Site</th></tr>
   <tr>
-    <td align="center"><img src="docs/screenshots/app-treino.jpg" width="200" alt="App: app-treino" /></td>
-    <td align="center"><img src="docs/screenshots/site-treino.jpg" width="520" alt="Site: site-treino" /></td>
+    <td align="center" valign="top"><img src="docs/screenshots/app-treino.jpg" width="220" alt="App: Treino" /></td>
+    <td align="center" valign="top"><img src="docs/screenshots/site-treino.jpg" width="560" alt="Site: Treino" /></td>
   </tr>
 </table>
+
+Ferramentas de criação: **Guia de Natures**, **Breeding** (parceiros compatíveis), **Golpes de ovo** (quem passa o golpe), **Contador de EVs**, **Calculadora de IVs**, **Contador de shiny** e o acompanhamento de **Nuzlocke**.
 
 ### Enciclopédia
 
-Todos os **golpes** (tipo, categoria, poder, precisão e quem aprende), **habilidades** (o que fazem e quem tem) e **itens** (efeito e categoria), com busca e filtros.
-
 <table>
   <tr><th>📱 App</th><th>💻 Site</th></tr>
   <tr>
-    <td align="center"><img src="docs/screenshots/app-enciclopedia.jpg" width="200" alt="App: app-enciclopedia" /></td>
-    <td align="center"><img src="docs/screenshots/site-enciclopedia.jpg" width="520" alt="Site: site-enciclopedia" /></td>
+    <td align="center" valign="top"><img src="docs/screenshots/app-enciclopedia.jpg" width="220" alt="App: Enciclopédia" /></td>
+    <td align="center" valign="top"><img src="docs/screenshots/site-enciclopedia.jpg" width="560" alt="Site: Enciclopédia" /></td>
   </tr>
 </table>
+
+Todos os **golpes** (tipo, categoria, poder, precisão e quem aprende), **habilidades** (o que fazem e quem tem) e **itens** (efeito e categoria), com busca e filtros.
 
 ### Amigos
 
-Adicione amigos pelo nome, converse no chat (as mensagens somem em 7 dias), mande cartões de time e de Pokémon, desafie para o quiz ou para uma batalha online e compare os recordes do Ranked.
+<table>
+  <tr><th>📱 App</th><th>💻 Site</th></tr>
+  <tr>
+    <td align="center" valign="top"><i>Só no site</i></td>
+    <td align="center" valign="top"><img src="docs/screenshots/site-amigos.jpg" width="560" alt="Site: Amigos" /></td>
+  </tr>
+</table>
+
+Adicione amigos pelo nome, converse no chat (as mensagens somem em 7 dias), mande cartões de time e de Pokémon, desafie para o quiz ou para uma batalha online e compare os recordes do Ranked. No app, a tela é a mesma, com a mesma conta.
+
+### Conquistas
 
 <table>
   <tr><th>📱 App</th><th>💻 Site</th></tr>
   <tr>
-    <td align="center"></td>
-    <td align="center"><img src="docs/screenshots/site-amigos.jpg" width="520" alt="Site: site-amigos" /></td>
+    <td align="center" valign="top"><img src="docs/screenshots/app-conquistas.jpg" width="220" alt="App: Conquistas" /></td>
+    <td align="center" valign="top"><img src="docs/screenshots/site-conquistas.jpg" width="560" alt="Site: Conquistas" /></td>
   </tr>
 </table>
 
-### Conquistas e Configurações
+Medalhas por jogar, montar times, favoritar Pokémon e avançar nas batalhas (inclusive as da Battle Factory).
 
-As **Conquistas** dão medalhas por jogar, montar times, favoritar Pokémon e avançar nas batalhas (inclusive as da Battle Factory). Nas **Configurações** ficam a conta (Google ou e-mail), o tema claro/escuro, o idioma (português, inglês, francês e espanhol), o tamanho do texto, os sprites (animados, BW ou 3D) e o Pix para apoiar o projeto.
+### Configurações
 
 <table>
   <tr><th>📱 App</th><th>💻 Site</th></tr>
   <tr>
-    <td align="center"><img src="docs/screenshots/app-conquistas.jpg" width="200" alt="App: app-conquistas" /> <img src="docs/screenshots/app-configuracoes.jpg" width="200" alt="App: app-configuracoes" /></td>
-    <td align="center"><img src="docs/screenshots/site-conquistas.jpg" width="520" alt="Site: site-conquistas" /><br/><img src="docs/screenshots/site-configuracoes.jpg" width="520" alt="Site: site-configuracoes" /></td>
+    <td align="center" valign="top"><img src="docs/screenshots/app-configuracoes.jpg" width="220" alt="App: Configurações" /></td>
+    <td align="center" valign="top"><img src="docs/screenshots/site-configuracoes.jpg" width="560" alt="Site: Configurações" /></td>
   </tr>
 </table>
+
+A conta (Google ou e-mail), o tema claro/escuro, o idioma (português, inglês, francês e espanhol), o tamanho do texto, os sprites (animados, BW ou 3D) e o Pix para apoiar o projeto.
 
 ---
 
@@ -154,43 +202,63 @@ As batalhas são por turnos, no estilo **Black & White**, com o **mesmo motor** 
 
 ### Individual (1 contra 1)
 
-Um Pokémon de cada lado. Antes de começar, a **prévia dos times** mostra o time do adversário e você escolhe quem entra primeiro.
+<table>
+  <tr><th>📱 App</th><th>💻 Site</th></tr>
+  <tr>
+    <td align="center" valign="top"><img src="docs/screenshots/app-batalha.jpg" width="220" alt="App: Batalha individual" /></td>
+    <td align="center" valign="top"><img src="docs/screenshots/site-batalha.jpg" width="560" alt="Site: Batalha individual" /></td>
+  </tr>
+</table>
+
+Um Pokémon de cada lado, com o seu de costas e o adversário de frente, como nos jogos. Antes de começar, a **prévia dos times** mostra o time do adversário e você escolhe quem entra primeiro. O menu tem **LUTAR**, **BOLSA**, **POKÉMON** e **FUGIR**.
+
+### Escolhendo o golpe
 
 <table>
   <tr><th>📱 App</th><th>💻 Site</th></tr>
   <tr>
-    <td align="center"><img src="docs/screenshots/app-batalha.jpg" width="200" alt="App: app-batalha" /> <img src="docs/screenshots/app-batalha-golpes.jpg" width="200" alt="App: app-batalha-golpes" /></td>
-    <td align="center"><img src="docs/screenshots/site-batalha.jpg" width="520" alt="Site: site-batalha" /><br/><img src="docs/screenshots/site-batalha-golpes.jpg" width="520" alt="Site: site-batalha-golpes" /></td>
+    <td align="center" valign="top"><img src="docs/screenshots/app-batalha-golpes.jpg" width="220" alt="App: Golpes" /></td>
+    <td align="center" valign="top"><img src="docs/screenshots/site-batalha-golpes.jpg" width="560" alt="Site: Golpes" /></td>
   </tr>
 </table>
+
+Cada golpe mostra o tipo, o PP, a **efetividade** e o **dano estimado** em % da vida do adversário. O botão redondo no meio ativa a mecânica do Pokémon (Mega, Z-Move, Dynamax/Gigantamax ou Tera), uma vez por batalha.
 
 ### Dupla e tripla
 
-Dois (ou três) Pokémon de cada lado, **com a mesma tela e os mesmos botões da individual**. Você escolhe o golpe de cada um e em quem usar (adversário ou aliado). Depois o turno acontece na ordem da velocidade e da prioridade, como nos jogos, com a ordem do turno na caixa de texto. A BOLSA também funciona: quem usa o item gasta o turno dele. Os golpes mostram o dano estimado em cada adversário.
+<table>
+  <tr><th>📱 App</th><th>💻 Site</th></tr>
+  <tr>
+    <td align="center" valign="top"><img src="docs/screenshots/app-dupla.jpg" width="220" alt="App: Batalha dupla" /></td>
+    <td align="center" valign="top"><img src="docs/screenshots/site-dupla.jpg" width="560" alt="Site: Batalha dupla" /></td>
+  </tr>
+</table>
+
+Dois (ou três) Pokémon de cada lado, **com a mesma tela e os mesmos botões da individual**. Você escolhe o que cada um faz; depois o turno acontece na ordem da velocidade e da prioridade, como nos jogos, com a ordem do turno na caixa de texto. A BOLSA também funciona: quem usa o item gasta o turno dele.
+
+### Golpes na dupla
 
 <table>
   <tr><th>📱 App</th><th>💻 Site</th></tr>
   <tr>
-    <td align="center"><img src="docs/screenshots/app-dupla.jpg" width="200" alt="App: app-dupla" /> <img src="docs/screenshots/app-dupla-golpes.jpg" width="200" alt="App: app-dupla-golpes" /></td>
-    <td align="center"><img src="docs/screenshots/site-dupla.jpg" width="520" alt="Site: site-dupla" /><br/><img src="docs/screenshots/site-dupla-golpes.jpg" width="520" alt="Site: site-dupla-golpes" /></td>
+    <td align="center" valign="top"><img src="docs/screenshots/app-dupla-golpes.jpg" width="220" alt="App: Golpes na dupla" /></td>
+    <td align="center" valign="top"><img src="docs/screenshots/site-dupla-golpes.jpg" width="560" alt="Site: Golpes na dupla" /></td>
   </tr>
 </table>
+
+Na dupla, cada golpe mostra o dano estimado em cada adversário, e depois você escolhe em quem usar (adversário ou aliado).
 
 ### Contra o computador
 
-Escolha o **formato** (individual, dupla ou tripla), o seu time (um dos seus ou aleatório), o adversário (time aleatório, o de um amigo, um líder de ginásio, a Torre de Batalha ou a Battle Factory) e a **dificuldade**:
-
-- **Fácil:** o computador ataca ao acaso, sem trocar nem usar itens.
-- **Normal:** IVs e EVs aleatórios.
-- **Difícil:** sets competitivos.
-
 <table>
   <tr><th>📱 App</th><th>💻 Site</th></tr>
   <tr>
-    <td align="center"><img src="docs/screenshots/app-batalha-config.jpg" width="200" alt="App: app-batalha-config" /></td>
-    <td align="center"><img src="docs/screenshots/site-batalha-config.jpg" width="520" alt="Site: site-batalha-config" /></td>
+    <td align="center" valign="top"><img src="docs/screenshots/app-batalha-config.jpg" width="220" alt="App: Configurar batalha" /></td>
+    <td align="center" valign="top"><img src="docs/screenshots/site-batalha-config.jpg" width="560" alt="Site: Configurar batalha" /></td>
   </tr>
 </table>
+
+Escolha o **formato** (individual, dupla ou tripla), o seu time (um dos seus ou aleatório), o adversário (time aleatório, o de um amigo, um líder de ginásio, a Torre de Batalha ou a Battle Factory) e a **dificuldade**: **Fácil** (o computador ataca ao acaso, sem trocar nem usar itens), **Normal** (IVs e EVs aleatórios) ou **Difícil** (sets competitivos).
 
 ### Online com amigos
 
@@ -206,13 +274,65 @@ Você e um amigo escolhem Pokémon um de cada vez para montar os times e depois 
 - **Torre de Batalha:** batalhas seguidas para aumentar a sua sequência de vitórias.
 - **Battle Factory (Pokelike):** um roguelike pela história de cada região. Você começa com um inicial grátis e segue pelo **mapa** de rotas e cidades, escolhendo o caminho em cada bifurcação: treinadores, Pokémon selvagens para **capturar**, eventos, vendedor ambulante, cura no caminho, cavernas e outros lugares até o **chefe** de cada cidade (líderes, rival, vilões, Elite Four e Campeão). A partir do andar 15 aparecem **duplas de treinadores** em batalha dupla. Nas cidades ficam o **Poké Mart**, o **Centro Pokémon** e a **Creche**. O XP vai para quem lutou (ou para todos com o Exp. Share) e os Pokémon evoluem. As moedas de cada corrida compram melhorias na **árvore de habilidades** e novos iniciais.
 
+#### Battle Factory: começo da corrida
+
 <table>
   <tr><th>📱 App</th><th>💻 Site</th></tr>
   <tr>
-    <td align="center"><img src="docs/screenshots/app-factory-mapa.jpg" width="200" alt="App: mapa" /> <img src="docs/screenshots/app-factory-cidade.jpg" width="200" alt="App: cidade" /><br/><img src="docs/screenshots/app-factory-loja.jpg" width="200" alt="App: Poké Mart" /> <img src="docs/screenshots/app-factory-cura.jpg" width="200" alt="App: cura na rota" /><br/><img src="docs/screenshots/app-factory-captura.jpg" width="200" alt="App: captura" /> <img src="docs/screenshots/app-factory-resultado.jpg" width="200" alt="App: resultado" /><br/><img src="docs/screenshots/app-factory-arvore.jpg" width="200" alt="App: árvore de melhorias" /></td>
-    <td align="center"><img src="docs/screenshots/site-factory-hub.jpg" width="420" alt="Site: começo da corrida" /><br/><img src="docs/screenshots/site-factory-mapa.jpg" width="420" alt="Site: mapa" /><br/><img src="docs/screenshots/site-factory-batalha.jpg" width="420" alt="Site: batalha" /></td>
+    <td align="center" valign="top"><img src="docs/screenshots/app-factory-arvore.jpg" width="220" alt="App: Árvore de melhorias" /></td>
+    <td align="center" valign="top"><img src="docs/screenshots/site-factory-hub.jpg" width="560" alt="Site: Começo da corrida" /></td>
   </tr>
 </table>
+
+Antes de cada corrida você escolhe o inicial e a região. As moedas de cada corrida compram melhorias na **árvore de habilidades** e novos iniciais.
+
+#### Battle Factory: mapa
+
+<table>
+  <tr><th>📱 App</th><th>💻 Site</th></tr>
+  <tr>
+    <td align="center" valign="top"><img src="docs/screenshots/app-factory-mapa.jpg" width="220" alt="App: Mapa" /></td>
+    <td align="center" valign="top"><img src="docs/screenshots/site-factory-mapa.jpg" width="560" alt="Site: Mapa" /></td>
+  </tr>
+</table>
+
+O **mapa** de rotas e cidades da história de cada região. Em cada bifurcação você escolhe o caminho: treinadores, Pokémon selvagens para **capturar**, eventos, vendedor ambulante, cura no caminho, cavernas e outros lugares até o **chefe** de cada cidade (líderes, rival, vilões, Elite Four e Campeão). A partir do andar 15 aparecem **duplas de treinadores** em batalha dupla.
+
+#### Battle Factory: batalha e captura
+
+<table>
+  <tr><th>📱 App</th><th>💻 Site</th></tr>
+  <tr>
+    <td align="center" valign="top"><img src="docs/screenshots/app-factory-captura.jpg" width="220" alt="App: Captura" /></td>
+    <td align="center" valign="top"><img src="docs/screenshots/site-factory-batalha.jpg" width="560" alt="Site: Batalha" /></td>
+  </tr>
+</table>
+
+As batalhas da corrida usam a mesma tela das outras. Contra Pokémon selvagem a BOLSA tem Poké Balls para capturar, e o XP vai para quem lutou (ou para todos com o Exp. Share). Os Pokémon sobem de nível e evoluem.
+
+#### Battle Factory: cidade, loja e cura
+
+<table>
+  <tr><th>📱 App</th><th>💻 Site</th></tr>
+  <tr>
+    <td align="center" valign="top"><img src="docs/screenshots/app-factory-cidade.jpg" width="220" alt="App: Cidade" /><br/><img src="docs/screenshots/app-factory-loja.jpg" width="220" alt="App: Poké Mart" /><br/><img src="docs/screenshots/app-factory-cura.jpg" width="220" alt="App: Cura na rota" /></td>
+    <td align="center" valign="top"><i>Só no app</i></td>
+  </tr>
+</table>
+
+Nas cidades ficam o **Poké Mart**, o **Centro Pokémon** e a **Creche**; na rota aparecem lugares de cura e vendedores. No site são as mesmas telas.
+
+#### Battle Factory: resultado
+
+<table>
+  <tr><th>📱 App</th><th>💻 Site</th></tr>
+  <tr>
+    <td align="center" valign="top"><img src="docs/screenshots/app-factory-resultado.jpg" width="220" alt="App: Resultado" /></td>
+    <td align="center" valign="top"><i>Só no app</i></td>
+  </tr>
+</table>
+
+No fim da corrida aparecem os andares vencidos, as moedas ganhas e o time que chegou até ali. No site é a mesma tela.
 
 ---
 
