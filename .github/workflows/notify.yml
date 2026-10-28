@@ -1,0 +1,44 @@
+name: Notificações
+
+# A cada 10 minutos avisa no celular (push) quem tem o app: pedido de
+# amizade, mensagem no chat, desafio, convite para batalha online e draft
+# (tool/notify/notify.mjs). O projeto está no plano gratuito do Firebase (sem
+# Cloud Functions), então quem roda é o GitHub. Precisa do segredo
+# FIREBASE_SERVICE_ACCOUNT (o mesmo da limpeza); sem ele, não faz nada.
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: notify
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: tool/notify
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tool/notify/package-lock.json
+      - name: Avisar
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::warning::Falta o segredo FIREBASE_SERVICE_ACCOUNT (Settings → Secrets and variables → Actions)."
+            exit 0
+          fi
+          npm ci
+          npm start
