@@ -1,0 +1,158 @@
+// lib/screens/moves_encyclopedia_screen.dart
+
+import 'package:flutter/material.dart' hide Text;
+import '../widgets/expandable_entry.dart';
+import '../models/move.dart';
+import '../services/pokemon_service.dart';
+import '../utils/pokemon_colors.dart';
+import '../utils/string_extensions.dart';
+import 'move_detail_screen.dart';
+import '../utils/responsive.dart';
+import '../utils/site_ui.dart';
+import 'package:pocket_dex/i18n/text.dart';
+
+class MovesEncyclopediaScreen extends StatefulWidget {
+  const MovesEncyclopediaScreen({super.key});
+
+  @override
+  State<MovesEncyclopediaScreen> createState() =>
+      _MovesEncyclopediaScreenState();
+}
+
+class _MovesEncyclopediaScreenState extends State<MovesEncyclopediaScreen> {
+  final PokemonService _pokemonService = PokemonService();
+  // Item aberto na lista (abre embaixo, empurrando os outros).
+  final ValueNotifier<String?> _openId = ValueNotifier(null);
+
+  @override
+  void dispose() {
+    _openId.dispose();
+    super.dispose();
+  }
+
+  List<Map<String, String>> _allMoves = [];
+  List<Map<String, String>> _filteredMoves = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMoves();
+  }
+
+  Future<void> _loadMoves() async {
+    try {
+      final movesList = await _pokemonService.fetchAllMovesList();
+      if (mounted) {
+        setState(() {
+          _allMoves = movesList;
+          _filteredMoves = _allMoves;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {}
+  }
+
+  void _filterMoves(String query) {
+    final filtered = _allMoves.where((move) {
+      return move['name']!
+          .toLowerCase()
+          .replaceAll('-', ' ')
+          .contains(query.toLowerCase());
+    }).toList();
+    setState(() {
+      _filteredMoves = filtered;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Golpes'),
+      ),
+      body: ReadableWidth(
+          child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+            child: SiteSearchField(onChanged: _filterMoves, hint: 'Procurar golpe'),
+          ),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : ListView.builder(
+                    itemCount: _filteredMoves.length,
+                    itemBuilder: (context, index) {
+                      final moveData = _filteredMoves[index];
+                      return _MoveTile(
+                        name: moveData['name']!,
+                        url: moveData['url']!,
+                        pokemonService: _pokemonService,
+                        openId: _openId,
+                      );
+                    },
+                  ),
+          ),
+        ],
+      )),
+    );
+  }
+}
+
+class _MoveTile extends StatelessWidget {
+  final String name;
+  final String url;
+  final PokemonService pokemonService;
+  final ValueNotifier<String?> openId;
+
+  const _MoveTile({required this.name, required this.url, required this.pokemonService, required this.openId});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ExpandableEntry<Move>(
+      id: url,
+      openId: openId,
+      accent: const Color(0xFFFFA726),
+      load: () => pokemonService.fetchResourceDetails(url, (json) => Move.fromApiJson(json)),
+      header: (context, move, open) => ListTile(
+        title: Text(move?.name ?? name.replaceAll('-', ' ').capitalise(),
+            style: TextStyle(color: theme.colorScheme.onSurface, fontWeight: FontWeight.bold)),
+        subtitle: move == null
+            ? Text('Carregando...', style: TextStyle(color: theme.hintColor))
+            : Row(
+                children: [
+                  Chip(
+                    label: Text(move.type.capitalise(), style: const TextStyle(color: Colors.white)),
+                    backgroundColor: getColorForType(move.type),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(
+                    move.category == 'physical'
+                        ? Icons.sports_mma
+                        : move.category == 'special'
+                            ? Icons.star
+                            : Icons.adjust,
+                    color: theme.hintColor,
+                    size: 20,
+                  ),
+                ],
+              ),
+      ),
+      details: (context, move) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          MoveInfoCard(move: move),
+          const SizedBox(height: 12),
+          Text('Pokémon que aprendem este Golpe:', style: theme.textTheme.titleMedium),
+          PokemonPreviewGrid(
+            load: () => pokemonService.fetchPokemonWhoLearnMove(move.name),
+            onSeeAll: () => Navigator.push(context, MaterialPageRoute(builder: (_) => MoveDetailScreen(move: move))),
+          ),
+        ],
+      ),
+    );
+  }
+}

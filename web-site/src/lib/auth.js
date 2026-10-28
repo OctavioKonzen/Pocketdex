@@ -1,0 +1,909 @@
+// Login com Firebase: e-mail e senha ou Google, com "Manter conectado".
+//
+// Banco de dados (Firestore):
+//   users/{uid}          → { name, email, createdAt, data: {favoritos, times...} }
+//   usernames/{nomeNorm} → { uid, name }   (garante que não existam 2 pessoas
+//                                           com o mesmo nome)
+//
+// O Firebase só é baixado quando o login está configurado, então o site
+// continua leve para quem já entrou.
+
+import { create } from 'zustand'
+import { firebaseConfig, isConfigured } from './firebaseConfig'
+import { teamSets } from './teamSets'
+import { isOffensive } from './profanity'
+
+let services = null
+
+export async function firebaseServices() {
+  return firebase()
+}
+
+async function firebase() {
+  if (services) return services
+  const [{ initializeApp }, authMod, fsMod] = await Promise.all([
+    import('firebase/app'),
+    import('firebase/auth'),
+    import('firebase/firestore'),
+  ])
+  const app = initializeApp(firebaseConfig)
+  const auth = authMod.getAuth(app)
+  auth.languageCode = 'pt-BR'
+  const db = fsMod.getFirestore(app)
+  // Teste automático (e2e/): usa os emuladores do Firebase em vez do projeto
+  // de verdade. Só existe no build feito com VITE_EMULATORS=1.
+  if (import.meta.env.VITE_EMULATORS) {
+    authMod.connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true })
+    fsMod.connectFirestoreEmulator(db, '127.0.0.1', 8085)
+  }
+  services = { auth, db, ...authMod, ...fsMod }
+  return services
+}
+
+/** Estado do login: 'loading' | 'signedOut' | 'needsName' | 'signedIn'. */
+export const useAuth = create(() => ({
+  status: isConfigured ? 'loading' : 'disabled',
+  user: null, // { uid, email, name, photo }
+}))
+
+// ---------------------------------------------------------------- nomes
+
+export const NAME_MIN = 3
+export const NAME_MAX = 20
+
+const ACCENTS = 'áàâãäéèêëíìîïóòôõöúùûüçñ'
+const PLAIN = 'aaaaaeeeeiiiiooooouuuucn'
+
+/**
+ * Chave usada para comparar nomes: "Ash  Ketchum" e "ásh ketchum" são o mesmo
+ * nome. Igual no app (auth_service.dart) e nas regras do Firestore.
+ */
+export function nameKey(name) {
+  return [...name.trim().toLowerCase()]
+    .map((ch) => {
+      const i = ACCENTS.indexOf(ch)
+      return i >= 0 ? PLAIN[i] : ch
+    })
+    .join('')
+    .replace(/\s+/g, ' ')
+}
+
+/** Retorna uma mensagem de erro ou null se o nome for válido. */
+export function validateName(name) {
+  const clean = name.trim().replace(/\s+/g, ' ')
+  if (clean.length < NAME_MIN) return `O nome precisa ter pelo menos ${NAME_MIN} letras.`
+  if (clean.length > NAME_MAX) return `O nome pode ter no máximo ${NAME_MAX} letras.`
+  if (!/^[\p{L}\p{N} _.-]+$/u.test(clean)) return 'Use só letras, números, espaço, ponto, - ou _.'
+  if (isOffensive(clean)) return 'Esse nome não é permitido. Escolha outro.'
+  return null
+}
+
+export class AuthError extends Error {
+  constructor(code) {
+    super(code)
+    this.code = code
+  }
+}
+
+export async function isNameAvailable(name) {
+  const { db, doc, getDoc } = await firebase()
+  const snap = await getDoc(doc(db, 'usernames', nameKey(name)))
+  return !snap.exists() || snap.data().uid === services.auth.currentUser?.uid
+}
+
+/** Reserva o nome para o usuário e cria o perfil dele, tudo de uma vez. */
+async function claimName(user, name) {
+  const { db, doc, runTransaction, serverTimestamp } = await firebase()
+  const clean = name.trim().replace(/\s+/g, ' ')
+  const nameRef = doc(db, 'usernames', nameKey(clean))
+  const userRef = doc(db, 'users', user.uid)
+  await runTransaction(db, async (tx) => {
+    // Nome de outra pessoa: as regras só deixam pegar se a conta dela foi
+    // excluída (senão a gravação é recusada e o nome continua dela).
+    await tx.get(nameRef)
+    tx.set(nameRef, { uid: user.uid, name: clean })
+    tx.set(userRef, { name: clean, nameKey: nameKey(clean), email: user.email ?? '', createdAt: serverTimestamp() }, { merge: true })
+  }).catch((error) => {
+    throw error?.code === 'permission-denied' ? new AuthError('name-taken') : error
+  })
+  return clean
+}
+
+// ---------------------------------------------------------------- sessão
+
+async function setKeepSignedIn(keep) {
+  const { auth, setPersistence, browserLocalPersistence, browserSessionPersistence } = await firebase()
+  await setPersistence(auth, keep ? browserLocalPersistence : browserSessionPersistence)
+}
+
+let started = false
+// Durante o cadastro o perfil ainda está sendo criado: o ouvinte espera.
+let signingUp = false
+
+/** Começa a ouvir o login (chamado uma vez ao abrir o site). */
+export async function startAuth() {
+  if (!isConfigured || started) return
+  started = true
+  try {
+    const { auth, db, doc, getDoc, onAuthStateChanged } = await firebase()
+    onAuthStateChanged(auth, async (user) => {
+      if (signingUp) return
+      if (!user) {
+        useAuth.setState({ status: 'signedOut', user: null })
+        return
+      }
+      const base = { uid: user.uid, email: user.email, photo: user.photoURL, name: null }
+      // Conta que já existe entra direto: se a leitura do perfil falhar (rede
+      // instável), tenta de novo em vez de achar que é uma conta nova.
+      for (let attempt = 0; auth.currentUser?.uid === user.uid; attempt++) {
+        try {
+          const profile = await getDoc(doc(db, 'users', user.uid))
+          const name = profile.exists() ? profile.data().name : null
+          useAuth.setState({ status: name ? 'signedIn' : 'needsName', user: { ...base, name } })
+          return
+        } catch {
+          if (attempt === 0) useAuth.setState({ status: 'loading', user: null })
+          // Sem internet: entra com o nome guardado no login (o mesmo da conta).
+          if (attempt === 2 && user.displayName && !validateName(user.displayName)) {
+            useAuth.setState({ status: 'signedIn', user: { ...base, name: user.displayName } })
+            return
+          }
+          await new Promise((r) => setTimeout(r, Math.min(1000 * (attempt + 1), 5000)))
+        }
+      }
+    })
+  } catch {
+    useAuth.setState({ status: 'signedOut', user: null })
+  }
+}
+
+export async function signUp({ name, email, password, keep }) {
+  const nameError = validateName(name)
+  if (nameError) throw new AuthError(nameError)
+  await setKeepSignedIn(keep)
+  const { auth, createUserWithEmailAndPassword, updateProfile, deleteUser } = await firebase()
+  signingUp = true
+  let user
+  try {
+    ;({ user } = await createUserWithEmailAndPassword(auth, email.trim(), password))
+  } catch (error) {
+    signingUp = false
+    throw error
+  }
+  try {
+    const clean = await claimName(user, name)
+    await updateProfile(user, { displayName: clean })
+    useAuth.setState({ status: 'signedIn', user: { uid: user.uid, email: user.email, photo: null, name: clean } })
+  } catch (error) {
+    // Alguém pegou o nome no mesmo instante: desfaz a conta criada.
+    await deleteUser(user).catch(() => {})
+    useAuth.setState({ status: 'signedOut', user: null })
+    throw error
+  } finally {
+    signingUp = false
+  }
+}
+
+export async function signIn({ email, password, keep }) {
+  await setKeepSignedIn(keep)
+  const { auth, signInWithEmailAndPassword } = await firebase()
+  await signInWithEmailAndPassword(auth, email.trim(), password)
+}
+
+export async function signInWithGoogle({ keep }) {
+  await setKeepSignedIn(keep)
+  const { auth, GoogleAuthProvider, signInWithPopup } = await firebase()
+  const provider = new GoogleAuthProvider()
+  provider.setCustomParameters({ prompt: 'select_account' })
+  await signInWithPopup(auth, provider)
+}
+
+/** Primeiro login com Google: a pessoa escolhe o nome dela. */
+export async function chooseName(name) {
+  const nameError = validateName(name)
+  if (nameError) throw new AuthError(nameError)
+  const { auth, updateProfile } = await firebase()
+  const user = auth.currentUser
+  const clean = await claimName(user, name)
+  await updateProfile(user, { displayName: clean }).catch(() => {})
+  useAuth.setState((s) => ({ status: 'signedIn', user: { ...s.user, name: clean } }))
+}
+
+export async function resetPassword(email) {
+  const { auth, sendPasswordResetEmail } = await firebase()
+  await sendPasswordResetEmail(auth, email.trim())
+}
+
+// ---------------------------------------------------------------- confirmações
+//   Conta com e-mail e senha: trocar a senha e excluir pedem a senha atual.
+//   Conta Google: entra direto (o Google já confirmou o e-mail); criar/trocar
+//   a senha e excluir pedem que a
+//   pessoa abra um link mandado para o e-mail (grátis, do próprio Firebase).
+//   O link abre o site (EmailLinkPage), que confirma e grava em
+//   confirmations/{uid} — o app espera essa confirmação.
+
+const CONFIRM_EMAIL_KEY = 'pocketdex-confirm-email'
+
+/** Troca a senha de uma conta com e-mail e senha (confirma a senha atual). */
+export async function changePassword({ current, password }) {
+  if (password.length < 6) throw new AuthError('auth/weak-password')
+  const { auth, EmailAuthProvider, reauthenticateWithCredential, updatePassword } = await firebase()
+  const user = auth.currentUser
+  await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email, current))
+  await updatePassword(user, password)
+}
+
+/** Manda o link de confirmação para o e-mail da conta. purpose: 'signup' | 'password' | 'delete'. */
+export async function sendConfirmationLink(purpose) {
+  const { auth, sendSignInLinkToEmail } = await firebase()
+  const email = auth.currentUser?.email
+  if (!email) throw new AuthError('auth/missing-email')
+  const url = `${window.location.origin}${import.meta.env.BASE_URL}?confirmar=${purpose}`
+  await sendSignInLinkToEmail(auth, email, { url, handleCodeInApp: true })
+  try {
+    localStorage.setItem(CONFIRM_EMAIL_KEY, email)
+  } catch {
+    // sem localStorage: o site pergunta o e-mail ao abrir o link
+  }
+}
+
+/** O site foi aberto pelo link de confirmação? Devolve o motivo ou null. */
+export function confirmationFromUrl(href = window.location.href) {
+  const url = new URL(href)
+  if (url.searchParams.get('mode') !== 'signIn' || !url.searchParams.get('oobCode')) return null
+  let purpose = url.searchParams.get('confirmar')
+  if (!purpose) {
+    const cont = url.searchParams.get('continueUrl')
+    if (cont) purpose = new URL(cont).searchParams.get('confirmar')
+  }
+  return ['signup', 'password', 'delete'].includes(purpose) ? purpose : null
+}
+
+/** E-mail guardado ao mandar o link (ou o da conta aberta neste navegador). */
+export async function confirmationEmail() {
+  const { auth } = await firebase()
+  try {
+    return auth.currentUser?.email ?? localStorage.getItem(CONFIRM_EMAIL_KEY) ?? ''
+  } catch {
+    return auth.currentUser?.email ?? ''
+  }
+}
+
+/**
+ * Confirma o link aberto: entra (ou confirma de novo) na conta dona do
+ * e-mail e grava a confirmação. Devolve o uid.
+ */
+export async function completeConfirmation(purpose, email) {
+  const f = await firebase()
+  const href = window.location.href
+  if (!f.isSignInWithEmailLink(f.auth, href)) throw new AuthError('auth/invalid-action-code')
+  const current = f.auth.currentUser
+  let user
+  if (current && current.email?.toLowerCase() === email.trim().toLowerCase()) {
+    ;({ user } = await f.reauthenticateWithCredential(current, f.EmailAuthProvider.credentialWithLink(email.trim(), href)))
+  } else {
+    ;({ user } = await f.signInWithEmailLink(f.auth, email.trim(), href))
+  }
+  await f.setDoc(f.doc(f.db, 'confirmations', user.uid), { [purpose]: f.serverTimestamp() }, { merge: true })
+  try {
+    localStorage.removeItem(CONFIRM_EMAIL_KEY)
+  } catch {
+    // nada
+  }
+  window.history.replaceState(null, '', `${import.meta.env.BASE_URL}${window.location.hash}`)
+  return user.uid
+}
+
+/** A pessoa já abriu o link de confirmação? (depois de `since`, em ms) */
+export async function hasConfirmation(purpose, since = 0) {
+  const { auth, db, doc, getDoc } = await firebase()
+  const uid = auth.currentUser?.uid
+  if (!uid) return false
+  const snap = await getDoc(doc(db, 'confirmations', uid))
+  const at = snap.exists() ? snap.data()[purpose] : null
+  return Boolean(at) && at.toMillis() >= since
+}
+
+/** Cria ou troca a senha logo depois de confirmar pelo link (conta Google). */
+export async function setPasswordAfterLink(password) {
+  if (password.length < 6) throw new AuthError('auth/weak-password')
+  const { auth, updatePassword } = await firebase()
+  await updatePassword(auth.currentUser, password)
+}
+
+export async function signOut() {
+  const { auth, signOut: logout } = await firebase()
+  await logout(auth)
+}
+
+// ---------------------------------------------------------------- dados
+
+/**
+ * Ouve os dados da conta em tempo real (mudanças feitas no app ou em outro
+ * computador chegam na hora). `callback(data | null)` — ou `callback(undefined)`
+ * quando a conta foi excluída (o documento sumiu); devolve a função que para
+ * de ouvir.
+ */
+export async function watchUserData(uid, callback, onError) {
+  const { db, doc, onSnapshot } = await firebase()
+  return onSnapshot(
+    doc(db, 'users', uid),
+    (snap) => {
+      // Ignora o "eco" das gravações feitas por este navegador.
+      if (snap.metadata.hasPendingWrites) return
+      if (!snap.exists()) {
+        // Sem o documento só por não estar no cache: espera a resposta do servidor.
+        if (!snap.metadata.fromCache) callback(undefined)
+        return
+      }
+      callback(snap.data().data ?? null)
+    },
+    onError,
+  )
+}
+
+/** Grava só os campos passados (os outros ficam como estão). */
+export async function saveUserData(uid, data) {
+  const { db, doc, setDoc, serverTimestamp } = await firebase()
+  await setDoc(doc(db, 'users', uid), { data, updatedAt: serverTimestamp() }, { merge: true })
+}
+
+// ---------------------------------------------------------------- ranking
+//   ranking/{uid}                   → { name, score, avatar }   recorde do Ranked
+//   weekly/{segunda}/scores/{uid}   → { name, score, avatar }   melhor da semana
+//   daily/{dia}/scores/{uid}        → { name, score, correct, seconds, avatar }
+//   factoryWeek/{segunda}/scores/{uid} → { name, score, avatar }   andar da corrida da semana (Factory)
+
+/** Caminho da coleção de cada ranking: 'all' | 'week' | 'day'. */
+function boardPath(board, key) {
+  if (board === 'week') return ['weekly', key, 'scores']
+  // A corrida da semana da Battle Factory (o andar alcançado).
+  if (board === 'factory') return ['factoryWeek', key, 'scores']
+  if (board === 'day') return ['daily', key, 'scores']
+  // O desafio semanal da Batalha (1000 − turnos da vitória).
+  if (board === 'battle') return ['battleWeek', key, 'scores']
+  return ['ranking']
+}
+
+/** Coloca (ou tira, se for 0) o recorde da pessoa no ranking geral. */
+export async function saveRanking(uid, name, score, avatar = null) {
+  const { db, doc, setDoc, deleteDoc, serverTimestamp } = await firebase()
+  const ref = doc(db, 'ranking', uid)
+  if (score > 0) await setDoc(ref, { name, score, avatar, updatedAt: serverTimestamp() })
+  else await deleteDoc(ref)
+}
+
+/** Guarda a pontuação da semana, se for maior que a já guardada. */
+export async function saveWeekly(uid, name, week, score, avatar = null, board = 'week') {
+  if (score <= 0) return
+  const { db, doc, getDoc, setDoc, serverTimestamp } = await firebase()
+  const ref = doc(db, ...boardPath(board, week), uid)
+  const current = await getDoc(ref)
+  if (current.exists() && current.data().score >= score) return
+  await setDoc(ref, { name, score, avatar, updatedAt: serverTimestamp() })
+}
+
+/** Resultado do desafio do dia (uma vez só por dia). */
+export async function saveDaily(uid, name, day, { score, correct, seconds }, avatar = null) {
+  const { db, doc, setDoc, serverTimestamp } = await firebase()
+  await setDoc(doc(db, 'daily', day, 'scores', uid), {
+    name,
+    score: Math.max(1, score),
+    correct,
+    seconds,
+    avatar,
+    updatedAt: serverTimestamp(),
+  })
+}
+
+/** A linha da pessoa num ranking (ou null). */
+export async function getMyScore(uid, board = 'all', key = '') {
+  const { db, doc, getDoc } = await firebase()
+  const snap = await getDoc(doc(db, ...boardPath(board, key), uid))
+  return snap.exists() ? snap.data() : null
+}
+
+/** Os melhores de um ranking, do maior para o menor. */
+export async function getRanking(count = 10, board = 'all', key = '') {
+  const { db, collection, query, orderBy, limit, getDocs } = await firebase()
+  const snap = await getDocs(query(collection(db, ...boardPath(board, key)), orderBy('score', 'desc'), limit(count)))
+  return snap.docs.map((d) => ({ uid: d.id, ...d.data() }))
+}
+
+/**
+ * Ouve um ranking em tempo real: `callback(lista)` na hora e a cada mudança
+ * (alguém fez pontos). Devolve a função que para de ouvir.
+ */
+export async function watchRanking(count, board, key, callback, onError) {
+  const { db, collection, query, orderBy, limit, onSnapshot } = await firebase()
+  return onSnapshot(
+    query(collection(db, ...boardPath(board, key)), orderBy('score', 'desc'), limit(count)),
+    (snap) => callback(snap.docs.map((d) => ({ uid: d.id, ...d.data() }))),
+    onError,
+  )
+}
+
+/** Posição de quem tem essa pontuação (quantos têm mais + 1). */
+export async function getRankingPosition(score, board = 'all', key = '') {
+  const { db, collection, query, where, getCountFromServer } = await firebase()
+  const snap = await getCountFromServer(query(collection(db, ...boardPath(board, key)), where('score', '>', score)))
+  return snap.data().count + 1
+}
+
+// ---------------------------------------------------------------- times públicos
+//   publicTeams/{teamId} → { ownerUid, ownerName, ownerKey, avatar, name, color,
+//                            pokemon: [id|null x6], ratingSum, ratingCount }
+//   publicTeams/{teamId}/ratings/{uid} → { stars: 1..5 }
+
+const publicTeam = (d) => {
+  const data = d.data()
+  return { id: d.id, ...data, rating: data.ratingCount ? data.ratingSum / data.ratingCount : null }
+}
+
+// JSON com as chaves em ordem (o Firestore não guarda a ordem dos campos).
+const sortKeys = (v) =>
+  Array.isArray(v) ? v.map(sortKeys) : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, sortKeys(v[k])])) : v
+const canon = (v) => JSON.stringify(sortKeys(v))
+
+/**
+ * Deixa os times públicos iguais aos times da conta: cria os novos, atualiza
+ * os que mudaram e apaga os que foram excluídos (a nota da comunidade fica).
+ */
+export async function publishTeams(uid, name, avatar, teams) {
+  const { db, collection, doc, query, where, getDocs, writeBatch, serverTimestamp } = await firebase()
+  const snap = await getDocs(query(collection(db, 'publicTeams'), where('ownerUid', '==', uid)))
+  const current = new Map(snap.docs.map((d) => [d.id, d.data()]))
+  const batch = writeBatch(db)
+  let changes = 0
+  const wanted = new Set()
+  for (const team of teams) {
+    const pokemon = Array.from({ length: 6 }, (_, i) => team.pokemon?.[i] ?? null)
+    if (!pokemon.some((p) => p != null)) continue // time vazio não aparece
+    if (isOffensive(team.name)) continue // nome com palavrão não aparece para os outros
+    wanted.add(team.id)
+    const sets = teamSets({ ...team, pokemon })
+    const fields = { ownerUid: uid, ownerName: name, ownerKey: nameKey(name), avatar: avatar ?? null, name: team.name, color: team.color ?? null, pokemon, sets }
+    const old = current.get(team.id)
+    const same = old && Object.entries(fields).every(([k, v]) => canon(old[k] ?? null) === canon(v))
+    if (same) continue
+    const ref = doc(db, 'publicTeams', team.id)
+    if (old) {
+      // Os votos e denúncias podem mudar depois da leitura: não os regrave.
+      batch.update(ref, { ...fields, updatedAt: serverTimestamp() })
+    } else {
+      batch.set(ref, { ...fields, ratingSum: 0, ratingCount: 0, reportCount: 0, updatedAt: serverTimestamp() })
+    }
+    changes++
+  }
+  for (const id of current.keys()) {
+    if (!wanted.has(id)) {
+      batch.delete(doc(db, 'publicTeams', id))
+      changes++
+    }
+  }
+  if (changes) await batch.commit()
+}
+
+/** Times com 3 ou mais denúncias somem da busca (o dono ainda vê os seus). */
+export const REPORT_LIMIT = 3
+
+/** Denuncia um time (uma vez por pessoa); a contagem do time sobe junto. */
+export async function reportTeam(uid, teamId, reason) {
+  const { db, doc, runTransaction, serverTimestamp } = await firebase()
+  const teamRef = doc(db, 'publicTeams', teamId)
+  const reportRef = doc(db, 'publicTeams', teamId, 'reports', uid)
+  await runTransaction(db, async (tx) => {
+    const team = await tx.get(teamRef)
+    if (!team.exists()) throw new AuthError('Esse time foi excluído pelo dono.')
+    const already = await tx.get(reportRef)
+    if (already.exists()) throw new AuthError('Você já denunciou esse time.')
+    tx.set(reportRef, { reason: String(reason ?? '').slice(0, 200), createdAt: serverTimestamp() })
+    tx.update(teamRef, { reportCount: (team.data().reportCount ?? 0) + 1 })
+  })
+}
+
+/** Times públicos de uma pessoa (pelo nome) ou os mais recentes. */
+export async function searchPublicTeams(name = '') {
+  const { db, collection, query, where, orderBy, limit, getDocs } = await firebase()
+  const key = nameKey(name)
+  const q = key
+    ? query(collection(db, 'publicTeams'), where('ownerKey', '==', key), limit(50))
+    : query(collection(db, 'publicTeams'), orderBy('updatedAt', 'desc'), limit(30))
+  const snap = await getDocs(q)
+  const uid = services?.auth.currentUser?.uid
+  return snap.docs.map(publicTeam).filter((t) => (t.reportCount ?? 0) < REPORT_LIMIT || t.ownerUid === uid)
+}
+
+/** Nota da comunidade dos times de uma pessoa: {teamId: {rating, count}}. */
+export async function myTeamRatings(uid) {
+  const { db, collection, query, where, getDocs } = await firebase()
+  const snap = await getDocs(query(collection(db, 'publicTeams'), where('ownerUid', '==', uid)))
+  return Object.fromEntries(snap.docs.map((d) => [d.id, { rating: publicTeam(d).rating, count: d.data().ratingCount }]))
+}
+
+/** Um time público (ou null, se o dono excluiu). */
+export async function getPublicTeam(teamId) {
+  const { db, doc, getDoc } = await firebase()
+  const snap = await getDoc(doc(db, 'publicTeams', teamId))
+  return snap.exists() ? publicTeam(snap) : null
+}
+
+/** O voto da pessoa num time (1 a 5) ou null. */
+export async function getMyVote(uid, teamId) {
+  const { db, doc, getDoc } = await firebase()
+  const snap = await getDoc(doc(db, 'publicTeams', teamId, 'ratings', uid))
+  return snap.exists() ? snap.data().stars : null
+}
+
+/** Vota (ou muda o voto) num time; a nota do time muda junto. */
+export async function rateTeam(uid, teamId, stars) {
+  const { db, doc, runTransaction } = await firebase()
+  const teamRef = doc(db, 'publicTeams', teamId)
+  const voteRef = doc(db, 'publicTeams', teamId, 'ratings', uid)
+  return runTransaction(db, async (tx) => {
+    const team = await tx.get(teamRef)
+    if (!team.exists()) throw new AuthError('Esse time foi excluído pelo dono.')
+    const vote = await tx.get(voteRef)
+    const old = vote.exists() ? vote.data().stars : 0
+    const ratingSum = team.data().ratingSum + stars - old
+    const ratingCount = team.data().ratingCount + (vote.exists() ? 0 : 1)
+    tx.set(voteRef, { stars })
+    tx.update(teamRef, { ratingSum, ratingCount })
+    return { rating: ratingSum / ratingCount, count: ratingCount }
+  })
+}
+
+// ---------------------------------------------------------------- excluir conta
+
+// ---------------------------------------------------------------- amigos
+//   friends/{uid}/list/{outro} → { name, avatar, status, since, challenge? }
+//   status: 'sent' (pedido enviado) | 'received' (pedido recebido) | 'friends'
+
+/** Procura uma conta pelo nome exato (sem diferença de maiúsculas e acentos). */
+export async function findAccount(name) {
+  const { db, doc, getDoc } = await firebase()
+  const snap = await getDoc(doc(db, 'usernames', nameKey(name)))
+  return snap.exists() ? { uid: snap.data().uid, name: snap.data().name } : null
+}
+
+/** Ouve a lista de amigos e pedidos em tempo real; devolve a função que para. */
+export async function watchFriends(uid, callback, onError) {
+  const { db, collection, onSnapshot } = await firebase()
+  return onSnapshot(
+    collection(db, 'friends', uid, 'list'),
+    (snap) => callback(snap.docs.map((d) => ({ uid: d.id, ...d.data() }))),
+    onError,
+  )
+}
+
+/**
+ * Pede amizade: 'sent' na minha lista e 'received' na do outro. Antes apaga o
+ * que sobrou de um pedido antigo na lista do outro (as regras não deixam
+ * sobrescrever um 'sent'/'friends' antigo com 'received').
+ */
+export async function sendFriendRequest(me, other) {
+  const { db, doc, deleteDoc, writeBatch, serverTimestamp } = await firebase()
+  await deleteDoc(doc(db, 'friends', other.uid, 'list', me.uid)).catch(() => {})
+  const b = writeBatch(db)
+  b.set(doc(db, 'friends', me.uid, 'list', other.uid), { name: other.name, avatar: null, status: 'sent', since: serverTimestamp() })
+  b.set(doc(db, 'friends', other.uid, 'list', me.uid), { name: me.name, avatar: me.avatar ?? null, status: 'received', since: serverTimestamp() })
+  await b.commit()
+}
+
+/** Aceita um pedido recebido: os dois lados viram 'friends'. */
+export async function acceptFriend(me, otherUid) {
+  const { db, doc, writeBatch } = await firebase()
+  const b = writeBatch(db)
+  b.update(doc(db, 'friends', me.uid, 'list', otherUid), { status: 'friends' })
+  b.update(doc(db, 'friends', otherUid, 'list', me.uid), { status: 'friends', name: me.name, avatar: me.avatar ?? null })
+  await b.commit()
+}
+
+/** Desfaz a amizade (ou recusa/cancela um pedido): apaga os dois lados e o chat. */
+export async function removeFriend(meUid, otherUid) {
+  await clearChat(meUid, otherUid).catch(() => {})
+  const { db, doc, writeBatch } = await firebase()
+  const b = writeBatch(db)
+  b.delete(doc(db, 'friends', meUid, 'list', otherUid))
+  b.delete(doc(db, 'friends', otherUid, 'list', meUid))
+  await b.commit()
+}
+
+// ---------------------------------------------------------------- chat
+//   chats/{uidA_uidB}/messages/{id} → { from, text, at }  (uidA < uidB)
+//   A lista de amigos guarda, do lado de quem recebe, quantas não leu
+//   (unread) e a última mensagem (last), para mostrar sem abrir o chat.
+
+export const CHAT_MAX = 500
+export const chatId = (a, b) => [a, b].sort().join('_')
+
+/** Ouve as últimas 100 mensagens com um amigo (mais antigas primeiro). */
+export async function watchChat(meUid, otherUid, callback, onError) {
+  const { db, collection, query, orderBy, limit, onSnapshot } = await firebase()
+  return onSnapshot(
+    query(collection(db, 'chats', chatId(meUid, otherUid), 'messages'), orderBy('at', 'desc'), limit(100)),
+    (snap) =>
+      callback(
+        snap.docs
+          .map((d) => {
+            const m = d.data({ serverTimestamps: 'estimate' })
+            return { id: d.id, from: m.from, text: m.text, at: m.at?.toMillis?.() ?? Date.now(), card: m.card ?? null }
+          })
+          .reverse(),
+      ),
+    onError,
+  )
+}
+
+/**
+ * Manda uma mensagem e avisa o amigo (não lidas + última mensagem).
+ * card: cartão clicável ({kind: 'pokemon', id, name} ou {kind: 'team', name, ids, code}).
+ */
+export async function sendMessage(me, otherUid, text, card = null) {
+  const body = text.trim().slice(0, CHAT_MAX)
+  if (!body) return
+  const { db, doc, collection, writeBatch, serverTimestamp, increment } = await firebase()
+  const b = writeBatch(db)
+  b.set(doc(collection(db, 'chats', chatId(me.uid, otherUid), 'messages')), {
+    from: me.uid,
+    text: body,
+    at: serverTimestamp(),
+    ...(card ? { card } : {}),
+  })
+  const last = { text: body.slice(0, 100), at: Date.now(), from: me.uid }
+  b.update(doc(db, 'friends', otherUid, 'list', me.uid), { name: me.name, unread: increment(1), last })
+  // Do meu lado também (para a lista de Conversas mostrar o que eu mandei).
+  b.update(doc(db, 'friends', me.uid, 'list', otherUid), { last })
+  await b.commit()
+}
+
+// ---------------------------------------------------------------- draft
+//   drafts/{id} → { players: [a, b], names: {uid: nome}, picks: {uid: [id]},
+//                   turn: uid, size, status: 'picking' | 'done', createdAt }
+// Igual ao app (lib/services/draft_service.dart).
+
+const draftOf = (d) => {
+  const data = d.data()
+  return { id: d.id, ...data, picks: data.picks ?? {}, createdAt: data.createdAt?.toMillis?.() ?? Date.now() }
+}
+
+/** Ouve os meus drafts (mais novos primeiro). */
+export async function watchMyDrafts(uid, callback) {
+  const { db, collection, query, where, onSnapshot } = await firebase()
+  return onSnapshot(
+    query(collection(db, 'drafts'), where('players', 'array-contains', uid)),
+    (snap) => callback(snap.docs.map(draftOf).sort((a, b) => b.createdAt - a.createdAt)),
+    () => callback([]),
+  )
+}
+
+/** Ouve um draft (null se foi apagado). */
+export async function watchDraft(id, callback) {
+  const { db, doc, onSnapshot } = await firebase()
+  return onSnapshot(
+    doc(db, 'drafts', id),
+    (snap) => callback(snap.exists() ? draftOf(snap) : null),
+    () => callback(null),
+  )
+}
+
+/** Novo draft com um amigo; eu começo. Devolve o id. */
+export async function createDraft(me, friend, size = 6) {
+  const { db, collection, doc, setDoc, serverTimestamp } = await firebase()
+  const ref = doc(collection(db, 'drafts'))
+  await setDoc(ref, {
+    players: [me.uid, friend.uid],
+    names: { [me.uid]: me.name, [friend.uid]: friend.name },
+    picks: {},
+    turn: me.uid,
+    size,
+    status: 'picking',
+    createdAt: serverTimestamp(),
+  })
+  return ref.id
+}
+
+/** Escolhe um Pokémon (na minha vez, sem repetir). Erro: AuthError com a mensagem. */
+export async function pickDraft(meUid, id, pokemonId) {
+  const { db, doc, runTransaction } = await firebase()
+  await runTransaction(db, async (tx) => {
+    const ref = doc(db, 'drafts', id)
+    const snap = await tx.get(ref)
+    if (!snap.exists()) throw new AuthError('Esse draft foi apagado.')
+    const d = draftOf(snap)
+    if (d.status === 'done') throw new AuthError('O draft já acabou.')
+    if (d.turn !== meUid) throw new AuthError('Não é a sua vez.')
+    const other = d.players.find((p) => p !== meUid)
+    const taken = new Set(Object.values(d.picks).flat())
+    if (taken.has(pokemonId)) throw new AuthError('Esse Pokémon já foi escolhido.')
+    const mine = [...(d.picks[meUid] ?? []), pokemonId]
+    const theirs = d.picks[other] ?? []
+    const finished = mine.length === d.size && theirs.length === d.size
+    tx.update(ref, {
+      picks: { [meUid]: mine, ...(theirs.length ? { [other]: theirs } : {}) },
+      ...(finished ? { status: 'done' } : { turn: theirs.length < d.size ? other : meUid }),
+    })
+  })
+}
+
+export async function deleteDraft(id) {
+  const { db, doc, deleteDoc } = await firebase()
+  await deleteDoc(doc(db, 'drafts', id))
+}
+
+/** Times públicos de um amigo (para a batalha). */
+export async function teamsOf(uid) {
+  const { db, collection, query, where, getDocs } = await firebase()
+  const snap = await getDocs(query(collection(db, 'publicTeams'), where('ownerUid', '==', uid)))
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+}
+
+/** Marca como lidas as mensagens de um amigo. */
+export async function markChatRead(meUid, otherUid) {
+  const { db, doc, updateDoc } = await firebase()
+  await updateDoc(doc(db, 'friends', meUid, 'list', otherUid), { unread: 0 })
+}
+
+/** Apaga todas as mensagens com um amigo. */
+export async function clearChat(meUid, otherUid) {
+  const { db, collection, getDocs, writeBatch } = await firebase()
+  const snap = await getDocs(collection(db, 'chats', chatId(meUid, otherUid), 'messages'))
+  for (let i = 0; i < snap.docs.length; i += 400) {
+    const b = writeBatch(db)
+    snap.docs.slice(i, i + 400).forEach((d) => b.delete(d.ref))
+    await b.commit()
+  }
+}
+
+/** Deixa um desafio (código) para um amigo, com a minha pontuação. */
+export async function sendChallenge(me, friendUid, code, score) {
+  const { db, doc, updateDoc } = await firebase()
+  await updateDoc(doc(db, 'friends', friendUid, 'list', me.uid), {
+    name: me.name,
+    avatar: me.avatar ?? null,
+    challenge: { code, score, at: Date.now() },
+  })
+}
+
+/** Tira o desafio que um amigo deixou (depois de jogar ou dispensar). */
+export async function clearChallenge(meUid, friendUid) {
+  const { db, doc, updateDoc } = await firebase()
+  await updateDoc(doc(db, 'friends', meUid, 'list', friendUid), { challenge: null })
+}
+
+/** Recorde do Ranked de cada amigo (ranking/{uid}), ou 0. */
+export async function friendRecords(uids) {
+  const { db, doc, getDoc } = await firebase()
+  const entries = await Promise.all(
+    uids.map((uid) =>
+      getDoc(doc(db, 'ranking', uid))
+        .then((s) => [uid, s.exists() ? s.data().score : 0])
+        .catch(() => [uid, 0]),
+    ),
+  )
+  return Object.fromEntries(entries)
+}
+
+/** Conta entrou com Google (e não com e-mail e senha)? */
+export async function usesGoogle() {
+  const { auth } = await firebase()
+  return auth.currentUser?.providerData.some((p) => p.providerId === 'google.com') ?? false
+}
+
+/**
+ * Apaga a conta e tudo dela: dados, nome reservado, rankings e o login.
+ * Por segurança o Firebase pede para confirmar a senha (ou a conta Google).
+ */
+export async function deleteAccount({ password, weeks = [], days = [], confirmedByLink = false }) {
+  const f = await firebase()
+  const user = f.auth.currentUser
+  if (!user) return
+  if (confirmedByLink) {
+    // já confirmou abrindo o link do e-mail (EmailLinkPage)
+  } else if (await usesGoogle()) {
+    await f.reauthenticateWithPopup(user, new f.GoogleAuthProvider())
+  } else {
+    await f.reauthenticateWithCredential(user, f.EmailAuthProvider.credential(user.email, password ?? ''))
+  }
+  const uid = user.uid
+  const { db, doc, getDoc, getDocs, collection, deleteDoc, writeBatch, increment, query, where } = f
+  const quiet = (p) => p.catch(() => {})
+  const profile = await getDoc(doc(db, 'users', uid))
+  const name = profile.exists() ? profile.data().name : null
+  const keys = new Set([profile.exists() ? profile.data().nameKey : null, name ? nameKey(name) : null].filter(Boolean))
+
+  // Times públicos: os da pessoa somem inteiros (com votos e denúncias);
+  // nos dos outros, o voto e a denúncia dela saem (a nota e a contagem voltam).
+  const teams = await getDocs(collection(db, 'publicTeams')).catch(() => null)
+  for (const team of teams?.docs ?? []) {
+    if (team.data().ownerUid === uid) {
+      for (const sub of ['ratings', 'reports']) {
+        const docs = await getDocs(collection(db, 'publicTeams', team.id, sub)).catch(() => null)
+        await Promise.all((docs?.docs ?? []).map((d) => quiet(deleteDoc(d.ref))))
+      }
+      await quiet(deleteDoc(team.ref))
+    } else {
+      const vote = await getDoc(doc(db, 'publicTeams', team.id, 'ratings', uid)).catch(() => null)
+      if (vote?.exists()) {
+        const batch = writeBatch(db)
+        batch.update(team.ref, { ratingSum: increment(-vote.data().stars), ratingCount: increment(-1) })
+        batch.delete(vote.ref)
+        await quiet(batch.commit())
+      }
+      const report = await getDoc(doc(db, 'publicTeams', team.id, 'reports', uid)).catch(() => null)
+      if (report?.exists()) {
+        const batch = writeBatch(db)
+        batch.update(team.ref, { reportCount: increment(-1) })
+        batch.delete(report.ref)
+        await quiet(batch.commit())
+      }
+    }
+  }
+
+  // Rankings: o geral e todas as semanas e dias desde que os rankings existem.
+  await Promise.all([...keys].map((k) => quiet(deleteDoc(doc(db, 'usernames', k)))))
+  const refs = [doc(db, 'ranking', uid)]
+  for (const key of new Set([...boardKeys(), ...weeks, ...days])) {
+    refs.push(doc(db, 'weekly', key, 'scores', uid), doc(db, 'daily', key, 'scores', uid), doc(db, 'factoryWeek', key, 'scores', uid))
+  }
+  for (let i = 0; i < refs.length; i += 400) {
+    const batch = writeBatch(db)
+    refs.slice(i, i + 400).forEach((ref) => batch.delete(ref))
+    await batch.commit().catch(() => Promise.all(refs.slice(i, i + 400).map((ref) => quiet(deleteDoc(ref)))))
+  }
+
+  // Amizades e chats: somem dos dois lados.
+  const friends = await getDocs(collection(db, 'friends', uid, 'list')).catch(() => null)
+  await Promise.all((friends?.docs ?? []).map((d) => clearChat(uid, d.id).catch(() => {})))
+  await Promise.all(
+    (friends?.docs ?? []).flatMap((d) => [quiet(deleteDoc(doc(db, 'friends', d.id, 'list', uid))), quiet(deleteDoc(d.ref))]),
+  )
+
+  // Lista das antigas Trocas (o recurso saiu), se ainda existir.
+  await quiet(deleteDoc(doc(db, 'trades', uid)))
+  // Drafts de que a conta participou.
+  const drafts = await getDocs(query(collection(db, 'drafts'), where('players', 'array-contains', uid))).catch(() => null)
+  await Promise.all((drafts?.docs ?? []).map((d) => quiet(deleteDoc(d.ref))))
+  await quiet(deleteDoc(doc(db, 'confirmations', uid)))
+  await deleteDoc(doc(db, 'users', uid))
+  await f.deleteUser(user)
+}
+
+/** Todos os dias desde o começo dos rankings (semana e dia usam "AAAA-MM-DD"). */
+function boardKeys(now = Date.now()) {
+  const keys = []
+  for (let t = Date.UTC(2026, 8, 20); t <= now + 2 * 86400000; t += 86400000) keys.push(new Date(t).toISOString().slice(0, 10))
+  return keys
+}
+
+// ---------------------------------------------------------------- mensagens
+
+const MESSAGES = {
+  'name-taken': 'Esse nome já está sendo usado. Escolha outro.',
+  'auth/invalid-email': 'E-mail inválido.',
+  'auth/missing-email': 'Digite o seu e-mail.',
+  'auth/missing-password': 'Digite a sua senha.',
+  'auth/email-already-in-use': 'Já existe uma conta com esse e-mail.',
+  'auth/weak-password': 'A senha precisa ter pelo menos 6 caracteres.',
+  'auth/invalid-credential': 'E-mail ou senha incorretos.',
+  'auth/wrong-password': 'E-mail ou senha incorretos.',
+  'auth/user-not-found': 'E-mail ou senha incorretos.',
+  'auth/user-disabled': 'Essa conta foi desativada.',
+  'auth/too-many-requests': 'Muitas tentativas. Espere um pouco e tente de novo.',
+  'auth/network-request-failed': 'Sem conexão com a internet.',
+  'auth/popup-closed-by-user': 'A janela do Google foi fechada antes de terminar.',
+  'auth/cancelled-popup-request': 'A janela do Google foi fechada antes de terminar.',
+  'auth/popup-blocked': 'O navegador bloqueou a janela do Google. Libere pop-ups para este site.',
+  'auth/unauthorized-domain': 'Este endereço não está autorizado no Firebase (Authentication → Domínios autorizados).',
+  'auth/operation-not-allowed': 'Esse tipo de login não está ativado no Firebase.',
+  'auth/requires-recent-login': 'Por segurança, saia e entre de novo na conta e tente outra vez.',
+  'auth/user-mismatch': 'Escolha a mesma conta Google que está conectada.',
+  'permission-denied': 'Sem permissão no banco de dados. Confira as regras do Firestore.',
+  'auth/invalid-action-code': 'Esse link já foi usado ou expirou. Peça outro.',
+  'auth/expired-action-code': 'Esse link expirou. Peça outro.',
+}
+
+export function errorMessage(error) {
+  const code = error?.code ?? ''
+  return MESSAGES[code] ?? (error instanceof AuthError ? code : 'Algo deu errado. Tente de novo.')
+}

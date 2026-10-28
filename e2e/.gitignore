@@ -1,0 +1,4 @@
+node_modules/
+emu.rules
+*-debug.log
+falha.png
