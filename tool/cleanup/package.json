@@ -1,0 +1,11 @@
+{
+  "name": "pocketdex-cleanup",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node cleanup.mjs"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0"
+  }
+}
