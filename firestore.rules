@@ -1,0 +1,671 @@
+rules_version = '2';
+
+// Regras do banco de dados dos usuários do PocketDex (site e app).
+// Cole no Console do Firebase → Firestore Database → Regras → Publicar.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // Chave do nome ("Ásh  Ketchum" → "ash ketchum"), igual à do site e do app.
+    function keyOf(name) {
+      return name.lower()
+        .replace('[áàâãä]', 'a').replace('[éèêë]', 'e').replace('[íìîï]', 'i')
+        .replace('[óòôõö]', 'o').replace('[úùûü]', 'u').replace('ç', 'c').replace('ñ', 'n')
+        .replace(' +', ' ');
+    }
+
+    // Nome da conta (o mesmo que aparece nos rankings).
+    function accountName(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data.name;
+    }
+
+    // Só dá para usar como nome um nome reservado para si em usernames.
+    function nameIsMine(uid) {
+      let d = request.resource.data;
+      return !('name' in d)
+        || (resource != null && resource.data.get('name', null) == d.name)
+        || ('nameKey' in d
+          && getAfter(/databases/$(database)/documents/usernames/$(d.nameKey)).data.uid == uid
+          && getAfter(/databases/$(database)/documents/usernames/$(d.nameKey)).data.name == d.name);
+    }
+
+    function validAvatar(d) {
+      return !('avatar' in d) || d.avatar == null || d.avatar is int;
+    }
+
+    // Linha de ranking: só a própria pessoa, com o nome da conta dela.
+    function validScore(uid, max) {
+      let d = request.resource.data;
+      return signedIn(uid)
+        && d.keys().hasOnly(['name', 'score', 'avatar', 'correct', 'seconds', 'updatedAt'])
+        && d.score is int && d.score > 0 && d.score <= max
+        && validAvatar(d)
+        && d.name == accountName(uid);
+    }
+
+    // Perfil e dados (favoritos, times, treinos...) de cada pessoa:
+    // só ela mesma pode ler e escrever.
+    match /users/{uid} {
+      allow read, delete: if signedIn(uid);
+      allow create, update: if signedIn(uid) && nameIsMine(uid);
+    }
+
+    // Amigos: friends/{dono}/list/{outro} = {name, avatar, status, since, challenge?}
+    //   status: 'sent' (pedido enviado), 'received' (pedido recebido), 'friends'.
+    // Quem pede grava dos dois lados ('sent' no seu, 'received' no do outro);
+    // quem recebeu aceita e os dois viram 'friends'. Qualquer um desfaz
+    // (apaga os dois). Amigos podem deixar um desafio (challenge) um para o outro.
+    match /friends/{owner}/list/{other} {
+      function validFriend(d) {
+        return d.keys().hasOnly(['name', 'avatar', 'status', 'since', 'challenge', 'unread', 'last'])
+          && d.name is string && d.name.size() <= 20
+          && (!('avatar' in d) || d.avatar == null || d.avatar is int)
+          && d.status in ['sent', 'received', 'friends']
+          && (!('challenge' in d) || d.challenge == null
+              || (d.challenge is map && d.challenge.keys().hasOnly(['code', 'score', 'at'])
+                  && d.challenge.code is string && d.challenge.code.size() <= 300))
+          // Chat: mensagens ainda não lidas e a última (para a lista).
+          && (!('unread' in d) || (d.unread is int && d.unread >= 0 && d.unread <= 999))
+          && (!('last' in d) || d.last == null
+              || (d.last is map && d.last.keys().hasOnly(['text', 'at', 'from'])
+                  && d.last.text is string && d.last.text.size() <= 100));
+      }
+      allow read: if signedIn(owner);
+      allow delete: if signedIn(owner) || signedIn(other);
+      // O dono: manda um pedido (com o nome real do outro), aceita um
+      // recebido, ou atualiza a própria lista sem mudar o estado.
+      allow create: if signedIn(owner) && owner != other && validFriend(request.resource.data)
+        && request.resource.data.status == 'sent' && request.resource.data.name == accountName(other);
+      allow update: if signedIn(owner) && validFriend(request.resource.data)
+        && ((resource.data.status == 'received' && request.resource.data.status == 'friends')
+            || request.resource.data.status == resource.data.status);
+      // O outro: o pedido dele chega aqui ('received', com o nome dele), ele
+      // aceita deste lado, ou (já amigos) manda um desafio / atualiza o nome.
+      allow create: if signedIn(other) && owner != other && validFriend(request.resource.data)
+        && request.resource.data.status == 'received' && request.resource.data.name == accountName(other);
+      allow update: if signedIn(other) && validFriend(request.resource.data)
+        && request.resource.data.name == accountName(other)
+        && request.resource.data.status == 'friends'
+        && resource.data.status in ['sent', 'friends'];
+    }
+
+    // Chat entre amigos: chats/{uidA_uidB}/messages/{id} = {from, text, at}
+    // (uidA < uidB). Só os dois leem, e só escrevem enquanto são amigos.
+    // Mensagem não muda; qualquer um dos dois apaga (desfazer amizade,
+    // excluir conta).
+    match /chats/{chat}/messages/{msg} {
+      function pair() { return chat.split('_'); }
+      function member() {
+        return request.auth != null && pair().size() == 2 && pair()[0] < pair()[1]
+          && request.auth.uid in pair();
+      }
+      // Cartão clicável: um Pokémon ({kind, id}) ou um time ({kind, name, ids, code}).
+      function validCard(c) {
+        return c is map && c.keys().hasOnly(['kind', 'id', 'name', 'ids', 'code'])
+          && c.kind in ['pokemon', 'team']
+          && (!('id' in c) || c.id is int)
+          && (!('name' in c) || (c.name is string && c.name.size() <= 60))
+          && (!('ids' in c) || (c.ids is list && c.ids.size() <= 6))
+          && (!('code' in c) || (c.code is string && c.code.size() <= 4000));
+      }
+      function otherOf() { return pair()[0] == request.auth.uid ? pair()[1] : pair()[0]; }
+      function friends() {
+        return get(/databases/$(database)/documents/friends/$(request.auth.uid)/list/$(otherOf())).data.status == 'friends';
+      }
+      allow read: if member() && friends();
+      allow delete: if member();
+      allow create: if member() && friends()
+        && request.resource.data.keys().hasOnly(['from', 'text', 'at', 'card'])
+        && (!('card' in request.resource.data) || validCard(request.resource.data.card))
+        && request.resource.data.from == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 500
+        && request.resource.data.at == request.time;
+    }
+
+    // Trocas (recurso removido): só dá para apagar a própria lista antiga.
+    match /trades/{uid} {
+      allow delete: if signedIn(uid);
+    }
+
+    // Draft entre amigos: drafts/{id} = {players: [a, b], names: {uid: nome},
+    // picks: {uid: [id]}, turn: uid, size, status: 'picking' | 'done',
+    // createdAt}. Cada um escolhe um Pokémon na sua vez, sem repetir; só os
+    // dois leem e mexem, e qualquer um apaga.
+    match /drafts/{draft} {
+      function me() { return request.auth.uid; }
+      function isPlayer(d) { return request.auth != null && d.players is list && me() in d.players; }
+      function otherIn(d) { return d.players[0] == me() ? d.players[1] : d.players[0]; }
+      // (Sem "is list" aqui: a lista "meus drafts" usa array-contains e o
+      // Firestore precisa conseguir provar a regra pela consulta.)
+      allow read, delete: if request.auth != null && request.auth.uid in resource.data.players;
+      allow create: if isPlayer(request.resource.data)
+        && request.resource.data.keys().hasOnly(['players', 'names', 'picks', 'turn', 'size', 'status', 'createdAt'])
+        && request.resource.data.players.size() == 2
+        && request.resource.data.players[0] != request.resource.data.players[1]
+        && get(/databases/$(database)/documents/friends/$(me())/list/$(otherIn(request.resource.data))).data.status == 'friends'
+        && request.resource.data.names is map && request.resource.data.names.keys().hasOnly(request.resource.data.players)
+        && request.resource.data.picks == {}
+        && request.resource.data.turn == me()
+        && request.resource.data.size is int && request.resource.data.size >= 1 && request.resource.data.size <= 6
+        && request.resource.data.status == 'picking'
+        && request.resource.data.createdAt == request.time;
+      // Uma escolha: só na minha vez, um Pokémon a mais para mim, que ninguém
+      // escolheu ainda; a vez passa para o outro (ou acaba).
+      allow update: if isPlayer(resource.data)
+        && resource.data.status == 'picking'
+        && resource.data.turn == me()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['picks', 'turn', 'status'])
+        && validPick(resource.data, request.resource.data);
+      function validPick(old, new) {
+        let other = otherIn(old);
+        let mine = old.picks.get(me(), []);
+        let theirs = old.picks.get(other, []);
+        let now = new.picks.get(me(), []);
+        let picked = now[now.size() - 1];
+        return now.size() == mine.size() + 1 && now.size() <= old.size
+          && now.hasAll(mine) && picked is int && picked >= 1 && picked <= 1025
+          && !(picked in mine) && !(picked in theirs)
+          && new.picks.get(other, []) == theirs
+          && new.picks.keys().hasOnly([me(), other])
+          && (now.size() == old.size && theirs.size() == old.size
+                ? new.status == 'done'
+                : new.status == 'picking' && new.turn == (theirs.size() < old.size ? other : me()));
+      }
+    }
+
+
+    // onlineBattles/{id}: convite privado e times imutáveis depois do aceite.
+    // actions/{round_uid}: ação imutável de cada jogador; até 500 rodadas.
+    match /onlineBattles/{battle} {
+      function member(d) { return request.auth != null && request.auth.uid in d.players; }
+      function legacyRoom(d) {
+        return d.keys().hasAll(['protocol', 'players', 'names', 'teams', 'status', 'seed', 'createdAt', 'endedBy'])
+          && d.keys().hasOnly(['protocol', 'players', 'names', 'teams', 'status', 'seed', 'createdAt', 'endedBy'])
+          && d.protocol in [1, 2, 3, 4] && d.players is list && d.players.size() == 2
+          && d.players[0] is string && d.players[1] is string
+          && d.players[0] != d.players[1]
+          && d.names is map && d.names.keys().hasOnly(d.players) && d.names.keys().hasAll(d.players)
+          && d.names[d.players[0]] is string && d.names[d.players[0]].size() <= 20
+          && d.names[d.players[1]] is string && d.names[d.players[1]].size() <= 20
+          && d.teams is map && d.teams.keys().hasOnly(d.players)
+          && d.teams[d.players[0]] is string && d.teams[d.players[0]].size() <= 20000
+          && (!(d.players[1] in d.teams) || (d.teams[d.players[1]] is string && d.teams[d.players[1]].size() <= 20000))
+          && d.status in ['pending', 'active', 'closed']
+          && d.seed is int && d.seed >= 0 && d.seed < 2147483648
+          && d.createdAt is timestamp
+          && (d.endedBy == null || d.endedBy in d.players);
+      }
+      function slots(d) { return d.mode == 'triples' ? 3 : d.mode == 'doubles' ? 2 : 1; }
+      function validPlayer(name) {
+        return name is string && name.size() <= 20;
+      }
+      function validSeat(seats, players, i) {
+        let seat = i < seats.size() ? seats[i] : '';
+        return i >= seats.size() || seat in players || seat == 'npc' + string(i);
+      }
+      function validNpc(teams, uid) {
+        return !(uid in teams) || (teams[uid] is string && teams[uid].size() <= 20000);
+      }
+      function separateTeams(d) {
+        let s = d.seats;
+        let count = slots(d);
+        return !s[0:count].hasAny(s[count:count * 2]);
+      }
+      function newRoom(d) {
+        let p = d.players;
+        let s = d.seats;
+        let n = d.names;
+        let npc = d.npcTeams;
+        return d.keys().hasAll(['protocol', 'players', 'names', 'teams', 'status', 'seed', 'createdAt', 'endedBy', 'mode', 'seats', 'npcTeams'])
+          && d.keys().hasOnly(['protocol', 'players', 'names', 'teams', 'status', 'seed', 'createdAt', 'endedBy', 'mode', 'seats', 'npcTeams', 'match', 'rules'])
+          && (!('match' in d) || d.match == true)
+          // Regras opcionais do convite: sem Pokémon repetido, Sleep Clause.
+          && (!('rules' in d) || d.rules is list && d.rules.size() <= 2 && d.rules.hasOnly(['species', 'sleep']))
+          && d.protocol == 5 && d.mode in ['singles', 'doubles', 'triples']
+          && p is list && p.size() >= 2 && p.size() <= 6 && p.toSet().size() == p.size()
+          && n is map && n.keys().toSet() == p.toSet()
+          && p.join('|').size() <= 773 && !p.hasAny(['npc0', 'npc1', 'npc2', 'npc3', 'npc4', 'npc5'])
+          && d.teams is map && d.teams.keys().hasOnly(p)
+          && validPlayer(n[p[0]]) && validPlayer(n[p[1]])
+          && (p.size() < 3 || validPlayer(n[p[2]])) && (p.size() < 4 || validPlayer(n[p[3]]))
+          && (p.size() < 5 || validPlayer(n[p[4]])) && (p.size() < 6 || validPlayer(n[p[5]]))
+          && s is list && s.size() == slots(d) * 2 && s[0] == p[0] && s.hasAll(p)
+          && s.hasOnly(p.concat(['npc0', 'npc1', 'npc2', 'npc3', 'npc4', 'npc5']))
+          && validSeat(s, p, 0) && validSeat(s, p, 1) && validSeat(s, p, 2) && validSeat(s, p, 3) && validSeat(s, p, 4) && validSeat(s, p, 5) && separateTeams(d)
+          && npc is map && npc.keys().toSet() == s.toSet().difference(p.toSet())
+          && (npc.size() == 0 || validNpc(npc, 'npc0') && validNpc(npc, 'npc1') && validNpc(npc, 'npc2') && validNpc(npc, 'npc3') && validNpc(npc, 'npc4') && validNpc(npc, 'npc5'))
+          && d.status in ['pending', 'active', 'closed'] && d.seed is int && d.seed >= 0 && d.seed < 2147483648
+          && d.createdAt is timestamp && (d.endedBy == null || d.endedBy in d.players);
+      }
+      function validRoom(d) { return d.protocol == 5 ? newRoom(d) : legacyRoom(d); }
+      // Cada convidado é amigo de quem cria, e o nome dele na sala é o nome
+      // real (o mesmo da lista de amigos de quem cria, que só aceita o nome
+      // da conta): ninguém se passa por outro.
+      function hostFriend(host, d, i) {
+        let friend = i >= d.players.size() ? null : get(/databases/$(database)/documents/friends/$(host)/list/$(d.players[i])).data;
+        return i >= d.players.size() || (friend.status == 'friends' && friend.name == d.names[d.players[i]]);
+      }
+      function newFriends(d) {
+        let p = d.players;
+        return hostFriend(p[0], d, 1) && hostFriend(p[0], d, 2) && hostFriend(p[0], d, 3) && hostFriend(p[0], d, 4) && hostFriend(p[0], d, 5);
+      }
+      // Quem aceita ainda é amigo de quem criou, do próprio lado também.
+      function acceptorFriend(d) {
+        return get(/databases/$(database)/documents/friends/$(request.auth.uid)/list/$(d.players[0])).data.status == 'friends';
+      }
+      // (newRoom é conferido uma vez só, no allow create: é pesado.)
+      function newCreate(d) {
+        return member(d) && d.players[0] == request.auth.uid && d.names[request.auth.uid] == accountName(request.auth.uid)
+          && d.teams[request.auth.uid] is string && d.teams[request.auth.uid].size() <= 20000
+          && d.teams.keys().hasOnly([request.auth.uid]) && d.status == 'pending' && d.endedBy == null && d.createdAt == request.time && newFriends(d);
+      }
+      function newAccept(old, now) {
+        return old.protocol == 5 && old.status == 'pending' && !(request.auth.uid in old.teams)
+          && now.diff(old).affectedKeys().hasOnly(['teams', 'status'])
+          && now.teams.diff(old.teams).affectedKeys().hasOnly([request.auth.uid]) && request.auth.uid in now.teams
+          && now.teams[request.auth.uid] is string && now.teams[request.auth.uid].size() <= 20000
+          && now.status == (now.teams.keys().hasAll(old.players) ? 'active' : 'pending')
+          && request.time < old.createdAt + duration.value(7, 'd') && newFriends(old) && acceptorFriend(old);
+      }
+      // Adversário aleatório (matchQueue): quem cria pega um da fila (que
+      // ainda não foi pego) e a sala nasce pronta com o time que ele deixou
+      // lá. Na mesma escrita a vaga dele fica marcada como pega por quem criou.
+      function matchCreate(d) {
+        let me = request.auth.uid;
+        let other = d.players[1];
+        let queue = getAfter(/databases/$(database)/documents/matchQueue/$(other)).data;
+        return d.match == true && member(d) && d.players.size() == 2 && d.players[0] == me
+          && d.mode == 'singles' && d.names[me] == accountName(me) && d.names[other] == queue.name
+          && d.teams.keys().hasAll(d.players) && d.teams[me] is string && d.teams[me].size() <= 20000
+          && d.teams[other] == queue.team && queue.claimedBy == me
+          && d.status == 'active' && d.endedBy == null && d.createdAt == request.time;
+      }
+      function stillFriends(d) {
+        return get(/databases/$(database)/documents/friends/$(d.players[0])/list/$(d.players[1])).data.status == 'friends'
+          && get(/databases/$(database)/documents/friends/$(d.players[1])/list/$(d.players[0])).data.status == 'friends';
+      }
+      allow read: if request.auth != null && request.auth.uid in resource.data.players;
+      allow create: if request.resource.data.protocol == 5 ? (newRoom(request.resource.data) && ('match' in request.resource.data ? matchCreate(request.resource.data) : newCreate(request.resource.data))) : (legacyRoom(request.resource.data) && request.resource.data.protocol == 4 && member(request.resource.data)
+        && request.resource.data.players[0] == request.auth.uid
+        && request.resource.data.names[request.auth.uid] == accountName(request.auth.uid)
+        && request.resource.data.names[request.resource.data.players[1]] == accountName(request.resource.data.players[1])
+        && request.resource.data.teams.keys().hasOnly([request.auth.uid])
+        && request.resource.data.status == 'pending' && request.resource.data.endedBy == null
+        && request.resource.data.createdAt == request.time && stillFriends(request.resource.data));
+      allow update: if member(resource.data) && (resource.data.protocol == 5 || validRoom(request.resource.data))
+        && (
+          // Só quem recebeu o convite escolhe seu time e aceita.
+          (resource.data.status == 'pending' && resource.data.protocol == 4 && request.auth.uid == resource.data.players[1]
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['teams', 'status'])
+            && request.resource.data.teams.diff(resource.data.teams).affectedKeys().hasOnly([request.auth.uid])
+            && request.resource.data.teams.keys().hasAll(resource.data.players)
+            && request.resource.data.status == 'active'
+            && request.time < resource.data.createdAt + duration.value(7, 'd') && stillFriends(resource.data))
+          // Cada jogador só pode declarar a própria desistência.
+          || (resource.data.status in ['pending', 'active']
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'endedBy'])
+            && request.resource.data.status == 'closed' && request.resource.data.endedBy == request.auth.uid)
+          || newAccept(resource.data, request.resource.data)
+          // Adversário sumiu: 3 min sem jogar a rodada em que você já jogou.
+          // Quem reclama vence (endedBy = quem sumiu, como numa desistência).
+          || (resource.data.status == 'active' && resource.data.protocol == 5 && resource.data.players.size() == 2
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'endedBy', 'timeout'])
+            && request.resource.data.status == 'closed' && request.resource.data.endedBy in resource.data.players
+            && request.resource.data.endedBy != request.auth.uid
+            && request.resource.data.timeout is int && request.resource.data.timeout >= 0 && request.resource.data.timeout < 500
+            && timedOut(request.resource.data.timeout, request.resource.data.endedBy))
+        );
+      function timedOut(round, other) {
+        let mine = get(/databases/$(database)/documents/onlineBattles/$(battle)/actions/$(string(round) + '_' + request.auth.uid)).data;
+        return mine.at + duration.value(3, 'm') < request.time
+          && !exists(/databases/$(database)/documents/onlineBattles/$(battle)/actions/$(string(round) + '_' + other));
+      }
+      // Emotes rápidos durante a partida (só os da lista).
+      match /emotes/{emote} {
+        function room() { return get(/databases/$(database)/documents/onlineBattles/$(battle)).data; }
+        allow read: if member(room());
+        allow create: if member(room()) && request.resource.data.keys().hasOnly(['uid', 'e', 'at'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.e in ['👍', '😂', '😮', '😡', '🔥', 'GG']
+          && request.resource.data.at == request.time;
+      }
+      match /actions/{action} {
+        function room() { return get(/databases/$(database)/documents/onlineBattles/$(battle)).data; }
+        function validAction(d) {
+          return d.keys().hasAll(['uid', 'round', 'kind', 'index', 'at'])
+            && d.keys().hasOnly(['uid', 'round', 'kind', 'index', 'gimmick', 'at'])
+            && d.uid == request.auth.uid && d.round is int && d.round >= 0 && d.round < 500
+            && action == string(d.round) + '_' + d.uid
+            && d.kind in ['move', 'switch', 'wait']
+            && d.index is int
+            && (d.kind == 'move' ? d.index >= -1 && d.index <= 3
+                : d.kind == 'switch' ? d.index >= 0 && d.index <= 5 : d.index == 0)
+            && (!('gimmick' in d) || (d.kind == 'move' && d.gimmick in ['none', 'mega', 'z', 'dmax', 'tera']))
+            && d.at == request.time;
+        }
+        function previousComplete(d, r) {
+          return d.round == 0
+            || (exists(/databases/$(database)/documents/onlineBattles/$(battle)/actions/$(string(d.round - 1) + '_' + r.players[0]))
+                && exists(/databases/$(database)/documents/onlineBattles/$(battle)/actions/$(string(d.round - 1) + '_' + r.players[1]))
+                && (r.players.size() < 3 || exists(/databases/$(database)/documents/onlineBattles/$(battle)/actions/$(string(d.round - 1) + '_' + r.players[2])))
+                && (r.players.size() < 4 || exists(/databases/$(database)/documents/onlineBattles/$(battle)/actions/$(string(d.round - 1) + '_' + r.players[3])))
+                && (r.players.size() < 5 || exists(/databases/$(database)/documents/onlineBattles/$(battle)/actions/$(string(d.round - 1) + '_' + r.players[4])))
+                && (r.players.size() < 6 || exists(/databases/$(database)/documents/onlineBattles/$(battle)/actions/$(string(d.round - 1) + '_' + r.players[5]))));
+        }
+        function ownedSeat(r, i) { return i < r.seats.size() && r.seats[i] == request.auth.uid ? 1 : 0; }
+        function ownedCount(r) { return ownedSeat(r, 0) + ownedSeat(r, 1) + ownedSeat(r, 2) + ownedSeat(r, 3) + ownedSeat(r, 4) + ownedSeat(r, 5); }
+        function validChoice(c, r) {
+          let count = slots(r);
+          return c is map && c.keys().hasAll(['seat', 'kind', 'index', 'target', 'gimmick']) && c.keys().hasOnly(['seat', 'kind', 'index', 'target', 'gimmick'])
+            && c.seat is int && c.seat >= 0 && c.seat < r.seats.size() && r.seats[c.seat] == request.auth.uid
+            && c.kind in ['move', 'switch', 'wait', 'pass', 'shift'] && c.index is int
+            && (c.kind == 'move' ? c.index >= -1 && c.index <= 3 : c.kind == 'switch' ? c.index >= 0 && c.index <= 5 : c.index == 0)
+            && (c.kind != 'shift' || r.mode == 'triples' && c.seat % 3 != 1)
+            && c.target is int && c.target >= -count && c.target <= count && (c.kind == 'move' || c.target == 0)
+            && c.gimmick in ['none', 'mega', 'z', 'dmax', 'tera'] && (c.kind == 'move' || c.gimmick == 'none');
+        }
+        function validGroup(d, r) {
+          return d.keys().hasAll(['uid', 'round', 'kind', 'choices', 'at']) && d.keys().hasOnly(['uid', 'round', 'kind', 'choices', 'at'])
+            && d.uid == request.auth.uid && d.round is int && d.round >= 0 && d.round < 500 && action == string(d.round) + '_' + d.uid
+            && d.kind == 'team' && d.choices is list && d.choices.size() == ownedCount(r) && d.choices.size() >= 1 && d.choices.size() <= 3
+            && validChoice(d.choices[0], r)
+            && (d.choices.size() < 2 || validChoice(d.choices[1], r) && d.choices[0].seat != d.choices[1].seat)
+            && (d.choices.size() < 3 || validChoice(d.choices[2], r) && d.choices[0].seat != d.choices[2].seat && d.choices[1].seat != d.choices[2].seat)
+            && d.at == request.time;
+        }
+        allow read: if member(room());
+        function canSubmit(d) {
+          let r = room();
+          return member(r) && r.protocol in [4, 5] && r.status == 'active'
+            && request.time < r.createdAt + duration.value(7, 'd')
+            && (r.protocol == 5 ? validGroup(d, r) : validAction(d)) && previousComplete(d, r);
+        }
+        allow create: if canSubmit(request.resource.data);
+        // Sem update/delete: não dá para mudar uma ação já enviada.
+      }
+    }
+
+    // Confirmações por link no e-mail (contas Google): quando a pessoa abriu
+    // o link para criar a conta, trocar a senha ou excluir. Só ela vê e muda.
+    match /confirmations/{uid} {
+      allow read, delete: if signedIn(uid);
+      allow create, update: if signedIn(uid)
+        && request.resource.data.keys().hasOnly(['signup', 'password', 'delete']);
+    }
+
+    // Fila do adversário aleatório (batalha online individual): cada um deixa
+    // o nome e o time; quem procura pega um da fila (só os de uid maior que o
+    // seu, para dois não se pegarem ao mesmo tempo) e cria a sala (matchCreate).
+    match /matchQueue/{uid} {
+      function entry(d) {
+        return d.keys().hasOnly(['name', 'team', 'mode', 'at', 'claimedBy'])
+          && d.name == accountName(uid) && d.team is string && d.team.size() <= 20000
+          && d.mode == 'singles' && d.at == request.time && d.claimedBy == null;
+      }
+      allow read: if request.auth != null;
+      allow create: if signedIn(uid) && entry(request.resource.data);
+      allow update: if (signedIn(uid) && entry(request.resource.data))
+        || (request.auth != null && request.auth.uid < uid && resource.data.claimedBy == null
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['claimedBy'])
+          && request.resource.data.claimedBy == request.auth.uid
+          && exists(/databases/$(database)/documents/matchQueue/$(request.auth.uid)));
+      allow delete: if signedIn(uid);
+    }
+
+    // Aparelhos para as notificações no celular (tool/notify/notify.mjs):
+    // só a pessoa vê e muda os dela. Quem manda os avisos é o servidor.
+    match /pushTokens/{uid} {
+      allow read, delete: if signedIn(uid);
+      allow create, update: if signedIn(uid)
+        && request.resource.data.keys().hasOnly(['tokens', 'lang'])
+        && request.resource.data.tokens is list && request.resource.data.tokens.size() <= 10
+        && (!('lang' in request.resource.data) || request.resource.data.lang in ['pt', 'en', 'fr', 'es']);
+    }
+
+    // Ranking das batalhas online (adversário aleatório), por temporada (mês):
+    // cada um atualiza o próprio depois de uma partida da fila (uma vez por
+    // sala), mudando no máximo 40 pontos; temporada nova começa em 1000.
+    match /ratings/{uid} {
+      function validRating(d, old) {
+        let fresh = old == null || old.season != d.season;
+        let base = fresh ? 1000 : old.rating;
+        let games = fresh ? 0 : old.wins + old.losses;
+        let r = get(/databases/$(database)/documents/onlineBattles/$(d.lastRoom)).data;
+        return d.keys().hasOnly(['name', 'avatar', 'rating', 'wins', 'losses', 'season', 'lastRoom', 'updatedAt'])
+          && d.name == accountName(uid) && (d.avatar == null || d.avatar is int)
+          && d.rating is int && d.rating >= base - 40 && d.rating <= base + 40
+          && d.wins is int && d.losses is int && d.wins >= 0 && d.losses >= 0 && d.wins + d.losses == games + 1
+          && (fresh || d.wins >= old.wins && d.losses >= old.losses && old.lastRoom != d.lastRoom)
+          && d.season is string && d.season.matches('^[0-9]{4}-[0-9]{2}$')
+          && d.lastRoom is string && d.updatedAt == request.time
+          && r.match == true && uid in r.players;
+      }
+      allow read: if request.auth != null;
+      allow create: if signedIn(uid) && validRating(request.resource.data, null);
+      allow update: if signedIn(uid) && validRating(request.resource.data, resource.data);
+      allow delete: if signedIn(uid);
+    }
+
+    // Duelo assíncrono: o time de defesa ({uid}) que os logados enfrentam (o
+    // computador joga pelo dono); só o dono grava. Os resultados ficam em
+    // duels: quem desafiou cria o seu (com o nome da conta dele), o dono e
+    // quem desafiou leem e apagam.
+    match /defense/{uid} {
+      function validDefense(d) {
+        return d.keys().hasOnly(['name', 'avatar', 'teamId', 'teamName', 'pokemon', 'sets', 'updatedAt'])
+          && d.name == accountName(uid) && validAvatar(d)
+          && d.teamId is string && d.teamName is string && d.teamName.size() <= 80
+          && d.pokemon is list && d.pokemon.size() == 6 && d.sets is list && d.sets.size() == 6
+          && d.updatedAt == request.time;
+      }
+      allow read: if request.auth != null;
+      allow create, update: if signedIn(uid) && validDefense(request.resource.data);
+      allow delete: if signedIn(uid);
+      match /duels/{id} {
+        allow create: if request.auth != null && request.auth.uid != uid
+          && request.resource.data.keys().hasOnly(['from', 'name', 'avatar', 'won', 'turns', 'createdAt'])
+          && request.resource.data.from == request.auth.uid
+          && request.resource.data.name == accountName(request.auth.uid)
+          && validAvatar(request.resource.data)
+          && request.resource.data.won is bool
+          && request.resource.data.turns is int && request.resource.data.turns > 0 && request.resource.data.turns < 10000
+          && request.resource.data.createdAt == request.time;
+        allow read, delete: if signedIn(uid) || (request.auth != null && resource.data.from == request.auth.uid);
+      }
+    }
+
+    // Perfil público ({uid}): qualquer um vê (é o link /perfil/{uid}); só o
+    // dono grava, com o nome da conta e só os campos do perfil.
+    match /profiles/{uid} {
+      function validProfile(d) {
+        return d.keys().hasOnly(['name', 'avatar', 'trainer', 'theme', 'shiny', 'champion', 'ranked', 'factory', 'tower', 'badges', 'hall', 'medals', 'caught', 'updatedAt'])
+          && d.name == accountName(uid) && validAvatar(d)
+          && d.theme is int && d.ranked is int && d.factory is int && d.tower is int && d.badges is int && d.caught is int
+          && d.shiny is bool && d.champion is bool && d.trainer is string && d.trainer.size() <= 40
+          && d.hall is list && d.hall.size() <= 10 && d.medals is list && d.medals.size() <= 40
+          && d.updatedAt == request.time;
+      }
+      allow read: if true;
+      allow create, update: if signedIn(uid) && validProfile(request.resource.data);
+      allow delete: if signedIn(uid);
+    }
+
+    // Ranking geral do Ranked: todos os logados veem.
+    match /ranking/{uid} {
+      allow read: if request.auth != null;
+      allow create, update: if validScore(uid, 5000);
+      allow delete: if signedIn(uid);
+    }
+
+    // Ranking da semana ({week} = segunda-feira, "AAAA-MM-DD"): só sobe.
+    match /weekly/{week}/scores/{uid} {
+      allow read: if request.auth != null;
+      allow create: if validScore(uid, 5000);
+      allow update: if validScore(uid, 5000) && request.resource.data.score >= resource.data.score;
+      allow delete: if signedIn(uid);
+    }
+
+    // Corrida da semana da Battle Factory ({week} = segunda-feira): o andar alcançado, só sobe.
+    match /factoryWeek/{week}/scores/{uid} {
+      allow read: if request.auth != null;
+      allow create: if validScore(uid, 2000);
+      allow update: if validScore(uid, 2000) && request.resource.data.score >= resource.data.score;
+      allow delete: if signedIn(uid);
+    }
+
+    // Desafio semanal da Batalha ({week} = segunda-feira): 1000 − turnos da vitória, só sobe.
+    match /battleWeek/{week}/scores/{uid} {
+      allow read: if request.auth != null;
+      allow create: if validScore(uid, 999);
+      allow update: if validScore(uid, 999) && request.resource.data.score >= resource.data.score;
+      allow delete: if signedIn(uid);
+    }
+
+    // Desafio do dia ({day} = "AAAA-MM-DD"): uma tentativa por dia.
+    match /daily/{day}/scores/{uid} {
+      allow read: if request.auth != null;
+      allow create: if validScore(uid, 11000)
+        && request.resource.data.correct is int
+        && request.resource.data.correct >= 0 && request.resource.data.correct <= 10;
+      allow delete: if signedIn(uid);
+    }
+
+    // Times públicos: todo time de quem tem conta aparece para todos os
+    // logados (busca pelo nome do dono). Só o dono cria, muda e apaga; a nota
+    // da comunidade (soma e quantidade de estrelas) só muda junto com o voto.
+    match /publicTeams/{teamId} {
+      function team() { return request.resource.data; }
+      function ratingPath() {
+        return /databases/$(database)/documents/publicTeams/$(teamId)/ratings/$(request.auth.uid);
+      }
+      function reportPath() {
+        return /databases/$(database)/documents/publicTeams/$(teamId)/reports/$(request.auth.uid);
+      }
+      function reports(d) { return d.get('reportCount', 0); }
+      function validTeam() {
+        return team().keys().hasOnly(['ownerUid', 'ownerName', 'ownerKey', 'avatar', 'name', 'color', 'pokemon', 'sets',
+                                      'ratingSum', 'ratingCount', 'reportCount', 'updatedAt'])
+          // dados completos de cada Pokémon (golpes, item, EVs...): 6 posições
+          && (!('sets' in team()) || (team().sets is list && team().sets.size() == 6))
+          && team().ownerUid == request.auth.uid
+          && team().ownerName == accountName(request.auth.uid)
+          && team().ownerKey == keyOf(team().ownerName)
+          && team().name is string && team().name.size() <= 60
+          && team().pokemon is list && team().pokemon.size() == 6
+          && (team().color == null || team().color is string)
+          && validAvatar(team());
+      }
+      allow read: if request.auth != null;
+      allow create: if validTeam() && team().ratingSum == 0 && team().ratingCount == 0 && reports(team()) == 0;
+      allow update: if (
+          // dono: muda o time, mas não a nota nem as denúncias
+          resource.data.ownerUid == request.auth.uid && validTeam()
+            && team().ratingSum == resource.data.ratingSum && team().ratingCount == resource.data.ratingCount
+            && reports(team()) == reports(resource.data)
+        ) || (
+          // outra pessoa denuncia: +1 denúncia, junto com a própria (uma por pessoa)
+          request.auth != null && resource.data.ownerUid != request.auth.uid
+            && team().diff(resource.data).affectedKeys().hasOnly(['reportCount'])
+            && !exists(reportPath()) && existsAfter(reportPath())
+            && team().reportCount == reports(resource.data) + 1
+        ) || (
+          // outra pessoa: só a nota, junto com o próprio voto
+          request.auth != null && resource.data.ownerUid != request.auth.uid
+            && team().diff(resource.data).affectedKeys().hasOnly(['ratingSum', 'ratingCount'])
+            && existsAfter(ratingPath())
+            && team().ratingSum == resource.data.ratingSum + getAfter(ratingPath()).data.stars
+                 - (exists(ratingPath()) ? get(ratingPath()).data.stars : 0)
+            && team().ratingCount == resource.data.ratingCount + (exists(ratingPath()) ? 0 : 1)
+        ) || (
+          // outra pessoa tira a própria denúncia (ao excluir a conta): -1 denúncia
+          request.auth != null && resource.data.ownerUid != request.auth.uid
+            && team().diff(resource.data).affectedKeys().hasOnly(['reportCount'])
+            && exists(reportPath()) && !existsAfter(reportPath())
+            && team().reportCount == reports(resource.data) - 1
+        ) || (
+          // outra pessoa tira o próprio voto (ao excluir a conta): a nota volta
+          request.auth != null && resource.data.ownerUid != request.auth.uid
+            && team().diff(resource.data).affectedKeys().hasOnly(['ratingSum', 'ratingCount'])
+            && exists(ratingPath()) && !existsAfter(ratingPath())
+            && team().ratingSum == resource.data.ratingSum - get(ratingPath()).data.stars
+            && team().ratingCount == resource.data.ratingCount - 1
+        );
+      allow delete: if request.auth != null && resource.data.ownerUid == request.auth.uid;
+
+      // Denúncia (uma por pessoa), sempre junto com o +1 no time. Com 3 ou mais
+      // o time some da busca; o dono do projeto revisa no Console do Firebase.
+      match /reports/{uid} {
+        function parent() { return /databases/$(database)/documents/publicTeams/$(teamId); }
+        function ownerOfTeam() {
+          return request.auth != null && get(parent()).data.ownerUid == request.auth.uid;
+        }
+        allow read: if signedIn(uid) || ownerOfTeam();
+        // Quem denunciou apaga a própria denúncia ao excluir a conta, sempre
+        // junto com o -1 no time; o dono apaga todas ao excluir o time.
+        allow delete: if (signedIn(uid) && (
+            !exists(parent())
+            || getAfter(parent()).data.get('reportCount', 0) == get(parent()).data.get('reportCount', 0) - 1
+          )) || ownerOfTeam();
+        allow create: if signedIn(uid)
+          && request.resource.data.keys().hasOnly(['reason', 'createdAt'])
+          && request.resource.data.reason is string && request.resource.data.reason.size() <= 200
+          && get(parent()).data.ownerUid != uid
+          && getAfter(parent()).data.get('reportCount', 0) == get(parent()).data.get('reportCount', 0) + 1;
+      }
+
+      // Voto de cada pessoa (1 a 5 estrelas), sempre junto com a nota do time.
+      match /ratings/{uid} {
+        function parent() { return /databases/$(database)/documents/publicTeams/$(teamId); }
+        function ownerOfTeam() {
+          return request.auth != null && get(parent()).data.ownerUid == request.auth.uid;
+        }
+        allow read: if signedIn(uid) || ownerOfTeam();
+        // Tirar o voto (ao excluir a conta): sempre junto com a nota do time
+        // voltando. O dono apaga todos os votos ao excluir o time.
+        allow delete: if (signedIn(uid) && (
+            !exists(parent())
+            || (getAfter(parent()).data.ratingSum == get(parent()).data.ratingSum - resource.data.stars
+                && getAfter(parent()).data.ratingCount == get(parent()).data.ratingCount - 1)
+          )) || ownerOfTeam();
+        allow create, update: if signedIn(uid)
+          && request.resource.data.keys().hasOnly(['stars'])
+          && request.resource.data.stars is int
+          && request.resource.data.stars >= 1 && request.resource.data.stars <= 5
+          && get(parent()).data.ownerUid != uid
+          && getAfter(parent()).data.ratingSum == get(parent()).data.ratingSum + request.resource.data.stars
+               - (resource == null ? 0 : resource.data.stars)
+          && getAfter(parent()).data.ratingCount == get(parent()).data.ratingCount + (resource == null ? 1 : 0);
+      }
+    }
+
+    // Nomes já usados. Qualquer um pode conferir UM nome (para avisar que já
+    // existe), mas não dá para listar todos. Só dá para reservar um nome
+    // livre, para si mesmo, e a chave precisa ser a do próprio nome.
+    // Assim não existem 2 pessoas com o mesmo nome.
+    match /usernames/{key} {
+      // Nome de uma conta que já foi excluída (o perfil não existe mais):
+      // fica livre para quem quiser usar.
+      function orphanName() {
+        return !exists(/databases/$(database)/documents/users/$(resource.data.uid));
+      }
+      allow get: if true;
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'name'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 3
+        && request.resource.data.name.size() <= 20
+        && keyOf(request.resource.data.name) == key;
+      allow update: if request.auth != null
+        && (resource.data.uid == request.auth.uid || orphanName())
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'name'])
+        && keyOf(request.resource.data.name) == key;
+      allow delete: if request.auth != null && (resource.data.uid == request.auth.uid || orphanName());
+    }
+  }
+}
