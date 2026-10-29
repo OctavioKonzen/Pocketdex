@@ -1,0 +1,573 @@
+// lib/widgets/pokemon_detail_panel.dart
+
+import 'dart:async';
+
+import 'package:flutter/material.dart' hide Text;
+import 'package:pocket_dex/utils/site_ui.dart';
+import 'base_stats.dart';
+import 'where_to_find.dart';
+import 'package:pocket_dex/models/alternate_form.dart';
+import 'package:pocket_dex/models/pokemon_details.dart';
+import 'package:pocket_dex/models/pokemon_move.dart';
+import 'package:pocket_dex/models/type_relations.dart';
+import 'package:pocket_dex/models/move.dart' as encyclopedia_move;
+import 'package:pocket_dex/screens/move_detail_screen.dart';
+import 'package:pocket_dex/utils/pokemon_colors.dart';
+import 'package:pocket_dex/utils/string_extensions.dart';
+import 'package:pocket_dex/widgets/evolution_pokemon_card.dart';
+import 'package:pocket_dex/utils/evolution_timeline.dart';
+import 'package:pocket_dex/i18n/text.dart';
+
+class PokemonDetailPanel extends StatelessWidget {
+  final PokemonDetails pokemon;
+  final AlternateForm form;
+  final TypeRelations typeRelations;
+  final PageController pageController;
+  final int selectedTabIndex;
+  final Function(int) onPageChanged;
+  final Function(int) onEvolutionSelected;
+
+  /// Altura do painel; por padrão 45% da tela (layout do app).
+  final double? height;
+
+  /// Cantos do painel; por padrão só os de cima são arredondados.
+  final BorderRadius? borderRadius;
+
+  const PokemonDetailPanel({
+    super.key,
+    required this.pokemon,
+    required this.form,
+    required this.typeRelations,
+    required this.pageController,
+    required this.selectedTabIndex,
+    required this.onPageChanged,
+    required this.onEvolutionSelected,
+    this.height,
+    this.borderRadius,
+  });
+
+  String _heightToFeetInches(int decimetres) {
+    double inches = decimetres * 3.93701;
+    int feet = inches ~/ 12;
+    int remainingInches = (inches % 12).round();
+    return "$feet' ${remainingInches.toString().padLeft(2, '0')}\"";
+  }
+
+  String _weightToLbs(int hectograms) {
+    double lbs = hectograms * 0.220462;
+    return '${lbs.toStringAsFixed(1)} lbs';
+  }
+
+  List<PokemonMove> _generateMovesForForm(AlternateForm form) {
+    final List<PokemonMove> movesList = [];
+    final bool isGMax = form.apiName.contains('gmax');
+
+    for (var moveData in form.rawMoves) {
+      final String moveName = moveData['move']['name'] as String;
+
+      if (isGMax) {
+        if (moveName.contains('gmax')) {
+          final moveJson = pokemon.allMoveDetails[moveName];
+          if (moveJson != null) {
+            movesList.add(_createPokemonMove(moveJson, 'machine', 0));
+          }
+        }
+      } else {
+        final learnDetailsList = moveData['version_group_details'] as List;
+        final learnDetail = learnDetailsList.lastWhere(
+          (d) => (d['move_learn_method']['name'] == 'level-up' &&
+              (d['level_learned_at'] as int) > 0),
+          orElse: () => null,
+        );
+
+        if (learnDetail != null) {
+          final moveJson = pokemon.allMoveDetails[moveName];
+          if (moveJson != null) {
+            movesList.add(_createPokemonMove(
+                moveJson, 'level-up', learnDetail['level_learned_at']));
+          }
+        }
+      }
+    }
+
+    if (!isGMax) {
+      movesList.sort((a, b) => a.levelLearnedAt.compareTo(b.levelLearnedAt));
+    }
+    return movesList;
+  }
+
+  PokemonMove _createPokemonMove(
+      Map<String, dynamic> moveJson, String learnMethod, int level) {
+    String effectText = "Sem descrição.";
+    var effectEntries = moveJson['effect_entries'] as List;
+    var englishEffect = effectEntries
+        .firstWhere((e) => e['language']['name'] == 'en', orElse: () => null);
+    if (englishEffect != null && (englishEffect['short_effect'] ?? '') != '') {
+      effectText = (englishEffect['short_effect'] as String).replaceAll(
+          '\$effect_chance', moveJson['effect_chance']?.toString() ?? '');
+    }
+
+    return PokemonMove(
+      name: (moveJson['name'] as String).replaceAll('-', ' ').capitalise(),
+      apiName: moveJson['name'],
+      learnMethod: learnMethod,
+      levelLearnedAt: level,
+      type: moveJson['type']['name'],
+      power: moveJson['power'],
+      accuracy: moveJson['accuracy'],
+      pp: moveJson['pp'],
+      effect: effectText,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      height: height ?? MediaQuery.of(context).size.height * 0.45,
+      decoration: BoxDecoration(
+        color: SiteColors.of(context).bg,
+        borderRadius: borderRadius ??
+            const BorderRadius.only(
+              topLeft: Radius.circular(30),
+              topRight: Radius.circular(30),
+            ),
+      ),
+      child: Padding(
+        padding:
+            const EdgeInsets.only(top: 20, left: 24, right: 24, bottom: 20),
+        child: Column(
+          children: [
+            // Cinco abas: roláveis de lado se não couberem na tela.
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (final (i, title) in const ['About', 'Base Stats', 'Evolution', 'Moves', 'Jogos'].indexed)
+                    Padding(padding: EdgeInsets.only(right: i == 4 ? 0 : 22), child: _buildTab(title, i, theme)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            Expanded(
+              child: PageView(
+                controller: pageController,
+                onPageChanged: onPageChanged,
+                children: [
+                  _buildAboutTab(form, typeRelations, theme),
+                  _buildBaseStatsTab(form, theme),
+                  _buildEvolutionTab(form, theme),
+                  _buildMovesTab(form, theme),
+                  GamesTab(pokemonId: form.id, games: form.games),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTab(String title, int index, ThemeData theme) {
+    bool isSelected = selectedTabIndex == index;
+    return GestureDetector(
+      onTap: () {
+        pageController.animateToPage(
+          index,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      },
+      child: Column(
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              color: isSelected
+                  ? theme.textTheme.bodyLarge?.color
+                  : theme.hintColor,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 4),
+          if (isSelected)
+            Container(
+              height: 3,
+              width: 24,
+              decoration: BoxDecoration(
+                color: getColorForType(pokemon.forms.first.types.first),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeightWeightInfo(AlternateForm currentForm, ThemeData theme) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text("Height: ",
+                style: TextStyle(color: theme.hintColor, fontSize: 12)),
+            Text(
+              _heightToFeetInches(currentForm.height),
+              style: TextStyle(
+                  color: theme.colorScheme.onSurface,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14),
+            )
+          ],
+        ),
+        Container(
+            height: 15, width: 1, color: theme.dividerColor.withAlpha(128)),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text("Weight: ",
+                style: TextStyle(color: theme.hintColor, fontSize: 12)),
+            Text(
+              _weightToLbs(currentForm.weight),
+              style: TextStyle(
+                  color: theme.colorScheme.onSurface,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14),
+            )
+          ],
+        )
+      ],
+    );
+  }
+
+  Widget _buildAboutTab(
+      AlternateForm currentForm, TypeRelations typeRelations, ThemeData theme) {
+    final int eggSteps = (pokemon.hatchCounter + 1) * 255;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(pokemon.description,
+              style: TextStyle(
+                  color: theme.colorScheme.onSurface.withAlpha(178),
+                  height: 1.5,
+                  fontSize: 14)),
+          const SizedBox(height: 16),
+          _buildHeightWeightInfo(currentForm, theme),
+          const SizedBox(height: 16),
+          Text("Breeding",
+              style: theme.textTheme.titleSmall
+                  ?.copyWith(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          _buildGenderRow('Gender', pokemon.genderRate, theme),
+          _buildInfoRow(
+              'Egg Groups', pokemon.eggGroups.join(', ').capitalise(), theme),
+          _buildInfoRow('Egg Cycle',
+              '$eggSteps steps (${pokemon.hatchCounter} cycles)', theme),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBaseStatsTab(AlternateForm currentForm, ThemeData theme) =>
+      BaseStatsView(stats: currentForm.stats, efforts: currentForm.efforts, shedinja: pokemon.id == 292);
+
+  /// A linha do tempo da evolução (igual ao site): as etapas uma embaixo da
+  /// outra, com a condição de cada evolução e o Pokémon aberto em destaque;
+  /// tudo entra em sequência, de cima para baixo.
+  Widget _buildEvolutionTab(AlternateForm currentForm, ThemeData theme) {
+    if (pokemon.evolutionChain.isEmpty) {
+      return Center(
+        child: Text(
+          "This Pokémon does not evolve.",
+          style: TextStyle(color: theme.colorScheme.onSurface.withAlpha(178)),
+        ),
+      );
+    }
+    final stages = EvolutionTimeline.stages(pokemon.evolutionChain);
+    return Builder(builder: (context) {
+      final c = SiteColors.of(context);
+      return ListView(
+        key: const ValueKey('evolution-timeline'),
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        children: [
+          for (final (i, stage) in stages.indexed) ...[
+            if (i > 0)
+              _EvoIn(
+                delay: i * 260 - 120,
+                child: Center(child: Container(width: 2, height: 22, decoration: BoxDecoration(color: c.line, borderRadius: BorderRadius.circular(2)))),
+              ),
+            _EvoIn(
+              delay: i * 260,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(tr('Etapa {0}').replaceAll('{0}', '${i + 1}').toUpperCase(),
+                    textAlign: TextAlign.center, style: TextStyle(color: c.muted, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1.4)),
+              ),
+            ),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                for (final (j, step) in stage.indexed)
+                  _EvoIn(
+                    delay: i * 260 + j * 70,
+                    child: SizedBox(
+                      width: 112,
+                      child: Column(children: [
+                        if (step.cond != null) _evoChip(step.cond!, c),
+                        const SizedBox(height: 4),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: '${pokemon.id}' == step.id ? const Color(0x1AEF3B36) : c.surface,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: '${pokemon.id}' == step.id ? const Color(0xFFEF3B36) : c.line, width: '${pokemon.id}' == step.id ? 2 : 1),
+                          ),
+                          child: EvolutionPokemonCard(
+                            pokemonName: step.name,
+                            pokemonId: step.id,
+                            currentFormName: currentForm.formName,
+                            onPokemonSelected: onEvolutionSelected,
+                            size: 70,
+                            textColor: c.text,
+                          ),
+                        ),
+                      ]),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ],
+      );
+    });
+  }
+
+  /// A condição da evolução: o ícone (ou o item da Bolsa) e o texto.
+  Widget _evoChip(EvoCondition cond, SiteColors c) => Container(
+        key: const ValueKey('evo-condition'),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(99)),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          cond.item != null
+              ? Image.asset('assets/database/sprites/items/${cond.item}.png',
+                  width: 20, height: 20, filterQuality: FilterQuality.none, errorBuilder: (_, __, ___) => const SizedBox.shrink())
+              : Text(cond.icon, style: const TextStyle(fontSize: 12)),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              cond.item != null ? cond.text : tr(cond.text).replaceAll('{0}', '${cond.level}'),
+              textAlign: TextAlign.center,
+              style: TextStyle(color: c.text, fontSize: 11, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ]),
+      );
+
+  Widget _buildMovesTab(AlternateForm form, ThemeData theme) {
+    final moves = _generateMovesForForm(form);
+
+    if (moves.isEmpty) {
+      return Center(
+        child: Text(
+          "This form has no moves to display.",
+          textAlign: TextAlign.center,
+          style: TextStyle(
+              color: theme.colorScheme.onSurface.withAlpha(178), fontSize: 16),
+        ),
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      itemCount: moves.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 4),
+      itemBuilder: (context, index) {
+        final PokemonMove pokemonMove = moves[index];
+        final moveJson = pokemon.allMoveDetails[pokemonMove.apiName];
+
+        if (moveJson == null) return const SizedBox.shrink();
+
+        final encyclopedia_move.Move moveForDetail =
+            encyclopedia_move.Move.fromApiJson(moveJson);
+
+        return Card(
+          color: theme.colorScheme.surface,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: ListTile(
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            title: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  pokemonMove.name,
+                  style: TextStyle(
+                      color: theme.colorScheme.onSurface,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16),
+                ),
+                Text(
+                  pokemonMove.learnMethod == 'machine'
+                      ? 'TM'
+                      : 'Lvl ${pokemonMove.levelLearnedAt}',
+                  style: TextStyle(color: theme.hintColor, fontSize: 14),
+                ),
+              ],
+            ),
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 6.0),
+              child: Row(
+                children: [
+                  Chip(
+                    label: Text(pokemonMove.type.capitalise()),
+                    backgroundColor: getColorForType(pokemonMove.type),
+                    labelStyle: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12),
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                  ),
+                  const SizedBox(width: 12),
+                  Icon(
+                    moveForDetail.category == 'physical'
+                        ? Icons.sports_mma
+                        : moveForDetail.category == 'special'
+                            ? Icons.star
+                            : Icons.adjust,
+                    color: theme.colorScheme.onSurface.withAlpha(178),
+                    size: 20,
+                  ),
+                ],
+              ),
+            ),
+            trailing: Icon(Icons.chevron_right, color: theme.hintColor),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) =>
+                        MoveDetailScreen(move: moveForDetail)),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value, ThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 4.0),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(label,
+                style: TextStyle(color: theme.hintColor, fontSize: 14)),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                  color: theme.colorScheme.onSurface,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGenderRow(String label, int genderRate, ThemeData theme) {
+    if (genderRate == -1) {
+      return _buildInfoRow(label, "Genderless", theme);
+    }
+    double femalePercentage = genderRate * 12.5;
+    double malePercentage = 100 - femalePercentage;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 4.0),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(label,
+                style: TextStyle(color: theme.hintColor, fontSize: 14)),
+          ),
+          if (malePercentage > 0)
+            Row(
+              children: [
+                const Icon(Icons.male, color: Colors.blue, size: 18),
+                Text(' ${malePercentage.toStringAsFixed(1)}%',
+                    style: TextStyle(
+                        color: theme.colorScheme.onSurface, fontSize: 15)),
+              ],
+            ),
+          const SizedBox(width: 20),
+          if (femalePercentage > 0)
+            Row(
+              children: [
+                const Icon(Icons.female, color: Colors.pink, size: 18),
+                Text(' ${femalePercentage.toStringAsFixed(1)}%',
+                    style: TextStyle(
+                        color: theme.colorScheme.onSurface, fontSize: 15)),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Entra subindo e aparecendo, depois de [delay] milissegundos (a linha da evolução).
+class _EvoIn extends StatefulWidget {
+  final int delay;
+  final Widget child;
+  const _EvoIn({required this.delay, required this.child});
+
+  @override
+  State<_EvoIn> createState() => _EvoInState();
+}
+
+class _EvoInState extends State<_EvoIn> with SingleTickerProviderStateMixin {
+  late final _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 450));
+  late final _a = CurvedAnimation(parent: _c, curve: const Cubic(0.2, 0.8, 0.2, 1));
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer(Duration(milliseconds: widget.delay < 0 ? 0 : widget.delay), () {
+      if (mounted) _c.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+        animation: _a,
+        child: widget.child,
+        builder: (context, child) => Opacity(
+          opacity: _a.value,
+          child: Transform.translate(offset: Offset(0, 10 * (1 - _a.value)), child: Transform.scale(scale: 0.92 + 0.08 * _a.value, child: child)),
+        ),
+      );
+}
