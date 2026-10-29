@@ -1,0 +1,80 @@
+// The same generated, network-free simulator is bundled into the Android APK.
+import '../../../assets/database/battle_engine.js'
+
+const engine = () => globalThis.PocketDexSim
+const weatherIds = {raindance: 'rain', sunnyday: 'sun', sandstorm: 'sand', hail: 'hail', snow: 'snow', snowscape: 'snow', deltastream: 'wind'}
+// Terreno e o efeito de lugar da Battle Factory (pocketdex<efeito>) no campo.
+const terrainIds = {grassyterrain: 'grassy', electricterrain: 'electric', mistyterrain: 'misty', psychicterrain: 'psychic'}
+export function simulatorInput(mon) {
+  return {...mon.simulation, id: mon.orig?.id ?? mon.id, name: mon.name, mega: mon.mega, gmax: mon.gmax, teraType: mon.teraType, gimmick: mon.gimmick, noDmax: mon.noDmax}
+}
+export function initializeSimulator(battle) {
+  const seed = Array.from({length: 4}, () => Math.floor(battle.random() * 65536))
+  const created = engine().create({teams: battle.sides.map(s => s.team.map(simulatorInput)), seed, mode: battle.mode, controllers: battle.controllers, rules: battle.rules ?? [], ...(battle.startBags ? {bags: battle.startBags} : {}), ...(battle.healPct ? {healPct: true} : {}), ...(battle.capture ? {capture: battle.capture} : {}), ...(battle.startWeather ? {weather: battle.startWeather} : {}), ...(battle.startField ? {field: battle.startField} : {}), ...(battle.startExp ? {exp: battle.startExp} : {})})
+  battle.simulator = {handle: created.handle, state: created.state, opening: created.events}
+  syncSimulator(battle, created)
+}
+export function simulatorCanGimmick(battle, side, gimmick, index) {
+  const req = battle.simulator.state.sides[side].request
+  return Boolean(gimmick === 'mega' ? req?.canMegaEvo : gimmick === 'tera' ? req?.canTerastallize : gimmick === 'dmax' ? req?.canDynamax : gimmick === 'z' ? req?.canZMove?.[index] : false)
+}
+export function syncSimulator(battle, result) {
+  const {state} = result
+  battle.simulator.state = state
+  battle.turn = state.turn
+  battle.winner = state.winner
+  battle.captured = state.captured ?? null
+  battle.capturedBall = state.capturedBall ?? null
+  battle.terrain = state.terrain
+  battle.weather = weatherIds[state.weather] ?? ''
+  battle.weatherTurns = state.weatherTurns ?? 0
+  battle.terrainTurns = state.terrainTurns ?? 0
+  battle.terrain = terrainIds[state.terrain] ?? ''
+  battle.place = (state.pseudoWeather ?? []).find((id) => id.startsWith('pocketdex'))?.slice(9) ?? ''
+  battle.bags = state.bags
+  // Battle Factory: o XP de agora (o motor dá na hora) e quem lutou contra cada adversário.
+  if (state.exp) {
+    battle.expNow = state.exp
+    battle.fought = Object.fromEntries(Object.entries(state.fought ?? {}).map(([j, list]) => [Number(j), list]))
+  }
+  battle.forceSwitch = state.sides.map(s => s.forceSwitch)
+  battle.needSwitch = state.winner == null && state.sides[0].forceSwitch
+  for (let side = 0; side < 2; side++) {
+    const s = state.sides[side]
+    battle.sides[side].active = s.active
+    battle.sides[side].switchOptions = s.switchOptions
+    battle.sides[side].revival = s.revival
+    battle.usedGimmicks[side] = Object.keys(s.used).filter(key => s.used[key])
+    for (const p of s.team) {
+      const mon = battle.sides[side].team[p.index]
+      if (mon.mega && p.species.toLowerCase().includes('-mega')) {
+        mon.id = mon.mega.id
+        mon.base = mon.mega.base
+        mon.side = {...mon.mega.side}
+      } else mon.id = p.formId ?? mon.orig?.id ?? mon.id
+      Object.assign(mon, {level: p.level ?? mon.level, hp: p.hp, maxHp: p.maxHp, spe: p.spe, effectiveSpe: p.actionSpeed, types: p.types.map(t => t.toLowerCase()), status: p.status, boosts: p.boosts, ability: p.ability, terastal: Boolean(p.tera), dmax: p.dmax})
+      if (mon.side) mon.side = {...mon.side, item: p.item, ability: p.ability, terastallized: Boolean(p.tera), teraType: p.tera.toLowerCase()}
+      const requestMoves = s.slots?.find(slot => slot.index === p.index)?.request?.moves ?? (p.index === s.active ? s.request?.moves : null)
+      const slots = requestMoves?.length ? requestMoves : p.moves
+      mon.moves = slots.map(slot => {
+        const data = engine().move(slot.id || slot.slug)
+        const original = p.moves.find(m => m.slug === (slot.id || slot.slug))
+        return {...data, pp: slot.pp ?? 1, maxPp: slot.maxpp ?? slot.maxPp ?? original?.maxPp ?? 1, disabled: Boolean(slot.disabled)}
+      })
+      mon.trapped = p.index === s.active && s.trapped
+    }
+  }
+  return result.events
+}
+export const simulatorTargets = (battle, side, slot, index, gimmick = '') => engine().targets(battle.simulator.handle, side, slot, index, gimmick)
+export const simulatorRecommend = (battle, side, options) => engine().recommend(battle.simulator.handle, side, options).actions
+export function simulatorTurn(battle, actions) {
+  return syncSimulator(battle, engine().choose(battle.simulator.handle, actions))
+}
+/** Estilo "Shift": troca de graça antes do adversário mandar o próximo Pokémon (engine.mjs → shift). */
+export function simulatorShift(battle, index) {
+  return syncSimulator(battle, engine().shift(battle.simulator.handle, index))
+}
+export function simulatorDispose(battle) {
+  if (battle.simulator) engine().dispose(battle.simulator.handle)
+}
