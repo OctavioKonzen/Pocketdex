@@ -1,0 +1,55 @@
+name: pocket_dex
+description: "A new Flutter project."
+publish_to: 'none'
+version: 0.8.2+93
+
+environment:
+  sdk: '>=3.8.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # DEPENDÊNCIAS DE PRODUÇÃO
+  # Certifique-se que cada uma aparece só uma vez!
+  provider: ^6.1.2
+  shared_preferences: ^2.2.3
+  uuid: ^4.4.0
+  debounce_throttle: ^2.0.0
+  firebase_core: ^4.15.0
+  firebase_auth: ^6.7.0
+  cloud_firestore: ^6.10.0
+  package_info_plus: ^10.2.1
+  ota_update: ^7.1.0
+  http: ^1.6.0
+  crypto: ^3.0.6
+  google_sign_in: ^7.2.0
+  qr_flutter: ^4.1.0
+  flutter_local_notifications: ^22.3.1
+  timezone: ^0.11.1
+  audioplayers: ^6.8.1
+  share_plus: ^13.3.0
+  home_widget: ^0.10.0
+  path_provider: ^2.1.5
+  quickjs_engine: 0.1.6
+  firebase_messaging: ^16.7.0
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  
+  # DEPENDÊNCIAS DE DESENVOLVIMENTO
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/i18n/
+    - assets/images/
+    - assets/database/
+    - assets/database/sprites/pokemon/
+    - assets/database/sprites/pokemon/shiny/
+    - assets/database/sprites/items/
+    - assets/database/sprites/trainers/
+    - assets/database/sprites/battle/
+    - assets/database/sounds/
+    - assets/database/cries/
