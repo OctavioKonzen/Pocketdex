@@ -4,8 +4,9 @@ name: Regras do Firestore
 # colar no Console). Usa o segredo FIREBASE_SERVICE_ACCOUNT, o mesmo da
 # limpeza do banco; sem ele, falha para não indicar uma publicação inexistente.
 #
-# Todas as buscas do site e do app usam um campo só (ranking por pontos,
-# times por dono ou por data), então o Firestore não precisa de índices extras.
+# Publica também firestore.indexes.json. As buscas do site e do app usam um
+# campo só, mas a das notificações busca os duelos de todas as defesas
+# (collectionGroup 'duels' por createdAt), e isso exige um índice de grupo.
 
 on:
   # Sem filtro de arquivos: a main é reescrita (um commit só) e o filtro não
@@ -28,7 +29,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Publicar as regras
+      - name: Publicar as regras e os índices
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
@@ -41,4 +42,4 @@ jobs:
           # O Firebase CLI exige que as regras estejam dentro da pasta do projeto.
           cp ../../firestore.rules firestore.rules
           node -e "const fs = require('fs'); const config = JSON.parse(fs.readFileSync('firebase.json', 'utf8')); config.firestore.rules = 'firestore.rules'; fs.writeFileSync('firebase.json', JSON.stringify(config));"
-          npx --yes firebase-tools@15 deploy --only firestore:rules --project pocketdex-ffb4d --non-interactive
+          npx --yes firebase-tools@15 deploy --only firestore:rules,firestore:indexes --project pocketdex-ffb4d --non-interactive
