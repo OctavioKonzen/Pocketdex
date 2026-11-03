@@ -1,0 +1,452 @@
+// Testa as regras do Firestore (firestore.rules) no emulador do Firebase.
+// Rodar: cd firestore-tests && npm ci && npm test
+import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing'
+import { readFileSync } from 'node:fs'
+import { doc, setDoc, getDoc, getDocs, collection, deleteDoc, writeBatch, serverTimestamp, updateDoc, query, where, increment } from 'firebase/firestore'
+
+const env = await initializeTestEnvironment({
+  projectId: 'demo-pocketdex',
+  firestore: { rules: readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8'), host: '127.0.0.1', port: 8085 },
+})
+let fails = 0
+const check = async (label, p, ok) => {
+  try { await (ok ? assertSucceeds(p) : assertFails(p)); console.log('OK  ', label) }
+  catch (e) { fails++; console.log('FAIL', label, e.message.slice(0, 200)) }
+}
+const A = env.authenticatedContext('alice').firestore()
+const B = env.authenticatedContext('bob').firestore()
+const anon = env.unauthenticatedContext().firestore()
+
+const claim = (db, uid, name, key) => {
+  const b = writeBatch(db)
+  b.set(doc(db, 'usernames', key), { uid, name })
+  b.set(doc(db, 'users', uid), { name, nameKey: key, email: 'x@y.z', createdAt: serverTimestamp() }, { merge: true })
+  return b.commit()
+}
+
+await check('cadastro com nome', claim(A, 'alice', 'Ash Ketchum', 'ash ketchum'), true)
+await check('cadastro com acento', claim(B, 'bob', 'João', 'joao'), true)
+await check('outro pega nome usado', claim(B, 'bob', 'ASH ketchum', 'ash ketchum'), false)
+await check('chave falsa p/ nome de outro', claim(B, 'bob', 'Ash Ketchum', 'fake'), false)
+await check('trocar nome direto no perfil', setDoc(doc(B, 'users', 'bob'), { name: 'Ash Ketchum' }, { merge: true }), false)
+await check('trocar nome usando chave de outro', setDoc(doc(B, 'users', 'bob'), { name: 'Ash Ketchum', nameKey: 'ash ketchum' }, { merge: true }), false)
+await check('salvar dados (sem mudar nome)', setDoc(doc(B, 'users', 'bob'), { data: { favorites: [1] }, updatedAt: serverTimestamp() }, { merge: true }), true)
+// perfil antigo sem nameKey
+await env.withSecurityRulesDisabled(async (ctx) => setDoc(doc(ctx.firestore(), 'users', 'old'), { name: 'Velho', email: '' }))
+const O = env.authenticatedContext('old').firestore()
+await check('perfil antigo salva dados', setDoc(doc(O, 'users', 'old'), { data: { teams: [] } }, { merge: true }), true)
+await check('ler perfil de outro', getDoc(doc(B, 'users', 'alice')), false)
+
+await check('ranking com nome certo + avatar', setDoc(doc(A, 'ranking', 'alice'), { name: 'Ash Ketchum', score: 50, avatar: 25, updatedAt: serverTimestamp() }), true)
+await check('ranking com nome de outro', setDoc(doc(B, 'ranking', 'bob'), { name: 'Ash Ketchum', score: 50 }), false)
+await check('ranking na linha de outro', setDoc(doc(B, 'ranking', 'alice'), { name: 'João', score: 60 }), false)
+await check('ler ranking logado', getDocs(collection(B, 'ranking')), true)
+await check('ler ranking sem login', getDocs(collection(anon, 'ranking')), false)
+
+await check('semana cria', setDoc(doc(A, 'weekly', '2026-09-21', 'scores', 'alice'), { name: 'Ash Ketchum', score: 30, avatar: null }), true)
+await check('semana sobe', setDoc(doc(A, 'weekly', '2026-09-21', 'scores', 'alice'), { name: 'Ash Ketchum', score: 40, avatar: null }), true)
+await check('semana desce', setDoc(doc(A, 'weekly', '2026-09-21', 'scores', 'alice'), { name: 'Ash Ketchum', score: 10, avatar: null }), false)
+await check('Factory da semana cria', setDoc(doc(A, 'factoryWeek', '2026-09-21', 'scores', 'alice'), { name: 'Ash Ketchum', score: 12, avatar: null }), true)
+await check('Factory da semana sobe', setDoc(doc(A, 'factoryWeek', '2026-09-21', 'scores', 'alice'), { name: 'Ash Ketchum', score: 20, avatar: null }), true)
+await check('Factory da semana desce', setDoc(doc(A, 'factoryWeek', '2026-09-21', 'scores', 'alice'), { name: 'Ash Ketchum', score: 5, avatar: null }), false)
+await check('Factory da semana de outro', setDoc(doc(A, 'factoryWeek', '2026-09-21', 'scores', 'bob'), { name: 'Ash Ketchum', score: 5, avatar: null }), false)
+const perfil = (name, extra = {}) => ({ name, avatar: 6, trainer: 'red', theme: 0, shiny: false, champion: false, ranked: 1, factory: 2, tower: 3, badges: 4, hall: [{ region: 'Kanto', team: [6] }], medals: ['champion'], caught: 9, updatedAt: serverTimestamp(), ...extra })
+await check('Perfil público cria', setDoc(doc(A, 'profiles', 'alice'), perfil('Ash Ketchum')), true)
+await check('Perfil público com nome de outro', setDoc(doc(B, 'profiles', 'bob'), perfil('Ash Ketchum')), false)
+await check('Perfil público de outro', setDoc(doc(B, 'profiles', 'alice'), perfil('João')), false)
+await check('Perfil público com campo a mais', setDoc(doc(A, 'profiles', 'alice'), perfil('Ash Ketchum', { email: 'x' })), false)
+await check('Perfil público: lê sem login', getDoc(doc(anon, 'profiles', 'alice')), true)
+const defesa = (name, extra = {}) => ({ name, avatar: null, teamId: 't1', teamName: 'Meu time', pokemon: [6, null, null, null, null, null], sets: [null, null, null, null, null, null], updatedAt: serverTimestamp(), ...extra })
+await check('Defesa cria', setDoc(doc(A, 'defense', 'alice'), defesa('Ash Ketchum')), true)
+await check('Defesa de outro', setDoc(doc(B, 'defense', 'alice'), defesa('João')), false)
+await check('Defesa: outro lê', getDoc(doc(B, 'defense', 'alice')), true)
+await check('Defesa: sem login não lê', getDoc(doc(anon, 'defense', 'alice')), false)
+const duelo = (from, name, extra = {}) => ({ from, name, avatar: null, won: true, turns: 12, createdAt: serverTimestamp(), ...extra })
+await check('Duelo: amigo manda o resultado', setDoc(doc(B, 'defense', 'alice', 'duels', 'd1'), duelo('bob', 'João')), true)
+await check('Duelo: com o nome de outro', setDoc(doc(B, 'defense', 'alice', 'duels', 'd2'), duelo('bob', 'Ash Ketchum')), false)
+await check('Duelo: em nome de outro', setDoc(doc(B, 'defense', 'alice', 'duels', 'd3'), duelo('alice', 'Ash Ketchum')), false)
+await check('Duelo: contra si mesmo', setDoc(doc(A, 'defense', 'alice', 'duels', 'd4'), duelo('alice', 'Ash Ketchum')), false)
+await check('Duelo: o dono lê', getDocs(collection(A, 'defense', 'alice', 'duels')), true)
+await check('Duelo: quem desafiou lê o seu', getDoc(doc(B, 'defense', 'alice', 'duels', 'd1')), true)
+await check('Desafio semanal cria', setDoc(doc(A, 'battleWeek', '2026-09-21', 'scores', 'alice'), { name: 'Ash Ketchum', score: 980, avatar: null }), true)
+await check('Desafio semanal sobe (menos turnos)', setDoc(doc(A, 'battleWeek', '2026-09-21', 'scores', 'alice'), { name: 'Ash Ketchum', score: 990, avatar: null }), true)
+await check('Desafio semanal desce', setDoc(doc(A, 'battleWeek', '2026-09-21', 'scores', 'alice'), { name: 'Ash Ketchum', score: 970, avatar: null }), false)
+await check('Desafio semanal acima do máximo', setDoc(doc(A, 'battleWeek', '2026-09-21', 'scores', 'alice'), { name: 'Ash Ketchum', score: 1000, avatar: null }), false)
+
+const daily = { name: 'Ash Ketchum', score: 4357, correct: 4, seconds: 31, avatar: 25, updatedAt: serverTimestamp() }
+await check('desafio cria', setDoc(doc(A, 'daily', '2026-09-25', 'scores', 'alice'), daily), true)
+await check('desafio 2a vez', setDoc(doc(A, 'daily', '2026-09-25', 'scores', 'alice'), { ...daily, score: 9000 }), false)
+await check('desafio pontos demais', setDoc(doc(B, 'daily', '2026-09-25', 'scores', 'bob'), { ...daily, name: 'João', score: 20000 }), false)
+
+await check('conferir 1 nome sem login', getDoc(doc(anon, 'usernames', 'ash ketchum')), true)
+await check('listar nomes', getDocs(collection(anon, 'usernames')), false)
+
+// times públicos e nota da comunidade
+const pub = (db, id, data) => setDoc(doc(db, 'publicTeams', id), data)
+const teamA = { ownerUid: 'alice', ownerName: 'Ash Ketchum', ownerKey: 'ash ketchum', avatar: 25, name: 'Time A', color: '#FF5252',
+  pokemon: [6, 9, null, null, null, null], ratingSum: 0, ratingCount: 0, updatedAt: serverTimestamp() }
+await check('publica time', pub(A, 'tA', teamA), true)
+await check('publica time com nome de outro', pub(B, 'tB', { ...teamA, ownerUid: 'bob' }), false)
+await check('publica com nota inventada', pub(B, 'tB', { ...teamA, ownerUid: 'bob', ownerName: 'João', ownerKey: 'joao', ratingSum: 50, ratingCount: 10 }), false)
+await check('publica time do bob', pub(B, 'tB', { ...teamA, ownerUid: 'bob', ownerName: 'João', ownerKey: 'joao', name: 'Time B' }), true)
+await check('dono edita', setDoc(doc(A, 'publicTeams', 'tA'), { ...teamA, name: 'Novo nome' }), true)
+const fullSet = { nickname: 'Chama', level: 50, gender: 'M', shiny: true, ability: 'blaze', item: 'life-orb', nature: 'Timid',
+  tera: 'fire', moves: ['flamethrower', 'air-slash', '', ''], evs: { hp: 0, atk: 0, def: 0, spa: 252, spd: 4, spe: 252 },
+  ivs: { hp: 31, atk: 0, def: 31, spa: 31, spd: 31, spe: 31 } }
+await check('time com dados completos', setDoc(doc(A, 'publicTeams', 'tA'), { ...teamA, sets: [fullSet, null, null, null, null, null] }), true)
+await check('sets com tamanho errado', setDoc(doc(A, 'publicTeams', 'tA'), { ...teamA, sets: [fullSet] }), false)
+await check('sets que não é lista', setDoc(doc(A, 'publicTeams', 'tA'), { ...teamA, sets: 'x' }), false)
+await check('dono mexe na nota', setDoc(doc(A, 'publicTeams', 'tA'), { ...teamA, ratingSum: 5, ratingCount: 1 }), false)
+await check('outro edita o time', setDoc(doc(B, 'publicTeams', 'tA'), { ...teamA, name: 'hack' }), false)
+const vote = (db, uid, team, stars, sum, count) => {
+  const b = writeBatch(db)
+  b.set(doc(db, 'publicTeams', team, 'ratings', uid), { stars })
+  b.update(doc(db, 'publicTeams', team), { ratingSum: sum, ratingCount: count })
+  return b.commit()
+}
+await check('bob vota 4 no time da alice', vote(B, 'bob', 'tA', 4, 4, 1), true)
+await check('bob muda voto para 5', vote(B, 'bob', 'tA', 5, 5, 1), true)
+await check('bob vota com soma errada', vote(B, 'bob', 'tA', 3, 10, 1), false)
+await check('bob conta 2 votos', vote(B, 'bob', 'tA', 5, 10, 2), false)
+await check('voto sem mexer na nota', setDoc(doc(B, 'publicTeams', 'tA', 'ratings', 'bob'), { stars: 1 }), false)
+await check('nota sem voto', updateDoc(doc(B, 'publicTeams', 'tA'), { ratingSum: 100, ratingCount: 20 }), false)
+await check('alice vota no próprio time', vote(A, 'alice', 'tA', 5, 10, 2), false)
+await check('voto 6 estrelas', vote(A, 'alice', 'tB', 6, 6, 1), false)
+await check('ler voto de outro', getDoc(doc(anon, 'publicTeams', 'tA', 'ratings', 'bob')), false)
+await check('dono lê voto no próprio time', getDoc(doc(A, 'publicTeams', 'tA', 'ratings', 'bob')), true)
+await check('buscar times pelo nome', getDocs(query(collection(B, 'publicTeams'), where('ownerKey', '==', 'ash ketchum'))), true)
+await check('buscar times sem login', getDocs(collection(anon, 'publicTeams')), false)
+const report = (db, uid, team, count) => {
+  const b = writeBatch(db)
+  b.set(doc(db, 'publicTeams', team, 'reports', uid), { reason: 'nome ofensivo', createdAt: serverTimestamp() })
+  b.update(doc(db, 'publicTeams', team), { reportCount: count })
+  return b.commit()
+}
+await check('bob denuncia time da alice', report(B, 'bob', 'tA', 1), true)
+await check('bob denuncia de novo', report(B, 'bob', 'tA', 2), false)
+await check('denúncia sem +1', setDoc(doc(anon, 'publicTeams', 'tA', 'reports', 'x'), { reason: 'x' }), false)
+await check('+1 sem denúncia', updateDoc(doc(B, 'publicTeams', 'tA'), { reportCount: 5 }), false)
+await check('alice denuncia o próprio', report(A, 'alice', 'tA', 2), false)
+await check('dono zera denúncias', setDoc(doc(A, 'publicTeams', 'tA'), { ...teamA, ratingSum: 5, ratingCount: 1, reportCount: 0 }), false)
+await check('dono edita mantendo denúncias', setDoc(doc(A, 'publicTeams', 'tA'), { ...teamA, name: 'Outro', ratingSum: 5, ratingCount: 1, reportCount: 1 }), true)
+await check('outro apaga time', deleteDoc(doc(B, 'publicTeams', 'tA')), false)
+
+// excluir conta: voto e denúncia saem dos times dos outros
+const unvote = (db, uid, team, stars) => {
+  const b = writeBatch(db)
+  b.update(doc(db, 'publicTeams', team), { ratingSum: increment(-stars), ratingCount: increment(-1) })
+  b.delete(doc(db, 'publicTeams', team, 'ratings', uid))
+  return b.commit()
+}
+await check('tirar voto sem mexer na nota', deleteDoc(doc(B, 'publicTeams', 'tA', 'ratings', 'bob')), false)
+await check('tirar voto com nota errada', unvote(B, 'bob', 'tA', 2), false)
+await check('outro tira voto do bob', unvote(A, 'bob', 'tA', 5), false)
+await check('bob tira o voto (nota volta)', unvote(B, 'bob', 'tA', 5), true)
+await check('bob vota de novo', vote(B, 'bob', 'tA', 3, 3, 1), true)
+const unreport = (db, uid, team) => {
+  const b = writeBatch(db)
+  b.update(doc(db, 'publicTeams', team), { reportCount: increment(-1) })
+  b.delete(doc(db, 'publicTeams', team, 'reports', uid))
+  return b.commit()
+}
+await check('outro apaga denúncia do bob', deleteDoc(doc(anon, 'publicTeams', 'tA', 'reports', 'bob')), false)
+await check('bob apaga denúncia sem -1', deleteDoc(doc(B, 'publicTeams', 'tA', 'reports', 'bob')), false)
+await check('-1 denúncia sem apagar a denúncia', updateDoc(doc(B, 'publicTeams', 'tA'), { reportCount: 0 }), false)
+await check('bob tira a própria denúncia (-1)', unreport(B, 'bob', 'tA'), true)
+await check('bob denuncia de novo', report(B, 'bob', 'tA', 1), true)
+await check('dono lista votos do próprio time', getDocs(collection(A, 'publicTeams', 'tA', 'ratings')), true)
+await check('outro lista votos do time', getDocs(collection(B, 'publicTeams', 'tB', 'ratings')), true)
+await check('bob lista votos do time da alice', getDocs(collection(B, 'publicTeams', 'tA', 'ratings')), false)
+await check('dono apaga votos do próprio time', deleteDoc(doc(A, 'publicTeams', 'tA', 'ratings', 'bob')), true)
+await check('dono apaga denúncias do próprio time', deleteDoc(doc(A, 'publicTeams', 'tA', 'reports', 'bob')), true)
+await check('dono apaga time', deleteDoc(doc(A, 'publicTeams', 'tA')), true)
+
+// excluir conta
+await check('apaga ranking', deleteDoc(doc(A, 'ranking', 'alice')), true)
+await check('apaga semana', deleteDoc(doc(A, 'weekly', '2026-09-21', 'scores', 'alice')), true)
+await check('apaga desafio', deleteDoc(doc(A, 'daily', '2026-09-25', 'scores', 'alice')), true)
+await check('apaga nome', deleteDoc(doc(A, 'usernames', 'ash ketchum')), true)
+await check('apaga perfil', deleteDoc(doc(A, 'users', 'alice')), true)
+await check('apaga nome de outro', deleteDoc(doc(A, 'usernames', 'joao')), false)
+
+// Nome preso de uma conta já excluída (perfil não existe mais): fica livre.
+await env.withSecurityRulesDisabled(async (ctx) => setDoc(doc(ctx.firestore(), 'usernames', 'misty'), { uid: 'gone', name: 'Misty' }))
+const C = env.authenticatedContext('carol').firestore()
+await check('nova conta pega nome de conta excluída', claim(C, 'carol', 'Misty', 'misty'), true)
+await check('nome de conta ativa continua preso', claim(C, 'carol', 'João', 'joao'), false)
+await check('apaga nome de conta ativa', deleteDoc(doc(anon, 'usernames', 'joao')), false)
+
+// Confirmação por link (contas Google): só a própria pessoa.
+await check('grava a própria confirmação', setDoc(doc(A, 'confirmations', 'alice'), { signup: serverTimestamp() }), true)
+await check('lê a própria confirmação', getDoc(doc(A, 'confirmations', 'alice')), true)
+await check('confirmação de outro', setDoc(doc(B, 'confirmations', 'alice'), { delete: serverTimestamp() }), false)
+await check('ler confirmação de outro', getDoc(doc(B, 'confirmations', 'alice')), false)
+await check('confirmação com campo estranho', setDoc(doc(A, 'confirmations', 'alice'), { hack: 1 }), false)
+await check('grava os próprios aparelhos', setDoc(doc(A, 'pushTokens', 'alice'), { tokens: ['t1'], lang: 'pt' }), true)
+await check('lê os próprios aparelhos', getDoc(doc(A, 'pushTokens', 'alice')), true)
+await check('aparelhos de outro', setDoc(doc(B, 'pushTokens', 'alice'), { tokens: ['t2'] }), false)
+await check('ler aparelhos de outro', getDoc(doc(B, 'pushTokens', 'alice')), false)
+await check('aparelhos com campo estranho', setDoc(doc(A, 'pushTokens', 'alice'), { tokens: [], hack: 1 }), false)
+await check('aparelhos demais', setDoc(doc(A, 'pushTokens', 'alice'), { tokens: Array.from({ length: 11 }, (_, i) => `t${i}`) }), false)
+await check('estado das notificações é só do servidor', getDoc(doc(A, 'meta', 'notify')), false)
+
+// Amigos
+await claim(A, 'alice', 'Ash Ketchum', 'ash ketchum').catch(() => {})
+await env.withSecurityRulesDisabled(async (ctx) => setDoc(doc(ctx.firestore(), 'users', 'alice'), { name: 'Ash Ketchum' }))
+const ask = (db, from, fromName, to, toName) => {
+  const b = writeBatch(db)
+  b.set(doc(db, 'friends', from, 'list', to), { name: toName, avatar: null, status: 'sent', since: serverTimestamp() })
+  b.set(doc(db, 'friends', to, 'list', from), { name: fromName, avatar: 25, status: 'received', since: serverTimestamp() })
+  return b.commit()
+}
+await check('pedido de amizade com nome falso', ask(A, 'alice', 'Outro Nome', 'bob', 'João'), false)
+await check('pedido de amizade em nome de outro', ask(C, 'alice', 'Ash Ketchum', 'bob', 'João'), false)
+await check('pedido de amizade', ask(A, 'alice', 'Ash Ketchum', 'bob', 'João'), true)
+await check('quem pediu não pode aceitar sozinho', updateDoc(doc(A, 'friends', 'alice', 'list', 'bob'), { status: 'friends' }), false)
+await check('terceiro lê lista', getDocs(collection(C, 'friends', 'bob', 'list')), false)
+await check('lê a própria lista', getDocs(collection(B, 'friends', 'bob', 'list')), true)
+const accept = (db) => {
+  const b = writeBatch(db)
+  b.update(doc(db, 'friends', 'bob', 'list', 'alice'), { status: 'friends' })
+  b.update(doc(db, 'friends', 'alice', 'list', 'bob'), { status: 'friends', name: 'João', avatar: 7 })
+  return b.commit()
+}
+await check('aceitar amizade', accept(B), true)
+await check('amigo manda desafio', updateDoc(doc(B, 'friends', 'alice', 'list', 'bob'), { challenge: { code: 'abc', score: 7, at: 1 } }), true)
+await check('desafio com campo estranho', updateDoc(doc(B, 'friends', 'alice', 'list', 'bob'), { challenge: { code: 'abc', hack: 1 } }), false)
+await check('amigo não troca o nome dele por outro', updateDoc(doc(B, 'friends', 'alice', 'list', 'bob'), { name: 'Ash Ketchum' }), false)
+// Chat entre amigos
+const send = (db, from, to, text, extra = {}) => {
+  const chat = [from, to].sort().join('_')
+  const b = writeBatch(db)
+  b.set(doc(collection(db, 'chats', chat, 'messages')), { from, text, at: serverTimestamp(), ...extra })
+  const last = { text: text.slice(0, 100), at: 1, from }
+  b.update(doc(db, 'friends', to, 'list', from), { unread: increment(1), last })
+  b.update(doc(db, 'friends', from, 'list', to), { last })
+  return b.commit()
+}
+await check('amigo manda mensagem', send(A, 'alice', 'bob', 'Oi, bora batalhar?'), true)
+await check('mensagem em nome de outro', setDoc(doc(collection(A, 'chats', 'alice_bob', 'messages')), { from: 'bob', text: 'oi', at: serverTimestamp() }), false)
+await check('mensagem vazia', setDoc(doc(collection(A, 'chats', 'alice_bob', 'messages')), { from: 'alice', text: '', at: serverTimestamp() }), false)
+await check('mensagem grande demais', setDoc(doc(collection(A, 'chats', 'alice_bob', 'messages')), { from: 'alice', text: 'x'.repeat(501), at: serverTimestamp() }), false)
+await check('mensagem com hora falsa', setDoc(doc(collection(A, 'chats', 'alice_bob', 'messages')), { from: 'alice', text: 'oi', at: 5 }), false)
+await check('mensagem com campo estranho', send(A, 'alice', 'bob', 'oi', { hack: 1 }), false)
+await check('chat com id fora de ordem', setDoc(doc(collection(A, 'chats', 'bob_alice', 'messages')), { from: 'alice', text: 'oi', at: serverTimestamp() }), false)
+await check('manda cartão de Pokémon', setDoc(doc(collection(A, 'chats', 'alice_bob', 'messages')), { from: 'alice', text: '📎 Pikachu', at: serverTimestamp(), card: { kind: 'pokemon', id: 25 } }), true)
+await check('manda cartão de time', setDoc(doc(collection(A, 'chats', 'alice_bob', 'messages')), { from: 'alice', text: '📎 Time', at: serverTimestamp(), card: { kind: 'team', name: 'Meu time', ids: [25, 6], code: 'PDX1abc' } }), true)
+await check('cartão estranho', setDoc(doc(collection(A, 'chats', 'alice_bob', 'messages')), { from: 'alice', text: 'x', at: serverTimestamp(), card: { kind: 'hack', id: 1 } }), false)
+await check('cartão com campo a mais', setDoc(doc(collection(A, 'chats', 'alice_bob', 'messages')), { from: 'alice', text: 'x', at: serverTimestamp(), card: { kind: 'pokemon', id: 1, url: 'http://x' } }), false)
+await check('amigo lê o chat', getDocs(collection(B, 'chats', 'alice_bob', 'messages')), true)
+await check('terceiro lê o chat', getDocs(collection(C, 'chats', 'alice_bob', 'messages')), false)
+await check('terceiro manda no chat', setDoc(doc(collection(C, 'chats', 'alice_bob', 'messages')), { from: 'carol', text: 'oi', at: serverTimestamp() }), false)
+await check('zera as não lidas', updateDoc(doc(B, 'friends', 'bob', 'list', 'alice'), { unread: 0 }), true)
+let msgs
+await env.withSecurityRulesDisabled(async (ctx) => { msgs = await getDocs(collection(ctx.firestore(), 'chats', 'alice_bob', 'messages')) })
+await check('não edita mensagem', updateDoc(doc(A, 'chats', 'alice_bob', 'messages', msgs.docs[0].id), { text: 'mudei' }), false)
+await check('terceiro apaga mensagem', deleteDoc(doc(C, 'chats', 'alice_bob', 'messages', msgs.docs[0].id)), false)
+await check('amigo apaga mensagem', deleteDoc(doc(B, 'chats', 'alice_bob', 'messages', msgs.docs[0].id)), true)
+await check('quem não é amigo não manda', setDoc(doc(collection(C, 'chats', 'bob_carol', 'messages')), { from: 'carol', text: 'oi', at: serverTimestamp() }), false)
+
+// Trocas
+await check('não grava mais lista de trocas', setDoc(doc(A, 'trades', 'alice'), { dupes: [1, 4], caught: [1, 4, 7], updatedAt: serverTimestamp() }), false)
+await check('amigo não lê lista de trocas', getDoc(doc(B, 'trades', 'alice')), false)
+await check('apaga a própria lista antiga', deleteDoc(doc(A, 'trades', 'alice')), true)
+await check('apaga a lista de outro', deleteDoc(doc(B, 'trades', 'alice')), false)
+
+// Draft entre amigos
+const draftRef = (db) => doc(db, 'drafts', 'd1')
+const newDraft = (extra = {}) => ({ players: ['alice', 'bob'], names: { alice: 'Ash Ketchum', bob: 'João' }, picks: {}, turn: 'alice', size: 2, status: 'picking', createdAt: serverTimestamp(), ...extra })
+await check('terceiro cria draft', setDoc(doc(C, 'drafts', 'x'), { ...newDraft(), players: ['carol', 'alice'], names: { carol: 'c', alice: 'a' }, turn: 'carol' }), false)
+await check('draft começando na vez do outro', setDoc(draftRef(A), newDraft({ turn: 'bob' })), false)
+await check('cria draft com amigo', setDoc(draftRef(A), newDraft()), true)
+await check('terceiro lê draft', getDoc(draftRef(C)), false)
+await check('amigo lê draft', getDoc(draftRef(B)), true)
+await check('lista os próprios drafts', getDocs(query(collection(B, 'drafts'), where('players', 'array-contains', 'bob'))), true)
+await check('lista drafts de outro', getDocs(query(collection(C, 'drafts'), where('players', 'array-contains', 'bob'))), false)
+await check('escolhe fora da vez', updateDoc(draftRef(B), { picks: { bob: [25] }, turn: 'alice' }), false)
+await check('escolhe na vez', updateDoc(draftRef(A), { picks: { alice: [6] }, turn: 'bob' }), true)
+await check('escolhe o mesmo que o outro', updateDoc(draftRef(B), { picks: { alice: [6], bob: [6] }, turn: 'alice' }), false)
+await check('mexe nas escolhas do outro', updateDoc(draftRef(B), { picks: { alice: [9], bob: [25] }, turn: 'alice' }), false)
+await check('escolhe dois de uma vez', updateDoc(draftRef(B), { picks: { alice: [6], bob: [25, 26] }, turn: 'alice' }), false)
+await check('amigo escolhe na vez', updateDoc(draftRef(B), { picks: { alice: [6], bob: [25] }, turn: 'alice' }), true)
+await check('escolhe e passa a vez', updateDoc(draftRef(A), { picks: { alice: [6, 9], bob: [25] }, turn: 'bob' }), true)
+await check('última escolha sem acabar', updateDoc(draftRef(B), { picks: { alice: [6, 9], bob: [25, 3] }, turn: 'alice' }), false)
+await check('última escolha acaba o draft', updateDoc(draftRef(B), { picks: { alice: [6, 9], bob: [25, 3] }, status: 'done' }), true)
+await check('escolhe depois de acabar', updateDoc(draftRef(A), { picks: { alice: [6, 9, 1], bob: [25, 3] } }), false)
+await check('terceiro apaga draft', deleteDoc(draftRef(C)), false)
+await check('jogador apaga draft', deleteDoc(draftRef(B)), true)
+
+await check('terceiro apaga amizade', deleteDoc(doc(C, 'friends', 'alice', 'list', 'bob')), false)
+await check('desfaz amizade (o outro lado)', deleteDoc(doc(B, 'friends', 'alice', 'list', 'bob')), true)
+await check('desfaz amizade (o próprio lado)', deleteDoc(doc(B, 'friends', 'bob', 'list', 'alice')), true)
+
+
+ // Partidas privadas: convite, aceite e ações imutáveis.
+await env.withSecurityRulesDisabled(async (ctx) => {
+  const db = ctx.firestore()
+  await setDoc(doc(db, 'friends', 'alice', 'list', 'bob'), { name: 'João', status: 'friends' })
+  await setDoc(doc(db, 'friends', 'bob', 'list', 'alice'), { name: 'Ash Ketchum', status: 'friends' })
+})
+const roomA = doc(A, 'onlineBattles', 'battle1'), roomB = doc(B, 'onlineBattles', 'battle1')
+const packed = JSON.stringify({ name: 'Time', pokemon: [6, null], sets: [] })
+const invitation = { protocol: 4, players: ['alice', 'bob'], names: { alice: 'Ash Ketchum', bob: 'João' },
+  teams: { alice: packed }, seed: 42, status: 'pending', createdAt: serverTimestamp(), endedBy: null }
+await check('batalha protocolo 2 não inicia partida com regras antigas', setDoc(doc(A, 'onlineBattles', 'legacy-v2-new'), { ...invitation, protocol: 2 }), false)
+await check('batalha protocolo 3 não inicia partida com o motor antigo', setDoc(doc(A, 'onlineBattles', 'legacy-v3-new'), { ...invitation, protocol: 3 }), false)
+await check('batalha antiga não inicia partida acima de 50', setDoc(doc(A, 'onlineBattles', 'legacy-new'), { ...invitation, protocol: 1 }), false)
+await check('batalha convida amigo', setDoc(roomA, invitation), true)
+await check('batalha sem login não lê', getDoc(doc(anon, 'onlineBattles', 'battle1')), false)
+await check('batalha terceiro não lê', getDoc(doc(C, 'onlineBattles', 'battle1')), false)
+await check('batalha consulta próprias partidas', getDocs(query(collection(B, 'onlineBattles'), where('players', 'array-contains', 'bob'))), true)
+await check('batalha dono não aceita pelo amigo', updateDoc(roomA, { 'teams.bob': packed, status: 'active' }), false)
+await check('batalha terceiro não aceita', updateDoc(doc(C, 'onlineBattles', 'battle1'), { 'teams.bob': packed, status: 'active' }), false)
+await check('batalha amigo não muda time do dono', updateDoc(roomB, { teams: { alice: 'hack', bob: packed }, status: 'active' }), false)
+await check('batalha time exagerado não entra', updateDoc(roomB, { 'teams.bob': 'x'.repeat(20001), status: 'active' }), false)
+await check('batalha amigo aceita com próprio time', updateDoc(roomB, { 'teams.bob': packed, status: 'active' }), true)
+await check('batalha time bloqueado depois de aceitar', updateDoc(roomA, { 'teams.alice': 'hack' }), false)
+await check('batalha não troca os participantes', updateDoc(roomA, { players: ['alice', 'charlie'] }), false)
+const actionRef = (db, uid, round) => doc(db, 'onlineBattles', 'battle1', 'actions', round + '_' + uid)
+const input = (uid, round) => ({ uid, round, kind: 'move', index: 0, at: serverTimestamp() })
+await check('batalha dono envia ação', setDoc(actionRef(A, 'alice', 0), input('alice', 0)), true)
+await check('batalha não escreve ação do adversário', setDoc(actionRef(A, 'bob', 0), input('bob', 0)), false)
+await check('batalha não altera ação enviada', updateDoc(actionRef(A, 'alice', 0), { index: 1 }), false)
+await check('batalha não apaga ação', deleteDoc(actionRef(A, 'alice', 0)), false)
+await check('batalha não pula rodada incompleta', setDoc(actionRef(A, 'alice', 1), input('alice', 1)), false)
+await check('batalha amigo envia ação', setDoc(actionRef(B, 'bob', 0), input('bob', 0)), true)
+await check('batalha próxima rodada completa liberada', setDoc(actionRef(A, 'alice', 1), { ...input('alice', 1), gimmick: 'none' }), true)
+await check('batalha índice inválido recusado', setDoc(actionRef(B, 'bob', 1), { ...input('bob', 1), index: 9 }), false)
+await check('batalha histórico privado para terceiro', getDocs(collection(C, 'onlineBattles', 'battle1', 'actions')), false)
+await check('batalha não declara desistência do outro', updateDoc(roomA, { status: 'closed', endedBy: 'bob' }), false)
+await check('batalha participante encerra', updateDoc(roomB, { status: 'closed', endedBy: 'bob' }), true)
+await check('batalha encerrada bloqueia ações', setDoc(actionRef(B, 'bob', 1), input('bob', 1)), false)
+await check('batalha encerrada não reabre', updateDoc(roomB, { status: 'active', endedBy: null }), false)
+
+await env.withSecurityRulesDisabled(async (ctx) => {
+  await setDoc(doc(ctx.firestore(), 'onlineBattles', 'legacy-active'), {
+    ...invitation, protocol: 1, teams: { alice: packed, bob: packed }, status: 'active',
+    createdAt: new Date(),
+  })
+})
+await check('partida antiga não recebe novos turnos incompatíveis', setDoc(doc(A, 'onlineBattles', 'legacy-active', 'actions', '0_alice'), input('alice', 0)), false)
+await check('ainda permite encerrar partida antiga', updateDoc(doc(A, 'onlineBattles', 'legacy-active'), { status: 'closed', endedBy: 'alice' }), true)
+
+// Duplas/triplas: parceiros humanos e NPCs, com ações por posição.
+const groupUsers = ['alice', 'bob', 'carol', 'dave', 'erin', 'frank']
+const groupDb = Object.fromEntries(groupUsers.map(uid => [uid, env.authenticatedContext(uid).firestore()]))
+await env.withSecurityRulesDisabled(async ctx => {
+  for (const uid of groupUsers.slice(1)) {
+    await setDoc(doc(ctx.firestore(), 'friends', 'alice', 'list', uid), {name: uid, status: 'friends'})
+    await setDoc(doc(ctx.firestore(), 'friends', uid, 'list', 'alice'), {name: 'Ash Ketchum', status: 'friends'})
+  }
+})
+const groupRoom = (mode, seats) => {
+  const players = [...new Set(seats.filter(uid => !uid.startsWith('npc')))]
+  return {...invitation, protocol: 5, mode, seats, players,
+    names: Object.fromEntries(players.map(uid => [uid, uid === 'alice' ? 'Ash Ketchum' : uid])),
+    npcTeams: Object.fromEntries(seats.filter(uid => uid.startsWith('npc')).map(uid => [uid, packed]))}
+}
+const groupInput = (uid, seats, round = 0) => ({uid, round, kind: 'team', at: serverTimestamp(),
+  choices: seats.flatMap((owner, seat) => owner === uid ? [{seat, kind: 'move', index: 0, target: 0, gimmick: 'none'}] : [])})
+for (const [id, mode, seats] of [
+  ['four', 'doubles', groupUsers.slice(0,4)],
+  ['six', 'triples', groupUsers],
+  ['five', 'triples', [...groupUsers.slice(0,5),'npc5']],
+  ['coop', 'doubles', ['alice','bob','npc2','npc3']],
+  ['mixed', 'triples', ['alice','bob','npc2','npc3','npc4','npc5']],
+  ['solo', 'triples', ['alice','alice','alice','bob','bob','bob']],
+]) {
+  const room = groupRoom(mode,seats), ref = uid => doc(groupDb[uid],'onlineBattles',id)
+  await check(`${id}: cria convite`,setDoc(ref('alice'),room),true)
+  await check(`${id}: ações bloqueadas antes do aceite`,setDoc(doc(groupDb.alice,'onlineBattles',id,'actions','0_alice'),groupInput('alice',seats)),false)
+  for (let i=1;i<room.players.length;i++) {
+    const uid=room.players[i]
+    await check(`${id}: ${uid} aceita somente seu time`,updateDoc(ref(uid),{[`teams.${uid}`]:packed,status:i===room.players.length-1?'active':'pending'}),true)
+  }
+  if (room.players.length<6) await check(`${id}: estranho não lê`,getDoc(doc(groupDb.frank,'onlineBattles',id)),false)
+  await check(`${id}: não muda posições`,updateDoc(ref('alice'),{seats:[...seats].reverse()}),false)
+  const bad=groupInput('alice',seats);bad.choices[0].seat=seats.indexOf('bob')
+  await check(`${id}: não controla Pokémon do amigo`,setDoc(doc(groupDb.alice,'onlineBattles',id,'actions','0_alice'),bad),false)
+  for (const uid of room.players) await check(`${id}: ${uid} envia suas posições`,setDoc(doc(groupDb[uid],'onlineBattles',id,'actions',`0_${uid}`),groupInput(uid,seats)),true)
+  await check(`${id}: próxima rodada aguarda todos os humanos`,setDoc(doc(groupDb.alice,'onlineBattles',id,'actions','1_alice'),groupInput('alice',seats,1)),true)
+  await check(`${id}: não pula rodada incompleta`,setDoc(doc(groupDb.alice,'onlineBattles',id,'actions','2_alice'),groupInput('alice',seats,2)),false)
+  if (Object.keys(room.npcTeams).length) await check(`${id}: NPC imutável`,updateDoc(ref('alice'),{npcTeams:{}}),false)
+}
+await check('protocolo 5: convidado com nome falso', setDoc(doc(A,'onlineBattles','fakename'), {...groupRoom('doubles',['alice','bob','npc2','npc3']), names: {alice: 'Ash Ketchum', bob: 'Admin'}}), false)
+await env.withSecurityRulesDisabled(async ctx => { await deleteDoc(doc(ctx.firestore(), 'friends', 'carol', 'list', 'alice')) })
+await check('protocolo 5: cria com quem desfez a amizade do lado dele', setDoc(doc(groupDb.alice,'onlineBattles','oneside'), groupRoom('doubles',['alice','carol','npc2','npc3'])), true)
+await check('protocolo 5: quem desfez a amizade não aceita', updateDoc(doc(groupDb.carol,'onlineBattles','oneside'), {'teams.carol': packed, status: 'active'}), false)
+await check('protocolo 5: não participa nos dois lados',setDoc(doc(A,'onlineBattles','cross'),groupRoom('doubles',['alice','bob','alice','npc3'])),false)
+await check('protocolo 5: NPC corresponde à posição',setDoc(doc(A,'onlineBattles','badnpc'),groupRoom('doubles',['alice','bob','npc3','npc2'])),false)
+
+// Adversário aleatório: fila (matchQueue) e a sala que nasce dela.
+await env.withSecurityRulesDisabled(async ctx => {
+  await setDoc(doc(ctx.firestore(), 'users', 'alice'), { name: 'Ash Ketchum' }, { merge: true })
+  await setDoc(doc(ctx.firestore(), 'users', 'bob'), { name: 'João' }, { merge: true })
+})
+const queueEntry = (name, team = packed) => ({ name, team, mode: 'singles', at: serverTimestamp(), claimedBy: null })
+const matchRoom = (team = packed) => ({ protocol: 5, mode: 'singles', players: ['alice', 'bob'], seats: ['alice', 'bob'], npcTeams: {},
+  names: { alice: 'Ash Ketchum', bob: 'João' }, teams: { alice: packed, bob: team }, status: 'active', seed: 7,
+  createdAt: serverTimestamp(), endedBy: null, match: true })
+const claimAndCreate = (id, team = packed) => {
+  const b = writeBatch(A)
+  b.update(doc(A, 'matchQueue', 'bob'), { claimedBy: 'alice' })
+  b.set(doc(A, 'onlineBattles', id), matchRoom(team))
+  return b.commit()
+}
+await check('fila: entra com o próprio nome', setDoc(doc(B, 'matchQueue', 'bob'), queueEntry('João')), true)
+await check('fila: nome falso', setDoc(doc(B, 'matchQueue', 'bob'), queueEntry('Ash Ketchum')), false)
+await check('fila: entrar no lugar de outro', setDoc(doc(A, 'matchQueue', 'bob'), queueEntry('João')), false)
+await check('fila: todos os logados veem', getDoc(doc(A, 'matchQueue', 'bob')), true)
+await check('fila: pegar alguém sem estar na fila', claimAndCreate('m0'), false)
+await check('fila: alice entra', setDoc(doc(A, 'matchQueue', 'alice'), queueEntry('Ash Ketchum')), true)
+await check('fila: uid maior não pega o menor', updateDoc(doc(B, 'matchQueue', 'alice'), { claimedBy: 'bob' }), false)
+await check('fila: sala com outro time do que o da fila', claimAndCreate('m1', JSON.stringify({ name: 'Outro', pokemon: [25], sets: [] })), false)
+await check('fila: sala sem marcar a vaga como pega', setDoc(doc(A, 'onlineBattles', 'm2'), matchRoom()), false)
+await check('fila: pega e cria a sala', claimAndCreate('m3'), true)
+await check('fila: o pego vê a sala', getDoc(doc(B, 'onlineBattles', 'm3')), true)
+await check('fila: não pega quem já foi pego', claimAndCreate('m4'), false)
+await check('fila: sala de convite não usa match', setDoc(doc(A, 'onlineBattles', 'm5'), { ...matchRoom(), status: 'pending', teams: { alice: packed }, match: false }), false)
+await check('fila: cada um sai da própria vaga', deleteDoc(doc(B, 'matchQueue', 'bob')), true)
+
+// Online: vitória por tempo, emotes, ranking e regras opcionais.
+{
+  const ago = (ms) => new Date(Date.now() - ms)
+  await env.withSecurityRulesDisabled(async ctx => {
+    const db = ctx.firestore()
+    await setDoc(doc(db, 'onlineBattles', 't1'), { ...matchRoom(), createdAt: new Date() })
+    await setDoc(doc(db, 'onlineBattles', 't1', 'actions', '3_alice'), { uid: 'alice', round: 3, kind: 'team', choices: [], at: ago(4 * 60000) })
+    await setDoc(doc(db, 'onlineBattles', 't2'), { ...matchRoom(), createdAt: new Date() })
+    await setDoc(doc(db, 'onlineBattles', 't2', 'actions', '0_alice'), { uid: 'alice', round: 0, kind: 'team', choices: [], at: ago(60000) })
+    await setDoc(doc(db, 'onlineBattles', 't3'), { ...matchRoom(), createdAt: new Date() })
+    await setDoc(doc(db, 'onlineBattles', 't3', 'actions', '0_alice'), { uid: 'alice', round: 0, kind: 'team', choices: [], at: ago(5 * 60000) })
+    await setDoc(doc(db, 'onlineBattles', 't3', 'actions', '0_bob'), { uid: 'bob', round: 0, kind: 'team', choices: [], at: ago(4 * 60000) })
+  })
+  const claimWin = (db, id, round, endedBy = 'bob') => updateDoc(doc(db, 'onlineBattles', id), { status: 'closed', endedBy, timeout: round })
+  await check('tempo: adversário sumiu há 3 min, reclama a vitória', claimWin(A, 't1', 3), true)
+  await check('tempo: antes de 3 min não pode', claimWin(A, 't2', 0), false)
+  await check('tempo: se o adversário jogou, não pode', claimWin(A, 't3', 0), false)
+  await check('tempo: não declara a si mesmo como quem sumiu', claimWin(A, 't3', 0, 'alice'), false)
+  await check('tempo: rodada em que você não jogou não vale', claimWin(B, 't2', 0, 'alice'), false)
+
+  const emote = (db, uid, e) => setDoc(doc(db, 'onlineBattles', 't2', 'emotes', `${uid}${e}`), { uid, e, at: serverTimestamp() })
+  await check('emote: jogador manda da lista', emote(A, 'alice', '🔥'), true)
+  await check('emote: texto livre não', emote(A, 'alice', 'qualquer coisa'), false)
+  await check('emote: em nome de outro não', emote(A, 'bob', 'GG'), false)
+  await check('emote: o outro jogador lê', getDocs(collection(B, 'onlineBattles', 't2', 'emotes')), true)
+  await check('emote: estranho não lê', getDocs(collection(anon, 'onlineBattles', 't2', 'emotes')), false)
+
+  const rating = (over = {}) => ({ name: 'Ash Ketchum', avatar: null, rating: 1016, wins: 1, losses: 0, season: '2026-10', lastRoom: 't1', updatedAt: serverTimestamp(), ...over })
+  await check('ranking: primeira partida da temporada', setDoc(doc(A, 'ratings', 'alice'), rating()), true)
+  await check('ranking: todos os logados veem', getDoc(doc(B, 'ratings', 'alice')), true)
+  await check('ranking: mesma sala duas vezes não', setDoc(doc(A, 'ratings', 'alice'), rating({ rating: 1030, wins: 2 })), false)
+  await check('ranking: mais de 40 pontos de uma vez não', setDoc(doc(A, 'ratings', 'alice'), rating({ rating: 1060, wins: 2, lastRoom: 't2' })), false)
+  await check('ranking: próxima sala, +14', setDoc(doc(A, 'ratings', 'alice'), rating({ rating: 1030, wins: 2, lastRoom: 't2' })), true)
+  await check('ranking: sala que não é da fila não', setDoc(doc(A, 'ratings', 'alice'), rating({ rating: 1040, wins: 3, lastRoom: 'battle1' })), false)
+  await check('ranking: nome falso não', setDoc(doc(B, 'ratings', 'bob'), rating({ name: 'Ash Ketchum' })), false)
+  await check('ranking: no lugar de outro não', setDoc(doc(B, 'ratings', 'alice'), rating({ lastRoom: 't3' })), false)
+  await check('ranking: temporada nova recomeça em 1000', setDoc(doc(A, 'ratings', 'alice'), rating({ season: '2026-11', rating: 984, wins: 0, losses: 1, lastRoom: 't3' })), true)
+}
+
+await env.cleanup()
+console.log(fails ? `${fails} FALHAS` : 'TUDO CERTO')
+process.exit(fails ? 1 : 0)
