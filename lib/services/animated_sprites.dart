@@ -1,0 +1,144 @@
+// lib/services/animated_sprites.dart
+//
+// Sprites animados (GIF) de todos os Pokémon, no estilo Black & White, no
+// banco do site (o app puxa da nuvem, com internet; sem ela aparece o sprite
+// parado): os oficiais do BW, a animação BW do Showdown ou, sem animação, a
+// arte BW parada (tool/fetch_animated_sprites.py e tool/bw_style_sprites.py).
+//
+// Quais existem, os parados, o ajuste de tamanho, o pé e a impressão digital
+// de cada um vêm em animated_sprites.json: o do APK ao abrir e, logo depois,
+// o do site (assim sprites novos aparecem sem precisar de APK novo).
+
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'dart:math';
+
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
+import 'package:flutter/services.dart' show rootBundle;
+import 'package:path_provider/path_provider.dart';
+
+
+/// Um sprite escolhido: o endereço, o ajuste [zoom, dx, dy, largura, altura],
+/// o pé (quanto descer na batalha, em fração do lado) e o tamanho do GIF em
+/// pixels (largura, altura; 0 se não sabe).
+typedef SpriteSource = ({String url, List<double> fit, double foot, int width, int height});
+
+class _Set {
+  final String folder;
+  final Map<String, Set<int>> have = {for (final k in AnimatedSprites.kinds) k: {}};
+  final Map<String, Set<int>> still = {for (final k in AnimatedSprites.kinds) k: {}};
+  final Map<String, Map<int, List<double>>> fit = {for (final k in AnimatedSprites.kinds) k: {}};
+  final Map<String, Map<int, double>> foot = {for (final k in AnimatedSprites.kinds) k: {}};
+  final Map<String, Map<int, List<int>>> size = {for (final k in AnimatedSprites.kinds) k: {}};
+
+  /// Impressão digital de cada GIF: vai na URL, então quando o banco troca um
+  /// sprite o celular não usa o velho que ficou no cache da internet.
+  final Map<String, Map<int, String>> hash = {for (final k in AnimatedSprites.kinds) k: {}};
+  _Set(this.folder);
+
+  void apply(Map raw) {
+    Map<int, T> byId<T>(Object? m, T Function(Object) f) =>
+        {for (final e in ((m as Map?) ?? const {}).entries) int.parse('${e.key}'): f(e.value as Object)};
+    for (final kind in AnimatedSprites.kinds) {
+      have[kind] = {for (final id in (raw[kind] as List? ?? const [])) (id as num).toInt()};
+      still[kind] = {for (final id in ((raw['still'] as Map?)?[kind] as List? ?? const [])) (id as num).toInt()};
+      fit[kind] = byId((raw['fit'] as Map?)?[kind], (v) => [for (final x in v as List) (x as num).toDouble()]);
+      foot[kind] = byId((raw['foot'] as Map?)?[kind], (v) => (v as num).toDouble());
+      size[kind] = byId((raw['size'] as Map?)?[kind], (v) => [for (final x in v as List) (x as num).toInt()]);
+      hash[kind] = byId((raw['hash'] as Map?)?[kind], (v) => '$v');
+    }
+  }
+
+  SpriteSource source(String kind, int id) {
+    final v = hash[kind]![id];
+    final wh = size[kind]![id];
+    return (
+      url: '${AnimatedSprites.site}/sprites/$folder/$kind/$id.gif${v == null ? '' : '?v=$v'}',
+      fit: fit[kind]![id] ?? const [1, 0, 0, 1, 1],
+      foot: foot[kind]![id] ?? 0,
+      width: wh == null ? 0 : wh[0],
+      height: wh == null ? 0 : wh[1],
+    );
+  }
+}
+
+class AnimatedSprites {
+  AnimatedSprites._();
+  static final AnimatedSprites instance = AnimatedSprites._();
+
+  static const site = 'https://octaviokonzen.github.io/Pocketdex';
+
+  /// Frente, shiny e as costas (para a batalha).
+  static const kinds = ['front', 'shiny', 'back', 'back-shiny'];
+  static String _kind(bool shiny, bool back) => back ? (shiny ? 'back-shiny' : 'back') : (shiny ? 'shiny' : 'front');
+
+  final _bw = _Set('animated');
+
+  /// Carrega a lista do APK e, em segundo plano, a atualizada do site.
+  Future<void> load() async {
+    try {
+      _apply(json.decode(await rootBundle.loadString('assets/database/animated_sprites.json')) as Map);
+    } catch (e) {
+      debugPrint('Sprites animados desligados: $e');
+    }
+    unawaited(_cleanOldDownloads());
+    unawaited(_refresh());
+  }
+
+  void _apply(Map raw) => _bw.apply(raw);
+
+  Future<void> _refresh() async {
+    if (kIsWeb) return;
+    final client = HttpClient()..connectionTimeout = const Duration(seconds: 15);
+    try {
+      final response = await (await client.getUrl(Uri.parse('$site/data/animated_sprites.json'))).close();
+      if (response.statusCode != 200) return;
+      final raw = json.decode(await response.transform(utf8.decoder).join());
+      if (raw is Map && raw['front'] is List) _apply(raw);
+    } catch (_) {
+      // Sem internet: segue com a lista do APK.
+    } finally {
+      client.close();
+    }
+  }
+
+  /// Até a 2.0.2 o app baixava os GIFs e guardava no celular: agora puxa
+  /// sempre da nuvem, então a pasta antiga só ocupa espaço.
+  Future<void> _cleanOldDownloads() async {
+    if (kIsWeb) return;
+    try {
+      final dir = Directory('${(await getApplicationSupportDirectory()).path}/animated');
+      if (dir.existsSync()) await dir.delete(recursive: true);
+    } catch (_) {}
+  }
+
+  /// O sprite desse Pokémon, ou null (fica o parado).
+  /// De costas: se as costas são só a arte parada e a frente é animada, null
+  /// (quem desenha espelha a frente, que se mexe).
+  SpriteSource? source(int id, {bool shiny = false, bool back = false}) {
+    final kind = _kind(shiny, back);
+    if (!_bw.have[kind]!.contains(id)) return null;
+    if (back && _bw.still[kind]!.contains(id)) {
+      final front = _kind(shiny, false);
+      if (_bw.have[front]!.contains(id) && !_bw.still[front]!.contains(id)) return null;
+    }
+    return _bw.source(kind, id);
+  }
+
+  /// Quanto [to] tem que crescer para ter o mesmo tamanho de pixel de [from]
+  /// (cada sprite é ajustado para a mesma caixa: uma Mega mais larga, como a
+  /// Kangaskhan com o filhote do lado, encolheria). Só cresce, até 1,6×.
+  double pixelRatio(int from, int to, {bool shiny = false, bool back = false}) {
+    final kind = _kind(shiny, back);
+    double side(int id) {
+      final wh = _bw.size[kind]![id];
+      if (wh == null) return 0;
+      return max(wh[0], wh[1]) / (_bw.fit[kind]![id]?.first ?? 1);
+    }
+
+    final a = side(from), b = side(to);
+    if (a <= 0 || b <= 0) return 1;
+    return (b / a).clamp(1.0, 1.6).toDouble();
+  }
+}
