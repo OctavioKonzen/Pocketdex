@@ -839,7 +839,14 @@ class FactoryRun {
     return {...factory, 'shinies': [...shinies, id]};
   }
 
-  static int runCoins(Json run) => (_int(run['floor']) - 1) * 5 + _int(run['defeated']) * 2 + ((run['bosses'] as num?) ?? 0).toInt() * 25;
+  /// Moedas que a corrida rende: 8 por andar vencido, 2 por Pokémon derrotado e 40 por chefe. Igual ao site.
+  static int runCoins(Json run) => (_int(run['floor']) - 1) * 8 + _int(run['defeated']) * 2 + ((run['bosses'] as num?) ?? 0).toInt() * 40;
+
+  /// O treinador forte do fim da rota: sem mecânica (Mega, Z, Tera, Dynamax) e só 1 nível acima antes deste andar. Igual ao site.
+  static const dbossGimmickFloor = 30;
+
+  /// Quantos Pokémon ele traz: 2 até o andar 20, 3 até o 40, 4 até o 60 e depois o time todo. Igual ao site.
+  static int dbossTeam(int floor) => floor < 20 ? 2 : floor < 40 ? 3 : floor < 60 ? 4 : 6;
 
   // ------------------------------------------------------------ Pokémon da corrida
 
@@ -1803,14 +1810,17 @@ class FactoryRun {
       }
       // O chefe do lugar: um treinador forte do lugar, alguns andares à frente (sempre deixa um item).
       if (node['kind'] == 'dboss') {
+        // No começo ele não é um muro (as primeiras corridas paravam todas no andar 9): só 1 nível acima e poucos Pokémon.
+        final early = _int(out['floor']) < dbossGimmickFloor;
         out['encounter'] = {
-          ...encounterFor(data, floor + 3, rand, null, false, {'kind': 'ace', 'biome': scene, 'shiny': run['shinyRate'] ?? 1}),
+          ...encounterFor(data, floor + (early ? 1 : 3), rand, null, false, {'kind': 'ace', 'biome': scene, 'shiny': run['shinyRate'] ?? 1, if (early) 'gentle': true}),
           'kind': 'dboss',
           'scene': scene,
         };
-        // O mais forte dele usa uma mecânica: Mega, Gigantamax ou Tera.
-        final foes = [...(out['encounter']['foes'] as List)];
-        foes[foes.length - 1] = bossGimmick(data, Map<String, dynamic>.from(foes.last as Map), rand);
+        final all = [...(out['encounter']['foes'] as List)];
+        final foes = all.sublist(math.max(0, all.length - dbossTeam(_int(out['floor']))));
+        // O mais forte dele usa uma mecânica (Mega, Gigantamax, Tera...), mas só a partir de dbossGimmickFloor.
+        if (!early) foes[foes.length - 1] = bossGimmick(data, Map<String, dynamic>.from(foes.last as Map), rand);
         out['encounter'] = {...out['encounter'] as Map, 'foes': foes};
       }
       // O rival de surpresa: o time dele no andar de agora (não conta como o da história).
@@ -2029,8 +2039,10 @@ class FactoryRun {
     if (kind == 'trainer' || kind == 'ace') {
       // O treinador forte: um Pokémon a mais, 2 níveis acima, mais EVs; sempre deixa um item.
       final ace = kind == 'ace';
+      // gentle: o treinador forte do fim da rota no começo (dboss antes de dbossGimmickFloor): sem os níveis e os IVs/EVs a mais.
+      final strong = ace && node?['gentle'] != true;
       final count = math.min(maxTeam, 1 + floor ~/ 12 + (rand() < 0.3 ? 1 : 0) + (ace ? 1 : 0));
-      final Json extra = ace ? {'iv': math.max(iv, 20), 'ev': (ev * 1.15).round()} : const {};
+      final Json extra = strong ? {'iv': math.max(iv, 20), 'ev': (ev * 1.15).round()} : const {};
       // Na base de uma equipe vilã: capangas com os Pokémon da equipe.
       final nodeBiome = '${node?['biome'] ?? ''}';
       final grunt = nodeBiome.startsWith('base-') ? nodeBiome.substring(5) : null;
@@ -2038,7 +2050,7 @@ class FactoryRun {
       final foes = <Json>[];
       for (var i = 0; i < count; i++) {
         final id = gruntPool != null ? _pick(gruntPool, rand) : pick(common, true);
-        foes.add(foe(id, level + (ace ? 2 : 0) - (rand() * 3).floor(), extra));
+        foes.add(foe(id, level + (strong ? 2 : 0) - (rand() * 3).floor(), extra));
       }
       // O mais forte do treinador forte segura um item de verdade (a partir do andar 15).
       if (ace && floor >= 15) foes.last['item'] = _pick(foeItems, rand);

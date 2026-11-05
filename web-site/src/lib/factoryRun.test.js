@@ -5,7 +5,7 @@ import {
   movesLearnedBetween,
   weeklyOf, startWeekly, buyCosmetic, equipCosmetic, COSMETIC_BALLS,
   FRIEND_EVOLVE, PICKUP, SYNCHRONIZE, legOf, nuzlockeArea, runSummary, legacyMinorPrice, MAX_SHINY_RATE, piecesFor, upgradePieces, pieceOf,
-  placeInfo, routeInfo, UPGRADE_FX, SHORE, CAVE_OF, dungeonPos, routePos, DUNGEON_LENGTH, CITY_BOSS, waterNext, RIVAL_FLOOR, targetOf, rivalBoss, rocketBoss, townShop, townCenter, townHub, biomesLinked,
+  placeInfo, routeInfo, DBOSS_GIMMICK_FLOOR, UPGRADE_FX, SHORE, CAVE_OF, dungeonPos, routePos, DUNGEON_LENGTH, CITY_BOSS, waterNext, RIVAL_FLOOR, targetOf, rivalBoss, rocketBoss, townShop, townCenter, townHub, biomesLinked,
   isDoubleBattle,
   DOUBLE_FLOOR,
   battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, foeLevelAt, foeMember,
@@ -223,7 +223,7 @@ describe('Battle Factory (roguelike)', () => {
     expect(run.bag['great-ball']).toBe(3)
     expect(run.bag['escape-rope']).toBe(2)
     expect([run.townMap, run.dmax, run.tera]).toEqual([true, true, true])
-    expect(endRun(f, { ...run, floor: 11, defeated: 0, bosses: 0 }).last.coins).toBe(100)
+    expect(endRun(f, { ...run, floor: 11, defeated: 0, bosses: 0 }).last.coins).toBe(160)
     expect(upgradeNeeds({ ...emptyFactory(), best: 999 }, 'tera')).toContainEqual({ kind: 'up', id: 'dmax', level: 1 })
     // A trilha: 1 nó de cada melhoria (pede a melhoria), com o efeito dos 8 antigos:
     // o ramo dá o mesmo total de antes, com bem menos para comprar.
@@ -247,7 +247,7 @@ describe('Battle Factory (roguelike)', () => {
     // A captura mais fácil vai para a batalha (o motor multiplica a taxa de captura).
     expect(captureFor({ ...big, encounter: { kind: 'wild', foes: [{ id: 16 }] } }, data)).toMatchObject({ bonus: 147 })
     expect(big.tokens).toEqual({ 'move-tutor': 14, 'move-reminder': 10 })
-    expect(endRun(all, { ...big, floor: 11, defeated: 0, bosses: 0 }).last.coins).toBe(135)
+    expect(endRun(all, { ...big, floor: 11, defeated: 0, bosses: 0 }).last.coins).toBe(215)
     // A cura depois da vitória: só em quem está de pé, até o HP cheio.
     const healRun = { ...big, team: [{ ...big.team[0], hp: 0.3 }, { ...big.team[0], hp: 0 }, { ...big.team[0], hp: 0.8 }], encounter: { kind: 'wild', foes: [{ id: 16, level: 3, iv: 0, ev: 0 }] } }
     expect(winFloor(healRun, data, { hp: [0.3, 0, 0.8], fought: [[0]] }).team.map((m) => m.hp)).toEqual([0.58, 0, 1])
@@ -629,9 +629,9 @@ describe('Battle Factory (roguelike)', () => {
 
   it('perdeu: moedas pela pontuação, recorde; moedas compram Pokémon pela força', () => {
     const run = { ...startRun(emptyFactory(), data, 1, 5), floor: 21, defeated: 30, bosses: 2 }
-    expect(runCoins(run)).toBe(20 * 5 + 30 * 2 + 2 * 25)
+    expect(runCoins(run)).toBe(20 * 8 + 30 * 2 + 2 * 40)
     const f = endRun({ ...emptyFactory(), best: 7 }, run)
-    expect(f).toMatchObject({ coins: 210, best: 20, run: null, last: { floor: 20, coins: 210 } })
+    expect(f).toMatchObject({ coins: 300, best: 20, run: null, last: { floor: 20, coins: 300 } })
     expect(pokemonPrice(data.species[150][1])).toBeGreaterThan(pokemonPrice(data.species[19][1]))
     // Primeiro um inicial grátis (de qualquer geração); os outros, inclusive iniciais, se compram.
     expect(freePick(f)).toBe(true)
@@ -1246,10 +1246,15 @@ describe('cidade e lugares perto dela', () => {
     expect(bossGimmick(data, { id: 16 }, () => 0.99)).toEqual({ id: 16, gimmick: 'tera', tera: 'fairy' })
     expect(foeMember({ id: 16, level: 30, iv: 31, gimmick: 'tera', tera: 'fairy' }, ['tackle']).set).toMatchObject({ gimmick: 'tera', tera: 'fairy' })
     const red = data.bosses.findIndex((b) => b.game === 'Red/Blue')
-    const start = { ...startRun(emptyFactory(), data, 4, 3), floor: 29, leg: 3, boss: { region: red, step: 3 } }
+    // A partir de DBOSS_GIMMICK_FLOOR, o mais forte usa a mecânica; antes, nada disso, só 2 Pokémon e no nível do andar + 1.
+    const start = { ...startRun(emptyFactory(), data, 4, 3), floor: DBOSS_GIMMICK_FLOOR, leg: 3, boss: { region: red, step: 3 } }
     const run = chooseNode({ ...start, route: { options: [{ kind: 'dboss' }], biome: 'grass' } }, data, 0)
     expect(run.encounter.kind).toBe('dboss')
     expect(['mega', 'dmax', 'tera']).toContain(run.encounter.foes.at(-1).gimmick)
+    const early = chooseNode({ ...start, floor: 9, leg: 1, route: { options: [{ kind: 'dboss' }], biome: 'grass' } }, data, 0)
+    expect(early.encounter.foes.length).toBeLessThanOrEqual(2)
+    expect(early.encounter.foes.some((f) => f.gimmick)).toBe(false)
+    expect(Math.max(...early.encounter.foes.map((f) => f.level))).toBeLessThanOrEqual(10 + 1)
   })
 
   it('o rival no começo (antes do andar 10) vem com um Pokémon só, sem IVs e EVs a mais', () => {

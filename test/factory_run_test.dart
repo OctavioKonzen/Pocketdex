@@ -123,7 +123,7 @@ void main() {
     expect(run['tokens'], {'move-tutor': 3, 'move-reminder': 3});
     // Os ramos novos: Great Balls, Escape Rope, Mapa, Dynamax Band, Tera Orb e moedas a mais no fim.
     expect([run['bag']['great-ball'], run['bag']['escape-rope'], run['townMap'], run['dmax'], run['tera']], [3, 2, true, true, true]);
-    expect(((FactoryRun.endRun(f, {...run, 'floor': 11, 'defeated': 0, 'bosses': 0})['last']) as Map)['coins'], 100);
+    expect(((FactoryRun.endRun(f, {...run, 'floor': 11, 'defeated': 0, 'bosses': 0})['last']) as Map)['coins'], 160);
     expect(FactoryRun.upgradeNeeds({...FactoryRun.empty(), 'best': 999}, 'tera'), contains(equals({'kind': 'up', 'id': 'dmax', 'level': 1})));
     // 2 nós por melhoria, cada um com o efeito de vários dos 8 antigos: o ramo dá o mesmo total de antes (igual ao site).
     expect(FactoryRun.upgrades.keys.where((k) => k.contains('~')).length, 63);
@@ -147,7 +147,7 @@ void main() {
     // A captura mais fácil vai para a batalha (o motor multiplica a taxa de captura).
     expect(FactoryRun.captureFor({...big, 'encounter': {'kind': 'wild', 'foes': [{'id': 16}]}}, data)!['bonus'], 147);
     expect(big['tokens'], {'move-tutor': 14, 'move-reminder': 10});
-    expect(((FactoryRun.endRun(all, {...big, 'floor': 11, 'defeated': 0, 'bosses': 0})['last']) as Map)['coins'], 135);
+    expect(((FactoryRun.endRun(all, {...big, 'floor': 11, 'defeated': 0, 'bosses': 0})['last']) as Map)['coins'], 215);
     // A cura depois da vitória: só em quem está de pé, até o HP cheio.
     final healRun = {
       ...big,
@@ -320,7 +320,7 @@ void main() {
   test('perdeu: moedas pela pontuação; moedas compram Pokémon pela força', () {
     final run = {...FactoryRun.startRun(FactoryRun.empty(), data, 1, 5)!, 'floor': 21, 'defeated': 30, 'bosses': 2};
     final f = FactoryRun.endRun({...FactoryRun.empty(), 'best': 7}, run);
-    expect([f['coins'], f['best'], f['run']], [210, 20, null]);
+    expect([f['coins'], f['best'], f['run']], [300, 20, null]);
     // Primeiro um inicial grátis (de qualquer geração); os outros se compram (1 em 4096 de vir shiny).
     expect(FactoryRun.buyPokemon({...f, 'coins': 10000}, data, 150), isNull);
     final picked = FactoryRun.claimStarter(f, data, 906);
@@ -824,10 +824,16 @@ void main() {
     final set = FactoryRun.foeMember({'id': 16, 'level': 30, 'iv': 31, 'gimmick': 'tera', 'tera': 'fairy'}, ['tackle']).$2;
     expect(set['tera'], 'fairy');
     final red = data.bosses.indexWhere((b) => b['game'] == 'Red/Blue');
-    final start = {...FactoryRun.startRun(FactoryRun.empty(), data, 4, 3)!, 'floor': 29, 'leg': 3, 'boss': {'region': red, 'step': 3}};
+    // A partir de dbossGimmickFloor, o mais forte usa a mecânica; antes, nada disso, só 2 Pokémon e no nível do andar + 1 (igual ao site).
+    final start = {...FactoryRun.startRun(FactoryRun.empty(), data, 4, 3)!, 'floor': FactoryRun.dbossGimmickFloor, 'leg': 3, 'boss': {'region': red, 'step': 3}};
     final run = FactoryRun.chooseNode({...start, 'route': {'options': [{'kind': 'dboss'}], 'biome': 'grass'}}, data, 0);
     expect(run['encounter']['kind'], 'dboss');
     expect(['mega', 'dmax', 'tera'], contains(((run['encounter']['foes'] as List).last as Map)['gimmick']));
+    final early = FactoryRun.chooseNode({...start, 'floor': 9, 'leg': 1, 'route': {'options': [{'kind': 'dboss'}], 'biome': 'grass'}}, data, 0);
+    final earlyFoes = (early['encounter']['foes'] as List).cast<Map>();
+    expect(earlyFoes.length, lessThanOrEqualTo(2));
+    expect(earlyFoes.any((f) => f['gimmick'] != null), isFalse);
+    expect(earlyFoes.map((f) => f['level'] as int).reduce(max), lessThanOrEqualTo(11));
   });
 
   test('o rival no começo (antes do andar 10) vem com um Pokémon só, sem IVs e EVs a mais (igual ao site)', () {

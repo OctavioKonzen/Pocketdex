@@ -693,8 +693,12 @@ export function buyUpgrade(factory, id) {
   return { ...factory, coins: factory.coins - price, ...(pieces ? { pieces: { ...piecesOf(factory), [pieceOf(id)]: piecesOf(factory)[pieceOf(id)] - pieces } } : {}), upgrades: { ...factory.upgrades, [id]: upgradeLevel(factory, id) + 1 } }
 }
 
-/** Moedas que a corrida rende: 5 por andar vencido, 2 por Pokémon derrotado e 25 por chefe. */
-export const runCoins = (run) => (run.floor - 1) * 5 + run.defeated * 2 + (run.bosses ?? 0) * 25
+/** Moedas que a corrida rende: 8 por andar vencido, 2 por Pokémon derrotado e 40 por chefe. */
+export const runCoins = (run) => (run.floor - 1) * 8 + run.defeated * 2 + (run.bosses ?? 0) * 40
+/** O treinador forte do fim da rota: sem mecânica (Mega, Z, Tera, Dynamax) e só 1 nível acima antes deste andar. Igual ao app. */
+export const DBOSS_GIMMICK_FLOOR = 30
+/** Quantos Pokémon ele traz: 2 até o andar 20, 3 até o 40, 4 até o 60 e depois o time todo. Igual ao app. */
+export const dbossTeam = (floor) => (floor < 20 ? 2 : floor < 40 ? 3 : floor < 60 ? 4 : 6)
 
 // ------------------------------------------------------------ Pokémon da corrida
 
@@ -1382,10 +1386,12 @@ export function chooseNode(run, data, index, clock = null) {
     }
     // O chefe do lugar: um treinador forte do lugar, alguns andares à frente (sempre deixa um item).
     if (node.kind === 'dboss') {
-      out.encounter = { ...encounterFor(data, out.floor + 3, rand, null, false, { kind: 'ace', biome: scene, shiny: run.shinyRate ?? 1 }), kind: 'dboss', scene }
-      // O mais forte dele usa uma mecânica: Mega, Gigantamax ou Tera.
-      const foes = [...out.encounter.foes]
-      foes[foes.length - 1] = bossGimmick(data, foes[foes.length - 1], rand)
+      // No começo ele não é um muro (as primeiras corridas paravam todas no andar 9): só 1 nível acima e poucos Pokémon.
+      const early = out.floor < DBOSS_GIMMICK_FLOOR
+      out.encounter = { ...encounterFor(data, out.floor + (early ? 1 : 3), rand, null, false, { kind: 'ace', biome: scene, shiny: run.shinyRate ?? 1, ...(early ? { gentle: true } : {}) }), kind: 'dboss', scene }
+      const foes = out.encounter.foes.slice(-dbossTeam(out.floor))
+      // O mais forte dele usa uma mecânica (Mega, Gigantamax, Tera...), mas só a partir de DBOSS_GIMMICK_FLOOR.
+      if (!early) foes[foes.length - 1] = bossGimmick(data, foes[foes.length - 1], rand)
       out.encounter = { ...out.encounter, foes }
     }
     // O rival de surpresa: o time dele no andar de agora (não conta como o da história).
@@ -1556,12 +1562,14 @@ export function encounterFor(data, floor, rand, boss = null, wild = false, node 
   if (kind === 'trainer' || kind === 'ace') {
     // O treinador forte: um Pokémon a mais, 2 níveis acima, mais EVs; sempre deixa um item.
     const ace = kind === 'ace'
+    // gentle: o treinador forte do fim da rota no começo (dboss antes de DBOSS_GIMMICK_FLOOR): sem os níveis e os IVs/EVs a mais.
+    const strong = ace && !node?.gentle
     const count = Math.min(MAX_TEAM, 1 + Math.floor(floor / 12) + (rand() < 0.3 ? 1 : 0) + (ace ? 1 : 0))
-    const extra = ace ? { iv: Math.max(iv, 20), ev: Math.round(ev * 1.15) } : {}
+    const extra = strong ? { iv: Math.max(iv, 20), ev: Math.round(ev * 1.15) } : {}
     // Na base de uma equipe vilã: capangas com os Pokémon da equipe.
     const grunt = node?.biome?.startsWith('base-') ? node.biome.slice(5) : null
     const choose = grunt && TEAM_POKEMON[grunt] ? () => pickOne(TEAM_POKEMON[grunt], rand) : () => pick(common, true)
-    const foes = Array.from({ length: count }, () => foe(choose(), level + (ace ? 2 : 0) - Math.floor(rand() * 3), extra))
+    const foes = Array.from({ length: count }, () => foe(choose(), level + (strong ? 2 : 0) - Math.floor(rand() * 3), extra))
     // O mais forte do treinador forte segura um item de verdade (a partir do andar 15).
     if (ace && floor >= 15) foes[foes.length - 1].item = pickOne(FOE_ITEMS, rand)
     return { kind, foes, trainerSeed: Math.floor(rand() * 1e9), ...(ace ? { reward: pickOne(ACE_REWARDS, rand) } : {}), ...(grunt ? { grunt } : {}) }
