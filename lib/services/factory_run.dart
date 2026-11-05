@@ -2904,6 +2904,27 @@ class FactoryRun {
     return out;
   }
 
+  /// Organiza a caixa (as vagas cheias primeiro): pelo número da Pokédex ('dex'), pelo nível (do maior para o menor) ou
+  /// pelo tipo (o primeiro tipo, depois o número). Igual ao site.
+  static const pcSorts = ['dex', 'level', 'type'];
+  static Json sortBox(Json run, int box, String by, FactoryData data) {
+    if (box < 0 || box >= pcBoxes || !pcSorts.contains(by)) return run;
+    final pc = pcSlots(run);
+    final start = box * pcBox;
+    final mons = [for (var k = start; k < start + pcBox; k++) if (pc[k] != null) pc[k]!];
+    String type(Json m) => '${(data.speciesOf(_int(m['id']))?.elementAtOrNull(4) as List?)?.firstOrNull ?? 'zzz'}';
+    int byId(Json a, Json b) => _int(a['id']) - _int(b['id']);
+    mons.sort((a, b) => switch (by) {
+          'level' => _int(b['level']) - _int(a['level']) != 0 ? _int(b['level']) - _int(a['level']) : byId(a, b),
+          'type' => type(a).compareTo(type(b)) != 0 ? type(a).compareTo(type(b)) : byId(a, b),
+          _ => byId(a, b) != 0 ? byId(a, b) : _int(b['level']) - _int(a['level']),
+        });
+    for (var k = 0; k < pcBox; k++) {
+      pc[start + k] = k < mons.length ? mons[k] : null;
+    }
+    return {...run, 'pc': _trimPc(pc)};
+  }
+
   /// Os fundos das caixas do PC (como nos jogos). Igual ao site.
   static const pcWalls = ['classic', 'forest', 'cave', 'sea', 'desert', 'snow', 'volcano', 'night'];
 

@@ -2170,6 +2170,22 @@ export function pcMove(run, from, to) {
   if (!nextTeam.length) return null
   return { ...run, team: nextTeam, pc: trimPc(pc.map((m) => (m ? { ...m, hp: 1 } : null))) }
 }
+/**
+ * Organiza a caixa (as vagas cheias primeiro): pelo número da Pokédex
+ * ('dex'), pelo nível (do maior para o menor) ou pelo tipo (o primeiro tipo,
+ * depois o número). Igual ao app.
+ */
+export const PC_SORTS = ['dex', 'level', 'type']
+export function sortBox(run, box, by, data) {
+  if (!(box >= 0 && box < PC_BOXES) || !PC_SORTS.includes(by)) return run
+  const pc = pcSlots(run)
+  const start = box * PC_BOX
+  const mons = pc.slice(start, start + PC_BOX).filter(Boolean)
+  const type = (m) => speciesOf(data, m.id)?.[4]?.[0] ?? 'zzz'
+  mons.sort((a, b) => (by === 'level' ? b.level - a.level || a.id - b.id : by === 'type' ? type(a).localeCompare(type(b)) || a.id - b.id : a.id - b.id || b.level - a.level))
+  for (let k = 0; k < PC_BOX; k++) pc[start + k] = mons[k] ?? null
+  return { ...run, pc: trimPc(pc) }
+}
 /** Os fundos das caixas do PC (como nos jogos). Igual ao app. */
 export const PC_WALLS = ['classic', 'forest', 'cave', 'sea', 'desert', 'snow', 'volcano', 'night']
 /** O fundo da caixa. */

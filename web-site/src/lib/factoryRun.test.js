@@ -8,7 +8,7 @@ import {
   placeInfo, routeInfo, DBOSS_GIMMICK_FLOOR, UPGRADE_FX, SHORE, CAVE_OF, dungeonPos, routePos, DUNGEON_LENGTH, CITY_BOSS, waterNext, RIVAL_FLOOR, targetOf, rivalBoss, rocketBoss, townShop, townCenter, townHub, biomesLinked,
   isDoubleBattle,
   DOUBLE_FLOOR,
-  battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, RARE_PLACES, atPc, pcOf, pcMove, pcSlots, PC_BOX, boxName, renameBox, boxWall, nextWall, setNick, gameOf, leagueAhead, rivalGrowth, bagsFor, NUZLOCKE_DEFAULT, levelCapOf, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
+  battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, RARE_PLACES, atPc, pcOf, pcMove, pcSlots, PC_BOX, boxName, renameBox, boxWall, nextWall, setNick, gameOf, leagueAhead, rivalGrowth, sortBox, bagsFor, NUZLOCKE_DEFAULT, levelCapOf, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
   HELD_BOOST, levelTo, MAX_TEAM, memberOf, movesAt, nextFloor, nextRandom, overflowPoints, pokemonPrice, runCoins, setMainItem, shopPrice,
   SHINY_BOOST, FOE_SHINY_BOOST, SHINY_CHANCE, START_BAG, START_BALLS, startersOf, buyShiny, shinyPrice, unlockShiny, claimStarter, freePick, canEvolveWith, teachMove,
   equipFromStash, gimmicksOf, setGimmick, storyLine, startRun, takeCard, teamDown, applyBagItem, winFloor, chooseNode, routeOptions, routeCities,
@@ -1511,6 +1511,12 @@ describe('PC do Centro Pokémon', () => {
     expect(ended.bestGames).toBe(2)
     expect(ended.gallery[0].games).toBe(2)
     expect(gameOf({ games: 2 })).toBe(3)
+    // Ordenar a caixa: pelo número, pelo nível ou pelo tipo (as vagas cheias primeiro).
+    const mon = (id, level) => ({ id, level, hp: 1 })
+    const messy = { ...center, pc: [null, mon(25, 20), null, mon(4, 30), mon(1, 10)] }
+    expect(pcSlots(sortBox(messy, 0, 'dex', data)).slice(0, 4).map((m) => m?.id ?? null)).toEqual([1, 4, 25, null])
+    expect(pcSlots(sortBox(messy, 0, 'level', data)).slice(0, 3).map((m) => m.id)).toEqual([4, 25, 1])
+    expect(pcSlots(sortBox(messy, 0, 'type', data)).slice(0, 3).map((m) => m.id)).toEqual([25, 4, 1])
     // O rival evolui junto: +1 nível por vitória contra ele (até +6); o rival convidado e os outros chefes não.
     const rivalEnc = { kind: 'boss', boss: { kind: 'rival' }, foes: [{ id: 1, level: 20 }] }
     expect(rivalGrowth(rivalEnc, { rivalWins: 3 }).foes[0].level).toBe(23)

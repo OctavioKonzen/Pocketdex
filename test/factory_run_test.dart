@@ -1081,6 +1081,12 @@ void main() {
     expect(ended['bestGames'], 2);
     expect((ended['gallery'] as List).first['games'], 2);
     expect(FactoryRun.gameOf({'games': 2}), 3);
+    // Ordenar a caixa: pelo número, pelo nível ou pelo tipo (as vagas cheias primeiro). Igual ao site.
+    Json mon(int id, int level) => {'id': id, 'level': level, 'hp': 1};
+    final messy = {...center, 'pc': [null, mon(25, 20), null, mon(4, 30), mon(1, 10)]};
+    expect([for (final m in FactoryRun.pcSlots(FactoryRun.sortBox(messy, 0, 'dex', data)).take(4)) m?['id']], [1, 4, 25, null]);
+    expect([for (final m in FactoryRun.pcSlots(FactoryRun.sortBox(messy, 0, 'level', data)).take(3)) m!['id']], [4, 25, 1]);
+    expect([for (final m in FactoryRun.pcSlots(FactoryRun.sortBox(messy, 0, 'type', data)).take(3)) m!['id']], [25, 4, 1]);
     // O rival evolui junto: +1 nível por vitória contra ele (até +6); o rival convidado e os outros chefes não.
     final rivalEnc = {'kind': 'boss', 'boss': {'kind': 'rival'}, 'foes': [{'id': 1, 'level': 20}]};
     expect((FactoryRun.rivalGrowth(rivalEnc, {'rivalWins': 3})['foes'] as List).first['level'], 23);

@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState } from 'react'
 import PokeIcon from './PokeIcon'
 import { t } from '../lib/i18n'
-import { boxName, boxWall, nextWall, pcMove, pcSlots, PC_BOX, PC_BOXES, renameBox, setNick, teamRoom } from '../lib/factoryRun'
+import { boxName, boxWall, nextWall, pcMove, pcSlots, PC_BOX, PC_BOXES, renameBox, setNick, sortBox, teamRoom } from '../lib/factoryRun'
 
 /** O fundo de cada caixa (como nos jogos). Igual ao app. */
 const WALL_BG = {
@@ -25,7 +25,7 @@ const pretty = (slug) => String(slug ?? '').split('-').map((w) => w.charAt(0).to
 
 const key = (l) => (l ? `${l.where}:${l.index}` : '')
 
-export default function PcPanel({ run, nameOf, onSave }) {
+export default function PcPanel({ run, data, nameOf, onSave }) {
   const [box, setBox] = useState(0)
   const [picked, setPicked] = useState(null) // tocou num (o próximo toque é o destino)
   const [drag, setDrag] = useState(null) // { from, id, shiny, x, y, moved }
@@ -150,6 +150,15 @@ export default function PcPanel({ run, nameOf, onSave }) {
           <button type="button" onClick={rename} className="bw-party-title min-w-0 flex-1 cursor-pointer truncate rounded-md px-2 py-0.5 text-sm font-black text-white" data-testid="pc-box-name">
             {inMemorial ? `🕯️ ${t('Memorial')}` : <>💻 {boxName(run, box)} <span className="text-[10px] opacity-80">✏️</span></>}
           </button>
+          {!inMemorial && (
+            <select value="" onChange={(e) => e.target.value && onSave(sortBox(run, box, e.target.value, data))} data-testid="pc-box-sort" title={t('Ordenar a caixa')}
+              className="bw-party-title w-9 cursor-pointer appearance-none rounded-md px-1 py-0.5 text-center text-sm text-white">
+              <option value="">🔃</option>
+              <option value="dex">{t('Nº da Pokédex')}</option>
+              <option value="level">{t('Nível')}</option>
+              <option value="type">{t('Tipo')}</option>
+            </select>
+          )}
           {!inMemorial && <button type="button" onClick={() => onSave(nextWall(run, box))} className="bw-party-title cursor-pointer rounded-md px-1.5 py-0.5 text-sm text-white" data-testid="pc-box-wall" title={t('Fundo da caixa')}>🎨</button>}
           <button type="button" data-pc-nav="next" onClick={() => setBox((b) => (b + 1) % pages)} className="bw-party-title cursor-pointer rounded-md px-2 py-0.5 text-sm font-black text-white" data-testid="pc-box-next">▶</button>
         </div>

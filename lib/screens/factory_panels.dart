@@ -3353,7 +3353,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
 
   /// O PC (como nos jogos): o time à esquerda e a caixa 6×6 à direita ([_PcPanel]). Igual ao site.
   Widget _pcPanel(Json run, VoidCallback close) =>
-      _PcPanel(key: const ValueKey('factory-pc'), run: run, nameOf: (id) => _name(id), onSave: (next) => _save(next));
+      _PcPanel(key: const ValueKey('factory-pc'), run: run, data: _data!, nameOf: (id) => _name(id), onSave: (next) => _save(next));
 
 
 
@@ -5093,8 +5093,9 @@ class _PagedMenuState extends State<_PagedMenu> {
 /// dois nomes); vazia, ele vai para lá. Segurando em cima de ◀ ▶ durante o arrasto, muda de caixa. Tocar num e depois
 /// em outra vaga também funciona. Igual ao site (PcPanel.jsx).
 class _PcPanel extends StatefulWidget {
-  const _PcPanel({super.key, required this.run, required this.nameOf, required this.onSave});
+  const _PcPanel({super.key, required this.run, required this.data, required this.nameOf, required this.onSave});
   final Json run;
+  final FactoryData data;
   final String Function(Object? id) nameOf;
   final void Function(Json next) onSave;
 
@@ -5376,6 +5377,19 @@ class _PcPanelState extends State<_PcPanel> {
                       : _title('💻 ${FactoryRun.boxName(run, _box)} ✏️', key: 'pc-box-name', onTap: _rename),
                 ),
                 if (!_inMemorial) ...[
+                  const SizedBox(width: 4),
+                  // Ordenar a caixa (Nº da Pokédex, nível ou tipo).
+                  PopupMenuButton<String>(
+                    key: const ValueKey('pc-box-sort'),
+                    tooltip: tr('Ordenar a caixa'),
+                    onSelected: (by) => widget.onSave(FactoryRun.sortBox(run, _box, by, widget.data)),
+                    itemBuilder: (_) => [
+                      PopupMenuItem(value: 'dex', child: Text(tr('Nº da Pokédex'))),
+                      PopupMenuItem(value: 'level', child: Text(tr('Nível'))),
+                      PopupMenuItem(value: 'type', child: Text(tr('Tipo'))),
+                    ],
+                    child: _title('🔃'),
+                  ),
                   const SizedBox(width: 4),
                   _title('🎨', key: 'pc-box-wall', onTap: () => widget.onSave(FactoryRun.nextWall(run, _box))),
                 ],

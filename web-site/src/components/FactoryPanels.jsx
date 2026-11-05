@@ -2288,7 +2288,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       </>
     )
     // O PC do Centro Pokémon (como nos jogos): o time à esquerda e a caixa 6×6 à direita (PcPanel).
-    if (pcOpen && atPc(run)) below = <PcPanel run={run} nameOf={name} onSave={save} />
+    if (pcOpen && atPc(run)) below = <PcPanel run={run} data={data} nameOf={name} onSave={save} />
     menu = pcOpen && atPc(run) ? (
       <MenuButton onClick={() => setPcOpen(false)} testid="factory-pc-close">{t('FECHAR')}</MenuButton>
     ) : (
