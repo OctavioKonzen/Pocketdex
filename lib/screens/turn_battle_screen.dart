@@ -2368,6 +2368,8 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                       ),
                       // Clima, terreno e efeito do lugar fazem parte do cenário: atrás dos Pokémon e das caixas.
                       Positioned.fill(child: _WeatherFx(_weather, terrain: _terrain, place: _place)),
+                      // O clima e o terreno com os turnos que faltam (como no registro), no alto do campo. Igual ao site.
+                      Positioned(top: 4, left: 0, right: 0, child: IgnorePointer(child: _FieldChip(_weather, _terrain, _b.weatherTurns, _b.terrainTurns))),
                       // Como no Black & White: o adversário lá atrás à direita (menor), o seu de costas na frente à esquerda (grande, cortado pela caixa do texto).
                       Positioned(
                           // O inimigo fica mais longe: menor e com os pés na
@@ -3153,6 +3155,34 @@ class _MoveButton extends StatelessWidget {
 
 /// O clima caindo por cima do campo (chuva, areia, granizo, neve) ou o brilho
 /// do sol. Igual ao site (index.css, .weather-*).
+const _fieldChip = {
+  'rain': ('🌧️', 'Chuva'), 'sun': ('☀️', 'Sol forte'), 'sand': ('🏜️', 'Tempestade de areia'), 'hail': ('🧊', 'Granizo'), 'snow': ('❄️', 'Neve'), 'wind': ('🌪️', 'Ventos fortes'),
+  'grassy': ('🌿', 'Campo de grama'), 'electric': ('⚡', 'Campo elétrico'), 'misty': ('🌫️', 'Campo de névoa'), 'psychic': ('🔮', 'Campo psíquico'),
+};
+
+/// O clima e o terreno no alto do campo, com os turnos que faltam (sem número: sem fim). Igual ao site.
+class _FieldChip extends StatelessWidget {
+  const _FieldChip(this.weather, this.terrain, this.weatherTurns, this.terrainTurns);
+  final String weather, terrain;
+  final int weatherTurns, terrainTurns;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = [(weather, weatherTurns), (terrain, terrainTurns)].where((i) => _fieldChip.containsKey(i.$1)).toList();
+    if (items.isEmpty) return const SizedBox.shrink();
+    return Row(key: const ValueKey('field-chip'), mainAxisAlignment: MainAxisAlignment.center, children: [
+      for (final (k, turns) in items)
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(color: const Color(0x8C000000), borderRadius: BorderRadius.circular(99)),
+          child: Text('${_fieldChip[k]!.$1} ${tr(_fieldChip[k]!.$2)}${turns > 0 ? ' · $turns' : ''}',
+              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900)),
+        ),
+    ]);
+  }
+}
+
 class _WeatherFx extends StatefulWidget {
   const _WeatherFx(this.weather, {this.terrain = '', this.place = ''});
   final String weather;

@@ -757,6 +757,25 @@ const BattleSprite = forwardRef(function BattleSprite({ mon, id, back, fainted, 
 /** O clima caindo por cima do campo (chuva, areia, granizo, neve) ou o brilho do sol. */
 /** Onde fica cada efeito do lugar no cenário. */
 const PLACE_ZONE = { miasma: 'ground', haunt: 'ground', current: 'ground', quicksand: 'ground', aurora: 'sky', storm: 'sky' }
+const FIELD_CHIP = {
+  rain: ['🌧️', 'Chuva'], sun: ['☀️', 'Sol forte'], sand: ['🏜️', 'Tempestade de areia'], hail: ['🧊', 'Granizo'], snow: ['❄️', 'Neve'], wind: ['🌪️', 'Ventos fortes'],
+  grassy: ['🌿', 'Campo de grama'], electric: ['⚡', 'Campo elétrico'], misty: ['🌫️', 'Campo de névoa'], psychic: ['🔮', 'Campo psíquico'],
+}
+/** O clima e o terreno no alto do campo, com os turnos que faltam (sem número: sem fim). Igual ao app. */
+function FieldChip({ weather, terrain, weatherTurns, terrainTurns }) {
+  const items = [[weather, weatherTurns], [terrain, terrainTurns]].filter(([k]) => FIELD_CHIP[k])
+  if (!items.length) return null
+  return (
+    <div className="pointer-events-none absolute top-1 left-1/2 z-[5] flex -translate-x-1/2 gap-1" data-testid="field-chip">
+      {items.map(([k, turns]) => (
+        <span key={k} className="rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-black whitespace-nowrap text-white" title={t(FIELD_CHIP[k][1])}>
+          {FIELD_CHIP[k][0]} {t(FIELD_CHIP[k][1])}{turns > 0 ? ` · ${turns}` : ''}
+        </span>
+      ))}
+    </div>
+  )
+}
+
 function WeatherFx({ weather, terrain = '', place = '' }) {
   return (
     <>
@@ -1558,6 +1577,8 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         <BattleBackground weather={shown.weather} scene={scene} layout="bw" />
         {/* Clima, terreno e efeito do lugar fazem parte do cenário: atrás dos Pokémon e das caixas. */}
         <WeatherFx weather={shown.weather} terrain={shown.terrain} place={shown.place} />
+        {/* O clima e o terreno com os turnos que faltam (como no registro), no alto do campo. */}
+        <FieldChip weather={shown.weather} terrain={shown.terrain} weatherTurns={battle.weatherTurns ?? 0} terrainTurns={battle.terrainTurns ?? 0} />
         {vsOn && <VsSplash me={myTrainer} coach={coach} vs={vsInfo} myName={myName} foeMon={wild ? active(battle, 1) : null} onSkip={() => vsDone.current?.()} />}
         <div className={`absolute z-20 ${wild ? 'top-[5%]' : 'top-[max(0px,calc(5%-14px))]'} left-0 w-[50%] max-w-[300px] transition-opacity ${intro && poke[1] === 'hidden' ? 'opacity-0' : ''}`}>
           <button type="button" className="block w-full cursor-pointer text-left" onClick={() => setInspect(1)} aria-label={t('Ver detalhes do adversário')} data-testid="inspect-foe">
