@@ -3874,7 +3874,9 @@ class _FactoryScreenState extends State<FactoryScreen> {
         '🌟 ${tr(_legendClues[target['kind'] == 'elite' ? _legendClues.length - 1 : min(_legendClues.length - 2, ((run['badges'] as num?) ?? 0).toInt())])}',
       if (dungeon != null && FactoryRun.dungeonPos(run) == 0)
         '🕳️ ${tr('Você entrou em {0}: {1} andares, sem desvios, e um chefe no fim. Depois, de volta para {2}.').replaceAll('{0}', insideName ?? '').replaceAll('{1}', '${FactoryRun.dungeonLength}').replaceAll('{2}', backTo)}',
-      if (meeting && boss['kind'] == 'rival') '💬 ${boss['name']}: ${tr(_rivalLines[min(_rivalLines.length - 1, ((run['rivalWins'] as num?) ?? 0).toInt())])}',
+      if (meeting && boss['kind'] == 'rival')
+        '💬 ${boss['name']}: ${tr(_rivalLines[min(_rivalLines.length - 1, ((run['rivalWins'] as num?) ?? 0).toInt())])}'
+        '${((run['rivalWins'] as num?) ?? 0) > 0 ? ' ${tr('(Você já me venceu {0} vezes. Meu time ficou mais forte!)').replaceAll('{0}', '${run['rivalWins']}')}' : ''}',
       if (meeting && boss['kind'] == 'villain') ...[
         '💬 ${boss['name']}: ${tr(_villainLines[((run['floor'] as num).toInt() + (run['seed'] as num).toInt()) % _villainLines.length])}',
         '💬 ${tr(_villainPlans[FactoryRun.villainTeam(boss['name'])] ?? _villainPlans['rocket']!)}',

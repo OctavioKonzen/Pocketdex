@@ -198,6 +198,19 @@ class FactoryRun {
   /// O bônus de todos os atributos dos adversários no degrau.
   static double foeBoostAt(int tier) => (tier * gameTier.boost * 1000).round() / 1000;
 
+  /// O rival evolui junto (como nos jogos): a cada vez que você o vence, o time dele volta [rivalGrowthStep] nível mais
+  /// forte (até [rivalGrowthMax]). Igual ao site.
+  static const rivalGrowthStep = 1, rivalGrowthMax = 6;
+  static Json rivalGrowth(Json encounter, Json? run) {
+    final wins = math.min(rivalGrowthMax, _int(run?['rivalWins'] ?? 0) * rivalGrowthStep);
+    final boss = encounter['boss'] as Map?;
+    if (wins == 0 || boss?['kind'] != 'rival' || boss?['guest'] == true) return encounter;
+    return {
+      ...encounter,
+      'foes': [for (final f in encounter['foes'] as List) {...(f as Map).cast<String, dynamic>(), 'level': _int(f['level']) + wins}],
+    };
+  }
+
   /// Os adversários do encontro com o degrau do jogo da corrida.
   static Json tierFoes(Json encounter, Json? run) {
     final tier = tierOf(run);
@@ -1909,7 +1922,7 @@ class FactoryRun {
         out['encounter'] = {...out['encounter'] as Map<String, dynamic>, 'foes': foes};
       }
       // Os selvagens e os treinadores do caminho na forma da região (e com o degrau do jogo da corrida).
-      out['encounter'] = tierFoes(regionalEncounter(data, run, Map<String, dynamic>.from(out['encounter'] as Map)), run);
+      out['encounter'] = rivalGrowth(tierFoes(regionalEncounter(data, run, Map<String, dynamic>.from(out['encounter'] as Map)), run), run);
       return out;
     }
     out['floor'] = floor + 1;

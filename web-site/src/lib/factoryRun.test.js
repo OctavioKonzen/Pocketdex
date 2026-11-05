@@ -8,7 +8,7 @@ import {
   placeInfo, routeInfo, DBOSS_GIMMICK_FLOOR, UPGRADE_FX, SHORE, CAVE_OF, dungeonPos, routePos, DUNGEON_LENGTH, CITY_BOSS, waterNext, RIVAL_FLOOR, targetOf, rivalBoss, rocketBoss, townShop, townCenter, townHub, biomesLinked,
   isDoubleBattle,
   DOUBLE_FLOOR,
-  battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, atPc, pcOf, pcMove, pcSlots, PC_BOX, boxName, renameBox, boxWall, nextWall, setNick, gameOf, leagueAhead, bagsFor, NUZLOCKE_DEFAULT, levelCapOf, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
+  battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, atPc, pcOf, pcMove, pcSlots, PC_BOX, boxName, renameBox, boxWall, nextWall, setNick, gameOf, leagueAhead, rivalGrowth, bagsFor, NUZLOCKE_DEFAULT, levelCapOf, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
   HELD_BOOST, levelTo, MAX_TEAM, memberOf, movesAt, nextFloor, nextRandom, overflowPoints, pokemonPrice, runCoins, setMainItem, shopPrice,
   SHINY_BOOST, FOE_SHINY_BOOST, SHINY_CHANCE, START_BAG, START_BALLS, startersOf, buyShiny, shinyPrice, unlockShiny, claimStarter, freePick, canEvolveWith, teachMove,
   equipFromStash, gimmicksOf, setGimmick, storyLine, startRun, takeCard, teamDown, applyBagItem, winFloor, chooseNode, routeOptions, routeCities,
@@ -1499,6 +1499,12 @@ describe('PC do Centro Pokémon', () => {
     expect(ended.bestGames).toBe(2)
     expect(ended.gallery[0].games).toBe(2)
     expect(gameOf({ games: 2 })).toBe(3)
+    // O rival evolui junto: +1 nível por vitória contra ele (até +6); o rival convidado e os outros chefes não.
+    const rivalEnc = { kind: 'boss', boss: { kind: 'rival' }, foes: [{ id: 1, level: 20 }] }
+    expect(rivalGrowth(rivalEnc, { rivalWins: 3 }).foes[0].level).toBe(23)
+    expect(rivalGrowth(rivalEnc, { rivalWins: 30 }).foes[0].level).toBe(26)
+    expect(rivalGrowth({ ...rivalEnc, boss: { kind: 'rival', guest: true } }, { rivalWins: 3 }).foes[0].level).toBe(20)
+    expect(rivalGrowth({ ...rivalEnc, boss: { kind: 'gym' } }, { rivalWins: 3 }).foes[0].level).toBe(20)
     // O aviso da Liga: só antes da primeira da Elite dos Quatro.
     const elite = data.bosses[0].leaders.findIndex((l) => l.kind === 'elite')
     expect(leagueAhead(data, { boss: { region: 0, step: elite } })).toBe(true)

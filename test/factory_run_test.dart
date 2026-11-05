@@ -1065,6 +1065,12 @@ void main() {
     expect(ended['bestGames'], 2);
     expect((ended['gallery'] as List).first['games'], 2);
     expect(FactoryRun.gameOf({'games': 2}), 3);
+    // O rival evolui junto: +1 nível por vitória contra ele (até +6); o rival convidado e os outros chefes não.
+    final rivalEnc = {'kind': 'boss', 'boss': {'kind': 'rival'}, 'foes': [{'id': 1, 'level': 20}]};
+    expect((FactoryRun.rivalGrowth(rivalEnc, {'rivalWins': 3})['foes'] as List).first['level'], 23);
+    expect((FactoryRun.rivalGrowth(rivalEnc, {'rivalWins': 30})['foes'] as List).first['level'], 26);
+    expect((FactoryRun.rivalGrowth({...rivalEnc, 'boss': {'kind': 'rival', 'guest': true}}, {'rivalWins': 3})['foes'] as List).first['level'], 20);
+    expect((FactoryRun.rivalGrowth({...rivalEnc, 'boss': {'kind': 'gym'}}, {'rivalWins': 3})['foes'] as List).first['level'], 20);
     // O aviso da Liga: só antes da primeira da Elite dos Quatro.
     final elite = (data.bosses[0]['leaders'] as List).indexWhere((l) => l['kind'] == 'elite');
     expect(FactoryRun.leagueAhead(data, {'boss': {'region': 0, 'step': elite}}), isTrue);

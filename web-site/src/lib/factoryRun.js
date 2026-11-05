@@ -119,6 +119,17 @@ export const GAME_TIER = { iv: 4, ev: 64, boost: 0.08 }
 export const tierOf = (run) => run?.games ?? 0
 /** O bônus de todos os atributos dos adversários no degrau. */
 export const foeBoostAt = (tier) => Math.round(tier * GAME_TIER.boost * 1000) / 1000
+/**
+ * O rival evolui junto (como nos jogos): a cada vez que você o vence, o time
+ * dele volta RIVAL_GROWTH nível mais forte (até RIVAL_GROWTH_MAX). Igual ao app.
+ */
+export const RIVAL_GROWTH = 1
+export const RIVAL_GROWTH_MAX = 6
+export function rivalGrowth(encounter, run) {
+  const wins = Math.min(RIVAL_GROWTH_MAX, (run?.rivalWins ?? 0) * RIVAL_GROWTH)
+  if (!wins || encounter?.boss?.kind !== 'rival' || encounter.boss.guest) return encounter
+  return { ...encounter, foes: encounter.foes.map((f) => ({ ...f, level: f.level + wins })) }
+}
 /** Os adversários do encontro com o degrau do jogo da corrida. */
 export function tierFoes(encounter, run) {
   const tier = tierOf(run)
@@ -1452,7 +1463,7 @@ export function chooseNode(run, data, index, clock = null) {
       out.encounter = { ...out.encounter, foes }
     }
     // Os selvagens e os treinadores do caminho na forma da região (e com o degrau do jogo da corrida).
-    out.encounter = tierFoes(regionalEncounter(data, run, out.encounter), run)
+    out.encounter = rivalGrowth(tierFoes(regionalEncounter(data, run, out.encounter), run), run)
     return out
   }
   out.floor += 1

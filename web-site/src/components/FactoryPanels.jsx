@@ -2544,7 +2544,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       !town && !inside && pos === 0 && !meeting && `🧭 ${t('Você sai de {0} e entra em {1}, rumo a {2}.').replace('{0}', from ?? t('casa')).replace('{1}', t(biome.label)).replace('{2}', to)} ${t(ROUTE_FLAVOR[route.biome] ?? ROUTE_FLAVOR.grass)}`,
       !town && !inside && pos === 0 && !meeting && legend != null && `🌟 ${t(LEGEND_CLUES[target.kind === 'elite' ? LEGEND_CLUES.length - 1 : Math.min(LEGEND_CLUES.length - 2, run.badges ?? 0)])}`,
       inside && dungeonPos(run) === 0 && `🕳️ ${t('Você entrou em {0}: {1} andares, sem desvios, e um chefe no fim. Depois, de volta para {2}.').replace('{0}', t(inside.name)).replace('{1}', DUNGEON_LENGTH).replace('{2}', backTo)}`,
-      meeting && boss.kind === 'rival' && `💬 ${boss.name}: ${t(RIVAL_LINES[Math.min(RIVAL_LINES.length - 1, run.rivalWins ?? 0)])}`,
+      meeting && boss.kind === 'rival' && `💬 ${boss.name}: ${t(RIVAL_LINES[Math.min(RIVAL_LINES.length - 1, run.rivalWins ?? 0)])}${run.rivalWins ? ` ${t('(Você já me venceu {0} vezes. Meu time ficou mais forte!)').replace('{0}', run.rivalWins)}` : ''}`,
       meeting && boss.kind === 'villain' && `💬 ${boss.name}: ${t(VILLAIN_LINES[(run.floor + run.seed) % VILLAIN_LINES.length])}`,
       meeting && boss.kind === 'villain' && `💬 ${t(VILLAIN_PLANS[villainTeam(boss.name)] ?? VILLAIN_PLANS.rocket)}`,
       meeting && boss.kind === 'gym' && `💬 ${boss.name}: ${t(LEADER_LINES[leaderType(data, boss)] ?? LEADER_LINES.normal)}`,
