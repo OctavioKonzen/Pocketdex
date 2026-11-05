@@ -1943,7 +1943,7 @@ export function winFloor(run, data, after = {}) {
       if (run.team.length === 1) out.soloGym = true
       // As MOs vêm com as insígnias (Cut, Flash, Surf e Dive).
       hm = HM_BADGES[out.badges] ?? null
-      if (hm && !hasHm(run, hm)) out.hms = [...(run.hms ?? []), hm]
+      if (hm && !(run.hms ?? []).includes(hm)) out.hms = [...(run.hms ?? []), hm]
       else hm = null
     }
     if (beaten.kind === 'champion') {
@@ -2258,7 +2258,8 @@ function addDex(out, id) {
 
 /** As MOs (HMs): vêm com a 1ª, a 2ª, a 3ª e a 5ª insígnia. Cut abre um caminho escondido; Flash ilumina cavernas; Surf deixa ir para o mar; Dive, para o fundo do mar. */
 export const HM_BADGES = { 1: 'cut', 2: 'flash', 3: 'surf', 5: 'dive' }
-export const hasHm = (run, hm) => (run.hms ?? []).includes(hm)
+/** Tem a MO: ganhou com a insígnia ou um Pokémon do time sabe o golpe (não precisa passar do ginásio). */
+export const hasHm = (run, hm) => (run.hms ?? []).includes(hm) || (run.team ?? []).some((m) => (m?.moves ?? []).includes(hm))
 /** A MO que falta para ir por este caminho (null se nada falta): o mar pede Surf; o fundo do mar, Dive. */
 export function hmNeeded(run, node) {
   const deep = (node?.biome === 'underwater' && run.route?.biome !== 'underwater') || (node?.kind === 'dungeon' && node.scene === 'underwater')

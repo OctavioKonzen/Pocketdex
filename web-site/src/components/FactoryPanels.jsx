@@ -1137,7 +1137,7 @@ const HM_INFO = {
   dive: { name: 'Dive', icon: '🤿', help: 'Deixa mergulhar até o fundo do mar.' },
 }
 /** O aviso do caminho bloqueado: a MO que falta e com qual insígnia ela vem. */
-const hmHint = (run, node) => (hmNeeded(run, node) === 'dive' ? t('Precisa da MO Dive (5ª insígnia).') : t('Precisa da MO Surf (3ª insígnia).'))
+const hmHint = (run, node) => (hmNeeded(run, node) === 'dive' ? t('Precisa de um Pokémon com Dive no time (ou da 5ª insígnia).') : t('Precisa de um Pokémon com Surf no time (ou da 3ª insígnia).'))
 const CUT_INFO = { icon: '🌳', label: 'Caminho escondido', help: 'Aberto com Cut: um selvagem raro do lugar.' }
 const CITY_KIND_SET = new Set(['gym', 'elite', 'champion'])
 const EVENT_TEXT = {

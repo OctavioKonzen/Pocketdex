@@ -2182,7 +2182,7 @@ const _hmInfo = <String, (String, String, String)>{
 
 /// O aviso do caminho bloqueado: a MO que falta e com qual insígnia ela vem. Igual ao site.
 String _hmHint(Json run, Map? node) =>
-    FactoryRun.hmNeeded(run, node) == 'dive' ? tr('Precisa da MO Dive (5ª insígnia).') : tr('Precisa da MO Surf (3ª insígnia).');
+    FactoryRun.hmNeeded(run, node) == 'dive' ? tr('Precisa de um Pokémon com Dive no time (ou da 5ª insígnia).') : tr('Precisa de um Pokémon com Surf no time (ou da 3ª insígnia).');
 const _cutInfo = ('🌳', 'Caminho escondido', 'Aberto com Cut: um selvagem raro do lugar.');
 const _eventText = {
   'items': 'Você achou {1}× {0} no caminho!',

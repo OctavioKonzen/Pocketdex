@@ -2482,9 +2482,9 @@ class FactoryRun {
       if (beaten['kind'] == 'gym') {
         out['badges'] = ((run['badges'] as num?) ?? 0).toInt() + 1;
         if ((run['team'] as List).length == 1) out['soloGym'] = true;
-        // As MOs vêm com as insígnias (Cut, Flash e Surf).
+        // As MOs vêm com as insígnias (Cut, Flash, Surf e Dive).
         hm = hmBadges[out['badges']];
-        if (hm != null && !hasHm(run, hm)) {
+        if (hm != null && !(run['hms'] as List? ?? const []).contains(hm)) {
           out['hms'] = [...(run['hms'] as List? ?? const []), hm];
         } else {
           hm = null;
@@ -2757,7 +2757,10 @@ class FactoryRun {
   /// As MOs (HMs): vêm com a 1ª, a 2ª, a 3ª e a 5ª insígnia. Cut abre um caminho escondido; Flash ilumina cavernas; Surf
   /// deixa ir para o mar; Dive, para o fundo do mar. Igual ao site.
   static const hmBadges = {1: 'cut', 2: 'flash', 3: 'surf', 5: 'dive'};
-  static bool hasHm(Json run, String hm) => (run['hms'] as List? ?? const []).contains(hm);
+  /// Tem a MO: ganhou com a insígnia ou um Pokémon do time sabe o golpe (não precisa passar do ginásio). Igual ao site.
+  static bool hasHm(Json run, String hm) =>
+      (run['hms'] as List? ?? const []).contains(hm) ||
+      (run['team'] as List? ?? const []).any((m) => m is Map && (m['moves'] as List? ?? const []).contains(hm));
 
   /// A MO que falta para ir por este caminho (null se nada falta): o mar pede Surf; o fundo do mar, Dive.
   static String? hmNeeded(Json run, Map? node) {

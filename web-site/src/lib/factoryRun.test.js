@@ -17,7 +17,7 @@ import {
   tradeMon, skipTrade, TRADE_LEVELS, escapeRope, ESCAPE_HP, progress, ACHIEVEMENTS, LUCKY_EGG, rerollRoute, FOE_ITEMS,
   regionLegend, REGION_LEGENDS, starterLine, newMission, resolveChoice, MISSION_MONEY, CHOICE_EVENTS,
   clockOf, weatherOf, fieldOf, battleMusic, mapMusic, upgradeNeeds, UPGRADE_BRANCHES, unequipItem, SEASON_TYPES, BIOME_IDS, SCENE_FIELD,
-  HM_BADGES, cutPath, nodeBlocked, hmNeeded, dexOf, dexRewardFor, DEX_REWARDS, leaveDaycare, takeDaycare, teamRoom, DAYCARE_EGG, EGG_BATTLES, EGG_IVS, rematchBoss,
+  HM_BADGES, cutPath, nodeBlocked, hmNeeded, hasHm, dexOf, dexRewardFor, DEX_REWARDS, leaveDaycare, takeDaycare, teamRoom, DAYCARE_EGG, EGG_BATTLES, EGG_IVS, rematchBoss,
 } from './factoryRun'
 
 const data = JSON.parse(readFileSync(new URL('../../../assets/database/factory.json', import.meta.url), 'utf8'))
@@ -997,6 +997,10 @@ describe('mapa da corrida', () => {
     expect(hmNeeded({ ...base, hms: ['surf'] }, { kind: 'dungeon', place: 'sea', scene: 'water' })).toBe(null)
     expect(hmNeeded({ ...base, hms: ['surf'] }, { kind: 'dungeon', place: 'deep', scene: 'underwater' })).toBe('dive')
     expect(hmNeeded(base, { kind: 'trainer' })).toBe(null)
+    // Não precisa da insígnia: basta um Pokémon do time que saiba o golpe.
+    const diver = { ...sea, team: [...sea.team, { ...sea.team[0], moves: ['tackle', 'dive'] }] }
+    expect(nodeBlocked(diver, sea.route.options[0])).toBe(false)
+    expect(hasHm({ ...base, team: [{ ...base.team[0], moves: ['surf'] }] }, 'surf')).toBe(true)
     // Cut: um caminho escondido por rota.
     expect(cutPath(sea)).toBe(null)
     const cut = cutPath({ ...sea, hms: ['cut'] })

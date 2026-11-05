@@ -608,6 +608,13 @@ void main() {
     expect(FactoryRun.hmNeeded({...base, 'hms': ['surf']}, {'kind': 'dungeon', 'place': 'sea', 'scene': 'water'}), isNull);
     expect(FactoryRun.hmNeeded({...base, 'hms': ['surf']}, {'kind': 'dungeon', 'place': 'deep', 'scene': 'underwater'}), 'dive');
     expect(FactoryRun.hmNeeded(base, {'kind': 'trainer'}), isNull);
+    // Não precisa da insígnia: basta um Pokémon do time que saiba o golpe.
+    final diver = {
+      ...sea,
+      'team': [...sea['team'] as List, {...(sea['team'] as List)[0] as Map, 'moves': ['tackle', 'dive']}],
+    };
+    expect(FactoryRun.nodeBlocked(diver, dive), isFalse);
+    expect(FactoryRun.hasHm({...base, 'team': [{...(base['team'] as List)[0] as Map, 'moves': ['surf']}]}, 'surf'), isTrue);
     expect(FactoryRun.cutPath(sea), isNull);
     final cut = FactoryRun.cutPath({...sea, 'hms': ['cut']})!;
     expect((cut['route']['options'] as List).last, {'kind': 'wild', 'biome': 'water', 'rare': true, 'cut': true});
