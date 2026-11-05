@@ -129,10 +129,47 @@ class Trainers {
     'sd-backersf', 'sd-doubleteam', 'sd-hooligans', 'sd-interviewers', 'sd-preschoolers', 'sd-sisandbro', 'sd-teammates', 'sd-teamrocket', 'sd-twins', 'sd-youngcouple'};
   static bool isPair(Trainer t) => pairIds.contains(t.id);
 
-  /// Um treinador comum, sempre o mesmo para a mesma semente (o andar).
-  static Trainer? generic(int seed) {
+  /// Quem faz sentido em cada lugar (a classe do treinador, sem o "sd-", o número e os hífens): nadador e pescador na
+  /// água, alpinista na montanha e na caverna, esquiador na neve, executivo e policial na cidade... Igual ao site.
+  static const biomeTrainers = <String, List<String>>{
+    'grass': ['youngster', 'lass', 'bugcatcher', 'camper', 'picnicker', 'schoolkid', 'schoolkidf', 'schoolboy', 'schoolgirl', 'pokefan', 'pokefanf', 'acetrainer', 'acetrainerf', 'acetrainerm', 'preschooler', 'preschoolerf', 'birdkeeper', 'cyclist', 'cyclistf', 'jogger', 'pokekid'],
+    'forest': ['bugcatcher', 'camper', 'picnicker', 'pokemonranger', 'pokemonrangerf', 'rangerm', 'rangerf', 'aromalady', 'gardener', 'backpacker', 'backpackerf', 'ninjaboy', 'fairytalegirl'],
+    'flowers': ['aromalady', 'lass', 'beauty', 'gardener', 'fairytalegirl', 'picnicker', 'parasollady', 'preschoolerf', 'pokefanf'],
+    'bamboo': ['ninjaboy', 'blackbelt', 'battlegirl', 'kimonogirl', 'hiker', 'crushgirl'],
+    'water': ['swimmer', 'swimmerf', 'swimmerm', 'fisherman', 'sailor', 'tuber', 'tuberf', 'tuberm', 'surfer', 'scubadiver', 'freediver'],
+    'beach': ['swimmer', 'swimmerf', 'swimmerm', 'tuber', 'tuberf', 'tuberm', 'surfer', 'sailor', 'fisherman', 'parasollady', 'beauty', 'sightseer', 'sightseerf', 'tourist', 'touristf'],
+    'underwater': ['scubadiver', 'freediver', 'swimmer', 'swimmerf', 'swimmerm', 'fisherman'],
+    'seacave': ['scubadiver', 'freediver', 'swimmer', 'swimmerf', 'fisherman', 'sailor', 'hiker'],
+    'swamp': ['fisherman', 'bugcatcher', 'pokemaniac', 'psychic', 'psychicf', 'medium', 'supernerd'],
+    'poisoncave': ['pokemaniac', 'supernerd', 'scientist', 'scientistf', 'hiker', 'medium'],
+    'sewer': ['supernerd', 'burglar', 'pokemaniac', 'worker', 'janitor', 'punkguy', 'punkgirl', 'delinquent'],
+    'cave': ['hiker', 'ruinmaniac', 'pokemaniac', 'supernerd', 'blackbelt', 'backpacker', 'collector', 'worker'],
+    'crystal': ['hiker', 'ruinmaniac', 'collector', 'supernerd', 'scientist', 'scientistf'],
+    'icecave': ['skier', 'skierf', 'boarder', 'hiker', 'acetrainersnow', 'acetrainersnowf', 'workerice'],
+    'snow': ['skier', 'skierf', 'boarder', 'acetrainersnow', 'acetrainersnowf', 'workerice', 'hiker'],
+    'mountain': ['hiker', 'blackbelt', 'battlegirl', 'backpacker', 'backpackerf', 'pokemonranger', 'pokemonrangerf', 'birdkeeper', 'dragontamer', 'veteran', 'veteranf'],
+    'desert': ['hiker', 'ruinmaniac', 'backpacker', 'backpackerf', 'firebreather', 'tourist', 'collector'],
+    'dunes': ['hiker', 'ruinmaniac', 'backpacker', 'firebreather', 'collector', 'medium'],
+    'volcano': ['firebreather', 'hiker', 'blackbelt', 'worker', 'supernerd'],
+    'lavacave': ['firebreather', 'hiker', 'worker', 'supernerd'],
+    'city': ['officeworker', 'officeworkerf', 'gentleman', 'lady', 'richboy', 'madame', 'clerk', 'clerkf', 'policeman', 'waiter', 'waitress', 'artist', 'musician', 'guitarist', 'idol', 'reporter', 'cameraman', 'punkguy', 'punkgirl', 'delinquent', 'roughneck', 'cyclist', 'cyclistf', 'rollerskater', 'rollerskaterf', 'beauty', 'juggler', 'clown'],
+    'sky': ['birdkeeper', 'skytrainer', 'skytrainerf', 'pilot', 'dragontamer'],
+    'tower': ['medium', 'psychic', 'psychicf', 'psychicm', 'channeler'],
+    'ruins': ['ruinmaniac', 'psychic', 'psychicf', 'medium', 'collector'],
+    'temple': ['psychic', 'psychicf', 'medium', 'blackbelt', 'battlegirl', 'kimonogirl'],
+    'plant': ['scientist', 'scientistf', 'supernerd', 'worker', 'engineer'],
+  };
+
+  /// A classe de um treinador ("sd-swimmerf" → "swimmerf", "bug-catcher" → "bugcatcher").
+  static String trainerClass(Trainer t) => t.id.replaceFirst(RegExp(r'^sd-'), '').replaceFirst(RegExp(r'-(gen\d+\w*|\w*\d+)$'), '').replaceAll('-', '');
+
+  /// Um treinador comum, sempre o mesmo para a mesma semente (o andar); com [biome], um que faz sentido naquele lugar.
+  static Trainer? generic(int seed, [String? biome]) {
     final options = list.where((t) => isGeneric(t) && !isPair(t)).toList();
-    return options.isEmpty ? null : options[seed.abs() % options.length];
+    final want = biomeTrainers[biome];
+    final fit = want == null ? <Trainer>[] : options.where((t) => want.contains(trainerClass(t))).toList();
+    final pool = fit.isNotEmpty ? fit : options;
+    return pool.isEmpty ? null : pool[seed.abs() % pool.length];
   }
 
   /// Dois treinadores comuns juntos (a batalha em dupla), sempre os mesmos para a mesma semente.

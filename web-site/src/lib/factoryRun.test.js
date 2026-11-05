@@ -228,29 +228,29 @@ describe('Battle Factory (roguelike)', () => {
     // A trilha: 1 nó de cada melhoria (pede a melhoria), com o efeito dos 8 antigos:
     // o ramo dá o mesmo total de antes, com bem menos para comprar.
     expect(Object.keys(UPGRADES).filter((k) => k.includes('~')).length).toBe(63)
-    expect(UPGRADES['atk~1'].per).toBeGreaterThan(2)
+    expect(UPGRADES['atk~1'].per).toBe(2) // o começo da árvore escala pouco (depthPower)
     expect(UPGRADES['level~1'].max).toBe(1)
     expect(upgradeNeeds({ ...f, upgrades: { ...f.upgrades, atk: 0 } }, 'atk~1')).toContainEqual({ kind: 'up', id: 'atk', level: 1 })
     expect(UPGRADE_TREE['atk~1']).toEqual({ needs: ['atk', 1], best: 7 })
     const all = buyAll({ ...f, coins: 9999999 }, Object.keys(UPGRADES))
     const big = startRun(all, data, 1, 42)
     // A árvore inteira: forte no fim, não no começo (os nós valem pela profundidade, depthPower).
-    expect(big.teamBoost).toEqual({ hp: 0.46, atk: 0.84, def: 0.76, spa: 0.87, spd: 0.6, spe: 0.86 })
-    expect(big.mult).toEqual({ money: 1.86, exp: 2.21, shop: 0.7 })
-    expect([big.bag['poke-ball'], big.bag['great-ball'], big.bag['ultra-ball'], big.bag.potion, big.bag.revive, big.bag['escape-rope']]).toEqual([24, 17, 17, 20, 10, 2])
+    expect(big.teamBoost).toEqual({ hp: 0.36, atk: 0.66, def: 0.6, spa: 0.68, spd: 0.44, spe: 0.6 })
+    expect(big.mult).toEqual({ money: 1.67, exp: 1.92, shop: 0.75 })
+    expect([big.bag['poke-ball'], big.bag['great-ball'], big.bag['ultra-ball'], big.bag.potion, big.bag.revive, big.bag['escape-rope']]).toEqual([20, 11, 17, 15, 7, 2])
     // Com os nós de shiny da trilha, mais comum ainda (até MAX_SHINY_RATE).
     expect(big.shinyRate).toBeGreaterThan(11)
     expect(big.shinyRate).toBeLessThanOrEqual(MAX_SHINY_RATE)
     expect(UPGRADES[Object.keys(UPGRADE_FX).find((k) => UPGRADE_FX[k][0] === 'shiny' && k.includes('~'))].label).toBe('+{0}× de chance de shiny')
     // Os efeitos que mudam a corrida: dinheiro no começo, cura depois de cada vitória, nível e IVs do inicial.
-    expect([big.money, big.winHeal, big.team[0].level, Math.min(...Object.values(big.team[0].ivs)), big.rerolls, big.stash.length, big.catchBonus]).toEqual([980, 35, 13, 31, 10, 46, 150])
+    expect([big.money, big.winHeal, big.team[0].level, Math.min(...Object.values(big.team[0].ivs)), big.rerolls, big.stash.length, big.catchBonus]).toEqual([815, 28, 12, 31, 7, 40, 147])
     // A captura mais fácil vai para a batalha (o motor multiplica a taxa de captura).
-    expect(captureFor({ ...big, encounter: { kind: 'wild', foes: [{ id: 16 }] } }, data)).toMatchObject({ bonus: 150 })
-    expect(big.tokens).toEqual({ 'move-tutor': 17, 'move-reminder': 13 })
-    expect(endRun(all, { ...big, floor: 11, defeated: 0, bosses: 0 }).last.coins).toBe(137)
+    expect(captureFor({ ...big, encounter: { kind: 'wild', foes: [{ id: 16 }] } }, data)).toMatchObject({ bonus: 147 })
+    expect(big.tokens).toEqual({ 'move-tutor': 14, 'move-reminder': 10 })
+    expect(endRun(all, { ...big, floor: 11, defeated: 0, bosses: 0 }).last.coins).toBe(135)
     // A cura depois da vitória: só em quem está de pé, até o HP cheio.
     const healRun = { ...big, team: [{ ...big.team[0], hp: 0.3 }, { ...big.team[0], hp: 0 }, { ...big.team[0], hp: 0.8 }], encounter: { kind: 'wild', foes: [{ id: 16, level: 3, iv: 0, ev: 0 }] } }
-    expect(winFloor(healRun, data, { hp: [0.3, 0, 0.8], fought: [[0]] }).team.map((m) => m.hp)).toEqual([0.65, 0, 1])
+    expect(winFloor(healRun, data, { hp: [0.3, 0, 0.8], fought: [[0]] }).team.map((m) => m.hp)).toEqual([0.58, 0, 1])
     // Um nó que saiu da árvore: as moedas voltam.
     const stale = normalizeOwned({ ...all, coins: 0, upgrades: { ...all.upgrades, 'atk~9': 1 } }, data)
     expect(stale.upgrades['atk~9']).toBe(undefined)

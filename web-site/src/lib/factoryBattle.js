@@ -102,13 +102,13 @@ export const GRUNT_TRAINERS = {
 }
 
 export function factoryFoe(run) {
-  const { kind, boss, grunt, trainerSeed, pair } = run.encounter
+  const { kind, boss, grunt, trainerSeed, pair, scene } = run.encounter
   return {
     // Dupla de treinadores: os dois juntos.
     foeName: boss?.name ?? (pair ? t('Dupla de treinadores') : ''),
     // Na base de uma equipe vilã, o capanga dela; os outros treinadores, uma classe comum (Youngster, Hiker...), nunca um líder.
     // A dupla de treinadores: o sprite com os dois juntos.
-    foeTrainer: boss?.trainer || (grunt ? GRUNT_TRAINERS[grunt]?.[(trainerSeed ?? 0) % 2] : null) || (kind === 'wild' || kind === 'wildboss' ? null : `${pair ? 'pair' : 'generic'}:${trainerSeed ?? 0}`),
+    foeTrainer: boss?.trainer || (grunt ? GRUNT_TRAINERS[grunt]?.[(trainerSeed ?? 0) % 2] : null) || (kind === 'wild' || kind === 'wildboss' ? null : pair ? `pair:${trainerSeed ?? 0}` : `generic:${trainerSeed ?? 0}:${scene ?? ''}`),
     challenge: { kind: 'factory', wild: kind === 'wild' || kind === 'wildboss', ...(boss ? { boss } : {}) },
   }
 }

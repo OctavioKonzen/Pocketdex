@@ -16,7 +16,7 @@ export function playSound(name, volume = 0.6, from = 0) {
     const base = cache.get(name) ?? new Audio(url(name))
     cache.set(name, base)
     const audio = base.cloneNode()
-    audio.volume = volume
+    audio.volume = Math.min(1, volume * SFX_LEVEL)
     if (from > 0) audio.currentTime = from
     audio.play().catch(() => {})
   } catch {
@@ -95,8 +95,13 @@ function stopSource(now = false) {
 export const HIT_AT = 0.7
 export const syncedStart = (speed) => (speed <= 1 ? 0 : HIT_AT - HIT_AT / speed)
 
-/** O volume da música no tocador: 0,6 × o das Configurações (0,5 dá o 0,3 de sempre). Igual ao app. */
-export const musicLevel = () => 0.6 * (usePrefs.getState().musicVolume ?? 0.5)
+/** O volume da música no tocador, pelo das Configurações. */
+export const musicLevel = () => 0.9 * (usePrefs.getState().musicVolume ?? 0.5)
+/**
+ * A música e os efeitos no mesmo nível: os efeitos (golpes, Poké Ball...) são curtos e fortes, e tocavam uns 8 dB acima
+ * da música. A música sobe (0,9 × o das Configurações: 0,5 dá 0,45) e os efeitos descem (×0,6). Igual ao app.
+ */
+export const SFX_LEVEL = 0.6
 
 /** Mudou o volume nas Configurações: a música que está tocando acompanha. */
 export function applyVolume() {

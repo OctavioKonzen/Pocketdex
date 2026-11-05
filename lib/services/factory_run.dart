@@ -576,10 +576,11 @@ class FactoryRun {
   /// nós que saíram recebe as moedas de volta pelo preço de então.
   static const _legacyLength = 8, _legacyKeystone = 4;
 
-  /// A árvore fica forte mais para o fim: a força de um nó pela profundidade (o recorde que ele pede): 15% no começo,
-  /// subindo até 100% no recorde 40. E o preço também sobe com a profundidade. Igual ao site.
-  static double depthPower(int best) => math.min(1.0, math.max(0.15, best / 40));
-  static double depthPrice(int best) => 1 + best / 10;
+  /// A árvore fica forte mais para o fim, em curva: a força de um nó pela profundidade (o recorde que ele pede) sobe
+  /// pouco no começo e cada vez mais depois (8% no começo, 31% no recorde 20, 60% no 30 e 100% no 40). O preço também
+  /// sobe em curva com a profundidade (1,1× no começo, 9× no recorde 40). Igual ao site.
+  static double depthPower(int best) => math.min(1.0, 0.08 + 0.92 * math.pow(best / 40, 2)).toDouble();
+  static double depthPrice(int best) => 1 + math.pow(best / 10, 1.5).toDouble();
   static int legacyMinorPrice(int parentBase, int k) => ((parentBase * 0.4 + 120 * k) / 10).round() * 10 * (k % _legacyKeystone == 0 ? 2 : 1);
 
   /// O máximo de níveis a mais no inicial pelos nós da trilha.

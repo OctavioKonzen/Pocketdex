@@ -86,7 +86,7 @@ class BattleSounds {
       final player = await _fxPlayer(name);
       await player.stop();
       if (from > Duration.zero) await player.seek(from);
-      await player.setVolume(volume);
+      await player.setVolume(volume * sfxLevel);
       await player.resume();
     } catch (_) {
       // Sem som: a batalha continua.
@@ -149,8 +149,11 @@ class BattleSounds {
   static const hitAt = Duration(milliseconds: 700);
   static Duration syncedStart(int speed) => speed <= 1 ? Duration.zero : hitAt - hitAt ~/ speed;
 
-  /// O volume da música no tocador: 0,6 × o das Configurações (0,5 dá o 0,3 de sempre). Igual ao site.
-  static double get musicLevel => 0.6 * AppSettings.instance.musicVolume;
+  /// O volume da música no tocador, pelo das Configurações.
+  /// A música e os efeitos no mesmo nível: os efeitos (golpes, Poké Ball...) são curtos e fortes, e tocavam uns 8 dB
+  /// acima da música. A música sobe (0,9 × o das Configurações: 0,5 dá 0,45) e os efeitos descem (×0,6). Igual ao site.
+  static double get musicLevel => 0.9 * AppSettings.instance.musicVolume;
+  static const sfxLevel = 0.6;
 
   /// Mudou o volume nas Configurações: a música que está tocando acompanha.
   static Future<void> applyVolume() async {

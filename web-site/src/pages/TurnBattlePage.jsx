@@ -958,8 +958,8 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   const trainers = useTrainers()
   const [foeCoach] = useState(() => foeTrainer)
   // Pokémon selvagem (Battle Factory): sem treinador do outro lado.
-  // "generic:<semente>": um treinador comum (de rota), nunca um líder ou um personagem importante.
-  const coach = wild ? null : (typeof foeCoach === 'string' ? (foeCoach.startsWith('generic:') ? genericTrainer(trainers, Number(foeCoach.slice(8))) : trainers?.find((x) => x.id === foeCoach)) : foeCoach) ?? randomOnce(trainers, myTrainer?.id, battle)
+  // "generic:<semente>:<lugar>": um treinador comum (de rota) que faz sentido no lugar, nunca um líder ou um personagem importante.
+  const coach = wild ? null : (typeof foeCoach === 'string' ? (foeCoach.startsWith('generic:') ? genericTrainer(trainers, Number(foeCoach.split(':')[1]), foeCoach.split(':')[2] || null) : trainers?.find((x) => x.id === foeCoach)) : foeCoach) ?? randomOnce(trainers, myTrainer?.id, battle)
   // A abertura (treinadores e Poké Balls) só no começo de uma batalha nova.
   // keepMine (Battle Factory): o seu Pokémon já está em campo (veio da tela da corrida): sem o treinador e a Poké Ball do seu lado.
   const [intro, setIntro] = useState(() => (!online && battle.turn <= 1 ? { foe: 'in', me: keepMine ? 'gone' : 'in', back: 0 } : null))

@@ -519,11 +519,12 @@ const BASE_BRANCHES = [
  */
 export const MINOR_LENGTH = 1
 /**
- * A árvore fica forte mais para o fim: a força de um nó pela profundidade (o recorde que ele pede): 15% no começo,
- * subindo até 100% no recorde 40. E o preço também sobe com a profundidade. Igual ao app.
+ * A árvore fica forte mais para o fim, em curva: a força de um nó pela profundidade (o recorde que ele pede) sobe
+ * pouco no começo e cada vez mais depois (8% no começo, 31% no recorde 20, 60% no 30 e 100% no 40). O preço também
+ * sobe em curva com a profundidade (1,1× no começo, 9× no recorde 40). Igual ao app.
  */
-export const depthPower = (best) => Math.min(1, Math.max(0.15, best / 40))
-export const depthPrice = (best) => 1 + best / 10
+export const depthPower = (best) => Math.min(1, 0.08 + 0.92 * (best / 40) ** 2)
+export const depthPrice = (best) => 1 + (best / 10) ** 1.5
 /** O segundo nó da trilha é o nó-chave (só no desenho). */
 export const KEYSTONE_EVERY = 2
 /**

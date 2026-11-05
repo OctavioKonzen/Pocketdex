@@ -218,7 +218,10 @@ const _gruntTrainers = {
             : kind == 'wild' || kind == 'wildboss'
                 ? null
                 // A dupla de treinadores: o sprite com os dois juntos.
-                : '${encounter['pair'] == true ? 'pair' : 'generic'}:${(encounter['trainerSeed'] as num?)?.toInt() ?? 0}',
+                : encounter['pair'] == true
+                    ? 'pair:${(encounter['trainerSeed'] as num?)?.toInt() ?? 0}'
+                    // Um treinador que faz sentido no lugar do encontro (nadador na água, alpinista na montanha...).
+                    : 'generic:${(encounter['trainerSeed'] as num?)?.toInt() ?? 0}:${encounter['scene'] ?? ''}',
     challenge: {'kind': 'factory', 'wild': kind == 'wild' || kind == 'wildboss', if (boss != null) 'boss': Map<String, dynamic>.from(boss)},
   );
 }

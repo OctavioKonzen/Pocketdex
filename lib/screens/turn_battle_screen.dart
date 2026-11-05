@@ -1467,11 +1467,11 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
   Future<void> _onlineQueue = Future.value();
 
   /// Os treinadores da abertura: o seu (de costas) e o do adversário.
-  // "generic:<semente>": um treinador comum (de rota), nunca um líder ou um personagem importante.
+  // "generic:<semente>:<lugar>": um treinador comum (de rota) que faz sentido no lugar, nunca um líder ou um personagem importante.
   late final Trainer? _coach = widget.wild
       ? null
       : widget.foeTrainer?.startsWith('generic:') == true
-          ? Trainers.generic(int.tryParse(widget.foeTrainer!.substring(8)) ?? 0)
+          ? Trainers.generic(int.tryParse(widget.foeTrainer!.split(':')[1]) ?? 0, widget.foeTrainer!.split(':').elementAtOrNull(2))
           : widget.foeTrainer != null
               ? Trainers.byId(widget.foeTrainer)
               : Trainers.random();
