@@ -1310,7 +1310,7 @@ Widget _bestRuns(BuildContext context, List gallery) {
             const SizedBox(width: 4),
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(tr('Andar {0}').replaceAll('{0}', '${g['floor']}'), style: TextStyle(fontWeight: FontWeight.bold, color: c.text, fontSize: 13)),
-              Text('${g['nuzlocke'] == true ? '🕯️ ' : ''}${g['weekly'] == true ? '🏆 ' : ''}${'${g['date']}'.split('-').reversed.join('/')}',
+              Text('${(g['games'] as num? ?? 0) > 0 ? '🎮${g['games']} ' : ''}${g['nuzlocke'] == true ? '🕯️ ' : ''}${g['weekly'] == true ? '🏆 ' : ''}${'${g['date']}'.split('-').reversed.join('/')}',
                   style: TextStyle(color: c.muted, fontSize: 11)),
             ]),
             const SizedBox(width: 8),
@@ -1804,7 +1804,7 @@ class _FactoryHubState extends State<FactoryHub> {
             ),
             const SizedBox(height: 4),
             // Os Star Pieces (caem dos chefes) destravam a árvore. Igual ao site.
-            Text('${tr('Recorde: andar {0}').replaceAll('{0}', '${factory['best']}')} · 🪙 $coins ${tr('moedas')} · ${piecesLine(FactoryRun.piecesOf(factory), all: true)}',
+            Text('${tr('Recorde: andar {0}').replaceAll('{0}', '${factory['best']}')}${(factory['bestGames'] as num? ?? 0) > 0 ? ' · 🎮 ${tr('{0} jogos zerados numa corrida').replaceAll('{0}', '${factory['bestGames']}')}' : ''} · 🪙 $coins ${tr('moedas')} · ${piecesLine(FactoryRun.piecesOf(factory), all: true)}',
                 key: const ValueKey('factory-pieces'), style: TextStyle(fontWeight: FontWeight.bold, color: c.text)),
             if (((factory['refunded'] as num?) ?? 0) > 0)
               Container(
@@ -2492,6 +2492,13 @@ class _FactoryScreenState extends State<FactoryScreen> {
             child: Row(children: [
               for (final w in <Widget>[
                 Text('🎲 ${tr('Andar {0}').replaceAll('{0}', '${run['floor']}')}', style: style),
+                // O jogo da corrida (cada um é um degrau de dificuldade).
+                Tooltip(
+                  message: tr('Jogo {0} da corrida: adversários +{1}% em todos os atributos')
+                      .replaceAll('{0}', '${FactoryRun.gameOf(run)}')
+                      .replaceAll('{1}', '${(FactoryRun.foeBoostAt(FactoryRun.tierOf(run)) * 100).round()}'),
+                  child: Text('🎮 ${FactoryRun.gameOf(run)}', key: const ValueKey('factory-game'), style: style),
+                ),
                 Text('💰 ${run['money']}', style: style),
                 Text('🎒 ${FactoryRun.bagItems.fold<int>(0, (n, id) => n + (bag[id] ?? 0))}', key: const ValueKey('factory-bag-count'), style: style),
                 // Os ovos que vão junto: quantas vitórias faltam para chocar.
@@ -2799,7 +2806,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
           PartySlot(
               id: (m['id'] as num).toInt(),
               shiny: m['shiny'] == true,
-              name: _name(m['id']),
+              name: (m['nick'] as String?) ?? _name(m['id']),
               level: (m['level'] as num).toInt(),
               hp: FactoryRun.hpOf(m).toDouble(),
               sub: m['item'] != null ? _itemName('${m['item']}') : null),
@@ -3798,7 +3805,23 @@ class _FactoryScreenState extends State<FactoryScreen> {
     final legend = FactoryRun.regionLegend(data, run);
     final clock = FactoryRun.clockOf();
     final mission = run['mission'] as Map?;
-    void pick(int k) {
+    Future<void> pick(int k) async {
+      // Antes da Elite dos Quatro (como nos jogos): depois dela, as lutas da Liga vêm uma atrás da outra.
+      final options = (run['route']?['options'] as List?) ?? const [];
+      if (k < options.length && options[k]['kind'] == 'boss' && FactoryRun.leagueAhead(data, run)) {
+        final go = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            key: const ValueKey('league-ask'),
+            content: Text(tr('A Liga começa aqui: depois da primeira da Elite dos Quatro, as lutas vêm uma atrás da outra, sem Centro Pokémon. Quer seguir?')),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context, false), child: Text(tr('NÃO'))),
+              FilledButton(key: const ValueKey('league-go'), onPressed: () => Navigator.pop(context, true), child: Text(tr('SIM'))),
+            ],
+          ),
+        );
+        if (go != true || !mounted) return;
+      }
       final next = FactoryRun.chooseNode(run, data, k, FactoryRun.clockOf());
       if (identical(next, run)) return;
       setState(() => saveFactory({...currentFactory(), 'run': next}));
@@ -5079,12 +5102,33 @@ class _PcPanel extends StatefulWidget {
 
 typedef _PcLoc = ({String where, int index});
 
+/// O fundo de cada caixa (como nos jogos). Igual ao site.
+const _wallColors = {
+  'classic': [Color(0xFF2B8A9E), Color(0xFF1F6F80)],
+  'forest': [Color(0xFF4D9A4F), Color(0xFF2F6B33)],
+  'cave': [Color(0xFF8A6A4C), Color(0xFF5A4330)],
+  'sea': [Color(0xFF3A7FD1), Color(0xFF1F4F99)],
+  'desert': [Color(0xFFE0B765), Color(0xFFB8873A)],
+  'snow': [Color(0xFFB9D9EF), Color(0xFF7FA9CC)],
+  'volcano': [Color(0xFFC9502F), Color(0xFF7D2A18)],
+  'night': [Color(0xFF4B3C8F), Color(0xFF251C52)],
+};
+
+/// O nome do golpe ou do item como no jogo (inglês, sem traduzir).
+String _prettySlug(Object? slug) => '${slug ?? ''}'.split('-').map((w) => w.isEmpty ? w : '${w[0].toUpperCase()}${w.substring(1)}').join(' ');
+
 class _PcPanelState extends State<_PcPanel> {
   int _box = 0;
   _PcLoc? _picked;
   Timer? _nav;
 
   Json get run => widget.run;
+
+  /// O memorial do Nuzlocke: uma página a mais, depois das caixas (só para ver).
+  List get _memorial => (run['memorial'] as List?) ?? const [];
+  int get _pages => FactoryRun.pcBoxes + (_memorial.isEmpty ? 0 : 1);
+  bool get _inMemorial => _box >= FactoryRun.pcBoxes;
+  String _label(Map m) => (m['nick'] as String?) ?? widget.nameOf(m['id']);
 
   @override
   void dispose() {
@@ -5110,7 +5154,7 @@ class _PcPanelState extends State<_PcPanel> {
         context: context,
         builder: (context) => AlertDialog(
           key: const ValueKey('pc-ask'),
-          content: Text(tr('Trocar {0} por {1}?').replaceAll('{0}', widget.nameOf(a['id'])).replaceAll('{1}', widget.nameOf(b['id'])),
+          content: Text(tr('Trocar {0} por {1}?').replaceAll('{0}', _label(a)).replaceAll('{1}', _label(b)),
               style: const TextStyle(fontWeight: FontWeight.w900)),
           actions: [
             TextButton(key: const ValueKey('pc-ask-no'), onPressed: () => Navigator.pop(context, false), child: Text(tr('NÃO'))),
@@ -5179,6 +5223,35 @@ class _PcPanelState extends State<_PcPanel> {
     );
   }
 
+  /// Quem caiu (Nuzlocke): em cinza, só para ver.
+  Widget _memorialCell(int k) {
+    final m = k < _memorial.length ? _memorial[k] as Map : null;
+    return Container(
+      decoration: BoxDecoration(color: const Color(0x33000000), border: Border.all(color: const Color(0x33FFFFFF), width: 2), borderRadius: BorderRadius.circular(8)),
+      clipBehavior: Clip.hardEdge,
+      child: m == null
+          ? null
+          : Tooltip(
+              message: '${_label(m)} · Nv. ${m['level']} · ${tr('andar')} ${m['floor']}',
+              child: Stack(fit: StackFit.expand, children: [
+                Padding(
+                  padding: const EdgeInsets.all(2),
+                  child: Center(
+                    child: AspectRatio(
+                      aspectRatio: 1,
+                      child: ColorFiltered(
+                        colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.saturation),
+                        child: PokemonSprite((m['id'] as num).toInt(), shiny: m['shiny'] == true, fill: 0.85),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(right: 2, bottom: 0, child: Text('${m['level']}', style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Colors.white))),
+              ]),
+            ),
+    );
+  }
+
   /// ◀ ▶: tocar muda de caixa; segurando um Pokémon em cima deles, também (como nos jogos).
   Widget _navButton(int step, String label, String key) => DragTarget<_PcLoc>(
         onWillAcceptWithDetails: (_) {
@@ -5192,7 +5265,7 @@ class _PcPanelState extends State<_PcPanel> {
           _nav?.cancel();
           _nav = null;
         },
-        builder: (context, _, __) => _title(label, key: key, onTap: () => setState(() => _box = (_box + step + FactoryRun.pcBoxes) % FactoryRun.pcBoxes)),
+        builder: (context, _, __) => _title(label, key: key, onTap: () => setState(() => _box = (_box + step + _pages) % _pages)),
       );
 
   Widget _title(String text, {String? key, VoidCallback? onTap}) => Material(
@@ -5210,6 +5283,45 @@ class _PcPanelState extends State<_PcPanel> {
             ),
           ),
         ),
+      );
+
+  Future<void> _nickname() async {
+    final at = _picked;
+    final mon = at == null ? null : _monAt(at);
+    if (at == null || mon == null) return;
+    final controller = TextEditingController(text: '${mon['nick'] ?? ''}');
+    final nick = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(tr('Apelido (vazio tira)')),
+        content: TextField(key: const ValueKey('pc-nick-field'), controller: controller, autofocus: true, maxLength: 12),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(tr('NÃO'))),
+          FilledButton(key: const ValueKey('pc-nick-ok'), onPressed: () => Navigator.pop(context, controller.text), child: Text(tr('OK'))),
+        ],
+      ),
+    );
+    if (nick != null) widget.onSave(FactoryRun.setNick(run, at, nick));
+  }
+
+  /// Os dados de quem foi tocado (sem tirar do PC) e o apelido.
+  Widget _info(Json mon) => Container(
+        key: const ValueKey('pc-info'),
+        margin: const EdgeInsets.only(top: 4),
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFF1E293B), width: 3)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+          Text('${mon['shiny'] == true ? '✨ ' : ''}${_label(mon)}${mon['nick'] != null ? ' (${widget.nameOf(mon['id'])})' : ''} · Nv. ${mon['level']}',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+          Text('${tr('Nature')}: ${mon['nature'] ?? '—'}${mon['item'] != null ? ' · ${_prettySlug(mon['item'])}' : ''}',
+              style: const TextStyle(fontSize: 11, color: Color(0xFF0F172A))),
+          if (((mon['moves'] as List?) ?? const []).isNotEmpty)
+            Text([for (final m in mon['moves'] as List) _prettySlug(m)].join(' · '), style: const TextStyle(fontSize: 11, color: Color(0xFF0F172A))),
+          Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+            TextButton(key: const ValueKey('pc-nick'), onPressed: _nickname, child: Text('✏️ ${tr('APELIDO')}')),
+            TextButton(onPressed: () => setState(() => _picked = null), child: Text(tr('FECHAR'))),
+          ]),
+        ]),
       );
 
   Future<void> _rename() async {
@@ -5231,10 +5343,12 @@ class _PcPanelState extends State<_PcPanel> {
   @override
   Widget build(BuildContext context) {
     final room = FactoryRun.teamRoom(run);
+    if (_box >= _pages) _box = 0;
+    final info = _picked == null ? null : _monAt(_picked!);
     return Container(
       padding: const EdgeInsets.all(6),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(colors: [Color(0xFF2B8A9E), Color(0xFF1F6F80)], begin: Alignment.topCenter, end: Alignment.bottomCenter),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: _wallColors[_inMemorial ? 'night' : FactoryRun.boxWall(run, _box)]!, begin: Alignment.topCenter, end: Alignment.bottomCenter),
       ),
       child: LayoutBuilder(builder: (context, size) {
         return Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -5254,7 +5368,15 @@ class _PcPanelState extends State<_PcPanel> {
               Row(children: [
                 _navButton(-1, '◀', 'pc-box-prev'),
                 const SizedBox(width: 4),
-                Expanded(child: _title('💻 ${FactoryRun.boxName(run, _box)} ✏️', key: 'pc-box-name', onTap: _rename)),
+                Expanded(
+                  child: _inMemorial
+                      ? _title('🕯️ ${tr('Memorial')}', key: 'pc-box-name')
+                      : _title('💻 ${FactoryRun.boxName(run, _box)} ✏️', key: 'pc-box-name', onTap: _rename),
+                ),
+                if (!_inMemorial) ...[
+                  const SizedBox(width: 4),
+                  _title('🎨', key: 'pc-box-wall', onTap: () => widget.onSave(FactoryRun.nextWall(run, _box))),
+                ],
                 const SizedBox(width: 4),
                 _navButton(1, '▶', 'pc-box-next'),
               ]),
@@ -5264,15 +5386,23 @@ class _PcPanelState extends State<_PcPanel> {
                     padding: const EdgeInsets.only(top: 4),
                     child: Row(children: [
                       for (var c = 0; c < 6; c++)
-                        Expanded(child: Padding(padding: EdgeInsets.only(left: c == 0 ? 0 : 4), child: _cell((where: 'pc', index: _box * FactoryRun.pcBox + r * 6 + c)))),
+                        Expanded(
+                          child: Padding(
+                            padding: EdgeInsets.only(left: c == 0 ? 0 : 4),
+                            child: _inMemorial ? _memorialCell(r * 6 + c) : _cell((where: 'pc', index: _box * FactoryRun.pcBox + r * 6 + c)),
+                          ),
+                        ),
                     ]),
                   ),
                 ),
-              Padding(
-                padding: const EdgeInsets.only(top: 3),
-                child: Text(tr('Arraste um Pokémon para outra vaga para trocar.'), textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
-              ),
+              if (info != null)
+                _info(info)
+              else
+                Padding(
+                  padding: const EdgeInsets.only(top: 3),
+                  child: Text(_inMemorial ? tr('Quem caiu nesta corrida (Nuzlocke).') : tr('Arraste um Pokémon para outra vaga para trocar.'), textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
+                ),
             ]),
           ),
         ]);
