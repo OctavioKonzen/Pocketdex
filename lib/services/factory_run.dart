@@ -2650,12 +2650,14 @@ class FactoryRun {
       team.add(mon);
     } else if (replace == toPc) {
       // Time cheio: o capturado vai para o PC (dá para trocar no Centro Pokémon da cidade).
-      if (pcOf(run).length >= pcSize) return run;
-      out['pc'] = [...pcOf(run), mon];
+      final pc = pcPut(run, mon);
+      if (pc == null) return run;
+      out['pc'] = pc;
     } else if (replace != null && replace >= 0 && replace < team.length) {
       // Quem sai do time vai para o PC.
-      final pc = [...pcOf(run), {...team[replace], 'hp': 1}];
-      out['pc'] = pc.length > pcSize ? pc.sublist(pc.length - pcSize) : pc;
+      final pc = pcPut(run, {...team[replace], 'hp': 1});
+      if (pc == null) return run;
+      out['pc'] = pc;
       team[replace] = mon;
     } else {
       return run;
@@ -2772,43 +2774,84 @@ class FactoryRun {
   /// Vagas para Pokémon no time: cada ovo ocupa uma.
   static int teamRoom(Json run) => maxTeam - eggsOf(run).length;
 
-  /// O PC (como nos jogos): os capturados que não cabem no time ficam guardados nele (até [pcSize]); no Centro
-  /// Pokémon da cidade dá para tirar, guardar e trocar. Quem está no PC fica curado. Igual ao site.
-  static const pcSize = 60;
-  static List<Json> pcOf(Json run) => [for (final m in (run['pc'] as List?) ?? const []) Map<String, dynamic>.from(m as Map)];
+  /// O PC (como nos jogos): os capturados que não cabem no time ficam guardados nele, em [pcBoxes] caixas de 6×6 (com
+  /// nome); no Centro Pokémon da cidade dá para mexer: arrastar um Pokémon para outra vaga (do time ou do PC) troca os
+  /// dois. Quem está no PC fica curado. run['pc']: as vagas (null = vazia). Igual ao site.
+  static const pcBox = 36, pcBoxes = 8, pcSize = pcBox * pcBoxes;
+
+  /// As vagas do PC (null = vazia), [pcSize] no total.
+  static List<Json?> pcSlots(Json run) {
+    final pc = (run['pc'] as List?) ?? const [];
+    return [for (var k = 0; k < pcSize; k++) k < pc.length && pc[k] != null ? Map<String, dynamic>.from(pc[k] as Map) : null];
+  }
+
+  /// Os guardados (sem as vagas vazias).
+  static List<Json> pcOf(Json run) => [for (final m in (run['pc'] as List?) ?? const []) if (m != null) Map<String, dynamic>.from(m as Map)];
+
+  /// O nome da caixa (o que você escolheu ou "Box 1"...).
+  static String boxName(Json run, int box) {
+    final names = (run['pcNames'] as List?) ?? const [];
+    final name = box < names.length ? '${names[box] ?? ''}' : '';
+    return name.isNotEmpty ? name : 'Box ${box + 1}';
+  }
+
+  static List<Json?> _trimPc(List<Json?> pc) {
+    final out = [...pc];
+    while (out.isNotEmpty && out.last == null) {
+      out.removeLast();
+    }
+    return out;
+  }
+
+  /// O PC com o Pokémon na primeira vaga vazia (null: cheio).
+  static List<Json?>? pcPut(Json run, Json mon) {
+    final pc = pcSlots(run);
+    final k = pc.indexOf(null);
+    if (k < 0) return null;
+    pc[k] = mon;
+    return _trimPc(pc);
+  }
 
   /// Está no Centro Pokémon da cidade (onde fica o PC).
   static bool atPc(Json run) => pendingOf(run)?['center'] == true && pendingOf(run)?['town'] == true;
 
-  /// Tira do PC (pcIndex) para o time; com o time cheio, troca com teamIndex (que vai para o PC no lugar dele).
-  static Json? pcWithdraw(Json run, int pcIndex, [int? teamIndex]) {
-    final pc = pcOf(run);
-    if (!atPc(run) || pcIndex < 0 || pcIndex >= pc.length) return null;
-    final mon = {...pc[pcIndex], 'hp': 1};
-    final team = teamOf(run);
-    final out = _copy(run);
-    if (teamIndex == null) {
-      if (team.length >= teamRoom(run)) return null;
-      out['team'] = [...team, mon];
-      out['pc'] = [for (var k = 0; k < pc.length; k++) if (k != pcIndex) pc[k]];
-      return out;
+  /// Arrasta um Pokémon (from) para outra vaga (to): (where: 'team' | 'pc', index). Vaga com alguém: os dois trocam de
+  /// lugar; vaga vazia: ele vai para lá (na vaga vazia do time, entra no fim do time). O time nunca fica vazio. Igual ao site.
+  static Json? pcMove(Json run, ({String where, int index}) from, ({String where, int index}) to) {
+    if (!atPc(run) || (from.where == to.where && from.index == to.index)) return null;
+    final team = <Json?>[...teamOf(run)];
+    final pc = pcSlots(run);
+    Json? get(({String where, int index}) l) => l.where == 'team' ? (l.index >= 0 && l.index < team.length ? team[l.index] : null) : (l.index >= 0 && l.index < pc.length ? pc[l.index] : null);
+    void set(({String where, int index}) l, Json? m) => l.where == 'team' ? team[l.index] = m : pc[l.index] = m;
+    final a = get(from);
+    if (a == null || (to.where == 'pc' && !(to.index >= 0 && to.index < pcSize)) || (to.where == 'team' && to.index < 0)) return null;
+    final b = get(to);
+    if (to.where == 'team' && b == null) {
+      // Na vaga vazia do time: entra no fim (se couber).
+      if (from.where == 'team' || team.length >= teamRoom(run)) return null;
+      set(from, null);
+      team.add(a);
+    } else {
+      set(to, a);
+      set(from, b);
     }
-    if (teamIndex < 0 || teamIndex >= team.length) return null;
-    final leaving = {...team[teamIndex], 'hp': 1};
-    team[teamIndex] = mon;
-    out['team'] = team;
-    out['pc'] = [for (var k = 0; k < pc.length; k++) k == pcIndex ? leaving : pc[k]];
+    final heal = from.where == 'pc' || to.where == 'pc';
+    final nextTeam = [for (final m in team) if (m != null) heal ? {...m, 'hp': 1} : m];
+    if (nextTeam.isEmpty) return null;
+    final out = _copy(run);
+    out['team'] = nextTeam;
+    out['pc'] = _trimPc([for (final m in pc) m == null ? null : {...m, 'hp': 1}]);
     return out;
   }
 
-  /// Guarda no PC quem está no time (o time nunca fica vazio).
-  static Json? pcDeposit(Json run, int teamIndex) {
-    final team = teamOf(run);
-    if (!atPc(run) || teamIndex < 0 || teamIndex >= team.length || team.length <= 1 || pcOf(run).length >= pcSize) return null;
-    final out = _copy(run);
-    out['team'] = [for (var k = 0; k < team.length; k++) if (k != teamIndex) team[k]];
-    out['pc'] = [...pcOf(run), {...team[teamIndex], 'hp': 1}];
-    return out;
+  /// Dá nome à caixa (até 16 letras; vazio volta ao "Box N").
+  static Json renameBox(Json run, int box, String name) {
+    if (box < 0 || box >= pcBoxes) return run;
+    final old = (run['pcNames'] as List?) ?? const [];
+    final names = [for (var k = 0; k < pcBoxes; k++) k < old.length ? '${old[k] ?? ''}' : ''];
+    final clean = name.trim();
+    names[box] = clean.length > 16 ? clean.substring(0, 16) : clean;
+    return {...run, 'pcNames': names};
   }
   static const eggIvs = 20;
   static const eggLevel = 5;
@@ -3408,7 +3451,7 @@ class FactoryRun {
       'history': addToHistory(factory['history'] as List?, run, coins),
       // O PC: o time da corrida e quem saiu do time no caminho.
       if (factory['hunt'] is Map) 'hunt': huntAfter(factory, run),
-      'box': addToBox(factory['box'] as List?, [...teamOf(run), for (final m in (run['pc'] as List?) ?? const []) Map<String, dynamic>.from(m as Map)]),
+      'box': addToBox(factory['box'] as List?, [...teamOf(run), ...pcOf(run)]),
     };
   }
 

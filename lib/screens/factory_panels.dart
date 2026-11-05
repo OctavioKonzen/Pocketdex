@@ -7,6 +7,7 @@
 // o mapa com os caminhos de cada andar) e a batalha de cada andar. Igual ao
 // site (web-site/src/components/FactoryPanels.jsx e web-site/src/lib/factoryBattle.js).
 
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart' hide Text;
@@ -2330,7 +2331,6 @@ class _FactoryScreenState extends State<FactoryScreen> {
   final List<String> _earned = [];
   String? _panel; // embaixo do menu: 'bag' | 'team' (na loja, a lista de compras)
   Widget? _framePanel; // o que abre dentro da moldura (lista da loja, Bolsa ou time)
-  int? _pcPick; // o Pokémon do PC escolhido para trocar com o time cheio
 
   static Color get _border => Hud.edge;
   static const _ink = Color(0xFF0F172A);
@@ -2824,7 +2824,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
             // O time e o esquecer golpe com o fundo das telas do jogo (verde-azulado), até embaixo.
             decoration: BoxDecoration(color: _panel == 'team' || (_learn != null && _learnStep == 'forget') ? Hud.tint(const Color(0xFF1F6F78)) : SiteColors.of(context).card, border: Border.all(color: _border, width: 4)),
             // O time tem tamanho fixo (as páginas trocam arrastando); o resto rola se não couber.
-            child: _panel == 'team' ? panel : SingleChildScrollView(child: panel),
+            // O time e o PC têm tamanho fixo (o PC: o time e a caixa 6×6 do tamanho do campo); o resto rola se não couber.
+            child: _panel == 'team' || _panel == 'pc' ? panel : SingleChildScrollView(child: panel),
           ),
         ),
       );
@@ -3328,70 +3329,26 @@ class _FactoryScreenState extends State<FactoryScreen> {
         if (p['story'] != null)
           for (final line in '${p['story']}'.split('\n\n')) Text('📖 $line', key: const ValueKey('factory-story-end'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
       ],
-      menu: FactoryRun.atPc(run)
-          ? _menuGrid([
-              _menuButton('💻 ${tr('PC')}', () => setState(() {
-                    _panel = _panel == 'pc' ? null : 'pc';
-                    _pcPick = null;
-                  }),
-                  key: const ValueKey('factory-pc-open'), active: _panel == 'pc'),
-              _menuButton(tr('CONTINUAR'), () {
-                setState(() => _panel = null);
-                _afterResult(run, p);
-              }, key: const ValueKey('factory-continue')),
-            ])
-          : _menuButton(tr('CONTINUAR'), () => _afterResult(run, p), key: const ValueKey('factory-continue')),
+      menu: FactoryRun.atPc(run) && _panel == 'pc'
+          // O PC aberto (como no site): só o FECHAR embaixo.
+          ? _menuButton(tr('FECHAR'), () => setState(() => _panel = null), key: const ValueKey('factory-pc-close'))
+          : FactoryRun.atPc(run)
+              ? _menuGrid([
+                  _menuButton('💻 ${tr('PC')}', () => setState(() => _panel = 'pc'), key: const ValueKey('factory-pc-open')),
+                  _menuButton(tr('CONTINUAR'), () {
+                    setState(() => _panel = null);
+                    _afterResult(run, p);
+                  }, key: const ValueKey('factory-continue')),
+                ])
+              : _menuButton(tr('CONTINUAR'), () => _afterResult(run, p), key: const ValueKey('factory-continue')),
     );
   }
 
-  /// O PC (como nos jogos): o time em cima (toque para guardar) e o PC embaixo (toque para levar para o time; com o
-  /// time cheio, escolha quem do time vai no lugar). Igual ao site.
-  Widget _pcPanel(Json run, VoidCallback close) {
-    final pc = FactoryRun.pcOf(run);
-    final full = FactoryRun.teamOf(run).length >= FactoryRun.teamRoom(run);
-    final pcParty = [
-      for (final m in pc)
-        PartySlot(id: (m['id'] as num).toInt(), shiny: m['shiny'] == true, name: _name(m['id']), level: (m['level'] as num).toInt(), hp: 1, sub: m['item'] != null ? _itemName('${m['item']}') : null),
-    ];
-    return Column(key: const ValueKey('factory-pc'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      _overlayHeader('💻 ${tr('PC')} (${pc.length}/${FactoryRun.pcSize})', close),
-      Expanded(
-        child: SingleChildScrollView(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            BwParty(
-              testKey: 'pc-team',
-              title: _pcPick != null && _pcPick! < pcParty.length
-                  ? tr('Quem do time vai para o PC no lugar de {0}?').replaceAll('{0}', pcParty[_pcPick!].name)
-                  : tr('Time: toque para guardar no PC'),
-              team: _party(run),
-              disabled: (_) => _pcPick == null && FactoryRun.teamOf(run).length <= 1,
-              onPick: (i) {
-                final next = _pcPick != null ? FactoryRun.pcWithdraw(run, _pcPick!, i) : FactoryRun.pcDeposit(run, i);
-                setState(() => _pcPick = null);
-                if (next != null) _save(next);
-              },
-            ),
-            if (pc.isEmpty)
-              Padding(padding: const EdgeInsets.all(8), child: Text('💻 ${tr('O PC está vazio: os capturados com o time cheio ficam guardados aqui.')}', style: const TextStyle(fontWeight: FontWeight.w900)))
-            else
-              BwParty(
-                testKey: 'pc-box',
-                title: '💻 ${tr('PC')}: ${full ? tr('toque para trocar com o time') : tr('toque para levar para o time')}',
-                team: pcParty,
-                onPick: (k) {
-                  if (!full) {
-                    final next = FactoryRun.pcWithdraw(run, k);
-                    if (next != null) _save(next);
-                  } else {
-                    setState(() => _pcPick = _pcPick == k ? null : k);
-                  }
-                },
-              ),
-          ]),
-        ),
-      ),
-    ]);
-  }
+  /// O PC (como nos jogos): o time à esquerda e a caixa 6×6 à direita ([_PcPanel]). Igual ao site.
+  Widget _pcPanel(Json run, VoidCallback close) =>
+      _PcPanel(key: const ValueKey('factory-pc'), run: run, nameOf: (id) => _name(id), onSave: (next) => _save(next));
+
+
 
   /// Os golpes que o time aprende subindo de nível (como nos jogos), um de cada vez: (posição no time, golpe, entrou sozinho).
   List<(int, String, bool)>? _learn;
@@ -5105,3 +5062,219 @@ class _PagedMenuState extends State<_PagedMenu> {
     });
   }
 }
+
+/// O PC do Centro Pokémon (Pokelike), como nos jogos: à esquerda o seu time (só os sprites), à direita a caixa de 6×6
+/// (com nome; ◀ ▶ troca de caixa). Arraste um Pokémon para outra vaga: com alguém nela, pergunta se quer trocar (com os
+/// dois nomes); vazia, ele vai para lá. Segurando em cima de ◀ ▶ durante o arrasto, muda de caixa. Tocar num e depois
+/// em outra vaga também funciona. Igual ao site (PcPanel.jsx).
+class _PcPanel extends StatefulWidget {
+  const _PcPanel({super.key, required this.run, required this.nameOf, required this.onSave});
+  final Json run;
+  final String Function(Object? id) nameOf;
+  final void Function(Json next) onSave;
+
+  @override
+  State<_PcPanel> createState() => _PcPanelState();
+}
+
+typedef _PcLoc = ({String where, int index});
+
+class _PcPanelState extends State<_PcPanel> {
+  int _box = 0;
+  _PcLoc? _picked;
+  Timer? _nav;
+
+  Json get run => widget.run;
+
+  @override
+  void dispose() {
+    _nav?.cancel();
+    super.dispose();
+  }
+
+  Json? _monAt(_PcLoc l) {
+    if (l.where == 'team') {
+      final team = FactoryRun.teamOf(run);
+      return l.index < team.length ? team[l.index] : null;
+    }
+    return FactoryRun.pcSlots(run)[l.index];
+  }
+
+  /// Soltou (ou tocou no destino): com alguém lá, pergunta; vazia, já move.
+  Future<void> _drop(_PcLoc from, _PcLoc to) async {
+    if (from == to) return;
+    final a = _monAt(from), b = _monAt(to);
+    if (a == null) return;
+    if (b != null) {
+      final yes = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          key: const ValueKey('pc-ask'),
+          content: Text(tr('Trocar {0} por {1}?').replaceAll('{0}', widget.nameOf(a['id'])).replaceAll('{1}', widget.nameOf(b['id'])),
+              style: const TextStyle(fontWeight: FontWeight.w900)),
+          actions: [
+            TextButton(key: const ValueKey('pc-ask-no'), onPressed: () => Navigator.pop(context, false), child: Text(tr('NÃO'))),
+            FilledButton(key: const ValueKey('pc-ask-yes'), onPressed: () => Navigator.pop(context, true), child: Text(tr('SIM'))),
+          ],
+        ),
+      );
+      if (yes != true) return;
+    }
+    final next = FactoryRun.pcMove(run, from, to);
+    if (next != null) widget.onSave(next);
+  }
+
+  void _tap(_PcLoc l) {
+    final picked = _picked;
+    if (picked != null && picked != l) {
+      setState(() => _picked = null);
+      _drop(picked, l);
+    } else if (_monAt(l) != null) {
+      setState(() => _picked = picked == l ? null : l);
+    }
+  }
+
+  Widget _cell(_PcLoc l, {bool small = false}) {
+    final mon = _monAt(l);
+    final picked = _picked == l;
+    Widget sprite(Json m, {double opacity = 1}) => Opacity(
+          opacity: opacity,
+          child: PokemonSprite((m['id'] as num).toInt(), shiny: m['shiny'] == true, fill: 0.9),
+        );
+    return DragTarget<_PcLoc>(
+      onWillAcceptWithDetails: (d) => d.data != l,
+      onAcceptWithDetails: (d) => _drop(d.data, l),
+      builder: (context, candidates, _) {
+        final hover = candidates.isNotEmpty;
+        final box = Container(
+          key: ValueKey('pc-slot-${l.where}-${l.index}'),
+          decoration: BoxDecoration(
+            color: picked || hover ? const Color(0xAAFDE68A) : mon != null ? const Color(0xCCE0F2FE) : const Color(0x26FFFFFF),
+            border: Border.all(color: picked ? const Color(0xFFFBBF24) : const Color(0x660F3D5C), width: 2),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: mon == null
+              ? null
+              : Stack(fit: StackFit.expand, children: [
+                  Padding(padding: const EdgeInsets.all(1), child: sprite(mon)),
+                  if (!small)
+                    Positioned(right: 2, bottom: 0, child: Text('${mon['level']}', style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Color(0xFF1E293B)))),
+                ]),
+        );
+        return GestureDetector(
+          onTap: () => _tap(l),
+          child: mon == null
+              ? box
+              : Draggable<_PcLoc>(
+                  data: l,
+                  feedback: SizedBox(width: 56, height: 56, child: sprite(mon)),
+                  childWhenDragging: Opacity(opacity: 0.35, child: box),
+                  child: box,
+                ),
+        );
+      },
+    );
+  }
+
+  /// ◀ ▶: tocar muda de caixa; segurando um Pokémon em cima deles, também (como nos jogos).
+  Widget _navButton(int step, String label, String key) => DragTarget<_PcLoc>(
+        onWillAcceptWithDetails: (_) {
+          _nav ??= Timer(const Duration(milliseconds: 500), () {
+            _nav = null;
+            if (mounted) setState(() => _box = (_box + step + FactoryRun.pcBoxes) % FactoryRun.pcBoxes);
+          });
+          return false;
+        },
+        onLeave: (_) {
+          _nav?.cancel();
+          _nav = null;
+        },
+        builder: (context, _, __) => _title(label, key: key, onTap: () => setState(() => _box = (_box + step + FactoryRun.pcBoxes) % FactoryRun.pcBoxes)),
+      );
+
+  Widget _title(String text, {String? key, VoidCallback? onTap}) => Material(
+        color: const Color(0xFF0F3D44),
+        borderRadius: BorderRadius.circular(6),
+        child: InkWell(
+          key: key == null ? null : ValueKey(key),
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(6),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(text, maxLines: 1, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13)),
+            ),
+          ),
+        ),
+      );
+
+  Future<void> _rename() async {
+    final controller = TextEditingController(text: FactoryRun.boxName(run, _box));
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(tr('Nome da caixa')),
+        content: TextField(key: const ValueKey('pc-box-name-field'), controller: controller, autofocus: true, maxLength: 16),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(tr('NÃO'))),
+          FilledButton(key: const ValueKey('pc-box-name-ok'), onPressed: () => Navigator.pop(context, controller.text), child: Text(tr('OK'))),
+        ],
+      ),
+    );
+    if (name != null) widget.onSave(FactoryRun.renameBox(run, _box, name));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final room = FactoryRun.teamRoom(run);
+    return Container(
+      padding: const EdgeInsets.all(6),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(colors: [Color(0xFF2B8A9E), Color(0xFF1F6F80)], begin: Alignment.topCenter, end: Alignment.bottomCenter),
+      ),
+      child: LayoutBuilder(builder: (context, size) {
+        return Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          // O seu time: pequeno, só os sprites.
+          SizedBox(
+            width: size.maxWidth * 0.16,
+            child: Column(key: const ValueKey('pc-team'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              _title(tr('Time')),
+              for (var i = 0; i < room; i++)
+                Expanded(child: Padding(padding: const EdgeInsets.only(top: 4), child: _cell((where: 'team', index: i), small: true))),
+            ]),
+          ),
+          const SizedBox(width: 6),
+          // A caixa: 6×6, com o nome (toque para mudar) e ◀ ▶.
+          Expanded(
+            child: Column(key: const ValueKey('pc-box'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Row(children: [
+                _navButton(-1, '◀', 'pc-box-prev'),
+                const SizedBox(width: 4),
+                Expanded(child: _title('💻 ${FactoryRun.boxName(run, _box)} ✏️', key: 'pc-box-name', onTap: _rename)),
+                const SizedBox(width: 4),
+                _navButton(1, '▶', 'pc-box-next'),
+              ]),
+              for (var r = 0; r < 6; r++)
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Row(children: [
+                      for (var c = 0; c < 6; c++)
+                        Expanded(child: Padding(padding: EdgeInsets.only(left: c == 0 ? 0 : 4), child: _cell((where: 'pc', index: _box * FactoryRun.pcBox + r * 6 + c)))),
+                    ]),
+                  ),
+                ),
+              Padding(
+                padding: const EdgeInsets.only(top: 3),
+                child: Text(tr('Arraste um Pokémon para outra vaga para trocar.'), textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
+              ),
+            ]),
+          ),
+        ]);
+      }),
+    );
+  }
+}
+

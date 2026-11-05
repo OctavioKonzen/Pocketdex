@@ -1021,23 +1021,30 @@ void main() {
     expect(FactoryRun.teamOf(sent), hasLength(6));
     expect([for (final m in FactoryRun.pcOf(sent)) m['id']], [19]);
     // Fora do Centro, o PC não abre.
-    expect(FactoryRun.pcWithdraw(sent, 0, 0), isNull);
+    ({String where, int index}) t(int i) => (where: 'team', index: i);
+    ({String where, int index}) p(int i) => (where: 'pc', index: i);
+    expect(FactoryRun.pcMove(sent, p(0), t(0)), isNull);
     final center = {...sent, 'pending': {'center': true, 'town': true}, 'team': [for (final m in FactoryRun.teamOf(sent)) {...m, 'hp': 0.5}]};
     expect(FactoryRun.atPc(center), isTrue);
-    // Time cheio: troca (quem sai vai para o PC no lugar dele, curado).
-    final swapped = FactoryRun.pcWithdraw(center, 0, 2)!;
+    // Arrastar do PC para alguém do time: os dois trocam de lugar (curados).
+    final swapped = FactoryRun.pcMove(center, p(0), t(2))!;
     expect(FactoryRun.teamOf(swapped)[2]['id'], 19);
     expect(FactoryRun.pcOf(swapped).first['id'], 12);
     expect(FactoryRun.pcOf(swapped).first['hp'], 1);
-    expect(FactoryRun.pcWithdraw(center, 0), isNull);
-    // Guarda e tira.
-    final stored = FactoryRun.pcDeposit(center, 0)!;
+    // Do time para uma vaga vazia do PC (em outra caixa): guarda.
+    final stored = FactoryRun.pcMove(center, t(0), p(FactoryRun.pcBox + 5))!;
     expect(FactoryRun.teamOf(stored), hasLength(5));
-    expect([for (final m in FactoryRun.pcOf(stored)) m['id']], [19, 10]);
-    final back = FactoryRun.pcWithdraw(stored, 0)!;
+    expect(FactoryRun.pcSlots(stored)[FactoryRun.pcBox + 5]!['id'], 10);
+    // Do PC para a vaga vazia do time: entra no fim.
+    final back = FactoryRun.pcMove(stored, p(0), t(5))!;
     expect([for (final m in FactoryRun.teamOf(back)) m['id']], [11, 12, 13, 14, 15, 19]);
-    // O time nunca fica vazio.
-    expect(FactoryRun.pcDeposit({...center, 'team': [FactoryRun.teamOf(center).first]}, 0), isNull);
+    // Dentro do PC: muda de vaga (e de caixa).
+    final moved = FactoryRun.pcMove(stored, p(FactoryRun.pcBox + 5), p(3))!;
+    expect(FactoryRun.pcSlots(moved)[3]!['id'], 10);
+    // O time nunca fica vazio; a caixa ganha nome.
+    expect(FactoryRun.pcMove({...center, 'team': [FactoryRun.teamOf(center).first]}, t(0), p(9)), isNull);
+    expect(FactoryRun.boxName(FactoryRun.renameBox(center, 1, '  Dragões  '), 1), 'Dragões');
+    expect(FactoryRun.boxName(center, 2), 'Box 3');
   });
 
   test('corrida da semana e cosméticos (igual ao site)', () {

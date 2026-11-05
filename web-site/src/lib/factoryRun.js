@@ -2060,11 +2060,14 @@ export function capture(run, replace = null) {
   if (out.team.length < teamRoom(out)) out.team.push(mon)
   else if (replace === 'pc') {
     // Time cheio: o capturado vai para o PC (dá para trocar no Centro Pokémon da cidade).
-    if (pcOf(run).length >= PC_SIZE) return run
-    out.pc = [...pcOf(run), mon]
+    const pc = pcPut(run, mon)
+    if (!pc) return run
+    out.pc = pc
   } else if (replace != null && replace >= 0 && replace < out.team.length) {
     // Quem sai do time vai para o PC.
-    out.pc = [...pcOf(run), { ...out.team[replace], hp: 1 }].slice(-PC_SIZE)
+    const pc = pcPut(run, { ...out.team[replace], hp: 1 })
+    if (!pc) return run
+    out.pc = pc
     out.team[replace] = mon
   } else return run
   addDex(out, foe.id)
@@ -2073,32 +2076,65 @@ export function capture(run, replace = null) {
 
 /**
  * O PC (como nos jogos): os capturados que não cabem no time ficam guardados
- * nele (até PC_SIZE); no Centro Pokémon da cidade dá para tirar, guardar e
- * trocar. Quem está no PC fica curado. Igual ao app.
+ * nele, em PC_BOXES caixas de 6×6 (com nome); no Centro Pokémon da cidade dá
+ * para mexer: arrastar um Pokémon para outra vaga (do time ou do PC) troca os
+ * dois. Quem está no PC fica curado. run.pc: as vagas (null = vazia).
+ * Igual ao app.
  */
-export const PC_SIZE = 60
-export const pcOf = (run) => run.pc ?? []
+export const PC_BOX = 36
+export const PC_BOXES = 8
+export const PC_SIZE = PC_BOX * PC_BOXES
+/** As vagas do PC (null = vazia), PC_SIZE no total. */
+export const pcSlots = (run) => Array.from({ length: PC_SIZE }, (_, k) => run.pc?.[k] ?? null)
+/** Os guardados (sem as vagas vazias). */
+export const pcOf = (run) => (run.pc ?? []).filter(Boolean)
+/** O nome da caixa (o que você escolheu ou "Box 1"...). */
+export const boxName = (run, box) => run.pcNames?.[box] || `Box ${box + 1}`
+/** Sem as vagas vazias do fim (para guardar menos). */
+const trimPc = (pc) => { const out = [...pc]; while (out.length && !out[out.length - 1]) out.pop(); return out }
+/** O PC com o Pokémon na primeira vaga vazia (null: cheio). */
+export function pcPut(run, mon) {
+  const pc = pcSlots(run)
+  const k = pc.indexOf(null)
+  if (k < 0) return null
+  pc[k] = mon
+  return trimPc(pc)
+}
 /** Está no Centro Pokémon da cidade (onde fica o PC). */
 export const atPc = (run) => Boolean(run.pending?.center && run.pending?.town)
-/** Tira do PC (pcIndex) para o time; com o time cheio, troca com teamIndex (que vai para o PC no lugar dele). */
-export function pcWithdraw(run, pcIndex, teamIndex = null) {
-  const pc = pcOf(run)
-  if (!atPc(run) || !pc[pcIndex]) return null
-  const mon = { ...pc[pcIndex], hp: 1 }
-  if (teamIndex == null) {
-    if (run.team.length >= teamRoom(run)) return null
-    return { ...run, team: [...run.team, mon], pc: pc.filter((_, k) => k !== pcIndex) }
-  }
-  if (!run.team[teamIndex]) return null
+/**
+ * Arrasta um Pokémon (from) para outra vaga (to): { where: 'team' | 'pc', index }.
+ * Vaga com alguém: os dois trocam de lugar; vaga vazia: ele vai para lá (na vaga
+ * vazia do time, entra no fim do time). O time nunca fica vazio. Igual ao app.
+ */
+export function pcMove(run, from, to) {
+  if (!atPc(run) || !from || !to || (from.where === to.where && from.index === to.index)) return null
   const team = [...run.team]
-  const out = { ...team[teamIndex], hp: 1 }
-  team[teamIndex] = mon
-  return { ...run, team, pc: pc.map((m, k) => (k === pcIndex ? out : m)) }
+  const pc = pcSlots(run)
+  const get = (l) => (l.where === 'team' ? team[l.index] : pc[l.index]) ?? null
+  const set = (l, m) => { if (l.where === 'team') team[l.index] = m; else pc[l.index] = m }
+  const a = get(from)
+  if (!a || (to.where === 'pc' && !(to.index >= 0 && to.index < PC_SIZE)) || (to.where === 'team' && !(to.index >= 0))) return null
+  const b = get(to)
+  if (to.where === 'team' && !b) {
+    // Na vaga vazia do time: entra no fim (se couber).
+    if (from.where === 'team' || team.length >= teamRoom(run)) return null
+    set(from, null)
+    team.push(a)
+  } else {
+    set(to, a)
+    set(from, b)
+  }
+  const nextTeam = team.filter(Boolean).map((m) => ({ ...m, hp: from.where === 'pc' || to.where === 'pc' ? 1 : m.hp }))
+  if (!nextTeam.length) return null
+  return { ...run, team: nextTeam, pc: trimPc(pc.map((m) => (m ? { ...m, hp: 1 } : null))) }
 }
-/** Guarda no PC quem está no time (o time nunca fica vazio). */
-export function pcDeposit(run, teamIndex) {
-  if (!atPc(run) || !run.team[teamIndex] || run.team.length <= 1 || pcOf(run).length >= PC_SIZE) return null
-  return { ...run, team: run.team.filter((_, k) => k !== teamIndex), pc: [...pcOf(run), { ...run.team[teamIndex], hp: 1 }] }
+/** Dá nome à caixa (até 16 letras; vazio volta ao "Box N"). */
+export function renameBox(run, box, name) {
+  if (!(box >= 0 && box < PC_BOXES)) return run
+  const names = Array.from({ length: PC_BOXES }, (_, k) => run.pcNames?.[k] ?? '')
+  names[box] = String(name ?? '').trim().slice(0, 16)
+  return { ...run, pcNames: names }
 }
 
 /**
@@ -2815,7 +2851,7 @@ export function endRun(factory, run) {
     history: addToHistory(factory.history, run, coins),
     ...(factory.hunt ? { hunt: huntAfter(factory, run) } : {}),
     // O PC: o time da corrida e quem saiu do time no caminho.
-    box: addToBox(factory.box, [...(run.team ?? []), ...(run.pc ?? [])]),
+    box: addToBox(factory.box, [...(run.team ?? []), ...pcOf(run)]),
   }
 }
 

@@ -189,6 +189,15 @@ final screens = <String, Widget Function()>{
   'Battle Factory (vendedor na rota)': () => _factory({'mart': true, 'shop': ['poke-ball', 'great-ball', 'potion', 'super-potion', 'revive', 'escape-rope']}),
   'Battle Factory (vendedor na rota, comprando)': () => _factory({'mart': true, 'shop': ['poke-ball', 'great-ball', 'potion', 'super-potion', 'revive', 'escape-rope']}),
   'Battle Factory (cura na rota)': () => _factory({'center': true}),
+  // O PC do Centro Pokémon da cidade: o time à esquerda e a caixa 6×6 à direita.
+  'Battle Factory (PC do Centro)': () => _factory({'center': true, 'town': true}, null, {
+        'scene': 'center',
+        'pc': [
+          for (final id in [133, 147, null, 7, 1, null, 92, 63])
+            id == null ? null : {'id': id, 'level': 10, 'exp': 1000, 'nature': 'Hardy', 'hp': 1, 'item': null, 'extras': [], 'ivs': {}, 'evs': {}},
+        ],
+        'pcNames': ['Dragões'],
+      }),
   'Battle Factory (mapa)': () => _factory(null, {'floor': 14, 'biome': 'water', 'options': [{'kind': 'wild', 'biome': 'water'}, {'kind': 'ace'}, {'kind': 'center'}]}),
   'Battle Factory (time)': () => _factory(null, {'floor': 14, 'biome': 'water', 'options': [{'kind': 'wild', 'biome': 'water'}, {'kind': 'ace'}]}),
   'Battle Factory (time, dados)': () => _factory(null, {'floor': 14, 'biome': 'water', 'options': [{'kind': 'wild', 'biome': 'water'}, {'kind': 'ace'}]}),
@@ -251,7 +260,7 @@ final screens = <String, Widget Function()>{
 };
 
 /// A Factory com uma corrida no meio (time com HP, itens extras e a Bolsa), na tela cheia da corrida.
-Widget _factory(Map<String, dynamic>? pending, [Map<String, dynamic>? route]) {
+Widget _factory(Map<String, dynamic>? pending, [Map<String, dynamic>? route, Map<String, dynamic> extra = const {}]) {
   Map<String, dynamic> mon(int id, double hp, [List<String> extras = const []]) => {
         'id': id, 'level': 12, 'exp': 1728, 'nature': 'Hardy', 'hp': hp, 'item': extras.isEmpty ? null : 'choice-band', 'extras': extras,
         'ivs': {for (final s in ['hp', 'atk', 'def', 'spa', 'spd', 'spe']) s: 20}, 'evs': {for (final s in ['hp', 'atk', 'def', 'spa', 'spd', 'spe']) s: 0},
@@ -267,6 +276,7 @@ Widget _factory(Map<String, dynamic>? pending, [Map<String, dynamic>? route]) {
       'team': [mon(6, 0.4, ['leftovers', 'life-orb']), mon(25, 0), mon(130, 1)],
       'teamBoost': {'hp': 0, 'atk': 0.06, 'def': 0, 'spa': 0.06, 'spd': 0, 'spe': 0}, 'mult': {'money': 1, 'exp': 1, 'shop': 1}, 'cards': ['atk'],
       'boss': {'region': 0, 'step': 2}, 'route': route, 'encounter': null, 'pending': pending,
+      ...extra,
     },
   });
   return Scaffold(body: ListView(padding: const EdgeInsets.all(12), children: [FactoryScreen(onBattle: (_) async {}, onExit: () {})]));
@@ -295,6 +305,13 @@ Future<void> _openTeam(WidgetTester tester) async {
 final Map<String, Future<void> Function(WidgetTester)> actions = {
   // O seu perfil: trocar a foto (Pokémon ou treinador) e o treinador.
   // O botão de editar o Início fica nas Configurações (Aparência).
+  'Battle Factory (PC do Centro)': (tester) async {
+    await tester.tap(find.byKey(const ValueKey('factory-pc-open')));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byKey(const ValueKey('pc-slot-pc-0')), findsOneWidget);
+    expect(find.text('💻 Dragões ✏️'), findsOneWidget);
+  },
   'Início: editar': (tester) async {
     await tester.tap(find.byKey(const ValueKey('settings-section-Aparência')));
     await tester.pump(const Duration(milliseconds: 300));
