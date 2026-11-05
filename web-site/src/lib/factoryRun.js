@@ -2416,12 +2416,12 @@ export function rerollRoute(run, data) {
 /** Recusa a troca. */
 /**
  * O clima de cada lugar (chances): sol e areia no deserto, chuva no mar e no
- * pântano, neve na neve e na caverna de gelo, sol no vulcão; às vezes sol ou
- * chuva na grama, na floresta e na cidade. Lugares fechados (caverna, esgoto,
- * torre, ginásio, Liga) sem clima. Igual ao app.
+ * pântano, neve na neve, sol no vulcão; às vezes sol ou chuva na grama, na
+ * floresta e na cidade. Lugares fechados (todas as cavernas e grutas, esgoto,
+ * torre, ginásio, Liga) sem clima: lá dentro não chove. Igual ao app.
  */
 export const SCENE_WEATHER = {
-  desert: [['sand', 0.6], ['sun', 0.25]], volcano: [['sun', 0.6]], snow: [['snow', 0.65]], icecave: [['snow', 0.5]], lavacave: [['sun', 0.4]], seacave: [['rain', 0.2]], waterfall: [['rain', 0.45]],
+  desert: [['sand', 0.6], ['sun', 0.25]], volcano: [['sun', 0.6]], snow: [['snow', 0.65]],
   beach: [['sun', 0.35], ['rain', 0.25]], water: [['rain', 0.55], ['sun', 0.1]], swamp: [['rain', 0.5]],
   grass: [['sun', 0.15], ['rain', 0.15]], forest: [['rain', 0.2], ['sun', 0.1]], mountain: [['sand', 0.15], ['snow', 0.15], ['sun', 0.1]],
   sky: [['sun', 0.2], ['rain', 0.2]], city: [['rain', 0.12], ['sun', 0.12]],

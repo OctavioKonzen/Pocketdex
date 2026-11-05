@@ -1028,6 +1028,8 @@ describe('mapa da corrida', () => {
     expect(share('water', 'rain')).toBeGreaterThan(0.45)
     expect(share('desert', 'sand')).toBeGreaterThan(0.5)
     expect(share('cave', 'rain')).toBe(0)
+    // Dentro das cavernas e grutas não chove (nem neva, nem faz sol).
+    for (const scene of ['cave', 'seacave', 'waterfall', 'icecave', 'lavacave', 'poisoncave', 'crystal']) expect(many.every((r) => weatherOf(r, scene, 'winter') === '')).toBe(true)
     // Pokédex da corrida: o inicial já conta; a 5ª espécie dá o prêmio.
     expect(dexOf(base)).toEqual([1])
     const four = { ...base, dex: [1, 2, 3, 4] }

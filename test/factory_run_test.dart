@@ -649,6 +649,10 @@ void main() {
     expect(share('water', 'rain'), greaterThan(0.45));
     expect(share('desert', 'sand'), greaterThan(0.5));
     expect(share('cave', 'rain'), 0);
+    // Dentro das cavernas e grutas não chove (nem neva, nem faz sol).
+    for (final scene in ['cave', 'seacave', 'waterfall', 'icecave', 'lavacave', 'poisoncave', 'crystal']) {
+      expect(many.every((r) => FactoryRun.weatherOf(r, scene, 'winter') == ''), isTrue, reason: scene);
+    }
     expect(FactoryRun.dexOf(base), [1]);
     final four = {...base, 'dex': [1, 2, 3, 4]};
     expect(FactoryRun.dexRewardFor(four, 4), isNull);
