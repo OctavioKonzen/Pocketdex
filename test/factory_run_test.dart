@@ -652,7 +652,7 @@ void main() {
     final won = FactoryRun.winFloor(picked, data);
     expect(won['pending']['dowsed'], hidden.item);
     expect(won['dowsed'], isNull);
-    int count(Json r) => ((r['bag'] as Map)[hidden!.item] as num? ?? 0).toInt() + (((r['tokens'] as Map?)?[hidden!.item] as num?) ?? 0).toInt();
+    int count(Json r) => ((r['bag'] as Map)[hidden!.item] as num? ?? 0).toInt() + (((r['tokens'] as Map?)?[hidden.item] as num?) ?? 0).toInt();
     expect(count(won), greaterThanOrEqualTo(count(picked) + 1));
   });
 
