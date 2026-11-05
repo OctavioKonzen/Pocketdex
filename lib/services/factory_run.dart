@@ -180,9 +180,44 @@ class FactoryRun {
   // ------------------------------------------------------------ dificuldade
 
   static int foeLevelAt(int floor) => 2 + ((floor - 1) * 0.8).floor();
-  static int foeEvsAt(int floor) => 3 * floor;
-  static int foeIvsAt(int floor) => math.min(31, floor ~/ 2) + math.max(0, ((floor - 100) / 10).floor());
-  static double foeBoostAt(int floor) => (math.max(0, floor - 30) * 0.003 * 1000).round() / 1000;
+  /// EVs (por atributo) dos adversários no andar: até 252 (o que passa disso vem do jogo da corrida, gameTier).
+  static int foeEvsAt(int floor) => math.min(252, 3 * floor);
+  /// IVs dos adversários no andar: até 31 (o que passa disso vem do jogo da corrida, gameTier).
+  static int foeIvsAt(int floor) => math.min(31, floor ~/ 2);
+
+  /// A dificuldade sobe a cada jogo da corrida: o primeiro (com o pós-jogo) é só o nível do andar;
+  /// ao começar o jogo seguinte, os adversários ganham, por jogo já vencido, IVs e EVs acima do limite
+  /// e uma porcentagem em todos os atributos. Sem teto: as cartas de atributo também crescem (cardPower). Igual ao site.
+  static const gameTier = (iv: 4, ev: 64, boost: 0.08);
+
+  /// Quantos jogos a corrida já terminou (o degrau da dificuldade).
+  static int tierOf(Json? run) => ((run?['games'] as num?) ?? 0).toInt();
+
+  /// O bônus de todos os atributos dos adversários no degrau.
+  static double foeBoostAt(int tier) => (tier * gameTier.boost * 1000).round() / 1000;
+
+  /// Os adversários do encontro com o degrau do jogo da corrida.
+  static Json tierFoes(Json encounter, Json? run) {
+    final tier = tierOf(run);
+    if (tier == 0 || encounter['foes'] == null) return encounter;
+    final boost = foeBoostAt(tier);
+    return {
+      ...encounter,
+      'foes': [
+        for (final f in encounter['foes'] as List)
+          {
+            ...(f as Map).cast<String, dynamic>(),
+            'iv': ((f['iv'] as num?) ?? 0).toInt() + tier * gameTier.iv,
+            'ev': ((f['ev'] as num?) ?? 0).toInt() + tier * gameTier.ev,
+            'boost': ((((f['boost'] as num?) ?? 0) + boost) * 1000).round() / 1000,
+          },
+      ],
+    };
+  }
+
+  /// Depois do andar winHealFloor (os treinadores já vêm com o time quase todo), cada vitória cura winHealPct% do HP de quem está de pé.
+  static const winHealFloor = 60;
+  static const winHealPct = 25;
   /// Preço da loja no andar: cresce junto com o dinheiro (nível e tamanho dos times dos treinadores). Igual ao site.
   static double priceScale(int floor) => (1 + (floor - 1) / 20) * (1 + 0.4 * math.min(5, floor ~/ 12));
 
@@ -1755,10 +1790,12 @@ class FactoryRun {
       // O Pokémon ferido leva a um selvagem raro do lugar (a batalha é neste andar).
       out['floor'] = _int(out['floor']) - 1;
       final scene = '${out['scene'] ?? 'grass'}';
-      out['encounter'] = regionalEncounter(data, run, {
-        ...encounterFor(data, _int(out['floor']), rand, null, false, {'kind': 'wild', 'biome': scene, 'rare': true, 'shiny': run['shinyRate'] ?? 1}),
-        'scene': scene,
-      });
+      out['encounter'] = tierFoes(
+          regionalEncounter(data, run, {
+            ...encounterFor(data, _int(out['floor']), rand, null, false, {'kind': 'wild', 'biome': scene, 'rare': true, 'shiny': run['shinyRate'] ?? 1}),
+            'scene': scene,
+          }),
+          run);
     } else {
       final found = hasHm(run, 'flash') || rand() < 0.5;
       if (found) {
@@ -1860,8 +1897,8 @@ class FactoryRun {
         foes[slot] = {...foes[slot], 'id': devolve(data, line.last, _int(foes[slot]['level']))};
         out['encounter'] = {...out['encounter'] as Map<String, dynamic>, 'foes': foes};
       }
-      // Os selvagens e os treinadores do caminho na forma da região.
-      out['encounter'] = regionalEncounter(data, run, Map<String, dynamic>.from(out['encounter'] as Map));
+      // Os selvagens e os treinadores do caminho na forma da região (e com o degrau do jogo da corrida).
+      out['encounter'] = tierFoes(regionalEncounter(data, run, Map<String, dynamic>.from(out['encounter'] as Map)), run);
       return out;
     }
     out['floor'] = floor + 1;
@@ -1944,10 +1981,10 @@ class FactoryRun {
   /// node: o caminho escolhido no mapa (selvagem do bioma, treinador ou treinador forte). Igual ao site.
   static Json encounterFor(FactoryData data, int floor, double Function() rand, [Json? boss, bool wild = false, Json? node]) {
     final level = math.max(2, foeLevelAt(floor) + (rand() * 2).floor());
-    final iv = foeIvsAt(floor), ev = foeEvsAt(floor), boost = foeBoostAt(floor);
+    final iv = foeIvsAt(floor), ev = foeEvsAt(floor);
     // Evoluídos só a partir do nível em que evoluem (abaixo dele, a forma anterior).
     Json foe(int id, int lvl, [Json extra = const {}]) =>
-        {'id': devolve(data, id, math.max(2, lvl)), 'level': math.max(2, lvl), 'iv': iv, 'ev': ev, if (boost != 0) 'boost': boost, ...extra};
+        {'id': devolve(data, id, math.max(2, lvl)), 'level': math.max(2, lvl), 'iv': iv, 'ev': ev, ...extra};
     // O chefe de um lugar sem treinadores (mar, cavernas de gelo, lava...): o Pokémon forte de lá, raro e acima do nível
     // (dá para capturar).
     if (wild && node?['area'] == true) {
@@ -2193,7 +2230,8 @@ class FactoryRun {
     final out = _copy(run);
     final team0 = teamOf(out);
     // Depois de cada vitória, a cura da árvore (só em quem está de pé).
-    final winHeal = ((run['winHeal'] as num?) ?? 0).toInt();
+    // Lá no fundo (winHealFloor), mais winHealPct%: os treinadores vêm com o time todo e o desgaste não pode decidir a corrida.
+    final winHeal = ((run['winHeal'] as num?) ?? 0).toInt() + (_int(run['floor']) >= winHealFloor ? winHealPct : 0);
     double healed(double h) => h > 0 && winHeal > 0 ? math.min(1.0, _round3(h + winHeal / 100)) : h;
     out['team'] = [for (var i = 0; i < team0.length; i++) {...team0[i], 'hp': healed(hp != null && i < hp.length ? hp[i] : hpOf(team0[i]))}];
     // A Escape Rope não entra na batalha: fica a da Bolsa.
@@ -2354,6 +2392,7 @@ class FactoryRun {
       final (boss, played) = _nextBoss(out, data, rand);
       // Acabou a história da região: o fim dela e o começo da próxima.
       if (boss['step'] == 0) {
+        out['games'] = tierOf(run) + 1;
         story = '${storyLine(data, '${beaten['region']}', 'end')}\n\n${storyLine(data, '${data.bosses[_int(boss['region'])]['region']}', 'intro')}';
       }
       out['boss'] = boss;

@@ -103,12 +103,31 @@ function pickWeighted(list, weights, rand) {
 
 /** Nível base dos adversários no andar (sem teto). */
 export const foeLevelAt = (floor) => 2 + Math.floor((floor - 1) * 0.8)
-/** EVs (por atributo) dos adversários: sobem sem limite. */
-export const foeEvsAt = (floor) => 3 * floor
-/** IVs dos adversários: chegam a 31 e, depois do andar 100, passam do limite. */
-export const foeIvsAt = (floor) => Math.min(31, Math.floor(floor / 2)) + Math.max(0, Math.floor((floor - 100) / 10))
-/** Porcentagem a mais em todos os atributos dos adversários depois do andar 30 (um pouco mais que as cartas: um dia a corrida acaba). */
-export const foeBoostAt = (floor) => Math.round(Math.max(0, floor - 30) * 0.003 * 1000) / 1000
+/** EVs (por atributo) dos adversários no andar: até 252, como nos jogos (o que passa disso vem do jogo da corrida, GAME_TIER). */
+export const foeEvsAt = (floor) => Math.min(252, 3 * floor)
+/** IVs dos adversários no andar: até 31 (o que passa disso vem do jogo da corrida, GAME_TIER). */
+export const foeIvsAt = (floor) => Math.min(31, Math.floor(floor / 2))
+/**
+ * A dificuldade sobe a cada jogo da corrida: o primeiro (com o pós-jogo) é só
+ * o nível do andar; ao começar o jogo seguinte, os adversários ganham, por
+ * jogo já vencido, IVs e EVs acima do limite e uma porcentagem em todos os
+ * atributos. Sem teto: as cartas de atributo também crescem (cardPower). Igual ao app.
+ */
+export const GAME_TIER = { iv: 4, ev: 64, boost: 0.08 }
+/** Quantos jogos a corrida já terminou (o degrau da dificuldade). */
+export const tierOf = (run) => run?.games ?? 0
+/** O bônus de todos os atributos dos adversários no degrau. */
+export const foeBoostAt = (tier) => Math.round(tier * GAME_TIER.boost * 1000) / 1000
+/** Os adversários do encontro com o degrau do jogo da corrida. */
+export function tierFoes(encounter, run) {
+  const tier = tierOf(run)
+  if (!tier || !encounter?.foes) return encounter
+  const boost = foeBoostAt(tier)
+  return { ...encounter, foes: encounter.foes.map((f) => ({ ...f, iv: (f.iv ?? 0) + tier * GAME_TIER.iv, ev: (f.ev ?? 0) + tier * GAME_TIER.ev, boost: Math.round(((f.boost ?? 0) + boost) * 1000) / 1000 })) }
+}
+/** Depois do andar WIN_HEAL_FLOOR (os treinadores já vêm com o time quase todo), cada vitória cura WIN_HEAL% do HP de quem está de pé. */
+export const WIN_HEAL_FLOOR = 60
+export const WIN_HEAL = 25
 /**
  * Preço da loja no andar: cresce junto com o dinheiro que os adversários dão
  * (o nível sobe e os treinadores ganham 1 Pokémon a cada 12 andares, até 6):
@@ -1425,8 +1444,8 @@ export function chooseNode(run, data, index, clock = null) {
       foes[slot] = { ...foes[slot], id: devolve(data, line[line.length - 1], foes[slot].level) }
       out.encounter = { ...out.encounter, foes }
     }
-    // Os selvagens e os treinadores do caminho na forma da região.
-    out.encounter = regionalEncounter(data, run, out.encounter)
+    // Os selvagens e os treinadores do caminho na forma da região (e com o degrau do jogo da corrida).
+    out.encounter = tierFoes(regionalEncounter(data, run, out.encounter), run)
     return out
   }
   out.floor += 1
@@ -1498,9 +1517,9 @@ export function bossGimmick(data, f, rand) {
  */
 export function encounterFor(data, floor, rand, boss = null, wild = false, node = null) {
   const level = Math.max(2, foeLevelAt(floor) + Math.floor(rand() * 2))
-  const iv = foeIvsAt(floor), ev = foeEvsAt(floor), boost = foeBoostAt(floor)
+  const iv = foeIvsAt(floor), ev = foeEvsAt(floor)
   // Evoluídos só a partir do nível em que evoluem (abaixo dele, a forma anterior).
-  const foe = (id, lvl, extra = {}) => ({ id: devolve(data, id, Math.max(2, lvl)), level: Math.max(2, lvl), iv, ev, ...(boost ? { boost } : {}), ...extra })
+  const foe = (id, lvl, extra = {}) => ({ id: devolve(data, id, Math.max(2, lvl)), level: Math.max(2, lvl), iv, ev, ...extra })
   // O chefe de um lugar sem treinadores (mar, cavernas de gelo, lava...): o Pokémon forte de lá, raro e acima do nível (dá para capturar).
   if (wild && node?.area) {
     const f = encounterFor(data, floor + 3, rand, null, false, { kind: 'wild', biome: node.biome, rare: true, shiny: node.shiny }).foes[0]
@@ -1726,7 +1745,9 @@ export function storyLine(data, region, key, name = '') {
 export function winFloor(run, data, after = {}) {
   // A Escape Rope não entra na batalha: fica a da Bolsa.
   // Depois de cada vitória, a cura da árvore (só em quem está de pé).
-  const healed = (hp) => (hp > 0 && run.winHeal ? Math.min(1, round3(hp + run.winHeal / 100)) : hp)
+  // Lá no fundo (WIN_HEAL_FLOOR), mais WIN_HEAL%: os treinadores vêm com o time todo e o desgaste não pode decidir a corrida.
+  const heal = (run.winHeal ?? 0) + (run.floor >= WIN_HEAL_FLOOR ? WIN_HEAL : 0)
+  const healed = (hp) => (hp > 0 && heal ? Math.min(1, round3(hp + heal / 100)) : hp)
   const out = { ...run, team: run.team.map((m, i) => ({ ...m, hp: healed(after.hp?.[i] ?? m.hp ?? 1) })), bag: { ...(after.bag ?? run.bag), 'escape-rope': run.bag['escape-rope'] ?? 0 } }
   const rand = dice(out)
   const { kind, foes } = run.encounter
@@ -1855,6 +1876,7 @@ export function winFloor(run, data, after = {}) {
     }
     const [boss, played] = nextBoss(out, data, rand)
     // Acabou a história da região: o fim dela e o começo da próxima.
+    if (boss.step === 0) out.games = (run.games ?? 0) + 1
     if (boss.step === 0) story = `${storyLine(data, beaten.region, 'end')}\n\n${storyLine(data, data.bosses[boss.region].region, 'intro')}`
     out.boss = boss
     out.played = played
@@ -2333,7 +2355,7 @@ export function resolveChoice(run, data, accept) {
     // O Pokémon ferido leva a um selvagem raro do lugar (a batalha é neste andar).
     out.floor -= 1
     const scene = out.scene ?? 'grass'
-    out.encounter = regionalEncounter(data, run, { ...encounterFor(data, out.floor, rand, null, false, { kind: 'wild', biome: scene, rare: true, shiny: run.shinyRate ?? 1 }), scene })
+    out.encounter = tierFoes(regionalEncounter(data, run, { ...encounterFor(data, out.floor, rand, null, false, { kind: 'wild', biome: scene, rare: true, shiny: run.shinyRate ?? 1 }), scene }), run)
   } else {
     const found = hasHm(run, 'flash') || rand() < 0.5
     if (found) {

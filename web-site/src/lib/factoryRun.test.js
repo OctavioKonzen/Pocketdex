@@ -8,7 +8,7 @@ import {
   placeInfo, routeInfo, DBOSS_GIMMICK_FLOOR, UPGRADE_FX, SHORE, CAVE_OF, dungeonPos, routePos, DUNGEON_LENGTH, CITY_BOSS, waterNext, RIVAL_FLOOR, targetOf, rivalBoss, rocketBoss, townShop, townCenter, townHub, biomesLinked,
   isDoubleBattle,
   DOUBLE_FLOOR,
-  battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, cardPower, cardText, foeLevelAt, foeMember,
+  battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
   HELD_BOOST, levelTo, MAX_TEAM, memberOf, movesAt, nextFloor, nextRandom, overflowPoints, pokemonPrice, runCoins, setMainItem, shopPrice,
   SHINY_BOOST, FOE_SHINY_BOOST, SHINY_CHANCE, START_BAG, START_BALLS, startersOf, buyShiny, shinyPrice, unlockShiny, claimStarter, freePick, canEvolveWith, teachMove,
   equipFromStash, gimmicksOf, setGimmick, storyLine, startRun, takeCard, teamDown, applyBagItem, winFloor, chooseNode, routeOptions, routeCities,
@@ -77,10 +77,18 @@ describe('Battle Factory (roguelike)', () => {
     for (let i = 0; i < 400; i++) for (const f of encounterFor(data, 30, rand).foes) expect([1, 2]).not.toContain(data.species[f.id][2])
     const deep = encounterFor(data, 500, seq([0.5, 0.9, 0.1]))
     expect(deep.foes[0].level).toBeGreaterThan(300)
-    expect(deep.foes[0].iv).toBeGreaterThan(31)
-    expect(deep.foes[0].boost).toBeCloseTo(foeBoostAt(500))
+    // No primeiro jogo da corrida, só o nível do andar (IVs e EVs no limite dos jogos, sem porcentagem a mais).
+    expect(deep.foes[0].iv).toBe(31)
+    expect(deep.foes[0].boost).toBeUndefined()
     expect(foeLevelAt(1)).toBe(2)
-    expect(foeBoostAt(30)).toBe(0)
+    expect(foeEvsAt(500)).toBe(252)
+    // Cada jogo vencido na corrida é um degrau a mais (sem teto).
+    expect(tierFoes(deep, { games: 0 })).toBe(deep)
+    const third = tierFoes(deep, { games: 2 }).foes[0]
+    expect(third.iv).toBe(31 + 2 * GAME_TIER.iv)
+    expect(third.ev).toBe(deep.foes[0].ev + 2 * GAME_TIER.ev)
+    expect(third.boost).toBeCloseTo(foeBoostAt(2))
+    expect(foeBoostAt(50)).toBeGreaterThan(foeBoostAt(10))
     // Nada de Fantasma nos primeiros andares (os iniciais só têm golpes Normal).
     for (let i = 0; i < 200; i++) for (const f of encounterFor(data, 2, rand).foes) expect(data.species[f.id][4]).not.toContain('ghost')
   })
@@ -537,7 +545,6 @@ describe('Battle Factory (roguelike)', () => {
     expect(deepCard.teamBoost.atk - (run.teamBoost?.atk ?? 0)).toBeCloseTo(2 * CARDS.atk.team.atk)
     expect(cardText('+6 % d’Attaque', 'atk', 130)).toBe('+12 % d’Attaque')
     expect(cardText('+5 Poké Balls', 'balls', 130)).toBe('+5 Poké Balls')
-    expect(foeBoostAt(5000)).toBeGreaterThan(foeBoostAt(500))
   })
 
   it('sem cura entre os andares: Bolsa fora da batalha, carta de cura e o time desmaiado', () => {

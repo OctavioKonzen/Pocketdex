@@ -61,7 +61,15 @@ void main() {
     expect(FactoryRun.cardPower(130), 2);
     expect(FactoryRun.cardText('+6 % d’Attaque', 'atk', 130), '+12 % d’Attaque');
     expect(FactoryRun.cardText('+5 Poké Balls', 'balls', 130), '+5 Poké Balls');
-    expect(FactoryRun.foeBoostAt(5000), greaterThan(FactoryRun.foeBoostAt(500)));
+    // Cada jogo vencido na corrida é um degrau a mais (sem teto); o primeiro é só o nível do andar.
+    expect(FactoryRun.foeEvsAt(500), 252);
+    expect(FactoryRun.foeIvsAt(500), 31);
+    final enc = {'foes': [{'id': 1, 'level': 50, 'iv': 31, 'ev': 150}]};
+    expect(FactoryRun.tierFoes(enc, {'games': 0}), same(enc));
+    final third = (FactoryRun.tierFoes(enc, {'games': 2})['foes'] as List).first as Map;
+    expect(third['iv'], 31 + 2 * FactoryRun.gameTier.iv);
+    expect(third['ev'], 150 + 2 * FactoryRun.gameTier.ev);
+    expect(third['boost'], closeTo(FactoryRun.foeBoostAt(2), 1e-9));
   });
 
   test('80 andares iguais ao site (test/fixtures/factory_trace.json): mapa, chefes, captura, carta e loja', () {
