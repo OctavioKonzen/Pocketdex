@@ -1468,13 +1468,20 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
 
   /// Os treinadores da abertura: o seu (de costas) e o do adversário.
   // "generic:<semente>:<lugar>": um treinador comum (de rota) que faz sentido no lugar, nunca um líder ou um personagem importante.
-  late final Trainer? _coach = widget.wild
+  late final Trainer? _rawCoach = widget.wild
       ? null
       : widget.foeTrainer?.startsWith('generic:') == true
           ? Trainers.generic(int.tryParse(widget.foeTrainer!.split(':')[1]) ?? 0, widget.foeTrainer!.split(':').elementAtOrNull(2))
           : widget.foeTrainer != null
               ? Trainers.byId(widget.foeTrainer)
               : Trainers.random();
+
+  /// O treinador comum com nome e fala (como nos jogos: "Youngster Joel"; a fala antes e quando perde). Igual ao site.
+  late final ({String name, String intro, String beat})? _persona = _rawCoach != null && widget.foeTrainer?.startsWith('generic:') == true
+      ? Trainers.persona(_rawCoach, int.tryParse(widget.foeTrainer!.split(':')[1]) ?? 0)
+      : null;
+  Trainer? get _coach => _rawCoach;
+  String? get _coachName => _persona?.name ?? _rawCoach?.name;
   late final Trainer? _myTrainer = Trainers.mine;
 
   /// A tela VS no começo da batalha contra treinador, chefe e online, com o nome de quem joga; tocar pula. Contra
@@ -1484,7 +1491,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
       ? widget.vs!
       : widget.wild
           ? {'kind': 'wild', 'name': widget.battle.teams[1][widget.battle.activeIndex[1]].name}
-          : {'kind': widget.online != null ? 'online' : 'trainer', 'name': widget.foeName.isNotEmpty ? widget.foeName : _coach?.name ?? tr('Treinador')};
+          : {'kind': widget.online != null ? 'online' : 'trainer', 'name': widget.foeName.isNotEmpty ? widget.foeName : _coachName ?? tr('Treinador')};
   final _vsSkip = Completer<void>();
   bool _introOn = false;
   bool _finished = false;
@@ -1590,11 +1597,13 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
     }
     await _wait(700);
     if (!mounted) return;
-    if (widget.foeName.isEmpty && _coach != null) setState(() => _text = tr('{0} quer batalhar!').replaceAll('{0}', _coach.name));
+    if (widget.foeName.isEmpty && _coach != null) {
+      setState(() => _text = tr('{0} quer batalhar!').replaceAll('{0}', _coachName!) + (_persona != null ? ' “${tr(_persona.intro)}”' : ''));
+    }
     _note('text', 1, _text);
     await _wait(1100);
     if (!mounted) return;
-    final who = widget.foeName.isNotEmpty ? widget.foeName : _coach?.name ?? tr('O adversário');
+    final who = widget.foeName.isNotEmpty ? widget.foeName : _coachName ?? tr('O adversário');
     if (widget.wild) {
       // Selvagem: ele já está ali, sem Poké Ball.
       setState(() {
@@ -2389,7 +2398,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                             duration: const Duration(milliseconds: 520),
                             curve: Curves.easeIn,
                             // Da altura de uma pessoa ao lado do Pokémon dele (a mesma escala).
-                            child: Align(alignment: Alignment.bottomCenter, child: TrainerSprite(_coach, height: farPerson(w))),
+                            child: Align(alignment: Alignment.bottomCenter, child: TrainerSprite(_coach!, height: farPerson(w))),
                           ),
                         ),
                       Positioned(
@@ -2521,8 +2530,8 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                               : waiting && (_menu == 'main' || _menu == 'fight') && !_b.needSwitch
                                   ? '${tr('O que')} ${current.name} ${tr('vai fazer?')}'
                                   // No fim, o recado do resultado também vem na caixa (em partes, se precisar).
-                                  : !_busy && _b.winner != null && widget.endNote.isNotEmpty
-                                      ? '$_text ${widget.endNote}'
+                                  : !_busy && _b.winner != null && (widget.endNote.isNotEmpty || (_persona != null && _b.winner == 0))
+                                      ? '$_text${_persona != null && _b.winner == 0 ? ' 💬 ${_persona.name}: “${tr(_persona.beat)}”' : ''}${widget.endNote.isNotEmpty ? ' ${widget.endNote}' : ''}'
                                       : _text,
                         ),
                       ),

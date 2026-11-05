@@ -33,7 +33,7 @@ import BwBag from '../components/BwBag'
 import BwSummary, { summaryOf } from '../components/BwSummary'
 import { BattleBackground, battleScale, battleScene, farPerson, foeBottom, nearPerson, PlatformBase, sceneOfBoss } from '../components/BattleScene'
 import { TrainerBack, TrainerSprite } from '../components/Trainer'
-import { genericTrainer, isPairTrainer, pairTrainer, randomTrainer, useMyTrainer, useTrainers } from '../lib/trainers'
+import { genericTrainer, isPairTrainer, pairTrainer, randomTrainer, trainerPersona, useMyTrainer, useTrainers } from '../lib/trainers'
 import { battleRecord } from '../lib/battleLog'
 import { battleAnalysis } from '../lib/battleAnalysis'
 import { isPlaying, playSound, soundOf, startMusic, stopMusic, syncedStart } from '../lib/battleSound'
@@ -959,7 +959,10 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   const [foeCoach] = useState(() => foeTrainer)
   // Pokémon selvagem (Battle Factory): sem treinador do outro lado.
   // "generic:<semente>:<lugar>": um treinador comum (de rota) que faz sentido no lugar, nunca um líder ou um personagem importante.
-  const coach = wild ? null : (typeof foeCoach === 'string' ? (foeCoach.startsWith('generic:') ? genericTrainer(trainers, Number(foeCoach.split(':')[1]), foeCoach.split(':')[2] || null) : trainers?.find((x) => x.id === foeCoach)) : foeCoach) ?? randomOnce(trainers, myTrainer?.id, battle)
+  const rawCoach = wild ? null : (typeof foeCoach === 'string' ? (foeCoach.startsWith('generic:') ? genericTrainer(trainers, Number(foeCoach.split(':')[1]), foeCoach.split(':')[2] || null) : trainers?.find((x) => x.id === foeCoach)) : foeCoach) ?? randomOnce(trainers, myTrainer?.id, battle)
+  // O treinador comum com nome e fala (como nos jogos: "Youngster Joel"; a fala antes e quando perde). Igual ao app.
+  const persona = rawCoach && typeof foeCoach === 'string' && foeCoach.startsWith('generic:') ? trainerPersona(rawCoach, Number(foeCoach.split(':')[1])) : null
+  const coach = persona ? { ...rawCoach, name: persona.name } : rawCoach
   // A abertura (treinadores e Poké Balls) só no começo de uma batalha nova.
   // keepMine (Battle Factory): o seu Pokémon já está em campo (veio da tela da corrida): sem o treinador e a Poké Ball do seu lado.
   const [intro, setIntro] = useState(() => (!online && battle.turn <= 1 ? { foe: 'in', me: keepMine ? 'gone' : 'in', back: 0 } : null))
@@ -1119,7 +1122,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
     }
     await wait(700)
     if (!foeName && coachRef.current) {
-      const line = t('{0} quer batalhar!').replace('{0}', coachRef.current.name)
+      const line = t('{0} quer batalhar!').replace('{0}', coachRef.current.name) + (persona ? ` “${t(persona.intro)}”` : '')
       setText(line)
       setLog([{ kind: 'text', side: 1, text: line }])
     }
@@ -1624,7 +1627,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
             // Hora de escolher (como no jogo e na dupla): "O que Charizard vai fazer?".
             : waiting && !locked && (menu === 'main' || menu === 'fight') && !battle.needSwitch ? `${t('O que')} ${current.name} ${t('vai fazer?')}`
             // No fim, o recado do resultado também vem na caixa (em partes, se precisar).
-            : !busy && battle.winner != null && endNote ? `${text} ${endNote}` : text} />
+            : !busy && battle.winner != null && (endNote || (persona && battle.winner === 0)) ? `${text}${persona && battle.winner === 0 ? ` 💬 ${persona.name}: “${t(persona.beat)}”` : ''}${endNote ? ` ${endNote}` : ''}` : text} />
         {/* A Bolsa e o time abrem por cima do campo (a mesma tela, como no jogo; dá para jogar com o celular de lado). */}
         {waiting && menu === 'bag' && (
           // A Bolsa do Black & White, em bolsos: em cima da caixa de texto (a descrição do item aparece nela); USAR e

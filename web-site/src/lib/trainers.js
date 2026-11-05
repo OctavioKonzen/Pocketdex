@@ -124,3 +124,44 @@ export function pairTrainer(list, seed) {
   const options = (list ?? []).filter((t) => isGenericTrainer(t) && isPairTrainer(t))
   return options.length ? options[Math.abs(Math.floor(seed)) % options.length] : null
 }
+
+/**
+ * Os treinadores comuns ganham nome e fala (como nos jogos: "Youngster Joel").
+ * Nomes nossos (sem os dos personagens dos jogos); a fala antes da luta (intro)
+ * e quando perde (beat) são textos traduzidos. Sempre os mesmos para a mesma
+ * semente. Igual ao app (Trainers.persona).
+ */
+export const TRAINER_NAMES_M = ['Joel', 'Ben', 'Tim', 'Eli', 'Theo', 'Lucas', 'Rafa', 'Davi', 'Leo', 'Noah', 'Hugo', 'Igor', 'Caio', 'Enzo', 'Gabe', 'Otto', 'Bruno', 'Dante', 'Felix', 'Ivo']
+export const TRAINER_NAMES_F = ['Lia', 'Mia', 'Ana', 'Bia', 'Luna', 'Nina', 'Sofia', 'Clara', 'Alice', 'Maya', 'Julia', 'Lara', 'Eva', 'Zoe', 'Helena', 'Olga', 'Vera', 'Tina', 'Paula', 'Duda']
+export const TRAINER_INTROS = [
+  'Ei, você! Nossos olhares se cruzaram, agora temos que batalhar!',
+  'Treinei a manhã inteira aqui. Vamos ver se valeu a pena!',
+  'Meu time está em ótima forma hoje!',
+  'Não vou pegar leve só porque você chegou longe.',
+  'Achei que ninguém passaria por aqui. Bora lutar!',
+  'Esse lugar é meu ponto de treino favorito!',
+  'Você parece forte… perfeito!',
+  'Aposto que meu Pokémon é mais rápido que o seu!',
+]
+export const TRAINER_BEATS = [
+  'Ah, não! Você é bom mesmo.',
+  'Preciso treinar mais um pouco…',
+  'Que batalha! Valeu pela luta.',
+  'Meus Pokémon deram tudo de si.',
+  'Perdi, mas aprendi muita coisa.',
+  'Da próxima vez vai ser diferente!',
+]
+const FEMALE_CLASS = /(f|girl|lass|lady|beauty|picnicker|madame|nurse|idol|maid|queen|woman|sis|socialite|aromalady|parasollady)$/
+export function trainerPersona(t, seed) {
+  if (!t) return null
+  const cls = trainerClass(t)
+  const s = Math.abs(Math.floor(seed))
+  const names = FEMALE_CLASS.test(cls) ? TRAINER_NAMES_F : TRAINER_NAMES_M
+  // "Swimmerf" → "Swimmer" (a classe feminina no nome da imagem).
+  const title = /f$/.test(cls) && /f$/.test(t.name ?? '') ? t.name.slice(0, -1) : t.name
+  return {
+    name: `${title} ${names[(s >>> 3) % names.length]}`,
+    intro: TRAINER_INTROS[(s >>> 7) % TRAINER_INTROS.length],
+    beat: TRAINER_BEATS[(s >>> 11) % TRAINER_BEATS.length],
+  }
+}

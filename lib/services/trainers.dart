@@ -172,6 +172,40 @@ class Trainers {
     return pool.isEmpty ? null : pool[seed.abs() % pool.length];
   }
 
+  /// Os treinadores comuns ganham nome e fala (como nos jogos: "Youngster Joel"). Nomes nossos (sem os dos personagens
+  /// dos jogos); a fala antes da luta (intro) e quando perde (beat) são textos traduzidos. Sempre os mesmos para a mesma
+  /// semente. Igual ao site (trainerPersona).
+  static const namesM = ['Joel', 'Ben', 'Tim', 'Eli', 'Theo', 'Lucas', 'Rafa', 'Davi', 'Leo', 'Noah', 'Hugo', 'Igor', 'Caio', 'Enzo', 'Gabe', 'Otto', 'Bruno', 'Dante', 'Felix', 'Ivo'];
+  static const namesF = ['Lia', 'Mia', 'Ana', 'Bia', 'Luna', 'Nina', 'Sofia', 'Clara', 'Alice', 'Maya', 'Julia', 'Lara', 'Eva', 'Zoe', 'Helena', 'Olga', 'Vera', 'Tina', 'Paula', 'Duda'];
+  static const intros = [
+    'Ei, você! Nossos olhares se cruzaram, agora temos que batalhar!',
+    'Treinei a manhã inteira aqui. Vamos ver se valeu a pena!',
+    'Meu time está em ótima forma hoje!',
+    'Não vou pegar leve só porque você chegou longe.',
+    'Achei que ninguém passaria por aqui. Bora lutar!',
+    'Esse lugar é meu ponto de treino favorito!',
+    'Você parece forte… perfeito!',
+    'Aposto que meu Pokémon é mais rápido que o seu!',
+  ];
+  static const beats = [
+    'Ah, não! Você é bom mesmo.',
+    'Preciso treinar mais um pouco…',
+    'Que batalha! Valeu pela luta.',
+    'Meus Pokémon deram tudo de si.',
+    'Perdi, mas aprendi muita coisa.',
+    'Da próxima vez vai ser diferente!',
+  ];
+  static final _femaleClass = RegExp(r'(f|girl|lass|lady|beauty|picnicker|madame|nurse|idol|maid|queen|woman|sis|socialite|aromalady|parasollady)$');
+
+  static ({String name, String intro, String beat}) persona(Trainer t, int seed) {
+    final cls = trainerClass(t);
+    final s = seed.abs() & 0xFFFFFFFF;
+    final names = _femaleClass.hasMatch(cls) ? namesF : namesM;
+    // "Swimmerf" → "Swimmer" (a classe feminina no nome da imagem).
+    final title = cls.endsWith('f') && t.name.endsWith('f') ? t.name.substring(0, t.name.length - 1) : t.name;
+    return (name: '$title ${names[(s >> 3) % names.length]}', intro: intros[(s >> 7) % intros.length], beat: beats[(s >> 11) % beats.length]);
+  }
+
   /// Dois treinadores comuns juntos (a batalha em dupla), sempre os mesmos para a mesma semente.
   static Trainer? pair(int seed) {
     final options = list.where((t) => isGeneric(t) && isPair(t)).toList();
