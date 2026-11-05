@@ -2611,7 +2611,12 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     menu = (
       <>
         {/* Sem o Mapa: dá para seguir em frente ou pegar outro caminho, sem saber aonde ele leva (a entrada de um lugar dá para ver). */}
-        {fork && !hasMap && route.options.map((node, k) => node.kind === 'dungeon' ? placeButton(node, k) : (
+        {fork && !hasMap && route.options.map((node, k) => node.kind === 'dungeon' ? placeButton(node, k) : hmPathInfo(node) ? (
+          // O caminho aberto com uma MO (Cut, Rock Smash, Strength): você sabe o que tem nele, mesmo sem o Mapa.
+          <MenuButton key={k} testid={`map-node-${k}`} disabled={busy || (isBattleNode(node) && down)} onClick={() => pickNode(k)} sub={t(hmPathInfo(node).help)}>
+            {hmPathInfo(node).icon} {t(hmPathInfo(node).label)}
+          </MenuButton>
+        ) : (
           <MenuButton key={k} testid={`map-node-${k}`} disabled={busy || nodeBlocked(run, node) || (isBattleNode(node) && down)} onClick={() => pickNode(k)}
             sub={nodeBlocked(run, node) ? hmHint(run, node) : k === 0 ? t('Continuar por onde você está') : t('Não dá para saber aonde ele leva (o Mapa mostra)')}>
             {k === 0 ? `➡️ ${t('SEGUIR EM FRENTE')}` : `↗️ ${t('OUTRO CAMINHO')}${route.options.length > 2 ? ` ${k}` : ''}`}
@@ -2637,17 +2642,17 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
             <MenuButton testid="town-daycare" disabled={busy} onClick={() => setPanel(panel === 'daycare' ? null : 'daycare')} active={panel === 'daycare'}>🏡 {t('CRECHE')}</MenuButton>
           </div>
         )}
-        {cut && hasMap && (
+        {cut && (
           <MenuButton testid="factory-cut" disabled={busy} onClick={() => save(cut)} sub={t(HM_INFO.cut.help)}>
             ✂️ {t('USAR {0}').replace('{0}', 'Cut')}
           </MenuButton>
         )}
-        {smash && hasMap && (
+        {smash && (
           <MenuButton testid="factory-smash" disabled={busy} onClick={() => save(smash)} sub={t(HM_INFO['rock-smash'].help)}>
             🪨 {t('USAR {0}').replace('{0}', 'Rock Smash')}
           </MenuButton>
         )}
-        {strength && hasMap && (
+        {strength && (
           <MenuButton testid="factory-strength" disabled={busy} onClick={() => save(strength)} sub={t(HM_INFO.strength.help)}>
             💪 {t('USAR {0}').replace('{0}', 'Strength')}
           </MenuButton>

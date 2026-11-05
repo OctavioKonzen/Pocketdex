@@ -1284,7 +1284,7 @@ class FactoryRun {
   };
 
   /// Na Dusk Ball (3×): os lugares escuros.
-  static const darkBiomes = ['cave', 'tower', 'icecave', 'sewer', 'underwater', 'lavacave', 'poisoncave', 'seacave', 'waterfall'];
+  static const darkBiomes = ['cave', 'tower', 'icecave', 'sewer', 'underwater', 'lavacave', 'poisoncave', 'seacave'];
 
   /// Os chefes de cidade (líder no ginásio dele; Elite dos Quatro e Campeão na Liga). Rival e vilões aparecem na rota.
   static const _cityKinds = ['gym', 'elite', 'champion'];

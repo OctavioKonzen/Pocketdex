@@ -1090,7 +1090,7 @@ export function bossScene(data, boss, fallback = 'grass') {
 }
 
 /** Na Dusk Ball (3×): os lugares escuros. */
-export const DARK_BIOMES = ['cave', 'tower', 'icecave', 'sewer', 'underwater', 'lavacave', 'poisoncave', 'seacave', 'waterfall']
+export const DARK_BIOMES = ['cave', 'tower', 'icecave', 'sewer', 'underwater', 'lavacave', 'poisoncave', 'seacave']
 
 /** Os chefes de cidade (líder no ginásio dele; Elite dos Quatro e Campeão na Liga). Rival e vilões aparecem na rota. */
 const CITY_KINDS = ['gym', 'elite', 'champion']

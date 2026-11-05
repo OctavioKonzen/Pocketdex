@@ -4003,6 +4003,11 @@ class _FactoryScreenState extends State<FactoryScreen> {
             for (var k = 0; k < options.length; k++)
               if (options[k]['kind'] == 'dungeon')
                 placeButton(k)
+              // O caminho aberto com uma MO (Cut, Rock Smash, Strength): você sabe o que tem nele, mesmo sem o Mapa.
+              else if (_hmPathInfo(options[k]) != null)
+                _menuButton('${_hmPathInfo(options[k])!.$1} ${tr(_hmPathInfo(options[k])!.$2)}',
+                    widget.busy || (FactoryRun.isBattleNode(options[k]) && down) ? null : () => pick(k),
+                    sub: tr(_hmPathInfo(options[k])!.$3), key: ValueKey('map-node-$k'))
               else
                 _menuButton(k == 0 ? '➡️ ${tr('SEGUIR EM FRENTE')}' : '↗️ ${tr('OUTRO CAMINHO')}${options.length > 2 ? ' $k' : ''}',
                   widget.busy || FactoryRun.nodeBlocked(run, options[k]) || (FactoryRun.isBattleNode(options[k]) && down) ? null : () => pick(k),
@@ -4045,13 +4050,13 @@ class _FactoryScreenState extends State<FactoryScreen> {
                   key: ValueKey('map-node-$k'),
                 );
               }),
-          if (cut != null && hasMap)
+          if (cut != null)
             _menuButton('✂️ ${tr('USAR {0}').replaceAll('{0}', 'Cut')}', widget.busy ? null : () => _save(cut),
                 sub: tr(_hmInfo['cut']!.$3), key: const ValueKey('factory-cut')),
-          if (smash != null && hasMap)
+          if (smash != null)
             _menuButton('🪨 ${tr('USAR {0}').replaceAll('{0}', 'Rock Smash')}', widget.busy ? null : () => _save(smash),
                 sub: tr(_hmInfo['rock-smash']!.$3), key: const ValueKey('factory-smash')),
-          if (strength != null && hasMap)
+          if (strength != null)
             _menuButton('💪 ${tr('USAR {0}').replaceAll('{0}', 'Strength')}', widget.busy ? null : () => _save(strength),
                 sub: tr(_hmInfo['strength']!.$3), key: const ValueKey('factory-strength')),
           if (((run['rerolls'] as num?) ?? 0) > 0 && !meeting && !town && hasMap)
