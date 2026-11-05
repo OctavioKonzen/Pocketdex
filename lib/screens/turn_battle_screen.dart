@@ -2512,9 +2512,11 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                               // O time aberto: a pergunta dele na caixa (como no jogo).
                               : waiting && _menu == 'party' && _summary == null
                                   ? (_b.needSwitch ? tr('Escolha o próximo Pokémon') : _item != null ? tr('Usar em qual Pokémon?') : tr('Escolha um Pokémon.'))
-                              // Derrubou o do adversário: a pergunta do "Shift" (sem dizer quem ele vai mandar).
+                              // Derrubou o do adversário: a pergunta do "Shift", com quem ele vai mandar (como nos jogos).
                               : waiting && _b.shiftPending && _menu == 'main'
-                                  ? tr('O adversário vai mandar outro Pokémon. Quer trocar de Pokémon?')
+                                  ? (_b.shiftNext != null && _b.shiftNext! >= 0 && _b.shiftNext! < _b.teams[1].length
+                                      ? tr('O adversário vai mandar {0}. Quer trocar de Pokémon?').replaceAll('{0}', _b.teams[1][_b.shiftNext!].name)
+                                      : tr('O adversário vai mandar outro Pokémon. Quer trocar de Pokémon?'))
                               // Hora de escolher (como no jogo e na dupla): "O que Charizard vai fazer?".
                               : waiting && (_menu == 'main' || _menu == 'fight') && !_b.needSwitch
                                   ? '${tr('O que')} ${current.name} ${tr('vai fazer?')}'

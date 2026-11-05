@@ -20,8 +20,15 @@ function play(battle, actions = null) {
       action = actions[i++]
     } else if (battle.needSwitch) action = { replace: battle.sides[0].team.findIndex((m, j) => m.hp > 0 && j !== battle.sides[0].active) }
     // A pergunta do "Shift": troca para o próximo de pé (de graça).
-    else if (battle.shiftPending) action = { shift: battle.sides[0].switchOptions[0] }
-    else action = { move: usableMoves(battle.sides[0].team[battle.sides[0].active])[n % 2] ?? 0, gimmick: 'none' }
+    else if (battle.shiftPending) {
+      action = { shift: battle.sides[0].switchOptions[0] }
+      // A pergunta já diz quem o adversário vai mandar: é esse que entra.
+      const told = battle.shiftNext
+      expect(battle.sides[1].team[told]).toBeTruthy()
+      log.push(shiftSwitch(battle, action.shift))
+      expect(battle.sides[1].active).toBe(told)
+      continue
+    } else action = { move: usableMoves(battle.sides[0].team[battle.sides[0].active])[n % 2] ?? 0, gimmick: 'none' }
     log.push(action.replace != null ? replace(battle, action.replace) : action.shift != null ? shiftSwitch(battle, action.shift) : playTurn(battle, action, hit))
   }
   return log

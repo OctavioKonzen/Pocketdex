@@ -653,7 +653,10 @@ class TurnBattle {
     var attempts = 0;
     while (winner == null && forceSwitch[1] && !forceSwitch[0]) {
       if (++attempts > 12) throw StateError('Não foi possível resolver a substituição');
-      events.addAll(_simChoose([{'kind': 'wait'}, {'kind': 'switch', 'index': _cpuReplacement(hit)}]));
+      final chosen = shiftNext;
+      shiftNext = null;
+      final index = chosen != null && chosen >= 0 && canSwitch(1, chosen) ? chosen : _cpuReplacement(hit);
+      events.addAll(_simChoose([{'kind': 'wait'}, {'kind': 'switch', 'index': index}]));
     }
   }
 
@@ -1584,6 +1587,8 @@ class TurnBattle {
       // pergunta se você quer trocar (estilo "Shift" dos jogos; shiftSwitch).
       if (_canShift()) {
         shiftPending = true;
+        // Como nos jogos: ele já escolheu quem vai mandar (a pergunta mostra o nome).
+        shiftNext = _cpuReplacement(hit);
       } else {
         _completeCpuSwitches(hit, events);
         _noteCpuEntry(events);
@@ -1719,6 +1724,9 @@ class TurnBattle {
 
   /// O adversário vai mandar outro Pokémon: a tela pergunta se você quer trocar.
   bool shiftPending = false;
+
+  /// Quem o adversário vai mandar depois da pergunta do "Shift" (escolhido antes dela). Igual ao site.
+  int? shiftNext;
 
   bool _canShift() =>
       shift && winner == null && mode == 'singles' && forceSwitch[1] && !forceSwitch[0] &&

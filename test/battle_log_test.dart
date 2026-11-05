@@ -76,7 +76,11 @@ void main() {
         log.add(show(original.replace(next)));
       } else if (original.shiftPending) {
         final next = [for (var i = 0; i < original.teams[0].length; i++) i].firstWhere((i) => original.teams[0][i].hp > 0 && i != original.activeIndex[0]);
+        // A pergunta já diz quem o adversário vai mandar: é esse que entra.
+        final told = original.shiftNext;
+        expect(told, isNotNull);
         final events = original.shiftSwitch(next);
+        expect(original.activeIndex[1], told);
         // Na troca de graça ninguém ataca.
         if (shifted < 0) {
           shifted = next;

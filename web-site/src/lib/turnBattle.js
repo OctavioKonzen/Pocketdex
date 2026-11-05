@@ -909,7 +909,11 @@ function turnOf(battle, action, hit) {
     }
     // Derrubou o Pokémon do adversário: antes dele mandar o próximo, a tela
     // pergunta se você quer trocar (estilo "Shift" dos jogos; shiftSwitch).
-    if (canShift(battle)) battle.shiftPending = true
+    if (canShift(battle)) {
+      battle.shiftPending = true
+      // Como nos jogos: ele já escolheu quem vai mandar (a pergunta mostra o nome).
+      battle.shiftNext = cpuReplacement(battle, hit)
+    }
     else {
       completeCpuSwitches(battle, hit, events)
       noteCpuEntry(battle, events)
@@ -989,7 +993,9 @@ function completeCpuSwitches(battle, hit, events) {
   while (battle.winner == null && battle.simulator.state.sides[1].forceSwitch) {
     if (++attempts > 12) throw new Error('Não foi possível resolver a substituição')
     if (battle.simulator.state.sides[0].forceSwitch) break
-    const index = cpuReplacement(battle, hit)
+    const chosen = battle.shiftNext
+    battle.shiftNext = null
+    const index = chosen != null && chosen >= 0 && battle.simulator.state.sides[1].switchOptions.includes(chosen) ? chosen : cpuReplacement(battle, hit)
     events.push(...simulatorTurn(battle, [{kind: 'wait'}, {kind: 'switch', index}]))
   }
 }
