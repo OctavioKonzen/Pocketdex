@@ -957,6 +957,12 @@ void main() {
     expect(FactoryRun.nuzlockeArea(city), endsWith(':city'));
     expect(FactoryRun.captureFor(city, data), isNotNull);
     expect(FactoryRun.captureFor({...route, 'dungeon': {'place': 'cave'}}, data), isNotNull);
+    // Cada área vale para sempre: capturou na caverna, voltar para a rota ou para a caverna não dá outra captura.
+    final caughtCave = FactoryRun.winFloor({...route, 'dungeon': {'place': 'cave'}}, data, captured: true);
+    final backRoute = {...caughtCave, 'floor': wild['floor'], 'dungeon': null, 'encounter': wild['encounter']};
+    expect(FactoryRun.captureFor(backRoute, data), isNull);
+    expect(FactoryRun.captureFor({...backRoute, 'dungeon': {'place': 'cave'}}, data), isNull);
+    expect(FactoryRun.captureFor({...backRoute, 'dungeon': {'place': 'forest'}}, data), isNotNull);
     // As regras que dá para escolher (já vêm ligadas: sem itens na batalha, repetidos e shiny). Igual ao site.
     expect(nuz['nuzRules'], ['noBattleItems', 'dupes', 'shinyClause', 'firstOnly']);
     final full = {...wild, 'bag': {...(nuz['bag'] as Map), 'potion': 3, 'poke-ball': 5}};

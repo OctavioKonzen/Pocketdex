@@ -1408,7 +1408,7 @@ export function chooseNode(run, data, index, clock = null) {
     const roll = () => ({ ...encounterFor(data, out.floor, rand, node.kind === 'boss' ? bossOf(data, out) : null, node.kind === 'wildboss', { ...node, biome: scene, shiny: run.shinyRate ?? 1, ...when, ...huntNode(run) }), scene })
     out.encounter = roll()
     // Nuzlocke (cláusula de repetidos): o primeiro selvagem da área não é de uma linha evolutiva que você já teve.
-    if (nuzRule(run, 'dupes') && out.encounter.kind === 'wild' && run.caughtArea !== nuzlockeArea(run)) {
+    if (nuzRule(run, 'dupes') && out.encounter.kind === 'wild' && !areaUsed(run)) {
       const had = new Set(dexOf(run).map((id) => baseForm(data, id)))
       for (let k = 0; k < 8 && out.encounter.foes.every((f) => had.has(baseForm(data, f.id))); k++) out.encounter = roll()
     }
@@ -1861,7 +1861,7 @@ export function winFloor(run, data, after = {}) {
   // Nuzlocke: o encontro desta área já foi (capturado agora; a área é a da batalha, antes de subir de andar).
   // Cláusula do shiny: o shiny não gasta o encontro da área.
   // Só o primeiro encontro: o primeiro selvagem da área gasta a área mesmo sem ser capturado.
-  if (run.nuzlocke && (after.captured || (nuzRule(run, 'firstOnly') && kind === 'wild')) && (kind === 'wild' || kind === 'wildboss') && !(nuzRule(run, 'shinyClause') && foes.some((f) => f.shiny))) out.caughtArea = nuzlockeArea(run)
+  if (run.nuzlocke && (after.captured || (nuzRule(run, 'firstOnly') && kind === 'wild')) && (kind === 'wild' || kind === 'wildboss') && !(nuzRule(run, 'shinyClause') && foes.some((f) => f.shiny))) { out.caughtArea = nuzlockeArea(run); out.caughtAreas = [...new Set([...(run.caughtAreas ?? []), nuzlockeArea(run)])] }
   if (lost.length && lost.length < out.team.length) out.team = out.team.filter((m) => (m.hp ?? 1) > 0)
   if (lost.length) out.fallen = (run.fallen ?? 0) + lost.length
   // O memorial do Nuzlocke: quem caiu, o nível e o andar (como os jogadores anotam).
@@ -2231,6 +2231,11 @@ export function townCenter(run) {
 /** O começo da rota de agora (o andar depois da última cidade). */
 export const legOf = (run) => run.floor - routePos(run) - (run.detour ?? 0)
 /** A área do Nuzlocke (um capturado em cada): a rota, a cidade dela ou o lugar (caverna, floresta...) em que você está. Igual ao app. */
+/**
+ * Nuzlocke: a área já deu o encontro dela (vale para sempre na corrida: voltar
+ * para a floresta ou para a caverna não dá outra captura). Igual ao app.
+ */
+export const areaUsed = (run) => (run.caughtAreas ?? []).includes(nuzlockeArea(run)) || run.caughtArea === nuzlockeArea(run)
 export const nuzlockeArea = (run) => `${legOf(run)}:${run.dungeon?.place ?? (routePos(run) >= ROUTE_LENGTH ? 'city' : 'route')}`
 
 /** O rival da região que aparece de surpresa: o último que você já enfrentou na história (ou o primeiro). null se a região não tem rival. */
@@ -3081,7 +3086,7 @@ export function captureFor(run, data) {
   if (kind !== 'wild' && kind !== 'wildboss') return null
   // Nuzlocke: um capturado por área.
   // Nuzlocke: um capturado por área (a rota, a cidade e cada lugar contam separados).
-  if (run.nuzlocke && run.caughtArea === nuzlockeArea(run) && !(nuzRule(run, 'shinyClause') && foes.some((f) => f.shiny))) return null
+  if (run.nuzlocke && areaUsed(run) && !(nuzRule(run, 'shinyClause') && foes.some((f) => f.shiny))) return null
   // Nuzlocke sem lendários: lendários e míticos não podem ser capturados.
   if (nuzRule(run, 'noLegendary') && foes.some((f) => [1, 2].includes(speciesOf(data, f.id)?.[2]))) return null
   // Monotipo: só quem tem um tipo do inicial.

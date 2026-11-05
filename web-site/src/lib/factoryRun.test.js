@@ -1354,6 +1354,13 @@ describe('ideias: amizade, habilidades fora da batalha, Nuzlocke', () => {
     expect(nuzlockeArea(city).endsWith(':city')).toBe(true)
     expect(captureFor(city, data)).not.toBe(null)
     expect(captureFor({ ...route, dungeon: { place: 'cave' } }, data)).not.toBe(null)
+    // Cada área vale para sempre: capturou na caverna, voltar para a rota ou para a caverna não dá outra captura.
+    const inCave = { ...route, dungeon: { place: 'cave' } }
+    const caughtCave = winFloor(inCave, data, { captured: true })
+    const backRoute = { ...caughtCave, floor: wild.floor, dungeon: null, encounter: wild.encounter }
+    expect(captureFor(backRoute, data)).toBe(null)
+    expect(captureFor({ ...backRoute, dungeon: { place: 'cave' } }, data)).toBe(null)
+    expect(captureFor({ ...backRoute, dungeon: { place: 'forest' } }, data)).not.toBe(null)
     // As regras que dá para escolher (já vêm ligadas: sem itens na batalha, repetidos e shiny).
     expect(nuz.nuzRules).toEqual(NUZLOCKE_DEFAULT)
     const full = { ...wild, bag: { ...nuz.bag, potion: 3, 'poke-ball': 5 } }

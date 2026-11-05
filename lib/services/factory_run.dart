@@ -1854,7 +1854,7 @@ class FactoryRun {
           };
       out['encounter'] = roll();
       // Nuzlocke (cláusula de repetidos): o primeiro selvagem da área não é de uma linha evolutiva que você já teve.
-      if (nuzRule(run, 'dupes') && out['encounter']['kind'] == 'wild' && run['caughtArea'] != nuzlockeArea(run)) {
+      if (nuzRule(run, 'dupes') && out['encounter']['kind'] == 'wild' && !areaUsed(run)) {
         final had = {for (final id in dexOf(run)) baseForm(data, id)};
         bool dupe() => (out['encounter']['foes'] as List).every((f) => had.contains(baseForm(data, _int(f['id']))));
         for (var k = 0; k < 8 && dupe(); k++) {
@@ -1977,7 +1977,7 @@ class FactoryRun {
     final kind = encounter?['kind'];
     if (kind != 'wild' && kind != 'wildboss') return null;
     // Nuzlocke: um capturado por área (a rota, a cidade e cada lugar contam separados).
-    if (run['nuzlocke'] == true && run['caughtArea'] == nuzlockeArea(run) && !(nuzRule(run, 'shinyClause') && ((encounter?['foes'] as List?) ?? const []).any((f) => f['shiny'] == true))) {
+    if (run['nuzlocke'] == true && areaUsed(run) && !(nuzRule(run, 'shinyClause') && ((encounter?['foes'] as List?) ?? const []).any((f) => f['shiny'] == true))) {
       return null;
     }
     // Nuzlocke sem lendários: lendários e míticos não podem ser capturados.
@@ -2389,6 +2389,7 @@ class FactoryRun {
         (kind == 'wild' || kind == 'wildboss') &&
         !(nuzRule(run, 'shinyClause') && foes.any((f) => f['shiny'] == true))) {
       out['caughtArea'] = nuzlockeArea(run);
+      out['caughtAreas'] = {...((run['caughtAreas'] as List?) ?? const []), nuzlockeArea(run)}.toList();
     }
     if (lost.isNotEmpty && lost.length < team.length) team.removeWhere((m) => hpOf(m) <= 0);
     if (lost.isNotEmpty) out['fallen'] = _int(run['fallen'] ?? 0) + lost.length;
@@ -2749,6 +2750,10 @@ class FactoryRun {
   static const rematchFloors = 5;
   /// A área do Nuzlocke (um capturado em cada): a rota, a cidade dela ou o lugar (caverna, floresta...) em que você está.
   /// Igual ao site.
+  /// Nuzlocke: a área já deu o encontro dela (vale para sempre na corrida: voltar para a floresta ou para a caverna
+  /// não dá outra captura). Igual ao site.
+  static bool areaUsed(Json run) => ((run['caughtAreas'] as List?) ?? const []).contains(nuzlockeArea(run)) || run['caughtArea'] == nuzlockeArea(run);
+
   static String nuzlockeArea(Json run) =>
       '${legOf(run)}:${run['dungeon']?['place'] ?? (routePos(run) >= routeLength ? 'city' : 'route')}';
 
