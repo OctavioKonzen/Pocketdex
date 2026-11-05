@@ -5139,7 +5139,7 @@ class _PcPanelState extends State<_PcPanel> {
     final picked = _picked == l;
     Widget sprite(Json m, {double opacity = 1}) => Opacity(
           opacity: opacity,
-          child: PokemonSprite((m['id'] as num).toInt(), shiny: m['shiny'] == true, fill: 0.9),
+          child: PokemonSprite((m['id'] as num).toInt(), shiny: m['shiny'] == true, fill: 0.85),
         );
     return DragTarget<_PcLoc>(
       onWillAcceptWithDetails: (d) => d.data != l,
@@ -5153,10 +5153,13 @@ class _PcPanelState extends State<_PcPanel> {
             border: Border.all(color: picked ? const Color(0xFFFBBF24) : const Color(0x660F3D5C), width: 2),
             borderRadius: BorderRadius.circular(8),
           ),
+          // O sprite fica dentro do quadrado (não sai pelas bordas).
+          clipBehavior: Clip.hardEdge,
           child: mon == null
               ? null
               : Stack(fit: StackFit.expand, children: [
-                  Padding(padding: const EdgeInsets.all(1), child: sprite(mon)),
+                  // O Pokémon inteiro no quadrado (num quadrado centralizado, sem cortar).
+                  Padding(padding: const EdgeInsets.all(2), child: Center(child: AspectRatio(aspectRatio: 1, child: sprite(mon)))),
                   if (!small)
                     Positioned(right: 2, bottom: 0, child: Text('${mon['level']}', style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Color(0xFF1E293B)))),
                 ]),

@@ -93,9 +93,9 @@ export default function PcPanel({ run, nameOf, onSave }) {
     const dragging = drag?.moved && key(drag.from) === key(l)
     return (
       <div key={key(l)} data-pc-slot={key(l)} data-testid={`pc-slot-${l.where}-${l.index}`} onPointerDown={(e) => start(e, l)}
-        className={`relative grid min-h-0 min-w-0 cursor-pointer ${small ? 'flex-1' : ''} touch-none select-none place-items-center rounded-lg border-2 ${isPicked ? 'border-amber-400 bg-amber-200/60' : mon ? 'border-sky-900/60 bg-sky-100/80' : 'border-dashed border-sky-900/30 bg-white/15'}`}
+        className={`relative grid min-h-0 min-w-0 cursor-pointer overflow-hidden ${small ? 'flex-1' : ''} touch-none select-none place-items-center rounded-lg border-2 ${isPicked ? 'border-amber-400 bg-amber-200/60' : mon ? 'border-sky-900/60 bg-sky-100/80' : 'border-dashed border-sky-900/30 bg-white/15'}`}
         title={mon ? nameOf(mon.id) : ''}>
-        {mon && <PokeIcon id={mon.id} shiny={Boolean(mon.shiny)} className={`pointer-events-none absolute inset-0 m-auto h-full max-h-full w-full max-w-full object-contain ${dragging ? 'opacity-30' : ''}`} />}
+        {mon && <PokeIcon id={mon.id} shiny={Boolean(mon.shiny)} fill={0.85} className={`pointer-events-none aspect-square h-full max-h-full max-w-full ${dragging ? 'opacity-30' : ''}`} />}
         {mon && !small && <span className="pointer-events-none absolute right-0.5 bottom-0 text-[8px] font-black text-slate-800">{mon.level}</span>}
       </div>
     )
