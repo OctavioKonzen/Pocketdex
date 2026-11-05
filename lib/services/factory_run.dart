@@ -180,9 +180,13 @@ class FactoryRun {
   // ------------------------------------------------------------ dificuldade
 
   static int foeLevelAt(int floor) => 2 + ((floor - 1) * 0.8).floor();
-  static int foeEvsAt(int floor) => 3 * floor;
-  static int foeIvsAt(int floor) => math.min(31, floor ~/ 2) + math.max(0, ((floor - 100) / 10).floor());
-  static double foeBoostAt(int floor) => (math.max(0, floor - 30) * 0.003 * 1000).round() / 1000;
+  /// A dificuldade: difícil de ir longe, mas quem joga bem pode seguir para sempre. Os adversários sobem de nível sem
+  /// teto (como o seu time, pela XP), mas os bônus que só eles têm (atributos a mais, IVs acima de 31 e EVs) param no
+  /// andar [foePlateau]: dali em diante, as cartas, os EVs e as escolhas do seu time vão abrindo vantagem. Igual ao site.
+  static const foePlateau = 300;
+  static int foeEvsAt(int floor) => 3 * math.min(floor, foePlateau);
+  static int foeIvsAt(int floor) => math.min(31, floor ~/ 2) + math.max(0, ((math.min(floor, foePlateau) - 100) / 10).floor());
+  static double foeBoostAt(int floor) => (math.min(0.8, math.max(0, floor - 30) * 0.003) * 1000).round() / 1000;
   /// Preço da loja no andar: cresce junto com o dinheiro (nível e tamanho dos times dos treinadores). Igual ao site.
   static double priceScale(int floor) => (1 + (floor - 1) / 20) * (1 + 0.4 * math.min(5, floor ~/ 12));
 

@@ -8,7 +8,7 @@ import {
   placeInfo, routeInfo, DBOSS_GIMMICK_FLOOR, UPGRADE_FX, SHORE, CAVE_OF, dungeonPos, routePos, DUNGEON_LENGTH, CITY_BOSS, waterNext, RIVAL_FLOOR, targetOf, rivalBoss, rocketBoss, townShop, townCenter, townHub, biomesLinked,
   isDoubleBattle,
   DOUBLE_FLOOR,
-  battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, foeLevelAt, foeMember,
+  battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, foeEvsAt, foeIvsAt, FOE_PLATEAU, foeLevelAt, foeMember,
   HELD_BOOST, levelTo, MAX_TEAM, memberOf, movesAt, nextFloor, nextRandom, overflowPoints, pokemonPrice, runCoins, setMainItem, shopPrice,
   SHINY_BOOST, FOE_SHINY_BOOST, SHINY_CHANCE, START_BAG, START_BALLS, startersOf, buyShiny, shinyPrice, unlockShiny, claimStarter, freePick, canEvolveWith, teachMove,
   equipFromStash, gimmicksOf, setGimmick, storyLine, startRun, takeCard, teamDown, applyBagItem, winFloor, chooseNode, routeOptions, routeCities,
@@ -81,6 +81,11 @@ describe('Battle Factory (roguelike)', () => {
     expect(deep.foes[0].boost).toBeCloseTo(foeBoostAt(500))
     expect(foeLevelAt(1)).toBe(2)
     expect(foeBoostAt(30)).toBe(0)
+    // Os bônus só dos adversários param no platô; o nível continua subindo.
+    expect(foeBoostAt(5000)).toBe(foeBoostAt(FOE_PLATEAU))
+    expect(foeIvsAt(5000)).toBe(foeIvsAt(FOE_PLATEAU))
+    expect(foeEvsAt(5000)).toBe(foeEvsAt(FOE_PLATEAU))
+    expect(foeLevelAt(5000)).toBeGreaterThan(foeLevelAt(FOE_PLATEAU))
     // Nada de Fantasma nos primeiros andares (os iniciais só têm golpes Normal).
     for (let i = 0; i < 200; i++) for (const f of encounterFor(data, 2, rand).foes) expect(data.species[f.id][4]).not.toContain('ghost')
   })

@@ -101,14 +101,20 @@ function pickWeighted(list, weights, rand) {
 
 // ------------------------------------------------------------ dificuldade
 
+/**
+ * A dificuldade: difícil de ir longe, mas quem joga bem pode seguir para sempre. Os adversários sobem de nível sem
+ * teto (como o seu time, pela XP), mas os bônus que só eles têm (atributos a mais, IVs acima de 31 e EVs) param no
+ * andar FOE_PLATEAU: dali em diante, as cartas, os EVs e as escolhas do seu time vão abrindo vantagem. Igual ao app.
+ */
+export const FOE_PLATEAU = 300
 /** Nível base dos adversários no andar (sem teto). */
 export const foeLevelAt = (floor) => 2 + Math.floor((floor - 1) * 0.8)
-/** EVs (por atributo) dos adversários: sobem sem limite. */
-export const foeEvsAt = (floor) => 3 * floor
-/** IVs dos adversários: chegam a 31 e, depois do andar 100, passam do limite. */
-export const foeIvsAt = (floor) => Math.min(31, Math.floor(floor / 2)) + Math.max(0, Math.floor((floor - 100) / 10))
-/** Porcentagem a mais em todos os atributos dos adversários depois do andar 30 (um pouco mais que as cartas: um dia a corrida acaba). */
-export const foeBoostAt = (floor) => Math.round(Math.max(0, floor - 30) * 0.003 * 1000) / 1000
+/** EVs (por atributo) dos adversários: sobem até o andar FOE_PLATEAU. */
+export const foeEvsAt = (floor) => 3 * Math.min(floor, FOE_PLATEAU)
+/** IVs dos adversários: chegam a 31 e, depois do andar 100, passam do limite (até +20, no andar FOE_PLATEAU). */
+export const foeIvsAt = (floor) => Math.min(31, Math.floor(floor / 2)) + Math.max(0, Math.floor((Math.min(floor, FOE_PLATEAU) - 100) / 10))
+/** Porcentagem a mais em todos os atributos dos adversários depois do andar 30 (até +80%, no andar ~FOE_PLATEAU). */
+export const foeBoostAt = (floor) => Math.round(Math.min(0.8, Math.max(0, floor - 30) * 0.003) * 1000) / 1000
 /**
  * Preço da loja no andar: cresce junto com o dinheiro que os adversários dão
  * (o nível sobe e os treinadores ganham 1 Pokémon a cada 12 andares, até 6):
