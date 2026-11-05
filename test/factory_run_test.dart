@@ -957,6 +957,60 @@ void main() {
     expect(FactoryRun.nuzlockeArea(city), endsWith(':city'));
     expect(FactoryRun.captureFor(city, data), isNotNull);
     expect(FactoryRun.captureFor({...route, 'dungeon': {'place': 'cave'}}, data), isNotNull);
+    // As regras que dá para escolher (já vêm ligadas: sem itens na batalha, repetidos e shiny). Igual ao site.
+    expect(nuz['nuzRules'], ['noBattleItems', 'dupes', 'shinyClause', 'firstOnly']);
+    final full = {...wild, 'bag': {...(nuz['bag'] as Map), 'potion': 3, 'poke-ball': 5}};
+    final inBattle = FactoryRun.bagsFor(full).first!;
+    expect([inBattle['potion'], inBattle['poke-ball']], [0, 5]);
+    // Fora da batalha a poção continua na Bolsa (e cura igual); da batalha volta só a conta das bolas.
+    final used = FactoryRun.winFloor(full, data, bag: {...inBattle, 'poke-ball': 4});
+    final plainUsed = FactoryRun.winFloor({...full, 'nuzRules': <String>[]}, data, bag: {...FactoryRun.bagOf(full), 'potion': 1, 'poke-ball': 4});
+    expect(FactoryRun.bagOf(used)['potion'], 3);
+    expect(FactoryRun.bagOf(plainUsed)['potion'], 1);
+    expect(FactoryRun.bagOf(used)['poke-ball'], FactoryRun.bagOf(plainUsed)['poke-ball']);
+    // Cláusula do shiny: dá para capturar mesmo depois do primeiro da área, e não gasta o encontro.
+    final shiny = {...route, 'encounter': {'kind': 'wild', 'foes': [{'id': 19, 'level': 5, 'shiny': true}]}};
+    expect(FactoryRun.captureFor(shiny, data), isNotNull);
+    expect(FactoryRun.winFloor({...shiny, 'caughtArea': null}, data, captured: true)['caughtArea'], isNull);
+    // Com as regras desligadas, como antes.
+    expect(FactoryRun.bagsFor({...full, 'nuzRules': <String>[]}).first!['potion'], 3);
+    expect(FactoryRun.captureFor({...shiny, 'nuzRules': <String>[]}, data), isNull);
+    // Cláusula de repetidos: o primeiro da área não é de uma linha que você já teve.
+    var other = 0;
+    for (var seed = 1; seed <= 30; seed++) {
+      final at = {...FactoryRun.startRun(FactoryRun.empty(), data, 1, seed, nuzlocke: true)!, 'floor': 12, 'route': {'floor': 12, 'biome': 'grass', 'options': [{'kind': 'wild'}]}};
+      final first = (FactoryRun.chooseNode({...at, 'nuzRules': <String>[]}, data, 0)['encounter']['foes'] as List).first['id'] as int;
+      final next = (FactoryRun.chooseNode({...at, 'dex': [FactoryRun.baseForm(data, first)]}, data, 0)['encounter']['foes'] as List).first['id'] as int;
+      if (FactoryRun.baseForm(data, next) != FactoryRun.baseForm(data, first)) other++;
+    }
+    expect(other, 30);
+    // Só o primeiro encontro: venceu o primeiro selvagem da área sem capturar, a área acabou.
+    expect(FactoryRun.winFloor(wild, data)['caughtArea'], FactoryRun.nuzlockeArea(wild));
+    expect(FactoryRun.winFloor({...wild, 'nuzRules': <String>[]}, data)['caughtArea'], isNull);
+    // Sem lendários: o lendário não dá para capturar.
+    final legend = data.species.entries.firstWhere((e) => e.value[2] == 1).key;
+    final legendary = {...nuz, 'nuzRules': ['noLegendary'], 'encounter': {'kind': 'wildboss', 'foes': [{'id': legend, 'level': 50}]}};
+    expect(FactoryRun.captureFor(legendary, data), isNull);
+    expect(FactoryRun.captureFor({...legendary, 'nuzRules': <String>[]}, data), isNotNull);
+    // Sem itens de segurar: o time luta sem itens.
+    final held = {...first, 'item': 'life-orb', 'extras': ['choice-band']};
+    expect(FactoryRun.memberOf({...nuz, 'nuzRules': ['noHeldItems']}, held, ['tackle']).$2['item'], '');
+    expect(FactoryRun.memberOf(nuz, held, ['tackle']).$2['item'], 'life-orb');
+    // Contra o líder: só tantos quantos ele tem.
+    final six = {...nuz, 'nuzRules': ['leaderCount'], 'team': List.filled(6, first), 'encounter': {'kind': 'boss', 'boss': {'kind': 'gym'}, 'foes': [{'id': 74}, {'id': 95}]}};
+    expect(FactoryRun.battleOrder(six), hasLength(2));
+    expect(FactoryRun.battleOrder({...six, 'encounter': {...(six['encounter'] as Map), 'boss': {'kind': 'rival'}}}), hasLength(6));
+    expect(FactoryRun.battleOrder({...six, 'nuzRules': <String>[]}), hasLength(6));
+    // Limite de nível: o do mais forte do próximo líder; o XP para nele e o Rare Candy não passa dele.
+    final capped = {...nuz, 'nuzRules': ['levelCap']};
+    final cap = FactoryRun.levelCapOf(data, capped)!;
+    expect(cap, greaterThan(FactoryRun.foeLevelAt(FactoryRun.cityBoss)));
+    expect(FactoryRun.levelCapOf(data, nuz), isNull);
+    final atCap = {...capped, 'team': [{...first, 'level': cap, 'exp': FactoryRun.expAt(cap)}], 'money': 99999, 'pending': {'shop': ['rare-candy']}};
+    expect(FactoryRun.buyItem(atCap, 'rare-candy', 0, data), isNull);
+    expect(FactoryRun.buyItem({...atCap, 'nuzRules': <String>[]}, 'rare-candy', 0, data), isNotNull);
+    final won = FactoryRun.winFloor({...atCap, 'pending': null, 'encounter': {'kind': 'trainer', 'foes': [{'id': 19, 'level': cap, 'iv': 0, 'ev': 0}]}}, data, hp: [1]);
+    expect(FactoryRun.teamOf(won).first['level'], cap);
   });
 
   test('corrida da semana e cosméticos (igual ao site)', () {

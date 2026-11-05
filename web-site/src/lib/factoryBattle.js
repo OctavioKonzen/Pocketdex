@@ -5,7 +5,7 @@
 import { battleMons } from './battleSetup'
 import { t } from './i18n'
 import { getFactoryData, getMoves, getPokemonById, getSpecies } from './data'
-import { bagsFor, battleOrder, bossScene, captureFor, clockOf, fieldOf, isDoubleBattle, weatherOf, EXP_SHARE, expAt, expFactor, expProgress, expShares, foeMember, memberOf, movesAt } from './factoryRun'
+import { bagsFor, battleOrder, bossScene, captureFor, clockOf, fieldOf, isDoubleBattle, weatherOf, EXP_SHARE, expAt, expFactor, expProgress, expShares, foeMember, memberOf, movesAt, nuzRule, levelCapOf } from './factoryRun'
 import { seededRandom } from './league'
 import { newBattle } from './turnBattle'
 
@@ -43,8 +43,10 @@ export async function factoryBattle(run) {
   const weather = weatherOf(run, scene, clockOf().season) || (place === 'wind' ? 'wind' : '')
   const field = place === 'wind' ? '' : place
   // A barra de XP (expBarOf) e o XP na hora: o XP de cada um agora e quanto cada adversário derrubado dá para cada um (quem lutou: tudo; com o Exp. Share, o resto: a metade).
+  const cap = levelCapOf(data, run)
   const expBar = {
-    mons: order.map((i) => ({ level: run.team[i].level, exp: run.team[i].exp })),
+    // cap: o limite de nível do Nuzlocke (o motor para o XP nele).
+    mons: order.map((i) => ({ level: run.team[i].level, exp: run.team[i].exp, ...(cap ? { cap } : {}) })),
     table: run.encounter.foes.map((f) => { const all = expShares(run, data, f, null, expFactor(run.encounter.kind)); return order.map((i) => all[i]) }),
     share: run.expShare ? EXP_SHARE : 0,
   }
@@ -54,6 +56,8 @@ export async function factoryBattle(run) {
     ...(doubles ? { mode: 'doubles', controllers: [['me', 'me'], ['npc1', 'npc2']] } : {}) })
   battle.members = { mine, theirs }
   battle.scene = scene
+  // Nuzlocke com o Modo Set: sem a pergunta de trocar quando o adversário cai.
+  if (nuzRule(run, 'setMode')) battle.noShift = true
   battle.factoryOrder = order
   battle.expBar = expBar
   return battle

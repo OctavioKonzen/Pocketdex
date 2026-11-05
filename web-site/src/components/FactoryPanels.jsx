@@ -20,7 +20,7 @@ import { battleMons } from '../lib/battleSetup'
 import {
   BAG_ITEMS, BOX_SIZE, boxToSet, releaseFromBox, HUNT_MAX, HUNT_STEP, huntBase, huntMultOf, setHunt, bossOf, regionOf, genderOf, piecesOf, pieceOf, upgradePieces, tradePieces, PIECE_ITEMS, PIECE_TRADE, capturedMon, isRegionalForm, emptyFactory, unequipItem, ROUTE_LENGTH, CITY_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, teamRoom, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
-  shinyPrice, shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, takeCard, teachMove, teamDown, applyBagItem, unlockShiny, VITAMIN_EVS, VITAMINS,
+  shinyPrice, shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, unlockShiny, VITAMIN_EVS, VITAMINS,
   buyShiny, forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor, isKeystone,
   tradeMon, skipTrade, TRADE_LEVELS, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, bossScene,
   resolveChoice, regionLegend, leaderType, villainTeam, rivalBoss, rocketBoss, placeInfo, routeInfo, DUNGEON_LENGTH, dungeonPos, townShop, townCenter,
@@ -810,6 +810,9 @@ export function FactoryHub({ onContinue, busy }) {
   const [pick, setPick] = useState(null)
   // Nuzlocke: quem desmaia vai embora e só um capturado por área (rota, cidade e cada lugar).
   const [nuzlocke, setNuzlocke] = useState(false)
+  // As regras do Nuzlocke que você escolhe (o botão aparece com o modo ligado).
+  const [nuzRules, setNuzRules] = useState(NUZLOCKE_DEFAULT)
+  const [rulesOpen, setRulesOpen] = useState(false)
   // Os outros modos da corrida (monotipo, sem itens, formas regionais).
   const [modes, setModes] = useState([])
   const [query, setQuery] = useState('')
@@ -889,6 +892,20 @@ export function FactoryHub({ onContinue, busy }) {
             <input type="checkbox" checked={nuzlocke} onChange={(e) => setNuzlocke(e.target.checked)} />
             🕯️ {t('Modo Nuzlocke: quem desmaia vai embora e só um capturado por área (rota, cidade e cada lugar)')}
           </label>
+          {nuzlocke && (
+            <div className="ml-6 space-y-1">
+              <button type="button" data-testid="factory-nuzlocke-rules" onClick={() => setRulesOpen((o) => !o)}
+                className="cursor-pointer rounded-lg border-2 border-slate-700 bg-surface px-3 py-1 text-sm font-black">
+                ⚙️ {t('Regras do Nuzlocke')} ({nuzRules.length}/{NUZLOCKE_RULES.length}) {rulesOpen ? '▲' : '▼'}
+              </button>
+              {rulesOpen && NUZLOCKE_RULES.map(([rule, icon, text]) => (
+                <label key={rule} className="flex items-center gap-2 text-sm" data-testid={`factory-nuzlocke-rule-${rule}`}>
+                  <input type="checkbox" checked={nuzRules.includes(rule)} onChange={(e) => setNuzRules((r) => (e.target.checked ? [...r, rule] : r.filter((x) => x !== rule)))} />
+                  {icon} {t(text)}
+                </label>
+              ))}
+            </div>
+          )}
           {RUN_MODE_TEXTS.map(([mode, text]) => (
             <label key={mode} className="flex items-center gap-2 text-sm font-semibold" data-testid={`factory-mode-${mode}`}>
               <input type="checkbox" checked={modes.includes(mode)} onChange={(e) => setModes((m) => (e.target.checked ? [...m, mode] : m.filter((x) => x !== mode)))} />
@@ -900,7 +917,7 @@ export function FactoryHub({ onContinue, busy }) {
             disabled={busy || pick == null}
             onClick={() => {
               const meta = claimStarter(factory, data, pick.id)
-              const next = startRun(meta, data, pick.id, Math.floor(Math.random() * 2 ** 31), pick.shiny, { nuzlocke, modes })
+              const next = startRun(meta, data, pick.id, Math.floor(Math.random() * 2 ** 31), pick.shiny, { nuzlocke, nuzRules, modes })
               if (!next) return
               saveFactory({ ...meta, run: next })
               onContinue()

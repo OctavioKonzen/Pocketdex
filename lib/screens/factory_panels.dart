@@ -134,14 +134,17 @@ Future<(TurnBattle, List<int>)> factoryBattle(Json run) async {
           : (place == 'wind' ? 'wind' : ''),
       startField: place == 'wind' ? '' : place,
       startExp: {
-        'mons': [for (final m in expBar.mons) {'level': m.level, 'exp': m.exp}],
+        // cap: o limite de nível do Nuzlocke (o motor para o XP nele).
+        'mons': [for (final m in expBar.mons) {'level': m.level, 'exp': m.exp, if (FactoryRun.levelCapOf(data, run) != null) 'cap': FactoryRun.levelCapOf(data, run)}],
         'table': expBar.table,
         'share': expBar.share,
       })
     ..ai = 'normal'
     ..seed = seed
     ..members = (mine: BattleLog.toRecord(mine), theirs: BattleLog.toRecord(theirs))
-    ..scene = scene;
+    ..scene = scene
+    // Nuzlocke com o Modo Set: sem a pergunta de trocar quando o adversário cai.
+    ..noShift = FactoryRun.nuzRule(run, 'setMode');
   battle.expBar = expBar;
   return (battle, order);
 }
@@ -1705,11 +1708,42 @@ class FactoryHub extends StatefulWidget {
 }
 
 class _FactoryHubState extends State<FactoryHub> {
+  /// A janela com as regras do Nuzlocke (liga e desliga cada uma).
+  Future<void> _pickNuzRules(BuildContext context) => showDialog<void>(
+        context: context,
+        builder: (context) => StatefulBuilder(
+          builder: (context, setDialog) => AlertDialog(
+            title: Text('🕯️ ${tr('Regras do Nuzlocke')}'),
+            content: SingleChildScrollView(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                for (final (rule, icon, text) in FactoryRun.nuzlockeRules)
+                  CheckboxListTile(
+                    key: ValueKey('factory-nuzlocke-rule-$rule'),
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    value: _nuzRules.contains(rule),
+                    title: Text('$icon ${tr(text)}', style: const TextStyle(fontSize: 13)),
+                    onChanged: (on) {
+                      setState(() => _nuzRules = on == true ? {..._nuzRules, rule} : ({..._nuzRules}..remove(rule)));
+                      setDialog(() {});
+                    },
+                  ),
+              ]),
+            ),
+            actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text(tr('OK')))],
+          ),
+        ),
+      );
+
   FactoryData? _data = FactoryData.loaded;
   ({int id, bool shiny})? _pick;
 
   /// O modo da corrida (um por vez, arrastando para o lado): normal, nuzlocke, monotipo, sem itens, formas regionais.
   String _mode = 'normal';
+
+  /// As regras do Nuzlocke que você escolhe (o botão aparece com o modo Nuzlocke).
+  Set<String> _nuzRules = {...FactoryRun.nuzlockeDefault};
   // A aba aberta embaixo (missões, árvore, loja...).
   int _tab = 0;
   int? _lucky;
@@ -1834,6 +1868,16 @@ class _FactoryHubState extends State<FactoryHub> {
           ]),
           const SizedBox(height: 4),
           _ModePicker(mode: _mode, onChanged: (m) => setState(() => _mode = m)),
+          if (_mode == 'nuzlocke') ...[
+            const SizedBox(height: 6),
+            Center(
+              child: OutlinedButton(
+                key: const ValueKey('factory-nuzlocke-rules'),
+                onPressed: () => _pickNuzRules(context),
+                child: Text('⚙️ ${tr('Regras do Nuzlocke')} (${_nuzRules.length}/${FactoryRun.nuzlockeRules.length})', style: const TextStyle(fontWeight: FontWeight.w900)),
+              ),
+            ),
+          ],
           const SizedBox(height: 8),
           PillButton(
             key: const ValueKey('factory-start'),
@@ -1842,7 +1886,7 @@ class _FactoryHubState extends State<FactoryHub> {
                 ? null
                 : () {
                     final meta = FactoryRun.claimStarter(factory, data, _pick!.id);
-                    final next = FactoryRun.startRun(meta, data, _pick!.id, Random().nextInt(1 << 31), shiny: _pick!.shiny, nuzlocke: _mode == 'nuzlocke', modes: {if (_mode != 'normal' && _mode != 'nuzlocke') _mode});
+                    final next = FactoryRun.startRun(meta, data, _pick!.id, Random().nextInt(1 << 31), shiny: _pick!.shiny, nuzlocke: _mode == 'nuzlocke', nuzRules: _nuzRules, modes: {if (_mode != 'normal' && _mode != 'nuzlocke') _mode});
                     if (next == null) return;
                     saveFactory({...meta, 'run': next});
                     widget.onContinue();

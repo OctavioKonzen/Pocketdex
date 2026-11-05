@@ -1509,7 +1509,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
     if (_b.mode != 'singles') return;
     // Contra o computador: depois de derrubar o Pokémon dele, pergunta se quer trocar (estilo "Troca";
     // nas Configurações dá para escolher o "Fixo", sem a pergunta).
-    if (widget.online == null) _b.shift = AppSettings.instance.battleStyle != 'set';
+    if (widget.online == null) _b.shift = AppSettings.instance.battleStyle != 'set' && !_b.noShift;
     // No celular a batalha pode deitar (com o registro ao lado).
     PhoneOrientation.any();
     // A música da batalha (para quando sai da tela).

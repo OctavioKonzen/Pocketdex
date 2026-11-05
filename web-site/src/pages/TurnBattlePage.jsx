@@ -1011,7 +1011,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   // nas Configurações dá para escolher o "Fixo", sem a pergunta).
   const battleStyle = usePrefs((s) => s.battleStyle)
   useState(() => {
-    if (!online) battle.shift = battleStyle !== 'set'
+    if (!online) battle.shift = battleStyle !== 'set' && !battle.noShift
   })
   const addLog = (entry) => setLog((l) => [...l, entry])
   // Para o resumo do fim: dano causado e recebido e nocautes de cada Pokémon ({lado:índice} → números).

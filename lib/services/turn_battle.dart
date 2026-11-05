@@ -1722,6 +1722,9 @@ class TurnBattle {
   /// da batalha e pelo replay. Igual ao site (shiftSwitch em turnBattle.js).
   bool shift = false;
 
+  /// Nuzlocke com o Modo Set: a batalha nunca faz a pergunta do "Shift" (vale mais que as Configurações).
+  bool noShift = false;
+
   /// O adversário vai mandar outro Pokémon: a tela pergunta se você quer trocar.
   bool shiftPending = false;
 

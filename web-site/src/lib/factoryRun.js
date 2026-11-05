@@ -1405,7 +1405,13 @@ export function chooseNode(run, data, index, clock = null) {
     const scene = node.biome ?? (city ? (bossOf(data, run).kind === 'gym' ? 'city' : 'tower') : run.route.biome ?? 'grass')
     out.scene = scene
     const when = clock ? { night: clock.night, season: clock.season } : {}
-    out.encounter = { ...encounterFor(data, out.floor, rand, node.kind === 'boss' ? bossOf(data, out) : null, node.kind === 'wildboss', { ...node, biome: scene, shiny: run.shinyRate ?? 1, ...when, ...huntNode(run) }), scene }
+    const roll = () => ({ ...encounterFor(data, out.floor, rand, node.kind === 'boss' ? bossOf(data, out) : null, node.kind === 'wildboss', { ...node, biome: scene, shiny: run.shinyRate ?? 1, ...when, ...huntNode(run) }), scene })
+    out.encounter = roll()
+    // Nuzlocke (cláusula de repetidos): o primeiro selvagem da área não é de uma linha evolutiva que você já teve.
+    if (nuzRule(run, 'dupes') && out.encounter.kind === 'wild' && run.caughtArea !== nuzlockeArea(run)) {
+      const had = new Set(dexOf(run).map((id) => baseForm(data, id)))
+      for (let k = 0; k < 8 && out.encounter.foes.every((f) => had.has(baseForm(data, f.id))); k++) out.encounter = roll()
+    }
     countHunt(data, out)
     // A revanche: o Campeão vencido, com o time do andar de agora (e mais forte).
     if (node.kind === 'rematch') {
@@ -1662,6 +1668,36 @@ export function huntAfter(factory, run) {
  */
 export const RUN_MODES = ['mono', 'noItems', 'regionalAll']
 
+/**
+ * As regras do Nuzlocke que dá para escolher (sempre valem: quem desmaia vai
+ * embora e só um capturado por área). [id, ícone, texto]. Igual ao app.
+ */
+export const NUZLOCKE_RULES = [
+  ['noBattleItems', '🎒', 'Sem itens na batalha: poções e afins só fora dela (as Poké Balls valem)'],
+  ['dupes', '🧬', 'Cláusula de repetidos: o primeiro da área nunca é de uma linha evolutiva que você já teve'],
+  ['shinyClause', '✨', 'Cláusula do shiny: um shiny pode ser capturado mesmo depois do primeiro da área'],
+  ['setMode', '🔁', 'Modo Set: sem trocar de graça quando o adversário cai'],
+  ['firstOnly', '1️⃣', 'Só o primeiro encontro: se o primeiro selvagem da área desmaiar, a área acabou'],
+  ['levelCap', '📏', 'Limite de nível: ninguém passa do nível do mais forte do próximo líder'],
+  ['leaderCount', '👥', 'Contra o líder (e a Liga): no máximo a mesma quantidade de Pokémon que ele tem'],
+  ['noLegendary', '🚫', 'Sem lendários: lendários e míticos não podem ser capturados'],
+  ['noHeldItems', '💍', 'Sem itens de segurar: o time luta sem itens'],
+]
+/** As que já vêm ligadas. */
+export const NUZLOCKE_DEFAULT = ['noBattleItems', 'dupes', 'shinyClause', 'firstOnly']
+/** A regra está ligada nesta corrida (corridas antigas do Nuzlocke: nenhuma). */
+export const nuzRule = (run, rule) => Boolean(run?.nuzlocke) && (run.nuzRules ?? []).includes(rule)
+/**
+ * Nuzlocke com limite de nível: o nível do mais forte do próximo chefe da
+ * cidade (líder, Elite dos Quatro ou Campeão); null sem a regra. Igual ao app.
+ */
+export function levelCapOf(data, run) {
+  if (!nuzRule(run, 'levelCap') || !data?.bosses?.[run.boss?.region]) return null
+  const boss = targetOf(data, run)
+  const floor = Math.max(run.floor, legOf(run) + CITY_BOSS)
+  return foeLevelAt(floor) + (floor < 10 ? 0 : { gym: 2, elite: 6, champion: 9 }[boss.kind] ?? 2) + 1
+}
+
 export function startRun(factory, data, id, seed, shiny = false, options = {}) {
   // Na corrida da semana, o inicial é o da semana (o mesmo para todos).
   if (!options.weekly && (!startersOf(factory, data).includes(id) || (shiny && !(factory.shinies ?? []).includes(id)))) return null
@@ -1684,7 +1720,7 @@ export function startRun(factory, data, id, seed, shiny = false, options = {}) {
     // O inicial (o rival escolhe o que tem vantagem sobre ele).
     starter: id,
     // Nuzlocke: quem desmaia vai embora e só um capturado por área (rota, cidade e cada lugar).
-    ...(options.nuzlocke ? { nuzlocke: true } : {}),
+    ...(options.nuzlocke ? { nuzlocke: true, nuzRules: NUZLOCKE_RULES.map(([r]) => r).filter((r) => (options.nuzRules ?? NUZLOCKE_DEFAULT).includes(r)) } : {}),
     // A corrida da semana (a semana e a regra dela).
     ...(options.weekly ? { weekly: options.weekly, rule: options.rule ?? 'normal' } : {}),
   }
@@ -1749,7 +1785,9 @@ export function winFloor(run, data, after = {}) {
   // Lá no fundo (WIN_HEAL_FLOOR), mais WIN_HEAL%: os treinadores vêm com o time todo e o desgaste não pode decidir a corrida.
   const heal = (run.winHeal ?? 0) + (run.floor >= WIN_HEAL_FLOOR ? WIN_HEAL : 0)
   const healed = (hp) => (hp > 0 && heal ? Math.min(1, round3(hp + heal / 100)) : hp)
-  const out = { ...run, team: run.team.map((m, i) => ({ ...m, hp: healed(after.hp?.[i] ?? m.hp ?? 1) })), bag: { ...(after.bag ?? run.bag), 'escape-rope': run.bag['escape-rope'] ?? 0 } }
+  // Nuzlocke sem itens na batalha: da batalha só voltam as Poké Balls (o resto ficou guardado na Bolsa).
+  const bagAfter = after.bag && nuzRule(run, 'noBattleItems') ? { ...run.bag, ...Object.fromEntries(BALL_IDS.map((id) => [id, after.bag[id] ?? run.bag[id] ?? 0])) } : after.bag ?? run.bag
+  const out = { ...run, team: run.team.map((m, i) => ({ ...m, hp: healed(after.hp?.[i] ?? m.hp ?? 1) })), bag: { ...bagAfter, 'escape-rope': run.bag['escape-rope'] ?? 0 } }
   const rand = dice(out)
   const { kind, foes } = run.encounter
   const factor = expFactor(kind)
@@ -1769,6 +1807,9 @@ export function winFloor(run, data, after = {}) {
   })
   // O XP que cada um já ganhou na luta (a batalha dá na hora, ao derrubar cada adversário): vale esse.
   if (after.gained) after.gained.forEach((g, i) => { if (i < gains.length) gains[i] = g })
+  // Nuzlocke com limite de nível: o XP para no nível do limite.
+  const cap = levelCapOf(data, run)
+  if (cap) out.team.forEach((m, i) => { gains[i] = Math.max(0, Math.min(gains[i], expAt(cap) - (m.exp ?? expAt(m.level)))) })
   const levels = []
   const exp = Math.max(0, ...gains)
   const before = out.team
@@ -1817,7 +1858,9 @@ export function winFloor(run, data, after = {}) {
   // Nuzlocke: quem desmaiou vai embora (para sempre).
   const lost = run.nuzlocke ? out.team.filter((m) => !((m.hp ?? 1) > 0)).map((m) => m.id) : []
   // Nuzlocke: o encontro desta área já foi (capturado agora; a área é a da batalha, antes de subir de andar).
-  if (run.nuzlocke && after.captured && (kind === 'wild' || kind === 'wildboss')) out.caughtArea = nuzlockeArea(run)
+  // Cláusula do shiny: o shiny não gasta o encontro da área.
+  // Só o primeiro encontro: o primeiro selvagem da área gasta a área mesmo sem ser capturado.
+  if (run.nuzlocke && (after.captured || (nuzRule(run, 'firstOnly') && kind === 'wild')) && (kind === 'wild' || kind === 'wildboss') && !(nuzRule(run, 'shinyClause') && foes.some((f) => f.shiny))) out.caughtArea = nuzlockeArea(run)
   if (lost.length && lost.length < out.team.length) out.team = out.team.filter((m) => (m.hp ?? 1) > 0)
   if (lost.length) out.fallen = (run.fallen ?? 0) + lost.length
   if (run.encounter.meteor) out.meteors = (run.meteors ?? 0) + 1
@@ -2497,7 +2540,8 @@ export function takeCard(run, id, data) {
   }
   if (card.levels) {
     const rand = dice(out)
-    out.team = withShedinja(out, out.team, out.team.map((m) => levelTo(m, m.level + card.levels, data, rand, regionOf(data, out))[0]), rand)
+    const cap = levelCapOf(data, out)
+    out.team = withShedinja(out, out.team, out.team.map((m) => levelTo(m, cap ? Math.max(m.level, Math.min(cap, m.level + card.levels)) : m.level + card.levels, data, rand, regionOf(data, out))[0]), rand)
   }
   return out
 }
@@ -2549,6 +2593,9 @@ export function buyItem(run, id, index, data) {
     return out
   }
   if (id === 'rare-candy') {
+    // Nuzlocke com limite de nível: o Rare Candy não passa do limite.
+    const cap = levelCapOf(data, run)
+    if (cap && mon.level >= cap) return null
     const rand = dice(out)
     out.team[index] = levelTo(mon, mon.level + 1, data, rand, regionOf(data, out))[0]
     out.team = withShedinja(out, run.team, out.team, rand)
@@ -2917,7 +2964,9 @@ export function bagsFor(run) {
   const foe = kind === 'boss'
     ? { ...none, 'hyper-potion': 1 + Math.floor(floor / 40), 'max-potion': floor >= 60 ? 1 : 0, revive: floor >= 100 ? 1 : 0 }
     : none
-  return [{ ...none, ...run.bag }, foe]
+  const mine = { ...none, ...run.bag }
+  // Nuzlocke sem itens na batalha: só as Poké Balls entram (as poções ficam para fora dela).
+  return [nuzRule(run, 'noBattleItems') ? Object.fromEntries(Object.entries(mine).map(([id, n]) => [id, BALL_IDS.includes(id) ? n : 0])) : mine, foe]
 }
 
 /**
@@ -2929,14 +2978,23 @@ export function captureFor(run, data) {
   if (kind !== 'wild' && kind !== 'wildboss') return null
   // Nuzlocke: um capturado por área.
   // Nuzlocke: um capturado por área (a rota, a cidade e cada lugar contam separados).
-  if (run.nuzlocke && run.caughtArea === nuzlockeArea(run)) return null
+  if (run.nuzlocke && run.caughtArea === nuzlockeArea(run) && !(nuzRule(run, 'shinyClause') && foes.some((f) => f.shiny))) return null
+  // Nuzlocke sem lendários: lendários e míticos não podem ser capturados.
+  if (nuzRule(run, 'noLegendary') && foes.some((f) => [1, 2].includes(speciesOf(data, f.id)?.[2]))) return null
   // Monotipo: só quem tem um tipo do inicial.
   if (run.mono && !foes.some((f) => (speciesOf(data, f.id)?.[4] ?? []).some((t) => run.mono.includes(t)))) return null
   return { rates: foes.map((f) => speciesOf(data, f.id)?.[5] ?? 45), dusk: DARK_BIOMES.includes(biome), ...(run.catchBonus ? { bonus: run.catchBonus } : {}) }
 }
 
-/** A ordem na batalha: quem está de pé primeiro (o primeiro entra em campo). Posições no time da corrida. */
-export const battleOrder = (run) => [...run.team.keys()].sort((a, b) => Number((run.team[b].hp ?? 1) > 0) - Number((run.team[a].hp ?? 1) > 0))
+/**
+ * A ordem na batalha: quem está de pé primeiro (o primeiro entra em campo). Posições no time da corrida.
+ * Nuzlocke (leaderCount): contra o líder, a Elite dos Quatro e o Campeão, só tantos quantos ele tem.
+ */
+export function battleOrder(run) {
+  const order = [...run.team.keys()].sort((a, b) => Number((run.team[b].hp ?? 1) > 0) - Number((run.team[a].hp ?? 1) > 0))
+  const boss = run.encounter?.kind === 'boss' && CITY_KINDS.includes(run.encounter.boss?.kind)
+  return boss && nuzRule(run, 'leaderCount') ? order.slice(0, Math.max(1, run.encounter.foes.length)) : order
+}
 
 /**
  * Sem limite de IVs e EVs: o motor aceita até 31 e 252; o que passa disso vira
@@ -2953,7 +3011,8 @@ const shinyBoost = () => Object.fromEntries(STATS.map((s) => [s, SHINY_BOOST]))
 export function boostOf(run, mon) {
   let out = { ...zero(), ...(run.teamBoost ?? {}) }
   if (mon.shiny) out = addStats(out, shinyBoost())
-  for (const id of mon.extras ?? []) out = addStats(out, HELD_BOOST[id])
+  // Nuzlocke sem itens de segurar: os extras também não contam.
+  if (!nuzRule(run, 'noHeldItems')) for (const id of mon.extras ?? []) out = addStats(out, HELD_BOOST[id])
   return Object.fromEntries(STATS.map((s) => [s, round3(out[s])]))
 }
 
@@ -2963,7 +3022,7 @@ export function memberOf(run, mon, moveList, data = null) {
   return {
     id: mon.id,
     set: {
-      level: mon.level, levelCap: 'none', nature: mon.nature, ivs: capStats(mon.ivs, 31), evs: capStats(mon.evs, 252), item: mon.item ?? '',
+      level: mon.level, levelCap: 'none', nature: mon.nature, ivs: capStats(mon.ivs, 31), evs: capStats(mon.evs, 252), item: nuzRule(run, 'noHeldItems') ? '' : mon.item ?? '',
       moves: mon.moves?.length ? mon.moves : moveList, lockMoves: true, shiny: Boolean(mon.shiny), ...(gimmick ? { gimmick } : {}),
       bonus: overflowPoints(mon.ivs, mon.evs, mon.level), boost: boostOf(run, mon), hpRatio: mon.hp ?? 1,
     },

@@ -138,7 +138,7 @@ function makePlaceEffect(key) {
 
 // Battle Factory (input.exp): o XP de cada adversário derrubado entra na hora, como nos jogos: quem lutou contra ele
 // ganha tudo e, com o Exp. Share, o resto do time ganha a metade; subindo de nível, os atributos crescem na hora.
-// exp = {mons: [{level, exp}] (por posição), table: [[XP para cada posição]] (por adversário), share}.
+// exp = {mons: [{level, exp, cap?}] (por posição), table: [[XP para cada posição]] (por adversário), share}.
 function markFought(game) {
   if (!game.exp) return;
   // Todos os que estão em campo (na dupla, os dois de cada lado).
@@ -179,7 +179,9 @@ function giveExp(game) {
       const now = exp.mons[i];
       if (!now || mon.fainted || !(mon.hp > 0)) continue;
       const full = fought.includes(i);
-      const gained = full ? exp.table[j]?.[i] ?? 0 : Math.floor((exp.table[j]?.[i] ?? 0) * exp.share);
+      const raw = full ? exp.table[j]?.[i] ?? 0 : Math.floor((exp.table[j]?.[i] ?? 0) * exp.share);
+      // O limite de nível (Nuzlocke, mons[i].cap): o XP para no nível do limite.
+      const gained = now.cap ? Math.max(0, Math.min(raw, now.cap ** 3 - now.exp)) : raw;
       if (!gained) continue;
       now.exp += gained;
       exp.gained[i] = (exp.gained[i] ?? 0) + gained;

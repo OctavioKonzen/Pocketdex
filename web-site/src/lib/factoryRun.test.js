@@ -8,7 +8,7 @@ import {
   placeInfo, routeInfo, DBOSS_GIMMICK_FLOOR, UPGRADE_FX, SHORE, CAVE_OF, dungeonPos, routePos, DUNGEON_LENGTH, CITY_BOSS, waterNext, RIVAL_FLOOR, targetOf, rivalBoss, rocketBoss, townShop, townCenter, townHub, biomesLinked,
   isDoubleBattle,
   DOUBLE_FLOOR,
-  battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
+  battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, bagsFor, NUZLOCKE_DEFAULT, levelCapOf, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
   HELD_BOOST, levelTo, MAX_TEAM, memberOf, movesAt, nextFloor, nextRandom, overflowPoints, pokemonPrice, runCoins, setMainItem, shopPrice,
   SHINY_BOOST, FOE_SHINY_BOOST, SHINY_CHANCE, START_BAG, START_BALLS, startersOf, buyShiny, shinyPrice, unlockShiny, claimStarter, freePick, canEvolveWith, teachMove,
   equipFromStash, gimmicksOf, setGimmick, storyLine, startRun, takeCard, teamDown, applyBagItem, winFloor, chooseNode, routeOptions, routeCities,
@@ -1354,6 +1354,60 @@ describe('ideias: amizade, habilidades fora da batalha, Nuzlocke', () => {
     expect(nuzlockeArea(city).endsWith(':city')).toBe(true)
     expect(captureFor(city, data)).not.toBe(null)
     expect(captureFor({ ...route, dungeon: { place: 'cave' } }, data)).not.toBe(null)
+    // As regras que dá para escolher (já vêm ligadas: sem itens na batalha, repetidos e shiny).
+    expect(nuz.nuzRules).toEqual(NUZLOCKE_DEFAULT)
+    const full = { ...wild, bag: { ...nuz.bag, potion: 3, 'poke-ball': 5 } }
+    const [inBattle] = bagsFor(full)
+    expect([inBattle.potion, inBattle['poke-ball']]).toEqual([0, 5])
+    // Fora da batalha a poção continua na Bolsa (e cura igual); da batalha volta só a conta das bolas.
+    const used = winFloor(full, data, { bag: { ...inBattle, 'poke-ball': 4 } })
+    const plainUsed = winFloor({ ...full, nuzRules: [] }, data, { bag: { ...full.bag, potion: 1, 'poke-ball': 4 } })
+    expect(used.bag.potion).toBe(3)
+    expect(plainUsed.bag.potion).toBe(1)
+    expect(used.bag['poke-ball']).toBe(plainUsed.bag['poke-ball'])
+    // Cláusula do shiny: dá para capturar mesmo depois do primeiro da área, e não gasta o encontro.
+    const shiny = { ...route, encounter: { kind: 'wild', foes: [{ id: 19, level: 5, shiny: true }] } }
+    expect(captureFor(shiny, data)).not.toBe(null)
+    expect(winFloor({ ...shiny, caughtArea: null }, data, { captured: true }).caughtArea).toBeFalsy()
+    // Com as regras desligadas, como antes.
+    expect(bagsFor({ ...full, nuzRules: [] })[0].potion).toBe(3)
+    expect(captureFor({ ...shiny, nuzRules: [] }, data)).toBe(null)
+    // Cláusula de repetidos: o primeiro da área não é de uma linha que você já teve.
+    let other = 0
+    for (let seed = 1; seed <= 30; seed++) {
+      const at = { ...startRun(emptyFactory(), data, 1, seed, false, { nuzlocke: true }), floor: 12, route: { floor: 12, biome: 'grass', options: [{ kind: 'wild' }] } }
+      const first = chooseNode({ ...at, nuzRules: [] }, data, 0).encounter.foes[0].id
+      const next = chooseNode({ ...at, dex: [baseForm(data, first)] }, data, 0).encounter.foes[0].id
+      if (baseForm(data, next) !== baseForm(data, first)) other++
+    }
+    expect(other).toBe(30)
+    // Só o primeiro encontro: venceu o primeiro selvagem da área sem capturar, a área acabou.
+    expect(winFloor(wild, data, {}).caughtArea).toBe(nuzlockeArea(wild))
+    expect(winFloor({ ...wild, nuzRules: [] }, data, {}).caughtArea).toBeFalsy()
+    // Sem lendários: o lendário não dá para capturar.
+    const legend = Number(Object.entries(data.species).find(([, info]) => info[2] === 1)[0])
+    const legendary = { ...nuz, nuzRules: ['noLegendary'], encounter: { kind: 'wildboss', foes: [{ id: legend, level: 50 }] } }
+    expect(captureFor(legendary, data)).toBe(null)
+    expect(captureFor({ ...legendary, nuzRules: [] }, data)).not.toBe(null)
+    // Sem itens de segurar: o time luta sem itens.
+    const held = { ...nuz.team[0], item: 'life-orb', extras: ['choice-band'] }
+    expect(memberOf({ ...nuz, nuzRules: ['noHeldItems'] }, held, ['tackle']).set.item).toBe('')
+    expect(memberOf(nuz, held, ['tackle']).set.item).toBe('life-orb')
+    // Contra o líder: só tantos quantos ele tem.
+    const six = { ...nuz, nuzRules: ['leaderCount'], team: Array.from({ length: 6 }, () => nuz.team[0]), encounter: { kind: 'boss', boss: { kind: 'gym' }, foes: [{ id: 74 }, { id: 95 }] } }
+    expect(battleOrder(six)).toHaveLength(2)
+    expect(battleOrder({ ...six, encounter: { ...six.encounter, boss: { kind: 'rival' } } })).toHaveLength(6)
+    expect(battleOrder({ ...six, nuzRules: [] })).toHaveLength(6)
+    // Limite de nível: o do mais forte do próximo líder; o XP para nele e o Rare Candy não passa dele.
+    const capped = { ...nuz, nuzRules: ['levelCap'] }
+    const cap = levelCapOf(data, capped)
+    expect(cap).toBeGreaterThan(foeLevelAt(CITY_BOSS))
+    expect(levelCapOf(data, nuz)).toBe(null)
+    const atCap = { ...capped, team: [{ ...capped.team[0], level: cap, exp: expAt(cap) }], bag: { ...capped.bag, 'rare-candy': 1 }, money: 99999, pending: { shop: ['rare-candy'] } }
+    expect(buyItem(atCap, 'rare-candy', 0, data)).toBe(null)
+    expect(buyItem({ ...atCap, nuzRules: [] }, 'rare-candy', 0, data)).not.toBe(null)
+    const won = winFloor({ ...atCap, encounter: { kind: 'trainer', foes: [{ id: 19, level: cap, iv: 0, ev: 0 }] } }, data, { hp: [1] })
+    expect(won.team[0].level).toBe(cap)
   })
 })
 
