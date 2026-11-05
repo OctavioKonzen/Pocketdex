@@ -2330,6 +2330,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
   final List<String> _earned = [];
   String? _panel; // embaixo do menu: 'bag' | 'team' (na loja, a lista de compras)
   Widget? _framePanel; // o que abre dentro da moldura (lista da loja, Bolsa ou time)
+  int? _pcPick; // o Pokémon do PC escolhido para trocar com o time cheio
 
   static Color get _border => Hud.edge;
   static const _ink = Color(0xFF0F172A);
@@ -2962,7 +2963,10 @@ class _FactoryScreenState extends State<FactoryScreen> {
                 // A Creche: um lugar da cidade (separado do Poké Mart).
                 : p == null && _panel == 'daycare'
                     ? _daycarePanel(run, data, close)
-                    : null;
+                    // O PC do Centro Pokémon da cidade (como nos jogos).
+                    : _panel == 'pc' && FactoryRun.atPc(run)
+                        ? _pcPanel(run, close)
+                        : null;
     // Esquecer um golpe para aprender o novo: a tela dos 5 golpes por cima de tudo (como nos jogos).
     if (step == 'result' && _learn != null && _learnStep == 'forget') _framePanel = _forgetPanel(run);
     if (step == 'result' && _learn != null && _learn!.isNotEmpty) {
@@ -3324,8 +3328,69 @@ class _FactoryScreenState extends State<FactoryScreen> {
         if (p['story'] != null)
           for (final line in '${p['story']}'.split('\n\n')) Text('📖 $line', key: const ValueKey('factory-story-end'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
       ],
-      menu: _menuButton(tr('CONTINUAR'), () => _afterResult(run, p), key: const ValueKey('factory-continue')),
+      menu: FactoryRun.atPc(run)
+          ? _menuGrid([
+              _menuButton('💻 ${tr('PC')}', () => setState(() {
+                    _panel = _panel == 'pc' ? null : 'pc';
+                    _pcPick = null;
+                  }),
+                  key: const ValueKey('factory-pc-open'), active: _panel == 'pc'),
+              _menuButton(tr('CONTINUAR'), () {
+                setState(() => _panel = null);
+                _afterResult(run, p);
+              }, key: const ValueKey('factory-continue')),
+            ])
+          : _menuButton(tr('CONTINUAR'), () => _afterResult(run, p), key: const ValueKey('factory-continue')),
     );
+  }
+
+  /// O PC (como nos jogos): o time em cima (toque para guardar) e o PC embaixo (toque para levar para o time; com o
+  /// time cheio, escolha quem do time vai no lugar). Igual ao site.
+  Widget _pcPanel(Json run, VoidCallback close) {
+    final pc = FactoryRun.pcOf(run);
+    final full = FactoryRun.teamOf(run).length >= FactoryRun.teamRoom(run);
+    final pcParty = [
+      for (final m in pc)
+        PartySlot(id: (m['id'] as num).toInt(), shiny: m['shiny'] == true, name: _name(m['id']), level: (m['level'] as num).toInt(), hp: 1, sub: m['item'] != null ? _itemName('${m['item']}') : null),
+    ];
+    return Column(key: const ValueKey('factory-pc'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      _overlayHeader('💻 ${tr('PC')} (${pc.length}/${FactoryRun.pcSize})', close),
+      Expanded(
+        child: SingleChildScrollView(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            BwParty(
+              testKey: 'pc-team',
+              title: _pcPick != null && _pcPick! < pcParty.length
+                  ? tr('Quem do time vai para o PC no lugar de {0}?').replaceAll('{0}', pcParty[_pcPick!].name)
+                  : tr('Time: toque para guardar no PC'),
+              team: _party(run),
+              disabled: (_) => _pcPick == null && FactoryRun.teamOf(run).length <= 1,
+              onPick: (i) {
+                final next = _pcPick != null ? FactoryRun.pcWithdraw(run, _pcPick!, i) : FactoryRun.pcDeposit(run, i);
+                setState(() => _pcPick = null);
+                if (next != null) _save(next);
+              },
+            ),
+            if (pc.isEmpty)
+              Padding(padding: const EdgeInsets.all(8), child: Text('💻 ${tr('O PC está vazio: os capturados com o time cheio ficam guardados aqui.')}', style: const TextStyle(fontWeight: FontWeight.w900)))
+            else
+              BwParty(
+                testKey: 'pc-box',
+                title: '💻 ${tr('PC')}: ${full ? tr('toque para trocar com o time') : tr('toque para levar para o time')}',
+                team: pcParty,
+                onPick: (k) {
+                  if (!full) {
+                    final next = FactoryRun.pcWithdraw(run, k);
+                    if (next != null) _save(next);
+                  } else {
+                    setState(() => _pcPick = _pcPick == k ? null : k);
+                  }
+                },
+              ),
+          ]),
+        ),
+      ),
+    ]);
   }
 
   /// Os golpes que o time aprende subindo de nível (como nos jogos), um de cada vez: (posição no time, golpe, entrou sozinho).
@@ -3704,6 +3769,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
         cancelLabel: tr('SOLTAR'),
       );
     }
+    final toPc = full && FactoryRun.pcOf(run).length < FactoryRun.pcSize;
     return _frame(
       run: run,
       // Capturado: ele está dentro da Poké Ball (na base dele), não mais no campo. Do ovo da Creche, ele mesmo. Igual ao site.
@@ -3728,10 +3794,13 @@ class _FactoryScreenState extends State<FactoryScreen> {
           _small(
               '${switch (FactoryRun.genderOf(_data!, mon)) { 'F' => '♀ ', 'M' => '♂ ', _ => '' }}${tr('Nature')}: ${mon['nature']}${FactoryRun.isRegionalForm((mon['id'] as num).toInt()) ? ' · 🌍 ${tr('forma regional')}' : ''}',
               color: const Color(0xFF0369A1)),
-        if (full) _small(tr('Time cheio: escolha quem sai.')),
+        if (full) _small(tr('Time cheio: escolha quem sai ou mande para o PC.')),
       ],
       menu: full
-          ? _menuGrid([_menuButton(tr('SOLTAR'), () => _save(FactoryRun.skipCapture(run)), key: const ValueKey('factory-release'))])
+          ? _menuGrid([
+              if (toPc) _menuButton('💻 ${tr('PARA O PC')}', () => keep(FactoryRun.toPc), key: const ValueKey('factory-to-pc')),
+              _menuButton(tr('SOLTAR'), () => _save(FactoryRun.skipCapture(run)), key: const ValueKey('factory-release')),
+            ])
           : _menuButton(tr('CONTINUAR'), () => keep(), key: const ValueKey('factory-continue')),
       tools: full ? tools : null,
     );

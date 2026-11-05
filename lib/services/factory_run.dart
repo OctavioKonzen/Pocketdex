@@ -2636,6 +2636,9 @@ class FactoryRun {
     return mon;
   }
 
+  /// Com o time cheio, o capturado vai para o PC (capture com [toPc]).
+  static const toPc = -1;
+
   static Json capture(Json run, [int? replace]) {
     final foe = pendingOf(run)?['capture'];
     if (foe == null) return run;
@@ -2645,9 +2648,14 @@ class FactoryRun {
     final team = teamOf(out);
     if (team.length < teamRoom(out)) {
       team.add(mon);
+    } else if (replace == toPc) {
+      // Time cheio: o capturado vai para o PC (dá para trocar no Centro Pokémon da cidade).
+      if (pcOf(run).length >= pcSize) return run;
+      out['pc'] = [...pcOf(run), mon];
     } else if (replace != null && replace >= 0 && replace < team.length) {
-      // Quem sai do time vai para o PC (no fim da corrida).
-      out['pc'] = [...((out['pc'] as List?) ?? const []), team[replace]].take(30).toList();
+      // Quem sai do time vai para o PC.
+      final pc = [...pcOf(run), {...team[replace], 'hp': 1}];
+      out['pc'] = pc.length > pcSize ? pc.sublist(pc.length - pcSize) : pc;
       team[replace] = mon;
     } else {
       return run;
@@ -2763,6 +2771,45 @@ class FactoryRun {
 
   /// Vagas para Pokémon no time: cada ovo ocupa uma.
   static int teamRoom(Json run) => maxTeam - eggsOf(run).length;
+
+  /// O PC (como nos jogos): os capturados que não cabem no time ficam guardados nele (até [pcSize]); no Centro
+  /// Pokémon da cidade dá para tirar, guardar e trocar. Quem está no PC fica curado. Igual ao site.
+  static const pcSize = 60;
+  static List<Json> pcOf(Json run) => [for (final m in (run['pc'] as List?) ?? const []) Map<String, dynamic>.from(m as Map)];
+
+  /// Está no Centro Pokémon da cidade (onde fica o PC).
+  static bool atPc(Json run) => pendingOf(run)?['center'] == true && pendingOf(run)?['town'] == true;
+
+  /// Tira do PC (pcIndex) para o time; com o time cheio, troca com teamIndex (que vai para o PC no lugar dele).
+  static Json? pcWithdraw(Json run, int pcIndex, [int? teamIndex]) {
+    final pc = pcOf(run);
+    if (!atPc(run) || pcIndex < 0 || pcIndex >= pc.length) return null;
+    final mon = {...pc[pcIndex], 'hp': 1};
+    final team = teamOf(run);
+    final out = _copy(run);
+    if (teamIndex == null) {
+      if (team.length >= teamRoom(run)) return null;
+      out['team'] = [...team, mon];
+      out['pc'] = [for (var k = 0; k < pc.length; k++) if (k != pcIndex) pc[k]];
+      return out;
+    }
+    if (teamIndex < 0 || teamIndex >= team.length) return null;
+    final leaving = {...team[teamIndex], 'hp': 1};
+    team[teamIndex] = mon;
+    out['team'] = team;
+    out['pc'] = [for (var k = 0; k < pc.length; k++) k == pcIndex ? leaving : pc[k]];
+    return out;
+  }
+
+  /// Guarda no PC quem está no time (o time nunca fica vazio).
+  static Json? pcDeposit(Json run, int teamIndex) {
+    final team = teamOf(run);
+    if (!atPc(run) || teamIndex < 0 || teamIndex >= team.length || team.length <= 1 || pcOf(run).length >= pcSize) return null;
+    final out = _copy(run);
+    out['team'] = [for (var k = 0; k < team.length; k++) if (k != teamIndex) team[k]];
+    out['pc'] = [...pcOf(run), {...team[teamIndex], 'hp': 1}];
+    return out;
+  }
   static const eggIvs = 20;
   static const eggLevel = 5;
   static Json? leaveDaycare(Json run, int index) {

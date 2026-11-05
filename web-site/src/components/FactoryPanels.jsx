@@ -20,7 +20,7 @@ import { battleMons } from '../lib/battleSetup'
 import {
   BAG_ITEMS, BOX_SIZE, boxToSet, releaseFromBox, HUNT_MAX, HUNT_STEP, huntBase, huntMultOf, setHunt, bossOf, regionOf, genderOf, piecesOf, pieceOf, upgradePieces, tradePieces, PIECE_ITEMS, PIECE_TRADE, capturedMon, isRegionalForm, emptyFactory, unequipItem, ROUTE_LENGTH, CITY_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, teamRoom, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
-  shinyPrice, shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, unlockShiny, VITAMIN_EVS, VITAMINS,
+  shinyPrice, shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, atPc, pcOf, pcWithdraw, pcDeposit, PC_SIZE, unlockShiny, VITAMIN_EVS, VITAMINS,
   buyShiny, forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor, isKeystone,
   tradeMon, skipTrade, TRADE_LEVELS, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, bossScene,
   resolveChoice, regionLegend, leaderType, villainTeam, rivalBoss, rocketBoss, placeInfo, routeInfo, DUNGEON_LENGTH, dungeonPos, townShop, townCenter,
@@ -2007,6 +2007,9 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
   // Os golpes que o time aprende subindo de nível (como nos jogos), um de cada vez: queue [[posição, golpe, entrou sozinho]];
   // step 'ask' (quer aprender?) ou 'forget' (a tela dos 5 golpes); msg: o que aconteceu (com CONTINUAR); pick: o golpe tocado.
   const [learn, setLearn] = useState(null)
+  // O PC no Centro Pokémon da cidade: aberto e o Pokémon do PC escolhido para trocar com o time cheio.
+  const [pcOpen, setPcOpen] = useState(false)
+  const [pcPick, setPcPick] = useState(null)
   const [unlocked, setUnlocked] = useState(null)
   const [target, setTarget] = useState(0)
   // Conquistas novas (com as moedas) e o Hall da Fama, conforme a corrida anda.
@@ -2282,7 +2285,41 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         {p.story && p.story.split('\n\n').map((line, k) => <p key={k} className="text-sm font-semibold" data-testid="factory-story-end">📖 {line}</p>)}
       </>
     )
-    menu = <MenuButton onClick={afterResult} testid="factory-continue">{t('CONTINUAR')}</MenuButton>
+    // O PC do Centro Pokémon (como nos jogos): tira, guarda e troca os Pokémon do time.
+    if (pcOpen && atPc(run)) {
+      const pc = pcOf(run)
+      const full = run.team.length >= teamRoom(run)
+      const pcParty = pc.map((m) => ({ id: m.id, shiny: m.shiny, name: t(prettyName(byId?.get(m.id)?.name ?? '')), level: m.level, hp: 1, sub: m.item ? itemName(m.item) : undefined }))
+      below = (
+        <div className="flex h-full min-h-full flex-col" data-testid="factory-pc">
+          <BwParty testid="pc-team" team={partyOf(run, byId)}
+            title={pcPick != null ? t('Quem do time vai para o PC no lugar de {0}?').replace('{0}', pcParty[pcPick]?.name ?? '') : t('Time: toque para guardar no PC')}
+            disabled={() => pcPick == null && run.team.length <= 1}
+            onPick={(i) => {
+              const next = pcPick != null ? pcWithdraw(run, pcPick, i) : pcDeposit(run, i)
+              setPcPick(null)
+              if (next) save(next)
+            }} />
+          {pc.length ? (
+            <BwParty testid="pc-box" team={pcParty} selected={pcPick}
+              title={`💻 ${t('PC')} (${pc.length}/${PC_SIZE}): ${full ? t('toque para trocar com o time') : t('toque para levar para o time')}`}
+              onPick={(k) => {
+                if (!full) save(pcWithdraw(run, k) ?? run)
+                else setPcPick(pcPick === k ? null : k)
+              }}
+              onCancel={() => { setPcOpen(false); setPcPick(null) }} cancelLabel={t('Fechar')} />
+          ) : (
+            <p className="bw-party-title m-2 rounded-lg px-3 py-1.5 text-sm font-black text-white">💻 {t('O PC está vazio: os capturados com o time cheio ficam guardados aqui.')}</p>
+          )}
+        </div>
+      )
+    }
+    menu = (
+      <>
+        {atPc(run) && <MenuButton onClick={() => { setPcOpen((o) => !o); setPcPick(null) }} testid="factory-pc-open">💻 {t('PC')}</MenuButton>}
+        <MenuButton onClick={() => { setPcOpen(false); afterResult() }} testid="factory-continue">{t('CONTINUAR')}</MenuButton>
+      </>
+    )
   } else if (step === 'choice') {
     // Uma escolha na rota: aceitar ou seguir o caminho.
     const choice = p.choice
@@ -2351,7 +2388,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
           const c = capturedMon(run)
           return <p className="text-sm text-sky-700 dark:text-sky-300" data-testid="capture-preview">{({ F: '♀ ', M: '♂ ' })[genderOf(data, c)] ?? ''}{t('Nature')}: {c.nature}{isRegionalForm(c.id) ? ` · 🌍 ${t('forma regional')}` : ''}</p>
         })()}
-        {full && <p className="text-sm">{t('Time cheio: escolha quem sai.')}</p>}
+        {full && <p className="text-sm">{t('Time cheio: escolha quem sai ou mande para o PC.')}</p>}
       </>
     )
     // Time cheio: a tela do time do Black & White, por cima do campo, para escolher quem sai.
@@ -2360,6 +2397,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     }
     menu = full ? (
       <>
+        {pcOf(run).length < PC_SIZE && <MenuButton onClick={() => keep('pc')} testid="factory-to-pc">💻 {t('PARA O PC')}</MenuButton>}
         <MenuButton onClick={() => save(skipCapture(run))} testid="factory-release">{t('SOLTAR')}</MenuButton>
       </>
     ) : <MenuButton onClick={() => keep(null)} testid="factory-continue">{t('CONTINUAR')}</MenuButton>

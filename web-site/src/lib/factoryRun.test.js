@@ -8,7 +8,7 @@ import {
   placeInfo, routeInfo, DBOSS_GIMMICK_FLOOR, UPGRADE_FX, SHORE, CAVE_OF, dungeonPos, routePos, DUNGEON_LENGTH, CITY_BOSS, waterNext, RIVAL_FLOOR, targetOf, rivalBoss, rocketBoss, townShop, townCenter, townHub, biomesLinked,
   isDoubleBattle,
   DOUBLE_FLOOR,
-  battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, bagsFor, NUZLOCKE_DEFAULT, levelCapOf, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
+  battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, atPc, pcOf, pcWithdraw, pcDeposit, bagsFor, NUZLOCKE_DEFAULT, levelCapOf, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
   HELD_BOOST, levelTo, MAX_TEAM, memberOf, movesAt, nextFloor, nextRandom, overflowPoints, pokemonPrice, runCoins, setMainItem, shopPrice,
   SHINY_BOOST, FOE_SHINY_BOOST, SHINY_CHANCE, START_BAG, START_BALLS, startersOf, buyShiny, shinyPrice, unlockShiny, claimStarter, freePick, canEvolveWith, teachMove,
   equipFromStash, gimmicksOf, setGimmick, storyLine, startRun, takeCard, teamDown, applyBagItem, winFloor, chooseNode, routeOptions, routeCities,
@@ -1447,3 +1447,31 @@ describe('aprender golpe subindo de nível (igual ao app)', () => {
     expect(learnMove(run, 0, 'flamethrower', ['tackle', 'ember', 'growl', 'scratch'])).toBe(run)
   })
 })
+
+describe('PC do Centro Pokémon', () => {
+  it('com o time cheio, o capturado vai para o PC; no Centro da cidade dá para tirar, guardar e trocar', () => {
+    const start = startRun(emptyFactory(), data, 1, 42)
+    const full = { ...start, team: Array.from({ length: 6 }, (_, k) => ({ ...start.team[0], id: 10 + k })), pending: { capture: { id: 19, level: 5 } } }
+    const sent = capture(full, 'pc')
+    expect(sent.team).toHaveLength(6)
+    expect(pcOf(sent).map((m) => m.id)).toEqual([19])
+    // Fora do Centro, o PC não abre.
+    expect(pcWithdraw(sent, 0, 0)).toBe(null)
+    const center = { ...sent, pending: { center: true, town: true }, team: sent.team.map((m) => ({ ...m, hp: 0.5 })) }
+    expect(atPc(center)).toBe(true)
+    // Time cheio: troca (quem sai vai para o PC no lugar dele, curado).
+    const swapped = pcWithdraw(center, 0, 2)
+    expect(swapped.team[2].id).toBe(19)
+    expect(pcOf(swapped)[0]).toMatchObject({ id: 12, hp: 1 })
+    expect(pcWithdraw(center, 0)).toBe(null)
+    // Guarda e tira.
+    const stored = pcDeposit(center, 0)
+    expect(stored.team).toHaveLength(5)
+    expect(pcOf(stored).map((m) => m.id)).toEqual([19, 10])
+    const back = pcWithdraw(stored, 0)
+    expect(back.team.map((m) => m.id)).toEqual([11, 12, 13, 14, 15, 19])
+    // O time nunca fica vazio.
+    expect(pcDeposit({ ...center, team: [center.team[0]] }, 0)).toBe(null)
+  })
+})
+

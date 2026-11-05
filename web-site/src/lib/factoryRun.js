@@ -2058,13 +2058,47 @@ export function capture(run, replace = null) {
   const mon = capturedMon(run, out)
   if (foe.mythic) out.mythics = (run.mythics ?? 0) + 1
   if (out.team.length < teamRoom(out)) out.team.push(mon)
-  else if (replace != null && replace >= 0 && replace < out.team.length) {
-    // Quem sai do time vai para o PC (no fim da corrida).
-    out.pc = [...(run.pc ?? []), out.team[replace]].slice(0, 30)
+  else if (replace === 'pc') {
+    // Time cheio: o capturado vai para o PC (dá para trocar no Centro Pokémon da cidade).
+    if (pcOf(run).length >= PC_SIZE) return run
+    out.pc = [...pcOf(run), mon]
+  } else if (replace != null && replace >= 0 && replace < out.team.length) {
+    // Quem sai do time vai para o PC.
+    out.pc = [...pcOf(run), { ...out.team[replace], hp: 1 }].slice(-PC_SIZE)
     out.team[replace] = mon
   } else return run
   addDex(out, foe.id)
   return out
+}
+
+/**
+ * O PC (como nos jogos): os capturados que não cabem no time ficam guardados
+ * nele (até PC_SIZE); no Centro Pokémon da cidade dá para tirar, guardar e
+ * trocar. Quem está no PC fica curado. Igual ao app.
+ */
+export const PC_SIZE = 60
+export const pcOf = (run) => run.pc ?? []
+/** Está no Centro Pokémon da cidade (onde fica o PC). */
+export const atPc = (run) => Boolean(run.pending?.center && run.pending?.town)
+/** Tira do PC (pcIndex) para o time; com o time cheio, troca com teamIndex (que vai para o PC no lugar dele). */
+export function pcWithdraw(run, pcIndex, teamIndex = null) {
+  const pc = pcOf(run)
+  if (!atPc(run) || !pc[pcIndex]) return null
+  const mon = { ...pc[pcIndex], hp: 1 }
+  if (teamIndex == null) {
+    if (run.team.length >= teamRoom(run)) return null
+    return { ...run, team: [...run.team, mon], pc: pc.filter((_, k) => k !== pcIndex) }
+  }
+  if (!run.team[teamIndex]) return null
+  const team = [...run.team]
+  const out = { ...team[teamIndex], hp: 1 }
+  team[teamIndex] = mon
+  return { ...run, team, pc: pc.map((m, k) => (k === pcIndex ? out : m)) }
+}
+/** Guarda no PC quem está no time (o time nunca fica vazio). */
+export function pcDeposit(run, teamIndex) {
+  if (!atPc(run) || !run.team[teamIndex] || run.team.length <= 1 || pcOf(run).length >= PC_SIZE) return null
+  return { ...run, team: run.team.filter((_, k) => k !== teamIndex), pc: [...pcOf(run), { ...run.team[teamIndex], hp: 1 }] }
 }
 
 /**

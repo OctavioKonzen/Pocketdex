@@ -1013,6 +1013,33 @@ void main() {
     expect(FactoryRun.teamOf(won).first['level'], cap);
   });
 
+  test('PC do Centro Pokémon: com o time cheio, o capturado vai para o PC; no Centro da cidade dá para tirar, guardar e trocar (igual ao site)', () {
+    final start = FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!;
+    final first = FactoryRun.teamOf(start).first;
+    final full = {...start, 'team': [for (var k = 0; k < 6; k++) {...first, 'id': 10 + k}], 'pending': {'capture': {'id': 19, 'level': 5}}};
+    final sent = FactoryRun.capture(full, FactoryRun.toPc);
+    expect(FactoryRun.teamOf(sent), hasLength(6));
+    expect([for (final m in FactoryRun.pcOf(sent)) m['id']], [19]);
+    // Fora do Centro, o PC não abre.
+    expect(FactoryRun.pcWithdraw(sent, 0, 0), isNull);
+    final center = {...sent, 'pending': {'center': true, 'town': true}, 'team': [for (final m in FactoryRun.teamOf(sent)) {...m, 'hp': 0.5}]};
+    expect(FactoryRun.atPc(center), isTrue);
+    // Time cheio: troca (quem sai vai para o PC no lugar dele, curado).
+    final swapped = FactoryRun.pcWithdraw(center, 0, 2)!;
+    expect(FactoryRun.teamOf(swapped)[2]['id'], 19);
+    expect(FactoryRun.pcOf(swapped).first['id'], 12);
+    expect(FactoryRun.pcOf(swapped).first['hp'], 1);
+    expect(FactoryRun.pcWithdraw(center, 0), isNull);
+    // Guarda e tira.
+    final stored = FactoryRun.pcDeposit(center, 0)!;
+    expect(FactoryRun.teamOf(stored), hasLength(5));
+    expect([for (final m in FactoryRun.pcOf(stored)) m['id']], [19, 10]);
+    final back = FactoryRun.pcWithdraw(stored, 0)!;
+    expect([for (final m in FactoryRun.teamOf(back)) m['id']], [11, 12, 13, 14, 15, 19]);
+    // O time nunca fica vazio.
+    expect(FactoryRun.pcDeposit({...center, 'team': [FactoryRun.teamOf(center).first]}, 0), isNull);
+  });
+
   test('corrida da semana e cosméticos (igual ao site)', () {
     final a = FactoryRun.weeklyOf(data, '2026-10-12');
     expect(a, FactoryRun.weeklyOf(data, '2026-10-12'));
