@@ -17,7 +17,7 @@ import {
   tradeMon, skipTrade, TRADE_LEVELS, escapeRope, ESCAPE_HP, progress, ACHIEVEMENTS, LUCKY_EGG, rerollRoute, FOE_ITEMS,
   regionLegend, REGION_LEGENDS, starterLine, newMission, resolveChoice, MISSION_MONEY, CHOICE_EVENTS,
   clockOf, weatherOf, fieldOf, battleMusic, mapMusic, upgradeNeeds, UPGRADE_BRANCHES, unequipItem, SEASON_TYPES, BIOME_IDS, SCENE_FIELD,
-  HM_BADGES, cutPath, smashPath, strengthPath, nodeBlocked, hmNeeded, hasHm, dexOf, dexRewardFor, DEX_REWARDS, leaveDaycare, takeDaycare, teamRoom, DAYCARE_EGG, EGG_BATTLES, EGG_IVS, rematchBoss,
+  HM_BADGES, cutPath, smashPath, strengthPath, roamerNode, roamerId, ROAMERS, ROAM_FLOOR, outbreakOf, OUTBREAK_SHINY, DOWSE_ITEMS, nodeBlocked, hmNeeded, hasHm, dexOf, dexRewardFor, DEX_REWARDS, leaveDaycare, takeDaycare, teamRoom, DAYCARE_EGG, EGG_BATTLES, EGG_IVS, rematchBoss,
 } from './factoryRun'
 
 const data = JSON.parse(readFileSync(new URL('../../../assets/database/factory.json', import.meta.url), 'utf8'))
@@ -981,6 +981,62 @@ describe('mapa da corrida', () => {
     expect(spring.winHeal).toBe(15)
   })
 
+  it('lendário que foge, surto do dia e Dowsing Machine', () => {
+    const base = startRun(emptyFactory(), data, 1, 42)
+    // O lendário que foge: um por corrida (pela semente); só a partir de ROAM_FLOOR; às vezes na rota.
+    expect(ROAMERS).toContain(roamerId(base))
+    expect(roamerNode({ ...base, floor: ROAM_FLOOR - 1 })).toBe(null)
+    const floors = Array.from({ length: 300 }, (_, f) => ({ ...base, floor: ROAM_FLOOR + f }))
+    const seen = floors.filter((r) => roamerNode(r))
+    expect(seen.length).toBeGreaterThan(10)
+    expect(seen.length).toBeLessThan(80)
+    const at = seen[0]
+    expect(roamerNode(at)).toEqual({ kind: 'wildboss', legend: roamerId(base), roam: true })
+    // Com o HP que ficou; derrubado ou capturado, não volta.
+    expect(roamerNode({ ...at, roamer: { id: roamerId(base), hp: 0.4 } }).roamHp).toBe(0.4)
+    expect(roamerNode({ ...at, roamer: { id: roamerId(base), done: 'caught' } })).toBe(null)
+    const enc = encounterFor(data, 30, seq([0.5]), null, true, { kind: 'wildboss', legend: 245, roam: true, roamHp: 0.4 })
+    expect(enc.foes[0]).toMatchObject({ id: 245, roam: true, hpRatio: 0.4 })
+    expect(foeMember(enc.foes[0], ['surf']).set.hpRatio).toBe(0.4)
+    // Fugiu: não conta como derrotado; o HP dele fica guardado.
+    const fight = { ...at, encounter: enc }
+    const fled = winFloor(fight, data, { fled: true, foeHp: 0.35 })
+    expect(fled.roamer).toEqual({ id: 245, hp: 0.35 })
+    expect(fled.pending.fled).toBe(245)
+    expect(fled.defeated).toBe(fight.defeated)
+    expect(fled.pending.money).toBe(0)
+    expect(winFloor(fight, data, {}).roamer).toEqual({ id: 245, done: 'fainted' })
+    expect(winFloor(fight, data, { captured: true }).roamer).toEqual({ id: 245, done: 'caught' })
+    // O surto do dia: a mesma espécie o dia todo, outra no outro dia; só uma forma básica que vive em algum lugar.
+    const today = outbreakOf(data, 20400)
+    expect(outbreakOf(data, 20400)).toBe(today)
+    expect(outbreakOf(data, null)).toBe(null)
+    expect(data.species[today][6].length).toBeGreaterThan(0)
+    expect(new Set(Array.from({ length: 10 }, (_, d) => outbreakOf(data, 20400 + d))).size).toBeGreaterThan(5)
+    const home = data.species[today][6][0]
+    // O sorteio do surto (rand < OUTBREAK_SHARE): vem a espécie do surto; senão, um selvagem comum do lugar.
+    expect(encounterFor(data, 5, seq([0.1]), null, false, { kind: 'wild', biome: home, outbreak: today }).foes[0].id).toBe(today)
+    expect(encounterFor(data, 5, seq([0.95]), null, false, { kind: 'wild', biome: home, outbreak: today }).foes[0].id)
+      .toBe(encounterFor(data, 5, seq([0.95]), null, false, { kind: 'wild', biome: home }).foes[0].id)
+    expect(OUTBREAK_SHINY).toBeGreaterThan(1)
+    // A Dowsing Machine: às vezes um caminho com batalha tem um item escondido; vencendo, o item fica.
+    let hidden = null
+    for (let f = 2; f < 400 && !hidden; f++) {
+      const r = nextFloor({ ...base, floor: f, leg: 1 }, data)
+      const node = r.route?.options?.find((o) => o.hidden)
+      if (node) hidden = { r, k: r.route.options.indexOf(node), item: node.hidden }
+    }
+    expect(hidden).not.toBe(null)
+    expect(DOWSE_ITEMS).toContain(hidden.item)
+    const picked = chooseNode(hidden.r, data, hidden.k)
+    expect(picked.dowsed).toBe(hidden.item)
+    const won = winFloor(picked, data, {})
+    expect(won.pending.dowsed).toBe(hidden.item)
+    expect(won.dowsed).toBe(null)
+    const count = (r) => (r.bag[hidden.item] ?? 0) + (r.tokens?.[hidden.item] ?? 0)
+    expect(count(won)).toBeGreaterThanOrEqual(count(picked) + 1)
+  })
+
   it('jogabilidade: MOs pelas insígnias, Pokédex da corrida, Creche com ovo, revanche do Campeão', () => {
     const base = startRun(emptyFactory(), data, 1, 42)
     expect(HM_BADGES).toEqual({ 1: 'cut', 2: 'flash', 3: 'surf', 4: 'rock-smash', 5: 'dive', 6: 'strength', 7: 'waterfall' })
@@ -1081,9 +1137,9 @@ describe('mapa da corrida', () => {
       expect(BIOME_IDS).toContain(b)
       expect(Object.values(data.species).some((s) => s[6].includes(b))).toBe(true)
     }
-    expect(clockOf(new Date(2026, 0, 10, 21))).toEqual({ night: true, season: 'spring' })
-    expect(clockOf(new Date(2026, 3, 10, 12))).toEqual({ night: false, season: 'winter' })
-    expect(clockOf(new Date(2026, 9, 13, 5))).toEqual({ night: true, season: 'summer' })
+    expect(clockOf(new Date(2026, 0, 10, 21))).toEqual({ night: true, season: 'spring', day: 20463 })
+    expect(clockOf(new Date(2026, 3, 10, 12))).toEqual({ night: false, season: 'winter', day: 20553 })
+    expect(clockOf(new Date(2026, 9, 13, 5))).toEqual({ night: true, season: 'summer', day: 20739 })
     expect(SEASON_TYPES.winter).toEqual(['ice'])
     // No inverno neva no campo (em algum andar); fora do inverno, nunca neve no campo.
     const base = startRun(emptyFactory(), data, 1, 42)

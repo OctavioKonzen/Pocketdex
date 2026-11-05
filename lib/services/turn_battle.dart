@@ -750,6 +750,10 @@ class TurnBattle {
     return weather == 'sun' ? const [2, 3] : const [1, 4];
   }
   int? winner; // 0 = você ganhou, 1 = o computador
+
+  /// O lendário que foge (Battle Factory): depois de quantos turnos ele vai embora; fled: foi embora.
+  int? fleeAfter;
+  bool fled = false;
   bool needSwitch = false; // seu Pokémon desmaiou: escolha outro
 
   BattleMon active(int side) => teams[side][activeIndex[side]];
@@ -1583,6 +1587,14 @@ class TurnBattle {
         if (theirs['kind'] == 'wait') rethrow;
         events = _simChoose([mine, recommend(1).first]);
       }
+      // O lendário que foge (Battle Factory): passados os turnos dele, vai embora (o HP que ficou é guardado).
+      final flee = fleeAfter;
+      if (flee != null && winner == null && captured == null && turn > flee && active(1).hp > 0) {
+        fled = true;
+        winner = 0;
+        _say(events, 'roamFled', [active(1).name]);
+        return [...turnOrder(events), ...events];
+      }
       // Derrubou o Pokémon do adversário: antes dele mandar o próximo, a tela
       // pergunta se você quer trocar (estilo "Shift" dos jogos; shiftSwitch).
       if (_canShift()) {
@@ -1794,6 +1806,7 @@ class TurnBattle {
     'win': 'Você venceu a batalha!',
     'lose': 'Todos os seus Pokémon desmaiaram... Você perdeu!',
     'ran': 'Você fugiu da batalha!',
+    'roamFled': '{0} fugiu! Ele vai aparecer de novo pelo caminho.',
     'usedItem': ['Você usou {1} em {0}!', 'O adversário usou {1} em {0}!'],
     'healed': ['{0} recuperou {1} de HP!', '{0} inimigo recuperou {1} de HP!'],
     'revived': ['{0} voltou à batalha!', '{0} inimigo voltou à batalha!'],

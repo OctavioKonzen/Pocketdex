@@ -147,6 +147,8 @@ Future<(TurnBattle, List<int>)> factoryBattle(Json run) async {
     // Nuzlocke com o Modo Set: sem a pergunta de trocar quando o adversário cai.
     ..noShift = FactoryRun.nuzRule(run, 'setMode');
   battle.expBar = expBar;
+  // O lendário que foge: depois de roamTurns turnos, ele vai embora.
+  if (FactoryRun.foesOf(run).firstOrNull?['roam'] == true) battle.fleeAfter = FactoryRun.roamTurns;
   return (battle, order);
 }
 
@@ -172,7 +174,8 @@ double? expBarOf(TurnBattle battle, int slot, List<int> foeHp) {
 }
 
 /// Como o time terminou a batalha (para winFloor): a parte do HP de cada um, na ordem da corrida, a Bolsa, se capturou o selvagem e quem lutou contra cada adversário.
-({List<double> hp, Map<String, int> bag, bool captured, List<List<int>> fought, List<int>? gained, String? ball}) factoryAfter(TurnBattle battle, List<int> order, Json run) {
+({List<double> hp, Map<String, int> bag, bool captured, List<List<int>> fought, List<int>? gained, String? ball, bool fled, double? foeHp}) factoryAfter(
+    TurnBattle battle, List<int> order, Json run) {
   final hp = [for (final m in FactoryRun.teamOf(run)) FactoryRun.hpOf(m)];
   for (var slot = 0; slot < order.length && slot < battle.teams[0].length; slot++) {
     final mon = battle.teams[0][slot];
@@ -193,7 +196,19 @@ double? expBarOf(TurnBattle battle, int slot, List<int> foeHp) {
       if (i < gained.length) gained[i] += (e.value as num).toInt();
     }
   }
-  return (hp: hp, bag: {for (final id in FactoryRun.bagItems) id: battle.bags[0][id] ?? 0}, captured: battle.captured != null, fought: fought, gained: gained, ball: battle.capturedBall);
+  // O lendário que fugiu: o HP que ficou (para a próxima vez).
+  final foe = battle.teams[1].isEmpty ? null : battle.teams[1][0];
+  final foeHp = battle.fled && foe != null && foe.maxHp > 0 ? ((foe.hp < 0 ? 0 : foe.hp) / foe.maxHp * 1000).round() / 1000 : null;
+  return (
+    hp: hp,
+    bag: {for (final id in FactoryRun.bagItems) id: battle.bags[0][id] ?? 0},
+    captured: battle.captured != null,
+    fought: fought,
+    gained: gained,
+    ball: battle.capturedBall,
+    fled: battle.fled,
+    foeHp: foeHp,
+  );
 }
 
 /// Os capangas de cada equipe vilã (homem e mulher). Igual ao site.
@@ -2306,6 +2321,9 @@ const _villainPlans = {
 /// A estação e a hora (do relógio de quem joga): mudam os Pokémon que aparecem e o clima. Igual ao site.
 const _seasonLabel = {'spring': '🌸 Primavera', 'summer': '☀️ Verão', 'autumn': '🍂 Outono', 'winter': '❄️ Inverno'};
 const _legendInfo = ('🌟', 'Lendário', 'O lendário da região espera aqui. Dá para capturar.');
+
+/// O lendário que foge (Raikou, Entei, Suicune...). Igual ao site.
+const _roamInfo = ('🐾', 'Lendário que foge', 'Foge depois de {0} turnos; o HP que você tirar fica para a próxima vez. Dá para capturar.');
 const _ballHelp = {
   'poke-ball': 'Para capturar os selvagens (jogue na batalha)',
   'great-ball': 'Captura 1,5× melhor',
@@ -3352,6 +3370,12 @@ class _FactoryScreenState extends State<FactoryScreen> {
               '💬 ${beat['name']}: ${tr(beat['kind'] == 'rival' ? _rivalBeat[min(_rivalBeat.length, ((run['rivalWins'] as num?) ?? 1).toInt()) - 1] : _beatLines[beat['kind']] ?? _beatLines['gym']!)}',
               key: const ValueKey('factory-beat-line'),
               style: const TextStyle(fontSize: 13, fontStyle: FontStyle.italic)),
+        if (p['fled'] != null)
+          Text('🐾 ${tr('{0} fugiu! Ele vai aparecer de novo pelo caminho (com o HP que ficou).').replaceAll('{0}', _name(p['fled']))}',
+              key: const ValueKey('factory-fled'), style: const TextStyle(fontSize: 13)),
+        if (p['dowsed'] != null)
+          Text('📡 ${tr('Você achou {0} escondido no caminho!').replaceAll('{0}', _itemName('${p['dowsed']}'))}',
+              key: const ValueKey('factory-dowsed'), style: const TextStyle(fontSize: 13)),
         if (p['hm'] != null && _hmInfo[p['hm']] != null)
           Text(
               '${_hmInfo[p['hm']]!.$2} ${tr('Com a insígnia, você ganhou a MO {0}!').replaceAll('{0}', _hmInfo[p['hm']]!.$1)} ${tr(_hmInfo[p['hm']]!.$3)}',
@@ -3883,6 +3907,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
     final smash = !meeting && !town ? FactoryRun.smashPath(run) : null;
     final strength = !meeting && !town ? FactoryRun.strengthPath(run) : null;
     final forecast = town ? '' : FactoryRun.weatherOf(run, '${route['biome']}', clock.season);
+    final burst = FactoryRun.outbreakOf(data, clock.day);
     // O andar (pequeno, num canto): na rota, até a cidade; num lugar, até o chefe dele.
     final floorTag = dungeon != null
         ? '${min(FactoryRun.dungeonLength, FactoryRun.dungeonPos(run) + 1)}/${FactoryRun.dungeonLength}'
@@ -3925,6 +3950,10 @@ class _FactoryScreenState extends State<FactoryScreen> {
       if (town && pos == FactoryRun.routeLength && boss['kind'] != 'villain')
         tr('Bem-vindo a {0}! O Poké Mart, o Centro Pokémon e a Creche ficam aqui; o líder espera no último andar da cidade.').replaceAll('{0}', cities.to),
       if (dungeon != null && dungeon['cleared'] == true) '🌊 ${tr('Você venceu o chefe daqui! Dá para seguir mais fundo ou voltar.')}',
+      for (final o in options)
+        if (o['roam'] == true)
+          '🐾 ${tr('{0} passou correndo por aqui! Ele foge depois de {1} turnos.').replaceAll('{0}', _name(o['legend'])).replaceAll('{1}', '${FactoryRun.roamTurns}')}',
+      if (options.any((o) => o['hidden'] != null)) '📡 ${tr('A Dowsing Machine apita: tem um item escondido num dos caminhos!')}',
     ];
     return _frame(
       run: run,
@@ -3994,6 +4023,12 @@ class _FactoryScreenState extends State<FactoryScreen> {
             '${forecast.isNotEmpty ? ' · ${tr('Clima: {0}').replaceAll('{0}', tr(_weatherLabel[forecast] ?? forecast))}' : ''}',
             key: const ValueKey('factory-clock'),
             style: TextStyle(fontSize: 11, color: _dlgSub)),
+        if (burst != null)
+          Text(
+              '📣 ${tr('Surto do dia: {0} aparece muito onde vive (mais chance de shiny).').replaceAll('{0}', _name(burst))}'
+              '${((data.species[burst]?.elementAtOrNull(6) as List?) ?? const []).contains(route['biome']) ? ' ${tr('Aqui também!')}' : ''}',
+              key: const ValueKey('factory-outbreak'),
+              style: TextStyle(fontSize: 11, color: _dlgSub)),
         if (down) _small(tr('O time todo está desmaiado: use um Revive ou desista.'), color: const Color(0xFFDC2626)),
       ],
       menu: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -4028,7 +4063,9 @@ class _FactoryScreenState extends State<FactoryScreen> {
                     ? _nodeInfo['mythic']!
                     : node['meteor'] == true
                         ? _nodeInfo['meteor']!
-                        : node['legend'] != null
+                        : node['roam'] == true
+                            ? _roamInfo
+                            : node['legend'] != null
                             ? _legendInfo
                             : _hmPathInfo(node) ?? _nodeInfo[node['kind']] ?? _nodeInfo['wild']!;
                 final b = _hmPathInfo(node) != null ? null : _biomeInfo[node['biome']];
@@ -4036,7 +4073,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                 final foeName = isBoss ? '${boss['name']}' : node['kind'] == 'rival' && rival != null ? '${rival['name']}' : null;
                 final noSurf = FactoryRun.nodeBlocked(run, node);
                 return _menuButton(
-                  '${options.length == 1 && foeName == null && node['kind'] != 'dboss' ? '${tr('SEGUIR')}: ' : ''}${node['biome'] == 'underwater' && route['biome'] != 'underwater' ? '🤿 ${tr('MERGULHAR')}: ' : ''}${town && isBoss ? '🏟️' : b?.$2 ?? info.$1} ${foeName ?? tr(info.$2)}${b != null ? ' · ${tr(b.$1)}' : ''}',
+                  '${options.length == 1 && foeName == null && node['kind'] != 'dboss' ? '${tr('SEGUIR')}: ' : ''}${node['biome'] == 'underwater' && route['biome'] != 'underwater' ? '🤿 ${tr('MERGULHAR')}: ' : ''}${town && isBoss ? '🏟️' : b?.$2 ?? info.$1} ${foeName ?? tr(info.$2)}${node['roam'] == true ? ' · ${_name(node['legend'])}' : ''}${b != null ? ' · ${tr(b.$1)}' : ''}${node['hidden'] != null ? ' 📡' : ''}',
                   widget.busy || (FactoryRun.isBattleNode(node) && down) || noSurf ? null : () => pick(k),
                   sub: noSurf
                       ? _hmHint(run, node)
@@ -4046,7 +4083,9 @@ class _FactoryScreenState extends State<FactoryScreen> {
                               ? dungeon != null
                                   ? tr('O chefe do lugar: vencendo, volta para {0}.').replaceAll('{0}', backTo)
                                   : tr('O chefe da rota: vencendo, você chega em {0}.').replaceAll('{0}', cities.to)
-                              : tr(info.$3),
+                              : node['hidden'] != null
+                                  ? '📡 ${tr('A Dowsing Machine apita: tem um item escondido aqui!')}'
+                                  : tr(info.$3).replaceAll('{0}', '${FactoryRun.roamTurns}'),
                   key: ValueKey('map-node-$k'),
                 );
               }),
@@ -4132,7 +4171,9 @@ class _FactoryScreenState extends State<FactoryScreen> {
                       final node = options[k];
                       final info = node['kind'] == 'dungeon'
                           ? ((_biomeInfo[node['scene']] ?? _biomeInfo['cave']!).$2, placeName(node['place']), '')
-                          : node['legend'] != null
+                          : node['roam'] == true
+                              ? _roamInfo
+                              : node['legend'] != null
                               ? _legendInfo
                               : _hmPathInfo(node) ?? _nodeInfo[node['kind']] ?? _nodeInfo['wild']!;
                       final b = _hmPathInfo(node) != null ? null : _biomeInfo[node['biome']];
@@ -4152,7 +4193,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                               child: Row(mainAxisSize: MainAxisSize.min, children: [
                                 CircleAvatar(radius: 12, backgroundColor: Colors.white, child: Text(b?.$2 ?? info.$1, style: const TextStyle(fontSize: 13))),
                                 const SizedBox(width: 4),
-                                Text(tr(info.$2), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11)),
+                                Text('${tr(info.$2)}${node['hidden'] != null ? ' 📡' : ''}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11)),
                               ]),
                             ),
                           ),

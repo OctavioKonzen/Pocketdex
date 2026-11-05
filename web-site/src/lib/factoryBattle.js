@@ -5,7 +5,7 @@
 import { battleMons } from './battleSetup'
 import { t } from './i18n'
 import { getFactoryData, getMoves, getPokemonById, getSpecies } from './data'
-import { bagsFor, battleOrder, bossScene, captureFor, clockOf, fieldOf, isDoubleBattle, weatherOf, EXP_SHARE, expAt, expFactor, expProgress, expShares, foeMember, memberOf, movesAt, nuzRule, levelCapOf } from './factoryRun'
+import { bagsFor, battleOrder, ROAM_TURNS, bossScene, captureFor, clockOf, fieldOf, isDoubleBattle, weatherOf, EXP_SHARE, expAt, expFactor, expProgress, expShares, foeMember, memberOf, movesAt, nuzRule, levelCapOf } from './factoryRun'
 import { seededRandom } from './league'
 import { newBattle } from './turnBattle'
 
@@ -60,6 +60,8 @@ export async function factoryBattle(run) {
   if (nuzRule(run, 'setMode')) battle.noShift = true
   battle.factoryOrder = order
   battle.expBar = expBar
+  // O lendário que foge: depois de ROAM_TURNS turnos, ele vai embora.
+  if (run.encounter.foes[0]?.roam) battle.fleeAfter = ROAM_TURNS
   return battle
 }
 
@@ -93,7 +95,10 @@ export function factoryAfter(battle, run) {
   const gained = battle.expNow ? run.team.map(() => 0) : null
   if (gained) Object.entries(battle.expNow.gained ?? {}).forEach(([slot, exp]) => { gained[battle.factoryOrder?.[Number(slot)] ?? Number(slot)] += exp })
   // A hora (pelo relógio): a Eevee evolui pela amizade em Espeon de dia e Umbreon à noite.
-  return { hp, bag: { ...battle.bags[0] }, captured: battle.captured != null, fought, night: clockOf().night, ...(gained ? { gained } : {}), ...(battle.capturedBall ? { ball: battle.capturedBall } : {}) }
+  // O lendário que fugiu: o HP que ficou (para a próxima vez).
+  const foe = battle.sides[1].team[0]
+  const fled = battle.fled ? { fled: true, foeHp: foe?.maxHp ? Math.round((Math.max(0, foe.hp) / foe.maxHp) * 1000) / 1000 : 1 } : {}
+  return { hp, bag: { ...battle.bags[0] }, captured: battle.captured != null, fought, ...fled, night: clockOf().night, ...(gained ? { gained } : {}), ...(battle.capturedBall ? { ball: battle.capturedBall } : {}) }
 }
 
 /** Quem é o adversário do andar: o chefe (nome, treinador e música) ou um selvagem (sem treinador). */

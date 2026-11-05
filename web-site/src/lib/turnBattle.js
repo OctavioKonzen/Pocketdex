@@ -907,6 +907,13 @@ function turnOf(battle, action, hit) {
       if (theirs.kind === 'wait') throw error
       events = simulatorTurn(battle, [mine, simulatorRecommend(battle, 1)[0]])
     }
+    // O lendário que foge (Battle Factory): passados os turnos dele, vai embora (o HP que ficou é guardado).
+    if (battle.fleeAfter && battle.winner == null && battle.captured == null && battle.turn > battle.fleeAfter && active(battle, 1).hp > 0) {
+      battle.fled = true
+      battle.winner = 0
+      say(events, 'roamFled', active(battle, 1).name)
+      return [...turnOrder(events), ...events]
+    }
     // Derrubou o Pokémon do adversário: antes dele mandar o próximo, a tela
     // pergunta se você quer trocar (estilo "Shift" dos jogos; shiftSwitch).
     if (canShift(battle)) {
@@ -1158,6 +1165,7 @@ export const LINES = {
   win: 'Você venceu a batalha!',
   lose: 'Todos os seus Pokémon desmaiaram... Você perdeu!',
   ran: 'Você fugiu da batalha!',
+  roamFled: '{0} fugiu! Ele vai aparecer de novo pelo caminho.',
   usedItem: ['Você usou {1} em {0}!', 'O adversário usou {1} em {0}!'],
   healed: ['{0} recuperou {1} de HP!', '{0} inimigo recuperou {1} de HP!'],
   revived: ['{0} voltou à batalha!', '{0} inimigo voltou à batalha!'],

@@ -1582,6 +1582,48 @@ class FactoryRun {
   static const _battleNodes = ['wild', 'trainer', 'ace', 'boss', 'wildboss', 'rematch', 'rival', 'dboss'];
   static bool isBattleNode(Map? node) => _battleNodes.contains(node?['kind']);
 
+  /// Os lendários que fogem (como os cães lendários de Johto, os Latis e a Cresselia): um por corrida. A partir de
+  /// roamFloor, às vezes (roamChance) aparece na primeira bifurcação da rota; depois de roamTurns turnos, foge. O HP que
+  /// você tirou fica (run.roamer.hp) até a próxima vez; derrubado ou capturado, não volta mais. Igual ao site.
+  static const roamers = [243, 244, 245, 380, 381, 488];
+  static const roamFloor = 15;
+  static const roamChance = 0.12;
+  static const roamTurns = 3;
+  static int roamerId(Json run) => _int((run['roamer'] as Map?)?['id'] ?? roamers[((run['seed'] as num).toInt() & 0xFFFFFFFF) % roamers.length]);
+
+  /// O caminho do lendário que foge neste andar (null se ele não aparece aqui). Não gasta o sorteio da corrida.
+  static Json? roamerNode(Json run) {
+    final roamer = run['roamer'] as Map?;
+    if (_int(run['floor']) < roamFloor || roamer?['done'] != null || followRoll(run, 2246822519) >= roamChance) return null;
+    final hp = (roamer?['hp'] as num?)?.toDouble();
+    return {'kind': 'wildboss', 'legend': roamerId(run), 'roam': true, if (hp != null && hp < 1) 'roamHp': hp};
+  }
+
+  /// A Dowsing Machine: a chance de apitar numa bifurcação e o que pode estar escondido. Igual ao site.
+  static const dowseChance = 0.2;
+  static const dowseItems = ['ultra-ball', 'hyper-potion', 'max-potion', 'revive', 'escape-rope', 'move-tutor'];
+  static void _dowse(Json run, List options) {
+    final battles = [for (var k = 0; k < options.length; k++) if (isBattleNode(options[k] as Map?) && options[k]['kind'] != 'boss') k];
+    if (options.length < 2 || battles.isEmpty || followRoll(run, 3266489917) >= dowseChance) return;
+    final k = battles[(followRoll(run, 668265263) * battles.length).floor()];
+    options[k] = {...Map<String, dynamic>.from(options[k] as Map), 'hidden': dowseItems[(followRoll(run, 374761393) * dowseItems.length).floor()]};
+  }
+
+  /// O surto do dia (como nos jogos): uma espécie aparece muito (outbreakShare dos selvagens) nos lugares onde ela
+  /// vive, com outbreakShiny vezes mais chance de shiny. Muda à meia-noite (o dia de quem joga). Igual ao site.
+  static const outbreakShare = 0.4;
+  static const outbreakShiny = 4;
+  static int? outbreakOf(FactoryData data, int? day) {
+    if (day == null) return null;
+    final list = (data.species.keys.toList()..sort()).where((id) {
+      final sp = data.species[id]!;
+      return sp[2] == 0 && ((sp.elementAtOrNull(6) as List?)?.isNotEmpty ?? false) && devolve(data, id, 1) == id;
+    }).toList();
+    if (list.isEmpty) return null;
+    final h = ((day * 2654435761) & 0xFFFFFFFF);
+    return list[h % list.length];
+  }
+
   /// O que tem no andar. A rota tem routeLength andares (o último é o chefe dela); depois vem a cidade, com cityLength
   /// andares (o último é o líder; na Liga, a Elite dos Quatro e o Campeão um atrás do outro). O rival da história pode
   /// aparecer em qualquer andar antes do líder. Fora isso, o caminho segue (um ponto só) e só nas bifurcações (na rota
@@ -1721,7 +1763,12 @@ class FactoryRun {
         final id = rarePlaceIds[(rand() * rarePlaceIds.length).floor()];
         add((id: id, name: rarePlaces[id]!.name, scene: rarePlaces[id]!.scene));
       }
+      // O lendário que foge (Raikou, Entei, Suicune...): às vezes aparece na primeira bifurcação da rota.
+      final roam = roamerNode(run);
+      if (pos == forks[0] && roam != null) options.add(roam);
     }
+    // A Dowsing Machine: às vezes apita, e um dos caminhos com batalha tem um item escondido.
+    _dowse(run, options);
     return {'floor': floor, 'biome': biome, if (city) 'town': true, 'options': options};
   }
 
@@ -1874,7 +1921,7 @@ class FactoryRun {
   }
 
   /// Escolhe o caminho: batalha (o encontro do andar) ou, sem batalha, Poké Mart, Centro Pokémon e eventos. Igual ao site.
-  static Json chooseNode(Json run, FactoryData data, int index, [({bool night, String season})? clock]) {
+  static Json chooseNode(Json run, FactoryData data, int index, [({bool night, String season, int? day})? clock]) {
     final options = (run['route']?['options'] as List?) ?? const [];
     if (index < 0 || index >= options.length || run['encounter'] != null || run['pending'] != null) return run;
     final node = Map<String, dynamic>.from(options[index] as Map);
@@ -1901,12 +1948,17 @@ class FactoryRun {
     final rand = _dice(out);
     final floor = _int(out['floor']);
     final routeBiomeNow = '${run['route']?['biome'] ?? 'grass'}';
+    // O item escondido (Dowsing Machine): fica com você quando vencer a batalha desse caminho.
+    if (node['hidden'] != null) out['dowsed'] = node['hidden'];
     if (isBattleNode(node)) {
       // O cenário da batalha: o bioma do selvagem, a cidade do ginásio, a Liga (torre) ou a rota.
       final city = node['kind'] == 'boss' && atCity(data, run);
       final scene = (node['biome'] as String?) ?? (city ? (bossOf(data, run)['kind'] == 'gym' ? 'city' : 'tower') : routeBiomeNow);
       out['scene'] = scene;
-      final when = clock == null ? const <String, dynamic>{} : {'night': clock.night, 'season': clock.season};
+      // O surto do dia: só nos lugares onde a espécie vive.
+      final burst = clock == null ? null : outbreakOf(data, clock.day);
+      final burstHere = burst != null && ((data.species[burst]?.elementAtOrNull(6) as List?) ?? const []).contains(scene);
+      final when = clock == null ? const <String, dynamic>{} : {'night': clock.night, 'season': clock.season, if (burstHere) 'outbreak': burst};
       Json roll() => {
             ...encounterFor(data, floor, rand, node['kind'] == 'boss' ? bossOf(data, out) : null, node['kind'] == 'wildboss',
                 {...node, 'biome': scene, 'shiny': run['shinyRate'] ?? 1, ...when, ...huntNode(run)}),
@@ -2078,7 +2130,13 @@ class FactoryRun {
       if (node?['legend'] != null) {
         // O lendário da região (na rota para a Liga) ou o mítico (evento raro).
         id = _int(node!['legend']);
-        extra = {'title': 'legend', if (node['mythic'] == true) 'mythic': true};
+        // O lendário que foge: com o HP que ficou da última vez.
+        extra = {
+          'title': 'legend',
+          if (node['mythic'] == true) 'mythic': true,
+          if (node['roam'] == true) 'roam': true,
+          if (node['roam'] == true && node['roamHp'] != null) 'hpRatio': node['roamHp'],
+        };
       } else if (r < 0.4 && megas.isNotEmpty) {
         id = _pick(megas, rand);
         final stone = _pick(data.megas[id]!, rand)[0] as String;
@@ -2181,10 +2239,16 @@ class FactoryRun {
     final rare = node?['rare'] == true ? [for (final p in (native.isNotEmpty ? native : common)) if (p.rate <= 75) p] : const <({int id, int bst, int rarity, int rate})>[];
     // Chuva de meteoros: um Clefairy (da linha dele, pelo nível), com mais chance de ser shiny.
     final meteor = node?['meteor'] == true;
-    final id = meteor ? devolve(data, 36, level) : pick(rare.isNotEmpty ? rare : native.isNotEmpty ? native : common);
+    // O surto do dia: a espécie dele aparece muito (e mais shiny).
+    final burst = node?['outbreak'] != null && !meteor && node?['rare'] != true && rand() < outbreakShare;
+    final id = burst
+        ? devolve(data, _int(node!['outbreak']), level)
+        : meteor
+            ? devolve(data, 36, level)
+            : pick(rare.isNotEmpty ? rare : native.isNotEmpty ? native : common);
     return {
       'kind': kind,
-      'foes': [foe(id, level, rand() < shinyChance * _shinyRate(node) * (meteor ? 8 : 1) * _huntBoost(data, node, id) ? {'shiny': true} : const {})],
+      'foes': [foe(id, level, rand() < shinyChance * _shinyRate(node) * (meteor ? 8 : 1) * (burst ? outbreakShiny : 1) * _huntBoost(data, node, id) ? {'shiny': true} : const {})],
       if (node?['biome'] != null) 'biome': node!['biome'],
       if (meteor) 'meteor': true,
     };
@@ -2326,7 +2390,15 @@ class FactoryRun {
   /// corrida) no fim da batalha; bag: a Bolsa que sobrou; captured: capturou o
   /// selvagem na batalha (entra no time). Igual ao site.
   static Json winFloor(Json run, FactoryData data,
-      {List<double>? hp, Map<String, int>? bag, bool captured = false, List<List<int>>? fought, List<int>? gained, String? ball, bool night = false}) {
+      {List<double>? hp,
+      Map<String, int>? bag,
+      bool captured = false,
+      List<List<int>>? fought,
+      List<int>? gained,
+      String? ball,
+      bool night = false,
+      bool fled = false,
+      double? foeHp}) {
     final out = _copy(run);
     final team0 = teamOf(out);
     // Depois de cada vitória, a cura da árvore (só em quem está de pé).
@@ -2341,7 +2413,10 @@ class FactoryRun {
     out['bag'] = {...bagAfter, 'escape-rope': (runBag['escape-rope'] as num?)?.toInt() ?? 0};
     final rand = _dice(out);
     final kind = run['encounter']['kind'] as String;
-    final foes = foesOf(run);
+    // O lendário que foge: se fugiu, não conta como derrotado (o HP dele fica para a próxima).
+    final allFoes = foesOf(run);
+    final roamer = allFoes.isNotEmpty && allFoes.first['roam'] == true ? _int(allFoes.first['id']) : null;
+    final foes = fled ? <Json>[] : allFoes;
     final factor = expFactor(kind);
     final moneyFactor = kind == 'boss' || kind == 'wildboss' || kind == 'rematch' || kind == 'rival' || kind == 'dboss' ? 3 : kind == 'ace' ? 2.5 : kind == 'trainer' ? 2 : 1;
     var money = 0;
@@ -2461,7 +2536,14 @@ class FactoryRun {
     out['defeated'] = _int(out['defeated']) + foes.length;
     out['floor'] = _int(out['floor']) + 1;
     String? drop, story;
-    if (kind == 'boss' || kind == 'wildboss') out['bosses'] = ((out['bosses'] as num?) ?? 0).toInt() + 1;
+    if ((kind == 'boss' || kind == 'wildboss') && !fled) out['bosses'] = ((out['bosses'] as num?) ?? 0).toInt() + 1;
+    if (roamer != null) {
+      out['roamer'] = fled ? {'id': roamer, 'hp': _round3(math.max(0.01, foeHp ?? 1))} : {'id': roamer, 'done': captured ? 'caught' : 'fainted'};
+    }
+    // O item escondido do caminho (Dowsing Machine).
+    final dowsed = run['dowsed'] as String?;
+    if (dowsed != null) _giveItem(out, dowsed);
+    out['dowsed'] = null;
     // Os itens dos chefes especiais (vão para a conta no fim da corrida, com as moedas).
     final pieces = piecesFor(data, run);
     if (pieces.isNotEmpty) out['pieces'] = _addPieces(piecesOf(run), pieces);
@@ -2534,7 +2616,7 @@ class FactoryRun {
       if (crystal != null && !_hasItem(out, crystal)) drop = crystal;
     }
     // A Mega deixa a Mega Pedra (derrotando ou capturando).
-    if (kind == 'wildboss' && foes.first['item'] != null && !_hasItem(out, '${foes.first['item']}')) drop = '${foes.first['item']}';
+    if (kind == 'wildboss' && foes.isNotEmpty && foes.first['item'] != null && !_hasItem(out, '${foes.first['item']}')) drop = '${foes.first['item']}';
     if (drop != null) out['stash'] = [...((out['stash'] as List?) ?? const []), drop];
     // O treinador forte deixa um item: bolas e remédios na Bolsa, ficha de Move Tutor, os de segurar guardados.
     // O lugar raro deixa uma Master Ball.
@@ -2597,6 +2679,8 @@ class FactoryRun {
         'beat': {'kind': run['encounter']['boss']['kind'], 'name': run['encounter']['boss']['name'], 'region': run['encounter']['boss']['region']},
       if (mission != null) 'mission': mission,
       if (hm != null) 'hm': hm,
+      if (fled) 'fled': roamer,
+      if (dowsed != null) 'dowsed': dowsed,
     };
     out['encounter'] = null;
     return out;
@@ -3147,9 +3231,14 @@ class FactoryRun {
   static const winterSnow = ['grass', 'forest', 'flowers', 'bamboo', 'mountain', 'city', 'ruins', 'beach'];
 
   /// A hora e a estação de agora: noite das 19h às 6h; a estação pelo mês (jan primavera, fev verão, mar outono, abr inverno...).
-  static ({bool night, String season}) clockOf([DateTime? date]) {
+  static ({bool night, String season, int? day}) clockOf([DateTime? date]) {
     final now = date ?? DateTime.now();
-    return (night: now.hour >= 19 || now.hour < 6, season: seasons[(now.month - 1) % 4]);
+    // day: o dia de quem joga (muda à meia-noite; o surto do dia).
+    return (
+      night: now.hour >= 19 || now.hour < 6,
+      season: seasons[(now.month - 1) % 4],
+      day: DateTime.utc(now.year, now.month, now.day).millisecondsSinceEpoch ~/ 86400000,
+    );
   }
 
   /// O clima com que a batalha do andar começa ('' sem clima): pelo lugar, sempre o mesmo para a mesma corrida e andar.
@@ -3946,6 +4035,7 @@ class FactoryRun {
         if (foe['item'] != null) 'item': foe['item'],
         if (foe['gimmick'] != null) 'gimmick': foe['gimmick'],
         if (foe['tera'] != null) 'tera': foe['tera'],
+        if (foe['hpRatio'] != null) 'hpRatio': foe['hpRatio'],
       }
     );
   }

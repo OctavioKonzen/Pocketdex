@@ -585,6 +585,63 @@ void main() {
     expect(data.species[follow['encounter']['foes'][0]['id']]![5] as num, lessThanOrEqualTo(75));
   });
 
+  test('lendário que foge, surto do dia e Dowsing Machine (igual ao site)', () {
+    double Function() same(double v) => () => v;
+    final base = FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!;
+    // O lendário que foge: um por corrida (pela semente); só a partir de roamFloor; às vezes na rota.
+    expect(FactoryRun.roamers, contains(FactoryRun.roamerId(base)));
+    expect(FactoryRun.roamerNode({...base, 'floor': FactoryRun.roamFloor - 1}), isNull);
+    final floors = [for (var f = 0; f < 300; f++) {...base, 'floor': FactoryRun.roamFloor + f}];
+    final seen = floors.where((r) => FactoryRun.roamerNode(r) != null).toList();
+    expect(seen.length, greaterThan(10));
+    expect(seen.length, lessThan(80));
+    final at = seen.first;
+    expect(FactoryRun.roamerNode(at), {'kind': 'wildboss', 'legend': FactoryRun.roamerId(base), 'roam': true});
+    // Com o HP que ficou; derrubado ou capturado, não volta.
+    expect(FactoryRun.roamerNode({...at, 'roamer': {'id': FactoryRun.roamerId(base), 'hp': 0.4}})!['roamHp'], 0.4);
+    expect(FactoryRun.roamerNode({...at, 'roamer': {'id': FactoryRun.roamerId(base), 'done': 'caught'}}), isNull);
+    final enc = FactoryRun.encounterFor(data, 30, same(0.5), null, true, {'kind': 'wildboss', 'legend': 245, 'roam': true, 'roamHp': 0.4});
+    final foe = (enc['foes'] as List).first as Map;
+    expect([foe['id'], foe['roam'], foe['hpRatio']], [245, true, 0.4]);
+    expect(FactoryRun.foeMember(Map<String, dynamic>.from(foe), ['surf']).$2['hpRatio'], 0.4);
+    // Fugiu: não conta como derrotado; o HP dele fica guardado.
+    final fight = {...at, 'encounter': enc};
+    final fled = FactoryRun.winFloor(fight, data, fled: true, foeHp: 0.35);
+    expect(fled['roamer'], {'id': 245, 'hp': 0.35});
+    expect(fled['pending']['fled'], 245);
+    expect(fled['defeated'], fight['defeated']);
+    expect(fled['pending']['money'], 0);
+    expect(FactoryRun.winFloor(fight, data)['roamer'], {'id': 245, 'done': 'fainted'});
+    expect(FactoryRun.winFloor(fight, data, captured: true)['roamer'], {'id': 245, 'done': 'caught'});
+    // O surto do dia: a mesma espécie o dia todo, outra no outro dia; só uma forma básica que vive em algum lugar.
+    final today = FactoryRun.outbreakOf(data, 20400)!;
+    expect(FactoryRun.outbreakOf(data, 20400), today);
+    expect(FactoryRun.outbreakOf(data, null), isNull);
+    expect({for (var d = 0; d < 10; d++) FactoryRun.outbreakOf(data, 20400 + d)}.length, greaterThan(5));
+    final home = (data.species[today]![6] as List).first;
+    Object? wild(double v, [bool burst = true]) =>
+        ((FactoryRun.encounterFor(data, 5, same(v), null, false, {'kind': 'wild', 'biome': home, if (burst) 'outbreak': today})['foes'] as List).first as Map)['id'];
+    expect(wild(0.1), today);
+    expect(wild(0.95), wild(0.95, false));
+    // A Dowsing Machine: às vezes um caminho com batalha tem um item escondido; vencendo, o item fica.
+    ({Json r, int k, String item})? hidden;
+    for (var f = 2; f < 400 && hidden == null; f++) {
+      final r = FactoryRun.nextFloor({...base, 'floor': f, 'leg': 1}, data);
+      final options = (r['route']?['options'] as List?) ?? const [];
+      final k = options.indexWhere((o) => o['hidden'] != null);
+      if (k >= 0) hidden = (r: r, k: k, item: '${options[k]['hidden']}');
+    }
+    expect(hidden, isNotNull);
+    expect(FactoryRun.dowseItems, contains(hidden!.item));
+    final picked = FactoryRun.chooseNode(hidden.r, data, hidden.k);
+    expect(picked['dowsed'], hidden.item);
+    final won = FactoryRun.winFloor(picked, data);
+    expect(won['pending']['dowsed'], hidden.item);
+    expect(won['dowsed'], isNull);
+    int count(Json r) => ((r['bag'] as Map)[hidden!.item] as num? ?? 0).toInt() + (((r['tokens'] as Map?)?[hidden!.item] as num?) ?? 0).toInt();
+    expect(count(won), greaterThanOrEqualTo(count(picked) + 1));
+  });
+
   test('jogabilidade: MOs pelas insígnias, Pokédex da corrida, Creche com ovo, revanche do Campeão (igual ao site)', () {
     final base = FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!;
     expect(FactoryRun.hmBadges, {1: 'cut', 2: 'flash', 3: 'surf', 4: 'rock-smash', 5: 'dive', 6: 'strength', 7: 'waterfall'});
@@ -706,9 +763,9 @@ void main() {
       expect(FactoryRun.biomeIds, contains(b));
       expect(data.species.values.any((s) => (s[6] as List).contains(b)), isTrue);
     }
-    expect(FactoryRun.clockOf(DateTime(2026, 1, 10, 21)), (night: true, season: 'spring'));
-    expect(FactoryRun.clockOf(DateTime(2026, 4, 10, 12)), (night: false, season: 'winter'));
-    expect(FactoryRun.clockOf(DateTime(2026, 10, 13, 5)), (night: true, season: 'summer'));
+    expect(FactoryRun.clockOf(DateTime(2026, 1, 10, 21)), (night: true, season: 'spring', day: 20463));
+    expect(FactoryRun.clockOf(DateTime(2026, 4, 10, 12)), (night: false, season: 'winter', day: 20553));
+    expect(FactoryRun.clockOf(DateTime(2026, 10, 13, 5)), (night: true, season: 'summer', day: 20739));
     final base = FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!;
     final floors = [for (var k = 0; k < 40; k++) {...base, 'floor': k + 1}];
     expect(floors.any((r) => FactoryRun.weatherOf(r, 'grass', 'winter') == 'snow'), isTrue);
@@ -722,7 +779,7 @@ void main() {
           'floor': 40,
           'route': {'floor': 40, 'biome': 'grass', 'options': [{'kind': 'trainer'}]},
         };
-        final out = FactoryRun.chooseNode(run, data, 0, night ? (night: true, season: 'spring') : null);
+        final out = FactoryRun.chooseNode(run, data, 0, night ? (night: true, season: 'spring', day: null) : null);
         n += (out['encounter']['foes'] as List).where((f) => ((data.species[f['id']] ?? data.formSpecies[f['id']])?[4] as List? ?? const []).any((t) => t == 'ghost' || t == 'dark')).length;
       }
       return n;

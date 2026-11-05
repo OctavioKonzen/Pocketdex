@@ -1284,6 +1284,45 @@ export const RARE_PLACES = {
 export const RARE_PLACE_IDS = Object.keys(RARE_PLACES)
 /** O lendário que espera no fim do lugar raro (sempre o mesmo na corrida). */
 export const rareLegend = (run, place) => { const l = RARE_PLACES[place]?.legends ?? []; return l.length ? l[((run.seed >>> 0) + run.floor) % l.length] : null }
+/**
+ * Os lendários que fogem (como os cães lendários de Johto, os Latis e a Cresselia): um por corrida. A partir de
+ * ROAM_FLOOR, às vezes (ROAM_CHANCE) aparece na primeira bifurcação da rota; depois de ROAM_TURNS turnos, foge. O HP
+ * que você tirou fica (run.roamer.hp) até a próxima vez; derrubado ou capturado, não volta mais. Igual ao app.
+ */
+export const ROAMERS = [243, 244, 245, 380, 381, 488]
+export const ROAM_FLOOR = 15
+export const ROAM_CHANCE = 0.12
+export const ROAM_TURNS = 3
+export const roamerId = (run) => run.roamer?.id ?? ROAMERS[(run.seed >>> 0) % ROAMERS.length]
+/** O caminho do lendário que foge neste andar (null se ele não aparece aqui). Não gasta o sorteio da corrida. */
+export function roamerNode(run) {
+  if (run.floor < ROAM_FLOOR || run.roamer?.done || followRoll(run, 2246822519) >= ROAM_CHANCE) return null
+  const hp = run.roamer?.hp
+  return { kind: 'wildboss', legend: roamerId(run), roam: true, ...(hp != null && hp < 1 ? { roamHp: hp } : {}) }
+}
+/** A Dowsing Machine: a chance de apitar numa bifurcação e o que pode estar escondido. Igual ao app. */
+export const DOWSE_CHANCE = 0.2
+export const DOWSE_ITEMS = ['ultra-ball', 'hyper-potion', 'max-potion', 'revive', 'escape-rope', 'move-tutor']
+function dowse(run, options) {
+  const battles = options.map((o, k) => (isBattleNode(o) && o.kind !== 'boss' ? k : -1)).filter((k) => k >= 0)
+  if (options.length < 2 || !battles.length || followRoll(run, 3266489917) >= DOWSE_CHANCE) return
+  const k = battles[Math.floor(followRoll(run, 668265263) * battles.length)]
+  options[k] = { ...options[k], hidden: DOWSE_ITEMS[Math.floor(followRoll(run, 374761393) * DOWSE_ITEMS.length)] }
+}
+
+/**
+ * O surto do dia (como nos jogos): uma espécie aparece muito (OUTBREAK_SHARE dos selvagens) nos lugares onde ela vive,
+ * com OUTBREAK_SHINY vezes mais chance de shiny. Muda à meia-noite (o dia de quem joga). Igual ao app.
+ */
+export const OUTBREAK_SHARE = 0.4
+export const OUTBREAK_SHINY = 4
+export function outbreakOf(data, day) {
+  if (day == null) return null
+  const list = Object.keys(data.species).map(Number).sort((a, b) => a - b)
+    .filter((id) => { const s = data.species[id]; return s[2] === 0 && (s[6]?.length ?? 0) > 0 && devolve(data, id, 1) === id })
+  return list.length ? list[(Math.imul(day | 0, 2654435761) >>> 0) % list.length] : null
+}
+
 /** O andar do lugar (0 a DUNGEON_LENGTH − 1; o último é o do chefe). */
 export const dungeonPos = (run) => (run.dungeon ? run.floor - run.dungeon.start : -1)
 
@@ -1406,7 +1445,12 @@ export function routeOptions(run, data, rand) {
       const id = RARE_PLACE_IDS[Math.floor(rand() * RARE_PLACE_IDS.length)]
       add({ id, scene: RARE_PLACES[id].scene })
     }
+    // O lendário que foge (Raikou, Entei, Suicune...): às vezes aparece na primeira bifurcação da rota.
+    const roam = roamerNode(run)
+    if (pos === FORKS[0] && roam) options.push(roam)
   }
+  // A Dowsing Machine: às vezes apita, e um dos caminhos com batalha tem um item escondido.
+  dowse(run, options)
   return { floor: run.floor, biome, ...(city ? { town: true } : {}), options }
 }
 
@@ -1455,12 +1499,16 @@ export function chooseNode(run, data, index, clock = null) {
     return out
   }
   const rand = dice(out)
+  // O item escondido (Dowsing Machine): fica com você quando vencer a batalha desse caminho.
+  if (node.hidden) out.dowsed = node.hidden
   if (isBattleNode(node)) {
     // O cenário da batalha: a cidade do ginásio, a Liga (torre) ou o lugar da rota (os selvagens e os treinadores são de lá).
     const city = node.kind === 'boss' && atCity(data, run)
     const scene = node.biome ?? (city ? (bossOf(data, run).kind === 'gym' ? 'city' : 'tower') : run.route.biome ?? 'grass')
     out.scene = scene
-    const when = clock ? { night: clock.night, season: clock.season } : {}
+    // O surto do dia: só nos lugares onde a espécie vive.
+    const burst = clock ? outbreakOf(data, clock.day) : null
+    const when = clock ? { night: clock.night, season: clock.season, ...(burst != null && data.species[burst]?.[6]?.includes(scene) ? { outbreak: burst } : {}) } : {}
     const roll = () => ({ ...encounterFor(data, out.floor, rand, node.kind === 'boss' ? bossOf(data, out) : null, node.kind === 'wildboss', { ...node, biome: scene, shiny: run.shinyRate ?? 1, ...when, ...huntNode(run) }), scene })
     out.encounter = roll()
     // Nuzlocke (cláusula de repetidos): o primeiro selvagem da área não é de uma linha evolutiva que você já teve.
@@ -1592,7 +1640,8 @@ export function encounterFor(data, floor, rand, boss = null, wild = false, node 
     if (node?.legend != null) {
       // O lendário da região (na rota para a Liga) ou o mítico (evento raro).
       id = node.legend
-      extra = { title: 'legend', ...(node.mythic ? { mythic: true } : {}) }
+      // O lendário que foge: com o HP que ficou da última vez.
+      extra = { title: 'legend', ...(node.mythic ? { mythic: true } : {}), ...(node.roam ? { roam: true, ...(node.roamHp != null ? { hpRatio: node.roamHp } : {}) } : {}) }
     } else if (r < 0.4 && megas.length) {
       id = pickOne(megas, rand)
       const [stone] = pickOne(data.megas[id], rand)
@@ -1665,8 +1714,10 @@ export function encounterFor(data, floor, rand, boss = null, wild = false, node 
   // Seguindo o Pokémon ferido: um raro do lugar (taxa de captura baixa).
   const rare = node?.rare ? (native.length ? native : common).filter((p) => p.rate <= 75) : []
   // Chuva de meteoros: um Clefairy (da linha dele, pelo nível), com mais chance de ser shiny.
-  const id = node?.meteor ? devolve(data, 36, level) : pick(rare.length ? rare : native.length ? native : common)
-  const shinyRate = SHINY_CHANCE * (node?.shiny ?? 1) * (node?.meteor ? 8 : 1) * huntBoost(data, node, id)
+  // O surto do dia: a espécie dele aparece muito (e mais shiny).
+  const burst = node?.outbreak != null && !node.meteor && !node.rare && rand() < OUTBREAK_SHARE
+  const id = burst ? devolve(data, node.outbreak, level) : node?.meteor ? devolve(data, 36, level) : pick(rare.length ? rare : native.length ? native : common)
+  const shinyRate = SHINY_CHANCE * (node?.shiny ?? 1) * (node?.meteor ? 8 : 1) * (burst ? OUTBREAK_SHINY : 1) * huntBoost(data, node, id)
   return { kind, foes: [foe(id, level, rand() < shinyRate ? { shiny: true } : {})], ...(node?.biome ? { biome: node.biome } : {}), ...(node?.meteor ? { meteor: true } : {}) }
 }
 
@@ -1839,7 +1890,11 @@ export function winFloor(run, data, after = {}) {
   const bagAfter = after.bag && nuzRule(run, 'noBattleItems') ? { ...run.bag, ...Object.fromEntries(BALL_IDS.map((id) => [id, after.bag[id] ?? run.bag[id] ?? 0])) } : after.bag ?? run.bag
   const out = { ...run, team: run.team.map((m, i) => ({ ...m, hp: healed(after.hp?.[i] ?? m.hp ?? 1) })), bag: { ...bagAfter, 'escape-rope': run.bag['escape-rope'] ?? 0 } }
   const rand = dice(out)
-  const { kind, foes } = run.encounter
+  // O lendário que foge: se fugiu, não conta como derrotado (o HP dele fica para a próxima).
+  const fled = Boolean(after.fled)
+  const roamer = run.encounter.foes[0]?.roam ? run.encounter.foes[0].id : null
+  const { kind } = run.encounter
+  const foes = fled ? [] : run.encounter.foes
   const factor = expFactor(kind)
   const moneyFactor = kind === 'boss' || kind === 'wildboss' || kind === 'rematch' || kind === 'rival' || kind === 'dboss' ? 3 : kind === 'ace' ? 2.5 : kind === 'trainer' ? 2 : 1
   let money = 0
@@ -1921,7 +1976,12 @@ export function winFloor(run, data, after = {}) {
   out.defeated += foes.length
   out.floor += 1
   let drop = null, story = null
-  if (kind === 'boss' || kind === 'wildboss') out.bosses = (out.bosses ?? 0) + 1
+  if ((kind === 'boss' || kind === 'wildboss') && !fled) out.bosses = (out.bosses ?? 0) + 1
+  if (roamer != null) out.roamer = fled ? { id: roamer, hp: round3(Math.max(0.01, after.foeHp ?? 1)) } : { id: roamer, done: after.captured ? 'caught' : 'fainted' }
+  // O item escondido do caminho (Dowsing Machine).
+  const dowsed = run.dowsed ?? null
+  if (dowsed) giveItem(out, dowsed)
+  out.dowsed = null
   // Os itens dos chefes especiais (vão para a conta no fim da corrida, com as moedas).
   const pieces = piecesFor(data, run)
   const dropped = Object.keys(pieces).length > 0
@@ -1984,7 +2044,7 @@ export function winFloor(run, data, after = {}) {
     if (crystal && !hasItem(out, crystal)) drop = crystal
   }
   // A Mega deixa a Mega Pedra (derrotando ou capturando).
-  if (kind === 'wildboss' && foes[0].item && !hasItem(out, foes[0].item)) drop = foes[0].item
+  if (kind === 'wildboss' && foes[0]?.item && !hasItem(out, foes[0].item)) drop = foes[0].item
   if (drop) out.stash = [...(out.stash ?? []), drop]
   // O treinador forte deixa um item: bolas e remédios na Bolsa, ficha de Move Tutor, os de segurar guardados.
   // O lugar raro deixa uma Master Ball.
@@ -2026,6 +2086,8 @@ export function winFloor(run, data, after = {}) {
     ...(kind === 'boss' || kind === 'rival' ? { beat: { kind: run.encounter.boss.kind, name: run.encounter.boss.name, region: run.encounter.boss.region } } : {}),
     ...(mission ? { mission } : {}),
     ...(hm ? { hm } : {}),
+    ...(fled ? { fled: roamer } : {}),
+    ...(dowsed ? { dowsed } : {}),
   }
   out.encounter = null
   return out
@@ -2454,7 +2516,8 @@ export const WINTER_SNOW = ['grass', 'forest', 'flowers', 'bamboo', 'mountain', 
 /** A hora e a estação de agora: noite das 19h às 6h; a estação pelo mês (jan primavera, fev verão, mar outono, abr inverno...). */
 export function clockOf(date = new Date()) {
   const hour = date.getHours()
-  return { night: hour >= 19 || hour < 6, season: SEASONS[date.getMonth() % 4] }
+  // day: o dia de quem joga (muda à meia-noite; o surto do dia).
+  return { night: hour >= 19 || hour < 6, season: SEASONS[date.getMonth() % 4], day: Math.floor(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86400000) }
 }
 
 /** O clima com que a batalha do andar começa ('' sem clima): pelo lugar, sempre o mesmo para a mesma corrida e andar. */
@@ -3238,6 +3301,7 @@ export function foeMember(foe, moveList) {
       ...(foe.item ? { item: foe.item } : {}),
       ...(foe.gimmick ? { gimmick: foe.gimmick } : {}),
       ...(foe.tera ? { tera: foe.tera } : {}),
+      ...(foe.hpRatio != null ? { hpRatio: foe.hpRatio } : {}),
     },
   }
 }

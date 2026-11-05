@@ -27,7 +27,7 @@ import {
   resolveChoice, regionLegend, leaderType, villainTeam, rivalBoss, rocketBoss, placeInfo, routeInfo, DUNGEON_LENGTH, dungeonPos, townShop, townCenter,
   weeklyOf, startWeekly, COSMETIC_BALLS, COSMETIC_FRAMES, hasCosmetic, buyCosmetic, equipCosmetic,
   boostOf, memberOf, learnMove, movesLearnedBetween,
-  cutPath, smashPath, strengthPath, weatherOf, nodeBlocked, hmNeeded, hasHm, clockOf, healerOf, inTown, DARK_BIOMES, dexOf, dexRewardFor, leaveDaycare, takeDaycare, DAYCARE_EGG, EGG_BATTLES, withSeen,
+  cutPath, smashPath, strengthPath, weatherOf, outbreakOf, ROAM_TURNS, nodeBlocked, hmNeeded, hasHm, clockOf, healerOf, inTown, DARK_BIOMES, dexOf, dexRewardFor, leaveDaycare, takeDaycare, DAYCARE_EGG, EGG_BATTLES, withSeen,
   mapMusic,
 } from '../lib/factoryRun'
 import { startMusic, stopMusic } from '../lib/battleSound'
@@ -1471,6 +1471,8 @@ const VILLAIN_PLANS = {
 /** A estação e a hora (do relógio de quem joga): mudam os Pokémon que aparecem e o clima. */
 const SEASON_LABEL = { spring: '🌸 Primavera', summer: '☀️ Verão', autumn: '🍂 Outono', winter: '❄️ Inverno' }
 const LEGEND_INFO = { icon: '🌟', label: 'Lendário', help: 'O lendário da região espera aqui. Dá para capturar.' }
+/** O lendário que foge (Raikou, Entei, Suicune...). */
+const ROAM_INFO = { icon: '🐾', label: 'Lendário que foge', help: 'Foge depois de {0} turnos; o HP que você tirar fica para a próxima vez. Dá para capturar.' }
 
 /** O passo da tela depois do andar: o que ainda falta ver ou escolher (ou nada: o mapa). */
 function stepOf(p) {
@@ -1904,14 +1906,14 @@ function TownMap({ route, pos, from, to, title, me, width, fieldRef, onPick, blo
       )}
       {/* Os caminhos: botões no próprio mapa. */}
       {route.options.map((node, k) => {
-        const info = node.kind === 'dungeon' ? { icon: (BIOME_INFO[node.scene] ?? BIOME_INFO.cave).icon, label: placeName(node.place) } : node.legend != null ? LEGEND_INFO : hmPathInfo(node) ?? NODE_INFO[node.kind]
+        const info = node.kind === 'dungeon' ? { icon: (BIOME_INFO[node.scene] ?? BIOME_INFO.cave).icon, label: placeName(node.place) } : node.roam ? ROAM_INFO : node.legend != null ? LEGEND_INFO : hmPathInfo(node) ?? NODE_INFO[node.kind]
         const b = node.biome && !hmPathInfo(node) ? BIOME_INFO[node.biome] : null
         return (
           <button key={k} type="button" disabled={!onPick || blocked(node)} onClick={() => onPick(k)} data-testid={`map-pin-${k}`}
             className="absolute flex -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center gap-1 rounded-full border-2 border-white bg-blue-900/90 py-0.5 pl-0.5 pr-2 text-[10px] font-black text-white shadow-lg hover:bg-amber-500 disabled:cursor-default disabled:opacity-50 sm:text-xs"
             style={{ left: `${(ox / W) * 100}%`, top: `${(ys[k] / H) * 100}%` }}>
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-sm sm:h-7 sm:w-7 sm:text-base">{b ? b.icon : info.icon}</span>
-            {t(info.label)}
+            {t(info.label)}{node.hidden ? ' 📡' : ''}
           </button>
         )
       })}
@@ -2293,6 +2295,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
             💬 <span data-no-translate>{p.beat.name}</span>: {t(p.beat.kind === 'rival' ? RIVAL_BEAT[Math.min(RIVAL_BEAT.length, run.rivalWins ?? 1) - 1] : BEAT_LINES[p.beat.kind] ?? BEAT_LINES.gym)}
           </p>
         )}
+        {p.fled != null && <p className="text-sm" data-testid="factory-fled">🐾 {t('{0} fugiu! Ele vai aparecer de novo pelo caminho (com o HP que ficou).').replace('{0}', name(p.fled))}</p>}
+        {p.dowsed && <p className="text-sm" data-testid="factory-dowsed">📡 {t('Você achou {0} escondido no caminho!').replace('{0}', itemName(p.dowsed))}</p>}
         {p.hm && (
           <p className="text-sm text-amber-600" data-testid="factory-hm">
             {HM_INFO[p.hm].icon} {t('Com a insígnia, você ganhou a MO {0}!').replace('{0}', HM_INFO[p.hm].name)} {t(HM_INFO[p.hm].help)}
@@ -2539,6 +2543,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     const smash = !meeting && !town ? smashPath(run) : null
     const strength = !meeting && !town ? strengthPath(run) : null
     const forecast = town ? '' : weatherOf(run, route.biome, clock.season)
+    const burst = outbreakOf(data, clock.day)
     // O andar (pequeno, num canto): na rota, até a cidade; num lugar, até o chefe dele.
     const floorTag = inside ? `${Math.min(DUNGEON_LENGTH, dungeonPos(run) + 1)}/${DUNGEON_LENGTH}` : town ? `${Math.min(CITY_LENGTH, pos - ROUTE_LENGTH + 1)}/${CITY_LENGTH}` : `${pos + 1}/${ROUTE_LENGTH}`
     field = fork && hasMap ? (
@@ -2580,6 +2585,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       town && boss.kind === 'villain' && `💬 ${t('A {0} tomou conta da cidade! O líder do ginásio só volta quando ela for embora.').replace('{0}', TEAM_NAMES[villainTeam(boss.name)] ?? 'Equipe Rocket')}`,
       town && pos === ROUTE_LENGTH && boss.kind !== 'villain' && t('Bem-vindo a {0}! O Poké Mart, o Centro Pokémon e a Creche ficam aqui; o líder espera no último andar da cidade.').replace('{0}', to),
       inside && run.dungeon.cleared && `🌊 ${t('Você venceu o chefe daqui! Dá para seguir mais fundo ou voltar.')}`,
+      route.options.some((o) => o.roam) && `🐾 ${t('{0} passou correndo por aqui! Ele foge depois de {1} turnos.').replace('{0}', name(route.options.find((o) => o.roam).legend)).replace('{1}', ROAM_TURNS)}`,
+      route.options.some((o) => o.hidden) && `📡 ${t('A Dowsing Machine apita: tem um item escondido num dos caminhos!')}`,
     ].filter(Boolean)
     // A entrada de um lugar: a base vilã e o lugar da cidade (na cidade) ou o lugar no caminho (na rota).
     const placeButton = (node, k) => (
@@ -2604,6 +2611,11 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
           {t(SEASON_LABEL[clock.season])} · {clock.night ? `🌙 ${t('Noite: mais Fantasma e Sombrio')}` : `🌤️ ${t('Dia')}`} · {t('Chefe em {0}:').replace('{0}', to)} <b data-no-translate>{target.name}</b>
           {forecast && <span data-testid="factory-forecast"> · {t('Clima: {0}').replace('{0}', t(WEATHER_LABEL[forecast] ?? forecast))}</span>}
         </p>
+        {burst != null && (
+          <p className="dlg-sub text-xs" data-testid="factory-outbreak">
+            📣 {t('Surto do dia: {0} aparece muito onde vive (mais chance de shiny).').replace('{0}', name(burst))}{data.species[burst]?.[6]?.includes(route.biome) ? ` ${t('Aqui também!')}` : ''}
+          </p>
+        )}
         {down && <p className="text-sm text-red-600">{t('O time todo está desmaiado: use um Revive ou desista.')}</p>}
       </>
     )
@@ -2624,13 +2636,13 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         ))}
         {(hasMap || !fork) && route.options.map((node, k) => {
           if (node.kind === 'dungeon') return placeButton(node, k)
-          const info = node.area ? NODE_INFO.area : node.mythic ? NODE_INFO.mythic : node.meteor ? NODE_INFO.meteor : node.legend != null ? LEGEND_INFO : hmPathInfo(node) ?? NODE_INFO[node.kind]
+          const info = node.area ? NODE_INFO.area : node.mythic ? NODE_INFO.mythic : node.meteor ? NODE_INFO.meteor : node.roam ? ROAM_INFO : node.legend != null ? LEGEND_INFO : hmPathInfo(node) ?? NODE_INFO[node.kind]
           const b = node.biome && !hmPathInfo(node) ? BIOME_INFO[node.biome] : null
           const noSurf = nodeBlocked(run, node)
           return (
             <MenuButton key={k} testid={`map-node-${k}`} disabled={busy || (isBattleNode(node) && down) || noSurf} onClick={() => pickNode(k)}
-              sub={noSurf ? hmHint(run, node) : node.kind === 'boss' ? `${bossKindLabel(boss.kind)}${CITY_KIND_SET.has(boss.kind) ? ` · ${to}` : ''}` : node.kind === 'dboss' ? (inside ? t('O chefe do lugar: vencendo, volta para {0}.').replace('{0}', backTo) : t('O chefe da rota: vencendo, você chega em {0}.').replace('{0}', to)) : t(info.help)}>
-              {route.options.length === 1 && !['boss', 'rival', 'dboss'].includes(node.kind) ? `${t('SEGUIR')}: ` : ''}{node.biome === 'underwater' && route.biome !== 'underwater' ? `🤿 ${t('MERGULHAR')}: ` : ''}{town && node.kind === 'boss' ? '🏟️' : b ? b.icon : info.icon} {node.kind === 'boss' || (node.kind === 'rival' && rival) ? <span data-no-translate>{(node.kind === 'rival' ? rival : boss).name}</span> : t(info.label)}{b ? ` · ${t(b.label)}` : ''}
+              sub={noSurf ? hmHint(run, node) : node.kind === 'boss' ? `${bossKindLabel(boss.kind)}${CITY_KIND_SET.has(boss.kind) ? ` · ${to}` : ''}` : node.kind === 'dboss' ? (inside ? t('O chefe do lugar: vencendo, volta para {0}.').replace('{0}', backTo) : t('O chefe da rota: vencendo, você chega em {0}.').replace('{0}', to)) : node.hidden ? `📡 ${t('A Dowsing Machine apita: tem um item escondido aqui!')}` : t(info.help).replace('{0}', ROAM_TURNS)}>
+              {route.options.length === 1 && !['boss', 'rival', 'dboss'].includes(node.kind) ? `${t('SEGUIR')}: ` : ''}{node.biome === 'underwater' && route.biome !== 'underwater' ? `🤿 ${t('MERGULHAR')}: ` : ''}{town && node.kind === 'boss' ? '🏟️' : b ? b.icon : info.icon} {node.kind === 'boss' || (node.kind === 'rival' && rival) ? <span data-no-translate>{(node.kind === 'rival' ? rival : boss).name}</span> : t(info.label)}{node.roam ? <span data-no-translate> · {name(node.legend)}</span> : ''}{b ? ` · ${t(b.label)}` : ''}{node.hidden ? ' 📡' : ''}
             </MenuButton>
           )
         })}
