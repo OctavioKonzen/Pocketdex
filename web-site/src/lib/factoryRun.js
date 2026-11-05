@@ -1020,8 +1020,10 @@ export const BIOMES = {
   lavacave: ['fire', 'rock', 'ground'],
   poisoncave: ['poison', 'dark', 'bug'],
   seacave: ['water', 'rock'],
+  waterfall: ['water', 'dragon', 'rock'],
 }
-export const BIOME_IDS = Object.keys(BIOMES)
+/** Os lugares que podem ser de uma rota (a gruta da cachoeira só se entra pelo mar, com Waterfall). */
+export const BIOME_IDS = Object.keys(BIOMES).filter((b) => b !== 'waterfall')
 /** Quanto a mais aparecem os tipos do lugar (selvagens; nos treinadores, ROUTE_TYPE_TRAINER). */
 export const ROUTE_TYPE_WEIGHT = 8
 export const ROUTE_TYPE_TRAINER = 3
@@ -1088,7 +1090,7 @@ export function bossScene(data, boss, fallback = 'grass') {
 }
 
 /** Na Dusk Ball (3×): os lugares escuros. */
-export const DARK_BIOMES = ['cave', 'tower', 'icecave', 'sewer', 'underwater', 'lavacave', 'poisoncave', 'seacave']
+export const DARK_BIOMES = ['cave', 'tower', 'icecave', 'sewer', 'underwater', 'lavacave', 'poisoncave', 'seacave', 'waterfall']
 
 /** Os chefes de cidade (líder no ginásio dele; Elite dos Quatro e Campeão na Liga). Rival e vilões aparecem na rota. */
 const CITY_KINDS = ['gym', 'elite', 'champion']
@@ -1202,7 +1204,9 @@ export const WATER_CHAIN = [['beach', 'Praia', 'beach'], ['sea', 'Mar', 'water']
 /** Numa rota de mar, os primeiros andares são a praia (a água começa por ela); depois, o mar. */
 export const SHORE = FORKS[1] + 1
 /** Os lugares sem treinadores: só selvagens, e o chefe é um selvagem forte de lá (dá para capturar). */
-export const WILD_ONLY = ['water', 'underwater', 'seacave', 'icecave', 'lavacave', 'poisoncave', 'crystal']
+export const WILD_ONLY = ['water', 'underwater', 'seacave', 'icecave', 'lavacave', 'poisoncave', 'crystal', 'waterfall']
+/** A gruta atrás da cachoeira: sobe a queda d'água do Mar com Waterfall (10 andares de selvagens e um chefe forte de lá). */
+export const WATERFALL_PLACE = { id: 'waterfall', name: 'Gruta da cachoeira', scene: 'waterfall' }
 /** A caverna combina com o lugar em volta: no gelo, de gelo; no pântano, venenosa; no vulcão, de lava; no mar, aquática. */
 export const CAVE_OF = { snow: 'icecave', icecave: 'icecave', swamp: 'poisoncave', volcano: 'lavacave', beach: 'seacave', water: 'seacave', underwater: 'seacave' }
 const caveScene = (scene, around) => (scene === 'cave' ? CAVE_OF[around] ?? 'cave' : scene)
@@ -1216,6 +1220,7 @@ export function waterNext(scene) {
 export function placeInfo(data, run, id) {
   if (DUNGEONS[id]) return DUNGEONS[id]
   if (RARE_PLACES[id]) return RARE_PLACES[id]
+  if (id === WATERFALL_PLACE.id) return WATERFALL_PLACE
   const water = WATER_CHAIN.find(([w]) => w === id)
   if (water) return { name: water[1], scene: water[2] }
   const info = routeInfo(data, run)
@@ -1313,7 +1318,9 @@ export function routeOptions(run, data, rand) {
   // Venceu o chefe de um lugar da água: segue para o próximo (o mar depois da praia...) ou volta.
   if (inside && run.dungeon.cleared) {
     const next = waterNext(run.dungeon.scene)
-    return { floor: run.floor, biome, options: [{ kind: 'dungeon', place: next.id, scene: next.scene, deeper: true }, { kind: 'leave' }] }
+    // No Mar, também dá para subir a cachoeira (com Waterfall) até a gruta atrás dela.
+    const fall = run.dungeon.scene === 'water' && !(run.places ?? []).includes(WATERFALL_PLACE.id) ? [{ kind: 'dungeon', place: WATERFALL_PLACE.id, scene: WATERFALL_PLACE.scene, deeper: true }] : []
+    return { floor: run.floor, biome, options: [{ kind: 'dungeon', place: next.id, scene: next.scene, deeper: true }, ...fall, { kind: 'leave' }] }
   }
   // Lugares sem treinadores (mar, fundo do mar, cavernas de gelo, lava, veneno, cristal): só selvagens, e o chefe é um selvagem forte (dá para capturar).
   const wildOnly = inside && (WILD_ONLY.includes(biome) || Boolean(RARE_PLACES[run.dungeon.place]))
@@ -1941,7 +1948,7 @@ export function winFloor(run, data, after = {}) {
     if (beaten.kind === 'gym') {
       out.badges = (run.badges ?? 0) + 1
       if (run.team.length === 1) out.soloGym = true
-      // As MOs vêm com as insígnias (Cut, Flash, Surf e Dive).
+      // As MOs vêm com as insígnias (Cut, Flash, Surf, Rock Smash, Dive, Strength e Waterfall).
       hm = HM_BADGES[out.badges] ?? null
       if (hm && !(run.hms ?? []).includes(hm)) out.hms = [...(run.hms ?? []), hm]
       else hm = null
@@ -2256,14 +2263,19 @@ function addDex(out, id) {
   out.money += reward.money
 }
 
-/** As MOs (HMs): vêm com a 1ª, a 2ª, a 3ª e a 5ª insígnia. Cut abre um caminho escondido; Flash ilumina cavernas; Surf deixa ir para o mar; Dive, para o fundo do mar. */
-export const HM_BADGES = { 1: 'cut', 2: 'flash', 3: 'surf', 5: 'dive' }
+/**
+ * As MOs (HMs), uma por insígnia até a 7ª. Cut abre um caminho escondido; Flash ilumina cavernas; Surf deixa ir para o
+ * mar; Rock Smash quebra uma rocha (um selvagem raro de pedra); Dive leva ao fundo do mar; Strength empurra uma pedra
+ * (um treinador forte, que sempre deixa um item); Waterfall sobe a cachoeira do Mar até a gruta atrás dela.
+ */
+export const HM_BADGES = { 1: 'cut', 2: 'flash', 3: 'surf', 4: 'rock-smash', 5: 'dive', 6: 'strength', 7: 'waterfall' }
 /** Tem a MO: ganhou com a insígnia ou um Pokémon do time sabe o golpe (não precisa passar do ginásio). */
 export const hasHm = (run, hm) => (run.hms ?? []).includes(hm) || (run.team ?? []).some((m) => (m?.moves ?? []).includes(hm))
 /** A MO que falta para ir por este caminho (null se nada falta): o mar pede Surf; o fundo do mar, Dive. */
 export function hmNeeded(run, node) {
   const deep = (node?.biome === 'underwater' && run.route?.biome !== 'underwater') || (node?.kind === 'dungeon' && node.scene === 'underwater')
-  const need = deep ? 'dive' : node?.kind === 'dungeon' && node.scene === 'water' ? 'surf' : null
+  const place = node?.kind === 'dungeon' ? node.scene : null
+  const need = deep ? 'dive' : place === 'water' ? 'surf' : place === 'waterfall' ? 'waterfall' : null
   return need && !hasHm(run, need) ? need : null
 }
 export const nodeBlocked = (run, node) => hmNeeded(run, node) != null
@@ -2272,6 +2284,23 @@ export function cutPath(run) {
   const route = run.route
   if (!hasHm(run, 'cut') || !route || route.options.length < 2 || run.encounter || run.pending || run.cutLeg === (run.leg ?? 1)) return null
   return { ...run, cutLeg: run.leg ?? 1, route: { ...route, options: [...route.options, { kind: 'wild', biome: route.biome, rare: true, cut: true }] } }
+}
+/** Onde há rochas para quebrar (Rock Smash) e pedras para empurrar (Strength). */
+export const SMASH_BIOMES = ['cave', 'mountain', 'icecave', 'crystal', 'lavacave', 'poisoncave', 'seacave', 'desert', 'dunes', 'ruins', 'volcano', 'waterfall']
+export const STRENGTH_BIOMES = ['cave', 'mountain', 'icecave', 'crystal', 'lavacave', 'poisoncave', 'seacave', 'ruins', 'temple', 'waterfall']
+const hmPathOk = (run, hm, biomes, leg) => {
+  const route = run.route
+  return hasHm(run, hm) && route && biomes.includes(route.biome) && route.options.length >= 2 && !route.town && !run.encounter && !run.pending && run[leg] !== (run.leg ?? 1)
+}
+/** Rock Smash: uma vez por rota, nos lugares de pedra, quebra a rocha e aparece um selvagem raro de lá. null se não dá. */
+export function smashPath(run) {
+  if (!hmPathOk(run, 'rock-smash', SMASH_BIOMES, 'smashLeg')) return null
+  return { ...run, smashLeg: run.leg ?? 1, route: { ...run.route, options: [...run.route.options, { kind: 'wild', biome: run.route.biome, rare: true, smash: true }] } }
+}
+/** Strength: uma vez por rota, nas cavernas e montanhas, empurra a pedra e abre o caminho de um treinador forte (sempre deixa um item). */
+export function strengthPath(run) {
+  if (!hmPathOk(run, 'strength', STRENGTH_BIOMES, 'strengthLeg')) return null
+  return { ...run, strengthLeg: run.leg ?? 1, route: { ...run.route, options: [...run.route.options, { kind: 'ace', strength: true }] } }
 }
 
 /** Dupla de treinadores: chance de um treinador vir acompanhado. */
@@ -2392,11 +2421,11 @@ export function rerollRoute(run, data) {
  * torre, ginásio, Liga) sem clima. Igual ao app.
  */
 export const SCENE_WEATHER = {
-  desert: [['sand', 0.45], ['sun', 0.25]], volcano: [['sun', 0.6]], snow: [['snow', 0.65]], icecave: [['snow', 0.5]], lavacave: [['sun', 0.4]], seacave: [['rain', 0.2]],
-  beach: [['sun', 0.35], ['rain', 0.15]], water: [['rain', 0.35], ['sun', 0.15]], swamp: [['rain', 0.45]],
+  desert: [['sand', 0.6], ['sun', 0.25]], volcano: [['sun', 0.6]], snow: [['snow', 0.65]], icecave: [['snow', 0.5]], lavacave: [['sun', 0.4]], seacave: [['rain', 0.2]], waterfall: [['rain', 0.45]],
+  beach: [['sun', 0.35], ['rain', 0.25]], water: [['rain', 0.55], ['sun', 0.1]], swamp: [['rain', 0.5]],
   grass: [['sun', 0.15], ['rain', 0.15]], forest: [['rain', 0.2], ['sun', 0.1]], mountain: [['sand', 0.15], ['snow', 0.15], ['sun', 0.1]],
   sky: [['sun', 0.2], ['rain', 0.2]], city: [['rain', 0.12], ['sun', 0.12]],
-  ruins: [['sand', 0.2], ['sun', 0.15]], flowers: [['sun', 0.25], ['rain', 0.1]], dunes: [['sand', 0.3]], bamboo: [['rain', 0.2], ['sun', 0.1]],
+  ruins: [['sand', 0.2], ['sun', 0.15]], flowers: [['sun', 0.25], ['rain', 0.1]], dunes: [['sand', 0.55]], bamboo: [['rain', 0.2], ['sun', 0.1]],
 }
 /** A música do mapa (andando na rota e na cidade): um tema original por região, mais calmo. Igual ao app. */
 export const MAP_REGIONS = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos', 'alola', 'galar', 'paldea']
@@ -2451,7 +2480,7 @@ export const SCENE_FIELD = {
   icecave: [['chill', 0.35], ['aurora', 0.1]], snow: [['chill', 0.2], ['aurora', 0.2]], tower: [['haunt', 0.35], ['psychic', 0.15]], underwater: [['current', 0.4]], water: [['current', 0.15]],
   grass: [['grassy', 0.2]], forest: [['grassy', 0.3], ['misty', 0.1]], city: [['electric', 0.25]], beach: [['misty', 0.1]], sky: [['wind', 0.3], ['storm', 0.15]],
   desert: [['quicksand', 0.2]], ruins: [['psychic', 0.2], ['haunt', 0.15]], flowers: [['spores', 0.3], ['misty', 0.15]], plant: [['storm', 0.35], ['electric', 0.25]],
-  crystal: [['diamonds', 0.4]], lavacave: [['ashes', 0.4]], poisoncave: [['miasma', 0.4]], seacave: [['current', 0.3]], dunes: [['quicksand', 0.35], ['haunt', 0.1]], bamboo: [['spores', 0.2], ['grassy', 0.2]], temple: [['psychic', 0.3]],
+  crystal: [['diamonds', 0.4]], lavacave: [['ashes', 0.4]], poisoncave: [['miasma', 0.4]], seacave: [['current', 0.3]], waterfall: [['current', 0.3]], dunes: [['quicksand', 0.35], ['haunt', 0.1]], bamboo: [['spores', 0.2], ['grassy', 0.2]], temple: [['psychic', 0.3]],
   'gym-grass': [['grassy', 0.6]], 'gym-electric': [['electric', 0.6]], 'gym-psychic': [['psychic', 0.6]], 'gym-fairy': [['misty', 0.6]], 'gym-ghost': [['haunt', 0.6]],
   'gym-rock': [['rockfall', 0.4]], 'gym-fire': [['ashes', 0.4]], 'gym-poison': [['miasma', 0.4]], 'gym-ice': [['chill', 0.4]], 'gym-water': [['current', 0.4]],
 }

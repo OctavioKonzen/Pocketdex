@@ -1265,8 +1265,11 @@ class FactoryRun {
     'lavacave': ['fire', 'rock', 'ground'],
     'poisoncave': ['poison', 'dark', 'bug'],
     'seacave': ['water', 'rock'],
+    'waterfall': ['water', 'dragon', 'rock'],
   };
-  static final biomeIds = biomes.keys.toList();
+
+  /// Os lugares que podem ser de uma rota (a gruta da cachoeira só se entra pelo mar, com Waterfall).
+  static final biomeIds = biomes.keys.where((b) => b != 'waterfall').toList();
 
   /// Quanto a mais aparecem os tipos do lugar (selvagens; treinadores).
   static const routeTypeWeight = 8, routeTypeTrainer = 3;
@@ -1281,7 +1284,7 @@ class FactoryRun {
   };
 
   /// Na Dusk Ball (3×): os lugares escuros.
-  static const darkBiomes = ['cave', 'tower', 'icecave', 'sewer', 'underwater', 'lavacave', 'poisoncave', 'seacave'];
+  static const darkBiomes = ['cave', 'tower', 'icecave', 'sewer', 'underwater', 'lavacave', 'poisoncave', 'seacave', 'waterfall'];
 
   /// Os chefes de cidade (líder no ginásio dele; Elite dos Quatro e Campeão na Liga). Rival e vilões aparecem na rota.
   static const _cityKinds = ['gym', 'elite', 'champion'];
@@ -1383,7 +1386,10 @@ class FactoryRun {
   static const shore = 5;
 
   /// Os lugares sem treinadores: só selvagens, e o chefe é um selvagem forte de lá (dá para capturar).
-  static const wildOnly = ['water', 'underwater', 'seacave', 'icecave', 'lavacave', 'poisoncave', 'crystal'];
+  static const wildOnly = ['water', 'underwater', 'seacave', 'icecave', 'lavacave', 'poisoncave', 'crystal', 'waterfall'];
+
+  /// A gruta atrás da cachoeira: sobe a queda d'água do Mar com Waterfall (10 andares de selvagens e um chefe forte de lá).
+  static const waterfallPlace = (id: 'waterfall', name: 'Gruta da cachoeira', scene: 'waterfall');
 
   /// A caverna combina com o lugar em volta: no gelo, de gelo; no pântano, venenosa; no vulcão, de lava; no mar, aquática.
   static const caveOf = {
@@ -1403,6 +1409,7 @@ class FactoryRun {
     if (generic != null) return (name: generic.name, scene: generic.scene);
     final rare = rarePlaces[id];
     if (rare != null) return (name: rare.name, scene: rare.scene);
+    if (id == waterfallPlace.id) return (name: waterfallPlace.name, scene: waterfallPlace.scene);
     for (final w in waterChain) {
       if (w.$1 == id) return (name: w.$2, scene: w.$3);
     }
@@ -1595,6 +1602,9 @@ class FactoryRun {
         'biome': biome,
         'options': [
           {'kind': 'dungeon', 'place': next.id, 'scene': next.scene, 'deeper': true},
+          // No Mar, também dá para subir a cachoeira (com Waterfall) até a gruta atrás dela.
+          if (run['dungeon']['scene'] == 'water' && !(run['places'] as List? ?? const []).contains(waterfallPlace.id))
+            {'kind': 'dungeon', 'place': waterfallPlace.id, 'scene': waterfallPlace.scene, 'deeper': true},
           {'kind': 'leave'},
         ],
       };
@@ -2482,7 +2492,7 @@ class FactoryRun {
       if (beaten['kind'] == 'gym') {
         out['badges'] = ((run['badges'] as num?) ?? 0).toInt() + 1;
         if ((run['team'] as List).length == 1) out['soloGym'] = true;
-        // As MOs vêm com as insígnias (Cut, Flash, Surf e Dive).
+        // As MOs vêm com as insígnias (Cut, Flash, Surf, Rock Smash, Dive, Strength e Waterfall).
         hm = hmBadges[out['badges']];
         if (hm != null && !(run['hms'] as List? ?? const []).contains(hm)) {
           out['hms'] = [...(run['hms'] as List? ?? const []), hm];
@@ -2754,9 +2764,10 @@ class FactoryRun {
     out['money'] = _int(out['money']) + (reward['money'] as int);
   }
 
-  /// As MOs (HMs): vêm com a 1ª, a 2ª, a 3ª e a 5ª insígnia. Cut abre um caminho escondido; Flash ilumina cavernas; Surf
-  /// deixa ir para o mar; Dive, para o fundo do mar. Igual ao site.
-  static const hmBadges = {1: 'cut', 2: 'flash', 3: 'surf', 5: 'dive'};
+  /// As MOs (HMs), uma por insígnia até a 7ª. Cut abre um caminho escondido; Flash ilumina cavernas; Surf deixa ir para o
+  /// mar; Rock Smash quebra uma rocha (um selvagem raro de pedra); Dive leva ao fundo do mar; Strength empurra uma pedra
+  /// (um treinador forte, que sempre deixa um item); Waterfall sobe a cachoeira do Mar até a gruta atrás dela. Igual ao site.
+  static const hmBadges = {1: 'cut', 2: 'flash', 3: 'surf', 4: 'rock-smash', 5: 'dive', 6: 'strength', 7: 'waterfall'};
   /// Tem a MO: ganhou com a insígnia ou um Pokémon do time sabe o golpe (não precisa passar do ginásio). Igual ao site.
   static bool hasHm(Json run, String hm) =>
       (run['hms'] as List? ?? const []).contains(hm) ||
@@ -2766,7 +2777,8 @@ class FactoryRun {
   static String? hmNeeded(Json run, Map? node) {
     final deep = (node?['biome'] == 'underwater' && (run['route'] as Map?)?['biome'] != 'underwater') ||
         (node?['kind'] == 'dungeon' && node?['scene'] == 'underwater');
-    final need = deep ? 'dive' : node?['kind'] == 'dungeon' && node?['scene'] == 'water' ? 'surf' : null;
+    final Object? place = node?['kind'] == 'dungeon' ? (node?['scene']) : null;
+    final need = deep ? 'dive' : place == 'water' ? 'surf' : place == 'waterfall' ? 'waterfall' : null;
     return need != null && !hasHm(run, need) ? need : null;
   }
 
@@ -2787,6 +2799,36 @@ class FactoryRun {
       },
     };
   }
+  /// Onde há rochas para quebrar (Rock Smash) e pedras para empurrar (Strength).
+  static const smashBiomes = ['cave', 'mountain', 'icecave', 'crystal', 'lavacave', 'poisoncave', 'seacave', 'desert', 'dunes', 'ruins', 'volcano', 'waterfall'];
+  static const strengthBiomes = ['cave', 'mountain', 'icecave', 'crystal', 'lavacave', 'poisoncave', 'seacave', 'ruins', 'temple', 'waterfall'];
+  static bool _hmPathOk(Json run, String hm, List<String> biomes, String leg) {
+    final route = run['route'] as Map?;
+    return hasHm(run, hm) &&
+        route != null &&
+        biomes.contains(route['biome']) &&
+        (route['options'] as List? ?? const []).length >= 2 &&
+        route['town'] != true &&
+        run['encounter'] == null &&
+        run['pending'] == null &&
+        run[leg] != (run['leg'] ?? 1);
+  }
+
+  static Json _withPath(Json run, String leg, Json node) {
+    final route = Map<String, dynamic>.from(run['route'] as Map);
+    return {...run, leg: run['leg'] ?? 1, 'route': {...route, 'options': [...route['options'] as List, node]}};
+  }
+
+  /// Rock Smash: uma vez por rota, nos lugares de pedra, quebra a rocha e aparece um selvagem raro de lá. null se não dá.
+  static Json? smashPath(Json run) => _hmPathOk(run, 'rock-smash', smashBiomes, 'smashLeg')
+      ? _withPath(run, 'smashLeg', {'kind': 'wild', 'biome': (run['route'] as Map)['biome'], 'rare': true, 'smash': true})
+      : null;
+
+  /// Strength: uma vez por rota, nas cavernas e montanhas, empurra a pedra e abre o caminho de um treinador forte (sempre
+  /// deixa um item).
+  static Json? strengthPath(Json run) =>
+      _hmPathOk(run, 'strength', strengthBiomes, 'strengthLeg') ? _withPath(run, 'strengthLeg', {'kind': 'ace', 'strength': true}) : null;
+
 
   /// Dupla de treinadores: chance de um treinador vir acompanhado.
   static const doubleChance = 0.2;
@@ -3068,11 +3110,11 @@ class FactoryRun {
   /// O clima de cada lugar (chances): sol e areia no deserto, chuva no mar e no pântano, neve na neve e na caverna de gelo,
   /// sol no vulcão; às vezes sol ou chuva na grama, na floresta e na cidade. Lugares fechados sem clima. Igual ao site.
   static const sceneWeather = <String, List<(String, double)>>{
-    'desert': [('sand', 0.45), ('sun', 0.25)], 'volcano': [('sun', 0.6)], 'snow': [('snow', 0.65)], 'icecave': [('snow', 0.5)], 'lavacave': [('sun', 0.4)], 'seacave': [('rain', 0.2)],
-    'beach': [('sun', 0.35), ('rain', 0.15)], 'water': [('rain', 0.35), ('sun', 0.15)], 'swamp': [('rain', 0.45)],
+    'desert': [('sand', 0.6), ('sun', 0.25)], 'volcano': [('sun', 0.6)], 'snow': [('snow', 0.65)], 'icecave': [('snow', 0.5)], 'lavacave': [('sun', 0.4)], 'seacave': [('rain', 0.2)], 'waterfall': [('rain', 0.45)],
+    'beach': [('sun', 0.35), ('rain', 0.25)], 'water': [('rain', 0.55), ('sun', 0.1)], 'swamp': [('rain', 0.5)],
     'grass': [('sun', 0.15), ('rain', 0.15)], 'forest': [('rain', 0.2), ('sun', 0.1)], 'mountain': [('sand', 0.15), ('snow', 0.15), ('sun', 0.1)],
     'sky': [('sun', 0.2), ('rain', 0.2)], 'city': [('rain', 0.12), ('sun', 0.12)],
-    'ruins': [('sand', 0.2), ('sun', 0.15)], 'flowers': [('sun', 0.25), ('rain', 0.1)], 'dunes': [('sand', 0.3)], 'bamboo': [('rain', 0.2), ('sun', 0.1)],
+    'ruins': [('sand', 0.2), ('sun', 0.15)], 'flowers': [('sun', 0.25), ('rain', 0.1)], 'dunes': [('sand', 0.55)], 'bamboo': [('rain', 0.2), ('sun', 0.1)],
   };
 
   /// A música do mapa (andando na rota e na cidade): um tema original por região, mais calmo. Igual ao site.
@@ -3129,7 +3171,7 @@ class FactoryRun {
     'icecave': [('chill', 0.35), ('aurora', 0.1)], 'snow': [('chill', 0.2), ('aurora', 0.2)], 'tower': [('haunt', 0.35), ('psychic', 0.15)], 'underwater': [('current', 0.4)], 'water': [('current', 0.15)],
     'grass': [('grassy', 0.2)], 'forest': [('grassy', 0.3), ('misty', 0.1)], 'city': [('electric', 0.25)], 'beach': [('misty', 0.1)], 'sky': [('wind', 0.3), ('storm', 0.15)],
     'desert': [('quicksand', 0.2)], 'ruins': [('psychic', 0.2), ('haunt', 0.15)], 'flowers': [('spores', 0.3), ('misty', 0.15)], 'plant': [('storm', 0.35), ('electric', 0.25)],
-    'crystal': [('diamonds', 0.4)], 'lavacave': [('ashes', 0.4)], 'poisoncave': [('miasma', 0.4)], 'seacave': [('current', 0.3)], 'dunes': [('quicksand', 0.35), ('haunt', 0.1)], 'bamboo': [('spores', 0.2), ('grassy', 0.2)], 'temple': [('psychic', 0.3)],
+    'crystal': [('diamonds', 0.4)], 'lavacave': [('ashes', 0.4)], 'poisoncave': [('miasma', 0.4)], 'seacave': [('current', 0.3)], 'waterfall': [('current', 0.3)], 'dunes': [('quicksand', 0.35), ('haunt', 0.1)], 'bamboo': [('spores', 0.2), ('grassy', 0.2)], 'temple': [('psychic', 0.3)],
     'gym-grass': [('grassy', 0.6)], 'gym-electric': [('electric', 0.6)], 'gym-psychic': [('psychic', 0.6)], 'gym-fairy': [('misty', 0.6)], 'gym-ghost': [('haunt', 0.6)],
     'gym-rock': [('rockfall', 0.4)], 'gym-fire': [('ashes', 0.4)], 'gym-poison': [('miasma', 0.4)], 'gym-ice': [('chill', 0.4)], 'gym-water': [('current', 0.4)],
   };

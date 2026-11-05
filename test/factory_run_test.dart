@@ -587,7 +587,7 @@ void main() {
 
   test('jogabilidade: MOs pelas insígnias, Pokédex da corrida, Creche com ovo, revanche do Campeão (igual ao site)', () {
     final base = FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!;
-    expect(FactoryRun.hmBadges, {1: 'cut', 2: 'flash', 3: 'surf', 5: 'dive'});
+    expect(FactoryRun.hmBadges, {1: 'cut', 2: 'flash', 3: 'surf', 4: 'rock-smash', 5: 'dive', 6: 'strength', 7: 'waterfall'});
     final sea = {
       ...base,
       'route': {
@@ -619,6 +619,36 @@ void main() {
     final cut = FactoryRun.cutPath({...sea, 'hms': ['cut']})!;
     expect((cut['route']['options'] as List).last, {'kind': 'wild', 'biome': 'water', 'rare': true, 'cut': true});
     expect(FactoryRun.cutPath(cut), isNull);
+    // Rock Smash e Strength: uma vez por rota, só nos lugares de pedra; com o golpe no time já vale.
+    final cave = {
+      ...base,
+      'route': {
+        'floor': 2,
+        'biome': 'cave',
+        'options': [{'kind': 'wild', 'biome': 'cave'}, {'kind': 'trainer'}],
+      },
+    };
+    expect(FactoryRun.smashPath(cave), isNull);
+    expect(FactoryRun.smashPath({...sea, 'hms': ['rock-smash']}), isNull);
+    final smashed = FactoryRun.smashPath({...cave, 'hms': ['rock-smash']})!;
+    expect((smashed['route']['options'] as List).last, {'kind': 'wild', 'biome': 'cave', 'rare': true, 'smash': true});
+    expect(FactoryRun.smashPath(smashed), isNull);
+    final pusher = {...cave, 'team': [{...(cave['team'] as List)[0] as Map, 'moves': ['strength']}]};
+    final pushed = FactoryRun.strengthPath(pusher)!;
+    expect((pushed['route']['options'] as List).last, {'kind': 'ace', 'strength': true});
+    expect(FactoryRun.strengthPath(pushed), isNull);
+    expect(FactoryRun.strengthPath({...pusher, 'route': {...pusher['route'] as Map, 'biome': 'grass'}}), isNull);
+    expect(FactoryRun.chooseNode(pushed, data, (pushed['route']['options'] as List).length - 1)['encounter']['kind'], 'ace');
+    // Waterfall: a gruta da cachoeira pede Waterfall.
+    const fallNode = {'kind': 'dungeon', 'place': 'waterfall', 'scene': 'waterfall'};
+    expect(FactoryRun.hmNeeded({...base, 'hms': ['surf']}, fallNode), 'waterfall');
+    expect(FactoryRun.hmNeeded({...base, 'hms': ['waterfall']}, fallNode), isNull);
+    // O clima mais forte: muita chuva no mar e areia no deserto.
+    final many = [for (var f = 0; f < 400; f++) {...base, 'floor': f}];
+    double share(String scene, String w) => many.where((r) => FactoryRun.weatherOf(r, scene) == w).length / many.length;
+    expect(share('water', 'rain'), greaterThan(0.45));
+    expect(share('desert', 'sand'), greaterThan(0.5));
+    expect(share('cave', 'rain'), 0);
     expect(FactoryRun.dexOf(base), [1]);
     final four = {...base, 'dex': [1, 2, 3, 4]};
     expect(FactoryRun.dexRewardFor(four, 4), isNull);
@@ -802,7 +832,7 @@ void main() {
     expect(FactoryRun.waterNext('seacave'), isNull);
     final gs = data.bosses.indexWhere((b) => b['game'] == 'Gold/Silver');
     final jasmine = (data.bosses[gs]['leaders'] as List).indexWhere((l) => l['name'] == 'Jasmine');
-    final start = {...FactoryRun.startRun(FactoryRun.empty(), data, 4, 3)!, 'leg': 1, 'boss': {'region': gs, 'step': jasmine}, 'hms': ['surf', 'dive']};
+    final start = {...FactoryRun.startRun(FactoryRun.empty(), data, 4, 3)!, 'leg': 1, 'boss': {'region': gs, 'step': jasmine}, 'hms': ['surf', 'dive', 'waterfall']};
     const f = FactoryRun.forks;
     var run = FactoryRun.nextFloor({...start, 'floor': 1 + f[1]}, data);
     expect(FactoryRun.routeOf(run)!['biome'], 'beach');
@@ -815,8 +845,19 @@ void main() {
     run = FactoryRun.nextFloor(FactoryRun.winFloor(FactoryRun.chooseNode(run, data, 0), data), data);
     expect(FactoryRun.routeOf(run)!['options'], [
       {'kind': 'dungeon', 'place': 'deep', 'scene': 'underwater', 'deeper': true},
+      {'kind': 'dungeon', 'place': 'waterfall', 'scene': 'waterfall', 'deeper': true},
       {'kind': 'leave'},
     ]);
+    final fallOption = (FactoryRun.routeOf(run)!['options'] as List)[1] as Map;
+    expect(FactoryRun.nodeBlocked(run, fallOption), isFalse);
+    expect(FactoryRun.nodeBlocked({...run, 'hms': ['surf', 'dive']}, fallOption), isTrue);
+    // A gruta da cachoeira: 10 andares de selvagens e um chefe forte.
+    var fall = FactoryRun.chooseNode(run, data, 1);
+    expect(FactoryRun.routeOf(fall)!['biome'], 'waterfall');
+    expect(FactoryRun.placeInfo(data, fall, 'waterfall').name, 'Gruta da cachoeira');
+    expect((FactoryRun.routeOf(fall)!['options'] as List).every((o) => o['kind'] == 'wild'), isTrue);
+    fall = FactoryRun.nextFloor({...fall, 'floor': (fall['floor'] as int) + FactoryRun.dungeonLength - 1}, data);
+    expect(FactoryRun.routeOf(fall)!['options'], [{'kind': 'wildboss', 'area': true}]);
     run = FactoryRun.chooseNode(run, data, 0);
     expect(run['dungeon']['entry'], 1 + f[1]);
     run = FactoryRun.nextFloor({...run, 'floor': (run['floor'] as int) + FactoryRun.dungeonLength - 1}, data);

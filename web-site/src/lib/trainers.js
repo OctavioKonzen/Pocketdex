@@ -91,6 +91,7 @@ export const BIOME_TRAINERS = {
   beach: ['swimmer', 'swimmerf', 'swimmerm', 'tuber', 'tuberf', 'tuberm', 'surfer', 'sailor', 'fisherman', 'parasollady', 'beauty', 'sightseer', 'sightseerf', 'tourist', 'touristf'],
   underwater: ['scubadiver', 'freediver', 'swimmer', 'swimmerf', 'swimmerm', 'fisherman'],
   seacave: ['scubadiver', 'freediver', 'swimmer', 'swimmerf', 'fisherman', 'sailor', 'hiker'],
+  waterfall: ['scubadiver', 'freediver', 'swimmer', 'swimmerf', 'fisherman', 'sailor', 'hiker'],
   swamp: ['fisherman', 'bugcatcher', 'pokemaniac', 'psychic', 'psychicf', 'medium', 'supernerd'],
   poisoncave: ['pokemaniac', 'supernerd', 'scientist', 'scientistf', 'hiker', 'medium'],
   sewer: ['supernerd', 'burglar', 'pokemaniac', 'worker', 'janitor', 'punkguy', 'punkgirl', 'delinquent'],

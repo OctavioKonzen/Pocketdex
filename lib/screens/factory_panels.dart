@@ -2115,6 +2115,7 @@ const _biomeInfo = <String, (String, String, Color)>{
   'lavacave': ('Caverna de lava', '🌋', Color(0xFFC2410C)),
   'poisoncave': ('Caverna venenosa', '🍄', Color(0xFF7E22CE)),
   'seacave': ('Caverna aquática', '🐚', Color(0xFF0E7490)),
+  'waterfall': ('Gruta da cachoeira', '🏞️', Color(0xFF0369A1)),
   'desert': ('Deserto', '🏜️', Color(0xFFB45309)),
   'ruins': ('Ruínas', '🏛️', Color(0xFFA16207)),
   'flowers': ('Campo de flores', '🌸', Color(0xFFDB2777)),
@@ -2178,12 +2179,33 @@ const _hmInfo = <String, (String, String, String)>{
   'flash': ('Flash', '💡', 'Ilumina cavernas, esgotos e torres: dá para ver os caminhos sem o Mapa, e a caverna secreta sempre tem algo.'),
   'surf': ('Surf', '🌊', 'Deixa navegar pelo mar (o caminho para o Mar).'),
   'dive': ('Dive', '🤿', 'Deixa mergulhar até o fundo do mar.'),
+  'rock-smash': ('Rock Smash', '🪨', 'Uma vez por rota, nas cavernas, montanhas e desertos, quebra uma rocha: aparece um selvagem raro do lugar.'),
+  'strength': ('Strength', '💪', 'Uma vez por rota, nas cavernas e montanhas, empurra uma pedra: atrás dela, um treinador forte (sempre deixa um item).'),
+  'waterfall': ('Waterfall', '🏞️', 'Sobe a cachoeira do Mar até a gruta atrás dela (selvagens e um chefe forte).'),
 };
 
 /// O aviso do caminho bloqueado: a MO que falta e com qual insígnia ela vem. Igual ao site.
-String _hmHint(Json run, Map? node) =>
-    FactoryRun.hmNeeded(run, node) == 'dive' ? tr('Precisa de um Pokémon com Dive no time (ou da 5ª insígnia).') : tr('Precisa de um Pokémon com Surf no time (ou da 3ª insígnia).');
+const _hmHints = {
+  'surf': 'Precisa de um Pokémon com Surf no time (ou da 3ª insígnia).',
+  'dive': 'Precisa de um Pokémon com Dive no time (ou da 5ª insígnia).',
+  'waterfall': 'Precisa de um Pokémon com Waterfall no time (ou da 7ª insígnia).',
+};
+String _hmHint(Json run, Map? node) => tr(_hmHints[FactoryRun.hmNeeded(run, node)] ?? _hmHints['surf']!);
+
+/// O clima do lugar (a previsão no mapa). Igual ao site.
+const _weatherLabel = {'rain': '🌧️ Chuva', 'sun': '☀️ Sol forte', 'sand': '🏜️ Tempestade de areia', 'snow': '❄️ Neve'};
 const _cutInfo = ('🌳', 'Caminho escondido', 'Aberto com Cut: um selvagem raro do lugar.');
+const _smashInfo = ('🪨', 'Rocha quebrada', 'Aberta com Rock Smash: um selvagem raro do lugar.');
+const _strengthInfo = ('💪', 'Pedra empurrada', 'Aberta com Strength: um treinador forte (sempre deixa um item).');
+
+/// O símbolo do caminho aberto por uma MO (Cut, Rock Smash, Strength). Igual ao site.
+(String, String, String)? _hmPathInfo(Map node) => node['cut'] == true
+    ? _cutInfo
+    : node['smash'] == true
+        ? _smashInfo
+        : node['strength'] == true
+            ? _strengthInfo
+            : null;
 const _eventText = {
   'items': 'Você achou {1}× {0} no caminho!',
   'money': 'Um treinador perdeu 💰{0} e não voltou para buscar.',
@@ -3858,6 +3880,9 @@ class _FactoryScreenState extends State<FactoryScreen> {
     // Sem o Mapa: nada do mapa e, na bifurcação, segue às cegas.
     final hasMap = run['townMap'] == true || (FactoryRun.hasHm(run, 'flash') && FactoryRun.darkBiomes.contains(route['biome']));
     final cut = !meeting && !town ? FactoryRun.cutPath(run) : null;
+    final smash = !meeting && !town ? FactoryRun.smashPath(run) : null;
+    final strength = !meeting && !town ? FactoryRun.strengthPath(run) : null;
+    final forecast = town ? '' : FactoryRun.weatherOf(run, '${route['biome']}', clock.season);
     // O andar (pequeno, num canto): na rota, até a cidade; num lugar, até o chefe dele.
     final floorTag = dungeon != null
         ? '${min(FactoryRun.dungeonLength, FactoryRun.dungeonPos(run) + 1)}/${FactoryRun.dungeonLength}'
@@ -3965,7 +3990,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
               style: const TextStyle(fontSize: 13)),
         Text(
             '${tr(_seasonLabel[clock.season] ?? '')} · ${clock.night ? '🌙 ${tr('Noite: mais Fantasma e Sombrio')}' : '🌤️ ${tr('Dia')}'} · '
-            '${tr('Chefe em {0}:').replaceAll('{0}', cities.to)} ${target['name']}',
+            '${tr('Chefe em {0}:').replaceAll('{0}', cities.to)} ${target['name']}'
+            '${forecast.isNotEmpty ? ' · ${tr('Clima: {0}').replaceAll('{0}', tr(_weatherLabel[forecast] ?? forecast))}' : ''}',
             key: const ValueKey('factory-clock'),
             style: TextStyle(fontSize: 11, color: _dlgSub)),
         if (down) _small(tr('O time todo está desmaiado: use um Revive ou desista.'), color: const Color(0xFFDC2626)),
@@ -3999,10 +4025,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
                         ? _nodeInfo['meteor']!
                         : node['legend'] != null
                             ? _legendInfo
-                            : node['cut'] == true
-                                ? _cutInfo
-                                : _nodeInfo[node['kind']] ?? _nodeInfo['wild']!;
-                final b = node['cut'] == true ? null : _biomeInfo[node['biome']];
+                            : _hmPathInfo(node) ?? _nodeInfo[node['kind']] ?? _nodeInfo['wild']!;
+                final b = _hmPathInfo(node) != null ? null : _biomeInfo[node['biome']];
                 final isBoss = node['kind'] == 'boss';
                 final foeName = isBoss ? '${boss['name']}' : node['kind'] == 'rival' && rival != null ? '${rival['name']}' : null;
                 final noSurf = FactoryRun.nodeBlocked(run, node);
@@ -4024,6 +4048,12 @@ class _FactoryScreenState extends State<FactoryScreen> {
           if (cut != null && hasMap)
             _menuButton('✂️ ${tr('USAR {0}').replaceAll('{0}', 'Cut')}', widget.busy ? null : () => _save(cut),
                 sub: tr(_hmInfo['cut']!.$3), key: const ValueKey('factory-cut')),
+          if (smash != null && hasMap)
+            _menuButton('🪨 ${tr('USAR {0}').replaceAll('{0}', 'Rock Smash')}', widget.busy ? null : () => _save(smash),
+                sub: tr(_hmInfo['rock-smash']!.$3), key: const ValueKey('factory-smash')),
+          if (strength != null && hasMap)
+            _menuButton('💪 ${tr('USAR {0}').replaceAll('{0}', 'Strength')}', widget.busy ? null : () => _save(strength),
+                sub: tr(_hmInfo['strength']!.$3), key: const ValueKey('factory-strength')),
           if (((run['rerolls'] as num?) ?? 0) > 0 && !meeting && !town && hasMap)
             _menuButton('🎲 ${tr('SORTEAR O CAMINHO DE NOVO')}', widget.busy ? null : () => _save(FactoryRun.rerollRoute(run, data)),
                 sub: tr('Restam {0} nesta corrida').replaceAll('{0}', '${run['rerolls']}'), key: const ValueKey('factory-reroll')),
@@ -4099,10 +4129,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
                           ? ((_biomeInfo[node['scene']] ?? _biomeInfo['cave']!).$2, placeName(node['place']), '')
                           : node['legend'] != null
                               ? _legendInfo
-                              : node['cut'] == true
-                                  ? _cutInfo
-                                  : _nodeInfo[node['kind']] ?? _nodeInfo['wild']!;
-                      final b = node['cut'] == true ? null : _biomeInfo[node['biome']];
+                              : _hmPathInfo(node) ?? _nodeInfo[node['kind']] ?? _nodeInfo['wild']!;
+                      final b = _hmPathInfo(node) != null ? null : _biomeInfo[node['biome']];
                       final off = onPick == null || blocked(node);
                       return Opacity(
                         opacity: off ? 0.5 : 1,
@@ -4218,6 +4246,7 @@ const _routeFlavor = {
   'lavacave': 'O calor sobe do chão e rios de lava iluminam as paredes.',
   'poisoncave': 'Uma névoa roxa cobre o chão; melhor não respirar fundo.',
   'seacave': 'A água bate nas pedras e ecoa por toda a caverna.',
+  'waterfall': 'O barulho da cachoeira enche a gruta; a névoa molha tudo.',
   'mountain': 'O caminho sobe pelas pedras; o ar fica mais fino.',
   'desert': 'O sol queima e a areia apaga as pegadas.',
   'volcano': 'O chão treme e a lava borbulha por perto.',

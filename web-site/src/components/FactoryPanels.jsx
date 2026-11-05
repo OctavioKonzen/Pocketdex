@@ -27,7 +27,7 @@ import {
   resolveChoice, regionLegend, leaderType, villainTeam, rivalBoss, rocketBoss, placeInfo, routeInfo, DUNGEON_LENGTH, dungeonPos, townShop, townCenter,
   weeklyOf, startWeekly, COSMETIC_BALLS, COSMETIC_FRAMES, hasCosmetic, buyCosmetic, equipCosmetic,
   boostOf, memberOf, learnMove, movesLearnedBetween,
-  cutPath, nodeBlocked, hmNeeded, hasHm, clockOf, healerOf, inTown, DARK_BIOMES, dexOf, dexRewardFor, leaveDaycare, takeDaycare, DAYCARE_EGG, EGG_BATTLES, withSeen,
+  cutPath, smashPath, strengthPath, weatherOf, nodeBlocked, hmNeeded, hasHm, clockOf, healerOf, inTown, DARK_BIOMES, dexOf, dexRewardFor, leaveDaycare, takeDaycare, DAYCARE_EGG, EGG_BATTLES, withSeen,
   mapMusic,
 } from '../lib/factoryRun'
 import { startMusic, stopMusic } from '../lib/battleSound'
@@ -1089,6 +1089,7 @@ const BIOME_INFO = {
   lavacave: { label: 'Caverna de lava', icon: '🌋', color: '#c2410c' },
   poisoncave: { label: 'Caverna venenosa', icon: '🍄', color: '#7e22ce' },
   seacave: { label: 'Caverna aquática', icon: '🐚', color: '#0e7490' },
+  waterfall: { label: 'Gruta da cachoeira', icon: '🏞️', color: '#0369a1' },
   desert: { label: 'Deserto', icon: '🏜️', color: '#b45309' },
   ruins: { label: 'Ruínas', icon: '🏛️', color: '#a16207' },
   flowers: { label: 'Campo de flores', icon: '🌸', color: '#db2777' },
@@ -1135,10 +1136,24 @@ const HM_INFO = {
   flash: { name: 'Flash', icon: '💡', help: 'Ilumina cavernas, esgotos e torres: dá para ver os caminhos sem o Mapa, e a caverna secreta sempre tem algo.' },
   surf: { name: 'Surf', icon: '🌊', help: 'Deixa navegar pelo mar (o caminho para o Mar).' },
   dive: { name: 'Dive', icon: '🤿', help: 'Deixa mergulhar até o fundo do mar.' },
+  'rock-smash': { name: 'Rock Smash', icon: '🪨', help: 'Uma vez por rota, nas cavernas, montanhas e desertos, quebra uma rocha: aparece um selvagem raro do lugar.' },
+  strength: { name: 'Strength', icon: '💪', help: 'Uma vez por rota, nas cavernas e montanhas, empurra uma pedra: atrás dela, um treinador forte (sempre deixa um item).' },
+  waterfall: { name: 'Waterfall', icon: '🏞️', help: 'Sobe a cachoeira do Mar até a gruta atrás dela (selvagens e um chefe forte).' },
 }
 /** O aviso do caminho bloqueado: a MO que falta e com qual insígnia ela vem. */
-const hmHint = (run, node) => (hmNeeded(run, node) === 'dive' ? t('Precisa de um Pokémon com Dive no time (ou da 5ª insígnia).') : t('Precisa de um Pokémon com Surf no time (ou da 3ª insígnia).'))
+const HM_HINTS = {
+  surf: 'Precisa de um Pokémon com Surf no time (ou da 3ª insígnia).',
+  dive: 'Precisa de um Pokémon com Dive no time (ou da 5ª insígnia).',
+  waterfall: 'Precisa de um Pokémon com Waterfall no time (ou da 7ª insígnia).',
+}
+const hmHint = (run, node) => t(HM_HINTS[hmNeeded(run, node)] ?? HM_HINTS.surf)
+/** O clima do lugar (a previsão no mapa). */
+const WEATHER_LABEL = { rain: '🌧️ Chuva', sun: '☀️ Sol forte', sand: '🏜️ Tempestade de areia', snow: '❄️ Neve' }
 const CUT_INFO = { icon: '🌳', label: 'Caminho escondido', help: 'Aberto com Cut: um selvagem raro do lugar.' }
+const SMASH_INFO = { icon: '🪨', label: 'Rocha quebrada', help: 'Aberta com Rock Smash: um selvagem raro do lugar.' }
+const STRENGTH_INFO = { icon: '💪', label: 'Pedra empurrada', help: 'Aberta com Strength: um treinador forte (sempre deixa um item).' }
+/** O símbolo do caminho aberto por uma MO (Cut, Rock Smash, Strength). */
+const hmPathInfo = (node) => (node.cut ? CUT_INFO : node.smash ? SMASH_INFO : node.strength ? STRENGTH_INFO : null)
 const CITY_KIND_SET = new Set(['gym', 'elite', 'champion'])
 const EVENT_TEXT = {
   items: 'Você achou {1}× {0} no caminho!',
@@ -1801,6 +1816,7 @@ const ROUTE_FLAVOR = {
   lavacave: 'O calor sobe do chão e rios de lava iluminam as paredes.',
   poisoncave: 'Uma névoa roxa cobre o chão; melhor não respirar fundo.',
   seacave: 'A água bate nas pedras e ecoa por toda a caverna.',
+  waterfall: 'O barulho da cachoeira enche a gruta; a névoa molha tudo.',
   mountain: 'O caminho sobe pelas pedras; o ar fica mais fino.',
   desert: 'O sol queima e a areia apaga as pegadas.',
   volcano: 'O chão treme e a lava borbulha por perto.',
@@ -1888,8 +1904,8 @@ function TownMap({ route, pos, from, to, title, me, width, fieldRef, onPick, blo
       )}
       {/* Os caminhos: botões no próprio mapa. */}
       {route.options.map((node, k) => {
-        const info = node.kind === 'dungeon' ? { icon: (BIOME_INFO[node.scene] ?? BIOME_INFO.cave).icon, label: placeName(node.place) } : node.legend != null ? LEGEND_INFO : node.cut ? CUT_INFO : NODE_INFO[node.kind]
-        const b = node.biome && !node.cut ? BIOME_INFO[node.biome] : null
+        const info = node.kind === 'dungeon' ? { icon: (BIOME_INFO[node.scene] ?? BIOME_INFO.cave).icon, label: placeName(node.place) } : node.legend != null ? LEGEND_INFO : hmPathInfo(node) ?? NODE_INFO[node.kind]
+        const b = node.biome && !hmPathInfo(node) ? BIOME_INFO[node.biome] : null
         return (
           <button key={k} type="button" disabled={!onPick || blocked(node)} onClick={() => onPick(k)} data-testid={`map-pin-${k}`}
             className="absolute flex -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center gap-1 rounded-full border-2 border-white bg-blue-900/90 py-0.5 pl-0.5 pr-2 text-[10px] font-black text-white shadow-lg hover:bg-amber-500 disabled:cursor-default disabled:opacity-50 sm:text-xs"
@@ -2520,6 +2536,9 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     // Sem o Mapa: nada do mapa e, na bifurcação, segue às cegas.
     const hasMap = Boolean(run.townMap) || (hasHm(run, 'flash') && DARK_BIOMES.includes(route.biome))
     const cut = !meeting && !town ? cutPath(run) : null
+    const smash = !meeting && !town ? smashPath(run) : null
+    const strength = !meeting && !town ? strengthPath(run) : null
+    const forecast = town ? '' : weatherOf(run, route.biome, clock.season)
     // O andar (pequeno, num canto): na rota, até a cidade; num lugar, até o chefe dele.
     const floorTag = inside ? `${Math.min(DUNGEON_LENGTH, dungeonPos(run) + 1)}/${DUNGEON_LENGTH}` : town ? `${Math.min(CITY_LENGTH, pos - ROUTE_LENGTH + 1)}/${CITY_LENGTH}` : `${pos + 1}/${ROUTE_LENGTH}`
     field = fork && hasMap ? (
@@ -2564,8 +2583,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     ].filter(Boolean)
     // A entrada de um lugar: a base vilã e o lugar da cidade (na cidade) ou o lugar no caminho (na rota).
     const placeButton = (node, k) => (
-      <MenuButton key={k} testid={`map-node-${k}`} disabled={busy || down} onClick={() => pickNode(k)}
-        sub={node.place === 'base' ? t('A equipe vilã está na cidade: {0} andares e o chefe dela no fim.').replace('{0}', DUNGEON_LENGTH)
+      <MenuButton key={k} testid={`map-node-${k}`} disabled={busy || down || nodeBlocked(run, node)} onClick={() => pickNode(k)}
+        sub={nodeBlocked(run, node) ? hmHint(run, node) : node.place === 'base' ? t('A equipe vilã está na cidade: {0} andares e o chefe dela no fim.').replace('{0}', DUNGEON_LENGTH)
           : node.deeper ? t('Mais {0} andares e um chefe.').replace('{0}', DUNGEON_LENGTH)
           : town ? t('{0} andares e um chefe; depois volta para a cidade, no mesmo andar.').replace('{0}', DUNGEON_LENGTH)
           : t('{0} andares e um chefe; depois volta para a rota, no mesmo andar.').replace('{0}', DUNGEON_LENGTH)}>
@@ -2583,6 +2602,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         )}
         <p className="dlg-sub text-xs" data-testid="factory-clock">
           {t(SEASON_LABEL[clock.season])} · {clock.night ? `🌙 ${t('Noite: mais Fantasma e Sombrio')}` : `🌤️ ${t('Dia')}`} · {t('Chefe em {0}:').replace('{0}', to)} <b data-no-translate>{target.name}</b>
+          {forecast && <span data-testid="factory-forecast"> · {t('Clima: {0}').replace('{0}', t(WEATHER_LABEL[forecast] ?? forecast))}</span>}
         </p>
         {down && <p className="text-sm text-red-600">{t('O time todo está desmaiado: use um Revive ou desista.')}</p>}
       </>
@@ -2599,8 +2619,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         ))}
         {(hasMap || !fork) && route.options.map((node, k) => {
           if (node.kind === 'dungeon') return placeButton(node, k)
-          const info = node.area ? NODE_INFO.area : node.mythic ? NODE_INFO.mythic : node.meteor ? NODE_INFO.meteor : node.legend != null ? LEGEND_INFO : node.cut ? CUT_INFO : NODE_INFO[node.kind]
-          const b = node.biome && !node.cut ? BIOME_INFO[node.biome] : null
+          const info = node.area ? NODE_INFO.area : node.mythic ? NODE_INFO.mythic : node.meteor ? NODE_INFO.meteor : node.legend != null ? LEGEND_INFO : hmPathInfo(node) ?? NODE_INFO[node.kind]
+          const b = node.biome && !hmPathInfo(node) ? BIOME_INFO[node.biome] : null
           const noSurf = nodeBlocked(run, node)
           return (
             <MenuButton key={k} testid={`map-node-${k}`} disabled={busy || (isBattleNode(node) && down) || noSurf} onClick={() => pickNode(k)}
@@ -2620,6 +2640,16 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         {cut && hasMap && (
           <MenuButton testid="factory-cut" disabled={busy} onClick={() => save(cut)} sub={t(HM_INFO.cut.help)}>
             ✂️ {t('USAR {0}').replace('{0}', 'Cut')}
+          </MenuButton>
+        )}
+        {smash && hasMap && (
+          <MenuButton testid="factory-smash" disabled={busy} onClick={() => save(smash)} sub={t(HM_INFO['rock-smash'].help)}>
+            🪨 {t('USAR {0}').replace('{0}', 'Rock Smash')}
+          </MenuButton>
+        )}
+        {strength && hasMap && (
+          <MenuButton testid="factory-strength" disabled={busy} onClick={() => save(strength)} sub={t(HM_INFO.strength.help)}>
+            💪 {t('USAR {0}').replace('{0}', 'Strength')}
           </MenuButton>
         )}
         {(run.rerolls ?? 0) > 0 && !meeting && !town && hasMap && (

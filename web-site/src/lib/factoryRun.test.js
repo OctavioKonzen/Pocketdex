@@ -17,7 +17,7 @@ import {
   tradeMon, skipTrade, TRADE_LEVELS, escapeRope, ESCAPE_HP, progress, ACHIEVEMENTS, LUCKY_EGG, rerollRoute, FOE_ITEMS,
   regionLegend, REGION_LEGENDS, starterLine, newMission, resolveChoice, MISSION_MONEY, CHOICE_EVENTS,
   clockOf, weatherOf, fieldOf, battleMusic, mapMusic, upgradeNeeds, UPGRADE_BRANCHES, unequipItem, SEASON_TYPES, BIOME_IDS, SCENE_FIELD,
-  HM_BADGES, cutPath, nodeBlocked, hmNeeded, hasHm, dexOf, dexRewardFor, DEX_REWARDS, leaveDaycare, takeDaycare, teamRoom, DAYCARE_EGG, EGG_BATTLES, EGG_IVS, rematchBoss,
+  HM_BADGES, cutPath, smashPath, strengthPath, nodeBlocked, hmNeeded, hasHm, dexOf, dexRewardFor, DEX_REWARDS, leaveDaycare, takeDaycare, teamRoom, DAYCARE_EGG, EGG_BATTLES, EGG_IVS, rematchBoss,
 } from './factoryRun'
 
 const data = JSON.parse(readFileSync(new URL('../../../assets/database/factory.json', import.meta.url), 'utf8'))
@@ -983,7 +983,7 @@ describe('mapa da corrida', () => {
 
   it('jogabilidade: MOs pelas insígnias, Pokédex da corrida, Creche com ovo, revanche do Campeão', () => {
     const base = startRun(emptyFactory(), data, 1, 42)
-    expect(HM_BADGES).toEqual({ 1: 'cut', 2: 'flash', 3: 'surf', 5: 'dive' })
+    expect(HM_BADGES).toEqual({ 1: 'cut', 2: 'flash', 3: 'surf', 4: 'rock-smash', 5: 'dive', 6: 'strength', 7: 'waterfall' })
     // Dive: sem ele, não mergulha até o fundo do mar (Surf não basta); blindPick pula o caminho bloqueado.
     const sea = { ...base, route: { floor: 2, biome: 'water', options: [{ kind: 'wild', biome: 'underwater' }, { kind: 'trainer' }] } }
     expect(nodeBlocked(sea, sea.route.options[0])).toBe(true)
@@ -1006,6 +1006,28 @@ describe('mapa da corrida', () => {
     const cut = cutPath({ ...sea, hms: ['cut'] })
     expect(cut.route.options.at(-1)).toEqual({ kind: 'wild', biome: 'water', rare: true, cut: true })
     expect(cutPath(cut)).toBe(null)
+    // Rock Smash e Strength: uma vez por rota, só nos lugares de pedra; com o golpe no time já vale.
+    const cave = { ...base, route: { floor: 2, biome: 'cave', options: [{ kind: 'wild', biome: 'cave' }, { kind: 'trainer' }] } }
+    expect(smashPath(cave)).toBe(null)
+    expect(smashPath({ ...sea, hms: ['rock-smash'] })).toBe(null)
+    const smashed = smashPath({ ...cave, hms: ['rock-smash'] })
+    expect(smashed.route.options.at(-1)).toEqual({ kind: 'wild', biome: 'cave', rare: true, smash: true })
+    expect(smashPath(smashed)).toBe(null)
+    const pusher = { ...cave, team: [{ ...cave.team[0], moves: ['strength'] }] }
+    const pushed = strengthPath(pusher)
+    expect(pushed.route.options.at(-1)).toEqual({ kind: 'ace', strength: true })
+    expect(strengthPath(pushed)).toBe(null)
+    expect(strengthPath({ ...pusher, route: { ...pusher.route, biome: 'grass' } })).toBe(null)
+    expect(chooseNode(pushed, data, pushed.route.options.length - 1).encounter.kind).toBe('ace')
+    // Waterfall: a gruta da cachoeira pede Waterfall.
+    expect(hmNeeded({ ...base, hms: ['surf'] }, { kind: 'dungeon', place: 'waterfall', scene: 'waterfall' })).toBe('waterfall')
+    expect(hmNeeded({ ...base, hms: ['waterfall'] }, { kind: 'dungeon', place: 'waterfall', scene: 'waterfall' })).toBe(null)
+    // O clima mais forte: muita chuva no mar e areia no deserto.
+    const many = Array.from({ length: 400 }, (_, f) => ({ ...base, floor: f }))
+    const share = (scene, w) => many.filter((r) => weatherOf(r, scene) === w).length / many.length
+    expect(share('water', 'rain')).toBeGreaterThan(0.45)
+    expect(share('desert', 'sand')).toBeGreaterThan(0.5)
+    expect(share('cave', 'rain')).toBe(0)
     // Pokédex da corrida: o inicial já conta; a 5ª espécie dá o prêmio.
     expect(dexOf(base)).toEqual([1])
     const four = { ...base, dex: [1, 2, 3, 4] }
@@ -1180,7 +1202,7 @@ describe('cidade e lugares perto dela', () => {
     expect(waterNext('seacave')).toBe(null)
     const gs = data.bosses.findIndex((b) => b.game === 'Gold/Silver')
     // A rota até Olivine City é de praia: o mar é um lugar opcional na bifurcação (precisa de Surf).
-    const start = { ...startRun(emptyFactory(), data, 4, 3), leg: 1, boss: { region: gs, step: data.bosses[gs].leaders.findIndex((l) => l.name === 'Jasmine') }, hms: ['surf', 'dive'] }
+    const start = { ...startRun(emptyFactory(), data, 4, 3), leg: 1, boss: { region: gs, step: data.bosses[gs].leaders.findIndex((l) => l.name === 'Jasmine') }, hms: ['surf', 'dive', 'waterfall'] }
     expect(targetOf(data, start).city).toBe('Olivine City')
     let run = nextFloor({ ...start, floor: 1 + FORKS[1] }, data)
     expect(run.route.biome).toBe('beach')
@@ -1190,8 +1212,17 @@ describe('cidade e lugares perto dela', () => {
     run = chooseNode(run, data, k)
     run = nextFloor({ ...run, floor: run.floor + DUNGEON_LENGTH - 1 }, data)
     run = nextFloor(winFloor(chooseNode(run, data, 0), data), data)
-    // Venceu o chefe do mar: mergulhar (fundo do mar) ou voltar.
-    expect(run.route.options).toEqual([{ kind: 'dungeon', place: 'deep', scene: 'underwater', deeper: true }, { kind: 'leave' }])
+    // Venceu o chefe do mar: mergulhar (fundo do mar), subir a cachoeira ou voltar.
+    expect(run.route.options).toEqual([{ kind: 'dungeon', place: 'deep', scene: 'underwater', deeper: true }, { kind: 'dungeon', place: 'waterfall', scene: 'waterfall', deeper: true }, { kind: 'leave' }])
+    expect(nodeBlocked(run, run.route.options[1])).toBe(false)
+    expect(nodeBlocked({ ...run, hms: ['surf', 'dive'] }, run.route.options[1])).toBe(true)
+    // A gruta da cachoeira: 10 andares de selvagens e um chefe forte; vencendo, volta para a rota (e não aparece de novo).
+    let fall = chooseNode(run, data, 1)
+    expect(fall.route.biome).toBe('waterfall')
+    expect(placeInfo(data, fall, 'waterfall').name).toBe('Gruta da cachoeira')
+    expect(fall.route.options.every((o) => o.kind === 'wild')).toBe(true)
+    fall = nextFloor({ ...fall, floor: fall.floor + DUNGEON_LENGTH - 1 }, data)
+    expect(fall.route.options).toEqual([{ kind: 'wildboss', area: true }])
     run = chooseNode(run, data, 0)
     expect(run.dungeon.entry).toBe(1 + FORKS[1])
     expect(run.route.biome).toBe('underwater')
