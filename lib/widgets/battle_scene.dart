@@ -154,7 +154,9 @@ class _StageMonState extends State<StageMon> {
         Transform.scale(
           scale: battleScale(battleHeights[widget.id]),
           alignment: Alignment.bottomCenter,
-          child: PokemonSprite(widget.id, shiny: widget.shiny, back: widget.back, fill: 0.95, alignBottom: true, battle: true),
+          // Sem a base (andando com você): o tamanho normal da figura, como fora da batalha (na batalha, a animação
+          // inteira cabe na caixa e quem é largo, como o Koraidon, encolhe). Igual ao site.
+          child: PokemonSprite(widget.id, shiny: widget.shiny, back: widget.back, fill: 0.95, alignBottom: true, battle: widget.base),
         ),
       ]);
 }

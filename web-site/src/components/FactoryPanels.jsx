@@ -1547,7 +1547,9 @@ function FieldMon({ mon, byId, back = false, follower = false, scene }) {
     <div className={place} style={back || follower ? undefined : { bottom: `${foeBottom(battleScene(scene)) * 100}%` }} data-testid={follower ? 'follower' : undefined}>
       {!follower && <PlatformBase scene={battleScene(scene)} side={back ? 'mine' : 'foe'} scale={scale} />}
       <div className="aspect-square w-full" style={{ transform: `scale(${scale})`, transformOrigin: '50% 100%' }}>
-        <Sprite key={`${p.id}-${mon.shiny}`} path={mon.shiny ? shinyPath(p.sprite) : p.sprite} box={p.box} fill={0.95} align="bottom" back={back} battle alt={p.name} />
+        {/* Andando com você (follower): o tamanho normal da figura, como fora da batalha (na batalha, a animação inteira
+            cabe na caixa e quem é largo, como o Koraidon, encolhe). */}
+        <Sprite key={`${p.id}-${mon.shiny}`} path={mon.shiny ? shinyPath(p.sprite) : p.sprite} box={p.box} fill={0.95} align="bottom" back={back} battle={!follower} alt={p.name} />
       </div>
     </div>
   )
