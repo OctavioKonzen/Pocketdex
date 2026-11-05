@@ -17,7 +17,7 @@ import {
   tradeMon, skipTrade, TRADE_LEVELS, escapeRope, ESCAPE_HP, progress, ACHIEVEMENTS, LUCKY_EGG, rerollRoute, FOE_ITEMS,
   regionLegend, REGION_LEGENDS, starterLine, newMission, resolveChoice, MISSION_MONEY, CHOICE_EVENTS,
   clockOf, weatherOf, fieldOf, battleMusic, mapMusic, upgradeNeeds, UPGRADE_BRANCHES, unequipItem, SEASON_TYPES, BIOME_IDS, SCENE_FIELD,
-  HM_BADGES, cutPath, nodeBlocked, dexOf, dexRewardFor, DEX_REWARDS, leaveDaycare, takeDaycare, teamRoom, DAYCARE_EGG, EGG_BATTLES, EGG_IVS, rematchBoss,
+  HM_BADGES, cutPath, nodeBlocked, hmNeeded, dexOf, dexRewardFor, DEX_REWARDS, leaveDaycare, takeDaycare, teamRoom, DAYCARE_EGG, EGG_BATTLES, EGG_IVS, rematchBoss,
 } from './factoryRun'
 
 const data = JSON.parse(readFileSync(new URL('../../../assets/database/factory.json', import.meta.url), 'utf8'))
@@ -983,13 +983,20 @@ describe('mapa da corrida', () => {
 
   it('jogabilidade: MOs pelas insígnias, Pokédex da corrida, Creche com ovo, revanche do Campeão', () => {
     const base = startRun(emptyFactory(), data, 1, 42)
-    expect(HM_BADGES).toEqual({ 1: 'cut', 2: 'flash', 3: 'surf' })
-    // Surf: sem ele, não mergulha; blindPick pula o caminho bloqueado.
+    expect(HM_BADGES).toEqual({ 1: 'cut', 2: 'flash', 3: 'surf', 5: 'dive' })
+    // Dive: sem ele, não mergulha até o fundo do mar (Surf não basta); blindPick pula o caminho bloqueado.
     const sea = { ...base, route: { floor: 2, biome: 'water', options: [{ kind: 'wild', biome: 'underwater' }, { kind: 'trainer' }] } }
     expect(nodeBlocked(sea, sea.route.options[0])).toBe(true)
+    expect(hmNeeded(sea, sea.route.options[0])).toBe('dive')
     expect(chooseNode(sea, data, 0)).toBe(sea)
     expect(blindPick(sea)).toBe(1)
-    expect(nodeBlocked({ ...sea, hms: ['surf'] }, sea.route.options[0])).toBe(false)
+    expect(nodeBlocked({ ...sea, hms: ['surf'] }, sea.route.options[0])).toBe(true)
+    expect(nodeBlocked({ ...sea, hms: ['dive'] }, sea.route.options[0])).toBe(false)
+    // O mar pede Surf; o fundo do mar, Dive.
+    expect(hmNeeded(base, { kind: 'dungeon', place: 'sea', scene: 'water' })).toBe('surf')
+    expect(hmNeeded({ ...base, hms: ['surf'] }, { kind: 'dungeon', place: 'sea', scene: 'water' })).toBe(null)
+    expect(hmNeeded({ ...base, hms: ['surf'] }, { kind: 'dungeon', place: 'deep', scene: 'underwater' })).toBe('dive')
+    expect(hmNeeded(base, { kind: 'trainer' })).toBe(null)
     // Cut: um caminho escondido por rota.
     expect(cutPath(sea)).toBe(null)
     const cut = cutPath({ ...sea, hms: ['cut'] })
@@ -1169,7 +1176,7 @@ describe('cidade e lugares perto dela', () => {
     expect(waterNext('seacave')).toBe(null)
     const gs = data.bosses.findIndex((b) => b.game === 'Gold/Silver')
     // A rota até Olivine City é de praia: o mar é um lugar opcional na bifurcação (precisa de Surf).
-    const start = { ...startRun(emptyFactory(), data, 4, 3), leg: 1, boss: { region: gs, step: data.bosses[gs].leaders.findIndex((l) => l.name === 'Jasmine') }, hms: ['surf'] }
+    const start = { ...startRun(emptyFactory(), data, 4, 3), leg: 1, boss: { region: gs, step: data.bosses[gs].leaders.findIndex((l) => l.name === 'Jasmine') }, hms: ['surf', 'dive'] }
     expect(targetOf(data, start).city).toBe('Olivine City')
     let run = nextFloor({ ...start, floor: 1 + FORKS[1] }, data)
     expect(run.route.biome).toBe('beach')

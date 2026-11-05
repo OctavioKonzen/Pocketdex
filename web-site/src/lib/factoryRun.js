@@ -1941,7 +1941,7 @@ export function winFloor(run, data, after = {}) {
     if (beaten.kind === 'gym') {
       out.badges = (run.badges ?? 0) + 1
       if (run.team.length === 1) out.soloGym = true
-      // As MOs vêm com as insígnias (Cut, Flash e Surf).
+      // As MOs vêm com as insígnias (Cut, Flash, Surf e Dive).
       hm = HM_BADGES[out.badges] ?? null
       if (hm && !hasHm(run, hm)) out.hms = [...(run.hms ?? []), hm]
       else hm = null
@@ -2256,12 +2256,16 @@ function addDex(out, id) {
   out.money += reward.money
 }
 
-/** As MOs (HMs): vêm com a 1ª, a 2ª e a 3ª insígnia. Cut abre um caminho escondido; Flash ilumina cavernas; Surf deixa mergulhar. */
-export const HM_BADGES = { 1: 'cut', 2: 'flash', 3: 'surf' }
+/** As MOs (HMs): vêm com a 1ª, a 2ª, a 3ª e a 5ª insígnia. Cut abre um caminho escondido; Flash ilumina cavernas; Surf deixa ir para o mar; Dive, para o fundo do mar. */
+export const HM_BADGES = { 1: 'cut', 2: 'flash', 3: 'surf', 5: 'dive' }
 export const hasHm = (run, hm) => (run.hms ?? []).includes(hm)
-/** Sem Surf, não dá para mergulhar. */
-export const nodeBlocked = (run, node) =>
-  ((node?.biome === 'underwater' && run.route?.biome !== 'underwater') || (node?.kind === 'dungeon' && ['water', 'underwater'].includes(node.scene))) && !hasHm(run, 'surf')
+/** A MO que falta para ir por este caminho (null se nada falta): o mar pede Surf; o fundo do mar, Dive. */
+export function hmNeeded(run, node) {
+  const deep = (node?.biome === 'underwater' && run.route?.biome !== 'underwater') || (node?.kind === 'dungeon' && node.scene === 'underwater')
+  const need = deep ? 'dive' : node?.kind === 'dungeon' && node.scene === 'water' ? 'surf' : null
+  return need && !hasHm(run, need) ? need : null
+}
+export const nodeBlocked = (run, node) => hmNeeded(run, node) != null
 /** Cut: uma vez por rota, corta a árvore e abre um caminho escondido (um selvagem raro do lugar). null se não dá. */
 export function cutPath(run) {
   const route = run.route

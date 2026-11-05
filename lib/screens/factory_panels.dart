@@ -2176,8 +2176,13 @@ const _nodeInfo = <String, (String, String, String)>{
 const _hmInfo = <String, (String, String, String)>{
   'cut': ('Cut', '✂️', 'Uma vez por rota, corta uma árvore e abre um caminho escondido (um selvagem raro).'),
   'flash': ('Flash', '💡', 'Ilumina cavernas, esgotos e torres: dá para ver os caminhos sem o Mapa, e a caverna secreta sempre tem algo.'),
-  'surf': ('Surf', '🌊', 'Deixa mergulhar no mar (o caminho para o fundo do mar).'),
+  'surf': ('Surf', '🌊', 'Deixa navegar pelo mar (o caminho para o Mar).'),
+  'dive': ('Dive', '🤿', 'Deixa mergulhar até o fundo do mar.'),
 };
+
+/// O aviso do caminho bloqueado: a MO que falta e com qual insígnia ela vem. Igual ao site.
+String _hmHint(Json run, Map? node) =>
+    FactoryRun.hmNeeded(run, node) == 'dive' ? tr('Precisa da MO Dive (5ª insígnia).') : tr('Precisa da MO Surf (3ª insígnia).');
 const _cutInfo = ('🌳', 'Caminho escondido', 'Aberto com Cut: um selvagem raro do lugar.');
 const _eventText = {
   'items': 'Você achou {1}× {0} no caminho!',
@@ -3840,7 +3845,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
       final base = node['place'] == 'base';
       return _menuButton('${FactoryRun.rarePlaces.containsKey(node['place']) ? '✨' : '🕳️'} ${(_biomeInfo[node['scene']] ?? biome).$2} ${base ? baseName : placeName(node['place'])}', widget.busy || down || FactoryRun.nodeBlocked(run, node) ? null : () => pick(k),
           sub: FactoryRun.nodeBlocked(run, node)
-              ? tr('Precisa da MO Surf (3ª insígnia).')
+              ? _hmHint(run, node)
               : base
                   ? tr('A equipe vilã está na cidade: {0} andares e o chefe dela no fim.').replaceAll('{0}', '${FactoryRun.dungeonLength}')
                   : node['deeper'] == true
@@ -3976,7 +3981,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                 _menuButton(k == 0 ? '➡️ ${tr('SEGUIR EM FRENTE')}' : '↗️ ${tr('OUTRO CAMINHO')}${options.length > 2 ? ' $k' : ''}',
                   widget.busy || FactoryRun.nodeBlocked(run, options[k]) || (FactoryRun.isBattleNode(options[k]) && down) ? null : () => pick(k),
                   sub: FactoryRun.nodeBlocked(run, options[k])
-                      ? tr('Precisa da MO Surf (3ª insígnia).')
+                      ? _hmHint(run, options[k] as Map?)
                       : k == 0
                           ? tr('Continuar por onde você está')
                           : tr('Não dá para saber aonde ele leva (o Mapa mostra)'),
@@ -4005,7 +4010,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                   '${options.length == 1 && foeName == null && node['kind'] != 'dboss' ? '${tr('SEGUIR')}: ' : ''}${node['biome'] == 'underwater' && route['biome'] != 'underwater' ? '🤿 ${tr('MERGULHAR')}: ' : ''}${town && isBoss ? '🏟️' : b?.$2 ?? info.$1} ${foeName ?? tr(info.$2)}${b != null ? ' · ${tr(b.$1)}' : ''}',
                   widget.busy || (FactoryRun.isBattleNode(node) && down) || noSurf ? null : () => pick(k),
                   sub: noSurf
-                      ? tr('Precisa da MO Surf (3ª insígnia).')
+                      ? _hmHint(run, node)
                       : isBoss
                           ? '${_bossKind(boss['kind'])}${ambush ? '' : ' · ${cities.to}'}'
                           : node['kind'] == 'dboss'

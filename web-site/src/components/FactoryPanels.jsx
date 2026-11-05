@@ -27,7 +27,7 @@ import {
   resolveChoice, regionLegend, leaderType, villainTeam, rivalBoss, rocketBoss, placeInfo, routeInfo, DUNGEON_LENGTH, dungeonPos, townShop, townCenter,
   weeklyOf, startWeekly, COSMETIC_BALLS, COSMETIC_FRAMES, hasCosmetic, buyCosmetic, equipCosmetic,
   boostOf, memberOf, learnMove, movesLearnedBetween,
-  cutPath, nodeBlocked, hasHm, clockOf, healerOf, inTown, DARK_BIOMES, dexOf, dexRewardFor, leaveDaycare, takeDaycare, DAYCARE_EGG, EGG_BATTLES, withSeen,
+  cutPath, nodeBlocked, hmNeeded, hasHm, clockOf, healerOf, inTown, DARK_BIOMES, dexOf, dexRewardFor, leaveDaycare, takeDaycare, DAYCARE_EGG, EGG_BATTLES, withSeen,
   mapMusic,
 } from '../lib/factoryRun'
 import { startMusic, stopMusic } from '../lib/battleSound'
@@ -1133,8 +1133,11 @@ const NODE_INFO = {
 const HM_INFO = {
   cut: { name: 'Cut', icon: '✂️', help: 'Uma vez por rota, corta uma árvore e abre um caminho escondido (um selvagem raro).' },
   flash: { name: 'Flash', icon: '💡', help: 'Ilumina cavernas, esgotos e torres: dá para ver os caminhos sem o Mapa, e a caverna secreta sempre tem algo.' },
-  surf: { name: 'Surf', icon: '🌊', help: 'Deixa mergulhar no mar (o caminho para o fundo do mar).' },
+  surf: { name: 'Surf', icon: '🌊', help: 'Deixa navegar pelo mar (o caminho para o Mar).' },
+  dive: { name: 'Dive', icon: '🤿', help: 'Deixa mergulhar até o fundo do mar.' },
 }
+/** O aviso do caminho bloqueado: a MO que falta e com qual insígnia ela vem. */
+const hmHint = (run, node) => (hmNeeded(run, node) === 'dive' ? t('Precisa da MO Dive (5ª insígnia).') : t('Precisa da MO Surf (3ª insígnia).'))
 const CUT_INFO = { icon: '🌳', label: 'Caminho escondido', help: 'Aberto com Cut: um selvagem raro do lugar.' }
 const CITY_KIND_SET = new Set(['gym', 'elite', 'champion'])
 const EVENT_TEXT = {
@@ -2590,7 +2593,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         {/* Sem o Mapa: dá para seguir em frente ou pegar outro caminho, sem saber aonde ele leva (a entrada de um lugar dá para ver). */}
         {fork && !hasMap && route.options.map((node, k) => node.kind === 'dungeon' ? placeButton(node, k) : (
           <MenuButton key={k} testid={`map-node-${k}`} disabled={busy || nodeBlocked(run, node) || (isBattleNode(node) && down)} onClick={() => pickNode(k)}
-            sub={nodeBlocked(run, node) ? t('Precisa da MO Surf (3ª insígnia).') : k === 0 ? t('Continuar por onde você está') : t('Não dá para saber aonde ele leva (o Mapa mostra)')}>
+            sub={nodeBlocked(run, node) ? hmHint(run, node) : k === 0 ? t('Continuar por onde você está') : t('Não dá para saber aonde ele leva (o Mapa mostra)')}>
             {k === 0 ? `➡️ ${t('SEGUIR EM FRENTE')}` : `↗️ ${t('OUTRO CAMINHO')}${route.options.length > 2 ? ` ${k}` : ''}`}
           </MenuButton>
         ))}
@@ -2601,7 +2604,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
           const noSurf = nodeBlocked(run, node)
           return (
             <MenuButton key={k} testid={`map-node-${k}`} disabled={busy || (isBattleNode(node) && down) || noSurf} onClick={() => pickNode(k)}
-              sub={noSurf ? t('Precisa da MO Surf (3ª insígnia).') : node.kind === 'boss' ? `${bossKindLabel(boss.kind)}${CITY_KIND_SET.has(boss.kind) ? ` · ${to}` : ''}` : node.kind === 'dboss' ? (inside ? t('O chefe do lugar: vencendo, volta para {0}.').replace('{0}', backTo) : t('O chefe da rota: vencendo, você chega em {0}.').replace('{0}', to)) : t(info.help)}>
+              sub={noSurf ? hmHint(run, node) : node.kind === 'boss' ? `${bossKindLabel(boss.kind)}${CITY_KIND_SET.has(boss.kind) ? ` · ${to}` : ''}` : node.kind === 'dboss' ? (inside ? t('O chefe do lugar: vencendo, volta para {0}.').replace('{0}', backTo) : t('O chefe da rota: vencendo, você chega em {0}.').replace('{0}', to)) : t(info.help)}>
               {route.options.length === 1 && !['boss', 'rival', 'dboss'].includes(node.kind) ? `${t('SEGUIR')}: ` : ''}{node.biome === 'underwater' && route.biome !== 'underwater' ? `🤿 ${t('MERGULHAR')}: ` : ''}{town && node.kind === 'boss' ? '🏟️' : b ? b.icon : info.icon} {node.kind === 'boss' || (node.kind === 'rival' && rival) ? <span data-no-translate>{(node.kind === 'rival' ? rival : boss).name}</span> : t(info.label)}{b ? ` · ${t(b.label)}` : ''}
             </MenuButton>
           )

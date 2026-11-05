@@ -2754,16 +2754,20 @@ class FactoryRun {
     out['money'] = _int(out['money']) + (reward['money'] as int);
   }
 
-  /// As MOs (HMs): vêm com a 1ª, a 2ª e a 3ª insígnia. Cut abre um caminho escondido; Flash ilumina cavernas; Surf deixa
-  /// mergulhar. Igual ao site.
-  static const hmBadges = {1: 'cut', 2: 'flash', 3: 'surf'};
+  /// As MOs (HMs): vêm com a 1ª, a 2ª, a 3ª e a 5ª insígnia. Cut abre um caminho escondido; Flash ilumina cavernas; Surf
+  /// deixa ir para o mar; Dive, para o fundo do mar. Igual ao site.
+  static const hmBadges = {1: 'cut', 2: 'flash', 3: 'surf', 5: 'dive'};
   static bool hasHm(Json run, String hm) => (run['hms'] as List? ?? const []).contains(hm);
 
-  /// Sem Surf, não dá para mergulhar.
-  static bool nodeBlocked(Json run, Map? node) =>
-      ((node?['biome'] == 'underwater' && (run['route'] as Map?)?['biome'] != 'underwater') ||
-          (node?['kind'] == 'dungeon' && const ['water', 'underwater'].contains(node?['scene']))) &&
-      !hasHm(run, 'surf');
+  /// A MO que falta para ir por este caminho (null se nada falta): o mar pede Surf; o fundo do mar, Dive.
+  static String? hmNeeded(Json run, Map? node) {
+    final deep = (node?['biome'] == 'underwater' && (run['route'] as Map?)?['biome'] != 'underwater') ||
+        (node?['kind'] == 'dungeon' && node?['scene'] == 'underwater');
+    final need = deep ? 'dive' : node?['kind'] == 'dungeon' && node?['scene'] == 'water' ? 'surf' : null;
+    return need != null && !hasHm(run, need) ? need : null;
+  }
+
+  static bool nodeBlocked(Json run, Map? node) => hmNeeded(run, node) != null;
 
   /// Cut: uma vez por rota, corta a árvore e abre um caminho escondido (um selvagem raro do lugar). null se não dá.
   static Json? cutPath(Json run) {

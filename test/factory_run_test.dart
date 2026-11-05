@@ -587,7 +587,7 @@ void main() {
 
   test('jogabilidade: MOs pelas insígnias, Pokédex da corrida, Creche com ovo, revanche do Campeão (igual ao site)', () {
     final base = FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!;
-    expect(FactoryRun.hmBadges, {1: 'cut', 2: 'flash', 3: 'surf'});
+    expect(FactoryRun.hmBadges, {1: 'cut', 2: 'flash', 3: 'surf', 5: 'dive'});
     final sea = {
       ...base,
       'route': {
@@ -600,7 +600,14 @@ void main() {
     expect(FactoryRun.nodeBlocked(sea, dive), isTrue);
     expect(identical(FactoryRun.chooseNode(sea, data, 0), sea), isTrue);
     expect(FactoryRun.blindPick(sea), 1);
-    expect(FactoryRun.nodeBlocked({...sea, 'hms': ['surf']}, dive), isFalse);
+    expect(FactoryRun.hmNeeded(sea, dive), 'dive');
+    expect(FactoryRun.nodeBlocked({...sea, 'hms': ['surf']}, dive), isTrue);
+    expect(FactoryRun.nodeBlocked({...sea, 'hms': ['dive']}, dive), isFalse);
+    // O mar pede Surf; o fundo do mar, Dive.
+    expect(FactoryRun.hmNeeded(base, {'kind': 'dungeon', 'place': 'sea', 'scene': 'water'}), 'surf');
+    expect(FactoryRun.hmNeeded({...base, 'hms': ['surf']}, {'kind': 'dungeon', 'place': 'sea', 'scene': 'water'}), isNull);
+    expect(FactoryRun.hmNeeded({...base, 'hms': ['surf']}, {'kind': 'dungeon', 'place': 'deep', 'scene': 'underwater'}), 'dive');
+    expect(FactoryRun.hmNeeded(base, {'kind': 'trainer'}), isNull);
     expect(FactoryRun.cutPath(sea), isNull);
     final cut = FactoryRun.cutPath({...sea, 'hms': ['cut']})!;
     expect((cut['route']['options'] as List).last, {'kind': 'wild', 'biome': 'water', 'rare': true, 'cut': true});
@@ -788,7 +795,7 @@ void main() {
     expect(FactoryRun.waterNext('seacave'), isNull);
     final gs = data.bosses.indexWhere((b) => b['game'] == 'Gold/Silver');
     final jasmine = (data.bosses[gs]['leaders'] as List).indexWhere((l) => l['name'] == 'Jasmine');
-    final start = {...FactoryRun.startRun(FactoryRun.empty(), data, 4, 3)!, 'leg': 1, 'boss': {'region': gs, 'step': jasmine}, 'hms': ['surf']};
+    final start = {...FactoryRun.startRun(FactoryRun.empty(), data, 4, 3)!, 'leg': 1, 'boss': {'region': gs, 'step': jasmine}, 'hms': ['surf', 'dive']};
     const f = FactoryRun.forks;
     var run = FactoryRun.nextFloor({...start, 'floor': 1 + f[1]}, data);
     expect(FactoryRun.routeOf(run)!['biome'], 'beach');
