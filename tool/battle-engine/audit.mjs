@@ -1,0 +1,14 @@
+import {readFileSync, writeFileSync} from 'node:fs';
+import {PocketDexSim} from './engine.mjs';
+const moves = JSON.parse(readFileSync(new URL('../../assets/database/moves.json', import.meta.url)));
+const shadowMoves = new Set(['rush', 'blast', 'blitz', 'bolt', 'break', 'chill', 'end', 'fire', 'rave', 'storm', 'wave', 'down', 'half', 'hold', 'mist', 'panic', 'shed', 'sky'].map(name => `shadow-${name}`));
+const rows = PocketDexSim.audit(moves.filter(move => !shadowMoves.has(move.name)).map(move => move.name));
+const excluded = moves.filter(move => shadowMoves.has(move.name)).map(move => move.name);
+const abilities = JSON.parse(readFileSync(new URL('../../assets/database/abilities.json', import.meta.url))).filter(a => a.is_main_series);
+const abilityRows = abilities.map(a => ({slug: a.name, name: PocketDexSim.ability(a.name).name}));
+const missingAbilities = abilityRows.filter(a => !a.name);
+if (missingAbilities.length) throw new Error(`Missing abilities: ${JSON.stringify(missingAbilities)}`);
+const missing = rows.filter(row => !row.implemented);
+if (missing.length) throw new Error(`Missing move implementations: ${missing.map(row => row.slug).join(', ')}`);
+console.log(JSON.stringify({total: rows.length, implemented: rows.length - missing.length, missing, excluded, abilities: abilityRows.length}, null, 2));
+writeFileSync(new URL('../../assets/database/battle_move_coverage.json', import.meta.url), JSON.stringify({engine: '@pkmn/sim@0.10.11', rules: 'Generation 9 singles, legacy mechanics enabled', excluded, abilities: abilityRows, moves: rows}, null, 2) + '\n');
