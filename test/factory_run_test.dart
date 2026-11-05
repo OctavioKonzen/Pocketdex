@@ -134,33 +134,34 @@ void main() {
     expect(FactoryRun.upgradeTree['atk~1']!.best, 7);
     final all = _buyAll({...f, 'coins': 9999999}, FactoryRun.upgrades.keys);
     final big = FactoryRun.startRun(all, data, 1, 42)!;
-    expect(big['teamBoost'], {'hp': 0.83, 'atk': 1.29, 'def': 1.21, 'spa': 1.33, 'spd': 1.19, 'spe': 1.61});
-    expect(big['mult'], {'money': 2.71, 'exp': 3.12, 'shop': 0.52});
+    // A árvore inteira: forte no fim, não no começo (os nós valem pela profundidade, depthPower). Igual ao site.
+    expect(big['teamBoost'], {'hp': 0.46, 'atk': 0.84, 'def': 0.76, 'spa': 0.87, 'spd': 0.6, 'spe': 0.86});
+    expect(big['mult'], {'money': 1.86, 'exp': 2.21, 'shop': 0.7});
     final bag = big['bag'] as Map;
-    expect([bag['poke-ball'], bag['great-ball'], bag['ultra-ball'], bag['potion'], bag['revive'], bag['escape-rope']], [52, 35, 17, 35, 18, 2]);
+    expect([bag['poke-ball'], bag['great-ball'], bag['ultra-ball'], bag['potion'], bag['revive'], bag['escape-rope']], [24, 17, 17, 20, 10, 2]);
     expect(big['shinyRate'] as int, inInclusiveRange(12, FactoryRun.maxShinyRate));
     // Os efeitos que mudam a corrida: dinheiro no começo, cura depois de cada vitória, nível e IVs do inicial.
     final starter = (big['team'] as List).first as Map;
     expect([big['money'], big['winHeal'], starter['level'], (starter['ivs'] as Map).values.cast<num>().reduce(min), big['rerolls'], (big['stash'] as List).length, big['catchBonus']],
-        [2900, 50, 25, 31, 18, 57, 150]);
+        [980, 35, 13, 31, 10, 46, 150]);
     // A captura mais fácil vai para a batalha (o motor multiplica a taxa de captura).
     expect(FactoryRun.captureFor({...big, 'encounter': {'kind': 'wild', 'foes': [{'id': 16}]}}, data)!['bonus'], 150);
-    expect(big['tokens'], {'move-tutor': 20, 'move-reminder': 18});
-    expect(((FactoryRun.endRun(all, {...big, 'floor': 11, 'defeated': 0, 'bosses': 0})['last']) as Map)['coins'], 140);
+    expect(big['tokens'], {'move-tutor': 17, 'move-reminder': 13});
+    expect(((FactoryRun.endRun(all, {...big, 'floor': 11, 'defeated': 0, 'bosses': 0})['last']) as Map)['coins'], 137);
     // A cura depois da vitória: só em quem está de pé, até o HP cheio.
     final healRun = {
       ...big,
       'team': [{...starter, 'hp': 0.3}, {...starter, 'hp': 0.0}, {...starter, 'hp': 0.8}],
       'encounter': {'kind': 'wild', 'foes': [{'id': 16, 'level': 3, 'iv': 0, 'ev': 0}]},
     };
-    expect([for (final m in FactoryRun.winFloor(healRun, data, hp: [0.3, 0, 0.8], fought: [[0]])['team'] as List) (m as Map)['hp']], [0.8, 0, 1]);
+    expect([for (final m in FactoryRun.winFloor(healRun, data, hp: [0.3, 0, 0.8], fought: [[0]])['team'] as List) (m as Map)['hp']], [0.65, 0, 1]);
     // Um nó que saiu da árvore: as moedas voltam.
     final stale = FactoryRun.normalizeOwned({...all, 'coins': 0, 'upgrades': {...all['upgrades'] as Map, 'atk~9': 1}}, data);
     expect((stale['upgrades'] as Map).containsKey('atk~9'), isFalse);
     expect(stale['coins'], FactoryRun.legacyMinorPrice(200, 9));
     // O mesmo preço do site (a metade do que era: 150 e 455).
-    expect(FactoryRun.upgradePrice(FactoryRun.empty(), 'level'), 75);
-    expect(FactoryRun.upgradePrice({...FactoryRun.empty(), 'upgrades': {'level': 1}}, 'level'), 225);
+    expect(FactoryRun.upgradePrice(FactoryRun.empty(), 'level'), 150);
+    expect(FactoryRun.upgradePrice({...FactoryRun.empty(), 'upgrades': {'level': 1}}, 'level'), 455);
   });
 
   test('devolve moedas na troca para a primeira forma; melhorias que mudam o jogo; chefes com itens (igual ao site)', () {

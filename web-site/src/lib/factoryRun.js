@@ -518,6 +518,12 @@ const BASE_BRANCHES = [
  * menos para comprar. Igual ao app.
  */
 export const MINOR_LENGTH = 1
+/**
+ * A árvore fica forte mais para o fim: a força de um nó pela profundidade (o recorde que ele pede): 15% no começo,
+ * subindo até 100% no recorde 40. E o preço também sobe com a profundidade. Igual ao app.
+ */
+export const depthPower = (best) => Math.min(1, Math.max(0.15, best / 40))
+export const depthPrice = (best) => 1 + best / 10
 /** O segundo nó da trilha é o nó-chave (só no desenho). */
 export const KEYSTONE_EVERY = 2
 /**
@@ -590,10 +596,13 @@ export const UPGRADE_BRANCHES = BASE_BRANCHES.map(([icon, branch, ids]) => {
       const [kind, arg] = fx[(i + k - 1) % fx.length]
       const per = MINOR_PER[`${kind}:${arg}`] ?? MINOR_PER[kind]
       const f = `${kind}:${arg}`
-      const base = Math.round((UPGRADES[parent].base * 0.4 + 120 * k) / 10) * 10
-      UPGRADES[id] = { label: MINOR_LABEL[`${kind}:${arg}`] ?? UPGRADES[MINOR_BASE[`${kind}:${arg}`]].label, per: NEW_MINOR_FX[f] ?? Math.max(per, Math.round((per * legacy[f]) / now[f])), max: 1, base }
+      const best = (UPGRADE_TREE[parent]?.best ?? 0) + 2 * k
+      // Forte no fim, não no começo: o nó vale de 15% (os primeiros) a 100% (os do fundo da árvore) e custa mais quanto
+      // mais fundo ele está (depthPrice).
+      const base = Math.round(((UPGRADES[parent].base * 0.4 + 120 * k) * depthPrice(best)) / 10) * 10
+      UPGRADES[id] = { label: MINOR_LABEL[`${kind}:${arg}`] ?? UPGRADES[MINOR_BASE[`${kind}:${arg}`]].label, per: NEW_MINOR_FX[f] ?? Math.max(per, Math.round(((per * legacy[f]) / now[f]) * depthPower(best))), max: 1, base }
       UPGRADE_FX[id] = [kind, arg]
-      UPGRADE_TREE[id] = { needs: [k === 1 ? parent : `${parent}~${k - 1}`, 1], best: (UPGRADE_TREE[parent]?.best ?? 0) + 2 * k }
+      UPGRADE_TREE[id] = { needs: [k === 1 ? parent : `${parent}~${k - 1}`, 1], best }
       list.push(id)
     }
   })
@@ -672,8 +681,8 @@ export const upgradeValue = (factory, id) => upgradeLevel(factory, id) * UPGRADE
 export function upgradePrice(factory, id) {
   const level = upgradeLevel(factory, id)
   const up = UPGRADES[id]
-  // As melhorias grandes custam metade do que custavam (a árvore ficou mais fácil de subir).
-  return !up || level >= up.max ? null : Math.round((up.base * (level + 1) ** 1.6 * (isMinor(id) ? 1 : 0.5)) / 5) * 5
+  // As melhorias grandes: mais caras quanto mais fundo na árvore (os nós da trilha já têm a profundidade no preço).
+  return !up || level >= up.max ? null : Math.round((up.base * (level + 1) ** 1.6 * (isMinor(id) ? 1 : 1 + (UPGRADE_TREE[id]?.best ?? 0) / 20)) / 5) * 5
 }
 /** Compra o próximo nível da melhoria (null se não dá). */
 export function buyUpgrade(factory, id) {

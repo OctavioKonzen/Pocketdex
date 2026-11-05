@@ -575,6 +575,11 @@ class FactoryRun {
   /// A trilha antiga (8 nós, o 4º e o 8º valendo o dobro): o total de cada efeito no ramo continua o mesmo, e quem tinha
   /// nós que saíram recebe as moedas de volta pelo preço de então.
   static const _legacyLength = 8, _legacyKeystone = 4;
+
+  /// A árvore fica forte mais para o fim: a força de um nó pela profundidade (o recorde que ele pede): 15% no começo,
+  /// subindo até 100% no recorde 40. E o preço também sobe com a profundidade. Igual ao site.
+  static double depthPower(int best) => math.min(1.0, math.max(0.15, best / 40));
+  static double depthPrice(int best) => 1 + best / 10;
   static int legacyMinorPrice(int parentBase, int k) => ((parentBase * 0.4 + 120 * k) / 10).round() * 10 * (k % _legacyKeystone == 0 ? 2 : 1);
 
   /// O máximo de níveis a mais no inicial pelos nós da trilha.
@@ -677,15 +682,17 @@ class FactoryRun {
           final (kind, arg) = kinds[(i + k - 1) % kinds.length];
           final per = minorPer['$kind:$arg'] ?? minorPer[kind]!;
           final fxKey = '$kind:$arg';
+          final best = (_baseTree[parent]?.best ?? 0) + 2 * k;
           ups[id] = (
             label: minorLabel['$kind:$arg'] ?? _baseUpgrades[minorBase['$kind:$arg']]!.label,
-            per: newMinorFx[fxKey] ?? math.max(per, (per * legacy[fxKey]! / now[fxKey]!).round()),
+            // Forte no fim, não no começo: de 15% (os primeiros) a 100% (os do fundo da árvore), e mais caro quanto mais fundo.
+            per: newMinorFx[fxKey] ?? math.max(per, (per * legacy[fxKey]! / now[fxKey]! * depthPower(best)).round()),
             max: 1,
-            base: ((_baseUpgrades[parent]!.base * 0.4 + 120 * k) / 10).round() * 10,
+            base: ((_baseUpgrades[parent]!.base * 0.4 + 120 * k) * depthPrice(best) / 10).round() * 10,
             offset: 0,
           );
           fx[id] = (kind, arg);
-          tree[id] = (needs: (k == 1 ? parent : '$parent~${k - 1}', 1), best: (_baseTree[parent]?.best ?? 0) + 2 * k, owned: 0);
+          tree[id] = (needs: (k == 1 ? parent : '$parent~${k - 1}', 1), best: best, owned: 0);
           list.add(id);
         }
       }
@@ -781,8 +788,8 @@ class FactoryRun {
     final up = upgrades[id];
     final level = upgradeLevel(factory, id);
     if (up == null || level >= up.max) return null;
-    // As melhorias grandes custam metade do que custavam (a árvore ficou mais fácil de subir).
-    return (up.base * math.pow(level + 1, 1.6) * (isMinor(id) ? 1 : 0.5) / 5).round() * 5;
+    // As melhorias grandes: mais caras quanto mais fundo na árvore (os nós da trilha já têm a profundidade no preço).
+    return (up.base * math.pow(level + 1, 1.6) * (isMinor(id) ? 1 : 1 + (upgradeTree[id]?.best ?? 0) / 20) / 5).round() * 5;
   }
 
   /// Compra o próximo nível da melhoria (null se não dá).
