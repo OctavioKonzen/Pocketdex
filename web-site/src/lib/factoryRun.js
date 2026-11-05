@@ -1476,17 +1476,6 @@ export function chooseNode(run, data, index, clock = null) {
       // Até 3 de cada (a batalha tem no máximo 6 de cada lado).
       out.encounter = { ...out.encounter, foes: [...out.encounter.foes.slice(0, PAIR_TEAM), ...second.foes.slice(0, PAIR_TEAM)], pair: true }
     }
-    // O rival leva o inicial que tem vantagem sobre o seu (no lugar do inicial dele ou do mais forte).
-    const counter = (node.kind === 'boss' || node.kind === 'rival') && out.encounter.boss?.kind === 'rival' && !out.encounter.boss?.guest ? rivalStarter(data, run.starter) : null
-    if (counter != null) {
-      const lines = data.starters.flatMap((id) => starterLine(data, id))
-      const foes = [...out.encounter.foes]
-      const found = foes.findIndex((f) => lines.includes(f.id))
-      const slot = found >= 0 ? found : foes.length - 1
-      const line = starterLine(data, counter)
-      foes[slot] = { ...foes[slot], id: devolve(data, line[line.length - 1], foes[slot].level) }
-      out.encounter = { ...out.encounter, foes }
-    }
     // Os selvagens e os treinadores do caminho na forma da região (e com o degrau do jogo da corrida).
     out.encounter = rivalGrowth(tierFoes(regionalEncounter(data, run, out.encounter), run), run)
     return out
@@ -1602,7 +1591,9 @@ export function encounterFor(data, floor, rand, boss = null, wild = false, node 
     const early = floor < 10
     const bonus = early ? 0 : { gym: 2, rival: 2, villain: 3, elite: 6, champion: 9 }[boss.kind] ?? 2
     const full = bossTeam(boss, floor)
-    const team = early && boss.kind === 'rival' ? full.slice(-1) : full
+    // No começo, o rival só com o inicial dele (o oficial do jogo; sem inicial no time, o mais forte).
+    const starterOf = () => { const lines = data.starters.flatMap((id) => starterLine(data, id)); return full.find((id) => lines.includes(id)) }
+    const team = early && boss.kind === 'rival' ? [starterOf() ?? full[full.length - 1]] : full
     const levelOf = (id, i) => bossLevel(data, floor, id, level + bonus + (i === team.length - 1 && !early ? 1 : 0))
     const foes = team.map((id, i) => foe(id, levelOf(id, i), early ? {} : { iv: Math.max(31, iv), ev: Math.round(ev * 1.25) }))
     // A partir do andar 10, cada Pokémon do chefe segura um item de verdade (Leftovers, Life Orb, Choice...).
@@ -2479,12 +2470,6 @@ export function starterLine(data, id) {
     line.push(next)
   }
   return line
-}
-/** O inicial que tem vantagem sobre o seu (Grama → Fogo → Água → Grama), da mesma geração; null se o seu não é um inicial. */
-export function rivalStarter(data, starter) {
-  const i = data.starters.indexOf(starter)
-  if (i < 0) return null
-  return data.starters[i - (i % 3) + ((i % 3) + 1) % 3]
 }
 
 /**

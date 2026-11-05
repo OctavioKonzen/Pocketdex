@@ -526,9 +526,10 @@ void main() {
     }
   });
 
-  test('história: rival com o inicial de vantagem, lendário da região, missão da rota e escolhas (igual ao site)', () {
+  test('história: rival com o inicial oficial dele, lendário da região, missão da rota e escolhas (igual ao site)', () {
     expect(FactoryRun.starterLine(data, 1), [1, 2, 3]);
-    expect([FactoryRun.rivalStarter(data, 1), FactoryRun.rivalStarter(data, 4), FactoryRun.rivalStarter(data, 7), FactoryRun.rivalStarter(data, 19)], [4, 7, 1, null]);
+    // O rival fica com o inicial oficial dele (o Blue com o Squirtle), não o que tem vantagem sobre o seu.
+    expect(((data.bosses.firstWhere((b) => b['game'] == 'Red/Blue')['leaders'] as List).firstWhere((l) => l['kind'] == 'rival')['team'] as List), contains(7));
     // Depois do Campeão, o pós-jogo (o Red no Mt. Silver): não é o rival, então não aparece de surpresa (igual ao site).
     final hgss = data.bosses.indexWhere((b) => b['game'] == 'HeartGold/SoulSilver');
     final leaders = data.bosses[hgss]['leaders'] as List;
@@ -556,7 +557,9 @@ void main() {
       'floor': 9,
       'route': {'floor': 9, 'biome': 'grass', 'options': [{'kind': 'boss'}]},
     }, data, 0);
-    expect((rival['encounter']['foes'] as List).any((f) => [4, 5, 6].contains(f['id'])), isTrue);
+    // O rival leva o inicial oficial dele (o Blue com o Squirtle), mesmo com o seu sendo o Bulbasaur.
+    expect((rival['encounter']['foes'] as List).any((f) => [7, 8, 9].contains(f['id'])), isTrue);
+    expect((rival['encounter']['foes'] as List).any((f) => [4, 5, 6].contains(f['id'])), isFalse);
     final run = {
       ...base,
       'money': 0,

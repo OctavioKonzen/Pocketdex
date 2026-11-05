@@ -1757,12 +1757,6 @@ class FactoryRun {
     return line;
   }
 
-  /// O inicial que tem vantagem sobre o seu (Grama → Fogo → Água → Grama), da mesma geração; null se o seu não é um inicial.
-  static int? rivalStarter(FactoryData data, Object? starter) {
-    final i = data.starters.indexOf(_int(starter ?? -1));
-    if (i < 0) return null;
-    return data.starters[i - (i % 3) + ((i % 3) + 1) % 3];
-  }
 
   /// Missão da rota: derrotar 3 de um tipo do lugar ou capturar 1 (na base de uma equipe vilã, derrotar 3 capangas).
   static const missionMoney = 150;
@@ -1941,17 +1935,6 @@ class FactoryRun {
           'pair': true,
         };
       }
-      // O rival leva o inicial que tem vantagem sobre o seu (no lugar do inicial dele ou do mais forte).
-      final counter = (node['kind'] == 'boss' || node['kind'] == 'rival') && out['encounter']['boss']?['kind'] == 'rival' && out['encounter']['boss']?['guest'] != true ? rivalStarter(data, run['starter']) : null;
-      if (counter != null) {
-        final lines = [for (final id in data.starters) ...starterLine(data, id)];
-        final foes = foesOf(out);
-        final found = foes.indexWhere((f) => lines.contains(_int(f['id'])));
-        final slot = found >= 0 ? found : foes.length - 1;
-        final line = starterLine(data, counter);
-        foes[slot] = {...foes[slot], 'id': devolve(data, line.last, _int(foes[slot]['level']))};
-        out['encounter'] = {...out['encounter'] as Map<String, dynamic>, 'foes': foes};
-      }
       // Os selvagens e os treinadores do caminho na forma da região (e com o degrau do jogo da corrida).
       out['encounter'] = rivalGrowth(tierFoes(regionalEncounter(data, run, Map<String, dynamic>.from(out['encounter'] as Map)), run), run);
       return out;
@@ -2093,7 +2076,9 @@ class FactoryRun {
       final early = floor < 10;
       final bonus = early ? 0 : const {'gym': 2, 'rival': 2, 'villain': 3, 'elite': 6, 'champion': 9}[boss['kind']] ?? 2;
       final full = bossTeam(boss, floor);
-      final team = early && boss['kind'] == 'rival' ? full.sublist(full.length - 1) : full;
+      // No começo, o rival só com o inicial dele (o oficial do jogo; sem inicial no time, o mais forte). Igual ao site.
+      final lines = {for (final id in data.starters) ...starterLine(data, id)};
+      final team = early && boss['kind'] == 'rival' ? [full.firstWhere(lines.contains, orElse: () => full.last)] : full;
       int levelOf(int id, int i) => _bossLevel(data, floor, id, level + bonus + (i == team.length - 1 && !early ? 1 : 0));
 
       final foes = [

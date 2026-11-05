@@ -15,7 +15,7 @@ import {
   captureFor, factoryOf, BIOMES, isBattleNode, skipCapture, FORKS, ROUTE_LENGTH, BALL_TIERS, HEAL_TIERS, tierPick, minLevelOf, devolve,
   EXP_SHARE, expProgress, shopOwned, baseForm, forSale, normalizeOwned, buyUpgrade, upgradePrice, UPGRADES,
   tradeMon, skipTrade, TRADE_LEVELS, escapeRope, ESCAPE_HP, progress, ACHIEVEMENTS, LUCKY_EGG, rerollRoute, FOE_ITEMS,
-  regionLegend, REGION_LEGENDS, rivalStarter, starterLine, newMission, resolveChoice, MISSION_MONEY, CHOICE_EVENTS,
+  regionLegend, REGION_LEGENDS, starterLine, newMission, resolveChoice, MISSION_MONEY, CHOICE_EVENTS,
   clockOf, weatherOf, fieldOf, battleMusic, mapMusic, upgradeNeeds, UPGRADE_BRANCHES, unequipItem, SEASON_TYPES, BIOME_IDS, SCENE_FIELD,
   HM_BADGES, cutPath, nodeBlocked, dexOf, dexRewardFor, DEX_REWARDS, leaveDaycare, takeDaycare, teamRoom, DAYCARE_EGG, EGG_BATTLES, EGG_IVS, rematchBoss,
 } from './factoryRun'
@@ -899,9 +899,10 @@ describe('mapa da corrida', () => {
     expect(f.run.bag['poke-ball']).toBe(START_BALLS + 7)
   })
 
-  it('história: rival com o inicial de vantagem, lendário da região, missão da rota e escolhas', () => {
+  it('história: rival com o inicial oficial dele, lendário da região, missão da rota e escolhas', () => {
     expect(starterLine(data, 1)).toEqual([1, 2, 3])
-    expect([rivalStarter(data, 1), rivalStarter(data, 4), rivalStarter(data, 7), rivalStarter(data, 19)]).toEqual([4, 7, 1, null])
+    // O rival fica com o inicial oficial dele (o Blue com o Squirtle), não o que tem vantagem sobre o seu.
+    expect(data.bosses.find((b) => b.game === 'Red/Blue').leaders.find((l) => l.kind === 'rival').team).toContain(7)
     // Depois do Campeão, o pós-jogo (o Red no Mt. Silver, a Cynthia em Unova): não é o rival, então não troca o inicial nem aparece de surpresa.
     const hgss = data.bosses.findIndex((b) => b.game === 'HeartGold/SoulSilver')
     const after = data.bosses[hgss].leaders.slice(data.bosses[hgss].leaders.findIndex((l) => l.kind === 'champion') + 1)
@@ -927,9 +928,10 @@ describe('mapa da corrida', () => {
     const red = data.bosses.findIndex((b) => b.game === 'Red/Blue')
     const step = (kind) => ({ region: red, step: data.bosses[red].leaders.findIndex((l) => l.kind === kind) })
     expect(newMission({ ...base, boss: step('villain'), dungeon: { place: 'base', scene: 'base-rocket', start: 1 } }, data, () => 0.5).kind).toBe('grunts')
-    // O rival leva o inicial que vence o seu (Bulbasaur → a linha do Charmander).
+    // O rival leva o inicial oficial dele (o Blue com o Squirtle), mesmo com o seu sendo o Bulbasaur.
     const rival = chooseNode({ ...base, boss: step('rival'), floor: 9, route: { floor: 9, biome: 'grass', options: [{ kind: 'boss' }] } }, data, 0)
-    expect(rival.encounter.foes.some((f) => [4, 5, 6].includes(f.id))).toBe(true)
+    expect(rival.encounter.foes.some((f) => [7, 8, 9].includes(f.id))).toBe(true)
+    expect(rival.encounter.foes.some((f) => [4, 5, 6].includes(f.id))).toBe(false)
     // Missão: o terceiro Normal derrotado completa (dinheiro e item).
     const run = { ...base, money: 0, mission: { leg: 1, kind: 'defeat', type: 'normal', need: 3, done: 2 }, encounter: { kind: 'trainer', foes: [{ id: 19, level: 5, iv: 0, ev: 0 }] } }
     const won = winFloor(run, data, { bag: { potion: 1 } })
