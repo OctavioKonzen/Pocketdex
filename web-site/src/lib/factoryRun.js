@@ -1856,13 +1856,16 @@ export function winFloor(run, data, after = {}) {
     picked.push({ id: lead.id, item, follow: true })
   }
   // Nuzlocke: quem desmaiou vai embora (para sempre).
-  const lost = run.nuzlocke ? out.team.filter((m) => !((m.hp ?? 1) > 0)).map((m) => m.id) : []
+  const fallenMons = run.nuzlocke ? out.team.filter((m) => !((m.hp ?? 1) > 0)) : []
+  const lost = fallenMons.map((m) => m.id)
   // Nuzlocke: o encontro desta área já foi (capturado agora; a área é a da batalha, antes de subir de andar).
   // Cláusula do shiny: o shiny não gasta o encontro da área.
   // Só o primeiro encontro: o primeiro selvagem da área gasta a área mesmo sem ser capturado.
   if (run.nuzlocke && (after.captured || (nuzRule(run, 'firstOnly') && kind === 'wild')) && (kind === 'wild' || kind === 'wildboss') && !(nuzRule(run, 'shinyClause') && foes.some((f) => f.shiny))) out.caughtArea = nuzlockeArea(run)
   if (lost.length && lost.length < out.team.length) out.team = out.team.filter((m) => (m.hp ?? 1) > 0)
   if (lost.length) out.fallen = (run.fallen ?? 0) + lost.length
+  // O memorial do Nuzlocke: quem caiu, o nível e o andar (como os jogadores anotam).
+  if (lost.length) out.memorial = [...(run.memorial ?? []), ...fallenMons.map((m) => ({ id: m.id, level: m.level, floor: run.floor, ...(m.nick ? { nick: m.nick } : {}), ...(m.shiny ? { shiny: true } : {}) }))]
   if (run.encounter.meteor) out.meteors = (run.meteors ?? 0) + 1
   out.money += money
   out.defeated += foes.length
@@ -2129,6 +2132,34 @@ export function pcMove(run, from, to) {
   if (!nextTeam.length) return null
   return { ...run, team: nextTeam, pc: trimPc(pc.map((m) => (m ? { ...m, hp: 1 } : null))) }
 }
+/** Os fundos das caixas do PC (como nos jogos). Igual ao app. */
+export const PC_WALLS = ['classic', 'forest', 'cave', 'sea', 'desert', 'snow', 'volcano', 'night']
+/** O fundo da caixa. */
+export const boxWall = (run, box) => (PC_WALLS.includes(run.pcWalls?.[box]) ? run.pcWalls[box] : PC_WALLS[box % PC_WALLS.length])
+/** Troca o fundo da caixa pelo seguinte. */
+export function nextWall(run, box) {
+  if (!(box >= 0 && box < PC_BOXES)) return run
+  const walls = Array.from({ length: PC_BOXES }, (_, k) => boxWall(run, k))
+  walls[box] = PC_WALLS[(PC_WALLS.indexOf(walls[box]) + 1) % PC_WALLS.length]
+  return { ...run, pcWalls: walls }
+}
+/** O apelido (até 12 letras; vazio tira) de quem está no time ou no PC: { where: 'team' | 'pc', index }. */
+export function setNick(run, at, nick) {
+  const clean = String(nick ?? '').trim().slice(0, 12)
+  const put = (m) => { const { nick: _old, ...rest } = m; return clean ? { ...rest, nick: clean } : rest }
+  if (at?.where === 'team' && run.team[at.index]) return { ...run, team: run.team.map((m, k) => (k === at.index ? put(m) : m)) }
+  if (at?.where === 'pc' && run.pc?.[at.index]) return { ...run, pc: run.pc.map((m, k) => (k === at.index && m ? put(m) : m)) }
+  return run
+}
+/** O jogo da corrida (1º, 2º...): cada um é um degrau de dificuldade (GAME_TIER). */
+export const gameOf = (run) => tierOf(run) + 1
+/** O próximo chefe é a primeira da Elite dos Quatro: depois dele, as lutas da Liga vêm uma atrás da outra. */
+export function leagueAhead(data, run) {
+  const leaders = data?.bosses?.[run.boss?.region]?.leaders
+  if (!leaders) return false
+  return leaders[run.boss.step]?.kind === 'elite' && leaders[run.boss.step - 1]?.kind !== 'elite'
+}
+
 /** Dá nome à caixa (até 16 letras; vazio volta ao "Box N"). */
 export function renameBox(run, box, name) {
   if (!(box >= 0 && box < PC_BOXES)) return run
@@ -2846,12 +2877,14 @@ export function endRun(factory, run) {
   const coins = Math.round(runCoins(run) * (1 + bonus / 100))
   return {
     ...factory, coins: factory.coins + coins, ...(run.pieces && typeof run.pieces === 'object' ? { pieces: addPieces(piecesOf(factory), piecesOf(run)) } : {}), best: Math.max(factory.best, run.floor - 1), run: null,
-    last: { floor: run.floor - 1, coins, ...(run.pieces && typeof run.pieces === 'object' ? { pieces: piecesOf(run) } : {}), ...(run.weekly ? { weekly: run.weekly } : {}), summary: runSummary(run) },
+    last: { floor: run.floor - 1, coins, ...(run.games ? { games: run.games } : {}), ...(run.pieces && typeof run.pieces === 'object' ? { pieces: piecesOf(run) } : {}), ...(run.weekly ? { weekly: run.weekly } : {}), summary: runSummary(run) },
     gallery: addToGallery(factory.gallery, run),
     history: addToHistory(factory.history, run, coins),
     ...(factory.hunt ? { hunt: huntAfter(factory, run) } : {}),
-    // O PC: o time da corrida e quem saiu do time no caminho.
-    box: addToBox(factory.box, [...(run.team ?? []), ...pcOf(run)]),
+    // O PC da conta: só o time da corrida (o PC do Centro Pokémon é da corrida e acaba com ela).
+    box: addToBox(factory.box, run.team ?? []),
+    // O recorde de jogos zerados numa corrida.
+    ...((run.games ?? 0) > (factory.bestGames ?? 0) ? { bestGames: run.games } : {}),
   }
 }
 
@@ -2972,7 +3005,7 @@ export const GALLERY_SIZE = 5
 export function addToGallery(gallery = [], run, date = new Date().toISOString().slice(0, 10)) {
   const floor = run.floor - 1
   if (floor < 1) return gallery
-  const entry = { floor, team: (run.team ?? []).map((m) => [m.id, m.level ?? 1, m.shiny ? 1 : 0]), date, ...(run.nuzlocke ? { nuzlocke: true } : {}), ...(run.weekly ? { weekly: true } : {}) }
+  const entry = { floor, team: (run.team ?? []).map((m) => [m.id, m.level ?? 1, m.shiny ? 1 : 0]), date, ...(run.nuzlocke ? { nuzlocke: true } : {}), ...(run.weekly ? { weekly: true } : {}), ...(run.games ? { games: run.games } : {}) }
   return [...gallery, entry].sort((a, b) => b.floor - a.floor).slice(0, GALLERY_SIZE)
 }
 

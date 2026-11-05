@@ -8,7 +8,7 @@ import {
   placeInfo, routeInfo, DBOSS_GIMMICK_FLOOR, UPGRADE_FX, SHORE, CAVE_OF, dungeonPos, routePos, DUNGEON_LENGTH, CITY_BOSS, waterNext, RIVAL_FLOOR, targetOf, rivalBoss, rocketBoss, townShop, townCenter, townHub, biomesLinked,
   isDoubleBattle,
   DOUBLE_FLOOR,
-  battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, atPc, pcOf, pcMove, pcSlots, PC_BOX, boxName, renameBox, bagsFor, NUZLOCKE_DEFAULT, levelCapOf, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
+  battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, atPc, pcOf, pcMove, pcSlots, PC_BOX, boxName, renameBox, boxWall, nextWall, setNick, gameOf, leagueAhead, bagsFor, NUZLOCKE_DEFAULT, levelCapOf, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
   HELD_BOOST, levelTo, MAX_TEAM, memberOf, movesAt, nextFloor, nextRandom, overflowPoints, pokemonPrice, runCoins, setMainItem, shopPrice,
   SHINY_BOOST, FOE_SHINY_BOOST, SHINY_CHANCE, START_BAG, START_BALLS, startersOf, buyShiny, shinyPrice, unlockShiny, claimStarter, freePick, canEvolveWith, teachMove,
   equipFromStash, gimmicksOf, setGimmick, storyLine, startRun, takeCard, teamDown, applyBagItem, winFloor, chooseNode, routeOptions, routeCities,
@@ -1381,6 +1381,8 @@ describe('ideias: amizade, habilidades fora da batalha, Nuzlocke', () => {
       if (baseForm(data, next) !== baseForm(data, first)) other++
     }
     expect(other).toBe(30)
+    // O memorial: quem caiu, com o nível e o andar.
+    expect(after.memorial).toEqual([{ id: 7, level: nuz.team[0].level, floor: two.floor }])
     // Só o primeiro encontro: venceu o primeiro selvagem da área sem capturar, a área acabou.
     expect(winFloor(wild, data, {}).caughtArea).toBe(nuzlockeArea(wild))
     expect(winFloor({ ...wild, nuzRules: [] }, data, {}).caughtArea).toBeFalsy()
@@ -1478,6 +1480,23 @@ describe('PC do Centro Pokémon', () => {
     expect(pcMove({ ...center, team: [center.team[0]] }, T(0), P(9))).toBe(null)
     expect(boxName(renameBox(center, 1, '  Dragões  '), 1)).toBe('Dragões')
     expect(boxName(center, 2)).toBe('Box 3')
+    // Fundo da caixa, apelido e o fim da corrida: o PC é da corrida (só o time vai para a caixa da conta).
+    expect(boxWall(center, 0)).toBe('classic')
+    expect(boxWall(nextWall(center, 0), 0)).toBe('forest')
+    const nick = setNick(center, { where: 'team', index: 1 }, '  Faísca  ')
+    expect(nick.team[1].nick).toBe('Faísca')
+    expect(setNick(nick, { where: 'team', index: 1 }, '').team[1].nick).toBeUndefined()
+    expect(setNick(center, { where: 'pc', index: 0 }, 'Pedra').pc[0].nick).toBe('Pedra')
+    const ended = endRun(emptyFactory(), { ...center, floor: 10, games: 2 })
+    expect(ended.box.map((m) => m.id)).toEqual(center.team.map((m) => m.id))
+    expect(ended.bestGames).toBe(2)
+    expect(ended.gallery[0].games).toBe(2)
+    expect(gameOf({ games: 2 })).toBe(3)
+    // O aviso da Liga: só antes da primeira da Elite dos Quatro.
+    const elite = data.bosses[0].leaders.findIndex((l) => l.kind === 'elite')
+    expect(leagueAhead(data, { boss: { region: 0, step: elite } })).toBe(true)
+    expect(leagueAhead(data, { boss: { region: 0, step: elite + 1 } })).toBe(false)
+    expect(leagueAhead(data, { boss: { region: 0, step: 0 } })).toBe(false)
   })
 })
 

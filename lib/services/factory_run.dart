@@ -2379,7 +2379,8 @@ class FactoryRun {
       }
     }
     // Nuzlocke: quem desmaiou vai embora (para sempre).
-    final lost = run['nuzlocke'] == true ? [for (final m in team) if (hpOf(m) <= 0) m['id']] : const [];
+    final fallenMons = run['nuzlocke'] == true ? [for (final m in team) if (hpOf(m) <= 0) m] : const <Json>[];
+    final lost = [for (final m in fallenMons) m['id']];
     // Nuzlocke: o encontro desta área já foi (capturado agora; a área é a da batalha, antes de subir de andar).
     // Cláusula do shiny: o shiny não gasta o encontro da área.
     // Só o primeiro encontro: o primeiro selvagem da área gasta a área mesmo sem ser capturado.
@@ -2391,6 +2392,14 @@ class FactoryRun {
     }
     if (lost.isNotEmpty && lost.length < team.length) team.removeWhere((m) => hpOf(m) <= 0);
     if (lost.isNotEmpty) out['fallen'] = _int(run['fallen'] ?? 0) + lost.length;
+    // O memorial do Nuzlocke: quem caiu, o nível e o andar (como os jogadores anotam). Igual ao site.
+    if (lost.isNotEmpty) {
+      out['memorial'] = [
+        ...((run['memorial'] as List?) ?? const []),
+        for (final m in fallenMons)
+          {'id': m['id'], 'level': m['level'], 'floor': _int(run['floor']), if (m['nick'] != null) 'nick': m['nick'], if (m['shiny'] == true) 'shiny': true},
+      ];
+    }
     if (run['encounter']['meteor'] == true) out['meteors'] = ((run['meteors'] as num?) ?? 0).toInt() + 1;
     out['team'] = team;
     out['money'] = _int(out['money']) + money;
@@ -2842,6 +2851,54 @@ class FactoryRun {
     out['team'] = nextTeam;
     out['pc'] = _trimPc([for (final m in pc) m == null ? null : {...m, 'hp': 1}]);
     return out;
+  }
+
+  /// Os fundos das caixas do PC (como nos jogos). Igual ao site.
+  static const pcWalls = ['classic', 'forest', 'cave', 'sea', 'desert', 'snow', 'volcano', 'night'];
+
+  /// O fundo da caixa.
+  static String boxWall(Json run, int box) {
+    final walls = (run['pcWalls'] as List?) ?? const [];
+    final w = box < walls.length ? walls[box] : null;
+    return pcWalls.contains(w) ? w as String : pcWalls[box % pcWalls.length];
+  }
+
+  /// Troca o fundo da caixa pelo seguinte.
+  static Json nextWall(Json run, int box) {
+    if (box < 0 || box >= pcBoxes) return run;
+    final walls = [for (var k = 0; k < pcBoxes; k++) boxWall(run, k)];
+    walls[box] = pcWalls[(pcWalls.indexOf(walls[box]) + 1) % pcWalls.length];
+    return {...run, 'pcWalls': walls};
+  }
+
+  /// O apelido (até 12 letras; vazio tira) de quem está no time ou no PC.
+  static Json setNick(Json run, ({String where, int index}) at, String nick) {
+    var clean = nick.trim();
+    if (clean.length > 12) clean = clean.substring(0, 12);
+    Json put(Map m) => {...Map<String, dynamic>.from(m)..remove('nick'), if (clean.isNotEmpty) 'nick': clean};
+    if (at.where == 'team') {
+      final team = teamOf(run);
+      if (at.index < 0 || at.index >= team.length) return run;
+      team[at.index] = put(team[at.index]);
+      return {...run, 'team': team};
+    }
+    final pc = [...((run['pc'] as List?) ?? const [])];
+    if (at.index < 0 || at.index >= pc.length || pc[at.index] == null) return run;
+    pc[at.index] = put(pc[at.index] as Map);
+    return {...run, 'pc': pc};
+  }
+
+  /// O jogo da corrida (1º, 2º...): cada um é um degrau de dificuldade ([gameTier]).
+  static int gameOf(Json run) => tierOf(run) + 1;
+
+  /// O próximo chefe é a primeira da Elite dos Quatro: depois dele, as lutas da Liga vêm uma atrás da outra.
+  static bool leagueAhead(FactoryData data, Json run) {
+    final boss = run['boss'] as Map?;
+    final region = boss?['region'];
+    if (region is! int || region < 0 || region >= data.bosses.length) return false;
+    final leaders = data.bosses[region]['leaders'] as List;
+    final step = _int(boss!['step']);
+    return step < leaders.length && leaders[step]['kind'] == 'elite' && (step == 0 || leaders[step - 1]['kind'] != 'elite');
   }
 
   /// Dá nome à caixa (até 16 letras; vazio volta ao "Box N").
@@ -3445,13 +3502,16 @@ class FactoryRun {
       'run': null,
       'last': {
         'floor': _int(run['floor']) - 1, 'coins': coins, if (run['pieces'] is Map) 'pieces': piecesOf(run),
+        if (_int(run['games'] ?? 0) > 0) 'games': _int(run['games']),
         if (run['weekly'] != null) 'weekly': run['weekly'], 'summary': runSummary(run),
       },
       'gallery': addToGallery(factory['gallery'] as List?, run),
       'history': addToHistory(factory['history'] as List?, run, coins),
-      // O PC: o time da corrida e quem saiu do time no caminho.
       if (factory['hunt'] is Map) 'hunt': huntAfter(factory, run),
-      'box': addToBox(factory['box'] as List?, [...teamOf(run), ...pcOf(run)]),
+      // O PC da conta: só o time da corrida (o PC do Centro Pokémon é da corrida e acaba com ela).
+      'box': addToBox(factory['box'] as List?, teamOf(run)),
+      // O recorde de jogos zerados numa corrida.
+      if (_int(run['games'] ?? 0) > _int(factory['bestGames'] ?? 0)) 'bestGames': _int(run['games']),
     };
   }
 
@@ -3583,6 +3643,7 @@ class FactoryRun {
       'date': date ?? DateTime.now().toIso8601String().substring(0, 10),
       if (run['nuzlocke'] == true) 'nuzlocke': true,
       if (run['weekly'] != null) 'weekly': true,
+      if (_int(run['games'] ?? 0) > 0) 'games': _int(run['games']),
     };
     return ([...old, entry]..sort((a, b) => _int(b['floor']) - _int(a['floor']))).take(gallerySize).toList();
   }

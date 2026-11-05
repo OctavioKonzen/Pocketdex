@@ -984,6 +984,8 @@ void main() {
       if (FactoryRun.baseForm(data, next) != FactoryRun.baseForm(data, first)) other++;
     }
     expect(other, 30);
+    // O memorial: quem caiu, com o nível e o andar.
+    expect(after['memorial'], [{'id': 7, 'level': first['level'], 'floor': two['floor']}]);
     // Só o primeiro encontro: venceu o primeiro selvagem da área sem capturar, a área acabou.
     expect(FactoryRun.winFloor(wild, data)['caughtArea'], FactoryRun.nuzlockeArea(wild));
     expect(FactoryRun.winFloor({...wild, 'nuzRules': <String>[]}, data)['caughtArea'], isNull);
@@ -1045,6 +1047,23 @@ void main() {
     expect(FactoryRun.pcMove({...center, 'team': [FactoryRun.teamOf(center).first]}, t(0), p(9)), isNull);
     expect(FactoryRun.boxName(FactoryRun.renameBox(center, 1, '  Dragões  '), 1), 'Dragões');
     expect(FactoryRun.boxName(center, 2), 'Box 3');
+    // Fundo da caixa, apelido e o fim da corrida: o PC é da corrida (só o time vai para a caixa da conta). Igual ao site.
+    expect(FactoryRun.boxWall(center, 0), 'classic');
+    expect(FactoryRun.boxWall(FactoryRun.nextWall(center, 0), 0), 'forest');
+    final nick = FactoryRun.setNick(center, t(1), '  Faísca  ');
+    expect(FactoryRun.teamOf(nick)[1]['nick'], 'Faísca');
+    expect(FactoryRun.teamOf(FactoryRun.setNick(nick, t(1), ''))[1]['nick'], isNull);
+    expect(FactoryRun.pcOf(FactoryRun.setNick(center, p(0), 'Pedra')).first['nick'], 'Pedra');
+    final ended = FactoryRun.endRun(FactoryRun.empty(), {...center, 'floor': 10, 'games': 2});
+    expect([for (final m in ended['box'] as List) m['id']], [for (final m in FactoryRun.teamOf(center)) m['id']]);
+    expect(ended['bestGames'], 2);
+    expect((ended['gallery'] as List).first['games'], 2);
+    expect(FactoryRun.gameOf({'games': 2}), 3);
+    // O aviso da Liga: só antes da primeira da Elite dos Quatro.
+    final elite = (data.bosses[0]['leaders'] as List).indexWhere((l) => l['kind'] == 'elite');
+    expect(FactoryRun.leagueAhead(data, {'boss': {'region': 0, 'step': elite}}), isTrue);
+    expect(FactoryRun.leagueAhead(data, {'boss': {'region': 0, 'step': elite + 1}}), isFalse);
+    expect(FactoryRun.leagueAhead(data, {'boss': {'region': 0, 'step': 0}}), isFalse);
   });
 
   test('corrida da semana e cosméticos (igual ao site)', () {
