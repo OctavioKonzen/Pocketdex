@@ -2965,7 +2965,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                                     fit: BoxFit.scaleDown,
                                     child: SizedBox(
                                       width: w * 0.26,
-                                      child: Text(tr(FactoryRun.cardLabel('$id')), textAlign: TextAlign.center, style: const TextStyle(color: _ink, fontWeight: FontWeight.w900, fontSize: 12)),
+                                      child: Text(FactoryRun.cardText(tr(FactoryRun.cardLabel('$id')), '$id', (run['floor'] as num?)?.toInt()), textAlign: TextAlign.center, style: const TextStyle(color: _ink, fontWeight: FontWeight.w900, fontSize: 12)),
                                     ),
                                   ),
                                 ),

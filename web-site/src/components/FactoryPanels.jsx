@@ -22,7 +22,7 @@ import {
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, teamRoom, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shinyPrice, shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, takeCard, teachMove, teamDown, applyBagItem, unlockShiny, VITAMIN_EVS, VITAMINS,
   buyShiny, forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor, isKeystone,
-  tradeMon, skipTrade, TRADE_LEVELS, RELICS, cardLabel, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, bossScene,
+  tradeMon, skipTrade, TRADE_LEVELS, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, bossScene,
   resolveChoice, regionLegend, leaderType, villainTeam, rivalBoss, rocketBoss, placeInfo, routeInfo, DUNGEON_LENGTH, dungeonPos, townShop, townCenter,
   weeklyOf, startWeekly, COSMETIC_BALLS, COSMETIC_FRAMES, hasCosmetic, buyCosmetic, equipCosmetic,
   boostOf, memberOf, learnMove, movesLearnedBetween,
@@ -2356,7 +2356,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
               className={`flex h-[85%] cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-4 p-1 text-center text-[11px] font-black shadow-lg transition hover:-translate-y-1 sm:text-sm ${RELICS[c] ? 'border-violet-900 bg-gradient-to-b from-violet-300 to-fuchsia-100 text-violet-950' : 'border-slate-800 bg-gradient-to-b from-amber-200 to-white text-slate-900'}`}>
               <span className="text-2xl sm:text-4xl">{RELICS[c] ? RELICS[c].icon : '🃏'}</span>
               {RELICS[c] && <span className="text-[10px] tracking-widest uppercase">{t('Relíquia')}</span>}
-              {t(cardLabel(c))}
+              {cardText(t(cardLabel(c)), c, run.floor)}
             </button>
           ))}
         </div>

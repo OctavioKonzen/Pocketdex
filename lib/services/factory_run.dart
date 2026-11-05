@@ -180,13 +180,9 @@ class FactoryRun {
   // ------------------------------------------------------------ dificuldade
 
   static int foeLevelAt(int floor) => 2 + ((floor - 1) * 0.8).floor();
-  /// A dificuldade: difícil de ir longe, mas quem joga bem pode seguir para sempre. Os adversários sobem de nível sem
-  /// teto (como o seu time, pela XP), mas os bônus que só eles têm (atributos a mais, IVs acima de 31 e EVs) param no
-  /// andar [foePlateau]: dali em diante, as cartas, os EVs e as escolhas do seu time vão abrindo vantagem. Igual ao site.
-  static const foePlateau = 300;
-  static int foeEvsAt(int floor) => 3 * math.min(floor, foePlateau);
-  static int foeIvsAt(int floor) => math.min(31, floor ~/ 2) + math.max(0, ((math.min(floor, foePlateau) - 100) / 10).floor());
-  static double foeBoostAt(int floor) => (math.min(0.8, math.max(0, floor - 30) * 0.003) * 1000).round() / 1000;
+  static int foeEvsAt(int floor) => 3 * floor;
+  static int foeIvsAt(int floor) => math.min(31, floor ~/ 2) + math.max(0, ((floor - 100) / 10).floor());
+  static double foeBoostAt(int floor) => (math.max(0, floor - 30) * 0.003 * 1000).round() / 1000;
   /// Preço da loja no andar: cresce junto com o dinheiro (nível e tamanho dos times dos treinadores). Igual ao site.
   static double priceScale(int floor) => (1 + (floor - 1) / 20) * (1 + 0.4 * math.min(5, floor ~/ 12));
 
@@ -267,6 +263,16 @@ class FactoryRun {
 
   /// O texto de uma carta ou relíquia.
   static String cardLabel(String id) => cards[id]?.label ?? relics[id]?.label ?? id;
+
+  /// Força das cartas de atributo no andar: crescem com a profundidade (+1% do valor
+  /// por andar depois do 30). Os adversários sobem para sempre, e as cartas também:
+  /// quem escolhe bem acompanha sem fim. Igual ao site.
+  static double cardPower(int? floor) => _round3(1 + math.max(0, (floor ?? 1) - 30) / 100);
+
+  /// O texto (já traduzido) da carta com os números de atributo do andar.
+  static String cardText(String text, String id, int? floor) => cards[id]?.team == null
+      ? text
+      : text.replaceFirstMapped(RegExp(r'\+(\d+)(\s?)%'), (m) => '+${(int.parse(m[1]!) * cardPower(floor)).round()}${m[2]}%');
 
   // ------------------------------------------------------------ meta
 
@@ -2948,7 +2954,8 @@ class FactoryRun {
     (out['pending'] as Map)['cards'] = null;
     if (card.team != null) {
       final boost = (out['teamBoost'] as Map?) ?? const {};
-      out['teamBoost'] = {for (final s in stats) s: _round3(((boost[s] as num?) ?? 0) + (card.team![s] ?? 0))};
+      final power = cardPower((run['floor'] as num?)?.toInt());
+      out['teamBoost'] = {for (final s in stats) s: _round3(((boost[s] as num?) ?? 0) + (card.team![s] ?? 0) * power)};
     }
     if (card.mult != null) (out['mult'] as Map)[card.mult!] = math.max(0.4, _round3(_mult(out, card.mult!) + card.by));
     if (card.balls > 0) {

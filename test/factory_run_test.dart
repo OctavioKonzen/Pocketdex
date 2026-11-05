@@ -56,6 +56,14 @@ void main() {
     });
   });
 
+  test('cartas de atributo crescem lá no fundo junto com os adversários (igual ao site)', () {
+    expect(FactoryRun.cardPower(30), 1);
+    expect(FactoryRun.cardPower(130), 2);
+    expect(FactoryRun.cardText('+6 % d’Attaque', 'atk', 130), '+12 % d’Attaque');
+    expect(FactoryRun.cardText('+5 Poké Balls', 'balls', 130), '+5 Poké Balls');
+    expect(FactoryRun.foeBoostAt(5000), greaterThan(FactoryRun.foeBoostAt(500)));
+  });
+
   test('80 andares iguais ao site (test/fixtures/factory_trace.json): mapa, chefes, captura, carta e loja', () {
     final expected = jsonDecode(File('test/fixtures/factory_trace.json').readAsStringSync()) as List;
     var run = FactoryRun.startRun(FactoryRun.empty(), data, 7, 2026)!;

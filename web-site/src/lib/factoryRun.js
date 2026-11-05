@@ -101,20 +101,14 @@ function pickWeighted(list, weights, rand) {
 
 // ------------------------------------------------------------ dificuldade
 
-/**
- * A dificuldade: difícil de ir longe, mas quem joga bem pode seguir para sempre. Os adversários sobem de nível sem
- * teto (como o seu time, pela XP), mas os bônus que só eles têm (atributos a mais, IVs acima de 31 e EVs) param no
- * andar FOE_PLATEAU: dali em diante, as cartas, os EVs e as escolhas do seu time vão abrindo vantagem. Igual ao app.
- */
-export const FOE_PLATEAU = 300
 /** Nível base dos adversários no andar (sem teto). */
 export const foeLevelAt = (floor) => 2 + Math.floor((floor - 1) * 0.8)
-/** EVs (por atributo) dos adversários: sobem até o andar FOE_PLATEAU. */
-export const foeEvsAt = (floor) => 3 * Math.min(floor, FOE_PLATEAU)
-/** IVs dos adversários: chegam a 31 e, depois do andar 100, passam do limite (até +20, no andar FOE_PLATEAU). */
-export const foeIvsAt = (floor) => Math.min(31, Math.floor(floor / 2)) + Math.max(0, Math.floor((Math.min(floor, FOE_PLATEAU) - 100) / 10))
-/** Porcentagem a mais em todos os atributos dos adversários depois do andar 30 (até +80%, no andar ~FOE_PLATEAU). */
-export const foeBoostAt = (floor) => Math.round(Math.min(0.8, Math.max(0, floor - 30) * 0.003) * 1000) / 1000
+/** EVs (por atributo) dos adversários: sobem sem limite. */
+export const foeEvsAt = (floor) => 3 * floor
+/** IVs dos adversários: chegam a 31 e, depois do andar 100, passam do limite. */
+export const foeIvsAt = (floor) => Math.min(31, Math.floor(floor / 2)) + Math.max(0, Math.floor((floor - 100) / 10))
+/** Porcentagem a mais em todos os atributos dos adversários depois do andar 30 (um pouco mais que as cartas: um dia a corrida acaba). */
+export const foeBoostAt = (floor) => Math.round(Math.max(0, floor - 30) * 0.003 * 1000) / 1000
 /**
  * Preço da loja no andar: cresce junto com o dinheiro que os adversários dão
  * (o nível sobe e os treinadores ganham 1 Pokémon a cada 12 andares, até 6):
@@ -206,6 +200,14 @@ export const RELICS = {
 export const RELIC_CHANCE = 0.35
 /** O texto de uma carta ou relíquia. */
 export const cardLabel = (id) => (CARDS[id] ?? RELICS[id])?.label ?? id
+/**
+ * Força das cartas de atributo no andar: crescem com a profundidade (+1% do valor
+ * por andar depois do 30). Os adversários sobem para sempre, e as cartas também:
+ * quem escolhe bem acompanha sem fim; quem escolhe mal fica para trás. Igual ao app.
+ */
+export const cardPower = (floor) => Math.round((1 + Math.max(0, (floor ?? 1) - 30) / 100) * 1000) / 1000
+/** O texto (já traduzido) da carta com os números de atributo do andar. */
+export const cardText = (text, id, floor) => (CARDS[id]?.team ? text.replace(/\+(\d+)(\s?)%/, (_, n, sp) => `+${Math.round(Number(n) * cardPower(floor))}${sp}%`) : text)
 
 // ------------------------------------------------------------ meta (entre corridas)
 
@@ -2463,7 +2465,7 @@ export function takeCard(run, id, data) {
   const card = CARDS[id]
   if (!card || !run.pending?.cards?.includes(id)) return run
   const out = { ...run, cards: [...run.cards, id], pending: { ...run.pending, cards: null } }
-  if (card.team) out.teamBoost = Object.fromEntries(STATS.map((s) => [s, round3((out.teamBoost?.[s] ?? 0) + (card.team[s] ?? 0))]))
+  if (card.team) out.teamBoost = Object.fromEntries(STATS.map((s) => [s, round3((out.teamBoost?.[s] ?? 0) + (card.team[s] ?? 0) * cardPower(run.floor))]))
   if (card.mult) out.mult = { ...out.mult, [card.mult[0]]: Math.max(0.4, round3(out.mult[card.mult[0]] + card.mult[1])) }
   if (card.balls) out.bag = { ...out.bag, 'poke-ball': (out.bag['poke-ball'] ?? 0) + card.balls }
   if (card.heal) {
