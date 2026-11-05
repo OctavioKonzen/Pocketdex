@@ -1019,6 +1019,12 @@ describe('mapa da corrida', () => {
     expect(encounterFor(data, 5, seq([0.95]), null, false, { kind: 'wild', biome: home, outbreak: today }).foes[0].id)
       .toBe(encounterFor(data, 5, seq([0.95]), null, false, { kind: 'wild', biome: home }).foes[0].id)
     expect(OUTBREAK_SHINY).toBeGreaterThan(1)
+    // As formas do meio fracas que só existem tarde (Pikachu, Marowak...) aparecem logo que podem existir.
+    let r0 = 7
+    const lcg = () => { r0 = (Math.imul(r0, 1103515245) + 12345) >>> 0; return r0 / 4294967296 }
+    const got = new Set()
+    for (let k = 0; k < 4000; k++) for (const f of encounterFor(data, 46 + (k % 20), lcg, null, false, { kind: 'wild', biome: ['grass', 'forest', 'cave'][k % 3] }).foes) got.add(f.id)
+    for (const id of [25, 105]) expect(got.has(id)).toBe(true)
     // A Dowsing Machine: às vezes um caminho com batalha tem um item escondido; vencendo, o item fica.
     let hidden = null
     for (let f = 2; f < 400 && !hidden; f++) {

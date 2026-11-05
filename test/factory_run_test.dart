@@ -623,6 +623,20 @@ void main() {
         ((FactoryRun.encounterFor(data, 5, same(v), null, false, {'kind': 'wild', 'biome': home, if (burst) 'outbreak': today})['foes'] as List).first as Map)['id'];
     expect(wild(0.1), today);
     expect(wild(0.95), wild(0.95, false));
+    // As formas do meio fracas que só existem tarde (Pikachu, Marowak...) aparecem logo que podem existir.
+    var r0 = 7;
+    double lcg() {
+      r0 = (r0 * 1103515245 + 12345) & 0xFFFFFFFF;
+      return r0 / 4294967296;
+    }
+
+    final got = <int>{};
+    for (var k = 0; k < 4000; k++) {
+      for (final f in FactoryRun.encounterFor(data, 46 + k % 20, lcg, null, false, {'kind': 'wild', 'biome': ['grass', 'forest', 'cave'][k % 3]})['foes'] as List) {
+        got.add((f['id'] as num).toInt());
+      }
+    }
+    expect(got.containsAll([25, 105]), isTrue);
     // A Dowsing Machine: às vezes um caminho com batalha tem um item escondido; vencendo, o item fica.
     ({Json r, int k, String item})? hidden;
     for (var f = 2; f < 400 && hidden == null; f++) {

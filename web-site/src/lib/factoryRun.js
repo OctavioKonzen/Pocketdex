@@ -952,6 +952,8 @@ export function bossTeam(boss, floor) {
 
 /** Força (total de atributos) das espécies do andar: mais fortes conforme sobe (depois do andar 60, qualquer uma). */
 export const speciesBudget = (floor) => 290 + floor * 7
+/** Quantos níveis depois do nível em que existe uma forma ainda entra mesmo com a força abaixo da faixa do andar. */
+export const FRESH_LEVELS = 15
 
 /** Nível de quem evolui por item (pedra), sem nível no jogo: a partir dele já aparece evoluído. */
 export const ITEM_EVOLUTION_LEVEL = 20
@@ -1680,6 +1682,10 @@ export function encounterFor(data, floor, rand, boss = null, wild = false, node 
     .filter(([id, info]) => (floor >= 8 || !info[4]?.includes('ghost')) && minLevelOf(data, Number(id)) <= level)
     .map(([id, [, bst, rarity, , , rate]]) => ({ id: Number(id), bst, rarity, rate: rate ?? 45 }))
   const budget = speciesBudget(floor)
+  // As formas que acabaram de poder aparecer (até FRESH_LEVELS acima do nível em que existem): entram mesmo com a
+  // força abaixo da faixa do andar. Sem isso, formas do meio fracas que só existem tarde (Pikachu, Marowak, Lampent...)
+  // nunca apareciam: quando a força cabia, o nível ainda era baixo; quando o nível chegava, a faixa já tinha passado.
+  const fresh = new Set(entries.filter((p) => { const min = minLevelOf(data, p.id); return min > 1 && level - min <= FRESH_LEVELS }).map((p) => p.id))
   // A chance de cada espécie segue a raridade dela (a taxa de captura dos jogos: Pidgey 255 aparece muito, Dratini 45 pouco, Beldum 3 quase nunca);
   // os treinadores escolhem com menos diferença (raiz da taxa).
   // Os tipos do lugar aparecem bem mais (ROUTE_TYPE_WEIGHT; nos treinadores, ROUTE_TYPE_TRAINER).
@@ -1687,7 +1693,7 @@ export function encounterFor(data, floor, rand, boss = null, wild = false, node 
   const types = BIOMES[node?.biome] && [...BIOMES[node.biome], ...(node.night ? NIGHT_TYPES : []), ...(SEASON_TYPES[node.season] ?? [])]
   const local = (p) => Boolean(types && (data.species[p.id]?.[4] ?? []).some((t) => types.includes(t)))
   const pick = (pool, trainer = false) => {
-    const fit = pool.filter((p) => p.bst <= budget && p.bst >= Math.min(budget, 600) - 160)
+    const fit = pool.filter((p) => p.bst <= budget && (p.bst >= Math.min(budget, 600) - 160 || fresh.has(p.id)))
     const list = fit.length ? fit : [...pool].sort((a, b) => Math.abs(a.bst - budget) - Math.abs(b.bst - budget)).slice(0, 20)
     return pickWeighted(list, list.map((p) => (trainer ? Math.sqrt(p.rate) * (local(p) ? ROUTE_TYPE_TRAINER : 1) : p.rate * (local(p) ? ROUTE_TYPE_WEIGHT : 1))), rand).id
   }

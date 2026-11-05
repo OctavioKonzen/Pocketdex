@@ -240,6 +240,9 @@ class FactoryRun {
   static double earlyMoney(int floor) => 1 + math.max(0, 11 - floor) / 10;
   static int speciesBudget(int floor) => 290 + floor * 7;
 
+  /// Quantos níveis depois do nível em que existe uma forma ainda entra mesmo com a força abaixo da faixa do andar. Igual ao site.
+  static const freshLevels = 15;
+
   // ------------------------------------------------------------ itens e cartas
 
   /// Itens de segurar: o principal tem o efeito de verdade; cada um a mais dá esta porcentagem.
@@ -2190,6 +2193,13 @@ class FactoryRun {
           (id: e.key, bst: _int(e.value[1]), rarity: _int(e.value[2]), rate: _int(e.value.elementAtOrNull(5) ?? 45))
     ];
     final budget = speciesBudget(floor);
+    // As formas que acabaram de poder aparecer (até freshLevels acima do nível em que existem): entram mesmo com a
+    // força abaixo da faixa do andar. Sem isso, formas do meio fracas que só existem tarde (Pikachu, Marowak, Lampent...)
+    // nunca apareciam: quando a força cabia, o nível ainda era baixo; quando o nível chegava, a faixa já tinha passado.
+    final fresh = {
+      for (final p in entries)
+        if (minLevelOf(data, p.id) > 1 && level - minLevelOf(data, p.id) <= freshLevels) p.id,
+    };
     // A chance de cada espécie segue a raridade dela (a taxa de captura); os treinadores com menos diferença (raiz).
     // Os tipos do lugar aparecem bem mais (routeTypeWeight; nos treinadores, routeTypeTrainer).
     // À noite, mais Fantasma e Sombrio; em cada estação, os tipos dela (node.night, node.season: o relógio de quem joga).
@@ -2198,7 +2208,7 @@ class FactoryRun {
         : [...biomes[node!['biome']]!, if (node['night'] == true) ...nightTypes, ...?seasonTypes[node['season']]];
     bool local(int id) => types != null && ((data.species[id]?.elementAtOrNull(4) as List?) ?? const []).any(types.contains);
     int pick(List<({int id, int bst, int rarity, int rate})> pool, [bool trainer = false]) {
-      final fit = [for (final p in pool) if (p.bst <= budget && p.bst >= math.min(budget, 600) - 160) p];
+      final fit = [for (final p in pool) if (p.bst <= budget && (p.bst >= math.min(budget, 600) - 160 || fresh.contains(p.id))) p];
       final near = [...pool]..sort((a, b) {
           final d = (a.bst - budget).abs().compareTo((b.bst - budget).abs());
           return d != 0 ? d : a.id.compareTo(b.id);
