@@ -5,14 +5,14 @@ import { addToBox, BOX_SIZE, boxToSet, capture, emptyFactory, encounterFor, endR
 const data = JSON.parse(readFileSync(new URL('../../../assets/database/factory.json', import.meta.url), 'utf8'))
 
 describe('PC (igual ao app)', () => {
-  it('no fim da corrida o time vai para o PC, com quem saiu do time', () => {
+  it('no fim da corrida só o time vai para o PC da conta (o PC do Centro é da corrida)', () => {
     let run = startRun(emptyFactory(), data, 1, 42)
     run = { ...run, team: [...run.team, ...[0, 1, 2, 3, 4].map((i) => ({ ...run.team[0], id: 10 + i }))] }
     run = { ...run, pending: { ...run.pending, capture: { id: 415, level: 9 } } }
     const caught = capture(run, 2)
     expect(caught.pc.map((m) => m.id)).toEqual([11])
     const box = endRun(emptyFactory(), caught).box
-    expect(box.map((b) => b.id)).toEqual([1, 10, 415, 12, 13, 14, 11])
+    expect(box.map((b) => b.id)).toEqual([1, 10, 415, 12, 13, 14])
     for (const k of ['id', 'level', 'nature', 'ivs', 'evs', 'moves', 'date']) expect(box[0]).toHaveProperty(k)
   })
   it('cabe 300, solta e vira membro de time', () => {

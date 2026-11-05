@@ -21,7 +21,7 @@ import { battleMons } from '../lib/battleSetup'
 import {
   BAG_ITEMS, BOX_SIZE, boxToSet, releaseFromBox, HUNT_MAX, HUNT_STEP, huntBase, huntMultOf, setHunt, bossOf, regionOf, genderOf, piecesOf, pieceOf, upgradePieces, tradePieces, PIECE_ITEMS, PIECE_TRADE, capturedMon, isRegionalForm, emptyFactory, unequipItem, ROUTE_LENGTH, CITY_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, teamRoom, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
-  shinyPrice, shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, atPc, pcOf, PC_SIZE, unlockShiny, VITAMIN_EVS, VITAMINS,
+  shinyPrice, shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, atPc, pcOf, PC_SIZE, gameOf, tierOf, foeBoostAt, leagueAhead, unlockShiny, VITAMIN_EVS, VITAMINS,
   buyShiny, forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor, isKeystone,
   tradeMon, skipTrade, TRADE_LEVELS, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, bossScene,
   resolveChoice, regionLegend, leaderType, villainTeam, rivalBoss, rocketBoss, placeInfo, routeInfo, DUNGEON_LENGTH, dungeonPos, townShop, townCenter,
@@ -217,7 +217,7 @@ function BagPanel({ run, byId, save, onClose }) {
 }
 
 /** O time da corrida para a tela do time (BwParty). */
-const partyOf = (run, byId) => run.team.map((m) => ({ id: m.id, shiny: m.shiny, name: t(prettyName(byId?.get(m.id)?.name ?? '')), level: m.level, hp: m.hp ?? 1, sub: m.item ? itemName(m.item) : undefined }))
+const partyOf = (run, byId) => run.team.map((m) => ({ id: m.id, shiny: m.shiny, name: m.nick || t(prettyName(byId?.get(m.id)?.name ?? '')), level: m.level, hp: m.hp ?? 1, sub: m.item ? itemName(m.item) : undefined }))
 
 const CATEGORY_LABEL = { physical: 'Físico', special: 'Especial', status: 'Status' }
 
@@ -795,7 +795,7 @@ function BestRuns({ gallery }) {
               {g.team.map(([id, level, shiny], i) => <span key={i} title={`Lv. ${level}`}><PokeIcon id={id} shiny={Boolean(shiny)} className="h-9 w-9" /></span>)}
             </span>
             <span className="shrink-0 text-right text-xs text-muted">
-              {g.nuzlocke && '🕯️ '}{g.weekly && '🏆 '}{g.date.split('-').reverse().join('/')}
+              {g.games > 0 && <span title={t('Jogos zerados')}>🎮{g.games} </span>}{g.nuzlocke && '🕯️ '}{g.weekly && '🏆 '}{g.date.split('-').reverse().join('/')}
             </span>
           </li>
         ))}
@@ -848,7 +848,7 @@ export function FactoryHub({ onContinue, busy }) {
         </p>
         <p className="mt-1 font-bold">
           {/* Os Star Pieces (caem dos chefes) destravam a árvore. Igual ao app. */}
-          {t('Recorde: andar {0}').replace('{0}', factory.best)} · 🪙 {factory.coins} {t('moedas')} · <span data-testid="factory-pieces">{piecesLine(piecesOf(factory), true)}</span>
+          {t('Recorde: andar {0}').replace('{0}', factory.best)}{factory.bestGames > 0 && <> · 🎮 {t('{0} jogos zerados numa corrida').replace('{0}', factory.bestGames)}</>} · 🪙 {factory.coins} {t('moedas')} · <span data-testid="factory-pieces">{piecesLine(piecesOf(factory), true)}</span>
         </p>
         {factory.refunded > 0 && (
           <p className="mt-1 rounded-lg bg-amber-500/15 px-2 py-1 font-bold" data-testid="factory-refunded">
@@ -1956,6 +1956,8 @@ function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, 
           {/* As informações rolam de lado; o time fica sempre à direita. A Bolsa é só a contagem (o que tem dentro: em BOLSA). Igual ao app. */}
           <span className="flex min-w-0 flex-1 items-center gap-x-3 overflow-x-auto">
             <span>🎲 {t('Andar {0}').replace('{0}', run.floor)}</span>
+            {/* O jogo da corrida (cada um é um degrau de dificuldade). */}
+            <span title={t('Jogo {0} da corrida: adversários +{1}% em todos os atributos').replace('{0}', gameOf(run)).replace('{1}', Math.round(foeBoostAt(tierOf(run)) * 100))} data-testid="factory-game">🎮 {gameOf(run)}</span>
             <span>💰 {run.money}</span>
             <span title={t('Bolsa')} data-testid="factory-bag-count">🎒 {BAG_ITEMS.reduce((n, id) => n + (run.bag[id] ?? 0), 0)}</span>
             {/* Os ovos que vão junto: quantas vitórias faltam para chocar. */}
@@ -2502,6 +2504,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     const legend = regionLegend(data, run)
     const clock = clockOf()
     const pickNode = (index) => {
+      // Antes da Elite dos Quatro (como nos jogos): depois dela, as lutas da Liga vêm uma atrás da outra.
+      if (route.options[index]?.kind === 'boss' && leagueAhead(data, run) && !window.confirm(t('A Liga começa aqui: depois da primeira da Elite dos Quatro, as lutas vêm uma atrás da outra, sem Centro Pokémon. Quer seguir?'))) return
       const next = chooseNode(run, data, index, clockOf())
       if (next === run) return
       saveFactory({ ...factoryOf(useStore.getState().league), run: next })

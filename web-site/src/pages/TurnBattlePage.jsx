@@ -1619,7 +1619,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
             : waiting && menu === 'party' && summary == null ? (battle.needSwitch ? t('Escolha o próximo Pokémon') : item ? t('Usar em qual Pokémon?') : t('Escolha um Pokémon.'))
             // Derrubou o do adversário: a pergunta do "Shift", com quem ele vai mandar (como nos jogos).
             : waiting && battle.shiftPending && menu === 'main' ? (battle.sides[1].team[battle.shiftNext]
-              ? t('O adversário vai mandar {0}. Quer trocar de Pokémon?').replace('{0}', battle.sides[1].team[battle.shiftNext].name)
+              ? t('O adversário vai mandar {0}. Quer trocar de Pokémon?').replace('{0}', `${battle.sides[1].team[battle.shiftNext].name} (${(battle.sides[1].team[battle.shiftNext].types ?? []).map((ty) => t(ty.charAt(0).toUpperCase() + ty.slice(1))).join('/')})`)
               : t('O adversário vai mandar outro Pokémon. Quer trocar de Pokémon?'))
             // Hora de escolher (como no jogo e na dupla): "O que Charizard vai fazer?".
             : waiting && !locked && (menu === 'main' || menu === 'fight') && !battle.needSwitch ? `${t('O que')} ${current.name} ${t('vai fazer?')}`

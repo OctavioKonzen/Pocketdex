@@ -7,7 +7,7 @@ import 'package:pocket_dex/services/factory_run.dart';
 void main() {
   final data = FactoryData.parse(jsonDecode(File('assets/database/factory.json').readAsStringSync()) as Map<String, dynamic>);
 
-  test('PC: no fim da corrida o time vai para o PC, com quem saiu do time (igual ao site)', () {
+  test('PC: no fim da corrida só o time vai para o PC da conta; o PC do Centro é da corrida (igual ao site)', () {
     var run = FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!;
     final team = FactoryRun.teamOf(run);
     run = {...run, 'team': [...team, for (var i = 0; i < 5; i++) {...team.first, 'id': 10 + i}]};
@@ -16,7 +16,7 @@ void main() {
     expect([for (final m in caught['pc'] as List) m['id']], [11]);
     final after = FactoryRun.endRun(FactoryRun.empty(), caught);
     final box = after['box'] as List;
-    expect([for (final b in box) b['id']], [1, 10, 415, 12, 13, 14, 11]);
+    expect([for (final b in box) b['id']], [1, 10, 415, 12, 13, 14]);
     expect((box.first as Map).keys.toSet().containsAll({'id', 'level', 'nature', 'ivs', 'evs', 'moves', 'date'}), isTrue);
   });
 

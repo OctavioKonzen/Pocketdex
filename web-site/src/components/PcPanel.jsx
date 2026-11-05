@@ -7,7 +7,21 @@
 import { useEffect, useRef, useState } from 'react'
 import PokeIcon from './PokeIcon'
 import { t } from '../lib/i18n'
-import { boxName, pcMove, pcSlots, PC_BOX, PC_BOXES, renameBox, teamRoom } from '../lib/factoryRun'
+import { boxName, boxWall, nextWall, pcMove, pcSlots, PC_BOX, PC_BOXES, renameBox, setNick, teamRoom } from '../lib/factoryRun'
+
+/** O fundo de cada caixa (como nos jogos). Igual ao app. */
+const WALL_BG = {
+  classic: 'linear-gradient(180deg,#2b8a9e,#1f6f80)',
+  forest: 'linear-gradient(180deg,#4d9a4f,#2f6b33)',
+  cave: 'linear-gradient(180deg,#8a6a4c,#5a4330)',
+  sea: 'linear-gradient(180deg,#3a7fd1,#1f4f99)',
+  desert: 'linear-gradient(180deg,#e0b765,#b8873a)',
+  snow: 'linear-gradient(180deg,#b9d9ef,#7fa9cc)',
+  volcano: 'linear-gradient(180deg,#c9502f,#7d2a18)',
+  night: 'linear-gradient(180deg,#4b3c8f,#251c52)',
+}
+/** O nome do golpe ou do item como no jogo (inglês, sem traduzir). */
+const pretty = (slug) => String(slug ?? '').split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
 
 const key = (l) => (l ? `${l.where}:${l.index}` : '')
 
@@ -21,6 +35,11 @@ export default function PcPanel({ run, nameOf, onSave }) {
   const navTimer = useRef(null)
   const slots = pcSlots(run)
   const room = teamRoom(run)
+  // O memorial do Nuzlocke: uma página a mais, depois das caixas (só para ver).
+  const memorial = run.memorial ?? []
+  const pages = PC_BOXES + (memorial.length ? 1 : 0)
+  const inMemorial = box >= PC_BOXES
+  const label = (mon) => mon?.nick || nameOf(mon?.id)
   const monAt = (l) => (l.where === 'team' ? run.team[l.index] : slots[l.index]) ?? null
 
   // Soltou (ou tocou no destino): com alguém lá, pergunta; vazia, já move.
@@ -94,7 +113,7 @@ export default function PcPanel({ run, nameOf, onSave }) {
     return (
       <div key={key(l)} data-pc-slot={key(l)} data-testid={`pc-slot-${l.where}-${l.index}`} onPointerDown={(e) => start(e, l)}
         className={`relative grid min-h-0 min-w-0 cursor-pointer overflow-hidden ${small ? 'flex-1' : ''} touch-none select-none place-items-center rounded-lg border-2 ${isPicked ? 'border-amber-400 bg-amber-200/60' : mon ? 'border-sky-900/60 bg-sky-100/80' : 'border-dashed border-sky-900/30 bg-white/15'}`}
-        title={mon ? nameOf(mon.id) : ''}>
+        title={mon ? label(mon) : ''}>
         {mon && <PokeIcon id={mon.id} shiny={Boolean(mon.shiny)} fill={0.85} className={`pointer-events-none aspect-square h-full max-h-full max-w-full ${dragging ? 'opacity-30' : ''}`} />}
         {mon && !small && <span className="pointer-events-none absolute right-0.5 bottom-0 text-[8px] font-black text-slate-800">{mon.level}</span>}
       </div>
@@ -102,15 +121,23 @@ export default function PcPanel({ run, nameOf, onSave }) {
   }
 
   const rename = () => {
+    if (inMemorial) return
     const name = window.prompt(t('Nome da caixa'), boxName(run, box))
     if (name != null) onSave(renameBox(run, box, name))
   }
+  const nickname = () => {
+    const mon = picked && monAt(picked)
+    if (!mon) return
+    const nick = window.prompt(t('Apelido (vazio tira)'), mon.nick ?? '')
+    if (nick != null) onSave(setNick(run, picked, nick))
+  }
+  const info = !ask && picked && !drag ? monAt(picked) : null
   const teamSlots = Array.from({ length: room }, (_, i) => ({ where: 'team', index: i }))
   const askFrom = ask && monAt(ask.from)
   const askTo = ask && monAt(ask.to)
 
   return (
-    <div className="bw-party relative flex h-full min-h-full gap-1.5 p-1.5" data-testid="factory-pc">
+    <div className="bw-party relative flex h-full min-h-full gap-1.5 p-1.5" data-testid="factory-pc" style={{ background: WALL_BG[inMemorial ? 'night' : boxWall(run, box)] }}>
       {/* O seu time: pequeno, só os sprites. */}
       <div className="flex min-h-0 w-[16%] shrink-0 flex-col gap-1" data-testid="pc-team">
         <p className="bw-party-title truncate rounded-md px-1 py-0.5 text-center text-[10px] font-black text-white">{t('Time')}</p>
@@ -119,19 +146,34 @@ export default function PcPanel({ run, nameOf, onSave }) {
       {/* A caixa: 6×6, com o nome (toque para mudar) e ◀ ▶. */}
       <div className="flex min-w-0 flex-1 flex-col gap-1" data-testid="pc-box">
         <div className="flex items-center gap-1">
-          <button type="button" data-pc-nav="prev" onClick={() => setBox((b) => (b + PC_BOXES - 1) % PC_BOXES)} className="bw-party-title cursor-pointer rounded-md px-2 py-0.5 text-sm font-black text-white" data-testid="pc-box-prev">◀</button>
+          <button type="button" data-pc-nav="prev" onClick={() => setBox((b) => (b + pages - 1) % pages)} className="bw-party-title cursor-pointer rounded-md px-2 py-0.5 text-sm font-black text-white" data-testid="pc-box-prev">◀</button>
           <button type="button" onClick={rename} className="bw-party-title min-w-0 flex-1 cursor-pointer truncate rounded-md px-2 py-0.5 text-sm font-black text-white" data-testid="pc-box-name">
-            💻 {boxName(run, box)} <span className="text-[10px] opacity-80">✏️</span>
+            {inMemorial ? `🕯️ ${t('Memorial')}` : <>💻 {boxName(run, box)} <span className="text-[10px] opacity-80">✏️</span></>}
           </button>
-          <button type="button" data-pc-nav="next" onClick={() => setBox((b) => (b + 1) % PC_BOXES)} className="bw-party-title cursor-pointer rounded-md px-2 py-0.5 text-sm font-black text-white" data-testid="pc-box-next">▶</button>
+          {!inMemorial && <button type="button" onClick={() => onSave(nextWall(run, box))} className="bw-party-title cursor-pointer rounded-md px-1.5 py-0.5 text-sm text-white" data-testid="pc-box-wall" title={t('Fundo da caixa')}>🎨</button>}
+          <button type="button" data-pc-nav="next" onClick={() => setBox((b) => (b + 1) % pages)} className="bw-party-title cursor-pointer rounded-md px-2 py-0.5 text-sm font-black text-white" data-testid="pc-box-next">▶</button>
         </div>
-        <div className="grid min-h-0 flex-1 grid-cols-6 grid-rows-6 gap-1">
-          {Array.from({ length: PC_BOX }, (_, k) => {
-            const l = { where: 'pc', index: box * PC_BOX + k }
-            return cell(l, slots[l.index])
-          })}
-        </div>
-        <p className="shrink-0 text-center text-[10px] leading-tight font-bold text-white/90">{t('Arraste um Pokémon para outra vaga para trocar.')}</p>
+        {inMemorial ? (
+          <div className="grid min-h-0 flex-1 grid-cols-6 grid-rows-6 gap-1" data-testid="pc-memorial">
+            {Array.from({ length: PC_BOX }, (_, k) => {
+              const m = memorial[k]
+              return (
+                <div key={k} className="relative grid min-h-0 min-w-0 place-items-center overflow-hidden rounded-lg border-2 border-white/20 bg-black/20" title={m ? `${label(m)} · Nv. ${m.level} · ${t('andar')} ${m.floor}` : ''}>
+                  {m && <PokeIcon id={m.id} shiny={Boolean(m.shiny)} fill={0.85} className="pointer-events-none aspect-square h-full max-h-full max-w-full grayscale" />}
+                  {m && <span className="pointer-events-none absolute right-0.5 bottom-0 text-[8px] font-black text-white">{m.level}</span>}
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="grid min-h-0 flex-1 grid-cols-6 grid-rows-6 gap-1">
+            {Array.from({ length: PC_BOX }, (_, k) => {
+              const l = { where: 'pc', index: box * PC_BOX + k }
+              return cell(l, slots[l.index])
+            })}
+          </div>
+        )}
+        <p className="shrink-0 text-center text-[10px] leading-tight font-bold text-white/90">{inMemorial ? t('Quem caiu nesta corrida (Nuzlocke).') : t('Arraste um Pokémon para outra vaga para trocar.')}</p>
       </div>
       {/* Arrastando: o sprite segue o dedo. */}
       {drag?.moved && (
@@ -139,10 +181,22 @@ export default function PcPanel({ run, nameOf, onSave }) {
           <PokeIcon id={drag.id} shiny={drag.shiny} className="h-full w-full drop-shadow-lg" />
         </div>
       )}
+      {/* Os dados de quem foi tocado (sem tirar do PC) e o apelido. */}
+      {info && (
+        <div className="absolute inset-x-2 bottom-2 z-10 rounded-xl border-4 border-slate-800 bg-white p-2 text-slate-900 shadow-xl" data-testid="pc-info">
+          <p className="text-sm font-black" data-no-translate>{info.shiny ? '✨ ' : ''}{label(info)}{info.nick ? ` (${nameOf(info.id)})` : ''} · Nv. {info.level}</p>
+          <p className="text-xs" data-no-translate>{t('Nature')}: {info.nature ?? '—'}{info.item ? ` · ${pretty(info.item)}` : ''}</p>
+          {info.moves?.length > 0 && <p className="text-xs" data-no-translate>{info.moves.map(pretty).join(' · ')}</p>}
+          <div className="mt-1 flex justify-end gap-2">
+            <button type="button" data-testid="pc-nick" onClick={nickname} className="cursor-pointer rounded-lg bg-sky-700 px-3 py-1 text-xs font-black text-white">✏️ {t('APELIDO')}</button>
+            <button type="button" onClick={() => setPicked(null)} className="cursor-pointer rounded-lg bg-slate-500 px-3 py-1 text-xs font-black text-white">{t('FECHAR')}</button>
+          </div>
+        </div>
+      )}
       {/* A pergunta de trocar (com os dois nomes). */}
       {ask && askFrom && askTo && (
         <div className="absolute inset-x-2 bottom-2 z-10 rounded-xl border-4 border-slate-800 bg-white p-2 text-slate-900 shadow-xl" data-testid="pc-ask">
-          <p className="text-sm font-black" data-no-translate>{t('Trocar {0} por {1}?').replace('{0}', nameOf(askFrom.id)).replace('{1}', nameOf(askTo.id))}</p>
+          <p className="text-sm font-black" data-no-translate>{t('Trocar {0} por {1}?').replace('{0}', label(askFrom)).replace('{1}', label(askTo))}</p>
           <div className="mt-1 flex justify-end gap-2">
             <button type="button" data-testid="pc-ask-no" onClick={() => setAsk(null)} className="cursor-pointer rounded-lg bg-slate-500 px-3 py-1 text-sm font-black text-white">{t('NÃO')}</button>
             <button type="button" data-testid="pc-ask-yes" onClick={() => { const next = pcMove(run, ask.from, ask.to); setAsk(null); if (next) onSave(next) }} className="cursor-pointer rounded-lg bg-emerald-600 px-3 py-1 text-sm font-black text-white">{t('SIM')}</button>
