@@ -179,7 +179,9 @@ class FactoryRun {
 
   // ------------------------------------------------------------ dificuldade
 
-  static int foeLevelAt(int floor) => 2 + ((floor - 1) * 0.8).floor();
+  /// Nível base dos adversários no andar (sem teto): o Campeão do primeiro jogo (andar ~185) fica perto do nível 100. Igual ao site.
+  static const foeLevelSlope = 0.53;
+  static int foeLevelAt(int floor) => 2 + ((floor - 1) * foeLevelSlope).floor();
   /// EVs (por atributo) dos adversários no andar: até 252 (o que passa disso vem do jogo da corrida, gameTier).
   static int foeEvsAt(int floor) => math.min(252, 3 * floor);
   /// IVs dos adversários no andar: até 31 (o que passa disso vem do jogo da corrida, gameTier).
@@ -2032,7 +2034,7 @@ class FactoryRun {
       // Antes do andar 10, sem o bônus de nível (o rival aparece cedo, como no começo dos jogos).
       // Antes do andar 10, o rival vem só com um Pokémon, sem IVs e EVs a mais (como no começo dos jogos).
       final early = floor < 10;
-      final bonus = early ? 0 : const {'gym': 2, 'rival': 2, 'villain': 3, 'elite': 4, 'champion': 5}[boss['kind']] ?? 2;
+      final bonus = early ? 0 : const {'gym': 2, 'rival': 2, 'villain': 3, 'elite': 6, 'champion': 9}[boss['kind']] ?? 2;
       final full = bossTeam(boss, floor);
       final team = early && boss['kind'] == 'rival' ? full.sublist(full.length - 1) : full;
       int levelOf(int id, int i) => _bossLevel(data, floor, id, level + bonus + (i == team.length - 1 && !early ? 1 : 0));

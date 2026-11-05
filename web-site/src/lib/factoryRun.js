@@ -101,8 +101,9 @@ function pickWeighted(list, weights, rand) {
 
 // ------------------------------------------------------------ dificuldade
 
-/** Nível base dos adversários no andar (sem teto). */
-export const foeLevelAt = (floor) => 2 + Math.floor((floor - 1) * 0.8)
+/** Nível base dos adversários no andar (sem teto): o Campeão do primeiro jogo (andar ~185) fica perto do nível 100. */
+export const FOE_LEVEL_SLOPE = 0.53
+export const foeLevelAt = (floor) => 2 + Math.floor((floor - 1) * FOE_LEVEL_SLOPE)
 /** EVs (por atributo) dos adversários no andar: até 252, como nos jogos (o que passa disso vem do jogo da corrida, GAME_TIER). */
 export const foeEvsAt = (floor) => Math.min(252, 3 * floor)
 /** IVs dos adversários no andar: até 31 (o que passa disso vem do jogo da corrida, GAME_TIER). */
@@ -1557,7 +1558,7 @@ export function encounterFor(data, floor, rand, boss = null, wild = false, node 
     // Antes do andar 10, sem o bônus de nível (o rival aparece cedo, como no começo dos jogos).
     // Antes do andar 10, o rival vem só com um Pokémon, sem IVs e EVs a mais (como no começo dos jogos).
     const early = floor < 10
-    const bonus = early ? 0 : { gym: 2, rival: 2, villain: 3, elite: 4, champion: 5 }[boss.kind] ?? 2
+    const bonus = early ? 0 : { gym: 2, rival: 2, villain: 3, elite: 6, champion: 9 }[boss.kind] ?? 2
     const full = bossTeam(boss, floor)
     const team = early && boss.kind === 'rival' ? full.slice(-1) : full
     const levelOf = (id, i) => bossLevel(data, floor, id, level + bonus + (i === team.length - 1 && !early ? 1 : 0))

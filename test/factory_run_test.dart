@@ -652,11 +652,11 @@ void main() {
       for (var seed = 1; seed <= 60; seed++) {
         final run = {
           ...FactoryRun.startRun(FactoryRun.empty(), data, 1, seed)!,
-          'floor': 20,
-          'route': {'floor': 20, 'biome': 'grass', 'options': [{'kind': 'trainer'}]},
+          'floor': 40,
+          'route': {'floor': 40, 'biome': 'grass', 'options': [{'kind': 'trainer'}]},
         };
         final out = FactoryRun.chooseNode(run, data, 0, night ? (night: true, season: 'spring') : null);
-        n += (out['encounter']['foes'] as List).where((f) => (data.species[f['id']]![4] as List).any((t) => t == 'ghost' || t == 'dark')).length;
+        n += (out['encounter']['foes'] as List).where((f) => ((data.species[f['id']] ?? data.formSpecies[f['id']])?[4] as List? ?? const []).any((t) => t == 'ghost' || t == 'dark')).length;
       }
       return n;
     }

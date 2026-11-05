@@ -76,7 +76,7 @@ describe('Battle Factory (roguelike)', () => {
     expect([...kinds].sort()).toEqual(['trainer', 'wild'])
     for (let i = 0; i < 400; i++) for (const f of encounterFor(data, 30, rand).foes) expect([1, 2]).not.toContain(data.species[f.id][2])
     const deep = encounterFor(data, 500, seq([0.5, 0.9, 0.1]))
-    expect(deep.foes[0].level).toBeGreaterThan(300)
+    expect(deep.foes[0].level).toBeGreaterThan(250)
     // No primeiro jogo da corrida, só o nível do andar (IVs e EVs no limite dos jogos, sem porcentagem a mais).
     expect(deep.foes[0].iv).toBe(31)
     expect(deep.foes[0].boost).toBeUndefined()
@@ -1048,9 +1048,9 @@ describe('mapa da corrida', () => {
     const ghosts = (night) => {
       let n = 0
       for (let seed = 1; seed <= 60; seed++) {
-        const run = { ...startRun(emptyFactory(), data, 1, seed), floor: 20, route: { floor: 20, biome: 'grass', options: [{ kind: 'trainer' }] } }
+        const run = { ...startRun(emptyFactory(), data, 1, seed), floor: 40, route: { floor: 40, biome: 'grass', options: [{ kind: 'trainer' }] } }
         const out = chooseNode(run, data, 0, night ? { night: true, season: 'spring' } : null)
-        n += out.encounter.foes.filter((f) => data.species[f.id][4].some((t) => t === 'ghost' || t === 'dark')).length
+        n += out.encounter.foes.filter((f) => (data.species[f.id] ?? data.formSpecies?.[f.id] ?? data.species[data.forms?.[f.id]])?.[4]?.some((t) => t === 'ghost' || t === 'dark')).length
       }
       return n
     }
