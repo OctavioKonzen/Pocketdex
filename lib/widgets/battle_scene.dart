@@ -21,7 +21,7 @@ const gymTypes = ['normal', 'fire', 'water', 'grass', 'electric', 'ice', 'fighti
 const championRegions = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos', 'alola', 'galar', 'paldea'];
 const villainBases = ['rocket', 'aqua', 'magma', 'galactic', 'plasma', 'flare', 'skull', 'aether', 'star'];
 final _indoor = [for (final t in gymTypes) 'gym-$t', for (final r in championRegions) 'champion-$r', for (final b in villainBases) 'base-$b'];
-final sceneImages = ['grass', 'forest', 'water', 'beach', 'underwater', 'swamp', 'sewer', 'cave', 'icecave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky', 'tower', 'gym', 'league', 'center', 'ruins', 'flowers', 'plant', 'crystal', 'dunes', 'bamboo', 'temple', 'lavacave', 'poisoncave', 'seacave', ..._indoor];
+final sceneImages = ['grass', 'forest', 'water', 'beach', 'underwater', 'swamp', 'sewer', 'cave', 'icecave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky', 'tower', 'gym', 'league', 'center', 'ruins', 'flowers', 'plant', 'crystal', 'dunes', 'bamboo', 'temple', 'lavacave', 'poisoncave', 'seacave', 'store', 'casino', 'school', 'stage', 'subway', 'ship', 'bridge', 'park', ..._indoor];
 String _usable(String scene) => sceneImages.contains(scene) || BattleScenePainter.colors.containsKey(scene) ? scene : 'grass';
 
 /// De onde vêm as versões do clima (o site; não vão no APK).

@@ -3902,7 +3902,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
           ? _townMap(route, options, pos % FactoryRun.routeLength, cities.from, cities.to, '${boss['region']} · ${boss['game']}', me,
               widget.busy ? null : pick, (node) => (FactoryRun.isBattleNode(node) && down) || FactoryRun.nodeBlocked(run, node), placeName)
           // O líder espera no ginásio da cidade; a Elite dos Quatro e o Campeão, na Liga (nunca no meio da rota).
-          : _field(scene, key: const ValueKey('factory-map'), (w, h) {
+          : _field(FactoryRun.shownScene(run, scene), key: const ValueKey('factory-map'), (w, h) {
               return [
                 Positioned(
                     left: 8,

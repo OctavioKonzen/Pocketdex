@@ -937,12 +937,179 @@ def temple():
     return a, {'outdoor': False, 'seed': 260}
 
 
+
+# ------------------------------------------------------------ lugares da cidade (loja, cassino, escola, palco, metrô, navio, ponte, parque)
+
+def store():
+    """Loja de departamento (e mercado, loja de ervas): prateleiras coloridas, balcão e luzes no teto."""
+    a = vgrad([(0, rgb('f2e6cc')), (1, rgb('d8c49c'))], 0, HORIZON + 30)
+    rnd = random.Random(911)
+    cols = [(230, 80, 80), (80, 150, 230), (250, 200, 70), (110, 190, 110), (200, 120, 220), (250, 150, 60)]
+
+    def shelves(d):
+        for x0 in (20, 290, 560):
+            d.rectangle([x0, 40, x0 + 220, HORIZON + 26], fill=(150, 104, 62, 255))
+            for r, y in enumerate(range(52, HORIZON + 10, 34)):
+                d.rectangle([x0 + 8, y + 26, x0 + 212, y + 30], fill=(110, 74, 42, 255))
+                x = x0 + 12
+                while x < x0 + 200:
+                    w, h = rnd.randint(12, 26), rnd.randint(14, 24)
+                    d.rectangle([x, y + 26 - h, x + w, y + 26], fill=cols[rnd.randrange(len(cols))] + (255,))
+                    x += w + 3
+    a = layer(a, shelves)
+    for x in (130, 400, 670):
+        a = glow(a, x, 14, 60, (255, 250, 230), 0.9)
+    a = layer(a, lambda d: [d.rectangle([x - 50, 8, x + 50, 16], fill=(255, 252, 236, 255)) for x in (130, 400, 670)])
+    a = ground(a, HORIZON + 30, rgb('e8dcc6'), rgb('b8a482'), 912, 6, 0.04)
+    a = layer(a, lambda d: [d.line([(W * 0.5 + (x - W * 0.5) * 0.2, HORIZON + 30), (x, H)], fill=(200, 184, 156, 255), width=2) for x in range(-300, W + 340, 110)] + [d.line([(0, y), (W, y)], fill=(200, 184, 156, 255), width=2) for y in (HORIZON + 52, HORIZON + 96, HORIZON + 170, HORIZON + 280)])
+    a = reflect(a, HORIZON + 30, HORIZON + 110, 0.15, 5)
+    return a, {'outdoor': False, 'seed': 910}
+
+
+def casino():
+    """Game Corner: fileiras de caça-níqueis com luzes e o tapete estampado."""
+    a = vgrad([(0, rgb('1a0614')), (1, rgb('4a1030'))], 0, HORIZON + 30)
+    rnd = random.Random(921)
+    sym = [(255, 70, 70), (255, 220, 60), (90, 200, 255), (120, 240, 120)]
+
+    def machines(d):
+        for x in range(10, W, 76):
+            d.rectangle([x, HORIZON - 120, x + 62, HORIZON + 26], fill=(60, 64, 92, 255))
+            d.rectangle([x + 4, HORIZON - 116, x + 58, HORIZON - 100], fill=(240, 200, 60, 255))
+            d.rectangle([x + 8, HORIZON - 90, x + 54, HORIZON - 56], fill=(16, 16, 26, 255))
+            for k in range(3):
+                d.rectangle([x + 11 + k * 14, HORIZON - 84, x + 21 + k * 14, HORIZON - 62], fill=sym[rnd.randrange(4)] + (255,))
+            d.rectangle([x + 8, HORIZON - 44, x + 54, HORIZON - 36], fill=(140, 30, 40, 255))
+            d.line([(x + 62, HORIZON - 80), (x + 70, HORIZON - 96)], fill=(200, 200, 210, 255), width=3)
+            d.ellipse([x + 66, HORIZON - 104, x + 76, HORIZON - 94], fill=(230, 50, 50, 255))
+    a = layer(a, machines)
+    for x in range(40, W, 76):
+        a = glow(a, x, HORIZON - 110, 28, (255, 210, 90), 0.5)
+    a = ground(a, HORIZON + 30, rgb('8a1a2a'), rgb('4a0a16'), 922, 6, 0.06)
+    a = layer(a, lambda d: [d.polygon([(x, y - 10), (x + 14, y), (x, y + 10), (x - 14, y)], outline=(230, 180, 70, 160)) for y in range(HORIZON + 56, H, 46) for x in range(-20 + (y // 46 % 2) * 40, W + 40, 80)], 0.4)
+    a = motes(a, 923, 40, (0, 0, W, HORIZON), (255, 220, 120), 2, 1)
+    return a, {'outdoor': False, 'seed': 920}
+
+
+def school():
+    """Escola de treinadores: o quadro-negro, janelas com o céu e o piso de madeira."""
+    a = vgrad([(0, rgb('d4ecd4')), (1, rgb('b0d4b4'))], 0, HORIZON + 30)
+    a = layer(a, lambda d: (d.rectangle([W * 0.22, 40, W * 0.78, HORIZON - 20], fill=(150, 104, 62, 255)),
+                            d.rectangle([W * 0.23, 48, W * 0.77, HORIZON - 28], fill=(34, 80, 58, 255))))
+    a = layer(a, lambda d: [d.line([(W * 0.27, y), (W * 0.27 + ln, y)], fill=(236, 240, 230, 220), width=3) for y, ln in ((70, 180), (96, 240), (122, 150), (148, 210))] +
+              [d.ellipse([W * 0.62, 66, W * 0.70, 104], outline=(236, 240, 230, 220), width=3), d.line([(W * 0.62, 85), (W * 0.70, 85)], fill=(236, 240, 230, 220), width=3)])
+    for x in (16, 680):
+        a = put(a, vgrad([(0, rgb('8ac8ff')), (1, rgb('dff0ff'))], 40, HORIZON - 20), mask(lambda d, x=x: d.rectangle([x, 40, x + 104, HORIZON - 20], fill=255)))
+        a = layer(a, lambda d, x=x: (d.rectangle([x, 40, x + 104, HORIZON - 20], outline=(240, 240, 236, 255), width=6), d.line([(x + 52, 40), (x + 52, HORIZON - 20)], fill=(240, 240, 236, 255), width=4)))
+    a = glow(a, W * 0.5, 0, 220, (255, 255, 240), 0.3)
+    a = ground(a, HORIZON + 30, rgb('d2a46a'), rgb('9a6a3a'), 931, 5, 0.06)
+    a = layer(a, lambda d: [d.line([(0, y), (W, y)], fill=(140, 96, 54, 255), width=2) for y in range(HORIZON + 44, H, 26)])
+    a = reflect(a, HORIZON + 30, HORIZON + 100, 0.12, 5)
+    return a, {'outdoor': False, 'seed': 930}
+
+
+def stage():
+    """Palco (concurso, estúdio): cortinas, holofotes e o piso do palco."""
+    a = vgrad([(0, rgb('0a0612')), (1, rgb('2a1a3a'))], 0, HORIZON + 30)
+    a = layer(a, lambda d: [d.polygon([(x - 14, 0), (x + 14, 0), (x + 150, HORIZON + 60), (x - 150, HORIZON + 60)], fill=(255, 240, 200, 30)) for x in (200, 400, 600)], 10)
+    for x in (200, 400, 600):
+        a = glow(a, x, 6, 40, (255, 240, 200), 1.0)
+
+    def curtains(d):
+        for side in (0, 1):
+            x0 = 0 if side == 0 else W - 150
+            d.rectangle([x0, 0, x0 + 150, HORIZON + 30], fill=(150, 20, 40, 255))
+            for k in range(6):
+                xx = x0 + 10 + k * 24
+                d.line([(xx, 0), (xx, HORIZON + 30)], fill=(100, 10, 26, 255), width=6)
+        d.rectangle([0, 0, W, 26], fill=(170, 26, 48, 255))
+        d.rectangle([0, 26, W, 32], fill=(230, 180, 70, 255))
+    a = layer(a, curtains)
+    a = ground(a, HORIZON + 30, rgb('c08a4a'), rgb('7a4a20'), 941, 5, 0.06)
+    a = layer(a, lambda d: [d.line([(W * 0.5 + (x - W * 0.5) * 0.2, HORIZON + 30), (x, H)], fill=(150, 100, 52, 255), width=2) for x in range(-300, W + 340, 70)] + [d.rectangle([0, HORIZON + 30, W, HORIZON + 36], fill=(230, 180, 70, 255))])
+    a = reflect(a, HORIZON + 30, HORIZON + 120, 0.2, 4)
+    a = motes(a, 942, 40, (0, 0, W, H * 0.6), (255, 230, 170), 2, 1.5)
+    return a, {'outdoor': False, 'seed': 940}
+
+
+def subway():
+    """Metrô (Battle Subway): janelas com o túnel passando, bancos e barras."""
+    a = vgrad([(0, rgb('bcc6d0')), (1, rgb('8e9aa6'))], 0, HORIZON + 30)
+    for x in (40, 300, 560):
+        a = put(a, vgrad([(0, rgb('0c1018')), (1, rgb('1e2632'))], 50, HORIZON - 30), mask(lambda d, x=x: d.rounded_rectangle([x, 50, x + 200, HORIZON - 30], radius=12, fill=255)))
+        a = layer(a, lambda d, x=x: [d.line([(x + 10 + k * 37, 90 + (k % 3) * 18), (x + 34 + k * 37, 90 + (k % 3) * 18)], fill=(255, 220, 140, 255), width=3) for k in range(5)])
+        a = layer(a, lambda d, x=x: d.rounded_rectangle([x, 50, x + 200, HORIZON - 30], radius=12, outline=(220, 226, 232, 255), width=6))
+    a = layer(a, lambda d: (d.rectangle([0, HORIZON - 24, W, HORIZON + 6], fill=(60, 100, 170, 255)), d.rectangle([0, HORIZON - 24, W, HORIZON - 18], fill=(90, 140, 210, 255)),
+                            d.rectangle([0, 10, W, 16], fill=(210, 214, 220, 255))))
+    a = layer(a, lambda d: [d.line([(x, 0), (x, HORIZON + 30)], fill=(230, 220, 120, 255), width=5) for x in (20, 280, 540, 780)])
+    a = glow(a, W * 0.5, 0, 260, (255, 255, 255), 0.35)
+    a = ground(a, HORIZON + 30, rgb('8a8e96'), rgb('4e525a'), 951, 6, 0.08)
+    a = layer(a, lambda d: [d.ellipse([x - 4, y - 2, x + 4, y + 2], fill=(110, 114, 122, 255)) for y in range(HORIZON + 50, H, 30) for x in range(10, W, 40)], 0.5)
+    return a, {'outdoor': False, 'seed': 950}
+
+
+def ship():
+    """Navio (S.S. Anne): o mar no horizonte, a amurada com boias e o convés de madeira."""
+    a = vgrad([(0, rgb('3a86d8')), (1, rgb('bfe2ff'))], 0, HORIZON)
+    a = layer(a, lambda d: [d.ellipse([x, y, x + w, y + 24], fill=(255, 255, 255, 220)) for x, y, w in ((60, 40, 140), (420, 60, 180), (660, 30, 110))], 4)
+    a = put(a, vgrad([(0, rgb('2a6ab8')), (1, rgb('1a4a8a'))], HORIZON - 10, HORIZON + 30), mask(lambda d: d.rectangle([0, HORIZON - 10, W, HORIZON + 30], fill=255)))
+    a = layer(a, lambda d: (d.rectangle([0, HORIZON - 2, W, HORIZON + 4], fill=(240, 240, 236, 255)),
+                            [d.line([(x, HORIZON + 4), (x, HORIZON + 36)], fill=(240, 240, 236, 255), width=4) for x in range(0, W, 36)],
+                            d.rectangle([0, HORIZON + 30, W, HORIZON + 36], fill=(240, 240, 236, 255))))
+    for x in (150, 610):
+        a = layer(a, lambda d, x=x: (d.ellipse([x - 22, HORIZON - 8, x + 22, HORIZON + 36], fill=(240, 90, 60, 255)), d.ellipse([x - 10, HORIZON + 4, x + 10, HORIZON + 24], fill=(40, 90, 150, 255)),
+                                       [d.rectangle([x - 4 + dx, HORIZON - 8 + dy, x + 4 + dx, HORIZON + dy], fill=(250, 250, 250, 255)) for dx, dy in ((-20, 18), (12, 18), (-4, -2), (-4, 34))]))
+    a = ground(a, HORIZON + 36, rgb('d8a868'), rgb('9a6a34'), 961, 5, 0.07)
+    a = layer(a, lambda d: [d.line([(W * 0.5 + (x - W * 0.5) * 0.15, HORIZON + 36), (x, H)], fill=(150, 104, 56, 255), width=2) for x in range(-400, W + 440, 60)])
+    return a, {'outdoor': True, 'seed': 960}
+
+
+def bridge():
+    """Ponte (Nugget Bridge): o rio lá embaixo, o guarda-corpo e o piso da ponte."""
+    a = vgrad([(0, rgb('4a96e0')), (1, rgb('cde8ff'))], 0, HORIZON - 20)
+    a = mountains(a, 971, HORIZON - 30, 50, rgb('7aa8a0'), rgb('5a8a7a'), rgb('cde8ff'), 0.4, 0.4)
+    a = put(a, vgrad([(0, rgb('3a86c8')), (1, rgb('2a62a0'))], HORIZON - 30, HORIZON + 30), mask(lambda d: d.rectangle([0, HORIZON - 30, W, HORIZON + 30], fill=255)))
+    a = layer(a, lambda d: [d.line([(x, y), (x + 18, y)], fill=(220, 240, 255, 200), width=2) for x, y in ((40, HORIZON - 20), (220, HORIZON - 6), (420, HORIZON - 16), (630, HORIZON + 2), (300, HORIZON + 14))])
+    a = layer(a, lambda d: (d.rectangle([0, HORIZON - 4, W, HORIZON + 4], fill=(180, 120, 60, 255)),
+                            [d.rectangle([x, HORIZON - 26, x + 10, HORIZON + 30], fill=(160, 104, 52, 255)) for x in range(0, W, 70)],
+                            d.rectangle([0, HORIZON - 30, W, HORIZON - 22], fill=(200, 140, 70, 255))))
+    a = ground(a, HORIZON + 30, rgb('e0b070'), rgb('a87638'), 972, 5, 0.06)
+    a = layer(a, lambda d: [d.line([(0, y), (W, y)], fill=(170, 116, 60, 255), width=2) for y in range(HORIZON + 46, H, 28)])
+    return a, {'outdoor': True, 'seed': 970}
+
+
+def park():
+    """Parque de diversões: a roda-gigante com as cabines coloridas, luzes e a praça."""
+    a = vgrad([(0, rgb('2a1e5a')), (0.6, rgb('c86a8a')), (1, rgb('f2b07a'))], 0, HORIZON)
+    a = stars(a, 981, 20, HORIZON - 120)
+    cx, cy, r = W * 0.62, HORIZON - 92, 88
+    cab = [(240, 80, 80), (250, 200, 60), (90, 180, 250), (120, 220, 120), (220, 120, 230)]
+
+    def wheel(d):
+        d.ellipse([cx - r, cy - r, cx + r, cy + r], outline=(240, 230, 250, 255), width=5)
+        for k in range(12):
+            ang = k * math.pi / 6
+            x, y = cx + r * math.cos(ang), cy + r * math.sin(ang)
+            d.line([(cx, cy), (x, y)], fill=(220, 210, 236, 255), width=2)
+            d.rounded_rectangle([x - 11, y - 6, x + 11, y + 14], radius=4, fill=cab[k % len(cab)] + (255,))
+        d.polygon([(cx, cy), (cx - 70, HORIZON + 20), (cx - 56, HORIZON + 20)], fill=(200, 190, 220, 255))
+        d.polygon([(cx, cy), (cx + 70, HORIZON + 20), (cx + 56, HORIZON + 20)], fill=(200, 190, 220, 255))
+    a = layer(a, wheel)
+    a = glow(a, cx, cy, r * 1.3, (255, 200, 230), 0.25)
+    a = layer(a, lambda d: [d.ellipse([x - 3, 70 + 18 * math.sin(x / 40) - 3, x + 3, 70 + 18 * math.sin(x / 40) + 3], fill=((255, 230, 120) if (x // 30) % 2 else (255, 120, 160)) + (255,)) for x in range(0, int(W * 0.45), 30)])
+    a = treeline(a, 982, HORIZON + 14, 34, ((40, 40, 70), (60, 56, 96), (90, 80, 130)), 4.5)
+    a = ground(a, HORIZON + 30, rgb('c8a8b8'), rgb('7a5a72'), 983, 6, 0.06)
+    a = layer(a, lambda d: [d.line([(W * 0.5 + (x - W * 0.5) * 0.2, HORIZON + 30), (x, H)], fill=(170, 140, 160, 255), width=2) for x in range(-300, W + 340, 110)] + [d.line([(0, y), (W, y)], fill=(170, 140, 160, 255), width=2) for y in (HORIZON + 56, HORIZON + 110, HORIZON + 200)])
+    return a, {'outdoor': True, 'seed': 980}
+
+
 SCENES = {
     'grass': grass, 'forest': forest, 'water': water, 'beach': beach, 'underwater': underwater, 'swamp': swamp, 'sewer': sewer,
     'cave': cave, 'icecave': icecave, 'mountain': mountain, 'desert': desert, 'volcano': volcano, 'snow': snow, 'city': city,
     'sky': sky, 'tower': tower, 'gym': gym, 'league': league, 'center': center,
     'ruins': ruins, 'flowers': flowers, 'plant': plant, 'crystal': crystal, 'dunes': dunes, 'bamboo': bamboo, 'temple': temple,
     'lavacave': lavacave, 'poisoncave': poisoncave, 'seacave': seacave,
+    'store': store, 'casino': casino, 'school': school, 'stage': stage, 'subway': subway, 'ship': ship, 'bridge': bridge, 'park': park,
 }
 
 

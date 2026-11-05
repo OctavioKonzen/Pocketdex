@@ -1343,6 +1343,18 @@ class FactoryRun {
   ];
   /// O id de um lugar pelo nome ("Mt. Moon" → "mt-moon").
   static String _placeId(String name) => name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');
+  /// O cenário próprio dos lugares da cidade que usam o da cidade (loja, cassino, escola, palco, metrô, navio, ponte,
+  /// parque): só a imagem muda; os selvagens e as regras continuam os da cidade. Igual ao site.
+  static const placeScenes = {
+    'nugget-bridge': 'bridge', 's-s-anne': 'ship', 'rocket-game-corner': 'casino', 'celadon-department-store': 'store',
+    'goldenrod-department-store': 'store', 'mauville-game-corner': 'casino', 'lavaridge-herb-shop': 'store', 'hearthome-contest-hall': 'stage',
+    'veilstone-department-store': 'store', 'veilstone-game-corner': 'casino', 'battle-subway': 'subway', 'nimbasa-amusement-park': 'park',
+    'driftveil-market': 'store', 'pok-star-studios': 'stage', 'trainers-school': 'school', 'hau-oli-shopping-district': 'store',
+  };
+
+  /// O cenário que aparece (o próprio do lugar, se ele tiver).
+  static String shownScene(Json? run, String scene) => (run?['dungeon'] is Map ? placeScenes[run!['dungeon']['place']] : null) ?? scene;
+
   static ({String id, String name, String scene})? _placeOf(Object? row) =>
       row is List ? (id: _placeId('${row[0]}'), name: '${row[0]}', scene: '${row[1]}') : null;
 
@@ -1937,12 +1949,15 @@ class FactoryRun {
       }
       // Os selvagens e os treinadores do caminho na forma da região (e com o degrau do jogo da corrida).
       out['encounter'] = rivalGrowth(tierFoes(regionalEncounter(data, run, Map<String, dynamic>.from(out['encounter'] as Map)), run), run);
+      // O cenário próprio do lugar (loja, cassino, escola...), se ele tiver. Igual ao site.
+      out['scene'] = shownScene(run, '${out['scene']}');
+      out['encounter'] = {...out['encounter'] as Map<String, dynamic>, 'scene': shownScene(run, '${out['encounter']['scene'] ?? out['scene']}')};
       return out;
     }
     out['floor'] = floor + 1;
     // O cenário de onde você está (Poké Mart e Centro na cidade).
     // Na rota não tem Poké Mart nem Centro: o vendedor ambulante e quem cura ficam no próprio lugar.
-    out['scene'] = routeBiomeNow;
+    out['scene'] = shownScene(run, routeBiomeNow);
     if (node['kind'] == 'mart') {
       out['pending'] = {'mart': true, 'shop': _pickShop(rand, data, floor, 10, run['townMap'] == true)};
     } else if (node['kind'] == 'trade') {

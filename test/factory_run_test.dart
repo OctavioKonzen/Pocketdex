@@ -1084,6 +1084,11 @@ void main() {
     expect(ended['bestGames'], 2);
     expect((ended['gallery'] as List).first['games'], 2);
     expect(FactoryRun.gameOf({'games': 2}), 3);
+    // Os lugares da cidade com cenário próprio (só a imagem muda). Igual ao site.
+    expect(FactoryRun.shownScene({'dungeon': {'place': 'trainers-school'}}, 'city'), 'school');
+    expect(FactoryRun.shownScene({'dungeon': {'place': 'rocket-game-corner'}}, 'city'), 'casino');
+    expect(FactoryRun.shownScene({'dungeon': {'place': 'cave'}}, 'cave'), 'cave');
+    expect(FactoryRun.shownScene({}, 'grass'), 'grass');
     // Ordenar a caixa: pelo número, pelo nível ou pelo tipo (as vagas cheias primeiro). Igual ao site.
     Json mon(int id, int level) => {'id': id, 'level': level, 'hp': 1};
     final messy = {...center, 'pc': [null, mon(25, 20), null, mon(4, 30), mon(1, 10)]};

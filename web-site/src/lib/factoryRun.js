@@ -1166,6 +1166,19 @@ export function routeBiome(data, run) {
 /** O id de um lugar pelo nome ("Mt. Moon" → "mt-moon"). */
 const placeId = (name) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-')
 const placeOf = (row) => (row ? { id: placeId(row[0]), name: row[0], scene: row[1] } : null)
+/**
+ * O cenário próprio dos lugares da cidade que usam o da cidade (loja, cassino,
+ * escola, palco, metrô, navio, ponte, parque): só a imagem muda; os selvagens e
+ * as regras continuam os da cidade. Igual ao app.
+ */
+export const PLACE_SCENES = {
+  'nugget-bridge': 'bridge', 's-s-anne': 'ship', 'rocket-game-corner': 'casino', 'celadon-department-store': 'store',
+  'goldenrod-department-store': 'store', 'mauville-game-corner': 'casino', 'lavaridge-herb-shop': 'store', 'hearthome-contest-hall': 'stage',
+  'veilstone-department-store': 'store', 'veilstone-game-corner': 'casino', 'battle-subway': 'subway', 'nimbasa-amusement-park': 'park',
+  'driftveil-market': 'store', 'pok-star-studios': 'stage', 'trainers-school': 'school', 'hau-oli-shopping-district': 'store',
+}
+/** O cenário que aparece (o próprio do lugar, se ele tiver). */
+export const shownScene = (run, scene) => (run?.dungeon && PLACE_SCENES[run.dungeon.place]) || scene
 
 /**
  * A rota até a próxima cidade, como nos jogos (tool/factory_routes.py): o
@@ -1478,12 +1491,15 @@ export function chooseNode(run, data, index, clock = null) {
     }
     // Os selvagens e os treinadores do caminho na forma da região (e com o degrau do jogo da corrida).
     out.encounter = rivalGrowth(tierFoes(regionalEncounter(data, run, out.encounter), run), run)
+    // O cenário próprio do lugar (loja, cassino, escola...), se ele tiver.
+    out.scene = shownScene(run, out.scene)
+    out.encounter = { ...out.encounter, scene: shownScene(run, out.encounter.scene) }
     return out
   }
   out.floor += 1
   // O cenário de onde você está (Poké Mart e Centro na cidade).
   // Na rota não tem Poké Mart nem Centro: o vendedor ambulante e quem cura ficam no próprio lugar.
-  out.scene = run.route.biome ?? 'grass'
+  out.scene = shownScene(run, run.route.biome ?? 'grass')
   if (node.kind === 'mart') out.pending = { mart: true, shop: pickShop(rand, data, run.floor, 10, Boolean(run.townMap)) }
   else if (node.kind === 'trade') {
     // Troca: alguém da rota oferece um Pokémon (você escolhe quem dar; ele vem TRADE_LEVELS acima).
