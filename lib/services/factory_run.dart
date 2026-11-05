@@ -1389,6 +1389,8 @@ class FactoryRun {
   static ({String name, String scene}) placeInfo(FactoryData data, Json run, String id) {
     final generic = dungeons[id];
     if (generic != null) return (name: generic.name, scene: generic.scene);
+    final rare = rarePlaces[id];
+    if (rare != null) return (name: rare.name, scene: rare.scene);
     for (final w in waterChain) {
       if (w.$1 == id) return (name: w.$2, scene: w.$3);
     }
@@ -1425,6 +1427,25 @@ class FactoryRun {
     'volcano': (scene: 'volcano', name: 'Vulcão'),
   };
   static final dungeonIds = dungeons.keys.toList();
+
+  /// Os lugares raros (como nos jogos): às vezes aparecem numa bifurcação da rota ([rarePlaceChance]). 10 andares só de
+  /// selvagens e, no fim, o lendário do lugar (dá para capturar); vencer deixa uma Master Ball. Igual ao site.
+  static const rarePlaceChance = 0.05;
+  static const rarePlaceReward = 'master-ball';
+  static const rarePlaces = <String, ({String scene, String name, List<int> legends, bool mythic})>{
+    'faraway-island': (scene: 'forest', name: 'Faraway Island', legends: [151], mythic: true),
+    'navel-rock': (scene: 'mountain', name: 'Navel Rock', legends: [249, 250], mythic: false),
+    'bell-tower': (scene: 'tower', name: 'Bell Tower', legends: [250], mythic: false),
+    'distortion-world': (scene: 'ruins', name: 'Distortion World', legends: [487], mythic: false),
+    'cerulean-cave': (scene: 'crystal', name: 'Cerulean Cave', legends: [150], mythic: false),
+  };
+  static final rarePlaceIds = rarePlaces.keys.toList();
+
+  /// O lendário que espera no fim do lugar raro (sempre o mesmo na corrida).
+  static int? rareLegend(Json run, String place) {
+    final l = rarePlaces[place]?.legends ?? const <int>[];
+    return l.isEmpty ? null : l[((_int(run['seed']) & 0xFFFFFFFF) + _int(run['floor'])) % l.length];
+  }
 
   /// O andar do lugar (0 a dungeonLength − 1; o último é o do chefe).
   static int dungeonPos(Json run) => run['dungeon'] == null ? -1 : _int(run['floor']) - _int(run['dungeon']['start']);
@@ -1568,7 +1589,12 @@ class FactoryRun {
     }
     // Lugares sem treinadores (mar, fundo do mar, cavernas de gelo, lava, veneno, cristal): só selvagens, e o chefe é um
     // selvagem forte (dá para capturar).
-    final onlyWild = inside && wildOnly.contains(biome);
+    final rareHere = inside ? rarePlaces[run['dungeon']['place']] : null;
+    final onlyWild = inside && (wildOnly.contains(biome) || rareHere != null);
+    // No lugar raro: o lendário do lugar.
+    if (inside && pos >= dungeonLength - 1 && rareHere != null) {
+      return only({'kind': 'wildboss', 'legend': rareLegend(run, '${run['dungeon']['place']}'), 'rare': true, if (rareHere.mythic) 'mythic': true});
+    }
     // Num lugar (esgoto, base vilã...): no último andar, o chefe (na base, o vilão).
     if (inside && pos >= dungeonLength - 1) {
       return only(onlyWild ? {'kind': 'wildboss', 'area': true} : {'kind': run['dungeon']['place'] == 'base' ? 'boss' : 'dboss'});
@@ -1668,6 +1694,11 @@ class FactoryRun {
       final sea = info?.biome == 'water';
       if (pos == forks[sea ? 2 : 1]) add(waterNext(biome));
       if (pos == forks[2]) add(info?.side);
+      // Às vezes, um lugar raro (como nos jogos).
+      if (pos == forks[2] && rand() < rarePlaceChance) {
+        final id = rarePlaceIds[(rand() * rarePlaceIds.length).floor()];
+        add((id: id, name: rarePlaces[id]!.name, scene: rarePlaces[id]!.scene));
+      }
     }
     return {'floor': floor, 'biome': biome, if (city) 'town': true, 'options': options};
   }
@@ -2429,7 +2460,8 @@ class FactoryRun {
     // Venceu a revanche: o Campeão some (até o próximo).
     if (kind == 'rival') out['rivalRaces'] = ((run['rivalRaces'] as num?) ?? 0).toInt() + 1;
     // Venceu o chefe do lugar (ou o vilão na base): volta para a cidade.
-    if (run['dungeon'] != null && (kind == 'dboss' || kind == 'boss' || run['encounter']['area'] == true)) {
+    final rarePlace = run['dungeon'] != null && rarePlaces.containsKey(run['dungeon']['place']) && kind == 'wildboss';
+    if (run['dungeon'] != null && (kind == 'dboss' || kind == 'boss' || run['encounter']['area'] == true || rarePlace)) {
       out['dungeons'] = ((run['dungeons'] as num?) ?? 0).toInt() + 1;
       final place = run['dungeon']['place'];
       if (place != 'base') out['places'] = [...(run['places'] as List? ?? const []), place];
@@ -2495,7 +2527,8 @@ class FactoryRun {
     if (kind == 'wildboss' && foes.first['item'] != null && !_hasItem(out, '${foes.first['item']}')) drop = '${foes.first['item']}';
     if (drop != null) out['stash'] = [...((out['stash'] as List?) ?? const []), drop];
     // O treinador forte deixa um item: bolas e remédios na Bolsa, ficha de Move Tutor, os de segurar guardados.
-    final reward = kind == 'ace' || kind == 'dboss' ? run['encounter']['reward'] as String? : null;
+    // O lugar raro deixa uma Master Ball.
+    final reward = rarePlace ? rarePlaceReward : kind == 'ace' || kind == 'dboss' ? run['encounter']['reward'] as String? : null;
     if (reward != null && bagItems.contains(reward)) {
       (out['bag'] as Map)[reward] = (((out['bag'] as Map)[reward] as num?) ?? 0).toInt() + 1;
     } else if (reward != null && tokens.contains(reward)) {

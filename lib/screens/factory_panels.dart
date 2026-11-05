@@ -3838,7 +3838,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
     Widget placeButton(int k) {
       final node = options[k];
       final base = node['place'] == 'base';
-      return _menuButton('🕳️ ${(_biomeInfo[node['scene']] ?? biome).$2} ${base ? baseName : placeName(node['place'])}', widget.busy || down || FactoryRun.nodeBlocked(run, node) ? null : () => pick(k),
+      return _menuButton('${FactoryRun.rarePlaces.containsKey(node['place']) ? '✨' : '🕳️'} ${(_biomeInfo[node['scene']] ?? biome).$2} ${base ? baseName : placeName(node['place'])}', widget.busy || down || FactoryRun.nodeBlocked(run, node) ? null : () => pick(k),
           sub: FactoryRun.nodeBlocked(run, node)
               ? tr('Precisa da MO Surf (3ª insígnia).')
               : base

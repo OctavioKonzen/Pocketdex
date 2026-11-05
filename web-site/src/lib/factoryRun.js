@@ -1202,6 +1202,7 @@ export function waterNext(scene) {
 /** O nome e o cenário de um lugar (os genéricos, os da água ou os do mapa da região). */
 export function placeInfo(data, run, id) {
   if (DUNGEONS[id]) return DUNGEONS[id]
+  if (RARE_PLACES[id]) return RARE_PLACES[id]
   const water = WATER_CHAIN.find(([w]) => w === id)
   if (water) return { name: water[1], scene: water[2] }
   const info = routeInfo(data, run)
@@ -1248,6 +1249,23 @@ export const DUNGEONS = {
   volcano: { scene: 'volcano', name: 'Vulcão' },
 }
 export const DUNGEON_IDS = Object.keys(DUNGEONS)
+/**
+ * Os lugares raros (como nos jogos): às vezes aparecem numa bifurcação da rota
+ * (RARE_PLACE_CHANCE). 10 andares só de selvagens e, no fim, o lendário do
+ * lugar (dá para capturar); vencer deixa uma Master Ball. Igual ao app.
+ */
+export const RARE_PLACE_CHANCE = 0.05
+export const RARE_PLACE_REWARD = 'master-ball'
+export const RARE_PLACES = {
+  'faraway-island': { scene: 'forest', name: 'Faraway Island', legends: [151], mythic: true },
+  'navel-rock': { scene: 'mountain', name: 'Navel Rock', legends: [249, 250] },
+  'bell-tower': { scene: 'tower', name: 'Bell Tower', legends: [250] },
+  'distortion-world': { scene: 'ruins', name: 'Distortion World', legends: [487] },
+  'cerulean-cave': { scene: 'crystal', name: 'Cerulean Cave', legends: [150] },
+}
+export const RARE_PLACE_IDS = Object.keys(RARE_PLACES)
+/** O lendário que espera no fim do lugar raro (sempre o mesmo na corrida). */
+export const rareLegend = (run, place) => { const l = RARE_PLACES[place]?.legends ?? []; return l.length ? l[((run.seed >>> 0) + run.floor) % l.length] : null }
 /** O andar do lugar (0 a DUNGEON_LENGTH − 1; o último é o do chefe). */
 export const dungeonPos = (run) => (run.dungeon ? run.floor - run.dungeon.start : -1)
 
@@ -1285,8 +1303,10 @@ export function routeOptions(run, data, rand) {
     return { floor: run.floor, biome, options: [{ kind: 'dungeon', place: next.id, scene: next.scene, deeper: true }, { kind: 'leave' }] }
   }
   // Lugares sem treinadores (mar, fundo do mar, cavernas de gelo, lava, veneno, cristal): só selvagens, e o chefe é um selvagem forte (dá para capturar).
-  const wildOnly = inside && WILD_ONLY.includes(biome)
+  const wildOnly = inside && (WILD_ONLY.includes(biome) || Boolean(RARE_PLACES[run.dungeon.place]))
   // Num lugar (esgoto, base vilã...): no último andar, o chefe (na base, o vilão).
+  // No lugar raro: o lendário do lugar.
+  if (inside && pos >= DUNGEON_LENGTH - 1 && RARE_PLACES[run.dungeon.place]) return only({ kind: 'wildboss', legend: rareLegend(run, run.dungeon.place), rare: true, ...(RARE_PLACES[run.dungeon.place].mythic ? { mythic: true } : {}) })
   if (inside && pos >= DUNGEON_LENGTH - 1) return only(wildOnly ? { kind: 'wildboss', area: true } : { kind: run.dungeon.place === 'base' ? 'boss' : 'dboss' })
   // O último andar da cidade: o líder (com a equipe vilã na cidade, primeiro a base dela).
   if (city && pos >= CITY_BOSS) return only(boss.kind === 'villain' ? { kind: 'dungeon', place: 'base', scene: `base-${villainTeam(boss.name)}` } : { kind: 'boss' })
@@ -1361,6 +1381,11 @@ export function routeOptions(run, data, rand) {
     const sea = info?.biome === 'water'
     if (pos === FORKS[sea ? 2 : 1]) add(waterNext(biome))
     if (pos === FORKS[2]) add(info?.side)
+    // Às vezes, um lugar raro (como nos jogos).
+    if (pos === FORKS[2] && rand() < RARE_PLACE_CHANCE) {
+      const id = RARE_PLACE_IDS[Math.floor(rand() * RARE_PLACE_IDS.length)]
+      add({ id, scene: RARE_PLACES[id].scene })
+    }
   }
   return { floor: run.floor, biome, ...(city ? { town: true } : {}), options }
 }
@@ -1891,7 +1916,8 @@ export function winFloor(run, data, after = {}) {
   // Venceu a revanche: o Campeão some (até o próximo).
   if (kind === 'rival') out.rivalRaces = (run.rivalRaces ?? 0) + 1
   // Venceu o chefe do lugar (ou o vilão na base): volta para a cidade.
-  if (run.dungeon && (kind === 'dboss' || kind === 'boss' || run.encounter.area)) {
+  const rarePlace = Boolean(run.dungeon && RARE_PLACES[run.dungeon.place] && kind === 'wildboss')
+  if (run.dungeon && (kind === 'dboss' || kind === 'boss' || run.encounter.area || rarePlace)) {
     out.dungeons = (run.dungeons ?? 0) + 1
     if (run.dungeon.place !== 'base') out.places = [...(run.places ?? []), run.dungeon.place]
     // Num lugar da água, dá para seguir para o próximo (o mar depois da praia...); nos outros, volta.
@@ -1947,7 +1973,8 @@ export function winFloor(run, data, after = {}) {
   if (kind === 'wildboss' && foes[0].item && !hasItem(out, foes[0].item)) drop = foes[0].item
   if (drop) out.stash = [...(out.stash ?? []), drop]
   // O treinador forte deixa um item: bolas e remédios na Bolsa, ficha de Move Tutor, os de segurar guardados.
-  const reward = kind === 'ace' || kind === 'dboss' ? run.encounter.reward ?? null : null
+  // O lugar raro deixa uma Master Ball.
+  const reward = rarePlace ? RARE_PLACE_REWARD : kind === 'ace' || kind === 'dboss' ? run.encounter.reward ?? null : null
   if (reward && BAG_ITEMS.includes(reward)) out.bag[reward] = (out.bag[reward] ?? 0) + 1
   else if (reward && TOKENS.includes(reward)) out.tokens = { ...out.tokens, [reward]: (out.tokens?.[reward] ?? 0) + 1 }
   else if (reward) out.stash = [...(out.stash ?? []), reward]

@@ -435,6 +435,22 @@ void main() {
     // O 10º andar da rota é o chefe dela; o líder fica no último andar da cidade.
     expect(FactoryRun.routeOptions(on(FactoryRun.routeLength, 1), data, rand)['options'], [{'kind': 'dboss'}]);
     expect(FactoryRun.routeOptions(on(1 + FactoryRun.cityBoss, 1), data, rand)['options'], [{'kind': 'boss'}]);
+    // O lugar raro: às vezes na última bifurcação; dentro, só selvagens e, no fim, o lendário do lugar; vencer deixa uma
+    // Master Ball. Igual ao site.
+    final rare = (FactoryRun.routeOptions(on(1 + FactoryRun.forks[2], 1), data, () => 0.01)['options'] as List)
+        .firstWhere((o) => FactoryRun.rarePlaces.containsKey(o['place'])) as Map;
+    final inside = {...on(20, 1), 'dungeon': {'place': rare['place'], 'scene': rare['scene'], 'start': 11}};
+    expect((FactoryRun.routeOptions({...inside, 'floor': 13}, data, rand)['options'] as List).every((o) => o['kind'] != 'trainer' && o['kind'] != 'ace'), isTrue);
+    final end = (FactoryRun.routeOptions(inside, data, rand)['options'] as List).first as Map;
+    expect(end['kind'], 'wildboss');
+    expect(end['rare'], isTrue);
+    expect(FactoryRun.rarePlaces[rare['place']]!.legends, contains(end['legend']));
+    final rareWon = FactoryRun.winFloor({
+      ...inside, 'team': FactoryRun.teamOf(at(20)), 'bag': {...(at(20)['bag'] as Map), 'master-ball': 0},
+      'encounter': {'kind': 'wildboss', 'foes': [{'id': end['legend'], 'level': 30, 'iv': 31, 'ev': 0}]},
+    }, data);
+    expect((rareWon['bag'] as Map)['master-ball'], 1);
+    expect(rareWon['dungeon'], isNull);
     // O rival: em qualquer andar da rota; no último, sempre. Liga: a Elite dos Quatro e o Campeão em sequência.
     expect(FactoryRun.routeOptions(on(3, 0), data, seq([0.1, 0.5]))['options'], [{'kind': 'boss'}]);
     expect((FactoryRun.routeOptions(on(1, 0), data, seq([0.9, 0.5]))['options'] as List).first['kind'], isNot('boss'));

@@ -8,7 +8,7 @@ import {
   placeInfo, routeInfo, DBOSS_GIMMICK_FLOOR, UPGRADE_FX, SHORE, CAVE_OF, dungeonPos, routePos, DUNGEON_LENGTH, CITY_BOSS, waterNext, RIVAL_FLOOR, targetOf, rivalBoss, rocketBoss, townShop, townCenter, townHub, biomesLinked,
   isDoubleBattle,
   DOUBLE_FLOOR,
-  battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, atPc, pcOf, pcMove, pcSlots, PC_BOX, boxName, renameBox, boxWall, nextWall, setNick, gameOf, leagueAhead, rivalGrowth, bagsFor, NUZLOCKE_DEFAULT, levelCapOf, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
+  battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, RARE_PLACES, atPc, pcOf, pcMove, pcSlots, PC_BOX, boxName, renameBox, boxWall, nextWall, setNick, gameOf, leagueAhead, rivalGrowth, bagsFor, NUZLOCKE_DEFAULT, levelCapOf, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
   HELD_BOOST, levelTo, MAX_TEAM, memberOf, movesAt, nextFloor, nextRandom, overflowPoints, pokemonPrice, runCoins, setMainItem, shopPrice,
   SHINY_BOOST, FOE_SHINY_BOOST, SHINY_CHANCE, START_BAG, START_BALLS, startersOf, buyShiny, shinyPrice, unlockShiny, claimStarter, freePick, canEvolveWith, teachMove,
   equipFromStash, gimmicksOf, setGimmick, storyLine, startRun, takeCard, teamDown, applyBagItem, winFloor, chooseNode, routeOptions, routeCities,
@@ -783,11 +783,23 @@ describe('mapa da corrida', () => {
     }
     for (let i = 0; i < 600; i++) {
       const route = routeOptions(at(1 + FORKS[i % 3]), data, rand)
-      expect(route.options.length).toBe((1 + FORKS[i % 3] <= 2 ? 2 : 3) + (i % 3 === 2 ? 1 : 0))
+      // (o lugar raro, quando aparece, é a mais.)
+      expect(route.options.filter((o) => !RARE_PLACES[o.place]).length).toBe((1 + FORKS[i % 3] <= 2 ? 2 : 3) + (i % 3 === 2 ? 1 : 0))
       expect(route.options.some(isBattleNode)).toBe(true)
       for (const o of route.options.filter((o) => o.kind !== 'dungeon')) kinds[o.kind] = (kinds[o.kind] ?? 0) + 1
       for (const o of route.options.filter((o) => o.kind === 'wild')) expect(Object.keys(BIOMES)).toContain(o.biome)
     }
+    // O lugar raro: às vezes na última bifurcação; dentro, só selvagens e, no fim, o lendário do lugar; vencer deixa uma Master Ball.
+    const rare = routeOptions(at(1 + FORKS[2]), data, () => 0.01).options.find((o) => RARE_PLACES[o.place])
+    expect(rare).toBeTruthy()
+    const inside = { ...at(20), dungeon: { place: rare.place, scene: rare.scene, start: 11 } }
+    expect(routeOptions({ ...inside, floor: 13 }, data, rand).options.every((o) => o.kind !== 'trainer' && o.kind !== 'ace')).toBe(true)
+    const end = routeOptions(inside, data, rand).options[0]
+    expect(end).toMatchObject({ kind: 'wildboss', rare: true })
+    expect(RARE_PLACES[rare.place].legends).toContain(end.legend)
+    const won = winFloor({ ...inside, team: runAt(20).team, bag: { ...runAt(20).bag, 'master-ball': 0 }, encounter: { kind: 'wildboss', foes: [{ id: end.legend, level: 30, iv: 31, ev: 0 }] } }, data, {})
+    expect(won.bag['master-ball']).toBe(1)
+    expect(won.dungeon).toBe(null)
     expect(Object.keys(kinds).sort()).toEqual(['ace', 'center', 'event', 'mart', 'trade', 'trainer', 'wild', 'wildboss'])
     expect(kinds.center).toBeLessThan(kinds.mart)
     for (let i = 0; i < 50; i++) for (const o of routeOptions(at(1), data, rand).options) expect(['wild', 'trainer']).toContain(o.kind)
