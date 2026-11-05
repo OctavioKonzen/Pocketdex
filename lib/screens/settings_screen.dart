@@ -17,6 +17,7 @@ import '../services/app_settings.dart';
 import '../widgets/pokemon_sprite.dart';
 import '../services/medals.dart';
 import '../widgets/medal_badge.dart';
+import 'home_screen.dart' show HomeLayout;
 import 'tools/pick_pokemon.dart';
 import '../services/auth_service.dart';
 import '../services/battle_sounds.dart';
@@ -155,6 +156,16 @@ class SettingsScreen extends StatelessWidget {
                         value: settings.textSize,
                         onChanged: settings.setTextSize,
                         options: [for (final t in AppSettings.textSizes) (t.$1, t.$2)],
+                      ),
+                    ),
+                    row(
+                      title: 'Início',
+                      subtitle: 'A ordem dos cartões e quais aparecem na tela inicial.',
+                      trailing: PillButton(
+                        key: const ValueKey('home-edit'),
+                        label: '✏️ ${tr('Editar')}',
+                        color: const Color(0xFF9333EA),
+                        onPressed: () => HomeLayout.edit(context),
                       ),
                     ),
                   ]),

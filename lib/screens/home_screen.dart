@@ -322,12 +322,10 @@ class _HomeScreenState extends State<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: 6),
-          child: Row(children: [
-            const Expanded(child: Text('Explorar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700))),
-            TextButton(key: const ValueKey('home-edit'), onPressed: () => HomeLayout.edit(context), child: Text('✏️ ${tr('Editar')}')),
-          ]),
+        // Editar a ordem e os cartões fica nas Configurações (Aparência → Início).
+        const Padding(
+          padding: EdgeInsets.only(bottom: 6),
+          child: Text('Explorar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
         ),
         GridView(
           shrinkWrap: true,

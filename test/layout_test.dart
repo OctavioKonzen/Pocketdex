@@ -85,7 +85,7 @@ final screens = <String, Widget Function()>{
   // A Raid da semana: o chefe, a barra do grupo e a luta.
   'Raid da semana': () => const RaidScreen(),
   // O Início do seu jeito: Editar (a ordem e o que aparece).
-  'Início: editar': () => const HomeScreen(),
+  'Início: editar': () => const SettingsScreen(),
   // A escolha do treinador: o filtro de meninas (com os que só respiram, como a Dawn e a Lyra).
   'Escolher treinador (meninas)': () => const Scaffold(body: SingleChildScrollView(child: TrainerPicker())),
   'Início (tema Charizard)': () => const HomeScreen(),
@@ -294,8 +294,13 @@ Future<void> _openTeam(WidgetTester tester) async {
 // Telas que abrem algo antes de conferir (ex.: a folha de filtros).
 final Map<String, Future<void> Function(WidgetTester)> actions = {
   // O seu perfil: trocar a foto (Pokémon ou treinador) e o treinador.
+  // O botão de editar o Início fica nas Configurações (Aparência).
   'Início: editar': (tester) async {
-    await tester.scrollUntilVisible(find.byKey(const ValueKey('home-edit')), 200, scrollable: find.byType(Scrollable).first);
+    await tester.tap(find.byKey(const ValueKey('settings-section-Aparência')));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.ensureVisible(find.byKey(const ValueKey('home-edit')));
+    await tester.pump(const Duration(milliseconds: 300));
     await tester.tap(find.byKey(const ValueKey('home-edit')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
