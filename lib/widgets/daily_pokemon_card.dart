@@ -92,14 +92,18 @@ class _DailyPokemonCardState extends State<DailyPokemonCard> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('⭐ Pokémon do dia', style: TextStyle(color: Colors.white.withAlpha(220), fontSize: 12, fontWeight: FontWeight.bold)),
-                      Text('$name  #${_id.toString().padLeft(3, '0')}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 19,
-                              fontWeight: FontWeight.w900,
-                              shadows: [Shadow(color: Colors.black38, blurRadius: 4)])),
+                      // Nome longo (Krookodile, Crabominable...) em tela pequena: diminui em vez de cortar.
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text('$name  #${_id.toString().padLeft(3, '0')}',
+                            maxLines: 1,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 19,
+                                fontWeight: FontWeight.w900,
+                                shadows: [Shadow(color: Colors.black38, blurRadius: 4)])),
+                      ),
                       if (_flavor.isNotEmpty)
                         // A descrição vem do banco já no idioma (sem tradução automática).
                         Text(_flavor, style: const TextStyle(color: Colors.white, fontSize: 12)),
