@@ -84,6 +84,21 @@ def fit(path):
     return [round(zoom, 2), round((cx - W / 2) / M, 3), round((cy - H / 2) / M, 3), round(W / M, 3), round(H / M, 3)]
 
 
+def stand(path):
+    """A largura e a altura do quadro típico (mediana dos quadros), em fração do
+    lado maior do GIF: o tamanho de verdade do Pokémon no desenho. Andando com
+    você, ele fica na altura dele perto do treinador (a altura da espécie)."""
+    from PIL import Image, ImageFile, ImageSequence
+    ImageFile.LOAD_TRUNCATED_IMAGES = True
+    im = Image.open(path)
+    M = max(im.size)
+    boxes = [b for fr in ImageSequence.Iterator(im) if (b := fr.convert('RGBA').getchannel('A').getbbox())]
+    if not boxes:
+        return None
+    mid = lambda xs: sorted(xs)[len(xs) // 2]
+    return [round(mid([b[2] - b[0] for b in boxes]) / M, 3), round(mid([b[3] - b[1] for b in boxes]) / M, 3)]
+
+
 def foot(path):
     """Quanto o pé do quadro típico fica acima do fundo do GIF (fração do lado
     maior): quem pula ou flutua no meio da animação. Na batalha o Pokémon
@@ -147,6 +162,8 @@ def describe(root):
     have['fit'] = {sub: fits(sub, have[sub], root) for sub in kinds}
     have['foot'] = {sub: {str(pid): v for pid in have[sub] if (v := foot(path(sub, pid)))} for sub in kinds}
     have['still'] = {sub: [pid for pid in have[sub] if frames(path(sub, pid)) == 1] for sub in kinds}
+    # O tamanho de verdade do Pokémon no desenho (de frente): andando com você, na altura dele.
+    have['stand'] = {'front': {str(pid): v for pid in have.get('front', []) if (v := stand(path('front', pid)))}}
     have['size'] = {sub: {str(pid): list(Image.open(path(sub, pid)).size) for pid in have[sub]} for sub in kinds}
     # Impressão digital de cada GIF: quando um muda, o navegador não usa o
     # velho do cache.

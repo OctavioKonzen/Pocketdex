@@ -16,6 +16,7 @@ import '../utils/hud_colors.dart';
 
 import '../i18n/text.dart';
 import '../services/account_sync.dart';
+import '../services/animated_sprites.dart';
 import '../services/battle_log.dart';
 import '../services/battle_sounds.dart';
 import '../services/damage_calc.dart';
@@ -3824,6 +3825,12 @@ class _FactoryScreenState extends State<FactoryScreen> {
   /// O mapa: o lugar de agora no campo (o andar, pequeno, num canto) e os caminhos no menu. Na cidade, o ginásio, o
   /// Poké Mart, o Centro, a Creche e o lugar perto dela; dentro de um lugar, os andares dele até o chefe. Igual ao site.
   Widget _mapFrame(Json run, FactoryData data, Map? lead, List<Widget> tools) {
+    // O Pokémon que segue você na cidade, na altura de verdade perto do treinador (followerFit). Igual ao site.
+    // A altura dele vem do banco: quando chegar, a tela desenha de novo (o treinador também muda de tamanho).
+    if (lead != null) loadBattleHeight((lead['id'] as num).toInt(), () => mounted ? setState(() {}) : null);
+    final follow = lead == null
+        ? null
+        : followerFit(battleHeights[(lead['id'] as num).toInt()], AnimatedSprites.instance.standOf((lead['id'] as num).toInt()));
     final boss = FactoryRun.bossOf(data, run);
     final target = FactoryRun.targetOf(data, run);
     final cities = FactoryRun.routeCities(data, run);
@@ -3985,7 +3992,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                     ),
                   ),
                 if (coach != null && (meeting || rival != null)) _far(TrainerSprite(coach, height: farPerson(w)), w, h),
-                if (town && me != null) Positioned(left: w * 0.02, bottom: h * 0.23, child: TrainerSprite(me, height: nearPerson(w))),
+                if (town && me != null) Positioned(left: w * 0.02, bottom: h * 0.23, child: TrainerSprite(me, height: nearPerson(w) * (follow?.k ?? 1))),
                 // Quem vai na frente acompanha você na cidade (como o Pokémon que segue o treinador). Igual ao site.
                 if (town && lead != null)
                   Positioned(
@@ -3995,7 +4002,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                       bottom: h * 0.23,
                       width: w * 0.58,
                       height: w * 0.58,
-                      child: StageMon(id: (lead['id'] as num).toInt(), shiny: lead['shiny'] == true, base: false, scene: _scene)),
+                      child: StageMon(id: (lead['id'] as num).toInt(), shiny: lead['shiny'] == true, base: false, scene: _scene, scale: follow?.scale)),
                 if (!town && lead != null) _fieldMon(lead, w, h, back: true),
               ];
             }),

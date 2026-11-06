@@ -45,6 +45,24 @@ const _platforms = {
 
 /// O tamanho na batalha pela altura do Pokémon (decímetros), como nos jogos: um Joltik bem pequeno, um Charizard quase do
 /// tamanho do espaço e os gigantes ocupando tudo. Igual ao site (battleScale).
+/// O Pokémon que segue você, ao lado do treinador, na altura de verdade: a da espécie perto de uma pessoa de
+/// personDm (o Pikachu, de 4 dm, chega a um quarto do treinador; o Koraidon, de 25, a uma vez e meia). Quem é grande
+/// demais para o campo deixa a cena menor (o treinador junto, até followMin), sem cortar. k: o tamanho da cena (o do
+/// treinador); scale: o do Pokémon na caixa dele. [stand]: AnimatedSprites.standOf. Igual ao site.
+const personDm = 16;
+const followMin = 0.35;
+({double k, double scale}) followerFit(num? height, List<double> stand) {
+  final w = max(stand[0], 0.01), h = max(stand[1], 0.01);
+  // A altura do treinador, em caixas do Pokémon (nearPerson).
+  final person = 0.95 * battleScale(personDm);
+  final want = person * max(0.15, (height ?? 10) / personDm);
+  // Cabe no campo: até 0,95 caixa de altura e 1,3 de largura (um pouco por trás do treinador).
+  final room = min(0.95, 1.3 * h / w);
+  final k = max(followMin, min(1.0, room / want));
+  // Mesmo com a cena no mínimo, o Pokémon não passa do campo (o Wailord fica do tamanho que cabe).
+  return (k: k, scale: min(want * k, room) / (0.95 * h));
+}
+
 double battleScale(num? height) => sqrt((height ?? 10) / 20).clamp(0.3, 1.0).toDouble();
 
 /// A altura de uma pessoa (~16 dm) na mesma escala dos Pokémon, num campo de largura [w]: lá atrás (a caixa do Pokémon
@@ -129,12 +147,15 @@ class _PlatformBaseState extends State<PlatformBase> {
 /// Um Pokémon parado no campo (as telas da Battle Factory): do tamanho dele (pela altura), em cima da base dele, no
 /// mesmo lugar da batalha. Vai num Positioned quadrado.
 class StageMon extends StatefulWidget {
-  const StageMon({super.key, required this.id, this.shiny = false, this.back = false, this.base = true, required this.scene});
+  const StageMon({super.key, required this.id, this.shiny = false, this.back = false, this.base = true, required this.scene, this.scale});
   final int id;
   final bool shiny, back;
 
   /// Com a base embaixo (fora da batalha, andando com você: sem).
   final bool base;
+
+  /// O tamanho (null: o da batalha, pela altura). Andando com você: o de followerFit.
+  final double? scale;
   final String scene;
 
   @override
@@ -152,7 +173,7 @@ class _StageMonState extends State<StageMon> {
   Widget build(BuildContext context) => Stack(clipBehavior: Clip.none, fit: StackFit.expand, children: [
         if (widget.base) PlatformBase(scene: widget.scene, side: widget.back ? 'mine' : 'foe', id: widget.id),
         Transform.scale(
-          scale: battleScale(battleHeights[widget.id]),
+          scale: widget.scale ?? battleScale(battleHeights[widget.id]),
           alignment: Alignment.bottomCenter,
           // Sem a base (andando com você): o tamanho normal da figura, como fora da batalha (na batalha, a animação
           // inteira cabe na caixa e quem é largo, como o Koraidon, encolhe). Igual ao site.

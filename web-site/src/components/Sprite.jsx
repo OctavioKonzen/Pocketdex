@@ -28,8 +28,11 @@ const describe = (d = {}, folder) => ({
   hash: d.hash ?? {},
   // Formas só de aparência (Vivillon, Unown, Alcremie...): { front: { "666-polar": {size, hash, fit, foot, still} } }.
   forms: d.forms ?? {},
+  // O tamanho de verdade do Pokémon no desenho de frente: [largura, altura] do quadro típico, em fração do lado maior.
+  stand: d.stand?.front ?? {},
 })
-function useAnimated() {
+/** Os dados dos sprites animados (null enquanto carregam; a tela desenha de novo quando chegam). */
+export function useAnimated() {
   const [sets, setSets] = useState(animated)
   useEffect(() => {
     if (animated) return undefined
@@ -81,7 +84,27 @@ export function animatedOf(path, set, back) {
     fit: set.fit[kind]?.[m[2]] ?? [1, 0, 0],
     foot: set.foot[kind]?.[m[2]] ?? 0,
     size: set.size[kind]?.[m[2]] ?? null,
+    stand: set.stand?.[m[2]] ?? null,
   }
+}
+
+/**
+ * Quanto do lado da caixa o Pokémon ocupa de verdade, de frente, fora da
+ * batalha (com fill 1): [largura, altura] do desenho. O GIF animado usa o
+ * quadro típico; a arte parada, o recorte dela (box). Igual ao app.
+ */
+export function standOf(path, sets, box) {
+  const a = path && sets ? animatedOf(path, sets, false) : null
+  if (a) {
+    const z = Math.max(1, a.fit?.[0] ?? 1)
+    const [w, h] = a.stand ?? [1 / z, 1 / z]
+    return [w * z, h * z]
+  }
+  if (box?.length >= 4) {
+    const w = box[2] - box[0], h = box[3] - box[1], m = Math.max(w, h, 1)
+    return [w / m, h / m]
+  }
+  return [0.9, 0.9]
 }
 
 /**

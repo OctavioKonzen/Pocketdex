@@ -32,6 +32,9 @@ class _Set {
   final Map<String, Map<int, double>> foot = {for (final k in AnimatedSprites.kinds) k: {}};
   final Map<String, Map<int, List<int>>> size = {for (final k in AnimatedSprites.kinds) k: {}};
 
+  /// O tamanho de verdade do Pokémon no desenho de frente: [largura, altura] do quadro típico, em fração do lado maior.
+  Map<int, List<double>> stand = {};
+
   /// Impressão digital de cada GIF: vai na URL, então quando o banco troca um
   /// sprite o celular não usa o velho que ficou no cache da internet.
   final Map<String, Map<int, String>> hash = {for (final k in AnimatedSprites.kinds) k: {}};
@@ -48,6 +51,7 @@ class _Set {
       size[kind] = byId((raw['size'] as Map?)?[kind], (v) => [for (final x in v as List) (x as num).toInt()]);
       hash[kind] = byId((raw['hash'] as Map?)?[kind], (v) => '$v');
     }
+    stand = byId((raw['stand'] as Map?)?['front'], (v) => [for (final x in v as List) (x as num).toDouble()]);
   }
 
   SpriteSource source(String kind, int id) {
@@ -124,6 +128,15 @@ class AnimatedSprites {
       if (_bw.have[front]!.contains(id) && !_bw.still[front]!.contains(id)) return null;
     }
     return _bw.source(kind, id);
+  }
+
+  /// Quanto do lado da caixa o Pokémon ocupa de verdade, de frente, fora da batalha (com fill 1): [largura, altura]
+  /// do desenho (o quadro típico do GIF). Sem GIF, um padrão. Igual ao site (standOf).
+  List<double> standOf(int id) {
+    if (!_bw.have['front']!.contains(id)) return const [0.9, 0.9];
+    final z = max(1.0, _bw.fit['front']![id]?.first ?? 1.0);
+    final s = _bw.stand[id] ?? [1 / z, 1 / z];
+    return [s[0] * z, s[1] * z];
   }
 
   /// Quanto [to] tem que crescer para ter o mesmo tamanho de pixel de [from]

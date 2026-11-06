@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import PokeIcon from './PokeIcon'
 import PcPanel from './PcPanel'
-import Sprite from './Sprite'
+import Sprite, { standOf, useAnimated } from './Sprite'
 import { BattleBackground, battleScale, battleScene, farPerson, foeBottom, nearPerson, PlatformBase } from './BattleScene'
 import BwBag from './BwBag'
 import BwParty from './BwParty'
@@ -1537,10 +1537,32 @@ function shareSummary(last, byId) {
  * (grande, na frente à esquerda) ou de frente lá atrás à direita, do tamanho
  * dele (pela altura) e em cima da base dele.
  */
-function FieldMon({ mon, byId, back = false, follower = false, scene }) {
+/**
+ * O Pokémon que segue você, ao lado do treinador, na altura de verdade: a da
+ * espécie perto de uma pessoa de PERSON_DM (o Pikachu, de 4 dm, chega a um
+ * quarto do treinador; o Koraidon, de 25, a uma vez e meia). Quem é grande
+ * demais para o campo deixa a cena menor (o treinador junto, até FOLLOW_MIN),
+ * sem cortar. k: o tamanho da cena (o do treinador); scale: o do Pokémon na
+ * caixa dele. Igual ao app.
+ */
+export const PERSON_DM = 16
+export const FOLLOW_MIN = 0.35
+export function followerFit(height, stand) {
+  const [w, h] = stand
+  // A altura do treinador, em caixas do Pokémon (nearPerson).
+  const person = 0.95 * battleScale(PERSON_DM)
+  const want = person * Math.max(0.15, (height ?? 10) / PERSON_DM)
+  // Cabe no campo: até 0,95 caixa de altura e 1,3 de largura (um pouco por trás do treinador).
+  const room = Math.min(0.95, (1.3 * Math.max(h, 0.01)) / Math.max(w, 0.01))
+  const k = Math.max(FOLLOW_MIN, Math.min(1, room / want))
+  // Mesmo com a cena no mínimo, o Pokémon não passa do campo (o Wailord fica do tamanho que cabe).
+  return { k, scale: Math.min(want * k, room) / (0.95 * Math.max(h, 0.01)) }
+}
+
+function FieldMon({ mon, byId, back = false, follower = false, scene, followScale = null }) {
   const p = byId?.get(mon.id)
   if (!p) return null
-  const scale = battleScale(p.height)
+  const scale = follower && followScale != null ? followScale : battleScale(p.height)
   // follower: andando com você na cidade (de frente, do tamanho dele perto de você, sem base).
   const place = follower ? 'absolute bottom-[23%] left-[42%] w-[58%]' : back ? 'absolute bottom-[22%] left-[1%] w-[58%]' : 'absolute right-[11%] w-[26%]'
   return (
@@ -2029,6 +2051,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
   const trainers = useTrainers()
   const me = useMyTrainer()
   const [fieldRef, width] = useWidth()
+  const sprites = useAnimated()
   const [panel, setPanel] = useState(null) // embaixo do menu: 'bag' | 'team' (na loja, a lista de compras)
   // Os golpes que o time aprende subindo de nível (como nos jogos), um de cada vez: queue [[posição, golpe, entrou sozinho]];
   // step 'ask' (quer aprender?) ou 'forget' (a tela dos 5 golpes); msg: o que aconteceu (com CONTINUAR); pick: o golpe tocado.
@@ -2070,6 +2093,9 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     saveFactory({ ...factory, run: out })
   }
   const lead = run?.team.find((m) => (m.hp ?? 1) > 0) ?? run?.team[0]
+  // O Pokémon que segue você na cidade, na altura de verdade perto do treinador (followerFit).
+  const leadInfo = lead && byId?.get(lead.id)
+  const follow = leadInfo ? followerFit(leadInfo.height, standOf(lead.shiny ? shinyPath(leadInfo.sprite) : leadInfo.sprite, sprites, leadInfo.box)) : { k: 1, scale: null }
   const links = run && (
     <div className="mt-2 flex flex-wrap justify-between gap-2 text-sm">
       <button type="button" onClick={onExit} className="cursor-pointer text-muted hover:text-text">← {t('Sair (a corrida fica salva)')}</button>
@@ -2561,9 +2587,9 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         </div>
         {floorTag && <span className="absolute right-3 top-2 rounded bg-slate-900/70 px-1.5 text-[10px] font-black text-white sm:text-xs" data-testid="route-floor">{floorTag}</span>}
         {coach && (meeting || rival) && <FarStand scene={meetScene}><TrainerSprite trainer={coach} height={farPerson(width)} /></FarStand>}
-        {town && me && <div className="absolute bottom-[23%] left-[2%] flex"><TrainerSprite trainer={me} height={nearPerson(width)} /></div>}
+        {town && me && <div className="absolute bottom-[23%] left-[2%] flex"><TrainerSprite trainer={me} height={nearPerson(width) * follow.k} /></div>}
         {/* Quem vai na frente acompanha você na cidade (como o Pokémon que segue o treinador). */}
-        {town && lead && <FieldMon mon={lead} byId={byId} follower scene={run.scene} />}
+        {town && lead && <FieldMon mon={lead} byId={byId} follower scene={run.scene} followScale={follow.scale} />}
         {!town && lead && <FieldMon mon={lead} byId={byId} back scene={meetScene} />}
       </Field>
     )
