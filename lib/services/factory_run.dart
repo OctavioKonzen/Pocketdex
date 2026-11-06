@@ -349,10 +349,13 @@ class FactoryRun {
 
   /// Na primeira vez escolhe um inicial grátis; depois só os que tem (os outros se compram).
   static bool freePick(Json factory) => ownedOf(factory).isEmpty;
-  /// Lendários e míticos (raridade 1 e 2): nunca são iniciais (nem à venda para começar). Igual ao site.
+  /// Lendários e míticos (raridade 1 e 2): não são iniciais nem estão à venda. A exceção: o que você capturou shiny
+  /// numa corrida (factory.legends) vira inicial (já shiny). Igual ao site.
   static bool isLegendary(FactoryData data, int id) => const [1, 2].contains(data.species[id]?[2]);
-  static List<int> startersOf(Json factory, FactoryData data) =>
-      freePick(factory) ? [...data.starters] : [for (final id in ownedOf(factory)) if (!isLegendary(data, id)) id];
+  static bool _earnedLegend(Json factory, int id) => ((factory['legends'] as List?) ?? const []).contains(id);
+  static List<int> startersOf(Json factory, FactoryData data) => freePick(factory)
+      ? [...data.starters]
+      : [for (final id in ownedOf(factory)) if (!isLegendary(data, id) || _earnedLegend(factory, id)) id];
   static List<int> shiniesOf(Json factory) => [for (final x in (factory['shinies'] as List?) ?? const []) _int(x)];
 
   /// Escolhe o inicial grátis (só na primeira vez).
@@ -406,8 +409,8 @@ class FactoryRun {
       final out = <int>[];
       for (final id in list) {
         final b = baseForm(data, id);
-        // Os lendários e míticos saem (não são iniciais): as moedas voltam inteiras.
-        if (!out.contains(b) && !isLegendary(data, b)) out.add(b);
+        // Os lendários e míticos comprados saem (não são iniciais): as moedas voltam inteiras. Fica o capturado shiny.
+        if (!out.contains(b) && (!isLegendary(data, b) || _earnedLegend(factory, b))) out.add(b);
       }
       return out;
     }
@@ -422,7 +425,7 @@ class FactoryRun {
     final before = ownedOf(factory);
     for (final id in before) {
       final base = baseForm(data, id);
-      if (isLegendary(data, base)) {
+      if (isLegendary(data, base) && !_earnedLegend(factory, base)) {
         refund += price(id);
         continue;
       }
@@ -902,11 +905,21 @@ class FactoryRun {
     return {...factory, 'coins': _int(factory['coins']) - price, 'shinies': [...shinies, id]};
   }
 
-  /// Capturou um shiny: se é um dos iniciais dele, libera o shiny para começar.
+  /// Capturou um shiny: se é um dos iniciais dele, libera o shiny para começar. Um lendário ou mítico shiny capturado
+  /// na corrida vira inicial (já shiny). Igual ao site.
   static Json unlockShiny(Json factory, FactoryData data, Map? mon) {
     final shinies = shiniesOf(factory);
     if (mon == null || mon['shiny'] != true) return factory;
     final id = _int(mon['id']);
+    final base = baseForm(data, id);
+    if (isLegendary(data, base) && !_earnedLegend(factory, base)) {
+      return {
+        ...factory,
+        'legends': [...((factory['legends'] as List?) ?? const []), base],
+        'owned': {...ownedOf(factory), base}.toList(),
+        'shinies': {...shinies, base}.toList(),
+      };
+    }
     if (shinies.contains(id) || !(data.starters.contains(id) || ownedOf(factory).contains(id))) return factory;
     return {...factory, 'shinies': [...shinies, id]};
   }

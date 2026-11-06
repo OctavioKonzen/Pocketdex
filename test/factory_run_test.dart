@@ -133,6 +133,14 @@ void main() {
     final legend = FactoryRun.normalizeOwned({...FactoryRun.empty(), 'coins': 10, 'owned': [1, 1007, 151], 'shinies': [1007]}, data);
     expect([legend['owned'], legend['shinies'], legend['coins']], [[1], [], 10 + legendPrice(1007) + legendPrice(151)]);
     expect(FactoryRun.startRun({...FactoryRun.empty(), 'owned': [1, 1007]}, data, 1007, 42), isNull);
+    // A exceção: o lendário capturado shiny na corrida vira inicial (já shiny), e não é devolvido.
+    final caught = FactoryRun.unlockShiny({...FactoryRun.empty(), 'owned': [1]}, data, {'id': 1007, 'shiny': true});
+    expect([caught['owned'], caught['shinies'], caught['legends']], [[1, 1007], [1007], [1007]]);
+    expect(FactoryRun.startersOf(caught, data), [1, 1007]);
+    expect(identical(FactoryRun.normalizeOwned(caught, data), caught), isTrue);
+    final legendRun = FactoryRun.startRun(caught, data, 1007, 42, shiny: true)!;
+    expect([FactoryRun.teamOf(legendRun).first['id'], FactoryRun.teamOf(legendRun).first['shiny']], [1007, true]);
+    expect(FactoryRun.unlockShiny({...FactoryRun.empty(), 'owned': [1]}, data, {'id': 1007})['owned'], [1]);
     var f = {...rich, 'best': 999, 'owned': [1, 4, 7, 152, 155, 158, 252, 255, 387, 390]};
     f = _buyAll(f);
     final run = FactoryRun.startRun(f, data, 1, 42)!;

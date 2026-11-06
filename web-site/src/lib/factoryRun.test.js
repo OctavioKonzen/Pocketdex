@@ -213,6 +213,13 @@ describe('Battle Factory (roguelike)', () => {
     const legend = normalizeOwned({ ...emptyFactory(), coins: 10, owned: [1, 1007, 151], shinies: [1007] }, data)
     expect(legend).toMatchObject({ owned: [1], shinies: [], coins: 10 + price(1007) + price(151) })
     expect(startRun({ ...emptyFactory(), owned: [1, 1007] }, data, 1007, 42)).toBe(null)
+    // A exceção: o lendário capturado shiny na corrida vira inicial (já shiny), e não é devolvido.
+    const caught = unlockShiny({ ...emptyFactory(), owned: [1] }, data, { id: 1007, shiny: true })
+    expect(caught).toMatchObject({ owned: [1, 1007], shinies: [1007], legends: [1007] })
+    expect(startersOf(caught, data)).toEqual([1, 1007])
+    expect(normalizeOwned(caught, data)).toBe(caught)
+    expect(startRun(caught, data, 1007, 42, true).team[0]).toMatchObject({ id: 1007, shiny: true })
+    expect(unlockShiny({ ...emptyFactory(), owned: [1] }, data, { id: 1007 })).toMatchObject({ owned: [1] })
     // Melhorias: cada nível mais caro, até o máximo; valem na próxima corrida.
     let f = { ...rich, coins: 999999, best: 999, owned: [1, 4, 7, 152, 155, 158, 252, 255, 387, 390] }
     const p1 = upgradePrice(f, 'level')

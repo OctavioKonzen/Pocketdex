@@ -259,9 +259,14 @@ export function factoryOf(league) {
 export const pokemonPrice = (bst) => Math.max(20, Math.round(pow15(Math.max(0, bst - 250)) / 10 / 5) * 5)
 
 /** Com quem dá para começar: na primeira vez, qualquer inicial (grátis); depois, os que você tem. */
-/** Lendários e míticos (raridade 1 e 2): nunca são iniciais (nem à venda para começar). */
+/**
+ * Lendários e míticos (raridade 1 e 2): não são iniciais nem estão à venda. A
+ * exceção: o que você capturou shiny numa corrida (factory.legends) vira
+ * inicial (já shiny).
+ */
 export const isLegendary = (data, id) => [1, 2].includes(data.species[id]?.[2])
-export const startersOf = (factory, data) => (freePick(factory) ? [...data.starters] : factory.owned.filter((id) => !isLegendary(data, id)))
+const earnedLegend = (factory, id) => (factory.legends ?? []).includes(id)
+export const startersOf = (factory, data) => (freePick(factory) ? [...data.starters] : factory.owned.filter((id) => !isLegendary(data, id) || earnedLegend(factory, id)))
 
 /** Escolhe o inicial grátis (só na primeira vez). */
 export function claimStarter(factory, data, id) {
@@ -299,8 +304,8 @@ export function normalizeOwned(factory, data) {
   // A dupla de treinadores salva com mais de 6 (os dois times inteiros): a batalha não começava. Fica com 3 de cada.
   const pairFoes = factory.run?.encounter?.pair ? factory.run.encounter.foes ?? [] : []
   if (pairFoes.length > 2 * PAIR_TEAM) factory = { ...factory, run: { ...factory.run, encounter: { ...factory.run.encounter, foes: [...pairFoes.slice(0, PAIR_TEAM), ...pairFoes.slice(-PAIR_TEAM)] } } }
-  // Os lendários e míticos saem (não são iniciais): as moedas voltam inteiras.
-  const fix = (list) => [...new Set((list ?? []).map((id) => baseForm(data, id)))].filter((id) => !isLegendary(data, id))
+  // Os lendários e míticos comprados saem (não são iniciais): as moedas voltam inteiras. Fica o capturado shiny (legends).
+  const fix = (list) => [...new Set((list ?? []).map((id) => baseForm(data, id)))].filter((id) => !isLegendary(data, id) || earnedLegend(factory, id))
   const owned = fix(factory.owned)
   const shinies = fix(factory.shinies)
   const same = (a, b) => a.length === (b ?? []).length && a.every((x, i) => x === b[i])
@@ -311,7 +316,7 @@ export function normalizeOwned(factory, data) {
   const kept = []
   for (const id of factory.owned ?? []) {
     const base = baseForm(data, id)
-    if (isLegendary(data, base)) { refund += price(id); continue }
+    if (isLegendary(data, base) && !earnedLegend(factory, base)) { refund += price(id); continue }
     if (id === base) { kept.push(id); continue }
     refund += kept.includes(base) || (factory.owned ?? []).includes(base) ? price(id) : price(id) - price(base)
     kept.push(base)
@@ -342,9 +347,16 @@ export function buyShiny(factory, data, id) {
   return { ...factory, coins: factory.coins - price, shinies: [...shinies, id] }
 }
 
-/** Capturou um shiny: se é um dos iniciais dele, libera o shiny para começar. */
+/**
+ * Capturou um shiny: se é um dos iniciais dele, libera o shiny para começar. Um
+ * lendário ou mítico shiny capturado na corrida vira inicial (já shiny).
+ */
 export function unlockShiny(factory, data, mon) {
   const shinies = factory.shinies ?? []
+  const base = mon?.shiny ? baseForm(data, mon.id) : null
+  if (base != null && isLegendary(data, base) && !earnedLegend(factory, base)) {
+    return { ...factory, legends: [...(factory.legends ?? []), base], owned: [...new Set([...(factory.owned ?? []), base])], shinies: [...new Set([...shinies, base])] }
+  }
   if (!mon?.shiny || shinies.includes(mon.id) || !(data.starters.includes(mon.id) || factory.owned.includes(mon.id))) return factory
   return { ...factory, shinies: [...shinies, mon.id] }
 }
