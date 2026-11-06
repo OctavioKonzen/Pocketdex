@@ -349,7 +349,10 @@ class FactoryRun {
 
   /// Na primeira vez escolhe um inicial grátis; depois só os que tem (os outros se compram).
   static bool freePick(Json factory) => ownedOf(factory).isEmpty;
-  static List<int> startersOf(Json factory, FactoryData data) => freePick(factory) ? [...data.starters] : ownedOf(factory);
+  /// Lendários e míticos (raridade 1 e 2): nunca são iniciais (nem à venda para começar). Igual ao site.
+  static bool isLegendary(FactoryData data, int id) => const [1, 2].contains(data.species[id]?[2]);
+  static List<int> startersOf(Json factory, FactoryData data) =>
+      freePick(factory) ? [...data.starters] : [for (final id in ownedOf(factory)) if (!isLegendary(data, id)) id];
   static List<int> shiniesOf(Json factory) => [for (final x in (factory['shinies'] as List?) ?? const []) _int(x)];
 
   /// Escolhe o inicial grátis (só na primeira vez).
@@ -370,10 +373,11 @@ class FactoryRun {
   }
 
   /// Só a primeira forma está à venda: a evolução vem jogando.
-  static bool forSale(FactoryData data, int id) => data.species[id] != null && baseForm(data, id) == id;
+  static bool forSale(FactoryData data, int id) => data.species[id] != null && baseForm(data, id) == id && !isLegendary(data, id);
 
   /// Contas antigas (que compraram uma forma evoluída): ficam com a primeira forma dela, sem repetir (o shiny também).
-  /// Devolve a mesma Factory se não mudou nada. Igual ao site.
+  /// Quem comprou um lendário ou mítico (não são iniciais) recebe as moedas de volta. Devolve a mesma Factory se não
+  /// mudou nada. Igual ao site.
   static Json normalizeOwned(Json factory, FactoryData data) {
     // Os nós da trilha que saíram da árvore (eram 8 por melhoria, agora 2): as moedas voltam (o preço de quando foram comprados).
     final ups = Map<String, dynamic>.from((factory['upgrades'] as Map?) ?? const {});
@@ -402,7 +406,8 @@ class FactoryRun {
       final out = <int>[];
       for (final id in list) {
         final b = baseForm(data, id);
-        if (!out.contains(b)) out.add(b);
+        // Os lendários e míticos saem (não são iniciais): as moedas voltam inteiras.
+        if (!out.contains(b) && !isLegendary(data, b)) out.add(b);
       }
       return out;
     }
@@ -417,6 +422,10 @@ class FactoryRun {
     final before = ownedOf(factory);
     for (final id in before) {
       final base = baseForm(data, id);
+      if (isLegendary(data, base)) {
+        refund += price(id);
+        continue;
+      }
       if (id == base) {
         kept.add(id);
         continue;

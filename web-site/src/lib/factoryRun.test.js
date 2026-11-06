@@ -204,6 +204,15 @@ describe('Battle Factory (roguelike)', () => {
     expect(normalizeOwned(old, data)).toMatchObject({ owned: [1, 4], shinies: [4] })
     const ok = { ...emptyFactory(), owned: [1, 4] }
     expect(normalizeOwned(ok, data)).toBe(ok)
+    // Lendários e míticos não são iniciais: fora da loja e da escolha; quem já tinha recebe as moedas de volta.
+    expect(forSale(data, 150)).toBe(false)
+    expect(forSale(data, 151)).toBe(false)
+    expect(buyPokemon(rich, data, 150)).toBe(null)
+    expect(startersOf({ ...emptyFactory(), owned: [1, 150] }, data)).toEqual([1])
+    const price = (id) => pokemonPrice(data.species[id][1])
+    const legend = normalizeOwned({ ...emptyFactory(), coins: 10, owned: [1, 1007, 151], shinies: [1007] }, data)
+    expect(legend).toMatchObject({ owned: [1], shinies: [], coins: 10 + price(1007) + price(151) })
+    expect(startRun({ ...emptyFactory(), owned: [1, 1007] }, data, 1007, 42)).toBe(null)
     // Melhorias: cada nível mais caro, até o máximo; valem na próxima corrida.
     let f = { ...rich, coins: 999999, best: 999, owned: [1, 4, 7, 152, 155, 158, 252, 255, 387, 390] }
     const p1 = upgradePrice(f, 'level')
@@ -657,14 +666,16 @@ describe('Battle Factory (roguelike)', () => {
     expect(claimStarter(picked, data, 1)).toBe(picked)
     expect(startersOf(picked, data)).toEqual([906])
     const rich = { ...picked, coins: 10000 }
-    const bought = buyPokemon(rich, data, 150)
-    expect(bought.owned).toEqual([906, 150])
-    expect(bought.coins).toBe(10000 - pokemonPrice(data.species[150][1]))
+    // Lendários e míticos não estão à venda (não são iniciais); os outros sim, pela força.
+    expect(buyPokemon(rich, data, 150)).toBe(null)
+    const bought = buyPokemon(rich, data, 147)
+    expect(bought.owned).toEqual([906, 147])
+    expect(bought.coins).toBe(10000 - pokemonPrice(data.species[147][1]))
     expect(bought.shinies).toEqual([])
     expect(buyPokemon(rich, data, 4).owned).toContain(4)
-    expect(buyPokemon(rich, data, 150, 0).shinies).toEqual([150])
-    expect(startersOf(bought, data)).toContain(150)
-    expect(buyPokemon(picked, data, 150)).toBe(null)
+    expect(buyPokemon(rich, data, 147, 0).shinies).toEqual([147])
+    expect(startersOf(bought, data)).toContain(147)
+    expect(buyPokemon({ ...picked, coins: 0 }, data, 147)).toBe(null)
   })
 
   it('shiny: selvagem shiny dá para capturar e tem bônus; inicial shiny libera o shiny dele (que também se compra, bem caro)', () => {

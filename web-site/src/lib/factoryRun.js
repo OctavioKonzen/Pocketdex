@@ -259,7 +259,9 @@ export function factoryOf(league) {
 export const pokemonPrice = (bst) => Math.max(20, Math.round(pow15(Math.max(0, bst - 250)) / 10 / 5) * 5)
 
 /** Com quem dá para começar: na primeira vez, qualquer inicial (grátis); depois, os que você tem. */
-export const startersOf = (factory, data) => (freePick(factory) ? [...data.starters] : [...factory.owned])
+/** Lendários e míticos (raridade 1 e 2): nunca são iniciais (nem à venda para começar). */
+export const isLegendary = (data, id) => [1, 2].includes(data.species[id]?.[2])
+export const startersOf = (factory, data) => (freePick(factory) ? [...data.starters] : factory.owned.filter((id) => !isLegendary(data, id)))
 
 /** Escolhe o inicial grátis (só na primeira vez). */
 export function claimStarter(factory, data, id) {
@@ -279,11 +281,13 @@ export function baseForm(data, id) {
 }
 
 /** Só a primeira forma está à venda: a evolução vem jogando. */
-export const forSale = (data, id) => Boolean(data.species[id]) && baseForm(data, id) === id
+export const forSale = (data, id) => Boolean(data.species[id]) && baseForm(data, id) === id && !isLegendary(data, id)
 
 /**
  * Contas antigas (que compraram uma forma evoluída): ficam com a primeira
- * forma dela, sem repetir (o shiny também). Devolve a mesma Factory se não mudou nada.
+ * forma dela, sem repetir (o shiny também). Quem comprou um lendário ou
+ * mítico (não são iniciais) recebe as moedas de volta. Devolve a mesma
+ * Factory se não mudou nada.
  */
 export function normalizeOwned(factory, data) {
   // Os nós da trilha que saíram da árvore (eram 8 por melhoria, agora 2): as moedas voltam (o preço de quando foram comprados).
@@ -295,7 +299,8 @@ export function normalizeOwned(factory, data) {
   // A dupla de treinadores salva com mais de 6 (os dois times inteiros): a batalha não começava. Fica com 3 de cada.
   const pairFoes = factory.run?.encounter?.pair ? factory.run.encounter.foes ?? [] : []
   if (pairFoes.length > 2 * PAIR_TEAM) factory = { ...factory, run: { ...factory.run, encounter: { ...factory.run.encounter, foes: [...pairFoes.slice(0, PAIR_TEAM), ...pairFoes.slice(-PAIR_TEAM)] } } }
-  const fix = (list) => [...new Set((list ?? []).map((id) => baseForm(data, id)))]
+  // Os lendários e míticos saem (não são iniciais): as moedas voltam inteiras.
+  const fix = (list) => [...new Set((list ?? []).map((id) => baseForm(data, id)))].filter((id) => !isLegendary(data, id))
   const owned = fix(factory.owned)
   const shinies = fix(factory.shinies)
   const same = (a, b) => a.length === (b ?? []).length && a.every((x, i) => x === b[i])
@@ -306,6 +311,7 @@ export function normalizeOwned(factory, data) {
   const kept = []
   for (const id of factory.owned ?? []) {
     const base = baseForm(data, id)
+    if (isLegendary(data, base)) { refund += price(id); continue }
     if (id === base) { kept.push(id); continue }
     refund += kept.includes(base) || (factory.owned ?? []).includes(base) ? price(id) : price(id) - price(base)
     kept.push(base)

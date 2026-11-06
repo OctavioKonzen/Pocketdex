@@ -124,6 +124,15 @@ void main() {
     final rich = {...FactoryRun.empty(), 'owned': [1], 'coins': 999999};
     expect(FactoryRun.buyPokemon(rich, data, 6), isNull);
     expect(FactoryRun.normalizeOwned({...FactoryRun.empty(), 'owned': [1, 6, 5, 3], 'shinies': [6]}, data), containsPair('owned', [1, 4]));
+    // Lendários e míticos não são iniciais: fora da loja e da escolha; quem já tinha recebe as moedas de volta.
+    expect(FactoryRun.forSale(data, 150), isFalse);
+    expect(FactoryRun.forSale(data, 151), isFalse);
+    expect(FactoryRun.buyPokemon(rich, data, 150), isNull);
+    expect(FactoryRun.startersOf({...FactoryRun.empty(), 'owned': [1, 150]}, data), [1]);
+    int legendPrice(int id) => FactoryRun.pokemonPrice((data.species[id]![1] as num).toInt());
+    final legend = FactoryRun.normalizeOwned({...FactoryRun.empty(), 'coins': 10, 'owned': [1, 1007, 151], 'shinies': [1007]}, data);
+    expect([legend['owned'], legend['shinies'], legend['coins']], [[1], [], 10 + legendPrice(1007) + legendPrice(151)]);
+    expect(FactoryRun.startRun({...FactoryRun.empty(), 'owned': [1, 1007]}, data, 1007, 42), isNull);
     var f = {...rich, 'best': 999, 'owned': [1, 4, 7, 152, 155, 158, 252, 255, 387, 390]};
     f = _buyAll(f);
     final run = FactoryRun.startRun(f, data, 1, 42)!;
@@ -341,11 +350,13 @@ void main() {
     expect(FactoryRun.buyPokemon({...f, 'coins': 10000}, data, 150), isNull);
     final picked = FactoryRun.claimStarter(f, data, 906);
     expect(FactoryRun.startersOf(picked, data), [906]);
-    final bought = FactoryRun.buyPokemon({...picked, 'coins': 10000}, data, 150)!;
-    expect(bought['owned'], [906, 150]);
+    // Lendários e míticos não estão à venda (não são iniciais); os outros sim, pela força.
+    expect(FactoryRun.buyPokemon({...picked, 'coins': 10000}, data, 150), isNull);
+    final bought = FactoryRun.buyPokemon({...picked, 'coins': 10000}, data, 147)!;
+    expect(bought['owned'], [906, 147]);
     expect(bought['shinies'], isEmpty);
-    expect(FactoryRun.buyPokemon({...picked, 'coins': 10000}, data, 150, 0)!['shinies'], [150]);
-    expect(FactoryRun.startersOf(bought, data), contains(150));
+    expect(FactoryRun.buyPokemon({...picked, 'coins': 10000}, data, 147, 0)!['shinies'], [147]);
+    expect(FactoryRun.startersOf(bought, data), contains(147));
   });
 
   test('chefe sem treinador (Mega deixa a Mega Pedra), loja nova, golpes, itens guardados e mecânicas', () {
