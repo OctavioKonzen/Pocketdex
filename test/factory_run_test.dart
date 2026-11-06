@@ -320,11 +320,15 @@ void main() {
     expect(caught['team'][2]['shiny'], true);
     expect(FactoryRun.teamOf(FactoryRun.skipCapture(after)), hasLength(2));
     final f = FactoryRun.empty();
-    expect(FactoryRun.unlockShiny(f, data, {'id': 19, 'shiny': true}), f);
-    expect(FactoryRun.unlockShiny(f, data, {'id': 4, 'shiny': true})['shinies'], [4]);
-    expect(FactoryRun.buyShiny({...f, 'coins': 1000000}, data, 1), isNull);
-    expect(FactoryRun.buyShiny({...f, 'owned': [1], 'coins': 1000000}, data, 1)!['shinies'], [1]);
-    expect(FactoryRun.buyShiny({...f, 'coins': 100}, data, 1), isNull);
+    // Capturar normal não libera nada; qualquer shiny capturado vira inicial shiny (a primeira forma dele). Igual ao site.
+    expect(identical(FactoryRun.unlockShiny(f, data, {'id': 4}), f), isTrue);
+    final rattata = FactoryRun.unlockShiny(f, data, {'id': 20, 'shiny': true});
+    expect([rattata['owned'], rattata['shinies']], [[19], [19]]);
+    final charmander = FactoryRun.unlockShiny(f, data, {'id': 4, 'shiny': true});
+    expect([charmander['owned'], charmander['shinies']], [[4], [4]]);
+    expect(identical(FactoryRun.unlockShiny(charmander, data, {'id': 4, 'shiny': true}), charmander), isTrue);
+    final bulba = FactoryRun.unlockShiny({...f, 'owned': [1]}, data, {'id': 2, 'shiny': true});
+    expect([bulba['owned'], bulba['shinies']], [[1], [1]]);
   });
 
   test('itens sem limite: principal e extras (porcentagem); Bolsa fora da batalha', () {
@@ -363,7 +367,8 @@ void main() {
     final bought = FactoryRun.buyPokemon({...picked, 'coins': 10000}, data, 147)!;
     expect(bought['owned'], [906, 147]);
     expect(bought['shinies'], isEmpty);
-    expect(FactoryRun.buyPokemon({...picked, 'coins': 10000}, data, 147, 0)!['shinies'], [147]);
+    // Comprar não dá shiny (o shiny só vem capturando na corrida).
+    expect(FactoryRun.shiniesOf(FactoryRun.buyPokemon({...picked, 'coins': 10000}, data, 147)!), isEmpty);
     expect(FactoryRun.startersOf(bought, data), contains(147));
   });
 

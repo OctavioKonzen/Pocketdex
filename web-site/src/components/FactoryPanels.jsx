@@ -21,8 +21,8 @@ import { battleMons } from '../lib/battleSetup'
 import {
   BAG_ITEMS, BOX_SIZE, boxToSet, releaseFromBox, HUNT_MAX, HUNT_STEP, huntBase, huntMultOf, setHunt, bossOf, regionOf, genderOf, piecesOf, pieceOf, upgradePieces, tradePieces, PIECE_ITEMS, PIECE_TRADE, capturedMon, isRegionalForm, emptyFactory, unequipItem, ROUTE_LENGTH, CITY_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, teamRoom, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
-  shinyPrice, shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, atPc, pcOf, PC_SIZE, RARE_PLACES, shownScene, gameOf, tierOf, foeBoostAt, leagueAhead, unlockShiny, VITAMIN_EVS, VITAMINS,
-  buyShiny, forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor, isKeystone,
+  shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, atPc, pcOf, PC_SIZE, RARE_PLACES, shownScene, gameOf, tierOf, foeBoostAt, leagueAhead, unlockShiny, VITAMIN_EVS, VITAMINS,
+  forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor, isKeystone,
   tradeMon, skipTrade, TRADE_LEVELS, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, bossScene,
   resolveChoice, regionLegend, leaderType, villainTeam, rivalBoss, rocketBoss, placeInfo, routeInfo, DUNGEON_LENGTH, dungeonPos, townShop, townCenter,
   weeklyOf, startWeekly, COSMETIC_BALLS, COSMETIC_FRAMES, hasCosmetic, buyCosmetic, equipCosmetic,
@@ -817,7 +817,6 @@ export function FactoryHub({ onContinue, busy }) {
   // Os outros modos da corrida (monotipo, sem itens, formas regionais).
   const [modes, setModes] = useState([])
   const [query, setQuery] = useState('')
-  const [lucky, setLucky] = useState(null)
   const run = factory.run
 
   const shopList = useMemo(() => {
@@ -1005,31 +1004,22 @@ export function FactoryHub({ onContinue, busy }) {
 
       <details className="rounded-2xl bg-bg p-3" data-testid="factory-shiny-shop">
         <summary className="cursor-pointer font-bold">✨ {t('Inicial shiny')}</summary>
-        <p className="my-2 text-xs text-muted">{t('Shiny tem +25% em todos os atributos. Capture um inicial shiny na corrida para liberar o shiny dele, ou transforme com moedas (bem caro).')}</p>
+        <p className="my-2 text-xs text-muted">{t('Shiny tem +25% em todos os atributos e não se compra: capture qualquer Pokémon shiny numa corrida e ele vira inicial shiny (a primeira forma dele), até lendário.')}</p>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {factory.owned.filter((id) => !(factory.shinies ?? []).includes(id)).map((id) => {
-            const price = shinyPrice(data.species[id][1])
-            return (
-              <div key={id} className="flex items-center gap-2 rounded-xl bg-card p-2">
-                <PokeIcon id={id} shiny className="h-10 w-10" />
-                <div className="min-w-0 flex-1 text-xs">
-                  <p className="truncate font-bold" data-no-translate>✨ {t(prettyName(byId?.get(id)?.name ?? ''))}</p>
-                  <p className="text-muted">🪙 {price}</p>
-                </div>
-                <Button disabled={factory.coins < price} onClick={() => { const next = buyShiny(factory, data, id); if (next) saveFactory(next) }}>
-                  {t('Comprar')}
-                </Button>
-              </div>
-            )
-          })}
+          {(factory.shinies ?? []).map((id) => (
+            <div key={id} className="flex items-center gap-2 rounded-xl bg-card p-2" data-testid={`factory-shiny-${id}`}>
+              <PokeIcon id={id} shiny className="h-10 w-10" />
+              <p className="min-w-0 flex-1 truncate text-xs font-bold" data-no-translate>✨ {t(prettyName(byId?.get(id)?.name ?? ''))}</p>
+            </div>
+          ))}
         </div>
+        {!(factory.shinies ?? []).length && <p className="text-xs text-muted">{t('Nenhum ainda.')}</p>}
       </details>
 
       <details className="rounded-2xl bg-bg p-3">
         <summary className="cursor-pointer font-bold">🪙 {t('Comprar Pokémon com moedas')}</summary>
-        <p className="my-2 text-xs text-muted">{t('Só a primeira forma de cada um (a evolução vem jogando). Os mais fortes custam mais. Comprado, ele aparece entre os iniciais. Tem 1 chance em 4096 de vir shiny.')}</p>
+        <p className="my-2 text-xs text-muted">{t('Só a primeira forma de cada um (a evolução vem jogando). Os mais fortes custam mais. Comprado, ele aparece entre os iniciais.')}</p>
         {freePick(factory) && <p className="mb-2 text-xs font-bold text-amber-500">{t('Primeiro escolha o seu inicial grátis.')}</p>}
-        {lucky && <p className="mb-2 rounded-lg bg-amber-500/15 p-2 text-sm font-bold">✨ {t('{0} veio shiny!').replace('{0}', t(prettyName(byId?.get(lucky)?.name ?? '')))}</p>}
         <SearchInput value={query} onChange={setQuery} placeholder={t('Buscar Pokémon')} />
         <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
           {shopList.map((p) => (
@@ -1040,10 +1030,8 @@ export function FactoryHub({ onContinue, busy }) {
                 <p className="text-muted">🪙 {p.price}</p>
               </div>
               <Button disabled={factory.coins < p.price || freePick(factory)} onClick={() => {
-                const next = buyPokemon(factory, data, p.id, Math.random())
-                if (!next) return
-                if (next.shinies.length > (factory.shinies ?? []).length) setLucky(p.id)
-                saveFactory(next)
+                const next = buyPokemon(factory, data, p.id)
+                if (next) saveFactory(next)
               }}>
                 {t('Comprar')}
               </Button>

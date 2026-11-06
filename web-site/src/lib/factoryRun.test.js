@@ -10,7 +10,7 @@ import {
   DOUBLE_FLOOR,
   battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, RARE_PLACES, atPc, pcOf, pcMove, pcSlots, PC_BOX, boxName, renameBox, boxWall, nextWall, setNick, gameOf, leagueAhead, rivalGrowth, sortBox, shownScene, bagsFor, NUZLOCKE_DEFAULT, levelCapOf, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
   HELD_BOOST, levelTo, MAX_TEAM, memberOf, movesAt, nextFloor, nextRandom, overflowPoints, pokemonPrice, runCoins, setMainItem, shopPrice,
-  SHINY_BOOST, FOE_SHINY_BOOST, SHINY_CHANCE, START_BAG, START_BALLS, startersOf, buyShiny, shinyPrice, unlockShiny, claimStarter, freePick, canEvolveWith, teachMove,
+  SHINY_BOOST, FOE_SHINY_BOOST, SHINY_CHANCE, START_BAG, START_BALLS, startersOf, unlockShiny, claimStarter, freePick, canEvolveWith, teachMove,
   equipFromStash, gimmicksOf, setGimmick, storyLine, startRun, takeCard, teamDown, applyBagItem, winFloor, chooseNode, routeOptions, routeCities,
   captureFor, factoryOf, BIOMES, isBattleNode, skipCapture, FORKS, ROUTE_LENGTH, BALL_TIERS, HEAL_TIERS, tierPick, minLevelOf, devolve,
   EXP_SHARE, expProgress, shopOwned, baseForm, forSale, normalizeOwned, buyUpgrade, upgradePrice, UPGRADES,
@@ -680,7 +680,8 @@ describe('Battle Factory (roguelike)', () => {
     expect(bought.coins).toBe(10000 - pokemonPrice(data.species[147][1]))
     expect(bought.shinies).toEqual([])
     expect(buyPokemon(rich, data, 4).owned).toContain(4)
-    expect(buyPokemon(rich, data, 147, 0).shinies).toEqual([147])
+    // Comprar não dá shiny (o shiny só vem capturando na corrida).
+    expect(buyPokemon(rich, data, 147).shinies ?? []).toEqual([])
     expect(startersOf(bought, data)).toContain(147)
     expect(buyPokemon({ ...picked, coins: 0 }, data, 147)).toBe(null)
   })
@@ -703,18 +704,16 @@ describe('Battle Factory (roguelike)', () => {
     expect(caught.team[1].shiny).toBe(true)
     expect(memberOf(caught, caught.team[1], ['tackle']).set).toMatchObject({ shiny: true, boost: { atk: SHINY_BOOST } })
     expect(foeMember({ id: 4, level: 5, iv: 0, ev: 0, shiny: true }, ['tackle']).set.boost.spe).toBe(FOE_SHINY_BOOST)
-    // Capturar o inicial normal não libera nada; shiny libera o shiny dele.
+    // Capturar normal não libera nada; qualquer shiny capturado vira inicial shiny (a primeira forma dele).
     expect(unlockShiny(f, data, { id: 4 })).toBe(f)
-    expect(unlockShiny(f, data, { id: 19, shiny: true })).toBe(f)
+    expect(unlockShiny(f, data, { id: 20, shiny: true })).toMatchObject({ owned: [19], shinies: [19] })
     const unlocked = unlockShiny(f, data, caught.team[1])
-    expect(unlocked.shinies).toEqual([4])
+    expect(unlocked).toMatchObject({ owned: [4], shinies: [4] })
+    expect(unlockShiny(unlocked, data, caught.team[1])).toBe(unlocked)
     expect(startRun(unlocked, data, 4, 1, true).team[0].shiny).toBe(true)
-    // Comprar: bem caro.
-    expect(shinyPrice(data.species[1][1])).toBeGreaterThanOrEqual(3000)
-    expect(buyShiny({ ...f, coins: 100 }, data, 1)).toBe(null)
-    expect(buyShiny({ ...f, coins: 1e6 }, data, 150)).toBe(null)
-    expect(buyShiny({ ...f, coins: 1e6 }, data, 1)).toBe(null)
-    expect(buyShiny({ ...f, owned: [1], coins: 1e6 }, data, 1).shinies).toEqual([1])
+    expect(startRun(unlocked, data, 4, 1).team[0].shiny).toBeFalsy()
+    // Já tinha o inicial comprado: o shiny dele só se soma.
+    expect(unlockShiny({ ...f, owned: [1] }, data, { id: 2, shiny: true })).toMatchObject({ owned: [1], shinies: [1] })
   })
 
   it('golpes pelo nível; golpes fortes só a partir de um nível compatível com o poder', () => {

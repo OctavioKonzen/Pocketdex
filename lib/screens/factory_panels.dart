@@ -1763,7 +1763,6 @@ class _FactoryHubState extends State<FactoryHub> {
   Set<String> _nuzRules = {...FactoryRun.nuzlockeDefault};
   // A aba aberta embaixo (missões, árvore, loja...).
   int _tab = 0;
-  int? _lucky;
   String _query = '';
   Map<int, String> _names = const {};
 
@@ -1942,12 +1941,10 @@ class _FactoryHubState extends State<FactoryHub> {
               '🪙',
               'Pokémon',
               (context) => _panel(context, '🪙 ${tr('Comprar Pokémon com moedas')}', key: const ValueKey('factory-shop'), [
-            Text(tr('Só a primeira forma de cada um (a evolução vem jogando). Os mais fortes custam mais. Comprado, ele aparece entre os iniciais. Tem 1 chance em 4096 de vir shiny.'),
+            Text(tr('Só a primeira forma de cada um (a evolução vem jogando). Os mais fortes custam mais. Comprado, ele aparece entre os iniciais.'),
                 style: TextStyle(color: c.muted, fontSize: 12)),
             if (FactoryRun.freePick(factory))
               Text(tr('Primeiro escolha o seu inicial grátis.'), style: const TextStyle(color: Color(0xFFF59E0B), fontWeight: FontWeight.bold, fontSize: 12)),
-            if (_lucky != null)
-              Text('✨ ${tr('{0} veio shiny!').replaceAll('{0}', _name(_lucky!))}', style: TextStyle(color: c.text, fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             SiteSearchField(hint: 'Buscar Pokémon', onChanged: (t) => setState(() => _query = t)),
             const SizedBox(height: 6),
@@ -1961,10 +1958,8 @@ class _FactoryHubState extends State<FactoryHub> {
                   onPressed: coins < p.price || FactoryRun.freePick(factory)
                       ? null
                       : () {
-                          final next = FactoryRun.buyPokemon(factory, data, p.id, Random().nextDouble());
-                          if (next == null) return;
-                          if (FactoryRun.shiniesOf(next).length > shinies.length) _lucky = p.id;
-                          _save(next);
+                          final next = FactoryRun.buyPokemon(factory, data, p.id);
+                          if (next != null) _save(next);
                         },
                   child: const Text('Comprar'),
                 ),
@@ -1978,25 +1973,17 @@ class _FactoryHubState extends State<FactoryHub> {
                     _HuntCard(factory: factory, data: data, names: _names, name: _name, onSave: _save),
                     const SizedBox(height: 12),
                     _panel(context, '✨ ${tr('Inicial shiny')}', key: const ValueKey('factory-shiny-shop'), [
-            Text(tr('Shiny tem +25% em todos os atributos. Capture um inicial shiny na corrida para liberar o shiny dele, ou transforme com moedas (bem caro).'),
+            Text(
+                tr('Shiny tem +25% em todos os atributos e não se compra: capture qualquer Pokémon shiny numa corrida e ele vira inicial shiny (a primeira forma dele), até lendário.'),
                 style: TextStyle(color: c.muted, fontSize: 12)),
-            for (final id in owned)
-              if (!shinies.contains(id))
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: SizedBox(width: 40, height: 40, child: PokemonSprite(id, shiny: true, fill: 0.9)),
-                  title: Text('✨ ${_name(id)}', style: TextStyle(color: c.text)),
-                  subtitle: Text('🪙 ${FactoryRun.shinyPrice(data.bstOf(id))}', style: TextStyle(color: c.muted)),
-                  trailing: TextButton(
-                    onPressed: coins < FactoryRun.shinyPrice(data.bstOf(id))
-                        ? null
-                        : () {
-                            final next = FactoryRun.buyShiny(factory, data, id);
-                            if (next != null) _save(next);
-                          },
-                    child: const Text('Comprar'),
-                  ),
-                ),
+            if (shinies.isEmpty) Text(tr('Nenhum ainda.'), style: TextStyle(color: c.muted, fontSize: 12)),
+            for (final id in shinies)
+              ListTile(
+                key: ValueKey('factory-shiny-$id'),
+                contentPadding: EdgeInsets.zero,
+                leading: SizedBox(width: 40, height: 40, child: PokemonSprite(id, shiny: true, fill: 0.9)),
+                title: Text('✨ ${_name(id)}', style: TextStyle(color: c.text)),
+              ),
                   ]),
                   ])
             ),
@@ -2049,25 +2036,17 @@ class _FactoryHubState extends State<FactoryHub> {
           tilePadding: EdgeInsets.zero,
           title: Text('✨ ${tr('Inicial shiny')}', style: TextStyle(fontWeight: FontWeight.bold, color: c.text)),
           children: [
-            Text(tr('Shiny tem +25% em todos os atributos. Capture um inicial shiny na corrida para liberar o shiny dele, ou transforme com moedas (bem caro).'),
+            Text(
+                tr('Shiny tem +25% em todos os atributos e não se compra: capture qualquer Pokémon shiny numa corrida e ele vira inicial shiny (a primeira forma dele), até lendário.'),
                 style: TextStyle(color: c.muted, fontSize: 12)),
-            for (final id in owned)
-              if (!shinies.contains(id))
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: SizedBox(width: 40, height: 40, child: PokemonSprite(id, shiny: true, fill: 0.9)),
-                  title: Text('✨ ${_name(id)}', style: TextStyle(color: c.text)),
-                  subtitle: Text('🪙 ${FactoryRun.shinyPrice(data.bstOf(id))}', style: TextStyle(color: c.muted)),
-                  trailing: TextButton(
-                    onPressed: coins < FactoryRun.shinyPrice(data.bstOf(id))
-                        ? null
-                        : () {
-                            final next = FactoryRun.buyShiny(factory, data, id);
-                            if (next != null) _save(next);
-                          },
-                    child: const Text('Comprar'),
-                  ),
-                ),
+            if (shinies.isEmpty) Text(tr('Nenhum ainda.'), style: TextStyle(color: c.muted, fontSize: 12)),
+            for (final id in shinies)
+              ListTile(
+                key: ValueKey('factory-shiny-$id'),
+                contentPadding: EdgeInsets.zero,
+                leading: SizedBox(width: 40, height: 40, child: PokemonSprite(id, shiny: true, fill: 0.9)),
+                title: Text('✨ ${_name(id)}', style: TextStyle(color: c.text)),
+              ),
                       ]),
                     ],
                   ])

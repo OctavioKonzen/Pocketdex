@@ -879,49 +879,31 @@ class FactoryRun {
     };
   }
 
-  /// Compra um Pokémon com as moedas (null se não dá). roll (0 a 1): 1 em 4096 de vir shiny.
-  static Json? buyPokemon(Json factory, FactoryData data, int id, [double roll = 1]) {
+  /// Compra um Pokémon com as moedas (null se não dá). O shiny não se compra: só capturando na corrida (unlockShiny).
+  /// Igual ao site.
+  static Json? buyPokemon(Json factory, FactoryData data, int id) {
     final info = data.species[id];
     final owned = ownedOf(factory);
     if (info == null || !forSale(data, id) || owned.contains(id) || freePick(factory)) return null;
     final price = pokemonPrice(_int(info[1]));
     if ((factory['coins'] as num) < price) return null;
-    final shinies = shiniesOf(factory);
-    return {
-      ...factory, 'coins': _int(factory['coins']) - price, 'owned': [...owned, id],
-      'shinies': roll < shinyChance && !shinies.contains(id) ? [...shinies, id] : shinies,
-    };
+    return {...factory, 'coins': _int(factory['coins']) - price, 'owned': [...owned, id]};
   }
 
-  /// Preço para transformar um inicial em shiny (bem caro).
-  static int shinyPrice(int bst) => math.max(3000, pokemonPrice(bst) * 20);
-
-  static Json? buyShiny(Json factory, FactoryData data, int id) {
-    final info = data.species[id];
-    final shinies = shiniesOf(factory);
-    if (info == null || shinies.contains(id) || !ownedOf(factory).contains(id)) return null;
-    final price = shinyPrice(_int(info[1]));
-    if ((factory['coins'] as num) < price) return null;
-    return {...factory, 'coins': _int(factory['coins']) - price, 'shinies': [...shinies, id]};
-  }
-
-  /// Capturou um shiny: se é um dos iniciais dele, libera o shiny para começar. Um lendário ou mítico shiny capturado
-  /// na corrida vira inicial (já shiny). Igual ao site.
+  /// Capturou um shiny na corrida: ele vira inicial, shiny (a primeira forma da linha; dá para começar com ele normal
+  /// ou shiny). O único jeito de ter um shiny. Lendário ou mítico também (fica em factory.legends). Igual ao site.
   static Json unlockShiny(Json factory, FactoryData data, Map? mon) {
-    final shinies = shiniesOf(factory);
     if (mon == null || mon['shiny'] != true) return factory;
-    final id = _int(mon['id']);
-    final base = baseForm(data, id);
-    if (isLegendary(data, base) && !_earnedLegend(factory, base)) {
-      return {
-        ...factory,
-        'legends': [...((factory['legends'] as List?) ?? const []), base],
-        'owned': {...ownedOf(factory), base}.toList(),
-        'shinies': {...shinies, base}.toList(),
-      };
-    }
-    if (shinies.contains(id) || !(data.starters.contains(id) || ownedOf(factory).contains(id))) return factory;
-    return {...factory, 'shinies': [...shinies, id]};
+    final base = baseForm(data, _int(mon['id']));
+    final shinies = shiniesOf(factory), owned = ownedOf(factory);
+    final legend = isLegendary(data, base);
+    if (shinies.contains(base) && owned.contains(base) && (!legend || _earnedLegend(factory, base))) return factory;
+    return {
+      ...factory,
+      'owned': owned.contains(base) ? owned : [...owned, base],
+      'shinies': shinies.contains(base) ? shinies : [...shinies, base],
+      if (legend && !_earnedLegend(factory, base)) 'legends': [...((factory['legends'] as List?) ?? const []), base],
+    };
   }
 
   /// Moedas que a corrida rende: 8 por andar vencido, 2 por Pokémon derrotado e 40 por chefe. Igual ao site.

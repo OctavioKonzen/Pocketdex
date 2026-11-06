@@ -324,41 +324,32 @@ export function normalizeOwned(factory, data) {
   return { ...factory, owned, shinies, coins: (factory.coins ?? 0) + Math.max(0, refund), refunded: Math.max(0, refund) + back }
 }
 
-/** Compra um Pokémon com as moedas (null se não dá). roll (0 a 1): 1 em 4096 de vir shiny. */
-export function buyPokemon(factory, data, id, roll = 1) {
+/** Compra um Pokémon com as moedas (null se não dá). O shiny não se compra: só capturando na corrida (unlockShiny). */
+export function buyPokemon(factory, data, id) {
   const info = data.species[id]
   if (!info || !forSale(data, id) || factory.owned.includes(id) || freePick(factory)) return null
   const price = pokemonPrice(info[1])
   if (factory.coins < price) return null
-  const shinies = factory.shinies ?? []
-  return { ...factory, coins: factory.coins - price, owned: [...factory.owned, id], shinies: roll < SHINY_CHANCE && !shinies.includes(id) ? [...shinies, id] : shinies }
-}
-
-/** Preço para transformar um inicial em shiny (bem caro). */
-export const shinyPrice = (bst) => Math.max(3000, pokemonPrice(bst) * 20)
-
-/** Transforma um inicial (grátis ou comprado) em shiny com as moedas (null se não dá). */
-export function buyShiny(factory, data, id) {
-  const info = data.species[id]
-  const shinies = factory.shinies ?? []
-  if (!info || shinies.includes(id) || !factory.owned.includes(id)) return null
-  const price = shinyPrice(info[1])
-  if (factory.coins < price) return null
-  return { ...factory, coins: factory.coins - price, shinies: [...shinies, id] }
+  return { ...factory, coins: factory.coins - price, owned: [...factory.owned, id] }
 }
 
 /**
- * Capturou um shiny: se é um dos iniciais dele, libera o shiny para começar. Um
- * lendário ou mítico shiny capturado na corrida vira inicial (já shiny).
+ * Capturou um shiny na corrida: ele vira inicial, shiny (a primeira forma da
+ * linha; dá para começar com ele normal ou shiny). O único jeito de ter um
+ * shiny. Lendário ou mítico também (fica em factory.legends). Igual ao app.
  */
 export function unlockShiny(factory, data, mon) {
-  const shinies = factory.shinies ?? []
-  const base = mon?.shiny ? baseForm(data, mon.id) : null
-  if (base != null && isLegendary(data, base) && !earnedLegend(factory, base)) {
-    return { ...factory, legends: [...(factory.legends ?? []), base], owned: [...new Set([...(factory.owned ?? []), base])], shinies: [...new Set([...shinies, base])] }
+  if (!mon?.shiny) return factory
+  const base = baseForm(data, mon.id)
+  const shinies = factory.shinies ?? [], owned = factory.owned ?? []
+  const legend = isLegendary(data, base)
+  if (shinies.includes(base) && owned.includes(base) && (!legend || earnedLegend(factory, base))) return factory
+  return {
+    ...factory,
+    owned: owned.includes(base) ? owned : [...owned, base],
+    shinies: shinies.includes(base) ? shinies : [...shinies, base],
+    ...(legend && !earnedLegend(factory, base) ? { legends: [...(factory.legends ?? []), base] } : {}),
   }
-  if (!mon?.shiny || shinies.includes(mon.id) || !(data.starters.includes(mon.id) || factory.owned.includes(mon.id))) return factory
-  return { ...factory, shinies: [...shinies, mon.id] }
 }
 
 /**
