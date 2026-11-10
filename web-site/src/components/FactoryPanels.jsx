@@ -23,7 +23,7 @@ import {
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, teamRoom, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, atPc, pcOf, PC_SIZE, RARE_PLACES, shownScene, gameOf, tierOf, foeBoostAt, leagueAhead, unlockShiny, VITAMIN_EVS, VITAMINS,
   forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor, isKeystone,
-  tradeMon, skipTrade, TRADE_LEVELS, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, bossScene,
+  tradeMon, skipTrade, TRADE_LEVELS, levelCapOf, townTrade, townTradeable, safariAct, safariRates, leaveSafari, SAFARI_FEE, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, bossScene,
   resolveChoice, regionLegend, leaderType, villainTeam, rivalBoss, rocketBoss, placeInfo, routeInfo, DUNGEON_LENGTH, dungeonPos, townShop, townCenter,
   weeklyOf, startWeekly, COSMETIC_BALLS, COSMETIC_FRAMES, hasCosmetic, buyCosmetic, equipCosmetic,
   boostOf, memberOf, learnMove, movesLearnedBetween,
@@ -445,13 +445,15 @@ function TeamView({ run, data, byId, save }) {
       items={<MonOptions run={run} data={data} i={sel} save={save} onLead={lead} />}
       actions={<MonOptions run={run} data={data} i={sel} save={save} onLead={lead} part="actions" />} />
   }
+  // O limite de nível de agora (o próximo chefe e os desvios): quem chegou nele para de ganhar XP até vencer o chefe.
+  const cap = levelCapOf(data, run)
   const team = run.team.map((m) => ({
-    id: m.id, shiny: m.shiny, name: t(prettyName(byId?.get(m.id)?.name ?? '')), level: m.level, hp: m.hp ?? 1,
+    id: m.id, shiny: m.shiny, name: t(prettyName(byId?.get(m.id)?.name ?? '')), level: m.level, hp: m.hp ?? 1, max: cap != null && m.level >= cap,
     // O item que ele segura (★ o principal; +N os extras).
     sub: m.item ? `★ ${itemName(m.item)}${(m.extras ?? []).length ? ` +${m.extras.length}` : ''}` : undefined,
   }))
   // Os ovos ocupam vagas do time (e chocam com as vitórias).
-  return <BwParty team={team} testid="factory-team" eggs={(run.eggs ?? []).map((e) => e.left)} onPick={(i) => { setSummary(null); setSel(i) }} />
+  return <BwParty team={team} testid="factory-team" title={cap != null ? `📈 ${t('Nível máximo agora: {0}. Sobe quando você vence o próximo chefe.').replace('{0}', cap)}` : undefined} eggs={(run.eggs ?? []).map((e) => e.left)} onPick={(i) => { setSummary(null); setSel(i) }} />
 }
 
 /** Ensinar um golpe: TM (os que ele aprende por máquina), Move Tutor (tutor e ovo) ou Move Reminder (os do nível). */
@@ -1107,7 +1109,8 @@ const NODE_INFO = {
   mart: { icon: '🎒', label: 'Vendedor ambulante', help: 'Vende o mesmo que o Poké Mart (sem batalha, sem XP).' },
   center: { icon: '⛺', label: 'Parada para descanso', help: 'Alguém do caminho cura o time todo, até quem desmaiou (sem batalha).' },
   event: { icon: '❓', label: 'Evento', help: 'Itens, dinheiro, frutas ou uma ficha de Move Tutor (sem batalha).' },
-  trade: { icon: '🔁', label: 'Troca', help: 'Alguém da rota troca um Pokémon com você: o que vem chega 3 níveis acima (com o item de quem foi).' },
+  trade: { icon: '🔁', label: 'Troca', help: 'Alguém da rota troca um Pokémon com você: o que vem chega 3 níveis acima (com o item de quem foi) e ganha mais XP.' },
+  safari: { icon: '🦒', label: 'Safari Zone', help: 'Sem batalha: a entrada custa 500 moedas. 10 Safari Balls para capturar Pokémon raros.' },
   wildboss: { icon: '🐉', label: 'Chefe sem treinador', help: 'Uma Mega, um Gigantamax ou um lendário. Dá para capturar.' },
   meteor: { icon: '☄️', label: 'Chuva de meteoros', help: 'Um Clefairy apareceu com os meteoros (mais chance de shiny).' },
   mythic: { icon: '✨', label: 'Pokémon mítico', help: 'Um Pokémon mítico, raríssimo. Dá para capturar.' },
@@ -1134,7 +1137,7 @@ const HM_HINTS = {
   dive: 'Precisa de um Pokémon com Dive no time (ou da 5ª insígnia).',
   waterfall: 'Precisa de um Pokémon com Waterfall no time (ou da 7ª insígnia).',
 }
-const hmHint = (run, node) => t(HM_HINTS[hmNeeded(run, node)] ?? HM_HINTS.surf)
+const hmHint = (run, node) => (node?.kind === 'safari' && !hmNeeded(run, node) ? t('Você precisa de {0} moedas para entrar.').replace('{0}', SAFARI_FEE) : t(HM_HINTS[hmNeeded(run, node)] ?? HM_HINTS.surf))
 /** O clima do lugar (a previsão no mapa). */
 const WEATHER_LABEL = { rain: '🌧️ Chuva', sun: '☀️ Sol forte', sand: '🏜️ Tempestade de areia', snow: '❄️ Neve' }
 const CUT_INFO = { icon: '🌳', label: 'Caminho escondido', help: 'Aberto com Cut: um selvagem raro do lugar.' }
@@ -1469,6 +1472,7 @@ function stepOf(p) {
   if (!p.seen && (p.exp != null || p.center || p.event)) return 'result'
   if (p.capture) return 'capture'
   if (p.cards) return 'cards'
+  if (p.safari) return 'safari'
   if (p.trade) return 'trade'
   if (p.shop) return 'shop'
   return null
@@ -2434,6 +2438,51 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       </Field>
     )
     text = <p>🃏 {t(p.cards.some((c) => RELICS[c]) ? 'Escolha uma carta de bônus (ou a relíquia: muda a regra da corrida)' : 'Escolha uma carta de bônus')}</p>
+  } else if (step === 'safari') {
+    // Safari Zone: sem batalha; em cada Pokémon, a Safari Ball, a isca ou a pedra.
+    const s = p.safari
+    const mon = s.mon
+    const rates = safariRates(data, s)
+    const pct = (v) => `${Math.round(v * 100)}%`
+    const lastName = s.lastId != null ? name(s.lastId) : ''
+    // Uma linha para o que aconteceu e outra para as chances (a caixa de texto tem duas linhas).
+    const LAST = { broke: 'Ah, não! {0} escapou da Safari Ball!', bait: '{0} está comendo a isca.', rock: '{0} ficou bravo!', fled: '{0} fugiu! Apareceu um {1}!', left: 'Você deixou {0} para lá. Apareceu um {1}!' }
+    const act = (action) => save(safariAct(run, data, action))
+    const shown = mon ? `${mon.shiny ? '✨ ' : ''}${name(mon.id)}` : ''
+    field = (
+      <Field biome={run.scene ?? 'grass'} fieldRef={fieldRef} testid="factory-safari">
+        {mon && <FieldMon mon={mon} byId={byId} scene={run.scene} />}
+        {lead && <FieldMon mon={lead} byId={byId} back scene={run.scene} />}
+      </Field>
+    )
+    text = mon ? (
+      <>
+        <p data-testid="safari-last">🦒 {LAST[s.last] ? t(LAST[s.last]).replace('{0}', lastName).replace('{1}', shown) : t('Um {0} selvagem apareceu!').replace('{0}', shown)} <span className="dlg-sub">Nv. {mon.level}</span></p>
+        <p className="text-sm" data-testid="safari-info">{t('Pegar: {0} · Fugir: {1} · Ainda aparecem: {2}').replace('{0}', pct(rates.catch)).replace('{1}', pct(rates.flee)).replace('{2}', s.left)}</p>
+      </>
+    ) : (
+      <>
+        {s.last === 'fled' && <p className="text-sm">{t('{0} fugiu!').replace('{0}', lastName)}</p>}
+        <p data-testid="safari-over">🦒 {t('O Safari acabou! Você pegou {0} Pokémon.').replace('{0}', s.caught ?? 0)}</p>
+      </>
+    )
+    // Os botões cabem numa página só: a bola, a isca e a pedra em cima; procurar outro e sair embaixo.
+    menu = mon ? (
+      <>
+        <div className="grid grid-cols-3 gap-1">
+          <MenuButton testid="safari-ball" disabled={busy} onClick={() => act('ball')}>🟢 {t('BOLA')} ×{s.balls}</MenuButton>
+          <MenuButton testid="safari-bait" disabled={busy} onClick={() => act('bait')}>🍖 {t('ISCA')}</MenuButton>
+          <MenuButton testid="safari-rock" disabled={busy} onClick={() => act('rock')}>🪨 {t('PEDRA')}</MenuButton>
+        </div>
+        <div className="grid grid-cols-2 gap-1">
+          <MenuButton testid="safari-next" disabled={busy} onClick={() => act('run')}>🔎 {t('PROCURAR OUTRO')}</MenuButton>
+          <MenuButton testid="safari-leave" disabled={busy} onClick={() => save(leaveSafari(run))}>🚪 {t('SAIR')}</MenuButton>
+        </div>
+      </>
+    ) : (
+      <MenuButton testid="safari-leave" disabled={busy} onClick={() => save(leaveSafari(run))}>{t('CONTINUAR')}</MenuButton>
+    )
+    wideMenu = true
   } else if (step === 'trade') {
     // Troca: escolhe quem dar; o oferecido vem TRADE_LEVELS níveis acima, com o item de quem foi.
     const offer = p.trade
@@ -2446,7 +2495,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     text = (
       <>
         <p>🔁 {t('Um treinador quer trocar o {0} dele com você!').replace('{0}', `${offer.shiny ? '✨ ' : ''}${name(offer.id)}`)}</p>
-        <p className="text-sm">{t('Quem você der vai embora; o {0} vem {1} níveis acima, com o item de quem foi.').replace('{0}', name(offer.id)).replace('{1}', TRADE_LEVELS)}</p>
+        <p className="text-sm">{t('Quem você der vai embora; o {0} vem {1} níveis acima, com o item de quem foi.').replace('{0}', name(offer.id)).replace('{1}', TRADE_LEVELS)} {t('Trocado ganha mais XP.')}</p>
       </>
     )
     // Quem dar: a tela do time, por cima do campo.
@@ -2639,7 +2688,11 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     menu = (
       <>
         {/* Sem o Mapa: dá para seguir em frente ou pegar outro caminho, sem saber aonde ele leva (a entrada de um lugar dá para ver). */}
-        {fork && !hasMap && route.options.map((node, k) => node.kind === 'dungeon' ? placeButton(node, k) : hmPathInfo(node) ? (
+        {fork && !hasMap && route.options.map((node, k) => node.kind === 'dungeon' ? placeButton(node, k) : node.kind === 'safari' ? (
+          <MenuButton key={k} testid={`map-node-${k}`} disabled={busy || nodeBlocked(run, node)} onClick={() => pickNode(k)} sub={nodeBlocked(run, node) ? hmHint(run, node) : t(NODE_INFO.safari.help)}>
+            {NODE_INFO.safari.icon} <span data-no-translate>Safari Zone</span>
+          </MenuButton>
+        ) : hmPathInfo(node) ? (
           // O caminho aberto com uma MO (Cut, Rock Smash, Strength): você sabe o que tem nele, mesmo sem o Mapa.
           <MenuButton key={k} testid={`map-node-${k}`} disabled={busy || (isBattleNode(node) && down)} onClick={() => pickNode(k)} sub={t(hmPathInfo(node).help)}>
             {hmPathInfo(node).icon} {t(hmPathInfo(node).label)}
@@ -2670,6 +2723,14 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
             <MenuButton testid="town-daycare" disabled={busy} onClick={() => setPanel(panel === 'daycare' ? null : 'daycare')} active={panel === 'daycare'}>🏡 {t('CRECHE')}</MenuButton>
           </div>
         )}
+        {town && run.town?.trade && (run.town.trade.done ? (
+          <MenuButton testid="town-trade" disabled>🔁 {t('Troca feita: chegou {0}!').replace('{0}', name(run.town.trade.got ?? run.town.trade.give))}</MenuButton>
+        ) : (
+          <MenuButton testid="town-trade" disabled={busy || !townTradeable(run, data).length} onClick={() => setPanel(panel === 'towntrade' ? null : 'towntrade')} active={panel === 'towntrade'}
+            sub={townTradeable(run, data).length ? t('Uma troca por cidade: o que vem chega {0} níveis acima, ganha mais XP e, se evolui por troca, já chega evoluído.').replace('{0}', TRADE_LEVELS) : t('Você não tem um {0} no time.').replace('{0}', name(run.town.trade.want))}>
+            🔁 {t('Um morador troca {0} por um {1}').replace('{0}', `${run.town.trade.shiny ? '✨ ' : ''}${name(run.town.trade.give)}`).replace('{1}', name(run.town.trade.want))}
+          </MenuButton>
+        ))}
         {cut && (
           <MenuButton testid="factory-cut" disabled={busy} onClick={() => save(cut)} sub={t(HM_INFO.cut.help)}>
             ✂️ {t('USAR {0}').replace('{0}', 'Cut')}
@@ -2694,6 +2755,14 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     )
     toolRow = true
     if (town && panel === 'daycare') below = daycareView()
+    if (town && panel === 'towntrade' && run.town?.trade && !run.town.trade.done) {
+      const ok = townTradeable(run, data)
+      below = (
+        <BwParty title={t('Quem você dá em troca do {0}?').replace('{0}', name(run.town.trade.give))} testid="towntrade"
+          team={partyOf(run, byId)} disabled={(i) => !ok.includes(i)}
+          onPick={(i) => { setPanel(null); save(townTrade(run, i, data)) }} onCancel={() => setPanel(null)} />
+      )
+    }
   } else if (!p && run.encounter) {
     field = <Field biome={run.scene} fieldRef={fieldRef}>{lead && <FieldMon mon={lead} byId={byId} back scene={run.scene} />}</Field>
     text = <p>{t('Lutar no andar {0}').replace('{0}', run.floor)}</p>

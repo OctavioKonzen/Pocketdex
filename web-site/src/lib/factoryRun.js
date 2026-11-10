@@ -2557,6 +2557,7 @@ export function townTrade(run, index, data) {
   const offer = run.town.trade
   const out = { ...run, team: [...run.team], town: { ...run.town, trade: { ...offer, done: true } }, trades: (run.trades ?? 0) + 1 }
   tradeIn(run, out, index, { id: offer.give, shiny: offer.shiny }, data, true)
+  out.town.trade.got = out.team[index].id
   return out
 }
 

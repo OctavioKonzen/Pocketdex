@@ -3291,6 +3291,7 @@ class FactoryRun {
     (out['town'] as Map)['trade'] = {...offer, 'done': true};
     out['trades'] = ((run['trades'] as num?) ?? 0).toInt() + 1;
     _tradeIn(run, out, index, {'id': offer['give'], 'shiny': offer['shiny']}, data, exact: true);
+    ((out['town'] as Map)['trade'] as Map)['got'] = teamOf(out)[index]['id'];
     return out;
   }
 
