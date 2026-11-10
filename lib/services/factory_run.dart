@@ -212,6 +212,20 @@ class FactoryRun {
   }
 
   /// Os adversários do encontro com o degrau do jogo da corrida.
+  /// Os desvios (cavernas, mar, bases, os lugares da cidade e os raros) também sobem a dificuldade: cada um vencido
+  /// deixa todos os adversários dali em diante detourLevel níveis acima, além do que o andar já sobe (no desvio, o time
+  /// ganha XP, itens e capturas a mais; sem isso, quem pega todos fica muito à frente). Igual ao site.
+  static const detourLevel = 3;
+  static int detourLift(Json? run) => detourLevel * _int(run?['dungeons'] ?? 0);
+  static Json detourFoes(Json encounter, Json? run) {
+    final lift = detourLift(run);
+    if (lift == 0 || encounter['foes'] == null) return encounter;
+    return {
+      ...encounter,
+      'foes': [for (final f in encounter['foes'] as List) {...(f as Map).cast<String, dynamic>(), 'level': _int(f['level']) + lift}],
+    };
+  }
+
   static Json tierFoes(Json encounter, Json? run) {
     final tier = tierOf(run);
     if (tier == 0 || encounter['foes'] == null) return encounter;
@@ -1906,11 +1920,13 @@ class FactoryRun {
       // O Pokémon ferido leva a um selvagem raro do lugar (a batalha é neste andar).
       out['floor'] = _int(out['floor']) - 1;
       final scene = '${out['scene'] ?? 'grass'}';
-      out['encounter'] = tierFoes(
-          regionalEncounter(data, run, {
-            ...encounterFor(data, _int(out['floor']), rand, null, false, {'kind': 'wild', 'biome': scene, 'rare': true, 'shiny': run['shinyRate'] ?? 1}),
-            'scene': scene,
-          }),
+      out['encounter'] = detourFoes(
+          tierFoes(
+              regionalEncounter(data, run, {
+                ...encounterFor(data, _int(out['floor']), rand, null, false, {'kind': 'wild', 'biome': scene, 'rare': true, 'shiny': run['shinyRate'] ?? 1}),
+                'scene': scene,
+              }),
+              run),
           run);
     } else {
       final found = hasHm(run, 'flash') || rand() < 0.5;
@@ -2017,7 +2033,7 @@ class FactoryRun {
         };
       }
       // Os selvagens e os treinadores do caminho na forma da região (e com o degrau do jogo da corrida).
-      out['encounter'] = rivalGrowth(tierFoes(regionalEncounter(data, run, Map<String, dynamic>.from(out['encounter'] as Map)), run), run);
+      out['encounter'] = rivalGrowth(detourFoes(tierFoes(regionalEncounter(data, run, Map<String, dynamic>.from(out['encounter'] as Map)), run), run), run);
       // O cenário próprio do lugar (loja, cassino, escola...), se ele tiver. Igual ao site.
       out['scene'] = shownScene(run, '${out['scene']}');
       out['encounter'] = {...out['encounter'] as Map<String, dynamic>, 'scene': shownScene(run, '${out['encounter']['scene'] ?? out['scene']}')};

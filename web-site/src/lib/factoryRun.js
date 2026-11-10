@@ -130,6 +130,20 @@ export function rivalGrowth(encounter, run) {
   if (!wins || encounter?.boss?.kind !== 'rival' || encounter.boss.guest) return encounter
   return { ...encounter, foes: encounter.foes.map((f) => ({ ...f, level: f.level + wins })) }
 }
+/**
+ * Os desvios (cavernas, mar, bases, os lugares da cidade e os raros) também
+ * sobem a dificuldade: cada um vencido deixa todos os adversários dali em
+ * diante DETOUR_LEVEL níveis acima, além do que o andar já sobe (no desvio, o
+ * time ganha XP, itens e capturas a mais; sem isso, quem pega todos fica
+ * muito à frente). Igual ao app.
+ */
+export const DETOUR_LEVEL = 3
+export const detourLift = (run) => DETOUR_LEVEL * (run?.dungeons ?? 0)
+export function detourFoes(encounter, run) {
+  const lift = detourLift(run)
+  if (!lift || !encounter?.foes) return encounter
+  return { ...encounter, foes: encounter.foes.map((f) => ({ ...f, level: f.level + lift })) }
+}
 /** Os adversários do encontro com o degrau do jogo da corrida. */
 export function tierFoes(encounter, run) {
   const tier = tierOf(run)
@@ -1556,7 +1570,7 @@ export function chooseNode(run, data, index, clock = null) {
       out.encounter = { ...out.encounter, foes: [...out.encounter.foes.slice(0, PAIR_TEAM), ...second.foes.slice(0, PAIR_TEAM)], pair: true }
     }
     // Os selvagens e os treinadores do caminho na forma da região (e com o degrau do jogo da corrida).
-    out.encounter = rivalGrowth(tierFoes(regionalEncounter(data, run, out.encounter), run), run)
+    out.encounter = rivalGrowth(detourFoes(tierFoes(regionalEncounter(data, run, out.encounter), run), run), run)
     // O cenário próprio do lugar (loja, cassino, escola...), se ele tiver.
     out.scene = shownScene(run, out.scene)
     out.encounter = { ...out.encounter, scene: shownScene(run, out.encounter.scene) }
@@ -2672,7 +2686,7 @@ export function resolveChoice(run, data, accept) {
     // O Pokémon ferido leva a um selvagem raro do lugar (a batalha é neste andar).
     out.floor -= 1
     const scene = out.scene ?? 'grass'
-    out.encounter = tierFoes(regionalEncounter(data, run, { ...encounterFor(data, out.floor, rand, null, false, { kind: 'wild', biome: scene, rare: true, shiny: run.shinyRate ?? 1 }), scene }), run)
+    out.encounter = detourFoes(tierFoes(regionalEncounter(data, run, { ...encounterFor(data, out.floor, rand, null, false, { kind: 'wild', biome: scene, rare: true, shiny: run.shinyRate ?? 1 }), scene }), run), run)
   } else {
     const found = hasHm(run, 'flash') || rand() < 0.5
     if (found) {
