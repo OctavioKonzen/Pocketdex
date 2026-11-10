@@ -137,7 +137,7 @@ export function rivalGrowth(encounter, run) {
  * time ganha XP, itens e capturas a mais; sem isso, quem pega todos fica
  * muito à frente). Igual ao app.
  */
-export const DETOUR_LEVEL = 3
+export const DETOUR_LEVEL = 2
 export const detourLift = (run) => DETOUR_LEVEL * (run?.dungeons ?? 0)
 export function detourFoes(encounter, run) {
   const lift = detourLift(run)

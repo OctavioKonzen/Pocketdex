@@ -215,7 +215,7 @@ class FactoryRun {
   /// Os desvios (cavernas, mar, bases, os lugares da cidade e os raros) também sobem a dificuldade: cada um vencido
   /// deixa todos os adversários dali em diante detourLevel níveis acima, além do que o andar já sobe (no desvio, o time
   /// ganha XP, itens e capturas a mais; sem isso, quem pega todos fica muito à frente). Igual ao site.
-  static const detourLevel = 3;
+  static const detourLevel = 2;
   static int detourLift(Json? run) => detourLevel * _int(run?['dungeons'] ?? 0);
   static Json detourFoes(Json encounter, Json? run) {
     final lift = detourLift(run);
