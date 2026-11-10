@@ -8,7 +8,7 @@ import {
   placeInfo, routeInfo, DBOSS_GIMMICK_FLOOR, UPGRADE_FX, SHORE, CAVE_OF, dungeonPos, routePos, DUNGEON_LENGTH, CITY_BOSS, waterNext, RIVAL_FLOOR, targetOf, rivalBoss, rocketBoss, townShop, townCenter, townHub, biomesLinked,
   isDoubleBattle,
   DOUBLE_FLOOR,
-  battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, RARE_PLACES, atPc, pcOf, pcMove, pcSlots, PC_BOX, boxName, renameBox, boxWall, nextWall, setNick, gameOf, leagueAhead, rivalGrowth, sortBox, shownScene, bagsFor, NUZLOCKE_DEFAULT, levelCapOf, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
+  battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, RARE_PLACES, atPc, pcOf, pcMove, pcSlots, PC_BOX, boxName, renameBox, boxWall, nextWall, setNick, gameOf, leagueAhead, rivalGrowth, sortBox, shownScene, bagsFor, NUZLOCKE_DEFAULT, levelCapOf, EXP_BENCH, benchShare, TRADE_EXP, TRADE_EVOS, TOWN_TRADES, familyOf, townTrade, townTradeable, SAFARI_FEE, SAFARI_BALLS, SAFARI_ENCOUNTERS, SAFARI_MONS, safariRates, safariAct, safariPool, leaveSafari, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
   HELD_BOOST, levelTo, MAX_TEAM, memberOf, movesAt, nextFloor, nextRandom, overflowPoints, pokemonPrice, runCoins, setMainItem, shopPrice,
   SHINY_BOOST, FOE_SHINY_BOOST, SHINY_CHANCE, START_BAG, START_BALLS, startersOf, unlockShiny, claimStarter, freePick, canEvolveWith, teachMove,
   equipFromStash, gimmicksOf, setGimmick, storyLine, startRun, takeCard, teamDown, applyBagItem, winFloor, chooseNode, routeOptions, routeCities,
@@ -165,7 +165,7 @@ describe('Battle Factory (roguelike)', () => {
     expect(expFor(100, 20, 20)).toBeGreaterThan(expAt(21) - expAt(20))
   })
 
-  it('XP só para quem lutou contra o adversário; com o Exp. Share, o resto do time ganha a metade (e os EVs)', () => {
+  it('XP inteiro para quem lutou; o banco ganha um quarto e, com o Exp. Share, a metade (e os EVs)', () => {
     const base = startRun(emptyFactory(), data, 1, 42)
     const team = [base.team[0], { ...base.team[0], id: 4 }, { ...base.team[0], id: 7, hp: 0 }]
     const foes = [{ id: 19, level: 7, iv: 0, ev: 0 }, { id: 16, level: 7, iv: 0, ev: 0 }]
@@ -173,14 +173,17 @@ describe('Battle Factory (roguelike)', () => {
     // O 1º lutou contra os dois, o 2º só contra o segundo; o 3º desmaiado não ganha.
     const after = winFloor(run, data, { fought: [[0], [0, 1]] })
     const e = (id, lvl) => expFor(data.species[id][0], 7, lvl, 1)
-    expect(after.pending.gains).toEqual([e(19, 5) + e(16, 5), e(16, 5), 0])
-    expect(after.team[1].evs.spe).toBe(data.species[16][3][5] * 3)
+    expect(after.pending.gains).toEqual([e(19, 5) + e(16, 5), e(16, 5) + Math.floor(e(19, 5) * EXP_BENCH), 0])
+    expect(after.team[1].evs.spe).toBe((data.species[16][3][5] + data.species[19][3][5]) * 3)
     // 5 níveis acima de um nível 7 ainda ganha XP.
     expect(expFor(data.species[19][0], 7, 12)).toBeGreaterThan(30)
-    // Sem Exp. Share, quem não lutou fica sem nada.
+    // Sem Exp. Share, quem ficou no banco ganha um quarto (o limite de nível segura quem luta; o banco acompanha).
     const alone = winFloor(run, data, { fought: [[0], [0]] })
-    expect(alone.pending.gains[1]).toBe(0)
-    expect(alone.team[1].evs).toEqual(team[1].evs)
+    expect(alone.pending.gains[1]).toBe(Math.floor(e(19, 5) * EXP_BENCH) + Math.floor(e(16, 5) * EXP_BENCH))
+    expect(benchShare(run)).toBe(EXP_BENCH)
+    // Quem veio de uma troca ganha mais XP.
+    const traded = winFloor({ ...run, team: [{ ...team[0], traded: true }, team[1], team[2]] }, data, { fought: [[0], [0]] })
+    expect(traded.pending.gains[0]).toBe(Math.floor(e(19, 5) * TRADE_EXP) + Math.floor(e(16, 5) * TRADE_EXP))
     // Com o Exp. Share (da loja), a metade.
     const shared = buyItem({ ...run, money: 99999, pending: { shop: ['exp-share'] } }, 'exp-share', 0, data)
     expect(shared.expShare).toBe(true)
@@ -1555,9 +1558,81 @@ describe('ideias: amizade, habilidades fora da batalha, Nuzlocke', () => {
     expect(buyItem({ ...atCap, nuzRules: [] }, 'rare-candy', 0, data)).not.toBe(null)
     const won = winFloor({ ...atCap, encounter: { kind: 'trainer', foes: [{ id: 19, level: cap, iv: 0, ev: 0 }] } }, data, { hp: [1] })
     expect(won.team[0].level).toBe(cap)
+    // A troca não passa do limite de nível.
+    const swapped = tradeMon({ ...nuz, team: [{ ...nuz.team[0], level: cap + 3, exp: expAt(cap + 3) }], pending: { trade: { id: 19 } } }, 0, data)
+    expect(swapped.team[0].level).toBe(cap + 4)
+    expect(swapped.team[0].traded).toBe(true)
     // Fora do Nuzlocke também: no limite geral o time não ganha nível.
     const free = { ...nuz, team: [{ ...nuz.team[0], level: cap + 4, exp: expAt(cap + 4) }], encounter: { kind: 'trainer', foes: [{ id: 19, level: cap + 4, iv: 0, ev: 0 }] } }
     expect(winFloor(free, data, { hp: [1] }).team[0].level).toBe(cap + 4)
+  })
+})
+
+describe('troca da cidade e Safari Zone', () => {
+  const start = () => startRun(emptyFactory(), data, 1, 42)
+  it('troca da cidade: pede um do time (nunca o mais forte), dá um raro; quem evolui por troca chega evoluído (igual ao app)', () => {
+    const first = start().team[0]
+    const team = [{ ...first, level: 20, exp: expAt(20) }, { ...first, id: 16, level: 12, exp: expAt(12), item: 'leftovers' }]
+    const run = { ...start(), floor: 40, team, town: { leg: 21, shop: [], trade: { want: 17, give: 93 } } }
+    // Pede a família: o Pidgey serve para quem quer um Pidgeotto.
+    expect(townTradeable(run, data)).toEqual([1])
+    expect(townTrade(run, 0, data)).toBe(run)
+    const out = townTrade(run, 1, data)
+    // Haunter evolui pela troca: chega um Gengar, 3 níveis acima, com o item de quem foi e XP de trocado.
+    expect(out.team[1]).toMatchObject({ id: TRADE_EVOS[93], level: 12 + TRADE_LEVELS, item: 'leftovers', traded: true })
+    expect(out.town.trade.done).toBe(true)
+    expect(out.trades).toBe(1)
+    expect(townTradeable(out, data)).toEqual([])
+    expect(townTrade(out, 0, data)).toBe(out)
+    expect(familyOf(data, 18)).toBe(16)
+    for (const id of TOWN_TRADES) expect(data.species[id]).toBeTruthy()
+    for (const [from, to] of Object.entries(TRADE_EVOS)) { expect(data.species[from]).toBeTruthy(); expect(data.species[to]).toBeTruthy() }
+  })
+  it('Safari Zone: paga a entrada, joga bola, isca e pedra; acaba com as bolas ou os encontros (igual ao app)', () => {
+    const base = { ...start(), floor: 30, money: SAFARI_FEE + 7, route: { floor: 30, biome: 'grass', options: [{ kind: 'safari' }] }, encounter: null, pending: null }
+    // Sem dinheiro para a entrada: o caminho fica fechado.
+    expect(nodeBlocked({ ...base, money: SAFARI_FEE - 1 }, { kind: 'safari' })).toBe(true)
+    expect(chooseNode({ ...base, money: SAFARI_FEE - 1 }, data, 0).pending).toBe(null)
+    let run = chooseNode(base, data, 0)
+    expect(run.money).toBe(7)
+    expect(run.floor).toBe(31)
+    expect(run.pending.safari).toMatchObject({ balls: SAFARI_BALLS, left: SAFARI_ENCOUNTERS - 1, caught: 0 })
+    expect(SAFARI_MONS).toContain(run.pending.safari.mon.id)
+    expect(run.pending.safari.mon.level).toBe(foeLevelAt(31))
+    // A isca: foge menos e fica mais difícil de pegar; a pedra, o contrário.
+    const calm = safariRates(data, { ...run.pending.safari, mood: null })
+    const eating = safariRates(data, { ...run.pending.safari, mood: 'eating' })
+    const angry = safariRates(data, { ...run.pending.safari, mood: 'angry' })
+    expect(eating.catch).toBeLessThan(calm.catch)
+    expect(eating.flee).toBeLessThan(calm.flee)
+    expect(angry.catch).toBeGreaterThan(calm.catch)
+    expect(angry.flee).toBeGreaterThan(calm.flee)
+    // Joga até acabar: cada captura entra pelo fluxo normal (pending.capture, com a Safari Ball).
+    let caught = 0
+    for (let guard = 0; guard < 200 && run.pending.safari.mon; guard++) {
+      const before = run.pending.safari
+      run = safariAct(run, data, guard % 4 === 3 ? 'rock' : 'ball')
+      expect(run.pending.safari.balls).toBeLessThanOrEqual(before.balls)
+      if (run.pending.capture) {
+        caught++
+        expect(run.pending.ball).toBe('safari-ball')
+        expect(safariAct(run, data, 'ball')).toBe(run)
+        run = capture(run, run.team.length >= MAX_TEAM ? 'pc' : null)
+      }
+    }
+    const end = run.pending.safari
+    expect(end.mon).toBe(null)
+    expect(end.caught).toBe(caught)
+    expect(end.balls === 0 || end.left === 0).toBe(true)
+    expect(safariAct(run, data, 'ball')).toBe(run)
+    expect(leaveSafari(run).pending.safari).toBe(null)
+    // Deixar este e procurar outro gasta um encontro, não uma bola.
+    const fresh = chooseNode(base, data, 0)
+    const moved = safariAct(fresh, data, 'run')
+    expect(moved.pending.safari).toMatchObject({ balls: SAFARI_BALLS, left: SAFARI_ENCOUNTERS - 2, last: 'left' })
+    for (const id of SAFARI_MONS) expect(data.species[id]).toBeTruthy()
+    // No Monotipo, só os do tipo.
+    expect(safariPool({ ...base, mono: ['dragon'] }, data)).toEqual([147])
   })
 })
 

@@ -5,7 +5,7 @@
 import { battleMons } from './battleSetup'
 import { t } from './i18n'
 import { getFactoryData, getMoves, getPokemonById, getSpecies } from './data'
-import { bagsFor, battleOrder, ROAM_TURNS, bossScene, captureFor, clockOf, fieldOf, isDoubleBattle, weatherOf, EXP_SHARE, expAt, expFactor, expProgress, expShares, foeMember, memberOf, movesAt, nuzRule, levelCapOf } from './factoryRun'
+import { bagsFor, battleOrder, ROAM_TURNS, bossScene, captureFor, clockOf, fieldOf, isDoubleBattle, weatherOf, benchShare, expAt, expFactor, expProgress, expShares, foeMember, memberOf, movesAt, nuzRule, levelCapOf } from './factoryRun'
 import { seededRandom } from './league'
 import { newBattle } from './turnBattle'
 
@@ -48,7 +48,7 @@ export async function factoryBattle(run) {
     // cap: o limite de nível do Nuzlocke (o motor para o XP nele).
     mons: order.map((i) => ({ level: run.team[i].level, exp: run.team[i].exp, ...(cap ? { cap } : {}) })),
     table: run.encounter.foes.map((f) => { const all = expShares(run, data, f, null, expFactor(run.encounter.kind)); return order.map((i) => all[i]) }),
-    share: run.expShare ? EXP_SHARE : 0,
+    share: benchShare(run),
   }
   // Dupla de treinadores a partir do andar DOUBLE_FLOOR: batalha dupla (2 contra 2).
   const doubles = isDoubleBattle(run)

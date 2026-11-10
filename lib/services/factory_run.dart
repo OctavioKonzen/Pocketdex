@@ -1098,6 +1098,16 @@ class FactoryRun {
   /// Exp. Share: quem não lutou ganha essa parte do XP (e os EVs).
   static const expShare = 0.5;
 
+  /// Sem o Exp. Share, quem ficou no banco ainda ganha um pouco: com o limite de nível, o time não fica para trás de
+  /// quem luta. Igual ao site.
+  static const expBench = 0.25;
+
+  /// A parte do XP de quem não lutou. Igual ao site.
+  static double benchShare(Json? run) => run?['expShare'] == true ? expShare : expBench;
+
+  /// O Pokémon que veio de uma troca ganha mais XP (como nos jogos). Igual ao site.
+  static const tradeExp = 1.5;
+
   /// Lucky Egg: XP a mais para quem segura (como extra, menos). Igual ao site.
   static const luckyEgg = (held: 1.5, extra: 1.2);
 
@@ -1166,8 +1176,8 @@ class FactoryRun {
       for (var i = 0; i < team.length; i++)
         () {
           if (!(hpOf(team[i]) > 0)) return 0;
-          final share = fought == null || fought.contains(i) ? 1.0 : run['expShare'] == true ? expShare : 0.0;
-          return share == 0 ? 0 : (expFor(base, _int(foe['level']), _int(team[i]['level']), factor * _mult(run, 'exp')) * share * _eggOf(team[i])).floor();
+          final share = fought == null || fought.contains(i) ? 1.0 : benchShare(run);
+          return (expFor(base, _int(foe['level']), _int(team[i]['level']), factor * _mult(run, 'exp')) * share * _eggOf(team[i]) * (team[i]['traded'] == true ? tradeExp : 1)).floor();
         }(),
     ];
   }
@@ -1784,6 +1794,10 @@ class FactoryRun {
         final id = rarePlaceIds[(rand() * rarePlaceIds.length).floor()];
         add((id: id, name: rarePlaces[id]!.name, scene: rarePlaces[id]!.scene));
       }
+      // A Safari Zone: às vezes, na segunda bifurcação da rota (no Nuzlocke não tem: um capturado por área).
+      if (pos == forks[1] && _int(run['floor']) >= safariFloor && run['nuzlocke'] != true && safariBiomes.contains(biome) && safariPool(run, data).isNotEmpty && rand() < safariChance) {
+        options.add({'kind': 'safari'});
+      }
       // O lendário que foge (Raikou, Entei, Suicune...): às vezes aparece na primeira bifurcação da rota.
       final roam = roamerNode(run);
       if (pos == forks[0] && roam != null) options.add(roam);
@@ -2045,6 +2059,10 @@ class FactoryRun {
     out['scene'] = shownScene(run, routeBiomeNow);
     if (node['kind'] == 'mart') {
       out['pending'] = {'mart': true, 'shop': _pickShop(rand, data, floor, 10, run['townMap'] == true)};
+    } else if (node['kind'] == 'safari') {
+      out['money'] = ((run['money'] as num?) ?? 0).toInt() - safariFee;
+      out['safaris'] = ((run['safaris'] as num?) ?? 0).toInt() + 1;
+      out['pending'] = {'safari': _safariNext({'balls': safariBalls, 'left': safariEncounters, 'caught': 0, 'mon': null, 'mood': null}, out, data, rand)};
     } else if (node['kind'] == 'trade') {
       // Troca: alguém da rota oferece um Pokémon (você escolhe quem dar; ele vem tradeLevels acima).
       final offer = (regionalEncounter(data, run, encounterFor(data, floor + 1, rand, null, false, {'kind': 'wild', 'biome': run['route']?['biome'], 'shiny': run['shinyRate'] ?? 1}))['foes'] as List).first as Map;
@@ -2900,7 +2918,7 @@ class FactoryRun {
     return need != null && !hasHm(run, need) ? need : null;
   }
 
-  static bool nodeBlocked(Json run, Map? node) => hmNeeded(run, node) != null;
+  static bool nodeBlocked(Json run, Map? node) => hmNeeded(run, node) != null || (node?['kind'] == 'safari' && ((run['money'] as num?) ?? 0) < safariFee);
 
   /// Cut: uma vez por rota, corta a árvore e abre um caminho escondido (um selvagem raro do lugar). null se não dá.
   static Json? cutPath(Json run) {
@@ -3201,17 +3219,159 @@ class FactoryRun {
     final offer = pendingOf(run)?['trade'] as Map?;
     final team = teamOf(run);
     if (offer == null || index < 0 || index >= team.length) return run;
-    final mon = team[index];
     final out = _copy(run);
     (out['pending'] as Map)['trade'] = null;
     out['trades'] = ((run['trades'] as num?) ?? 0).toInt() + 1;
+    _tradeIn(run, out, index, offer, data);
+    return out;
+  }
+
+  /// Quem evolui ao ser trocado (como nos jogos): chega já evoluído, seja qual for o nível. Igual ao site.
+  static const tradeEvos = {64: 65, 67: 68, 75: 76, 93: 94, 525: 526, 533: 534, 708: 709, 710: 711};
+
+  /// O oferecido entra no lugar de quem foi: tradeLevels acima (sem passar do limite de nível), evoluído pela troca,
+  /// com mais XP dali em diante. Na rota vem a forma do nível dele; o morador da cidade dá exatamente o que ofereceu.
+  static void _tradeIn(Json run, Json out, int index, Map offer, FactoryData data, {bool exact = false}) {
+    final mon = teamOf(run)[index];
+    final team = teamOf(out);
     final rand = _dice(out);
-    final level = _int(mon['level']);
-    final fresh = newMon(devolve(data, _int(offer['id']), level), level, rand, 10, offer['shiny'] == true);
-    final (grown, _) = levelTo(fresh, level + tradeLevels, data, rand, regionOf(data, run));
-    team[index] = {...grown, 'item': mon['item'], 'extras': mon['extras'] ?? <String>[]};
+    final from = _int(mon['level']);
+    final cap = levelCapOf(data, run);
+    final level = math.max(from, cap == null ? from + tradeLevels : math.min(from + tradeLevels, cap));
+    final fresh = newMon(exact ? _int(offer['id']) : devolve(data, _int(offer['id']), from), from, rand, 10, offer['shiny'] == true);
+    var (grown, _) = levelTo(fresh, level, data, rand, regionOf(data, run));
+    final evo = tradeEvos[_int(grown['id'])];
+    if (evo != null && data.species[evo] != null) grown = {...grown, 'id': evo};
+    team[index] = {...grown, 'traded': true, 'item': mon['item'], 'extras': mon['extras'] ?? <String>[]};
     out['team'] = team;
     _addDex(out, _int(grown['id']));
+  }
+
+  /// A troca da cidade (como as trocas com moradores nos jogos): alguém quer um Pokémon que você tem no time (nunca o
+  /// mais forte) e dá um raro em troca, que não aparece nas rotas. Uma por cidade. Igual ao site.
+  static const townTrades = [122, 83, 124, 108, 114, 64, 67, 75, 93, 213, 115, 241];
+
+  /// A família (a primeira forma da linha): a troca aceita o pedido em qualquer estágio.
+  static int familyOf(FactoryData data, int id) => devolve(data, id, 0);
+
+  static bool _monoOk(Json run, FactoryData data, int id) {
+    final mono = run['mono'] as List?;
+    return mono == null || ((data.speciesOf(id)?.elementAtOrNull(4) as List?) ?? const []).any(mono.contains);
+  }
+
+  static Map<String, dynamic>? _townTradeOffer(Json run, FactoryData data, double Function() rand) {
+    final roll = [rand(), rand(), rand()];
+    final team = teamOf(run);
+    var top = 0;
+    for (var i = 1; i < team.length; i++) {
+      if (_int(team[i]['level']) > _int(team[top]['level'])) top = i;
+    }
+    final wanted = [for (var i = 0; i < team.length; i++) if (i != top && team[i]['egg'] != true) team[i]];
+    if (wanted.isEmpty) return null;
+    final want = _int(wanted[(roll[0] * wanted.length).floor()]['id']);
+    final gives = [for (final id in townTrades) if (data.species[id] != null && familyOf(data, id) != familyOf(data, want) && _monoOk(run, data, id)) id];
+    if (gives.isEmpty) return null;
+    return {'want': want, 'give': gives[(roll[1] * gives.length).floor()], if (roll[2] < shinyChance * ((run['shinyRate'] as num?) ?? 1)) 'shiny': true};
+  }
+
+  /// Quem do time serve para a troca da cidade (posições). Igual ao site.
+  static List<int> townTradeable(Json run, FactoryData data) {
+    final offer = (run['town'] as Map?)?['trade'] as Map?;
+    if (offer == null || offer['done'] == true || run['encounter'] != null || run['pending'] != null) return const [];
+    final team = teamOf(run);
+    final want = familyOf(data, _int(offer['want']));
+    return [for (var i = 0; i < team.length; i++) if (team[i]['egg'] != true && familyOf(data, _int(team[i]['id'])) == want) i];
+  }
+
+  /// Faz a troca da cidade com quem está na posição index. Igual ao site.
+  static Json townTrade(Json run, int index, FactoryData data) {
+    if (!townTradeable(run, data).contains(index)) return run;
+    final out = _copy(run);
+    final offer = Map<String, dynamic>.from((out['town'] as Map)['trade'] as Map);
+    (out['town'] as Map)['trade'] = {...offer, 'done': true};
+    out['trades'] = ((run['trades'] as num?) ?? 0).toInt() + 1;
+    _tradeIn(run, out, index, {'id': offer['give'], 'shiny': offer['shiny']}, data, exact: true);
+    return out;
+  }
+
+  /// A Safari Zone (como nos jogos): um caminho sem batalha que às vezes aparece na rota. Você paga a entrada e recebe
+  /// safariBalls Safari Balls; aparecem até safariEncounters Pokémon raros, um de cada vez. Em cada um: jogar a bola, a
+  /// isca (ele foge menos, mas fica mais difícil de pegar) ou a pedra (mais fácil de pegar, mas foge mais). Igual ao site.
+  static const safariFloor = 10, safariChance = 0.2, safariFee = 500, safariBalls = 10, safariEncounters = 5, safariFlee = 0.15;
+  static const safariBiomes = ['grass', 'flowers', 'forest', 'bamboo', 'swamp', 'desert', 'dunes', 'mountain'];
+  static const safariMons = [113, 115, 123, 127, 128, 147, 111, 102, 114, 214, 203, 241, 234, 193, 453, 455, 451, 108, 84, 46, 29, 32, 25, 440];
+
+  /// Quem pode aparecer no Safari desta corrida (no Monotipo, só os do tipo).
+  static List<int> safariPool(Json run, FactoryData data) => [for (final id in safariMons) if (data.species[id] != null && _monoOk(run, data, id)) id];
+
+  /// As chances de agora: de a Safari Ball pegar e de ele fugir depois da sua jogada.
+  static ({double catchRate, double flee}) safariRates(FactoryData data, Map? safari) {
+    final mon = safari?['mon'] as Map?;
+    if (mon == null) return (catchRate: 0, flee: 0);
+    final base = math.min(0.9, 0.2 + (_int(data.speciesOf(_int(mon['id']))?.elementAtOrNull(5) ?? 45) / 255) * 0.6);
+    final mood = safari?['mood'];
+    return (
+      catchRate: math.min(0.95, base * (mood == 'angry' ? 1.6 : mood == 'eating' ? 0.6 : 1)),
+      flee: math.min(0.9, safariFlee * (mood == 'angry' ? 2 : mood == 'eating' ? 0.35 : 1)),
+    );
+  }
+
+  /// O próximo Pokémon do Safari (mon: null quando acabaram as bolas ou os encontros).
+  static Map<String, dynamic> _safariNext(Map safari, Json run, FactoryData data, double Function() rand) {
+    final pool = safariPool(run, data);
+    final next = Map<String, dynamic>.from(safari);
+    if (_int(safari['balls'] ?? 0) <= 0 || _int(safari['left'] ?? 0) <= 0 || pool.isEmpty) return next..['mon'] = null..['mood'] = null;
+    final id = pool[(rand() * pool.length).floor()];
+    final shiny = rand() < shinyChance * ((run['shinyRate'] as num?) ?? 1);
+    return next
+      ..['left'] = _int(safari['left']) - 1
+      ..['mood'] = null
+      ..['mon'] = {'id': id, 'level': foeLevelAt(_int(run['floor'])), if (shiny) 'shiny': true};
+  }
+
+  /// Uma jogada no Safari: 'ball', 'bait', 'rock' ou 'run' (deixa este e procura outro). Igual ao site.
+  static Json safariAct(Json run, FactoryData data, String action) {
+    final safari = pendingOf(run)?['safari'] as Map?;
+    final mon = safari?['mon'] as Map?;
+    if (safari == null || mon == null || pendingOf(run)?['capture'] != null) return run;
+    if (!const ['ball', 'bait', 'rock', 'run'].contains(action)) return run;
+    if (action == 'ball' && _int(safari['balls'] ?? 0) <= 0) return run;
+    final out = _copy(run);
+    final rand = _dice(out);
+    final pending = out['pending'] as Map;
+    var next = <String, dynamic>{...Map<String, dynamic>.from(safari), 'last': null, 'lastId': mon['id']};
+    if (action == 'ball') {
+      next['balls'] = _int(safari['balls']) - 1;
+      if (rand() < safariRates(data, safari).catchRate) {
+        pending['capture'] = {'id': mon['id'], 'level': mon['level'], if (mon['shiny'] == true) 'shiny': true};
+        pending['ball'] = 'safari-ball';
+        pending['safari'] = _safariNext({...next, 'caught': _int(safari['caught'] ?? 0) + 1, 'last': 'caught'}, out, data, rand);
+        return out;
+      }
+      next['last'] = 'broke';
+    } else if (action == 'bait') {
+      next = {...next, 'mood': 'eating', 'last': 'bait'};
+    } else if (action == 'rock') {
+      next = {...next, 'mood': 'angry', 'last': 'rock'};
+    } else {
+      pending['safari'] = _safariNext({...next, 'last': 'left'}, out, data, rand);
+      return out;
+    }
+    // Depois da sua jogada, ele pode fugir (sem bolas, o Safari acaba).
+    if (_int(next['balls'] ?? 0) <= 0) {
+      next = {...next, 'mon': null, 'mood': null};
+    } else if (rand() < safariRates(data, next).flee) {
+      next = _safariNext({...next, 'last': 'fled'}, out, data, rand);
+    }
+    pending['safari'] = next;
+    return out;
+  }
+
+  /// Sai do Safari (as bolas que sobraram ficam lá). Igual ao site.
+  static Json leaveSafari(Json run) {
+    if (pendingOf(run)?['safari'] == null) return run;
+    final out = _copy(run);
+    (out['pending'] as Map)['safari'] = null;
     return out;
   }
 
@@ -3684,6 +3844,8 @@ class FactoryRun {
     // Chegou na cidade: o estoque do Poké Mart dela e o lugar com batalha perto dela.
     if (townHub(data, out) && out['town']?['leg'] != legOf(out)) {
       out['town'] = {'leg': legOf(out), 'shop': _pickShop(rand, data, _int(out['floor']), 8, run['townMap'] == true)};
+      final trade = _townTradeOffer(out, data, rand);
+      if (trade != null) (out['town'] as Map)['trade'] = trade;
     }
     out['route'] = routeOptions(out, data, rand);
     // Começo de uma rota nova: a missão dela.

@@ -919,14 +919,20 @@ export function expFor(baseExp, foeLevel, level, factor = 1) {
 
 /** Exp. Share: quem não lutou ganha essa parte do XP (e os EVs). */
 export const EXP_SHARE = 0.5
+/** Sem o Exp. Share, quem ficou no banco ainda ganha um pouco: com o limite de nível, o time não fica para trás de quem luta. */
+export const EXP_BENCH = 0.25
+/** A parte do XP de quem não lutou. */
+export const benchShare = (run) => (run?.expShare ? EXP_SHARE : EXP_BENCH)
+/** O Pokémon que veio de uma troca ganha mais XP (como nos jogos). */
+export const TRADE_EXP = 1.5
 
 /** O XP de um derrotado para cada um do time (posição na corrida): fought = quem lutou contra ele; sem fought, todos de pé. */
 export function expShares(run, data, foe, fought, factor = 1) {
   const base = speciesOf(data, foe.id)?.[0] ?? 60
   return run.team.map((m, i) => {
     if (!(m.hp > 0)) return 0
-    const share = !fought || fought.includes(i) ? 1 : run.expShare ? EXP_SHARE : 0
-    return share ? Math.floor(expFor(base, foe.level, m.level, factor * run.mult.exp) * share * eggOf(m)) : 0
+    const share = !fought || fought.includes(i) ? 1 : benchShare(run)
+    return Math.floor(expFor(base, foe.level, m.level, factor * run.mult.exp) * share * eggOf(m) * (m.traded ? TRADE_EXP : 1))
   })
 }
 
@@ -1470,6 +1476,8 @@ export function routeOptions(run, data, rand) {
       const id = RARE_PLACE_IDS[Math.floor(rand() * RARE_PLACE_IDS.length)]
       add({ id, scene: RARE_PLACES[id].scene })
     }
+    // A Safari Zone: às vezes, na segunda bifurcação da rota (no Nuzlocke não tem: um capturado por área).
+    if (pos === FORKS[1] && run.floor >= SAFARI_FLOOR && !run.nuzlocke && SAFARI_BIOMES.includes(biome) && safariPool(run, data).length && rand() < SAFARI_CHANCE) options.push({ kind: 'safari' })
     // O lendário que foge (Raikou, Entei, Suicune...): às vezes aparece na primeira bifurcação da rota.
     const roam = roamerNode(run)
     if (pos === FORKS[0] && roam) options.push(roam)
@@ -1581,7 +1589,11 @@ export function chooseNode(run, data, index, clock = null) {
   // Na rota não tem Poké Mart nem Centro: o vendedor ambulante e quem cura ficam no próprio lugar.
   out.scene = shownScene(run, run.route.biome ?? 'grass')
   if (node.kind === 'mart') out.pending = { mart: true, shop: pickShop(rand, data, run.floor, 10, Boolean(run.townMap)) }
-  else if (node.kind === 'trade') {
+  else if (node.kind === 'safari') {
+    out.money = run.money - SAFARI_FEE
+    out.safaris = (run.safaris ?? 0) + 1
+    out.pending = { safari: safariNext({ balls: SAFARI_BALLS, left: SAFARI_ENCOUNTERS, caught: 0, mon: null, mood: null }, out, data, rand) }
+  } else if (node.kind === 'trade') {
     // Troca: alguém da rota oferece um Pokémon (você escolhe quem dar; ele vem TRADE_LEVELS acima).
     const offer = regionalEncounter(data, run, encounterFor(data, out.floor, rand, null, false, { kind: 'wild', biome: run.route?.biome, shiny: run.shinyRate ?? 1 })).foes[0]
     out.pending = { trade: { id: offer.id, ...(offer.shiny ? { shiny: true } : {}) } }
@@ -2376,7 +2388,7 @@ export function hmNeeded(run, node) {
   const need = deep ? 'dive' : place === 'water' ? 'surf' : place === 'waterfall' ? 'waterfall' : null
   return need && !hasHm(run, need) ? need : null
 }
-export const nodeBlocked = (run, node) => hmNeeded(run, node) != null
+export const nodeBlocked = (run, node) => hmNeeded(run, node) != null || (node?.kind === 'safari' && (run.money ?? 0) < SAFARI_FEE)
 /** Cut: uma vez por rota, corta a árvore e abre um caminho escondido (um selvagem raro do lugar). null se não dá. */
 export function cutPath(run) {
   const route = run.route
@@ -2491,18 +2503,125 @@ export const skipCapture = (run) => (run.pending ? { ...run, pending: { ...run.p
 
 /** A troca: quem está na posição index vai e vem o oferecido, TRADE_LEVELS níveis acima (evolui se der), com o item dele. */
 export const TRADE_LEVELS = 3
+/** Quem evolui ao ser trocado (como nos jogos): chega já evoluído, seja qual for o nível. */
+export const TRADE_EVOS = { 64: 65, 67: 68, 75: 76, 93: 94, 525: 526, 533: 534, 708: 709, 710: 711 }
+/** O oferecido entra no lugar de quem foi: TRADE_LEVELS acima (sem passar do limite de nível), evoluído pela troca, com mais XP dali em diante. */
+function tradeIn(run, out, index, offer, data, exact = false) {
+  const mon = run.team[index]
+  const rand = dice(out)
+  const cap = levelCapOf(data, run)
+  const level = Math.max(mon.level, Math.min(mon.level + TRADE_LEVELS, cap ?? Infinity))
+  // Na rota vem a forma do nível dele; o morador da cidade dá exatamente o que ofereceu.
+  const fresh = newMon(exact ? offer.id : devolve(data, offer.id, mon.level), mon.level, rand, 10, Boolean(offer.shiny))
+  let [grown] = levelTo(fresh, level, data, rand, regionOf(data, run))
+  if (TRADE_EVOS[grown.id] && data.species[TRADE_EVOS[grown.id]]) grown = { ...grown, id: TRADE_EVOS[grown.id] }
+  out.team[index] = { ...grown, traded: true, item: mon.item ?? null, extras: mon.extras ?? [] }
+  addDex(out, grown.id)
+}
 export function tradeMon(run, index, data) {
   const offer = run.pending?.trade
   const mon = run.team[index]
   if (!offer || !mon) return run
   const out = { ...run, team: [...run.team], pending: { ...run.pending, trade: null }, trades: (run.trades ?? 0) + 1 }
-  const rand = dice(out)
-  const fresh = newMon(devolve(data, offer.id, mon.level), mon.level, rand, 10, Boolean(offer.shiny))
-  const [grown] = levelTo(fresh, mon.level + TRADE_LEVELS, data, rand, regionOf(data, run))
-  out.team[index] = { ...grown, item: mon.item ?? null, extras: mon.extras ?? [] }
-  addDex(out, grown.id)
+  tradeIn(run, out, index, offer, data)
   return out
 }
+
+/**
+ * A troca da cidade (como as trocas com moradores nos jogos): alguém quer um
+ * Pokémon que você tem no time (nunca o mais forte) e dá um raro em troca, que
+ * não aparece nas rotas. Uma por cidade. Igual ao app.
+ */
+export const TOWN_TRADES = [122, 83, 124, 108, 114, 64, 67, 75, 93, 213, 115, 241]
+/** A família (a primeira forma da linha): a troca aceita o pedido em qualquer estágio. */
+export const familyOf = (data, id) => devolve(data, id, 0)
+function townTradeOffer(run, data, rand) {
+  const roll = [rand(), rand(), rand()]
+  const top = run.team.reduce((best, m, i) => (m.level > run.team[best].level ? i : best), 0)
+  const wanted = run.team.filter((m, i) => i !== top && !m.egg)
+  if (!wanted.length) return null
+  const want = wanted[Math.floor(roll[0] * wanted.length)].id
+  const gives = TOWN_TRADES.filter((id) => data.species[id] && familyOf(data, id) !== familyOf(data, want) && (!run.mono || (speciesOf(data, id)?.[4] ?? []).some((t) => run.mono.includes(t))))
+  if (!gives.length) return null
+  return { want, give: gives[Math.floor(roll[1] * gives.length)], ...(roll[2] < SHINY_CHANCE * (run.shinyRate ?? 1) ? { shiny: true } : {}) }
+}
+/** Quem do time serve para a troca da cidade (posições). */
+export function townTradeable(run, data) {
+  const offer = run.town?.trade
+  if (!offer || offer.done || run.encounter || run.pending) return []
+  return run.team.map((m, i) => i).filter((i) => !run.team[i].egg && familyOf(data, run.team[i].id) === familyOf(data, offer.want))
+}
+/** Faz a troca da cidade com quem está na posição index. */
+export function townTrade(run, index, data) {
+  if (!townTradeable(run, data).includes(index)) return run
+  const offer = run.town.trade
+  const out = { ...run, team: [...run.team], town: { ...run.town, trade: { ...offer, done: true } }, trades: (run.trades ?? 0) + 1 }
+  tradeIn(run, out, index, { id: offer.give, shiny: offer.shiny }, data, true)
+  return out
+}
+
+/**
+ * A Safari Zone (como nos jogos): um caminho sem batalha que às vezes aparece
+ * na rota. Você paga a entrada e recebe SAFARI_BALLS Safari Balls; aparecem até
+ * SAFARI_ENCOUNTERS Pokémon raros, um de cada vez. Em cada um: jogar a bola, a
+ * isca (ele foge menos, mas fica mais difícil de pegar) ou a pedra (mais fácil
+ * de pegar, mas foge mais). Igual ao app.
+ */
+export const SAFARI_FLOOR = 10
+export const SAFARI_CHANCE = 0.2
+export const SAFARI_FEE = 500
+export const SAFARI_BALLS = 10
+export const SAFARI_ENCOUNTERS = 5
+export const SAFARI_FLEE = 0.15
+export const SAFARI_BIOMES = ['grass', 'flowers', 'forest', 'bamboo', 'swamp', 'desert', 'dunes', 'mountain']
+export const SAFARI_MONS = [113, 115, 123, 127, 128, 147, 111, 102, 114, 214, 203, 241, 234, 193, 453, 455, 451, 108, 84, 46, 29, 32, 25, 440]
+/** Quem pode aparecer no Safari desta corrida (no Monotipo, só os do tipo). */
+export const safariPool = (run, data) => SAFARI_MONS.filter((id) => data.species[id] && (!run.mono || (speciesOf(data, id)?.[4] ?? []).some((t) => run.mono.includes(t))))
+/** As chances de agora: de a Safari Ball pegar e de ele fugir depois da sua jogada. */
+export function safariRates(data, safari) {
+  if (!safari?.mon) return { catch: 0, flee: 0 }
+  const base = Math.min(0.9, 0.2 + ((speciesOf(data, safari.mon.id)?.[5] ?? 45) / 255) * 0.6)
+  const mood = safari.mood
+  return { catch: Math.min(0.95, base * (mood === 'angry' ? 1.6 : mood === 'eating' ? 0.6 : 1)), flee: Math.min(0.9, SAFARI_FLEE * (mood === 'angry' ? 2 : mood === 'eating' ? 0.35 : 1)) }
+}
+/** O próximo Pokémon do Safari (mon: null quando acabaram as bolas ou os encontros). */
+function safariNext(safari, run, data, rand) {
+  const pool = safariPool(run, data)
+  if (!(safari.balls > 0) || !(safari.left > 0) || !pool.length) return { ...safari, mon: null, mood: null }
+  const id = pool[Math.floor(rand() * pool.length)]
+  const shiny = rand() < SHINY_CHANCE * (run.shinyRate ?? 1)
+  return { ...safari, left: safari.left - 1, mood: null, mon: { id, level: foeLevelAt(run.floor), ...(shiny ? { shiny: true } : {}) } }
+}
+/** Uma jogada no Safari: 'ball', 'bait', 'rock' ou 'run' (deixa este e procura outro). */
+export function safariAct(run, data, action) {
+  const safari = run.pending?.safari
+  if (!safari?.mon || run.pending.capture) return run
+  const out = { ...run }
+  const rand = dice(out)
+  let next = { ...safari, last: null, lastId: safari.mon.id }
+  if (action === 'ball') {
+    if (!(safari.balls > 0)) return run
+    next.balls = safari.balls - 1
+    if (rand() < safariRates(data, safari).catch) {
+      const capture = { id: safari.mon.id, level: safari.mon.level, ...(safari.mon.shiny ? { shiny: true } : {}) }
+      out.pending = { ...run.pending, capture, ball: 'safari-ball', safari: safariNext({ ...next, caught: (safari.caught ?? 0) + 1, last: 'caught' }, out, data, rand) }
+      return out
+    }
+    next.last = 'broke'
+  } else if (action === 'bait') next = { ...next, mood: 'eating', last: 'bait' }
+  else if (action === 'rock') next = { ...next, mood: 'angry', last: 'rock' }
+  else if (action === 'run') {
+    out.pending = { ...run.pending, safari: safariNext({ ...next, last: 'left' }, out, data, rand) }
+    return out
+  } else return run
+  // Depois da sua jogada, ele pode fugir (sem bolas, o Safari acaba).
+  if (!(next.balls > 0)) next = { ...next, mon: null, mood: null }
+  else if (rand() < safariRates(data, next).flee) next = safariNext({ ...next, last: 'fled' }, out, data, rand)
+  out.pending = { ...run.pending, safari: next }
+  return out
+}
+/** Sai do Safari (as bolas que sobraram ficam lá). */
+export const leaveSafari = (run) => (run.pending?.safari ? { ...run, pending: { ...run.pending, safari: null } } : run)
 /** Sorteia os caminhos do andar de novo (melhoria "reroll": algumas vezes por corrida). null se não dá. */
 export function rerollRoute(run, data) {
   if (!((run.rerolls ?? 0) > 0) || !run.route || run.encounter || run.pending) return null
@@ -3015,6 +3134,8 @@ export function nextFloor(run, data) {
   // Chegou na cidade: o estoque do Poké Mart dela e o lugar com batalha perto dela.
   if (townHub(data, out) && out.town?.leg !== legOf(out)) {
     out.town = { leg: legOf(out), shop: pickShop(rand, data, out.floor, 8, Boolean(run.townMap)) }
+    const trade = townTradeOffer(out, data, rand)
+    if (trade) out.town.trade = trade
   }
   out.route = routeOptions(out, data, rand)
   // Começo de uma rota nova: a missão dela.

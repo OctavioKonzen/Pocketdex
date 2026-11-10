@@ -283,7 +283,68 @@ void main() {
     expect(identical(f1, f2), isTrue);
   });
 
-  test('XP só para quem lutou; com o Exp. Share, a metade para o resto do time (igual ao site)', () {
+  test('troca da cidade: pede um do time, dá um raro; quem evolui por troca chega evoluído (igual ao site)', () {
+    final base = FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!;
+    final first = FactoryRun.teamOf(base).first;
+    final team = [{...first, 'level': 20, 'exp': FactoryRun.expAt(20)}, {...first, 'id': 16, 'level': 12, 'exp': FactoryRun.expAt(12), 'item': 'leftovers'}];
+    final run = {...base, 'floor': 40, 'team': team, 'town': {'leg': 21, 'shop': <String>[], 'trade': {'want': 17, 'give': 93}}};
+    expect(FactoryRun.townTradeable(run, data), [1]);
+    expect(identical(FactoryRun.townTrade(run, 0, data), run), isTrue);
+    final out = FactoryRun.townTrade(run, 1, data);
+    final got = FactoryRun.teamOf(out)[1];
+    expect([got['id'], got['level'], got['item'], got['traded']], [FactoryRun.tradeEvos[93], 12 + FactoryRun.tradeLevels, 'leftovers', true]);
+    expect(out['town']['trade']['done'], true);
+    expect(out['trades'], 1);
+    expect(FactoryRun.townTradeable(out, data), isEmpty);
+    expect(FactoryRun.familyOf(data, 18), 16);
+    for (final id in FactoryRun.townTrades) {
+      expect(data.species[id], isNotNull);
+    }
+    for (final e in FactoryRun.tradeEvos.entries) {
+      expect(data.species[e.key], isNotNull);
+      expect(data.species[e.value], isNotNull);
+    }
+  });
+
+  test('Safari Zone: paga a entrada, joga bola, isca e pedra; acaba com as bolas ou os encontros (igual ao site)', () {
+    final start = FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!;
+    final base = {...start, 'floor': 30, 'money': FactoryRun.safariFee + 7, 'route': {'floor': 30, 'biome': 'grass', 'options': [{'kind': 'safari'}]}, 'encounter': null, 'pending': null};
+    expect(FactoryRun.nodeBlocked({...base, 'money': FactoryRun.safariFee - 1}, {'kind': 'safari'}), isTrue);
+    expect(FactoryRun.chooseNode({...base, 'money': FactoryRun.safariFee - 1}, data, 0)['pending'], isNull);
+    var run = FactoryRun.chooseNode(base, data, 0);
+    expect(run['money'], 7);
+    expect(run['floor'], 31);
+    Map safari() => FactoryRun.pendingOf(run)!['safari'] as Map;
+    expect([safari()['balls'], safari()['left'], safari()['caught']], [FactoryRun.safariBalls, FactoryRun.safariEncounters - 1, 0]);
+    expect(FactoryRun.safariMons, contains(safari()['mon']['id']));
+    expect(safari()['mon']['level'], FactoryRun.foeLevelAt(31));
+    final calm = FactoryRun.safariRates(data, {...safari(), 'mood': null});
+    final eating = FactoryRun.safariRates(data, {...safari(), 'mood': 'eating'});
+    final angry = FactoryRun.safariRates(data, {...safari(), 'mood': 'angry'});
+    expect(eating.catchRate, lessThan(calm.catchRate));
+    expect(eating.flee, lessThan(calm.flee));
+    expect(angry.catchRate, greaterThan(calm.catchRate));
+    expect(angry.flee, greaterThan(calm.flee));
+    var caught = 0;
+    for (var guard = 0; guard < 200 && safari()['mon'] != null; guard++) {
+      run = FactoryRun.safariAct(run, data, guard % 4 == 3 ? 'rock' : 'ball');
+      if (FactoryRun.pendingOf(run)!['capture'] != null) {
+        caught++;
+        expect(FactoryRun.pendingOf(run)!['ball'], 'safari-ball');
+        expect(identical(FactoryRun.safariAct(run, data, 'ball'), run), isTrue);
+        run = FactoryRun.capture(run, FactoryRun.teamOf(run).length >= FactoryRun.maxTeam ? FactoryRun.toPc : null);
+      }
+    }
+    expect(safari()['mon'], isNull);
+    expect(safari()['caught'], caught);
+    expect(safari()['balls'] == 0 || safari()['left'] == 0, isTrue);
+    expect(FactoryRun.pendingOf(FactoryRun.leaveSafari(run))!['safari'], isNull);
+    final moved = FactoryRun.pendingOf(FactoryRun.safariAct(FactoryRun.chooseNode(base, data, 0), data, 'run'))!['safari'] as Map;
+    expect([moved['balls'], moved['left'], moved['last']], [FactoryRun.safariBalls, FactoryRun.safariEncounters - 2, 'left']);
+    expect(FactoryRun.safariPool({...base, 'mono': ['dragon']}, data), [147]);
+  });
+
+  test('XP inteiro para quem lutou; o banco ganha um quarto e, com o Exp. Share, a metade (igual ao site)', () {
     final base = FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!;
     final first = FactoryRun.teamOf(base).first;
     final run = {
@@ -293,8 +354,12 @@ void main() {
     };
     int e(int id, int lvl) => FactoryRun.expFor(data.species[id]![0] as int, 7, lvl);
     final after = FactoryRun.winFloor(run, data, fought: [[0], [0, 1]]);
-    expect(FactoryRun.pendingOf(after)!['gains'], [e(19, 5) + e(16, 5), e(16, 5), 0]);
-    expect(FactoryRun.winFloor(run, data, fought: [[0], [0]])['pending']['gains'][1], 0);
+    expect(FactoryRun.pendingOf(after)!['gains'], [e(19, 5) + e(16, 5), e(16, 5) + (e(19, 5) * FactoryRun.expBench).floor(), 0]);
+    expect(FactoryRun.winFloor(run, data, fought: [[0], [0]])['pending']['gains'][1], (e(19, 5) * FactoryRun.expBench).floor() + (e(16, 5) * FactoryRun.expBench).floor());
+    expect(FactoryRun.benchShare(run), FactoryRun.expBench);
+    // Quem veio de uma troca ganha mais XP.
+    final traded = FactoryRun.winFloor({...run, 'team': [{...first, 'traded': true}, {...first, 'id': 4}, {...first, 'id': 7, 'hp': 0.0}]}, data, fought: [[0], [0]]);
+    expect(traded['pending']['gains'][0], (e(19, 5) * FactoryRun.tradeExp).floor() + (e(16, 5) * FactoryRun.tradeExp).floor());
     final shared = FactoryRun.buyItem({...run, 'money': 99999, 'pending': {'shop': ['exp-share']}}, 'exp-share', 0, data)!;
     expect(shared['expShare'], true);
     final half = FactoryRun.winFloor({...shared, 'encounter': run['encounter']}, data, fought: [[0], [0]]);
@@ -1193,6 +1258,10 @@ void main() {
     expect(FactoryRun.buyItem({...atCap, 'nuzRules': <String>[]}, 'rare-candy', 0, data), isNotNull);
     final won = FactoryRun.winFloor({...atCap, 'pending': null, 'encounter': {'kind': 'trainer', 'foes': [{'id': 19, 'level': cap, 'iv': 0, 'ev': 0}]}}, data, hp: [1]);
     expect(FactoryRun.teamOf(won).first['level'], cap);
+    // A troca não passa do limite de nível.
+    final swapped = FactoryRun.tradeMon({...nuz, 'team': [{...first, 'level': cap + 3, 'exp': FactoryRun.expAt(cap + 3)}], 'pending': {'trade': {'id': 19}}}, 0, data);
+    expect(FactoryRun.teamOf(swapped).first['level'], cap + 4);
+    expect(FactoryRun.teamOf(swapped).first['traded'], true);
     // Fora do Nuzlocke também: no limite geral o time não ganha nível.
     final free = {...nuz, 'team': [{...first, 'level': cap + 4, 'exp': FactoryRun.expAt(cap + 4)}], 'encounter': {'kind': 'trainer', 'foes': [{'id': 19, 'level': cap + 4, 'iv': 0, 'ev': 0}]}};
     expect(FactoryRun.teamOf(FactoryRun.winFloor(free, data, hp: [1])).first['level'], cap + 4);
