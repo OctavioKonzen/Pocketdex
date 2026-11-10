@@ -74,7 +74,7 @@ void main() {
 
   test('80 andares iguais ao site (test/fixtures/factory_trace.json): mapa, chefes, captura, carta e loja', () {
     final expected = jsonDecode(File('test/fixtures/factory_trace.json').readAsStringSync()) as List;
-    var run = FactoryRun.startRun(FactoryRun.empty(), data, 7, 2026)!;
+    var run = FactoryRun.startRun(FactoryRun.empty(), data, 7, 2027)!;
     final out = [];
     // 1.0 no Dart é 1 no site.
     Object? n(Object? v) => v is double && v == v.roundToDouble() ? v.toInt() : v;
@@ -1068,10 +1068,10 @@ void main() {
     Json base() => {...FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!, 'encounter': {'kind': 'trainer', 'foes': [{'id': 19, 'level': 5, 'iv': 0, 'ev': 0}]}};
     final first = FactoryRun.teamOf(base()).first;
     final nincada = {...first, 'id': 290, 'level': 19, 'exp': FactoryRun.expAt(20) - 1};
-    final won = FactoryRun.winFloor({...base(), 'team': [nincada]}, data);
+    final won = FactoryRun.winFloor({...base(), 'floor': 40, 'team': [nincada]}, data);
     expect([for (final m in FactoryRun.teamOf(won)) m['id']], [291, 292]);
     expect(FactoryRun.pendingOf(won)!['shed'], true);
-    final full = FactoryRun.winFloor({...base(), 'team': [nincada, for (var i = 1; i < FactoryRun.maxTeam; i++) {...first, 'hp': 1}]}, data);
+    final full = FactoryRun.winFloor({...base(), 'floor': 40, 'team': [nincada, for (var i = 1; i < FactoryRun.maxTeam; i++) {...first, 'hp': 1}]}, data);
     expect([for (final m in FactoryRun.teamOf(full)) m['id']].contains(292), isFalse);
     expect(FactoryRun.pendingOf(full)!['shed'], isNull);
     final eevee = {...first, 'id': 133, 'friendship': FactoryRun.friendEvolve - 1, 'moves': ['tackle', 'baby-doll-eyes']};
@@ -1186,12 +1186,16 @@ void main() {
     final capped = {...nuz, 'nuzRules': ['levelCap']};
     final cap = FactoryRun.levelCapOf(data, capped)!;
     expect(cap, greaterThan(FactoryRun.foeLevelAt(FactoryRun.cityBoss)));
-    expect(FactoryRun.levelCapOf(data, nuz), isNull);
+    // Sem a regra: o limite geral, 5 acima do próximo chefe.
+    expect(FactoryRun.levelCapOf(data, nuz), cap + 4);
     final atCap = {...capped, 'team': [{...first, 'level': cap, 'exp': FactoryRun.expAt(cap)}], 'money': 99999, 'pending': {'shop': ['rare-candy']}};
     expect(FactoryRun.buyItem(atCap, 'rare-candy', 0, data), isNull);
     expect(FactoryRun.buyItem({...atCap, 'nuzRules': <String>[]}, 'rare-candy', 0, data), isNotNull);
     final won = FactoryRun.winFloor({...atCap, 'pending': null, 'encounter': {'kind': 'trainer', 'foes': [{'id': 19, 'level': cap, 'iv': 0, 'ev': 0}]}}, data, hp: [1]);
     expect(FactoryRun.teamOf(won).first['level'], cap);
+    // Fora do Nuzlocke também: no limite geral o time não ganha nível.
+    final free = {...nuz, 'team': [{...first, 'level': cap + 4, 'exp': FactoryRun.expAt(cap + 4)}], 'encounter': {'kind': 'trainer', 'foes': [{'id': 19, 'level': cap + 4, 'iv': 0, 'ev': 0}]}};
+    expect(FactoryRun.teamOf(FactoryRun.winFloor(free, data, hp: [1])).first['level'], cap + 4);
   });
 
   test('PC do Centro Pokémon: com o time cheio, o capturado vai para o PC; no Centro da cidade dá para tirar, guardar e trocar (igual ao site)', () {

@@ -2308,15 +2308,19 @@ class FactoryRun {
   /// A regra está ligada nesta corrida (corridas antigas do Nuzlocke: nenhuma).
   static bool nuzRule(Json? run, String rule) => run?['nuzlocke'] == true && ((run?['nuzRules'] as List?) ?? const []).contains(rule);
 
-  /// Nuzlocke com limite de nível: o nível do mais forte do próximo chefe da cidade (líder, Elite dos Quatro ou
-  /// Campeão); null sem a regra. Igual ao site.
+  /// O limite de nível do time: o nível do próximo chefe (com os desvios vencidos) mais levelGap; no Nuzlocke com a
+  /// regra do limite, só 1 acima. O XP para nele (na batalha e no fim do andar), e as cartas de nível e o Rare Candy
+  /// também: o time não dispara na frente dos adversários. Igual ao site.
+  static const levelGap = 5;
   static int? levelCapOf(FactoryData data, Json run) {
-    if (!nuzRule(run, 'levelCap')) return null;
     final region = (run['boss'] as Map?)?['region'];
     if (region is! int || region < 0 || region >= data.bosses.length) return null;
     final boss = targetOf(data, run);
     final floor = math.max(_int(run['floor']), legOf(run) + cityBoss);
-    return foeLevelAt(floor) + (floor < 10 ? 0 : const {'gym': 2, 'elite': 6, 'champion': 9}[boss['kind']] ?? 2) + 1;
+    return foeLevelAt(floor) +
+        (floor < 10 ? 0 : const {'gym': 2, 'elite': 6, 'champion': 9}[boss['kind']] ?? 2) +
+        detourLift(run) +
+        (nuzRule(run, 'levelCap') ? 1 : levelGap);
   }
 
   static Json? startRun(Json factory, FactoryData data, int id, int seed,

@@ -732,7 +732,7 @@ describe('Battle Factory (roguelike)', () => {
 // O mesmo roteiro no app (test/factory_run_test.dart): 80 andares com chefes, captura, carta e loja.
 // Para gerar de novo: UPDATE_FACTORY_TRACE=1 npx vitest run src/lib/factoryRun.test.js
 function factoryTrace(F, data) {
-  let run = F.startRun(F.emptyFactory(), data, 7, 2026)
+  let run = F.startRun(F.emptyFactory(), data, 7, 2027)
   const out = []
   for (let i = 0; i < 80; i++) {
     const options = run.route.options
@@ -1434,11 +1434,11 @@ describe('ideias: amizade, habilidades fora da batalha, Nuzlocke', () => {
   it('evoluções especiais: Shedinja na vaga, Sylveon com golpe de Fada, pedras da Eevee, troca sem pular estágio (igual ao app)', () => {
     const first = base().team[0]
     const nincada = { ...first, id: 290, level: 19, exp: expAt(20) - 1 }
-    const won = winFloor({ ...base(), team: [nincada] }, data)
+    const won = winFloor({ ...base(), floor: 40, team: [nincada] }, data)
     expect(won.team.map((m) => m.id)).toEqual([291, 292])
     expect(won.pending.shed).toBe(true)
     // Time cheio: só o Ninjask.
-    const full = winFloor({ ...base(), team: [nincada, ...Array(MAX_TEAM - 1).fill({ ...first, hp: 1 })] }, data)
+    const full = winFloor({ ...base(), floor: 40, team: [nincada, ...Array(MAX_TEAM - 1).fill({ ...first, hp: 1 })] }, data)
     expect(full.team.map((m) => m.id).filter((id) => id === 292)).toEqual([])
     expect(full.pending.shed).toBeUndefined()
     // Sylveon: amizade com um golpe de Fada.
@@ -1548,12 +1548,16 @@ describe('ideias: amizade, habilidades fora da batalha, Nuzlocke', () => {
     const capped = { ...nuz, nuzRules: ['levelCap'] }
     const cap = levelCapOf(data, capped)
     expect(cap).toBeGreaterThan(foeLevelAt(CITY_BOSS))
-    expect(levelCapOf(data, nuz)).toBe(null)
+    // Sem a regra: o limite geral, 5 acima do próximo chefe.
+    expect(levelCapOf(data, nuz)).toBe(cap + 4)
     const atCap = { ...capped, team: [{ ...capped.team[0], level: cap, exp: expAt(cap) }], bag: { ...capped.bag, 'rare-candy': 1 }, money: 99999, pending: { shop: ['rare-candy'] } }
     expect(buyItem(atCap, 'rare-candy', 0, data)).toBe(null)
     expect(buyItem({ ...atCap, nuzRules: [] }, 'rare-candy', 0, data)).not.toBe(null)
     const won = winFloor({ ...atCap, encounter: { kind: 'trainer', foes: [{ id: 19, level: cap, iv: 0, ev: 0 }] } }, data, { hp: [1] })
     expect(won.team[0].level).toBe(cap)
+    // Fora do Nuzlocke também: no limite geral o time não ganha nível.
+    const free = { ...nuz, team: [{ ...nuz.team[0], level: cap + 4, exp: expAt(cap + 4) }], encounter: { kind: 'trainer', foes: [{ id: 19, level: cap + 4, iv: 0, ev: 0 }] } }
+    expect(winFloor(free, data, { hp: [1] }).team[0].level).toBe(cap + 4)
   })
 })
 

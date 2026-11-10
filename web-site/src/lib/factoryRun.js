@@ -1821,11 +1821,18 @@ export const nuzRule = (run, rule) => Boolean(run?.nuzlocke) && (run.nuzRules ??
  * Nuzlocke com limite de nível: o nível do mais forte do próximo chefe da
  * cidade (líder, Elite dos Quatro ou Campeão); null sem a regra. Igual ao app.
  */
+/**
+ * O limite de nível do time: o nível do próximo chefe (com os desvios
+ * vencidos) mais LEVEL_GAP; no Nuzlocke com a regra do limite, só 1 acima. O
+ * XP para nele (na batalha e no fim do andar), e as cartas de nível e o Rare
+ * Candy também: o time não dispara na frente dos adversários. Igual ao app.
+ */
+export const LEVEL_GAP = 5
 export function levelCapOf(data, run) {
-  if (!nuzRule(run, 'levelCap') || !data?.bosses?.[run.boss?.region]) return null
+  if (!data?.bosses?.[run?.boss?.region]) return null
   const boss = targetOf(data, run)
   const floor = Math.max(run.floor, legOf(run) + CITY_BOSS)
-  return foeLevelAt(floor) + (floor < 10 ? 0 : { gym: 2, elite: 6, champion: 9 }[boss.kind] ?? 2) + 1
+  return foeLevelAt(floor) + (floor < 10 ? 0 : { gym: 2, elite: 6, champion: 9 }[boss.kind] ?? 2) + detourLift(run) + (nuzRule(run, 'levelCap') ? 1 : LEVEL_GAP)
 }
 
 export function startRun(factory, data, id, seed, shiny = false, options = {}) {
