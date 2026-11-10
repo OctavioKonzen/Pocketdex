@@ -13,7 +13,7 @@ import '../i18n/i18n.dart';
 import 'pokemon_sprite.dart';
 
 class PartySlot {
-  const PartySlot({required this.id, this.shiny = false, required this.name, required this.level, this.hp = 1, this.sub, this.status = ''});
+  const PartySlot({required this.id, this.shiny = false, required this.name, required this.level, this.hp = 1, this.sub, this.status = '', this.max = false});
   final int id, level;
   final bool shiny;
   final String name;
@@ -22,6 +22,9 @@ class PartySlot {
 
   /// O status (PAR, SLP...), se tiver.
   final String status;
+
+  /// Chegou no limite de nível da corrida (mostra MÁX ao lado do nível).
+  final bool max;
 }
 
 class BwParty extends StatefulWidget {
@@ -160,6 +163,13 @@ class _BwPartyState extends State<BwParty> {
                             decoration: BoxDecoration(color: const Color(0xFF7C3AED), borderRadius: BorderRadius.circular(3)),
                             child: Text(m.status.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900))),
                       Text('Lv${m.level}', style: const TextStyle(color: _ink, fontWeight: FontWeight.w900, fontSize: 11)),
+                      if (m.max)
+                        Container(
+                            key: ValueKey('${widget.testKey}-max-$i'),
+                            margin: const EdgeInsets.only(left: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 2),
+                            decoration: BoxDecoration(color: const Color(0xFFFBBF24), borderRadius: BorderRadius.circular(3)),
+                            child: const Text('MÁX', style: TextStyle(color: Color(0xFF0F172A), fontSize: 8, fontWeight: FontWeight.w900))),
                     ]),
                     const SizedBox(height: 2),
                     Row(children: [

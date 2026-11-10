@@ -253,6 +253,11 @@ final screens = <String, Widget Function()>{
     return const PokedexScreen();
   },
   'Battle Factory (cidade)': () => _factory(null, {'floor': 10, 'biome': 'city', 'town': true, 'options': [{'kind': 'boss'}, {'kind': 'dungeon', 'place': 'sewer', 'scene': 'sewer'}]}),
+  // A troca do morador (uma por cidade): o botão dela junto do Poké Mart, do Centro e da Creche.
+  'Battle Factory (cidade, troca)': () => _factory(null, {'floor': 10, 'biome': 'city', 'town': true, 'options': [{'kind': 'boss'}]}, {'town': {'leg': 1, 'shop': ['potion'], 'trade': {'want': 25, 'give': 93}}}),
+  // A Safari Zone: o Pokémon, as chances e os botões (bola, isca, pedra, procurar outro, sair) numa página só.
+  'Battle Factory (Safari)': () => _factory({'safari': {'balls': 7, 'left': 3, 'caught': 1, 'mon': {'id': 123, 'level': 12}, 'mood': 'angry', 'last': 'rock', 'lastId': 123}}),
+  'Battle Factory (Safari, fim)': () => _factory({'safari': {'balls': 0, 'left': 2, 'caught': 2, 'mon': null, 'mood': null, 'last': 'broke', 'lastId': 123}}),
   'Login': () => const LoginScreen(),
   'Pokémon (Charizard)': () => const PokemonDetailScreen(initialPokemonId: 6),
   'Status do Pokémon': () => const PokemonDetailScreen(initialPokemonId: 6),

@@ -8890,5 +8890,120 @@
   "en": "Team Rocket never gives up. Hand over those Pokémon!",
   "fr": "La Team Rocket n'abandonne jamais. Donne-nous ces Pokémon !",
   "es": "El Team Rocket nunca se rinde. ¡Danos esos Pokémon!"
+ },
+ "Nível máximo agora: {0}. Sobe quando você vence o próximo chefe.": {
+  "en": "Level cap now: {0}. It rises when you beat the next boss.",
+  "fr": "Niveau maximum actuel : {0}. Il monte quand vous battez le prochain boss.",
+  "es": "Nivel máximo ahora: {0}. Sube al vencer al próximo jefe."
+ },
+ "Alguém da rota troca um Pokémon com você: o que vem chega 3 níveis acima (com o item de quem foi) e ganha mais XP.": {
+  "en": "Someone on the route trades a Pokémon with you: the one you get arrives 3 levels higher (with the item of the one that left) and earns more XP.",
+  "fr": "Quelqu'un sur la route échange un Pokémon avec vous : celui que vous recevez arrive 3 niveaux plus haut (avec l'objet de celui qui est parti) et gagne plus d'XP.",
+  "es": "Alguien de la ruta te cambia un Pokémon: el que llega viene 3 niveles por encima (con el objeto del que se fue) y gana más XP."
+ },
+ "Safari Zone": {
+  "en": "Safari Zone",
+  "fr": "Safari Zone",
+  "es": "Safari Zone"
+ },
+ "Sem batalha: a entrada custa 500 moedas. 10 Safari Balls para capturar Pokémon raros.": {
+  "en": "No battle: entry costs 500 coins. 10 Safari Balls to catch rare Pokémon.",
+  "fr": "Sans combat : l'entrée coûte 500 pièces. 10 Safari Balls pour capturer des Pokémon rares.",
+  "es": "Sin combate: la entrada cuesta 500 monedas. 10 Safari Balls para capturar Pokémon raros."
+ },
+ "Você precisa de {0} moedas para entrar.": {
+  "en": "You need {0} coins to enter.",
+  "fr": "Il vous faut {0} pièces pour entrer.",
+  "es": "Necesitas {0} monedas para entrar."
+ },
+ "Troca feita: chegou {0}!": {
+  "en": "Trade done: {0} arrived!",
+  "fr": "Échange fait : {0} est arrivé !",
+  "es": "¡Intercambio hecho: llegó {0}!"
+ },
+ "Um morador troca {0} por um {1}": {
+  "en": "A resident trades {0} for a {1}",
+  "fr": "Un habitant échange {0} contre un {1}",
+  "es": "Un vecino cambia {0} por un {1}"
+ },
+ "Uma troca por cidade: o que vem chega {0} níveis acima, ganha mais XP e, se evolui por troca, já chega evoluído.": {
+  "en": "One trade per town: the one you get arrives {0} levels higher, earns more XP and, if it evolves by trade, arrives already evolved.",
+  "fr": "Un échange par ville : celui que vous recevez arrive {0} niveaux plus haut, gagne plus d'XP et, s'il évolue par échange, arrive déjà évolué.",
+  "es": "Un intercambio por ciudad: el que llega viene {0} niveles por encima, gana más XP y, si evoluciona por intercambio, llega ya evolucionado."
+ },
+ "Você não tem um {0} no time.": {
+  "en": "You don't have a {0} in your team.",
+  "fr": "Vous n'avez pas de {0} dans l'équipe.",
+  "es": "No tienes un {0} en el equipo."
+ },
+ "Ah, não! {0} escapou da Safari Ball!": {
+  "en": "Oh no! {0} broke out of the Safari Ball!",
+  "fr": "Oh non ! {0} s'est échappé de la Safari Ball !",
+  "es": "¡Oh, no! ¡{0} escapó de la Safari Ball!"
+ },
+ "{0} está comendo a isca.": {
+  "en": "{0} is eating the bait.",
+  "fr": "{0} mange l'appât.",
+  "es": "{0} está comiendo el cebo."
+ },
+ "{0} ficou bravo!": {
+  "en": "{0} got angry!",
+  "fr": "{0} s'est mis en colère !",
+  "es": "¡{0} se enfadó!"
+ },
+ "{0} fugiu! Apareceu um {1}!": {
+  "en": "{0} fled! A {1} appeared!",
+  "fr": "{0} s'est enfui ! Un {1} est apparu !",
+  "es": "¡{0} huyó! ¡Apareció un {1}!"
+ },
+ "Você deixou {0} para lá. Apareceu um {1}!": {
+  "en": "You left {0} behind. A {1} appeared!",
+  "fr": "Vous avez laissé {0}. Un {1} est apparu !",
+  "es": "Dejaste a {0}. ¡Apareció un {1}!"
+ },
+ "Pegar: {0} · Fugir: {1} · Ainda aparecem: {2}": {
+  "en": "Catch: {0} · Flee: {1} · Still to appear: {2}",
+  "fr": "Capture : {0} · Fuite : {1} · Encore à venir : {2}",
+  "es": "Captura: {0} · Huida: {1} · Aún aparecen: {2}"
+ },
+ "{0} fugiu!": {
+  "en": "{0} fled!",
+  "fr": "{0} s'est enfui !",
+  "es": "¡{0} huyó!"
+ },
+ "O Safari acabou! Você pegou {0} Pokémon.": {
+  "en": "The Safari is over! You caught {0} Pokémon.",
+  "fr": "Le Safari est terminé ! Vous avez capturé {0} Pokémon.",
+  "es": "¡El Safari terminó! Capturaste {0} Pokémon."
+ },
+ "BOLA": {
+  "en": "BALL",
+  "fr": "BALL",
+  "es": "BALL"
+ },
+ "ISCA": {
+  "en": "BAIT",
+  "fr": "APPÂT",
+  "es": "CEBO"
+ },
+ "PEDRA": {
+  "en": "ROCK",
+  "fr": "CAILLOU",
+  "es": "ROCA"
+ },
+ "PROCURAR OUTRO": {
+  "en": "LOOK FOR ANOTHER",
+  "fr": "CHERCHER UN AUTRE",
+  "es": "BUSCAR OTRO"
+ },
+ "SAIR": {
+  "en": "LEAVE",
+  "fr": "SORTIR",
+  "es": "SALIR"
+ },
+ "Trocado ganha mais XP.": {
+  "en": "Traded Pokémon earn more XP.",
+  "fr": "Les Pokémon échangés gagnent plus d'XP.",
+  "es": "Los Pokémon intercambiados ganan más XP."
  }
 }

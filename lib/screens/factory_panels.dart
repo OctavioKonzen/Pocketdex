@@ -907,9 +907,12 @@ class _BagAndItemsState extends State<_BagAndItems> {
       );
     }
     // Os 6 no lugar do campo, como a tela de trocar da batalha (3 linhas de 2, sem rolar).
+    // O limite de nível de agora (o próximo chefe e os desvios): quem chegou nele para de ganhar XP até vencer o chefe.
+    final cap = FactoryRun.levelCapOf(widget.data, run);
     return BwParty(
       testKey: 'factory-team',
       fill: true,
+      title: cap == null ? null : '📈 ${tr('Nível máximo agora: {0}. Sobe quando você vence o próximo chefe.').replaceAll('{0}', '$cap')}',
       // Os ovos ocupam vagas do time (e chocam com as vitórias).
       eggs: [for (final e in FactoryRun.eggsOf(run)) (e['left'] as num).toInt()],
       team: [
@@ -920,6 +923,7 @@ class _BagAndItemsState extends State<_BagAndItems> {
             name: battleMonName({'name': widget.names[(m['id'] as num).toInt()] ?? ''}),
             level: (m['level'] as num).toInt(),
             hp: FactoryRun.hpOf(m).toDouble(),
+            max: cap != null && (m['level'] as num).toInt() >= cap,
             // O item que ele segura (★ o principal; +N os extras).
             sub: m['item'] == null
                 ? null
@@ -2156,7 +2160,8 @@ const _nodeInfo = <String, (String, String, String)>{
   'mart': ('🎒', 'Vendedor ambulante', 'Vende o mesmo que o Poké Mart (sem batalha, sem XP).'),
   'center': ('⛺', 'Parada para descanso', 'Alguém do caminho cura o time todo, até quem desmaiou (sem batalha).'),
   'event': ('❓', 'Evento', 'Itens, dinheiro, frutas ou uma ficha de Move Tutor (sem batalha).'),
-  'trade': ('🔁', 'Troca', 'Alguém da rota troca um Pokémon com você: o que vem chega 3 níveis acima (com o item de quem foi).'),
+  'trade': ('🔁', 'Troca', 'Alguém da rota troca um Pokémon com você: o que vem chega 3 níveis acima (com o item de quem foi) e ganha mais XP.'),
+  'safari': ('🦒', 'Safari Zone', 'Sem batalha: a entrada custa 500 moedas. 10 Safari Balls para capturar Pokémon raros.'),
   'wildboss': ('🐉', 'Chefe sem treinador', 'Uma Mega, um Gigantamax ou um lendário. Dá para capturar.'),
   'meteor': ('☄️', 'Chuva de meteoros', 'Um Clefairy apareceu com os meteoros (mais chance de shiny).'),
   'mythic': ('✨', 'Pokémon mítico', 'Um Pokémon mítico, raríssimo. Dá para capturar.'),
@@ -2185,7 +2190,9 @@ const _hmHints = {
   'dive': 'Precisa de um Pokémon com Dive no time (ou da 5ª insígnia).',
   'waterfall': 'Precisa de um Pokémon com Waterfall no time (ou da 7ª insígnia).',
 };
-String _hmHint(Json run, Map? node) => tr(_hmHints[FactoryRun.hmNeeded(run, node)] ?? _hmHints['surf']!);
+String _hmHint(Json run, Map? node) => node?['kind'] == 'safari' && FactoryRun.hmNeeded(run, node) == null
+    ? tr('Você precisa de {0} moedas para entrar.').replaceAll('{0}', '${FactoryRun.safariFee}')
+    : tr(_hmHints[FactoryRun.hmNeeded(run, node)] ?? _hmHints['surf']!);
 
 /// O clima do lugar (a previsão no mapa). Igual ao site.
 const _weatherLabel = {'rain': '🌧️ Chuva', 'sun': '☀️ Sol forte', 'sand': '🏜️ Tempestade de areia', 'snow': '❄️ Neve'};
@@ -2325,6 +2332,7 @@ String? _stepOf(Map? p) {
   if (p['seen'] != true && (p['exp'] != null || p['center'] == true || p['event'] != null)) return 'result';
   if (p['capture'] != null) return 'capture';
   if (p['cards'] != null) return 'cards';
+  if (p['safari'] != null) return 'safari';
   if (p['trade'] != null) return 'trade';
   if (p['shop'] != null) return 'shop';
   return null;
@@ -2996,6 +3004,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
                 // A Creche: um lugar da cidade (separado do Poké Mart).
                 : p == null && _panel == 'daycare'
                     ? _daycarePanel(run, data, close)
+                    : p == null && _panel == 'towntrade' && _townTradeOpen(run)
+                    ? _townTradePanel(run, data, close)
                     // O PC do Centro Pokémon da cidade (como nos jogos).
                     : _panel == 'pc' && FactoryRun.atPc(run)
                         ? _pcPanel(run, close)
@@ -3010,6 +3020,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
       frame = _choiceFrame(run, p!, lead, data);
     } else if (step == 'capture') {
       frame = _captureFrame(run, p!, lead, tools);
+    } else if (step == 'safari') {
+      frame = _safariFrame(run, p!, lead, data);
     } else if (step == 'trade') {
       frame = _tradeFrame(run, p!, lead, data);
     } else if (step == 'cards') {
@@ -3646,6 +3658,84 @@ class _FactoryScreenState extends State<FactoryScreen> {
     );
   }
 
+  bool _townTradeOpen(Json run) {
+    final trade = (run['town'] as Map?)?['trade'] as Map?;
+    return trade != null && trade['done'] != true;
+  }
+
+  /// A troca da cidade: quem você dá ao morador (só serve quem ele pediu). Igual ao site.
+  Widget _townTradePanel(Json run, FactoryData data, VoidCallback close) {
+    final trade = (run['town'] as Map)['trade'] as Map;
+    final ok = FactoryRun.townTradeable(run, data);
+    return BwParty(
+      testKey: 'towntrade',
+      title: tr('Quem você dá em troca do {0}?').replaceAll('{0}', _name(trade['give'])),
+      team: [for (final m in _party(run)) PartySlot(id: m.id, shiny: m.shiny, name: m.name, level: m.level, hp: m.hp, sub: m.sub)],
+      disabled: (i) => !ok.contains(i),
+      onPick: (i) {
+        _panel = null;
+        _save(FactoryRun.townTrade(run, i, data));
+      },
+      onCancel: close,
+    );
+  }
+
+  /// Safari Zone: sem batalha; em cada Pokémon, a Safari Ball, a isca ou a pedra. Igual ao site.
+  Widget _safariFrame(Json run, Json p, Map? lead, FactoryData data) {
+    final s = p['safari'] as Map;
+    final mon = s['mon'] as Map?;
+    final rates = FactoryRun.safariRates(data, s);
+    String pct(double v) => '${(v * 100).round()}%';
+    final lastName = s['lastId'] == null ? '' : _name(s['lastId']);
+    // Uma linha para o que aconteceu e outra para as chances (a caixa de texto tem duas linhas).
+    const last = {
+      'broke': 'Ah, não! {0} escapou da Safari Ball!',
+      'bait': '{0} está comendo a isca.',
+      'rock': '{0} ficou bravo!',
+      'fled': '{0} fugiu! Apareceu um {1}!',
+      'left': 'Você deixou {0} para lá. Apareceu um {1}!',
+    };
+    final shown = mon == null ? '' : '${mon['shiny'] == true ? '✨ ' : ''}${_name(mon['id'])}';
+    void act(String action) => _save(FactoryRun.safariAct(run, data, action));
+    final busy = widget.busy;
+    return _frame(
+      run: run,
+      field: _field('${run['scene'] ?? 'grass'}', key: const ValueKey('factory-safari'), (w, h) => [if (mon != null) _fieldMon(mon, w, h), if (lead != null) _fieldMon(lead, w, h, back: true)]),
+      text: mon != null
+          ? [
+              Text(
+                  '🦒 ${last[s['last']] != null ? tr(last[s['last']]!).replaceAll('{0}', lastName).replaceAll('{1}', shown) : tr('Um {0} selvagem apareceu!').replaceAll('{0}', shown)} Nv. ${mon['level']}',
+                  key: const ValueKey('safari-last')),
+              KeyedSubtree(
+                  key: const ValueKey('safari-info'),
+                  child: _small(tr('Pegar: {0} · Fugir: {1} · Ainda aparecem: {2}').replaceAll('{0}', pct(rates.catchRate)).replaceAll('{1}', pct(rates.flee)).replaceAll('{2}', '${s['left']}'))),
+            ]
+          : [
+              if (s['last'] == 'fled') _small(tr('{0} fugiu!').replaceAll('{0}', lastName)),
+              Text('🦒 ${tr('O Safari acabou! Você pegou {0} Pokémon.').replaceAll('{0}', '${s['caught'] ?? 0}')}', key: const ValueKey('safari-over')),
+            ],
+      // Os botões cabem numa página só: a bola, a isca e a pedra em cima; procurar outro e sair embaixo.
+      menu: mon != null
+          ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              _MenuRow(
+                  child: Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Row(children: [
+                        Expanded(child: _menuButton('🟢 ${tr('BOLA')} ×${s['balls']}', busy ? null : () => act('ball'), key: const ValueKey('safari-ball'))),
+                        const SizedBox(width: 4),
+                        Expanded(child: _menuButton('🍖 ${tr('ISCA')}', busy ? null : () => act('bait'), key: const ValueKey('safari-bait'))),
+                        const SizedBox(width: 4),
+                        Expanded(child: _menuButton('🪨 ${tr('PEDRA')}', busy ? null : () => act('rock'), key: const ValueKey('safari-rock'))),
+                      ]))),
+              _menuGrid([
+                _menuButton('🔎 ${tr('PROCURAR OUTRO')}', busy ? null : () => act('run'), key: const ValueKey('safari-next')),
+                _menuButton('🚪 ${tr('SAIR')}', busy ? null : () => _save(FactoryRun.leaveSafari(run)), key: const ValueKey('safari-leave')),
+              ]),
+            ])
+          : _menuGrid([_menuButton(tr('CONTINUAR'), busy ? null : () => _save(FactoryRun.leaveSafari(run)), key: const ValueKey('safari-leave'))]),
+    );
+  }
+
   /// Troca: escolhe quem dar; o oferecido vem tradeLevels níveis acima, com o item de quem foi.
   Widget _tradeFrame(Json run, Json p, Map? lead, FactoryData data) {
     final team = FactoryRun.teamOf(run);
@@ -3672,9 +3762,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
       field: _field('${run['scene'] ?? 'grass'}', key: const ValueKey('factory-trade'), (w, h) => [_fieldMon(offer, w, h), if (lead != null) _fieldMon(lead, w, h, back: true)]),
       text: [
         Text('🔁 ${tr('Um treinador quer trocar o {0} dele com você!').replaceAll('{0}', '${shiny ? '✨ ' : ''}${_name(offer['id'])}')}'),
-        _small(tr('Quem você der vai embora; o {0} vem {1} níveis acima, com o item de quem foi.')
-            .replaceAll('{0}', _name(offer['id']))
-            .replaceAll('{1}', '${FactoryRun.tradeLevels}')),
+        _small('${tr('Quem você der vai embora; o {0} vem {1} níveis acima, com o item de quem foi.').replaceAll('{0}', _name(offer['id'])).replaceAll('{1}', '${FactoryRun.tradeLevels}')} ${tr('Trocado ganha mais XP.')}'),
       ],
       menu: _menuGrid([
         _menuButton(tr('TROCAR'), () => setState(() => _panel = _panel == 'trade' ? null : 'trade'), active: _panel == 'trade', key: const ValueKey('trade-open')),
@@ -4025,6 +4113,10 @@ class _FactoryScreenState extends State<FactoryScreen> {
               if (options[k]['kind'] == 'dungeon')
                 placeButton(k)
               // O caminho aberto com uma MO (Cut, Rock Smash, Strength): você sabe o que tem nele, mesmo sem o Mapa.
+              // A entrada da Safari Zone dá para ver, mesmo sem o Mapa.
+              else if (options[k]['kind'] == 'safari')
+                _menuButton('${_nodeInfo['safari']!.$1} Safari Zone', widget.busy || FactoryRun.nodeBlocked(run, options[k]) ? null : () => pick(k),
+                    sub: FactoryRun.nodeBlocked(run, options[k]) ? _hmHint(run, options[k] as Map?) : tr(_nodeInfo['safari']!.$3), key: ValueKey('map-node-$k'))
               else if (_hmPathInfo(options[k]) != null)
                 _menuButton('${_hmPathInfo(options[k])!.$1} ${tr(_hmPathInfo(options[k])!.$2)}',
                     widget.busy || (FactoryRun.isBattleNode(options[k]) && down) ? null : () => pick(k),
@@ -4095,6 +4187,18 @@ class _FactoryScreenState extends State<FactoryScreen> {
             _menuButton('🏥 ${tr('CENTRO')}', widget.busy ? null : () => _save(FactoryRun.townCenter(run)), key: const ValueKey('town-center')),
             _menuButton('🏡 ${tr('CRECHE')}', widget.busy ? null : () => setState(() => _panel = _panel == 'daycare' ? null : 'daycare'),
                 active: _panel == 'daycare', key: const ValueKey('town-daycare')),
+            // A troca do morador (uma por cidade).
+            if ((run['town'] as Map?)?['trade'] case final Map trade)
+              trade['done'] == true
+                  ? _menuButton('🔁 ${tr('Troca feita: chegou {0}!').replaceAll('{0}', _name(trade['got'] ?? trade['give']))}', null, key: const ValueKey('town-trade'))
+                  : _menuButton(
+                      '🔁 ${tr('Um morador troca {0} por um {1}').replaceAll('{0}', '${trade['shiny'] == true ? '✨ ' : ''}${_name(trade['give'])}').replaceAll('{1}', _name(trade['want']))}',
+                      widget.busy || FactoryRun.townTradeable(run, data).isEmpty ? null : () => setState(() => _panel = _panel == 'towntrade' ? null : 'towntrade'),
+                      sub: FactoryRun.townTradeable(run, data).isEmpty
+                          ? tr('Você não tem um {0} no time.').replaceAll('{0}', _name(trade['want']))
+                          : tr('Uma troca por cidade: o que vem chega {0} níveis acima, ganha mais XP e, se evolui por troca, já chega evoluído.').replaceAll('{0}', '${FactoryRun.tradeLevels}'),
+                      active: _panel == 'towntrade',
+                      key: const ValueKey('town-trade')),
           ]),
       ]),
       tools: tools,
