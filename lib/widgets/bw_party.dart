@@ -249,6 +249,16 @@ class _BwPartyState extends State<BwParty> {
           padding: const EdgeInsets.all(6),
           color: Hud.tint(const Color(0xFF1F6F78)),
           child: Column(children: [
+            // O aviso de cima (o limite de nível da corrida), numa linha só.
+            if (widget.title != null)
+              Container(
+                key: ValueKey('$testKey-title'),
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(color: const Color(0xFF0F3D44), border: Border.all(color: const Color(0xFF0B2A2F), width: 2), borderRadius: BorderRadius.circular(8)),
+                child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(widget.title!, maxLines: 1, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12))),
+              ),
             for (var r = 0; r < team.length + widget.eggs.length || r < 6; r += 2) ...[
               if (r > 0) const SizedBox(height: 6),
               Expanded(
