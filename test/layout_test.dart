@@ -259,6 +259,15 @@ final screens = <String, Widget Function()>{
   'Battle Factory (Safari)': () => _factory({'safari': {'balls': 7, 'left': 3, 'caught': 1, 'mon': {'id': 123, 'level': 12}, 'mood': 'angry', 'last': 'rock', 'lastId': 123}}),
   // O fóssil que o museu reviveu (a mesma tela da captura, com o Pokémon no campo).
   'Battle Factory (fóssil do museu)': () => _factory({'exp': 120, 'money': 80, 'seen': true, 'levels': [], 'joy': false, 'capture': {'id': 138, 'level': 14, 'fossil': true}, 'cards': null, 'shop': null}),
+  // Celadon: a Department Store, o Game Corner, o Eevee de presente e a Pokémon Tower fechada (falta o Silph Scope).
+  'Battle Factory (cidade, Celadon)': () => _factory(null, {'floor': 14, 'biome': 'city', 'town': true, 'options': [{'kind': 'boss'}, {'kind': 'dungeon', 'place': 'rocket-hideout', 'scene': 'base-rocket'}, {'kind': 'dungeon', 'place': 'pok-mon-tower', 'scene': 'tower', 'needs': 'silph-scope'}]}, {'leg': 1, 'boss': {'region': 0, 'step': 7}, 'money': 5400, 'gcCoins': 120, 'town': {'leg': 1, 'shop': ['potion']}}),
+  'Battle Factory (Game Corner)': () => _factory(null, {'floor': 14, 'biome': 'city', 'town': true, 'options': [{'kind': 'boss'}, {'kind': 'dungeon', 'place': 'rocket-hideout', 'scene': 'base-rocket'}, {'kind': 'dungeon', 'place': 'pok-mon-tower', 'scene': 'tower', 'needs': 'silph-scope'}]}, {'leg': 1, 'boss': {'region': 0, 'step': 7}, 'money': 5400, 'gcCoins': 120, 'town': {'leg': 1, 'shop': ['potion']}, 'slots': {'reels': ['🍒', '🍒', '🍒'], 'won': 6}}),
+  // Fuchsia: o Move Deleter (quem esquece e qual golpe).
+  'Battle Factory (Move Deleter)': () => _factory(null, {'floor': 14, 'biome': 'city', 'town': true, 'options': [{'kind': 'boss'}]}, {'leg': 1, 'boss': {'region': 0, 'step': 10}, 'town': {'leg': 1, 'shop': ['potion']}}),
+  // O Snorlax dormindo na rota até Fuchsia: sem a Poké Flute, só dando a volta.
+  'Battle Factory (Snorlax no caminho)': () => _factory(null, {'floor': 4, 'biome': 'grass', 'options': [{'kind': 'wildboss', 'legend': 143, 'blocker': 'poke-flute'}, {'kind': 'trainer', 'around': true}]}, {'leg': 1, 'boss': {'region': 0, 'step': 10}, 'townMap': true}),
+  // O item-chave do lugar (o Silph Scope do Rocket Hideout) e o prêmio da história na tela do resultado.
+  'Battle Factory (item-chave)': () => _factory({'exp': 120, 'money': 80, 'levels': [], 'joy': false, 'capture': null, 'cards': null, 'shop': null, 'key': 'silph-scope', 'placeReward': 'master-ball'}),
   'Battle Factory (Safari, fim)': () => _factory({'safari': {'balls': 0, 'left': 2, 'caught': 2, 'mon': null, 'mood': null, 'last': 'broke', 'lastId': 123}}),
   'Login': () => const LoginScreen(),
   'Pokémon (Charizard)': () => const PokemonDetailScreen(initialPokemonId: 6),
@@ -303,6 +312,18 @@ Future<void> _openTeam(WidgetTester tester) async {
   }
   await tester.tap(team);
   // O painel aparece subindo (220 ms).
+  await tester.pump(const Duration(milliseconds: 300));
+  await tester.pump(const Duration(milliseconds: 300));
+}
+
+/// Toca num botão da cidade (virando a página do menu até ele aparecer).
+Future<void> _openTown(WidgetTester tester, String key) async {
+  final button = find.byKey(ValueKey(key));
+  for (var i = 0; i < 4 && button.hitTestable().evaluate().isEmpty; i++) {
+    await tester.tap(find.byKey(const ValueKey('factory-menu-next')));
+    await tester.pump(const Duration(milliseconds: 300));
+  }
+  await tester.tap(button);
   await tester.pump(const Duration(milliseconds: 300));
   await tester.pump(const Duration(milliseconds: 300));
 }
@@ -500,6 +521,18 @@ final Map<String, Future<void> Function(WidgetTester)> actions = {
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.byKey(const ValueKey('skill-tree-full')), findsOneWidget);
     expect(find.byKey(const ValueKey('tree-full-close')), findsOneWidget);
+  },
+  'Battle Factory (Game Corner)': (tester) async {
+    await _openTown(tester, 'town-corner');
+    expect(find.byKey(const ValueKey('corner-spin')), findsOneWidget);
+  },
+  'Battle Factory (Move Deleter)': (tester) async {
+    await _openTown(tester, 'town-deleter');
+    expect(find.byKey(const ValueKey('deleter')), findsOneWidget);
+  },
+  'Battle Factory (cidade, Celadon)': (tester) async {
+    expect(find.byKey(const ValueKey('town-store'), skipOffstage: false), findsOneWidget);
+    expect(find.byKey(const ValueKey('town-gift-0-133'), skipOffstage: false), findsOneWidget);
   },
   'Battle Factory (vendedor na rota, comprando)': (tester) async {
     final buy = find.byKey(const ValueKey('factory-menu-buy'));

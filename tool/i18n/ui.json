@@ -9015,5 +9015,140 @@
   "en": "Welcome to {0}! The Poké Mart and the Pokémon Center are here; the leader waits on the city's last floor.",
   "fr": "Bienvenue à {0} ! La Boutique Poké et le Centre Pokémon sont ici ; le champion attend au dernier étage de la ville.",
   "es": "¡Bienvenido a {0}! La Tienda Poké y el Centro Pokémon están aquí; el líder espera en el último piso de la ciudad."
+ },
+ "Deixa ver os fantasmas da Pokémon Tower: agora dá para entrar.": {
+  "en": "Lets you see the ghosts of Pokémon Tower: now you can go in.",
+  "fr": "Permet de voir les fantômes de la Pokémon Tower : vous pouvez maintenant entrer.",
+  "es": "Permite ver a los fantasmas de la Pokémon Tower: ahora se puede entrar."
+ },
+ "Acorda o Snorlax que dorme na rota até Fuchsia City.": {
+  "en": "Wakes the Snorlax sleeping on the route to Fuchsia City.",
+  "fr": "Réveille le Snorlax qui dort sur la route de Fuchsia City.",
+  "es": "Despierta al Snorlax que duerme en la ruta a Fuchsia City."
+ },
+ "Molha o Sudowoodo que bloqueia a rota até Ecruteak City.": {
+  "en": "Waters the Sudowoodo blocking the route to Ecruteak City.",
+  "fr": "Arrose le Sudowoodo qui bloque la route d'Ecruteak City.",
+  "es": "Riega al Sudowoodo que bloquea la ruta a Ecruteak City."
+ },
+ "{0} bloqueia o caminho": {
+  "en": "{0} blocks the way",
+  "fr": "{0} bloque le chemin",
+  "es": "{0} bloquea el camino"
+ },
+ "Com o item certo, ele acorda e luta. Dá para capturar.": {
+  "en": "With the right item, it wakes up and fights. It can be caught.",
+  "fr": "Avec le bon objet, il se réveille et se bat. On peut le capturer.",
+  "es": "Con el objeto correcto, se despierta y lucha. Se puede capturar."
+ },
+ "Dar a volta": {
+  "en": "Go around",
+  "fr": "Faire le tour",
+  "es": "Dar la vuelta"
+ },
+ "Um treinador no desvio; ele continua lá, dormindo.": {
+  "en": "A trainer on the detour; it stays there, asleep.",
+  "fr": "Un dresseur sur le détour ; il reste là, endormi.",
+  "es": "Un entrenador en el desvío; él sigue ahí, dormido."
+ },
+ "O lendário daqui: é o chefe do lugar. Dá para capturar.": {
+  "en": "The legendary of this place: it is the boss here. It can be caught.",
+  "fr": "Le légendaire d'ici : c'est le boss du lieu. On peut le capturer.",
+  "es": "El legendario de aquí: es el jefe del lugar. Se puede capturar."
+ },
+ "Precisa de {0} para acordá-lo; sem ela, só dando a volta.": {
+  "en": "You need the {0} to wake it; without it, you can only go around.",
+  "fr": "Il faut {0} pour le réveiller ; sans cela, il faut faire le tour.",
+  "es": "Necesitas {0} para despertarlo; sin eso, solo dando la vuelta."
+ },
+ "Precisa de {0} para entrar.": {
+  "en": "You need the {0} to enter.",
+  "fr": "Il faut {0} pour entrer.",
+  "es": "Necesitas {0} para entrar."
+ },
+ "Você recebeu {0}!": {
+  "en": "You received the {0}!",
+  "fr": "Vous avez reçu {0} !",
+  "es": "¡Recibiste {0}!"
+ },
+ "Pela ajuda, te deram {0}!": {
+  "en": "For your help, they gave you a {0}!",
+  "fr": "Pour votre aide, on vous a donné {0} !",
+  "es": "¡Por tu ayuda, te dieron {0}!"
+ },
+ "Fichas do Game Corner": {
+  "en": "Game Corner coins",
+  "fr": "Jetons du Game Corner",
+  "es": "Fichas del Game Corner"
+ },
+ "Sem vaga no time para o ovo.": {
+  "en": "No room in the team for the egg.",
+  "fr": "Pas de place dans l'équipe pour l'œuf.",
+  "es": "No hay sitio en el equipo para el huevo."
+ },
+ "Um presente daqui: escolha só um dos dois.": {
+  "en": "A gift from here: choose only one of the two.",
+  "fr": "Un cadeau d'ici : choisissez un seul des deux.",
+  "es": "Un regalo de aquí: elige solo uno de los dos."
+ },
+ "Vai no time como ovo e choca depois de {0} vitórias.": {
+  "en": "It joins the team as an egg and hatches after {0} wins.",
+  "fr": "Il rejoint l'équipe comme œuf et éclot après {0} victoires.",
+  "es": "Va en el equipo como huevo y eclosiona tras {0} victorias."
+ },
+ "Um presente daqui: entra no time (ou vai para o PC).": {
+  "en": "A gift from here: it joins the team (or goes to the PC).",
+  "fr": "Un cadeau d'ici : il rejoint l'équipe (ou va au PC).",
+  "es": "Un regalo de aquí: entra en el equipo (o va al PC)."
+ },
+ "RECEBER O OVO DE {0}": {
+  "en": "GET THE {0} EGG",
+  "fr": "RECEVOIR L'ŒUF DE {0}",
+  "es": "RECIBIR EL HUEVO DE {0}"
+ },
+ "RECEBER {0}": {
+  "en": "GET {0}",
+  "fr": "RECEVOIR {0}",
+  "es": "RECIBIR {0}"
+ },
+ "Ganhou {0} fichas!": {
+  "en": "You won {0} coins!",
+  "fr": "Vous avez gagné {0} jetons !",
+  "es": "¡Ganaste {0} fichas!"
+ },
+ "Não foi desta vez.": {
+  "en": "Not this time.",
+  "fr": "Pas cette fois.",
+  "es": "Esta vez no."
+ },
+ "Três iguais pagam: 7 paga 100, BAR paga 30, 🍒 paga 6.": {
+  "en": "Three of a kind pay: 7 pays 100, BAR pays 30, 🍒 pays 6.",
+  "fr": "Trois identiques paient : 7 paie 100, BAR paie 30, 🍒 paie 6.",
+  "es": "Tres iguales pagan: 7 paga 100, BAR paga 30, 🍒 paga 6."
+ },
+ "{0} fichas por 💰{1}": {
+  "en": "{0} coins for 💰{1}",
+  "fr": "{0} jetons pour 💰{1}",
+  "es": "{0} fichas por 💰{1}"
+ },
+ "JOGAR ({0} fichas)": {
+  "en": "PLAY ({0} coins)",
+  "fr": "JOUER ({0} jetons)",
+  "es": "JUGAR ({0} fichas)"
+ },
+ "Os prêmios daqui (as fichas ficam com você a corrida toda):": {
+  "en": "The prizes here (coins stay with you for the whole run):",
+  "fr": "Les prix d'ici (les jetons restent avec vous toute la partie) :",
+  "es": "Los premios de aquí (las fichas se quedan contigo toda la partida):"
+ },
+ "Move Deleter: quem vai esquecer um golpe?": {
+  "en": "Move Deleter: who will forget a move?",
+  "fr": "Move Deleter : qui va oublier une attaque ?",
+  "es": "Move Deleter: ¿quién va a olvidar un movimiento?"
+ },
+ "Qual golpe ele esquece? (Até uma MO; não dá para voltar atrás.)": {
+  "en": "Which move does it forget? (Even an HM; this cannot be undone.)",
+  "fr": "Quelle attaque oublie-t-il ? (Même une CS ; c'est définitif.)",
+  "es": "¿Qué movimiento olvida? (Incluso una MO; no se puede deshacer.)"
  }
 }

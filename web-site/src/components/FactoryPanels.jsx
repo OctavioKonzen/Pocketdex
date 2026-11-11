@@ -2801,9 +2801,10 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     if (corner && panel === 'corner') {
       below = (
         <div className="space-y-2 p-2" data-testid="corner">
-          <OverlayClose onClose={() => setPanel(null)} title={`🎰 ${corner.name} · 🪙${run.gcCoins ?? 0} · 💰${run.money}`} />
-          <div className="flex items-center justify-center gap-2 rounded-xl bg-surface p-3 text-3xl" data-testid="corner-reels" data-no-translate>
-            {(run.slots?.reels ?? ['7', '7', '7']).map((r, i) => <span key={i} className="flex h-12 w-14 items-center justify-center rounded-lg border-2 border-amber-400 bg-white text-xl font-black text-slate-900">{r}</span>)}
+          <OverlayClose onClose={() => setPanel(null)} title={`🎰 ${corner.name}`} />
+          <p className="text-center text-sm font-bold" data-testid="corner-coins">🪙 {run.gcCoins ?? 0} · 💰 {run.money}</p>
+          <div className="flex items-center justify-center gap-2 rounded-xl bg-surface p-1 text-3xl" data-testid="corner-reels" data-no-translate>
+            {(run.slots?.reels ?? ['?', '?', '?']).map((r, i) => <span key={i} className="flex h-9 w-14 items-center justify-center rounded-lg border-2 border-amber-400 bg-white text-xl font-black text-slate-900">{r}</span>)}
           </div>
           <p className="text-center text-sm" data-testid="corner-result">{run.slots ? (run.slots.won ? `🎉 ${t('Ganhou {0} fichas!').replace('{0}', run.slots.won)}` : t('Não foi desta vez.')) : t('Três iguais pagam: 7 paga 100, BAR paga 30, 🍒 paga 6.')}</p>
           <div className="grid grid-cols-2 gap-2">
@@ -2825,13 +2826,13 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         </div>
       )
     }
-    if (town && panel === 'deleter') {
+    if (town && panel === 'deleter' && tutorsOf(data, run).includes('deleter')) {
       below = (
         <BwParty title={t('Move Deleter: quem vai esquecer um golpe?')} testid="deleter" team={partyOf(run, byId)} disabled={(i) => (run.team[i].moves ?? []).length < 2}
           onPick={(i) => setPanel(`deleter:${i}`)} onCancel={() => setPanel(null)} />
       )
     }
-    if (town && String(panel).startsWith('deleter:')) {
+    if (town && String(panel).startsWith('deleter:') && tutorsOf(data, run).includes('deleter')) {
       const i = Number(String(panel).slice(8))
       const mon = run.team[i]
       below = mon && (

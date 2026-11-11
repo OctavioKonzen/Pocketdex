@@ -2190,9 +2190,29 @@ const _hmHints = {
   'dive': 'Precisa de um Pokémon com Dive no time (ou da 5ª insígnia).',
   'waterfall': 'Precisa de um Pokémon com Waterfall no time (ou da 7ª insígnia).',
 };
-String _hmHint(Json run, Map? node) => node?['kind'] == 'safari' && FactoryRun.hmNeeded(run, node) == null
-    ? tr('Você precisa de {0} moedas para entrar.').replaceAll('{0}', '${FactoryRun.safariFee}')
-    : tr(_hmHints[FactoryRun.hmNeeded(run, node)] ?? _hmHints['surf']!);
+/// Os itens-chave: o símbolo e para que servem (os nomes são os dos jogos, sem traduzir). Igual ao site.
+const _keyInfo = {
+  'silph-scope': ('🔭', 'Deixa ver os fantasmas da Pokémon Tower: agora dá para entrar.'),
+  'poke-flute': ('🪈', 'Acorda o Snorlax que dorme na rota até Fuchsia City.'),
+  'squirt-bottle': ('🚿', 'Molha o Sudowoodo que bloqueia a rota até Ecruteak City.'),
+};
+
+/// O item-chave que falta para este caminho (o Silph Scope, a Poké Flute, a Squirt Bottle) ou null.
+Object? _keyNeeded(Json run, Map? node) {
+  for (final k in [node?['needs'], node?['blocker']]) {
+    if (k != null && !FactoryRun.hasKey(run, k)) return k;
+  }
+  return null;
+}
+
+const _blockerInfo = ('💤', '{0} bloqueia o caminho', 'Com o item certo, ele acorda e luta. Dá para capturar.');
+const _aroundInfo = ('↪️', 'Dar a volta', 'Um treinador no desvio; ele continua lá, dormindo.');
+const _placeLegendHelp = 'O lendário daqui: é o chefe do lugar. Dá para capturar.';
+String _hmHint(Json run, Map? node) => _keyNeeded(run, node) != null
+    ? tr(node?['blocker'] != null ? 'Precisa de {0} para acordá-lo; sem ela, só dando a volta.' : 'Precisa de {0} para entrar.').replaceAll('{0}', FactoryRun.keyItems[_keyNeeded(run, node)] ?? '')
+    : node?['kind'] == 'safari' && FactoryRun.hmNeeded(run, node) == null
+        ? tr('Você precisa de {0} moedas para entrar.').replaceAll('{0}', '${FactoryRun.safariFee}')
+        : tr(_hmHints[FactoryRun.hmNeeded(run, node)] ?? _hmHints['surf']!);
 
 /// O clima do lugar (a previsão no mapa). Igual ao site.
 const _weatherLabel = {'rain': '🌧️ Chuva', 'sun': '☀️ Sol forte', 'sand': '🏜️ Tempestade de areia', 'snow': '❄️ Neve'};
@@ -2207,7 +2227,11 @@ const _strengthInfo = ('💪', 'Pedra empurrada', 'Aberta com Strength: um trein
         ? _smashInfo
         : node['strength'] == true
             ? _strengthInfo
-            : null;
+            : node['blocker'] != null
+                ? _blockerInfo
+                : node['around'] == true
+                    ? _aroundInfo
+                    : null;
 const _eventText = {
   'items': 'Você achou {1}× {0} no caminho!',
   'money': 'Um treinador perdeu 💰{0} e não voltou para buscar.',
@@ -2540,6 +2564,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
                 Text('📖 ${FactoryRun.dexOf(run).length}', key: const ValueKey('factory-dex'), style: style),
                 if (_data != null) _badges(_data!, run),
                 for (final hm in (run['hms'] as List? ?? const [])) Text(_hmInfo[hm]?.$2 ?? '', style: style),
+                for (final k in (run['keyItems'] as List? ?? const [])) Text(_keyInfo[k]?.$1 ?? '', key: ValueKey('factory-key-$k'), style: style),
+                if (((run['gcCoins'] as num?) ?? 0) > 0) Text('🎰 ${run['gcCoins']}', key: const ValueKey('factory-coins'), style: style),
                 if (run['daycare'] != null) const Text('🏡', style: style),
               ])
                 Padding(padding: const EdgeInsets.only(right: 8), child: w),
@@ -2998,7 +3024,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
               ])
             : step == 'shop' && _panel == 'buy'
                 ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                    _overlayHeader('${p?['mart'] == true ? '🎒 ${tr('Vendedor ambulante')}' : '🛒 Poké Mart'} · 💰${run['money']}', close),
+                    _overlayHeader('${p?['mart'] == true ? '🎒 ${tr('Vendedor ambulante')}' : p?['store'] != null ? '🏬 ${p!['store']}' : '🛒 Poké Mart'} · 💰${run['money']}', close),
                     Padding(padding: const EdgeInsets.all(8), child: _shopList(context, run, p!, data)),
                   ])
                 // A Creche: um lugar da cidade (separado do Poké Mart).
@@ -3006,6 +3032,10 @@ class _FactoryScreenState extends State<FactoryScreen> {
                     ? _daycarePanel(run, data, close)
                     : p == null && _panel == 'towntrade' && _townTradeOpen(run)
                     ? _townTradePanel(run, data, close)
+                    : p == null && _panel == 'corner' && FactoryRun.cornerOf(data, run) != null
+                    ? _cornerPanel(run, data, close)
+                    : p == null && (_panel ?? '').startsWith('deleter') && FactoryRun.tutorsOf(data, run).contains('deleter')
+                    ? _deleterPanel(run, data, close)
                     // O PC do Centro Pokémon da cidade (como nos jogos).
                     : _panel == 'pc' && FactoryRun.atPc(run)
                         ? _pcPanel(run, close)
@@ -3137,7 +3167,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.85), borderRadius: BorderRadius.circular(8)),
-                  child: const Text('🛒 Poké Mart', style: TextStyle(fontWeight: FontWeight.w900, color: _ink, fontSize: 13)),
+                  child: Text(p?['store'] != null ? '🏬 ${p?['store']}' : '🛒 Poké Mart', style: const TextStyle(fontWeight: FontWeight.w900, color: _ink, fontSize: 13)),
                 ),
               ),
             ]),
@@ -3368,6 +3398,12 @@ class _FactoryScreenState extends State<FactoryScreen> {
         if (p['dowsed'] != null)
           Text('📡 ${tr('Você achou {0} escondido no caminho!').replaceAll('{0}', _itemName('${p['dowsed']}'))}',
               key: const ValueKey('factory-dowsed'), style: const TextStyle(fontSize: 13)),
+        if (p['key'] != null)
+          Text('${_keyInfo[p['key']]?.$1 ?? '🔑'} ${tr('Você recebeu {0}!').replaceAll('{0}', FactoryRun.keyItems[p['key']] ?? '${p['key']}')} ${tr(_keyInfo[p['key']]?.$2 ?? '')}',
+              key: const ValueKey('factory-key'), style: const TextStyle(fontSize: 13, color: Color(0xFFD97706))),
+        if (p['placeReward'] != null)
+          Text('🎁 ${tr('Pela ajuda, te deram {0}!').replaceAll('{0}', _itemName('${p['placeReward']}'))}',
+              key: const ValueKey('factory-place-reward'), style: const TextStyle(fontSize: 13, color: Color(0xFFD97706))),
         if (p['hm'] != null && _hmInfo[p['hm']] != null)
           Text(
               '${_hmInfo[p['hm']]!.$2} ${tr('Com a insígnia, você ganhou a MO {0}!').replaceAll('{0}', _hmInfo[p['hm']]!.$1)} ${tr(_hmInfo[p['hm']]!.$3)}',
@@ -3678,6 +3714,126 @@ class _FactoryScreenState extends State<FactoryScreen> {
       },
       onCancel: close,
     );
+  }
+
+  /// O Game Corner: fichas, caça-níqueis e os prêmios de lá. Igual ao site.
+  Widget _cornerPanel(Json run, FactoryData data, VoidCallback close) {
+    final corner = FactoryRun.cornerOf(data, run)!;
+    final c = SiteColors.of(context);
+    final slots = run['slots'] as Map?;
+    final reels = (slots?['reels'] as List?) ?? const ['?', '?', '?'];
+    final won = ((slots?['won'] as num?) ?? 0).toInt();
+    final buy = FactoryRun.buyCoins(run, data), spin = FactoryRun.spinSlots(run, data);
+    return Column(key: const ValueKey('corner'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      _overlayHeader('🎰 ${corner['name']}', close),
+      Padding(
+        padding: const EdgeInsets.all(8),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text('🪙 ${run['gcCoins'] ?? 0} · 💰 ${run['money']}', key: const ValueKey('corner-coins'), textAlign: TextAlign.center, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: c.text)),
+          const SizedBox(height: 4),
+          Row(key: const ValueKey('corner-reels'), mainAxisAlignment: MainAxisAlignment.center, children: [
+            for (final r in reels)
+              Container(
+                width: 56,
+                height: 38,
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(color: Colors.white, border: Border.all(color: const Color(0xFFFBBF24), width: 2), borderRadius: BorderRadius.circular(8)),
+                child: Text('$r', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: _ink)),
+              ),
+          ]),
+          const SizedBox(height: 6),
+          Text(
+              slots == null
+                  ? tr('Três iguais pagam: 7 paga 100, BAR paga 30, 🍒 paga 6.')
+                  : won > 0
+                      ? '🎉 ${tr('Ganhou {0} fichas!').replaceAll('{0}', '$won')}'
+                      : tr('Não foi desta vez.'),
+              key: const ValueKey('corner-result'),
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: c.text)),
+          const SizedBox(height: 6),
+          Row(children: [
+            Expanded(
+              child: FilledButton(
+                key: const ValueKey('corner-buy'),
+                onPressed: widget.busy || buy == null ? null : () => _save(buy),
+                child: Text(tr('{0} fichas por 💰{1}').replaceAll('{0}', '${FactoryRun.cornerPack}').replaceAll('{1}', '${FactoryRun.cornerPackPrice}'), textAlign: TextAlign.center),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: FilledButton(
+                key: const ValueKey('corner-spin'),
+                onPressed: widget.busy || spin == null ? null : () => _save(spin),
+                child: Text(tr('JOGAR ({0} fichas)').replaceAll('{0}', '${FactoryRun.cornerSpin}'), textAlign: TextAlign.center),
+              ),
+            ),
+          ]),
+          const SizedBox(height: 6),
+          Text(tr('Os prêmios daqui (as fichas ficam com você a corrida toda):'), style: TextStyle(fontSize: 12, color: c.muted)),
+          for (final row in corner['prizes'] as List)
+            Builder(builder: (context) {
+              final Object prize = (row as List)[0] as Object;
+              final got = FactoryRun.cornerPrize(run, data, prize);
+              return Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Row(children: [
+                  if (prize is num) SizedBox(width: 36, height: 36, child: PokemonSprite(prize.toInt(), fill: 0.9)) else const Text('💿', style: TextStyle(fontSize: 22)),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(prize is num ? _name(prize) : _itemName('$prize'), style: TextStyle(fontWeight: FontWeight.bold, color: c.text))),
+                  FilledButton(
+                    key: ValueKey('corner-prize-$prize'),
+                    onPressed: widget.busy || got == null ? null : () => _save(got),
+                    child: Text('🪙${row[1]}'),
+                  ),
+                ]),
+              );
+            }),
+        ]),
+      ),
+    ]);
+  }
+
+  /// O Move Deleter: quem esquece e qual golpe (fica com pelo menos um). Igual ao site.
+  Widget _deleterPanel(Json run, FactoryData data, VoidCallback close) {
+    final team = FactoryRun.teamOf(run);
+    final index = _panel!.startsWith('deleter:') ? int.tryParse(_panel!.substring(8)) : null;
+    if (index == null || index < 0 || index >= team.length) {
+      return BwParty(
+        testKey: 'deleter',
+        title: tr('Move Deleter: quem vai esquecer um golpe?'),
+        team: _party(run),
+        disabled: (i) => ((team[i]['moves'] as List?) ?? const []).length < 2,
+        onPick: (i) => setState(() => _panel = 'deleter:$i'),
+        onCancel: close,
+      );
+    }
+    final c = SiteColors.of(context);
+    final moves = (team[index]['moves'] as List?) ?? const [];
+    return Column(key: const ValueKey('deleter-moves'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      _overlayHeader('🧓 Move Deleter · ${_name(team[index]['id'])}', () => setState(() => _panel = 'deleter')),
+      Padding(
+        padding: const EdgeInsets.all(8),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text(tr('Qual golpe ele esquece? (Até uma MO; não dá para voltar atrás.)'), style: TextStyle(fontSize: 12, color: c.muted)),
+          const SizedBox(height: 6),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            for (var k = 0; k < moves.length; k++)
+              FilledButton(
+                key: ValueKey('deleter-move-$k'),
+                onPressed: widget.busy || FactoryRun.forgetMove(run, data, index, k) == null
+                    ? null
+                    : () {
+                        _panel = null;
+                        _save(FactoryRun.forgetMove(run, data, index, k));
+                      },
+                child: Text(prettySlug('${moves[k]}')),
+              ),
+          ]),
+        ]),
+      ),
+    ]);
   }
 
   /// Safari Zone: sem batalha; em cada Pokémon, a Safari Ball, a isca ou a pedra. Igual ao site.
@@ -4118,9 +4274,9 @@ class _FactoryScreenState extends State<FactoryScreen> {
                 _menuButton('${_nodeInfo['safari']!.$1} ${options[k]['name'] ?? 'Safari Zone'}', widget.busy || FactoryRun.nodeBlocked(run, options[k]) ? null : () => pick(k),
                     sub: FactoryRun.nodeBlocked(run, options[k]) ? _hmHint(run, options[k] as Map?) : tr(_nodeInfo['safari']!.$3), key: ValueKey('map-node-$k'))
               else if (_hmPathInfo(options[k]) != null)
-                _menuButton('${_hmPathInfo(options[k])!.$1} ${tr(_hmPathInfo(options[k])!.$2)}',
-                    widget.busy || (FactoryRun.isBattleNode(options[k]) && down) ? null : () => pick(k),
-                    sub: tr(_hmPathInfo(options[k])!.$3), key: ValueKey('map-node-$k'))
+                _menuButton('${_hmPathInfo(options[k])!.$1} ${tr(_hmPathInfo(options[k])!.$2).replaceAll('{0}', options[k]['blocker'] != null ? _name(options[k]['legend']) : '')}',
+                    widget.busy || FactoryRun.nodeBlocked(run, options[k]) || (FactoryRun.isBattleNode(options[k]) && down) ? null : () => pick(k),
+                    sub: FactoryRun.nodeBlocked(run, options[k]) ? _hmHint(run, options[k] as Map?) : tr(_hmPathInfo(options[k])!.$3), key: ValueKey('map-node-$k'))
               else
                 _menuButton(k == 0 ? '➡️ ${tr('SEGUIR EM FRENTE')}' : '↗️ ${tr('OUTRO CAMINHO')}${options.length > 2 ? ' $k' : ''}',
                   widget.busy || FactoryRun.nodeBlocked(run, options[k]) || (FactoryRun.isBattleNode(options[k]) && down) ? null : () => pick(k),
@@ -4143,15 +4299,14 @@ class _FactoryScreenState extends State<FactoryScreen> {
                         ? _nodeInfo['meteor']!
                         : node['roam'] == true
                             ? _roamInfo
-                            : node['legend'] != null
-                            ? _legendInfo
-                            : _hmPathInfo(node) ?? _nodeInfo[node['kind']] ?? _nodeInfo['wild']!;
+                            : _hmPathInfo(node) ?? (node['legend'] != null ? _legendInfo : _nodeInfo[node['kind']] ?? _nodeInfo['wild']!);
+                final placeLegend = node['placeLegend'] == true || node['routeLegend'] == true;
                 final b = _hmPathInfo(node) != null ? null : _biomeInfo[node['biome']];
                 final isBoss = node['kind'] == 'boss';
                 final foeName = isBoss ? '${boss['name']}' : node['kind'] == 'rival' && rival != null ? '${rival['name']}' : null;
                 final noSurf = FactoryRun.nodeBlocked(run, node);
                 return _menuButton(
-                  '${options.length == 1 && foeName == null && node['kind'] != 'dboss' ? '${tr('SEGUIR')}: ' : ''}${node['biome'] == 'underwater' && route['biome'] != 'underwater' ? '🤿 ${tr('MERGULHAR')}: ' : ''}${town && isBoss ? '🏟️' : b?.$2 ?? info.$1} ${foeName ?? tr(info.$2)}${node['roam'] == true ? ' · ${_name(node['legend'])}' : ''}${b != null ? ' · ${tr(b.$1)}' : ''}${node['hidden'] != null ? ' 📡' : ''}',
+                  '${options.length == 1 && foeName == null && node['kind'] != 'dboss' ? '${tr('SEGUIR')}: ' : ''}${node['biome'] == 'underwater' && route['biome'] != 'underwater' ? '🤿 ${tr('MERGULHAR')}: ' : ''}${town && isBoss ? '🏟️' : b?.$2 ?? info.$1} ${foeName ?? tr(info.$2).replaceAll('{0}', node['blocker'] != null ? _name(node['legend']) : '')}${node['roam'] == true || placeLegend ? ' · ${node['forceShiny'] == true ? '✨ ' : ''}${_name(node['legend'])}' : ''}${b != null ? ' · ${tr(b.$1)}' : ''}${node['hidden'] != null ? ' 📡' : ''}',
                   widget.busy || (FactoryRun.isBattleNode(node) && down) || noSurf ? null : () => pick(k),
                   sub: noSurf
                       ? _hmHint(run, node)
@@ -4163,7 +4318,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                                   : tr('O chefe da rota: vencendo, você chega em {0}.').replaceAll('{0}', cities.to)
                               : node['hidden'] != null
                                   ? '📡 ${tr('A Dowsing Machine apita: tem um item escondido aqui!')}'
-                                  : tr(info.$3).replaceAll('{0}', '${FactoryRun.roamTurns}'),
+                                  : tr(placeLegend ? _placeLegendHelp : info.$3).replaceAll('{0}', '${FactoryRun.roamTurns}'),
                   key: ValueKey('map-node-$k'),
                 );
               }),
@@ -4200,6 +4355,38 @@ class _FactoryScreenState extends State<FactoryScreen> {
                           : tr('Uma troca por cidade: o que vem chega {0} níveis acima, ganha mais XP e, se evolui por troca, já chega evoluído.').replaceAll('{0}', '${FactoryRun.tradeLevels}'),
                       active: _panel == 'towntrade',
                       key: const ValueKey('town-trade')),
+            // O que só esta cidade tem (como nos jogos): a Department Store, o Game Corner, o Move Deleter e o Move Reminder.
+            if (FactoryRun.storeOf(data, run) case final Map store)
+              _menuButton('🏬 ${store['name']}', widget.busy ? null : () => _save(FactoryRun.enterStore(run, data)), key: const ValueKey('town-store')),
+            if (FactoryRun.cornerOf(data, run) case final Map corner)
+              _menuButton('🎰 ${corner['name']}', widget.busy ? null : () => setState(() => _panel = _panel == 'corner' ? null : 'corner'),
+                  active: _panel == 'corner', key: const ValueKey('town-corner')),
+            if (FactoryRun.tutorsOf(data, run).contains('deleter'))
+              _menuButton('🧓 Move Deleter', widget.busy ? null : () => setState(() => _panel = (_panel ?? '').startsWith('deleter') ? null : 'deleter'),
+                  active: (_panel ?? '').startsWith('deleter'), key: const ValueKey('town-deleter')),
+            if (FactoryRun.tutorsOf(data, run).contains('reminder'))
+              _menuButton(
+                  '💭 Move Reminder${(run['town'] as Map?)?['reminded'] == true ? ' ✓' : FactoryRun.reminderCost(data, run) > 0 ? ' · 💰${FactoryRun.reminderCost(data, run)}' : ''}',
+                  widget.busy || FactoryRun.townReminder(run, data) == null ? null : () => _save(FactoryRun.townReminder(run, data)),
+                  key: const ValueKey('town-reminder')),
+            // Os presentes da cidade (o Eevee de Celadon, o Lapras da Silph Co., o ovo de Togepi...).
+            for (final g in FactoryRun.townGifts(data, run))
+              for (final id in (g['choose'] as List?) ?? [g['id']])
+                Builder(builder: (context) {
+                  final got = FactoryRun.takeGift(run, data, g['k'] as int, (id as num).toInt());
+                  final egg = g['egg'] == true;
+                  return _menuButton(
+                      '${egg ? '🥚' : '🎁'} ${tr(egg ? 'RECEBER O OVO DE {0}' : 'RECEBER {0}').replaceAll('{0}', _name(id))}',
+                      widget.busy || got == null ? null : () => _save(got),
+                      sub: got == null
+                          ? tr('Sem vaga no time para o ovo.')
+                          : g['choose'] != null
+                              ? tr('Um presente daqui: escolha só um dos dois.')
+                              : egg
+                                  ? tr('Vai no time como ovo e choca depois de {0} vitórias.').replaceAll('{0}', '${FactoryRun.eggBattles}')
+                                  : tr('Um presente daqui: entra no time (ou vai para o PC).'),
+                      key: ValueKey('town-gift-${g['k']}-$id'));
+                }),
           ]),
       ]),
       tools: tools,
@@ -4264,9 +4451,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                           ? ((_biomeInfo[node['scene']] ?? _biomeInfo['cave']!).$2, placeName(node['place']), '')
                           : node['roam'] == true
                               ? _roamInfo
-                              : node['legend'] != null
-                              ? _legendInfo
-                              : _hmPathInfo(node) ?? _nodeInfo[node['kind']] ?? _nodeInfo['wild']!;
+                              : _hmPathInfo(node) ?? (node['legend'] != null ? _legendInfo : _nodeInfo[node['kind']] ?? _nodeInfo['wild']!);
                       final b = _hmPathInfo(node) != null ? null : _biomeInfo[node['biome']];
                       final off = onPick == null || blocked(node);
                       return Opacity(
@@ -4284,7 +4469,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                               child: Row(mainAxisSize: MainAxisSize.min, children: [
                                 CircleAvatar(radius: 12, backgroundColor: Colors.white, child: Text(b?.$2 ?? info.$1, style: const TextStyle(fontSize: 13))),
                                 const SizedBox(width: 4),
-                                Text('${tr(info.$2)}${node['hidden'] != null ? ' 📡' : ''}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11)),
+                                Text('${node['placeLegend'] == true || node['routeLegend'] == true ? _name(node['legend']) : tr(info.$2).replaceAll('{0}', node['blocker'] != null ? _name(node['legend']) : '')}${node['hidden'] != null ? ' 📡' : ''}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11)),
                               ]),
                             ),
                           ),
