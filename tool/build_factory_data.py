@@ -29,7 +29,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from factory_stories import CITIES, STORIES  # noqa: E402
-from factory_routes import CITIES as ROUTE_CITIES, START as ROUTE_START  # noqa: E402
+from factory_routes import CITIES as ROUTE_CITIES, START as ROUTE_START, FEATURES as ROUTE_FEATURES, RARE as ROUTE_RARE  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB = os.path.join(ROOT, 'assets', 'database')
@@ -522,7 +522,7 @@ def main():
     data = {'species': out_species, 'evolutions': evolutions, 'starters': STARTERS, 'bosses': bosses, 'forms': forms,
             'formSpecies': form_species, 'regional': REGIONAL,
             'megas': megas, 'gmax': gmax, 'zcrystals': zcrystals, 'tms': tms, 'stones': stones, 'stories': STORIES,
-            'routes': {'cities': ROUTE_CITIES, 'start': ROUTE_START}}
+            'routes': {'cities': ROUTE_CITIES, 'start': ROUTE_START, 'features': ROUTE_FEATURES, 'rare': ROUTE_RARE}}
     with open(os.path.join(DB, 'factory.json'), 'w', encoding='utf-8') as f:
         json.dump(data, f, separators=(',', ':'))
         f.write('\n')

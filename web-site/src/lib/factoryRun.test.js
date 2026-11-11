@@ -8,7 +8,7 @@ import {
   placeInfo, routeInfo, DBOSS_GIMMICK_FLOOR, UPGRADE_FX, SHORE, CAVE_OF, dungeonPos, routePos, DUNGEON_LENGTH, CITY_BOSS, waterNext, RIVAL_FLOOR, targetOf, rivalBoss, rocketBoss, townShop, townCenter, townHub, biomesLinked,
   isDoubleBattle,
   DOUBLE_FLOOR,
-  battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, RARE_PLACES, atPc, pcOf, pcMove, pcSlots, PC_BOX, boxName, renameBox, boxWall, nextWall, setNick, gameOf, leagueAhead, rivalGrowth, sortBox, shownScene, bagsFor, NUZLOCKE_DEFAULT, levelCapOf, EXP_BENCH, benchShare, TRADE_EXP, TRADE_EVOS, TOWN_TRADES, familyOf, townTrade, townTradeable, SAFARI_FEE, SAFARI_BALLS, SAFARI_ENCOUNTERS, SAFARI_MONS, safariRates, safariAct, safariPool, leaveSafari, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
+  battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, RARE_PLACES, atPc, pcOf, pcMove, pcSlots, PC_BOX, boxName, renameBox, boxWall, nextWall, setNick, gameOf, leagueAhead, rivalGrowth, sortBox, shownScene, bagsFor, NUZLOCKE_DEFAULT, levelCapOf, EXP_BENCH, benchShare, TRADE_EXP, TRADE_EVOS, familyOf, townTrade, townTradeable, featuresOf, waterReach, hasWaterfall, WATER_REACH, daycareHere, daycareOpen, rarePlacesOf, SECRET_BIOMES, PLACE_SCENES, SAFARI_FEE, SAFARI_BALLS, SAFARI_ENCOUNTERS, SAFARI_MONS, safariRates, safariAct, safariPool, leaveSafari, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
   HELD_BOOST, levelTo, MAX_TEAM, memberOf, movesAt, nextFloor, nextRandom, overflowPoints, pokemonPrice, runCoins, setMainItem, shopPrice,
   SHINY_BOOST, FOE_SHINY_BOOST, SHINY_CHANCE, START_BAG, START_BALLS, startersOf, unlockShiny, claimStarter, freePick, canEvolveWith, teachMove,
   equipFromStash, gimmicksOf, setGimmick, storyLine, startRun, takeCard, teamDown, applyBagItem, winFloor, chooseNode, routeOptions, routeCities,
@@ -115,7 +115,7 @@ describe('Battle Factory (roguelike)', () => {
     expect(won.pending.cards).toHaveLength(3)
     expect(won.pending.capture).toBe(null)
     // Depois do Campeão, outra região.
-    const last = { ...run, boss: { region: red, step: region.leaders.length - 1 } }
+    const last = { ...run, played: [region.region], boss: { region: red, step: region.leaders.length - 1 } }
     const champ = winFloor({ ...last, encounter: encounterFor(data, 10, seq([0.3]), bossOf(data, last)) }, data)
     expect(champ.boss.step).toBe(0)
     expect(champ.boss.region).not.toBe(red)
@@ -1284,39 +1284,57 @@ describe('cidade e lugares perto dela', () => {
     expect(waterNext('water').id).toBe('deep')
     expect(waterNext('underwater')).toEqual({ id: 'seacave', name: 'Caverna aquática', scene: 'seacave' })
     expect(waterNext('seacave')).toBe(null)
+    // Até onde a água vai depende da rota: só o mar, até o fundo (Dive) ou até a caverna aquática.
+    expect(waterNext('beach', 0)).toBe(null)
+    expect(waterNext('water', 1)).toBe(null)
+    expect(waterNext('underwater', 2)).toBe(null)
     const gs = data.bosses.findIndex((b) => b.game === 'Gold/Silver')
+    {
+      // Com o mapa de verdade, perto de Olivine City só há o mar: vencido o chefe dele, volta para a rota.
+      const at = { ...startRun(emptyFactory(), data, 4, 3), leg: 1, boss: { region: gs, step: data.bosses[gs].leaders.findIndex((l) => l.name === 'Jasmine') }, hms: ['surf', 'dive', 'waterfall'] }
+      expect(featuresOf(data, at)).toEqual(data.routes.features['Olivine City'])
+      expect(waterReach(data, at)).toBe(1)
+      expect(hasWaterfall(data, at)).toBe(false)
+      let sea = nextFloor({ ...at, floor: 1 + FORKS[1] }, data)
+      sea = chooseNode(sea, data, sea.route.options.findIndex((o) => o.kind === 'dungeon'))
+      sea = nextFloor({ ...sea, floor: sea.floor + DUNGEON_LENGTH - 1 }, data)
+      sea = winFloor(chooseNode(sea, data, 0), data)
+      expect(sea.dungeon).toBe(null)
+    }
+    // O resto do teste usa um mapa em que a rota de Olivine tem a água inteira e a cachoeira.
+    const full = { ...data, routes: { ...data.routes, features: { ...data.routes.features, 'Olivine City': { water: 'cave', fall: true } } } }
     // A rota até Olivine City é de praia: o mar é um lugar opcional na bifurcação (precisa de Surf).
-    const start = { ...startRun(emptyFactory(), data, 4, 3), leg: 1, boss: { region: gs, step: data.bosses[gs].leaders.findIndex((l) => l.name === 'Jasmine') }, hms: ['surf', 'dive', 'waterfall'] }
-    expect(targetOf(data, start).city).toBe('Olivine City')
-    let run = nextFloor({ ...start, floor: 1 + FORKS[1] }, data)
+    const start = { ...startRun(emptyFactory(), full, 4, 3), leg: 1, boss: { region: gs, step: full.bosses[gs].leaders.findIndex((l) => l.name === 'Jasmine') }, hms: ['surf', 'dive', 'waterfall'] }
+    expect(targetOf(full, start).city).toBe('Olivine City')
+    let run = nextFloor({ ...start, floor: 1 + FORKS[1] }, full)
     expect(run.route.biome).toBe('beach')
     const k = run.route.options.findIndex((o) => o.kind === 'dungeon')
     expect(run.route.options[k]).toEqual({ kind: 'dungeon', place: 'sea', scene: 'water' })
     expect(nodeBlocked({ ...run, hms: [] }, run.route.options[k])).toBe(true)
-    run = chooseNode(run, data, k)
-    run = nextFloor({ ...run, floor: run.floor + DUNGEON_LENGTH - 1 }, data)
-    run = nextFloor(winFloor(chooseNode(run, data, 0), data), data)
+    run = chooseNode(run, full, k)
+    run = nextFloor({ ...run, floor: run.floor + DUNGEON_LENGTH - 1 }, full)
+    run = nextFloor(winFloor(chooseNode(run, full, 0), full), full)
     // Venceu o chefe do mar: mergulhar (fundo do mar), subir a cachoeira ou voltar.
     expect(run.route.options).toEqual([{ kind: 'dungeon', place: 'deep', scene: 'underwater', deeper: true }, { kind: 'dungeon', place: 'waterfall', scene: 'waterfall', deeper: true }, { kind: 'leave' }])
     expect(nodeBlocked(run, run.route.options[1])).toBe(false)
     expect(nodeBlocked({ ...run, hms: ['surf', 'dive'] }, run.route.options[1])).toBe(true)
     // A gruta da cachoeira: 10 andares de selvagens e um chefe forte; vencendo, volta para a rota (e não aparece de novo).
-    let fall = chooseNode(run, data, 1)
+    let fall = chooseNode(run, full, 1)
     expect(fall.route.biome).toBe('waterfall')
-    expect(placeInfo(data, fall, 'waterfall').name).toBe('Gruta da cachoeira')
+    expect(placeInfo(full, fall, 'waterfall').name).toBe('Gruta da cachoeira')
     expect(fall.route.options.every((o) => o.kind === 'wild')).toBe(true)
-    fall = nextFloor({ ...fall, floor: fall.floor + DUNGEON_LENGTH - 1 }, data)
+    fall = nextFloor({ ...fall, floor: fall.floor + DUNGEON_LENGTH - 1 }, full)
     expect(fall.route.options).toEqual([{ kind: 'wildboss', area: true }])
-    run = chooseNode(run, data, 0)
+    run = chooseNode(run, full, 0)
     expect(run.dungeon.entry).toBe(1 + FORKS[1])
     expect(run.route.biome).toBe('underwater')
-    run = nextFloor({ ...run, floor: run.floor + DUNGEON_LENGTH - 1 }, data)
-    run = nextFloor(winFloor(chooseNode(run, data, 0), data), data)
-    run = chooseNode(run, data, 1)
+    run = nextFloor({ ...run, floor: run.floor + DUNGEON_LENGTH - 1 }, full)
+    run = nextFloor(winFloor(chooseNode(run, full, 0), full), full)
+    run = chooseNode(run, full, 1)
     // De volta para a rota, no andar em que entrou na água (não vai para a cidade).
     expect(run.dungeon).toBe(null)
     expect(routePos(run)).toBe(FORKS[1])
-    expect(townHub(data, run)).toBe(false)
+    expect(townHub(full, run)).toBe(false)
     expect(run.places).toEqual(['sea', 'deep'])
   })
 
@@ -1328,8 +1346,11 @@ describe('cidade e lugares perto dela', () => {
     expect(routeBiome(data, at(SHORE, 'Blaine'))).toBe('beach')
     expect(routeBiome(data, at(1 + SHORE, 'Blaine'))).toBe('water')
     expect(nextFloor(at(1 + FORKS[1], 'Blaine'), data).route.options.some((o) => o.place === 'sea')).toBe(false)
-    const deep = nextFloor(at(1 + FORKS[2], 'Blaine'), data).route.options
-    expect(deep).toContainEqual({ kind: 'dungeon', place: 'deep', scene: 'underwater' })
+    // Em Kanto não há Dive: o fundo do mar não aparece. Em Hoenn, na rota até Mossdeep City, aparece.
+    expect(nextFloor(at(1 + FORKS[2], 'Blaine'), data).route.options.some((o) => o.place === 'deep')).toBe(false)
+    const ruby = data.bosses.findIndex((b) => b.region === 'Hoenn')
+    const tate = { ...at(1 + FORKS[2], 'Blaine'), boss: { region: ruby, step: data.bosses[ruby].leaders.findIndex((l) => l.city === 'Mossdeep City') } }
+    expect(nextFloor(tate, data).route.options).toContainEqual({ kind: 'dungeon', place: 'deep', scene: 'underwater' })
     // A caverna no caminho combina com a rota: no pântano, venenosa; no mar, aquática; numa de grama, normal.
     const sinnoh = data.bosses.findIndex((b) => b.game === 'Diamond/Pearl')
     const wake = { ...startRun(emptyFactory(), data, 4, 3), boss: { region: sinnoh, step: data.bosses[sinnoh].leaders.findIndex((l) => l.name === 'Wake') } }
@@ -1568,37 +1589,71 @@ describe('ideias: amizade, habilidades fora da batalha, Nuzlocke', () => {
   })
 })
 
-describe('troca da cidade e Safari Zone', () => {
+describe('tudo conforme o mapa: trocas, Safari, Creche, lugares raros, caverna secreta e museu', () => {
   const start = () => startRun(emptyFactory(), data, 1, 42)
-  it('troca da cidade: pede um do time (nunca o mais forte), dá um raro; quem evolui por troca chega evoluído (igual ao app)', () => {
+  const game = (name) => data.bosses.findIndex((b) => b.game === name)
+  const toCity = (g, city, extra = {}) => ({ ...start(), leg: 1, boss: { region: g, step: data.bosses[g].leaders.findIndex((l) => l.city === city) }, encounter: null, pending: null, ...extra })
+  const red = game('Red/Blue')
+  it('o mapa: as chaves são cidades de verdade e toda rota de praia ou de mar tem mar (igual ao app)', () => {
+    const { cities, features, rare } = data.routes
+    for (const [city, f] of Object.entries(features)) {
+      expect(cities[city], city).toBeTruthy()
+      for (const id of f.trade ?? []) expect(data.species[id], `${city} ${id}`).toBeTruthy()
+      for (const [place, fossils] of Object.entries(f.museum ?? {})) {
+        expect(PLACE_SCENES[place]).toBe('museum')
+        expect(routeInfoOf(city).towns.map((p) => p.id)).toContain(place)
+        for (const id of fossils) expect(data.species[id]).toBeTruthy()
+      }
+    }
+    for (const [city, row] of Object.entries(cities)) if (['beach', 'water'].includes(row[0])) expect(WATER_REACH[features[city]?.water], city).toBeGreaterThan(0)
+    for (const ids of Object.values(rare)) for (const id of ids) { expect(RARE_PLACES[id], id).toBeTruthy(); for (const l of RARE_PLACES[id].legends) expect(data.species[l]).toBeTruthy() }
+    for (const b of data.bosses) expect(rare[b.region], b.region).toBeTruthy()
+  })
+  const routeInfoOf = (city) => { const g = data.bosses.findIndex((b) => b.leaders.some((l) => l.city === city)); return routeInfo(data, toCity(g, city)) }
+  it('troca da cidade: só onde há uma nos jogos, com os Pokémon de lá; quem evolui por troca chega evoluído (igual ao app)', () => {
     const first = start().team[0]
-    const team = [{ ...first, level: 20, exp: expAt(20) }, { ...first, id: 16, level: 12, exp: expAt(12), item: 'leftovers' }]
-    const run = { ...start(), floor: 40, team, town: { leg: 21, shop: [], trade: { want: 17, give: 93 } } }
-    // Pede a família: o Pidgey serve para quem quer um Pidgeotto.
-    expect(townTradeable(run, data)).toEqual([1])
-    expect(townTrade(run, 0, data)).toBe(run)
-    const out = townTrade(run, 1, data)
-    // Haunter evolui pela troca: chega um Gengar, 3 níveis acima, com o item de quem foi e XP de trocado.
-    expect(out.team[1]).toMatchObject({ id: TRADE_EVOS[93], level: 12 + TRADE_LEVELS, item: 'leftovers', traded: true })
-    expect(out.town.trade.done).toBe(true)
+    // Pewter City: um Abra por um Mr. Mime. Saffron City não tem troca.
+    const pewter = nextFloor(toCity(red, 'Pewter City', { floor: 1 + ROUTE_LENGTH, team: [{ ...first, level: 20, exp: expAt(20) }, { ...first, id: 64, level: 12, exp: expAt(12), item: 'leftovers' }] }), data)
+    expect(pewter.town.trade).toEqual({ want: 63, give: 122 })
+    expect(nextFloor(toCity(red, 'Saffron City', { floor: 1 + ROUTE_LENGTH }), data).town.trade).toBeUndefined()
+    // Pede a família: o Kadabra serve para quem quer um Abra.
+    expect(townTradeable(pewter, data)).toEqual([1])
+    expect(townTrade(pewter, 0, data)).toBe(pewter)
+    const out = townTrade(pewter, 1, data)
+    expect(out.team[1]).toMatchObject({ id: 122, level: 12 + TRADE_LEVELS, item: 'leftovers', traded: true })
+    expect(out.town.trade).toMatchObject({ done: true, got: 122 })
     expect(out.trades).toBe(1)
     expect(townTradeable(out, data)).toEqual([])
     expect(townTrade(out, 0, data)).toBe(out)
+    // Quem evolui por troca chega evoluído (o Haunter de Snowpoint e de Levincia vira Gengar).
+    const haunter = townTrade({ ...pewter, town: { ...pewter.town, trade: { want: 63, give: 93 } } }, 1, data)
+    expect(haunter.team[1].id).toBe(TRADE_EVOS[93])
     expect(familyOf(data, 18)).toBe(16)
-    for (const id of TOWN_TRADES) expect(data.species[id]).toBeTruthy()
     for (const [from, to] of Object.entries(TRADE_EVOS)) { expect(data.species[from]).toBeTruthy(); expect(data.species[to]).toBeTruthy() }
   })
-  it('Safari Zone: paga a entrada, joga bola, isca e pedra; acaba com as bolas ou os encontros (igual ao app)', () => {
-    const base = { ...start(), floor: 30, money: SAFARI_FEE + 7, route: { floor: 30, biome: 'grass', options: [{ kind: 'safari' }] }, encounter: null, pending: null }
+  it('Safari: só nas rotas que têm um (Fuchsia, Cianwood, Mossdeep, Pastoria), uma vez por rota; paga a entrada, joga bola, isca e pedra (igual ao app)', () => {
+    const safaris = Object.entries(data.routes.features).filter(([, f]) => f.safari).map(([city]) => city).sort()
+    expect(safaris).toEqual(['Cianwood City', 'Fuchsia City', 'Mossdeep City', 'Pastoria City'])
+    const fuchsia = toCity(red, 'Fuchsia City', { floor: 1 + FORKS[1], money: SAFARI_FEE + 7 })
+    const route = nextFloor(fuchsia, data).route
+    expect(route.options).toContainEqual({ kind: 'safari', name: 'Safari Zone' })
+    // Na rota até Pewter City não tem; no Nuzlocke também não; e não aparece de novo na mesma rota.
+    expect(nextFloor(toCity(red, 'Pewter City', { floor: 1 + FORKS[1] }), data).route.options.some((o) => o.kind === 'safari')).toBe(false)
+    expect(nextFloor({ ...fuchsia, nuzlocke: true }, data).route.options.some((o) => o.kind === 'safari')).toBe(false)
+    expect(nextFloor({ ...fuchsia, safariLeg: legOf(fuchsia) }, data).route.options.some((o) => o.kind === 'safari')).toBe(false)
+    const dp = game('Diamond/Pearl')
+    expect(nextFloor(toCity(dp, 'Pastoria City', { floor: 1 + FORKS[1] }), data).route.options).toContainEqual({ kind: 'safari', name: 'Great Marsh' })
+    const base = { ...fuchsia, route: { floor: fuchsia.floor, biome: 'grass', options: [{ kind: 'safari', name: 'Safari Zone' }] } }
     // Sem dinheiro para a entrada: o caminho fica fechado.
     expect(nodeBlocked({ ...base, money: SAFARI_FEE - 1 }, { kind: 'safari' })).toBe(true)
     expect(chooseNode({ ...base, money: SAFARI_FEE - 1 }, data, 0).pending).toBe(null)
     let run = chooseNode(base, data, 0)
     expect(run.money).toBe(7)
-    expect(run.floor).toBe(31)
+    expect(run.floor).toBe(base.floor + 1)
+    expect(run.safariLeg).toBe(legOf(base))
     expect(run.pending.safari).toMatchObject({ balls: SAFARI_BALLS, left: SAFARI_ENCOUNTERS - 1, caught: 0 })
     expect(SAFARI_MONS).toContain(run.pending.safari.mon.id)
-    expect(run.pending.safari.mon.level).toBe(foeLevelAt(31))
+    expect(run.pending.safari.mon.level).toBe(foeLevelAt(run.floor))
     // A isca: foge menos e fica mais difícil de pegar; a pedra, o contrário.
     const calm = safariRates(data, { ...run.pending.safari, mood: null })
     const eating = safariRates(data, { ...run.pending.safari, mood: 'eating' })
@@ -1627,12 +1682,40 @@ describe('troca da cidade e Safari Zone', () => {
     expect(safariAct(run, data, 'ball')).toBe(run)
     expect(leaveSafari(run).pending.safari).toBe(null)
     // Deixar este e procurar outro gasta um encontro, não uma bola.
-    const fresh = chooseNode(base, data, 0)
-    const moved = safariAct(fresh, data, 'run')
+    const moved = safariAct(chooseNode(base, data, 0), data, 'run')
     expect(moved.pending.safari).toMatchObject({ balls: SAFARI_BALLS, left: SAFARI_ENCOUNTERS - 2, last: 'left' })
     for (const id of SAFARI_MONS) expect(data.species[id]).toBeTruthy()
     // No Monotipo, só os do tipo.
     expect(safariPool({ ...base, mono: ['dragon'] }, data)).toEqual([147])
+  })
+  it('Creche só onde há uma; lugares raros só os da região; caverna secreta só onde há cavernas (igual ao app)', () => {
+    const vermilion = toCity(red, 'Vermilion City')
+    const pewter = toCity(red, 'Pewter City')
+    expect(daycareHere(data, vermilion)).toBe(true)
+    expect(daycareHere(data, pewter)).toBe(false)
+    // Sem Creche na cidade não dá para deixar; com um Pokémon lá, dá para buscar em qualquer uma.
+    const two = { ...pewter, team: [pewter.team[0], { ...pewter.team[0], id: 16 }] }
+    expect(leaveDaycare(two, 1, data)).toBe(null)
+    expect(leaveDaycare({ ...two, boss: vermilion.boss }, 1, data).daycare.mon.id).toBe(16)
+    expect(daycareOpen(data, pewter)).toBe(false)
+    expect(daycareOpen(data, { ...pewter, daycare: { mon: pewter.team[0], floor: 1 } })).toBe(true)
+    expect(rarePlacesOf(data, pewter)).toEqual(['cerulean-cave', 'navel-rock'])
+    expect(rarePlacesOf(data, toCity(game('Gold/Silver'), 'Violet City'))).toEqual(['bell-tower'])
+    for (const b of data.bosses) expect(rarePlacesOf(data, { boss: { region: data.bosses.indexOf(b), step: 0 } }).length).toBeGreaterThan(0)
+    expect(SECRET_BIOMES).toContain('cave')
+    expect(SECRET_BIOMES).not.toContain('grass')
+    expect(CHOICE_EVENTS).toContain('secret')
+  })
+  it('museu: cenário próprio e, vencendo o chefe dele, um fóssil de lá revivido (igual ao app)', () => {
+    const pewter = toCity(red, 'Pewter City', { floor: 15, dungeon: { place: 'pewter-museum', scene: 'ruins', start: 12 } })
+    expect(shownScene(pewter, 'ruins')).toBe('museum')
+    const won = winFloor({ ...pewter, encounter: { kind: 'dboss', foes: [{ id: 74, level: 8, iv: 0, ev: 0 }] } }, data, { hp: [1] })
+    expect(data.routes.features['Pewter City'].museum['pewter-museum']).toContain(won.pending.capture.id)
+    expect(won.pending.capture).toMatchObject({ level: foeLevelAt(15), fossil: true })
+    expect(capture(won).team.at(-1).id).toBe(won.pending.capture.id)
+    // Num lugar que não é museu, nada de fóssil.
+    const other = winFloor({ ...pewter, dungeon: { place: 'viridian-forest', scene: 'forest', start: 12 }, encounter: { kind: 'dboss', foes: [{ id: 74, level: 8, iv: 0, ev: 0 }] } }, data, { hp: [1] })
+    expect(other.pending.capture).toBe(null)
   })
 })
 

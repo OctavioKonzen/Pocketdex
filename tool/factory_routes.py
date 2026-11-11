@@ -17,6 +17,19 @@ CITIES: a cidade de destino de cada rota (o "city" dos chefes) →
     entrar em mais de um (um por bifurcação da cidade).
   A Liga de cada região tem a chave "Região:Pokémon League" (o nome se repete).
 
+FEATURES: o que existe em cada rota e cidade, como nos jogos (a mesma chave de
+CITIES). O que não está aqui não aparece lá:
+  - water: até onde a água vai: 'sea' (dá para surfar), 'deep' (tem Dive: o
+    fundo do mar) ou 'cave' (tem caverna aquática depois do fundo). Sem a
+    chave, a praia é só a praia;
+  - fall: tem cachoeira no mar (a gruta da cachoeira, com Waterfall);
+  - safari: o nome do Safari no caminho (Safari Zone, Great Marsh);
+  - daycare: tem Creche na cidade ou na rota dela;
+  - trade: [quem o morador quer, quem ele dá], a troca de lá nos jogos;
+  - museum: {lugar da cidade: [fósseis que o museu revive]}.
+
+RARE: os lugares raros de cada região (só aparecem nela).
+
 START: de onde a região começa (a cidade inicial do jogo). A chave é o jogo
 quando ele começa em outro lugar (Black 2/White 2).
 """
@@ -28,7 +41,7 @@ CITIES = {
     'Vermilion City': ['grass', 'Route 5 · Route 6', ['Underground Path', 'sewer'], [['S.S. Anne', 'city'], ['Vermilion Harbor', 'beach']]],
     'Celadon City': ['cave', 'Route 9 · Rock Tunnel', ['Pokémon Tower', 'tower'],
                      [['Rocket Game Corner', 'city'], ['Rocket Hideout', 'base-rocket'], ['Celadon Department Store', 'city']]],
-    'Fuchsia City': ['grass', 'Route 12 · Route 15', ['Safari Zone', 'swamp'], [['Fuchsia Beach', 'beach']]],
+    'Fuchsia City': ['grass', 'Route 12 · Route 15', None, [['Fuchsia Beach', 'beach']]],
     'Saffron City': ['city', 'Route 7 · Route 8', ['Power Plant', 'plant'], [['Silph Co.', 'base-rocket'], ['Fighting Dojo', 'temple']]],
     'Cinnabar Island': ['water', 'Route 19 · Route 20', ['Seafoam Islands', 'icecave'],
                         [['Pokémon Mansion', 'ruins'], ['Cinnabar Lab', 'plant'], ['Cinnabar Beach', 'beach']]],
@@ -121,6 +134,81 @@ CITIES = {
     'Alfornada': ['mountain', 'South Province (Area Six)', ['Alfornada Cavern', 'cave'], [['Team Star Fighting Crew', 'base-star']]],
     'Glaseado': ['snow', 'Glaseado Mountain', ['Dalizapa Passage', 'icecave'], []],
     'Paldea:Pokémon League': ['grass', 'West Province (Area One)', ['Area Zero', 'crystal'], []],
+}
+
+FEATURES = {
+    # Kanto
+    'Pewter City': {'trade': [63, 122], 'museum': {'pewter-museum': [138, 140, 142]}},
+    'Cerulean City': {'trade': [61, 124]},
+    'Vermilion City': {'water': 'sea', 'daycare': True, 'trade': [21, 83]},
+    'Fuchsia City': {'water': 'sea', 'safari': 'Safari Zone', 'trade': [55, 108]},
+    'Cinnabar Island': {'water': 'sea', 'trade': [48, 114]},
+    'Viridian City': {'water': 'sea'},
+    'Seafoam Islands': {'water': 'sea'},
+    # Johto
+    'Violet City': {'trade': [69, 95]},
+    'Goldenrod City': {'daycare': True, 'trade': [96, 66]},
+    'Olivine City': {'water': 'sea', 'trade': [98, 100]},
+    'Cianwood City': {'water': 'sea', 'fall': True, 'safari': 'Safari Zone'},
+    'Blackthorn City': {'trade': [148, 85]},
+    # Hoenn
+    'Rustboro City': {'trade': [287, 296]},
+    'Dewford Town': {'water': 'sea'},
+    'Mauville City': {'water': 'sea', 'daycare': True},
+    'Fortree City': {'trade': [25, 300]},
+    'Mossdeep City': {'water': 'deep', 'safari': 'Safari Zone'},
+    'Sootopolis City': {'water': 'cave', 'fall': True},
+    # Sinnoh
+    'Oreburgh City': {'trade': [66, 63], 'museum': {'oreburgh-mining-museum': [408, 410]}},
+    'Eterna City': {'trade': [418, 441]},
+    'Veilstone City': {'daycare': True},
+    'Pastoria City': {'water': 'sea', 'safari': 'Great Marsh'},
+    'Canalave City': {'water': 'sea'},
+    'Snowpoint City': {'trade': [308, 93]},
+    'Sunyshore City': {'water': 'sea', 'fall': True},
+    # Unova
+    'Nacrene City': {'daycare': True, 'trade': [546, 548], 'museum': {'nacrene-museum': [564, 566]}},
+    'Driftveil City': {'trade': [572, 550]},
+    'Icirrus City': {'trade': [525, 587]},
+    'Humilau City': {'water': 'deep', 'trade': [226, 465]},
+    # Kalos
+    'Cyllage City': {'water': 'sea', 'daycare': True, 'trade': [370, 208]},
+    'Shalour City': {'water': 'sea'},
+    'Coumarine City': {'water': 'sea'},
+    # Alola
+    'Verdant Cavern': {'water': 'sea', 'trade': [21, 66]},
+    'Ruins of Life': {'water': 'sea'},
+    'Brooklet Hill': {'daycare': True, 'trade': [506, 761]},
+    'Malie City': {'trade': [674, 440]},
+    'Seafolk Village': {'water': 'sea', 'trade': [210, 762]},
+    # Galar
+    'Hulbury': {'daycare': True, 'trade': [572, 546]},
+    'Motostoke': {'trade': [659, 819]},
+    'Circhester': {'trade': [583, 538]},
+    'Spikemuth': {'water': 'sea'},
+    'Hammerlocke': {'trade': [848, 175]},
+    'Wyndon': {'trade': [873, 884]},
+    # Paldea (os ovos vêm do piquenique: dá em qualquer cidade)
+    'Cortondo': {'daycare': True, 'trade': [669, 872]},
+    'Artazon': {'daycare': True},
+    'Levincia': {'water': 'sea', 'daycare': True, 'trade': [871, 93]},
+    'Cascarrafa': {'daycare': True},
+    'Medali': {'daycare': True},
+    'Montenevera': {'daycare': True},
+    'Alfornada': {'daycare': True},
+    'Glaseado': {'daycare': True},
+}
+
+RARE = {
+    'Kanto': ['cerulean-cave', 'navel-rock'],
+    'Johto': ['bell-tower'],
+    'Hoenn': ['faraway-island'],
+    'Sinnoh': ['distortion-world'],
+    'Unova': ['liberty-garden'],
+    'Kalos': ['sea-spirit-s-den'],
+    'Alola': ['ruins-of-conflict'],
+    'Galar': ['crown-shrine'],
+    'Paldea': ['grasswither-shrine'],
 }
 
 START = {

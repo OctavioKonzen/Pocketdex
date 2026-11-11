@@ -1209,6 +1209,7 @@ export const PLACE_SCENES = {
   'goldenrod-department-store': 'store', 'mauville-game-corner': 'casino', 'lavaridge-herb-shop': 'store', 'hearthome-contest-hall': 'stage',
   'veilstone-department-store': 'store', 'veilstone-game-corner': 'casino', 'battle-subway': 'subway', 'nimbasa-amusement-park': 'park',
   'driftveil-market': 'store', 'pok-star-studios': 'stage', 'trainers-school': 'school', 'hau-oli-shopping-district': 'store',
+  'pewter-museum': 'museum', 'oreburgh-mining-museum': 'museum', 'nacrene-museum': 'museum',
 }
 /** O cenário que aparece (o próprio do lugar, se ele tiver). */
 export const shownScene = (run, scene) => (run?.dungeon && PLACE_SCENES[run.dungeon.place]) || scene
@@ -1227,6 +1228,28 @@ export function routeInfo(data, run) {
 }
 
 /**
+ * O que existe na rota e na cidade de agora, como nos jogos (tool/factory_routes.py, FEATURES): até onde a água vai
+ * (water), a cachoeira (fall), o Safari (safari), a Creche (daycare), a troca do morador (trade) e os fósseis do museu
+ * (museum). O que não está no mapa de lá não aparece. Igual ao app.
+ */
+export function featuresOf(data, run) {
+  const game = data?.bosses?.[run?.boss?.region]
+  if (!game) return {}
+  const city = targetOf(data, run).city ?? ''
+  const all = data.routes?.features
+  return all?.[`${game.region}:${city}`] ?? all?.[city] ?? {}
+}
+/** Até onde a água vai nesta rota: 0 só a praia, 1 o mar (dá para surfar), 2 o fundo do mar (Dive), 3 a caverna aquática. */
+export const WATER_REACH = { sea: 1, deep: 2, cave: 3 }
+export const waterReach = (data, run) => WATER_REACH[featuresOf(data, run).water] ?? 0
+/** Tem cachoeira no mar daqui (a gruta atrás dela, com Waterfall). */
+export const hasWaterfall = (data, run) => Boolean(featuresOf(data, run).fall)
+/** Tem Creche na cidade (ou na rota dela); com um Pokémon lá, dá para buscar em qualquer cidade. */
+export const daycareOpen = (data, run) => Boolean(featuresOf(data, run).daycare) || Boolean(run.daycare)
+/** Só dá para deixar um Pokémon onde há Creche. */
+export const daycareHere = (data, run) => Boolean(featuresOf(data, run).daycare)
+
+/**
  * A água, em ordem (não dá para pular): da praia (a rota ou a da cidade) para
  * o mar, dele para o fundo do mar e dali para a caverna aquática. Cada um é um
  * lugar de 10 andares com um chefe; vencendo, dá para seguir para o próximo ou voltar.
@@ -1242,9 +1265,9 @@ export const WATERFALL_PLACE = { id: 'waterfall', name: 'Gruta da cachoeira', sc
 export const CAVE_OF = { snow: 'icecave', icecave: 'icecave', swamp: 'poisoncave', volcano: 'lavacave', beach: 'seacave', water: 'seacave', underwater: 'seacave' }
 const caveScene = (scene, around) => (scene === 'cave' ? CAVE_OF[around] ?? 'cave' : scene)
 /** O lugar da água depois deste cenário (null se não tem: a caverna aquática é o fim). */
-export function waterNext(scene) {
+export function waterNext(scene, reach = WATER_CHAIN.length - 1) {
   const k = WATER_CHAIN.findIndex(([, , s]) => s === scene)
-  return k >= 0 && k < WATER_CHAIN.length - 1 ? { id: WATER_CHAIN[k + 1][0], name: WATER_CHAIN[k + 1][1], scene: WATER_CHAIN[k + 1][2] } : null
+  return k >= 0 && k < Math.min(WATER_CHAIN.length - 1, reach) ? { id: WATER_CHAIN[k + 1][0], name: WATER_CHAIN[k + 1][1], scene: WATER_CHAIN[k + 1][2] } : null
 }
 
 /** O nome e o cenário de um lugar (os genéricos, os da água ou os do mapa da região). */
@@ -1311,7 +1334,14 @@ export const RARE_PLACES = {
   'bell-tower': { scene: 'tower', name: 'Bell Tower', legends: [250] },
   'distortion-world': { scene: 'ruins', name: 'Distortion World', legends: [487] },
   'cerulean-cave': { scene: 'crystal', name: 'Cerulean Cave', legends: [150] },
+  'liberty-garden': { scene: 'tower', name: 'Liberty Garden', legends: [494], mythic: true },
+  'sea-spirit-s-den': { scene: 'seacave', name: "Sea Spirit's Den", legends: [144, 145, 146] },
+  'ruins-of-conflict': { scene: 'ruins', name: 'Ruins of Conflict', legends: [785] },
+  'crown-shrine': { scene: 'snow', name: 'Crown Shrine', legends: [898] },
+  'grasswither-shrine': { scene: 'ruins', name: 'Grasswither Shrine', legends: [1001] },
 }
+/** Os lugares raros da região de agora (cada um só aparece na região dele nos jogos). */
+export const rarePlacesOf = (data, run) => (data.routes?.rare?.[data.bosses?.[run.boss?.region]?.region] ?? []).filter((id) => RARE_PLACES[id])
 export const RARE_PLACE_IDS = Object.keys(RARE_PLACES)
 /** O lendário que espera no fim do lugar raro (sempre o mesmo na corrida). */
 export const rareLegend = (run, place) => { const l = RARE_PLACES[place]?.legends ?? []; return l.length ? l[((run.seed >>> 0) + run.floor) % l.length] : null }
@@ -1387,10 +1417,10 @@ export function routeOptions(run, data, rand) {
   const only = (node) => ({ floor: run.floor, biome, ...(city ? { town: true } : {}), options: [node] })
   // Venceu o chefe de um lugar da água: segue para o próximo (o mar depois da praia...) ou volta.
   if (inside && run.dungeon.cleared) {
-    const next = waterNext(run.dungeon.scene)
-    // No Mar, também dá para subir a cachoeira (com Waterfall) até a gruta atrás dela.
-    const fall = run.dungeon.scene === 'water' && !(run.places ?? []).includes(WATERFALL_PLACE.id) ? [{ kind: 'dungeon', place: WATERFALL_PLACE.id, scene: WATERFALL_PLACE.scene, deeper: true }] : []
-    return { floor: run.floor, biome, options: [{ kind: 'dungeon', place: next.id, scene: next.scene, deeper: true }, ...fall, { kind: 'leave' }] }
+    const next = waterNext(run.dungeon.scene, waterReach(data, run))
+    // No Mar, onde há cachoeira, também dá para subir por ela (com Waterfall) até a gruta atrás dela.
+    const fall = run.dungeon.scene === 'water' && hasWaterfall(data, run) && !(run.places ?? []).includes(WATERFALL_PLACE.id) ? [{ kind: 'dungeon', place: WATERFALL_PLACE.id, scene: WATERFALL_PLACE.scene, deeper: true }] : []
+    return { floor: run.floor, biome, options: [...(next ? [{ kind: 'dungeon', place: next.id, scene: next.scene, deeper: true }] : []), ...fall, { kind: 'leave' }] }
   }
   // Lugares sem treinadores (mar, fundo do mar, cavernas de gelo, lava, veneno, cristal): só selvagens, e o chefe é um selvagem forte (dá para capturar).
   const wildOnly = inside && (WILD_ONLY.includes(biome) || Boolean(RARE_PLACES[run.dungeon.place]))
@@ -1469,15 +1499,18 @@ export function routeOptions(run, data, rand) {
   } else {
     // Numa rota de praia, o mar é opcional; numa rota de mar, o fundo do mar.
     const sea = info?.biome === 'water'
-    if (pos === FORKS[sea ? 2 : 1]) add(waterNext(biome))
+    if (pos === FORKS[sea ? 2 : 1]) add(waterNext(biome, waterReach(data, run)))
     if (pos === FORKS[2]) add(info?.side)
     // Às vezes, um lugar raro (como nos jogos).
     if (pos === FORKS[2] && rand() < RARE_PLACE_CHANCE) {
-      const id = RARE_PLACE_IDS[Math.floor(rand() * RARE_PLACE_IDS.length)]
-      add({ id, scene: RARE_PLACES[id].scene })
+      // Só os da região (Bell Tower em Johto, Cerulean Cave em Kanto...).
+      const ids = rarePlacesOf(data, run)
+      const roll = rand()
+      if (ids.length) { const id = ids[Math.floor(roll * ids.length)]; add({ id, scene: RARE_PLACES[id].scene }) }
     }
-    // A Safari Zone: às vezes, na segunda bifurcação da rota (no Nuzlocke não tem: um capturado por área).
-    if (pos === FORKS[1] && run.floor >= SAFARI_FLOOR && !run.nuzlocke && SAFARI_BIOMES.includes(biome) && safariPool(run, data).length && rand() < SAFARI_CHANCE) options.push({ kind: 'safari' })
+    // O Safari: só nas rotas que têm um nos jogos (Safari Zone, Great Marsh), uma vez por rota (no Nuzlocke não tem: um capturado por área).
+    const safari = featuresOf(data, run).safari
+    if (pos === FORKS[1] && safari && !run.nuzlocke && run.safariLeg !== legOf(run) && safariPool(run, data).length) options.push({ kind: 'safari', name: safari })
     // O lendário que foge (Raikou, Entei, Suicune...): às vezes aparece na primeira bifurcação da rota.
     const roam = roamerNode(run)
     if (pos === FORKS[0] && roam) options.push(roam)
@@ -1592,6 +1625,7 @@ export function chooseNode(run, data, index, clock = null) {
   else if (node.kind === 'safari') {
     out.money = run.money - SAFARI_FEE
     out.safaris = (run.safaris ?? 0) + 1
+    out.safariLeg = legOf(run)
     out.pending = { safari: safariNext({ balls: SAFARI_BALLS, left: SAFARI_ENCOUNTERS, caught: 0, mon: null, mood: null }, out, data, rand) }
   } else if (node.kind === 'trade') {
     // Troca: alguém da rota oferece um Pokémon (você escolhe quem dar; ele vem TRADE_LEVELS acima).
@@ -1602,7 +1636,8 @@ export function chooseNode(run, data, index, clock = null) {
     out.pending = { center: true }
   } else if (rand() < CHOICE_CHANCE) {
     // Uma escolha na rota: ajudar alguém, seguir um Pokémon ferido ou entrar numa caverna secreta.
-    const kind = pickOne(CHOICE_EVENTS, rand)
+    // A caverna secreta só onde há cavernas (rota de caverna, montanha, vulcão...).
+    const kind = pickOne(SECRET_BIOMES.includes(run.route?.biome) ? CHOICE_EVENTS : CHOICE_EVENTS.filter((k) => k !== 'secret'), rand)
     const scale = priceScale(out.floor - 1)
     const choice = { kind }
     if (kind === 'help') choice.cost = Math.round(80 * scale)
@@ -2043,7 +2078,8 @@ export function winFloor(run, data, after = {}) {
     out.dungeons = (run.dungeons ?? 0) + 1
     if (run.dungeon.place !== 'base') out.places = [...(run.places ?? []), run.dungeon.place]
     // Num lugar da água, dá para seguir para o próximo (o mar depois da praia...); nos outros, volta.
-    if (run.dungeon.place !== 'base' && waterNext(run.dungeon.scene)) out.dungeon = { ...run.dungeon, cleared: true }
+    const onward = waterNext(run.dungeon.scene, waterReach(data, run)) || (run.dungeon.scene === 'water' && hasWaterfall(data, run) && !(out.places ?? []).includes(WATERFALL_PLACE.id))
+    if (run.dungeon.place !== 'base' && WATER_CHAIN.some(([, , sc]) => sc === run.dungeon.scene) && onward) out.dungeon = { ...run.dungeon, cleared: true }
     else leavePlace(run, out)
   }
   if (kind === 'rematch') {
@@ -2120,11 +2156,14 @@ export function winFloor(run, data, after = {}) {
   const joy = rand() < JOY_CHANCE
   if (joy) out.team = out.team.map((m) => ({ ...m, hp: 1 }))
   const born = hatch(out, after.captured && (kind === 'wild' || kind === 'wildboss'))
+  // O museu revive um fóssil para quem vence o chefe dele (os de lá: Omanyte, Kabuto e Aerodactyl em Pewter...).
+  const fossils = run.dungeon && kind === 'dboss' && !born ? (featuresOf(data, run).museum?.[run.dungeon.place] ?? []).filter((id) => data.species[id] && (!run.mono || (speciesOf(data, id)?.[4] ?? []).some((t) => run.mono.includes(t)))) : []
+  const fossil = fossils.length ? { id: pickOne(fossils, rand), level: foeLevelAt(run.floor), fossil: true } : null
   out.pending = {
     exp, gains, money, levels, joy, drop, story, reward, ...(champion ? { champion: true } : {}),
     ...(picked.length ? { picked } : {}), ...(lost.length ? { lost } : {}), ...(shed ? { shed: true } : {}), ...(dropped ? { pieces } : {}),
     // O capturado ou o ovo que chocou (a mesma tela).
-    capture: after.captured && (kind === 'wild' || kind === 'wildboss') ? foes[0] : born,
+    capture: after.captured && (kind === 'wild' || kind === 'wildboss') ? foes[0] : born ?? fossil,
     // A Poké Ball em que ele foi capturado (o sprite dela na tela da captura).
     ...(after.captured && after.ball ? { ball: after.ball } : {}),
     cards: kind === 'boss' ? pickCards(rand, run.cardCount ?? 3, run.relics ?? []) : null,
@@ -2469,7 +2508,8 @@ export const EGG_BATTLES = 10
 export const teamRoom = (run) => MAX_TEAM - (run.eggs?.length ?? 0)
 export const EGG_IVS = 20
 export const EGG_LEVEL = 5
-export function leaveDaycare(run, index) {
+export function leaveDaycare(run, index, data = null) {
+  if (data && !daycareHere(data, run)) return null
   if (run.daycare || run.team.length < 2 || !run.team[index]) return null
   const team = run.team.filter((_, i) => i !== index)
   return { ...run, team, daycare: { mon: run.team[index], floor: run.floor } }
@@ -2528,22 +2568,18 @@ export function tradeMon(run, index, data) {
 }
 
 /**
- * A troca da cidade (como as trocas com moradores nos jogos): alguém quer um
- * Pokémon que você tem no time (nunca o mais forte) e dá um raro em troca, que
- * não aparece nas rotas. Uma por cidade. Igual ao app.
+ * A troca da cidade (as trocas com moradores dos jogos): só nas cidades que
+ * têm uma, com os Pokémon de lá (em Pewter, um Abra por um Mr. Mime). Uma por
+ * cidade; serve qualquer estágio da linha pedida. Igual ao app.
  */
-export const TOWN_TRADES = [122, 83, 124, 108, 114, 64, 67, 75, 93, 213, 115, 241]
 /** A família (a primeira forma da linha): a troca aceita o pedido em qualquer estágio. */
 export const familyOf = (data, id) => devolve(data, id, 0)
+/** A troca da cidade de agora, como nos jogos (FEATURES.trade: quem o morador quer e quem ele dá); null se lá não tem. */
 function townTradeOffer(run, data, rand) {
-  const roll = [rand(), rand(), rand()]
-  const top = run.team.reduce((best, m, i) => (m.level > run.team[best].level ? i : best), 0)
-  const wanted = run.team.filter((m, i) => i !== top && !m.egg)
-  if (!wanted.length) return null
-  const want = wanted[Math.floor(roll[0] * wanted.length)].id
-  const gives = TOWN_TRADES.filter((id) => data.species[id] && familyOf(data, id) !== familyOf(data, want) && (!run.mono || (speciesOf(data, id)?.[4] ?? []).some((t) => run.mono.includes(t))))
-  if (!gives.length) return null
-  return { want, give: gives[Math.floor(roll[1] * gives.length)], ...(roll[2] < SHINY_CHANCE * (run.shinyRate ?? 1) ? { shiny: true } : {}) }
+  const trade = featuresOf(data, run).trade
+  if (!trade || !data.species[trade[0]] || !data.species[trade[1]]) return null
+  if (run.mono && !(speciesOf(data, trade[1])?.[4] ?? []).some((t) => run.mono.includes(t))) return null
+  return { want: trade[0], give: trade[1], ...(rand() < SHINY_CHANCE * (run.shinyRate ?? 1) ? { shiny: true } : {}) }
 }
 /** Quem do time serve para a troca da cidade (posições). */
 export function townTradeable(run, data) {
@@ -2562,19 +2598,16 @@ export function townTrade(run, index, data) {
 }
 
 /**
- * A Safari Zone (como nos jogos): um caminho sem batalha que às vezes aparece
- * na rota. Você paga a entrada e recebe SAFARI_BALLS Safari Balls; aparecem até
+ * O Safari (como nos jogos): um caminho sem batalha nas rotas que têm um
+ * (FEATURES.safari: Safari Zone, Great Marsh). Você paga a entrada e recebe SAFARI_BALLS Safari Balls; aparecem até
  * SAFARI_ENCOUNTERS Pokémon raros, um de cada vez. Em cada um: jogar a bola, a
  * isca (ele foge menos, mas fica mais difícil de pegar) ou a pedra (mais fácil
  * de pegar, mas foge mais). Igual ao app.
  */
-export const SAFARI_FLOOR = 10
-export const SAFARI_CHANCE = 0.2
 export const SAFARI_FEE = 500
 export const SAFARI_BALLS = 10
 export const SAFARI_ENCOUNTERS = 5
 export const SAFARI_FLEE = 0.15
-export const SAFARI_BIOMES = ['grass', 'flowers', 'forest', 'bamboo', 'swamp', 'desert', 'dunes', 'mountain']
 export const SAFARI_MONS = [113, 115, 123, 127, 128, 147, 111, 102, 114, 214, 203, 241, 234, 193, 453, 455, 451, 108, 84, 46, 29, 32, 25, 440]
 /** Quem pode aparecer no Safari desta corrida (no Monotipo, só os do tipo). */
 export const safariPool = (run, data) => SAFARI_MONS.filter((id) => data.species[id] && (!run.mono || (speciesOf(data, id)?.[4] ?? []).some((t) => run.mono.includes(t))))
@@ -2760,6 +2793,7 @@ export function newMission(run, data, rand) {
  * (com Flash, sempre acha algo). accept: aceitou. Igual ao app.
  */
 export const CHOICE_EVENTS = ['help', 'follow', 'secret', 'merchant', 'bet', 'injured']
+export const SECRET_BIOMES = ['cave', 'mountain', 'icecave', 'crystal', 'lavacave', 'poisoncave', 'seacave', 'volcano', 'waterfall']
 /** O que o mercador misterioso vende. */
 export const MERCHANT_ITEMS = ['master-ball', 'max-potion', 'revive', 'life-orb', 'leftovers', 'choice-band', 'choice-specs', 'focus-sash']
 export function resolveChoice(run, data, accept) {
