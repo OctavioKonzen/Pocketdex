@@ -23,7 +23,7 @@ import {
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, teamRoom, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, atPc, pcOf, PC_SIZE, RARE_PLACES, shownScene, gameOf, tierOf, foeBoostAt, leagueAhead, unlockShiny, VITAMIN_EVS, VITAMINS,
   forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor, isKeystone,
-  tradeMon, skipTrade, TRADE_LEVELS, levelCapOf, townTrade, townTradeable, daycareOpen, daycareHere, safariAct, safariRates, leaveSafari, SAFARI_FEE, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, bossScene,
+  tradeMon, skipTrade, TRADE_LEVELS, levelCapOf, townTrade, townTradeable, KEY_ITEMS, hasKey, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, reminderCost, forgetMove, daycareOpen, daycareHere, safariAct, safariRates, leaveSafari, SAFARI_FEE, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, bossScene,
   resolveChoice, regionLegend, leaderType, villainTeam, rivalBoss, rocketBoss, placeInfo, routeInfo, DUNGEON_LENGTH, dungeonPos, townShop, townCenter,
   weeklyOf, startWeekly, COSMETIC_BALLS, COSMETIC_FRAMES, hasCosmetic, buyCosmetic, equipCosmetic,
   boostOf, memberOf, learnMove, movesLearnedBetween,
@@ -1137,14 +1137,25 @@ const HM_HINTS = {
   dive: 'Precisa de um Pokémon com Dive no time (ou da 5ª insígnia).',
   waterfall: 'Precisa de um Pokémon com Waterfall no time (ou da 7ª insígnia).',
 }
-const hmHint = (run, node) => (node?.kind === 'safari' && !hmNeeded(run, node) ? t('Você precisa de {0} moedas para entrar.').replace('{0}', SAFARI_FEE) : t(HM_HINTS[hmNeeded(run, node)] ?? HM_HINTS.surf))
+/** Os itens-chave: o símbolo e para que servem (os nomes são os dos jogos, sem traduzir). */
+const KEY_INFO = {
+  'silph-scope': { icon: '🔭', help: 'Deixa ver os fantasmas da Pokémon Tower: agora dá para entrar.' },
+  'poke-flute': { icon: '🪈', help: 'Acorda o Snorlax que dorme na rota até Fuchsia City.' },
+  'squirt-bottle': { icon: '🚿', help: 'Molha o Sudowoodo que bloqueia a rota até Ecruteak City.' },
+}
+/** O item-chave que falta para este caminho (o Silph Scope, a Poké Flute, a Squirt Bottle) ou null. */
+const keyNeeded = (run, node) => [node?.needs, node?.blocker].find((k) => k != null && !hasKey(run, k)) ?? null
+const BLOCKER_INFO = { icon: '💤', label: '{0} bloqueia o caminho', help: 'Com o item certo, ele acorda e luta. Dá para capturar.' }
+const AROUND_INFO = { icon: '↪️', label: 'Dar a volta', help: 'Um treinador no desvio; ele continua lá, dormindo.' }
+const PLACE_LEGEND_HELP = 'O lendário daqui: é o chefe do lugar. Dá para capturar.'
+const hmHint = (run, node) => (keyNeeded(run, node) ? t(node.blocker ? 'Precisa de {0} para acordá-lo; sem ela, só dando a volta.' : 'Precisa de {0} para entrar.').replace('{0}', KEY_ITEMS[keyNeeded(run, node)]) : node?.kind === 'safari' && !hmNeeded(run, node) ? t('Você precisa de {0} moedas para entrar.').replace('{0}', SAFARI_FEE) : t(HM_HINTS[hmNeeded(run, node)] ?? HM_HINTS.surf))
 /** O clima do lugar (a previsão no mapa). */
 const WEATHER_LABEL = { rain: '🌧️ Chuva', sun: '☀️ Sol forte', sand: '🏜️ Tempestade de areia', snow: '❄️ Neve' }
 const CUT_INFO = { icon: '🌳', label: 'Caminho escondido', help: 'Aberto com Cut: um selvagem raro do lugar.' }
 const SMASH_INFO = { icon: '🪨', label: 'Rocha quebrada', help: 'Aberta com Rock Smash: um selvagem raro do lugar.' }
 const STRENGTH_INFO = { icon: '💪', label: 'Pedra empurrada', help: 'Aberta com Strength: um treinador forte (sempre deixa um item).' }
 /** O símbolo do caminho aberto por uma MO (Cut, Rock Smash, Strength). */
-const hmPathInfo = (node) => (node.cut ? CUT_INFO : node.smash ? SMASH_INFO : node.strength ? STRENGTH_INFO : null)
+const hmPathInfo = (node) => (node.cut ? CUT_INFO : node.smash ? SMASH_INFO : node.strength ? STRENGTH_INFO : node.blocker ? BLOCKER_INFO : node.around ? AROUND_INFO : null)
 const CITY_KIND_SET = new Set(['gym', 'elite', 'champion'])
 const EVENT_TEXT = {
   items: 'Você achou {1}× {0} no caminho!',
@@ -1880,7 +1891,7 @@ const VILLAIN_LINES = [
  * cidade de onde veio até a do chefe, você no andar de agora e os caminhos
  * abrindo na frente; toque num caminho para ir por ele.
  */
-function TownMap({ route, pos, from, to, title, me, width, fieldRef, onPick, blocked, placeName }) {
+function TownMap({ route, pos, from, to, title, me, width, fieldRef, onPick, blocked, placeName, monName }) {
   const W = 160
   const H = 120
   const END = ROUTE_LENGTH + 1
@@ -1922,14 +1933,14 @@ function TownMap({ route, pos, from, to, title, me, width, fieldRef, onPick, blo
       )}
       {/* Os caminhos: botões no próprio mapa. */}
       {route.options.map((node, k) => {
-        const info = node.kind === 'dungeon' ? { icon: (BIOME_INFO[node.scene] ?? BIOME_INFO.cave).icon, label: placeName(node.place) } : node.roam ? ROAM_INFO : node.legend != null ? LEGEND_INFO : hmPathInfo(node) ?? NODE_INFO[node.kind]
+        const info = node.kind === 'dungeon' ? { icon: (BIOME_INFO[node.scene] ?? BIOME_INFO.cave).icon, label: placeName(node.place) } : node.roam ? ROAM_INFO : hmPathInfo(node) ?? (node.legend != null ? LEGEND_INFO : NODE_INFO[node.kind])
         const b = node.biome && !hmPathInfo(node) ? BIOME_INFO[node.biome] : null
         return (
           <button key={k} type="button" disabled={!onPick || blocked(node)} onClick={() => onPick(k)} data-testid={`map-pin-${k}`}
             className="absolute flex -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center gap-1 rounded-full border-2 border-white bg-blue-900/90 py-0.5 pl-0.5 pr-2 text-[10px] font-black text-white shadow-lg hover:bg-amber-500 disabled:cursor-default disabled:opacity-50 sm:text-xs"
             style={{ left: `${(ox / W) * 100}%`, top: `${(ys[k] / H) * 100}%` }}>
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-sm sm:h-7 sm:w-7 sm:text-base">{b ? b.icon : info.icon}</span>
-            {t(info.label)}{node.hidden ? ' 📡' : ''}
+            {node.placeLegend || node.routeLegend ? <span data-no-translate>{monName?.(node.legend)}</span> : t(info.label).replace('{0}', node.blocker ? monName?.(node.legend) ?? '' : '')}{node.hidden ? ' 📡' : ''}
           </button>
         )
       })}
@@ -2002,6 +2013,8 @@ function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, 
             <span title={t('Pokédex da corrida')} data-testid="factory-dex">📖 {dexOf(run).length}</span>
             {data && <Badges data={data} run={run} />}
             {(run.hms ?? []).map((hm) => <span key={hm} title={HM_INFO[hm]?.name}>{HM_INFO[hm]?.icon}</span>)}
+            {(run.keyItems ?? []).map((k) => <span key={k} title={KEY_ITEMS[k]} data-testid={`factory-key-${k}`}>{KEY_INFO[k]?.icon}</span>)}
+            {(run.gcCoins ?? 0) > 0 && <span title={t('Fichas do Game Corner')} data-testid="factory-coins">🎰 {run.gcCoins}</span>}
             {run.daycare && <span title={t('Creche')}>🏡</span>}
           </span>
           <span className="flex shrink-0 gap-0.5">
@@ -2317,6 +2330,12 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         )}
         {p.fled != null && <p className="text-sm" data-testid="factory-fled">🐾 {t('{0} fugiu! Ele vai aparecer de novo pelo caminho (com o HP que ficou).').replace('{0}', name(p.fled))}</p>}
         {p.dowsed && <p className="text-sm" data-testid="factory-dowsed">📡 {t('Você achou {0} escondido no caminho!').replace('{0}', itemName(p.dowsed))}</p>}
+        {p.key && (
+          <p className="text-sm text-amber-600" data-testid="factory-key">
+            {KEY_INFO[p.key]?.icon} {t('Você recebeu {0}!').replace('{0}', KEY_ITEMS[p.key] ?? p.key)} {t(KEY_INFO[p.key]?.help ?? '')}
+          </p>
+        )}
+        {p.placeReward && <p className="text-sm text-amber-600" data-testid="factory-place-reward">🎁 {t('Pela ajuda, te deram {0}!').replace('{0}', itemName(p.placeReward))}</p>}
         {p.hm && (
           <p className="text-sm text-amber-600" data-testid="factory-hm">
             {HM_INFO[p.hm].icon} {t('Com a insígnia, você ganhou a MO {0}!').replace('{0}', HM_INFO[p.hm].name)} {t(HM_INFO[p.hm].help)}
@@ -2530,7 +2549,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
           <img src={spriteUrl('trainers/sd-clerkf.png')} alt="" className="pixelated object-contain object-bottom" style={{ height: width * 0.4 }} />
         </div>
         <div className="absolute inset-x-0 bottom-0 h-[26%] border-t-[6px] border-amber-400 bg-gradient-to-b from-amber-600 to-amber-800" />
-        <div className="absolute left-3 top-2 rounded-lg bg-white/80 px-2 py-0.5 text-sm font-black text-slate-900">🛒 Poké Mart</div>
+        <div className="absolute left-3 top-2 rounded-lg bg-white/80 px-2 py-0.5 text-sm font-black text-slate-900" data-no-translate>{p.store ? `🏬 ${p.store}` : '🛒 Poké Mart'}</div>
       </Field>
     )
     text = <p>{vendor ? t('Um vendedor ambulante! Tenho o mesmo que o Poké Mart. Do que você precisa?') : t('Bem-vindo! Do que você precisa?')} <span className="dlg-sub">💰{run.money}</span></p>
@@ -2544,7 +2563,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     if (panel === 'buy') {
       below = (
         <div className="space-y-2 p-2">
-          <OverlayClose onClose={() => setPanel(null)} title={`${vendor ? `🎒 ${t('Vendedor ambulante')}` : '🛒 Poké Mart'} · 💰${run.money}`} />
+          <OverlayClose onClose={() => setPanel(null)} title={`${vendor ? `🎒 ${t('Vendedor ambulante')}` : p.store ? `🏬 ${p.store}` : '🛒 Poké Mart'} · 💰${run.money}`} />
           <p className="text-xs text-muted">{t('Para quem é a compra (bolas e itens da Bolsa vão para a Bolsa):')}</p>
           <div className="flex flex-wrap gap-1">{run.team.map((m, i) => <MonChip key={i} mon={m} byId={byId} selected={pick === i} onClick={() => setTarget(i)} testid={`target-${i}`} />)}</div>
           <div className="grid gap-2 sm:grid-cols-2">
@@ -2612,7 +2631,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     // O andar (pequeno, num canto): na rota, até a cidade; num lugar, até o chefe dele.
     const floorTag = inside ? `${Math.min(DUNGEON_LENGTH, dungeonPos(run) + 1)}/${DUNGEON_LENGTH}` : town ? `${Math.min(CITY_LENGTH, pos - ROUTE_LENGTH + 1)}/${CITY_LENGTH}` : `${pos + 1}/${ROUTE_LENGTH}`
     field = fork && hasMap ? (
-      <TownMap route={route} pos={pos % ROUTE_LENGTH} from={from} to={to} title={`${boss.region} · ${boss.game}`} me={me} width={width} fieldRef={fieldRef} placeName={(id) => placeInfo(data, run, id).name}
+      <TownMap route={route} pos={pos % ROUTE_LENGTH} from={from} to={to} title={`${boss.region} · ${boss.game}`} me={me} width={width} fieldRef={fieldRef} placeName={(id) => placeInfo(data, run, id).name} monName={name}
         onPick={busy ? null : pickNode} blocked={(node) => (isBattleNode(node) && down) || nodeBlocked(run, node)} />
     ) : (
       // O líder espera no ginásio da cidade; a Elite dos Quatro e o Campeão, na Liga (nunca no meio da rota).
@@ -2694,8 +2713,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
           </MenuButton>
         ) : hmPathInfo(node) ? (
           // O caminho aberto com uma MO (Cut, Rock Smash, Strength): você sabe o que tem nele, mesmo sem o Mapa.
-          <MenuButton key={k} testid={`map-node-${k}`} disabled={busy || (isBattleNode(node) && down)} onClick={() => pickNode(k)} sub={t(hmPathInfo(node).help)}>
-            {hmPathInfo(node).icon} {t(hmPathInfo(node).label)}
+          <MenuButton key={k} testid={`map-node-${k}`} disabled={busy || nodeBlocked(run, node) || (isBattleNode(node) && down)} onClick={() => pickNode(k)} sub={nodeBlocked(run, node) ? hmHint(run, node) : t(hmPathInfo(node).help)}>
+            {hmPathInfo(node).icon} {t(hmPathInfo(node).label).replace('{0}', node.blocker ? name(node.legend) : '')}
           </MenuButton>
         ) : (
           <MenuButton key={k} testid={`map-node-${k}`} disabled={busy || nodeBlocked(run, node) || (isBattleNode(node) && down)} onClick={() => pickNode(k)}
@@ -2705,13 +2724,13 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         ))}
         {(hasMap || !fork) && route.options.map((node, k) => {
           if (node.kind === 'dungeon') return placeButton(node, k)
-          const info = node.area ? NODE_INFO.area : node.mythic ? NODE_INFO.mythic : node.meteor ? NODE_INFO.meteor : node.roam ? ROAM_INFO : node.legend != null ? LEGEND_INFO : hmPathInfo(node) ?? NODE_INFO[node.kind]
+          const info = node.area ? NODE_INFO.area : node.mythic ? NODE_INFO.mythic : node.meteor ? NODE_INFO.meteor : node.roam ? ROAM_INFO : hmPathInfo(node) ?? (node.legend != null ? LEGEND_INFO : NODE_INFO[node.kind])
           const b = node.biome && !hmPathInfo(node) ? BIOME_INFO[node.biome] : null
           const noSurf = nodeBlocked(run, node)
           return (
             <MenuButton key={k} testid={`map-node-${k}`} disabled={busy || (isBattleNode(node) && down) || noSurf} onClick={() => pickNode(k)}
-              sub={noSurf ? hmHint(run, node) : node.kind === 'boss' ? `${bossKindLabel(boss.kind)}${CITY_KIND_SET.has(boss.kind) ? ` · ${to}` : ''}` : node.kind === 'dboss' ? (inside ? t('O chefe do lugar: vencendo, volta para {0}.').replace('{0}', backTo) : t('O chefe da rota: vencendo, você chega em {0}.').replace('{0}', to)) : node.hidden ? `📡 ${t('A Dowsing Machine apita: tem um item escondido aqui!')}` : t(info.help).replace('{0}', ROAM_TURNS)}>
-              {route.options.length === 1 && !['boss', 'rival', 'dboss'].includes(node.kind) ? `${t('SEGUIR')}: ` : ''}{node.biome === 'underwater' && route.biome !== 'underwater' ? `🤿 ${t('MERGULHAR')}: ` : ''}{town && node.kind === 'boss' ? '🏟️' : b ? b.icon : info.icon} {node.kind === 'boss' || (node.kind === 'rival' && rival) ? <span data-no-translate>{(node.kind === 'rival' ? rival : boss).name}</span> : t(info.label)}{node.roam ? <span data-no-translate> · {name(node.legend)}</span> : ''}{b ? ` · ${t(b.label)}` : ''}{node.hidden ? ' 📡' : ''}
+              sub={noSurf ? hmHint(run, node) : node.kind === 'boss' ? `${bossKindLabel(boss.kind)}${CITY_KIND_SET.has(boss.kind) ? ` · ${to}` : ''}` : node.kind === 'dboss' ? (inside ? t('O chefe do lugar: vencendo, volta para {0}.').replace('{0}', backTo) : t('O chefe da rota: vencendo, você chega em {0}.').replace('{0}', to)) : node.hidden ? `📡 ${t('A Dowsing Machine apita: tem um item escondido aqui!')}` : t(node.placeLegend || node.routeLegend ? PLACE_LEGEND_HELP : info.help).replace('{0}', ROAM_TURNS)}>
+              {route.options.length === 1 && !['boss', 'rival', 'dboss'].includes(node.kind) ? `${t('SEGUIR')}: ` : ''}{node.biome === 'underwater' && route.biome !== 'underwater' ? `🤿 ${t('MERGULHAR')}: ` : ''}{town && node.kind === 'boss' ? '🏟️' : b ? b.icon : info.icon} {node.kind === 'boss' || (node.kind === 'rival' && rival) ? <span data-no-translate>{(node.kind === 'rival' ? rival : boss).name}</span> : t(info.label).replace('{0}', node.blocker ? name(node.legend) : '')}{node.roam || node.placeLegend || node.routeLegend ? <span data-no-translate> · {node.forceShiny ? '✨ ' : ''}{name(node.legend)}</span> : ''}{b ? ` · ${t(b.label)}` : ''}{node.hidden ? ' 📡' : ''}
             </MenuButton>
           )
         })}
@@ -2723,6 +2742,29 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
             {daycareOpen(data, run) && <MenuButton testid="town-daycare" disabled={busy} onClick={() => setPanel(panel === 'daycare' ? null : 'daycare')} active={panel === 'daycare'}>🏡 {t('CRECHE')}</MenuButton>}
           </div>
         )}
+        {/* O que só esta cidade tem (como nos jogos): a Department Store, o Game Corner, o Move Deleter e o Move Reminder. */}
+        {town && (storeOf(data, run) || cornerOf(data, run) || tutorsOf(data, run).length > 0) && (
+          <div className="grid grid-cols-2 gap-1">
+            {storeOf(data, run) && <MenuButton testid="town-store" disabled={busy} onClick={() => save(enterStore(run, data))}>🏬 <span data-no-translate>{storeOf(data, run).name}</span></MenuButton>}
+            {cornerOf(data, run) && <MenuButton testid="town-corner" disabled={busy} onClick={() => setPanel(panel === 'corner' ? null : 'corner')} active={panel === 'corner'}>🎰 <span data-no-translate>{cornerOf(data, run).name}</span></MenuButton>}
+            {tutorsOf(data, run).includes('deleter') && <MenuButton testid="town-deleter" disabled={busy} onClick={() => setPanel(String(panel).startsWith('deleter') ? null : 'deleter')} active={String(panel).startsWith('deleter')}>🧓 Move Deleter</MenuButton>}
+            {tutorsOf(data, run).includes('reminder') && (
+              <MenuButton testid="town-reminder" disabled={busy || !townReminder(run, data)} onClick={() => save(townReminder(run, data))}>
+                💭 Move Reminder{run.town?.reminded ? ' ✓' : reminderCost(data, run) ? ` · 💰${reminderCost(data, run)}` : ''}
+              </MenuButton>
+            )}
+          </div>
+        )}
+        {/* Os presentes da cidade (o Eevee de Celadon, o Lapras da Silph Co., o ovo de Togepi...). */}
+        {town && townGifts(data, run).map((g) => (g.choose ?? [g.id]).map((id) => {
+          const got = takeGift(run, data, g.k, id)
+          return (
+            <MenuButton key={`${g.k}-${id}`} testid={`town-gift-${g.k}-${id}`} disabled={busy || !got} onClick={() => save(got)}
+              sub={!got ? t('Sem vaga no time para o ovo.') : g.choose ? t('Um presente daqui: escolha só um dos dois.') : g.egg ? t('Vai no time como ovo e choca depois de {0} vitórias.').replace('{0}', EGG_BATTLES) : t('Um presente daqui: entra no time (ou vai para o PC).')}>
+              {g.egg ? '🥚' : '🎁'} {t(g.egg ? 'RECEBER O OVO DE {0}' : 'RECEBER {0}').replace('{0}', name(id))}
+            </MenuButton>
+          )
+        }))}
         {town && run.town?.trade && (run.town.trade.done ? (
           <MenuButton testid="town-trade" disabled>🔁 {t('Troca feita: chegou {0}!').replace('{0}', name(run.town.trade.got ?? run.town.trade.give))}</MenuButton>
         ) : (
@@ -2755,6 +2797,55 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     )
     toolRow = true
     if (town && panel === 'daycare') below = daycareView()
+    const corner = town ? cornerOf(data, run) : null
+    if (corner && panel === 'corner') {
+      below = (
+        <div className="space-y-2 p-2" data-testid="corner">
+          <OverlayClose onClose={() => setPanel(null)} title={`🎰 ${corner.name} · 🪙${run.gcCoins ?? 0} · 💰${run.money}`} />
+          <div className="flex items-center justify-center gap-2 rounded-xl bg-surface p-3 text-3xl" data-testid="corner-reels" data-no-translate>
+            {(run.slots?.reels ?? ['7', '7', '7']).map((r, i) => <span key={i} className="flex h-12 w-14 items-center justify-center rounded-lg border-2 border-amber-400 bg-white text-xl font-black text-slate-900">{r}</span>)}
+          </div>
+          <p className="text-center text-sm" data-testid="corner-result">{run.slots ? (run.slots.won ? `🎉 ${t('Ganhou {0} fichas!').replace('{0}', run.slots.won)}` : t('Não foi desta vez.')) : t('Três iguais pagam: 7 paga 100, BAR paga 30, 🍒 paga 6.')}</p>
+          <div className="grid grid-cols-2 gap-2">
+            <Button data-testid="corner-buy" disabled={busy || !buyCoins(run, data)} onClick={() => save(buyCoins(run, data))}>{t('{0} fichas por 💰{1}').replace('{0}', CORNER_PACK).replace('{1}', CORNER_PACK_PRICE)}</Button>
+            <Button data-testid="corner-spin" disabled={busy || !spinSlots(run, data)} onClick={() => save(spinSlots(run, data))}>{t('JOGAR ({0} fichas)').replace('{0}', CORNER_SPIN)}</Button>
+          </div>
+          <p className="text-xs text-muted">{t('Os prêmios daqui (as fichas ficam com você a corrida toda):')}</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {corner.prizes.map(([prize, cost]) => (
+              <div key={prize} className="flex items-center justify-between gap-2 rounded-xl bg-surface p-2 text-sm">
+                <span className="flex min-w-0 items-center gap-2 font-bold" data-no-translate>
+                  {typeof prize === 'number' ? <PokeIcon id={prize} className="h-9 w-9" /> : <img src={itemIcon(prize)} alt="" className="h-7 w-7" />}
+                  {typeof prize === 'number' ? name(prize) : itemName(prize)}
+                </span>
+                <Button data-testid={`corner-prize-${prize}`} disabled={busy || !cornerPrize(run, data, prize)} onClick={() => save(cornerPrize(run, data, prize))}>🪙{cost}</Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )
+    }
+    if (town && panel === 'deleter') {
+      below = (
+        <BwParty title={t('Move Deleter: quem vai esquecer um golpe?')} testid="deleter" team={partyOf(run, byId)} disabled={(i) => (run.team[i].moves ?? []).length < 2}
+          onPick={(i) => setPanel(`deleter:${i}`)} onCancel={() => setPanel(null)} />
+      )
+    }
+    if (town && String(panel).startsWith('deleter:')) {
+      const i = Number(String(panel).slice(8))
+      const mon = run.team[i]
+      below = mon && (
+        <div className="space-y-2 p-2" data-testid="deleter-moves">
+          <OverlayClose onClose={() => setPanel('deleter')} title={`🧓 Move Deleter · ${name(mon.id)}`} />
+          <p className="text-xs text-muted">{t('Qual golpe ele esquece? (Até uma MO; não dá para voltar atrás.)')}</p>
+          <div className="grid grid-cols-2 gap-2">
+            {(mon.moves ?? []).map((mv, k) => (
+              <Button key={mv} data-testid={`deleter-move-${k}`} disabled={busy || !forgetMove(run, data, i, k)} onClick={() => { setPanel(null); save(forgetMove(run, data, i, k)) }}><span data-no-translate>{prettySlug(mv)}</span></Button>
+            ))}
+          </div>
+        </div>
+      )
+    }
     if (town && panel === 'towntrade' && run.town?.trade && !run.town.trade.done) {
       const ok = townTradeable(run, data)
       below = (
