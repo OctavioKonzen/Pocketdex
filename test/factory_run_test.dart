@@ -283,41 +283,86 @@ void main() {
     expect(identical(f1, f2), isTrue);
   });
 
-  test('troca da cidade: pede um do time, dá um raro; quem evolui por troca chega evoluído (igual ao site)', () {
-    final base = FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!;
-    final first = FactoryRun.teamOf(base).first;
-    final team = [{...first, 'level': 20, 'exp': FactoryRun.expAt(20)}, {...first, 'id': 16, 'level': 12, 'exp': FactoryRun.expAt(12), 'item': 'leftovers'}];
-    final run = {...base, 'floor': 40, 'team': team, 'town': {'leg': 21, 'shop': <String>[], 'trade': {'want': 17, 'give': 93}}};
-    expect(FactoryRun.townTradeable(run, data), [1]);
-    expect(identical(FactoryRun.townTrade(run, 0, data), run), isTrue);
-    final out = FactoryRun.townTrade(run, 1, data);
+  Json toCity(int g, String city, [Json extra = const {}]) => {
+        ...FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!,
+        'leg': 1, 'boss': {'region': g, 'step': (data.bosses[g]['leaders'] as List).indexWhere((l) => l['city'] == city)}, 'encounter': null, 'pending': null, ...extra,
+      };
+  int gameOf(String name) => data.bosses.indexWhere((b) => b['game'] == name);
+
+  test('o mapa: as chaves são cidades de verdade e toda rota de praia ou de mar tem mar (igual ao site)', () {
+    final cities = data.routes['cities'] as Map, features = data.routes['features'] as Map, rare = data.routes['rare'] as Map;
+    for (final e in features.entries) {
+      expect(cities[e.key], isNotNull, reason: '${e.key}');
+      for (final id in (e.value['trade'] as List?) ?? const []) {
+        expect(data.species[id], isNotNull, reason: '${e.key} $id');
+      }
+      for (final m in ((e.value['museum'] as Map?) ?? const {}).entries) {
+        expect(FactoryRun.placeScenes[m.key], 'museum');
+        for (final id in m.value as List) {
+          expect(data.species[id], isNotNull);
+        }
+      }
+    }
+    for (final e in cities.entries) {
+      if (const ['beach', 'water'].contains((e.value as List)[0])) expect(FactoryRun.waterReaches[(features[e.key] as Map?)?['water']] ?? 0, greaterThan(0), reason: '${e.key}');
+    }
+    for (final b in data.bosses) {
+      expect((rare[b['region']] as List?) ?? const [], isNotEmpty, reason: '${b['region']}');
+      for (final id in rare[b['region']] as List) {
+        expect(FactoryRun.rarePlaces[id], isNotNull, reason: '$id');
+        for (final l in FactoryRun.rarePlaces[id]!.legends) {
+          expect(data.species[l], isNotNull);
+        }
+      }
+    }
+  });
+
+  test('troca da cidade: só onde há uma nos jogos, com os Pokémon de lá; quem evolui por troca chega evoluído (igual ao site)', () {
+    final red = gameOf('Red/Blue');
+    final first = FactoryRun.teamOf(toCity(red, 'Pewter City')).first;
+    final team = [{...first, 'level': 20, 'exp': FactoryRun.expAt(20)}, {...first, 'id': 64, 'level': 12, 'exp': FactoryRun.expAt(12), 'item': 'leftovers'}];
+    final pewter = FactoryRun.nextFloor(toCity(red, 'Pewter City', {'floor': 1 + FactoryRun.routeLength, 'team': team}), data);
+    expect(pewter['town']['trade'], {'want': 63, 'give': 122});
+    expect(FactoryRun.nextFloor(toCity(red, 'Saffron City', {'floor': 1 + FactoryRun.routeLength}), data)['town']['trade'], isNull);
+    expect(FactoryRun.townTradeable(pewter, data), [1]);
+    expect(identical(FactoryRun.townTrade(pewter, 0, data), pewter), isTrue);
+    final out = FactoryRun.townTrade(pewter, 1, data);
     final got = FactoryRun.teamOf(out)[1];
-    expect([got['id'], got['level'], got['item'], got['traded']], [FactoryRun.tradeEvos[93], 12 + FactoryRun.tradeLevels, 'leftovers', true]);
-    expect(out['town']['trade']['done'], true);
+    expect([got['id'], got['level'], got['item'], got['traded']], [122, 12 + FactoryRun.tradeLevels, 'leftovers', true]);
+    expect([out['town']['trade']['done'], out['town']['trade']['got']], [true, 122]);
     expect(out['trades'], 1);
     expect(FactoryRun.townTradeable(out, data), isEmpty);
+    final haunter = FactoryRun.townTrade({...pewter, 'town': {...pewter['town'] as Map, 'trade': {'want': 63, 'give': 93}}}, 1, data);
+    expect(FactoryRun.teamOf(haunter)[1]['id'], FactoryRun.tradeEvos[93]);
     expect(FactoryRun.familyOf(data, 18), 16);
-    for (final id in FactoryRun.townTrades) {
-      expect(data.species[id], isNotNull);
-    }
     for (final e in FactoryRun.tradeEvos.entries) {
       expect(data.species[e.key], isNotNull);
       expect(data.species[e.value], isNotNull);
     }
   });
 
-  test('Safari Zone: paga a entrada, joga bola, isca e pedra; acaba com as bolas ou os encontros (igual ao site)', () {
-    final start = FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!;
-    final base = {...start, 'floor': 30, 'money': FactoryRun.safariFee + 7, 'route': {'floor': 30, 'biome': 'grass', 'options': [{'kind': 'safari'}]}, 'encounter': null, 'pending': null};
+  test('Safari: só nas rotas que têm um, uma vez por rota; paga a entrada, joga bola, isca e pedra (igual ao site)', () {
+    final red = gameOf('Red/Blue');
+    final safaris = [for (final e in (data.routes['features'] as Map).entries) if (e.value['safari'] != null) '${e.key}']..sort();
+    expect(safaris, ['Cianwood City', 'Fuchsia City', 'Mossdeep City', 'Pastoria City']);
+    final fuchsia = toCity(red, 'Fuchsia City', {'floor': 1 + FactoryRun.forks[1], 'money': FactoryRun.safariFee + 7});
+    List optionsOf(Json r) => FactoryRun.routeOf(FactoryRun.nextFloor(r, data))!['options'] as List;
+    expect(optionsOf(fuchsia), contains(equals({'kind': 'safari', 'name': 'Safari Zone'})));
+    expect(optionsOf(toCity(red, 'Pewter City', {'floor': 1 + FactoryRun.forks[1]})).any((o) => o['kind'] == 'safari'), isFalse);
+    expect(optionsOf({...fuchsia, 'nuzlocke': true}).any((o) => o['kind'] == 'safari'), isFalse);
+    expect(optionsOf({...fuchsia, 'safariLeg': FactoryRun.legOf(fuchsia)}).any((o) => o['kind'] == 'safari'), isFalse);
+    expect(optionsOf(toCity(gameOf('Diamond/Pearl'), 'Pastoria City', {'floor': 1 + FactoryRun.forks[1]})), contains(equals({'kind': 'safari', 'name': 'Great Marsh'})));
+    final base = {...fuchsia, 'route': {'floor': fuchsia['floor'], 'biome': 'grass', 'options': [{'kind': 'safari', 'name': 'Safari Zone'}]}};
     expect(FactoryRun.nodeBlocked({...base, 'money': FactoryRun.safariFee - 1}, {'kind': 'safari'}), isTrue);
     expect(FactoryRun.chooseNode({...base, 'money': FactoryRun.safariFee - 1}, data, 0)['pending'], isNull);
     var run = FactoryRun.chooseNode(base, data, 0);
     expect(run['money'], 7);
-    expect(run['floor'], 31);
+    expect(run['floor'], (base['floor'] as int) + 1);
+    expect(run['safariLeg'], FactoryRun.legOf(base));
     Map safari() => FactoryRun.pendingOf(run)!['safari'] as Map;
     expect([safari()['balls'], safari()['left'], safari()['caught']], [FactoryRun.safariBalls, FactoryRun.safariEncounters - 1, 0]);
     expect(FactoryRun.safariMons, contains(safari()['mon']['id']));
-    expect(safari()['mon']['level'], FactoryRun.foeLevelAt(31));
+    expect(safari()['mon']['level'], FactoryRun.foeLevelAt(run['floor'] as int));
     final calm = FactoryRun.safariRates(data, {...safari(), 'mood': null});
     final eating = FactoryRun.safariRates(data, {...safari(), 'mood': 'eating'});
     final angry = FactoryRun.safariRates(data, {...safari(), 'mood': 'angry'});
@@ -342,6 +387,34 @@ void main() {
     final moved = FactoryRun.pendingOf(FactoryRun.safariAct(FactoryRun.chooseNode(base, data, 0), data, 'run'))!['safari'] as Map;
     expect([moved['balls'], moved['left'], moved['last']], [FactoryRun.safariBalls, FactoryRun.safariEncounters - 2, 'left']);
     expect(FactoryRun.safariPool({...base, 'mono': ['dragon']}, data), [147]);
+  });
+
+  test('Creche só onde há uma; lugares raros só os da região; caverna secreta só onde há cavernas; museu com fóssil (igual ao site)', () {
+    final red = gameOf('Red/Blue');
+    final vermilion = toCity(red, 'Vermilion City'), pewter = toCity(red, 'Pewter City');
+    expect(FactoryRun.daycareHere(data, vermilion), isTrue);
+    expect(FactoryRun.daycareHere(data, pewter), isFalse);
+    final first = FactoryRun.teamOf(pewter).first;
+    final two = {...pewter, 'team': [first, {...first, 'id': 16}]};
+    expect(FactoryRun.leaveDaycare(two, 1, data), isNull);
+    expect(FactoryRun.leaveDaycare({...two, 'boss': vermilion['boss']}, 1, data)!['daycare']['mon']['id'], 16);
+    expect(FactoryRun.daycareOpen(data, pewter), isFalse);
+    expect(FactoryRun.daycareOpen(data, {...pewter, 'daycare': {'mon': first, 'floor': 1}}), isTrue);
+    expect(FactoryRun.rarePlacesOf(data, pewter), ['cerulean-cave', 'navel-rock']);
+    expect(FactoryRun.rarePlacesOf(data, toCity(gameOf('Gold/Silver'), 'Violet City')), ['bell-tower']);
+    expect(FactoryRun.secretBiomes, contains('cave'));
+    expect(FactoryRun.secretBiomes, isNot(contains('grass')));
+    // O museu: cenário próprio e, vencendo o chefe dele, um fóssil de lá revivido.
+    final museum = toCity(red, 'Pewter City', {'floor': 15, 'dungeon': {'place': 'pewter-museum', 'scene': 'ruins', 'start': 12}});
+    expect(FactoryRun.shownScene(museum, 'ruins'), 'museum');
+    final foes = {'kind': 'dboss', 'foes': [{'id': 74, 'level': 8, 'iv': 0, 'ev': 0}]};
+    final won = FactoryRun.winFloor({...museum, 'encounter': foes}, data, hp: [1]);
+    final fossil = FactoryRun.pendingOf(won)!['capture'] as Map;
+    expect(((data.routes['features'] as Map)['Pewter City']['museum']['pewter-museum'] as List), contains(fossil['id']));
+    expect([fossil['level'], fossil['fossil']], [FactoryRun.foeLevelAt(15), true]);
+    expect(FactoryRun.teamOf(FactoryRun.capture(won)).last['id'], fossil['id']);
+    final other = FactoryRun.winFloor({...museum, 'dungeon': {'place': 'viridian-forest', 'scene': 'forest', 'start': 12}, 'encounter': foes}, data, hp: [1]);
+    expect(FactoryRun.pendingOf(other)!['capture'], isNull);
   });
 
   test('XP inteiro para quem lutou; o banco ganha um quarto e, com o Exp. Share, a metade (igual ao site)', () {
@@ -994,19 +1067,39 @@ void main() {
     expect(FactoryRun.waterNext('water')!.id, 'deep');
     expect(FactoryRun.waterNext('underwater'), (id: 'seacave', name: 'Caverna aquática', scene: 'seacave'));
     expect(FactoryRun.waterNext('seacave'), isNull);
-    final gs = data.bosses.indexWhere((b) => b['game'] == 'Gold/Silver');
-    final jasmine = (data.bosses[gs]['leaders'] as List).indexWhere((l) => l['name'] == 'Jasmine');
-    final start = {...FactoryRun.startRun(FactoryRun.empty(), data, 4, 3)!, 'leg': 1, 'boss': {'region': gs, 'step': jasmine}, 'hms': ['surf', 'dive', 'waterfall']};
+    // Até onde a água vai depende da rota: só o mar, até o fundo (Dive) ou até a caverna aquática.
+    expect(FactoryRun.waterNext('beach', 0), isNull);
+    expect(FactoryRun.waterNext('water', 1), isNull);
+    expect(FactoryRun.waterNext('underwater', 2), isNull);
+    {
+      // Com o mapa de verdade, perto de Olivine City só há o mar: vencido o chefe dele, volta para a rota.
+      final gs = data.bosses.indexWhere((b) => b['game'] == 'Gold/Silver');
+      final at = {...FactoryRun.startRun(FactoryRun.empty(), data, 4, 3)!, 'leg': 1, 'boss': {'region': gs, 'step': (data.bosses[gs]['leaders'] as List).indexWhere((l) => l['name'] == 'Jasmine')}, 'hms': ['surf', 'dive', 'waterfall']};
+      expect(FactoryRun.waterReach(data, at), 1);
+      expect(FactoryRun.hasWaterfall(data, at), isFalse);
+      var sea = FactoryRun.nextFloor({...at, 'floor': 1 + FactoryRun.forks[1]}, data);
+      sea = FactoryRun.chooseNode(sea, data, (FactoryRun.routeOf(sea)!['options'] as List).indexWhere((o) => o['kind'] == 'dungeon'));
+      sea = FactoryRun.nextFloor({...sea, 'floor': (sea['floor'] as int) + FactoryRun.dungeonLength - 1}, data);
+      sea = FactoryRun.winFloor(FactoryRun.chooseNode(sea, data, 0), data);
+      expect(sea['dungeon'], isNull);
+    }
+    // O resto do teste usa um mapa em que a rota de Olivine tem a água inteira e a cachoeira.
+    final raw = jsonDecode(File('assets/database/factory.json').readAsStringSync()) as Map<String, dynamic>;
+    ((raw['routes'] as Map)['features'] as Map)['Olivine City'] = {'water': 'cave', 'fall': true};
+    final full = FactoryData.parse(raw);
+    final gs = full.bosses.indexWhere((b) => b['game'] == 'Gold/Silver');
+    final jasmine = (full.bosses[gs]['leaders'] as List).indexWhere((l) => l['name'] == 'Jasmine');
+    final start = {...FactoryRun.startRun(FactoryRun.empty(), full, 4, 3)!, 'leg': 1, 'boss': {'region': gs, 'step': jasmine}, 'hms': ['surf', 'dive', 'waterfall']};
     const f = FactoryRun.forks;
-    var run = FactoryRun.nextFloor({...start, 'floor': 1 + f[1]}, data);
+    var run = FactoryRun.nextFloor({...start, 'floor': 1 + f[1]}, full);
     expect(FactoryRun.routeOf(run)!['biome'], 'beach');
     final options = FactoryRun.routeOf(run)!['options'] as List;
     final k = options.indexWhere((o) => o['kind'] == 'dungeon');
     expect(options[k], {'kind': 'dungeon', 'place': 'sea', 'scene': 'water'});
     expect(FactoryRun.nodeBlocked({...run, 'hms': []}, options[k] as Map), isTrue);
-    run = FactoryRun.chooseNode(run, data, k);
-    run = FactoryRun.nextFloor({...run, 'floor': (run['floor'] as int) + FactoryRun.dungeonLength - 1}, data);
-    run = FactoryRun.nextFloor(FactoryRun.winFloor(FactoryRun.chooseNode(run, data, 0), data), data);
+    run = FactoryRun.chooseNode(run, full, k);
+    run = FactoryRun.nextFloor({...run, 'floor': (run['floor'] as int) + FactoryRun.dungeonLength - 1}, full);
+    run = FactoryRun.nextFloor(FactoryRun.winFloor(FactoryRun.chooseNode(run, full, 0), full), full);
     expect(FactoryRun.routeOf(run)!['options'], [
       {'kind': 'dungeon', 'place': 'deep', 'scene': 'underwater', 'deeper': true},
       {'kind': 'dungeon', 'place': 'waterfall', 'scene': 'waterfall', 'deeper': true},
@@ -1016,20 +1109,20 @@ void main() {
     expect(FactoryRun.nodeBlocked(run, fallOption), isFalse);
     expect(FactoryRun.nodeBlocked({...run, 'hms': ['surf', 'dive']}, fallOption), isTrue);
     // A gruta da cachoeira: 10 andares de selvagens e um chefe forte.
-    var fall = FactoryRun.chooseNode(run, data, 1);
+    var fall = FactoryRun.chooseNode(run, full, 1);
     expect(FactoryRun.routeOf(fall)!['biome'], 'waterfall');
-    expect(FactoryRun.placeInfo(data, fall, 'waterfall').name, 'Gruta da cachoeira');
+    expect(FactoryRun.placeInfo(full, fall, 'waterfall').name, 'Gruta da cachoeira');
     expect((FactoryRun.routeOf(fall)!['options'] as List).every((o) => o['kind'] == 'wild'), isTrue);
-    fall = FactoryRun.nextFloor({...fall, 'floor': (fall['floor'] as int) + FactoryRun.dungeonLength - 1}, data);
+    fall = FactoryRun.nextFloor({...fall, 'floor': (fall['floor'] as int) + FactoryRun.dungeonLength - 1}, full);
     expect(FactoryRun.routeOf(fall)!['options'], [{'kind': 'wildboss', 'area': true}]);
-    run = FactoryRun.chooseNode(run, data, 0);
+    run = FactoryRun.chooseNode(run, full, 0);
     expect(run['dungeon']['entry'], 1 + f[1]);
-    run = FactoryRun.nextFloor({...run, 'floor': (run['floor'] as int) + FactoryRun.dungeonLength - 1}, data);
-    run = FactoryRun.nextFloor(FactoryRun.winFloor(FactoryRun.chooseNode(run, data, 0), data), data);
-    run = FactoryRun.chooseNode(run, data, 1);
+    run = FactoryRun.nextFloor({...run, 'floor': (run['floor'] as int) + FactoryRun.dungeonLength - 1}, full);
+    run = FactoryRun.nextFloor(FactoryRun.winFloor(FactoryRun.chooseNode(run, full, 0), full), full);
+    run = FactoryRun.chooseNode(run, full, 1);
     expect(run['dungeon'], isNull);
     expect(FactoryRun.routePos(run), f[1]);
-    expect(FactoryRun.townHub(data, run), isFalse);
+    expect(FactoryRun.townHub(full, run), isFalse);
     expect(run['places'], ['sea', 'deep']);
   });
 
@@ -1042,7 +1135,11 @@ void main() {
     expect(FactoryRun.routeBiome(data, at(1 + FactoryRun.shore, 'Blaine')), 'water');
     const f = FactoryRun.forks;
     expect((FactoryRun.routeOf(FactoryRun.nextFloor(at(1 + f[1], 'Blaine'), data))!['options'] as List).any((o) => o['place'] == 'sea'), isFalse);
-    expect(FactoryRun.routeOf(FactoryRun.nextFloor(at(1 + f[2], 'Blaine'), data))!['options'], contains(equals({'kind': 'dungeon', 'place': 'deep', 'scene': 'underwater'})));
+    // Em Kanto não há Dive: o fundo do mar não aparece. Em Hoenn, na rota até Mossdeep City, aparece.
+    expect((FactoryRun.routeOf(FactoryRun.nextFloor(at(1 + f[2], 'Blaine'), data))!['options'] as List).any((o) => o['place'] == 'deep'), isFalse);
+    final hoenn = data.bosses.indexWhere((b) => b['region'] == 'Hoenn');
+    final tate = {...at(1 + f[2], 'Blaine'), 'boss': {'region': hoenn, 'step': (data.bosses[hoenn]['leaders'] as List).indexWhere((l) => l['city'] == 'Mossdeep City')}};
+    expect(FactoryRun.routeOf(FactoryRun.nextFloor(tate, data))!['options'], contains(equals({'kind': 'dungeon', 'place': 'deep', 'scene': 'underwater'})));
     final sinnoh = data.bosses.indexWhere((b) => b['game'] == 'Diamond/Pearl');
     final wake = {...FactoryRun.startRun(FactoryRun.empty(), data, 4, 3)!, 'boss': {'region': sinnoh, 'step': step(sinnoh, 'Wake')}};
     expect(FactoryRun.routeInfo(data, wake)!.side, (id: 'ruin-maniac-cave', name: 'Ruin Maniac Cave', scene: 'poisoncave'));
