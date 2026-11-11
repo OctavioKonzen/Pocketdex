@@ -23,7 +23,7 @@ import {
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, teamRoom, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, atPc, pcOf, PC_SIZE, RARE_PLACES, shownScene, gameOf, tierOf, foeBoostAt, leagueAhead, unlockShiny, VITAMIN_EVS, VITAMINS,
   forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor, isKeystone,
-  tradeMon, skipTrade, TRADE_LEVELS, levelCapOf, townTrade, townTradeable, safariAct, safariRates, leaveSafari, SAFARI_FEE, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, bossScene,
+  tradeMon, skipTrade, TRADE_LEVELS, levelCapOf, townTrade, townTradeable, daycareOpen, daycareHere, safariAct, safariRates, leaveSafari, SAFARI_FEE, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, bossScene,
   resolveChoice, regionLegend, leaderType, villainTeam, rivalBoss, rocketBoss, placeInfo, routeInfo, DUNGEON_LENGTH, dungeonPos, townShop, townCenter,
   weeklyOf, startWeekly, COSMETIC_BALLS, COSMETIC_FRAMES, hasCosmetic, buyCosmetic, equipCosmetic,
   boostOf, memberOf, learnMove, movesLearnedBetween,
@@ -2239,7 +2239,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         </div>
       ) : (
         <BwParty title={t('Creche: quem fica? Ganha um nível por andar e, depois de {0} andares, aparece um ovo.').replace('{0}', DAYCARE_EGG)} team={partyOf(run, byId)} testid="daycare"
-          disabled={() => run.team.length < 2} onPick={(i) => { setPanel(null); save(leaveDaycare(run, i)) }} onCancel={() => setPanel(null)} />
+          disabled={() => run.team.length < 2} onPick={(i) => { setPanel(null); save(leaveDaycare(run, i, data)) }} onCancel={() => setPanel(null)} />
       )
   }
 
@@ -2387,7 +2387,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     field = (
       <Field biome={run.scene ?? 'grass'} fieldRef={fieldRef} testid="factory-capture">
         {/* Capturado: ele está dentro da Poké Ball (na base dele), não mais no campo. Do ovo da Creche, ele mesmo. */}
-        {mon.egg ? <FieldMon mon={mon} byId={byId} scene={run.scene} /> : (
+        {mon.egg || mon.fossil ? <FieldMon mon={mon} byId={byId} scene={run.scene} /> : (
           <FarStand scene={run.scene ?? 'grass'}><img src={spriteUrl(`items/${p.ball ?? 'poke-ball'}.png`)} alt="" className="pixelated w-[22%]" data-testid="captured-ball" /></FarStand>
         )}
         {lead && <FieldMon mon={lead} byId={byId} back scene={run.scene} />}
@@ -2395,7 +2395,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     )
     text = (
       <>
-        <p>{mon.shiny ? '✨ ' : ''}{(mon.egg ? t('O ovo da Creche chocou: é um {0}!') : t('Pegou! {0} foi capturado!')).replace('{0}', name(mon.id))} <span className="dlg-sub">Nv. {mon.level}</span></p>
+        <p>{mon.shiny ? '✨ ' : ''}{(mon.egg ? t('O ovo da Creche chocou: é um {0}!') : mon.fossil ? t('O museu reviveu um fóssil para você: é um {0}!') : t('Pegou! {0} foi capturado!')).replace('{0}', name(mon.id))} <span className="dlg-sub">Nv. {mon.level}</span></p>
         {!dexOf(run).includes(mon.id) && (
           <p className="text-sm" data-testid="factory-dex-new">
             📖 {t('Novo na Pokédex da corrida ({0})').replace('{0}', dexOf(run).length + 1)}
@@ -2648,7 +2648,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       route.options.length === 1 && route.options[0].meteor && `☄️ ${t('Uma chuva de meteoros! Algo caiu bem perto daqui...')}`,
       route.options.length === 1 && route.options[0].mythic && `✨ ${t('Uma presença misteriosa... um Pokémon mítico está aqui!')}`,
       town && boss.kind === 'villain' && `💬 ${t('A {0} tomou conta da cidade! O líder do ginásio só volta quando ela for embora.').replace('{0}', TEAM_NAMES[villainTeam(boss.name)] ?? 'Equipe Rocket')}`,
-      town && pos === ROUTE_LENGTH && boss.kind !== 'villain' && t('Bem-vindo a {0}! O Poké Mart, o Centro Pokémon e a Creche ficam aqui; o líder espera no último andar da cidade.').replace('{0}', to),
+      town && pos === ROUTE_LENGTH && boss.kind !== 'villain' && t(daycareHere(data, run) ? 'Bem-vindo a {0}! O Poké Mart, o Centro Pokémon e a Creche ficam aqui; o líder espera no último andar da cidade.' : 'Bem-vindo a {0}! O Poké Mart e o Centro Pokémon ficam aqui; o líder espera no último andar da cidade.').replace('{0}', to),
       inside && run.dungeon.cleared && `🌊 ${t('Você venceu o chefe daqui! Dá para seguir mais fundo ou voltar.')}`,
       route.options.some((o) => o.roam) && `🐾 ${t('{0} passou correndo por aqui! Ele foge depois de {1} turnos.').replace('{0}', name(route.options.find((o) => o.roam).legend)).replace('{1}', ROAM_TURNS)}`,
       route.options.some((o) => o.hidden) && `📡 ${t('A Dowsing Machine apita: tem um item escondido num dos caminhos!')}`,
@@ -2690,7 +2690,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         {/* Sem o Mapa: dá para seguir em frente ou pegar outro caminho, sem saber aonde ele leva (a entrada de um lugar dá para ver). */}
         {fork && !hasMap && route.options.map((node, k) => node.kind === 'dungeon' ? placeButton(node, k) : node.kind === 'safari' ? (
           <MenuButton key={k} testid={`map-node-${k}`} disabled={busy || nodeBlocked(run, node)} onClick={() => pickNode(k)} sub={nodeBlocked(run, node) ? hmHint(run, node) : t(NODE_INFO.safari.help)}>
-            {NODE_INFO.safari.icon} <span data-no-translate>Safari Zone</span>
+            {NODE_INFO.safari.icon} <span data-no-translate>{node.name ?? 'Safari Zone'}</span>
           </MenuButton>
         ) : hmPathInfo(node) ? (
           // O caminho aberto com uma MO (Cut, Rock Smash, Strength): você sabe o que tem nele, mesmo sem o Mapa.
@@ -2720,7 +2720,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
           <div className="grid grid-cols-3 gap-1">
             <MenuButton testid="town-mart" disabled={busy} onClick={() => save(townShop(run))}>🛒 Poké Mart</MenuButton>
             <MenuButton testid="town-center" disabled={busy} onClick={() => save(townCenter(run))}>🏥 {t('CENTRO')}</MenuButton>
-            <MenuButton testid="town-daycare" disabled={busy} onClick={() => setPanel(panel === 'daycare' ? null : 'daycare')} active={panel === 'daycare'}>🏡 {t('CRECHE')}</MenuButton>
+            {daycareOpen(data, run) && <MenuButton testid="town-daycare" disabled={busy} onClick={() => setPanel(panel === 'daycare' ? null : 'daycare')} active={panel === 'daycare'}>🏡 {t('CRECHE')}</MenuButton>}
           </div>
         )}
         {town && run.town?.trade && (run.town.trade.done ? (

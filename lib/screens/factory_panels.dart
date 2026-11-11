@@ -3784,7 +3784,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
         disabled: (_) => FactoryRun.teamOf(run).length < 2,
         onPick: (i) {
           _panel = null;
-          _save(FactoryRun.leaveDaycare(run, i));
+          _save(FactoryRun.leaveDaycare(run, i, data));
         },
         onCancel: close,
       );
@@ -3857,11 +3857,11 @@ class _FactoryScreenState extends State<FactoryScreen> {
       run: run,
       // Capturado: ele está dentro da Poké Ball (na base dele), não mais no campo. Do ovo da Creche, ele mesmo. Igual ao site.
       field: _field('${run['scene'] ?? 'grass'}', key: const ValueKey('factory-capture'), (w, h) => [
-            foe['egg'] == true ? _fieldMon(foe, w, h) : _far(KeyedSubtree(key: const ValueKey('captured-ball'), child: _itemIcon('${p['ball'] ?? 'poke-ball'}', w * 0.08)), w, h),
+            foe['egg'] == true || foe['fossil'] == true ? _fieldMon(foe, w, h) : _far(KeyedSubtree(key: const ValueKey('captured-ball'), child: _itemIcon('${p['ball'] ?? 'poke-ball'}', w * 0.08)), w, h),
             if (lead != null) _fieldMon(lead, w, h, back: true),
           ]),
       text: [
-        Text('${shiny ? '✨ ' : ''}${tr(foe['egg'] == true ? 'O ovo da Creche chocou: é um {0}!' : 'Pegou! {0} foi capturado!').replaceAll('{0}', _name(foe['id']))} Nv. ${foe['level']}'),
+        Text('${shiny ? '✨ ' : ''}${tr(foe['egg'] == true ? 'O ovo da Creche chocou: é um {0}!' : foe['fossil'] == true ? 'O museu reviveu um fóssil para você: é um {0}!' : 'Pegou! {0} foi capturado!').replaceAll('{0}', _name(foe['id']))} Nv. ${foe['level']}'),
         if (!FactoryRun.dexOf(run).contains((foe['id'] as num).toInt()))
           Builder(builder: (context) {
             final reward = FactoryRun.dexRewardFor(run, (foe['id'] as num).toInt());
@@ -4022,7 +4022,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
       if (options.length == 1 && options.first['mythic'] == true) '✨ ${tr('Uma presença misteriosa... um Pokémon mítico está aqui!')}',
       if (town && boss['kind'] == 'villain') '💬 ${tr('A {0} tomou conta da cidade! O líder do ginásio só volta quando ela for embora.').replaceAll('{0}', teamName)}',
       if (town && pos == FactoryRun.routeLength && boss['kind'] != 'villain')
-        tr('Bem-vindo a {0}! O Poké Mart, o Centro Pokémon e a Creche ficam aqui; o líder espera no último andar da cidade.').replaceAll('{0}', cities.to),
+        tr(FactoryRun.daycareHere(data, run) ? 'Bem-vindo a {0}! O Poké Mart, o Centro Pokémon e a Creche ficam aqui; o líder espera no último andar da cidade.' : 'Bem-vindo a {0}! O Poké Mart e o Centro Pokémon ficam aqui; o líder espera no último andar da cidade.').replaceAll('{0}', cities.to),
       if (dungeon != null && dungeon['cleared'] == true) '🌊 ${tr('Você venceu o chefe daqui! Dá para seguir mais fundo ou voltar.')}',
       for (final o in options)
         if (o['roam'] == true)
@@ -4115,7 +4115,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
               // O caminho aberto com uma MO (Cut, Rock Smash, Strength): você sabe o que tem nele, mesmo sem o Mapa.
               // A entrada da Safari Zone dá para ver, mesmo sem o Mapa.
               else if (options[k]['kind'] == 'safari')
-                _menuButton('${_nodeInfo['safari']!.$1} Safari Zone', widget.busy || FactoryRun.nodeBlocked(run, options[k]) ? null : () => pick(k),
+                _menuButton('${_nodeInfo['safari']!.$1} ${options[k]['name'] ?? 'Safari Zone'}', widget.busy || FactoryRun.nodeBlocked(run, options[k]) ? null : () => pick(k),
                     sub: FactoryRun.nodeBlocked(run, options[k]) ? _hmHint(run, options[k] as Map?) : tr(_nodeInfo['safari']!.$3), key: ValueKey('map-node-$k'))
               else if (_hmPathInfo(options[k]) != null)
                 _menuButton('${_hmPathInfo(options[k])!.$1} ${tr(_hmPathInfo(options[k])!.$2)}',
@@ -4185,7 +4185,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
           _menuGrid([
             _menuButton('🛒 Poké Mart', widget.busy ? null : () => _save(FactoryRun.townShop(run)), key: const ValueKey('town-mart')),
             _menuButton('🏥 ${tr('CENTRO')}', widget.busy ? null : () => _save(FactoryRun.townCenter(run)), key: const ValueKey('town-center')),
-            _menuButton('🏡 ${tr('CRECHE')}', widget.busy ? null : () => setState(() => _panel = _panel == 'daycare' ? null : 'daycare'),
+            if (FactoryRun.daycareOpen(data, run))
+              _menuButton('🏡 ${tr('CRECHE')}', widget.busy ? null : () => setState(() => _panel = _panel == 'daycare' ? null : 'daycare'),
                 active: _panel == 'daycare', key: const ValueKey('town-daycare')),
             // A troca do morador (uma por cidade).
             if ((run['town'] as Map?)?['trade'] case final Map trade)

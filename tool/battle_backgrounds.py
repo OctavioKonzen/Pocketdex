@@ -1131,13 +1131,68 @@ def park():
     return a, {'outdoor': True, 'seed': 980}
 
 
+def museum():
+    """Museu (Pewter, Oreburgh, Nacrene): o esqueleto de um fóssil no meio, vitrines com pedras e o piso de mármore."""
+    a = vgrad([(0, rgb('3a3046')), (1, rgb('6a5a64'))], 0, HORIZON + 30)
+    # As colunas e a faixa da parede.
+    a = layer(a, lambda d: [d.rectangle([x - 14, 20, x + 14, HORIZON + 26], fill=(150, 136, 150, 255)) for x in (60, 740)] +
+              [d.rectangle([x - 20, 14, x + 20, 26], fill=(176, 160, 172, 255)) for x in (60, 740)] +
+              [d.rectangle([0, 28, W, 34], fill=(196, 160, 96, 255))])
+    # O esqueleto (um fóssil grande de pescoço comprido) sobre o pedestal, no fundo.
+    bone = (238, 230, 210, 255)
+    shade = (150, 138, 116, 255)
+
+    def skeleton(d):
+        cx, by = W * 0.5, HORIZON + 4
+        d.rectangle([cx - 150, by, cx + 150, by + 22], fill=(120, 96, 70, 255))
+        d.rectangle([cx - 160, by + 18, cx + 160, by + 26], fill=(96, 74, 52, 255))
+        # pernas
+        for x in (cx - 80, cx - 50, cx + 40, cx + 70):
+            d.line([(x, by - 70), (x + 6, by - 30), (x, by)], fill=bone, width=7)
+        # coluna (do rabo ao pescoço) e costelas
+        spine = [(cx - 160, by - 50), (cx - 110, by - 74), (cx - 40, by - 88), (cx + 40, by - 84), (cx + 90, by - 100), (cx + 120, by - 140), (cx + 150, by - 160)]
+        d.line(spine, fill=bone, width=8)
+        for k in range(7):
+            x = cx - 70 + k * 18
+            top = by - 86 + abs(k - 3) * 2
+            d.arc([x - 14, top - 4, x + 14, top + 46], 20, 160, fill=bone, width=4)
+        # crânio
+        d.ellipse([cx + 138, by - 176, cx + 182, by - 150], fill=bone)
+        d.polygon([(cx + 176, by - 170), (cx + 206, by - 162), (cx + 176, by - 154)], fill=bone)
+        d.ellipse([cx + 156, by - 168, cx + 164, by - 160], fill=shade)
+    a = layer(a, skeleton)
+    # As vitrines dos lados (vidro com as pedras e os fósseis menores).
+    rnd = random.Random(1011)
+
+    def cases(d):
+        for x0 in (110, 560):
+            d.rectangle([x0, HORIZON - 40, x0 + 130, HORIZON + 26], fill=(110, 84, 58, 255))
+            d.rectangle([x0 + 6, HORIZON - 34, x0 + 124, HORIZON - 2], fill=(196, 226, 236, 255))
+            for k in range(4):
+                x = x0 + 16 + k * 28
+                c = [(178, 150, 112), (120, 160, 190), (200, 170, 120), (150, 130, 170)][rnd.randrange(4)]
+                d.ellipse([x, HORIZON - 22, x + 18, HORIZON - 8], fill=c + (255,))
+                d.arc([x + 3, HORIZON - 20, x + 15, HORIZON - 10], 0, 300, fill=(90, 70, 50, 255), width=2)
+            d.line([(x0 + 10, HORIZON - 32), (x0 + 40, HORIZON - 6)], fill=(255, 255, 255, 140), width=3)
+    a = layer(a, cases)
+    # Os holofotes em cima do fóssil e das vitrines.
+    for x in (175, 400, 625):
+        a = glow(a, x, HORIZON - 70, 120, (255, 236, 190), 0.35)
+    # O piso de mármore em xadrez.
+    a = ground(a, HORIZON + 30, rgb('e6ddd0'), rgb('b0a28c'), 1012, 5, 0.04)
+    a = layer(a, lambda d: [d.line([(W * 0.5 + (x - W * 0.5) * 0.2, HORIZON + 30), (x, H)], fill=(186, 172, 150, 255), width=2) for x in range(-300, W + 340, 110)] +
+              [d.line([(0, y), (W, y)], fill=(186, 172, 150, 255), width=2) for y in (HORIZON + 52, HORIZON + 96, HORIZON + 170, HORIZON + 280)])
+    a = reflect(a, HORIZON + 30, HORIZON + 110, 0.18, 5)
+    return a, {'outdoor': False, 'seed': 1010}
+
+
 SCENES = {
     'grass': grass, 'forest': forest, 'water': water, 'beach': beach, 'underwater': underwater, 'swamp': swamp, 'sewer': sewer,
     'cave': cave, 'icecave': icecave, 'mountain': mountain, 'desert': desert, 'volcano': volcano, 'snow': snow, 'city': city,
     'sky': sky, 'tower': tower, 'gym': gym, 'league': league, 'center': center,
     'ruins': ruins, 'flowers': flowers, 'plant': plant, 'crystal': crystal, 'dunes': dunes, 'bamboo': bamboo, 'temple': temple,
     'lavacave': lavacave, 'poisoncave': poisoncave, 'seacave': seacave, 'waterfall': waterfall,
-    'store': store, 'casino': casino, 'school': school, 'stage': stage, 'subway': subway, 'ship': ship, 'bridge': bridge, 'park': park,
+    'store': store, 'casino': casino, 'school': school, 'stage': stage, 'subway': subway, 'ship': ship, 'bridge': bridge, 'park': park, 'museum': museum,
 }
 
 

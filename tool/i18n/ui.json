@@ -9005,5 +9005,15 @@
   "en": "Traded Pokémon earn more XP.",
   "fr": "Les Pokémon échangés gagnent plus d'XP.",
   "es": "Los Pokémon intercambiados ganan más XP."
+ },
+ "O museu reviveu um fóssil para você: é um {0}!": {
+  "en": "The museum revived a fossil for you: it's a {0}!",
+  "fr": "Le musée a ranimé un fossile pour vous : c'est un {0} !",
+  "es": "¡El museo revivió un fósil para ti: es un {0}!"
+ },
+ "Bem-vindo a {0}! O Poké Mart e o Centro Pokémon ficam aqui; o líder espera no último andar da cidade.": {
+  "en": "Welcome to {0}! The Poké Mart and the Pokémon Center are here; the leader waits on the city's last floor.",
+  "fr": "Bienvenue à {0} ! La Boutique Poké et le Centre Pokémon sont ici ; le champion attend au dernier étage de la ville.",
+  "es": "¡Bienvenido a {0}! La Tienda Poké y el Centro Pokémon están aquí; el líder espera en el último piso de la ciudad."
  }
 }

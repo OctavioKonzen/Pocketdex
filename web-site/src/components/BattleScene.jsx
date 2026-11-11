@@ -165,7 +165,7 @@ export const GYM_TYPES = ['normal', 'fire', 'water', 'grass', 'electric', 'ice',
 export const CHAMPION_REGIONS = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos', 'alola', 'galar', 'paldea']
 export const VILLAIN_BASES = ['rocket', 'aqua', 'magma', 'galactic', 'plasma', 'flare', 'skull', 'aether', 'star']
 const INDOOR = [...GYM_TYPES.map((t) => `gym-${t}`), ...CHAMPION_REGIONS.map((r) => `champion-${r}`), ...VILLAIN_BASES.map((b) => `base-${b}`)]
-export const SCENE_IMAGES = ['grass', 'forest', 'water', 'beach', 'underwater', 'swamp', 'sewer', 'cave', 'icecave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky', 'tower', 'gym', 'league', 'center', 'ruins', 'flowers', 'plant', 'crystal', 'dunes', 'bamboo', 'temple', 'lavacave', 'poisoncave', 'seacave', 'waterfall', 'store', 'casino', 'school', 'stage', 'subway', 'ship', 'bridge', 'park', ...INDOOR]
+export const SCENE_IMAGES = ['grass', 'forest', 'water', 'beach', 'underwater', 'swamp', 'sewer', 'cave', 'icecave', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky', 'tower', 'gym', 'league', 'center', 'ruins', 'flowers', 'plant', 'crystal', 'dunes', 'bamboo', 'temple', 'lavacave', 'poisoncave', 'seacave', 'waterfall', 'store', 'casino', 'school', 'stage', 'subway', 'ship', 'bridge', 'park', 'museum', ...INDOOR]
 const usable = (scene) => (SCENE_IMAGES.includes(scene) || SCENE_COLORS[scene] ? scene : 'grass')
 /** Os lugares abertos que escurecem à noite (o deserto à noite já é noite). */
 const NIGHT_SCENES = ['grass', 'forest', 'water', 'beach', 'swamp', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky', 'ruins', 'flowers', 'bamboo']
