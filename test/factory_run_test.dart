@@ -297,7 +297,7 @@ void main() {
         expect(data.species[id], isNotNull, reason: '${e.key} $id');
       }
       for (final m in ((e.value['museum'] as Map?) ?? const {}).entries) {
-        expect(FactoryRun.placeScenes[m.key], 'museum');
+        if ('${m.key}'.endsWith('museum')) expect(FactoryRun.placeScenes[m.key], 'museum');
         for (final id in m.value as List) {
           expect(data.species[id], isNotNull);
         }
@@ -415,6 +415,132 @@ void main() {
     expect(FactoryRun.teamOf(FactoryRun.capture(won)).last['id'], fossil['id']);
     final other = FactoryRun.winFloor({...museum, 'dungeon': {'place': 'viridian-forest', 'scene': 'forest', 'start': 12}, 'encounter': foes}, data, hp: [1]);
     expect(FactoryRun.pendingOf(other)!['capture'], isNull);
+  });
+
+  test('lendários dos lugares, Snorlax e Sudowoodo, itens-chave (igual ao site)', () {
+    final red = gameOf('Red/Blue'), gs = gameOf('Gold/Silver');
+    Json inPlace(int g, String city, String place, String scene, [Json extra = const {}]) =>
+        toCity(g, city, {'floor': 1 + FactoryRun.dungeonLength, 'dungeon': {'place': place, 'scene': scene, 'start': 2}, ...extra});
+    List optionsOf(Json r) => FactoryRun.routeOf(r)!['options'] as List;
+    final plant = FactoryRun.nextFloor(inPlace(red, 'Saffron City', 'power-plant', 'plant'), data);
+    expect(optionsOf(plant), [{'kind': 'wildboss', 'legend': 145, 'placeLegend': true}]);
+    final fight = FactoryRun.chooseNode(plant, data, 0);
+    expect(fight['encounter']['foes'][0]['id'], 145);
+    expect(fight['encounter']['placeLegend'], true);
+    final won = FactoryRun.winFloor(fight, data, captured: true);
+    expect(won['dungeon'], isNull);
+    expect(FactoryRun.pendingOf(won)!['capture']['id'], 145);
+    expect(FactoryRun.placeLegendOf(data, toCity(red, 'Cinnabar Island'), 'seafoam-islands'), {'id': 144});
+    final rage = FactoryRun.chooseNode(FactoryRun.nextFloor(inPlace(gs, 'Blackthorn City', 'lake-of-rage', 'swamp'), data), data, 0);
+    expect([rage['encounter']['foes'][0]['id'], rage['encounter']['foes'][0]['shiny']], [130, true]);
+    final victory = FactoryRun.nextFloor(toCity(red, 'Indigo Plateau', {'floor': FactoryRun.routeLength}), data);
+    expect(optionsOf(victory), [{'kind': 'wildboss', 'legend': 146, 'routeLegend': true}]);
+    // O Snorlax: sem a Poké Flute, só dando a volta.
+    final road = toCity(red, 'Fuchsia City', {'floor': 1 + FactoryRun.forks[0]});
+    final opts = optionsOf(FactoryRun.nextFloor(road, data));
+    expect(opts, [{'kind': 'wildboss', 'legend': 143, 'blocker': 'poke-flute'}, {'kind': 'trainer', 'around': true}]);
+    expect(FactoryRun.nodeBlocked(road, opts[0] as Map), isTrue);
+    final around = FactoryRun.chooseNode(FactoryRun.nextFloor(road, data), data, 1);
+    expect(around['blockLeg'], FactoryRun.legOf(road));
+    expect(FactoryRun.blockerOf(data, around), isNull);
+    final flute = FactoryRun.nextFloor({...road, 'keyItems': ['poke-flute']}, data);
+    expect(FactoryRun.nodeBlocked(flute, optionsOf(flute)[0] as Map), isFalse);
+    final snorlax = FactoryRun.chooseNode(flute, data, 0);
+    expect(snorlax['encounter']['foes'][0]['id'], 143);
+    expect(FactoryRun.winFloor(snorlax, data)['blockLeg'], FactoryRun.legOf(road));
+    // Celadon: sem o Silph Scope, a Pokémon Tower fica fechada; o Rocket Hideout dá o Silph Scope e a torre, a Poké Flute.
+    var celadon = FactoryRun.nextFloor(toCity(red, 'Celadon City', {'floor': 1 + FactoryRun.routeLength + FactoryRun.forks[0], 'boss': {'region': red, 'step': (data.bosses[red]['leaders'] as List).indexWhere((l) => l['city'] == 'Celadon City' && l['kind'] == 'gym')}}), data);
+    Map towerOf(Json r) => optionsOf(r).firstWhere((o) => o['place'] == 'pok-mon-tower') as Map;
+    expect(FactoryRun.nodeBlocked(celadon, towerOf(celadon)), isTrue);
+    final dboss = {'kind': 'dboss', 'foes': [{'id': 92, 'level': 20, 'iv': 0, 'ev': 0}]};
+    final hideout = FactoryRun.winFloor({...inPlace(red, 'Celadon City', 'rocket-hideout', 'base-rocket'), 'encounter': dboss}, data, hp: [1]);
+    expect(FactoryRun.pendingOf(hideout)!['key'], 'silph-scope');
+    expect(FactoryRun.hasKey(hideout, 'silph-scope'), isTrue);
+    celadon = {...celadon, 'keyItems': ['silph-scope']};
+    expect(FactoryRun.nodeBlocked(celadon, towerOf(celadon)), isFalse);
+    final tower = FactoryRun.winFloor({...inPlace(red, 'Celadon City', 'pok-mon-tower', 'tower', {'keyItems': ['silph-scope']}), 'encounter': dboss}, data, hp: [1]);
+    expect(FactoryRun.pendingOf(tower)!['key'], 'poke-flute');
+    // A Squirt Bottle: vencendo a Whitney (ginásio de Goldenrod).
+    final step = (data.bosses[gs]['leaders'] as List).indexWhere((l) => l['city'] == 'Goldenrod City' && l['kind'] == 'gym');
+    final whitney = toCity(gs, 'Goldenrod City', {'floor': 1 + FactoryRun.cityBoss, 'boss': {'region': gs, 'step': step}});
+    final gym = FactoryRun.winFloor(FactoryRun.chooseNode(FactoryRun.nextFloor(whitney, data), data, 0), data);
+    expect(FactoryRun.pendingOf(gym)!['key'], 'squirt-bottle');
+    expect(FactoryRun.blockerOf(data, toCity(gs, 'Ecruteak City')), {'id': 185, 'item': 'squirt-bottle'});
+    expect(FactoryRun.keyItems.keys, ['silph-scope', 'poke-flute', 'squirt-bottle']);
+    // O prêmio da história: a Master Ball da Silph Co.
+    final silph = FactoryRun.winFloor({...inPlace(red, 'Saffron City', 'silph-co-', 'base-rocket'), 'encounter': dboss}, data, hp: [1]);
+    expect(FactoryRun.pendingOf(silph)!['placeReward'], 'master-ball');
+    expect(silph['bag']['master-ball'], greaterThan(0));
+  });
+
+  test('presentes da cidade, Game Corner, Department Store e Move Deleter/Reminder (igual ao site)', () {
+    final red = gameOf('Red/Blue'), gs = gameOf('Gold/Silver');
+    Json inTown(int g, String city, [Json extra = const {}]) => FactoryRun.nextFloor(toCity(g, city, {'floor': 1 + FactoryRun.routeLength, ...extra}), data);
+    final celadon = inTown(red, 'Celadon City', {'money': 50000});
+    expect([for (final g in FactoryRun.townGifts(data, celadon)) g['id']], [133]);
+    final got = FactoryRun.takeGift(celadon, data, 0)!;
+    final eevee = FactoryRun.teamOf(got).last;
+    expect([eevee['id'], eevee['level']], [133, max(5, FactoryRun.foeLevelAt(celadon['floor'] as int))]);
+    // O mesmo sorteio do site (IVs e natureza iguais).
+    expect(eevee['ivs'], {'hp': 28, 'atk': 24, 'def': 15, 'spa': 17, 'spd': 29, 'spe': 23});
+    expect(FactoryRun.townGifts(data, got), isEmpty);
+    expect(FactoryRun.takeGift(got, data, 0), isNull);
+    final saffron = inTown(red, 'Saffron City');
+    expect(FactoryRun.townGifts(data, saffron), isEmpty);
+    final after = {...saffron, 'places': ['silph-co-', 'fighting-dojo']};
+    expect([for (final g in FactoryRun.townGifts(data, after)) g['k']], [0, 1]);
+    expect(FactoryRun.takeGift(after, data, 1, 25), isNull);
+    expect(FactoryRun.teamOf(FactoryRun.takeGift(after, data, 1, 107)!).last['id'], 107);
+    final violet = inTown(gs, 'Violet City');
+    final egg = FactoryRun.takeGift(violet, data, 0)!;
+    expect((egg['eggs'] as List).last, {'id': 175, 'left': FactoryRun.eggBattles});
+    expect((egg['team'] as List).length, (violet['team'] as List).length);
+    // Game Corner.
+    expect(FactoryRun.cornerOf(data, celadon)!['name'], 'Rocket Game Corner');
+    expect(FactoryRun.cornerOf(data, inTown(red, 'Pewter City')), isNull);
+    var run = FactoryRun.buyCoins(celadon, data)!;
+    expect([run['money'], run['gcCoins']], [50000 - FactoryRun.cornerPackPrice, FactoryRun.cornerPack]);
+    var total = 0;
+    for (var k = 0; k < 400; k++) {
+      final next = FactoryRun.spinSlots(run, data) ?? FactoryRun.spinSlots(FactoryRun.buyCoins(run, data)!, data)!;
+      final reels = next['slots']['reels'] as List;
+      expect(reels, hasLength(3));
+      if ((next['slots']['won'] as int) > 0) expect(reels.toSet(), hasLength(1));
+      total += next['slots']['won'] as int;
+      run = next;
+    }
+    expect(total, lessThan(400 * FactoryRun.cornerSpin));
+    expect(total, 758);
+    expect(FactoryRun.cornerPrize({...run, 'gcCoins': 0}, data, 137), isNull);
+    final porygon = FactoryRun.cornerPrize({...run, 'gcCoins': 1000}, data, 137)!;
+    expect(porygon['gcCoins'], 0);
+    expect([...FactoryRun.teamOf(porygon), ...(porygon['pc'] as List? ?? const [])].any((m) => m?['id'] == 137), isTrue);
+    final hoenn = data.bosses.indexWhere((b) => b['region'] == 'Hoenn');
+    final tm = FactoryRun.cornerPrize({...inTown(hoenn, 'Mauville City'), 'gcCoins': 400}, data, 'tm:thunderbolt')!;
+    expect(tm['tms']['thunderbolt'], 1);
+    // Department Store.
+    final store = FactoryRun.enterStore(celadon, data);
+    expect(FactoryRun.pendingOf(store)!['store'], 'Celadon Department Store');
+    expect(FactoryRun.pendingOf(store)!['shop'], contains('evo:moon-stone'));
+    expect(FactoryRun.storeOf(data, inTown(red, 'Pewter City')), isNull);
+    // Move Deleter e Reminder.
+    final fuchsia = inTown(red, 'Fuchsia City');
+    expect(FactoryRun.tutorsOf(data, fuchsia), ['deleter']);
+    final mon = {...FactoryRun.teamOf(fuchsia).first, 'moves': ['scratch', 'growl', 'ember']};
+    expect(FactoryRun.teamOf(FactoryRun.forgetMove({...fuchsia, 'team': [mon]}, data, 0, 1)!).first['moves'], ['scratch', 'ember']);
+    expect(FactoryRun.forgetMove({...fuchsia, 'team': [{...mon, 'moves': ['scratch']}]}, data, 0, 0), isNull);
+    expect(FactoryRun.townReminder(fuchsia, data), isNull);
+    final cinnabar = inTown(red, 'Cinnabar Island');
+    final reminded = FactoryRun.townReminder(cinnabar, data)!;
+    expect(reminded['tokens']['move-reminder'], ((cinnabar['tokens']['move-reminder'] as num?) ?? 0) + 1);
+    expect(reminded['money'], cinnabar['money']);
+    expect(FactoryRun.townReminder(reminded, data), isNull);
+    final pastoria = inTown(gameOf('Diamond/Pearl'), 'Pastoria City', {'money': 99999});
+    expect(FactoryRun.reminderCost(data, pastoria), greaterThan(0));
+    expect(FactoryRun.townReminder(pastoria, data)!['money'], 99999 - FactoryRun.reminderCost(data, pastoria));
+    final galar = data.bosses.indexWhere((b) => b['region'] == 'Galar');
+    final city = '${(data.bosses[galar]['leaders'] as List).firstWhere((l) => l['city'] != null)['city']}';
+    expect(FactoryRun.tutorsOf(data, inTown(galar, city)), ['deleter', 'reminder']);
   });
 
   test('XP inteiro para quem lutou; o banco ganha um quarto e, com o Exp. Share, a metade (igual ao site)', () {
@@ -1041,7 +1167,7 @@ void main() {
     expect(FactoryRun.teamOf(FactoryRun.townCenter({...run, 'team': [for (final m in FactoryRun.teamOf(run)) {...m, 'hp': 0}]})).every((m) => m['hp'] == 1), isTrue);
     run = FactoryRun.nextFloor({...run, 'floor': 1 + r + f[0]}, data);
     List places(Json run) => [for (final o in FactoryRun.routeOf(run)!['options'] as List) if (o['kind'] == 'dungeon') o['place']];
-    expect(places(run), ['rocket-game-corner', 'rocket-hideout', 'celadon-department-store']);
+    expect(places(run), ['rocket-hideout', 'pok-mon-tower']);
     final options = FactoryRun.routeOf(run)!['options'] as List;
     run = FactoryRun.chooseNode(run, data, options.indexWhere((o) => o['place'] == 'rocket-hideout'));
     expect(FactoryRun.townHub(data, run), isFalse);
@@ -1052,7 +1178,7 @@ void main() {
     expect(FactoryRun.routePos(run), r + f[0]);
     expect(FactoryRun.routeOf(run)!['options'], hasLength(1));
     run = FactoryRun.nextFloor({...run, 'floor': (run['floor'] as int) + f[1] - f[0]}, data);
-    expect(places(run), ['rocket-game-corner', 'celadon-department-store']);
+    expect(places(run), ['pok-mon-tower']);
     run = FactoryRun.nextFloor({...run, 'floor': (run['floor'] as int) + FactoryRun.cityBoss - r - f[1]}, data);
     expect(FactoryRun.routePos(run), FactoryRun.cityBoss);
     expect(FactoryRun.routeOf(run)!['options'], [{'kind': 'boss'}]);

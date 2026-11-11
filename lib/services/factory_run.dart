@@ -1453,6 +1453,186 @@ class FactoryRun {
   /// Só dá para deixar um Pokémon onde há Creche.
   static bool daycareHere(FactoryData data, Json run) => featuresOf(data, run)['daycare'] == true;
 
+  /// Os itens-chave (como nos jogos): o Silph Scope (vencendo o Rocket Hideout) deixa ver os fantasmas da Pokémon Tower;
+  /// a Poké Flute (do Mr. Fuji, no alto da torre) acorda o Snorlax; a Squirt Bottle (depois do ginásio de Goldenrod)
+  /// molha o Sudowoodo. Ficam com você a corrida toda. Igual ao site.
+  static const keyItems = {'silph-scope': 'Silph Scope', 'poke-flute': 'Poké Flute', 'squirt-bottle': 'Squirt Bottle'};
+  static bool hasKey(Json run, Object? item) => ((run['keyItems'] as List?) ?? const []).contains(item);
+  static String? _addKey(Json out, Object? item) {
+    if (item == null || hasKey(out, item)) return null;
+    out['keyItems'] = [...((out['keyItems'] as List?) ?? const []), item];
+    return '$item';
+  }
+
+  /// O lendário que é o chefe deste lugar (as aves de Kanto, o Gyarados vermelho): {id, shiny} ou null.
+  static Map? placeLegendOf(FactoryData data, Json run, Object? place) {
+    final l = (featuresOf(data, run)['legends'] as Map?)?[place];
+    return l == null ? null : l is num ? {'id': l.toInt()} : l as Map;
+  }
+
+  /// O que dorme no meio da rota (o Snorlax na rota até Fuchsia, o Sudowoodo na rota até Ecruteak): com o item dá para
+  /// acordá-lo e lutar (e capturar); sem ele, só dá para dar a volta. Uma vez por rota. Igual ao site.
+  static Map? blockerOf(FactoryData data, Json run) {
+    final b = featuresOf(data, run)['blocker'] as Map?;
+    return b != null && data.species[_int(b['id'])] != null && run['blockLeg'] != legOf(run) ? b : null;
+  }
+
+  /// Os presentes da cidade (como nos jogos): o Eevee de Celadon, o Lapras da Silph Co., o Hitmonlee ou o Hitmonchan do
+  /// Fighting Dojo, os ovos de Togepi e de Riolu... Uns logo ao chegar, outros só depois de vencer o lugar (after).
+  /// Cada um uma vez por cidade. Igual ao site.
+  static List<Json> townGifts(FactoryData data, Json run) {
+    if (run['town'] == null || run['encounter'] != null || run['pending'] != null) return const [];
+    final got = ((run['town'] as Map)['gifts'] as List?) ?? const [];
+    final all = (featuresOf(data, run)['gifts'] as List?) ?? const [];
+    final places = (run['places'] as List?) ?? const [];
+    return [
+      for (var k = 0; k < all.length; k++)
+        if (!got.contains(k) &&
+            ((all[k] as Map)['after'] == null || places.contains((all[k] as Map)['after'])) &&
+            [(all[k] as Map)['id'], ...(((all[k] as Map)['choose'] as List?) ?? const [])].any((id) => id != null && data.species[_int(id)] != null && _monoOk(run, data, _int(id))))
+          {...Map<String, dynamic>.from(all[k] as Map), 'k': k},
+    ];
+  }
+
+  /// Recebe o presente k (pick: qual, quando dá para escolher). Ovo vai junto como ovo; sem vaga, vai para o PC. null se não dá.
+  static Json? takeGift(Json run, FactoryData data, int k, [int? pick]) {
+    final g = townGifts(data, run).where((x) => x['k'] == k).firstOrNull;
+    if (g == null) return null;
+    final choose = g['choose'] as List?;
+    final int? id = choose != null ? (choose.contains(pick) ? pick : null) : (g['id'] as num?)?.toInt();
+    if (id == null) return null;
+    final out = _copy(run);
+    (out['town'] as Map)['gifts'] = [...(((run['town'] as Map)['gifts'] as List?) ?? const []), k];
+    final rand = _dice(out);
+    if (g['egg'] == true) {
+      if ((out['team'] as List).length >= teamRoom(out)) return null;
+      out['eggs'] = [...((out['eggs'] as List?) ?? const []), {'id': id, 'left': eggBattles}];
+      out['gifted'] = _n(run, 'gifted') + 1;
+      return out;
+    }
+    final level = math.max(startLevel, foeLevelAt(_int(run['floor'])));
+    final shiny = rand() < shinyChance * ((run['shinyRate'] as num?) ?? 1);
+    final mon = newMon(id, level, rand, 15, shiny);
+    if ((out['team'] as List).length < teamRoom(out)) {
+      (out['team'] as List).add(mon);
+    } else {
+      final pc = pcPut(run, mon);
+      if (pc == null) return null;
+      out['pc'] = pc;
+    }
+    _addDex(out, id);
+    out['gifted'] = _n(run, 'gifted') + 1;
+    return out;
+  }
+
+  /// O Game Corner (Celadon, Goldenrod, Mauville, Veilstone): compra fichas, joga no caça-níqueis e troca as fichas por
+  /// prêmios de lá (em Celadon, o Porygon; em Goldenrod, o Dratini; em Mauville e Veilstone, TMs). As fichas ficam com
+  /// você a corrida toda. Igual ao site.
+  static const cornerPack = 50, cornerPackPrice = 1000, cornerSpin = 3;
+  static const cornerReels = ['7', 'BAR', '🍒', '⚡', '🔵'];
+
+  /// As chances do caça-níqueis: (resultado, chance, fichas que paga). Na média, perde um pouco (como nos jogos).
+  static const cornerPays = [('7', 0.005, 100), ('BAR', 0.02, 30), ('🍒', 0.15, 6)];
+  static Map? cornerOf(FactoryData data, Json run) => run['town'] != null ? featuresOf(data, run)['corner'] as Map? : null;
+  static Json? buyCoins(Json run, FactoryData data) {
+    if (cornerOf(data, run) == null || _n(run, 'money') < cornerPackPrice || run['encounter'] != null || run['pending'] != null) return null;
+    return {...run, 'money': _n(run, 'money') - cornerPackPrice, 'gcCoins': _n(run, 'gcCoins') + cornerPack};
+  }
+
+  static Json? spinSlots(Json run, FactoryData data) {
+    if (cornerOf(data, run) == null || _n(run, 'gcCoins') < cornerSpin || run['encounter'] != null || run['pending'] != null) return null;
+    final out = _copy(run);
+    final rand = _dice(out);
+    final r = rand();
+    var acc = 0.0;
+    (String, double, int)? hit;
+    for (final pay in cornerPays) {
+      acc += pay.$2;
+      if (acc > r) {
+        hit = pay;
+        break;
+      }
+    }
+    List<String> reels;
+    if (hit != null) {
+      reels = [hit.$1, hit.$1, hit.$1];
+    } else {
+      reels = [for (var i = 0; i < 3; i++) _pick(cornerReels, rand)];
+      if (reels[0] == reels[1] && reels[1] == reels[2]) reels[2] = cornerReels[(cornerReels.indexOf(reels[2]) + 1) % cornerReels.length];
+    }
+    out['gcCoins'] = _n(run, 'gcCoins') - cornerSpin + (hit?.$3 ?? 0);
+    out['slots'] = {'reels': reels, 'won': hit?.$3 ?? 0};
+    return out;
+  }
+
+  /// Troca fichas pelo prêmio (um Pokémon entra no time ou vai para o PC; um TM fica na caixa de TMs).
+  static Json? cornerPrize(Json run, FactoryData data, Object prize) {
+    final corner = cornerOf(data, run);
+    final row = ((corner?['prizes'] as List?) ?? const []).where((p) => (p as List)[0] == prize).firstOrNull as List?;
+    if (row == null || _n(run, 'gcCoins') < _int(row[1]) || run['encounter'] != null || run['pending'] != null) return null;
+    final out = _copy(run);
+    out['gcCoins'] = _n(run, 'gcCoins') - _int(row[1]);
+    if (prize is String) {
+      final tms = Map<String, dynamic>.from((out['tms'] as Map?) ?? const {});
+      final move = prize.substring(3);
+      tms[move] = ((tms[move] as num?) ?? 0).toInt() + 1;
+      return out..['tms'] = tms;
+    }
+    final id = _int(prize);
+    final rand = _dice(out);
+    final shiny = rand() < shinyChance * ((run['shinyRate'] as num?) ?? 1);
+    final mon = newMon(id, math.max(startLevel, foeLevelAt(_int(run['floor'])) - 2), rand, 0, shiny);
+    if ((out['team'] as List).length < teamRoom(out)) {
+      (out['team'] as List).add(mon);
+    } else {
+      final pc = pcPut(run, mon);
+      if (pc == null) return null;
+      out['pc'] = pc;
+    }
+    _addDex(out, id);
+    return out;
+  }
+
+  /// A Department Store (Celadon, Goldenrod, Veilstone): o estoque fixo de lá (pedras, vitaminas, TMs), com os preços de sempre.
+  static Map? storeOf(FactoryData data, Json run) => run['town'] != null ? featuresOf(data, run)['store'] as Map? : null;
+  static Json enterStore(Json run, FactoryData data) {
+    final store = storeOf(data, run);
+    if (store == null || run['encounter'] != null || run['pending'] != null) return run;
+    return {...run, 'pending': {'shop': [...(store['stock'] as List)], 'store': store['name']}};
+  }
+
+  /// O Move Reminder e o Move Deleter das cidades (como nos jogos). O Reminder dá uma ficha de Move Reminder por cidade
+  /// (em Hoenn e Sinnoh ele cobra uma Heart Scale: heartScale de dinheiro); o Deleter faz esquecer um golpe, até uma MO.
+  /// Em Galar e em Paldea, todo Centro Pokémon faz os dois. Igual ao site.
+  static const heartScale = 300;
+  static List<String> tutorsOf(FactoryData data, Json run) {
+    if (run['town'] == null) return const [];
+    final r = (run['boss'] as Map?)?['region'];
+    final region = r is int && r >= 0 && r < data.bosses.length ? data.bosses[r]['region'] : null;
+    if (((data.routes['tutors'] as List?) ?? const []).contains(region)) return const ['deleter', 'reminder'];
+    return [for (final t in (featuresOf(data, run)['tutors'] as List?) ?? const []) '$t'];
+  }
+
+  static int reminderCost(FactoryData data, Json run) => tutorsOf(data, run).contains('heart-scale') ? (heartScale * priceScale(_int(run['floor']))).round() : 0;
+  static Json? townReminder(Json run, FactoryData data) {
+    if (!tutorsOf(data, run).contains('reminder') || (run['town'] as Map?)?['reminded'] == true || run['encounter'] != null || run['pending'] != null) return null;
+    final cost = reminderCost(data, run);
+    if (_n(run, 'money') < cost) return null;
+    final tokens = Map<String, dynamic>.from((run['tokens'] as Map?) ?? const {});
+    tokens['move-reminder'] = ((tokens['move-reminder'] as num?) ?? 0).toInt() + 1;
+    return {...run, 'money': _n(run, 'money') - cost, 'town': {...Map<String, dynamic>.from(run['town'] as Map), 'reminded': true}, 'tokens': tokens};
+  }
+
+  /// O Move Deleter: o Pokémon index esquece o golpe slot (fica com pelo menos um).
+  static Json? forgetMove(Json run, FactoryData data, int index, int slot) {
+    final team = teamOf(run);
+    if (!tutorsOf(data, run).contains('deleter') || index < 0 || index >= team.length || run['encounter'] != null || run['pending'] != null) return null;
+    final moves = (team[index]['moves'] as List?) ?? const [];
+    if (moves.length < 2 || slot < 0 || slot >= moves.length) return null;
+    team[index] = {...team[index], 'moves': [for (var i = 0; i < moves.length; i++) if (i != slot) moves[i]]};
+    return {...run, 'team': team};
+  }
+
   /// Os lugares raros da região de agora (cada um só aparece na região dele nos jogos).
   static List<String> rarePlacesOf(FactoryData data, Json run) {
     final region = (run['boss'] as Map?)?['region'];
@@ -1723,6 +1903,11 @@ class FactoryRun {
     // selvagem forte (dá para capturar).
     final rareHere = inside ? rarePlaces[run['dungeon']['place']] : null;
     final onlyWild = inside && (wildOnly.contains(biome) || rareHere != null);
+    // O lendário do lugar (as aves de Kanto, o Gyarados vermelho do Lake of Rage): o chefe é ele, e dá para capturar.
+    final legendHere = inside ? placeLegendOf(data, run, run['dungeon']['place']) : null;
+    if (inside && pos >= dungeonLength - 1 && legendHere != null) {
+      return only({'kind': 'wildboss', 'legend': legendHere['id'], 'placeLegend': true, if (legendHere['shiny'] == true) 'forceShiny': true});
+    }
     // No lugar raro: o lendário do lugar.
     if (inside && pos >= dungeonLength - 1 && rareHere != null) {
       return only({'kind': 'wildboss', 'legend': rareLegend(run, '${run['dungeon']['place']}'), 'rare': true, if (rareHere.mythic) 'mythic': true});
@@ -1737,7 +1922,23 @@ class FactoryRun {
     }
     if (atCity(data, run)) return only({'kind': 'boss'});
     // O último andar da rota: o chefe dela.
-    if (!inside && !city && pos == routeLength - 1) return only({'kind': 'dboss'});
+    if (!inside && !city && pos == routeLength - 1) {
+      // Na Victory Road de Kanto, o chefe da rota é o Moltres.
+      final legend = featuresOf(data, run)['routeLegend'];
+      return only(legend != null && data.species[_int(legend)] != null ? {'kind': 'wildboss', 'legend': legend, 'routeLegend': true} : {'kind': 'dboss'});
+    }
+    // O Snorlax (ou o Sudowoodo) dorme no caminho: com o item, acorda e luta; sem ele, só dando a volta.
+    final blocker = !inside && !city && pos == forks[0] ? blockerOf(data, run) : null;
+    if (blocker != null) {
+      return {
+        'floor': run['floor'],
+        'biome': biome,
+        'options': [
+          {'kind': 'wildboss', 'legend': blocker['id'], 'blocker': blocker['item']},
+          {'kind': 'trainer', 'around': true},
+        ],
+      };
+    }
     if (!inside && boss['kind'] == 'rival') {
       // O rival da história: quantos ainda faltam e quantos andares livres sobram até o líder (sem os chefes).
       final leaders = _leaders(data, run);
@@ -1812,8 +2013,11 @@ class FactoryRun {
     // na rota, o mar (numa rota de praia) e o lugar no caminho (Mt. Moon, Rock Tunnel...).
     final info = routeInfo(data, run);
     final done = (run['places'] as List?) ?? const [];
+    final needs = (featuresOf(data, run)['needs'] as Map?) ?? const {};
     void add(({String id, String name, String scene})? place) {
-      if (place != null && !done.contains(place.id)) options.add({'kind': 'dungeon', 'place': place.id, 'scene': place.scene});
+      if (place != null && !done.contains(place.id)) {
+        options.add({'kind': 'dungeon', 'place': place.id, 'scene': place.scene, if (needs[place.id] != null) 'needs': needs[place.id]});
+      }
     }
 
     if (city) {
@@ -2056,6 +2260,10 @@ class FactoryRun {
         }
       }
       _countHunt(data, out);
+      // O lendário do lugar e o que dormia no caminho: vencendo (ou capturando), o lugar ou a rota seguem.
+      if (node['placeLegend'] == true) out['encounter'] = {...Map<String, dynamic>.from(out['encounter'] as Map), 'placeLegend': true};
+      if (node['blocker'] != null) out['encounter'] = {...Map<String, dynamic>.from(out['encounter'] as Map), 'blocker': true};
+      if (node['around'] == true) out['blockLeg'] = legOf(run);
       // A revanche: o Campeão vencido, com o time do andar de agora (e mais forte).
       if (node['kind'] == 'rematch') {
         out['encounter'] = {...encounterFor(data, floor + rematchFloors, rand, rematchBoss(data, run)), 'kind': 'rematch', 'scene': scene};
@@ -2237,8 +2445,9 @@ class FactoryRun {
         id = _pick(legends, rand);
         extra = {'title': 'legend'};
       }
-      final lvl = _bossLevel(data, floor, id, level + 3);
-      return {'kind': 'wildboss', 'foes': [foe(id, lvl, {...strong, ...extra, if (rand() < shinyChance * _shinyRate(node)) 'shiny': true})]};
+      // O lendário do lugar e o que dorme no caminho vêm na forma deles (o Gyarados vermelho é Gyarados, o Snorlax é Snorlax).
+      final lvl = math.max(_bossLevel(data, floor, id, level + 3), node?['legend'] != null ? minLevelOf(data, id) : 0);
+      return {'kind': 'wildboss', 'foes': [foe(id, lvl, {...strong, ...extra, if (rand() < shinyChance * _shinyRate(node) || node?['forceShiny'] == true) 'shiny': true})]};
     }
     if (boss != null) {
       // Os times dos chefes são de Pokémon evoluídos: quem é mais forte que as espécies do andar vem com nível menor.
@@ -2647,15 +2856,24 @@ class FactoryRun {
     final pieces = piecesFor(data, run);
     if (pieces.isNotEmpty) out['pieces'] = _addPieces(piecesOf(run), pieces);
     var champion = false;
-    String? hm;
+    String? hm, key, placeReward;
+    if (run['encounter']['blocker'] == true) out['blockLeg'] = legOf(run);
     // Venceu a revanche: o Campeão some (até o próximo).
     if (kind == 'rival') out['rivalRaces'] = ((run['rivalRaces'] as num?) ?? 0).toInt() + 1;
     // Venceu o chefe do lugar (ou o vilão na base): volta para a cidade.
     final rarePlace = run['dungeon'] != null && rarePlaces.containsKey(run['dungeon']['place']) && kind == 'wildboss';
-    if (run['dungeon'] != null && (kind == 'dboss' || kind == 'boss' || run['encounter']['area'] == true || rarePlace)) {
+    if (run['dungeon'] != null && (kind == 'dboss' || kind == 'boss' || run['encounter']['area'] == true || run['encounter']['placeLegend'] == true || rarePlace)) {
       out['dungeons'] = ((run['dungeons'] as num?) ?? 0).toInt() + 1;
       final place = run['dungeon']['place'];
       if (place != 'base') out['places'] = [...(run['places'] as List? ?? const []), place];
+      // O que o lugar deixa (como nos jogos): o item-chave (o Silph Scope, a Poké Flute) e o prêmio da história (a Master Ball da Silph Co.).
+      final f = featuresOf(data, run);
+      key = _addKey(out, (f['keys'] as Map?)?[place]);
+      final prize = (f['rewards'] as Map?)?[place];
+      if (prize != null) {
+        _giveItem(out, '$prize');
+        placeReward = '$prize';
+      }
       // Num lugar da água, dá para seguir para o próximo (o mar depois da praia...); nos outros, volta.
       final onward = waterNext(run['dungeon']['scene'], waterReach(data, run)) != null ||
           (run['dungeon']['scene'] == 'water' && hasWaterfall(data, run) && !(out['places'] as List? ?? const []).contains(waterfallPlace.id));
@@ -2682,6 +2900,8 @@ class FactoryRun {
         } else {
           hm = null;
         }
+        // O item-chave que o ginásio dá (a Squirt Bottle depois da Whitney, em Goldenrod).
+        key = _addKey(out, (featuresOf(data, run)['keys'] as Map?)?['gym']) ?? key;
       }
       if (beaten['kind'] == 'champion') {
         out['champions'] = ((run['champions'] as num?) ?? 0).toInt() + 1;
@@ -2785,6 +3005,8 @@ class FactoryRun {
         'beat': {'kind': run['encounter']['boss']['kind'], 'name': run['encounter']['boss']['name'], 'region': run['encounter']['boss']['region']},
       if (mission != null) 'mission': mission,
       if (hm != null) 'hm': hm,
+      if (key != null) 'key': key,
+      if (placeReward != null) 'placeReward': placeReward,
       if (fled) 'fled': roamer,
       if (dowsed != null) 'dowsed': dowsed,
     };
@@ -2972,7 +3194,9 @@ class FactoryRun {
     return need != null && !hasHm(run, need) ? need : null;
   }
 
-  static bool nodeBlocked(Json run, Map? node) => hmNeeded(run, node) != null || (node?['kind'] == 'safari' && ((run['money'] as num?) ?? 0) < safariFee);
+  static bool nodeBlocked(Json run, Map? node) => hmNeeded(run, node) != null || (node?['kind'] == 'safari' && ((run['money'] as num?) ?? 0) < safariFee) ||
+      (node?['needs'] != null && !hasKey(run, node?['needs'])) ||
+      (node?['blocker'] != null && !hasKey(run, node?['blocker']));
 
   /// Cut: uma vez por rota, corta a árvore e abre um caminho escondido (um selvagem raro do lugar). null se não dá.
   static Json? cutPath(Json run) {
