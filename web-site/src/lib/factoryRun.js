@@ -1250,6 +1250,154 @@ export const daycareOpen = (data, run) => Boolean(featuresOf(data, run).daycare)
 export const daycareHere = (data, run) => Boolean(featuresOf(data, run).daycare)
 
 /**
+ * Os itens-chave (como nos jogos): o Silph Scope (vencendo o Rocket Hideout) deixa ver os fantasmas da Pokémon Tower;
+ * a Poké Flute (do Mr. Fuji, no alto da torre) acorda o Snorlax; a Squirt Bottle (depois do ginásio de Goldenrod)
+ * molha o Sudowoodo. Ficam com você a corrida toda. Igual ao app.
+ */
+export const KEY_ITEMS = { 'silph-scope': 'Silph Scope', 'poke-flute': 'Poké Flute', 'squirt-bottle': 'Squirt Bottle' }
+export const hasKey = (run, item) => (run.keyItems ?? []).includes(item)
+function addKey(out, item) {
+  if (!item || hasKey(out, item)) return null
+  out.keyItems = [...(out.keyItems ?? []), item]
+  return item
+}
+/** O lendário que é o chefe deste lugar (as aves de Kanto, o Gyarados vermelho): { id, shiny } ou null. */
+export function placeLegendOf(data, run, place) {
+  const l = featuresOf(data, run).legends?.[place]
+  return l == null ? null : typeof l === 'number' ? { id: l } : l
+}
+/**
+ * O que dorme no meio da rota (o Snorlax na rota até Fuchsia, o Sudowoodo na rota até Ecruteak): com o item dá para
+ * acordá-lo e lutar (e capturar); sem ele, só dá para dar a volta. Uma vez por rota. Igual ao app.
+ */
+export function blockerOf(data, run) {
+  const b = featuresOf(data, run).blocker
+  return b && data.species[b.id] && run.blockLeg !== legOf(run) ? b : null
+}
+
+/**
+ * Os presentes da cidade (como nos jogos): o Eevee de Celadon, o Lapras da Silph Co., o Hitmonlee ou o Hitmonchan do
+ * Fighting Dojo, os ovos de Togepi e de Riolu... Uns logo ao chegar, outros só depois de vencer o lugar (after).
+ * Cada um uma vez por cidade. Igual ao app.
+ */
+export function townGifts(data, run) {
+  if (!run.town || run.encounter || run.pending) return []
+  const got = run.town.gifts ?? []
+  return (featuresOf(data, run).gifts ?? []).map((g, k) => ({ ...g, k })).filter((g) => !got.includes(g.k) && (!g.after || (run.places ?? []).includes(g.after)))
+    .filter((g) => [g.id, ...(g.choose ?? [])].some((id) => id != null && data.species[id] && (!run.mono || (speciesOf(data, id)?.[4] ?? []).some((t) => run.mono.includes(t)))))
+}
+/** Recebe o presente k (pick: qual, quando dá para escolher). Ovo vai junto como ovo; sem vaga, vai para o PC. null se não dá. */
+export function takeGift(run, data, k, pick = null) {
+  const g = townGifts(data, run).find((x) => x.k === k)
+  if (!g) return null
+  const id = g.choose ? (g.choose.includes(pick) ? pick : null) : g.id
+  if (id == null) return null
+  const out = { ...run, team: [...run.team], town: { ...run.town, gifts: [...(run.town.gifts ?? []), k] } }
+  const rand = dice(out)
+  if (g.egg) {
+    if (out.team.length >= teamRoom(out)) return null
+    out.eggs = [...(out.eggs ?? []), { id, left: EGG_BATTLES }]
+    out.gifted = (run.gifted ?? 0) + 1
+    return out
+  }
+  const mon = newMon(id, Math.max(START_LEVEL, foeLevelAt(run.floor)), rand, 15, rand() < SHINY_CHANCE * (run.shinyRate ?? 1))
+  if (out.team.length < teamRoom(out)) out.team.push(mon)
+  else {
+    const pc = pcPut(run, mon)
+    if (!pc) return null
+    out.pc = pc
+  }
+  addDex(out, id)
+  out.gifted = (run.gifted ?? 0) + 1
+  return out
+}
+
+/**
+ * O Game Corner (Celadon, Goldenrod, Mauville, Veilstone): compra fichas, joga no caça-níqueis e troca as fichas por
+ * prêmios de lá (em Celadon, o Porygon; em Goldenrod, o Dratini; em Mauville e Veilstone, TMs). As fichas ficam com
+ * você a corrida toda. Igual ao app.
+ */
+export const CORNER_PACK = 50
+export const CORNER_PACK_PRICE = 1000
+export const CORNER_SPIN = 3
+export const CORNER_REELS = ['7', 'BAR', '🍒', '⚡', '🔵']
+/** As chances do caça-níqueis: [resultado, chance, fichas que paga]. Na média, perde um pouco (como nos jogos). */
+export const CORNER_PAYS = [['7', 0.005, 100], ['BAR', 0.02, 30], ['🍒', 0.15, 6]]
+export const cornerOf = (data, run) => (run.town ? featuresOf(data, run).corner ?? null : null)
+export function buyCoins(run, data) {
+  if (!cornerOf(data, run) || run.money < CORNER_PACK_PRICE || run.encounter || run.pending) return null
+  return { ...run, money: run.money - CORNER_PACK_PRICE, gcCoins: (run.gcCoins ?? 0) + CORNER_PACK }
+}
+export function spinSlots(run, data) {
+  if (!cornerOf(data, run) || (run.gcCoins ?? 0) < CORNER_SPIN || run.encounter || run.pending) return null
+  const out = { ...run }
+  const rand = dice(out)
+  const r = rand()
+  let acc = 0
+  const hit = CORNER_PAYS.find(([, chance]) => (acc += chance) > r)
+  const reels = hit ? [hit[0], hit[0], hit[0]] : (() => { const x = [0, 1, 2].map(() => pickOne(CORNER_REELS, rand)); if (x[0] === x[1] && x[1] === x[2]) x[2] = CORNER_REELS[(CORNER_REELS.indexOf(x[2]) + 1) % CORNER_REELS.length]; return x })()
+  out.gcCoins = (run.gcCoins ?? 0) - CORNER_SPIN + (hit ? hit[2] : 0)
+  out.slots = { reels, won: hit ? hit[2] : 0 }
+  return out
+}
+/** Troca fichas pelo prêmio (um Pokémon entra no time ou vai para o PC; um TM fica na caixa de TMs). */
+export function cornerPrize(run, data, prize) {
+  const corner = cornerOf(data, run)
+  const row = corner?.prizes.find(([p]) => p === prize)
+  if (!row || (run.gcCoins ?? 0) < row[1] || run.encounter || run.pending) return null
+  const out = { ...run, team: [...run.team], gcCoins: run.gcCoins - row[1] }
+  if (typeof prize === 'string') return { ...out, tms: { ...out.tms, [prize.slice(3)]: (out.tms?.[prize.slice(3)] ?? 0) + 1 } }
+  const rand = dice(out)
+  const mon = newMon(prize, Math.max(START_LEVEL, foeLevelAt(run.floor) - 2), rand, 0, rand() < SHINY_CHANCE * (run.shinyRate ?? 1))
+  if (out.team.length < teamRoom(out)) out.team.push(mon)
+  else {
+    const pc = pcPut(run, mon)
+    if (!pc) return null
+    out.pc = pc
+  }
+  addDex(out, prize)
+  return out
+}
+
+/** A Department Store (Celadon, Goldenrod, Veilstone): o estoque fixo de lá (pedras, vitaminas, TMs), com os preços de sempre. */
+export const storeOf = (data, run) => (run.town ? featuresOf(data, run).store ?? null : null)
+export function enterStore(run, data) {
+  const store = storeOf(data, run)
+  if (!store || run.encounter || run.pending) return run
+  return { ...run, pending: { shop: [...store.stock], store: store.name } }
+}
+
+/**
+ * O Move Reminder e o Move Deleter das cidades (como nos jogos). O Reminder dá uma ficha de Move Reminder por cidade
+ * (em Hoenn e Sinnoh ele cobra uma Heart Scale: HEART_SCALE de dinheiro); o Deleter faz esquecer um golpe, até uma MO.
+ * Em Galar e em Paldea, todo Centro Pokémon faz os dois. Igual ao app.
+ */
+export const HEART_SCALE = 300
+export function tutorsOf(data, run) {
+  if (!run.town) return []
+  const region = data.bosses?.[run.boss?.region]?.region
+  if ((data.routes?.tutors ?? []).includes(region)) return ['deleter', 'reminder']
+  return featuresOf(data, run).tutors ?? []
+}
+export const reminderCost = (data, run) => (tutorsOf(data, run).includes('heart-scale') ? Math.round(HEART_SCALE * priceScale(run.floor)) : 0)
+export function townReminder(run, data) {
+  if (!tutorsOf(data, run).includes('reminder') || run.town?.reminded || run.encounter || run.pending) return null
+  const cost = reminderCost(data, run)
+  if (run.money < cost) return null
+  return { ...run, money: run.money - cost, town: { ...run.town, reminded: true }, tokens: { ...run.tokens, 'move-reminder': (run.tokens?.['move-reminder'] ?? 0) + 1 } }
+}
+/** O Move Deleter: o Pokémon index esquece o golpe slot (fica com pelo menos um). */
+export function forgetMove(run, data, index, slot) {
+  const mon = run.team[index]
+  if (!tutorsOf(data, run).includes('deleter') || !mon || run.encounter || run.pending) return null
+  const moves = mon.moves ?? []
+  if (moves.length < 2 || slot < 0 || slot >= moves.length) return null
+  const team = [...run.team]
+  team[index] = { ...mon, moves: moves.filter((_, i) => i !== slot) }
+  return { ...run, team }
+}
+
+/**
  * A água, em ordem (não dá para pular): da praia (a rota ou a da cidade) para
  * o mar, dele para o fundo do mar e dali para a caverna aquática. Cada um é um
  * lugar de 10 andares com um chefe; vencendo, dá para seguir para o próximo ou voltar.
@@ -1426,13 +1574,28 @@ export function routeOptions(run, data, rand) {
   const wildOnly = inside && (WILD_ONLY.includes(biome) || Boolean(RARE_PLACES[run.dungeon.place]))
   // Num lugar (esgoto, base vilã...): no último andar, o chefe (na base, o vilão).
   // No lugar raro: o lendário do lugar.
+  // O lendário do lugar (as aves de Kanto, o Gyarados vermelho do Lake of Rage): o chefe é ele, e dá para capturar.
+  const legendHere = inside ? placeLegendOf(data, run, run.dungeon.place) : null
+  if (inside && pos >= DUNGEON_LENGTH - 1 && legendHere) return only({ kind: 'wildboss', legend: legendHere.id, placeLegend: true, ...(legendHere.shiny ? { forceShiny: true } : {}) })
   if (inside && pos >= DUNGEON_LENGTH - 1 && RARE_PLACES[run.dungeon.place]) return only({ kind: 'wildboss', legend: rareLegend(run, run.dungeon.place), rare: true, ...(RARE_PLACES[run.dungeon.place].mythic ? { mythic: true } : {}) })
   if (inside && pos >= DUNGEON_LENGTH - 1) return only(wildOnly ? { kind: 'wildboss', area: true } : { kind: run.dungeon.place === 'base' ? 'boss' : 'dboss' })
   // O último andar da cidade: o líder (com a equipe vilã na cidade, primeiro a base dela).
   if (city && pos >= CITY_BOSS) return only(boss.kind === 'villain' ? { kind: 'dungeon', place: 'base', scene: `base-${villainTeam(boss.name)}` } : { kind: 'boss' })
   if (atCity(data, run)) return only({ kind: 'boss' })
   // O último andar da rota: o chefe dela.
-  if (!inside && !city && pos === ROUTE_LENGTH - 1) return only({ kind: 'dboss' })
+  if (!inside && !city && pos === ROUTE_LENGTH - 1) {
+    // Na Victory Road de Kanto, o chefe da rota é o Moltres.
+    const legend = featuresOf(data, run).routeLegend
+    return only(legend != null && data.species[legend] ? { kind: 'wildboss', legend, routeLegend: true } : { kind: 'dboss' })
+  }
+  // O Snorlax (ou o Sudowoodo) dorme no caminho: com o item, acorda e luta; sem ele, só dando a volta.
+  const blocker = !inside && !city && pos === FORKS[0] ? blockerOf(data, run) : null
+  if (blocker) {
+    return { floor: run.floor, biome, options: [
+      { kind: 'wildboss', legend: blocker.id, blocker: blocker.item },
+      { kind: 'trainer', around: true },
+    ] }
+  }
   if (!inside && boss.kind === 'rival') {
     // O rival da história: quantos ainda faltam e quantos andares livres sobram até o líder (sem os chefes).
     const leaders = data.bosses[run.boss.region].leaders
@@ -1492,7 +1655,8 @@ export function routeOptions(run, data, rand) {
   // na rota, o mar (numa rota de praia) e o lugar no caminho (Mt. Moon, Rock Tunnel...).
   const info = routeInfo(data, run)
   const done = run.places ?? []
-  const add = (place) => { if (place && !done.includes(place.id)) options.push({ kind: 'dungeon', place: place.id, scene: place.scene }) }
+  const needs = featuresOf(data, run).needs ?? {}
+  const add = (place) => { if (place && !done.includes(place.id)) options.push({ kind: 'dungeon', place: place.id, scene: place.scene, ...(needs[place.id] ? { needs: needs[place.id] } : {}) }) }
   if (city) {
     for (const place of info?.towns ?? []) add(place)
     if (boss.kind === 'villain') options.push({ kind: 'dungeon', place: 'base', scene: `base-${villainTeam(boss.name)}` })
@@ -1583,6 +1747,10 @@ export function chooseNode(run, data, index, clock = null) {
       for (let k = 0; k < 8 && out.encounter.foes.every((f) => had.has(baseForm(data, f.id))); k++) out.encounter = roll()
     }
     countHunt(data, out)
+    // O lendário do lugar e o que dormia no caminho: vencendo (ou capturando), o lugar ou a rota seguem.
+    if (node.placeLegend) out.encounter = { ...out.encounter, placeLegend: true }
+    if (node.blocker) out.encounter = { ...out.encounter, blocker: true }
+    if (node.around) out.blockLeg = legOf(run)
     // A revanche: o Campeão vencido, com o time do andar de agora (e mais forte).
     if (node.kind === 'rematch') {
       const champ = rematchBoss(data, run)
@@ -1726,7 +1894,9 @@ export function encounterFor(data, floor, rand, boss = null, wild = false, node 
       id = pickOne(legends, rand)
       extra = { title: 'legend' }
     }
-    return { kind: 'wildboss', foes: [foe(id, bossLevel(data, floor, id, level + 3), { ...strong, ...extra, ...(rand() < SHINY_CHANCE * (node?.shiny ?? 1) ? { shiny: true } : {}) })] }
+    // O lendário do lugar e o que dorme no caminho vêm na forma deles (o Gyarados vermelho é Gyarados, o Snorlax é Snorlax).
+    const lvl = Math.max(bossLevel(data, floor, id, level + 3), node?.legend != null ? minLevelOf(data, id) : 0)
+    return { kind: 'wildboss', foes: [foe(id, lvl, { ...strong, ...extra, ...(rand() < SHINY_CHANCE * (node?.shiny ?? 1) || node?.forceShiny ? { shiny: true } : {}) })] }
   }
   if (boss) {
     // Os times dos chefes são de Pokémon evoluídos: quem é mais forte que as espécies do andar vem com nível menor.
@@ -2069,14 +2239,20 @@ export function winFloor(run, data, after = {}) {
   const pieces = piecesFor(data, run)
   const dropped = Object.keys(pieces).length > 0
   if (dropped) out.pieces = addPieces(piecesOf(run), pieces)
-  let champion = false, hm = null
+  let champion = false, hm = null, key = null, placeReward = null
+  if (run.encounter.blocker) out.blockLeg = legOf(run)
   // Venceu a revanche: o Campeão some (até o próximo).
   if (kind === 'rival') out.rivalRaces = (run.rivalRaces ?? 0) + 1
   // Venceu o chefe do lugar (ou o vilão na base): volta para a cidade.
   const rarePlace = Boolean(run.dungeon && RARE_PLACES[run.dungeon.place] && kind === 'wildboss')
-  if (run.dungeon && (kind === 'dboss' || kind === 'boss' || run.encounter.area || rarePlace)) {
+  if (run.dungeon && (kind === 'dboss' || kind === 'boss' || run.encounter.area || run.encounter.placeLegend || rarePlace)) {
     out.dungeons = (run.dungeons ?? 0) + 1
     if (run.dungeon.place !== 'base') out.places = [...(run.places ?? []), run.dungeon.place]
+    // O que o lugar deixa (como nos jogos): o item-chave (o Silph Scope, a Poké Flute) e o prêmio da história (a Master Ball da Silph Co.).
+    const f = featuresOf(data, run)
+    key = addKey(out, f.keys?.[run.dungeon.place])
+    const prize = f.rewards?.[run.dungeon.place]
+    if (prize) { giveItem(out, prize); placeReward = prize }
     // Num lugar da água, dá para seguir para o próximo (o mar depois da praia...); nos outros, volta.
     const onward = waterNext(run.dungeon.scene, waterReach(data, run)) || (run.dungeon.scene === 'water' && hasWaterfall(data, run) && !(out.places ?? []).includes(WATERFALL_PLACE.id))
     if (run.dungeon.place !== 'base' && WATER_CHAIN.some(([, , sc]) => sc === run.dungeon.scene) && onward) out.dungeon = { ...run.dungeon, cleared: true }
@@ -2096,6 +2272,8 @@ export function winFloor(run, data, after = {}) {
       hm = HM_BADGES[out.badges] ?? null
       if (hm && !(run.hms ?? []).includes(hm)) out.hms = [...(run.hms ?? []), hm]
       else hm = null
+      // O item-chave que o ginásio dá (a Squirt Bottle depois da Whitney, em Goldenrod).
+      key = addKey(out, featuresOf(data, run).keys?.gym) ?? key
     }
     if (beaten.kind === 'champion') {
       out.champions = (run.champions ?? 0) + 1
@@ -2173,6 +2351,8 @@ export function winFloor(run, data, after = {}) {
     ...(kind === 'boss' || kind === 'rival' ? { beat: { kind: run.encounter.boss.kind, name: run.encounter.boss.name, region: run.encounter.boss.region } } : {}),
     ...(mission ? { mission } : {}),
     ...(hm ? { hm } : {}),
+    ...(key ? { key } : {}),
+    ...(placeReward ? { placeReward } : {}),
     ...(fled ? { fled: roamer } : {}),
     ...(dowsed ? { dowsed } : {}),
   }
@@ -2427,7 +2607,7 @@ export function hmNeeded(run, node) {
   const need = deep ? 'dive' : place === 'water' ? 'surf' : place === 'waterfall' ? 'waterfall' : null
   return need && !hasHm(run, need) ? need : null
 }
-export const nodeBlocked = (run, node) => hmNeeded(run, node) != null || (node?.kind === 'safari' && (run.money ?? 0) < SAFARI_FEE)
+export const nodeBlocked = (run, node) => hmNeeded(run, node) != null || (node?.kind === 'safari' && (run.money ?? 0) < SAFARI_FEE) || (node?.needs != null && !hasKey(run, node.needs)) || (node?.blocker != null && !hasKey(run, node.blocker))
 /** Cut: uma vez por rota, corta a árvore e abre um caminho escondido (um selvagem raro do lugar). null se não dá. */
 export function cutPath(run) {
   const route = run.route

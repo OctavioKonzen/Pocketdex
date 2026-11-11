@@ -26,7 +26,28 @@ CITIES). O que não está aqui não aparece lá:
   - safari: o nome do Safari no caminho (Safari Zone, Great Marsh);
   - daycare: tem Creche na cidade ou na rota dela;
   - trade: [quem o morador quer, quem ele dá], a troca de lá nos jogos;
-  - museum: {lugar da cidade: [fósseis que o museu revive]}.
+  - museum: {lugar: [fósseis que ele revive]} (os museus, a Devon, a Glittering
+    Cave, as ruínas de Stow-on-Side): vencendo o chefe dele, um deles entra no time;
+  - legends: {lugar: espécie ou {id, shiny}}: o chefe do lugar é ele (dá para
+    capturar), como as aves de Kanto e o Gyarados vermelho do Lake of Rage;
+  - routeLegend: o chefe da rota é ele (o Moltres na Victory Road);
+  - blocker: {id, item}: dorme no meio da rota (o Snorlax, o Sudowoodo); com o
+    item (Poké Flute, Squirt Bottle) dá para acordá-lo e lutar, sem ele só dá
+    para dar a volta;
+  - gifts: [{id, egg?, after?, choose?}]: o presente da cidade (after: só depois
+    de vencer aquele lugar; choose: escolha um; egg: vem em ovo);
+  - keys: {lugar ou 'gym': item-chave}: o que se ganha vencendo ali (o Silph
+    Scope no Rocket Hideout, a Poké Flute na Pokémon Tower, a Squirt Bottle no
+    ginásio de Goldenrod);
+  - needs: {lugar: item-chave}: sem ele não dá para entrar (os fantasmas da
+    Pokémon Tower sem o Silph Scope);
+  - rewards: {lugar: item}: o prêmio da história (a Master Ball da Silph Co.);
+  - corner: {name, prizes: [[espécie ou tm:golpe, fichas]]}: o Game Corner;
+  - store: {name, stock: [...]}: a Department Store (pedras, vitaminas, TMs);
+  - tutors: ['deleter', 'reminder', 'heart-scale']: o Move Deleter e o Move
+    Reminder da cidade (heart-scale: ele cobra uma, como em Hoenn e Sinnoh).
+
+TUTOR_EVERYWHERE: as regiões em que todo Centro Pokémon lembra e esquece golpes.
 
 RARE: os lugares raros de cada região (só aparecem nela).
 
@@ -39,8 +60,7 @@ CITIES = {
     'Pewter City': ['grass', 'Route 1 · Route 2', ['Viridian Forest', 'forest'], [['Pewter Museum', 'ruins']]],
     'Cerulean City': ['mountain', 'Route 3 · Route 4', ['Mt. Moon', 'cave'], [['Nugget Bridge', 'city']]],
     'Vermilion City': ['grass', 'Route 5 · Route 6', ['Underground Path', 'sewer'], [['S.S. Anne', 'city'], ['Vermilion Harbor', 'beach']]],
-    'Celadon City': ['cave', 'Route 9 · Rock Tunnel', ['Pokémon Tower', 'tower'],
-                     [['Rocket Game Corner', 'city'], ['Rocket Hideout', 'base-rocket'], ['Celadon Department Store', 'city']]],
+    'Celadon City': ['cave', 'Route 9 · Rock Tunnel', None, [['Rocket Hideout', 'base-rocket'], ['Pokémon Tower', 'tower']]],
     'Fuchsia City': ['grass', 'Route 12 · Route 15', None, [['Fuchsia Beach', 'beach']]],
     'Saffron City': ['city', 'Route 7 · Route 8', ['Power Plant', 'plant'], [['Silph Co.', 'base-rocket'], ['Fighting Dojo', 'temple']]],
     'Cinnabar Island': ['water', 'Route 19 · Route 20', ['Seafoam Islands', 'icecave'],
@@ -52,7 +72,7 @@ CITIES = {
     'Violet City': ['grass', 'Route 29 · Route 30 · Route 31', ['Dark Cave', 'cave'], [['Sprout Tower', 'tower'], ['Ruins of Alph', 'ruins']]],
     'Azalea Town': ['grass', 'Route 32 · Route 33', ['Union Cave', 'cave'], [['Slowpoke Well', 'sewer']]],
     'Goldenrod City': ['grass', 'Route 34', ['Ilex Forest', 'forest'],
-                       [['Goldenrod Tunnel', 'sewer'], ['Radio Tower', 'base-rocket'], ['Goldenrod Department Store', 'city']]],
+                       [['Goldenrod Tunnel', 'sewer'], ['Radio Tower', 'base-rocket']]],
     'Ecruteak City': ['grass', 'Route 35 · Route 36 · Route 37', ['National Park', 'flowers'], [['Burned Tower', 'tower'], ['Bell Tower', 'tower']]],
     'Olivine City': ['beach', 'Route 38 · Route 39', None, [['Glitter Lighthouse', 'tower'], ['Olivine Beach', 'beach']]],
     'Cianwood City': ['water', 'Route 40 · Route 41', ['Whirl Islands', 'cave'], [['Cianwood Beach', 'beach']]],
@@ -61,7 +81,7 @@ CITIES = {
     # Hoenn
     'Rustboro City': ['grass', 'Route 101 · Route 102 · Route 104', ['Petalburg Woods', 'forest'], [['Devon Corporation', 'plant'], ["Trainers' School", 'city']]],
     'Dewford Town': ['water', 'Route 105 · Route 106', ['Granite Cave', 'cave'], [['Dewford Beach', 'beach']]],
-    'Mauville City': ['beach', 'Route 109 · Route 110', ['New Mauville', 'plant'], [['Mauville Game Corner', 'city']]],
+    'Mauville City': ['beach', 'Route 109 · Route 110', ['New Mauville', 'plant'], []],
     'Lavaridge Town': ['mountain', 'Route 111 · Route 112', ['Fiery Path', 'lavacave'], [['Lavaridge Herb Shop', 'city']]],
     'Petalburg City': ['desert', 'Route 111 · Route 102', ['Mirage Tower', 'tower'], []],
     'Fortree City': ['forest', 'Route 119', ['Weather Institute', 'plant'], []],
@@ -73,7 +93,7 @@ CITIES = {
     'Eterna City': ['forest', 'Route 204 · Route 205', ['Eterna Forest', 'forest'], [['Galactic Eterna Building', 'base-galactic']]],
     'Hearthome City': ['grass', 'Route 206 · Route 207 · Route 208', ['Mt. Coronet', 'mountain'], [['Hearthome Contest Hall', 'city']]],
     'Veilstone City': ['mountain', 'Route 209 · Route 210 · Route 215', ['Lost Tower', 'tower'],
-                       [['Galactic HQ', 'base-galactic'], ['Veilstone Department Store', 'city'], ['Veilstone Game Corner', 'city']]],
+                       [['Galactic HQ', 'base-galactic']]],
     'Pastoria City': ['swamp', 'Route 213 · Route 214', ['Ruin Maniac Cave', 'cave'], [['Valor Lakefront', 'beach']]],
     'Canalave City': ['water', 'Route 218', ['Iron Island', 'cave'], [['Canalave Library', 'ruins'], ['Canalave Harbor', 'beach']]],
     'Snowpoint City': ['snow', 'Route 216 · Route 217', ['Lake Acuity', 'snow'], [['Snowpoint Temple', 'temple'], ['Snowpoint Harbor', 'beach']]],
@@ -137,57 +157,79 @@ CITIES = {
 }
 
 FEATURES = {
-    # Kanto
     'Pewter City': {'trade': [63, 122], 'museum': {'pewter-museum': [138, 140, 142]}},
-    'Cerulean City': {'trade': [61, 124]},
-    'Vermilion City': {'water': 'sea', 'daycare': True, 'trade': [21, 83]},
-    'Fuchsia City': {'water': 'sea', 'safari': 'Safari Zone', 'trade': [55, 108]},
-    'Cinnabar Island': {'water': 'sea', 'trade': [48, 114]},
+    'Cerulean City': {'trade': [61, 124], 'gifts': [{'id': 1}]},
+    'Vermilion City': {'water': 'sea', 'daycare': True, 'trade': [21, 83], 'gifts': [{'id': 7}]},
+    'Celadon City': {
+        'gifts': [{'id': 133}],
+        'keys': {'rocket-hideout': 'silph-scope', 'pok-mon-tower': 'poke-flute'},
+        'needs': {'pok-mon-tower': 'silph-scope'},
+        'corner': {'name': 'Rocket Game Corner', 'prizes': [[63, 18], [35, 50], [30, 120], [33, 120], [147, 280], [123, 550], [127, 550], [137, 1000]]},
+        'store': {'name': 'Celadon Department Store', 'stock': ['evo:fire-stone', 'evo:water-stone', 'evo:thunder-stone', 'evo:leaf-stone', 'evo:moon-stone',
+                                                                 'hp-up', 'protein', 'iron', 'calcium', 'carbos', 'tm:ice-beam', 'tm:thunderbolt', 'tm:flamethrower',
+                                                                 'super-potion', 'hyper-potion']},
+    },
+    'Fuchsia City': {'water': 'sea', 'safari': 'Safari Zone', 'trade': [55, 108], 'blocker': {'id': 143, 'item': 'poke-flute'}, 'tutors': ['deleter']},
+    'Saffron City': {'legends': {'power-plant': 145}, 'gifts': [{'id': 131, 'after': 'silph-co-'}, {'choose': [106, 107], 'after': 'fighting-dojo'}], 'rewards': {'silph-co-': 'master-ball'}},
+    'Cinnabar Island': {'water': 'sea', 'trade': [48, 114], 'legends': {'seafoam-islands': 144}, 'tutors': ['reminder']},
     'Viridian City': {'water': 'sea'},
-    'Seafoam Islands': {'water': 'sea'},
-    # Johto
-    'Violet City': {'trade': [69, 95]},
-    'Goldenrod City': {'daycare': True, 'trade': [96, 66]},
+    'Indigo Plateau': {'routeLegend': 146},
+    'Seafoam Islands': {'water': 'sea', 'legends': {'seafoam-islands': 144}},
+    'Violet City': {'trade': [69, 95], 'gifts': [{'id': 175, 'egg': True}]},
+    'Goldenrod City': {
+        'daycare': True, 'trade': [96, 66], 'gifts': [{'id': 133}], 'keys': {'gym': 'squirt-bottle'}, 'rewards': {'radio-tower': 'max-revive'},
+        'corner': {'name': 'Goldenrod Game Corner', 'prizes': [[63, 20], [23, 70], [27, 70], [147, 210]]},
+        'store': {'name': 'Goldenrod Department Store', 'stock': ['evo:fire-stone', 'evo:water-stone', 'evo:thunder-stone', 'evo:leaf-stone', 'hp-up', 'protein', 'iron',
+                                                                   'calcium', 'carbos', 'tm:dig', 'tm:body-slam', 'tm:double-edge', 'hyper-potion', 'revive']},
+    },
+    'Ecruteak City': {'blocker': {'id': 185, 'item': 'squirt-bottle'}},
     'Olivine City': {'water': 'sea', 'trade': [98, 100]},
-    'Cianwood City': {'water': 'sea', 'fall': True, 'safari': 'Safari Zone'},
-    'Blackthorn City': {'trade': [148, 85]},
-    # Hoenn
-    'Rustboro City': {'trade': [287, 296]},
+    'Cianwood City': {'water': 'sea', 'fall': True, 'safari': 'Safari Zone', 'gifts': [{'id': 213}]},
+    'Blackthorn City': {'trade': [148, 85], 'legends': {'lake-of-rage': {'id': 130, 'shiny': True}}, 'gifts': [{'id': 147, 'after': 'dragon-s-den'}], 'tutors': ['deleter', 'reminder']},
+    'Rustboro City': {'trade': [287, 296], 'museum': {'devon-corporation': [345, 347]}},
     'Dewford Town': {'water': 'sea'},
-    'Mauville City': {'water': 'sea', 'daycare': True},
-    'Fortree City': {'trade': [25, 300]},
-    'Mossdeep City': {'water': 'deep', 'safari': 'Safari Zone'},
+    'Mauville City': {
+        'water': 'sea', 'daycare': True,
+        'corner': {'name': 'Mauville Game Corner', 'prizes': [['tm:shadow-ball', 150], ['tm:psychic', 350], ['tm:flamethrower', 400], ['tm:thunderbolt', 400], ['tm:ice-beam', 400]]},
+    },
+    'Lavaridge Town': {'gifts': [{'id': 360, 'egg': True}], 'tutors': ['reminder', 'heart-scale']},
+    'Fortree City': {'trade': [25, 300], 'gifts': [{'id': 351, 'after': 'weather-institute'}]},
+    'Mossdeep City': {'water': 'deep', 'safari': 'Safari Zone', 'gifts': [{'id': 374}], 'tutors': ['deleter']},
     'Sootopolis City': {'water': 'cave', 'fall': True},
-    # Sinnoh
     'Oreburgh City': {'trade': [66, 63], 'museum': {'oreburgh-mining-museum': [408, 410]}},
-    'Eterna City': {'trade': [418, 441]},
-    'Veilstone City': {'daycare': True},
-    'Pastoria City': {'water': 'sea', 'safari': 'Great Marsh'},
-    'Canalave City': {'water': 'sea'},
+    'Eterna City': {'trade': [418, 441], 'gifts': [{'id': 175, 'egg': True}]},
+    'Hearthome City': {'gifts': [{'id': 133}]},
+    'Veilstone City': {
+        'daycare': True, 'rewards': {'galactic-hq': 'master-ball'},
+        'corner': {'name': 'Veilstone Game Corner', 'prizes': [['tm:dark-pulse', 200], ['tm:earthquake', 400], ['tm:thunderbolt', 400], ['tm:ice-beam', 400], ['tm:flamethrower', 400]]},
+        'store': {'name': 'Veilstone Department Store', 'stock': ['hp-up', 'protein', 'iron', 'calcium', 'zinc', 'carbos', 'tm:shadow-ball', 'tm:earthquake', 'tm:psychic',
+                                                                   'tm:energy-ball', 'hyper-potion', 'max-potion', 'revive']},
+    },
+    'Pastoria City': {'water': 'sea', 'safari': 'Great Marsh', 'tutors': ['reminder', 'heart-scale']},
+    'Canalave City': {'water': 'sea', 'gifts': [{'id': 447, 'egg': True, 'after': 'iron-island'}], 'tutors': ['deleter']},
     'Snowpoint City': {'trade': [308, 93]},
     'Sunyshore City': {'water': 'sea', 'fall': True},
-    # Unova
     'Nacrene City': {'daycare': True, 'trade': [546, 548], 'museum': {'nacrene-museum': [564, 566]}},
-    'Driftveil City': {'trade': [572, 550]},
+    'Driftveil City': {'trade': [572, 550], 'gifts': [{'id': 570}]},
+    'Mistralton City': {'tutors': ['deleter', 'reminder']},
     'Icirrus City': {'trade': [525, 587]},
     'Humilau City': {'water': 'deep', 'trade': [226, 465]},
-    # Kalos
     'Cyllage City': {'water': 'sea', 'daycare': True, 'trade': [370, 208]},
-    'Shalour City': {'water': 'sea'},
-    'Coumarine City': {'water': 'sea'},
-    # Alola
+    'Shalour City': {'water': 'sea', 'gifts': [{'id': 448, 'after': 'tower-of-mastery'}]},
+    'Coumarine City': {'water': 'sea', 'museum': {'glittering-cave': [696, 698]}},
+    'Lumiose City': {'tutors': ['deleter', 'reminder']},
     'Verdant Cavern': {'water': 'sea', 'trade': [21, 66]},
     'Ruins of Life': {'water': 'sea'},
     'Brooklet Hill': {'daycare': True, 'trade': [506, 761]},
-    'Malie City': {'trade': [674, 440]},
+    'Malie City': {'trade': [674, 440], 'tutors': ['deleter', 'reminder']},
     'Seafolk Village': {'water': 'sea', 'trade': [210, 762]},
-    # Galar
-    'Hulbury': {'daycare': True, 'trade': [572, 546]},
+    'Hulbury': {'daycare': True, 'trade': [572, 546], 'gifts': [{'id': 848, 'egg': True}]},
     'Motostoke': {'trade': [659, 819]},
+    'Stow-on-Side': {'museum': {'stow-on-side-ruins': [880, 881, 882, 883]}},
     'Circhester': {'trade': [583, 538]},
     'Spikemuth': {'water': 'sea'},
     'Hammerlocke': {'trade': [848, 175]},
-    'Wyndon': {'trade': [873, 884]},
+    'Wyndon': {'trade': [873, 884], 'gifts': [{'id': 772}]},
     # Paldea (os ovos vêm do piquenique: dá em qualquer cidade)
     'Cortondo': {'daycare': True, 'trade': [669, 872]},
     'Artazon': {'daycare': True},
@@ -198,6 +240,8 @@ FEATURES = {
     'Alfornada': {'daycare': True},
     'Glaseado': {'daycare': True},
 }
+
+TUTOR_EVERYWHERE = ['Galar', 'Paldea']
 
 RARE = {
     'Kanto': ['cerulean-cave', 'navel-rock'],

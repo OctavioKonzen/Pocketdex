@@ -8,7 +8,7 @@ import {
   placeInfo, routeInfo, DBOSS_GIMMICK_FLOOR, UPGRADE_FX, SHORE, CAVE_OF, dungeonPos, routePos, DUNGEON_LENGTH, CITY_BOSS, waterNext, RIVAL_FLOOR, targetOf, rivalBoss, rocketBoss, townShop, townCenter, townHub, biomesLinked,
   isDoubleBattle,
   DOUBLE_FLOOR,
-  battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, RARE_PLACES, atPc, pcOf, pcMove, pcSlots, PC_BOX, boxName, renameBox, boxWall, nextWall, setNick, gameOf, leagueAhead, rivalGrowth, sortBox, shownScene, bagsFor, NUZLOCKE_DEFAULT, levelCapOf, EXP_BENCH, benchShare, TRADE_EXP, TRADE_EVOS, familyOf, townTrade, townTradeable, featuresOf, waterReach, hasWaterfall, WATER_REACH, daycareHere, daycareOpen, rarePlacesOf, SECRET_BIOMES, PLACE_SCENES, SAFARI_FEE, SAFARI_BALLS, SAFARI_ENCOUNTERS, SAFARI_MONS, safariRates, safariAct, safariPool, leaveSafari, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
+  battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, RARE_PLACES, atPc, pcOf, pcMove, pcSlots, PC_BOX, boxName, renameBox, boxWall, nextWall, setNick, gameOf, leagueAhead, rivalGrowth, sortBox, shownScene, bagsFor, NUZLOCKE_DEFAULT, levelCapOf, EXP_BENCH, benchShare, TRADE_EXP, TRADE_EVOS, familyOf, townTrade, townTradeable, featuresOf, waterReach, hasWaterfall, WATER_REACH, daycareHere, daycareOpen, rarePlacesOf, SECRET_BIOMES, PLACE_SCENES, hasKey, KEY_ITEMS, placeLegendOf, blockerOf, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, forgetMove, reminderCost, SAFARI_FEE, SAFARI_BALLS, SAFARI_ENCOUNTERS, SAFARI_MONS, safariRates, safariAct, safariPool, leaveSafari, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
   HELD_BOOST, levelTo, MAX_TEAM, memberOf, movesAt, nextFloor, nextRandom, overflowPoints, pokemonPrice, runCoins, setMainItem, shopPrice,
   SHINY_BOOST, FOE_SHINY_BOOST, SHINY_CHANCE, START_BAG, START_BALLS, startersOf, unlockShiny, claimStarter, freePick, canEvolveWith, teachMove,
   equipFromStash, gimmicksOf, setGimmick, storyLine, startRun, takeCard, teamDown, applyBagItem, winFloor, chooseNode, routeOptions, routeCities,
@@ -1257,18 +1257,25 @@ describe('cidade e lugares perto dela', () => {
     // Na bifurcação da cidade, os lugares dela (do jogo), nunca floresta ou caverna.
     run = nextFloor({ ...run, floor: 1 + ROUTE_LENGTH + FORKS[0] }, data)
     const places = run.route.options.filter((o) => o.kind === 'dungeon').map((o) => o.place)
-    expect(places).toEqual(['rocket-game-corner', 'rocket-hideout', 'celadon-department-store'])
+    expect(places).toEqual(['rocket-hideout', 'pok-mon-tower'])
+    // Sem o Silph Scope, os fantasmas da Pokémon Tower não deixam entrar.
+    expect(nodeBlocked(run, run.route.options.find((o) => o.place === 'pok-mon-tower'))).toBe(true)
     run = chooseNode(run, data, run.route.options.findIndex((o) => o.place === 'rocket-hideout'))
     expect(townHub(data, run)).toBe(false)
     expect(run.route.biome).toBe('base-rocket')
     run = nextFloor({ ...run, floor: run.floor + DUNGEON_LENGTH - 1 }, data)
     expect(run.route.options).toEqual([{ kind: 'dboss' }])
-    run = nextFloor(winFloor(chooseNode(run, data, 0), data), data)
+    run = winFloor(chooseNode(run, data, 0), data)
+    // Vencendo o Rocket Hideout, o Silph Scope (agora dá para entrar na Pokémon Tower).
+    expect(run.pending.key).toBe('silph-scope')
+    expect(hasKey(run, 'silph-scope')).toBe(true)
+    run = nextFloor(run, data)
     // De volta ao mesmo andar da cidade; na próxima bifurcação, os que faltam.
     expect(routePos(run)).toBe(ROUTE_LENGTH + FORKS[0])
     expect(run.route.options).toHaveLength(1)
     run = nextFloor({ ...run, floor: run.floor + FORKS[1] - FORKS[0] }, data)
-    expect(run.route.options.filter((o) => o.kind === 'dungeon').map((o) => o.place)).toEqual(['rocket-game-corner', 'celadon-department-store'])
+    expect(run.route.options.filter((o) => o.kind === 'dungeon').map((o) => o.place)).toEqual(['pok-mon-tower'])
+    expect(nodeBlocked(run, run.route.options.find((o) => o.place === 'pok-mon-tower'))).toBe(false)
     // O último andar da cidade: o líder.
     run = nextFloor({ ...run, floor: run.floor + CITY_BOSS - ROUTE_LENGTH - FORKS[1] }, data)
     expect(routePos(run)).toBe(CITY_BOSS)
@@ -1600,8 +1607,8 @@ describe('tudo conforme o mapa: trocas, Safari, Creche, lugares raros, caverna s
       expect(cities[city], city).toBeTruthy()
       for (const id of f.trade ?? []) expect(data.species[id], `${city} ${id}`).toBeTruthy()
       for (const [place, fossils] of Object.entries(f.museum ?? {})) {
-        expect(PLACE_SCENES[place]).toBe('museum')
-        expect(routeInfoOf(city).towns.map((p) => p.id)).toContain(place)
+        if (place.endsWith('museum')) expect(PLACE_SCENES[place]).toBe('museum')
+        expect([...routeInfoOf(city).towns, routeInfoOf(city).side].filter(Boolean).map((p) => p.id)).toContain(place)
         for (const id of fossils) expect(data.species[id]).toBeTruthy()
       }
     }
@@ -1716,6 +1723,134 @@ describe('tudo conforme o mapa: trocas, Safari, Creche, lugares raros, caverna s
     // Num lugar que não é museu, nada de fóssil.
     const other = winFloor({ ...pewter, dungeon: { place: 'viridian-forest', scene: 'forest', start: 12 }, encounter: { kind: 'dboss', foes: [{ id: 74, level: 8, iv: 0, ev: 0 }] } }, data, { hp: [1] })
     expect(other.pending.capture).toBe(null)
+  })
+})
+
+describe('o que acontece em cada lugar: lendários, bloqueios, presentes, Game Corner, Department Store, Move Deleter e Reminder', () => {
+  const start = () => startRun(emptyFactory(), data, 1, 42)
+  const game = (name) => data.bosses.findIndex((b) => b.game === name)
+  const red = game('Red/Blue')
+  const toCity = (g, city, extra = {}) => ({ ...start(), leg: 1, boss: { region: g, step: data.bosses[g].leaders.findIndex((l) => l.city === city) }, encounter: null, pending: null, ...extra })
+  const inPlace = (g, city, place, scene, extra = {}) => toCity(g, city, { floor: 1 + DUNGEON_LENGTH, dungeon: { place, scene, start: 2 }, ...extra })
+  it('as aves de Kanto e o Gyarados vermelho: o chefe do lugar é ele, dá para capturar; o Moltres é o chefe da Victory Road (igual ao app)', () => {
+    const plant = nextFloor(inPlace(red, 'Saffron City', 'power-plant', 'plant', { floor: 1 + DUNGEON_LENGTH }), data)
+    expect(plant.route.options).toEqual([{ kind: 'wildboss', legend: 145, placeLegend: true }])
+    const fight = chooseNode(plant, data, 0)
+    expect(fight.encounter.foes[0].id).toBe(145)
+    expect(fight.encounter.placeLegend).toBe(true)
+    // Vencendo (ou capturando), o lugar acaba e você volta.
+    const won = winFloor(fight, data, { captured: true })
+    expect(won.dungeon).toBe(null)
+    expect(won.pending.capture.id).toBe(145)
+    expect(placeLegendOf(data, toCity(red, 'Cinnabar Island'), 'seafoam-islands')).toEqual({ id: 144 })
+    const gs = game('Gold/Silver')
+    const rage = chooseNode(nextFloor(inPlace(gs, 'Blackthorn City', 'lake-of-rage', 'swamp'), data), data, 0)
+    expect(rage.encounter.foes[0]).toMatchObject({ id: 130, shiny: true })
+    const victory = nextFloor(toCity(red, 'Indigo Plateau', { floor: ROUTE_LENGTH }), data)
+    expect(victory.route.options).toEqual([{ kind: 'wildboss', legend: 146, routeLegend: true }])
+  })
+  it('o Snorlax e o Sudowoodo dormem no caminho: sem o item, só dá a volta; a Poké Flute vem da Pokémon Tower e a Squirt Bottle do ginásio de Goldenrod (igual ao app)', () => {
+    const road = toCity(red, 'Fuchsia City', { floor: 1 + FORKS[0] })
+    const opts = nextFloor(road, data).route.options
+    expect(opts).toEqual([{ kind: 'wildboss', legend: 143, blocker: 'poke-flute' }, { kind: 'trainer', around: true }])
+    expect(nodeBlocked(road, opts[0])).toBe(true)
+    // Dando a volta, ele não aparece de novo nesta rota.
+    const around = chooseNode(nextFloor(road, data), data, 1)
+    expect(around.blockLeg).toBe(legOf(road))
+    expect(blockerOf(data, around)).toBe(null)
+    // Com a Poké Flute: acorda e luta.
+    const flute = nextFloor({ ...road, keyItems: ['poke-flute'] }, data)
+    expect(nodeBlocked(flute, flute.route.options[0])).toBe(false)
+    const snorlax = chooseNode(flute, data, 0)
+    expect(snorlax.encounter.foes[0].id).toBe(143)
+    expect(winFloor(snorlax, data).blockLeg).toBe(legOf(road))
+    // A Poké Flute: vencendo a Pokémon Tower (precisa do Silph Scope).
+    const tower = winFloor({ ...inPlace(red, 'Celadon City', 'pok-mon-tower', 'tower', { keyItems: ['silph-scope'] }), encounter: { kind: 'dboss', foes: [{ id: 92, level: 20, iv: 0, ev: 0 }] } }, data, { hp: [1] })
+    expect(tower.pending.key).toBe('poke-flute')
+    expect(hasKey(tower, 'poke-flute')).toBe(true)
+    // A Squirt Bottle: vencendo a Whitney (ginásio de Goldenrod).
+    const gs = game('Gold/Silver')
+    const whitney = toCity(gs, 'Goldenrod City', { floor: 1 + CITY_BOSS, boss: { region: gs, step: data.bosses[gs].leaders.findIndex((l) => l.city === 'Goldenrod City' && l.kind === 'gym') } })
+    const gym = winFloor(chooseNode(nextFloor(whitney, data), data, 0), data)
+    expect(gym.pending.key).toBe('squirt-bottle')
+    expect(blockerOf(data, toCity(gs, 'Ecruteak City'))).toEqual({ id: 185, item: 'squirt-bottle' })
+    expect(Object.keys(KEY_ITEMS)).toEqual(['silph-scope', 'poke-flute', 'squirt-bottle'])
+  })
+  it('os presentes da cidade: o Eevee de Celadon, o Lapras depois da Silph Co., escolher Hitmonlee ou Hitmonchan, o ovo de Togepi (igual ao app)', () => {
+    const celadon = nextFloor(toCity(red, 'Celadon City', { floor: 1 + ROUTE_LENGTH }), data)
+    const gifts = townGifts(data, celadon)
+    expect(gifts.map((g) => g.id)).toEqual([133])
+    const got = takeGift(celadon, data, 0)
+    expect(got.team.at(-1)).toMatchObject({ id: 133, level: Math.max(5, foeLevelAt(celadon.floor)) })
+    expect(townGifts(data, got)).toEqual([])
+    expect(takeGift(got, data, 0)).toBe(null)
+    // Saffron: o Lapras só depois da Silph Co.; no Dojo, escolhe um dos dois.
+    const saffron = nextFloor(toCity(red, 'Saffron City', { floor: 1 + ROUTE_LENGTH }), data)
+    expect(townGifts(data, saffron)).toEqual([])
+    const after = { ...saffron, places: ['silph-co-', 'fighting-dojo'] }
+    expect(townGifts(data, after).map((g) => g.k)).toEqual([0, 1])
+    expect(takeGift(after, data, 1, 25)).toBe(null)
+    expect(takeGift(after, data, 1, 107).team.at(-1).id).toBe(107)
+    // O ovo de Togepi (Violet City) vai como ovo.
+    const violet = nextFloor(toCity(game('Gold/Silver'), 'Violet City', { floor: 1 + ROUTE_LENGTH }), data)
+    const egg = takeGift(violet, data, 0)
+    expect(egg.eggs.at(-1)).toEqual({ id: 175, left: EGG_BATTLES })
+    expect(egg.team).toHaveLength(violet.team.length)
+    // Rewards da história: a Master Ball da Silph Co.
+    const silph = winFloor({ ...inPlace(red, 'Saffron City', 'silph-co-', 'base-rocket'), encounter: { kind: 'dboss', foes: [{ id: 24, level: 30, iv: 0, ev: 0 }] } }, data, { hp: [1] })
+    expect(silph.pending.placeReward).toBe('master-ball')
+    expect(silph.bag['master-ball']).toBe((silph.bag['master-ball'] ?? 0) && silph.bag['master-ball'])
+    expect(silph.bag['master-ball']).toBeGreaterThan(0)
+  })
+  it('Game Corner: fichas, caça-níqueis e os prêmios de lá (o Porygon em Celadon, TMs em Mauville) (igual ao app)', () => {
+    const celadon = nextFloor(toCity(red, 'Celadon City', { floor: 1 + ROUTE_LENGTH, money: 50000 }), data)
+    expect(cornerOf(data, celadon).name).toBe('Rocket Game Corner')
+    expect(cornerOf(data, nextFloor(toCity(red, 'Pewter City', { floor: 1 + ROUTE_LENGTH }), data))).toBe(null)
+    let run = buyCoins(celadon, data)
+    expect(run).toMatchObject({ money: 50000 - CORNER_PACK_PRICE, gcCoins: CORNER_PACK })
+    let total = 0
+    for (let k = 0; k < 400; k++) {
+      const next = spinSlots(run, data) ?? spinSlots(buyCoins(run, data), data)
+      expect(next.slots.reels).toHaveLength(3)
+      if (next.slots.won) expect(new Set(next.slots.reels).size).toBe(1)
+      total += next.slots.won
+      run = next
+    }
+    // Na média, o caça-níqueis perde um pouco (como nos jogos).
+    expect(total).toBeLessThan(400 * CORNER_SPIN)
+    expect(cornerPrize({ ...run, gcCoins: 0 }, data, 137)).toBe(null)
+    const porygon = cornerPrize({ ...run, gcCoins: 1000 }, data, 137)
+    expect(porygon.gcCoins).toBe(0)
+    expect([...porygon.team, ...(porygon.pc ?? [])].some((m) => m?.id === 137)).toBe(true)
+    const gsc = game('Ruby/Sapphire') >= 0 ? game('Ruby/Sapphire') : data.bosses.findIndex((b) => b.region === 'Hoenn')
+    const mauville = nextFloor(toCity(gsc, 'Mauville City', { floor: 1 + ROUTE_LENGTH }), data)
+    const tm = cornerPrize({ ...mauville, gcCoins: 400 }, data, 'tm:thunderbolt')
+    expect(tm.tms.thunderbolt).toBe(1)
+  })
+  it('Department Store e Move Deleter/Reminder: só onde existem; em Hoenn e Sinnoh o Reminder cobra uma Heart Scale; em Galar todo Centro faz (igual ao app)', () => {
+    const celadon = nextFloor(toCity(red, 'Celadon City', { floor: 1 + ROUTE_LENGTH }), data)
+    const store = enterStore(celadon, data)
+    expect(store.pending.store).toBe('Celadon Department Store')
+    expect(store.pending.shop).toContain('evo:moon-stone')
+    expect(storeOf(data, nextFloor(toCity(red, 'Pewter City', { floor: 1 + ROUTE_LENGTH }), data))).toBe(null)
+    const fuchsia = nextFloor(toCity(red, 'Fuchsia City', { floor: 1 + ROUTE_LENGTH }), data)
+    expect(tutorsOf(data, fuchsia)).toEqual(['deleter'])
+    const mon = { ...fuchsia.team[0], moves: ['scratch', 'growl', 'ember'] }
+    expect(forgetMove({ ...fuchsia, team: [mon] }, data, 0, 1).team[0].moves).toEqual(['scratch', 'ember'])
+    expect(forgetMove({ ...fuchsia, team: [{ ...mon, moves: ['scratch'] }] }, data, 0, 0)).toBe(null)
+    expect(townReminder(fuchsia, data)).toBe(null)
+    const cinnabar = nextFloor(toCity(red, 'Cinnabar Island', { floor: 1 + ROUTE_LENGTH }), data)
+    const reminded = townReminder(cinnabar, data)
+    expect(reminded.tokens['move-reminder']).toBe((cinnabar.tokens['move-reminder'] ?? 0) + 1)
+    expect(reminded.money).toBe(cinnabar.money)
+    expect(townReminder(reminded, data)).toBe(null)
+    const dp = game('Diamond/Pearl')
+    const pastoria = nextFloor(toCity(dp, 'Pastoria City', { floor: 1 + ROUTE_LENGTH, money: 99999 }), data)
+    expect(reminderCost(data, pastoria)).toBeGreaterThan(0)
+    expect(townReminder(pastoria, data).money).toBe(99999 - reminderCost(data, pastoria))
+    const galar = data.bosses.findIndex((b) => b.region === 'Galar')
+    const city = data.bosses[galar].leaders.find((l) => l.city)?.city
+    expect(tutorsOf(data, nextFloor(toCity(galar, city, { floor: 1 + ROUTE_LENGTH }), data))).toEqual(['deleter', 'reminder'])
   })
 })
 
