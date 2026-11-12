@@ -1764,8 +1764,8 @@ describe('o clima único de cada rota e lugar (como nos jogos)', () => {
         const [biome, , side, towns] = data.routes.cities[city]
         const place = [side, ...(towns ?? [])].filter(Boolean).find(([name]) => name.toLowerCase().replace(/[^a-z0-9]/g, '-') === key)
         const scene = key === 'route' ? biome : PLACE_SCENES[key] ?? place[1]
-        if ((c.w ?? []).some(([w]) => w === 'snow')) expect([...SNOW_SCENES, 'mountain'], `${city} ${key}`).toContain(scene)
-        if ((c.w ?? []).some(([w]) => w === 'sand')) expect(SAND_SCENES, `${city} ${key}`).toContain(scene)
+        if ((c.w ?? []).some(([w]) => w === 'snow')) expect([...SNOW_SCENES, 'mountain', 'wildarea'], `${city} ${key}`).toContain(scene)
+        if ((c.w ?? []).some(([w]) => w === 'sand')) expect([...SAND_SCENES, 'wildarea'], `${city} ${key}`).toContain(scene)
       }
     }
     // Tempestade, aurora e ventos fortes também só a céu aberto.

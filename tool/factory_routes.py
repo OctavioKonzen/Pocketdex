@@ -303,7 +303,7 @@ CLIMATE = {
     'Mount Lanakila': {'route': {'w': [['snow', 0.9]]}, 'mount-lanakila': {'f': [['chill', 0.7]]}},
     # Galar
     'Turffield': {'galar-mine': {'f': [['diamonds', 0.5]]}},
-    'Motostoke': {'wild-area': {'w': [['sun', 0.3], ['rain', 0.3]]}},  # o clima da Wild Area muda sempre
+    'Motostoke': {'wild-area': {'w': [['sun', 0.2], ['rain', 0.2], ['snow', 0.12], ['sand', 0.12]], 'f': [['storm', 0.2], ['misty', 0.2]]}},  # a Wild Area tem todos os climas dos jogos: sol forte, chuva, trovoada, neve, tempestade de areia e neblina
     'Stow-on-Side': {'route': {'w': [['sand', 0.6]]}},
     'Ballonlea': {'route': {'f': [['misty', 0.7]]}, 'glimwood-tangle': {'f': [['misty', 0.5], ['spores', 0.4]]}},
     'Circhester': {'route': {'w': [['snow', 0.8]]}},
