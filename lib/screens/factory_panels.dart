@@ -109,7 +109,7 @@ Future<(TurnBattle, List<int>)> factoryBattle(Json run) async {
   final scene = FactoryRun.bossScene(data, run['encounter']?['boss'] as Map?, '${run['encounter']?['scene'] ?? run['encounter']?['biome'] ?? 'grass'}');
   // E o clima do lugar (sol no deserto, chuva no mar, neve na caverna de gelo...).
   // E o efeito do lugar (terreno, chuva de diamantes, aura sombria...; no céu, ventos fortes).
-  final place = FactoryRun.fieldOf(run, scene);
+  final place = FactoryRun.fieldOf(run, scene, data);
   // A barra de XP e o XP na hora: quem lutou ganha tudo; com o Exp. Share, o resto a metade.
   final kind = run['encounter']?['kind'] as String?;
   final expBar = (
@@ -131,8 +131,8 @@ Future<(TurnBattle, List<int>)> factoryBattle(Json run) async {
       startBags: FactoryRun.bagsFor(run),
       healPct: true,
       capture: FactoryRun.captureFor(run, data),
-      startWeather: FactoryRun.weatherOf(run, scene, FactoryRun.clockOf().season).isNotEmpty
-          ? FactoryRun.weatherOf(run, scene, FactoryRun.clockOf().season)
+      startWeather: FactoryRun.weatherOf(run, scene, FactoryRun.clockOf().season, data).isNotEmpty
+          ? FactoryRun.weatherOf(run, scene, FactoryRun.clockOf().season, data)
           : (place == 'wind' ? 'wind' : ''),
       startField: place == 'wind' ? '' : place,
       startExp: {
@@ -4136,7 +4136,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
     final cut = !meeting && !town ? FactoryRun.cutPath(run) : null;
     final smash = !meeting && !town ? FactoryRun.smashPath(run) : null;
     final strength = !meeting && !town ? FactoryRun.strengthPath(run) : null;
-    final forecast = town ? '' : FactoryRun.weatherOf(run, '${route['biome']}', clock.season);
+    final forecast = town ? '' : FactoryRun.weatherOf(run, '${route['biome']}', clock.season, data);
     final burst = FactoryRun.outbreakOf(data, clock.day);
     // O andar (pequeno, num canto): na rota, até a cidade; num lugar, até o chefe dele.
     final floorTag = dungeon != null

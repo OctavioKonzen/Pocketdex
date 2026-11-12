@@ -241,6 +241,83 @@ FEATURES = {
     'Glaseado': {'daycare': True},
 }
 
+
+# O clima único de cada rota e lugar, como nos jogos: 'route' é a rota até a cidade; as outras chaves são os lugares
+# (o mesmo id do jogo). w: o clima (sun, rain, sand, snow); f: o efeito do lugar (diamonds, rockfall, ashes, miasma,
+# chill, haunt, current, spores, quicksand, storm, aurora, grassy, electric, misty, psychic, wind). [nome, chance].
+# Onde não há nada aqui, vale o clima normal do tipo de lugar.
+CLIMATE = {
+    # Kanto
+    'Cerulean City': {'mt--moon': {'f': [['diamonds', 0.7]]}},                      # as Moon Stones caindo do teto
+    'Celadon City': {'pok-mon-tower': {'f': [['haunt', 0.9]]}},                      # os fantasmas da torre
+    'Saffron City': {'power-plant': {'f': [['storm', 0.6], ['electric', 0.3]]}},     # a usina do Zapdos
+    'Cinnabar Island': {'seafoam-islands': {'f': [['chill', 0.6], ['current', 0.3]]}, 'pok-mon-mansion': {'f': [['ashes', 0.5]]}},
+    'Seafoam Islands': {'seafoam-islands': {'f': [['chill', 0.6], ['current', 0.3]]}},
+    'Indigo Plateau': {'cerulean-cave': {'f': [['psychic', 0.7]]}},                  # a caverna do Mewtwo
+    # Johto
+    'Violet City': {'ruins-of-alph': {'f': [['psychic', 0.7]]}, 'sprout-tower': {'f': [['grassy', 0.5]]}},
+    'Ecruteak City': {'burned-tower': {'f': [['ashes', 0.7]]}, 'bell-tower': {'w': [['sun', 0.7]]}},
+    'Olivine City': {'glitter-lighthouse': {'f': [['electric', 0.6]]}},
+    'Cianwood City': {'route': {'w': [['rain', 0.6]]}, 'whirl-islands': {'f': [['current', 0.8]]}},
+    'Mahogany Town': {'mt--mortar': {'f': [['rockfall', 0.5]]}},
+    'Blackthorn City': {'route': {'f': [['chill', 0.6]]}, 'lake-of-rage': {'w': [['rain', 1.0]]}},   # chove sem parar no Lake of Rage
+    # Hoenn
+    'Dewford Town': {'granite-cave': {'f': [['rockfall', 0.4]]}},
+    'Mauville City': {'new-mauville': {'f': [['electric', 0.8]]}},
+    'Lavaridge Town': {'route': {'f': [['ashes', 0.7]]}, 'fiery-path': {'f': [['ashes', 0.7]]}},     # as cinzas da Route 113
+    'Petalburg City': {'route': {'w': [['sand', 0.9]]}},                                             # o deserto da Route 111
+    'Fortree City': {'route': {'w': [['rain', 0.85]]}, 'weather-institute': {'f': [['storm', 0.5]]}},  # a chuva da Route 119
+    'Mossdeep City': {'shoal-cave': {'f': [['chill', 0.5], ['current', 0.3]]}},
+    'Sootopolis City': {'route': {'w': [['rain', 0.5], ['sun', 0.3]]}, 'seafloor-cavern': {'f': [['current', 0.8]]}},  # Kyogre e Groudon
+    'Ever Grande City': {'sky-pillar': {'f': [['wind', 0.9]]}},                                      # o Rayquaza
+    # Sinnoh
+    'Hearthome City': {'mt--coronet': {'w': [['snow', 0.4]], 'f': [['rockfall', 0.4]]}},
+    'Veilstone City': {'route': {'w': [['rain', 0.5]], 'f': [['misty', 0.5]]}, 'lost-tower': {'f': [['haunt', 0.8]]}},  # a neblina da 210 e a chuva da 215
+    'Pastoria City': {'route': {'w': [['rain', 0.7]]}},
+    'Canalave City': {'iron-island': {'f': [['rockfall', 0.4]]}},
+    'Snowpoint City': {'route': {'w': [['snow', 0.9]], 'f': [['diamonds', 0.5]]}, 'lake-acuity': {'w': [['snow', 0.8]], 'f': [['aurora', 0.5]]}},  # o Diamond Dust de Snowpoint
+    'Sunyshore City': {'vista-lighthouse': {'f': [['electric', 0.6]]}},
+    'Sinnoh:Pokémon League': {'spear-pillar': {'f': [['psychic', 0.6]]}},
+    # Unova
+    'Nimbasa City': {'route': {'w': [['sand', 0.9]]}, 'relic-castle': {'f': [['quicksand', 0.8]]}},  # o Desert Resort
+    'Driftveil City': {'cold-storage': {'f': [['chill', 0.8]]}},
+    'Mistralton City': {'chargestone-cave': {'f': [['electric', 0.9]]}},
+    'Icirrus City': {'route': {'w': [['snow', 0.6]]}, 'twist-mountain': {'f': [['chill', 0.6]]}, 'dragonspiral-tower': {'f': [['storm', 0.5]]}},
+    'Opelucid City': {'route': {'w': [['rain', 0.5]]}, 'moor-of-icirrus': {'w': [['rain', 0.5]], 'f': [['miasma', 0.4]]}},
+    'Virbank City': {'virbank-complex': {'f': [['miasma', 0.5]]}},
+    'Unova:Pokémon League': {'giant-chasm': {'f': [['chill', 0.6], ['aurora', 0.2]]}},
+    # Kalos
+    'Shalour City': {'reflection-cave': {'f': [['diamonds', 0.6]]}},
+    'Coumarine City': {'glittering-cave': {'f': [['diamonds', 0.8]]}},
+    'Lumiose City': {'route': {'w': [['sand', 0.8]]}, 'kalos-power-plant': {'f': [['electric', 0.8]]}},  # as Lumiose Badlands
+    'Laverre City': {'route': {'w': [['rain', 0.6]], 'f': [['miasma', 0.3]]}, 'lost-hotel': {'f': [['haunt', 0.6]]}},
+    'Anistar City': {'frost-cavern': {'f': [['chill', 0.8]]}},
+    'Snowbelle City': {'route': {'w': [['snow', 0.9]]}},                                             # a Mamoswine Road
+    # Alola
+    'Brooklet Hill': {'brooklet-hill': {'w': [['rain', 0.7]]}},
+    'Wela Volcano Park': {'wela-volcano-park': {'f': [['ashes', 0.7]]}},
+    'Lush Jungle': {'lush-jungle': {'f': [['spores', 0.6]]}},
+    'Malie City': {'route': {'w': [['rain', 0.5]]}, 'blush-mountain': {'f': [['electric', 0.7]]}},
+    'Hokulani Observatory': {'hokulani-observatory': {'f': [['electric', 0.6]]}},
+    'Vast Poni Canyon': {'vast-poni-canyon': {'f': [['rockfall', 0.6]]}},
+    'Mount Lanakila': {'route': {'w': [['snow', 0.9]]}, 'mount-lanakila': {'f': [['chill', 0.7]]}},
+    # Galar
+    'Turffield': {'galar-mine': {'f': [['diamonds', 0.5]]}},
+    'Motostoke': {'wild-area': {'w': [['sun', 0.25], ['rain', 0.25], ['sand', 0.15], ['snow', 0.15]]}},  # o clima da Wild Area muda sempre
+    'Stow-on-Side': {'route': {'w': [['sand', 0.6]]}},
+    'Ballonlea': {'route': {'f': [['misty', 0.7]]}, 'glimwood-tangle': {'f': [['misty', 0.5], ['spores', 0.4]]}},
+    'Circhester': {'route': {'w': [['snow', 0.8]]}},
+    'Hammerlocke': {'energy-plant': {'f': [['storm', 0.7]]}},
+    'Wyndon': {'route': {'w': [['snow', 0.8]]}},
+    # Paldea
+    'Cascarrafa': {'route': {'w': [['sand', 0.9]]}, 'asado-desert': {'w': [['sand', 0.9]], 'f': [['quicksand', 0.4]]}},
+    'Montenevera': {'route': {'w': [['snow', 0.8]]}, 'dalizapa-passage': {'f': [['chill', 0.6]]}},
+    'Glaseado': {'route': {'w': [['snow', 0.9]]}, 'dalizapa-passage': {'f': [['chill', 0.6]]}},
+    'Paldea:Pokémon League': {'area-zero': {'f': [['diamonds', 0.7]]}},                              # os cristais Tera da Area Zero
+}
+for _city, _climate in CLIMATE.items():
+    FEATURES.setdefault(_city, {})['climate'] = _climate
+
 TUTOR_EVERYWHERE = ['Galar', 'Paldea']
 
 RARE = {

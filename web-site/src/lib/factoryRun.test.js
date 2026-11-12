@@ -8,7 +8,7 @@ import {
   placeInfo, routeInfo, DBOSS_GIMMICK_FLOOR, UPGRADE_FX, SHORE, CAVE_OF, dungeonPos, routePos, DUNGEON_LENGTH, CITY_BOSS, waterNext, RIVAL_FLOOR, targetOf, rivalBoss, rocketBoss, townShop, townCenter, townHub, biomesLinked,
   isDoubleBattle,
   DOUBLE_FLOOR,
-  battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, RARE_PLACES, atPc, pcOf, pcMove, pcSlots, PC_BOX, boxName, renameBox, boxWall, nextWall, setNick, gameOf, leagueAhead, rivalGrowth, sortBox, shownScene, bagsFor, NUZLOCKE_DEFAULT, levelCapOf, EXP_BENCH, benchShare, TRADE_EXP, TRADE_EVOS, familyOf, townTrade, townTradeable, featuresOf, waterReach, hasWaterfall, WATER_REACH, daycareHere, daycareOpen, rarePlacesOf, SECRET_BIOMES, PLACE_SCENES, hasKey, KEY_ITEMS, placeLegendOf, blockerOf, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, forgetMove, reminderCost, SAFARI_FEE, SAFARI_BALLS, SAFARI_ENCOUNTERS, SAFARI_MONS, safariRates, safariAct, safariPool, leaveSafari, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
+  battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, RARE_PLACES, atPc, pcOf, pcMove, pcSlots, PC_BOX, boxName, renameBox, boxWall, nextWall, setNick, gameOf, leagueAhead, rivalGrowth, sortBox, shownScene, bagsFor, NUZLOCKE_DEFAULT, levelCapOf, EXP_BENCH, benchShare, TRADE_EXP, TRADE_EVOS, familyOf, townTrade, townTradeable, featuresOf, climateOf, waterReach, hasWaterfall, WATER_REACH, daycareHere, daycareOpen, rarePlacesOf, SECRET_BIOMES, PLACE_SCENES, hasKey, KEY_ITEMS, placeLegendOf, blockerOf, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, forgetMove, reminderCost, SAFARI_FEE, SAFARI_BALLS, SAFARI_ENCOUNTERS, SAFARI_MONS, safariRates, safariAct, safariPool, leaveSafari, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
   HELD_BOOST, levelTo, MAX_TEAM, memberOf, movesAt, nextFloor, nextRandom, overflowPoints, pokemonPrice, runCoins, setMainItem, shopPrice,
   SHINY_BOOST, FOE_SHINY_BOOST, SHINY_CHANCE, START_BAG, START_BALLS, startersOf, unlockShiny, claimStarter, freePick, canEvolveWith, teachMove,
   equipFromStash, gimmicksOf, setGimmick, storyLine, startRun, takeCard, teamDown, applyBagItem, winFloor, chooseNode, routeOptions, routeCities,
@@ -1723,6 +1723,46 @@ describe('tudo conforme o mapa: trocas, Safari, Creche, lugares raros, caverna s
     // Num lugar que não é museu, nada de fóssil.
     const other = winFloor({ ...pewter, dungeon: { place: 'viridian-forest', scene: 'forest', start: 12 }, encounter: { kind: 'dboss', foes: [{ id: 74, level: 8, iv: 0, ev: 0 }] } }, data, { hp: [1] })
     expect(other.pending.capture).toBe(null)
+  })
+})
+
+describe('o clima único de cada rota e lugar (como nos jogos)', () => {
+  const game = (name) => data.bosses.findIndex((b) => b.game === name)
+  const at = (g, city, extra = {}) => ({ ...startRun(emptyFactory(), data, 1, 42), leg: 1, boss: { region: g, step: data.bosses[g].leaders.findIndex((l) => l.city === city) }, encounter: null, pending: null, ...extra })
+  const share = (fn) => { let n = 0; for (let seed = 1; seed <= 400; seed++) if (fn(seed)) n++; return n / 400 }
+  it('chove sem parar no Lake of Rage, as Moon Stones caem no Mt. Moon e o Diamond Dust em Snowpoint; fora deles, o clima normal (igual ao app)', () => {
+    const gs = game('Gold/Silver'), red = game('Red/Blue'), dp = game('Diamond/Pearl')
+    const lake = at(gs, 'Blackthorn City', { floor: 5, dungeon: { place: 'lake-of-rage', scene: 'swamp', start: 3 } })
+    expect(climateOf(data, lake, 'lake')).toEqual({ w: [['rain', 1]] })
+    expect(share((seed) => weatherOf({ ...lake, seed }, 'lake', null, data) === 'rain')).toBe(1)
+    const moon = at(red, 'Cerulean City', { floor: 5, dungeon: { place: 'mt--moon', scene: 'cave', start: 3 } })
+    expect(share((seed) => fieldOf({ ...moon, seed }, 'cave', data) === 'diamonds')).toBeGreaterThan(0.6)
+    expect(share((seed) => fieldOf({ ...moon, seed }, 'cave') === 'diamonds')).toBeLessThan(0.4)
+    const snow = at(dp, 'Snowpoint City', { floor: 4 })
+    expect(share((seed) => weatherOf({ ...snow, seed }, 'snow', null, data) === 'snow')).toBeGreaterThan(0.85)
+    expect(share((seed) => fieldOf({ ...snow, seed }, 'snow', data) === 'diamonds')).toBeGreaterThan(0.4)
+    // Na cidade e nas arenas (ginásio, Liga) o clima da rota não vale; num lugar sem clima próprio, o do tipo de lugar.
+    expect(climateOf(data, { ...snow, floor: 1 + ROUTE_LENGTH }, 'city')).toBe(null)
+    expect(climateOf(data, snow, 'gym-ice')).toBe(null)
+    expect(climateOf(data, { ...moon, dungeon: { place: 'nugget-bridge', scene: 'city', start: 3 } }, 'bridge')).toBe(null)
+    expect(climateOf(null, lake, 'lake')).toBe(null)
+  })
+  it('todo clima do mapa é de uma rota ou de um lugar de verdade e usa climas e efeitos que existem (igual ao app)', () => {
+    const weathers = ['sun', 'rain', 'sand', 'snow']
+    const fields = new Set(Object.values(SCENE_FIELD).flat().map(([f]) => f))
+    let n = 0
+    for (const [city, f] of Object.entries(data.routes.features)) {
+      for (const [key, c] of Object.entries(f.climate ?? {})) {
+        n++
+        const [, , side, towns] = data.routes.cities[city]
+        const ids = [side, ...(towns ?? [])].filter(Boolean).map(([name]) => name.toLowerCase().replace(/[^a-z0-9]/g, '-'))
+        if (key !== 'route') expect(ids, `${city} ${key}`).toContain(key)
+        for (const [w, chance] of c.w ?? []) { expect(weathers).toContain(w); expect(chance).toBeGreaterThan(0) }
+        for (const [e] of c.f ?? []) expect(fields.has(e), `${city} ${key} ${e}`).toBe(true)
+        for (const t of [c.w, c.f]) expect((t ?? []).reduce((sum, [, x]) => sum + x, 0)).toBeLessThanOrEqual(1)
+      }
+    }
+    expect(n).toBeGreaterThan(60)
   })
 })
 

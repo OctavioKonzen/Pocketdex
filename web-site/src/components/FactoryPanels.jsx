@@ -2626,7 +2626,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     const cut = !meeting && !town ? cutPath(run) : null
     const smash = !meeting && !town ? smashPath(run) : null
     const strength = !meeting && !town ? strengthPath(run) : null
-    const forecast = town ? '' : weatherOf(run, route.biome, clock.season)
+    const forecast = town ? '' : weatherOf(run, route.biome, clock.season, data)
     const burst = outbreakOf(data, clock.day)
     // O andar (pequeno, num canto): na rota, até a cidade; num lugar, até o chefe dele.
     const floorTag = inside ? `${Math.min(DUNGEON_LENGTH, dungeonPos(run) + 1)}/${DUNGEON_LENGTH}` : town ? `${Math.min(CITY_LENGTH, pos - ROUTE_LENGTH + 1)}/${CITY_LENGTH}` : `${pos + 1}/${ROUTE_LENGTH}`

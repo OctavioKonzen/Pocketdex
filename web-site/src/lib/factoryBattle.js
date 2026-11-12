@@ -38,9 +38,9 @@ export async function factoryBattle(run) {
   const scene = bossScene(data, run.encounter.boss, run.encounter.scene ?? run.encounter.biome ?? 'grass')
   // E o clima do lugar (sol no deserto, chuva no mar, neve na caverna de gelo...).
   // E o efeito do lugar (terreno, chuva de diamantes, aura sombria...; no céu, ventos fortes).
-  const place = fieldOf(run, scene)
+  const place = fieldOf(run, scene, data)
   // No inverno (a estação de verdade), neva nos lugares abertos.
-  const weather = weatherOf(run, scene, clockOf().season) || (place === 'wind' ? 'wind' : '')
+  const weather = weatherOf(run, scene, clockOf().season, data) || (place === 'wind' ? 'wind' : '')
   const field = place === 'wind' ? '' : place
   // A barra de XP (expBarOf) e o XP na hora: o XP de cada um agora e quanto cada adversário derrubado dá para cada um (quem lutou: tudo; com o Exp. Share, o resto: a metade).
   const cap = levelCapOf(data, run)

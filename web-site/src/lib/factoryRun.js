@@ -2858,6 +2858,7 @@ export const SCENE_WEATHER = {
   grass: [['sun', 0.15], ['rain', 0.15]], forest: [['rain', 0.2], ['sun', 0.1]], mountain: [['sand', 0.15], ['snow', 0.15], ['sun', 0.1]],
   sky: [['sun', 0.2], ['rain', 0.2]], city: [['rain', 0.12], ['sun', 0.12]],
   ruins: [['sand', 0.2], ['sun', 0.15]], flowers: [['sun', 0.25], ['rain', 0.1]], dunes: [['sand', 0.55]], bamboo: [['rain', 0.2], ['sun', 0.1]],
+  lake: [['rain', 0.7]],
 }
 /** A música do mapa (andando na rota e na cidade): um tema original por região, mais calmo. Igual ao app. */
 export const MAP_REGIONS = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos', 'alola', 'galar', 'paldea']
@@ -2890,9 +2891,20 @@ export function clockOf(date = new Date()) {
   return { night: hour >= 19 || hour < 6, season: SEASONS[date.getMonth() % 4], day: Math.floor(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86400000) }
 }
 
+/**
+ * O clima único desta rota ou deste lugar, como nos jogos (tool/factory_routes.py, CLIMATE): a chuva sem parar no
+ * Lake of Rage, as cinzas da Route 113, o Diamond Dust de Snowpoint, as Moon Stones caindo no Mt. Moon... { w, f } ou
+ * null (aí vale o clima normal do tipo de lugar). Nas arenas (ginásio, Liga) e na cidade não vale. Igual ao app.
+ */
+export function climateOf(data, run, scene = '') {
+  const climate = data ? featuresOf(data, run).climate : null
+  if (!climate || String(scene).startsWith('gym-') || String(scene).startsWith('champion-') || scene === 'league') return null
+  if (run.dungeon) return climate[run.dungeon.place] ?? null
+  return routePos(run) < ROUTE_LENGTH ? climate.route ?? null : null
+}
 /** O clima com que a batalha do andar começa ('' sem clima): pelo lugar, sempre o mesmo para a mesma corrida e andar. */
-export function weatherOf(run, scene, season = null) {
-  const table = season === 'winter' && WINTER_SNOW.includes(scene) ? [['snow', 0.35], ...(SCENE_WEATHER[scene] ?? [])] : SCENE_WEATHER[scene]
+export function weatherOf(run, scene, season = null, data = null) {
+  const table = climateOf(data, run, scene)?.w ?? (season === 'winter' && WINTER_SNOW.includes(scene) ? [['snow', 0.35], ...(SCENE_WEATHER[scene] ?? [])] : SCENE_WEATHER[scene])
   if (!table) return ''
   let roll = (Math.imul(((run.seed ?? 0) ^ (run.floor * 40503)) | 0, 2246822519) >>> 0) / 4294967296
   for (const [weather, chance] of table) {
@@ -2914,13 +2926,14 @@ export const SCENE_FIELD = {
   grass: [['grassy', 0.2]], forest: [['grassy', 0.3], ['misty', 0.1]], city: [['electric', 0.25]], beach: [['misty', 0.1]], sky: [['wind', 0.3], ['storm', 0.15]],
   desert: [['quicksand', 0.2]], ruins: [['psychic', 0.2], ['haunt', 0.15]], flowers: [['spores', 0.3], ['misty', 0.15]], plant: [['storm', 0.35], ['electric', 0.25]],
   crystal: [['diamonds', 0.4]], lavacave: [['ashes', 0.4]], poisoncave: [['miasma', 0.4]], seacave: [['current', 0.3]], waterfall: [['current', 0.3]], dunes: [['quicksand', 0.35], ['haunt', 0.1]], bamboo: [['spores', 0.2], ['grassy', 0.2]], temple: [['psychic', 0.3]],
+  seafoam: [['chill', 0.4], ['current', 0.3]], silph: [['electric', 0.3], ['psychic', 0.2]], radio: [['electric', 0.5]],
   'gym-grass': [['grassy', 0.6]], 'gym-electric': [['electric', 0.6]], 'gym-psychic': [['psychic', 0.6]], 'gym-fairy': [['misty', 0.6]], 'gym-ghost': [['haunt', 0.6]],
   'gym-rock': [['rockfall', 0.4]], 'gym-fire': [['ashes', 0.4]], 'gym-poison': [['miasma', 0.4]], 'gym-ice': [['chill', 0.4]], 'gym-water': [['current', 0.4]],
 }
 
 /** O efeito com que a batalha do andar começa ('' sem efeito): pelo lugar, sempre o mesmo para a mesma corrida e andar. */
-export function fieldOf(run, scene) {
-  const table = SCENE_FIELD[scene]
+export function fieldOf(run, scene, data = null) {
+  const table = climateOf(data, run, scene)?.f ?? SCENE_FIELD[scene]
   if (!table) return ''
   let roll = (Math.imul(((run.seed ?? 0) ^ (run.floor * 69069)) | 0, 2654435761 | 0) >>> 0) / 4294967296
   for (const [effect, chance] of table) {

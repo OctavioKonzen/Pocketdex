@@ -417,6 +417,32 @@ void main() {
     expect(FactoryRun.pendingOf(other)!['capture'], isNull);
   });
 
+  test('clima único de cada rota e lugar: Lake of Rage, Mt. Moon, Snowpoint; fora deles, o clima normal (igual ao site)', () {
+    final gs = gameOf('Gold/Silver'), red = gameOf('Red/Blue'), dp = gameOf('Diamond/Pearl');
+    double share(bool Function(int) fn) => [for (var seed = 1; seed <= 400; seed++) if (fn(seed)) 1].length / 400;
+    final lake = toCity(gs, 'Blackthorn City', {'floor': 5, 'dungeon': {'place': 'lake-of-rage', 'scene': 'swamp', 'start': 3}});
+    expect(FactoryRun.climateOf(data, lake, 'lake'), {'w': [['rain', 1.0]]});
+    expect(share((seed) => FactoryRun.weatherOf({...lake, 'seed': seed}, 'lake', null, data) == 'rain'), 1);
+    final moon = toCity(red, 'Cerulean City', {'floor': 5, 'dungeon': {'place': 'mt--moon', 'scene': 'cave', 'start': 3}});
+    expect(share((seed) => FactoryRun.fieldOf({...moon, 'seed': seed}, 'cave', data) == 'diamonds'), greaterThan(0.6));
+    expect(share((seed) => FactoryRun.fieldOf({...moon, 'seed': seed}, 'cave') == 'diamonds'), lessThan(0.4));
+    final snow = toCity(dp, 'Snowpoint City', {'floor': 4});
+    expect(share((seed) => FactoryRun.weatherOf({...snow, 'seed': seed}, 'snow', null, data) == 'snow'), greaterThan(0.85));
+    expect(share((seed) => FactoryRun.fieldOf({...snow, 'seed': seed}, 'snow', data) == 'diamonds'), greaterThan(0.4));
+    // O mesmo sorteio do site.
+    expect([for (var seed = 1; seed <= 12; seed++) FactoryRun.fieldOf({...snow, 'seed': seed}, 'snow', data)].join(','), ',diamonds,,diamonds,diamonds,,diamonds,,,diamonds,,diamonds');
+    expect(FactoryRun.climateOf(data, {...snow, 'floor': 1 + FactoryRun.routeLength}, 'city'), isNull);
+    expect(FactoryRun.climateOf(data, snow, 'gym-ice'), isNull);
+    expect(FactoryRun.climateOf(null, lake, 'lake'), isNull);
+    for (final e in (data.routes['features'] as Map).entries) {
+      for (final c in ((e.value['climate'] as Map?) ?? const {}).values) {
+        for (final f in (c['f'] as List?) ?? const []) {
+          expect(FactoryRun.sceneField.values.any((t) => t.any((x) => x.$1 == f[0])), isTrue, reason: '${e.key} ${f[0]}');
+        }
+      }
+    }
+  });
+
   test('lendários dos lugares, Snorlax e Sudowoodo, itens-chave (igual ao site)', () {
     final red = gameOf('Red/Blue'), gs = gameOf('Gold/Silver');
     Json inPlace(int g, String city, String place, String scene, [Json extra = const {}]) =>
