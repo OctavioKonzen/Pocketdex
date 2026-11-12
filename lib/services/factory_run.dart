@@ -1473,7 +1473,10 @@ class FactoryRun {
   /// Os itens-chave (como nos jogos): o Silph Scope (vencendo o Rocket Hideout) deixa ver os fantasmas da Pokémon Tower;
   /// a Poké Flute (do Mr. Fuji, no alto da torre) acorda o Snorlax; a Squirt Bottle (depois do ginásio de Goldenrod)
   /// molha o Sudowoodo. Ficam com você a corrida toda. Igual ao site.
-  static const keyItems = {'silph-scope': 'Silph Scope', 'poke-flute': 'Poké Flute', 'squirt-bottle': 'Squirt Bottle'};
+  static const keyItems = {
+    'silph-scope': 'Silph Scope', 'poke-flute': 'Poké Flute', 'squirt-bottle': 'Squirt Bottle', 'old-rod': 'Old Rod', 'good-rod': 'Good Rod', 'super-rod': 'Super Rod',
+    'bicycle': 'Bicycle', 'ss-ticket': 'S.S. Ticket',
+  };
   static bool hasKey(Json run, Object? item) => ((run['keyItems'] as List?) ?? const []).contains(item);
   static String? _addKey(Json out, Object? item) {
     if (item == null || hasKey(out, item)) return null;
@@ -1670,6 +1673,7 @@ class FactoryRun {
     final rare = rarePlaces[id];
     if (rare != null) return (name: rare.name, scene: rare.scene);
     if (id == waterfallPlace.id) return (name: waterfallPlace.name, scene: waterfallPlace.scene);
+    if (id == ferry.id) return (name: ferry.name, scene: ferry.scene);
     for (final w in waterChain) {
       if (w.$1 == id) return (name: w.$2, scene: w.$3);
     }
@@ -2041,6 +2045,10 @@ class FactoryRun {
       for (final place in info?.towns ?? const <({String id, String name, String scene})>[]) {
         add(place);
       }
+      // No porto: a balsa (com o S.S. Ticket), com os treinadores a bordo e um prêmio no fim.
+      if (ferryTowns.contains(featuresOf(data, run)['town']) && !done.contains(ferry.id)) {
+        options.add({'kind': 'dungeon', 'place': ferry.id, 'scene': ferry.scene, 'needs': 'ss-ticket'});
+      }
       if (boss['kind'] == 'villain') options.add({'kind': 'dungeon', 'place': 'base', 'scene': 'base-${villainTeam(boss['name'])}'});
     } else {
       // Numa rota de praia, o mar é opcional; numa rota de mar, o fundo do mar.
@@ -2264,9 +2272,10 @@ class FactoryRun {
       final when = clock == null ? const <String, dynamic>{} : {'night': clock.night, 'season': clock.season, if (burstHere) 'outbreak': burst};
       // O clima da rota (o mesmo em todos os andares dela) atrai Pokémon diferentes.
       final sky = weatherOf(run, shownScene(run, scene, data), null, data);
+      final mist = fieldOf(run, shownScene(run, scene, data), data);
       Json roll() => {
             ...encounterFor(data, floor, rand, node['kind'] == 'boss' ? bossOf(data, out) : null, node['kind'] == 'wildboss',
-                {...node, 'biome': scene, 'shiny': run['shinyRate'] ?? 1, ...when, if (sky.isNotEmpty) 'weather': sky, ...huntNode(run)}),
+                {...node, 'biome': scene, 'shiny': run['shinyRate'] ?? 1, ...when, if (sky.isNotEmpty) 'weather': sky, if (fieldTypes.containsKey(mist)) 'field': mist, ...huntNode(run)}),
             'scene': scene,
           };
       out['encounter'] = roll();
@@ -2279,6 +2288,15 @@ class FactoryRun {
         }
       }
       _countHunt(data, out);
+      // Venceu o desafio do ginásio: o time do líder vem gymEdgeLevels níveis abaixo.
+      final edge = run['gymEdge'] as Map?;
+      if (node['kind'] == 'boss' && edge?['won'] == true && edge?['leg'] == legOf(run) && (out['encounter']['boss'] as Map?)?['kind'] == 'gym') {
+        out['encounter'] = {
+          ...Map<String, dynamic>.from(out['encounter'] as Map),
+          'edge': true,
+          'foes': [for (final f in out['encounter']['foes'] as List) {...Map<String, dynamic>.from(f as Map), 'level': math.max(1, _int(f['level']) - gymEdgeLevels)}],
+        };
+      }
       // O lendário do lugar e o que dormia no caminho: vencendo (ou capturando), o lugar ou a rota seguem.
       if (node['placeLegend'] == true) out['encounter'] = {...Map<String, dynamic>.from(out['encounter'] as Map), 'placeLegend': true};
       if (node['blocker'] != null) out['encounter'] = {...Map<String, dynamic>.from(out['encounter'] as Map), 'blocker': true};
@@ -2343,6 +2361,11 @@ class FactoryRun {
     } else if (node['kind'] == 'center') {
       out['team'] = [for (final m in teamOf(out)) {...m, 'hp': 1}];
       out['pending'] = {'center': true};
+    } else if (node['kind'] == 'bike') {
+      // De bicicleta: passa o andar sem batalha (e sem prêmio).
+      out['pending'] = {
+        'event': {'kind': 'bike'}
+      };
     } else if (rand() < choiceChance) {
       // Uma escolha na rota: ajudar alguém, seguir um Pokémon ferido ou entrar numa caverna secreta.
       // A caverna secreta só onde há cavernas (rota de caverna, montanha, vulcão...).
@@ -2517,7 +2540,7 @@ class FactoryRun {
     // Os tipos do lugar aparecem bem mais (routeTypeWeight; nos treinadores, routeTypeTrainer).
     // À noite, mais Fantasma e Sombrio; em cada estação, os tipos dela (node.night, node.season: o relógio de quem joga).
     // O clima da rota também: com chuva, mais Água, Elétrico e Inseto; com sol, Fogo, Planta e Terra; areia, Pedra, Terra e Aço; neve, Gelo.
-    final drawn = weatherTypes[node?['weather']] ?? const <String>[];
+    final drawn = [...?weatherTypes[node?['weather']], ...?fieldTypes[node?['field']]];
     final types = biomes[node?['biome']] == null
         ? null
         : [...biomes[node!['biome']]!, if (node['night'] == true) ...nightTypes, ...?seasonTypes[node['season']], ...drawn];
@@ -2571,14 +2594,37 @@ class FactoryRun {
     final meteor = node?['meteor'] == true;
     // O surto do dia: a espécie dele aparece muito (e mais shiny).
     final burst = node?['outbreak'] != null && !meteor && node?['rare'] != true && rand() < outbreakShare;
+    // Pescando: só os de Água, e a vara decide quem vem (Old Rod os comuns, Good Rod os do meio, Super Rod os raros).
+    final fish = node?['fish'] != null ? _fishPool(data, common, _int(node!['fish'])) : const <({int id, int bst, int rarity, int rate})>[];
+    // Na árvore (Headbutt ou mel): os Pokémon que só caem dela.
+    final tree = node?['tree'] != null ? [for (final t in treeMons[node!['tree']] ?? const <int>[]) if (data.species[t] != null) t] : const <int>[];
     final id = burst
         ? devolve(data, _int(node!['outbreak']), level)
         : meteor
             ? devolve(data, 36, level)
-            : pick(rare.isNotEmpty ? rare : native.isNotEmpty ? native : common);
+            : tree.isNotEmpty
+                ? _pick(tree, rand)
+                : fish.isNotEmpty
+                    ? pick(fish)
+                    : pick(rare.isNotEmpty ? rare : native.isNotEmpty ? native : common);
+    // A horda: cinco iguais, mais fracos, de uma vez (mais XP e cinco chances de shiny).
+    final hidden = node?['hidden'] != null && node?['hidden'] != false;
+    final special = burst || meteor || node?['rare'] == true || node?['fish'] != null || node?['tree'] != null || hidden;
+    if (!special && floor >= hordeFloor && rand() < hordeChance) {
+      final rate = shinyChance * _shinyRate(node) * _huntBoost(data, node, id);
+      return {
+        'kind': kind,
+        'foes': [for (var k = 0; k < hordeSize; k++) foe(id, math.max(2, level - hordeLevels), rand() < rate ? {'shiny': true} : const {})],
+        'horde': true,
+        if (node?['biome'] != null) 'biome': node!['biome'],
+      };
+    }
     return {
       'kind': kind,
-      'foes': [foe(id, level, rand() < shinyChance * _shinyRate(node) * (meteor ? 8 : 1) * (burst ? outbreakShiny : 1) * _huntBoost(data, node, id) ? {'shiny': true} : const {})],
+      'foes': [
+        foe(id, level,
+            rand() < shinyChance * _shinyRate(node) * (meteor ? 8 : 1) * (burst ? outbreakShiny : 1) * (node?['tree'] == 'honey' ? honeyShiny : 1) * _huntBoost(data, node, id) ? {'shiny': true} : const {})
+      ],
       if (node?['biome'] != null) 'biome': node!['biome'],
       if (meteor) 'meteor': true,
     };
@@ -2727,6 +2773,7 @@ class FactoryRun {
       {List<double>? hp,
       Map<String, int>? bag,
       bool captured = false,
+      int? capturedIndex,
       List<List<int>>? fought,
       List<int>? gained,
       String? ball,
@@ -2895,7 +2942,7 @@ class FactoryRun {
       // O que o lugar deixa (como nos jogos): o item-chave (o Silph Scope, a Poké Flute) e o prêmio da história (a Master Ball da Silph Co.).
       final f = featuresOf(data, run);
       key = _addKey(out, (f['keys'] as Map?)?[place]);
-      final prize = (f['rewards'] as Map?)?[place];
+      final prize = (f['rewards'] as Map?)?[place] ?? (place == ferry.id ? ferry.prize : null);
       if (prize != null) {
         _giveItem(out, '$prize');
         placeReward = '$prize';
@@ -3021,7 +3068,7 @@ class FactoryRun {
       if (shed) 'shed': true,
       if (pieces.isNotEmpty) 'pieces': pieces,
       // O capturado ou o ovo que chocou (a mesma tela).
-      'capture': captured && (kind == 'wild' || kind == 'wildboss') ? foes.first : born ?? fossil,
+      'capture': captured && (kind == 'wild' || kind == 'wildboss') ? (capturedIndex != null && capturedIndex >= 0 && capturedIndex < foes.length ? foes[capturedIndex] : foes.first) : born ?? fossil,
       // A Poké Ball em que ele foi capturado (o sprite dela na tela da captura). Igual ao site.
       if (captured && ball != null) 'ball': ball,
       'cards': cardsPick,
@@ -3223,6 +3270,537 @@ class FactoryRun {
   static bool nodeBlocked(Json run, Map? node) => hmNeeded(run, node) != null || (node?['kind'] == 'safari' && ((run['money'] as num?) ?? 0) < safariFee) ||
       (node?['needs'] != null && !hasKey(run, node?['needs'])) ||
       (node?['blocker'] != null && !hasKey(run, node?['blocker']));
+
+  // ------------------------------------------------------------ rodada 14: pesca, árvores, frutas, bicicleta, balsa, hordas e os desafios dos ginásios
+
+  /// A balsa dos portos (com o S.S. Ticket): os treinadores a bordo, no cenário do navio, e um prêmio no fim. Igual ao site.
+  static const ferry = (id: 'ferry', name: 'S.S. Ferry', scene: 'ship', prize: 'max-revive');
+
+  /// A balsa sai dos portos e das ilhas.
+  static const ferryTowns = ['port', 'island'];
+
+  /// As hordas (como em X/Y): a partir do andar hordeFloor, às vezes vêm hordeSize iguais, hordeLevels níveis abaixo.
+  static const hordeFloor = 8, hordeSize = 5, hordeLevels = 5;
+  static const hordeChance = 0.07;
+
+  /// As varas, da pior para a melhor: a Old Rod só traz os comuns, a Good Rod os do meio e a Super Rod os raros.
+  static const rods = ['old-rod', 'good-rod', 'super-rod'];
+  static int rodOf(Json run) {
+    var best = -1;
+    for (var k = 0; k < rods.length; k++) {
+      if (hasKey(run, rods[k])) best = k;
+    }
+    return best;
+  }
+
+  /// Onde dá para pescar: rotas de água, praia e pântano, os lagos e as rotas que têm mar por perto.
+  static const fishBiomes = ['water', 'beach', 'swamp', 'lake', 'lakeside', 'seacave', 'waterfall'];
+  static List<({int id, int bst, int rarity, int rate})> _fishPool(FactoryData data, List<({int id, int bst, int rarity, int rate})> common, int tier) {
+    final water = [for (final p in common) if (((data.species[p.id]?.elementAtOrNull(4) as List?) ?? const []).contains('water')) p];
+    final pool = tier <= 0
+        ? [for (final p in water) if (p.rate >= 150) p]
+        : tier == 1
+            ? [for (final p in water) if (p.rate >= 60 && p.rate < 225) p]
+            : [for (final p in water) if (p.rate <= 90) p];
+    return pool.isNotEmpty ? pool : water;
+  }
+
+  static bool _routeAction(Json run) {
+    final route = run['route'] as Map?;
+    return route != null && route['town'] != true && ((route['options'] as List?) ?? const []).isNotEmpty && run['encounter'] == null && run['pending'] == null;
+  }
+
+  static Json _withOption(Json run, Json extra, Json option) => {
+        ...run,
+        ...extra,
+        'route': {
+          ...Map<String, dynamic>.from(run['route'] as Map),
+          'options': [...(run['route']['options'] as List), option],
+        },
+      };
+
+  /// Pescar (uma vez por rota): abre um caminho com um Pokémon de Água; quem vem depende da vara. null se não dá.
+  static Json? fishPath(Json run, FactoryData data) {
+    final tier = rodOf(run);
+    final here = fishBiomes.contains(run['route']?['biome']) || (run['dungeon'] == null && featuresOf(data, run)['water'] != null);
+    if (tier < 0 || !_routeAction(run) || !here || run['fishLeg'] == (run['leg'] ?? 1)) return null;
+    return _withOption(run, {'fishLeg': run['leg'] ?? 1}, {'kind': 'wild', 'biome': 'water', 'fish': tier});
+  }
+
+  /// As árvores (Headbutt e mel, como em Johto e Sinnoh): onde há árvores e quem só cai delas.
+  static const treeBiomes = ['forest', 'grass', 'bamboo', 'flowers', 'swamp'];
+  static const treeMons = {
+    'headbutt': [214, 204, 190, 163, 102, 10, 13, 165, 167, 21, 265, 412],
+    'honey': [446, 214, 415, 412, 190, 420, 216, 265, 415, 420],
+  };
+  static const honeyFloors = 3, honeyShiny = 2;
+  static bool _treeHere(Json run) => _routeAction(run) && treeBiomes.contains(run['route']['biome']);
+
+  /// Headbutt: sacode a árvore (uma vez por rota) e cai um Pokémon que vive nela. null se não dá.
+  static Json? headbuttPath(Json run) {
+    if (!_treeHere(run) || run['headbuttLeg'] == (run['leg'] ?? 1)) return null;
+    return _withOption(run, {'headbuttLeg': run['leg'] ?? 1}, {'kind': 'wild', 'biome': run['route']['biome'], 'tree': 'headbutt'});
+  }
+
+  /// Mel: passa mel na árvore (uma vez por rota); honeyFloors andares depois, um Pokémon raro está lambendo o mel.
+  static Json? slatherHoney(Json run) {
+    if (!_treeHere(run) || run['honey'] != null || run['honeyLeg'] == (run['leg'] ?? 1)) return null;
+    return {
+      ...run,
+      'honeyLeg': run['leg'] ?? 1,
+      'honey': {'floor': run['floor']},
+    };
+  }
+
+  static bool honeyReady(Json run) => run['honey'] != null && _int(run['floor']) - _int(run['honey']['floor']) >= honeyFloors;
+  static Json? honeyPath(Json run) {
+    if (!honeyReady(run) || !_routeAction(run)) return null;
+    return _withOption(run, {'honey': null}, {'kind': 'wild', 'biome': run['route']['biome'], 'tree': 'honey'});
+  }
+
+  /// O vaso de frutas (os Berry Pots): planta uma fruta e colhe várias alguns andares depois; com chuva, cresce mais rápido e dá mais.
+  static const berries = ['sitrus-berry', 'lum-berry'];
+  static const berryFloors = 5, berryRainFloors = 3, berryYield = 2;
+  static Json? plantBerry(Json run, FactoryData data) {
+    if (!_routeAction(run) || run['berry'] != null) return null;
+    final out = _copy(run);
+    final rand = _dice(out);
+    final rain = weatherOf(run, shownScene(run, '${run['route']['biome']}', data), null, data) == 'rain';
+    out['berry'] = {'floor': run['floor'], 'item': _pick(berries, rand), 'need': rain ? berryRainFloors : berryFloors, 'count': berryYield + (rain ? 1 : 0)};
+    return out;
+  }
+
+  static bool berryReady(Json run) => run['berry'] != null && _int(run['floor']) - _int(run['berry']['floor']) >= _int(run['berry']['need']);
+  static Json? harvestBerry(Json run) {
+    if (!berryReady(run) || run['encounter'] != null || run['pending'] != null) return null;
+    final count = _int(run['berry']['count']);
+    final out = _copy(run)
+      ..['berry'] = null
+      ..['harvested'] = _n(run, 'harvested') + count;
+    for (var k = 0; k < count; k++) {
+      _giveItem(out, '${run['berry']['item']}');
+    }
+    return out;
+  }
+
+  /// A Bicycle: uma vez por rota (duas na Cycling Road), passa um andar sem batalha. Não vale no último andar da rota.
+  static int bikeUses(FactoryData data, Json run) => featuresOf(data, run)['cycling'] == true ? 2 : 1;
+  static Json? bikePath(Json run, FactoryData data) {
+    if (!hasKey(run, 'bicycle') || !_routeAction(run) || run['dungeon'] != null || routePos(run) >= routeLength - 1) return null;
+    final bike = run['bike'] as Map?;
+    final used = bike?['leg'] == (run['leg'] ?? 1) ? _int(bike!['n']) : 0;
+    if (used >= bikeUses(data, run) || (run['route']['options'] as List).any((o) => o['kind'] == 'bike')) return null;
+    return _withOption(run, {
+      'bike': {'leg': run['leg'] ?? 1, 'n': used + 1}
+    }, {
+      'kind': 'bike'
+    });
+  }
+
+  /// As fotos da corrida: um álbum com os momentos guardados (o lugar, o Pokémon e o andar). Até photoMax.
+  static const photoMax = 24;
+  static Json? takePhoto(Json run, Map? photo) {
+    final list = (run['photos'] as List?) ?? const [];
+    if (photo == null || list.length >= photoMax || list.any((p) => p['floor'] == run['floor'] && p['kind'] == photo['kind'] && p['id'] == photo['id'])) return null;
+    return {
+      ...run,
+      'photos': [
+        ...list,
+        {'floor': run['floor'], 'scene': run['scene'] ?? 'grass', ...Map<String, dynamic>.from(photo)}
+      ],
+    };
+  }
+
+  /// A foto que dá para tirar agora: o capturado (ou o ovo que nasceu) e a vitória sobre um chefe. null se não há o que fotografar.
+  static Json? photoNow(Json run) {
+    final p = run['pending'] as Map?;
+    final capture = p?['capture'] as Map?;
+    if (capture != null) return {'kind': capture['fossil'] == true ? 'fossil' : 'capture', 'id': capture['id'], if (capture['shiny'] == true) 'shiny': true};
+    final beat = p?['beat'] as Map?;
+    final team = (run['team'] as List?) ?? const [];
+    if (beat != null && p?['exp'] != null) {
+      return {'kind': beat['kind'], 'id': team.isEmpty ? null : team.first['id'], 'name': beat['name'], if (team.isNotEmpty && team.first['shiny'] == true) 'shiny': true};
+    }
+    return null;
+  }
+
+  /// Os desafios dos ginásios: antes do líder, um quebra-cabeça no tema do ginásio (os dos jogos: as lixeiras do Lt. Surge,
+  /// o gelo do Pryce, o quiz do Blaine, as paredes invisíveis do Koga, o piso de gelo do Juan, os teleportes da Sabrina...).
+  /// Vencendo, o time do líder vem gymEdgeLevels níveis abaixo e você ganha um prêmio. Uma tentativa por ginásio. Igual ao site.
+  static const gymPuzzles = {
+    'normal': 'silhouette', 'fire': 'quiz', 'water': 'tiles', 'grass': 'maze', 'electric': 'switches', 'ice': 'slide', 'fighting': 'memory', 'poison': 'maze', 'ground': 'slide',
+    'flying': 'slide', 'psychic': 'memory', 'bug': 'switches', 'rock': 'tiles', 'ghost': 'maze', 'dragon': 'memory', 'dark': 'silhouette', 'steel': 'slide', 'fairy': 'quiz',
+  };
+
+  /// Os labirintos de paredes que não se veem (o do Koga e a ponte invisível do Morty).
+  static const puzzleHidden = ['poison', 'ghost'];
+  static const gymEdgeLevels = 2, puzzleMoney = 150;
+
+  /// Quem ganha de quem (atacante → os tipos em que ele é super efetivo): para o quiz.
+  static const superEffective = <String, List<String>>{
+    'normal': [], 'fire': ['grass', 'ice', 'bug', 'steel'], 'water': ['fire', 'ground', 'rock'], 'grass': ['water', 'ground', 'rock'], 'electric': ['water', 'flying'],
+    'ice': ['grass', 'ground', 'flying', 'dragon'], 'fighting': ['normal', 'ice', 'rock', 'dark', 'steel'], 'poison': ['grass', 'fairy'], 'ground': ['fire', 'electric', 'poison', 'rock', 'steel'],
+    'flying': ['grass', 'fighting', 'bug'], 'psychic': ['fighting', 'poison'], 'bug': ['grass', 'psychic', 'dark'], 'rock': ['fire', 'ice', 'flying', 'bug'], 'ghost': ['psychic', 'ghost'],
+    'dragon': ['dragon'], 'dark': ['psychic', 'ghost'], 'steel': ['ice', 'rock', 'fairy'], 'fairy': ['fighting', 'dragon', 'dark'],
+  };
+  static List<String> get _types18 => superEffective.keys.toList();
+  static int _randInt(double Function() rand, int n) => (rand() * n).floor();
+
+  /// Embaralha (Fisher–Yates) com o sorteio da corrida.
+  static List<T> _shuffled<T>(List<T> list, double Function() rand) {
+    final out = [...list];
+    for (var i = out.length - 1; i > 0; i--) {
+      final j = _randInt(rand, i + 1);
+      final t = out[i];
+      out[i] = out[j];
+      out[j] = t;
+    }
+    return out;
+  }
+
+  static List<int> _neighbors(int i, int cols, int rows) {
+    final x = i % cols, y = i ~/ cols;
+    return [if (y > 0) i - cols, if (x < cols - 1) i + 1, if (y < rows - 1) i + cols, if (x > 0) i - 1];
+  }
+
+  /// Deslizar no gelo: de pos na direção (dx, dy) até bater numa pedra ou na borda; passando pela saída, para nela.
+  static int _slideTo(Map p, int pos, int dx, int dy) {
+    final cols = _int(p['cols']), rows = _int(p['rows']), goal = _int(p['goal']);
+    final rocks = p['rocks'] as List;
+    var x = pos % cols, y = pos ~/ cols;
+    for (;;) {
+      final nx = x + dx, ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= cols || ny >= rows || rocks.contains(ny * cols + nx)) break;
+      x = nx;
+      y = ny;
+      if (y * cols + x == goal) break;
+    }
+    return y * cols + x;
+  }
+
+  static const _dirs = [(0, -1), (1, 0), (0, 1), (-1, 0)];
+
+  /// O menor número de jogadas (busca em largura); -1 se não dá.
+  static int _shortest(int start, int goal, Iterable<int> Function(int) step) {
+    final dist = {start: 0};
+    final queue = [start];
+    while (queue.isNotEmpty) {
+      final at = queue.removeAt(0);
+      if (at == goal) return dist[at]!;
+      for (final to in step(at)) {
+        if (!dist.containsKey(to)) {
+          dist[to] = dist[at]! + 1;
+          queue.add(to);
+        }
+      }
+    }
+    return -1;
+  }
+
+  static List<int> _speciesIds(FactoryData data) => [for (final id in data.species.keys) if (id > 0 && id <= 1025) id]..sort();
+  static List _typesOfId(FactoryData data, int id) => (data.species[id]?.elementAtOrNull(4) as List?) ?? const [];
+  static Json _quizQuestion(FactoryData data, double Function() rand, List<int> ids) {
+    final kind = _pick(const ['strong', 'typeOf', 'hasType'], rand);
+    final all = _types18;
+    if (kind == 'strong') {
+      final target = _pick([for (final t in all) if (all.any((a) => superEffective[a]!.contains(t))) t], rand);
+      final right = _pick([for (final a in all) if (superEffective[a]!.contains(target)) a], rand);
+      final wrong = _shuffled([for (final a in all) if (!superEffective[a]!.contains(target)) a], rand).take(3);
+      final options = _shuffled([right, ...wrong], rand);
+      return {'q': kind, 'type': target, 'options': options, 'answer': options.indexOf(right)};
+    }
+    if (kind == 'typeOf') {
+      final id = _pick(ids, rand);
+      final types = _typesOfId(data, id);
+      final right = '${types.first}';
+      final others = _shuffled([for (final t in all) if (!types.contains(t)) t], rand).take(3);
+      final options = _shuffled([right, ...others], rand);
+      return {'q': kind, 'mon': id, 'options': options, 'answer': options.indexOf(right)};
+    }
+    final type = _pick(all, rand);
+    final has = [for (final id in ids) if (_typesOfId(data, id).contains(type)) id];
+    final right = _pick(has.isNotEmpty ? has : ids, rand);
+    final others = _shuffled([for (final id in ids) if (!_typesOfId(data, id).contains(type)) id], rand).take(3);
+    final options = _shuffled([right, ...others], rand);
+    return {'q': 'hasType', 'type': type, 'options': options, 'answer': options.indexOf(right)};
+  }
+
+  /// O desafio do ginásio de agora (o tipo do líder) ou null: só na cidade de um ginásio, uma vez por ginásio.
+  static ({String type, String kind})? gymPuzzleOf(FactoryData data, Json run) {
+    if (run['town'] == null || run['dungeon'] != null || run['encounter'] != null || run['pending'] != null || run['puzzleLeg'] == legOf(run)) return null;
+    final boss = bossOf(data, run);
+    if (boss['kind'] != 'gym') return null;
+    final type = leaderType(data, boss);
+    final kind = gymPuzzles[type];
+    return kind == null ? null : (type: type, kind: kind);
+  }
+
+  /// Monta o desafio (sempre com solução) e abre a tela dele.
+  static Json? startPuzzle(Json run, FactoryData data) {
+    final info = gymPuzzleOf(data, run);
+    return info == null ? null : puzzleOfType(data, run, info.type);
+  }
+
+  /// O desafio de um tipo de ginásio (o do líder de agora é o startPuzzle).
+  static Json? puzzleOfType(FactoryData data, Json run, String type) {
+    final kind = gymPuzzles[type];
+    if (kind == null) return null;
+    final out = _copy(run)..['puzzleLeg'] = legOf(run);
+    final rand = _dice(out);
+    final p = <String, dynamic>{'kind': kind, 'type': type, 'done': false, 'won': false};
+    if (kind == 'quiz') {
+      final ids = _speciesIds(data);
+      p.addAll({'qs': [for (var k = 0; k < 3; k++) _quizQuestion(data, rand, ids)], 'at': 0, 'right': 0});
+    } else if (kind == 'silhouette') {
+      final ids = _speciesIds(data);
+      final qs = <Json>[];
+      for (var k = 0; k < 3; k++) {
+        final options = _shuffled(ids, rand).take(4).toList();
+        final right = _pick(options, rand);
+        qs.add({'mon': right, 'options': options, 'answer': options.indexOf(right)});
+      }
+      p.addAll({'qs': qs, 'at': 0, 'right': 0});
+    } else if (kind == 'switches') {
+      final a = _randInt(rand, 15);
+      p.addAll({'cols': 5, 'rows': 3, 'a': a, 'b': _pick(_neighbors(a, 5, 3), rand), 'open': <String, dynamic>{}, 'found': 0, 'left': 6});
+    } else if (kind == 'slide') {
+      p.addAll({'cols': 5, 'rows': 5, 'pos': 22, 'goal': 2, 'rocks': <int>[], 'left': 3});
+      for (var k = 0; k < 60; k++) {
+        final goal = _randInt(rand, 5);
+        final rocks = _shuffled([for (var i = 0; i < 25; i++) if (i != 22 && i != goal) i], rand).take(6).toList();
+        final trial = {...p, 'goal': goal, 'rocks': rocks};
+        final n = _shortest(22, goal, (at) => [for (final d in _dirs) _slideTo(trial, at, d.$1, d.$2)].where((to) => to != at));
+        if (n >= 2 && n <= 5) {
+          p.addAll({'goal': goal, 'rocks': rocks, 'left': n + 2});
+          break;
+        }
+      }
+    } else if (kind == 'maze') {
+      // Um caminho garantido da entrada até o líder; o resto vira parede (as que não se veem, no do Koga e no do Morty).
+      const cols = 5, rows = 5, start = 22, goal = 2;
+      final seen = {start};
+      List<int>? walk(int at) {
+        if (at == goal) return [at];
+        for (final to in _shuffled(_neighbors(at, cols, rows), rand)) {
+          if (seen.contains(to)) continue;
+          seen.add(to);
+          final rest = walk(to);
+          if (rest != null) return [at, ...rest];
+        }
+        return null;
+      }
+
+      final path = walk(start)!;
+      final walls = [for (var i = 0; i < 25; i++) if (!path.contains(i) && rand() < 0.6) i];
+      final hidden = puzzleHidden.contains(type);
+      final n = _shortest(start, goal, (at) => _neighbors(at, cols, rows).where((to) => !walls.contains(to)));
+      p.addAll({'cols': cols, 'rows': rows, 'pos': start, 'goal': goal, 'walls': walls, 'seen': <int>[], 'hidden': hidden, 'left': hidden ? 3 : n + 3});
+    } else if (kind == 'tiles') {
+      // Um caminho que passa por todos os ladrilhos existe sempre; você tem de achar um.
+      p.addAll({'cols': 4, 'rows': 3, 'pos': 8, 'visited': [8]});
+    } else {
+      p.addAll({'seq': [for (var k = 0; k < 5; k++) _randInt(rand, 4)], 'shown': true, 'at': 0});
+    }
+    out['pending'] = {'puzzle': p};
+    return out;
+  }
+
+  /// Uma jogada no desafio: i é a casa (ou a resposta) tocada; -1 é "memorizei" (no de memória).
+  static Json puzzleAct(Json run, FactoryData data, int i) {
+    final p0 = (run['pending'] as Map?)?['puzzle'] as Map?;
+    if (p0 == null || p0['done'] == true) return run;
+    final p = Map<String, dynamic>.from(p0);
+    void end(bool won) {
+      p['done'] = true;
+      p['won'] = won;
+    }
+
+    final kind = p['kind'];
+    if (kind == 'quiz' || kind == 'silhouette') {
+      final qs = p['qs'] as List;
+      final at = _int(p['at']);
+      if (at >= qs.length) return run;
+      final q = qs[at] as Map;
+      if (i < 0 || i >= (q['options'] as List).length) return run;
+      p['picked'] = i;
+      if (i == q['answer']) p['right'] = _int(p['right']) + 1;
+      p['at'] = at + 1;
+      if (at + 1 >= qs.length) end(_int(p['right']) >= 2);
+    } else if (kind == 'switches') {
+      final cols = _int(p['cols']), rows = _int(p['rows']);
+      final open = Map<String, dynamic>.from(p['open'] as Map);
+      if (i < 0 || i >= cols * rows || open['$i'] != null) return run;
+      final targets = [for (final t in [_int(p['a']), _int(p['b'])]) if (open['$t'] == null) t];
+      if (targets.contains(i)) {
+        open['$i'] = 'hit';
+        p['open'] = open;
+        p['found'] = _int(p['found']) + 1;
+        if (_int(p['found']) >= 2) end(true);
+      } else {
+        final dist = [for (final t in targets) ((t % cols) - (i % cols)).abs() + ((t ~/ cols) - (i ~/ cols)).abs()].reduce(math.min);
+        open['$i'] = dist;
+        p['open'] = open;
+        p['left'] = _int(p['left']) - 1;
+        if (_int(p['left']) <= 0) end(false);
+      }
+    } else if (kind == 'slide') {
+      final cols = _int(p['cols']), rows = _int(p['rows']), pos = _int(p['pos']);
+      if (i < 0 || i >= cols * rows || i == pos) return run;
+      final dx = (i % cols) - (pos % cols), dy = (i ~/ cols) - (pos ~/ cols);
+      final to = dx.abs() >= dy.abs() ? _slideTo(p, pos, dx.sign, 0) : _slideTo(p, pos, 0, dy.sign);
+      if (to == pos) return run;
+      p['pos'] = to;
+      p['left'] = _int(p['left']) - 1;
+      if (to == p['goal']) {
+        end(true);
+      } else if (_int(p['left']) <= 0) {
+        end(false);
+      }
+    } else if (kind == 'maze') {
+      final cols = _int(p['cols']), rows = _int(p['rows']);
+      if (!_neighbors(_int(p['pos']), cols, rows).contains(i)) return run;
+      final hidden = p['hidden'] == true;
+      if ((p['walls'] as List).contains(i)) {
+        if (!hidden || (p['seen'] as List).contains(i)) return run;
+        p['seen'] = [...(p['seen'] as List), i];
+        p['left'] = _int(p['left']) - 1;
+        if (_int(p['left']) <= 0) end(false);
+      } else {
+        p['pos'] = i;
+        if (!hidden) p['left'] = _int(p['left']) - 1;
+        if (i == p['goal']) {
+          end(true);
+        } else if (_int(p['left']) <= 0) {
+          end(false);
+        }
+      }
+    } else if (kind == 'tiles') {
+      final cols = _int(p['cols']), rows = _int(p['rows']);
+      if (!_neighbors(_int(p['pos']), cols, rows).contains(i)) return run;
+      final visited = p['visited'] as List;
+      if (visited.contains(i)) {
+        end(false);
+      } else {
+        p['pos'] = i;
+        final now = [...visited, i];
+        p['visited'] = now;
+        if (now.length >= cols * rows) {
+          end(true);
+        } else if (_neighbors(i, cols, rows).every(now.contains)) {
+          end(false);
+        }
+      }
+    } else if (kind == 'memory') {
+      final seq = p['seq'] as List;
+      if (p['shown'] == true) {
+        if (i != -1) return run;
+        p['shown'] = false;
+      } else if (i < 0 || i > 3) {
+        return run;
+      } else if (seq[_int(p['at'])] == i) {
+        p['at'] = _int(p['at']) + 1;
+        if (_int(p['at']) >= seq.length) end(true);
+      } else {
+        end(false);
+      }
+    }
+    return {
+      ...run,
+      'pending': {...Map<String, dynamic>.from(run['pending'] as Map), 'puzzle': p},
+    };
+  }
+
+  /// Sai do desafio (ou desiste dele): guarda se venceu (a vantagem contra o líder) e dá o prêmio.
+  static Json finishPuzzle(Json run) {
+    final p = (run['pending'] as Map?)?['puzzle'] as Map?;
+    if (p == null) return run;
+    final won = p['done'] == true && p['won'] == true;
+    final money = won ? (puzzleMoney * priceScale(_int(run['floor']))).round() : 0;
+    return {
+      ...run,
+      'pending': null,
+      'money': _n(run, 'money') + money,
+      'gymEdge': {'leg': legOf(run), 'won': won},
+      'puzzles': _n(run, 'puzzles') + (won ? 1 : 0),
+    };
+  }
+
+  /// O desafio como a tela mostra: as casas (c: o que tem nela), quantas colunas e o que perguntar. As casas:
+  /// 'me' você, 'goal' o líder, 'rock' pedra, 'wall' parede (vista), 'floor' chão, 'done' ladrilho pisado, 'closed' lixeira
+  /// fechada, 'num' vazia (n: a distância até o interruptor), 'hit' interruptor, 'type' (type), 'mon' (mon), 'sym' (n).
+  static Json? puzzleView(Json run) {
+    final p = (run['pending'] as Map?)?['puzzle'] as Map?;
+    if (p == null) return null;
+    final base = <String, dynamic>{'kind': p['kind'], 'type': p['type'], 'done': p['done'], 'won': p['won']};
+    final kind = p['kind'];
+    if (kind == 'quiz' || kind == 'silhouette') {
+      final qs = p['qs'] as List;
+      final q = qs[math.min(_int(p['at']), qs.length - 1)] as Map;
+      return {
+        ...base,
+        'cols': 2,
+        'cells': [for (final o in q['options'] as List) o is num ? {'c': 'mon', 'mon': o.toInt()} : {'c': 'type', 'type': o}],
+        'prompt': kind == 'silhouette' ? {'q': 'who', 'mon': q['mon']} : {'q': q['q'], if (q['type'] != null) 'type': q['type'], if (q['mon'] != null) 'mon': q['mon']},
+        'at': p['at'],
+        'total': qs.length,
+        'right': p['right'],
+      };
+    }
+    final cols = kind == 'memory' ? 4 : _int(p['cols']);
+    final count = kind == 'memory' ? 4 : cols * _int(p['rows']);
+    if (kind == 'switches') {
+      final open = p['open'] as Map;
+      return {
+        ...base,
+        'cols': cols,
+        'left': p['left'],
+        'found': p['found'],
+        'cells': [
+          for (var i = 0; i < count; i++)
+            open['$i'] == null
+                ? (p['done'] == true && (i == p['a'] || i == p['b']) ? {'c': 'hit'} : {'c': 'closed'})
+                : open['$i'] == 'hit'
+                    ? {'c': 'hit'}
+                    : {'c': 'num', 'n': open['$i']}
+        ],
+      };
+    }
+    if (kind == 'slide') {
+      return {
+        ...base,
+        'cols': cols,
+        'left': p['left'],
+        'cells': [for (var i = 0; i < count; i++) {'c': i == p['pos'] ? 'me' : i == p['goal'] ? 'goal' : (p['rocks'] as List).contains(i) ? 'rock' : 'floor'}],
+      };
+    }
+    if (kind == 'maze') {
+      bool shown(int i) => (p['walls'] as List).contains(i) && (p['hidden'] != true || (p['seen'] as List).contains(i) || p['done'] == true);
+      return {
+        ...base,
+        'cols': cols,
+        'left': p['left'],
+        'hidden': p['hidden'],
+        'cells': [for (var i = 0; i < count; i++) {'c': i == p['pos'] ? 'me' : i == p['goal'] ? 'goal' : shown(i) ? 'wall' : 'floor'}],
+      };
+    }
+    if (kind == 'tiles') {
+      final visited = p['visited'] as List;
+      return {
+        ...base,
+        'cols': cols,
+        'left': count - visited.length,
+        'cells': [for (var i = 0; i < count; i++) {'c': i == p['pos'] ? 'me' : visited.contains(i) ? 'done' : 'floor'}],
+      };
+    }
+    return {
+      ...base,
+      'cols': 4,
+      'seq': p['shown'] == true || p['done'] == true ? p['seq'] : null,
+      'at': p['at'],
+      'total': (p['seq'] as List).length,
+      'cells': [for (var n = 0; n < 4; n++) {'c': 'sym', 'n': n}],
+    };
+  }
 
   /// Cut: uma vez por rota, corta a árvore e abre um caminho escondido (um selvagem raro do lugar). null se não dá.
   static Json? cutPath(Json run) {
@@ -3759,7 +4337,12 @@ class FactoryRun {
   static const weatherTypes = {'rain': ['water', 'electric', 'bug'], 'sun': ['fire', 'grass', 'ground'], 'sand': ['rock', 'ground', 'steel'], 'snow': ['ice']};
 
   /// Os efeitos de lugar que vêm do céu: como o clima, só a céu aberto.
-  static const skyFields = ['storm', 'aurora', 'wind'];
+  static const skyFields = ['storm', 'aurora', 'wind', 'fog'];
+
+  /// Os efeitos de lugar que atraem Pokémon: na neblina aparecem mais Fantasma.
+  static const fieldTypes = {
+    'fog': ['ghost']
+  };
   static const openScenes = ['grass', 'forest', 'water', 'beach', 'swamp', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky', 'ruins', 'flowers', 'dunes', 'bamboo', 'lake', 'lakeside', 'acuity', 'wildarea', 'skypillar', 'spearpillar', 'bridge', 'park'];
 
   // season: não muda mais o clima (a neve do inverno caía em qualquer lugar aberto, mesmo onde não neva).
@@ -3784,7 +4367,7 @@ class FactoryRun {
   static const sceneField = <String, List<(String, double)>>{
     'cave': [('diamonds', 0.3)], 'mountain': [('rockfall', 0.25)], 'volcano': [('ashes', 0.4)], 'swamp': [('miasma', 0.35)], 'sewer': [('miasma', 0.25)],
     'icecave': [('chill', 0.35), ('aurora', 0.1)], 'snow': [('chill', 0.2), ('aurora', 0.2)], 'tower': [('haunt', 0.35), ('psychic', 0.15)], 'underwater': [('current', 0.4)], 'water': [('current', 0.15)],
-    'grass': [('grassy', 0.2)], 'forest': [('grassy', 0.3), ('misty', 0.1)], 'city': [('electric', 0.25)], 'beach': [('misty', 0.1)], 'sky': [('wind', 0.3), ('storm', 0.15)],
+    'grass': [('grassy', 0.2)], 'forest': [('grassy', 0.3), ('fog', 0.1)], 'city': [('electric', 0.25)], 'beach': [('fog', 0.1)], 'sky': [('wind', 0.3), ('storm', 0.15)],
     'desert': [('quicksand', 0.2)], 'ruins': [('psychic', 0.2), ('haunt', 0.15)], 'flowers': [('spores', 0.3), ('misty', 0.15)], 'plant': [('storm', 0.35), ('electric', 0.25)],
     'crystal': [('diamonds', 0.4)], 'lavacave': [('ashes', 0.4)], 'poisoncave': [('miasma', 0.4)], 'seacave': [('current', 0.3)], 'waterfall': [('current', 0.3)], 'dunes': [('quicksand', 0.35), ('haunt', 0.1)], 'bamboo': [('spores', 0.2), ('grassy', 0.2)], 'temple': [('psychic', 0.3)],
     'seafoam': [('chill', 0.4), ('current', 0.3)], 'silph': [('electric', 0.3), ('psychic', 0.2)], 'radio': [('electric', 0.5)],
@@ -4184,6 +4767,9 @@ class FactoryRun {
       out['town'] = {'leg': legOf(out), 'shop': _pickShop(rand, data, _int(out['floor']), 8, run['townMap'] == true)};
       final trade = _townTradeOffer(out, data, rand);
       if (trade != null) (out['town'] as Map)['trade'] = trade;
+      // O que a cidade te dá ao chegar (como nos jogos): a vara do Fishing Guru, a Bicycle, o S.S. Ticket.
+      final got = [for (final k in (featuresOf(data, out)['arrive'] as List?) ?? const []) _addKey(out, k)].whereType<String>().toList();
+      if (got.isNotEmpty) (out['town'] as Map)['got'] = got;
     }
     out['route'] = routeOptions(out, data, rand);
     // Começo de uma rota nova: a missão dela.

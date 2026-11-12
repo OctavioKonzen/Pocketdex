@@ -1913,6 +1913,28 @@ describe('pesca, árvores, frutas, bicicleta, balsa, hordas, neblina, fotos e os
   })
 })
 
+// O mesmo no app (test/factory_run_test.dart): os desafios de cada tipo, as hordas e o vaso de frutas com o mesmo sorteio.
+// Para gerar de novo: UPDATE_FACTORY_TRACE=1 npx vitest run src/lib/factoryRun.test.js -t "rodada 14 igual ao app"
+function round14Trace(F) {
+  const red = data.bosses.findIndex((b) => b.game === 'Red/Blue')
+  const gym = (seed) => F.nextFloor({ ...F.startRun(F.emptyFactory(), data, 1, 42), seed, leg: 1, floor: 1 + F.ROUTE_LENGTH, encounter: null, pending: null, boss: { region: red, step: data.bosses[red].leaders.findIndex((l) => l.city === 'Pewter City' && l.kind === 'gym') } }, data)
+  const puzzles = Object.keys(F.GYM_PUZZLES).flatMap((type) => [3, 11].map((seed) => { const r = F.puzzleOfType(data, gym(seed), type); return [type, seed, r.pending.puzzle, r.seed, F.puzzleView(r)] }))
+  const wild = Array.from({ length: 60 }, (_, k) => { const e = F.encounterFor(data, 30, seededRandom(k + 1), null, false, { kind: 'wild', biome: 'grass', ...(k % 3 === 0 ? { fish: k % 9 === 0 ? 0 : 2, biome: 'water' } : k % 3 === 1 ? { tree: k % 2 ? 'honey' : 'headbutt' } : {}) }); return [e.horde ? 1 : 0, e.foes.map((f) => [f.id, f.level, f.shiny ? 1 : 0])] })
+  const route = { ...gym(5), town: null, floor: 3, route: { floor: 3, biome: 'grass', options: [{ kind: 'trainer' }] } }
+  const berry = [5, 6, 7, 8].map((seed) => { const r = F.plantBerry({ ...route, seed }, data); return [r.berry, r.seed] })
+  return { puzzles, wild, berry }
+}
+describe('rodada 14 igual ao app', () => {
+  it('os desafios, as hordas, a pesca, as árvores e as frutas dão o mesmo que test/fixtures/round14.json', async () => {
+    const F = await import('./factoryRun')
+    const trace = JSON.parse(JSON.stringify(round14Trace(F)))
+    const url = new URL('../../../test/fixtures/round14.json', import.meta.url)
+    const { writeFileSync } = await import('node:fs')
+    if (process.env.UPDATE_FACTORY_TRACE) writeFileSync(url, JSON.stringify(trace) + '\n')
+    expect(trace).toEqual(JSON.parse(readFileSync(url, 'utf8')))
+  })
+})
+
 describe('o cenário de cada cidade ou vila (pela descrição dela nos jogos)', () => {
   const game = (name) => data.bosses.findIndex((b) => b.game === name)
   const at = (g, city, extra = {}) => ({ ...startRun(emptyFactory(), data, 1, 42), leg: 1, boss: { region: g, step: data.bosses[g].leaders.findIndex((l) => l.city === city) }, encounter: null, pending: null, ...extra })
