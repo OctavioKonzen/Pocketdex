@@ -8,7 +8,7 @@ import {
   placeInfo, routeInfo, DBOSS_GIMMICK_FLOOR, UPGRADE_FX, SHORE, CAVE_OF, dungeonPos, routePos, DUNGEON_LENGTH, CITY_BOSS, waterNext, RIVAL_FLOOR, targetOf, rivalBoss, rocketBoss, townShop, townCenter, townHub, biomesLinked,
   isDoubleBattle,
   DOUBLE_FLOOR,
-  battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, RARE_PLACES, atPc, pcOf, pcMove, pcSlots, PC_BOX, boxName, renameBox, boxWall, nextWall, setNick, gameOf, leagueAhead, rivalGrowth, sortBox, shownScene, bagsFor, NUZLOCKE_DEFAULT, levelCapOf, EXP_BENCH, benchShare, TRADE_EXP, TRADE_EVOS, familyOf, townTrade, townTradeable, featuresOf, climateOf, SCENE_WEATHER, OPEN_SCENES, waterReach, hasWaterfall, WATER_REACH, daycareHere, daycareOpen, rarePlacesOf, SECRET_BIOMES, PLACE_SCENES, hasKey, KEY_ITEMS, placeLegendOf, blockerOf, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, forgetMove, reminderCost, SAFARI_FEE, SAFARI_BALLS, SAFARI_ENCOUNTERS, SAFARI_MONS, safariRates, safariAct, safariPool, leaveSafari, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
+  battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, RARE_PLACES, atPc, pcOf, pcMove, pcSlots, PC_BOX, boxName, renameBox, boxWall, nextWall, setNick, gameOf, leagueAhead, rivalGrowth, sortBox, shownScene, bagsFor, NUZLOCKE_DEFAULT, levelCapOf, EXP_BENCH, benchShare, TRADE_EXP, TRADE_EVOS, familyOf, townTrade, townTradeable, featuresOf, climateOf, SAND_SCENES, SNOW_SCENES, SCENE_WEATHER, OPEN_SCENES, waterReach, hasWaterfall, WATER_REACH, daycareHere, daycareOpen, rarePlacesOf, SECRET_BIOMES, PLACE_SCENES, hasKey, KEY_ITEMS, placeLegendOf, blockerOf, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, forgetMove, reminderCost, SAFARI_FEE, SAFARI_BALLS, SAFARI_ENCOUNTERS, SAFARI_MONS, safariRates, safariAct, safariPool, leaveSafari, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
   HELD_BOOST, levelTo, MAX_TEAM, memberOf, movesAt, nextFloor, nextRandom, overflowPoints, pokemonPrice, runCoins, setMainItem, shopPrice,
   SHINY_BOOST, FOE_SHINY_BOOST, SHINY_CHANCE, START_BAG, START_BALLS, startersOf, unlockShiny, claimStarter, freePick, canEvolveWith, teachMove,
   equipFromStash, gimmicksOf, setGimmick, storyLine, startRun, takeCard, teamDown, applyBagItem, winFloor, chooseNode, routeOptions, routeCities,
@@ -1167,10 +1167,10 @@ describe('mapa da corrida', () => {
     expect(clockOf(new Date(2026, 3, 10, 12))).toEqual({ night: false, season: 'winter', day: 20553 })
     expect(clockOf(new Date(2026, 9, 13, 5))).toEqual({ night: true, season: 'summer', day: 20739 })
     expect(SEASON_TYPES.winter).toEqual(['ice'])
-    // No inverno neva no campo (em algum andar); fora do inverno, nunca neve no campo.
+    // Nunca neva no campo, nem no inverno (neve só onde é lugar de neve).
     const base = startRun(emptyFactory(), data, 1, 42)
     const floors = Array.from({ length: 40 }, (_, k) => ({ ...base, floor: k + 1 }))
-    expect(floors.some((r) => weatherOf(r, 'grass', 'winter') === 'snow')).toBe(true)
+    expect(floors.some((r) => weatherOf(r, 'grass', 'winter') === 'snow')).toBe(false)
     expect(floors.some((r) => weatherOf(r, 'grass', 'summer') === 'snow')).toBe(false)
     expect(weatherOf(base, 'grass')).toBe(weatherOf(base, 'grass', 'summer'))
     for (const effect of ['spores', 'quicksand', 'storm', 'aurora']) expect(Object.values(SCENE_FIELD).flat().some(([e]) => e === effect)).toBe(true)
@@ -1753,6 +1753,21 @@ describe('o clima único de cada rota e lugar (como nos jogos)', () => {
       for (let seed = 1; seed <= 60; seed++) expect(weatherOf({ ...run, seed }, scene, 'winter', data), scene).toBe('')
     }
     for (const scene of Object.keys(SCENE_WEATHER)) expect(OPEN_SCENES, scene).toContain(scene)
+    // Neve só onde é lugar de neve e areia só onde é deserto: no clima do tipo de lugar e no do mapa.
+    for (const [scene, table] of Object.entries(SCENE_WEATHER)) {
+      if (table.some(([w]) => w === 'snow')) expect(SNOW_SCENES, scene).toContain(scene)
+      if (table.some(([w]) => w === 'sand')) expect(SAND_SCENES, scene).toContain(scene)
+    }
+    for (const scene of OPEN_SCENES.filter((s) => !SNOW_SCENES.includes(s))) for (let seed = 1; seed <= 80; seed++) for (const season of ['winter', 'summer']) expect(weatherOf({ ...run, seed }, scene, season), scene).not.toBe('snow')
+    for (const [city, f] of Object.entries(data.routes.features)) {
+      for (const [key, c] of Object.entries(f.climate ?? {})) {
+        const [biome, , side, towns] = data.routes.cities[city]
+        const place = [side, ...(towns ?? [])].filter(Boolean).find(([name]) => name.toLowerCase().replace(/[^a-z0-9]/g, '-') === key)
+        const scene = key === 'route' ? biome : PLACE_SCENES[key] ?? place[1]
+        if ((c.w ?? []).some(([w]) => w === 'snow')) expect([...SNOW_SCENES, 'mountain'], `${city} ${key}`).toContain(scene)
+        if ((c.w ?? []).some(([w]) => w === 'sand')) expect(SAND_SCENES, `${city} ${key}`).toContain(scene)
+      }
+    }
     // Tempestade, aurora e ventos fortes também só a céu aberto.
     for (const scene of ['plant', 'icecave', 'cave', 'tower', 'lab']) for (let seed = 1; seed <= 200; seed++) expect(['storm', 'aurora', 'wind']).not.toContain(fieldOf({ ...run, seed }, scene, data))
     for (const [city, f] of Object.entries(data.routes.features)) {

@@ -2856,9 +2856,9 @@ export function rerollRoute(run, data) {
 export const SCENE_WEATHER = {
   desert: [['sand', 0.6], ['sun', 0.25]], volcano: [['sun', 0.6]], snow: [['snow', 0.65]],
   beach: [['sun', 0.35], ['rain', 0.25]], water: [['rain', 0.55], ['sun', 0.1]], swamp: [['rain', 0.5]],
-  grass: [['sun', 0.15], ['rain', 0.15]], forest: [['rain', 0.2], ['sun', 0.1]], mountain: [['sand', 0.15], ['snow', 0.15], ['sun', 0.1]],
+  grass: [['sun', 0.15], ['rain', 0.15]], forest: [['rain', 0.2], ['sun', 0.1]], mountain: [['sun', 0.1]],
   sky: [['sun', 0.2], ['rain', 0.2]], city: [['rain', 0.12], ['sun', 0.12]],
-  ruins: [['sand', 0.2], ['sun', 0.15]], flowers: [['sun', 0.25], ['rain', 0.1]], dunes: [['sand', 0.55]], bamboo: [['rain', 0.2], ['sun', 0.1]],
+  ruins: [['sun', 0.15]], flowers: [['sun', 0.25], ['rain', 0.1]], dunes: [['sand', 0.55]], bamboo: [['rain', 0.2], ['sun', 0.1]],
   lake: [['rain', 0.7]], lakeside: [['sun', 0.2], ['rain', 0.2]], acuity: [['snow', 0.65]], wildarea: [['sun', 0.2], ['rain', 0.2]], skypillar: [['sun', 0.2]],
 }
 /** A música do mapa (andando na rota e na cidade): um tema original por região, mais calmo. Igual ao app. */
@@ -2883,8 +2883,9 @@ export const SEASONS = ['spring', 'summer', 'autumn', 'winter']
 /** Os tipos que aparecem mais em cada estação e à noite. */
 export const SEASON_TYPES = { spring: ['grass', 'fairy'], summer: ['fire', 'water'], autumn: ['bug', 'ground'], winter: ['ice'] }
 export const NIGHT_TYPES = ['ghost', 'dark']
-/** No inverno, neva nos lugares abertos. */
-export const WINTER_SNOW = ['grass', 'forest', 'flowers', 'bamboo', 'mountain', 'city', 'ruins', 'beach']
+/** Neve só onde é lugar de neve e areia só onde é deserto (fora os lugares do mapa que têm isso nos jogos: CLIMATE). Igual ao app. */
+export const SNOW_SCENES = ['snow', 'acuity']
+export const SAND_SCENES = ['desert', 'dunes']
 /** A hora e a estação de agora: noite das 19h às 6h; a estação pelo mês (jan primavera, fev verão, mar outono, abr inverno...). */
 export function clockOf(date = new Date()) {
   const hour = date.getHours()
@@ -2908,10 +2909,11 @@ export function climateOf(data, run, scene = '') {
   return routePos(run) < ROUTE_LENGTH ? climate.route ?? null : null
 }
 /** O clima com que a batalha do andar começa ('' sem clima): pelo lugar, sempre o mesmo para a mesma corrida e andar. */
+// season: não muda mais o clima (a neve do inverno caía em qualquer lugar aberto, mesmo onde não neva).
 export function weatherOf(run, scene, season = null, data = null) {
   // Em lugar fechado não chove, não neva nem faz sol forte: lá dentro o clima só muda por golpe ou habilidade de Pokémon.
   if (!OPEN_SCENES.includes(scene)) return ''
-  const table = climateOf(data, run, scene)?.w ?? (season === 'winter' && WINTER_SNOW.includes(scene) ? [['snow', 0.35], ...(SCENE_WEATHER[scene] ?? [])] : SCENE_WEATHER[scene])
+  const table = climateOf(data, run, scene)?.w ?? SCENE_WEATHER[scene]
   if (!table) return ''
   let roll = (Math.imul(((run.seed ?? 0) ^ (run.floor * 40503)) | 0, 2246822519) >>> 0) / 4294967296
   for (const [weather, chance] of table) {

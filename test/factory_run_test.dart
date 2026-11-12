@@ -443,6 +443,16 @@ void main() {
     for (final scene in FactoryRun.sceneWeather.keys) {
       expect(FactoryRun.openScenes, contains(scene));
     }
+    // Neve só onde é lugar de neve e areia só onde é deserto.
+    for (final e in FactoryRun.sceneWeather.entries) {
+      if (e.value.any((w) => w.$1 == 'snow')) expect(FactoryRun.snowScenes, contains(e.key));
+      if (e.value.any((w) => w.$1 == 'sand')) expect(FactoryRun.sandScenes, contains(e.key));
+    }
+    for (final scene in FactoryRun.openScenes.where((s) => !FactoryRun.snowScenes.contains(s))) {
+      for (var seed = 1; seed <= 80; seed++) {
+        expect(FactoryRun.weatherOf({...lake, 'dungeon': null, 'seed': seed}, scene, 'winter'), isNot('snow'), reason: scene);
+      }
+    }
     for (final scene in ['plant', 'icecave', 'cave', 'tower', 'lab']) {
       for (var seed = 1; seed <= 200; seed++) {
         expect(FactoryRun.skyFields, isNot(contains(FactoryRun.fieldOf({...lake, 'seed': seed}, scene, data))), reason: scene);
@@ -1110,7 +1120,7 @@ void main() {
     expect(FactoryRun.clockOf(DateTime(2026, 10, 13, 5)), (night: true, season: 'summer', day: 20739));
     final base = FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!;
     final floors = [for (var k = 0; k < 40; k++) {...base, 'floor': k + 1}];
-    expect(floors.any((r) => FactoryRun.weatherOf(r, 'grass', 'winter') == 'snow'), isTrue);
+    expect(floors.any((r) => FactoryRun.weatherOf(r, 'grass', 'winter') == 'snow'), isFalse);
     expect(floors.any((r) => FactoryRun.weatherOf(r, 'grass', 'summer') == 'snow'), isFalse);
     expect(floors.any((r) => FactoryRun.fieldOf(r, 'flowers') == 'spores'), isTrue);
     int ghosts(bool night) {

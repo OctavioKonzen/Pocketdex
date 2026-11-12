@@ -3664,9 +3664,9 @@ class FactoryRun {
   static const sceneWeather = <String, List<(String, double)>>{
     'desert': [('sand', 0.6), ('sun', 0.25)], 'volcano': [('sun', 0.6)], 'snow': [('snow', 0.65)],
     'beach': [('sun', 0.35), ('rain', 0.25)], 'water': [('rain', 0.55), ('sun', 0.1)], 'swamp': [('rain', 0.5)],
-    'grass': [('sun', 0.15), ('rain', 0.15)], 'forest': [('rain', 0.2), ('sun', 0.1)], 'mountain': [('sand', 0.15), ('snow', 0.15), ('sun', 0.1)],
+    'grass': [('sun', 0.15), ('rain', 0.15)], 'forest': [('rain', 0.2), ('sun', 0.1)], 'mountain': [('sun', 0.1)],
     'sky': [('sun', 0.2), ('rain', 0.2)], 'city': [('rain', 0.12), ('sun', 0.12)],
-    'ruins': [('sand', 0.2), ('sun', 0.15)], 'flowers': [('sun', 0.25), ('rain', 0.1)], 'dunes': [('sand', 0.55)], 'bamboo': [('rain', 0.2), ('sun', 0.1)],
+    'ruins': [('sun', 0.15)], 'flowers': [('sun', 0.25), ('rain', 0.1)], 'dunes': [('sand', 0.55)], 'bamboo': [('rain', 0.2), ('sun', 0.1)],
     'lake': [('rain', 0.7)], 'lakeside': [('sun', 0.2), ('rain', 0.2)], 'acuity': [('snow', 0.65)], 'wildarea': [('sun', 0.2), ('rain', 0.2)], 'skypillar': [('sun', 0.2)],
   };
 
@@ -3695,8 +3695,9 @@ class FactoryRun {
   static const seasonTypes = {'spring': ['grass', 'fairy'], 'summer': ['fire', 'water'], 'autumn': ['bug', 'ground'], 'winter': ['ice']};
   static const nightTypes = ['ghost', 'dark'];
 
-  /// No inverno, neva nos lugares abertos.
-  static const winterSnow = ['grass', 'forest', 'flowers', 'bamboo', 'mountain', 'city', 'ruins', 'beach'];
+  /// Neve só onde é lugar de neve e areia só onde é deserto (fora os lugares do mapa que têm isso nos jogos: CLIMATE). Igual ao site.
+  static const snowScenes = ['snow', 'acuity'];
+  static const sandScenes = ['desert', 'dunes'];
 
   /// A hora e a estação de agora: noite das 19h às 6h; a estação pelo mês (jan primavera, fev verão, mar outono, abr inverno...).
   static ({bool night, String season, int? day}) clockOf([DateTime? date]) {
@@ -3728,11 +3729,12 @@ class FactoryRun {
   static const skyFields = ['storm', 'aurora', 'wind'];
   static const openScenes = ['grass', 'forest', 'water', 'beach', 'swamp', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky', 'ruins', 'flowers', 'dunes', 'bamboo', 'lake', 'lakeside', 'acuity', 'wildarea', 'skypillar', 'spearpillar', 'bridge', 'park'];
 
+  // season: não muda mais o clima (a neve do inverno caía em qualquer lugar aberto, mesmo onde não neva).
   static String weatherOf(Json run, String scene, [String? season, FactoryData? data]) {
     // Em lugar fechado não chove, não neva nem faz sol forte: lá dentro o clima só muda por golpe ou habilidade de Pokémon.
     if (!openScenes.contains(scene)) return '';
     final table = _climateTable(climateOf(data, run, scene)?['w']) ??
-        (season == 'winter' && winterSnow.contains(scene) ? [('snow', 0.35), ...?sceneWeather[scene]] : sceneWeather[scene]);
+        sceneWeather[scene];
     if (table == null) return '';
     final mixed = (_int(run['seed'] ?? 0) ^ ((_int(run['floor']) * 40503) & 0xFFFFFFFF)) & 0xFFFFFFFF;
     var roll = ((mixed * 2246822519) & 0xFFFFFFFF) / 4294967296;
