@@ -9150,5 +9150,25 @@
   "en": "Which move does it forget? (Even an HM; this cannot be undone.)",
   "fr": "Quelle attaque oublie-t-il ? (Même une CS ; c'est définitif.)",
   "es": "¿Qué movimiento olvida? (Incluso una MO; no se puede deshacer.)"
+ },
+ "mais Água, Elétrico e Inseto": {
+  "en": "more Water, Electric and Bug",
+  "fr": "plus d'Eau, Électrik et Insecte",
+  "es": "más Agua, Eléctrico y Bicho"
+ },
+ "mais Fogo, Planta e Terra": {
+  "en": "more Fire, Grass and Ground",
+  "fr": "plus de Feu, Plante et Sol",
+  "es": "más Fuego, Planta y Tierra"
+ },
+ "mais Pedra, Terra e Aço": {
+  "en": "more Rock, Ground and Steel",
+  "fr": "plus de Roche, Sol et Acier",
+  "es": "más Roca, Tierra y Acero"
+ },
+ "mais Gelo": {
+  "en": "more Ice",
+  "fr": "plus de Glace",
+  "es": "más Hielo"
  }
 }

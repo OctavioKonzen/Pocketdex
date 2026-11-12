@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { seededRandom } from './league'
 import {
   learnMove,
   movesLearnedBetween,
@@ -8,7 +9,7 @@ import {
   placeInfo, routeInfo, DBOSS_GIMMICK_FLOOR, UPGRADE_FX, SHORE, CAVE_OF, dungeonPos, routePos, DUNGEON_LENGTH, CITY_BOSS, waterNext, RIVAL_FLOOR, targetOf, rivalBoss, rocketBoss, townShop, townCenter, townHub, biomesLinked,
   isDoubleBattle,
   DOUBLE_FLOOR,
-  battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, RARE_PLACES, atPc, pcOf, pcMove, pcSlots, PC_BOX, boxName, renameBox, boxWall, nextWall, setNick, gameOf, leagueAhead, rivalGrowth, sortBox, shownScene, bagsFor, NUZLOCKE_DEFAULT, levelCapOf, EXP_BENCH, benchShare, TRADE_EXP, TRADE_EVOS, familyOf, townTrade, townTradeable, featuresOf, climateOf, SAND_SCENES, SNOW_SCENES, SCENE_WEATHER, OPEN_SCENES, waterReach, hasWaterfall, WATER_REACH, daycareHere, daycareOpen, rarePlacesOf, SECRET_BIOMES, PLACE_SCENES, hasKey, KEY_ITEMS, placeLegendOf, blockerOf, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, forgetMove, reminderCost, SAFARI_FEE, SAFARI_BALLS, SAFARI_ENCOUNTERS, SAFARI_MONS, safariRates, safariAct, safariPool, leaveSafari, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
+  battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, RARE_PLACES, atPc, pcOf, pcMove, pcSlots, PC_BOX, boxName, renameBox, boxWall, nextWall, setNick, gameOf, leagueAhead, rivalGrowth, sortBox, shownScene, bagsFor, NUZLOCKE_DEFAULT, levelCapOf, EXP_BENCH, benchShare, TRADE_EXP, TRADE_EVOS, familyOf, townTrade, townTradeable, featuresOf, climateOf, WEATHER_TYPES, SAND_SCENES, SNOW_SCENES, SCENE_WEATHER, OPEN_SCENES, waterReach, hasWaterfall, WATER_REACH, daycareHere, daycareOpen, rarePlacesOf, SECRET_BIOMES, PLACE_SCENES, hasKey, KEY_ITEMS, placeLegendOf, blockerOf, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, forgetMove, reminderCost, SAFARI_FEE, SAFARI_BALLS, SAFARI_ENCOUNTERS, SAFARI_MONS, safariRates, safariAct, safariPool, leaveSafari, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
   HELD_BOOST, levelTo, MAX_TEAM, memberOf, movesAt, nextFloor, nextRandom, overflowPoints, pokemonPrice, runCoins, setMainItem, shopPrice,
   SHINY_BOOST, FOE_SHINY_BOOST, SHINY_CHANCE, START_BAG, START_BALLS, startersOf, unlockShiny, claimStarter, freePick, canEvolveWith, teachMove,
   equipFromStash, gimmicksOf, setGimmick, storyLine, startRun, takeCard, teamDown, applyBagItem, winFloor, chooseNode, routeOptions, routeCities,
@@ -1105,7 +1106,7 @@ describe('mapa da corrida', () => {
     expect(hmNeeded({ ...base, hms: ['surf'] }, { kind: 'dungeon', place: 'waterfall', scene: 'waterfall' })).toBe('waterfall')
     expect(hmNeeded({ ...base, hms: ['waterfall'] }, { kind: 'dungeon', place: 'waterfall', scene: 'waterfall' })).toBe(null)
     // O clima mais forte: muita chuva no mar e areia no deserto.
-    const many = Array.from({ length: 400 }, (_, f) => ({ ...base, floor: f }))
+    const many = Array.from({ length: 400 }, (_, f) => ({ ...base, seed: f + 1 }))
     const share = (scene, w) => many.filter((r) => weatherOf(r, scene) === w).length / many.length
     expect(share('water', 'rain')).toBeGreaterThan(0.45)
     expect(share('desert', 'sand')).toBeGreaterThan(0.5)
@@ -1174,7 +1175,7 @@ describe('mapa da corrida', () => {
     expect(floors.some((r) => weatherOf(r, 'grass', 'summer') === 'snow')).toBe(false)
     expect(weatherOf(base, 'grass')).toBe(weatherOf(base, 'grass', 'summer'))
     for (const effect of ['spores', 'quicksand', 'storm', 'aurora']) expect(Object.values(SCENE_FIELD).flat().some(([e]) => e === effect)).toBe(true)
-    expect(floors.some((r) => fieldOf(r, 'flowers') === 'spores')).toBe(true)
+    expect(floors.some((r, k) => fieldOf({ ...r, seed: k + 1 }, 'flowers') === 'spores')).toBe(true)
     // À noite, mais Fantasma e Sombrio (o mesmo andar, com e sem a noite).
     const ghosts = (night) => {
       let n = 0
@@ -1746,6 +1747,35 @@ describe('o clima único de cada rota e lugar (como nos jogos)', () => {
     expect(climateOf(data, snow, 'gym-ice')).toBe(null)
     expect(climateOf(data, { ...moon, dungeon: { place: 'nugget-bridge', scene: 'city', start: 3 } }, 'bridge')).toBe(null)
     expect(climateOf(null, lake, 'lake')).toBe(null)
+  })
+  it('o clima é sorteado no primeiro andar da rota e fica o mesmo até o fim dela; num lugar, o dele; e atrai Pokémon diferentes (igual ao app)', () => {
+    const base = { ...startRun(emptyFactory(), data, 1, 42), leg: 1 }
+    let changed = 0
+    for (let seed = 1; seed <= 120; seed++) {
+      const route = Array.from({ length: ROUTE_LENGTH }, (_, k) => weatherOf({ ...base, seed, floor: 1 + k }, 'water'))
+      expect(new Set(route).size, `seed ${seed}`).toBe(1)
+      const fields = Array.from({ length: ROUTE_LENGTH }, (_, k) => fieldOf({ ...base, seed, floor: 1 + k }, 'forest'))
+      expect(new Set(fields).size).toBe(1)
+      // Na rota seguinte, sorteia de novo.
+      if (weatherOf({ ...base, seed, floor: 21, leg: 21 }, 'water') !== route[0]) changed++
+      // Num lugar: o mesmo clima em todos os andares dele (o do andar em que entrou).
+      const place = Array.from({ length: DUNGEON_LENGTH }, (_, k) => weatherOf({ ...base, seed, floor: 6 + k, dungeon: { place: 'x', scene: 'swamp', start: 5 } }, 'swamp'))
+      expect(new Set(place).size).toBe(1)
+    }
+    expect(changed).toBeGreaterThan(20)
+    expect(Object.keys(WEATHER_TYPES)).toEqual(['rain', 'sun', 'sand', 'snow'])
+    // O clima atrai: com neve aparecem bem mais Pokémon de Gelo (e na chuva, de Água, Elétrico e Inseto) na mesma rota.
+    const share = (weather, types) => {
+      let n = 0
+      for (let seed = 1; seed <= 300; seed++) {
+        const foe = encounterFor(data, 30, seededRandom(seed), null, false, { kind: 'wild', biome: 'grass', ...(weather ? { weather } : {}) }).foes[0]
+        if ((data.species[foe.id] ?? data.species[data.forms?.[foe.id]] ?? [])[4]?.some((t) => types.includes(t))) n++
+      }
+      return n / 300
+    }
+    expect(share('snow', ['ice'])).toBeGreaterThan(share('', ['ice']) + 0.03)
+    expect(share('rain', WEATHER_TYPES.rain)).toBeGreaterThan(share('', WEATHER_TYPES.rain) + 0.1)
+    expect(share('sand', WEATHER_TYPES.sand)).toBeGreaterThan(share('', WEATHER_TYPES.sand) + 0.1)
   })
   it('em lugar fechado o clima não acontece sozinho (só por golpe ou habilidade de Pokémon); o mapa não põe clima em lugar fechado (igual ao app)', () => {
     const run = startRun(emptyFactory(), data, 1, 42)

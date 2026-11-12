@@ -430,7 +430,7 @@ void main() {
     expect(share((seed) => FactoryRun.weatherOf({...snow, 'seed': seed}, 'snow', null, data) == 'snow'), greaterThan(0.85));
     expect(share((seed) => FactoryRun.fieldOf({...snow, 'seed': seed}, 'snow', data) == 'diamonds'), greaterThan(0.4));
     // O mesmo sorteio do site.
-    expect([for (var seed = 1; seed <= 12; seed++) FactoryRun.fieldOf({...snow, 'seed': seed}, 'snow', data)].join(','), ',diamonds,,diamonds,diamonds,,diamonds,,,diamonds,,diamonds');
+    expect([for (var seed = 1; seed <= 12; seed++) FactoryRun.fieldOf({...snow, 'seed': seed}, 'snow', data)].join(','), 'diamonds,diamonds,,,,,diamonds,diamonds,diamonds,diamonds,,');
     expect(FactoryRun.climateOf(data, {...snow, 'floor': 1 + FactoryRun.routeLength}, 'city'), isNull);
     expect(FactoryRun.climateOf(data, snow, 'gym-ice'), isNull);
     expect(FactoryRun.climateOf(null, lake, 'lake'), isNull);
@@ -465,6 +465,39 @@ void main() {
         }
       }
     }
+  });
+
+  test('o clima é sorteado no primeiro andar da rota e fica até o fim dela; num lugar, o dele; e atrai Pokémon diferentes (igual ao site)', () {
+    final base = {...FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!, 'leg': 1};
+    var changed = 0;
+    for (var seed = 1; seed <= 120; seed++) {
+      final route = {for (var k = 0; k < FactoryRun.routeLength; k++) FactoryRun.weatherOf({...base, 'seed': seed, 'floor': 1 + k}, 'water')};
+      expect(route, hasLength(1), reason: 'seed $seed');
+      expect({for (var k = 0; k < FactoryRun.routeLength; k++) FactoryRun.fieldOf({...base, 'seed': seed, 'floor': 1 + k}, 'forest')}, hasLength(1));
+      if (FactoryRun.weatherOf({...base, 'seed': seed, 'floor': 21, 'leg': 21}, 'water') != route.first) changed++;
+      final place = {
+        for (var k = 0; k < FactoryRun.dungeonLength; k++)
+          FactoryRun.weatherOf({...base, 'seed': seed, 'floor': 6 + k, 'dungeon': {'place': 'x', 'scene': 'swamp', 'start': 5}}, 'swamp')
+      };
+      expect(place, hasLength(1));
+    }
+    expect(changed, greaterThan(20));
+    // O mesmo sorteio do site.
+    expect([for (var seed = 1; seed <= 12; seed++) FactoryRun.weatherOf({...base, 'seed': seed, 'floor': 4}, 'water')].join(','), ',rain,,rain,,rain,sun,rain,,rain,,rain');
+    expect(FactoryRun.weatherTypes.keys, ['rain', 'sun', 'sand', 'snow']);
+    double share(String weather, List<String> types) {
+      var n = 0;
+      for (var seed = 1; seed <= 300; seed++) {
+        final foe = (FactoryRun.encounterFor(data, 30, League.seededRandom(seed), null, false, {'kind': 'wild', 'biome': 'grass', if (weather.isNotEmpty) 'weather': weather})['foes'] as List).first;
+        if (((data.speciesOf(foe['id'] as int)?.elementAtOrNull(4) as List?) ?? const []).any(types.contains)) n++;
+      }
+      return n / 300;
+    }
+
+    expect(share('snow', ['ice']), greaterThan(share('', ['ice']) + 0.03));
+    expect(share('rain', FactoryRun.weatherTypes['rain']!), greaterThan(share('', FactoryRun.weatherTypes['rain']!) + 0.1));
+    // O mesmo sorteio do site: quantos de Gelo em 300 selvagens com neve.
+    expect((share('snow', ['ice']) * 300).round(), 18);
   });
 
   test('lendários dos lugares, Snorlax e Sudowoodo, itens-chave (igual ao site)', () {
@@ -1053,7 +1086,7 @@ void main() {
     expect(FactoryRun.hmNeeded({...base, 'hms': ['surf']}, fallNode), 'waterfall');
     expect(FactoryRun.hmNeeded({...base, 'hms': ['waterfall']}, fallNode), isNull);
     // O clima mais forte: muita chuva no mar e areia no deserto.
-    final many = [for (var f = 0; f < 400; f++) {...base, 'floor': f}];
+    final many = [for (var f = 0; f < 400; f++) {...base, 'seed': f + 1}];
     double share(String scene, String w) => many.where((r) => FactoryRun.weatherOf(r, scene) == w).length / many.length;
     expect(share('water', 'rain'), greaterThan(0.45));
     expect(share('desert', 'sand'), greaterThan(0.5));
@@ -1122,7 +1155,7 @@ void main() {
     final floors = [for (var k = 0; k < 40; k++) {...base, 'floor': k + 1}];
     expect(floors.any((r) => FactoryRun.weatherOf(r, 'grass', 'winter') == 'snow'), isFalse);
     expect(floors.any((r) => FactoryRun.weatherOf(r, 'grass', 'summer') == 'snow'), isFalse);
-    expect(floors.any((r) => FactoryRun.fieldOf(r, 'flowers') == 'spores'), isTrue);
+    expect([for (var k = 0; k < 40; k++) FactoryRun.fieldOf({...base, 'seed': k + 1}, 'flowers')], contains('spores'));
     int ghosts(bool night) {
       var n = 0;
       for (var seed = 1; seed <= 60; seed++) {

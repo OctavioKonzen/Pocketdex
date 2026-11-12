@@ -2216,6 +2216,8 @@ String _hmHint(Json run, Map? node) => _keyNeeded(run, node) != null
 
 /// O clima do lugar (a previsão no mapa). Igual ao site.
 const _weatherLabel = {'rain': '🌧️ Chuva', 'sun': '☀️ Sol forte', 'sand': '🏜️ Tempestade de areia', 'snow': '❄️ Neve'};
+/// O clima da rota (o mesmo em todos os andares dela) atrai Pokémon diferentes. Igual ao site.
+const _weatherPull = {'rain': 'mais Água, Elétrico e Inseto', 'sun': 'mais Fogo, Planta e Terra', 'sand': 'mais Pedra, Terra e Aço', 'snow': 'mais Gelo'};
 const _cutInfo = ('🌳', 'Caminho escondido', 'Aberto com Cut: um selvagem raro do lugar.');
 const _smashInfo = ('🪨', 'Rocha quebrada', 'Aberta com Rock Smash: um selvagem raro do lugar.');
 const _strengthInfo = ('💪', 'Pedra empurrada', 'Aberta com Strength: um treinador forte (sempre deixa um item).');
@@ -4136,7 +4138,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
     final cut = !meeting && !town ? FactoryRun.cutPath(run) : null;
     final smash = !meeting && !town ? FactoryRun.smashPath(run) : null;
     final strength = !meeting && !town ? FactoryRun.strengthPath(run) : null;
-    final forecast = town ? '' : FactoryRun.weatherOf(run, '${route['biome']}', clock.season, data);
+    final forecast = town ? '' : FactoryRun.weatherOf(run, FactoryRun.shownScene(run, '${route['biome']}'), clock.season, data);
     final burst = FactoryRun.outbreakOf(data, clock.day);
     // O andar (pequeno, num canto): na rota, até a cidade; num lugar, até o chefe dele.
     final floorTag = dungeon != null
@@ -4250,7 +4252,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
         Text(
             '${tr(_seasonLabel[clock.season] ?? '')} · ${clock.night ? '🌙 ${tr('Noite: mais Fantasma e Sombrio')}' : '🌤️ ${tr('Dia')}'} · '
             '${tr('Chefe em {0}:').replaceAll('{0}', cities.to)} ${target['name']}'
-            '${forecast.isNotEmpty ? ' · ${tr('Clima: {0}').replaceAll('{0}', tr(_weatherLabel[forecast] ?? forecast))}' : ''}',
+            '${forecast.isNotEmpty ? ' · ${tr('Clima: {0}').replaceAll('{0}', tr(_weatherLabel[forecast] ?? forecast))}${_weatherPull[forecast] != null ? ' (${tr(_weatherPull[forecast]!)})' : ''}' : ''}',
             key: const ValueKey('factory-clock'),
             style: TextStyle(fontSize: 11, color: _dlgSub)),
         if (burst != null)

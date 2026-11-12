@@ -1151,6 +1151,8 @@ const PLACE_LEGEND_HELP = 'O lendário daqui: é o chefe do lugar. Dá para capt
 const hmHint = (run, node) => (keyNeeded(run, node) ? t(node.blocker ? 'Precisa de {0} para acordá-lo; sem ela, só dando a volta.' : 'Precisa de {0} para entrar.').replace('{0}', KEY_ITEMS[keyNeeded(run, node)]) : node?.kind === 'safari' && !hmNeeded(run, node) ? t('Você precisa de {0} moedas para entrar.').replace('{0}', SAFARI_FEE) : t(HM_HINTS[hmNeeded(run, node)] ?? HM_HINTS.surf))
 /** O clima do lugar (a previsão no mapa). */
 const WEATHER_LABEL = { rain: '🌧️ Chuva', sun: '☀️ Sol forte', sand: '🏜️ Tempestade de areia', snow: '❄️ Neve' }
+/** O clima da rota (o mesmo em todos os andares dela) atrai Pokémon diferentes. */
+const WEATHER_PULL = { rain: 'mais Água, Elétrico e Inseto', sun: 'mais Fogo, Planta e Terra', sand: 'mais Pedra, Terra e Aço', snow: 'mais Gelo' }
 const CUT_INFO = { icon: '🌳', label: 'Caminho escondido', help: 'Aberto com Cut: um selvagem raro do lugar.' }
 const SMASH_INFO = { icon: '🪨', label: 'Rocha quebrada', help: 'Aberta com Rock Smash: um selvagem raro do lugar.' }
 const STRENGTH_INFO = { icon: '💪', label: 'Pedra empurrada', help: 'Aberta com Strength: um treinador forte (sempre deixa um item).' }
@@ -2626,7 +2628,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     const cut = !meeting && !town ? cutPath(run) : null
     const smash = !meeting && !town ? smashPath(run) : null
     const strength = !meeting && !town ? strengthPath(run) : null
-    const forecast = town ? '' : weatherOf(run, route.biome, clock.season, data)
+    const forecast = town ? '' : weatherOf(run, shownScene(run, route.biome), clock.season, data)
     const burst = outbreakOf(data, clock.day)
     // O andar (pequeno, num canto): na rota, até a cidade; num lugar, até o chefe dele.
     const floorTag = inside ? `${Math.min(DUNGEON_LENGTH, dungeonPos(run) + 1)}/${DUNGEON_LENGTH}` : town ? `${Math.min(CITY_LENGTH, pos - ROUTE_LENGTH + 1)}/${CITY_LENGTH}` : `${pos + 1}/${ROUTE_LENGTH}`
@@ -2693,7 +2695,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         )}
         <p className="dlg-sub text-xs" data-testid="factory-clock">
           {t(SEASON_LABEL[clock.season])} · {clock.night ? `🌙 ${t('Noite: mais Fantasma e Sombrio')}` : `🌤️ ${t('Dia')}`} · {t('Chefe em {0}:').replace('{0}', to)} <b data-no-translate>{target.name}</b>
-          {forecast && <span data-testid="factory-forecast"> · {t('Clima: {0}').replace('{0}', t(WEATHER_LABEL[forecast] ?? forecast))}</span>}
+          {forecast && <span data-testid="factory-forecast"> · {t('Clima: {0}').replace('{0}', t(WEATHER_LABEL[forecast] ?? forecast))}{WEATHER_PULL[forecast] ? ` (${t(WEATHER_PULL[forecast])})` : ''}</span>}
         </p>
         {burst != null && (
           <p className="dlg-sub text-xs" data-testid="factory-outbreak">

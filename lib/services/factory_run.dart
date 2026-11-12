@@ -2247,9 +2247,11 @@ class FactoryRun {
       final burst = clock == null ? null : outbreakOf(data, clock.day);
       final burstHere = burst != null && ((data.species[burst]?.elementAtOrNull(6) as List?) ?? const []).contains(scene);
       final when = clock == null ? const <String, dynamic>{} : {'night': clock.night, 'season': clock.season, if (burstHere) 'outbreak': burst};
+      // O clima da rota (o mesmo em todos os andares dela) atrai Pokémon diferentes.
+      final sky = weatherOf(run, shownScene(run, scene), null, data);
       Json roll() => {
             ...encounterFor(data, floor, rand, node['kind'] == 'boss' ? bossOf(data, out) : null, node['kind'] == 'wildboss',
-                {...node, 'biome': scene, 'shiny': run['shinyRate'] ?? 1, ...when, ...huntNode(run)}),
+                {...node, 'biome': scene, 'shiny': run['shinyRate'] ?? 1, ...when, if (sky.isNotEmpty) 'weather': sky, ...huntNode(run)}),
             'scene': scene,
           };
       out['encounter'] = roll();
@@ -2499,9 +2501,12 @@ class FactoryRun {
     // A chance de cada espécie segue a raridade dela (a taxa de captura); os treinadores com menos diferença (raiz).
     // Os tipos do lugar aparecem bem mais (routeTypeWeight; nos treinadores, routeTypeTrainer).
     // À noite, mais Fantasma e Sombrio; em cada estação, os tipos dela (node.night, node.season: o relógio de quem joga).
+    // O clima da rota também: com chuva, mais Água, Elétrico e Inseto; com sol, Fogo, Planta e Terra; areia, Pedra, Terra e Aço; neve, Gelo.
+    final drawn = weatherTypes[node?['weather']] ?? const <String>[];
     final types = biomes[node?['biome']] == null
         ? null
-        : [...biomes[node!['biome']]!, if (node['night'] == true) ...nightTypes, ...?seasonTypes[node['season']]];
+        : [...biomes[node!['biome']]!, if (node['night'] == true) ...nightTypes, ...?seasonTypes[node['season']], ...drawn];
+    bool pulled(int id) => drawn.isNotEmpty && ((data.species[id]?.elementAtOrNull(4) as List?) ?? const []).any(drawn.contains);
     bool local(int id) => types != null && ((data.species[id]?.elementAtOrNull(4) as List?) ?? const []).any(types.contains);
     int pick(List<({int id, int bst, int rarity, int rate})> pool, [bool trainer = false]) {
       final fit = [for (final p in pool) if (p.bst <= budget && (p.bst >= math.min(budget, 600) - 160 || fresh.contains(p.id))) p];
@@ -2511,7 +2516,7 @@ class FactoryRun {
         });
       final list = fit.isNotEmpty ? fit : near.take(20).toList();
       return _pickWeighted(list, [
-        for (final p in list) trainer ? math.sqrt(p.rate) * (local(p.id) ? routeTypeTrainer : 1) : p.rate.toDouble() * (local(p.id) ? routeTypeWeight : 1)
+        for (final p in list) trainer ? math.sqrt(p.rate) * (local(p.id) ? routeTypeTrainer : 1) : p.rate.toDouble() * (local(p.id) ? routeTypeWeight : 1) * (pulled(p.id) ? weatherWeight : 1)
       ], rand).id;
     }
 
@@ -2540,7 +2545,11 @@ class FactoryRun {
     // só quem vive debaixo d'água); sem habitat nos dados, pelos tipos do lugar; sem nenhum, qualquer um.
     final place = node?['biome'];
     final lives = place == null ? const <({int id, int bst, int rarity, int rate})>[] : [for (final p in common) if (((data.species[p.id]?.elementAtOrNull(6) as List?) ?? const []).contains(place)) p];
-    final native = lives.isNotEmpty ? lives : types == null ? const <({int id, int bst, int rarity, int rate})>[] : [for (final p in common) if (local(p.id)) p];
+    // Com clima, quem é dos tipos dele vem para a rota mesmo sem viver nela (a neve traz os de Gelo, a chuva os de Água...).
+    final guests = drawn.isNotEmpty && lives.isNotEmpty
+        ? [for (final p in common) if (!lives.contains(p) && ((data.species[p.id]?.elementAtOrNull(4) as List?) ?? const []).any(drawn.contains)) p]
+        : const <({int id, int bst, int rarity, int rate})>[];
+    final native = lives.isNotEmpty ? [...lives, ...guests] : types == null ? const <({int id, int bst, int rarity, int rate})>[] : [for (final p in common) if (local(p.id)) p];
     // Seguindo o Pokémon ferido: um raro do lugar (taxa de captura baixa).
     final rare = node?['rare'] == true ? [for (final p in (native.isNotEmpty ? native : common)) if (p.rate <= 75) p] : const <({int id, int bst, int rarity, int rate})>[];
     // Chuva de meteoros: um Clefairy (da linha dele, pelo nível), com mais chance de ser shiny.
@@ -3725,6 +3734,15 @@ class FactoryRun {
       list is List ? [for (final e in list) ('${(e as List)[0]}', (e[1] as num).toDouble())] : null;
 
   /// Os lugares a céu aberto: só neles o clima do lugar (chuva, sol forte, areia, neve) acontece sozinho. Igual ao site.
+  /// O clima é sorteado uma vez, no primeiro andar da rota (ou ao entrar num lugar), e fica o mesmo até o fim dela: não
+  /// muda de andar para andar. A chave do sorteio: o andar em que a rota começou; num lugar, o andar em que você entrou.
+  static int climateKey(Json run) => run['dungeon'] is Map ? _int(run['dungeon']['start'] ?? run['floor']) + 7919 : legOf(run);
+
+  /// O clima da rota atrai Pokémon diferentes: os tipos que aparecem mais (e passam a aparecer ali) com cada clima. Igual ao site.
+  /// Quanto o clima puxa os selvagens dos tipos dele (por cima do peso dos tipos do lugar).
+  static const weatherWeight = 3;
+  static const weatherTypes = {'rain': ['water', 'electric', 'bug'], 'sun': ['fire', 'grass', 'ground'], 'sand': ['rock', 'ground', 'steel'], 'snow': ['ice']};
+
   /// Os efeitos de lugar que vêm do céu: como o clima, só a céu aberto.
   static const skyFields = ['storm', 'aurora', 'wind'];
   static const openScenes = ['grass', 'forest', 'water', 'beach', 'swamp', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky', 'ruins', 'flowers', 'dunes', 'bamboo', 'lake', 'lakeside', 'acuity', 'wildarea', 'skypillar', 'spearpillar', 'bridge', 'park'];
@@ -3736,7 +3754,7 @@ class FactoryRun {
     final table = _climateTable(climateOf(data, run, scene)?['w']) ??
         sceneWeather[scene];
     if (table == null) return '';
-    final mixed = (_int(run['seed'] ?? 0) ^ ((_int(run['floor']) * 40503) & 0xFFFFFFFF)) & 0xFFFFFFFF;
+    final mixed = (_int(run['seed'] ?? 0) ^ ((climateKey(run) * 40503) & 0xFFFFFFFF)) & 0xFFFFFFFF;
     var roll = ((mixed * 2246822519) & 0xFFFFFFFF) / 4294967296;
     for (final (weather, chance) in table) {
       if (roll < chance) return weather;
@@ -3767,7 +3785,7 @@ class FactoryRun {
     final all = _climateTable(climateOf(data, run, scene)?['f']) ?? sceneField[scene];
     final table = all != null && !openScenes.contains(scene) ? [for (final e in all) if (!skyFields.contains(e.$1)) e] : all;
     if (table == null) return '';
-    final mixed = (_int(run['seed'] ?? 0) ^ ((_int(run['floor']) * 69069) & 0xFFFFFFFF)) & 0xFFFFFFFF;
+    final mixed = (_int(run['seed'] ?? 0) ^ ((climateKey(run) * 69069) & 0xFFFFFFFF)) & 0xFFFFFFFF;
     var roll = ((mixed * 2654435761) & 0xFFFFFFFF) / 4294967296;
     for (final (effect, chance) in table) {
       if (roll < chance) return effect;

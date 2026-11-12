@@ -1741,7 +1741,9 @@ export function chooseNode(run, data, index, clock = null) {
     // O surto do dia: só nos lugares onde a espécie vive.
     const burst = clock ? outbreakOf(data, clock.day) : null
     const when = clock ? { night: clock.night, season: clock.season, ...(burst != null && data.species[burst]?.[6]?.includes(scene) ? { outbreak: burst } : {}) } : {}
-    const roll = () => ({ ...encounterFor(data, out.floor, rand, node.kind === 'boss' ? bossOf(data, out) : null, node.kind === 'wildboss', { ...node, biome: scene, shiny: run.shinyRate ?? 1, ...when, ...huntNode(run) }), scene })
+    // O clima da rota (o mesmo em todos os andares dela) atrai Pokémon diferentes.
+    const sky = weatherOf(run, shownScene(run, scene), null, data)
+    const roll = () => ({ ...encounterFor(data, out.floor, rand, node.kind === 'boss' ? bossOf(data, out) : null, node.kind === 'wildboss', { ...node, biome: scene, shiny: run.shinyRate ?? 1, ...when, ...(sky ? { weather: sky } : {}), ...huntNode(run) }), scene })
     out.encounter = roll()
     // Nuzlocke (cláusula de repetidos): o primeiro selvagem da área não é de uma linha evolutiva que você já teve.
     if (nuzRule(run, 'dupes') && out.encounter.kind === 'wild' && !areaUsed(run)) {
@@ -1932,12 +1934,15 @@ export function encounterFor(data, floor, rand, boss = null, wild = false, node 
   // os treinadores escolhem com menos diferença (raiz da taxa).
   // Os tipos do lugar aparecem bem mais (ROUTE_TYPE_WEIGHT; nos treinadores, ROUTE_TYPE_TRAINER).
   // À noite, mais Fantasma e Sombrio; em cada estação, os tipos dela (node.night, node.season: o relógio de quem joga).
-  const types = BIOMES[node?.biome] && [...BIOMES[node.biome], ...(node.night ? NIGHT_TYPES : []), ...(SEASON_TYPES[node.season] ?? [])]
+  // O clima da rota também: com chuva, mais Água, Elétrico e Inseto; com sol, Fogo, Planta e Terra; areia, Pedra, Terra e Aço; neve, Gelo.
+  const drawn = WEATHER_TYPES[node?.weather] ?? []
+  const types = BIOMES[node?.biome] && [...BIOMES[node.biome], ...(node.night ? NIGHT_TYPES : []), ...(SEASON_TYPES[node.season] ?? []), ...drawn]
+  const pulled = (p) => drawn.length > 0 && (data.species[p.id]?.[4] ?? []).some((t) => drawn.includes(t))
   const local = (p) => Boolean(types && (data.species[p.id]?.[4] ?? []).some((t) => types.includes(t)))
   const pick = (pool, trainer = false) => {
     const fit = pool.filter((p) => p.bst <= budget && (p.bst >= Math.min(budget, 600) - 160 || fresh.has(p.id)))
     const list = fit.length ? fit : [...pool].sort((a, b) => Math.abs(a.bst - budget) - Math.abs(b.bst - budget)).slice(0, 20)
-    return pickWeighted(list, list.map((p) => (trainer ? Math.sqrt(p.rate) * (local(p) ? ROUTE_TYPE_TRAINER : 1) : p.rate * (local(p) ? ROUTE_TYPE_WEIGHT : 1))), rand).id
+    return pickWeighted(list, list.map((p) => (trainer ? Math.sqrt(p.rate) * (local(p) ? ROUTE_TYPE_TRAINER : 1) : p.rate * (local(p) ? ROUTE_TYPE_WEIGHT : 1) * (pulled(p) ? WEATHER_WEIGHT : 1))), rand).id
   }
   const common = entries.filter((p) => p.rarity === 0 || p.rarity === 3)
   if (kind === 'trainer' || kind === 'ace') {
@@ -1958,7 +1963,9 @@ export function encounterFor(data, floor, rand, boss = null, wild = false, node 
   // Selvagem: só os que vivem no lugar (o habitat de cada espécie: dos locais de encontro dos jogos; no fundo do mar,
   // só quem vive debaixo d'água); sem habitat nos dados, pelos tipos do lugar; sem nenhum, qualquer um.
   const lives = node?.biome ? common.filter((p) => data.species[p.id]?.[6]?.includes(node.biome)) : []
-  const native = lives.length ? lives : types ? common.filter(local) : []
+  // Com clima, quem é dos tipos dele vem para a rota mesmo sem viver nela (a neve traz os de Gelo, a chuva os de Água...).
+  const guests = drawn.length && lives.length ? common.filter((p) => !lives.includes(p) && (data.species[p.id]?.[4] ?? []).some((t) => drawn.includes(t))) : []
+  const native = lives.length ? [...lives, ...guests] : types ? common.filter(local) : []
   // Seguindo o Pokémon ferido: um raro do lugar (taxa de captura baixa).
   const rare = node?.rare ? (native.length ? native : common).filter((p) => p.rate <= 75) : []
   // Chuva de meteoros: um Clefairy (da linha dele, pelo nível), com mais chance de ser shiny.
@@ -2895,6 +2902,15 @@ export function clockOf(date = new Date()) {
 
 /** Os lugares a céu aberto: só neles o clima do lugar (chuva, sol forte, areia, neve) acontece sozinho. Igual ao app. */
 export const OPEN_SCENES = ['grass', 'forest', 'water', 'beach', 'swamp', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky', 'ruins', 'flowers', 'dunes', 'bamboo', 'lake', 'lakeside', 'acuity', 'wildarea', 'skypillar', 'spearpillar', 'bridge', 'park']
+/**
+ * O clima é sorteado uma vez, no primeiro andar da rota (ou ao entrar num lugar), e fica o mesmo até o fim dela: não
+ * muda de andar para andar. A chave do sorteio: o andar em que a rota começou; num lugar, o andar em que você entrou.
+ */
+export const climateKey = (run) => (run.dungeon ? (run.dungeon.start ?? run.floor) + 7919 : legOf(run))
+/** O clima da rota atrai Pokémon diferentes: os tipos que aparecem mais (e passam a aparecer ali) com cada clima. Igual ao app. */
+/** Quanto o clima puxa os selvagens dos tipos dele (por cima do peso dos tipos do lugar). */
+export const WEATHER_WEIGHT = 3
+export const WEATHER_TYPES = { rain: ['water', 'electric', 'bug'], sun: ['fire', 'grass', 'ground'], sand: ['rock', 'ground', 'steel'], snow: ['ice'] }
 /** Os efeitos de lugar que vêm do céu: como o clima, só a céu aberto. */
 export const SKY_FIELDS = ['storm', 'aurora', 'wind']
 /**
@@ -2908,14 +2924,14 @@ export function climateOf(data, run, scene = '') {
   if (run.dungeon) return climate[run.dungeon.place] ?? null
   return routePos(run) < ROUTE_LENGTH ? climate.route ?? null : null
 }
-/** O clima com que a batalha do andar começa ('' sem clima): pelo lugar, sempre o mesmo para a mesma corrida e andar. */
+/** O clima com que as batalhas da rota (ou do lugar) começam ('' sem clima): o mesmo em todos os andares dela. */
 // season: não muda mais o clima (a neve do inverno caía em qualquer lugar aberto, mesmo onde não neva).
 export function weatherOf(run, scene, season = null, data = null) {
   // Em lugar fechado não chove, não neva nem faz sol forte: lá dentro o clima só muda por golpe ou habilidade de Pokémon.
   if (!OPEN_SCENES.includes(scene)) return ''
   const table = climateOf(data, run, scene)?.w ?? SCENE_WEATHER[scene]
   if (!table) return ''
-  let roll = (Math.imul(((run.seed ?? 0) ^ (run.floor * 40503)) | 0, 2246822519) >>> 0) / 4294967296
+  let roll = (Math.imul(((run.seed ?? 0) ^ (climateKey(run) * 40503)) | 0, 2246822519) >>> 0) / 4294967296
   for (const [weather, chance] of table) {
     if (roll < chance) return weather
     roll -= chance
@@ -2949,7 +2965,7 @@ export function fieldOf(run, scene, data = null) {
   const all = climateOf(data, run, scene)?.f ?? SCENE_FIELD[scene]
   const table = all && !OPEN_SCENES.includes(scene) ? all.filter(([effect]) => !SKY_FIELDS.includes(effect)) : all
   if (!table) return ''
-  let roll = (Math.imul(((run.seed ?? 0) ^ (run.floor * 69069)) | 0, 2654435761 | 0) >>> 0) / 4294967296
+  let roll = (Math.imul(((run.seed ?? 0) ^ (climateKey(run) * 69069)) | 0, 2654435761 | 0) >>> 0) / 4294967296
   for (const [effect, chance] of table) {
     if (roll < chance) return effect
     roll -= chance
