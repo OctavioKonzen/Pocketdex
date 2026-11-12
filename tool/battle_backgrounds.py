@@ -309,8 +309,106 @@ def sky_mask(scene, a):
     return band * same
 
 
+# Os lugares fechados de pedra (cavernas, grutas, esgoto): lá dentro o clima chega como goteira, poeira ou geada.
+CAVES = {'cave', 'icecave', 'lavacave', 'poisoncave', 'seacave', 'crystal', 'waterfall', 'seafoam', 'sewer'}
+
+
+def window_mask(scene):
+    """As janelas do lugar (silph, radio...): é por elas que se vê o clima lá de fora."""
+    m = np.zeros((H, W), np.float32)
+    for x0, y0, x1, y1 in scene.get('windows', ()):
+        m[int(y0):int(y1), int(x0):int(x1)] = 1
+    return m
+
+
+def frost(a, seed, k=0.6):
+    """Geada pelas bordas (o frio entrando num lugar fechado)."""
+    yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
+    edge = np.clip(np.maximum(np.abs(xx - W / 2) / (W / 2), np.abs(yy - H / 2) / (H / 2)) * 1.25 - 0.62, 0, 1)
+    return put(a, rgb('eaf4ff'), edge * (0.55 + 0.45 * noise(8, seed, 4, 1.5)) * k)
+
+
+def weather_indoor(a, w, scene):
+    """O clima num lugar fechado tem de fazer sentido: num prédio não chove nem neva lá dentro (vê-se pelas janelas,
+    e a luz e o ar mudam); numa caverna chega como goteira e poça, poeira no ar ou geada e flocos pela entrada."""
+    seed = scene.get('seed', 1)
+    if scene.get('name') == 'underwater':
+        # No fundo do mar o clima é o da superfície: a luz que desce muda (sol forte, céu fechado, areia revolvida, gelo em cima).
+        if w == 'sun':
+            a = a * np.array([1.08, 1.06, 0.96], np.float32) + 8
+            a = layer(a, lambda d: [d.polygon([(x, -10), (x + 50, -10), (x - 90, H * 0.8), (x - 170, H * 0.8)], fill=(255, 246, 200, 40)) for x in (180, 420, 660)], 12)
+        elif w == 'rain':
+            a = mix(a, lum(a), 0.3) * np.array([0.74, 0.8, 0.9], np.float32)
+        elif w == 'sand':
+            a = put(a * np.array([1.02, 0.96, 0.84], np.float32), rgb('b89a6a'), 0.12 + noise(4, seed + 80, 4, 2.2) * 0.25)
+        elif w == 'snow':
+            a = mix(a, lum(a), 0.3) * np.array([0.9, 0.97, 1.08], np.float32) + 6
+            a = put(a, rgb('e6f2ff'), np.clip(1 - np.arange(H, dtype=np.float32)[:, None] / 70, 0, 1) * np.ones((1, W), np.float32) * 0.7)
+        return np.clip(a, 0, 255)
+    cave = scene.get('name') in CAVES
+    win = window_mask(scene)
+    has_win = bool(win.any())
+    rnd = random.Random(seed + 70)
+    if w == 'sun':
+        a = a * np.array([1.10, 1.04, 0.90], np.float32) + 8
+        if has_win:
+            # O sol entra pelas janelas: o céu claro lá fora e a luz no chão.
+            a = put(a, vgrad([(0, rgb('ffd28a')), (1, rgb('fff0c8'))], 0, HORIZON), win * 0.45)
+            for x0, y0, x1, y1 in scene['windows']:
+                a = glow(a, (x0 + x1) / 2, y1 + 70, (x1 - x0) * 0.8, (255, 226, 160), 0.35)
+        elif cave:
+            # Um facho de sol por uma fresta no teto.
+            a = layer(a, lambda d: d.polygon([(W * 0.62, -10), (W * 0.74, -10), (W * 0.52, H * 0.7), (W * 0.30, H * 0.7)], fill=(255, 236, 180, 46)), 14)
+            a = glow(a, W * 0.42, H * 0.68, 150, (255, 230, 170), 0.3)
+        else:
+            a = glow(a, W * 0.5, -40, W * 0.45, (255, 190, 110), 0.5)
+    elif w == 'rain':
+        a = mix(a, lum(a), 0.3) * np.array([0.78, 0.82, 0.92], np.float32)
+        if has_win:
+            clouds = vgrad([(0, rgb('2e3644')), (1, rgb('566274'))], 0, HORIZON)
+            a = put(a, clouds, win * 0.7)
+            drops = mask(lambda d: [d.line([(x, y), (x - 4, y + L)], fill=255, width=1) for x, y, L in [(rnd.uniform(0, W), rnd.uniform(0, HORIZON + 20), rnd.uniform(10, 26)) for _ in range(1400)]])
+            a = put(a, rgb('c8d7f0'), drops * win * 0.55)
+        elif cave:
+            # Goteiras do teto e as poças no chão.
+            a = layer(a, lambda d: [d.line([(x, y), (x, y + L)], fill=(190, 212, 240, 120), width=1) for x, y, L in [(rnd.uniform(0, W), rnd.uniform(-10, H * 0.8), rnd.uniform(8, 20)) for _ in range(70)]])
+            a = layer(a, lambda d: [d.ellipse([x - s, y - s * 0.12, x + s, y + s * 0.12], fill=(150, 176, 210, 120)) for x, y, s in [(rnd.uniform(0, W), rnd.uniform(HORIZON + 40, H), rnd.uniform(20, 80)) for _ in range(14)]], 2)
+    elif w == 'sand':
+        a = a * np.array([1.04, 0.96, 0.82], np.float32)
+        haze = noise(4, seed + 80, 4, 2.2)
+        if has_win:
+            a = put(a, rgb('c89a5e'), win * (0.5 + haze * 0.3))
+            a = put(a, rgb('d2a468'), (1 - win) * 0.1)
+        elif cave:
+            # A poeira que o vento traz pela entrada e a areia juntando no chão.
+            gnd = 1 - np.clip((HORIZON + 40 - np.arange(H, dtype=np.float32)[:, None]) / 60, 0, 1) * np.ones((1, W), np.float32)
+            a = put(a, rgb('d2a468'), 0.14 + haze * 0.22)
+            a = put(a, rgb('c9a06a'), np.clip((noise(9, seed + 82, 5, 3.0) - 0.5) * 3, 0, 1) * gnd * 0.5)
+            a = motes(a, seed + 81, 120, (0, 0, W, H), (240, 210, 160), 1.8, 0.8)
+        else:
+            a = put(a, rgb('d2a468'), 0.1 + haze * 0.08)
+    elif w == 'snow':
+        a = mix(a, lum(a), 0.3) * np.array([0.93, 0.97, 1.07], np.float32) + 8
+        if has_win:
+            a = put(a, vgrad([(0, rgb('9aa8bc')), (1, rgb('dfe7f2'))], 0, HORIZON), win * 0.75)
+            flakes = mask(lambda d: [d.ellipse([x - r, y - r, x + r, y + r], fill=255) for x, y, r in [(rnd.uniform(0, W), rnd.uniform(0, HORIZON + 20), rnd.uniform(0.8, 2.2)) for _ in range(900)]])
+            a = put(a, rgb('ffffff'), flakes * win * 0.9)
+            a = frost(a, seed + 92, 0.35)
+        elif cave:
+            # A geada cobrindo o chão e uns flocos entrando com o vento.
+            gnd = 1 - np.clip((HORIZON + 30 - np.arange(H, dtype=np.float32)[:, None]) / 50, 0, 1) * np.ones((1, W), np.float32)
+            a = put(a, rgb('eef4ff'), np.clip((noise(9, seed + 90, 5, 3.0) - 0.45) * 3.2, 0, 1) * gnd * 0.6)
+            a = frost(a, seed + 92, 0.45)
+            a = motes(a, seed + 91, 70, (0, 0, W, H), (255, 255, 255), 2.2, 0.6)
+        else:
+            a = frost(a, seed + 92, 0.6)
+    return np.clip(a, 0, 255)
+
+
 def weather(a, w, scene):
     out = scene.get('outdoor', True)
+    if not out:
+        return weather_indoor(a, w, scene)
     sky = sky_mask(scene, a) if out else np.zeros((H, W), np.float32)
     gnd = 1 - np.clip((HORIZON - np.arange(H, dtype=np.float32)[:, None]) / 30, 0, 1) * np.ones((1, W), np.float32)
     seed = scene.get('seed', 1)
@@ -1231,7 +1329,7 @@ def silph():
     a = layer(a, lambda d: [d.line([(W * 0.5 + (x - W * 0.5) * 0.2, HORIZON + 30), (x, H)], fill=(170, 182, 198, 255), width=2) for x in range(-300, W + 340, 110)] +
               [d.line([(0, y), (W, y)], fill=(170, 182, 198, 255), width=2) for y in (HORIZON + 52, HORIZON + 96, HORIZON + 170, HORIZON + 280)])
     a = reflect(a, HORIZON + 30, HORIZON + 130, 0.28, 5)
-    return a, {'outdoor': False, 'seed': 1020}
+    return a, {'outdoor': False, 'seed': 1020, 'windows': [(30, 40, 240, HORIZON), (560, 40, 770, HORIZON)]}
 
 
 def radio():
@@ -1284,7 +1382,7 @@ def radio():
     a = ground(a, HORIZON + 30, rgb('7a5a6e'), rgb('3a2838'), 1032, 6, 0.08)
     a = layer(a, lambda d: [d.line([(0, y), (W, y)], fill=(90, 66, 84, 255), width=2) for y in (HORIZON + 52, HORIZON + 96, HORIZON + 170, HORIZON + 280)])
     a = reflect(a, HORIZON + 30, HORIZON + 100, 0.14, 5)
-    return a, {'outdoor': False, 'seed': 1030}
+    return a, {'outdoor': False, 'seed': 1030, 'windows': [(304, 52, 496, HORIZON - 42)]}
 
 
 def seafoam():
@@ -1588,11 +1686,14 @@ def render(name, w='', bases=True):
     SKY.clear()
     FLOOR.clear()
     a, info = SCENES[name]()
+    info = {**info, 'name': name}
     if w:
         a = weather(a, w, info)
     if bases:
         for spec in (FOE, MINE):
             a = platform(a, spec)
+    if not info.get('outdoor', True):
+        return finish(a, info.get('seed', 1))
     if w == 'rain':
         a = a * 0.92
     elif w == 'sun':
