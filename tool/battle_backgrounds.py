@@ -1186,6 +1186,177 @@ def museum():
     return a, {'outdoor': False, 'seed': 1010}
 
 
+def silph():
+    """Silph Co. (Saffron): o saguão do prédio, com as janelas para a cidade, os elevadores e o piso polido."""
+    a = vgrad([(0, rgb('c8d4e0')), (1, rgb('9aaabc'))], 0, HORIZON + 30)
+    rnd = random.Random(1021)
+
+    def wall(d):
+        # As janelas grandes com os prédios de Saffron lá fora.
+        for x0 in (30, 560):
+            d.rectangle([x0 - 6, 34, x0 + 216, HORIZON + 6], fill=(70, 84, 104, 255))
+            d.rectangle([x0, 40, x0 + 210, HORIZON], fill=(126, 178, 226, 255))
+            x = x0 + 4
+            while x < x0 + 196:
+                w, h = rnd.randint(18, 34), rnd.randint(40, 120)
+                d.rectangle([x, HORIZON - h, x + w, HORIZON], fill=(86, 116, 160, 255))
+                for yy in range(int(HORIZON - h + 6), HORIZON - 6, 10):
+                    d.line([(x + 3, yy), (x + w - 3, yy)], fill=(190, 216, 240, 255), width=2)
+                x += w + 4
+            for k in (1, 2):
+                d.line([(x0 + 70 * k, 40), (x0 + 70 * k, HORIZON)], fill=(70, 84, 104, 255), width=4)
+            d.line([(x0 + 12, 50), (x0 + 60, HORIZON - 10)], fill=(255, 255, 255, 90), width=6)
+        # Os dois elevadores no meio e o painel em cima.
+        d.rectangle([290, 60, 510, HORIZON + 26], fill=(92, 104, 122, 255))
+        for x0 in (304, 406):
+            d.rectangle([x0, 84, x0 + 90, HORIZON + 26], fill=(176, 188, 200, 255))
+            d.line([(x0 + 45, 84), (x0 + 45, HORIZON + 26)], fill=(110, 122, 138, 255), width=3)
+            d.rectangle([x0 + 30, 68, x0 + 60, 78], fill=(30, 36, 46, 255))
+            d.rectangle([x0 + 38, 70, x0 + 44, 76], fill=(255, 90, 60, 255))
+        # A faixa da empresa.
+        d.rectangle([0, 18, W, 30], fill=(40, 70, 130, 255))
+        d.rectangle([340, 14, 460, 34], fill=(230, 236, 244, 255))
+        d.rectangle([352, 20, 448, 28], fill=(200, 40, 50, 255))
+    a = layer(a, wall)
+
+    def plants(d):
+        for x in (262, 538):
+            d.rectangle([x - 12, HORIZON + 2, x + 12, HORIZON + 26], fill=(150, 96, 60, 255))
+            for k in range(-3, 4):
+                d.polygon([(x, HORIZON + 4), (x + k * 9 - 4, HORIZON - 40 + abs(k) * 6), (x + k * 9 + 4, HORIZON - 36 + abs(k) * 6)], fill=(50, 130 + (k % 2) * 30, 70, 255))
+    a = layer(a, plants)
+    for x in (135, 400, 665):
+        a = glow(a, x, 6, 70, (255, 255, 255), 0.7)
+    a = ground(a, HORIZON + 30, rgb('d6dde6'), rgb('8794a6'), 1022, 6, 0.04)
+    a = layer(a, lambda d: [d.line([(W * 0.5 + (x - W * 0.5) * 0.2, HORIZON + 30), (x, H)], fill=(170, 182, 198, 255), width=2) for x in range(-300, W + 340, 110)] +
+              [d.line([(0, y), (W, y)], fill=(170, 182, 198, 255), width=2) for y in (HORIZON + 52, HORIZON + 96, HORIZON + 170, HORIZON + 280)])
+    a = reflect(a, HORIZON + 30, HORIZON + 130, 0.28, 5)
+    return a, {'outdoor': False, 'seed': 1020}
+
+
+def radio():
+    """Radio Tower (Goldenrod): o estúdio, com a mesa de som, o aviso ON AIR, as caixas de som e a antena na janela."""
+    a = vgrad([(0, rgb('3a2a4a')), (1, rgb('6a4a6a'))], 0, HORIZON + 30)
+    rnd = random.Random(1031)
+
+    def studio(d):
+        # A espuma acústica da parede.
+        for y in range(36, HORIZON, 22):
+            for x in range(0, W, 22):
+                c = 78 + ((x // 22 + y // 22) % 2) * 14
+                d.polygon([(x, y + 22), (x + 11, y), (x + 22, y + 22)], fill=(c, c - 22, c + 16, 255))
+        # A janela com a noite de Goldenrod e a antena piscando.
+        d.rectangle([296, 44, 504, HORIZON - 34], fill=(40, 30, 54, 255))
+        d.rectangle([304, 52, 496, HORIZON - 42], fill=(24, 34, 84, 255))
+        for _ in range(26):
+            x, y = rnd.uniform(308, 492), rnd.uniform(56, HORIZON - 90)
+            d.point((x, y), fill=(240, 240, 255, 255))
+        d.line([(400, HORIZON - 42), (400, 70)], fill=(200, 60, 60, 255), width=4)
+        for k in range(5):
+            y = HORIZON - 50 - k * 22
+            d.line([(400 - 22 + k * 4, y), (400 + 22 - k * 4, y)], fill=(230, 230, 236, 255), width=3)
+        d.ellipse([394, 60, 406, 72], fill=(255, 80, 70, 255))
+        # ON AIR.
+        d.rectangle([340, 18, 460, 40], fill=(40, 12, 16, 255))
+        d.rectangle([346, 22, 454, 36], fill=(230, 40, 50, 255))
+        for k, x in enumerate(range(356, 446, 16)):
+            d.rectangle([x, 25, x + 9, 33], fill=(255, 226, 210, 255))
+        # As caixas de som.
+        for x0 in (60, 660):
+            d.rectangle([x0, HORIZON - 110, x0 + 80, HORIZON + 26], fill=(26, 24, 32, 255))
+            d.ellipse([x0 + 14, HORIZON - 96, x0 + 66, HORIZON - 44], fill=(70, 66, 82, 255))
+            d.ellipse([x0 + 28, HORIZON - 82, x0 + 52, HORIZON - 58], fill=(30, 28, 38, 255))
+            d.ellipse([x0 + 24, HORIZON - 34, x0 + 56, HORIZON - 2], fill=(70, 66, 82, 255))
+        # A mesa de som (botões e luzes).
+        d.rectangle([180, HORIZON - 26, 620, HORIZON + 26], fill=(54, 50, 66, 255))
+        d.rectangle([180, HORIZON - 30, 620, HORIZON - 22], fill=(96, 90, 112, 255))
+        for x in range(196, 610, 14):
+            h = rnd.randint(6, 30)
+            d.line([(x, HORIZON + 18), (x, HORIZON + 18 - h)], fill=[(90, 230, 120, 255), (250, 220, 80, 255), (250, 90, 80, 255)][min(2, h // 11)], width=5)
+        # O microfone.
+        d.line([(520, HORIZON - 30), (540, HORIZON - 70), (500, HORIZON - 96)], fill=(190, 190, 200, 255), width=4)
+        d.ellipse([486, HORIZON - 110, 510, HORIZON - 86], fill=(60, 60, 70, 255))
+    a = layer(a, studio)
+    a = glow(a, 400, 30, 90, (255, 70, 60), 0.5)
+    a = glow(a, 400, 66, 40, (255, 90, 80), 0.6)
+    for x in (150, 650):
+        a = glow(a, x, 10, 80, (255, 220, 190), 0.4)
+    a = ground(a, HORIZON + 30, rgb('7a5a6e'), rgb('3a2838'), 1032, 6, 0.08)
+    a = layer(a, lambda d: [d.line([(0, y), (W, y)], fill=(90, 66, 84, 255), width=2) for y in (HORIZON + 52, HORIZON + 96, HORIZON + 170, HORIZON + 280)])
+    a = reflect(a, HORIZON + 30, HORIZON + 100, 0.14, 5)
+    return a, {'outdoor': False, 'seed': 1030}
+
+
+def seafoam():
+    """Seafoam Islands: a caverna gelada com a correnteza do mar passando, blocos de gelo boiando e estalactites."""
+    a = vgrad([(0, rgb('071a30')), (1, rgb('1f5a86'))], 0, HORIZON + 40)
+    a = mountains(a, 1041, HORIZON + 10, 120, rgb('3f78a8'), rgb('173a5e'), rgb('12304e'), 0.25, 0.8, 10, freq=1.8)
+    rnd = random.Random(1042)
+    a = layer(a, lambda d: [(d.polygon([(x, -5), (x + w, -5), (x + w / 2, h)], fill=(140, 200, 235, 235)), d.polygon([(x, -5), (x + w * 0.4, -5), (x + w / 2, h)], fill=(214, 240, 255, 235))) for x, w, h in [(x, rnd.uniform(16, 30), rnd.uniform(30, 130)) for x in range(-10, W, 30)]], 0.6)
+    # A abertura para o mar, no fundo, com a luz entrando.
+    a = layer(a, lambda d: d.ellipse([300, HORIZON - 120, 500, HORIZON + 30], fill=(150, 214, 240, 255)), 6)
+    a = glow(a, 400, HORIZON - 50, 170, (170, 230, 255), 0.6)
+    # A água (a correnteza) no chão todo, com as margens de gelo dos lados.
+    a = ground(a, HORIZON + 16, rgb('4aa6c8'), rgb('124a78'), 1043, 9, 0.08)
+    a = reflect(a, HORIZON + 16, HORIZON + 80, 0.4, 3)
+
+    def stream(d):
+        for _ in range(420):
+            y = rnd.uniform(HORIZON + 22, H)
+            k = (y - HORIZON) / (H - HORIZON)
+            s = 8 + k * 80
+            x = rnd.uniform(-40, W)
+            d.line([(x, y), (x + s, y + s * 0.04)], fill=(226, 248, 255, int(70 + 110 * k)), width=max(1, int(s / 26)))
+    a = layer(a, stream, 0.5)
+
+    def ice(d):
+        # As margens de gelo e os blocos boiando.
+        d.polygon([(0, HORIZON + 10), (170, HORIZON + 12), (120, HORIZON + 60), (40, HORIZON + 120), (0, HORIZON + 150)], fill=(206, 234, 248, 255))
+        d.polygon([(W, HORIZON + 10), (W - 190, HORIZON + 12), (W - 130, HORIZON + 54), (W - 50, HORIZON + 110), (W, HORIZON + 140)], fill=(206, 234, 248, 255))
+        d.line([(0, HORIZON + 150), (40, HORIZON + 120), (120, HORIZON + 60), (170, HORIZON + 12)], fill=(120, 176, 214, 255), width=4)
+        d.line([(W, HORIZON + 140), (W - 50, HORIZON + 110), (W - 130, HORIZON + 54), (W - 190, HORIZON + 12)], fill=(120, 176, 214, 255), width=4)
+        for x, y, s in ((250, HORIZON + 70, 44), (560, HORIZON + 46, 30), (690, H - 60, 70), (90, H - 40, 60)):
+            d.polygon([(x - s, y), (x - s * 0.5, y - s * 0.28), (x + s * 0.6, y - s * 0.3), (x + s, y - s * 0.04), (x + s * 0.5, y + s * 0.18), (x - s * 0.6, y + s * 0.16)], fill=(232, 246, 255, 255))
+            d.polygon([(x - s, y), (x - s * 0.6, y + s * 0.16), (x + s * 0.5, y + s * 0.18), (x + s, y - s * 0.04), (x + s * 0.5, y + s * 0.3), (x - s * 0.6, y + s * 0.28)], fill=(138, 190, 224, 255))
+    a = layer(a, ice)
+    for x, y, s in ((60, HORIZON + 6, 70), (730, HORIZON + 4, 80)):
+        a = glow(a, x, y - s * 0.6, s * 1.2, (110, 200, 255), 0.5)
+        a = layer(a, lambda d, x=x, y=y, s=s: [(d.polygon([(x + k * s * 0.32, y), (x + k * s * 0.32 - s * 0.12, y - s * 0.4), (x + k * s * 0.32 + k * s * 0.12, y - s * (1.25 - abs(k) * 0.4)), (x + k * s * 0.32 + s * 0.12, y - s * 0.4)], fill=(180, 234, 255, 245)), d.line([(x + k * s * 0.32, y - s * 0.4), (x + k * s * 0.32 + k * s * 0.12, y - s * (1.25 - abs(k) * 0.4))], fill=(255, 255, 255, 220), width=2)) for k in (-1, 0, 1)])
+    a = motes(a, 1044, 110, (0, HORIZON - 60, W, H), (240, 250, 255), 1.8, 0.6)
+    return a, {'outdoor': False, 'seed': 1040}
+
+
+def lake():
+    """Lake of Rage: o lago largo sob o céu carregado, os pinheiros de Mahogany em volta e o brilho vermelho na água."""
+    a = vgrad([(0, rgb('2c3448')), (0.6, rgb('5a6478')), (1, rgb('8a8a96'))], 0, HORIZON)
+    clouds = np.clip((noise(5, 1051, 4, 2.2) - 0.35) * 2.2, 0, 1) * np.clip((HORIZON - np.arange(H, dtype=np.float32)[:, None]) / 60, 0, 1)
+    a = put(a, rgb('20283a'), clouds * 0.75)
+    a = mountains(a, 1052, HORIZON - 6, 60, rgb('3a4a5c'), rgb('2a3a48'), rgb('6a7888'), 0.35, 0.5, 10, blur=2)
+    rnd = random.Random(1053)
+    a = layer(a, lambda d: [pine(d, x, HORIZON + 4, rnd.uniform(46, 96), (20, 44, 40), (38, 72, 60)) for x in range(-10, W + 20, 26)], 0.6)
+    a = ground(a, HORIZON + 4, rgb('5a7a96'), rgb('15304e'), 1054, 9, 0.08)
+    a = reflect(a, HORIZON + 4, HORIZON + 90, 0.5, 3)
+    # O brilho vermelho do Gyarados lá no meio do lago.
+    a = glow(a, W * 0.56, HORIZON + 30, 150, (220, 50, 50), 0.38)
+    a = layer(a, lambda d: [d.ellipse([W * 0.56 - 90 + k * 14, HORIZON + 26 + k * 5, W * 0.56 + 90 - k * 14, HORIZON + 34 + k * 5], outline=(240, 120, 110, 150 - k * 30), width=2) for k in range(4)], 1.2)
+
+    def waves(d):
+        for _ in range(620):
+            y = rnd.uniform(HORIZON + 8, H)
+            k = (y - HORIZON) / (H - HORIZON)
+            s = 6 + k * 70
+            x = rnd.uniform(-40, W)
+            d.arc([x, y - s * 0.12, x + s, y + s * 0.12], 200, 340, fill=(214, 228, 244, int(70 + 100 * k)), width=max(1, int(s / 22)))
+    a = layer(a, waves, 0.5)
+    # A margem de perto, com o capim e os juncos.
+    a = put(a, rgb('2e4636'), mask(lambda d: d.polygon([(0, H * 0.74), (W * 0.30, H * 0.80), (W * 0.52, H * 0.93), (W * 0.56, H), (0, H)], fill=255), 2))
+    a = blades(a, 1055, 260, H * 0.76, H + 10, [rgb('3a5a40'), rgb('52744c'), rgb('2a4232')], 0.2)
+    fog = noise(5, 1056, 4, 3)
+    band = np.clip(1 - np.abs(np.arange(H, dtype=np.float32)[:, None] - HORIZON - 10) / 110, 0, 1)
+    a = put(a, rgb('b8c2d0'), np.clip((fog - 0.35) * 1.3, 0, 1) * band * 0.5)
+    return a, {'outdoor': True, 'seed': 1050}
+
+
 SCENES = {
     'grass': grass, 'forest': forest, 'water': water, 'beach': beach, 'underwater': underwater, 'swamp': swamp, 'sewer': sewer,
     'cave': cave, 'icecave': icecave, 'mountain': mountain, 'desert': desert, 'volcano': volcano, 'snow': snow, 'city': city,
@@ -1193,6 +1364,7 @@ SCENES = {
     'ruins': ruins, 'flowers': flowers, 'plant': plant, 'crystal': crystal, 'dunes': dunes, 'bamboo': bamboo, 'temple': temple,
     'lavacave': lavacave, 'poisoncave': poisoncave, 'seacave': seacave, 'waterfall': waterfall,
     'store': store, 'casino': casino, 'school': school, 'stage': stage, 'subway': subway, 'ship': ship, 'bridge': bridge, 'park': park, 'museum': museum,
+    'silph': silph, 'radio': radio, 'seafoam': seafoam, 'lake': lake,
 }
 
 

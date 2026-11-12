@@ -1384,6 +1384,7 @@ class FactoryRun {
     'goldenrod-department-store': 'store', 'mauville-game-corner': 'casino', 'lavaridge-herb-shop': 'store', 'hearthome-contest-hall': 'stage',
     'veilstone-department-store': 'store', 'veilstone-game-corner': 'casino', 'battle-subway': 'subway', 'nimbasa-amusement-park': 'park',
     'driftveil-market': 'store', 'pok-star-studios': 'stage', 'trainers-school': 'school', 'hau-oli-shopping-district': 'store',
+    'silph-co-': 'silph', 'radio-tower': 'radio', 'seafoam-islands': 'seafoam', 'lake-of-rage': 'lake',
     'pewter-museum': 'museum', 'oreburgh-mining-museum': 'museum', 'nacrene-museum': 'museum',
   };
 
