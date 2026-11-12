@@ -434,6 +434,20 @@ void main() {
     expect(FactoryRun.climateOf(data, {...snow, 'floor': 1 + FactoryRun.routeLength}, 'city'), isNull);
     expect(FactoryRun.climateOf(data, snow, 'gym-ice'), isNull);
     expect(FactoryRun.climateOf(null, lake, 'lake'), isNull);
+    // Em lugar fechado o clima não acontece sozinho (só por golpe ou habilidade de Pokémon).
+    for (final scene in ['cave', 'icecave', 'tower', 'gym-water', 'center', 'silph', 'radio', 'seafoam', 'library', 'lab', 'dojo', 'lighthouse', 'underwater', 'base-rocket', 'museum', 'store']) {
+      for (var seed = 1; seed <= 60; seed++) {
+        expect(FactoryRun.weatherOf({...lake, 'seed': seed}, scene, 'winter', data), '', reason: scene);
+      }
+    }
+    for (final scene in FactoryRun.sceneWeather.keys) {
+      expect(FactoryRun.openScenes, contains(scene));
+    }
+    for (final scene in ['plant', 'icecave', 'cave', 'tower', 'lab']) {
+      for (var seed = 1; seed <= 200; seed++) {
+        expect(FactoryRun.skyFields, isNot(contains(FactoryRun.fieldOf({...lake, 'seed': seed}, scene, data))), reason: scene);
+      }
+    }
     for (final e in (data.routes['features'] as Map).entries) {
       for (final c in ((e.value['climate'] as Map?) ?? const {}).values) {
         for (final f in (c['f'] as List?) ?? const []) {

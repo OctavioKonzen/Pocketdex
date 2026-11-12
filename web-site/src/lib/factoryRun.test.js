@@ -8,7 +8,7 @@ import {
   placeInfo, routeInfo, DBOSS_GIMMICK_FLOOR, UPGRADE_FX, SHORE, CAVE_OF, dungeonPos, routePos, DUNGEON_LENGTH, CITY_BOSS, waterNext, RIVAL_FLOOR, targetOf, rivalBoss, rocketBoss, townShop, townCenter, townHub, biomesLinked,
   isDoubleBattle,
   DOUBLE_FLOOR,
-  battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, RARE_PLACES, atPc, pcOf, pcMove, pcSlots, PC_BOX, boxName, renameBox, boxWall, nextWall, setNick, gameOf, leagueAhead, rivalGrowth, sortBox, shownScene, bagsFor, NUZLOCKE_DEFAULT, levelCapOf, EXP_BENCH, benchShare, TRADE_EXP, TRADE_EVOS, familyOf, townTrade, townTradeable, featuresOf, climateOf, waterReach, hasWaterfall, WATER_REACH, daycareHere, daycareOpen, rarePlacesOf, SECRET_BIOMES, PLACE_SCENES, hasKey, KEY_ITEMS, placeLegendOf, blockerOf, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, forgetMove, reminderCost, SAFARI_FEE, SAFARI_BALLS, SAFARI_ENCOUNTERS, SAFARI_MONS, safariRates, safariAct, safariPool, leaveSafari, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
+  battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, RARE_PLACES, atPc, pcOf, pcMove, pcSlots, PC_BOX, boxName, renameBox, boxWall, nextWall, setNick, gameOf, leagueAhead, rivalGrowth, sortBox, shownScene, bagsFor, NUZLOCKE_DEFAULT, levelCapOf, EXP_BENCH, benchShare, TRADE_EXP, TRADE_EVOS, familyOf, townTrade, townTradeable, featuresOf, climateOf, SCENE_WEATHER, OPEN_SCENES, waterReach, hasWaterfall, WATER_REACH, daycareHere, daycareOpen, rarePlacesOf, SECRET_BIOMES, PLACE_SCENES, hasKey, KEY_ITEMS, placeLegendOf, blockerOf, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, forgetMove, reminderCost, SAFARI_FEE, SAFARI_BALLS, SAFARI_ENCOUNTERS, SAFARI_MONS, safariRates, safariAct, safariPool, leaveSafari, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
   HELD_BOOST, levelTo, MAX_TEAM, memberOf, movesAt, nextFloor, nextRandom, overflowPoints, pokemonPrice, runCoins, setMainItem, shopPrice,
   SHINY_BOOST, FOE_SHINY_BOOST, SHINY_CHANCE, START_BAG, START_BALLS, startersOf, unlockShiny, claimStarter, freePick, canEvolveWith, teachMove,
   equipFromStash, gimmicksOf, setGimmick, storyLine, startRun, takeCard, teamDown, applyBagItem, winFloor, chooseNode, routeOptions, routeCities,
@@ -1746,6 +1746,24 @@ describe('o clima único de cada rota e lugar (como nos jogos)', () => {
     expect(climateOf(data, snow, 'gym-ice')).toBe(null)
     expect(climateOf(data, { ...moon, dungeon: { place: 'nugget-bridge', scene: 'city', start: 3 } }, 'bridge')).toBe(null)
     expect(climateOf(null, lake, 'lake')).toBe(null)
+  })
+  it('em lugar fechado o clima não acontece sozinho (só por golpe ou habilidade de Pokémon); o mapa não põe clima em lugar fechado (igual ao app)', () => {
+    const run = startRun(emptyFactory(), data, 1, 42)
+    for (const scene of ['cave', 'icecave', 'tower', 'gym-water', 'center', 'silph', 'radio', 'seafoam', 'library', 'lab', 'dojo', 'lighthouse', 'underwater', 'base-rocket', 'museum', 'store']) {
+      for (let seed = 1; seed <= 60; seed++) expect(weatherOf({ ...run, seed }, scene, 'winter', data), scene).toBe('')
+    }
+    for (const scene of Object.keys(SCENE_WEATHER)) expect(OPEN_SCENES, scene).toContain(scene)
+    // Tempestade, aurora e ventos fortes também só a céu aberto.
+    for (const scene of ['plant', 'icecave', 'cave', 'tower', 'lab']) for (let seed = 1; seed <= 200; seed++) expect(['storm', 'aurora', 'wind']).not.toContain(fieldOf({ ...run, seed }, scene, data))
+    for (const [city, f] of Object.entries(data.routes.features)) {
+      for (const [key, c] of Object.entries(f.climate ?? {})) {
+        if (!c.w) continue
+        const [biome, , side, towns] = data.routes.cities[city]
+        const place = [side, ...(towns ?? [])].filter(Boolean).find(([name]) => name.toLowerCase().replace(/[^a-z0-9]/g, '-') === key)
+        const scene = key === 'route' ? biome : PLACE_SCENES[key] ?? place[1]
+        expect(OPEN_SCENES, `${city} ${key} ${scene}`).toContain(scene)
+      }
+    }
   })
   it('todo clima do mapa é de uma rota ou de um lugar de verdade e usa climas e efeitos que existem (igual ao app)', () => {
     const weathers = ['sun', 'rain', 'sand', 'snow']

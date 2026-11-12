@@ -3723,7 +3723,14 @@ class FactoryRun {
   static List<(String, double)>? _climateTable(Object? list) =>
       list is List ? [for (final e in list) ('${(e as List)[0]}', (e[1] as num).toDouble())] : null;
 
+  /// Os lugares a céu aberto: só neles o clima do lugar (chuva, sol forte, areia, neve) acontece sozinho. Igual ao site.
+  /// Os efeitos de lugar que vêm do céu: como o clima, só a céu aberto.
+  static const skyFields = ['storm', 'aurora', 'wind'];
+  static const openScenes = ['grass', 'forest', 'water', 'beach', 'swamp', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky', 'ruins', 'flowers', 'dunes', 'bamboo', 'lake', 'lakeside', 'acuity', 'wildarea', 'skypillar', 'spearpillar', 'bridge', 'park'];
+
   static String weatherOf(Json run, String scene, [String? season, FactoryData? data]) {
+    // Em lugar fechado não chove, não neva nem faz sol forte: lá dentro o clima só muda por golpe ou habilidade de Pokémon.
+    if (!openScenes.contains(scene)) return '';
     final table = _climateTable(climateOf(data, run, scene)?['w']) ??
         (season == 'winter' && winterSnow.contains(scene) ? [('snow', 0.35), ...?sceneWeather[scene]] : sceneWeather[scene]);
     if (table == null) return '';
@@ -3754,7 +3761,9 @@ class FactoryRun {
 
   /// O efeito com que a batalha do andar começa ('' sem efeito): pelo lugar, sempre o mesmo para a mesma corrida e andar.
   static String fieldOf(Json run, String scene, [FactoryData? data]) {
-    final table = _climateTable(climateOf(data, run, scene)?['f']) ?? sceneField[scene];
+    // Os efeitos do céu (tempestade, aurora, ventos fortes) também só acontecem a céu aberto.
+    final all = _climateTable(climateOf(data, run, scene)?['f']) ?? sceneField[scene];
+    final table = all != null && !openScenes.contains(scene) ? [for (final e in all) if (!skyFields.contains(e.$1)) e] : all;
     if (table == null) return '';
     final mixed = (_int(run['seed'] ?? 0) ^ ((_int(run['floor']) * 69069) & 0xFFFFFFFF)) & 0xFFFFFFFF;
     var roll = ((mixed * 2654435761) & 0xFFFFFFFF) / 4294967296;

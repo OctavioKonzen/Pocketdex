@@ -2892,6 +2892,10 @@ export function clockOf(date = new Date()) {
   return { night: hour >= 19 || hour < 6, season: SEASONS[date.getMonth() % 4], day: Math.floor(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86400000) }
 }
 
+/** Os lugares a céu aberto: só neles o clima do lugar (chuva, sol forte, areia, neve) acontece sozinho. Igual ao app. */
+export const OPEN_SCENES = ['grass', 'forest', 'water', 'beach', 'swamp', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky', 'ruins', 'flowers', 'dunes', 'bamboo', 'lake', 'lakeside', 'acuity', 'wildarea', 'skypillar', 'spearpillar', 'bridge', 'park']
+/** Os efeitos de lugar que vêm do céu: como o clima, só a céu aberto. */
+export const SKY_FIELDS = ['storm', 'aurora', 'wind']
 /**
  * O clima único desta rota ou deste lugar, como nos jogos (tool/factory_routes.py, CLIMATE): a chuva sem parar no
  * Lake of Rage, as cinzas da Route 113, o Diamond Dust de Snowpoint, as Moon Stones caindo no Mt. Moon... { w, f } ou
@@ -2905,6 +2909,8 @@ export function climateOf(data, run, scene = '') {
 }
 /** O clima com que a batalha do andar começa ('' sem clima): pelo lugar, sempre o mesmo para a mesma corrida e andar. */
 export function weatherOf(run, scene, season = null, data = null) {
+  // Em lugar fechado não chove, não neva nem faz sol forte: lá dentro o clima só muda por golpe ou habilidade de Pokémon.
+  if (!OPEN_SCENES.includes(scene)) return ''
   const table = climateOf(data, run, scene)?.w ?? (season === 'winter' && WINTER_SNOW.includes(scene) ? [['snow', 0.35], ...(SCENE_WEATHER[scene] ?? [])] : SCENE_WEATHER[scene])
   if (!table) return ''
   let roll = (Math.imul(((run.seed ?? 0) ^ (run.floor * 40503)) | 0, 2246822519) >>> 0) / 4294967296
@@ -2937,7 +2943,9 @@ export const SCENE_FIELD = {
 
 /** O efeito com que a batalha do andar começa ('' sem efeito): pelo lugar, sempre o mesmo para a mesma corrida e andar. */
 export function fieldOf(run, scene, data = null) {
-  const table = climateOf(data, run, scene)?.f ?? SCENE_FIELD[scene]
+  // Os efeitos do céu (tempestade, aurora, ventos fortes) também só acontecem a céu aberto.
+  const all = climateOf(data, run, scene)?.f ?? SCENE_FIELD[scene]
+  const table = all && !OPEN_SCENES.includes(scene) ? all.filter(([effect]) => !SKY_FIELDS.includes(effect)) : all
   if (!table) return ''
   let roll = (Math.imul(((run.seed ?? 0) ^ (run.floor * 69069)) | 0, 2654435761 | 0) >>> 0) / 4294967296
   for (const [effect, chance] of table) {
