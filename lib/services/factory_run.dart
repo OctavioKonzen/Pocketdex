@@ -1385,6 +1385,7 @@ class FactoryRun {
     'veilstone-department-store': 'store', 'veilstone-game-corner': 'casino', 'battle-subway': 'subway', 'nimbasa-amusement-park': 'park',
     'driftveil-market': 'store', 'pok-star-studios': 'stage', 'trainers-school': 'school', 'hau-oli-shopping-district': 'store',
     'silph-co-': 'silph', 'radio-tower': 'radio', 'seafoam-islands': 'seafoam', 'lake-of-rage': 'lake',
+    'canalave-library': 'library', 'malie-library': 'library', 'pok-mon-mansion': 'mansion', 'space-center': 'space', 'devon-corporation': 'lab', 'cinnabar-lab': 'lab', 'weather-institute': 'lab', 'pok--ball-factory': 'lab', 'hokulani-observatory': 'observatory', 'cold-storage': 'coldstorage', 'fighting-dojo': 'dojo', 'dragon-s-den': 'dragonsden', 'spear-pillar': 'spearpillar', 'cave-of-origin': 'origin', 'burned-tower': 'burnedtower', 'glitter-lighthouse': 'lighthouse', 'vista-lighthouse': 'lighthouse', 'sky-pillar': 'skypillar', 'whirl-islands': 'whirl', 'seafloor-cavern': 'seacave', 'lake-acuity': 'acuity', 'valor-lakefront': 'lakeside', 'lost-hotel': 'hotel', 'wild-area': 'wildarea',
     'pewter-museum': 'museum', 'oreburgh-mining-museum': 'museum', 'nacrene-museum': 'museum',
   };
 
@@ -3666,7 +3667,7 @@ class FactoryRun {
     'grass': [('sun', 0.15), ('rain', 0.15)], 'forest': [('rain', 0.2), ('sun', 0.1)], 'mountain': [('sand', 0.15), ('snow', 0.15), ('sun', 0.1)],
     'sky': [('sun', 0.2), ('rain', 0.2)], 'city': [('rain', 0.12), ('sun', 0.12)],
     'ruins': [('sand', 0.2), ('sun', 0.15)], 'flowers': [('sun', 0.25), ('rain', 0.1)], 'dunes': [('sand', 0.55)], 'bamboo': [('rain', 0.2), ('sun', 0.1)],
-    'lake': [('rain', 0.7)],
+    'lake': [('rain', 0.7)], 'lakeside': [('sun', 0.2), ('rain', 0.2)], 'acuity': [('snow', 0.65)], 'wildarea': [('sun', 0.2), ('rain', 0.2)], 'skypillar': [('sun', 0.2)],
   };
 
   /// A música do mapa (andando na rota e na cidade): um tema original por região, mais calmo. Igual ao site.
@@ -3744,6 +3745,9 @@ class FactoryRun {
     'desert': [('quicksand', 0.2)], 'ruins': [('psychic', 0.2), ('haunt', 0.15)], 'flowers': [('spores', 0.3), ('misty', 0.15)], 'plant': [('storm', 0.35), ('electric', 0.25)],
     'crystal': [('diamonds', 0.4)], 'lavacave': [('ashes', 0.4)], 'poisoncave': [('miasma', 0.4)], 'seacave': [('current', 0.3)], 'waterfall': [('current', 0.3)], 'dunes': [('quicksand', 0.35), ('haunt', 0.1)], 'bamboo': [('spores', 0.2), ('grassy', 0.2)], 'temple': [('psychic', 0.3)],
     'seafoam': [('chill', 0.4), ('current', 0.3)], 'silph': [('electric', 0.3), ('psychic', 0.2)], 'radio': [('electric', 0.5)],
+    'library': [('psychic', 0.2)], 'mansion': [('ashes', 0.3), ('haunt', 0.2)], 'lab': [('electric', 0.3)], 'observatory': [('psychic', 0.25)], 'coldstorage': [('chill', 0.5)],
+    'dragonsden': [('current', 0.35)], 'spearpillar': [('psychic', 0.35)], 'origin': [('current', 0.3)], 'burnedtower': [('ashes', 0.4), ('haunt', 0.15)], 'lighthouse': [('electric', 0.3)],
+    'skypillar': [('wind', 0.5)], 'whirl': [('current', 0.5)], 'acuity': [('chill', 0.2), ('aurora', 0.3)], 'hotel': [('haunt', 0.4)], 'wildarea': [('grassy', 0.2)],
     'gym-grass': [('grassy', 0.6)], 'gym-electric': [('electric', 0.6)], 'gym-psychic': [('psychic', 0.6)], 'gym-fairy': [('misty', 0.6)], 'gym-ghost': [('haunt', 0.6)],
     'gym-rock': [('rockfall', 0.4)], 'gym-fire': [('ashes', 0.4)], 'gym-poison': [('miasma', 0.4)], 'gym-ice': [('chill', 0.4)], 'gym-water': [('current', 0.4)],
   };
