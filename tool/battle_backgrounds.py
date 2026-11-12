@@ -2153,6 +2153,490 @@ def wildarea():
     return a, {'outdoor': True, 'seed': 1270}
 
 
+# ------------------------------------------------------------ cidades e vilas (de dia; à noite o jogo escurece)
+
+def day_sky(top='3f8fe0', bottom='cfeaff', clouds=((150, 64), (440, 40), (700, 90)), alpha=185):
+    a = vgrad([(0, rgb(top)), (1, rgb(bottom))], 0, HORIZON)
+    return layer(a, lambda d: [d.ellipse([x - 120, y - 20, x + 120, y + 20], fill=(255, 255, 255, alpha)) for x, y in clouds], 14)
+
+
+def house(d, x, y, w, h, wall, roof, door=(96, 64, 40), windows=True, chimney=False):
+    """Uma casa (a base no chão em y): parede, telhado de duas águas, porta e janelas."""
+    d.rectangle([x, y - h, x + w, y], fill=wall + (255,))
+    d.rectangle([x, y - h, x + w * 0.22, y], fill=tuple(min(255, int(v * 1.12)) for v in wall) + (255,))
+    d.polygon([(x - w * 0.08, y - h), (x + w * 0.5, y - h - w * 0.42), (x + w * 1.08, y - h)], fill=roof + (255,))
+    d.polygon([(x - w * 0.08, y - h), (x + w * 0.5, y - h - w * 0.42), (x + w * 0.3, y - h)], fill=tuple(min(255, int(v * 1.2)) for v in roof) + (255,))
+    if chimney:
+        d.rectangle([x + w * 0.7, y - h - w * 0.36, x + w * 0.82, y - h - w * 0.1], fill=(120, 96, 90, 255))
+    d.rectangle([x + w * 0.42, y - h * 0.5, x + w * 0.58, y], fill=door + (255,))
+    if windows:
+        for wx in (0.12, 0.7):
+            d.rectangle([x + w * wx, y - h * 0.72, x + w * (wx + 0.18), y - h * 0.42], fill=(170, 220, 250, 255))
+            d.line([(x + w * (wx + 0.09), y - h * 0.72), (x + w * (wx + 0.09), y - h * 0.42)], fill=wall + (255,), width=1)
+
+
+def path(a, color, top, x0=0.44, x1=0.56, k=0.7):
+    """O caminho que vem do horizonte até você."""
+    return put(a, rgb(color), mask(lambda d: d.polygon([(W * x0, top), (W * x1, top), (W * 0.84, H), (W * 0.16, H)], fill=255), 3) * k)
+
+
+def town_village():
+    """Vila pequena (Pallet, Petalburg, Striaton, Santalune...): casinhas de telhado vermelho, cercas, árvores e o caminho de terra."""
+    a = day_sky()
+    a = mountains(a, 1301, HORIZON - 2, 46, rgb('8fb0cc'), rgb('7498b6'), rgb('c4dcf0'), 0.45, 0.4, 10, blur=2.5)
+    a = treeline(a, 1302, HORIZON + 4, 34, ((40, 110, 60), (60, 140, 76), (96, 176, 100)), 1.0)
+    a = ground(a, HORIZON + 26, rgb('8fd06a'), rgb('4a9a42'), 1303, 5, 0.1, spots=(rgb('b6d870'), 0.35))
+    a = layer(a, lambda d: (house(d, 60, HORIZON + 30, 120, 62, (238, 228, 204), (200, 70, 60), chimney=True), house(d, 250, HORIZON + 28, 90, 50, (226, 232, 240), (70, 110, 180)),
+                           house(d, 470, HORIZON + 28, 96, 54, (240, 226, 196), (200, 70, 60)), house(d, 620, HORIZON + 30, 128, 66, (232, 236, 226), (90, 150, 90), chimney=True)))
+    a = path(a, 'd8c48c', HORIZON + 26)
+    # As cercas brancas e a placa da vila.
+    a = layer(a, lambda d: [d.line([(x0, HORIZON + 44), (x1, HORIZON + 44)], fill=(246, 246, 240, 255), width=3) for x0, x1 in ((0, 330), (470, W))] +
+              [d.line([(x, HORIZON + 36), (x, HORIZON + 52)], fill=(246, 246, 240, 255), width=3) for x in list(range(4, 330, 22)) + list(range(474, W, 22))] +
+              [d.rectangle([386, HORIZON + 18, 414, HORIZON + 32], fill=(150, 104, 60, 255)), d.line([(400, HORIZON + 32), (400, HORIZON + 44)], fill=(110, 76, 44, 255), width=4)])
+    a = blades(a, 1304, 380, HORIZON + 60, H + 10, [rgb('4f9a44'), rgb('79c35a'), rgb('2f7a36')], 0.25)
+    a = motes(a, 1305, 40, (0, HORIZON, W, H), (255, 250, 200), 2, 0.8)
+    return a, {'outdoor': True, 'seed': 1300}
+
+
+def town_port():
+    """Cidade portuária (Vermilion, Olivine, Slateport, Canalave, Hulbury...): o cais de madeira, o navio atracado, o farol e as gaivotas."""
+    a = day_sky('2f86dc', 'd6efff')
+    a = ground(a, HORIZON, rgb('5ab0e6'), rgb('2a78c0'), 1311, 9, 0.06)
+    rnd = random.Random(1312)
+
+    def harbor(d):
+        # O farol no morro e os armazéns.
+        d.polygon([(0, HORIZON + 6), (0, HORIZON - 30), (90, HORIZON - 44), (180, HORIZON - 20), (220, HORIZON + 6)], fill=(110, 150, 96, 255))
+        d.polygon([(70, HORIZON - 40), (78, HORIZON - 130), (102, HORIZON - 130), (110, HORIZON - 40)], fill=(244, 244, 240, 255))
+        for k in range(3):
+            d.rectangle([73 + k, HORIZON - 70 - k * 22, 107 - k, HORIZON - 60 - k * 22], fill=(210, 60, 54, 255))
+        d.rectangle([74, HORIZON - 146, 106, HORIZON - 130], fill=(255, 236, 150, 255))
+        d.polygon([(70, HORIZON - 146), (90, HORIZON - 162), (110, HORIZON - 146)], fill=(210, 60, 54, 255))
+        for x0, w, c in ((230, 90, (200, 110, 80)), (330, 70, (120, 150, 190))):
+            d.rectangle([x0, HORIZON - 40, x0 + w, HORIZON + 8], fill=c + (255,))
+            d.polygon([(x0 - 4, HORIZON - 40), (x0 + w / 2, HORIZON - 62), (x0 + w + 4, HORIZON - 40)], fill=(80, 84, 96, 255))
+            d.rectangle([x0 + w * 0.3, HORIZON - 24, x0 + w * 0.7, HORIZON + 8], fill=(60, 50, 46, 255))
+        # O navio grande atracado (o S.S.) e os barquinhos.
+        d.polygon([(470, HORIZON + 8), (490, HORIZON + 34), (760, HORIZON + 34), (790, HORIZON + 2), (470, HORIZON + 2)], fill=(40, 60, 110, 255))
+        d.rectangle([470, HORIZON - 4, 790, HORIZON + 4], fill=(220, 60, 54, 255))
+        d.rectangle([520, HORIZON - 36, 740, HORIZON - 4], fill=(246, 246, 244, 255))
+        d.rectangle([560, HORIZON - 58, 700, HORIZON - 36], fill=(232, 234, 238, 255))
+        for x in range(532, 736, 20):
+            d.ellipse([x, HORIZON - 26, x + 10, HORIZON - 16], fill=(90, 170, 230, 255))
+        for x in (600, 650):
+            d.rectangle([x, HORIZON - 92, x + 26, HORIZON - 58], fill=(220, 60, 54, 255))
+            d.rectangle([x, HORIZON - 92, x + 26, HORIZON - 84], fill=(40, 44, 54, 255))
+        for _ in range(7):
+            x, y = rnd.uniform(40, W - 40), rnd.uniform(20, HORIZON - 70)
+            d.line([(x - 8, y), (x, y - 5), (x + 8, y)], fill=(255, 255, 255, 255), width=2)
+    a = layer(a, harbor)
+    a = glow(a, 90, HORIZON - 138, 40, (255, 240, 160), 0.6)
+    a = reflect(a, HORIZON + 34, HORIZON + 80, 0.35, 3)
+    # O cais de tábuas em primeiro plano, com os postes de amarração.
+    a = put(a, vgrad([(0, rgb('c49a62')), (1, rgb('8a6236'))], HORIZON + 50, H), mask(lambda d: d.polygon([(W * 0.20, HORIZON + 50), (W * 0.80, HORIZON + 50), (W + 60, H), (-60, H)], fill=255), 1))
+    FLOOR.append(HORIZON + 50)
+    a = layer(a, lambda d: [d.line([(W * 0.5 + (x - W * 0.5) * 0.36, HORIZON + 50), (x, H)], fill=(104, 72, 40, 255), width=2) for x in range(-200, W + 240, 70)] +
+              [d.line([(W * 0.20 - (y - HORIZON - 50) * 0.75, y), (W * 0.80 + (y - HORIZON - 50) * 0.75, y)], fill=(104, 72, 40, 255), width=2) for y in (HORIZON + 80, HORIZON + 130, HORIZON + 210, HORIZON + 320)] +
+              [d.rectangle([x - 8, y - 26, x + 8, y], fill=(96, 66, 40, 255)) for x, y in ((150, HORIZON + 70), (650, HORIZON + 70), (60, HORIZON + 170), (740, HORIZON + 170))])
+    a = motes(a, 1313, 60, (0, HORIZON, W, HORIZON + 60), (255, 255, 255), 1.6, 0.5)
+    return a, {'outdoor': True, 'seed': 1310}
+
+
+def town_metro():
+    """Metrópole (Saffron, Celadon, Goldenrod, Castelia, Lumiose, Wyndon...): os arranha-céus de vidro de dia, a avenida e os postes."""
+    a = day_sky('4a96e4', 'd8ecfa')
+    rnd = random.Random(1321)
+
+    def towers(d):
+        for x in range(-10, W, 44):
+            w, h = rnd.uniform(30, 56), rnd.uniform(70, 200)
+            c = rnd.choice(((150, 176, 204), (176, 196, 216), (130, 156, 190), (196, 204, 214), (214, 190, 170)))
+            top = HORIZON + 12 - h
+            d.rectangle([x, top, x + w, HORIZON + 14], fill=c + (255,))
+            d.rectangle([x, top, x + w * 0.2, HORIZON + 14], fill=tuple(min(255, int(v * 1.12)) for v in c) + (255,))
+            for yy in range(int(top + 6), HORIZON + 6, 10):
+                d.line([(x + 3, yy), (x + w - 3, yy)], fill=(210, 232, 250, 255), width=3)
+            if rnd.random() < 0.35:
+                d.line([(x + w / 2, top), (x + w / 2, top - 22)], fill=(110, 120, 136, 255), width=2)
+                d.ellipse([x + w / 2 - 3, top - 26, x + w / 2 + 3, top - 20], fill=(240, 70, 70, 255))
+        # O trem-bala no viaduto.
+        d.rectangle([0, HORIZON - 6, W, HORIZON + 2], fill=(150, 156, 168, 255))
+        for x in range(20, W, 80):
+            d.rectangle([x, HORIZON + 2, x + 10, HORIZON + 16], fill=(130, 136, 148, 255))
+        d.rounded_rectangle([430, HORIZON - 22, 700, HORIZON - 6], radius=8, fill=(246, 248, 252, 255))
+        d.rectangle([430, HORIZON - 14, 700, HORIZON - 10], fill=(60, 110, 200, 255))
+    a = layer(a, towers)
+    a = ground(a, HORIZON + 16, rgb('a4a8b4'), rgb('585c6c'), 1322, 6, 0.06)
+    # A avenida com a faixa, as calçadas e as árvores.
+    a = put(a, rgb('4c5060'), mask(lambda d: d.polygon([(W * 0.40, HORIZON + 16), (W * 0.60, HORIZON + 16), (W * 0.94, H), (W * 0.06, H)], fill=255), 2))
+    a = layer(a, lambda d: [d.polygon([(W * 0.5 - 2 - k * 1.5, y), (W * 0.5 + 2 + k * 1.5, y), (W * 0.5 + 3 + k * 2, y + 14 + k * 8), (W * 0.5 - 3 - k * 2, y + 14 + k * 8)], fill=(244, 236, 190, 255)) for k, y in enumerate((HORIZON + 26, HORIZON + 56, HORIZON + 104, HORIZON + 180, HORIZON + 290))])
+    a = layer(a, lambda d: [(d.line([(x, HORIZON - 30), (x, HORIZON + 40)], fill=(70, 76, 92, 255), width=4), d.ellipse([x - 7, HORIZON - 38, x + 7, HORIZON - 26], fill=(250, 250, 236, 255))) for x in (170, 630)] +
+              [(d.rectangle([x - 3, HORIZON + 14, x + 3, HORIZON + 36], fill=(110, 76, 44, 255)), d.ellipse([x - 20, HORIZON - 16, x + 20, HORIZON + 22], fill=(60, 140, 76, 255)), d.ellipse([x - 16, HORIZON - 16, x + 6, HORIZON + 6], fill=(96, 176, 100, 255))) for x in (80, 270, 530, 720)])
+    a = reflect(a, HORIZON + 16, HORIZON + 80, 0.12, 4)
+    return a, {'outdoor': True, 'seed': 1320}
+
+
+def town_snow():
+    """Cidade de neve (Snowpoint, Snowbelle, Icirrus, Circhester...): as casas com neve no telhado, os pinheiros brancos e a fumaça das chaminés."""
+    a = vgrad([(0, rgb('7f96bc')), (1, rgb('e4ecf6'))], 0, HORIZON)
+    a = mountains(a, 1331, HORIZON - 2, 80, rgb('b8c8dc'), rgb('8ea2be'), rgb('e6eef8'), 0.4, 0.5, 10, blur=2, snowcap=rgb('ffffff'))
+    rnd = random.Random(1332)
+    a = layer(a, lambda d: [pine(d, x, HORIZON + 10, rnd.uniform(40, 84), (40, 78, 80), (70, 116, 110), (240, 246, 255, 255)) for x in range(-10, W + 20, 34)], 0.6)
+    a = ground(a, HORIZON + 26, rgb('f2f6fc'), rgb('b8c8e0'), 1333, 5, 0.06)
+
+    def homes(d):
+        for x, w, h, wall in ((50, 120, 60, (150, 110, 80)), (240, 96, 52, (176, 130, 96)), (470, 100, 56, (140, 104, 78)), (630, 124, 62, (166, 122, 90))):
+            house(d, x, HORIZON + 30, w, h, wall, (96, 70, 60), chimney=True)
+            # A neve acumulada no telhado.
+            d.polygon([(x - w * 0.1, HORIZON + 30 - h), (x + w * 0.5, HORIZON + 30 - h - w * 0.46), (x + w * 1.1, HORIZON + 30 - h), (x + w * 0.96, HORIZON + 24 - h), (x + w * 0.5, HORIZON + 30 - h - w * 0.34), (x + w * 0.04, HORIZON + 24 - h)], fill=(250, 252, 255, 255))
+            for wx in (0.12, 0.7):
+                d.rectangle([x + w * wx, HORIZON + 30 - h * 0.72, x + w * (wx + 0.18), HORIZON + 30 - h * 0.42], fill=(255, 220, 130, 255))
+    a = layer(a, homes)
+    for x in (140, 320, 546, 730):
+        a = glow(a, x, HORIZON - 60, 30, (240, 244, 250), 0.5)
+    a = path(a, 'c8d4e6', HORIZON + 26, k=0.6)
+    cover = np.clip((noise(9, 1334, 5, 3.0) - 0.5) * 3, 0, 1) * (1 - np.clip((HORIZON + 40 - np.arange(H, dtype=np.float32)[:, None]) / 40, 0, 1))
+    a = put(a, rgb('ffffff'), cover * 0.5)
+    a = motes(a, 1335, 170, (0, 0, W, H), (255, 255, 255), 2.2, 0.6)
+    return a, {'outdoor': True, 'seed': 1330}
+
+
+def town_mountain():
+    """Cidade de montanha (Pewter, Blackthorn, Oreburgh, Veilstone, Cyllage...): as casas de pedra no pé do paredão, as escadarias e os pedregulhos."""
+    a = day_sky('4a8ad0', 'c8dff0', ((180, 50), (620, 70)))
+    a = mountains(a, 1341, HORIZON - 30, 130, rgb('8a8a94'), rgb('5c5c68'), rgb('b8c4d0'), 0.3, 0.8, 9, freq=1.4, snowcap=rgb('f0f2f6'))
+    a = mountains(a, 1342, HORIZON + 6, 60, rgb('a09a90'), rgb('6a645c'), rgb('b8b0a4'), 0.2, 0.7, 10, freq=2.2)
+    a = ground(a, HORIZON + 26, rgb('b8b0a0'), rgb('6a6458'), 1343, 5, 0.12, spots=(rgb('8aa070'), 0.35))
+
+    def homes(d):
+        for x, w, h in ((60, 110, 56), (230, 86, 48), (480, 92, 50), (620, 120, 60)):
+            house(d, x, HORIZON + 30, w, h, (168, 164, 156), (92, 96, 110))
+            for yy in range(int(HORIZON + 30 - h + 8), HORIZON + 28, 10):
+                d.line([(x + 2, yy), (x + w - 2, yy)], fill=(140, 136, 128, 255), width=1)
+        # A escadaria de pedra subindo o morro.
+        for k in range(7):
+            d.rectangle([372 - k * 4, HORIZON + 22 - k * 9, 428 + k * 4 - k * 8, HORIZON + 30 - k * 9], fill=(190, 186, 176, 255))
+            d.line([(372 - k * 4, HORIZON + 30 - k * 9), (428 - k * 4, HORIZON + 30 - k * 9)], fill=(120, 116, 108, 255), width=2)
+    a = layer(a, homes)
+    a = path(a, 'c8c0ac', HORIZON + 26, k=0.65)
+    a = rocks(a, 1344, 16, HORIZON + 50, H - 10, (140, 136, 128), (190, 186, 176), (70, 66, 60), 10, 34)
+    a = motes(a, 1345, 30, (0, HORIZON, W, H), (255, 255, 240), 1.8, 0.8)
+    return a, {'outdoor': True, 'seed': 1340}
+
+
+def town_island():
+    """Vila de ilha (Dewford, Cianwood, Mossdeep, Humilau, as de Alola...): as cabanas de palha, os coqueiros, a areia e o mar azul-claro."""
+    a = day_sky('2f9ae8', 'd8f4ff', ((140, 60), (520, 44), (720, 96)))
+    a = ground(a, HORIZON, rgb('5ad0e0'), rgb('2a90c8'), 1351, 9, 0.05)
+    a = layer(a, lambda d: [d.polygon([(560, HORIZON + 4), (600, HORIZON - 30), (660, HORIZON - 44), (730, HORIZON - 20), (760, HORIZON + 4)], fill=(96, 160, 110, 255))], 1.5)
+    # A praia subindo até a vila.
+    a = put(a, vgrad([(0, rgb('f4e6b4')), (1, rgb('d8bc7c'))], HORIZON + 20, H), mask(lambda d: d.polygon([(0, HORIZON + 36), (W * 0.30, HORIZON + 22), (W * 0.70, HORIZON + 22), (W, HORIZON + 36), (W, H), (0, H)], fill=255), 3))
+    FLOOR.append(HORIZON + 26)
+
+    def huts(d):
+        for x, w in ((80, 110), (260, 84), (470, 90), (620, 116)):
+            y = HORIZON + 34
+            for px in (x + 8, x + w - 12):
+                d.rectangle([px, y - 14, px + 4, y + 6], fill=(120, 84, 50, 255))
+            d.rectangle([x, y - 46, x + w, y - 12], fill=(226, 196, 140, 255))
+            d.rectangle([x + w * 0.4, y - 36, x + w * 0.6, y - 12], fill=(96, 64, 40, 255))
+            d.polygon([(x - 14, y - 44), (x + w * 0.5, y - 86), (x + w + 14, y - 44)], fill=(196, 160, 80, 255))
+            for k in range(6):
+                d.line([(x - 14 + k * (w + 28) / 6, y - 44), (x + w * 0.5, y - 86)], fill=(150, 116, 50, 255), width=2)
+
+        def palm(x, y, h):
+            d.line([(x, y), (x + h * 0.12, y - h * 0.5), (x + h * 0.06, y - h)], fill=(130, 96, 56, 255), width=max(4, int(h * 0.06)))
+            for ang in (-150, -110, -60, -20, 200, 240):
+                ex, ey = x + h * 0.06 + math.cos(math.radians(ang)) * h * 0.42, y - h + math.sin(math.radians(ang)) * h * 0.22 + h * 0.08
+                d.line([(x + h * 0.06, y - h), (ex, ey)], fill=(50, 150, 76, 255), width=max(4, int(h * 0.07)))
+            d.ellipse([x + h * 0.02, y - h - 2, x + h * 0.12, y - h + 8], fill=(110, 76, 44, 255))
+        for x, h in ((30, 130), (212, 100), (402, 116), (760, 140)):
+            palm(x, HORIZON + 40, h)
+    a = layer(a, huts)
+    a = layer(a, lambda d: [d.arc([x, HORIZON + 24, x + 200, HORIZON + 44], 180, 360, fill=(255, 255, 255, 190), width=3) for x in range(-60, W, 190)], 1)
+    a = motes(a, 1352, 50, (0, HORIZON, W, H), (255, 255, 240), 1.8, 0.7)
+    return a, {'outdoor': True, 'seed': 1350}
+
+
+def town_old():
+    """Cidade histórica (Ecruteak, Violet, Malie, Anistar, Opelucid, Hammerlocke...): os pagodes de vários andares, os telhados curvos, as lanternas e as árvores vermelhas."""
+    a = day_sky('5a92d4', 'e4eaf2', ((180, 56), (640, 74)), 150)
+    a = mountains(a, 1361, HORIZON - 2, 50, rgb('8aa0b8'), rgb('6e88a4'), rgb('c8d6e4'), 0.45, 0.4, 10, blur=2.5)
+    rnd = random.Random(1362)
+
+    def pagoda(d, cx, by, w, levels):
+        for k in range(levels):
+            ww = w * (1 - k * 0.14)
+            y = by - k * 34
+            d.rectangle([cx - ww * 0.36, y - 26, cx + ww * 0.36, y], fill=(232, 222, 200, 255))
+            for px in (-0.36, -0.12, 0.1, 0.32):
+                d.rectangle([cx + ww * px, y - 26, cx + ww * px + 4, y], fill=(150, 50, 44, 255))
+            d.polygon([(cx - ww * 0.62, y - 22), (cx - ww * 0.4, y - 36), (cx + ww * 0.4, y - 36), (cx + ww * 0.62, y - 22), (cx + ww * 0.5, y - 26), (cx - ww * 0.5, y - 26)], fill=(70, 72, 86, 255))
+        d.line([(cx, by - levels * 34 - 2), (cx, by - levels * 34 - 26)], fill=(200, 170, 80, 255), width=3)
+    a = layer(a, lambda d: (pagoda(d, 150, HORIZON + 30, 150, 4), pagoda(d, 640, HORIZON + 30, 170, 5)))
+    # As árvores de outono (vermelhas e douradas) e as casas baixas de madeira.
+    a = layer(a, lambda d: [(d.rectangle([x - 3, HORIZON + 6, x + 3, HORIZON + 30], fill=(96, 64, 44, 255)), d.ellipse([x - 26, HORIZON - 34, x + 26, HORIZON + 14], fill=c + (255,)), d.ellipse([x - 20, HORIZON - 34, x + 6, HORIZON - 6], fill=tuple(min(255, int(v * 1.18)) for v in c) + (255,)))
+                           for x, c in ((30, (200, 80, 50)), (290, (220, 150, 50)), (350, (196, 60, 50)), (480, (220, 150, 50)), (770, (200, 80, 50)))])
+    a = layer(a, lambda d: [(d.rectangle([x, HORIZON - 4, x + 90, HORIZON + 30], fill=(196, 170, 130, 255)), d.polygon([(x - 12, HORIZON - 2), (x + 6, HORIZON - 22), (x + 84, HORIZON - 22), (x + 102, HORIZON - 2)], fill=(70, 72, 86, 255)), d.rectangle([x + 36, HORIZON + 6, x + 54, HORIZON + 30], fill=(96, 64, 44, 255))) for x in (370,)])
+    a = ground(a, HORIZON + 30, rgb('c8b88c'), rgb('7a6a48'), 1363, 5, 0.1)
+    a = tiles(a, (150, 134, 100, 255), HORIZON + 30, 120)
+    # As lanternas de pedra ao longo do caminho.
+    lamps = ((250, HORIZON + 60), (550, HORIZON + 60), (150, HORIZON + 150), (650, HORIZON + 150))
+    a = layer(a, lambda d: [(d.rectangle([x - 4, y - 26, x + 4, y], fill=(150, 150, 150, 255)), d.rectangle([x - 10, y - 40, x + 10, y - 26], fill=(176, 176, 176, 255)), d.rectangle([x - 5, y - 37, x + 5, y - 29], fill=(255, 220, 130, 255)), d.polygon([(x - 14, y - 40), (x, y - 52), (x + 14, y - 40)], fill=(120, 120, 124, 255))) for x, y in lamps])
+    for x, y in lamps:
+        a = glow(a, x, y - 33, 26, (255, 210, 120), 0.5)
+    a = motes(a, 1364, 60, (0, 0, W, H), (230, 110, 60), 2.4, 0.4)
+    return a, {'outdoor': True, 'seed': 1360}
+
+
+def town_forest():
+    """Cidade na floresta (Fortree, Eterna, Laverre, Ballonlea, Lush Jungle...): as casas nas árvores, as pontes de corda e a luz filtrada."""
+    a = vgrad([(0, rgb('2a6a4a')), (1, rgb('9ad08a'))], 0, HORIZON)
+    a = treeline(a, 1371, HORIZON - 30, 60, ((24, 80, 50), (36, 104, 62), (60, 136, 80)), 0.8, haze=rgb('9ad08a'), haze_k=0.4, blur=2)
+    a = ground(a, HORIZON + 26, rgb('6aae58'), rgb('2e6a34'), 1372, 5, 0.12, spots=(rgb('8a7a4a'), 0.3))
+    rnd = random.Random(1373)
+
+    def trees(d):
+        for x, tw in ((110, 46), (330, 38), (520, 40), (700, 50)):
+            d.rectangle([x - tw / 2, 0, x + tw / 2, HORIZON + 34], fill=(104, 72, 44, 255))
+            d.rectangle([x - tw / 2, 0, x - tw / 2 + tw * 0.28, HORIZON + 34], fill=(132, 94, 58, 255))
+            # A casa na árvore, com a varanda e a escada.
+            hy = HORIZON - 60 - (x % 3) * 14
+            d.rectangle([x - 54, hy, x + 54, hy + 8], fill=(150, 108, 64, 255))
+            d.rectangle([x - 40, hy - 40, x + 40, hy], fill=(206, 170, 112, 255))
+            d.polygon([(x - 52, hy - 38), (x, hy - 72), (x + 52, hy - 38)], fill=(60, 130, 70, 255))
+            d.rectangle([x - 8, hy - 26, x + 8, hy], fill=(96, 64, 40, 255))
+            d.rectangle([x + 16, hy - 30, x + 30, hy - 16], fill=(255, 226, 150, 255))
+            d.line([(x + tw / 2 + 4, hy + 8), (x + tw / 2 + 4, HORIZON + 34)], fill=(190, 160, 110, 255), width=2)
+            d.line([(x + tw / 2 + 16, hy + 8), (x + tw / 2 + 16, HORIZON + 34)], fill=(190, 160, 110, 255), width=2)
+            for yy in range(int(hy + 16), HORIZON + 34, 12):
+                d.line([(x + tw / 2 + 4, yy), (x + tw / 2 + 16, yy)], fill=(190, 160, 110, 255), width=2)
+        # As pontes de corda entre as casas.
+        for x0, x1, y in ((164, 276, HORIZON - 70), (384, 466, HORIZON - 64), (574, 646, HORIZON - 76)):
+            pts = [(x0 + (x1 - x0) * t / 8, y + math.sin(t / 8 * math.pi) * 12) for t in range(9)]
+            d.line(pts, fill=(150, 108, 64, 255), width=5)
+            d.line([(px, py - 16) for px, py in pts], fill=(214, 190, 140, 255), width=2)
+            for px, py in pts:
+                d.line([(px, py), (px, py - 16)], fill=(214, 190, 140, 255), width=1)
+    a = layer(a, trees)
+    a = layer(a, lambda d: [d.ellipse([x - r, y - r * 0.6, x + r, y + r * 0.6], fill=(40, 110, 60, 235)) for x, y, r in [(rnd.uniform(0, W), rnd.uniform(-10, 40), rnd.uniform(60, 120)) for _ in range(12)]], 2)
+    a = layer(a, lambda d: [d.polygon([(x, -10), (x + 40, -10), (x - 60, H * 0.7), (x - 130, H * 0.7)], fill=(240, 255, 200, 34)) for x in (240, 470, 690)], 12)
+    a = path(a, 'b89a64', HORIZON + 26, k=0.6)
+    a = blades(a, 1374, 360, HORIZON + 60, H + 10, [rgb('3f8a40'), rgb('66b054'), rgb('2a6a30')], 0.25)
+    a = motes(a, 1375, 50, (0, 0, W, H), (220, 255, 160), 2.2, 1.2)
+    return a, {'outdoor': True, 'seed': 1370}
+
+
+def town_flower():
+    """Cidade das flores e dos campos (Floaroma, Artazon, Turffield, Cortondo...): os canteiros coloridos, o moinho de vento e as casinhas."""
+    a = day_sky('4a9cec', 'dff2ff')
+    a = mountains(a, 1381, HORIZON - 2, 40, rgb('8cc08a'), rgb('6ea870'), rgb('c8e4c0'), 0.4, 0.3, 12, blur=2.5)
+    a = ground(a, HORIZON + 20, rgb('9ad86a'), rgb('4a9a42'), 1382, 5, 0.08)
+
+    def mill(d):
+        # O moinho de vento.
+        d.polygon([(560, HORIZON + 26), (574, HORIZON - 70), (606, HORIZON - 70), (620, HORIZON + 26)], fill=(240, 232, 214, 255))
+        d.polygon([(566, HORIZON - 70), (590, HORIZON - 100), (614, HORIZON - 70)], fill=(190, 70, 60, 255))
+        d.rectangle([582, HORIZON - 6, 598, HORIZON + 26], fill=(96, 64, 40, 255))
+        for ang in (20, 110, 200, 290):
+            ex, ey = 590 + math.cos(math.radians(ang)) * 74, HORIZON - 76 + math.sin(math.radians(ang)) * 74
+            d.line([(590, HORIZON - 76), (ex, ey)], fill=(120, 90, 60, 255), width=4)
+            px, py = math.cos(math.radians(ang + 90)) * 12, math.sin(math.radians(ang + 90)) * 12
+            d.polygon([(590 + (ex - 590) * 0.3, HORIZON - 76 + (ey - HORIZON + 76) * 0.3), (ex, ey), (ex + px, ey + py), (590 + (ex - 590) * 0.3 + px, HORIZON - 76 + (ey - HORIZON + 76) * 0.3 + py)], fill=(250, 246, 236, 255))
+        house(d, 90, HORIZON + 26, 110, 54, (244, 234, 210), (220, 110, 130), chimney=True)
+        house(d, 260, HORIZON + 24, 84, 46, (236, 240, 232), (110, 170, 110))
+        house(d, 690, HORIZON + 26, 96, 50, (244, 234, 210), (230, 170, 70))
+    a = layer(a, mill)
+    # Os canteiros em faixas de cores, até o horizonte.
+    cols = ['f0607a', 'f8d040', 'f4f4f8', 'c070e0', 'f08a3a', 'f0607a', 'f8d040']
+    yy = np.arange(H, dtype=np.float32)[:, None] * np.ones((1, W), np.float32)
+    xx = np.ones((H, 1), np.float32) * np.arange(W, dtype=np.float32)[None, :]
+    depth = np.clip((yy - HORIZON - 30) / (H - HORIZON - 30), 0, 1)
+    u = (xx - W / 2) / (0.25 + depth * 1.2) / W
+    band = np.floor((u + 3) * 5).astype(int) % len(cols)
+    side = (np.abs(xx - W / 2) > (40 + depth * 150)) & (yy > HORIZON + 36)
+    speck = noise(60, 1383, 2, 1.0) > 0.5
+    for k, c in enumerate(cols):
+        a = put(a, rgb(c), ((band == k) & side & speck).astype(np.float32) * 0.9)
+    a = path(a, 'e0cc94', HORIZON + 20, k=0.75)
+    a = blades(a, 1384, 240, HORIZON + 60, H + 10, [rgb('4f9a44'), rgb('79c35a')], 0.2)
+    a = motes(a, 1385, 80, (0, HORIZON - 40, W, H), (255, 220, 240), 2.2, 0.6)
+    return a, {'outdoor': True, 'seed': 1380}
+
+
+def town_desert():
+    """Cidade do deserto (Stow-on-Side, Cascarrafa...): as casas de adobe, os toldos da feira, as palmeiras do oásis e o paredão de arenito."""
+    a = vgrad([(0, rgb('e89a4a')), (1, rgb('ffe0a0'))], 0, HORIZON)
+    a = glow(a, W * 0.78, 60, 110, (255, 240, 190), 0.8)
+    a = mountains(a, 1391, HORIZON - 4, 110, rgb('d08a4a'), rgb('a8602e'), rgb('f0c080'), 0.3, 0.9, 8, freq=1.2)
+    a = ground(a, HORIZON + 26, rgb('eccb86'), rgb('b88a4a'), 1392, 5, 0.1)
+
+    def adobe(d):
+        for x, w, h in ((40, 130, 64), (210, 96, 48), (470, 104, 56), (620, 140, 70)):
+            y = HORIZON + 30
+            d.rectangle([x, y - h, x + w, y], fill=(226, 180, 120, 255))
+            d.rectangle([x, y - h, x + w * 0.2, y], fill=(240, 200, 140, 255))
+            d.rectangle([x - 4, y - h - 6, x + w + 4, y - h], fill=(196, 150, 96, 255))
+            for k in range(4):
+                d.rectangle([x + 8 + k * w / 4.4, y - h - 3, x + 14 + k * w / 4.4, y - h + 5], fill=(110, 76, 44, 255))
+            d.pieslice([x + w * 0.38, y - h * 0.66, x + w * 0.62, y - h * 0.1], 180, 360, fill=(90, 60, 40, 255))
+            d.rectangle([x + w * 0.38, y - h * 0.38, x + w * 0.62, y], fill=(90, 60, 40, 255))
+            d.rectangle([x + w * 0.74, y - h * 0.7, x + w * 0.88, y - h * 0.46], fill=(70, 110, 130, 255))
+        # Os toldos listrados da feira.
+        for x, c in ((330, (210, 70, 60)), (390, (60, 130, 180))):
+            d.polygon([(x, HORIZON + 4), (x + 54, HORIZON + 4), (x + 60, HORIZON + 18), (x - 6, HORIZON + 18)], fill=c + (255,))
+            for k in range(0, 54, 18):
+                d.polygon([(x + k, HORIZON + 4), (x + k + 9, HORIZON + 4), (x + k + 10, HORIZON + 18), (x + k - 1, HORIZON + 18)], fill=(250, 246, 236, 255))
+            d.line([(x, HORIZON + 18), (x, HORIZON + 34)], fill=(110, 76, 44, 255), width=3)
+            d.line([(x + 54, HORIZON + 18), (x + 54, HORIZON + 34)], fill=(110, 76, 44, 255), width=3)
+        # As palmeiras do oásis.
+        for x, h in ((180, 96), (446, 80), (776, 110)):
+            d.line([(x, HORIZON + 34), (x + h * 0.1, HORIZON + 34 - h)], fill=(130, 96, 56, 255), width=6)
+            for ang in (-150, -110, -60, -20, 200, 240):
+                d.line([(x + h * 0.1, HORIZON + 34 - h), (x + h * 0.1 + math.cos(math.radians(ang)) * h * 0.4, HORIZON + 34 - h + math.sin(math.radians(ang)) * h * 0.2 + h * 0.08)], fill=(70, 150, 76, 255), width=6)
+    a = layer(a, adobe)
+    a = put(a, rgb('5ab8d8'), mask(lambda d: d.ellipse([300, HORIZON + 50, 500, HORIZON + 84], fill=255), 2) * 0.9)
+    a = rocks(a, 1393, 8, HORIZON + 100, H - 10, (190, 140, 90), (230, 190, 130), (120, 80, 50), 10, 28)
+    haze = noise(4, 1394, 4, 2.2)
+    a = put(a, rgb('f0d09a'), np.clip((haze - 0.5) * 1.2, 0, 1) * 0.25)
+    return a, {'outdoor': True, 'seed': 1390}
+
+
+def town_industrial():
+    """Cidade industrial (Motostoke, Virbank, Oreburgh, Driftveil, Spikemuth...): as fábricas de tijolo, as chaminés soltando vapor, as engrenagens e os canos."""
+    a = vgrad([(0, rgb('6a86a8')), (1, rgb('d6d0c4'))], 0, HORIZON)
+    rnd = random.Random(1401)
+    smog = np.clip((noise(5, 1402, 4, 2.4) - 0.4) * 2, 0, 1) * np.clip((HORIZON - np.arange(H, dtype=np.float32)[:, None]) / 90, 0, 1)
+    a = put(a, rgb('b8b4ac'), smog * 0.6)
+
+    def plant(d):
+        for x, w, h in ((0, 150, 110), (170, 110, 80), (470, 130, 96), (620, 180, 126)):
+            y = HORIZON + 30
+            d.rectangle([x, y - h, x + w, y], fill=(150, 84, 62, 255))
+            for yy in range(int(y - h + 8), y, 10):
+                d.line([(x, yy), (x + w, yy)], fill=(120, 64, 48, 255), width=1)
+            for k in range(int(w // 34)):
+                d.polygon([(x + k * 34, y - h), (x + k * 34 + 34, y - h), (x + k * 34 + 34, y - h - 18)], fill=(96, 100, 112, 255))
+                d.rectangle([x + 8 + k * 34, y - h + 16, x + 26 + k * 34, y - h + 40], fill=(255, 216, 130, 255))
+            d.rectangle([x + w * 0.4, y - 30, x + w * 0.6, y], fill=(60, 50, 50, 255))
+        # As chaminés com o vapor.
+        for x, h in ((60, 190), (250, 150), (540, 170), (720, 210)):
+            d.rectangle([x - 12, HORIZON + 30 - h, x + 12, HORIZON + 30 - h * 0.5], fill=(120, 70, 56, 255))
+            d.rectangle([x - 15, HORIZON + 30 - h, x + 15, HORIZON + 38 - h], fill=(84, 60, 54, 255))
+        # A engrenagem grande e os canos.
+        cx, cy, r = 400, HORIZON - 30, 42
+        for k in range(12):
+            ang = k * math.pi / 6
+            d.polygon([(cx + math.cos(ang - 0.12) * r, cy + math.sin(ang - 0.12) * r), (cx + math.cos(ang - 0.08) * (r + 12), cy + math.sin(ang - 0.08) * (r + 12)), (cx + math.cos(ang + 0.08) * (r + 12), cy + math.sin(ang + 0.08) * (r + 12)), (cx + math.cos(ang + 0.12) * r, cy + math.sin(ang + 0.12) * r)], fill=(170, 130, 70, 255))
+        d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(196, 150, 80, 255))
+        d.ellipse([cx - r * 0.5, cy - r * 0.5, cx + r * 0.5, cy + r * 0.5], fill=(110, 84, 50, 255))
+        d.line([(280, HORIZON + 10), (470, HORIZON + 10)], fill=(110, 116, 128, 255), width=8)
+    a = layer(a, plant)
+    a = layer(a, lambda d: [d.ellipse([x - r, y - r * 0.7, x + r, y + r * 0.7], fill=(244, 244, 244, 170)) for x0, h in ((60, 190), (250, 150), (540, 170), (720, 210)) for x, y, r in [(x0 + k * 12 + rnd.uniform(-6, 6), HORIZON + 26 - h - k * 22, 16 + k * 7) for k in range(4)]], 5)
+    a = ground(a, HORIZON + 30, rgb('8a8480'), rgb('44403e'), 1403, 6, 0.1)
+    a = tiles(a, (60, 56, 54, 255), HORIZON + 30, 100)
+    # Os trilhos da mina / do bonde.
+    a = layer(a, lambda d: [d.line([(W * 0.47, HORIZON + 30), (W * 0.30, H)], fill=(170, 170, 180, 255), width=4), d.line([(W * 0.53, HORIZON + 30), (W * 0.70, H)], fill=(170, 170, 180, 255), width=4)] +
+              [d.line([(W * 0.5 - 22 - k * 1.5, y), (W * 0.5 + 22 + k * 1.5, y)], fill=(96, 70, 48, 255), width=4) for k, y in [(k, HORIZON + 40 + int(k ** 1.6) * 6) for k in range(0, 36, 3)]])
+    return a, {'outdoor': True, 'seed': 1400}
+
+
+def town_water():
+    """Cidade na água (Cerulean, Pastoria, Sootopolis, Coumarine...): as casas brancas à beira dos canais, as pontes em arco e os barcos."""
+    a = day_sky('3a92e2', 'd4eeff')
+    a = mountains(a, 1411, HORIZON - 2, 70, rgb('c8ccd0'), rgb('9aa0aa'), rgb('e0e8f0'), 0.35, 0.6, 10, freq=1.4)
+    a = ground(a, HORIZON + 20, rgb('5ab8e8'), rgb('2a78c0'), 1412, 9, 0.05)
+
+    def canal(d):
+        for x, w, h in ((30, 110, 60), (170, 90, 80), (520, 96, 84), (640, 130, 62)):
+            y = HORIZON + 26
+            d.rectangle([x, y - h, x + w, y], fill=(246, 246, 242, 255))
+            d.rectangle([x, y - h, x + w * 0.2, y], fill=(255, 255, 255, 255))
+            d.rectangle([x - 4, y - h - 8, x + w + 4, y - h], fill=(70, 130, 200, 255))
+            d.pieslice([x + w * 0.3, y - h - 34, x + w * 0.7, y - h + 16], 180, 360, fill=(70, 130, 200, 255))
+            for r in range(int(h // 24)):
+                for c in range(3):
+                    d.rectangle([x + 10 + c * w / 3.4, y - h + 10 + r * 24, x + 22 + c * w / 3.4, y - h + 24 + r * 24], fill=(120, 190, 230, 255))
+        # A ponte em arco no meio e as bordas de pedra do canal.
+        d.arc([300, HORIZON - 30, 500, HORIZON + 70], 180, 360, fill=(206, 200, 190, 255), width=16)
+        d.line([(300, HORIZON + 4), (500, HORIZON + 4)], fill=(230, 226, 216, 255), width=5)
+        for x in range(304, 500, 16):
+            d.line([(x, HORIZON + 4), (x, HORIZON - 10 - math.sin((x - 300) / 200 * math.pi) * 18)], fill=(230, 226, 216, 255), width=2)
+        d.rectangle([0, HORIZON + 22, 290, HORIZON + 32], fill=(190, 186, 176, 255))
+        d.rectangle([510, HORIZON + 22, W, HORIZON + 32], fill=(190, 186, 176, 255))
+        # O barquinho.
+        d.polygon([(560, HORIZON + 70), (572, HORIZON + 84), (650, HORIZON + 84), (664, HORIZON + 70)], fill=(160, 100, 60, 255))
+        d.line([(610, HORIZON + 70), (610, HORIZON + 30)], fill=(110, 76, 44, 255), width=3)
+        d.polygon([(612, HORIZON + 32), (650, HORIZON + 62), (612, HORIZON + 62)], fill=(250, 250, 244, 255))
+    a = layer(a, canal)
+    a = reflect(a, HORIZON + 32, HORIZON + 110, 0.42, 3)
+    rnd = random.Random(1413)
+    a = layer(a, lambda d: [d.arc([x, y - s * 0.1, x + s, y + s * 0.1], 200, 340, fill=(240, 250, 255, int(70 + 100 * k)), width=1) for x, y, s, k in [(rnd.uniform(-40, W), y, 6 + (y - HORIZON) / (H - HORIZON) * 60, (y - HORIZON) / (H - HORIZON)) for y in [rnd.uniform(HORIZON + 34, H) for _ in range(320)]]], 0.5)
+    # A calçada de pedra de perto.
+    a = put(a, vgrad([(0, rgb('d8d2c4')), (1, rgb('a09a8c'))], H * 0.72, H), mask(lambda d: d.polygon([(0, H * 0.74), (W * 0.34, H * 0.78), (W * 0.56, H * 0.92), (W * 0.60, H), (0, H)], fill=255), 2))
+    a = motes(a, 1414, 60, (0, HORIZON, W, H), (255, 255, 255), 1.8, 0.5)
+    return a, {'outdoor': True, 'seed': 1410}
+
+
+def town_volcano():
+    """Cidade do vulcão (Cinnabar, Lavaridge, Wela Volcano Park...): o vulcão fumegando no fundo, as fontes termais com vapor e as casas de madeira."""
+    a = vgrad([(0, rgb('4a7ac0')), (1, rgb('f0d0a8'))], 0, HORIZON)
+    # O vulcão com a fumaça e o brilho da cratera.
+    a = layer(a, lambda d: d.polygon([(180, HORIZON + 10), (340, 50), (380, 40), (430, 46), (470, 54), (640, HORIZON + 10)], fill=(104, 70, 60, 255)), 1)
+    a = layer(a, lambda d: [d.polygon([(340, 50), (380, 40), (430, 46), (470, 54), (440, 78), (410, 62), (380, 84), (356, 66)], fill=(240, 110, 50, 255)), d.polygon([(380, 84), (372, 150), (390, 130), (396, 100)], fill=(240, 110, 50, 255))], 1.5)
+    a = glow(a, 405, 50, 90, (255, 150, 70), 0.6)
+    rnd = random.Random(1421)
+    a = layer(a, lambda d: [d.ellipse([x - r, y - r * 0.7, x + r, y + r * 0.7], fill=(120, 110, 110, 190)) for x, y, r in [(405 + k * 14 + rnd.uniform(-8, 8), 34 - k * 9, 22 + k * 9) for k in range(5)]], 6)
+    a = mountains(a, 1422, HORIZON + 4, 30, rgb('8a6a54'), rgb('6a4e3e'), rgb('c0a080'), 0.3, 0.6, 10, freq=2.2)
+    a = ground(a, HORIZON + 26, rgb('b89a78'), rgb('6a4e38'), 1423, 5, 0.12, spots=(rgb('8a9a5a'), 0.3))
+    a = layer(a, lambda d: (house(d, 50, HORIZON + 30, 116, 58, (186, 140, 96), (150, 60, 50), chimney=True), house(d, 630, HORIZON + 30, 122, 62, (196, 150, 104), (150, 60, 50), chimney=True),
+                           house(d, 210, HORIZON + 28, 80, 44, (206, 164, 116), (96, 70, 60))))
+    # As fontes termais (a água quente cercada de pedras) e o vapor.
+    pool = mask(lambda d: d.ellipse([W * 0.30, HORIZON + 44, W * 0.74, HORIZON + 110], fill=255), 2)
+    a = put(a, vgrad([(0, rgb('8ae0e0')), (1, rgb('4aa8c0'))], HORIZON + 40, HORIZON + 114), pool)
+    a = rocks(a, 1424, 22, HORIZON + 40, HORIZON + 120, (130, 110, 96), (180, 160, 140), (60, 46, 40), 10, 22)
+    steam = np.clip((noise(6, 1425, 4, 2.0) - 0.42) * 2.0, 0, 1) * np.clip(1 - np.abs(np.arange(H, dtype=np.float32)[:, None] - HORIZON - 40) / 90, 0, 1) * np.clip(1 - np.abs(np.arange(W, dtype=np.float32)[None, :] - W * 0.52) / (W * 0.34), 0, 1)
+    a = put(a, rgb('ffffff'), steam * 0.7)
+    a = motes(a, 1426, 50, (0, 0, W, H), (255, 180, 110), 1.8, 0.8)
+    return a, {'outdoor': True, 'seed': 1420}
+
+
+def town_league():
+    """A entrada da Liga Pokémon (Indigo Plateau, Ever Grande, as Ligas...): o prédio imponente no alto do platô, a escadaria, as bandeiras e as estátuas."""
+    a = day_sky('3a7ad8', 'dce8f8', ((150, 50), (660, 70)), 160)
+    a = mountains(a, 1431, HORIZON + 2, 90, rgb('8a94a8'), rgb('66708a'), rgb('c0cce0'), 0.35, 0.7, 9, freq=1.4, snowcap=rgb('f0f4fa'))
+
+    def hall(d):
+        cx, by = W * 0.5, HORIZON + 30
+        d.rectangle([cx - 230, by - 96, cx + 230, by], fill=(226, 226, 232, 255))
+        d.rectangle([cx - 230, by - 96, cx - 190, by], fill=(244, 244, 248, 255))
+        d.polygon([(cx - 250, by - 96), (cx, by - 170), (cx + 250, by - 96)], fill=(190, 60, 60, 255))
+        d.polygon([(cx - 250, by - 96), (cx, by - 170), (cx - 60, by - 96)], fill=(214, 84, 80, 255))
+        # A Poké Ball no frontão e as colunas.
+        d.ellipse([cx - 26, by - 140, cx + 26, by - 88], fill=(250, 250, 250, 255))
+        d.pieslice([cx - 26, by - 140, cx + 26, by - 88], 180, 360, fill=(220, 50, 50, 255))
+        d.line([(cx - 26, by - 114), (cx + 26, by - 114)], fill=(40, 40, 50, 255), width=4)
+        d.ellipse([cx - 8, by - 122, cx + 8, by - 106], fill=(250, 250, 250, 255), outline=(40, 40, 50, 255), width=3)
+        for x in range(int(cx - 210), int(cx + 211), 60):
+            d.rectangle([x - 9, by - 90, x + 9, by], fill=(250, 250, 252, 255))
+            d.rectangle([x - 12, by - 96, x + 12, by - 88], fill=(200, 200, 210, 255))
+        d.rectangle([cx - 30, by - 66, cx + 30, by], fill=(70, 50, 44, 255))
+        d.line([(cx, by - 66), (cx, by)], fill=(200, 170, 80, 255), width=3)
+        # As bandeiras nos mastros.
+        for x, c in ((cx - 290, (60, 110, 200)), (cx + 290, (220, 170, 50))):
+            d.line([(x, by), (x, by - 150)], fill=(150, 150, 160, 255), width=4)
+            d.polygon([(x, by - 150), (x + 50, by - 138), (x, by - 118)], fill=c + (255,))
+    a = layer(a, hall)
+    a = ground(a, HORIZON + 30, rgb('d8d4c8'), rgb('8a8474'), 1432, 5, 0.06)
+    # A escadaria larga e o tapete vermelho.
+    a = layer(a, lambda d: [d.line([(W * 0.5 - 120 - k * 26, HORIZON + 34 + k * k * 2.2), (W * 0.5 + 120 + k * 26, HORIZON + 34 + k * k * 2.2)], fill=(150, 144, 130, 255), width=3) for k in range(13)])
+    a = put(a, rgb('b03a3a'), mask(lambda d: d.polygon([(W * 0.46, HORIZON + 30), (W * 0.54, HORIZON + 30), (W * 0.70, H), (W * 0.30, H)], fill=255), 2) * 0.85)
+    # As estátuas de Pokémon dos lados.
+    a = layer(a, lambda d: [(d.rectangle([x - 26, y - 20, x + 26, y], fill=(150, 150, 160, 255)), d.ellipse([x - 20, y - 64, x + 20, y - 18], fill=(196, 196, 204, 255)), d.polygon([(x - 14, y - 58), (x - 24, y - 84), (x - 4, y - 66)], fill=(196, 196, 204, 255)), d.polygon([(x + 14, y - 58), (x + 24, y - 84), (x + 4, y - 66)], fill=(196, 196, 204, 255))) for x, y in ((150, HORIZON + 110), (650, HORIZON + 110))])
+    a = motes(a, 1433, 40, (0, 0, W, H), (255, 250, 220), 2, 0.8)
+    return a, {'outdoor': True, 'seed': 1430}
+
+
 SCENES = {
     'grass': grass, 'forest': forest, 'water': water, 'beach': beach, 'underwater': underwater, 'swamp': swamp, 'sewer': sewer,
     'cave': cave, 'icecave': icecave, 'mountain': mountain, 'desert': desert, 'volcano': volcano, 'snow': snow, 'city': city,
@@ -2164,6 +2648,8 @@ SCENES = {
     'library': library, 'mansion': mansion, 'space': space, 'lab': lab, 'observatory': observatory, 'coldstorage': coldstorage,
     'dojo': dojo, 'dragonsden': dragonsden, 'spearpillar': spearpillar, 'origin': origin, 'burnedtower': burnedtower,
     'lighthouse': lighthouse, 'skypillar': skypillar, 'whirl': whirl, 'lakeside': lakeside, 'acuity': acuity, 'hotel': hotel, 'wildarea': wildarea,
+    'town-village': town_village, 'town-port': town_port, 'town-metro': town_metro, 'town-snow': town_snow, 'town-mountain': town_mountain, 'town-island': town_island, 'town-old': town_old,
+    'town-forest': town_forest, 'town-flower': town_flower, 'town-desert': town_desert, 'town-industrial': town_industrial, 'town-water': town_water, 'town-volcano': town_volcano, 'town-league': town_league,
 }
 
 

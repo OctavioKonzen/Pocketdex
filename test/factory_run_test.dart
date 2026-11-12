@@ -417,6 +417,29 @@ void main() {
     expect(FactoryRun.pendingOf(other)!['capture'], isNull);
   });
 
+  test('cada cidade tem o cenário do tipo dela: porto, metrópole, neve, vulcão, Liga... (igual ao site)', () {
+    final red = gameOf('Red/Blue'), dp = gameOf('Diamond/Pearl');
+    String scene(int g, String city) => FactoryRun.shownScene(toCity(g, city, {'floor': 1 + FactoryRun.routeLength}), 'city', data);
+    expect([scene(red, 'Vermilion City'), scene(red, 'Saffron City'), scene(red, 'Cinnabar Island'), scene(red, 'Pewter City'), scene(red, 'Indigo Plateau'), scene(dp, 'Snowpoint City')],
+        ['town-port', 'town-metro', 'town-volcano', 'town-mountain', 'town-league', 'town-snow']);
+    expect(FactoryRun.shownScene(toCity(red, 'Vermilion City'), 'grass', data), 'grass');
+    expect(FactoryRun.shownScene(toCity(red, 'Saffron City', {'dungeon': {'place': 'silph-co-', 'scene': 'base-rocket', 'start': 3}}), 'city', data), 'silph');
+    expect(FactoryRun.shownScene(toCity(red, 'Vermilion City'), 'city'), 'city');
+    for (final city in (data.routes['cities'] as Map).keys) {
+      expect((data.routes['features'] as Map)[city]?['town'], isNotNull, reason: '$city');
+      expect(File('assets/database/sprites/battle/town-${(data.routes['features'] as Map)[city]['town']}.webp').existsSync(), isTrue, reason: '$city');
+    }
+    expect([FactoryRun.inTown('town-port'), FactoryRun.isCity('town-old'), FactoryRun.isCity('grass')], [true, true, false]);
+    final run = FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!;
+    Set<String> weathers(String sc) => {for (var k = 0; k < 200; k++) FactoryRun.weatherOf({...run, 'seed': k + 1}, sc)};
+    expect(weathers('town-snow'), contains('snow'));
+    expect(weathers('town-port'), isNot(contains('snow')));
+    expect(weathers('town-desert'), contains('sand'));
+    final walked = FactoryRun.nextFloor(toCity(red, 'Vermilion City', {'floor': 1 + FactoryRun.routeLength}), data);
+    final fight = FactoryRun.chooseNode({...walked, 'route': {...walked['route'] as Map, 'options': [{'kind': 'trainer'}]}}, data, 0);
+    expect(fight['encounter']['scene'], 'town-port');
+  });
+
   test('clima único de cada rota e lugar: Lake of Rage, Mt. Moon, Snowpoint; fora deles, o clima normal (igual ao site)', () {
     final gs = gameOf('Gold/Silver'), red = gameOf('Red/Blue'), dp = gameOf('Diamond/Pearl');
     double share(bool Function(int) fn) => [for (var seed = 1; seed <= 400; seed++) if (fn(seed)) 1].length / 400;

@@ -1390,7 +1390,22 @@ class FactoryRun {
   };
 
   /// O cenário que aparece (o próprio do lugar, se ele tiver).
-  static String shownScene(Json? run, String scene) => (run?['dungeon'] is Map ? placeScenes[run!['dungeon']['place']] : null) ?? scene;
+  static String shownScene(Json? run, String scene, [FactoryData? data]) =>
+      (run?['dungeon'] is Map ? placeScenes[run!['dungeon']['place']] : null) ?? (scene == 'city' && run != null && run['dungeon'] is! Map && data != null ? townScene(data, run) : null) ?? scene;
+
+  /// O cenário da cidade ou vila de agora, pela descrição dela nos jogos (tool/factory_routes.py, TOWNS): vila pequena,
+  /// porto, metrópole, neve, montanha, ilha, histórica, floresta, flores, deserto, industrial, na água, vulcão ou a Liga.
+  /// null: a cidade genérica. Igual ao site.
+  static String? townScene(FactoryData data, Json run) {
+    final kind = featuresOf(data, run)['town'];
+    return kind == null ? null : 'town-$kind';
+  }
+
+  /// Uma cidade (o cenário genérico ou o de um tipo de cidade).
+  static bool isCity(String scene) => scene == 'city' || scene.startsWith('town-');
+
+  /// O clima e o efeito do lugar de cada tipo de cidade: como a cidade genérica, fora a de neve e a do deserto.
+  static String _sceneBase(String scene) => scene == 'town-snow' ? 'snow' : scene == 'town-desert' ? 'desert' : scene.startsWith('town-') ? 'city' : scene;
 
   static ({String id, String name, String scene})? _placeOf(Object? row) =>
       row is List ? (id: _placeId('${row[0]}'), name: '${row[0]}', scene: '${row[1]}') : null;
@@ -2248,7 +2263,7 @@ class FactoryRun {
       final burstHere = burst != null && ((data.species[burst]?.elementAtOrNull(6) as List?) ?? const []).contains(scene);
       final when = clock == null ? const <String, dynamic>{} : {'night': clock.night, 'season': clock.season, if (burstHere) 'outbreak': burst};
       // O clima da rota (o mesmo em todos os andares dela) atrai Pokémon diferentes.
-      final sky = weatherOf(run, shownScene(run, scene), null, data);
+      final sky = weatherOf(run, shownScene(run, scene, data), null, data);
       Json roll() => {
             ...encounterFor(data, floor, rand, node['kind'] == 'boss' ? bossOf(data, out) : null, node['kind'] == 'wildboss',
                 {...node, 'biome': scene, 'shiny': run['shinyRate'] ?? 1, ...when, if (sky.isNotEmpty) 'weather': sky, ...huntNode(run)}),
@@ -2306,14 +2321,14 @@ class FactoryRun {
       // Os selvagens e os treinadores do caminho na forma da região (e com o degrau do jogo da corrida).
       out['encounter'] = rivalGrowth(detourFoes(tierFoes(regionalEncounter(data, run, Map<String, dynamic>.from(out['encounter'] as Map)), run), run), run);
       // O cenário próprio do lugar (loja, cassino, escola...), se ele tiver. Igual ao site.
-      out['scene'] = shownScene(run, '${out['scene']}');
-      out['encounter'] = {...out['encounter'] as Map<String, dynamic>, 'scene': shownScene(run, '${out['encounter']['scene'] ?? out['scene']}')};
+      out['scene'] = shownScene(run, '${out['scene']}', data);
+      out['encounter'] = {...out['encounter'] as Map<String, dynamic>, 'scene': shownScene(run, '${out['encounter']['scene'] ?? out['scene']}', data)};
       return out;
     }
     out['floor'] = floor + 1;
     // O cenário de onde você está (Poké Mart e Centro na cidade).
     // Na rota não tem Poké Mart nem Centro: o vendedor ambulante e quem cura ficam no próprio lugar.
-    out['scene'] = shownScene(run, routeBiomeNow);
+    out['scene'] = shownScene(run, routeBiomeNow, data);
     if (node['kind'] == 'mart') {
       out['pending'] = {'mart': true, 'shop': _pickShop(rand, data, floor, 10, run['townMap'] == true)};
     } else if (node['kind'] == 'safari') {
@@ -3695,7 +3710,7 @@ class FactoryRun {
   static (String, String) healerOf(Json run) => healers[(_int(run['seed'] ?? 0) + _int(run['floor'])) % healers.length];
 
   /// Os lugares da cidade (onde ficam o Poké Mart e a Enfermeira Joy).
-  static bool inTown(String scene) => scene == 'city' || scene == 'center' || scene == 'tower' || scene.startsWith('gym-') || scene.startsWith('champion-');
+  static bool inTown(String scene) => isCity(scene) || scene == 'center' || scene == 'tower' || scene.startsWith('gym-') || scene.startsWith('champion-');
 
   /// As estações (como no Black & White: mudam a cada mês) e a noite (pelo relógio de verdade). Igual ao site.
   static const seasons = ['spring', 'summer', 'autumn', 'winter'];
@@ -3750,6 +3765,7 @@ class FactoryRun {
   // season: não muda mais o clima (a neve do inverno caía em qualquer lugar aberto, mesmo onde não neva).
   static String weatherOf(Json run, String scene, [String? season, FactoryData? data]) {
     // Em lugar fechado não chove, não neva nem faz sol forte: lá dentro o clima só muda por golpe ou habilidade de Pokémon.
+    scene = _sceneBase(scene);
     if (!openScenes.contains(scene)) return '';
     final table = _climateTable(climateOf(data, run, scene)?['w']) ??
         sceneWeather[scene];
@@ -3781,6 +3797,7 @@ class FactoryRun {
 
   /// O efeito com que a batalha do andar começa ('' sem efeito): pelo lugar, sempre o mesmo para a mesma corrida e andar.
   static String fieldOf(Json run, String scene, [FactoryData? data]) {
+    scene = _sceneBase(scene);
     // Os efeitos do céu (tempestade, aurora, ventos fortes) também só acontecem a céu aberto.
     final all = _climateTable(climateOf(data, run, scene)?['f']) ?? sceneField[scene];
     final table = all != null && !openScenes.contains(scene) ? [for (final e in all) if (!skyFields.contains(e.$1)) e] : all;

@@ -318,6 +318,30 @@ CLIMATE = {
 for _city, _climate in CLIMATE.items():
     FEATURES.setdefault(_city, {})['climate'] = _climate
 
+
+# O cenário de cada cidade ou vila, pela descrição dela nos jogos (o fundo que aparece na cidade e nas batalhas dela):
+# vila pequena, porto, metrópole, neve, montanha, ilha, cidade histórica, floresta, flores, deserto, industrial, na água,
+# vulcão e a entrada da Liga. Sem nada aqui, a cidade genérica.
+TOWNS = {
+    'village': ['Fuchsia City', 'Viridian City', 'Azalea Town', 'Mahogany Town', 'Petalburg City', 'Striaton City', 'Aspertia City', 'Santalune City', 'Medali'],
+    'port': ['Vermilion City', 'Olivine City', 'Canalave City', 'Sunyshore City', 'Driftveil City', 'Shalour City', 'Coumarine City', 'Seafolk Village', 'Hulbury'],
+    'metro': ['Celadon City', 'Saffron City', 'Goldenrod City', 'Rustboro City', 'Mauville City', 'Hearthome City', 'Castelia City', 'Nimbasa City', 'Lumiose City', 'Wyndon', 'Levincia'],
+    'snow': ['Snowpoint City', 'Icirrus City', 'Snowbelle City', 'Mount Lanakila', 'Circhester', 'Montenevera', 'Glaseado'],
+    'mountain': ['Pewter City', 'Blackthorn City', 'Veilstone City', 'Mistralton City', 'Cyllage City', 'Hokulani Observatory', 'Vast Poni Canyon', 'Alfornada'],
+    'island': ['Seafoam Islands', 'Cianwood City', 'Dewford Town', 'Mossdeep City', 'Humilau City', 'Verdant Cavern', 'Iki Town', 'Ruins of Life', 'Brooklet Hill'],
+    'old': ['Violet City', 'Ecruteak City', 'Eterna City', 'Opelucid City', 'Anistar City', 'Malie City', 'Hammerlocke'],
+    'forest': ['Fortree City', 'Laverre City', 'Lush Jungle', 'Ballonlea'],
+    'flower': ['Turffield', 'Cortondo', 'Artazon'],
+    'desert': ['Stow-on-Side', 'Cascarrafa'],
+    'industrial': ['Oreburgh City', 'Nacrene City', 'Virbank City', 'Motostoke', 'Spikemuth'],
+    'water': ['Cerulean City', 'Sootopolis City', 'Pastoria City'],
+    'volcano': ['Cinnabar Island', 'Lavaridge Town', 'Wela Volcano Park'],
+    'league': ['Indigo Plateau', 'Ever Grande City', 'Sinnoh:Pokémon League', 'Unova:Pokémon League', 'Kalos:Pokémon League', 'Paldea:Pokémon League'],
+}
+for _kind, _cities in TOWNS.items():
+    for _city in _cities:
+        FEATURES.setdefault(_city, {})['town'] = _kind
+
 TUTOR_EVERYWHERE = ['Galar', 'Paldea']
 
 RARE = {

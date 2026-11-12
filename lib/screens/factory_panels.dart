@@ -3141,7 +3141,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
     } else if (step == 'shop') {
       frame = _frame(
         run: run,
-        field: _field('city', key: const ValueKey('factory-shop'), (w, h) => [
+        field: _field(FactoryRun.shownScene(run, 'city', data), key: const ValueKey('factory-shop'), (w, h) => [
               Positioned(
                 left: 0,
                 right: 0,
@@ -4138,7 +4138,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
     final cut = !meeting && !town ? FactoryRun.cutPath(run) : null;
     final smash = !meeting && !town ? FactoryRun.smashPath(run) : null;
     final strength = !meeting && !town ? FactoryRun.strengthPath(run) : null;
-    final forecast = town ? '' : FactoryRun.weatherOf(run, FactoryRun.shownScene(run, '${route['biome']}'), clock.season, data);
+    final forecast = town ? '' : FactoryRun.weatherOf(run, FactoryRun.shownScene(run, '${route['biome']}', data), clock.season, data);
     final burst = FactoryRun.outbreakOf(data, clock.day);
     // O andar (pequeno, num canto): na rota, até a cidade; num lugar, até o chefe dele.
     final floorTag = dungeon != null
@@ -4193,7 +4193,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
           ? _townMap(route, options, pos % FactoryRun.routeLength, cities.from, cities.to, '${boss['region']} · ${boss['game']}', me,
               widget.busy ? null : pick, (node) => (FactoryRun.isBattleNode(node) && down) || FactoryRun.nodeBlocked(run, node), placeName)
           // O líder espera no ginásio da cidade; a Elite dos Quatro e o Campeão, na Liga (nunca no meio da rota).
-          : _field(FactoryRun.shownScene(run, scene), key: const ValueKey('factory-map'), (w, h) {
+          : _field(FactoryRun.shownScene(run, scene, data), key: const ValueKey('factory-map'), (w, h) {
               return [
                 Positioned(
                     left: 8,

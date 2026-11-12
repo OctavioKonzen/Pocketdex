@@ -9,7 +9,7 @@ import {
   placeInfo, routeInfo, DBOSS_GIMMICK_FLOOR, UPGRADE_FX, SHORE, CAVE_OF, dungeonPos, routePos, DUNGEON_LENGTH, CITY_BOSS, waterNext, RIVAL_FLOOR, targetOf, rivalBoss, rocketBoss, townShop, townCenter, townHub, biomesLinked,
   isDoubleBattle,
   DOUBLE_FLOOR,
-  battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, RARE_PLACES, atPc, pcOf, pcMove, pcSlots, PC_BOX, boxName, renameBox, boxWall, nextWall, setNick, gameOf, leagueAhead, rivalGrowth, sortBox, shownScene, bagsFor, NUZLOCKE_DEFAULT, levelCapOf, EXP_BENCH, benchShare, TRADE_EXP, TRADE_EVOS, familyOf, townTrade, townTradeable, featuresOf, climateOf, WEATHER_TYPES, SAND_SCENES, SNOW_SCENES, SCENE_WEATHER, OPEN_SCENES, waterReach, hasWaterfall, WATER_REACH, daycareHere, daycareOpen, rarePlacesOf, SECRET_BIOMES, PLACE_SCENES, hasKey, KEY_ITEMS, placeLegendOf, blockerOf, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, forgetMove, reminderCost, SAFARI_FEE, SAFARI_BALLS, SAFARI_ENCOUNTERS, SAFARI_MONS, safariRates, safariAct, safariPool, leaveSafari, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
+  battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, RARE_PLACES, atPc, pcOf, pcMove, pcSlots, PC_BOX, boxName, renameBox, boxWall, nextWall, setNick, gameOf, leagueAhead, rivalGrowth, sortBox, shownScene, bagsFor, NUZLOCKE_DEFAULT, levelCapOf, EXP_BENCH, benchShare, TRADE_EXP, TRADE_EVOS, familyOf, townTrade, townTradeable, featuresOf, climateOf, inTown, isCity, townScene, WEATHER_TYPES, SAND_SCENES, SNOW_SCENES, SCENE_WEATHER, OPEN_SCENES, waterReach, hasWaterfall, WATER_REACH, daycareHere, daycareOpen, rarePlacesOf, SECRET_BIOMES, PLACE_SCENES, hasKey, KEY_ITEMS, placeLegendOf, blockerOf, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, forgetMove, reminderCost, SAFARI_FEE, SAFARI_BALLS, SAFARI_ENCOUNTERS, SAFARI_MONS, safariRates, safariAct, safariPool, leaveSafari, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
   HELD_BOOST, levelTo, MAX_TEAM, memberOf, movesAt, nextFloor, nextRandom, overflowPoints, pokemonPrice, runCoins, setMainItem, shopPrice,
   SHINY_BOOST, FOE_SHINY_BOOST, SHINY_CHANCE, START_BAG, START_BALLS, startersOf, unlockShiny, claimStarter, freePick, canEvolveWith, teachMove,
   equipFromStash, gimmicksOf, setGimmick, storyLine, startRun, takeCard, teamDown, applyBagItem, winFloor, chooseNode, routeOptions, routeCities,
@@ -1724,6 +1724,35 @@ describe('tudo conforme o mapa: trocas, Safari, Creche, lugares raros, caverna s
     // Num lugar que não é museu, nada de fóssil.
     const other = winFloor({ ...pewter, dungeon: { place: 'viridian-forest', scene: 'forest', start: 12 }, encounter: { kind: 'dboss', foes: [{ id: 74, level: 8, iv: 0, ev: 0 }] } }, data, { hp: [1] })
     expect(other.pending.capture).toBe(null)
+  })
+})
+
+describe('o cenário de cada cidade ou vila (pela descrição dela nos jogos)', () => {
+  const game = (name) => data.bosses.findIndex((b) => b.game === name)
+  const at = (g, city, extra = {}) => ({ ...startRun(emptyFactory(), data, 1, 42), leg: 1, boss: { region: g, step: data.bosses[g].leaders.findIndex((l) => l.city === city) }, encounter: null, pending: null, ...extra })
+  it('cada cidade tem o cenário do tipo dela: porto em Vermilion, metrópole em Saffron, neve em Snowpoint, vulcão em Cinnabar... (igual ao app)', () => {
+    const red = game('Red/Blue'), dp = game('Diamond/Pearl')
+    const scene = (g, city) => shownScene(at(g, city, { floor: 1 + ROUTE_LENGTH }), 'city', data)
+    expect([scene(red, 'Vermilion City'), scene(red, 'Saffron City'), scene(red, 'Cinnabar Island'), scene(red, 'Pewter City'), scene(red, 'Indigo Plateau'), scene(dp, 'Snowpoint City')])
+      .toEqual(['town-port', 'town-metro', 'town-volcano', 'town-mountain', 'town-league', 'town-snow'])
+    // Só a cidade muda: a rota e os lugares continuam com o cenário deles.
+    expect(shownScene(at(red, 'Vermilion City'), 'grass', data)).toBe('grass')
+    expect(shownScene(at(red, 'Saffron City', { dungeon: { place: 'silph-co-', scene: 'base-rocket', start: 3 } }), 'city', data)).toBe('silph')
+    expect(shownScene(at(red, 'Vermilion City'), 'city')).toBe('city')
+    // Toda cidade do mapa tem um tipo; a cidade de neve tem o clima da neve e as outras o da cidade.
+    for (const city of Object.keys(data.routes.cities)) expect(data.routes.features[city]?.town, city).toBeTruthy()
+    expect(inTown('town-port')).toBe(true)
+    expect(isCity('town-old')).toBe(true)
+    expect(isCity('grass')).toBe(false)
+    const run = startRun(emptyFactory(), data, 1, 42)
+    const weathers = (sc) => new Set(Array.from({ length: 200 }, (_, k) => weatherOf({ ...run, seed: k + 1 }, sc)))
+    expect(weathers('town-snow').has('snow')).toBe(true)
+    expect(weathers('town-port').has('snow')).toBe(false)
+    expect(weathers('town-desert').has('sand')).toBe(true)
+    // Andando para a cidade, a corrida guarda o cenário dela (o fundo da cidade e das batalhas nela).
+    const walked = nextFloor(at(red, 'Vermilion City', { floor: 1 + ROUTE_LENGTH }), data)
+    const fight = chooseNode({ ...walked, route: { ...walked.route, options: [{ kind: 'trainer' }] } }, data, 0)
+    expect(fight.encounter.scene).toBe('town-port')
   })
 })
 

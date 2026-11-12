@@ -1214,7 +1214,17 @@ export const PLACE_SCENES = {
   'pewter-museum': 'museum', 'oreburgh-mining-museum': 'museum', 'nacrene-museum': 'museum',
 }
 /** O cenário que aparece (o próprio do lugar, se ele tiver). */
-export const shownScene = (run, scene) => (run?.dungeon && PLACE_SCENES[run.dungeon.place]) || scene
+export const shownScene = (run, scene, data = null) => (run?.dungeon && PLACE_SCENES[run.dungeon.place]) || (scene === 'city' && !run?.dungeon && data ? townScene(data, run) : null) || scene
+/**
+ * O cenário da cidade ou vila de agora, pela descrição dela nos jogos (tool/factory_routes.py, TOWNS): vila pequena,
+ * porto, metrópole, neve, montanha, ilha, histórica, floresta, flores, deserto, industrial, na água, vulcão ou a Liga.
+ * null: a cidade genérica. Igual ao app.
+ */
+export const townScene = (data, run) => { const kind = run ? featuresOf(data, run).town : null; return kind ? `town-${kind}` : null }
+/** Uma cidade (o cenário genérico ou o de um tipo de cidade). */
+export const isCity = (scene) => scene === 'city' || String(scene).startsWith('town-')
+/** O clima e o efeito do lugar de cada tipo de cidade: como a cidade genérica, fora a de neve e a do deserto. */
+const sceneBase = (scene) => (scene === 'town-snow' ? 'snow' : scene === 'town-desert' ? 'desert' : String(scene).startsWith('town-') ? 'city' : scene)
 
 /**
  * A rota até a próxima cidade, como nos jogos (tool/factory_routes.py): o
@@ -1742,7 +1752,7 @@ export function chooseNode(run, data, index, clock = null) {
     const burst = clock ? outbreakOf(data, clock.day) : null
     const when = clock ? { night: clock.night, season: clock.season, ...(burst != null && data.species[burst]?.[6]?.includes(scene) ? { outbreak: burst } : {}) } : {}
     // O clima da rota (o mesmo em todos os andares dela) atrai Pokémon diferentes.
-    const sky = weatherOf(run, shownScene(run, scene), null, data)
+    const sky = weatherOf(run, shownScene(run, scene, data), null, data)
     const roll = () => ({ ...encounterFor(data, out.floor, rand, node.kind === 'boss' ? bossOf(data, out) : null, node.kind === 'wildboss', { ...node, biome: scene, shiny: run.shinyRate ?? 1, ...when, ...(sky ? { weather: sky } : {}), ...huntNode(run) }), scene })
     out.encounter = roll()
     // Nuzlocke (cláusula de repetidos): o primeiro selvagem da área não é de uma linha evolutiva que você já teve.
@@ -1785,14 +1795,14 @@ export function chooseNode(run, data, index, clock = null) {
     // Os selvagens e os treinadores do caminho na forma da região (e com o degrau do jogo da corrida).
     out.encounter = rivalGrowth(detourFoes(tierFoes(regionalEncounter(data, run, out.encounter), run), run), run)
     // O cenário próprio do lugar (loja, cassino, escola...), se ele tiver.
-    out.scene = shownScene(run, out.scene)
-    out.encounter = { ...out.encounter, scene: shownScene(run, out.encounter.scene) }
+    out.scene = shownScene(run, out.scene, data)
+    out.encounter = { ...out.encounter, scene: shownScene(run, out.encounter.scene, data) }
     return out
   }
   out.floor += 1
   // O cenário de onde você está (Poké Mart e Centro na cidade).
   // Na rota não tem Poké Mart nem Centro: o vendedor ambulante e quem cura ficam no próprio lugar.
-  out.scene = shownScene(run, run.route.biome ?? 'grass')
+  out.scene = shownScene(run, run.route.biome ?? 'grass', data)
   if (node.kind === 'mart') out.pending = { mart: true, shop: pickShop(rand, data, run.floor, 10, Boolean(run.townMap)) }
   else if (node.kind === 'safari') {
     out.money = run.money - SAFARI_FEE
@@ -2883,7 +2893,7 @@ export const battleMusic = (data, run) => mapMusic(data, run) ?? 'map_kanto'
 export const HEALERS = [['sd-pokemonbreederf', 'Pokémon Breeder'], ['sd-doctor', 'Doctor'], ['sd-pokemonrangerf', 'Pokémon Ranger'], ['sd-aromalady', 'Aroma Lady']]
 export const healerOf = (run) => HEALERS[((run.seed ?? 0) + run.floor) % HEALERS.length]
 /** Os lugares da cidade (onde ficam o Poké Mart e a Enfermeira Joy). */
-export const inTown = (scene) => scene === 'city' || scene === 'center' || scene === 'tower' || String(scene).startsWith('gym-') || String(scene).startsWith('champion-')
+export const inTown = (scene) => isCity(scene) || scene === 'center' || scene === 'tower' || String(scene).startsWith('gym-') || String(scene).startsWith('champion-')
 
 /** As estações (como no Black & White: mudam a cada mês) e a noite (pelo relógio de verdade). */
 export const SEASONS = ['spring', 'summer', 'autumn', 'winter']
@@ -2928,6 +2938,7 @@ export function climateOf(data, run, scene = '') {
 // season: não muda mais o clima (a neve do inverno caía em qualquer lugar aberto, mesmo onde não neva).
 export function weatherOf(run, scene, season = null, data = null) {
   // Em lugar fechado não chove, não neva nem faz sol forte: lá dentro o clima só muda por golpe ou habilidade de Pokémon.
+  scene = sceneBase(scene)
   if (!OPEN_SCENES.includes(scene)) return ''
   const table = climateOf(data, run, scene)?.w ?? SCENE_WEATHER[scene]
   if (!table) return ''
@@ -2961,6 +2972,7 @@ export const SCENE_FIELD = {
 
 /** O efeito com que a batalha do andar começa ('' sem efeito): pelo lugar, sempre o mesmo para a mesma corrida e andar. */
 export function fieldOf(run, scene, data = null) {
+  scene = sceneBase(scene)
   // Os efeitos do céu (tempestade, aurora, ventos fortes) também só acontecem a céu aberto.
   const all = climateOf(data, run, scene)?.f ?? SCENE_FIELD[scene]
   const table = all && !OPEN_SCENES.includes(scene) ? all.filter(([effect]) => !SKY_FIELDS.includes(effect)) : all

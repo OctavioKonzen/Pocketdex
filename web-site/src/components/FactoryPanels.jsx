@@ -2545,7 +2545,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         <div className="absolute left-3 top-2 rounded-lg bg-white/80 px-2 py-0.5 text-sm font-black text-slate-900">🎒 {t('Vendedor ambulante')}</div>
       </Field>
     ) : (
-      <Field biome="city" fieldRef={fieldRef} testid="factory-shop">
+      <Field biome={shownScene(run, 'city', data)} fieldRef={fieldRef} testid="factory-shop">
         <div className="absolute inset-x-0 bottom-[22%] flex items-end justify-center gap-1">
           <img src={spriteUrl('trainers/sd-clerk.png')} alt="" className="pixelated object-contain object-bottom" style={{ height: width * 0.4 }} />
           <img src={spriteUrl('trainers/sd-clerkf.png')} alt="" className="pixelated object-contain object-bottom" style={{ height: width * 0.4 }} />
@@ -2622,13 +2622,13 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     }
     const fork = !town && route.options.length > 1
     // O líder no ginásio do tipo dele, a Elite dos Quatro na Liga, o Campeão na sala dele; rival e vilões na rota (o vilão, na base da equipe).
-    const meetScene = town ? 'city' : meeting && CITY_KIND_SET.has(boss.kind) ? bossScene(data, boss, route.biome) : route.biome
+    const meetScene = town ? shownScene(run, 'city', data) : meeting && CITY_KIND_SET.has(boss.kind) ? bossScene(data, boss, route.biome) : route.biome
     // Sem o Mapa: nada do mapa e, na bifurcação, segue às cegas.
     const hasMap = Boolean(run.townMap) || (hasHm(run, 'flash') && DARK_BIOMES.includes(route.biome))
     const cut = !meeting && !town ? cutPath(run) : null
     const smash = !meeting && !town ? smashPath(run) : null
     const strength = !meeting && !town ? strengthPath(run) : null
-    const forecast = town ? '' : weatherOf(run, shownScene(run, route.biome), clock.season, data)
+    const forecast = town ? '' : weatherOf(run, shownScene(run, route.biome, data), clock.season, data)
     const burst = outbreakOf(data, clock.day)
     // O andar (pequeno, num canto): na rota, até a cidade; num lugar, até o chefe dele.
     const floorTag = inside ? `${Math.min(DUNGEON_LENGTH, dungeonPos(run) + 1)}/${DUNGEON_LENGTH}` : town ? `${Math.min(CITY_LENGTH, pos - ROUTE_LENGTH + 1)}/${CITY_LENGTH}` : `${pos + 1}/${ROUTE_LENGTH}`
