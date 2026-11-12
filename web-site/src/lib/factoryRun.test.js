@@ -9,7 +9,7 @@ import {
   placeInfo, routeInfo, DBOSS_GIMMICK_FLOOR, UPGRADE_FX, SHORE, CAVE_OF, dungeonPos, routePos, DUNGEON_LENGTH, CITY_BOSS, waterNext, RIVAL_FLOOR, targetOf, rivalBoss, rocketBoss, townShop, townCenter, townHub, biomesLinked,
   isDoubleBattle,
   DOUBLE_FLOOR,
-  battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, RARE_PLACES, atPc, pcOf, pcMove, pcSlots, PC_BOX, boxName, renameBox, boxWall, nextWall, setNick, gameOf, leagueAhead, rivalGrowth, sortBox, shownScene, bagsFor, NUZLOCKE_DEFAULT, levelCapOf, EXP_BENCH, benchShare, TRADE_EXP, TRADE_EVOS, familyOf, townTrade, townTradeable, featuresOf, climateOf, inTown, isCity, townScene, WEATHER_TYPES, SAND_SCENES, SNOW_SCENES, SCENE_WEATHER, OPEN_SCENES, waterReach, hasWaterfall, WATER_REACH, daycareHere, daycareOpen, rarePlacesOf, SECRET_BIOMES, PLACE_SCENES, hasKey, KEY_ITEMS, placeLegendOf, blockerOf, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, forgetMove, reminderCost, SAFARI_FEE, SAFARI_BALLS, SAFARI_ENCOUNTERS, SAFARI_MONS, safariRates, safariAct, safariPool, leaveSafari, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
+  battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, RARE_PLACES, atPc, pcOf, pcMove, pcSlots, PC_BOX, boxName, renameBox, boxWall, nextWall, setNick, gameOf, leagueAhead, rivalGrowth, sortBox, shownScene, bagsFor, NUZLOCKE_DEFAULT, levelCapOf, EXP_BENCH, benchShare, TRADE_EXP, TRADE_EVOS, familyOf, townTrade, townTradeable, featuresOf, climateOf, RODS, rodOf, fishPath, headbuttPath, slatherHoney, honeyReady, honeyPath, TREE_MONS, HONEY_FLOORS, plantBerry, harvestBerry, BERRIES, BERRY_FLOORS, BERRY_RAIN_FLOORS, BERRY_YIELD, bikePath, bikeUses, FERRY, HORDE_SIZE, HORDE_FLOOR, SKY_FIELDS, FIELD_TYPES, takePhoto, photoNow, PHOTO_MAX, GYM_PUZZLES, SUPER_EFFECTIVE, gymPuzzleOf, startPuzzle, puzzleAct, finishPuzzle, puzzleView, puzzleOfType, PUZZLE_MONEY, GYM_EDGE_LEVELS, priceScale, inTown, isCity, townScene, WEATHER_TYPES, SAND_SCENES, SNOW_SCENES, SCENE_WEATHER, OPEN_SCENES, waterReach, hasWaterfall, WATER_REACH, daycareHere, daycareOpen, rarePlacesOf, SECRET_BIOMES, PLACE_SCENES, hasKey, KEY_ITEMS, placeLegendOf, blockerOf, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, forgetMove, reminderCost, SAFARI_FEE, SAFARI_BALLS, SAFARI_ENCOUNTERS, SAFARI_MONS, safariRates, safariAct, safariPool, leaveSafari, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
   HELD_BOOST, levelTo, MAX_TEAM, memberOf, movesAt, nextFloor, nextRandom, overflowPoints, pokemonPrice, runCoins, setMainItem, shopPrice,
   SHINY_BOOST, FOE_SHINY_BOOST, SHINY_CHANCE, START_BAG, START_BALLS, startersOf, unlockShiny, claimStarter, freePick, canEvolveWith, teachMove,
   equipFromStash, gimmicksOf, setGimmick, storyLine, startRun, takeCard, teamDown, applyBagItem, winFloor, chooseNode, routeOptions, routeCities,
@@ -697,9 +697,9 @@ describe('Battle Factory (roguelike)', () => {
     for (let i = 0; i < 4000; i++) if (encounterFor(data, 20, rand).foes.some((f) => f.shiny)) shinies++
     expect(SHINY_CHANCE).toBe(1 / 4096)
     expect(shinies).toBeLessThan(6)
-    // Nível, tipo (selvagem), espécie e o sorteio do shiny (abaixo de 1/4096).
-    expect(encounterFor(data, 20, seq([0.5, 0.9, 0.5, 0.0001])).foes[0].shiny).toBe(true)
-    expect(encounterFor(data, 20, seq([0.5, 0.9, 0.5, 0.001])).foes[0].shiny).toBeUndefined()
+    // Nível, tipo (selvagem), espécie, a horda (não) e o sorteio do shiny (abaixo de 1/4096).
+    expect(encounterFor(data, 20, seq([0.5, 0.9, 0.5, 0.5, 0.0001])).foes[0].shiny).toBe(true)
+    expect(encounterFor(data, 20, seq([0.5, 0.9, 0.5, 0.5, 0.001])).foes[0].shiny).toBeUndefined()
     const f = emptyFactory()
     expect(startRun(f, data, 4, 1, true)).toBe(null)
     let run = startRun(f, data, 1, 5)
@@ -1434,7 +1434,7 @@ describe('cidade e lugares perto dela', () => {
     const start = { ...startRun(emptyFactory(), data, 4, 3), floor: DBOSS_GIMMICK_FLOOR, leg: 3, boss: { region: red, step: 3 } }
     const run = chooseNode({ ...start, route: { options: [{ kind: 'dboss' }], biome: 'grass' } }, data, 0)
     expect(run.encounter.kind).toBe('dboss')
-    expect(['mega', 'dmax', 'tera']).toContain(run.encounter.foes.at(-1).gimmick)
+    expect(['mega', 'dmax', 'tera', 'z']).toContain(run.encounter.foes.at(-1).gimmick)
     const early = chooseNode({ ...start, floor: 9, leg: 1, route: { options: [{ kind: 'dboss' }], biome: 'grass' } }, data, 0)
     expect(early.encounter.foes.length).toBeLessThanOrEqual(2)
     expect(early.encounter.foes.some((f) => f.gimmick)).toBe(false)
@@ -1727,6 +1727,192 @@ describe('tudo conforme o mapa: trocas, Safari, Creche, lugares raros, caverna s
   })
 })
 
+describe('pesca, árvores, frutas, bicicleta, balsa, hordas, neblina, fotos e os desafios dos ginásios', () => {
+  const game = (name) => data.bosses.findIndex((b) => b.game === name)
+  const red = game('Red/Blue')
+  const at = (g, city, extra = {}) => ({ ...startRun(emptyFactory(), data, 1, 42), leg: 1, boss: { region: g, step: data.bosses[g].leaders.findIndex((l) => l.city === city) }, encounter: null, pending: null, ...extra })
+  const onRoute = (biome, extra = {}) => ({ ...at(red, 'Pewter City'), floor: 3, route: { floor: 3, biome, options: [{ kind: 'wild', biome }, { kind: 'trainer' }] }, ...extra })
+  const typesOf = (id) => (data.species[id] ?? data.species[data.forms?.[id]] ?? [])[4] ?? []
+  it('a cidade dá a vara, a Bicycle e o S.S. Ticket ao chegar; a vara decide quem vem na pesca, uma vez por rota (igual ao app)', () => {
+    const cerulean = nextFloor(at(red, 'Cerulean City', { floor: 1 + ROUTE_LENGTH }), data)
+    expect(cerulean.town.got).toEqual(['ss-ticket', 'bicycle'])
+    expect(hasKey(cerulean, 'bicycle')).toBe(true)
+    // Chegando de novo, não ganha duas vezes.
+    expect(nextFloor({ ...cerulean, town: null }, data).town.got).toBeUndefined()
+    expect(RODS).toEqual(['old-rod', 'good-rod', 'super-rod'])
+    expect(rodOf(onRoute('water'))).toBe(-1)
+    expect(fishPath(onRoute('water'), data)).toBe(null)
+    expect(fishPath(onRoute('cave', { keyItems: ['old-rod'], dungeon: { place: 'x', scene: 'cave', start: 2 } }), data)).toBe(null)
+    const fishing = fishPath(onRoute('water', { keyItems: ['old-rod', 'super-rod'] }), data)
+    expect(fishing.route.options.at(-1)).toEqual({ kind: 'wild', biome: 'water', fish: 2 })
+    expect(fishPath(fishing, data)).toBe(null)
+    // Old Rod: só os comuns de Água; Super Rod: os raros.
+    const caught = (tier) => Array.from({ length: 80 }, (_, k) => encounterFor(data, 30, seededRandom(k + 1), null, false, { kind: 'wild', biome: 'water', fish: tier }).foes[0].id)
+    for (const id of caught(0)) { expect(typesOf(id)).toContain('water'); expect(data.species[id]?.[5] ?? 255).toBeGreaterThanOrEqual(150) }
+    for (const id of caught(2)) { expect(typesOf(id)).toContain('water'); expect(data.species[id]?.[5] ?? 0).toBeLessThanOrEqual(90) }
+  })
+  it('Headbutt e mel: só onde há árvores, uma vez por rota; o mel demora HONEY_FLOORS andares (igual ao app)', () => {
+    expect(headbuttPath(onRoute('cave'))).toBe(null)
+    const shaken = headbuttPath(onRoute('forest'))
+    expect(shaken.route.options.at(-1)).toEqual({ kind: 'wild', biome: 'forest', tree: 'headbutt' })
+    expect(headbuttPath(shaken)).toBe(null)
+    for (let k = 1; k <= 40; k++) expect(TREE_MONS.headbutt).toContain(encounterFor(data, 20, seededRandom(k), null, false, shaken.route.options.at(-1)).foes[0].id)
+    const honey = slatherHoney(onRoute('forest'))
+    expect(honey.honey).toEqual({ floor: 3 })
+    expect(slatherHoney(honey)).toBe(null)
+    expect(honeyReady(honey)).toBe(false)
+    expect(honeyPath({ ...honey, floor: 3 + HONEY_FLOORS - 1 })).toBe(null)
+    const licked = honeyPath({ ...honey, floor: 3 + HONEY_FLOORS })
+    expect(licked.honey).toBe(null)
+    expect(licked.route.options.at(-1).tree).toBe('honey')
+    for (let k = 1; k <= 40; k++) expect(TREE_MONS.honey).toContain(encounterFor(data, 20, seededRandom(k), null, false, licked.route.options.at(-1)).foes[0].id)
+  })
+  it('o vaso de frutas: planta, espera e colhe; com chuva cresce mais rápido e dá mais (igual ao app)', () => {
+    const planted = plantBerry(onRoute('grass'), data)
+    expect(BERRIES).toContain(planted.berry.item)
+    expect(planted.berry).toMatchObject({ floor: 3, need: BERRY_FLOORS, count: BERRY_YIELD })
+    expect(plantBerry(planted, data)).toBe(null)
+    expect(harvestBerry({ ...planted, floor: 3 + BERRY_FLOORS - 1 })).toBe(null)
+    const picked = harvestBerry({ ...planted, floor: 3 + BERRY_FLOORS })
+    expect(picked.berry).toBe(null)
+    expect(picked.stash.filter((x) => x === planted.berry.item)).toHaveLength((planted.stash ?? []).filter((x) => x === planted.berry.item).length + BERRY_YIELD)
+    // Na chuva (o Lake of Rage chove sempre).
+    const gs = game('Gold/Silver')
+    const rainy = plantBerry({ ...at(gs, 'Blackthorn City'), floor: 5, dungeon: { place: 'lake-of-rage', scene: 'swamp', start: 3 }, route: { floor: 5, biome: 'swamp', options: [{ kind: 'wild', biome: 'swamp' }] } }, data)
+    expect(rainy.berry).toMatchObject({ need: BERRY_RAIN_FLOORS, count: BERRY_YIELD + 1 })
+  })
+  it('a Bicycle passa um andar sem batalha, uma vez por rota (duas na Cycling Road), nunca no último (igual ao app)', () => {
+    expect(bikePath(onRoute('grass'), data)).toBe(null)
+    const rider = onRoute('grass', { keyItems: ['bicycle'] })
+    const ride = bikePath(rider, data)
+    expect(ride.route.options.at(-1)).toEqual({ kind: 'bike' })
+    expect(isBattleNode({ kind: 'bike' })).toBe(false)
+    const rode = chooseNode(ride, data, ride.route.options.length - 1)
+    expect(rode.floor).toBe(rider.floor + 1)
+    expect(rode.pending).toEqual({ event: { kind: 'bike' } })
+    expect(rode.encounter).toBe(null)
+    expect(bikePath({ ...rider, bike: ride.bike }, data)).toBe(null)
+    expect(bikePath({ ...rider, floor: ROUTE_LENGTH }, data)).toBe(null)
+    const road = { ...at(red, 'Fuchsia City'), floor: 3, keyItems: ['bicycle'], route: { floor: 3, biome: 'grass', options: [{ kind: 'trainer' }] } }
+    expect(bikeUses(data, road)).toBe(2)
+    expect(bikePath({ ...road, bike: bikePath(road, data).bike }, data)).not.toBe(null)
+  })
+  it('a balsa: nos portos e nas ilhas, só com o S.S. Ticket; vencendo, o prêmio (igual ao app)', () => {
+    const gymAt = (city) => ({ region: red, step: data.bosses[red].leaders.findIndex((l) => l.city === city && l.kind === 'gym') })
+    const port = nextFloor(at(red, 'Vermilion City', { floor: 1 + ROUTE_LENGTH + FORKS[0], boss: gymAt('Vermilion City') }), data)
+    const ferry = port.route.options.find((o) => o.place === FERRY.id)
+    expect(ferry).toEqual({ kind: 'dungeon', place: 'ferry', scene: 'ship', needs: 'ss-ticket' })
+    expect(nodeBlocked(port, ferry)).toBe(true)
+    expect(nodeBlocked({ ...port, keyItems: ['ss-ticket'] }, ferry)).toBe(false)
+    expect(placeInfo(data, port, 'ferry').name).toBe('S.S. Ferry')
+    expect(nextFloor(at(red, 'Saffron City', { floor: 1 + ROUTE_LENGTH + FORKS[0], boss: gymAt('Saffron City') }), data).route.options.some((o) => o.place === FERRY.id)).toBe(false)
+    const won = winFloor({ ...at(red, 'Vermilion City'), floor: 1 + DUNGEON_LENGTH, dungeon: { place: 'ferry', scene: 'ship', start: 2 }, encounter: { kind: 'dboss', foes: [{ id: 66, level: 20, iv: 0, ev: 0 }] } }, data, { hp: [1] })
+    expect(won.pending.placeReward).toBe(FERRY.prize)
+    expect(won.places).toContain('ferry')
+  })
+  it('hordas: cinco iguais e mais fracos, só a partir do andar HORDE_FLOOR; a captura é a do que você pegou (igual ao app)', () => {
+    let hordes = 0
+    for (let k = 1; k <= 400; k++) {
+      const e = encounterFor(data, 30, seededRandom(k), null, false, { kind: 'wild', biome: 'grass' })
+      if (!e.horde) { expect(e.foes).toHaveLength(1); continue }
+      hordes++
+      expect(e.foes).toHaveLength(HORDE_SIZE)
+      expect(new Set(e.foes.map((f) => f.id)).size).toBe(1)
+    }
+    expect(hordes).toBeGreaterThan(10)
+    expect(hordes).toBeLessThan(60)
+    for (let k = 1; k <= 200; k++) expect(encounterFor(data, HORDE_FLOOR - 1, seededRandom(k), null, false, { kind: 'wild', biome: 'grass' }).horde).toBeUndefined()
+    const foes = [0, 1, 2, 3, 4].map((k) => ({ id: 19, level: 10, iv: 0, ev: 0, ...(k === 3 ? { shiny: true } : {}) }))
+    const caught = winFloor({ ...onRoute('grass'), encounter: { kind: 'wild', foes, horde: true } }, data, { hp: [1], captured: true, capturedIndex: 3 })
+    expect(caught.pending.capture.shiny).toBe(true)
+  })
+  it('a neblina: só a céu aberto, atrai Fantasma (igual ao app)', () => {
+    expect(SKY_FIELDS).toContain('fog')
+    expect(FIELD_TYPES.fog).toEqual(['ghost'])
+    const dp = game('Diamond/Pearl')
+    const road = at(dp, 'Veilstone City', { floor: 4 })
+    const share = Array.from({ length: 200 }, (_, k) => fieldOf({ ...road, seed: k + 1 }, 'mountain', data)).filter((f) => f === 'fog').length / 200
+    expect(share).toBeGreaterThan(0.35)
+    const ghosts = (field) => Array.from({ length: 300 }, (_, k) => encounterFor(data, 30, seededRandom(k + 1), null, false, { kind: 'wild', biome: 'grass', ...(field ? { field } : {}) }).foes[0].id).filter((id) => typesOf(id).includes('ghost')).length
+    expect(ghosts('fog')).toBeGreaterThan(ghosts('') + 5)
+  })
+  it('as fotos da corrida: o capturado e a vitória sobre um chefe, sem repetir, até PHOTO_MAX (igual ao app)', () => {
+    const run = { ...onRoute('grass'), scene: 'forest', pending: { capture: { id: 25, level: 9, shiny: true } } }
+    expect(photoNow(run)).toEqual({ kind: 'capture', id: 25, shiny: true })
+    const one = takePhoto(run, photoNow(run))
+    expect(one.photos).toEqual([{ floor: 3, scene: 'forest', kind: 'capture', id: 25, shiny: true }])
+    expect(takePhoto(one, photoNow(one))).toBe(null)
+    expect(photoNow({ ...run, pending: null })).toBe(null)
+    expect(takePhoto({ ...run, photos: Array.from({ length: PHOTO_MAX }, (_, k) => ({ floor: 100 + k, kind: 'capture', id: 1 })) }, photoNow(run))).toBe(null)
+  })
+  it('todo tipo de ginásio tem o desafio dele, sempre com solução; vencendo, o líder vem mais fraco e sai um prêmio (igual ao app)', () => {
+    expect(Object.keys(GYM_PUZZLES).sort()).toEqual(Object.keys(SUPER_EFFECTIVE).sort())
+    const gymRun = (seed) => nextFloor({ ...at(red, 'Pewter City'), seed, floor: 1 + ROUTE_LENGTH, boss: { region: red, step: data.bosses[red].leaders.findIndex((l) => l.city === 'Pewter City' && l.kind === 'gym') } }, data)
+    const base = gymRun(42)
+    expect(gymPuzzleOf(data, base)).toEqual({ type: 'rock', kind: 'tiles' })
+    expect(gymPuzzleOf(data, onRoute('grass'))).toBe(null)
+    // Resolve cada tipo de desafio com um resolvedor de verdade (para provar que sempre há solução).
+    const solve = (run) => {
+      for (let step = 0; step < 80 && !run.pending.puzzle.done; step++) {
+        const p = run.pending.puzzle
+        let move = 0
+        if (p.kind === 'quiz' || p.kind === 'silhouette') move = p.qs[p.at].answer
+        else if (p.kind === 'switches') move = [p.a, p.b].find((t) => p.open[t] == null)
+        else if (p.kind === 'memory') move = p.shown ? -1 : p.seq[p.at]
+        else {
+          // Busca em largura pelo próximo passo.
+          const key = (s) => (p.kind === 'tiles' ? `${s.pos}:${[...s.visited].sort((a, b) => a - b).join()}` : String(s.pos))
+          const seen = new Set([key(p)])
+          const queue = [[p, null]]
+          let found = null
+          while (queue.length && found == null) {
+            const [s, first] = queue.shift()
+            for (let i = 0; i < s.cols * s.rows; i++) {
+              const next = puzzleAct({ ...run, pending: { puzzle: s } }, data, i).pending.puzzle
+              if (next === s || (next.done && !next.won) || (p.kind === 'maze' && next.pos === s.pos)) continue
+              if (next.done && next.won) { found = first ?? i; break }
+              if (seen.has(key(next))) continue
+              seen.add(key(next))
+              queue.push([next, first ?? i])
+            }
+          }
+          expect(found, `${p.kind} ${p.type}`).not.toBe(null)
+          move = found
+        }
+        run = puzzleAct(run, data, move)
+      }
+      return run
+    }
+    for (const type of Object.keys(GYM_PUZZLES)) {
+      for (let seed = 1; seed <= 25; seed++) {
+        const started = startPuzzle({ ...gymRun(seed), pending: null }, data)
+        // O tipo do líder muda o desafio: força o tipo trocando o desafio montado.
+        const forced = startPuzzle({ ...gymRun(seed), boss: base.boss }, data)
+        expect(forced.puzzleLeg).toBe(legOf(forced))
+        expect(startPuzzle(forced, data)).toBe(null)
+        const p = puzzleOfType(data, gymRun(seed), type)
+        const done = solve(p)
+        expect(done.pending.puzzle, `${type} seed ${seed}`).toMatchObject({ done: true, won: true })
+        expect(puzzleView(done).done).toBe(true)
+        expect(started.pending.puzzle.kind).toBe('tiles')
+      }
+    }
+    // Errando: perde o desafio (sem vantagem); vencendo: prêmio e o líder GYM_EDGE_LEVELS níveis abaixo.
+    const quiz = puzzleOfType(data, base, 'fire')
+    let wrong = quiz
+    for (let k = 0; k < 3; k++) wrong = puzzleAct(wrong, data, (wrong.pending.puzzle.qs[wrong.pending.puzzle.at].answer + 1) % 4)
+    expect(wrong.pending.puzzle).toMatchObject({ done: true, won: false })
+    const lost = finishPuzzle(wrong)
+    expect(lost).toMatchObject({ pending: null, money: base.money, gymEdge: { leg: legOf(base), won: false } })
+    const won = finishPuzzle(solve(quiz))
+    expect(won.money).toBe(base.money + Math.round(PUZZLE_MONEY * priceScale(base.floor)))
+    const boss = (run) => chooseNode(nextFloor({ ...run, floor: 1 + CITY_BOSS }, data), data, 0).encounter
+    const weak = boss(won), normal = boss(lost)
+    expect(weak.edge).toBe(true)
+    expect(weak.foes.map((f) => f.level)).toEqual(normal.foes.map((f) => Math.max(1, f.level - GYM_EDGE_LEVELS)))
+  })
+})
+
 describe('o cenário de cada cidade ou vila (pela descrição dela nos jogos)', () => {
   const game = (name) => data.bosses.findIndex((b) => b.game === name)
   const at = (g, city, extra = {}) => ({ ...startRun(emptyFactory(), data, 1, 42), leg: 1, boss: { region: g, step: data.bosses[g].leaders.findIndex((l) => l.city === city) }, encounter: null, pending: null, ...extra })
@@ -1906,7 +2092,7 @@ describe('o que acontece em cada lugar: lendários, bloqueios, presentes, Game C
     const gym = winFloor(chooseNode(nextFloor(whitney, data), data, 0), data)
     expect(gym.pending.key).toBe('squirt-bottle')
     expect(blockerOf(data, toCity(gs, 'Ecruteak City'))).toEqual({ id: 185, item: 'squirt-bottle' })
-    expect(Object.keys(KEY_ITEMS)).toEqual(['silph-scope', 'poke-flute', 'squirt-bottle'])
+    expect(Object.keys(KEY_ITEMS).slice(0, 3)).toEqual(['silph-scope', 'poke-flute', 'squirt-bottle'])
   })
   it('os presentes da cidade: o Eevee de Celadon, o Lapras depois da Silph Co., escolher Hitmonlee ou Hitmonchan, o ovo de Togepi (igual ao app)', () => {
     const celadon = nextFloor(toCity(red, 'Celadon City', { floor: 1 + ROUTE_LENGTH }), data)

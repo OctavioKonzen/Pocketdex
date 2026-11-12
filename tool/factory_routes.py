@@ -272,7 +272,7 @@ CLIMATE = {
     'Ever Grande City': {'sky-pillar': {'f': [['wind', 0.9]]}},                                      # o Rayquaza
     # Sinnoh
     'Hearthome City': {'mt--coronet': {'w': [['snow', 0.4]], 'f': [['rockfall', 0.4]]}},
-    'Veilstone City': {'route': {'w': [['rain', 0.5]], 'f': [['misty', 0.5]]}, 'lost-tower': {'f': [['haunt', 0.8]]}},  # a neblina da 210 e a chuva da 215
+    'Veilstone City': {'route': {'w': [['rain', 0.5]], 'f': [['fog', 0.5]]}, 'lost-tower': {'f': [['haunt', 0.8]]}},  # a neblina da 210 e a chuva da 215
     'Pastoria City': {'route': {'w': [['rain', 0.7]]}},
     'Canalave City': {'iron-island': {'f': [['rockfall', 0.4]]}},
     'Snowpoint City': {'route': {'w': [['snow', 0.9]], 'f': [['diamonds', 0.5]]}, 'lake-acuity': {'w': [['snow', 0.8]], 'f': [['aurora', 0.5]]}},  # o Diamond Dust de Snowpoint
@@ -305,7 +305,7 @@ CLIMATE = {
     'Turffield': {'galar-mine': {'f': [['diamonds', 0.5]]}},
     'Motostoke': {'wild-area': {'w': [['sun', 0.2], ['rain', 0.2], ['snow', 0.12], ['sand', 0.12]], 'f': [['storm', 0.2], ['misty', 0.2]]}},  # a Wild Area tem todos os climas dos jogos: sol forte, chuva, trovoada, neve, tempestade de areia e neblina
     'Stow-on-Side': {'route': {'w': [['sand', 0.6]]}},
-    'Ballonlea': {'route': {'f': [['misty', 0.7]]}, 'glimwood-tangle': {'f': [['misty', 0.5], ['spores', 0.4]]}},
+    'Ballonlea': {'route': {'f': [['fog', 0.7]]}, 'glimwood-tangle': {'f': [['misty', 0.5], ['spores', 0.4]]}},
     'Circhester': {'route': {'w': [['snow', 0.8]]}},
     'Hammerlocke': {'energy-plant': {'f': [['electric', 0.7]]}},
     'Wyndon': {'route': {'w': [['snow', 0.8]]}},
@@ -324,8 +324,8 @@ for _city, _climate in CLIMATE.items():
 # vulcão e a entrada da Liga. Sem nada aqui, a cidade genérica.
 TOWNS = {
     'village': ['Fuchsia City', 'Viridian City', 'Azalea Town', 'Mahogany Town', 'Petalburg City', 'Striaton City', 'Aspertia City', 'Santalune City', 'Medali'],
-    'port': ['Vermilion City', 'Olivine City', 'Canalave City', 'Sunyshore City', 'Driftveil City', 'Shalour City', 'Coumarine City', 'Seafolk Village', 'Hulbury'],
-    'metro': ['Celadon City', 'Saffron City', 'Goldenrod City', 'Rustboro City', 'Mauville City', 'Hearthome City', 'Castelia City', 'Nimbasa City', 'Lumiose City', 'Wyndon', 'Levincia'],
+    'port': ['Vermilion City', 'Olivine City', 'Canalave City', 'Sunyshore City', 'Driftveil City', 'Shalour City', 'Coumarine City', 'Seafolk Village', 'Hulbury', 'Levincia'],
+    'metro': ['Celadon City', 'Saffron City', 'Goldenrod City', 'Rustboro City', 'Mauville City', 'Hearthome City', 'Castelia City', 'Nimbasa City', 'Lumiose City', 'Wyndon'],
     'snow': ['Snowpoint City', 'Icirrus City', 'Snowbelle City', 'Mount Lanakila', 'Circhester', 'Montenevera', 'Glaseado'],
     'mountain': ['Pewter City', 'Blackthorn City', 'Veilstone City', 'Mistralton City', 'Cyllage City', 'Hokulani Observatory', 'Vast Poni Canyon', 'Alfornada'],
     'island': ['Seafoam Islands', 'Cianwood City', 'Dewford Town', 'Mossdeep City', 'Humilau City', 'Verdant Cavern', 'Iki Town', 'Ruins of Life', 'Brooklet Hill'],
@@ -341,6 +341,25 @@ TOWNS = {
 for _kind, _cities in TOWNS.items():
     for _city in _cities:
         FEATURES.setdefault(_city, {})['town'] = _kind
+
+
+# O que a cidade te dá ao chegar (como nos jogos): as varas dos Fishing Gurus, a Bicycle da loja de bicicletas e o
+# S.S. Ticket. E as rotas de Cycling Road (lá a Bicycle vale duas vezes).
+ARRIVE = {
+    'Cerulean City': ['ss-ticket', 'bicycle'], 'Vermilion City': ['old-rod'], 'Fuchsia City': ['good-rod'], 'Cinnabar Island': ['super-rod'],
+    'Azalea Town': ['old-rod'], 'Goldenrod City': ['bicycle'], 'Olivine City': ['good-rod', 'ss-ticket'], 'Blackthorn City': ['super-rod'],
+    'Dewford Town': ['old-rod', 'ss-ticket'], 'Mauville City': ['bicycle', 'good-rod'], 'Mossdeep City': ['super-rod'],
+    'Oreburgh City': ['old-rod'], 'Eterna City': ['bicycle'], 'Hearthome City': ['good-rod'], 'Canalave City': ['ss-ticket'], 'Sunyshore City': ['super-rod'],
+    'Castelia City': ['old-rod', 'ss-ticket'], 'Nimbasa City': ['bicycle'], 'Driftveil City': ['good-rod'], 'Humilau City': ['super-rod'],
+    'Cyllage City': ['bicycle', 'old-rod'], 'Coumarine City': ['good-rod', 'ss-ticket'], 'Anistar City': ['super-rod'],
+    'Verdant Cavern': ['bicycle'], 'Brooklet Hill': ['old-rod'], 'Malie City': ['good-rod'], 'Seafolk Village': ['ss-ticket', 'super-rod'],
+    'Hulbury': ['old-rod', 'bicycle', 'ss-ticket'], 'Motostoke': ['good-rod'], 'Spikemuth': ['super-rod'],
+    'Cortondo': ['bicycle'], 'Levincia': ['old-rod', 'ss-ticket'], 'Cascarrafa': ['good-rod'], 'Montenevera': ['super-rod'],
+}
+for _city, _keys in ARRIVE.items():
+    FEATURES.setdefault(_city, {})['arrive'] = _keys
+for _city in ('Fuchsia City', 'Mauville City', 'Hearthome City'):
+    FEATURES.setdefault(_city, {})['cycling'] = True
 
 TUTOR_EVERYWHERE = ['Galar', 'Paldea']
 

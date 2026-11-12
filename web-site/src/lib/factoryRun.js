@@ -1266,7 +1266,7 @@ export const daycareHere = (data, run) => Boolean(featuresOf(data, run).daycare)
  * a Poké Flute (do Mr. Fuji, no alto da torre) acorda o Snorlax; a Squirt Bottle (depois do ginásio de Goldenrod)
  * molha o Sudowoodo. Ficam com você a corrida toda. Igual ao app.
  */
-export const KEY_ITEMS = { 'silph-scope': 'Silph Scope', 'poke-flute': 'Poké Flute', 'squirt-bottle': 'Squirt Bottle' }
+export const KEY_ITEMS = { 'silph-scope': 'Silph Scope', 'poke-flute': 'Poké Flute', 'squirt-bottle': 'Squirt Bottle', 'old-rod': 'Old Rod', 'good-rod': 'Good Rod', 'super-rod': 'Super Rod', bicycle: 'Bicycle', 'ss-ticket': 'S.S. Ticket' }
 export const hasKey = (run, item) => (run.keyItems ?? []).includes(item)
 function addKey(out, item) {
   if (!item || hasKey(out, item)) return null
@@ -1409,6 +1409,359 @@ export function forgetMove(run, data, index, slot) {
   return { ...run, team }
 }
 
+// ------------------------------------------------------------ rodada 14: pesca, árvores, frutas, bicicleta, balsa, hordas e os desafios dos ginásios
+
+/** A balsa dos portos (com o S.S. Ticket): os treinadores a bordo, no cenário do navio, e um prêmio no fim. Igual ao app. */
+export const FERRY = { id: 'ferry', name: 'S.S. Ferry', scene: 'ship', prize: 'max-revive' }
+/** A balsa sai dos portos e das ilhas. */
+export const FERRY_TOWNS = ['port', 'island']
+
+/** As hordas (como em X/Y): a partir do andar HORDE_FLOOR, às vezes vêm HORDE_SIZE iguais, HORDE_LEVELS níveis abaixo. */
+export const HORDE_FLOOR = 8
+export const HORDE_CHANCE = 0.07
+export const HORDE_SIZE = 5
+export const HORDE_LEVELS = 5
+
+/** As varas, da pior para a melhor: a Old Rod só traz os comuns, a Good Rod os do meio e a Super Rod os raros. */
+export const RODS = ['old-rod', 'good-rod', 'super-rod']
+export const rodOf = (run) => RODS.reduce((best, rod, k) => (hasKey(run, rod) ? k : best), -1)
+/** Onde dá para pescar: rotas de água, praia e pântano, os lagos e as rotas que têm mar por perto. */
+export const FISH_BIOMES = ['water', 'beach', 'swamp', 'lake', 'lakeside', 'seacave', 'waterfall']
+function fishPool(data, common, tier) {
+  const water = common.filter((p) => (data.species[p.id]?.[4] ?? []).includes('water'))
+  const pool = tier <= 0 ? water.filter((p) => p.rate >= 150) : tier === 1 ? water.filter((p) => p.rate >= 60 && p.rate < 225) : water.filter((p) => p.rate <= 90)
+  return pool.length ? pool : water
+}
+const routeAction = (run) => Boolean(run.route && !run.route.town && run.route.options.length >= 1 && !run.encounter && !run.pending)
+/** Pescar (uma vez por rota): abre um caminho com um Pokémon de Água; quem vem depende da vara. null se não dá. */
+export function fishPath(run, data) {
+  const tier = rodOf(run)
+  const here = FISH_BIOMES.includes(run.route?.biome) || (!run.dungeon && Boolean(featuresOf(data, run).water))
+  if (tier < 0 || !routeAction(run) || !here || run.fishLeg === (run.leg ?? 1)) return null
+  return { ...run, fishLeg: run.leg ?? 1, route: { ...run.route, options: [...run.route.options, { kind: 'wild', biome: 'water', fish: tier }] } }
+}
+
+/** As árvores (Headbutt e mel, como em Johto e Sinnoh): onde há árvores e quem só cai delas. */
+export const TREE_BIOMES = ['forest', 'grass', 'bamboo', 'flowers', 'swamp']
+export const TREE_MONS = {
+  headbutt: [214, 204, 190, 163, 102, 10, 13, 165, 167, 21, 265, 412],
+  honey: [446, 214, 415, 412, 190, 420, 216, 265, 415, 420],
+}
+export const HONEY_FLOORS = 3
+export const HONEY_SHINY = 2
+const treeHere = (run) => routeAction(run) && TREE_BIOMES.includes(run.route.biome)
+/** Headbutt: sacode a árvore (uma vez por rota) e cai um Pokémon que vive nela. null se não dá. */
+export function headbuttPath(run) {
+  if (!treeHere(run) || run.headbuttLeg === (run.leg ?? 1)) return null
+  return { ...run, headbuttLeg: run.leg ?? 1, route: { ...run.route, options: [...run.route.options, { kind: 'wild', biome: run.route.biome, tree: 'headbutt' }] } }
+}
+/** Mel: passa mel na árvore (uma vez por rota); HONEY_FLOORS andares depois, um Pokémon raro está lambendo o mel. */
+export function slatherHoney(run) {
+  if (!treeHere(run) || run.honey || run.honeyLeg === (run.leg ?? 1)) return null
+  return { ...run, honeyLeg: run.leg ?? 1, honey: { floor: run.floor } }
+}
+export const honeyReady = (run) => Boolean(run.honey && run.floor - run.honey.floor >= HONEY_FLOORS)
+export function honeyPath(run) {
+  if (!honeyReady(run) || !routeAction(run)) return null
+  return { ...run, honey: null, route: { ...run.route, options: [...run.route.options, { kind: 'wild', biome: run.route.biome, tree: 'honey' }] } }
+}
+
+/** O vaso de frutas (os Berry Pots): planta uma fruta e colhe várias alguns andares depois; com chuva, cresce mais rápido e dá mais. */
+export const BERRIES = ['sitrus-berry', 'lum-berry']
+export const BERRY_FLOORS = 5
+export const BERRY_RAIN_FLOORS = 3
+export const BERRY_YIELD = 2
+export function plantBerry(run, data) {
+  if (!routeAction(run) || run.berry) return null
+  const out = { ...run }
+  const rand = dice(out)
+  const rain = weatherOf(run, shownScene(run, run.route.biome, data), null, data) === 'rain'
+  out.berry = { floor: run.floor, item: pickOne(BERRIES, rand), need: rain ? BERRY_RAIN_FLOORS : BERRY_FLOORS, count: BERRY_YIELD + (rain ? 1 : 0) }
+  return out
+}
+export const berryReady = (run) => Boolean(run.berry && run.floor - run.berry.floor >= run.berry.need)
+export function harvestBerry(run) {
+  if (!berryReady(run) || run.encounter || run.pending) return null
+  const out = { ...run, berry: null, harvested: (run.harvested ?? 0) + run.berry.count }
+  for (let k = 0; k < run.berry.count; k++) giveItem(out, run.berry.item)
+  return out
+}
+
+/** A Bicycle: uma vez por rota (duas na Cycling Road), passa um andar sem batalha. Não vale no último andar da rota. */
+export const bikeUses = (data, run) => (featuresOf(data, run).cycling ? 2 : 1)
+export function bikePath(run, data) {
+  if (!hasKey(run, 'bicycle') || !routeAction(run) || run.dungeon || routePos(run) >= ROUTE_LENGTH - 1) return null
+  const used = run.bike?.leg === (run.leg ?? 1) ? run.bike.n : 0
+  if (used >= bikeUses(data, run) || run.route.options.some((o) => o.kind === 'bike')) return null
+  return { ...run, bike: { leg: run.leg ?? 1, n: used + 1 }, route: { ...run.route, options: [...run.route.options, { kind: 'bike' }] } }
+}
+
+/** As fotos da corrida: um álbum com os momentos guardados (o lugar, o Pokémon e o andar). Até PHOTO_MAX. */
+export const PHOTO_MAX = 24
+export function takePhoto(run, photo) {
+  const list = run.photos ?? []
+  if (!photo || list.length >= PHOTO_MAX || list.some((p) => p.floor === run.floor && p.kind === photo.kind && p.id === photo.id)) return null
+  return { ...run, photos: [...list, { floor: run.floor, scene: run.scene ?? 'grass', ...photo }] }
+}
+/** A foto que dá para tirar agora: o capturado (ou o ovo que nasceu) e a vitória sobre um chefe. null se não há o que fotografar. */
+export function photoNow(run) {
+  const p = run.pending
+  if (p?.capture) return { kind: p.capture.fossil ? 'fossil' : 'capture', id: p.capture.id, ...(p.capture.shiny ? { shiny: true } : {}) }
+  if (p?.beat && p.exp != null) return { kind: p.beat.kind, id: run.team[0]?.id, name: p.beat.name, ...(run.team[0]?.shiny ? { shiny: true } : {}) }
+  return null
+}
+
+/**
+ * Os desafios dos ginásios: antes do líder, um quebra-cabeça no tema do ginásio (os dos jogos: as lixeiras do Lt. Surge,
+ * o gelo do Pryce, o quiz do Blaine, as paredes invisíveis do Koga, o piso de gelo do Juan, os teleportes da Sabrina...).
+ * Vencendo, o time do líder vem GYM_EDGE_LEVELS níveis abaixo e você ganha um prêmio. Uma tentativa por ginásio. Igual ao app.
+ */
+export const GYM_PUZZLES = {
+  normal: 'silhouette', fire: 'quiz', water: 'tiles', grass: 'maze', electric: 'switches', ice: 'slide', fighting: 'memory', poison: 'maze', ground: 'slide',
+  flying: 'slide', psychic: 'memory', bug: 'switches', rock: 'tiles', ghost: 'maze', dragon: 'memory', dark: 'silhouette', steel: 'slide', fairy: 'quiz',
+}
+/** Os labirintos de paredes que não se veem (o do Koga e a ponte invisível do Morty). */
+export const PUZZLE_HIDDEN = ['poison', 'ghost']
+export const GYM_EDGE_LEVELS = 2
+export const PUZZLE_MONEY = 150
+/** Quem ganha de quem (atacante → os tipos em que ele é super efetivo): para o quiz. */
+export const SUPER_EFFECTIVE = {
+  normal: [], fire: ['grass', 'ice', 'bug', 'steel'], water: ['fire', 'ground', 'rock'], grass: ['water', 'ground', 'rock'], electric: ['water', 'flying'],
+  ice: ['grass', 'ground', 'flying', 'dragon'], fighting: ['normal', 'ice', 'rock', 'dark', 'steel'], poison: ['grass', 'fairy'], ground: ['fire', 'electric', 'poison', 'rock', 'steel'],
+  flying: ['grass', 'fighting', 'bug'], psychic: ['fighting', 'poison'], bug: ['grass', 'psychic', 'dark'], rock: ['fire', 'ice', 'flying', 'bug'], ghost: ['psychic', 'ghost'],
+  dragon: ['dragon'], dark: ['psychic', 'ghost'], steel: ['ice', 'rock', 'fairy'], fairy: ['fighting', 'dragon', 'dark'],
+}
+const TYPES_18 = Object.keys(SUPER_EFFECTIVE)
+const randInt = (rand, n) => Math.floor(rand() * n)
+/** Embaralha (Fisher–Yates) com o sorteio da corrida. */
+function shuffled(list, rand) {
+  const out = [...list]
+  for (let i = out.length - 1; i > 0; i--) { const j = randInt(rand, i + 1); const t = out[i]; out[i] = out[j]; out[j] = t }
+  return out
+}
+const neighbors = (i, cols, rows) => {
+  const x = i % cols, y = Math.floor(i / cols)
+  return [y > 0 ? i - cols : -1, x < cols - 1 ? i + 1 : -1, y < rows - 1 ? i + cols : -1, x > 0 ? i - 1 : -1].filter((n) => n >= 0)
+}
+/** Deslizar no gelo: de pos na direção (dx, dy) até bater numa pedra ou na borda; passando pela saída, para nela. */
+function slideTo(p, pos, dx, dy) {
+  let x = pos % p.cols, y = Math.floor(pos / p.cols)
+  for (;;) {
+    const nx = x + dx, ny = y + dy
+    if (nx < 0 || ny < 0 || nx >= p.cols || ny >= p.rows || p.rocks.includes(ny * p.cols + nx)) break
+    x = nx; y = ny
+    if (y * p.cols + x === p.goal) break
+  }
+  return y * p.cols + x
+}
+const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]]
+/** O menor número de jogadas (busca em largura); -1 se não dá. step(pos) devolve as casas alcançáveis numa jogada. */
+function shortest(start, goal, step) {
+  const dist = new Map([[start, 0]])
+  const queue = [start]
+  while (queue.length) {
+    const at = queue.shift()
+    if (at === goal) return dist.get(at)
+    for (const to of step(at)) if (!dist.has(to)) { dist.set(to, dist.get(at) + 1); queue.push(to) }
+  }
+  return -1
+}
+const speciesIds = (data) => Object.keys(data.species).map(Number).filter((id) => id > 0 && id <= 1025).sort((a, b) => a - b)
+function quizQuestion(data, rand, ids) {
+  const kind = pickOne(['strong', 'typeOf', 'hasType'], rand)
+  if (kind === 'strong') {
+    const target = pickOne(TYPES_18.filter((t) => TYPES_18.some((a) => SUPER_EFFECTIVE[a].includes(t))), rand)
+    const right = pickOne(TYPES_18.filter((a) => SUPER_EFFECTIVE[a].includes(target)), rand)
+    const wrong = shuffled(TYPES_18.filter((a) => !SUPER_EFFECTIVE[a].includes(target)), rand).slice(0, 3)
+    const options = shuffled([right, ...wrong], rand)
+    return { q: kind, type: target, options, answer: options.indexOf(right) }
+  }
+  if (kind === 'typeOf') {
+    const id = pickOne(ids, rand)
+    const types = data.species[id][4] ?? []
+    const right = types[0]
+    const options = shuffled([right, ...shuffled(TYPES_18.filter((t) => !types.includes(t)), rand).slice(0, 3)], rand)
+    return { q: kind, mon: id, options, answer: options.indexOf(right) }
+  }
+  const type = pickOne(TYPES_18, rand)
+  const has = ids.filter((id) => (data.species[id][4] ?? []).includes(type))
+  const right = pickOne(has.length ? has : ids, rand)
+  const options = shuffled([right, ...shuffled(ids.filter((id) => !(data.species[id][4] ?? []).includes(type)), rand).slice(0, 3)], rand)
+  return { q: 'hasType', type, options, answer: options.indexOf(right) }
+}
+/** O desafio do ginásio de agora (o tipo do líder) ou null: só na cidade de um ginásio, uma vez por ginásio. */
+export function gymPuzzleOf(data, run) {
+  if (!run.town || run.dungeon || run.encounter || run.pending || run.puzzleLeg === legOf(run)) return null
+  const boss = bossOf(data, run)
+  if (boss?.kind !== 'gym') return null
+  const type = leaderType(data, boss)
+  return GYM_PUZZLES[type] ? { type, kind: GYM_PUZZLES[type] } : null
+}
+/** Monta o desafio (sempre com solução) e abre a tela dele. */
+export function startPuzzle(run, data) {
+  const info = gymPuzzleOf(data, run)
+  return info ? puzzleOfType(data, run, info.type) : null
+}
+/** O desafio de um tipo de ginásio (o do líder de agora é o startPuzzle). */
+export function puzzleOfType(data, run, type) {
+  const info = { type, kind: GYM_PUZZLES[type] }
+  if (!info.kind) return null
+  const out = { ...run, puzzleLeg: legOf(run) }
+  const rand = dice(out)
+  const { kind } = info
+  const p = { kind, type, done: false, won: false }
+  if (kind === 'quiz') {
+    const ids = speciesIds(data)
+    Object.assign(p, { qs: [0, 1, 2].map(() => quizQuestion(data, rand, ids)), at: 0, right: 0 })
+  } else if (kind === 'silhouette') {
+    const ids = speciesIds(data)
+    Object.assign(p, { qs: [0, 1, 2].map(() => { const options = shuffled(ids, rand).slice(0, 4); const right = pickOne(options, rand); return { mon: right, options, answer: options.indexOf(right) } }), at: 0, right: 0 })
+  } else if (kind === 'switches') {
+    const a = randInt(rand, 15)
+    Object.assign(p, { cols: 5, rows: 3, a, b: pickOne(neighbors(a, 5, 3), rand), open: {}, found: 0, left: 6 })
+  } else if (kind === 'slide') {
+    Object.assign(p, { cols: 5, rows: 5, pos: 22, goal: 2, rocks: [], left: 3 })
+    for (let k = 0; k < 60; k++) {
+      const goal = randInt(rand, 5)
+      const rocks = shuffled(Array.from({ length: 25 }, (_, i) => i).filter((i) => i !== 22 && i !== goal), rand).slice(0, 6)
+      const trial = { ...p, goal, rocks }
+      const n = shortest(22, goal, (at) => DIRS.map(([dx, dy]) => slideTo(trial, at, dx, dy)).filter((to) => to !== at))
+      if (n >= 2 && n <= 5) { Object.assign(p, { goal, rocks, left: n + 2 }); break }
+    }
+  } else if (kind === 'maze') {
+    // Um caminho garantido da entrada até o líder; o resto vira parede (as que não se veem, no do Koga e no do Morty).
+    const cols = 5, rows = 5, start = 22, goal = 2
+    const path = (() => {
+      const seen = new Set([start])
+      const walk = (at) => {
+        if (at === goal) return [at]
+        for (const to of shuffled(neighbors(at, cols, rows), rand)) {
+          if (seen.has(to)) continue
+          seen.add(to)
+          const rest = walk(to)
+          if (rest) return [at, ...rest]
+        }
+        return null
+      }
+      return walk(start)
+    })()
+    const walls = Array.from({ length: 25 }, (_, i) => i).filter((i) => !path.includes(i) && rand() < 0.6)
+    const hidden = PUZZLE_HIDDEN.includes(type)
+    const n = shortest(start, goal, (at) => neighbors(at, cols, rows).filter((to) => !walls.includes(to)))
+    Object.assign(p, { cols, rows, pos: start, goal, walls, seen: [], hidden, left: hidden ? 3 : n + 3 })
+  } else if (kind === 'tiles') {
+    // Um caminho que passa por todos os ladrilhos existe sempre (o do sorteio); você tem de achar um.
+    const cols = 4, rows = 3, start = 8
+    Object.assign(p, { cols, rows, pos: start, visited: [start] })
+  } else {
+    Object.assign(p, { seq: [0, 1, 2, 3, 4].map(() => randInt(rand, 4)), shown: true, at: 0 })
+  }
+  out.pending = { puzzle: p }
+  return out
+}
+/** Uma jogada no desafio: i é a casa (ou a resposta) tocada; -1 é "memorizei" (no de memória). */
+export function puzzleAct(run, data, i) {
+  const p0 = run.pending?.puzzle
+  if (!p0 || p0.done) return run
+  const p = { ...p0 }
+  const end = (won) => { p.done = true; p.won = won }
+  if (p.kind === 'quiz' || p.kind === 'silhouette') {
+    const q = p.qs[p.at]
+    if (!q || i < 0 || i >= q.options.length) return run
+    p.picked = i
+    if (i === q.answer) p.right += 1
+    p.at += 1
+    if (p.at >= p.qs.length) end(p.right >= 2)
+  } else if (p.kind === 'switches') {
+    if (i < 0 || i >= p.cols * p.rows || p.open[i] != null) return run
+    const targets = [p.a, p.b].filter((t) => p.open[t] == null)
+    if (targets.includes(i)) {
+      p.open = { ...p.open, [i]: 'hit' }
+      p.found += 1
+      if (p.found >= 2) end(true)
+    } else {
+      const dist = Math.min(...targets.map((t) => Math.abs((t % p.cols) - (i % p.cols)) + Math.abs(Math.floor(t / p.cols) - Math.floor(i / p.cols))))
+      p.open = { ...p.open, [i]: dist }
+      p.left -= 1
+      if (p.left <= 0) end(false)
+    }
+  } else if (p.kind === 'slide') {
+    if (i < 0 || i >= p.cols * p.rows || i === p.pos) return run
+    const dx = (i % p.cols) - (p.pos % p.cols), dy = Math.floor(i / p.cols) - Math.floor(p.pos / p.cols)
+    const to = Math.abs(dx) >= Math.abs(dy) ? slideTo(p, p.pos, Math.sign(dx), 0) : slideTo(p, p.pos, 0, Math.sign(dy))
+    if (to === p.pos) return run
+    p.pos = to
+    p.left -= 1
+    if (p.pos === p.goal) end(true)
+    else if (p.left <= 0) end(false)
+  } else if (p.kind === 'maze') {
+    if (!neighbors(p.pos, p.cols, p.rows).includes(i)) return run
+    if (p.walls.includes(i)) {
+      if (!p.hidden || p.seen.includes(i)) return run
+      p.seen = [...p.seen, i]
+      p.left -= 1
+      if (p.left <= 0) end(false)
+    } else {
+      p.pos = i
+      if (!p.hidden) p.left -= 1
+      if (p.pos === p.goal) end(true)
+      else if (p.left <= 0) end(false)
+    }
+  } else if (p.kind === 'tiles') {
+    if (!neighbors(p.pos, p.cols, p.rows).includes(i)) return run
+    if (p.visited.includes(i)) end(false)
+    else {
+      p.pos = i
+      p.visited = [...p.visited, i]
+      if (p.visited.length >= p.cols * p.rows) end(true)
+      else if (neighbors(i, p.cols, p.rows).every((n) => p.visited.includes(n))) end(false)
+    }
+  } else if (p.kind === 'memory') {
+    if (p.shown) { if (i !== -1) return run; p.shown = false }
+    else if (i < 0 || i > 3) return run
+    else if (p.seq[p.at] === i) { p.at += 1; if (p.at >= p.seq.length) end(true) }
+    else end(false)
+  }
+  return { ...run, pending: { ...run.pending, puzzle: p } }
+}
+/** Sai do desafio (ou desiste dele): guarda se venceu (a vantagem contra o líder) e dá o prêmio. */
+export function finishPuzzle(run) {
+  const p = run.pending?.puzzle
+  if (!p) return run
+  const won = Boolean(p.done && p.won)
+  const money = won ? Math.round(PUZZLE_MONEY * priceScale(run.floor)) : 0
+  return { ...run, pending: null, money: run.money + money, gymEdge: { leg: legOf(run), won }, puzzles: (run.puzzles ?? 0) + (won ? 1 : 0) }
+}
+/**
+ * O desafio como a tela mostra: as casas (c: o que tem nela), quantas colunas e o que perguntar. As casas:
+ * 'me' você, 'goal' o líder, 'rock' pedra, 'wall' parede (vista), 'floor' chão, 'done' ladrilho pisado, 'closed' lixeira
+ * fechada, 'num' vazia (n: a distância até o interruptor), 'hit' interruptor, 'type' (type), 'mon' (mon), 'sym' (n).
+ */
+export function puzzleView(run) {
+  const p = run.pending?.puzzle
+  if (!p) return null
+  const base = { kind: p.kind, type: p.type, done: p.done, won: p.won }
+  if (p.kind === 'quiz' || p.kind === 'silhouette') {
+    const q = p.qs[Math.min(p.at, p.qs.length - 1)]
+    const cells = q.options.map((o) => (typeof o === 'number' ? { c: 'mon', mon: o } : { c: 'type', type: o }))
+    return { ...base, cols: 2, cells, prompt: p.kind === 'silhouette' ? { q: 'who', mon: q.mon } : { q: q.q, ...(q.type ? { type: q.type } : {}), ...(q.mon ? { mon: q.mon } : {}) }, at: p.at, total: p.qs.length, right: p.right }
+  }
+  if (p.kind === 'switches') {
+    return { ...base, cols: p.cols, left: p.left, found: p.found, cells: Array.from({ length: p.cols * p.rows }, (_, i) => (p.open[i] == null ? (p.done && [p.a, p.b].includes(i) ? { c: 'hit' } : { c: 'closed' }) : p.open[i] === 'hit' ? { c: 'hit' } : { c: 'num', n: p.open[i] })) }
+  }
+  if (p.kind === 'slide') {
+    return { ...base, cols: p.cols, left: p.left, cells: Array.from({ length: p.cols * p.rows }, (_, i) => ({ c: i === p.pos ? 'me' : i === p.goal ? 'goal' : p.rocks.includes(i) ? 'rock' : 'floor' })) }
+  }
+  if (p.kind === 'maze') {
+    const shown = (i) => p.walls.includes(i) && (!p.hidden || p.seen.includes(i) || p.done)
+    return { ...base, cols: p.cols, left: p.left, hidden: p.hidden, cells: Array.from({ length: p.cols * p.rows }, (_, i) => ({ c: i === p.pos ? 'me' : i === p.goal ? 'goal' : shown(i) ? 'wall' : 'floor' })) }
+  }
+  if (p.kind === 'tiles') {
+    return { ...base, cols: p.cols, left: p.cols * p.rows - p.visited.length, cells: Array.from({ length: p.cols * p.rows }, (_, i) => ({ c: i === p.pos ? 'me' : p.visited.includes(i) ? 'done' : 'floor' })) }
+  }
+  return { ...base, cols: 4, seq: p.shown || p.done ? p.seq : null, at: p.at, total: p.seq.length, cells: [0, 1, 2, 3].map((n) => ({ c: 'sym', n })) }
+}
+
 /**
  * A água, em ordem (não dá para pular): da praia (a rota ou a da cidade) para
  * o mar, dele para o fundo do mar e dali para a caverna aquática. Cada um é um
@@ -1435,6 +1788,7 @@ export function placeInfo(data, run, id) {
   if (DUNGEONS[id]) return DUNGEONS[id]
   if (RARE_PLACES[id]) return RARE_PLACES[id]
   if (id === WATERFALL_PLACE.id) return WATERFALL_PLACE
+  if (id === FERRY.id) return FERRY
   const water = WATER_CHAIN.find(([w]) => w === id)
   if (water) return { name: water[1], scene: water[2] }
   const info = routeInfo(data, run)
@@ -1671,6 +2025,8 @@ export function routeOptions(run, data, rand) {
   const add = (place) => { if (place && !done.includes(place.id)) options.push({ kind: 'dungeon', place: place.id, scene: place.scene, ...(needs[place.id] ? { needs: needs[place.id] } : {}) }) }
   if (city) {
     for (const place of info?.towns ?? []) add(place)
+    // No porto: a balsa (com o S.S. Ticket), com os treinadores a bordo e um prêmio no fim.
+    if (FERRY_TOWNS.includes(featuresOf(data, run).town) && !done.includes(FERRY.id)) options.push({ kind: 'dungeon', place: FERRY.id, scene: FERRY.scene, needs: 'ss-ticket' })
     if (boss.kind === 'villain') options.push({ kind: 'dungeon', place: 'base', scene: `base-${villainTeam(boss.name)}` })
   } else {
     // Numa rota de praia, o mar é opcional; numa rota de mar, o fundo do mar.
@@ -1753,7 +2109,8 @@ export function chooseNode(run, data, index, clock = null) {
     const when = clock ? { night: clock.night, season: clock.season, ...(burst != null && data.species[burst]?.[6]?.includes(scene) ? { outbreak: burst } : {}) } : {}
     // O clima da rota (o mesmo em todos os andares dela) atrai Pokémon diferentes.
     const sky = weatherOf(run, shownScene(run, scene, data), null, data)
-    const roll = () => ({ ...encounterFor(data, out.floor, rand, node.kind === 'boss' ? bossOf(data, out) : null, node.kind === 'wildboss', { ...node, biome: scene, shiny: run.shinyRate ?? 1, ...when, ...(sky ? { weather: sky } : {}), ...huntNode(run) }), scene })
+    const mist = fieldOf(run, shownScene(run, scene, data), data)
+    const roll = () => ({ ...encounterFor(data, out.floor, rand, node.kind === 'boss' ? bossOf(data, out) : null, node.kind === 'wildboss', { ...node, biome: scene, shiny: run.shinyRate ?? 1, ...when, ...(sky ? { weather: sky } : {}), ...(FIELD_TYPES[mist] ? { field: mist } : {}), ...huntNode(run) }), scene })
     out.encounter = roll()
     // Nuzlocke (cláusula de repetidos): o primeiro selvagem da área não é de uma linha evolutiva que você já teve.
     if (nuzRule(run, 'dupes') && out.encounter.kind === 'wild' && !areaUsed(run)) {
@@ -1761,6 +2118,10 @@ export function chooseNode(run, data, index, clock = null) {
       for (let k = 0; k < 8 && out.encounter.foes.every((f) => had.has(baseForm(data, f.id))); k++) out.encounter = roll()
     }
     countHunt(data, out)
+    // Venceu o desafio do ginásio: o time do líder vem GYM_EDGE_LEVELS níveis abaixo.
+    if (node.kind === 'boss' && run.gymEdge?.won && run.gymEdge.leg === legOf(run) && out.encounter.boss?.kind === 'gym') {
+      out.encounter = { ...out.encounter, edge: true, foes: out.encounter.foes.map((f) => ({ ...f, level: Math.max(1, f.level - GYM_EDGE_LEVELS) })) }
+    }
     // O lendário do lugar e o que dormia no caminho: vencendo (ou capturando), o lugar ou a rota seguem.
     if (node.placeLegend) out.encounter = { ...out.encounter, placeLegend: true }
     if (node.blocker) out.encounter = { ...out.encounter, blocker: true }
@@ -1816,6 +2177,9 @@ export function chooseNode(run, data, index, clock = null) {
   } else if (node.kind === 'center') {
     out.team = out.team.map((m) => ({ ...m, hp: 1 }))
     out.pending = { center: true }
+  } else if (node.kind === 'bike') {
+    // De bicicleta: passa o andar sem batalha (e sem prêmio).
+    out.pending = { event: { kind: 'bike' } }
   } else if (rand() < CHOICE_CHANCE) {
     // Uma escolha na rota: ajudar alguém, seguir um Pokémon ferido ou entrar numa caverna secreta.
     // A caverna secreta só onde há cavernas (rota de caverna, montanha, vulcão...).
@@ -1945,7 +2309,7 @@ export function encounterFor(data, floor, rand, boss = null, wild = false, node 
   // Os tipos do lugar aparecem bem mais (ROUTE_TYPE_WEIGHT; nos treinadores, ROUTE_TYPE_TRAINER).
   // À noite, mais Fantasma e Sombrio; em cada estação, os tipos dela (node.night, node.season: o relógio de quem joga).
   // O clima da rota também: com chuva, mais Água, Elétrico e Inseto; com sol, Fogo, Planta e Terra; areia, Pedra, Terra e Aço; neve, Gelo.
-  const drawn = WEATHER_TYPES[node?.weather] ?? []
+  const drawn = [...(WEATHER_TYPES[node?.weather] ?? []), ...(FIELD_TYPES[node?.field] ?? [])]
   const types = BIOMES[node?.biome] && [...BIOMES[node.biome], ...(node.night ? NIGHT_TYPES : []), ...(SEASON_TYPES[node.season] ?? []), ...drawn]
   const pulled = (p) => drawn.length > 0 && (data.species[p.id]?.[4] ?? []).some((t) => drawn.includes(t))
   const local = (p) => Boolean(types && (data.species[p.id]?.[4] ?? []).some((t) => types.includes(t)))
@@ -1981,8 +2345,19 @@ export function encounterFor(data, floor, rand, boss = null, wild = false, node 
   // Chuva de meteoros: um Clefairy (da linha dele, pelo nível), com mais chance de ser shiny.
   // O surto do dia: a espécie dele aparece muito (e mais shiny).
   const burst = node?.outbreak != null && !node.meteor && !node.rare && rand() < OUTBREAK_SHARE
-  const id = burst ? devolve(data, node.outbreak, level) : node?.meteor ? devolve(data, 36, level) : pick(rare.length ? rare : native.length ? native : common)
-  const shinyRate = SHINY_CHANCE * (node?.shiny ?? 1) * (node?.meteor ? 8 : 1) * (burst ? OUTBREAK_SHINY : 1) * huntBoost(data, node, id)
+  // Pescando: só os de Água, e a vara decide quem vem (Old Rod os comuns, Good Rod os do meio, Super Rod os raros).
+  const fish = node?.fish != null ? fishPool(data, common, node.fish) : []
+  // Na árvore (Headbutt ou mel): os Pokémon que só caem dela.
+  const tree = node?.tree ? TREE_MONS[node.tree].filter((t) => data.species[t]) : []
+  const id = burst ? devolve(data, node.outbreak, level) : node?.meteor ? devolve(data, 36, level) : tree.length ? pickOne(tree, rand) : fish.length ? pick(fish) : pick(rare.length ? rare : native.length ? native : common)
+  // A horda: cinco iguais, mais fracos, de uma vez (mais XP e cinco chances de shiny).
+  const special = burst || node?.meteor || node?.rare || node?.fish != null || node?.tree || node?.hidden
+  if (!special && floor >= HORDE_FLOOR && rand() < HORDE_CHANCE) {
+    const rate = SHINY_CHANCE * (node?.shiny ?? 1) * huntBoost(data, node, id)
+    const foes = Array.from({ length: HORDE_SIZE }, () => foe(id, Math.max(2, level - HORDE_LEVELS), rand() < rate ? { shiny: true } : {}))
+    return { kind, foes, horde: true, ...(node?.biome ? { biome: node.biome } : {}) }
+  }
+  const shinyRate = SHINY_CHANCE * (node?.shiny ?? 1) * (node?.meteor ? 8 : 1) * (burst ? OUTBREAK_SHINY : 1) * (node?.tree === 'honey' ? HONEY_SHINY : 1) * huntBoost(data, node, id)
   return { kind, foes: [foe(id, level, rand() < shinyRate ? { shiny: true } : {})], ...(node?.biome ? { biome: node.biome } : {}), ...(node?.meteor ? { meteor: true } : {}) }
 }
 
@@ -2270,7 +2645,7 @@ export function winFloor(run, data, after = {}) {
     // O que o lugar deixa (como nos jogos): o item-chave (o Silph Scope, a Poké Flute) e o prêmio da história (a Master Ball da Silph Co.).
     const f = featuresOf(data, run)
     key = addKey(out, f.keys?.[run.dungeon.place])
-    const prize = f.rewards?.[run.dungeon.place]
+    const prize = f.rewards?.[run.dungeon.place] ?? (run.dungeon.place === FERRY.id ? FERRY.prize : null)
     if (prize) { giveItem(out, prize); placeReward = prize }
     // Num lugar da água, dá para seguir para o próximo (o mar depois da praia...); nos outros, volta.
     const onward = waterNext(run.dungeon.scene, waterReach(data, run)) || (run.dungeon.scene === 'water' && hasWaterfall(data, run) && !(out.places ?? []).includes(WATERFALL_PLACE.id))
@@ -2360,7 +2735,7 @@ export function winFloor(run, data, after = {}) {
     exp, gains, money, levels, joy, drop, story, reward, ...(champion ? { champion: true } : {}),
     ...(picked.length ? { picked } : {}), ...(lost.length ? { lost } : {}), ...(shed ? { shed: true } : {}), ...(dropped ? { pieces } : {}),
     // O capturado ou o ovo que chocou (a mesma tela).
-    capture: after.captured && (kind === 'wild' || kind === 'wildboss') ? foes[0] : born ?? fossil,
+    capture: after.captured && (kind === 'wild' || kind === 'wildboss') ? foes[after.capturedIndex ?? 0] ?? foes[0] : born ?? fossil,
     // A Poké Ball em que ele foi capturado (o sprite dela na tela da captura).
     ...(after.captured && after.ball ? { ball: after.ball } : {}),
     cards: kind === 'boss' ? pickCards(rand, run.cardCount ?? 3, run.relics ?? []) : null,
@@ -2922,7 +3297,9 @@ export const climateKey = (run) => (run.dungeon ? (run.dungeon.start ?? run.floo
 export const WEATHER_WEIGHT = 3
 export const WEATHER_TYPES = { rain: ['water', 'electric', 'bug'], sun: ['fire', 'grass', 'ground'], sand: ['rock', 'ground', 'steel'], snow: ['ice'] }
 /** Os efeitos de lugar que vêm do céu: como o clima, só a céu aberto. */
-export const SKY_FIELDS = ['storm', 'aurora', 'wind']
+export const SKY_FIELDS = ['storm', 'aurora', 'wind', 'fog']
+/** Os efeitos de lugar que atraem Pokémon: na neblina aparecem mais Fantasma. */
+export const FIELD_TYPES = { fog: ['ghost'] }
 /**
  * O clima único desta rota ou deste lugar, como nos jogos (tool/factory_routes.py, CLIMATE): a chuva sem parar no
  * Lake of Rage, as cinzas da Route 113, o Diamond Dust de Snowpoint, as Moon Stones caindo no Mt. Moon... { w, f } ou
@@ -2959,7 +3336,7 @@ export function weatherOf(run, scene, season = null, data = null) {
 export const SCENE_FIELD = {
   cave: [['diamonds', 0.3]], mountain: [['rockfall', 0.25]], volcano: [['ashes', 0.4]], swamp: [['miasma', 0.35]], sewer: [['miasma', 0.25]],
   icecave: [['chill', 0.35], ['aurora', 0.1]], snow: [['chill', 0.2], ['aurora', 0.2]], tower: [['haunt', 0.35], ['psychic', 0.15]], underwater: [['current', 0.4]], water: [['current', 0.15]],
-  grass: [['grassy', 0.2]], forest: [['grassy', 0.3], ['misty', 0.1]], city: [['electric', 0.25]], beach: [['misty', 0.1]], sky: [['wind', 0.3], ['storm', 0.15]],
+  grass: [['grassy', 0.2]], forest: [['grassy', 0.3], ['fog', 0.1]], city: [['electric', 0.25]], beach: [['fog', 0.1]], sky: [['wind', 0.3], ['storm', 0.15]],
   desert: [['quicksand', 0.2]], ruins: [['psychic', 0.2], ['haunt', 0.15]], flowers: [['spores', 0.3], ['misty', 0.15]], plant: [['storm', 0.35], ['electric', 0.25]],
   crystal: [['diamonds', 0.4]], lavacave: [['ashes', 0.4]], poisoncave: [['miasma', 0.4]], seacave: [['current', 0.3]], waterfall: [['current', 0.3]], dunes: [['quicksand', 0.35], ['haunt', 0.1]], bamboo: [['spores', 0.2], ['grassy', 0.2]], temple: [['psychic', 0.3]],
   seafoam: [['chill', 0.4], ['current', 0.3]], silph: [['electric', 0.3], ['psychic', 0.2]], radio: [['electric', 0.5]],
@@ -3407,6 +3784,9 @@ export function nextFloor(run, data) {
     out.town = { leg: legOf(out), shop: pickShop(rand, data, out.floor, 8, Boolean(run.townMap)) }
     const trade = townTradeOffer(out, data, rand)
     if (trade) out.town.trade = trade
+    // O que a cidade te dá ao chegar (como nos jogos): a vara do Fishing Guru, a Bicycle, o S.S. Ticket.
+    const got = (featuresOf(data, out).arrive ?? []).map((k) => addKey(out, k)).filter(Boolean)
+    if (got.length) out.town.got = got
   }
   out.route = routeOptions(out, data, rand)
   // Começo de uma rota nova: a missão dela.
