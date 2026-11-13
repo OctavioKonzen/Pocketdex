@@ -111,7 +111,10 @@ class I18n {
     }
     // Os modelos mais específicos (mais texto fixo) primeiro.
     _patterns.sort((a, b) => b.fixed - a.fixed);
-    if (code == 'fr' || code == 'es') await _loadPokemonNames(code);
+    if (code == 'fr' || code == 'es') {
+      await _loadPokemonNames(code);
+      await _loadCharacterNames(code);
+    }
     current.value = code;
   }
 
@@ -138,6 +141,17 @@ class I18n {
       }
       for (final e in seen.entries) {
         if (e.value != null && e.value != e.key) _names[e.key] = e.value!;
+      }
+    } catch (_) {}
+  }
+
+  /// Os nomes dos personagens no idioma (Brock → Pierre em francês, Falkner → Pegaso em espanhol). Igual ao site.
+  static Future<void> _loadCharacterNames(String code) async {
+    try {
+      final chars = json.decode(await rootBundle.loadString('assets/i18n/characters.json')) as Map<String, dynamic>;
+      for (final e in chars.entries) {
+        final local = (e.value as List)[code == 'fr' ? 0 : 1] as String;
+        if (local != e.key) _names[e.key] = local;
       }
     } catch (_) {}
   }

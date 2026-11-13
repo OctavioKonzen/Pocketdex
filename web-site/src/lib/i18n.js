@@ -8,6 +8,7 @@
 // Nomes de golpes, habilidades e itens continuam os originais.
 
 import ui from '../i18n/ui.json'
+import characters from '../i18n/characters.json'
 
 export const LANGUAGES = [
   { code: 'pt', label: 'Português', flag: '🇧🇷' },
@@ -71,6 +72,8 @@ patterns.sort((a, b) => b.fixed - a.fixed)
 
 /** Nome oficial do Pokémon no idioma (preenchido por loadPokemonNames). */
 const names = new Map()
+// Os nomes dos personagens no idioma (Brock → Pierre em francês, Falkner → Pegaso em espanhol): os oficiais de cada língua.
+if (language === 'fr' || language === 'es') for (const [en, local] of Object.entries(characters)) names.set(en, local[language === 'fr' ? 0 : 1])
 const cache = new Map()
 // Textos que o próprio tradutor gerou: não são traduzidos de novo.
 const produced = new Set()

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Copia o dicionário da interface (tool/i18n/ui.json) para o site e o app.
+"""Copia o dicionário da interface (tool/i18n/ui.json) e os nomes dos personagens (tool/i18n/characters.json) para o site e o app.
 
     web-site/src/i18n/ui.json  e  assets/i18n/ui.json
 
@@ -33,6 +33,13 @@ def main():
         with open(os.path.join(ROOT, path), 'w', encoding='utf-8') as f:
             json.dump(out, f, ensure_ascii=False, separators=(',', ':'))
     print(f'{len(out)} textos traduzidos (en, fr, es) copiados para o site e o app')
+    # Os nomes dos personagens (líderes, rivais, vilões...): {nome em inglês: [francês, espanhol]}.
+    with open(os.path.join(ROOT, 'tool', 'i18n', 'characters.json'), encoding='utf-8') as f:
+        chars = json.load(f)
+    for path in ('web-site/src/i18n/characters.json', 'assets/i18n/characters.json'):
+        with open(os.path.join(ROOT, path), 'w', encoding='utf-8') as f:
+            json.dump(chars, f, ensure_ascii=False, separators=(',', ':'))
+    print(f'{len(chars)} nomes de personagens (fr, es)')
 
 
 if __name__ == '__main__':
