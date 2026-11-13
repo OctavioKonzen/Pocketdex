@@ -1,0 +1,147 @@
+// lib/widgets/daily_pokemon_card.dart
+//
+// Card do Pokémon do dia no Início (igual ao site, DailyPokemonCard.jsx):
+// sprite, nome, uma curiosidade (a descrição da Pokédex) e o grito.
+
+import 'package:flutter/material.dart' hide Text;
+
+import '../i18n/i18n.dart';
+import '../i18n/text.dart';
+import '../screens/factory_panels.dart' show currentFactory, saveFactory;
+import '../screens/pokemon_detail_screen.dart';
+import '../screens/turn_battle_screen.dart';
+import '../services/daily_battle.dart';
+import '../services/team_battle.dart' show Member;
+import '../services/user_data.dart';
+import '../services/cry_player.dart';
+import '../services/daily_pokemon.dart';
+import '../services/local_database.dart';
+import '../utils/pokemon_colors.dart';
+import '../utils/string_extensions.dart';
+import 'pokemon_sprite.dart';
+
+class DailyPokemonCard extends StatefulWidget {
+  const DailyPokemonCard({super.key});
+
+  @override
+  State<DailyPokemonCard> createState() => _DailyPokemonCardState();
+}
+
+class _DailyPokemonCardState extends State<DailyPokemonCard> {
+  final int _id = DailyPokemon.today;
+
+  /// O seu primeiro time (ou três ao acaso) contra o trio do Pokémon do dia. Igual ao site.
+  void _challenge(BuildContext context, String name) {
+    final teams = UserData.instance.teams;
+    final first = teams.isEmpty ? null : BattleTeam.fromMap(teams.first);
+    final seed = DateTime.now().millisecondsSinceEpoch;
+    final mine = first?.members ?? <Member>[for (var i = 0; i < 3; i++) (1 + (seed * (i + 7) % 1025), null)];
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TurnBattleScreen(
+          mine: mine,
+          theirs: [for (var i = 0; i < DailyBattle.foes; i++) (_id, null)],
+          foeName: '${tr('Pokémon do dia')}: $name',
+          onWin: () => saveFactory(DailyBattle.win(currentFactory())),
+        ),
+      ),
+    );
+  }
+  Map<String, dynamic>? _row;
+  String _flavor = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final db = LocalDatabase.instance;
+    final row = await db.pokemonRow(_id);
+    final species = (await db.speciesById())[_id];
+    if (!mounted) return;
+    setState(() {
+      _row = row;
+      _flavor = (I18n.pick(species?['flavor'] as String?, species?['flavors']) ?? '').replaceAll('\n', ' ');
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final row = _row;
+    if (row == null) return const SizedBox(height: 104);
+    final types = (row['types'] as List).cast<String>();
+    final name = I18n.pokemonName((row['name'] as String).split('-').first.capitalise());
+    return Material(
+      color: Colors.transparent,
+      child: Ink(
+        decoration: typeBackground(types, borderRadius: BorderRadius.circular(20)),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PokemonDetailScreen(initialPokemonId: _id))),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
+            child: Row(
+              children: [
+                SizedBox.square(dimension: 80, child: PokemonSprite(_id, fill: 0.95)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('⭐ Pokémon do dia', style: TextStyle(color: Colors.white.withAlpha(220), fontSize: 12, fontWeight: FontWeight.bold)),
+                      // Nome longo (Krookodile, Crabominable...) em tela pequena: diminui em vez de cortar.
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text('$name  #${_id.toString().padLeft(3, '0')}',
+                            maxLines: 1,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 19,
+                                fontWeight: FontWeight.w900,
+                                shadows: [Shadow(color: Colors.black38, blurRadius: 4)])),
+                      ),
+                      if (_flavor.isNotEmpty)
+                        // A descrição vem do banco já no idioma (sem tradução automática).
+                        Text(_flavor, style: const TextStyle(color: Colors.white, fontSize: 12)),
+                      const SizedBox(height: 4),
+                      // O desafio do dia: o seu primeiro time contra um trio dele; vencer dá moedas do Pokelike (1 vez por dia).
+                      ListenableBuilder(
+                        listenable: UserData.instance,
+                        builder: (context, _) {
+                          final done = DailyBattle.doneToday(currentFactory());
+                          return InkWell(
+                            key: const ValueKey('daily-battle'),
+                            onTap: done ? null : () => _challenge(context, name),
+                            borderRadius: BorderRadius.circular(99),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(color: Colors.black.withAlpha(done ? 40 : 90), borderRadius: BorderRadius.circular(99)),
+                              child: Text(
+                                  done
+                                      ? '✅ ${tr('Desafio de hoje vencido')}'
+                                      : '⚔️ ${tr('Desafiar o trio do dia (+{0} moedas)').replaceAll('{0}', '${DailyBattle.coins}')}',
+                                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  tooltip: tr('Ouvir o grito'),
+                  onPressed: () => CryPlayer.instance.play(_id),
+                  icon: const Icon(Icons.volume_up_rounded, color: Colors.white),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
