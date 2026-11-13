@@ -689,7 +689,7 @@ ART = {
         'Ever Grande City': (1400, 215), 'Rustboro City': (500, 390), 'Slateport City': (495, 700), 'Verdanturf Town': (320, 540),
         'Fallarbor Town': (430, 250), 'Oldale Town': (610, 135), 'Littleroot Town': (205, 855), 'Dewford Town': (735, 830),
         'Battle Frontier': (1430, 470)}},
-    'alola': {'crop': (0, 0, 1536, 1024), 'cities': {'Iki Town': (200, 255), "Hau'oli City": (330, 330), 'Verdant Cavern': (390, 190), 'Heahea City': (1065, 250), 'Paniola Town': (1320, 290), 'Konikoni City': (1240, 360), 'Brooklet Hill': (990, 300), 'Lush Jungle': (1110, 160), 'Wela Volcano Park': (1185, 135), 'Ruins of Life': (1400, 350), 'Aether Paradise': (770, 440), 'Seafolk Village': (170, 660), 'Vast Poni Canyon': (430, 700), 'Malie City': (975, 665), 'Po Town': (905, 760), 'Mount Lanakila': (1225, 560), 'Hokulani Observatory': (1365, 745), 'Tapu Village': (1345, 850)}},
+    'alola': {'crop': (0, 0, 1536, 1024), 'cities': {'Iki Town': (225, 275), "Hau'oli City": (355, 335), 'Verdant Cavern': (400, 195), 'Heahea City': (1000, 250), 'Paniola Town': (1120, 320), 'Konikoni City': (1245, 345), 'Brooklet Hill': (1360, 300), 'Lush Jungle': (1335, 240), 'Wela Volcano Park': (1180, 200), 'Ruins of Life': (1400, 385), 'Aether Paradise': (770, 450), 'Seafolk Village': (200, 690), 'Vast Poni Canyon': (410, 695), 'Malie City': (970, 680), 'Po Town': (935, 780), 'Mount Lanakila': (1220, 570), 'Hokulani Observatory': (1360, 690), 'Tapu Village': (1345, 860)}},
     'paldea': {'crop': (0, 0, 1536, 1024), 'cities': {
         'Medali': (360, 225), 'Cascarrafa': (470, 548), 'Mesagoza': (770, 580), 'Levincia': (1180, 625),
         'Artazon': (1240, 405), 'Los Platos': (230, 705), 'Montenevera': (690, 175), 'Glaseado': (900, 232),
