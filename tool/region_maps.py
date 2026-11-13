@@ -647,10 +647,10 @@ def build(name, wanted):
     return img, cities
 
 
-# Mapas desenhados que você mandou (tool/region_maps_art/<id>.webp): a imagem é usada como está (sem a moldura) e só
+# Mapas desenhados que você mandou (tool/region_maps_art/<id>.webp): a imagem é usada inteira (com a moldura) e só
 # as cidades são marcadas (em pixels da imagem original). Os nomes já vêm no desenho, então o app não escreve outros.
 ART = {
-    'kanto': {'crop': (62, 62, 1616, 886), 'cities': {
+    'kanto': {'crop': (0, 0, 1678, 937), 'cities': {
         'Pewter City': (415, 440), 'Viridian City': (845, 393), 'Celadon City': (1078, 393), 'Cerulean City': (1345, 398),
         'Lavender Town': (1078, 212), 'Indigo Plateau': (1162, 158), 'Fuchsia City': (1348, 603), 'Saffron City': (1225, 742),
         'Vermilion City': (940, 733), 'Cinnabar Island': (1530, 718), 'Pallet Town': (560, 635), 'Seafoam Islands': (540, 800)}},
