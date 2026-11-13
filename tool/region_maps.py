@@ -30,51 +30,48 @@ OUT_SITE = os.path.join(ROOT, 'web-site', 'public', 'sprites', 'maps')
 # biomes: (tipo, forma) com forma = elipse (4 números) ou contorno (lista de pontos); rivers: linhas;
 # roads: linhas (nomes de cidade ou pontos; 'sea' no começo = rota pelo mar); cities: nome → (x, y).
 HAND = {
-    # Paldea: pelo mapa que você mandou (Mesagoza no centro-sul, o lago no noroeste, os rios, Cabo Poco no sul).
+    # Paldea: pelo mapa que você mandou (as áreas, o Casseroya Lake, o Glaseado, a Area Zero e o Asado Desert).
     'paldea': {
-        'aspect': 1.0,
-        'cities': {'Porto Marinada': (14.6, 49.1), 'Cascarrafa': (44.3, 52.5), 'Medali': (59.9, 45.8), 'Montenevera': (81.9, 28.6), 'Zapapico': (94.2, 53.7), 'Levincia': (124.8, 57.6), 'Pokémon League': (58.0, 67.3), 'Mesagoza': (71.7, 76.2), 'Cortondo': (42.5, 76.3), 'Artazon': (111.9, 74.4), 'Alfornada': (25.5, 88.4), 'Los Platos': (71.7, 87.3), 'Cabo Poco': (71.7, 95.1), 'Glaseado': (77.6, 19.7)},
-        'land': [(15.5, 22.3), (32.6, 15.0), (48.1, 17.1), (62.1, 12.4), (76.1, 14.0), (100.9, 15.5), (108.7, 23.8), (121.1, 24.3), (127.3, 29.0), (133.5, 36.2), (140.5, 45.5), (132.0, 54.3), (130.4, 61.1), (133.5, 67.8), (128.9, 75.6), (116.5, 80.7), (111.0, 88.0), (100.9, 89.5), (89.3, 91.6), (77.6, 92.7), (74.5, 96.3), (68.3, 96.3), (66.8, 93.2), (54.3, 92.7), (43.5, 91.1), (25.6, 93.7), (17.9, 91.1), (15.5, 83.9), (10.9, 75.6), (7.8, 64.7), (10.9, 54.3), (15.5, 48.7), (16.3, 41.4), (15.5, 31.1)],
-        'islands': [(5.4, 43.0, 1.6, 2.1), (111.8, 22.0, 2.3, 0.9), (139.8, 64.2, 1.9, 1.3), (10.1, 38.8, 1.1, 0.7)],
-        'water': [[(22.5, 25.4), (37.3, 23.3), (49.7, 24.3), (55.9, 29.0), (60.6, 33.6), (54.3, 36.2), (45.0, 37.3), (32.6, 39.3), (23.3, 39.3), (21.0, 36.2)], (67.5, 14.5, 3.1, 2.1)],
-        'biomes': [('snow', [(62.1, 13.5), (100.9, 15.5), (97.0, 32.1), (77.6, 33.1), (63.7, 29.0)]), ('desert', (38.8, 54.9, 10.9, 6.2)), ('crater', (83.9, 45.5, 14.8, 7.8)), ('forest', (102.5, 45.5, 7.0, 4.1)), ('forest', (112.6, 73.5, 9.3, 4.1)), ('mountain', (124.2, 36.2, 8.5, 6.2)), ('swamp', (97.0, 87.5, 6.2, 2.6)), ('plain', (46.6, 80.2, 11.6, 4.7)), ('forest', (29.5, 67.3, 7.0, 3.6)), ('mountain', (23.3, 31.1, 4.7, 4.1)), ('forest', (116.5, 56.9, 4.7, 2.6)), ('plain', (85.4, 85.4, 9.3, 3.1)), ('mountain', (59.0, 36.2, 5.4, 2.6))],
-        'rivers': [[(16.3, 41.4), (43.5, 41.9), (54.3, 38.3), (69.9, 35.2), (73.0, 29.0), (77.6, 26.9)], [(101.7, 16.6), (91.6, 20.7), (89.3, 30.5)], [(93.2, 39.9), (108.7, 43.0), (121.1, 45.0), (140.5, 46.1)], [(90.8, 59.0), (100.9, 56.4), (119.6, 56.4), (125.0, 57.5)], [(100.9, 56.9), (107.1, 64.7), (116.5, 67.8), (128.9, 63.7)], [(17.1, 64.2), (31.1, 67.3), (54.3, 68.8), (63.7, 73.5), (66.8, 75.1)], [(29.5, 68.3), (34.9, 77.6), (46.6, 82.3), (60.6, 81.8)], [(83.1, 78.7), (96.3, 82.8), (108.7, 85.9)]],
-        'roads': [['Cabo Poco', 'Los Platos'], ['Los Platos', 'Mesagoza'], ['Mesagoza', 'Pokémon League'], ['Mesagoza', (54.3, 77.6), 'Cortondo'], ['Cortondo', (32.6, 83.9), 'Alfornada'], ['Cortondo', (41.9, 62.1), 'Cascarrafa'], ['Cascarrafa', 'Porto Marinada'], ['Cascarrafa', 'Medali'], ['Medali', (69.9, 36.2), 'Montenevera'], ['Montenevera', 'Glaseado'], ['Montenevera', (89.3, 41.4), 'Zapapico'], ['Zapapico', 'Levincia'], ['Levincia', (116.5, 67.3), 'Artazon'], ['Artazon', (93.2, 75.6), 'Mesagoza'], ['Pokémon League', 'Medali']],
+        'aspect': 0.95,
+        'cities': {'Porto Marinada': (11.6, 41.0), 'Cascarrafa': (42.8, 45.6), 'Medali': (57.7, 40.8), 'Montenevera': (77.2, 18.3), 'Zapapico': (96.2, 46.2), 'Levincia': (129.9, 50.0), 'Pokémon League': (55.6, 63.0), 'Mesagoza': (71.6, 69.9), 'Cortondo': (38.6, 72.4), 'Artazon': (116.3, 68.1), 'Alfornada': (19.6, 85.5), 'Los Platos': (70.8, 82.5), 'Cabo Poco': (71.4, 90.2), 'Glaseado': (84.8, 23.8)},
+        'land': [(8.8, 16.7), (26.4, 6.1), (44.8, 7.6), (52.8, 4.6), (76.8, 4.6), (93.6, 6.1), (106.3, 8.6), (111.9, 18.2), (130.3, 20.8), (137.5, 28.4), (146.3, 40.0), (140.7, 45.6), (139.1, 56.7), (143.1, 60.8), (142.3, 73.4), (119.9, 75.9), (111.9, 86.1), (95.9, 87.1), (80.0, 90.1), (76.8, 93.2), (65.6, 92.7), (65.6, 88.6), (33.6, 89.1), (24.0, 90.6), (8.0, 89.1), (7.2, 75.9), (13.6, 73.9), (4.0, 63.3), (2.4, 50.6), (7.2, 44.6), (6.4, 40.5), (8.0, 32.9), (10.4, 30.4)],
+        'islands': [(114.3, 14.2, 3.2, 1.3), (147.9, 55.7, 1.6, 0.8), (5.6, 31.4, 1.2, 0.6)],
+        'water': [[(12.8, 15.2), (35.2, 14.2), (44.8, 16.7), (51.2, 21.3), (56.0, 27.3), (44.8, 31.4), (33.6, 32.4), (20.0, 32.4), (12.8, 30.4)], (55.2, 61.3, 3.2, 2.0)],
+        'biomes': [('snow', [(44.8, 9.6), (78.4, 6.1), (99.9, 8.6), (105.5, 18.2), (98.3, 26.3), (84.8, 32.4), (70.4, 28.4), (65.6, 22.3), (56.0, 18.2)]), ('desert', [(8.0, 45.6), (26.4, 39.5), (41.6, 40.5), (44.8, 45.6), (36.0, 50.6), (16.0, 50.6)]), ('crater', (70.4, 52.7, 18.4, 11.1)), ('forest', (97.5, 37.5, 7.2, 4.1)), ('desert', [(95.9, 39.5), (119.9, 38.5), (143.9, 40.5), (139.9, 46.6), (119.9, 48.6), (99.9, 48.1)]), ('mountain', (21.6, 82.5, 13.6, 6.6)), ('mountain', (102.3, 72.4, 14.4, 4.6)), ('plain', (48.0, 70.9, 13.6, 5.1)), ('forest', (56.0, 82.0, 12.0, 3.5)), ('mountain', (110.3, 12.7, 7.2, 3.5)), ('forest', (121.5, 30.4, 8.0, 5.1)), ('forest', (20.8, 55.7, 9.6, 6.1)), ('swamp', (107.9, 79.0, 6.4, 2.5)), ('mountain', (12.0, 60.8, 4.8, 6.1))],
+        'rivers': [[(17.6, 62.8), (32.0, 65.8), (56.0, 67.3), (65.6, 71.9)], [(30.4, 66.8), (36.0, 75.9), (48.0, 80.5), (62.4, 80.0)], [(85.6, 77.0), (99.1, 81.0), (111.9, 84.1)], [(94.3, 53.7), (103.9, 52.7), (123.1, 53.7)], [(44.8, 32.4), (56.0, 35.4), (60.8, 39.5)]],
+        'roads': [['Cabo Poco', 'Los Platos'], ['Los Platos', 'Mesagoza'], ['Mesagoza', 'Pokémon League'], ['Mesagoza', (56.0, 73.4), 'Cortondo'], ['Cortondo', (32.0, 80.0), 'Alfornada'], ['Cortondo', (40.0, 58.2), 'Cascarrafa'], ['Cascarrafa', 'Porto Marinada'], ['Cascarrafa', 'Medali'], ['Medali', (68.0, 30.4), 'Montenevera'], ['Montenevera', 'Glaseado'], ['Montenevera', (92.0, 32.9), 'Zapapico'], ['Zapapico', 'Levincia'], ['Levincia', (123.9, 60.8), 'Artazon'], ['Artazon', (92.0, 68.4), 'Mesagoza'], ['Pokémon League', 'Medali']],
     },
-    # Galar: pelo mapa que você mandou (Postwick no sul, a Wild Area no meio, Wyndon no norte, as montanhas de neve).
     'galar': {
         'aspect': 0.707,
         'cities': {'Postwick': (73.4, 91.0), 'Wedgehurst': (73.4, 84.2), 'Motostoke': (66.6, 54.2), 'Turffield': (55.7, 45.8), 'Hulbury': (83.0, 45.8), 'Hammerlocke': (77.9, 36.9), 'Stow-on-Side': (50.9, 36.9), 'Ballonlea': (50.9, 32.2), 'Circhester': (103.3, 30.3), 'Spikemuth': (114.9, 36.9), 'Wyndon': (77.9, 17.1)},
         'land': [(19.3, 9.1), (48.3, 6.1), (83.7, 4.6), (122.3, 7.6), (138.4, 13.7), (141.6, 22.8), (135.2, 34.9), (141.6, 45.5), (128.8, 57.7), (122.3, 69.8), (106.2, 81.9), (96.6, 91.0), (83.7, 97.1), (57.9, 97.1), (38.6, 91.0), (25.8, 78.9), (19.3, 65.3), (22.5, 53.1), (19.3, 44.0), (16.1, 34.9), (19.3, 22.8)],
         'islands': [(130.4, 28.8, 3.9, 1.2), (12.9, 63.7, 4.5, 1.5)],
         'water': [(80.5, 60.7, 8.4, 2.7), (96.6, 68.3, 6.4, 2.1), (96.6, 85.0, 5.2, 1.5)],
-        'biomes': [('snow', [(29.0, 19.7), (64.4, 16.7), (122.3, 18.2), (128.8, 30.3), (96.6, 32.6), (64.4, 28.8), (38.6, 30.3)]), ('forest', (38.6, 32.6, 9.7, 3.9)), ('desert', (53.1, 40.2, 9.0, 2.7)), ('plain', (72.4, 66.8, 19.3, 9.1)), ('mountain', (106.2, 50.1, 12.9, 6.1)), ('forest', (35.4, 50.1, 9.7, 6.1)), ('mountain', (32.2, 68.3, 8.0, 4.6)), ('forest', (90.1, 91.0, 9.7, 3.8)), ('mountain', (112.7, 68.3, 9.7, 6.1)), ('plain', (64.4, 85.0, 9.7, 3.0))],
+        'biomes': [('snow', [(29.0, 19.0), (64.4, 15.9), (122.3, 17.5), (132.0, 30.3), (106.2, 35.7), (77.3, 32.6), (45.1, 33.4)]), ('forest', (38.6, 32.6, 9.7, 3.9)), ('hills', (48.3, 37.9, 12.9, 3.3)), ('mountain', (83.7, 32.6, 16.1, 2.7)), ('plain', (72.4, 66.8, 19.3, 9.1)), ('hills', (109.4, 63.7, 14.5, 13.7)), ('forest', (35.4, 50.1, 9.7, 6.1)), ('hills', (32.2, 69.8, 9.7, 6.1)), ('forest', (90.1, 91.0, 9.7, 3.8)), ('hills', (48.3, 78.9, 19.3, 4.6)), ('hills', (119.1, 81.9, 12.9, 6.1)), ('plain', (64.4, 87.3, 9.7, 3.0)), ('hills', (35.4, 45.5, 9.7, 4.6))],
         'rivers': [[(80.5, 45.5), (77.3, 53.1), (80.5, 60.7)], [(103.0, 37.9), (106.2, 45.5), (99.8, 54.6)]],
         'roads': [['Postwick', 'Wedgehurst'], ['Wedgehurst', (67.6, 75.9), (67.6, 63.7), 'Motostoke'], ['Wedgehurst', (93.3, 81.9), (93.3, 78.6)], ['Motostoke', (55.7, 52.4), 'Turffield'], ['Motostoke', (83.0, 52.4), 'Hulbury'], ['Motostoke', (77.9, 48.6), 'Hammerlocke'], ['Hammerlocke', 'Stow-on-Side'], ['Stow-on-Side', 'Ballonlea'], ['Hammerlocke', 'Wyndon'], ['Hammerlocke', 'Spikemuth'], ['Circhester', (103.3, 36.9)]],
     },
-    # Alola: pelo mapa que você mandou (Melemele, Akala, Ula'ula e Poni, e a Aether Paradise no meio do mar).
+    # Alola: pelo mapa que você mandou (as 4 ilhas e a Aether Paradise; o relevo pelo mapa ilustrado).
     'alola': {
         'aspect': 1.667,
         'cities': {'Iki Town': (49.3, 20.5), "Hau'oli City": (43.4, 28.5), 'Verdant Cavern': (55.7, 26.5), 'Paniola Town': (94.0, 29.3), 'Heahea City': (87.6, 36.3), 'Konikoni City': (84.4, 42.4), 'Brooklet Hill': (98.5, 19.9), 'Lush Jungle': (104.5, 15.5), 'Wela Volcano Park': (102.5, 32.1), 'Ruins of Life': (92.6, 46.5), 'Po Town': (117.9, 53.7), 'Malie City': (130.6, 63.1), 'Mount Lanakila': (123.4, 60.3), 'Hokulani Observatory': (138.4, 70.8), 'Tapu Village': (124.8, 81.2), 'Seafolk Village': (14.4, 54.3), 'Vast Poni Canyon': (23.9, 42.0), 'Aether Paradise': (59.5, 61.2)},
         'land': [],
         'islands': [[(34.8, 13.8), (39.8, 12.7), (44.8, 12.2), (50.8, 10.0), (55.7, 12.2), (59.7, 10.5), (62.2, 13.8), (60.7, 21.0), (63.2, 22.7), (64.7, 26.5), (69.7, 27.7), (71.2, 33.2), (69.7, 38.7), (63.7, 39.8), (55.7, 38.7), (52.8, 33.2), (48.8, 32.1), (47.8, 35.4), (44.8, 36.0), (44.8, 32.1), (41.8, 32.1), (38.3, 31.0), (37.8, 26.5), (36.8, 19.9)], [(91.1, 13.3), (95.6, 8.8), (103.5, 10.0), (107.0, 15.5), (110.5, 15.5), (111.5, 21.0), (107.5, 24.3), (108.5, 35.4), (111.0, 38.7), (107.5, 43.1), (102.5, 42.0), (99.5, 38.2), (100.5, 34.3), (93.6, 36.5), (89.6, 37.6), (86.6, 39.8), (85.6, 44.2), (88.6, 48.7), (95.6, 48.7), (96.1, 45.4), (92.6, 42.6), (87.6, 38.7), (86.6, 33.2), (89.6, 29.3), (88.6, 23.8), (90.6, 18.8)], [(114.5, 51.4), (117.5, 49.2), (120.4, 53.1), (129.4, 54.4), (130.4, 59.7), (134.4, 63.6), (138.9, 64.2), (142.3, 71.9), (142.3, 78.5), (135.4, 80.8), (128.4, 83.0), (127.4, 87.4), (121.4, 87.4), (115.5, 85.2), (113.5, 77.4), (114.5, 70.8), (115.5, 64.2), (117.0, 58.6)], [(12.9, 44.2), (17.9, 35.4), (20.9, 33.2), (25.9, 35.4), (31.9, 37.6), (32.8, 44.2), (30.9, 50.9), (26.9, 54.2), (19.9, 54.2), (14.9, 55.3), (11.9, 52.0), (12.4, 46.5)], (59.5, 60.8, 3.0, 2.4), (5.5, 52.0, 2.2, 1.7), (129.9, 14.2, 1.4, 1.3), (109.5, 19.4, 1.5, 2.2), (137.9, 63.9, 1.0, 0.9)],
         'water': [],
-        'biomes': [('volcano', (102.5, 31.0, 4.0, 3.9)), ('snow', (123.4, 59.7, 6.0, 4.4)), ('forest', (104.5, 15.5, 4.0, 3.9)), ('mountain', (23.9, 42.0, 6.0, 5.5)), ('desert', (117.5, 76.3, 3.0, 3.3)), ('forest', (52.8, 19.9, 4.0, 3.3)), ('plain', (93.6, 25.4, 4.0, 3.3)), ('mountain', (138.4, 71.9, 2.5, 2.8)), ('swamp', (129.4, 77.4, 3.0, 2.2)), ('forest', (21.9, 48.7, 4.0, 2.8)), ('mountain', (46.8, 16.6, 3.0, 2.2))],
+        'biomes': [('volcano', (99.5, 27.7, 7.0, 6.6)), ('mountain', (98.5, 21.0, 6.0, 5.5)), ('forest', (104.5, 15.5, 4.0, 3.9)), ('snow', (126.4, 70.8, 8.0, 7.7)), ('mountain', (127.4, 71.9, 11.9, 13.3)), ('mountain', (55.7, 25.4, 6.0, 5.5)), ('forest', (44.8, 19.9, 6.0, 4.4)), ('mountain', (23.9, 42.0, 7.0, 6.6)), ('desert', (117.5, 77.4, 3.0, 3.3)), ('forest', (16.9, 49.8, 5.0, 3.3)), ('forest', (89.6, 42.0, 5.0, 4.4)), ('forest', (137.4, 77.4, 4.0, 5.5)), ('plain', (93.6, 31.0, 4.0, 3.3)), ('forest', (63.7, 35.4, 4.0, 3.3))],
         'rivers': [],
         'roads': [['Iki Town', "Hau'oli City"], ['Iki Town', (55.7, 22.1), 'Verdant Cavern'], ['Verdant Cavern', (63.7, 33.2)], ['Heahea City', 'Paniola Town'], ['Paniola Town', 'Brooklet Hill'], ['Brooklet Hill', 'Lush Jungle'], ['Paniola Town', 'Wela Volcano Park'], ['Wela Volcano Park', (103.5, 38.7), 'Konikoni City'], ['Konikoni City', 'Ruins of Life'], ['Malie City', 'Mount Lanakila'], ['Malie City', 'Hokulani Observatory'], ['Malie City', (121.4, 57.5), 'Po Town'], ['Malie City', (128.4, 71.9), 'Tapu Village'], ['Seafolk Village', 'Vast Poni Canyon'], ['sea', "Hau'oli City", (64.7, 35.4), (83.6, 36.5), 'Heahea City'], ['sea', 'Konikoni City', (99.5, 53.1), (119.4, 64.2), 'Malie City'], ['sea', 'Tapu Village', (79.6, 77.4), (29.9, 57.5), 'Seafolk Village'], ['sea', "Hau'oli City", (55.7, 47.6), 'Aether Paradise']],
     },
-    # Kalos: pelo mapa que você mandou (Lumiose no centro, a costa a oeste com Shalour, Cyllage e Ambrette).
     'kalos': {
-        'aspect': 1.525,
-        'cities': {'Laverre City': (77.4, 11.9), 'Coumarine City': (51.6, 29.6), 'Shalour City': (22.3, 35.4), 'Geosenge Town': (14.1, 47.0), 'Cyllage City': (25.8, 57.2), 'Ambrette Town': (33.4, 75.1), 'Camphrier Town': (61.7, 57.5), 'Lumiose City': (76.9, 36.7), 'Dendemille Town': (102.4, 29.8), 'Anistar City': (131.2, 38.1), 'Couriway Town': (139.4, 45.6), 'Snowbelle City': (126.9, 55.2), 'Pokémon League': (109.8, 43.4), 'Santalune City': (92.4, 56.6), 'Aquacorde Town': (99.2, 74.0), 'Vaniville Town': (99.2, 85.1), 'Kiloude City': (111.4, 92.0)},
+        'aspect': 1.524,
+        'cities': {'Laverre City': (77.3, 11.6), 'Coumarine City': (51.3, 30.0), 'Shalour City': (22.3, 35.9), 'Geosenge Town': (13.6, 47.7), 'Cyllage City': (26.0, 57.2), 'Ambrette Town': (33.6, 75.6), 'Camphrier Town': (61.9, 57.2), 'Lumiose City': (77.3, 37.0), 'Dendemille Town': (102.5, 30.0), 'Anistar City': (131.6, 38.0), 'Couriway Town': (139.5, 45.6), 'Snowbelle City': (127.0, 55.6), 'Pokémon League': (110.0, 43.5), 'Santalune City': (92.3, 56.9), 'Aquacorde Town': (99.3, 74.3), 'Vaniville Town': (99.3, 86.1), 'Kiloude City': (112.1, 92.0)},
         'land': [(0.0, 0.0), (150.0, 0.0), (150.0, 100.0), (0.0, 100.0)],
-        'islands': [(46.2, 11.0, 2.2, 1.7), (27.2, 16.6, 1.9, 1.4)],
-        'water': [[(0.0, 0.0), (40.8, 0.0), (38.0, 11.0), (32.6, 19.3), (40.8, 22.1), (43.5, 27.6), (35.3, 30.9), (27.2, 29.8), (19.0, 32.6), (10.9, 38.7), (8.2, 44.2), (9.8, 55.2), (19.0, 61.9), (27.2, 68.0), (28.3, 82.9), (21.7, 100.0), (0.0, 100.0)], [(40.8, 0.0), (67.9, 0.0), (62.5, 8.3), (54.3, 16.6), (48.9, 16.6), (43.5, 11.0)], [(141.3, 80.1), (150.0, 74.6), (150.0, 100.0), (135.9, 100.0)]],
-        'biomes': [('snow', (126.9, 58.0, 10.9, 8.3)), ('snow', (102.4, 26.2, 8.2, 5.5)), ('mountain', (109.8, 48.3, 6.0, 4.4)), ('forest', (89.7, 66.3, 6.5, 5.0)), ('forest', (119.6, 69.1, 8.2, 6.1)), ('mountain', (14.1, 52.5, 4.3, 3.9)), ('mountain', (40.8, 69.1, 4.9, 3.9)), ('desert', (62.5, 38.7, 6.0, 4.4)), ('mountain', (135.9, 30.4, 4.3, 3.9)), ('forest', (81.5, 22.1, 5.4, 4.4))],
-        'rivers': [[(65.2, 27.6), (71.2, 47.0), (68.5, 69.1), (63.0, 93.9)], [(127.7, 66.3), (135.9, 77.3), (144.0, 82.9)]],
-        'roads': [['Shalour City', (38.0, 30.4), 'Coumarine City'], ['Coumarine City', 'Lumiose City'], ['Lumiose City', 'Laverre City'], ['Laverre City', 'Dendemille Town'], ['Lumiose City', 'Dendemille Town'], ['Dendemille Town', 'Anistar City'], ['Anistar City', 'Couriway Town'], ['Couriway Town', 'Snowbelle City'], ['Santalune City', (109.8, 55.2), 'Snowbelle City'], ['Pokémon League', (109.8, 55.2)], ['Lumiose City', 'Santalune City'], ['Santalune City', (99.2, 64.1), 'Aquacorde Town'], ['Aquacorde Town', 'Vaniville Town'], ['Lumiose City', 'Camphrier Town'], ['Camphrier Town', 'Cyllage City'], [(43.5, 44.2), 'Camphrier Town'], ['Shalour City', (19.0, 40.1), 'Geosenge Town'], ['Geosenge Town', 'Cyllage City'], ['Cyllage City', (27.2, 66.3), 'Ambrette Town'], ['Ambrette Town', (54.3, 75.1)]],
+        'islands': [(37.5, 18.5, 2.0, 1.8), (38.8, 27.1, 1.0, 0.8), (42.8, 27.5, 0.8, 0.6), (20.4, 59.7, 1.0, 0.8)],
+        'water': [[(0.0, 0.0), (71.7, 0.0), (69.7, 6.1), (65.7, 10.1), (59.7, 16.2), (55.7, 23.3), (46.8, 29.3), (39.8, 30.3), (31.9, 27.3), (23.9, 24.3), (17.9, 30.3), (13.9, 33.4), (10.0, 40.4), (6.0, 44.5), (8.0, 52.6), (12.9, 56.6), (17.9, 60.7), (24.9, 64.7), (28.9, 70.8), (29.9, 80.9), (32.8, 91.0), (37.8, 100.0), (0.0, 100.0)]],
+        'biomes': [('mountain', (39.8, 43.5, 13.9, 7.1)), ('mountain', (46.8, 68.8, 13.9, 10.1)), ('mountain', (58.7, 49.5, 5.0, 4.0)), ('mountain', (79.6, 62.7, 6.0, 5.1)), ('mountain', (110.5, 47.5, 5.5, 8.1)), ('mountain', (139.3, 70.8, 10.9, 18.2)), ('snow', [(105.0, 0.0), (150.0, 0.0), (150.0, 30.3), (139.3, 33.4), (122.4, 25.3), (109.5, 20.2)]), ('desert', (63.7, 23.3, 8.0, 6.1)), ('forest', (89.6, 52.6, 5.0, 4.0)), ('forest', (99.5, 45.5, 5.0, 4.0)), ('forest', (122.4, 63.7, 6.0, 6.1)), ('forest', (92.6, 66.7, 6.0, 5.1)), ('forest', (69.7, 74.8, 7.0, 5.1)), ('plain', (82.6, 25.3, 6.0, 5.1)), ('forest', (19.9, 45.5, 4.0, 4.0))],
+        'rivers': [[(41.8, 56.6), (46.8, 64.7), (55.7, 69.8), (61.7, 80.9), (69.7, 91.0)], [(86.6, 58.6), (95.6, 70.8), (109.5, 76.8), (117.5, 83.9), (129.4, 84.9)], [(117.5, 52.6), (114.5, 65.7), (113.5, 80.9)], [(123.4, 28.3), (130.4, 26.3), (137.4, 20.2), (150.0, 16.2)], [(61.7, 60.7), (69.7, 70.8), (85.6, 77.9)]],
+        'roads': [['Shalour City', 'Coumarine City'], ['Coumarine City', 'Lumiose City'], ['Lumiose City', 'Laverre City'], ['Laverre City', 'Dendemille Town'], ['Lumiose City', 'Dendemille Town'], ['Dendemille Town', 'Anistar City'], ['Anistar City', 'Couriway Town'], ['Couriway Town', 'Snowbelle City'], ['Snowbelle City', (120.9, 75.3)], ['Santalune City', (110.0, 55.1), 'Snowbelle City'], ['Pokémon League', (110.0, 55.1)], ['Lumiose City', 'Santalune City'], ['Santalune City', (99.3, 64.2), 'Aquacorde Town'], ['Aquacorde Town', 'Vaniville Town'], ['Lumiose City', 'Camphrier Town'], ['Camphrier Town', 'Cyllage City'], ['Camphrier Town', (44.1, 44.5)], ['Shalour City', (18.4, 39.9), 'Geosenge Town'], ['Geosenge Town', 'Cyllage City'], ['sea', 'Cyllage City', 'Ambrette Town'], ['Ambrette Town', (54.2, 75.6)]],
     },
-    # Unova: pelo mapa do Black 2/White 2 que você mandou (Castelia na baía do sul, o rio que desce do norte, Nuvema no sudeste).
     'unova': {
         'aspect': 1.524,
         'cities': {'Icirrus City': (43.4, 25.6), 'Opelucid City': (77.3, 25.6), 'Lacunosa Town': (110.7, 25.6), 'Humilau City': (137.7, 21.4), 'Undella Town': (131.2, 39.9), 'Lentimas Town': (109.0, 39.9), 'Black City': (110.7, 53.9), 'Mistralton City': (23.1, 39.9), 'Driftveil City': (43.4, 53.9), 'Nimbasa City': (77.3, 53.9), 'Castelia City': (77.3, 77.1), 'Nacrene City': (118.9, 69.9), 'Striaton City': (133.6, 69.9), 'Accumula Town': (135.9, 81.8), 'Nuvema Town': (135.9, 93.8), 'Aspertia City': (8.2, 91.1), 'Floccesy Town': (19.0, 75.6), 'Virbank City': (40.4, 75.6), 'Pokémon League': (99.6, 8.6), 'Pokéstar Studios': (37.5, 68.2)},
@@ -92,22 +89,22 @@ HAND = {
         'land': [(0.0, 0.0), (150.0, 0.0), (150.0, 100.0), (0.0, 100.0)],
         'islands': [[(95.0, 0.9), (117.1, 0.0), (122.6, 11.4), (127.0, 28.4), (130.3, 37.9), (127.0, 43.6), (121.5, 42.6), (117.1, 36.0), (110.5, 39.8), (99.4, 37.9), (92.8, 31.2), (93.9, 18.9)], [(135.9, 0.0), (144.7, 0.0), (143.6, 11.4), (139.2, 18.9), (137.0, 11.4)], (13.8, 12.1, 4.4, 4.3), (23.2, 12.1, 4.4, 4.3), (18.2, 41.7, 2.8, 2.1), (23.7, 27.9, 1.7, 0.9)],
         'water': [[(0.0, 0.0), (33.1, 0.0), (32.0, 5.7), (35.3, 12.3), (33.1, 23.7), (32.0, 33.1), (27.6, 39.8), (22.1, 44.5), (17.7, 53.0), (8.8, 60.6), (0.0, 62.5)], [(66.3, 0.0), (95.0, 0.0), (92.8, 5.7), (95.0, 14.2), (91.7, 23.7), (91.7, 37.9), (95.0, 43.6), (102.7, 49.2), (119.3, 56.8), (123.7, 61.6), (127.0, 72.0), (131.4, 68.2), (132.5, 49.2), (139.2, 43.6), (150.0, 35.0), (150.0, 0.0), (135.9, 0.0), (133.7, 8.5), (131.4, 18.9)], [(61.9, 100.0), (99.4, 90.9), (112.7, 88.5), (127.0, 83.8), (138.1, 81.6), (150.0, 75.8), (150.0, 100.0)], (48.6, 6.6, 3.8, 3.4), (11.6, 86.6, 3.8, 2.8), (107.7, 75.8, 4.0, 3.2), (114.9, 67.2, 1.8, 2.1)],
-        'biomes': [('snow', [(33.1, 0.0), (66.3, 0.0), (68.5, 26.5), (46.4, 28.4), (33.1, 24.6)]), ('mountain', [(55.2, 16.1), (63.0, 19.9), (69.6, 39.8), (67.4, 60.6), (63.0, 66.3), (58.5, 56.8), (57.4, 30.3)]), ('forest', (36.5, 54.9, 5.5, 4.7)), ('swamp', (97.2, 81.4, 5.5, 3.8)), ('mountain', (139.7, 53.0, 3.3, 4.7)), ('forest', (83.9, 53.0, 4.4, 2.8)), ('snow', [(95.0, 0.9), (117.1, 0.0), (119.3, 11.4), (99.4, 11.4)])],
+        'biomes': [('snow', [(33.1, 0.0), (71.8, 0.0), (77.3, 18.9), (70.7, 31.2), (47.5, 31.2), (36.5, 26.5), (32.0, 11.4)]), ('mountain', [(59.6, 30.3), (67.4, 28.4), (70.7, 49.2), (72.9, 66.3), (70.7, 85.2), (66.3, 99.4), (59.6, 99.4), (61.9, 80.5), (59.6, 56.8), (57.4, 39.8)]), ('mountain', [(95.0, 0.9), (117.1, 0.0), (122.6, 11.4), (127.0, 28.4), (130.3, 37.9), (121.5, 42.6), (110.5, 39.8), (99.4, 37.9), (92.8, 31.2), (93.9, 18.9)]), ('mountain', (104.9, 53.0, 6.6, 6.6)), ('mountain', (122.6, 56.8, 4.4, 5.7)), ('forest', (36.5, 53.0, 6.6, 5.7)), ('forest', (22.1, 68.2, 7.7, 5.7)), ('forest', (83.9, 81.4, 8.8, 5.7)), ('forest', (116.0, 83.3, 7.7, 4.7)), ('forest', (86.2, 53.0, 4.4, 3.8)), ('swamp', (97.2, 81.4, 5.5, 3.8)), ('forest', (13.3, 92.8, 6.6, 3.8)), ('mountain', (139.7, 56.8, 3.3, 5.7)), ('forest', (49.7, 56.8, 4.4, 5.7))],
         'rivers': [],
         'roads': [['Snowpoint City', (47.2, 4.3), (47.2, 29.4), (61.9, 29.4), (61.9, 45.8)], ['Eterna City', 'Celestic Town'], ['Celestic Town', (86.2, 45.8), (86.2, 54.5), 'Veilstone City'], [(86.2, 54.5), 'Solaceon Town'], ['Solaceon Town', (86.2, 70.1), 'Hearthome City'], ['Eterna City', (47.2, 71.0), 'Hearthome City'], [(47.2, 71.0), 'Oreburgh City'], ['Eterna City', (32.0, 45.8), (27.6, 53.0), 'Floaroma Town'], ['Floaroma Town', 'Jubilife City'], ['Jubilife City', 'Canalave City'], ['Jubilife City', 'Oreburgh City'], ['Jubilife City', 'Sandgem Town'], ['Sandgem Town', (11.0, 87.6), (11.0, 83.3)], ['Twinleaf Town', (18.0, 87.6)], ['sea', 'Sandgem Town', (27.6, 96.1), (46.4, 96.1)], ['Hearthome City', (71.8, 87.6), 'Pastoria City'], ['Veilstone City', (109.9, 73.9), (106.0, 83.3), 'Pastoria City'], [(109.9, 78.6), 'Sunyshore City'], ['sea', 'Sunyshore City', (129.8, 66.3), 'Pokémon League'], ['Pokémon League', (139.7, 49.2), (139.7, 2.8)], ['Fight Area', (95.5, 33.3), (95.5, 20.8), 'Survival Area'], ['Survival Area', (115.4, 20.8), (115.4, 7.6)], ['Survival Area', (117.1, 20.8), (120.4, 30.3), 'Resort Area'], ['sea', 'Fight Area', (122.6, 33.3), 'Resort Area']],
     },
     # Hoenn: pelo mapa que você mandou (o continente a oeste, as ilhas de Mossdeep, Sootopolis, Ever Grande e Pacifidlog a leste).
+    # Hoenn: pelo mapa que você mandou (o esquema com as cidades e o mapa ilustrado com o relevo).
     'hoenn': {
-        'aspect': 1.524,
-        'cities': {'Fallarbor Town': (28.1, 14.3), 'Lavaridge Town': (36.9, 31.0), 'Rustboro City': (12.9, 47.6), 'Verdanturf Town': (28.1, 47.6), 'Mauville City': (51.6, 47.6), 'Petalburg City': (23.4, 63.1), 'Oldale Town': (35.2, 63.1), 'Littleroot Town': (35.2, 75.0), 'Slateport City': (51.6, 75.0), 'Dewford Town': (23.4, 90.5), 'Fortree City': (76.2, 14.3), 'Lilycove City': (87.9, 25.0), 'Mossdeep City': (123.0, 37.5), 'Sootopolis City': (108.4, 53.6), 'Ever Grande City': (135.9, 57.1), 'Pacifidlog Town': (90.8, 73.8)},
-        'land': [(4.7, 8.3), (41.0, 3.6), (82.0, 3.6), (96.7, 14.3), (97.3, 31.0), (82.0, 39.3), (70.3, 54.8), (60.9, 66.7), (60.9, 82.1), (49.2, 88.1), (30.5, 82.1), (14.1, 78.6), (4.7, 59.5), (2.3, 29.8)],
-        'islands': [(123.0, 37.5, 11.7, 7.7), (108.4, 53.6, 8.2, 7.1), (135.9, 57.1, 5.9, 10.7), (90.8, 73.8, 4.7, 3.6), (23.4, 90.5, 7.0, 4.8), (104.3, 83.3, 4.1, 2.4), (72.7, 82.1, 2.9, 1.8), (117.2, 17.9, 4.7, 3.0)],
-        'water': [(108.4, 53.6, 3.5, 3.0)],
-        'biomes': [('volcano', (35.2, 23.8, 7.0, 6.0)), ('mountain', (23.4, 17.9, 8.2, 6.0)), ('desert', (51.6, 23.8, 5.3, 5.4)), ('forest', (17.6, 56.5, 4.7, 4.8)), ('forest', (67.4, 23.8, 5.9, 10.7)), ('forest', (82.0, 17.9, 4.7, 3.6)), ('mountain', (108.4, 53.6, 8.2, 7.1)), ('mountain', (135.9, 52.4, 3.5, 4.8)), ('mountain', (8.2, 35.7, 4.7, 6.0)), ('forest', (41.0, 54.8, 5.9, 3.6))],
-        'rivers': [[(67.4, 17.9), (69.1, 35.7), (65.6, 47.6)]],
-        'roads': [['Rustboro City', (12.9, 14.3), 'Fallarbor Town'], ['Fallarbor Town', (51.6, 14.3), (51.6, 31.0)], ['Lavaridge Town', (51.6, 31.0)], [(51.6, 31.0), 'Mauville City'], ['Rustboro City', 'Verdanturf Town'], ['Verdanturf Town', 'Mauville City'], ['Rustboro City', (12.9, 63.1), 'Petalburg City'], ['Petalburg City', 'Oldale Town'], ['Oldale Town', 'Littleroot Town'], ['Mauville City', (51.6, 63.1), 'Slateport City'], ['Oldale Town', (51.6, 63.1)], ['Mauville City', (64.5, 47.6), (76.2, 47.6), 'Fortree City'], ['Fortree City', (87.9, 14.3), 'Lilycove City'], ['sea', 'Lilycove City', (111.3, 28.6), 'Mossdeep City'], ['sea', 'Mossdeep City', (117.2, 47.6), 'Sootopolis City'], ['sea', 'Sootopolis City', (126.0, 59.5), 'Ever Grande City'], ['sea', 'Slateport City', (70.3, 81.0), 'Pacifidlog Town'], ['sea', 'Pacifidlog Town', (99.6, 65.5), 'Sootopolis City'], ['sea', 'Petalburg City', (10.5, 71.4), (10.5, 89.3), 'Dewford Town'], ['sea', 'Dewford Town', (41.0, 90.5), 'Slateport City']],
+        'aspect': 1.522,
+        'cities': {'Fallarbor Town': (22.5, 14.9), 'Fortree City': (67.5, 14.9), 'Lavaridge Town': (32.5, 30.1), 'Lilycove City': (99.8, 30.1), 'Rustboro City': (7.5, 42.6), 'Verdanturf Town': (27.6, 45.3), 'Mauville City': (50.0, 45.3), 'Mossdeep City': (129.9, 40.1), 'Sootopolis City': (112.5, 50.3), 'Petalburg City': (12.5, 60.6), 'Oldale Town': (27.6, 60.6), 'Littleroot Town': (27.6, 70.7), 'Slateport City': (47.5, 68.2), 'Pacifidlog Town': (92.4, 65.5), 'Ever Grande City': (142.5, 58.1), 'Dewford Town': (17.5, 85.9), 'Battle Frontier': (117.5, 75.8)},
+        'land': [(6.0, 20.2), (10.0, 15.2), (21.9, 9.1), (27.9, 5.1), (32.8, 6.1), (37.8, 9.1), (41.8, 10.1), (51.8, 11.1), (59.7, 10.1), (69.7, 9.1), (79.6, 11.1), (89.6, 15.2), (97.5, 20.2), (103.5, 26.3), (104.5, 33.3), (98.5, 38.4), (94.6, 42.4), (89.6, 47.5), (84.6, 52.5), (75.6, 56.6), (64.7, 60.6), (59.7, 64.6), (55.7, 70.7), (51.8, 74.7), (46.8, 76.8), (43.8, 74.7), (41.8, 72.7), (37.8, 78.8), (32.8, 78.8), (24.9, 77.8), (21.9, 70.7), (14.9, 68.7), (10.9, 64.6), (8.0, 60.6), (6.0, 56.6), (5.5, 50.5), (3.0, 46.5), (2.0, 42.4), (4.0, 38.4), (6.0, 30.3)],
+        'islands': [(129.4, 40.4, 6.2, 3.2), (112.5, 50.0, 5.8, 5.3), (144.3, 62.6, 5.0, 10.1), (16.9, 87.9, 9.5, 4.2), (95.6, 75.8, 8.5, 5.1), (129.4, 77.8, 6.0, 5.1), (107.5, 60.6, 2.5, 2.0), (92.6, 60.6, 2.0, 1.5), (49.8, 92.9, 4.5, 3.2), (67.7, 86.1, 1.6, 1.0), (142.3, 85.9, 2.0, 2.0), (60.7, 56.6, 9.5, 6.6), (107.5, 78.8, 2.2, 1.4)],
+        'water': [(87.6, 38.4, 3.2, 2.6), (112.5, 50.0, 2.6, 2.2)],
+        'biomes': [('volcano', (32.8, 23.2, 6.2, 5.3)), ('mountain', (20.9, 27.3, 7.0, 6.1)), ('desert', (41.8, 21.7, 4.0, 6.1)), ('forest', (10.0, 52.5, 4.2, 5.3)), ('forest', (64.7, 30.3, 8.0, 12.1)), ('forest', (79.6, 24.2, 8.0, 5.6)), ('mountain', (112.5, 50.0, 5.8, 5.3)), ('mountain', (144.3, 56.6, 3.2, 5.6)), ('forest', (32.8, 70.7, 5.5, 4.5)), ('forest', (13.9, 30.3, 5.0, 8.1)), ('forest', (61.7, 56.6, 7.0, 4.5)), ('mountain', (55.7, 26.3, 4.0, 6.1)), ('swamp', (53.7, 19.2, 3.0, 2.0))],
+        'rivers': [[(46.8, 46.5), (47.8, 54.5), (46.8, 62.6)], [(59.7, 16.2), (61.7, 30.3), (59.7, 42.4)]],
+        'roads': [['Rustboro City', (7.5, 25.3), (11.9, 25.3), (11.9, 14.9), 'Fallarbor Town'], ['Fallarbor Town', (47.6, 14.9), (47.6, 45.3)], [(47.6, 30.1), 'Lavaridge Town'], ['Rustboro City', (27.6, 40.2), 'Verdanturf Town'], ['Verdanturf Town', 'Mauville City'], ['Mauville City', (88.6, 45.3), (88.6, 30.1), 'Lilycove City'], ['Fortree City', (62.5, 14.9), (62.5, 45.3)], ['Fortree City', (72.5, 14.9), (72.5, 30.1), (88.6, 30.1)], ['Rustboro City', (7.5, 60.6), 'Petalburg City'], ['Petalburg City', 'Oldale Town'], ['Oldale Town', 'Littleroot Town'], ['Oldale Town', (27.6, 55.4), (47.6, 55.4), 'Slateport City'], ['Mauville City', (47.6, 55.4)], ['sea', (7.5, 60.6), (7.5, 80.8), (17.5, 80.8), 'Dewford Town'], ['sea', 'Dewford Town', (47.6, 84.8), 'Slateport City'], ['sea', 'Slateport City', 'Pacifidlog Town'], ['sea', 'Pacifidlog Town', (134.4, 65.5), (134.4, 58.1), 'Ever Grande City'], ['sea', 'Lilycove City', (129.9, 28.8), 'Mossdeep City'], ['sea', 'Mossdeep City', (120.9, 50.5), 'Sootopolis City'], ['sea', 'Sootopolis City', (120.9, 60.6), (134.4, 60.6)], ['sea', 'Pacifidlog Town', (109.5, 70.7), 'Battle Frontier']],
     },
-    # Johto: pelo mapa que você mandou (Cianwood na ilha a oeste, o Lake of Rage ao norte de Mahogany, a Liga a leste).
     'johto': {
         'aspect': 1.428,
         'cities': {'Cianwood City': (16.9, 64.7), 'Olivine City': (34.3, 48.1), 'Ecruteak City': (58.7, 28.6), 'Mahogany Town': (79.2, 28.6), 'Blackthorn City': (102.0, 28.6), 'Violet City': (71.9, 46.0), 'Goldenrod City': (49.2, 65.0), 'Azalea Town': (57.6, 83.7), 'Cherrygrove City': (85.7, 68.2), 'New Bark Town': (106.5, 68.4), 'Indigo Plateau': (135.7, 15.8)},
@@ -116,16 +113,12 @@ HAND = {
         'water': [[(0.0, 45.5), (26.7, 45.5), (29.5, 50.3), (36.0, 50.8), (39.3, 61.5), (39.3, 74.9), (42.1, 88.2), (56.2, 91.4), (68.8, 88.8), (74.7, 80.2), (74.7, 63.6), (82.0, 64.7), (92.7, 67.4), (112.4, 65.8), (123.6, 65.8), (134.8, 58.3), (150.0, 53.5), (150.0, 100.0), (0.0, 100.0)], (79.5, 8.0, 6.2, 3.7)],
         'biomes': [('mountain', (68.8, 22.7, 6.2, 3.7)), ('snow', (103.9, 20.1, 5.6, 3.7)), ('mountain', [(120.8, 5.3), (150.0, 0.0), (150.0, 45.5), (123.6, 42.8)]), ('forest', (44.9, 78.9, 5.1, 5.9)), ('forest', (61.8, 37.4, 4.5, 3.2)), ('mountain', (92.7, 50.8, 4.5, 3.7)), ('mountain', (66.0, 80.2, 3.9, 3.2)), ('forest', (19.7, 32.1, 8.4, 5.3)), ('forest', (92.7, 16.0, 5.1, 3.2))],
         'rivers': [],
-        'roads': [['Cianwood City', (3.7, 69.5), (3.7, 55.3)], ['sea', 'Cianwood City', (30.3, 64.7), (30.3, 50.8), 'Olivine City'], ['Olivine City', (34.3, 28.6), 'Ecruteak City'], ['Ecruteak City', 'Mahogany Town'], ['Mahogany Town', 'Blackthorn City'], ['Mahogany Town', (79.2, 10.7)], ['Ecruteak City', (58.7, 46.0), 'Violet City'], ['Goldenrod City', (49.2, 46.0), (58.7, 46.0)], ['Violet City', (85.7, 46.0), 'Cherrygrove City'], ['Goldenrod City', (49.2, 83.7), 'Azalea Town'], ['Azalea Town', (71.9, 83.7), 'Violet City'], ['Cherrygrove City', 'New Bark Town'], ['New Bark Town', (118.5, 68.4), (118.5, 49.5), (150.0, 49.5)], ['Indigo Plateau', (134.8, 68.4)], ['Blackthorn City', (102.0, 56.1), (95.5, 56.1), (95.5, 68.2)]],
+        'roads': [[(3.7, 55.3), (3.7, 69.0), (16.9, 69.0), 'Cianwood City'], ['sea', 'Cianwood City', (30.3, 64.7), (30.3, 50.8), 'Olivine City'], ['Olivine City', (34.3, 28.6), 'Ecruteak City'], ['Ecruteak City', 'Mahogany Town'], ['Mahogany Town', 'Blackthorn City'], ['Mahogany Town', (79.2, 10.7)], ['Ecruteak City', (58.7, 46.0), 'Violet City'], ['Goldenrod City', (49.2, 46.0), (58.7, 46.0)], ['Violet City', (85.7, 46.0), 'Cherrygrove City'], ['Goldenrod City', (49.2, 83.7), 'Azalea Town'], ['Azalea Town', (71.9, 83.7), 'Violet City'], ['Cherrygrove City', 'New Bark Town'], ['New Bark Town', (118.5, 68.4), (118.5, 49.5), (150.0, 49.5)], ['Indigo Plateau', (134.8, 68.4)], ['Blackthorn City', (102.0, 56.1), (95.5, 56.1), (95.5, 68.2)]],
     },
     # Kanto: pelo mapa do HeartGold/SoulSilver que você mandou (Mt. Silver e as montanhas no noroeste, a enseada a oeste de Fuchsia).
     'kanto': {
         'aspect': 1.524,
-        'cities': {
-            'Pewter City': (61, 28.6), 'Viridian City': (61, 53.6), 'Pallet Town': (61, 69.6), 'Cinnabar Island': (61, 94), 'Indigo Plateau': (38.7, 45.8),
-            'Celadon City': (95.5, 42.9), 'Saffron City': (116.6, 42.9), 'Cerulean City': (116.6, 28.6), 'Lavender Town': (137, 42.9),
-            'Vermilion City': (116.6, 54.8), 'Fuchsia City': (93.8, 83.3), 'Seafoam Islands': (76, 93),
-        },
+        'cities': {'Pewter City': (62.7, 28.6), 'Viridian City': (60.9, 53.6), 'Pallet Town': (60.9, 68.5), 'Cinnabar Island': (60.9, 92.9), 'Seafoam Islands': (76.2, 92.9), 'Indigo Plateau': (38.7, 45.8), 'Celadon City': (95.5, 42.9), 'Saffron City': (116.0, 42.9), 'Cerulean City': (116.0, 28.0), 'Lavender Town': (137.1, 42.9), 'Vermilion City': (116.0, 55.4), 'Fuchsia City': (95.5, 83.3)},
         'land': [(0, 0), (150, 0), (150, 100), (0, 100)],
         'islands': [(61, 94, 5, 4), (76, 93, 4, 3)],
         'water': [[(0, 90), (150, 88), (150, 100), (0, 100)],
@@ -134,13 +127,7 @@ HAND = {
         'biomes': [('mountain', [(0, 0), (58, 0), (60, 18), (50, 34), (30, 38), (12, 56), (0, 58)]), ('mountain', (88, 16, 9, 6)), ('mountain', (137, 30, 4, 5)),
                    ('forest', (61, 40, 4, 5)), ('forest', (95, 72, 6, 4)), ('forest', (128, 70, 6, 5)), ('mountain', (38, 52, 4, 3)), ('forest', (104, 58, 4, 3))],
         'rivers': [[(120, 26), (130, 20), (140, 18)]],
-        'roads': [
-            ['Pewter City', 'Cerulean City'], ['Cerulean City', (137, 28.6), 'Lavender Town'], ['Cerulean City', (116.6, 12), (140, 12)],
-            ['Pewter City', 'Viridian City'], ['Viridian City', 'Pallet Town'], ['sea', 'Pallet Town', 'Cinnabar Island'],
-            ['sea', 'Cinnabar Island', 'Seafoam Islands', (93.8, 94), 'Fuchsia City'], ['Viridian City', (38.7, 53.6), 'Indigo Plateau'], [(38.7, 53.6), (20, 57), (0, 60)],
-            ['Celadon City', 'Saffron City'], ['Saffron City', 'Lavender Town'], ['Cerulean City', 'Saffron City'], ['Saffron City', 'Vermilion City'],
-            ['Vermilion City', (137, 54.8)], ['Lavender Town', (140, 71), (120, 76), (104, 83.3), 'Fuchsia City'], ['Celadon City', (85, 42.9), (85, 83.3), 'Fuchsia City'],
-        ],
+        'roads': [['Viridian City', (23.4, 53.0)], ['Indigo Plateau', (38.7, 53.0)], [(38.7, 53.0), (36.3, 71.4), (0.0, 71.4)], ['Viridian City', 'Pewter City'], ['Viridian City', 'Pallet Town'], ['sea', 'Pallet Town', 'Cinnabar Island'], ['sea', 'Cinnabar Island', 'Seafoam Islands', (95.5, 93.5), 'Fuchsia City'], ['Pewter City', (62.7, 28.0), 'Cerulean City'], ['Cerulean City', (137.1, 28.0), 'Lavender Town'], ['Lavender Town', (137.1, 70.2), (121.9, 70.2), (121.9, 82.1), 'Fuchsia City'], ['Fuchsia City', (82.0, 82.1), (82.0, 54.8), 'Celadon City'], ['Celadon City', 'Saffron City'], ['Saffron City', 'Lavender Town'], ['Cerulean City', 'Saffron City'], ['Saffron City', 'Vermilion City'], ['Vermilion City', (137.1, 55.4)], ['Cerulean City', (116.0, 8.9), (137.7, 8.9)]],
     },
 }
 
@@ -345,30 +332,59 @@ def paint(cv, land, rivers, biomes, roads_land, roads_bridge, roads_sea, seed=1)
     inland = blur(land, 40)
     height = n1 * 0.9 + n2 * 0.45 + n3 * 0.15 + inland * 0.8
     layers = []
+    # As bordas dos biomas: deformadas pelo ruído (contorno irregular, como num mapa desenhado, e não elipses).
+    wx, wy = cv.noise(5, seed + 50, 3), cv.noise(5, seed + 51, 3)
+    yy0, xx0 = np.mgrid[0:cv.h, 0:cv.w].astype(float)
+    amp = cv.w * 0.32
+    wcoords = [yy0 + (wy - 0.5) * amp, xx0 + (wx - 0.5) * amp]
+    # Cristas das serras (ruído "ridged"): o relevo das montanhas tem espinhaço e vales, não é um morro liso.
+    ridge = (1 - np.abs(cv.noise(9, seed + 60, 4) * 2 - 1)) ** 2 * 0.7 + (1 - np.abs(cv.noise(22, seed + 61, 3) * 2 - 1)) ** 2 * 0.3
     for kind, shape in biomes:
         # A forma: elipse, contorno ou uma máscara pronta (tirada da imagem de referência).
-        m = roughen(shape.astype(float), n3, 0.4, 3) if isinstance(shape, np.ndarray) else roughen(cv.shape(shape), n3, 0.5, 5)
+        if isinstance(shape, np.ndarray):
+            m = roughen(shape.astype(float), n3, 0.4, 3)
+        else:
+            m = roughen(ndimage.map_coordinates(cv.shape(shape), wcoords, order=1, mode='nearest'), n3, 0.6, 4)
         if kind == 'water':
             land = np.minimum(land, 1 - m)
             continue
         m = m * land
-        layers.append((kind, shape, m))
-        if kind in ('mountain', 'volcano', 'crater', 'snow'):
-            height = height + blur(m, 6) * (2.2 + n3 * 1.6) + blur(m, 2) * n2 * 1.2
+        dome = blur(m, cv.w * 0.016)
+        layers.append((kind, shape, m, dome))
+        if kind in ('mountain', 'volcano', 'snow'):
+            height = height + dome * 1.6 + m * dome * ridge * (2.6 if kind != 'snow' else 1.6) + blur(m, 2) * n3 * 0.5
+        elif kind == 'crater':
+            # Um anel alto em volta de um fundo bem baixo.
+            cx, cy, rx, ry = shape
+            pit = blur(cv.shape((cx, cy, rx * 0.66, ry * 0.66)), 6) * land
+            height = height + dome * 1.4 + m * ridge * 1.6 - pit * 2.6
+        elif kind == 'hills':
+            # Colinas: relevo só pela sombra (verde), sem pedra.
+            height = height + dome * 1.1 + m * dome * ridge * 1.2
         elif kind == 'forest':
-            height = height + blur(m, 4) * 0.25
-    height = blur(np.clip(height / max(1e-6, height.max()), 0, 1), 1.2)
+            height = height + blur(m, 4) * 0.3 + m * ridge * 0.15
+        elif kind == 'plain':
+            height = height - blur(m, 6) * 0.2
+    lo, hi = height.min(), height.max()
+    height = blur(np.clip((height - lo) / max(1e-6, hi - lo), 0, 1), 1.0)
     gy, gx = np.gradient(height)
     # A luz vem do noroeste: a encosta virada para ela clareia, a outra escurece.
-    shade = np.clip(1 + (-gx - gy) * 70, 0.45, 1.6)
-    for kind, shape, m in layers:
+    shade = np.clip(1 + (-gx - gy) * 80, 0.42, 1.65)
+    # A cor pela altitude: baixada verde-escura, planalto mais claro e amarelado.
+    ground = mix(ground, (40, 88, 46), np.clip((0.35 - height) * 3, 0, 1) * 0.5)
+    ground = mix(ground, (122, 150, 82), np.clip((height - 0.5) * 2.5, 0, 1) * 0.45)
+    for kind, shape, m, dome in layers:
         if kind == 'forest':
             ground = mix(ground, (30, 76, 40), m * 0.9)
             ground = mix(ground, (18, 54, 30), (n3 > 0.62) * m * 0.8)
             ground = mix(ground, (70, 120, 60), (n3 < 0.3) * m * 0.5)
         elif kind == 'mountain':
+            # Pé verde-acinzentado, rocha marrom, cume claro e neve no topo das mais altas.
+            ground = mix(ground, (104, 112, 74), np.clip(blur(m, 4) * 1.6, 0, 1) * 0.6)
             ground = mix(ground, (128, 108, 80), m * 0.95)
             ground = mix(ground, (168, 150, 120), np.clip((n3 - 0.55) * 4, 0, 1) * m * 0.7)
+            ground = mix(ground, (190, 176, 150), np.clip((height - 0.72) * 6, 0, 1) * m * 0.8)
+            ground = mix(ground, (240, 244, 250), np.clip((height - 0.86) * 9, 0, 1) * m)
         elif kind == 'volcano':
             ground = mix(ground, (96, 66, 54), m)
             if not isinstance(shape, np.ndarray):
@@ -383,17 +399,31 @@ def paint(cv, land, rivers, biomes, roads_land, roads_bridge, roads_sea, seed=1)
             ground = mix(ground, (90, 140, 150), (n3 > 0.6) * m * 0.7)
         elif kind == 'plain':
             ground = mix(ground, (120, 168, 80), m * 0.8)
+        elif kind == 'hills':
+            ground = mix(ground, (92, 136, 62), m * 0.5)
+            ground = mix(ground, (128, 140, 92), np.clip((height - 0.7) * 5, 0, 1) * m * 0.5)
         elif kind == 'crater':
             cx, cy, rx, ry = shape
             ground = mix(ground, (120, 100, 80), m)
+            ground = mix(ground, (70, 120, 72), np.clip((n3 - 0.5) * 4, 0, 1) * m * 0.5)
             ground = mix(ground, (46, 40, 52), roughen(cv.shape((cx, cy, rx * 0.62, ry * 0.62)), n3, 0.4, 4))
             ground = mix(ground, (120, 220, 200), (cv.shape((cx, cy, rx * 0.25, ry * 0.25), 5) * 2 - 0.6) * 0.6)
     ground *= shade[..., None]
+    # Curvas de nível: linhas finas onde a altitude muda de faixa (mais marcadas nas serras).
+    level = np.floor(height * 18)
+    edge = (level != np.roll(level, 1, 0)) | (level != np.roll(level, 1, 1))
+    hilly = np.clip(height * 1.6 - 0.35, 0.15, 1)
+    ground = mix(ground, (40, 34, 26), edge * hilly * 0.22 * (blur(land, 3) > 0.9))
     beach = np.clip((land - inner) * 3.2, 0, 1) * land
     ground = mix(ground, (226, 208, 150), beach * 0.85)
     img = img * (1 - land[..., None]) + ground * land[..., None]
+    # A espuma na beira da praia.
+    lm = land > 0.5
+    foam = near(lm, 2.5) & ~lm
+    img = mix(img, (236, 246, 252), foam * 0.55)
+    img = mix(img, (150, 200, 230), (near(lm, 7) & ~near(lm, 4.5)) * (n3 > 0.5) * 0.25)
     img = mix(img, (58, 128, 196), blur(rivers, 1.5) * 1.3 * 0.9)
-    img = details(cv, img, land, layers, seed)
+    img = details(cv, img, land, layers, seed, height)
     # As rotas: laranja com borda escura (pela linha do meio de cada uma); pelo mar, tracejadas.
     yy, xx = np.mgrid[0:cv.h, 0:cv.w]
     dash = ((xx // 9 + yy // 9) % 2) == 0
@@ -427,31 +457,65 @@ def scatter(mask, step, rng, thresh=0.6):
     return sorted(pts, key=lambda q: q[1])
 
 
-def details(cv, img, land, layers, seed):
+def details(cv, img, land, layers, seed, height):
     """O detalhe de cada bioma (como num mapa desenhado): árvores, picos, dunas, juncos, a lava e os arvoredos dos campos."""
     rng = np.random.default_rng(seed + 11)
     out = Image.fromarray(np.clip(img, 0, 255).astype(np.uint8)).convert('RGBA')
     d = ImageDraw.Draw(out, 'RGBA')
     covered = np.zeros_like(land)
-    for kind, shape, m in layers:
+    cold = np.zeros_like(land)
+    for kind, shape, m, dome in layers:
+        if kind in ('snow', 'mountain'):
+            cold = np.maximum(cold, blur(m, 18) * (1.0 if kind == 'snow' else 0.6))
+    # Grama: tufos pequenos pela terra toda (textura).
+    tuft = rng.random(land.shape) < 0.035
+    for y, x in zip(*np.nonzero(tuft & (blur(land, 3) > 0.95))):
+        d.line([(x, y), (x + 1, y - 2)], fill=(30, 70, 34, 90), width=1)
+    for kind, shape, m, dome in layers:
         covered = np.maximum(covered, m)
         if kind == 'forest':
-            for x, y in scatter(m, 7, rng, 0.45):
-                r = rng.uniform(3.2, 5.0)
-                d.ellipse([x - r, y - r + 2, x + r, y + r + 2], fill=(10, 34, 18, 150))
-                d.ellipse([x - r, y - r, x + r, y + r], fill=(26 + int(rng.integers(0, 20)), 82 + int(rng.integers(0, 30)), 40, 255))
-                d.ellipse([x - r * 0.5, y - r * 0.7, x + r * 0.1, y - r * 0.1], fill=(90, 150, 80, 200))
+            dn = dome / max(1e-6, dome.max())
+            for x, y in scatter(m, 6, rng, 0.4):
+                r = rng.uniform(2.8, 4.2) + dn[y, x] * 1.4
+                g = int(rng.integers(0, 26))
+                if cold[y, x] > 0.35 or rng.random() < 0.12:
+                    # Pinheiro (perto da neve e das serras).
+                    d.polygon([(x, y - r * 2.1), (x - r, y + r * 0.6), (x + r, y + r * 0.6)], fill=(10, 34, 18, 140))
+                    d.polygon([(x, y - r * 2.3), (x - r * 0.95, y + r * 0.4), (x, y + r * 0.4)], fill=(30 + g, 86 + g, 52, 255))
+                    d.polygon([(x, y - r * 2.3), (x + r * 0.95, y + r * 0.4), (x, y + r * 0.4)], fill=(18 + g, 60 + g, 36, 255))
+                    if cold[y, x] > 0.7:
+                        d.polygon([(x, y - r * 2.3), (x - r * 0.4, y - r * 1.2), (x + r * 0.4, y - r * 1.2)], fill=(236, 244, 250, 230))
+                else:
+                    d.ellipse([x - r, y - r + 2, x + r, y + r + 2], fill=(10, 34, 18, 150))
+                    d.ellipse([x - r, y - r, x + r, y + r], fill=(26 + g, 82 + int(rng.integers(0, 30)), 40, 255))
+                    d.ellipse([x - r * 0.5, y - r * 0.7, x + r * 0.1, y - r * 0.1], fill=(90, 150, 80, 200))
         elif kind in ('mountain', 'snow', 'volcano', 'crater'):
-            step = 10 if kind != 'snow' else 12
-            for x, y in scatter(m, step, rng, 0.45):
-                h = rng.uniform(10, 19)
+            step = 9 if kind != 'snow' else 11
+            where = m
+            if kind == 'crater':
+                cx, cy, rx, ry = shape
+                where = m * (1 - cv.shape((cx, cy, rx * 0.7, ry * 0.7), 4))
+            dn = dome / max(1e-6, dome.max())
+            # Pedras soltas no pé das serras.
+            for x, y in scatter(np.clip(blur(m, 8) - m, 0, 1) * 3 * land, 11, rng, 0.35):
+                r = rng.uniform(1.2, 2.4)
+                d.ellipse([x - r, y - r * 0.7, x + r, y + r * 0.7], fill=(120, 110, 96, 220))
+            # Os picos: só nos topos das cristas (máximos locais da altura) e alguns soltos; o resto é a sombra do relevo.
+            top = (height == ndimage.maximum_filter(height, size=24)) & (height > ndimage.minimum_filter(height, size=24) + 0.03) & (where > 0.5)
+            pts = [(x, y) for y, x in zip(*np.nonzero(top))] + (scatter(where, 40, rng, 0.6) if kind != 'snow' else [])
+            for x, y in sorted(pts, key=lambda q: q[1]):
+                # Mais alto no meio da serra, menor na borda.
+                h = rng.uniform(7, 11) + dn[y, x] * rng.uniform(8, 14)
                 wdt = h * rng.uniform(0.8, 1.1)
-                snowy = kind == 'snow' or rng.random() < 0.25 and kind == 'mountain'
+                snowy = kind == 'snow' or kind == 'mountain' and (height[y, x] > 0.8 or rng.random() < 0.12)
                 left, right = ((214, 226, 238, 255), (150, 168, 190, 255)) if kind == 'snow' else ((168, 146, 112, 255), (104, 84, 62, 255))
                 if kind == 'volcano':
                     left, right = (120, 84, 70, 255), (76, 50, 44, 255)
+                d.polygon([(x + 2, y - h + 2), (x + wdt + 3, y + 1), (x - wdt + 2, y + 1)], fill=(20, 16, 12, 70))
                 d.polygon([(x, y - h), (x - wdt, y), (x, y)], fill=left)
                 d.polygon([(x, y - h), (x + wdt, y), (x, y)], fill=right)
+                # Uma fenda no meio da encosta (dá volume).
+                d.line([(x, y - h), (x + wdt * 0.25, y - h * 0.45), (x + wdt * 0.1, y)], fill=tuple(int(c * 0.82) for c in right[:3]) + (200,), width=1)
                 if snowy and kind != 'snow':
                     d.polygon([(x, y - h), (x - wdt * 0.35, y - h * 0.62), (x + wdt * 0.35, y - h * 0.62)], fill=(236, 242, 250, 255))
                 elif kind == 'snow':
@@ -461,12 +525,24 @@ def details(cv, img, land, layers, seed):
                 X, Y = cx * cv.w / 100, cy * cv.h / 100
                 d.ellipse([X - rx * cv.w / 400, Y - ry * cv.h / 400, X + rx * cv.w / 400, Y + ry * cv.h / 400], fill=(240, 96, 40, 255), outline=(90, 30, 20, 255))
         elif kind == 'desert':
-            for x, y in scatter(m, 13, rng, 0.5):
-                d.arc([x - 7, y - 3, x + 7, y + 4], 200, 340, fill=(170, 130, 76, 220), width=2)
+            for x, y in scatter(m, 11, rng, 0.5):
+                w = rng.uniform(5, 9)
+                d.arc([x - w, y - 3, x + w, y + 4], 200, 340, fill=(170, 130, 76, 220), width=2)
+                d.arc([x - w + 1, y - 2, x + w - 1, y + 5], 210, 330, fill=(236, 214, 160, 160), width=1)
+            for x, y in scatter(m, 26, rng, 0.6):
+                if rng.random() < 0.5:
+                    # Cacto ou pedra.
+                    d.line([(x, y), (x, y - 6)], fill=(60, 110, 60, 255), width=2)
+                    d.line([(x - 3, y - 4), (x - 3, y - 2), (x, y - 2)], fill=(60, 110, 60, 255), width=1)
+                else:
+                    d.ellipse([x - 3, y - 2, x + 3, y + 2], fill=(150, 116, 80, 230))
         elif kind == 'swamp':
-            for x, y in scatter(m, 8, rng, 0.5):
+            for x, y in scatter(m, 7, rng, 0.5):
                 d.line([(x, y), (x - 1, y - 5)], fill=(40, 70, 40, 230), width=1)
                 d.line([(x + 2, y), (x + 3, y - 4)], fill=(40, 70, 40, 230), width=1)
+            for x, y in scatter(m, 18, rng, 0.6):
+                w = rng.uniform(3, 6)
+                d.ellipse([x - w, y - w * 0.5, x + w, y + w * 0.5], fill=(70, 130, 150, 200))
         elif kind == 'plain':
             for x, y in scatter(m, 9, rng, 0.5):
                 d.ellipse([x - 1.5, y - 1.5, x + 1.5, y + 1.5], fill=(236, 220, 110, 200) if rng.random() < 0.4 else (150, 196, 100, 220))
@@ -527,21 +603,23 @@ def build(name, wanted):
         cv = Canvas(spec.get('aspect', 1.5))
         mask = lambda kind: np.asarray(Image.open(os.path.join(REF_DIR, f'{name}-m-{kind}.png')).convert('L').resize((cv.w, cv.h), Image.BILINEAR), dtype=float) / 255  # noqa: E731
         land = mask('land')
-        roads = mask('road') > 0.5
-        # As cidades viram um ponto cheio (sem o anel da referência) e as rotas quebradas se emendam.
-        yy, xx = np.mgrid[0:cv.h, 0:cv.w]
-        for (x, y) in spec['cities'].values():
-            X, Y = x / 150 * cv.w, y / 100 * cv.h
-            disk = (xx - X) ** 2 + (yy - Y) ** 2 <= (cv.w * 0.022) ** 2
-            roads = roads | (disk & near(roads, cv.w * 0.03))
-        roads = ndimage.binary_closing(roads, iterations=4)
+        # As rotas: as linhas limpas de cidade a cidade (medidas na imagem); pelo mar, tracejadas.
+        pc = lambda q: (q[0] / 1.5, q[1])  # noqa: E731
+        cc = {c: pc(xy) for c, xy in spec['cities'].items()}
+        lines_land, lines_sea = [], []
+        for road in spec.get('roads', []):
+            sea = road[0] == 'sea'
+            pts = [cc[q] if isinstance(q, str) else pc(q) for q in (road[1:] if sea else road)]
+            (lines_sea if sea else lines_land).append(pts)
+        roads = cv.lines(lines_land, 5) > 0.5
+        sea_roads = cv.lines(lines_sea, 5) > 0.5
         found = [(k, mask(k) * s) for k, s in (('mountain', 1.0), ('desert', 1.0), ('forest', 0.85))]
         # Sem relevo na imagem (um mapa só de linhas, como o de Johto): o relevo marcado à mão.
         flat = all(m.max() < 0.5 for _, m in found)
         hand = [(k, (sh[0] / 1.5, sh[1], sh[2] / 1.5, sh[3]) if isinstance(sh, tuple) and len(sh) == 4 and not isinstance(sh[0], tuple) else [(p[0] / 1.5, p[1]) for p in sh]) for k, sh in spec.get('biomes', [])]
         biomes = ([] if flat else found) + [(k, sh) for k, sh in hand if flat or k in ('snow', 'volcano', 'swamp', 'plain', 'crater')]
         cities = {c: (xy[0] / 1.5, xy[1]) for c, xy in spec['cities'].items()}
-        img = paint(cv, land, np.zeros((cv.h, cv.w)), biomes, roads, np.zeros_like(roads), np.zeros_like(roads), seed=3)
+        img = paint(cv, land, np.zeros((cv.h, cv.w)), biomes, roads, np.zeros_like(roads), sea_roads, seed=3)
         return img, cities
     # A proporção da imagem de referência (Galar em pé, Paldea quadrado); as posições continuam em 150 × 100.
     cv = Canvas(spec.get('aspect', 1.5))
