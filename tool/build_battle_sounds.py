@@ -866,6 +866,8 @@ CHAMPION_THEMES = {
     'evice': (63, 'harmonic', [0, 5, 1, 4], 168, 0.25, 'pulse'), 'gordor': (65, 'minor', [0, 6, 5, 4], 172, 0.5, 'pulse'),
     'blake-hall': (62, 'phrygian', [0, 1, 5, 4], 166, 0.25, 'pulse'), 'ice': (64, 'harmonic', [0, 3, 1, 4], 174, 0.125, 'pulse'),
     'kieran': (66, 'minor', [0, 5, 3, 4], 176, 0.25, 'pulse'),
+    'mustard': (64, 'dorian', [0, 6, 3, 4], 172, 0.25, 'pulse'), 'peony': (67, 'mixolydian', [0, 3, 6, 4], 166, 0.5, 'pulse'),
+    'drake': (65, 'harmonic', [0, 5, 1, 4], 170, 0.25, 'pulse'),
 }
 
 # Os lugares da Battle Factory, cada grupo com o seu tema original (selvagens e treinadores da rota).
@@ -926,6 +928,10 @@ MAP_THEMES = {
     'blueberry': (66, 'major', [0, 4, 5, 3], 124, 0.25, 'pulse', {}),
     # Ilhas Sevii: viagem de barco entre ilhas (marimba, flauta e violão, ondas calmas), I–IV–ii–V.
     'sevii': (67, 'major', [0, 3, 1, 4], 110, 0.25, 'pulse', {}),
+    # Ilha da Armadura: treino no dojo (gongo, flauta, cordas e tambor), Terras da Coroa: tundra de lendas (celesta, coro e cordas),
+    # Ilhas Laranja: viagem de barco pelas ilhas tropicais do anime (steel drum, violão e flauta).
+    'armor': (64, 'dorian', [0, 3, 6, 4], 104, 0.25, 'pulse', {}), 'crown': (62, 'minor', [0, 5, 3, 4], 84, 0.5, 'pulse', {}),
+    'orange': (67, 'major', [0, 4, 3, 4], 116, 0.5, 'pulse', {}),
 }
 
 
@@ -1509,6 +1515,7 @@ EXTRA_MAP_SOUNDS = {
     'orre': (22, 78, 25, 32, 116), 'fiore': (73, 24, 48, 33, 0), 'almia': (71, 45, 0, 32, 0),
     'oblivia': (12, 75, 46, 33, 116), 'kitakami': (77, 107, 49, 32, 116), 'blueberry': (81, 4, 89, 38, 0),
     'sevii': (12, 73, 24, 33, 0),
+    'armor': (73, 48, 46, 32, 116), 'crown': (8, 52, 48, 32, 0), 'orange': (114, 73, 24, 33, 0),
 }
 
 
@@ -1961,7 +1968,7 @@ CHAMPIONS = {'blue': blue_orchestra, 'lance': lance_orchestra, 'steven': steven_
              'cynthia': sinnoh_orchestra, 'alder': alder_orchestra, 'iris': iris_orchestra, 'diantha': diantha_orchestra,
              'kukui': kukui_orchestra, 'leon': leon_orchestra, 'geeta': geeta_orchestra,
              'volo': volo_orchestra}
-CHAMPIONS.update({n: (lambda n=n: extra_champion_orchestra(n)) for n in ('evice', 'gordor', 'blake-hall', 'ice', 'kieran')})  # os campeões já refeitos (os outros tocam o tema da região)
+CHAMPIONS.update({n: (lambda n=n: extra_champion_orchestra(n)) for n in ('evice', 'gordor', 'blake-hall', 'ice', 'kieran', 'mustard', 'peony', 'drake')})  # os campeões já refeitos (os outros tocam o tema da região)
 
 
 # Os rivais (no Pokelike): cada um com o tema original dele — tônica, escala, progressão e andamento.
@@ -3467,6 +3474,7 @@ GYM_THEMES = {
     'orre': (64, 'harmonic', [0, 6, 5, 4], 162), 'fiore': (67, 'mixolydian', [0, 6, 3, 4], 158), 'almia': (65, 'dorian', [0, 3, 6, 4], 160),
     'oblivia': (62, 'mixolydian', [0, 6, 4, 0], 156), 'kitakami': (64, 'phrygian', [0, 1, 6, 0], 152), 'blueberry': (66, 'minor', [0, 5, 6, 4], 170),
     'sevii': (67, 'dorian', [0, 6, 3, 4], 158),
+    'armor': (64, 'phrygian', [0, 1, 5, 4], 164), 'crown': (62, 'harmonic', [0, 5, 6, 4], 158), 'orange': (67, 'mixolydian', [0, 6, 4, 0], 160),
 }
 ELITE_THEMES = {
     'elite_kanto': (62, 'harmonic', [0, 5, 3, 4], 144),
@@ -3754,6 +3762,9 @@ EXTRA_GYM_SOUNDS = {
     'kitakami': (77, 107, 106, 61), # shakuhachi, koto e shamisen
     'blueberry': (81, 4, 89, 62),   # sintetizador, piano elétrico
     'sevii': (12, 73, 24, 61),      # marimba, flauta e violão
+    'armor': (73, 61, 48, 61),      # flauta e metais: o dojo
+    'crown': (8, 61, 48, 57),       # celesta e metais: a tundra
+    'orange': (114, 25, 24, 61),    # steel drum e violão: as ilhas
 }
 
 

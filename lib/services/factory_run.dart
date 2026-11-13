@@ -1781,6 +1781,8 @@ class FactoryRun {
     'oni-mountain-summit': (scene: 'mountain', name: 'Oni Mountain Summit', legends: [1017], mythic: false),
     'area-zero-underdepths': (scene: 'crystal', name: 'Area Zero Underdepths', legends: [1024], mythic: false),
     'birth-island': (scene: 'ruins', name: 'Birth Island', legends: [386], mythic: true),
+    'tower-of-waters': (scene: 'tower', name: 'Tower of Waters', legends: [892], mythic: false),
+    'shamouti-shrine': (scene: 'temple', name: 'Shamouti Shrine', legends: [249, 144, 145, 146], mythic: false),
     'snowpoint-temple': (scene: 'temple', name: 'Snowpoint Temple', legends: [486], mythic: false),
   };
   static final rarePlaceIds = rarePlaces.keys.toList();
@@ -2255,7 +2257,7 @@ class FactoryRun {
   static const regionLegends = <String, List<int>>{
     'Kanto': [150, 144, 145, 146], 'Johto': [249, 250, 243, 244, 245], 'Hoenn': [382, 383, 384, 380, 381], 'Sinnoh': [483, 484, 487, 480, 481, 482], 'Hisui': [483, 484, 487, 905],
     'Unova': [643, 644, 646, 638, 639, 640], 'Kalos': [716, 717, 718], 'Alola': [791, 792, 800, 785], 'Galar': [888, 889, 890], 'Paldea': [1007, 1008, 1001, 1002],
-    'Orre': [243, 244, 245, 249], 'Fiore': [243, 244, 245], 'Almia': [485, 486, 384], 'Oblivia': [249, 250, 243, 244, 245], 'Kitakami': [1017, 1014, 1015, 1016], 'Blueberry': [1024, 1009, 1010], 'Sevii': [146, 386, 201],
+    'Orre': [243, 244, 245, 249], 'Fiore': [243, 244, 245], 'Almia': [485, 486, 384], 'Oblivia': [249, 250, 243, 244, 245], 'Kitakami': [1017, 1014, 1015, 1016], 'Blueberry': [1024, 1009, 1010], 'Sevii': [146, 386, 201], 'Armor': [891, 10164], 'Crown': [898, 894, 895, 10169, 10170, 10171], 'Orange': [144, 145, 146, 249],
   };
 
   /// O lendário da região da corrida (sempre o mesmo para a mesma corrida e região).
@@ -4484,8 +4486,8 @@ class FactoryRun {
 
   /// A música do mapa (andando na rota e na cidade): um tema original por região, mais calmo. Igual ao site.
   /// O lugar da última batalha das regiões sem arena de campeão (os outros jogos e as expansões). Igual ao site.
-  static const championArenas = {'hisui': 'spearpillar', 'orre': 'tower', 'fiore': 'temple', 'almia': 'mansion', 'oblivia': 'ruins', 'kitakami': 'crystal', 'blueberry': 'league', 'sevii': 'tower'};
-  static const mapRegions = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos', 'alola', 'galar', 'paldea', 'hisui', 'orre', 'fiore', 'almia', 'oblivia', 'kitakami', 'blueberry', 'sevii'];
+  static const championArenas = {'hisui': 'spearpillar', 'orre': 'tower', 'fiore': 'temple', 'almia': 'mansion', 'oblivia': 'ruins', 'kitakami': 'crystal', 'blueberry': 'league', 'sevii': 'tower', 'armor': 'dojo', 'crown': 'snow', 'orange': 'league'};
+  static const mapRegions = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos', 'alola', 'galar', 'paldea', 'hisui', 'orre', 'fiore', 'almia', 'oblivia', 'kitakami', 'blueberry', 'sevii', 'armor', 'crown', 'orange'];
   static String? mapMusic(FactoryData data, Map? run) {
     final region = regionOf(data, run)?.toLowerCase();
     return region == null ? null : 'map_${mapRegions.contains(region) ? region : 'kanto'}';

@@ -1160,7 +1160,7 @@ export function bossScene(data, boss, fallback = 'grass') {
 }
 
 /** O lugar da última batalha das regiões sem arena de campeão (os outros jogos e as expansões): o lugar da luta no jogo. */
-export const CHAMPION_ARENAS = { hisui: 'spearpillar', orre: 'tower', fiore: 'temple', almia: 'mansion', oblivia: 'ruins', kitakami: 'crystal', blueberry: 'league', sevii: 'tower' }
+export const CHAMPION_ARENAS = { hisui: 'spearpillar', orre: 'tower', fiore: 'temple', almia: 'mansion', oblivia: 'ruins', kitakami: 'crystal', blueberry: 'league', sevii: 'tower', armor: 'dojo', crown: 'snow', orange: 'league' }
 
 /** Na Dusk Ball (3×): os lugares escuros. */
 export const DARK_BIOMES = ['cave', 'tower', 'icecave', 'sewer', 'underwater', 'lavacave', 'poisoncave', 'seacave']
@@ -1923,6 +1923,8 @@ export const RARE_PLACES = {
   'oni-mountain-summit': { scene: 'mountain', name: 'Oni Mountain Summit', legends: [1017] },
   'area-zero-underdepths': { scene: 'crystal', name: 'Area Zero Underdepths', legends: [1024] },
   'birth-island': { scene: 'ruins', name: 'Birth Island', legends: [386], mythic: true },
+  'tower-of-waters': { scene: 'tower', name: 'Tower of Waters', legends: [892] },
+  'shamouti-shrine': { scene: 'temple', name: 'Shamouti Shrine', legends: [249, 144, 145, 146] },
   'snowpoint-temple': { scene: 'temple', name: 'Snowpoint Temple', legends: [486] },
 }
 /** Os lugares raros da região de agora (cada um só aparece na região dele nos jogos). */
@@ -3414,7 +3416,7 @@ export const SCENE_WEATHER = {
   lake: [['rain', 0.7]], lakeside: [['sun', 0.2], ['rain', 0.2]], acuity: [['snow', 0.65]], wildarea: [['sun', 0.2], ['rain', 0.2]], skypillar: [['sun', 0.2]],
 }
 /** A música do mapa (andando na rota e na cidade): um tema original por região, mais calmo. Igual ao app. */
-export const MAP_REGIONS = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos', 'alola', 'galar', 'paldea', 'hisui', 'orre', 'fiore', 'almia', 'oblivia', 'kitakami', 'blueberry', 'sevii']
+export const MAP_REGIONS = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos', 'alola', 'galar', 'paldea', 'hisui', 'orre', 'fiore', 'almia', 'oblivia', 'kitakami', 'blueberry', 'sevii', 'armor', 'crown', 'orange']
 export function mapMusic(data, run) {
   const region = regionOf(data, run)?.toLowerCase()
   return region == null ? null : `map_${MAP_REGIONS.includes(region) ? region : 'kanto'}`
@@ -3536,7 +3538,7 @@ export function fieldOf(run, scene, data = null) {
 export const REGION_LEGENDS = {
   Kanto: [150, 144, 145, 146], Johto: [249, 250, 243, 244, 245], Hoenn: [382, 383, 384, 380, 381], Sinnoh: [483, 484, 487, 480, 481, 482], Hisui: [483, 484, 487, 905],
   Unova: [643, 644, 646, 638, 639, 640], Kalos: [716, 717, 718], Alola: [791, 792, 800, 785], Galar: [888, 889, 890], Paldea: [1007, 1008, 1001, 1002],
-  Orre: [243, 244, 245, 249], Fiore: [243, 244, 245], Almia: [485, 486, 384], Oblivia: [249, 250, 243, 244, 245], Kitakami: [1017, 1014, 1015, 1016], Blueberry: [1024, 1009, 1010], Sevii: [146, 386, 201],
+  Orre: [243, 244, 245, 249], Fiore: [243, 244, 245], Almia: [485, 486, 384], Oblivia: [249, 250, 243, 244, 245], Kitakami: [1017, 1014, 1015, 1016], Blueberry: [1024, 1009, 1010], Sevii: [146, 386, 201], Armor: [891, 10164], Crown: [898, 894, 895, 10169, 10170, 10171], Orange: [144, 145, 146, 249],
 }
 /** O lendário da região da corrida (sempre o mesmo para a mesma corrida e região). */
 export function regionLegend(data, run) {

@@ -59,7 +59,7 @@ export const RIVAL_THEMES = ['blue', 'silver', 'brendan-may', 'wally', 'barry', 
 // que os comandantes dividem, conforme vão sendo feitos; os outros tocam o tema da região. Igual ao app.
 export const VILLAIN_THEMES = ['giovanni', 'maxie', 'archie', 'cyrus', 'colress', 'lysandre', 'guzma', 'lusamine', 'ghetsis', 'giacomo', 'ortega', 'penny', 'rose', 'jessie-e-james']
 /** As regiões com tema de ginásio e com tema da Elite dos Quatro (os outros: o tema da região). Igual ao app. */
-export const GYM_THEMES = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos', 'alola', 'galar', 'paldea', 'hisui', 'orre', 'fiore', 'almia', 'oblivia', 'kitakami', 'blueberry', 'sevii']
+export const GYM_THEMES = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos', 'alola', 'galar', 'paldea', 'hisui', 'orre', 'fiore', 'almia', 'oblivia', 'kitakami', 'blueberry', 'sevii', 'armor', 'crown', 'orange']
 /** Galar não tem Elite dos Quatro (os líderes lutam de novo na Copa). */
 export const ELITE_THEMES = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos', 'alola', 'paldea']
 export const TEAM_THEMES = ['rocket', 'magma', 'aqua', 'galactic', 'plasma', 'flare', 'skull', 'aether', 'ultra', 'star', 'macro', 'yell']
@@ -74,7 +74,7 @@ export const VILLAIN_TEAMS = {
 }
 // Rivais que dividem o tema (o mesmo papel, conforme o personagem escolhido no jogo).
 export const RIVAL_ALIAS = { brendan: 'brendan-may', may: 'brendan-may', serena: 'serena-calem', calem: 'serena-calem' }
-export const CHAMPION_THEMES = ['blue', 'lance', 'steven', 'wallace', 'cynthia', 'alder', 'iris', 'diantha', 'kukui', 'leon', 'geeta', 'volo', 'evice', 'gordor', 'blake-hall', 'ice', 'kieran']
+export const CHAMPION_THEMES = ['blue', 'lance', 'steven', 'wallace', 'cynthia', 'alder', 'iris', 'diantha', 'kukui', 'leon', 'geeta', 'volo', 'evice', 'gordor', 'blake-hall', 'ice', 'kieran', 'mustard', 'peony', 'drake']
 
 /** O último número da Pokédex de cada região. */
 export const DEX_REGIONS = [[151, 'kanto'], [251, 'johto'], [386, 'hoenn'], [493, 'sinnoh'], [649, 'unova'], [721, 'kalos'], [809, 'alola'], [905, 'galar'], [1025, 'paldea']]

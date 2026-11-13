@@ -81,7 +81,7 @@ class GymChallenge {
   /// que os comandantes dividem, conforme vão sendo feitos; os outros tocam o tema da região. Igual ao site.
   static const villainThemes = ['giovanni', 'maxie', 'archie', 'cyrus', 'colress', 'lysandre', 'guzma', 'lusamine', 'ghetsis', 'giacomo', 'ortega', 'penny', 'rose', 'jessie-e-james'];
   /// As regiões com tema de ginásio e com tema da Elite dos Quatro (os outros: o tema da região). Igual ao site.
-  static const gymThemes = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos', 'alola', 'galar', 'paldea', 'hisui', 'orre', 'fiore', 'almia', 'oblivia', 'kitakami', 'blueberry', 'sevii'];
+  static const gymThemes = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos', 'alola', 'galar', 'paldea', 'hisui', 'orre', 'fiore', 'almia', 'oblivia', 'kitakami', 'blueberry', 'sevii', 'armor', 'crown', 'orange'];
   /// Galar não tem Elite dos Quatro (os líderes lutam de novo na Copa).
   static const eliteThemes = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos', 'alola', 'paldea'];
   static const teamThemes = ['rocket', 'magma', 'aqua', 'galactic', 'plasma', 'flare', 'skull', 'aether', 'ultra', 'star', 'macro', 'yell'];
@@ -98,7 +98,7 @@ class GymChallenge {
   /// Rivais que dividem o tema (o mesmo papel, conforme o personagem escolhido no jogo).
   static const rivalAlias = {'brendan': 'brendan-may', 'may': 'brendan-may', 'serena': 'serena-calem', 'calem': 'serena-calem'};
 
-  static const championThemes = ['blue', 'lance', 'steven', 'wallace', 'cynthia', 'alder', 'iris', 'diantha', 'kukui', 'leon', 'geeta', 'volo', 'evice', 'gordor', 'blake-hall', 'ice', 'kieran'];
+  static const championThemes = ['blue', 'lance', 'steven', 'wallace', 'cynthia', 'alder', 'iris', 'diantha', 'kukui', 'leon', 'geeta', 'volo', 'evice', 'gordor', 'blake-hall', 'ice', 'kieran', 'mustard', 'peony', 'drake'];
 
   /// A música da batalha (temas originais, nenhum copiado dos jogos): o tema do
   /// campeão, o da região para líderes, Elite dos Quatro e kahunas, ou a normal.

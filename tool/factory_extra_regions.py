@@ -254,10 +254,97 @@ REGIONS = [
             'end': 'A Network Machine funciona de novo e as ilhas estão em paz. O barco leva você para outra região.',
         },
     },
+    {
+        # Ilha da Armadura (DLC de Sword/Shield): só depois de Galar.
+        'region': 'Armor', 'game': 'The Isle of Armor', 'after': 'Galar', 'start': 'Master Dojo', 'color': '#a16207', 'legends': [891, 10164],
+        'leaders': [
+            ('Avery', 'sd-avery', 'gym', [10164, 63, 64], 'Soothing Wetlands', {}),
+            ('Klara', 'sd-klara', 'gym', [10164, 109, 690], 'Challenge Beach', {}),
+            ('Kubfu', 'mon-891', 'gym', [891, 107, 106], 'Tower of Two Fists', {}),
+            ('Mustard', 'sd-mustard', 'champion', [620, 405, 823, 784, 892], 'Master Dojo', {}),
+        ],
+        'routes': {
+            'Soothing Wetlands': ['swamp', 'Fields of Honor', ['Forest of Focus', 'forest'], []],
+            'Challenge Beach': ['beach', 'Challenge Road', ['Brawlers\u2019 Cave', 'cave'], [['Courageous Cavern', 'seacave']]],
+            'Tower of Two Fists': ['mountain', 'Training Lowlands', ['Potbottom Desert', 'desert'], []],
+            'Master Dojo': ['grass', 'Fields of Honor', ['Warm-Up Tunnel', 'cave'], []],
+        },
+        'climate': {'Soothing Wetlands': {'route': {'w': [['rain', 0.6]]}}, 'Tower of Two Fists': {'potbottom-desert': {'w': [['sand', 0.9]]}}},
+        'features': {'Challenge Beach': {'water': 'sea'}},
+        'towns': {'village': ['Soothing Wetlands'], 'port': ['Challenge Beach'], 'mountain': ['Tower of Two Fists'], 'league': ['Master Dojo']},
+        'story': {
+            'intro': 'O Mestre Mustard aceitou você no Master Dojo, na Ilha da Armadura. Para virar aluno de verdade, você passa pelos testes dele pela ilha.',
+            'gym': '{0} é o desafio desta parte da ilha. Vença para ganhar o respeito do dojo.',
+            'rival': '{0} também é aluno do dojo e não quer perder para um novato.',
+            'villain': '{0} quer atrapalhar os testes do dojo.',
+            'elite': '{0} guarda a entrada do dojo.',
+            'champion': 'No Master Dojo, o Mestre {0}, ex-campeão de Galar, quer ver quanto você aprendeu. É a última batalha da ilha.',
+            'end': 'Você terminou o treino do Master Dojo. Um trem leva você de volta, e uma nova viagem começa.',
+        },
+    },
+    {
+        # Terras da Coroa (DLC de Sword/Shield): só depois da Ilha da Armadura.
+        'region': 'Crown', 'game': 'The Crown Tundra', 'after': 'Armor', 'start': 'Freezington', 'color': '#0369a1', 'legends': [898, 894, 895, 10169, 10170, 10171],
+        'leaders': [
+            ('Peony', 'sd-peony', 'rival', [879], 'Ballimere Lake', {'guest': True}),
+            ('Regieleki', 'mon-894', 'gym', [894, 377, 378, 379], 'Split-Decision Ruins', {}),
+            ('Calyrex', 'mon-898', 'gym', [898, 896, 897], 'Crown Shrine', {}),
+            ('Peony', 'sd-peony-league', 'champion', [879, 306, 437, 863, 530], 'Freezington', {}),
+        ],
+        'routes': {
+            'Ballimere Lake': ['snow', 'Slippery Slope', ['Giant\u2019s Bed', 'grass'], [['Dyna Tree Hill', 'forest']]],
+            'Split-Decision Ruins': ['snow', 'Frigid Sea', ['Iceberg Ruins', 'icecave'], []],
+            'Crown Shrine': ['snow', 'Crown Shrine Path', ['Old Cemetery', 'ruins'], []],
+            'Freezington': ['snow', 'Snowslide Slope', ['Max Lair', 'cave'], []],
+        },
+        'climate': {'Ballimere Lake': {'route': {'w': [['snow', 0.8]]}}, 'Split-Decision Ruins': {'route': {'w': [['snow', 0.9]]}},
+                    'Crown Shrine': {'route': {'w': [['snow', 0.9]]}}, 'Freezington': {'route': {'w': [['snow', 0.95]]}}},
+        'towns': {'snow': ['Ballimere Lake', 'Split-Decision Ruins', 'Freezington'], 'old': ['Crown Shrine']},
+        'story': {
+            'intro': 'O Peony convidou você para explorar as Terras da Coroa, uma tundra gelada cheia de lendas. Você chega em Freezington, onde o povo fala de um rei antigo.',
+            'gym': 'O lendário {0} acordou nas Terras da Coroa. Mostre que você é digno dele.',
+            'rival': '{0}, o explorador animado, quer testar você antes da expedição. "Vamos lá, parceiro!"',
+            'villain': '{0} quer as lendas só para si.',
+            'elite': '{0} guarda o caminho do santuário.',
+            'champion': 'De volta a Freezington, {0} quer uma última batalha para fechar a expedição. É a última batalha da tundra.',
+            'end': 'As lendas das Terras da Coroa estão em paz. Você deixa a tundra para outra região.',
+        },
+    },
+    {
+        # Ilhas Laranja (anime): a Liga Laranja, depois de Kanto, como no anime.
+        'region': 'Orange', 'game': 'Liga Laranja', 'after': 'Kanto', 'start': 'Valencia Island', 'color': '#ea580c', 'legends': [144, 145, 146, 249],
+        'leaders': [
+            ('Cissy', 'sd-swimmerf', 'gym', [117, 9], 'Mikan Island', {}),
+            ('Danny', 'sd-hiker', 'gym', [31, 123, 101], 'Navel Island', {}),
+            ('Rudy', 'sd-gentleman', 'gym', [125, 121, 103], 'Trovita Island', {}),
+            ('Luana', 'sd-madame', 'gym', [105, 65], 'Kumquat Island', {}),
+            ('Drake', 'sd-veteran', 'champion', [132, 95, 94, 3, 125, 149], 'Pummelo Island', {}),
+        ],
+        'routes': {
+            'Mikan Island': ['water', 'Orange Archipelago', ['Pinkan Island', 'forest'], [['Mikan Beach', 'beach']]],
+            'Navel Island': ['mountain', 'Navel Island Road', ['Mt. Navel', 'mountain'], []],
+            'Trovita Island': ['water', 'Orange Archipelago', ['Shamouti Island', 'temple'], [['Trovita Beach', 'beach']]],
+            'Kumquat Island': ['beach', 'Kumquat Shore', ['Kumquat Resort', 'city'], []],
+            'Pummelo Island': ['water', 'Orange Archipelago', ['Pummelo Stadium', 'league'], []],
+        },
+        'climate': {'Mikan Island': {'route': {'w': [['sun', 0.5]]}}, 'Navel Island': {'mt--navel': {'w': [['snow', 0.5]]}},
+                    'Trovita Island': {'route': {'w': [['sun', 0.4], ['rain', 0.2]]}}, 'Kumquat Island': {'route': {'w': [['sun', 0.6]]}}},
+        'features': {'Mikan Island': {'water': 'sea'}, 'Trovita Island': {'water': 'sea'}, 'Kumquat Island': {'water': 'sea'}, 'Pummelo Island': {'water': 'sea'}},
+        'towns': {'island': ['Mikan Island', 'Navel Island', 'Trovita Island', 'Kumquat Island'], 'league': ['Pummelo Island']},
+        'story': {
+            'intro': 'Depois de Kanto, você leva uma Poké Ball para a Professora Ivy na Valencia Island e descobre a Liga Laranja: quatro ginásios pelas ilhas e o campeão Drake.',
+            'gym': '{0}, líder de ginásio da Liga Laranja, não luta do jeito comum: primeiro vem um desafio, depois a batalha.',
+            'rival': '{0} também quer o troféu da Liga Laranja.',
+            'villain': '{0} está atrás dos Pokémon das ilhas.',
+            'elite': '{0} guarda o estádio da Pummelo Island.',
+            'champion': 'No estádio da Pummelo Island, {0}, o campeão da Liga Laranja, nunca perdeu. É a última batalha das ilhas.',
+            'end': 'Você levou o troféu da Liga Laranja. O barco leva você para outra região.',
+        },
+    },
 ]
 
 RARE = {'Orre': ['relic-forest'], 'Fiore': ['hia-valley'], 'Almia': ['shiver-camp'], 'Oblivia': ['sophian-island'], 'Kitakami': ['oni-mountain-summit'],
-        'Blueberry': ['area-zero-underdepths'], 'Sevii': ['birth-island']}
+        'Blueberry': ['area-zero-underdepths'], 'Sevii': ['birth-island'], 'Armor': ['tower-of-waters'], 'Crown': ['crown-shrine'], 'Orange': ['shamouti-shrine']}
 
 
 def routes_of(key):

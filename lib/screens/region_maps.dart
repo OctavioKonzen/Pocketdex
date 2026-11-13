@@ -43,6 +43,15 @@ const regionMaps = <String, List<RegionMapInfo>>{
   'Sevii': [
     (id: 'sevii', aspect: 1.5, art: true, cities: <String, List<double>>{'One Island': [78.78, 51.76], 'Two Island': [21.48, 41.99], 'Three Island': [46.88, 22.46], 'Four Island': [82.68, 24.41], 'Five Island': [46.22, 46.88], 'Six Island': [50.13, 78.12], 'Seven Island': [82.03, 77.15]}),
   ],
+  'Armor': [
+    (id: 'armor', aspect: 1.5, art: false, cities: <String, List<double>>{'Master Dojo': [49.47, 42.0], 'Soothing Wetlands': [33.87, 62.5], 'Challenge Beach': [68.33, 68.4], 'Tower of Two Fists': [68.33, 24.4]}),
+  ],
+  'Crown': [
+    (id: 'crown', aspect: 1.5, art: false, cities: <String, List<double>>{'Freezington': [49.47, 60.5], 'Ballimere Lake': [36.47, 43.0], 'Split-Decision Ruins': [72.93, 50.8], 'Crown Shrine': [52.07, 16.6]}),
+  ],
+  'Orange': [
+    (id: 'orange', aspect: 1.5, art: false, cities: <String, List<double>>{'Mikan Island': [19.53, 29.3], 'Navel Island': [42.33, 21.5], 'Trovita Island': [65.13, 32.2], 'Kumquat Island': [45.6, 60.5], 'Pummelo Island': [78.13, 73.2]}),
+  ],
   'Unova': [
     (id: 'unova', aspect: 1.5, art: true, cities: <String, List<double>>{'Nuvema Town': [25.07, 18.55], 'Nacrene City': [48.18, 22.27], 'Icirrus City': [77.47, 20.31], 'Opelucid City': [90.82, 29.3], 'Castelia City': [51.11, 42.48], 'Striaton City': [9.77, 44.73], 'Nimbasa City': [25.07, 67.87], 'Undella Town': [51.76, 77.15], 'Driftveil City': [82.16, 72.27], 'Pokémon League': [10.74, 20.02], 'Accumula Town': [30.92, 47.85], 'Lacunosa Town': [70.96, 8.79], 'Humilau City': [87.37, 58.4], 'Lentimas Town': [59.9, 10.74], 'Black City': [50.13, 54.69], 'Aspertia City': [9.11, 72.75], 'Floccesy Town': [27.34, 53.22], 'Virbank City': [31.25, 77.15], 'Pokéstar Studios': [35.68, 87.89], 'Mistralton City': [67.71, 49.32]}),
   ],

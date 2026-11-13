@@ -25,7 +25,11 @@ describe('ordem das regiões (igual ao app)', () => {
     // As Ilhas Sevii vêm depois de Kanto no FireRed/LeafGreen (nos outros jogos de Kanto, não).
     const frlg = data.bosses.findIndex((b) => b.game === 'FireRed/LeafGreen')
     expect(data.bosses[finish(frlg, ['Kanto']).boss.region].region).toBe('Sevii')
-    const other = finish(at('Kanto'), ['Kanto'])
+    // Galar → Ilha da Armadura → Terras da Coroa; Kanto (Red/Blue) → Ilhas Laranja, como no anime.
+    expect(data.bosses[finish(at('Galar'), ['Galar']).boss.region].region).toBe('Armor')
+    expect(data.bosses[finish(at('Armor'), ['Galar', 'Armor']).boss.region].region).toBe('Crown')
+    expect(data.bosses[finish(at('Kanto'), ['Kanto']).boss.region].region).toBe('Orange')
+    const other = finish(at('Johto'), ['Johto'])
     expect(data.bosses[other.boss.region].after).toBeUndefined()
   })
 })

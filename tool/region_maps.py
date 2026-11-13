@@ -138,6 +138,39 @@ HAND = {
         'rivers': [],
         'roads': [['Polar Biome', 'League Club Room'], ['Coastal Biome', 'League Club Room'], ['League Club Room', 'Savanna Biome'], ['League Club Room', 'Canyon Biome']],
     },
+    # provisório, até o desenho que você mandar
+    'armor': {
+        'aspect': 1.5,
+        'cities': {'Master Dojo': (74.2, 42.0), 'Soothing Wetlands': (50.8, 62.5), 'Challenge Beach': (102.5, 68.4), 'Tower of Two Fists': (102.5, 24.4)},
+        'land': [(29.3, 24.4), (58.6, 14.6), (87.9, 11.7), (117.2, 19.5), (127.0, 43.9), (117.2, 73.2), (87.9, 85.9), (58.6, 83.0), (34.2, 73.2), (24.4, 48.8)],
+        'islands': [(131.8, 76.2, 6.8, 4.9)],
+        'water': [(68.4, 54.7, 6.8, 4.9)],
+        'biomes': [('swamp', (50.8, 63.5, 13.7, 8.8)), ('forest', (43.9, 37.1, 11.7, 8.8)), ('desert', (97.7, 50.8, 9.8, 5.9)), ('mountain', (102.5, 24.4, 11.7, 7.8)), ('plain', (74.2, 42.0, 11.7, 6.8))],
+        'rivers': [],
+        'roads': [['Master Dojo', 'Soothing Wetlands'], ['Master Dojo', 'Challenge Beach'], ['Master Dojo', 'Tower of Two Fists']],
+    },
+    # provisório, até o desenho que você mandar
+    'crown': {
+        'aspect': 1.5,
+        'cities': {'Freezington': (74.2, 60.5), 'Ballimere Lake': (54.7, 43.0), 'Split-Decision Ruins': (109.4, 50.8), 'Crown Shrine': (78.1, 16.6)},
+        'land': [(24.4, 29.3), (48.8, 14.6), (78.1, 9.8), (107.4, 14.6), (127.0, 34.2), (127.0, 68.4), (97.7, 85.9), (58.6, 85.9), (29.3, 73.2), (19.5, 48.8)],
+        'islands': [],
+        'water': [(54.7, 44.9, 10.7, 6.8)],
+        'biomes': [('snow', [(24.4, 29.3), (48.8, 14.6), (78.1, 9.8), (107.4, 14.6), (127.0, 34.2), (127.0, 68.4), (97.7, 85.9), (58.6, 85.9), (29.3, 73.2), (19.5, 48.8)]), ('mountain', (78.1, 22.5, 17.6, 8.8)), ('forest', (41.0, 62.5, 9.8, 6.8))],
+        'rivers': [],
+        'roads': [['Freezington', 'Ballimere Lake'], ['Freezington', 'Split-Decision Ruins'], ['Ballimere Lake', 'Crown Shrine']],
+    },
+    # provisório, até o desenho que você mandar
+    'orange': {
+        'aspect': 1.5,
+        'cities': {'Mikan Island': (29.3, 29.3), 'Navel Island': (63.5, 21.5), 'Trovita Island': (97.7, 32.2), 'Kumquat Island': (68.4, 60.5), 'Pummelo Island': (117.2, 73.2)},
+        'land': [],
+        'islands': [(29.3, 29.3, 10.7, 7.8), (63.5, 21.5, 9.8, 6.8), (97.7, 32.2, 10.7, 7.8), (68.4, 60.5, 11.7, 7.8), (117.2, 73.2, 12.7, 8.8), (19.5, 63.5, 5.9, 3.9), (127.0, 17.6, 5.9, 3.9), (43.9, 80.1, 4.9, 3.4)],
+        'water': [],
+        'biomes': [('mountain', (63.5, 19.5, 5.9, 3.9)), ('forest', (29.3, 29.3, 5.9, 3.9)), ('plain', (97.7, 32.2, 5.9, 3.9)), ('forest', (19.5, 63.5, 3.9, 2.4))],
+        'rivers': [],
+        'roads': [['sea', 'Mikan Island', 'Navel Island'], ['sea', 'Navel Island', 'Trovita Island'], ['sea', 'Trovita Island', 'Kumquat Island'], ['sea', 'Kumquat Island', 'Pummelo Island']],
+    },
     'kanto': {
         'aspect': 1.524,
         'cities': {'Pewter City': (62.7, 28.6), 'Viridian City': (60.9, 53.6), 'Pallet Town': (60.9, 68.5), 'Cinnabar Island': (60.9, 92.9), 'Seafoam Islands': (76.2, 92.9), 'Indigo Plateau': (38.7, 45.8), 'Celadon City': (95.5, 42.9), 'Saffron City': (116.0, 42.9), 'Cerulean City': (116.0, 28.0), 'Lavender Town': (137.1, 42.9), 'Vermilion City': (116.0, 55.4), 'Fuchsia City': (95.5, 83.3)},
@@ -206,7 +239,7 @@ REF = {
     },
 }
 # Os mapas de cada região (Johto também mostra Kanto, onde a história continua depois da Liga).
-REGIONS = {'Kanto': ['kanto'], 'Johto': ['johto', 'kanto'], 'Hoenn': ['hoenn'], 'Sinnoh': ['sinnoh'], 'Hisui': ['hisui'], 'Orre': ['orre'], 'Fiore': ['fiore'], 'Almia': ['almia'], 'Oblivia': ['oblivia'], 'Kitakami': ['kitakami'], 'Blueberry': ['blueberry'], 'Sevii': ['sevii'], 'Unova': ['unova'], 'Kalos': ['kalos'],
+REGIONS = {'Kanto': ['kanto'], 'Johto': ['johto', 'kanto'], 'Hoenn': ['hoenn'], 'Sinnoh': ['sinnoh'], 'Hisui': ['hisui'], 'Orre': ['orre'], 'Fiore': ['fiore'], 'Almia': ['almia'], 'Oblivia': ['oblivia'], 'Kitakami': ['kitakami'], 'Blueberry': ['blueberry'], 'Sevii': ['sevii'], 'Armor': ['armor'], 'Crown': ['crown'], 'Orange': ['orange'], 'Unova': ['unova'], 'Kalos': ['kalos'],
            'Alola': ['alola'], 'Galar': ['galar'], 'Paldea': ['paldea']}
 REF_DIR = os.path.join(os.path.dirname(__file__), 'region_maps_ref')
 WPX = 900
