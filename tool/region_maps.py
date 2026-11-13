@@ -29,6 +29,29 @@ OUT_SITE = os.path.join(ROOT, 'web-site', 'public', 'sprites', 'maps')
 # biomes: (tipo, forma) com forma = elipse (4 números) ou contorno (lista de pontos); rivers: linhas;
 # roads: linhas (nomes de cidade ou pontos; 'sea' no começo = rota pelo mar); cities: nome → (x, y).
 HAND = {
+    # Kanto: pelo mapa do HeartGold/SoulSilver que você mandou (Mt. Silver e as montanhas no noroeste, a enseada a oeste de Fuchsia).
+    'kanto': {
+        'cities': {
+            'Pewter City': (61, 28.6), 'Viridian City': (61, 53.6), 'Pallet Town': (61, 69.6), 'Cinnabar Island': (61, 94), 'Indigo Plateau': (38.7, 45.8),
+            'Celadon City': (95.5, 42.9), 'Saffron City': (116.6, 42.9), 'Cerulean City': (116.6, 28.6), 'Lavender Town': (137, 42.9),
+            'Vermilion City': (116.6, 54.8), 'Fuchsia City': (93.8, 83.3), 'Seafoam Islands': (76, 93),
+        },
+        'land': [(0, 0), (150, 0), (150, 100), (0, 100)],
+        'islands': [(61, 94, 5, 4), (76, 93, 4, 3)],
+        'water': [[(0, 90), (150, 88), (150, 100), (0, 100)],
+                  [(0, 62), (40, 62), (52, 72), (58, 76), (66, 76), (72, 66), (74, 56), (82, 54), (83, 68), (82, 80), (86, 90), (0, 92)],
+                  [(142, 0), (150, 0), (150, 24), (144, 18)]],
+        'biomes': [('mountain', [(0, 0), (58, 0), (60, 18), (50, 34), (30, 38), (12, 56), (0, 58)]), ('mountain', (88, 16, 9, 6)), ('mountain', (137, 30, 4, 5)),
+                   ('forest', (61, 40, 4, 5)), ('forest', (95, 72, 6, 4)), ('forest', (128, 70, 6, 5)), ('mountain', (38, 52, 4, 3)), ('forest', (104, 58, 4, 3))],
+        'rivers': [[(120, 26), (130, 20), (140, 18)]],
+        'roads': [
+            ['Pewter City', 'Cerulean City'], ['Cerulean City', (137, 28.6), 'Lavender Town'], ['Cerulean City', (116.6, 12), (140, 12)],
+            ['Pewter City', 'Viridian City'], ['Viridian City', 'Pallet Town'], ['sea', 'Pallet Town', 'Cinnabar Island'],
+            ['sea', 'Cinnabar Island', 'Seafoam Islands', (93.8, 94), 'Fuchsia City'], ['Viridian City', (38.7, 53.6), 'Indigo Plateau'], [(38.7, 53.6), (20, 57), (0, 60)],
+            ['Celadon City', 'Saffron City'], ['Saffron City', 'Lavender Town'], ['Cerulean City', 'Saffron City'], ['Saffron City', 'Vermilion City'],
+            ['Vermilion City', (137, 54.8)], ['Lavender Town', (140, 71), (120, 76), (104, 83.3), 'Fuchsia City'], ['Celadon City', (85, 42.9), (85, 83.3), 'Fuchsia City'],
+        ],
+    },
     'hoenn': {
         'cities': {
             'Littleroot Town': (40, 80), 'Oldale Town': (40, 70), 'Petalburg City': (24, 70), 'Rustboro City': (12, 46), 'Dewford Town': (14, 90),
@@ -373,7 +396,7 @@ def story_cities():
 
 def build(name, wanted):
     """(imagem, cidades em %) de um mapa."""
-    if name in REF:
+    if name in REF and name not in HAND:
         aspect, places, biomes = ref_spec(name)
         cv = Canvas(aspect)
         spec = REF[name]
@@ -408,10 +431,10 @@ def build(name, wanted):
     land = np.zeros((cv.h, cv.w))
     if spec.get('land'):
         land = np.maximum(land, cv.shape(conv(spec['land'])))
-    for isl in spec.get('islands', []):
-        land = np.maximum(land, cv.shape(conv(isl)))
     for wtr in spec.get('water', []):
         land = np.minimum(land, 1 - cv.shape(conv(wtr)))
+    for isl in spec.get('islands', []):
+        land = np.maximum(land, cv.shape(conv(isl)))
     cities = {c: pc(xy) for c, xy in spec['cities'].items()}
     lines_land, lines_sea = [], []
     for road in spec.get('roads', []):
@@ -475,7 +498,7 @@ def main():
         img, cities = build(name, wanted) if (not only or name in only) else (None, None)
         if img is None:
             img = Image.open(os.path.join(OUT, f'{name}.webp'))
-            cities = build(name, wanted)[1] if name in REF else {c: (xy[0] / 1.5, xy[1]) for c, xy in HAND[name]['cities'].items() if c in wanted}
+            cities = build(name, wanted)[1] if name in REF and name not in HAND else {c: (xy[0] / 1.5, xy[1]) for c, xy in HAND[name]['cities'].items() if c in wanted}
         else:
             for folder in (OUT, OUT_SITE):
                 img.save(os.path.join(folder, f'{name}.webp'), 'WEBP', quality=86, method=6)
