@@ -661,6 +661,27 @@ def build(name, wanted):
 # Mapas desenhados que você mandou (tool/region_maps_art/<id>.webp): a imagem é usada inteira (com a moldura) e só
 # as cidades são marcadas (em pixels da imagem original). Os nomes já vêm no desenho, então o app não escreve outros.
 ART = {
+    'johto': {'crop': (0, 0, 1536, 1024), 'cities': {
+        'Azalea Town': (172, 495), 'Cherrygrove City': (290, 635), 'New Bark Town': (598, 642), 'Ecruteak City': (578, 462),
+        'Goldenrod City': (628, 340), 'Mahogany Town': (898, 332), 'Olivine City': (1120, 328), 'Violet City': (995, 512),
+        'Cianwood City': (1420, 668), 'Blackthorn City': (1415, 478)}},
+    'hoenn': {'crop': (0, 0, 1536, 1024), 'cities': {
+        'Mauville City': (620, 290), 'Fortree City': (1000, 250), 'Petalburg City': (760, 395), 'Lavaridge Town': (150, 440),
+        'Pacifidlog Town': (190, 650), 'Lilycove City': (1150, 375), 'Sootopolis City': (1160, 455), 'Mossdeep City': (1095, 765),
+        'Ever Grande City': (1400, 215), 'Rustboro City': (500, 390), 'Slateport City': (495, 700), 'Verdanturf Town': (320, 540),
+        'Fallarbor Town': (430, 250), 'Oldale Town': (610, 135), 'Littleroot Town': (205, 855), 'Dewford Town': (735, 830),
+        'Battle Frontier': (1430, 470)}},
+    'alola': {'crop': (0, 0, 1536, 1024), 'cities': {
+        'Iki Town': (400, 165), "Hau'oli City": (470, 270), 'Verdant Cavern': (590, 300), 'Paniola Town': (1045, 280),
+        'Heahea City': (870, 335), 'Konikoni City': (905, 425), 'Brooklet Hill': (1110, 335), 'Lush Jungle': (960, 240),
+        'Wela Volcano Park': (1010, 140), 'Ruins of Life': (830, 180), 'Malie City': (1075, 660), 'Po Town': (1395, 540),
+        'Mount Lanakila': (1290, 520), 'Hokulani Observatory': (1215, 790), 'Tapu Village': (1140, 765), 'Seafolk Village': (250, 690),
+        'Vast Poni Canyon': (180, 470), 'Aether Paradise': (720, 480)}},
+    'paldea': {'crop': (0, 0, 1536, 1024), 'cities': {
+        'Medali': (360, 225), 'Cascarrafa': (470, 548), 'Mesagoza': (770, 580), 'Levincia': (1180, 625),
+        'Artazon': (1240, 405), 'Los Platos': (230, 705), 'Montenevera': (690, 175), 'Glaseado': (900, 232),
+        'Zapapico': (1150, 230), 'Porto Marinada': (150, 320), 'Pokémon League': (495, 325), 'Cabo Poco': (775, 800),
+        'Cortondo': (450, 770), 'Alfornada': (1380, 690)}},
     'kanto': {'crop': (0, 0, 1678, 937), 'cities': {
         'Pewter City': (415, 440), 'Viridian City': (845, 393), 'Celadon City': (1078, 393), 'Cerulean City': (1345, 398),
         'Lavender Town': (1078, 212), 'Indigo Plateau': (1162, 158), 'Fuchsia City': (1348, 603), 'Saffron City': (1225, 742),
