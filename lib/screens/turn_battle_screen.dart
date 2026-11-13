@@ -656,6 +656,13 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
                     next: _next,
                     wild: _challenge?['wild'] == true,
                     keepMine: _challenge?['kind'] == 'factory',
+                    taunt: _challenge?['kind'] == 'factory' && _challenge?['boss'] is Map && FactoryData.loaded != null
+                        ? [
+                            for (final l in FactoryRun.sceneLines(FactoryData.loaded!, '${_challenge!['boss']['region']}', 'last',
+                                '${_challenge!['boss']['name']}@${FactoryRun.bossCity(FactoryData.loaded!, currentFactory()['run'] as Map<String, dynamic>?)}', I18n.language))
+                              l.$1.isNotEmpty ? '${tr(l.$1)}: ${l.$2}' : l.$2
+                          ]
+                        : const [],
                     // A tela VS: o líder da Jornada ou o chefe da Battle Factory.
                     vs: _resumed && _challenge?['kind'] == 'factory'
                         ? null
@@ -1311,6 +1318,9 @@ class BattleView extends StatefulWidget {
 
   /// Battle Factory: o seu Pokémon já está em campo (veio da tela da corrida): sem o treinador e a Poké Ball do seu lado.
   final bool keepMine;
+
+  /// Na história do Pokelike: o que o chefe diz quando manda o último Pokémon (a fala daquele momento da trama).
+  final List<String> taunt;
   const BattleView(
       {super.key,
       required this.battle,
@@ -1330,7 +1340,8 @@ class BattleView extends StatefulWidget {
       this.onRematch,
       this.wild = false,
       this.vs,
-      this.keepMine = false});
+      this.keepMine = false,
+      this.taunt = const []});
 
   @override
   State<BattleView> createState() => BattleViewState();
@@ -1939,10 +1950,16 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
               [for (var k = 0; k < _b.teams[1].length; k++) if (k != e.value && _hp[1][k] > 0) k].isEmpty) {
             _lastWords = true;
             final name = '${widget.vs!['name'] ?? widget.foeName}';
-            setState(() => _text = '$name: ${tr(_lastLines[(name.length + _b.teams[1].length) % _lastLines.length])}');
-            _note('text', 1, _text);
-            _skip = Completer<void>();
-            await Future.any([_wait(1800), _skip!.future]);
+            // Na história do Pokelike, a fala daquele momento da trama; fora dela, uma das falas comuns. Igual ao site.
+            final words = widget.taunt.isNotEmpty ? widget.taunt : ['$name: ${tr(_lastLines[(name.length + _b.teams[1].length) % _lastLines.length])}'];
+            for (final w in words) {
+              if (!mounted) return;
+              setState(() => _text = w);
+              _note('text', 1, _text);
+              _skip = Completer<void>();
+              await Future.any([_wait(1800), _skip!.future]);
+              _skip = null;
+            }
             _skip = null;
             if (!mounted) return;
           }

@@ -21,7 +21,7 @@ import { battleMons } from '../lib/battleSetup'
 import {
   BAG_ITEMS, BOX_SIZE, boxToSet, releaseFromBox, HUNT_MAX, HUNT_STEP, huntBase, huntMultOf, setHunt, bossOf, regionOf, genderOf, piecesOf, pieceOf, upgradePieces, tradePieces, PIECE_ITEMS, PIECE_TRADE, capturedMon, isRegionalForm, emptyFactory, unequipItem, ROUTE_LENGTH, CITY_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, teamRoom, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
-  shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, atPc, pcOf, PC_SIZE, RARE_PLACES, shownScene, gameOf, tierOf, foeBoostAt, leagueAhead, unlockShiny, VITAMIN_EVS, VITAMINS,
+  shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, sceneLines, bossCity, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, atPc, pcOf, PC_SIZE, RARE_PLACES, shownScene, gameOf, tierOf, foeBoostAt, leagueAhead, unlockShiny, VITAMIN_EVS, VITAMINS,
   forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor, isKeystone,
   tradeMon, skipTrade, TRADE_LEVELS, levelCapOf, townTrade, townTradeable, legOf, fishPath, rodOf, RODS, headbuttPath, slatherHoney, honeyReady, honeyPath, HONEY_FLOORS, plantBerry, berryReady, harvestBerry, bikePath, takePhoto, photoNow, gymPuzzleOf, startPuzzle, puzzleAct, finishPuzzle, puzzleView, GYM_EDGE_LEVELS, KEY_ITEMS, hasKey, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, reminderCost, forgetMove, daycareOpen, daycareHere, safariAct, safariRates, leaveSafari, SAFARI_FEE, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, bossScene,
   resolveChoice, regionLegend, leaderType, villainTeam, rivalBoss, rocketBoss, placeInfo, routeInfo, DUNGEON_LENGTH, dungeonPos, townShop, townCenter,
@@ -33,7 +33,7 @@ import {
 } from '../lib/factoryRun'
 import { startMusic, stopMusic } from '../lib/battleSound'
 import { REGION_MAPS, regionMap } from '../lib/regionMaps'
-import { t } from '../lib/i18n'
+import { language, t } from '../lib/i18n'
 import { prettyName, typeColor } from '../lib/pokemon'
 import { usePokemonIndex } from '../lib/pokemonIndex'
 import { prettySlug } from '../lib/teamSets'
@@ -2568,6 +2568,10 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
             📋 {t('Missão cumprida: {0}!').replace('{0}', missionText(p.mission))} +💰{p.mission.money} · 🎁 {itemName(p.mission.item)}
           </p>
         )}
+        {/* O que o chefe diz depois de perder (a história segue). */}
+        {p.beat?.city && sceneLines(data, p.beat.region ?? data.bosses[run.boss.region]?.region, 'after', `${p.beat.name}@${p.beat.city}`, language).map(([who, text], k) => (
+          <p key={`after-${k}`} className="text-sm" data-testid="factory-scene-after">{who ? `💬 ${t(who)}: ` : '📖 '}{text}</p>
+        ))}
         {p.story && p.story.split('\n\n').map((line, k) => <p key={k} className="text-sm font-semibold" data-testid="factory-story-end">📖 {line}</p>)}
       </>
     )
@@ -2933,20 +2937,26 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         {!town && lead && <FieldMon mon={lead} byId={byId} back scene={meetScene} />}
       </Field>
     )
+    // As cenas da história: ao chegar na cidade e antes da luta do chefe (o que ele diz naquele momento da trama).
+    const sceneText = ([who, text]) => (who ? `💬 ${t(who)}: ${text}` : `📖 ${text}`)
+    const arrival = town && pos === ROUTE_LENGTH ? sceneLines(data, boss.region, 'city', to, language).map(sceneText) : []
+    const before = meeting ? sceneLines(data, boss.region, 'before', `${boss.name}@${bossCity(data, run)}`, language).map(sceneText) : []
     // As falas (uma por vez, tocando para passar, como nos jogos).
     const lines = [
       intro && `📖 ${intro}`,
+      ...arrival,
       ...(town && pos === ROUTE_LENGTH ? (run.town?.got ?? []).map((k) => `${KEY_INFO[k]?.icon ?? '🔑'} ${t('Em {0} te deram {1}!').replace('{0}', to).replace('{1}', KEY_ITEMS[k] ?? k)} ${t(KEY_INFO[k]?.help ?? '')}`) : []),
       !town && !inside && pos === 0 && !meeting && `🧭 ${t('Você sai de {0} e entra em {1}, rumo a {2}.').replace('{0}', from ?? t('casa')).replace('{1}', t(biome.label)).replace('{2}', to)} ${t(ROUTE_FLAVOR[route.biome] ?? ROUTE_FLAVOR.grass)}`,
       !town && !inside && pos === 0 && !meeting && legend != null && `🌟 ${t(LEGEND_CLUES[target.kind === 'elite' ? LEGEND_CLUES.length - 1 : Math.min(LEGEND_CLUES.length - 2, run.badges ?? 0)])}`,
       inside && dungeonPos(run) === 0 && `🕳️ ${t('Você entrou em {0}: {1} andares, sem desvios, e um chefe no fim. Depois, de volta para {2}.').replace('{0}', t(inside.name)).replace('{1}', DUNGEON_LENGTH).replace('{2}', backTo)}`,
-      meeting && boss.kind === 'rival' && `💬 ${boss.name}: ${t(RIVAL_LINES[Math.min(RIVAL_LINES.length - 1, run.rivalWins ?? 0)])}${run.rivalWins ? ` ${t('(Você já me venceu {0} vezes. Meu time ficou mais forte!)').replace('{0}', run.rivalWins)}` : ''}`,
-      meeting && boss.kind === 'villain' && `💬 ${boss.name}: ${t(VILLAIN_LINES[(run.floor + run.seed) % VILLAIN_LINES.length])}`,
-      meeting && boss.kind === 'villain' && `💬 ${t(VILLAIN_PLANS[villainTeam(boss.name)] ?? VILLAIN_PLANS.rocket)}`,
-      meeting && boss.kind === 'gym' && `💬 ${boss.name}: ${t(LEADER_LINES[leaderType(data, boss)] ?? LEADER_LINES.normal)}`,
+      ...before,
+      meeting && !before.length && boss.kind === 'rival' && `💬 ${boss.name}: ${t(RIVAL_LINES[Math.min(RIVAL_LINES.length - 1, run.rivalWins ?? 0)])}${run.rivalWins ? ` ${t('(Você já me venceu {0} vezes. Meu time ficou mais forte!)').replace('{0}', run.rivalWins)}` : ''}`,
+      meeting && !before.length && boss.kind === 'villain' && `💬 ${boss.name}: ${t(VILLAIN_LINES[(run.floor + run.seed) % VILLAIN_LINES.length])}`,
+      meeting && !before.length && boss.kind === 'villain' && `💬 ${t(VILLAIN_PLANS[villainTeam(boss.name)] ?? VILLAIN_PLANS.rocket)}`,
+      meeting && !before.length && boss.kind === 'gym' && `💬 ${boss.name}: ${t(LEADER_LINES[leaderType(data, boss)] ?? LEADER_LINES.normal)}`,
       meeting && (boss.kind === 'rival' || boss.kind === 'villain') && t('{0} apareceu no caminho!').replace('{0}', boss.name),
       meeting && !(boss.kind === 'rival' || boss.kind === 'villain') && t('O chefe espera'),
-      meeting && storyLine(data, boss.region, boss.kind, boss.name),
+      meeting && !before.length && storyLine(data, boss.region, boss.kind, boss.name),
       rival && `💬 ${rival.name}: ${t(rival.pair ? ROCKET_LINES[(run.rivalRaces ?? 0) % ROCKET_LINES.length] : RIVAL_RACE_LINES[(run.rivalRaces ?? 0) % RIVAL_RACE_LINES.length])}`,
       rival && t('{0} apareceu no caminho!').replace('{0}', rival.name),
       route.options.length === 1 && route.options[0].meteor && `☄️ ${t('Uma chuva de meteoros! Algo caiu bem perto daqui...')}`,

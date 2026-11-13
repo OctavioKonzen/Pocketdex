@@ -14,6 +14,7 @@ import 'package:flutter/material.dart' hide Text;
 import 'package:share_plus/share_plus.dart';
 import '../utils/hud_colors.dart';
 
+import '../i18n/i18n.dart';
 import '../i18n/text.dart';
 import '../services/account_sync.dart';
 import '../services/animated_sprites.dart';
@@ -3719,6 +3720,10 @@ class _FactoryScreenState extends State<FactoryScreen> {
         if (mission != null)
           Text('📋 ${tr('Missão cumprida: {0}!').replaceAll('{0}', _mission(mission))} +💰${mission['money']} · 🎁 ${_itemName('${mission['item']}')}',
               key: const ValueKey('factory-mission-done'), style: const TextStyle(fontSize: 13, color: Color(0xFFD97706))),
+        // O que o chefe diz depois de perder (a história segue). Igual ao site.
+        if ((p['beat'] as Map?)?['city'] != null && _data != null)
+          for (final l in FactoryRun.sceneLines(_data!, '${(p['beat'] as Map)['region']}', 'after', '${(p['beat'] as Map)['name']}@${(p['beat'] as Map)['city']}', I18n.language))
+            Text(l.$1.isNotEmpty ? '💬 ${tr(l.$1)}: ${l.$2}' : '📖 ${l.$2}', key: const ValueKey('factory-scene-after'), style: const TextStyle(fontSize: 13)),
         if (p['story'] != null)
           for (final line in '${p['story']}'.split('\n\n')) Text('📖 $line', key: const ValueKey('factory-story-end'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
       ],
@@ -4669,9 +4674,14 @@ class _FactoryScreenState extends State<FactoryScreen> {
         : meeting && _cityKinds.contains(boss['kind'])
             ? FactoryRun.bossScene(data, boss, '${route['biome']}')
             : '${route['biome']}';
+    // As cenas da história: ao chegar na cidade e antes da luta do chefe (o que ele diz naquele momento da trama). Igual ao site.
+    String sceneText((String, String) l) => l.$1.isNotEmpty ? '💬 ${tr(l.$1)}: ${l.$2}' : '📖 ${l.$2}';
+    final arrival = town && pos == FactoryRun.routeLength ? FactoryRun.sceneLines(data, region, 'city', cities.to, I18n.language).map(sceneText).toList() : <String>[];
+    final before = meeting ? FactoryRun.sceneLines(data, region, 'before', '${boss['name']}@${FactoryRun.bossCity(data, run)}', I18n.language).map(sceneText).toList() : <String>[];
     // As falas (uma por vez, tocando para passar, como nos jogos).
     final lines = <String>[
       if (intro.isNotEmpty) '📖 $intro',
+      ...arrival,
       if (town && pos == FactoryRun.routeLength)
         for (final k in ((run['town'] as Map?)?['got'] as List?) ?? const [])
           '${_keyInfo[k]?.$1 ?? '🔑'} ${tr('Em {0} te deram {1}!').replaceAll('{0}', cities.to).replaceAll('{1}', FactoryRun.keyItems[k] ?? '$k')} ${tr(_keyInfo[k]?.$2 ?? '')}',
@@ -4682,17 +4692,18 @@ class _FactoryScreenState extends State<FactoryScreen> {
         '🌟 ${tr(_legendClues[target['kind'] == 'elite' ? _legendClues.length - 1 : min(_legendClues.length - 2, ((run['badges'] as num?) ?? 0).toInt())])}',
       if (dungeon != null && FactoryRun.dungeonPos(run) == 0)
         '🕳️ ${tr('Você entrou em {0}: {1} andares, sem desvios, e um chefe no fim. Depois, de volta para {2}.').replaceAll('{0}', insideName ?? '').replaceAll('{1}', '${FactoryRun.dungeonLength}').replaceAll('{2}', backTo)}',
-      if (meeting && boss['kind'] == 'rival')
+      ...before,
+      if (meeting && before.isEmpty && boss['kind'] == 'rival')
         '💬 ${boss['name']}: ${tr(_rivalLines[min(_rivalLines.length - 1, ((run['rivalWins'] as num?) ?? 0).toInt())])}'
         '${((run['rivalWins'] as num?) ?? 0) > 0 ? ' ${tr('(Você já me venceu {0} vezes. Meu time ficou mais forte!)').replaceAll('{0}', '${run['rivalWins']}')}' : ''}',
-      if (meeting && boss['kind'] == 'villain') ...[
+      if (meeting && before.isEmpty && boss['kind'] == 'villain') ...[
         '💬 ${boss['name']}: ${tr(_villainLines[((run['floor'] as num).toInt() + (run['seed'] as num).toInt()) % _villainLines.length])}',
         '💬 ${tr(_villainPlans[FactoryRun.villainTeam(boss['name'])] ?? _villainPlans['rocket']!)}',
       ],
-      if (meeting && boss['kind'] == 'gym') '💬 ${boss['name']}: ${tr(_leaderLines[FactoryRun.leaderType(data, boss)] ?? _leaderLines['normal']!)}',
+      if (meeting && before.isEmpty && boss['kind'] == 'gym') '💬 ${boss['name']}: ${tr(_leaderLines[FactoryRun.leaderType(data, boss)] ?? _leaderLines['normal']!)}',
       if (ambush) tr('{0} apareceu no caminho!').replaceAll('{0}', '${boss['name']}'),
       if (meeting && !ambush) tr('O chefe espera'),
-      if (meeting) FactoryRun.storyLine(data, region, '${boss['kind']}', '${boss['name']}'),
+      if (meeting && before.isEmpty) FactoryRun.storyLine(data, region, '${boss['kind']}', '${boss['name']}'),
       if (rival != null) ...[
         '💬 ${rival['name']}: ${tr((rival['pair'] == true ? _rocketLines : _rivalRaceLines)[((run['rivalRaces'] as num?) ?? 0).toInt() % (rival['pair'] == true ? _rocketLines : _rivalRaceLines).length])}',
         tr('{0} apareceu no caminho!').replaceAll('{0}', '${rival['name']}'),

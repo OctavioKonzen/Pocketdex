@@ -30,6 +30,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from factory_stories import CITIES, STORIES  # noqa: E402
 from factory_extra_regions import REGIONS as EXTRA_REGIONS  # noqa: E402
+from factory_scenes import SCENES  # noqa: E402
 from factory_routes import CITIES as ROUTE_CITIES, START as ROUTE_START, FEATURES as ROUTE_FEATURES, RARE as ROUTE_RARE, TUTOR_EVERYWHERE as ROUTE_TUTORS  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -568,6 +569,8 @@ def main():
     data = {'species': out_species, 'evolutions': evolutions, 'starters': STARTERS, 'bosses': bosses, 'forms': forms,
             'formSpecies': form_species, 'regional': REGIONAL,
             'megas': megas, 'gmax': gmax, 'zcrystals': zcrystals, 'tms': tms, 'stones': stones, 'stories': STORIES,
+            'scenes': {r: {'cities': {c: [list(x) for x in ls] for c, ls in sc.get('cities', {}).items()},
+                           'bosses': {k: {w: [list(x) for x in ls] for w, ls in v.items()} for k, v in sc.get('bosses', {}).items()}} for r, sc in SCENES.items()},
             'routes': {'cities': ROUTE_CITIES, 'start': ROUTE_START, 'features': ROUTE_FEATURES, 'rare': ROUTE_RARE, 'tutors': ROUTE_TUTORS}}
     with open(os.path.join(DB, 'factory.json'), 'w', encoding='utf-8') as f:
         json.dump(data, f, separators=(',', ':'))

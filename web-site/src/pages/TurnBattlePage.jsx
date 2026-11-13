@@ -14,7 +14,7 @@ import { battleHitter, battleMons, leaderTeam, randomTeam } from '../lib/battleS
 import { friendsOnly, useFriends } from '../lib/friends'
 import { getGymLeaders, getMoveAnims, getMoves, getTypes, shinyPath, spriteUrl } from '../lib/data'
 import { addHallOfFame, badgesNeeded, badgesOf, leagueOpen, leagueOrder, musicOf, regionGyms, regionOf, streakResult, winBadge } from '../lib/gymChallenge'
-import { localText, t } from '../lib/i18n'
+import { language, localText, t } from '../lib/i18n'
 import { fast, toggleBattleSpeed, useBattleAnimationSpeed, useBattleSpeed } from '../lib/battleSpeed'
 import { useRunTakeover } from '../lib/runGuard'
 import { winDailyBattle } from '../lib/dailyBattle'
@@ -41,7 +41,7 @@ import {simulatorTargets, simulatorTurn} from '../lib/battleSimulator'
 import {newPartyBattle, playPartyTurn, describeEvents} from '../lib/partyBattle'
 import { FactoryHub, FactoryScreen, factoryDataNow, saveFactory } from '../components/FactoryPanels'
 import { expBarOf, factoryAfter, factoryBattle, factoryFoe } from '../lib/factoryBattle'
-import { battleMusic, endRun, escapeRope, factoryOf, winFloor } from '../lib/factoryRun'
+import { battleMusic, bossCity, endRun, escapeRope, factoryOf, sceneLines, winFloor } from '../lib/factoryRun'
 import { getFactoryData } from '../lib/data'
 
 const CARD = 'rounded-2xl bg-card p-5 shadow'
@@ -970,7 +970,7 @@ function VsSplash({ me, coach, vs, myName, foeMon = null, onSkip }) {
   )
 }
 
-function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain, onRematch = null, onFinish, online = null, music = null, endNote = '', next = null, wild = false, vs = null, keepMine = false }) {
+function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain, onRematch = null, onFinish, online = null, music = null, endNote = '', next = null, wild = false, vs = null, keepMine = false, taunt = [] }) {
   const byId = usePokemonIndex()
   // Os treinadores: o seu (de costas, lançando a Poké Ball) e o do adversário.
   const myTrainer = useMyTrainer()
@@ -1297,18 +1297,20 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         setShown((s) => ({ ...s, fainted: s.fainted.map((f, i) => (i === e.side ? true : f)) }))
       } else if (e.t === 'switch') {
         // Personagem importante (chefe com tela VS): fala no meio da batalha, como nos jogos, quando manda o último Pokémon.
+        // Na história do Pokelike, a fala daquele momento da trama (taunt); fora dela, uma das falas comuns.
         if (e.side === 1 && vs?.name && !lastWords.current && battle.sides[1].team.length > 1
           && !battle.sides[1].team.some((_, k) => k !== e.index && shownRef.current.hp[1][k] > 0)) {
           lastWords.current = true
-          const words = `${vs.name}: ${t(LAST_LINES[(vs.name.length + battle.sides[1].team.length) % LAST_LINES.length])}`
-          setText(words)
-          addLog({ kind: 'text', side: 1, text: words })
-          await new Promise((resolve) => {
-            const id = setTimeout(resolve, fast(1800))
-            skip.current = () => (clearTimeout(id), resolve())
-          })
-          skip.current = null
-          if (!live.current) return
+          for (const words of taunt.length ? taunt : [`${vs.name}: ${t(LAST_LINES[(vs.name.length + battle.sides[1].team.length) % LAST_LINES.length])}`]) {
+            setText(words)
+            addLog({ kind: 'text', side: 1, text: words })
+            await new Promise((resolve) => {
+              const id = setTimeout(resolve, fast(1800))
+              skip.current = () => (clearTimeout(id), resolve())
+            })
+            skip.current = null
+            if (!live.current) return
+          }
         }
         // Volta para a Poké Ball (se não desmaiou) e o outro sai dela.
         const gone = shownRef.current.fainted[e.side]
@@ -2827,6 +2829,8 @@ export default function TurnBattlePage() {
           onRematch={['league', 'tower', 'factory'].includes(challenge?.kind) || game.battle.seed == null ? null : () => again(true)}
           // Na Battle Factory, sem chefe: a música do lugar.
           keepMine={challenge?.kind === 'factory'}
+          // Na história do Pokelike: a fala do chefe quando ele manda o último Pokémon.
+          taunt={challenge?.kind === 'factory' && challenge.boss && factoryDataNow() ? sceneLines(factoryDataNow(), challenge.boss.region, 'last', `${challenge.boss.name}@${bossCity(factoryDataNow(), factoryOf(useStore.getState().league).run)}`, language).map(([who, text]) => (who ? `${t(who)}: ${text}` : text)) : []}
           vs={foeLeader ?? (VS_KIND[challenge?.boss?.kind] ? challenge.boss : null)}
           // Sem chefe: o tema de batalha da região, como num ginásio dela (na Battle Factory, a da corrida).
           music={!foeLeader && !challenge?.boss && challenge?.kind === 'factory' && factoryDataNow() ? battleMusic(factoryDataNow(), factoryOf(useStore.getState().league).run) : musicOf(foeLeader ?? challenge?.boss, game.battle.sides[1].team[game.battle.sides[1].active].id, game.battle.seed ?? 0)}

@@ -1930,6 +1930,19 @@ void main() {
     final fixed = FactoryRun.normalizeOwned({...FactoryRun.empty(), 'run': run}, data);
     expect([for (final f in FactoryRun.foesOf(fixed['run'] as Map<String, dynamic>)) f['id']], [1, 2, 3, 9, 10, 11]);
   });
+
+  test('a história em cenas: ao chegar, antes, no meio e depois da luta, na língua escolhida (igual ao site)', () {
+    final data = FactoryData.parse(jsonDecode(File('assets/database/factory.json').readAsStringSync()) as Map<String, dynamic>);
+    expect(FactoryRun.sceneLines(data, 'Kanto', 'city', 'Saffron City').first.$2, contains('Silph Co.'));
+    expect(FactoryRun.sceneLines(data, 'Kanto', 'city', 'Saffron City', 'en').first.$2, contains('Saffron City is locked down'));
+    final before = FactoryRun.sceneLines(data, 'Kanto', 'before', 'Giovanni@Saffron City', 'fr');
+    expect(before.first.$1, 'Giovanni');
+    expect(before.first.$2, contains('Master Ball'));
+    expect(FactoryRun.sceneLines(data, 'Kanto', 'last', 'Brock@Pewter City', 'es').first.$2, contains('último'));
+    expect([for (final l in FactoryRun.sceneLines(data, 'Kanto', 'after', 'Blue@Indigo Plateau')) l.$1], ['Blue', 'Oak']);
+    expect(FactoryRun.sceneLines(data, 'Johto', 'city', 'Nowhere'), isEmpty);
+    expect(FactoryRun.bossCity(data, {'boss': {'region': 0, 'step': 1}}), 'Pewter City');
+  });
 }
 
 /// Compra todas as melhorias (em várias passadas: umas pedem outras), enquanto dá.

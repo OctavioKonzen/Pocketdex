@@ -2635,6 +2635,21 @@ function nextBoss(run, data, rand) {
   return [{ region, step: 0 }, [...played, data.bosses[region].region]]
 }
 
+/** As línguas das cenas, na ordem de cada fala em tool/factory_scenes.py. */
+export const SCENE_LANGS = ['pt', 'en', 'fr', 'es']
+/**
+ * As cenas da história (tool/factory_scenes.py): kind 'city' (ao chegar na cidade, key = a cidade) ou 'before'/'after'
+ * (antes e depois da luta, key = "Nome@Cidade"). Devolve [[quem fala ('' = narrador), texto na língua]]. Igual ao app.
+ */
+export function sceneLines(data, region, kind, key, lang = 'pt') {
+  const s = data?.scenes?.[region]
+  const list = kind === 'city' ? s?.cities?.[key] : s?.bosses?.[key]?.[kind]
+  const i = Math.max(0, SCENE_LANGS.indexOf(lang))
+  return (list ?? []).map((l) => [l[0], l[1 + i] ?? l[1]])
+}
+/** A cidade do chefe de agora na corrida (a chave das cenas dele). */
+export const bossCity = (data, run) => data?.bosses?.[run?.boss?.region]?.leaders?.[run.boss.step]?.city ?? null
+
 /** O texto da história (tool/factory_stories.py) para a região e o momento ({0}: o nome do chefe). */
 export function storyLine(data, region, key, name = '') {
   return (data.stories?.[region]?.[key] ?? '').replace('{0}', name)
@@ -2889,7 +2904,7 @@ export function winFloor(run, data, after = {}) {
     // A loja da cidade: chegando nela, logo antes do chefe (no resto da rota, os Poké Marts do mapa).
     shop: kind !== 'boss' || !CITY_KINDS.includes(run.encounter.boss.kind) ? (atCity(data, out) && !inLeague(data, out) && !townHub(data, out) ? pickShop(rand, data, run.floor, 8, Boolean(run.townMap)) : null) : null,
     // O chefe que acabou de perder (as falas depois da luta) e a missão completa.
-    ...(kind === 'boss' || kind === 'rival' ? { beat: { kind: run.encounter.boss.kind, name: run.encounter.boss.name, region: run.encounter.boss.region } } : {}),
+    ...(kind === 'boss' || kind === 'rival' ? { beat: { kind: run.encounter.boss.kind, name: run.encounter.boss.name, region: run.encounter.boss.region, ...(kind === 'boss' && bossCity(data, run) ? { city: bossCity(data, run) } : {}) } } : {}),
     ...(mission ? { mission } : {}),
     ...(hm ? { hm } : {}),
     ...(key ? { key } : {}),

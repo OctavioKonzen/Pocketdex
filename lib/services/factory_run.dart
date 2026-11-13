@@ -57,10 +57,14 @@ class FactoryData {
   /// Formas e evoluções por região e por gênero (tool/build_factory_data.py, REGIONAL): {forms, evolveIn, regionEvos,
   /// gender, femaleForm}.
   final Json regional;
+
+  /// As cenas da história de cada região (tool/factory_scenes.py): {cities: {cidade: falas}, bosses: {"Nome@Cidade":
+  /// {before, last, after}}}; cada fala é [quem fala, pt, en, fr, es].
+  final Json scenes;
   const FactoryData(this.species, this.evolutions, this.starters,
       [this.bosses = const [], this.forms = const {}, this.megas = const {}, this.gmax = const [], this.zcrystals = const {},
       this.tms = const [], this.stones = const [], this.stories = const {}, this.routes = const {}, this.formSpecies = const {},
-      this.regional = const {}]);
+      this.regional = const {}, this.scenes = const {}]);
 
   static Future<FactoryData>? _loading;
 
@@ -100,6 +104,7 @@ class FactoryData {
       Map<String, dynamic>.from((j['routes'] as Map?) ?? const {}),
       {for (final e in ((j['formSpecies'] as Map?) ?? const {}).entries) int.parse('${e.key}'): e.value as List},
       Map<String, dynamic>.from((j['regional'] as Map?) ?? const {}),
+      Map<String, dynamic>.from((j['scenes'] as Map?) ?? const {}),
     );
   }
 
@@ -2927,6 +2932,30 @@ class FactoryRun {
   }
 
   /// O texto da história para a região e o momento ({0}: o nome do chefe).
+  /// As línguas das cenas, na ordem de cada fala em tool/factory_scenes.py.
+  static const sceneLangs = ['pt', 'en', 'fr', 'es'];
+
+  /// As cenas da história (tool/factory_scenes.py): kind 'city' (ao chegar na cidade, key = a cidade) ou
+  /// 'before'/'last'/'after' (antes, no meio e depois da luta, key = "Nome@Cidade"). [[quem fala, texto]]. Igual ao site.
+  static List<(String, String)> sceneLines(FactoryData data, String region, String kind, String key, [String lang = 'pt']) {
+    final s = data.scenes[region] as Map?;
+    final List? list = kind == 'city' ? ((s?['cities'] as Map?)?[key] as List?) : (((s?['bosses'] as Map?)?[key] as Map?)?[kind] as List?);
+    final i = math.max(0, sceneLangs.indexOf(lang));
+    return [
+      for (final l in list ?? const [])
+        ('${(l as List)[0]}', '${l.length > 1 + i ? l[1 + i] : l[1]}')
+    ];
+  }
+
+  /// A cidade do chefe de agora na corrida (a chave das cenas dele).
+  static String? bossCity(FactoryData data, Json? run) {
+    final r = run?['boss'] as Map?;
+    if (r == null) return null;
+    final g = data.bosses.elementAtOrNull(_int(r['region']));
+    final l = (g?['leaders'] as List?)?.elementAtOrNull(_int(r['step'])) as Map?;
+    return l?['city'] as String?;
+  }
+
   static String storyLine(FactoryData data, String region, String key, [String name = '']) => (data.stories[region]?[key] ?? '').replaceFirst('{0}', name);
 
   /// Venceu o andar. hp: a parte do HP de cada um do time (na ordem da
@@ -3271,7 +3300,10 @@ class FactoryRun {
       'shop': shopPick,
       // O chefe que acabou de perder (as falas depois da luta) e a missão completa.
       if (kind == 'boss' || kind == 'rival')
-        'beat': {'kind': run['encounter']['boss']['kind'], 'name': run['encounter']['boss']['name'], 'region': run['encounter']['boss']['region']},
+        'beat': {
+          'kind': run['encounter']['boss']['kind'], 'name': run['encounter']['boss']['name'], 'region': run['encounter']['boss']['region'],
+          if (kind == 'boss' && bossCity(data, run) != null) 'city': bossCity(data, run),
+        },
       if (mission != null) 'mission': mission,
       if (hm != null) 'hm': hm,
       if (key != null) 'key': key,
