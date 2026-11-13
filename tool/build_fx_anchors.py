@@ -21,6 +21,12 @@ ROOT = Path(__file__).resolve().parent.parent
 SPR = ROOT / 'assets' / 'database' / 'sprites' / 'animated'
 OUT = ROOT / 'assets' / 'database' / 'fx_anchors.json'
 
+# Correções à mão (o cálculo erra em formatos estranhos): id → {lado: (boca_x, boca_y, frente_x, frente_y)}.
+OVERRIDES = {
+    '130': {'f': (27, 62, 22, 55), 'b': (98, 32, 90, 42)},  # Gyarados: a boca aberta embaixo, não o corpo
+    '658': {'f': (39, 40, 24, 42), 'b': (66, 30, 68, 35)},  # Greninja: o rosto, não a ponta da língua
+}
+
 
 def first_frame(path):
     im = Image.open(path)
@@ -110,6 +116,9 @@ def main():
             b = anchors(bp, 1)
             if b:
                 entry['b'] = b
+        for key, fix in OVERRIDES.get(sid, {}).items():
+            if key in entry:
+                entry[key][6:10] = list(fix)
         if entry:
             out[sid] = entry
     OUT.write_text(json.dumps(out, separators=(',', ':'), sort_keys=True) + '\n')
