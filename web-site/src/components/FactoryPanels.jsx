@@ -32,6 +32,7 @@ import {
   heartsOf, roamerSeen, villainPlot, fieldOf, mysteryEgg, takeMysteryEgg, LEAGUE_FLAWLESS,
 } from '../lib/factoryRun'
 import { startMusic, stopMusic } from '../lib/battleSound'
+import { regionMap } from '../lib/regionMaps'
 import { t } from '../lib/i18n'
 import { prettyName, typeColor } from '../lib/pokemon'
 import { usePokemonIndex } from '../lib/pokemonIndex'
@@ -1720,15 +1721,76 @@ function RegionMap({ data, run, onClose, monName }) {
   const plot = villainPlot(data, run)
   const clock = clockOf()
   const sky = weatherOf(run, shownScene(run, run.scene ?? 'grass', data), clock.season, data)
+  const map = regionMap(game.region, cities)
+  const hereIndex = cities.findIndex((c, i) => !c.steps.every((k) => k < run.boss.step) && (i === 0 || cities[i - 1].steps.every((k) => k < run.boss.step)))
+  const [pick, setPick] = useState(null)
+  const shown = pick ?? Math.max(0, hereIndex)
   return (
-    <div className="space-y-2 p-2" data-testid="region-map">
+    <div className={map ? 'flex h-full flex-col gap-1 p-2' : 'space-y-2 p-2'} data-testid="region-map">
       <OverlayClose onClose={onClose} title={`🗺️ ${game.region} · ${game.game}`} />
-      <p className="flex flex-wrap gap-1 text-xs font-bold" data-testid="region-hud">
+      <p className={map ? 'flex shrink-0 gap-1 overflow-x-auto whitespace-nowrap text-[10px] font-bold sm:text-xs' : 'flex flex-wrap gap-1 text-xs font-bold'} data-testid="region-hud">
         <span className="rounded bg-slate-900/80 px-1.5 text-white">{clock.night ? `🌙 ${t('Noite')}` : `☀️ ${t('Dia')}`}</span>
         <span className="rounded bg-slate-900/80 px-1.5 text-white">{sky ? t(WEATHER_LABEL[sky] ?? sky) : `🌤️ ${t('Tempo bom')}`}</span>
         <span className="rounded bg-slate-900/80 px-1.5 text-white">{t(SEASON_LABEL[clock.season])}</span>
         {plot && <span className="rounded bg-red-700 px-1.5 text-white" data-testid="region-plot">🚨 {t('Plano da {0}: {1}/{2} atrapalhados').replace('{0}', TEAM_NAMES[plot.team] ?? 'Equipe Rocket').replace('{1}', plot.foiled).replace('{2}', plot.chapters.length)}</span>}
       </p>
+      {map ? (
+        // O Town Map (como nos jogos): o mar, as terras, as rotas e as cidades; tocando numa, o nome dela embaixo.
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border-4 border-slate-900 bg-slate-900" data-testid="town-map-region">
+          <div className="relative min-h-0 flex-1">
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full" aria-hidden="true">
+              <defs>
+                <pattern id="sea-grid" width="4" height="4" patternUnits="userSpaceOnUse"><path d="M4 0H0V4" fill="none" stroke="#ffffff22" strokeWidth="0.3" /></pattern>
+              </defs>
+              <rect width="100" height="100" fill="#2f6db5" />
+              <rect width="100" height="100" fill="url(#sea-grid)" />
+              {map.land.map(([x, y, rx, ry], k) => <ellipse key={`b${k}`} cx={x} cy={y} rx={rx + 1.2} ry={ry + 1.2} fill="#e8d9a0" />)}
+              {/* A terra segue as rotas (como no mapa dos jogos): a praia e o verde em volta de cada caminho. */}
+              {map.spots.slice(1).map((c, i) => map.byLand[i] && <line key={`pb${i}`} x1={map.spots[i].xy[0]} y1={map.spots[i].xy[1]} x2={c.xy[0]} y2={c.xy[1]} stroke="#e8d9a0" strokeWidth="13.5" strokeLinecap="round" />)}
+              {map.land.map(([x, y, rx, ry], k) => <ellipse key={`l${k}`} cx={x} cy={y} rx={rx} ry={ry} fill="#5fae4e" />)}
+              {map.spots.slice(1).map((c, i) => map.byLand[i] && <line key={`pl${i}`} x1={map.spots[i].xy[0]} y1={map.spots[i].xy[1]} x2={c.xy[0]} y2={c.xy[1]} stroke="#5fae4e" strokeWidth="11" strokeLinecap="round" />)}
+              {map.land.map(([x, y, rx, ry], k) => <ellipse key={`g${k}`} cx={x} cy={y} rx={rx} ry={ry} fill="url(#sea-grid)" />)}
+              {map.spots.slice(1).map((c, i) => {
+                const [a, b] = [map.spots[i].xy, c.xy]
+                // A rota já feita fica acesa; as que faltam, tracejadas.
+                const done = c.steps.every((k) => k < run.boss.step)
+                return <line key={i} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke={done ? '#f8e08e' : '#f3f4f6'} strokeWidth="1.6" strokeLinecap="round" strokeDasharray={done ? undefined : '2 1.4'} />
+              })}
+            </svg>
+            {map.spots.map((c, i) => {
+              const done = c.steps.every((k) => k < run.boss.step)
+              const here = i === hereIndex
+              const marks = [
+                roam && c.steps.includes(roam.at) ? '🐾' : '',
+                ...(plot?.chapters.filter((x) => c.steps.includes(x.step)).map((x) => (x.foiled ? '✔' : x.past ? '✖' : '🚨')) ?? []),
+                plot && plot.base === c.city ? '🏴' : '',
+              ].filter(Boolean).join('')
+              return (
+                <button key={i} type="button" onClick={() => setPick(i)} className="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer" style={{ left: `${c.xy[0]}%`, top: `${c.xy[1]}%` }}
+                  data-testid={done ? 'city-lit' : here ? 'city-here' : 'city-dark'} title={c.city}>
+                  <span className={`block h-3.5 w-3.5 rounded-[2px] border-2 sm:h-4 sm:w-4 ${here ? 'animate-pulse border-white bg-sky-400' : done ? 'border-amber-100 bg-amber-400' : 'border-white bg-red-600'} ${i === shown ? 'ring-2 ring-yellow-300' : ''}`} />
+                  {marks && <span className="absolute -top-4 left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] leading-none drop-shadow">{marks}</span>}
+                  {here && <span className="absolute left-1/2 top-4 -translate-x-1/2 text-sm leading-none">📍</span>}
+                </button>
+              )
+            })}
+          </div>
+          {/* A faixa de baixo (como no Town Map): o nome da cidade escolhida e o que tem nela. */}
+          {map.spots[shown] && (() => {
+            const c = map.spots[shown]
+            const done = c.steps.every((k) => k < run.boss.step)
+            return (
+              <p className="bg-slate-900 px-2 py-1 text-xs font-bold text-white sm:text-sm" data-testid="town-map-name">
+                <span data-no-translate>{c.city}</span>
+                {shown === hereIndex ? ` · ◀ ${t('você está indo para cá')}` : done ? ' · ✔' : ''}
+                {roam && c.steps.includes(roam.at) && <span className="text-amber-300" data-testid="region-roamer"> · 🐾 <span data-no-translate>{roamName(monName(roam.id))}</span> {t('foi visto aqui')}</span>}
+                {plot?.chapters.some((x) => c.steps.includes(x.step)) && <span className="text-red-300" data-testid="region-plot-city"> · 🚨 {TEAM_NAMES[plot.team] ?? ''}</span>}
+                {plot && plot.base === c.city && <span className="text-red-300"> · 🏴 {t('Base')}</span>}
+              </p>
+            )
+          })()}
+        </div>
+      ) : (
       <div className="relative rounded-xl p-3" style={{ background: `linear-gradient(135deg, ${color}33, #0f172a22)` }}>
         <div className="absolute bottom-6 left-7 top-6 w-1 rounded bg-slate-500/40" />
         {cities.map((c, i) => {
@@ -1749,6 +1811,7 @@ function RegionMap({ data, run, onClose, monName }) {
           )
         })}
       </div>
+      )}
     </div>
   )
 }
@@ -1833,6 +1896,7 @@ function WeeklyCard({ factory, data, byId, onContinue }) {
 
 /** O nome de cada equipe vilã (nomes dos jogos). */
 const TEAM_NAMES = {
+  yell: 'Equipe Yell', macro: 'Macro Cosmos',
   rocket: 'Equipe Rocket', aqua: 'Equipe Aqua', magma: 'Equipe Magma', galactic: 'Equipe Galáctica', plasma: 'Equipe Plasma',
   flare: 'Equipe Flare', skull: 'Equipe Skull', aether: 'Fundação Aether', star: 'Equipe Star',
 }

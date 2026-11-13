@@ -1092,7 +1092,7 @@ export const VILLAIN_TEAMS = {
   Giovanni: 'rocket', Executiva: 'rocket', Executivo: 'rocket', Proton: 'rocket', Ariana: 'rocket', Archer: 'rocket', Petrel: 'rocket',
   Archie: 'aqua', Shelly: 'aqua', Matt: 'aqua', Maxie: 'magma', Tabitha: 'magma', Courtney: 'magma',
   Mars: 'galactic', Cyrus: 'galactic', Jupiter: 'galactic', Saturn: 'galactic', N: 'plasma', Zinzolin: 'plasma', Colress: 'plasma', Ghetsis: 'plasma',
-  Lysandre: 'flare', Bryony: 'flare', Mable: 'flare', Plumeria: 'skull', Guzma: 'skull', Faba: 'aether', Soliera: 'aether', Dulse: 'aether',
+  Lysandre: 'flare', Bryony: 'flare', Mable: 'flare', Plumeria: 'skull', Guzma: 'skull', Faba: 'aether', Lusamine: 'aether', Soliera: 'aether', Dulse: 'aether',
   Giacomo: 'star', Ortega: 'star', Mela: 'star', Atticus: 'star', Eri: 'star', Penny: 'star', Aliana: 'flare', Celosia: 'flare', Xerosic: 'flare',
   Rose: 'macro', Oleana: 'macro', 'Equipe Yell': 'yell',
 }
