@@ -28,7 +28,8 @@ void main() {
     expect(wild('Alola', 52), 10107);
     expect(wild('Kanto', 52), 52);
     expect(wild('Galar', 52, 'boss'), 52);
-    expect(wild('Sinnoh', 215), 10235);
+    expect(wild('Hisui', 215), 10235);
+    expect(wild('Sinnoh', 215), 215);
     expect(wild('Paldea', 194, 'trainer'), 10253);
   });
 
@@ -46,10 +47,12 @@ void main() {
     expect(FactoryRun.canEvolveWith(data, mon(25, 20), 'thunder-stone', 'Alola'), [10100]);
     expect(FactoryRun.canEvolveWith(data, mon(25, 20), 'thunder-stone', 'Kanto'), [26]);
     expect(FactoryRun.canEvolveWith(data, mon(102, 20), 'leaf-stone', 'Alola'), [10114]);
-    expect(at(mon(156, 35), 36, 'Sinnoh'), 10233);
+    expect(at(mon(156, 35), 36, 'Hisui'), 10233);
+    expect(at(mon(156, 35), 36, 'Sinnoh'), 157);
     expect(at(mon(156, 35), 36, 'Johto'), 157);
     expect(at(mon(109, 34), 35, 'Galar'), 10167);
-    expect(at(mon(234, 24), 30, 'Sinnoh'), 899);
+    expect(at(mon(234, 24), 30, 'Hisui'), 899);
+    expect(at(mon(234, 24), 30, 'Sinnoh'), 234);
     expect(at(mon(234, 24), 30, 'Kanto'), 234);
     expect(FactoryRun.canEvolveWith(data, mon(217, 40), 'peat-block', 'Paldea'), [901]);
     expect(FactoryRun.canEvolveWith(data, mon(217, 40), 'peat-block', 'Kanto'), isEmpty);

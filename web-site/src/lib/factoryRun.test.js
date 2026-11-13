@@ -26,8 +26,8 @@ import {
 const data = JSON.parse(readFileSync(new URL('../../../assets/database/factory.json', import.meta.url), 'utf8'))
 const moves = Object.fromEntries(JSON.parse(readFileSync(new URL('../../../assets/database/moves.json', import.meta.url), 'utf8')).map((m) => [m.name, { ...m, category: m.damage_class }]))
 const forms = Object.fromEntries(JSON.parse(readFileSync(new URL('../../../assets/database/pokemon.json', import.meta.url), 'utf8')).map((p) => [p.id, p]))
-const ROUTE_42 = { floor: 1, biome: 'grass', options: [{ kind: 'trainer' }] }
-const ENCOUNTER_42 = { kind: 'trainer', foes: [{ id: 276, level: 3, iv: 0, ev: 3 }], trainerSeed: 500729487, scene: 'grass' }
+const ROUTE_42 = { floor: 1, biome: 'forest', options: [{ kind: 'trainer' }] }
+const ENCOUNTER_42 = { kind: 'trainer', foes: [{ id: 270, level: 3, iv: 0, ev: 3 }], trainerSeed: 500729487, scene: 'forest' }
 const seq = (values) => { let i = 0; return () => values[i++ % values.length] }
 
 /** Compra todas as melhorias (em várias passadas: umas pedem outras), enquanto dá. */
@@ -59,7 +59,7 @@ describe('Battle Factory (roguelike)', () => {
     expect(run.seed).toBe(2967354801)
     expect(run.team[0].ivs).toEqual({ hp: 25, atk: 22, def: 29, spa: 26, spd: 17, spe: 23 })
     expect(run.team[0].nature).toBe('Docile')
-    expect(run.boss).toEqual({ region: 11, step: 0 })
+    expect(run.boss).toEqual({ region: 12, step: 0 })
     // O mapa: no 1º andar, o caminho segue (uma batalha comum).
     expect(run.encounter).toBe(null)
     expect(run.route).toEqual(ROUTE_42)

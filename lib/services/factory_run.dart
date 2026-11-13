@@ -1083,7 +1083,7 @@ class FactoryRun {
     return atk > def ? 106 : atk < def ? 107 : 237;
   }
 
-  /// A região da perna da corrida (Kanto, Alola, Galar...; Hisui fica nas pernas de Sinnoh).
+  /// A região da perna da corrida (Kanto, Alola, Galar, Hisui...).
   static String? regionOf(FactoryData data, Map? run) {
     final i = (run?['boss'] as Map?)?['region'];
     return i == null || _int(i) >= data.bosses.length ? null : '${data.bosses[_int(i)]['region']}';
@@ -1096,7 +1096,7 @@ class FactoryRun {
     // Modo formas regionais: a da região de agora e, sem ela, a primeira que existir (Alola, Galar, Hisui, Paldea).
     final forms = run['regionalAll'] == true
         ? {
-            for (final r in ['Paldea', 'Sinnoh', 'Galar', 'Alola']) ...data.regionalMap('forms', r),
+            for (final r in ['Paldea', 'Hisui', 'Galar', 'Alola']) ...data.regionalMap('forms', r),
             ...data.regionalMap('forms', regionOf(data, run)),
           }
         : data.regionalMap('forms', regionOf(data, run));
@@ -1774,6 +1774,7 @@ class FactoryRun {
     'ruins-of-conflict': (scene: 'ruins', name: 'Ruins of Conflict', legends: [785], mythic: false),
     'crown-shrine': (scene: 'snow', name: 'Crown Shrine', legends: [898], mythic: false),
     'grasswither-shrine': (scene: 'ruins', name: 'Grasswither Shrine', legends: [1001], mythic: false),
+    'snowpoint-temple': (scene: 'temple', name: 'Snowpoint Temple', legends: [486], mythic: false),
   };
   static final rarePlaceIds = rarePlaces.keys.toList();
 
@@ -1807,7 +1808,7 @@ class FactoryRun {
   static const villainTeams = <String, String>{
     'Giovanni': 'rocket', 'Executiva': 'rocket', 'Executivo': 'rocket', 'Proton': 'rocket', 'Ariana': 'rocket', 'Archer': 'rocket', 'Petrel': 'rocket',
     'Archie': 'aqua', 'Shelly': 'aqua', 'Matt': 'aqua', 'Maxie': 'magma', 'Tabitha': 'magma', 'Courtney': 'magma',
-    'Mars': 'galactic', 'Cyrus': 'galactic', 'Jupiter': 'galactic', 'Saturn': 'galactic', 'N': 'plasma', 'Zinzolin': 'plasma', 'Colress': 'plasma', 'Ghetsis': 'plasma',
+    'Mars': 'galactic', 'Cyrus': 'galactic', 'Jupiter': 'galactic', 'Saturn': 'galactic', 'Kamado': 'galactic', 'N': 'plasma', 'Zinzolin': 'plasma', 'Colress': 'plasma', 'Ghetsis': 'plasma',
     'Lysandre': 'flare', 'Bryony': 'flare', 'Mable': 'flare', 'Plumeria': 'skull', 'Guzma': 'skull', 'Faba': 'aether', 'Lusamine': 'aether', 'Soliera': 'aether', 'Dulse': 'aether',
     'Giacomo': 'star', 'Ortega': 'star', 'Mela': 'star', 'Atticus': 'star', 'Eri': 'star', 'Penny': 'star', 'Aliana': 'flare', 'Celosia': 'flare', 'Xerosic': 'flare',
     'Rose': 'macro', 'Oleana': 'macro', 'Equipe Yell': 'yell',
@@ -1944,7 +1945,7 @@ class FactoryRun {
   /// mais nesta região. Igual ao site.
   static const roamers = [243, 244, 245, 380, 381, 488];
   static const regionRoamers = {
-    'Kanto': [243, 244, 245], 'Johto': [243, 244, 245], 'Hoenn': [380, 381], 'Sinnoh': [481, 488], 'Unova': [641, 642], 'Kalos': [144, 145, 146],
+    'Kanto': [243, 244, 245], 'Johto': [243, 244, 245], 'Hoenn': [380, 381], 'Sinnoh': [481, 488], 'Hisui': [641, 642, 645, 905], 'Unova': [641, 642], 'Kalos': [144, 145, 146],
   };
   static const roamFloor = 15;
   static const roamSpan = 5;
@@ -2244,7 +2245,7 @@ class FactoryRun {
 
   /// Os lendários de cada região: as pistas aparecem ao longo da história e, na rota para a Liga, um deles espera.
   static const regionLegends = <String, List<int>>{
-    'Kanto': [150, 144, 145, 146], 'Johto': [249, 250, 243, 244, 245], 'Hoenn': [382, 383, 384, 380, 381], 'Sinnoh': [483, 484, 487, 480, 481, 482],
+    'Kanto': [150, 144, 145, 146], 'Johto': [249, 250, 243, 244, 245], 'Hoenn': [382, 383, 384, 380, 381], 'Sinnoh': [483, 484, 487, 480, 481, 482], 'Hisui': [483, 484, 487, 905],
     'Unova': [643, 644, 646, 638, 639, 640], 'Kalos': [716, 717, 718], 'Alola': [791, 792, 800, 785], 'Galar': [888, 889, 890], 'Paldea': [1007, 1008, 1001, 1002],
   };
 
@@ -4468,7 +4469,7 @@ class FactoryRun {
   };
 
   /// A música do mapa (andando na rota e na cidade): um tema original por região, mais calmo. Igual ao site.
-  static const mapRegions = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos', 'alola', 'galar', 'paldea'];
+  static const mapRegions = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos', 'alola', 'galar', 'paldea', 'hisui'];
   static String? mapMusic(FactoryData data, Map? run) {
     final region = regionOf(data, run)?.toLowerCase();
     return region == null ? null : 'map_${mapRegions.contains(region) ? region : 'kanto'}';

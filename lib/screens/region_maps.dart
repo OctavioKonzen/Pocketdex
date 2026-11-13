@@ -19,6 +19,9 @@ const regionMaps = <String, List<RegionMapInfo>>{
   'Sinnoh': [
     (id: 'sinnoh', aspect: 1.5, art: true, cities: <String, List<double>>{'Snowpoint City': [45.57, 16.11], 'Veilstone City': [65.1, 23.44], 'Pokémon League': [79.75, 22.66], 'Pastoria City': [81.38, 36.33], 'Oreburgh City': [39.84, 39.55], 'Eterna City': [24.22, 53.22], 'Jubilife City': [56.64, 57.13], 'Canalave City': [90.49, 64.65], 'Twinleaf Town': [20.83, 74.02], 'Hearthome City': [62.83, 80.27], 'Sunyshore City': [78.78, 77.34], 'Sandgem Town': [39.84, 77.15], 'Celestic Town': [38.54, 63.48], 'Solaceon Town': [69.01, 67.38], 'Floaroma Town': [14.65, 58.59], 'Survival Area': [16.28, 17.58], 'Fight Area': [22.46, 32.23], 'Resort Area': [87.57, 39.55]}),
   ],
+  'Hisui': [
+    (id: 'hisui', aspect: 1.5, art: false, cities: <String, List<double>>{'Jubilife Village': [25.4, 54.7], 'Obsidian Fieldlands': [83.67, 54.7], 'Crimson Mirelands': [67.4, 51.8], 'Cobalt Coastlands': [88.2, 18.6], 'Coronet Highlands': [49.8, 32.2], 'Alabaster Icelands': [23.73, 20.5], 'Temple of Sinnoh': [64.8, 72.3]}),
+  ],
   'Unova': [
     (id: 'unova', aspect: 1.5, art: true, cities: <String, List<double>>{'Nuvema Town': [25.07, 18.55], 'Nacrene City': [48.18, 22.27], 'Icirrus City': [77.47, 20.31], 'Opelucid City': [90.82, 29.3], 'Castelia City': [51.11, 42.48], 'Striaton City': [9.77, 44.73], 'Nimbasa City': [25.07, 67.87], 'Undella Town': [51.76, 77.15], 'Driftveil City': [82.16, 72.27], 'Pokémon League': [10.74, 20.02], 'Accumula Town': [30.92, 47.85], 'Lacunosa Town': [70.96, 8.79], 'Humilau City': [87.37, 58.4], 'Lentimas Town': [59.9, 10.74], 'Black City': [50.13, 54.69], 'Aspertia City': [9.11, 72.75], 'Floccesy Town': [27.34, 53.22], 'Virbank City': [31.25, 77.15], 'Pokéstar Studios': [35.68, 87.89], 'Mistralton City': [67.71, 49.32]}),
   ],

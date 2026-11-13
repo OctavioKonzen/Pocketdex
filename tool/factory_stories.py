@@ -44,6 +44,15 @@ STORIES = {
         'champion': '{0}, a Campeã, estuda as lendas de Sinnoh e quer saber se você merece a verdade.',
         'end': 'Dialga e Palkia se acalmaram. Você pega o barco para uma nova região.',
     },
+    'Hisui': {
+        'intro': 'Uma fenda no céu jogou você no passado, em Hisui, a terra que um dia vai virar Sinnoh. A Equipe Galáxia acolhe você na Jubilife Village, e os Nobres das cinco áreas estão furiosos.',
+        'gym': '{0} é guardião do Nobre desta área. Para seguir, você enfrenta o guardião e acalma o Nobre.',
+        'rival': '{0} também caiu do céu e quer provar que é capaz. "Vamos ver quem pesquisa mais rápido!"',
+        'villain': '{0}, comandante da Equipe Galáxia, desconfia de quem veio do céu e quer testar você.',
+        'elite': '{0} guarda o caminho para o Monte Coronet.',
+        'champion': 'No Temple of Sinnoh, {0} tira a máscara: ele queria o poder de Arceus o tempo todo. É a última batalha de Hisui.',
+        'end': 'A fenda no céu se fechou e Hisui ficou em paz. Uma luz leva você de volta ao presente, para outra região.',
+    },
     'Unova': {
         'intro': 'Em Unova, todos discutem: os Pokémon devem ficar com os humanos ou ser libertados? Sua jornada começa em Nuvema Town, no meio dessa briga.',
         'gym': '{0} defende o ginásio e quer ver a ligação entre você e seus Pokémon.',

@@ -99,6 +99,13 @@ CITIES = {
     'Snowpoint City': ['snow', 'Route 216 · Route 217', ['Lake Acuity', 'snow'], [['Snowpoint Temple', 'temple'], ['Snowpoint Harbor', 'beach']]],
     'Sunyshore City': ['beach', 'Route 222', None, [['Vista Lighthouse', 'tower'], ['Sunyshore Beach', 'beach']]],
     'Sinnoh:Pokémon League': ['cave', 'Victory Road', ['Spear Pillar', 'temple'], []],
+    # Hisui (as áreas de Legends: Arceus; você sai da Jubilife Village)
+    'Obsidian Fieldlands': ['grass', 'Obsidian Fieldlands', ['Grandtree Arena', 'forest'], [['Lake Verity', 'lakeside']]],
+    'Crimson Mirelands': ['swamp', 'Crimson Mirelands', ['Brava Arena', 'ruins'], [['Diamond Settlement', 'city'], ['Lake Valor', 'lakeside']]],
+    'Cobalt Coastlands': ['water', 'Cobalt Coastlands', ['Firespit Island', 'volcano'], [['Tombolo Walk', 'beach']]],
+    'Coronet Highlands': ['mountain', 'Coronet Highlands', ['Wayward Cave', 'cave'], [['Moonview Arena', 'ruins']]],
+    'Alabaster Icelands': ['snow', 'Alabaster Icelands', ["Avalugg's Legacy", 'icecave'], [['Pearl Settlement', 'city'], ['Lake Acuity', 'snow']]],
+    'Temple of Sinnoh': ['mountain', 'Mount Coronet', ['Spear Pillar', 'temple'], []],
     # Unova
     'Striaton City': ['grass', 'Route 1 · Route 2', ['Dreamyard', 'ruins'], []],
     'Nacrene City': ['grass', 'Route 3', ['Wellspring Cave', 'cave'], [['Nacrene Museum', 'ruins']]],
@@ -209,6 +216,7 @@ FEATURES = {
     'Canalave City': {'water': 'sea', 'gifts': [{'id': 447, 'egg': True, 'after': 'iron-island'}], 'tutors': ['deleter']},
     'Snowpoint City': {'trade': [308, 93]},
     'Sunyshore City': {'water': 'sea', 'fall': True},
+    'Cobalt Coastlands': {'water': 'sea'},
     'Nacrene City': {'daycare': True, 'trade': [546, 548], 'museum': {'nacrene-museum': [564, 566]}},
     'Driftveil City': {'trade': [572, 550], 'gifts': [{'id': 570}]},
     'Mistralton City': {'tutors': ['deleter', 'reminder']},
@@ -278,6 +286,13 @@ CLIMATE = {
     'Snowpoint City': {'route': {'w': [['snow', 0.9]], 'f': [['diamonds', 0.5]]}, 'lake-acuity': {'w': [['snow', 0.8]], 'f': [['aurora', 0.5]]}},  # o Diamond Dust de Snowpoint
     'Sunyshore City': {'vista-lighthouse': {'f': [['electric', 0.6]]}},
     'Sinnoh:Pokémon League': {'spear-pillar': {'f': [['psychic', 0.6]]}},
+    # Hisui
+    'Obsidian Fieldlands': {'route': {'w': [['sun', 0.3], ['rain', 0.2]]}, 'grandtree-arena': {'f': [['wind', 0.5]]}},
+    'Crimson Mirelands': {'route': {'w': [['rain', 0.7]], 'f': [['fog', 0.4]]}},                    # a chuva e a neblina dos pântanos
+    'Cobalt Coastlands': {'route': {'w': [['sun', 0.4]]}, 'firespit-island': {'f': [['ashes', 0.7]]}},
+    'Coronet Highlands': {'route': {'f': [['rockfall', 0.5], ['fog', 0.2]]}, 'wayward-cave': {'f': [['rockfall', 0.4]]}},
+    'Alabaster Icelands': {'route': {'w': [['snow', 0.95]]}, 'avalugg-s-legacy': {'f': [['chill', 0.6]]}},  # a nevasca de Alabaster
+    'Temple of Sinnoh': {'spear-pillar': {'f': [['psychic', 0.7]]}},
     # Unova
     'Nimbasa City': {'route': {'w': [['sand', 0.9]]}, 'relic-castle': {'f': [['quicksand', 0.8]]}},  # o Desert Resort
     'Driftveil City': {'cold-storage': {'f': [['chill', 0.8]]}},
@@ -323,12 +338,12 @@ for _city, _climate in CLIMATE.items():
 # vila pequena, porto, metrópole, neve, montanha, ilha, cidade histórica, floresta, flores, deserto, industrial, na água,
 # vulcão e a entrada da Liga. Sem nada aqui, a cidade genérica.
 TOWNS = {
-    'village': ['Fuchsia City', 'Viridian City', 'Azalea Town', 'Mahogany Town', 'Petalburg City', 'Striaton City', 'Aspertia City', 'Santalune City', 'Medali'],
+    'village': ['Fuchsia City', 'Viridian City', 'Azalea Town', 'Mahogany Town', 'Petalburg City', 'Striaton City', 'Aspertia City', 'Santalune City', 'Medali', 'Obsidian Fieldlands', 'Crimson Mirelands'],
     'port': ['Vermilion City', 'Olivine City', 'Canalave City', 'Sunyshore City', 'Driftveil City', 'Shalour City', 'Coumarine City', 'Seafolk Village', 'Hulbury', 'Levincia'],
     'metro': ['Celadon City', 'Saffron City', 'Goldenrod City', 'Rustboro City', 'Mauville City', 'Hearthome City', 'Castelia City', 'Nimbasa City', 'Lumiose City', 'Wyndon'],
-    'snow': ['Snowpoint City', 'Icirrus City', 'Snowbelle City', 'Mount Lanakila', 'Circhester', 'Montenevera', 'Glaseado'],
-    'mountain': ['Pewter City', 'Blackthorn City', 'Veilstone City', 'Mistralton City', 'Cyllage City', 'Hokulani Observatory', 'Vast Poni Canyon', 'Alfornada'],
-    'island': ['Seafoam Islands', 'Cianwood City', 'Dewford Town', 'Mossdeep City', 'Humilau City', 'Verdant Cavern', 'Iki Town', 'Ruins of Life', 'Brooklet Hill'],
+    'snow': ['Snowpoint City', 'Icirrus City', 'Snowbelle City', 'Mount Lanakila', 'Circhester', 'Montenevera', 'Glaseado', 'Alabaster Icelands'],
+    'mountain': ['Pewter City', 'Blackthorn City', 'Veilstone City', 'Mistralton City', 'Cyllage City', 'Hokulani Observatory', 'Vast Poni Canyon', 'Alfornada', 'Coronet Highlands'],
+    'island': ['Seafoam Islands', 'Cianwood City', 'Dewford Town', 'Mossdeep City', 'Humilau City', 'Verdant Cavern', 'Iki Town', 'Ruins of Life', 'Brooklet Hill', 'Cobalt Coastlands'],
     'old': ['Violet City', 'Ecruteak City', 'Eterna City', 'Opelucid City', 'Anistar City', 'Malie City', 'Hammerlocke'],
     'forest': ['Fortree City', 'Laverre City', 'Lush Jungle', 'Ballonlea'],
     'flower': ['Turffield', 'Cortondo', 'Artazon'],
@@ -336,7 +351,7 @@ TOWNS = {
     'industrial': ['Oreburgh City', 'Nacrene City', 'Virbank City', 'Motostoke', 'Spikemuth'],
     'water': ['Cerulean City', 'Sootopolis City', 'Pastoria City'],
     'volcano': ['Cinnabar Island', 'Lavaridge Town', 'Wela Volcano Park'],
-    'league': ['Indigo Plateau', 'Ever Grande City', 'Sinnoh:Pokémon League', 'Unova:Pokémon League', 'Kalos:Pokémon League', 'Paldea:Pokémon League'],
+    'league': ['Indigo Plateau', 'Ever Grande City', 'Sinnoh:Pokémon League', 'Unova:Pokémon League', 'Kalos:Pokémon League', 'Paldea:Pokémon League', 'Temple of Sinnoh'],
 }
 for _kind, _cities in TOWNS.items():
     for _city in _cities:
@@ -368,6 +383,7 @@ RARE = {
     'Johto': ['bell-tower'],
     'Hoenn': ['faraway-island'],
     'Sinnoh': ['distortion-world'],
+    'Hisui': ['snowpoint-temple'],
     'Unova': ['liberty-garden'],
     'Kalos': ['sea-spirit-s-den'],
     'Alola': ['ruins-of-conflict'],
@@ -380,6 +396,7 @@ START = {
     'Johto': 'New Bark Town',
     'Hoenn': 'Littleroot Town',
     'Sinnoh': 'Twinleaf Town',
+    'Hisui': 'Jubilife Village',
     'Unova': 'Nuvema Town',
     'Black 2/White 2': 'Aspertia City',
     'Kalos': 'Vaniville Town',

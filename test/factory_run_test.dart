@@ -48,11 +48,11 @@ void main() {
     expect(run['seed'], 2967354801);
     expect(run['team'][0]['ivs'], {'hp': 25, 'atk': 22, 'def': 29, 'spa': 26, 'spd': 17, 'spe': 23});
     expect(run['team'][0]['nature'], 'Docile');
-    expect(run['boss'], {'region': 11, 'step': 0});
+    expect(run['boss'], {'region': 12, 'step': 0});
     expect(run['encounter'], isNull);
-    expect(run['route'], {'floor': 1, 'biome': 'grass', 'options': [{'kind': 'trainer'}]});
+    expect(run['route'], {'floor': 1, 'biome': 'forest', 'options': [{'kind': 'trainer'}]});
     expect(FactoryRun.chooseNode(run, data, 0)['encounter'], {
-      'kind': 'trainer', 'foes': [{'id': 276, 'level': 3, 'iv': 0, 'ev': 3}], 'trainerSeed': 500729487, 'scene': 'grass',
+      'kind': 'trainer', 'foes': [{'id': 270, 'level': 3, 'iv': 0, 'ev': 3}], 'trainerSeed': 500729487, 'scene': 'forest',
     });
   });
 
@@ -271,7 +271,7 @@ void main() {
     expect(traded['item'], 'leftovers');
     expect(FactoryRun.escapeRope(base, data, hp: [0]), isNull);
     final escaped = FactoryRun.escapeRope({...base, 'floor': 7, 'bag': {...base['bag'] as Map, 'escape-rope': 1}}, data, hp: [0])!;
-    expect(escaped['route'], {'floor': 7, 'biome': 'grass', 'options': [{'kind': 'trainer'}]});
+    expect(escaped['route'], {'floor': 7, 'biome': 'forest', 'options': [{'kind': 'trainer'}]});
     expect(FactoryRun.teamOf(escaped).first['hp'], FactoryRun.escapeHp);
     expect(escaped['bag']['escape-rope'], 0);
     final (f1, earned) = FactoryRun.progress(

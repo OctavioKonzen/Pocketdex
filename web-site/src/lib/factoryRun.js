@@ -904,7 +904,7 @@ function tyrogue(mon) {
   return atk > def ? 106 : atk < def ? 107 : 237
 }
 
-/** A região da perna da corrida (Kanto, Alola, Galar...; Hisui fica nas pernas de Sinnoh). */
+/** A região da perna da corrida (Kanto, Alola, Galar, Hisui...). */
 export const regionOf = (data, run) => data.bosses?.[run?.boss?.region]?.region ?? null
 
 /**
@@ -915,7 +915,7 @@ export function regionalEncounter(data, run, encounter) {
   if (['boss', 'rival', 'rematch'].includes(encounter.kind)) return encounter
   // Modo formas regionais: a da região de agora e, sem ela, a primeira que existir (Alola, Galar, Hisui, Paldea).
   const all = data.regional?.forms ?? {}
-  const forms = run.regionalAll ? { ...all.Paldea, ...all.Sinnoh, ...all.Galar, ...all.Alola, ...all[regionOf(data, run)] } : all[regionOf(data, run)]
+  const forms = run.regionalAll ? { ...all.Paldea, ...all.Hisui, ...all.Galar, ...all.Alola, ...all[regionOf(data, run)] } : all[regionOf(data, run)]
   if (!forms) return encounter
   return { ...encounter, foes: (encounter.foes ?? []).map((f) => ({ ...f, id: forms[f.id] ?? f.id })) }
 }
@@ -1091,7 +1091,7 @@ const TYPE_BIOMES = {
 export const VILLAIN_TEAMS = {
   Giovanni: 'rocket', Executiva: 'rocket', Executivo: 'rocket', Proton: 'rocket', Ariana: 'rocket', Archer: 'rocket', Petrel: 'rocket',
   Archie: 'aqua', Shelly: 'aqua', Matt: 'aqua', Maxie: 'magma', Tabitha: 'magma', Courtney: 'magma',
-  Mars: 'galactic', Cyrus: 'galactic', Jupiter: 'galactic', Saturn: 'galactic', N: 'plasma', Zinzolin: 'plasma', Colress: 'plasma', Ghetsis: 'plasma',
+  Mars: 'galactic', Cyrus: 'galactic', Jupiter: 'galactic', Saturn: 'galactic', Kamado: 'galactic', N: 'plasma', Zinzolin: 'plasma', Colress: 'plasma', Ghetsis: 'plasma',
   Lysandre: 'flare', Bryony: 'flare', Mable: 'flare', Plumeria: 'skull', Guzma: 'skull', Faba: 'aether', Lusamine: 'aether', Soliera: 'aether', Dulse: 'aether',
   Giacomo: 'star', Ortega: 'star', Mela: 'star', Atticus: 'star', Eri: 'star', Penny: 'star', Aliana: 'flare', Celosia: 'flare', Xerosic: 'flare',
   Rose: 'macro', Oleana: 'macro', 'Equipe Yell': 'yell',
@@ -1910,6 +1910,7 @@ export const RARE_PLACES = {
   'ruins-of-conflict': { scene: 'ruins', name: 'Ruins of Conflict', legends: [785] },
   'crown-shrine': { scene: 'snow', name: 'Crown Shrine', legends: [898] },
   'grasswither-shrine': { scene: 'ruins', name: 'Grasswither Shrine', legends: [1001] },
+  'snowpoint-temple': { scene: 'temple', name: 'Snowpoint Temple', legends: [486] },
 }
 /** Os lugares raros da região de agora (cada um só aparece na região dele nos jogos). */
 export const rarePlacesOf = (data, run) => (data.routes?.rare?.[data.bosses?.[run.boss?.region]?.region] ?? []).filter((id) => RARE_PLACES[id])
@@ -1925,7 +1926,7 @@ export const rareLegend = (run, place) => { const l = RARE_PLACES[place]?.legend
  * mais nesta região. Igual ao app.
  */
 export const ROAMERS = [243, 244, 245, 380, 381, 488]
-export const REGION_ROAMERS = { Kanto: [243, 244, 245], Johto: [243, 244, 245], Hoenn: [380, 381], Sinnoh: [481, 488], Unova: [641, 642], Kalos: [144, 145, 146] }
+export const REGION_ROAMERS = { Kanto: [243, 244, 245], Johto: [243, 244, 245], Hoenn: [380, 381], Sinnoh: [481, 488], Hisui: [641, 642, 645, 905], Unova: [641, 642], Kalos: [144, 145, 146] }
 export const ROAM_FLOOR = 15
 export const ROAM_SPAN = 5
 export const ROAM_TURNS = 1
@@ -3394,7 +3395,7 @@ export const SCENE_WEATHER = {
   lake: [['rain', 0.7]], lakeside: [['sun', 0.2], ['rain', 0.2]], acuity: [['snow', 0.65]], wildarea: [['sun', 0.2], ['rain', 0.2]], skypillar: [['sun', 0.2]],
 }
 /** A música do mapa (andando na rota e na cidade): um tema original por região, mais calmo. Igual ao app. */
-export const MAP_REGIONS = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos', 'alola', 'galar', 'paldea']
+export const MAP_REGIONS = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos', 'alola', 'galar', 'paldea', 'hisui']
 export function mapMusic(data, run) {
   const region = regionOf(data, run)?.toLowerCase()
   return region == null ? null : `map_${MAP_REGIONS.includes(region) ? region : 'kanto'}`
@@ -3514,7 +3515,7 @@ export function fieldOf(run, scene, data = null) {
  * rota para a Liga, um deles espera (dá para capturar). Igual ao app.
  */
 export const REGION_LEGENDS = {
-  Kanto: [150, 144, 145, 146], Johto: [249, 250, 243, 244, 245], Hoenn: [382, 383, 384, 380, 381], Sinnoh: [483, 484, 487, 480, 481, 482],
+  Kanto: [150, 144, 145, 146], Johto: [249, 250, 243, 244, 245], Hoenn: [382, 383, 384, 380, 381], Sinnoh: [483, 484, 487, 480, 481, 482], Hisui: [483, 484, 487, 905],
   Unova: [643, 644, 646, 638, 639, 640], Kalos: [716, 717, 718], Alola: [791, 792, 800, 785], Galar: [888, 889, 890], Paldea: [1007, 1008, 1001, 1002],
 }
 /** O lendário da região da corrida (sempre o mesmo para a mesma corrida e região). */

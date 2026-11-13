@@ -24,8 +24,9 @@ describe('evoluções como nos jogos (igual ao app)', () => {
     expect(regionalEncounter(data, run('Alola'), enc).foes[0].id).toBe(10107)
     expect(regionalEncounter(data, run('Kanto'), enc).foes[0].id).toBe(52)
     expect(regionalEncounter(data, run('Galar'), { ...enc, kind: 'boss' }).foes[0].id).toBe(52)
-    // Hisui fica nas pernas de Sinnoh; Paldea tem o Wooper de Paldea.
-    expect(regionalEncounter(data, run('Sinnoh'), { kind: 'wild', foes: [{ id: 215, level: 30 }] }).foes[0].id).toBe(10235)
+    // Hisui é uma região própria (em Sinnoh, a forma comum); Paldea tem o Wooper de Paldea.
+    expect(regionalEncounter(data, run('Hisui'), { kind: 'wild', foes: [{ id: 215, level: 30 }] }).foes[0].id).toBe(10235)
+    expect(regionalEncounter(data, run('Sinnoh'), { kind: 'wild', foes: [{ id: 215, level: 30 }] }).foes[0].id).toBe(215)
     expect(regionalEncounter(data, run('Paldea'), { kind: 'trainer', foes: [{ id: 194, level: 10 }] }).foes[0].id).toBe(10253)
   })
 
@@ -43,11 +44,13 @@ describe('evoluções como nos jogos (igual ao app)', () => {
     expect(canEvolveWith(data, mon(25, 20), 'thunder-stone', 'Alola')).toEqual([10100])
     expect(canEvolveWith(data, mon(25, 20), 'thunder-stone', 'Kanto')).toEqual([26])
     expect(canEvolveWith(data, mon(102, 20), 'leaf-stone', 'Alola')).toEqual([10114])
-    expect(at(mon(156, 35), 36, 'Sinnoh')).toBe(10233)
+    expect(at(mon(156, 35), 36, 'Hisui')).toBe(10233)
+    expect(at(mon(156, 35), 36, 'Sinnoh')).toBe(157)
     expect(at(mon(156, 35), 36, 'Johto')).toBe(157)
     expect(at(mon(109, 34), 35, 'Galar')).toBe(10167)
     // Só na região: Stantler → Wyrdeer em Hisui; Ursaring com o Peat Block em Hisui e Paldea.
-    expect(at(mon(234, 24), 30, 'Sinnoh')).toBe(899)
+    expect(at(mon(234, 24), 30, 'Hisui')).toBe(899)
+    expect(at(mon(234, 24), 30, 'Sinnoh')).toBe(234)
     expect(at(mon(234, 24), 30, 'Kanto')).toBe(234)
     expect(canEvolveWith(data, mon(217, 40), 'peat-block', 'Paldea')).toEqual([901])
     expect(canEvolveWith(data, mon(217, 40), 'peat-block', 'Kanto')).toEqual([])

@@ -116,6 +116,17 @@ HAND = {
         'roads': [[(3.7, 55.3), (3.7, 69.0), (16.9, 69.0), 'Cianwood City'], ['sea', 'Cianwood City', (30.3, 64.7), (30.3, 50.8), 'Olivine City'], ['Olivine City', (34.3, 28.6), 'Ecruteak City'], ['Ecruteak City', 'Mahogany Town'], ['Mahogany Town', 'Blackthorn City'], ['Mahogany Town', (79.2, 10.7)], ['Ecruteak City', (58.7, 46.0), 'Violet City'], ['Goldenrod City', (49.2, 46.0), (58.7, 46.0)], ['Violet City', (85.7, 46.0), 'Cherrygrove City'], ['Goldenrod City', (49.2, 83.7), 'Azalea Town'], ['Azalea Town', (71.9, 83.7), 'Violet City'], ['Cherrygrove City', 'New Bark Town'], ['New Bark Town', (118.5, 68.4), (118.5, 49.5), (150.0, 49.5)], ['Indigo Plateau', (134.8, 68.4)], ['Blackthorn City', (102.0, 56.1), (95.5, 56.1), (95.5, 68.2)]],
     },
     # Kanto: pelo mapa do HeartGold/SoulSilver que você mandou (Mt. Silver e as montanhas no noroeste, a enseada a oeste de Fuchsia).
+    # Hisui (provisório, até o desenho de Hisui que você mandou).
+    'hisui': {
+        'aspect': 1.5,
+        'cities': {'Jubilife Village': (38.1, 54.7), 'Obsidian Fieldlands': (125.5, 54.7), 'Crimson Mirelands': (101.1, 51.8), 'Cobalt Coastlands': (132.3, 18.6), 'Coronet Highlands': (74.7, 32.2), 'Alabaster Icelands': (35.6, 20.5), 'Temple of Sinnoh': (97.2, 72.3)},
+        'land': [(11.7, 15.6), (39.1, 10.7), (68.4, 8.8), (97.7, 11.7), (122.1, 10.7), (138.7, 19.5), (141.6, 41.0), (138.7, 68.4), (127.0, 80.1), (97.7, 84.0), (68.4, 82.0), (54.7, 78.1), (29.3, 81.1), (11.7, 74.2), (9.8, 50.8), (17.6, 39.1)],
+        'islands': [(136.7, 14.6, 5.9, 3.9), (54.7, 62.5, 2.9, 2.4), (106.4, 85.9, 3.9, 2.4)],
+        'water': [[(54.7, 58.6), (68.4, 54.7), (80.1, 60.5), (74.2, 70.3), (60.5, 70.3)], (110.4, 33.2, 5.9, 3.9)],
+        'biomes': [('snow', [(12.7, 13.7), (54.7, 9.8), (62.5, 25.4), (41.0, 32.2), (19.5, 32.2)]), ('mountain', [(60.5, 19.5), (76.2, 14.6), (89.8, 25.4), (87.9, 44.9), (68.4, 45.9), (58.6, 37.1)]), ('snow', (74.2, 23.4, 6.8, 5.9)), ('forest', (50.8, 46.9, 10.7, 6.8)), ('swamp', (102.5, 54.7, 12.7, 7.8)), ('plain', (125.0, 58.6, 11.7, 8.8)), ('forest', (87.9, 68.4, 11.7, 7.8)), ('desert', (127.0, 24.4, 5.9, 3.9)), ('forest', (29.3, 68.4, 11.7, 5.9))],
+        'rivers': [[(74.2, 41.0), (70.3, 50.8), (67.4, 58.6)]],
+        'roads': [['Jubilife Village', 'Coronet Highlands'], ['Jubilife Village', (700, 600), 'Temple of Sinnoh'], ['Temple of Sinnoh', 'Crimson Mirelands'], ['Crimson Mirelands', 'Obsidian Fieldlands'], ['Crimson Mirelands', (1130, 400), 'Cobalt Coastlands'], ['Jubilife Village', 'Alabaster Icelands'], ['Coronet Highlands', (1000, 450), 'Crimson Mirelands']],
+    },
     'kanto': {
         'aspect': 1.524,
         'cities': {'Pewter City': (62.7, 28.6), 'Viridian City': (60.9, 53.6), 'Pallet Town': (60.9, 68.5), 'Cinnabar Island': (60.9, 92.9), 'Seafoam Islands': (76.2, 92.9), 'Indigo Plateau': (38.7, 45.8), 'Celadon City': (95.5, 42.9), 'Saffron City': (116.0, 42.9), 'Cerulean City': (116.0, 28.0), 'Lavender Town': (137.1, 42.9), 'Vermilion City': (116.0, 55.4), 'Fuchsia City': (95.5, 83.3)},
@@ -184,7 +195,7 @@ REF = {
     },
 }
 # Os mapas de cada região (Johto também mostra Kanto, onde a história continua depois da Liga).
-REGIONS = {'Kanto': ['kanto'], 'Johto': ['johto', 'kanto'], 'Hoenn': ['hoenn'], 'Sinnoh': ['sinnoh'], 'Unova': ['unova'], 'Kalos': ['kalos'],
+REGIONS = {'Kanto': ['kanto'], 'Johto': ['johto', 'kanto'], 'Hoenn': ['hoenn'], 'Sinnoh': ['sinnoh'], 'Hisui': ['hisui'], 'Unova': ['unova'], 'Kalos': ['kalos'],
            'Alola': ['alola'], 'Galar': ['galar'], 'Paldea': ['paldea']}
 REF_DIR = os.path.join(os.path.dirname(__file__), 'region_maps_ref')
 WPX = 900

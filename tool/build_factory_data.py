@@ -46,8 +46,8 @@ ITEM_OVERRIDE = {470: 'leaf-stone', 471: 'ice-stone'}
 # Shedinja não é evolução de escolha: aparece junto quando o Nincada vira Ninjask (com vaga no time), no motor.
 SKIP_TRIGGERS = {'shed'}
 
-# Formas regionais, como nos jogos. A região é a do jogo da perna da corrida; Hisui (Legends: Arceus) é o passado
-# de Sinnoh, então nas pernas de Sinnoh valem as formas e evoluções de Hisui.
+# Formas regionais, como nos jogos. A região é a do jogo da perna da corrida; Hisui (Legends: Arceus) é uma região
+# própria (o passado de Sinnoh): as formas e evoluções de Hisui valem só nas pernas de Hisui.
 # forms: quem aparece (selvagem) na forma da região. evolveIn: quem, evoluindo nessa região, vira a forma dela
 # (Pikachu → Raichu de Alola). regionEvos: evoluções que só acontecem na região (Stantler → Wyrdeer em Hisui).
 REGIONAL = {
@@ -56,17 +56,17 @@ REGIONAL = {
                   53: 10108, 74: 10109, 75: 10110, 76: 10111, 88: 10112, 89: 10113, 103: 10114, 105: 10115},
         'Galar': {52: 10161, 77: 10162, 78: 10163, 79: 10164, 80: 10165, 83: 10166, 110: 10167, 122: 10168, 199: 10172, 222: 10173,
                   263: 10174, 264: 10175, 554: 10176, 555: 10177, 562: 10179, 618: 10180},
-        'Sinnoh': {58: 10229, 59: 10230, 100: 10231, 101: 10232, 157: 10233, 211: 10234, 215: 10235, 503: 10236, 549: 10237,
+        'Hisui': {58: 10229, 59: 10230, 100: 10231, 101: 10232, 157: 10233, 211: 10234, 215: 10235, 503: 10236, 549: 10237,
                    550: 10247, 570: 10238, 571: 10239, 628: 10240, 705: 10241, 706: 10242, 713: 10243, 724: 10244},
         'Paldea': {128: 10250, 194: 10253},
     },
     'evolveIn': {
         'Alola': {26: 10100, 103: 10114, 105: 10115},
         'Galar': {110: 10167, 122: 10168},
-        'Sinnoh': {157: 10233, 503: 10236, 549: 10237, 628: 10240, 705: 10241, 713: 10243, 724: 10244},
+        'Hisui': {157: 10233, 503: 10236, 549: 10237, 628: 10240, 705: 10241, 713: 10243, 724: 10244},
     },
     'regionEvos': {
-        'Sinnoh': {234: [[899, 25]], 123: [[900, 0, 'black-augurite']], 217: [[901, 0, 'peat-block']]},
+        'Hisui': {234: [[899, 25]], 123: [[900, 0, 'black-augurite']], 217: [[901, 0, 'peat-block']]},
         'Paldea': {217: [[901, 0, 'peat-block']]},
     },
     # Só com esse gênero (o resto do ramo segue igual): Burmy, Combee, Salandit e as pedras do Kirlia e do Snorunt.
@@ -186,6 +186,40 @@ EXTRA = {
                      {'name': 'Rose', 'class': 'Macro Cosmos', 'trainer': 'sd-rose',
                       'battles': [{'label': 'Rose Tower', 'at': 0.99, 'team': [{'id': i} for i in (589, 598, 863, 601, 879)]}]}],
 }
+# Hisui (Legends: Arceus): não está nos dados dos times dos jogos, então vem daqui. Os Nobres no lugar dos ginásios (o
+# guardião de cada um com o Nobre por último), o rival (Akari, a outra pessoa da Equipe Galáxia), os líderes dos
+# clãs (Adaman e Irida), o Kamado (comandante da Equipe Galáxia) e o Volo como o último chefe, no Temple of Sinnoh.
+# As cidades: você sai da Jubilife Village e passa pelas 5 áreas, como no jogo.
+HISUI_STARTERS = [722, 723, 724, 10244, 155, 156, 157, 10233, 501, 502, 503, 10236]
+HISUI = [
+    ('Akari', 'sd-akari', 'rival', [722], 'Obsidian Fieldlands', {}),
+    ('Lian', 'sd-lian', 'gym', [74, 123, 900], 'Obsidian Fieldlands', {}),
+    ('Adaman', 'sd-adaman', 'rival', [470, 197, 134, 169], 'Crimson Mirelands', {'guest': True}),
+    ('Arezu', 'sd-arezu', 'gym', [315, 455, 10237], 'Crimson Mirelands', {}),
+    ('Akari', 'sd-akari', 'rival', [397, 403, 723], 'Cobalt Coastlands', {}),
+    ('Irida', 'sd-irida', 'rival', [471, 196, 136, 450], 'Cobalt Coastlands', {'guest': True}),
+    ('Melli', 'sd-melli', 'gym', [78, 126, 10230], 'Cobalt Coastlands', {}),
+    ('Kamado', 'sd-kamado', 'villain', [214, 76, 143], 'Coronet Highlands', {}),
+    ('Ingo', 'sd-ingo-hisui', 'gym', [404, 82, 10232], 'Coronet Highlands', {}),
+    ('Akari', 'sd-akari', 'rival', [398, 404, 724], 'Alabaster Icelands', {}),
+    ('Gaeric', 'sd-gaeric', 'gym', [221, 478, 362, 10243], 'Alabaster Icelands', {}),
+    ('Volo', 'sd-volo', 'champion', [442, 407, 10230, 448, 468, 445], 'Temple of Sinnoh', {}),
+]
+
+
+def hisui_game(usable, sprites):
+    leaders = []
+    for name, trainer, kind, team, city, extra in HISUI:
+        team = [i for i in team if usable(i)]
+        pool = list(team)
+        if name == 'Akari':
+            pool = [i for i in dict.fromkeys(HISUI_STARTERS + [m for t in HISUI if t[0] == 'Akari' for m in t[3]]) if usable(i)]
+        slug = re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')
+        leaders.append({'id': f'hisui-{slug}', 'name': name, 'trainer': trainer if trainer in sprites else '', 'kind': kind, 'team': team,
+                        'pool': pool, **extra, 'city': city})
+    return {'region': 'Hisui', 'game': 'Legends: Arceus', 'leaders': leaders}
+
+
 TYPES = {'normal', 'fire', 'water', 'grass', 'electric', 'ice', 'fighting', 'poison', 'ground', 'flying', 'psychic', 'bug', 'rock', 'ghost',
          'dragon', 'dark', 'steel', 'fairy'}
 
@@ -486,6 +520,7 @@ def main():
             add_cities(game['region'], story)
             rocket = rocket_of(game['region'], usable, sprites)
             bosses.append({'region': game['region'], 'game': game['name'], 'leaders': story, **({'rocket': rocket} if rocket else {})})
+    bosses.append(hisui_game(usable, sprites))
     # Mega: espécie -> [[Mega Pedra (nome do item como no sprite), id da forma Mega]].
     item_files = {re.sub(r'[^a-z0-9]', '', f[:-4]): f[:-4] for f in os.listdir(os.path.join(DB, 'sprites', 'items')) if f.endswith('.png') and '--' not in f}
     by_name = {p['name']: p for p in records.values()}

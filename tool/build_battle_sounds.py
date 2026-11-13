@@ -862,6 +862,7 @@ CHAMPION_THEMES = {
     'kukui': (67, 'mixolydian', [0, 6, 3, 4], 160, 0.25, 'pulse'),
     'leon': (62, 'minor', [0, 5, 6, 4], 180, 0.25, 'pulse'),
     'geeta': (63, 'harmonic', [0, 3, 5, 4], 172, 0.125, 'pulse'),
+    'volo': (62, 'harmonic', [0, 1, 5, 4], 170, 0.25, 'pulse'),
 }
 
 # Os lugares da Battle Factory, cada grupo com o seu tema original (selvagens e treinadores da rota).
@@ -906,6 +907,8 @@ MAP_THEMES = {
     # Paldea: escola de anime (o sinal da escola, flauta doce e glockenspiel, piano, pizzicato e bateria leve),
     # I–V–vi–IV, com melodia original.
     'paldea': (65, 'major', [0, 4, 5, 3], 128, 0.25, 'pulse', {'school': True}),
+    # Hisui: o Japão antigo da era Meiji (shakuhachi, koto, shamisen e taikô ao longe), na frígia, com melodia original.
+    'hisui': (62, 'phrygian', [0, 5, 6, 0], 88, 0.25, 'pulse', {}),
 }
 
 
@@ -1470,6 +1473,20 @@ def sinnoh_orchestra():
     return render(parts, bpm, len(lead))
 
 
+def hisui_orchestra():
+    """Hisui: o Japão antigo (a era Meiji de Legends: Arceus). O shakuhachi na melodia, o koto dedilhando o acorde,
+    o shamisen nos contratempos, as cordas de fundo e o taikô grave a cada compasso, como ao longe."""
+    lead, chords, bpm = map_song('hisui')
+    parts = [
+        (77, lead_notes(lead, 86, extra=0.3), {'cc': {1: 30}}),
+        (107, each_chord(chords, lambda b, r, t, c: [(b + k, 1.6, [t[0], t[1], t[2], t[0] + 12, t[2], t[1]][k % 6] + 12, 58 if k % 4 else 70) for k in range(16)])),
+        (106, each_chord(chords, lambda b, r, t, c: [(b + k, 0.6, t[0] + 12, 50) for k in (2, 6, 10, 14)])),
+        (49, each_chord(chords, lambda b, r, t, c: [(b, 16, m - 12, 44) for m in t])),
+        (116, each_chord(chords, lambda b, r, t, c: [(b + k, 2, 36, v) for k, v in ((0, 92), (8, 70), (11, 54))])),
+    ]
+    return render(parts, bpm, len(lead))
+
+
 def unova_orchestra():
     """Unova: porto à noite com clima de boate. Baixo sintetizado saltitante, melodia em serra, a linha em
     espiral, pad e batida de boate (bumbo em todo tempo, palmas, chimbal aberto)."""
@@ -1879,9 +1896,27 @@ def geeta_orchestra():
     return render(parts, bpm, len(lead))
 
 
+def volo_orchestra():
+    """Volo (Hisui), o mercador gentil que mostra quem é no fim: o órgão e o coro sombrios, as cordas em trêmulo, o
+    cravo correndo no acorde, os metais graves, os tímpanos e a bateria pesada."""
+    lead, chords, bpm = champion_song('volo')
+    parts = [
+        (19, lead_notes(lead, 92, extra=0.05)),
+        (52, lead_notes(lead, 70, -12, keep=lambda i: i % 2 == 0, extra=1)),
+        (44, each_chord(chords, lambda b, r, t, c: [(b, 16, m - 12, 60) for m in t])),
+        (6, each_chord(chords, lambda b, r, t, c: [(b + k / 2, 0.45, [t[0], t[1], t[2], t[1]][k % 4], 50) for k in range(32)])),
+        (57, each_chord(chords, lambda b, r, t, c: [(b + k, 1.5, x - 12, 90) for k in (0, 6, 12) for x in (t[0], t[2])])),
+        (33, each_chord(chords, lambda b, r, t, c: [(b + k, 0.85, r, 96 if k % 2 == 0 else 80) for k in range(16)])),
+        (47, each_chord(chords, lambda b, r, t, c: [(b, 2, r, 104), (b + 8, 2, r, 88)])),
+        ('drums', hits(chords, lambda b, bar: rock_kit(b, bar, (0, 3, 4)))),
+    ]
+    return render(parts, bpm, len(lead))
+
+
 CHAMPIONS = {'blue': blue_orchestra, 'lance': lance_orchestra, 'steven': steven_orchestra, 'wallace': wallace_orchestra,
              'cynthia': sinnoh_orchestra, 'alder': alder_orchestra, 'iris': iris_orchestra, 'diantha': diantha_orchestra,
-             'kukui': kukui_orchestra, 'leon': leon_orchestra, 'geeta': geeta_orchestra}  # os campeões já refeitos (os outros tocam o tema da região)
+             'kukui': kukui_orchestra, 'leon': leon_orchestra, 'geeta': geeta_orchestra,
+             'volo': volo_orchestra}  # os campeões já refeitos (os outros tocam o tema da região)
 
 
 # Os rivais (no Pokelike): cada um com o tema original dele — tônica, escala, progressão e andamento.
@@ -3347,6 +3382,7 @@ GYM_THEMES = {
     'alola': (67, 'major', [0, 4, 5, 3], 140),
     'galar': (66, 'major', [0, 5, 3, 4], 152),
     'paldea': (69, 'major', [0, 3, 4, 5], 168),
+    'hisui': (62, 'phrygian', [0, 1, 5, 0], 164),
 }
 ELITE_THEMES = {
     'elite_kanto': (62, 'harmonic', [0, 5, 3, 4], 144),
@@ -3611,11 +3647,26 @@ def elite_paldea_orchestra():
     ])
 
 
+def gym_hisui_orchestra():
+    """Os Nobres de Hisui (a batalha do guardião e do Nobre furioso): os taikôs em ritmo de guerra, o shamisen em
+    colcheias, o shakuhachi e as cordas na melodia, os metais nos ataques e o baixo."""
+    lead, chords, bpm = gym_song('hisui')
+    m = _gym_mel(lead)
+    return _band(chords, lead, bpm, [
+        (77, m), (48, [(st, ln, x - 12, 76) for st, ln, x, v in m]),
+        (106, lambda b, r, t, c: [(b + k, 0.5, [t[0], t[2], t[1], t[2]][k % 4] + 12, 80 if k % 2 == 0 else 64) for k in range(16)]),
+        (61, lambda b, r, t, c: [(b + k, 0.8, x, 96) for k in (0, 6, 12) for x in (t[0], t[2])]),
+        _roots(92), (116, lambda b, r, t, c: [(b + k, 1, 36 + (7 if k % 4 == 3 else 0), 110 if k % 4 == 0 else 84) for k in range(0, 16, 1) if k % 2 == 0 or k % 8 == 7]),
+        ('drums', hits(chords, lambda b, bar: [(b + k, 36, 100) for k in (0, 3, 4)] + [(b + k, 38, 88) for k in (2, 6)] + [(b + k, 47, 70) for k in (5, 7)])),
+    ])
+
+
 GYMS = {'gym_kanto': gym_kanto_orchestra, 'gym_johto': gym_johto_orchestra, 'gym_hoenn': gym_hoenn_orchestra, 'gym_sinnoh': gym_sinnoh_orchestra,
         'gym_unova': gym_unova_orchestra, 'gym_kalos': gym_kalos_orchestra, 'gym_alola': gym_alola_orchestra, 'gym_galar': gym_galar_orchestra,
         'gym_paldea': gym_paldea_orchestra, 'elite_kanto': elite_kanto_orchestra, 'elite_johto': elite_johto_orchestra,
         'elite_hoenn': elite_hoenn_orchestra, 'elite_sinnoh': elite_sinnoh_orchestra, 'elite_unova': elite_unova_orchestra,
-        'elite_kalos': elite_kalos_orchestra, 'elite_alola': elite_alola_orchestra, 'elite_paldea': elite_paldea_orchestra}  # gym_<região> e elite_<região> já feitos
+        'elite_kalos': elite_kalos_orchestra, 'elite_alola': elite_alola_orchestra, 'elite_paldea': elite_paldea_orchestra,
+        'gym_hisui': gym_hisui_orchestra}  # gym_<região> e elite_<região> já feitos
 
 
 def mega_orchestra():
@@ -3687,6 +3738,7 @@ def hifi_tracks():
         # Sinnoh e a Cynthia trocados (a pedido): o mapa toca o tema que era dela, e ela o que era do mapa.
         'map_sinnoh': cynthia_orchestra(), 'map_unova': unova_orchestra(), 'map_kalos': kalos_orchestra(),
         'map_alola': alola_orchestra(), 'map_galar': galar_orchestra(), 'map_paldea': paldea_orchestra(),
+        'map_hisui': hisui_orchestra(),
         'mega_theme': mega_orchestra(), 'dmax_theme': dmax_orchestra(),
     })
     out.update({f'champion_{name}': fn() for name, fn in CHAMPIONS.items()})
@@ -3744,7 +3796,8 @@ def main():
     if only:
         loops = {'map_kanto': kanto_orchestra, 'map_johto': johto_orchestra, 'map_hoenn': hoenn_orchestra,
                  'map_sinnoh': cynthia_orchestra, 'map_unova': unova_orchestra, 'map_kalos': kalos_orchestra,
-                 'map_alola': alola_orchestra, 'map_galar': galar_orchestra, 'map_paldea': paldea_orchestra}
+                 'map_alola': alola_orchestra, 'map_galar': galar_orchestra, 'map_paldea': paldea_orchestra,
+                 'map_hisui': hisui_orchestra}
         loops.update({f'champion_{n}': fn for n, fn in CHAMPIONS.items()})
         loops.update({f'rival_{n}': fn for n, fn in RIVALS.items()})
         loops.update({f'villain_{n}': fn for n, fn in VILLAINS.items()})
