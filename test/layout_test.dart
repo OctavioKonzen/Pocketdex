@@ -199,6 +199,7 @@ final screens = <String, Widget Function()>{
         'pcNames': ['Dragões'],
       }),
   'Battle Factory (mapa)': () => _factory(null, {'floor': 14, 'biome': 'water', 'options': [{'kind': 'wild', 'biome': 'water'}, {'kind': 'ace'}, {'kind': 'center'}]}),
+  'Battle Factory (bolsa)': () => _factory(null, {'floor': 14, 'biome': 'water', 'options': [{'kind': 'wild', 'biome': 'water'}, {'kind': 'ace'}]}),
   'Battle Factory (time)': () => _factory(null, {'floor': 14, 'biome': 'water', 'options': [{'kind': 'wild', 'biome': 'water'}, {'kind': 'ace'}]}),
   'Battle Factory (time, dados)': () => _factory(null, {'floor': 14, 'biome': 'water', 'options': [{'kind': 'wild', 'biome': 'water'}, {'kind': 'ace'}]}),
   // Deitado: o campo à esquerda e a tela de baixo à direita (DsLayout).
@@ -606,6 +607,11 @@ final Map<String, Future<void> Function(WidgetTester)> actions = {
   // O time como a tela de trocar: os 6; tocando num, os dados e os itens dele.
   'Battle Factory (time)': (tester) async {
     await _openTeam(tester);
+  },
+  'Battle Factory (bolsa)': (tester) async {
+    await tester.tap(find.byKey(const ValueKey('factory-menu-bag')));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
   },
   'Battle Factory (time, dados)': (tester) async {
     await _openTeam(tester);

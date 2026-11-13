@@ -605,13 +605,14 @@ body {
 .hud-base { background-color: var(--hud); }
 /* A faixa do campo (efeitos, andar, dinheiro): cinza puxado um pouco para o tema. */
 .hud-bar { background-color: color-mix(in srgb, #334155 78%, var(--hud-accent, #334155)); }
-/* A Bolsa do Black & White: azul com bolinhas, abas brancas. */
+/* A Bolsa do Black & White: azul-claro com listras na diagonal, pílulas brancas de borda azul e a barra dos bolsos
+   azul-escura embaixo. */
 .bw-bag {
-  background-color: color-mix(in srgb, #2563c9 78%, var(--hud-accent, #2563c9));
-  background-image: radial-gradient(circle at 8px 8px, rgba(255, 255, 255, 0.14) 3px, transparent 3.5px);
-  background-size: 16px 16px;
+  background-color: color-mix(in srgb, #4aa3df 82%, var(--hud-accent, #4aa3df));
+  background-image: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.13) 0 6px, transparent 6px 14px);
 }
-.bw-bag-row { box-shadow: 0 2px 0 rgba(0, 0, 0, 0.35); }
+.bw-bag-bar { background-color: color-mix(in srgb, #1e4f8a 85%, var(--hud-accent, #1e4f8a)); }
+.bw-bag-top { box-shadow: 0 3px 0 rgba(15, 23, 42, 0.3); }
 /* O Town Map do Black & White: azul escuro com a grade. */
 .town-map {
   background-color: #1d3f8f;
