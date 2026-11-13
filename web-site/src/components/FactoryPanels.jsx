@@ -32,7 +32,7 @@ import {
   heartsOf, roamerSeen, villainPlot, fieldOf, mysteryEgg, takeMysteryEgg, LEAGUE_FLAWLESS,
 } from '../lib/factoryRun'
 import { startMusic, stopMusic } from '../lib/battleSound'
-import { regionMap } from '../lib/regionMaps'
+import { REGION_MAPS, regionMap } from '../lib/regionMaps'
 import { t } from '../lib/i18n'
 import { prettyName, typeColor } from '../lib/pokemon'
 import { usePokemonIndex } from '../lib/pokemonIndex'
@@ -1721,10 +1721,25 @@ function RegionMap({ data, run, onClose, monName }) {
   const plot = villainPlot(data, run)
   const clock = clockOf()
   const sky = weatherOf(run, shownScene(run, run.scene ?? 'grass', data), clock.season, data)
-  const map = regionMap(game.region, cities)
   const hereIndex = cities.findIndex((c, i) => !c.steps.every((k) => k < run.boss.step) && (i === 0 || cities[i - 1].steps.every((k) => k < run.boss.step)))
   const [pick, setPick] = useState(null)
   const shown = pick ?? Math.max(0, hereIndex)
+  // O mapa em que está a cidade escolhida (Johto também mostra Kanto) e as outras vilas e cidades dele.
+  const map = regionMap(game.region, cities, cities[shown]?.city)
+  const towns = map ? Object.entries(REGION_MAPS[game.region].find((m) => m.id === map.id).cities).filter(([city]) => !cities.some((c) => c.city === city)) : []
+  // A imagem cabe inteira no espaço (na proporção dela).
+  const boxRef = useRef(null)
+  const [box, setBox] = useState({ w: 0, h: 0 })
+  useLayoutEffect(() => {
+    const el = boxRef.current
+    if (!el) return undefined
+    const measure = () => setBox({ w: el.clientWidth, h: el.clientHeight })
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [map?.id])
+  const fit = map ? (box.w / Math.max(1, box.h) > map.aspect ? { w: box.h * map.aspect, h: box.h } : { w: box.w, h: box.w / map.aspect }) : { w: 0, h: 0 }
   return (
     <div className={map ? 'flex h-full flex-col gap-1 p-2' : 'space-y-2 p-2'} data-testid="region-map">
       <OverlayClose onClose={onClose} title={`🗺️ ${game.region} · ${game.game}`} />
@@ -1735,49 +1750,38 @@ function RegionMap({ data, run, onClose, monName }) {
         {plot && <span className="rounded bg-red-700 px-1.5 text-white" data-testid="region-plot">🚨 {t('Plano da {0}: {1}/{2} atrapalhados').replace('{0}', TEAM_NAMES[plot.team] ?? 'Equipe Rocket').replace('{1}', plot.foiled).replace('{2}', plot.chapters.length)}</span>}
       </p>
       {map ? (
-        // O Town Map (como nos jogos): o mar, as terras, as rotas e as cidades; tocando numa, o nome dela embaixo.
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border-4 border-slate-900 bg-slate-900" data-testid="town-map-region">
-          <div className="relative min-h-0 flex-1">
-            <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full" aria-hidden="true">
-              <defs>
-                <pattern id="sea-grid" width="4" height="4" patternUnits="userSpaceOnUse"><path d="M4 0H0V4" fill="none" stroke="#ffffff22" strokeWidth="0.3" /></pattern>
-              </defs>
-              <rect width="100" height="100" fill="#2f6db5" />
-              <rect width="100" height="100" fill="url(#sea-grid)" />
-              {map.land.map(([x, y, rx, ry], k) => <ellipse key={`b${k}`} cx={x} cy={y} rx={rx + 1.2} ry={ry + 1.2} fill="#e8d9a0" />)}
-              {/* A terra segue as rotas (como no mapa dos jogos): a praia e o verde em volta de cada caminho. */}
-              {map.spots.slice(1).map((c, i) => map.byLand[i] && <line key={`pb${i}`} x1={map.spots[i].xy[0]} y1={map.spots[i].xy[1]} x2={c.xy[0]} y2={c.xy[1]} stroke="#e8d9a0" strokeWidth="13.5" strokeLinecap="round" />)}
-              {map.land.map(([x, y, rx, ry], k) => <ellipse key={`l${k}`} cx={x} cy={y} rx={rx} ry={ry} fill="#5fae4e" />)}
-              {map.spots.slice(1).map((c, i) => map.byLand[i] && <line key={`pl${i}`} x1={map.spots[i].xy[0]} y1={map.spots[i].xy[1]} x2={c.xy[0]} y2={c.xy[1]} stroke="#5fae4e" strokeWidth="11" strokeLinecap="round" />)}
-              {map.land.map(([x, y, rx, ry], k) => <ellipse key={`g${k}`} cx={x} cy={y} rx={rx} ry={ry} fill="url(#sea-grid)" />)}
-              {map.spots.slice(1).map((c, i) => {
-                const [a, b] = [map.spots[i].xy, c.xy]
-                // A rota já feita fica acesa; as que faltam, tracejadas.
+        // O Town Map (como nos jogos): o desenho da região, as cidades em círculos; tocando numa, o nome dela embaixo.
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border-4 border-slate-900 bg-[#14396f]" data-testid="town-map-region">
+          <div ref={boxRef} className="relative flex min-h-0 flex-1 items-center justify-center">
+            <div className="relative" style={{ width: fit.w, height: fit.h }}>
+              <img src={spriteUrl(`maps/${map.id}.webp`)} alt="" className="absolute inset-0 h-full w-full select-none" draggable={false} data-testid="town-map-image" />
+              {/* As vilas e cidades que não são da história (só o círculo). */}
+              {towns.map(([city, [x, y]]) => (
+                <span key={city} className="absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#f6a834] bg-[#1e3a5f] sm:h-3 sm:w-3" style={{ left: `${x}%`, top: `${y}%` }} title={city} />
+              ))}
+              {map.spots.map((c) => {
+                const i = c.i
                 const done = c.steps.every((k) => k < run.boss.step)
-                return <line key={i} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke={done ? '#f8e08e' : '#f3f4f6'} strokeWidth="1.6" strokeLinecap="round" strokeDasharray={done ? undefined : '2 1.4'} />
+                const here = i === hereIndex
+                const marks = [
+                  roam && c.steps.includes(roam.at) ? '🐾' : '',
+                  ...(plot?.chapters.filter((x) => c.steps.includes(x.step)).map((x) => (x.foiled ? '✔' : x.past ? '✖' : '🚨')) ?? []),
+                  plot && plot.base === c.city ? '🏴' : '',
+                ].filter(Boolean).join('')
+                return (
+                  <button key={i} type="button" onClick={() => setPick(i)} className="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer" style={{ left: `${c.xy[0]}%`, top: `${c.xy[1]}%` }}
+                    data-testid={done ? 'city-lit' : here ? 'city-here' : 'city-dark'} title={c.city}>
+                    <span className={`block h-4 w-4 rounded-full border-[3px] sm:h-5 sm:w-5 ${here ? 'animate-pulse border-white bg-sky-400' : done ? 'border-[#f6a834] bg-amber-300' : 'border-[#f6a834] bg-[#1d5e8c]'} ${i === shown ? 'ring-2 ring-yellow-300' : ''}`} />
+                    {marks && <span className="absolute -top-4 left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] leading-none drop-shadow">{marks}</span>}
+                    {here && <span className="absolute left-1/2 top-4 -translate-x-1/2 text-sm leading-none sm:top-5">📍</span>}
+                  </button>
+                )
               })}
-            </svg>
-            {map.spots.map((c, i) => {
-              const done = c.steps.every((k) => k < run.boss.step)
-              const here = i === hereIndex
-              const marks = [
-                roam && c.steps.includes(roam.at) ? '🐾' : '',
-                ...(plot?.chapters.filter((x) => c.steps.includes(x.step)).map((x) => (x.foiled ? '✔' : x.past ? '✖' : '🚨')) ?? []),
-                plot && plot.base === c.city ? '🏴' : '',
-              ].filter(Boolean).join('')
-              return (
-                <button key={i} type="button" onClick={() => setPick(i)} className="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer" style={{ left: `${c.xy[0]}%`, top: `${c.xy[1]}%` }}
-                  data-testid={done ? 'city-lit' : here ? 'city-here' : 'city-dark'} title={c.city}>
-                  <span className={`block h-3.5 w-3.5 rounded-[2px] border-2 sm:h-4 sm:w-4 ${here ? 'animate-pulse border-white bg-sky-400' : done ? 'border-amber-100 bg-amber-400' : 'border-white bg-red-600'} ${i === shown ? 'ring-2 ring-yellow-300' : ''}`} />
-                  {marks && <span className="absolute -top-4 left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] leading-none drop-shadow">{marks}</span>}
-                  {here && <span className="absolute left-1/2 top-4 -translate-x-1/2 text-sm leading-none">📍</span>}
-                </button>
-              )
-            })}
+            </div>
           </div>
           {/* A faixa de baixo (como no Town Map): o nome da cidade escolhida e o que tem nela. */}
-          {map.spots[shown] && (() => {
-            const c = map.spots[shown]
+          {cities[shown] && (() => {
+            const c = cities[shown]
             const done = c.steps.every((k) => k < run.boss.step)
             return (
               <p className="bg-slate-900 px-2 py-1 text-xs font-bold text-white sm:text-sm" data-testid="town-map-name">

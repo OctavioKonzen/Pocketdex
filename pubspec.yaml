@@ -52,5 +52,6 @@ flutter:
     - assets/database/sprites/items/
     - assets/database/sprites/trainers/
     - assets/database/sprites/battle/
+    - assets/database/sprites/maps/
     - assets/database/sounds/
     - assets/database/cries/

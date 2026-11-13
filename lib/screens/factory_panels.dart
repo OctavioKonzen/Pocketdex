@@ -2723,7 +2723,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
         ),
       ),
       if (regionMaps['${game['region']}'] != null)
-        _townMapRegion(regionMaps['${game['region']}']!, [for (final x in cities) (city: x.city, steps: x.steps)], step, roam, plot, chapters)
+        (_townMapRegion('${game['region']}', [for (final x in cities) (city: x.city, steps: x.steps)], step, roam, plot, chapters))
       else
       Container(
         margin: const EdgeInsets.all(8),
@@ -2774,16 +2774,13 @@ class _FactoryScreenState extends State<FactoryScreen> {
 
   /// O Town Map (como nos jogos): o mar, as terras, as rotas e as cidades; tocando numa, o nome dela embaixo. Igual
   /// ao site.
-  Widget _townMapRegion(({Map<String, List<double>> cities, List<List<double>> land}) map, List<({String city, List<int> steps})> cities, int step,
-      Json? roam, Json? plot, List<Map> chapters) {
-    var spare = 0;
-    final spots = [for (final c in cities) map.cities[c.city] ?? [8.0 + (spare++ % 6) * 16, 6.0]];
-    // A rota vai por terra (o meio dela em terra) ou pelo mar (entre ilhas).
-    bool onLand(double x, double y) => map.land.any((e) => pow((x - e[0]) / e[2], 2) + pow((y - e[1]) / e[3], 2) <= 1.2);
-    final byLand = [for (var i = 1; i < spots.length; i++) onLand((spots[i][0] + spots[i - 1][0]) / 2, (spots[i][1] + spots[i - 1][1]) / 2)];
+  Widget _townMapRegion(String region, List<({String city, List<int> steps})> cities, int step, Json? roam, Json? plot, List<Map> chapters) {
     bool done(int i) => cities[i].steps.every((k) => k < step);
     final hereIndex = [for (var i = 0; i < cities.length; i++) i].where((i) => !done(i) && (i == 0 || done(i - 1))).firstOrNull ?? -1;
     final int shown = (_regionPick ?? (hereIndex < 0 ? 0 : hereIndex)).clamp(0, cities.isEmpty ? 0 : cities.length - 1);
+    // O mapa em que está a cidade escolhida (Johto também mostra Kanto).
+    final map = regionMapFor(region, cities.isEmpty ? null : cities[shown].city)!;
+    final storyNames = {for (final c in cities) c.city};
     String marks(int i) => [
           if (roam != null && cities[i].steps.contains(roam['at'])) '🐾',
           for (final x in chapters)
@@ -2791,50 +2788,68 @@ class _FactoryScreenState extends State<FactoryScreen> {
           if (plot != null && plot['base'] == cities[i].city) '🏴',
         ].join();
     final c = cities.isEmpty ? null : cities[shown];
+    const ring = Color(0xFFF6A834);
     return Container(
       key: const ValueKey('town-map-region'),
       margin: const EdgeInsets.fromLTRB(8, 4, 8, 4),
-      decoration: BoxDecoration(color: const Color(0xFF0F172A), border: Border.all(color: const Color(0xFF0F172A), width: 4), borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(color: const Color(0xFF14396F), border: Border.all(color: const Color(0xFF0F172A), width: 4), borderRadius: BorderRadius.circular(12)),
       clipBehavior: Clip.antiAlias,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        AspectRatio(
-          aspectRatio: 2,
-          child: LayoutBuilder(builder: (context, box) {
-            final w = box.maxWidth / 100, h = box.maxHeight / 100;
-            return Stack(clipBehavior: Clip.none, children: [
-              Positioned.fill(child: CustomPaint(painter: _RegionMapPainter(map.land, spots, [for (var i = 0; i < cities.length; i++) done(i)], byLand))),
-              for (var i = 0; i < cities.length; i++)
-                Positioned(
-                  left: spots[i][0] * w - 12,
-                  top: spots[i][1] * h - 12,
-                  width: 24,
-                  height: 24,
-                  child: GestureDetector(
-                    key: ValueKey(done(i) ? 'city-lit' : i == hereIndex ? 'city-here' : 'city-dark'),
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => setState(() => _regionPick = i),
-                    child: Stack(clipBehavior: Clip.none, alignment: Alignment.center, children: [
-                      Container(
-                        width: 14,
-                        height: 14,
-                        decoration: BoxDecoration(
-                          color: i == hereIndex ? const Color(0xFF38BDF8) : done(i) ? const Color(0xFFFBBF24) : const Color(0xFFDC2626),
-                          border: Border.all(color: i == shown ? const Color(0xFFFDE047) : Colors.white, width: 2),
-                          borderRadius: BorderRadius.circular(2),
+        // A altura: a da imagem na largura do painel, até 250 (Galar, em pé, fica mais estreito no meio).
+        LayoutBuilder(builder: (context, outer) => SizedBox(
+          height: min(outer.maxWidth / map.aspect, 250.0),
+          child: Center(
+            child: AspectRatio(
+              aspectRatio: map.aspect,
+              child: LayoutBuilder(builder: (context, box) {
+                final w = box.maxWidth / 100, h = box.maxHeight / 100;
+                return Stack(clipBehavior: Clip.none, children: [
+                  Positioned.fill(child: Image.asset('assets/database/sprites/maps/${map.id}.webp', key: const ValueKey('town-map-image'), fit: BoxFit.fill)),
+                  // As vilas e cidades que não são da história (só o círculo).
+                  for (final e in map.cities.entries)
+                    if (!storyNames.contains(e.key))
+                      Positioned(
+                        left: e.value[0] * w - 5,
+                        top: e.value[1] * h - 5,
+                        child: Container(
+                            width: 10, height: 10, decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFF1E3A5F), border: Border.all(color: ring, width: 2))),
+                      ),
+                  for (var i = 0; i < cities.length; i++)
+                    if (map.cities[cities[i].city] != null)
+                      Positioned(
+                        left: map.cities[cities[i].city]![0] * w - 12,
+                        top: map.cities[cities[i].city]![1] * h - 12,
+                        width: 24,
+                        height: 24,
+                        child: GestureDetector(
+                          key: ValueKey(done(i) ? 'city-lit' : i == hereIndex ? 'city-here' : 'city-dark'),
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => setState(() => _regionPick = i),
+                          child: Stack(clipBehavior: Clip.none, alignment: Alignment.center, children: [
+                            Container(
+                              width: 16,
+                              height: 16,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: i == hereIndex ? const Color(0xFF38BDF8) : done(i) ? const Color(0xFFFCD34D) : const Color(0xFF1D5E8C),
+                                border: Border.all(color: i == shown ? const Color(0xFFFDE047) : (i == hereIndex ? Colors.white : ring), width: 3),
+                              ),
+                            ),
+                            if (marks(i).isNotEmpty) Positioned(top: -12, child: Text(marks(i), style: const TextStyle(fontSize: 11, height: 1))),
+                            if (i == hereIndex) const Positioned(bottom: -12, child: Text('📍', style: TextStyle(fontSize: 13, height: 1))),
+                          ]),
                         ),
                       ),
-                      if (marks(i).isNotEmpty) Positioned(top: -12, child: Text(marks(i), style: const TextStyle(fontSize: 11, height: 1))),
-                      if (i == hereIndex) const Positioned(bottom: -12, child: Text('📍', style: TextStyle(fontSize: 13, height: 1))),
-                    ]),
-                  ),
-                ),
-            ]);
-          }),
-        ),
+                ]);
+              }),
+            ),
+          ),
+        )),
         // A faixa de baixo (como no Town Map): o nome da cidade escolhida e o que tem nela.
         if (c != null)
-          Padding(
+          Container(
             key: const ValueKey('town-map-name'),
+            color: const Color(0xFF0F172A),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             child: Text.rich(
               TextSpan(children: [
@@ -6279,67 +6294,4 @@ class _PcPanelState extends State<_PcPanel> {
       }),
     );
   }
-}
-
-/// O desenho do Town Map: o mar quadriculado, a praia, as terras e as rotas (as já feitas acesas). Igual ao site.
-class _RegionMapPainter extends CustomPainter {
-  _RegionMapPainter(this.land, this.spots, this.done, this.byLand);
-  final List<List<double>> land;
-  final List<List<double>> spots;
-  final List<bool> done, byLand;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final sx = size.width / 100, sy = size.height / 100;
-    canvas.drawRect(Offset.zero & size, Paint()..color = const Color(0xFF2F6DB5));
-    final grid = Paint()
-      ..color = const Color(0x22FFFFFF)
-      ..strokeWidth = 0.3 * sx;
-    for (var k = 0.0; k <= 100; k += 4) {
-      canvas.drawLine(Offset(k * sx, 0), Offset(k * sx, size.height), grid);
-      canvas.drawLine(Offset(0, k * sy), Offset(size.width, k * sy), grid);
-    }
-    Rect oval(List<double> e, double pad) => Rect.fromCenter(center: Offset(e[0] * sx, e[1] * sy), width: (e[2] + pad) * 2 * sx, height: (e[3] + pad) * 2 * sy);
-    final u = (sx + sy) / 2;
-    Offset at(int i) => Offset(spots[i][0] * sx, spots[i][1] * sy);
-    // A terra segue as rotas (como no mapa dos jogos): a praia e o verde em volta de cada caminho por terra.
-    void roads(Color color, double width) {
-      for (var i = 1; i < spots.length; i++) {
-        if (byLand[i - 1]) {
-          canvas.drawLine(at(i - 1), at(i), Paint()
-            ..color = color
-            ..strokeWidth = width * u
-            ..strokeCap = StrokeCap.round);
-        }
-      }
-    }
-
-    for (final e in land) {
-      canvas.drawOval(oval(e, 1.2), Paint()..color = const Color(0xFFE8D9A0));
-    }
-    roads(const Color(0xFFE8D9A0), 13.5);
-    for (final e in land) {
-      canvas.drawOval(oval(e, 0), Paint()..color = const Color(0xFF5FAE4E));
-    }
-    roads(const Color(0xFF5FAE4E), 11);
-    for (var i = 1; i < spots.length; i++) {
-      final a = Offset(spots[i - 1][0] * sx, spots[i - 1][1] * sy), b = Offset(spots[i][0] * sx, spots[i][1] * sy);
-      final paint = Paint()
-        ..color = done[i] ? const Color(0xFFF8E08E) : const Color(0xFFF3F4F6)
-        ..strokeWidth = 1.6 * sx
-        ..strokeCap = StrokeCap.round;
-      if (done[i]) {
-        canvas.drawLine(a, b, paint);
-      } else {
-        // Tracejada: o caminho que ainda falta.
-        final d = b - a, len = d.distance, dash = 2.0 * sx, gap = 1.4 * sx;
-        for (var t = 0.0; t < len; t += dash + gap) {
-          canvas.drawLine(a + d * (t / len), a + d * (min(len, t + dash) / len), paint);
-        }
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(_RegionMapPainter old) => old.spots != spots || old.done != done;
 }

@@ -1,225 +1,44 @@
 // lib/screens/region_maps.dart
 //
-// O mapa de cada região (como o Town Map dos jogos): onde fica cada cidade (x e y de 0 a 100, perto do lugar dela nos
-// jogos) e as terras (elipses cx, cy, rx, ry) sobre o mar. As rotas ligam as cidades na ordem da história. Gerado a
-// partir do site (web-site/src/lib/regionMaps.js): igual ao site.
+// Gerado por tool/region_maps.py (não editar à mão): os mapas de cada região (como o Town Map dos jogos) e onde fica
+// cada cidade neles (em % da largura e da altura da imagem assets/database/sprites/maps/<id>.webp). Igual ao site.
 
-const regionMaps = <String, ({Map<String, List<double>> cities, List<List<double>> land})>{
-  'Kanto': (
-    cities: {
-      'Pallet Town': [22.0, 80.0],
-      'Viridian City': [22.0, 62.0],
-      'Pewter City': [22.0, 30.0],
-      'Cerulean City': [62.0, 22.0],
-      'Saffron City': [62.0, 44.0],
-      'Celadon City': [42.0, 44.0],
-      'Vermilion City': [62.0, 64.0],
-      'Lavender Town': [84.0, 44.0],
-      'Fuchsia City': [48.0, 82.0],
-      'Cinnabar Island': [22.0, 94.0],
-      'Indigo Plateau': [6.0, 22.0],
-      'Seafoam Islands': [36.0, 92.0],
-    },
-    land: [
-      [44.0, 52.0, 40.0, 36.0],
-      [22.0, 94.0, 7.0, 5.0],
-      [6.0, 24.0, 6.0, 10.0],
-      [36.0, 91.0, 6.0, 4.0],
-    ],
-  ),
-  'Johto': (
-    cities: {
-      'Pallet Town': [61.0, 68.0],
-      'Viridian City': [61.0, 57.2],
-      'Pewter City': [61.0, 38.0],
-      'Cerulean City': [81.0, 33.2],
-      'Saffron City': [81.0, 46.4],
-      'Celadon City': [71.0, 46.4],
-      'Vermilion City': [81.0, 58.4],
-      'Lavender Town': [92.0, 46.4],
-      'Fuchsia City': [74.0, 69.2],
-      'Cinnabar Island': [61.0, 76.4],
-      'Indigo Plateau': [49.0, 42.0],
-      'Seafoam Islands': [68.0, 75.2],
-      'New Bark Town': [45.0, 57.2],
-      'Cherrygrove City': [39.0, 58.4],
-      'Violet City': [35.0, 44.0],
-      'Azalea Town': [32.0, 68.0],
-      'Goldenrod City': [24.0, 58.4],
-      'Ecruteak City': [24.0, 39.2],
-      'Olivine City': [14.0, 45.2],
-      'Cianwood City': [4.0, 56.0],
-      'Mahogany Town': [36.0, 34.4],
-      'Blackthorn City': [45.0, 33.2],
-    },
-    land: [
-      [26.0, 50.0, 22.0, 22.8],
-      [4.0, 56.0, 3.0, 4.2],
-      [72.0, 51.2, 20.0, 21.6],
-      [61.0, 76.4, 3.5, 3.0],
-      [53.0, 34.4, 3.0, 6.0],
-      [68.0, 74.6, 3.0, 2.4],
-      [49.0, 42.0, 4.0, 6.0],
-    ],
-  ),
-  'Hoenn': (
-    cities: {
-      'Littleroot Town': [30.0, 76.0],
-      'Oldale Town': [30.0, 66.0],
-      'Petalburg City': [18.0, 66.0],
-      'Rustboro City': [8.0, 42.0],
-      'Dewford Town': [10.0, 88.0],
-      'Slateport City': [42.0, 80.0],
-      'Mauville City': [42.0, 54.0],
-      'Verdanturf Town': [28.0, 54.0],
-      'Fallarbor Town': [24.0, 22.0],
-      'Lavaridge Town': [32.0, 36.0],
-      'Fortree City': [54.0, 22.0],
-      'Lilycove City': [72.0, 30.0],
-      'Mossdeep City': [88.0, 40.0],
-      'Sootopolis City': [78.0, 58.0],
-      'Pacifidlog Town': [62.0, 76.0],
-      'Ever Grande City': [94.0, 68.0],
-    },
-    land: [
-      [30.0, 50.0, 30.0, 36.0],
-      [64.0, 28.0, 16.0, 12.0],
-      [88.0, 40.0, 7.0, 7.0],
-      [78.0, 58.0, 7.0, 6.0],
-      [94.0, 68.0, 5.0, 9.0],
-      [10.0, 88.0, 6.0, 4.0],
-      [62.0, 76.0, 4.0, 3.0],
-    ],
-  ),
-  'Sinnoh': (
-    cities: {
-      'Twinleaf Town': [20.0, 88.0],
-      'Sandgem Town': [28.0, 82.0],
-      'Jubilife City': [26.0, 68.0],
-      'Oreburgh City': [38.0, 66.0],
-      'Floaroma Town': [24.0, 54.0],
-      'Eterna City': [36.0, 42.0],
-      'Hearthome City': [54.0, 62.0],
-      'Solaceon Town': [60.0, 48.0],
-      'Veilstone City': [74.0, 46.0],
-      'Pastoria City': [68.0, 78.0],
-      'Celestic Town': [52.0, 36.0],
-      'Canalave City': [10.0, 64.0],
-      'Snowpoint City': [46.0, 8.0],
-      'Sunyshore City': [88.0, 80.0],
-      'Pokémon League': [90.0, 52.0],
-    },
-    land: [
-      [46.0, 58.0, 38.0, 36.0],
-      [44.0, 22.0, 18.0, 18.0],
-      [10.0, 64.0, 6.0, 7.0],
-      [90.0, 52.0, 7.0, 9.0],
-      [88.0, 80.0, 7.0, 7.0],
-    ],
-  ),
-  'Unova': (
-    cities: {
-      'Nuvema Town': [72.0, 88.0],
-      'Accumula Town': [72.0, 74.0],
-      'Striaton City': [66.0, 60.0],
-      'Nacrene City': [54.0, 60.0],
-      'Castelia City': [54.0, 84.0],
-      'Nimbasa City': [54.0, 44.0],
-      'Driftveil City': [34.0, 44.0],
-      'Mistralton City': [22.0, 26.0],
-      'Icirrus City': [30.0, 12.0],
-      'Opelucid City': [72.0, 20.0],
-      'Pokémon League': [52.0, 10.0],
-      'Aspertia City': [30.0, 82.0],
-      'Virbank City': [40.0, 92.0],
-      'Humilau City': [92.0, 38.0],
-      'Lacunosa Town': [84.0, 24.0],
-      'Undella Town': [90.0, 52.0],
-    },
-    land: [
-      [54.0, 52.0, 40.0, 42.0],
-      [92.0, 40.0, 6.0, 12.0],
-      [34.0, 86.0, 12.0, 9.0],
-    ],
-  ),
-  'Kalos': (
-    cities: {
-      'Vaniville Town': [40.0, 94.0],
-      'Aquacorde Town': [44.0, 88.0],
-      'Santalune City': [46.0, 76.0],
-      'Lumiose City': [50.0, 54.0],
-      'Camphrier Town': [28.0, 60.0],
-      'Ambrette Town': [12.0, 62.0],
-      'Cyllage City': [10.0, 44.0],
-      'Geosenge Town': [16.0, 28.0],
-      'Shalour City': [26.0, 16.0],
-      'Coumarine City': [66.0, 18.0],
-      'Laverre City': [66.0, 40.0],
-      'Dendemille Town': [80.0, 40.0],
-      'Anistar City': [94.0, 34.0],
-      'Couriway Town': [86.0, 60.0],
-      'Snowbelle City': [84.0, 76.0],
-      'Pokémon League': [76.0, 56.0],
-    },
-    land: [
-      [50.0, 54.0, 46.0, 44.0],
-    ],
-  ),
-  'Alola': (
-    cities: {
-      'Iki Town': [20.0, 62.0],
-      'Verdant Cavern': [30.0, 74.0],
-      'Brooklet Hill': [46.0, 78.0],
-      'Wela Volcano Park': [56.0, 84.0],
-      'Lush Jungle': [44.0, 90.0],
-      'Ruins of Life': [58.0, 92.0],
-      'Malie City': [66.0, 50.0],
-      'Hokulani Observatory': [78.0, 36.0],
-      'Mount Lanakila': [70.0, 24.0],
-      'Seafolk Village': [26.0, 34.0],
-      'Vast Poni Canyon': [16.0, 22.0],
-    },
-    land: [
-      [24.0, 70.0, 12.0, 11.0],
-      [51.0, 86.0, 12.0, 9.0],
-      [72.0, 38.0, 14.0, 18.0],
-      [21.0, 28.0, 11.0, 11.0],
-    ],
-  ),
-  'Galar': (
-    cities: {
-      'Postwick': [50.0, 96.0],
-      'Wedgehurst': [50.0, 88.0],
-      'Motostoke': [50.0, 68.0],
-      'Turffield': [32.0, 78.0],
-      'Hulbury': [72.0, 76.0],
-      'Stow-on-Side': [36.0, 54.0],
-      'Ballonlea': [18.0, 48.0],
-      'Hammerlocke': [52.0, 44.0],
-      'Circhester': [60.0, 24.0],
-      'Spikemuth': [84.0, 28.0],
-      'Wyndon': [50.0, 6.0],
-    },
-    land: [
-      [50.0, 54.0, 34.0, 48.0],
-    ],
-  ),
-  'Paldea': (
-    cities: {
-      'Mesagoza': [50.0, 50.0],
-      'Cortondo': [30.0, 70.0],
-      'Artazon': [38.0, 38.0],
-      'Levincia': [76.0, 36.0],
-      'Cascarrafa': [22.0, 42.0],
-      'Medali': [30.0, 22.0],
-      'Montenevera': [70.0, 16.0],
-      'Alfornada': [18.0, 80.0],
-      'Glaseado': [50.0, 12.0],
-      'Pokémon League': [52.0, 60.0],
-      'Porto Marinada': [8.0, 46.0],
-    },
-    land: [
-      [48.0, 48.0, 42.0, 40.0],
-    ],
-  ),
+typedef RegionMapInfo = ({String id, double aspect, Map<String, List<double>> cities});
+
+const regionMaps = <String, List<RegionMapInfo>>{
+  'Kanto': [
+    (id: 'kanto', aspect: 1.5228, cities: <String, List<double>>{'Pewter City': [40.67, 28.6], 'Viridian City': [40.67, 53.6], 'Pallet Town': [40.67, 69.6], 'Cinnabar Island': [40.67, 94.0], 'Indigo Plateau': [25.8, 45.8], 'Celadon City': [63.67, 42.9], 'Saffron City': [77.73, 42.9], 'Cerulean City': [77.73, 28.6], 'Lavender Town': [91.33, 42.9], 'Vermilion City': [77.73, 54.8], 'Fuchsia City': [62.53, 83.3], 'Seafoam Islands': [50.67, 93.0]}),
+  ],
+  'Johto': [
+    (id: 'johto', aspect: 1.4286, cities: <String, List<double>>{'Cianwood City': [11.27, 64.7], 'Olivine City': [22.87, 48.1], 'Ecruteak City': [39.13, 28.6], 'Mahogany Town': [52.8, 28.6], 'Blackthorn City': [68.0, 28.6], 'Violet City': [47.93, 46.0], 'Goldenrod City': [32.8, 65.0], 'Azalea Town': [38.4, 83.7], 'Cherrygrove City': [57.13, 68.2], 'New Bark Town': [71.0, 68.4], 'Indigo Plateau': [90.47, 15.8]}),
+    (id: 'kanto', aspect: 1.5228, cities: <String, List<double>>{'Pewter City': [40.67, 28.6], 'Viridian City': [40.67, 53.6], 'Pallet Town': [40.67, 69.6], 'Cinnabar Island': [40.67, 94.0], 'Indigo Plateau': [25.8, 45.8], 'Celadon City': [63.67, 42.9], 'Saffron City': [77.73, 42.9], 'Cerulean City': [77.73, 28.6], 'Lavender Town': [91.33, 42.9], 'Vermilion City': [77.73, 54.8], 'Fuchsia City': [62.53, 83.3], 'Seafoam Islands': [50.67, 93.0]}),
+  ],
+  'Hoenn': [
+    (id: 'hoenn', aspect: 1.5228, cities: <String, List<double>>{'Fallarbor Town': [18.73, 14.3], 'Lavaridge Town': [24.6, 31.0], 'Rustboro City': [8.6, 47.6], 'Verdanturf Town': [18.73, 47.6], 'Mauville City': [34.4, 47.6], 'Petalburg City': [15.6, 63.1], 'Oldale Town': [23.47, 63.1], 'Littleroot Town': [23.47, 75.0], 'Slateport City': [34.4, 75.0], 'Dewford Town': [15.6, 90.5], 'Fortree City': [50.8, 14.3], 'Lilycove City': [58.6, 25.0], 'Mossdeep City': [82.0, 37.5], 'Sootopolis City': [72.27, 53.6], 'Ever Grande City': [90.6, 57.1], 'Pacifidlog Town': [60.53, 73.8]}),
+  ],
+  'Sinnoh': [
+    (id: 'sinnoh', aspect: 1.2857, cities: <String, List<double>>{'Snowpoint City': [37.93, 6.3], 'Eterna City': [32.93, 48.0], 'Celestic Town': [48.13, 45.8], 'Floaroma Town': [18.4, 60.4], 'Canalave City': [5.53, 72.9], 'Jubilife City': [16.87, 76.9], 'Oreburgh City': [29.8, 76.9], 'Hearthome City': [49.2, 68.7], 'Solaceon Town': [58.93, 62.5], 'Veilstone City': [71.8, 56.3], 'Pastoria City': [62.2, 85.5], 'Sunyshore City': [88.13, 76.9], 'Pokémon League': [86.53, 50.0], 'Sandgem Town': [18.4, 87.6], 'Twinleaf Town': [12.0, 91.7], 'Survival Area': [67.07, 20.8], 'Fight Area': [65.53, 33.3], 'Resort Area': [83.2, 37.4]}),
+  ],
+  'Unova': [
+    (id: 'unova', aspect: 1.5228, cities: <String, List<double>>{'Icirrus City': [28.93, 25.6], 'Opelucid City': [51.53, 25.6], 'Lacunosa Town': [73.8, 25.6], 'Humilau City': [91.8, 21.4], 'Undella Town': [87.47, 39.9], 'Lentimas Town': [72.67, 39.9], 'Black City': [73.8, 53.9], 'Mistralton City': [15.4, 39.9], 'Driftveil City': [28.93, 53.9], 'Nimbasa City': [51.53, 53.9], 'Castelia City': [51.53, 77.1], 'Nacrene City': [79.27, 69.9], 'Striaton City': [89.07, 69.9], 'Accumula Town': [90.6, 81.8], 'Nuvema Town': [90.6, 93.8], 'Aspertia City': [5.47, 91.1], 'Floccesy Town': [12.67, 75.6], 'Virbank City': [26.93, 75.6], 'Pokémon League': [66.4, 8.6], 'Pokéstar Studios': [25.0, 68.2]}),
+  ],
+  'Kalos': [
+    (id: 'kalos', aspect: 1.5254, cities: <String, List<double>>{'Laverre City': [51.6, 11.9], 'Coumarine City': [34.4, 29.6], 'Shalour City': [14.87, 35.4], 'Geosenge Town': [9.4, 47.0], 'Cyllage City': [17.2, 57.2], 'Ambrette Town': [22.27, 75.1], 'Camphrier Town': [41.13, 57.5], 'Lumiose City': [51.27, 36.7], 'Dendemille Town': [68.27, 29.8], 'Anistar City': [87.47, 38.1], 'Couriway Town': [92.93, 45.6], 'Snowbelle City': [84.6, 55.2], 'Pokémon League': [73.2, 43.4], 'Santalune City': [61.6, 56.6], 'Aquacorde Town': [66.13, 74.0], 'Vaniville Town': [66.13, 85.1], 'Kiloude City': [74.27, 92.0]}),
+  ],
+  'Alola': [
+    (id: 'alola', aspect: 1.6667, cities: <String, List<double>>{'Iki Town': [32.87, 20.5], 'Hau\'oli City': [28.93, 28.5], 'Verdant Cavern': [37.13, 26.5], 'Paniola Town': [62.67, 29.3], 'Heahea City': [58.4, 36.3], 'Konikoni City': [56.27, 42.4], 'Brooklet Hill': [65.67, 19.9], 'Lush Jungle': [69.67, 15.5], 'Wela Volcano Park': [68.33, 32.1], 'Ruins of Life': [61.73, 46.5], 'Po Town': [78.6, 53.7], 'Malie City': [87.07, 63.1], 'Mount Lanakila': [82.27, 60.3], 'Hokulani Observatory': [92.27, 70.8], 'Tapu Village': [83.2, 81.2], 'Seafolk Village': [9.6, 54.3], 'Vast Poni Canyon': [15.93, 42.0], 'Aether Paradise': [39.67, 61.2]}),
+  ],
+  'Galar': [
+    (id: 'galar', aspect: 0.707, cities: <String, List<double>>{'Postwick': [48.93, 91.0], 'Wedgehurst': [48.93, 84.2], 'Motostoke': [44.4, 54.2], 'Turffield': [37.13, 45.8], 'Hulbury': [55.33, 45.8], 'Hammerlocke': [51.93, 36.9], 'Stow-on-Side': [33.93, 36.9], 'Ballonlea': [33.93, 32.2], 'Circhester': [68.87, 30.3], 'Spikemuth': [76.6, 36.9], 'Wyndon': [51.93, 17.1]}),
+  ],
+  'Paldea': [
+    (id: 'paldea', aspect: 1.0, cities: <String, List<double>>{'Porto Marinada': [9.73, 49.1], 'Cascarrafa': [29.53, 52.5], 'Medali': [39.93, 45.8], 'Montenevera': [54.6, 28.6], 'Zapapico': [62.8, 53.7], 'Levincia': [83.2, 57.6], 'Pokémon League': [38.67, 67.3], 'Mesagoza': [47.8, 76.2], 'Cortondo': [28.33, 76.3], 'Artazon': [74.6, 74.4], 'Alfornada': [17.0, 88.4], 'Los Platos': [47.8, 87.3], 'Cabo Poco': [47.8, 95.1], 'Glaseado': [51.73, 19.7]}),
+  ],
 };
+
+/// O mapa da região que tem a cidade de agora (Johto também mostra Kanto).
+RegionMapInfo? regionMapFor(String region, String? current) {
+  final maps = regionMaps[region];
+  if (maps == null || maps.isEmpty) return null;
+  return maps.where((m) => current != null && m.cities.containsKey(current)).firstOrNull ?? maps.first;
+}
