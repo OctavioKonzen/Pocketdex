@@ -18,6 +18,7 @@ import sys
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
+from scipy import ndimage
 
 ROOT = os.path.join(os.path.dirname(__file__), '..')
 OUT = os.path.join(ROOT, 'assets', 'database', 'sprites', 'maps')
@@ -246,7 +247,8 @@ class Canvas:
 
 
 def blur(a, r):
-    return np.asarray(Image.fromarray(np.clip(a * 255, 0, 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(r)), dtype=float) / 255
+    """Desfoque em ponto flutuante (sem degraus: o relevo não fica listrado)."""
+    return ndimage.gaussian_filter(np.asarray(a, dtype=float), max(0.1, r))
 
 
 def mix(base, color, alpha):
@@ -339,19 +341,26 @@ def paint(cv, land, rivers, biomes, roads_land, roads_bridge, roads_sea, seed=1)
     ground[:] = (64, 118, 56)
     ground = mix(ground, (44, 92, 44), (n1 - 0.45) * 3)
     ground = mix(ground, (96, 146, 70), np.clip((n2 - 0.6) * 3, 0, 1) * 0.6)
-    height = n1 * 0.6 + n2 * 0.3 + n3 * 0.1
+    # O relevo: morros suaves pela terra toda, mais alto longe do mar e bem alto nas montanhas.
+    inland = blur(land, 40)
+    height = n1 * 0.9 + n2 * 0.45 + n3 * 0.15 + inland * 0.8
     layers = []
     for kind, shape in biomes:
-        m = roughen(cv.shape(shape), n3, 0.5, 5)
+        # A forma: elipse, contorno ou uma máscara pronta (tirada da imagem de referência).
+        m = roughen(shape.astype(float), n3, 0.4, 3) if isinstance(shape, np.ndarray) else roughen(cv.shape(shape), n3, 0.5, 5)
         if kind == 'water':
             land = np.minimum(land, 1 - m)
             continue
         m = m * land
         layers.append((kind, shape, m))
-        if kind in ('mountain', 'volcano', 'crater'):
-            height = height + m * (0.8 + n3 * 0.8)
+        if kind in ('mountain', 'volcano', 'crater', 'snow'):
+            height = height + blur(m, 6) * (2.2 + n3 * 1.6) + blur(m, 2) * n2 * 1.2
+        elif kind == 'forest':
+            height = height + blur(m, 4) * 0.25
+    height = blur(np.clip(height / max(1e-6, height.max()), 0, 1), 1.2)
     gy, gx = np.gradient(height)
-    shade = np.clip(1 + (-gx - gy) * 18, 0.6, 1.4)
+    # A luz vem do noroeste: a encosta virada para ela clareia, a outra escurece.
+    shade = np.clip(1 + (-gx - gy) * 70, 0.45, 1.6)
     for kind, shape, m in layers:
         if kind == 'forest':
             ground = mix(ground, (30, 76, 40), m * 0.9)
@@ -362,7 +371,8 @@ def paint(cv, land, rivers, biomes, roads_land, roads_bridge, roads_sea, seed=1)
             ground = mix(ground, (168, 150, 120), np.clip((n3 - 0.55) * 4, 0, 1) * m * 0.7)
         elif kind == 'volcano':
             ground = mix(ground, (96, 66, 54), m)
-            ground = mix(ground, (210, 80, 40), cv.shape(shape, 6) * 3 - 2.2)
+            if not isinstance(shape, np.ndarray):
+                ground = mix(ground, (210, 80, 40), cv.shape(shape, 6) * 3 - 2.2)
         elif kind == 'snow':
             ground = mix(ground, (226, 236, 246), m * 0.92)
         elif kind == 'desert':
@@ -432,9 +442,9 @@ def details(cv, img, land, layers, seed):
                 d.ellipse([x - r, y - r, x + r, y + r], fill=(26 + int(rng.integers(0, 20)), 82 + int(rng.integers(0, 30)), 40, 255))
                 d.ellipse([x - r * 0.5, y - r * 0.7, x + r * 0.1, y - r * 0.1], fill=(90, 150, 80, 200))
         elif kind in ('mountain', 'snow', 'volcano', 'crater'):
-            step = 14 if kind != 'snow' else 16
-            for x, y in scatter(m, step, rng, 0.5):
-                h = rng.uniform(8, 15)
+            step = 10 if kind != 'snow' else 12
+            for x, y in scatter(m, step, rng, 0.45):
+                h = rng.uniform(10, 19)
                 wdt = h * rng.uniform(0.8, 1.1)
                 snowy = kind == 'snow' or rng.random() < 0.25 and kind == 'mountain'
                 left, right = ((214, 226, 238, 255), (150, 168, 190, 255)) if kind == 'snow' else ((168, 146, 112, 255), (104, 84, 62, 255))
@@ -446,7 +456,7 @@ def details(cv, img, land, layers, seed):
                     d.polygon([(x, y - h), (x - wdt * 0.35, y - h * 0.62), (x + wdt * 0.35, y - h * 0.62)], fill=(236, 242, 250, 255))
                 elif kind == 'snow':
                     d.polygon([(x, y - h), (x - wdt * 0.4, y - h * 0.55), (x + wdt * 0.4, y - h * 0.55)], fill=(255, 255, 255, 255))
-            if kind == 'volcano':
+            if kind == 'volcano' and not isinstance(shape, np.ndarray):
                 cx, cy, rx, ry = shape
                 X, Y = cx * cv.w / 100, cy * cv.h / 100
                 d.ellipse([X - rx * cv.w / 400, Y - ry * cv.h / 400, X + rx * cv.w / 400, Y + ry * cv.h / 400], fill=(240, 96, 40, 255), outline=(90, 30, 20, 255))
@@ -510,8 +520,29 @@ def build(name, wanted):
         rivers = cv.lines(spec.get('rivers', []), 9)
         img = paint(cv, land, rivers, biomes, rl, rb, rs)
         return img, cities
-    # Desenhado à mão (unidades de 150 × 100).
+    # Desenhado à mão (unidades de 150 × 100); com as máscaras da imagem de referência (tool/region_maps_masks.py),
+    # a terra, as rotas e o relevo vêm delas.
     spec = HAND[name]
+    if os.path.exists(os.path.join(REF_DIR, f'{name}-m-land.png')):
+        cv = Canvas(spec.get('aspect', 1.5))
+        mask = lambda kind: np.asarray(Image.open(os.path.join(REF_DIR, f'{name}-m-{kind}.png')).convert('L').resize((cv.w, cv.h), Image.BILINEAR), dtype=float) / 255  # noqa: E731
+        land = mask('land')
+        roads = mask('road') > 0.5
+        # As cidades viram um ponto cheio (sem o anel da referência) e as rotas quebradas se emendam.
+        yy, xx = np.mgrid[0:cv.h, 0:cv.w]
+        for (x, y) in spec['cities'].values():
+            X, Y = x / 150 * cv.w, y / 100 * cv.h
+            disk = (xx - X) ** 2 + (yy - Y) ** 2 <= (cv.w * 0.022) ** 2
+            roads = roads | (disk & near(roads, cv.w * 0.03))
+        roads = ndimage.binary_closing(roads, iterations=4)
+        found = [(k, mask(k) * s) for k, s in (('mountain', 1.0), ('desert', 1.0), ('forest', 0.85))]
+        # Sem relevo na imagem (um mapa só de linhas, como o de Johto): o relevo marcado à mão.
+        flat = all(m.max() < 0.5 for _, m in found)
+        hand = [(k, (sh[0] / 1.5, sh[1], sh[2] / 1.5, sh[3]) if isinstance(sh, tuple) and len(sh) == 4 and not isinstance(sh[0], tuple) else [(p[0] / 1.5, p[1]) for p in sh]) for k, sh in spec.get('biomes', [])]
+        biomes = ([] if flat else found) + [(k, sh) for k, sh in hand if flat or k in ('snow', 'volcano', 'swamp', 'plain', 'crater')]
+        cities = {c: (xy[0] / 1.5, xy[1]) for c, xy in spec['cities'].items()}
+        img = paint(cv, land, np.zeros((cv.h, cv.w)), biomes, roads, np.zeros_like(roads), np.zeros_like(roads), seed=3)
+        return img, cities
     # A proporção da imagem de referência (Galar em pé, Paldea quadrado); as posições continuam em 150 × 100.
     cv = Canvas(spec.get('aspect', 1.5))
     pc = lambda p: (p[0] / 1.5, p[1])  # noqa: E731

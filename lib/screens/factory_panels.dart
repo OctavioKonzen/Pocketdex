@@ -2723,7 +2723,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
         ),
       ),
       if (regionMaps['${game['region']}'] != null)
-        (_townMapRegion('${game['region']}', [for (final x in cities) (city: x.city, steps: x.steps)], step, roam, plot, chapters))
+        (_townMapRegion(run, '${game['region']}', [for (final x in cities) (city: x.city, steps: x.steps)], step, roam, plot, chapters))
       else
       Container(
         margin: const EdgeInsets.all(8),
@@ -2774,7 +2774,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
 
   /// O Town Map (como nos jogos): o mar, as terras, as rotas e as cidades; tocando numa, o nome dela embaixo. Igual
   /// ao site.
-  Widget _townMapRegion(String region, List<({String city, List<int> steps})> cities, int step, Json? roam, Json? plot, List<Map> chapters) {
+  Widget _townMapRegion(Json run, String region, List<({String city, List<int> steps})> cities, int step, Json? roam, Json? plot, List<Map> chapters) {
     bool done(int i) => cities[i].steps.every((k) => k < step);
     final hereIndex = [for (var i = 0; i < cities.length; i++) i].where((i) => !done(i) && (i == 0 || done(i - 1))).firstOrNull ?? -1;
     final int shown = (_regionPick ?? (hereIndex < 0 ? 0 : hereIndex)).clamp(0, cities.isEmpty ? 0 : cities.length - 1);
@@ -2789,31 +2789,86 @@ class _FactoryScreenState extends State<FactoryScreen> {
         ].join();
     final c = cities.isEmpty ? null : cities[shown];
     const ring = Color(0xFFF6A834);
+    // Onde está o treinador: na rota, entre a cidade de antes e a próxima (pelo andar); na cidade, nela.
+    List<double>? xyOf(int k) => k >= 0 && k < cities.length ? map.cities[cities[k].city] : null;
+    final target = xyOf(hereIndex);
+    final before = xyOf(hereIndex - 1) ?? (target == null ? null : [target[0] - 6, target[1] + 6]);
+    final walk = (FactoryRun.routePos(run) / FactoryRun.routeLength).clamp(0.0, 1.0);
+    final meAt = target == null || before == null ? null : [before[0] + (target[0] - before[0]) * walk, before[1] + (target[1] - before[1]) * walk];
+    final me = Trainers.mine;
+    // O nome curto no mapa (sem "City", "Town"...); o completo fica na faixa de baixo.
+    Widget label(String text, {double opacity = 1}) => Opacity(
+          opacity: opacity,
+          child: Text(text.replaceFirst(RegExp(r' (City|Town|Island|Village)$'), ''),
+              maxLines: 1,
+              softWrap: false,
+              style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900, height: 1, shadows: [
+                Shadow(blurRadius: 2),
+                Shadow(blurRadius: 2),
+                Shadow(offset: Offset(0, 1), blurRadius: 2),
+              ])),
+        );
     return Container(
       key: const ValueKey('town-map-region'),
       margin: const EdgeInsets.fromLTRB(8, 4, 8, 4),
       decoration: BoxDecoration(color: const Color(0xFF14396F), border: Border.all(color: const Color(0xFF0F172A), width: 4), borderRadius: BorderRadius.circular(12)),
       clipBehavior: Clip.antiAlias,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        // A altura: a da imagem na largura do painel, até 250 (Galar, em pé, fica mais estreito no meio).
-        LayoutBuilder(builder: (context, outer) => SizedBox(
-          height: min(outer.maxWidth / map.aspect, 250.0),
-          child: Center(
-            child: AspectRatio(
-              aspectRatio: map.aspect,
+        // O mapa ocupa a largura toda (sem faixas dos lados); mais alto que 250, rola na vertical, aberto no treinador.
+        LayoutBuilder(builder: (context, outer) {
+          final fullH = outer.maxWidth / map.aspect, viewH = min(fullH, 250.0);
+          final startY = meAt == null ? 0.0 : (meAt[1] / 100 * fullH - viewH / 2).clamp(0.0, max(0.0, fullH - viewH)).toDouble();
+          return SizedBox(
+          height: viewH,
+          child: SingleChildScrollView(
+            key: const ValueKey('town-map-scroll'),
+            controller: ScrollController(initialScrollOffset: startY),
+            child: SizedBox(
+              width: outer.maxWidth,
+              height: fullH,
               child: LayoutBuilder(builder: (context, box) {
                 final w = box.maxWidth / 100, h = box.maxHeight / 100;
+                // Os nomes que esbarrariam em outro vão para cima do círculo.
+                final side = <String, String>{};
+                final placed = <Rect>[];
+                final all = [for (final e in map.cities.entries) (city: e.key, xy: e.value)]..sort((a, b) => a.xy[1].compareTo(b.xy[1]));
+                for (final l in all) {
+                  final name = l.city.replaceFirst(RegExp(r' (City|Town|Island|Village)$'), '');
+                  final lw = name.length * 5.0, x = l.xy[0] * w, y = l.xy[1] * h;
+                  final boxes = {
+                    'below': Rect.fromLTWH(x - lw / 2, y + 7, lw, 11), 'above': Rect.fromLTWH(x - lw / 2, y - 22, lw, 11),
+                    'right': Rect.fromLTWH(x + 10, y - 6, lw, 11), 'left': Rect.fromLTWH(x - 10 - lw, y - 6, lw, 11),
+                  };
+                  bool hits(Rect r) => r.left < 0 || r.right > box.maxWidth || placed.any((q) => q.overlaps(r));
+                  final order = l.xy[1] > 90 ? ['above', 'right', 'left', 'below'] : ['below', 'above', 'right', 'left'];
+                  final pick = order.firstWhere((k) => !hits(boxes[k]!), orElse: () => order.first);
+                  side[l.city] = pick;
+                  placed.add(boxes[pick]!);
+                }
+                // Onde fica o nome (embaixo, em cima, à direita ou à esquerda do círculo).
+                Widget placeLabel(String city, double x, double y, double down, Widget child) {
+                  final s = side[city] ?? 'below';
+                  if (s == 'right') return Positioned(left: x + 10, top: y - 6, child: child);
+                  if (s == 'left') return Positioned(right: box.maxWidth - x + 10, top: y - 6, child: child);
+                  return Positioned(left: x - 60, width: 120, top: s == 'above' ? y - 21 : y + down, child: Center(child: child));
+                }
                 return Stack(clipBehavior: Clip.none, children: [
                   Positioned.fill(child: Image.asset('assets/database/sprites/maps/${map.id}.webp', key: const ValueKey('town-map-image'), fit: BoxFit.fill)),
                   // As vilas e cidades que não são da história (só o círculo).
                   for (final e in map.cities.entries)
-                    if (!storyNames.contains(e.key))
+                    if (!storyNames.contains(e.key)) ...[
                       Positioned(
                         left: e.value[0] * w - 5,
                         top: e.value[1] * h - 5,
                         child: Container(
                             width: 10, height: 10, decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFF1E3A5F), border: Border.all(color: ring, width: 2))),
                       ),
+                      placeLabel(e.key, e.value[0] * w, e.value[1] * h, 6, label(e.key, opacity: 0.9)),
+                    ],
+                  // Os nomes das cidades da história.
+                  for (var i = 0; i < cities.length; i++)
+                    if (map.cities[cities[i].city] != null)
+                      placeLabel(cities[i].city, map.cities[cities[i].city]![0] * w, map.cities[cities[i].city]![1] * h, 9, label(cities[i].city)),
                   for (var i = 0; i < cities.length; i++)
                     if (map.cities[cities[i].city] != null)
                       Positioned(
@@ -2836,15 +2891,28 @@ class _FactoryScreenState extends State<FactoryScreen> {
                               ),
                             ),
                             if (marks(i).isNotEmpty) Positioned(top: -12, child: Text(marks(i), style: const TextStyle(fontSize: 11, height: 1))),
-                            if (i == hereIndex) const Positioned(bottom: -12, child: Text('📍', style: TextStyle(fontSize: 13, height: 1))),
                           ]),
                         ),
                       ),
+                  // O treinador: onde você está agora.
+                  if (meAt != null)
+                    Positioned(
+                      key: const ValueKey('town-map-me'),
+                      left: meAt[0] * w - 20,
+                      top: meAt[1] * h - 40,
+                      width: 40,
+                      height: 40,
+                      child: IgnorePointer(
+                          child: Align(
+                              alignment: Alignment.bottomCenter,
+                              child: me != null ? TrainerSprite(me, height: 36) : const Text('📍', style: TextStyle(fontSize: 18, height: 1)))),
+                    ),
                 ]);
               }),
             ),
           ),
-        )),
+        );
+        }),
         // A faixa de baixo (como no Town Map): o nome da cidade escolhida e o que tem nela.
         if (c != null)
           Container(

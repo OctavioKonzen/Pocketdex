@@ -1739,7 +1739,54 @@ function RegionMap({ data, run, onClose, monName }) {
     ro.observe(el)
     return () => ro.disconnect()
   }, [map?.id])
-  const fit = map ? (box.w / Math.max(1, box.h) > map.aspect ? { w: box.h * map.aspect, h: box.h } : { w: box.w, h: box.w / map.aspect }) : { w: 0, h: 0 }
+  // O mapa ocupa a largura toda (sem faixas dos lados); mais alto que o espaço, rola na vertical.
+  const fit = map ? { w: box.w, h: box.w / map.aspect } : { w: 0, h: 0 }
+  // Onde está o treinador: na rota, entre a cidade de antes e a próxima (pelo andar); na cidade, nela.
+  const me = useMyTrainer()
+  const xyOf = (k) => map?.spots.find((c) => c.i === k)?.xy
+  const target = xyOf(hereIndex)
+  const before = xyOf(hereIndex - 1) ?? (target ? [target[0] - 6, target[1] + 6] : null)
+  const walk = Math.max(0, Math.min(1, routePos(run) / ROUTE_LENGTH))
+  const meAt = target && before ? [before[0] + (target[0] - before[0]) * walk, before[1] + (target[1] - before[1]) * walk] : null
+  // Abre o mapa com o treinador no meio (quando ele rola).
+  const meY = meAt ? meAt[1] : null
+  const mapId = map?.id
+  useLayoutEffect(() => {
+    const el = boxRef.current
+    if (el && meY != null && fit.h > el.clientHeight) el.scrollTop = Math.max(0, (meY / 100) * fit.h - el.clientHeight / 2)
+  }, [mapId, fit.h, meY])
+  const label = 'pointer-events-none absolute left-1/2 top-full mt-0.5 -translate-x-1/2 whitespace-nowrap text-[8px] font-black leading-none text-white sm:text-[10px]'
+  const outline = { textShadow: '0 0 2px #000, 0 0 2px #000, 0 1px 2px #000' }
+  // O nome curto no mapa (sem "City", "Town"...); o completo fica na faixa de baixo.
+  const short = (name) => name.replace(/ (City|Town|Island|Village)$/, '')
+  // Os nomes que esbarrariam em outro vão para cima do círculo.
+  const side = {}
+  if (map && fit.w) {
+    const all = [...towns.map(([city, xy]) => ({ city, xy })), ...map.spots.map((c) => ({ city: c.city, xy: c.xy }))].sort((a, b) => a.xy[1] - b.xy[1])
+    const placed = []
+    const px = fit.w < 500 ? 5.2 : 6.2
+    for (const { city, xy } of all) {
+      const w = (short(city).length * px) / fit.w * 100
+      const h = 12 / Math.max(1, fit.h) * 100
+      const dx = 14 / Math.max(1, fit.w) * 100
+      const boxes = {
+        below: [xy[0] - w / 2, xy[1] + h * 0.4, w, h], above: [xy[0] - w / 2, xy[1] - 2 * h, w, h],
+        right: [xy[0] + dx, xy[1] - h / 2, w, h], left: [xy[0] - dx - w, xy[1] - h / 2, w, h],
+      }
+      const hits = (b) => b[0] < 0 || b[0] + b[2] > 100 || placed.some((q) => b[0] < q[0] + q[2] && q[0] < b[0] + b[2] && b[1] < q[1] + q[3] && q[1] < b[1] + b[3])
+      const order = xy[1] > 90 ? ['above', 'right', 'left', 'below'] : ['below', 'above', 'right', 'left']
+      const pick = order.find((k) => !hits(boxes[k])) ?? order[0]
+      side[city] = pick
+      placed.push(boxes[pick])
+    }
+  }
+  const SIDES = {
+    below: label,
+    above: label.replace('top-full mt-0.5', 'bottom-full mb-0.5'),
+    right: label.replace('left-1/2 top-full mt-0.5 -translate-x-1/2', 'left-full top-1/2 ml-1 -translate-y-1/2'),
+    left: label.replace('left-1/2 top-full mt-0.5 -translate-x-1/2', 'right-full top-1/2 mr-1 -translate-y-1/2'),
+  }
+  const labelAt = (city) => SIDES[side[city] ?? 'below']
   return (
     <div className={map ? 'flex h-full flex-col gap-1 p-2' : 'space-y-2 p-2'} data-testid="region-map">
       <OverlayClose onClose={onClose} title={`🗺️ ${game.region} · ${game.game}`} />
@@ -1752,12 +1799,15 @@ function RegionMap({ data, run, onClose, monName }) {
       {map ? (
         // O Town Map (como nos jogos): o desenho da região, as cidades em círculos; tocando numa, o nome dela embaixo.
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border-4 border-slate-900 bg-[#14396f]" data-testid="town-map-region">
-          <div ref={boxRef} className="relative flex min-h-0 flex-1 items-center justify-center">
+          <div ref={boxRef} className={`relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden ${fit.h < box.h ? 'flex items-center' : ''}`} data-testid="town-map-scroll">
             <div className="relative" style={{ width: fit.w, height: fit.h }}>
               <img src={spriteUrl(`maps/${map.id}.webp`)} alt="" className="absolute inset-0 h-full w-full select-none" draggable={false} data-testid="town-map-image" />
               {/* As vilas e cidades que não são da história (só o círculo). */}
               {towns.map(([city, [x, y]]) => (
-                <span key={city} className="absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#f6a834] bg-[#1e3a5f] sm:h-3 sm:w-3" style={{ left: `${x}%`, top: `${y}%` }} title={city} />
+                <span key={city} className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${x}%`, top: `${y}%` }} title={city}>
+                  <span className="block h-2.5 w-2.5 rounded-full border-2 border-[#f6a834] bg-[#1e3a5f] sm:h-3 sm:w-3" />
+                  <span className={`${labelAt(city)} opacity-90`} style={outline} data-no-translate>{short(city)}</span>
+                </span>
               ))}
               {map.spots.map((c) => {
                 const i = c.i
@@ -1773,10 +1823,16 @@ function RegionMap({ data, run, onClose, monName }) {
                     data-testid={done ? 'city-lit' : here ? 'city-here' : 'city-dark'} title={c.city}>
                     <span className={`block h-4 w-4 rounded-full border-[3px] sm:h-5 sm:w-5 ${here ? 'animate-pulse border-white bg-sky-400' : done ? 'border-[#f6a834] bg-amber-300' : 'border-[#f6a834] bg-[#1d5e8c]'} ${i === shown ? 'ring-2 ring-yellow-300' : ''}`} />
                     {marks && <span className="absolute -top-4 left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] leading-none drop-shadow">{marks}</span>}
-                    {here && <span className="absolute left-1/2 top-4 -translate-x-1/2 text-sm leading-none sm:top-5">📍</span>}
+                    <span className={labelAt(c.city)} style={outline} data-no-translate>{short(c.city)}</span>
                   </button>
                 )
               })}
+              {/* O treinador: onde você está agora. */}
+              {meAt && (
+                <span className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full" style={{ left: `${meAt[0]}%`, top: `${meAt[1]}%` }} data-testid="town-map-me">
+                  {me ? <TrainerSprite trainer={me} height={Math.min(36, Math.max(24, fit.w * 0.06))} /> : <span className="text-lg leading-none">📍</span>}
+                </span>
+              )}
             </div>
           </div>
           {/* A faixa de baixo (como no Town Map): o nome da cidade escolhida e o que tem nela. */}
