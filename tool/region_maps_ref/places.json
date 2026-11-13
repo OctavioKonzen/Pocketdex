@@ -1,0 +1,817 @@
+{
+ "kanto": {
+  "indigo-plateau": {
+   "kind": "Cities",
+   "x": 4.99,
+   "y": 16.06
+  },
+  "pewter-city": {
+   "kind": "Cities",
+   "x": 17.86,
+   "y": 21.99
+  },
+  "viridian-city": {
+   "kind": "Cities",
+   "x": 17.89,
+   "y": 52.47
+  },
+  "pallet-town": {
+   "kind": "Cities",
+   "x": 17.89,
+   "y": 70.89
+  },
+  "celadon-city": {
+   "kind": "Cities",
+   "x": 50.37,
+   "y": 34.28
+  },
+  "cinnabar-island": {
+   "kind": "Cities",
+   "x": 17.86,
+   "y": 94.86
+  },
+  "fuchsia-city": {
+   "kind": "Cities",
+   "x": 56.85,
+   "y": 82.97
+  },
+  "vermillion-city": {
+   "kind": "Cities",
+   "x": 69.85,
+   "y": 58.57
+  },
+  "saffron-city": {
+   "kind": "Cities",
+   "x": 69.85,
+   "y": 34.28
+  },
+  "lavender-town": {
+   "kind": "Cities",
+   "x": 95.65,
+   "y": 34.28
+  },
+  "cerulean-city": {
+   "kind": "Cities",
+   "x": 69.85,
+   "y": 16.05
+  },
+  "kanto-victory-road-2": {
+   "kind": "POI",
+   "x": 4.98,
+   "y": 21.04
+  },
+  "kanto-victory-road-1": {
+   "kind": "POI",
+   "x": 4.98,
+   "y": 25.38
+  },
+  "viridian-forest": {
+   "kind": "POI",
+   "x": 17.86,
+   "y": 26.93
+  },
+  "digletts-cave": {
+   "kind": "POI",
+   "x": 22.51,
+   "y": 26.93
+  },
+  "mt-moon": {
+   "kind": "POI",
+   "x": 43.97,
+   "y": 16.05
+  },
+  "seafoam-islands": {
+   "kind": "POI",
+   "x": 37.41,
+   "y": 94.98
+  },
+  "pokemon-mansion": {
+   "kind": "POI",
+   "x": 12.51,
+   "y": 94.86
+  },
+  "kanto-safari-zone": {
+   "kind": "POI",
+   "x": 57.01,
+   "y": 77.99
+  },
+  "ss-anne": {
+   "kind": "POI",
+   "x": 69.85,
+   "y": 63.57
+  },
+  "rock-tunnel": {
+   "kind": "POI",
+   "x": 95.66,
+   "y": 16.05
+  },
+  "kanto-power-plant": {
+   "kind": "POI",
+   "x": 95.66,
+   "y": 20.39
+  },
+  "pokemon-tower": {
+   "kind": "POI",
+   "x": 101,
+   "y": 34.28
+  },
+  "sea-cottage": {
+   "kind": "POI",
+   "x": 82.79,
+   "y": 4.03
+  },
+  "cerulean-cave": {
+   "kind": "POI",
+   "x": 64.5,
+   "y": 13.22
+  },
+  "__aspect": 0.9333333333333333
+ },
+ "johto": {
+  "azalea-town": {
+   "kind": "Cities",
+   "x": 50.74,
+   "y": 86.6
+  },
+  "goldenrod-city_goldenrod-tunnel_radio-tower_johto-pokemart": {
+   "kind": "Cities",
+   "x": 40.08,
+   "y": 67.31
+  },
+  "cianwood-city_cliff-edge-gate": {
+   "kind": "Cities",
+   "x": 19.24,
+   "y": 67.31
+  },
+  "olivine-city": {
+   "kind": "Cities",
+   "x": 33.93,
+   "y": 50.8
+  },
+  "violet-city": {
+   "kind": "Cities",
+   "x": 58.27,
+   "y": 52.25
+  },
+  "blackthorn-city": {
+   "kind": "Cities",
+   "x": 84.01,
+   "y": 33.75
+  },
+  "ecruteak-city": {
+   "kind": "Cities",
+   "x": 46.27,
+   "y": 33.75
+  },
+  "new-bark-town": {
+   "kind": "Cities",
+   "x": 85.89,
+   "y": 75.72
+  },
+  "mahogany-town_team-rocket-hq": {
+   "kind": "Cities",
+   "x": 65.01,
+   "y": 36.44
+  },
+  "cherrygrove-city": {
+   "kind": "Cities",
+   "x": 67.18,
+   "y": 75.72
+  },
+  "slowpoke-well": {
+   "kind": "POI",
+   "x": 52.54,
+   "y": 86.67
+  },
+  "frontier-access": {
+   "kind": "POI",
+   "x": 25.41,
+   "y": 45.1
+  },
+  "ruins-of-alph": {
+   "kind": "POI",
+   "x": 52.46,
+   "y": 56.93
+  },
+  "national-park_pokeathlon-dome": {
+   "kind": "POI",
+   "x": 42.35,
+   "y": 45.12
+  },
+  "johto-safari-zone_safari-zone-gate": {
+   "kind": "POI",
+   "x": 8.77,
+   "y": 55.95
+  },
+  "lake-of-rage": {
+   "kind": "POI",
+   "x": 65.09,
+   "y": 17.21
+  },
+  "johto-lighthouse": {
+   "kind": "POI",
+   "x": 35.91,
+   "y": 53.34
+  },
+  "burned-tower": {
+   "kind": "POI",
+   "x": 44.18,
+   "y": 31.36
+  },
+  "bell-tower_bellchime-trail": {
+   "kind": "POI",
+   "x": 48.45,
+   "y": 31.36
+  },
+  "ice-path_dragons-den": {
+   "kind": "POI",
+   "x": 85.97,
+   "y": 31.36
+  },
+  "sprout-tower": {
+   "kind": "POI",
+   "x": 60.26,
+   "y": 49.71
+  },
+  "dark-cave": {
+   "kind": "POI",
+   "x": 81.77,
+   "y": 42.23
+  },
+  "mt-silver_mt-silver-cave": {
+   "kind": "POI",
+   "x": 95.39,
+   "y": 53.34
+  },
+  "union-cave": {
+   "kind": "POI",
+   "x": 56.72,
+   "y": 81.23
+  },
+  "dark-cave1": {
+   "kind": "POI",
+   "x": 69.3,
+   "y": 53.6
+  },
+  "ilex-forest": {
+   "kind": "POI",
+   "x": 44.21,
+   "y": 86.67
+  },
+  "dark-cave2": {
+   "kind": "POI",
+   "x": 77.6,
+   "y": 64.53
+  },
+  "tohjo-falls": {
+   "kind": "POI",
+   "x": 100,
+   "y": 75.76
+  },
+  "mt-mortar": {
+   "kind": "POI",
+   "x": 56.76,
+   "y": 36.73
+  },
+  "whirl-islands": {
+   "kind": "POI",
+   "x": 27.61,
+   "y": 70.52
+  },
+  "__aspect": 1.3333333333333333
+ },
+ "sinnoh": {
+  "jubilife-city": {
+   "kind": "Cities",
+   "x": 21.69,
+   "y": 76.61
+  },
+  "pastoria-city": {
+   "kind": "Cities",
+   "x": 65.41,
+   "y": 86.78
+  },
+  "hearthorne-city": {
+   "kind": "Cities",
+   "x": 50,
+   "y": 69.95
+  },
+  "veilstone-city": {
+   "kind": "Cities",
+   "x": 73.09,
+   "y": 59.14
+  },
+  "sunyshore-city": {
+   "kind": "Cities",
+   "x": 85.95,
+   "y": 76.61
+  },
+  "sinnoh-pokemon-league": {
+   "kind": "Cities",
+   "x": 84.7,
+   "y": 50.84
+  },
+  "canalave-city": {
+   "kind": "Cities",
+   "x": 10.02,
+   "y": 73.28
+  },
+  "floaroma-city": {
+   "kind": "Cities",
+   "x": 22.77,
+   "y": 62.81
+  },
+  "solaceon-city": {
+   "kind": "Cities",
+   "x": 60.54,
+   "y": 64.4
+  },
+  "resort-area": {
+   "kind": "Cities",
+   "x": 80.94,
+   "y": 43.85
+  },
+  "survival-area": {
+   "kind": "Cities",
+   "x": 66.7,
+   "y": 30.27
+  },
+  "celestic-town": {
+   "kind": "Cities",
+   "x": 48.75,
+   "y": 50.84
+  },
+  "sandgem-town": {
+   "kind": "Cities",
+   "x": 22.94,
+   "y": 88.78
+  },
+  "pal-park": {
+   "kind": "Cities",
+   "x": 33.21,
+   "y": 95.45
+  },
+  "elite-4": {
+   "kind": "Cities",
+   "x": 84.7,
+   "y": 54.66
+  },
+  "twinleaf-town": {
+   "kind": "Cities",
+   "x": 15.12,
+   "y": 92.12
+  },
+  "oreburgh-city": {
+   "kind": "Cities",
+   "x": 34.27,
+   "y": 76.61
+  },
+  "eterna-city": {
+   "kind": "Cities",
+   "x": 36.85,
+   "y": 52.51
+  },
+  "snowpoint-city": {
+   "kind": "Cities",
+   "x": 41.05,
+   "y": 11.32
+  },
+  "fight-area": {
+   "kind": "Cities",
+   "x": 65.54,
+   "y": 40.51
+  },
+  "__aspect": 1.3333333333333333
+ },
+ "unova": {
+  "nuvema-town": {
+   "kind": "Cities",
+   "x": 89.43,
+   "y": 93.97
+  },
+  "accumula-town": {
+   "kind": "Cities",
+   "x": 89.43,
+   "y": 82.11
+  },
+  "striaton-city": {
+   "kind": "Cities",
+   "x": 88.03,
+   "y": 70.12
+  },
+  "nacrene-city": {
+   "kind": "Cities",
+   "x": 78.46,
+   "y": 70.12
+  },
+  "castelia-city_royal-unova_medal-secretariat": {
+   "kind": "Cities",
+   "x": 51.27,
+   "y": 77.3
+  },
+  "unity-tower": {
+   "kind": "Cities",
+   "x": 38.56,
+   "y": 93.35
+  },
+  "nimbasa-city_gear-station_battle-subway_musical-theater": {
+   "kind": "Cities",
+   "x": 51.27,
+   "y": 54.19
+  },
+  "driftveil-city": {
+   "kind": "Cities",
+   "x": 29.24,
+   "y": 54.19
+  },
+  "aspertia-city": {
+   "kind": "Cities",
+   "x": 6.32,
+   "y": 91.18
+  },
+  "floccesy-town": {
+   "kind": "Cities",
+   "x": 13.59,
+   "y": 75.39
+  },
+  "virbank-city": {
+   "kind": "Cities",
+   "x": 27.42,
+   "y": 75.39
+  },
+  "mistralton-city": {
+   "kind": "Cities",
+   "x": 16.12,
+   "y": 39.88
+  },
+  "icirrus-city": {
+   "kind": "Cities",
+   "x": 29.24,
+   "y": 25.56
+  },
+  "opelucid-city": {
+   "kind": "Cities",
+   "x": 51.27,
+   "y": 25.56
+  },
+  "lacunosa-town": {
+   "kind": "Cities",
+   "x": 73.25,
+   "y": 25.56
+  },
+  "undella-town": {
+   "kind": "Cities",
+   "x": 86.41,
+   "y": 39.88
+  },
+  "lentimas-town": {
+   "kind": "Cities",
+   "x": 72.38,
+   "y": 39.88
+  },
+  "humilau-city": {
+   "kind": "Cities",
+   "x": 90.69,
+   "y": 21.32
+  },
+  "black-city_white-forest_black-tower_white-treehollow": {
+   "kind": "Cities",
+   "x": 73.35,
+   "y": 54.19
+  },
+  "unova-victory-road-2": {
+   "kind": "Cities",
+   "x": 71.17,
+   "y": 9.47
+  },
+  "join-avenue": {
+   "kind": "Cities",
+   "x": 51.27,
+   "y": 61.95
+  },
+  "pwt": {
+   "kind": "Cities",
+   "x": 30.4,
+   "y": 61.36
+  },
+  "pokestar-studios": {
+   "kind": "Cities",
+   "x": 25.42,
+   "y": 68.51
+  },
+  "unova-pokemon-league": {
+   "kind": "Cities",
+   "x": 65.95,
+   "y": 9.47
+  },
+  "giant-chasm": {
+   "kind": "POI",
+   "x": 80.36,
+   "y": 21.32
+  },
+  "seaside-cave": {
+   "kind": "POI",
+   "x": 90.63,
+   "y": 31.5
+  },
+  "abyssal-ruins": {
+   "kind": "POI",
+   "x": 93.35,
+   "y": 37.56
+  },
+  "reversal-mountain": {
+   "kind": "POI",
+   "x": 79.59,
+   "y": 39.85
+  },
+  "abundant-shrine": {
+   "kind": "POI",
+   "x": 76.12,
+   "y": 45.83
+  },
+  "poke-transfer-lab": {
+   "kind": "POI",
+   "x": 68.54,
+   "y": 50
+  },
+  "lostlorn-forest": {
+   "kind": "POI",
+   "x": 56.71,
+   "y": 50
+  },
+  "entralink": {
+   "kind": "POI",
+   "x": 51.38,
+   "y": 39.86
+  },
+  "moor-of-icirrus": {
+   "kind": "POI",
+   "x": 34.59,
+   "y": 21.44
+  },
+  "dragonspiral-tower": {
+   "kind": "POI",
+   "x": 26.17,
+   "y": 18.44
+  },
+  "celestial-tower": {
+   "kind": "POI",
+   "x": 21.59,
+   "y": 29.76
+  },
+  "twist-mountain": {
+   "kind": "POI",
+   "x": 28.46,
+   "y": 32.75
+  },
+  "mistralton-cave_guidance-chamber": {
+   "kind": "POI",
+   "x": 25.4,
+   "y": 42.3
+  },
+  "chargestone-cave": {
+   "kind": "POI",
+   "x": 17.02,
+   "y": 47.62
+  },
+  "anville-town": {
+   "kind": "POI",
+   "x": 3.66,
+   "y": 17.88
+  },
+  "clay-tunnel_underground-ruins_rocky-mountain-room_glacier-room_iron-room": {
+   "kind": "POI",
+   "x": 28.48,
+   "y": 46
+  },
+  "relic-castle": {
+   "kind": "POI",
+   "x": 44.88,
+   "y": 61.88
+  },
+  "relic-passage": {
+   "kind": "POI",
+   "x": 41.02,
+   "y": 70.24
+  },
+  "castelia-sewers": {
+   "kind": "POI",
+   "x": 60.52,
+   "y": 85.12
+  },
+  "pinwheel-forest_rumination-field_bridge-gate": {
+   "kind": "POI",
+   "x": 74.99,
+   "y": 74.35
+  },
+  "wellspring-cave": {
+   "kind": "POI",
+   "x": 83.02,
+   "y": 65.48
+  },
+  "dreamyard": {
+   "kind": "POI",
+   "x": 92.18,
+   "y": 70.25
+  },
+  "p2-laboratory": {
+   "kind": "POI",
+   "x": 82.66,
+   "y": 89.87
+  },
+  "plasma-frigate": {
+   "kind": "POI",
+   "x": 85.71,
+   "y": 89.88
+  },
+  "liberty-garden": {
+   "kind": "POI",
+   "x": 29.22,
+   "y": 86.33
+  },
+  "virbank-complex": {
+   "kind": "POI",
+   "x": 25.43,
+   "y": 82.12
+  },
+  "cave-of-being": {
+   "kind": "POI",
+   "x": 16.64,
+   "y": 82.12
+  },
+  "floccesy-ranch": {
+   "kind": "POI",
+   "x": 16.64,
+   "y": 70.18
+  },
+  "strange-house": {
+   "kind": "POI",
+   "x": 76.55,
+   "y": 35.04
+  },
+  "ns-castle": {
+   "kind": "POI",
+   "x": 70.44,
+   "y": 3.58
+  },
+  "__aspect": 1.56
+ },
+ "kalos": {
+  "vaniville-town": {
+   "kind": "Cities",
+   "x": 63.14,
+   "y": 83.82
+  },
+  "aquacorde-town": {
+   "kind": "Cities",
+   "x": 63.14,
+   "y": 73.02
+  },
+  "santalune-city": {
+   "kind": "Cities",
+   "x": 58.84,
+   "y": 55.85
+  },
+  "lumiose-city_prism-tower_lysandre-labs_lumiose-station": {
+   "kind": "Cities",
+   "x": 49.94,
+   "y": 37.38
+  },
+  "camphrier-town_shabboneau-castle": {
+   "kind": "Cities",
+   "x": 40.09,
+   "y": 56.93
+  },
+  "ambrette-town_ambrette-aquarium": {
+   "kind": "Cities",
+   "x": 23.26,
+   "y": 74.27
+  },
+  "cyllage-city": {
+   "kind": "Cities",
+   "x": 18.76,
+   "y": 56.41
+  },
+  "geosenge-town_team-flare-secret-hq": {
+   "kind": "Cities",
+   "x": 11.07,
+   "y": 47.4
+  },
+  "shalour-city_tower-of-mastery": {
+   "kind": "Cities",
+   "x": 16.4,
+   "y": 36.27
+  },
+  "coumarine-city": {
+   "kind": "Cities",
+   "x": 34.13,
+   "y": 30.37
+  },
+  "laverre-city": {
+   "kind": "Cities",
+   "x": 49.83,
+   "y": 12.83
+  },
+  "dendemille-town": {
+   "kind": "Cities",
+   "x": 65.15,
+   "y": 30.55
+  },
+  "kalos-pokemon-league_radiant-chamber": {
+   "kind": "Cities",
+   "x": 69.74,
+   "y": 43.77
+  },
+  "anistar-city": {
+   "kind": "Cities",
+   "x": 82.7,
+   "y": 38.16
+  },
+  "couriway-town": {
+   "kind": "Cities",
+   "x": 87.58,
+   "y": 45.77
+  },
+  "snowbelle-city": {
+   "kind": "Cities",
+   "x": 79.93,
+   "y": 55.19
+  },
+  "kiloude-city_battle-maison_kiloude-station_friend-safari": {
+   "kind": "Cities",
+   "x": 71.07,
+   "y": 90.18
+  },
+  "santalune-forest": {
+   "kind": "POI",
+   "x": 63.06,
+   "y": 63.4
+  },
+  "chamber-of-emptiness": {
+   "kind": "POI",
+   "x": 65.9,
+   "y": 59.15
+  },
+  "kalos-power-plant": {
+   "kind": "POI",
+   "x": 37.63,
+   "y": 40.56
+  },
+  "parfum-palace": {
+   "kind": "POI",
+   "x": 29.55,
+   "y": 44.54
+  },
+  "connecting-cave_zubat-roost": {
+   "kind": "POI",
+   "x": 25.47,
+   "y": 56.6
+  },
+  "glittering-cave": {
+   "kind": "POI",
+   "x": 35.74,
+   "y": 73.88
+  },
+  "reflection-cave": {
+   "kind": "POI",
+   "x": 14.59,
+   "y": 38.61
+  },
+  "sea-spirits-den": {
+   "kind": "POI",
+   "x": 25.51,
+   "y": 19.19
+  },
+  "poke-ball-factory": {
+   "kind": "POI",
+   "x": 49.83,
+   "y": 9.07
+  },
+  "lost-hotel": {
+   "kind": "POI",
+   "x": 56.97,
+   "y": 26.53
+  },
+  "frost-cavern": {
+   "kind": "POI",
+   "x": 68.76,
+   "y": 23.74
+  },
+  "terminus-cave": {
+   "kind": "POI",
+   "x": 89.4,
+   "y": 36.2
+  },
+  "pokemon-village_unknown-dungeon": {
+   "kind": "POI",
+   "x": 76.22,
+   "y": 73.83
+  },
+  "kalos-victory-road": {
+   "kind": "POI",
+   "x": 69.59,
+   "y": 54.21
+  },
+  "__aspect": 1.6
+ }
+}
