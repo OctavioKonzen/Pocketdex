@@ -688,12 +688,7 @@ ART = {
         'Zapapico': (1150, 230), 'Porto Marinada': (150, 320), 'Pokémon League': (495, 325), 'Cabo Poco': (775, 800),
         'Cortondo': (450, 770), 'Alfornada': (1380, 690)}},
     'kanto': {'crop': (0, 0, 1536, 1024), 'cities': {'Indigo Plateau': (350, 230), 'Pewter City': (530, 250), 'Viridian City': (250, 410), 'Celadon City': (500, 430), 'Saffron City': (860, 330), 'Lavender Town': (1040, 430), 'Cerulean City': (1130, 230), 'Vermilion City': (1190, 450), 'Pallet Town': (420, 640), 'Fuchsia City': (910, 665), 'Cinnabar Island': (220, 810), 'Seafoam Islands': (720, 900)}},
-    'sinnoh': {'crop': (0, 0, 1536, 1024), 'cities': {
-        'Snowpoint City': (700, 165), 'Veilstone City': (1000, 240), 'Pokémon League': (1225, 232), 'Pastoria City': (1250, 372),
-        'Oreburgh City': (612, 405), 'Eterna City': (372, 545), 'Jubilife City': (870, 585), 'Canalave City': (1390, 662),
-        'Twinleaf Town': (320, 758), 'Hearthome City': (965, 822), 'Sunyshore City': (1210, 792), 'Sandgem Town': (612, 790),
-        'Celestic Town': (592, 650), 'Solaceon Town': (1060, 690), 'Floaroma Town': (225, 600), 'Survival Area': (250, 180),
-        'Fight Area': (345, 330), 'Resort Area': (1345, 405)}},
+    'sinnoh': {'crop': (0, 0, 1536, 1024), 'cities': {'Celestic Town': (250, 240), 'Snowpoint City': (760, 290), 'Solaceon Town': (330, 330), 'Veilstone City': (1010, 370), 'Pastoria City': (1320, 420), 'Oreburgh City': (440, 470), 'Eterna City': (755, 470), 'Hearthome City': (990, 530), 'Canalave City': (340, 640), 'Twinleaf Town': (760, 700), 'Sunyshore City': (1310, 750), 'Jubilife City': (570, 560), 'Sandgem Town': (840, 800), 'Floaroma Town': (210, 420), 'Pokémon League': (1180, 250), 'Survival Area': (1410, 255), 'Fight Area': (110, 510), 'Resort Area': (1410, 560)}},
     'unova': {'crop': (0, 0, 1536, 1024), 'cities': {
         'Nuvema Town': (385, 190), 'Nacrene City': (740, 228), 'Icirrus City': (1190, 208), 'Opelucid City': (1395, 300),
         'Castelia City': (785, 435), 'Striaton City': (150, 458), 'Nimbasa City': (385, 695), 'Undella Town': (795, 790),
