@@ -695,10 +695,7 @@ ART = {
         'Artazon': (1240, 405), 'Los Platos': (230, 705), 'Montenevera': (690, 175), 'Glaseado': (900, 232),
         'Zapapico': (1150, 230), 'Porto Marinada': (150, 320), 'Pokémon League': (495, 325), 'Cabo Poco': (775, 800),
         'Cortondo': (450, 770), 'Alfornada': (1380, 690)}},
-    'kanto': {'crop': (0, 0, 1678, 937), 'cities': {
-        'Pewter City': (415, 440), 'Viridian City': (845, 393), 'Celadon City': (1078, 393), 'Cerulean City': (1345, 398),
-        'Lavender Town': (1078, 212), 'Indigo Plateau': (1162, 158), 'Fuchsia City': (1348, 603), 'Saffron City': (1225, 742),
-        'Vermilion City': (940, 733), 'Cinnabar Island': (1530, 718), 'Pallet Town': (560, 635), 'Seafoam Islands': (540, 800)}},
+    'kanto': {'crop': (0, 0, 1536, 1024), 'cities': {'Pewter City': (305, 270), 'Viridian City': (400, 440), 'Pallet Town': (400, 790), 'Cerulean City': (1110, 250), 'Saffron City': (900, 430), 'Fuchsia City': (940, 670), 'Cinnabar Island': (1285, 735), 'Celadon City': (535, 375), 'Lavender Town': (1215, 505), 'Vermilion City': (985, 745), 'Indigo Plateau': (300, 640), 'Seafoam Islands': (720, 880)}},
     'sinnoh': {'crop': (0, 0, 1536, 1024), 'cities': {
         'Snowpoint City': (700, 165), 'Veilstone City': (1000, 240), 'Pokémon League': (1225, 232), 'Pastoria City': (1250, 372),
         'Oreburgh City': (612, 405), 'Eterna City': (372, 545), 'Jubilife City': (870, 585), 'Canalave City': (1390, 662),
