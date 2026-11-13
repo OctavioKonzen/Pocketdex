@@ -29,6 +29,26 @@ OUT_SITE = os.path.join(ROOT, 'web-site', 'public', 'sprites', 'maps')
 # biomes: (tipo, forma) com forma = elipse (4 números) ou contorno (lista de pontos); rivers: linhas;
 # roads: linhas (nomes de cidade ou pontos; 'sea' no começo = rota pelo mar); cities: nome → (x, y).
 HAND = {
+    # Hoenn: pelo mapa que você mandou (o continente a oeste, as ilhas de Mossdeep, Sootopolis, Ever Grande e Pacifidlog a leste).
+    'hoenn': {
+        'cities': {'Fallarbor Town': (28.1, 14.3), 'Lavaridge Town': (36.9, 31.0), 'Rustboro City': (12.9, 47.6), 'Verdanturf Town': (28.1, 47.6), 'Mauville City': (51.6, 47.6), 'Petalburg City': (23.4, 63.1), 'Oldale Town': (35.2, 63.1), 'Littleroot Town': (35.2, 75.0), 'Slateport City': (51.6, 75.0), 'Dewford Town': (23.4, 90.5), 'Fortree City': (76.2, 14.3), 'Lilycove City': (87.9, 25.0), 'Mossdeep City': (123.0, 37.5), 'Sootopolis City': (108.4, 53.6), 'Ever Grande City': (135.9, 57.1), 'Pacifidlog Town': (90.8, 73.8)},
+        'land': [(4.7, 8.3), (41.0, 3.6), (82.0, 3.6), (96.7, 14.3), (97.3, 31.0), (82.0, 39.3), (70.3, 54.8), (60.9, 66.7), (60.9, 82.1), (49.2, 88.1), (30.5, 82.1), (14.1, 78.6), (4.7, 59.5), (2.3, 29.8)],
+        'islands': [(123.0, 37.5, 11.7, 7.7), (108.4, 53.6, 8.2, 7.1), (135.9, 57.1, 5.9, 10.7), (90.8, 73.8, 4.7, 3.6), (23.4, 90.5, 7.0, 4.8), (104.3, 83.3, 4.1, 2.4), (72.7, 82.1, 2.9, 1.8), (117.2, 17.9, 4.7, 3.0)],
+        'water': [(108.4, 53.6, 3.5, 3.0)],
+        'biomes': [('volcano', (35.2, 23.8, 7.0, 6.0)), ('mountain', (23.4, 17.9, 8.2, 6.0)), ('desert', (51.6, 23.8, 5.3, 5.4)), ('forest', (17.6, 56.5, 4.7, 4.8)), ('forest', (67.4, 23.8, 5.9, 10.7)), ('forest', (82.0, 17.9, 4.7, 3.6)), ('mountain', (108.4, 53.6, 8.2, 7.1)), ('mountain', (135.9, 52.4, 3.5, 4.8)), ('mountain', (8.2, 35.7, 4.7, 6.0)), ('forest', (41.0, 54.8, 5.9, 3.6))],
+        'rivers': [[(67.4, 17.9), (69.1, 35.7), (65.6, 47.6)]],
+        'roads': [['Rustboro City', (12.9, 14.3), 'Fallarbor Town'], ['Fallarbor Town', (51.6, 14.3), (51.6, 31.0)], ['Lavaridge Town', (51.6, 31.0)], [(51.6, 31.0), 'Mauville City'], ['Rustboro City', 'Verdanturf Town'], ['Verdanturf Town', 'Mauville City'], ['Rustboro City', (12.9, 63.1), 'Petalburg City'], ['Petalburg City', 'Oldale Town'], ['Oldale Town', 'Littleroot Town'], ['Mauville City', (51.6, 63.1), 'Slateport City'], ['Oldale Town', (51.6, 63.1)], ['Mauville City', (64.5, 47.6), (76.2, 47.6), 'Fortree City'], ['Fortree City', (87.9, 14.3), 'Lilycove City'], ['sea', 'Lilycove City', (111.3, 28.6), 'Mossdeep City'], ['sea', 'Mossdeep City', (117.2, 47.6), 'Sootopolis City'], ['sea', 'Sootopolis City', (126.0, 59.5), 'Ever Grande City'], ['sea', 'Slateport City', (70.3, 81.0), 'Pacifidlog Town'], ['sea', 'Pacifidlog Town', (99.6, 65.5), 'Sootopolis City'], ['sea', 'Petalburg City', (10.5, 71.4), (10.5, 89.3), 'Dewford Town'], ['sea', 'Dewford Town', (41.0, 90.5), 'Slateport City']],
+    },
+    # Johto: pelo mapa que você mandou (Cianwood na ilha a oeste, o Lake of Rage ao norte de Mahogany, a Liga a leste).
+    'johto': {
+        'cities': {'Cianwood City': (16.9, 64.7), 'Olivine City': (34.3, 48.1), 'Ecruteak City': (58.7, 28.6), 'Mahogany Town': (79.2, 28.6), 'Blackthorn City': (102.0, 28.6), 'Violet City': (71.9, 46.0), 'Goldenrod City': (49.2, 65.0), 'Azalea Town': (57.6, 83.7), 'Cherrygrove City': (85.7, 68.2), 'New Bark Town': (106.5, 68.4), 'Indigo Plateau': (135.7, 15.8)},
+        'land': [(0, 0), (150, 0), (150, 100), (0, 100)],
+        'islands': [(12.6, 64.7, 13.5, 13.4)],
+        'water': [[(0.0, 45.5), (26.7, 45.5), (29.5, 50.3), (36.0, 50.8), (39.3, 61.5), (39.3, 74.9), (42.1, 88.2), (56.2, 91.4), (68.8, 88.8), (74.7, 80.2), (74.7, 63.6), (82.0, 64.7), (92.7, 67.4), (112.4, 65.8), (123.6, 65.8), (134.8, 58.3), (150.0, 53.5), (150.0, 100.0), (0.0, 100.0)], (79.5, 8.0, 6.2, 3.7)],
+        'biomes': [('mountain', (68.8, 22.7, 6.2, 3.7)), ('snow', (103.9, 20.1, 5.6, 3.7)), ('mountain', [(120.8, 5.3), (150.0, 0.0), (150.0, 45.5), (123.6, 42.8)]), ('forest', (44.9, 78.9, 5.1, 5.9)), ('forest', (61.8, 37.4, 4.5, 3.2)), ('mountain', (92.7, 50.8, 4.5, 3.7)), ('mountain', (66.0, 80.2, 3.9, 3.2)), ('forest', (19.7, 32.1, 8.4, 5.3)), ('forest', (92.7, 16.0, 5.1, 3.2))],
+        'rivers': [],
+        'roads': [['Cianwood City', (3.7, 69.5), (3.7, 55.3)], ['sea', 'Cianwood City', (30.3, 64.7), (30.3, 50.8), 'Olivine City'], ['Olivine City', (34.3, 28.6), 'Ecruteak City'], ['Ecruteak City', 'Mahogany Town'], ['Mahogany Town', 'Blackthorn City'], ['Mahogany Town', (79.2, 10.7)], ['Ecruteak City', (58.7, 46.0), 'Violet City'], ['Goldenrod City', (49.2, 46.0), (58.7, 46.0)], ['Violet City', (85.7, 46.0), 'Cherrygrove City'], ['Goldenrod City', (49.2, 83.7), 'Azalea Town'], ['Azalea Town', (71.9, 83.7), 'Violet City'], ['Cherrygrove City', 'New Bark Town'], ['New Bark Town', (118.5, 68.4), (118.5, 49.5), (150.0, 49.5)], ['Indigo Plateau', (134.8, 68.4)], ['Blackthorn City', (102.0, 56.1), (95.5, 56.1), (95.5, 68.2)]],
+    },
     # Kanto: pelo mapa do HeartGold/SoulSilver que você mandou (Mt. Silver e as montanhas no noroeste, a enseada a oeste de Fuchsia).
     'kanto': {
         'cities': {
@@ -50,32 +70,6 @@ HAND = {
             ['sea', 'Cinnabar Island', 'Seafoam Islands', (93.8, 94), 'Fuchsia City'], ['Viridian City', (38.7, 53.6), 'Indigo Plateau'], [(38.7, 53.6), (20, 57), (0, 60)],
             ['Celadon City', 'Saffron City'], ['Saffron City', 'Lavender Town'], ['Cerulean City', 'Saffron City'], ['Saffron City', 'Vermilion City'],
             ['Vermilion City', (137, 54.8)], ['Lavender Town', (140, 71), (120, 76), (104, 83.3), 'Fuchsia City'], ['Celadon City', (85, 42.9), (85, 83.3), 'Fuchsia City'],
-        ],
-    },
-    'hoenn': {
-        'cities': {
-            'Littleroot Town': (40, 80), 'Oldale Town': (40, 70), 'Petalburg City': (24, 70), 'Rustboro City': (12, 46), 'Dewford Town': (14, 90),
-            'Slateport City': (62, 82), 'Mauville City': (60, 52), 'Verdanturf Town': (40, 50), 'Fallarbor Town': (24, 14), 'Lavaridge Town': (38, 34),
-            'Fortree City': (78, 14), 'Lilycove City': (108, 24), 'Mossdeep City': (132, 30), 'Sootopolis City': (118, 52), 'Pacifidlog Town': (94, 84),
-            'Ever Grande City': (142, 70),
-        },
-        'land': [(2, 2), (114, 2), (118, 16), (114, 32), (98, 34), (90, 40), (84, 58), (76, 68), (70, 84), (62, 90), (52, 88), (46, 84), (34, 82), (22, 78),
-                 (8, 74), (4, 60), (4, 40), (2, 30)],
-        'islands': [(132, 30, 9, 7), (118, 52, 8, 7), (142, 70, 6, 10), (14, 90, 4, 3), (94, 84, 3, 2), (104, 64, 3, 2), (128, 46, 3, 2), (82, 94, 2, 1.5)],
-        'water': [(118, 52, 4, 3)],
-        'biomes': [('volcano', (46, 24, 6, 5)), ('mountain', [(26, 20), (40, 16), (56, 18), (54, 30), (32, 30)]), ('mountain', (14, 28, 6, 6)), ('desert', (60, 24, 7, 7)),
-                   ('forest', (14, 60, 5, 5)), ('forest', (82, 30, 6, 10)), ('forest', (96, 22, 6, 5)), ('mountain', (118, 52, 8, 7)), ('forest', (30, 46, 5, 4)),
-                   ('mountain', (142, 64, 4, 5))],
-        'rivers': [[(78, 16), (82, 36), (78, 52)], [(60, 60), (66, 68), (70, 76)]],
-        'roads': [
-            ['Littleroot Town', 'Oldale Town'], ['Oldale Town', 'Petalburg City'], ['Petalburg City', (10, 64), (12, 56), 'Rustboro City'],
-            ['Rustboro City', (12, 30), (16, 20), 'Fallarbor Town'], ['Rustboro City', (26, 46), 'Verdanturf Town'], ['Verdanturf Town', 'Mauville City'],
-            ['Oldale Town', (44, 60), (54, 60)], ['Slateport City', 'Mauville City'], ['sea', (10, 64), (10, 84), 'Dewford Town'],
-            ['sea', 'Dewford Town', (30, 92), (50, 90), 'Slateport City'], ['Mauville City', (60, 30), (46, 30), 'Lavaridge Town'],
-            [(60, 30), (60, 14), (40, 12), 'Fallarbor Town'], ['Mauville City', (80, 52), (80, 24), 'Fortree City'], ['Fortree City', (96, 16), 'Lilycove City'],
-            ['sea', 'Lilycove City', (122, 26), 'Mossdeep City'], ['sea', 'Mossdeep City', (126, 44), 'Sootopolis City'],
-            ['sea', 'Sootopolis City', (134, 64), 'Ever Grande City'], ['sea', 'Slateport City', (80, 88), 'Pacifidlog Town'],
-            ['sea', 'Pacifidlog Town', (108, 72), 'Sootopolis City'],
         ],
     },
     'alola': {
