@@ -666,6 +666,12 @@ ART = {
         'Driftveil City': (1262, 740), 'Pokémon League': (165, 205), 'Accumula Town': (475, 490), 'Lacunosa Town': (1090, 90),
         'Humilau City': (1342, 598), 'Lentimas Town': (920, 110), 'Black City': (770, 560), 'Aspertia City': (140, 745),
         'Floccesy Town': (420, 545), 'Virbank City': (480, 790), 'Pokéstar Studios': (548, 900), 'Mistralton City': (1040, 505)}},
+    'kalos': {'crop': (0, 0, 1536, 1024), 'cities': {
+        'Anistar City': (215, 388), 'Geosenge Town': (465, 455), 'Cyllage City': (300, 565), 'Ambrette Town': (462, 540),
+        'Coumarine City': (350, 738), 'Lumiose City': (790, 350), 'Santalune City': (640, 548), 'Camphrier Town': (950, 705),
+        'Vaniville Town': (630, 825), 'Aquacorde Town': (995, 795), 'Dendemille Town': (1240, 548), 'Snowbelle City': (1300, 430),
+        'Laverre City': (1110, 420), 'Shalour City': (150, 478), 'Couriway Town': (1392, 468), 'Pokémon League': (1000, 250),
+        'Kiloude City': (500, 282)}},
 }
 ART_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'region_maps_art')
 
