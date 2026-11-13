@@ -654,6 +654,12 @@ ART = {
         'Pewter City': (415, 440), 'Viridian City': (845, 393), 'Celadon City': (1078, 393), 'Cerulean City': (1345, 398),
         'Lavender Town': (1078, 212), 'Indigo Plateau': (1162, 158), 'Fuchsia City': (1348, 603), 'Saffron City': (1225, 742),
         'Vermilion City': (940, 733), 'Cinnabar Island': (1530, 718), 'Pallet Town': (560, 635), 'Seafoam Islands': (540, 800)}},
+    'sinnoh': {'crop': (0, 0, 1536, 1024), 'cities': {
+        'Snowpoint City': (700, 165), 'Veilstone City': (1000, 240), 'Pokémon League': (1225, 232), 'Pastoria City': (1250, 372),
+        'Oreburgh City': (612, 405), 'Eterna City': (372, 545), 'Jubilife City': (870, 585), 'Canalave City': (1390, 662),
+        'Twinleaf Town': (320, 758), 'Hearthome City': (965, 822), 'Sunnyshore City': (1210, 792), 'Sandgem Town': (612, 790),
+        'Celestic Town': (592, 650), 'Solaceon Town': (1060, 690), 'Floaroma Town': (225, 600), 'Survival Area': (250, 180),
+        'Fight Area': (345, 330), 'Resort Area': (1345, 405)}},
 }
 ART_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'region_maps_art')
 
