@@ -44,8 +44,8 @@ export const FX_STAGE = {
   w: 960,
   h: 540,
   // pé (x, y) e altura do sprite
-  near: { x: 300, y: 620, h: 360 },
-  far: { x: 680, y: 345, h: 190 },
+  near: { x: 285, y: 655, h: 330 },
+  far: { x: 590, y: 335, h: 220 },
 }
 
 
@@ -75,6 +75,39 @@ const FX_EFFECT = {
   recoil: {},
 }
 
+
+/**
+ * Onde cada um fica, como no Black & White: o outro no meio-direita, de frente, no tamanho do sprite dele (3×); você
+ * de costas à esquerda, maior (5,4×) e cortado pela borda de baixo. [anchors] = fx_anchors.json (boca e frente de
+ * cada sprite), [near]/[far] = o id do sprite de cada lado. Devolve, para cada lado, o pé (x, y), a altura, a caixa
+ * do sprite na tela e de onde saem os golpes: mouth (Flamethrower, Ice Beam) e front (soco, bola, tiro).
+ */
+export const FX_SCALE = { far: 3, near: 5.4, farFeet: { x: 590, y: 335 }, nearFeet: { x: 270, y: 600 } }
+
+export function fxStage(anchors, near, far) {
+  const place = (id, key, scale, feet, fallback) => {
+    const v = anchors?.[id]?.[key]
+    if (!v) return fallback
+    const [w, h, x0, y0, x1, y1, mx, my, fx, fy] = v
+    const left = feet.x - ((x0 + x1) / 2) * scale
+    const top = feet.y - y1 * scale
+    return {
+      x: feet.x,
+      y: feet.y,
+      h: (y1 - y0) * scale,
+      box: { left, top, w: w * scale, h: h * scale },
+      mouth: { x: left + mx * scale, y: top + my * scale },
+      front: { x: left + fx * scale, y: top + fy * scale },
+    }
+  }
+  return {
+    w: 960,
+    h: 540,
+    near: place(near, 'b', FX_SCALE.near, FX_SCALE.nearFeet, FX_STAGE.near),
+    far: place(far, 'f', FX_SCALE.far, FX_SCALE.farFeet, FX_STAGE.far),
+  }
+}
+
 const NEUTRAL = [480, 270, 1, 0]
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v))
 
@@ -98,6 +131,9 @@ export function fxPlan2({ kind, type, slug = '', from = 0, seed = 1, stage = FX_
   const T = from === 0 ? stage.far : stage.near
   const a = body(A)
   const tc = body(T)
+  // De onde o golpe sai: a boca (jatos, raios, sopros) ou a frente do corpo (bolas, tiros), nunca as costas.
+  const mouth = A.mouth ?? { x: a.x + 40 * (from === 0 ? 1 : -1), y: A.y - A.h * 0.7 }
+  const front = A.front ?? { x: a.x + 40 * (from === 0 ? 1 : -1), y: a.y }
   const L = [] // camadas
   const S = [] // sprites
   const shake = []
@@ -482,7 +518,7 @@ export function fxPlan2({ kind, type, slug = '', from = 0, seed = 1, stage = FX_
         const k = Math.max(n, r.d === 'volley' ? 3 : 1)
         const t0 = t + 380
         cam = (t ? cam : [[0, ...NEUTRAL]]).concat([[t0, ...look({ x: a.x * 0.35 + tc.x * 0.65, y: a.y * 0.35 + tc.y * 0.65 }, 1.15, -toward)], [t0 + 300 + k * 170, ...look(tc, z, (-2 + tilt) * toward)]])
-        const o = { x: a.x + 40 * toward, y: a.y - 20 }
+        const o = { x: front.x + 14 * toward, y: front.y }
         add({ s: 'glow', t0: t, t1: t0 + 60, x: o.x, y: o.y, r: [4, 34 + 6 * p], c: [c0, c1, c2], a: 1, swirl: 1 })
         for (let i = 0; i < k; i++) {
           const ti = t0 + 300 + i * 170
@@ -502,7 +538,7 @@ export function fxPlan2({ kind, type, slug = '', from = 0, seed = 1, stage = FX_
       case 'jet': {
         const t0 = t + 350
         cam = (t ? cam : [[0, ...NEUTRAL]]).concat([[t0, ...look(a, 1.3, 2 * toward)], [t0 + 450, ...look(a, 1.35, 2 * toward)], [t0 + 650, ...look({ x: (a.x + tc.x) / 2, y: (a.y + tc.y) / 2 }, 1.0, 0)], [t0 + 950, ...look(tc, z, (-2 + tilt) * toward)]])
-        const o = { x: a.x + 40 * toward, y: a.y - 10 }
+        const o = mouth
         if (r.d === 'beam') {
           add({ s: 'particles', t0: t0 - 100, t1: t0 + 550, n: 26, seed: v, x: o.x, y: o.y, sx: 0, sy: 0, mode: 'converge', r: 160, life: 450, size: [3, 7], style: 'dot', c: [c0, c1] })
           add({ s: 'glow', t0: t0 - 50, t1: t0 + 600, x: o.x, y: o.y, r: [6, 40 + 8 * p], c: [c0, c1, c2], a: 1 })
@@ -565,8 +601,8 @@ export function fxPlan2({ kind, type, slug = '', from = 0, seed = 1, stage = FX_
         const sound = r.d === 'sound'
         cam = (t ? cam : [[0, ...NEUTRAL]]).concat([[t + 350, ...look(sound ? { x: (a.x + tc.x) / 2, y: (a.y + tc.y) / 2 } : tc, sound ? 1.05 : z - 0.1, 0)], [t + 1250, ...look(tc, z, (-2 + tilt) * toward)]])
         if (sound) {
-          add({ s: 'ring', t0: t + 200, t1: t + 1200, x: [a.x, tc.x], y: [a.y, tc.y], r: [30, 110], ratio: 0.8, w: 5, c: c1, a: [1, 0.3], n: 3 + p, stagger: 1 })
-          add({ s: 'particles', t0: t + 200, t1: t + 1200, n: 14 + 3 * p, seed: v, x: [a.x, tc.x], y: [a.y, tc.y], sx: 60, sy: 50, mode: 'travel', life: 800, size: [16, 12], style: 'note', c: [c0, c1, c2] })
+          add({ s: 'ring', t0: t + 200, t1: t + 1200, x: [mouth.x, tc.x], y: [mouth.y, tc.y], r: [30, 110], ratio: 0.8, w: 5, c: c1, a: [1, 0.3], n: 3 + p, stagger: 1 })
+          add({ s: 'particles', t0: t + 200, t1: t + 1200, n: 14 + 3 * p, seed: v, x: [mouth.x, tc.x], y: [mouth.y, tc.y], sx: 60, sy: 50, mode: 'travel', life: 800, size: [16, 12], style: 'note', c: [c0, c1, c2] })
         } else {
           add({ s: 'tint', t0: t + 300, t1: t + 1300, color: c3, a: [0, 0.4] })
           add({ s: 'particles', t0: t + 300, t1: t + 1200, n: 30 + 6 * p, seed: v, x: tc.x, y: tc.y, sx: 0, sy: 0, mode: 'converge', r: 220, life: 600, size: [4, 10], style: st, c: [c0, c1, c2] })
@@ -606,7 +642,7 @@ export function fxPlan2({ kind, type, slug = '', from = 0, seed = 1, stage = FX_
         if (r.d === 'hazard') {
           for (let i = 0; i < 4 + (p > 1 ? 1 : 0); i++) {
             const dx = (i - 2) * 50 + (vr(i) - 0.5) * 20
-            add({ s: 'shot', t0: t + 100 + i * 110, t1: t + 500 + i * 110, x: [a.x, tc.x + dx], y: [a.y, T.y - 6], r: 16, c: [c0, c1, c2, c3], style: st, arc: 160 })
+            add({ s: 'shot', t0: t + 100 + i * 110, t1: t + 500 + i * 110, x: [front.x, tc.x + dx], y: [front.y, T.y - 6], r: 16, c: [c0, c1, c2, c3], style: st, arc: 160 })
             add({ s: 'icon', t0: t + 500 + i * 110, t1: t + 1500, x: tc.x + dx, y: T.y - 6, size: 26, a: [1, 1], style: st === 'dot' ? 'star' : st, c: [c0, c1, c2] })
           }
           hud = [100, 1500]
@@ -614,7 +650,7 @@ export function fxPlan2({ kind, type, slug = '', from = 0, seed = 1, stage = FX_
           end(2000)
           break
         }
-        add({ s: 'particles', t0: t + 150, t1: t + 1100, n: 24 + 4 * p, seed: v, x: [a.x, tc.x], y: [a.y, tc.y], sx: 70, sy: 50, mode: 'travel', life: 800, size: [8, 4], style: st, c: [c0, c1, c2] })
+        add({ s: 'particles', t0: t + 150, t1: t + 1100, n: 24 + 4 * p, seed: v, x: [front.x, tc.x], y: [front.y, tc.y], sx: 70, sy: 50, mode: 'travel', life: 800, size: [8, 4], style: st, c: [c0, c1, c2] })
         add({ s: 'ring', t0: t + 700, t1: t + 1400, x: tc.x, y: tc.y, r: [120, 20], ratio: 0.6, w: [2, 7], c: c1, a: [0, 1], n: 3 })
         motifHit(t + 900)
         S.push({ who: 'T', k: 'tint', t0: t + 800, t1: t + 1400, color: c2, a: 0.45, pulse: 14 })
@@ -632,7 +668,7 @@ export function fxPlan2({ kind, type, slug = '', from = 0, seed = 1, stage = FX_
       default: {
         const t0 = t + 350
         cam = (t ? cam : [[0, ...NEUTRAL]]).concat([[t0, ...look(a, 1.3, 2 * toward)], [t0 + 500, ...look(a, 1.35, 2 * toward)], [t0 + 800, ...look({ x: (a.x + tc.x) / 2, y: (a.y + tc.y) / 2 }, 1.0, 0)], [t0 + 1000, ...look(tc, z, (-2 + tilt) * toward)]])
-        const o = { x: a.x + 50 * toward, y: a.y - 30 }
+        const o = { x: front.x + 40 * toward, y: (mouth.y + front.y) / 2 }
         add({ s: 'particles', t0: t0 - 100, t1: t0 + 600, n: 24, seed: v, x: o.x, y: o.y, sx: 0, sy: 0, mode: 'converge', r: 140, life: 420, size: [3, 7], style: st, c: [c0, c1] })
         add({ s: 'glow', t0: t0 - 50, t1: t0 + 600, x: o.x, y: o.y, r: [4, 36 + 6 * p], c: [c0, c1, c2, c3], a: 1, core: 0.3, swirl: 1 })
         add({ s: 'glow', t0: t0 + 600, t1: t0 + 900, x: [o.x, tc.x], y: [o.y, tc.y], r: [36 + 6 * p, 50 + 8 * p], c: [c0, c1, c2, c3], a: 1, core: 0.3, swirl: 1, trail: 1 })
@@ -739,9 +775,9 @@ export function fxPlan2({ kind, type, slug = '', from = 0, seed = 1, stage = FX_
 const SELF = new Set(['boost', 'dance', 'heal', 'shield', 'charge', 'weather', 'terrain', 'field', 'wall', 'explode', 'drop', 'status', 'powder', 'hazard', 'swap'])
 
 /** Plano de um golpe pelo nome, tipo e categoria (os de status pelo alvo das regras). */
-export function fxForMove({ slug, type, category, self = false, entry = null, recipe = null, from = 0, seed = 1 }) {
+export function fxForMove({ slug, type, category, self = false, entry = null, recipe = null, from = 0, seed = 1, stage = FX_STAGE }) {
   const kind = entry?.[0] ?? (category === 'status' ? (self ? 'boost' : 'status') : moveAnim(slug, type, category))
-  return fxPlan2({ kind, type, slug, from, seed, recipe })
+  return fxPlan2({ kind, type, slug, from, seed, recipe, stage })
 }
 
 /** A câmera no instante [ms]: [x, y, zoom, giro], suave entre os pontos. */
