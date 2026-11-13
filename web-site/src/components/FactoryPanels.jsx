@@ -1806,7 +1806,7 @@ function RegionMap({ data, run, onClose, monName }) {
               {towns.map(([city, [x, y]]) => (
                 <span key={city} className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${x}%`, top: `${y}%` }} title={city}>
                   <span className="block h-2.5 w-2.5 rounded-full border-2 border-[#f6a834] bg-[#1e3a5f] sm:h-3 sm:w-3" />
-                  <span className={`${labelAt(city)} opacity-90`} style={outline} data-no-translate>{short(city)}</span>
+                  {!map.art && <span className={`${labelAt(city)} opacity-90`} style={outline} data-no-translate>{short(city)}</span>}
                 </span>
               ))}
               {map.spots.map((c) => {
@@ -1823,7 +1823,7 @@ function RegionMap({ data, run, onClose, monName }) {
                     data-testid={done ? 'city-lit' : here ? 'city-here' : 'city-dark'} title={c.city}>
                     <span className={`block h-4 w-4 rounded-full border-[3px] sm:h-5 sm:w-5 ${here ? 'animate-pulse border-white bg-sky-400' : done ? 'border-[#f6a834] bg-amber-300' : 'border-[#f6a834] bg-[#1d5e8c]'} ${i === shown ? 'ring-2 ring-yellow-300' : ''}`} />
                     {marks && <span className="absolute -top-4 left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] leading-none drop-shadow">{marks}</span>}
-                    <span className={labelAt(c.city)} style={outline} data-no-translate>{short(c.city)}</span>
+                    {!map.art && <span className={labelAt(c.city)} style={outline} data-no-translate>{short(c.city)}</span>}
                   </button>
                 )
               })}

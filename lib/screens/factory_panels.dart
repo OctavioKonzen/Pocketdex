@@ -2863,11 +2863,11 @@ class _FactoryScreenState extends State<FactoryScreen> {
                         child: Container(
                             width: 10, height: 10, decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFF1E3A5F), border: Border.all(color: ring, width: 2))),
                       ),
-                      placeLabel(e.key, e.value[0] * w, e.value[1] * h, 6, label(e.key, opacity: 0.9)),
+                      if (!map.art) placeLabel(e.key, e.value[0] * w, e.value[1] * h, 6, label(e.key, opacity: 0.9)),
                     ],
                   // Os nomes das cidades da história.
                   for (var i = 0; i < cities.length; i++)
-                    if (map.cities[cities[i].city] != null)
+                    if (map.cities[cities[i].city] != null && !map.art)
                       placeLabel(cities[i].city, map.cities[cities[i].city]![0] * w, map.cities[cities[i].city]![1] * h, 9, label(cities[i].city)),
                   for (var i = 0; i < cities.length; i++)
                     if (map.cities[cities[i].city] != null)

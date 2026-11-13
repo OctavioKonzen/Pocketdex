@@ -569,6 +569,8 @@ def story_cities():
 
 def build(name, wanted):
     """(imagem, cidades em %) de um mapa."""
+    if name in ART:
+        return build_art(name)
     if name in REF and name not in HAND:
         aspect, places, biomes = ref_spec(name)
         cv = Canvas(aspect)
@@ -645,6 +647,25 @@ def build(name, wanted):
     return img, cities
 
 
+# Mapas desenhados que você mandou (tool/region_maps_art/<id>.webp): a imagem é usada como está (sem a moldura) e só
+# as cidades são marcadas (em pixels da imagem original). Os nomes já vêm no desenho, então o app não escreve outros.
+ART = {
+    'kanto': {'crop': (62, 62, 1616, 886), 'cities': {
+        'Pewter City': (415, 440), 'Viridian City': (845, 393), 'Celadon City': (1078, 393), 'Cerulean City': (1345, 398),
+        'Lavender Town': (1078, 212), 'Indigo Plateau': (1162, 158), 'Fuchsia City': (1348, 603), 'Saffron City': (1225, 742),
+        'Vermilion City': (940, 733), 'Cinnabar Island': (1530, 718), 'Pallet Town': (560, 635), 'Seafoam Islands': (540, 800)}},
+}
+ART_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'region_maps_art')
+
+
+def build_art(name):
+    spec = ART[name]
+    x0, y0, x1, y1 = spec['crop']
+    img = Image.open(os.path.join(ART_DIR, f'{name}.webp')).convert('RGB').crop((x0, y0, x1, y1))
+    cities = {c: ((x - x0) / (x1 - x0) * 100, (y - y0) / (y1 - y0) * 100) for c, (x, y) in spec['cities'].items()}
+    return img, cities
+
+
 def write_positions(found):
     data = {region: [{'id': m, 'cities': {c: [round(x, 2), round(y, 2)] for c, (x, y) in found[m].items()}} for m in maps] for region, maps in REGIONS.items()}
     js = ('// Gerado por tool/region_maps.py (não editar à mão): os mapas de cada região (como o Town Map dos jogos) e onde\n'
@@ -652,25 +673,27 @@ def write_positions(found):
           f'export const REGION_MAPS = {json.dumps(data, ensure_ascii=False)}\n\n'
           '/** A proporção (largura / altura) de cada imagem. */\n'
           f'export const MAP_ASPECT = {json.dumps({m: round(ASPECTS[m], 4) for m in found})}\n\n'
+          '/** Os mapas desenhados (os nomes das cidades já estão na imagem). */\n'
+          f'export const MAP_ART = {json.dumps(sorted(m for m in found if m in ART))}\n\n'
           '/** O mapa da região que tem a cidade de agora (Johto também mostra Kanto) e as cidades da história nele. */\n'
           'export function regionMap(region, cities, current) {\n'
           '  const maps = REGION_MAPS[region]\n'
           '  if (!maps) return null\n'
           '  const map = maps.find((m) => current && m.cities[current]) ?? maps[0]\n'
-          '  return { id: map.id, aspect: MAP_ASPECT[map.id] ?? 1.5, spots: cities.map((c, i) => ({ ...c, i, xy: map.cities[c.city] })).filter((c) => c.xy) }\n'
+          '  return { id: map.id, aspect: MAP_ASPECT[map.id] ?? 1.5, art: MAP_ART.includes(map.id), spots: cities.map((c, i) => ({ ...c, i, xy: map.cities[c.city] })).filter((c) => c.xy) }\n'
           '}\n')
     open(os.path.join(ROOT, 'web-site', 'src', 'lib', 'regionMaps.js'), 'w').write(js)
     q = lambda s: "'" + s.replace("'", "\\'") + "'"  # noqa: E731
     lines = ['// lib/screens/region_maps.dart', '//',
              '// Gerado por tool/region_maps.py (não editar à mão): os mapas de cada região (como o Town Map dos jogos) e onde fica',
              '// cada cidade neles (em % da largura e da altura da imagem assets/database/sprites/maps/<id>.webp). Igual ao site.', '',
-             'typedef RegionMapInfo = ({String id, double aspect, Map<String, List<double>> cities});', '',
+             'typedef RegionMapInfo = ({String id, double aspect, bool art, Map<String, List<double>> cities});', '',
              'const regionMaps = <String, List<RegionMapInfo>>{']
     for region, maps in data.items():
         lines.append(f'  {q(region)}: [')
         for m in maps:
             cities = ', '.join(f'{q(c)}: [{float(x)}, {float(y)}]' for c, (x, y) in m['cities'].items())
-            lines.append(f"    (id: {q(m['id'])}, aspect: {round(ASPECTS[m['id']], 4)}, cities: <String, List<double>>{{{cities}}}),")
+            lines.append(f"    (id: {q(m['id'])}, aspect: {round(ASPECTS[m['id']], 4)}, art: {'true' if m['id'] in ART else 'false'}, cities: <String, List<double>>{{{cities}}}),")
         lines.append('  ],')
     lines += ['};', '', '/// O mapa da região que tem a cidade de agora (Johto também mostra Kanto).',
               'RegionMapInfo? regionMapFor(String region, String? current) {', '  final maps = regionMaps[region];',
@@ -695,7 +718,7 @@ def main():
         img, cities = build(name, wanted) if (not only or name in only) else (None, None)
         if img is None:
             img = Image.open(os.path.join(OUT, f'{name}.webp'))
-            cities = build(name, wanted)[1] if name in REF and name not in HAND else {c: (xy[0] / 1.5, xy[1]) for c, xy in HAND[name]['cities'].items()}
+            cities = build_art(name)[1] if name in ART else build(name, wanted)[1] if name in REF and name not in HAND else {c: (xy[0] / 1.5, xy[1]) for c, xy in HAND[name]['cities'].items()}
         else:
             for folder in (OUT, OUT_SITE):
                 img.save(os.path.join(folder, f'{name}.webp'), 'WEBP', quality=86, method=6)
