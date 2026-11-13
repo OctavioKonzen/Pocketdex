@@ -434,6 +434,9 @@ describe('Battle Factory (roguelike)', () => {
     const brock = data.bosses[0].leaders.find((l) => l.id === 'kanto-brock')
     expect(bossScene(data, { ...brock, region: 'Kanto' })).toBe('gym-rock')
     expect(bossScene(data, { kind: 'champion', region: 'Kanto' })).toBe('champion-kanto')
+    // As regiões sem arena de campeão lutam no lugar da luta no jogo (o Volo no Spear Pillar).
+    expect(bossScene(data, { kind: 'champion', region: 'Hisui' })).toBe('spearpillar')
+    expect(bossScene(data, { kind: 'champion', region: 'Kitakami' })).toBe('crystal')
     expect(bossScene(data, { kind: 'villain', name: 'Archie' })).toBe('base-aqua')
     expect(bossScene(data, null, 'forest')).toBe('forest')
   })

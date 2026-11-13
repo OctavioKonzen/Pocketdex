@@ -863,6 +863,9 @@ CHAMPION_THEMES = {
     'leon': (62, 'minor', [0, 5, 6, 4], 180, 0.25, 'pulse'),
     'geeta': (63, 'harmonic', [0, 3, 5, 4], 172, 0.125, 'pulse'),
     'volo': (62, 'harmonic', [0, 1, 5, 4], 170, 0.25, 'pulse'),
+    'evice': (63, 'harmonic', [0, 5, 1, 4], 168, 0.25, 'pulse'), 'gordor': (65, 'minor', [0, 6, 5, 4], 172, 0.5, 'pulse'),
+    'blake-hall': (62, 'phrygian', [0, 1, 5, 4], 166, 0.25, 'pulse'), 'ice': (64, 'harmonic', [0, 3, 1, 4], 174, 0.125, 'pulse'),
+    'kieran': (66, 'minor', [0, 5, 3, 4], 176, 0.25, 'pulse'),
 }
 
 # Os lugares da Battle Factory, cada grupo com o seu tema original (selvagens e treinadores da rota).
@@ -1957,7 +1960,8 @@ def volo_orchestra():
 CHAMPIONS = {'blue': blue_orchestra, 'lance': lance_orchestra, 'steven': steven_orchestra, 'wallace': wallace_orchestra,
              'cynthia': sinnoh_orchestra, 'alder': alder_orchestra, 'iris': iris_orchestra, 'diantha': diantha_orchestra,
              'kukui': kukui_orchestra, 'leon': leon_orchestra, 'geeta': geeta_orchestra,
-             'volo': volo_orchestra}  # os campeões já refeitos (os outros tocam o tema da região)
+             'volo': volo_orchestra}
+CHAMPIONS.update({n: (lambda n=n: extra_champion_orchestra(n)) for n in ('evice', 'gordor', 'blake-hall', 'ice', 'kieran')})  # os campeões já refeitos (os outros tocam o tema da região)
 
 
 # Os rivais (no Pokelike): cada um com o tema original dele — tônica, escala, progressão e andamento.
@@ -3424,6 +3428,9 @@ GYM_THEMES = {
     'galar': (66, 'major', [0, 5, 3, 4], 152),
     'paldea': (69, 'major', [0, 3, 4, 5], 168),
     'hisui': (62, 'phrygian', [0, 1, 5, 0], 164),
+    'orre': (64, 'harmonic', [0, 6, 5, 4], 162), 'fiore': (67, 'mixolydian', [0, 6, 3, 4], 158), 'almia': (65, 'dorian', [0, 3, 6, 4], 160),
+    'oblivia': (62, 'mixolydian', [0, 6, 4, 0], 156), 'kitakami': (64, 'phrygian', [0, 1, 6, 0], 152), 'blueberry': (66, 'minor', [0, 5, 6, 4], 170),
+    'sevii': (67, 'dorian', [0, 6, 3, 4], 158),
 }
 ELITE_THEMES = {
     'elite_kanto': (62, 'harmonic', [0, 5, 3, 4], 144),
@@ -3702,12 +3709,55 @@ def gym_hisui_orchestra():
     ])
 
 
+# Os chefes das regiões dos outros jogos e das expansões: (melodia, dobra, ostinato, ataques) de cada uma, a mesma banda.
+EXTRA_GYM_SOUNDS = {
+    'orre': (25, 22, 30, 61),       # violão de aço e gaita, guitarra abafada: faroeste
+    'fiore': (73, 56, 48, 61),      # flauta e trompete, cordas
+    'almia': (71, 61, 48, 57),      # clarinete e metais
+    'oblivia': (12, 75, 46, 61),    # marimba e flauta de pã, harpa
+    'kitakami': (77, 107, 106, 61), # shakuhachi, koto e shamisen
+    'blueberry': (81, 4, 89, 62),   # sintetizador, piano elétrico
+    'sevii': (12, 73, 24, 61),      # marimba, flauta e violão
+}
+
+
+def extra_gym_orchestra(region):
+    """Os chefes de cada região fora da série principal e das expansões: a melodia original no instrumento do lugar com a
+    dobra uma oitava abaixo, o ostinato no acorde, os metais nos ataques, o baixo, os tímpanos e a bateria de rock."""
+    lead, chords, bpm = gym_song(region)
+    mel, double, ost, stab = EXTRA_GYM_SOUNDS[region]
+    m = _gym_mel(lead)
+    return _band(chords, lead, bpm, [
+        (mel, m), (double, [(st, ln, x - 12, 74) for st, ln, x, v in m]), _ostinato(ost),
+        (stab, lambda b, r, t, c: [(b + k, 0.8, x, 94) for k in (0, 6, 12) for x in (t[0], t[2])]),
+        _roots(), _timp(), ('drums', hits(chords, lambda b, bar: rock_kit(b, bar, (0, 3, 4)))),
+    ])
+
+
+def extra_champion_orchestra(name):
+    """Os últimos chefes das regiões fora da série principal (Evice, Gordor, Blake Hall, Ice) e o Kieran campeão: o
+    tema original deles com metais e cordas na melodia, órgão, coro, tímpanos e bateria pesada."""
+    lead, chords, bpm = champion_song(name)
+    parts = [
+        (61, lead_notes(lead, 96, extra=0.05)),
+        (48, lead_notes(lead, 70, -12, keep=lambda i: i % 2 == 0, extra=1)),
+        (19, each_chord(chords, lambda b, r, t, c: [(b, 16, m - 12, 54) for m in t])),
+        (52, each_chord(chords, lambda b, r, t, c: [(b, 8, m, 46) for m in t] + [(b + 8, 8, m, 46) for m in t])),
+        (48, each_chord(chords, lambda b, r, t, c: [(b + k / 2, 0.45, [t[0], t[1], t[2], t[1]][k % 4], 56) for k in range(32)])),
+        (33, each_chord(chords, lambda b, r, t, c: [(b + k, 0.85, r, 98 if k % 2 == 0 else 82) for k in range(16)])),
+        (47, each_chord(chords, lambda b, r, t, c: [(b, 2, r, 104), (b + 8, 2, r, 88)])),
+        ('drums', hits(chords, lambda b, bar: rock_kit(b, bar, (0, 3, 4)))),
+    ]
+    return render(parts, bpm, len(lead))
+
+
 GYMS = {'gym_kanto': gym_kanto_orchestra, 'gym_johto': gym_johto_orchestra, 'gym_hoenn': gym_hoenn_orchestra, 'gym_sinnoh': gym_sinnoh_orchestra,
         'gym_unova': gym_unova_orchestra, 'gym_kalos': gym_kalos_orchestra, 'gym_alola': gym_alola_orchestra, 'gym_galar': gym_galar_orchestra,
         'gym_paldea': gym_paldea_orchestra, 'elite_kanto': elite_kanto_orchestra, 'elite_johto': elite_johto_orchestra,
         'elite_hoenn': elite_hoenn_orchestra, 'elite_sinnoh': elite_sinnoh_orchestra, 'elite_unova': elite_unova_orchestra,
         'elite_kalos': elite_kalos_orchestra, 'elite_alola': elite_alola_orchestra, 'elite_paldea': elite_paldea_orchestra,
-        'gym_hisui': gym_hisui_orchestra}  # gym_<região> e elite_<região> já feitos
+        'gym_hisui': gym_hisui_orchestra}
+GYMS.update({f'gym_{r}': (lambda r=r: extra_gym_orchestra(r)) for r in EXTRA_GYM_SOUNDS})  # gym_<região> e elite_<região> já feitos
 
 
 def mega_orchestra():

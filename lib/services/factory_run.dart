@@ -1901,7 +1901,8 @@ class FactoryRun {
         final full = data.bosses.expand((g) => g['leaders'] as List).cast<Map>().where((l) => l['id'] == boss['id']).firstOrNull;
         return 'gym-${full != null ? leaderType(data, full) : 'normal'}';
       case 'champion':
-        return 'champion-${'${boss['region'] ?? ''}'.toLowerCase()}';
+        final region = '${boss['region'] ?? ''}'.toLowerCase();
+        return championArenas[region] ?? 'champion-$region';
       case 'elite':
         return 'league';
       case 'villain':
@@ -4482,6 +4483,8 @@ class FactoryRun {
   };
 
   /// A música do mapa (andando na rota e na cidade): um tema original por região, mais calmo. Igual ao site.
+  /// O lugar da última batalha das regiões sem arena de campeão (os outros jogos e as expansões). Igual ao site.
+  static const championArenas = {'hisui': 'spearpillar', 'orre': 'tower', 'fiore': 'temple', 'almia': 'mansion', 'oblivia': 'ruins', 'kitakami': 'crystal', 'blueberry': 'league', 'sevii': 'tower'};
   static const mapRegions = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos', 'alola', 'galar', 'paldea', 'hisui', 'orre', 'fiore', 'almia', 'oblivia', 'kitakami', 'blueberry', 'sevii'];
   static String? mapMusic(FactoryData data, Map? run) {
     final region = regionOf(data, run)?.toLowerCase();

@@ -1150,11 +1150,17 @@ export function bossScene(data, boss, fallback = 'grass') {
     const full = data.bosses.flatMap((g) => g.leaders).find((l) => l.id === boss.id)
     return `gym-${full ? leaderType(data, full) : 'normal'}`
   }
-  if (boss.kind === 'champion') return `champion-${String(boss.region ?? '').toLowerCase()}`
+  if (boss.kind === 'champion') {
+    const region = String(boss.region ?? '').toLowerCase()
+    return CHAMPION_ARENAS[region] ?? `champion-${region}`
+  }
   if (boss.kind === 'elite') return 'league'
   if (boss.kind === 'villain') return `base-${villainTeam(boss.name)}`
   return fallback
 }
+
+/** O lugar da última batalha das regiões sem arena de campeão (os outros jogos e as expansões): o lugar da luta no jogo. */
+export const CHAMPION_ARENAS = { hisui: 'spearpillar', orre: 'tower', fiore: 'temple', almia: 'mansion', oblivia: 'ruins', kitakami: 'crystal', blueberry: 'league', sevii: 'tower' }
 
 /** Na Dusk Ball (3×): os lugares escuros. */
 export const DARK_BIOMES = ['cave', 'tower', 'icecave', 'sewer', 'underwater', 'lavacave', 'poisoncave', 'seacave']

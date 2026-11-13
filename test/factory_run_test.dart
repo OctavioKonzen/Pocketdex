@@ -255,6 +255,8 @@ void main() {
     final brock = (data.bosses[0]['leaders'] as List).cast<Map>().firstWhere((l) => l['id'] == 'kanto-brock');
     expect(FactoryRun.bossScene(data, {...brock, 'region': 'Kanto'}), 'gym-rock');
     expect(FactoryRun.bossScene(data, {'kind': 'champion', 'region': 'Kanto'}), 'champion-kanto');
+    expect(FactoryRun.bossScene(data, {'kind': 'champion', 'region': 'Hisui'}), 'spearpillar');
+    expect(FactoryRun.bossScene(data, {'kind': 'champion', 'region': 'Kitakami'}), 'crystal');
     expect(FactoryRun.bossScene(data, {'kind': 'villain', 'name': 'Archie'}), 'base-aqua');
     expect(FactoryRun.bossScene(data, null, 'forest'), 'forest');
   });

@@ -59,7 +59,7 @@ export const RIVAL_THEMES = ['blue', 'silver', 'brendan-may', 'wally', 'barry', 
 // que os comandantes dividem, conforme vão sendo feitos; os outros tocam o tema da região. Igual ao app.
 export const VILLAIN_THEMES = ['giovanni', 'maxie', 'archie', 'cyrus', 'colress', 'lysandre', 'guzma', 'lusamine', 'ghetsis', 'giacomo', 'ortega', 'penny', 'rose', 'jessie-e-james']
 /** As regiões com tema de ginásio e com tema da Elite dos Quatro (os outros: o tema da região). Igual ao app. */
-export const GYM_THEMES = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos', 'alola', 'galar', 'paldea', 'hisui']
+export const GYM_THEMES = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos', 'alola', 'galar', 'paldea', 'hisui', 'orre', 'fiore', 'almia', 'oblivia', 'kitakami', 'blueberry', 'sevii']
 /** Galar não tem Elite dos Quatro (os líderes lutam de novo na Copa). */
 export const ELITE_THEMES = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos', 'alola', 'paldea']
 export const TEAM_THEMES = ['rocket', 'magma', 'aqua', 'galactic', 'plasma', 'flare', 'skull', 'aether', 'ultra', 'star', 'macro', 'yell']
@@ -74,7 +74,7 @@ export const VILLAIN_TEAMS = {
 }
 // Rivais que dividem o tema (o mesmo papel, conforme o personagem escolhido no jogo).
 export const RIVAL_ALIAS = { brendan: 'brendan-may', may: 'brendan-may', serena: 'serena-calem', calem: 'serena-calem' }
-export const CHAMPION_THEMES = ['blue', 'lance', 'steven', 'wallace', 'cynthia', 'alder', 'iris', 'diantha', 'kukui', 'leon', 'geeta', 'volo']
+export const CHAMPION_THEMES = ['blue', 'lance', 'steven', 'wallace', 'cynthia', 'alder', 'iris', 'diantha', 'kukui', 'leon', 'geeta', 'volo', 'evice', 'gordor', 'blake-hall', 'ice', 'kieran']
 
 /** O último número da Pokédex de cada região. */
 export const DEX_REGIONS = [[151, 'kanto'], [251, 'johto'], [386, 'hoenn'], [493, 'sinnoh'], [649, 'unova'], [721, 'kalos'], [809, 'alola'], [905, 'galar'], [1025, 'paldea']]
@@ -96,8 +96,8 @@ export function regionTheme(id, seed = 0) {
 export function musicOf(leader, foe = 0, seed = 0) {
   if (!leader) return regionTheme(foe, seed)
   const champion = leader.name.toLowerCase()
-  if (leader.kind === 'champion' && CHAMPION_THEMES.includes(champion)) return `champion_${champion}`
   const slug = champion.replace(/\//g, '-').replace(/ /g, '-')
+  if (leader.kind === 'champion' && CHAMPION_THEMES.includes(slug)) return `champion_${slug}`
   const rival = RIVAL_ALIAS[slug] ?? slug
   // Jessie e James (aparecem como a dupla de rivais da rota): o tema deles.
   if (slug === 'jessie-e-james' && VILLAIN_THEMES.includes(slug)) return `villain_${slug}`
