@@ -672,6 +672,10 @@ ART = {
         'Vaniville Town': (630, 825), 'Aquacorde Town': (995, 795), 'Dendemille Town': (1240, 548), 'Snowbelle City': (1300, 430),
         'Laverre City': (1110, 420), 'Shalour City': (150, 478), 'Couriway Town': (1392, 468), 'Pokémon League': (1000, 250),
         'Kiloude City': (500, 282)}},
+    'galar': {'crop': (0, 0, 1214, 1296), 'cities': {
+        'Wyndon': (610, 235), 'Hammerlocke': (300, 318), 'Motostoke': (905, 355), 'Stow-on-Side': (305, 585),
+        'Ballonlea': (905, 645), 'Spikemuth': (590, 640), 'Turffield': (665, 1128), 'Postwick': (640, 1170),
+        'Wedgehurst': (795, 935), 'Hulbury': (775, 578), 'Circhester': (630, 465)}},
 }
 ART_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'region_maps_art')
 
