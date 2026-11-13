@@ -679,10 +679,7 @@ ART = {
     'almia': {'crop': (0, 0, 1536, 1024), 'cities': {'Vientown': (730, 645), 'Pueltown': (1270, 390), 'Chicole Village': (745, 400), 'Boyleland': (1040, 215), 'Haruba Village': (280, 500), 'Altru Building': (470, 175), 'Almia Castle': (1200, 800)}},
     'oblivia': {'crop': (0, 0, 1536, 1024), 'cities': {'Dolce Island': (300, 175), 'Renbow Island': (1180, 470), 'Mitonga Island': (440, 640), 'Layuda Island': (615, 215), 'Faldera Island': (1200, 200), 'Oblivia Ruins': (780, 440)}},
     'kitakami': {'crop': (0, 0, 1536, 1024), 'cities': {'Mossui Town': (720, 600), 'Apple Hills': (360, 330), 'Oni Mountain': (710, 190), 'Kitakami Hall': (1290, 560), 'Timeless Woods': (1190, 265), 'Crystal Pool': (945, 410)}},
-    'johto': {'crop': (0, 0, 1536, 1024), 'cities': {
-        'Azalea Town': (172, 495), 'Cherrygrove City': (290, 635), 'New Bark Town': (598, 642), 'Ecruteak City': (578, 462),
-        'Goldenrod City': (628, 340), 'Mahogany Town': (898, 332), 'Olivine City': (1120, 328), 'Violet City': (995, 512),
-        'Cianwood City': (1420, 668), 'Blackthorn City': (1415, 478)}},
+    'johto': {'crop': (0, 0, 1536, 1024), 'cities': {'Goldenrod City': (470, 330), 'Ecruteak City': (990, 330), 'Blackthorn City': (1060, 230), 'New Bark Town': (1290, 390), 'Olivine City': (250, 500), 'Violet City': (930, 580), 'Azalea Town': (680, 680), 'Cianwood City': (380, 760), 'Cherrygrove City': (1230, 600), 'Mahogany Town': (900, 190), 'Indigo Plateau': (380, 200)}},
     'hoenn': {'crop': (0, 0, 1536, 1024), 'cities': {
         'Mauville City': (620, 290), 'Fortree City': (1000, 250), 'Petalburg City': (760, 395), 'Lavaridge Town': (150, 440),
         'Pacifidlog Town': (190, 650), 'Lilycove City': (1150, 375), 'Sootopolis City': (1160, 455), 'Mossdeep City': (1095, 765),
