@@ -127,6 +127,8 @@ const body = (p, k = 0.5) => ({ x: p.x, y: p.y - p.h * k })
 export function fxPlan2({ kind, type, slug = '', from = 0, seed = 1, stage = FX_STAGE, recipe = null }) {
   const P = FX_TYPES[type] ?? FX_TYPES.normal
   const [c0, c1, c2, c3] = P.c
+  // A câmera sem zoom: o meio do mundo (960 × 540 no harness; no campo 4:3 da batalha, 960 × 720).
+  const NEUTRAL = [stage.w / 2, stage.h / 2, 1, 0]
   const A = from === 0 ? stage.near : stage.far
   const T = from === 0 ? stage.far : stage.near
   const a = body(A)
@@ -417,7 +419,7 @@ export function fxPlan2({ kind, type, slug = '', from = 0, seed = 1, stage = FX_
   function shapeCamera(k) {
     if (!k || k === 'cine' || k === 'wide' || k === 'self') return
     const [fp, fz] = { still: [0, 0], nudge: [0.35, 0.3], pan: [0.75, 0.35], zoom: [1, 1.25] }[k] ?? [1, 1]
-    cam = cam.map(([t, x, y, zz, r]) => [t, 480 + (x - 480) * fp, 270 + (y - 270) * fp, Math.max(0.9, 1 + (zz - 1) * fz), r * fp])
+    cam = cam.map(([t, x, y, zz, r]) => [t, NEUTRAL[0] + (x - NEUTRAL[0]) * fp, NEUTRAL[1] + (y - NEUTRAL[1]) * fp, Math.max(0.9, 1 + (zz - 1) * fz), r * fp])
     // Câmera parada ou quase: os HPs e a caixa de texto ficam na tela (como nos golpes simples do jogo).
     if (k === 'still' || k === 'nudge') hud = [dur + 1, dur + 1]
   }
@@ -768,7 +770,7 @@ export function fxPlan2({ kind, type, slug = '', from = 0, seed = 1, stage = FX_
   if (!hud) hud = [120, dur - 80]
   cam.sort((x, y) => x[0] - y[0])
   if (cam[cam.length - 1][0] < dur) cam.push([dur, ...cam[cam.length - 1].slice(1)])
-  return { dur, cam, hud, shake, sprites: S, layers: L, contact, from }
+  return { dur, cam, hud, shake, sprites: S, layers: L, contact, from, world: [stage.w, stage.h] }
 }
 
 /** Estilos que acontecem em quem usa o golpe (ou no campo), não no alvo. */

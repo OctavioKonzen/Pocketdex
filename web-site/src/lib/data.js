@@ -76,6 +76,10 @@ export const getGameAreas = () => load('game_areas.json')
 export const getReadySets = () => load('sets.json')
 /** Animação de cada golpe na batalha: {slug: [estilo, símbolo, variação]} (tool/build_move_anims.py). */
 export const getMoveAnims = () => load('move_anims.json')
+/** Uma animação para cada golpe: {slug: receita} (tool/build_move_fx.py). */
+export const getMoveFx = () => load('move_fx.json')
+/** A boca e a frente de cada sprite animado (tool/build_fx_anchors.py). */
+export const getFxAnchors = () => load('fx_anchors.json')
 /** Regras dos golpes na batalha (efeitos, recuo, dreno, status...): {slug: {...}} (tool/build_move_rules.mjs). */
 export const getMoveRules = () => load('move_rules.json')
 /** Quais Pokémon têm sprite animado: {front: [ids], shiny: [ids]} (tool/fetch_animated_sprites.py). */

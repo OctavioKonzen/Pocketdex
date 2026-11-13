@@ -21,7 +21,8 @@ function rgba(hex, a) {
 export function applyCamera(g, plan, ms, w, h) {
   const [cx, cy, z, r] = fxCamera(plan, ms)
   const [sx, sy] = fxShake(plan, ms)
-  const fit = Math.min(w / 960, h / 540)
+  const [ww, wh] = plan.world ?? [960, 540]
+  const fit = Math.min(w / ww, h / wh)
   g.translate(w / 2 + sx * fit, h / 2 + sy * fit)
   g.rotate((r * Math.PI) / 180)
   g.scale(z * fit, z * fit)
@@ -32,19 +33,33 @@ export function applyCamera(g, plan, ms, w, h) {
 export function cameraCss(plan, ms, w, h) {
   const [cx, cy, z, r] = fxCamera(plan, ms)
   const [sx, sy] = fxShake(plan, ms)
-  const fit = Math.min(w / 960, h / 540)
+  const [ww, wh] = plan.world ?? [960, 540]
+  const fit = Math.min(w / ww, h / wh)
   return `translate(${w / 2 + sx * fit}px,${h / 2 + sy * fit}px) rotate(${r}deg) scale(${z * fit}) translate(${-cx}px,${-cy}px)`
 }
+
+/** A mesma câmera para um campo cujos filhos já estão em pixels da tela (a batalha): sem a escala do mundo. */
+export function cameraCssPx(plan, ms, w, h) {
+  const [cx, cy, z, r] = fxCamera(plan, ms)
+  const [sx, sy] = fxShake(plan, ms)
+  const f = w / (plan.world ?? [960, 540])[0]
+  return `translate(${w / 2 + sx * f}px,${h / 2 + sy * f}px) rotate(${r}deg) scale(${z}) translate(${-cx * f}px,${-cy * f}px)`
+}
+
+/** O tamanho do mundo do golpe que está sendo desenhado (as camadas de tela usam). */
+let VW = 960
+let VH = 540
 
 /** Desenha as camadas. Camadas de tela (tint, fill) ficam sem câmera. */
 export function paintFx(g, plan, ms, w, h) {
   g.clearRect(0, 0, w, h)
+  ;[VW, VH] = plan.world ?? [960, 540]
   for (const L of plan.layers) {
     if (ms < L.t0 || ms > L.t1) continue
     const k = (ms - L.t0) / Math.max(1, L.t1 - L.t0)
     g.save()
     if (L.s === 'tint' || L.s === 'fill' || L.s === 'wave') {
-      g.scale(w / 960, h / 540)
+      g.scale(w / VW, h / VH)
       SCREEN[L.s](g, L, k, ms)
     } else {
       applyCamera(g, plan, ms, w, h)
@@ -652,16 +667,16 @@ function crack(g, L, k) {
 /** Tela inteira de uma cor (escurecer, clarão). */
 function tint(g, L, k) {
   g.fillStyle = rgba(L.color, at(L.a, k))
-  g.fillRect(0, 0, 960, 540)
+  g.fillRect(0, 0, VW, VH)
 }
 
 /** Explosão em pixels varrendo a tela (como no jogo). */
 function fill(g, L, k, ms) {
   const fade = k < 0.6 ? 1 : 1 - (k - 0.6) * 2.5
   const B = 16
-  const front = L.from === 'center' ? null : L.from === 'right' ? 960 * (1.1 - k * 1.7) : 960 * (-0.1 + k * 1.7)
-  for (let by = 0; by < 540; by += B)
-    for (let bx = 0; bx < 960; bx += B) {
+  const front = L.from === 'center' ? null : L.from === 'right' ? VW * (1.1 - k * 1.7) : VW * (-0.1 + k * 1.7)
+  for (let by = 0; by < VH; by += B)
+    for (let bx = 0; bx < VW; bx += B) {
       let d
       if (front === null) d = 260 * k * 3 - Math.hypot(bx - 480, by - 270) + fxRand(by * 7 + bx) * 120
       else d = (L.from === 'right' ? bx - front : front - bx) + fxRand(by * 7 + bx) * 140
@@ -678,22 +693,22 @@ function fill(g, L, k, ms) {
 function wave(g, L, k, ms) {
   const dir = L.dir
   const x = dir > 0 ? lerp(-500, 1200, k) : lerp(1460, -240, k)
-  const h = lerp(L.h[0], L.h[1], Math.sin(k * Math.PI)) * 540
+  const h = lerp(L.h[0], L.h[1], Math.sin(k * Math.PI)) * VH
   for (let band = 0; band < 4; band++) {
     const off = band * 60 * -dir
-    const lg = g.createLinearGradient(0, 540 - h, 0, 540)
+    const lg = g.createLinearGradient(0, VH - h, 0, VH)
     lg.addColorStop(0, rgba(L.c[Math.min(3, band)], 0.85))
     lg.addColorStop(1, rgba(L.c[3], 0.95))
     g.fillStyle = lg
     g.beginPath()
-    g.moveTo(x + off - 600 * dir, 540)
+    g.moveTo(x + off - 600 * dir, VH)
     for (let i = 0; i <= 30; i++) {
       const px = x + off - 600 * dir + (i / 30) * 600 * dir
       const crest = Math.pow(i / 30, 2.4)
-      const py = 540 - h * (0.25 + 0.75 * crest) * (1 - band * 0.12) + Math.sin(i * 0.9 + ms / 90 + band) * 8
+      const py = VH - h * (0.25 + 0.75 * crest) * (1 - band * 0.12) + Math.sin(i * 0.9 + ms / 90 + band) * 8
       g.lineTo(px, py)
     }
-    g.lineTo(x + off, 540)
+    g.lineTo(x + off, VH)
     g.closePath()
     g.fill()
   }
@@ -701,7 +716,7 @@ function wave(g, L, k, ms) {
   g.fillStyle = 'rgba(255,255,255,0.85)'
   for (let i = 0; i < 18; i++) {
     const px = x - dir * fxRand(i) * 120
-    const py = 540 - h + fxRand(i + 5) * 40
+    const py = VH - h + fxRand(i + 5) * 40
     g.fillRect(px, py, 8, 8)
   }
 }

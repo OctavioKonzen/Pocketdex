@@ -12,7 +12,9 @@ import { addRaidHit, getDefense, saveDuel, saveWeekly, teamsOf, useAuth, watchRa
 import { raidAfterFight, raidDamage, raidMember } from '../lib/raid'
 import { battleHitter, battleMons, leaderTeam, randomTeam } from '../lib/battleSetup'
 import { friendsOnly, useFriends } from '../lib/friends'
-import { getGymLeaders, getMoveAnims, getMoves, getTypes, shinyPath, spriteUrl } from '../lib/data'
+import { getFxAnchors, getGymLeaders, getMoveAnims, getMoveFx, getMoves, getTypes, shinyPath, spriteUrl } from '../lib/data'
+import { fxForMove } from '../lib/battleFx'
+import { canPlayFx, measureStage, runFx } from '../lib/fxRun'
 import { addHallOfFame, badgesNeeded, badgesOf, leagueOpen, leagueOrder, musicOf, regionGyms, regionOf, streakResult, winBadge } from '../lib/gymChallenge'
 import { language, localText, t } from '../lib/i18n'
 import { fast, toggleBattleSpeed, useBattleAnimationSpeed, useBattleSpeed } from '../lib/battleSpeed'
@@ -1081,6 +1083,11 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   const field = useRef(null)
   // A animação de cada golpe (estilo, símbolo e variação).
   const anims = useRef(null)
+  // A animação nova de cada golpe (câmera, efeitos desenhados): a receita dele e a boca/frente de cada sprite.
+  const moveFx = useRef(null)
+  const fxAnchors = useRef(null)
+  const world = useRef(null)
+  const fxCanvas = useRef(null)
   const live = useRef(true)
   const queued = useRef(Promise.resolve())
   // Replay (BattleHistoryPage.jsx): a primeira rodada (o começo da batalha) também passa na tela.
@@ -1095,6 +1102,12 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   useEffect(() => {
     getMoveAnims()
       .then((table) => (anims.current = table))
+      .catch(() => {})
+    getMoveFx()
+      .then((table) => (moveFx.current = table))
+      .catch(() => {})
+    getFxAnchors()
+      .then((table) => (fxAnchors.current = table))
       .catch(() => {})
   }, [])
 
@@ -1221,6 +1234,18 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         const self = rules?.t === 'self' || rules?.h
         const [kind, icon, variant] =
           entry ?? (e.category === 'status' ? [self ? 'boost' : 'status', null, 0] : [moveAnim(e.slug, e.type, e.category), null, 0])
+        // A animação nova (como no Black & White): câmera, fases, efeitos desenhados saindo da boca ou da frente.
+        const recipe = moveFx.current?.[e.slug]
+        const stage = recipe && canPlayFx() && world.current && fxCanvas.current && field.current
+          ? measureStage(field.current, [sprites[0].current, sprites[1].current], [0, 1].map((i) => String(shownRef.current.form[i] ?? battle.sides[i].team[shownRef.current.active[i]]?.id)), fxAnchors.current)
+          : null
+        if (stage) {
+          if (e.category !== 'status') lastHit.current = typeColor(e.type)
+          const plan2 = fxForMove({ slug: e.slug, type: e.type, category: e.category, self, entry, recipe, from: e.side, seed: turnNo.current, stage })
+          await runFx({ field: field.current, world: world.current, canvas: fxCanvas.current, spriteEls: [sprites[0].current, sprites[1].current], plan: plan2, rate: fast(1000) / 1000, live: () => live.current })
+          if (!live.current) return
+          continue
+        }
         const plan = fxPlan(kind, e.type, e.side, centerOf(e.side), centerOf(1 - e.side), icon, variant)
         if (!SELF_KINDS.has(kind)) pulse(sprites[e.side].current, CONTACT.has(kind) ? `battle-dash-${e.side}` : `battle-lunge-${e.side}`, 450)
         setEffect({ plan, color: typeColor(e.type), key: ++effectKey.current })
@@ -1576,19 +1601,11 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         data-layout="bw"
       >
         {/* Como no Black & White: o adversário lá atrás à direita (menor), o seu de costas na frente à esquerda (grande, cortado pela caixa do texto). */}
+        {/* O mundo da batalha (fundo, clima, bases, Pokémon, treinadores): a câmera dos golpes move tudo junto. */}
+        <div ref={world} className="absolute inset-0 origin-top-left" data-testid="battle-world">
         <BattleBackground weather={shown.weather} scene={scene} layout="bw" />
         {/* Clima, terreno e efeito do lugar fazem parte do cenário: atrás dos Pokémon e das caixas. */}
         <WeatherFx weather={shown.weather} terrain={shown.terrain} place={shown.place} />
-        {/* O clima e o terreno com os turnos que faltam (como no registro), no alto do campo. */}
-        <FieldChip weather={shown.weather} terrain={shown.terrain} weatherTurns={battle.weatherTurns ?? 0} terrainTurns={battle.terrainTurns ?? 0} />
-        {vsOn && <VsSplash me={myTrainer} coach={coach} vs={vsInfo} myName={myName} foeMon={wild ? active(battle, 1) : null} onSkip={() => vsDone.current?.()} />}
-        <div className={`absolute z-20 ${wild ? 'top-[5%]' : 'top-[max(0px,calc(5%-14px))]'} left-0 w-[50%] max-w-[300px] transition-opacity ${intro && poke[1] === 'hidden' ? 'opacity-0' : ''}`}>
-          <button type="button" className="block w-full cursor-pointer text-left" onClick={() => setInspect(1)} aria-label={t('Ver detalhes do adversário')} data-testid="inspect-foe">
-            {/* Quantos o treinador tem: a Poké Ball acesa está de pé; apagada, desmaiou (como nos jogos). */}
-            {!wild && <PartyBalls hp={shown.hp[1]} side="foe" />}
-            <InfoBox bw mon={foe} hp={shown.hp[1][shown.active[1]]} status={shown.status[1][shown.active[1]]} dmax={shown.dmax[1]} boosts={shown.boosts[1]} hpTestId={online ? "online-hp-" + (1 - online.side) : undefined} />
-          </button>
-        </div>
         {/* O inimigo fica mais longe: menor e com os pés na frente do meio da plataforma (pisando nela, como o seu). */}
         <div className="absolute right-[11%] w-[26%]" style={{ bottom: `${foeBottom(scene) * 100}%` }}>
           <PlatformBase scene={scene} side="foe" scale={battleScale(byId?.get(shown.form[1] ?? foe.id)?.height)} />
@@ -1619,6 +1636,19 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
             <TrainerBack trainer={myTrainer} frame={intro.back} box={nearPerson(fieldWidth(field)) * 0.94} />
           </div>
         )}
+        </div>
+        {/* Os efeitos dos golpes, desenhados por cima do mundo (fxRun.js). */}
+        <canvas ref={fxCanvas} className="pointer-events-none absolute inset-0 z-[15] h-full w-full" aria-hidden="true" />
+        {/* O clima e o terreno com os turnos que faltam (como no registro), no alto do campo. */}
+        <FieldChip weather={shown.weather} terrain={shown.terrain} weatherTurns={battle.weatherTurns ?? 0} terrainTurns={battle.terrainTurns ?? 0} />
+        {vsOn && <VsSplash me={myTrainer} coach={coach} vs={vsInfo} myName={myName} foeMon={wild ? active(battle, 1) : null} onSkip={() => vsDone.current?.()} />}
+        <div className={`absolute z-20 ${wild ? 'top-[5%]' : 'top-[max(0px,calc(5%-14px))]'} left-0 w-[50%] max-w-[300px] transition-opacity ${intro && poke[1] === 'hidden' ? 'opacity-0' : ''}`} data-fx-hud>
+          <button type="button" className="block w-full cursor-pointer text-left" onClick={() => setInspect(1)} aria-label={t('Ver detalhes do adversário')} data-testid="inspect-foe">
+            {/* Quantos o treinador tem: a Poké Ball acesa está de pé; apagada, desmaiou (como nos jogos). */}
+            {!wild && <PartyBalls hp={shown.hp[1]} side="foe" />}
+            <InfoBox bw mon={foe} hp={shown.hp[1][shown.active[1]]} status={shown.status[1][shown.active[1]]} dmax={shown.dmax[1]} boosts={shown.boosts[1]} hpTestId={online ? "online-hp-" + (1 - online.side) : undefined} />
+          </button>
+        </div>
         {/* A habilidade em ação: a faixa sai do lado do Pokémon (o adversário à direita, o seu à esquerda), como nos jogos. */}
         {ability && (
           <div key={ability.k} className={`ability-banner absolute z-20 ${ability.side === 1 ? 'ability-banner-1 right-0 top-[30%] rounded-l-lg' : 'ability-banner-0 left-0 bottom-[34%] rounded-r-lg'} bw-box px-3 py-1 text-white`} data-testid="ability-banner">
@@ -1629,7 +1659,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         {effect && <MoveFx key={effect.key} plan={effect.plan} color={effect.color} />}
         {impact && <span key={impact.n} className="move-impact pointer-events-none absolute z-20" style={{ left: `${impact.x}%`, top: `${impact.y}%`, '--c': impact.color }} data-testid="move-impact" />}
         {flash > 0 && <div key={`flash-${flash}`} className="battle-flash pointer-events-none absolute inset-0 bg-white" />}
-        <div className={`absolute z-20 right-0 bottom-[24%] w-[50%] max-w-[300px] transition-opacity ${intro && poke[0] === 'hidden' ? 'opacity-0' : ''}`}>
+        <div className={`absolute z-20 right-0 bottom-[24%] w-[50%] max-w-[300px] transition-opacity ${intro && poke[0] === 'hidden' ? 'opacity-0' : ''}`} data-fx-hud>
           <button type="button" className="block w-full cursor-pointer text-left" onClick={() => setInspect(0)} aria-label={t('Ver detalhes do seu Pokémon')} data-testid="inspect-me">
             <PartyBalls hp={shown.hp[0]} side="me" />
             <InfoBox bw mon={me} hp={shown.hp[0][shown.active[0]]} status={shown.status[0][shown.active[0]]} dmax={shown.dmax[0]} boosts={shown.boosts[0]} mine hpTestId={online ? "online-hp-" + online.side : undefined}

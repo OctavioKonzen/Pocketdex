@@ -267,6 +267,9 @@ def main():
     save('npc_sets.json', load('npc_sets'))
     # Animação de cada golpe na batalha (tool/build_move_anims.py).
     save('move_anims.json', load('move_anims'))
+    # Uma animação para cada golpe (tool/build_move_fx.py) e a boca e a frente de cada sprite (tool/build_fx_anchors.py).
+    save('move_fx.json', load('move_fx'))
+    save('fx_anchors.json', load('fx_anchors'))
     # Regras dos golpes na batalha (tool/build_move_rules.mjs, dados do Pokémon Showdown).
     save('move_rules.json', load('move_rules'))
     # Mega Pedras e Cristais Z da batalha (tool/build_battle_items.mjs).
