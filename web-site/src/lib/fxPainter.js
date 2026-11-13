@@ -280,6 +280,88 @@ function particle(g, style, x, y, s, color, a, rot) {
       g.fill()
       break
     }
+    case 'heart': {
+      g.beginPath()
+      g.moveTo(x, y + s * 0.7)
+      g.bezierCurveTo(x - s * 1.2, y - s * 0.1, x - s * 0.5, y - s * 0.95, x, y - s * 0.35)
+      g.bezierCurveTo(x + s * 0.5, y - s * 0.95, x + s * 1.2, y - s * 0.1, x, y + s * 0.7)
+      g.fill()
+      break
+    }
+    case 'note': {
+      g.fillRect(x + s * 0.25, y - s, s * 0.14, s * 1.1)
+      g.fillRect(x + s * 0.25, y - s, s * 0.55, s * 0.18)
+      g.beginPath()
+      g.ellipse(x, y + s * 0.1, s * 0.34, s * 0.24, -0.4, 0, Math.PI * 2)
+      g.fill()
+      break
+    }
+    case 'zzz':
+      g.font = `900 ${Math.round(s)}px sans-serif`
+      g.fillText('Z', x, y)
+      break
+    case 'gear': {
+      g.save()
+      g.translate(x, y)
+      g.rotate(rot)
+      g.beginPath()
+      for (let i = 0; i < 16; i++) {
+        const r = i % 2 ? s * 0.7 : s
+        const a0 = (i / 16) * Math.PI * 2
+        g.lineTo(Math.cos(a0) * r, Math.sin(a0) * r)
+      }
+      g.closePath()
+      g.fill()
+      g.globalCompositeOperation = 'destination-out'
+      g.beginPath()
+      g.arc(0, 0, s * 0.3, 0, Math.PI * 2)
+      g.fill()
+      g.restore()
+      break
+    }
+    case 'moon':
+      g.beginPath()
+      g.arc(x, y, s, 0.6, Math.PI * 2 - 0.6)
+      g.arc(x + s * 0.55, y - s * 0.1, s * 0.75, Math.PI * 2 - 0.9, 0.9, true)
+      g.closePath()
+      g.fill()
+      break
+    case 'sun': {
+      g.beginPath()
+      g.arc(x, y, s * 0.55, 0, Math.PI * 2)
+      g.fill()
+      g.lineWidth = Math.max(2, s * 0.14)
+      for (let i = 0; i < 8; i++) {
+        const an = rot + (i * Math.PI) / 4
+        g.beginPath()
+        g.moveTo(x + Math.cos(an) * s * 0.75, y + Math.sin(an) * s * 0.75)
+        g.lineTo(x + Math.cos(an) * s * 1.15, y + Math.sin(an) * s * 1.15)
+        g.stroke()
+      }
+      break
+    }
+    case 'goo':
+      g.beginPath()
+      g.arc(x, y, s * 0.6, 0, Math.PI * 2)
+      g.fill()
+      g.globalAlpha = clamp(a) * 0.7
+      g.fillStyle = '#ffffff'
+      g.fillRect(x - s * 0.3, y - s * 0.35, s * 0.18, s * 0.18)
+      break
+    case 'rain':
+      g.lineWidth = 2
+      g.beginPath()
+      g.moveTo(x, y)
+      g.lineTo(x - s * 0.3, y + s)
+      g.stroke()
+      break
+    case 'fist':
+    case 'foot':
+    case 'head':
+    case 'body':
+    case 'wing':
+      drawIcon(g, style, x, y, s, color, rot)
+      break
     default: {
       // dot: bolinha de luz.
       const rg = g.createRadialGradient(x, y, 0, x, y, s)
@@ -314,7 +396,7 @@ function particles(g, L, k, ms) {
     const r1 = fxRand(L.seed * 7.3 + i)
     const r2 = fxRand(L.seed * 3.1 + i * 1.7)
     const r3 = fxRand(L.seed * 5.9 + i * 2.3)
-    const born = L.mode === 'burst' ? r1 * 60 : r1 * Math.max(1, span - life)
+    const born = L.mode === 'burst' ? r1 * 60 : L.mode === 'orbit' ? 0 : r1 * Math.max(1, span - life)
     const t = (age0 - born) / life
     if (t < 0 || t > 1) continue
     const sec = (age0 - born) / 1000
@@ -332,6 +414,10 @@ function particles(g, L, k, ms) {
       const d = L.r * (1 - fxEase(t)) * (0.6 + r3 * 0.6)
       x = ox + Math.cos(ang + t * 1.5) * d
       y = oy + Math.sin(ang + t * 1.5) * d
+    } else if (L.mode === 'orbit') {
+      const ang = (i / L.n) * Math.PI * 2 + (age0 / 1000) * 4
+      x = ox + Math.cos(ang) * L.r
+      y = oy + Math.sin(ang) * L.r * 0.4
     } else if (L.mode === 'swirl') {
       const ang = r2 * Math.PI * 2 + t * 6
       const d = L.r * (0.3 + 0.7 * (1 - t)) * (0.6 + r3 * 0.6)
@@ -352,7 +438,7 @@ function particles(g, L, k, ms) {
     }
     const size = lerp(L.size[0], L.size[1], t) * (0.7 + r2 * 0.6)
     const ci = Math.min(L.c.length - 1, Math.floor(t * L.c.length + r3 * 0.6))
-    const fade = L.mode === 'converge' ? Math.min(1, t * 3) : 1 - t * t
+    const fade = L.mode === 'converge' ? Math.min(1, t * 3) : L.mode === 'orbit' ? Math.min(1, t * 5, (1 - t) * 5) : 1 - t * t
     particle(g, L.style, x, y, size, L.c[ci], fade, r1 * 6 + t * 4 * (r2 - 0.5))
   }
 }
@@ -507,10 +593,11 @@ function cone(g, L, k) {
 
 /** Tiro (semente, pedra, meteoro): voa com rastro. */
 function shot(g, L, k) {
+  const lift = (u) => (L.arc ? Math.sin(u * Math.PI) * L.arc : 0)
   const x = at(L.x, k)
-  const y = at(L.y, k)
+  const y = at(L.y, k) - lift(k)
   const x0 = at(L.x, Math.max(0, k - 0.3))
-  const y0 = at(L.y, Math.max(0, k - 0.3))
+  const y0 = at(L.y, Math.max(0, k - 0.3)) - lift(Math.max(0, k - 0.3))
   if (L.trail) {
     const lg = g.createLinearGradient(x0, y0, x, y)
     lg.addColorStop(0, rgba(L.c[2], 0))
@@ -523,7 +610,7 @@ function shot(g, L, k) {
     g.lineTo(x, y)
     g.stroke()
   }
-  if (L.style === 'shard' || L.style === 'crystal') particle(g, L.style, x, y, L.r * 1.3, L.c[2], 1, k * 8)
+  if (!['dot', 'ember', 'flame', 'spark', 'bubble', 'droplet', 'goo', 'wisp', 'glint', 'dust', 'streak'].includes(L.style)) particle(g, L.style, x, y, L.r * 1.3, L.style === 'shard' || L.style === 'crystal' ? L.c[2] : L.c[1], 1, k * 8 * (L.spin ?? 1))
   else {
     const rg = g.createRadialGradient(x, y, 0, x, y, L.r)
     rg.addColorStop(0, L.c[0])
@@ -619,5 +706,75 @@ function wave(g, L, k, ms) {
   }
 }
 
-const SHAPES = { glow, rays, ring, particles, bolt, beam, web, arc, fangs, cone, shot, crack }
+/** Uma forma grande com brilho (o punho no soco, o pé no chute, a lua no Moonblast...). */
+function icon(g, L, k) {
+  const x = at(L.x, k)
+  const y = at(L.y, k)
+  const s = at(L.size, k)
+  const a = at(L.a, k)
+  const rg = g.createRadialGradient(x, y, 0, x, y, s * 1.3)
+  rg.addColorStop(0, rgba(L.c[0], 0.7 * a))
+  rg.addColorStop(1, rgba(L.c[1], 0))
+  g.fillStyle = rg
+  g.beginPath()
+  g.arc(x, y, s * 1.3, 0, Math.PI * 2)
+  g.fill()
+  particle(g, L.style, x, y, s * 0.6, L.c[1], a, L.rot ?? 0)
+}
+
+/** Punho, pé, cabeça (estrela de impacto), corpo e asa, desenhados. */
+function drawIcon(g, style, x, y, s, color, rot) {
+  g.save()
+  g.translate(x, y)
+  g.rotate(rot)
+  g.fillStyle = color
+  g.strokeStyle = 'rgba(0,0,0,0.55)'
+  g.lineWidth = Math.max(2, s * 0.08)
+  const shape = () => {
+    g.fill()
+    g.stroke()
+  }
+  if (style === 'fist') {
+    g.beginPath()
+    g.roundRect(-s * 0.7, -s * 0.55, s * 1.25, s * 1.05, s * 0.3)
+    shape()
+    for (let i = 0; i < 3; i++) {
+      g.beginPath()
+      g.moveTo(-s * 0.35 + i * s * 0.32, -s * 0.55)
+      g.lineTo(-s * 0.35 + i * s * 0.32, -s * 0.1)
+      g.stroke()
+    }
+    g.beginPath()
+    g.roundRect(-s * 0.95, -s * 0.15, s * 0.45, s * 0.55, s * 0.18)
+    shape()
+  } else if (style === 'foot') {
+    g.beginPath()
+    g.ellipse(0, 0, s * 0.45, s * 0.85, 0.3, 0, Math.PI * 2)
+    shape()
+    for (let i = 0; i < 3; i++) {
+      g.beginPath()
+      g.arc(-s * 0.35 + i * s * 0.3, -s * 0.85, s * 0.16, 0, Math.PI * 2)
+      shape()
+    }
+  } else if (style === 'wing') {
+    for (let i = 0; i < 4; i++) {
+      g.beginPath()
+      g.ellipse(-s * 0.2 + i * s * 0.18, -s * 0.1 + i * s * 0.12, s * 0.22, s * (0.9 - i * 0.15), -0.7, 0, Math.PI * 2)
+      shape()
+    }
+  } else {
+    // head / body: estrela de impacto.
+    g.beginPath()
+    for (let i = 0; i < 16; i++) {
+      const r = i % 2 ? s * 0.45 : s
+      const an = (i * Math.PI) / 8
+      g.lineTo(Math.cos(an) * r, Math.sin(an) * r)
+    }
+    g.closePath()
+    shape()
+  }
+  g.restore()
+}
+
+const SHAPES = { glow, rays, ring, particles, bolt, beam, web, arc, fangs, cone, shot, crack, icon }
 const SCREEN = { tint, fill, wave }

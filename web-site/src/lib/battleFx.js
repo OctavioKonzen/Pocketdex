@@ -48,6 +48,33 @@ export const FX_STAGE = {
   far: { x: 680, y: 345, h: 190 },
 }
 
+
+/** O estilo das partículas de cada forma. */
+const MOTIF_STYLE = {
+  petal: 'leaf', rock: 'shard', crystal: 'crystal', heart: 'heart', moon: 'moon', sun: 'sun', star: 'star', note: 'note',
+  gear: 'gear', wisp: 'wisp', dragon: 'ember', bubble: 'bubble', flame: 'ember', spark: 'spark', goo: 'goo', dust: 'dust',
+  ring: 'dot', eye: 'dot', wing: 'feather', web: 'dot', fist: 'star', foot: 'star', head: 'star', body: 'star',
+  fang: 'star', claw: 'streak', blade: 'streak', horn: 'glint', whip: 'streak',
+}
+
+/** O efeito no fim de cada golpe: queimar, congelar, paralisar, envenenar, dormir, confundir, atributos. */
+const FX_EFFECT = {
+  burn: { n: 22, vy: -180, size: [10, 3], style: 'ember', c: ['#fff7c2', '#ffb02e', '#e5391a'], tint: '#ff5a1a' },
+  freeze: { n: 16, vy: 40, size: [16, 8], style: 'crystal', c: ['#ffffff', '#c8f6ff', '#6cc9f0'], tint: '#9ee8ff', ring: '#c8f6ff' },
+  para: { n: 14, vy: 0, v: 160, size: [8, 3], style: 'spark', c: ['#ffffff', '#ffe94a'], tint: '#ffe94a', bolt: 1 },
+  poison: { n: 18, vy: -120, size: [12, 6], style: 'goo', c: ['#f6dcff', '#c56cf0', '#8e2fc2'], tint: '#a855f7' },
+  sleep: { n: 6, vy: -90, v: 40, size: [18, 26], style: 'zzz', c: ['#ffffff', '#c7d2fe'], tint: '#818cf8' },
+  confuse: { n: 8, vy: 0, mode: 'orbit', size: [14, 14], style: 'star', c: ['#fff7c2', '#facc15'] },
+  flinch: { n: 6, vy: 0, mode: 'orbit', size: [12, 12], style: 'star', c: ['#ffffff', '#fde68a'] },
+  trap: { n: 10, vy: 0, mode: 'orbit', size: [10, 10], style: 'dot', c: ['#ffffff', '#cbd5e1'], ring: '#e2e8f0' },
+  heart: { n: 10, vy: -120, size: [14, 10], style: 'heart', c: ['#ffd6ec', '#f472b6', '#db2777'], tint: '#f472b6' },
+  up: { n: 10, vy: -200, size: [16, 12], style: 'arrowUp', c: ['#ffffff', '#fca5a5', '#ef4444'], tint: '#ef4444' },
+  down: { n: 10, vy: 200, size: [16, 12], style: 'arrowDown', c: ['#ffffff', '#93c5fd', '#3b82f6'], tint: '#3b82f6' },
+  drain: {},
+  heal: {},
+  recoil: {},
+}
+
 const NEUTRAL = [480, 270, 1, 0]
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v))
 
@@ -64,7 +91,7 @@ const body = (p, k = 0.5) => ({ x: p.x, y: p.y - p.h * k })
  * O plano da animação de um golpe. [from] 0: você ataca (o alvo é o de cima); 1: o outro ataca.
  * [kind] o estilo (moveAnim / move_anims.json), [slug] o golpe (os marcantes têm animação própria).
  */
-export function fxPlan2({ kind, type, slug = '', from = 0, seed = 1, stage = FX_STAGE }) {
+export function fxPlan2({ kind, type, slug = '', from = 0, seed = 1, stage = FX_STAGE, recipe = null }) {
   const P = FX_TYPES[type] ?? FX_TYPES.normal
   const [c0, c1, c2, c3] = P.c
   const A = from === 0 ? stage.near : stage.far
@@ -121,6 +148,7 @@ export function fxPlan2({ kind, type, slug = '', from = 0, seed = 1, stage = FX_
     }
   }
 
+  const has = (str, ...w) => w.some((x) => str.includes(x))
   const contact = ['punch', 'kick', 'bite', 'slash', 'tackle', 'spin', 'dive', 'pierce', 'whip'].includes(kind)
 
   // ---- Os golpes marcantes, com animação própria ----
@@ -166,6 +194,7 @@ export function fxPlan2({ kind, type, slug = '', from = 0, seed = 1, stage = FX_
   }
   const sig = signature[slug]
   if (sig) sig()
+  else if (recipe) byRecipe(recipe)
   else {
     switch (kind) {
       // ---- Golpes de contato: quem ataca avança, a câmera segue e dá zoom no impacto ----
@@ -343,6 +372,303 @@ export function fxPlan2({ kind, type, slug = '', from = 0, seed = 1, stage = FX_
       }
     }
   }
+
+  // ---- Uma animação para cada golpe: a receita dele (move_fx.json) diz como chega, a forma, a força, os acertos e o efeito ----
+  function byRecipe(r) {
+    const p = r.p ?? 1
+    const pw = 0.75 + 0.2 * p
+    const z = 1.3 + 0.07 * p
+    const m = r.m
+    const st = MOTIF_STYLE[m] ?? P.p
+    const n = r.n ?? 1
+    const v = r.v ?? 0
+    const vr = (i) => fxRand(v * 1.37 + i)
+    const tilt = (vr(1) - 0.5) * 4
+    let t = 0
+    // Carrega antes (Solar Beam, Sky Attack): energia juntando em quem ataca.
+    const charge = (t0, len = 650) => {
+      cam = [[0, ...NEUTRAL], [t0 + 300, ...look(a, 1.4, 2 * toward)]]
+      add({ s: 'particles', t0, t1: t0 + len, n: 30, seed: v, x: a.x, y: a.y, sx: 0, sy: 0, mode: 'converge', r: 170, life: 450, size: [3, 8], style: st === 'leaf' ? 'leaf' : 'dot', c: [c0, c1] })
+      add({ s: 'glow', t0: t0 + 100, t1: t0 + len, x: a.x, y: a.y, r: [10, 90], c: [c0, c1, c2], a: [0.2, 0.8], swirl: 1 })
+      S.push({ who: 'A', k: 'tint', t0, t1: t0 + len, color: c1, a: 0.5, pulse: 20 })
+      return t0 + len
+    }
+    // A forma do golpe, grande, no impacto (punho, pé, garras, lâmina, chifre, presas, asa, cauda...).
+    const motifHit = (t1, at = tc, k = 0) => {
+      const sz = 70 + 18 * p
+      const flip = (vr(k + 3) > 0.5 ? 1 : -1) * toward
+      if (m === 'blade' || m === 'claw' || m === 'whip') {
+        const cuts = m === 'claw' ? 3 : m === 'whip' ? 1 : 1 + (p > 2 ? 1 : 0)
+        for (let i = 0; i < cuts; i++) {
+          const off = (i - (cuts - 1) / 2) * (m === 'claw' ? 26 : 30)
+          const a0 = m === 'whip' ? -2.9 : -2.3 + vr(k + i) * 0.4
+          add({ s: 'arc', t0: t1 - 80 + i * (m === 'claw' ? 40 : 110), t1: t1 + 220 + i * 60, x: at.x + off, y: at.y, r: m === 'whip' ? 120 : 95, a0, a1: [a0, a0 + (m === 'whip' ? 2.6 : 3.0)], w: m === 'claw' ? 6 : 10, c: '#ffffff', c2: c1, flip: (i + (flip > 0 ? 0 : 1)) % 2 })
+        }
+      } else if (m === 'fang') add({ s: 'fangs', t0: t1 - 160, t1: t1 + 260, x: at.x, y: at.y, r: 80, close: [0, 1], c: '#ffffff', c2: c2 })
+      else if (m === 'horn') for (let i = 0; i < Math.max(1, n === 1 ? 2 : 1); i++) add({ s: 'cone', t0: t1 - 120 + i * 90, t1: t1 + 60 + i * 90, x: at.x + (i - 0.5) * 24, y: [at.y + 140, at.y], w: 20, c: c1, a: 1 })
+      else if (m === 'web') add({ s: 'web', t0: t1 - 100, t1: t1 + 700, x: at.x, y: at.y, r: [20, 130], n: 8, rings: 5, w: 2.5, c: '#ffffff', c2: c1, a: [1, 0] })
+      else if (['fist', 'foot', 'head', 'body', 'wing'].includes(m))
+        add({ s: 'icon', t0: t1 - 140, t1: t1 + 200, x: at.x - 30 * toward, y: at.y, size: [sz * 1.8, sz], a: [0.5, 1], style: m, c: [c0, c1, c2], rot: tilt * 0.08 * flip })
+      else add({ s: 'icon', t0: t1 - 60, t1: t1 + 300, x: at.x, y: at.y, size: [sz * 0.4, sz * 1.1], a: [1, 0], style: m, c: [c0, c1, c2], rot: tilt * 0.1 })
+    }
+    // O efeito no fim (queimou, congelou, paralisou, envenenou, dormiu, ficou confuso, atributo subiu ou desceu...).
+    const after = (t1) => {
+      const e = r.e
+      if (!e) return t1
+      const F = FX_EFFECT[e]
+      if (!F) return t1
+      const at = e === 'up' || e === 'heal' || e === 'recoil' ? a : tc
+      const who = at === a ? 'A' : 'T'
+      if (e === 'drain' || e === 'heal') {
+        if (e === 'drain') add({ s: 'particles', t0: t1, t1: t1 + 800, n: 22, seed: v + 1, x: [tc.x, a.x], y: [tc.y, a.y], sx: 50, sy: 40, mode: 'travel', life: 650, size: [9, 5], style: 'dot', c: ['#ffffff', '#b8ffcf', '#4ade80'] })
+        add({ s: 'particles', t0: t1 + 300, t1: t1 + 1000, n: 18, seed: v + 2, x: a.x, y: A.y, sx: A.h * 0.35, sy: 10, v: 0, vy: -220, g: 0, life: 600, mode: 'stream', size: [10, 4], style: 'star', c: ['#ffffff', '#b8ffcf', '#4ade80'] })
+        S.push({ who: 'A', k: 'tint', t0: t1 + 300, t1: t1 + 1000, color: '#4ade80', a: 0.4, pulse: 10 })
+        return t1 + 1000
+      }
+      if (e === 'recoil') {
+        S.push({ who: 'A', k: 'move', t0: t1, t1: t1 + 300, dx: -14 * toward, dy: 0, bounce: 2 })
+        add({ s: 'glow', t0: t1, t1: t1 + 260, x: a.x, y: a.y, r: [10, 70], c: ['#ffffff', c1, c2], a: [0.8, 0] })
+        return t1 + 300
+      }
+      add({ s: 'particles', t0: t1, t1: t1 + 900, n: F.n, seed: v + 3, x: at.x, y: at.y + (F.vy > 0 ? -60 : 30), sx: (at === a ? A.h : T.h) * 0.35, sy: 30, v: F.v ?? 0, vy: F.vy, g: 0, life: 650, mode: F.mode ?? 'stream', r: 110, size: F.size, style: F.style, c: F.c })
+      if (F.tint) S.push({ who, k: 'tint', t0: t1, t1: t1 + 800, color: F.tint, a: 0.45, pulse: 16 })
+      if (F.ring) add({ s: 'ring', t0: t1, t1: t1 + 700, x: at.x, y: at.y, r: [130, 30], ratio: 0.6, w: [2, 6], c: F.ring, a: [0, 1], n: 2 })
+      if (F.bolt) add({ s: 'bolt', t0: t1, t1: t1 + 600, x: at.x, y: at.y, r: 110, n: 5, c: '#ffffff', c2: '#ffe94a', w: 2.5, flicker: 1 })
+      return t1 + 900
+    }
+    const finish = (t1, zoomOut = 0) => {
+      const t2 = after(t1 + 100)
+      back(Math.max(t1 + 200, t2 - 200), zoomOut)
+      flashAfter(Math.max(t1 + 200, t2 - 200) + 520)
+    }
+    if (r.c) t = charge(0)
+    switch (r.d) {
+      case 'dash':
+      case 'dive': {
+        const t1 = t + 520
+        cam = (t ? cam : [[0, ...NEUTRAL]]).concat([[t + 280, ...look({ x: (a.x + tc.x) / 2, y: (a.y + tc.y) / 2 }, 1.1, 0)], [t1, ...look(tc, z + 0.1, (-3 + tilt) * toward)]])
+        if (r.d === 'dive') {
+          S.push({ who: 'A', k: 'move', t0: t, t1: t + 380, dx: 0, dy: -700, back: 0 })
+          S.push({ who: 'A', k: 'hide', t0: t + 360, t1: t1 + 500 + n * 260 })
+          add({ s: 'cone', t0: t1 - 240, t1: t1 + 40, x: tc.x, y: [tc.y - 460, tc.y], w: 70, c: c1, a: 0.95 })
+        } else {
+          S.push({ who: 'A', k: 'move', t0: t + 80, t1: t1 + 160 + (n - 1) * 260, dx: (tc.x - a.x) * 0.55, dy: (tc.y - a.y) * 0.55, back: 1 })
+          add({ s: 'particles', t0: t + 120, t1, n: 16, seed: v, x: [a.x, tc.x], y: [a.y, tc.y], sx: 40, sy: 30, v: 40, vy: 0, g: 0, life: 260, mode: 'trail', size: [7, 2], style: 'streak', c: ['#ffffff', c1] })
+        }
+        for (let i = 0; i < n; i++) {
+          const ti = t1 + i * 260
+          motifHit(ti, { x: tc.x + (i - (n - 1) / 2) * 30, y: tc.y + (vr(i) - 0.5) * 30 }, i)
+          hit(ti + 60, pw * (i === n - 1 ? 1.15 : 0.8))
+          if (type !== 'normal' && type !== 'fighting') add(typeParticles(ti + 80, tc, 10 + 4 * p, 'burst', 520, pw))
+        }
+        cam.push([t1 + n * 260 + 200, ...look(tc, z, (-2 + tilt) * toward)])
+        finish(t1 + n * 260 + 150, 60)
+        break
+      }
+      case 'shot':
+      case 'volley': {
+        const k = Math.max(n, r.d === 'volley' ? 3 : 1)
+        const t0 = t + 380
+        cam = (t ? cam : [[0, ...NEUTRAL]]).concat([[t0, ...look({ x: a.x * 0.35 + tc.x * 0.65, y: a.y * 0.35 + tc.y * 0.65 }, 1.15, -toward)], [t0 + 300 + k * 170, ...look(tc, z, (-2 + tilt) * toward)]])
+        const o = { x: a.x + 40 * toward, y: a.y - 20 }
+        add({ s: 'glow', t0: t, t1: t0 + 60, x: o.x, y: o.y, r: [4, 34 + 6 * p], c: [c0, c1, c2], a: 1, swirl: 1 })
+        for (let i = 0; i < k; i++) {
+          const ti = t0 + 300 + i * 170
+          const dx = (vr(i) - 0.5) * (k > 1 ? 110 : 0)
+          const dy = (vr(i + 9) - 0.5) * (k > 1 ? 70 : 0)
+          add({ s: 'shot', t0: ti - 300, t1: ti, x: [o.x, tc.x + dx], y: [o.y - 40 * Math.sin(vr(i + 5) * 3), tc.y + dy], r: 14 + 5 * p, c: [c0, c1, c2, c3], style: st, trail: 1, spin: vr(i + 7) > 0.5 ? 1 : -1 })
+          add({ s: 'glow', t0: ti, t1: ti + 220, x: tc.x + dx, y: tc.y + dy, r: [10, 60 + 10 * p], c: [c0, c1, c2], a: [1, 0] })
+          shake.push([ti, ti + 120, 3 + p])
+        }
+        const last = t0 + 300 + (k - 1) * 170
+        motifHit(last + 20)
+        hit(last + 40, pw)
+        finish(last + 300, 60)
+        break
+      }
+      case 'beam':
+      case 'jet': {
+        const t0 = t + 350
+        cam = (t ? cam : [[0, ...NEUTRAL]]).concat([[t0, ...look(a, 1.3, 2 * toward)], [t0 + 450, ...look(a, 1.35, 2 * toward)], [t0 + 650, ...look({ x: (a.x + tc.x) / 2, y: (a.y + tc.y) / 2 }, 1.0, 0)], [t0 + 950, ...look(tc, z, (-2 + tilt) * toward)]])
+        const o = { x: a.x + 40 * toward, y: a.y - 10 }
+        if (r.d === 'beam') {
+          add({ s: 'particles', t0: t0 - 100, t1: t0 + 550, n: 26, seed: v, x: o.x, y: o.y, sx: 0, sy: 0, mode: 'converge', r: 160, life: 450, size: [3, 7], style: 'dot', c: [c0, c1] })
+          add({ s: 'glow', t0: t0 - 50, t1: t0 + 600, x: o.x, y: o.y, r: [6, 40 + 8 * p], c: [c0, c1, c2], a: 1 })
+          add({ s: 'beam', t0: t0 + 550, t1: t0 + 1450, x0: o.x, y0: o.y, x1: tc.x, y1: tc.y, w: [10, 26 + 8 * p], c: [c0, c1, c2], a: [1, 0], wobble: 4, grow: 120 })
+          add({ s: 'particles', t0: t0 + 600, t1: t0 + 1400, n: 30 + 6 * p, seed: v + 3, x: [o.x, tc.x], y: [o.y, tc.y], sx: 20, sy: 20, v: 60, vy: 0, g: 0, life: 300, mode: 'trail', size: [8, 2], style: st, c: [c0, c1, c2] })
+        } else
+          add({ s: 'particles', t0: t0 + 200, t1: t0 + 1350, n: 70 + 20 * p, seed: v, x: [o.x, tc.x], y: [o.y, tc.y], sx: 6, sy: 6, spread: 18 + 6 * p, mode: 'jet', life: 420, size: [10, 18 + 6 * p], style: st === 'bubble' ? 'droplet' : st === 'goo' ? 'goo' : 'flame', c: [c0, c1, c2, c3] })
+        motifHit(t0 + 750)
+        hit(t0 + 760, pw)
+        S.push({ who: 'T', k: 'tint', t0: t0 + 760, t1: t0 + 1450, color: c2, a: 0.55, pulse: 26 })
+        finish(t0 + 1450, 60)
+        break
+      }
+      case 'sky': {
+        const t0 = t + 350
+        cam = (t ? cam : [[0, ...NEUTRAL]]).concat([[t0, ...look({ x: tc.x, y: tc.y - 120 }, 1.2, -toward)], [t0 + 700, ...look(tc, z, (-3 + tilt) * toward)]])
+        add({ s: 'tint', t0, t1: t0 + 1100, color: '#05040f', a: [0.45, 0.15] })
+        const k = st === 'spark' ? 3 : 3 + p
+        for (let i = 0; i < k; i++) {
+          const ti = t0 + 250 + i * 140
+          const dx = (vr(i) - 0.5) * 140
+          if (st === 'spark') add({ s: 'bolt', t0: ti, t1: ti + 220, x: tc.x + dx * 0.3, y: tc.y, r: 0, from: { x: tc.x + dx, y: tc.y - 480 }, n: 9, c: '#ffffff', c2: c1, w: 5 + p, flicker: 1 })
+          else add({ s: 'shot', t0: ti - 260, t1: ti, x: [tc.x + dx - 160 * toward, tc.x + dx * 0.4], y: [tc.y - 460, tc.y + (vr(i + 3) - 0.5) * 40], r: 18 + 6 * p, c: [c0, c1, c2, c3], style: st, trail: 1 })
+          add({ s: 'glow', t0: ti, t1: ti + 220, x: tc.x + dx * 0.35, y: tc.y, r: [10, 70 + 10 * p], c: [c0, c1, c2], a: [1, 0] })
+          shake.push([ti, ti + 140, 4 + 2 * p])
+        }
+        if (st === 'spark') add({ s: 'tint', t0: t0 + 250, t1: t0 + 360, color: '#ffffff', a: [0.8, 0] })
+        hit(t0 + 250 + (k - 1) * 140, pw * 1.1)
+        finish(t0 + 400 + k * 140, 60)
+        break
+      }
+      case 'quake': {
+        cam = (t ? cam : [[0, ...NEUTRAL]]).concat([[t + 300, 480, 300, 0.92, 0], [t + 1400, 480, 300, 0.95, 0]])
+        add({ s: 'crack', t0: t + 300, t1: t + 1400, x: tc.x, y: T.y, r: [20, 220 + 30 * p], n: 5 + p, c: c3, c2: c1, a: [1, 0] })
+        add({ s: 'particles', t0: t + 350, t1: t + 1400, n: 30 + 10 * p, seed: v, x: tc.x, y: T.y, sx: 220, sy: 10, v: 60, vy: -260, g: 600, life: 700, mode: 'stream', size: [12, 4], style: st === 'shard' ? 'shard' : 'dust', c: [c1, c2, c3] })
+        shake.push([t + 300, t + 1300, 8 + 2 * p])
+        S.push({ who: 'T', k: 'move', t0: t + 400, t1: t + 1100, dx: 0, dy: -24, bounce: 3 })
+        hit(t + 700, pw)
+        finish(t + 1300, 0)
+        break
+      }
+      case 'wave': {
+        cam = (t ? cam : [[0, ...NEUTRAL]]).concat([[t + 400, 480, 290, 0.95, -toward], [t + 1500, ...look(tc, 1.3, -2 * toward)]])
+        add({ s: 'wave', t0: t + 300, t1: t + 1500, dir: toward, c: [c0, c1, c2, c3], h: [0.2, 0.55 + 0.06 * p] })
+        add({ s: 'particles', t0: t + 500, t1: t + 1500, n: 50, seed: v, x: tc.x, y: tc.y, sx: 200, sy: 120, v: 120, vy: -200, g: 500, life: 600, mode: 'stream', size: [8, 3], style: st === 'bubble' ? 'droplet' : st, c: [c0, c1, c2] })
+        hit(t + 950, pw)
+        finish(t + 1500, 60)
+        break
+      }
+      case 'gale': {
+        cam = (t ? cam : [[0, ...NEUTRAL]]).concat([[t + 380, ...look(tc, z, (-2 + tilt) * toward)]])
+        add({ s: 'ring', t0: t + 300, t1: t + 1400, x: tc.x, y: [T.y, tc.y - 60], r: [40, 120 + 10 * p], ratio: 0.35, w: [10, 3], c: c0, a: [0.9, 0], n: 4 + p, spiral: 4 })
+        add({ s: 'particles', t0: t + 350, t1: t + 1400, n: 40 + 10 * p, seed: v, x: tc.x, y: tc.y, sx: 0, sy: 0, mode: 'swirl', r: 150, life: 900, size: [10, 4], style: ['crystal', 'leaf', 'feather', 'shard'].includes(st) ? st : 'streak', c: [c0, c1, c2] })
+        hit(t + 850, pw)
+        finish(t + 1400, 60)
+        break
+      }
+      case 'sound':
+      case 'aura': {
+        const sound = r.d === 'sound'
+        cam = (t ? cam : [[0, ...NEUTRAL]]).concat([[t + 350, ...look(sound ? { x: (a.x + tc.x) / 2, y: (a.y + tc.y) / 2 } : tc, sound ? 1.05 : z - 0.1, 0)], [t + 1250, ...look(tc, z, (-2 + tilt) * toward)]])
+        if (sound) {
+          add({ s: 'ring', t0: t + 200, t1: t + 1200, x: [a.x, tc.x], y: [a.y, tc.y], r: [30, 110], ratio: 0.8, w: 5, c: c1, a: [1, 0.3], n: 3 + p, stagger: 1 })
+          add({ s: 'particles', t0: t + 200, t1: t + 1200, n: 14 + 3 * p, seed: v, x: [a.x, tc.x], y: [a.y, tc.y], sx: 60, sy: 50, mode: 'travel', life: 800, size: [16, 12], style: 'note', c: [c0, c1, c2] })
+        } else {
+          add({ s: 'tint', t0: t + 300, t1: t + 1300, color: c3, a: [0, 0.4] })
+          add({ s: 'particles', t0: t + 300, t1: t + 1200, n: 30 + 6 * p, seed: v, x: tc.x, y: tc.y, sx: 0, sy: 0, mode: 'converge', r: 220, life: 600, size: [4, 10], style: st, c: [c0, c1, c2] })
+        }
+        add({ s: 'ring', t0: t + 800, t1: t + 1500, x: tc.x, y: tc.y, r: [150, 20], ratio: 1, w: [2, 8], c: c0, a: [0, 1], n: 3 })
+        motifHit(t + 1150)
+        hit(t + 1200, pw)
+        S.push({ who: 'T', k: 'tint', t0: t + 800, t1: t + 1500, color: c1, a: 0.5, pulse: 18 })
+        finish(t + 1500, 60)
+        break
+      }
+      case 'blast': {
+        const self = has(slug, 'explosion', 'self-destruct', 'mind-blown', 'misty-explosion')
+        const at = self ? a : tc
+        cam = (t ? cam : [[0, ...NEUTRAL]]).concat([[t + 400, ...look(at, 1.3, 2 * toward)], [t + 900, 480, 280, 0.95, 0]])
+        add({ s: 'glow', t0: t + 300, t1: t + 900, x: at.x, y: at.y, r: [10, 90], c: ['#ffffff', c1, c2], a: 1, swirl: 1 })
+        add({ s: 'tint', t0: t + 900, t1: t + 1050, color: '#ffffff', a: [1, 0] })
+        add({ s: 'fill', t0: t + 900, t1: t + 1800, c: [c0, c1, c2, c3], from: 'center', a: 0.85 })
+        add(typeParticles(t + 950, at, 30, 'burst', 700, 1.6))
+        shake.push([t + 900, t + 1700, 10 + 2 * p])
+        if (self) S.push({ who: 'A', k: 'tint', t0: t + 300, t1: t + 900, color: '#ffffff', a: 0.8, pulse: 30 })
+        hit(t + 950, pw * 1.2)
+        finish(t + 1700, 0)
+        break
+      }
+      case 'drain': {
+        cam = (t ? cam : [[0, ...NEUTRAL]]).concat([[t + 300, ...look(tc, 1.3, -2 * toward)], [t + 900, ...look({ x: (a.x + tc.x) / 2, y: (a.y + tc.y) / 2 }, 1.0, 0)]])
+        motifHit(t + 380)
+        hit(t + 380, pw * 0.8)
+        add({ s: 'glow', t0: t + 300, t1: t + 900, x: tc.x, y: tc.y, r: [30, 100], c: [c0, c1, c2], a: [0.9, 0] })
+        finish(t + 500, 0)
+        break
+      }
+      case 'hex':
+      case 'hazard': {
+        cam = (t ? cam : [[0, ...NEUTRAL]]).concat([[t + 400, ...look(tc, 1.35, (-2 + tilt) * toward)]])
+        if (r.d === 'hazard') {
+          for (let i = 0; i < 4 + (p > 1 ? 1 : 0); i++) {
+            const dx = (i - 2) * 50 + (vr(i) - 0.5) * 20
+            add({ s: 'shot', t0: t + 100 + i * 110, t1: t + 500 + i * 110, x: [a.x, tc.x + dx], y: [a.y, T.y - 6], r: 16, c: [c0, c1, c2, c3], style: st, arc: 160 })
+            add({ s: 'icon', t0: t + 500 + i * 110, t1: t + 1500, x: tc.x + dx, y: T.y - 6, size: 26, a: [1, 1], style: st === 'dot' ? 'star' : st, c: [c0, c1, c2] })
+          }
+          hud = [100, 1500]
+          cam.push([1500, ...look(tc, 1.35, -2 * toward)], [1900, ...NEUTRAL])
+          end(2000)
+          break
+        }
+        add({ s: 'particles', t0: t + 150, t1: t + 1100, n: 24 + 4 * p, seed: v, x: [a.x, tc.x], y: [a.y, tc.y], sx: 70, sy: 50, mode: 'travel', life: 800, size: [8, 4], style: st, c: [c0, c1, c2] })
+        add({ s: 'ring', t0: t + 700, t1: t + 1400, x: tc.x, y: tc.y, r: [120, 20], ratio: 0.6, w: [2, 7], c: c1, a: [0, 1], n: 3 })
+        motifHit(t + 900)
+        S.push({ who: 'T', k: 'tint', t0: t + 800, t1: t + 1400, color: c2, a: 0.45, pulse: 14 })
+        const t2 = after(t + 1000)
+        hud = [100, t2]
+        cam.push([t2, ...look(tc, 1.35, -2 * toward)], [t2 + 380, ...NEUTRAL])
+        end(t2 + 420)
+        break
+      }
+      case 'self':
+      case 'field':
+        selfRecipe(r, st)
+        break
+      case 'orb':
+      default: {
+        const t0 = t + 350
+        cam = (t ? cam : [[0, ...NEUTRAL]]).concat([[t0, ...look(a, 1.3, 2 * toward)], [t0 + 500, ...look(a, 1.35, 2 * toward)], [t0 + 800, ...look({ x: (a.x + tc.x) / 2, y: (a.y + tc.y) / 2 }, 1.0, 0)], [t0 + 1000, ...look(tc, z, (-2 + tilt) * toward)]])
+        const o = { x: a.x + 50 * toward, y: a.y - 30 }
+        add({ s: 'particles', t0: t0 - 100, t1: t0 + 600, n: 24, seed: v, x: o.x, y: o.y, sx: 0, sy: 0, mode: 'converge', r: 140, life: 420, size: [3, 7], style: st, c: [c0, c1] })
+        add({ s: 'glow', t0: t0 - 50, t1: t0 + 600, x: o.x, y: o.y, r: [4, 36 + 6 * p], c: [c0, c1, c2, c3], a: 1, core: 0.3, swirl: 1 })
+        add({ s: 'glow', t0: t0 + 600, t1: t0 + 900, x: [o.x, tc.x], y: [o.y, tc.y], r: [36 + 6 * p, 50 + 8 * p], c: [c0, c1, c2, c3], a: 1, core: 0.3, swirl: 1, trail: 1 })
+        motifHit(t0 + 900)
+        hit(t0 + 900, pw)
+        finish(t0 + 1150, 160)
+      }
+    }
+  }
+  // Em quem usa (atributos, cura, redoma, dança) ou no campo (clima, terreno, sala).
+  function selfRecipe(r, st) {
+    const m = r.m
+    const v = r.v ?? 0
+    if (r.d === 'field') {
+      cam = [[0, ...NEUTRAL], [500, 480, 250, 0.92, 0], [1600, 480, 260, 0.94, 0]]
+      const rain = m === 'bubble'
+      const sun = m === 'sun' || m === 'flame'
+      const sand = m === 'dust' || m === 'rock'
+      const snow = m === 'crystal'
+      add({ s: 'tint', t0: 300, t1: 1700, color: sun ? '#ffb02e' : rain ? '#0b2a55' : c2, a: [0, sun ? 0.25 : 0.35] })
+      if (sun) add({ s: 'rays', t0: 300, t1: 1700, x: 480, y: -40, n: 14, r0: 0, r1: [200, 700], w: [4, 12], c: '#fff7c2', c2: '#ffb02e', a: [0, 0.8], rot: [0, 0.6] })
+      add({ s: 'particles', t0: 300, t1: 1700, n: rain ? 110 : 70, seed: v, x: 480, y: rain || snow || sand ? -20 : 560, sx: 560, sy: 10, v: sand ? 900 : 30, vy: rain ? 900 : snow ? 220 : sand ? 120 : -260, g: 0, life: rain ? 500 : 1000, mode: 'stream', size: rain ? [14, 14] : [10, 4], style: rain ? 'rain' : snow ? 'crystal' : sand ? 'dust' : st, c: [c0, c1, c2] })
+      hud = [100, 1600]
+      cam.push([2000, ...NEUTRAL])
+      end(2100)
+      return
+    }
+    cam = [[0, ...NEUTRAL], [400, ...look(a, 1.4, 2 * toward)], [1500, ...look(a, 1.45, 2 * toward)]]
+    if (r.e === 'heal') {
+      add({ s: 'particles', t0: 400, t1: 1500, n: 30, seed: v, x: a.x, y: A.y, sx: A.h * 0.4, sy: 10, v: 0, vy: -220, g: 0, life: 800, mode: 'stream', size: [10, 4], style: 'star', c: ['#ffffff', '#b8ffcf', '#4ade80'] })
+      add({ s: 'glow', t0: 600, t1: 1500, x: a.x, y: a.y, r: [40, 160], c: ['#ffffff', '#b8ffcf', '#4ade80'], a: [0.7, 0] })
+      S.push({ who: 'A', k: 'tint', t0: 600, t1: 1400, color: '#4ade80', a: 0.4, pulse: 10 })
+    } else if (m === 'ring' || m === 'gear') {
+      add({ s: 'ring', t0: 400, t1: 1400, x: a.x, y: a.y, r: [20, A.h * 0.7], ratio: 1, w: [12, 3], c: c0, a: [1, 0.2], n: 1 })
+      add({ s: 'glow', t0: 500, t1: 1400, x: a.x, y: a.y, r: A.h * 0.7, c: ['rgba(0,0,0,0)', c1, c0], a: [0.6, 0], core: 0.7 })
+      add({ s: 'particles', t0: 500, t1: 1400, n: 12, seed: v, x: a.x, y: a.y, sx: 0, sy: 0, mode: 'orbit', r: A.h * 0.6, life: 900, size: [10, 10], style: m === 'gear' ? 'gear' : 'glint', c: [c0, c1] })
+    } else {
+      // Dança e atributos: as formas giram em volta, a aura sobe e as setas sobem.
+      add({ s: 'particles', t0: 300, t1: 1300, n: 6, seed: v, x: a.x, y: a.y, sx: 0, sy: 0, mode: 'orbit', r: A.h * 0.55, life: 1000, size: [26, 26], style: st, c: [c0, c1, c2] })
+      add({ s: 'ring', t0: 300, t1: 1300, x: a.x, y: [A.y, A.y - A.h], r: A.h * 0.45, ratio: 0.3, w: 5, c: c1, a: [1, 0], n: 4, stagger: 1 })
+      add({ s: 'particles', t0: 300, t1: 1400, n: 36, seed: v + 1, x: a.x, y: A.y, sx: A.h * 0.4, sy: 10, v: 0, vy: -320, g: 0, life: 700, mode: 'stream', size: [10, 3], style: 'streak', c: [c0, c1, c2] })
+      if (r.e === 'up') add({ s: 'particles', t0: 800, t1: 1500, n: 10, seed: v + 4, x: a.x, y: A.y - A.h * 0.3, sx: A.h * 0.35, sy: 20, v: 0, vy: -200, g: 0, life: 600, mode: 'stream', size: [16, 12], style: 'arrowUp', c: ['#ffffff', c1, c2] })
+      S.push({ who: 'A', k: 'tint', t0: 600, t1: 1400, color: c1, a: 0.45, pulse: 16 })
+    }
+    hud = [100, 1500]
+    cam.push([1900, ...NEUTRAL])
+    end(2000)
+  }
   // Golpes que acontecem em quem usa: aura, anéis, brilho subindo (atributos, cura, proteção, clima...).
   function selfMove(k) {
     cam = [[0, ...NEUTRAL], [400, ...look(a, 1.4, 2 * toward)], [1500, ...look(a, 1.45, 2 * toward)]]
@@ -401,9 +727,9 @@ export function fxPlan2({ kind, type, slug = '', from = 0, seed = 1, stage = FX_
 const SELF = new Set(['boost', 'dance', 'heal', 'shield', 'charge', 'weather', 'terrain', 'field', 'wall', 'explode', 'drop', 'status', 'powder', 'hazard', 'swap'])
 
 /** Plano de um golpe pelo nome, tipo e categoria (os de status pelo alvo das regras). */
-export function fxForMove({ slug, type, category, self = false, entry = null, from = 0, seed = 1 }) {
+export function fxForMove({ slug, type, category, self = false, entry = null, recipe = null, from = 0, seed = 1 }) {
   const kind = entry?.[0] ?? (category === 'status' ? (self ? 'boost' : 'status') : moveAnim(slug, type, category))
-  return fxPlan2({ kind, type, slug, from, seed })
+  return fxPlan2({ kind, type, slug, from, seed, recipe })
 }
 
 /** A câmera no instante [ms]: [x, y, zoom, giro], suave entre os pontos. */
