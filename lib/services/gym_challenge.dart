@@ -75,7 +75,7 @@ class GymChallenge {
   /// tocam o tema da região deles. Igual ao site.
   /// Os rivais com tema próprio (rival_<nome>, "Brendan/May" vira brendan-may), conforme vão sendo feitos;
   /// os outros tocam o tema da região. Igual ao site.
-  static const rivalThemes = ['blue', 'silver', 'brendan-may', 'wally', 'barry', 'cheren', 'bianca', 'hugh', 'n', 'serena-calem', 'shauna', 'tierno', 'trevor', 'hau', 'gladion', 'hop', 'bede', 'marnie', 'nemona', 'arven', 'red', 'lillie', 'az', 'anabel', 'dexio', 'sina', 'benga', 'eusine', 'ryuki', 'sordward-e-shielbert'];
+  static const rivalThemes = ['blue', 'silver', 'brendan-may', 'wally', 'barry', 'cheren', 'bianca', 'hugh', 'n', 'serena-calem', 'shauna', 'tierno', 'trevor', 'hau', 'gladion', 'hop', 'bede', 'marnie', 'nemona', 'arven', 'red', 'lillie', 'az', 'anabel', 'dexio', 'sina', 'benga', 'eusine', 'ryuki', 'sordward-e-shielbert', 'akari', 'adaman', 'irida', 'wes', 'solana', 'keith', 'summer', 'carmine', 'perrin'];
 
   /// Os vilões: os personagens importantes com tema próprio (villain_<nome>) e as equipes (villain_team_<equipe>),
   /// que os comandantes dividem, conforme vão sendo feitos; os outros tocam o tema da região. Igual ao site.

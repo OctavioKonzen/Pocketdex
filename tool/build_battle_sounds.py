@@ -1996,6 +1996,10 @@ RIVAL_THEMES = {
     'eusine': (62, 'dorian', [0, 3, 6, 4], 124),
     'ryuki': (64, 'phrygian', [0, 1, 6, 4], 172),
     'sordward-e-shielbert': (65, 'major', [0, 4, 5, 3], 132),
+    # As regiões dos outros jogos e as expansões.
+    'akari': (62, 'dorian', [0, 3, 6, 4], 160), 'adaman': (64, 'mixolydian', [0, 6, 3, 4], 156), 'irida': (65, 'dorian', [0, 5, 3, 4], 150),
+    'wes': (64, 'minor', [0, 6, 5, 4], 158), 'solana': (67, 'major', [0, 3, 4, 5], 162), 'keith': (65, 'mixolydian', [0, 3, 6, 4], 166),
+    'summer': (66, 'major', [0, 5, 3, 4], 160), 'carmine': (63, 'harmonic', [0, 5, 6, 4], 168), 'perrin': (64, 'dorian', [0, 6, 3, 0], 148),
 }
 
 
@@ -2755,6 +2759,38 @@ RIVALS = {'blue': rival_blue_orchestra, 'silver': rival_silver_orchestra, 'brend
           'trevor': rival_trevor_orchestra, 'hau': rival_hau_orchestra, 'gladion': rival_gladion_orchestra,
           'hop': rival_hop_orchestra, 'bede': rival_bede_orchestra, 'marnie': rival_marnie_orchestra,
           'nemona': rival_nemona_orchestra, 'arven': rival_arven_orchestra, 'red': rival_red_orchestra, 'lillie': rival_lillie_orchestra, 'az': rival_az_orchestra, 'anabel': rival_anabel_orchestra, 'dexio': rival_dexio_orchestra, 'sina': rival_sina_orchestra, 'benga': rival_benga_orchestra, 'eusine': rival_eusine_orchestra, 'ryuki': rival_ryuki_orchestra, 'sordward-e-shielbert': rival_sordward_shielbert_orchestra}  # os rivais já feitos (os outros tocam o tema da região)
+
+
+# Os rivais das regiões novas: (melodia, dobra, acordes, baixo) de cada um, a mesma banda de rival.
+EXTRA_RIVAL_SOUNDS = {
+    'akari': (77, 48, 107, 33),   # shakuhachi e cordas, koto: a pesquisadora de Hisui
+    'adaman': (61, 56, 30, 34),   # metais e trompete, guitarra: o líder do Clã Diamante, firme
+    'irida': (73, 49, 46, 33),    # flauta e cordas, harpa: a líder do Clã Pearl, calma
+    'wes': (30, 29, 81, 34),      # guitarra distorcida e sintetizador: o ex-Snagem, durão
+    'solana': (73, 24, 0, 33),    # flauta, violão e piano: a Ranger animada
+    'keith': (56, 61, 30, 34),    # trompete e metais, guitarra: o rival convencido
+    'summer': (12, 73, 24, 33),   # marimba, flauta e violão: a Ranger das ilhas
+    'carmine': (81, 30, 62, 38),  # sintetizador e guitarra: a irmã brava de Kitakami
+    'perrin': (71, 0, 46, 32),    # clarinete, piano e harpa: a fotógrafa
+}
+
+
+def extra_rival_orchestra(name):
+    """Os rivais das regiões fora da série principal e das expansões: a melodia original no instrumento dele, a dobra uma
+    oitava abaixo, os acordes nos contratempos, o baixo em colcheias e a bateria de rival (agitada, sem peso de campeão)."""
+    lead, chords, bpm = rival_song(name)
+    mel, double, comp, bass = EXTRA_RIVAL_SOUNDS[name]
+    melody = lead_notes(lead, 94, maxlen=4, keep=lambda i: i % 2 == 0, extra=0.05)
+    parts = [
+        (mel, melody), (double, [(st, ln, m - 12, 70) for st, ln, m, v in melody]),
+        (comp, each_chord(chords, lambda b, r, t, c: [(b + k, 0.5, m, 66) for k in range(1, 16, 2) for m in t])),
+        (bass, each_chord(chords, lambda b, r, t, c: [(b + k, 0.85, r + (12 if k % 4 == 3 else 0), 92 if k % 2 == 0 else 78) for k in range(16)])),
+        ('drums', hits(chords, lambda b, bar: [(b + k, 36, 96) for k in (0, 3, 4)] + [(b + k, 38, 88) for k in (2, 6)] + [(b + k / 2, 42, 56) for k in range(16)])),
+    ]
+    return render(parts, bpm, len(lead))
+
+
+RIVALS.update({n: (lambda n=n: extra_rival_orchestra(n)) for n in EXTRA_RIVAL_SOUNDS})
 
 
 # Os vilões: um tema para cada equipe (os comandantes dividem) e um próprio para os personagens importantes.
