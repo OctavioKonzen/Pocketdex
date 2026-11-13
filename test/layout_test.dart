@@ -270,6 +270,11 @@ final screens = <String, Widget Function()>{
       }),
   'Battle Factory (mapa da região)': () => _factory(null, {'floor': 24, 'biome': 'grass', 'options': [{'kind': 'wild', 'biome': 'grass'}]}, {'leg': 21, 'boss': {'region': 0, 'step': 1}}),
   'Battle Factory (plano atrapalhado)': () => _factory({'exp': 0, 'money': 420, 'levels': [], 'joy': false, 'capture': null, 'cards': null, 'shop': null, 'plot': {'chapter': 1, 'team': 'rocket', 'item': 'ultra-ball'}, 'flawless': 'master-ball'}),
+  // A história em cenas: ao chegar na cidade, antes da luta e depois de vencer (Kanto).
+  'Battle Factory (cena ao chegar)': () => _factory(null, {'floor': 10, 'biome': 'city', 'town': true, 'options': [{'kind': 'boss'}]}),
+  'Battle Factory (cena antes da luta)': () => _factory(null, {'floor': 20, 'biome': 'grass', 'options': [{'kind': 'boss'}]}, {'boss': {'region': 0, 'step': 3}}),
+  'Battle Factory (cena depois da luta)': () => _factory({'exp': 0, 'money': 420, 'levels': [], 'joy': false, 'capture': null, 'cards': null, 'shop': null,
+        'beat': {'kind': 'gym', 'name': 'Misty', 'region': 'Kanto', 'city': 'Cerulean City'}}),
   'Battle Factory (cidade)': () => _factory(null, {'floor': 10, 'biome': 'city', 'town': true, 'options': [{'kind': 'boss'}, {'kind': 'dungeon', 'place': 'sewer', 'scene': 'sewer'}]}),
   // A troca do morador (uma por cidade): o botão dela junto do Poké Mart, do Centro e da Creche.
   'Battle Factory (cidade, troca)': () => _factory(null, {'floor': 10, 'biome': 'city', 'town': true, 'options': [{'kind': 'boss'}]}, {'town': {'leg': 1, 'shop': ['potion'], 'trade': {'want': 25, 'give': 93}}}),
