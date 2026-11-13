@@ -116,7 +116,7 @@ HAND = {
         'roads': [[(3.7, 55.3), (3.7, 69.0), (16.9, 69.0), 'Cianwood City'], ['sea', 'Cianwood City', (30.3, 64.7), (30.3, 50.8), 'Olivine City'], ['Olivine City', (34.3, 28.6), 'Ecruteak City'], ['Ecruteak City', 'Mahogany Town'], ['Mahogany Town', 'Blackthorn City'], ['Mahogany Town', (79.2, 10.7)], ['Ecruteak City', (58.7, 46.0), 'Violet City'], ['Goldenrod City', (49.2, 46.0), (58.7, 46.0)], ['Violet City', (85.7, 46.0), 'Cherrygrove City'], ['Goldenrod City', (49.2, 83.7), 'Azalea Town'], ['Azalea Town', (71.9, 83.7), 'Violet City'], ['Cherrygrove City', 'New Bark Town'], ['New Bark Town', (118.5, 68.4), (118.5, 49.5), (150.0, 49.5)], ['Indigo Plateau', (134.8, 68.4)], ['Blackthorn City', (102.0, 56.1), (95.5, 56.1), (95.5, 68.2)]],
     },
     # Kanto: pelo mapa do HeartGold/SoulSilver que você mandou (Mt. Silver e as montanhas no noroeste, a enseada a oeste de Fuchsia).
-    # Hisui (provisório, até o desenho de Hisui que você mandou).
+    # Hisui (o provisório; vale o desenho em ART).
     'hisui': {
         'aspect': 1.5,
         'cities': {'Jubilife Village': (38.1, 54.7), 'Obsidian Fieldlands': (125.5, 54.7), 'Crimson Mirelands': (101.1, 51.8), 'Cobalt Coastlands': (132.3, 18.6), 'Coronet Highlands': (74.7, 32.2), 'Alabaster Icelands': (35.6, 20.5), 'Temple of Sinnoh': (97.2, 72.3)},
@@ -687,6 +687,9 @@ ART = {
         'Wyndon': (610, 235), 'Hammerlocke': (300, 318), 'Motostoke': (905, 355), 'Stow-on-Side': (305, 585),
         'Ballonlea': (905, 645), 'Spikemuth': (590, 640), 'Turffield': (665, 1128), 'Postwick': (640, 1170),
         'Wedgehurst': (795, 935), 'Hulbury': (775, 578), 'Circhester': (630, 465)}},
+    'hisui': {'crop': (0, 0, 1536, 1024), 'cities': {
+        'Jubilife Village': (395, 570), 'Alabaster Icelands': (462, 210), 'Coronet Highlands': (890, 260), 'Crimson Mirelands': (1040, 540),
+        'Obsidian Fieldlands': (1245, 600), 'Cobalt Coastlands': (1175, 200), 'Temple of Sinnoh': (930, 745)}},
 }
 ART_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'region_maps_art')
 
