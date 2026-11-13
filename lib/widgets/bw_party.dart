@@ -6,6 +6,8 @@
 // quem usar um item, quem trocar ou quem sai do time. Igual ao site
 // (web-site/src/components/BwParty.jsx).
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import '../utils/hud_colors.dart';
 
@@ -13,7 +15,7 @@ import '../i18n/i18n.dart';
 import 'pokemon_sprite.dart';
 
 class PartySlot {
-  const PartySlot({required this.id, this.shiny = false, required this.name, required this.level, this.hp = 1, this.sub, this.status = '', this.max = false});
+  const PartySlot({required this.id, this.shiny = false, required this.name, required this.level, this.hp = 1, this.sub, this.status = '', this.max = false, this.hearts});
   final int id, level;
   final bool shiny;
   final String name;
@@ -25,11 +27,14 @@ class PartySlot {
 
   /// Chegou no limite de nível da corrida (mostra MÁX ao lado do nível).
   final bool max;
+
+  /// A amizade (Battle Factory): de 0 a 5 corações; null não mostra.
+  final int? hearts;
 }
 
 class BwParty extends StatefulWidget {
   const BwParty(
-      {super.key, required this.team, required this.onPick, this.title, this.disabled, this.onCancel, this.cancelLabel, this.testKey = 'bw-party', this.active, this.header, this.onInfo, this.pickLabel, this.fill = false, this.selected, this.onSelect, this.eggs = const []});
+      {super.key, required this.team, required this.onPick, this.title, this.disabled, this.onCancel, this.cancelLabel, this.testKey = 'bw-party', this.active, this.header, this.onInfo, this.pickLabel, this.fill = false, this.selected, this.onSelect, this.eggs = const [], this.mystery = const {}});
   final List<PartySlot> team;
   final ValueChanged<int> onPick;
   final String? title;
@@ -58,6 +63,9 @@ class BwParty extends StatefulWidget {
 
   /// Os ovos no time (Battle Factory): cada um numa vaga, depois dos Pokémon, com as vitórias que faltam para chocar.
   final List<int> eggs;
+
+  /// Quais desses ovos são misteriosos (as posições em [eggs]): aparecem como ❔ até chocar.
+  final Set<int> mystery;
 
   @override
   State<BwParty> createState() => _BwPartyState();
@@ -171,6 +179,15 @@ class _BwPartyState extends State<BwParty> {
                             decoration: BoxDecoration(color: const Color(0xFFFBBF24), borderRadius: BorderRadius.circular(3)),
                             child: const Text('MÁX', style: TextStyle(color: Color(0xFF0F172A), fontSize: 8, fontWeight: FontWeight.w900))),
                     ]),
+                    if (m.hearts != null)
+                      Text.rich(
+                        key: ValueKey('${widget.testKey}-hearts-$i'),
+                        TextSpan(children: [
+                          TextSpan(text: '♥' * m.hearts!),
+                          TextSpan(text: '♥' * math.max(0, 5 - m.hearts!), style: const TextStyle(color: Color(0x66EC4899))),
+                        ]),
+                        style: const TextStyle(color: Color(0xFFEC4899), fontSize: 9, height: 1),
+                      ),
                     const SizedBox(height: 2),
                     Row(children: [
                       Container(
@@ -205,7 +222,7 @@ class _BwPartyState extends State<BwParty> {
   }
 
   /// Um ovo no time: a vaga dele (não dá para tocar), com quantas vitórias faltam.
-  Widget _eggSlot(int left) => Container(
+  Widget _eggSlot(int left, [bool mystery = false]) => Container(
         key: const ValueKey('party-egg'),
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
         decoration: BoxDecoration(
@@ -214,11 +231,11 @@ class _BwPartyState extends State<BwParty> {
           borderRadius: BorderRadius.circular(12),
         ),
         child: _fitted(Row(children: [
-          const SizedBox(width: 38, height: 38, child: Center(child: Text('🥚', style: TextStyle(fontSize: 26)))),
+          SizedBox(width: 38, height: 38, child: Center(child: Text(mystery ? '❔' : '🥚', style: const TextStyle(fontSize: 26)))),
           const SizedBox(width: 4),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-              Text(tr('Ovo'), style: const TextStyle(color: _ink, fontWeight: FontWeight.w900, fontSize: 12)),
+              Text(tr(mystery ? 'Ovo misterioso' : 'Ovo'), style: const TextStyle(color: _ink, fontWeight: FontWeight.w900, fontSize: 12)),
               FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerLeft,
@@ -234,7 +251,7 @@ class _BwPartyState extends State<BwParty> {
   Widget _cell(int k) => k < team.length
       ? _slot(k)
       : k < team.length + widget.eggs.length
-          ? _eggSlot(widget.eggs[k - team.length])
+          ? _eggSlot(widget.eggs[k - team.length], widget.mystery.contains(k - team.length))
           : const SizedBox();
 
   /// No modo da batalha o cartão ocupa a célula dele: o conteúdo centraliza (e diminui, se não couber).

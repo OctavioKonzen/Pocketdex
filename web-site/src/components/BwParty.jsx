@@ -12,7 +12,9 @@ const hpColor = (hp) => (hp > 0.5 ? 'bg-emerald-400' : hp > 0.2 ? 'bg-amber-400'
 /**
  * team: [{ id, shiny, name, level, hp (0 a 1), hpText?, sub? }]
  * onPick(i); disabled(i) → true deixa o cartão apagado; selected: a posição em destaque.
- * eggs: os ovos no time (Battle Factory), cada um numa vaga depois dos Pokémon, com as vitórias que faltam para chocar.
+ * eggs: os ovos no time (Battle Factory), cada um numa vaga depois dos Pokémon, com as vitórias que faltam para chocar
+ * (um número, ou { left, mystery } para o ovo misterioso, que aparece como ❔).
+ * hearts (em cada um do time): a amizade, de 0 a 5 corações.
  */
 export default function BwParty({ team, title, onPick, disabled = () => false, selected = null, onCancel, cancelLabel, testid = 'bw-party', eggs = [] }) {
   return (
@@ -31,6 +33,11 @@ export default function BwParty({ team, title, onPick, disabled = () => false, s
                   <span className="truncate text-xs font-black sm:text-sm" data-no-translate>{m.name}</span>
                   <span className="shrink-0 text-[10px] font-black sm:text-xs">Lv{m.level}{m.max && <span className="ml-0.5 rounded bg-amber-400 px-0.5 text-[8px] text-slate-900" data-testid={`${testid}-max-${i}`}>MÁX</span>}</span>
                 </span>
+                {m.hearts != null && (
+                  <span className="block text-[9px] leading-none tracking-tighter text-pink-500" title={t('Amizade')} data-testid={`${testid}-hearts-${i}`}>
+                    {'♥'.repeat(m.hearts)}<span className="opacity-40">{'♥'.repeat(Math.max(0, 5 - m.hearts))}</span>
+                  </span>
+                )}
                 <span className="mt-0.5 flex items-center gap-1">
                   <span className="rounded bg-amber-500 px-0.5 text-[8px] font-black text-white">HP</span>
                   <span className="block h-1.5 flex-1 overflow-hidden rounded bg-slate-800">
@@ -42,15 +49,15 @@ export default function BwParty({ team, title, onPick, disabled = () => false, s
             </button>
           )
         })}
-        {eggs.map((left, k) => (
+        {eggs.map((egg, k) => { const left = egg?.left ?? egg; const mystery = Boolean(egg?.mystery); return (
           <div key={`egg-${k}`} className="flex min-w-0 items-center gap-1 rounded-xl border-2 border-amber-800 bg-gradient-to-b from-amber-100 to-amber-300 px-1.5 py-1 text-slate-900" data-testid="party-egg">
-            <span className="grid h-9 w-9 shrink-0 place-items-center text-2xl sm:h-11 sm:w-11">🥚</span>
+            <span className="grid h-9 w-9 shrink-0 place-items-center text-2xl sm:h-11 sm:w-11">{mystery ? '❔' : '🥚'}</span>
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-xs font-black sm:text-sm">{t('Ovo')}</span>
+              <span className="block truncate text-xs font-black sm:text-sm">{t(mystery ? 'Ovo misterioso' : 'Ovo')}</span>
               <span className="block truncate text-[10px] font-bold">{t('Choca em {0} vitórias').replace('{0}', left)}</span>
             </span>
           </div>
-        ))}
+        ) })}
       </div>
       {onCancel && (
         <button type="button" onClick={onCancel} className="self-end cursor-pointer rounded-lg bg-red-600 px-3 py-1 text-sm font-black text-white" data-testid={`${testid}-cancel`}>

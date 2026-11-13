@@ -29,6 +29,7 @@ import {
   boostOf, memberOf, learnMove, movesLearnedBetween,
   cutPath, smashPath, strengthPath, weatherOf, outbreakOf, ROAM_TURNS, nodeBlocked, hmNeeded, hasHm, clockOf, healerOf, inTown, DARK_BIOMES, dexOf, dexRewardFor, leaveDaycare, takeDaycare, DAYCARE_EGG, EGG_BATTLES, withSeen,
   mapMusic,
+  heartsOf, roamerSeen, villainPlot, fieldOf, mysteryEgg, takeMysteryEgg, LEAGUE_FLAWLESS,
 } from '../lib/factoryRun'
 import { startMusic, stopMusic } from '../lib/battleSound'
 import { t } from '../lib/i18n'
@@ -448,12 +449,14 @@ function TeamView({ run, data, byId, save }) {
   // O limite de nível de agora (o próximo chefe e os desvios): quem chegou nele para de ganhar XP até vencer o chefe.
   const cap = levelCapOf(data, run)
   const team = run.team.map((m) => ({
-    id: m.id, shiny: m.shiny, name: t(prettyName(byId?.get(m.id)?.name ?? '')), level: m.level, hp: m.hp ?? 1, max: cap != null && m.level >= cap,
+    id: m.id, shiny: m.shiny, name: m.nick || t(prettyName(byId?.get(m.id)?.name ?? '')), level: m.level, hp: m.hp ?? 1, max: cap != null && m.level >= cap,
+    // A amizade (os corações) e, de quem veio de uma troca, o treinador de antes (OT).
+    hearts: heartsOf(m),
     // O item que ele segura (★ o principal; +N os extras).
-    sub: m.item ? `★ ${itemName(m.item)}${(m.extras ?? []).length ? ` +${m.extras.length}` : ''}` : undefined,
+    sub: m.item ? `★ ${itemName(m.item)}${(m.extras ?? []).length ? ` +${m.extras.length}` : ''}` : m.ot ? `🔁 OT ${m.ot}` : undefined,
   }))
   // Os ovos ocupam vagas do time (e chocam com as vitórias).
-  return <BwParty team={team} testid="factory-team" title={cap != null ? `📈 ${t('Nível máximo agora: {0}. Sobe quando você vence o próximo chefe.').replace('{0}', cap)}` : undefined} eggs={(run.eggs ?? []).map((e) => e.left)} onPick={(i) => { setSummary(null); setSel(i) }} />
+  return <BwParty team={team} testid="factory-team" title={cap != null ? `📈 ${t('Nível máximo agora: {0}. Sobe quando você vence o próximo chefe.').replace('{0}', cap)}` : undefined} eggs={(run.eggs ?? []).map((e) => (e.mystery ? { left: e.left, mystery: true } : e.left))} onPick={(i) => { setSummary(null); setSel(i) }} />
 }
 
 /** Ensinar um golpe: TM (os que ele aprende por máquina), Move Tutor (tutor e ovo) ou Move Reminder (os do nível). */
@@ -1515,7 +1518,38 @@ const VILLAIN_PLANS = {
 const SEASON_LABEL = { spring: '🌸 Primavera', summer: '☀️ Verão', autumn: '🍂 Outono', winter: '❄️ Inverno' }
 const LEGEND_INFO = { icon: '🌟', label: 'Lendário', help: 'O lendário da região espera aqui. Dá para capturar.' }
 /** O lendário que foge (Raikou, Entei, Suicune...). */
-const ROAM_INFO = { icon: '🐾', label: 'Lendário que foge', help: 'Foge depois de {0} turnos; o HP que você tirar fica para a próxima vez. Dá para capturar.' }
+const ROAM_INFO = { icon: '🐾', label: 'Lendário que foge', help: 'Foge depois do primeiro turno (dormindo ou congelado, não); o HP que você tirar fica para a próxima vez. Dá para capturar.' }
+/** O capanga do plano da equipe vilã (nas cidades antes da base). */
+const PLOT_INFO = { icon: '🚨', label: 'Capanga da equipe vilã', help: 'Vencendo, você atrapalha o plano: ganha uma Ultra Ball e o chefe da equipe vem mais fraco.' }
+/** O nome do lendário que foge sem a forma (Tornadus, não "Tornadus incarnate"). */
+const roamName = (n) => String(n).replace(/[\s-]incarnate$/i, '')
+/** O HUD do mapa: os efeitos do lugar (ícone e nome). Igual ao app. */
+const FIELD_HUD = {
+  diamonds: ['💎', 'Chuva de diamantes'], rockfall: ['🪨', 'Desmoronamento'], ashes: ['🌋', 'Cinzas ardentes'], miasma: ['☠️', 'Névoa tóxica'], chill: ['🥶', 'Frio cortante'],
+  haunt: ['👻', 'Aura sombria'], current: ['🌊', 'Correnteza'], spores: ['🍄', 'Esporos'], quicksand: ['⏳', 'Areia movediça'], storm: ['⛈️', 'Tempestade'], aurora: ['🌌', 'Aurora'],
+  fog: ['🌫️', 'Neblina'], wind: ['🌬️', 'Ventos fortes'], grassy: ['🌿', 'Grassy Terrain'], electric: ['⚡', 'Electric Terrain'], psychic: ['🔮', 'Psychic Terrain'], misty: ['🌸', 'Misty Terrain'],
+}
+/**
+ * O HUD do mapa (como a faixa do tempo nos jogos): a hora (dia ou noite), o clima e o efeito do lugar (fixos na
+ * rota), a estação, onde o lendário que foge foi visto e o plano da equipe vilã. Igual ao app.
+ */
+function MapHud({ run, data, scene, clock, monName, inline = false }) {
+  const sky = weatherOf(run, scene, clock.season, data)
+  const field = fieldOf(run, scene, data)
+  const roam = roamerSeen(data, run)
+  const plot = villainPlot(data, run)
+  const chip = 'shrink-0 rounded bg-slate-900/80 px-1 py-px shadow'
+  return (
+    <div className={`pointer-events-none z-10 flex flex-wrap gap-1 text-[10px] font-black text-white sm:text-xs ${inline ? '' : 'absolute left-2 right-2 top-9 sm:top-10'}`} data-testid="map-hud">
+      <span className={chip} data-testid="hud-time">{clock.night ? `🌙 ${t('Noite')}` : `☀️ ${t('Dia')}`}</span>
+      <span className={chip} data-testid="hud-weather">{sky ? t(WEATHER_LABEL[sky] ?? sky) : `🌤️ ${t('Tempo bom')}`}</span>
+      {FIELD_HUD[field] && <span className={chip} data-testid="hud-field">{FIELD_HUD[field][0]} {t(FIELD_HUD[field][1])}</span>}
+      <span className={chip}>{t(SEASON_LABEL[clock.season])}</span>
+      {roam && <span className={chip} data-testid="hud-roamer">🐾 <span data-no-translate>{roamName(monName(roam.id))}</span>: {roam.here ? t('nesta rota!') : <span data-no-translate>{roam.city}</span>}</span>}
+      {plot?.chapters.length > 0 && <span className={chip} data-testid="hud-plot">🚨 {plot.foiled}/{plot.chapters.length}</span>}
+    </div>
+  )
+}
 
 /** O passo da tela depois do andar: o que ainda falta ver ou escolher (ou nada: o mapa). */
 function stepOf(p) {
@@ -1671,7 +1705,7 @@ const REGION_THEME = {
  * O mapa da região: as cidades da história, na ordem, acendendo conforme você
  * ganha as insígnias (a de agora piscando). Igual ao app.
  */
-function RegionMap({ data, run, onClose }) {
+function RegionMap({ data, run, onClose, monName }) {
   const game = data.bosses[run.boss.region]
   const cities = []
   game.leaders.forEach((l, k) => {
@@ -1681,9 +1715,20 @@ function RegionMap({ data, run, onClose }) {
     else cities.push({ city: l.city, steps: [k], kind: l.kind })
   })
   const color = REGION_THEME[game.region] ?? '#334155'
+  // Onde o lendário que foge foi visto e as cidades do plano da equipe vilã (e a base dela).
+  const roam = roamerSeen(data, run)
+  const plot = villainPlot(data, run)
+  const clock = clockOf()
+  const sky = weatherOf(run, shownScene(run, run.scene ?? 'grass', data), clock.season, data)
   return (
     <div className="space-y-2 p-2" data-testid="region-map">
       <OverlayClose onClose={onClose} title={`🗺️ ${game.region} · ${game.game}`} />
+      <p className="flex flex-wrap gap-1 text-xs font-bold" data-testid="region-hud">
+        <span className="rounded bg-slate-900/80 px-1.5 text-white">{clock.night ? `🌙 ${t('Noite')}` : `☀️ ${t('Dia')}`}</span>
+        <span className="rounded bg-slate-900/80 px-1.5 text-white">{sky ? t(WEATHER_LABEL[sky] ?? sky) : `🌤️ ${t('Tempo bom')}`}</span>
+        <span className="rounded bg-slate-900/80 px-1.5 text-white">{t(SEASON_LABEL[clock.season])}</span>
+        {plot && <span className="rounded bg-red-700 px-1.5 text-white" data-testid="region-plot">🚨 {t('Plano da {0}: {1}/{2} atrapalhados').replace('{0}', TEAM_NAMES[plot.team] ?? 'Equipe Rocket').replace('{1}', plot.foiled).replace('{2}', plot.chapters.length)}</span>}
+      </p>
       <div className="relative rounded-xl p-3" style={{ background: `linear-gradient(135deg, ${color}33, #0f172a22)` }}>
         <div className="absolute bottom-6 left-7 top-6 w-1 rounded bg-slate-500/40" />
         {cities.map((c, i) => {
@@ -1692,8 +1737,14 @@ function RegionMap({ data, run, onClose }) {
           return (
             <div key={i} className="relative flex items-center gap-3 py-1" data-testid={done ? 'city-lit' : here ? 'city-here' : 'city-dark'}>
               <span className={`z-10 inline-block h-5 w-5 rounded-full border-2 ${done ? 'border-amber-300 bg-amber-400 shadow-[0_0_8px_#fbbf24]' : here ? 'animate-pulse border-white bg-sky-400' : 'border-slate-500 bg-slate-700'}`} />
-              <span className={`text-sm font-bold ${done ? '' : 'text-muted'}`} data-no-translate>{c.city}</span>
+              <span className="flex flex-col">
+                <span className={`text-sm font-bold ${done ? '' : 'text-muted'}`} data-no-translate>{c.city}</span>
+                {/* Onde o lendário que foge foi visto (embaixo do nome da cidade). */}
+                {roam && c.steps.includes(roam.at) && <span className="text-xs font-bold text-amber-600" data-testid="region-roamer">🐾 <span data-no-translate>{roamName(monName(roam.id))}</span> {t('foi visto aqui')}</span>}
+              </span>
               {here && <span className="text-xs text-sky-500">◀ {t('você está indo para cá')}</span>}
+              {plot?.chapters.filter((x) => c.steps.includes(x.step)).map((x) => <span key={x.step} className="text-xs font-bold text-red-600" data-testid="region-plot-city">{x.foiled ? '✔' : x.past ? '✖' : '🚨'}</span>)}
+              {plot && plot.base === c.city && <span className="text-xs font-bold text-red-700">🏴 {t('Base')}</span>}
             </div>
           )
         })}
@@ -1933,7 +1984,7 @@ const VILLAIN_LINES = [
  * cidade de onde veio até a do chefe, você no andar de agora e os caminhos
  * abrindo na frente; toque num caminho para ir por ele.
  */
-function TownMap({ route, pos, from, to, title, me, width, fieldRef, onPick, blocked, placeName, monName }) {
+function TownMap({ route, pos, from, to, title, me, width, fieldRef, onPick, blocked, placeName, monName, hud = null }) {
   const W = 160
   const H = 120
   const END = ROUTE_LENGTH + 1
@@ -1975,7 +2026,7 @@ function TownMap({ route, pos, from, to, title, me, width, fieldRef, onPick, blo
       )}
       {/* Os caminhos: botões no próprio mapa. */}
       {route.options.map((node, k) => {
-        const info = node.kind === 'dungeon' ? { icon: (BIOME_INFO[node.scene] ?? BIOME_INFO.cave).icon, label: placeName(node.place) } : node.roam ? ROAM_INFO : hmPathInfo(node) ?? (node.legend != null ? LEGEND_INFO : NODE_INFO[node.kind])
+        const info = node.kind === 'dungeon' ? { icon: (BIOME_INFO[node.scene] ?? BIOME_INFO.cave).icon, label: placeName(node.place) } : node.roam ? ROAM_INFO : node.plot ? PLOT_INFO : hmPathInfo(node) ?? (node.legend != null ? LEGEND_INFO : NODE_INFO[node.kind])
         const b = node.biome && !hmPathInfo(node) ? BIOME_INFO[node.biome] : null
         return (
           <button key={k} type="button" disabled={!onPick || blocked(node)} onClick={() => onPick(k)} data-testid={`map-pin-${k}`}
@@ -1986,6 +2037,7 @@ function TownMap({ route, pos, from, to, title, me, width, fieldRef, onPick, blo
           </button>
         )
       })}
+      {hud}
     </div>
   )
 }
@@ -2051,7 +2103,7 @@ function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, 
             <span>💰 {run.money}</span>
             <span title={t('Bolsa')} data-testid="factory-bag-count">🎒 {BAG_ITEMS.reduce((n, id) => n + (run.bag[id] ?? 0), 0)}</span>
             {/* Os ovos que vão junto: quantas vitórias faltam para chocar. */}
-            {(run.eggs ?? []).map((e, i) => <span key={i} title={t('Choca em {0} vitórias').replace('{0}', e.left)} data-testid="factory-egg">🥚{e.left}</span>)}
+            {(run.eggs ?? []).map((e, i) => <span key={i} title={t(e.mystery ? 'Ovo misterioso: choca em {0} vitórias' : 'Choca em {0} vitórias').replace('{0}', e.left)} data-testid="factory-egg">{e.mystery ? '❔' : '🥚'}{e.left}</span>)}
             <span title={t('Pokédex da corrida')} data-testid="factory-dex">📖 {dexOf(run).length}</span>
             {data && <Badges data={data} run={run} />}
             {(run.hms ?? []).map((hm) => <span key={hm} title={HM_INFO[hm]?.name}>{HM_INFO[hm]?.icon}</span>)}
@@ -2155,7 +2207,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
   )
   const extras = run && (panel === 'bag' || panel === 'team' || panel === 'region' || panel === 'help') && (
     panel === 'region' ? (
-      <RegionMap data={data} run={run} onClose={() => setPanel(null)} />
+      <RegionMap data={data} run={run} onClose={() => setPanel(null)} monName={name} />
     ) : panel === 'help' ? (
       <HelpPanel onClose={() => setPanel(null)} />
     ) : panel === 'bag' ? (
@@ -2372,7 +2424,9 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
             💬 <span data-no-translate>{p.beat.name}</span>: {t(p.beat.kind === 'rival' ? RIVAL_BEAT[Math.min(RIVAL_BEAT.length, run.rivalWins ?? 1) - 1] : BEAT_LINES[p.beat.kind] ?? BEAT_LINES.gym)}
           </p>
         )}
-        {p.fled != null && <p className="text-sm" data-testid="factory-fled">🐾 {t('{0} fugiu! Ele vai aparecer de novo pelo caminho (com o HP que ficou).').replace('{0}', name(p.fled))}</p>}
+        {p.fled != null && <p className="text-sm" data-testid="factory-fled">🐾 {t('{0} fugiu! Ele continua andando pela região (com o HP que ficou): veja no mapa onde foi visto.').replace('{0}', name(p.fled))}</p>}
+        {p.plot && <p className="text-sm" data-testid="factory-plot">🚨 {t('Você atrapalhou o plano da {0} ({1})! Ganhou {2}; o chefe da equipe vai estar mais fraco.').replace('{0}', TEAM_NAMES[p.plot.team] ?? 'Equipe Rocket').replace('{1}', p.plot.chapter).replace('{2}', itemName(p.plot.item))}</p>}
+        {p.flawless && <p className="text-sm" data-testid="factory-flawless">🏆 {t('Liga sem nenhum desmaio! Prêmio: {0}.').replace('{0}', itemName(p.flawless))}</p>}
         {p.dowsed && <p className="text-sm" data-testid="factory-dowsed">📡 {t('Você achou {0} escondido no caminho!').replace('{0}', itemName(p.dowsed))}</p>}
         {p.key && (
           <p className="text-sm text-amber-600" data-testid="factory-key">
@@ -2459,7 +2513,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     )
     text = (
       <>
-        <p>{mon.shiny ? '✨ ' : ''}{(mon.egg ? t('O ovo da Creche chocou: é um {0}!') : mon.fossil ? t('O museu reviveu um fóssil para você: é um {0}!') : t('Pegou! {0} foi capturado!')).replace('{0}', name(mon.id))} <span className="dlg-sub">Nv. {mon.level}</span></p>
+        <p>{mon.shiny ? '✨ ' : ''}{(mon.egg ? t(mon.mystery ? 'O ovo misterioso chocou: é um {0}!' : 'O ovo da Creche chocou: é um {0}!') : mon.fossil ? t('O museu reviveu um fóssil para você: é um {0}!') : t('Pegou! {0} foi capturado!')).replace('{0}', name(mon.id))} <span className="dlg-sub">Nv. {mon.level}</span></p>
         {!dexOf(run).includes(mon.id) && (
           <p className="text-sm" data-testid="factory-dex-new">
             📖 {t('Novo na Pokédex da corrida ({0})').replace('{0}', dexOf(run).length + 1)}
@@ -2477,7 +2531,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     )
     // Time cheio: a tela do time do Black & White, por cima do campo, para escolher quem sai.
     if (full && !panel) {
-      below = <BwParty title={t('Time cheio: escolha quem sai para {0} entrar.').replace('{0}', name(mon.id))} team={partyOf(run, byId)} testid="replace" eggs={(run.eggs ?? []).map((e) => e.left)} onPick={keep} onCancel={() => save(skipCapture(run))} cancelLabel={t('SOLTAR')} />
+      below = <BwParty title={t('Time cheio: escolha quem sai para {0} entrar.').replace('{0}', name(mon.id))} team={partyOf(run, byId)} testid="replace" eggs={(run.eggs ?? []).map((e) => (e.mystery ? { left: e.left, mystery: true } : e.left))} onPick={keep} onCancel={() => save(skipCapture(run))} cancelLabel={t('SOLTAR')} />
     }
     menu = full ? (
       <>
@@ -2711,7 +2765,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     const clock = clockOf()
     const pickNode = (index) => {
       // Antes da Elite dos Quatro (como nos jogos): depois dela, as lutas da Liga vêm uma atrás da outra.
-      if (route.options[index]?.kind === 'boss' && leagueAhead(data, run) && !window.confirm(t('A Liga começa aqui: depois da primeira da Elite dos Quatro, as lutas vêm uma atrás da outra, sem Centro Pokémon. Quer seguir?'))) return
+      if (route.options[index]?.kind === 'boss' && leagueAhead(data, run) && !window.confirm(t('A Liga começa aqui: depois da primeira da Elite dos Quatro, as lutas vêm uma atrás da outra, sem Centro Pokémon e sem a Enfermeira Joy; só a Bolsa cura. Sem nenhum desmaio até o Campeão, você ganha uma Master Ball. Quer seguir?'))) return
       const next = chooseNode(run, data, index, clockOf())
       if (next === run) return
       saveFactory({ ...factoryOf(useStore.getState().league), run: next })
@@ -2728,17 +2782,24 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     const forecast = town ? '' : weatherOf(run, shownScene(run, route.biome, data), clock.season, data)
     const burst = outbreakOf(data, clock.day)
     // O andar (pequeno, num canto): na rota, até a cidade; num lugar, até o chefe dele.
+    // O HUD do mapa: hora, clima, efeito do lugar, estação, o lendário que foge e o plano vilão.
+    const hudProps = { run, data, scene: shownScene(run, town ? 'city' : route.biome, data), clock, monName: name }
+    const hud = <MapHud {...hudProps} />
     const floorTag = inside ? `${Math.min(DUNGEON_LENGTH, dungeonPos(run) + 1)}/${DUNGEON_LENGTH}` : town ? `${Math.min(CITY_LENGTH, pos - ROUTE_LENGTH + 1)}/${CITY_LENGTH}` : `${pos + 1}/${ROUTE_LENGTH}`
     field = fork && hasMap ? (
       <TownMap route={route} pos={pos % ROUTE_LENGTH} from={from} to={to} title={`${boss.region} · ${boss.game}`} me={me} width={width} fieldRef={fieldRef} placeName={(id) => placeInfo(data, run, id).name} monName={name}
-        onPick={busy ? null : pickNode} blocked={(node) => (isBattleNode(node) && down) || nodeBlocked(run, node)} />
+        onPick={busy ? null : pickNode} blocked={(node) => (isBattleNode(node) && down) || nodeBlocked(run, node)} hud={hud} />
     ) : (
       // O líder espera no ginásio da cidade; a Elite dos Quatro e o Campeão, na Liga (nunca no meio da rota).
       <Field biome={shownScene(run, meetScene)} fieldRef={fieldRef} testid="factory-map">
-        <div className="absolute left-3 top-2 rounded-lg bg-white/85 px-2 py-0.5 text-xs font-black text-slate-900 sm:text-sm">
-          {town ? <span data-no-translate>🏙️ {to}</span>
-            : inside ? <>{biome.icon} {t(inside.name)}</>
-            : <><span data-no-translate>{boss.region} · {boss.game}</span> · {biome.icon} {routeName ? <span data-no-translate>{routeName} → {to}</span> : t('Rota para {0}').replace('{0}', to)}</>}
+        {/* O nome do lugar e, logo abaixo, o HUD (hora, clima, efeito, estação, lendário que foge, plano vilão). */}
+        <div className="absolute left-3 right-14 top-2 z-10 flex flex-col items-start gap-1">
+          <div className="rounded-lg bg-white/85 px-2 py-0.5 text-xs font-black text-slate-900 sm:text-sm">
+            {town ? <span data-no-translate>🏙️ {to}</span>
+              : inside ? <>{biome.icon} {t(inside.name)}</>
+              : <><span data-no-translate>{boss.region} · {boss.game}</span> · {biome.icon} {routeName ? <span data-no-translate>{routeName} → {to}</span> : t('Rota para {0}').replace('{0}', to)}</>}
+          </div>
+          <MapHud {...hudProps} inline />
         </div>
         {floorTag && <span className="absolute right-3 top-2 rounded bg-slate-900/70 px-1.5 text-[10px] font-black text-white sm:text-xs" data-testid="route-floor">{floorTag}</span>}
         {coach && (meeting || rival) && <FarStand scene={meetScene}><TrainerSprite trainer={coach} height={farPerson(width)} /></FarStand>}
@@ -2769,7 +2830,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       town && boss.kind === 'villain' && `💬 ${t('A {0} tomou conta da cidade! O líder do ginásio só volta quando ela for embora.').replace('{0}', TEAM_NAMES[villainTeam(boss.name)] ?? 'Equipe Rocket')}`,
       town && pos === ROUTE_LENGTH && boss.kind !== 'villain' && t(daycareHere(data, run) ? 'Bem-vindo a {0}! O Poké Mart, o Centro Pokémon e a Creche ficam aqui; o líder espera no último andar da cidade.' : 'Bem-vindo a {0}! O Poké Mart e o Centro Pokémon ficam aqui; o líder espera no último andar da cidade.').replace('{0}', to),
       inside && run.dungeon.cleared && `🌊 ${t('Você venceu o chefe daqui! Dá para seguir mais fundo ou voltar.')}`,
-      route.options.some((o) => o.roam) && `🐾 ${t('{0} passou correndo por aqui! Ele foge depois de {1} turnos.').replace('{0}', name(route.options.find((o) => o.roam).legend)).replace('{1}', ROAM_TURNS)}`,
+      route.options.some((o) => o.roam) && `🐾 ${t('{0} passou correndo por aqui! Ele foge depois do primeiro turno (dormindo ou congelado, não foge).').replace('{0}', name(route.options.find((o) => o.roam).legend))}`,
+      route.options.some((o) => o.plot) && `🚨 ${t('Um capanga da {0} está agindo nesta cidade! Derrote-o para atrapalhar o plano.').replace('{0}', TEAM_NAMES[route.options.find((o) => o.plot).grunt] ?? 'Equipe Rocket')}`,
       route.options.some((o) => o.hidden) && `📡 ${t('A Dowsing Machine apita: tem um item escondido num dos caminhos!')}`,
     ].filter(Boolean)
     // A entrada de um lugar: a base vilã e o lugar da cidade (na cidade) ou o lugar no caminho (na rota).
@@ -2824,7 +2886,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         ))}
         {(hasMap || !fork) && route.options.map((node, k) => {
           if (node.kind === 'dungeon') return placeButton(node, k)
-          const info = node.area ? NODE_INFO.area : node.mythic ? NODE_INFO.mythic : node.meteor ? NODE_INFO.meteor : node.roam ? ROAM_INFO : hmPathInfo(node) ?? (node.legend != null ? LEGEND_INFO : NODE_INFO[node.kind])
+          const info = node.area ? NODE_INFO.area : node.mythic ? NODE_INFO.mythic : node.meteor ? NODE_INFO.meteor : node.roam ? ROAM_INFO : node.plot ? PLOT_INFO : hmPathInfo(node) ?? (node.legend != null ? LEGEND_INFO : NODE_INFO[node.kind])
           const b = node.biome && !hmPathInfo(node) ? BIOME_INFO[node.biome] : null
           const noSurf = nodeBlocked(run, node)
           return (
@@ -2854,6 +2916,12 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
               </MenuButton>
             )}
           </div>
+        )}
+        {/* O ovo misterioso: um morador te dá um ovo sem dizer de quem é. */}
+        {town && mysteryEgg(data, run) != null && (
+          <MenuButton testid="town-mystery-egg" disabled={busy} onClick={() => save(takeMysteryEgg(run, data))} sub={t('Um morador quer que você cuide de um ovo. De quem será? Choca depois de {0} vitórias.').replace('{0}', EGG_BATTLES)}>
+            ❔ {t('RECEBER O OVO MISTERIOSO')}
+          </MenuButton>
         )}
         {/* Os presentes da cidade (o Eevee de Celadon, o Lapras da Silph Co., o ovo de Togepi...). */}
         {town && townGifts(data, run).map((g) => (g.choose ?? [g.id]).map((id) => {

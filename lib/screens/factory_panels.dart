@@ -916,18 +916,21 @@ class _BagAndItemsState extends State<_BagAndItems> {
       title: cap == null ? null : '📈 ${tr('Nível máximo agora: {0}. Sobe quando você vence o próximo chefe.').replaceAll('{0}', '$cap')}',
       // Os ovos ocupam vagas do time (e chocam com as vitórias).
       eggs: [for (final e in FactoryRun.eggsOf(run)) (e['left'] as num).toInt()],
+      mystery: {for (final (k, e) in FactoryRun.eggsOf(run).indexed) if (e['mystery'] == true) k},
       team: [
         for (final m in team)
           PartySlot(
             id: (m['id'] as num).toInt(),
             shiny: m['shiny'] == true,
-            name: battleMonName({'name': widget.names[(m['id'] as num).toInt()] ?? ''}),
+            name: '${m['nick'] ?? ''}'.isNotEmpty ? '${m['nick']}' : battleMonName({'name': widget.names[(m['id'] as num).toInt()] ?? ''}),
             level: (m['level'] as num).toInt(),
             hp: FactoryRun.hpOf(m).toDouble(),
             max: cap != null && (m['level'] as num).toInt() >= cap,
+            // A amizade (os corações) e, de quem veio de uma troca, o treinador de antes (OT).
+            hearts: FactoryRun.heartsOf(m),
             // O item que ele segura (★ o principal; +N os extras).
             sub: m['item'] == null
-                ? null
+                ? (m['ot'] != null ? '🔁 OT ${m['ot']}' : null)
                 : '★ ${_itemName('${m['item']}')}${((m['extras'] as List?) ?? const []).isNotEmpty ? ' +${(m['extras'] as List).length}' : ''}',
           ),
       ],
@@ -2391,7 +2394,21 @@ const _seasonLabel = {'spring': '🌸 Primavera', 'summer': '☀️ Verão', 'au
 const _legendInfo = ('🌟', 'Lendário', 'O lendário da região espera aqui. Dá para capturar.');
 
 /// O lendário que foge (Raikou, Entei, Suicune...). Igual ao site.
-const _roamInfo = ('🐾', 'Lendário que foge', 'Foge depois de {0} turnos; o HP que você tirar fica para a próxima vez. Dá para capturar.');
+const _roamInfo = ('🐾', 'Lendário que foge', 'Foge depois do primeiro turno (dormindo ou congelado, não); o HP que você tirar fica para a próxima vez. Dá para capturar.');
+
+/// O capanga do plano da equipe vilã (nas cidades antes da base).
+const _plotInfo = ('🚨', 'Capanga da equipe vilã', 'Vencendo, você atrapalha o plano: ganha uma Ultra Ball e o chefe da equipe vem mais fraco.');
+
+/// O nome do lendário que foge sem a forma (Tornadus, não "Tornadus incarnate").
+String _roamName(String n) => n.replaceFirst(RegExp(r'[\s-]incarnate$', caseSensitive: false), '');
+
+/// O HUD do mapa: os efeitos do lugar (ícone e nome). Igual ao site.
+const _fieldHud = {
+  'diamonds': ('💎', 'Chuva de diamantes'), 'rockfall': ('🪨', 'Desmoronamento'), 'ashes': ('🌋', 'Cinzas ardentes'), 'miasma': ('☠️', 'Névoa tóxica'),
+  'chill': ('🥶', 'Frio cortante'), 'haunt': ('👻', 'Aura sombria'), 'current': ('🌊', 'Correnteza'), 'spores': ('🍄', 'Esporos'),
+  'quicksand': ('⏳', 'Areia movediça'), 'storm': ('⛈️', 'Tempestade'), 'aurora': ('🌌', 'Aurora'), 'fog': ('🌫️', 'Neblina'), 'wind': ('🌬️', 'Ventos fortes'),
+  'grassy': ('🌿', 'Grassy Terrain'), 'electric': ('⚡', 'Electric Terrain'), 'psychic': ('🔮', 'Psychic Terrain'), 'misty': ('🌸', 'Misty Terrain'),
+};
 const _ballHelp = {
   'poke-ball': 'Para capturar os selvagens (jogue na batalha)',
   'great-ball': 'Captura 1,5× melhor',
@@ -2618,7 +2635,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                 Text('🎒 ${FactoryRun.bagItems.fold<int>(0, (n, id) => n + (bag[id] ?? 0))}', key: const ValueKey('factory-bag-count'), style: style),
                 // Os ovos que vão junto: quantas vitórias faltam para chocar.
                 for (final e in FactoryRun.eggsOf(run))
-                  Text('🥚${e['left']}', key: const ValueKey('factory-egg'), style: style),
+                  Text('${e['mystery'] == true ? '❔' : '🥚'}${e['left']}', key: const ValueKey('factory-egg'), style: style),
                 Text('📖 ${FactoryRun.dexOf(run).length}', key: const ValueKey('factory-dex'), style: style),
                 if (_data != null) _badges(_data!, run),
                 for (final hm in (run['hms'] as List? ?? const [])) Text(_hmInfo[hm]?.$2 ?? '', style: style),
@@ -2672,8 +2689,34 @@ class _FactoryScreenState extends State<FactoryScreen> {
     }
     final color = _regionTheme['${game['region']}'] ?? const Color(0xFF334155);
     final c = SiteColors.of(context);
+    // Onde o lendário que foge foi visto e as cidades do plano da equipe vilã (e a base dela).
+    final roam = FactoryRun.roamerSeen(data, run);
+    final plot = FactoryRun.villainPlot(data, run);
+    final chapters = [for (final x in (plot?['chapters'] as List?) ?? const []) x as Map];
+    final clock = FactoryRun.clockOf();
+    final sky = FactoryRun.weatherOf(run, FactoryRun.shownScene(run, '${run['scene'] ?? 'grass'}', data), clock.season, data);
+    Widget chip(String text, {Color bg = const Color(0xCC0F172A), String? key}) => Container(
+          key: key == null ? null : ValueKey(key),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(4)),
+          child: Text(text, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+        );
     return Column(key: const ValueKey('region-map'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       _overlayHeader('🗺️ ${game['region']} · ${game['game']}', close),
+      Padding(
+        key: const ValueKey('region-hud'),
+        padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
+        child: Wrap(spacing: 4, runSpacing: 4, children: [
+          chip(clock.night ? '🌙 ${tr('Noite')}' : '☀️ ${tr('Dia')}'),
+          chip(sky.isNotEmpty ? tr(_weatherLabel[sky] ?? sky) : '🌤️ ${tr('Tempo bom')}'),
+          chip(tr(_seasonLabel[clock.season] ?? '')),
+          if (plot != null)
+            chip(
+                '🚨 ${tr('Plano da {0}: {1}/{2} atrapalhados').replaceAll('{0}', _teamNames[plot['team']] ?? 'Equipe Rocket').replaceAll('{1}', '${plot['foiled']}').replaceAll('{2}', '${chapters.length}')}',
+                bg: const Color(0xFFB91C1C),
+                key: 'region-plot'),
+        ]),
+      ),
       Container(
         margin: const EdgeInsets.all(8),
         padding: const EdgeInsets.all(10),
@@ -2698,8 +2741,21 @@ class _FactoryScreenState extends State<FactoryScreen> {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  Expanded(child: Text(cities[i].city, style: TextStyle(fontWeight: FontWeight.bold, color: done ? c.text : c.muted))),
+                  Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(cities[i].city, style: TextStyle(fontWeight: FontWeight.bold, color: done ? c.text : c.muted)),
+                    // Onde o lendário que foge foi visto (embaixo do nome da cidade).
+                    if (roam != null && cities[i].steps.contains(roam['at']))
+                      Text('🐾 ${_roamName(_name(roam['id']))} ${tr('foi visto aqui')}',
+                          key: const ValueKey('region-roamer'), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFD97706))),
+                  ])),
                   if (here) Text('◀ ${tr('você está indo para cá')}', style: const TextStyle(fontSize: 11, color: Color(0xFF0EA5E9))),
+                  for (final x in chapters)
+                    if (cities[i].steps.contains(x['step']))
+                      Text(' ${x['foiled'] == true ? '✔' : x['past'] == true ? '✖' : '🚨'}',
+                          key: const ValueKey('region-plot-city'), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
+                  if (plot != null && plot['base'] == cities[i].city)
+                    Text(' 🏴 ${tr('Base')}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFB91C1C))),
                 ]),
               );
             }),
@@ -3461,8 +3517,16 @@ class _FactoryScreenState extends State<FactoryScreen> {
               key: const ValueKey('factory-beat-line'),
               style: const TextStyle(fontSize: 13, fontStyle: FontStyle.italic)),
         if (p['fled'] != null)
-          Text('🐾 ${tr('{0} fugiu! Ele vai aparecer de novo pelo caminho (com o HP que ficou).').replaceAll('{0}', _name(p['fled']))}',
+          Text('🐾 ${tr('{0} fugiu! Ele continua andando pela região (com o HP que ficou): veja no mapa onde foi visto.').replaceAll('{0}', _name(p['fled']))}',
               key: const ValueKey('factory-fled'), style: const TextStyle(fontSize: 13)),
+        if (p['plot'] != null)
+          Text(
+              '🚨 ${tr('Você atrapalhou o plano da {0} ({1})! Ganhou {2}; o chefe da equipe vai estar mais fraco.').replaceAll('{0}', _teamNames[p['plot']['team']] ?? 'Equipe Rocket').replaceAll('{1}', '${p['plot']['chapter']}').replaceAll('{2}', _itemName('${p['plot']['item']}'))}',
+              key: const ValueKey('factory-plot'),
+              style: const TextStyle(fontSize: 13)),
+        if (p['flawless'] != null)
+          Text('🏆 ${tr('Liga sem nenhum desmaio! Prêmio: {0}.').replaceAll('{0}', _itemName('${p['flawless']}'))}',
+              key: const ValueKey('factory-flawless'), style: const TextStyle(fontSize: 13)),
         if (p['dowsed'] != null)
           Text('📡 ${tr('Você achou {0} escondido no caminho!').replaceAll('{0}', _itemName('${p['dowsed']}'))}',
               key: const ValueKey('factory-dowsed'), style: const TextStyle(fontSize: 13)),
@@ -4281,6 +4345,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
         title: tr('Time cheio: escolha quem sai para {0} entrar.').replaceAll('{0}', _name(foe['id'])),
         team: _party(run),
         eggs: [for (final e in FactoryRun.eggsOf(run)) (e['left'] as num).toInt()],
+        mystery: {for (final (k, e) in FactoryRun.eggsOf(run).indexed) if (e['mystery'] == true) k},
         onPick: keep,
         onCancel: () => _save(FactoryRun.skipCapture(run)),
         cancelLabel: tr('SOLTAR'),
@@ -4295,7 +4360,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
             if (lead != null) _fieldMon(lead, w, h, back: true),
           ]),
       text: [
-        Text('${shiny ? '✨ ' : ''}${tr(foe['egg'] == true ? 'O ovo da Creche chocou: é um {0}!' : foe['fossil'] == true ? 'O museu reviveu um fóssil para você: é um {0}!' : 'Pegou! {0} foi capturado!').replaceAll('{0}', _name(foe['id']))} Nv. ${foe['level']}'),
+        Text('${shiny ? '✨ ' : ''}${tr(foe['egg'] == true ? (foe['mystery'] == true ? 'O ovo misterioso chocou: é um {0}!' : 'O ovo da Creche chocou: é um {0}!') : foe['fossil'] == true ? 'O museu reviveu um fóssil para você: é um {0}!' : 'Pegou! {0} foi capturado!').replaceAll('{0}', _name(foe['id']))} Nv. ${foe['level']}'),
         if (!FactoryRun.dexOf(run).contains((foe['id'] as num).toInt()))
           Builder(builder: (context) {
             final reward = FactoryRun.dexRewardFor(run, (foe['id'] as num).toInt());
@@ -4372,7 +4437,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
           context: context,
           builder: (context) => AlertDialog(
             key: const ValueKey('league-ask'),
-            content: Text(tr('A Liga começa aqui: depois da primeira da Elite dos Quatro, as lutas vêm uma atrás da outra, sem Centro Pokémon. Quer seguir?')),
+            content: Text(tr('A Liga começa aqui: depois da primeira da Elite dos Quatro, as lutas vêm uma atrás da outra, sem Centro Pokémon e sem a Enfermeira Joy; só a Bolsa cura. Sem nenhum desmaio até o Campeão, você ganha uma Master Ball. Quer seguir?')),
             actions: [
               TextButton(onPressed: () => Navigator.pop(context, false), child: Text(tr('NÃO'))),
               FilledButton(key: const ValueKey('league-go'), onPressed: () => Navigator.pop(context, true), child: Text(tr('SIM'))),
@@ -4422,6 +4487,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
         : town
             ? '${min(FactoryRun.cityLength, pos - FactoryRun.routeLength + 1)}/${FactoryRun.cityLength}'
             : '${pos + 1}/${FactoryRun.routeLength}';
+    // O HUD do mapa: hora, clima, efeito do lugar, estação, o lendário que foge e o plano vilão.
+    final hud = _mapHud(run, data, FactoryRun.shownScene(run, town ? 'city' : '${route['biome']}', data), clock);
     final scene = town
         ? 'city'
         : meeting && _cityKinds.contains(boss['kind'])
@@ -4463,28 +4530,34 @@ class _FactoryScreenState extends State<FactoryScreen> {
       if (dungeon != null && dungeon['cleared'] == true) '🌊 ${tr('Você venceu o chefe daqui! Dá para seguir mais fundo ou voltar.')}',
       for (final o in options)
         if (o['roam'] == true)
-          '🐾 ${tr('{0} passou correndo por aqui! Ele foge depois de {1} turnos.').replaceAll('{0}', _name(o['legend'])).replaceAll('{1}', '${FactoryRun.roamTurns}')}',
+          '🐾 ${tr('{0} passou correndo por aqui! Ele foge depois do primeiro turno (dormindo ou congelado, não foge).').replaceAll('{0}', _name(o['legend']))}',
+      for (final o in options)
+        if (o['plot'] != null)
+          '🚨 ${tr('Um capanga da {0} está agindo nesta cidade! Derrote-o para atrapalhar o plano.').replaceAll('{0}', _teamNames[o['grunt']] ?? 'Equipe Rocket')}',
       if (options.any((o) => o['hidden'] != null)) '📡 ${tr('A Dowsing Machine apita: tem um item escondido num dos caminhos!')}',
     ];
     return _frame(
       run: run,
       field: fork && hasMap
           ? _townMap(route, options, pos % FactoryRun.routeLength, cities.from, cities.to, '${boss['region']} · ${boss['game']}', me,
-              widget.busy ? null : pick, (node) => (FactoryRun.isBattleNode(node) && down) || FactoryRun.nodeBlocked(run, node), placeName)
+              widget.busy ? null : pick, (node) => (FactoryRun.isBattleNode(node) && down) || FactoryRun.nodeBlocked(run, node), placeName, hud)
           // O líder espera no ginásio da cidade; a Elite dos Quatro e o Campeão, na Liga (nunca no meio da rota).
           : _field(FactoryRun.shownScene(run, scene, data), key: const ValueKey('factory-map'), (w, h) {
               return [
+                // O nome do lugar e, logo abaixo, o HUD (hora, clima, efeito, estação, lendário que foge, plano vilão).
                 Positioned(
                     left: 8,
                     top: 6,
                     right: 48,
-                    child: Align(
-                        alignment: Alignment.topLeft,
-                        child: sign(town
-                            ? '🏙️ ${cities.to}'
-                            : insideName != null
-                                ? '${biome.$2} $insideName'
-                                : '${boss['region']} · ${boss['game']} · ${biome.$2} ${routeName != null ? '$routeName → ${cities.to}' : tr('Rota para {0}').replaceAll('{0}', cities.to)}'))),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      sign(town
+                          ? '🏙️ ${cities.to}'
+                          : insideName != null
+                              ? '${biome.$2} $insideName'
+                              : '${boss['region']} · ${boss['game']} · ${biome.$2} ${routeName != null ? '$routeName → ${cities.to}' : tr('Rota para {0}').replaceAll('{0}', cities.to)}'),
+                      const SizedBox(height: 4),
+                      hud,
+                    ])),
                 Positioned(
                     right: 8,
                     top: 6,
@@ -4580,6 +4653,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
                         ? _nodeInfo['meteor']!
                         : node['roam'] == true
                             ? _roamInfo
+                            : node['plot'] != null
+                            ? _plotInfo
                             : _hmPathInfo(node) ?? (node['legend'] != null ? _legendInfo : _nodeInfo[node['kind']] ?? _nodeInfo['wild']!);
                 final placeLegend = node['placeLegend'] == true || node['routeLegend'] == true;
                 final b = _hmPathInfo(node) != null ? null : _biomeInfo[node['biome']];
@@ -4662,6 +4737,11 @@ class _FactoryScreenState extends State<FactoryScreen> {
                   '💭 Move Reminder${(run['town'] as Map?)?['reminded'] == true ? ' ✓' : FactoryRun.reminderCost(data, run) > 0 ? ' · 💰${FactoryRun.reminderCost(data, run)}' : ''}',
                   widget.busy || FactoryRun.townReminder(run, data) == null ? null : () => _save(FactoryRun.townReminder(run, data)),
                   key: const ValueKey('town-reminder')),
+            // O ovo misterioso: um morador te dá um ovo sem dizer de quem é.
+            if (FactoryRun.mysteryEgg(data, run) != null)
+              _menuButton('❔ ${tr('RECEBER O OVO MISTERIOSO')}', widget.busy ? null : () => _save(FactoryRun.takeMysteryEgg(run, data)),
+                  sub: tr('Um morador quer que você cuide de um ovo. De quem será? Choca depois de {0} vitórias.').replaceAll('{0}', '${FactoryRun.eggBattles}'),
+                  key: const ValueKey('town-mystery-egg')),
             // Os presentes da cidade (o Eevee de Celadon, o Lapras da Silph Co., o ovo de Togepi...).
             for (final g in FactoryRun.townGifts(data, run))
               for (final id in (g['choose'] as List?) ?? [g['id']])
@@ -4688,8 +4768,37 @@ class _FactoryScreenState extends State<FactoryScreen> {
 
   /// O mapa da cidade (como o Town Map do Black & White) na bifurcação: a rota da cidade de onde veio até a do chefe,
   /// você no andar de agora e os caminhos abrindo na frente; toque num caminho para ir por ele. Igual ao site (TownMap).
+  /// O HUD do mapa (como a faixa do tempo nos jogos): a hora (dia ou noite), o clima e o efeito do lugar (fixos na
+  /// rota), a estação, onde o lendário que foge foi visto e o plano da equipe vilã. Igual ao site.
+  Widget _mapHud(Json run, FactoryData data, String scene, ({bool night, String season, int? day}) clock) {
+    final sky = FactoryRun.weatherOf(run, scene, clock.season, data);
+    final field = FactoryRun.fieldOf(run, scene, data);
+    final roam = FactoryRun.roamerSeen(data, run);
+    final plot = FactoryRun.villainPlot(data, run);
+    Widget chip(String text, [String? key]) => Container(
+          key: key == null ? null : ValueKey(key),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+          decoration: BoxDecoration(color: const Color(0xCC0F172A), borderRadius: BorderRadius.circular(4)),
+          child: Text(text, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900)),
+        );
+    final chapters = (plot?['chapters'] as List?) ?? const [];
+    return IgnorePointer(
+      child: KeyedSubtree(
+        key: const ValueKey('map-hud'),
+        child: Wrap(spacing: 3, runSpacing: 3, children: [
+            chip(clock.night ? '🌙 ${tr('Noite')}' : '☀️ ${tr('Dia')}', 'hud-time'),
+            chip(sky.isNotEmpty ? tr(_weatherLabel[sky] ?? sky) : '🌤️ ${tr('Tempo bom')}', 'hud-weather'),
+            if (_fieldHud[field] != null) chip('${_fieldHud[field]!.$1} ${tr(_fieldHud[field]!.$2)}', 'hud-field'),
+            chip(tr(_seasonLabel[clock.season] ?? '')),
+            if (roam != null) chip('🐾 ${_roamName(_name(roam['id']))}: ${roam['here'] == true ? tr('nesta rota!') : '${roam['city'] ?? ''}'}', 'hud-roamer'),
+          if (chapters.isNotEmpty) chip('🚨 ${plot!['foiled']}/${chapters.length}', 'hud-plot'),
+        ]),
+      ),
+    );
+  }
+
   Widget _townMap(Json route, List<Json> options, int pos, String? from, String to, String title, Trainer? me, void Function(int)? onPick,
-      bool Function(Json) blocked, String Function(Object?) placeName) {
+      bool Function(Json) blocked, String Function(Object?) placeName, [Widget? hud]) {
     const end = FactoryRun.routeLength + 1;
     final here = pos + 1;
     return ClipRRect(
@@ -4744,6 +4853,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
                           ? ((_biomeInfo[node['scene']] ?? _biomeInfo['cave']!).$2, placeName(node['place']), '')
                           : node['roam'] == true
                               ? _roamInfo
+                              : node['plot'] != null
+                              ? _plotInfo
                               : _hmPathInfo(node) ?? (node['legend'] != null ? _legendInfo : _nodeInfo[node['kind']] ?? _nodeInfo['wild']!);
                       final b = _hmPathInfo(node) != null ? null : _biomeInfo[node['biome']];
                       final off = onPick == null || blocked(node);
@@ -4771,6 +4882,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                     }),
                   ),
                 ),
+              if (hud != null) Positioned(left: 8, right: 8, top: 30, child: hud),
             ]);
           }),
         ),

@@ -9665,5 +9665,119 @@
   "en": "Fairy",
   "fr": "Fée",
   "es": "Hada"
+ },
+ "Ovo misterioso: choca em {0} vitórias": {
+  "en": "Mystery Egg: hatches in {0} wins",
+  "fr": "Œuf mystère : éclot dans {0} victoires",
+  "es": "Huevo misterioso: eclosiona en {0} victorias",
+  "pt": "Ovo misterioso: choca em {0} vitórias"
+ },
+ "O ovo misterioso chocou: é um {0}!": {
+  "en": "The Mystery Egg hatched: it's a {0}!",
+  "fr": "L'Œuf mystère a éclos : c'est un {0} !",
+  "es": "¡El huevo misterioso eclosionó: es un {0}!",
+  "pt": "O ovo misterioso chocou: é um {0}!"
+ },
+ "{0} fugiu! Ele continua andando pela região (com o HP que ficou): veja no mapa onde foi visto.": {
+  "en": "{0} fled! It keeps roaming the region (with the HP it has left): check the map to see where it was spotted.",
+  "fr": "{0} s'est enfui ! Il continue d'errer dans la région (avec les PV restants) : regardez sur la carte où il a été vu.",
+  "es": "¡{0} huyó! Sigue vagando por la región (con los PS que le quedan): mira en el mapa dónde lo vieron.",
+  "pt": "{0} fugiu! Ele continua andando pela região (com o HP que ficou): veja no mapa onde foi visto."
+ },
+ "Você atrapalhou o plano da {0} ({1})! Ganhou {2}; o chefe da equipe vai estar mais fraco.": {
+  "en": "You foiled the {0}'s plan ({1})! You got {2}; the team's boss will be weaker.",
+  "fr": "Vous avez déjoué le plan de la {0} ({1}) ! Vous recevez {2} ; le chef de l'équipe sera plus faible.",
+  "es": "¡Frustraste el plan del {0} ({1})! Recibiste {2}; el jefe del equipo estará más débil.",
+  "pt": "Você atrapalhou o plano da {0} ({1})! Ganhou {2}; o chefe da equipe vai estar mais fraco."
+ },
+ "Liga sem nenhum desmaio! Prêmio: {0}.": {
+  "en": "League cleared without a single faint! Prize: {0}.",
+  "fr": "Ligue terminée sans aucun K.O. ! Récompense : {0}.",
+  "es": "¡Liga sin ningún debilitado! Premio: {0}.",
+  "pt": "Liga sem nenhum desmaio! Prêmio: {0}."
+ },
+ "A Liga começa aqui: depois da primeira da Elite dos Quatro, as lutas vêm uma atrás da outra, sem Centro Pokémon e sem a Enfermeira Joy; só a Bolsa cura. Sem nenhum desmaio até o Campeão, você ganha uma Master Ball. Quer seguir?": {
+  "en": "The League starts here: after the first Elite Four member, the battles come one after another, with no Pokémon Center and no Nurse Joy; only your Bag heals. Reach the Champion without a single faint and you get a Master Ball. Continue?",
+  "fr": "La Ligue commence ici : après le premier membre du Conseil 4, les combats s'enchaînent, sans Centre Pokémon ni Infirmière Joëlle ; seul le Sac soigne. Sans aucun K.O. jusqu'au Maître, vous gagnez une Master Ball. Continuer ?",
+  "es": "La Liga empieza aquí: después del primer miembro del Alto Mando, los combates vienen uno tras otro, sin Centro Pokémon ni Enfermera Joy; solo la Mochila cura. Sin ningún debilitado hasta el Campeón, ganas una Master Ball. ¿Seguir?",
+  "pt": "A Liga começa aqui: depois da primeira da Elite dos Quatro, as lutas vêm uma atrás da outra, sem Centro Pokémon e sem a Enfermeira Joy; só a Bolsa cura. Sem nenhum desmaio até o Campeão, você ganha uma Master Ball. Quer seguir?"
+ },
+ "{0} passou correndo por aqui! Ele foge depois do primeiro turno (dormindo ou congelado, não foge).": {
+  "en": "{0} ran past here! It flees after the first turn (unless it is asleep or frozen).",
+  "fr": "{0} est passé en courant ! Il s'enfuit après le premier tour (sauf s'il est endormi ou gelé).",
+  "es": "¡{0} pasó corriendo por aquí! Huye tras el primer turno (dormido o congelado, no huye).",
+  "pt": "{0} passou correndo por aqui! Ele foge depois do primeiro turno (dormindo ou congelado, não foge)."
+ },
+ "Um capanga da {0} está agindo nesta cidade! Derrote-o para atrapalhar o plano.": {
+  "en": "A {0} grunt is up to something in this city! Defeat them to foil the plan.",
+  "fr": "Un sbire de la {0} sévit dans cette ville ! Battez-le pour déjouer le plan.",
+  "es": "¡Un recluta del {0} está actuando en esta ciudad! Derrótalo para frustrar el plan.",
+  "pt": "Um capanga da {0} está agindo nesta cidade! Derrote-o para atrapalhar o plano."
+ },
+ "Um morador quer que você cuide de um ovo. De quem será? Choca depois de {0} vitórias.": {
+  "en": "A local wants you to look after an Egg. Whose could it be? It hatches after {0} wins.",
+  "fr": "Un habitant veut que vous vous occupiez d'un Œuf. De qui peut-il bien être ? Il éclot après {0} victoires.",
+  "es": "Un vecino quiere que cuides un huevo. ¿De quién será? Eclosiona tras {0} victorias.",
+  "pt": "Um morador quer que você cuide de um ovo. De quem será? Choca depois de {0} vitórias."
+ },
+ "RECEBER O OVO MISTERIOSO": {
+  "en": "TAKE THE MYSTERY EGG",
+  "fr": "PRENDRE L'ŒUF MYSTÈRE",
+  "es": "RECIBIR EL HUEVO MISTERIOSO",
+  "pt": "RECEBER O OVO MISTERIOSO"
+ },
+ "Foge depois do primeiro turno (dormindo ou congelado, não); o HP que você tirar fica para a próxima vez. Dá para capturar.": {
+  "en": "Flees after the first turn (not while asleep or frozen); the HP you take stays for next time. Can be caught.",
+  "fr": "S'enfuit après le premier tour (pas s'il est endormi ou gelé) ; les PV que vous lui retirez restent pour la prochaine fois. Peut être capturé.",
+  "es": "Huye tras el primer turno (dormido o congelado, no); los PS que le quites se mantienen para la próxima vez. Se puede capturar.",
+  "pt": "Foge depois do primeiro turno (dormindo ou congelado, não); o HP que você tirar fica para a próxima vez. Dá para capturar."
+ },
+ "Capanga da equipe vilã": {
+  "en": "Villain team grunt",
+  "fr": "Sbire de l'équipe maléfique",
+  "es": "Recluta del equipo villano",
+  "pt": "Capanga da equipe vilã"
+ },
+ "Vencendo, você atrapalha o plano: ganha uma Ultra Ball e o chefe da equipe vem mais fraco.": {
+  "en": "Win to foil the plan: you get an Ultra Ball and the team's boss will be weaker.",
+  "fr": "Gagnez pour déjouer le plan : vous recevez une Ultra Ball et le chef de l'équipe sera plus faible.",
+  "es": "Si ganas, frustras el plan: recibes una Ultra Ball y el jefe del equipo vendrá más débil.",
+  "pt": "Vencendo, você atrapalha o plano: ganha uma Ultra Ball e o chefe da equipe vem mais fraco."
+ },
+ "Tempo bom": {
+  "en": "Clear skies",
+  "fr": "Beau temps",
+  "es": "Despejado",
+  "pt": "Tempo bom"
+ },
+ "nesta rota!": {
+  "en": "on this route!",
+  "fr": "sur cette route !",
+  "es": "¡en esta ruta!",
+  "pt": "nesta rota!"
+ },
+ "Plano da {0}: {1}/{2} atrapalhados": {
+  "en": "{0} plan: {1}/{2} foiled",
+  "fr": "Plan de la {0} : {1}/{2} déjoués",
+  "es": "Plan del {0}: {1}/{2} frustrados",
+  "pt": "Plano da {0}: {1}/{2} atrapalhados"
+ },
+ "foi visto aqui": {
+  "en": "was spotted here",
+  "fr": "a été vu ici",
+  "es": "fue visto aquí",
+  "pt": "foi visto aqui"
+ },
+ "Amizade": {
+  "en": "Friendship",
+  "fr": "Amitié",
+  "es": "Amistad",
+  "pt": "Amizade"
+ },
+ "Ovo misterioso": {
+  "en": "Mystery Egg",
+  "fr": "Œuf mystère",
+  "es": "Huevo misterioso",
+  "pt": "Ovo misterioso"
  }
 }

@@ -252,6 +252,24 @@ final screens = <String, Widget Function()>{
     UserData.instance.update({'league': {...UserData.instance.league, 'factory': {...FactoryRun.of(UserData.instance.league), 'caught': [1], 'seen': [2]}}});
     return const PokedexScreen();
   },
+  // Rodada 15: o HUD do mapa (hora, clima, efeito, estação, o lendário que foge e o plano vilão), os corações de
+  // amizade, o ovo misterioso, o mapa da região e os avisos do plano atrapalhado e da Liga sem desmaios.
+  'Battle Factory (HUD do mapa)': () => _factory(null, {'floor': 23, 'biome': 'forest', 'options': [{'kind': 'wild', 'biome': 'forest'}, {'kind': 'trainer'}, {'kind': 'wildboss', 'legend': 244, 'roam': true}]},
+      {'leg': 21, 'townMap': true, 'boss': {'region': 0, 'step': 1}}),
+  'Battle Factory (HUD na rota)': () => _factory(null, {'floor': 24, 'biome': 'grass', 'options': [{'kind': 'wild', 'biome': 'grass'}]}, {'leg': 21, 'boss': {'region': 0, 'step': 1}}),
+  'Battle Factory (amizade e ovo misterioso)': () => _factory(null, {'floor': 24, 'biome': 'grass', 'options': [{'kind': 'wild', 'biome': 'grass'}]}, {
+        'leg': 21,
+        'eggs': [{'id': 175, 'left': 6, 'mystery': true}],
+        'team': [
+          for (final (id, f, extra) in [(6, 10, const <String, dynamic>{}), (447, 6, const <String, dynamic>{}), (122, 2, const <String, dynamic>{'traded': true, 'nick': 'Marcel', 'ot': 'Turner'})])
+            {
+              'id': id, 'level': 22, 'exp': 10648, 'nature': 'Hardy', 'hp': 1.0, 'item': null, 'extras': <String>[], 'friendship': f, ...extra,
+              'ivs': {for (final s in ['hp', 'atk', 'def', 'spa', 'spd', 'spe']) s: 20}, 'evs': {for (final s in ['hp', 'atk', 'def', 'spa', 'spd', 'spe']) s: 0},
+            },
+        ],
+      }),
+  'Battle Factory (mapa da região)': () => _factory(null, {'floor': 24, 'biome': 'grass', 'options': [{'kind': 'wild', 'biome': 'grass'}]}, {'leg': 21, 'boss': {'region': 0, 'step': 1}}),
+  'Battle Factory (plano atrapalhado)': () => _factory({'exp': 0, 'money': 420, 'levels': [], 'joy': false, 'capture': null, 'cards': null, 'shop': null, 'plot': {'chapter': 1, 'team': 'rocket', 'item': 'ultra-ball'}, 'flawless': 'master-ball'}),
   'Battle Factory (cidade)': () => _factory(null, {'floor': 10, 'biome': 'city', 'town': true, 'options': [{'kind': 'boss'}, {'kind': 'dungeon', 'place': 'sewer', 'scene': 'sewer'}]}),
   // A troca do morador (uma por cidade): o botão dela junto do Poké Mart, do Centro e da Creche.
   'Battle Factory (cidade, troca)': () => _factory(null, {'floor': 10, 'biome': 'city', 'town': true, 'options': [{'kind': 'boss'}]}, {'town': {'leg': 1, 'shop': ['potion'], 'trade': {'want': 25, 'give': 93}}}),
@@ -532,6 +550,26 @@ final Map<String, Future<void> Function(WidgetTester)> actions = {
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.byKey(const ValueKey('skill-tree-full')), findsOneWidget);
     expect(find.byKey(const ValueKey('tree-full-close')), findsOneWidget);
+  },
+  'Battle Factory (HUD do mapa)': (tester) async {
+    expect(find.byKey(const ValueKey('map-hud')), findsOneWidget);
+    expect(find.byKey(const ValueKey('hud-time')), findsOneWidget);
+    expect(find.byKey(const ValueKey('hud-weather')), findsOneWidget);
+  },
+  'Battle Factory (HUD na rota)': (tester) async {
+    expect(find.byKey(const ValueKey('map-hud')), findsOneWidget);
+  },
+  'Battle Factory (amizade e ovo misterioso)': (tester) async {
+    await _openTeam(tester);
+    expect(find.byKey(const ValueKey('factory-team-hearts-0')), findsOneWidget);
+  },
+  'Battle Factory (mapa da região)': (tester) async {
+    await _openTown(tester, 'factory-menu-region');
+    expect(find.byKey(const ValueKey('region-hud')), findsOneWidget);
+  },
+  'Battle Factory (plano atrapalhado)': (tester) async {
+    expect(find.byKey(const ValueKey('factory-plot'), skipOffstage: false), findsOneWidget);
+    expect(find.byKey(const ValueKey('factory-flawless'), skipOffstage: false), findsOneWidget);
   },
   'Battle Factory (álbum)': (tester) async {
     await _openTown(tester, 'factory-album');
