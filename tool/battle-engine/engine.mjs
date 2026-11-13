@@ -97,6 +97,8 @@ const PLACE_EFFECTS = {
   quicksand: {name: 'a areia movediça', mode: 'slow', chance: 3, types: ['Ground', 'Flying']},
   storm: {name: 'a tempestade', hurt: true, chance: 4, power: 8, types: ['Electric', 'Ground']},
   aurora: {name: 'a aurora', hurt: false, types: ['Ice']},
+  // A neblina (como em Diamond/Pearl): os golpes acertam menos (3/5 da precisão) enquanto ela durar.
+  fog: {name: 'a neblina', mode: 'fog', types: []},
 };
 const placeEffects = {};
 function placeEffect(key, dex) {
@@ -111,9 +113,14 @@ function makePlaceEffect(key) {
   const Condition = Dex.conditions.get('gravity').constructor;
   placeEffects[key] = new Condition({
     name: `PocketDex ${key}`, effectType: 'Condition',
+    onModifyAccuracyPriority: 6,
+    onModifyAccuracy(accuracy) {
+      if (def.mode !== 'fog' || typeof accuracy !== 'number') return;
+      return this.chainModify([2458, 4096]);
+    },
     onResidualOrder: 5,
     onResidual(pokemon) {
-      if (!pokemon.hp || pokemon.fainted) return;
+      if (def.mode === 'fog' || !pokemon.hp || pokemon.fainted) return;
       const has = pokemon.getTypes().some(t => def.types.includes(t));
       // Os de chance: só às vezes (1 em def.chance), e só em quem não é dos tipos protegidos.
       if (def.chance && (has || !this.randomChance(1, def.chance))) return;

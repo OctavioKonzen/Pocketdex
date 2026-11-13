@@ -483,6 +483,7 @@ body {
 .place-quicksand { background: radial-gradient(ellipse at 50% 85%, rgb(180 140 80 / 0.45), transparent 55%); animation: place-drift 2.5s ease-in-out infinite; }
 .place-storm { background: linear-gradient(rgb(30 30 60 / 0.25), rgb(30 30 60 / 0.1)); animation: place-flash 3s steps(1) infinite; }
 .place-aurora { background: linear-gradient(170deg, rgb(52 211 153 / 0.3), transparent 30%, rgb(129 140 248 / 0.25) 45%, transparent 60%); background-size: 200% 100%; animation: place-aurora 6s ease-in-out infinite; }
+.place-fog { background: linear-gradient(90deg, rgb(226 232 240 / 0.55), rgb(226 232 240 / 0.25) 30%, rgb(226 232 240 / 0.6) 60%, rgb(226 232 240 / 0.3)); background-size: 200% 100%; animation: place-aurora 14s ease-in-out infinite; }
 .night-tint { background: rgb(16 24 72 / 0.35); mix-blend-mode: multiply; pointer-events: none; }
 @keyframes place-rise { to { background-position: 20px -140px; } }
 @keyframes place-flash { 0%, 100% { background-color: transparent; } 88% { background-color: rgb(255 255 220 / 0.55); } 91% { background-color: transparent; } }

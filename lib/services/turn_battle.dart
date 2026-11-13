@@ -945,7 +945,7 @@ class TurnBattle {
     // Os efeitos de lugar da Battle Factory.
     'pocketdexdiamonds': 'Chuva de diamantes', 'pocketdexrockfall': 'Desmoronamento', 'pocketdexashes': 'Cinzas ardentes',
     'pocketdexmiasma': 'Névoa tóxica', 'pocketdexchill': 'Frio cortante', 'pocketdexhaunt': 'Aura sombria', 'pocketdexcurrent': 'Correnteza',
-    'pocketdexspores': 'Esporos', 'pocketdexquicksand': 'Areia movediça', 'pocketdexstorm': 'Tempestade', 'pocketdexaurora': 'Aurora',
+    'pocketdexspores': 'Esporos', 'pocketdexquicksand': 'Areia movediça', 'pocketdexstorm': 'Tempestade', 'pocketdexaurora': 'Aurora', 'pocketdexfog': 'Neblina',
   };
 
   /// O campo em textos curtos: [o seu lado, o do adversário, o campo todo]. Igual ao site.
@@ -1884,6 +1884,7 @@ class TurnBattle {
     'quicksandStart': 'O chão virou areia movediça!',
     'stormStart': 'Uma tempestade de raios cai sobre o campo!',
     'auroraStart': 'Uma aurora colorida brilha no céu!',
+    'fogStart': 'Uma neblina densa cobre o lugar: os golpes acertam menos!',
     'placeHurt': ['{0} sofreu com {1}!', '{0} inimigo sofreu com {1}!'],
     // Battle Factory: o XP na hora e a subida de nível durante a luta.
     'gainExp': ['{0} ganhou {1} de XP!', '{0} inimigo ganhou {1} de XP!'],

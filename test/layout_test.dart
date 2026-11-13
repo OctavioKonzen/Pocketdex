@@ -268,6 +268,17 @@ final screens = <String, Widget Function()>{
   'Battle Factory (Snorlax no caminho)': () => _factory(null, {'floor': 4, 'biome': 'grass', 'options': [{'kind': 'wildboss', 'legend': 143, 'blocker': 'poke-flute'}, {'kind': 'trainer', 'around': true}]}, {'leg': 1, 'boss': {'region': 0, 'step': 10}, 'townMap': true}),
   // O item-chave do lugar (o Silph Scope do Rocket Hideout) e o prêmio da história na tela do resultado.
   'Battle Factory (item-chave)': () => _factory({'exp': 120, 'money': 80, 'levels': [], 'joy': false, 'capture': null, 'cards': null, 'shop': null, 'key': 'silph-scope', 'placeReward': 'master-ball'}),
+  'Battle Factory (desafio electric)': () => _factory({'puzzle': {'kind': 'switches', 'type': 'electric', 'done': false, 'won': false, 'cols': 5, 'rows': 3, 'a': 13, 'b': 8, 'open': {}, 'found': 0, 'left': 6}}, null, {'boss': {'region': 0, 'step': 1}, 'town': {'leg': 1, 'shop': ['potion']}}),
+  'Battle Factory (desafio ice)': () => _factory({'puzzle': {'kind': 'slide', 'type': 'ice', 'done': false, 'won': false, 'cols': 5, 'rows': 5, 'pos': 22, 'goal': 3, 'rocks': [0, 20, 21, 9, 11, 2], 'left': 5}}, null, {'boss': {'region': 0, 'step': 1}, 'town': {'leg': 1, 'shop': ['potion']}}),
+  'Battle Factory (desafio ghost)': () => _factory({'puzzle': {'kind': 'maze', 'type': 'ghost', 'done': false, 'won': false, 'cols': 5, 'rows': 5, 'pos': 22, 'goal': 2, 'walls': [3, 4, 9], 'seen': [], 'hidden': true, 'left': 3}}, null, {'boss': {'region': 0, 'step': 1}, 'town': {'leg': 1, 'shop': ['potion']}}),
+  'Battle Factory (desafio fighting)': () => _factory({'puzzle': {'kind': 'memory', 'type': 'fighting', 'done': false, 'won': false, 'seq': [3, 1, 2, 1, 2], 'shown': true, 'at': 0}}, null, {'boss': {'region': 0, 'step': 1}, 'town': {'leg': 1, 'shop': ['potion']}}),
+  'Battle Factory (desafio fire)': () => _factory({'puzzle': {'kind': 'quiz', 'type': 'fire', 'done': false, 'won': false, 'qs': [{'q': 'hasType', 'type': 'ice', 'options': [740, 323, 1008, 543], 'answer': 0}, {'q': 'hasType', 'type': 'psychic', 'options': [28, 382, 102, 318], 'answer': 2}, {'q': 'strong', 'type': 'normal', 'options': ['steel', 'fighting', 'psychic', 'bug'], 'answer': 1}], 'at': 0, 'right': 0}}, null, {'boss': {'region': 0, 'step': 1}, 'town': {'leg': 1, 'shop': ['potion']}}),
+  'Battle Factory (desafio normal)': () => _factory({'puzzle': {'kind': 'silhouette', 'type': 'normal', 'done': false, 'won': false, 'qs': [{'mon': 106, 'options': [180, 106, 469, 627], 'answer': 1}, {'mon': 909, 'options': [875, 579, 959, 909], 'answer': 3}, {'mon': 291, 'options': [942, 437, 291, 697], 'answer': 2}], 'at': 0, 'right': 0}}, null, {'boss': {'region': 0, 'step': 1}, 'town': {'leg': 1, 'shop': ['potion']}}),
+  // As ações da rota (pescar, sacudir a árvore, o mel, o vaso de frutas, a bicicleta e o álbum) e o álbum aberto.
+  'Battle Factory (ações da rota)': () => _factory(null, {'floor': 3, 'biome': 'forest', 'options': [{'kind': 'wild', 'biome': 'forest'}, {'kind': 'trainer'}]}, {'leg': 1, 'keyItems': ['super-rod', 'bicycle'], 'berry': {'floor': 0, 'item': 'sitrus-berry', 'need': 3, 'count': 3}, 'photos': [{'floor': 2, 'scene': 'forest', 'kind': 'capture', 'id': 25, 'shiny': true}, {'floor': 9, 'scene': 'town-mountain', 'kind': 'gym', 'id': 4, 'name': 'Brock'}]}),
+  'Battle Factory (álbum)': () => _factory(null, {'floor': 3, 'biome': 'forest', 'options': [{'kind': 'wild', 'biome': 'forest'}, {'kind': 'trainer'}]}, {'leg': 1, 'photos': [{'floor': 2, 'scene': 'forest', 'kind': 'capture', 'id': 25, 'shiny': true}, {'floor': 9, 'scene': 'town-mountain', 'kind': 'gym', 'id': 4, 'name': 'Brock'}, {'floor': 6, 'scene': 'cave', 'kind': 'capture', 'id': 74}]}),
+  // O desafio do ginásio na cidade (o botão junto do líder).
+  'Battle Factory (cidade, desafio)': () => _factory(null, {'floor': 11, 'biome': 'city', 'town': true, 'options': [{'kind': 'boss'}]}, {'leg': 1, 'boss': {'region': 0, 'step': 1}, 'town': {'leg': 1, 'shop': ['potion'], 'got': ['old-rod']}, 'keyItems': ['old-rod']}),
   'Battle Factory (Safari, fim)': () => _factory({'safari': {'balls': 0, 'left': 2, 'caught': 2, 'mon': null, 'mood': null, 'last': 'broke', 'lastId': 123}}),
   'Login': () => const LoginScreen(),
   'Pokémon (Charizard)': () => const PokemonDetailScreen(initialPokemonId: 6),
@@ -319,7 +330,7 @@ Future<void> _openTeam(WidgetTester tester) async {
 /// Toca num botão da cidade (virando a página do menu até ele aparecer).
 Future<void> _openTown(WidgetTester tester, String key) async {
   final button = find.byKey(ValueKey(key));
-  for (var i = 0; i < 4 && button.hitTestable().evaluate().isEmpty; i++) {
+  for (var i = 0; i < 8 && button.hitTestable().evaluate().isEmpty; i++) {
     await tester.tap(find.byKey(const ValueKey('factory-menu-next')));
     await tester.pump(const Duration(milliseconds: 300));
   }
@@ -521,6 +532,13 @@ final Map<String, Future<void> Function(WidgetTester)> actions = {
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.byKey(const ValueKey('skill-tree-full')), findsOneWidget);
     expect(find.byKey(const ValueKey('tree-full-close')), findsOneWidget);
+  },
+  'Battle Factory (álbum)': (tester) async {
+    await _openTown(tester, 'factory-album');
+    expect(find.byKey(const ValueKey('album')), findsOneWidget);
+  },
+  'Battle Factory (desafio fire)': (tester) async {
+    expect(find.byKey(const ValueKey('puzzle-question')), findsOneWidget);
   },
   'Battle Factory (Game Corner)': (tester) async {
     await _openTown(tester, 'town-corner');

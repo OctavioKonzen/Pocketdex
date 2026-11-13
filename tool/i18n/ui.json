@@ -9170,5 +9170,500 @@
   "en": "more Ice",
   "fr": "plus de Glace",
   "es": "más Hielo"
+ },
+ "Dá para pescar onde há água (uma vez por rota): vêm os Pokémon de Água mais comuns.": {
+  "en": "You can fish where there is water (once per route): the most common Water Pokémon bite.",
+  "fr": "On peut pêcher là où il y a de l'eau (une fois par route) : les Pokémon Eau les plus communs mordent.",
+  "es": "Se puede pescar donde hay agua (una vez por ruta): pican los Pokémon de Agua más comunes."
+ },
+ "Uma vara melhor: na pesca vêm Pokémon de Água menos comuns.": {
+  "en": "A better rod: less common Water Pokémon bite.",
+  "fr": "Une meilleure canne : des Pokémon Eau moins communs mordent.",
+  "es": "Una caña mejor: pican Pokémon de Agua menos comunes."
+ },
+ "A melhor vara: na pesca vêm os Pokémon de Água raros.": {
+  "en": "The best rod: rare Water Pokémon bite.",
+  "fr": "La meilleure canne : les Pokémon Eau rares mordent.",
+  "es": "La mejor caña: pican los Pokémon de Agua raros."
+ },
+ "Uma vez por rota (duas na Cycling Road), passa um andar sem batalha.": {
+  "en": "Once per route (twice on the Cycling Road), skip a floor without battling.",
+  "fr": "Une fois par route (deux sur la Piste Cyclable), passe un étage sans combat.",
+  "es": "Una vez por ruta (dos en el Camino de Bicis), pasa un piso sin combate."
+ },
+ "Deixa embarcar na balsa dos portos e das ilhas: treinadores a bordo e um prêmio no fim.": {
+  "en": "Lets you board the ferry at ports and islands: trainers on board and a prize at the end.",
+  "fr": "Permet d'embarquer sur le ferry des ports et des îles : des dresseurs à bord et un prix à la fin.",
+  "es": "Permite subir al ferry de puertos e islas: entrenadores a bordo y un premio al final."
+ },
+ "Pescaria": {
+  "en": "Fishing",
+  "fr": "Pêche",
+  "es": "Pesca"
+ },
+ "Um Pokémon de Água mordeu a isca: quem vem depende da vara.": {
+  "en": "A Water Pokémon took the bait: what bites depends on the rod.",
+  "fr": "Un Pokémon Eau a mordu : ce qui vient dépend de la canne.",
+  "es": "Un Pokémon de Agua picó: lo que viene depende de la caña."
+ },
+ "Árvore sacudida": {
+  "en": "Shaken tree",
+  "fr": "Arbre secoué",
+  "es": "Árbol sacudido"
+ },
+ "Caiu um Pokémon que vive na árvore.": {
+  "en": "A Pokémon living in the tree fell out.",
+  "fr": "Un Pokémon qui vit dans l'arbre est tombé.",
+  "es": "Cayó un Pokémon que vive en el árbol."
+ },
+ "Árvore de mel": {
+  "en": "Honey tree",
+  "fr": "Arbre à miel",
+  "es": "Árbol de miel"
+ },
+ "Um Pokémon raro está lambendo o mel (mais chance de shiny).": {
+  "en": "A rare Pokémon is licking the honey (higher shiny chance).",
+  "fr": "Un Pokémon rare lèche le miel (plus de chances de shiny).",
+  "es": "Un Pokémon raro está lamiendo la miel (más probabilidad de shiny)."
+ },
+ "Pedalar": {
+  "en": "Ride",
+  "fr": "Pédaler",
+  "es": "Pedalear"
+ },
+ "De bicicleta: passa o andar sem batalha (e sem prêmio).": {
+  "en": "By bike: skip the floor without battling (and without a prize).",
+  "fr": "À vélo : passe l'étage sans combat (et sans prix).",
+  "es": "En bici: pasa el piso sin combate (y sin premio)."
+ },
+ "Você pedalou por este trecho sem encontrar ninguém.": {
+  "en": "You rode through this stretch without meeting anyone.",
+  "fr": "Vous avez pédalé sur ce tronçon sans croiser personne.",
+  "es": "Pedaleaste por este tramo sin encontrarte con nadie."
+ },
+ "Em {0} te deram {1}!": {
+  "en": "In {0} you got the {1}!",
+  "fr": "À {0}, on vous a donné {1} !",
+  "es": "¡En {0} te dieron {1}!"
+ },
+ "FOTO": {
+  "en": "PHOTO",
+  "fr": "PHOTO",
+  "es": "FOTO"
+ },
+ "FOTO GUARDADA": {
+  "en": "PHOTO SAVED",
+  "fr": "PHOTO GARDÉE",
+  "es": "FOTO GUARDADA"
+ },
+ "DESAFIO DO GINÁSIO": {
+  "en": "GYM CHALLENGE",
+  "fr": "DÉFI DE L'ARÈNE",
+  "es": "DESAFÍO DEL GIMNASIO"
+ },
+ "Uma tentativa: vencendo, o time do líder vem {0} níveis abaixo e você ganha um prêmio.": {
+  "en": "One try: win and the leader's team comes {0} levels lower, plus a prize.",
+  "fr": "Une seule tentative : en gagnant, l'équipe du champion a {0} niveaux de moins et vous gagnez un prix.",
+  "es": "Un intento: si ganas, el equipo del líder viene {0} niveles más bajo y ganas un premio."
+ },
+ "Desafio vencido: o time do líder vem mais fraco.": {
+  "en": "Challenge won: the leader's team is weaker.",
+  "fr": "Défi réussi : l'équipe du champion est plus faible.",
+  "es": "Desafío ganado: el equipo del líder viene más débil."
+ },
+ "Desafio perdido: o líder luta com tudo.": {
+  "en": "Challenge lost: the leader fights at full strength.",
+  "fr": "Défi raté : le champion se bat à pleine puissance.",
+  "es": "Desafío perdido: el líder pelea con todo."
+ },
+ "PESCAR": {
+  "en": "FISH",
+  "fr": "PÊCHER",
+  "es": "PESCAR"
+ },
+ "SACUDIR A ÁRVORE": {
+  "en": "SHAKE THE TREE",
+  "fr": "SECOUER L'ARBRE",
+  "es": "SACUDIR EL ÁRBOL"
+ },
+ "PASSAR MEL": {
+  "en": "SPREAD HONEY",
+  "fr": "METTRE DU MIEL",
+  "es": "UNTAR MIEL"
+ },
+ "VER O MEL": {
+  "en": "CHECK THE HONEY",
+  "fr": "VOIR LE MIEL",
+  "es": "VER LA MIEL"
+ },
+ "PLANTAR FRUTA": {
+  "en": "PLANT A BERRY",
+  "fr": "PLANTER UNE BAIE",
+  "es": "PLANTAR BAYA"
+ },
+ "COLHER {0}× {1}": {
+  "en": "PICK {0}× {1}",
+  "fr": "CUEILLIR {0}× {1}",
+  "es": "RECOGER {0}× {1}"
+ },
+ "ÁLBUM": {
+  "en": "ALBUM",
+  "fr": "ALBUM",
+  "es": "ÁLBUM"
+ },
+ "Álbum da corrida": {
+  "en": "Run album",
+  "fr": "Album de la partie",
+  "es": "Álbum de la partida"
+ },
+ "Mel na árvore": {
+  "en": "Honey on the tree",
+  "fr": "Miel sur l'arbre",
+  "es": "Miel en el árbol"
+ },
+ "Vaso de frutas": {
+  "en": "Berry pot",
+  "fr": "Pot à baies",
+  "es": "Maceta de bayas"
+ },
+ "Você venceu o desafio! O time do líder vem {0} níveis abaixo.": {
+  "en": "You beat the challenge! The leader's team comes {0} levels lower.",
+  "fr": "Défi réussi ! L'équipe du champion a {0} niveaux de moins.",
+  "es": "¡Superaste el desafío! El equipo del líder viene {0} niveles más bajo."
+ },
+ "Não foi desta vez: o líder luta com tudo.": {
+  "en": "Not this time: the leader fights at full strength.",
+  "fr": "Pas cette fois : le champion se bat à pleine puissance.",
+  "es": "Esta vez no: el líder pelea con todo."
+ },
+ "Pergunta {0} de {1} · acertos: {2}": {
+  "en": "Question {0} of {1} · correct: {2}",
+  "fr": "Question {0} sur {1} · bonnes réponses : {2}",
+  "es": "Pregunta {0} de {1} · aciertos: {2}"
+ },
+ "Memorize a ordem.": {
+  "en": "Memorize the order.",
+  "fr": "Mémorisez l'ordre.",
+  "es": "Memoriza el orden."
+ },
+ "Repita a ordem: {0} de {1}.": {
+  "en": "Repeat the order: {0} of {1}.",
+  "fr": "Répétez l'ordre : {0} sur {1}.",
+  "es": "Repite el orden: {0} de {1}."
+ },
+ "Faltam {0}.": {
+  "en": "{0} left.",
+  "fr": "Il en reste {0}.",
+  "es": "Faltan {0}."
+ },
+ "Tentativas: {0} · achados: {1} de 2": {
+  "en": "Tries: {0} · found: {1} of 2",
+  "fr": "Essais : {0} · trouvés : {1} sur 2",
+  "es": "Intentos: {0} · encontrados: {1} de 2"
+ },
+ "Batidas que ainda aguenta: {0}": {
+  "en": "Bumps left: {0}",
+  "fr": "Chocs restants : {0}",
+  "es": "Golpes que aguantas: {0}"
+ },
+ "Jogadas: {0}": {
+  "en": "Moves: {0}",
+  "fr": "Coups : {0}",
+  "es": "Jugadas: {0}"
+ },
+ "MEMORIZEI": {
+  "en": "GOT IT",
+  "fr": "MÉMORISÉ",
+  "es": "MEMORIZADO"
+ },
+ "DESISTIR DO DESAFIO": {
+  "en": "GIVE UP THE CHALLENGE",
+  "fr": "ABANDONNER LE DÉFI",
+  "es": "ABANDONAR EL DESAFÍO"
+ },
+ "Qual tipo é super efetivo contra {0}?": {
+  "en": "Which type is super effective against {0}?",
+  "fr": "Quel type est super efficace contre {0} ?",
+  "es": "¿Qué tipo es súper eficaz contra {0}?"
+ },
+ "Qual é um dos tipos de {0}?": {
+  "en": "What is one of {0}'s types?",
+  "fr": "Quel est l'un des types de {0} ?",
+  "es": "¿Cuál es uno de los tipos de {0}?"
+ },
+ "Qual destes Pokémon é do tipo {0}?": {
+  "en": "Which of these Pokémon is {0} type?",
+  "fr": "Lequel de ces Pokémon est de type {0} ?",
+  "es": "¿Cuál de estos Pokémon es de tipo {0}?"
+ },
+ "O quiz do Blaine": {
+  "en": "Blaine's quiz",
+  "fr": "Le quiz d'Auguste",
+  "es": "El concurso de Blaine"
+ },
+ "Responda as perguntas do líder: acerte 2 de 3.": {
+  "en": "Answer the leader's questions: get 2 of 3 right.",
+  "fr": "Répondez aux questions du champion : 2 bonnes sur 3.",
+  "es": "Responde las preguntas del líder: acierta 2 de 3."
+ },
+ "Reconheça a silhueta: acerte 2 de 3.": {
+  "en": "Name the silhouette: get 2 of 3 right.",
+  "fr": "Reconnaissez la silhouette : 2 bonnes sur 3.",
+  "es": "Reconoce la silueta: acierta 2 de 3."
+ },
+ "O piso de gelo do Juan": {
+  "en": "Juan's ice floor",
+  "fr": "Le sol de glace de Juan",
+  "es": "El suelo de hielo de Galano"
+ },
+ "Pise em todos os ladrilhos uma única vez: pisar de novo quebra o gelo.": {
+  "en": "Step on every tile exactly once: stepping twice breaks the ice.",
+  "fr": "Marchez sur chaque dalle une seule fois : y revenir brise la glace.",
+  "es": "Pisa cada baldosa una sola vez: pisar dos veces rompe el hielo."
+ },
+ "O jardim da Erika": {
+  "en": "Erika's garden",
+  "fr": "Le jardin d'Erika",
+  "es": "El jardín de Erika"
+ },
+ "Ache o caminho entre as cercas vivas até a líder, sem gastar os passos.": {
+  "en": "Find the way through the hedges to the leader before you run out of steps.",
+  "fr": "Trouvez le chemin entre les haies jusqu'à la championne sans épuiser vos pas.",
+  "es": "Encuentra el camino entre los setos hasta la líder sin gastar tus pasos."
+ },
+ "As lixeiras do Lt. Surge": {
+  "en": "Lt. Surge's trash cans",
+  "fr": "Les poubelles du Major Bob",
+  "es": "Los cubos de basura del Teniente Surge"
+ },
+ "Dois interruptores, um ao lado do outro, estão escondidos nas lixeiras. O número diz a quantas casas está o mais próximo.": {
+  "en": "Two switches, side by side, are hidden in the trash cans. The number tells how many squares away the nearest one is.",
+  "fr": "Deux interrupteurs côte à côte sont cachés dans les poubelles. Le chiffre indique à combien de cases se trouve le plus proche.",
+  "es": "Dos interruptores, uno junto al otro, están escondidos en los cubos. El número dice a cuántas casillas está el más cercano."
+ },
+ "O gelo do Pryce": {
+  "en": "Pryce's ice",
+  "fr": "La glace de Frédo",
+  "es": "El hielo de Fredo"
+ },
+ "No gelo você escorrega até bater numa pedra. Chegue ao líder.": {
+  "en": "On ice you slide until you hit a rock. Reach the leader.",
+  "fr": "Sur la glace vous glissez jusqu'à heurter un rocher. Atteignez le champion.",
+  "es": "En el hielo resbalas hasta chocar con una roca. Llega al líder."
+ },
+ "Os sacos de pancada da Maylene": {
+  "en": "Maylene's punching bags",
+  "fr": "Les sacs de frappe de Mélina",
+  "es": "Los sacos de boxeo de Brega"
+ },
+ "Memorize a ordem dos golpes e repita sem errar.": {
+  "en": "Memorize the order of the strikes and repeat it without a mistake.",
+  "fr": "Mémorisez l'ordre des coups et répétez-le sans erreur.",
+  "es": "Memoriza el orden de los golpes y repítelo sin fallar."
+ },
+ "As paredes invisíveis do Koga": {
+  "en": "Koga's invisible walls",
+  "fr": "Les murs invisibles de Koga",
+  "es": "Las paredes invisibles de Koga"
+ },
+ "As paredes não aparecem até você bater nelas. Chegue ao líder com poucas batidas.": {
+  "en": "Walls stay hidden until you bump into them. Reach the leader with few bumps.",
+  "fr": "Les murs restent invisibles jusqu'à ce que vous les heurtiez. Atteignez le champion avec peu de chocs.",
+  "es": "Las paredes no aparecen hasta que chocas con ellas. Llega al líder con pocos choques."
+ },
+ "Os ladrilhos giratórios do Giovanni": {
+  "en": "Giovanni's spin tiles",
+  "fr": "Les dalles tournantes de Giovanni",
+  "es": "Las baldosas giratorias de Giovanni"
+ },
+ "Cada ladrilho te joga em linha reta até bater. Chegue ao líder.": {
+  "en": "Each tile sends you straight until you hit something. Reach the leader.",
+  "fr": "Chaque dalle vous envoie tout droit jusqu'à un obstacle. Atteignez le champion.",
+  "es": "Cada baldosa te lanza en línea recta hasta chocar. Llega al líder."
+ },
+ "Os canhões da Skyla": {
+  "en": "Skyla's cannons",
+  "fr": "Les canons de Carolina",
+  "es": "Los cañones de Gerania"
+ },
+ "O canhão te atira em linha reta até a parede. Chegue à líder.": {
+  "en": "The cannon shoots you straight to the wall. Reach the leader.",
+  "fr": "Le canon vous propulse tout droit jusqu'au mur. Atteignez la championne.",
+  "es": "El cañón te dispara en línea recta hasta la pared. Llega a la líder."
+ },
+ "Os teleportes da Sabrina": {
+  "en": "Sabrina's warp panels",
+  "fr": "Les téléporteurs de Morgane",
+  "es": "Los teletransportes de Sabrina"
+ },
+ "Memorize a ordem das plataformas e repita sem errar.": {
+  "en": "Memorize the order of the panels and repeat it without a mistake.",
+  "fr": "Mémorisez l'ordre des plateformes et répétez-le sans erreur.",
+  "es": "Memoriza el orden de las plataformas y repítelo sin fallar."
+ },
+ "As teias do Bugsy": {
+  "en": "Bugsy's webs",
+  "fr": "Les toiles d'Hector",
+  "es": "Las telarañas de Antón"
+ },
+ "Duas alavancas, uma ao lado da outra, estão escondidas nas teias. O número diz a quantas casas está a mais próxima.": {
+  "en": "Two levers, side by side, are hidden in the webs. The number tells how many squares away the nearest one is.",
+  "fr": "Deux leviers côte à côte sont cachés dans les toiles. Le chiffre indique à combien de cases se trouve le plus proche.",
+  "es": "Dos palancas, una junto a la otra, están escondidas en las telarañas. El número dice a cuántas casillas está la más cercana."
+ },
+ "As lajes do Roark": {
+  "en": "Roark's slabs",
+  "fr": "Les dalles de Pierrick",
+  "es": "Las losas de Roco"
+ },
+ "Pise em todas as lajes uma única vez: pisar de novo faz desmoronar.": {
+  "en": "Step on every slab exactly once: stepping twice makes it collapse.",
+  "fr": "Marchez sur chaque dalle une seule fois : y revenir la fait s'effondrer.",
+  "es": "Pisa cada losa una sola vez: pisar dos veces la derrumba."
+ },
+ "A ponte invisível do Morty": {
+  "en": "Morty's invisible bridge",
+  "fr": "Le pont invisible de Mortimer",
+  "es": "El puente invisible de Morti"
+ },
+ "O caminho não aparece: um passo fora dele e você cai. Chegue ao líder.": {
+  "en": "The path is invisible: one step off and you fall. Reach the leader.",
+  "fr": "Le chemin est invisible : un pas de travers et vous tombez. Atteignez le champion.",
+  "es": "El camino no se ve: un paso fuera y caes. Llega al líder."
+ },
+ "As estátuas de dragão do Drayden": {
+  "en": "Drayden's dragon statues",
+  "fr": "Les statues de dragon de Watson",
+  "es": "Las estatuas de dragón de Lirio"
+ },
+ "Memorize a ordem das estátuas e repita sem errar.": {
+  "en": "Memorize the order of the statues and repeat it without a mistake.",
+  "fr": "Mémorisez l'ordre des statues et répétez-le sans erreur.",
+  "es": "Memoriza el orden de las estatuas y repítelo sin fallar."
+ },
+ "No escuro: quem é esse Pokémon?": {
+  "en": "In the dark: who's that Pokémon?",
+  "fr": "Dans le noir : quel est ce Pokémon ?",
+  "es": "A oscuras: ¿quién es ese Pokémon?"
+ },
+ "As luzes estão apagadas. Reconheça a silhueta: acerte 2 de 3.": {
+  "en": "The lights are out. Name the silhouette: get 2 of 3 right.",
+  "fr": "Les lumières sont éteintes. Reconnaissez la silhouette : 2 bonnes sur 3.",
+  "es": "Las luces están apagadas. Reconoce la silueta: acierta 2 de 3."
+ },
+ "As esteiras do Byron": {
+  "en": "Byron's conveyor belts",
+  "fr": "Les tapis roulants de Charles",
+  "es": "Las cintas de Acerón"
+ },
+ "A esteira te leva em linha reta até bater. Chegue ao líder.": {
+  "en": "The belt carries you straight until you hit something. Reach the leader.",
+  "fr": "Le tapis vous emmène tout droit jusqu'à un obstacle. Atteignez le champion.",
+  "es": "La cinta te lleva en línea recta hasta chocar. Llega al líder."
+ },
+ "O quiz da Opal": {
+  "en": "Opal's quiz",
+  "fr": "Le quiz de Sally",
+  "es": "El concurso de Sally"
+ },
+ "Responda as perguntas da líder: acerte 2 de 3.": {
+  "en": "Answer the leader's questions: get 2 of 3 right.",
+  "fr": "Répondez aux questions de la championne : 2 bonnes sur 3.",
+  "es": "Responde las preguntas de la líder: acierta 2 de 3."
+ },
+ "Uma neblina densa cobre o lugar: os golpes acertam menos!": {
+  "en": "A thick fog covers the area: moves are less accurate!",
+  "fr": "Un épais brouillard recouvre les lieux : les attaques sont moins précises !",
+  "es": "Una niebla densa cubre el lugar: ¡los ataques aciertan menos!"
+ },
+ "Neblina": {
+  "en": "Fog",
+  "fr": "Brouillard",
+  "es": "Niebla"
+ },
+ "Fogo": {
+  "en": "Fire",
+  "fr": "Feu",
+  "es": "Fuego"
+ },
+ "Água": {
+  "en": "Water",
+  "fr": "Eau",
+  "es": "Agua"
+ },
+ "Planta": {
+  "en": "Grass",
+  "fr": "Plante",
+  "es": "Planta"
+ },
+ "Elétrico": {
+  "en": "Electric",
+  "fr": "Électrik",
+  "es": "Eléctrico"
+ },
+ "Gelo": {
+  "en": "Ice",
+  "fr": "Glace",
+  "es": "Hielo"
+ },
+ "Lutador": {
+  "en": "Fighting",
+  "fr": "Combat",
+  "es": "Lucha"
+ },
+ "Venenoso": {
+  "en": "Poison",
+  "fr": "Poison",
+  "es": "Veneno"
+ },
+ "Terra": {
+  "en": "Ground",
+  "fr": "Sol",
+  "es": "Tierra"
+ },
+ "Voador": {
+  "en": "Flying",
+  "fr": "Vol",
+  "es": "Volador"
+ },
+ "Psíquico": {
+  "en": "Psychic",
+  "fr": "Psy",
+  "es": "Psíquico"
+ },
+ "Inseto": {
+  "en": "Bug",
+  "fr": "Insecte",
+  "es": "Bicho"
+ },
+ "Pedra": {
+  "en": "Rock",
+  "fr": "Roche",
+  "es": "Roca"
+ },
+ "Fantasma": {
+  "en": "Ghost",
+  "fr": "Spectre",
+  "es": "Fantasma"
+ },
+ "Dragão": {
+  "en": "Dragon",
+  "fr": "Dragon",
+  "es": "Dragón"
+ },
+ "Sombrio": {
+  "en": "Dark",
+  "fr": "Ténèbres",
+  "es": "Siniestro"
+ },
+ "Aço": {
+  "en": "Steel",
+  "fr": "Acier",
+  "es": "Acero"
+ },
+ "Fada": {
+  "en": "Fairy",
+  "fr": "Fée",
+  "es": "Hada"
  }
 }

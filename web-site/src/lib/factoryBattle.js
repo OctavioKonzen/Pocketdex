@@ -98,7 +98,7 @@ export function factoryAfter(battle, run) {
   // O lendário que fugiu: o HP que ficou (para a próxima vez).
   const foe = battle.sides[1].team[0]
   const fled = battle.fled ? { fled: true, foeHp: foe?.maxHp ? Math.round((Math.max(0, foe.hp) / foe.maxHp) * 1000) / 1000 : 1 } : {}
-  return { hp, bag: { ...battle.bags[0] }, captured: battle.captured != null, fought, ...fled, night: clockOf().night, ...(gained ? { gained } : {}), ...(battle.capturedBall ? { ball: battle.capturedBall } : {}) }
+  return { hp, bag: { ...battle.bags[0] }, captured: battle.captured != null, ...(battle.captured != null ? { capturedIndex: battle.captured } : {}), fought, ...fled, night: clockOf().night, ...(gained ? { gained } : {}), ...(battle.capturedBall ? { ball: battle.capturedBall } : {}) }
 }
 
 /** Quem é o adversário do andar: o chefe (nome, treinador e música) ou um selvagem (sem treinador). */

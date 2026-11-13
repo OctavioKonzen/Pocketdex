@@ -23,7 +23,7 @@ import {
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, teamRoom, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, atPc, pcOf, PC_SIZE, RARE_PLACES, shownScene, gameOf, tierOf, foeBoostAt, leagueAhead, unlockShiny, VITAMIN_EVS, VITAMINS,
   forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor, isKeystone,
-  tradeMon, skipTrade, TRADE_LEVELS, levelCapOf, townTrade, townTradeable, KEY_ITEMS, hasKey, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, reminderCost, forgetMove, daycareOpen, daycareHere, safariAct, safariRates, leaveSafari, SAFARI_FEE, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, bossScene,
+  tradeMon, skipTrade, TRADE_LEVELS, levelCapOf, townTrade, townTradeable, legOf, fishPath, rodOf, RODS, headbuttPath, slatherHoney, honeyReady, honeyPath, HONEY_FLOORS, plantBerry, berryReady, harvestBerry, bikePath, takePhoto, photoNow, gymPuzzleOf, startPuzzle, puzzleAct, finishPuzzle, puzzleView, GYM_EDGE_LEVELS, KEY_ITEMS, hasKey, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, reminderCost, forgetMove, daycareOpen, daycareHere, safariAct, safariRates, leaveSafari, SAFARI_FEE, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, bossScene,
   resolveChoice, regionLegend, leaderType, villainTeam, rivalBoss, rocketBoss, placeInfo, routeInfo, DUNGEON_LENGTH, dungeonPos, townShop, townCenter,
   weeklyOf, startWeekly, COSMETIC_BALLS, COSMETIC_FRAMES, hasCosmetic, buyCosmetic, equipCosmetic,
   boostOf, memberOf, learnMove, movesLearnedBetween,
@@ -1115,6 +1115,7 @@ const NODE_INFO = {
   meteor: { icon: '☄️', label: 'Chuva de meteoros', help: 'Um Clefairy apareceu com os meteoros (mais chance de shiny).' },
   mythic: { icon: '✨', label: 'Pokémon mítico', help: 'Um Pokémon mítico, raríssimo. Dá para capturar.' },
   boss: { icon: '👑', label: 'Chefe', help: '' },
+  bike: { icon: '🚲', label: 'Pedalar', help: 'De bicicleta: passa o andar sem batalha (e sem prêmio).' },
   rematch: { icon: '🏆', label: 'Revanche do Campeão', help: 'O Campeão que você venceu quer revanche: time mais forte, prêmio maior.' },
   rival: { icon: '⚔️', label: 'Rival', help: 'O seu rival te seguiu pela rota: quer ver quem ficou mais forte (prêmio maior).' },
   leave: { icon: '↩️', label: 'Voltar', help: 'Sai da água e volta para onde você entrou.' },
@@ -1142,7 +1143,44 @@ const KEY_INFO = {
   'silph-scope': { icon: '🔭', help: 'Deixa ver os fantasmas da Pokémon Tower: agora dá para entrar.' },
   'poke-flute': { icon: '🪈', help: 'Acorda o Snorlax que dorme na rota até Fuchsia City.' },
   'squirt-bottle': { icon: '🚿', help: 'Molha o Sudowoodo que bloqueia a rota até Ecruteak City.' },
+  'old-rod': { icon: '🎣', help: 'Dá para pescar onde há água (uma vez por rota): vêm os Pokémon de Água mais comuns.' },
+  'good-rod': { icon: '🎣', help: 'Uma vara melhor: na pesca vêm Pokémon de Água menos comuns.' },
+  'super-rod': { icon: '🎣', help: 'A melhor vara: na pesca vêm os Pokémon de Água raros.' },
+  bicycle: { icon: '🚲', help: 'Uma vez por rota (duas na Cycling Road), passa um andar sem batalha.' },
+  'ss-ticket': { icon: '🎫', help: 'Deixa embarcar na balsa dos portos e das ilhas: treinadores a bordo e um prêmio no fim.' },
 }
+/** Os caminhos e as ações da rodada 14: a pesca, as árvores e a bicicleta. */
+const FISH_INFO = { icon: '🎣', label: 'Pescaria', help: 'Um Pokémon de Água mordeu a isca: quem vem depende da vara.' }
+const HEADBUTT_INFO = { icon: '🌳', label: 'Árvore sacudida', help: 'Caiu um Pokémon que vive na árvore.' }
+const HONEY_INFO = { icon: '🍯', label: 'Árvore de mel', help: 'Um Pokémon raro está lambendo o mel (mais chance de shiny).' }
+/**
+ * Os desafios dos ginásios, cada um no tema do tipo (os quebra-cabeças dos jogos): o nome, o que fazer e os símbolos.
+ */
+const PUZZLE_INFO = {
+  normal: { title: 'Quem é esse Pokémon?', intro: 'Reconheça a silhueta: acerte 2 de 3.' },
+  fire: { title: 'O quiz do Blaine', intro: 'Responda as perguntas do líder: acerte 2 de 3.' },
+  water: { title: 'O piso de gelo do Juan', intro: 'Pise em todos os ladrilhos uma única vez: pisar de novo quebra o gelo.' },
+  grass: { title: 'O jardim da Erika', intro: 'Ache o caminho entre as cercas vivas até a líder, sem gastar os passos.' },
+  electric: { title: 'As lixeiras do Lt. Surge', intro: 'Dois interruptores, um ao lado do outro, estão escondidos nas lixeiras. O número diz a quantas casas está o mais próximo.' },
+  ice: { title: 'O gelo do Pryce', intro: 'No gelo você escorrega até bater numa pedra. Chegue ao líder.' },
+  fighting: { title: 'Os sacos de pancada da Maylene', intro: 'Memorize a ordem dos golpes e repita sem errar.' },
+  poison: { title: 'As paredes invisíveis do Koga', intro: 'As paredes não aparecem até você bater nelas. Chegue ao líder com poucas batidas.' },
+  ground: { title: 'Os ladrilhos giratórios do Giovanni', intro: 'Cada ladrilho te joga em linha reta até bater. Chegue ao líder.' },
+  flying: { title: 'Os canhões da Skyla', intro: 'O canhão te atira em linha reta até a parede. Chegue à líder.' },
+  psychic: { title: 'Os teleportes da Sabrina', intro: 'Memorize a ordem das plataformas e repita sem errar.' },
+  bug: { title: 'As teias do Bugsy', intro: 'Duas alavancas, uma ao lado da outra, estão escondidas nas teias. O número diz a quantas casas está a mais próxima.' },
+  rock: { title: 'As lajes do Roark', intro: 'Pise em todas as lajes uma única vez: pisar de novo faz desmoronar.' },
+  ghost: { title: 'A ponte invisível do Morty', intro: 'O caminho não aparece: um passo fora dele e você cai. Chegue ao líder.' },
+  dragon: { title: 'As estátuas de dragão do Drayden', intro: 'Memorize a ordem das estátuas e repita sem errar.' },
+  dark: { title: 'No escuro: quem é esse Pokémon?', intro: 'As luzes estão apagadas. Reconheça a silhueta: acerte 2 de 3.' },
+  steel: { title: 'As esteiras do Byron', intro: 'A esteira te leva em linha reta até bater. Chegue ao líder.' },
+  fairy: { title: 'O quiz da Opal', intro: 'Responda as perguntas da líder: acerte 2 de 3.' },
+}
+const PUZZLE_CELL = { me: '🧍', goal: '🏅', rock: '🪨', wall: '🧱', floor: '', done: '✅', closed: '🗑️', hit: '🔘' }
+const PUZZLE_SKIN = { bug: { closed: '🕸️', hit: '🕹️' }, water: { done: '💧', floor: '🧊' }, rock: { done: '🪨', floor: '⬜' }, ghost: { wall: '🕳️' }, grass: { wall: '🌳' }, ice: { floor: '🧊' } }
+const PUZZLE_SYMBOLS = { fighting: ['👊', '🦵', '🤜', '🥋'], psychic: ['🔴', '🔵', '🟢', '🟡'], dragon: ['🐉', '🐲', '🔥', '💎'] }
+const PUZZLE_QUESTION = { strong: 'Qual tipo é super efetivo contra {0}?', typeOf: 'Qual é um dos tipos de {0}?', hasType: 'Qual destes Pokémon é do tipo {0}?', who: 'Quem é esse Pokémon?' }
+const TYPE_PT = { normal: 'Normal', fire: 'Fogo', water: 'Água', grass: 'Planta', electric: 'Elétrico', ice: 'Gelo', fighting: 'Lutador', poison: 'Venenoso', ground: 'Terra', flying: 'Voador', psychic: 'Psíquico', bug: 'Inseto', rock: 'Pedra', ghost: 'Fantasma', dragon: 'Dragão', dark: 'Sombrio', steel: 'Aço', fairy: 'Fada' }
 /** O item-chave que falta para este caminho (o Silph Scope, a Poké Flute, a Squirt Bottle) ou null. */
 const keyNeeded = (run, node) => [node?.needs, node?.blocker].find((k) => k != null && !hasKey(run, k)) ?? null
 const BLOCKER_INFO = { icon: '💤', label: '{0} bloqueia o caminho', help: 'Com o item certo, ele acorda e luta. Dá para capturar.' }
@@ -1157,7 +1195,7 @@ const CUT_INFO = { icon: '🌳', label: 'Caminho escondido', help: 'Aberto com C
 const SMASH_INFO = { icon: '🪨', label: 'Rocha quebrada', help: 'Aberta com Rock Smash: um selvagem raro do lugar.' }
 const STRENGTH_INFO = { icon: '💪', label: 'Pedra empurrada', help: 'Aberta com Strength: um treinador forte (sempre deixa um item).' }
 /** O símbolo do caminho aberto por uma MO (Cut, Rock Smash, Strength). */
-const hmPathInfo = (node) => (node.cut ? CUT_INFO : node.smash ? SMASH_INFO : node.strength ? STRENGTH_INFO : node.blocker ? BLOCKER_INFO : node.around ? AROUND_INFO : null)
+const hmPathInfo = (node) => (node.cut ? CUT_INFO : node.smash ? SMASH_INFO : node.strength ? STRENGTH_INFO : node.blocker ? BLOCKER_INFO : node.around ? AROUND_INFO : node.fish != null ? FISH_INFO : node.tree === 'headbutt' ? HEADBUTT_INFO : node.tree === 'honey' ? HONEY_INFO : null)
 const CITY_KIND_SET = new Set(['gym', 'elite', 'champion'])
 const EVENT_TEXT = {
   items: 'Você achou {1}× {0} no caminho!',
@@ -1165,6 +1203,7 @@ const EVENT_TEXT = {
   berries: 'Frutas no caminho: o time recuperou 30% do HP.',
   tutor: 'Um velho professor te deu uma ficha de Move Tutor.',
   declined: 'Você seguiu o seu caminho.',
+  bike: 'Você pedalou por este trecho sem encontrar ninguém.',
   helped: 'O treinador agradeceu e te deu {0}!',
   secretFound: 'Na caverna secreta: {0} e 💰{1}!',
   secretEmpty: 'A caverna estava vazia... e escura demais para procurar.',
@@ -1174,7 +1213,7 @@ const EVENT_TEXT = {
   injuredJoined: 'Você usou {0} e o Pokémon ferido quis ir com você!',
   noPotion: 'Sem nenhuma poção na Bolsa, não deu para curar o Pokémon ferido.',
 }
-const EVENT_ICON = { money: '💰', berries: '🍒', tutor: '📀', declined: '👣', helped: '🤝', secretFound: '💎', secretEmpty: '🕳️', bought: '🧳', betWon: '🎰', betLost: '🎰', injuredJoined: '💚', noPotion: '🩹' }
+const EVENT_ICON = { bike: '🚲', money: '💰', berries: '🍒', tutor: '📀', declined: '👣', helped: '🤝', secretFound: '💎', secretEmpty: '🕳️', bought: '🧳', betWon: '🎰', betLost: '🎰', injuredJoined: '💚', noPotion: '🩹' }
 /** O símbolo de cada melhoria (no círculo da árvore). */
 const UPGRADE_ICONS = {
   level: '🎓', ivs: '🧬', balls: '⚪', potions: '🧪', revive: '💖', money: '💰', shop: '🏷️', exp: '✨',
@@ -1486,6 +1525,7 @@ function stepOf(p) {
   if (p.capture) return 'capture'
   if (p.cards) return 'cards'
   if (p.safari) return 'safari'
+  if (p.puzzle) return 'puzzle'
   if (p.trade) return 'trade'
   if (p.shop) return 'shop'
   return null
@@ -2017,6 +2057,8 @@ function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, 
             {(run.hms ?? []).map((hm) => <span key={hm} title={HM_INFO[hm]?.name}>{HM_INFO[hm]?.icon}</span>)}
             {(run.keyItems ?? []).map((k) => <span key={k} title={KEY_ITEMS[k]} data-testid={`factory-key-${k}`}>{KEY_INFO[k]?.icon}</span>)}
             {(run.gcCoins ?? 0) > 0 && <span title={t('Fichas do Game Corner')} data-testid="factory-coins">🎰 {run.gcCoins}</span>}
+            {run.honey && <span title={t('Mel na árvore')} data-testid="factory-honey">🍯{Math.max(0, HONEY_FLOORS - (run.floor - run.honey.floor))}</span>}
+            {run.berry && <span title={t('Vaso de frutas')} data-testid="factory-berry">🌱{Math.max(0, run.berry.need - (run.floor - run.berry.floor))}</span>}
             {run.daycare && <span title={t('Creche')}>🏡</span>}
           </span>
           <span className="flex shrink-0 gap-0.5">
@@ -2358,6 +2400,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     ) : (
       <>
         {atPc(run) && <MenuButton onClick={() => setPcOpen(true)} testid="factory-pc-open">💻 {t('PC')}</MenuButton>}
+        {photoNow(run) && <MenuButton disabled={!takePhoto(run, photoNow(run))} onClick={() => save(takePhoto(run, photoNow(run)))} testid="factory-photo">📸 {t(takePhoto(run, photoNow(run)) ? 'FOTO' : 'FOTO GUARDADA')}</MenuButton>}
         <MenuButton onClick={() => { setPcOpen(false); afterResult() }} testid="factory-continue">{t('CONTINUAR')}</MenuButton>
       </>
     )
@@ -2441,7 +2484,12 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         {pcOf(run).length < PC_SIZE && <MenuButton onClick={() => keep('pc')} testid="factory-to-pc">💻 {t('PARA O PC')}</MenuButton>}
         <MenuButton onClick={() => save(skipCapture(run))} testid="factory-release">{t('SOLTAR')}</MenuButton>
       </>
-    ) : <MenuButton onClick={() => keep(null)} testid="factory-continue">{t('CONTINUAR')}</MenuButton>
+    ) : (
+      <>
+        <MenuButton onClick={() => keep(null)} testid="factory-continue">{t('CONTINUAR')}</MenuButton>
+        {photoNow(run) && <MenuButton disabled={!takePhoto(run, photoNow(run))} onClick={() => save(takePhoto(run, photoNow(run)))} testid="factory-photo">📸 {t(takePhoto(run, photoNow(run)) ? 'FOTO' : 'FOTO GUARDADA')}</MenuButton>}
+      </>
+    )
     toolRow = full
   } else if (step === 'cards') {
     field = (
@@ -2531,6 +2579,55 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       <>
         <MenuButton onClick={() => setPanel(panel === 'trade' ? null : 'trade')} active={panel === 'trade'} testid="trade-open">{t('TROCAR')}</MenuButton>
         <MenuButton onClick={() => save(skipTrade(run))} testid="trade-skip">{t('NÃO TROCAR')}</MenuButton>
+      </>
+    )
+  } else if (step === 'puzzle') {
+    const v = puzzleView(run)
+    const info = PUZZLE_INFO[v.type]
+    const skin = { ...PUZZLE_CELL, ...(PUZZLE_SKIN[v.type] ?? {}) }
+    const symbols = PUZZLE_SYMBOLS[v.type] ?? PUZZLE_SYMBOLS.psychic
+    const act = (i) => save(puzzleAct(run, data, i))
+    field = <Field biome={`gym-${v.type}`} fieldRef={fieldRef} testid="factory-puzzle" />
+    const question = v.prompt ? t(PUZZLE_QUESTION[v.prompt.q]).replace('{0}', v.prompt.q === 'typeOf' ? name(v.prompt.mon) : t(TYPE_PT[v.prompt.type] ?? '')) : null
+    const status = (
+        <p className="text-center text-xs font-bold text-amber-500" data-testid="puzzle-status">
+          {v.done ? (v.won ? `🎉 ${t('Você venceu o desafio! O time do líder vem {0} níveis abaixo.').replace('{0}', GYM_EDGE_LEVELS)}` : `💥 ${t('Não foi desta vez: o líder luta com tudo.')}`)
+            : v.total && v.kind !== 'memory' ? t('Pergunta {0} de {1} · acertos: {2}').replace('{0}', Math.min(v.total, v.at + 1)).replace('{1}', v.total).replace('{2}', v.right)
+              : v.kind === 'memory' ? (v.seq ? t('Memorize a ordem.') : t('Repita a ordem: {0} de {1}.').replace('{0}', v.at).replace('{1}', v.total))
+                : v.kind === 'tiles' ? t('Faltam {0}.').replace('{0}', v.left) : v.kind === 'switches' ? t('Tentativas: {0} · achados: {1} de 2').replace('{0}', v.left).replace('{1}', v.found)
+                  : v.kind === 'maze' && v.hidden ? t('Batidas que ainda aguenta: {0}').replace('{0}', v.left) : t('Jogadas: {0}').replace('{0}', v.left)}
+        </p>
+    )
+    text = <p className="font-black">🧩 {t(info.title)}</p>
+    below = (
+      <div className="flex h-full flex-col items-center justify-center gap-1.5 p-2" data-testid="puzzle">
+        <p className="text-center text-sm font-black" data-testid="puzzle-title">🧩 {t(info.title)}</p>
+        <p className="text-center text-xs text-muted">{t(info.intro)}</p>
+        {status}
+        {question && (
+          <div className="flex items-center gap-2">
+            {v.prompt.q === 'who' && <div data-testid="puzzle-silhouette" style={v.done ? undefined : { filter: 'brightness(0)' }}><PokeIcon id={v.prompt.mon} className="h-20 w-20" /></div>}
+            {v.prompt.q === 'typeOf' && <PokeIcon id={v.prompt.mon} className="h-14 w-14" />}
+            <p className="text-center text-sm font-black" data-testid="puzzle-question">{question}</p>
+          </div>
+        )}
+        {v.kind === 'memory' && <p className="text-3xl tracking-widest" data-testid="puzzle-seq" data-no-translate>{v.seq ? v.seq.map((n) => symbols[n]).join(' ') : '❔ '.repeat(v.total).trim()}</p>}
+        <div className="grid w-full max-w-sm gap-1" style={{ gridTemplateColumns: `repeat(${v.cols}, minmax(0, 1fr))` }}>
+          {v.cells.map((cell, i) => (
+            <button key={i} type="button" data-testid={`puzzle-cell-${i}`} disabled={busy || v.done || (v.kind === 'memory' && Boolean(v.seq)) || cell.c === 'num' || cell.c === 'hit'} onClick={() => act(i)}
+              className={`flex min-h-10 cursor-pointer items-center justify-center rounded-lg border-2 px-1 py-1 text-sm font-black disabled:cursor-default ${cell.c === 'me' ? 'border-amber-400 bg-amber-100 text-slate-900' : cell.c === 'goal' ? 'border-emerald-400 bg-emerald-100 text-slate-900' : cell.c === 'wall' || cell.c === 'rock' ? 'border-slate-500 bg-slate-600 text-white' : cell.c === 'done' ? 'border-sky-300 bg-sky-200 text-slate-900' : 'border-white/60 bg-white/90 text-slate-900 hover:bg-amber-200'}`}>
+              {cell.c === 'type' ? t(TYPE_PT[cell.type]) : cell.c === 'mon' ? <span className="flex items-center gap-1" data-no-translate>{v.kind !== 'silhouette' && <PokeIcon id={cell.mon} className="h-7 w-7" />}{name(cell.mon)}</span> : cell.c === 'num' ? cell.n : cell.c === 'sym' ? <span className="text-2xl">{symbols[cell.n]}</span> : <span className="text-xl">{skin[cell.c]}</span>}
+            </button>
+          ))}
+        </div>
+      </div>
+    )
+    menu = v.done ? (
+      <MenuButton onClick={() => save(finishPuzzle(run))} testid="factory-continue">{t('CONTINUAR')}</MenuButton>
+    ) : (
+      <>
+        {v.kind === 'memory' && v.seq && <MenuButton onClick={() => act(-1)} testid="puzzle-ready">{t('MEMORIZEI')}</MenuButton>}
+        <MenuButton onClick={() => save(finishPuzzle(run))} testid="puzzle-quit">{t('DESISTIR DO DESAFIO')}</MenuButton>
       </>
     )
   } else if (step === 'shop') {
@@ -2654,6 +2751,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     // As falas (uma por vez, tocando para passar, como nos jogos).
     const lines = [
       intro && `📖 ${intro}`,
+      ...(town && pos === ROUTE_LENGTH ? (run.town?.got ?? []).map((k) => `${KEY_INFO[k]?.icon ?? '🔑'} ${t('Em {0} te deram {1}!').replace('{0}', to).replace('{1}', KEY_ITEMS[k] ?? k)} ${t(KEY_INFO[k]?.help ?? '')}`) : []),
       !town && !inside && pos === 0 && !meeting && `🧭 ${t('Você sai de {0} e entra em {1}, rumo a {2}.').replace('{0}', from ?? t('casa')).replace('{1}', t(biome.label)).replace('{2}', to)} ${t(ROUTE_FLAVOR[route.biome] ?? ROUTE_FLAVOR.grass)}`,
       !town && !inside && pos === 0 && !meeting && legend != null && `🌟 ${t(LEGEND_CLUES[target.kind === 'elite' ? LEGEND_CLUES.length - 1 : Math.min(LEGEND_CLUES.length - 2, run.badges ?? 0)])}`,
       inside && dungeonPos(run) === 0 && `🕳️ ${t('Você entrou em {0}: {1} andares, sem desvios, e um chefe no fim. Depois, de volta para {2}.').replace('{0}', t(inside.name)).replace('{1}', DUNGEON_LENGTH).replace('{2}', backTo)}`,
@@ -2775,6 +2873,33 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
             🔁 {t('Um morador troca {0} por um {1}').replace('{0}', `${run.town.trade.shiny ? '✨ ' : ''}${name(run.town.trade.give)}`).replace('{1}', name(run.town.trade.want))}
           </MenuButton>
         ))}
+        {/* O desafio do ginásio (antes do líder): vencendo, o time dele vem mais fraco. */}
+        {town && gymPuzzleOf(data, run) && (
+          <MenuButton testid="town-puzzle" disabled={busy} onClick={() => save(startPuzzle(run, data))} sub={t('Uma tentativa: vencendo, o time do líder vem {0} níveis abaixo e você ganha um prêmio.').replace('{0}', GYM_EDGE_LEVELS)}>
+            🧩 {t('DESAFIO DO GINÁSIO')}: {t(PUZZLE_INFO[gymPuzzleOf(data, run).type].title)}
+          </MenuButton>
+        )}
+        {town && run.gymEdge?.leg === legOf(run) && (
+          <p className="dlg-sub px-2 text-xs" data-testid="town-puzzle-done">🧩 {t(run.gymEdge.won ? 'Desafio vencido: o time do líder vem mais fraco.' : 'Desafio perdido: o líder luta com tudo.')}</p>
+        )}
+        {/* As ações da rota, numa grade: pescar, sacudir a árvore, o mel, o vaso de frutas, a bicicleta e o álbum. */}
+        {(() => {
+          const acts = [
+            !meeting && fishPath(run, data) && ['factory-fish', `🎣 ${t('PESCAR')}`, () => save(fishPath(run, data))],
+            !meeting && headbuttPath(run) && ['factory-headbutt', `🌳 ${t('SACUDIR A ÁRVORE')}`, () => save(headbuttPath(run))],
+            !meeting && slatherHoney(run) && ['factory-honey-put', `🍯 ${t('PASSAR MEL')}`, () => save(slatherHoney(run))],
+            !meeting && honeyPath(run) && ['factory-honey-go', `🍯 ${t('VER O MEL')}`, () => save(honeyPath(run))],
+            !meeting && !town && plantBerry(run, data) && ['factory-berry-plant', `🌱 ${t('PLANTAR FRUTA')}`, () => save(plantBerry(run, data))],
+            berryReady(run) && harvestBerry(run) && ['factory-berry-pick', `🍓 ${t('COLHER {0}× {1}').replace('{0}', run.berry.count).replace('{1}', itemName(run.berry.item))}`, () => save(harvestBerry(run))],
+            !meeting && bikePath(run, data) && ['factory-bike', '🚲 Bicycle', () => save(bikePath(run, data))],
+            (run.photos ?? []).length > 0 && ['factory-album', `📷 ${t('ÁLBUM')} (${run.photos.length})`, () => setPanel(panel === 'album' ? null : 'album')],
+          ].filter(Boolean)
+          return acts.length > 0 && (
+            <div className="grid grid-cols-2 gap-1" data-testid="route-actions">
+              {acts.map(([id, label, go]) => <MenuButton key={id} testid={id} disabled={busy} onClick={go} active={id === 'factory-album' && panel === 'album'}>{label}</MenuButton>)}
+            </div>
+          )
+        })()}
         {cut && (
           <MenuButton testid="factory-cut" disabled={busy} onClick={() => save(cut)} sub={t(HM_INFO.cut.help)}>
             ✂️ {t('USAR {0}').replace('{0}', 'Cut')}
@@ -2799,6 +2924,26 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     )
     toolRow = true
     if (town && panel === 'daycare') below = daycareView()
+    if (panel === 'album') {
+      below = (
+        <div className="space-y-2 p-2" data-testid="album">
+          <OverlayClose onClose={() => setPanel(null)} title={`📷 ${t('Álbum da corrida')}`} />
+          <div className="grid grid-cols-3 gap-2">
+            {(run.photos ?? []).map((ph, k) => (
+              <figure key={k} className="overflow-hidden rounded-lg border-2 border-white/70 bg-black" data-testid={`photo-${k}`}>
+                <div className="relative aspect-[4/3]">
+                  <img src={spriteUrl(`battle/${battleScene(ph.scene)}.webp`)} alt="" className="pixelated absolute inset-0 h-full w-full object-cover" onError={hide} />
+                  {ph.id != null && <PokeIcon id={ph.id} shiny={Boolean(ph.shiny)} className="absolute bottom-0 left-1/2 h-4/5 w-auto -translate-x-1/2" />}
+                </div>
+                <figcaption className="bg-white px-1 py-0.5 text-center text-[10px] leading-tight font-bold text-slate-900">
+                  {ph.shiny ? '✨ ' : ''}<span data-no-translate>{ph.name ?? name(ph.id)}</span> · {t('Andar {0}').replace('{0}', ph.floor)}
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+        </div>
+      )
+    }
     const corner = town ? cornerOf(data, run) : null
     if (corner && panel === 'corner') {
       below = (

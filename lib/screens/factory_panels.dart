@@ -175,7 +175,7 @@ double? expBarOf(TurnBattle battle, int slot, List<int> foeHp) {
 }
 
 /// Como o time terminou a batalha (para winFloor): a parte do HP de cada um, na ordem da corrida, a Bolsa, se capturou o selvagem e quem lutou contra cada adversário.
-({List<double> hp, Map<String, int> bag, bool captured, List<List<int>> fought, List<int>? gained, String? ball, bool fled, double? foeHp}) factoryAfter(
+({List<double> hp, Map<String, int> bag, bool captured, int? capturedIndex, List<List<int>> fought, List<int>? gained, String? ball, bool fled, double? foeHp}) factoryAfter(
     TurnBattle battle, List<int> order, Json run) {
   final hp = [for (final m in FactoryRun.teamOf(run)) FactoryRun.hpOf(m)];
   for (var slot = 0; slot < order.length && slot < battle.teams[0].length; slot++) {
@@ -204,6 +204,7 @@ double? expBarOf(TurnBattle battle, int slot, List<int> foeHp) {
     hp: hp,
     bag: {for (final id in FactoryRun.bagItems) id: battle.bags[0][id] ?? 0},
     captured: battle.captured != null,
+    capturedIndex: battle.captured,
     fought: fought,
     gained: gained,
     ball: battle.capturedBall,
@@ -2166,6 +2167,7 @@ const _nodeInfo = <String, (String, String, String)>{
   'meteor': ('☄️', 'Chuva de meteoros', 'Um Clefairy apareceu com os meteoros (mais chance de shiny).'),
   'mythic': ('✨', 'Pokémon mítico', 'Um Pokémon mítico, raríssimo. Dá para capturar.'),
   'boss': ('👑', 'Chefe', ''),
+  'bike': ('🚲', 'Pedalar', 'De bicicleta: passa o andar sem batalha (e sem prêmio).'),
   'rematch': ('🏆', 'Revanche do Campeão', 'O Campeão que você venceu quer revanche: time mais forte, prêmio maior.'),
   'rival': ('⚔️', 'Rival', 'O seu rival te seguiu pela rota: quer ver quem ficou mais forte (prêmio maior).'),
   'leave': ('↩️', 'Voltar', 'Sai da água e volta para onde você entrou.'),
@@ -2195,6 +2197,52 @@ const _keyInfo = {
   'silph-scope': ('🔭', 'Deixa ver os fantasmas da Pokémon Tower: agora dá para entrar.'),
   'poke-flute': ('🪈', 'Acorda o Snorlax que dorme na rota até Fuchsia City.'),
   'squirt-bottle': ('🚿', 'Molha o Sudowoodo que bloqueia a rota até Ecruteak City.'),
+  'old-rod': ('🎣', 'Dá para pescar onde há água (uma vez por rota): vêm os Pokémon de Água mais comuns.'),
+  'good-rod': ('🎣', 'Uma vara melhor: na pesca vêm Pokémon de Água menos comuns.'),
+  'super-rod': ('🎣', 'A melhor vara: na pesca vêm os Pokémon de Água raros.'),
+  'bicycle': ('🚲', 'Uma vez por rota (duas na Cycling Road), passa um andar sem batalha.'),
+  'ss-ticket': ('🎫', 'Deixa embarcar na balsa dos portos e das ilhas: treinadores a bordo e um prêmio no fim.'),
+};
+
+/// Os caminhos da rodada 14: a pesca e as árvores. Igual ao site.
+const _fishInfo = ('🎣', 'Pescaria', 'Um Pokémon de Água mordeu a isca: quem vem depende da vara.');
+const _headbuttInfo = ('🌳', 'Árvore sacudida', 'Caiu um Pokémon que vive na árvore.');
+const _honeyInfo = ('🍯', 'Árvore de mel', 'Um Pokémon raro está lambendo o mel (mais chance de shiny).');
+
+/// Os desafios dos ginásios, cada um no tema do tipo (os quebra-cabeças dos jogos): o nome e o que fazer. Igual ao site.
+const _puzzleInfo = {
+  'normal': ('Quem é esse Pokémon?', 'Reconheça a silhueta: acerte 2 de 3.'),
+  'fire': ('O quiz do Blaine', 'Responda as perguntas do líder: acerte 2 de 3.'),
+  'water': ('O piso de gelo do Juan', 'Pise em todos os ladrilhos uma única vez: pisar de novo quebra o gelo.'),
+  'grass': ('O jardim da Erika', 'Ache o caminho entre as cercas vivas até a líder, sem gastar os passos.'),
+  'electric': ('As lixeiras do Lt. Surge', 'Dois interruptores, um ao lado do outro, estão escondidos nas lixeiras. O número diz a quantas casas está o mais próximo.'),
+  'ice': ('O gelo do Pryce', 'No gelo você escorrega até bater numa pedra. Chegue ao líder.'),
+  'fighting': ('Os sacos de pancada da Maylene', 'Memorize a ordem dos golpes e repita sem errar.'),
+  'poison': ('As paredes invisíveis do Koga', 'As paredes não aparecem até você bater nelas. Chegue ao líder com poucas batidas.'),
+  'ground': ('Os ladrilhos giratórios do Giovanni', 'Cada ladrilho te joga em linha reta até bater. Chegue ao líder.'),
+  'flying': ('Os canhões da Skyla', 'O canhão te atira em linha reta até a parede. Chegue à líder.'),
+  'psychic': ('Os teleportes da Sabrina', 'Memorize a ordem das plataformas e repita sem errar.'),
+  'bug': ('As teias do Bugsy', 'Duas alavancas, uma ao lado da outra, estão escondidas nas teias. O número diz a quantas casas está a mais próxima.'),
+  'rock': ('As lajes do Roark', 'Pise em todas as lajes uma única vez: pisar de novo faz desmoronar.'),
+  'ghost': ('A ponte invisível do Morty', 'O caminho não aparece: um passo fora dele e você cai. Chegue ao líder.'),
+  'dragon': ('As estátuas de dragão do Drayden', 'Memorize a ordem das estátuas e repita sem errar.'),
+  'dark': ('No escuro: quem é esse Pokémon?', 'As luzes estão apagadas. Reconheça a silhueta: acerte 2 de 3.'),
+  'steel': ('As esteiras do Byron', 'A esteira te leva em linha reta até bater. Chegue ao líder.'),
+  'fairy': ('O quiz da Opal', 'Responda as perguntas da líder: acerte 2 de 3.'),
+};
+const _puzzleCell = {'me': '🧍', 'goal': '🏅', 'rock': '🪨', 'wall': '🧱', 'floor': '', 'done': '✅', 'closed': '🗑️', 'hit': '🔘'};
+const _puzzleSkin = {
+  'bug': {'closed': '🕸️', 'hit': '🕹️'}, 'water': {'done': '💧', 'floor': '🧊'}, 'rock': {'done': '🪨', 'floor': '⬜'}, 'ghost': {'wall': '🕳️'}, 'grass': {'wall': '🌳'}, 'ice': {'floor': '🧊'},
+};
+const _puzzleSymbols = {
+  'fighting': ['👊', '🦵', '🤜', '🥋'], 'psychic': ['🔴', '🔵', '🟢', '🟡'], 'dragon': ['🐉', '🐲', '🔥', '💎'],
+};
+const _puzzleQuestion = {
+  'strong': 'Qual tipo é super efetivo contra {0}?', 'typeOf': 'Qual é um dos tipos de {0}?', 'hasType': 'Qual destes Pokémon é do tipo {0}?', 'who': 'Quem é esse Pokémon?',
+};
+const _typePt = {
+  'normal': 'Normal', 'fire': 'Fogo', 'water': 'Água', 'grass': 'Planta', 'electric': 'Elétrico', 'ice': 'Gelo', 'fighting': 'Lutador', 'poison': 'Venenoso', 'ground': 'Terra',
+  'flying': 'Voador', 'psychic': 'Psíquico', 'bug': 'Inseto', 'rock': 'Pedra', 'ghost': 'Fantasma', 'dragon': 'Dragão', 'dark': 'Sombrio', 'steel': 'Aço', 'fairy': 'Fada',
 };
 
 /// O item-chave que falta para este caminho (o Silph Scope, a Poké Flute, a Squirt Bottle) ou null.
@@ -2233,13 +2281,20 @@ const _strengthInfo = ('💪', 'Pedra empurrada', 'Aberta com Strength: um trein
                 ? _blockerInfo
                 : node['around'] == true
                     ? _aroundInfo
-                    : null;
+                    : node['fish'] != null
+                        ? _fishInfo
+                        : node['tree'] == 'headbutt'
+                            ? _headbuttInfo
+                            : node['tree'] == 'honey'
+                                ? _honeyInfo
+                                : null;
 const _eventText = {
   'items': 'Você achou {1}× {0} no caminho!',
   'money': 'Um treinador perdeu 💰{0} e não voltou para buscar.',
   'berries': 'Frutas no caminho: o time recuperou 30% do HP.',
   'tutor': 'Um velho professor te deu uma ficha de Move Tutor.',
   'declined': 'Você seguiu o seu caminho.',
+  'bike': 'Você pedalou por este trecho sem encontrar ninguém.',
   'helped': 'O treinador agradeceu e te deu {0}!',
   'secretFound': 'Na caverna secreta: {0} e 💰{1}!',
   'secretEmpty': 'A caverna estava vazia... e escura demais para procurar.',
@@ -2250,7 +2305,7 @@ const _eventText = {
   'noPotion': 'Sem nenhuma poção na Bolsa, não deu para curar o Pokémon ferido.',
 };
 const _eventIcon = {
-  'money': '💰', 'berries': '🍒', 'tutor': '📀', 'declined': '👣', 'helped': '🤝', 'secretFound': '💎', 'secretEmpty': '🕳️', //
+  'bike': '🚲', 'money': '💰', 'berries': '🍒', 'tutor': '📀', 'declined': '👣', 'helped': '🤝', 'secretFound': '💎', 'secretEmpty': '🕳️', //
   'bought': '🧳', 'betWon': '🎰', 'betLost': '🎰', 'injuredJoined': '💚', 'noPotion': '🩹',
 };
 
@@ -2359,6 +2414,7 @@ String? _stepOf(Map? p) {
   if (p['capture'] != null) return 'capture';
   if (p['cards'] != null) return 'cards';
   if (p['safari'] != null) return 'safari';
+  if (p['puzzle'] != null) return 'puzzle';
   if (p['trade'] != null) return 'trade';
   if (p['shop'] != null) return 'shop';
   return null;
@@ -2568,6 +2624,10 @@ class _FactoryScreenState extends State<FactoryScreen> {
                 for (final hm in (run['hms'] as List? ?? const [])) Text(_hmInfo[hm]?.$2 ?? '', style: style),
                 for (final k in (run['keyItems'] as List? ?? const [])) Text(_keyInfo[k]?.$1 ?? '', key: ValueKey('factory-key-$k'), style: style),
                 if (((run['gcCoins'] as num?) ?? 0) > 0) Text('🎰 ${run['gcCoins']}', key: const ValueKey('factory-coins'), style: style),
+                if (run['honey'] != null)
+                  Text('🍯${max(0, FactoryRun.honeyFloors - ((run['floor'] as num).toInt() - (run['honey']['floor'] as num).toInt()))}', key: const ValueKey('factory-honey'), style: style),
+                if (run['berry'] != null)
+                  Text('🌱${max(0, (run['berry']['need'] as num).toInt() - ((run['floor'] as num).toInt() - (run['berry']['floor'] as num).toInt()))}', key: const ValueKey('factory-berry'), style: style),
                 if (run['daycare'] != null) const Text('🏡', style: style),
               ])
                 Padding(padding: const EdgeInsets.only(right: 8), child: w),
@@ -3032,6 +3092,10 @@ class _FactoryScreenState extends State<FactoryScreen> {
                 // A Creche: um lugar da cidade (separado do Poké Mart).
                 : p == null && _panel == 'daycare'
                     ? _daycarePanel(run, data, close)
+                    : step == 'puzzle'
+                    ? _puzzlePanel(run, data)
+                    : p == null && _panel == 'album'
+                    ? _albumPanel(run, close)
                     : p == null && _panel == 'towntrade' && _townTradeOpen(run)
                     ? _townTradePanel(run, data, close)
                     : p == null && _panel == 'corner' && FactoryRun.cornerOf(data, run) != null
@@ -3054,6 +3118,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
       frame = _captureFrame(run, p!, lead, tools);
     } else if (step == 'safari') {
       frame = _safariFrame(run, p!, lead, data);
+    } else if (step == 'puzzle') {
+      frame = _puzzleFrame(run, data);
     } else if (step == 'trade') {
       frame = _tradeFrame(run, p!, lead, data);
     } else if (step == 'cards') {
@@ -3428,7 +3494,9 @@ class _FactoryScreenState extends State<FactoryScreen> {
                     _afterResult(run, p);
                   }, key: const ValueKey('factory-continue')),
                 ])
-              : _menuButton(tr('CONTINUAR'), () => _afterResult(run, p), key: const ValueKey('factory-continue')),
+              : FactoryRun.photoNow(run) != null
+                  ? _menuGrid([_menuButton(tr('CONTINUAR'), () => _afterResult(run, p), key: const ValueKey('factory-continue')), _photoButton(run)])
+                  : _menuButton(tr('CONTINUAR'), () => _afterResult(run, p), key: const ValueKey('factory-continue')),
     );
   }
 
@@ -3715,6 +3783,214 @@ class _FactoryScreenState extends State<FactoryScreen> {
         _save(FactoryRun.townTrade(run, i, data));
       },
       onCancel: close,
+    );
+  }
+
+  /// O botão da foto (o capturado ou a vitória sobre um chefe). Igual ao site.
+  Widget _photoButton(Json run) {
+    final shot = FactoryRun.takePhoto(run, FactoryRun.photoNow(run));
+    return _menuButton('📸 ${tr(shot != null ? 'FOTO' : 'FOTO GUARDADA')}', shot == null ? null : () => _save(shot), key: const ValueKey('factory-photo'));
+  }
+
+  /// As ações da rota (rodada 14), numa grade de duas colunas. Igual ao site.
+  List<Widget> _routeActions(Json run, FactoryData data, bool meeting, bool town) {
+    final fish = meeting ? null : FactoryRun.fishPath(run, data);
+    final shake = meeting ? null : FactoryRun.headbuttPath(run);
+    final honey = meeting ? null : FactoryRun.slatherHoney(run);
+    final licked = meeting ? null : FactoryRun.honeyPath(run);
+    final plant = meeting || town ? null : FactoryRun.plantBerry(run, data);
+    final pick = FactoryRun.berryReady(run) ? FactoryRun.harvestBerry(run) : null;
+    final bike = meeting ? null : FactoryRun.bikePath(run, data);
+    final photos = (run['photos'] as List?) ?? const [];
+    Widget act(String key, String label, Json next) => _menuButton(label, widget.busy ? null : () => _save(next), key: ValueKey(key));
+    final acts = [
+      if (fish != null) act('factory-fish', '🎣 ${tr('PESCAR')}', fish),
+      if (shake != null) act('factory-headbutt', '🌳 ${tr('SACUDIR A ÁRVORE')}', shake),
+      if (honey != null) act('factory-honey-put', '🍯 ${tr('PASSAR MEL')}', honey),
+      if (licked != null) act('factory-honey-go', '🍯 ${tr('VER O MEL')}', licked),
+      if (plant != null) act('factory-berry-plant', '🌱 ${tr('PLANTAR FRUTA')}', plant),
+      if (pick != null) act('factory-berry-pick', '🍓 ${tr('COLHER {0}× {1}').replaceAll('{0}', '${run['berry']['count']}').replaceAll('{1}', _itemName('${run['berry']['item']}'))}', pick),
+      if (bike != null) act('factory-bike', '🚲 Bicycle', bike),
+      if (photos.isNotEmpty)
+        _menuButton('📷 ${tr('ÁLBUM')} (${photos.length})', widget.busy ? null : () => setState(() => _panel = _panel == 'album' ? null : 'album'),
+            active: _panel == 'album', key: const ValueKey('factory-album')),
+    ];
+    return acts.isEmpty ? const [] : [KeyedSubtree(key: const ValueKey('route-actions'), child: _menuGrid(acts))];
+  }
+
+  /// O álbum da corrida: cada foto com o lugar, o Pokémon e o andar. Igual ao site.
+  Widget _albumPanel(Json run, VoidCallback close) {
+    final photos = (run['photos'] as List?) ?? const [];
+    return Column(key: const ValueKey('album'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      _overlayHeader('📷 ${tr('Álbum da corrida')}', close),
+      Padding(
+        padding: const EdgeInsets.all(8),
+        child: GridView.count(
+          crossAxisCount: 3,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 8,
+          crossAxisSpacing: 8,
+          childAspectRatio: 0.9,
+          children: [
+            for (var k = 0; k < photos.length; k++)
+              Container(
+                key: ValueKey('photo-$k'),
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(color: Colors.white, border: Border.all(color: Colors.white, width: 2), borderRadius: BorderRadius.circular(8)),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  Expanded(
+                    child: Stack(fit: StackFit.expand, children: [
+                      BattleBackdrop(scene: battleScene('${photos[k]['scene'] ?? 'grass'}', null)),
+                      if (photos[k]['id'] != null)
+                        Align(alignment: Alignment.bottomCenter, child: FractionallySizedBox(heightFactor: 0.8, child: PokemonSprite((photos[k]['id'] as num).toInt(), shiny: photos[k]['shiny'] == true, fill: 0.9))),
+                    ]),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+                    child: Text(
+                        '${photos[k]['shiny'] == true ? '✨ ' : ''}${photos[k]['name'] ?? _name(photos[k]['id'])} · ${tr('Andar {0}').replaceAll('{0}', '${photos[k]['floor']}')}',
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: _ink, height: 1.1)),
+                  ),
+                ]),
+              ),
+          ],
+        ),
+      ),
+    ]);
+  }
+
+  /// O desafio do ginásio: o cenário do ginásio, o nome do desafio e os botões (memorizei, desistir, continuar). Igual ao site.
+  Widget _puzzleFrame(Json run, FactoryData data) {
+    final v = FactoryRun.puzzleView(run)!;
+    final info = _puzzleInfo[v['type']]!;
+    return _frame(
+      field: _field('gym-${v['type']}', key: const ValueKey('factory-puzzle'), (w, h) => const []),
+      run: run,
+      text: [Text('🧩 ${tr(info.$1)}', style: const TextStyle(fontWeight: FontWeight.w900))],
+      menu: v['done'] == true
+          ? _menuButton(tr('CONTINUAR'), () => _save(FactoryRun.finishPuzzle(run)), key: const ValueKey('factory-continue'))
+          : _menuGrid([
+              if (v['kind'] == 'memory' && v['seq'] != null) _menuButton(tr('MEMORIZEI'), () => _save(FactoryRun.puzzleAct(run, data, -1)), key: const ValueKey('puzzle-ready')),
+              _menuButton(tr('DESISTIR DO DESAFIO'), () => _save(FactoryRun.finishPuzzle(run)), key: const ValueKey('puzzle-quit')),
+            ]),
+    );
+  }
+
+  /// As casas do desafio (por cima do campo): o que fazer, o placar, a pergunta e a grade de botões. Igual ao site.
+  Widget _puzzlePanel(Json run, FactoryData data) {
+    final v = FactoryRun.puzzleView(run)!;
+    final c = SiteColors.of(context);
+    final type = '${v['type']}';
+    final info = _puzzleInfo[type]!;
+    final skin = {..._puzzleCell, ...?_puzzleSkin[type]};
+    final symbols = _puzzleSymbols[type] ?? _puzzleSymbols['psychic']!;
+    final done = v['done'] == true, kind = v['kind'];
+    final prompt = v['prompt'] as Map?;
+    final seq = v['seq'] as List?;
+    final cells = v['cells'] as List;
+    final cols = (v['cols'] as num).toInt();
+    final status = done
+        ? (v['won'] == true
+            ? '🎉 ${tr('Você venceu o desafio! O time do líder vem {0} níveis abaixo.').replaceAll('{0}', '${FactoryRun.gymEdgeLevels}')}'
+            : '💥 ${tr('Não foi desta vez: o líder luta com tudo.')}')
+        : kind == 'quiz' || kind == 'silhouette'
+            ? tr('Pergunta {0} de {1} · acertos: {2}').replaceAll('{0}', '${min((v['total'] as num).toInt(), (v['at'] as num).toInt() + 1)}').replaceAll('{1}', '${v['total']}').replaceAll('{2}', '${v['right']}')
+            : kind == 'memory'
+                ? (seq != null ? tr('Memorize a ordem.') : tr('Repita a ordem: {0} de {1}.').replaceAll('{0}', '${v['at']}').replaceAll('{1}', '${v['total']}'))
+                : kind == 'tiles'
+                    ? tr('Faltam {0}.').replaceAll('{0}', '${v['left']}')
+                    : kind == 'switches'
+                        ? tr('Tentativas: {0} · achados: {1} de 2').replaceAll('{0}', '${v['left']}').replaceAll('{1}', '${v['found']}')
+                        : kind == 'maze' && v['hidden'] == true
+                            ? tr('Batidas que ainda aguenta: {0}').replaceAll('{0}', '${v['left']}')
+                            : tr('Jogadas: {0}').replaceAll('{0}', '${v['left']}');
+    final question = prompt == null
+        ? null
+        : tr(_puzzleQuestion[prompt['q']]!).replaceAll('{0}', prompt['q'] == 'typeOf' ? _name(prompt['mon']) : tr(_typePt[prompt['type']] ?? ''));
+    Widget cell(int i) {
+      final x = cells[i] as Map;
+      final code = '${x['c']}';
+      final off = widget.busy || done || (kind == 'memory' && seq != null) || code == 'num' || code == 'hit';
+      final (bg, border) = switch (code) {
+        'me' => (const Color(0xFFFEF3C7), const Color(0xFFFBBF24)),
+        'goal' => (const Color(0xFFD1FAE5), const Color(0xFF34D399)),
+        'wall' || 'rock' => (const Color(0xFF475569), const Color(0xFF64748B)),
+        'done' => (const Color(0xFFBAE6FD), const Color(0xFF7DD3FC)),
+        _ => (const Color(0xF2FFFFFF), const Color(0x99FFFFFF)),
+      };
+      final Widget child = switch (code) {
+        'type' => Text(tr(_typePt[x['type']] ?? ''), textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: _ink)),
+        'mon' => Row(mainAxisAlignment: MainAxisAlignment.center, mainAxisSize: MainAxisSize.min, children: [
+            if (kind != 'silhouette') SizedBox(width: 26, height: 26, child: PokemonSprite((x['mon'] as num).toInt(), fill: 0.9)),
+            Flexible(child: Text(_name(x['mon']), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: _ink))),
+          ]),
+        'num' => Text('${x['n']}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: _ink)),
+        'sym' => Text(symbols[(x['n'] as num).toInt()], style: const TextStyle(fontSize: 22)),
+        _ => Text(skin[code] ?? '', style: const TextStyle(fontSize: 18)),
+      };
+      return Material(
+        color: bg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: BorderSide(color: border, width: 2)),
+        child: InkWell(
+          key: ValueKey('puzzle-cell-$i'),
+          borderRadius: BorderRadius.circular(8),
+          onTap: off ? null : () => _save(FactoryRun.puzzleAct(run, data, i)),
+          child: Container(constraints: BoxConstraints(minHeight: cells.length > 16 ? 26 : 36), alignment: Alignment.center, padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2), child: child),
+        ),
+      );
+    }
+
+    return Padding(
+      key: const ValueKey('puzzle'),
+      padding: const EdgeInsets.all(8),
+      child: Column(mainAxisAlignment: MainAxisAlignment.center, mainAxisSize: MainAxisSize.min, children: [
+        Text('🧩 ${tr(info.$1)}', key: const ValueKey('puzzle-title'), textAlign: TextAlign.center, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: c.text)),
+        Text(tr(info.$2), textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: c.muted)),
+        Text(status, key: const ValueKey('puzzle-status'), textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFF59E0B))),
+        if (question != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              if (prompt!['q'] == 'who')
+                SizedBox(
+                  key: const ValueKey('puzzle-silhouette'),
+                  width: 64,
+                  height: 64,
+                  child: done
+                      ? PokemonSprite((prompt['mon'] as num).toInt(), fill: 0.9)
+                      : ColorFiltered(colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn), child: PokemonSprite((prompt['mon'] as num).toInt(), fill: 0.9)),
+                ),
+              if (prompt['q'] == 'typeOf') SizedBox(width: 48, height: 48, child: PokemonSprite((prompt['mon'] as num).toInt(), fill: 0.9)),
+              Flexible(child: Text(question, key: const ValueKey('puzzle-question'), textAlign: TextAlign.center, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: c.text))),
+            ]),
+          ),
+        if (kind == 'memory')
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Text(seq != null ? [for (final n in seq) symbols[(n as num).toInt()]].join(' ') : List.filled((v['total'] as num).toInt(), '❔').join(' '),
+                key: const ValueKey('puzzle-seq'), style: const TextStyle(fontSize: 24, letterSpacing: 2)),
+          ),
+        const SizedBox(height: 4),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 360),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            for (var r = 0; r * cols < cells.length; r++)
+              Padding(
+                padding: EdgeInsets.only(bottom: cells.length > 16 ? 3 : 4),
+                child: Row(children: [
+                  for (var k = 0; k < cols; k++) ...[
+                    if (k > 0) const SizedBox(width: 4),
+                    Expanded(child: r * cols + k < cells.length ? cell(r * cols + k) : const SizedBox()),
+                  ],
+                ]),
+              ),
+          ]),
+        ),
+      ]),
     );
   }
 
@@ -4042,7 +4318,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
               if (toPc) _menuButton('💻 ${tr('PARA O PC')}', () => keep(FactoryRun.toPc), key: const ValueKey('factory-to-pc')),
               _menuButton(tr('SOLTAR'), () => _save(FactoryRun.skipCapture(run)), key: const ValueKey('factory-release')),
             ])
-          : _menuButton(tr('CONTINUAR'), () => keep(), key: const ValueKey('factory-continue')),
+          : _menuGrid([_menuButton(tr('CONTINUAR'), () => keep(), key: const ValueKey('factory-continue')), if (FactoryRun.photoNow(run) != null) _photoButton(run)]),
       tools: full ? tools : null,
     );
   }
@@ -4154,6 +4430,9 @@ class _FactoryScreenState extends State<FactoryScreen> {
     // As falas (uma por vez, tocando para passar, como nos jogos).
     final lines = <String>[
       if (intro.isNotEmpty) '📖 $intro',
+      if (town && pos == FactoryRun.routeLength)
+        for (final k in ((run['town'] as Map?)?['got'] as List?) ?? const [])
+          '${_keyInfo[k]?.$1 ?? '🔑'} ${tr('Em {0} te deram {1}!').replaceAll('{0}', cities.to).replaceAll('{1}', FactoryRun.keyItems[k] ?? '$k')} ${tr(_keyInfo[k]?.$2 ?? '')}',
       if (!town && dungeon == null && pos == 0 && !meeting)
         '🧭 ${tr('Você sai de {0} e entra em {1}, rumo a {2}.').replaceAll('{0}', cities.from ?? tr('casa')).replaceAll('{1}', tr(biome.$1)).replaceAll('{2}', cities.to)} '
             '${tr(_routeFlavor['${route['biome']}'] ?? _routeFlavor['grass']!)}',
@@ -4324,6 +4603,18 @@ class _FactoryScreenState extends State<FactoryScreen> {
                   key: ValueKey('map-node-$k'),
                 );
               }),
+          // O desafio do ginásio (antes do líder): vencendo, o time dele vem mais fraco.
+          if (town && FactoryRun.gymPuzzleOf(data, run) != null)
+            _menuButton('🧩 ${tr('DESAFIO DO GINÁSIO')}: ${tr(_puzzleInfo[FactoryRun.gymPuzzleOf(data, run)!.type]!.$1)}', widget.busy ? null : () => _save(FactoryRun.startPuzzle(run, data)),
+                sub: tr('Uma tentativa: vencendo, o time do líder vem {0} níveis abaixo e você ganha um prêmio.').replaceAll('{0}', '${FactoryRun.gymEdgeLevels}'), key: const ValueKey('town-puzzle')),
+          if (town && (run['gymEdge'] as Map?)?['leg'] == FactoryRun.legOf(run))
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Text('🧩 ${tr((run['gymEdge'] as Map)['won'] == true ? 'Desafio vencido: o time do líder vem mais fraco.' : 'Desafio perdido: o líder luta com tudo.')}',
+                  key: const ValueKey('town-puzzle-done'), style: TextStyle(fontSize: 11, color: _dlgSub)),
+            ),
+          // As ações da rota, numa grade: pescar, sacudir a árvore, o mel, o vaso de frutas, a bicicleta e o álbum.
+          ..._routeActions(run, data, meeting, town),
           if (cut != null)
             _menuButton('✂️ ${tr('USAR {0}').replaceAll('{0}', 'Cut')}', widget.busy ? null : () => _save(cut),
                 sub: tr(_hmInfo['cut']!.$3), key: const ValueKey('factory-cut')),

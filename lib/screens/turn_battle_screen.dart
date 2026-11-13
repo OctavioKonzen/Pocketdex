@@ -454,7 +454,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
       if (_battle?.winner == 0) {
         final data = _factoryData ??= await FactoryData.load();
         final after = factoryAfter(_battle!, _factoryOrder, run);
-        saveFactory({...factory, 'run': FactoryRun.winFloor(run, data, hp: after.hp, bag: after.bag, captured: after.captured, fought: after.fought, gained: after.gained, ball: after.ball, night: FactoryRun.clockOf().night, fled: after.fled, foeHp: after.foeHp)});
+        saveFactory({...factory, 'run': FactoryRun.winFloor(run, data, hp: after.hp, bag: after.bag, captured: after.captured, capturedIndex: after.capturedIndex, fought: after.fought, gained: after.gained, ball: after.ball, night: FactoryRun.clockOf().night, fled: after.fled, foeHp: after.foeHp)});
         // Uma tela de vitória só: a do resultado do andar (XP, níveis, dinheiro), logo depois.
         note = '';
       } else {
@@ -3300,6 +3300,14 @@ class _WeatherPainter extends CustomPainter {
         if (t % 3 > 2.65) {
           canvas.drawRect(sky, Paint()..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0x8CFFFFDC), Colors.transparent]).createShader(sky));
         }
+        return;
+      case 'fog':
+        // A neblina cobre o campo todo, andando devagar.
+        canvas.drawRect(Offset.zero & size, Paint()..shader = LinearGradient(
+              begin: Alignment(-1 + sin(t * 0.25), 0),
+              end: Alignment(1 + sin(t * 0.25), 0),
+              colors: const [Color(0x8CE2E8F0), Color(0x40E2E8F0), Color(0x99E2E8F0), Color(0x4DE2E8F0)],
+              stops: const [0, 0.3, 0.6, 1]).createShader(Offset.zero & size));
         return;
       case 'aurora':
         // No céu do cenário.
