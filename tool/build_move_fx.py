@@ -162,6 +162,32 @@ def effect(slug, mv):
     return ''
 
 
+def camera(slug, d, p, v):
+    """A câmera de cada golpe (nem todo golpe vai para a frente):
+    still  parada (golpes fracos e a maioria dos de status)
+    nudge  chega um pouco perto do alvo
+    pan    vai até o alvo de lado, sem muito zoom
+    zoom   zoom forte no alvo (golpes fortes)
+    cine   vai até quem ataca e depois até o alvo (raios, bolas e jatos fortes)
+    wide   abre para mostrar o campo todo (terremoto, onda, explosão, céu, clima)
+    self   chega perto de quem usa (danças, cura, redoma)"""
+    if d in ('quake', 'wave', 'blast', 'field', 'sky'):
+        return 'wide' if p >= 2 or d in ('field', 'quake', 'wave') else 'pan'
+    if d == 'self':
+        return 'self' if v % 3 else 'still'
+    if d in ('hex', 'hazard', 'sound'):
+        return ('still', 'nudge', 'still')[v % 3] if p < 2 else 'nudge'
+    if p == 1:
+        return ('still', 'still', 'nudge', 'pan')[v % 4]
+    if p == 2:
+        if d in ('beam', 'jet', 'orb', 'shot', 'aura', 'drain'):
+            return ('nudge', 'pan', 'cine')[v % 3]
+        return ('nudge', 'pan', 'zoom')[v % 3]
+    if d in ('beam', 'jet', 'orb', 'aura') or p == 4:
+        return 'cine'
+    return ('zoom', 'pan', 'cine', 'zoom')[v % 4]
+
+
 def power(mv):
     p = mv.get('power') or 0
     if p >= 140:
@@ -190,6 +216,7 @@ def main():
         if slug in ('triple-kick', 'triple-axel', 'surging-strikes', 'triple-dive'):
             n = 3
         recipe = {'d': d, 'm': m, 'p': power(mv), 'v': zlib.crc32(slug.encode()) % 997}
+        recipe['k'] = camera(slug, d, recipe['p'], recipe['v'])
         if n > 1:
             recipe['n'] = min(5, n)
         fx = effect(slug, mv)
@@ -201,6 +228,8 @@ def main():
         count[d] = count.get(d, 0) + 1
     (DB / 'move_fx.json').write_text(json.dumps(out, ensure_ascii=False, separators=(',', ':'), sort_keys=True) + '\n')
     combos = len({json.dumps({k: v for k, v in r.items() if k != 'v'}, sort_keys=True) + k for k, r in out.items()})
+    import collections
+    print('câmeras:', dict(collections.Counter(r['k'] for r in out.values())))
     print(f'move_fx.json: {len(out)} golpes, {combos} receitas;', ', '.join(f'{k} {v}' for k, v in sorted(count.items(), key=lambda x: -x[1])))
 
 

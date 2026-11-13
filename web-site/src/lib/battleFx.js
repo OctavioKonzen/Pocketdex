@@ -126,7 +126,7 @@ export function fxPlan2({ kind, type, slug = '', from = 0, seed = 1, stage = FX_
     S.push({ who: 'T', k: 'tint', t0: t, t1: t + 420, color: tint, a: 0.55 })
     S.push({ who: 'T', k: 'move', t0: t, t1: t + 380, dx: 18 * toward * power, dy: -4 * power })
     shake.push([t, t + 300, 7 * power])
-    add({ s: 'tint', t0: t, t1: t + 140, color: '#ffffff', a: [0.55 * power, 0] })
+    if (power > 1.1) add({ s: 'tint', t0: t, t1: t + 140, color: '#ffffff', a: [Math.min(0.55, (power - 1.1) * 0.8), 0] })
     impactBurst(t, power)
   }
   const flashAfter = (t) => S.push({ who: 'T', k: 'flash', t0: t, n: 2 })
@@ -194,7 +194,10 @@ export function fxPlan2({ kind, type, slug = '', from = 0, seed = 1, stage = FX_
   }
   const sig = signature[slug]
   if (sig) sig()
-  else if (recipe) byRecipe(recipe)
+  else if (recipe) {
+    byRecipe(recipe)
+    shapeCamera(recipe.k)
+  }
   else {
     switch (kind) {
       // ---- Golpes de contato: quem ataca avança, a câmera segue e dá zoom no impacto ----
@@ -373,6 +376,15 @@ export function fxPlan2({ kind, type, slug = '', from = 0, seed = 1, stage = FX_
     }
   }
 
+
+  // Cada golpe com a sua câmera: parada, um pouco perto, de lado, zoom forte, a viagem completa ou aberta.
+  function shapeCamera(k) {
+    if (!k || k === 'cine' || k === 'wide' || k === 'self') return
+    const [fp, fz] = { still: [0, 0], nudge: [0.35, 0.3], pan: [0.75, 0.35], zoom: [1, 1.25] }[k] ?? [1, 1]
+    cam = cam.map(([t, x, y, zz, r]) => [t, 480 + (x - 480) * fp, 270 + (y - 270) * fp, Math.max(0.9, 1 + (zz - 1) * fz), r * fp])
+    // Câmera parada ou quase: os HPs e a caixa de texto ficam na tela (como nos golpes simples do jogo).
+    if (k === 'still' || k === 'nudge') hud = [dur + 1, dur + 1]
+  }
   // ---- Uma animação para cada golpe: a receita dele (move_fx.json) diz como chega, a forma, a força, os acertos e o efeito ----
   function byRecipe(r) {
     const p = r.p ?? 1
