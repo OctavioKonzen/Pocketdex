@@ -660,6 +660,12 @@ ART = {
         'Twinleaf Town': (320, 758), 'Hearthome City': (965, 822), 'Sunyshore City': (1210, 792), 'Sandgem Town': (612, 790),
         'Celestic Town': (592, 650), 'Solaceon Town': (1060, 690), 'Floaroma Town': (225, 600), 'Survival Area': (250, 180),
         'Fight Area': (345, 330), 'Resort Area': (1345, 405)}},
+    'unova': {'crop': (0, 0, 1536, 1024), 'cities': {
+        'Nuvema Town': (385, 190), 'Nacrene City': (740, 228), 'Icirrus City': (1190, 208), 'Opelucid City': (1395, 300),
+        'Castelia City': (785, 435), 'Striaton City': (150, 458), 'Nimbasa City': (385, 695), 'Undella Town': (795, 790),
+        'Driftveil City': (1262, 740), 'Pokémon League': (165, 205), 'Accumula Town': (475, 490), 'Lacunosa Town': (1090, 90),
+        'Humilau City': (1342, 598), 'Lentimas Town': (920, 110), 'Black City': (770, 560), 'Aspertia City': (140, 745),
+        'Floccesy Town': (420, 545), 'Virbank City': (480, 790), 'Pokéstar Studios': (548, 900), 'Mistralton City': (1040, 505)}},
 }
 ART_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'region_maps_art')
 
