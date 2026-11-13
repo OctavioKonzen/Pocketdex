@@ -127,6 +127,17 @@ HAND = {
         'rivers': [[(74.2, 41.0), (70.3, 50.8), (67.4, 58.6)]],
         'roads': [['Jubilife Village', 'Coronet Highlands'], ['Jubilife Village', (700, 600), 'Temple of Sinnoh'], ['Temple of Sinnoh', 'Crimson Mirelands'], ['Crimson Mirelands', 'Obsidian Fieldlands'], ['Crimson Mirelands', (1130, 400), 'Cobalt Coastlands'], ['Jubilife Village', 'Alabaster Icelands'], ['Coronet Highlands', (1000, 450), 'Crimson Mirelands']],
     },
+    # Blueberry Academy (provisório, até o desenho que você mandou).
+    'blueberry': {
+        'aspect': 1.5,
+        'cities': {'Savanna Biome': (125.0, 46.9), 'Coastal Biome': (25.4, 46.9), 'Canyon Biome': (108.4, 72.3), 'Polar Biome': (35.2, 20.5), 'League Club Room': (75.2, 34.2)},
+        'land': [],
+        'islands': [(75.2, 37.1, 22.5, 14.6), (32.2, 24.4, 22.5, 10.7), (25.4, 48.8, 13.7, 7.8), (43.0, 70.3, 27.3, 13.7), (102.5, 70.3, 31.2, 14.6), (125.0, 47.9, 18.6, 14.6), (127.0, 20.5, 17.6, 8.8)],
+        'water': [],
+        'biomes': [('snow', (29.3, 18.6, 14.6, 7.8)), ('mountain', (32.2, 17.6, 10.7, 5.9)), ('forest', (125.0, 46.9, 14.6, 10.7)), ('plain', (102.5, 70.3, 21.5, 9.8)), ('crater', (75.2, 35.2, 11.7, 8.8)), ('desert', (25.4, 50.8, 7.8, 3.9))],
+        'rivers': [],
+        'roads': [['Polar Biome', 'League Club Room'], ['Coastal Biome', 'League Club Room'], ['League Club Room', 'Savanna Biome'], ['League Club Room', 'Canyon Biome']],
+    },
     'kanto': {
         'aspect': 1.524,
         'cities': {'Pewter City': (62.7, 28.6), 'Viridian City': (60.9, 53.6), 'Pallet Town': (60.9, 68.5), 'Cinnabar Island': (60.9, 92.9), 'Seafoam Islands': (76.2, 92.9), 'Indigo Plateau': (38.7, 45.8), 'Celadon City': (95.5, 42.9), 'Saffron City': (116.0, 42.9), 'Cerulean City': (116.0, 28.0), 'Lavender Town': (137.1, 42.9), 'Vermilion City': (116.0, 55.4), 'Fuchsia City': (95.5, 83.3)},
@@ -195,7 +206,7 @@ REF = {
     },
 }
 # Os mapas de cada região (Johto também mostra Kanto, onde a história continua depois da Liga).
-REGIONS = {'Kanto': ['kanto'], 'Johto': ['johto', 'kanto'], 'Hoenn': ['hoenn'], 'Sinnoh': ['sinnoh'], 'Hisui': ['hisui'], 'Unova': ['unova'], 'Kalos': ['kalos'],
+REGIONS = {'Kanto': ['kanto'], 'Johto': ['johto', 'kanto'], 'Hoenn': ['hoenn'], 'Sinnoh': ['sinnoh'], 'Hisui': ['hisui'], 'Orre': ['orre'], 'Fiore': ['fiore'], 'Almia': ['almia'], 'Oblivia': ['oblivia'], 'Kitakami': ['kitakami'], 'Blueberry': ['blueberry'], 'Unova': ['unova'], 'Kalos': ['kalos'],
            'Alola': ['alola'], 'Galar': ['galar'], 'Paldea': ['paldea']}
 REF_DIR = os.path.join(os.path.dirname(__file__), 'region_maps_ref')
 WPX = 900
@@ -661,6 +672,11 @@ def build(name, wanted):
 # Mapas desenhados que você mandou (tool/region_maps_art/<id>.webp): a imagem é usada inteira (com a moldura) e só
 # as cidades são marcadas (em pixels da imagem original). Os nomes já vêm no desenho, então o app não escreve outros.
 ART = {
+    'orre': {'crop': (0, 0, 1536, 1024), 'cities': {'Gateon Port': (320, 450), 'Pyrite Town': (1200, 250), 'Agate Village': (640, 430), 'Phenac City': (250, 215), 'Cipher Lab': (770, 240), 'Desert Resort': (1060, 440), 'Realgam Tower': (1150, 640)}},
+    'fiore': {'crop': (0, 0, 1536, 1024), 'cities': {'Ringtown': (380, 690), 'Fall City': (1140, 690), 'Summerland': (1055, 385), 'Wintown': (555, 375), 'Sekra Range': (390, 200), 'Fiore Temple': (800, 500)}},
+    'almia': {'crop': (0, 0, 1536, 1024), 'cities': {'Vientown': (730, 645), 'Pueltown': (1270, 390), 'Chicole Village': (745, 400), 'Boyleland': (1040, 215), 'Haruba Village': (280, 500), 'Altru Building': (470, 175), 'Almia Castle': (1200, 800)}},
+    'oblivia': {'crop': (0, 0, 1536, 1024), 'cities': {'Dolce Island': (300, 175), 'Renbow Island': (1180, 470), 'Mitonga Island': (440, 640), 'Layuda Island': (615, 215), 'Faldera Island': (1200, 200), 'Oblivia Ruins': (780, 440)}},
+    'kitakami': {'crop': (0, 0, 1536, 1024), 'cities': {'Mossui Town': (720, 600), 'Apple Hills': (360, 330), 'Oni Mountain': (710, 190), 'Kitakami Hall': (1290, 560), 'Timeless Woods': (1190, 265), 'Crystal Pool': (945, 410)}},
     'johto': {'crop': (0, 0, 1536, 1024), 'cities': {
         'Azalea Town': (172, 495), 'Cherrygrove City': (290, 635), 'New Bark Town': (598, 642), 'Ecruteak City': (578, 462),
         'Goldenrod City': (628, 340), 'Mahogany Town': (898, 332), 'Olivine City': (1120, 328), 'Violet City': (995, 512),

@@ -1774,6 +1774,12 @@ class FactoryRun {
     'ruins-of-conflict': (scene: 'ruins', name: 'Ruins of Conflict', legends: [785], mythic: false),
     'crown-shrine': (scene: 'snow', name: 'Crown Shrine', legends: [898], mythic: false),
     'grasswither-shrine': (scene: 'ruins', name: 'Grasswither Shrine', legends: [1001], mythic: false),
+    'relic-forest': (scene: 'forest', name: 'Relic Forest', legends: [251], mythic: true),
+    'hia-valley': (scene: 'mountain', name: 'Hia Valley', legends: [380, 381], mythic: false),
+    'shiver-camp': (scene: 'snow', name: 'Shiver Camp', legends: [491], mythic: true),
+    'sophian-island': (scene: 'temple', name: 'Sophian Island', legends: [250], mythic: false),
+    'oni-mountain-summit': (scene: 'mountain', name: 'Oni Mountain Summit', legends: [1017], mythic: false),
+    'area-zero-underdepths': (scene: 'crystal', name: 'Area Zero Underdepths', legends: [1024], mythic: false),
     'snowpoint-temple': (scene: 'temple', name: 'Snowpoint Temple', legends: [486], mythic: false),
   };
   static final rarePlaceIds = rarePlaces.keys.toList();
@@ -2247,6 +2253,7 @@ class FactoryRun {
   static const regionLegends = <String, List<int>>{
     'Kanto': [150, 144, 145, 146], 'Johto': [249, 250, 243, 244, 245], 'Hoenn': [382, 383, 384, 380, 381], 'Sinnoh': [483, 484, 487, 480, 481, 482], 'Hisui': [483, 484, 487, 905],
     'Unova': [643, 644, 646, 638, 639, 640], 'Kalos': [716, 717, 718], 'Alola': [791, 792, 800, 785], 'Galar': [888, 889, 890], 'Paldea': [1007, 1008, 1001, 1002],
+    'Orre': [243, 244, 245, 249], 'Fiore': [243, 244, 245], 'Almia': [485, 486, 384], 'Oblivia': [249, 250, 243, 244, 245], 'Kitakami': [1017, 1014, 1015, 1016], 'Blueberry': [1024, 1009, 1010],
   };
 
   /// O lendário da região da corrida (sempre o mesmo para a mesma corrida e região).
@@ -2880,7 +2887,9 @@ class FactoryRun {
     final rand = _dice(run);
     // O inicial vem com IVs bons (15 a 31; com a Genética, mais).
     run['team'] = [newMon(id, startLevel + up('level') + math.min(maxStartLevel, fxTotal(factory, 'level')), rand, math.min(31, 15 + up('ivs') + fxTotal(factory, 'ivs')), shiny)];
-    run['boss'] = {'region': (rand() * data.bosses.length).floor(), 'step': 0};
+    // A corrida começa num jogo (não numa expansão: ela vem depois do jogo dela).
+    final firsts = [for (var i = 0; i < data.bosses.length; i++) if (data.bosses[i]['after'] == null) i];
+    run['boss'] = {'region': firsts[(rand() * firsts.length).floor()], 'step': 0};
     run['played'] = [data.bosses[_int(run['boss']['region'])]['region']];
     run['route'] = routeOptions(run, data, rand);
     run['mission'] = newMission(run, data, rand);
@@ -2900,10 +2909,13 @@ class FactoryRun {
     final step = _int(run['boss']['step']) + 1;
     var played = [for (final x in (run['played'] as List?) ?? const []) '$x'];
     if (step < (data.bosses[region]['leaders'] as List).length) return ({'region': region, 'step': step}, played);
-    var options = [for (var i = 0; i < data.bosses.length; i++) if (!played.contains(data.bosses[i]['region'])) i];
+    // A expansão (DLC) vem logo depois do jogo dela; sem o jogo dela jogado, ela não sai.
+    final dlc = [for (var i = 0; i < data.bosses.length; i++) if (data.bosses[i]['after'] == data.bosses[region]['region'] && !played.contains(data.bosses[i]['region'])) i];
+    if (dlc.isNotEmpty) return ({'region': dlc.first, 'step': 0}, [...played, '${data.bosses[dlc.first]['region']}']);
+    var options = [for (var i = 0; i < data.bosses.length; i++) if (!played.contains(data.bosses[i]['region']) && data.bosses[i]['after'] == null) i];
     if (options.isEmpty) {
       played = [];
-      options = [for (var i = 0; i < data.bosses.length; i++) if (data.bosses[i]['region'] != data.bosses[region]['region']) i];
+      options = [for (var i = 0; i < data.bosses.length; i++) if (data.bosses[i]['region'] != data.bosses[region]['region'] && data.bosses[i]['after'] == null) i];
     }
     if (options.isEmpty) options = [region];
     final next = _pick(options, rand);
@@ -4469,7 +4481,7 @@ class FactoryRun {
   };
 
   /// A música do mapa (andando na rota e na cidade): um tema original por região, mais calmo. Igual ao site.
-  static const mapRegions = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos', 'alola', 'galar', 'paldea', 'hisui'];
+  static const mapRegions = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos', 'alola', 'galar', 'paldea', 'hisui', 'orre', 'fiore', 'almia', 'oblivia', 'kitakami', 'blueberry'];
   static String? mapMusic(FactoryData data, Map? run) {
     final region = regionOf(data, run)?.toLowerCase();
     return region == null ? null : 'map_${mapRegions.contains(region) ? region : 'kanto'}';

@@ -55,6 +55,8 @@ START: de onde a região começa (a cidade inicial do jogo). A chave é o jogo
 quando ele começa em outro lugar (Black 2/White 2).
 """
 
+from factory_extra_regions import REGIONS as EXTRA_REGIONS, RARE as EXTRA_RARE, routes_of as extra_routes  # noqa: E402
+
 CITIES = {
     # Kanto
     'Pewter City': ['grass', 'Route 1 · Route 2', ['Viridian Forest', 'forest'], [['Pewter Museum', 'ruins']]],
@@ -162,6 +164,7 @@ CITIES = {
     'Glaseado': ['snow', 'Glaseado Mountain', ['Dalizapa Passage', 'icecave'], []],
     'Paldea:Pokémon League': ['grass', 'West Province (Area One)', ['Area Zero', 'crystal'], []],
 }
+CITIES.update(extra_routes('routes'))
 
 FEATURES = {
     'Pewter City': {'trade': [63, 122], 'museum': {'pewter-museum': [138, 140, 142]}},
@@ -248,6 +251,7 @@ FEATURES = {
     'Alfornada': {'daycare': True},
     'Glaseado': {'daycare': True},
 }
+FEATURES.update(extra_routes('features'))
 
 
 # O clima único de cada rota e lugar, como nos jogos: 'route' é a rota até a cidade; as outras chaves são os lugares
@@ -330,6 +334,7 @@ CLIMATE = {
     'Glaseado': {'route': {'w': [['snow', 0.9]]}, 'dalizapa-passage': {'f': [['chill', 0.6]]}},
     'Paldea:Pokémon League': {'area-zero': {'f': [['diamonds', 0.7]]}},                              # os cristais Tera da Area Zero
 }
+CLIMATE.update(extra_routes('climate'))
 for _city, _climate in CLIMATE.items():
     FEATURES.setdefault(_city, {})['climate'] = _climate
 
@@ -353,6 +358,9 @@ TOWNS = {
     'volcano': ['Cinnabar Island', 'Lavaridge Town', 'Wela Volcano Park'],
     'league': ['Indigo Plateau', 'Ever Grande City', 'Sinnoh:Pokémon League', 'Unova:Pokémon League', 'Kalos:Pokémon League', 'Paldea:Pokémon League', 'Temple of Sinnoh'],
 }
+for _r in EXTRA_REGIONS:
+    for _kind, _cities in _r.get('towns', {}).items():
+        TOWNS.setdefault(_kind, []).extend(_cities)
 for _kind, _cities in TOWNS.items():
     for _city in _cities:
         FEATURES.setdefault(_city, {})['town'] = _kind
@@ -404,3 +412,6 @@ START = {
     'Galar': 'Postwick',
     'Paldea': 'Cabo Poco',
 }
+for _r in EXTRA_REGIONS:
+    START[_r['region']] = _r['start']
+    RARE.update({_r['region']: EXTRA_RARE[_r['region']]})

@@ -909,6 +909,18 @@ MAP_THEMES = {
     'paldea': (65, 'major', [0, 4, 5, 3], 128, 0.25, 'pulse', {'school': True}),
     # Hisui: o Japão antigo da era Meiji (shakuhachi, koto, shamisen e taikô ao longe), na frígia, com melodia original.
     'hisui': (62, 'phrygian', [0, 5, 6, 0], 88, 0.25, 'pulse', {}),
+    # Orre: faroeste no deserto (violão, gaita, assobio e o baixo andando), na dórica.
+    'orre': (64, 'dorian', [0, 6, 3, 4], 104, 0.5, 'pulse', {}),
+    # Fiore: aventura ao ar livre de Ranger (flauta, violão e cordas leves), I–IV–V–IV.
+    'fiore': (67, 'major', [0, 3, 4, 3], 120, 0.25, 'pulse', {}),
+    # Almia: a escola de Rangers no litoral (piano, clarinete e pizzicato), I–vi–ii–V.
+    'almia': (65, 'major', [0, 5, 1, 4], 112, 0.25, 'pulse', {}),
+    # Oblivia: ilhas tropicais e ruínas antigas (marimba, flauta de pã e tambores de mão), na mixolídia.
+    'oblivia': (62, 'mixolydian', [0, 6, 3, 0], 108, 0.5, 'pulse', {}),
+    # Kitakami: o festival do interior (koto, flauta japonesa, taikô e sininhos), na menor.
+    'kitakami': (64, 'minor', [0, 5, 3, 6], 96, 0.25, 'pulse', {}),
+    # Blueberry Academy: escola no mar, moderna (sintetizador, piano elétrico, baixo e bateria eletrônica leve).
+    'blueberry': (66, 'major', [0, 4, 5, 3], 124, 0.25, 'pulse', {}),
 }
 
 
@@ -1484,6 +1496,32 @@ def hisui_orchestra():
         (49, each_chord(chords, lambda b, r, t, c: [(b, 16, m - 12, 44) for m in t])),
         (116, each_chord(chords, lambda b, r, t, c: [(b + k, 2, 36, v) for k, v in ((0, 92), (8, 70), (11, 54))])),
     ]
+    return render(parts, bpm, len(lead))
+
+
+# (melodia, dobra, acordes, baixo, percussão grave) de cada mapa novo: o mesmo arranjo calmo, com os instrumentos do lugar.
+EXTRA_MAP_SOUNDS = {
+    'orre': (22, 78, 25, 32, 116), 'fiore': (73, 24, 48, 33, 0), 'almia': (71, 45, 0, 32, 0),
+    'oblivia': (12, 75, 46, 33, 116), 'kitakami': (77, 107, 49, 32, 116), 'blueberry': (81, 4, 89, 38, 0),
+}
+
+
+def extra_map_orchestra(region):
+    """Os mapas das regiões fora da série principal (Orre, Fiore, Almia, Oblivia) e das expansões (Kitakami, Blueberry):
+    a melodia original no instrumento do lugar, a dobra uma oitava acima, os acordes dedilhados, o baixo e, onde tem,
+    o tambor grave a cada compasso."""
+    lead, chords, bpm = map_song(region)
+    mel, double, comp, bass, drum = EXTRA_MAP_SOUNDS[region]
+    parts = [
+        (mel, lead_notes(lead, 88, extra=0.2)),
+        (double, lead_notes(lead, 44, 12, keep=lambda i: i % 2 == 0)),
+        (comp, each_chord(chords, lambda b, r, t, c: [(b + k, 1.4, [t[0], t[1], t[2], t[1]][(k // 2) % 4], 56 if k % 4 else 66) for k in range(0, 16, 2)])),
+        (bass, each_chord(chords, lambda b, r, t, c: [(b + k, 2, r + (7 if k == 8 else 0), 80) for k in (0, 4, 8, 12)])),
+    ]
+    if drum:
+        parts.append((drum, each_chord(chords, lambda b, r, t, c: [(b + k, 2, 36, v) for k, v in ((0, 88), (8, 66))])))
+    else:
+        parts.append(('drums', hits(chords, lambda b, bar: [(b + k, 36, 64) for k in (0, 4)] + [(b + k, 38, 46) for k in (2, 6)] + [(b + k, 42, 34) for k in range(8)])))
     return render(parts, bpm, len(lead))
 
 
@@ -3739,6 +3777,7 @@ def hifi_tracks():
         'map_sinnoh': cynthia_orchestra(), 'map_unova': unova_orchestra(), 'map_kalos': kalos_orchestra(),
         'map_alola': alola_orchestra(), 'map_galar': galar_orchestra(), 'map_paldea': paldea_orchestra(),
         'map_hisui': hisui_orchestra(),
+        **{f'map_{r}': extra_map_orchestra(r) for r in EXTRA_MAP_SOUNDS},
         'mega_theme': mega_orchestra(), 'dmax_theme': dmax_orchestra(),
     })
     out.update({f'champion_{name}': fn() for name, fn in CHAMPIONS.items()})
@@ -3798,6 +3837,7 @@ def main():
                  'map_sinnoh': cynthia_orchestra, 'map_unova': unova_orchestra, 'map_kalos': kalos_orchestra,
                  'map_alola': alola_orchestra, 'map_galar': galar_orchestra, 'map_paldea': paldea_orchestra,
                  'map_hisui': hisui_orchestra}
+        loops.update({f'map_{r}': (lambda r=r: extra_map_orchestra(r)) for r in EXTRA_MAP_SOUNDS})
         loops.update({f'champion_{n}': fn for n, fn in CHAMPIONS.items()})
         loops.update({f'rival_{n}': fn for n, fn in RIVALS.items()})
         loops.update({f'villain_{n}': fn for n, fn in VILLAINS.items()})

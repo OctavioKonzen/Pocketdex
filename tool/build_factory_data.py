@@ -29,6 +29,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from factory_stories import CITIES, STORIES  # noqa: E402
+from factory_extra_regions import REGIONS as EXTRA_REGIONS  # noqa: E402
 from factory_routes import CITIES as ROUTE_CITIES, START as ROUTE_START, FEATURES as ROUTE_FEATURES, RARE as ROUTE_RARE, TUTOR_EVERYWHERE as ROUTE_TUTORS  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -521,6 +522,16 @@ def main():
             rocket = rocket_of(game['region'], usable, sprites)
             bosses.append({'region': game['region'], 'game': game['name'], 'leaders': story, **({'rocket': rocket} if rocket else {})})
     bosses.append(hisui_game(usable, sprites))
+    # As regiões dos outros jogos (Orre, Ranger, DLC): tool/factory_extra_regions.py. 'after': só depois desse jogo.
+    for r in EXTRA_REGIONS:
+        leaders = []
+        for name, trainer, kind, team, city, extra in r['leaders']:
+            team = [i for i in team if usable(i)]
+            pool = list(dict.fromkeys(m for t in r['leaders'] if t[0] == name for m in t[3] if usable(m))) if kind == 'rival' else list(team)
+            slug = re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')
+            leaders.append({'id': f"{r['region'].lower()}-{slug}", 'name': name, 'trainer': trainer if trainer in sprites else '', 'kind': kind,
+                            'team': team, 'pool': pool, **extra, 'city': city})
+        bosses.append({'region': r['region'], 'game': r['game'], **({'after': r['after']} if r.get('after') else {}), 'leaders': leaders})
     # Mega: espécie -> [[Mega Pedra (nome do item como no sprite), id da forma Mega]].
     item_files = {re.sub(r'[^a-z0-9]', '', f[:-4]): f[:-4] for f in os.listdir(os.path.join(DB, 'sprites', 'items')) if f.endswith('.png') and '--' not in f}
     by_name = {p['name']: p for p in records.values()}

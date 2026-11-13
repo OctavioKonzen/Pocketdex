@@ -104,6 +104,9 @@ STORIES = {
 # "-genN" do sprite) -> a cidade do ginásio (ou da prova, em Alola). Os
 # chefes que não são de ginásio (rival, vilões) aparecem na cidade do próximo
 # líder; a Elite dos Quatro e o Campeão, na Liga (league). Nomes próprios: não traduzir.
+from factory_extra_regions import REGIONS as _EXTRA  # noqa: E402
+STORIES.update({r['region']: r['story'] for r in _EXTRA})
+
 CITIES = {
     'Kanto': {
         'league': 'Indigo Plateau',

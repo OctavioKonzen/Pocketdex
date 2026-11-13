@@ -1910,6 +1910,12 @@ export const RARE_PLACES = {
   'ruins-of-conflict': { scene: 'ruins', name: 'Ruins of Conflict', legends: [785] },
   'crown-shrine': { scene: 'snow', name: 'Crown Shrine', legends: [898] },
   'grasswither-shrine': { scene: 'ruins', name: 'Grasswither Shrine', legends: [1001] },
+  'relic-forest': { scene: 'forest', name: 'Relic Forest', legends: [251], mythic: true },
+  'hia-valley': { scene: 'mountain', name: 'Hia Valley', legends: [380, 381] },
+  'shiver-camp': { scene: 'snow', name: 'Shiver Camp', legends: [491], mythic: true },
+  'sophian-island': { scene: 'temple', name: 'Sophian Island', legends: [250] },
+  'oni-mountain-summit': { scene: 'mountain', name: 'Oni Mountain Summit', legends: [1017] },
+  'area-zero-underdepths': { scene: 'crystal', name: 'Area Zero Underdepths', legends: [1024] },
   'snowpoint-temple': { scene: 'temple', name: 'Snowpoint Temple', legends: [486] },
 }
 /** Os lugares raros da região de agora (cada um só aparece na região dele nos jogos). */
@@ -2592,7 +2598,9 @@ export function startRun(factory, data, id, seed, shiny = false, options = {}) {
   const rand = dice(run)
   // O inicial vem com IVs bons (15 a 31; com a Genética, mais).
   run.team = [newMon(id, START_LEVEL + up('level') + Math.min(MAX_START_LEVEL, fxTotal(factory, 'level')), rand, Math.min(31, 15 + up('ivs') + fxTotal(factory, 'ivs')), shiny)]
-  run.boss = { region: Math.floor(rand() * data.bosses.length), step: 0 }
+  // A corrida começa num jogo (não numa expansão: ela vem depois do jogo dela).
+  const firsts = data.bosses.map((_, i) => i).filter((i) => !data.bosses[i].after)
+  run.boss = { region: firsts[Math.floor(rand() * firsts.length)], step: 0 }
   run.played = [data.bosses[run.boss.region].region]
   run.route = routeOptions(run, data, rand)
   run.mission = newMission(run, data, rand)
@@ -2604,10 +2612,13 @@ function nextBoss(run, data, rand) {
   const step = run.boss.step + 1
   if (step < data.bosses[run.boss.region].leaders.length) return [{ ...run.boss, step }, run.played ?? []]
   let played = run.played ?? []
-  let options = data.bosses.map((_, i) => i).filter((i) => !played.includes(data.bosses[i].region))
+  // A expansão (DLC) vem logo depois do jogo dela; sem o jogo dela jogado, ela não sai.
+  const dlc = data.bosses.map((_, i) => i).filter((i) => data.bosses[i].after === data.bosses[run.boss.region].region && !played.includes(data.bosses[i].region))
+  if (dlc.length) return [{ region: dlc[0], step: 0 }, [...played, data.bosses[dlc[0]].region]]
+  let options = data.bosses.map((_, i) => i).filter((i) => !played.includes(data.bosses[i].region) && !data.bosses[i].after)
   if (!options.length) {
     played = []
-    options = data.bosses.map((_, i) => i).filter((i) => data.bosses[i].region !== data.bosses[run.boss.region].region)
+    options = data.bosses.map((_, i) => i).filter((i) => data.bosses[i].region !== data.bosses[run.boss.region].region && !data.bosses[i].after)
   }
   if (!options.length) options = [run.boss.region]
   const region = pickOne(options, rand)
@@ -3395,7 +3406,7 @@ export const SCENE_WEATHER = {
   lake: [['rain', 0.7]], lakeside: [['sun', 0.2], ['rain', 0.2]], acuity: [['snow', 0.65]], wildarea: [['sun', 0.2], ['rain', 0.2]], skypillar: [['sun', 0.2]],
 }
 /** A música do mapa (andando na rota e na cidade): um tema original por região, mais calmo. Igual ao app. */
-export const MAP_REGIONS = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos', 'alola', 'galar', 'paldea', 'hisui']
+export const MAP_REGIONS = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos', 'alola', 'galar', 'paldea', 'hisui', 'orre', 'fiore', 'almia', 'oblivia', 'kitakami', 'blueberry']
 export function mapMusic(data, run) {
   const region = regionOf(data, run)?.toLowerCase()
   return region == null ? null : `map_${MAP_REGIONS.includes(region) ? region : 'kanto'}`
@@ -3517,6 +3528,7 @@ export function fieldOf(run, scene, data = null) {
 export const REGION_LEGENDS = {
   Kanto: [150, 144, 145, 146], Johto: [249, 250, 243, 244, 245], Hoenn: [382, 383, 384, 380, 381], Sinnoh: [483, 484, 487, 480, 481, 482], Hisui: [483, 484, 487, 905],
   Unova: [643, 644, 646, 638, 639, 640], Kalos: [716, 717, 718], Alola: [791, 792, 800, 785], Galar: [888, 889, 890], Paldea: [1007, 1008, 1001, 1002],
+  Orre: [243, 244, 245, 249], Fiore: [243, 244, 245], Almia: [485, 486, 384], Oblivia: [249, 250, 243, 244, 245], Kitakami: [1017, 1014, 1015, 1016], Blueberry: [1024, 1009, 1010],
 }
 /** O lendário da região da corrida (sempre o mesmo para a mesma corrida e região). */
 export function regionLegend(data, run) {
