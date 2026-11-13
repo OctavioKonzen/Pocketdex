@@ -293,15 +293,24 @@ def slug(name):
     return ''.join(c if c.isalnum() else '-' for c in s).strip('-')
 
 
+def pretty(pid):
+    return ' '.join(w.capitalize() for w in pid.split('_')[0].split('-'))
+
+
 def ref_cities(name, places, wanted):
-    """As cidades da história (os nomes do jogo) no mapa: o lugar delas na referência."""
+    """Todas as cidades e vilas do mapa (as da história com o nome dela no jogo): o lugar delas na referência."""
     out = {}
+    used = set()
     alias = REF[name].get('cities', {})
     for city in wanted:
         key = alias.get(city) or slug(city)
-        hit = next((v for pid, v in places.items() if pid != '__aspect' and (pid == key or pid.split('_')[0] == key)), None)
+        hit = next((pid for pid, v in places.items() if pid != '__aspect' and (pid == key or pid.split('_')[0] == key)), None)
         if hit:
-            out[city] = (hit['x'], hit['y'])
+            out[city] = (places[hit]['x'], places[hit]['y'])
+            used.add(hit)
+    for pid, v in places.items():
+        if pid != '__aspect' and v['kind'] == 'Cities' and pid not in used and not pid[-1].isdigit():
+            out.setdefault(pretty(pid), (v['x'], v['y']))
     return out
 
 
@@ -445,7 +454,7 @@ def build(name, wanted):
     rivers = cv.lines([[pc(p) for p in r] for r in spec.get('rivers', [])], 9)
     biomes = [(k, conv(sh)) for k, sh in spec.get('biomes', [])]
     img = paint(cv, land, rivers, biomes, rl, np.zeros_like(rl), rs, seed=3)
-    return img, {c: xy for c, xy in cities.items() if c in wanted}
+    return img, cities
 
 
 def write_positions(found):
@@ -498,12 +507,12 @@ def main():
         img, cities = build(name, wanted) if (not only or name in only) else (None, None)
         if img is None:
             img = Image.open(os.path.join(OUT, f'{name}.webp'))
-            cities = build(name, wanted)[1] if name in REF and name not in HAND else {c: (xy[0] / 1.5, xy[1]) for c, xy in HAND[name]['cities'].items() if c in wanted}
+            cities = build(name, wanted)[1] if name in REF and name not in HAND else {c: (xy[0] / 1.5, xy[1]) for c, xy in HAND[name]['cities'].items()}
         else:
             for folder in (OUT, OUT_SITE):
                 img.save(os.path.join(folder, f'{name}.webp'), 'WEBP', quality=86, method=6)
             done.append((name, img, cities))
-            print('ok', name, f'{len(cities)}/{len(wanted)} cidades', sorted(wanted - set(cities)))
+            print('ok', name, f'{len(cities)} cidades; da história faltando:', sorted(wanted - set(cities)))
         ASPECTS[name] = img.width / img.height
         found[name] = cities
     write_positions(found)
