@@ -921,6 +921,8 @@ MAP_THEMES = {
     'kitakami': (64, 'minor', [0, 5, 3, 6], 96, 0.25, 'pulse', {}),
     # Blueberry Academy: escola no mar, moderna (sintetizador, piano elétrico, baixo e bateria eletrônica leve).
     'blueberry': (66, 'major', [0, 4, 5, 3], 124, 0.25, 'pulse', {}),
+    # Ilhas Sevii: viagem de barco entre ilhas (marimba, flauta e violão, ondas calmas), I–IV–ii–V.
+    'sevii': (67, 'major', [0, 3, 1, 4], 110, 0.25, 'pulse', {}),
 }
 
 
@@ -1503,6 +1505,7 @@ def hisui_orchestra():
 EXTRA_MAP_SOUNDS = {
     'orre': (22, 78, 25, 32, 116), 'fiore': (73, 24, 48, 33, 0), 'almia': (71, 45, 0, 32, 0),
     'oblivia': (12, 75, 46, 33, 116), 'kitakami': (77, 107, 49, 32, 116), 'blueberry': (81, 4, 89, 38, 0),
+    'sevii': (12, 73, 24, 33, 0),
 }
 
 

@@ -353,7 +353,7 @@ const _frameColors = {
 
 /// A cor de cada região (o tema dela na barra da corrida). Igual ao site.
 const _regionTheme = {
-  'Kanto': Color(0xFFB91C1C), 'Johto': Color(0xFFA16207), 'Hoenn': Color(0xFF15803D), 'Sinnoh': Color(0xFF1D4ED8), 'Hisui': Color(0xFF0F766E), 'Orre': Color(0xFFB45309), 'Fiore': Color(0xFF16A34A), 'Almia': Color(0xFF0891B2), 'Oblivia': Color(0xFF2563EB), 'Kitakami': Color(0xFF15803D), 'Blueberry': Color(0xFF1E40AF), 'Unova': Color(0xFF3F3F46),
+  'Kanto': Color(0xFFB91C1C), 'Johto': Color(0xFFA16207), 'Hoenn': Color(0xFF15803D), 'Sinnoh': Color(0xFF1D4ED8), 'Hisui': Color(0xFF0F766E), 'Orre': Color(0xFFB45309), 'Fiore': Color(0xFF16A34A), 'Almia': Color(0xFF0891B2), 'Oblivia': Color(0xFF2563EB), 'Kitakami': Color(0xFF15803D), 'Blueberry': Color(0xFF1E40AF), 'Sevii': Color(0xFF0E7490), 'Unova': Color(0xFF3F3F46),
   'Kalos': Color(0xFF0369A1), 'Alola': Color(0xFFEA580C), 'Galar': Color(0xFF7E22CE), 'Paldea': Color(0xFFBE123C),
 };
 

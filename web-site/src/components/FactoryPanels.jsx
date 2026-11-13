@@ -1699,7 +1699,7 @@ function FarStand({ children, scene, plain = false }) {
 
 /** A cor de cada região (o tema dela na barra da corrida). Igual ao app. */
 const REGION_THEME = {
-  Kanto: '#b91c1c', Johto: '#a16207', Hoenn: '#15803d', Sinnoh: '#1d4ed8', Hisui: '#0f766e', Orre: '#b45309', Fiore: '#16a34a', Almia: '#0891b2', Oblivia: '#2563eb', Kitakami: '#15803d', Blueberry: '#1e40af', Unova: '#3f3f46', Kalos: '#0369a1', Alola: '#ea580c', Galar: '#7e22ce', Paldea: '#be123c',
+  Kanto: '#b91c1c', Johto: '#a16207', Hoenn: '#15803d', Sinnoh: '#1d4ed8', Hisui: '#0f766e', Orre: '#b45309', Fiore: '#16a34a', Almia: '#0891b2', Oblivia: '#2563eb', Kitakami: '#15803d', Blueberry: '#1e40af', Sevii: '#0e7490', Unova: '#3f3f46', Kalos: '#0369a1', Alola: '#ea580c', Galar: '#7e22ce', Paldea: '#be123c',
 }
 
 /**

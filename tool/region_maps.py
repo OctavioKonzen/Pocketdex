@@ -206,7 +206,7 @@ REF = {
     },
 }
 # Os mapas de cada região (Johto também mostra Kanto, onde a história continua depois da Liga).
-REGIONS = {'Kanto': ['kanto'], 'Johto': ['johto', 'kanto'], 'Hoenn': ['hoenn'], 'Sinnoh': ['sinnoh'], 'Hisui': ['hisui'], 'Orre': ['orre'], 'Fiore': ['fiore'], 'Almia': ['almia'], 'Oblivia': ['oblivia'], 'Kitakami': ['kitakami'], 'Blueberry': ['blueberry'], 'Unova': ['unova'], 'Kalos': ['kalos'],
+REGIONS = {'Kanto': ['kanto'], 'Johto': ['johto', 'kanto'], 'Hoenn': ['hoenn'], 'Sinnoh': ['sinnoh'], 'Hisui': ['hisui'], 'Orre': ['orre'], 'Fiore': ['fiore'], 'Almia': ['almia'], 'Oblivia': ['oblivia'], 'Kitakami': ['kitakami'], 'Blueberry': ['blueberry'], 'Sevii': ['sevii'], 'Unova': ['unova'], 'Kalos': ['kalos'],
            'Alola': ['alola'], 'Galar': ['galar'], 'Paldea': ['paldea']}
 REF_DIR = os.path.join(os.path.dirname(__file__), 'region_maps_ref')
 WPX = 900
@@ -672,6 +672,7 @@ def build(name, wanted):
 # Mapas desenhados que você mandou (tool/region_maps_art/<id>.webp): a imagem é usada inteira (com a moldura) e só
 # as cidades são marcadas (em pixels da imagem original). Os nomes já vêm no desenho, então o app não escreve outros.
 ART = {
+    'sevii': {'crop': (0, 0, 1536, 1024), 'cities': {'One Island': (1210, 530), 'Two Island': (330, 430), 'Three Island': (720, 230), 'Four Island': (1270, 250), 'Five Island': (710, 480), 'Six Island': (770, 800), 'Seven Island': (1260, 790)}},
     'blueberry': {'crop': (0, 0, 1536, 1024), 'cities': {'Savanna Biome': (1285, 470), 'Coastal Biome': (260, 500), 'Canyon Biome': (1110, 740), 'Polar Biome': (360, 215), 'League Club Room': (770, 345)}},
     'orre': {'crop': (0, 0, 1536, 1024), 'cities': {'Gateon Port': (320, 450), 'Pyrite Town': (1200, 250), 'Agate Village': (640, 430), 'Phenac City': (250, 215), 'Cipher Lab': (770, 240), 'Desert Resort': (1060, 440), 'Realgam Tower': (1150, 640)}},
     'fiore': {'crop': (0, 0, 1536, 1024), 'cities': {'Ringtown': (380, 690), 'Fall City': (1140, 690), 'Summerland': (1055, 385), 'Wintown': (555, 375), 'Sekra Range': (390, 200), 'Fiore Temple': (800, 500)}},

@@ -22,6 +22,9 @@ describe('ordem das regiões (igual ao app)', () => {
     expect(data.bosses[kita.boss.region].region).toBe('Kitakami')
     const blue = finish(at('Kitakami'), ['Paldea', 'Kitakami'])
     expect(data.bosses[blue.boss.region].region).toBe('Blueberry')
+    // As Ilhas Sevii vêm depois de Kanto no FireRed/LeafGreen (nos outros jogos de Kanto, não).
+    const frlg = data.bosses.findIndex((b) => b.game === 'FireRed/LeafGreen')
+    expect(data.bosses[finish(frlg, ['Kanto']).boss.region].region).toBe('Sevii')
     const other = finish(at('Kanto'), ['Kanto'])
     expect(data.bosses[other.boss.region].after).toBeUndefined()
   })

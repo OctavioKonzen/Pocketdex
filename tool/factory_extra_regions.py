@@ -219,10 +219,45 @@ REGIONS = [
             'end': 'A Liga Blueberry tem um novo campeão. Você deixa a academia e segue para outra região.',
         },
     },
+    {
+        # Ilhas Sevii (FireRed/LeafGreen): só depois de terminar Kanto no FireRed/LeafGreen.
+        'region': 'Sevii', 'game': 'Sevii Islands', 'after': 'FireRed/LeafGreen', 'start': 'One Island', 'color': '#0e7490', 'legends': [146, 386, 201],
+        'leaders': [
+            ('Paxton', 'biker', 'gym', [88, 109, 89, 110], 'Three Island', {}),
+            ('Lorelei', 'lorelei', 'rival', [87, 91, 124, 131], 'Four Island', {'guest': True}),
+            ('Executivo', 'rocket-grunt-m', 'villain', [24, 110, 229], 'Five Island', {}),
+            ('Executiva', 'rocket-grunt-f', 'villain', [42, 89, 229], 'Five Island', {}),
+            ('Gideon', 'scientist', 'gym', [81, 100, 137, 82], 'Six Island', {}),
+            ('Blue', 'sd-blue', 'champion', [18, 65, 112, 103, 59, 130], 'Seven Island', {}),
+        ],
+        'routes': {
+            'Three Island': ['water', 'Bond Bridge', ['Berry Forest', 'forest'], [['Three Isle Port', 'beach']]],
+            'Four Island': ['beach', 'Four Island Shore', ['Icefall Cave', 'icecave'], []],
+            'Five Island': ['water', 'Water Labyrinth', ['Memorial Pillar', 'ruins'], [['Rocket Warehouse', 'base-rocket']]],
+            'Six Island': ['water', 'Outcast Island', ['Dotted Hole', 'cave'], [['Ruin Valley', 'ruins']]],
+            'Seven Island': ['mountain', 'Sevault Canyon', ['Tanoby Ruins', 'ruins'], [['Trainer Tower', 'tower']]],
+        },
+        'climate': {
+            'Four Island': {'icefall-cave': {'f': [['chill', 0.7]]}},
+            'Six Island': {'dotted-hole': {'f': [['psychic', 0.4]]}}, 'Seven Island': {'route': {'f': [['rockfall', 0.4]]}},
+        },
+        'features': {'Three Island': {'water': 'sea'}, 'Four Island': {'water': 'sea', 'daycare': True}, 'Five Island': {'water': 'sea'},
+                     'Six Island': {'water': 'sea'}},
+        'towns': {'island': ['Three Island', 'Four Island', 'Five Island', 'Six Island'], 'mountain': ['Seven Island']},
+        'story': {
+            'intro': 'Depois da Liga de Kanto, o Bill leva você de barco às Ilhas Sevii. A Equipe Rocket voltou e está atrás do Ruby e do Sapphire para mexer na Network Machine.',
+            'gym': '{0} causa problemas nas ilhas. Só passa quem vencer.',
+            'rival': '{0}, da Elite dos Quatro, nasceu em Four Island e quer ver se você protege as ilhas.',
+            'villain': '{0}, da Equipe Rocket, guarda o depósito da equipe em Five Island.',
+            'elite': '{0} guarda a passagem para Seven Island.',
+            'champion': 'No alto da Trainer Tower de Seven Island, {0} espera para uma revanche. É a última batalha das ilhas.',
+            'end': 'A Network Machine funciona de novo e as ilhas estão em paz. O barco leva você para outra região.',
+        },
+    },
 ]
 
 RARE = {'Orre': ['relic-forest'], 'Fiore': ['hia-valley'], 'Almia': ['shiver-camp'], 'Oblivia': ['sophian-island'], 'Kitakami': ['oni-mountain-summit'],
-        'Blueberry': ['area-zero-underdepths']}
+        'Blueberry': ['area-zero-underdepths'], 'Sevii': ['birth-island']}
 
 
 def routes_of(key):
