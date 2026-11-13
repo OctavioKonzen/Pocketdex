@@ -672,6 +672,7 @@ def build(name, wanted):
 # Mapas desenhados que você mandou (tool/region_maps_art/<id>.webp): a imagem é usada inteira (com a moldura) e só
 # as cidades são marcadas (em pixels da imagem original). Os nomes já vêm no desenho, então o app não escreve outros.
 ART = {
+    'blueberry': {'crop': (0, 0, 1536, 1024), 'cities': {'Savanna Biome': (1285, 470), 'Coastal Biome': (260, 500), 'Canyon Biome': (1110, 740), 'Polar Biome': (360, 215), 'League Club Room': (770, 345)}},
     'orre': {'crop': (0, 0, 1536, 1024), 'cities': {'Gateon Port': (320, 450), 'Pyrite Town': (1200, 250), 'Agate Village': (640, 430), 'Phenac City': (250, 215), 'Cipher Lab': (770, 240), 'Desert Resort': (1060, 440), 'Realgam Tower': (1150, 640)}},
     'fiore': {'crop': (0, 0, 1536, 1024), 'cities': {'Ringtown': (380, 690), 'Fall City': (1140, 690), 'Summerland': (1055, 385), 'Wintown': (555, 375), 'Sekra Range': (390, 200), 'Fiore Temple': (800, 500)}},
     'almia': {'crop': (0, 0, 1536, 1024), 'cities': {'Vientown': (730, 645), 'Pueltown': (1270, 390), 'Chicole Village': (745, 400), 'Boyleland': (1040, 215), 'Haruba Village': (280, 500), 'Altru Building': (470, 175), 'Almia Castle': (1200, 800)}},

@@ -38,7 +38,7 @@ const regionMaps = <String, List<RegionMapInfo>>{
     (id: 'kitakami', aspect: 1.5, art: true, cities: <String, List<double>>{'Mossui Town': [46.88, 58.59], 'Apple Hills': [23.44, 32.23], 'Oni Mountain': [46.22, 18.55], 'Kitakami Hall': [83.98, 54.69], 'Timeless Woods': [77.47, 25.88], 'Crystal Pool': [61.52, 40.04]}),
   ],
   'Blueberry': [
-    (id: 'blueberry', aspect: 1.5, art: false, cities: <String, List<double>>{'Savanna Biome': [83.33, 46.9], 'Coastal Biome': [16.93, 46.9], 'Canyon Biome': [72.27, 72.3], 'Polar Biome': [23.47, 20.5], 'League Club Room': [50.13, 34.2]}),
+    (id: 'blueberry', aspect: 1.5, art: true, cities: <String, List<double>>{'Savanna Biome': [83.66, 45.9], 'Coastal Biome': [16.93, 48.83], 'Canyon Biome': [72.27, 72.27], 'Polar Biome': [23.44, 21.0], 'League Club Room': [50.13, 33.69]}),
   ],
   'Unova': [
     (id: 'unova', aspect: 1.5, art: true, cities: <String, List<double>>{'Nuvema Town': [25.07, 18.55], 'Nacrene City': [48.18, 22.27], 'Icirrus City': [77.47, 20.31], 'Opelucid City': [90.82, 29.3], 'Castelia City': [51.11, 42.48], 'Striaton City': [9.77, 44.73], 'Nimbasa City': [25.07, 67.87], 'Undella Town': [51.76, 77.15], 'Driftveil City': [82.16, 72.27], 'Pokémon League': [10.74, 20.02], 'Accumula Town': [30.92, 47.85], 'Lacunosa Town': [70.96, 8.79], 'Humilau City': [87.37, 58.4], 'Lentimas Town': [59.9, 10.74], 'Black City': [50.13, 54.69], 'Aspertia City': [9.11, 72.75], 'Floccesy Town': [27.34, 53.22], 'Virbank City': [31.25, 77.15], 'Pokéstar Studios': [35.68, 87.89], 'Mistralton City': [67.71, 49.32]}),
