@@ -657,7 +657,7 @@ ART = {
     'sinnoh': {'crop': (0, 0, 1536, 1024), 'cities': {
         'Snowpoint City': (700, 165), 'Veilstone City': (1000, 240), 'Pokémon League': (1225, 232), 'Pastoria City': (1250, 372),
         'Oreburgh City': (612, 405), 'Eterna City': (372, 545), 'Jubilife City': (870, 585), 'Canalave City': (1390, 662),
-        'Twinleaf Town': (320, 758), 'Hearthome City': (965, 822), 'Sunnyshore City': (1210, 792), 'Sandgem Town': (612, 790),
+        'Twinleaf Town': (320, 758), 'Hearthome City': (965, 822), 'Sunyshore City': (1210, 792), 'Sandgem Town': (612, 790),
         'Celestic Town': (592, 650), 'Solaceon Town': (1060, 690), 'Floaroma Town': (225, 600), 'Survival Area': (250, 180),
         'Fight Area': (345, 330), 'Resort Area': (1345, 405)}},
 }
