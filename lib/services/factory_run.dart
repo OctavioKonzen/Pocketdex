@@ -135,6 +135,9 @@ class FactoryRun {
   static const healShare = {'potion': 0.25, 'super-potion': 0.5, 'hyper-potion': 0.75, 'max-potion': 1.0};
   static const joyChance = 0.05, shinyChance = 1 / 4096;
 
+  /// Venceu a Elite dos Quatro e o Campeão sem nenhum desmaio: o prêmio.
+  static const leagueFlawless = 'master-ball';
+
   /// O seu shiny: +25% em todos os atributos (o adversário shiny, +10%). Igual ao site.
   static const shinyBoost = 0.25, foeShinyBoost = 0.1;
 
@@ -988,6 +991,22 @@ class FactoryRun {
 
   static List<int> _friendTargets(int id) => switch (friendEvos[id]) { final List l => l.cast<int>(), final int v => [v], _ => const [] };
 
+  /// As que dependem da hora (como nos jogos): Riolu e Budew só de dia; Chingling e Snom só à noite. Na hora errada,
+  /// a amizade fica guardada e ele evolui quando a hora chegar. Igual ao site.
+  static const friendTime = {447: 'day', 406: 'day', 433: 'night', 872: 'night'};
+
+  /// O máximo de amizade e os corações (um a cada friendEvolve / friendHearts pontos).
+  static const friendMax = 20, friendHearts = 5;
+
+  /// Os corações de amizade (0 a friendHearts): cheios quando ele já pode evoluir pela amizade.
+  static int heartsOf(Map? mon) => math.min(friendHearts, (_int(mon?['friendship'] ?? 0) * friendHearts) ~/ friendEvolve);
+
+  /// As evoluções por nível que dependem da hora: Tyrantrum só de dia, Aurorus só à noite (como nos jogos).
+  static const timeEvos = {697: 'day', 699: 'night'};
+
+  /// Se a hora deixa (night: null quando não se sabe a hora; aí deixa sempre).
+  static bool timeFits(String? when, bool? night) => when == null || night == null || (when == 'night') == night;
+
   /// Eventos raros na rota (a partir do andar rareFloor): chuva de meteoros (Clefairy, com mais chance de shiny) e um
   /// Pokémon mítico. Igual ao site.
   static const rareFloor = 8, rareChance = 0.04;
@@ -995,7 +1014,7 @@ class FactoryRun {
 
   /// Sobe para o nível (com as evoluções que ele alcançar): (mon, evoluiu para).
   /// [region]: a região da perna da corrida (as evoluções de lá: Pikachu → Raichu de Alola, Stantler → Wyrdeer em Hisui).
-  static (Json, int?) levelTo(Json mon, int level, FactoryData data, double Function() rand, [String? region]) {
+  static (Json, int?) levelTo(Json mon, int level, FactoryData data, double Function() rand, [String? region, bool? night]) {
     var out = {...mon, 'level': math.max(1, level)};
     out['exp'] = math.max(((out['exp'] as num?) ?? 0).toInt(), expAt(out['level'] as int));
     int? evolved;
@@ -1006,7 +1025,7 @@ class FactoryRun {
       final friends = friendEvos.containsKey(id) ? (id == 133 ? null : _friendTargets(id)) : const <int>[];
       final options = [
         for (final e in evolutionsOf(data, out, region))
-          if (e.length < 3 && (out['level'] as int) >= (e[1] as int) && friends != null && !friends.contains(e[0])) e
+          if (e.length < 3 && (out['level'] as int) >= (e[1] as int) && friends != null && !friends.contains(e[0]) && timeFits(timeEvos[e[0]], night)) e
       ];
       if (options.isEmpty) break;
       // Tyrogue: como nos jogos, pelo Ataque e pela Defesa (Hitmonlee, Hitmonchan ou Hitmontop).
@@ -1192,7 +1211,7 @@ class FactoryRun {
     return ((((mon['exp'] as num?) ?? from) + extra - from) / (to - from)).clamp(0.0, 1.0).toDouble();
   }
 
-  static (Json, int, int?) _gainExp(Json mon, int exp, FactoryData data, double Function() rand, [String? region]) {
+  static (Json, int, int?) _gainExp(Json mon, int exp, FactoryData data, double Function() rand, [String? region, bool? night]) {
     final total = _int(mon['exp']) + exp;
     final from = _int(mon['level']);
     var level = from;
@@ -1200,7 +1219,7 @@ class FactoryRun {
       level++;
     }
     if (level > from) {
-      final (out, evolved) = levelTo({...mon, 'exp': total}, level, data, rand, region);
+      final (out, evolved) = levelTo({...mon, 'exp': total}, level, data, rand, region, night);
       return (out, from, evolved);
     }
     return ({...mon, 'exp': total}, from, null);
@@ -1514,6 +1533,35 @@ class FactoryRun {
     ];
   }
 
+  /// O ovo misterioso (como o ovo que um morador dá nos jogos): em algumas cidades (mysteryEggChance), alguém te dá
+  /// um ovo sem dizer de quem é. Ele aparece como ❔ até chocar. Não gasta o sorteio da corrida. Igual ao site.
+  static const mysteryEggChance = 0.3;
+  static const mysteryEggs = [172, 173, 174, 175, 236, 238, 239, 240, 298, 360, 406, 433, 438, 439, 440, 446, 447, 458, 147, 246, 371, 374, 443, 610, 633, 704, 782, 885, 133, 280];
+
+  /// O sorteio da cidade (o mesmo em todos os andares dela).
+  static double _townRoll(Json run, int k) => followRoll({'seed': run['seed'], 'floor': legOf(run) * 7 + 3}, k);
+
+  /// O ovo que o morador desta cidade dá (o id; null se aqui não tem, se já pegou ou se não tem vaga).
+  static int? mysteryEgg(FactoryData data, Json run) {
+    final town = run['town'] as Map?;
+    if (town == null || town['egg'] == true || run['encounter'] != null || run['pending'] != null || _inLeague(data, run) || (run['team'] as List).length >= teamRoom(run)) return null;
+    if (_townRoll(run, 2891336453) >= mysteryEggChance) return null;
+    final pool = [for (final id in mysteryEggs) if (data.species[id] != null && _monoOk(run, data, id)) id];
+    return pool.isEmpty ? null : pool[(_townRoll(run, 1181783497) * pool.length).floor()];
+  }
+
+  /// Aceita o ovo misterioso.
+  static Json takeMysteryEgg(Json run, FactoryData data) {
+    final id = mysteryEgg(data, run);
+    if (id == null) return run;
+    return {
+      ...run,
+      'town': {...Map<String, dynamic>.from(run['town'] as Map), 'egg': true},
+      'eggs': [...((run['eggs'] as List?) ?? const []), {'id': id, 'left': eggBattles, 'mystery': true}],
+      'gifted': _n(run, 'gifted') + 1,
+    };
+  }
+
   /// Recebe o presente k (pick: qual, quando dá para escolher). Ovo vai junto como ovo; sem vaga, vai para o PC. null se não dá.
   static Json? takeGift(Json run, FactoryData data, int k, [int? pick]) {
     final g = townGifts(data, run).where((x) => x['k'] == k).firstOrNull;
@@ -1766,6 +1814,43 @@ class FactoryRun {
   };
   static String villainTeam(Object? name) => villainTeams['$name'] ?? 'rocket';
 
+  /// O plano da equipe vilã (como nos jogos, ela age em várias cidades antes da base): nas plotChapters cidades de
+  /// ginásio antes da base, um capanga da equipe aparece nas bifurcações da cidade. Cada um derrotado atrapalha o
+  /// plano: dá plotReward e o chefe da base vem plotLevels nível abaixo por capítulo. Igual ao site.
+  static const plotChapters = 3, plotLevels = 1;
+  static const plotReward = 'ultra-ball';
+  static Json? villainPlot(FactoryData data, Json run) {
+    if (run['boss'] == null) return null;
+    final leaders = _leaders(data, run);
+    final step = _int(run['boss']['step']);
+    var v = -1;
+    for (var k = step; k < leaders.length; k++) {
+      if ((leaders[k] as Map)['kind'] == 'villain') {
+        v = k;
+        break;
+      }
+    }
+    if (v < 0) return null;
+    final steps = <int>[];
+    for (var k = v - 1; k >= 0 && steps.length < plotChapters; k--) {
+      if ((leaders[k] as Map)['kind'] == 'gym') steps.insert(0, k);
+    }
+    final plot = run['plot'] as Map?;
+    final foiled = plot?['region'] == run['boss']['region'] ? [for (final x in (plot!['foiled'] as List?) ?? const []) _int(x)] : const <int>[];
+    final chapters = [
+      for (final k in steps) {'step': k, 'city': (leaders[k] as Map)['city'], 'foiled': foiled.contains(k), 'past': k < step},
+    ];
+    final now = chapters.indexWhere((c) => c['step'] == step && c['foiled'] != true);
+    return {
+      'team': villainTeam((leaders[v] as Map)['name']),
+      'boss': (leaders[v] as Map)['name'],
+      'base': (leaders[v] as Map)['city'],
+      'chapters': chapters,
+      'foiled': foiled.length,
+      'chapter': now >= 0 ? now + 1 : null,
+    };
+  }
+
   /// Os Pokémon dos capangas de cada equipe (os evoluídos só a partir do nível em que evoluem).
   static const teamPokemon = <String, List<int>>{
     'rocket': [19, 20, 23, 24, 41, 42, 109, 110, 88, 89, 52, 53, 96, 97, 198, 228, 229],
@@ -1851,21 +1936,63 @@ class FactoryRun {
   static const _battleNodes = ['wild', 'trainer', 'ace', 'boss', 'wildboss', 'rematch', 'rival', 'dboss'];
   static bool isBattleNode(Map? node) => _battleNodes.contains(node?['kind']);
 
-  /// Os lendários que fogem (como os cães lendários de Johto, os Latis e a Cresselia): um por corrida. A partir de
-  /// roamFloor, às vezes (roamChance) aparece na primeira bifurcação da rota; depois de roamTurns turnos, foge. O HP que
-  /// você tirou fica (run.roamer.hp) até a próxima vez; derrubado ou capturado, não volta mais. Igual ao site.
+  /// Os lendários que fogem (como nos jogos): um por região, os de lá (os cães lendários em Kanto e Johto, os Latis em
+  /// Hoenn, Mesprit e Cresselia em Sinnoh, Tornadus e Thundurus em Unova, as aves em Kalos). A partir de roamFloor ele
+  /// anda pela região: a cada andar muda de lugar (uma das roamSpan cidades à frente, e o mapa mostra onde foi visto).
+  /// Quando está na rota em que você está, aparece na primeira bifurcação; no primeiro turno (roamTurns), foge (dormindo
+  /// ou congelado, não). O HP que você tirou fica (run.roamer.hp) até a próxima vez; derrubado ou capturado, não volta
+  /// mais nesta região. Igual ao site.
   static const roamers = [243, 244, 245, 380, 381, 488];
+  static const regionRoamers = {
+    'Kanto': [243, 244, 245], 'Johto': [243, 244, 245], 'Hoenn': [380, 381], 'Sinnoh': [481, 488], 'Unova': [641, 642], 'Kalos': [144, 145, 146],
+  };
   static const roamFloor = 15;
-  static const roamChance = 0.12;
-  static const roamTurns = 3;
-  static int roamerId(Json run) => _int((run['roamer'] as Map?)?['id'] ?? roamers[((run['seed'] as num).toInt() & 0xFFFFFFFF) % roamers.length]);
+  static const roamSpan = 5;
+  static const roamTurns = 1;
+  static String? _regionName(FactoryData? data, Json run) {
+    final k = (run['boss'] as Map?)?['region'];
+    if (data == null || k == null) return null;
+    final i = _int(k);
+    return i >= 0 && i < data.bosses.length ? data.bosses[i]['region'] as String? : null;
+  }
 
-  /// O caminho do lendário que foge neste andar (null se ele não aparece aqui). Não gasta o sorteio da corrida.
-  static Json? roamerNode(Json run) {
+  /// O lendário que anda pela região de agora (o mesmo até você derrubar ou capturar).
+  static int roamerId(Json run, [FactoryData? data]) {
+    final region = _regionName(data, run);
     final roamer = run['roamer'] as Map?;
-    if (_int(run['floor']) < roamFloor || roamer?['done'] != null || followRoll(run, 2246822519) >= roamChance) return null;
-    final hp = (roamer?['hp'] as num?)?.toDouble();
-    return {'kind': 'wildboss', 'legend': roamerId(run), 'roam': true, if (hp != null && hp < 1) 'roamHp': hp};
+    if (roamer?['id'] != null && roamer?['region'] == region) return _int(roamer!['id']);
+    final list = [for (final id in regionRoamers[region] ?? roamers) if (data == null || data.species[id] != null) id];
+    final pool = list.isNotEmpty ? list : roamers;
+    return pool[((run['seed'] as num).toInt() & 0xFFFFFFFF) % pool.length];
+  }
+
+  /// Já derrubado ou capturado (nesta região).
+  static bool roamerGone(FactoryData? data, Json run) {
+    final roamer = run['roamer'] as Map?;
+    return roamer?['done'] != null && roamer?['region'] == _regionName(data, run);
+  }
+
+  /// Onde ele foi visto neste andar (a posição da cidade na história da região); null se ainda não anda ou já foi pego.
+  static int? roamerAt(FactoryData? data, Json run) {
+    if (data == null || run['boss'] == null || _int(run['floor']) < roamFloor || roamerGone(data, run)) return null;
+    final leaders = _leaders(data, run);
+    return math.min(leaders.length - 1, _int(run['boss']['step']) + (followRoll(run, 2246822519) * roamSpan).floor());
+  }
+
+  /// A cidade onde ele foi visto (o nome dela), para o mapa.
+  static Json? roamerSeen(FactoryData data, Json run) {
+    final at = roamerAt(data, run);
+    if (at == null) return null;
+    return {'id': roamerId(run, data), 'at': at, 'here': at == _int(run['boss']['step']), 'city': (_leaders(data, run)[at] as Map)['city']};
+  }
+
+  /// O caminho do lendário que foge neste andar (null se ele não está nesta rota). Não gasta o sorteio da corrida.
+  static Json? roamerNode(Json run, [FactoryData? data]) {
+    final at = roamerAt(data, run);
+    if (at == null || at != _int(run['boss']['step'])) return null;
+    final roamer = run['roamer'] as Map?;
+    final hp = roamer?['region'] == _regionName(data, run) ? (roamer?['hp'] as num?)?.toDouble() : null;
+    return {'kind': 'wildboss', 'legend': roamerId(run, data), 'roam': true, if (hp != null && hp < 1) 'roamHp': hp};
   }
 
   /// A Dowsing Machine: a chance de apitar numa bifurcação e o que pode estar escondido. Igual ao site.
@@ -2050,6 +2177,9 @@ class FactoryRun {
         options.add({'kind': 'dungeon', 'place': ferry.id, 'scene': ferry.scene, 'needs': 'ss-ticket'});
       }
       if (boss['kind'] == 'villain') options.add({'kind': 'dungeon', 'place': 'base', 'scene': 'base-${villainTeam(boss['name'])}'});
+      // O plano da equipe vilã: o capanga dela age nesta cidade.
+      final plot = villainPlot(data, run);
+      if (plot?['chapter'] != null) options.add({'kind': 'trainer', 'grunt': plot!['team'], 'plot': plot['chapter']});
     } else {
       // Numa rota de praia, o mar é opcional; numa rota de mar, o fundo do mar.
       final sea = info?.biome == 'water';
@@ -2072,7 +2202,7 @@ class FactoryRun {
         options.add({'kind': 'safari', 'name': safari});
       }
       // O lendário que foge (Raikou, Entei, Suicune...): às vezes aparece na primeira bifurcação da rota.
-      final roam = roamerNode(run);
+      final roam = roamerNode(run, data);
       if (pos == forks[0] && roam != null) options.add(roam);
     }
     // A Dowsing Machine: às vezes apita, e um dos caminhos com batalha tem um item escondido.
@@ -2295,6 +2425,18 @@ class FactoryRun {
           ...Map<String, dynamic>.from(out['encounter'] as Map),
           'edge': true,
           'foes': [for (final f in out['encounter']['foes'] as List) {...Map<String, dynamic>.from(f as Map), 'level': math.max(1, _int(f['level']) - gymEdgeLevels)}],
+        };
+      }
+      // O capanga do plano da equipe vilã (vencendo, o plano atrasa).
+      if (node['plot'] != null) out['encounter'] = {...Map<String, dynamic>.from(out['encounter'] as Map), 'plot': node['plot']};
+      // Cada capítulo do plano atrapalhado: o chefe da equipe vem plotLevels nível abaixo.
+      final plotRun = run['plot'] as Map?;
+      final foiled = plotRun?['region'] == run['boss']['region'] ? ((plotRun!['foiled'] as List?)?.length ?? 0) : 0;
+      if (node['kind'] == 'boss' && foiled > 0 && (out['encounter']['boss'] as Map?)?['kind'] == 'villain') {
+        out['encounter'] = {
+          ...Map<String, dynamic>.from(out['encounter'] as Map),
+          'foiled': foiled,
+          'foes': [for (final f in out['encounter']['foes'] as List) {...Map<String, dynamic>.from(f as Map), 'level': math.max(1, _int(f['level']) - foiled * plotLevels)}],
         };
       }
       // O lendário do lugar e o que dormia no caminho: vencendo (ou capturando), o lugar ou a rota seguem.
@@ -2568,7 +2710,7 @@ class FactoryRun {
       final Json extra = strong ? {'iv': math.max(iv, 20), 'ev': (ev * 1.15).round()} : const {};
       // Na base de uma equipe vilã: capangas com os Pokémon da equipe.
       final nodeBiome = '${node?['biome'] ?? ''}';
-      final grunt = nodeBiome.startsWith('base-') ? nodeBiome.substring(5) : null;
+      final grunt = node?['grunt'] as String? ?? (nodeBiome.startsWith('base-') ? nodeBiome.substring(5) : null);
       final gruntPool = grunt == null ? null : teamPokemon[grunt];
       final foes = <Json>[];
       for (var i = 0; i < count; i++) {
@@ -2582,7 +2724,11 @@ class FactoryRun {
     // Selvagem: só os que vivem no lugar (o habitat de cada espécie: dos locais de encontro dos jogos; no fundo do mar,
     // só quem vive debaixo d'água); sem habitat nos dados, pelos tipos do lugar; sem nenhum, qualquer um.
     final place = node?['biome'];
-    final lives = place == null ? const <({int id, int bst, int rarity, int rate})>[] : [for (final p in common) if (((data.species[p.id]?.elementAtOrNull(6) as List?) ?? const []).contains(place)) p];
+    final habitat = place == null ? const <({int id, int bst, int rarity, int rate})>[] : [for (final p in common) if (((data.species[p.id]?.elementAtOrNull(6) as List?) ?? const []).contains(place)) p];
+    // De dia, os da noite não aparecem (e o contrário); se só sobrariam eles, ficam.
+    final asleep = node?['night'] == null ? const <int>[] : node!['night'] == true ? dayOnly : nightOnly;
+    final awake = [for (final p in habitat) if (!asleep.contains(p.id)) p];
+    final lives = awake.isNotEmpty ? awake : habitat;
     // Com clima, quem é dos tipos dele vem para a rota mesmo sem viver nela (a neve traz os de Gelo, a chuva os de Água...).
     final guests = drawn.isNotEmpty && lives.isNotEmpty
         ? [for (final p in common) if (!lives.contains(p) && ((data.species[p.id]?.elementAtOrNull(4) as List?) ?? const []).any(drawn.contains)) p]
@@ -2777,7 +2923,7 @@ class FactoryRun {
       List<List<int>>? fought,
       List<int>? gained,
       String? ball,
-      bool night = false,
+      bool? night,
       bool fled = false,
       double? foeHp}) {
     final out = _copy(run);
@@ -2839,7 +2985,7 @@ class FactoryRun {
     for (var i = 0; i < team.length; i++) {
       final m = team[i];
       if (gains[i] == 0) continue;
-      final (mon, from, evolved) = _gainExp({...m, 'evs': _add(m['evs'] as Map?, evs[i])}, gains[i], data, rand, regionOf(data, run));
+      final (mon, from, evolved) = _gainExp({...m, 'evs': _add(m['evs'] as Map?, evs[i])}, gains[i], data, rand, regionOf(data, run), night);
       if (_int(mon['level']) > from || evolved != null) levels.add({'index': i, 'from': from, 'to': mon['level'], 'evolved': evolved});
       // O XP da corrida inteira (para o MVP do resumo no fim). Igual ao site.
       team[i] = {...mon, 'xpRun': _int(m['xpRun'] ?? 0) + gains[i]};
@@ -2848,18 +2994,23 @@ class FactoryRun {
     final grown = withShedinja(out, before, team, rand);
     final shed = grown.length > team.length;
     team.addAll(grown.skip(team.length));
-    // Amizade: quem está de pé ganha um ponto; com friendEvolve, os que evoluem por amizade evoluem.
+    // Amizade: quem está de pé ganha um ponto (quem vai na frente, o que segue você, ganha dois); quem desmaiou perde um.
+    // Com friendEvolve, os que evoluem por amizade evoluem (Riolu e Budew só de dia; Chingling e Snom só à noite).
+    final first = battleOrder(run).firstOrNull;
     for (var i = 0; i < team.length; i++) {
       final m = team[i];
-      if (hpOf(m) <= 0) continue;
-      final friendship = _int(m['friendship'] ?? 0) + 1;
+      if (hpOf(m) <= 0) {
+        if (_int(m['friendship'] ?? 0) != 0) team[i] = {...m, 'friendship': _int(m['friendship']) - 1};
+        continue;
+      }
+      final friendship = math.min(friendMax, _int(m['friendship'] ?? 0) + (i == first ? 2 : 1));
       final to = friendEvos[_int(m['id'])];
-      if (to == null || friendship < friendEvolve) {
+      if (to == null || friendship < friendEvolve || !timeFits(friendTime[_int(m['id'])], night)) {
         team[i] = {...m, 'friendship': friendship};
         continue;
       }
       final fairy = _int(m['id']) == 133 && [for (final x in (m['moves'] as List?) ?? const []) '$x'].any(fairyMoves.contains);
-      final id = fairy ? 700 : to is List ? to[night ? 1 : 0] as int : to as int;
+      final id = fairy ? 700 : to is List ? to[night == true ? 1 : 0] as int : to as int;
       out['friendEvos'] = ((out['friendEvos'] as num?) ?? 0).toInt() + 1;
       levels.add({'index': i, 'from': m['level'], 'to': m['level'], 'evolved': id, 'friend': true});
       team[i] = {...m, 'id': id, 'friendship': friendship};
@@ -2919,7 +3070,8 @@ class FactoryRun {
     String? drop, story;
     if ((kind == 'boss' || kind == 'wildboss') && !fled) out['bosses'] = ((out['bosses'] as num?) ?? 0).toInt() + 1;
     if (roamer != null) {
-      out['roamer'] = fled ? {'id': roamer, 'hp': _round3(math.max(0.01, foeHp ?? 1))} : {'id': roamer, 'done': captured ? 'caught' : 'fainted'};
+      final region = _regionName(data, run);
+      out['roamer'] = fled ? {'id': roamer, 'region': region, 'hp': _round3(math.max(0.01, foeHp ?? 1))} : {'id': roamer, 'region': region, 'done': captured ? 'caught' : 'fainted'};
     }
     // O item escondido do caminho (Dowsing Machine).
     final dowsed = run['dowsed'] as String?;
@@ -2959,6 +3111,24 @@ class FactoryRun {
     if (kind == 'rematch') {
       out['rematch'] = null;
       out['rematches'] = ((run['rematches'] as num?) ?? 0).toInt() + 1;
+    }
+    // Na Liga: quantos desmaiaram (vencer a Elite e o Campeão sem nenhum desmaio dá o prêmio leagueFlawless).
+    var flawless = false;
+    final fightKind = (run['encounter']['boss'] as Map?)?['kind'];
+    if (kind == 'boss' && (fightKind == 'elite' || fightKind == 'champion')) {
+      var faints = _n(run, 'leagueFaints');
+      for (var i = 0; i < team0.length; i++) {
+        if (!((hp != null && i < hp.length ? hp[i] : hpOf(team0[i])) > 0)) faints++;
+      }
+      out['leagueFaints'] = faints;
+      if (fightKind == 'champion') {
+        out.remove('leagueFaints');
+        if (faints == 0) {
+          flawless = true;
+          _giveItem(out, leagueFlawless);
+          out['flawless'] = _n(run, 'flawless') + 1;
+        }
+      }
     }
     if (kind == 'boss') {
       final beaten = run['encounter']['boss'] as Map;
@@ -3024,6 +3194,14 @@ class FactoryRun {
     } else if (reward != null) {
       out['stash'] = [...((out['stash'] as List?) ?? const []), reward];
     }
+    // O plano da equipe vilã: o capanga derrotado atrasa o plano.
+    Json? plot;
+    if (run['encounter']['plot'] != null && !fled) {
+      final prev = (run['plot'] as Map?)?['region'] == run['boss']['region'] ? ((run['plot'] as Map)['foiled'] as List?) ?? const [] : const [];
+      out['plot'] = {'region': run['boss']['region'], 'foiled': [...prev, run['boss']['step']]};
+      _giveItem(out, plotReward);
+      plot = {'chapter': run['encounter']['plot'], 'team': run['encounter']['grunt'], 'item': plotReward};
+    }
     // A missão da rota: os derrotados (e o capturado) do tipo contam; completa, dá dinheiro e um item.
     Json? mission;
     final m = run['mission'] as Map?;
@@ -3048,7 +3226,8 @@ class FactoryRun {
         }
       }
     }
-    final joy = rand() < joyChance;
+    // Na Liga não tem Centro: as lutas vêm uma atrás da outra, só com a Bolsa (a Enfermeira Joy não aparece).
+    final joy = rand() < joyChance && !_inLeague(data, out);
     if (joy) out['team'] = [for (final m in teamOf(out)) {...m, 'hp': 1}];
     final born = _hatch(out, captured && (kind == 'wild' || kind == 'wildboss'));
     // O museu revive um fóssil para quem vence o chefe dele (os de lá: Omanyte, Kabuto e Aerodactyl em Pewter...).
@@ -3081,6 +3260,8 @@ class FactoryRun {
       if (key != null) 'key': key,
       if (placeReward != null) 'placeReward': placeReward,
       if (fled) 'fled': roamer,
+      if (flawless) 'flawless': leagueFlawless,
+      if (plot != null) 'plot': plot,
       if (dowsed != null) 'dowsed': dowsed,
     };
     out['encounter'] = null;
@@ -4083,7 +4264,10 @@ class FactoryRun {
     if (eggs.isEmpty) return null;
     Json? born;
     final ready = captured ? -1 : eggs.indexWhere((e) => _int(e['left']) <= 0);
-    if (ready >= 0) born = {'id': eggs.removeAt(ready)['id'], 'level': eggLevel, 'egg': true};
+    if (ready >= 0) {
+      final egg = eggs.removeAt(ready);
+      born = {'id': egg['id'], 'level': eggLevel, 'egg': true, if (egg['mystery'] == true) 'mystery': true};
+    }
     out['eggs'] = eggs;
     return born;
   }
@@ -4112,6 +4296,17 @@ class FactoryRun {
   /// Quem evolui ao ser trocado (como nos jogos): chega já evoluído, seja qual for o nível. Igual ao site.
   static const tradeEvos = {64: 65, 67: 68, 75: 76, 93: 94, 525: 526, 533: 534, 708: 709, 710: 711};
 
+  /// Quem vem de uma troca chega com o apelido e o nome do treinador de antes (o OT), como nos jogos. Os das trocas
+  /// famosas têm o apelido de lá; os outros, um da lista. Não gasta o sorteio da corrida. Igual ao site.
+  static const tradeNicks = {122: 'Marcel', 124: 'Zynx', 83: "Ch'Ding", 108: 'Marc', 101: 'Doris', 114: 'Tangeny', 86: 'Sailor', 30: 'Rickey', 33: 'Spot', 63: 'Abby', 66: 'Muscle', 296: 'Makit', 415: 'Cherry'};
+  static const tradeNames = ['Buddy', 'Lucky', 'Sunny', 'Pip', 'Coco', 'Biscuit', 'Nugget', 'Mochi', 'Pepper', 'Ziggy', 'Bubbles', 'Rocky'];
+  static const tradeOts = ['Turner', 'Doris', 'Clifton', 'Norma', 'Mallory', 'Kimi', 'Sid', 'Tyler', 'Emy', 'Haden', 'Garret', 'Wendy'];
+  static Json tradeTag(Json run, int id) {
+    final k = {'seed': run['seed'], 'floor': _int(run['floor']) * 31 + _n(run, 'trades')};
+    final nick = tradeNicks[id] ?? tradeNames[(followRoll(k, 2246822519) * tradeNames.length).floor()];
+    return {'nick': nick, 'ot': tradeOts[(followRoll(k, 3266489917) * tradeOts.length).floor()]};
+  }
+
   /// O oferecido entra no lugar de quem foi: tradeLevels acima (sem passar do limite de nível), evoluído pela troca,
   /// com mais XP dali em diante. Na rota vem a forma do nível dele; o morador da cidade dá exatamente o que ofereceu.
   static void _tradeIn(Json run, Json out, int index, Map offer, FactoryData data, {bool exact = false}) {
@@ -4125,7 +4320,7 @@ class FactoryRun {
     var (grown, _) = levelTo(fresh, level, data, rand, regionOf(data, run));
     final evo = tradeEvos[_int(grown['id'])];
     if (evo != null && data.species[evo] != null) grown = {...grown, 'id': evo};
-    team[index] = {...grown, 'traded': true, 'item': mon['item'], 'extras': mon['extras'] ?? <String>[]};
+    team[index] = {...grown, 'traded': true, ...tradeTag(run, _int(grown['id'])), 'item': mon['item'], 'extras': mon['extras'] ?? <String>[]};
     out['team'] = team;
     _addDex(out, _int(grown['id']));
   }
@@ -4296,6 +4491,12 @@ class FactoryRun {
   /// Os tipos que aparecem mais em cada estação e à noite.
   static const seasonTypes = {'spring': ['grass', 'fairy'], 'summer': ['fire', 'water'], 'autumn': ['bug', 'ground'], 'winter': ['ice']};
   static const nightTypes = ['ghost', 'dark'];
+
+  /// Quem só aparece de noite ou só de dia (como nos jogos de Johto em diante): Hoothoot, Gastly, Murkrow, Misdreavus,
+  /// Spinarak, Oddish... à noite; Pidgey, Ledyba, Sentret, Sunkern, Caterpie... de dia. Só vale com a hora de quem joga
+  /// (node.night). Igual ao site.
+  static const nightOnly = [163, 164, 92, 93, 198, 200, 167, 168, 43, 44, 269, 290, 425, 426, 570, 571, 714, 734, 735, 821];
+  static const dayOnly = [16, 165, 166, 161, 162, 191, 10, 13, 187, 263, 396, 504, 505, 506, 731, 819, 761];
 
   /// Neve só onde é lugar de neve e areia só onde é deserto (fora os lugares do mapa que têm isso nos jogos: CLIMATE). Igual ao site.
   static const snowScenes = ['snow', 'acuity'];
@@ -4541,7 +4742,8 @@ class FactoryRun {
       out['bag'] = bag;
     }
     if (card.heal) {
-      out['team'] = [for (final m in teamOf(out)) {...m, 'hp': 1}];
+      // Na Liga não tem cura: a carta só dá a Max Potion (para a Bolsa).
+      if (!_inLeague(data, run)) out['team'] = [for (final m in teamOf(out)) {...m, 'hp': 1}];
       final bag = Map<String, dynamic>.from(out['bag'] as Map);
       bag['max-potion'] = ((bag['max-potion'] as num?) ?? 0).toInt() + 1;
       out['bag'] = bag;

@@ -417,6 +417,73 @@ void main() {
     expect(FactoryRun.pendingOf(other)!['capture'], isNull);
   });
 
+  test('rodada 15 igual ao site (test/fixtures/round15.json): errantes, plano vilão, ovos, trocas, dia e noite e amizade', () {
+    final expected = jsonDecode(File('test/fixtures/round15.json').readAsStringSync()) as Map;
+    Object? norm(Object? v) => jsonDecode(jsonEncode(v));
+    final run = FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!;
+    final games = [for (final g in ['Red/Blue', 'Gold/Silver', 'Ruby/Sapphire', 'Diamond/Pearl', 'Black/White', 'X/Y', 'Sun/Moon']) gameOf(g)].where((g) => g >= 0).toList();
+    final roam = [
+      for (final g in games)
+        for (final seed in [1, 7])
+          for (final floor in [15, 22, 31, 40])
+            () {
+              final r = {...run, 'seed': seed, 'floor': floor, 'boss': {'region': g, 'step': 1}};
+              return [g, seed, floor, FactoryRun.roamerId(r, data), FactoryRun.roamerAt(data, r), FactoryRun.roamerNode(r, data)];
+            }()
+    ];
+    expect(norm(roam), expected['roam']);
+    final plot = [
+      for (final g in games)
+        () {
+          final p = FactoryRun.villainPlot(data, {...run, 'boss': {'region': g, 'step': 0}});
+          return [g, p?['team'], p == null ? null : [for (final c in p['chapters'] as List) c['step']]];
+        }()
+    ];
+    expect(norm(plot), expected['plot']);
+    final eggs = [
+      for (var k = 0; k < 30; k++)
+        FactoryRun.mysteryEgg(data, {...run, 'seed': k + 1, 'floor': 1 + FactoryRun.routeLength, 'leg': 1, 'town': {'leg': 1}, 'encounter': null, 'pending': null}),
+    ];
+    expect(norm(eggs), expected['eggs']);
+    final tags = [for (var k = 0; k < 12; k++) FactoryRun.tradeTag({...run, 'seed': k + 3, 'floor': k * 5}, k.isOdd ? 122 : 19)];
+    expect(norm(tags), expected['tags']);
+    final wild = [
+      for (final night in [true, false])
+        for (var k = 0; k < 20; k++)
+          (FactoryRun.encounterFor(data, 14, League.seededRandom(k + 1), null, false, {'kind': 'wild', 'biome': 'grass', 'night': night})['foes'] as List).first['id'],
+    ];
+    expect(norm(wild), expected['wild']);
+    final first = (run['team'] as List).first as Map;
+    final fr = {
+      ...run,
+      'team': [
+        {...first, 'friendship': 3},
+        {...first, 'id': 447, 'friendship': 9},
+        {...first, 'id': 19, 'friendship': 4},
+      ],
+      'encounter': {'kind': 'trainer', 'foes': [{'id': 19, 'level': 5, 'iv': 0, 'ev': 0}]},
+    };
+    final friends = [
+      for (final night in [null, true, false]) [for (final m in FactoryRun.winFloor(fr, data, hp: [1, 1, 0], night: night)['team'] as List) [m['id'], m['friendship']]],
+    ];
+    expect(norm(friends), expected['friends']);
+    // A Liga: sem a Enfermeira Joy depois da primeira luta e o prêmio sem desmaios.
+    final red = gameOf('Red/Blue');
+    final leaders = data.bosses[red]['leaders'] as List;
+    final e = leaders.indexWhere((l) => l['kind'] == 'elite');
+    final champ = leaders.indexWhere((l) => l['kind'] == 'champion');
+    Json fight(int step, [Json extra = const {}]) => {
+          ...run, 'leg': 1, 'floor': 1 + FactoryRun.routeLength, 'boss': {'region': red, 'step': step}, 'pending': null, ...extra,
+          'encounter': {'kind': 'boss', 'boss': {...Map<String, dynamic>.from(leaders[step] as Map), 'region': 'Kanto'}, 'foes': [{'id': 19, 'level': 5, 'iv': 0, 'ev': 0}]},
+        };
+    for (var seed = 1; seed < 60; seed++) {
+      expect(FactoryRun.winFloor(fight(e, {'seed': seed}), data)['pending']['joy'], false);
+    }
+    expect(FactoryRun.winFloor(fight(e), data, hp: [0])['leagueFaints'], 1);
+    expect(FactoryRun.winFloor(fight(champ, {'leagueFaints': 0}), data)['pending']['flawless'], FactoryRun.leagueFlawless);
+    expect(FactoryRun.winFloor(fight(champ, {'leagueFaints': 1}), data)['pending']['flawless'], null);
+  });
+
   test('rodada 14 igual ao site (test/fixtures/round14.json): desafios dos ginásios, hordas, pesca, árvores e frutas', () {
     final expected = jsonDecode(File('test/fixtures/round14.json').readAsStringSync()) as Map;
     final red = gameOf('Red/Blue');
@@ -1119,18 +1186,23 @@ void main() {
   test('lendário que foge, surto do dia e Dowsing Machine (igual ao site)', () {
     double Function() same(double v) => () => v;
     final base = FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!;
-    // O lendário que foge: um por corrida (pela semente); só a partir de roamFloor; às vezes na rota.
-    expect(FactoryRun.roamers, contains(FactoryRun.roamerId(base)));
-    expect(FactoryRun.roamerNode({...base, 'floor': FactoryRun.roamFloor - 1}), isNull);
+    // O lendário que foge: o da região (pela semente); só a partir de roamFloor; anda pela região a cada andar.
+    final region = data.bosses[base['boss']['region'] as int]['region'];
+    final id = FactoryRun.roamerId(base, data);
+    expect(FactoryRun.regionRoamers[region] ?? FactoryRun.roamers, contains(id));
+    expect(FactoryRun.roamerNode({...base, 'floor': FactoryRun.roamFloor - 1}, data), isNull);
+    expect(FactoryRun.roamTurns, 1);
     final floors = [for (var f = 0; f < 300; f++) {...base, 'floor': FactoryRun.roamFloor + f}];
-    final seen = floors.where((r) => FactoryRun.roamerNode(r) != null).toList();
-    expect(seen.length, greaterThan(10));
-    expect(seen.length, lessThan(80));
+    final seen = floors.where((r) => FactoryRun.roamerNode(r, data) != null).toList();
+    expect(seen.length, greaterThan(30));
+    expect(seen.length, lessThan(100));
     final at = seen.first;
-    expect(FactoryRun.roamerNode(at), {'kind': 'wildboss', 'legend': FactoryRun.roamerId(base), 'roam': true});
-    // Com o HP que ficou; derrubado ou capturado, não volta.
-    expect(FactoryRun.roamerNode({...at, 'roamer': {'id': FactoryRun.roamerId(base), 'hp': 0.4}})!['roamHp'], 0.4);
-    expect(FactoryRun.roamerNode({...at, 'roamer': {'id': FactoryRun.roamerId(base), 'done': 'caught'}}), isNull);
+    expect(FactoryRun.roamerNode(at, data), {'kind': 'wildboss', 'legend': id, 'roam': true});
+    expect(FactoryRun.roamerSeen(data, at)!['here'], true);
+    // Com o HP que ficou; derrubado ou capturado, não volta (nesta região).
+    expect(FactoryRun.roamerNode({...at, 'roamer': {'id': id, 'region': region, 'hp': 0.4}}, data)!['roamHp'], 0.4);
+    expect(FactoryRun.roamerNode({...at, 'roamer': {'id': id, 'region': region, 'done': 'caught'}}, data), isNull);
+    expect(FactoryRun.roamerNode({...at, 'roamer': {'id': 1, 'region': 'Outra', 'done': 'caught'}}, data), isNotNull);
     final enc = FactoryRun.encounterFor(data, 30, same(0.5), null, true, {'kind': 'wildboss', 'legend': 245, 'roam': true, 'roamHp': 0.4});
     final foe = (enc['foes'] as List).first as Map;
     expect([foe['id'], foe['roam'], foe['hpRatio']], [245, true, 0.4]);
@@ -1138,12 +1210,12 @@ void main() {
     // Fugiu: não conta como derrotado; o HP dele fica guardado.
     final fight = {...at, 'encounter': enc};
     final fled = FactoryRun.winFloor(fight, data, fled: true, foeHp: 0.35);
-    expect(fled['roamer'], {'id': 245, 'hp': 0.35});
+    expect(fled['roamer'], {'id': 245, 'region': region, 'hp': 0.35});
     expect(fled['pending']['fled'], 245);
     expect(fled['defeated'], fight['defeated']);
     expect(fled['pending']['money'], 0);
-    expect(FactoryRun.winFloor(fight, data)['roamer'], {'id': 245, 'done': 'fainted'});
-    expect(FactoryRun.winFloor(fight, data, captured: true)['roamer'], {'id': 245, 'done': 'caught'});
+    expect(FactoryRun.winFloor(fight, data)['roamer'], {'id': 245, 'region': region, 'done': 'fainted'});
+    expect(FactoryRun.winFloor(fight, data, captured: true)['roamer'], {'id': 245, 'region': region, 'done': 'caught'});
     // O surto do dia: a mesma espécie o dia todo, outra no outro dia; só uma forma básica que vive em algum lugar.
     final today = FactoryRun.outbreakOf(data, 20400)!;
     expect(FactoryRun.outbreakOf(data, 20400), today);

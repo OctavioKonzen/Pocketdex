@@ -1588,8 +1588,9 @@ class TurnBattle {
         events = _simChoose([mine, recommend(1).first]);
       }
       // O lendário que foge (Battle Factory): passados os turnos dele, vai embora (o HP que ficou é guardado).
+      // Dormindo ou congelado, não consegue fugir (como nos jogos).
       final flee = fleeAfter;
-      if (flee != null && winner == null && captured == null && turn > flee && active(1).hp > 0) {
+      if (flee != null && winner == null && captured == null && turn > flee && active(1).hp > 0 && !const ['slp', 'frz'].contains(active(1).status)) {
         fled = true;
         winner = 0;
         _say(events, 'roamFled', [active(1).name]);

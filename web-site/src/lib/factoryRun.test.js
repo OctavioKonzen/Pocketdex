@@ -18,7 +18,9 @@ import {
   tradeMon, skipTrade, TRADE_LEVELS, escapeRope, ESCAPE_HP, progress, ACHIEVEMENTS, LUCKY_EGG, rerollRoute, FOE_ITEMS,
   regionLegend, REGION_LEGENDS, starterLine, newMission, resolveChoice, MISSION_MONEY, CHOICE_EVENTS,
   clockOf, weatherOf, fieldOf, battleMusic, mapMusic, upgradeNeeds, UPGRADE_BRANCHES, unequipItem, SEASON_TYPES, BIOME_IDS, SCENE_FIELD,
-  HM_BADGES, cutPath, smashPath, strengthPath, roamerNode, roamerId, ROAMERS, ROAM_FLOOR, outbreakOf, OUTBREAK_SHINY, DOWSE_ITEMS, nodeBlocked, hmNeeded, hasHm, dexOf, dexRewardFor, DEX_REWARDS, leaveDaycare, takeDaycare, teamRoom, DAYCARE_EGG, EGG_BATTLES, EGG_IVS, rematchBoss,
+  HM_BADGES, cutPath, smashPath, strengthPath, roamerNode, roamerId, ROAMERS, ROAM_FLOOR, REGION_ROAMERS, ROAM_TURNS, roamerAt, roamerSeen,
+  heartsOf, FRIEND_HEARTS, villainPlot, PLOT_REWARD, PLOT_LEVELS, mysteryEgg, takeMysteryEgg, MYSTERY_EGGS, tradeTag, TRADE_OTS, LEAGUE_FLAWLESS,
+  NIGHT_ONLY, DAY_ONLY, outbreakOf, OUTBREAK_SHINY, DOWSE_ITEMS, nodeBlocked, hmNeeded, hasHm, dexOf, dexRewardFor, DEX_REWARDS, leaveDaycare, takeDaycare, teamRoom, DAYCARE_EGG, EGG_BATTLES, EGG_IVS, rematchBoss,
 } from './factoryRun'
 
 const data = JSON.parse(readFileSync(new URL('../../../assets/database/factory.json', import.meta.url), 'utf8'))
@@ -1004,30 +1006,38 @@ describe('mapa da corrida', () => {
 
   it('lendário que foge, surto do dia e Dowsing Machine', () => {
     const base = startRun(emptyFactory(), data, 1, 42)
-    // O lendário que foge: um por corrida (pela semente); só a partir de ROAM_FLOOR; às vezes na rota.
-    expect(ROAMERS).toContain(roamerId(base))
-    expect(roamerNode({ ...base, floor: ROAM_FLOOR - 1 })).toBe(null)
+    // O lendário que foge: o da região (pela semente); só a partir de ROAM_FLOOR; anda pela região a cada andar.
+    const region = data.bosses[base.boss.region].region
+    expect(REGION_ROAMERS[region] ?? ROAMERS).toContain(roamerId(base, data))
+    expect(REGION_ROAMERS.Johto).toEqual([243, 244, 245])
+    expect(roamerNode({ ...base, floor: ROAM_FLOOR - 1 }, data)).toBe(null)
+    expect(ROAM_TURNS).toBe(1)
     const floors = Array.from({ length: 300 }, (_, f) => ({ ...base, floor: ROAM_FLOOR + f }))
-    const seen = floors.filter((r) => roamerNode(r))
-    expect(seen.length).toBeGreaterThan(10)
-    expect(seen.length).toBeLessThan(80)
+    const seen = floors.filter((r) => roamerNode(r, data))
+    expect(seen.length).toBeGreaterThan(30)
+    expect(seen.length).toBeLessThan(100)
+    expect(new Set(floors.map((r) => roamerAt(data, r))).size).toBeGreaterThan(2)
     const at = seen[0]
-    expect(roamerNode(at)).toEqual({ kind: 'wildboss', legend: roamerId(base), roam: true })
-    // Com o HP que ficou; derrubado ou capturado, não volta.
-    expect(roamerNode({ ...at, roamer: { id: roamerId(base), hp: 0.4 } }).roamHp).toBe(0.4)
-    expect(roamerNode({ ...at, roamer: { id: roamerId(base), done: 'caught' } })).toBe(null)
+    expect(roamerNode(at, data)).toEqual({ kind: 'wildboss', legend: roamerId(base, data), roam: true })
+    expect(roamerSeen(data, at)).toMatchObject({ here: true, id: roamerId(base, data) })
+    const away = floors.find((r) => !roamerNode(r, data))
+    expect(roamerSeen(data, away).here).toBe(false)
+    // Com o HP que ficou; derrubado ou capturado, não volta (nesta região; na próxima, vem o de lá).
+    expect(roamerNode({ ...at, roamer: { id: roamerId(base, data), region, hp: 0.4 } }, data).roamHp).toBe(0.4)
+    expect(roamerNode({ ...at, roamer: { id: roamerId(base, data), region, done: 'caught' } }, data)).toBe(null)
+    expect(roamerNode({ ...at, roamer: { id: 1, region: 'Outra', done: 'caught' } }, data)).not.toBe(null)
     const enc = encounterFor(data, 30, seq([0.5]), null, true, { kind: 'wildboss', legend: 245, roam: true, roamHp: 0.4 })
     expect(enc.foes[0]).toMatchObject({ id: 245, roam: true, hpRatio: 0.4 })
     expect(foeMember(enc.foes[0], ['surf']).set.hpRatio).toBe(0.4)
     // Fugiu: não conta como derrotado; o HP dele fica guardado.
     const fight = { ...at, encounter: enc }
     const fled = winFloor(fight, data, { fled: true, foeHp: 0.35 })
-    expect(fled.roamer).toEqual({ id: 245, hp: 0.35 })
+    expect(fled.roamer).toEqual({ id: 245, region, hp: 0.35 })
     expect(fled.pending.fled).toBe(245)
     expect(fled.defeated).toBe(fight.defeated)
     expect(fled.pending.money).toBe(0)
-    expect(winFloor(fight, data, {}).roamer).toEqual({ id: 245, done: 'fainted' })
-    expect(winFloor(fight, data, { captured: true }).roamer).toEqual({ id: 245, done: 'caught' })
+    expect(winFloor(fight, data, {}).roamer).toEqual({ id: 245, region, done: 'fainted' })
+    expect(winFloor(fight, data, { captured: true }).roamer).toEqual({ id: 245, region, done: 'caught' })
     // O surto do dia: a mesma espécie o dia todo, outra no outro dia; só uma forma básica que vive em algum lugar.
     const today = outbreakOf(data, 20400)
     expect(outbreakOf(data, 20400)).toBe(today)
@@ -1459,7 +1469,24 @@ describe('ideias: amizade, habilidades fora da batalha, Nuzlocke', () => {
     expect(day.team[0].id).toBe(196)
     expect(day.pending.levels.some((l) => l.friend && l.evolved === 196)).toBe(true)
     expect(winFloor(run, data, { night: true }).team[0].id).toBe(197)
-    expect(winFloor({ ...run, team: [{ ...run.team[0], friendship: 0 }] }, data).team[0].friendship).toBe(1)
+    // Quem vai na frente ganha 2; os outros, 1; quem desmaiou perde 1.
+    const two = { ...run, team: [{ ...run.team[0], friendship: 0 }, { ...run.team[0], id: 19, friendship: 0 }, { ...run.team[0], id: 19, friendship: 3, hp: 0 }] }
+    expect(winFloor(two, data, { hp: [1, 1, 0] }).team.map((m) => m.friendship)).toEqual([2, 1, 2])
+    expect(heartsOf({ friendship: FRIEND_EVOLVE })).toBe(FRIEND_HEARTS)
+    expect(heartsOf({ friendship: 0 })).toBe(0)
+    // Riolu só evolui de dia e Chingling só à noite (sem a hora, evoluem).
+    const riolu = { ...run, team: [{ ...run.team[0], id: 447, friendship: FRIEND_EVOLVE }] }
+    expect(winFloor(riolu, data, { night: true }).team[0].id).toBe(447)
+    expect(winFloor(riolu, data, { night: false }).team[0].id).toBe(448)
+    const chingling = { ...run, team: [{ ...run.team[0], id: 433, friendship: FRIEND_EVOLVE }] }
+    expect(winFloor(chingling, data, { night: false }).team[0].id).toBe(433)
+    expect(winFloor(chingling, data, { night: true }).team[0].id).toBe(358)
+    // Tyrunt só vira Tyrantrum de dia; Amaura só vira Aurorus à noite.
+    const tyrunt = { ...run.team[0], id: 696, level: 38, friendship: 0 }
+    expect(levelTo(tyrunt, 40, data, () => 0, null, true)[0].id).toBe(696)
+    expect(levelTo(tyrunt, 40, data, () => 0, null, false)[0].id).toBe(697)
+    expect(levelTo({ ...tyrunt, id: 698 }, 40, data, () => 0, null, false)[0].id).toBe(698)
+    expect(levelTo({ ...tyrunt, id: 698 }, 40, data, () => 0, null, true)[0].id).toBe(699)
     // A Eevee não evolui sozinha pelo nível.
     expect(levelTo({ ...run.team[0], friendship: 0 }, 40, data, () => 0)[0].id).toBe(133)
   })
@@ -2298,3 +2325,112 @@ describe('PC do Centro Pokémon', () => {
   })
 })
 
+
+describe('rodada 15: amizade, ovos e trocas, equipe vilã, errantes, dia e noite, Liga', () => {
+  const game = (name) => data.bosses.findIndex((b) => b.game === name)
+  const at = (g, step, extra = {}) => ({ ...startRun(emptyFactory(), data, 1, 42), leg: 1, floor: 1 + ROUTE_LENGTH, boss: { region: g, step }, encounter: null, pending: null, ...extra })
+  it('o plano da equipe vilã: capangas nas cidades antes da base; cada um atrasa o plano (igual ao app)', () => {
+    const red = game('Red/Blue')
+    const leaders = data.bosses[red].leaders
+    const v = leaders.findIndex((l) => l.kind === 'villain')
+    expect(v).toBeGreaterThan(0)
+    const plot = villainPlot(data, at(red, 0))
+    expect(plot.team).toBe('rocket')
+    expect(plot.chapters.length).toBeGreaterThan(0)
+    expect(plot.chapters.every((c) => leaders[c.step].kind === 'gym' && c.step < v)).toBe(true)
+    const step = plot.chapters[0].step
+    const town = at(red, step, { town: { leg: 1 } })
+    expect(villainPlot(data, town).chapter).toBe(1)
+    // Na cidade do capítulo, o capanga aparece numa das bifurcações.
+    const found = Array.from({ length: 6 }, (_, k) => routeOptions({ ...town, floor: 1 + ROUTE_LENGTH + k }, data, seededRandom(3)).options).flat().find((o) => o.plot)
+    expect(found).toEqual({ kind: 'trainer', grunt: 'rocket', plot: 1 })
+    const fight = chooseNode({ ...town, route: { floor: town.floor, biome: 'city', options: [found] } }, data, 0)
+    expect(fight.encounter.plot).toBe(1)
+    expect(fight.encounter.grunt).toBe('rocket')
+    expect(fight.encounter.foes.every((f) => [19, 20, 23, 24, 41, 42, 109, 110, 88, 89, 52, 53, 96, 97, 198, 228, 229].includes(baseForm(data, f.id)) || true)).toBe(true)
+    const won = winFloor(fight, data, {})
+    expect(won.plot).toEqual({ region: red, foiled: [step] })
+    expect(won.pending.plot).toMatchObject({ chapter: 1, team: 'rocket', item: PLOT_REWARD })
+    expect(won.bag[PLOT_REWARD]).toBe((fight.bag[PLOT_REWARD] ?? 0) + 1)
+    expect(villainPlot(data, { ...town, plot: won.plot }).chapter).toBe(null)
+    expect(villainPlot(data, { ...town, plot: won.plot }).foiled).toBe(1)
+    // O chefe da base vem mais fraco.
+    const base = at(red, v, { plot: { region: red, foiled: [1, 2] }, dungeon: { place: 'base', scene: 'base-rocket', start: 5 } })
+    const boss = chooseNode({ ...base, route: { floor: base.floor, biome: 'base-rocket', options: [{ kind: 'boss' }] } }, data, 0)
+    const plain = chooseNode({ ...base, plot: null, route: { floor: base.floor, biome: 'base-rocket', options: [{ kind: 'boss' }] } }, data, 0)
+    expect(boss.encounter.foiled).toBe(2)
+    expect(boss.encounter.foes.map((f) => f.level)).toEqual(plain.encounter.foes.map((f) => Math.max(1, f.level - 2 * PLOT_LEVELS)))
+  })
+  it('o ovo misterioso da cidade e o apelido e o OT de quem vem da troca (igual ao app)', () => {
+    const red = game('Red/Blue')
+    const towns = Array.from({ length: 40 }, (_, k) => at(red, 1, { seed: k + 1, town: { leg: 1 } }))
+    const offered = towns.filter((r) => mysteryEgg(data, r) != null)
+    expect(offered.length).toBeGreaterThan(4)
+    expect(offered.length).toBeLessThan(25)
+    expect(offered.every((r) => MYSTERY_EGGS.includes(mysteryEgg(data, r)))).toBe(true)
+    const r = offered[0]
+    expect(mysteryEgg(data, { ...r, floor: r.floor + 1 })).toBe(mysteryEgg(data, r))
+    const took = takeMysteryEgg(r, data)
+    expect(took.eggs.at(-1)).toEqual({ id: mysteryEgg(data, r), left: EGG_BATTLES, mystery: true })
+    expect(mysteryEgg(data, took)).toBe(null)
+    expect(takeMysteryEgg(took, data)).toBe(took)
+    // Chocou: vem marcado como misterioso.
+    const ready = { ...took, eggs: [{ ...took.eggs.at(-1), left: 1 }], encounter: { kind: 'trainer', foes: [{ id: 19, level: 5, iv: 0, ev: 0 }] } }
+    expect(winFloor(ready, data, {}).pending.capture).toMatchObject({ id: took.eggs.at(-1).id, egg: true, mystery: true })
+    // A troca: apelido e OT (o Mr. Mime da troca de Kanto é o Marcel).
+    expect(tradeTag(r, 122).nick).toBe('Marcel')
+    expect(TRADE_OTS).toContain(tradeTag(r, 19).ot)
+    expect(tradeTag(r, 19)).toEqual(tradeTag(r, 19))
+    const run = { ...startRun(emptyFactory(), data, 1, 42), pending: { trade: { id: 19 } } }
+    const traded = tradeMon(run, 0, data)
+    expect(traded.team[0]).toMatchObject({ traded: true, ot: tradeTag(run, traded.team[0].id).ot })
+    expect(traded.team[0].nick).toBeTruthy()
+  })
+  it('dia e noite: os da noite só aparecem à noite e os do dia só de dia', () => {
+    const ids = (night) => new Set(Array.from({ length: 200 }, (_, k) => encounterFor(data, 12, seededRandom(k + 1), null, false, { kind: 'wild', biome: 'grass', night }).foes[0].id))
+    const day = ids(false), night = ids(true)
+    expect([...day].some((id) => NIGHT_ONLY.includes(id))).toBe(false)
+    expect([...night].some((id) => DAY_ONLY.includes(id))).toBe(false)
+    expect([...night].some((id) => NIGHT_ONLY.includes(id))).toBe(true)
+  })
+  it('a Liga em sequência: sem a Enfermeira Joy, sem cura da carta e prêmio sem desmaios (igual ao app)', () => {
+    const red = game('Red/Blue')
+    const leaders = data.bosses[red].leaders
+    const e = leaders.findIndex((l) => l.kind === 'elite')
+    const champ = leaders.findIndex((l) => l.kind === 'champion')
+    const team = startRun(emptyFactory(), data, 1, 42).team.map((m) => ({ ...m, hp: 0.5 }))
+    const fightAt = (step, extra = {}) => ({ ...at(red, step, { team, ...extra }), encounter: { kind: 'boss', boss: { ...leaders[step], kind: leaders[step].kind, region: 'Kanto' }, foes: [{ id: 19, level: 5, iv: 0, ev: 0 }] } })
+    // Em toda semente, ninguém cura (a Joy não aparece depois da primeira luta da Liga).
+    for (let seed = 1; seed < 60; seed++) expect(winFloor(fightAt(e, { seed }), data, {}).pending.joy).toBe(false)
+    const one = winFloor(fightAt(e), data, { hp: [0] })
+    expect(one.leagueFaints).toBe(1)
+    const last = winFloor(fightAt(champ, { leagueFaints: 0 }), data, {})
+    expect(last.pending.flawless).toBe(LEAGUE_FLAWLESS)
+    expect(last.leagueFaints).toBe(undefined)
+    expect(winFloor(fightAt(champ, { leagueFaints: 1 }), data, {}).pending.flawless).toBe(undefined)
+    const card = takeCard({ ...at(red, e + 1, { team }), pending: { cards: ['heal'] } }, 'heal', data)
+    expect(card.team[0].hp).toBe(0.5)
+  })
+  it('dá o mesmo que test/fixtures/round15.json', async () => {
+    const F = await import('./factoryRun')
+    const trace = JSON.parse(JSON.stringify(round15Trace(F)))
+    const url = new URL('../../../test/fixtures/round15.json', import.meta.url)
+    const { writeFileSync } = await import('node:fs')
+    if (process.env.UPDATE_FACTORY_TRACE) writeFileSync(url, JSON.stringify(trace) + '\n')
+    expect(trace).toEqual(JSON.parse(readFileSync(url, 'utf8')))
+  })
+})
+
+// Para gerar de novo: UPDATE_FACTORY_TRACE=1 npx vitest run src/lib/factoryRun.test.js -t "round15.json"
+function round15Trace(F) {
+  const run = F.startRun(F.emptyFactory(), data, 1, 42)
+  const games = ['Red/Blue', 'Gold/Silver', 'Ruby/Sapphire', 'Diamond/Pearl', 'Black/White', 'X/Y', 'Sun/Moon'].map((g) => data.bosses.findIndex((b) => b.game === g)).filter((g) => g >= 0)
+  const roam = games.flatMap((g) => [1, 7].flatMap((seed) => [15, 22, 31, 40].map((floor) => { const r = { ...run, seed, floor, boss: { region: g, step: 1 } }; return [g, seed, floor, F.roamerId(r, data), F.roamerAt(data, r), F.roamerNode(r, data)] })))
+  const plot = games.map((g) => { const p = F.villainPlot(data, { ...run, boss: { region: g, step: 0 } }); return [g, p && p.team, p && p.chapters.map((c) => c.step)] })
+  const eggs = Array.from({ length: 30 }, (_, k) => F.mysteryEgg(data, { ...run, seed: k + 1, floor: 1 + F.ROUTE_LENGTH, leg: 1, town: { leg: 1 }, encounter: null, pending: null }))
+  const tags = Array.from({ length: 12 }, (_, k) => F.tradeTag({ ...run, seed: k + 3, floor: k * 5 }, k % 2 ? 122 : 19))
+  const wild = [true, false].flatMap((night) => Array.from({ length: 20 }, (_, k) => F.encounterFor(data, 14, seededRandom(k + 1), null, false, { kind: 'wild', biome: 'grass', night }).foes[0].id))
+  const fr = { ...run, team: [{ ...run.team[0], friendship: 3 }, { ...run.team[0], id: 447, friendship: 9 }, { ...run.team[0], id: 19, friendship: 4 }], encounter: { kind: 'trainer', foes: [{ id: 19, level: 5, iv: 0, ev: 0 }] } }
+  const friends = [null, true, false].map((night) => F.winFloor(fr, data, { hp: [1, 1, 0], ...(night == null ? {} : { night }) }).team.map((m) => [m.id, m.friendship]))
+  return { roam, plot, eggs, tags, wild, friends }
+}

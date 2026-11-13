@@ -908,7 +908,8 @@ function turnOf(battle, action, hit) {
       events = simulatorTurn(battle, [mine, simulatorRecommend(battle, 1)[0]])
     }
     // O lendário que foge (Battle Factory): passados os turnos dele, vai embora (o HP que ficou é guardado).
-    if (battle.fleeAfter && battle.winner == null && battle.captured == null && battle.turn > battle.fleeAfter && active(battle, 1).hp > 0) {
+    // Dormindo ou congelado, não consegue fugir (como nos jogos).
+    if (battle.fleeAfter && battle.winner == null && battle.captured == null && battle.turn > battle.fleeAfter && active(battle, 1).hp > 0 && !['slp', 'frz'].includes(active(battle, 1).status)) {
       battle.fled = true
       battle.winner = 0
       say(events, 'roamFled', active(battle, 1).name)

@@ -54,6 +54,8 @@ export const START_BAG = { 'poke-ball': START_BALLS, potion: 4, 'super-potion': 
 /** Quanto cada item da Bolsa cura (parte do HP máximo; igual na batalha: healPct do motor). */
 export const HEAL_SHARE = { potion: 0.25, 'super-potion': 0.5, 'hyper-potion': 0.75, 'max-potion': 1 }
 export const JOY_CHANCE = 0.05
+/** Venceu a Elite dos Quatro e o Campeão sem nenhum desmaio: o prêmio. */
+export const LEAGUE_FLAWLESS = 'master-ball'
 /** Shiny: 1 em 4096 (como nos jogos); o seu shiny tem +25% em todos os atributos (o adversário, +10%). Igual ao app. */
 export const SHINY_CHANCE = 1 / 4096
 export const SHINY_BOOST = 0.25
@@ -810,6 +812,20 @@ export const FRIEND_EVOS = {
   10107: 10108,
 }
 const friendTargets = (id) => [FRIEND_EVOS[id]].flat()
+/**
+ * As que dependem da hora (como nos jogos): Riolu e Budew só de dia; Chingling e Snom só à noite.
+ * Na hora errada, a amizade fica guardada e ele evolui quando a hora chegar. Igual ao app.
+ */
+export const FRIEND_TIME = { 447: 'day', 406: 'day', 433: 'night', 872: 'night' }
+/** O máximo de amizade (os corações: FRIEND_HEARTS, um a cada FRIEND_EVOLVE / FRIEND_HEARTS pontos). */
+export const FRIEND_MAX = 20
+export const FRIEND_HEARTS = 5
+/** Os corações de amizade (0 a FRIEND_HEARTS): cheios quando ele já pode evoluir pela amizade. */
+export const heartsOf = (mon) => Math.min(FRIEND_HEARTS, Math.floor(((mon?.friendship ?? 0) * FRIEND_HEARTS) / FRIEND_EVOLVE))
+/** As evoluções por nível que dependem da hora: Tyrantrum só de dia, Aurorus só à noite (como nos jogos). */
+export const TIME_EVOS = { 697: 'day', 699: 'night' }
+/** Se a hora deixa (night: null quando não se sabe a hora; aí deixa sempre). */
+export const timeFits = (when, night) => !when || night == null || (when === 'night') === Boolean(night)
 
 /** Eevee com um golpe de Fada vira Sylveon pela amizade (como nos jogos). Igual ao app. */
 export const FAIRY_MOVES = ['baby-doll-eyes', 'charm', 'disarming-voice', 'draining-kiss', 'fairy-wind', 'dazzling-gleam', 'moonblast', 'play-rough', 'alluring-voice', 'sweet-kiss']
@@ -829,7 +845,7 @@ export const RARE_CHANCE = 0.04
 export const MYTHICS = [151, 251, 385, 386, 490, 491, 492, 494, 647, 648, 719, 720, 721, 801, 802, 807, 893]
 
 /** region: a região da perna da corrida (as evoluções de lá: Pikachu → Raichu de Alola, Stantler → Wyrdeer em Hisui). */
-export function levelTo(mon, level, data, rand, region = null) {
+export function levelTo(mon, level, data, rand, region = null, night = null) {
   let out = { ...mon, level: Math.max(1, level) }
   out.exp = Math.max(out.exp, expAt(out.level))
   let evolved = null
@@ -837,7 +853,7 @@ export function levelTo(mon, level, data, rand, region = null) {
     // Evoluções por item (pedras) só com o item: canEvolveWith/buyItem.
     // As por amizade (FRIEND_EVOS) não são por nível (a Eevee, só por pedra ou amizade).
     const friends = FRIEND_EVOS[out.id] ? (out.id === 133 ? null : friendTargets(out.id)) : []
-    const options = evolutionsOf(data, out, region).filter(([to, at, item]) => !item && out.level >= at && friends && !friends.includes(to))
+    const options = evolutionsOf(data, out, region).filter(([to, at, item]) => !item && out.level >= at && friends && !friends.includes(to) && timeFits(TIME_EVOS[to], night))
     if (!options.length) break
     // Tyrogue: como nos jogos, pelo Ataque e pela Defesa (Hitmonlee, Hitmonchan ou Hitmontop).
     const to = out.id === 236 ? tyrogue(out) : pickOne(options, rand)[0]
@@ -946,11 +962,11 @@ export function expProgress(mon, extra = 0) {
 }
 
 /** Ganha XP: sobe os níveis que der. */
-function gainExp(mon, exp, data, rand, region = null) {
+function gainExp(mon, exp, data, rand, region = null, night = null) {
   const total = mon.exp + exp
   let level = mon.level
   while (total >= expAt(level + 1)) level++
-  const [out, evolved] = level > mon.level ? levelTo({ ...mon, exp: total }, level, data, rand, region) : [{ ...mon, exp: total }, null]
+  const [out, evolved] = level > mon.level ? levelTo({ ...mon, exp: total }, level, data, rand, region, night) : [{ ...mon, exp: total }, null]
   return { mon: out, from: mon.level, evolved }
 }
 
@@ -1081,6 +1097,26 @@ export const VILLAIN_TEAMS = {
   Rose: 'macro', Oleana: 'macro', 'Equipe Yell': 'yell',
 }
 export const villainTeam = (name) => VILLAIN_TEAMS[name] ?? 'rocket'
+/**
+ * O plano da equipe vilã (como nos jogos, ela age em várias cidades antes da base): nas PLOT_CHAPTERS cidades de
+ * ginásio antes da base, um capanga da equipe aparece nas bifurcações da cidade. Cada um derrotado atrapalha o
+ * plano: dá PLOT_REWARD e o chefe da base vem PLOT_LEVELS nível abaixo por capítulo. Igual ao app.
+ */
+export const PLOT_CHAPTERS = 3
+export const PLOT_LEVELS = 1
+export const PLOT_REWARD = 'ultra-ball'
+export function villainPlot(data, run) {
+  const leaders = data?.bosses?.[run.boss?.region]?.leaders
+  if (!leaders) return null
+  const v = leaders.findIndex((l, k) => k >= run.boss.step && l.kind === 'villain')
+  if (v < 0) return null
+  const steps = []
+  for (let k = v - 1; k >= 0 && steps.length < PLOT_CHAPTERS; k--) if (leaders[k].kind === 'gym') steps.unshift(k)
+  const foiled = run.plot?.region === run.boss.region ? run.plot.foiled ?? [] : []
+  const chapters = steps.map((k) => ({ step: k, city: leaders[k].city ?? null, foiled: foiled.includes(k), past: k < run.boss.step }))
+  const now = chapters.find((c) => c.step === run.boss.step && !c.foiled)
+  return { team: villainTeam(leaders[v].name), boss: leaders[v].name, base: leaders[v].city ?? null, chapters, foiled: foiled.length, chapter: now ? chapters.indexOf(now) + 1 : null }
+}
 /** Os Pokémon dos capangas de cada equipe (os evoluídos só a partir do nível em que evoluem). */
 export const TEAM_POKEMON = {
   rocket: [19, 20, 23, 24, 41, 42, 109, 110, 88, 89, 52, 53, 96, 97, 198, 228, 229],
@@ -1297,6 +1333,27 @@ export function townGifts(data, run) {
   const got = run.town.gifts ?? []
   return (featuresOf(data, run).gifts ?? []).map((g, k) => ({ ...g, k })).filter((g) => !got.includes(g.k) && (!g.after || (run.places ?? []).includes(g.after)))
     .filter((g) => [g.id, ...(g.choose ?? [])].some((id) => id != null && data.species[id] && (!run.mono || (speciesOf(data, id)?.[4] ?? []).some((t) => run.mono.includes(t)))))
+}
+/**
+ * O ovo misterioso (como o ovo que um morador dá nos jogos): em algumas cidades (MYSTERY_EGG_CHANCE), alguém te
+ * dá um ovo sem dizer de quem é. Ele aparece como ❔ até chocar. Não gasta o sorteio da corrida. Igual ao app.
+ */
+export const MYSTERY_EGG_CHANCE = 0.3
+export const MYSTERY_EGGS = [172, 173, 174, 175, 236, 238, 239, 240, 298, 360, 406, 433, 438, 439, 440, 446, 447, 458, 147, 246, 371, 374, 443, 610, 633, 704, 782, 885, 133, 280]
+/** O sorteio da cidade (o mesmo em todos os andares dela). */
+const townRoll = (run, k) => followRoll({ seed: run.seed, floor: legOf(run) * 7 + 3 }, k)
+/** O ovo que o morador desta cidade dá (o id; null se aqui não tem, se já pegou ou se não tem vaga). */
+export function mysteryEgg(data, run) {
+  if (!run.town || run.town.egg || run.encounter || run.pending || inLeague(data, run) || run.team.length >= teamRoom(run)) return null
+  if (townRoll(run, 2891336453) >= MYSTERY_EGG_CHANCE) return null
+  const pool = MYSTERY_EGGS.filter((id) => data.species[id] && (!run.mono || (speciesOf(data, id)?.[4] ?? []).some((t) => run.mono.includes(t))))
+  return pool.length ? pool[Math.floor(townRoll(run, 1181783497) * pool.length)] : null
+}
+/** Aceita o ovo misterioso. */
+export function takeMysteryEgg(run, data) {
+  const id = mysteryEgg(data, run)
+  if (id == null) return run
+  return { ...run, town: { ...run.town, egg: true }, eggs: [...(run.eggs ?? []), { id, left: EGG_BATTLES, mystery: true }], gifted: (run.gifted ?? 0) + 1 }
 }
 /** Recebe o presente k (pick: qual, quando dá para escolher). Ovo vai junto como ovo; sem vaga, vai para o PC. null se não dá. */
 export function takeGift(run, data, k, pick = null) {
@@ -1860,20 +1917,47 @@ export const RARE_PLACE_IDS = Object.keys(RARE_PLACES)
 /** O lendário que espera no fim do lugar raro (sempre o mesmo na corrida). */
 export const rareLegend = (run, place) => { const l = RARE_PLACES[place]?.legends ?? []; return l.length ? l[((run.seed >>> 0) + run.floor) % l.length] : null }
 /**
- * Os lendários que fogem (como os cães lendários de Johto, os Latis e a Cresselia): um por corrida. A partir de
- * ROAM_FLOOR, às vezes (ROAM_CHANCE) aparece na primeira bifurcação da rota; depois de ROAM_TURNS turnos, foge. O HP
- * que você tirou fica (run.roamer.hp) até a próxima vez; derrubado ou capturado, não volta mais. Igual ao app.
+ * Os lendários que fogem (como nos jogos): um por região, os de lá (os cães lendários em Kanto e Johto, os Latis em
+ * Hoenn, Mesprit e Cresselia em Sinnoh, Tornadus e Thundurus em Unova, as aves em Kalos). A partir de ROAM_FLOOR ele
+ * anda pela região: a cada andar muda de lugar (uma das ROAM_SPAN cidades à frente, e o mapa mostra onde foi visto).
+ * Quando está na rota em que você está, aparece na primeira bifurcação; no primeiro turno (ROAM_TURNS), foge (dormindo
+ * ou congelado, não). O HP que você tirou fica (run.roamer.hp) até a próxima vez; derrubado ou capturado, não volta
+ * mais nesta região. Igual ao app.
  */
 export const ROAMERS = [243, 244, 245, 380, 381, 488]
+export const REGION_ROAMERS = { Kanto: [243, 244, 245], Johto: [243, 244, 245], Hoenn: [380, 381], Sinnoh: [481, 488], Unova: [641, 642], Kalos: [144, 145, 146] }
 export const ROAM_FLOOR = 15
-export const ROAM_CHANCE = 0.12
-export const ROAM_TURNS = 3
-export const roamerId = (run) => run.roamer?.id ?? ROAMERS[(run.seed >>> 0) % ROAMERS.length]
-/** O caminho do lendário que foge neste andar (null se ele não aparece aqui). Não gasta o sorteio da corrida. */
-export function roamerNode(run) {
-  if (run.floor < ROAM_FLOOR || run.roamer?.done || followRoll(run, 2246822519) >= ROAM_CHANCE) return null
-  const hp = run.roamer?.hp
-  return { kind: 'wildboss', legend: roamerId(run), roam: true, ...(hp != null && hp < 1 ? { roamHp: hp } : {}) }
+export const ROAM_SPAN = 5
+export const ROAM_TURNS = 1
+const regionName = (data, run) => data?.bosses?.[run.boss?.region]?.region ?? null
+/** O lendário que anda pela região de agora (o mesmo até você derrubar ou capturar). */
+export function roamerId(run, data = null) {
+  const region = regionName(data, run)
+  if (run.roamer?.id != null && (run.roamer.region ?? null) === region) return run.roamer.id
+  const list = (REGION_ROAMERS[region] ?? ROAMERS).filter((id) => !data || data.species[id])
+  const pool = list.length ? list : ROAMERS
+  return pool[(run.seed >>> 0) % pool.length]
+}
+/** Onde ele foi visto neste andar (a posição da cidade na história da região); null se ainda não anda ou já foi pego. */
+export function roamerAt(data, run) {
+  const leaders = data?.bosses?.[run.boss?.region]?.leaders
+  if (!leaders || run.floor < ROAM_FLOOR || roamerGone(data, run)) return null
+  return Math.min(leaders.length - 1, run.boss.step + Math.floor(followRoll(run, 2246822519) * ROAM_SPAN))
+}
+/** Já derrubado ou capturado (nesta região). */
+export const roamerGone = (data, run) => Boolean(run.roamer?.done) && (run.roamer.region ?? null) === regionName(data, run)
+/** A cidade onde ele foi visto (o nome dela), para o mapa. */
+export function roamerSeen(data, run) {
+  const at = roamerAt(data, run)
+  if (at == null) return null
+  const leaders = data.bosses[run.boss.region].leaders
+  return { id: roamerId(run, data), at, here: at === run.boss.step, city: leaders[at].city ?? null }
+}
+/** O caminho do lendário que foge neste andar (null se ele não está nesta rota). Não gasta o sorteio da corrida. */
+export function roamerNode(run, data = null) {
+  if (roamerAt(data, run) !== run.boss.step) return null
+  const hp = (run.roamer?.region ?? null) === regionName(data, run) ? run.roamer?.hp : null
+  return { kind: 'wildboss', legend: roamerId(run, data), roam: true, ...(hp != null && hp < 1 ? { roamHp: hp } : {}) }
 }
 /** A Dowsing Machine: a chance de apitar numa bifurcação e o que pode estar escondido. Igual ao app. */
 export const DOWSE_CHANCE = 0.2
@@ -2028,6 +2112,9 @@ export function routeOptions(run, data, rand) {
     // No porto: a balsa (com o S.S. Ticket), com os treinadores a bordo e um prêmio no fim.
     if (FERRY_TOWNS.includes(featuresOf(data, run).town) && !done.includes(FERRY.id)) options.push({ kind: 'dungeon', place: FERRY.id, scene: FERRY.scene, needs: 'ss-ticket' })
     if (boss.kind === 'villain') options.push({ kind: 'dungeon', place: 'base', scene: `base-${villainTeam(boss.name)}` })
+    // O plano da equipe vilã: o capanga dela age nesta cidade.
+    const plot = villainPlot(data, run)
+    if (plot?.chapter) options.push({ kind: 'trainer', grunt: plot.team, plot: plot.chapter })
   } else {
     // Numa rota de praia, o mar é opcional; numa rota de mar, o fundo do mar.
     const sea = info?.biome === 'water'
@@ -2044,7 +2131,7 @@ export function routeOptions(run, data, rand) {
     const safari = featuresOf(data, run).safari
     if (pos === FORKS[1] && safari && !run.nuzlocke && run.safariLeg !== legOf(run) && safariPool(run, data).length) options.push({ kind: 'safari', name: safari })
     // O lendário que foge (Raikou, Entei, Suicune...): às vezes aparece na primeira bifurcação da rota.
-    const roam = roamerNode(run)
+    const roam = roamerNode(run, data)
     if (pos === FORKS[0] && roam) options.push(roam)
   }
   // A Dowsing Machine: às vezes apita, e um dos caminhos com batalha tem um item escondido.
@@ -2121,6 +2208,13 @@ export function chooseNode(run, data, index, clock = null) {
     // Venceu o desafio do ginásio: o time do líder vem GYM_EDGE_LEVELS níveis abaixo.
     if (node.kind === 'boss' && run.gymEdge?.won && run.gymEdge.leg === legOf(run) && out.encounter.boss?.kind === 'gym') {
       out.encounter = { ...out.encounter, edge: true, foes: out.encounter.foes.map((f) => ({ ...f, level: Math.max(1, f.level - GYM_EDGE_LEVELS) })) }
+    }
+    // O capanga do plano da equipe vilã (vencendo, o plano atrasa).
+    if (node.plot) out.encounter = { ...out.encounter, plot: node.plot }
+    // Cada capítulo do plano atrapalhado: o chefe da equipe vem PLOT_LEVELS nível abaixo.
+    const foiled = run.plot?.region === run.boss.region ? run.plot.foiled?.length ?? 0 : 0
+    if (node.kind === 'boss' && foiled && out.encounter.boss?.kind === 'villain') {
+      out.encounter = { ...out.encounter, foiled, foes: out.encounter.foes.map((f) => ({ ...f, level: Math.max(1, f.level - foiled * PLOT_LEVELS) })) }
     }
     // O lendário do lugar e o que dormia no caminho: vencendo (ou capturando), o lugar ou a rota seguem.
     if (node.placeLegend) out.encounter = { ...out.encounter, placeLegend: true }
@@ -2327,7 +2421,7 @@ export function encounterFor(data, floor, rand, boss = null, wild = false, node 
     const count = Math.min(MAX_TEAM, 1 + Math.floor(floor / 12) + (rand() < 0.3 ? 1 : 0) + (ace ? 1 : 0))
     const extra = strong ? { iv: Math.max(iv, 20), ev: Math.round(ev * 1.15) } : {}
     // Na base de uma equipe vilã: capangas com os Pokémon da equipe.
-    const grunt = node?.biome?.startsWith('base-') ? node.biome.slice(5) : null
+    const grunt = node?.grunt ?? (node?.biome?.startsWith('base-') ? node.biome.slice(5) : null)
     const choose = grunt && TEAM_POKEMON[grunt] ? () => pickOne(TEAM_POKEMON[grunt], rand) : () => pick(common, true)
     const foes = Array.from({ length: count }, () => foe(choose(), level + (strong ? 2 : 0) - Math.floor(rand() * 3), extra))
     // O mais forte do treinador forte segura um item de verdade (a partir do andar 15).
@@ -2336,7 +2430,11 @@ export function encounterFor(data, floor, rand, boss = null, wild = false, node 
   }
   // Selvagem: só os que vivem no lugar (o habitat de cada espécie: dos locais de encontro dos jogos; no fundo do mar,
   // só quem vive debaixo d'água); sem habitat nos dados, pelos tipos do lugar; sem nenhum, qualquer um.
-  const lives = node?.biome ? common.filter((p) => data.species[p.id]?.[6]?.includes(node.biome)) : []
+  const habitat = node?.biome ? common.filter((p) => data.species[p.id]?.[6]?.includes(node.biome)) : []
+  // De dia, os da noite não aparecem (e o contrário); se só sobrariam eles, ficam.
+  const hidden = node?.night == null ? [] : node.night ? DAY_ONLY : NIGHT_ONLY
+  const awake = habitat.filter((p) => !hidden.includes(p.id))
+  const lives = awake.length ? awake : habitat
   // Com clima, quem é dos tipos dele vem para a rota mesmo sem viver nela (a neve traz os de Gelo, a chuva os de Água...).
   const guests = drawn.length && lives.length ? common.filter((p) => !lives.includes(p) && (data.species[p.id]?.[4] ?? []).some((t) => drawn.includes(t))) : []
   const native = lives.length ? [...lives, ...guests] : types ? common.filter(local) : []
@@ -2567,7 +2665,7 @@ export function winFloor(run, data, after = {}) {
   const before = out.team
   out.team = out.team.map((m, index) => {
     if (!gains[index]) return m
-    const r = gainExp({ ...m, evs: addStats(m.evs, evs[index]) }, gains[index], data, rand, regionOf(data, run))
+    const r = gainExp({ ...m, evs: addStats(m.evs, evs[index]) }, gains[index], data, rand, regionOf(data, run), after.night ?? null)
     if (r.mon.level > r.from || r.evolved) levels.push({ index, from: r.from, to: r.mon.level, evolved: r.evolved })
     // O XP da corrida inteira (para o MVP do resumo no fim). Igual ao app.
     return { ...r.mon, xpRun: (m.xpRun ?? 0) + gains[index] }
@@ -2576,12 +2674,14 @@ export function winFloor(run, data, after = {}) {
   const grown = withShedinja(out, before, out.team, rand)
   const shed = grown.length > out.team.length
   out.team = grown
-  // Amizade: quem está de pé ganha um ponto; com FRIEND_EVOLVE, os que evoluem por amizade evoluem.
+  // Amizade: quem está de pé ganha um ponto (quem vai na frente, o que segue você, ganha dois); quem desmaiou perde um.
+  // Com FRIEND_EVOLVE, os que evoluem por amizade evoluem (Riolu e Budew só de dia; Chingling e Snom só à noite).
+  const first = battleOrder(run)[0]
   out.team = out.team.map((m, index) => {
-    if (!((m.hp ?? 1) > 0)) return m
-    const friendship = (m.friendship ?? 0) + 1
+    if (!((m.hp ?? 1) > 0)) return m.friendship ? { ...m, friendship: m.friendship - 1 } : m
+    const friendship = Math.min(FRIEND_MAX, (m.friendship ?? 0) + (index === first ? 2 : 1))
     const to = FRIEND_EVOS[m.id]
-    if (to == null || friendship < FRIEND_EVOLVE) return { ...m, friendship }
+    if (to == null || friendship < FRIEND_EVOLVE || !timeFits(FRIEND_TIME[m.id], after.night)) return { ...m, friendship }
     const fairy = m.id === 133 && (m.moves ?? []).some((x) => FAIRY_MOVES.includes(x))
     const id = fairy ? 700 : Array.isArray(to) ? to[after.night ? 1 : 0] : to
     out.friendEvos = (out.friendEvos ?? 0) + 1
@@ -2624,7 +2724,8 @@ export function winFloor(run, data, after = {}) {
   out.floor += 1
   let drop = null, story = null
   if ((kind === 'boss' || kind === 'wildboss') && !fled) out.bosses = (out.bosses ?? 0) + 1
-  if (roamer != null) out.roamer = fled ? { id: roamer, hp: round3(Math.max(0.01, after.foeHp ?? 1)) } : { id: roamer, done: after.captured ? 'caught' : 'fainted' }
+  const region = regionName(data, run)
+  if (roamer != null) out.roamer = fled ? { id: roamer, region, hp: round3(Math.max(0.01, after.foeHp ?? 1)) } : { id: roamer, region, done: after.captured ? 'caught' : 'fainted' }
   // O item escondido do caminho (Dowsing Machine).
   const dowsed = run.dowsed ?? null
   if (dowsed) giveItem(out, dowsed)
@@ -2655,6 +2756,20 @@ export function winFloor(run, data, after = {}) {
   if (kind === 'rematch') {
     out.rematch = null
     out.rematches = (run.rematches ?? 0) + 1
+  }
+  // Na Liga: quantos desmaiaram (vencer a Elite e o Campeão sem nenhum desmaio dá o prêmio LEAGUE_FLAWLESS).
+  let flawless = false
+  if (kind === 'boss' && ['elite', 'champion'].includes(run.encounter.boss?.kind)) {
+    const faints = (run.leagueFaints ?? 0) + run.team.filter((m, i) => !((after.hp?.[i] ?? m.hp ?? 1) > 0)).length
+    out.leagueFaints = faints
+    if (run.encounter.boss?.kind === 'champion') {
+      delete out.leagueFaints
+      if (!faints) {
+        flawless = true
+        giveItem(out, LEAGUE_FLAWLESS)
+        out.flawless = (run.flawless ?? 0) + 1
+      }
+    }
   }
   if (kind === 'boss') {
     const beaten = run.encounter.boss
@@ -2708,6 +2823,14 @@ export function winFloor(run, data, after = {}) {
   if (reward && BAG_ITEMS.includes(reward)) out.bag[reward] = (out.bag[reward] ?? 0) + 1
   else if (reward && TOKENS.includes(reward)) out.tokens = { ...out.tokens, [reward]: (out.tokens?.[reward] ?? 0) + 1 }
   else if (reward) out.stash = [...(out.stash ?? []), reward]
+  // O plano da equipe vilã: o capanga derrotado atrasa o plano.
+  let plot = null
+  if (run.encounter.plot && !fled) {
+    const prev = run.plot?.region === run.boss.region ? run.plot.foiled ?? [] : []
+    out.plot = { region: run.boss.region, foiled: [...prev, run.boss.step] }
+    giveItem(out, PLOT_REWARD)
+    plot = { chapter: run.encounter.plot, team: run.encounter.grunt ?? null, item: PLOT_REWARD }
+  }
   // A missão da rota: os derrotados (e o capturado) do tipo contam; completa, dá dinheiro e um item.
   let mission = null
   if (run.mission && run.mission.done < run.mission.need) {
@@ -2725,7 +2848,9 @@ export function winFloor(run, data, after = {}) {
       }
     }
   }
-  const joy = rand() < JOY_CHANCE
+  // Na Liga não tem Centro: as lutas vêm uma atrás da outra, só com a Bolsa (a Enfermeira Joy não aparece).
+  const league = inLeague(data, out)
+  const joy = rand() < JOY_CHANCE && !league
   if (joy) out.team = out.team.map((m) => ({ ...m, hp: 1 }))
   const born = hatch(out, after.captured && (kind === 'wild' || kind === 'wildboss'))
   // O museu revive um fóssil para quem vence o chefe dele (os de lá: Omanyte, Kabuto e Aerodactyl em Pewter...).
@@ -2748,6 +2873,8 @@ export function winFloor(run, data, after = {}) {
     ...(key ? { key } : {}),
     ...(placeReward ? { placeReward } : {}),
     ...(fled ? { fled: roamer } : {}),
+    ...(flawless ? { flawless: LEAGUE_FLAWLESS } : {}),
+    ...(plot ? { plot } : {}),
     ...(dowsed ? { dowsed } : {}),
   }
   out.encounter = null
@@ -3107,7 +3234,8 @@ function hatch(out, captured) {
   if (!out.eggs?.length) return null
   const eggs = out.eggs.map((e) => ({ ...e, left: Math.max(0, e.left - 1) }))
   const ready = captured ? -1 : eggs.findIndex((e) => e.left <= 0)
-  const born = ready >= 0 ? { id: eggs.splice(ready, 1)[0].id, level: EGG_LEVEL, egg: true } : null
+  const egg = ready >= 0 ? eggs.splice(ready, 1)[0] : null
+  const born = egg ? { id: egg.id, level: EGG_LEVEL, egg: true, ...(egg.mystery ? { mystery: true } : {}) } : null
   out.eggs = eggs
   return born
 }
@@ -3119,6 +3247,18 @@ export const skipCapture = (run) => (run.pending ? { ...run, pending: { ...run.p
 export const TRADE_LEVELS = 3
 /** Quem evolui ao ser trocado (como nos jogos): chega já evoluído, seja qual for o nível. */
 export const TRADE_EVOS = { 64: 65, 67: 68, 75: 76, 93: 94, 525: 526, 533: 534, 708: 709, 710: 711 }
+/**
+ * Quem vem de uma troca chega com o apelido e o nome do treinador de antes (o OT), como nos jogos. Os das
+ * trocas famosas têm o apelido de lá; os outros, um da lista. Não gasta o sorteio da corrida. Igual ao app.
+ */
+export const TRADE_NICKS = { 122: 'Marcel', 124: 'Zynx', 83: "Ch'Ding", 108: 'Marc', 101: 'Doris', 114: 'Tangeny', 86: 'Sailor', 30: 'Rickey', 33: 'Spot', 63: 'Abby', 66: 'Muscle', 296: 'Makit', 415: 'Cherry' }
+export const TRADE_NAMES = ['Buddy', 'Lucky', 'Sunny', 'Pip', 'Coco', 'Biscuit', 'Nugget', 'Mochi', 'Pepper', 'Ziggy', 'Bubbles', 'Rocky']
+export const TRADE_OTS = ['Turner', 'Doris', 'Clifton', 'Norma', 'Mallory', 'Kimi', 'Sid', 'Tyler', 'Emy', 'Haden', 'Garret', 'Wendy']
+export function tradeTag(run, id) {
+  const k = { seed: run.seed, floor: run.floor * 31 + (run.trades ?? 0) }
+  const nick = TRADE_NICKS[id] ?? TRADE_NAMES[Math.floor(followRoll(k, 2246822519) * TRADE_NAMES.length)]
+  return { nick, ot: TRADE_OTS[Math.floor(followRoll(k, 3266489917) * TRADE_OTS.length)] }
+}
 /** O oferecido entra no lugar de quem foi: TRADE_LEVELS acima (sem passar do limite de nível), evoluído pela troca, com mais XP dali em diante. */
 function tradeIn(run, out, index, offer, data, exact = false) {
   const mon = run.team[index]
@@ -3129,7 +3269,7 @@ function tradeIn(run, out, index, offer, data, exact = false) {
   const fresh = newMon(exact ? offer.id : devolve(data, offer.id, mon.level), mon.level, rand, 10, Boolean(offer.shiny))
   let [grown] = levelTo(fresh, level, data, rand, regionOf(data, run))
   if (TRADE_EVOS[grown.id] && data.species[TRADE_EVOS[grown.id]]) grown = { ...grown, id: TRADE_EVOS[grown.id] }
-  out.team[index] = { ...grown, traded: true, item: mon.item ?? null, extras: mon.extras ?? [] }
+  out.team[index] = { ...grown, traded: true, ...tradeTag(run, grown.id), item: mon.item ?? null, extras: mon.extras ?? [] }
   addDex(out, grown.id)
 }
 export function tradeMon(run, index, data) {
@@ -3275,6 +3415,13 @@ export const SEASONS = ['spring', 'summer', 'autumn', 'winter']
 /** Os tipos que aparecem mais em cada estação e à noite. */
 export const SEASON_TYPES = { spring: ['grass', 'fairy'], summer: ['fire', 'water'], autumn: ['bug', 'ground'], winter: ['ice'] }
 export const NIGHT_TYPES = ['ghost', 'dark']
+/**
+ * Quem só aparece de noite ou só de dia (como nos jogos de Johto em diante): Hoothoot, Gastly, Murkrow,
+ * Misdreavus, Spinarak, Oddish... à noite; Pidgey, Ledyba, Sentret, Sunkern, Caterpie... de dia. Só vale com a
+ * hora de quem joga (node.night). Igual ao app.
+ */
+export const NIGHT_ONLY = [163, 164, 92, 93, 198, 200, 167, 168, 43, 44, 269, 290, 425, 426, 570, 571, 714, 734, 735, 821]
+export const DAY_ONLY = [16, 165, 166, 161, 162, 191, 10, 13, 187, 263, 396, 504, 505, 506, 731, 819, 761]
 /** Neve só onde é lugar de neve e areia só onde é deserto (fora os lugares do mapa que têm isso nos jogos: CLIMATE). Igual ao app. */
 export const SNOW_SCENES = ['snow', 'acuity']
 export const SAND_SCENES = ['desert', 'dunes']
@@ -3596,7 +3743,8 @@ export function takeCard(run, id, data) {
   if (card.mult) out.mult = { ...out.mult, [card.mult[0]]: Math.max(0.4, round3(out.mult[card.mult[0]] + card.mult[1])) }
   if (card.balls) out.bag = { ...out.bag, 'poke-ball': (out.bag['poke-ball'] ?? 0) + card.balls }
   if (card.heal) {
-    out.team = out.team.map((m) => ({ ...m, hp: 1 }))
+    // Na Liga não tem cura: a carta só dá a Max Potion (para a Bolsa).
+    if (!(data && inLeague(data, run))) out.team = out.team.map((m) => ({ ...m, hp: 1 }))
     out.bag = { ...out.bag, 'max-potion': (out.bag['max-potion'] ?? 0) + 1 }
   }
   if (card.levels) {
