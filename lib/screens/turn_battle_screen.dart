@@ -2820,8 +2820,15 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
                         ),
                       ),
                       // O menu e os golpes dentro da tela, acima da sua caixa de HP (como no port).
-                      if (controlsGrid != null)
-                        Positioned(key: const ValueKey('battle-bottom-grid'), right: w * 0.0125, bottom: h * 0.28, width: w * 0.36, height: h * 0.19, child: _PortScope(child: controlsGrid)),
+                      if (controlsGrid != null && !_vsOn)
+                        Positioned(
+                          key: const ValueKey('battle-bottom-grid'),
+                          right: w * 0.0125,
+                          // Com o time ou a Bolsa abertos por cima do campo, as opções ficam embaixo, ao lado do texto.
+                          bottom: fieldPanel != null ? h * 0.085 : h * 0.28,
+                          width: w * 0.36,
+                          height: fieldPanel != null ? h * 0.145 : h * 0.19,
+                          child: _PortScope(child: controlsGrid)),
                       // A barra de dicas embaixo (como no port): o que o toque faz, os efeitos do campo, a velocidade, o registro e o Voltar.
                       Positioned(
                         key: const ValueKey('battle-bottom-footer'),
@@ -3033,6 +3040,8 @@ const _portMenuColors = {
   'FUGIR': [Color(0xFF1D4ED8), Color(0xFF1E3A8A), Color(0xFF93C5FD)],
 };
 
+const _portMenuText = TextStyle(fontFamily: 'PixelifySans', color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15, shadows: [Shadow(color: Colors.black, offset: Offset(1, 1))]);
+
 const _portCut = BeveledRectangleBorder(borderRadius: BorderRadius.only(topLeft: Radius.circular(7), bottomRight: Radius.circular(7)));
 
 class _MenuButton extends StatelessWidget {
@@ -3061,8 +3070,10 @@ class _MenuButton extends StatelessWidget {
                     alignment: c == null ? Alignment.center : Alignment.centerLeft,
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
-                      child: Text('▸ ${tr(label)}',
-                          style: const TextStyle(fontFamily: 'PixelifySans', color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15, shadows: [Shadow(color: Colors.black, offset: Offset(1, 1))])),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        const Text('▸ ', style: _portMenuText),
+                        Text(tr(label), style: _portMenuText),
+                      ]),
                     ),
                   ),
                 ),
@@ -3253,53 +3264,22 @@ Widget _menuGrid(List<Widget> buttons) => Column(children: [
       ],
     ]);
 
-/// A tela de baixo da batalha (como a do DS), a mesma na normal e na dupla/tripla: sempre do mesmo tamanho e cada
-/// coisa no seu lugar — em cima a linha de informação (fraquezas, quem já escolheu), no meio a grade 2×2 (o menu ou
-/// os golpes, no mesmo lugar) e embaixo o Voltar. Nada empurra nada. No fim da batalha, os botões do resultado.
+/// Embaixo da tela da batalha (que agora tem tudo dentro, como no port de Black & White): só as escolhas do fim
+/// (Continuar, Batalhar de novo, Sair...).
 class _BottomScreen extends StatelessWidget {
-  const _BottomScreen({this.info, this.grid, this.footer, this.extra, this.inField = false});
+  const _BottomScreen({this.extra, this.inField = true});
 
-  /// O menu e os golpes ficam dentro do campo (a batalha de um contra um): aqui só as escolhas do fim.
+  /// Sempre dentro do campo (o menu e os golpes ficam lá).
   final bool inField;
-  final Widget? info, grid, footer;
 
-  /// Outras escolhas (Continuar, Batalhar de novo, Sair...): embaixo dos botões fixos, sem mexer neles.
   final Widget? extra;
 
-  static double infoHeight(BuildContext context) => MediaQuery.textScalerOf(context).scale(17) * 2 + 6;
-  static double gridHeight(BuildContext context) => (12 + MediaQuery.textScalerOf(context).scale(18) + MediaQuery.textScalerOf(context).scale(19)) * 2 + 6;
-  static double footerHeight(BuildContext context) => MediaQuery.textScalerOf(context).scale(20) + 24;
-  static double height(BuildContext context) => infoHeight(context) + 6 + gridHeight(context) + 6 + footerHeight(context);
+  /// A altura que a tela de baixo tinha (o Pokelike ainda usa a mesma para as telas dele não mudarem de tamanho).
+  static double height(BuildContext context) =>
+      MediaQuery.textScalerOf(context).scale(17) * 2 + 6 + 6 + (12 + MediaQuery.textScalerOf(context).scale(18) + MediaQuery.textScalerOf(context).scale(19)) * 2 + 6 + 6 + MediaQuery.textScalerOf(context).scale(20) + 24;
 
   @override
-  Widget build(BuildContext context) => inField
-      ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          if (extra != null) Padding(key: const ValueKey('battle-extra'), padding: const EdgeInsets.only(top: 10), child: extra),
-        ])
-      : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Container(
-          key: const ValueKey('battle-bottom'),
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(color: Hud.base, border: Border.all(color: Hud.edge, width: 4), borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16))),
-          child: SizedBox(
-            height: height(context),
-            child: DefaultTextStyle.merge(
-              style: const TextStyle(color: Colors.white),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                SizedBox(
-                  key: const ValueKey('battle-bottom-info'),
-                  height: infoHeight(context),
-                  child: info == null ? null : Align(alignment: Alignment.centerLeft, child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: info)),
-                ),
-                const SizedBox(height: 6),
-                // Sem nada para escolher agora: o menu fica no lugar dele, apagado (os botões não somem nem mudam de lugar).
-                SizedBox(key: const ValueKey('battle-bottom-grid'), height: gridHeight(context), child: grid ?? _idleMenu()),
-                const SizedBox(height: 6),
-                SizedBox(key: const ValueKey('battle-bottom-footer'), height: footerHeight(context), child: footer),
-              ]),
-            ),
-          ),
-        ),
+  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         if (extra != null) Padding(key: const ValueKey('battle-extra'), padding: const EdgeInsets.only(top: 10), child: extra),
       ]);
 }
@@ -3309,7 +3289,6 @@ class _BottomScreen extends StatelessWidget {
 double battleBottomHeight(BuildContext context) => _BottomScreen.height(context) + 16;
 double battleBarHeight(BuildContext context) => MediaQuery.textScalerOf(context).scale(15) + 12;
 
-/// O menu apagado (enquanto o turno acontece ou é a vez do outro).
 /// O que o item da Bolsa faz (na caixa de texto, ao tocar nele). Igual ao site.
 String _itemHelp(BattleItem it, bool healPct) => it.ball
     ? tr('Jogar no Pokémon selvagem')
@@ -3321,11 +3300,10 @@ String _itemHelp(BattleItem it, bool healPct) => it.ball
                 ? tr('Recupera {0}% do HP').replaceAll('{0}', '${((const {'potion': 0.25, 'super-potion': 0.5, 'hyper-potion': 0.75}[it.slug] ?? 0) * 100).round()}')
                 : tr('Recupera {0} de HP').replaceAll('{0}', '${it.heal}');
 
-Widget _idleMenu() => _menuGrid([for (final label in ['LUTAR', 'BOLSA', 'POKÉMON', 'FUGIR']) _MenuButton(label, null)]);
 
 /// Os 4 golpes (2 por linha), iguais na batalha normal e na dupla/tripla: a altura pelas duas linhas de texto
 /// (cresce com o texto maior).
-Widget moveGrid(BuildContext context, List<Widget> children) => _PortScope.of(context) ? _menuGrid(children) : GridView(
+Widget moveGrid(BuildContext outer, List<Widget> children) => Builder(builder: (context) => _PortScope.of(context) ? _menuGrid(children) : GridView(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -3335,7 +3313,7 @@ Widget moveGrid(BuildContext context, List<Widget> children) => _PortScope.of(co
         mainAxisExtent: 12 + MediaQuery.textScalerOf(context).scale(18) + MediaQuery.textScalerOf(context).scale(19),
       ),
       children: children,
-    );
+    ));
 
 /// O botão de golpe (e de alvo): a cor do tipo, o nome em cima; embaixo o PP/crítico/dano à esquerda e a eficácia
 /// à direita (os dois diminuem se não couberem). O mesmo na batalha normal e na dupla/tripla.
@@ -3372,15 +3350,15 @@ class _MoveButton extends StatelessWidget {
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: m.Text(label, maxLines: 1, style: const TextStyle(fontFamily: 'PixelifySans', color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15, shadows: [Shadow(color: Colors.black, offset: Offset(1, 1))])),
-                    ),
-                    if (details.isNotEmpty)
-                      Flexible(child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Row(mainAxisSize: MainAxisSize.min, children: [details.first, if (effect != null) ...[const SizedBox(width: 4), effect!]]))),
-                  ]),
+                  // Tudo encolhe para caber no botão (o tamanho do botão vem da tela, como no port).
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      m.Text(label, maxLines: 1, style: const TextStyle(fontFamily: 'PixelifySans', color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15, shadows: [Shadow(color: Colors.black, offset: Offset(1, 1))])),
+                      if (details.isNotEmpty) Row(mainAxisSize: MainAxisSize.min, children: [details.first, if (effect != null) ...[const SizedBox(width: 4), effect!]]),
+                    ]),
+                  ),
                 ),
               ),
             ]),
@@ -3389,7 +3367,7 @@ class _MoveButton extends StatelessWidget {
       );
 
   @override
-  Widget build(BuildContext context) => _PortScope.of(context) && !wide ? _port() : Material(
+  Widget build(BuildContext context) => _PortScope.of(context) ? _port() : Material(
         color: color.withAlpha(faded || onTap == null ? 100 : 255),
         borderRadius: BorderRadius.circular(10),
         child: InkWell(
@@ -4533,111 +4511,8 @@ class _FxPainter extends CustomPainter {
 /// A sombra do texto no estilo Black & White.
 const _bwShadow = [Shadow(color: Colors.black, offset: Offset(1, 1))];
 
-/// A barra de XP (azul, embaixo da vida, só no seu), como nos jogos.
-class _ExpBar extends StatelessWidget {
-  final double value;
-  const _ExpBar(this.value);
 
-  @override
-  Widget build(BuildContext context) => Padding(
-        key: const ValueKey('exp-bar'),
-        padding: const EdgeInsets.only(top: 2),
-        child: Row(children: [
-          const m.Text('EXP', style: TextStyle(color: Color(0xFF7EC8FF), fontSize: 8, fontWeight: FontWeight.w900, shadows: [])),
-          const SizedBox(width: 3),
-          Expanded(
-            child: Container(
-              height: 4,
-              decoration: BoxDecoration(color: const Color(0xFF202830), borderRadius: BorderRadius.circular(2)),
-              alignment: Alignment.centerLeft,
-              child: TweenAnimationBuilder<double>(
-                tween: Tween(end: value.clamp(0.0, 1.0)),
-                duration: const Duration(milliseconds: 1000),
-                curve: Curves.easeOut,
-                builder: (context, v, _) => FractionallySizedBox(widthFactor: v, heightFactor: 1, child: const ColoredBox(color: Color(0xFF38A8F8))),
-              ),
-            ),
-          ),
-        ]),
-      );
-}
 
-class _HpBar extends StatelessWidget {
-  final int hp, max;
-  final bool bw;
-  const _HpBar({required this.hp, required this.max, this.bw = false});
-
-  @override
-  Widget build(BuildContext context) {
-    final pct = (hp / max).clamp(0.0, 1.0);
-    final color = pct > 0.5 ? const Color(0xFF22C55E) : (pct > 0.2 ? const Color(0xFFEAB308) : const Color(0xFFEF4444));
-    if (bw) {
-      // Como no Black & White: "HP" num selo e a barra fina em cima do fundo escuro.
-      return Row(children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 3),
-          decoration: const BoxDecoration(color: Color(0xFFF8B830), borderRadius: BorderRadius.horizontal(left: Radius.circular(2))),
-          child: const m.Text('HP', style: TextStyle(color: Color(0xFF5A3A00), fontSize: 9, height: 1.2, fontWeight: FontWeight.w900, shadows: [])),
-        ),
-        Expanded(
-          child: Container(
-            height: 7,
-            decoration: BoxDecoration(color: const Color(0xFF384838), border: Border.all(color: const Color(0xFF202020))),
-            alignment: Alignment.centerLeft,
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(end: pct),
-              duration: const Duration(milliseconds: 700),
-              curve: Curves.easeOut,
-              builder: (context, v, _) => FractionallySizedBox(widthFactor: v, heightFactor: 1, child: ColoredBox(color: color)),
-            ),
-          ),
-        ),
-      ]);
-    }
-    return Row(children: [
-      const m.Text('HP', style: TextStyle(color: Color(0xFFD97706), fontSize: 10, fontWeight: FontWeight.w900)),
-      const SizedBox(width: 4),
-      Expanded(
-        child: Container(
-          height: 8,
-          decoration: BoxDecoration(color: const Color(0xFF334155), borderRadius: BorderRadius.circular(8)),
-          alignment: Alignment.centerLeft,
-          child: TweenAnimationBuilder<double>(
-            tween: Tween(end: pct),
-            duration: const Duration(milliseconds: 700),
-            curve: Curves.easeOut,
-            builder: (context, v, _) => FractionallySizedBox(
-              widthFactor: v,
-              heightFactor: 1,
-              child: DecoratedBox(decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(8))),
-            ),
-          ),
-        ),
-      ),
-    ]);
-  }
-}
-
-/// Selo do status, como no Showdown.
-class _StatusBadge extends StatelessWidget {
-  final String status;
-  const _StatusBadge(this.status);
-  static const _colors = {
-    'brn': Color(0xFFEE8130),
-    'par': Color(0xFFC9A400),
-    'psn': Color(0xFFA33EA1),
-    'tox': Color(0xFF7B2E7A),
-    'slp': Color(0xFF78716C),
-    'frz': Color(0xFF4FB3D9),
-  };
-
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-        decoration: BoxDecoration(color: _colors[status] ?? Colors.grey, borderRadius: BorderRadius.circular(4)),
-        child: m.Text(status.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900)),
-      );
-}
 
 class _MultiBattleView extends StatefulWidget {
   final TurnBattle battle;
@@ -4927,7 +4802,7 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
   /// O campo da dupla/trio, como na batalha normal (e no Black & White): o cenário do lugar, os adversários lá atrás
   /// à direita em plataformas, os seus de costas na frente à esquerda (maiores), as caixas de vida no estilo BW
   /// (as dos adversários no alto à esquerda, as suas embaixo à direita) e a caixa de texto dentro da tela, embaixo.
-  Widget _field(String text, [Widget? panel]) {
+  Widget _field(String text, [Widget? panel, ({Widget? info, Widget? grid, Widget? footer})? controls]) {
     final scene = battleScene(_b.scene, _b.seed);
     final dark = Theme.of(context).brightness == Brightness.dark;
     List<int> live(int side) => [
@@ -4935,10 +4810,10 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
             if (index >= 0) index,
         ];
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-      // Sempre do mesmo tamanho da batalha normal (4:3), em dupla e em tripla.
+      borderRadius: BorderRadius.circular(16),
+      // Como a batalha normal (o port de Black & White: 16:9, tudo numa tela só), em dupla e em tripla.
       child: AspectRatio(
-        aspectRatio: 4 / 3,
+        aspectRatio: 16 / 9,
         child: DecoratedBox(
           decoration: BoxDecoration(border: Border.all(color: Hud.edge, width: 4), color: const Color(0xFF9FDCFF)),
           child: LayoutBuilder(builder: (context, constraints) {
@@ -4958,15 +4833,16 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
             }
 
             final foes = live(1 - _side), mine = live(_side);
-            final foeW = w * (_count == 3 ? 0.66 : 0.58), myW = w * (_count == 3 ? 0.66 : 0.64);
+            final foeW = w * (_count == 3 ? 0.44 : 0.36), myW = w * (_count == 3 ? 0.54 : 0.46);
             Widget info(int side) {
               final mineSide = side == _side;
+              // Como no port: as do adversário em cima à esquerda, as suas embaixo à direita (empilhadas; somem no golpe).
               return Positioned(
-                left: mineSide ? null : 0,
-                right: mineSide ? 0 : null,
-                top: mineSide ? null : h * 0.02,
-                bottom: mineSide ? h * 0.235 : null,
-                width: w * (_count == 3 ? 0.3 : mineSide ? 0.38 : 0.44),
+                left: mineSide ? null : w * 0.0125,
+                right: mineSide ? w * 0.0125 : null,
+                top: mineSide ? null : h * 0.019,
+                bottom: mineSide ? h * 0.085 : null,
+                width: w * 0.315,
                 child: Column(key: ValueKey('battle-info-$side'), mainAxisSize: MainAxisSize.min, children: [
                   for (final (pos, index) in live(side).indexed)
                     Padding(
@@ -4975,9 +4851,7 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
                         final mon = _b.teams[side][index];
                         return Semantics(
                             label: '${_trainer(_b.controllers![side][min(pos, _count - 1)])} · ${mon.name}',
-                            child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: SizedBox(width: 210, child: _InfoBox(mon: mon, hp: _hpOf(side, index), mine: mineSide, status: _statusOf(side, index), dmax: mon.dmax > 0, boosts: mon.boosts, exp: null, bw: true))));
+                            child: _PortHp(mon: mon, hp: _hpOf(side, index), mine: mineSide, status: _statusOf(side, index), dmax: mon.dmax > 0, w: w));
                       }),
                     ),
                 ]),
@@ -4988,8 +4862,8 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
               Positioned.fill(child: BattleBackdrop(scene: scene, weather: _b.weather)),
               // Os adversários: lá atrás, à direita, pisando no chão do cenário.
               Positioned(
-                right: 0,
-                bottom: h * (_count == 3 ? 0.66 : 0.55),
+                right: w * 0.345,
+                bottom: h * 0.42,
                 width: foeW,
                 height: foeW / max(2, _count),
                 child: Row(key: ValueKey('battle-sprites-${1 - _side}'), crossAxisAlignment: CrossAxisAlignment.end, children: [for (final index in foes) mon(1 - _side, index)]),
@@ -4997,7 +4871,7 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
               // Os seus: de costas, na frente, maiores (a caixa do texto corta embaixo, como nos jogos).
               Positioned(
                 left: 0,
-                bottom: h * (_count == 3 ? 0.25 : 0.19),
+                bottom: h * 0.06,
                 width: myW,
                 height: myW / max(2, _count),
                 child: Row(key: ValueKey('battle-sprites-$_side'), crossAxisAlignment: CrossAxisAlignment.end, children: [for (final index in mine) mon(_side, index)]),
@@ -5006,13 +4880,14 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
               info(_side),
               // A mensagem dentro da tela, embaixo (tocar passa o texto).
               Positioned(
-                left: w * 0.015,
-                right: w * 0.015,
-                bottom: h * 0.015,
-                height: h * 0.21,
+                left: w * 0.0125,
+                right: w * 0.373,
+                bottom: h * 0.085,
+                height: h * 0.145,
                 child: _DialogBox(
                   key: const ValueKey('battle-text'),
                   dark: dark,
+                  port: true,
                   text: text,
                   onSize: (size) {
                             _dialogSize = size;
@@ -5023,8 +4898,44 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
                   },
                 ),
               ),
+              // O menu, os golpes e os alvos acima das suas caixas (como no port); a barra de dicas embaixo.
+              if (controls?.grid != null && !_vsOn)
+                Positioned(
+                    key: const ValueKey('battle-bottom-grid'),
+                    right: w * 0.0125,
+                    // Com o time ou a Bolsa abertos por cima do campo, as opções ficam embaixo, ao lado do texto.
+                    bottom: panel != null ? h * 0.085 : h * (0.095 + _count * 0.145),
+                    width: w * 0.36,
+                    height: panel != null ? h * 0.145 : h * 0.19,
+                    child: _PortScope(child: controls!.grid!)),
+              Positioned(
+                key: const ValueKey('battle-bottom-footer'),
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: h * 0.067,
+                child: MediaQuery.withNoTextScaling(
+                  child: Container(
+                    decoration: const BoxDecoration(color: Color(0xFF15181F), border: Border(top: BorderSide(color: Color(0xFF22D3EE), width: 2))),
+                    padding: EdgeInsets.symmetric(horizontal: w * 0.01),
+                    child: Row(children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 3),
+                        decoration: BoxDecoration(border: Border.all(color: const Color(0xFF9CA3AF), width: 1.5), borderRadius: BorderRadius.circular(4)),
+                        child: m.Text('✋', style: TextStyle(fontSize: w * 0.016)),
+                      ),
+                      SizedBox(width: w * 0.01),
+                      if (controls?.info != null)
+                        Expanded(child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: DefaultTextStyle.merge(style: const TextStyle(color: Colors.white), child: controls!.info!)))
+                      else
+                        Expanded(child: _FieldBar(conditions: _b.fieldConditions(), onLog: widget.onLog, bare: true)),
+                      if (controls?.footer != null) SizedBox(height: h * 0.055, width: w * 0.12, child: _PortScope(child: controls!.footer!)),
+                    ]),
+                  ),
+                ),
+              ),
               // A troca abre por cima do campo, em cima da caixa de texto (a pergunta aparece nela), como na batalha normal.
-              if (panel != null) Positioned(key: const ValueKey('battle-panel'), left: 0, right: 0, top: 0, bottom: _summary != null ? 0 : h * 0.225, child: _Appear(child: panel)),
+              if (panel != null) Positioned(key: const ValueKey('battle-panel'), left: 0, right: 0, top: 0, bottom: _summary != null ? 0 : h * 0.24, child: _Appear(child: panel)),
               if (_vsOn)
                 Positioned.fill(
                   child: _VsSplash(
@@ -5199,7 +5110,7 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
       final targets = (_b.targets(_side, position, index, '${_aim!['gimmick']}')['targets'] as List).cast<Map>();
       List<Map> row(bool ally) => targets.where((t) => (t['ally'] == true) == ally).toList()..sort((a, b) => (a['slot'] as int).compareTo(b['slot'] as int));
       // Os alvos com o mesmo botão dos golpes: os adversários em vermelho, o aliado em azul.
-      grid = SingleChildScrollView(child: moveGrid(context, [
+      grid = moveGrid(context, [
         for (final ally in [false, true])
           for (final target in row(ally))
             _MoveButton(
@@ -5222,7 +5133,7 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
                   ? _EffectTag(widget.typeEff(mon.moves[index].type, typesOf(_b.teams[target['side'] as int][target['index'] as int])))
                   : null,
             ),
-      ]));
+      ]);
     } else if (menu == 'main') {
       grid = _menuGrid([
         _MenuButton(key: const ValueKey('battle-fight'), 'LUTAR', _locked ? null : () => setState(() => _menu = 'fight')),
@@ -5348,7 +5259,9 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
     final choosing = !_playing && _b.winner == null && _pending.isNotEmpty && widget.online?.locked != true;
     // Todo texto na caixa de texto (o erro também).
     final text = _playing ? _text : _error ?? (choosing ? _prompt() : status);
+    final panel = choosing ? _panel() : (info: null, grid: null, footer: null);
     return DsLayout(
+      single: true,
       top: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         // Tocar em qualquer lugar do campo passa o texto (como tocar na caixa).
         GestureDetector(
@@ -5357,19 +5270,15 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
           onTap: () {
             if (_skip != null && !_skip!.isCompleted) _skip!.complete();
           },
-          child: _field(text.isEmpty ? status : text, _partyPanel()),
+          child: _field(text.isEmpty ? status : text, _partyPanel(), panel),
         ),
-        _FieldBar(conditions: _b.fieldConditions(), onLog: widget.onLog),
       ]),
       // Embaixo do campo: a mesma tela de baixo da batalha normal (do mesmo tamanho, cada coisa no seu lugar).
       bottom: Builder(builder: (context) {
-        final panel = choosing ? _panel() : (info: null, grid: null, footer: null);
         final more = !_playing && _b.winner == null && _pending.isEmpty && widget.online?.locked != true;
         final end = widget.online == null && _b.winner != null && !_playing && widget.onFinish == null;
         return _BottomScreen(
-          info: panel.info,
-          grid: panel.grid,
-          footer: panel.footer,
+          inField: true,
           // As outras escolhas: embaixo dos botões fixos (no fim, como na batalha normal; a Factory abre a tela do andar sozinha).
           extra: more || end
               ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -5390,8 +5299,6 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
 /// Quanto o texto do turno muda o estágio (statUp2 = +2...).
 const _boostText = {'statUp': 1, 'statUp2': 2, 'statUp3': 3, 'statDown': -1, 'statDown2': -2, 'statDown3': -3};
 
-/// Selo dos estágios de atributo.
-const _boostShort = {'atk': 'Atq', 'def': 'Def', 'spa': 'AtE', 'spd': 'DfE', 'spe': 'Vel', 'accuracy': 'Pre', 'evasion': 'Eva'};
 
 /// Armadilhas, telas e efeitos do campo (como no Showdown), entre o campo e o texto.
 class _FieldBar extends StatelessWidget {
@@ -5478,125 +5385,6 @@ class _FieldBar extends StatelessWidget {
 }
 
 
-class _InfoBox extends StatelessWidget {
-  final BattleMon mon;
-  final int hp;
-  final bool mine, dmax;
-  final String status;
-  final Map<String, int> boosts;
-
-  /// Black & White: caixa escura encostada na borda, com o XP (exp: 0 a 1) embaixo da vida.
-  final bool bw;
-  final double? exp;
-  const _InfoBox({required this.mon, required this.hp, this.mine = false, this.status = '', this.dmax = false, this.boosts = const {}, this.bw = false, this.exp});
-
-  @override
-  Widget build(BuildContext context) => bw ? _bwBox() : _classic();
-
-  Widget _bwBox() => Container(
-        padding: EdgeInsets.fromLTRB(mine ? 12 : 8, 2, mine ? 8 : 12, 4),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF5B5B5B), Color(0xFF3A3A3A), Color(0xFF2C2C2C)], stops: [0, 0.45, 1]),
-          border: Border.all(color: const Color(0xFF181818), width: 2),
-          borderRadius: mine ? const BorderRadius.horizontal(left: Radius.circular(12)) : const BorderRadius.horizontal(right: Radius.circular(12)),
-        ),
-        child: DefaultTextStyle.merge(
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, shadows: _bwShadow),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(children: [
-                Expanded(child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: m.Text(mon.name, maxLines: 1, style: const TextStyle(fontSize: 13)))),
-                const SizedBox(width: 4),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 110),
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerRight,
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      if (mon.terastal) ...[_Tag('TERA ${mon.teraType.toUpperCase()}', getColorForType(mon.teraType)), const SizedBox(width: 4)],
-                      if (dmax) ...[const _Tag('DMAX', Color(0xFFE11D48)), const SizedBox(width: 4)],
-                      if (status.isNotEmpty) ...[_StatusBadge(status), const SizedBox(width: 4)],
-                      m.Text('Lv${mon.level}', style: const TextStyle(fontSize: 12)),
-                    ]),
-                  ),
-                ),
-              ]),
-              _HpBar(hp: hp, max: mon.maxHp, bw: true),
-              if (boosts.entries.any((b) => b.value != 0 && _boostShort.containsKey(b.key)))
-                Padding(
-                  padding: const EdgeInsets.only(top: 2),
-                  child: Wrap(alignment: WrapAlignment.end, spacing: 2, runSpacing: 2, children: [
-                    for (final b in boosts.entries)
-                      if (b.value != 0 && _boostShort.containsKey(b.key))
-                        _Tag('${tr(_boostShort[b.key]!)} ${b.value > 0 ? '+' : '−'}${b.value.abs()}',
-                            b.value > 0 ? const Color(0xFF059669) : const Color(0xFFE11D48)),
-                  ]),
-                ),
-              if (mine) m.Text('$hp/${mon.maxHp}', textAlign: TextAlign.right, style: const TextStyle(fontSize: 12, height: 1.1)),
-              if (exp != null) _ExpBar(exp!),
-            ],
-          ),
-        ),
-      );
-
-  Widget _classic() => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFFDE0),
-          border: Border.all(color: const Color(0xFF334155), width: 2),
-          borderRadius: BorderRadius.circular(2),
-          boxShadow: const [BoxShadow(color: Color(0xFF52634A), offset: Offset(2,2))],
-        ),
-        child: DefaultTextStyle.merge(
-          style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.w900, fontFamily: 'monospace'),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(children: [
-                // Nome longo diminui em vez de cortar.
-                Expanded(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: m.Text(mon.name, maxLines: 1, style: const TextStyle(fontSize: 13)),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                // Selos e nível: diminuem juntos se não couberem (Tera + DMAX + status).
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 110),
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerRight,
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      if (mon.terastal) ...[_Tag('TERA ${mon.teraType.toUpperCase()}', getColorForType(mon.teraType)), const SizedBox(width: 4)],
-                      if (dmax) ...[const _Tag('DMAX', Color(0xFFE11D48)), const SizedBox(width: 4)],
-                      if (status.isNotEmpty) ...[_StatusBadge(status), const SizedBox(width: 4)],
-                      m.Text('Nv.${mon.level}', style: const TextStyle(fontSize: 11)),
-                    ]),
-                  ),
-                ),
-              ]),
-              _HpBar(hp: hp, max: mon.maxHp),
-              if (boosts.entries.any((b) => b.value != 0 && _boostShort.containsKey(b.key)))
-                Padding(
-                  padding: const EdgeInsets.only(top: 2),
-                  child: Wrap(alignment: WrapAlignment.end, spacing: 2, runSpacing: 2, children: [
-                    for (final b in boosts.entries)
-                      if (b.value != 0 && _boostShort.containsKey(b.key))
-                        _Tag('${tr(_boostShort[b.key]!)} ${b.value > 0 ? '+' : '−'}${b.value.abs()}',
-                            b.value > 0 ? const Color(0xFF059669) : const Color(0xFFE11D48)),
-                  ]),
-                ),
-              if (mine) m.Text('$hp/${mon.maxHp}', textAlign: TextAlign.right, style: const TextStyle(fontSize: 12)),
-            ],
-          ),
-        ),
-      );
-}
 
 // Cores da efetividade: verde = bom para quem ataca, vermelho = ruim.
 const _effectColors = {

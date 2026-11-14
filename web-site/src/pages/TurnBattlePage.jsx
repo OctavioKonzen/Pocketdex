@@ -2282,7 +2282,7 @@ export function MultiBattle({battle, hit = null, onExit, onAgain, onFinish, onli
   </div>
   // O cenário do lugar (o mesmo do mapa, como na batalha de um contra um), com a plataforma embaixo de cada um.
   const scene = battleScene(battle.scene, battle.seed ?? 0)
-  const sprites = teamSide => <div className={`absolute z-10 grid items-end ${teamSide===side?`left-0 ${count===3?'bottom-[6%] w-[54%]':'bottom-[6%] w-[46%]'}`:`right-[30%] ${count===3?'bottom-[42%] w-[44%]':'bottom-[42%] w-[36%]'}`}`} style={{gridTemplateColumns:`repeat(${count},minmax(0,1fr))`}} data-testid={`multi-sprites-${teamSide}`}>
+  const sprites = teamSide => <div className={`absolute z-10 grid items-end ${teamSide===side?`left-0 ${count===3?'bottom-[6%] w-[54%]':'bottom-[6%] w-[46%]'}`:`right-[34.5%] ${count===3?'bottom-[42%] w-[44%]':'bottom-[42%] w-[36%]'}`}`} style={{gridTemplateColumns:`repeat(${count},minmax(0,1fr))`}} data-testid={`multi-sprites-${teamSide}`}>
     {fieldSlots(teamSide).map(slot=>{const mon=battle.sides[teamSide].team[slot.index],id=mon.dmax && mon.gmax || mon.id;return <div key={slot.slot} className="relative">
       <PlatformBase scene={scene} side={teamSide===side?'mine':'foe'} scale={battleScale(byId?.get(id)?.height)}/>
       <BattleSprite mon={mon} id={id} back={teamSide===side} fainted={hpOf(teamSide,slot.index)<=0} dmax={mon.dmax>0} tera={teraOf(mon)} byId={byId}/>

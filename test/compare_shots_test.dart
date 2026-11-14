@@ -63,7 +63,7 @@ void main() {
       Future<void> shot(String state) async {
         await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 400)));
         await tester.pump();
-        places['$name $state'] = [for (final key in ['battle-text', 'battle-bottom', 'battle-bottom-info', 'battle-bottom-grid', 'battle-bottom-footer']) tester.getRect(find.byKey(ValueKey(key)))];
+        places['$name $state'] = [for (final key in ['battle-text', 'battle-bottom-footer']) if (find.byKey(ValueKey(key)).evaluate().isNotEmpty) tester.getRect(find.byKey(ValueKey(key)))];
         final boundary = tester.renderObject<RenderRepaintBoundary>(find.byKey(const ValueKey('shot')));
         await tester.runAsync(() async {
           final image = await boundary.toImage(pixelRatio: 1);
@@ -81,7 +81,9 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('battle-fight')));
       await tester.pump();
       await shot('2-golpes');
-      await tap(const ValueKey('battle-bottom-footer'));
+      // O Voltar fica na ponta da barra de dicas (como no port).
+      await tester.tap(find.text('Voltar'));
+      await tester.pump();
       await tester.tap(find.text('POKÉMON'));
       await tester.pump();
       await shot('3-troca');
@@ -90,7 +92,9 @@ void main() {
       await tester.tap(find.byWidgetPredicate((w) => w.key is ValueKey && RegExp(r'^battle-(single-)?switch-(\d-)?1$').hasMatch('${(w.key as ValueKey).value}')));
       await tester.pump();
       await shot('3b-opcoes');
-      await tap(const ValueKey('battle-bottom-footer'));
+      // O Voltar fica na ponta da barra de dicas (como no port).
+      await tester.tap(find.text('Voltar'));
+      await tester.pump();
       for (var pos = 0; pos < (k == 0 ? 1 : 2); pos++) {
         await tester.tap(find.byKey(const ValueKey('battle-fight')));
         await tester.pump();

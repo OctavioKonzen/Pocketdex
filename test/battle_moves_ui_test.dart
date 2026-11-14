@@ -93,6 +93,8 @@ void main() {
     expect(battle.turn,1);
     Future<void> finishAnimations() async {for(var i=0;i<90;i++) {await tester.pump(const Duration(milliseconds:500));} expect(tester.takeException(),isNull);}
     await finishAnimations();
+    // O menu aparece dentro do campo depois da tela de VS (como no port).
+    for(var i=0;i<90 && find.byKey(const ValueKey('battle-fight')).evaluate().isEmpty;i++) { await tester.pump(const Duration(milliseconds:500)); }
     final fight=find.byKey(const ValueKey('battle-fight')); await tester.ensureVisible(fight); await tester.tap(fight); await tester.pump();
     final move=find.byKey(const ValueKey('battle-single-move-0')); await tester.ensureVisible(move);
     await tester.tap(move); await tester.tap(move,warnIfMissed:false); await tester.pump();
@@ -146,6 +148,8 @@ void main() {
         // Como no Showdown: um Pokémon por vez; depois do último, o turno vai sozinho.
         for(var position=0;position<count;position++) {
           // Como na batalha normal: LUTAR abre os golpes.
+          // O menu aparece dentro do campo depois da tela de VS e do turno (como no port).
+          for(var i=0;i<90 && find.byKey(const ValueKey('battle-fight')).evaluate().isEmpty;i++) { await tester.pump(const Duration(milliseconds:500)); }
           final fight=find.byKey(const ValueKey('battle-fight'));
           await tester.ensureVisible(fight); await tester.tap(fight); await tester.pump();
           for(var move=0;move<4;move++) expect(find.byKey(ValueKey('battle-move-$position-$move')), findsOneWidget);
@@ -187,6 +191,8 @@ void main() {
       battle:battle, hit:(_, _, _, _, [power, weather=''])=>null, typeEff:(_,_)=>1, foeName:'NPC', onAgain:(){}, onExit:(){},
     )))));
     await tester.pump(const Duration(milliseconds:300));
+    // O menu aparece dentro do campo depois da tela de VS (como no port).
+    for(var i=0;i<90 && find.byKey(const ValueKey('battle-fight')).evaluate().isEmpty;i++) { await tester.pump(const Duration(milliseconds:500)); }
     Future<void> tap(String key) async { final f=find.byKey(ValueKey(key)); await tester.ensureVisible(f); await tester.tap(f); await tester.pump(); }
     final turn=battle.turn;
     expect(find.text('O que Mew vai fazer? (1/2)'), findsOneWidget);
@@ -237,7 +243,7 @@ void main() {
     // Lugar fixo: a arena, a caixa de texto, a tela de baixo e cada parte dela (como num jogo oficial).
     final places=<String,List<Rect>>{};
     Size arena() {
-      places[sizes.length.toString()]=[for(final k in ['battle-text','battle-bottom','battle-bottom-grid','battle-bottom-footer']) tester.getRect(find.byKey(ValueKey(k)))];
+      places[sizes.length.toString()]=[for(final k in ['battle-text','battle-bottom-footer']) if(find.byKey(ValueKey(k)).evaluate().isNotEmpty) tester.getRect(find.byKey(ValueKey(k)))];
       return tester.getSize(find.byType(BattleBackdrop).first);
     }
     for(final (k,battle) in battles!.indexed) {
