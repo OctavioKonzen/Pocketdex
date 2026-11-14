@@ -778,3 +778,6 @@ h1, h2, .font-display {
 .port-multi .port-hp { padding-top: 0.6%; padding-bottom: 0.8%; }
 .port-multi .port-hp-row { font-size: 1.8cqw; }
 .port-multi .port-hp-num { font-size: 1.4cqw; line-height: 1.05; }
+/* O treinador entrando pela direita (no começo da batalha e quando fala no meio dela). */
+.trainer-enter-1 { animation: trainer-enter-1 420ms ease-out both; }
+@keyframes trainer-enter-1 { from { transform: translateX(140%); opacity: 0; } to { transform: none; opacity: 1; } }

@@ -13,7 +13,7 @@ import { raidAfterFight, raidDamage, raidMember } from '../lib/raid'
 import { battleHitter, battleMons, leaderTeam, randomTeam } from '../lib/battleSetup'
 import { friendsOnly, useFriends } from '../lib/friends'
 import { getFxAnchors, getGymLeaders, getMoveAnims, getMoveFx, getMoves, getTypes, shinyPath, spriteUrl } from '../lib/data'
-import { FX_SCALE, fxForMove, fxStage } from '../lib/battleFx'
+import { FX_SCALE, fxForMove, fxScene, fxStage } from '../lib/battleFx'
 import { canPlayFx, measureStage, runFx } from '../lib/fxRun'
 import { addHallOfFame, badgesNeeded, badgesOf, leagueOpen, leagueOrder, musicOf, regionGyms, regionOf, streakResult, winBadge } from '../lib/gymChallenge'
 import { language, localText, t } from '../lib/i18n'
@@ -1122,6 +1122,8 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   const fxAnchors = useRef(null)
   const [anchorsTable, setAnchorsTable] = useState(null)
   const [focusMove, setFocusMove] = useState(0)
+  // O treinador ao lado do Pokémon dele quando fala no meio da batalha: 'in' entrando/falando, 'out' saindo.
+  const [talker, setTalker] = useState(null)
   const world = useRef(null)
   const fxCanvas = useRef(null)
   const live = useRef(true)
@@ -1164,6 +1166,25 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   const finished = useRef(false)
 
   /** A Poké Ball abre na plataforma e o Pokémon sai dela. */
+  /**
+   * As cenas como no Black & White (mesma câmera e efeitos dos golpes): 'sendout' (a Poké Ball voa e abre),
+   * 'recall' (o raio vermelho) e 'faint' (desmaio). Devolve false quando não dá (sem os dados): usa a de antes.
+   */
+  const playScene = async (kind, side) => {
+    if (!canPlayFx() || !fxAnchors.current || !world.current || !fxCanvas.current || !field.current) return false
+    const ids = [0, 1].map((i) => String(shownRef.current.form[i] ?? battle.sides[i].team[shownRef.current.active[i]]?.id))
+    const stage = fxStage(fxAnchors.current, ids[0], ids[1])
+    if (!stage?.near?.box || !stage?.far?.box || !sprites[side].current) return false
+    const plan = fxScene({ kind, side, stage, seed: (turnNo.current * 7 + side) % 997 })
+    if (kind === 'sendout') playSound('open')
+    if (kind === 'recall') playSound('recall')
+    const done = runFx({ field: field.current, world: world.current, canvas: fxCanvas.current, spriteEls: [sprites[0].current, sprites[1].current], plan, rate: fast(1000) / 1000, live: () => live.current, endHidden: kind === 'sendout' ? null : side })
+    // Sai da Poké Ball: o sprite já existe (escondido pela cena até a bola abrir).
+    if (kind === 'sendout') requestAnimationFrame(() => setSide(setPoke, side, ''))
+    await done
+    if (kind === 'sendout') await sparkleIfShiny(side)
+    return true
+  }
   const release = async (side) => {
     playSound('open')
     setSide(setBall, side, 'open')
@@ -1211,9 +1232,13 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
     } else {
       say(t('{0} enviou {1}!').replace('{0}', foeName || coachRef.current?.name || t('O adversário')).replace('{1}', foeMon.name), 1)
       playSound('throw')
-      setSide(setBall, 1, 'throw')
-      await wait(520)
-      await release(1)
+      // O treinador saiu: a Poké Ball voa, abre e o Pokémon sai (a cena nova); sem ela, a de antes.
+      await wait(380)
+      if (!(await playScene('sendout', 1))) {
+        setSide(setBall, 1, 'throw')
+        await wait(520)
+        await release(1)
+      }
     }
     if (!live.current) return
     if (keepMine) {
@@ -1227,9 +1252,11 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
     }
     setIntro((i) => ({ ...i, me: 'out' }))
     playSound('throw')
-    setSide(setBall, 0, 'throw')
-    await wait(520)
-    await release(0)
+    if (!(await playScene('sendout', 0))) {
+      setSide(setBall, 0, 'throw')
+      await wait(520)
+      await release(0)
+    }
     setIntro(null)
   }
 
@@ -1358,6 +1385,9 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         // Espera piscar e a barra de HP descer.
         await wait(550)
       } else if (e.t === 'faint') {
+        // Desmaio como no jogo: a câmera chega perto, ele escurece e afunda (a cena nova).
+        await playScene('faint', e.side)
+        if (!live.current) return
         setShown((s) => ({ ...s, fainted: s.fainted.map((f, i) => (i === e.side ? true : f)) }))
       } else if (e.t === 'switch') {
         // Personagem importante (chefe com tela VS): fala no meio da batalha, como nos jogos, quando manda o último Pokémon.
@@ -1365,6 +1395,11 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         if (e.side === 1 && vs?.name && !lastWords.current && battle.sides[1].team.length > 1
           && !battle.sides[1].team.some((_, k) => k !== e.index && shownRef.current.hp[1][k] > 0)) {
           lastWords.current = true
+          // O treinador aparece ao lado do Pokémon dele enquanto fala (como nos jogos) e depois sai.
+          if (coachRef.current) {
+            setTalker('in')
+            await wait(380)
+          }
           for (const words of taunt.length ? taunt : [`${vs.name}: ${t(LAST_LINES[(vs.name.length + battle.sides[1].team.length) % LAST_LINES.length])}`]) {
             setText(words)
             addLog({ kind: 'text', side: 1, text: words })
@@ -1375,10 +1410,15 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
             skip.current = null
             if (!live.current) return
           }
+          if (coachRef.current) {
+            setTalker('out')
+            await wait(480)
+            setTalker(null)
+          }
         }
         // Volta para a Poké Ball (se não desmaiou) e o outro sai dela.
         const gone = shownRef.current.fainted[e.side]
-        if (!gone && shownRef.current.active[e.side] !== e.index) {
+        if (!gone && shownRef.current.active[e.side] !== e.index && !(await playScene('recall', e.side))) {
           playSound('recall')
           setSide(setPoke, e.side, 'recall')
           await wait(380)
@@ -1393,7 +1433,9 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
           boosts: s.boosts.map((b, i) => (i === e.side ? {} : b)),
           tera: s.tera.map((x, i) => (i === e.side ? '' : x)),
         }))
-        await release(e.side)
+        // Espera a tela trocar de Pokémon e ele sai da Poké Ball (a cena nova; sem ela, a de antes).
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+        if (!(await playScene('sendout', e.side))) await release(e.side)
       } else if (e.t === 'mega') {
         // A fanfarra da Mega e, dali até o fim da batalha, o tema épico. Igual ao app.
         playSound('mega', 0.8, syncedStart(useBattleSpeed.getState().speed))
@@ -1771,8 +1813,14 @@ waiting && !locked && menu === 'fight' ? <MenuButton onClick={() => setMenu('mai
             </div>
           )
         })}
-        {intro && coach && (
-          <div className={`trainer-foe absolute flex justify-center ${intro.foe === 'out' ? 'trainer-leave-1' : ''}`} style={{ left: '49%', width: '25%', bottom: `${(1 - FX_SCALE.farFeet.y / 540) * 100}%` }} data-testid="foe-trainer">
+        {/* O treinador entra depois da tela de VS (desliza pela direita), fica no lugar do Pokémon dele e sai para mandá-lo. */}
+        {intro && coach && !vsOn && (
+          <div className={`trainer-foe absolute flex justify-center ${intro.foe === 'out' ? 'trainer-leave-1' : 'trainer-enter-1'}`} style={{ left: '49%', width: '25%', bottom: `${(1 - FX_SCALE.farFeet.y / 540) * 100}%` }} data-testid="foe-trainer">
+            <TrainerSprite trainer={coach} height={farPerson(fieldWidth(field)) * 1.25} />
+          </div>
+        )}
+        {talker && coach && (
+          <div className={`absolute z-[12] flex justify-center ${talker === 'out' ? 'trainer-leave-1' : 'trainer-enter-1'}`} style={{ right: '1%', width: '22%', bottom: `${(1 - FX_SCALE.farFeet.y / 540) * 100 - 2}%` }} data-testid="foe-talker">
             <TrainerSprite trainer={coach} height={farPerson(fieldWidth(field)) * 1.25} />
           </div>
         )}

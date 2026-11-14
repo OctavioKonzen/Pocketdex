@@ -75,7 +75,7 @@ export const canPlayFx = () =>
  * Toca o golpe. [world] o elemento que a câmera move (fundo e sprites), [canvas] por cima, [spriteEls] [o seu, o outro],
  * [rate] a velocidade da batalha (1 normal, 0.5 rápido). Resolve quando termina.
  */
-export function runFx({ field, world, canvas, spriteEls, plan, rate = 1, live = () => true }) {
+export function runFx({ field, world, canvas, spriteEls, plan, rate = 1, live = () => true, endHidden = null }) {
   return new Promise((resolve) => {
     const W = field.clientWidth
     const H = field.clientHeight
@@ -95,14 +95,15 @@ export function runFx({ field, world, canvas, spriteEls, plan, rate = 1, live = 
     const start = performance.now()
     const reset = () => {
       world.style.transform = ''
-      for (const el of huds) el.style.opacity = ''
-      for (const el of spriteEls) {
-        if (!el) continue
+      for (const el of huds) el.style.filter = ''
+      spriteEls.forEach((el, i) => {
+        if (!el) return
         el.style.translate = ''
         el.style.scale = ''
         el.style.filter = ''
-        el.style.opacity = ''
-      }
+        // Voltou para a Poké Ball ou desmaiou: continua fora até a próxima cena dele.
+        el.style.opacity = i === endHidden ? '0' : ''
+      })
       g.setTransform(1, 0, 0, 1, 0, 0)
       g.clearRect(0, 0, canvas.width, canvas.height)
     }
@@ -115,7 +116,8 @@ export function runFx({ field, world, canvas, spriteEls, plan, rate = 1, live = 
       }
       world.style.transform = cameraCssPx(plan, ms, W, H)
       const hud = fxHud(plan, ms)
-      for (const el of huds) el.style.opacity = String(hud)
+      // filter (e não opacity): multiplica com a da própria caixa (a sua ainda escondida antes do seu Pokémon sair).
+      for (const el of huds) el.style.filter = hud < 1 ? `opacity(${hud})` : ''
       const looks = who.map((w) => fxSprite(plan, w, ms))
       looks.forEach((s, i) => {
         const el = spriteEls[i]
@@ -123,7 +125,7 @@ export function runFx({ field, world, canvas, spriteEls, plan, rate = 1, live = 
         el.style.translate = `${s.dx * f}px ${s.dy * f}px`
         el.style.scale = `${s.sx} ${s.sy}`
         el.style.filter = s.white ? 'brightness(0) invert(1)' : ''
-        el.style.opacity = s.hidden ? '0' : ''
+        el.style.opacity = s.hidden ? '0' : s.alpha < 1 ? String(s.alpha) : ''
       })
       g.setTransform(dpr, 0, 0, dpr, 0, 0)
       paintFx(g, plan, ms, W, H)
