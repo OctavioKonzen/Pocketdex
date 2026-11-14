@@ -733,9 +733,7 @@ ART = {
         'Wyndon': (518, 205), 'Circhester': (275, 358), 'Spikemuth': (760, 340), 'Hammerlocke': (548, 505),
         'Ballonlea': (178, 565), 'Stow-on-Side': (378, 600), 'Turffield': (233, 905), 'Motostoke': (530, 1052),
         'Hulbury': (830, 1122), 'Wedgehurst': (300, 1258), 'Postwick': (602, 1288)}},
-    'hisui': {'crop': (0, 0, 1536, 1024), 'cities': {
-        'Jubilife Village': (395, 570), 'Alabaster Icelands': (462, 210), 'Coronet Highlands': (890, 260), 'Crimson Mirelands': (1040, 540),
-        'Obsidian Fieldlands': (1245, 600), 'Cobalt Coastlands': (1175, 200), 'Temple of Sinnoh': (930, 745)}},
+    'hisui': {'crop': (0, 0, 1224, 1285), 'cities': {'Jubilife Village': (330, 768), 'Obsidian Fieldlands': (265, 412), 'Alabaster Icelands': (420, 282), 'Coronet Highlands': (617, 652), 'Temple of Sinnoh': (607, 418), 'Cobalt Coastlands': (935, 560), 'Crimson Mirelands': (860, 882)}},
 }
 ART_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'region_maps_art')
 

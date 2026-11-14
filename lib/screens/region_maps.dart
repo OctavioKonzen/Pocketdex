@@ -20,7 +20,7 @@ const regionMaps = <String, List<RegionMapInfo>>{
     (id: 'sinnoh', aspect: 1.2496, art: true, cities: <String, List<double>>{'Snowpoint City': [49.71, 21.39], 'Eterna City': [33.52, 28.7], 'Floaroma Town': [26.53, 37.88], 'Celestic Town': [60.49, 33.69], 'Oreburgh City': [43.65, 47.68], 'Canalave City': [17.62, 50.36], 'Jubilife City': [35.09, 56.33], 'Solaceon Town': [66.19, 45.45], 'Veilstone City': [77.39, 45.01], 'Hearthome City': [74.18, 57.49], 'Pastoria City': [84.88, 65.95], 'Sunyshore City': [88.45, 79.14], 'Twinleaf Town': [11.41, 77.72], 'Sandgem Town': [26.53, 83.96], 'Pokémon League': [90.01, 36.1], 'Fight Area': [82.03, 16.93], 'Survival Area': [85.95, 18.27], 'Resort Area': [89.73, 16.93]}),
   ],
   'Hisui': [
-    (id: 'hisui', aspect: 1.5, art: true, cities: <String, List<double>>{'Jubilife Village': [25.72, 55.66], 'Alabaster Icelands': [30.08, 20.51], 'Coronet Highlands': [57.94, 25.39], 'Crimson Mirelands': [67.71, 52.73], 'Obsidian Fieldlands': [81.05, 58.59], 'Cobalt Coastlands': [76.5, 19.53], 'Temple of Sinnoh': [60.55, 72.75]}),
+    (id: 'hisui', aspect: 0.9525, art: true, cities: <String, List<double>>{'Jubilife Village': [26.96, 59.77], 'Obsidian Fieldlands': [21.65, 32.06], 'Alabaster Icelands': [34.31, 21.95], 'Coronet Highlands': [50.41, 50.74], 'Temple of Sinnoh': [49.59, 32.53], 'Cobalt Coastlands': [76.39, 43.58], 'Crimson Mirelands': [70.26, 68.64]}),
   ],
   'Orre': [
     (id: 'orre', aspect: 1.5, art: true, cities: <String, List<double>>{'Gateon Port': [20.83, 43.95], 'Pyrite Town': [78.12, 24.41], 'Agate Village': [41.67, 41.99], 'Phenac City': [16.28, 21.0], 'Cipher Lab': [50.13, 23.44], 'Desert Resort': [69.01, 42.97], 'Realgam Tower': [74.87, 62.5]}),
