@@ -1734,7 +1734,8 @@ function RegionMap({ data, run, onClose, monName }) {
     return () => ro.disconnect()
   }, [map?.id])
   // O mapa ocupa a largura toda (sem faixas dos lados); mais alto que o espaço, rola na vertical.
-  const fit = map ? { w: box.w, h: box.w / map.aspect } : { w: 0, h: 0 }
+  // Tela única: o mapa inteiro cabe no espaço (pela largura ou pela altura), sem rolar.
+  const fit = map ? (box.w / map.aspect <= box.h ? { w: box.w, h: box.w / map.aspect } : { w: box.h * map.aspect, h: box.h }) : { w: 0, h: 0 }
   // Onde está o treinador: na rota, entre a cidade de antes e a próxima (pelo andar); na cidade, nela.
   const me = useMyTrainer()
   const xyOf = (k) => map?.spots.find((c) => c.i === k)?.xy
@@ -1793,7 +1794,7 @@ function RegionMap({ data, run, onClose, monName }) {
       {map ? (
         // O Town Map (como nos jogos): o desenho da região, as cidades em círculos; tocando numa, o nome dela embaixo.
         <div className="port-card flex min-h-0 flex-1 flex-col overflow-hidden bg-[#14396f]" data-testid="town-map-region">
-          <div ref={boxRef} className={`relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden ${fit.h < box.h ? 'flex items-center' : ''}`} data-testid="town-map-scroll">
+          <div ref={boxRef} className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden" data-testid="town-map-scroll">
             <div className="relative" style={{ width: fit.w, height: fit.h }}>
               <img src={spriteUrl(`maps/${map.id}.webp`)} alt="" className="absolute inset-0 h-full w-full select-none" draggable={false} data-testid="town-map-image" />
               {/* As vilas e cidades que não são da história (só o círculo). */}
@@ -1882,15 +1883,26 @@ const HELP = [
   ['💞', 'Amizade e habilidades', 'Quem fica no time ganha amizade e alguns evoluem por ela. Pickup acha itens, Intimidate espanta selvagens e Synchronize passa a Nature para o capturado.'],
 ]
 function HelpPanel({ onClose }) {
+  // Tela única: 4 tópicos por página (2 × 2), do tamanho do campo, sem rolar; ◀ ▶ troca a página.
+  const [page, setPage] = useState(0)
+  const per = 4
+  const pages = Math.ceil(HELP.length / per)
   return (
-    <div className="port-panel min-h-full space-y-2 p-2" data-testid="help-panel">
+    <div className="port-panel flex h-full flex-col gap-2 overflow-hidden p-2" style={{ containerType: 'inline-size' }} data-testid="help-panel">
       <OverlayClose onClose={onClose} title={`❓ ${t('Ajuda')}`} />
-      {HELP.map(([icon, title, text]) => (
-        <div key={title} className="port-card p-2">
-          <p className="text-sm">{icon} {t(title)}</p>
-          <p className="text-xs leading-snug text-slate-300">{t(text)}</p>
-        </div>
-      ))}
+      <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-2">
+        {HELP.slice(page * per, page * per + per).map(([icon, title, text]) => (
+          <div key={title} className="port-card flex min-h-0 flex-col gap-[0.8cqw] overflow-hidden p-[1.5cqw]">
+            <p className="text-[2.2cqw]">{icon} {t(title)}</p>
+            <p className="text-[1.6cqw] leading-snug text-slate-300">{t(text)}</p>
+          </div>
+        ))}
+      </div>
+      <div className="flex shrink-0 items-center justify-center gap-4 text-[1.8cqw]">
+        <button type="button" className="port-chip cursor-pointer px-3 disabled:opacity-30" disabled={page === 0} onClick={() => setPage(page - 1)} aria-label={t('Anterior')} data-testid="help-prev">◀</button>
+        <span className="tabular-nums">{page + 1}/{pages}</span>
+        <button type="button" className="port-chip cursor-pointer px-3 disabled:opacity-30" disabled={page === pages - 1} onClick={() => setPage(page + 1)} aria-label={t('Próxima')} data-testid="help-next">▶</button>
+      </div>
     </div>
   )
 }
