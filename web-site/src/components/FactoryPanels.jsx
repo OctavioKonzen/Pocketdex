@@ -1582,7 +1582,7 @@ function useWidth() {
 /** O campo da batalha (o mesmo cenário dela, no mesmo tamanho: 4:3, como no Black & White), no lugar em que você está. */
 function Field({ biome = 'grass', fieldRef, children, testid }) {
   return (
-    <div ref={fieldRef} className="relative aspect-video overflow-clip rounded-t-2xl border-4 border-b-0 hud-edge" style={{ background: '#9fdcff' }} data-testid={testid} data-layout="bw">
+    <div ref={fieldRef} className="relative aspect-[4/3] overflow-hidden rounded-t-2xl border-4 border-b-0 hud-edge" style={{ background: '#9fdcff' }} data-testid={testid} data-layout="bw">
       <BattleBackground scene={battleScene(biome)} layout="bw" />
       {children}
     </div>
@@ -1644,7 +1644,7 @@ function FieldMon({ mon, byId, back = false, follower = false, scene, followScal
   if (!p) return null
   const scale = follower && followScale != null ? followScale : battleScale(p.height)
   // follower: andando com você na cidade (de frente, do tamanho dele perto de você, sem base).
-  const place = follower ? 'absolute bottom-[26%] left-[30%] w-[40%]' : back ? 'absolute bottom-[26%] left-[3%] w-[40%]' : 'absolute right-[11%] w-[22%]'
+  const place = follower ? 'absolute bottom-[23%] left-[42%] w-[58%]' : back ? 'absolute bottom-[22%] left-[1%] w-[58%]' : 'absolute right-[11%] w-[26%]'
   return (
     <div className={place} style={back || follower ? undefined : { bottom: `${foeBottom(battleScene(scene)) * 100}%` }} data-testid={follower ? 'follower' : undefined}>
       {!follower && <PlatformBase scene={battleScene(scene)} side={back ? 'mine' : 'foe'} scale={scale} />}
@@ -1991,7 +1991,7 @@ function ToolButton({ icon, children, onClick, testid, active = false }) {
 function MenuButton({ children, sub, onClick, disabled = false, testid, active = false }) {
   return (
     <button type="button" onClick={onClick} disabled={disabled} data-testid={testid}
-      className={`dlg-btn cursor-pointer rounded-lg px-2 py-1 text-left disabled:cursor-default disabled:opacity-40 ${active ? 'active' : ''}`}>
+      className={`dlg-btn cursor-pointer rounded-lg px-2 py-2 text-left disabled:cursor-default disabled:opacity-40 ${active ? 'active' : ''}`}>
       <span className="block font-black">▸ {children}</span>
       {sub && <span className="dlg-sub block pl-3 text-[11px] font-semibold leading-tight">{sub}</span>}
     </button>
@@ -2122,7 +2122,7 @@ function TownMap({ route, pos, from, to, title, me, width, fieldRef, onPick, blo
   const n = route.options.length
   const ys = route.options.map((_, k) => y0 + (k - (n - 1) / 2) * Math.min(30, 84 / n))
   return (
-    <div ref={fieldRef} className="town-map relative aspect-video overflow-clip rounded-t-2xl border-4 border-b-0 hud-edge" data-testid="factory-map" data-fork="1">
+    <div ref={fieldRef} className="town-map relative aspect-[4/3] overflow-hidden rounded-t-2xl border-4 border-b-0 hud-edge" data-testid="factory-map" data-fork="1">
       <svg viewBox={`0 0 ${W} ${H}`} className="absolute inset-0 h-full w-full" aria-hidden="true">
         {/* A rota (o que já passou mais clara) e as cidades nas pontas. */}
         <line x1={x(0)} y1={y0} x2={x(here)} y2={y0} stroke="#fde68a" strokeWidth="3" strokeLinecap="round" />
@@ -2210,22 +2210,15 @@ function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, 
         {/* Sem corte seco: a tela do lugar troca com um fade (mapa, loja, resultado...). */}
         <div key={field?.props?.testid ?? ''} className="page-in">{field}</div>
         {/* A fala dentro da tela, embaixo, no mesmo lugar e do mesmo tamanho da batalha (o que não cabe: tocar passa). */}
-        <div className={`dlg-box absolute bottom-[1.5%] left-[1.25%] z-20 h-[25%] cursor-pointer ${menu ? 'right-[41%]' : 'right-[1.25%]'} space-y-1 overflow-hidden rounded-lg border-4 px-3 py-1.5 text-left text-xs leading-snug font-bold sm:px-3 sm:text-base ${frame ? `frame-${frame}` : ''}`}
+        <div className={`dlg-box absolute inset-x-[1.5%] bottom-[1.5%] z-20 h-[21%] cursor-pointer space-y-1 overflow-hidden rounded-lg border-4 px-3 py-1.5 text-left text-sm leading-snug font-bold sm:px-4 sm:text-lg ${frame ? `frame-${frame}` : ''}`}
           data-testid="factory-text" onClick={(e) => { const el = e.currentTarget; el.scrollTop = el.scrollTop + el.clientHeight >= el.scrollHeight - 1 ? 0 : el.scrollTop + el.clientHeight - 8 }}>
           {text}
         </div>
-        {/* O menu dentro da tela, à direita da caixa de texto (como na batalha): sem tela de baixo, dá para jogar com o celular de lado. */}
-        {menu && (
-          <div className="dlg-box absolute bottom-[1.5%] right-[1.25%] z-20 flex h-[50%] w-[39%] flex-col rounded-lg border-4 p-1.5 text-xs sm:text-sm" data-testid="factory-bottom">
-            {tools && <div className="mb-1 grid h-[26px] shrink-0 grid-cols-4 gap-1 border-b border-[var(--dlg-sub)]/35 pb-1" data-testid="factory-tools">{tools}</div>}
-            <div className="min-h-0 flex-1"><PagedMenu key={field?.props?.testid ?? ''} wide>{menu}</PagedMenu></div>
-          </div>
-        )}
         {panel && <div key={panel?.key ?? panel?.props?.testid ?? 'panel'} className="field-overlay factory-overlay panel-in rounded-t-2xl border-4 border-b-0 hud-edge bg-bg text-text" data-testid="factory-panel">{panel}</div>}
       </div>
-      {!run && <div className="h-7 rounded-b-2xl border-4 border-t-0 hud-edge hud-bar" />}
+      {!run && <div className="h-7 border-x-4 hud-edge hud-bar" />}
       {run && (
-        <div className="flex h-7 items-center gap-x-2 whitespace-nowrap rounded-b-2xl border-4 border-t-0 hud-edge hud-bar px-2 text-xs font-bold text-white" style={theme ? { background: `linear-gradient(90deg, ${theme}, color-mix(in srgb, #334155 78%, var(--hud-accent, #334155)) 70%)` } : undefined} data-testid="factory-bar">
+        <div className="flex h-7 items-center gap-x-2 whitespace-nowrap border-x-4 hud-edge hud-bar px-2 text-xs font-bold text-white" style={theme ? { background: `linear-gradient(90deg, ${theme}, color-mix(in srgb, #334155 78%, var(--hud-accent, #334155)) 70%)` } : undefined} data-testid="factory-bar">
           {/* As informações rolam de lado; o time fica sempre à direita. A Bolsa é só a contagem (o que tem dentro: em BOLSA). Igual ao app. */}
           <span className="flex min-w-0 flex-1 items-center gap-x-3 overflow-x-auto">
             <span>🎲 {t('Andar {0}').replace('{0}', run.floor)}</span>
@@ -2256,6 +2249,16 @@ function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, 
           </span>
         </div>
       )}
+      {/* A tela de baixo: da altura da tela de baixo da batalha (nada muda de tamanho entre a corrida e a batalha). */}
+      {/* Os botões ficam sempre nos mesmos lugares (como na batalha): o que não cabe vai para a próxima página (◀ ▶). */}
+      <div className="h-[15.5rem] rounded-b-2xl border-4 hud-edge hud-base p-2" data-testid="factory-bottom">
+        {menu && (
+          <div className="dlg-box flex h-full flex-col rounded-xl border-4 p-2">
+            {tools && <div className="mb-1.5 grid h-[30px] shrink-0 grid-cols-4 gap-1 border-b border-[var(--dlg-sub)]/35 pb-1.5" data-testid="factory-tools">{tools}</div>}
+            <div className="min-h-0 flex-1"><PagedMenu key={field?.props?.testid ?? ''} wide={wideMenu}>{menu}</PagedMenu></div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
