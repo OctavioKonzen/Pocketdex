@@ -15,7 +15,7 @@ import os
 import shutil
 
 OTA_API = 1
-FILES = ['battle_engine.js', 'factory.json', 'battle_items.json', 'move_rules.json']
+FILES = ['battle_engine.js', 'factory.json', 'battle_items.json', 'move_rules.json', 'battle_fx.js', 'move_fx.json', 'fx_anchors.json']
 
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 src = os.path.join(root, 'assets', 'database')

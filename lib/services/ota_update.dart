@@ -26,7 +26,7 @@ class OtaUpdate {
   static const base = 'https://octaviokonzen.github.io/Pocketdex/ota/';
 
   /// Os arquivos que podem vir pela rede (os outros sempre vêm do APK).
-  static const files = ['battle_engine.js', 'factory.json', 'battle_items.json', 'move_rules.json'];
+  static const files = ['battle_engine.js', 'factory.json', 'battle_items.json', 'move_rules.json', 'battle_fx.js', 'move_fx.json', 'fx_anchors.json'];
 
   /// A pasta da versão em uso (null: a do APK).
   static Directory? _active;
