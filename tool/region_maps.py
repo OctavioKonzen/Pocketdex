@@ -736,6 +736,7 @@ ART = {
     'hisui': {'crop': (0, 0, 1224, 1285), 'cities': {'Jubilife Village': (330, 768), 'Obsidian Fieldlands': (265, 412), 'Alabaster Icelands': (420, 282), 'Coronet Highlands': (617, 652), 'Temple of Sinnoh': (607, 418), 'Cobalt Coastlands': (935, 560), 'Crimson Mirelands': (860, 882)}},
     'armor': {'crop': (0, 0, 1224, 1285), 'cities': {'Master Dojo': (612, 430), 'Soothing Wetlands': (380, 835), 'Challenge Beach': (985, 660), 'Tower of Two Fists': (612, 262)}},
     'crown': {'crop': (0, 0, 1312, 1199), 'cities': {'Freezington': (1010, 822), 'Ballimere Lake': (408, 802), 'Split-Decision Ruins': (1060, 608), 'Crown Shrine': (660, 189)}},
+    'orange': {'crop': (0, 0, 1227, 1282), 'cities': {'Mikan Island': (220, 400), 'Navel Island': (615, 232), 'Trovita Island': (1000, 400), 'Kumquat Island': (615, 545), 'Pummelo Island': (1000, 780)}},
 }
 ART_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'region_maps_art')
 

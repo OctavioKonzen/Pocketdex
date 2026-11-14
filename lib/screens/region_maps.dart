@@ -50,7 +50,7 @@ const regionMaps = <String, List<RegionMapInfo>>{
     (id: 'crown', aspect: 1.0942, art: true, cities: <String, List<double>>{'Freezington': [76.98, 68.56], 'Ballimere Lake': [31.1, 66.89], 'Split-Decision Ruins': [80.79, 50.71], 'Crown Shrine': [50.3, 15.76]}),
   ],
   'Orange': [
-    (id: 'orange', aspect: 1.5, art: false, cities: <String, List<double>>{'Mikan Island': [19.53, 29.3], 'Navel Island': [42.33, 21.5], 'Trovita Island': [65.13, 32.2], 'Kumquat Island': [45.6, 60.5], 'Pummelo Island': [78.13, 73.2]}),
+    (id: 'orange', aspect: 0.9571, art: true, cities: <String, List<double>>{'Mikan Island': [17.93, 31.2], 'Navel Island': [50.12, 18.1], 'Trovita Island': [81.5, 31.2], 'Kumquat Island': [50.12, 42.51], 'Pummelo Island': [81.5, 60.84]}),
   ],
   'Unova': [
     (id: 'unova', aspect: 1.5, art: true, cities: <String, List<double>>{'Nuvema Town': [91.15, 87.4], 'Nacrene City': [73.89, 64.65], 'Icirrus City': [19.53, 23.93], 'Opelucid City': [82.16, 26.17], 'Castelia City': [47.72, 84.96], 'Striaton City': [76.82, 85.64], 'Nimbasa City': [48.5, 42.19], 'Undella Town': [89.84, 67.58], 'Driftveil City': [19.53, 46.68], 'Pokémon League': [61.85, 21.29], 'Accumula Town': [83.98, 85.64], 'Lacunosa Town': [86.59, 37.89], 'Humilau City': [88.54, 53.52], 'Lentimas Town': [87.57, 76.37], 'Black City': [73.83, 44.73], 'Aspertia City': [11.39, 74.41], 'Floccesy Town': [18.88, 60.74], 'Virbank City': [30.6, 67.58], 'Pokéstar Studios': [42.32, 67.58], 'Mistralton City': [14.97, 33.01]}),
