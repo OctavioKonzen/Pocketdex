@@ -44,7 +44,7 @@ import 'region_maps.dart';
 import '../widgets/pokemon_sprite.dart';
 import '../widgets/trainer_sprite.dart';
 import '../widgets/type_chip.dart';
-import 'turn_battle_screen.dart' show battleMonName, battleBarHeight, battleBottomHeight;
+import 'turn_battle_screen.dart' show battleMonName, battleBarHeight;
 
 /// Os itens da árvore: o símbolo, o nome (do jogo, sem traduzir) e de onde cai. Igual ao site.
 const pieceInfo = {
@@ -2555,7 +2555,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
         key: key,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
         child: AspectRatio(
-          aspectRatio: 4 / 3,
+          aspectRatio: 16 / 9,
           child: DecoratedBox(
             decoration: BoxDecoration(border: Border.all(color: _border, width: 4), color: const Color(0xFF9FDCFF)),
             child: LayoutBuilder(builder: (context, box) {
@@ -2572,8 +2572,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
   Widget _fieldMon(Map mon, double w, double h, {bool back = false}) {
     final sprite = StageMon(id: (mon['id'] as num).toInt(), shiny: mon['shiny'] == true, back: back, scene: _scene);
     return back
-        ? Positioned(left: w * 0.01, bottom: h * 0.22, width: w * 0.58, height: w * 0.58, child: sprite)
-        : Positioned(right: w * 0.11, bottom: h * foeBottom(_scene), width: w * 0.26, height: w * 0.26, child: sprite);
+        ? Positioned(left: w * 0.03, bottom: h * 0.26, width: w * 0.4, height: w * 0.4, child: sprite)
+        : Positioned(right: w * 0.11, bottom: h * foeBottom(_scene), width: w * 0.22, height: w * 0.22, child: sprite);
   }
 
   /// Alguém de pé na base de lá de trás (Enfermeira Joy, o chefe, um item...).
@@ -3198,7 +3198,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
       top: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         // A mesma tela da batalha: o campo (4:3) com a fala dentro dele, embaixo, no mesmo lugar e do mesmo tamanho.
         LayoutBuilder(builder: (context, box) {
-          final w = box.maxWidth, h = w * 3 / 4;
+          final w = box.maxWidth, h = w * 9 / 16;
           return Stack(children: [
             // Sem corte seco: a tela do lugar troca com um fade (mapa, loja, resultado...).
             AnimatedSwitcher(
@@ -3209,10 +3209,10 @@ class _FactoryScreenState extends State<FactoryScreen> {
               child: field,
             ),
             Positioned(
-              left: w * 0.015,
-              right: w * 0.015,
+              left: w * 0.0125,
+              right: menu == null ? w * 0.0125 : w * 0.41,
               bottom: h * 0.015,
-              height: h * 0.21,
+              height: h * 0.25,
               child: _PagedText(
                 key: const ValueKey('factory-text'),
                 // A moldura comprada na loja de cosméticos (por cima da caixa no tema).
@@ -3224,25 +3224,15 @@ class _FactoryScreenState extends State<FactoryScreen> {
                 children: text,
               ),
             ),
-            // A Bolsa e a loja aparecem por cima do campo; o time cobre a tela toda (como a tela do time da batalha).
-            if (_framePanel != null && !_fullPanel) Positioned.fill(child: _panelBox(_framePanel!)),
-          ]);
-        }),
-        // A faixa (da altura da faixa da batalha) e a tela de baixo (da altura da tela de baixo da batalha).
-        if (run != null)
-          _bar(run)
-        else
-          Container(height: battleBarHeight(context), decoration: BoxDecoration(color: Hud.tint(const Color(0xFF334155)), border: Border.symmetric(vertical: BorderSide(color: _border, width: 4)))),
-      ]),
-        bottom: Container(
-          key: const ValueKey('factory-bottom'),
-          height: battleBottomHeight(context),
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(color: Hud.base, border: Border.all(color: _border, width: 4), borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16))),
-          // Os botões ficam sempre nos mesmos lugares (como na batalha): o que não cabe vai para a próxima página (◀ ▶).
-          child: menu == null
-              ? null
-              : Container(
+            // O menu dentro da tela, à direita da caixa de texto (como na batalha): sem tela de baixo. Igual ao site.
+            if (menu != null)
+              Positioned(
+                key: const ValueKey('factory-bottom'),
+                right: w * 0.0125,
+                bottom: h * 0.015,
+                width: w * 0.39,
+                height: h * 0.5,
+                child: Container(
                   padding: const EdgeInsets.all(6),
                   decoration: _dlgBox(),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -3259,7 +3249,19 @@ class _FactoryScreenState extends State<FactoryScreen> {
                     Expanded(child: _PagedMenu(key: ValueKey(('menu', field.key)), color: _dlgText, child: menu is _MenuRow ? menu : _MenuRow(child: menu))),
                   ]),
                 ),
-        ),
+              ),
+            // A Bolsa e a loja aparecem por cima do campo; o time cobre a tela toda (como a tela do time da batalha).
+            if (_framePanel != null && !_fullPanel) Positioned.fill(child: _panelBox(_framePanel!)),
+          ]);
+        }),
+        // A faixa (da altura da faixa da batalha) e a tela de baixo (da altura da tela de baixo da batalha).
+        if (run != null)
+          _bar(run)
+        else
+          Container(height: battleBarHeight(context), decoration: BoxDecoration(color: Hud.tint(const Color(0xFF334155)), border: Border.symmetric(vertical: BorderSide(color: _border, width: 4)))),
+      ]),
+        bottom: const SizedBox.shrink(),
+        single: true,
       );
 
   Widget _small(String text, {Color? color}) => Text(text, style: TextStyle(fontSize: 13, color: color ?? _dlgText));
@@ -4761,10 +4763,10 @@ class _FactoryScreenState extends State<FactoryScreen> {
                   Positioned(
                       key: const ValueKey('follower'),
                       // Do tamanho dele perto de você (a mesma escala da batalha).
-                      left: w * 0.42,
-                      bottom: h * 0.23,
-                      width: w * 0.58,
-                      height: w * 0.58,
+                      left: w * 0.3,
+                      bottom: h * 0.26,
+                      width: w * 0.4,
+                      height: w * 0.4,
                       child: StageMon(id: (lead['id'] as num).toInt(), shiny: lead['shiny'] == true, base: false, scene: _scene, scale: follow?.scale)),
                 if (!town && lead != null) _fieldMon(lead, w, h, back: true),
               ];
@@ -4991,7 +4993,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
       key: const ValueKey('factory-map'),
       borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
       child: AspectRatio(
-        aspectRatio: 4 / 3,
+        aspectRatio: 16 / 9,
         child: DecoratedBox(
           decoration: BoxDecoration(border: Border.all(color: _border, width: 4), color: const Color(0xFF1D3F8F)),
           child: LayoutBuilder(builder: (context, box) {
