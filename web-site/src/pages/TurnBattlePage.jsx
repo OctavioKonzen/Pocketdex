@@ -2271,17 +2271,18 @@ export function MultiBattle({battle, hit = null, onExit, onAgain, onFinish, onli
   useEffect(()=>{if(state.winner != null && !playing && !online && !finished.current){finished.current=true;onFinish?.(null)}},[state.winner, playing, online, onFinish])
   const fieldSlots = teamSide => (shown?.slots[teamSide] ?? state.sides[teamSide].slots.map(slot=>slot.index)).map((index,slot)=>({slot,index})).filter(slot=>slot.index>=0)
   const hpOf = (teamSide,index) => shown?.hp[teamSide]?.[index] ?? battle.sides[teamSide].team[index].hp
-  const info = teamSide => <div className={`absolute z-20 space-y-1 ${teamSide===side?`bottom-[23.5%] right-0 ${count===3?'w-[34%]':'w-[38%]'}`:`top-[2%] left-0 ${count===3?'w-[34%]':'w-[44%]'}`}`}>
+  // Como no port: as caixas do adversário em cima à esquerda, as suas embaixo à direita (empilhadas).
+  const info = teamSide => <div data-fx-hud className={`absolute z-20 w-[31.5%] space-y-[0.6%] ${teamSide===side?'bottom-[8.5%] right-[1.25%]':'top-[1.9%] left-[1.25%]'}`}>
     {fieldSlots(teamSide).map(slot=>{
       const mon=battle.sides[teamSide].team[slot.index]
       return <div key={slot.slot} aria-label={`${trainer(battle.controllers[teamSide][slot.slot])} · posição ${slot.slot+1}`}>
-        <InfoBox bw mon={mon} hp={hpOf(teamSide,slot.index)} mine={teamSide===side} status={shown?.status[teamSide]?.[slot.index] ?? mon.status} dmax={mon.dmax>0} hpTestId={`multi-hp-${teamSide}-${slot.slot}`}/>
+        <PortHp mon={mon} hp={hpOf(teamSide,slot.index)} mine={teamSide===side} status={shown?.status[teamSide]?.[slot.index] ?? mon.status} dmax={mon.dmax>0} hpTestId={`multi-hp-${teamSide}-${slot.slot}`}/>
       </div>
     })}
   </div>
   // O cenário do lugar (o mesmo do mapa, como na batalha de um contra um), com a plataforma embaixo de cada um.
   const scene = battleScene(battle.scene, battle.seed ?? 0)
-  const sprites = teamSide => <div className={`absolute z-10 grid items-end ${teamSide===side?`left-0 ${count===3?'bottom-[25%] w-[66%]':'bottom-[19%] w-[64%]'}`:`right-0 ${count===3?'bottom-[62%] w-[66%]':'bottom-[55%] w-[58%]'}`}`} style={{gridTemplateColumns:`repeat(${count},minmax(0,1fr))`}} data-testid={`multi-sprites-${teamSide}`}>
+  const sprites = teamSide => <div className={`absolute z-10 grid items-end ${teamSide===side?`left-0 ${count===3?'bottom-[6%] w-[54%]':'bottom-[6%] w-[46%]'}`:`right-[30%] ${count===3?'bottom-[42%] w-[44%]':'bottom-[42%] w-[36%]'}`}`} style={{gridTemplateColumns:`repeat(${count},minmax(0,1fr))`}} data-testid={`multi-sprites-${teamSide}`}>
     {fieldSlots(teamSide).map(slot=>{const mon=battle.sides[teamSide].team[slot.index],id=mon.dmax && mon.gmax || mon.id;return <div key={slot.slot} className="relative">
       <PlatformBase scene={scene} side={teamSide===side?'mine':'foe'} scale={battleScale(byId?.get(id)?.height)}/>
       <BattleSprite mon={mon} id={id} back={teamSide===side} fainted={hpOf(teamSide,slot.index)<=0} dmax={mon.dmax>0} tera={teraOf(mon)} byId={byId}/>
@@ -2335,20 +2336,8 @@ export function MultiBattle({battle, hit = null, onExit, onAgain, onFinish, onli
     if (menu === 'party') return `${t(item ? 'Usar em qual Pokémon?' : 'Escolha um Pokémon.')}${step}`
     return `${t('O que')} ${mon.name} ${t('vai fazer?')}${step}`
   })()
-  const lines = online?.events ? describeEvents(online.events) : history
-  return <BattleWithLog log={lines}><section className="max-w-3xl space-y-2 max-lg:mx-auto">
-    <MoveInfo info={moveInfo} onClose={() => setMoveInfo(null)} />
-    {/* Sempre do mesmo tamanho da batalha normal (4:3), em dupla e em tripla. */}
-    <div onClickCapture={(e) => { if (skip.current) { e.stopPropagation(); skip.current() } }} className="battle-field port-field relative aspect-video overflow-clip rounded-2xl border-4 hud-edge" data-testid="multi-battle-field" data-layout="bw" style={{background:'#9fdcff'}}>
-      <BattleBackground weather={battle.weather} scene={scene} layout="bw"/>{sprites(1-side)}{sprites(side)}{info(1-side)}{info(side)}<WeatherFx weather={battle.weather}/>
-      {/* A mensagem dentro da tela, embaixo, como na batalha normal (tocar passa o texto). */}
-      {/* Todo texto na caixa (o erro também); se não couber, em partes. */}
-      <BattleDialog boxRef={dialogRef} onSkip={()=>skip.current?.()} text={shown ? shown.text : (error || online?.error) ? (error || online.error) : choosing ? prompt : status}/>
-      {party}{bag}
-      {vsOn && <VsSplash me={myTrainer} coach={coach} vs={{kind: online ? 'online' : 'trainer', name: foeName || coach?.name || (horde ? t('Horda') : t('Adversários'))}} myName={myName} foeMon={horde} onSkip={()=>setVsOn(false)}/>}
-    </div>
-    {/* Embaixo da tela: a mesma tela de baixo da batalha normal (do mesmo tamanho, cada coisa no seu lugar). */}
-    {(()=>{
+  // O menu, os golpes e os alvos (dentro do campo, como no port) e as escolhas do fim (embaixo).
+  const multiActions = (()=>{
       const slots = choosing ? (()=>{
         const slot=current, mon=battle.sides[side].team[slot.index], req=slot.request
         const mechanic=mon.gimmick
@@ -2435,15 +2424,35 @@ export function MultiBattle({battle, hit = null, onExit, onAgain, onFinish, onli
       })() : {}
       const more = state.winner==null && pending.length===0 && !playing && !online?.locked
       const end = !online && state.winner!=null && !playing && !onFinish
-      return <BottomScreen testId="multi-actions" data-turn={state.turn} data-round={online?.round ?? state.turn} data-playing={playing ? 1 : 0}
-        info={slots.info} grid={slots.grid} footer={slots.footer}
+      return {slots, bottom: <BottomScreen testId="multi-actions" inField data-turn={state.turn} data-round={online?.round ?? state.turn} data-playing={playing ? 1 : 0}
         // As outras escolhas: embaixo dos botões fixos (no fim, como na batalha normal; a Factory abre a tela do andar sozinha).
         extra={(slots.extra || more || end) ? <>
           {slots.extra}
           {more && <Button disabled={locked} onClick={()=>send()}>Continuar</Button>}
           {end && <><Button color="linear-gradient(90deg,#DC2626,#9333EA)" onClick={onAgain}>Batalhar de novo</Button><Button color="#546E7A" onClick={onExit}>Sair</Button></>}
-        </> : null}/>
-    })()}
+        </> : null}/>}
+  })()
+  const lines = online?.events ? describeEvents(online.events) : history
+  return <BattleWithLog log={lines}><section className="max-w-3xl space-y-2 max-lg:mx-auto">
+    <MoveInfo info={moveInfo} onClose={() => setMoveInfo(null)} />
+    {/* Sempre do mesmo tamanho da batalha normal (4:3), em dupla e em tripla. */}
+    <div onClickCapture={(e) => { if (skip.current) { e.stopPropagation(); skip.current() } }} className="battle-field port-field relative aspect-video overflow-clip rounded-2xl border-4 hud-edge" data-testid="multi-battle-field" data-layout="bw" style={{background:'#9fdcff'}}>
+      <BattleBackground weather={battle.weather} scene={scene} layout="bw"/>{sprites(1-side)}{sprites(side)}{info(1-side)}{info(side)}<WeatherFx weather={battle.weather}/>
+      {/* A mensagem dentro da tela, embaixo, como na batalha normal (tocar passa o texto). */}
+      {/* Todo texto na caixa (o erro também); se não couber, em partes. */}
+      <BattleDialog boxRef={dialogRef} narrow onSkip={()=>skip.current?.()} text={shown ? shown.text : (error || online?.error) ? (error || online.error) : choosing ? prompt : status}/>
+      {/* O menu e os golpes acima das suas caixas (como no port); a barra de dicas embaixo. */}
+      {multiActions.slots.grid && <div className="port-controls absolute right-[1.25%] z-30 h-[19%] w-[36%]" style={{ bottom: `${9.5 + count * 14.5}%` }} data-testid="battle-bottom-grid">{multiActions.slots.grid}</div>}
+      <div className="port-hint absolute inset-x-0 bottom-0 z-30 flex h-[6.7%] items-center gap-3 px-2 text-[1.6cqw] font-bold" data-testid="battle-bottom-footer">
+        <span className="port-key">✋</span>
+        <span className="shrink-0">{choosing ? t('Toque: escolher') : t('Toque: próximo')}</span>
+        {multiActions.slots.info && <div className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap">{multiActions.slots.info}</div>}
+        {multiActions.slots.footer && <div className="ml-auto h-[85%] shrink-0">{multiActions.slots.footer}</div>}
+      </div>
+      {party}{bag}
+      {vsOn && <VsSplash me={myTrainer} coach={coach} vs={{kind: online ? 'online' : 'trainer', name: foeName || coach?.name || (horde ? t('Horda') : t('Adversários'))}} myName={myName} foeMon={horde} onSkip={()=>setVsOn(false)}/>}
+    </div>
+    {multiActions.bottom}
     {/* No celular o registro fica embaixo; no PC, ao lado (BattleWithLog). */}
     <div className="max-h-44 overflow-auto rounded-xl bg-card p-3 text-sm lg:hidden" aria-live="polite">{lines.map((line,index)=><p key={index}>{line}</p>)}</div>
   </section></BattleWithLog>
