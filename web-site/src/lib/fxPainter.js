@@ -295,6 +295,35 @@ function particle(g, style, x, y, s, color, a, rot) {
       g.fill()
       break
     }
+    case 'pokeball': {
+      // A Poké Ball girando (vermelha em cima, branca embaixo, a faixa e o botão).
+      g.save()
+      g.translate(x, y)
+      g.rotate(rot)
+      g.globalAlpha = 1
+      g.fillStyle = '#ef4444'
+      g.beginPath()
+      g.arc(0, 0, s, Math.PI, 0)
+      g.fill()
+      g.fillStyle = '#f8fafc'
+      g.beginPath()
+      g.arc(0, 0, s, 0, Math.PI)
+      g.fill()
+      g.strokeStyle = '#111827'
+      g.lineWidth = Math.max(2, s * 0.16)
+      g.beginPath()
+      g.arc(0, 0, s, 0, Math.PI * 2)
+      g.moveTo(-s, 0)
+      g.lineTo(s, 0)
+      g.stroke()
+      g.fillStyle = '#f8fafc'
+      g.beginPath()
+      g.arc(0, 0, s * 0.32, 0, Math.PI * 2)
+      g.fill()
+      g.stroke()
+      g.restore()
+      break
+    }
     case 'heart': {
       g.beginPath()
       g.moveTo(x, y + s * 0.7)

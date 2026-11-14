@@ -775,6 +775,69 @@ export function fxPlan2({ kind, type, slug = '', from = 0, seed = 1, stage = FX_
   return { dur, cam, hud, shake, sprites: S, layers: L, contact, from, world: [stage.w, stage.h] }
 }
 
+
+/**
+ * As cenas da batalha como no Black & White (mesmo motor dos golpes): kind
+ *   sendout  a Poké Ball voa, abre num clarão com brilhos e o Pokémon sai dela como silhueta branca e cresce
+ *   recall   o raio vermelho volta para a Poké Ball: o Pokémon fica vermelho e encolhe até sumir
+ *   faint    o Pokémon desmaia: desce, fica escuro e some
+ * [side] 0 o seu (perto, de costas), 1 o outro. A câmera vai até ele e volta.
+ */
+export function fxScene({ kind, side = 1, stage = FX_STAGE, seed = 1 }) {
+  const S = side === 0 ? stage.near : stage.far
+  const c = body(S)
+  const NEUTRAL = [stage.w / 2, stage.h / 2, 1, 0]
+  const look = (p, z, r = 0) => [p.x, p.y, z, r]
+  const L = []
+  const SP = []
+  const shake = []
+  const who = 'A' // a cena é sempre de um Pokémon: ele é o "A" do plano
+  const toward = side === 0 ? 1 : -1
+  let cam
+  let dur
+  if (kind === 'sendout') {
+    // A bola vem de fora da tela (do treinador), em arco, gira e cai nos pés dele.
+    const from = side === 0 ? { x: -60, y: stage.h * 0.8 } : { x: stage.w + 60, y: S.y - S.h * 1.2 }
+    const land = { x: S.x, y: S.y - 30 }
+    cam = [[0, ...look({ x: (from.x + land.x) / 2, y: (from.y + land.y) / 2 }, side === 0 ? 1.0 : 1.05, 0)], [500, ...look(c, side === 0 ? 1.2 : 1.45, -2 * toward)], [1350, ...look(c, side === 0 ? 1.15 : 1.4, -toward)], [1800, ...NEUTRAL]]
+    L.push({ s: 'shot', t0: 0, t1: 520, x: [from.x, land.x], y: [from.y, land.y], r: 14, c: ['#ffffff', '#ef4444', '#991b1b', '#111827'], style: 'pokeball', arc: 140, spin: toward })
+    // Abre: clarão, raios, anel e brilhos subindo.
+    L.push({ s: 'tint', t0: 520, t1: 680, color: '#ffffff', a: [0.7, 0] })
+    L.push({ s: 'glow', t0: 520, t1: 900, x: land.x, y: land.y - S.h * 0.3, r: [10, S.h * 0.75], c: ['#ffffff', '#fff7d6', '#ffd6e0'], a: [1, 0] })
+    L.push({ s: 'rays', t0: 520, t1: 880, x: land.x, y: land.y - S.h * 0.3, n: 12, r0: 10, r1: [40, S.h * 0.9], w: 5, c: '#ffffff', c2: '#fde68a', a: [1, 0], rot: [0, 0.8] })
+    L.push({ s: 'ring', t0: 540, t1: 1000, x: land.x, y: land.y, r: [10, S.h * 0.55], ratio: 0.35, w: [8, 2], c: '#ffffff', a: [1, 0], n: 2, stagger: 1 })
+    L.push({ s: 'particles', t0: 560, t1: 1400, n: 26, seed, x: land.x, y: land.y - S.h * 0.2, sx: S.h * 0.35, sy: S.h * 0.2, v: 0, vy: -140, g: 0, life: 700, mode: 'stream', size: [12, 4], style: 'star', c: ['#ffffff', '#fef3c7', '#bae6fd'] })
+    SP.push({ who, k: 'hide', t0: 0, t1: 560 })
+    SP.push({ who, k: 'grow', t0: 560, t1: 900, s0: 0.05, s1: 1 })
+    SP.push({ who, k: 'silhouette', t0: 560, t1: 980 })
+    SP.push({ who, k: 'tint', t0: 900, t1: 1300, color: '#ffffff', a: 0.4 })
+    dur = 1850
+  } else if (kind === 'recall') {
+    // O raio vermelho sai da mão do treinador (fora da tela) e puxa o Pokémon de volta.
+    const hand = side === 0 ? { x: -40, y: stage.h * 0.75 } : { x: stage.w + 40, y: S.y - S.h * 1.1 }
+    cam = [[0, ...NEUTRAL], [350, ...look(c, side === 0 ? 1.15 : 1.35, -toward)], [1100, ...look(c, side === 0 ? 1.1 : 1.3, 0)], [1450, ...NEUTRAL]]
+    L.push({ s: 'beam', t0: 250, t1: 950, x0: hand.x, y0: hand.y, x1: c.x, y1: c.y, w: [4, 14], c: ['#ffe4e6', '#f43f5e', '#9f1239'], a: [1, 0], wobble: 2, grow: 160 })
+    L.push({ s: 'glow', t0: 450, t1: 1000, x: c.x, y: c.y, r: [S.h * 0.5, 10], c: ['#ffe4e6', '#f43f5e', '#9f1239'], a: [0.8, 0] })
+    L.push({ s: 'particles', t0: 450, t1: 1000, n: 22, seed, x: c.x, y: c.y, sx: 0, sy: 0, mode: 'converge', r: S.h * 0.6, life: 450, size: [8, 3], style: 'dot', c: ['#ffe4e6', '#f43f5e'] })
+    SP.push({ who, k: 'tint', t0: 350, t1: 1000, color: '#f43f5e', a: 0.85 })
+    SP.push({ who, k: 'grow', t0: 450, t1: 900, s0: 1, s1: 0 })
+    SP.push({ who, k: 'hide', t0: 900, t1: 1600 })
+    dur = 1500
+  } else {
+    // Desmaio: grito, desce do chão e some (como no jogo), a câmera chega perto.
+    cam = [[0, ...NEUTRAL], [300, ...look(c, side === 0 ? 1.1 : 1.3, toward)], [1200, ...look(c, side === 0 ? 1.1 : 1.3, toward)], [1500, ...NEUTRAL]]
+    SP.push({ who, k: 'move', t0: 300, t1: 1000, dx: 0, dy: S.h * 0.9, back: 0 })
+    SP.push({ who, k: 'fade', t0: 300, t1: 1000, a0: 1, a1: 0 })
+    SP.push({ who, k: 'tint', t0: 250, t1: 1000, color: '#1e1b4b', a: 0.5 })
+    SP.push({ who, k: 'hide', t0: 1000, t1: 1600 })
+    L.push({ s: 'particles', t0: 350, t1: 1100, n: 18, seed, x: S.x, y: S.y, sx: S.h * 0.4, sy: 6, v: 40, vy: -60, g: 0, life: 600, mode: 'stream', size: [14, 6], style: 'smoke', c: ['#94a3b8', '#64748b'] })
+    shake.push([300, 500, 4])
+    dur = 1550
+  }
+  // "from": o lado de quem é a cena (o A é ele).
+  return { dur, cam, hud: [80, dur - 200], shake, sprites: SP, layers: L, contact: false, from: side, world: [stage.w, stage.h] }
+}
+
 /** Estilos que acontecem em quem usa o golpe (ou no campo), não no alvo. */
 const SELF = new Set(['boost', 'dance', 'heal', 'shield', 'charge', 'weather', 'terrain', 'field', 'wall', 'explode', 'drop', 'status', 'powder', 'hazard', 'swap'])
 
@@ -786,6 +849,16 @@ export function fxForMove({ slug, type, category, self = false, entry = null, re
 
 /** A câmera no instante [ms]: [x, y, zoom, giro], suave entre os pontos. */
 export function fxCamera(plan, ms) {
+  const [cx, cy, z, r] = fxCameraRaw(plan, ms)
+  // Nunca mostra fora do cenário (com zoom, o meio fica longe das bordas).
+  const [w, h] = plan.world ?? [960, 540]
+  if (z < 1) return [cx, cy, z, r]
+  const hw = w / 2 / z
+  const hh = h / 2 / z
+  return [clamp(cx, hw, w - hw), clamp(cy, hh, h - hh), z, r]
+}
+
+function fxCameraRaw(plan, ms) {
   const k = plan.cam
   if (!k.length) return NEUTRAL
   if (ms <= k[0][0]) return k[0].slice(1)
@@ -824,7 +897,7 @@ export function fxHud(plan, ms) {
 
 /** Como fica cada sprite no instante [ms]: deslocamento, escala, cor por cima, silhueta branca e se aparece. */
 export function fxSprite(plan, who, ms) {
-  const out = { dx: 0, dy: 0, sx: 1, sy: 1, tint: null, tintA: 0, white: false, hidden: false }
+  const out = { dx: 0, dy: 0, sx: 1, sy: 1, tint: null, tintA: 0, white: false, hidden: false, alpha: 1 }
   for (const e of plan.sprites) {
     if (e.who !== who) continue
     if (e.k === 'flash') {
@@ -845,6 +918,13 @@ export function fxSprite(plan, who, ms) {
       out.dx += e.dx * f
       out.dy += e.dy * f
     } else if (e.k === 'hide') out.hidden = true
+    else if (e.k === 'grow') {
+      // Cresce (sai da Poké Ball) ou encolhe (volta para ela), a partir dos pés.
+      const g = e.s0 + (e.s1 - e.s0) * fxEase(k)
+      out.sx *= g
+      out.sy *= g
+    } else if (e.k === 'fade') out.alpha *= e.a0 + (e.a1 - e.a0) * k
+    else if (e.k === 'silhouette') out.white = true
     else if (e.k === 'squash') {
       const f = Math.sin(k * Math.PI)
       out.sx *= 1 + (e.sx - 1) * f
