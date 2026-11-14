@@ -34,12 +34,12 @@ export default function BwBag({ pockets, onClose, pocket: start, onPocket, selec
       <div className="flex flex-1 gap-1.5 p-2">
         {/* Os bolsos à esquerda (como no jogo): ícones em quadrados, o aberto claro e maior; embaixo, o nome com « ». */}
         <div className="flex w-28 shrink-0 flex-col gap-1.5">
-          <div className="grid grid-cols-3 gap-1">
+          <div className="grid flex-1 auto-rows-fr grid-cols-1 gap-1">
             {shown.map((p) => (
               <button key={p.id} type="button" onClick={() => open(p)} aria-label={t(p.label)} title={t(p.label)} aria-pressed={p.id === current?.id}
-                className={`flex aspect-square cursor-pointer items-center justify-center rounded-md border-2 text-xl transition-transform ${p.id === current?.id ? 'scale-105 border-white bg-white/60' : 'border-slate-900/40 bg-white/25 opacity-75 hover:opacity-100'}`}
+                className={`flex min-h-0 cursor-pointer items-center justify-center rounded-md border-2 text-xl transition-transform ${p.id === current?.id ? 'scale-105 border-white bg-white/60' : 'border-slate-900/40 bg-white/25 opacity-75 hover:opacity-100'}`}
                 data-testid={`${testid}-tab-${p.id}`}>
-                <PocketIcon p={p} size="h-6 w-6" />
+                <PocketIcon p={p} size="h-7 w-7" />
               </button>
             ))}
           </div>
@@ -64,6 +64,7 @@ export default function BwBag({ pockets, onClose, pocket: start, onPocket, selec
                     {it.icon ? <img src={it.icon} alt="" className="pixelated h-7 w-7 shrink-0" onError={(e) => { e.currentTarget.style.visibility = 'hidden' }} /> : <span className="h-7 w-1" />}
                     <span className="min-w-0 flex-1 truncate" data-no-translate>{it.name}</span>
                     {it.count != null && <span className="text-xs tabular-nums text-slate-300">×{it.count}</span>}
+                    {it.price != null && <span className={`text-xs font-black tabular-nums ${it.disabled ? 'text-slate-500' : 'text-amber-300'}`}>💰{it.price}</span>}
                   </button>
                 </li>
               ))}

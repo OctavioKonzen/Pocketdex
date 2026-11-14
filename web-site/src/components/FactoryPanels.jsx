@@ -2312,6 +2312,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
   const [pcOpen, setPcOpen] = useState(false)
   const [unlocked, setUnlocked] = useState(null)
   const [target, setTarget] = useState(0)
+  // O item tocado na loja (a descrição e o COMPRAR aparecem embaixo, como na Bolsa).
+  const [shopSel, setShopSel] = useState(null)
   // Conquistas novas (com as moedas) e o Hall da Fama, conforme a corrida anda.
   const [earned, setEarned] = useState([])
   useEffect(() => {
@@ -2868,28 +2870,29 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     )
     toolRow = true
     if (panel === 'buy') {
+      // A loja com a cara da Bolsa do Black & White: os bolsos à esquerda (um embaixo do outro), a lista escura com o
+      // preço, e embaixo o item tocado com a descrição e o COMPRAR. Para quem é a compra: o time, embaixo da lista.
+      const pocketOf = (id) => (/ball/.test(id) ? 'balls' : /potion|revive|heal|restore|elixir|ether|full|berry/.test(id) ? 'medicine' : /^tm|tutor|^evo:|reminder|deleter/i.test(id) ? 'moves' : 'items')
+      const item = (id) => {
+        const blocked = run.money < shopPrice(run, id) || shopOwned(run, id) || (id.startsWith('evo:') && !canEvolveWith(data, run.team[pick], id.slice(4), regionOf(data, run)).length)
+        return { id, name: itemName(id), icon: itemIcon(id), price: shopPrice(run, id), help: shopOwned(run, id) ? t('Você já tem') : itemHelp(id), disabled: blocked,
+          use: `${t('COMPRAR')} · 💰${shopPrice(run, id)}`, onUse: () => save(buyItem(run, id, pick, data)) }
+      }
+      const pockets = [
+        { id: 'balls', label: 'Poké Balls', img: 'poke-ball', items: [] },
+        { id: 'medicine', label: 'Remédios', img: 'potion', items: [] },
+        { id: 'items', label: 'Itens', img: 'leftovers', items: [] },
+        { id: 'moves', label: 'TMs e golpes', img: 'tm-normal', items: [] },
+      ]
+      for (const id of p.shop) pockets.find((x) => x.id === pocketOf(id)).items.push(item(id))
       below = (
-        <div className="space-y-2 p-2">
-          <OverlayClose onClose={() => setPanel(null)} title={`${vendor ? `🎒 ${t('Vendedor ambulante')}` : p.store ? `🏬 ${p.store}` : '🛒 Poké Mart'} · 💰${run.money}`} />
-          <p className="text-xs text-muted">{t('Para quem é a compra (bolas e itens da Bolsa vão para a Bolsa):')}</p>
-          <div className="flex flex-wrap gap-1">{run.team.map((m, i) => <MonChip key={i} mon={m} byId={byId} selected={pick === i} onClick={() => setTarget(i)} testid={`target-${i}`} />)}</div>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {p.shop.map((id) => (
-              <div key={id} className="flex items-center justify-between gap-2 rounded-xl bg-surface p-2 text-sm">
-                <img src={itemIcon(id)} alt="" className="pixelated h-8 w-8" onError={hide} />
-                <div className="min-w-0 flex-1">
-                  <p className="font-bold" data-no-translate>{itemName(id)}</p>
-                  <p className="text-xs text-muted">{shopOwned(run, id) ? t('Você já tem') : itemHelp(id)}</p>
-                </div>
-                <Button data-testid={`buy-${id}`}
-                  disabled={run.money < shopPrice(run, id) || shopOwned(run, id) || (id.startsWith('evo:') && !canEvolveWith(data, run.team[pick], id.slice(4), regionOf(data, run)).length)}
-                  onClick={() => save(buyItem(run, id, pick, data))}>
-                  💰{shopPrice(run, id)}
-                </Button>
-              </div>
-            ))}
+        <BwBag pockets={pockets.filter((x) => x.items.length)} onClose={() => setPanel(null)} selected={shopSel} onSelect={setShopSel} testid="factory-shop-bag">
+          <div className="mt-auto flex flex-wrap items-center gap-1 border-t border-white/10 pt-1 text-xs font-bold">
+            <span className="text-slate-300">{t('Para:')}</span>
+            {run.team.map((m, i) => <MonChip key={i} mon={m} byId={byId} selected={pick === i} onClick={() => setTarget(i)} testid={`target-${i}`} />)}
+            <span className="ml-auto text-amber-300">💰{run.money}</span>
           </div>
-        </div>
+        </BwBag>
       )
     }
   } else if (!p && run.route) {
@@ -3059,7 +3062,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         {!asCards && pathItems}
         {/* Na cidade: o Poké Mart, o Centro Pokémon e a Creche (cada um no seu lugar). */}
         {town && (
-          <div className="grid grid-cols-3 gap-1">
+          <div className="contents">
             <MenuButton testid="town-mart" disabled={busy} onClick={() => save(townShop(run))}>🛒 Poké Mart</MenuButton>
             <MenuButton testid="town-center" disabled={busy} onClick={() => save(townCenter(run))}>🏥 {t('CENTRO')}</MenuButton>
             {daycareOpen(data, run) && <MenuButton testid="town-daycare" disabled={busy} onClick={() => setPanel(panel === 'daycare' ? null : 'daycare')} active={panel === 'daycare'}>🏡 {t('CRECHE')}</MenuButton>}
@@ -3067,7 +3070,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         )}
         {/* O que só esta cidade tem (como nos jogos): a Department Store, o Game Corner, o Move Deleter e o Move Reminder. */}
         {town && (storeOf(data, run) || cornerOf(data, run) || tutorsOf(data, run).length > 0) && (
-          <div className="grid grid-cols-2 gap-1">
+          <div className="contents">
             {storeOf(data, run) && <MenuButton testid="town-store" disabled={busy} onClick={() => save(enterStore(run, data))}>🏬 <span data-no-translate>{storeOf(data, run).name}</span></MenuButton>}
             {cornerOf(data, run) && <MenuButton testid="town-corner" disabled={busy} onClick={() => setPanel(panel === 'corner' ? null : 'corner')} active={panel === 'corner'}>🎰 <span data-no-translate>{cornerOf(data, run).name}</span></MenuButton>}
             {tutorsOf(data, run).includes('deleter') && <MenuButton testid="town-deleter" disabled={busy} onClick={() => setPanel(String(panel).startsWith('deleter') ? null : 'deleter')} active={String(panel).startsWith('deleter')}>🧓 Move Deleter</MenuButton>}
