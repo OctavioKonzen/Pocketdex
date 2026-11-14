@@ -46,7 +46,7 @@ Color _rgba(String s, double a) {
   return c.withValues(alpha: c.a * _clamp(a));
 }
 
-const _screenShapes = {'tint', 'fill', 'wave'};
+const _screenShapes = {'tint', 'fill', 'wave', 'surge'};
 
 /// Aplica a câmera do golpe (o mundo vai para a tela de tamanho [size]).
 void applyFxCamera(Canvas canvas, MoveFxPlan plan, double ms, Size size) {
@@ -98,6 +98,8 @@ class FxPainter extends CustomPainter {
             _fill(canvas, l, k);
           case 'wave':
             _wave(canvas, l, k);
+          case 'surge':
+            _surge(canvas, l, k);
         }
       } else {
         applyFxCamera(canvas, plan, ms, size);
@@ -659,6 +661,63 @@ class FxPainter extends CustomPainter {
     final foam = Paint()..color = Colors.white.withValues(alpha: 0.85);
     for (var i = 0; i < 18; i++) {
       canvas.drawRect(Rect.fromLTWH(x - dir * BattleFx.rand(i) * 120, _vh - h + BattleFx.rand(i + 5) * 40, 8, 8), foam);
+    }
+  }
+
+  /// A onda do Surf como no Black & White, em pixels (igual a surge do fxPainter.js).
+  void _surge(Canvas canvas, Map l, double k) {
+    const b = 12.0;
+    final c = _cs(l['c']);
+    final a = _n(l['a'], 0.92);
+    final dir = _n(l['dir'], 1);
+    double sm(double t) => t * t * (3 - 2 * t);
+    final rise = _clamp(k / 0.25), sweep = _clamp((k - 0.2) / 0.5), drain = _clamp((k - 0.72) / 0.28);
+    final h = _vh * (0.3 + 0.62 * sm(rise)) * (1 - sm(drain));
+    if (h <= 1) return;
+    final f = _lerp(-60, 160, sm(rise)) + sm(sweep) * (_vw + 420);
+    double xOf(double u) => dir > 0 ? u : _vw - u - b;
+    double top(double u) {
+      final t = _clamp((u - (f - 520)) / 520);
+      final y = _vh - h * (0.72 + 0.28 * t * t) + math.sin(u * 0.035 + ms / 90) * 10;
+      return (y / b).roundToDouble() * b;
+    }
+
+    void band(double x, double y0, double y1, String col, double al) {
+      if (y1 <= y0) return;
+      canvas.drawRect(Rect.fromLTWH(x, y0, b, y1 - y0), Paint()..color = _rgba(col, al));
+    }
+
+    for (var u = 0.0; u < _vw; u += b) {
+      final x = xOf(u);
+      if (u <= f) {
+        final y = top(u);
+        final mid = y + 3 * b + (_vh - y) * 0.3;
+        band(x, y, y + b, c[0], a);
+        band(x, y + b, y + 3 * b, c[1], a);
+        band(x, y + 3 * b, mid, c[2], a);
+        band(x, mid, _vh, c[3], a);
+      } else if (u <= f + 96 && drain == 0) {
+        final q = (u - f) / 96;
+        final y = ((_vh - h * 1.04 + q * q * h * 0.42) / b).roundToDouble() * b;
+        final th = math.max(b, ((b * 3 * (1 - q * 0.6)) / b).roundToDouble() * b);
+        band(x, y, y + b, c[0], a);
+        band(x, y + b, y + th, c[1], a * (1 - q * 0.4));
+      }
+    }
+    for (var i = 0; i < 16; i++) {
+      var u = (BattleFx.rand(i) * _vw + ms * 0.25 * (i % 3 != 0 ? 1 : -1)) % _vw;
+      if (u < 0) u += _vw;
+      if (u > f) continue;
+      final y0 = top(u) + 4 * b;
+      final y = y0 + BattleFx.rand(i + 30) * math.max(0, _vh - y0);
+      canvas.drawRect(Rect.fromLTWH(xOf((u / b).roundToDouble() * b), (y / (b / 2)).roundToDouble() * (b / 2), b * 3, b / 2), Paint()..color = _rgba(c[1], 0.55 * a));
+    }
+    if (drain == 0) {
+      for (var i = 0; i < 22; i++) {
+        final u = f + BattleFx.rand(i + 50) * 110 - 30 + math.sin(ms / 70 + i) * 8;
+        final y = _vh - h * 1.04 - BattleFx.rand(i + 70) * 70 + ((ms / 6 + i * 13) % 50);
+        canvas.drawRect(Rect.fromLTWH(xOf((u / (b / 2)).roundToDouble() * (b / 2)), (y / (b / 2)).roundToDouble() * (b / 2), b / 2, b / 2), Paint()..color = _rgba(c[0], 0.9 * a));
+      }
     }
   }
 

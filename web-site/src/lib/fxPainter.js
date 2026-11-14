@@ -58,7 +58,7 @@ export function paintFx(g, plan, ms, w, h) {
     if (ms < L.t0 || ms > L.t1) continue
     const k = (ms - L.t0) / Math.max(1, L.t1 - L.t0)
     g.save()
-    if (L.s === 'tint' || L.s === 'fill' || L.s === 'wave') {
+    if (L.s in SCREEN) {
       g.scale(w / VW, h / VH)
       SCREEN[L.s](g, L, k, ms)
     } else {
@@ -750,6 +750,71 @@ function wave(g, L, k, ms) {
   }
 }
 
+/**
+ * A onda do Surf como no Black & White, em pixels: sobe atrás de quem ataca, a crista enrola e quebra, atravessa a
+ * tela cobrindo o alvo e depois a água escoa para baixo. c = [espuma, claro, médio, fundo].
+ */
+function surge(g, L, k, ms) {
+  const B = 12
+  const c = L.c
+  const a = L.a ?? 0.92
+  const sm = (t) => t * t * (3 - 2 * t)
+  const rise = clamp(k / 0.25)
+  const sweep = clamp((k - 0.2) / 0.5)
+  const drain = clamp((k - 0.72) / 0.28)
+  const H = VH * (0.3 + 0.62 * sm(rise)) * (1 - sm(drain))
+  if (H <= 1) return
+  const F = lerp(-60, 160, sm(rise)) + sm(sweep) * (VW + 420)
+  const X = (u) => (L.dir > 0 ? u : VW - u - B)
+  const top = (u) => {
+    const t = clamp((u - (F - 520)) / 520)
+    const y = VH - H * (0.72 + 0.28 * t * t) + Math.sin(u * 0.035 + ms / 90) * 10
+    return Math.round(y / B) * B
+  }
+  const band = (x, y0, y1, col, al) => {
+    if (y1 <= y0) return
+    g.fillStyle = rgba(col, al)
+    g.fillRect(x, y0, B, y1 - y0)
+  }
+  for (let u = 0; u < VW; u += B) {
+    const x = X(u)
+    if (u <= F) {
+      const y = top(u)
+      const mid = y + 3 * B + (VH - y) * 0.3
+      band(x, y, y + B, c[0], a)
+      band(x, y + B, y + 3 * B, c[1], a)
+      band(x, y + 3 * B, mid, c[2], a)
+      band(x, mid, VH, c[3], a)
+    } else if (u <= F + 96 && drain === 0) {
+      // A crista enrolando para frente (oca embaixo, como um tubo).
+      const q = (u - F) / 96
+      const y = Math.round((VH - H * 1.04 + q * q * H * 0.42) / B) * B
+      const th = Math.max(B, Math.round((B * 3 * (1 - q * 0.6)) / B) * B)
+      band(x, y, y + B, c[0], a)
+      band(x, y + B, y + th, c[1], a * (1 - q * 0.4))
+    }
+  }
+  // Reflexos de luz correndo pela água.
+  for (let i = 0; i < 16; i++) {
+    const u = (fxRand(i) * VW + (ms * 0.25 * (i % 3 ? 1 : -1))) % VW
+    const uu = u < 0 ? u + VW : u
+    if (uu > F) continue
+    const y0 = top(uu) + 4 * B
+    const y = y0 + fxRand(i + 30) * Math.max(0, VH - y0)
+    g.fillStyle = rgba(c[1], 0.55 * a)
+    g.fillRect(X(Math.round(uu / B) * B), Math.round(y / (B / 2)) * (B / 2), B * 3, B / 2)
+  }
+  // Espuma espirrando da crista.
+  if (drain === 0) {
+    for (let i = 0; i < 22; i++) {
+      const u = F + fxRand(i + 50) * 110 - 30 + Math.sin(ms / 70 + i) * 8
+      const y = VH - H * 1.04 - fxRand(i + 70) * 70 + ((ms / 6 + i * 13) % 50)
+      g.fillStyle = rgba(c[0], 0.9 * a)
+      g.fillRect(X(Math.round(u / (B / 2)) * (B / 2)), Math.round(y / (B / 2)) * (B / 2), B / 2, B / 2)
+    }
+  }
+}
+
 /** Uma forma grande com brilho (o punho no soco, o pé no chute, a lua no Moonblast...). */
 function icon(g, L, k) {
   const x = at(L.x, k)
@@ -821,4 +886,4 @@ function drawIcon(g, style, x, y, s, color, rot) {
 }
 
 const SHAPES = { glow, rays, ring, particles, bolt, beam, web, arc, fangs, cone, shot, crack, icon }
-const SCREEN = { tint, fill, wave }
+const SCREEN = { tint, fill, wave, surge }

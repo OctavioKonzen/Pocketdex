@@ -149,13 +149,21 @@ class BattleFx {
 
   /// A tela tremendo no instante [ms]: (dx, dy).
   static (double, double) shake(MoveFxPlan p, double ms) {
-    var amp = 0.0;
+    var amp = 0.0, sway = 0.0;
     for (final s in p.shake) {
-      if (ms >= s[0] && ms <= s[1]) amp = math.max(amp, s[2] * (1 - (ms - s[0]) / (s[1] - s[0])));
+      if (ms < s[0] || ms > s[1]) continue;
+      final k = (ms - s[0]) / (s[1] - s[0]);
+      // Modo 1: a tela balança para os lados (Earthquake), sobe rápido e acalma no fim.
+      if (s.length > 3 && s[3] == 1) {
+        sway = math.max(sway, s[2] * math.min(1.0, math.min(k * 6, (1 - k) * 2.5)));
+      } else {
+        amp = math.max(amp, s[2] * (1 - k));
+      }
     }
-    if (amp == 0) return (0, 0);
+    if (amp == 0 && sway == 0) return (0, 0);
     final i = (ms / 33).floor();
-    return ((rand(i) - 0.5) * 2 * amp, (rand(i + 99) - 0.5) * 2 * amp);
+    final sx = sway * math.sin(ms / 150 * math.pi * 2), sy = sway * 0.15 * math.sin(ms / 75 * math.pi * 2);
+    return ((rand(i) - 0.5) * 2 * amp + sx, (rand(i + 99) - 0.5) * 2 * amp + sy);
   }
 
   /// HP e caixas: 1 visível, 0 escondido.

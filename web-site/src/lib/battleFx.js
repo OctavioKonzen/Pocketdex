@@ -263,28 +263,44 @@ export function fxPlan2({ kind, type, slug = '', from = 0, seed = 1, stage = FX_
       flashAfter(2550)
     },
     surf: () => {
-      // A câmera abre, a parede de água atravessa a tela inteira e espirra no alvo.
-      cam = [[0, ...NEUTRAL], [400, ...[stage.w / 2, stage.h / 2 + 20, 0.94, -toward]], [1800, ...look(tc, 1.3, -2 * toward)]]
-      add({ s: 'tint', t0: 200, t1: 1900, color: '#0b3b8a', a: [0, 0.25] })
-      add({ s: 'wave', t0: 300, t1: 1700, dir: toward, c: ['#e8fbff', '#5cc8ff', '#1f6fd6', '#0b3b8a'], h: [0.25, 0.85] })
-      add({ s: 'particles', t0: 600, t1: 1800, n: 70, seed, x: tc.x, y: tc.y, sx: 240, sy: 140, v: 140, vy: -240, g: 520, life: 650, mode: 'stream', size: [9, 4], style: 'droplet', c: ['#ffffff', '#bfe8ff', '#5cc8ff'] })
-      add({ s: 'particles', t0: 700, t1: 1800, n: 20, seed: seed + 2, x: tc.x, y: tc.y, sx: 120, sy: 80, v: 30, vy: -80, g: 0, life: 700, mode: 'stream', size: [10, 6], style: 'bubble', c: ['#ffffff', '#bfe8ff'] })
-      hit(1050, 1.2, '#5cc8ff')
-      back(1850, 60)
-      flashAfter(2400)
+      // Como no BW: a água sobe aos pés de quem ataca, a onda em pixels cresce atrás dele, enrola, quebra por cima do
+      // alvo e atravessa a tela; depois escoa e o alvo fica pingando.
+      const wide = [(a.x + tc.x) / 2, (a.y + tc.y) / 2 + 10, 0.95, -toward]
+      cam = [[0, ...NEUTRAL], [450, ...wide], [1750, ...wide], [2100, ...look(tc, 1.35, -2 * toward)]]
+      add({ s: 'tint', t0: 150, t1: 2500, color: '#06235c', a: [0, 0.32] })
+      add({ s: 'ring', t0: 150, t1: 800, x: a.x, y: a.y, r: [20, A.h * 0.7], ratio: 0.28, w: [8, 2], c: '#bfe8ff', a: [1, 0], n: 3, stagger: 1 })
+      add({ s: 'particles', t0: 150, t1: 900, n: 36, seed, x: a.x, y: a.y, sx: A.h * 0.5, sy: 8, v: 30, vy: -300, g: 500, life: 550, mode: 'stream', size: [8, 4], style: 'droplet', c: ['#ffffff', '#bfe8ff', '#5cc8ff'] })
+      add({ s: 'surge', t0: 350, t1: 2350, dir: toward, c: ['#f4fdff', '#7fd6ff', '#2a86e0', '#0d3f99'], a: 0.93 })
+      add({ s: 'particles', t0: 1250, t1: 2000, n: 46, seed: seed + 2, x: tc.x, y: tc.y, sx: 30, sy: 30, v: 260, vy: -220, g: 700, life: 650, mode: 'burst', size: [10, 4], style: 'droplet', c: ['#ffffff', '#bfe8ff', '#5cc8ff'] })
+      add({ s: 'particles', t0: 1450, t1: 2400, n: 26, seed: seed + 4, x: tc.x, y: T.y, sx: T.h * 0.6, sy: 20, v: 20, vy: -160, g: -40, life: 800, mode: 'stream', size: [12, 6], style: 'bubble', c: ['#ffffff', '#bfe8ff'] })
+      add({ s: 'particles', t0: 2050, t1: 2800, n: 22, seed: seed + 6, x: tc.x, y: tc.y - T.h * 0.2, sx: T.h * 0.35, sy: T.h * 0.25, v: 0, vy: 40, g: 600, life: 500, mode: 'stream', size: [7, 4], style: 'droplet', c: ['#ffffff', '#9edcff'] })
+      hit(1250, 1.25, '#5cc8ff')
+      S.push({ who: 'T', k: 'tint', t0: 1250, t1: 2700, color: '#4aa8ff', a: 0.55 })
+      S.push({ who: 'A', k: 'tint', t0: 200, t1: 900, color: '#7fd6ff', a: 0.4 })
+      back(2650, 60)
+      flashAfter(3200)
     },
     earthquake: () => {
-      // A câmera abre, tudo treme forte, o chão racha embaixo do alvo e pedras e poeira sobem.
-      cam = [[0, ...NEUTRAL], [300, stage.w / 2, stage.h / 2 + 30, 0.9, 0], [1700, stage.w / 2, stage.h / 2 + 30, 0.93, 0]]
-      shake.push([300, 1700, 18])
-      add({ s: 'crack', t0: 350, t1: 1700, x: tc.x, y: T.y, r: [30, 340], n: 9, c: '#3b2a12', c2: '#e0b866', a: [1, 0] })
-      add({ s: 'particles', t0: 400, t1: 1700, n: 70, seed, x: tc.x, y: T.y, sx: 260, sy: 10, v: 80, vy: -320, g: 700, life: 750, mode: 'stream', size: [16, 6], style: 'dust', c: ['#e0b866', '#a8742e', '#5b3c12'] })
-      add({ s: 'particles', t0: 500, t1: 1600, n: 18, seed: seed + 2, x: tc.x, y: T.y, sx: 200, sy: 10, v: 40, vy: -420, g: 900, life: 800, mode: 'stream', size: [16, 12], style: 'shard', c: ['#d6b98a', '#9b7c4f'] })
-      S.push({ who: 'T', k: 'move', t0: 450, t1: 1400, dx: 0, dy: -30, bounce: 4 })
-      S.push({ who: 'A', k: 'move', t0: 350, t1: 1300, dx: 0, dy: -10, bounce: 5 })
-      hit(800, 1.3, '#a8742e')
-      back(1700, 0)
-      flashAfter(2200)
+      // Como no BW: a câmera desce para o chão, o campo inteiro balança para os lados, o chão racha embaixo do alvo,
+      // nuvens de poeira rolam pelo chão, pedras pulam e os dois Pokémon quicam.
+      const ground = [(a.x + tc.x) / 2, (a.y + tc.y) / 2 + 40, 0.92, 0]
+      cam = [[0, ...NEUTRAL], [350, ...ground], [2050, ground[0], ground[1], 0.96, 0]]
+      shake.push([300, 2150, 30, 1])
+      add({ s: 'tint', t0: 250, t1: 2350, color: '#2a1606', a: [0, 0.22] })
+      add({ s: 'crack', t0: 450, t1: 2250, x: tc.x, y: T.y, r: [30, 380], n: 9, c: '#2b1b08', c2: '#e0b866', a: [1, 0] })
+      add({ s: 'crack', t0: 950, t1: 2250, x: tc.x + 60 * toward, y: T.y + 10, r: [20, 220], n: 6, c: '#2b1b08', c2: '#c9974a', a: [1, 0] })
+      for (const [y, w, sd] of [[T.y, 320, 0], [a.y, 380, 7], [(a.y + T.y) / 2, 420, 13]])
+        add({ s: 'particles', t0: 350, t1: 2250, n: 30, seed: seed + sd, x: tc.x * 0.5 + a.x * 0.5, y, sx: w, sy: 8, v: 90, vy: -110, g: 160, life: 900, mode: 'stream', size: [18, 8], style: 'dust', c: ['#d9b47a', '#a8742e', '#6b4a1c'] })
+      for (const t of [500, 1000, 1500])
+        add({ s: 'particles', t0: t, t1: t + 900, n: 9, seed: seed + t, x: tc.x, y: T.y, sx: 140, sy: 6, v: 60, vy: -520, g: 1300, life: 750, mode: 'burst', size: [18, 12], style: 'shard', c: ['#d6b98a', '#9b7c4f', '#6b4f2a'] })
+      add({ s: 'particles', t0: 400, t1: 2100, n: 60, seed: seed + 3, x: tc.x, y: T.y, sx: 260, sy: 8, v: 40, vy: -260, g: 600, life: 700, mode: 'stream', size: [8, 3], style: 'dust', c: ['#e0b866', '#a8742e'] })
+      S.push({ who: 'T', k: 'move', t0: 450, t1: 1950, dx: 0, dy: -38, bounce: 6 })
+      S.push({ who: 'A', k: 'move', t0: 350, t1: 1800, dx: 0, dy: -14, bounce: 6 })
+      hit(700, 1.3, '#a8742e')
+      impactBurst(1300, 0.9, { x: tc.x, y: T.y - 20 })
+      S.push({ who: 'T', k: 'tint', t0: 700, t1: 2150, color: '#8a5a20', a: 0.5 })
+      back(2150, 0)
+      flashAfter(2650)
     },
     'shadow-ball': () => {
       // Sombras se juntam na frente dele, a bola roxa gira, cresce, voa e estoura em fantasmas.
@@ -1258,10 +1274,19 @@ export const fxEase = (k) => (k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) 
 /** O quanto a tela treme no instante [ms]: [dx, dy]. */
 export function fxShake(plan, ms) {
   let amp = 0
-  for (const [t0, t1, f] of plan.shake) if (ms >= t0 && ms <= t1) amp = Math.max(amp, f * (1 - (ms - t0) / (t1 - t0)))
-  if (!amp) return [0, 0]
+  let sway = 0
+  for (const [t0, t1, f, mode] of plan.shake) {
+    if (ms < t0 || ms > t1) continue
+    const k = (ms - t0) / (t1 - t0)
+    // mode 1: a tela balança para os lados (Earthquake), sobe rápido e acalma no fim.
+    if (mode === 1) sway = Math.max(sway, f * Math.min(1, k * 6, (1 - k) * 2.5))
+    else amp = Math.max(amp, f * (1 - k))
+  }
+  if (!amp && !sway) return [0, 0]
   const i = Math.floor(ms / 33)
-  return [(fxRand(i) - 0.5) * 2 * amp, (fxRand(i + 99) - 0.5) * 2 * amp]
+  const sx = sway * Math.sin((ms / 150) * Math.PI * 2)
+  const sy = sway * 0.15 * Math.sin((ms / 75) * Math.PI * 2)
+  return [(fxRand(i) - 0.5) * 2 * amp + sx, (fxRand(i + 99) - 0.5) * 2 * amp + sy]
 }
 
 /** HP e caixa de texto: 1 visível, 0 escondido (some e volta em 150 ms). */
