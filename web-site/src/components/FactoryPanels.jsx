@@ -2225,7 +2225,7 @@ function Badges({ data, run }) {
 }
 
 // tools: BOLSA, TIME, MAPA e AJUDA numa linha fixa no alto da tela de baixo; os caminhos e o resto, nas páginas (◀ ▶).
-function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, panel = null, tools = null }) {
+function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, panel = null, tools = null, menuFill = false }) {
   // A HUD da batalha (o port de Black & White), igual: o campo 16:9, a caixa de texto à esquerda, os botões à direita
   // dela e a faixa de dica embaixo, tudo dentro da tela (nada embaixo dela). Igual ao app.
   return (
@@ -2250,7 +2250,7 @@ function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, 
         )
       })()}
       {/* Os botões no lugar dos da batalha, à direita da caixa de texto (o que não cabe vai para a próxima página). */}
-      {menu && <div className="port-controls absolute right-[1.25%] bottom-[8.5%] z-30 h-[14.5%] w-[36%]" data-testid="factory-bottom"><PagedMenu key={field?.props?.testid ?? ''}>{menu}</PagedMenu></div>}
+      {menu && <div className="port-controls absolute right-[1.25%] bottom-[8.5%] z-30 h-[14.5%] w-[36%]" data-testid="factory-bottom">{menuFill ? menu : <PagedMenu key={field?.props?.testid ?? ''}>{menu}</PagedMenu>}</div>}
       {/* A faixa de dica da batalha: o andar, o dinheiro, a Bolsa, as insígnias, BOLSA/TIME/MAPA/AJUDA e o time. */}
       <div className="port-hint absolute inset-x-0 bottom-0 z-30 flex h-[6.7%] items-center gap-[1.2cqw] whitespace-nowrap px-2 text-[1.5cqw] font-bold" data-testid="factory-bar">
         {run && (
@@ -2478,7 +2478,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
   const town = run && inTown(run.scene ?? 'grass')
   const [healerSprite, healerName] = run ? (town ? ['sd-nurse', 'Enfermeira Joy'] : healerOf(run)) : ['sd-nurse', '']
   const nurse = <FarPerson id={healerSprite} trainers={trainers} width={width} />
-  let field, text, menu, below = null, toolRow = false
+  let field, text, menu, below = null, toolRow = false, menuFill = false
   // A Creche (um lugar da cidade, separado do Poké Mart): quem fica e o ovo.
   const daycareView = () => {
       const care = run.daycare
@@ -3157,7 +3157,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       // Como no port: os 4 botões coloridos (BOLSA, TIME, MAPA, AJUDA) no lugar de LUTAR/BOLSA/POKÉMON/FUGIR; os
       // caminhos em cartas no campo e, ao lado delas, o que dá para fazer aqui (árvore, mel, fruta...).
       const rest = Children.toArray(menu.props.children)
-      menu = <div className="grid h-full grid-cols-2 grid-rows-2 gap-[4%]">{tools}</div>
+      menu = <div className="grid h-full grid-cols-2 grid-rows-2 gap-[6%]">{tools}</div>
+      menuFill = true
       toolRow = false
       const cards = (
         <div key={`cards-${run.floor}`} className="absolute left-[3%] right-[3%] top-[16%] bottom-[37%] z-20 flex gap-[2%]" data-testid="path-cards">
@@ -3257,7 +3258,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
 
   return (
     <section data-testid="factory-screen">
-      <BattleFrame field={field} run={run} byId={byId} data={data} frame={factory.frame} menu={menu} tools={toolRow ? tools : null} panel={below || extras || null}
+      <BattleFrame field={field} run={run} byId={byId} data={data} frame={factory.frame} menu={menu} menuFill={menuFill} tools={toolRow ? tools : null} panel={below || extras || null}
         text={<>
           {text}
           {unlocked != null && <p className="text-sm text-amber-600" data-testid="factory-shiny-unlocked">✨ {t('{0} shiny liberado para começar as próximas corridas!').replace('{0}', name(unlocked))}</p>}
