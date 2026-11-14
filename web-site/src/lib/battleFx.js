@@ -821,7 +821,7 @@ export function fxScene({ kind, side = 1, stage = FX_STAGE, seed = 1 }) {
     L.push({ s: 'particles', t0: 450, t1: 1000, n: 22, seed, x: c.x, y: c.y, sx: 0, sy: 0, mode: 'converge', r: S.h * 0.6, life: 450, size: [8, 3], style: 'dot', c: ['#ffe4e6', '#f43f5e'] })
     SP.push({ who, k: 'tint', t0: 350, t1: 1000, color: '#f43f5e', a: 0.85 })
     SP.push({ who, k: 'grow', t0: 450, t1: 900, s0: 1, s1: 0 })
-    SP.push({ who, k: 'hide', t0: 900, t1: 1600 })
+    SP.push({ who, k: 'hide', t0: 900, t1: 99999 })
     dur = 1500
   } else {
     // Desmaio: grito, desce do chão e some (como no jogo), a câmera chega perto.
@@ -829,7 +829,7 @@ export function fxScene({ kind, side = 1, stage = FX_STAGE, seed = 1 }) {
     SP.push({ who, k: 'move', t0: 300, t1: 1000, dx: 0, dy: S.h * 0.9, back: 0 })
     SP.push({ who, k: 'fade', t0: 300, t1: 1000, a0: 1, a1: 0 })
     SP.push({ who, k: 'tint', t0: 250, t1: 1000, color: '#1e1b4b', a: 0.5 })
-    SP.push({ who, k: 'hide', t0: 1000, t1: 1600 })
+    SP.push({ who, k: 'hide', t0: 1000, t1: 99999 })
     L.push({ s: 'particles', t0: 350, t1: 1100, n: 18, seed, x: S.x, y: S.y, sx: S.h * 0.4, sy: 6, v: 40, vy: -60, g: 0, life: 600, mode: 'stream', size: [14, 6], style: 'smoke', c: ['#94a3b8', '#64748b'] })
     shake.push([300, 500, 4])
     dur = 1550
