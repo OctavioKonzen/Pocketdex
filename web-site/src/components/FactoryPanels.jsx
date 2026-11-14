@@ -5,7 +5,7 @@
 // bônus, a loja com "Continuar" e o mapa com os caminhos de cada andar (Bolsa,
 // itens, golpes e mecânicas em todos). Igual ao app (lib/screens/factory_panels.dart).
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Children, cloneElement, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import PokeIcon from './PokeIcon'
 import PcPanel from './PcPanel'
 import Sprite, { standOf, useAnimated } from './Sprite'
@@ -1982,8 +1982,9 @@ function Dialogue({ lines, fallback = null }) {
 function ToolButton({ icon, children, onClick, testid, active = false }) {
   return (
     <button type="button" onClick={onClick} data-testid={testid}
+      title={typeof children === 'string' ? children : undefined}
       className={`dlg-btn tool-btn cursor-pointer truncate rounded-lg px-1 text-xs font-black ${active ? 'active' : ''}`}>
-      {icon} {children}
+      {icon}<span className="tool-label"> {children}</span>
     </button>
   )
 }
@@ -1994,6 +1995,30 @@ function MenuButton({ children, sub, onClick, disabled = false, testid, active =
       className={`dlg-btn cursor-pointer rounded-lg px-2 py-2 text-left disabled:cursor-default disabled:opacity-40 ${active ? 'active' : ''}`}>
       <span className="block font-black">▸ {children}</span>
       {sub && <span className="dlg-sub block pl-3 text-[11px] font-semibold leading-tight">{sub}</span>}
+    </button>
+  )
+}
+
+
+/** As cores das cartas dos caminhos, pelo que tem nelas (batalha vermelha, selvagem verde, loja azul, chefe roxo...). */
+const CARD_COLORS = {
+  wild: ['#22c55e', '#15803d'], trainer: ['#ef4444', '#b91c1c'], ace: ['#f97316', '#c2410c'], rival: ['#f43f5e', '#9f1239'],
+  boss: ['#a855f7', '#6b21a8'], dboss: ['#7c3aed', '#4c1d95'], area: ['#a855f7', '#6b21a8'], wildboss: ['#d946ef', '#86198f'],
+  mart: ['#3b82f6', '#1d4ed8'], center: ['#ec4899', '#be185d'], event: ['#eab308', '#a16207'], trade: ['#06b6d4', '#0e7490'],
+  safari: ['#84cc16', '#4d7c0f'], meteor: ['#f59e0b', '#b45309'], mythic: ['#f0abfc', '#a21caf'], bike: ['#14b8a6', '#0f766e'],
+  rematch: ['#facc15', '#a16207'], leave: ['#64748b', '#334155'], dungeon: ['#78716c', '#44403c'],
+}
+
+/** Um caminho como carta: o ícone grande, o nome e o que tem nele; virada (❔) quando, sem o Mapa, não dá para saber. */
+function PathCard({ children, sub, onClick, disabled = false, testid, kind, hidden = false, i = 0 }) {
+  const [c1, c2] = hidden ? ['#475569', '#1e293b'] : CARD_COLORS[kind] ?? ['#64748b', '#334155']
+  return (
+    <button type="button" onClick={onClick} disabled={disabled} data-testid={testid}
+      className="path-card flex min-w-0 max-w-[34%] flex-1 cursor-pointer flex-col items-center justify-center gap-1 overflow-hidden rounded-xl border-4 border-white/90 p-1.5 text-center text-white shadow-[0_6px_0_rgba(0,0,0,0.35)] disabled:cursor-default disabled:opacity-50"
+      style={{ animationDelay: `${i * 90}ms`, background: hidden ? `repeating-linear-gradient(45deg, ${c1} 0 10px, ${c2} 10px 20px)` : `linear-gradient(160deg, ${c1}, ${c2})` }}>
+      <span className="flex aspect-square w-[46%] shrink-0 items-center justify-center rounded-full border-2 border-white/80 bg-white/20 text-2xl drop-shadow sm:text-4xl">{hidden ? '❔' : kind === 'dungeon' ? '🕳️' : NODE_INFO[kind]?.icon ?? '❔'}</span>
+      <span className={`line-clamp-3 font-black leading-tight drop-shadow ${hidden ? 'text-[10px] sm:text-xs' : 'text-xs sm:text-base'}`}>{children}</span>
+      {sub && !hidden && <span className="line-clamp-3 text-[9px] font-semibold leading-tight opacity-90 sm:text-[11px]">{sub}</span>}
     </button>
   )
 }
@@ -2214,11 +2239,17 @@ function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, 
           data-testid="factory-text" onClick={(e) => { const el = e.currentTarget; el.scrollTop = el.scrollTop + el.clientHeight >= el.scrollHeight - 1 ? 0 : el.scrollTop + el.clientHeight - 8 }}>
           {text}
         </div>
+        {/* O menu dentro do campo, à direita, acima da caixa de texto (sem tela de baixo). */}
+        {menu && (
+          <div className="dlg-box absolute right-[1.5%] top-[17%] bottom-[24.5%] z-20 flex w-[34%] flex-col rounded-lg border-4 p-1.5 text-xs" data-testid="factory-bottom">
+            <div className="min-h-0 flex-1"><PagedMenu key={field?.props?.testid ?? ''} wide>{menu}</PagedMenu></div>
+          </div>
+        )}
         {panel && <div key={panel?.key ?? panel?.props?.testid ?? 'panel'} className="field-overlay factory-overlay panel-in rounded-t-2xl border-4 border-b-0 hud-edge bg-bg text-text" data-testid="factory-panel">{panel}</div>}
       </div>
-      {!run && <div className="h-7 border-x-4 hud-edge hud-bar" />}
+      {!run && <div className="bar-tools flex h-7 items-center justify-end gap-1 rounded-b-2xl border-4 border-t-0 hud-edge hud-bar px-1">{tools}</div>}
       {run && (
-        <div className="flex h-7 items-center gap-x-2 whitespace-nowrap border-x-4 hud-edge hud-bar px-2 text-xs font-bold text-white" style={theme ? { background: `linear-gradient(90deg, ${theme}, color-mix(in srgb, #334155 78%, var(--hud-accent, #334155)) 70%)` } : undefined} data-testid="factory-bar">
+        <div className="flex h-8 items-center gap-x-2 whitespace-nowrap rounded-b-2xl border-4 border-t-0 hud-edge hud-bar px-2 text-xs font-bold text-white" style={theme ? { background: `linear-gradient(90deg, ${theme}, color-mix(in srgb, #334155 78%, var(--hud-accent, #334155)) 70%)` } : undefined} data-testid="factory-bar">
           {/* As informações rolam de lado; o time fica sempre à direita. A Bolsa é só a contagem (o que tem dentro: em BOLSA). Igual ao app. */}
           <span className="flex min-w-0 flex-1 items-center gap-x-3 overflow-x-auto">
             <span>🎲 {t('Andar {0}').replace('{0}', run.floor)}</span>
@@ -2237,6 +2268,8 @@ function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, 
             {run.berry && <span title={t('Vaso de frutas')} data-testid="factory-berry">🌱{Math.max(0, run.berry.need - (run.floor - run.berry.floor))}</span>}
             {run.daycare && <span title={t('Creche')}>🏡</span>}
           </span>
+          {/* BOLSA, TIME, MAPA e AJUDA: ícones na faixa (sem tela de baixo). */}
+          {tools && <span className="bar-tools flex shrink-0 gap-1" data-testid="factory-tools">{tools}</span>}
           <span className="flex shrink-0 gap-0.5">
             {run.team.map((m, i) => (
               <span key={i} className="flex flex-col items-center" title={t(prettyName(byId?.get(m.id)?.name ?? ''))}>
@@ -2249,16 +2282,6 @@ function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, 
           </span>
         </div>
       )}
-      {/* A tela de baixo: da altura da tela de baixo da batalha (nada muda de tamanho entre a corrida e a batalha). */}
-      {/* Os botões ficam sempre nos mesmos lugares (como na batalha): o que não cabe vai para a próxima página (◀ ▶). */}
-      <div className="h-[15.5rem] rounded-b-2xl border-4 hud-edge hud-base p-2" data-testid="factory-bottom">
-        {menu && (
-          <div className="dlg-box flex h-full flex-col rounded-xl border-4 p-2">
-            {tools && <div className="mb-1.5 grid h-[30px] shrink-0 grid-cols-4 gap-1 border-b border-[var(--dlg-sub)]/35 pb-1.5" data-testid="factory-tools">{tools}</div>}
-            <div className="min-h-0 flex-1"><PagedMenu key={field?.props?.testid ?? ''} wide={wideMenu}>{menu}</PagedMenu></div>
-          </div>
-        )}
-      </div>
     </div>
   )
 }
@@ -2914,10 +2937,49 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     const hudProps = { run, data, scene: shownScene(run, town ? 'city' : route.biome, data), clock, monName: name }
     const hud = <MapHud {...hudProps} />
     const floorTag = inside ? `${Math.min(DUNGEON_LENGTH, dungeonPos(run) + 1)}/${DUNGEON_LENGTH}` : town ? `${Math.min(CITY_LENGTH, pos - ROUTE_LENGTH + 1)}/${CITY_LENGTH}` : `${pos + 1}/${ROUTE_LENGTH}`
-    field = fork && hasMap ? (
-      <TownMap route={route} pos={pos % ROUTE_LENGTH} from={from} to={to} title={`${boss.region} · ${boss.game}`} me={me} width={width} fieldRef={fieldRef} placeName={(id) => placeInfo(data, run, id).name} monName={name}
-        onPick={busy ? null : pickNode} blocked={(node) => (isBattleNode(node) && down) || nodeBlocked(run, node)} hud={hud} />
-    ) : (
+    // Os caminhos viram cartas que deslizam por cima do campo (na rota); na cidade, os botões do menu de sempre.
+    const asCards = !town && !meeting && !rival
+    const Btn = asCards ? PathCard : MenuButton
+    // A entrada de um lugar: a base vilã e o lugar da cidade (na cidade) ou o lugar no caminho (na rota).
+    const placeButton = (node, k) => (
+      <Btn key={k} i={k} kind={node.kind} testid={`map-node-${k}`} disabled={busy || down || nodeBlocked(run, node)} onClick={() => pickNode(k)}
+        sub={nodeBlocked(run, node) ? hmHint(run, node) : node.place === 'base' ? t('A equipe vilã está na cidade: {0} andares e o chefe dela no fim.').replace('{0}', DUNGEON_LENGTH)
+          : node.deeper ? t('Mais {0} andares e um chefe.').replace('{0}', DUNGEON_LENGTH)
+          : town ? t('{0} andares e um chefe; depois volta para a cidade, no mesmo andar.').replace('{0}', DUNGEON_LENGTH)
+          : t('{0} andares e um chefe; depois volta para a rota, no mesmo andar.').replace('{0}', DUNGEON_LENGTH)}>
+        {RARE_PLACES[node.place] ? '✨' : '🕳️'} {(BIOME_INFO[node.scene] ?? biome).icon} {node.place === 'base' ? baseName : <span data-no-translate>{placeInfo(data, run, node.place).name}</span>}
+      </Btn>
+    )
+    const pathItems = [
+      ...((fork && !hasMap && route.options.map((node, k) => node.kind === 'dungeon' ? placeButton(node, k) : node.kind === 'safari' ? (
+          <Btn key={k} i={k} kind={node.kind} testid={`map-node-${k}`} disabled={busy || nodeBlocked(run, node)} onClick={() => pickNode(k)} sub={nodeBlocked(run, node) ? hmHint(run, node) : t(NODE_INFO.safari.help)}>
+            {NODE_INFO.safari.icon} <span data-no-translate>{node.name ?? 'Safari Zone'}</span>
+          </Btn>
+        ) : hmPathInfo(node) ? (
+          // O caminho aberto com uma MO (Cut, Rock Smash, Strength): você sabe o que tem nele, mesmo sem o Mapa.
+          <Btn key={k} i={k} kind={node.kind} testid={`map-node-${k}`} disabled={busy || nodeBlocked(run, node) || (isBattleNode(node) && down)} onClick={() => pickNode(k)} sub={nodeBlocked(run, node) ? hmHint(run, node) : t(hmPathInfo(node).help)}>
+            {hmPathInfo(node).icon} {t(hmPathInfo(node).label).replace('{0}', node.blocker ? name(node.legend) : '')}
+          </Btn>
+        ) : (
+          <Btn key={k} i={k} kind={node.kind} hidden testid={`map-node-${k}`} disabled={busy || nodeBlocked(run, node) || (isBattleNode(node) && down)} onClick={() => pickNode(k)}
+            sub={nodeBlocked(run, node) ? hmHint(run, node) : k === 0 ? t('Continuar por onde você está') : t('Não dá para saber aonde ele leva (o Mapa mostra)')}>
+            {k === 0 ? `➡️ ${t('SEGUIR EM FRENTE')}` : `↗️ ${t('OUTRO CAMINHO')}${route.options.length > 2 ? ` ${k}` : ''}`}
+          </Btn>
+        ))) || []),
+      ...(((hasMap || !fork) && route.options.map((node, k) => {
+          if (node.kind === 'dungeon') return placeButton(node, k)
+          const info = node.area ? NODE_INFO.area : node.mythic ? NODE_INFO.mythic : node.meteor ? NODE_INFO.meteor : node.roam ? ROAM_INFO : node.plot ? PLOT_INFO : hmPathInfo(node) ?? (node.legend != null ? LEGEND_INFO : NODE_INFO[node.kind])
+          const b = node.biome && !hmPathInfo(node) ? BIOME_INFO[node.biome] : null
+          const noSurf = nodeBlocked(run, node)
+          return (
+            <Btn key={k} i={k} kind={node.kind} testid={`map-node-${k}`} disabled={busy || (isBattleNode(node) && down) || noSurf} onClick={() => pickNode(k)}
+              sub={noSurf ? hmHint(run, node) : node.kind === 'boss' ? `${bossKindLabel(boss.kind)}${CITY_KIND_SET.has(boss.kind) ? ` · ${to}` : ''}` : node.kind === 'dboss' ? (inside ? t('O chefe do lugar: vencendo, volta para {0}.').replace('{0}', backTo) : t('O chefe da rota: vencendo, você chega em {0}.').replace('{0}', to)) : node.hidden ? `📡 ${t('A Dowsing Machine apita: tem um item escondido aqui!')}` : t(node.placeLegend || node.routeLegend ? PLACE_LEGEND_HELP : info.help).replace('{0}', ROAM_TURNS)}>
+              {route.options.length === 1 && !['boss', 'rival', 'dboss'].includes(node.kind) ? `${t('SEGUIR')}: ` : ''}{node.biome === 'underwater' && route.biome !== 'underwater' ? `🤿 ${t('MERGULHAR')}: ` : ''}{town && node.kind === 'boss' ? '🏟️' : b ? b.icon : info.icon} {node.kind === 'boss' || (node.kind === 'rival' && rival) ? <span data-no-translate>{(node.kind === 'rival' ? rival : boss).name}</span> : t(info.label).replace('{0}', node.blocker ? name(node.legend) : '')}{node.roam || node.placeLegend || node.routeLegend ? <span data-no-translate> · {node.forceShiny ? '✨ ' : ''}{name(node.legend)}</span> : ''}{b ? ` · ${t(b.label)}` : ''}{node.hidden ? ' 📡' : ''}
+            </Btn>
+          )
+        })) || []),
+    ]
+    field = (
       // O líder espera no ginásio da cidade; a Elite dos Quatro e o Campeão, na Liga (nunca no meio da rota).
       <Field biome={shownScene(run, meetScene)} fieldRef={fieldRef} testid="factory-map">
         {/* O nome do lugar e, logo abaixo, o HUD (hora, clima, efeito, estação, lendário que foge, plano vilão). */}
@@ -2968,16 +3030,6 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       route.options.some((o) => o.plot) && `🚨 ${t('Um capanga da {0} está agindo nesta cidade! Derrote-o para atrapalhar o plano.').replace('{0}', TEAM_NAMES[route.options.find((o) => o.plot).grunt] ?? 'Equipe Rocket')}`,
       route.options.some((o) => o.hidden) && `📡 ${t('A Dowsing Machine apita: tem um item escondido num dos caminhos!')}`,
     ].filter(Boolean)
-    // A entrada de um lugar: a base vilã e o lugar da cidade (na cidade) ou o lugar no caminho (na rota).
-    const placeButton = (node, k) => (
-      <MenuButton key={k} testid={`map-node-${k}`} disabled={busy || down || nodeBlocked(run, node)} onClick={() => pickNode(k)}
-        sub={nodeBlocked(run, node) ? hmHint(run, node) : node.place === 'base' ? t('A equipe vilã está na cidade: {0} andares e o chefe dela no fim.').replace('{0}', DUNGEON_LENGTH)
-          : node.deeper ? t('Mais {0} andares e um chefe.').replace('{0}', DUNGEON_LENGTH)
-          : town ? t('{0} andares e um chefe; depois volta para a cidade, no mesmo andar.').replace('{0}', DUNGEON_LENGTH)
-          : t('{0} andares e um chefe; depois volta para a rota, no mesmo andar.').replace('{0}', DUNGEON_LENGTH)}>
-        {RARE_PLACES[node.place] ? '✨' : '🕳️'} {(BIOME_INFO[node.scene] ?? biome).icon} {node.place === 'base' ? baseName : <span data-no-translate>{placeInfo(data, run, node.place).name}</span>}
-      </MenuButton>
-    )
     text = (
       <>
         <Dialogue key={`${run.floor}-${run.dungeon?.place ?? ''}-${route.options.map((o) => o.kind).join()}`} lines={lines}
@@ -3002,34 +3054,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     wideMenu = true
     menu = (
       <>
-        {/* Sem o Mapa: dá para seguir em frente ou pegar outro caminho, sem saber aonde ele leva (a entrada de um lugar dá para ver). */}
-        {fork && !hasMap && route.options.map((node, k) => node.kind === 'dungeon' ? placeButton(node, k) : node.kind === 'safari' ? (
-          <MenuButton key={k} testid={`map-node-${k}`} disabled={busy || nodeBlocked(run, node)} onClick={() => pickNode(k)} sub={nodeBlocked(run, node) ? hmHint(run, node) : t(NODE_INFO.safari.help)}>
-            {NODE_INFO.safari.icon} <span data-no-translate>{node.name ?? 'Safari Zone'}</span>
-          </MenuButton>
-        ) : hmPathInfo(node) ? (
-          // O caminho aberto com uma MO (Cut, Rock Smash, Strength): você sabe o que tem nele, mesmo sem o Mapa.
-          <MenuButton key={k} testid={`map-node-${k}`} disabled={busy || nodeBlocked(run, node) || (isBattleNode(node) && down)} onClick={() => pickNode(k)} sub={nodeBlocked(run, node) ? hmHint(run, node) : t(hmPathInfo(node).help)}>
-            {hmPathInfo(node).icon} {t(hmPathInfo(node).label).replace('{0}', node.blocker ? name(node.legend) : '')}
-          </MenuButton>
-        ) : (
-          <MenuButton key={k} testid={`map-node-${k}`} disabled={busy || nodeBlocked(run, node) || (isBattleNode(node) && down)} onClick={() => pickNode(k)}
-            sub={nodeBlocked(run, node) ? hmHint(run, node) : k === 0 ? t('Continuar por onde você está') : t('Não dá para saber aonde ele leva (o Mapa mostra)')}>
-            {k === 0 ? `➡️ ${t('SEGUIR EM FRENTE')}` : `↗️ ${t('OUTRO CAMINHO')}${route.options.length > 2 ? ` ${k}` : ''}`}
-          </MenuButton>
-        ))}
-        {(hasMap || !fork) && route.options.map((node, k) => {
-          if (node.kind === 'dungeon') return placeButton(node, k)
-          const info = node.area ? NODE_INFO.area : node.mythic ? NODE_INFO.mythic : node.meteor ? NODE_INFO.meteor : node.roam ? ROAM_INFO : node.plot ? PLOT_INFO : hmPathInfo(node) ?? (node.legend != null ? LEGEND_INFO : NODE_INFO[node.kind])
-          const b = node.biome && !hmPathInfo(node) ? BIOME_INFO[node.biome] : null
-          const noSurf = nodeBlocked(run, node)
-          return (
-            <MenuButton key={k} testid={`map-node-${k}`} disabled={busy || (isBattleNode(node) && down) || noSurf} onClick={() => pickNode(k)}
-              sub={noSurf ? hmHint(run, node) : node.kind === 'boss' ? `${bossKindLabel(boss.kind)}${CITY_KIND_SET.has(boss.kind) ? ` · ${to}` : ''}` : node.kind === 'dboss' ? (inside ? t('O chefe do lugar: vencendo, volta para {0}.').replace('{0}', backTo) : t('O chefe da rota: vencendo, você chega em {0}.').replace('{0}', to)) : node.hidden ? `📡 ${t('A Dowsing Machine apita: tem um item escondido aqui!')}` : t(node.placeLegend || node.routeLegend ? PLACE_LEGEND_HELP : info.help).replace('{0}', ROAM_TURNS)}>
-              {route.options.length === 1 && !['boss', 'rival', 'dboss'].includes(node.kind) ? `${t('SEGUIR')}: ` : ''}{node.biome === 'underwater' && route.biome !== 'underwater' ? `🤿 ${t('MERGULHAR')}: ` : ''}{town && node.kind === 'boss' ? '🏟️' : b ? b.icon : info.icon} {node.kind === 'boss' || (node.kind === 'rival' && rival) ? <span data-no-translate>{(node.kind === 'rival' ? rival : boss).name}</span> : t(info.label).replace('{0}', node.blocker ? name(node.legend) : '')}{node.roam || node.placeLegend || node.routeLegend ? <span data-no-translate> · {node.forceShiny ? '✨ ' : ''}{name(node.legend)}</span> : ''}{b ? ` · ${t(b.label)}` : ''}{node.hidden ? ' 📡' : ''}
-            </MenuButton>
-          )
-        })}
+        {!asCards && pathItems}
         {/* Na cidade: o Poké Mart, o Centro Pokémon e a Creche (cada um no seu lugar). */}
         {town && (
           <div className="grid grid-cols-3 gap-1">
@@ -3125,6 +3150,18 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       </>
     )
     toolRow = true
+    // Na rota: as cartas dos caminhos no campo e, ao lado delas, o resto (árvore, mel, fruta...). Nada embaixo do campo.
+    if (asCards) {
+      const rest = Children.toArray(menu.props.children)
+      menu = null
+      const cards = (
+        <div key={`cards-${run.floor}`} className="absolute inset-x-[3%] top-[17%] bottom-[24.5%] z-20 flex gap-[2%]" data-testid="path-cards">
+          <div className="flex min-w-0 flex-1 items-stretch justify-center gap-[3%]">{pathItems}</div>
+          {rest.length > 0 && <div className="dlg-box flex max-h-full w-[26%] shrink-0 flex-col self-start rounded-lg border-4 p-1.5 text-xs"><PagedMenu wide>{rest}</PagedMenu></div>}
+        </div>
+      )
+      field = cloneElement(field, {}, ...Children.toArray(field.props.children), cards)
+    }
     if (town && panel === 'daycare') below = daycareView()
     if (panel === 'album') {
       below = (

@@ -781,3 +781,10 @@ h1, h2, .font-display {
 /* O treinador entrando pela direita (no começo da batalha e quando fala no meio dela). */
 .trainer-enter-1 { animation: trainer-enter-1 420ms ease-out both; }
 @keyframes trainer-enter-1 { from { transform: translateX(140%); opacity: 0; } to { transform: none; opacity: 1; } }
+/* As cartas dos caminhos do Pokelike: entram deslizando de baixo, uma depois da outra, e sobem um pouco ao passar o dedo. */
+.path-card { animation: path-card-in 420ms cubic-bezier(.2,.9,.3,1.25) both; transition: transform 120ms; }
+.path-card:not(:disabled):hover { transform: translateY(-6px); }
+@keyframes path-card-in { from { opacity: 0; transform: translateY(60%) rotate(-8deg) scale(.85); } }
+/* A faixa do Pokelike com BOLSA, TIME, MAPA e AJUDA só com os ícones; as cartas usam o campo todo sem o menu ao lado. */
+.bar-tools .tool-btn { height: 22px; min-width: 26px; padding: 0 4px; font-size: 13px; }
+.bar-tools .tool-label { display: none; }
