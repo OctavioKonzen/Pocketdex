@@ -669,7 +669,10 @@ function doMove(battle, side, moveIndex, hit, events, zMove = false) {
     say(events, 'missed', label(battle, side))
     return
   }
-  events.push({ t: 'attack', side, type: move.type, category: move.category, slug: move.slug })
+  // Z-Move e Max Move tocam a animação deles (breakneck-blitz--physical, max-flare...), não a do golpe base.
+  const fx = (n) => n.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+  const slug = !special ? move.slug : zMove ? `${fx(name)}--${move.category}` : fx(name)
+  events.push({ t: 'attack', side, type: move.type, category: move.category, slug })
   if (move.category === 'status') {
     statusMove(battle, side, move, events)
     faints(battle, events, foeSide)

@@ -1292,7 +1292,14 @@ class TurnBattle {
       _say(events, 'missed', [_label(side)]);
       return;
     }
-    events.add(BattleEvent.attack(side, move.type, move.category, move.slug));
+    // Z-Move e Max Move tocam a animação deles (breakneck-blitz--physical, max-flare...), não a do golpe base.
+    String fx(String n) => n.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');
+    final slug = !special
+        ? move.slug
+        : zMove
+            ? '${fx(name)}--${move.category}'
+            : fx(name);
+    events.add(BattleEvent.attack(side, move.type, move.category, slug));
     if (move.category == 'status') {
       _statusMove(side, move, events);
       _faints(events, foeSide);
