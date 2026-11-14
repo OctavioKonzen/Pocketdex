@@ -3690,6 +3690,14 @@ export function setLead(run, index) {
   return { ...run, team: [mon, ...team] }
 }
 
+/** Troca dois do time de lugar (arrastando um em cima do outro na tela do time). Igual ao app. */
+export function swapTeam(run, a, b) {
+  if (a === b || !run.team[a] || !run.team[b]) return run
+  const team = [...run.team]
+  ;[team[a], team[b]] = [team[b], team[a]]
+  return { ...run, team }
+}
+
 /**
  * Perdeu a batalha com uma Escape Rope na Bolsa: gasta ela e o time foge com
  * pouco HP (ESCAPE_HP), no mesmo andar, com o mapa de novo (dentro de um lugar, de volta na cidade). after = {hp, bag}

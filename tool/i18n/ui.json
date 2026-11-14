@@ -9804,5 +9804,10 @@
   "fr": "Œuf mystère",
   "es": "Huevo misterioso",
   "pt": "Ovo misterioso"
+ },
+ "Arraste um Pokémon em cima de outro para trocar de lugar.": {
+  "en": "Drag a Pokémon onto another to swap places.",
+  "fr": "Fais glisser un Pokémon sur un autre pour les échanger.",
+  "es": "Arrastra un Pokémon sobre otro para cambiarlos de lugar."
  }
 }

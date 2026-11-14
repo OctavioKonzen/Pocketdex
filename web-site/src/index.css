@@ -607,27 +607,39 @@ body {
 .hud-bar { background-color: color-mix(in srgb, #334155 78%, var(--hud-accent, #334155)); }
 /* A Bolsa: azul na cor do tema com listras na diagonal, a lista e a descrição em azul-escuro. */
 .bw-bag {
-  background-color: color-mix(in srgb, #4aa3df 82%, var(--hud-accent, #4aa3df));
+  background-color: #4aa3df;
   background-image: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.13) 0 6px, transparent 6px 14px);
 }
-.bw-bag-list { background-color: color-mix(in srgb, #0b1e36 88%, var(--hud-accent, #0b1e36)); }
-.bw-bag-desc { background-color: color-mix(in srgb, #0f2c52 85%, var(--hud-accent, #0f2c52)); }
+.bw-bag-list { background-color: #0b1e36; }
+.bw-bag-desc { background-color: #0f2c52; }
 /* O Town Map do Black & White: azul escuro com a grade. */
 .town-map {
   background-color: #1d3f8f;
   background-image: linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
   background-size: 12px 12px;
 }
-/* O time do Black & White: fundo azul-petróleo com listras, cartões azuis; o escolhido laranja. */
+/* O time do port de Black & White: fundo fixo (não muda com o tema), as caixas escuras de borda cinza da HUD. */
 .bw-party {
-  background-color: color-mix(in srgb, #1f6f78 78%, var(--hud-accent, #1f6f78));
+  container-type: inline-size;
+  background-color: #1f6f78;
   background-image: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0 10px, transparent 10px 20px);
+  font-family: 'Pixelify Sans', 'Chakra Petch', monospace;
+  color: #fff;
+  user-select: none;
 }
-.bw-party-title { background: #0f3d44; border: 2px solid #0b2a2f; }
-.bw-party-slot { background: linear-gradient(#7fd3f0, #4aa8d8); border-color: #0f3d5c; color: #0f172a; }
-.bw-party-slot.lead { background: linear-gradient(#a5e9b0, #5cc07a); }
-.bw-party-slot.selected,
-.bw-party-slot:hover:not(:disabled) { background: linear-gradient(#ffd27a, #f59e0b); }
+.bw-party .party-title, .bw-party .party-box {
+  background: rgba(20, 22, 28, 0.92);
+  border: 2px solid #8b93a1;
+  box-shadow: inset 0 0 0 2px #1f242d;
+  text-shadow: 1px 1px 0 #000;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+}
+.bw-party .party-box { flex: 1; height: 100%; }
+.bw-party .party-box.empty { opacity: 0.35; }
+.bw-party .party-box.selected, .bw-party .party-box:hover:not(:disabled):not(.empty) { border-color: #facc15; background: rgba(66, 52, 10, 0.92); }
+.bw-party .party-box.over { border-color: #22d3ee; background: rgba(8, 51, 68, 0.95); }
+.bw-party .port-hp-bar b { font-size: 1.2cqw; }
+.bw-party .port-hp-bar i { height: 0.8cqw; }
 /* O que abre por cima do campo (Bolsa, time, loja): ocupa o campo todo e rola por dentro. */
 .field-overlay { position: absolute; inset: 0; z-index: 30; overflow-y: auto; }
 /* A faixa da habilidade em ação (como nos jogos): entra pelo lado do Pokémon. */

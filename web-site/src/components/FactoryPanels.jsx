@@ -23,7 +23,7 @@ import {
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, teamRoom, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, sceneLines, bossCity, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, atPc, pcOf, PC_SIZE, RARE_PLACES, shownScene, gameOf, tierOf, foeBoostAt, leagueAhead, unlockShiny, VITAMIN_EVS, VITAMINS,
   forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor, isKeystone,
-  tradeMon, skipTrade, TRADE_LEVELS, levelCapOf, townTrade, townTradeable, legOf, fishPath, rodOf, RODS, headbuttPath, slatherHoney, honeyReady, honeyPath, HONEY_FLOORS, plantBerry, berryReady, harvestBerry, bikePath, takePhoto, photoNow, gymPuzzleOf, startPuzzle, puzzleAct, finishPuzzle, puzzleView, GYM_EDGE_LEVELS, KEY_ITEMS, hasKey, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, reminderCost, forgetMove, daycareOpen, daycareHere, safariAct, safariRates, leaveSafari, SAFARI_FEE, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, bossScene,
+  tradeMon, skipTrade, TRADE_LEVELS, levelCapOf, townTrade, townTradeable, legOf, fishPath, rodOf, RODS, headbuttPath, slatherHoney, honeyReady, honeyPath, HONEY_FLOORS, plantBerry, berryReady, harvestBerry, bikePath, takePhoto, photoNow, gymPuzzleOf, startPuzzle, puzzleAct, finishPuzzle, puzzleView, GYM_EDGE_LEVELS, KEY_ITEMS, hasKey, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, reminderCost, forgetMove, daycareOpen, daycareHere, safariAct, safariRates, leaveSafari, SAFARI_FEE, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, swapTeam, bossScene,
   resolveChoice, regionLegend, leaderType, villainTeam, rivalBoss, rocketBoss, placeInfo, routeInfo, DUNGEON_LENGTH, dungeonPos, townShop, townCenter,
   weeklyOf, startWeekly, COSMETIC_BALLS, COSMETIC_FRAMES, hasCosmetic, buyCosmetic, equipCosmetic,
   boostOf, memberOf, learnMove, movesLearnedBetween,
@@ -457,7 +457,7 @@ function TeamView({ run, data, byId, save }) {
     sub: m.item ? `★ ${itemName(m.item)}${(m.extras ?? []).length ? ` +${m.extras.length}` : ''}` : m.ot ? `🔁 OT ${m.ot}` : undefined,
   }))
   // Os ovos ocupam vagas do time (e chocam com as vitórias).
-  return <BwParty team={team} testid="factory-team" title={cap != null ? `📈 ${t('Nível máximo agora: {0}. Sobe quando você vence o próximo chefe.').replace('{0}', cap)}` : undefined} eggs={(run.eggs ?? []).map((e) => (e.mystery ? { left: e.left, mystery: true } : e.left))} onPick={(i) => { setSummary(null); setSel(i) }} />
+  return <BwParty team={team} testid="factory-team" title={cap != null ? `📈 ${t('Nível máximo agora: {0}. Sobe quando você vence o próximo chefe.').replace('{0}', cap)}` : undefined} eggs={(run.eggs ?? []).map((e) => (e.mystery ? { left: e.left, mystery: true } : e.left))} onPick={(i) => { setSummary(null); setSel(i) }} onMove={(a, b) => save(swapTeam(run, a, b))} />
 }
 
 /** Ensinar um golpe: TM (os que ele aprende por máquina), Move Tutor (tutor e ovo) ou Move Reminder (os do nível). */
@@ -2367,7 +2367,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       <BagPanel run={run} byId={byId} save={save} onClose={() => setPanel(null)} />
     ) : (
       // O time com o tamanho do campo (sem rolar): a lista e as páginas cabem nele.
-      <div className="flex h-full flex-col p-2">
+      <div className="flex h-full flex-col">
         <OverlayClose onClose={() => setPanel(null)} title={`🧩 ${t('Time')}`} />
         <div className="min-h-0 flex-1"><TeamView run={run} data={data} byId={byId} save={save} /></div>
       </div>
