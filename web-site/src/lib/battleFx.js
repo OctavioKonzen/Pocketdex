@@ -1883,14 +1883,15 @@ export function fxPlan2({ kind, type, slug = '', from = 0, seed = 1, stage = FX_
     rain: (o) => {
       const c = o.c ?? P.c
       const n = o.n ?? 5
+      const gy = Math.min(T.y, stage.h * 0.7)
       cam = [[0, ...NEUTRAL], [400, ...look({ x: tc.x, y: tc.y - 120 }, 1.2, -toward)], [1100, ...look(tc, 1.4, -2 * toward)]]
       if (o.dark) add({ s: 'tint', t0: 200, t1: 900 + n * 140, color: o.dark, a: [0, 0.45] })
       for (let i = 0; i < n; i++) {
         const t = 400 + i * 140
         const dx = (rnd(i) - 0.5) * 220
-        add({ s: 'shot', t0: t, t1: t + 380, x: [tc.x + dx * 1.2 - 80 * toward, tc.x + dx * 0.5], y: [tc.y - 360, T.y - 30 - rnd(i + 4) * 60], r: 26 * (o.r ?? 1), c, style: o.p ?? 'shard', spin: rnd(i) - 0.5, trail: o.trail })
-        add({ s: 'particles', t0: t + 380, t1: t + 800, n: 10, seed: seed + i, x: tc.x + dx * 0.5, y: T.y - 30, sx: 20, sy: 6, v: 150, vy: -220, g: 800, life: 400, mode: 'burst', size: [12, 6], style: o.burst ?? o.p ?? 'shard', c: c.slice(0, 3) })
-        if (o.boom) add({ s: 'glow', t0: t + 380, t1: t + 700, x: tc.x + dx * 0.5, y: T.y - 40, r: [20, 110], c: c.slice(0, 3), a: [1, 0] })
+        add({ s: 'shot', t0: t, t1: t + 380, x: [tc.x + dx * 1.2 - 80 * toward, tc.x + dx * 0.5], y: [tc.y - 360, gy - 30 - rnd(i + 4) * 60], r: 26 * (o.r ?? 1), c, style: o.p ?? 'shard', spin: rnd(i) - 0.5, trail: o.trail })
+        add({ s: 'particles', t0: t + 380, t1: t + 800, n: 10, seed: seed + i, x: tc.x + dx * 0.5, y: gy - 30, sx: 20, sy: 6, v: 150, vy: -220, g: 800, life: 400, mode: 'burst', size: [12, 6], style: o.burst ?? o.p ?? 'shard', c: c.slice(0, 3) })
+        if (o.boom) add({ s: 'glow', t0: t + 380, t1: t + 700, x: tc.x + dx * 0.5, y: gy - 40, r: [20, 110], c: c.slice(0, 3), a: [1, 0] })
         shake.push([t + 380, t + 500, 8])
       }
       hit(780, o.pow ?? 1.3, c[2])
@@ -2946,6 +2947,15 @@ export function fxScene({ kind, side = 1, stage = FX_STAGE, seed = 1 }) {
 const SELF = new Set(['boost', 'dance', 'heal', 'shield', 'charge', 'weather', 'terrain', 'field', 'wall', 'explode', 'drop', 'status', 'powder', 'hazard', 'swap'])
 
 /** Plano de um golpe pelo nome, tipo e categoria (os de status pelo alvo das regras). */
+/**
+ * O nome da animação de um golpe: o simulador manda "inferno-overdrive" (o Z-Move de cada tipo tem "--physical" e
+ * "--special" aqui), "let-s-snuggle-forever" (aqui "lets-...") e "g-max-wildfire". [has] diz se a animação existe.
+ */
+export function fxKey(slug, category, has = (k) => Boolean(HAND_MOVES[k])) {
+  const options = [slug, `${slug}--${category}`, `${slug}--physical`, `${slug}--special`, slug.replace(/-s-/g, 's-')]
+  return options.find((k) => has(k) || HAND_MOVES[k]) ?? slug
+}
+
 export function fxForMove({ slug, type, category, self = false, entry = null, recipe = null, from = 0, seed = 1, stage = FX_STAGE, boosts = null }) {
   const kind = entry?.[0] ?? (category === 'status' ? (self ? 'boost' : 'status') : moveAnim(slug, type, category))
   return fxPlan2({ kind, type, slug, from, seed, recipe, stage, boosts })

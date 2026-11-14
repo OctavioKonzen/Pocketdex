@@ -13,7 +13,8 @@ import { raidAfterFight, raidDamage, raidMember } from '../lib/raid'
 import { battleHitter, battleMons, leaderTeam, randomTeam } from '../lib/battleSetup'
 import { friendsOnly, useFriends } from '../lib/friends'
 import { getFxAnchors, getGymLeaders, getMoveAnims, getMoveFx, getMoves, getTypes, shinyPath, spriteUrl } from '../lib/data'
-import { FX_SCALE, fxForMove, fxScene, fxStage } from '../lib/battleFx'
+import { FX_SCALE, fxForMove, fxKey, fxScene, fxStage } from '../lib/battleFx'
+import { HAND_MOVES } from '../lib/battleFxMoves'
 import { canPlayFx, measureStage, runFx } from '../lib/fxRun'
 import { addHallOfFame, badgesNeeded, badgesOf, leagueOpen, leagueOrder, musicOf, regionGyms, regionOf, streakResult, winBadge } from '../lib/gymChallenge'
 import { language, localText, t } from '../lib/i18n'
@@ -1301,13 +1302,15 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         const [kind, icon, variant] =
           entry ?? (e.category === 'status' ? [self ? 'boost' : 'status', null, 0] : [moveAnim(e.slug, e.type, e.category), null, 0])
         // A animação nova (como no Black & White): câmera, fases, efeitos desenhados saindo da boca ou da frente.
-        const recipe = moveFx.current?.[e.slug]
-        const stage = recipe && canPlayFx() && world.current && fxCanvas.current && field.current
+        // O nome do simulador (inferno-overdrive, g-max-wildfire...) vira o da animação.
+        const fxSlug = fxKey(e.slug, e.category, (k) => Boolean(moveFx.current?.[k]))
+        const recipe = moveFx.current?.[fxSlug]
+        const stage = (recipe || HAND_MOVES[fxSlug]) && moveFx.current && canPlayFx() && world.current && fxCanvas.current && field.current
           ? measureStage(field.current, [sprites[0].current, sprites[1].current], [0, 1].map((i) => String(shownRef.current.form[i] ?? battle.sides[i].team[shownRef.current.active[i]]?.id)), fxAnchors.current)
           : null
         if (stage) {
           if (e.category !== 'status') lastHit.current = typeColor(e.type)
-          const plan2 = fxForMove({ slug: e.slug, type: e.type, category: e.category, self, entry, recipe, from: e.side, seed: turnNo.current, stage, boosts: active(battle, e.side).boosts })
+          const plan2 = fxForMove({ slug: fxSlug, type: e.type, category: e.category, self, entry, recipe, from: e.side, seed: turnNo.current, stage, boosts: active(battle, e.side).boosts })
           await runFx({ field: field.current, world: world.current, canvas: fxCanvas.current, spriteEls: [sprites[0].current, sprites[1].current], plan: plan2, rate: fast(1000) / 1000, live: () => live.current })
           if (!live.current) return
           continue
