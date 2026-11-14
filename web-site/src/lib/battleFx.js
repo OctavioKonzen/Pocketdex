@@ -206,7 +206,7 @@ export function fxPlan2({ kind, type, slug = '', from = 0, seed = 1, stage = FX_
       add({ s: 'tint', t0: 1200, t1: 2800, color: '#1a0200', a: [0, 0.5] })
       add({ s: 'rays', t0: 1500, t1: 2750, x: sky.x, y: sky.y, n: 16, r0: 0, r1: [60, 420], w: [2, 7], c: c1, c2: c3, a: [0.2, 1], rot: [0, 2.2] })
       add({ s: 'particles', t0: 1500, t1: 2700, n: 40, seed: seed + 5, x: sky.x, y: sky.y, sx: 0, sy: 0, mode: 'converge', r: 260, life: 700, size: [4, 7], style: 'ember', c: [c0, c1] })
-      add({ s: 'glow', t0: 1500, t1: 2550, x: sky.x, y: sky.y, r: [10, 105], c: [c0, c1, c2, c3], a: 1, core: 0.25 })
+      add({ s: 'glow', t0: 1500, t1: 2550, x: sky.x, y: sky.y, r: [10, 105], c: [c0, c1, c2, c3], a: 1, core: 0.25, spin: 1.1 * toward })
       add({ s: 'glow', t0: 2550, t1: 2860, x: [sky.x, tc.x], y: [sky.y, tc.y - 20], r: [105, 230], c: [c0, c1, c2, c3], a: 1, core: 0.25, trail: 1 })
       add({ s: 'tint', t0: 2850, t1: 3050, color: '#fff8e0', a: [1, 0] })
       add({ s: 'fill', t0: 2850, t1: 3900, c: [c1, c2, '#ff6a1a', c3], from: toward > 0 ? 'right' : 'left', a: 0.88 })
