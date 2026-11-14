@@ -1807,6 +1807,87 @@ export function fxPlan2({ kind, type, slug = '', from = 0, seed = 1, stage = FX_
       flashAfter(3700)
       end(3900)
     },
+    // ---- Z-Moves com animação própria (como no Sun & Moon) ----
+    'inferno-overdrive--physical': () => {
+      // Junta fogo na boca e cospe uma bola de fogo que cresce enquanto voa e explode no alvo.
+      cam = [[0, ...NEUTRAL], [300, ...look(a, 1.4, 2 * toward)], [1100, ...look(a, 1.45, 3 * toward)], [1500, ...look(mid, 0.95, 0)], [2100, ...look(tc, 1.35, -2 * toward)]]
+      add({ s: 'tint', t0: 200, t1: 2900, color: '#2a0500', a: [0, 0.5] })
+      S.push({ who: 'A', k: 'tint', t0: 200, t1: 1200, color: '#ff6a12', a: 0.6, pulse: 26 })
+      add({ s: 'particles', t0: 250, t1: 1200, n: 60, seed, x: mouth.x, y: mouth.y, sx: 0, sy: 0, mode: 'converge', r: 260, life: 600, size: [14, 5], style: 'flame', c: ['#fff7c2', '#ffb02e', '#e5391a'] })
+      add({ s: 'glow', t0: 400, t1: 1250, x: mouth.x, y: mouth.y, r: [10, 60], c: ['#fffbe0', '#ffb02e', '#e5391a', '#7a1406'], a: 1, swirl: 1 })
+      add({ s: 'glow', t0: 1250, t1: 2050, x: [mouth.x, tc.x], y: [mouth.y, tc.y], r: [60, 190], c: ['#fffbe0', '#ffb02e', '#e5391a', '#7a1406'], a: 1, core: 0.3, swirl: 1, trail: 1 })
+      add({ s: 'particles', t0: 1250, t1: 2050, n: 80, seed: seed + 2, x: [mouth.x, tc.x], y: [mouth.y, tc.y], sx: 60, sy: 60, v: 60, vy: -80, g: -40, life: 400, mode: 'trail', size: [20, 6], style: 'flame', c: ['#fff7c2', '#ffb02e', '#e5391a'] })
+      add({ s: 'tint', t0: 2050, t1: 2200, color: '#fffbe0', a: [1, 0] })
+      add({ s: 'fill', t0: 2050, t1: 3000, c: ['#fff7c2', '#ffb02e', '#ff6a12', '#d6200f'], from: 'center', a: 0.9 })
+      add({ s: 'glow', t0: 2050, t1: 3000, x: tc.x, y: tc.y, r: [150, 460], c: ['#fffbe0', '#ff8a2a', '#d6200f'], a: [1, 0] })
+      add({ s: 'particles', t0: 2400, t1: 3600, n: 36, seed: seed + 4, x: tc.x, y: tc.y, sx: T.h * 0.6, sy: 30, v: 20, vy: -120, g: -30, life: 1100, mode: 'stream', size: [30, 10], style: 'smoke', c: ['#3b3b3b', '#555', '#222'] })
+      shake.push([2050, 2900, 16])
+      hit(2050, 1.8, '#ff4a0a')
+      S.push({ who: 'T', k: 'tint', t0: 2050, t1: 3100, color: '#ff2a0a', a: 0.7, pulse: 30 })
+      back(3100, 100)
+      flashAfter(3700)
+    },
+    'subzero-slammer--physical': () => {
+      // A temperatura despenca: neve na tela, gelo se forma em volta do alvo até virar um bloco e estoura.
+      cam = [[0, ...NEUTRAL], [400, ...look(a, 1.3, 2 * toward)], [1000, ...look(tc, 1.3, -2 * toward)], [2400, ...look(tc, 1.55, -3 * toward)]]
+      add({ s: 'tint', t0: 200, t1: 3000, color: '#dbeafe', a: [0, 0.45] })
+      add({ s: 'particles', t0: 200, t1: 2800, n: 200, seed, x: stage.w / 2, y: -20, sx: stage.w * 0.6, sy: 20, v: 100 * toward, vy: 300, g: 0, life: 1200, mode: 'stream', size: [8, 4], style: 'crystal', c: ['#ffffff', '#e0f2fe', '#bae6fd'] })
+      S.push({ who: 'A', k: 'tint', t0: 300, t1: 1100, color: '#bfeeff', a: 0.55, pulse: 20 })
+      for (let i = 0; i < 8; i++) {
+        const ang = (i / 8) * Math.PI * 2
+        const dx = Math.cos(ang) * T.h * 0.45
+        const dy = Math.sin(ang) * T.h * 0.4
+        add({ s: 'shot', t0: 1000 + i * 90, t1: 2300, x: [tc.x + dx * 2.2, tc.x + dx], y: [tc.y + dy * 2.2, tc.y + dy], r: 42, c: ['#ffffff', '#c8f6ff', '#6cc9f0'], style: 'crystal', spin: 0.04 })
+      }
+      add({ s: 'glow', t0: 1700, t1: 2350, x: tc.x, y: tc.y, r: [40, T.h * 0.85], c: ['#ffffff', '#c8f6ff', '#6cc9f0'], a: [0.3, 0.85], core: 0.5 })
+      S.push({ who: 'T', k: 'tint', t0: 1300, t1: 3000, color: '#e0faff', a: 0.8 })
+      add({ s: 'tint', t0: 2350, t1: 2500, color: '#ffffff', a: [1, 0] })
+      add({ s: 'particles', t0: 2350, t1: 3200, n: 40, seed: seed + 3, x: tc.x, y: tc.y, sx: 30, sy: 30, v: 360, vy: -120, g: 500, life: 800, mode: 'burst', size: [26, 10], style: 'crystal', c: ['#ffffff', '#c8f6ff', '#6cc9f0'] })
+      shake.push([2350, 2900, 15])
+      hit(2350, 1.8, '#9ee8ff')
+      back(3100, 80)
+      flashAfter(3650)
+    },
+    'acid-downpour--physical': () => {
+      // Um pântano de veneno se abre embaixo do alvo, chove veneno e ele afunda na gosma roxa.
+      const gy = Math.min(T.y, stage.h * 0.7)
+      cam = [[0, ...NEUTRAL], [400, ...look(a, 1.3, 2 * toward)], [1000, ...look({ x: tc.x, y: gy - 60 }, 1.3, -2 * toward)], [2600, ...look({ x: tc.x, y: gy - 60 }, 1.4, -2 * toward)]]
+      add({ s: 'tint', t0: 200, t1: 3000, color: '#1a0624', a: [0, 0.5] })
+      S.push({ who: 'A', k: 'tint', t0: 300, t1: 1100, color: '#a855f7', a: 0.55, pulse: 20 })
+      add({ s: 'ring', t0: 800, t1: 2900, x: tc.x, y: gy, r: [20, T.h * 0.9], ratio: 0.25, w: [30, 14], c: '#7e22ce', a: [1, 0.8], n: 1 })
+      add({ s: 'ring', t0: 900, t1: 2900, x: tc.x, y: gy, r: [10, T.h * 0.7], ratio: 0.25, w: [24, 10], c: '#c56cf0', a: [1, 0.8], n: 1 })
+      add({ s: 'particles', t0: 900, t1: 2800, n: 40, seed, x: tc.x, y: gy, sx: T.h * 0.6, sy: 10, v: 10, vy: -140, g: 0, life: 700, mode: 'stream', size: [14, 6], style: 'bubble', c: ['#f6dcff', '#c56cf0', '#8e2fc2'] })
+      add({ s: 'particles', t0: 1000, t1: 2700, n: 140, seed: seed + 2, x: tc.x, y: -20, sx: T.h * 0.9, sy: 20, v: 0, vy: 700, g: 300, life: 600, mode: 'stream', size: [10, 18], style: 'goo', c: ['#f6dcff', '#c56cf0', '#8e2fc2'] })
+      S.push({ who: 'T', k: 'move', t0: 1300, t1: 2900, dx: 0, dy: 70, back: 1 })
+      S.push({ who: 'T', k: 'tint', t0: 1300, t1: 3000, color: '#a855f7', a: 0.65, pulse: 16 })
+      add({ s: 'particles', t0: 2300, t1: 3100, n: 40, seed: seed + 4, x: tc.x, y: gy, sx: 30, sy: 10, v: 300, vy: -320, g: 900, life: 700, mode: 'burst', size: [16, 8], style: 'goo', c: ['#f6dcff', '#c56cf0', '#8e2fc2'] })
+      shake.push([2300, 2800, 13])
+      hit(2300, 1.8, '#8e2fc2')
+      back(3000, 80)
+      flashAfter(3550)
+    },
+    '10-000-000-volt-thunderbolt': () => {
+      // Pikachu de boné junta energia e solta sete raios coloridos que sobem e se juntam num raio gigante no alvo.
+      const colors = ['#f87171', '#fb923c', '#facc15', '#4ade80', '#38bdf8', '#818cf8', '#e879f9']
+      cam = [[0, ...NEUTRAL], [300, ...look(a, 1.4, 2 * toward)], [1300, ...look({ x: a.x, y: a.y - 120 }, 1.1, 0)], [1800, ...look(mid, 0.92, 0)], [2400, ...look(tc, 1.4, -3 * toward)]]
+      add({ s: 'tint', t0: 200, t1: 3000, color: '#05040f', a: [0, 0.6] })
+      S.push({ who: 'A', k: 'tint', t0: 250, t1: 1600, color: '#ffe94a', a: 0.6, pulse: 40 })
+      add({ s: 'bolt', t0: 300, t1: 1500, x: a.x, y: a.y, r: A.h * 0.8, n: 9, c: '#ffffff', c2: '#ffe94a', w: 4, flicker: 1 })
+      colors.forEach((col, i) => {
+        const ang = -Math.PI / 2 + (i - 3) * 0.32
+        const top = { x: a.x + Math.cos(ang) * 260, y: a.y + Math.sin(ang) * 260 }
+        add({ s: 'bolt', t0: 1000 + i * 60, t1: 1700, x: top.x, y: top.y, r: 0, from: mouth, n: 8, c: '#ffffff', c2: col, w: 6, flicker: 1 })
+        add({ s: 'bolt', t0: 1700 + i * 40, t1: 2300, x: tc.x, y: tc.y, r: 0, from: top, n: 10, c: '#ffffff', c2: col, w: 6, flicker: 1 })
+      })
+      add({ s: 'beam', t0: 2100, t1: 2900, x0: tc.x, y0: -60, x1: tc.x, y1: tc.y, w: [30, 90], c: ['#ffffff', '#fef08a', '#facc15'], a: [1, 0], grow: 150 })
+      add({ s: 'tint', t0: 2100, t1: 2250, color: '#ffffff', a: [1, 0] })
+      add({ s: 'bolt', t0: 2100, t1: 3000, x: tc.x, y: tc.y, r: 180, n: 10, c: '#ffffff', c2: '#ffe94a', w: 4, flicker: 1 })
+      shake.push([2100, 2900, 16])
+      hit(2100, 1.9, '#ffe94a')
+      S.push({ who: 'T', k: 'tint', t0: 2100, t1: 3000, color: '#ffe94a', a: 0.65, pulse: 50 })
+      back(3000, 80)
+      flashAfter(3550)
+    },
     electroweb: () => {
       strike(380, 1.55)
       add({ s: 'ring', t0: 350, t1: 1150, x: tc.x, y: tc.y + T.h * 0.25, r: [10, 120], ratio: 0.45, w: [8, 2], c: '#ffffff', a: [1, 0], n: 4, spiral: 1 })
@@ -2309,6 +2390,7 @@ export function fxPlan2({ kind, type, slug = '', from = 0, seed = 1, stage = FX_
     vanish: (o) => {
       const c = o.c ?? P.c
       const up = o.dir !== 'down' && o.dir !== 'ghost'
+      const gy = Math.min(T.y, stage.h * 0.7)
       cam = [[0, ...NEUTRAL], [300, ...look(a, 1.25, 2 * toward)], [800, ...look(up ? { x: a.x, y: a.y - 200 } : a, 1.05, 0)], [1300, ...look({ x: tc.x, y: tc.y - (up ? 140 : 0) }, 1.1, 0)], [1600, ...look(tc, 1.6, -3 * toward)]]
       if (o.dir === 'ghost') {
         add({ s: 'tint', t0: 150, t1: 1900, color: '#0b0614', a: [0, 0.5] })
@@ -2318,8 +2400,8 @@ export function fxPlan2({ kind, type, slug = '', from = 0, seed = 1, stage = FX_
       add({ s: 'particles', t0: 250, t1: 900, n: 30, seed, x: a.x, y: up ? A.y - A.h * 0.5 : A.y, sx: A.h * 0.4, sy: 10, v: 100, vy: up ? 40 : -260, g: up ? 60 : 700, life: 700, mode: 'stream', size: [14, 8], style: o.p ?? P.p, c: c.slice(0, 3) })
       if (up) add({ s: 'shot', t0: 1250, t1: 1550, x: [tc.x - 120 * toward, tc.x], y: [-80, tc.y], r: 40, c: c.slice(0, 3), style: 'streak', trail: 1 })
       else {
-        add({ s: 'crack', t0: 1100, t1: 1900, x: tc.x, y: T.y, r: [10, 200], n: 7, c: c[3] ?? '#2b1b08', c2: c[1], a: [1, 0] })
-        add({ s: 'particles', t0: 1350, t1: 1900, n: 40, seed: seed + 2, x: tc.x, y: o.dir === 'ghost' ? tc.y : T.y, sx: T.h * 0.3, sy: 6, v: 80, vy: -500, g: o.dir === 'ghost' ? 0 : 1000, life: 600, mode: 'stream', size: [16, 8], style: o.p ?? P.p, c: c.slice(0, 3) })
+        add({ s: 'crack', t0: 1100, t1: 1900, x: tc.x, y: gy, r: [10, 260], n: 9, c: c[3] ?? '#2b1b08', c2: c[1], a: [1, 0] })
+        add({ s: 'particles', t0: 1350, t1: 1900, n: 80, seed: seed + 2, x: tc.x, y: o.dir === 'ghost' ? tc.y : gy, sx: T.h * 0.4, sy: 6, v: 80, vy: -620, g: o.dir === 'ghost' ? 0 : 1000, life: 600, mode: 'stream', size: [16, 8], style: o.p ?? P.p, c: c.slice(0, 3) })
       }
       add({ s: 'rays', t0: 1550, t1: 1900, x: tc.x, y: tc.y, n: 10, r0: 20, r1: [50, 170], w: 6, c: '#ffffff', c2: c[1], a: [1, 0], rot: 0.3 })
       hit(1550, o.pow ?? 1.3, c[2])
@@ -2371,6 +2453,7 @@ export function fxPlan2({ kind, type, slug = '', from = 0, seed = 1, stage = FX_
   const hand = !signature[slug] ? HAND_MOVES[slug] : null
   if (hand && K[hand[0]]) signature[slug] = () => K[hand[0]](hand[1] ?? {})
 
+  for (const z of ['inferno-overdrive', 'subzero-slammer', 'acid-downpour']) signature[`${z}--special`] = signature[`${z}--physical`]
   const sig = signature[slug]
   if (sig) sig()
   else if (recipe) {
