@@ -1773,6 +1773,40 @@ export function fxPlan2({ kind, type, slug = '', from = 0, seed = 1, stage = FX_
       cam.push([2200, ...NEUTRAL])
       end(2300)
     },
+    'g-max-stonesurge': () => {
+      // A onda gigante sobe com pedras pontudas no meio da água, quebra em cima do alvo, as pedras brotam da água em
+      // volta dele, giram e ficam fincadas no campo do adversário (como o Stealth Rock).
+      const wide = [mid.x, mid.y + 10, 0.95, -toward]
+      const gy = Math.min(T.y + (A.y - T.y) * 0.25, stage.h * 0.66)
+      const gx = tc.x + (a.x - tc.x) * 0.25
+      const rock = ['#fff3dd', '#d6b98a', '#9b7c4f', '#4f3b20']
+      cam = [[0, ...NEUTRAL], [450, ...wide], [1700, ...wide], [2050, ...look({ x: tc.x, y: (tc.y + gy) / 2 }, 1.3, -2 * toward)], [3000, ...look({ x: tc.x, y: (tc.y + gy) / 2 }, 1.3, -2 * toward)]]
+      add({ s: 'tint', t0: 150, t1: 2600, color: '#06235c', a: [0, 0.32] })
+      add({ s: 'surge', t0: 350, t1: 2350, dir: toward, c: ['#f4fdff', '#7fd6ff', '#2a86e0', '#0d3f99'], a: 0.9 })
+      // As pedras vão junto com a onda (por cima da água).
+      for (let i = 0; i < 6; i++) {
+        const t = 650 + i * 70
+        const y0 = stage.h * (0.35 + rnd(i) * 0.25)
+        add({ s: 'shot', t0: t, t1: t + 700, x: [a.x - 160 * toward, tc.x + (rnd(i + 3) - 0.5) * 140], y: [y0, tc.y + (rnd(i + 5) - 0.5) * 80], r: 34 + rnd(i + 7) * 18, c: rock, style: 'shard', arc: 60, spin: 1.5 * toward })
+      }
+      hit(1250, 1.6, '#2a86e0')
+      add({ s: 'particles', t0: 1250, t1: 2000, n: 30, seed, x: tc.x, y: tc.y, sx: 30, sy: 30, v: 260, vy: -220, g: 700, life: 650, mode: 'burst', size: [10, 4], style: 'droplet', c: ['#ffffff', '#bfe8ff', '#5cc8ff'] })
+      add({ s: 'particles', t0: 1300, t1: 2000, n: 16, seed: seed + 2, x: tc.x, y: tc.y, sx: 20, sy: 20, v: 240, vy: -200, g: 900, life: 700, mode: 'burst', size: [16, 10], style: 'shard', c: rock.slice(0, 3) })
+      // Pedras pontudas brotam da água em volta do alvo...
+      for (let i = 0; i < 5; i++) {
+        const dx = (i - 2) * 58 + (rnd(i + 11) - 0.5) * 20
+        add({ s: 'shot', t0: 1700 + i * 70, t1: 2300, x: [tc.x + dx, tc.x + dx], y: [gy + 30, tc.y - 20 - rnd(i) * 60], r: 34, c: rock, style: 'shard', spin: (rnd(i + 2) - 0.5) * 0.3 })
+      }
+      // ...giram em volta dele e caem fincadas no chão do lado dele.
+      add({ s: 'particles', t0: 2150, t1: 2750, n: 6, seed: seed + 4, x: tc.x, y: tc.y - 20, sx: 0, sy: 0, mode: 'orbit', r: T.h * 0.6, life: 600, size: [34, 30], style: 'shard', c: rock.slice(0, 3) })
+      for (let i = 0; i < 5; i++) add({ s: 'shot', t0: 2550 + i * 60, t1: 3300, x: [gx + (i - 2) * 60, gx + (i - 2) * 60], y: [gy - 40, gy - 10 - (i % 2) * 16], r: 28, c: rock, style: 'shard', spin: 0.05 })
+      S.push({ who: 'T', k: 'tint', t0: 1250, t1: 2400, color: '#2a86e0', a: 0.5 })
+      shake.push([1250, 1500, 12])
+      hud = [120, 3200]
+      cam.push([3550, ...NEUTRAL])
+      flashAfter(3700)
+      end(3900)
+    },
     electroweb: () => {
       strike(380, 1.55)
       add({ s: 'ring', t0: 350, t1: 1150, x: tc.x, y: tc.y + T.h * 0.25, r: [10, 120], ratio: 0.45, w: [8, 2], c: '#ffffff', a: [1, 0], n: 4, spiral: 1 })
