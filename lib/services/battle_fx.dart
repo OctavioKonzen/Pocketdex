@@ -47,7 +47,7 @@ class FxSpot {
 
 /// O que acontece com um sprite num instante: deslocamento, escala, cor por cima, silhueta branca e se aparece.
 class FxLook {
-  double dx = 0, dy = 0, sx = 1, sy = 1, tintA = 0;
+  double dx = 0, dy = 0, sx = 1, sy = 1, tintA = 0, alpha = 1;
   String? tint;
   bool white = false, hidden = false;
 }
@@ -95,6 +95,19 @@ class BattleFx {
     if (raw is! Map || raw['near'] is! Map || raw['far'] is! Map) return null;
     if ((raw['near'] as Map)['box'] == null || (raw['far'] as Map)['box'] == null) return null;
     return (near: FxSpot(raw['near'] as Map), far: FxSpot(raw['far'] as Map));
+  }
+
+  /// A cena [kind] ('sendout', 'recall' ou 'faint') do lado [side] (0 você, 1 o outro), como no Black & White.
+  static MoveFxPlan? scene({required String kind, required int side, required int near, required int far, int seed = 1}) {
+    final raw = _call('scene', [
+      {'kind': kind, 'side': side, 'near': near, 'far': far, 'seed': seed}
+    ]);
+    if (raw is! Map) return null;
+    try {
+      return MoveFxPlan(Map<String, dynamic>.from(raw));
+    } catch (_) {
+      return null;
+    }
   }
 
   /// O plano do golpe [slug] usado por [from] (0 você, 1 o outro), com os sprites [near] e [far].
@@ -187,6 +200,15 @@ class BattleFx {
           out.dy += (e['dy'] as num) * f;
         case 'hide':
           out.hidden = true;
+        case 'grow':
+          // Cresce (sai da Poké Ball) ou encolhe (volta para ela), a partir dos pés.
+          final g = (e['s0'] as num) + ((e['s1'] as num) - (e['s0'] as num)) * ease(k);
+          out.sx *= g;
+          out.sy *= g;
+        case 'fade':
+          out.alpha *= (e['a0'] as num) + ((e['a1'] as num) - (e['a0'] as num)) * k;
+        case 'silhouette':
+          out.white = true;
         case 'squash':
           final f = math.sin(k * math.pi);
           out.sx *= 1 + ((e['sx'] as num) - 1) * f;

@@ -303,6 +303,20 @@ class FxPainter extends CustomPainter {
               ..lineTo(x - s * 0.8, y)
               ..close(),
             fillP);
+      case 'pokeball':
+        // A Poké Ball girando (vermelha em cima, branca embaixo, a faixa e o botão).
+        canvas.save();
+        canvas.translate(x, y);
+        canvas.rotate(rot);
+        final rect = Rect.fromCircle(center: Offset.zero, radius: s);
+        canvas.drawArc(rect, math.pi, math.pi, true, Paint()..color = const Color(0xFFEF4444));
+        canvas.drawArc(rect, 0, math.pi, true, Paint()..color = const Color(0xFFF8FAFC));
+        final edge = _stroke(const Color(0xFF111827), math.max(2, s * 0.16));
+        canvas.drawCircle(Offset.zero, s, edge);
+        canvas.drawLine(Offset(-s, 0), Offset(s, 0), edge);
+        canvas.drawCircle(Offset.zero, s * 0.32, Paint()..color = const Color(0xFFF8FAFC));
+        canvas.drawCircle(Offset.zero, s * 0.32, edge);
+        canvas.restore();
       case 'heart':
         canvas.drawPath(
             Path()

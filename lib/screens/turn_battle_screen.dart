@@ -1432,6 +1432,9 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
   /// O chefe já falou ao mandar o último Pokémon (só uma vez).
   bool _lastWords = false;
 
+  /// O treinador ao lado do Pokémon dele quando fala no meio da batalha: 'in' entrando/falando, 'out' saindo.
+  String? _talker;
+
   /// O impacto do golpe (onde, a cor do tipo, contador) e a cor do último golpe que acertou.
   (Point<double>, Color, int)? _impact;
   int _impactKey = 0;
@@ -1585,6 +1588,41 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
   }
 
   /// A Poké Ball abre na plataforma e o Pokémon sai dela.
+  /// As cenas como no Black & White (mesma câmera e efeitos dos golpes): 'sendout' (a Poké Ball voa e abre),
+  /// 'recall' (o raio vermelho) e 'faint' (desmaio). Devolve false quando não dá (sem os dados): usa a de antes.
+  Future<bool> _playScene(String kind, int side) async {
+    if (!_fxReady || !mounted) return false;
+    final near = _form[0] ?? _b.teams[0][_active[0]].id, far = _form[1] ?? _b.teams[1][_active[1]].id;
+    if (_portStage(near, far, _b.teams[0][_active[0]].shiny, _b.teams[1][_active[1]].shiny) == null) return false;
+    final p = BattleFx.scene(kind: kind, side: side, near: near, far: far, seed: (_turnNo * 7 + side) % 997);
+    if (p == null) return false;
+    if (kind == 'sendout') BattleSounds.play('open');
+    if (kind == 'recall') BattleSounds.play('recall');
+    // Sai da Poké Ball: o sprite já existe (escondido pela cena até a bola abrir).
+    setState(() {
+      _fxPlan = p;
+      if (kind == 'sendout') {
+        _ball[side] = null;
+        _poke[side] = '';
+      }
+    });
+    _fxCtl.duration = Duration(milliseconds: max(1, BattleSpeed.ms(p.dur.round())));
+    try {
+      await _fxCtl.forward(from: 0).orCancel;
+    } catch (_) {
+      // Cancelado (saiu da batalha).
+    }
+    if (!mounted) return true;
+    // Voltou para a Poké Ball ou desmaiou: continua fora (no mesmo quadro em que a cena acaba).
+    setState(() {
+      _fxPlan = null;
+      if (kind == 'recall') _poke[side] = 'hidden';
+      if (kind == 'faint') _fainted[side] = true;
+    });
+    if (kind == 'sendout') await _sparkleIfShiny(side);
+    return true;
+  }
+
   Future<void> _release(int side) async {
     BattleSounds.play('open');
     setState(() => _ball[side] = 'open');
@@ -1639,12 +1677,17 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
         _text = tr('{0} enviou {1}!').replaceAll('{0}', who).replaceAll('{1}', _b.active(1).name);
         _note('text', 1, _text);
         _foeGone = true;
-        _ball[1] = 'throw';
       });
       BattleSounds.play('throw');
-      await _wait(520);
+      // O treinador saiu: a Poké Ball voa, abre e o Pokémon sai (a cena nova); sem ela, a de antes.
+      await _wait(380);
       if (!mounted) return;
-      await _release(1);
+      if (!await _playScene('sendout', 1)) {
+        setState(() => _ball[1] = 'throw');
+        await _wait(520);
+        if (!mounted) return;
+        await _release(1);
+      }
     }
     if (!mounted) return;
     if (widget.keepMine) {
@@ -1658,14 +1701,14 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
       await _wait(90);
       if (!mounted) return;
     }
-    setState(() {
-      _meGone = true;
-      _ball[0] = 'throw';
-    });
+    setState(() => _meGone = true);
     BattleSounds.play('throw');
-    await _wait(520);
-    if (!mounted) return;
-    await _release(0);
+    if (!await _playScene('sendout', 0)) {
+      setState(() => _ball[0] = 'throw');
+      await _wait(520);
+      if (!mounted) return;
+      await _release(0);
+    }
     if (mounted) setState(() => _introOn = false);
   }
 
@@ -1855,7 +1898,7 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
           }
           if (look.white) out = ColorFiltered(colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn), child: out);
           return Opacity(
-            opacity: look.hidden ? 0 : 1,
+            opacity: look.hidden ? 0 : look.alpha.clamp(0.0, 1.0),
             child: Transform.translate(
               offset: Offset(look.dx * f, look.dy * f),
               child: Transform(alignment: Alignment.bottomCenter, transform: Matrix4.diagonal3Values(look.sx, look.sy, 1), child: out),
@@ -2037,6 +2080,9 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
           // Espera piscar e a barra de HP descer.
           await _wait(550);
         case 'faint':
+          // Desmaio como no jogo: a câmera chega perto, ele escurece e afunda (a cena nova).
+          await _playScene('faint', e.side);
+          if (!mounted) return;
           setState(() => _fainted[e.side] = true);
         case 'switch':
           // Personagem importante (chefe com tela VS): fala no meio da batalha, como nos jogos,
@@ -2047,6 +2093,11 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
             final name = '${widget.vs!['name'] ?? widget.foeName}';
             // Na história do Pokelike, a fala daquele momento da trama; fora dela, uma das falas comuns. Igual ao site.
             final words = widget.taunt.isNotEmpty ? widget.taunt : ['$name: ${tr(_lastLines[(name.length + _b.teams[1].length) % _lastLines.length])}'];
+            // O treinador aparece ao lado do Pokémon dele enquanto fala (como nos jogos) e depois sai.
+            if (_coach != null) {
+              setState(() => _talker = 'in');
+              await _wait(380);
+            }
             for (final w in words) {
               if (!mounted) return;
               setState(() => _text = w);
@@ -2057,9 +2108,15 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
             }
             _skip = null;
             if (!mounted) return;
+            if (_talker != null) {
+              setState(() => _talker = 'out');
+              await _wait(480);
+              if (!mounted) return;
+              setState(() => _talker = null);
+            }
           }
           // Volta para a Poké Ball (se não desmaiou) e o outro sai dela.
-          if (!_fainted[e.side] && _active[e.side] != e.value) {
+          if (!_fainted[e.side] && _active[e.side] != e.value && !await _playScene('recall', e.side)) {
             BattleSounds.play('recall');
             setState(() => _poke[e.side] = 'recall');
             await _wait(380);
@@ -2074,7 +2131,7 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
             _tera[e.side] = '';
             _boosts[e.side].clear();
           });
-          await _release(e.side);
+          if (!await _playScene('sendout', e.side)) await _release(e.side);
         case 'mega':
           // A fanfarra da Mega e, dali até o fim da batalha, o tema épico. Igual ao site.
           BattleSounds.play('mega', volume: 0.8, from: BattleSounds.syncedStart(BattleSpeed.speed.value));
@@ -2678,19 +2735,30 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
                             ]),
                           ),
                         ],
-                      if (_introOn && _coach != null)
+                      // O treinador entra depois da tela de VS (desliza pela direita), fica no lugar do Pokémon dele e sai para mandá-lo.
+                      if (_introOn && _coach != null && !_vsOn)
                         Positioned(
-                          right: w * 0.0,
-                          bottom: h * foeBottom(scene),
-                          width: w * 0.48,
-                          height: w * 0.48,
-                          child: AnimatedSlide(
+                          left: w * 0.44,
+                          bottom: h * (1 - 335 / 540),
+                          width: w * 0.34,
+                          height: w * 0.34,
+                          child: _TrainerSlide(
                             key: const ValueKey('foe-trainer'),
-                            offset: _foeGone ? const Offset(1.6, 0) : Offset.zero,
-                            duration: const Duration(milliseconds: 520),
-                            curve: Curves.easeIn,
-                            // Da altura de uma pessoa ao lado do Pokémon dele (a mesma escala).
-                            child: Align(alignment: Alignment.bottomCenter, child: TrainerSprite(_coach!, height: farPerson(w))),
+                            gone: _foeGone,
+                            child: Align(alignment: Alignment.bottomCenter, child: TrainerSprite(_coach!, height: farPerson(w) * 1.25)),
+                          ),
+                        ),
+                      // Fala no meio da batalha: o treinador ao lado do Pokémon dele.
+                      if (_talker != null && _coach != null)
+                        Positioned(
+                          right: w * 0.01,
+                          bottom: h * (1 - 335 / 540) - h * 0.02,
+                          width: w * 0.24,
+                          height: w * 0.3,
+                          child: _TrainerSlide(
+                            key: ValueKey(('foe-talker', _talker)),
+                            gone: _talker == 'out',
+                            child: Align(alignment: Alignment.bottomCenter, child: TrainerSprite(_coach!, height: farPerson(w) * 1.25)),
                           ),
                         ),
                       if (_introOn && _myTrainer != null && !widget.keepMine)
@@ -3759,6 +3827,27 @@ class _CutCorner extends CustomClipper<Path> {
     ..close();
   @override
   bool shouldReclip(_CutCorner old) => old.cut != cut;
+}
+
+/// O treinador entrando pela direita e saindo para a direita ([gone]), como no site (trainer-enter-1 / trainer-leave-1).
+class _TrainerSlide extends StatelessWidget {
+  const _TrainerSlide({super.key, required this.gone, required this.child});
+  final bool gone;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+        tween: Tween(begin: 1.4, end: 0),
+        duration: const Duration(milliseconds: 420),
+        curve: Curves.easeOut,
+        builder: (context, v, child) => FractionalTranslation(translation: Offset(v, 0), child: Opacity(opacity: (1 - v / 1.4).clamp(0.0, 1.0), child: child)),
+        child: AnimatedSlide(
+          offset: gone ? const Offset(1.6, 0) : Offset.zero,
+          duration: const Duration(milliseconds: 520),
+          curve: Curves.easeIn,
+          child: AnimatedOpacity(opacity: gone ? 0 : 1, duration: const Duration(milliseconds: 520), child: child),
+        ),
+      );
 }
 
 class _PortSprite extends StatelessWidget {
