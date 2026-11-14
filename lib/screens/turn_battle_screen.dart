@@ -57,6 +57,8 @@ import '../widgets/bw_bag.dart';
 import '../widgets/bw_party.dart';
 import '../widgets/bw_summary.dart';
 import '../widgets/ds_layout.dart';
+import '../services/battle_fx.dart';
+import '../widgets/battle_fx_painter.dart';
 
 /// Um time para a batalha: nome e membros (id + set).
 class BattleTeam {
@@ -1347,7 +1349,7 @@ class BattleView extends StatefulWidget {
   State<BattleView> createState() => BattleViewState();
 }
 
-class BattleViewState extends State<BattleView> with SingleTickerProviderStateMixin, RouteAware {
+class BattleViewState extends State<BattleView> with TickerProviderStateMixin, RouteAware {
   static const _step = Duration(milliseconds: 1100);
   late final List<int> _active = [widget.battle.activeIndex[0], widget.battle.activeIndex[1]];
   late final List<List<int>> _hp = [
@@ -1418,6 +1420,10 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
   String? _gimmickPick;
   int? _gimmickMon;
   late final _shake = AnimationController(vsync: this, duration: const Duration(milliseconds: 650));
+  // A animação nova de cada golpe (como no port de Black & White): o plano dele e o tempo correndo.
+  MoveFxPlan? _fxPlan;
+  late final _fxCtl = AnimationController(vsync: this, duration: const Duration(seconds: 1));
+  bool _fxReady = BattleFx.ready;
   int _flash = 0;
 
   /// A transformação em andamento (lado, 'mega' | 'dmax' | 'tera', contador): a aura em volta do Pokémon.
@@ -1533,6 +1539,9 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
     // A música da batalha (para quando sai da tela).
     if (_b.winner == null) BattleSounds.startMusic(widget.music ?? GymChallenge.musicOf(null, foe: _b.active(1).id, seed: _b.seed ?? 0), this);
     LocalDatabase.instance.moveAnims().then((t) => _anims = t).catchError((_) => <String, dynamic>{});
+    BattleFx.load().then((_) {
+      if (mounted && BattleFx.ready != _fxReady) setState(() => _fxReady = BattleFx.ready);
+    });
     // Começo: as habilidades de clima de quem entrou (Drizzle, Drought...).
     _menu = _b.needSwitch ? 'party' : 'main';
     _summary = null;
@@ -1696,6 +1705,7 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
       t.cancel();
     }
     _shake.dispose();
+    _fxCtl.dispose();
     BattleSounds.routes.unsubscribe(this);
     BattleSounds.stopMusic(this);
     if (_b.mode == 'singles') PhoneOrientation.portrait();
@@ -1805,6 +1815,71 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
 
   /// Esperas da animação: canceladas quando a tela fecha (nada fica rodando).
   final Set<Timer> _timers = {};
+  /// Toca o golpe: a câmera move o campo, os efeitos são desenhados por cima e os sprites mudam (fxPlan).
+  Future<void> _playFx(MoveFxPlan p) async {
+    setState(() => _fxPlan = p);
+    _fxCtl.duration = Duration(milliseconds: max(1, BattleSpeed.ms(p.dur.round())));
+    try {
+      await _fxCtl.forward(from: 0).orCancel;
+    } catch (_) {
+      // Cancelado (saiu da batalha).
+    }
+    if (mounted) setState(() => _fxPlan = null);
+  }
+
+  /// Onde ficam os dois como no port (guardado: muda só quando troca o Pokémon). Null sem os dados ou sem o GIF.
+  ({FxSpot near, FxSpot far})? _stageVal;
+  String? _stageKey;
+  ({FxSpot near, FxSpot far})? _portStage(int near, int far, bool nearShiny, bool farShiny) {
+    if (!_fxReady) return null;
+    final key = '$near-$far-$nearShiny-$farShiny';
+    if (key == _stageKey) return _stageVal;
+    _stageKey = key;
+    final sprites = AnimatedSprites.instance;
+    final ok = sprites.source(near, shiny: nearShiny, back: true) != null && sprites.source(far, shiny: farShiny) != null;
+    _stageVal = ok ? BattleFx.stage(near, far) : null;
+    return _stageVal;
+  }
+
+  /// O sprite durante o golpe: anda, estica, fica da cor do golpe, pisca branco ou some (BattleFx.sprite).
+  Widget _fxLook(int side, double f, Widget child) => AnimatedBuilder(
+        animation: _fxCtl,
+        child: child,
+        builder: (context, child) {
+          final p = _fxPlan;
+          if (p == null) return child!;
+          final look = BattleFx.sprite(p, (side == p.from) ? 'A' : 'T', _fxMs);
+          Widget out = child!;
+          if (look.tint != null && look.tintA > 0) {
+            out = ColorFiltered(colorFilter: ColorFilter.mode(_fxColor(look.tint!).withValues(alpha: look.tintA.clamp(0.0, 1.0)), BlendMode.srcATop), child: out);
+          }
+          if (look.white) out = ColorFiltered(colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn), child: out);
+          return Opacity(
+            opacity: look.hidden ? 0 : 1,
+            child: Transform.translate(
+              offset: Offset(look.dx * f, look.dy * f),
+              child: Transform(alignment: Alignment.bottomCenter, transform: Matrix4.diagonal3Values(look.sx, look.sy, 1), child: out),
+            ),
+          );
+        },
+      );
+
+  /// A HUD some durante o golpe e volta depois (BattleFx.hud).
+  Widget _fxHud(Widget child) => AnimatedBuilder(
+        animation: _fxCtl,
+        child: child,
+        builder: (context, child) => _fxPlan == null ? child! : Opacity(opacity: BattleFx.hud(_fxPlan!, _fxMs).clamp(0.0, 1.0), child: child),
+      );
+
+  static Color _fxColor(String hex) {
+    var h = hex.substring(1);
+    if (h.length == 3) h = h.split('').map((c) => '$c$c').join();
+    return Color(0xFF000000 | int.parse(h, radix: 16));
+  }
+
+  /// O tempo do golpe agora (em ms do plano).
+  double get _fxMs => _fxPlan == null ? 0 : _fxCtl.value * _fxPlan!.dur;
+
   Future<void> _wait(int ms) {
     final done = Completer<void>();
     late final Timer timer;
@@ -1864,6 +1939,26 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                   ? (self ? 'boost' : 'status')
                   : moveAnim(e.slug, e.type, e.category);
           final variant = entry is List ? (entry[2] as num).toInt() : 0;
+          // A animação nova (como no Black & White): câmera, fases, efeitos desenhados saindo da boca ou da frente.
+          if (_fxReady) {
+            final p = BattleFx.plan(
+              slug: e.slug,
+              type: e.type,
+              category: e.category,
+              from: e.side,
+              near: _form[0] ?? _b.teams[0][_active[0]].id,
+              far: _form[1] ?? _b.teams[1][_active[1]].id,
+              self: self,
+              entry: entry is List ? entry : null,
+              seed: _turnNo,
+            );
+            if (p != null) {
+              if (e.category != 'status') _lastHit = getColorForType(e.type);
+              await _playFx(p);
+              if (!mounted) return;
+              continue;
+            }
+          }
           final plan = fxPlan(kind, e.type, e.side, _centerOf(e.side), _centerOf(1 - e.side), entry is List ? '${entry[1]}' : null, variant);
           if (!selfKinds.contains(kind)) _sprites[e.side].currentState?.lunge(dash: contactKinds.contains(kind));
           setState(() => _fx = (plan, getColorForType(e.type), ++_fxKey));
@@ -2248,7 +2343,6 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
     final waiting = !_busy && !(widget.online?.locked ?? false) && _b.winner == null;
     // Efetividade (como nos jogos): nos golpes, nas fraquezas do inimigo e na troca.
     final rival = _b.active(1);
-    final foeWeak = TurnBattle.weaknesses(rival.types, allTypes, widget.typeEff);
     final dark = Theme.of(context).brightness == Brightness.dark;
     // A Bolsa e o time abrem por cima do campo (a mesma tela, como no jogo; dá para jogar com o celular de lado).
     // A Bolsa: em cima da caixa de texto (a descrição do item aparece nela); USAR e Voltar nos botões fixos de baixo.
@@ -2338,265 +2432,8 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
     final selected = _selectedGimmick;
     final maxed = current.dmax > 0 || (selected == 'dmax' && _b.canGimmick(0, 'dmax'));
     final border = Hud.edge;
-    return DsLayout(
-      // Deitado: o registro embaixo dos menus, à direita.
-      side: DsLayout.lying(context)
-          ? SizedBox(
-              key: const ValueKey('battle-log-side'),
-              height: 220,
-              child: DecoratedBox(
-                decoration: BoxDecoration(color: SiteColors.of(context).card, borderRadius: BorderRadius.circular(16), border: Border.all(color: SiteColors.of(context).line)),
-                child: _logList(context, padding: const EdgeInsets.all(12), newestFirst: true),
-              ),
-            )
-          : null,
-      top: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        // Campo (tocar em qualquer lugar dele passa o texto, como tocar na caixa)
-        GestureDetector(
-          key: const ValueKey('battle-field-tap'),
-          behavior: HitTestBehavior.translucent,
-          onTap: () {
-            if (_skip != null && !_skip!.isCompleted) _skip!.complete();
-          },
-          child: ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-          child: AspectRatio(
-            // Como a tela do DS (4:3).
-            aspectRatio: 4 / 3,
-            child: DecoratedBox(
-              decoration: BoxDecoration(border: Border.all(color: border, width: 4), color: const Color(0xFF9FDCFF)),
-              child: LayoutBuilder(builder: (context, box) {
-                final w = box.maxWidth, h = box.maxHeight;
-                final scene = battleScene(_b.scene, _b.seed);
-                // Terremoto: o campo treme.
-                return AnimatedBuilder(
-                  animation: _shake,
-                  builder: (context, child) => Transform.translate(
-                    offset: Offset(_shake.isAnimating ? sin(_shake.value * pi * 10) * w * 0.015 : 0, 0),
-                    child: child,
-                  ),
-                  child: Stack(
-                    children: [
-                      Positioned.fill(
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 800),
-                          child: BattleBackdrop(key: ValueKey(_weather), scene: scene, weather: _weather),
-                        ),
-                      ),
-                      // Clima, terreno e efeito do lugar fazem parte do cenário: atrás dos Pokémon e das caixas.
-                      Positioned.fill(child: _WeatherFx(_weather, terrain: _terrain, place: _place)),
-                      // O clima e o terreno com os turnos que faltam (como no registro), no alto do campo. Igual ao site.
-                      Positioned(top: 4, left: 0, right: 0, child: IgnorePointer(child: _FieldChip(_weather, _terrain, _b.weatherTurns, _b.terrainTurns))),
-                      // Como no Black & White: o adversário lá atrás à direita (menor), o seu de costas na frente à esquerda (grande, cortado pela caixa do texto).
-                      Positioned(
-                          // O inimigo fica mais longe: menor e com os pés na
-                          // frente do meio da plataforma (pisando nela, como o seu).
-                          right: w * 0.11,
-                          bottom: h * foeBottom(scene),
-                          width: w * 0.26,
-                          height: w * 0.26,
-                          child: Stack(clipBehavior: Clip.none, fit: StackFit.expand, children: [
-                            PlatformBase(scene: scene, side: 'foe', id: _form[1] ?? foe.id),
-                            _PokeOut(
-                                state: _poke[1],
-                                child: _Sprite(key: _sprites[1], mon: foe, id: _form[1] ?? foe.id, dmax: _dmax[1], tera: _tera[1], fainted: _fainted[1])),
-                            if (_morph?.$1 == 1) Positioned.fill(child: _Morph(key: ValueKey(('morph', _morph!.$3)), kind: _morph!.$2, type: foe.teraType)),
-                            if (_shine?.$1 == 1) Positioned.fill(child: _Sparkles(key: ValueKey(('shine', _shine!.$2)))),
-                          ])),
-                      if (_ball[1] != null)
-                        Positioned(right: w * 0.11, bottom: h * foeBottom(scene), width: w * 0.26, height: w * 0.26, child: _Ball(side: 1, phase: _ball[1]!, kind: _ballKind[1])),
-                      if (_introOn && _coach != null)
-                        Positioned(
-                          right: w * 0.0,
-                          bottom: h * foeBottom(scene),
-                          width: w * 0.48,
-                          height: w * 0.48,
-                          child: AnimatedSlide(
-                            key: const ValueKey('foe-trainer'),
-                            offset: _foeGone ? const Offset(1.6, 0) : Offset.zero,
-                            duration: const Duration(milliseconds: 520),
-                            curve: Curves.easeIn,
-                            // Da altura de uma pessoa ao lado do Pokémon dele (a mesma escala).
-                            child: Align(alignment: Alignment.bottomCenter, child: TrainerSprite(_coach!, height: farPerson(w))),
-                          ),
-                        ),
-                      Positioned(
-                          left: w * 0.01,
-                          bottom: h * 0.22,
-                          width: w * 0.58,
-                          height: w * 0.58,
-                          child: Stack(clipBehavior: Clip.none, fit: StackFit.expand, children: [
-                            PlatformBase(scene: scene, side: 'mine', id: _form[0] ?? me.id),
-                            _PokeOut(
-                                state: _poke[0],
-                                child: _Sprite(key: _sprites[0], mon: me, id: _form[0] ?? me.id, dmax: _dmax[0], tera: _tera[0], back: true, fainted: _fainted[0])),
-                            if (_morph?.$1 == 0) Positioned.fill(child: _Morph(key: ValueKey(('morph', _morph!.$3)), kind: _morph!.$2, type: me.teraType)),
-                            if (_shine?.$1 == 0) Positioned.fill(child: _Sparkles(key: ValueKey(('shine', _shine!.$2)))),
-                          ])),
-                      if (_ball[0] != null)
-                        Positioned(left: w * 0.01, bottom: h * 0.22, width: w * 0.58, height: w * 0.58, child: _Ball(side: 0, phase: _ball[0]!, kind: _ballKind[0])),
-                      if (_introOn && _myTrainer != null && !widget.keepMine)
-                        Positioned(
-                          left: w * 0.02,
-                          bottom: 0,
-                          child: AnimatedSlide(
-                            key: const ValueKey('my-trainer'),
-                            offset: _meGone ? const Offset(-1.3, 0) : Offset.zero,
-                            duration: const Duration(milliseconds: 520),
-                            curve: Curves.easeIn,
-                            // Na frente de tudo (mais perto que o seu Pokémon): a mesma escala de uma pessoa, um pouco maior pela perspectiva.
-                            child: TrainerBack(_myTrainer, frame: _backFrame, height: nearPerson(w) * 0.94),
-                          ),
-                        ),
-                      // As caixas de vida ficam sempre por cima dos Pokémon (como nos jogos): um Pokémon grande não cobre a vida.
-                      Positioned(
-                          left: 0,
-                          top: max(0.0, h * 0.05 - (widget.wild ? 0 : _PartyBalls.height)),
-                          width: w * 0.5,
-                          child: AnimatedOpacity(
-                              opacity: _introOn && _poke[1] == 'hidden' ? 0 : 1,
-                              duration: const Duration(milliseconds: 200),
-                              child: GestureDetector(
-                                  key: const ValueKey('inspect-foe'),
-                                  onTap: () => _inspect(1),
-                                  child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                                    // Quantos o treinador tem: a Poké Ball acesa está de pé; apagada, desmaiou (como nos jogos).
-                                    if (!widget.wild) _PartyBalls(key: const ValueKey('party-balls-foe'), hp: _hp[1]),
-                                    _InfoBox(mon: foe, hp: _hp[1][_active[1]], status: _status[1][_active[1]], dmax: _dmax[1], boosts: _boosts[1], bw: true),
-                                  ])))),
-                      Positioned(
-                          right: 0,
-                          bottom: h * 0.255,
-                          width: w * 0.5,
-                          child: AnimatedOpacity(
-                              opacity: _introOn && _poke[0] == 'hidden' ? 0 : 1,
-                              duration: const Duration(milliseconds: 200),
-                              child: GestureDetector(
-                                  key: const ValueKey('inspect-me'),
-                                  onTap: () => _inspect(0),
-                                  child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                                    _PartyBalls(key: const ValueKey('party-balls-me'), hp: _hp[0], mine: true),
-                                    _InfoBox(mon: me, hp: _hp[0][_active[0]], status: _status[0][_active[0]], dmax: _dmax[0], boosts: _boosts[0], mine: true, bw: true,
-                                        exp: expBarOf(_b, _active[0], _hp[1])),
-                                  ])))),
-                      // A habilidade em ação: a faixa sai do lado do Pokémon (o adversário à direita, o seu à esquerda).
-                      if (_ability != null)
-                        Positioned(
-                          key: ValueKey(('ability', _ability)),
-                          right: _ability!.$1 == 1 ? 0 : null,
-                          left: _ability!.$1 == 0 ? 0 : null,
-                          top: _ability!.$1 == 1 ? h * 0.30 : null,
-                          bottom: _ability!.$1 == 0 ? h * 0.34 : null,
-                          child: TweenAnimationBuilder<double>(
-                            tween: Tween(begin: 1, end: 0),
-                            duration: const Duration(milliseconds: 260),
-                            builder: (context, v, child) => FractionalTranslation(translation: Offset(_ability!.$1 == 1 ? v : -v, 0), child: child),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF5B5B5B), Color(0xFF2C2C2C)]),
-                                border: Border.all(color: const Color(0xFF181818), width: 2),
-                                borderRadius: _ability!.$1 == 1 ? const BorderRadius.horizontal(left: Radius.circular(8)) : const BorderRadius.horizontal(right: Radius.circular(8)),
-                              ),
-                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                                // Nomes como no jogo (não traduz).
-                                m.Text(_ability!.$2, style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold, shadows: _bwShadow)),
-                                m.Text(_ability!.$3, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900, shadows: _bwShadow)),
-                              ]),
-                            ),
-                          ),
-                        ),
-                      if (_fx != null) _MoveFx(key: ValueKey(('fx', _fx!.$3)), plan: _fx!.$1, color: _fx!.$2, w: w, h: h),
-                      if (_impact != null)
-                        Positioned(
-                          key: ValueKey(('impact', _impact!.$3)),
-                          left: _impact!.$1.x / 100 * w - w * 0.11,
-                          top: _impact!.$1.y / 100 * h - w * 0.11,
-                          width: w * 0.22,
-                          height: w * 0.22,
-                          child: _Impact(color: _impact!.$2),
-                        ),
-                      if (_flash > 0) _Flash(key: ValueKey(('flash', _flash))),
-                      // A mensagem dentro da tela, embaixo, como nos jogos (tocar passa o texto).
-                      Positioned(
-                        left: w * 0.015,
-                        right: w * 0.015,
-                        bottom: h * 0.015,
-                        height: h * 0.21,
-                        child: _DialogBox(
-                          key: const ValueKey('battle-text'),
-                          dark: dark,
-                          onSize: (size) {
-                            _dialogSize = size;
-                            _dialogScale = MediaQuery.textScalerOf(context);
-                          },
-                          onTap: () { if (_skip != null && !_skip!.isCompleted) _skip!.complete(); },
-                          // Já traduzido (nomes e golpes não mudam).
-                          text: !_busy && widget.online != null
-                              ? tr(widget.online!.message)
-                              // A Bolsa: a descrição do item tocado (ou a pergunta) na caixa.
-                              : waiting && _menu == 'bag'
-                                  ? (bagPicked != null ? '${bagPicked.name}: ${bagPicked.help}' : tr('Escolha um item.'))
-                              // O time aberto: a pergunta dele na caixa (como no jogo).
-                              : waiting && _menu == 'party' && _summary == null
-                                  ? (_b.needSwitch ? tr('Escolha o próximo Pokémon') : _item != null ? tr('Usar em qual Pokémon?') : tr('Escolha um Pokémon.'))
-                              // Derrubou o do adversário: a pergunta do "Shift", com quem ele vai mandar (como nos jogos).
-                              : waiting && _b.shiftPending && _menu == 'main'
-                                  ? (_b.shiftNext != null && _b.shiftNext! >= 0 && _b.shiftNext! < _b.teams[1].length
-                                      ? tr('O adversário vai mandar {0}. Quer trocar de Pokémon?').replaceAll('{0}', '${_b.teams[1][_b.shiftNext!].name} (${_b.teams[1][_b.shiftNext!].types.map((t) => tr('${t[0].toUpperCase()}${t.substring(1)}')).join('/')})')
-                                      : tr('O adversário vai mandar outro Pokémon. Quer trocar de Pokémon?'))
-                              // Hora de escolher (como no jogo e na dupla): "O que Charizard vai fazer?".
-                              : waiting && (_menu == 'main' || _menu == 'fight') && !_b.needSwitch
-                                  ? '${tr('O que')} ${current.name} ${tr('vai fazer?')}'
-                                  // No fim, o recado do resultado também vem na caixa (em partes, se precisar).
-                                  : !_busy && _b.winner != null && (widget.endNote.isNotEmpty || (_persona != null && _b.winner == 0))
-                                      ? '$_text${_persona != null && _b.winner == 0 ? ' 💬 ${_persona.name}: “${tr(_persona.beat)}”' : ''}${widget.endNote.isNotEmpty ? ' ${widget.endNote}' : ''}'
-                                      : _text,
-                        ),
-                      ),
-                      // A Bolsa ocupa o campo inteiro (a lista rola por dentro); o time rola se não couber.
-                      if (fieldPanel != null)
-                        // O time fica em cima da caixa de texto (a fala "Escolha um Pokémon" aparece nela).
-                        Positioned(
-                            key: const ValueKey('battle-panel'),
-                            left: 0,
-                            right: 0,
-                            top: 0,
-                            bottom: _menu == 'bag' || _menu == 'party' && _summary == null ? h * 0.225 : 0,
-                            child: _Appear(key: ValueKey(_menu), child: _menu == 'bag' || _summary == null ? fieldPanel : SingleChildScrollView(child: fieldPanel))),
-                      // A tela VS por cima de tudo: só os dois treinadores (o resto some até ela acabar).
-                      if (_vsOn)
-                        Positioned.fill(
-                          child: _VsSplash(
-                            vs: _vsInfo,
-                            me: _myTrainer,
-                            myName: _myName(),
-                            foeMon: widget.wild ? widget.battle.teams[1][widget.battle.activeIndex[1]] : null,
-                            coach: widget.wild ? null : _coach,
-                            width: w,
-                            onSkip: () => _vsSkip.isCompleted ? null : _vsSkip.complete(),
-                          ),
-                        ),
-                    ],
-                  ),
-                );
-              }),
-            ),
-          ),
-        ),
-        ),
-        _FieldBar(conditions: _b.fieldConditions(), onLog: _logButton(context)),
-      ]),
-        // Texto e menus: a tela de baixo (como no DS), sempre do mesmo tamanho e com lugar fixo para cada coisa.
-        bottom: _BottomScreen(
-          // No menu principal também (antes ficava vazio): as fraquezas do adversário. Igual ao site.
-          info: waiting && (_menu == 'main' || _menu == 'fight' || _menu == 'party' && _item == null)
-              ? Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  if (_menu == 'fight') _ChoiceLock(_b.active(0)),
-                  _Weak(rival, foeWeak, dark: true),
-                ])
-              : null,
-          grid: !waiting || (widget.online?.waitForSwitch ?? false)
+    // O menu e os golpes ficam dentro do campo, embaixo à direita (como no port de Black & White: tudo numa tela só).
+    final Widget? controlsGrid = !waiting || (widget.online?.waitForSwitch ?? false)
               ? null
               : _menu == 'main' && _b.shiftPending
                       ? _menuGrid([
@@ -2699,8 +2536,8 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                             _gimmickMon = current.id;
                           })),
                 ])
-                          : null,
-          footer: waiting && _menu == 'fight'
+                          : null;
+    final Widget? controlsFooter = waiting && _menu == 'fight'
               ? _MenuButton('Voltar', () => setState(() => _menu = 'main'))
               : waiting && _menu == 'bag'
                   ? _MenuButton(key: const ValueKey('bag-close'), 'Voltar', () => setState(() {
@@ -2716,7 +2553,345 @@ class BattleViewState extends State<BattleView> with SingleTickerProviderStateMi
                             _item = null;
                             _partyPick = null;
                           }))
-                  : null,
+                  : null;
+    return DsLayout(
+      single: true,
+      // Como no port: tudo numa tela só (o registro abre pelo botão 📜 da barra de dicas).
+      side: null,
+      top: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        // Campo (tocar em qualquer lugar dele passa o texto, como tocar na caixa)
+        GestureDetector(
+          key: const ValueKey('battle-field-tap'),
+          behavior: HitTestBehavior.translucent,
+          onTap: () {
+            if (_skip != null && !_skip!.isCompleted) _skip!.complete();
+          },
+          child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: AspectRatio(
+            // Como o port de Black & White: tela larga (16:9), tudo numa tela só.
+            aspectRatio: 16 / 9,
+            child: DecoratedBox(
+              decoration: BoxDecoration(border: Border.all(color: border, width: 4), color: const Color(0xFF9FDCFF)),
+              child: LayoutBuilder(builder: (context, box) {
+                final w = box.maxWidth, h = box.maxHeight;
+                final scene = battleScene(_b.scene, _b.seed);
+                // Onde cada Pokémon fica (como no port), num mundo de 960 × 540.
+                final f = w / 960;
+                final st = _portStage(_form[0] ?? me.id, _form[1] ?? foe.id, me.shiny, foe.shiny);
+                // Terremoto: o campo treme.
+                return AnimatedBuilder(
+                  animation: _shake,
+                  builder: (context, child) => Transform.translate(
+                    offset: Offset(_shake.isAnimating ? sin(_shake.value * pi * 10) * w * 0.015 : 0, 0),
+                    child: child,
+                  ),
+                  child: Stack(
+                    children: [
+                      // O mundo da batalha (fundo, clima, Pokémon, treinadores): a câmera dos golpes move tudo junto.
+                      Positioned.fill(
+                        child: AnimatedBuilder(
+                          animation: _fxCtl,
+                          builder: (context, child) => _fxPlan == null ? child! : Transform(transform: fxCameraMatrix(_fxPlan!, _fxMs, Size(w, h)), child: child),
+                          child: Stack(clipBehavior: Clip.none, children: [
+                      Positioned.fill(
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 800),
+                          child: BattleBackdrop(key: ValueKey(_weather), scene: scene, weather: _weather),
+                        ),
+                      ),
+                      // Clima, terreno e efeito do lugar fazem parte do cenário: atrás dos Pokémon e das caixas.
+                      Positioned.fill(child: _WeatherFx(_weather, terrain: _terrain, place: _place)),
+                      // O clima e o terreno com os turnos que faltam (como no registro), no alto do campo. Igual ao site.
+                      Positioned(top: 4, left: 0, right: 0, child: IgnorePointer(child: _FieldChip(_weather, _terrain, _b.weatherTurns, _b.terrainTurns))),
+                      // Como no port de Black & White: o adversário no meio-direita, no tamanho do sprite dele; o seu de costas
+                      // à esquerda, grande e cortado embaixo (BattleFx.stage, pelo fx_anchors.json). Sem os dados, como antes.
+                      if (st == null) ...[
+                      // Como no Black & White: o adversário lá atrás à direita (menor), o seu de costas na frente à esquerda (grande, cortado pela caixa do texto).
+                      Positioned(
+                          // O inimigo fica mais longe: menor e com os pés na
+                          // frente do meio da plataforma (pisando nela, como o seu).
+                          right: w * 0.11,
+                          bottom: h * foeBottom(scene),
+                          width: w * 0.26,
+                          height: w * 0.26,
+                          child: Stack(clipBehavior: Clip.none, fit: StackFit.expand, children: [
+                            PlatformBase(scene: scene, side: 'foe', id: _form[1] ?? foe.id),
+                            _PokeOut(
+                                state: _poke[1],
+                                child: _Sprite(key: _sprites[1], mon: foe, id: _form[1] ?? foe.id, dmax: _dmax[1], tera: _tera[1], fainted: _fainted[1])),
+                            if (_morph?.$1 == 1) Positioned.fill(child: _Morph(key: ValueKey(('morph', _morph!.$3)), kind: _morph!.$2, type: foe.teraType)),
+                            if (_shine?.$1 == 1) Positioned.fill(child: _Sparkles(key: ValueKey(('shine', _shine!.$2)))),
+                          ])),
+                      if (_ball[1] != null)
+                        Positioned(right: w * 0.11, bottom: h * foeBottom(scene), width: w * 0.26, height: w * 0.26, child: _Ball(side: 1, phase: _ball[1]!, kind: _ballKind[1])),
+                      Positioned(
+                          left: w * 0.01,
+                          bottom: h * 0.22,
+                          width: w * 0.58,
+                          height: w * 0.58,
+                          child: Stack(clipBehavior: Clip.none, fit: StackFit.expand, children: [
+                            PlatformBase(scene: scene, side: 'mine', id: _form[0] ?? me.id),
+                            _PokeOut(
+                                state: _poke[0],
+                                child: _Sprite(key: _sprites[0], mon: me, id: _form[0] ?? me.id, dmax: _dmax[0], tera: _tera[0], back: true, fainted: _fainted[0])),
+                            if (_morph?.$1 == 0) Positioned.fill(child: _Morph(key: ValueKey(('morph', _morph!.$3)), kind: _morph!.$2, type: me.teraType)),
+                            if (_shine?.$1 == 0) Positioned.fill(child: _Sparkles(key: ValueKey(('shine', _shine!.$2)))),
+                          ])),
+                      if (_ball[0] != null)
+                        Positioned(left: w * 0.01, bottom: h * 0.22, width: w * 0.58, height: w * 0.58, child: _Ball(side: 0, phase: _ball[0]!, kind: _ballKind[0])),
+                      ] else
+                        for (final side in [1, 0]) ...[
+                          Positioned(
+                            left: ((side == 1 ? st.far : st.near).x - (side == 1 ? st.far : st.near).w * 0.4) * f,
+                            top: ((side == 1 ? st.far : st.near).y - (side == 1 ? st.far : st.near).w * 0.08) * f,
+                            width: (side == 1 ? st.far : st.near).w * 0.8 * f,
+                            height: (side == 1 ? st.far : st.near).w * 0.16 * f,
+                            child: const IgnorePointer(child: DecoratedBox(decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [Color(0x73000000), Color(0x00000000)], stops: [0, 0.7])))),
+                          ),
+                          Positioned(
+                            key: ValueKey('port-${side == 1 ? 'foe' : 'me'}'),
+                            left: (side == 1 ? st.far : st.near).left * f,
+                            top: (side == 1 ? st.far : st.near).top * f,
+                            width: (side == 1 ? st.far : st.near).w * f,
+                            height: (side == 1 ? st.far : st.near).boxH * f,
+                            child: Stack(clipBehavior: Clip.none, fit: StackFit.expand, children: [
+                              _PokeOut(
+                                state: _poke[side],
+                                child: _fxLook(
+                                  side,
+                                  f,
+                                  _PortSprite(
+                                    mon: side == 1 ? foe : me,
+                                    id: _form[side] ?? (side == 1 ? foe : me).id,
+                                    back: side == 0,
+                                    dmax: _dmax[side],
+                                    tera: _tera[side],
+                                    fainted: _fainted[side],
+                                    fallback: _Sprite(key: _sprites[side], mon: side == 1 ? foe : me, id: _form[side] ?? (side == 1 ? foe : me).id, dmax: _dmax[side], tera: _tera[side], back: side == 0, fainted: _fainted[side]),
+                                  ),
+                                ),
+                              ),
+                              if (_morph?.$1 == side) Positioned.fill(child: _Morph(key: ValueKey(('morph', _morph!.$3)), kind: _morph!.$2, type: (side == 1 ? foe : me).teraType)),
+                              if (_shine?.$1 == side) Positioned.fill(child: _Sparkles(key: ValueKey(('shine', _shine!.$2)))),
+                              if (_ball[side] != null) Positioned.fill(child: _Ball(side: side, phase: _ball[side]!, kind: _ballKind[side])),
+                            ]),
+                          ),
+                        ],
+                      if (_introOn && _coach != null)
+                        Positioned(
+                          right: w * 0.0,
+                          bottom: h * foeBottom(scene),
+                          width: w * 0.48,
+                          height: w * 0.48,
+                          child: AnimatedSlide(
+                            key: const ValueKey('foe-trainer'),
+                            offset: _foeGone ? const Offset(1.6, 0) : Offset.zero,
+                            duration: const Duration(milliseconds: 520),
+                            curve: Curves.easeIn,
+                            // Da altura de uma pessoa ao lado do Pokémon dele (a mesma escala).
+                            child: Align(alignment: Alignment.bottomCenter, child: TrainerSprite(_coach!, height: farPerson(w))),
+                          ),
+                        ),
+                      if (_introOn && _myTrainer != null && !widget.keepMine)
+                        Positioned(
+                          left: w * 0.02,
+                          bottom: 0,
+                          child: AnimatedSlide(
+                            key: const ValueKey('my-trainer'),
+                            offset: _meGone ? const Offset(-1.3, 0) : Offset.zero,
+                            duration: const Duration(milliseconds: 520),
+                            curve: Curves.easeIn,
+                            // Na frente de tudo (mais perto que o seu Pokémon): a mesma escala de uma pessoa, um pouco maior pela perspectiva.
+                            child: TrainerBack(_myTrainer, frame: _backFrame, height: nearPerson(w) * 0.94),
+                          ),
+                        ),
+                          ]),
+                        ),
+                      ),
+                      // Os efeitos dos golpes, desenhados por cima do mundo (battle_fx_painter.dart).
+                      if (_fxPlan != null)
+                        Positioned.fill(
+                          child: IgnorePointer(
+                            child: AnimatedBuilder(
+                              animation: _fxCtl,
+                              builder: (context, _) => _fxPlan == null ? const SizedBox() : CustomPaint(painter: FxPainter(_fxPlan!, _fxMs)),
+                            ),
+                          ),
+                        ),
+                      // As caixas de vida ficam sempre por cima dos Pokémon (como nos jogos): um Pokémon grande não cobre a vida.
+                      // As caixas de HP do port: a do adversário em cima à esquerda, a sua embaixo à direita (somem no golpe).
+                      Positioned(
+                          left: w * 0.0125,
+                          top: h * 0.019,
+                          width: w * 0.315,
+                          child: _fxHud(AnimatedOpacity(
+                              opacity: _introOn && _poke[1] == 'hidden' ? 0 : 1,
+                              duration: const Duration(milliseconds: 200),
+                              child: GestureDetector(
+                                  key: const ValueKey('inspect-foe'),
+                                  onTap: () => _inspect(1),
+                                  child: _PortHp(mon: foe, hp: _hp[1][_active[1]], status: _status[1][_active[1]], dmax: _dmax[1], w: w))))),
+                      Positioned(
+                          right: w * 0.0125,
+                          bottom: h * 0.085,
+                          width: w * 0.315,
+                          child: _fxHud(AnimatedOpacity(
+                              opacity: _introOn && _poke[0] == 'hidden' ? 0 : 1,
+                              duration: const Duration(milliseconds: 200),
+                              child: GestureDetector(
+                                  key: const ValueKey('inspect-me'),
+                                  onTap: () => _inspect(0),
+                                  child: _PortHp(mon: me, hp: _hp[0][_active[0]], status: _status[0][_active[0]], dmax: _dmax[0], mine: true, w: w, exp: expBarOf(_b, _active[0], _hp[1])))))),
+                      // A habilidade em ação: a faixa sai do lado do Pokémon (o adversário à direita, o seu à esquerda).
+                      if (_ability != null)
+                        Positioned(
+                          key: ValueKey(('ability', _ability)),
+                          right: _ability!.$1 == 1 ? 0 : null,
+                          left: _ability!.$1 == 0 ? 0 : null,
+                          top: _ability!.$1 == 1 ? h * 0.30 : null,
+                          bottom: _ability!.$1 == 0 ? h * 0.34 : null,
+                          child: TweenAnimationBuilder<double>(
+                            tween: Tween(begin: 1, end: 0),
+                            duration: const Duration(milliseconds: 260),
+                            builder: (context, v, child) => FractionalTranslation(translation: Offset(_ability!.$1 == 1 ? v : -v, 0), child: child),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF5B5B5B), Color(0xFF2C2C2C)]),
+                                border: Border.all(color: const Color(0xFF181818), width: 2),
+                                borderRadius: _ability!.$1 == 1 ? const BorderRadius.horizontal(left: Radius.circular(8)) : const BorderRadius.horizontal(right: Radius.circular(8)),
+                              ),
+                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                                // Nomes como no jogo (não traduz).
+                                m.Text(_ability!.$2, style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold, shadows: _bwShadow)),
+                                m.Text(_ability!.$3, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900, shadows: _bwShadow)),
+                              ]),
+                            ),
+                          ),
+                        ),
+                      if (_fx != null) _MoveFx(key: ValueKey(('fx', _fx!.$3)), plan: _fx!.$1, color: _fx!.$2, w: w, h: h),
+                      if (_impact != null)
+                        Positioned(
+                          key: ValueKey(('impact', _impact!.$3)),
+                          left: _impact!.$1.x / 100 * w - w * 0.11,
+                          top: _impact!.$1.y / 100 * h - w * 0.11,
+                          width: w * 0.22,
+                          height: w * 0.22,
+                          child: _Impact(color: _impact!.$2),
+                        ),
+                      if (_flash > 0) _Flash(key: ValueKey(('flash', _flash))),
+                      // A mensagem dentro da tela, embaixo, como nos jogos (tocar passa o texto).
+                      Positioned(
+                        left: w * 0.0125,
+                        right: w * 0.373,
+                        bottom: h * 0.085,
+                        height: h * 0.145,
+                        child: _DialogBox(
+                          key: const ValueKey('battle-text'),
+                          dark: dark,
+                          port: true,
+                          onSize: (size) {
+                            _dialogSize = size;
+                            _dialogScale = MediaQuery.textScalerOf(context);
+                          },
+                          onTap: () { if (_skip != null && !_skip!.isCompleted) _skip!.complete(); },
+                          // Já traduzido (nomes e golpes não mudam).
+                          text: !_busy && widget.online != null
+                              ? tr(widget.online!.message)
+                              // A Bolsa: a descrição do item tocado (ou a pergunta) na caixa.
+                              : waiting && _menu == 'bag'
+                                  ? (bagPicked != null ? '${bagPicked.name}: ${bagPicked.help}' : tr('Escolha um item.'))
+                              // O time aberto: a pergunta dele na caixa (como no jogo).
+                              : waiting && _menu == 'party' && _summary == null
+                                  ? (_b.needSwitch ? tr('Escolha o próximo Pokémon') : _item != null ? tr('Usar em qual Pokémon?') : tr('Escolha um Pokémon.'))
+                              // Derrubou o do adversário: a pergunta do "Shift", com quem ele vai mandar (como nos jogos).
+                              : waiting && _b.shiftPending && _menu == 'main'
+                                  ? (_b.shiftNext != null && _b.shiftNext! >= 0 && _b.shiftNext! < _b.teams[1].length
+                                      ? tr('O adversário vai mandar {0}. Quer trocar de Pokémon?').replaceAll('{0}', '${_b.teams[1][_b.shiftNext!].name} (${_b.teams[1][_b.shiftNext!].types.map((t) => tr('${t[0].toUpperCase()}${t.substring(1)}')).join('/')})')
+                                      : tr('O adversário vai mandar outro Pokémon. Quer trocar de Pokémon?'))
+                              // Hora de escolher (como no jogo e na dupla): "O que Charizard vai fazer?".
+                              : waiting && (_menu == 'main' || _menu == 'fight') && !_b.needSwitch
+                                  ? '${tr('O que')} ${current.name} ${tr('vai fazer?')}'
+                                  // No fim, o recado do resultado também vem na caixa (em partes, se precisar).
+                                  : !_busy && _b.winner != null && (widget.endNote.isNotEmpty || (_persona != null && _b.winner == 0))
+                                      ? '$_text${_persona != null && _b.winner == 0 ? ' 💬 ${_persona.name}: “${tr(_persona.beat)}”' : ''}${widget.endNote.isNotEmpty ? ' ${widget.endNote}' : ''}'
+                                      : _text,
+                        ),
+                      ),
+                      // O menu e os golpes dentro da tela, acima da sua caixa de HP (como no port).
+                      if (controlsGrid != null)
+                        Positioned(key: const ValueKey('battle-bottom-grid'), right: w * 0.0125, bottom: h * 0.28, width: w * 0.36, height: h * 0.19, child: _PortScope(child: controlsGrid)),
+                      // A barra de dicas embaixo (como no port): o que o toque faz, os efeitos do campo, a velocidade, o registro e o Voltar.
+                      Positioned(
+                        key: const ValueKey('battle-bottom-footer'),
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        height: h * 0.067,
+                        child: MediaQuery.withNoTextScaling(child: Container(
+                          decoration: const BoxDecoration(color: Color(0xFF15181F), border: Border(top: BorderSide(color: Color(0xFF22D3EE), width: 2))),
+                          padding: EdgeInsets.symmetric(horizontal: w * 0.01),
+                          child: Row(children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 3),
+                              decoration: BoxDecoration(border: Border.all(color: const Color(0xFF9CA3AF), width: 1.5), borderRadius: BorderRadius.circular(4)),
+                              child: m.Text('✋', style: TextStyle(fontSize: w * 0.016)),
+                            ),
+                            SizedBox(width: w * 0.01),
+                            Flexible(
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: m.Text(
+                                  waiting && _menu == 'fight' ? tr('Toque: usar · Segure: detalhes') : waiting ? tr('Toque: escolher') : tr('Toque: próximo'),
+                                  style: TextStyle(fontFamily: 'PixelifySans', color: const Color(0xFFCBD5E1), fontSize: w * 0.017, fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: w * 0.01),
+                            // Preso ao golpe pelo item de escolha: o aviso aqui também.
+                            if (waiting && _menu == 'fight') _ChoiceLock(_b.active(0)),
+                            Expanded(child: _FieldBar(conditions: _b.fieldConditions(), onLog: _logButton(context), bare: true)),
+                            if (controlsFooter != null) SizedBox(height: h * 0.055, width: w * 0.12, child: _PortScope(child: controlsFooter)),
+                          ]),
+                        )),
+                      ),
+                      // A Bolsa ocupa o campo inteiro (a lista rola por dentro); o time rola se não couber.
+                      if (fieldPanel != null)
+                        // O time fica em cima da caixa de texto (a fala "Escolha um Pokémon" aparece nela).
+                        Positioned(
+                            key: const ValueKey('battle-panel'),
+                            left: 0,
+                            right: 0,
+                            top: 0,
+                            bottom: _menu == 'bag' || _menu == 'party' && _summary == null ? h * 0.24 : 0,
+                            child: _Appear(key: ValueKey(_menu), child: _menu == 'bag' || _summary == null ? fieldPanel : SingleChildScrollView(child: fieldPanel))),
+                      // A tela VS por cima de tudo: só os dois treinadores (o resto some até ela acabar).
+                      if (_vsOn)
+                        Positioned.fill(
+                          child: _VsSplash(
+                            vs: _vsInfo,
+                            me: _myTrainer,
+                            myName: _myName(),
+                            foeMon: widget.wild ? widget.battle.teams[1][widget.battle.activeIndex[1]] : null,
+                            coach: widget.wild ? null : _coach,
+                            width: w,
+                            onSkip: () => _vsSkip.isCompleted ? null : _vsSkip.complete(),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              }),
+            ),
+          ),
+        ),
+        ),
+      ]),
+        // Texto e menus: a tela de baixo (como no DS), sempre do mesmo tamanho e com lugar fixo para cada coisa.
+        bottom: _BottomScreen(
+          // No menu principal também (antes ficava vazio): as fraquezas do adversário. Igual ao site.
+          inField: true,
           extra: waiting && (widget.online?.waitForSwitch ?? false)
               ? FilledButton(onPressed: () => widget.online!.onAction({'kind': 'wait', 'index': 0}), child: const Text('Aguardar troca do amigo'))
               : !_busy && _b.winner != null
@@ -2841,6 +3016,25 @@ class _BattleSummary extends StatelessWidget {
   }
 }
 
+/// Os botões dentro do campo, no estilo do port de Black & White (o menu em 4 cores, os golpes escuros com a cor do
+/// tipo na borda). Fora dele (a dupla e a tripla), o estilo de sempre.
+class _PortScope extends InheritedWidget {
+  const _PortScope({required super.child});
+  static bool of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<_PortScope>() != null;
+  @override
+  bool updateShouldNotify(_PortScope old) => false;
+}
+
+/// As cores do menu do port: LUTAR vermelho, BOLSA amarelo, POKÉMON verde, FUGIR azul.
+const _portMenuColors = {
+  'LUTAR': [Color(0xFFC62828), Color(0xFF7F1D1D), Color(0xFFFCA5A5)],
+  'BOLSA': [Color(0xFFCA8A04), Color(0xFF854D0E), Color(0xFFFDE68A)],
+  'POKÉMON': [Color(0xFF15803D), Color(0xFF14532D), Color(0xFF86EFAC)],
+  'FUGIR': [Color(0xFF1D4ED8), Color(0xFF1E3A8A), Color(0xFF93C5FD)],
+};
+
+const _portCut = BeveledRectangleBorder(borderRadius: BorderRadius.only(topLeft: Radius.circular(7), bottomRight: Radius.circular(7)));
+
 class _MenuButton extends StatelessWidget {
   final String label;
   final VoidCallback? onTap;
@@ -2848,6 +3042,36 @@ class _MenuButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (_PortScope.of(context)) {
+      final c = _portMenuColors[label];
+      return SizedBox.expand(
+        child: Opacity(
+          opacity: onTap == null ? 0.4 : 1,
+          child: Material(
+            shape: _portCut.copyWith(side: BorderSide(color: c?[2] ?? const Color(0xFF8B93A1), width: 2)),
+            clipBehavior: Clip.antiAlias,
+            color: c == null ? const Color(0xEB14161C) : null,
+            child: Ink(
+              decoration: c == null ? null : BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [c[0], c[1]])),
+              child: InkWell(
+                onTap: onTap,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Align(
+                    alignment: c == null ? Alignment.center : Alignment.centerLeft,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text('▸ ${tr(label)}',
+                          style: const TextStyle(fontFamily: 'PixelifySans', color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15, shadows: [Shadow(color: Colors.black, offset: Offset(1, 1))])),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
     // No tema: escuro no tema escuro, branco no claro (igual ao site).
     final dark = Theme.of(context).brightness == Brightness.dark;
     // Ocupa o lugar dela na tela de baixo (a grade do menu ou a linha do Voltar).
@@ -2949,9 +3173,12 @@ List<String> dialogPages(String text, Size box, TextScaler scaler) {
 /// A caixa de texto da batalha (a mesma na normal e na dupla): sempre do mesmo tamanho; toda fala aparece nela e,
 /// se não couber, em partes (tocar passa para a próxima parte; na última, passa a fala).
 class _DialogBox extends StatefulWidget {
-  const _DialogBox({super.key, required this.text, required this.dark, this.onTap, this.onSize});
+  const _DialogBox({super.key, required this.text, required this.dark, this.onTap, this.onSize, this.port = false});
   final String text;
   final bool dark;
+
+  /// Como no port de Black & White: escura, de cantos cortados, com a fonte de pixel.
+  final bool port;
   final VoidCallback? onTap;
   final ValueChanged<Size>? onSize;
 
@@ -2970,11 +3197,13 @@ class _DialogBoxState extends State<_DialogBox> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = widget.dark;
+    final dark = widget.dark || widget.port;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       // A caixa de diálogo no tema: escura no tema escuro, branca no claro (igual ao site).
-      decoration: dark
+      decoration: widget.port
+          ? ShapeDecoration(color: const Color(0xE614161C), shape: _portCut.copyWith(side: const BorderSide(color: Color(0xFF8B93A1), width: 2)))
+          : dark
           ? BoxDecoration(
               gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Hud.tint(const Color(0xFF4D4D4D), 0.12), Hud.tint(const Color(0xFF2E2E2E), 0.12)]),
               border: Border.all(color: const Color(0xFF1A1A1A), width: 3),
@@ -2996,7 +3225,7 @@ class _DialogBoxState extends State<_DialogBox> {
               child: ClipRect(
                 child: Align(
                   alignment: Alignment.topLeft,
-                  child: m.Text(pages[page], textScaler: dialogScaler(size, MediaQuery.textScalerOf(context)), style: _dialogStyle.copyWith(color: dark ? Colors.white : const Color(0xFF0F172A), shadows: dark ? _bwShadow : null)),
+                  child: m.Text(pages[page], textScaler: dialogScaler(size, MediaQuery.textScalerOf(context)), style: _dialogStyle.copyWith(fontFamily: widget.port ? 'PixelifySans' : null, color: dark ? Colors.white : const Color(0xFF0F172A), shadows: dark ? _bwShadow : null)),
                 ),
               ),
             ),
@@ -3028,7 +3257,10 @@ Widget _menuGrid(List<Widget> buttons) => Column(children: [
 /// coisa no seu lugar — em cima a linha de informação (fraquezas, quem já escolheu), no meio a grade 2×2 (o menu ou
 /// os golpes, no mesmo lugar) e embaixo o Voltar. Nada empurra nada. No fim da batalha, os botões do resultado.
 class _BottomScreen extends StatelessWidget {
-  const _BottomScreen({this.info, this.grid, this.footer, this.extra});
+  const _BottomScreen({this.info, this.grid, this.footer, this.extra, this.inField = false});
+
+  /// O menu e os golpes ficam dentro do campo (a batalha de um contra um): aqui só as escolhas do fim.
+  final bool inField;
   final Widget? info, grid, footer;
 
   /// Outras escolhas (Continuar, Batalhar de novo, Sair...): embaixo dos botões fixos, sem mexer neles.
@@ -3040,7 +3272,11 @@ class _BottomScreen extends StatelessWidget {
   static double height(BuildContext context) => infoHeight(context) + 6 + gridHeight(context) + 6 + footerHeight(context);
 
   @override
-  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+  Widget build(BuildContext context) => inField
+      ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          if (extra != null) Padding(key: const ValueKey('battle-extra'), padding: const EdgeInsets.only(top: 10), child: extra),
+        ])
+      : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Container(
           key: const ValueKey('battle-bottom'),
           padding: const EdgeInsets.all(4),
@@ -3089,7 +3325,7 @@ Widget _idleMenu() => _menuGrid([for (final label in ['LUTAR', 'BOLSA', 'POKÉMO
 
 /// Os 4 golpes (2 por linha), iguais na batalha normal e na dupla/tripla: a altura pelas duas linhas de texto
 /// (cresce com o texto maior).
-Widget moveGrid(BuildContext context, List<Widget> children) => GridView(
+Widget moveGrid(BuildContext context, List<Widget> children) => _PortScope.of(context) ? _menuGrid(children) : GridView(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -3120,8 +3356,40 @@ class _MoveButton extends StatelessWidget {
   /// Na dupla: o nome e o PP em cima e, embaixo, a linha inteira para como o golpe pega em cada adversário.
   final bool wide;
 
+  /// Como no port: escuro, com a cor do tipo na borda esquerda, o nome grande e o PP embaixo.
+  Widget _port() => Opacity(
+        opacity: faded || onTap == null ? 0.45 : 1,
+        child: Material(
+          shape: _portCut.copyWith(side: const BorderSide(color: Color(0xFF8B93A1), width: 2)),
+          clipBehavior: Clip.antiAlias,
+          color: const Color(0xEB14161C),
+          child: InkWell(
+            key: inkKey,
+            onTap: onTap,
+            onLongPress: onLongPress,
+            child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Container(width: 5, color: color),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: m.Text(label, maxLines: 1, style: const TextStyle(fontFamily: 'PixelifySans', color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15, shadows: [Shadow(color: Colors.black, offset: Offset(1, 1))])),
+                    ),
+                    if (details.isNotEmpty)
+                      Flexible(child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Row(mainAxisSize: MainAxisSize.min, children: [details.first, if (effect != null) ...[const SizedBox(width: 4), effect!]]))),
+                  ]),
+                ),
+              ),
+            ]),
+          ),
+        ),
+      );
+
   @override
-  Widget build(BuildContext context) => Material(
+  Widget build(BuildContext context) => _PortScope.of(context) && !wide ? _port() : Material(
         color: color.withAlpha(faded || onTap == null ? 100 : 255),
         borderRadius: BorderRadius.circular(10),
         child: InkWell(
@@ -3420,6 +3688,137 @@ class _WeatherPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_WeatherPainter old) => old.t != t || old.weather != weather || old.terrain != terrain || old.place != place;
+}
+
+/// O Pokémon como no port de Black & White: o GIF animado inteiro, no tamanho de pixel do sprite (a caixa já vem do
+/// tamanho certo, BattleFx.stage). Shiny, de costas, Dinamax (maior, contorno vermelho), Tera (brilho na cor do tipo) e
+/// desmaiado (desce e some). Sem o GIF, o sprite de sempre ([fallback]). Igual ao site (PortSprite).
+/// A caixa de HP do port de Black & White: escura com o canto cortado, o nome, "Lv.50", o "HP" em verde-amarelo e a
+/// barra fina; a sua com os números e o XP embaixo. Igual ao site (PortHp).
+class _PortHp extends StatelessWidget {
+  const _PortHp({required this.mon, required this.hp, required this.w, this.status, this.dmax = false, this.mine = false, this.exp});
+  final BattleMon mon;
+  final int hp;
+  final double w;
+  final String? status;
+  final bool dmax, mine;
+  final double? exp;
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = mon.maxHp > 0 ? (hp / mon.maxHp).clamp(0.0, 1.0) : 0.0;
+    final color = pct > 0.5 ? const Color(0xFF4ADE80) : pct > 0.2 ? const Color(0xFFFACC15) : const Color(0xFFEF4444);
+    final font = TextStyle(fontFamily: 'PixelifySans', color: Colors.white, fontSize: w * 0.023, fontWeight: FontWeight.w500, shadows: const [Shadow(color: Colors.black, offset: Offset(1, 1))]);
+    Widget tag(String text, Color bg) => Container(
+          margin: EdgeInsets.only(left: w * 0.006),
+          padding: EdgeInsets.symmetric(horizontal: w * 0.005),
+          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(2)),
+          child: m.Text(text, style: font.copyWith(fontSize: w * 0.011, fontWeight: FontWeight.w700)),
+        );
+    // Tamanho fixo pela tela (como no port): o texto maior do celular não empurra a caixa.
+    return MediaQuery.withNoTextScaling(
+      child: ClipPath(
+      key: ValueKey(mine ? 'port-hp-me' : 'port-hp-foe'),
+      clipper: _CutCorner(w * 0.04),
+      child: Container(
+        padding: EdgeInsets.fromLTRB(w * 0.0126, w * 0.004, w * 0.0126, w * 0.006),
+        decoration: BoxDecoration(
+          color: const Color(0xEB181A1E),
+          border: Border.all(color: const Color(0xFF8B93A1), width: 2),
+        ),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            // Nome como no jogo (não traduz).
+            Flexible(child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: m.Text(mon.name, style: font))),
+            if (dmax) tag('DMAX', const Color(0xFFE11D48)),
+            if (status != null && status!.isNotEmpty) tag(status!.toUpperCase(), const Color(0xFF6B7280)),
+            const Spacer(),
+            m.Text('Lv.${mon.level}', style: font.copyWith(fontSize: w * 0.017)),
+          ]),
+          SizedBox(height: w * 0.003),
+          Row(children: [
+            m.Text('HP', style: font.copyWith(color: const Color(0xFFA3E635), fontSize: w * 0.013, fontWeight: FontWeight.w700)),
+            SizedBox(width: w * 0.006),
+            Expanded(
+              child: Container(
+                height: w * 0.0075,
+                decoration: BoxDecoration(color: const Color(0xFF2B3240), border: Border.all(color: Colors.black, width: 1)),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: AnimatedFractionallySizedBox(duration: const Duration(milliseconds: 700), widthFactor: pct, heightFactor: 1, child: ColoredBox(color: color)),
+                ),
+              ),
+            ),
+          ]),
+          if (mine) Align(alignment: Alignment.centerRight, child: m.Text('$hp/${mon.maxHp}', key: const ValueKey('port-hp-num'), style: font.copyWith(fontSize: w * 0.017))),
+          if (exp != null) ...[
+            SizedBox(height: w * 0.003),
+            Container(
+              height: w * 0.004,
+              color: const Color(0xFF1E293B),
+              child: Align(alignment: Alignment.centerLeft, child: FractionallySizedBox(widthFactor: exp!.clamp(0.0, 1.0), heightFactor: 1, child: const ColoredBox(color: Color(0xFF38BDF8)))),
+            ),
+          ],
+        ]),
+      ),
+    ),
+    );
+  }
+}
+
+/// O canto de baixo à direita cortado na diagonal (as caixas do port).
+class _CutCorner extends CustomClipper<Path> {
+  const _CutCorner(this.cut);
+  final double cut;
+  @override
+  Path getClip(Size size) => Path()
+    ..moveTo(0, 0)
+    ..lineTo(size.width, 0)
+    ..lineTo(size.width, size.height - cut)
+    ..lineTo(size.width - cut, size.height)
+    ..lineTo(0, size.height)
+    ..close();
+  @override
+  bool shouldReclip(_CutCorner old) => old.cut != cut;
+}
+
+class _PortSprite extends StatelessWidget {
+  const _PortSprite({required this.mon, required this.id, required this.back, required this.dmax, required this.tera, required this.fainted, required this.fallback});
+  final BattleMon mon;
+  final int id;
+  final bool back, dmax, fainted;
+  final String tera;
+  final Widget fallback;
+
+  @override
+  Widget build(BuildContext context) {
+    final src = AnimatedSprites.instance.source(id, shiny: mon.shiny, back: back);
+    if (src == null) return fallback;
+    final glow = dmax ? const Color(0xFFE11D48) : tera.isNotEmpty ? getColorForType(tera) : null;
+    Widget img = Image.network(
+      src.url,
+      key: ValueKey('port-sprite-$id-$back'),
+      fit: BoxFit.fill,
+      filterQuality: FilterQuality.none,
+      gaplessPlayback: true,
+      errorBuilder: (context, error, stack) => fallback,
+    );
+    if (glow != null) {
+      img = Stack(fit: StackFit.expand, children: [
+        ImageFiltered(imageFilter: ImageFilter.blur(sigmaX: 4, sigmaY: 4), child: ColorFiltered(colorFilter: ColorFilter.mode(glow, BlendMode.srcIn), child: img)),
+        img,
+      ]);
+    }
+    return AnimatedSlide(
+      offset: fainted ? const Offset(0, 0.3) : Offset.zero,
+      duration: const Duration(milliseconds: 500),
+      child: AnimatedOpacity(
+        opacity: fainted ? 0 : 1,
+        duration: const Duration(milliseconds: 500),
+        child: dmax ? Transform.scale(scale: 1.3, alignment: Alignment.bottomCenter, child: img) : img,
+      ),
+    );
+  }
 }
 
 class _Sprite extends StatefulWidget {
@@ -4578,7 +4977,7 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
                             label: '${_trainer(_b.controllers![side][min(pos, _count - 1)])} · ${mon.name}',
                             child: FittedBox(
                                 fit: BoxFit.scaleDown,
-                                child: SizedBox(width: 210, child: _InfoBox(mon: mon, hp: _hpOf(side, index), mine: mineSide, status: _statusOf(side, index), dmax: mon.dmax > 0, bw: true))));
+                                child: SizedBox(width: 210, child: _InfoBox(mon: mon, hp: _hpOf(side, index), mine: mineSide, status: _statusOf(side, index), dmax: mon.dmax > 0, boosts: mon.boosts, exp: null, bw: true))));
                       }),
                     ),
                 ]),
@@ -5000,7 +5399,10 @@ class _FieldBar extends StatelessWidget {
 
   /// O botão 📜 do registro, na ponta direita da faixa (null: sem o botão).
   final VoidCallback? onLog;
-  const _FieldBar({required this.conditions, this.onLog});
+  const _FieldBar({required this.conditions, this.onLog, this.bare = false});
+
+  /// Dentro da barra de dicas do campo (como no port): sem fundo nem borda.
+  final bool bare;
 
   @override
   Widget build(BuildContext context) {
@@ -5014,8 +5416,8 @@ class _FieldBar extends StatelessWidget {
     // Sempre a mesma altura (uma linha que rola de lado): aparecer um efeito não empurra a tela de baixo.
     return Container(
       key: const ValueKey('field-bar'),
-      decoration: BoxDecoration(color: Hud.tint(const Color(0xFF334155)), border: Border.symmetric(vertical: BorderSide(color: Hud.edge, width: 4))),
-      height: battleBarHeight(context),
+      decoration: bare ? null : BoxDecoration(color: Hud.tint(const Color(0xFF334155)), border: Border.symmetric(vertical: BorderSide(color: Hud.edge, width: 4))),
+      height: bare ? null : battleBarHeight(context),
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       child: Row(children: [
         Expanded(
@@ -5075,50 +5477,6 @@ class _FieldBar extends StatelessWidget {
   }
 }
 
-/// O time do treinador em Poké Balls em cima da caixa de vida: acesa, de pé; apagada, desmaiou (como nos jogos).
-/// Igual ao site.
-class _PartyBalls extends StatelessWidget {
-  static const height = 14.0;
-  final List<int> hp;
-  final bool mine;
-  const _PartyBalls({super.key, required this.hp, this.mine = false});
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-        height: height,
-        child: Row(mainAxisAlignment: mine ? MainAxisAlignment.end : MainAxisAlignment.start, children: [
-          for (var i = 0; i < hp.length; i++)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 1.5, vertical: 1),
-              child: SizedBox(width: 12, height: 12, child: CustomPaint(key: ValueKey('party-ball-${hp[i] > 0 ? 'on' : 'off'}'), painter: _PartyBallPainter(hp[i] > 0))),
-            ),
-        ]),
-      );
-}
-
-class _PartyBallPainter extends CustomPainter {
-  final bool alive;
-  const _PartyBallPainter(this.alive);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final c = size.center(Offset.zero);
-    final r = size.width / 2 - 0.5;
-    final line = Paint()
-      ..color = const Color(0xFF111111)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = size.width * 0.1;
-    canvas.drawCircle(c, r, Paint()..color = alive ? Colors.white : const Color(0xFF6B7280));
-    canvas.drawArc(Rect.fromCircle(center: c, radius: r), pi, pi, true, Paint()..color = alive ? const Color(0xFFEF4444) : const Color(0xFF374151));
-    canvas.drawCircle(c, r, line);
-    canvas.drawLine(Offset(c.dx - r, c.dy), Offset(c.dx + r, c.dy), line);
-    canvas.drawCircle(c, r * 0.32, Paint()..color = alive ? Colors.white : const Color(0xFF9CA3AF));
-    canvas.drawCircle(c, r * 0.32, line);
-  }
-
-  @override
-  bool shouldRepaint(_PartyBallPainter old) => old.alive != alive;
-}
 
 class _InfoBox extends StatelessWidget {
   final BattleMon mon;

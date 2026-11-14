@@ -10,7 +10,11 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 class DsLayout extends StatelessWidget {
-  const DsLayout({super.key, required this.top, required this.bottom, this.side});
+  const DsLayout({super.key, required this.top, required this.bottom, this.side, this.single = false});
+
+  /// Como no port de Black & White: tudo numa tela só (o campo 16:9 com o menu dentro). Deitado, o campo ocupa a
+  /// altura da tela; embaixo dele, só as escolhas do fim (Continuar, Sair...).
+  final bool single;
 
   /// O campo (4:3 pela largura) com o que vai junto embaixo dele (a faixa).
   final Widget top;
@@ -27,6 +31,15 @@ class DsLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!lying(context)) return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [top, bottom]);
+    if (single) {
+      return LayoutBuilder(builder: (context, box) {
+        final w = min(box.maxWidth, (MediaQuery.sizeOf(context).height - MediaQuery.paddingOf(context).vertical - 16) * 16 / 9);
+        return Center(
+          key: const ValueKey('ds-single'),
+          child: SizedBox(width: w, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [top, bottom])),
+        );
+      });
+    }
     return LayoutBuilder(builder: (context, box) {
       // O campo sempre com o tamanho de sempre (a largura do celular em pé); a tela de baixo ao lado, também do mesmo
       // tamanho quando cabe (num celular mais curto, só ela fica um pouco mais estreita). O que não couber na altura rola.

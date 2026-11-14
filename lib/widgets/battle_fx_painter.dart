@@ -49,7 +49,7 @@ Color _rgba(String s, double a) {
 const _screenShapes = {'tint', 'fill', 'wave'};
 
 /// Aplica a câmera do golpe (o mundo vai para a tela de tamanho [size]).
-void applyFxCamera(Canvas canvas, FxPlan plan, double ms, Size size) {
+void applyFxCamera(Canvas canvas, MoveFxPlan plan, double ms, Size size) {
   final c = BattleFx.camera(plan, ms);
   final (sx, sy) = BattleFx.shake(plan, ms);
   final fit = math.min(size.width / plan.world[0], size.height / plan.world[1]);
@@ -60,7 +60,7 @@ void applyFxCamera(Canvas canvas, FxPlan plan, double ms, Size size) {
 }
 
 /// A matriz da mesma câmera (para mover o campo inteiro: fundo e sprites).
-Matrix4 fxCameraMatrix(FxPlan plan, double ms, Size size) {
+Matrix4 fxCameraMatrix(MoveFxPlan plan, double ms, Size size) {
   final c = BattleFx.camera(plan, ms);
   final (sx, sy) = BattleFx.shake(plan, ms);
   final f = size.width / plan.world[0];
@@ -73,7 +73,7 @@ Matrix4 fxCameraMatrix(FxPlan plan, double ms, Size size) {
 
 class FxPainter extends CustomPainter {
   FxPainter(this.plan, this.ms);
-  final FxPlan plan;
+  final MoveFxPlan plan;
   final double ms;
 
   late double _vw, _vh;

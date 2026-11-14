@@ -55,3 +55,8 @@ flutter:
     - assets/database/sprites/maps/
     - assets/database/sounds/
     - assets/database/cries/
+  # A fonte de pixel da HUD da batalha (como no port de Black & White). Pixelify Sans, licença OFL (Google Fonts).
+  fonts:
+    - family: PixelifySans
+      fonts:
+        - asset: assets/fonts/PixelifySans.ttf

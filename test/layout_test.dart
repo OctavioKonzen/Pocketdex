@@ -765,13 +765,16 @@ final Map<String, Future<void> Function(WidgetTester)> actions = {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
   },
-  // Espera a batalha abrir e confere o registro ao lado.
+  // Espera a batalha abrir e confere a tela única (como no port de Black & White: o menu dentro do campo).
   'Batalha deitada': (tester) async {
     for (var i = 0; i < 30 && find.byKey(const ValueKey('battle-fight')).evaluate().isEmpty; i++) {
       await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
       await tester.pump(const Duration(milliseconds: 300));
     }
-    if (find.byKey(const ValueKey('battle-fight')).evaluate().isNotEmpty) expect(find.byKey(const ValueKey('battle-log-side')), findsOneWidget);
+    if (find.byKey(const ValueKey('battle-fight')).evaluate().isNotEmpty) {
+      expect(find.byKey(const ValueKey('ds-single')), findsOneWidget);
+      expect(find.byKey(const ValueKey('battle-bottom-grid')), findsOneWidget);
+    }
   },
   'Filtros da Pokédex': (tester) async {
     await tester.tap(find.byType(FloatingActionButton));

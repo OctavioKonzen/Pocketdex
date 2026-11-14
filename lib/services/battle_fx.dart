@@ -10,8 +10,8 @@ import 'package:quickjs_engine/quickjs_engine.dart';
 import 'ota_update.dart';
 
 /// O plano de um golpe (o JSON do battleFx.js).
-class FxPlan {
-  FxPlan(this.raw)
+class MoveFxPlan {
+  MoveFxPlan(this.raw)
       : dur = (raw['dur'] as num).toDouble(),
         from = (raw['from'] as num?)?.toInt() ?? 0,
         world = [for (final v in (raw['world'] as List? ?? const [960, 540])) (v as num).toDouble()],
@@ -98,13 +98,13 @@ class BattleFx {
   }
 
   /// O plano do golpe [slug] usado por [from] (0 você, 1 o outro), com os sprites [near] e [far].
-  static FxPlan? plan({required String slug, required String type, required String category, required int from, required int near, required int far, bool self = false, List? entry, int seed = 1}) {
+  static MoveFxPlan? plan({required String slug, required String type, required String category, required int from, required int near, required int far, bool self = false, List? entry, int seed = 1}) {
     final raw = _call('plan', [
       {'slug': slug, 'type': type, 'category': category, 'from': from, 'near': near, 'far': far, 'self': self, 'entry': entry, 'seed': seed}
     ]);
     if (raw is! Map) return null;
     try {
-      return FxPlan(Map<String, dynamic>.from(raw));
+      return MoveFxPlan(Map<String, dynamic>.from(raw));
     } catch (_) {
       return null;
     }
@@ -120,7 +120,7 @@ class BattleFx {
   static double ease(double k) => k < 0.5 ? 2 * k * k : 1 - math.pow(-2 * k + 2, 2) / 2;
 
   /// A câmera no instante [ms]: [x, y, zoom, giro].
-  static List<double> camera(FxPlan p, double ms) {
+  static List<double> camera(MoveFxPlan p, double ms) {
     final k = p.cam;
     if (k.isEmpty) return [p.world[0] / 2, p.world[1] / 2, 1, 0];
     if (ms <= k.first[0]) return k.first.sublist(1);
@@ -135,7 +135,7 @@ class BattleFx {
   }
 
   /// A tela tremendo no instante [ms]: (dx, dy).
-  static (double, double) shake(FxPlan p, double ms) {
+  static (double, double) shake(MoveFxPlan p, double ms) {
     var amp = 0.0;
     for (final s in p.shake) {
       if (ms >= s[0] && ms <= s[1]) amp = math.max(amp, s[2] * (1 - (ms - s[0]) / (s[1] - s[0])));
@@ -146,7 +146,7 @@ class BattleFx {
   }
 
   /// HP e caixas: 1 visível, 0 escondido.
-  static double hud(FxPlan p, double ms) {
+  static double hud(MoveFxPlan p, double ms) {
     final h = p.hud;
     if (h == null) return 1;
     if (ms < h[0]) return 1;
@@ -156,7 +156,7 @@ class BattleFx {
   }
 
   /// Como fica quem ataca ('A') ou o alvo ('T') no instante [ms].
-  static FxLook sprite(FxPlan p, String who, double ms) {
+  static FxLook sprite(MoveFxPlan p, String who, double ms) {
     final out = FxLook();
     for (final e in p.sprites) {
       if (e['who'] != who) continue;
