@@ -96,6 +96,10 @@ void main() {
       await tester.pump();
     }
 
+    // O menu aparece dentro do campo depois da tela de VS (como no port).
+    for (var i = 0; i < 90 && find.byKey(const ValueKey('battle-fight')).evaluate().isEmpty; i++) {
+      await tester.pump(const Duration(milliseconds: 500));
+    }
     final log = <String>[];
     var turns = 0, switches = 0, targets = 0, picks = 0;
     bool visible(String key) => find.byKey(ValueKey(key)).evaluate().isNotEmpty;

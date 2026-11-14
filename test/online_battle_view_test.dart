@@ -44,7 +44,8 @@ void main() {
     }
     expect(find.byWidgetPredicate((w) => w is PokemonSprite && w.id == 9 && w.back), findsOneWidget);
     expect(find.byWidgetPredicate((w) => w is PokemonSprite && w.id == 6 && !w.back), findsOneWidget);
-    await tester.tap(find.byKey(const ValueKey('battle-fight'))); await tester.pump();
+    for (var i = 0; i < 90 && find.byKey(const ValueKey('battle-fight')).evaluate().isEmpty; i++) { await tester.pump(const Duration(milliseconds: 500)); } // o menu aparece depois da tela de VS
+      await tester.tap(find.byKey(const ValueKey('battle-fight'))); await tester.pump();
     await tester.tap(find.text('Tackle')); await tester.pump();
     expect(chosen, {'kind': 'move', 'index': 0, 'gimmick': 'none'});
     expect(canonical.active(1).hp, 100);
@@ -77,6 +78,7 @@ void main() {
       ))))));
       await tester.pump();
       // Só o painel do jogador (posição 1): LUTAR abre os golpes, POKÉMON as trocas (como na batalha normal).
+      for (var i = 0; i < 90 && find.byKey(const ValueKey('battle-fight')).evaluate().isEmpty; i++) { await tester.pump(const Duration(milliseconds: 500)); } // o menu aparece depois da tela de VS
       await tester.tap(find.byKey(const ValueKey('battle-fight'))); await tester.pump();
       expect(find.byKey(const ValueKey('battle-move-0-0')),findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('battle-back'))); await tester.pump();
@@ -108,6 +110,7 @@ void main() {
             message: 'Escolha', waitForSwitch: false, onAction: (a) => chosen = a, onClose: () {}),
         ))))));
       await tester.pump();
+      for (var i = 0; i < 90 && find.byKey(const ValueKey('battle-fight')).evaluate().isEmpty; i++) { await tester.pump(const Duration(milliseconds: 500)); } // o menu aparece depois da tela de VS
       await tester.tap(find.byKey(const ValueKey('battle-fight'))); await tester.pump();
       for (final other in ['mega', 'tera', 'dmax', 'z'].where((other) => other != kind)) {
         expect(find.byKey(ValueKey(other)), findsNothing);

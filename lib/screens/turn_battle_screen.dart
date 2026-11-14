@@ -2872,7 +2872,7 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
                             left: 0,
                             right: 0,
                             top: 0,
-                            bottom: _menu == 'bag' || _menu == 'party' && _summary == null ? h * 0.24 : 0,
+                            bottom: _menu == 'bag' || _menu == 'party' && _summary == null ? h * 0.235 : 0,
                             child: _Appear(key: ValueKey(_menu), child: _menu == 'bag' || _summary == null ? fieldPanel : SingleChildScrollView(child: fieldPanel))),
                       // A tela VS por cima de tudo: só os dois treinadores (o resto some até ela acabar).
                       if (_vsOn)
@@ -3357,7 +3357,7 @@ class _MoveButton extends StatelessWidget {
                     alignment: Alignment.centerLeft,
                     child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
                       m.Text(label, maxLines: 1, style: const TextStyle(fontFamily: 'PixelifySans', color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15, shadows: [Shadow(color: Colors.black, offset: Offset(1, 1))])),
-                      if (details.isNotEmpty) Row(mainAxisSize: MainAxisSize.min, children: [details.first, if (effect != null) ...[const SizedBox(width: 4), effect!]]),
+                      if (details.isNotEmpty || effect != null) Row(mainAxisSize: MainAxisSize.min, children: [for (final d in details) ...[d, const SizedBox(width: 4)], ?effect]),
                     ]),
                   ),
                 ),
@@ -4937,7 +4937,7 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
                 ),
               ),
               // A troca abre por cima do campo, em cima da caixa de texto (a pergunta aparece nela), como na batalha normal.
-              if (panel != null) Positioned(key: const ValueKey('battle-panel'), left: 0, right: 0, top: 0, bottom: _summary != null ? 0 : h * 0.24, child: _Appear(child: panel)),
+              if (panel != null) Positioned(key: const ValueKey('battle-panel'), left: 0, right: 0, top: 0, bottom: _summary != null ? 0 : h * 0.235, child: _Appear(child: panel)),
               if (_vsOn)
                 Positioned.fill(
                   child: _VsSplash(

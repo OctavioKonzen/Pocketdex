@@ -68,6 +68,10 @@ void main() {
       ),
     ));
     await tester.pump(const Duration(milliseconds: 300));
+    // O menu aparece dentro do campo depois da tela de VS (como no port).
+    for (var i = 0; i < 90 && find.byKey(const ValueKey('battle-fight')).evaluate().isEmpty; i++) {
+      await tester.pump(const Duration(milliseconds: 500));
+    }
     return (battle: battle, finished: () => finished);
   }
 
