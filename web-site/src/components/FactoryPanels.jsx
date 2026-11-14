@@ -1539,7 +1539,7 @@ function MapHud({ run, data, scene, clock, monName, inline = false }) {
   const field = fieldOf(run, scene, data)
   const roam = roamerSeen(data, run)
   const plot = villainPlot(data, run)
-  const chip = 'shrink-0 rounded bg-slate-900/80 px-1 py-px shadow'
+  const chip = 'port-chip shrink-0 px-1 py-px'
   return (
     <div className={`pointer-events-none z-10 flex flex-wrap gap-1 text-[10px] font-black text-white sm:text-xs ${inline ? '' : 'absolute left-2 right-2 top-9 sm:top-10'}`} data-testid="map-hud">
       <span className={chip} data-testid="hud-time">{clock.night ? `🌙 ${t('Noite')}` : `☀️ ${t('Dia')}`}</span>
@@ -1697,11 +1697,6 @@ function FarStand({ children, scene, plain = false }) {
   )
 }
 
-/** A cor de cada região (o tema dela na barra da corrida). Igual ao app. */
-const REGION_THEME = {
-  Kanto: '#b91c1c', Johto: '#a16207', Hoenn: '#15803d', Sinnoh: '#1d4ed8', Hisui: '#0f766e', Orre: '#b45309', Fiore: '#16a34a', Almia: '#0891b2', Oblivia: '#2563eb', Kitakami: '#15803d', Blueberry: '#1e40af', Sevii: '#0e7490', Armor: '#a16207', Crown: '#0369a1', Orange: '#ea580c', Unova: '#3f3f46', Kalos: '#0369a1', Alola: '#ea580c', Galar: '#7e22ce', Paldea: '#be123c',
-}
-
 /**
  * O mapa da região: as cidades da história, na ordem, acendendo conforme você
  * ganha as insígnias (a de agora piscando). Igual ao app.
@@ -1715,7 +1710,6 @@ function RegionMap({ data, run, onClose, monName }) {
     if (last?.city === l.city) last.steps.push(k)
     else cities.push({ city: l.city, steps: [k], kind: l.kind })
   })
-  const color = REGION_THEME[game.region] ?? '#334155'
   // Onde o lendário que foge foi visto e as cidades do plano da equipe vilã (e a base dela).
   const roam = roamerSeen(data, run)
   const plot = villainPlot(data, run)
@@ -1788,17 +1782,17 @@ function RegionMap({ data, run, onClose, monName }) {
   }
   const labelAt = (city) => SIDES[side[city] ?? 'below']
   return (
-    <div className={map ? 'flex h-full flex-col gap-1 p-2' : 'space-y-2 p-2'} data-testid="region-map">
+    <div className={`port-panel ${map ? 'flex h-full flex-col gap-1 p-2' : 'min-h-full space-y-2 p-2'}`} data-testid="region-map">
       <OverlayClose onClose={onClose} title={`🗺️ ${game.region} · ${game.game}`} />
       <p className={map ? 'flex shrink-0 gap-1 overflow-x-auto whitespace-nowrap text-[10px] font-bold sm:text-xs' : 'flex flex-wrap gap-1 text-xs font-bold'} data-testid="region-hud">
-        <span className="rounded bg-slate-900/80 px-1.5 text-white">{clock.night ? `🌙 ${t('Noite')}` : `☀️ ${t('Dia')}`}</span>
-        <span className="rounded bg-slate-900/80 px-1.5 text-white">{sky ? t(WEATHER_LABEL[sky] ?? sky) : `🌤️ ${t('Tempo bom')}`}</span>
-        <span className="rounded bg-slate-900/80 px-1.5 text-white">{t(SEASON_LABEL[clock.season])}</span>
-        {plot && <span className="rounded bg-red-700 px-1.5 text-white" data-testid="region-plot">🚨 {t('Plano da {0}: {1}/{2} atrapalhados').replace('{0}', TEAM_NAMES[plot.team] ?? 'Equipe Rocket').replace('{1}', plot.foiled).replace('{2}', plot.chapters.length)}</span>}
+        <span className="port-chip px-1.5">{clock.night ? `🌙 ${t('Noite')}` : `☀️ ${t('Dia')}`}</span>
+        <span className="port-chip px-1.5">{sky ? t(WEATHER_LABEL[sky] ?? sky) : `🌤️ ${t('Tempo bom')}`}</span>
+        <span className="port-chip px-1.5">{t(SEASON_LABEL[clock.season])}</span>
+        {plot && <span className="port-chip px-1.5 text-red-300" data-testid="region-plot">🚨 {t('Plano da {0}: {1}/{2} atrapalhados').replace('{0}', TEAM_NAMES[plot.team] ?? 'Equipe Rocket').replace('{1}', plot.foiled).replace('{2}', plot.chapters.length)}</span>}
       </p>
       {map ? (
         // O Town Map (como nos jogos): o desenho da região, as cidades em círculos; tocando numa, o nome dela embaixo.
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border-4 border-slate-900 bg-[#14396f]" data-testid="town-map-region">
+        <div className="port-card flex min-h-0 flex-1 flex-col overflow-hidden bg-[#14396f]" data-testid="town-map-region">
           <div ref={boxRef} className={`relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden ${fit.h < box.h ? 'flex items-center' : ''}`} data-testid="town-map-scroll">
             <div className="relative" style={{ width: fit.w, height: fit.h }}>
               <img src={spriteUrl(`maps/${map.id}.webp`)} alt="" className="absolute inset-0 h-full w-full select-none" draggable={false} data-testid="town-map-image" />
@@ -1840,7 +1834,7 @@ function RegionMap({ data, run, onClose, monName }) {
             const c = cities[shown]
             const done = c.steps.every((k) => k < run.boss.step)
             return (
-              <p className="bg-slate-900 px-2 py-1 text-xs font-bold text-white sm:text-sm" data-testid="town-map-name">
+              <p className="port-titlebar px-2 py-1 text-xs sm:text-sm" data-testid="town-map-name">
                 <span data-no-translate>{c.city}</span>
                 {shown === hereIndex ? ` · ◀ ${t('você está indo para cá')}` : done ? ' · ✔' : ''}
                 {roam && c.steps.includes(roam.at) && <span className="text-amber-300" data-testid="region-roamer"> · 🐾 <span data-no-translate>{roamName(monName(roam.id))}</span> {t('foi visto aqui')}</span>}
@@ -1851,7 +1845,7 @@ function RegionMap({ data, run, onClose, monName }) {
           })()}
         </div>
       ) : (
-      <div className="relative rounded-xl p-3" style={{ background: `linear-gradient(135deg, ${color}33, #0f172a22)` }}>
+      <div className="port-card relative p-3">
         <div className="absolute bottom-6 left-7 top-6 w-1 rounded bg-slate-500/40" />
         {cities.map((c, i) => {
           const done = c.steps.every((k) => k < run.boss.step)
@@ -1889,12 +1883,12 @@ const HELP = [
 ]
 function HelpPanel({ onClose }) {
   return (
-    <div className="space-y-2 p-2" data-testid="help-panel">
+    <div className="port-panel min-h-full space-y-2 p-2" data-testid="help-panel">
       <OverlayClose onClose={onClose} title={`❓ ${t('Ajuda')}`} />
       {HELP.map(([icon, title, text]) => (
-        <div key={title} className="rounded-xl bg-card p-2">
-          <p className="text-sm font-bold">{icon} {t(title)}</p>
-          <p className="text-xs text-muted">{t(text)}</p>
+        <div key={title} className="port-card p-2">
+          <p className="text-sm">{icon} {t(title)}</p>
+          <p className="text-xs leading-snug text-slate-300">{t(text)}</p>
         </div>
       ))}
     </div>
@@ -2194,9 +2188,9 @@ function TownMap({ route, pos, from, to, title, me, width, fieldRef, onPick, blo
 /** O título e o "fechar" do que abre por cima do campo. */
 function OverlayClose({ title, onClose }) {
   return (
-    <div className="sticky top-0 z-10 -mx-2 -mt-2 mb-2 flex items-center justify-between gap-2 bg-slate-900 px-3 py-1.5 text-sm font-black text-white">
+    <div className="port-titlebar sticky top-0 z-10 -mx-2 -mt-2 mb-2 flex items-center justify-between gap-2 px-3 py-1.5 text-sm">
       <span className="truncate">{title}</span>
-      <button type="button" onClick={onClose} className="cursor-pointer rounded bg-red-600 px-2" aria-label={t('Fechar')} data-testid="overlay-close">✕</button>
+      <button type="button" onClick={onClose} className="port-chip cursor-pointer px-2" aria-label={t('Fechar')} data-testid="overlay-close">✕</button>
     </div>
   )
 }

@@ -808,3 +808,16 @@ h1, h2, .font-display {
   text-shadow: 1px 1px 0 #000; font-family: 'Pixelify Sans', monospace; font-size: 1.5cqw; padding: 0.6cqw 0.8cqw;
   clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
 }
+/* As telas que abrem por cima do campo (mapa, ajuda...) com a HUD do port: cor fixa, caixas escuras de borda cinza. */
+.port-panel {
+  background-color: #1f6f78;
+  background-image: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0 10px, transparent 10px 20px);
+  color: #fff;
+  font-family: 'Pixelify Sans', 'Chakra Petch', monospace;
+}
+.port-titlebar { background: #15181f; border-bottom: 2px solid #22d3ee; color: #fff; font-family: 'Pixelify Sans', 'Chakra Petch', monospace; text-shadow: 1px 1px 0 #000; }
+.port-card {
+  background: rgba(20, 22, 28, 0.92); border: 2px solid #8b93a1; box-shadow: inset 0 0 0 2px #1f242d; color: #fff; text-shadow: 1px 1px 0 #000;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+}
+.port-chip { background: rgba(20, 22, 28, 0.92); border: 1px solid #8b93a1; color: #fff; font-family: 'Pixelify Sans', 'Chakra Petch', monospace; text-shadow: 1px 1px 0 #000; }
