@@ -219,6 +219,385 @@ export function fxPlan2({ kind, type, slug = '', from = 0, seed = 1, stage = FX_
       flashAfter(4050)
       end(4500)
     },
+    // ---- Lote 1, feitos à mão como no Black & White ----
+    thunderbolt: () => {
+      // Carrega faíscas no corpo, o raio sai e acerta em zigue-zague, o alvo fica eletrificado.
+      cam = [[0, ...NEUTRAL], [300, ...look(a, 1.35, 2 * toward)], [800, ...look(a, 1.35, 2 * toward)], [1000, ...look({ x: (a.x + tc.x) / 2, y: (a.y + tc.y) / 2 }, 1.05, 0)], [1200, ...look(tc, 1.45, -2 * toward)]]
+      S.push({ who: 'A', k: 'tint', t0: 250, t1: 950, color: '#ffe94a', a: 0.55, pulse: 40 })
+      add({ s: 'bolt', t0: 250, t1: 950, x: a.x, y: a.y, r: A.h * 0.55, n: 6, c: '#ffffff', c2: '#ffe94a', w: 3, flicker: 1 })
+      add({ s: 'tint', t0: 900, t1: 1500, color: '#05040f', a: [0.45, 0.1] })
+      for (let i = 0; i < 3; i++) add({ s: 'bolt', t0: 950 + i * 90, t1: 1250 + i * 90, x: tc.x, y: tc.y, r: 0, from: mouth, n: 10, c: '#ffffff', c2: '#ffd400', w: 7 - i, flicker: 1 })
+      add({ s: 'tint', t0: 1000, t1: 1100, color: '#ffffff', a: [0.85, 0] })
+      add({ s: 'bolt', t0: 1150, t1: 1800, x: tc.x, y: tc.y, r: 120, n: 7, c: '#ffffff', c2: '#ffe94a', w: 3, flicker: 1 })
+      add({ s: 'particles', t0: 1150, t1: 1800, n: 26, seed, x: tc.x, y: tc.y, sx: 90, sy: 80, v: 120, vy: 0, g: 0, life: 260, mode: 'stream', size: [7, 2], style: 'spark', c: ['#ffffff', '#ffe94a'] })
+      hit(1050, 1.2, '#ffe94a')
+      S.push({ who: 'T', k: 'tint', t0: 1100, t1: 1800, color: '#ffe94a', a: 0.55, pulse: 45 })
+      back(1800, 60)
+      flashAfter(2350)
+    },
+    flamethrower: () => {
+      // Brasa na boca, o jato de fogo grosso cobre o alvo, que pega fogo.
+      cam = [[0, ...NEUTRAL], [300, ...look(a, 1.3, 2 * toward)], [700, ...look({ x: a.x * 0.4 + tc.x * 0.6, y: a.y * 0.4 + tc.y * 0.6 }, 1.15, -toward)], [1500, ...look(tc, 1.45, -2 * toward)]]
+      add({ s: 'glow', t0: 200, t1: 1600, x: mouth.x, y: mouth.y, r: [6, 46], c: ['#fff7c2', '#ffb02e', '#e5391a'], a: [1, 0.8] })
+      add({ s: 'particles', t0: 450, t1: 1650, n: 190, seed, x: [mouth.x, tc.x], y: [mouth.y, tc.y], sx: 8, sy: 8, spread: 34, mode: 'jet', life: 380, size: [14, 34], style: 'flame', c: ['#fff7c2', '#ffd23a', '#ff6a12', '#d6200f'] })
+      add({ s: 'particles', t0: 500, t1: 1650, n: 60, seed: seed + 2, x: [mouth.x, tc.x], y: [mouth.y, tc.y], sx: 6, sy: 6, spread: 20, mode: 'jet', life: 420, size: [6, 3], style: 'ember', c: ['#ffffff', '#ffd23a'] })
+      add({ s: 'glow', t0: 800, t1: 1800, x: tc.x, y: tc.y, r: [40, 140], c: ['#fff7c2', '#ff8a2a', '#d6200f'], a: [0.95, 0] })
+      add({ s: 'particles', t0: 900, t1: 2000, n: 40, seed: seed + 4, x: tc.x, y: T.y, sx: T.h * 0.4, sy: 10, v: 20, vy: -260, g: -60, life: 700, mode: 'stream', size: [12, 4], style: 'ember', c: ['#fff7c2', '#ffb02e', '#e5391a'] })
+      hit(850, 1.1, '#ff5a1a')
+      S.push({ who: 'T', k: 'tint', t0: 850, t1: 1900, color: '#ff4a0a', a: 0.6, pulse: 22 })
+      back(1900, 60)
+      flashAfter(2450)
+    },
+    'ice-beam': () => {
+      // Cristais se juntam na boca, o raio azul-claro gela o caminho e o alvo fica coberto de gelo.
+      cam = [[0, ...NEUTRAL], [300, ...look(a, 1.35, 2 * toward)], [850, ...look(a, 1.35, 2 * toward)], [1050, ...look({ x: (a.x + tc.x) / 2, y: (a.y + tc.y) / 2 }, 1.0, 0)], [1300, ...look(tc, 1.45, -2 * toward)]]
+      add({ s: 'particles', t0: 250, t1: 950, n: 30, seed, x: mouth.x, y: mouth.y, sx: 0, sy: 0, mode: 'converge', r: 170, life: 450, size: [6, 12], style: 'crystal', c: ['#ffffff', '#c8f6ff', '#6cc9f0'] })
+      add({ s: 'glow', t0: 300, t1: 1000, x: mouth.x, y: mouth.y, r: [6, 44], c: ['#ffffff', '#c8f6ff', '#6cc9f0'], a: 1 })
+      add({ s: 'beam', t0: 950, t1: 1750, x0: mouth.x, y0: mouth.y, x1: tc.x, y1: tc.y, w: [8, 26], c: ['#ffffff', '#bfeeff', '#6cc9f0'], a: [1, 0], wobble: 2, grow: 140 })
+      add({ s: 'particles', t0: 1000, t1: 1750, n: 40, seed: seed + 3, x: [mouth.x, tc.x], y: [mouth.y, tc.y], sx: 24, sy: 24, v: 40, vy: 0, g: 0, life: 320, mode: 'trail', size: [9, 3], style: 'crystal', c: ['#ffffff', '#c8f6ff'] })
+      add({ s: 'particles', t0: 1150, t1: 2000, n: 22, seed: seed + 5, x: tc.x, y: tc.y, sx: 0, sy: 0, mode: 'burst', v: 160, vy: 40, g: 200, life: 700, size: [18, 10], style: 'crystal', c: ['#ffffff', '#c8f6ff', '#6cc9f0'] })
+      add({ s: 'ring', t0: 1150, t1: 1800, x: tc.x, y: T.y, r: [20, T.h * 0.6], ratio: 0.3, w: [8, 2], c: '#e0faff', a: [1, 0], n: 2, stagger: 1 })
+      hit(1150, 1.1, '#9ee8ff')
+      S.push({ who: 'T', k: 'tint', t0: 1150, t1: 2000, color: '#bfeeff', a: 0.65 })
+      back(2000, 80)
+      flashAfter(2550)
+    },
+    surf: () => {
+      // A câmera abre, a parede de água atravessa a tela inteira e espirra no alvo.
+      cam = [[0, ...NEUTRAL], [400, ...[stage.w / 2, stage.h / 2 + 20, 0.94, -toward]], [1800, ...look(tc, 1.3, -2 * toward)]]
+      add({ s: 'tint', t0: 200, t1: 1900, color: '#0b3b8a', a: [0, 0.25] })
+      add({ s: 'wave', t0: 300, t1: 1700, dir: toward, c: ['#e8fbff', '#5cc8ff', '#1f6fd6', '#0b3b8a'], h: [0.25, 0.85] })
+      add({ s: 'particles', t0: 600, t1: 1800, n: 70, seed, x: tc.x, y: tc.y, sx: 240, sy: 140, v: 140, vy: -240, g: 520, life: 650, mode: 'stream', size: [9, 4], style: 'droplet', c: ['#ffffff', '#bfe8ff', '#5cc8ff'] })
+      add({ s: 'particles', t0: 700, t1: 1800, n: 20, seed: seed + 2, x: tc.x, y: tc.y, sx: 120, sy: 80, v: 30, vy: -80, g: 0, life: 700, mode: 'stream', size: [10, 6], style: 'bubble', c: ['#ffffff', '#bfe8ff'] })
+      hit(1050, 1.2, '#5cc8ff')
+      back(1850, 60)
+      flashAfter(2400)
+    },
+    earthquake: () => {
+      // A câmera abre, tudo treme forte, o chão racha embaixo do alvo e pedras e poeira sobem.
+      cam = [[0, ...NEUTRAL], [300, stage.w / 2, stage.h / 2 + 30, 0.9, 0], [1700, stage.w / 2, stage.h / 2 + 30, 0.93, 0]]
+      shake.push([300, 1700, 18])
+      add({ s: 'crack', t0: 350, t1: 1700, x: tc.x, y: T.y, r: [30, 340], n: 9, c: '#3b2a12', c2: '#e0b866', a: [1, 0] })
+      add({ s: 'particles', t0: 400, t1: 1700, n: 70, seed, x: tc.x, y: T.y, sx: 260, sy: 10, v: 80, vy: -320, g: 700, life: 750, mode: 'stream', size: [16, 6], style: 'dust', c: ['#e0b866', '#a8742e', '#5b3c12'] })
+      add({ s: 'particles', t0: 500, t1: 1600, n: 18, seed: seed + 2, x: tc.x, y: T.y, sx: 200, sy: 10, v: 40, vy: -420, g: 900, life: 800, mode: 'stream', size: [16, 12], style: 'shard', c: ['#d6b98a', '#9b7c4f'] })
+      S.push({ who: 'T', k: 'move', t0: 450, t1: 1400, dx: 0, dy: -30, bounce: 4 })
+      S.push({ who: 'A', k: 'move', t0: 350, t1: 1300, dx: 0, dy: -10, bounce: 5 })
+      hit(800, 1.3, '#a8742e')
+      back(1700, 0)
+      flashAfter(2200)
+    },
+    'shadow-ball': () => {
+      // Sombras se juntam na frente dele, a bola roxa gira, cresce, voa e estoura em fantasmas.
+      const o = { x: front.x + 50 * toward, y: (mouth.y + front.y) / 2 }
+      cam = [[0, ...NEUTRAL], [300, ...look(a, 1.3, 2 * toward)], [950, ...look(a, 1.35, 2 * toward)], [1200, ...look({ x: (a.x + tc.x) / 2, y: (a.y + tc.y) / 2 }, 1.0, 0)], [1400, ...look(tc, 1.5, -2 * toward)]]
+      add({ s: 'tint', t0: 200, t1: 1700, color: '#120624', a: [0, 0.45] })
+      add({ s: 'particles', t0: 250, t1: 1000, n: 34, seed, x: o.x, y: o.y, sx: 0, sy: 0, mode: 'converge', r: 200, life: 500, size: [10, 18], style: 'wisp', c: ['#a78bfa', '#6d3fc9', '#2a1450'] })
+      add({ s: 'glow', t0: 300, t1: 1000, x: o.x, y: o.y, r: [6, 56], c: ['#2a1450', '#6d3fc9', '#a78bfa', '#120624'], a: 1, core: 0.4, swirl: 1 })
+      add({ s: 'glow', t0: 1000, t1: 1330, x: [o.x, tc.x], y: [o.y, tc.y], r: [56, 70], c: ['#2a1450', '#6d3fc9', '#a78bfa', '#120624'], a: 1, core: 0.4, swirl: 1, trail: 1 })
+      add({ s: 'particles', t0: 1330, t1: 2000, n: 26, seed: seed + 3, x: tc.x, y: tc.y, sx: 20, sy: 20, v: 180, vy: -40, g: 0, life: 650, mode: 'burst', size: [16, 6], style: 'wisp', c: ['#c4b5fd', '#7c3aed', '#2a1450'] })
+      add({ s: 'ring', t0: 1330, t1: 1800, x: tc.x, y: tc.y, r: [20, 150], ratio: 0.8, w: [10, 2], c: '#a78bfa', a: [1, 0], n: 2, stagger: 1 })
+      hit(1330, 1.15, '#6d3fc9')
+      back(1450, 300)
+      flashAfter(2400)
+    },
+    psychic: () => {
+      // A tela fica rosa e pulsa, anéis apertam o alvo, ele é erguido e sacudido pela mente.
+      cam = [[0, ...NEUTRAL], [400, ...look({ x: (a.x + tc.x) / 2, y: (a.y + tc.y) / 2 }, 1.05, 0)], [900, ...look(tc, 1.45, -2 * toward)], [1900, ...look(tc, 1.5, -3 * toward)]]
+      S.push({ who: 'A', k: 'tint', t0: 250, t1: 900, color: '#ff8fd0', a: 0.5, pulse: 20 })
+      add({ s: 'tint', t0: 300, t1: 2000, color: '#ff3fa4', a: [0, 0.3] })
+      add({ s: 'ring', t0: 300, t1: 1000, x: [a.x, tc.x], y: [a.y, tc.y], r: [40, 120], ratio: 0.85, w: 6, c: '#ffc0e6', a: [1, 0.4], n: 5, stagger: 1 })
+      add({ s: 'ring', t0: 900, t1: 1900, x: tc.x, y: tc.y, r: [170, 30], ratio: 1, w: [2, 9], c: '#ff8fd0', a: [0.2, 1], n: 4, stagger: 1 })
+      add({ s: 'particles', t0: 900, t1: 1900, n: 24, seed, x: tc.x, y: tc.y, sx: 0, sy: 0, mode: 'swirl', r: 160, life: 800, size: [10, 5], style: 'dot', c: ['#ffffff', '#ff8fd0'] })
+      S.push({ who: 'T', k: 'move', t0: 1000, t1: 1800, dx: 0, dy: -40, back: 1 })
+      S.push({ who: 'T', k: 'tint', t0: 900, t1: 1900, color: '#ff8fd0', a: 0.6, pulse: 30 })
+      shake.push([1300, 1800, 6])
+      hit(1500, 1.1, '#e2479c')
+      back(1950, 60)
+      flashAfter(2500)
+    },
+    'close-combat': () => {
+      // Avança e acerta uma sequência de socos e chutes, cada um com estrela e tranco.
+      cam = [[0, ...NEUTRAL], [280, ...look({ x: (a.x + tc.x) / 2, y: (a.y + tc.y) / 2 }, 1.1, 0)], [500, ...look(tc, 1.6, -3 * toward)], [1500, ...look(tc, 1.5, -2 * toward)]]
+      S.push({ who: 'A', k: 'move', t0: 80, t1: 1500, dx: (tc.x - a.x) * 0.55, dy: (tc.y - a.y) * 0.55, back: 1 })
+      for (let i = 0; i < 6; i++) {
+        const t = 500 + i * 150
+        const ox = (rnd(i) - 0.5) * 90
+        const oy = (rnd(i + 3) - 0.5) * 80
+        add({ s: 'icon', t0: t - 90, t1: t + 140, x: tc.x + ox, y: tc.y + oy, size: [150, 80], a: [0.5, 1], style: i % 2 ? 'foot' : 'fist', c: ['#fff2e0', '#ffb067', '#d0562b'], rot: (rnd(i + 7) - 0.5) * 0.8 })
+        add({ s: 'rays', t0: t, t1: t + 180, x: tc.x + ox, y: tc.y + oy, n: 8, r0: 10, r1: [30, 90], w: 5, c: '#ffffff', c2: '#ffb067', a: [1, 0], rot: rnd(i) })
+        shake.push([t, t + 100, 6])
+        S.push({ who: 'T', k: 'move', t0: t, t1: t + 140, dx: 10 * toward, dy: 0 })
+      }
+      hit(1350, 1.3, '#d0562b')
+      back(1500, 150)
+      flashAfter(2150)
+    },
+    'dragon-claw': () => {
+      // Avança com garras de energia azul e rasga o alvo três vezes.
+      cam = [[0, ...NEUTRAL], [280, ...look({ x: (a.x + tc.x) / 2, y: (a.y + tc.y) / 2 }, 1.1, 0)], [520, ...look(tc, 1.6, -3 * toward)], [1100, ...look(tc, 1.5, -2 * toward)]]
+      S.push({ who: 'A', k: 'move', t0: 80, t1: 900, dx: (tc.x - a.x) * 0.55, dy: (tc.y - a.y) * 0.55, back: 1 })
+      S.push({ who: 'A', k: 'tint', t0: 100, t1: 600, color: '#5a4ae0', a: 0.45 })
+      for (let i = 0; i < 3; i++) add({ s: 'arc', t0: 480 + i * 60, t1: 820 + i * 60, x: tc.x + (i - 1) * 26, y: tc.y, r: 110, a0: -2.4, a1: [-2.4, 0.7], w: 9, c: '#e0e4ff', c2: '#5a4ae0', flip: toward > 0 ? 0 : 1 })
+      add({ s: 'particles', t0: 560, t1: 1200, n: 26, seed, x: tc.x, y: tc.y, sx: 30, sy: 30, v: 200, vy: -60, g: 0, life: 500, mode: 'burst', size: [10, 3], style: 'ember', c: ['#eef0ff', '#9aa6ff', '#5a4ae0'] })
+      hit(600, 1.2, '#5a4ae0')
+      back(1100, 120)
+      flashAfter(1750)
+    },
+    moonblast: () => {
+      // A lua aparece no alto e brilha; a luz dela vira uma esfera rosa que desce no alvo e estoura em brilhos.
+      const moon = { x: a.x + 80 * toward, y: Math.min(a.y, tc.y) - 200 }
+      cam = [[0, ...NEUTRAL], [450, ...look({ x: moon.x, y: moon.y + 80 }, 1.25, 0)], [1300, ...look({ x: moon.x, y: moon.y + 80 }, 1.3, 0)], [1600, ...look(tc, 1.45, -2 * toward)]]
+      add({ s: 'tint', t0: 200, t1: 1900, color: '#0a0620', a: [0, 0.5] })
+      add({ s: 'glow', t0: 300, t1: 1500, x: moon.x, y: moon.y, r: [10, 90], c: ['#ffffff', '#ffe6f6', '#f7a8d8'], a: [0.3, 1] })
+      add({ s: 'icon', t0: 300, t1: 1500, x: moon.x, y: moon.y, size: [20, 70], a: [0.3, 1], style: 'moon', c: ['#ffffff', '#fff4fb', '#f7a8d8'] })
+      add({ s: 'particles', t0: 500, t1: 1400, n: 26, seed, x: moon.x, y: moon.y, sx: 0, sy: 0, mode: 'converge', r: 220, life: 500, size: [5, 10], style: 'star', c: ['#ffffff', '#ffc6e8'] })
+      add({ s: 'glow', t0: 1350, t1: 1650, x: [moon.x, tc.x], y: [moon.y, tc.y], r: [40, 70], c: ['#ffffff', '#ffc6e8', '#f77fbe'], a: 1, trail: 1 })
+      add({ s: 'particles', t0: 1650, t1: 2300, n: 34, seed: seed + 3, x: tc.x, y: tc.y, sx: 20, sy: 20, v: 220, vy: -40, g: 60, life: 650, mode: 'burst', size: [14, 4], style: 'star', c: ['#ffffff', '#ffc6e8', '#f77fbe'] })
+      hit(1650, 1.2, '#f77fbe')
+      back(2000, 100)
+      flashAfter(2600)
+    },
+    'hydro-pump': () => {
+      // Dois jatos de água fortes saem da boca e empurram o alvo para trás.
+      cam = [[0, ...NEUTRAL], [300, ...look(a, 1.3, 2 * toward)], [700, ...look({ x: a.x * 0.4 + tc.x * 0.6, y: a.y * 0.4 + tc.y * 0.6 }, 1.1, -toward)], [1600, ...look(tc, 1.45, -2 * toward)]]
+      add({ s: 'glow', t0: 200, t1: 1700, x: mouth.x, y: mouth.y, r: [6, 40], c: ['#ffffff', '#5cc8ff', '#1f6fd6'], a: [1, 0.7] })
+      for (const off of [-16, 16]) add({ s: 'particles', t0: 450, t1: 1700, n: 140, seed: seed + off, x: [mouth.x, tc.x], y: [mouth.y + off * 0.4, tc.y + off], sx: 6, sy: 6, spread: 18, mode: 'jet', life: 340, size: [12, 22], style: 'droplet', c: ['#ffffff', '#bfe8ff', '#5cc8ff', '#1f6fd6'] })
+      add({ s: 'particles', t0: 850, t1: 1800, n: 50, seed: seed + 9, x: tc.x, y: tc.y, sx: 60, sy: 50, v: 200, vy: -160, g: 500, life: 600, mode: 'stream', size: [9, 4], style: 'droplet', c: ['#ffffff', '#5cc8ff'] })
+      S.push({ who: 'T', k: 'move', t0: 850, t1: 1700, dx: 34 * toward, dy: -6, back: 1 })
+      hit(850, 1.25, '#1f6fd6')
+      back(1800, 60)
+      flashAfter(2350)
+    },
+    'fire-blast': () => {
+      // Uma bola de fogo voa e explode na estrela de cinco pontas, o "大" de fogo dos jogos.
+      const o = { x: mouth.x, y: mouth.y }
+      cam = [[0, ...NEUTRAL], [300, ...look(a, 1.3, 2 * toward)], [800, ...look({ x: (a.x + tc.x) / 2, y: (a.y + tc.y) / 2 }, 1.0, 0)], [1050, ...look(tc, 1.4, -2 * toward)], [2000, ...look(tc, 1.45, -2 * toward)]]
+      add({ s: 'glow', t0: 200, t1: 700, x: o.x, y: o.y, r: [6, 50], c: ['#fff7c2', '#ffb02e', '#e5391a'], a: 1, swirl: 1 })
+      add({ s: 'glow', t0: 700, t1: 1000, x: [o.x, tc.x], y: [o.y, tc.y], r: [50, 64], c: ['#fff7c2', '#ffb02e', '#e5391a', '#7a1406'], a: 1, trail: 1 })
+      add({ s: 'tint', t0: 1000, t1: 1120, color: '#fff3d0', a: [0.85, 0] })
+      add({ s: 'rays', t0: 1000, t1: 2000, x: tc.x, y: tc.y, n: 5, r0: 20, r1: [60, 260], w: [30, 46], c: '#ffd23a', c2: '#e5391a', a: [1, 0], rot: -Math.PI / 2 })
+      add({ s: 'glow', t0: 1000, t1: 2000, x: tc.x, y: tc.y, r: [60, 200], c: ['#fff7c2', '#ff8a2a', '#d6200f'], a: [1, 0] })
+      add({ s: 'particles', t0: 1050, t1: 2200, n: 60, seed, x: tc.x, y: tc.y, sx: 140, sy: 140, v: 30, vy: -220, g: -60, life: 800, mode: 'stream', size: [16, 5], style: 'flame', c: ['#fff7c2', '#ffb02e', '#e5391a'] })
+      shake.push([1000, 1700, 12])
+      hit(1000, 1.4, '#ff4a0a')
+      S.push({ who: 'T', k: 'tint', t0: 1000, t1: 2000, color: '#ff4a0a', a: 0.65, pulse: 24 })
+      back(2050, 60)
+      flashAfter(2600)
+    },
+    thunder: () => {
+      // O céu escurece, um raio gigante cai do alto no alvo duas vezes, com clarões.
+      cam = [[0, ...NEUTRAL], [400, ...look({ x: tc.x, y: tc.y - 140 }, 1.15, -toward)], [1000, ...look(tc, 1.45, -3 * toward)]]
+      add({ s: 'tint', t0: 200, t1: 1900, color: '#05040f', a: [0, 0.6] })
+      for (let i = 0; i < 2; i++) {
+        const t = 700 + i * 380
+        add({ s: 'bolt', t0: t, t1: t + 320, x: tc.x, y: tc.y, r: 0, from: { x: tc.x + (rnd(i) - 0.5) * 120, y: -60 }, n: 12, c: '#ffffff', c2: '#ffe94a', w: 14, flicker: 1 })
+        add({ s: 'tint', t0: t, t1: t + 140, color: '#ffffff', a: [0.9, 0] })
+        shake.push([t, t + 220, 12])
+      }
+      add({ s: 'bolt', t0: 750, t1: 1700, x: tc.x, y: tc.y, r: 150, n: 8, c: '#ffffff', c2: '#ffe94a', w: 4, flicker: 1 })
+      hit(720, 1.4, '#ffe94a')
+      S.push({ who: 'T', k: 'tint', t0: 720, t1: 1700, color: '#ffe94a', a: 0.6, pulse: 50 })
+      back(1750, 60)
+      flashAfter(2300)
+    },
+    hurricane: () => {
+      // Um furacão se forma no alvo: anéis de vento girando, riscos e o alvo girando no ar.
+      cam = [[0, ...NEUTRAL], [400, ...look(tc, 1.35, -2 * toward)], [1900, ...look({ x: tc.x, y: tc.y - 40 }, 1.45, -4 * toward)]]
+      add({ s: 'ring', t0: 300, t1: 1900, x: tc.x, y: [T.y, tc.y - 120], r: [50, 170], ratio: 0.3, w: [12, 3], c: '#e4f3ff', a: [0.9, 0], n: 8, spiral: 6 })
+      add({ s: 'particles', t0: 300, t1: 1900, n: 80, seed, x: tc.x, y: tc.y, sx: 0, sy: 0, mode: 'swirl', r: 190, life: 900, size: [16, 5], style: 'streak', c: ['#ffffff', '#e4f3ff', '#9cc8ee'] })
+      add({ s: 'particles', t0: 400, t1: 1800, n: 16, seed: seed + 2, x: tc.x, y: tc.y, sx: 0, sy: 0, mode: 'swirl', r: 150, life: 1000, size: [14, 10], style: 'feather', c: ['#ffffff', '#e4f3ff'] })
+      S.push({ who: 'T', k: 'move', t0: 600, t1: 1700, dx: 0, dy: -50, back: 1 })
+      S.push({ who: 'T', k: 'squash', t0: 600, t1: 1700, sx: 0.85, sy: 1.08 })
+      hit(1100, 1.2, '#9cc8ee')
+      back(1950, 60)
+      flashAfter(2500)
+    },
+    'leaf-storm': () => {
+      // Uma tempestade de folhas sai de quem ataca, vai até o alvo e gira em volta dele.
+      cam = [[0, ...NEUTRAL], [300, ...look(a, 1.25, 2 * toward)], [800, ...look({ x: (a.x + tc.x) / 2, y: (a.y + tc.y) / 2 }, 1.0, 0)], [1300, ...look(tc, 1.4, -2 * toward)]]
+      add({ s: 'particles', t0: 200, t1: 1300, n: 90, seed, x: [front.x, tc.x], y: [front.y, tc.y], sx: 80, sy: 70, mode: 'travel', life: 700, size: [18, 14], style: 'leaf', c: ['#f1ffd0', '#9be35a', '#3fa34d'] })
+      add({ s: 'particles', t0: 900, t1: 2000, n: 70, seed: seed + 3, x: tc.x, y: tc.y, sx: 0, sy: 0, mode: 'swirl', r: 180, life: 800, size: [18, 12], style: 'leaf', c: ['#f1ffd0', '#9be35a', '#3fa34d'] })
+      add({ s: 'ring', t0: 900, t1: 1900, x: tc.x, y: tc.y, r: [160, 60], ratio: 0.5, w: [3, 7], c: '#9be35a', a: [0, 0.8], n: 3, spiral: 3 })
+      hit(1200, 1.25, '#3fa34d')
+      back(2000, 60)
+      flashAfter(2550)
+    },
+    'stone-edge': () => {
+      // Pedras pontudas brotam do chão embaixo do alvo, uma atrás da outra, e o acertam.
+      cam = [[0, ...NEUTRAL], [350, ...look({ x: tc.x, y: T.y - 60 }, 1.35, -2 * toward)], [1400, ...look(tc, 1.45, -3 * toward)]]
+      for (let i = 0; i < 5; i++) {
+        const t = 400 + i * 110
+        const dx = (i - 2) * 46 + (rnd(i) - 0.5) * 20
+        add({ s: 'cone', t0: t, t1: t + 420, x: tc.x + dx, y: [T.y + 30, T.y - 80 - rnd(i + 2) * 80], w: 40, c: '#b89a6a', a: 1 })
+        add({ s: 'particles', t0: t, t1: t + 420, n: 8, seed: seed + i, x: tc.x + dx, y: T.y, sx: 20, sy: 4, v: 120, vy: -260, g: 700, life: 400, mode: 'burst', size: [10, 5], style: 'shard', c: ['#d6b98a', '#9b7c4f'] })
+        shake.push([t, t + 120, 7])
+      }
+      hit(700, 1.3, '#9b7c4f')
+      back(1450, 60)
+      flashAfter(2000)
+    },
+    'u-turn': () => {
+      // Avança num risco verde, acerta e volta voando para o lugar dele.
+      cam = [[0, ...NEUTRAL], [280, ...look({ x: (a.x + tc.x) / 2, y: (a.y + tc.y) / 2 }, 1.05, 0)], [480, ...look(tc, 1.5, -3 * toward)], [800, ...look({ x: (a.x + tc.x) / 2, y: (a.y + tc.y) / 2 }, 1.05, 0)]]
+      S.push({ who: 'A', k: 'move', t0: 60, t1: 900, dx: (tc.x - a.x) * 0.6, dy: (tc.y - a.y) * 0.6, back: 1 })
+      add({ s: 'particles', t0: 80, t1: 900, n: 40, seed, x: [a.x, tc.x], y: [a.y, tc.y], sx: 30, sy: 30, v: 40, vy: 0, g: 0, life: 300, mode: 'trail', size: [14, 3], style: 'streak', c: ['#ffffff', '#c9e04a', '#8aa61c'] })
+      add({ s: 'arc', t0: 420, t1: 760, x: tc.x, y: tc.y, r: 120, a0: -2.6, a1: [-2.6, 0.6], w: 12, c: '#f7ffd6', c2: '#8aa61c', flip: toward > 0 ? 0 : 1 })
+      hit(500, 1.1, '#8aa61c')
+      back(900, 0)
+      flashAfter(1450)
+    },
+    'knock-off': () => {
+      // Um golpe sombrio arranca o item: o tapa escuro acerta e uma estrela sai voando.
+      cam = [[0, ...NEUTRAL], [280, ...look({ x: (a.x + tc.x) / 2, y: (a.y + tc.y) / 2 }, 1.1, 0)], [500, ...look(tc, 1.55, -3 * toward)], [1200, ...look(tc, 1.45, -2 * toward)]]
+      S.push({ who: 'A', k: 'move', t0: 80, t1: 850, dx: (tc.x - a.x) * 0.55, dy: (tc.y - a.y) * 0.55, back: 1 })
+      add({ s: 'arc', t0: 460, t1: 800, x: tc.x, y: tc.y, r: 100, a0: 0.4, a1: [0.4, -2.6], w: 16, c: '#2e1d40', c2: '#8a76a8', flip: toward > 0 ? 1 : 0 })
+      add({ s: 'shot', t0: 560, t1: 1250, x: [tc.x, tc.x + 260 * toward], y: [tc.y - 20, tc.y - 220], r: 22, c: ['#ffffff', '#fde68a', '#f59e0b', '#92400e'], style: 'star', arc: 60, spin: toward })
+      hit(540, 1.15, '#3d2f55')
+      back(1200, 60)
+      flashAfter(1750)
+    },
+    'draco-meteor': () => {
+      // Energia laranja sobe da boca ao céu; de lá caem vários meteoros no campo, com explosões.
+      cam = [[0, ...NEUTRAL], [350, ...look(a, 1.3, 2 * toward)], [900, ...look({ x: a.x, y: a.y - 200 }, 1.1, 0)], [1300, stage.w / 2, stage.h / 2, 0.92, 0], [2600, ...look(tc, 1.2, -2 * toward)]]
+      S.push({ who: 'A', k: 'tint', t0: 250, t1: 900, color: '#ff8a2a', a: 0.5, pulse: 20 })
+      add({ s: 'glow', t0: 300, t1: 900, x: mouth.x, y: mouth.y, r: [6, 50], c: ['#fff7c2', '#ffb02e', '#e5391a'], a: 1 })
+      add({ s: 'glow', t0: 850, t1: 1150, x: [mouth.x, mouth.x], y: [mouth.y, -80], r: [40, 30], c: ['#fff7c2', '#ffb02e', '#e5391a'], a: 1, trail: 1 })
+      add({ s: 'tint', t0: 1100, t1: 2700, color: '#1a0612', a: [0, 0.45] })
+      for (let i = 0; i < 6; i++) {
+        const t = 1350 + i * 180
+        const dx = (rnd(i) - 0.5) * 260
+        add({ s: 'shot', t0: t - 300, t1: t, x: [tc.x + dx - 220 * toward, tc.x + dx * 0.5], y: [-60, T.y - 40 + (rnd(i + 3) - 0.5) * 40], r: 30, c: ['#fff7c2', '#ffb02e', '#e5391a', '#7a1406'], style: 'dot', trail: 1 })
+        add({ s: 'glow', t0: t, t1: t + 300, x: tc.x + dx * 0.5, y: T.y - 40, r: [20, 120], c: ['#fff7c2', '#ff8a2a', '#d6200f'], a: [1, 0] })
+        shake.push([t, t + 160, 10])
+      }
+      hit(1350, 1.4, '#e5391a')
+      back(2650, 100)
+      flashAfter(3250)
+    },
+    'sludge-bomb': () => {
+      // Uma bola de lodo roxo voa em arco e estoura espirrando gosma no alvo.
+      cam = [[0, ...NEUTRAL], [300, ...look({ x: (a.x + tc.x) / 2, y: (a.y + tc.y) / 2 - 40 }, 1.05, 0)], [900, ...look(tc, 1.45, -2 * toward)]]
+      add({ s: 'shot', t0: 250, t1: 850, x: [mouth.x, tc.x], y: [mouth.y, tc.y], r: 30, c: ['#f6dcff', '#c56cf0', '#8e2fc2', '#43125e'], style: 'goo', arc: 180, spin: toward })
+      add({ s: 'particles', t0: 850, t1: 1600, n: 34, seed, x: tc.x, y: tc.y, sx: 20, sy: 20, v: 220, vy: -160, g: 600, life: 700, mode: 'burst', size: [14, 6], style: 'goo', c: ['#f6dcff', '#c56cf0', '#8e2fc2'] })
+      add({ s: 'particles', t0: 950, t1: 1800, n: 14, seed: seed + 3, x: tc.x, y: tc.y - 20, sx: 70, sy: 30, v: 0, vy: -90, g: 0, life: 700, mode: 'stream', size: [12, 6], style: 'bubble', c: ['#f6dcff', '#c56cf0'] })
+      hit(850, 1.15, '#8e2fc2')
+      S.push({ who: 'T', k: 'tint', t0: 850, t1: 1700, color: '#a855f7', a: 0.55, pulse: 16 })
+      back(1750, 60)
+      flashAfter(2300)
+    },
+    'flash-cannon': () => {
+      // Luz prateada junta na frente, sai um raio de metal largo e brilhante.
+      cam = [[0, ...NEUTRAL], [300, ...look(a, 1.35, 2 * toward)], [850, ...look(a, 1.35, 2 * toward)], [1050, ...look({ x: (a.x + tc.x) / 2, y: (a.y + tc.y) / 2 }, 1.0, 0)], [1300, ...look(tc, 1.45, -2 * toward)]]
+      add({ s: 'particles', t0: 250, t1: 950, n: 26, seed, x: front.x, y: front.y, sx: 0, sy: 0, mode: 'converge', r: 170, life: 450, size: [5, 10], style: 'glint', c: ['#ffffff', '#e3eaf2'] })
+      add({ s: 'glow', t0: 300, t1: 1000, x: front.x, y: front.y, r: [6, 50], c: ['#ffffff', '#e3eaf2', '#9aaabd'], a: 1, swirl: 1 })
+      add({ s: 'beam', t0: 950, t1: 1750, x0: front.x, y0: front.y, x1: tc.x, y1: tc.y, w: [12, 40], c: ['#ffffff', '#e3eaf2', '#9aaabd'], a: [1, 0], wobble: 3, grow: 120 })
+      add({ s: 'rays', t0: 1050, t1: 1600, x: tc.x, y: tc.y, n: 12, r0: 20, r1: [60, 180], w: 5, c: '#ffffff', c2: '#9aaabd', a: [1, 0], rot: [0, 0.6] })
+      hit(1050, 1.2, '#9aaabd')
+      back(1750, 80)
+      flashAfter(2300)
+    },
+    'energy-ball': () => {
+      // A bola verde de natureza se forma com folhinhas girando, voa e estoura em verde.
+      const o = { x: front.x + 50 * toward, y: (mouth.y + front.y) / 2 }
+      cam = [[0, ...NEUTRAL], [300, ...look(a, 1.3, 2 * toward)], [950, ...look(a, 1.35, 2 * toward)], [1200, ...look({ x: (a.x + tc.x) / 2, y: (a.y + tc.y) / 2 }, 1.0, 0)], [1400, ...look(tc, 1.5, -2 * toward)]]
+      add({ s: 'particles', t0: 250, t1: 1000, n: 24, seed, x: o.x, y: o.y, sx: 0, sy: 0, mode: 'converge', r: 170, life: 500, size: [12, 8], style: 'leaf', c: ['#f1ffd0', '#9be35a'] })
+      add({ s: 'glow', t0: 300, t1: 1000, x: o.x, y: o.y, r: [6, 52], c: ['#f1ffd0', '#9be35a', '#3fa34d', '#1d5a2a'], a: 1, core: 0.3, swirl: 1 })
+      add({ s: 'glow', t0: 1000, t1: 1330, x: [o.x, tc.x], y: [o.y, tc.y], r: [52, 64], c: ['#f1ffd0', '#9be35a', '#3fa34d', '#1d5a2a'], a: 1, core: 0.3, swirl: 1, trail: 1 })
+      add({ s: 'particles', t0: 1330, t1: 2000, n: 30, seed: seed + 3, x: tc.x, y: tc.y, sx: 20, sy: 20, v: 220, vy: -40, g: 200, life: 650, mode: 'burst', size: [14, 8], style: 'leaf', c: ['#f1ffd0', '#9be35a', '#3fa34d'] })
+      hit(1330, 1.15, '#3fa34d')
+      back(1450, 300)
+      flashAfter(2400)
+    },
+    'swords-dance': () => {
+      // Espadas de luz giram em volta de quem usa, cruzam no alto e o ataque sobe.
+      cam = [[0, ...NEUTRAL], [400, ...look(a, 1.4, 2 * toward)], [1700, ...look(a, 1.45, 2 * toward)]]
+      for (let i = 0; i < 4; i++) add({ s: 'arc', t0: 300 + i * 120, t1: 1300 + i * 120, x: a.x, y: a.y - A.h * 0.1, r: A.h * (0.45 + i * 0.04), a0: (i * Math.PI) / 2, a1: [(i * Math.PI) / 2, (i * Math.PI) / 2 + 4], w: 7, c: '#ffffff', c2: '#fca5a5' })
+      add({ s: 'particles', t0: 400, t1: 1500, n: 6, seed, x: a.x, y: a.y - A.h * 0.1, sx: 0, sy: 0, mode: 'orbit', r: A.h * 0.55, life: 1100, size: [26, 26], style: 'streak', c: ['#ffffff', '#e3eaf2'] })
+      add({ s: 'rays', t0: 1300, t1: 1700, x: a.x, y: a.y - A.h * 0.5, n: 10, r0: 10, r1: [40, 160], w: 5, c: '#ffffff', c2: '#ef4444', a: [1, 0], rot: 0.2 })
+      add({ s: 'particles', t0: 1300, t1: 1900, n: 10, seed: seed + 4, x: a.x, y: A.y - A.h * 0.3, sx: A.h * 0.35, sy: 20, v: 0, vy: -220, g: 0, life: 600, mode: 'stream', size: [18, 14], style: 'arrowUp', c: ['#ffffff', '#fca5a5', '#ef4444'] })
+      S.push({ who: 'A', k: 'tint', t0: 1200, t1: 1900, color: '#ef4444', a: 0.5, pulse: 18 })
+      hud = [100, 1900]
+      cam.push([2200, ...NEUTRAL])
+      end(2300)
+    },
+    'dragon-dance': () => {
+      // Chamas roxas e vermelhas giram e sobem em volta dele, a aura cresce e os atributos sobem.
+      cam = [[0, ...NEUTRAL], [400, ...look(a, 1.4, 2 * toward)], [1700, ...look(a, 1.45, 2 * toward)]]
+      add({ s: 'particles', t0: 300, t1: 1600, n: 10, seed, x: a.x, y: a.y, sx: 0, sy: 0, mode: 'orbit', r: A.h * 0.55, life: 1300, size: [26, 22], style: 'flame', c: ['#ffd6a0', '#9aa6ff', '#5a4ae0'] })
+      add({ s: 'particles', t0: 300, t1: 1700, n: 50, seed: seed + 2, x: a.x, y: A.y, sx: A.h * 0.45, sy: 10, v: 0, vy: -300, g: 0, life: 700, mode: 'stream', size: [14, 4], style: 'ember', c: ['#ffd6a0', '#ff6a12', '#5a4ae0'] })
+      add({ s: 'glow', t0: 700, t1: 1700, x: a.x, y: a.y, r: [40, A.h * 0.8], c: ['rgba(0,0,0,0)', '#9aa6ff', '#5a4ae0'], a: [0.6, 0], core: 0.6 })
+      add({ s: 'particles', t0: 1200, t1: 1900, n: 10, seed: seed + 4, x: a.x, y: A.y - A.h * 0.3, sx: A.h * 0.35, sy: 20, v: 0, vy: -220, g: 0, life: 600, mode: 'stream', size: [18, 14], style: 'arrowUp', c: ['#ffffff', '#9aa6ff', '#5a4ae0'] })
+      S.push({ who: 'A', k: 'tint', t0: 600, t1: 1800, color: '#7c6cf0', a: 0.45, pulse: 14 })
+      hud = [100, 1900]
+      cam.push([2200, ...NEUTRAL])
+      end(2300)
+    },
+    protect: () => {
+      // Uma redoma verde-clara se fecha em volta dele, brilha e some.
+      cam = [[0, ...NEUTRAL], [350, ...look(a, 1.35, 2 * toward)], [1400, ...look(a, 1.4, 2 * toward)]]
+      add({ s: 'ring', t0: 300, t1: 1300, x: a.x, y: a.y, r: [A.h * 0.2, A.h * 0.7], ratio: 1, w: [14, 4], c: '#d9fbe8', a: [1, 0.3], n: 1 })
+      add({ s: 'glow', t0: 400, t1: 1400, x: a.x, y: a.y, r: A.h * 0.72, c: ['rgba(0,0,0,0)', '#86efac', '#ecfdf5'], a: [0.7, 0], core: 0.75 })
+      add({ s: 'rays', t0: 500, t1: 1100, x: a.x - A.h * 0.25, y: a.y - A.h * 0.35, n: 4, r0: 0, r1: [10, 60], w: 4, c: '#ffffff', c2: '#86efac', a: [1, 0], rot: 0.4 })
+      hud = [100, 1400]
+      cam.push([1750, ...NEUTRAL])
+      end(1850)
+    },
+    'will-o-wisp': () => {
+      // Três chamas fantasmas azuladas flutuam devagar até o alvo, giram nele e ele se queima.
+      cam = [[0, ...NEUTRAL], [400, ...look({ x: (a.x + tc.x) / 2, y: (a.y + tc.y) / 2 }, 1.05, 0)], [1300, ...look(tc, 1.4, -2 * toward)]]
+      add({ s: 'tint', t0: 200, t1: 2000, color: '#0a0620', a: [0, 0.4] })
+      add({ s: 'particles', t0: 300, t1: 1400, n: 3, seed, x: [front.x, tc.x], y: [front.y, tc.y], sx: 60, sy: 40, mode: 'travel', life: 1000, size: [26, 26], style: 'wisp', c: ['#c7d2fe', '#818cf8', '#4f46e5'] })
+      add({ s: 'particles', t0: 1300, t1: 2000, n: 3, seed: seed + 2, x: tc.x, y: tc.y, sx: 0, sy: 0, mode: 'orbit', r: T.h * 0.4, life: 700, size: [24, 18], style: 'wisp', c: ['#c7d2fe', '#818cf8'] })
+      add({ s: 'particles', t0: 1500, t1: 2200, n: 20, seed: seed + 4, x: tc.x, y: T.y, sx: T.h * 0.4, sy: 10, v: 0, vy: -200, g: 0, life: 600, mode: 'stream', size: [10, 3], style: 'ember', c: ['#fff7c2', '#ffb02e', '#e5391a'] })
+      S.push({ who: 'T', k: 'tint', t0: 1500, t1: 2200, color: '#ff5a1a', a: 0.5, pulse: 16 })
+      hud = [100, 2200]
+      cam.push([2200, ...look(tc, 1.4, -2 * toward)], [2550, ...NEUTRAL])
+      end(2650)
+    },
+    'thunder-wave': () => {
+      // Ondas elétricas saem dele até o alvo, que fica cercado de faíscas e paralisado.
+      cam = [[0, ...NEUTRAL], [400, ...look({ x: (a.x + tc.x) / 2, y: (a.y + tc.y) / 2 }, 1.05, 0)], [1100, ...look(tc, 1.4, -2 * toward)]]
+      add({ s: 'ring', t0: 250, t1: 1150, x: [front.x, tc.x], y: [front.y, tc.y], r: [30, 100], ratio: 0.8, w: 5, c: '#ffe94a', a: [1, 0.3], n: 5, stagger: 1 })
+      add({ s: 'bolt', t0: 1050, t1: 1900, x: tc.x, y: tc.y, r: 120, n: 6, c: '#ffffff', c2: '#ffe94a', w: 3, flicker: 1 })
+      add({ s: 'particles', t0: 1050, t1: 1900, n: 18, seed, x: tc.x, y: tc.y, sx: 90, sy: 80, v: 100, vy: 0, g: 0, life: 260, mode: 'stream', size: [7, 2], style: 'spark', c: ['#ffffff', '#ffe94a'] })
+      S.push({ who: 'T', k: 'tint', t0: 1050, t1: 1900, color: '#ffe94a', a: 0.5, pulse: 40 })
+      S.push({ who: 'T', k: 'move', t0: 1100, t1: 1700, dx: 6, dy: 0, bounce: 8 })
+      hud = [100, 1900]
+      cam.push([1900, ...look(tc, 1.4, -2 * toward)], [2250, ...NEUTRAL])
+      end(2350)
+    },
+    toxic: () => {
+      // Gotas de veneno caem em cima do alvo, ele borbulha roxo.
+      cam = [[0, ...NEUTRAL], [400, ...look(tc, 1.35, -2 * toward)], [1700, ...look(tc, 1.4, -2 * toward)]]
+      add({ s: 'shot', t0: 200, t1: 700, x: [front.x, tc.x], y: [front.y, tc.y - 140], r: 22, c: ['#f6dcff', '#c56cf0', '#8e2fc2', '#43125e'], style: 'goo', arc: 120 })
+      add({ s: 'particles', t0: 700, t1: 1600, n: 30, seed, x: tc.x, y: tc.y - 160, sx: 70, sy: 10, v: 0, vy: 320, g: 300, life: 500, mode: 'stream', size: [12, 8], style: 'goo', c: ['#f6dcff', '#c56cf0', '#8e2fc2'] })
+      add({ s: 'particles', t0: 1000, t1: 1900, n: 18, seed: seed + 3, x: tc.x, y: tc.y, sx: 70, sy: 40, v: 0, vy: -100, g: 0, life: 700, mode: 'stream', size: [14, 6], style: 'bubble', c: ['#f6dcff', '#c56cf0'] })
+      S.push({ who: 'T', k: 'tint', t0: 900, t1: 1900, color: '#a855f7', a: 0.55, pulse: 16 })
+      hud = [100, 1900]
+      cam.push([2200, ...NEUTRAL])
+      end(2300)
+    },
+    recover: () => {
+      // Brilhos verdes e brancos sobem em volta dele, a luz o envolve e ele se cura.
+      cam = [[0, ...NEUTRAL], [400, ...look(a, 1.35, 2 * toward)], [1600, ...look(a, 1.4, 2 * toward)]]
+      add({ s: 'particles', t0: 300, t1: 1500, n: 40, seed, x: a.x, y: A.y, sx: A.h * 0.45, sy: 10, v: 0, vy: -240, g: 0, life: 800, mode: 'stream', size: [12, 4], style: 'star', c: ['#ffffff', '#d9fbe8', '#4ade80'] })
+      add({ s: 'ring', t0: 400, t1: 1400, x: a.x, y: [A.y, A.y - A.h], r: A.h * 0.45, ratio: 0.3, w: 5, c: '#b8ffcf', a: [1, 0], n: 3, stagger: 1 })
+      add({ s: 'glow', t0: 700, t1: 1600, x: a.x, y: a.y, r: [40, A.h * 0.8], c: ['#ffffff', '#b8ffcf', '#4ade80'], a: [0.7, 0] })
+      S.push({ who: 'A', k: 'tint', t0: 700, t1: 1600, color: '#4ade80', a: 0.45, pulse: 10 })
+      hud = [100, 1700]
+      cam.push([2000, ...NEUTRAL])
+      end(2100)
+    },
+    'stealth-rock': () => {
+      // Pedras pontudas flutuam do lado do adversário, giram e ficam espalhadas pelo campo dele.
+      cam = [[0, ...NEUTRAL], [450, ...look({ x: tc.x, y: T.y - 60 }, 1.3, -toward)], [1800, ...look({ x: tc.x, y: T.y - 60 }, 1.3, -toward)]]
+      add({ s: 'particles', t0: 300, t1: 1300, n: 8, seed, x: [front.x, tc.x], y: [front.y, T.y - 120], sx: 120, sy: 40, mode: 'travel', life: 800, size: [20, 18], style: 'shard', c: ['#d6b98a', '#9b7c4f'] })
+      add({ s: 'particles', t0: 1100, t1: 1900, n: 8, seed: seed + 2, x: tc.x, y: T.y - 100, sx: 0, sy: 0, mode: 'orbit', r: T.h * 0.7, life: 800, size: [18, 18], style: 'shard', c: ['#d6b98a', '#9b7c4f'] })
+      for (let i = 0; i < 5; i++) add({ s: 'icon', t0: 1500 + i * 60, t1: 2300, x: tc.x + (i - 2) * 55, y: T.y - 10 - (i % 2) * 14, size: 22, a: [1, 0.9], style: 'shard', c: ['#fff3dd', '#d6b98a', '#9b7c4f'], rot: rnd(i) })
+      hud = [100, 2200]
+      cam.push([2400, ...NEUTRAL])
+      end(2500)
+    },
     electroweb: () => {
       strike(380, 1.55)
       add({ s: 'ring', t0: 350, t1: 1150, x: tc.x, y: tc.y + T.h * 0.25, r: [10, 120], ratio: 0.45, w: [8, 2], c: '#ffffff', a: [1, 0], n: 4, spiral: 1 })
