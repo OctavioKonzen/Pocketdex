@@ -47,7 +47,7 @@ const regionMaps = <String, List<RegionMapInfo>>{
     (id: 'armor', aspect: 0.9525, art: true, cities: <String, List<double>>{'Master Dojo': [50.0, 33.46], 'Soothing Wetlands': [31.05, 64.98], 'Challenge Beach': [80.47, 51.36], 'Tower of Two Fists': [50.0, 20.39]}),
   ],
   'Crown': [
-    (id: 'crown', aspect: 1.5, art: false, cities: <String, List<double>>{'Freezington': [49.47, 60.5], 'Ballimere Lake': [36.47, 43.0], 'Split-Decision Ruins': [72.93, 50.8], 'Crown Shrine': [52.07, 16.6]}),
+    (id: 'crown', aspect: 1.0942, art: true, cities: <String, List<double>>{'Freezington': [76.98, 68.56], 'Ballimere Lake': [31.1, 66.89], 'Split-Decision Ruins': [80.79, 50.71], 'Crown Shrine': [50.3, 15.76]}),
   ],
   'Orange': [
     (id: 'orange', aspect: 1.5, art: false, cities: <String, List<double>>{'Mikan Island': [19.53, 29.3], 'Navel Island': [42.33, 21.5], 'Trovita Island': [65.13, 32.2], 'Kumquat Island': [45.6, 60.5], 'Pummelo Island': [78.13, 73.2]}),
