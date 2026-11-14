@@ -65,7 +65,7 @@ const regionMaps = <String, List<RegionMapInfo>>{
     (id: 'galar', aspect: 0.6667, art: true, cities: <String, List<double>>{'Wyndon': [50.59, 13.35], 'Circhester': [26.86, 23.31], 'Spikemuth': [74.22, 22.14], 'Hammerlocke': [53.52, 32.88], 'Ballonlea': [17.38, 36.78], 'Stow-on-Side': [36.91, 39.06], 'Turffield': [22.75, 58.92], 'Motostoke': [51.76, 68.49], 'Hulbury': [81.05, 73.05], 'Wedgehurst': [29.3, 81.9], 'Postwick': [58.79, 83.85]}),
   ],
   'Paldea': [
-    (id: 'paldea', aspect: 1.5, art: true, cities: <String, List<double>>{'Medali': [23.44, 21.97], 'Cascarrafa': [30.6, 53.52], 'Mesagoza': [50.13, 56.64], 'Levincia': [76.82, 61.04], 'Artazon': [80.73, 39.55], 'Los Platos': [14.97, 68.85], 'Montenevera': [44.92, 17.09], 'Glaseado': [58.59, 22.66], 'Zapapico': [74.87, 22.46], 'Porto Marinada': [9.77, 31.25], 'Pokémon League': [32.23, 31.74], 'Cabo Poco': [50.46, 78.12], 'Cortondo': [29.3, 75.2], 'Alfornada': [89.84, 67.38]}),
+    (id: 'paldea', aspect: 0.9139, art: true, cities: <String, List<double>>{'Medali': [31.28, 22.1], 'Montenevera': [56.96, 19.97], 'Glaseado': [46.71, 22.87], 'Zapapico': [80.07, 21.49], 'Porto Marinada': [7.92, 42.3], 'Pokémon League': [42.54, 33.92], 'Cascarrafa': [27.94, 42.68], 'Mesagoza': [54.3, 50.3], 'Levincia': [86.74, 46.88], 'Artazon': [72.56, 59.45], 'Cortondo': [21.85, 64.79], 'Los Platos': [56.96, 72.79], 'Alfornada': [26.52, 78.89], 'Cabo Poco': [54.21, 84.98]}),
   ],
 };
 
