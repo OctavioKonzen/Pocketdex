@@ -704,3 +704,42 @@ h1, h2, .font-display {
 @keyframes medal-shine { 50% { filter: brightness(1.15) drop-shadow(0 0 6px rgb(250 204 21 / 0.45)); } }
 .medal-on { animation: medal-shine 3s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .medal-on { animation: none; } }
+
+/* A HUD do port de Black & White (tudo numa tela só): caixas escuras com cantos cortados, menu em quatro cores,
+   golpes com a cor do tipo na borda e a barra de dicas embaixo. TurnBattlePage.jsx. */
+.battle-field .bw-message,
+.battle-field .bw-box {
+  background: rgba(20, 22, 28, 0.9);
+  color: #fff;
+  border: 2px solid #8b93a1;
+  border-radius: 0;
+  box-shadow: inset 0 0 0 2px #1f242d;
+  text-shadow: 1px 1px 0 #000;
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+}
+.port-controls .dlg-box { background: transparent; border: 0 !important; box-shadow: none; padding: 0; }
+.port-controls .dlg-btn,
+.port-move {
+  background: rgba(20, 22, 28, 0.92);
+  color: #fff;
+  border: 2px solid #8b93a1;
+  border-left: 6px solid var(--type, #8b93a1);
+  border-radius: 0;
+  text-shadow: 1px 1px 0 #000;
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+.port-move:hover:not([aria-disabled='true']) { background: rgba(66, 52, 10, 0.92); border-color: #facc15; border-left-color: var(--type); }
+.port-controls .dlg-btn[data-k='LUTAR'] { background: linear-gradient(#c62828, #7f1d1d); border-color: #fca5a5; }
+.port-controls .dlg-btn[data-k='BOLSA'] { background: linear-gradient(#ca8a04, #854d0e); border-color: #fde68a; }
+.port-controls .dlg-btn[data-k='POKÉMON'] { background: linear-gradient(#15803d, #14532d); border-color: #86efac; }
+.port-controls .dlg-btn[data-k='FUGIR'] { background: linear-gradient(#1d4ed8, #1e3a8a); border-color: #93c5fd; }
+.port-hint { background: #15181f; border-top: 2px solid #22d3ee; color: #cbd5e1; }
+.port-hint .dlg-btn { background: transparent; border: 2px solid #9ca3af; border-radius: 6px; padding: 0 10px; font-size: 11px; color: #e5e7eb; }
+.port-key { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 18px; border: 2px solid #9ca3af; border-radius: 5px; font-size: 10px; }
+.port-shadow { border-radius: 50%; background: radial-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0) 70%); }
+/* No campo 16:9 do port, o cenário (4:3) cobre o campo inteiro, cortando em cima e embaixo. */
+.port-field [data-scene] img { object-fit: cover; }
+.port-controls .dlg-btn { font-size: 1.9cqw; padding: 0 4%; }
+.port-controls .port-move > div:first-child { font-size: 1.8cqw; }
+.port-controls .port-move > div { font-size: 1.1cqw; }
+.port-controls .gimmick-button { width: 5.5cqw; height: 5.5cqw; font-size: 1.2cqw; }

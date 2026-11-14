@@ -13,7 +13,7 @@ import { raidAfterFight, raidDamage, raidMember } from '../lib/raid'
 import { battleHitter, battleMons, leaderTeam, randomTeam } from '../lib/battleSetup'
 import { friendsOnly, useFriends } from '../lib/friends'
 import { getFxAnchors, getGymLeaders, getMoveAnims, getMoveFx, getMoves, getTypes, shinyPath, spriteUrl } from '../lib/data'
-import { fxForMove } from '../lib/battleFx'
+import { FX_SCALE, fxForMove, fxStage } from '../lib/battleFx'
 import { canPlayFx, measureStage, runFx } from '../lib/fxRun'
 import { addHallOfFame, badgesNeeded, badgesOf, leagueOpen, leagueOrder, musicOf, regionGyms, regionOf, streakResult, winBadge } from '../lib/gymChallenge'
 import { language, localText, t } from '../lib/i18n'
@@ -593,14 +593,14 @@ function BoostTags({ boosts }) {
 const STATUS_BADGE = { brn: '#EE8130', par: '#C9A400', psn: '#A33EA1', tox: '#7B2E7A', slp: '#78716C', frz: '#4FB3D9' }
 
 /** Armadilhas, telas e efeitos do campo (como no Showdown), em cima do texto. */
-function FieldBar({ battle }) {
+function FieldBar({ battle, bare = false }) {
   const [mine, theirs, all] = fieldConditions(battle)
   const openLog = useContext(LogButtonContext)
   const speed = useBattleSpeed((s) => s.speed)
   const chips = (list, color) => list.map((x) => <span key={x} className="rounded-full px-2 py-0.5 text-[11px] font-bold text-white" style={{ background: color }}>{x}</span>)
   return (
     // Sempre a mesma altura (uma linha que rola de lado): aparecer um efeito não empurra a tela de baixo.
-    <div className="flex h-7 items-center gap-1 overflow-x-auto whitespace-nowrap border-x-4 hud-edge hud-bar px-2" data-testid="field-bar" data-no-translate>
+    <div className={bare ? 'flex h-full min-w-0 flex-1 items-center gap-1 overflow-x-auto whitespace-nowrap' : 'flex h-7 items-center gap-1 overflow-x-auto whitespace-nowrap border-x-4 hud-edge hud-bar px-2'} data-testid="field-bar" data-no-translate>
       {theirs.length > 0 && <span className="text-[11px] font-bold text-slate-300">{t('Adversário')}:</span>}
       {chips(theirs, '#b45309')}
       {mine.length > 0 && <span className="text-[11px] font-bold text-slate-300">{t('Você')}:</span>}
@@ -733,6 +733,28 @@ function TeraCrown({ color }) {
     </svg>
   )
 }
+
+/**
+ * O Pokémon como no port de Black & White: o GIF animado inteiro, no tamanho de pixel do sprite (a caixa já vem do
+ * tamanho certo, fxStage). Shiny, de costas, Dinamax (maior, contorno vermelho), Tera (brilho na cor do tipo) e
+ * desmaiado (desce e some). Sem o GIF, o sprite de sempre.
+ */
+const PortSprite = forwardRef(function PortSprite({ mon, id, back, dmax, tera = '', fainted }, ref) {
+  const [failed, setFailed] = useState(false)
+  const kind = back ? (mon.shiny ? 'back-shiny' : 'back') : mon.shiny ? 'shiny' : 'front'
+  const glow = dmax ? 'drop-shadow(0 0 6px #e11d48) drop-shadow(0 0 2px #e11d48)' : tera ? `drop-shadow(0 0 6px ${typeColor(tera)}) drop-shadow(0 0 2px #fff)` : undefined
+  return (
+    <div className={`h-full w-full origin-bottom transition-all duration-500 ${fainted ? 'translate-y-[30%] opacity-0' : ''}`} style={dmax ? { transform: 'scale(1.3)' } : undefined}>
+      <div ref={ref} className="relative h-full w-full" style={{ filter: glow }} data-tera={tera || undefined}>
+        {failed ? (
+          <Sprite path={mon.shiny ? shinyPath(`pokemon/${id}.png`) : `pokemon/${id}.png`} fill={0.95} align="bottom" back={back} battle alt={mon.name} />
+        ) : (
+          <img src={spriteUrl(`animated/${kind}/${id}.gif`)} alt={mon.name} draggable={false} onError={() => setFailed(true)} className="pixelated pointer-events-none h-full w-full" data-testid="port-sprite" />
+        )}
+      </div>
+    </div>
+  )
+})
 
 const BattleSprite = forwardRef(function BattleSprite({ mon, id, back, fainted, dmax, tera = '', byId }, ref) {
   const p = byId?.get(id) ?? byId?.get(mon.id)
@@ -1086,6 +1108,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   // A animação nova de cada golpe (câmera, efeitos desenhados): a receita dele e a boca/frente de cada sprite.
   const moveFx = useRef(null)
   const fxAnchors = useRef(null)
+  const [anchorsTable, setAnchorsTable] = useState(null)
   const world = useRef(null)
   const fxCanvas = useRef(null)
   const live = useRef(true)
@@ -1107,7 +1130,10 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
       .then((table) => (moveFx.current = table))
       .catch(() => {})
     getFxAnchors()
-      .then((table) => (fxAnchors.current = table))
+      .then((table) => {
+        fxAnchors.current = table
+        setAnchorsTable(table)
+      })
       .catch(() => {})
   }, [])
 
@@ -1587,139 +1613,11 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
     }
   }
 
-  return (
-    <BattleWithLog log={log} summary={!busy && battle.winner != null ? <BattleSummary battle={battle} stats={stats.current} turns={turnNo.current - 1} kos={kos.current} /> : null}>
-    <MoveInfo info={moveInfo} onClose={() => setMoveInfo(null)} />
-    <div className="screen-fade max-w-3xl select-none max-lg:mx-auto">
-      {/* Campo */}
-      <div
-        ref={field}
-        // Tocar em qualquer lugar do campo passa o texto (como tocar na caixa); sem texto passando, o toque segue normal.
-        onClickCapture={(e) => { if (skip.current) { e.stopPropagation(); skip.current() } }}
-        className="battle-field relative aspect-[4/3] overflow-hidden rounded-t-2xl border-4 border-b-0 hud-edge"
-        style={{ background: '#9fdcff' }}
-        data-layout="bw"
-      >
-        {/* Como no Black & White: o adversário lá atrás à direita (menor), o seu de costas na frente à esquerda (grande, cortado pela caixa do texto). */}
-        {/* O mundo da batalha (fundo, clima, bases, Pokémon, treinadores): a câmera dos golpes move tudo junto. */}
-        <div ref={world} className="absolute inset-0 origin-top-left" data-testid="battle-world">
-        <BattleBackground weather={shown.weather} scene={scene} layout="bw" />
-        {/* Clima, terreno e efeito do lugar fazem parte do cenário: atrás dos Pokémon e das caixas. */}
-        <WeatherFx weather={shown.weather} terrain={shown.terrain} place={shown.place} />
-        {/* O inimigo fica mais longe: menor e com os pés na frente do meio da plataforma (pisando nela, como o seu). */}
-        <div className="absolute right-[11%] w-[26%]" style={{ bottom: `${foeBottom(scene) * 100}%` }}>
-          <PlatformBase scene={scene} side="foe" scale={battleScale(byId?.get(shown.form[1] ?? foe.id)?.height)} />
-          <div className={`poke-${poke[1] || 'shown'}`}>
-            <BattleSprite ref={sprites[1]} mon={foe} id={shown.form[1] ?? foe.id} dmax={shown.dmax[1]} tera={shown.tera[1]} fainted={shown.fainted[1]} byId={byId} />
-          </div>
-          {morph?.side === 1 && <Morph key={morph.n} kind={morph.kind} type={morph.type} />}
-          {shine?.side === 1 && <Sparkles key={shine.n} />}
-          {ball[1] && <PokeBall side={1} phase={ball[1]} kind={ballKind[1]} />}
-          {intro && coach && (
-            <div className={`trainer-foe absolute inset-x-0 bottom-0 flex justify-center ${intro.foe === 'out' ? 'trainer-leave-1' : ''}`} data-testid="foe-trainer">
-              <TrainerSprite trainer={coach} height={farPerson(fieldWidth(field))} />
-            </div>
-          )}
-        </div>
-        <div className="absolute bottom-[22%] left-[1%] w-[58%]">
-          <PlatformBase scene={scene} side="mine" scale={battleScale(byId?.get(shown.form[0] ?? me.id)?.height)} />
-          <div className={`poke-${poke[0] || 'shown'}`}>
-            <BattleSprite ref={sprites[0]} mon={me} id={shown.form[0] ?? me.id} dmax={shown.dmax[0]} tera={shown.tera[0]} back fainted={shown.fainted[0]} byId={byId} />
-          </div>
-          {morph?.side === 0 && <Morph key={morph.n} kind={morph.kind} type={morph.type} />}
-          {shine?.side === 0 && <Sparkles key={shine.n} />}
-          {ball[0] && <PokeBall side={0} phase={ball[0]} kind={ballKind[0]} />}
-        </div>
-        {intro && intro.me !== 'gone' && myTrainer && (
-          <div className={`absolute bottom-0 left-[2%] ${intro.me === 'out' ? 'trainer-leave-0' : ''}`} data-testid="my-trainer">
-            {/* Na frente de tudo (mais perto que o seu Pokémon): a mesma escala de uma pessoa, um pouco maior pela perspectiva. */}
-            <TrainerBack trainer={myTrainer} frame={intro.back} box={nearPerson(fieldWidth(field)) * 0.94} />
-          </div>
-        )}
-        </div>
-        {/* Os efeitos dos golpes, desenhados por cima do mundo (fxRun.js). */}
-        <canvas ref={fxCanvas} className="pointer-events-none absolute inset-0 z-[15] h-full w-full" aria-hidden="true" />
-        {/* O clima e o terreno com os turnos que faltam (como no registro), no alto do campo. */}
-        <FieldChip weather={shown.weather} terrain={shown.terrain} weatherTurns={battle.weatherTurns ?? 0} terrainTurns={battle.terrainTurns ?? 0} />
-        {vsOn && <VsSplash me={myTrainer} coach={coach} vs={vsInfo} myName={myName} foeMon={wild ? active(battle, 1) : null} onSkip={() => vsDone.current?.()} />}
-        <div className={`absolute z-20 ${wild ? 'top-[5%]' : 'top-[max(0px,calc(5%-14px))]'} left-0 w-[50%] max-w-[300px] transition-opacity ${intro && poke[1] === 'hidden' ? 'opacity-0' : ''}`} data-fx-hud>
-          <button type="button" className="block w-full cursor-pointer text-left" onClick={() => setInspect(1)} aria-label={t('Ver detalhes do adversário')} data-testid="inspect-foe">
-            {/* Quantos o treinador tem: a Poké Ball acesa está de pé; apagada, desmaiou (como nos jogos). */}
-            {!wild && <PartyBalls hp={shown.hp[1]} side="foe" />}
-            <InfoBox bw mon={foe} hp={shown.hp[1][shown.active[1]]} status={shown.status[1][shown.active[1]]} dmax={shown.dmax[1]} boosts={shown.boosts[1]} hpTestId={online ? "online-hp-" + (1 - online.side) : undefined} />
-          </button>
-        </div>
-        {/* A habilidade em ação: a faixa sai do lado do Pokémon (o adversário à direita, o seu à esquerda), como nos jogos. */}
-        {ability && (
-          <div key={ability.k} className={`ability-banner absolute z-20 ${ability.side === 1 ? 'ability-banner-1 right-0 top-[30%] rounded-l-lg' : 'ability-banner-0 left-0 bottom-[34%] rounded-r-lg'} bw-box px-3 py-1 text-white`} data-testid="ability-banner">
-            <p className="bw-text text-[10px] font-bold leading-tight opacity-90 sm:text-xs" data-no-translate>{ability.name}</p>
-            <p className="bw-text text-sm font-black leading-tight sm:text-base" data-no-translate>{ability.ability}</p>
-          </div>
-        )}
-        {effect && <MoveFx key={effect.key} plan={effect.plan} color={effect.color} />}
-        {impact && <span key={impact.n} className="move-impact pointer-events-none absolute z-20" style={{ left: `${impact.x}%`, top: `${impact.y}%`, '--c': impact.color }} data-testid="move-impact" />}
-        {flash > 0 && <div key={`flash-${flash}`} className="battle-flash pointer-events-none absolute inset-0 bg-white" />}
-        <div className={`absolute z-20 right-0 bottom-[24%] w-[50%] max-w-[300px] transition-opacity ${intro && poke[0] === 'hidden' ? 'opacity-0' : ''}`} data-fx-hud>
-          <button type="button" className="block w-full cursor-pointer text-left" onClick={() => setInspect(0)} aria-label={t('Ver detalhes do seu Pokémon')} data-testid="inspect-me">
-            <PartyBalls hp={shown.hp[0]} side="me" />
-            <InfoBox bw mon={me} hp={shown.hp[0][shown.active[0]]} status={shown.status[0][shown.active[0]]} dmax={shown.dmax[0]} boosts={shown.boosts[0]} mine hpTestId={online ? "online-hp-" + online.side : undefined}
-              exp={expBarOf(battle, shown.active[0], shown.hp[1])} />
-          </button>
-        </div>
-        {/* A mensagem dentro da tela, embaixo, como nos jogos (tocar passa o texto). */}
-        <BattleDialog boxRef={dialogRef} onSkip={() => skip.current?.()}
-          text={!busy && online?.message ? t(online.message)
-            // A Bolsa: a descrição do item tocado (ou a pergunta) na caixa.
-            : waiting && menu === 'bag' ? (bagPicked ? `${bagPicked.name}: ${bagPicked.help}` : t('Escolha um item.'))
-            // O time aberto: a pergunta dele na caixa (como no jogo).
-            : waiting && menu === 'party' && summary == null ? (battle.needSwitch ? t('Escolha o próximo Pokémon') : item ? t('Usar em qual Pokémon?') : t('Escolha um Pokémon.'))
-            // Derrubou o do adversário: a pergunta do "Shift", com quem ele vai mandar (como nos jogos).
-            : waiting && battle.shiftPending && menu === 'main' ? (battle.sides[1].team[battle.shiftNext]
-              ? t('O adversário vai mandar {0}. Quer trocar de Pokémon?').replace('{0}', `${battle.sides[1].team[battle.shiftNext].name} (${(battle.sides[1].team[battle.shiftNext].types ?? []).map((ty) => t(ty.charAt(0).toUpperCase() + ty.slice(1))).join('/')})`)
-              : t('O adversário vai mandar outro Pokémon. Quer trocar de Pokémon?'))
-            // Hora de escolher (como no jogo e na dupla): "O que Charizard vai fazer?".
-            : waiting && !locked && (menu === 'main' || menu === 'fight') && !battle.needSwitch ? `${t('O que')} ${current.name} ${t('vai fazer?')}`
-            // No fim, o recado do resultado também vem na caixa (em partes, se precisar).
-            : !busy && battle.winner != null && (endNote || (persona && battle.winner === 0)) ? `${text}${persona && battle.winner === 0 ? ` 💬 ${persona.name}: “${t(persona.beat)}”` : ''}${endNote ? ` ${endNote}` : ''}` : text} />
-        {/* A Bolsa e o time abrem por cima do campo (a mesma tela, como no jogo; dá para jogar com o celular de lado). */}
-        {waiting && menu === 'bag' && (
-          // A Bolsa do Black & White, em bolsos: em cima da caixa de texto (a descrição do item aparece nela); USAR e
-          // Voltar nos botões fixos de baixo.
-          <div className="panel-in absolute inset-x-0 top-0 bottom-[22.5%] z-30"><BwBag testid="bag" external selected={bagPick} onSelect={setBagPick} pockets={bagPockets} /></div>
-        )}
-        {waiting && menu === 'party' && summary != null && (
-          // Os dados do Pokémon (como no jogo).
-          <div className="field-overlay overflow-y-auto">
-            <BwSummary data={summaryOf(battle, 0, summary)} onBack={() => setSummary(null)}
-              onSwitch={!item && (battle.sides[0].switchOptions ? battle.sides[0].switchOptions.includes(summary) : battle.sides[0].team[summary].hp > 0 && summary !== battle.sides[0].active)
-                ? () => { const i = summary; setSummary(null); setPartyPick(null); choose(i) } : null} />
-          </div>
-        )}
-        {waiting && menu === 'party' && summary == null && (
-          // A tela do time do Black & White: os 6 cabem exatamente na tela, em cima da caixa de texto (a pergunta aparece
-          // nela); tocou num Pokémon, as opções ficam nos botões fixos de baixo (como no jogo).
-          <PartyGrid team={battle.sides[0].team} active={battle.sides[0].active} picked={item ? null : partyPick} testPrefix="party"
-            disabled={(i) => item ? !canUseItem(battle, 0, item, i) : false}
-            dim={(i, m) => !item && (battle.sides[0].switchOptions ? !battle.sides[0].switchOptions.includes(i) : m.hp <= 0 || i === battle.sides[0].active)}
-            onTap={(i) => (item ? choose(i) : setPartyPick(i))}
-            badge={(m) => {
-              const match = !item && m.hp > 0 ? switchMatchup(hit, m, rival, typeEff) : null
-              return match && <span className="flex gap-1 text-[10px] font-bold" data-testid="matchup">
-                {match.attack != null && <EffectTag eff={match.attack} prefix={t('Ataca')} />}
-                <DefenseTag mult={match.defense} />
-              </span>
-            }} />
-        )}
-      </div>
-
-      <FieldBar battle={battle} />
-      <Modal open={inspect != null} onClose={() => setInspect(null)} title={inspect === 1 ? foe.name : me.name}>
-        {inspect != null && <MonDetails battle={battle} side={inspect} mon={inspect === 1 ? foe : me} />}
-      </Modal>
-      {/* Texto e menus: a tela de baixo (como no DS), sempre do mesmo tamanho e cada coisa no seu lugar. */}
-      <BottomScreen
-        info={waiting && !locked && (menu === 'main' || menu === 'fight' || menu === 'party' && !item) ? <>{menu === 'fight' && <ChoiceLock mon={me} />}<Weak mon={rival} list={foeWeak} /></> : null}
-        grid={waiting && online?.waitForSwitch
+  // Onde cada Pokémon fica (como no port): o mundo de 960 × 540 do campo 16:9.
+  const portStage = anchorsTable ? fxStage(anchorsTable, String(shown.form[0] ?? me.id), String(shown.form[1] ?? foe.id)) : null
+  // O menu e os golpes ficam dentro do campo, embaixo à direita (como no port de Black & White: tudo numa tela só).
+  const controlsGrid = (
+waiting && online?.waitForSwitch
           ? null
           : waiting && menu === 'bag' && bagPicked
             // Tocou num item: USAR (ou JOGAR) e CANCELAR nos botões fixos.
@@ -1761,6 +1659,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
                   onClick={() => fight(i)}
                   onHold={() => setMoveInfo({ move: m, foe: rival.name, damage: damageRange(hit, current, rival, m, shown.weather), crit: critChance(current, m), eff })}
                   color={typeColor(m.type)}
+                  kind={t(m.type.charAt(0).toUpperCase() + m.type.slice(1)).toUpperCase()}
                   label={z ? Z_MOVES[m.type] : max ? MAX_MOVES[m.type] : m.name}
                   note={(z || max) ? `${m.name} · ${t('Poder')} ${z ? zPower(m.power) : maxPower(m.power, m.type)}` : null}
                 >
@@ -1790,12 +1689,179 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
               </button>
             ))}
                 </div>
-              : null}
-        footer={waiting && !locked && menu === 'fight' ? <MenuButton onClick={() => setMenu('main')} className="h-full w-full text-sm">Voltar</MenuButton>
+              : null
+  )
+  const controlsFooter = (
+waiting && !locked && menu === 'fight' ? <MenuButton onClick={() => setMenu('main')} className="h-full w-full text-sm">Voltar</MenuButton>
           : waiting && menu === 'bag'
             ? <MenuButton testId="bag-close" onClick={() => { setBagPick(null); setMenu('main') }} className="h-full w-full text-sm">Voltar</MenuButton>
           : waiting && menu === 'party' && summary == null && !battle.needSwitch
-            ? <MenuButton testId="party-back" onClick={() => { setPartyPick(null); if (item) { setItem(null); setMenu('bag') } else setMenu('main') }} className="h-full w-full text-sm">Voltar</MenuButton> : null}
+            ? <MenuButton testId="party-back" onClick={() => { setPartyPick(null); if (item) { setItem(null); setMenu('bag') } else setMenu('main') }} className="h-full w-full text-sm">Voltar</MenuButton> : null
+  )
+  return (
+    <BattleWithLog log={log} summary={!busy && battle.winner != null ? <BattleSummary battle={battle} stats={stats.current} turns={turnNo.current - 1} kos={kos.current} /> : null}>
+    <MoveInfo info={moveInfo} onClose={() => setMoveInfo(null)} />
+    <div className="screen-fade max-w-3xl select-none max-lg:mx-auto">
+      {/* Campo */}
+      <div
+        ref={field}
+        // Tocar em qualquer lugar do campo passa o texto (como tocar na caixa); sem texto passando, o toque segue normal.
+        onClickCapture={(e) => { if (skip.current) { e.stopPropagation(); skip.current() } }}
+        className="battle-field port-field relative aspect-video overflow-clip rounded-2xl border-4 hud-edge"
+        style={{ background: '#9fdcff' }}
+        data-layout="bw"
+      >
+        {/* Como no Black & White: o adversário lá atrás à direita (menor), o seu de costas na frente à esquerda (grande, cortado pela caixa do texto). */}
+        {/* O mundo da batalha (fundo, clima, bases, Pokémon, treinadores): a câmera dos golpes move tudo junto. */}
+        <div ref={world} className="absolute inset-0 origin-top-left" data-testid="battle-world">
+        <BattleBackground weather={shown.weather} scene={scene} layout="bw" />
+        {/* Clima, terreno e efeito do lugar fazem parte do cenário: atrás dos Pokémon e das caixas. */}
+        <WeatherFx weather={shown.weather} terrain={shown.terrain} place={shown.place} />
+        {/* Como no port de Black & White: o adversário no meio-direita, no tamanho do sprite dele; o seu de costas à esquerda,
+            grande e cortado embaixo (fxStage, pelo fx_anchors.json). Sem os dados, as caixas de antes. */}
+        {[1, 0].map((side) => {
+          const mon = side === 1 ? foe : me
+          const id = shown.form[side] ?? mon.id
+          const spot = portStage?.[side === 1 ? 'far' : 'near']
+          const extras = (
+            <>
+              {morph?.side === side && <Morph key={morph.n} kind={morph.kind} type={morph.type} />}
+              {shine?.side === side && <Sparkles key={shine.n} />}
+              {ball[side] && <PokeBall side={side} phase={ball[side]} kind={ballKind[side]} />}
+            </>
+          )
+          if (!spot?.box) {
+            return (
+              <div key={side} className={side === 1 ? 'absolute right-[11%] w-[26%]' : 'absolute bottom-[22%] left-[1%] w-[58%]'} style={side === 1 ? { bottom: `${foeBottom(scene) * 100}%` } : undefined}>
+                <PlatformBase scene={scene} side={side === 1 ? 'foe' : 'mine'} scale={battleScale(byId?.get(id)?.height)} />
+                <div className={`poke-${poke[side] || 'shown'}`}>
+                  <BattleSprite ref={sprites[side]} mon={mon} id={id} dmax={shown.dmax[side]} tera={shown.tera[side]} back={side === 0} fainted={shown.fainted[side]} byId={byId} />
+                </div>
+                {extras}
+              </div>
+            )
+          }
+          const pct = (v, total) => `${(v / total) * 100}%`
+          const W0 = portStage.w
+          const H0 = portStage.h
+          return (
+            <div key={side}>
+              {/* A sombra no chão, embaixo dos pés. */}
+              <div className="port-shadow pointer-events-none absolute" style={{ left: pct(spot.x - spot.box.w * 0.4, W0), top: pct(spot.y - spot.box.w * 0.08, H0), width: pct(spot.box.w * 0.8, W0), height: pct(spot.box.w * 0.16, H0) }} />
+              <div className="absolute" style={{ left: pct(spot.box.left, W0), top: pct(spot.box.top, H0), width: pct(spot.box.w, W0), height: pct(spot.box.h, H0) }} data-testid={`port-${side === 1 ? 'foe' : 'me'}`}>
+                <div className={`poke-${poke[side] || 'shown'} h-full w-full`}>
+                  <PortSprite ref={sprites[side]} mon={mon} id={id} back={side === 0} dmax={shown.dmax[side]} tera={shown.tera[side]} fainted={shown.fainted[side]} />
+                </div>
+                {extras}
+              </div>
+            </div>
+          )
+        })}
+        {intro && coach && (
+          <div className={`trainer-foe absolute flex justify-center ${intro.foe === 'out' ? 'trainer-leave-1' : ''}`} style={{ left: '49%', width: '25%', bottom: `${(1 - FX_SCALE.farFeet.y / 540) * 100}%` }} data-testid="foe-trainer">
+            <TrainerSprite trainer={coach} height={farPerson(fieldWidth(field)) * 1.25} />
+          </div>
+        )}
+        {intro && intro.me !== 'gone' && myTrainer && (
+          <div className={`absolute bottom-0 left-[2%] ${intro.me === 'out' ? 'trainer-leave-0' : ''}`} data-testid="my-trainer">
+            {/* Na frente de tudo (mais perto que o seu Pokémon): a mesma escala de uma pessoa, um pouco maior pela perspectiva. */}
+            <TrainerBack trainer={myTrainer} frame={intro.back} box={nearPerson(fieldWidth(field)) * 0.94} />
+          </div>
+        )}
+        </div>
+        {/* Os efeitos dos golpes, desenhados por cima do mundo (fxRun.js). */}
+        <canvas ref={fxCanvas} className="pointer-events-none absolute inset-0 z-[15] h-full w-full" aria-hidden="true" />
+        {/* O clima e o terreno com os turnos que faltam (como no registro), no alto do campo. */}
+        <FieldChip weather={shown.weather} terrain={shown.terrain} weatherTurns={battle.weatherTurns ?? 0} terrainTurns={battle.terrainTurns ?? 0} />
+        {vsOn && <VsSplash me={myTrainer} coach={coach} vs={vsInfo} myName={myName} foeMon={wild ? active(battle, 1) : null} onSkip={() => vsDone.current?.()} />}
+        <div className={`absolute z-20 top-[1.9%] left-[1.25%] w-[31.5%] transition-opacity ${intro && poke[1] === 'hidden' ? 'opacity-0' : ''}`} data-fx-hud>
+          <button type="button" className="block w-full cursor-pointer text-left" onClick={() => setInspect(1)} aria-label={t('Ver detalhes do adversário')} data-testid="inspect-foe">
+            {/* Quantos o treinador tem: a Poké Ball acesa está de pé; apagada, desmaiou (como nos jogos). */}
+            {!wild && <PartyBalls hp={shown.hp[1]} side="foe" />}
+            <InfoBox bw mon={foe} hp={shown.hp[1][shown.active[1]]} status={shown.status[1][shown.active[1]]} dmax={shown.dmax[1]} boosts={shown.boosts[1]} hpTestId={online ? "online-hp-" + (1 - online.side) : undefined} />
+          </button>
+        </div>
+        {/* A habilidade em ação: a faixa sai do lado do Pokémon (o adversário à direita, o seu à esquerda), como nos jogos. */}
+        {ability && (
+          <div key={ability.k} className={`ability-banner absolute z-20 ${ability.side === 1 ? 'ability-banner-1 right-0 top-[30%] rounded-l-lg' : 'ability-banner-0 left-0 bottom-[34%] rounded-r-lg'} bw-box px-3 py-1 text-white`} data-testid="ability-banner">
+            <p className="bw-text text-[10px] font-bold leading-tight opacity-90 sm:text-xs" data-no-translate>{ability.name}</p>
+            <p className="bw-text text-sm font-black leading-tight sm:text-base" data-no-translate>{ability.ability}</p>
+          </div>
+        )}
+        {effect && <MoveFx key={effect.key} plan={effect.plan} color={effect.color} />}
+        {impact && <span key={impact.n} className="move-impact pointer-events-none absolute z-20" style={{ left: `${impact.x}%`, top: `${impact.y}%`, '--c': impact.color }} data-testid="move-impact" />}
+        {flash > 0 && <div key={`flash-${flash}`} className="battle-flash pointer-events-none absolute inset-0 bg-white" />}
+        <div className={`absolute z-20 right-[1.25%] bottom-[8.5%] w-[31.5%] transition-opacity ${intro && poke[0] === 'hidden' ? 'opacity-0' : ''}`} data-fx-hud>
+          <button type="button" className="block w-full cursor-pointer text-left" onClick={() => setInspect(0)} aria-label={t('Ver detalhes do seu Pokémon')} data-testid="inspect-me">
+            <PartyBalls hp={shown.hp[0]} side="me" />
+            <InfoBox bw mon={me} hp={shown.hp[0][shown.active[0]]} status={shown.status[0][shown.active[0]]} dmax={shown.dmax[0]} boosts={shown.boosts[0]} mine hpTestId={online ? "online-hp-" + online.side : undefined}
+              exp={expBarOf(battle, shown.active[0], shown.hp[1])} />
+          </button>
+        </div>
+        {/* A mensagem dentro da tela, embaixo, como nos jogos (tocar passa o texto). */}
+        <BattleDialog boxRef={dialogRef} narrow onSkip={() => skip.current?.()}
+          text={!busy && online?.message ? t(online.message)
+            // A Bolsa: a descrição do item tocado (ou a pergunta) na caixa.
+            : waiting && menu === 'bag' ? (bagPicked ? `${bagPicked.name}: ${bagPicked.help}` : t('Escolha um item.'))
+            // O time aberto: a pergunta dele na caixa (como no jogo).
+            : waiting && menu === 'party' && summary == null ? (battle.needSwitch ? t('Escolha o próximo Pokémon') : item ? t('Usar em qual Pokémon?') : t('Escolha um Pokémon.'))
+            // Derrubou o do adversário: a pergunta do "Shift", com quem ele vai mandar (como nos jogos).
+            : waiting && battle.shiftPending && menu === 'main' ? (battle.sides[1].team[battle.shiftNext]
+              ? t('O adversário vai mandar {0}. Quer trocar de Pokémon?').replace('{0}', `${battle.sides[1].team[battle.shiftNext].name} (${(battle.sides[1].team[battle.shiftNext].types ?? []).map((ty) => t(ty.charAt(0).toUpperCase() + ty.slice(1))).join('/')})`)
+              : t('O adversário vai mandar outro Pokémon. Quer trocar de Pokémon?'))
+            // Hora de escolher (como no jogo e na dupla): "O que Charizard vai fazer?".
+            : waiting && !locked && (menu === 'main' || menu === 'fight') && !battle.needSwitch ? `${t('O que')} ${current.name} ${t('vai fazer?')}`
+            // No fim, o recado do resultado também vem na caixa (em partes, se precisar).
+            : !busy && battle.winner != null && (endNote || (persona && battle.winner === 0)) ? `${text}${persona && battle.winner === 0 ? ` 💬 ${persona.name}: “${t(persona.beat)}”` : ''}${endNote ? ` ${endNote}` : ''}` : text} />
+        {controlsGrid && <div className="port-controls absolute right-[1.25%] bottom-[28%] z-30 h-[19%] w-[36%]" data-testid="battle-bottom-grid">{controlsGrid}</div>}
+        {/* A barra de dicas embaixo (como no port): o que o toque faz e o Voltar. */}
+        <div className="port-hint absolute inset-x-0 bottom-0 z-30 flex h-[6.7%] items-center gap-3 px-2 text-[1.6cqw] font-bold" data-testid="battle-bottom-footer">
+          <span className="port-key">✋</span>
+          <span className="shrink-0">{waiting && !locked && menu === 'fight' ? t('Toque: usar · Segure: detalhes') : waiting ? t('Toque: escolher') : t('Toque: próximo')}</span>
+          {/* Os efeitos no campo, a velocidade e o registro também ficam aqui (nada embaixo da tela). */}
+          <FieldBar battle={battle} bare />
+          {controlsFooter && <div className="h-[85%] shrink-0">{controlsFooter}</div>}
+        </div>
+        {/* A Bolsa e o time abrem por cima do campo (a mesma tela, como no jogo; dá para jogar com o celular de lado). */}
+        {waiting && menu === 'bag' && (
+          // A Bolsa do Black & White, em bolsos: em cima da caixa de texto (a descrição do item aparece nela); USAR e
+          // Voltar nos botões fixos de baixo.
+          <div className="panel-in absolute inset-x-0 top-0 bottom-[27.5%] z-30"><BwBag testid="bag" external selected={bagPick} onSelect={setBagPick} pockets={bagPockets} /></div>
+        )}
+        {waiting && menu === 'party' && summary != null && (
+          // Os dados do Pokémon (como no jogo).
+          <div className="field-overlay overflow-y-auto">
+            <BwSummary data={summaryOf(battle, 0, summary)} onBack={() => setSummary(null)}
+              onSwitch={!item && (battle.sides[0].switchOptions ? battle.sides[0].switchOptions.includes(summary) : battle.sides[0].team[summary].hp > 0 && summary !== battle.sides[0].active)
+                ? () => { const i = summary; setSummary(null); setPartyPick(null); choose(i) } : null} />
+          </div>
+        )}
+        {waiting && menu === 'party' && summary == null && (
+          // A tela do time do Black & White: os 6 cabem exatamente na tela, em cima da caixa de texto (a pergunta aparece
+          // nela); tocou num Pokémon, as opções ficam nos botões fixos de baixo (como no jogo).
+          <PartyGrid team={battle.sides[0].team} active={battle.sides[0].active} picked={item ? null : partyPick} testPrefix="party"
+            disabled={(i) => item ? !canUseItem(battle, 0, item, i) : false}
+            dim={(i, m) => !item && (battle.sides[0].switchOptions ? !battle.sides[0].switchOptions.includes(i) : m.hp <= 0 || i === battle.sides[0].active)}
+            onTap={(i) => (item ? choose(i) : setPartyPick(i))}
+            badge={(m) => {
+              const match = !item && m.hp > 0 ? switchMatchup(hit, m, rival, typeEff) : null
+              return match && <span className="flex gap-1 text-[10px] font-bold" data-testid="matchup">
+                {match.attack != null && <EffectTag eff={match.attack} prefix={t('Ataca')} />}
+                <DefenseTag mult={match.defense} />
+              </span>
+            }} />
+        )}
+      </div>
+
+      <Modal open={inspect != null} onClose={() => setInspect(null)} title={inspect === 1 ? foe.name : me.name}>
+        {inspect != null && <MonDetails battle={battle} side={inspect} mon={inspect === 1 ? foe : me} />}
+      </Modal>
+      {/* Texto e menus: a tela de baixo (como no DS), sempre do mesmo tamanho e cada coisa no seu lugar. */}
+      <BottomScreen
+        info={waiting && !locked && (menu === 'main' || menu === 'fight' || menu === 'party' && !item) ? <>{menu === 'fight' && <ChoiceLock mon={me} />}<Weak mon={rival} list={foeWeak} /></> : null}
+        grid={null}
+        footer={null}
+        inField
         // As outras escolhas: embaixo dos botões fixos.
         extra={waiting && online?.waitForSwitch ? <Button onClick={() => online.onAction({ kind: 'wait', index: 0 })}>Aguardar troca do amigo</Button>
           : !busy && battle.winner != null && !(keepMine && battle.winner === 0) ? (
@@ -2236,7 +2302,7 @@ export function MultiBattle({battle, hit = null, onExit, onAgain, onFinish, onli
       dim={(i) => (item ? !canItem(item, i) : !options.includes(i))} onTap={(i) => setPartyPick(i)} />
   })()
   // A Bolsa abre no mesmo lugar (a descrição do item vai para a caixa de texto).
-  const bag = choosing && !aim && view === 'bag' && <div className="panel-in absolute inset-x-0 top-0 bottom-[22.5%] z-30"><BwBag testid="bag" external selected={bagPick} onSelect={setBagPick} pockets={bagPockets} /></div>
+  const bag = choosing && !aim && view === 'bag' && <div className="panel-in absolute inset-x-0 top-0 bottom-[27.5%] z-30"><BwBag testid="bag" external selected={bagPick} onSelect={setBagPick} pockets={bagPockets} /></div>
   const status = online?.message || (state.winner != null ? state.winner === -1 ? 'Empate!' : state.winner === side ? 'Você venceu!' : 'A equipe adversária venceu!' : `${t('Turno')} ${state.turn}`)
   // A pergunta na caixa de texto enquanto escolhe ("O que Pikachu vai fazer?").
   const prompt = (()=>{
@@ -2252,7 +2318,7 @@ export function MultiBattle({battle, hit = null, onExit, onAgain, onFinish, onli
   return <BattleWithLog log={lines}><section className="max-w-3xl space-y-2 max-lg:mx-auto">
     <MoveInfo info={moveInfo} onClose={() => setMoveInfo(null)} />
     {/* Sempre do mesmo tamanho da batalha normal (4:3), em dupla e em tripla. */}
-    <div onClickCapture={(e) => { if (skip.current) { e.stopPropagation(); skip.current() } }} className="battle-field relative aspect-[4/3] overflow-hidden rounded-t-2xl border-4 border-b-0 hud-edge" data-testid="multi-battle-field" data-layout="bw" style={{background:'#9fdcff'}}>
+    <div onClickCapture={(e) => { if (skip.current) { e.stopPropagation(); skip.current() } }} className="battle-field port-field relative aspect-video overflow-clip rounded-2xl border-4 hud-edge" data-testid="multi-battle-field" data-layout="bw" style={{background:'#9fdcff'}}>
       <BattleBackground weather={battle.weather} scene={scene} layout="bw"/>{sprites(1-side)}{sprites(side)}{info(1-side)}{info(side)}<WeatherFx weather={battle.weather}/>
       {/* A mensagem dentro da tela, embaixo, como na batalha normal (tocar passa o texto). */}
       {/* Todo texto na caixa (o erro também); se não couber, em partes. */}
@@ -2367,7 +2433,11 @@ export function MultiBattle({battle, hit = null, onExit, onAgain, onFinish, onli
  * no seu lugar — em cima a linha de informação (fraquezas, quem já escolheu), no meio a grade 2×2 (o menu ou os golpes,
  * no mesmo lugar) e embaixo o Voltar. Nada empurra nada. No fim da batalha, os botões do resultado.
  */
-function BottomScreen({ info, grid, footer, extra, testId = 'battle-bottom', ...rest }) {
+function BottomScreen({ info, grid, footer, extra, testId = 'battle-bottom', inField = false, ...rest }) {
+  // O menu e os golpes dentro do campo (a batalha de um contra um): aqui fica só a linha de informações.
+  if (inField)
+    // Tudo numa tela só (como no port): embaixo do campo, só as escolhas do fim (Continuar, Batalhar de novo...).
+    return extra ? <div className="mt-2 flex w-full flex-col gap-2" data-testid="battle-extra">{extra}</div> : null
   return (
     <>
       <div className="flex h-[15.5rem] flex-col gap-1.5 rounded-b-2xl border-4 hud-edge hud-base p-2 text-white" data-testid={testId} {...rest}>
@@ -2414,7 +2484,7 @@ function dialogPages(text, box) {
 }
 
 /** A caixa de texto da batalha (a mesma na normal e na dupla): sempre do mesmo tamanho; toda fala aparece nela e, se não couber, em partes (tocar passa para a próxima parte; na última, passa a fala). */
-function BattleDialog({ text, onSkip, boxRef }) {
+function BattleDialog({ text, onSkip, boxRef, narrow = false }) {
   const own = useRef(null)
   const ref = boxRef ?? own
   const [pages, setPages] = useState([text])
@@ -2424,7 +2494,7 @@ function BattleDialog({ text, onSkip, boxRef }) {
   const more = page < pages.length - 1
   return (
     <button ref={ref} type="button" onClick={() => (more ? setPage(page + 1) : onSkip?.())}
-      className="bw-message absolute inset-x-[1.5%] bottom-[1.5%] z-30 h-[21%] cursor-pointer overflow-hidden rounded-lg px-3 py-1.5 text-left text-sm leading-snug font-bold sm:px-4 sm:text-lg"
+      className={`bw-message absolute left-[1.25%] ${narrow ? 'right-[37.3%]' : 'right-[1.25%]'} bottom-[8.5%] z-30 h-[14.5%] cursor-pointer overflow-hidden px-[2.2%] py-[0.8%] text-left text-[2.3cqw] leading-snug font-bold`}
       data-testid="battle-text">
       {shown}
       {more && <span className="absolute right-2 bottom-1 animate-pulse text-xs" data-testid="battle-text-more">▼</span>}
@@ -2435,7 +2505,7 @@ function BattleDialog({ text, onSkip, boxRef }) {
 /** A tela do time na batalha (como no jogo): os 6 cabem exatamente na tela (3 linhas × 2 colunas, sem rolar), em cima da caixa de texto. */
 function PartyGrid({ team, active, picked, disabled, dim, onTap, testPrefix, badge }) {
   return (
-    <div className="bw-party panel-in absolute inset-x-0 top-0 bottom-[22.5%] z-30 p-1.5" data-testid={`${testPrefix}-screen`}>
+    <div className="bw-party panel-in absolute inset-x-0 top-0 bottom-[27.5%] z-30 p-1.5" data-testid={`${testPrefix}-screen`}>
       <div className="grid h-full grid-cols-2 grid-rows-3 gap-1.5" data-testid={testPrefix}>
         {team.map((m, i) => (
           <button key={i} type="button" data-testid={`${testPrefix}-${i}`} disabled={disabled?.(i)} onClick={() => onTap(i)}
@@ -2489,14 +2559,16 @@ function useHold(onHold) {
   }
 }
 
-function MoveButton({ label, note, color, disabled = false, onClick, onHold, testId, children }) {
+function MoveButton({ label, note, color, kind = '', disabled = false, onClick, onHold, testId, children }) {
   const hold = useHold(onHold)
   return (
     // Desligado (sem PP), ainda dá para segurar e ver o golpe: o botão fica "aria-disabled" em vez de disabled.
     <button type="button" aria-disabled={disabled} onClick={disabled ? undefined : onClick} data-testid={testId} {...hold}
-      className="h-full min-h-0 cursor-pointer touch-manipulation overflow-hidden rounded-lg px-2 py-1 text-left text-white select-none aria-disabled:cursor-default aria-disabled:opacity-40"
-      style={{ background: color, WebkitTouchCallout: 'none' }} data-no-translate>
-      <div className="truncate text-sm font-black">{label}</div>
+      // Como no port de Black & White: escuro, com a cor do tipo na borda esquerda e o nome do tipo embaixo.
+      className="port-move h-full min-h-0 cursor-pointer touch-manipulation overflow-hidden px-2 py-1 text-left text-white select-none aria-disabled:cursor-default aria-disabled:opacity-40"
+      style={{ '--type': color, WebkitTouchCallout: 'none' }} data-no-translate>
+      <div className="truncate text-sm font-black sm:text-base">{label}</div>
+      {kind && <div className="truncate text-[9px] font-black tracking-widest sm:text-[10px]" style={{ color }}>{kind}</div>}
       {note && <div className="truncate text-[10px] font-bold opacity-90">{note}</div>}
       <div className="flex items-center justify-between gap-1 text-[11px] font-semibold">{children}</div>
     </button>
@@ -2573,7 +2645,7 @@ function MoveInfo({ info, onClose }) {
 
 function MenuButton({ children, onClick, className = '', disabled = false, testId }) {
   return (
-    <button type="button" onClick={onClick} disabled={disabled} data-testid={testId} className={`disabled:cursor-default disabled:opacity-40 dlg-btn cursor-pointer rounded-lg px-2 py-2 text-left font-black whitespace-nowrap ${className}`}>
+    <button type="button" onClick={onClick} disabled={disabled} data-testid={testId} data-k={typeof children === 'string' ? children : undefined} className={`disabled:cursor-default disabled:opacity-40 dlg-btn cursor-pointer rounded-lg px-2 py-2 text-left font-black whitespace-nowrap ${className}`}>
       {`▸ ${t(children)}`}
     </button>
   )

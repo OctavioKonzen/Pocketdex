@@ -90,10 +90,12 @@ export function fxStage(anchors, near, far) {
     if (!v) return fallback
     const [w, h, x0, y0, x1, y1, mx, my, fx, fy] = v
     const left = feet.x - ((x0 + x1) / 2) * scale
-    const top = feet.y - y1 * scale
+    // O de costas baixinho (Clodsire, Snorlax deitado) sobe até aparecer bem acima da caixa de texto.
+    const lift = key === 'b' ? Math.max(0, feet.y - (y1 - y0) * scale - 250) : 0
+    const top = feet.y - y1 * scale - lift
     return {
       x: feet.x,
-      y: feet.y,
+      y: feet.y - lift,
       h: (y1 - y0) * scale,
       box: { left, top, w: w * scale, h: h * scale },
       mouth: { x: left + mx * scale, y: top + my * scale },

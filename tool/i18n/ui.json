@@ -2739,6 +2739,21 @@
   "fr": "Touche un objet pour voir ce qu’il fait.",
   "es": "Toca un objeto para ver qué hace."
  },
+ "Toque: escolher": {
+  "en": "Tap: choose",
+  "fr": "Touche : choisir",
+  "es": "Toca: elegir"
+ },
+ "Toque: próximo": {
+  "en": "Tap: next",
+  "fr": "Touche : suivant",
+  "es": "Toca: siguiente"
+ },
+ "Toque: usar · Segure: detalhes": {
+  "en": "Tap: use · Hold: details",
+  "fr": "Touche : utiliser · Maintiens : détails",
+  "es": "Toca: usar · Mantén: detalles"
+ },
  "Toque para escolher golpes": {
   "en": "Tap to choose moves",
   "fr": "Touchez pour choisir les attaques",
