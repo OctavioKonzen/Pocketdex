@@ -2734,7 +2734,7 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
                                   child: _PortHp(mon: foe, hp: _hp[1][_active[1]], status: _status[1][_active[1]], dmax: _dmax[1], w: w))))),
                       Positioned(
                           right: w * 0.0125,
-                          bottom: h * 0.085,
+                          bottom: h * 0.24,
                           width: w * 0.315,
                           child: _fxHud(AnimatedOpacity(
                               opacity: _introOn && _poke[0] == 'hidden' ? 0 : 1,
@@ -2825,9 +2825,10 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
                           key: const ValueKey('battle-bottom-grid'),
                           right: w * 0.0125,
                           // Com o time ou a Bolsa abertos por cima do campo, as opções ficam embaixo, ao lado do texto.
-                          bottom: fieldPanel != null ? h * 0.085 : h * 0.28,
+                          // Ao lado da caixa de texto, embaixo da sua caixa de vida.
+                          bottom: h * 0.085,
                           width: w * 0.36,
-                          height: fieldPanel != null ? h * 0.145 : h * 0.19,
+                          height: h * 0.145,
                           child: _PortScope(child: controlsGrid)),
                       // A barra de dicas embaixo (como no port): o que o toque faz, os efeitos do campo, a velocidade, o registro e o Voltar.
                       Positioned(
@@ -4833,7 +4834,7 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
             }
 
             final foes = live(1 - _side), mine = live(_side);
-            final foeW = w * (_count == 3 ? 0.44 : 0.36), myW = w * (_count == 3 ? 0.54 : 0.46);
+            final foeW = w * (_count == 3 ? 0.44 : 0.36), myW = w * (_count == 3 ? 0.50 : 0.44);
             Widget info(int side) {
               final mineSide = side == _side;
               // Como no port: as do adversário em cima à esquerda, as suas embaixo à direita (empilhadas; somem no golpe).
@@ -4841,8 +4842,8 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
                 left: mineSide ? null : w * 0.0125,
                 right: mineSide ? w * 0.0125 : null,
                 top: mineSide ? null : h * 0.019,
-                bottom: mineSide ? h * 0.085 : null,
-                width: w * 0.315,
+                bottom: mineSide ? h * 0.24 : null,
+                width: w * 0.26,
                 child: Column(key: ValueKey('battle-info-$side'), mainAxisSize: MainAxisSize.min, children: [
                   for (final (pos, index) in live(side).indexed)
                     Padding(
@@ -4851,7 +4852,7 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
                         final mon = _b.teams[side][index];
                         return Semantics(
                             label: '${_trainer(_b.controllers![side][min(pos, _count - 1)])} · ${mon.name}',
-                            child: _PortHp(mon: mon, hp: _hpOf(side, index), mine: mineSide, status: _statusOf(side, index), dmax: mon.dmax > 0, w: w));
+                            child: _PortHp(mon: mon, hp: _hpOf(side, index), mine: mineSide, status: _statusOf(side, index), dmax: mon.dmax > 0, w: w * 0.8));
                       }),
                     ),
                 ]),
@@ -4871,7 +4872,7 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
               // Os seus: de costas, na frente, maiores (a caixa do texto corta embaixo, como nos jogos).
               Positioned(
                 left: 0,
-                bottom: h * 0.06,
+                bottom: h * 0.18,
                 width: myW,
                 height: myW / max(2, _count),
                 child: Row(key: ValueKey('battle-sprites-$_side'), crossAxisAlignment: CrossAxisAlignment.end, children: [for (final index in mine) mon(_side, index)]),
@@ -4904,9 +4905,10 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
                     key: const ValueKey('battle-bottom-grid'),
                     right: w * 0.0125,
                     // Com o time ou a Bolsa abertos por cima do campo, as opções ficam embaixo, ao lado do texto.
-                    bottom: panel != null ? h * 0.085 : h * (0.095 + _count * 0.145),
+                    // Ao lado da caixa de texto, embaixo das suas caixas de vida.
+                    bottom: h * 0.085,
                     width: w * 0.36,
-                    height: panel != null ? h * 0.145 : h * 0.19,
+                    height: h * 0.145,
                     child: _PortScope(child: controls!.grid!)),
               Positioned(
                 key: const ValueKey('battle-bottom-footer'),
