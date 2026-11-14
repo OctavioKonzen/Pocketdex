@@ -44,7 +44,7 @@ const regionMaps = <String, List<RegionMapInfo>>{
     (id: 'sevii', aspect: 1.5, art: true, cities: <String, List<double>>{'One Island': [78.78, 51.76], 'Two Island': [21.48, 41.99], 'Three Island': [46.88, 22.46], 'Four Island': [82.68, 24.41], 'Five Island': [46.22, 46.88], 'Six Island': [50.13, 78.12], 'Seven Island': [82.03, 77.15]}),
   ],
   'Armor': [
-    (id: 'armor', aspect: 1.5, art: false, cities: <String, List<double>>{'Master Dojo': [49.47, 42.0], 'Soothing Wetlands': [33.87, 62.5], 'Challenge Beach': [68.33, 68.4], 'Tower of Two Fists': [68.33, 24.4]}),
+    (id: 'armor', aspect: 0.9525, art: true, cities: <String, List<double>>{'Master Dojo': [50.0, 33.46], 'Soothing Wetlands': [31.05, 64.98], 'Challenge Beach': [80.47, 51.36], 'Tower of Two Fists': [50.0, 20.39]}),
   ],
   'Crown': [
     (id: 'crown', aspect: 1.5, art: false, cities: <String, List<double>>{'Freezington': [49.47, 60.5], 'Ballimere Lake': [36.47, 43.0], 'Split-Decision Ruins': [72.93, 50.8], 'Crown Shrine': [52.07, 16.6]}),

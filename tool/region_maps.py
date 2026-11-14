@@ -734,6 +734,7 @@ ART = {
         'Ballonlea': (178, 565), 'Stow-on-Side': (378, 600), 'Turffield': (233, 905), 'Motostoke': (530, 1052),
         'Hulbury': (830, 1122), 'Wedgehurst': (300, 1258), 'Postwick': (602, 1288)}},
     'hisui': {'crop': (0, 0, 1224, 1285), 'cities': {'Jubilife Village': (330, 768), 'Obsidian Fieldlands': (265, 412), 'Alabaster Icelands': (420, 282), 'Coronet Highlands': (617, 652), 'Temple of Sinnoh': (607, 418), 'Cobalt Coastlands': (935, 560), 'Crimson Mirelands': (860, 882)}},
+    'armor': {'crop': (0, 0, 1224, 1285), 'cities': {'Master Dojo': (612, 430), 'Soothing Wetlands': (380, 835), 'Challenge Beach': (985, 660), 'Tower of Two Fists': (612, 262)}},
 }
 ART_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'region_maps_art')
 
