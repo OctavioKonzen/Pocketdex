@@ -1847,7 +1847,7 @@ waiting && !locked && menu === 'fight' ? <MenuButton onClick={() => setMenu('mai
         {waiting && menu === 'bag' && (
           // A Bolsa do Black & White, em bolsos: em cima da caixa de texto (a descrição do item aparece nela); USAR e
           // Voltar nos botões fixos de baixo.
-          <div className="panel-in absolute inset-x-0 top-0 bottom-[27.5%] z-30"><BwBag testid="bag" external selected={bagPick} onSelect={setBagPick} pockets={bagPockets} /></div>
+          <div className="panel-in absolute inset-x-0 top-0 bottom-[23.5%] z-30"><BwBag testid="bag" external selected={bagPick} onSelect={setBagPick} pockets={bagPockets} /></div>
         )}
         {waiting && menu === 'party' && summary != null && (
           // Os dados do Pokémon (como no jogo).
@@ -2324,7 +2324,7 @@ export function MultiBattle({battle, hit = null, onExit, onAgain, onFinish, onli
       dim={(i) => (item ? !canItem(item, i) : !options.includes(i))} onTap={(i) => setPartyPick(i)} />
   })()
   // A Bolsa abre no mesmo lugar (a descrição do item vai para a caixa de texto).
-  const bag = choosing && !aim && view === 'bag' && <div className="panel-in absolute inset-x-0 top-0 bottom-[27.5%] z-30"><BwBag testid="bag" external selected={bagPick} onSelect={setBagPick} pockets={bagPockets} /></div>
+  const bag = choosing && !aim && view === 'bag' && <div className="panel-in absolute inset-x-0 top-0 bottom-[23.5%] z-30"><BwBag testid="bag" external selected={bagPick} onSelect={setBagPick} pockets={bagPockets} /></div>
   const status = online?.message || (state.winner != null ? state.winner === -1 ? 'Empate!' : state.winner === side ? 'Você venceu!' : 'A equipe adversária venceu!' : `${t('Turno')} ${state.turn}`)
   // A pergunta na caixa de texto enquanto escolhe ("O que Pikachu vai fazer?").
   const prompt = (()=>{
@@ -2535,7 +2535,7 @@ function BattleDialog({ text, onSkip, boxRef, narrow = false }) {
 /** A tela do time na batalha (como no jogo): os 6 cabem exatamente na tela (3 linhas × 2 colunas, sem rolar), em cima da caixa de texto. */
 function PartyGrid({ team, active, picked, disabled, dim, onTap, testPrefix, badge }) {
   return (
-    <div className="bw-party panel-in absolute inset-x-0 top-0 bottom-[27.5%] z-30 p-1.5" data-testid={`${testPrefix}-screen`}>
+    <div className="bw-party panel-in absolute inset-x-0 top-0 bottom-[23.5%] z-30 p-1.5" data-testid={`${testPrefix}-screen`}>
       <div className="grid h-full grid-cols-2 grid-rows-3 gap-1.5" data-testid={testPrefix}>
         {team.map((m, i) => (
           <button key={i} type="button" data-testid={`${testPrefix}-${i}`} disabled={disabled?.(i)} onClick={() => onTap(i)}
