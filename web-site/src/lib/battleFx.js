@@ -126,7 +126,7 @@ const body = (p, k = 0.5) => ({ x: p.x, y: p.y - p.h * k })
  * O plano da animação de um golpe. [from] 0: você ataca (o alvo é o de cima); 1: o outro ataca.
  * [kind] o estilo (moveAnim / move_anims.json), [slug] o golpe (os marcantes têm animação própria).
  */
-export function fxPlan2({ kind, type, slug = '', from = 0, seed = 1, stage = FX_STAGE, recipe = null }) {
+export function fxPlan2({ kind, type, slug = '', from = 0, seed = 1, stage = FX_STAGE, recipe = null, boosts = null }) {
   const P = FX_TYPES[type] ?? FX_TYPES.normal
   const [c0, c1, c2, c3] = P.c
   // A câmera sem zoom: o meio do mundo (960 × 540 no harness; no campo 4:3 da batalha, 960 × 720).
@@ -145,7 +145,8 @@ export function fxPlan2({ kind, type, slug = '', from = 0, seed = 1, stage = FX_
   let hud = null
   let dur = 0
   const rnd = (i) => fxRand(seed * 13.7 + i)
-  const add = (layer) => L.push(layer)
+  // As bolas (carregando com swirl ou voando com trail) giram e ficam irregulares, como no Black & White.
+  const add = (layer) => L.push(layer.s === 'glow' && (layer.swirl || layer.trail) && layer.spin == null ? { ...layer, spin: 1.3 * (from === 0 ? 1 : -1) } : layer)
   const end = (ms) => (dur = Math.max(dur, ms))
   // Câmera olhando para um ponto, mais perto (zoom) e com um leve giro.
   const look = (p, z, r = 0) => [p.x, p.y, z, r]
@@ -525,16 +526,19 @@ export function fxPlan2({ kind, type, slug = '', from = 0, seed = 1, stage = FX_
       flashAfter(2400)
     },
     'swords-dance': () => {
-      // Espadas de luz giram em volta de quem usa, cruzam no alto e o ataque sobe.
-      cam = [[0, ...NEUTRAL], [400, ...look(a, 1.4, 2 * toward)], [1700, ...look(a, 1.45, 2 * toward)]]
-      for (let i = 0; i < 4; i++) add({ s: 'arc', t0: 300 + i * 120, t1: 1300 + i * 120, x: a.x, y: a.y - A.h * 0.1, r: A.h * (0.45 + i * 0.04), a0: (i * Math.PI) / 2, a1: [(i * Math.PI) / 2, (i * Math.PI) / 2 + 4], w: 7, c: '#ffffff', c2: '#fca5a5' })
-      add({ s: 'particles', t0: 400, t1: 1500, n: 6, seed, x: a.x, y: a.y - A.h * 0.1, sx: 0, sy: 0, mode: 'orbit', r: A.h * 0.55, life: 1100, size: [26, 26], style: 'streak', c: ['#ffffff', '#e3eaf2'] })
-      add({ s: 'rays', t0: 1300, t1: 1700, x: a.x, y: a.y - A.h * 0.5, n: 10, r0: 10, r1: [40, 160], w: 5, c: '#ffffff', c2: '#ef4444', a: [1, 0], rot: 0.2 })
-      add({ s: 'particles', t0: 1300, t1: 1900, n: 10, seed: seed + 4, x: a.x, y: A.y - A.h * 0.3, sx: A.h * 0.35, sy: 20, v: 0, vy: -220, g: 0, life: 600, mode: 'stream', size: [18, 14], style: 'arrowUp', c: ['#ffffff', '#fca5a5', '#ef4444'] })
-      S.push({ who: 'A', k: 'tint', t0: 1200, t1: 1900, color: '#ef4444', a: 0.5, pulse: 18 })
-      hud = [100, 1900]
-      cam.push([2200, ...NEUTRAL])
-      end(2300)
+      // Como no BW: espadas aparecem uma a uma girando em volta de quem usa (uma por estágio de Ataque: +2 são duas,
+      // +6 são seis), se juntam no alto, brilham e o ataque sobe.
+      const n = Math.max(1, Math.min(6, boosts?.atk ?? 2))
+      const mid = { x: a.x, y: A.y - A.h * 0.55 }
+      cam = [[0, ...NEUTRAL], [400, ...look(mid, 1.45, 2 * toward)], [2000, ...look(mid, 1.5, 2 * toward)]]
+      add({ s: 'swords', t0: 250, t1: 2000, x: mid.x, y: mid.y, rx: Math.max(80, A.h * 0.66), ry: Math.max(18, A.h * 0.16), n, size: Math.max(40, A.h * 0.42), spin: 0.75 * toward, top: A.y - A.h * 1.12, c: ['#ffffff', '#c9d6e3', '#6b7a8c', '#ef4444', '#facc15'] })
+      add({ s: 'rays', t0: 1650, t1: 2150, x: a.x, y: A.y - A.h * 1.12, n: 12, r0: 10, r1: [40, 180], w: 5, c: '#ffffff', c2: '#ef4444', a: [1, 0], rot: 0.2 })
+      add({ s: 'glow', t0: 1650, t1: 2050, x: a.x, y: A.y - A.h * 1.12, r: [10, 90], c: ['#ffffff', '#ffe0e0', '#ef4444'], a: [1, 0] })
+      add({ s: 'particles', t0: 1700, t1: 2300, n: 10, seed: seed + 4, x: a.x, y: A.y - A.h * 0.3, sx: A.h * 0.35, sy: 20, v: 0, vy: -220, g: 0, life: 600, mode: 'stream', size: [18, 14], style: 'arrowUp', c: ['#ffffff', '#fca5a5', '#ef4444'] })
+      S.push({ who: 'A', k: 'tint', t0: 1650, t1: 2300, color: '#ef4444', a: 0.5, pulse: 18 })
+      hud = [100, 2300]
+      cam.push([2600, ...NEUTRAL])
+      end(2700)
     },
     'dragon-dance': () => {
       // Chamas roxas e vermelhas giram e sobem em volta dele, a aura cresce e os atributos sobem.
@@ -1237,9 +1241,9 @@ export function fxScene({ kind, side = 1, stage = FX_STAGE, seed = 1 }) {
 const SELF = new Set(['boost', 'dance', 'heal', 'shield', 'charge', 'weather', 'terrain', 'field', 'wall', 'explode', 'drop', 'status', 'powder', 'hazard', 'swap'])
 
 /** Plano de um golpe pelo nome, tipo e categoria (os de status pelo alvo das regras). */
-export function fxForMove({ slug, type, category, self = false, entry = null, recipe = null, from = 0, seed = 1, stage = FX_STAGE }) {
+export function fxForMove({ slug, type, category, self = false, entry = null, recipe = null, from = 0, seed = 1, stage = FX_STAGE, boosts = null }) {
   const kind = entry?.[0] ?? (category === 'status' ? (self ? 'boost' : 'status') : moveAnim(slug, type, category))
-  return fxPlan2({ kind, type, slug, from, seed, recipe, stage })
+  return fxPlan2({ kind, type, slug, from, seed, recipe, stage, boosts })
 }
 
 /** A câmera no instante [ms]: [x, y, zoom, giro], suave entre os pontos. */

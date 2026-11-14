@@ -1307,7 +1307,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
           : null
         if (stage) {
           if (e.category !== 'status') lastHit.current = typeColor(e.type)
-          const plan2 = fxForMove({ slug: e.slug, type: e.type, category: e.category, self, entry, recipe, from: e.side, seed: turnNo.current, stage })
+          const plan2 = fxForMove({ slug: e.slug, type: e.type, category: e.category, self, entry, recipe, from: e.side, seed: turnNo.current, stage, boosts: active(battle, e.side).boosts })
           await runFx({ field: field.current, world: world.current, canvas: fxCanvas.current, spriteEls: [sprites[0].current, sprites[1].current], plan: plan2, rate: fast(1000) / 1000, live: () => live.current })
           if (!live.current) return
           continue

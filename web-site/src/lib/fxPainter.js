@@ -102,8 +102,38 @@ function glow(g, L, k, ms) {
   rg.addColorStop(1, rgba(c[3] ?? c[2] ?? c[1], 0))
   g.fillStyle = rg
   g.beginPath()
-  g.arc(x, y, r, 0, Math.PI * 2)
-  g.fill()
+  if (L.spin) {
+    // Bola irregular girando: a borda ondula (três e cinco caroços) e um miolo claro fora do centro dá a volta.
+    const rot = (ms / 1000) * L.spin * Math.PI * 2
+    for (let j = 0; j <= 28; j++) {
+      const t = (j / 28) * Math.PI * 2
+      const rr = r * (0.9 + 0.13 * Math.sin(3 * t + rot) + 0.07 * Math.sin(5 * t - rot * 1.6 + 1))
+      g.lineTo(x + Math.cos(t) * rr, y + Math.sin(t) * rr)
+    }
+    g.fill()
+    const hx = x + Math.cos(rot) * r * 0.32
+    const hy = y + Math.sin(rot) * r * 0.32
+    const hg = g.createRadialGradient(hx, hy, 0, hx, hy, r * 0.5)
+    hg.addColorStop(0, rgba(c[0], 0.85 * a))
+    hg.addColorStop(1, rgba(c[0], 0))
+    g.fillStyle = hg
+    g.beginPath()
+    g.arc(hx, hy, r * 0.5, 0, Math.PI * 2)
+    g.fill()
+    // Um lado mais escuro (a sombra também gira).
+    const dx = x - Math.cos(rot) * r * 0.4
+    const dy = y - Math.sin(rot) * r * 0.4
+    const dg = g.createRadialGradient(dx, dy, 0, dx, dy, r * 0.55)
+    dg.addColorStop(0, rgba(c[c.length - 1], 0.6 * a))
+    dg.addColorStop(1, rgba(c[c.length - 1], 0))
+    g.fillStyle = dg
+    g.beginPath()
+    g.arc(dx, dy, r * 0.55, 0, Math.PI * 2)
+    g.fill()
+  } else {
+    g.arc(x, y, r, 0, Math.PI * 2)
+    g.fill()
+  }
   if (L.swirl) {
     // Riscos girando por dentro (energia viva).
     g.strokeStyle = rgba(c[0], 0.7 * a)
@@ -815,6 +845,56 @@ function surge(g, L, k, ms) {
   }
 }
 
+/**
+ * As espadas do Swords Dance em pixels, girando numa elipse em volta do Pokémon (as de trás mais apagadas e menores).
+ * Cada uma aparece por vez; no fim todas sobem e se juntam no alto (top). c = [brilho, lâmina, sombra, cabo, guarda].
+ */
+function swords(g, L, k, ms) {
+  const c = L.c
+  const join = clamp((k - 0.8) / 0.2)
+  const rot = (ms / 1000) * L.spin * Math.PI * 2
+  const list = []
+  for (let i = 0; i < L.n; i++) {
+    const show = clamp((k - i * 0.07) / 0.08)
+    if (show <= 0) continue
+    const t = rot + (i / L.n) * Math.PI * 2
+    const depth = Math.sin(t)
+    const x = lerp(L.x + Math.cos(t) * L.rx, L.x, join)
+    const y = lerp(L.y + depth * L.ry, L.top, join)
+    list.push({ x, y, depth, s: L.size * (0.82 + 0.18 * depth) * (0.4 + 0.6 * show), a: (depth < 0 ? 0.55 : 1) * show * (1 - clamp((k - 0.95) / 0.05)), tilt: join * (i % 2 ? 0.6 : -0.6) })
+  }
+  list.sort((p, q) => p.depth - q.depth)
+  for (const p of list) drawSword(g, p.x, p.y, p.s, p.a, p.tilt, c)
+}
+
+/** Uma espada em blocos (ponta para cima), de altura s. */
+function drawSword(g, x, y, s, a, tilt, c) {
+  const u = Math.max(2, Math.round(s / 14))
+  g.save()
+  g.translate(Math.round(x), Math.round(y))
+  g.rotate(tilt)
+  const R = (px, py, w, h, col, al = 1) => {
+    g.fillStyle = rgba(col, a * al)
+    g.fillRect(px * u, py * u, w * u, h * u)
+  }
+  // Lâmina (com ponta), fio claro, guarda dourada e cabo vermelho; contorno escuro.
+  R(-2, -8, 4, 11, c[2])
+  R(-1, -10, 2, 2, c[2])
+  R(-1, -8, 2, 11, c[1])
+  R(-1, -9, 1, 1, c[1])
+  R(0, -8, 1, 10, c[0])
+  R(-4, 3, 8, 2, c[2])
+  R(-3, 3, 6, 1, c[4])
+  R(-1, 5, 2, 4, c[3])
+  R(-2, 9, 4, 1, c[4])
+  g.restore()
+  // Brilho que corre pela lâmina.
+  g.fillStyle = rgba(c[0], a * 0.15)
+  g.beginPath()
+  g.arc(x, y - s * 0.25, s * 0.22, 0, Math.PI * 2)
+  g.fill()
+}
+
 /** Uma forma grande com brilho (o punho no soco, o pé no chute, a lua no Moonblast...). */
 function icon(g, L, k) {
   const x = at(L.x, k)
@@ -885,5 +965,5 @@ function drawIcon(g, style, x, y, s, color, rot) {
   g.restore()
 }
 
-const SHAPES = { glow, rays, ring, particles, bolt, beam, web, arc, fangs, cone, shot, crack, icon }
+const SHAPES = { glow, rays, ring, particles, bolt, beam, web, arc, fangs, cone, shot, crack, icon, swords }
 const SCREEN = { tint, fill, wave, surge }

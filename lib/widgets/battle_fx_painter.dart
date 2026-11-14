@@ -130,6 +130,8 @@ class FxPainter extends CustomPainter {
             _crack(canvas, l, k);
           case 'icon':
             _icon(canvas, l, k);
+          case 'swords':
+            _swords(canvas, l, k);
         }
       }
       canvas.restore();
@@ -169,7 +171,25 @@ class FxPainter extends CustomPainter {
     stops.add(1);
     final paint = Paint()
       ..shader = ui.Gradient.radial(Offset(x, y), r, colors, stops, TileMode.clamp, null, Offset(x - r * 0.15, y - r * 0.15), r * 0.05);
-    canvas.drawCircle(Offset(x, y), r, paint);
+    final spin = l['spin'];
+    if (spin is num && spin != 0) {
+      // Bola irregular girando (igual ao fxPainter.js).
+      final rot = ms / 1000 * spin * math.pi * 2;
+      final path = Path();
+      for (var j = 0; j <= 28; j++) {
+        final t = j / 28 * math.pi * 2;
+        final rr = r * (0.9 + 0.13 * math.sin(3 * t + rot) + 0.07 * math.sin(5 * t - rot * 1.6 + 1));
+        final p = Offset(x + math.cos(t) * rr, y + math.sin(t) * rr);
+        j == 0 ? path.moveTo(p.dx, p.dy) : path.lineTo(p.dx, p.dy);
+      }
+      canvas.drawPath(path, paint);
+      final h = Offset(x + math.cos(rot) * r * 0.32, y + math.sin(rot) * r * 0.32);
+      canvas.drawCircle(h, r * 0.5, Paint()..shader = ui.Gradient.radial(h, r * 0.5, [_rgba(c[0], 0.85 * a), _rgba(c[0], 0)]));
+      final d = Offset(x - math.cos(rot) * r * 0.4, y - math.sin(rot) * r * 0.4);
+      canvas.drawCircle(d, r * 0.55, Paint()..shader = ui.Gradient.radial(d, r * 0.55, [_rgba(c.last, 0.6 * a), _rgba(c.last, 0)]));
+    } else {
+      canvas.drawCircle(Offset(x, y), r, paint);
+    }
     if (l['swirl'] != null) {
       final p = _stroke(_rgba(c[0], 0.7 * a), math.max(1, r * 0.06));
       for (var i = 0; i < 3; i++) {
@@ -718,6 +738,50 @@ class FxPainter extends CustomPainter {
         final y = _vh - h * 1.04 - BattleFx.rand(i + 70) * 70 + ((ms / 6 + i * 13) % 50);
         canvas.drawRect(Rect.fromLTWH(xOf((u / (b / 2)).roundToDouble() * (b / 2)), (y / (b / 2)).roundToDouble() * (b / 2), b / 2, b / 2), Paint()..color = _rgba(c[0], 0.9 * a));
       }
+    }
+  }
+
+  /// As espadas do Swords Dance girando em volta do Pokémon (igual a swords do fxPainter.js).
+  void _swords(Canvas canvas, Map l, double k) {
+    final c = _cs(l['c']);
+    final join = _clamp((k - 0.8) / 0.2);
+    final rot = ms / 1000 * _n(l['spin']) * math.pi * 2;
+    final n = _n(l['n']).toInt();
+    final x0 = _n(l['x']), y0 = _n(l['y']), rx = _n(l['rx']), ry = _n(l['ry']), size = _n(l['size']), top = _n(l['top']);
+    final list = <(double, double, double, double, double, double)>[];
+    for (var i = 0; i < n; i++) {
+      final show = _clamp((k - i * 0.07) / 0.08);
+      if (show <= 0) continue;
+      final t = rot + i / n * math.pi * 2;
+      final depth = math.sin(t);
+      list.add((
+        _lerp(x0 + math.cos(t) * rx, x0, join),
+        _lerp(y0 + depth * ry, top, join),
+        depth,
+        size * (0.82 + 0.18 * depth) * (0.4 + 0.6 * show),
+        (depth < 0 ? 0.55 : 1) * show * (1 - _clamp((k - 0.95) / 0.05)),
+        join * (i.isOdd ? 0.6 : -0.6),
+      ));
+    }
+    list.sort((p, q) => p.$3.compareTo(q.$3));
+    for (final p in list) {
+      final (x, y, _, s, a, tilt) = p;
+      final u = math.max(2, (s / 14).round()).toDouble();
+      canvas.save();
+      canvas.translate(x.roundToDouble(), y.roundToDouble());
+      canvas.rotate(tilt);
+      void r(double px, double py, double w, double h, String col) => canvas.drawRect(Rect.fromLTWH(px * u, py * u, w * u, h * u), Paint()..color = _rgba(col, a));
+      r(-2, -8, 4, 11, c[2]);
+      r(-1, -10, 2, 2, c[2]);
+      r(-1, -8, 2, 11, c[1]);
+      r(-1, -9, 1, 1, c[1]);
+      r(0, -8, 1, 10, c[0]);
+      r(-4, 3, 8, 2, c[2]);
+      r(-3, 3, 6, 1, c[4]);
+      r(-1, 5, 2, 4, c[3]);
+      r(-2, 9, 4, 1, c[4]);
+      canvas.restore();
+      canvas.drawCircle(Offset(x, y - s * 0.25), s * 0.22, Paint()..color = _rgba(c[0], a * 0.15));
     }
   }
 

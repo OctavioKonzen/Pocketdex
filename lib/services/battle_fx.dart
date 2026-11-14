@@ -111,9 +111,9 @@ class BattleFx {
   }
 
   /// O plano do golpe [slug] usado por [from] (0 você, 1 o outro), com os sprites [near] e [far].
-  static MoveFxPlan? plan({required String slug, required String type, required String category, required int from, required int near, required int far, bool self = false, List? entry, int seed = 1}) {
+  static MoveFxPlan? plan({required String slug, required String type, required String category, required int from, required int near, required int far, bool self = false, List? entry, int seed = 1, Map<String, int>? boosts}) {
     final raw = _call('plan', [
-      {'slug': slug, 'type': type, 'category': category, 'from': from, 'near': near, 'far': far, 'self': self, 'entry': entry, 'seed': seed}
+      {'slug': slug, 'type': type, 'category': category, 'from': from, 'near': near, 'far': far, 'self': self, 'entry': entry, 'seed': seed, 'boosts': boosts}
     ]);
     if (raw is! Map) return null;
     try {

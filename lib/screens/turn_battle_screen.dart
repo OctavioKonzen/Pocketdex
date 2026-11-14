@@ -1994,6 +1994,7 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
               self: self,
               entry: entry is List ? entry : null,
               seed: _turnNo,
+              boosts: _b.active(e.side).boosts,
             );
             if (p != null) {
               if (e.category != 'status') _lastHit = getColorForType(e.type);
