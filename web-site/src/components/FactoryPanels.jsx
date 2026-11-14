@@ -1735,7 +1735,7 @@ function RegionMap({ data, run, onClose, monName }) {
   }, [map?.id])
   // O mapa ocupa a largura toda (sem faixas dos lados); mais alto que o espaço, rola na vertical.
   // Tela única: o mapa inteiro cabe no espaço (pela largura ou pela altura), sem rolar.
-  const fit = map ? (box.w / map.aspect <= box.h ? { w: box.w, h: box.w / map.aspect } : { w: box.h * map.aspect, h: box.h }) : { w: 0, h: 0 }
+  const fit = map ? { w: box.w, h: Math.max(box.h, box.w / map.aspect) } : { w: 0, h: 0 }
   // Onde está o treinador: na rota, entre a cidade de antes e a próxima (pelo andar); na cidade, nela.
   const me = useMyTrainer()
   const xyOf = (k) => map?.spots.find((c) => c.i === k)?.xy
@@ -1783,7 +1783,9 @@ function RegionMap({ data, run, onClose, monName }) {
   }
   const labelAt = (city) => SIDES[side[city] ?? 'below']
   return (
-    <div className={`port-panel ${map ? 'flex h-full flex-col gap-1 p-2' : 'min-h-full space-y-2 p-2'}`} data-testid="region-map">
+    <div className={`port-panel ${map ? 'relative h-full overflow-hidden' : 'min-h-full space-y-2 p-2'}`} data-testid="region-map">
+      {/* O título e as etiquetas flutuam por cima do mapa (o desenho ocupa a tela inteira). */}
+      <div className={map ? 'pointer-events-none absolute inset-x-0 top-0 z-20 flex flex-col gap-1 p-2 [&_button]:pointer-events-auto' : ''}>
       <OverlayClose onClose={onClose} title={`🗺️ ${game.region} · ${game.game}`} />
       <p className={map ? 'flex shrink-0 gap-1 overflow-x-auto whitespace-nowrap text-[10px] font-bold sm:text-xs' : 'flex flex-wrap gap-1 text-xs font-bold'} data-testid="region-hud">
         <span className="port-chip px-1.5">{clock.night ? `🌙 ${t('Noite')}` : `☀️ ${t('Dia')}`}</span>
@@ -1791,10 +1793,12 @@ function RegionMap({ data, run, onClose, monName }) {
         <span className="port-chip px-1.5">{t(SEASON_LABEL[clock.season])}</span>
         {plot && <span className="port-chip px-1.5 text-red-300" data-testid="region-plot">🚨 {t('Plano da {0}: {1}/{2} atrapalhados').replace('{0}', TEAM_NAMES[plot.team] ?? 'Equipe Rocket').replace('{1}', plot.foiled).replace('{2}', plot.chapters.length)}</span>}
       </p>
+      </div>
       {map ? (
-        // O Town Map (como nos jogos): o desenho da região, as cidades em círculos; tocando numa, o nome dela embaixo.
-        <div className="port-card flex min-h-0 flex-1 flex-col overflow-hidden bg-[#14396f]" data-testid="town-map-region">
-          <div ref={boxRef} className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden" data-testid="town-map-scroll">
+        // O Town Map (como nos jogos): o desenho da região na tela inteira, as cidades em círculos; tocando numa, o nome
+        // dela embaixo. Mais alto que a tela: arrasta para ver o resto (sem sair da tela).
+        <div className="absolute inset-0 flex flex-col overflow-hidden bg-[#14396f]" data-testid="town-map-region">
+          <div ref={boxRef} className="no-scrollbar relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden" data-testid="town-map-scroll">
             <div className="relative" style={{ width: fit.w, height: fit.h }}>
               <img src={spriteUrl(`maps/${map.id}.webp`)} alt="" className="absolute inset-0 h-full w-full select-none" draggable={false} data-testid="town-map-image" />
               {/* As vilas e cidades que não são da história (só o círculo). */}
@@ -1835,7 +1839,7 @@ function RegionMap({ data, run, onClose, monName }) {
             const c = cities[shown]
             const done = c.steps.every((k) => k < run.boss.step)
             return (
-              <p className="port-titlebar px-2 py-1 text-xs sm:text-sm" data-testid="town-map-name">
+              <p className="port-titlebar absolute inset-x-0 bottom-0 z-20 px-2 py-1 text-xs sm:text-sm" data-testid="town-map-name">
                 <span data-no-translate>{c.city}</span>
                 {shown === hereIndex ? ` · ◀ ${t('você está indo para cá')}` : done ? ' · ✔' : ''}
                 {roam && c.steps.includes(roam.at) && <span className="text-amber-300" data-testid="region-roamer"> · 🐾 <span data-no-translate>{roamName(monName(roam.id))}</span> {t('foi visto aqui')}</span>}
