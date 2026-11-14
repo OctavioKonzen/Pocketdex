@@ -1660,15 +1660,6 @@ waiting && online?.waitForSwitch
               </MenuGrid>
             : waiting && !locked && menu === 'fight'
               ? <div className="relative grid h-full grid-cols-2 grid-rows-2 gap-1.5" data-testid="moves">
-            {/* Em cima dos golpes (como no port): a categoria, o poder e a precisão do golpe apontado. */}
-            {(() => {
-              const m = current.moves[Math.min(focusMove, current.moves.length - 1)]
-              return m && <div className="port-info absolute right-0 bottom-full mb-[1.5%] flex items-center gap-[1.2cqw] text-[1.4cqw] text-white" data-testid="move-info-line">
-                <span className="rounded-sm px-[0.6cqw]" style={{ background: m.category === 'physical' ? '#c2410c' : m.category === 'special' ? '#1d4ed8' : '#6b7280' }}>{CATEGORY[m.category]?.[0]}</span>
-                <span>{`PWR ${m.power || '—'}`}</span>
-                <span>{`ACC ${m.accuracy === true || !m.accuracy ? '—' : m.accuracy}`}</span>
-              </div>
-            })()}
             {current.moves.map((m, i) => {
               const eff = moveEffect(hit, current, rival, m)
               const z = selected === 'z' && canGimmick(battle, 0, 'z', i)
@@ -1813,7 +1804,7 @@ waiting && !locked && menu === 'fight' ? <MenuButton onClick={() => setMenu('mai
         {effect && <MoveFx key={effect.key} plan={effect.plan} color={effect.color} />}
         {impact && <span key={impact.n} className="move-impact pointer-events-none absolute z-20" style={{ left: `${impact.x}%`, top: `${impact.y}%`, '--c': impact.color }} data-testid="move-impact" />}
         {flash > 0 && <div key={`flash-${flash}`} className="battle-flash pointer-events-none absolute inset-0 bg-white" />}
-        <div className={`absolute z-20 right-[1.25%] bottom-[8.5%] w-[31.5%] transition-opacity ${intro && poke[0] === 'hidden' ? 'opacity-0' : ''}`} data-fx-hud>
+        <div className={`absolute z-20 right-[1.25%] bottom-[24%] w-[31.5%] transition-opacity ${intro && poke[0] === 'hidden' ? 'opacity-0' : ''}`} data-fx-hud>
           <button type="button" className="block w-full cursor-pointer text-left" onClick={() => setInspect(0)} aria-label={t('Ver detalhes do seu Pokémon')} data-testid="inspect-me">
             <PortHp mon={me} hp={shown.hp[0][shown.active[0]]} status={shown.status[0][shown.active[0]]} dmax={shown.dmax[0]} mine hpTestId={online ? "online-hp-" + online.side : undefined}
               exp={expBarOf(battle, shown.active[0], shown.hp[1])} />
@@ -1834,11 +1825,20 @@ waiting && !locked && menu === 'fight' ? <MenuButton onClick={() => setMenu('mai
             : waiting && !locked && (menu === 'main' || menu === 'fight') && !battle.needSwitch ? `${t('O que')} ${current.name} ${t('vai fazer?')}`
             // No fim, o recado do resultado também vem na caixa (em partes, se precisar).
             : !busy && battle.winner != null && (endNote || (persona && battle.winner === 0)) ? `${text}${persona && battle.winner === 0 ? ` 💬 ${persona.name}: “${t(persona.beat)}”` : ''}${endNote ? ` ${endNote}` : ''}` : text} />
-        {controlsGrid && <div className="port-controls absolute right-[1.25%] bottom-[28%] z-30 h-[19%] w-[36%]" data-testid="battle-bottom-grid">{controlsGrid}</div>}
+        {controlsGrid && <div className="port-controls absolute right-[1.25%] bottom-[8.5%] z-30 h-[14.5%] w-[36%]" data-testid="battle-bottom-grid">{controlsGrid}</div>}
         {/* A barra de dicas embaixo (como no port): o que o toque faz e o Voltar. */}
         <div className="port-hint absolute inset-x-0 bottom-0 z-30 flex h-[6.7%] items-center gap-3 px-2 text-[1.6cqw] font-bold" data-testid="battle-bottom-footer">
           <span className="port-key">✋</span>
-          <span className="shrink-0">{waiting && !locked && menu === 'fight' ? t('Toque: usar · Segure: detalhes') : waiting ? t('Toque: escolher') : t('Toque: próximo')}</span>
+          {waiting && !locked && menu === 'fight' && current.moves[Math.min(focusMove, current.moves.length - 1)] ? (() => {
+            // Na barra de dicas (como no port): a categoria, o poder e a precisão do golpe apontado.
+            const m = current.moves[Math.min(focusMove, current.moves.length - 1)]
+            return <span className="port-info flex shrink-0 items-center gap-[1.2cqw] text-white" data-testid="move-info-line">
+              <span className="rounded-sm px-[0.6cqw]" style={{ background: m.category === 'physical' ? '#c2410c' : m.category === 'special' ? '#1d4ed8' : '#6b7280' }}>{CATEGORY[m.category]?.[0]}</span>
+              <span>{`PWR ${m.power || '—'}`}</span>
+              <span>{`ACC ${m.accuracy === true || !m.accuracy ? '—' : m.accuracy}`}</span>
+              <span className="text-slate-400">{t('Segure: detalhes')}</span>
+            </span>
+          })() : <span className="shrink-0">{waiting ? t('Toque: escolher') : t('Toque: próximo')}</span>}
           {/* Os efeitos no campo, a velocidade e o registro também ficam aqui (nada embaixo da tela). */}
           <FieldBar battle={battle} bare />
           {controlsFooter && <div className="h-[85%] shrink-0">{controlsFooter}</div>}
@@ -2272,7 +2272,7 @@ export function MultiBattle({battle, hit = null, onExit, onAgain, onFinish, onli
   const fieldSlots = teamSide => (shown?.slots[teamSide] ?? state.sides[teamSide].slots.map(slot=>slot.index)).map((index,slot)=>({slot,index})).filter(slot=>slot.index>=0)
   const hpOf = (teamSide,index) => shown?.hp[teamSide]?.[index] ?? battle.sides[teamSide].team[index].hp
   // Como no port: as caixas do adversário em cima à esquerda, as suas embaixo à direita (empilhadas).
-  const info = teamSide => <div data-fx-hud className={`absolute z-20 w-[31.5%] space-y-[0.6%] ${teamSide===side?'bottom-[8.5%] right-[1.25%]':'top-[1.9%] left-[1.25%]'}`}>
+  const info = teamSide => <div data-fx-hud className={`port-multi absolute z-20 w-[26%] space-y-[0.5%] ${teamSide===side?'bottom-[24%] right-[1.25%]':'top-[1.9%] left-[1.25%]'}`}>
     {fieldSlots(teamSide).map(slot=>{
       const mon=battle.sides[teamSide].team[slot.index]
       return <div key={slot.slot} aria-label={`${trainer(battle.controllers[teamSide][slot.slot])} · posição ${slot.slot+1}`}>
@@ -2282,7 +2282,7 @@ export function MultiBattle({battle, hit = null, onExit, onAgain, onFinish, onli
   </div>
   // O cenário do lugar (o mesmo do mapa, como na batalha de um contra um), com a plataforma embaixo de cada um.
   const scene = battleScene(battle.scene, battle.seed ?? 0)
-  const sprites = teamSide => <div className={`absolute z-10 grid items-end ${teamSide===side?`left-0 ${count===3?'bottom-[6%] w-[54%]':'bottom-[6%] w-[46%]'}`:`right-[34.5%] ${count===3?'bottom-[42%] w-[44%]':'bottom-[42%] w-[36%]'}`}`} style={{gridTemplateColumns:`repeat(${count},minmax(0,1fr))`}} data-testid={`multi-sprites-${teamSide}`}>
+  const sprites = teamSide => <div className={`absolute z-10 grid items-end ${teamSide===side?`left-0 ${count===3?'bottom-[18%] w-[50%]':'bottom-[18%] w-[44%]'}`:`right-[34.5%] ${count===3?'bottom-[42%] w-[44%]':'bottom-[42%] w-[36%]'}`}`} style={{gridTemplateColumns:`repeat(${count},minmax(0,1fr))`}} data-testid={`multi-sprites-${teamSide}`}>
     {fieldSlots(teamSide).map(slot=>{const mon=battle.sides[teamSide].team[slot.index],id=mon.dmax && mon.gmax || mon.id;return <div key={slot.slot} className="relative">
       <PlatformBase scene={scene} side={teamSide===side?'mine':'foe'} scale={battleScale(byId?.get(id)?.height)}/>
       <BattleSprite mon={mon} id={id} back={teamSide===side} fainted={hpOf(teamSide,slot.index)<=0} dmax={mon.dmax>0} tera={teraOf(mon)} byId={byId}/>
@@ -2442,7 +2442,7 @@ export function MultiBattle({battle, hit = null, onExit, onAgain, onFinish, onli
       {/* Todo texto na caixa (o erro também); se não couber, em partes. */}
       <BattleDialog boxRef={dialogRef} narrow onSkip={()=>skip.current?.()} text={shown ? shown.text : (error || online?.error) ? (error || online.error) : choosing ? prompt : status}/>
       {/* O menu e os golpes acima das suas caixas (como no port); a barra de dicas embaixo. */}
-      {multiActions.slots.grid && <div className="port-controls absolute right-[1.25%] z-30 h-[19%] w-[36%]" style={{ bottom: `${9.5 + count * 14.5}%` }} data-testid="battle-bottom-grid">{multiActions.slots.grid}</div>}
+      {multiActions.slots.grid && <div className="port-controls absolute right-[1.25%] bottom-[8.5%] z-30 h-[14.5%] w-[36%]" data-testid="battle-bottom-grid">{multiActions.slots.grid}</div>}
       <div className="port-hint absolute inset-x-0 bottom-0 z-30 flex h-[6.7%] items-center gap-3 px-2 text-[1.6cqw] font-bold" data-testid="battle-bottom-footer">
         <span className="port-key">✋</span>
         <span className="shrink-0">{choosing ? t('Toque: escolher') : t('Toque: próximo')}</span>

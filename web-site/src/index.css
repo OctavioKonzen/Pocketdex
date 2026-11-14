@@ -774,3 +774,7 @@ h1, h2, .font-display {
 .port-controls .port-move > div:first-child { font-size: 1.9cqw; line-height: 1.1; }
 .port-controls .port-move > div:last-child { font-size: 1.1cqw; }
 .port-hint { font-family: 'Pixelify Sans', monospace; }
+/* Dupla e tripla: as caixas de vida mais baixas (sem a barra de XP), para não cobrirem os Pokémon. */
+.port-multi .port-hp { padding-top: 0.6%; padding-bottom: 0.8%; }
+.port-multi .port-hp-row { font-size: 1.8cqw; }
+.port-multi .port-hp-num { font-size: 1.4cqw; line-height: 1.05; }

@@ -2739,6 +2739,11 @@
   "fr": "Touche un objet pour voir ce qu’il fait.",
   "es": "Toca un objeto para ver qué hace."
  },
+ "Segure: detalhes": {
+  "en": "Hold: details",
+  "fr": "Maintiens : détails",
+  "es": "Mantén: detalles"
+ },
  "Toque: escolher": {
   "en": "Tap: choose",
   "fr": "Touche : choisir",
