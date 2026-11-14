@@ -723,11 +723,11 @@ ART = {
     'kanto': {'crop': (0, 0, 1536, 1024), 'cities': {'Indigo Plateau': (350, 230), 'Pewter City': (530, 250), 'Viridian City': (250, 410), 'Celadon City': (500, 430), 'Saffron City': (860, 330), 'Lavender Town': (1040, 430), 'Cerulean City': (1130, 230), 'Vermilion City': (1190, 450), 'Pallet Town': (420, 640), 'Fuchsia City': (910, 665), 'Cinnabar Island': (220, 810), 'Seafoam Islands': (720, 900)}},
     'sinnoh': {'crop': (0, 0, 1402, 1122), 'cities': {'Snowpoint City': (697, 240), 'Eterna City': (470, 322), 'Floaroma Town': (372, 425), 'Celestic Town': (848, 378), 'Oreburgh City': (612, 535), 'Canalave City': (247, 565), 'Jubilife City': (492, 632), 'Solaceon Town': (928, 510), 'Veilstone City': (1085, 505), 'Hearthome City': (1040, 645), 'Pastoria City': (1190, 740), 'Sunyshore City': (1240, 888), 'Twinleaf Town': (160, 872), 'Sandgem Town': (372, 942), 'Pokémon League': (1262, 405), 'Fight Area': (1150, 190), 'Survival Area': (1205, 205), 'Resort Area': (1258, 190)}},
     'unova': {'crop': (0, 0, 1536, 1024), 'cities': {
-        'Nuvema Town': (385, 190), 'Nacrene City': (740, 228), 'Icirrus City': (1190, 208), 'Opelucid City': (1395, 300),
-        'Castelia City': (785, 435), 'Striaton City': (150, 458), 'Nimbasa City': (385, 695), 'Undella Town': (795, 790),
-        'Driftveil City': (1262, 740), 'Pokémon League': (165, 205), 'Accumula Town': (475, 490), 'Lacunosa Town': (1090, 90),
-        'Humilau City': (1342, 598), 'Lentimas Town': (920, 110), 'Black City': (770, 560), 'Aspertia City': (140, 745),
-        'Floccesy Town': (420, 545), 'Virbank City': (480, 790), 'Pokéstar Studios': (548, 900), 'Mistralton City': (1040, 505)}},
+        'Nuvema Town': (1400, 895), 'Nacrene City': (1135, 662), 'Icirrus City': (300, 245), 'Opelucid City': (1262, 268),
+        'Castelia City': (733, 870), 'Striaton City': (1180, 877), 'Nimbasa City': (745, 432), 'Undella Town': (1380, 692),
+        'Driftveil City': (300, 478), 'Pokémon League': (950, 218), 'Accumula Town': (1290, 877), 'Lacunosa Town': (1330, 388),
+        'Humilau City': (1360, 548), 'Lentimas Town': (1345, 782), 'Black City': (1134, 458), 'Aspertia City': (175, 762),
+        'Floccesy Town': (290, 622), 'Virbank City': (470, 692), 'Pokéstar Studios': (650, 692), 'Mistralton City': (230, 338)}},
     'kalos': {'crop': (0, 0, 1536, 1024), 'cities': {
         'Anistar City': (215, 388), 'Geosenge Town': (465, 455), 'Cyllage City': (300, 565), 'Ambrette Town': (462, 540),
         'Coumarine City': (350, 738), 'Lumiose City': (790, 350), 'Santalune City': (640, 548), 'Camphrier Town': (950, 705),
