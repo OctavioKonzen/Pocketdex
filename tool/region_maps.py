@@ -733,10 +733,10 @@ ART = {
         'Coumarine City': (665, 214), 'Lumiose City': (729, 502), 'Santalune City': (717, 688), 'Camphrier Town': (480, 668),
         'Vaniville Town': (715, 902), 'Aquacorde Town': (893, 788), 'Dendemille Town': (912, 264), 'Snowbelle City': (1395, 622),
         'Laverre City': (1040, 548), 'Shalour City': (290, 264), 'Couriway Town': (1215, 592), 'Pokémon League': (1372, 308)}},
-    'galar': {'crop': (0, 0, 1214, 1296), 'cities': {
-        'Wyndon': (610, 235), 'Hammerlocke': (300, 318), 'Motostoke': (905, 355), 'Stow-on-Side': (305, 585),
-        'Ballonlea': (905, 645), 'Spikemuth': (590, 640), 'Turffield': (665, 1128), 'Postwick': (640, 1170),
-        'Wedgehurst': (795, 935), 'Hulbury': (775, 578), 'Circhester': (630, 465)}},
+    'galar': {'crop': (0, 0, 1024, 1536), 'cities': {
+        'Wyndon': (518, 205), 'Circhester': (275, 358), 'Spikemuth': (760, 340), 'Hammerlocke': (548, 505),
+        'Ballonlea': (178, 565), 'Stow-on-Side': (378, 600), 'Turffield': (233, 905), 'Motostoke': (530, 1052),
+        'Hulbury': (830, 1122), 'Wedgehurst': (300, 1258), 'Postwick': (602, 1288)}},
     'hisui': {'crop': (0, 0, 1536, 1024), 'cities': {
         'Jubilife Village': (395, 570), 'Alabaster Icelands': (462, 210), 'Coronet Highlands': (890, 260), 'Crimson Mirelands': (1040, 540),
         'Obsidian Fieldlands': (1245, 600), 'Cobalt Coastlands': (1175, 200), 'Temple of Sinnoh': (930, 745)}},
