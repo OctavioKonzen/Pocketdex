@@ -1582,7 +1582,7 @@ function useWidth() {
 /** O campo da batalha (o mesmo cenário dela, no mesmo tamanho: 4:3, como no Black & White), no lugar em que você está. */
 function Field({ biome = 'grass', fieldRef, children, testid }) {
   return (
-    <div ref={fieldRef} className="relative aspect-[4/3] overflow-hidden rounded-t-2xl border-4 border-b-0 hud-edge" style={{ background: '#9fdcff' }} data-testid={testid} data-layout="bw">
+    <div ref={fieldRef} className="absolute inset-0 overflow-clip" style={{ background: '#9fdcff' }} data-testid={testid} data-layout="bw">
       <BattleBackground scene={battleScene(biome)} layout="bw" />
       {children}
     </div>
@@ -1644,7 +1644,7 @@ function FieldMon({ mon, byId, back = false, follower = false, scene, followScal
   if (!p) return null
   const scale = follower && followScale != null ? followScale : battleScale(p.height)
   // follower: andando com você na cidade (de frente, do tamanho dele perto de você, sem base).
-  const place = follower ? 'absolute bottom-[23%] left-[42%] w-[58%]' : back ? 'absolute bottom-[22%] left-[1%] w-[58%]' : 'absolute right-[11%] w-[26%]'
+  const place = follower ? 'absolute bottom-[20%] left-[30%] w-[36%]' : back ? 'absolute bottom-[18%] left-[4%] w-[36%]' : 'absolute right-[14%] w-[20%]'
   return (
     <div className={place} style={back || follower ? undefined : { bottom: `${foeBottom(battleScene(scene)) * 100}%` }} data-testid={follower ? 'follower' : undefined}>
       {!follower && <PlatformBase scene={battleScene(scene)} side={back ? 'mine' : 'foe'} scale={scale} />}
@@ -2014,7 +2014,7 @@ function PathCard({ children, sub, onClick, disabled = false, testid, kind, hidd
   const [c1, c2] = hidden ? ['#475569', '#1e293b'] : CARD_COLORS[kind] ?? ['#64748b', '#334155']
   return (
     <button type="button" onClick={onClick} disabled={disabled} data-testid={testid}
-      className="path-card flex min-w-0 max-w-[34%] flex-1 cursor-pointer flex-col items-center justify-center gap-1 overflow-hidden rounded-xl border-4 border-white/90 p-1.5 text-center text-white shadow-[0_6px_0_rgba(0,0,0,0.35)] disabled:cursor-default disabled:opacity-50"
+      className="path-card flex min-w-0 max-w-[24%] flex-1 cursor-pointer flex-col items-center justify-center gap-1 overflow-hidden rounded-xl border-4 border-white/90 p-1.5 text-center text-white shadow-[0_6px_0_rgba(0,0,0,0.35)] disabled:cursor-default disabled:opacity-50"
       style={{ animationDelay: `${i * 90}ms`, background: hidden ? `repeating-linear-gradient(45deg, ${c1} 0 10px, ${c2} 10px 20px)` : `linear-gradient(160deg, ${c1}, ${c2})` }}>
       <span className="flex aspect-square w-[46%] shrink-0 items-center justify-center rounded-full border-2 border-white/80 bg-white/20 text-2xl drop-shadow sm:text-4xl">{hidden ? '❔' : kind === 'dungeon' ? '🕳️' : NODE_INFO[kind]?.icon ?? '❔'}</span>
       <span className={`line-clamp-3 font-black leading-tight drop-shadow ${hidden ? 'text-[10px] sm:text-xs' : 'text-xs sm:text-base'}`}>{children}</span>
@@ -2147,7 +2147,7 @@ function TownMap({ route, pos, from, to, title, me, width, fieldRef, onPick, blo
   const n = route.options.length
   const ys = route.options.map((_, k) => y0 + (k - (n - 1) / 2) * Math.min(30, 84 / n))
   return (
-    <div ref={fieldRef} className="town-map relative aspect-[4/3] overflow-hidden rounded-t-2xl border-4 border-b-0 hud-edge" data-testid="factory-map" data-fork="1">
+    <div ref={fieldRef} className="town-map absolute inset-0 overflow-clip" data-testid="factory-map" data-fork="1">
       <svg viewBox={`0 0 ${W} ${H}`} className="absolute inset-0 h-full w-full" aria-hidden="true">
         {/* A rota (o que já passou mais clara) e as cidades nas pontas. */}
         <line x1={x(0)} y1={y0} x2={x(here)} y2={y0} stroke="#fde68a" strokeWidth="3" strokeLinecap="round" />
@@ -2225,39 +2225,28 @@ function Badges({ data, run }) {
 }
 
 // tools: BOLSA, TIME, MAPA e AJUDA numa linha fixa no alto da tela de baixo; os caminhos e o resto, nas páginas (◀ ▶).
-function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, wideMenu = false, panel = null, tools = null }) {
-  // A moldura comprada na loja de cosméticos e a cor da região (o tema dela na barra).
-  const theme = data && run ? REGION_THEME[data.bosses[run.boss.region]?.region] : null
+function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, panel = null, tools = null }) {
+  // A HUD da batalha (o port de Black & White), igual: o campo 16:9, a caixa de texto à esquerda, os botões à direita
+  // dela e a faixa de dica embaixo, tudo dentro da tela (nada embaixo dela). Igual ao app.
   return (
-    <div className="select-none">
-      {/* A Bolsa, o time, a loja e a troca abrem por cima do campo (a mesma tela, como no jogo; dá para jogar com o celular de lado). */}
-      <div className="relative">
-        {/* Sem corte seco: a tela do lugar troca com um fade (mapa, loja, resultado...). */}
-        <div key={field?.props?.testid ?? ''} className="page-in">{field}</div>
-        {/* A fala dentro da tela, embaixo, no mesmo lugar e do mesmo tamanho da batalha (o que não cabe: tocar passa). */}
-        <div className={`dlg-box absolute inset-x-[1.5%] bottom-[1.5%] z-20 h-[21%] cursor-pointer space-y-1 overflow-hidden rounded-lg border-4 px-3 py-1.5 text-left text-sm leading-snug font-bold sm:px-4 sm:text-lg ${frame ? `frame-${frame}` : ''}`}
-          data-testid="factory-text" onClick={(e) => { const el = e.currentTarget; el.scrollTop = el.scrollTop + el.clientHeight >= el.scrollHeight - 1 ? 0 : el.scrollTop + el.clientHeight - 8 }}>
-          {text}
-        </div>
-        {/* O menu dentro do campo, à direita, acima da caixa de texto (sem tela de baixo). */}
-        {menu && (
-          <div className="dlg-box absolute right-[1.5%] top-[17%] bottom-[24.5%] z-20 flex w-[34%] flex-col rounded-lg border-4 p-1.5 text-xs" data-testid="factory-bottom">
-            <div className="min-h-0 flex-1"><PagedMenu key={field?.props?.testid ?? ''} wide>{menu}</PagedMenu></div>
-          </div>
-        )}
-        {panel && <div key={panel?.key ?? panel?.props?.testid ?? 'panel'} className="field-overlay factory-overlay panel-in rounded-t-2xl border-4 border-b-0 hud-edge bg-bg text-text" data-testid="factory-panel">{panel}</div>}
+    <div className="battle-field port-field factory-port relative aspect-video select-none overflow-clip rounded-2xl border-4 hud-edge" style={{ background: '#9fdcff' }}>
+      {/* Sem corte seco: a tela do lugar troca com um fade (mapa, loja, resultado...). */}
+      <div key={field?.props?.testid ?? ''} className="page-in absolute inset-0">{field}</div>
+      {/* A caixa de texto no lugar da da batalha (o que não cabe: tocar passa). */}
+      <div className={`bw-message absolute left-[1.25%] ${menu ? 'right-[37.3%]' : 'right-[1.25%]'} bottom-[8.5%] z-30 h-[14.5%] cursor-pointer space-y-0.5 overflow-hidden px-[2.2%] py-[0.8%] text-left text-[2.1cqw] leading-snug font-bold ${frame ? `frame-${frame}` : ''}`}
+        data-testid="factory-text" onClick={(e) => { const el = e.currentTarget; el.scrollTop = el.scrollTop + el.clientHeight >= el.scrollHeight - 1 ? 0 : el.scrollTop + el.clientHeight - 8 }}>
+        {text}
       </div>
-      {!run && <div className="bar-tools flex h-7 items-center justify-end gap-1 rounded-b-2xl border-4 border-t-0 hud-edge hud-bar px-1">{tools}</div>}
-      {run && (
-        <div className="flex h-8 items-center gap-x-2 whitespace-nowrap rounded-b-2xl border-4 border-t-0 hud-edge hud-bar px-2 text-xs font-bold text-white" style={theme ? { background: `linear-gradient(90deg, ${theme}, color-mix(in srgb, #334155 78%, var(--hud-accent, #334155)) 70%)` } : undefined} data-testid="factory-bar">
-          {/* As informações rolam de lado; o time fica sempre à direita. A Bolsa é só a contagem (o que tem dentro: em BOLSA). Igual ao app. */}
-          <span className="flex min-w-0 flex-1 items-center gap-x-3 overflow-x-auto">
+      {/* Os botões no lugar dos da batalha, à direita da caixa de texto (o que não cabe vai para a próxima página). */}
+      {menu && <div className="port-controls absolute right-[1.25%] bottom-[8.5%] z-30 h-[14.5%] w-[36%]" data-testid="factory-bottom"><PagedMenu key={field?.props?.testid ?? ''}>{menu}</PagedMenu></div>}
+      {/* A faixa de dica da batalha: o andar, o dinheiro, a Bolsa, as insígnias, BOLSA/TIME/MAPA/AJUDA e o time. */}
+      <div className="port-hint absolute inset-x-0 bottom-0 z-30 flex h-[6.7%] items-center gap-[1.2cqw] whitespace-nowrap px-2 text-[1.5cqw] font-bold" data-testid="factory-bar">
+        {run && (
+          <span className="flex min-w-0 flex-1 items-center gap-x-[1.2cqw] overflow-x-auto">
             <span>🎲 {t('Andar {0}').replace('{0}', run.floor)}</span>
-            {/* O jogo da corrida (cada um é um degrau de dificuldade). */}
             <span title={t('Jogo {0} da corrida: adversários +{1}% em todos os atributos').replace('{0}', gameOf(run)).replace('{1}', Math.round(foeBoostAt(tierOf(run)) * 100))} data-testid="factory-game">🎮 {gameOf(run)}</span>
             <span>💰 {run.money}</span>
             <span title={t('Bolsa')} data-testid="factory-bag-count">🎒 {BAG_ITEMS.reduce((n, id) => n + (run.bag[id] ?? 0), 0)}</span>
-            {/* Os ovos que vão junto: quantas vitórias faltam para chocar. */}
             {(run.eggs ?? []).map((e, i) => <span key={i} title={t(e.mystery ? 'Ovo misterioso: choca em {0} vitórias' : 'Choca em {0} vitórias').replace('{0}', e.left)} data-testid="factory-egg">{e.mystery ? '❔' : '🥚'}{e.left}</span>)}
             <span title={t('Pokédex da corrida')} data-testid="factory-dex">📖 {dexOf(run).length}</span>
             {data && <Badges data={data} run={run} />}
@@ -2268,20 +2257,23 @@ function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, 
             {run.berry && <span title={t('Vaso de frutas')} data-testid="factory-berry">🌱{Math.max(0, run.berry.need - (run.floor - run.berry.floor))}</span>}
             {run.daycare && <span title={t('Creche')}>🏡</span>}
           </span>
-          {/* BOLSA, TIME, MAPA e AJUDA: ícones na faixa (sem tela de baixo). */}
-          {tools && <span className="bar-tools flex shrink-0 gap-1" data-testid="factory-tools">{tools}</span>}
+        )}
+        {!run && <span className="flex-1" />}
+        {tools && <span className="bar-tools flex shrink-0 gap-1" data-testid="factory-tools">{tools}</span>}
+        {run && (
           <span className="flex shrink-0 gap-0.5">
             {run.team.map((m, i) => (
               <span key={i} className="flex flex-col items-center" title={t(prettyName(byId?.get(m.id)?.name ?? ''))}>
-                <PokeIcon id={m.id} shiny={Boolean(m.shiny)} className={`h-5 w-5 ${(m.hp ?? 1) > 0 ? '' : 'opacity-40 grayscale'}`} />
-                <span className="block h-1 w-6 overflow-hidden rounded bg-slate-900">
+                <PokeIcon id={m.id} shiny={Boolean(m.shiny)} className={`h-[2.6cqw] w-[2.6cqw] ${(m.hp ?? 1) > 0 ? '' : 'opacity-40 grayscale'}`} />
+                <span className="block h-[0.4cqw] w-[2.8cqw] overflow-hidden rounded bg-slate-900">
                   <span className={`block h-full ${(m.hp ?? 1) > 0.5 ? 'bg-emerald-400' : (m.hp ?? 1) > 0.2 ? 'bg-amber-400' : 'bg-red-500'}`} style={{ width: `${Math.max(0, Math.min(1, m.hp ?? 1)) * 100}%` }} />
                 </span>
               </span>
             ))}
           </span>
-        </div>
-      )}
+        )}
+      </div>
+      {panel && <div key={panel?.key ?? panel?.props?.testid ?? 'panel'} className="field-overlay factory-overlay panel-in border-0 bg-bg text-text" data-testid="factory-panel">{panel}</div>}
     </div>
   )
 }
@@ -2474,7 +2466,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
   const town = run && inTown(run.scene ?? 'grass')
   const [healerSprite, healerName] = run ? (town ? ['sd-nurse', 'Enfermeira Joy'] : healerOf(run)) : ['sd-nurse', '']
   const nurse = <FarPerson id={healerSprite} trainers={trainers} width={width} />
-  let field, text, menu, below = null, wideMenu = false, toolRow = false
+  let field, text, menu, below = null, toolRow = false
   // A Creche (um lugar da cidade, separado do Poké Mart): quem fica e o ovo.
   const daycareView = () => {
       const care = run.daycare
@@ -2756,7 +2748,6 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     ) : (
       <MenuButton testid="safari-leave" disabled={busy} onClick={() => save(leaveSafari(run))}>{t('CONTINUAR')}</MenuButton>
     )
-    wideMenu = true
   } else if (step === 'trade') {
     // Troca: escolhe quem dar; o oferecido vem TRADE_LEVELS níveis acima, com o item de quem foi.
     const offer = p.trade
@@ -3051,7 +3042,6 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         {down && <p className="text-sm text-red-600">{t('O time todo está desmaiado: use um Revive ou desista.')}</p>}
       </>
     )
-    wideMenu = true
     menu = (
       <>
         {!asCards && pathItems}
@@ -3153,12 +3143,9 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     // Na rota: as cartas dos caminhos no campo e, ao lado delas, o resto (árvore, mel, fruta...). Nada embaixo do campo.
     if (asCards) {
       const rest = Children.toArray(menu.props.children)
-      menu = null
+      menu = rest.length ? <>{rest}</> : null
       const cards = (
-        <div key={`cards-${run.floor}`} className="absolute inset-x-[3%] top-[17%] bottom-[24.5%] z-20 flex gap-[2%]" data-testid="path-cards">
-          <div className="flex min-w-0 flex-1 items-stretch justify-center gap-[3%]">{pathItems}</div>
-          {rest.length > 0 && <div className="dlg-box flex max-h-full w-[26%] shrink-0 flex-col self-start rounded-lg border-4 p-1.5 text-xs"><PagedMenu wide>{rest}</PagedMenu></div>}
-        </div>
+        <div key={`cards-${run.floor}`} className="absolute inset-x-[3%] top-[16%] bottom-[25%] z-20 flex items-stretch justify-center gap-[2%]" data-testid="path-cards">{pathItems}</div>
       )
       field = cloneElement(field, {}, ...Children.toArray(field.props.children), cards)
     }
@@ -3252,7 +3239,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
 
   return (
     <section data-testid="factory-screen">
-      <BattleFrame field={field} run={run} byId={byId} data={data} frame={factory.frame} wideMenu={wideMenu} menu={menu} tools={toolRow ? tools : null} panel={below || extras || null}
+      <BattleFrame field={field} run={run} byId={byId} data={data} frame={factory.frame} menu={menu} tools={toolRow ? tools : null} panel={below || extras || null}
         text={<>
           {text}
           {unlocked != null && <p className="text-sm text-amber-600" data-testid="factory-shiny-unlocked">✨ {t('{0} shiny liberado para começar as próximas corridas!').replace('{0}', name(unlocked))}</p>}
