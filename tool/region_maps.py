@@ -729,11 +729,10 @@ ART = {
         'Humilau City': (1360, 548), 'Lentimas Town': (1345, 782), 'Black City': (1134, 458), 'Aspertia City': (175, 762),
         'Floccesy Town': (290, 622), 'Virbank City': (470, 692), 'Pokéstar Studios': (650, 692), 'Mistralton City': (230, 338)}},
     'kalos': {'crop': (0, 0, 1536, 1024), 'cities': {
-        'Anistar City': (215, 388), 'Geosenge Town': (465, 455), 'Cyllage City': (300, 565), 'Ambrette Town': (462, 540),
-        'Coumarine City': (350, 738), 'Lumiose City': (790, 350), 'Santalune City': (640, 548), 'Camphrier Town': (950, 705),
-        'Vaniville Town': (630, 825), 'Aquacorde Town': (995, 795), 'Dendemille Town': (1240, 548), 'Snowbelle City': (1300, 430),
-        'Laverre City': (1110, 420), 'Shalour City': (150, 478), 'Couriway Town': (1392, 468), 'Pokémon League': (1000, 250),
-        'Kiloude City': (500, 282)}},
+        'Anistar City': (1130, 248), 'Geosenge Town': (380, 335), 'Cyllage City': (250, 452), 'Ambrette Town': (230, 642),
+        'Coumarine City': (665, 214), 'Lumiose City': (729, 502), 'Santalune City': (717, 688), 'Camphrier Town': (480, 668),
+        'Vaniville Town': (715, 902), 'Aquacorde Town': (893, 788), 'Dendemille Town': (912, 264), 'Snowbelle City': (1395, 622),
+        'Laverre City': (1040, 548), 'Shalour City': (290, 264), 'Couriway Town': (1215, 592), 'Pokémon League': (1372, 308)}},
     'galar': {'crop': (0, 0, 1214, 1296), 'cities': {
         'Wyndon': (610, 235), 'Hammerlocke': (300, 318), 'Motostoke': (905, 355), 'Stow-on-Side': (305, 585),
         'Ballonlea': (905, 645), 'Spikemuth': (590, 640), 'Turffield': (665, 1128), 'Postwick': (640, 1170),
