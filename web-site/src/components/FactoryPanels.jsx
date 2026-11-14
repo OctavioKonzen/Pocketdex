@@ -1981,7 +1981,7 @@ function Dialogue({ lines, fallback = null }) {
 /** Um botão da linha fixa de ferramentas (BOLSA, TIME, MAPA, AJUDA). Igual ao app. */
 function ToolButton({ icon, children, onClick, testid, active = false }) {
   return (
-    <button type="button" onClick={onClick} data-testid={testid}
+    <button type="button" onClick={onClick} data-testid={testid} data-k={testid?.replace('factory-menu-', '')}
       title={typeof children === 'string' ? children : undefined}
       className={`dlg-btn tool-btn cursor-pointer truncate rounded-lg px-1 text-xs font-black ${active ? 'active' : ''}`}>
       {icon}<span className="tool-label"> {children}</span>
@@ -2233,10 +2233,22 @@ function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, 
       {/* Sem corte seco: a tela do lugar troca com um fade (mapa, loja, resultado...). */}
       <div key={field?.props?.testid ?? ''} className="page-in absolute inset-0">{field}</div>
       {/* A caixa de texto no lugar da da batalha (o que não cabe: tocar passa). */}
-      <div className={`bw-message absolute left-[1.25%] ${menu ? 'right-[37.3%]' : 'right-[1.25%]'} bottom-[8.5%] z-30 h-[14.5%] cursor-pointer space-y-0.5 overflow-hidden px-[2.2%] py-[0.8%] text-left text-[2.1cqw] leading-snug font-bold ${frame ? `frame-${frame}` : ''}`}
+      <div className={`bw-message absolute left-[1.25%] ${menu ? 'right-[37.3%]' : 'right-[1.25%]'} bottom-[8.5%] z-30 h-[14.5%] cursor-pointer space-y-0.5 overflow-hidden px-[2.2%] py-[0.8%] text-left text-[2.3cqw] leading-snug font-bold ${frame ? `frame-${frame}` : ''}`}
         data-testid="factory-text" onClick={(e) => { const el = e.currentTarget; el.scrollTop = el.scrollTop + el.clientHeight >= el.scrollHeight - 1 ? 0 : el.scrollTop + el.clientHeight - 8 }}>
         {text}
       </div>
+      {/* A vida do Pokémon da frente, no mesmo lugar da sua caixa de HP na batalha (os botões ficam embaixo dela). */}
+      {run && menu && (() => {
+        const m = run.team.find((x) => (x.hp ?? 1) > 0) ?? run.team[0]
+        if (!m) return null
+        const pct = Math.max(0, Math.min(100, (m.hp ?? 1) * 100))
+        return (
+          <div className="port-hp absolute right-[1.25%] bottom-[24%] z-20 w-[31.5%]" data-testid="port-hp-me">
+            <div className="port-hp-row"><span className="truncate" data-no-translate>{m.nick ?? prettyName(byId?.get(m.id)?.name ?? '')}</span><span className="port-lv">{`Lv.${m.level ?? ''}`}</span></div>
+            <div className="port-hp-bar"><b>HP</b><i><u style={{ width: `${pct}%`, background: pct > 50 ? '#4ade80' : pct > 20 ? '#facc15' : '#ef4444' }} /></i></div>
+          </div>
+        )
+      })()}
       {/* Os botões no lugar dos da batalha, à direita da caixa de texto (o que não cabe vai para a próxima página). */}
       {menu && <div className="port-controls absolute right-[1.25%] bottom-[8.5%] z-30 h-[14.5%] w-[36%]" data-testid="factory-bottom"><PagedMenu key={field?.props?.testid ?? ''}>{menu}</PagedMenu></div>}
       {/* A faixa de dica da batalha: o andar, o dinheiro, a Bolsa, as insígnias, BOLSA/TIME/MAPA/AJUDA e o time. */}
@@ -3142,10 +3154,16 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     toolRow = true
     // Na rota: as cartas dos caminhos no campo e, ao lado delas, o resto (árvore, mel, fruta...). Nada embaixo do campo.
     if (asCards) {
+      // Como no port: os 4 botões coloridos (BOLSA, TIME, MAPA, AJUDA) no lugar de LUTAR/BOLSA/POKÉMON/FUGIR; os
+      // caminhos em cartas no campo e, ao lado delas, o que dá para fazer aqui (árvore, mel, fruta...).
       const rest = Children.toArray(menu.props.children)
-      menu = rest.length ? <>{rest}</> : null
+      menu = <div className="grid h-full grid-cols-2 grid-rows-2 gap-[4%]">{tools}</div>
+      toolRow = false
       const cards = (
-        <div key={`cards-${run.floor}`} className="absolute inset-x-[3%] top-[16%] bottom-[25%] z-20 flex items-stretch justify-center gap-[2%]" data-testid="path-cards">{pathItems}</div>
+        <div key={`cards-${run.floor}`} className="absolute left-[3%] right-[3%] top-[16%] bottom-[37%] z-20 flex gap-[2%]" data-testid="path-cards">
+          <div className="flex min-w-0 flex-1 items-stretch justify-center gap-[2.5%]">{pathItems}</div>
+          {rest.length > 0 && <div className="port-extras flex w-[24%] shrink-0 flex-col justify-center gap-[3%]">{rest}</div>}
+        </div>
       )
       field = cloneElement(field, {}, ...Children.toArray(field.props.children), cards)
     }

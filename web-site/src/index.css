@@ -788,3 +788,15 @@ h1, h2, .font-display {
 /* A faixa do Pokelike com BOLSA, TIME, MAPA e AJUDA só com os ícones; as cartas usam o campo todo sem o menu ao lado. */
 .bar-tools .tool-btn { height: 22px; min-width: 26px; padding: 0 4px; font-size: 13px; }
 .bar-tools .tool-label { display: none; }
+/* Pokelike: os 4 botões do port (como LUTAR/BOLSA/POKÉMON/FUGIR) e os extras ao lado das cartas. */
+.port-controls .dlg-btn[data-k='bag'] { background: linear-gradient(#ca8a04, #854d0e); border-color: #fde68a; }
+.port-controls .dlg-btn[data-k='team'] { background: linear-gradient(#15803d, #14532d); border-color: #86efac; }
+.port-controls .dlg-btn[data-k='region'] { background: linear-gradient(#1d4ed8, #1e3a8a); border-color: #93c5fd; }
+.port-controls .dlg-btn[data-k='help'] { background: linear-gradient(#c62828, #7f1d1d); border-color: #fca5a5; }
+.port-controls .tool-btn { height: 100%; font-size: 1.9cqw; display: flex; align-items: center; justify-content: center; gap: 0.6cqw; }
+.port-field .bw-message p { font-size: 1.5cqw; }
+.port-extras .dlg-btn {
+  background: rgba(20, 22, 28, 0.92); color: #fff; border: 2px solid #8b93a1; border-left: 6px solid #facc15; border-radius: 0;
+  text-shadow: 1px 1px 0 #000; font-family: 'Pixelify Sans', monospace; font-size: 1.5cqw; padding: 0.6cqw 0.8cqw;
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
