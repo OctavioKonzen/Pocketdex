@@ -644,18 +644,30 @@ function MonDetails({ battle, side, mon }) {
   )
 }
 
-/** O time do treinador em Poké Balls em cima da caixa de vida: acesa, de pé; apagada, desmaiou (como nos jogos). Igual ao app. */
-function PartyBalls({ hp, side }) {
+
+/**
+ * A caixa de HP do port de Black & White: escura com o canto cortado, o nome, "Lv.50", o "HP" em verde-amarelo e a
+ * barra fina (verde, amarela, vermelha); a sua com os números e o XP embaixo.
+ */
+function PortHp({ mon, hp, mine, status, dmax, hpTestId, exp = null }) {
+  const pct = Math.max(0, Math.min(100, (hp / mon.maxHp) * 100))
+  const color = pct > 50 ? '#4ade80' : pct > 20 ? '#facc15' : '#ef4444'
   return (
-    <span className={`flex h-[14px] items-center gap-[3px] ${side === 'me' ? 'justify-end' : ''}`} data-testid={`party-balls-${side}`}>
-      {hp.map((v, i) => (
-        <svg key={i} viewBox="0 0 16 16" className="h-3 w-3" data-testid={`party-ball-${v > 0 ? 'on' : 'off'}`} aria-hidden>
-          <circle cx="8" cy="8" r="7" fill={v > 0 ? '#fff' : '#6b7280'} stroke="#111" strokeWidth="1.6" />
-          <path d="M1 8a7 7 0 0 1 14 0z" fill={v > 0 ? '#ef4444' : '#374151'} stroke="#111" strokeWidth="1.6" />
-          <circle cx="8" cy="8" r="2.2" fill={v > 0 ? '#fff' : '#9ca3af'} stroke="#111" strokeWidth="1.6" />
-        </svg>
-      ))}
-    </span>
+    <div className="port-hp" data-testid={mine ? 'port-hp-me' : 'port-hp-foe'}>
+      <div className="port-hp-row">
+        <span className="truncate">{mon.name}</span>
+        {mon.terastal && <span className="port-tag" style={{ background: typeColor(mon.teraType) }} data-testid="tera-badge">{`TERA ${mon.teraType}`.toUpperCase()}</span>}
+        {dmax && <span className="port-tag bg-rose-600">DMAX</span>}
+        {status && <span className="port-tag" style={{ background: STATUS_BADGE[status] }} data-testid="status-badge">{status.toUpperCase()}</span>}
+        <span className="port-lv">{`Lv.${mon.level}`}</span>
+      </div>
+      <div className="port-hp-bar" data-testid="hp-bar">
+        <b>HP</b>
+        <i><u style={{ width: `${pct}%`, background: color }} /></i>
+      </div>
+      {(mine || hpTestId) && <div className="port-hp-num" data-testid={hpTestId}>{`${hp}/${mon.maxHp}`}</div>}
+      {exp != null && <div className="port-exp"><u style={{ width: `${Math.round(exp * 100)}%` }} /></div>}
+    </div>
   )
 }
 
@@ -1109,6 +1121,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   const moveFx = useRef(null)
   const fxAnchors = useRef(null)
   const [anchorsTable, setAnchorsTable] = useState(null)
+  const [focusMove, setFocusMove] = useState(0)
   const world = useRef(null)
   const fxCanvas = useRef(null)
   const live = useRef(true)
@@ -1647,6 +1660,15 @@ waiting && online?.waitForSwitch
               </MenuGrid>
             : waiting && !locked && menu === 'fight'
               ? <div className="relative grid h-full grid-cols-2 grid-rows-2 gap-1.5" data-testid="moves">
+            {/* Em cima dos golpes (como no port): a categoria, o poder e a precisão do golpe apontado. */}
+            {(() => {
+              const m = current.moves[Math.min(focusMove, current.moves.length - 1)]
+              return m && <div className="port-info absolute right-0 bottom-full mb-[1.5%] flex items-center gap-[1.2cqw] text-[1.4cqw] text-white" data-testid="move-info-line">
+                <span className="rounded-sm px-[0.6cqw]" style={{ background: m.category === 'physical' ? '#c2410c' : m.category === 'special' ? '#1d4ed8' : '#6b7280' }}>{CATEGORY[m.category]?.[0]}</span>
+                <span>{`PWR ${m.power || '—'}`}</span>
+                <span>{`ACC ${m.accuracy === true || !m.accuracy ? '—' : m.accuracy}`}</span>
+              </div>
+            })()}
             {current.moves.map((m, i) => {
               const eff = moveEffect(hit, current, rival, m)
               const z = selected === 'z' && canGimmick(battle, 0, 'z', i)
@@ -1654,6 +1676,7 @@ waiting && online?.waitForSwitch
               return (
                 <MoveButton
                   key={m.slug}
+                  onFocusMove={() => setFocusMove(i)}
                   testId={`battle-single-move-${i}`}
                   disabled={m.pp <= 0 || m.disabled}
                   onClick={() => fight(i)}
@@ -1777,8 +1800,7 @@ waiting && !locked && menu === 'fight' ? <MenuButton onClick={() => setMenu('mai
         <div className={`absolute z-20 top-[1.9%] left-[1.25%] w-[31.5%] transition-opacity ${intro && poke[1] === 'hidden' ? 'opacity-0' : ''}`} data-fx-hud>
           <button type="button" className="block w-full cursor-pointer text-left" onClick={() => setInspect(1)} aria-label={t('Ver detalhes do adversário')} data-testid="inspect-foe">
             {/* Quantos o treinador tem: a Poké Ball acesa está de pé; apagada, desmaiou (como nos jogos). */}
-            {!wild && <PartyBalls hp={shown.hp[1]} side="foe" />}
-            <InfoBox bw mon={foe} hp={shown.hp[1][shown.active[1]]} status={shown.status[1][shown.active[1]]} dmax={shown.dmax[1]} boosts={shown.boosts[1]} hpTestId={online ? "online-hp-" + (1 - online.side) : undefined} />
+            <PortHp mon={foe} hp={shown.hp[1][shown.active[1]]} status={shown.status[1][shown.active[1]]} dmax={shown.dmax[1]} hpTestId={online ? "online-hp-" + (1 - online.side) : undefined} />
           </button>
         </div>
         {/* A habilidade em ação: a faixa sai do lado do Pokémon (o adversário à direita, o seu à esquerda), como nos jogos. */}
@@ -1793,8 +1815,7 @@ waiting && !locked && menu === 'fight' ? <MenuButton onClick={() => setMenu('mai
         {flash > 0 && <div key={`flash-${flash}`} className="battle-flash pointer-events-none absolute inset-0 bg-white" />}
         <div className={`absolute z-20 right-[1.25%] bottom-[8.5%] w-[31.5%] transition-opacity ${intro && poke[0] === 'hidden' ? 'opacity-0' : ''}`} data-fx-hud>
           <button type="button" className="block w-full cursor-pointer text-left" onClick={() => setInspect(0)} aria-label={t('Ver detalhes do seu Pokémon')} data-testid="inspect-me">
-            <PartyBalls hp={shown.hp[0]} side="me" />
-            <InfoBox bw mon={me} hp={shown.hp[0][shown.active[0]]} status={shown.status[0][shown.active[0]]} dmax={shown.dmax[0]} boosts={shown.boosts[0]} mine hpTestId={online ? "online-hp-" + online.side : undefined}
+            <PortHp mon={me} hp={shown.hp[0][shown.active[0]]} status={shown.status[0][shown.active[0]]} dmax={shown.dmax[0]} mine hpTestId={online ? "online-hp-" + online.side : undefined}
               exp={expBarOf(battle, shown.active[0], shown.hp[1])} />
           </button>
         </div>
@@ -2559,11 +2580,11 @@ function useHold(onHold) {
   }
 }
 
-function MoveButton({ label, note, color, kind = '', disabled = false, onClick, onHold, testId, children }) {
+function MoveButton({ label, note, color, kind = '', disabled = false, onClick, onHold, onFocusMove, testId, children }) {
   const hold = useHold(onHold)
   return (
     // Desligado (sem PP), ainda dá para segurar e ver o golpe: o botão fica "aria-disabled" em vez de disabled.
-    <button type="button" aria-disabled={disabled} onClick={disabled ? undefined : onClick} data-testid={testId} {...hold}
+    <button type="button" aria-disabled={disabled} onClick={disabled ? undefined : onClick} data-testid={testId} {...hold} onPointerEnter={onFocusMove} onFocus={onFocusMove}
       // Como no port de Black & White: escuro, com a cor do tipo na borda esquerda e o nome do tipo embaixo.
       className="port-move h-full min-h-0 cursor-pointer touch-manipulation overflow-hidden px-2 py-1 text-left text-white select-none aria-disabled:cursor-default aria-disabled:opacity-40"
       style={{ '--type': color, WebkitTouchCallout: 'none' }} data-no-translate>

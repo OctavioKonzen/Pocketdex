@@ -743,3 +743,34 @@ h1, h2, .font-display {
 .port-controls .port-move > div:first-child { font-size: 1.8cqw; }
 .port-controls .port-move > div { font-size: 1.1cqw; }
 .port-controls .gimmick-button { width: 5.5cqw; height: 5.5cqw; font-size: 1.2cqw; }
+/* O port de Black & White: a fonte de pixel, as caixas de HP e o resto da HUD (TurnBattlePage.jsx). */
+.port-field .bw-message, .port-field .port-hp, .port-field .port-controls, .port-field .port-hint, .port-field .port-move, .port-field .port-info {
+  font-family: 'Pixelify Sans', 'Chakra Petch', monospace;
+  letter-spacing: 0.02em;
+}
+.port-hp {
+  background: rgba(24, 26, 30, 0.92);
+  border: 2px solid #8b93a1;
+  box-shadow: inset 0 0 0 2px #1f242d;
+  color: #fff;
+  text-shadow: 1px 1px 0 #000;
+  padding: 1.2% 4% 1.6% 4%;
+  clip-path: polygon(0 0, 100% 0, 100% 62%, calc(100% - 4cqw) 100%, 0 100%);
+}
+.port-hp-row { display: flex; align-items: baseline; gap: 0.6cqw; font-size: 2.3cqw; line-height: 1.15; font-weight: 500; }
+.port-lv { margin-left: auto; flex-shrink: 0; font-size: 1.7cqw; }
+.port-tag { flex-shrink: 0; padding: 0 0.5cqw; border-radius: 2px; font-size: 1.1cqw; font-weight: 700; }
+.port-hp-bar { display: flex; align-items: center; gap: 0.6cqw; margin-top: 0.3cqw; }
+.port-hp-bar b { color: #a3e635; font-size: 1.3cqw; font-weight: 700; line-height: 1; }
+.port-hp-bar i { flex: 1; height: 0.75cqw; background: #2b3240; box-shadow: inset 0 0 0 1px #000; overflow: hidden; }
+.port-hp-bar u { display: block; height: 100%; text-decoration: none; transition: width 0.7s ease-out; }
+.port-hp-num { text-align: right; font-size: 1.7cqw; line-height: 1.2; }
+.port-exp { height: 0.4cqw; margin-top: 0.3cqw; background: #1e293b; }
+.port-exp u { display: block; height: 100%; background: #38bdf8; text-decoration: none; }
+/* O menu do port: botões pequenos de cantos cortados; os golpes um pouco maiores, com o tipo e o PP embaixo. */
+.port-controls .dlg-box { gap: 4%; }
+.port-controls .dlg-btn { font-size: 1.6cqw; padding: 0 5%; clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px); }
+.port-move { padding: 0.4cqw 0.9cqw !important; }
+.port-controls .port-move > div:first-child { font-size: 1.9cqw; line-height: 1.1; }
+.port-controls .port-move > div:last-child { font-size: 1.1cqw; }
+.port-hint { font-family: 'Pixelify Sans', monospace; }
