@@ -638,6 +638,8 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
             : battle != null && _hit != null
             ? ListView(
                 padding: const EdgeInsets.all(12),
+                // Deitado, a tela da batalha fica travada (cabe inteira); no fim, solta para chegar aos botões do resultado.
+                physics: lying && battle.winner == null ? const NeverScrollableScrollPhysics() : null,
                 children: [
                   BattleView(
                     key: ValueKey(_key),
@@ -677,6 +679,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
                     onRematch: const ['league', 'tower', 'factory'].contains(_challenge?['kind']) || battle.seed == null ? null : () => _again(same: true),
                     onFinish: (foeTrainer) {
                       final b = _battle;
+                      if (mounted) setState(() {}); // solta a rolagem (deitado) para os botões do fim
                       // A Factory fica fora do histórico: o replay não refaz as bolsas da corrida.
                       if (b != null && b.members != null && b.seed != null && _challenge?['kind'] != 'factory') {
                         BattleLog.add(BattleLog.record(b, foeName: _foeName, foeTrainer: foeTrainer));
