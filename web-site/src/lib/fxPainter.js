@@ -1,7 +1,7 @@
 // Desenha as camadas de um golpe (battleFx.js) num <canvas>, no instante [ms], com a câmera do golpe.
 // Tudo é desenhado em coordenadas do mundo (960 × 540) e a câmera leva para a tela. Igual ao app (battle_fx_painter.dart).
 
-import { fxCamera, fxEase, fxRand, fxShake } from './battleFx'
+import { fxEase, fxRand, fxView } from './battleFx'
 
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v))
 const lerp = (a, b, k) => a + (b - a) * k
@@ -19,8 +19,7 @@ function rgba(hex, a) {
 
 /** Aplica a câmera do golpe ao contexto (o mundo fica na tela). [w, h] o tamanho da tela. */
 export function applyCamera(g, plan, ms, w, h) {
-  const [cx, cy, z, r] = fxCamera(plan, ms)
-  const [sx, sy] = fxShake(plan, ms)
+  const [cx, cy, z, r, sx, sy] = fxView(plan, ms)
   const [ww, wh] = plan.world ?? [960, 540]
   const fit = Math.min(w / ww, h / wh)
   g.translate(w / 2 + sx * fit, h / 2 + sy * fit)
@@ -31,8 +30,7 @@ export function applyCamera(g, plan, ms, w, h) {
 
 /** A transformação CSS do mundo (os sprites e o fundo, num <div> de 960 × 540) para a mesma câmera. */
 export function cameraCss(plan, ms, w, h) {
-  const [cx, cy, z, r] = fxCamera(plan, ms)
-  const [sx, sy] = fxShake(plan, ms)
+  const [cx, cy, z, r, sx, sy] = fxView(plan, ms)
   const [ww, wh] = plan.world ?? [960, 540]
   const fit = Math.min(w / ww, h / wh)
   return `translate(${w / 2 + sx * fit}px,${h / 2 + sy * fit}px) rotate(${r}deg) scale(${z * fit}) translate(${-cx}px,${-cy}px)`
@@ -40,8 +38,7 @@ export function cameraCss(plan, ms, w, h) {
 
 /** A mesma câmera para um campo cujos filhos já estão em pixels da tela (a batalha): sem a escala do mundo. */
 export function cameraCssPx(plan, ms, w, h) {
-  const [cx, cy, z, r] = fxCamera(plan, ms)
-  const [sx, sy] = fxShake(plan, ms)
+  const [cx, cy, z, r, sx, sy] = fxView(plan, ms)
   const f = w / (plan.world ?? [960, 540])[0]
   return `translate(${w / 2 + sx * f}px,${h / 2 + sy * f}px) rotate(${r}deg) scale(${z}) translate(${-cx * f}px,${-cy * f}px)`
 }
