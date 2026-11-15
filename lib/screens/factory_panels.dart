@@ -26,6 +26,7 @@ import '../services/factory_widget.dart';
 import '../services/factory_run.dart';
 import '../services/league.dart';
 import '../services/missions_reminder.dart';
+import '../services/phone_orientation.dart';
 import '../services/local_database.dart';
 import '../services/team_battle.dart';
 import '../services/team_sets.dart';
@@ -2519,6 +2520,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
   @override
   void initState() {
     super.initState();
+    // O Pokelike é deitado, como o port do Black & White (em pé, a tela 16:9 fica pequena demais).
+    PhoneOrientation.landscape();
     FactoryData.load().then((d) => mounted ? setState(() => _data = d) : null);
     Trainers.load().then((_) => mounted ? setState(() {}) : null);
     LocalDatabase.instance.allPokemonRows().then((rows) {
@@ -2540,6 +2543,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
   @override
   void dispose() {
     BattleSounds.stopMusic(this);
+    PhoneOrientation.leaveLandscape();
     super.dispose();
   }
 
