@@ -14,17 +14,17 @@ void main() {
     return [(s[0] as num) * z, (s[1] as num) * z];
   }
 
-  final person = 0.95 * battleScale(personDm);
+  final person = 0.95 * battleScale(personDm) * followPerson;
   ({double pokemon, double trainer, double k}) sizes(num height, int id) {
     final s = stand(id);
     final f = followerFit(height, s);
     return (pokemon: f.scale * 0.95 * s[1], trainer: person * f.k, k: f.k);
   }
 
-  test('o Pokémon ao lado do treinador, na altura de verdade (igual ao site)', () {
+  test('o Pokémon ao lado do treinador: os grandes na altura de verdade, os pequenos maiores (igual ao site)', () {
     for (final (id, height) in [(25, 4), (6, 17), (143, 21), (1007, 25)]) {
       final r = sizes(height, id);
-      expect(r.pokemon / r.trainer, closeTo(height / personDm, 0.01));
+      expect(r.pokemon / r.trainer, closeTo(followRatio(height), 0.01));
     }
     expect(sizes(25, 1007).k, lessThan(1));
     final wailord = sizes(145, 321);

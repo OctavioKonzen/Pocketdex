@@ -51,11 +51,22 @@ const _platforms = {
 /// treinador); scale: o do Pokémon na caixa dele. [stand]: AnimatedSprites.standOf. Igual ao site.
 const personDm = 16;
 const followMin = 0.35;
+
+/// O treinador na cidade, menor que o da batalha (o Pokémon ao lado aparece melhor).
+const followPerson = 0.75;
+
+/// O Pokémon perto do treinador: os grandes na altura de verdade; os pequenos maiores que a conta (raiz), para dar para
+/// ver (o Mudkip, de 4 dm, fica com metade do treinador em vez de um quarto). Igual ao site.
+double followRatio(num? height) {
+  final r = (height ?? 10) / personDm;
+  return r >= 1 ? r.toDouble() : max(0.45, sqrt(r));
+}
+
 ({double k, double scale}) followerFit(num? height, List<double> stand) {
   final w = max(stand[0], 0.01), h = max(stand[1], 0.01);
-  // A altura do treinador, em caixas do Pokémon (nearPerson).
-  final person = 0.95 * battleScale(personDm);
-  final want = person * max(0.15, (height ?? 10) / personDm);
+  // A altura do treinador, em caixas do Pokémon (nearPerson, na escala da cidade).
+  final person = 0.95 * battleScale(personDm) * followPerson;
+  final want = person * followRatio(height);
   // Cabe no campo: até 0,95 caixa de altura e 1,3 de largura (um pouco por trás do treinador).
   final room = min(0.95, 1.3 * h / w);
   final k = max(followMin, min(1.0, room / want));

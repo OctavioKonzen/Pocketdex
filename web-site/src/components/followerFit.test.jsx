@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { followerFit, FOLLOW_MIN, PERSON_DM } from './FactoryPanels'
+import { followerFit, followRatio, FOLLOW_MIN, FOLLOW_PERSON, PERSON_DM } from './FactoryPanels'
 import { battleScale } from './BattleScene'
 
 const anim = JSON.parse(readFileSync(new URL('../../../assets/database/animated_sprites.json', import.meta.url), 'utf8'))
@@ -10,7 +10,7 @@ const stand = (id) => {
   const [w, h] = anim.stand.front[id]
   return [w * z, h * z]
 }
-const person = 0.95 * battleScale(PERSON_DM)
+const person = 0.95 * battleScale(PERSON_DM) * FOLLOW_PERSON
 // A altura do Pokémon e a do treinador na tela (em caixas), como o campo desenha.
 const sizes = (height, id) => {
   const s = stand(id)
@@ -19,10 +19,10 @@ const sizes = (height, id) => {
 }
 
 describe('o Pokémon ao lado do treinador, na altura de verdade (igual ao app)', () => {
-  it('a proporção é a das alturas (pessoa de 1,6 m)', () => {
+  it('os grandes na altura de verdade, os pequenos maiores (pessoa de 1,6 m)', () => {
     for (const [id, height] of [[25, 4], [6, 17], [143, 21], [1007, 25]]) {
       const { pokemon, trainer } = sizes(height, id)
-      expect(pokemon / trainer).toBeCloseTo(height / PERSON_DM, 2)
+      expect(pokemon / trainer).toBeCloseTo(followRatio(height), 2)
     }
   })
   it('quem é grande demais deixa a cena menor, sem passar do campo', () => {

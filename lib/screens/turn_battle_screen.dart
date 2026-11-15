@@ -627,7 +627,12 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
           child: KeyedSubtree(
             key: ValueKey(_factoryScreen ? 'factory-$_key' : battle != null && _hit != null ? 'battle-$_key' : 'setup'),
             child: _factoryScreen
-            ? ListView(padding: const EdgeInsets.all(12), children: [
+            ? ListView(
+                padding: const EdgeInsets.all(12),
+                // Deitado, a tela do Pokelike fica travada (cabe inteira, com o Sair/Desistir embaixo): o arrastar do PC e
+                // do time não vira rolagem.
+                physics: lying ? const NeverScrollableScrollPhysics() : null,
+                children: [
                 FactoryScreen(
                   key: ValueKey('factory-$_key'),
                   onBattle: _factoryFloor,

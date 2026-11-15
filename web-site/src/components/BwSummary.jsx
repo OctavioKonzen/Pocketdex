@@ -15,12 +15,13 @@ export default function BwSummary({ data: d, onBack, onSwitch, extra = null }) {
   const hp = d.maxHp > 0 ? Math.max(0, Math.min(1, d.hp / d.maxHp)) : 0
   return (
     <div className="bw-party flex flex-col gap-2 p-2" data-testid="bw-summary">
-      <p className="bw-party-title flex justify-between rounded-lg px-3 py-1.5 font-black text-white">
-        <span className="truncate" data-no-translate>{d.name}</span>
-        <span data-no-translate>Lv{d.level}</span>
-      </p>
+      {/* Em cima, como as outras telas: o nome e o nível e o ✕ (voltar). Igual ao app e ao time do Pokelike. */}
+      <div className="port-titlebar -mx-2 -mt-2 flex items-center gap-2 px-3 py-1.5 font-black text-white">
+        <span className="min-w-0 flex-1 truncate" data-no-translate>{d.name}  Lv{d.level}</span>
+        <button type="button" onClick={onBack} className="port-chip cursor-pointer px-2" aria-label={t('Fechar')} data-testid="bw-summary-back">✕</button>
+      </div>
       <div className="flex gap-2">
-        <div className="h-20 w-20 shrink-0 rounded-xl border-2 border-sky-900 bg-sky-100">
+        <div className="h-20 w-20 shrink-0 rounded-md border-2 border-[#8b93a1] bg-[#181a1eeb]">
           <PokeIcon id={d.id} shiny={Boolean(d.shiny)} className="h-full w-full" />
         </div>
         <div className="min-w-0 flex-1 text-xs font-black text-white">
@@ -38,29 +39,30 @@ export default function BwSummary({ data: d, onBack, onSwitch, extra = null }) {
         </div>
       </div>
       {/* Os atributos (com os estágios da batalha: ▲ subiu, ▼ caiu). */}
-      <div className="rounded-lg border-2 border-sky-900 bg-sky-50 p-1.5 text-xs font-bold text-slate-900">
+      <div className="rounded-md border-2 border-[#8b93a1] bg-[#181a1eeb] p-1.5 text-xs font-bold text-white">
         {SUMMARY_STATS.map(([key, label]) => (
           <p key={key} className="flex justify-between">
             <span>{t(label)}</span>
             <span className="tabular-nums">
-              {d.boosts?.[key] ? <span className={d.boosts[key] > 0 ? 'text-red-600' : 'text-blue-600'}>{d.boosts[key] > 0 ? '▲' : '▼'}{Math.abs(d.boosts[key])} </span> : null}
-              {d.stats?.[key] ?? '—'}
+              {d.boosts?.[key] ? <span className={d.boosts[key] > 0 ? 'text-red-400' : 'text-blue-400'}>{d.boosts[key] > 0 ? '▲' : '▼'}{Math.abs(d.boosts[key])} </span> : null}
+              <span className="text-amber-200">{d.stats?.[key] ?? '—'}</span>
             </span>
           </p>
         ))}
       </div>
       {d.moves.map((mv, k) => (
-        <p key={k} className="flex items-center gap-1.5 rounded-lg border-2 border-sky-900 bg-white px-2 py-0.5 text-xs font-black text-slate-900">
+        <p key={k} className="flex items-center gap-1.5 rounded-md border-2 border-[#8b93a1] bg-[#181a1eeb] px-2 py-0.5 text-xs font-black text-white">
           {mv.type && <TypeBadge type={mv.type} small />}
           <span className="min-w-0 flex-1 truncate" data-no-translate>{mv.name}</span>
-          <span className="tabular-nums">PP {mv.pp}/{mv.maxPp}</span>
+          <span className="tabular-nums text-amber-200">PP {mv.pp}/{mv.maxPp}</span>
         </p>
       ))}
       {extra}
-      <div className="flex justify-end gap-2">
-        {onSwitch && <button type="button" onClick={onSwitch} className="cursor-pointer rounded-lg bg-green-600 px-3 py-1 text-sm font-black text-white" data-testid="bw-summary-switch">{t('TROCAR')}</button>}
-        <button type="button" onClick={onBack} className="cursor-pointer rounded-lg bg-red-600 px-3 py-1 text-sm font-black text-white" data-testid="bw-summary-back">✕ {t('Voltar')}</button>
-      </div>
+      {onSwitch && (
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={onSwitch} className="cursor-pointer rounded-lg bg-green-600 px-3 py-1 text-sm font-black text-white" data-testid="bw-summary-switch">{t('TROCAR')}</button>
+        </div>
+      )}
     </div>
   )
 }

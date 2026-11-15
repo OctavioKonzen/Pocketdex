@@ -373,6 +373,25 @@ const _portText = TextStyle(fontFamily: 'PixelifySans', color: Colors.white, fon
   );
 }
 
+/// O cabeçalho das telas por cima do campo (Bolsa, time, dados do Pokémon, mapa...): escuro, com a linha ciano embaixo e
+/// o ✕ vermelho à direita. O mesmo em todas. Igual ao site.
+Widget _portHeader(Widget title, VoidCallback onClose, {Key closeKey = const ValueKey('overlay-close')}) => Container(
+      decoration: const BoxDecoration(color: Color(0xFF15181F), border: Border(bottom: BorderSide(color: Color(0xFF22D3EE), width: 2))),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      child: Row(children: [
+        Expanded(child: title),
+        IconButton(
+            tooltip: tr('Fechar'),
+            key: closeKey,
+            visualDensity: VisualDensity.compact,
+            onPressed: onClose,
+            icon: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                decoration: BoxDecoration(color: const Color(0xFFDC2626), borderRadius: BorderRadius.circular(4)),
+                child: const Text('✕', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900)))),
+      ]),
+    );
+
 /// As caixas do port: o canto de cima à esquerda e o de baixo à direita cortados.
 const _portBox = BeveledRectangleBorder(borderRadius: BorderRadius.only(topLeft: Radius.circular(7), bottomRight: Radius.circular(7)));
 
@@ -959,7 +978,7 @@ class _BagAndItemsState extends State<_BagAndItems> {
     // Os 6 no lugar do campo, como a tela de trocar da batalha (3 linhas de 2, sem rolar).
     // O limite de nível de agora (o próximo chefe e os desvios): quem chegou nele para de ganhar XP até vencer o chefe.
     final cap = FactoryRun.levelCapOf(widget.data, run);
-    return PortParty(
+    final party = PortParty(
       testKey: 'factory-team',
       title: cap == null ? null : '📈 ${tr('Nível máximo agora: {0}. Sobe quando você vence o próximo chefe.').replaceAll('{0}', '$cap')}',
       // Os ovos ocupam vagas do time (e chocam com as vitórias).
@@ -985,6 +1004,11 @@ class _BagAndItemsState extends State<_BagAndItems> {
       onPick: _open,
       onMove: (a, b) => setState(() => saveFactory({...currentFactory(), 'run': FactoryRun.swapTeam(run, a, b)})),
     );
+    if (widget.onClose == null) return party;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      _portHeader(Text('🧩 ${tr('Time')}', overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900)), widget.onClose!),
+      Expanded(child: party),
+    ]);
   }
 
   @override
@@ -1006,7 +1030,6 @@ class _TeamPages extends StatefulWidget {
 class _TeamPagesState extends State<_TeamPages> {
   final _pages = PageController();
   int _page = 0;
-  static const _ink = Color(0xFF0F172A);
   static const _tabs = ['DADOS', 'GOLPES', 'ITENS', 'OPÇÕES'];
 
   @override
@@ -1029,7 +1052,7 @@ class _TeamPagesState extends State<_TeamPages> {
         Container(
           width: 64,
           height: 64,
-          decoration: BoxDecoration(color: const Color(0xFFBDE7F0), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFF0F3D5C), width: 2)),
+          decoration: BoxDecoration(color: const Color(0xEB181A1E), borderRadius: BorderRadius.circular(6), border: Border.all(color: const Color(0xFF8B93A1), width: 2)),
           child: PokemonSprite(d.id, shiny: d.shiny, fill: 0.85),
         ),
         const SizedBox(width: 8),
@@ -1066,7 +1089,7 @@ class _TeamPagesState extends State<_TeamPages> {
       Expanded(
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(color: const Color(0xFFE0F2FE), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFF0F3D5C), width: 2)),
+          decoration: BoxDecoration(color: const Color(0xEB181A1E), borderRadius: BorderRadius.circular(6), border: Border.all(color: const Color(0xFF8B93A1), width: 2)),
           child: Column(children: [
             for (var r = 0; r < summaryStats.length; r += 2)
               Expanded(
@@ -1081,8 +1104,8 @@ class _TeamPagesState extends State<_TeamPages> {
                                   child: FittedBox(
                                       fit: BoxFit.scaleDown,
                                       alignment: Alignment.centerLeft,
-                                      child: Text(summaryStats[k].$2, maxLines: 1, style: const TextStyle(color: _ink, fontSize: 11, fontWeight: FontWeight.w800)))),
-                              Text('${d.stats[summaryStats[k].$1] ?? '—'}', style: const TextStyle(color: _ink, fontSize: 11, fontWeight: FontWeight.w900)),
+                                      child: Text(summaryStats[k].$2, maxLines: 1, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)))),
+                              Text('${d.stats[summaryStats[k].$1] ?? '—'}', style: const TextStyle(color: Color(0xFFFDE68A), fontSize: 12, fontWeight: FontWeight.w900)),
                             ]),
                     ),
                   ],
@@ -1104,13 +1127,13 @@ class _TeamPagesState extends State<_TeamPages> {
               final mv = d.moves[k];
               return Container(
               padding: const EdgeInsets.symmetric(horizontal: 8),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFF0F3D5C), width: 2)),
+              decoration: BoxDecoration(color: const Color(0xEB181A1E), borderRadius: BorderRadius.circular(6), border: Border.all(color: const Color(0xFF8B93A1), width: 2)),
               child: Row(children: [
                 if (mv.type.isNotEmpty) TypeChip(mv.type),
                 const SizedBox(width: 6),
                 // Nome do golpe como no jogo (não traduz).
-                Expanded(child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(mv.name, maxLines: 1, style: const TextStyle(color: _ink, fontSize: 12, fontWeight: FontWeight.w900)))),
-                Text('PP ${mv.pp}/${mv.maxPp}', style: const TextStyle(color: _ink, fontSize: 11, fontWeight: FontWeight.w800)),
+                Expanded(child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(mv.name, maxLines: 1, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w900)))),
+                Text('PP ${mv.pp}/${mv.maxPp}', style: const TextStyle(color: Color(0xFFFDE68A), fontSize: 11, fontWeight: FontWeight.w800)),
               ]),
             );
             }),
@@ -1131,20 +1154,17 @@ class _TeamPagesState extends State<_TeamPages> {
     return Container(
       key: const ValueKey('team-pages'),
       color: const Color(0xFF1F6F78),
-      padding: const EdgeInsets.all(6),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        // O nome e o nível, as abas (a página de agora acesa) e voltar ao time.
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-          decoration: BoxDecoration(color: const Color(0xFF0F3D44), border: Border.all(color: const Color(0xFF0B2A2F), width: 2), borderRadius: BorderRadius.circular(8)),
-          child: Row(children: [
+        // Em cima, como as outras telas: ◀ o nome e o nível, as abas (a de agora acesa) ▶ e o ✕ (volta ao time).
+        _portHeader(
+          Row(children: [
             arrow('◀', _page - 1, 'team-prev'),
             Expanded(
               child: FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerLeft,
                 child: Row(children: [
-                  Text('${d.name} Lv${d.level}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13)),
+                  Text('${d.name} Lv${d.level}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 14)),
                   const SizedBox(width: 8),
                   for (var k = 0; k < _tabs.length; k++)
                     GestureDetector(
@@ -1152,26 +1172,27 @@ class _TeamPagesState extends State<_TeamPages> {
                       onTap: () => _go(k),
                       child: Container(
                         margin: const EdgeInsets.only(right: 3),
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(color: k == _page ? const Color(0xFFF97316) : Colors.white12, borderRadius: BorderRadius.circular(6)),
-                        child: Text(tr(_tabs[k]), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900)),
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                        decoration: BoxDecoration(
+                            color: k == _page ? const Color(0xFFF97316) : const Color(0xFF2B3240),
+                            border: Border.all(color: k == _page ? const Color(0xFFFDBA74) : const Color(0xFF8B93A1)),
+                            borderRadius: BorderRadius.circular(5)),
+                        child: Text(tr(_tabs[k]), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900)),
                       ),
                     ),
                 ]),
               ),
             ),
             arrow('▶', _page + 1, 'team-next'),
-            InkWell(
-              key: const ValueKey('bw-summary-back'),
-              onTap: widget.onBack,
-              child: const Padding(padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2), child: Text('✕', style: TextStyle(color: Color(0xFFFCA5A5), fontSize: 16, fontWeight: FontWeight.w900))),
-            ),
           ]),
+          widget.onBack,
+          closeKey: const ValueKey('bw-summary-back'),
         ),
-        const SizedBox(height: 6),
         // As páginas: arrastar para o lado troca.
         Expanded(
-          child: PageView(
+          child: Padding(
+           padding: const EdgeInsets.all(6),
+           child: PageView(
             controller: _pages,
             onPageChanged: (p) => setState(() => _page = p),
             children: [
@@ -1181,6 +1202,7 @@ class _TeamPagesState extends State<_TeamPages> {
               SingleChildScrollView(child: widget.items),
               widget.actions,
             ],
+          ),
           ),
         ),
       ]),
@@ -3256,21 +3278,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
       );
 
   /// O título e o "fechar" do que abre por cima do campo.
-  Widget _overlayHeader(String title, VoidCallback onClose) => Container(
-        decoration: const BoxDecoration(color: Color(0xFF15181F), border: Border(bottom: BorderSide(color: Color(0xFF22D3EE), width: 2))),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-        child: Row(children: [
-          Expanded(child: Text(title, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900))),
-          IconButton(tooltip: tr('Fechar'), 
-              key: const ValueKey('overlay-close'),
-              visualDensity: VisualDensity.compact,
-              onPressed: onClose,
-              icon: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  decoration: BoxDecoration(color: const Color(0xFFDC2626), borderRadius: BorderRadius.circular(4)),
-                  child: const Text('✕', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900)))),
-        ]),
-      );
+  Widget _overlayHeader(String title, VoidCallback onClose) =>
+      _portHeader(Text(title, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900)), onClose);
 
   /// O time da corrida para a tela do time (BwParty).
   List<PartySlot> _party(Json run) => [
@@ -3321,6 +3330,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
   /// dela (a Bolsa, o time, o mapa e o resto abrem por cima do campo). Igual ao site.
   Widget _frameColumn({required Widget field, Json? run, required List<Widget> text, Widget? menu, List<Widget>? tools, bool menuFill = false}) => DsLayout(
         single: true,
+        // Deitado: sobra lugar para o Sair/Desistir embaixo (a tela não rola).
+        reserve: 52,
         top: LayoutBuilder(builder: (context, box) {
           final w = box.maxWidth, h = w * 9 / 16;
           return MediaQuery.withNoTextScaling(
@@ -3481,10 +3492,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
             : _panel == 'bag'
         ? _BagAndItems(run: run, data: data, names: _names, onSave: _save, only: 'bag', onClose: close)
         : _panel == 'team'
-            ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                _overlayHeader('🧩 ${tr('Time')}', close),
-                Expanded(child: _BagAndItems(run: run, data: data, names: _names, onSave: _save, only: 'team')),
-              ])
+            // O cabeçalho (Time com o ✕, ou o do Pokémon aberto com as abas e o ✕) fica dentro dele: um só em cima.
+            ? _BagAndItems(run: run, data: data, names: _names, onSave: _save, only: 'team', onClose: close)
             : step == 'shop' && _panel == 'buy'
                 ? _shopBag(run, p!, data, close)
                 // A Creche: um lugar da cidade (separado do Poké Mart).
@@ -3919,7 +3928,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
 
   /// O PC (como nos jogos): o time à esquerda e a caixa 6×6 à direita ([_PcPanel]). Igual ao site.
   Widget _pcPanel(Json run, VoidCallback close) =>
-      _PcPanel(key: const ValueKey('factory-pc'), run: run, data: _data!, nameOf: (id) => _name(id), onSave: (next) => _save(next));
+      _PcPanel(key: const ValueKey('factory-pc'), run: run, data: _data!, nameOf: (id) => _name(id), onSave: (next) => _save(next), onClose: () => setState(() => _panel = null));
 
 
 
@@ -5061,7 +5070,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                     ),
                   ),
                 if (coach != null && (meeting || rival != null)) _far(TrainerSprite(coach, height: farPerson(w)), w, h),
-                if (town && me != null) Positioned(left: w * 0.02, bottom: h * 0.23, child: TrainerSprite(me, height: nearPerson(w) * (follow?.k ?? 1))),
+                if (town && me != null) Positioned(left: w * 0.02, bottom: h * 0.23, child: TrainerSprite(me, height: nearPerson(w) * followPerson * (follow?.k ?? 1))),
                 // Quem vai na frente acompanha você na cidade (como o Pokémon que segue o treinador). Igual ao site.
                 if (town && lead != null)
                   Positioned(
@@ -6303,8 +6312,9 @@ class _PagedMenuState extends State<_PagedMenu> {
 /// dois nomes); vazia, ele vai para lá. Segurando em cima de ◀ ▶ durante o arrasto, muda de caixa. Tocar num e depois
 /// em outra vaga também funciona. Igual ao site (PcPanel.jsx).
 class _PcPanel extends StatefulWidget {
-  const _PcPanel({super.key, required this.run, required this.data, required this.nameOf, required this.onSave});
+  const _PcPanel({super.key, required this.run, required this.data, required this.nameOf, required this.onSave, this.onClose});
   final Json run;
+  final VoidCallback? onClose;
   final FactoryData data;
   final String Function(Object? id) nameOf;
   final void Function(Json next) onSave;
@@ -6403,12 +6413,13 @@ class _PcPanelState extends State<_PcPanel> {
       onAcceptWithDetails: (d) => _drop(d.data, l),
       builder: (context, candidates, _) {
         final hover = candidates.isNotEmpty;
+        // As caixas como as do time (o port): escuras, com a borda cinza; a tocada (ou com alguém em cima) em amarelo.
         final box = Container(
           key: ValueKey('pc-slot-${l.where}-${l.index}'),
           decoration: BoxDecoration(
-            color: picked || hover ? const Color(0xAAFDE68A) : mon != null ? const Color(0xCCE0F2FE) : const Color(0x26FFFFFF),
-            border: Border.all(color: picked ? const Color(0xFFFBBF24) : const Color(0x660F3D5C), width: 2),
-            borderRadius: BorderRadius.circular(8),
+            color: picked || hover ? const Color(0xEB42340A) : mon != null ? const Color(0xEB181A1E) : const Color(0x66181A1E),
+            border: Border.all(color: picked || hover ? const Color(0xFFFACC15) : const Color(0xFF8B93A1), width: 2),
+            borderRadius: BorderRadius.circular(6),
           ),
           // O sprite fica dentro do quadrado (não sai pelas bordas).
           clipBehavior: Clip.hardEdge,
@@ -6418,14 +6429,16 @@ class _PcPanelState extends State<_PcPanel> {
                   // O Pokémon inteiro no quadrado (num quadrado centralizado, sem cortar).
                   Padding(padding: const EdgeInsets.all(2), child: Center(child: AspectRatio(aspectRatio: 1, child: sprite(mon)))),
                   if (!small)
-                    Positioned(right: 2, bottom: 0, child: Text('${mon['level']}', style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Color(0xFF1E293B)))),
+                    Positioned(right: 2, bottom: 0, child: Text('${mon['level']}', style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Colors.white))),
                 ]),
         );
         return GestureDetector(
           onTap: () => _tap(l),
           child: mon == null
               ? box
-              : Draggable<_PcLoc>(
+              // Segurando um instante e arrastando (como no time): a tela em volta não rouba o arrasto.
+              : LongPressDraggable<_PcLoc>(
+                  delay: const Duration(milliseconds: 150),
                   data: l,
                   feedback: SizedBox(width: 56, height: 56, child: sprite(mon)),
                   childWhenDragging: Opacity(opacity: 0.35, child: box),
@@ -6482,8 +6495,8 @@ class _PcPanelState extends State<_PcPanel> {
       );
 
   Widget _title(String text, {String? key, VoidCallback? onTap}) => Material(
-        color: const Color(0xFF0F3D44),
-        borderRadius: BorderRadius.circular(6),
+        color: const Color(0xFF15181F),
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(6)), side: BorderSide(color: Color(0xFF8B93A1), width: 1.5)),
         child: InkWell(
           key: key == null ? null : ValueKey(key),
           onTap: onTap,
@@ -6605,6 +6618,20 @@ class _PcPanelState extends State<_PcPanel> {
                 ],
                 const SizedBox(width: 4),
                 _navButton(1, '▶', 'pc-box-next'),
+                if (widget.onClose != null) ...[
+                  const SizedBox(width: 4),
+                  // Fechar o PC (ele cobre a tela toda, como a Bolsa e o time).
+                  Material(
+                    color: const Color(0xFFDC2626),
+                    borderRadius: BorderRadius.circular(6),
+                    child: InkWell(
+                      key: const ValueKey('pc-close'),
+                      onTap: widget.onClose,
+                      borderRadius: BorderRadius.circular(6),
+                      child: const Padding(padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2), child: Icon(Icons.close, color: Colors.white, size: 18)),
+                    ),
+                  ),
+                ],
               ]),
               for (var r = 0; r < 6; r++)
                 Expanded(

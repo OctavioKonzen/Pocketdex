@@ -378,27 +378,26 @@ function TeamPages({ d, items, actions, onBack }) {
   const hp = d.maxHp > 0 ? Math.max(0, Math.min(1, d.hp / d.maxHp)) : 0
   return (
     <div className="bw-party flex h-full flex-col gap-1.5 p-1.5" data-testid="team-pages">
-      <div className="bw-party-title flex items-center gap-1 rounded-lg px-1 py-0.5 text-white">
+      {/* Em cima, como as outras telas: ◀ o nome e o nível, as abas (a de agora acesa) ▶ e o ✕ (volta ao time). Igual ao app. */}
+      <div className="port-titlebar -mx-1.5 -mt-1.5 flex items-center gap-1 px-2 py-1 text-white">
         <button type="button" onClick={() => go(page - 1)} disabled={page === 0} className="cursor-pointer px-1 font-black disabled:opacity-30" data-testid="team-prev">◀</button>
-        {/* O nome, o gênero e o nível ficam no painel (aqui não cabem com as abas). */}
-        <span className="flex-1" />
+        <span className="min-w-0 flex-1 truncate text-sm font-black" data-no-translate>{d.name} <span data-testid="team-gender">{d.gender} Lv{d.level}</span></span>
         <span className="flex flex-none justify-center gap-0.5">
           {TEAM_TABS.map((tab, k) => (
             <button key={tab} type="button" onClick={() => go(k)} data-testid={`team-tab-${k}`}
-              className={`cursor-pointer rounded px-1 py-0.5 text-[9px] font-black ${k === page ? 'bg-orange-500' : 'bg-white/10'}`}>{t(tab)}</button>
+              className={`cursor-pointer rounded border px-1.5 py-0.5 text-[10px] font-black ${k === page ? 'border-orange-300 bg-orange-500' : 'border-[#8b93a1] bg-[#2b3240]'}`}>{t(tab)}</button>
           ))}
         </span>
         <button type="button" onClick={() => go(page + 1)} disabled={page === TEAM_TABS.length - 1} className="cursor-pointer px-1 font-black disabled:opacity-30" data-testid="team-next">▶</button>
-        <button type="button" onClick={onBack} className="cursor-pointer px-1 font-black text-red-300" data-testid="bw-summary-back">✕</button>
+        <button type="button" onClick={onBack} className="port-chip cursor-pointer px-2" aria-label={t('Fechar')} data-testid="bw-summary-back">✕</button>
       </div>
       {/* As páginas: arrastar para o lado troca (cada uma do tamanho do campo). */}
       <div ref={ref} onScroll={(e) => setPage(Math.round(e.currentTarget.scrollLeft / Math.max(1, e.currentTarget.clientWidth)))}
         className="flex min-h-0 flex-1 snap-x snap-mandatory overflow-x-auto overflow-y-hidden [scrollbar-width:none]">
         <div className="flex w-full shrink-0 snap-start flex-col gap-1.5">
           <div className="flex gap-2">
-            <div className="h-16 w-16 shrink-0 rounded-xl border-2 border-sky-900 bg-sky-100"><PokeIcon id={d.id} shiny={Boolean(d.shiny)} className="h-full w-full" /></div>
+            <div className="h-16 w-16 shrink-0 rounded-md border-2 border-[#8b93a1] bg-[#181a1eeb]"><PokeIcon id={d.id} shiny={Boolean(d.shiny)} className="h-full w-full" /></div>
             <div className="min-w-0 flex-1 text-[11px] font-black text-white">
-              <p className="flex items-center gap-1 text-[13px]"><span className="truncate" data-no-translate>{d.name}</span><span className="shrink-0" data-testid="team-gender">{d.gender} Lv{d.level}</span></p>
               <div className="flex flex-wrap gap-1">{d.types.map((type) => <TypeBadge key={type} type={type} small />)}</div>
               <div className="mt-1 flex items-center gap-1">HP
                 <span className="block h-1.5 flex-1 overflow-hidden rounded bg-slate-800"><span className={`block h-full ${hp > 0.5 ? 'bg-emerald-400' : hp > 0.2 ? 'bg-amber-400' : 'bg-red-500'}`} style={{ width: `${hp * 100}%` }} /></span>
@@ -408,18 +407,18 @@ function TeamPages({ d, items, actions, onBack }) {
               <p className="truncate">{t('Item')}: <span className="text-amber-200" data-no-translate>{d.item || '—'}</span></p>
             </div>
           </div>
-          <div className="grid flex-1 grid-cols-2 content-center gap-x-3 rounded-lg border-2 border-sky-900 bg-sky-50 px-2 py-1 text-[11px] font-bold text-slate-900">
+          <div className="grid flex-1 grid-cols-2 content-evenly gap-x-3 rounded-md border-2 border-[#8b93a1] bg-[#181a1eeb] px-2 py-1 text-[12px] font-bold text-white">
             {SUMMARY_STATS.map(([key, label]) => (
-              <p key={key} className="flex justify-between"><span>{t(label)}</span><span className="tabular-nums font-black">{d.stats?.[key] ?? '—'}</span></p>
+              <p key={key} className="flex justify-between"><span>{t(label)}</span><span className="tabular-nums font-black text-amber-200">{d.stats?.[key] ?? '—'}</span></p>
             ))}
           </div>
         </div>
         <div className="flex w-full shrink-0 snap-start flex-col gap-1">
           {d.moves.map((mv, k) => (
-            <p key={k} className="flex flex-1 items-center gap-1.5 rounded-lg border-2 border-sky-900 bg-white px-2 text-xs font-black text-slate-900">
+            <p key={k} className="flex flex-1 items-center gap-1.5 rounded-md border-2 border-[#8b93a1] bg-[#181a1eeb] px-2 text-xs font-black text-white">
               {mv.type && <TypeBadge type={mv.type} small />}
               <span className="min-w-0 flex-1 truncate" data-no-translate>{mv.name}</span>
-              <span className="tabular-nums">PP {mv.pp}/{mv.maxPp}</span>
+              <span className="tabular-nums text-amber-200">PP {mv.pp}/{mv.maxPp}</span>
             </p>
           ))}
         </div>
@@ -432,7 +431,7 @@ function TeamPages({ d, items, actions, onBack }) {
 }
 
 /** O time como a tela de trocar da batalha (Black & White): toque num Pokémon para ver os dados dele e equipar itens. Igual ao app. */
-function TeamView({ run, data, byId, save }) {
+function TeamView({ run, data, byId, save, onClose = null }) {
   const [sel, setSel] = useState(null)
   const [summary, setSummary] = useState(null)
   // Os dados de quem está aberto (refeitos quando o item, o nível ou o time mudam).
@@ -459,7 +458,15 @@ function TeamView({ run, data, byId, save }) {
     sub: m.item ? `★ ${itemName(m.item)}${(m.extras ?? []).length ? ` +${m.extras.length}` : ''}` : m.ot ? `🔁 OT ${m.ot}` : undefined,
   }))
   // Os ovos ocupam vagas do time (e chocam com as vitórias).
-  return <BwParty team={team} testid="factory-team" title={cap != null ? `📈 ${t('Nível máximo agora: {0}. Sobe quando você vence o próximo chefe.').replace('{0}', cap)}` : undefined} eggs={(run.eggs ?? []).map((e) => (e.mystery ? { left: e.left, mystery: true } : e.left))} onPick={(i) => { setSummary(null); setSel(i) }} onMove={(a, b) => save(swapTeam(run, a, b))} />
+  const party = <BwParty team={team} testid="factory-team" title={cap != null ? `📈 ${t('Nível máximo agora: {0}. Sobe quando você vence o próximo chefe.').replace('{0}', cap)}` : undefined} eggs={(run.eggs ?? []).map((e) => (e.mystery ? { left: e.left, mystery: true } : e.left))} onPick={(i) => { setSummary(null); setSel(i) }} onMove={(a, b) => save(swapTeam(run, a, b))} />
+  if (!onClose) return party
+  // Um cabeçalho só em cima (o Time com o ✕; aberto um Pokémon, o dele com as abas e o ✕). Igual ao app.
+  return (
+    <div className="flex h-full flex-col">
+      <OverlayClose onClose={onClose} title={`🧩 ${t('Time')}`} />
+      <div className="min-h-0 flex-1">{party}</div>
+    </div>
+  )
 }
 
 /** Ensinar um golpe: TM (os que ele aprende por máquina), Move Tutor (tutor e ovo) ou Move Reminder (os do nível). */
@@ -1643,11 +1650,21 @@ function shareSummary(last, byId) {
  */
 export const PERSON_DM = 16
 export const FOLLOW_MIN = 0.35
+/** O treinador na cidade, menor que o da batalha (o Pokémon ao lado aparece melhor). */
+export const FOLLOW_PERSON = 0.75
+/**
+ * O Pokémon perto do treinador: os grandes na altura de verdade; os pequenos maiores que a conta (raiz), para dar para
+ * ver (o Mudkip, de 4 dm, fica com metade do treinador em vez de um quarto). Igual ao app.
+ */
+export function followRatio(height) {
+  const r = (height ?? 10) / PERSON_DM
+  return r >= 1 ? r : Math.max(0.45, Math.sqrt(r))
+}
 export function followerFit(height, stand) {
   const [w, h] = stand
-  // A altura do treinador, em caixas do Pokémon (nearPerson).
-  const person = 0.95 * battleScale(PERSON_DM)
-  const want = person * Math.max(0.15, (height ?? 10) / PERSON_DM)
+  // A altura do treinador, em caixas do Pokémon (nearPerson, na escala da cidade).
+  const person = 0.95 * battleScale(PERSON_DM) * FOLLOW_PERSON
+  const want = person * followRatio(height)
   // Cabe no campo: até 0,95 caixa de altura e 1,3 de largura (um pouco por trás do treinador).
   const room = Math.min(0.95, (1.3 * Math.max(h, 0.01)) / Math.max(w, 0.01))
   const k = Math.max(FOLLOW_MIN, Math.min(1, room / want))
@@ -2402,8 +2419,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     ) : (
       // O time com o tamanho do campo (sem rolar): a lista e as páginas cabem nele.
       <div className="flex h-full flex-col">
-        <OverlayClose onClose={() => setPanel(null)} title={`🧩 ${t('Time')}`} />
-        <div className="min-h-0 flex-1"><TeamView run={run} data={data} byId={byId} save={save} /></div>
+        <div className="min-h-0 flex-1"><TeamView run={run} data={data} byId={byId} save={save} onClose={() => setPanel(null)} /></div>
       </div>
     )
   )
@@ -2658,7 +2674,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       </>
     )
     // O PC do Centro Pokémon (como nos jogos): o time à esquerda e a caixa 6×6 à direita (PcPanel).
-    if (pcOpen && atPc(run)) below = <PcPanel run={run} data={data} nameOf={name} onSave={save} />
+    if (pcOpen && atPc(run)) below = <PcPanel run={run} data={data} nameOf={name} onSave={save} onClose={() => setPcOpen(false)} />
     menu = pcOpen && atPc(run) ? (
       <MenuButton onClick={() => setPcOpen(false)} testid="factory-pc-close">{t('FECHAR')}</MenuButton>
     ) : (
@@ -3052,7 +3068,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         </div>
         {floorTag && <span className="absolute right-3 top-2 rounded bg-slate-900/70 px-1.5 text-[10px] font-black text-white sm:text-xs" data-testid="route-floor">{floorTag}</span>}
         {coach && (meeting || rival) && <FarStand scene={meetScene}><TrainerSprite trainer={coach} height={farPerson(width)} /></FarStand>}
-        {town && me && <div className="absolute bottom-[23%] left-[2%] flex"><TrainerSprite trainer={me} height={nearPerson(width) * follow.k} /></div>}
+        {town && me && <div className="absolute bottom-[23%] left-[2%] flex"><TrainerSprite trainer={me} height={nearPerson(width) * FOLLOW_PERSON * follow.k} /></div>}
         {/* Quem vai na frente acompanha você na cidade (como o Pokémon que segue o treinador). */}
         {town && lead && <FieldMon mon={lead} byId={byId} follower scene={run.scene} followScale={follow.scale} />}
         {!town && lead && <FieldMon mon={lead} byId={byId} back scene={meetScene} />}

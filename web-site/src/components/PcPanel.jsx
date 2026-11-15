@@ -25,7 +25,7 @@ const pretty = (slug) => String(slug ?? '').split('-').map((w) => w.charAt(0).to
 
 const key = (l) => (l ? `${l.where}:${l.index}` : '')
 
-export default function PcPanel({ run, data, nameOf, onSave }) {
+export default function PcPanel({ run, data, nameOf, onSave, onClose = null }) {
   const [box, setBox] = useState(0)
   const [picked, setPicked] = useState(null) // tocou num (o próximo toque é o destino)
   const [drag, setDrag] = useState(null) // { from, id, shiny, x, y, moved }
@@ -112,10 +112,10 @@ export default function PcPanel({ run, data, nameOf, onSave }) {
     const dragging = drag?.moved && key(drag.from) === key(l)
     return (
       <div key={key(l)} data-pc-slot={key(l)} data-testid={`pc-slot-${l.where}-${l.index}`} onPointerDown={(e) => start(e, l)}
-        className={`relative grid min-h-0 min-w-0 cursor-pointer overflow-hidden ${small ? 'flex-1' : ''} touch-none select-none place-items-center rounded-lg border-2 ${isPicked ? 'border-amber-400 bg-amber-200/60' : mon ? 'border-sky-900/60 bg-sky-100/80' : 'border-dashed border-sky-900/30 bg-white/15'}`}
+        className={`relative grid min-h-0 min-w-0 cursor-pointer overflow-hidden ${small ? 'flex-1' : ''} touch-none select-none place-items-center rounded-lg border-2 ${isPicked ? 'border-yellow-400 bg-[#42340aeb]' : mon ? 'border-[#8b93a1] bg-[#181a1eeb]' : 'border-[#8b93a1] bg-[#181a1e66]'}`}
         title={mon ? label(mon) : ''}>
         {mon && <PokeIcon id={mon.id} shiny={Boolean(mon.shiny)} fill={0.85} className={`pointer-events-none aspect-square h-full max-h-full max-w-full ${dragging ? 'opacity-30' : ''}`} />}
-        {mon && !small && <span className="pointer-events-none absolute right-0.5 bottom-0 text-[8px] font-black text-slate-800">{mon.level}</span>}
+        {mon && !small && <span className="pointer-events-none absolute right-0.5 bottom-0 text-[8px] font-black text-white">{mon.level}</span>}
       </div>
     )
   }
@@ -161,6 +161,8 @@ export default function PcPanel({ run, data, nameOf, onSave }) {
           )}
           {!inMemorial && <button type="button" onClick={() => onSave(nextWall(run, box))} className="bw-party-title cursor-pointer rounded-md px-1.5 py-0.5 text-sm text-white" data-testid="pc-box-wall" title={t('Fundo da caixa')}>🎨</button>}
           <button type="button" data-pc-nav="next" onClick={() => setBox((b) => (b + 1) % pages)} className="bw-party-title cursor-pointer rounded-md px-2 py-0.5 text-sm font-black text-white" data-testid="pc-box-next">▶</button>
+          {/* Fechar o PC (ele cobre a tela toda, como a Bolsa e o time). Igual ao app. */}
+          {onClose && <button type="button" onClick={onClose} className="cursor-pointer rounded-md bg-red-600 px-2 py-0.5 text-sm font-black text-white" data-testid="pc-close" aria-label={t('Fechar')}>✕</button>}
         </div>
         {inMemorial ? (
           <div className="grid min-h-0 flex-1 grid-cols-6 grid-rows-6 gap-1" data-testid="pc-memorial">

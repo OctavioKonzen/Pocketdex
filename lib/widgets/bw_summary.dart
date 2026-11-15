@@ -57,8 +57,6 @@ class BwSummary extends StatelessWidget {
   /// Trocar por ele (só quando dá).
   final VoidCallback? onSwitch;
 
-  static const _ink = Color(0xFF0F172A);
-
   Widget _row(String label, String value, {Color? color}) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 1),
         child: Row(children: [
@@ -77,23 +75,33 @@ class BwSummary extends StatelessWidget {
     final hp = d.maxHp > 0 ? (d.hp / d.maxHp).clamp(0.0, 1.0) : 0.0;
     return Container(
       key: const ValueKey('bw-summary'),
-      padding: const EdgeInsets.all(8),
       color: Hud.tint(const Color(0xFF1F6F78)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        // Em cima, como as outras telas: o nome e o nível e o ✕ vermelho (voltar). Igual ao site e ao time do Pokelike.
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(color: const Color(0xFF0F3D44), border: Border.all(color: const Color(0xFF0B2A2F), width: 2), borderRadius: BorderRadius.circular(8)),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+          decoration: const BoxDecoration(color: Color(0xFF15181F), border: Border(bottom: BorderSide(color: Color(0xFF22D3EE), width: 2))),
           child: Row(children: [
-            Expanded(child: mt.Text(d.name, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15))),
-            mt.Text('Lv${d.level}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900)),
+            Expanded(child: mt.Text('${d.name}  Lv${d.level}', overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15))),
+            IconButton(
+                key: const ValueKey('bw-summary-back'),
+                tooltip: tr('Fechar'),
+                visualDensity: VisualDensity.compact,
+                onPressed: onBack,
+                icon: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    decoration: BoxDecoration(color: const Color(0xFFDC2626), borderRadius: BorderRadius.circular(4)),
+                    child: const mt.Text('✕', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900)))),
           ]),
         ),
-        const SizedBox(height: 6),
+        Padding(
+          padding: const EdgeInsets.all(8),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Container(
             width: 84,
             height: 84,
-            decoration: BoxDecoration(color: const Color(0xFFBDE7F0), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFF0F3D5C), width: 2)),
+            decoration: BoxDecoration(color: const Color(0xEB181A1E), borderRadius: BorderRadius.circular(6), border: Border.all(color: const Color(0xFF8B93A1), width: 2)),
             child: PokemonSprite(d.id, shiny: d.shiny, fill: 0.85),
           ),
           const SizedBox(width: 8),
@@ -130,15 +138,15 @@ class BwSummary extends StatelessWidget {
         // Os atributos (com os estágios da batalha: ▲ subiu, ▼ caiu).
         Container(
           padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(color: const Color(0xFFE0F2FE), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFF0F3D5C), width: 2)),
+          decoration: BoxDecoration(color: const Color(0xEB181A1E), borderRadius: BorderRadius.circular(6), border: Border.all(color: const Color(0xFF8B93A1), width: 2)),
           child: Column(children: [
             for (final (key, label) in summaryStats)
               Row(children: [
-                Expanded(child: Text(label, style: const TextStyle(color: _ink, fontSize: 12, fontWeight: FontWeight.w800))),
+                Expanded(child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800))),
                 if ((d.boosts[key] ?? 0) != 0)
                   mt.Text('${d.boosts[key]! > 0 ? '▲' : '▼'}${d.boosts[key]!.abs()} ',
-                      style: TextStyle(color: d.boosts[key]! > 0 ? const Color(0xFFDC2626) : const Color(0xFF2563EB), fontSize: 11, fontWeight: FontWeight.w900)),
-                mt.Text('${d.stats[key] ?? '—'}', style: const TextStyle(color: _ink, fontSize: 12, fontWeight: FontWeight.w900)),
+                      style: TextStyle(color: d.boosts[key]! > 0 ? const Color(0xFFF87171) : const Color(0xFF60A5FA), fontSize: 11, fontWeight: FontWeight.w900)),
+                mt.Text('${d.stats[key] ?? '—'}', style: const TextStyle(color: Color(0xFFFDE68A), fontSize: 12, fontWeight: FontWeight.w900)),
               ]),
           ]),
         ),
@@ -147,35 +155,29 @@ class BwSummary extends StatelessWidget {
           Container(
             margin: const EdgeInsets.only(bottom: 3),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFF0F3D5C), width: 2)),
+            decoration: BoxDecoration(color: const Color(0xEB181A1E), borderRadius: BorderRadius.circular(6), border: Border.all(color: const Color(0xFF8B93A1), width: 2)),
             child: Row(children: [
               if (mv.type.isNotEmpty) TypeChip(mv.type),
               const SizedBox(width: 6),
               // Nome do golpe como no jogo (não traduz).
-              Expanded(child: mt.Text(mv.name, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _ink, fontSize: 12, fontWeight: FontWeight.w900))),
-              mt.Text('PP ${mv.pp}/${mv.maxPp}', style: const TextStyle(color: _ink, fontSize: 11, fontWeight: FontWeight.w800)),
+              Expanded(child: mt.Text(mv.name, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w900))),
+              mt.Text('PP ${mv.pp}/${mv.maxPp}', style: const TextStyle(color: Color(0xFFFDE68A), fontSize: 11, fontWeight: FontWeight.w800)),
             ]),
           ),
         if (extra != null) Padding(padding: const EdgeInsets.only(top: 3), child: extra),
-        const SizedBox(height: 4),
-        Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-          if (onSwitch != null)
-            Padding(
-              padding: const EdgeInsets.only(right: 6),
-              child: FilledButton(
-                key: const ValueKey('bw-summary-switch'),
-                style: FilledButton.styleFrom(backgroundColor: const Color(0xFF16A34A), visualDensity: VisualDensity.compact),
-                onPressed: onSwitch,
-                child: Text(tr('TROCAR'), style: const TextStyle(fontWeight: FontWeight.w900)),
-              ),
+        if (onSwitch != null) ...[
+          const SizedBox(height: 4),
+          Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+            FilledButton(
+              key: const ValueKey('bw-summary-switch'),
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF16A34A), visualDensity: VisualDensity.compact),
+              onPressed: onSwitch,
+              child: Text(tr('TROCAR'), style: const TextStyle(fontWeight: FontWeight.w900)),
             ),
-          FilledButton(
-            key: const ValueKey('bw-summary-back'),
-            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFDC2626), visualDensity: VisualDensity.compact),
-            onPressed: onBack,
-            child: Text('✕ ${tr('Voltar')}', style: const TextStyle(fontWeight: FontWeight.w900)),
-          ),
-        ]),
+          ]),
+        ],
+          ]),
+        ),
       ]),
     );
   }

@@ -10,7 +10,10 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 class DsLayout extends StatelessWidget {
-  const DsLayout({super.key, required this.top, required this.bottom, this.side, this.single = false});
+  const DsLayout({super.key, required this.top, required this.bottom, this.side, this.single = false, this.reserve = 0});
+
+  /// Deitado (single): a altura que fica livre embaixo da tela (ex.: o Sair/Desistir do Pokelike), sem rolar.
+  final double reserve;
 
   /// Como no port de Black & White: tudo numa tela só (o campo 16:9 com o menu dentro). Deitado, o campo ocupa a
   /// altura da tela; embaixo dele, só as escolhas do fim (Continuar, Sair...).
@@ -37,7 +40,7 @@ class DsLayout extends StatelessWidget {
         // MediaQuery, por isso vêm da View) e o respiro da lista em volta (12 em cima e embaixo). Assim a tela não rola.
         final view = View.of(context);
         final bars = (view.padding.top + view.padding.bottom) / view.devicePixelRatio;
-        final w = min(box.maxWidth, (MediaQuery.sizeOf(context).height - max(bars, MediaQuery.paddingOf(context).vertical) - 32) * 16 / 9);
+        final w = min(box.maxWidth, (MediaQuery.sizeOf(context).height - max(bars, MediaQuery.paddingOf(context).vertical) - 32 - reserve) * 16 / 9);
         return Center(
           key: const ValueKey('ds-single'),
           child: SizedBox(width: w, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [top, bottom])),
