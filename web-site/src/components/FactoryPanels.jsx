@@ -1566,6 +1566,20 @@ function stepOf(p) {
   return null
 }
 
+/**
+ * O resultado do andar sem nada para ver com calma (só XP, dinheiro, níveis sem evolução e itens achados): passa direto
+ * para o próximo andar ou a escolha, com o resumo numa linha da caixa de texto. Igual ao app.
+ */
+function quickResult(p) {
+  if (!p || p.seen || p.exp == null || p.center || p.event) return false
+  for (const k of ['key', 'hm', 'story', 'plot', 'flawless', 'placeReward', 'fled', 'lost', 'shed', 'joy', 'beat', 'mission']) {
+    const v = p[k]
+    if (v == null || v === false || (Array.isArray(v) && !v.length) || (typeof v === 'object' && !Array.isArray(v) && !Object.keys(v).length)) continue
+    return false
+  }
+  return !(p.levels ?? []).some((l) => l.evolved || l.friend)
+}
+
 /** A largura de um elemento (os sprites de treinador são em px). */
 function useWidth() {
   const [width, setWidth] = useState(640)
@@ -2318,6 +2332,11 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
   // Os golpes que o time aprende subindo de nível (como nos jogos), um de cada vez: queue [[posição, golpe, entrou sozinho]];
   // step 'ask' (quer aprender?) ou 'forget' (a tela dos 5 golpes); msg: o que aconteceu (com CONTINUAR); pick: o golpe tocado.
   const [learn, setLearn] = useState(null)
+  // O resumo do andar que passou direto (XP, dinheiro, níveis, itens, golpes aprendidos sozinhos), na caixa de texto da
+  // tela seguinte. noteKeep: o próximo save ainda mostra.
+  const [note, setNote] = useState(null)
+  const noteKeep = useRef(false)
+  const autoResult = useRef(false)
   // O PC no Centro Pokémon da cidade (aberto).
   const [pcOpen, setPcOpen] = useState(false)
   const [unlocked, setUnlocked] = useState(null)
@@ -2353,6 +2372,9 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
   const name = (id) => t(prettyName(byId?.get(id)?.name ?? ''))
   const save = (next) => {
     if (!next) return
+    // O resumo do andar fica só na tela seguinte.
+    if (noteKeep.current) noteKeep.current = false
+    else setNote(null)
     const out = next.pending && !stepOf(next.pending) ? nextFloor(next, data) : next
     saveFactory({ ...factory, run: out })
   }
@@ -2442,7 +2464,14 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
   const p = run.pending
   // Depois do resultado do andar: os golpes novos de quem subiu de nível. Com vaga, aprende sozinho; com 4, pergunta.
   // Os golpes de quem subiu ficam guardados (não mudam mais sozinhos). Igual ao app.
-  const afterResult = async () => {
+  // O resultado do andar numa linha: XP, dinheiro, quem subiu de nível e os itens achados.
+  const resultLine = () => [
+    `🏆 ${t('Andar vencido!')} +${p.exp} XP · +💰${p.money}`,
+    ...(p.levels ?? []).filter((l) => run.team[l.index]).map((l) => `${name(run.team[l.index].id)}: Nv. ${l.from} → ${l.to}`),
+    ...[p.drop, p.reward, p.dowsed].filter(Boolean).map((id) => `🎁 ${itemName(id)}`),
+    ...(p.picked ?? []).map((x) => `🎒 ${name(x.id)}: ${itemName(x.item)}`),
+  ].join(' · ')
+  const afterResult = async (quick = false) => {
     const moves = await getMoves()
     let next = run
     const queue = []
@@ -2462,8 +2491,14 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       }
       next = { ...next, team: next.team.map((x, k) => (k === i ? { ...x, moves: current } : x)) }
     }
-    if (!queue.length) return save({ ...next, pending: { ...p, seen: true } })
-    setLearn({ queue, step: 'ask', msg: null, pick: null, moves })
+    // Quem aprendeu sozinho (tinha vaga) não precisa de tela: vai no resumo. Só pergunta quem já tem 4 golpes.
+    const learned = queue.filter((q) => q[2]).map(([i, move]) => `✨ ${t('{0} aprendeu {1}!').replace('{0}', name(next.team[i].id)).replace('{1}', prettySlug(move))}`)
+    const ask = queue.filter((q) => !q[2])
+    const line = [...(quick ? [resultLine()] : []), ...learned].join(' · ')
+    setNote(line || null)
+    noteKeep.current = Boolean(line)
+    if (!ask.length) return save({ ...next, pending: { ...p, seen: true } })
+    setLearn({ queue: ask, step: 'ask', msg: null, pick: null, moves })
     save(next)
   }
   // O próximo golpe da fila (sem mais nenhum, segue o andar).
@@ -2486,6 +2521,11 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     save(learnMove(run, i, move, current, learn.pick))
   }
   const step = stepOf(p)
+  // Vencer um andar sem nada importante: segue sozinho (sem CONTINUAR).
+  if (step === 'result' && !learn && !autoResult.current && quickResult(p)) {
+    autoResult.current = true
+    setTimeout(() => afterResult(true).finally(() => { autoResult.current = false }), 0)
+  }
   // A Enfermeira Joy só na cidade; na rota, quem cura é alguém do caminho (Pokémon Breeder, Doctor...).
   const town = run && inTown(run.scene ?? 'grass')
   const [healerSprite, healerName] = run ? (town ? ['sd-nurse', 'Enfermeira Joy'] : healerOf(run)) : ['sd-nurse', '']
@@ -3273,6 +3313,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     <section data-testid="factory-screen">
       <BattleFrame field={field} run={run} byId={byId} data={data} frame={factory.frame} menu={menu} menuFill={menuFill} tools={toolRow ? tools : null} panel={below || extras || null}
         text={<>
+          {note && <p data-testid="factory-note">{note}</p>}
           {text}
           {unlocked != null && <p className="text-sm text-amber-600" data-testid="factory-shiny-unlocked">✨ {t('{0} shiny liberado para começar as próximas corridas!').replace('{0}', name(unlocked))}</p>}
           {earned.map((id) => (

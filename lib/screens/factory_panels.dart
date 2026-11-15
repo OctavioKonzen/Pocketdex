@@ -2486,6 +2486,18 @@ String? _stepOf(Map? p) {
   return null;
 }
 
+/// O resultado do andar sem nada para ver com calma (só XP, dinheiro, níveis sem evolução e itens achados): passa
+/// direto para o próximo andar ou a escolha, com o resumo numa linha da caixa de texto. Igual ao site.
+bool _quickResult(Map p) {
+  if (p['seen'] == true || p['exp'] == null || p['center'] == true || p['event'] != null) return false;
+  for (final k in const ['key', 'hm', 'story', 'plot', 'flawless', 'placeReward', 'fled', 'lost', 'shed', 'joy', 'beat', 'mission']) {
+    final v = p[k];
+    if (v == null || v == false || (v is List && v.isEmpty) || (v is Map && v.isEmpty)) continue;
+    return false;
+  }
+  return !(p['levels'] as List? ?? const []).any((l) => (l as Map)['evolved'] != null || l['friend'] == true);
+}
+
 /// A corrida em tela cheia, no lugar da batalha: o resultado do andar, o
 /// capturado, a carta, a loja (com "Continuar") e o mapa com os caminhos do
 /// próximo andar. onBattle(run): começa a batalha do caminho escolhido. Igual ao site.
@@ -2552,6 +2564,12 @@ class _FactoryScreenState extends State<FactoryScreen> {
   /// Salva; sem mais nada para ver depois do andar, abre o mapa (os caminhos do próximo).
   void _save(Json? next, [Json? meta]) {
     if (next == null) return;
+    // O resumo do andar fica só na tela seguinte.
+    if (_noteKeep) {
+      _noteKeep = false;
+    } else {
+      _note = null;
+    }
     final out = next['pending'] != null && _stepOf(next['pending'] as Map) == null ? FactoryRun.nextFloor(next, _data!) : next;
     setState(() => saveFactory({...(meta ?? currentFactory()), 'run': out}));
   }
@@ -3340,7 +3358,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                           ? _dlgBox().copyWith(border: Border.all(color: _frameColors[currentFactory()['frame']]?.$1 ?? _border, width: 3))
                           : _dlgBox(),
                       style: _portText.copyWith(fontSize: m.font, height: 1.3),
-                      children: text,
+                      children: [if (_note != null) Text(_note!, key: const ValueKey('factory-note')), ...text],
                     ),
                   ),
                   // Os botões no lugar dos da batalha, à direita da caixa de texto (o que não cabe vai para a próxima página).
@@ -3487,6 +3505,13 @@ class _FactoryScreenState extends State<FactoryScreen> {
                         ? _pcPanel(run, close)
                         : null;
     // Esquecer um golpe para aprender o novo: a tela dos 5 golpes por cima de tudo (como nos jogos).
+    // Vencer um andar sem nada importante: segue sozinho (sem CONTINUAR).
+    if (step == 'result' && _learn == null && !_autoResult && _quickResult(p!)) {
+      _autoResult = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _afterResult(run, p, quick: true).whenComplete(() => _autoResult = false);
+      });
+    }
     if (step == 'result' && _learn != null && _learnStep == 'forget') _framePanel = _forgetPanel(run);
     if (step == 'result' && _learn != null && _learn!.isNotEmpty) {
       frame = _learnFrame(run, p!);
@@ -3898,6 +3923,12 @@ class _FactoryScreenState extends State<FactoryScreen> {
 
 
 
+  /// O resumo do andar que passou direto (XP, dinheiro, níveis, itens, golpes aprendidos sozinhos), na caixa de texto da
+  /// tela seguinte. [_noteKeep]: o próximo _save ainda mostra.
+  String? _note;
+  bool _noteKeep = false;
+  bool _autoResult = false;
+
   /// Os golpes que o time aprende subindo de nível (como nos jogos), um de cada vez: (posição no time, golpe, entrou sozinho).
   List<(int, String, bool)>? _learn;
 
@@ -3907,9 +3938,21 @@ class _FactoryScreenState extends State<FactoryScreen> {
   int? _forgetPick;
   Map<String, Map<String, dynamic>> _moveData = const {};
 
+  /// O resultado do andar numa linha: XP, dinheiro, quem subiu de nível e os itens achados.
+  String _resultLine(Json run, Json p) {
+    final team = FactoryRun.teamOf(run);
+    return [
+      '🏆 ${tr('Andar vencido!')} +${p['exp']} XP · +💰${p['money']}',
+      for (final l in (p['levels'] as List? ?? const []).cast<Map>())
+        if ((l['index'] as num).toInt() < team.length) '${_name(team[(l['index'] as num).toInt()]['id'])}: Nv. ${l['from']} → ${l['to']}',
+      for (final id in [p['drop'], p['reward'], p['dowsed']].whereType<String>()) '🎁 ${_itemName(id)}',
+      for (final x in (p['picked'] as List? ?? const []).cast<Map>()) '🎒 ${_name(x['id'])}: ${_itemName('${x['item']}')}',
+    ].join(' · ');
+  }
+
   /// Depois do resultado do andar: os golpes novos de quem subiu de nível. Com vaga, aprende sozinho; com 4, pergunta.
   /// Os golpes de quem subiu ficam guardados (não mudam mais sozinhos).
-  Future<void> _afterResult(Json run, Json p) async {
+  Future<void> _afterResult(Json run, Json p, {bool quick = false}) async {
     _moveData = await LocalDatabase.instance.movesByName();
     var next = run;
     final queue = <(int, String, bool)>[];
@@ -3937,6 +3980,16 @@ class _FactoryScreenState extends State<FactoryScreen> {
       next = {...next, 'team': [for (var k = 0; k < team.length; k++) k == i ? {...team[k], 'moves': current} : team[k]]};
     }
     if (!mounted) return;
+    // Quem aprendeu sozinho (tinha vaga) não precisa de tela: vai no resumo. Só pergunta quem já tem 4 golpes.
+    final team = FactoryRun.teamOf(next);
+    final learned = [
+      for (final (i, move, auto) in queue)
+        if (auto) '✨ ${tr('{0} aprendeu {1}!').replaceAll('{0}', _name(team[i]['id'])).replaceAll('{1}', prettySlug(move))}'
+    ];
+    queue.removeWhere((q) => q.$3);
+    final note = [if (quick) _resultLine(run, p), ...learned].join(' · ');
+    _note = note.isEmpty ? null : note;
+    _noteKeep = _note != null;
     if (queue.isEmpty) return _save({...next, 'pending': {...p, 'seen': true}});
     _learn = queue;
     _learnStep = 'ask';
