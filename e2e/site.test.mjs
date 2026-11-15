@@ -399,7 +399,8 @@ try {
   let healed = false
   let shifted = false
   for (let i = 0; ; i++) {
-    assert.ok(i < 150, `${step}: a batalha não terminou`)
+    // Contra um time aleatório: cada turno leva umas 35 falas (e animações); 6 contra 6 pode passar de 15 turnos.
+    assert.ok(i < 800, `${step}: a batalha não terminou`)
     if (await page.getByRole('button', { name: 'Batalhar de novo' }).isVisible()) break
     // Derrubou o do adversário: a pergunta do "Shift" (troca de graça uma vez; depois continua com o mesmo).
     if (await page.getByTestId('shift-yes').isVisible()) {
