@@ -229,19 +229,32 @@ export function PlatformBase({ scene, side, scale = 1 }) {
   )
 }
 
-export function BattleBackground({ weather = '', scene = 'grass', layout = 'classic' }) {
+export function BattleBackground({ weather = '', scene = 'grass', layout = 'classic', bleed = false }) {
   const { foe, mine } = PLATFORMS[layout] ?? PLATFORMS.classic
   if (layout === 'bw' && SCENE_IMAGES.includes(scene)) {
     // A do clima por cima da normal, aparecendo devagar quando o golpe muda o clima.
     const sky = WEATHER_IMAGE[weather]
-    return (
-      <div className="pointer-events-none absolute inset-0" aria-hidden="true" data-scene={scene} data-weather={sky ?? ''}>
+    const tile = (
+      <>
         <img src={spriteUrl(`battle/${scene}.webp`)} alt="" className="pixelated absolute inset-0 h-full w-full object-fill" />
         {Object.values(WEATHER_IMAGE).filter((w, i, all) => all.indexOf(w) === i).map((w) => (
           <img key={w} src={spriteUrl(`battle-weather/${scene}-${w}.webp`)} alt="" loading="lazy" className="pixelated absolute inset-0 h-full w-full object-fill transition-opacity duration-700" style={{ opacity: sky === w ? 1 : 0 }} />
         ))}
         {/* À noite (pelo relógio de quem joga), os lugares abertos ficam escuros e azulados. */}
         {NIGHT_SCENES.includes(scene) && isNight() && <div className="night-tint absolute inset-0" data-testid="night-tint" />}
+      </>
+    )
+    return (
+      <div className="pointer-events-none absolute inset-0" aria-hidden="true" data-scene={scene} data-weather={sky ?? ''}>
+        {bleed
+          ? // O cenário continua além da borda (cópias espelhadas em volta): a câmera do golpe tremendo, girando ou se
+            // afastando mostra mais cenário em vez da borda. Igual ao app (SceneBleed).
+            [-1, 0, 1].flatMap((j) => [-1, 0, 1].map((i) => (
+              <div key={`${i}${j}`} className="absolute h-full w-full" style={{ left: `${i * 100}%`, top: `${j * 100}%`, transform: i || j ? `scale(${i ? -1 : 1},${j ? -1 : 1})` : undefined }}>
+                {tile}
+              </div>
+            )))
+          : tile}
       </div>
     )
   }

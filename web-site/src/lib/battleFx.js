@@ -3089,29 +3089,6 @@ export function fxCamera(plan, ms) {
   return [clamp(cx, hw, w - hw), clamp(cy, hh, h - hh), z, r]
 }
 
-/**
- * A câmera e o tremor juntos, sem nunca mostrar fora do cenário (o corte no fundo): o tremor e a inclinação ganham um
- * zoom só do tamanho que precisam, e o centro fica dentro do cenário. [cx, cy, z, r, sx, sy]. Igual ao app.
- */
-export function fxView(plan, ms) {
-  let [cx, cy, z, r] = fxCamera(plan, ms)
-  const [sx, sy] = fxShake(plan, ms)
-  const [w, h] = plan.world ?? [960, 540]
-  const t = (r * Math.PI) / 180
-  const c = Math.abs(Math.cos(t))
-  const s = Math.abs(Math.sin(t))
-  const zr = Math.max(c + (h / w) * s, c + (w / h) * s)
-  z = Math.max(z, zr + 2 * Math.max(Math.abs(sx) / w, Math.abs(sy) / h))
-  const hw = (w / 2 * c + h / 2 * s) / z
-  const hh = (h / 2 * c + w / 2 * s) / z
-  // O tremor é na tela: no cenário ele vem girado pela inclinação.
-  const rx = (Math.cos(t) * sx + Math.sin(t) * sy) / z
-  const ry = (-Math.sin(t) * sx + Math.cos(t) * sy) / z
-  cx = clamp(cx - rx, hw, w - hw) + rx
-  cy = clamp(cy - ry, hh, h - hh) + ry
-  return [cx, cy, z, r, sx, sy]
-}
-
 function fxCameraRaw(plan, ms) {
   const k = plan.cam
   if (!k.length) return NEUTRAL

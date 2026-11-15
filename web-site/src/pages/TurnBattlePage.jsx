@@ -1773,7 +1773,7 @@ waiting && !locked && menu === 'fight' ? <MenuButton onClick={() => setMenu('mai
         {/* Como no Black & White: o adversário lá atrás à direita (menor), o seu de costas na frente à esquerda (grande, cortado pela caixa do texto). */}
         {/* O mundo da batalha (fundo, clima, bases, Pokémon, treinadores): a câmera dos golpes move tudo junto. */}
         <div ref={world} className="absolute inset-0 origin-top-left" data-testid="battle-world">
-        <BattleBackground weather={shown.weather} scene={scene} layout="bw" />
+        <BattleBackground weather={shown.weather} scene={scene} layout="bw" bleed />
         {/* Clima, terreno e efeito do lugar fazem parte do cenário: atrás dos Pokémon e das caixas. */}
         <WeatherFx weather={shown.weather} terrain={shown.terrain} place={shown.place} />
         {/* Como no port de Black & White: o adversário no meio-direita, no tamanho do sprite dele; o seu de costas à esquerda,

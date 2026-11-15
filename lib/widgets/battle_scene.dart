@@ -369,3 +369,26 @@ class BattleScenePainter extends CustomPainter {
   @override
   bool shouldRepaint(BattleScenePainter old) => old.scene != scene || old.weather != weather || old.bw != bw;
 }
+
+/// O cenário continuando além da borda da tela: cópias espelhadas em volta (emendam sem corte). Quando a câmera do
+/// golpe treme, gira ou se afasta, aparece mais cenário em vez da borda. Igual ao site.
+class SceneBleed extends StatelessWidget {
+  const SceneBleed({super.key, required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(builder: (context, box) {
+        final w = box.maxWidth, h = box.maxHeight;
+        return Stack(clipBehavior: Clip.none, children: [
+          for (final j in const [-1, 0, 1])
+            for (final i in const [-1, 0, 1])
+              Positioned(
+                left: i * w,
+                top: j * h,
+                width: w,
+                height: h,
+                child: i == 0 && j == 0 ? child : Transform.flip(flipX: i != 0, flipY: j != 0, child: child),
+              ),
+        ]);
+      });
+}

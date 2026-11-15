@@ -61,30 +61,14 @@ void applyFxCamera(Canvas canvas, MoveFxPlan plan, double ms, Size size) {
 
 /// A matriz da mesma câmera (para mover o campo inteiro: fundo e sprites).
 Matrix4 fxCameraMatrix(MoveFxPlan plan, double ms, Size size) {
-  final (cx, cy, z, r, sx, sy) = fxView(plan, ms);
+  final c = BattleFx.camera(plan, ms);
+  final (sx, sy) = BattleFx.shake(plan, ms);
   final f = size.width / plan.world[0];
   return Matrix4.identity()
     ..translateByDouble(size.width / 2 + sx * f, size.height / 2 + sy * f, 0, 1)
-    ..rotateZ(r * math.pi / 180)
-    ..scaleByDouble(z, z, 1, 1)
-    ..translateByDouble(-cx * f, -cy * f, 0, 1);
-}
-
-/// A câmera e o tremor juntos, sem nunca mostrar fora do cenário (o corte no fundo): o tremor e a inclinação ganham um
-/// zoom só do tamanho que precisam, e o centro fica dentro do cenário. Igual ao site (fxView).
-(double, double, double, double, double, double) fxView(MoveFxPlan plan, double ms) {
-  final c0 = BattleFx.camera(plan, ms);
-  final (sx, sy) = BattleFx.shake(plan, ms);
-  final w = plan.world[0], h = plan.world[1];
-  final t = c0[3] * math.pi / 180, c = math.cos(t).abs(), s = math.sin(t).abs();
-  final zr = math.max(c + h / w * s, c + w / h * s);
-  final z = math.max(c0[2], zr + 2 * math.max(sx.abs() / w, sy.abs() / h));
-  final hw = (w / 2 * c + h / 2 * s) / z, hh = (h / 2 * c + w / 2 * s) / z;
-  // O tremor é na tela: no cenário ele vem girado pela inclinação.
-  final rx = (math.cos(t) * sx + math.sin(t) * sy) / z, ry = (-math.sin(t) * sx + math.cos(t) * sy) / z;
-  final cx = (c0[0] - rx).clamp(hw, w - hw) + rx;
-  final cy = (c0[1] - ry).clamp(hh, h - hh) + ry;
-  return (cx, cy, z, c0[3], sx, sy);
+    ..rotateZ(c[3] * math.pi / 180)
+    ..scaleByDouble(c[2], c[2], 1, 1)
+    ..translateByDouble(-c[0] * f, -c[1] * f, 0, 1);
 }
 
 class FxPainter extends CustomPainter {

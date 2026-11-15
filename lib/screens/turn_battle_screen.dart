@@ -2643,16 +2643,10 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
                 // Terremoto: o campo treme.
                 return AnimatedBuilder(
                   animation: _shake,
-                  // Com um zoom do tamanho do balanço, para a borda do cenário nunca aparecer (o corte).
-                  builder: (context, child) => _shake.isAnimating
-                      ? Transform(
-                          alignment: Alignment.center,
-                          transform: Matrix4.identity()
-                            ..translateByDouble(sin(_shake.value * pi * 10) * w * 0.015, 0, 0, 1)
-                            ..scaleByDouble(1.035, 1.035, 1, 1),
-                          child: child,
-                        )
-                      : child!,
+                  builder: (context, child) => Transform.translate(
+                    offset: Offset(_shake.isAnimating ? sin(_shake.value * pi * 10) * w * 0.015 : 0, 0),
+                    child: child,
+                  ),
                   child: Stack(
                     children: [
                       // O mundo da batalha (fundo, clima, Pokémon, treinadores): a câmera dos golpes move tudo junto.
@@ -2664,7 +2658,7 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
                       Positioned.fill(
                         child: AnimatedSwitcher(
                           duration: const Duration(milliseconds: 800),
-                          child: BattleBackdrop(key: ValueKey(_weather), scene: scene, weather: _weather),
+                          child: SceneBleed(key: ValueKey(_weather), child: BattleBackdrop(scene: scene, weather: _weather)),
                         ),
                       ),
                       // Clima, terreno e efeito do lugar fazem parte do cenário: atrás dos Pokémon e das caixas.
