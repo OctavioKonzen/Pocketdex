@@ -2610,7 +2610,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
             child: LayoutBuilder(builder: (context, box) {
               final w = box.maxWidth, h = box.maxHeight;
               _scene = battleScene(biome, 0);
-              return Stack(children: [Positioned.fill(child: BattleBackdrop(scene: _scene)), ...children(w, h)]);
+              return Stack(children: [Positioned.fill(child: SceneBleed(child: BattleBackdrop(scene: _scene))), ...children(w, h)]);
             }),
           ),
         ),

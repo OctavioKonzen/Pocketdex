@@ -1583,7 +1583,7 @@ function useWidth() {
 function Field({ biome = 'grass', fieldRef, children, testid }) {
   return (
     <div ref={fieldRef} className="absolute inset-0 overflow-clip" style={{ background: '#9fdcff' }} data-testid={testid} data-layout="bw">
-      <BattleBackground scene={battleScene(biome)} layout="bw" />
+      <BattleBackground scene={battleScene(biome)} layout="bw" bleed />
       {children}
     </div>
   )

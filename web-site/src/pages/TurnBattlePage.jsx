@@ -2488,7 +2488,7 @@ export function MultiBattle({battle, hit = null, onExit, onAgain, onFinish, onli
     <MoveInfo info={moveInfo} onClose={() => setMoveInfo(null)} />
     {/* Sempre do mesmo tamanho da batalha normal (4:3), em dupla e em tripla. */}
     <div onClickCapture={(e) => { if (skip.current) { e.stopPropagation(); skip.current() } }} className="battle-field port-field relative aspect-video overflow-clip rounded-2xl border-4 hud-edge" data-testid="multi-battle-field" data-layout="bw" style={{background:'#9fdcff'}}>
-      <BattleBackground weather={battle.weather} scene={scene} layout="bw"/>{sprites(1-side)}{sprites(side)}{info(1-side)}{info(side)}<WeatherFx weather={battle.weather}/>
+      <BattleBackground weather={battle.weather} scene={scene} layout="bw" bleed/>{sprites(1-side)}{sprites(side)}{info(1-side)}{info(side)}<WeatherFx weather={battle.weather}/>
       {/* A mensagem dentro da tela, embaixo, como na batalha normal (tocar passa o texto). */}
       {/* Todo texto na caixa (o erro também); se não couber, em partes. */}
       <BattleDialog boxRef={dialogRef} narrow onSkip={()=>skip.current?.()} text={shown ? shown.text : (error || online?.error) ? (error || online.error) : choosing ? prompt : status}/>

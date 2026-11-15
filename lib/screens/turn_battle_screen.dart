@@ -4953,7 +4953,7 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
             }
 
             return Stack(clipBehavior: Clip.hardEdge, children: [
-              Positioned.fill(child: BattleBackdrop(scene: scene, weather: _b.weather)),
+              Positioned.fill(child: SceneBleed(child: BattleBackdrop(scene: scene, weather: _b.weather))),
               // Os adversários: lá atrás, à direita, pisando no chão do cenário.
               Positioned(
                 right: w * 0.345,
