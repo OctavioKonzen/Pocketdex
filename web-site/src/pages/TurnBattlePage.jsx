@@ -2518,7 +2518,11 @@ function BottomScreen({ info, grid, footer, extra, testId = 'battle-bottom', inF
   // O menu e os golpes dentro do campo (a batalha de um contra um): aqui fica só a linha de informações.
   if (inField)
     // Tudo numa tela só (como no port): embaixo do campo, só as escolhas do fim (Continuar, Batalhar de novo...).
-    return extra ? <div className="mt-2 flex w-full flex-col gap-2" data-testid="battle-extra">{extra}</div> : null
+    // O estado do turno (data-turn, data-round, data-playing) continua num marcador escondido.
+    return <>
+      <div hidden data-testid={testId} {...rest} />
+      {extra && <div className="mt-2 flex w-full flex-col gap-2" data-testid="battle-extra">{extra}</div>}
+    </>
   return (
     <>
       <div className="flex h-[15.5rem] flex-col gap-1.5 rounded-b-2xl border-4 hud-edge hud-base p-2 text-white" data-testid={testId} {...rest}>
