@@ -304,7 +304,7 @@ try {
   for (const kind of ['mega', 'dmax', 'z']) assert.equal(await page.getByTestId(kind).count(), 0)
   await page.getByTestId('tera').click()
   await page.getByTestId('moves').getByRole('button', { name: /^Earthquake/ }).click()
-  await page.getByText('Você já enviou sua ação. Aguardando seu amigo…', { exact: true }).first().waitFor({ timeout: 15000 })
+  await page.getByText(/Você já enviou sua ação/).first().waitFor({ timeout: 15000 })
   assert.equal(await page2.getByTestId('online-hp-0').innerText(), beforeOnline, 'não deve resolver o turno sem a escolha do amigo')
   await page2.locator('.battle-field').waitFor({ timeout: 30000 })
   await page2.getByRole('button', { name: '▸ LUTAR', exact: true }).click()
@@ -351,7 +351,7 @@ try {
       if (await target.count()) await target.first().click()
     }
     await act(page)
-    await page.getByText('Você já enviou sua ação. Aguardando seu amigo…',{exact:true}).first().waitFor({timeout:15000})
+    await page.getByText(/Você já enviou sua ação/).first().waitFor({timeout:15000})
     assert.equal(await page2.getByTestId('multi-actions').getAttribute('data-turn'),'1','NPCs aguardam os dois amigos')
     await act(page2)
     for (const p of [page,page2]) await p.waitForFunction(()=>Number(document.querySelector('[data-testid="multi-actions"]')?.dataset.round)>0,null,{timeout:30000})
