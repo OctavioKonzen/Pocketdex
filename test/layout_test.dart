@@ -179,6 +179,7 @@ final screens = <String, Widget Function()>{
   // O celular deitado: a batalha e o registro lado a lado (o teste gira a tela).
   'Batalha (segurar golpe)': () => const TurnBattleScreen(mine: [(6, null), (9, null)], theirs: [(3, null), (94, null)], foeName: 'Ash'),
   'Batalha (tema Charizard, campeão)': () => const TurnBattleScreen(mine: [(6, null), (9, null)], theirs: [(3, null), (94, null)], foeName: 'Ash'),
+  'Batalha (trocar)': () => const TurnBattleScreen(mine: [(6, null), (9, null), (25, null)], theirs: [(3, null), (94, null)], foeName: 'Ash'),
   'Batalha deitada': () => const TurnBattleScreen(mine: [(6, null), (9, null)], theirs: [(3, null), (94, null)], foeName: 'Ash'),
   'Battle Factory (resultado)': () => _factory({'exp': 120, 'money': 80, 'levels': [{'index': 0, 'from': 11, 'to': 12, 'evolved': null}], 'joy': true, 'drop': 'firium-z',
         'reward': 'leftovers', 'capture': null, 'cards': null, 'shop': null}),
@@ -786,6 +787,19 @@ final Map<String, Future<void> Function(WidgetTester)> actions = {
     await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.byKey(const ValueKey('move-info')), findsOneWidget);
+  },
+  // A tela de trocar (POKÉMON): a mesma do time do Pokelike.
+  'Batalha (trocar)': (tester) async {
+    for (var i = 0; i < 60 && find.byKey(const ValueKey('battle-fight')).evaluate().isEmpty; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 500)));
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+    if (find.byKey(const ValueKey('battle-fight')).evaluate().isEmpty) return _noBattle();
+    await tester.tap(find.text('POKÉMON').last);
+    for (var i = 0; i < 4; i++) {
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+    expect(find.byKey(const ValueKey('battle-single-switch')), findsOneWidget);
   },
   // O registro aberto depois de um turno (o botão 📜).
   'Registro da batalha': (tester) async {

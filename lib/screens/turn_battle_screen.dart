@@ -55,6 +55,7 @@ import 'factory_panels.dart';
 import '../widgets/battle_scene.dart';
 import '../widgets/bw_bag.dart';
 import '../widgets/bw_party.dart';
+import '../widgets/port_party.dart';
 import '../widgets/bw_summary.dart';
 import '../widgets/ds_layout.dart';
 import '../services/battle_fx.dart';
@@ -2464,9 +2465,9 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
             // A tela do time do Black & White (compacta, em 2 colunas), por cima do campo.
             // Os 6 cabem exatamente na tela (como no jogo); o título vai para a caixa de texto e as opções para os
             // botões fixos de baixo.
-            ? BwParty(
+            // A mesma tela do time do Pokelike: quem está em campo grande à esquerda (se for o primeiro), os outros à direita.
+            ? PortParty(
                 testKey: 'battle-single-switch',
-                fill: true,
                 selected: _partyPick,
                 onSelect: _item == null ? (i) => setState(() => _partyPick = i) : null,
                 active: _b.activeIndex[0],
@@ -2488,9 +2489,6 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
                 ],
                 disabled: (i) => !(_item != null ? _b.canUseItem(0, _item!, i) : _b.canSwitch(0, i)),
                 onPick: _choose,
-                // Trocando: tocar mostra as opções (TROCAR, DADOS), como no jogo.
-                onInfo: _item == null ? (i) => setState(() => _summary = i) : null,
-                pickLabel: tr('TROCAR'),
               )
             : null;
     // A mecânica do set (montador) ativa sozinha no primeiro ataque, como nos
@@ -5103,9 +5101,8 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
       return SingleChildScrollView(child: BwSummary(summaryOf(_b, _side, _summary!), onBack: () => setState(() => _summary = null)));
     }
     // Os 6 cabem exatamente na tela (como no jogo); a pergunta vai para a caixa de texto e as opções para os botões de baixo.
-    return BwParty(
+    return PortParty(
       testKey: 'battle-switch-$position',
-      fill: true,
       selected: _partyPick,
       onSelect: (i) => setState(() => _partyPick = i),
       active: slot['index'] as int,
@@ -5123,7 +5120,6 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
       ],
       disabled: (i) => _locked || (item != null ? !_canItem(item, i) : !options.contains(i)),
       onPick: (i) => _commit(slot, item != null ? {'kind': 'item', 'item': item, 'index': i} : {'kind': 'switch', 'index': i}),
-      pickLabel: tr(item != null ? 'USAR' : 'TROCAR'),
     );
   }
 
