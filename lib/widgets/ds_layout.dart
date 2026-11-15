@@ -33,7 +33,11 @@ class DsLayout extends StatelessWidget {
     if (!lying(context)) return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [top, bottom]);
     if (single) {
       return LayoutBuilder(builder: (context, box) {
-        final w = min(box.maxWidth, (MediaQuery.sizeOf(context).height - MediaQuery.paddingOf(context).vertical - 16) * 16 / 9);
+        // A altura de verdade: a tela menos a barra de status e a de navegação (o SafeArea de fora já tirou elas do
+        // MediaQuery, por isso vêm da View) e o respiro da lista em volta (12 em cima e embaixo). Assim a tela não rola.
+        final view = View.of(context);
+        final bars = (view.padding.top + view.padding.bottom) / view.devicePixelRatio;
+        final w = min(box.maxWidth, (MediaQuery.sizeOf(context).height - max(bars, MediaQuery.paddingOf(context).vertical) - 32) * 16 / 9);
         return Center(
           key: const ValueKey('ds-single'),
           child: SizedBox(width: w, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [top, bottom])),
