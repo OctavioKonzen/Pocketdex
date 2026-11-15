@@ -9026,6 +9026,11 @@
   "fr": "SORTIR",
   "es": "SALIR"
  },
+ "AÇÕES": {
+  "en": "ACTIONS",
+  "fr": "ACTIONS",
+  "es": "ACCIONES"
+ },
  "DESISTIR": {
   "en": "GIVE UP",
   "fr": "ABANDONNER",

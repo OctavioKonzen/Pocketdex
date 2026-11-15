@@ -2651,6 +2651,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
   /// Salva; sem mais nada para ver depois do andar, abre o mapa (os caminhos do próximo).
   void _save(Json? next, [Json? meta]) {
     if (next == null) return;
+    // Fez uma ação (ou seguiu): a lista de ações fecha.
+    if (_panel == 'actions') _panel = null;
     // O resumo do andar fica só na tela seguinte.
     if (_noteKeep) {
       _noteKeep = false;
@@ -4019,6 +4021,10 @@ class _FactoryScreenState extends State<FactoryScreen> {
   int? _forgetPick;
   Map<String, Map<String, dynamic>> _moveData = const {};
 
+  /// Quantas ações há (a grade da rota conta cada botão dela).
+  int _actionCount(List<Widget> extras) => extras.fold(0, (n, e) => n + (e is KeyedSubtree && e.key == const ValueKey('route-actions') ? _routeActionCount : 1));
+  int _routeActionCount = 0;
+
   /// O resultado do andar numa linha: XP, dinheiro, quem subiu de nível e os itens achados.
   String _resultLine(Json run, Json p) {
     final team = FactoryRun.teamOf(run);
@@ -4350,6 +4356,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
         _menuButton('📷 ${tr('ÁLBUM')} (${photos.length})', widget.busy ? null : () => setState(() => _panel = _panel == 'album' ? null : 'album'),
             active: _panel == 'album', key: const ValueKey('factory-album')),
     ];
+    _routeActionCount = acts.length;
     return acts.isEmpty ? const [] : [KeyedSubtree(key: const ValueKey('route-actions'), child: _menuGrid(acts, wide: true))];
   }
 
@@ -5108,6 +5115,22 @@ class _FactoryScreenState extends State<FactoryScreen> {
             _menuButton('🎲 ${tr('SORTEAR O CAMINHO DE NOVO')}', widget.busy ? null : () => _save(FactoryRun.rerollRoute(run, data)),
                 sub: tr('Restam {0} nesta corrida').replaceAll('{0}', '${run['rerolls']}'), key: const ValueKey('factory-reroll')),
     ];
+    // A lista das ações (aberta pelo botão AÇÕES): por cima do campo, com o ✕, os botões grandes um embaixo do outro.
+    if (_panel == 'actions' && asCards && extras.isNotEmpty) {
+      _framePanel = Container(
+        key: const ValueKey('actions-panel'),
+        color: const Color(0xFF1F6F78),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          _overlayHeader('✨ ${tr('AÇÕES')}', () => setState(() => _panel = null)),
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              for (final e in extras) Padding(padding: const EdgeInsets.only(bottom: 6), child: e),
+            ]),
+          ),
+        ]),
+      );
+    }
     return _frame(
       menuFill: asCards,
       run: run,
@@ -5170,18 +5193,14 @@ class _FactoryScreenState extends State<FactoryScreen> {
                             for (final (i, c) in paths.indexed) ...[if (i > 0) SizedBox(width: w * 0.02), SizedBox(width: w * 0.16, child: _CardIn(index: i, child: c))],
                           ]),
                         ),
+                        // O que dá para fazer aqui (árvore, mel, fruta...): um botão só, que abre a lista por cima.
                         if (extras.isNotEmpty)
-                          SizedBox(
-                            width: w * 0.3,
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              alignment: Alignment.topCenter,
-                              child: SizedBox(
-                                width: w * 0.3,
-                                child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                                  for (final e in extras) Padding(padding: const EdgeInsets.only(bottom: 4), child: e),
-                                ]),
-                              ),
+                          Align(
+                            alignment: Alignment.topRight,
+                            child: SizedBox(
+                              width: w * 0.2,
+                              child: _menuButton('✨ ${tr('AÇÕES')} (${_actionCount(extras)})', widget.busy ? null : () => setState(() => _panel = 'actions'),
+                                  key: const ValueKey('factory-actions'), active: _panel == 'actions'),
                             ),
                           ),
                       ]),

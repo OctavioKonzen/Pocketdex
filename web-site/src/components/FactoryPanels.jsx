@@ -2431,6 +2431,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
   const name = (id) => t(prettyName(byId?.get(id)?.name ?? ''))
   const save = (next) => {
     if (!next) return
+    // Fez uma ação (ou seguiu): a lista de ações fecha.
+    if (panel === 'actions') setPanel(null)
     // O resumo do andar fica só na tela seguinte.
     if (noteKeep.current) noteKeep.current = false
     else setNote(null)
@@ -3267,10 +3269,26 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       const cards = (
         <div key={`cards-${run.floor}`} className="absolute left-[3%] right-[3%] top-[16%] bottom-[37%] z-20 flex gap-[2%]" data-testid="path-cards">
           <div className="flex min-w-0 flex-1 items-stretch justify-center gap-[2.5%]">{pathItems}</div>
-          {rest.length > 0 && <div className="port-extras flex w-[24%] shrink-0 flex-col justify-center gap-[3%]">{rest}</div>}
+          {/* O que dá para fazer aqui (árvore, mel, fruta...): um botão só, que abre a lista por cima. Igual ao app. */}
+          {rest.length > 0 && (
+            <div className="port-extras w-[20%] shrink-0 self-start">
+              <MenuButton testid="factory-actions" disabled={busy} active={panel === 'actions'} onClick={() => setPanel('actions')}>
+                ✨ {t('AÇÕES')} ({rest.reduce((n, el) => n + (el.props?.['data-testid'] === 'route-actions' ? Children.count(el.props.children) : 1), 0)})
+              </MenuButton>
+            </div>
+          )}
         </div>
       )
       field = cloneElement(field, {}, ...Children.toArray(field.props.children), cards)
+      // A lista das ações (aberta pelo botão AÇÕES): por cima do campo, com o ✕, os botões um embaixo do outro.
+      if (panel === 'actions' && rest.length > 0) {
+        below = (
+          <div className="flex h-full flex-col" data-testid="actions-panel">
+            <OverlayClose onClose={() => setPanel(null)} title={`✨ ${t('AÇÕES')}`} />
+            <div className="port-extras grid content-start gap-2 p-1 [&_[data-testid=route-actions]]:gap-2">{rest}</div>
+          </div>
+        )
+      }
     }
     if (town && panel === 'daycare') below = daycareView()
     if (panel === 'album') {

@@ -578,7 +578,19 @@ final Map<String, Future<void> Function(WidgetTester)> actions = {
     expect(find.byKey(const ValueKey('factory-plot'), skipOffstage: false), findsOneWidget);
     expect(find.byKey(const ValueKey('factory-flawless'), skipOffstage: false), findsOneWidget);
   },
+  // As ações da rota: um botão só (AÇÕES) abre a lista por cima, com o ✕.
+  'Battle Factory (ações da rota)': (tester) async {
+    await tester.tap(find.byKey(const ValueKey('factory-actions')));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byKey(const ValueKey('actions-panel')), findsOneWidget);
+    expect(find.byKey(const ValueKey('route-actions')), findsOneWidget);
+  },
   'Battle Factory (álbum)': (tester) async {
+    // Na rota, o álbum fica dentro de AÇÕES.
+    if (find.byKey(const ValueKey('factory-actions')).evaluate().isNotEmpty) {
+      await tester.tap(find.byKey(const ValueKey('factory-actions')));
+      await tester.pump(const Duration(milliseconds: 300));
+    }
     await _openTown(tester, 'factory-album');
     expect(find.byKey(const ValueKey('album')), findsOneWidget);
   },
