@@ -3271,24 +3271,19 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
           <div className="flex min-w-0 flex-1 items-stretch justify-center gap-[2.5%]">{pathItems}</div>
           {/* O que dá para fazer aqui (árvore, mel, fruta...): um botão só, que abre a lista por cima. Igual ao app. */}
           {rest.length > 0 && (
-            <div className="port-extras w-[20%] shrink-0 self-start">
-              <MenuButton testid="factory-actions" disabled={busy} active={panel === 'actions'} onClick={() => setPanel('actions')}>
+            <div className="port-extras flex max-h-full w-[26%] shrink-0 flex-col gap-1 self-start">
+              <MenuButton testid="factory-actions" disabled={busy} active={panel === 'actions'} onClick={() => setPanel(panel === 'actions' ? null : 'actions')}>
                 ✨ {t('AÇÕES')} ({rest.reduce((n, el) => n + (el.props?.['data-testid'] === 'route-actions' ? Children.count(el.props.children) : 1), 0)})
               </MenuButton>
+              {/* A lista pequena, logo abaixo do botão (tocando de novo, fecha). Igual ao app. */}
+              {panel === 'actions' && (
+                <div className="grid min-h-0 content-start gap-1 overflow-hidden rounded-md border-2 border-[#8b93a1] bg-[#15181ff0] p-1 [&_[data-testid=route-actions]]:gap-1" data-testid="actions-panel">{rest}</div>
+              )}
             </div>
           )}
         </div>
       )
       field = cloneElement(field, {}, ...Children.toArray(field.props.children), cards)
-      // A lista das ações (aberta pelo botão AÇÕES): por cima do campo, com o ✕, os botões um embaixo do outro.
-      if (panel === 'actions' && rest.length > 0) {
-        below = (
-          <div className="flex h-full flex-col" data-testid="actions-panel">
-            <OverlayClose onClose={() => setPanel(null)} title={`✨ ${t('AÇÕES')}`} />
-            <div className="port-extras grid content-start gap-2 p-1 [&_[data-testid=route-actions]]:gap-2">{rest}</div>
-          </div>
-        )
-      }
     }
     if (town && panel === 'daycare') below = daycareView()
     if (panel === 'album') {

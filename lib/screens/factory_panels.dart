@@ -5115,22 +5115,6 @@ class _FactoryScreenState extends State<FactoryScreen> {
             _menuButton('🎲 ${tr('SORTEAR O CAMINHO DE NOVO')}', widget.busy ? null : () => _save(FactoryRun.rerollRoute(run, data)),
                 sub: tr('Restam {0} nesta corrida').replaceAll('{0}', '${run['rerolls']}'), key: const ValueKey('factory-reroll')),
     ];
-    // A lista das ações (aberta pelo botão AÇÕES): por cima do campo, com o ✕, os botões grandes um embaixo do outro.
-    if (_panel == 'actions' && asCards && extras.isNotEmpty) {
-      _framePanel = Container(
-        key: const ValueKey('actions-panel'),
-        color: const Color(0xFF1F6F78),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          _overlayHeader('✨ ${tr('AÇÕES')}', () => setState(() => _panel = null)),
-          Padding(
-            padding: const EdgeInsets.all(8),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              for (final e in extras) Padding(padding: const EdgeInsets.only(bottom: 6), child: e),
-            ]),
-          ),
-        ]),
-      );
-    }
     return _frame(
       menuFill: asCards,
       run: run,
@@ -5194,14 +5178,33 @@ class _FactoryScreenState extends State<FactoryScreen> {
                           ]),
                         ),
                         // O que dá para fazer aqui (árvore, mel, fruta...): um botão só, que abre a lista por cima.
+                        // Tocando, abre uma lista pequena logo abaixo dele (por cima das cartas); tocando de novo, fecha.
                         if (extras.isNotEmpty)
-                          Align(
-                            alignment: Alignment.topRight,
-                            child: SizedBox(
-                              width: w * 0.2,
-                              child: _menuButton('✨ ${tr('AÇÕES')} (${_actionCount(extras)})', widget.busy ? null : () => setState(() => _panel = 'actions'),
+                          SizedBox(
+                            width: w * 0.26,
+                            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                              _menuButton('✨ ${tr('AÇÕES')} (${_actionCount(extras)})', widget.busy ? null : () => setState(() => _panel = _panel == 'actions' ? null : 'actions'),
                                   key: const ValueKey('factory-actions'), active: _panel == 'actions'),
-                            ),
+                              if (_panel == 'actions')
+                                Flexible(
+                                  child: Container(
+                                    key: const ValueKey('actions-panel'),
+                                    margin: const EdgeInsets.only(top: 4),
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(color: const Color(0xF015181F), border: Border.all(color: const Color(0xFF8B93A1), width: 2), borderRadius: BorderRadius.circular(6)),
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment: Alignment.topCenter,
+                                      child: SizedBox(
+                                        width: w * 0.26 - 12,
+                                        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                                          for (final e in extras) Padding(padding: const EdgeInsets.only(bottom: 3), child: e),
+                                        ]),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ]),
                           ),
                       ]),
                     );
