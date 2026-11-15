@@ -728,10 +728,13 @@ class _OptionButton extends StatelessWidget {
                       style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
                 ),
                 const SizedBox(width: 12),
+                // Nomes longos (ex.: Dudunsparce two segment) encolhem para caber, sem cortar.
                 Expanded(
-                  child: Text(label,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(label, maxLines: 1, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  ),
                 ),
                 if (mark != null) Text(mark!, style: const TextStyle(color: Colors.white, fontSize: 20)),
               ],
