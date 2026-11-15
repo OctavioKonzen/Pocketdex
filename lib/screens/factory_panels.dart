@@ -354,6 +354,24 @@ const _frameNames = {'gold': 'Dourada', 'crystal': 'Cristal', 'night': 'Noite', 
 /// O texto da HUD do port (a fonte de pixel, branco com sombra).
 const _portText = TextStyle(fontFamily: 'PixelifySans', color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13, shadows: [Shadow(color: Colors.black, offset: Offset(1, 1))]);
 
+/// Os tamanhos da HUD do port: a fonte, a faixa de dica, a altura da caixa de texto e dos botões e onde fica a vida.
+/// Tudo vem da largura (a tela é sempre 16:9).
+({double font, double bar, double bottom, double zone, double hpBottom, double menuW, double cardsTop, double cardsBottom}) _portMetrics(double w, double h) {
+  final s = w * 9 / 16, font = w * 0.023;
+  // A faixa de dica tem uma altura mínima (no celular em pé a tela é pequena); o resto sobe junto.
+  final bar = max(s * 0.067, 22.0), bottom = s * 0.085 + bar - s * 0.067;
+  return (
+    font: font,
+    bar: bar,
+    bottom: bottom,
+    zone: s * 0.145,
+    hpBottom: s * 0.24 + bar - s * 0.067,
+    menuW: w * 0.36,
+    cardsTop: h * 0.16,
+    cardsBottom: h * 0.37,
+  );
+}
+
 /// As caixas do port: o canto de cima à esquerda e o de baixo à direita cortados.
 const _portBox = BeveledRectangleBorder(borderRadius: BorderRadius.only(topLeft: Radius.circular(7), bottomRight: Radius.circular(7)));
 
@@ -3291,8 +3309,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
               clipBehavior: Clip.antiAlias,
               child: LayoutBuilder(builder: (context, inner) {
                 final w = inner.maxWidth, h = inner.maxHeight;
-                // A faixa de dica tem uma altura mínima (no celular em pé a tela é pequena); o resto sobe junto.
-                final barH = max(h * 0.067, 22.0), lift = barH - h * 0.067;
+                // Os tamanhos vêm da largura (a altura de 16:9), com um mínimo para dar para ler num celular.
+                final m = _portMetrics(w, h);
                 return Stack(children: [
                   // Sem corte seco: a tela do lugar troca com um fade (mapa, loja, resultado...).
                   Positioned.fill(
@@ -3305,19 +3323,19 @@ class _FactoryScreenState extends State<FactoryScreen> {
                     ),
                   ),
                   // A vida do Pokémon da frente, no lugar da sua caixa de HP na batalha (os botões ficam embaixo dela).
-                  if (run != null && menu != null) Positioned(right: w * 0.0125, bottom: h * 0.24 + lift, width: w * 0.315, child: _leadHp(run, w)),
+                  if (run != null && menu != null) Positioned(right: w * 0.0125, bottom: m.hpBottom, width: m.menuW * 0.875, child: _leadHp(run, m.font)),
                   // A caixa de texto no lugar da da batalha (o que não cabe: tocar passa).
                   Positioned(
                     left: w * 0.0125,
-                    right: menu == null ? w * 0.0125 : w * 0.373,
-                    bottom: h * 0.085 + lift,
-                    height: h * 0.145,
+                    right: menu == null ? w * 0.0125 : w * 0.025 + m.menuW,
+                    bottom: m.bottom,
+                    height: m.zone,
                     child: _PagedText(
                       key: const ValueKey('factory-text'),
                       decoration: currentFactory()['frame'] is String
                           ? _dlgBox().copyWith(border: Border.all(color: _frameColors[currentFactory()['frame']]?.$1 ?? _border, width: 3))
                           : _dlgBox(),
-                      style: _portText.copyWith(fontSize: w * 0.023, height: 1.3),
+                      style: _portText.copyWith(fontSize: m.font, height: 1.3),
                       children: text,
                     ),
                   ),
@@ -3326,10 +3344,10 @@ class _FactoryScreenState extends State<FactoryScreen> {
                     Positioned(
                       key: const ValueKey('factory-bottom'),
                       right: w * 0.0125,
-                      bottom: h * 0.085 + lift,
-                      width: w * 0.36,
-                      height: h * 0.145,
-                      // Numa tela pequena (o celular em pé), os botões são feitos num tamanho mínimo e encolhidos para caber.
+                      bottom: m.bottom,
+                      width: m.menuW,
+                      height: m.zone,
+                      // Numa tela pequena, os botões são feitos num tamanho mínimo e encolhidos só um pouco para caber.
                       child: LayoutBuilder(builder: (context, b) {
                         final vw = max(b.maxWidth, 300.0), vh = vw * b.maxHeight / b.maxWidth;
                         return FittedBox(
@@ -3343,7 +3361,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                       }),
                     ),
                   // A faixa de dica da batalha: o andar, o dinheiro, a Bolsa, as insígnias, BOLSA/TIME/MAPA/AJUDA e o time.
-                  Positioned(left: 0, right: 0, bottom: 0, height: barH, child: _bar(run, tools)),
+                  Positioned(left: 0, right: 0, bottom: 0, height: m.bar, child: _bar(run, tools)),
                   // A Bolsa, o time, o mapa, a loja: por cima de tudo, na mesma tela.
                   if (_framePanel != null) Positioned.fill(child: _panelBox(_framePanel!)),
                 ]);
@@ -3355,12 +3373,13 @@ class _FactoryScreenState extends State<FactoryScreen> {
       );
 
   /// A caixa de vida do Pokémon da frente (como a sua na batalha).
-  Widget _leadHp(Json run, double w) {
+  Widget _leadHp(Json run, double f) {
+    final w = f / 0.023;
     final team = FactoryRun.teamOf(run);
     if (team.isEmpty) return const SizedBox.shrink();
     final m = team.firstWhere((x) => FactoryRun.hpOf(x) > 0, orElse: () => team.first);
     final pct = FactoryRun.hpOf(m).clamp(0.0, 1.0).toDouble();
-    final font = _portText.copyWith(fontSize: w * 0.023, fontWeight: FontWeight.w500);
+    final font = _portText.copyWith(fontSize: f, fontWeight: FontWeight.w500);
     return ClipPath(
       key: const ValueKey('port-hp-me'),
       clipper: _CutCorner(w * 0.04),
@@ -4990,33 +5009,37 @@ class _FactoryScreenState extends State<FactoryScreen> {
                 if (!town && lead != null) _fieldMon(lead, w, h, back: true),
                 // As cartas dos caminhos e, ao lado delas, o que dá para fazer aqui (árvore, mel, fruta...).
                 if (asCards)
-                  Positioned(
-                    key: ValueKey('cards-${run['floor']}'),
-                    left: w * 0.03,
-                    right: w * 0.03,
-                    top: h * 0.16,
-                    bottom: h * 0.37,
-                    child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                      Expanded(
-                        child: Row(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                          for (final (i, c) in paths.indexed) ...[if (i > 0) SizedBox(width: w * 0.02), SizedBox(width: w * 0.16, child: _CardIn(index: i, child: c))],
-                        ]),
-                      ),
-                      if (extras.isNotEmpty)
-                        SizedBox(
-                          width: w * 0.24,
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: SizedBox(
-                              width: w * 0.24,
-                              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                                for (final e in extras) Padding(padding: const EdgeInsets.only(bottom: 4), child: e),
-                              ]),
+                  Builder(builder: (context) {
+                    final pm = _portMetrics(w, h);
+                    return Positioned(
+                      key: ValueKey('cards-${run['floor']}'),
+                      left: w * 0.03,
+                      right: w * 0.03,
+                      top: pm.cardsTop,
+                      bottom: pm.cardsBottom,
+                      child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                        Expanded(
+                          child: Row(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                            for (final (i, c) in paths.indexed) ...[if (i > 0) SizedBox(width: w * 0.02), SizedBox(width: w * 0.16, child: _CardIn(index: i, child: c))],
+                          ]),
+                        ),
+                        if (extras.isNotEmpty)
+                          SizedBox(
+                            width: w * 0.3,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.topCenter,
+                              child: SizedBox(
+                                width: w * 0.3,
+                                child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                                  for (final e in extras) Padding(padding: const EdgeInsets.only(bottom: 4), child: e),
+                                ]),
+                              ),
                             ),
                           ),
-                        ),
-                    ]),
-                  ),
+                      ]),
+                    );
+                  }),
               ];
             }),
       text: [
@@ -6601,12 +6624,12 @@ class _PathCard extends StatelessWidget {
                 ),
                 SizedBox(height: s * 0.04),
                 Text(label, textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: hidden ? s * 0.075 : s * 0.1, height: 1.1, shadows: const [Shadow(color: Colors.black54, offset: Offset(1, 1))])),
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: min(s * 0.12, 11), height: 1.1, shadows: const [Shadow(color: Colors.black54, offset: Offset(1, 1))])),
                 if (sub != null && !hidden)
                   Padding(
                     padding: EdgeInsets.only(top: s * 0.02),
                     child: Text(sub!, textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontWeight: FontWeight.w600, fontSize: s * 0.065, height: 1.1)),
+                        style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontWeight: FontWeight.w600, fontSize: min(s * 0.08, 9), height: 1.1)),
                   ),
               ])));
             }),

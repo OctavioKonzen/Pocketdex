@@ -812,6 +812,8 @@ void main() {
       'packages/devtools_app_shared/fonts/Roboto/Roboto-Bold.ttf',
     ]);
     await font('MaterialIcons', ['fonts/MaterialIcons-Regular.otf']);
+    final pixel = FontLoader('PixelifySans')..addFont(Future.value(ByteData.sublistView(File('assets/fonts/PixelifySans.ttf').readAsBytesSync())));
+    await pixel.load();
     await I18n.load();
     await UserData.instance.load();
     await SpriteBoxes.load();
