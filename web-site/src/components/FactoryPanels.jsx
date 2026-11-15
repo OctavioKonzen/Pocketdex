@@ -227,7 +227,7 @@ const CATEGORY_LABEL = { physical: 'Físico', special: 'Especial', status: 'Stat
  * Esquecer um golpe (como nos jogos): o Pokémon à esquerda e os 5 golpes à direita (os 4 de agora e o novo), no lugar
  * do campo (como a Bolsa); toque num para ver o poder e a precisão no título e confirme embaixo. Igual ao app.
  */
-function ForgetPanel({ mon, move, moves, name, types, pick, onPick }) {
+function ForgetPanel({ mon, move, moves, name, types, pick, onPick, actions = null }) {
   const current = mon.moves ?? []
   const five = [...current, move]
   const pm = pick == null ? null : moves[five[pick]]
@@ -260,6 +260,8 @@ function ForgetPanel({ mon, move, moves, name, types, pick, onPick }) {
           })}
         </div>
       </div>
+      {/* Confirmar o tocado (ESQUECER ou NÃO APRENDER) e VOLTAR, embaixo (a tela cobre os botões da caixa de texto). */}
+      {actions && <div className="mt-auto grid grid-cols-[2fr_1fr] gap-1.5 pt-1">{actions}</div>}
     </div>
   )
 }
@@ -2568,13 +2570,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     menu = msg ? (
       <MenuButton onClick={nextLearn} testid="learn-continue">{t('CONTINUAR')}</MenuButton>
     ) : learn.step === 'forget' ? (
-      // Na tela dos 5 golpes: confirmar o tocado (ESQUECER ou NÃO APRENDER) e VOLTAR, nos botões de baixo.
-      <>
-        <MenuButton disabled={learn.pick == null} onClick={confirmForget} testid="forget-confirm">
-          {learn.pick == null ? t('Escolha um golpe') : learn.pick >= current.length ? t('NÃO APRENDER') : `${t('ESQUECER')} ${prettySlug(current[learn.pick])}`}
-        </MenuButton>
-        <MenuButton onClick={() => setLearn({ ...learn, step: 'ask', pick: null })} testid="forget-back">{t('VOLTAR')}</MenuButton>
-      </>
+      // Na tela dos 5 golpes os botões ficam dentro dela (ela cobre a tela toda).
+      null
     ) : (
       <>
         <MenuButton onClick={() => setLearn({ ...learn, step: 'forget' })} testid="learn-yes">{t('SIM')}</MenuButton>
@@ -2582,7 +2579,13 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       </>
     )
     if (learn.step === 'forget' && !msg) {
-      below = <ForgetPanel mon={mon} move={move} moves={learn.moves} name={nm} types={data.species[mon.id]?.[4] ?? []} pick={learn.pick} onPick={(k) => setLearn({ ...learn, pick: k })} />
+      below = <ForgetPanel mon={mon} move={move} moves={learn.moves} name={nm} types={data.species[mon.id]?.[4] ?? []} pick={learn.pick} onPick={(k) => setLearn({ ...learn, pick: k })}
+        actions={<>
+          <MenuButton disabled={learn.pick == null} onClick={confirmForget} testid="forget-confirm">
+            {learn.pick == null ? t('Escolha um golpe') : learn.pick >= current.length ? t('NÃO APRENDER') : `${t('ESQUECER')} ${prettySlug(current[learn.pick])}`}
+          </MenuButton>
+          <MenuButton onClick={() => setLearn({ ...learn, step: 'ask', pick: null })} testid="forget-back">{t('VOLTAR')}</MenuButton>
+        </>} />
     }
   } else if (step === 'result') {
     const event = p.event

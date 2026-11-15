@@ -4027,22 +4027,9 @@ class _FactoryScreenState extends State<FactoryScreen> {
       ],
       menu: msg != null
           ? _menuButton(tr('CONTINUAR'), () => _nextLearn(run, p), key: const ValueKey('learn-continue'))
+          // Na tela dos 5 golpes os botões ficam dentro dela (ela cobre a tela toda).
           : _learnStep == 'forget'
-              // Na tela dos 5 golpes: confirmar o tocado (ESQUECER ou NÃO APRENDER) e VOLTAR, nos botões de baixo.
-              ? _menuGrid([
-                  _menuButton(
-                      _forgetPick == null
-                          ? tr('Escolha um golpe')
-                          : _forgetPick == FactoryRun.teamOf(run)[i]['moves'].length
-                              ? tr('NÃO APRENDER')
-                              : '${tr('ESQUECER')} ${prettySlug('${(FactoryRun.teamOf(run)[i]['moves'] as List)[_forgetPick!]}')}',
-                      _forgetPick == null ? null : () => _confirmForget(run),
-                      key: const ValueKey('forget-confirm')),
-                  _menuButton(tr('VOLTAR'), () => setState(() {
-                        _learnStep = 'ask';
-                        _forgetPick = null;
-                      }), key: const ValueKey('forget-back')),
-                ])
+              ? null
           : _menuGrid([
               _menuButton(tr('SIM'), () => setState(() => _learnStep = 'forget'), key: const ValueKey('learn-yes')),
               _menuButton(tr('NÃO'), () => setState(() => _learnMsg = tr('{0} não aprendeu {1}.').replaceAll('{0}', name).replaceAll('{1}', mv)),
@@ -4165,6 +4152,28 @@ class _FactoryScreenState extends State<FactoryScreen> {
           ),
           const SizedBox(width: 6),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [for (var k = 0; k < five.length; k++) tile(k)])),
+        ]),
+        const SizedBox(height: 8),
+        // Confirmar o tocado (ESQUECER ou NÃO APRENDER) e VOLTAR, embaixo (a tela cobre os botões da caixa de texto).
+        Row(children: [
+          Expanded(
+            flex: 2,
+            child: _menuButton(
+                pick == null
+                    ? tr('Escolha um golpe')
+                    : pick == current.length
+                        ? tr('NÃO APRENDER')
+                        : '${tr('ESQUECER')} ${prettySlug(current[pick])}',
+                pick == null ? null : () => _confirmForget(run),
+                key: const ValueKey('forget-confirm')),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: _menuButton(tr('VOLTAR'), () => setState(() {
+                  _learnStep = 'ask';
+                  _forgetPick = null;
+                }), key: const ValueKey('forget-back')),
+          ),
         ]),
       ]),
     );
