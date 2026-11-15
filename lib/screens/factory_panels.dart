@@ -3273,8 +3273,9 @@ class _FactoryScreenState extends State<FactoryScreen> {
       );
 
   /// Os botões em duas colunas (ou um embaixo do outro).
-  Widget _menuGrid(List<Widget> items, {bool wide = false}) {
-    if (wide) return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [for (final i in items) _MenuRow(child: Padding(padding: const EdgeInsets.only(bottom: 4), child: i))]);
+  /// [wide] null: um por linha só com mais de 4 botões (a cidade); senão, 2 colunas (todos juntos). Igual ao site.
+  Widget _menuGrid(List<Widget> items, {bool? wide = false}) {
+    if (wide ?? items.length > 4) return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [for (final i in items) _MenuRow(child: Padding(padding: const EdgeInsets.only(bottom: 4), child: i))]);
     return Column(children: [
       for (var k = 0; k < items.length; k += 2)
         _MenuRow(
@@ -5227,7 +5228,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
             ])
           : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         // Na cidade: 2 por fileira, como os botões da batalha.
-        _menuGrid(wide: true, [
+        _menuGrid(wide: null, [
           ...paths,
           ...extras,
         ]),

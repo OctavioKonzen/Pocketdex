@@ -5,7 +5,7 @@
 // bônus, a loja com "Continuar" e o mapa com os caminhos de cada andar (Bolsa,
 // itens, golpes e mecânicas em todos). Igual ao app (lib/screens/factory_panels.dart).
 
-import { Children, cloneElement, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Children, cloneElement, Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import PokeIcon from './PokeIcon'
 import PcPanel from './PcPanel'
 import Sprite, { standOf, useAnimated } from './Sprite'
@@ -2066,6 +2066,12 @@ function ToolButton({ icon, children, onClick, testid, active = false }) {
   )
 }
 
+/** Quantos botões tem o menu (um fragmento conta os de dentro): com mais de 4 (a cidade), um por linha; senão, 2 colunas. Igual ao app. */
+function menuCount(menu) {
+  const flat = (n) => Children.toArray(n).flatMap((c) => (c?.type === Fragment ? flat(c.props.children) : [c]))
+  return flat(menu).length
+}
+
 function MenuButton({ children, sub, onClick, disabled = false, testid, active = false }) {
   return (
     <button type="button" onClick={onClick} disabled={disabled} data-testid={testid} title={typeof sub === 'string' ? sub : undefined}
@@ -2327,7 +2333,7 @@ function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, 
         )
       })()}
       {/* Os botões no lugar dos da batalha, à direita da caixa de texto (o que não cabe vai para a próxima página). */}
-      {menu && <div className="port-controls absolute right-[1.25%] bottom-[8.5%] z-30 h-[14.5%] w-[36%]" data-testid="factory-bottom">{menuFill ? menu : <PagedMenu wide key={field?.props?.testid ?? ''}>{menu}</PagedMenu>}</div>}
+      {menu && <div className="port-controls absolute right-[1.25%] bottom-[8.5%] z-30 h-[14.5%] w-[36%]" data-testid="factory-bottom">{menuFill ? menu : <PagedMenu wide={menuCount(menu) > 4} key={field?.props?.testid ?? ''}>{menu}</PagedMenu>}</div>}
       {/* A faixa de dica da batalha: o andar, o dinheiro, a Bolsa, as insígnias, BOLSA/TIME/MAPA/AJUDA e o time. */}
       <div className="port-hint absolute inset-x-0 bottom-0 z-30 flex h-[6.7%] items-center gap-[1.2cqw] whitespace-nowrap px-2 text-[1.5cqw] font-bold" data-testid="factory-bar">
         {run && (
