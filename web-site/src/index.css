@@ -821,3 +821,13 @@ h1, h2, .font-display {
   clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
 }
 .port-chip { background: rgba(20, 22, 28, 0.92); border: 1px solid #8b93a1; color: #fff; font-family: 'Pixelify Sans', 'Chakra Petch', monospace; text-shadow: 1px 1px 0 #000; }
+
+/* Pokelike: os botões de baixo e os de ação ao lado das cartas maiores (para ler), um por linha, só com o nome (a
+   explicação aparece ao passar o mouse); a caixa de vida do Pokémon da frente menor. Igual ao app. */
+.factory-port .port-controls .dlg-btn { font-size: 2.1cqw; padding: 0.5cqw 4%; }
+.factory-port .port-controls .dlg-sub { display: none; }
+.port-extras .dlg-btn { font-size: 2cqw; }
+.lead-hp .port-hp-row { font-size: 1.7cqw; }
+.lead-hp .port-lv { font-size: 1.3cqw; }
+.lead-hp .port-hp-bar b { font-size: 1cqw; }
+.lead-hp .port-hp-bar i { height: 0.6cqw; }

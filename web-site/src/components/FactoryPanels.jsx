@@ -2068,7 +2068,7 @@ function ToolButton({ icon, children, onClick, testid, active = false }) {
 
 function MenuButton({ children, sub, onClick, disabled = false, testid, active = false }) {
   return (
-    <button type="button" onClick={onClick} disabled={disabled} data-testid={testid}
+    <button type="button" onClick={onClick} disabled={disabled} data-testid={testid} title={typeof sub === 'string' ? sub : undefined}
       className={`dlg-btn cursor-pointer rounded-lg px-2 py-2 text-left disabled:cursor-default disabled:opacity-40 ${active ? 'active' : ''}`}>
       <span className="block font-black">▸ {children}</span>
       {sub && <span className="dlg-sub block pl-3 text-[11px] font-semibold leading-tight">{sub}</span>}
@@ -2320,14 +2320,14 @@ function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, 
         if (!m) return null
         const pct = Math.max(0, Math.min(100, (m.hp ?? 1) * 100))
         return (
-          <div className="port-hp absolute right-[1.25%] bottom-[24%] z-20 w-[31.5%]" data-testid="port-hp-me">
+          <div className="port-hp lead-hp absolute right-[1.25%] bottom-[24%] z-20 w-[24%]" data-testid="port-hp-me">
             <div className="port-hp-row"><span className="truncate" data-no-translate>{m.nick ?? prettyName(byId?.get(m.id)?.name ?? '')}</span><span className="port-lv">{`Lv.${m.level ?? ''}`}</span></div>
             <div className="port-hp-bar"><b>HP</b><i><u style={{ width: `${pct}%`, background: pct > 50 ? '#4ade80' : pct > 20 ? '#facc15' : '#ef4444' }} /></i></div>
           </div>
         )
       })()}
       {/* Os botões no lugar dos da batalha, à direita da caixa de texto (o que não cabe vai para a próxima página). */}
-      {menu && <div className="port-controls absolute right-[1.25%] bottom-[8.5%] z-30 h-[14.5%] w-[36%]" data-testid="factory-bottom">{menuFill ? menu : <PagedMenu key={field?.props?.testid ?? ''}>{menu}</PagedMenu>}</div>}
+      {menu && <div className="port-controls absolute right-[1.25%] bottom-[8.5%] z-30 h-[14.5%] w-[36%]" data-testid="factory-bottom">{menuFill ? menu : <PagedMenu wide key={field?.props?.testid ?? ''}>{menu}</PagedMenu>}</div>}
       {/* A faixa de dica da batalha: o andar, o dinheiro, a Bolsa, as insígnias, BOLSA/TIME/MAPA/AJUDA e o time. */}
       <div className="port-hint absolute inset-x-0 bottom-0 z-30 flex h-[6.7%] items-center gap-[1.2cqw] whitespace-nowrap px-2 text-[1.5cqw] font-bold" data-testid="factory-bar">
         {run && (
@@ -3222,7 +3222,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
             (run.photos ?? []).length > 0 && ['factory-album', `📷 ${t('ÁLBUM')} (${run.photos.length})`, () => setPanel(panel === 'album' ? null : 'album')],
           ].filter(Boolean)
           return acts.length > 0 && (
-            <div className="grid grid-cols-2 gap-1" data-testid="route-actions">
+            <div className="grid grid-cols-1 gap-1" data-testid="route-actions">
               {acts.map(([id, label, go]) => <MenuButton key={id} testid={id} disabled={busy} onClick={go} active={id === 'factory-album' && panel === 'album'}>{label}</MenuButton>)}
             </div>
           )

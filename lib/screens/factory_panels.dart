@@ -392,6 +392,14 @@ Widget _portHeader(Widget title, VoidCallback onClose, {Key closeKey = const Val
       ]),
     );
 
+/// Dentro dos 4 botões de baixo: os botões mostram só o nome (maior), sem a explicação miúda (ela vira a dica ao segurar).
+class _NoSubs extends InheritedWidget {
+  const _NoSubs({required super.child});
+  static bool on(BuildContext context) => context.dependOnInheritedWidgetOfExactType<_NoSubs>() != null;
+  @override
+  bool updateShouldNotify(_NoSubs oldWidget) => false;
+}
+
 /// As caixas do port: o canto de cima à esquerda e o de baixo à direita cortados.
 const _portBox = BeveledRectangleBorder(borderRadius: BorderRadius.only(topLeft: Radius.circular(7), bottomRight: Radius.circular(7)));
 
@@ -3228,16 +3236,20 @@ class _FactoryScreenState extends State<FactoryScreen> {
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
               // Uma linha só (como os botões da batalha): o que não cabe encolhe.
-              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-                FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('▸ $label', maxLines: 1, softWrap: false, style: _portText)),
-                if (sub != null && sub.isNotEmpty)
+              child: Builder(builder: (context) {
+                final noSub = _NoSubs.on(context);
+                final body = Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+                FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('▸ $label', maxLines: 1, softWrap: false, style: _portText.copyWith(fontSize: 15))),
+                if (sub != null && sub.isNotEmpty && !noSub)
                   FittedBox(
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerLeft,
                       child: Padding(
                           padding: const EdgeInsets.only(left: 10),
                           child: Text(sub, maxLines: 1, softWrap: false, style: _portText.copyWith(fontSize: 10, color: const Color(0xFFCBD5E1), fontWeight: FontWeight.w500)))),
-              ]),
+              ]);
+                return noSub && sub != null && sub.isNotEmpty ? Tooltip(message: sub, child: body) : body;
+              }),
             ),
           ),
         ),
@@ -3433,7 +3445,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                     ),
                   ),
                   // A vida do Pokémon da frente, no lugar da sua caixa de HP na batalha (os botões ficam embaixo dela).
-                  if (run != null && menu != null) Positioned(right: w * 0.0125, bottom: m.hpBottom, width: m.menuW * 0.875, child: _leadHp(run, m.font)),
+                  if (run != null && menu != null) Positioned(right: w * 0.0125, bottom: m.hpBottom, width: w * 0.24, child: _leadHp(run, m.font * 0.75)),
                   // A caixa de texto no lugar da da batalha (o que não cabe: tocar passa).
                   Positioned(
                     left: w * 0.0125,
@@ -3459,13 +3471,14 @@ class _FactoryScreenState extends State<FactoryScreen> {
                       height: m.zone,
                       // Numa tela pequena, os botões são feitos num tamanho mínimo e encolhidos só um pouco para caber.
                       child: LayoutBuilder(builder: (context, b) {
-                        final vw = max(b.maxWidth, 300.0), vh = vw * b.maxHeight / b.maxWidth;
+                        final vw = max(b.maxWidth, 230.0), vh = vw * b.maxHeight / b.maxWidth;
                         return FittedBox(
                           fit: BoxFit.contain,
                           child: SizedBox(
                             width: vw,
                             height: vh,
-                            child: menuFill ? menu : _PagedMenu(key: ValueKey(('menu', field.key)), color: Colors.white, child: menu is _MenuRow ? menu : _MenuRow(child: menu)),
+                            // Nos 4 botões, só o nome (maior, para ler); a explicação fica ao segurar o botão.
+                            child: _NoSubs(child: menuFill ? menu : _PagedMenu(key: ValueKey(('menu', field.key)), color: Colors.white, child: menu is _MenuRow ? menu : _MenuRow(child: menu))),
                           ),
                         );
                       }),
@@ -4336,7 +4349,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
         _menuButton('📷 ${tr('ÁLBUM')} (${photos.length})', widget.busy ? null : () => setState(() => _panel = _panel == 'album' ? null : 'album'),
             active: _panel == 'album', key: const ValueKey('factory-album')),
     ];
-    return acts.isEmpty ? const [] : [KeyedSubtree(key: const ValueKey('route-actions'), child: _menuGrid(acts))];
+    return acts.isEmpty ? const [] : [KeyedSubtree(key: const ValueKey('route-actions'), child: _menuGrid(acts, wide: true))];
   }
 
   /// O álbum da corrida: cada foto com o lugar, o Pokémon e o andar. Igual ao site.
@@ -5214,7 +5227,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
             ])
           : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         // Na cidade: 2 por fileira, como os botões da batalha.
-        _menuGrid(wide: !town, [
+        _menuGrid(wide: true, [
           ...paths,
           ...extras,
         ]),
