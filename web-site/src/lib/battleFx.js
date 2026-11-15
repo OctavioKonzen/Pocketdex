@@ -2108,14 +2108,18 @@ export function fxPlan2({ kind, type, slug = '', from = 0, seed = 1, stage = FX_
     pierce: (o) => {
       const c = o.c ?? P.c
       cam = [[0, ...NEUTRAL], [280, ...look(mid, 1.1, 0)], [520, ...look(tc, 1.65, -3 * toward)], [1200, ...look(tc, 1.5, -2 * toward)]]
-      S.push({ who: 'A', k: 'move', t0: 80, t1: 1000, dx: (tc.x - a.x) * 0.6, dy: (tc.y - a.y) * 0.6, back: 1 })
+      // short: bicadas (Peck): o atacante chega menos perto e dá bicadas curtas e rápidas, em pontos diferentes do alvo.
+      const short = Boolean(o.short)
+      const reach = short ? 0.42 : 0.6
+      S.push({ who: 'A', k: 'move', t0: 80, t1: 1000, dx: (tc.x - a.x) * reach, dy: (tc.y - a.y) * reach, back: 1 })
       if (o.aura) S.push({ who: 'A', k: 'tint', t0: 100, t1: 700, color: o.aura, a: 0.45 })
       for (let i = 0; i < (o.n ?? 1); i++) {
-        const t = 450 + i * 150
-        const dy = (o.n ?? 1) > 1 ? (rnd(i) - 0.5) * 70 : 0
-        add({ s: 'beam', t0: t, t1: t + 320, x0: tc.x - 170 * toward, y0: tc.y + dy, x1: tc.x + 40 * toward, y1: tc.y + dy, w: [8, 18], c: c.slice(0, 3), a: [1, 0], grow: 70 })
-        add({ s: 'rays', t0: t + 60, t1: t + 300, x: tc.x, y: tc.y + dy, n: 8, r0: 10, r1: [30, 110], w: 5, c: '#ffffff', c2: c[1], a: [1, 0], rot: rnd(i) })
-        shake.push([t + 60, t + 160, 6])
+        const t = 450 + i * (short ? 120 : 150)
+        const dy = short ? (rnd(i + 3) - 0.5) * 60 : (o.n ?? 1) > 1 ? (rnd(i) - 0.5) * 70 : 0
+        const dx = short ? (rnd(i + 7) - 0.5) * 40 : 0
+        add({ s: 'beam', t0: t, t1: t + (short ? 180 : 320), x0: tc.x + dx - (short ? 70 : 170) * toward, y0: tc.y + dy - (short ? 20 : 0), x1: tc.x + dx + (short ? 8 : 40) * toward, y1: tc.y + dy, w: short ? [4, 9] : [8, 18], c: c.slice(0, 3), a: [1, 0], grow: short ? 30 : 70 })
+        add({ s: 'rays', t0: t + 60, t1: t + (short ? 220 : 300), x: tc.x + dx, y: tc.y + dy, n: short ? 6 : 8, r0: short ? 6 : 10, r1: short ? [16, 50] : [30, 110], w: short ? 4 : 5, c: '#ffffff', c2: c[1], a: [1, 0], rot: rnd(i) })
+        shake.push([t + 60, t + 140, short ? 4 : 6])
       }
       if (o.p) add({ s: 'particles', t0: 550, t1: 1300, n: 26, seed, x: tc.x, y: tc.y, sx: 20, sy: 20, v: 200, vy: -140, g: 500, life: 600, mode: 'burst', size: [12, 6], style: o.p, c: c.slice(0, 3) })
       hit(560, o.pow ?? 1.2, c[2])

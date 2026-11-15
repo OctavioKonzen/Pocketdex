@@ -520,7 +520,7 @@ export const HAND_MOVES = {
   'parting-shot': ['sound', { c: DA, p: 'moon', status: 1, down: 1 }],
   'pay-day': ['volley', { c: GOLD, p: 'dot', n: 5, gap: 70, r: 0.6 }],
   payback: ['strike', { c: DA, icon: 'fist', aura: '#3d2f55', rot: 2.4 }],
-  peck: ['pierce', { c: FL }],
+  peck: ['pierce', { c: FL, short: 1, n: 3 }],
   'perish-song': ['weather', { c: ['#ffffff', '#e9d5ff', '#6d28d9', '#0b0614'], p: 'note', n: 60, size: [18, 12], ta: 0.45 }],
   'petal-blizzard': ['storm', { c: ['#ffffff', '#fbcfe8', '#f472b6', '#831843'], p: 'leaf', size: [16, 10], swirl: 1 }],
   'petal-dance': ['vortex', { c: ['#ffffff', '#fbcfe8', '#f472b6', '#831843'], p: 'leaf', size: [18, 10], pow: 1.4 }],

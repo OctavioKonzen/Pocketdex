@@ -3508,9 +3508,9 @@ class _FactoryScreenState extends State<FactoryScreen> {
     final font = _portText.copyWith(fontSize: f, fontWeight: FontWeight.w500);
     return ClipPath(
       key: const ValueKey('port-hp-me'),
-      clipper: _CutCorner(w * 0.04),
+      clipper: _CutCorner(w * 0.03),
       child: Container(
-        padding: EdgeInsets.fromLTRB(w * 0.0126, w * 0.004, w * 0.0126, w * 0.008),
+        padding: EdgeInsets.fromLTRB(w * 0.0126, w * 0.004, w * 0.045, w * 0.008), // a barra termina antes do canto cortado
         decoration: BoxDecoration(color: const Color(0xEB181A1E), border: Border.all(color: const Color(0xFF8B93A1), width: 2)),
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
