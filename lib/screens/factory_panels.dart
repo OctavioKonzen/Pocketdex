@@ -4937,7 +4937,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
         );
     final fork = !town && options.length > 1;
     // Os caminhos viram cartas no campo (na rota); na cidade, os botões de sempre. Igual ao site.
-    final asCards = !town && !meeting && rival == null;
+    // Em todo lugar (rota, cidade, rival), os caminhos são cartas; só a conversa (meeting) fica nos botões.
+    final asCards = !meeting;
     Widget btn(String label, VoidCallback? onTap, {String? sub, required Key key, String? kind, bool hidden = false}) =>
         asCards ? _PathCard(label: label, sub: sub, onTap: onTap, kind: kind, hidden: hidden, key: key) : _menuButton(label, onTap, sub: sub, key: key);
     // A entrada de um lugar: a base vilã (na cidade), os lugares da cidade, o lugar no caminho ou o próximo da água.
@@ -5115,6 +5116,67 @@ class _FactoryScreenState extends State<FactoryScreen> {
             _menuButton('🎲 ${tr('SORTEAR O CAMINHO DE NOVO')}', widget.busy ? null : () => _save(FactoryRun.rerollRoute(run, data)),
                 sub: tr('Restam {0} nesta corrida').replaceAll('{0}', '${run['rerolls']}'), key: const ValueKey('factory-reroll')),
     ];
+    // Na cidade: o Poké Mart, o Centro Pokémon, a Creche e o que só esta cidade tem (vão para o AÇÕES). Igual ao site.
+    final townItems = <Widget>[
+      if (town) ...[
+            _menuButton('🛒 Poké Mart', widget.busy ? null : () => _save(FactoryRun.townShop(run)), key: const ValueKey('town-mart')),
+            _menuButton('🏥 ${tr('CENTRO')}', widget.busy ? null : () => _save(FactoryRun.townCenter(run)), key: const ValueKey('town-center')),
+            if (FactoryRun.daycareOpen(data, run))
+              _menuButton('🏡 ${tr('CRECHE')}', widget.busy ? null : () => setState(() => _panel = _panel == 'daycare' ? null : 'daycare'),
+                active: _panel == 'daycare', key: const ValueKey('town-daycare')),
+            // A troca do morador (uma por cidade).
+            if ((run['town'] as Map?)?['trade'] case final Map trade)
+              trade['done'] == true
+                  ? _menuButton('🔁 ${tr('Troca feita: chegou {0}!').replaceAll('{0}', _name(trade['got'] ?? trade['give']))}', null, key: const ValueKey('town-trade'))
+                  : _menuButton(
+                      '🔁 ${tr('Um morador troca {0} por um {1}').replaceAll('{0}', '${trade['shiny'] == true ? '✨ ' : ''}${_name(trade['give'])}').replaceAll('{1}', _name(trade['want']))}',
+                      widget.busy || FactoryRun.townTradeable(run, data).isEmpty ? null : () => setState(() => _panel = _panel == 'towntrade' ? null : 'towntrade'),
+                      sub: FactoryRun.townTradeable(run, data).isEmpty
+                          ? tr('Você não tem um {0} no time.').replaceAll('{0}', _name(trade['want']))
+                          : tr('Uma troca por cidade: o que vem chega {0} níveis acima, ganha mais XP e, se evolui por troca, já chega evoluído.').replaceAll('{0}', '${FactoryRun.tradeLevels}'),
+                      active: _panel == 'towntrade',
+                      key: const ValueKey('town-trade')),
+            // O que só esta cidade tem (como nos jogos): a Department Store, o Game Corner, o Move Deleter e o Move Reminder.
+            if (FactoryRun.storeOf(data, run) case final Map store)
+              _menuButton('🏬 ${store['name']}', widget.busy ? null : () => _save(FactoryRun.enterStore(run, data)), key: const ValueKey('town-store')),
+            if (FactoryRun.cornerOf(data, run) case final Map corner)
+              _menuButton('🎰 ${corner['name']}', widget.busy ? null : () => setState(() => _panel = _panel == 'corner' ? null : 'corner'),
+                  active: _panel == 'corner', key: const ValueKey('town-corner')),
+            if (FactoryRun.tutorsOf(data, run).contains('deleter'))
+              _menuButton('🧓 Move Deleter', widget.busy ? null : () => setState(() => _panel = (_panel ?? '').startsWith('deleter') ? null : 'deleter'),
+                  active: (_panel ?? '').startsWith('deleter'), key: const ValueKey('town-deleter')),
+            if (FactoryRun.tutorsOf(data, run).contains('reminder'))
+              _menuButton(
+                  '💭 Move Reminder${(run['town'] as Map?)?['reminded'] == true ? ' ✓' : FactoryRun.reminderCost(data, run) > 0 ? ' · 💰${FactoryRun.reminderCost(data, run)}' : ''}',
+                  widget.busy || FactoryRun.townReminder(run, data) == null ? null : () => _save(FactoryRun.townReminder(run, data)),
+                  key: const ValueKey('town-reminder')),
+            // O ovo misterioso: um morador te dá um ovo sem dizer de quem é.
+            if (FactoryRun.mysteryEgg(data, run) != null)
+              _menuButton('❔ ${tr('RECEBER O OVO MISTERIOSO')}', widget.busy ? null : () => _save(FactoryRun.takeMysteryEgg(run, data)),
+                  sub: tr('Um morador quer que você cuide de um ovo. De quem será? Choca depois de {0} vitórias.').replaceAll('{0}', '${FactoryRun.eggBattles}'),
+                  key: const ValueKey('town-mystery-egg')),
+            // Os presentes da cidade (o Eevee de Celadon, o Lapras da Silph Co., o ovo de Togepi...).
+            for (final g in FactoryRun.townGifts(data, run))
+              for (final id in (g['choose'] as List?) ?? [g['id']])
+                Builder(builder: (context) {
+                  final got = FactoryRun.takeGift(run, data, g['k'] as int, (id as num).toInt());
+                  final egg = g['egg'] == true;
+                  return _menuButton(
+                      '${egg ? '🥚' : '🎁'} ${tr(egg ? 'RECEBER O OVO DE {0}' : 'RECEBER {0}').replaceAll('{0}', _name(id))}',
+                      widget.busy || got == null ? null : () => _save(got),
+                      sub: got == null
+                          ? tr('Sem vaga no time para o ovo.')
+                          : g['choose'] != null
+                              ? tr('Um presente daqui: escolha só um dos dois.')
+                              : egg
+                                  ? tr('Vai no time como ovo e choca depois de {0} vitórias.').replaceAll('{0}', '${FactoryRun.eggBattles}')
+                                  : tr('Um presente daqui: entra no time (ou vai para o PC).'),
+                      key: ValueKey('town-gift-${g['k']}-$id'));
+                }),
+      ],
+    ];
+    // O que dá para fazer aqui (as ações da rota e os lugares da cidade): tudo no AÇÕES.
+    final acts = [...extras, ...townItems];
     return _frame(
       menuFill: asCards,
       run: run,
@@ -5179,11 +5241,11 @@ class _FactoryScreenState extends State<FactoryScreen> {
                         ),
                         // O que dá para fazer aqui (árvore, mel, fruta...): um botão só, que abre a lista por cima.
                         // Tocando, abre uma lista pequena logo abaixo dele (por cima das cartas); tocando de novo, fecha.
-                        if (extras.isNotEmpty)
+                        if (acts.isNotEmpty)
                           SizedBox(
                             width: w * 0.26,
                             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                              _menuButton('✨ ${tr('AÇÕES')} (${_actionCount(extras)})', widget.busy ? null : () => setState(() => _panel = _panel == 'actions' ? null : 'actions'),
+                              _menuButton('✨ ${tr('AÇÕES')} (${_actionCount(acts)})', widget.busy ? null : () => setState(() => _panel = _panel == 'actions' ? null : 'actions'),
                                   key: const ValueKey('factory-actions'), active: _panel == 'actions'),
                               if (_panel == 'actions')
                                 Flexible(
@@ -5192,15 +5254,11 @@ class _FactoryScreenState extends State<FactoryScreen> {
                                     margin: const EdgeInsets.only(top: 4),
                                     padding: const EdgeInsets.all(4),
                                     decoration: BoxDecoration(color: const Color(0xF015181F), border: Border.all(color: const Color(0xFF8B93A1), width: 2), borderRadius: BorderRadius.circular(6)),
-                                    child: FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      alignment: Alignment.topCenter,
-                                      child: SizedBox(
-                                        width: w * 0.26 - 12,
-                                        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                                          for (final e in extras) Padding(padding: const EdgeInsets.only(bottom: 3), child: e),
-                                        ]),
-                                      ),
+                                    // Muitas (a cidade): a lista rola dentro da caixinha.
+                                    child: SingleChildScrollView(
+                                      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                                        for (final e in acts) Padding(padding: const EdgeInsets.only(bottom: 3), child: e),
+                                      ]),
                                     ),
                                   ),
                                 ),
@@ -5253,65 +5311,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
         _menuGrid(wide: null, [
           ...paths,
           ...extras,
+          ...townItems,
         ]),
-        // Na cidade: o Poké Mart, o Centro Pokémon e a Creche (cada um no seu lugar). Igual ao site.
-        if (town)
-          _menuGrid([
-            _menuButton('🛒 Poké Mart', widget.busy ? null : () => _save(FactoryRun.townShop(run)), key: const ValueKey('town-mart')),
-            _menuButton('🏥 ${tr('CENTRO')}', widget.busy ? null : () => _save(FactoryRun.townCenter(run)), key: const ValueKey('town-center')),
-            if (FactoryRun.daycareOpen(data, run))
-              _menuButton('🏡 ${tr('CRECHE')}', widget.busy ? null : () => setState(() => _panel = _panel == 'daycare' ? null : 'daycare'),
-                active: _panel == 'daycare', key: const ValueKey('town-daycare')),
-            // A troca do morador (uma por cidade).
-            if ((run['town'] as Map?)?['trade'] case final Map trade)
-              trade['done'] == true
-                  ? _menuButton('🔁 ${tr('Troca feita: chegou {0}!').replaceAll('{0}', _name(trade['got'] ?? trade['give']))}', null, key: const ValueKey('town-trade'))
-                  : _menuButton(
-                      '🔁 ${tr('Um morador troca {0} por um {1}').replaceAll('{0}', '${trade['shiny'] == true ? '✨ ' : ''}${_name(trade['give'])}').replaceAll('{1}', _name(trade['want']))}',
-                      widget.busy || FactoryRun.townTradeable(run, data).isEmpty ? null : () => setState(() => _panel = _panel == 'towntrade' ? null : 'towntrade'),
-                      sub: FactoryRun.townTradeable(run, data).isEmpty
-                          ? tr('Você não tem um {0} no time.').replaceAll('{0}', _name(trade['want']))
-                          : tr('Uma troca por cidade: o que vem chega {0} níveis acima, ganha mais XP e, se evolui por troca, já chega evoluído.').replaceAll('{0}', '${FactoryRun.tradeLevels}'),
-                      active: _panel == 'towntrade',
-                      key: const ValueKey('town-trade')),
-            // O que só esta cidade tem (como nos jogos): a Department Store, o Game Corner, o Move Deleter e o Move Reminder.
-            if (FactoryRun.storeOf(data, run) case final Map store)
-              _menuButton('🏬 ${store['name']}', widget.busy ? null : () => _save(FactoryRun.enterStore(run, data)), key: const ValueKey('town-store')),
-            if (FactoryRun.cornerOf(data, run) case final Map corner)
-              _menuButton('🎰 ${corner['name']}', widget.busy ? null : () => setState(() => _panel = _panel == 'corner' ? null : 'corner'),
-                  active: _panel == 'corner', key: const ValueKey('town-corner')),
-            if (FactoryRun.tutorsOf(data, run).contains('deleter'))
-              _menuButton('🧓 Move Deleter', widget.busy ? null : () => setState(() => _panel = (_panel ?? '').startsWith('deleter') ? null : 'deleter'),
-                  active: (_panel ?? '').startsWith('deleter'), key: const ValueKey('town-deleter')),
-            if (FactoryRun.tutorsOf(data, run).contains('reminder'))
-              _menuButton(
-                  '💭 Move Reminder${(run['town'] as Map?)?['reminded'] == true ? ' ✓' : FactoryRun.reminderCost(data, run) > 0 ? ' · 💰${FactoryRun.reminderCost(data, run)}' : ''}',
-                  widget.busy || FactoryRun.townReminder(run, data) == null ? null : () => _save(FactoryRun.townReminder(run, data)),
-                  key: const ValueKey('town-reminder')),
-            // O ovo misterioso: um morador te dá um ovo sem dizer de quem é.
-            if (FactoryRun.mysteryEgg(data, run) != null)
-              _menuButton('❔ ${tr('RECEBER O OVO MISTERIOSO')}', widget.busy ? null : () => _save(FactoryRun.takeMysteryEgg(run, data)),
-                  sub: tr('Um morador quer que você cuide de um ovo. De quem será? Choca depois de {0} vitórias.').replaceAll('{0}', '${FactoryRun.eggBattles}'),
-                  key: const ValueKey('town-mystery-egg')),
-            // Os presentes da cidade (o Eevee de Celadon, o Lapras da Silph Co., o ovo de Togepi...).
-            for (final g in FactoryRun.townGifts(data, run))
-              for (final id in (g['choose'] as List?) ?? [g['id']])
-                Builder(builder: (context) {
-                  final got = FactoryRun.takeGift(run, data, g['k'] as int, (id as num).toInt());
-                  final egg = g['egg'] == true;
-                  return _menuButton(
-                      '${egg ? '🥚' : '🎁'} ${tr(egg ? 'RECEBER O OVO DE {0}' : 'RECEBER {0}').replaceAll('{0}', _name(id))}',
-                      widget.busy || got == null ? null : () => _save(got),
-                      sub: got == null
-                          ? tr('Sem vaga no time para o ovo.')
-                          : g['choose'] != null
-                              ? tr('Um presente daqui: escolha só um dos dois.')
-                              : egg
-                                  ? tr('Vai no time como ovo e choca depois de {0} vitórias.').replaceAll('{0}', '${FactoryRun.eggBattles}')
-                                  : tr('Um presente daqui: entra no time (ou vai para o PC).'),
-                      key: ValueKey('town-gift-${g['k']}-$id'));
-                }),
-          ]),
       ]),
       // Com as cartas, BOLSA/TIME/MAPA/AJUDA ficam nos 4 botões (não repetem na faixa).
       tools: asCards ? null : tools,

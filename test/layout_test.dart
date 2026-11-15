@@ -355,7 +355,17 @@ Future<void> _openTeam(WidgetTester tester) async {
 /// Toca num botão da cidade (virando a página do menu até ele aparecer).
 Future<void> _openTown(WidgetTester tester, String key) async {
   final button = find.byKey(ValueKey(key));
-  for (var i = 0; i < 20 && button.hitTestable().evaluate().isEmpty; i++) {
+  // Os lugares da cidade e as ações ficam no AÇÕES (uma lista pequena que rola).
+  final actions = find.byKey(const ValueKey('factory-actions'));
+  if (button.evaluate().isEmpty && actions.evaluate().isNotEmpty) {
+    await tester.tap(actions);
+    await tester.pump(const Duration(milliseconds: 300));
+  }
+  if (button.evaluate().isNotEmpty && find.byKey(const ValueKey('actions-panel')).evaluate().isNotEmpty) {
+    await tester.ensureVisible(button);
+    await tester.pump(const Duration(milliseconds: 300));
+  }
+  for (var i = 0; i < 20 && button.hitTestable().evaluate().isEmpty && find.byKey(const ValueKey('factory-menu-next')).evaluate().isNotEmpty; i++) {
     await tester.tap(find.byKey(const ValueKey('factory-menu-next')));
     await tester.pump(const Duration(milliseconds: 300));
   }
@@ -586,11 +596,6 @@ final Map<String, Future<void> Function(WidgetTester)> actions = {
     expect(find.byKey(const ValueKey('route-actions')), findsOneWidget);
   },
   'Battle Factory (álbum)': (tester) async {
-    // Na rota, o álbum fica dentro de AÇÕES.
-    if (find.byKey(const ValueKey('factory-actions')).evaluate().isNotEmpty) {
-      await tester.tap(find.byKey(const ValueKey('factory-actions')));
-      await tester.pump(const Duration(milliseconds: 300));
-    }
     await _openTown(tester, 'factory-album');
     expect(find.byKey(const ValueKey('album')), findsOneWidget);
   },
@@ -606,6 +611,9 @@ final Map<String, Future<void> Function(WidgetTester)> actions = {
     expect(find.byKey(const ValueKey('deleter')), findsOneWidget);
   },
   'Battle Factory (cidade, Celadon)': (tester) async {
+    // Os lugares da cidade ficam no AÇÕES.
+    await tester.tap(find.byKey(const ValueKey('factory-actions')));
+    await tester.pump(const Duration(milliseconds: 300));
     expect(find.byKey(const ValueKey('town-store'), skipOffstage: false), findsOneWidget);
     expect(find.byKey(const ValueKey('town-gift-0-133'), skipOffstage: false), findsOneWidget);
   },

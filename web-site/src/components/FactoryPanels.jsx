@@ -3047,7 +3047,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     const hud = <MapHud {...hudProps} />
     const floorTag = inside ? `${Math.min(DUNGEON_LENGTH, dungeonPos(run) + 1)}/${DUNGEON_LENGTH}` : town ? `${Math.min(CITY_LENGTH, pos - ROUTE_LENGTH + 1)}/${CITY_LENGTH}` : `${pos + 1}/${ROUTE_LENGTH}`
     // Os caminhos viram cartas que deslizam por cima do campo (na rota); na cidade, os botões do menu de sempre.
-    const asCards = !town && !meeting && !rival
+    // Em todo lugar (rota, cidade, rival), os caminhos são cartas; só a conversa (meeting) fica nos botões. Igual ao app.
+    const asCards = !meeting
     const Btn = asCards ? PathCard : MenuButton
     // A entrada de um lugar: a base vilã e o lugar da cidade (na cidade) ou o lugar no caminho (na rota).
     const placeButton = (node, k) => (
@@ -3273,11 +3274,11 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
           {rest.length > 0 && (
             <div className="port-extras flex max-h-full w-[26%] shrink-0 flex-col gap-1 self-start">
               <MenuButton testid="factory-actions" disabled={busy} active={panel === 'actions'} onClick={() => setPanel(panel === 'actions' ? null : 'actions')}>
-                ✨ {t('AÇÕES')} ({rest.reduce((n, el) => n + (el.props?.['data-testid'] === 'route-actions' ? Children.count(el.props.children) : 1), 0)})
+                ✨ {t('AÇÕES')} ({rest.reduce((n, el) => n + (el.type === 'div' || el.type === Fragment ? Children.toArray(el.props.children).length : 1), 0)})
               </MenuButton>
               {/* A lista pequena, logo abaixo do botão (tocando de novo, fecha). Igual ao app. */}
               {panel === 'actions' && (
-                <div className="grid min-h-0 content-start gap-1 overflow-hidden rounded-md border-2 border-[#8b93a1] bg-[#15181ff0] p-1 [&_[data-testid=route-actions]]:gap-1" data-testid="actions-panel">{rest}</div>
+                <div className="grid min-h-0 content-start gap-1 overflow-y-auto rounded-md border-2 border-[#8b93a1] bg-[#15181ff0] p-1 [&_[data-testid=route-actions]]:gap-1" data-testid="actions-panel">{rest}</div>
               )}
             </div>
           )}
