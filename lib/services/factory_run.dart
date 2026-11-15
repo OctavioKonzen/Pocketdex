@@ -4664,6 +4664,16 @@ class FactoryRun {
   }
 
   /// Quem abre a batalha: passa o Pokémon da posição para a frente do time (para treinar os mais fracos). Igual ao site.
+  /// Troca dois do time de lugar (arrastando um em cima do outro na tela do time). Igual ao site.
+  static Json swapTeam(Json run, int a, int b) {
+    final team = teamOf(run);
+    if (a == b || a < 0 || b < 0 || a >= team.length || b >= team.length) return run;
+    final x = team[a];
+    team[a] = team[b];
+    team[b] = x;
+    return {...run, 'team': team};
+  }
+
   static Json setLead(Json run, int index) {
     final team = teamOf(run);
     if (index <= 0 || index >= team.length) return run;

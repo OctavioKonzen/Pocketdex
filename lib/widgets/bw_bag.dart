@@ -7,15 +7,17 @@
 // Igual ao site (web-site/src/components/BwBag.jsx).
 
 import 'package:flutter/material.dart';
-import '../utils/hud_colors.dart';
 
 import '../i18n/i18n.dart';
 
 /// Um item da Bolsa. onUse: o que ele faz (quem chama pergunta em quem); sem onUse, só a ajuda.
 class BagEntry {
-  const BagEntry({required this.id, required this.name, this.count, required this.icon, this.help = '', this.onUse, this.use, this.disabled = false});
+  const BagEntry({required this.id, required this.name, this.count, required this.icon, this.help = '', this.onUse, this.use, this.disabled = false, this.price});
   final String id, name, icon, help;
   final int? count;
+
+  /// Na loja: o preço (aparece em amarelo à direita).
+  final int? price;
   final VoidCallback? onUse;
   final String? use;
   final bool disabled;
@@ -58,9 +60,10 @@ class _BwBagState extends State<BwBag> {
   String? _selected;
 
   // O azul do tema com listras, a lista e a descrição em azul-escuro (tingidos pelo tema) e o ciano do escolhido.
-  static Color get _sky => Hud.tint(const Color(0xFF4AA3DF));
-  static Color get _list => Hud.tint(const Color(0xFF0B1E36));
-  static Color get _desc => Hud.tint(const Color(0xFF0F2C52));
+  // Cor fixa (a HUD não muda com o tema). Igual ao site.
+  static const _sky = Color(0xFF4AA3DF);
+  static const _list = Color(0xFF0B1E36);
+  static const _desc = Color(0xFF0F2C52);
   static const _cyan = Color(0xFF22D3EE);
   static const _dark = Color(0xFF0F172A);
   static const _white = TextStyle(color: Colors.white, fontWeight: FontWeight.w700);
@@ -96,6 +99,7 @@ class _BwBagState extends State<BwBag> {
             // Nome do item como no jogo (não traduz).
             Expanded(child: Text(it.name, overflow: TextOverflow.ellipsis, style: _white)),
             if (it.count != null) Text('×${it.count}', style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 12, fontWeight: FontWeight.w700)),
+            if (it.price != null) Text('💰${it.price}', style: TextStyle(color: it.disabled ? const Color(0xFF64748B) : const Color(0xFFFCD34D), fontSize: 12, fontWeight: FontWeight.w900)),
           ]),
         ),
       ),
@@ -115,7 +119,7 @@ class _BwBagState extends State<BwBag> {
             child: InkWell(
               borderRadius: BorderRadius.circular(8),
               onTap: () => _open(p),
-              child: Tooltip(message: tr(p.label), child: AspectRatio(aspectRatio: 1, child: Center(child: _icon(p.img, 24)))),
+              child: Tooltip(message: tr(p.label), child: Center(child: _icon(p.img, 28))),
             ),
           ),
         ),
@@ -150,15 +154,12 @@ class _BwBagState extends State<BwBag> {
         // Os bolsos à esquerda (como no jogo) e, embaixo, o nome do bolso com « ».
         SizedBox(
           width: 112,
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            GridView.count(
-              crossAxisCount: 3,
-              mainAxisSpacing: 4,
-              crossAxisSpacing: 4,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              children: [for (final p in pockets) _pocketTile(p, p.id == current.id)],
-            ),
+          // Os bolsos um embaixo do outro, ocupando a coluna toda. Igual ao site.
+          child: Column(mainAxisSize: widget.fill ? MainAxisSize.max : MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            for (final (i, p) in pockets.indexed) ...[
+              if (i > 0) const SizedBox(height: 4),
+              if (widget.fill) Expanded(child: _pocketTile(p, p.id == current.id)) else SizedBox(height: 44, child: _pocketTile(p, p.id == current.id)),
+            ],
             const SizedBox(height: 6),
             Container(
               decoration: BoxDecoration(color: const Color(0xFF020617), borderRadius: BorderRadius.circular(4)),

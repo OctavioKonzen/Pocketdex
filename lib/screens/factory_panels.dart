@@ -38,13 +38,14 @@ import '../utils/site_ui.dart';
 import '../widgets/battle_scene.dart';
 import '../widgets/bw_bag.dart';
 import '../widgets/bw_party.dart';
+import '../widgets/port_party.dart';
 import '../widgets/bw_summary.dart';
 import '../widgets/ds_layout.dart';
 import 'region_maps.dart';
 import '../widgets/pokemon_sprite.dart';
 import '../widgets/trainer_sprite.dart';
 import '../widgets/type_chip.dart';
-import 'turn_battle_screen.dart' show battleMonName, battleBarHeight, battleBottomHeight;
+import 'turn_battle_screen.dart' show battleMonName;
 
 /// Os itens da árvore: o símbolo, o nome (do jogo, sem traduzir) e de onde cai. Igual ao site.
 const pieceInfo = {
@@ -255,13 +256,18 @@ const _statLabel = {'hp': 'HP', 'atk': 'Atk', 'def': 'Def', 'spa': 'SpA', 'spd':
 String _itemName(String id) => id.startsWith('tm:') ? 'TM ${prettySlug(id.substring(3))}' : prettySlug(id.startsWith('evo:') ? id.substring(4) : id);
 
 /// O sprite do item (TM, ficha de serviço e Cristal Z têm nomes próprios).
-Widget _itemIcon(String id, [double size = 28]) {
+/// O arquivo do ícone de um item (sprites/items/<arquivo>.png).
+String _itemIconFile(String id) {
   final own = {'move-tutor': 'tm-case', 'move-reminder': 'heart-scale', 'dynamax-band': 'wishing-piece', 'tera-orb': 'tera-orb'}[id];
-  final file = id.startsWith('tm:')
+  return id.startsWith('tm:')
       ? 'tm-normal'
       : id.startsWith('evo:')
           ? id.substring(4)
           : own ?? (id.endsWith('-z') ? '$id--held' : id);
+}
+
+Widget _itemIcon(String id, [double size = 28]) {
+  final file = _itemIconFile(id);
   return Image.asset('assets/database/sprites/items/$file.png',
       width: size, height: size, filterQuality: FilterQuality.none, errorBuilder: (_, __, ___) => SizedBox(width: size, height: size));
 }
@@ -345,6 +351,28 @@ Widget _mon(BuildContext context, Map m, {bool selected = false, VoidCallback? o
 /// O dinheiro e a Bolsa da corrida (Poké Balls e remédios).
 /// As molduras da caixa de texto (loja de cosméticos). Igual ao site.
 const _frameNames = {'gold': 'Dourada', 'crystal': 'Cristal', 'night': 'Noite', 'sakura': 'Sakura'};
+/// O texto da HUD do port (a fonte de pixel, branco com sombra).
+const _portText = TextStyle(fontFamily: 'PixelifySans', color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13, shadows: [Shadow(color: Colors.black, offset: Offset(1, 1))]);
+
+/// As caixas do port: o canto de cima à esquerda e o de baixo à direita cortados.
+const _portBox = BeveledRectangleBorder(borderRadius: BorderRadius.only(topLeft: Radius.circular(7), bottomRight: Radius.circular(7)));
+
+/// O canto de baixo à direita cortado na diagonal (as caixas de vida do port).
+class _CutCorner extends CustomClipper<Path> {
+  const _CutCorner(this.cut);
+  final double cut;
+  @override
+  Path getClip(Size size) => Path()
+    ..moveTo(0, 0)
+    ..lineTo(size.width, 0)
+    ..lineTo(size.width, size.height - cut)
+    ..lineTo(size.width - cut, size.height)
+    ..lineTo(0, size.height)
+    ..close();
+  @override
+  bool shouldReclip(_CutCorner old) => old.cut != cut;
+}
+
 const _frameColors = {
   'gold': (Color(0xFFF59E0B), Color(0xFFFDE68A)),
   'crystal': (Color(0xFF67E8F9), Color(0xFFA5F3FC)),
@@ -646,7 +674,7 @@ class _BagAndItemsState extends State<_BagAndItems> {
     final u = _using;
     // Escolher em quem: a tela do time do Black & White, no mesmo lugar.
     if (u != null) {
-      return BwParty(
+      return PortParty(
         testKey: 'bag-target',
         title: u.$1 == 'stash' ? tr('Quem vai segurar?') : u.$1 == 'teach' ? tr('Ensinar a quem?') : tr('Usar em qual Pokémon?'),
         team: [
@@ -897,7 +925,7 @@ class _BagAndItemsState extends State<_BagAndItems> {
           final d = snap.data;
           if (d == null) {
             return Container(
-              color: Hud.tint(const Color(0xFF1F6F78)),
+              color: const Color(0xFF1F6F78),
               padding: const EdgeInsets.all(24),
               alignment: Alignment.center,
               child: snap.connectionState == ConnectionState.done
@@ -912,9 +940,8 @@ class _BagAndItemsState extends State<_BagAndItems> {
     // Os 6 no lugar do campo, como a tela de trocar da batalha (3 linhas de 2, sem rolar).
     // O limite de nível de agora (o próximo chefe e os desvios): quem chegou nele para de ganhar XP até vencer o chefe.
     final cap = FactoryRun.levelCapOf(widget.data, run);
-    return BwParty(
+    return PortParty(
       testKey: 'factory-team',
-      fill: true,
       title: cap == null ? null : '📈 ${tr('Nível máximo agora: {0}. Sobe quando você vence o próximo chefe.').replaceAll('{0}', '$cap')}',
       // Os ovos ocupam vagas do time (e chocam com as vitórias).
       eggs: [for (final e in FactoryRun.eggsOf(run)) (e['left'] as num).toInt()],
@@ -937,6 +964,7 @@ class _BagAndItemsState extends State<_BagAndItems> {
           ),
       ],
       onPick: _open,
+      onMove: (a, b) => setState(() => saveFactory({...currentFactory(), 'run': FactoryRun.swapTeam(run, a, b)})),
     );
   }
 
@@ -1083,7 +1111,7 @@ class _TeamPagesState extends State<_TeamPages> {
         );
     return Container(
       key: const ValueKey('team-pages'),
-      color: Hud.tint(const Color(0xFF1F6F78)),
+      color: const Color(0xFF1F6F78),
       padding: const EdgeInsets.all(6),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         // O nome e o nível, as abas (a página de agora acesa) e voltar ao time.
@@ -2553,11 +2581,10 @@ class _FactoryScreenState extends State<FactoryScreen> {
   /// O campo da batalha, no mesmo tamanho (4:3, como no Black & White) e com o mesmo cenário dela, no lugar em que você está.
   Widget _field(String biome, List<Widget> Function(double w, double h) children, {Key? key}) => ClipRRect(
         key: key,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-        child: AspectRatio(
-          aspectRatio: 4 / 3,
+        borderRadius: BorderRadius.zero,
+        child: SizedBox.expand(
           child: DecoratedBox(
-            decoration: BoxDecoration(border: Border.all(color: _border, width: 4), color: const Color(0xFF9FDCFF)),
+            decoration: const BoxDecoration(color: Color(0xFF9FDCFF)),
             child: LayoutBuilder(builder: (context, box) {
               final w = box.maxWidth, h = box.maxHeight;
               _scene = battleScene(biome, 0);
@@ -2572,8 +2599,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
   Widget _fieldMon(Map mon, double w, double h, {bool back = false}) {
     final sprite = StageMon(id: (mon['id'] as num).toInt(), shiny: mon['shiny'] == true, back: back, scene: _scene);
     return back
-        ? Positioned(left: w * 0.01, bottom: h * 0.22, width: w * 0.58, height: w * 0.58, child: sprite)
-        : Positioned(right: w * 0.11, bottom: h * foeBottom(_scene), width: w * 0.26, height: w * 0.26, child: sprite);
+        ? Positioned(left: w * 0.04, bottom: h * 0.18, width: w * 0.36, height: w * 0.36, child: sprite)
+        : Positioned(right: w * 0.14, bottom: h * foeBottom(_scene), width: w * 0.2, height: w * 0.2, child: sprite);
   }
 
   /// Alguém de pé na base de lá de trás (Enfermeira Joy, o chefe, um item...).
@@ -2600,25 +2627,23 @@ class _FactoryScreenState extends State<FactoryScreen> {
       height: size, fit: BoxFit.contain, alignment: Alignment.bottomCenter, filterQuality: FilterQuality.none, errorBuilder: (_, __, ___) => const SizedBox());
 
   /// A barra da corrida (como a do campo na batalha): andar, dinheiro, Bolsa e o time.
-  Widget _bar(Json run) {
+  Widget _bar(Json? run, [List<Widget>? tools]) {
+    // A faixa de dica do port: escura, com a linha ciano em cima, na fonte de pixel. Igual ao site.
+    final style = _portText.copyWith(fontSize: 11);
+    if (run == null) {
+      return Container(
+        key: const ValueKey('factory-bar'),
+        decoration: const BoxDecoration(color: Color(0xFF15181F), border: Border(top: BorderSide(color: Color(0xFF22D3EE), width: 2))),
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        child: Row(children: [const Spacer(), if (tools != null) _barTools(tools)]),
+      );
+    }
     final bag = FactoryRun.bagOf(run);
-    const style = TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12);
     return Container(
       key: const ValueKey('factory-bar'),
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      // A cor da região (o tema dela na barra). Igual ao site.
-      decoration: BoxDecoration(
-        color: Hud.tint(const Color(0xFF334155)),
-        gradient: _data == null
-            ? null
-            : LinearGradient(colors: [
-                _regionTheme['${_data!.bosses[(run['boss']['region'] as num).toInt()]['region']}'] ?? Hud.tint(const Color(0xFF334155)),
-                Hud.tint(const Color(0xFF334155)),
-              ], stops: const [0, 0.7]),
-        border: Border.symmetric(vertical: BorderSide(color: _border, width: 4)),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      decoration: const BoxDecoration(color: Color(0xFF15181F), border: Border(top: BorderSide(color: Color(0xFF22D3EE), width: 2))),
       // Uma linha só, da altura da faixa da batalha (rola de lado se não couber): nada muda de tamanho.
-      height: battleBarHeight(context),
       // As informações rolam de lado; o time fica sempre à direita. A Bolsa é só a contagem (o que tem dentro: em BOLSA).
       child: Row(children: [
         Expanded(
@@ -2648,15 +2673,16 @@ class _FactoryScreenState extends State<FactoryScreen> {
                   Text('🍯${max(0, FactoryRun.honeyFloors - ((run['floor'] as num).toInt() - (run['honey']['floor'] as num).toInt()))}', key: const ValueKey('factory-honey'), style: style),
                 if (run['berry'] != null)
                   Text('🌱${max(0, (run['berry']['need'] as num).toInt() - ((run['floor'] as num).toInt() - (run['berry']['floor'] as num).toInt()))}', key: const ValueKey('factory-berry'), style: style),
-                if (run['daycare'] != null) const Text('🏡', style: style),
+                if (run['daycare'] != null) Text('🏡', style: style),
               ])
                 Padding(padding: const EdgeInsets.only(right: 8), child: w),
             ]),
           ),
         ),
+        if (tools != null) _barTools(tools),
         Row(mainAxisSize: MainAxisSize.min, children: [
           for (final m in FactoryRun.teamOf(run))
-            Column(mainAxisSize: MainAxisSize.min, children: [
+            FittedBox(child: Column(mainAxisSize: MainAxisSize.min, children: [
               Opacity(opacity: FactoryRun.hpOf(m) > 0 ? 1 : 0.4, child: SizedBox(width: 20, height: 20, child: PokemonSprite((m['id'] as num).toInt(), shiny: m['shiny'] == true, fill: 0.9))),
               Container(
                 width: 22,
@@ -2668,11 +2694,18 @@ class _FactoryScreenState extends State<FactoryScreen> {
                   child: Container(color: FactoryRun.hpOf(m) > 0.5 ? const Color(0xFF34D399) : FactoryRun.hpOf(m) > 0.2 ? const Color(0xFFFBBF24) : const Color(0xFFEF4444)),
                 ),
               ),
-            ]),
+            ])),
         ]),
       ]),
     );
   }
+
+  /// BOLSA, TIME, MAPA e AJUDA como ícones na faixa (nas telas em que não ficam nos 4 botões).
+  Widget _barTools(List<Widget> tools) => Padding(
+        key: const ValueKey('factory-tools'),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [for (final t in tools) Padding(padding: const EdgeInsets.only(left: 3), child: SizedBox(width: 26, child: t))]),
+      );
 
   /// O mapa da região: as cidades da história, na ordem, acendendo conforme você ganha as insígnias (a de agora
   /// piscando). Igual ao site.
@@ -2698,13 +2731,13 @@ class _FactoryScreenState extends State<FactoryScreen> {
     final chapters = [for (final x in (plot?['chapters'] as List?) ?? const []) x as Map];
     final clock = FactoryRun.clockOf();
     final sky = FactoryRun.weatherOf(run, FactoryRun.shownScene(run, '${run['scene'] ?? 'grass'}', data), clock.season, data);
-    Widget chip(String text, {Color bg = const Color(0xCC0F172A), String? key}) => Container(
+    Widget chip(String text, {Color bg = const Color(0xEB14161C), String? key}) => Container(
           key: key == null ? null : ValueKey(key),
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(4)),
-          child: Text(text, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+          decoration: BoxDecoration(color: const Color(0xEB14161C), border: Border.all(color: const Color(0xFF8B93A1))),
+          child: Text(text, style: _portText.copyWith(fontSize: 11, color: bg == const Color(0xEB14161C) ? Colors.white : const Color(0xFFFCA5A5))),
         );
-    return Column(key: const ValueKey('region-map'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+    final top = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       _overlayHeader('🗺️ ${game['region']} · ${game['game']}', close),
       Padding(
         key: const ValueKey('region-hud'),
@@ -2723,9 +2756,16 @@ class _FactoryScreenState extends State<FactoryScreen> {
           ]),
         ),
       ),
-      if (regionMaps['${game['region']}'] != null)
-        (_townMapRegion(run, '${game['region']}', [for (final x in cities) (city: x.city, steps: x.steps)], step, roam, plot, chapters))
-      else
+    ]);
+    // O mapa na tela inteira; o título e as etiquetas por cima dele. Igual ao site.
+    if (regionMaps['${game['region']}'] != null) {
+      return Stack(key: const ValueKey('region-map'), children: [
+        Positioned.fill(child: _townMapRegion(run, '${game['region']}', [for (final x in cities) (city: x.city, steps: x.steps)], step, roam, plot, chapters)),
+        Positioned(left: 0, right: 0, top: 0, child: top),
+      ]);
+    }
+    return Column(key: const ValueKey('region-map'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      top,
       Container(
         margin: const EdgeInsets.all(8),
         padding: const EdgeInsets.all(10),
@@ -2811,13 +2851,11 @@ class _FactoryScreenState extends State<FactoryScreen> {
         );
     return Container(
       key: const ValueKey('town-map-region'),
-      margin: const EdgeInsets.fromLTRB(8, 4, 8, 4),
-      decoration: BoxDecoration(color: const Color(0xFF14396F), border: Border.all(color: const Color(0xFF0F172A), width: 4), borderRadius: BorderRadius.circular(12)),
-      clipBehavior: Clip.antiAlias,
+      color: const Color(0xFF14396F),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        // O mapa ocupa a largura toda (sem faixas dos lados); mais alto que 250, rola na vertical, aberto no treinador.
-        LayoutBuilder(builder: (context, outer) {
-          final fullH = outer.maxWidth / map.aspect, viewH = min(fullH, 250.0);
+        // O mapa ocupa a tela inteira (a largura toda); mais alto que a tela, arrasta na vertical, aberto no treinador.
+        Expanded(child: LayoutBuilder(builder: (context, outer) {
+          final fullH = max(outer.maxHeight, outer.maxWidth / map.aspect), viewH = outer.maxHeight;
           final startY = meAt == null ? 0.0 : (meAt[1] / 100 * fullH - viewH / 2).clamp(0.0, max(0.0, fullH - viewH)).toDouble();
           return SizedBox(
           height: viewH,
@@ -2913,12 +2951,12 @@ class _FactoryScreenState extends State<FactoryScreen> {
             ),
           ),
         );
-        }),
+        })),
         // A faixa de baixo (como no Town Map): o nome da cidade escolhida e o que tem nela.
         if (c != null)
           Container(
             key: const ValueKey('town-map-name'),
-            color: const Color(0xFF0F172A),
+            decoration: const BoxDecoration(color: Color(0xFF15181F), border: Border(top: BorderSide(color: Color(0xFF22D3EE), width: 2))),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             child: Text.rich(
               TextSpan(children: [
@@ -2938,22 +2976,66 @@ class _FactoryScreenState extends State<FactoryScreen> {
   }
 
   /// A ajuda para quem está começando: tipos, clima, efeitos, status, mecânicas e captura. Igual ao site.
+  // A página da ajuda (4 tópicos por página, sem rolar).
+  int _helpPage = 0;
+
+  /// A ajuda numa tela só: 4 tópicos por página (2 × 2), do tamanho do campo; ◀ ▶ troca a página. Igual ao site.
   Widget _helpPanel(VoidCallback close) {
-    final c = SiteColors.of(context);
-    return Column(key: const ValueKey('help-panel'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      _overlayHeader('❓ ${tr('Ajuda')}', close),
-      for (final (icon, title, text) in _helpTopics)
-        Container(
-          margin: const EdgeInsets.fromLTRB(8, 6, 8, 0),
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(10)),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('$icon ${tr(title)}', style: TextStyle(fontWeight: FontWeight.bold, color: c.text, fontSize: 13)),
-            Text(tr(text), style: TextStyle(color: c.muted, fontSize: 12)),
+    const per = 4;
+    final pages = (_helpTopics.length / per).ceil();
+    final page = _helpPage.clamp(0, pages - 1);
+    final shown = _helpTopics.skip(page * per).take(per).toList();
+    Widget card((String, String, String)? t) => Expanded(
+          child: t == null
+              ? const SizedBox()
+              : Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(color: const Color(0xEB14161C), border: Border.all(color: const Color(0xFF8B93A1), width: 2)),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('${t.$1} ${tr(t.$2)}', style: _portText.copyWith(fontSize: 13)),
+                    const SizedBox(height: 2),
+                    Expanded(child: Text(tr(t.$3), overflow: TextOverflow.fade, style: _portText.copyWith(fontSize: 10, color: const Color(0xFFCBD5E1), fontWeight: FontWeight.w500))),
+                  ]),
+                ),
+        );
+    Widget arrow(String label, String key, VoidCallback? onTap) => Opacity(
+          opacity: onTap == null ? 0.3 : 1,
+          child: InkWell(
+            key: ValueKey(key),
+            onTap: onTap,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 1),
+              decoration: BoxDecoration(color: const Color(0xEB14161C), border: Border.all(color: const Color(0xFF8B93A1))),
+              child: Text(label, style: _portText),
+            ),
+          ),
+        );
+    return Container(
+      key: const ValueKey('help-panel'),
+      color: const Color(0xFF1F6F78),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        _overlayHeader('❓ ${tr('Ajuda')}', close),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.all(6),
+            child: Column(children: [
+              for (final r in [0, 2]) ...[
+                if (r > 0) const SizedBox(height: 6),
+                Expanded(child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [card(shown.elementAtOrNull(r)), const SizedBox(width: 6), card(shown.elementAtOrNull(r + 1))])),
+              ],
+            ]),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            arrow('◀', 'help-prev', page > 0 ? () => setState(() => _helpPage = page - 1) : null),
+            Padding(padding: const EdgeInsets.symmetric(horizontal: 12), child: Text('${page + 1}/$pages', style: _portText)),
+            arrow('▶', 'help-next', page < pages - 1 ? () => setState(() => _helpPage = page + 1) : null),
           ]),
         ),
-      const SizedBox(height: 8),
-    ]);
+      ]),
+    );
   }
 
   /// As insígnias da região de agora: uma por líder de ginásio, na cor do tipo dele; as ganhas acesas, as que faltam
@@ -2993,21 +3075,27 @@ class _FactoryScreenState extends State<FactoryScreen> {
   }
 
   /// Um botão do menu, como os da batalha ("▸ LUTAR"); sub: uma linha menor embaixo.
-  Widget _menuButton(String label, VoidCallback? onTap, {String? sub, Key? key, bool active = false}) => Material(
+  Widget _menuButton(String label, VoidCallback? onTap, {String? sub, Key? key, bool active = false}) => Opacity(
         key: key,
-        color: active ? (_dark ? const Color(0x24FFFFFF) : const Color(0xFFFEF3C7)) : Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(10),
-          onTap: onTap,
-          child: Opacity(
-            opacity: onTap == null ? 0.4 : 1,
+        opacity: onTap == null ? 0.45 : 1,
+        child: Material(
+          shape: _portBox.copyWith(side: BorderSide(color: active ? const Color(0xFFFACC15) : const Color(0xFF8B93A1), width: 2)),
+          clipBehavior: Clip.antiAlias,
+          color: active ? const Color(0xEB42340A) : const Color(0xEB14161C),
+          child: InkWell(
+            onTap: onTap,
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('▸ $label', style: TextStyle(color: _dlgText, fontWeight: FontWeight.w900)),
+              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+              // Uma linha só (como os botões da batalha): o que não cabe encolhe.
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+                FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('▸ $label', maxLines: 1, softWrap: false, style: _portText)),
                 if (sub != null && sub.isNotEmpty)
-                  Padding(padding: const EdgeInsets.only(left: 12), child: Text(sub, style: TextStyle(color: _dlgSub, fontSize: 11, fontWeight: FontWeight.w600))),
+                  FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Padding(
+                          padding: const EdgeInsets.only(left: 10),
+                          child: Text(sub, maxLines: 1, softWrap: false, style: _portText.copyWith(fontSize: 10, color: const Color(0xFFCBD5E1), fontWeight: FontWeight.w500)))),
               ]),
             ),
           ),
@@ -3017,18 +3105,15 @@ class _FactoryScreenState extends State<FactoryScreen> {
   /// Um botão da linha fixa de ferramentas (BOLSA, TIME, MAPA, AJUDA).
   Widget _toolButton(String icon, String label, VoidCallback onTap, {Key? key, bool active = false}) => Material(
         key: key,
-        color: active ? (_dark ? const Color(0x33FFFFFF) : const Color(0xFFFEF3C7)) : (_dark ? const Color(0x14FFFFFF) : const Color(0x0F0F172A)),
-        borderRadius: BorderRadius.circular(8),
+        shape: _portBox.copyWith(side: BorderSide(color: active ? const Color(0xFFFACC15) : const Color(0xFF8B93A1), width: 2)),
+        clipBehavior: Clip.antiAlias,
+        color: active ? const Color(0xEB42340A) : const Color(0xEB14161C),
         child: InkWell(
-          borderRadius: BorderRadius.circular(8),
           onTap: onTap,
           child: Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text('$icon $label', maxLines: 1, style: TextStyle(color: _dlgText, fontWeight: FontWeight.w900, fontSize: 12)),
-              ),
+              child: FittedBox(fit: BoxFit.scaleDown, child: Text(label.isEmpty ? icon : '$icon $label', maxLines: 1, style: _portText)),
             ),
           ),
         ),
@@ -3052,90 +3137,87 @@ class _FactoryScreenState extends State<FactoryScreen> {
   }
 
   /// A lista da loja (dentro da moldura): para quem é a compra e os itens.
-  Widget _shopList(BuildContext context, Json run, Json p, FactoryData data) {
-    final c = SiteColors.of(context);
+  /// A loja com a cara da Bolsa do Black & White: os bolsos à esquerda (um embaixo do outro), a lista escura com o
+  /// preço, e embaixo o item tocado com a descrição e o COMPRAR. Para quem é a compra: o time, embaixo da lista. Igual
+  /// ao site.
+  Widget _shopBag(Json run, Json p, FactoryData data, VoidCallback close) {
     final team = FactoryRun.teamOf(run);
     final target = min(_target, team.length - 1);
-    // Compacto (cabe no celular, por cima do campo): o alvo numa fileira de ícones e cada item numa linha.
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text(tr('Para quem é a compra (bolas e itens da Bolsa vão para a Bolsa):'), style: TextStyle(color: c.muted, fontSize: 11)),
-      const SizedBox(height: 4),
-      SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(children: [
-          for (var i = 0; i < team.length; i++)
-            Padding(
-              padding: const EdgeInsets.only(right: 4),
-              child: InkWell(
-                key: ValueKey('target-$i'),
-                borderRadius: BorderRadius.circular(10),
-                onTap: () => setState(() => _target = i),
-                child: Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: c.surface,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: target == i ? const Color(0xFFFBBF24) : Colors.transparent, width: 2),
-                  ),
-                  child: Opacity(
-                    opacity: FactoryRun.hpOf(team[i]) > 0 ? 1 : 0.45,
-                    child: PokemonSprite((team[i]['id'] as num).toInt(), shiny: team[i]['shiny'] == true, fill: 0.9),
-                  ),
-                ),
+    String pocketOf(String id) => RegExp('ball').hasMatch(id)
+        ? 'balls'
+        : RegExp('potion|revive|heal|restore|elixir|ether|full|berry').hasMatch(id)
+            ? 'medicine'
+            : RegExp(r'^tm|tutor|^evo:|reminder|deleter', caseSensitive: false).hasMatch(id)
+                ? 'moves'
+                : 'items';
+    BagEntry item(String id) {
+      final price = FactoryRun.shopPrice(run, id);
+      final blocked = (run['money'] as num) < price ||
+          FactoryRun.shopOwned(run, id) ||
+          (id.startsWith('evo:') && FactoryRun.canEvolveWith(data, team[target], id.substring(4), FactoryRun.regionOf(data, run)).isEmpty);
+      return BagEntry(
+          id: id,
+          name: _itemName(id),
+          icon: _itemIconFile(id),
+          price: price,
+          help: FactoryRun.shopOwned(run, id) ? tr('Você já tem') : _help(id),
+          disabled: blocked,
+          use: '${tr('COMPRAR')} · 💰$price',
+          onUse: () => _save(FactoryRun.buyItem(run, id, target, data)));
+    }
+
+    final pockets = [
+      ('balls', 'Poké Balls', 'poke-ball'),
+      ('medicine', 'Remédios', 'potion'),
+      ('items', 'Itens', 'leftovers'),
+      ('moves', 'TMs e golpes', 'tm-normal'),
+    ];
+    final ids = [for (final id in p['shop'] as List) '$id'];
+    return BwBag(
+      key: const ValueKey('factory-shop-bag'),
+      testKey: 'factory-shop-bag',
+      fill: true,
+      onClose: close,
+      pockets: [
+        for (final (id, label, img) in pockets)
+          if (ids.any((x) => pocketOf(x) == id)) BagPocket(id: id, label: label, img: img, items: [for (final x in ids) if (pocketOf(x) == id) item(x)]),
+      ],
+      below: Row(children: [
+        Text(tr('Para:'), style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 12, fontWeight: FontWeight.bold)),
+        const SizedBox(width: 4),
+        for (var i = 0; i < team.length; i++)
+          Padding(
+            padding: const EdgeInsets.only(right: 4),
+            child: InkWell(
+              key: ValueKey('target-$i'),
+              onTap: () => setState(() => _target = i),
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(color: const Color(0x33FFFFFF), border: Border.all(color: target == i ? const Color(0xFFFBBF24) : Colors.transparent, width: 2)),
+                child: Opacity(opacity: FactoryRun.hpOf(team[i]) > 0 ? 1 : 0.45, child: PokemonSprite((team[i]['id'] as num).toInt(), shiny: team[i]['shiny'] == true, fill: 0.9)),
               ),
             ),
-          const SizedBox(width: 4),
-          Text('${_name(team[target]['id'])} · Nv. ${team[target]['level']}', style: TextStyle(color: c.text, fontSize: 12, fontWeight: FontWeight.bold)),
-        ]),
-      ),
-      const SizedBox(height: 6),
-      for (final id in p['shop'] as List)
-        Container(
-          key: ValueKey('shop-$id'),
-          margin: const EdgeInsets.only(bottom: 4),
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-          decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(10)),
-          child: Row(children: [
-            _itemIcon('$id', 26),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                Text(_itemName('$id'), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.bold, color: c.text, fontSize: 13)),
-                // O que o item faz (inteiro: a linha cresce).
-                Text(FactoryRun.shopOwned(run, '$id') ? tr('Você já tem') : _help('$id'), style: TextStyle(color: c.muted, fontSize: 11, height: 1.2)),
-              ]),
-            ),
-            const SizedBox(width: 4),
-            FilledButton(
-              key: ValueKey('buy-$id'),
-              style: FilledButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 8)),
-              onPressed: (run['money'] as num) < FactoryRun.shopPrice(run, '$id') ||
-                      FactoryRun.shopOwned(run, '$id') ||
-                      ('$id'.startsWith('evo:') && FactoryRun.canEvolveWith(data, team[target], '$id'.substring(4), FactoryRun.regionOf(data, run)).isEmpty)
-                  ? null
-                  : () => _save(FactoryRun.buyItem(run, '$id', target, data)),
-              child: Text('💰${FactoryRun.shopPrice(run, '$id')}', style: const TextStyle(fontSize: 12)),
-            ),
-          ]),
-        ),
-    ]);
+          ),
+        const Spacer(),
+        Text('💰${run['money']}', style: const TextStyle(color: Color(0xFFFCD34D), fontSize: 12, fontWeight: FontWeight.w900)),
+      ]),
+    );
   }
 
   /// A caixa de diálogo no tema: escura no tema escuro, branca no claro (igual ao site).
-  bool get _dark => Theme.of(context).brightness == Brightness.dark;
+  // A HUD tem cor fixa (a do port de Black & White), não muda com o tema.
+  bool get _dark => true;
   Color get _dlgText => _dark ? Colors.white : _ink;
   Color get _dlgSub => _dark ? const Color(0xFFCBD5E1) : const Color(0xFF64748B);
   BoxDecoration _dlgBox() => BoxDecoration(
-        color: _dark ? null : Colors.white,
-        gradient: _dark ? LinearGradient(colors: [Hud.tint(const Color(0xFF4D4D4D), 0.12), Hud.tint(const Color(0xFF2E2E2E), 0.12)], begin: Alignment.topCenter, end: Alignment.bottomCenter) : null,
-        border: Border.all(color: _dark ? const Color(0xFF1A1A1A) : const Color(0xFF334155), width: 3),
-        borderRadius: BorderRadius.circular(12),
+        color: const Color(0xE614161C),
+        border: Border.all(color: const Color(0xFF8B93A1), width: 2),
       );
 
   /// O título e o "fechar" do que abre por cima do campo.
   Widget _overlayHeader(String title, VoidCallback onClose) => Container(
-        color: const Color(0xFF0F172A),
+        decoration: const BoxDecoration(color: Color(0xFF15181F), border: Border(bottom: BorderSide(color: Color(0xFF22D3EE), width: 2))),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
         child: Row(children: [
           Expanded(child: Text(title, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900))),
@@ -3162,10 +3244,6 @@ class _FactoryScreenState extends State<FactoryScreen> {
               sub: m['item'] != null ? _itemName('${m['item']}') : null),
       ];
 
-  /// A moldura: o campo, a barra e a caixa de texto com o menu (igual à batalha). A Bolsa, o time, a loja e a troca
-  /// abrem por cima do campo (a mesma tela, como no jogo; dá para jogar com o celular de lado).
-  /// Tudo abre no lugar do campo, do tamanho dele (nada muda o tamanho da tela).
-  bool get _fullPanel => false;
 
   /// O que abre por cima (Bolsa, time, loja): aparece subindo de leve (sem surgir de uma vez).
   Widget _panelBox(Widget panel) => TweenAnimationBuilder<double>(
@@ -3178,89 +3256,139 @@ class _FactoryScreenState extends State<FactoryScreen> {
           key: const ValueKey('factory-panel'),
           borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
           child: Container(
-            // O time e o esquecer golpe com o fundo das telas do jogo (verde-azulado), até embaixo.
-            decoration: BoxDecoration(color: _panel == 'team' || (_learn != null && _learnStep == 'forget') ? Hud.tint(const Color(0xFF1F6F78)) : SiteColors.of(context).card, border: Border.all(color: _border, width: 4)),
+            // Cor fixa (a HUD não muda com o tema): o fundo azul-petróleo das telas do port.
+            decoration: const BoxDecoration(color: Color(0xFF1F6F78)),
             // O time tem tamanho fixo (as páginas trocam arrastando); o resto rola se não couber.
             // O time e o PC têm tamanho fixo (o PC: o time e a caixa 6×6 do tamanho do campo); o resto rola se não couber.
-            child: _panel == 'team' || _panel == 'pc' ? panel : SingleChildScrollView(child: panel),
+            // Numa tela pequena (o celular em pé), a tela é feita num tamanho mínimo e encolhida para caber (nada corta).
+            child: LayoutBuilder(builder: (context, b) {
+              final vw = max(b.maxWidth, 560.0), vh = vw * b.maxHeight / max(1.0, b.maxWidth);
+              return FittedBox(
+                fit: BoxFit.contain,
+                alignment: Alignment.topCenter,
+                child: SizedBox(width: vw, height: vh, child: const {'team', 'pc', 'region', 'help', 'buy'}.contains(_panel) ? panel : SingleChildScrollView(child: panel)),
+              );
+            }),
           ),
         ),
       );
 
-  Widget _frame({required Widget field, Json? run, required List<Widget> text, Widget? menu, List<Widget>? tools}) => Stack(children: [
-        _frameColumn(field: field, run: run, text: text, menu: menu, tools: tools),
-        if (_framePanel != null && _fullPanel) Positioned.fill(child: _panelBox(_framePanel!)),
-      ]);
+  Widget _frame({required Widget field, Json? run, required List<Widget> text, Widget? menu, List<Widget>? tools, bool menuFill = false}) =>
+      _frameColumn(field: field, run: run, text: text, menu: menu, tools: tools, menuFill: menuFill);
 
-  // Deitado (DsLayout): o campo com a faixa à esquerda e a tela de baixo à direita, como na batalha.
-  // [tools]: BOLSA, TIME, MAPA e AJUDA numa linha fixa no alto da tela de baixo; os caminhos e o resto, nas páginas (◀ ▶).
-  Widget _frameColumn({required Widget field, Json? run, required List<Widget> text, Widget? menu, List<Widget>? tools}) => DsLayout(
-      top: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        // A mesma tela da batalha: o campo (4:3) com a fala dentro dele, embaixo, no mesmo lugar e do mesmo tamanho.
-        LayoutBuilder(builder: (context, box) {
-          final w = box.maxWidth, h = w * 3 / 4;
-          return Stack(children: [
-            // Sem corte seco: a tela do lugar troca com um fade (mapa, loja, resultado...).
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 350),
-              switchInCurve: Curves.easeOut,
-              switchOutCurve: Curves.easeIn,
-              layoutBuilder: (current, previous) => Stack(alignment: Alignment.topCenter, children: [...previous, ?current]),
-              child: field,
+  /// A HUD da batalha (o port de Black & White), igual: o campo 16:9, a caixa de texto à esquerda, a vida do Pokémon
+  /// da frente e, embaixo dela, os botões, ao lado da caixa; a faixa de dica embaixo. Tudo numa tela só, nada embaixo
+  /// dela (a Bolsa, o time, o mapa e o resto abrem por cima do campo). Igual ao site.
+  Widget _frameColumn({required Widget field, Json? run, required List<Widget> text, Widget? menu, List<Widget>? tools, bool menuFill = false}) => DsLayout(
+        single: true,
+        top: LayoutBuilder(builder: (context, box) {
+          final w = box.maxWidth, h = w * 9 / 16;
+          return MediaQuery.withNoTextScaling(
+            child: Container(
+              width: w,
+              height: h,
+              decoration: BoxDecoration(border: Border.all(color: _border, width: 4), borderRadius: BorderRadius.circular(16), color: const Color(0xFF9FDCFF)),
+              clipBehavior: Clip.antiAlias,
+              child: LayoutBuilder(builder: (context, inner) {
+                final w = inner.maxWidth, h = inner.maxHeight;
+                // A faixa de dica tem uma altura mínima (no celular em pé a tela é pequena); o resto sobe junto.
+                final barH = max(h * 0.067, 22.0), lift = barH - h * 0.067;
+                return Stack(children: [
+                  // Sem corte seco: a tela do lugar troca com um fade (mapa, loja, resultado...).
+                  Positioned.fill(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 350),
+                      switchInCurve: Curves.easeOut,
+                      switchOutCurve: Curves.easeIn,
+                      layoutBuilder: (current, previous) => Stack(fit: StackFit.expand, children: [...previous, ?current]),
+                      child: field,
+                    ),
+                  ),
+                  // A vida do Pokémon da frente, no lugar da sua caixa de HP na batalha (os botões ficam embaixo dela).
+                  if (run != null && menu != null) Positioned(right: w * 0.0125, bottom: h * 0.24 + lift, width: w * 0.315, child: _leadHp(run, w)),
+                  // A caixa de texto no lugar da da batalha (o que não cabe: tocar passa).
+                  Positioned(
+                    left: w * 0.0125,
+                    right: menu == null ? w * 0.0125 : w * 0.373,
+                    bottom: h * 0.085 + lift,
+                    height: h * 0.145,
+                    child: _PagedText(
+                      key: const ValueKey('factory-text'),
+                      decoration: currentFactory()['frame'] is String
+                          ? _dlgBox().copyWith(border: Border.all(color: _frameColors[currentFactory()['frame']]?.$1 ?? _border, width: 3))
+                          : _dlgBox(),
+                      style: _portText.copyWith(fontSize: w * 0.023, height: 1.3),
+                      children: text,
+                    ),
+                  ),
+                  // Os botões no lugar dos da batalha, à direita da caixa de texto (o que não cabe vai para a próxima página).
+                  if (menu != null)
+                    Positioned(
+                      key: const ValueKey('factory-bottom'),
+                      right: w * 0.0125,
+                      bottom: h * 0.085 + lift,
+                      width: w * 0.36,
+                      height: h * 0.145,
+                      // Numa tela pequena (o celular em pé), os botões são feitos num tamanho mínimo e encolhidos para caber.
+                      child: LayoutBuilder(builder: (context, b) {
+                        final vw = max(b.maxWidth, 300.0), vh = vw * b.maxHeight / b.maxWidth;
+                        return FittedBox(
+                          fit: BoxFit.contain,
+                          child: SizedBox(
+                            width: vw,
+                            height: vh,
+                            child: menuFill ? menu : _PagedMenu(key: ValueKey(('menu', field.key)), color: Colors.white, child: menu is _MenuRow ? menu : _MenuRow(child: menu)),
+                          ),
+                        );
+                      }),
+                    ),
+                  // A faixa de dica da batalha: o andar, o dinheiro, a Bolsa, as insígnias, BOLSA/TIME/MAPA/AJUDA e o time.
+                  Positioned(left: 0, right: 0, bottom: 0, height: barH, child: _bar(run, tools)),
+                  // A Bolsa, o time, o mapa, a loja: por cima de tudo, na mesma tela.
+                  if (_framePanel != null) Positioned.fill(child: _panelBox(_framePanel!)),
+                ]);
+              }),
             ),
-            Positioned(
-              left: w * 0.015,
-              right: w * 0.015,
-              bottom: h * 0.015,
-              height: h * 0.21,
-              child: _PagedText(
-                key: const ValueKey('factory-text'),
-                // A moldura comprada na loja de cosméticos (por cima da caixa no tema).
-                decoration: (currentFactory()['frame'] is String
-                        ? _dlgBox().copyWith(border: Border.all(color: _frameColors[currentFactory()['frame']]?.$1 ?? _border, width: 3))
-                        : _dlgBox())
-                    .copyWith(borderRadius: BorderRadius.circular(8)),
-                style: TextStyle(color: _dlgText, fontSize: 14, height: 1.25, fontWeight: FontWeight.bold),
-                children: text,
+          );
+        }),
+        bottom: const SizedBox.shrink(),
+      );
+
+  /// A caixa de vida do Pokémon da frente (como a sua na batalha).
+  Widget _leadHp(Json run, double w) {
+    final team = FactoryRun.teamOf(run);
+    if (team.isEmpty) return const SizedBox.shrink();
+    final m = team.firstWhere((x) => FactoryRun.hpOf(x) > 0, orElse: () => team.first);
+    final pct = FactoryRun.hpOf(m).clamp(0.0, 1.0).toDouble();
+    final font = _portText.copyWith(fontSize: w * 0.023, fontWeight: FontWeight.w500);
+    return ClipPath(
+      key: const ValueKey('port-hp-me'),
+      clipper: _CutCorner(w * 0.04),
+      child: Container(
+        padding: EdgeInsets.fromLTRB(w * 0.0126, w * 0.004, w * 0.0126, w * 0.008),
+        decoration: BoxDecoration(color: const Color(0xEB181A1E), border: Border.all(color: const Color(0xFF8B93A1), width: 2)),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(children: [
+            Flexible(child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text((m['nick'] as String?) ?? _name(m['id']), style: font))),
+            const Spacer(),
+            Text('Lv.${m['level']}', style: font.copyWith(fontSize: w * 0.017)),
+          ]),
+          Row(children: [
+            Text('HP', style: font.copyWith(color: const Color(0xFFA3E635), fontSize: w * 0.013, fontWeight: FontWeight.w700)),
+            SizedBox(width: w * 0.006),
+            Expanded(
+              child: Container(
+                height: w * 0.0075,
+                decoration: BoxDecoration(color: const Color(0xFF2B3240), border: Border.all(color: Colors.black, width: 1)),
+                alignment: Alignment.centerLeft,
+                child: FractionallySizedBox(widthFactor: pct, heightFactor: 1, child: ColoredBox(color: pct > 0.5 ? const Color(0xFF4ADE80) : pct > 0.2 ? const Color(0xFFFACC15) : const Color(0xFFEF4444))),
               ),
             ),
-            // A Bolsa e a loja aparecem por cima do campo; o time cobre a tela toda (como a tela do time da batalha).
-            if (_framePanel != null && !_fullPanel) Positioned.fill(child: _panelBox(_framePanel!)),
-          ]);
-        }),
-        // A faixa (da altura da faixa da batalha) e a tela de baixo (da altura da tela de baixo da batalha).
-        if (run != null)
-          _bar(run)
-        else
-          Container(height: battleBarHeight(context), decoration: BoxDecoration(color: Hud.tint(const Color(0xFF334155)), border: Border.symmetric(vertical: BorderSide(color: _border, width: 4)))),
-      ]),
-        bottom: Container(
-          key: const ValueKey('factory-bottom'),
-          height: battleBottomHeight(context),
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(color: Hud.base, border: Border.all(color: _border, width: 4), borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16))),
-          // Os botões ficam sempre nos mesmos lugares (como na batalha): o que não cabe vai para a próxima página (◀ ▶).
-          child: menu == null
-              ? null
-              : Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: _dlgBox(),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                    if (tools != null) ...[
-                      SizedBox(
-                        key: const ValueKey('factory-tools'),
-                        height: 30,
-                        child: Row(children: [
-                          for (final (i, t) in tools.indexed) ...[if (i > 0) const SizedBox(width: 4), Expanded(child: t)],
-                        ]),
-                      ),
-                      Divider(height: 9, thickness: 1, color: _dlgSub.withValues(alpha: 0.35)),
-                    ],
-                    Expanded(child: _PagedMenu(key: ValueKey(('menu', field.key)), color: _dlgText, child: menu is _MenuRow ? menu : _MenuRow(child: menu))),
-                  ]),
-                ),
-        ),
-      );
+          ]),
+        ]),
+      ),
+    );
+  }
 
   Widget _small(String text, {Color? color}) => Text(text, style: TextStyle(fontSize: 13, color: color ?? _dlgText));
 
@@ -3317,10 +3445,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                 Expanded(child: _BagAndItems(run: run, data: data, names: _names, onSave: _save, only: 'team')),
               ])
             : step == 'shop' && _panel == 'buy'
-                ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                    _overlayHeader('${p?['mart'] == true ? '🎒 ${tr('Vendedor ambulante')}' : p?['store'] != null ? '🏬 ${p!['store']}' : '🛒 Poké Mart'} · 💰${run['money']}', close),
-                    Padding(padding: const EdgeInsets.all(8), child: _shopList(context, run, p!, data)),
-                  ])
+                ? _shopBag(run, p!, data, close)
                 // A Creche: um lugar da cidade (separado do Poké Mart).
                 : p == null && _panel == 'daycare'
                     ? _daycarePanel(run, data, close)
@@ -3924,7 +4049,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
     final pm = pick == null ? null : _moveData[five[pick]];
     return Container(
       key: const ValueKey('forget-panel'),
-      color: Hud.tint(const Color(0xFF1F6F78)),
+      color: const Color(0xFF1F6F78),
       padding: const EdgeInsets.all(6),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Container(
@@ -4017,7 +4142,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
   Widget _townTradePanel(Json run, FactoryData data, VoidCallback close) {
     final trade = (run['town'] as Map)['trade'] as Map;
     final ok = FactoryRun.townTradeable(run, data);
-    return BwParty(
+    return PortParty(
       testKey: 'towntrade',
       title: tr('Quem você dá em troca do {0}?').replaceAll('{0}', _name(trade['give'])),
       team: [for (final m in _party(run)) PartySlot(id: m.id, shiny: m.shiny, name: m.name, level: m.level, hp: m.hp, sub: m.sub)],
@@ -4322,7 +4447,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
     final team = FactoryRun.teamOf(run);
     final index = _panel!.startsWith('deleter:') ? int.tryParse(_panel!.substring(8)) : null;
     if (index == null || index < 0 || index >= team.length) {
-      return BwParty(
+      return PortParty(
         testKey: 'deleter',
         title: tr('Move Deleter: quem vai esquecer um golpe?'),
         team: _party(run),
@@ -4421,7 +4546,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
     final shiny = offer['shiny'] == true;
     // Quem dar: a tela do time, por cima do campo.
     if (_panel == 'trade') {
-      _framePanel = BwParty(
+      _framePanel = PortParty(
         testKey: 'trade',
         title: tr('Quem você dá em troca do {0}?').replaceAll('{0}', _name(offer['id'])),
         team: [
@@ -4455,7 +4580,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
     // Sem vaga (o ovo pronto também precisa de uma): não dá para buscar.
     final full = care != null && FactoryRun.takeDaycare(run, data) == null;
     if (care == null) {
-      return BwParty(
+      return PortParty(
         testKey: 'daycare',
         title: tr('Creche: quem fica? Ganha um nível por andar e, depois de {0} andares, aparece um ovo.').replaceAll('{0}', '${FactoryRun.daycareEgg}'),
         team: _party(run),
@@ -4520,7 +4645,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
 
     // Time cheio: a tela do time do Black & White, por cima do campo, para escolher quem sai.
     if (full && _panel == null) {
-      _framePanel = BwParty(
+      _framePanel = PortParty(
         testKey: 'replace',
         title: tr('Time cheio: escolha quem sai para {0} entrar.').replaceAll('{0}', _name(foe['id'])),
         team: _party(run),
@@ -4638,11 +4763,16 @@ class _FactoryScreenState extends State<FactoryScreen> {
           child: Text(text, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: _ink)),
         );
     final fork = !town && options.length > 1;
+    // Os caminhos viram cartas no campo (na rota); na cidade, os botões de sempre. Igual ao site.
+    final asCards = !town && !meeting && rival == null;
+    Widget btn(String label, VoidCallback? onTap, {String? sub, required Key key, String? kind, bool hidden = false}) =>
+        asCards ? _PathCard(label: label, sub: sub, onTap: onTap, kind: kind, hidden: hidden, key: key) : _menuButton(label, onTap, sub: sub, key: key);
     // A entrada de um lugar: a base vilã (na cidade), os lugares da cidade, o lugar no caminho ou o próximo da água.
     Widget placeButton(int k) {
       final node = options[k];
       final base = node['place'] == 'base';
-      return _menuButton('${FactoryRun.rarePlaces.containsKey(node['place']) ? '✨' : '🕳️'} ${(_biomeInfo[node['scene']] ?? biome).$2} ${base ? baseName : placeName(node['place'])}', widget.busy || down || FactoryRun.nodeBlocked(run, node) ? null : () => pick(k),
+      return btn('${FactoryRun.rarePlaces.containsKey(node['place']) ? '✨' : '🕳️'} ${(_biomeInfo[node['scene']] ?? biome).$2} ${base ? baseName : placeName(node['place'])}', widget.busy || down || FactoryRun.nodeBlocked(run, node) ? null : () => pick(k),
+          kind: 'dungeon',
           sub: FactoryRun.nodeBlocked(run, node)
               ? _hmHint(run, node)
               : base
@@ -4722,9 +4852,100 @@ class _FactoryScreenState extends State<FactoryScreen> {
           '🚨 ${tr('Um capanga da {0} está agindo nesta cidade! Derrote-o para atrapalhar o plano.').replaceAll('{0}', _teamNames[o['grunt']] ?? 'Equipe Rocket')}',
       if (options.any((o) => o['hidden'] != null)) '📡 ${tr('A Dowsing Machine apita: tem um item escondido num dos caminhos!')}',
     ];
+    final paths = <Widget>[
+
+          if (fork && !hasMap)
+            for (var k = 0; k < options.length; k++)
+              if (options[k]['kind'] == 'dungeon')
+                placeButton(k)
+              // O caminho aberto com uma MO (Cut, Rock Smash, Strength): você sabe o que tem nele, mesmo sem o Mapa.
+              // A entrada da Safari Zone dá para ver, mesmo sem o Mapa.
+              else if (options[k]['kind'] == 'safari')
+                btn('${_nodeInfo['safari']!.$1} ${options[k]['name'] ?? 'Safari Zone'}', kind: 'safari', widget.busy || FactoryRun.nodeBlocked(run, options[k]) ? null : () => pick(k),
+                    sub: FactoryRun.nodeBlocked(run, options[k]) ? _hmHint(run, options[k] as Map?) : tr(_nodeInfo['safari']!.$3), key: ValueKey('map-node-$k'))
+              else if (_hmPathInfo(options[k]) != null)
+                btn(kind: '${options[k]['kind']}', '${_hmPathInfo(options[k])!.$1} ${tr(_hmPathInfo(options[k])!.$2).replaceAll('{0}', options[k]['blocker'] != null ? _name(options[k]['legend']) : '')}',
+                    widget.busy || FactoryRun.nodeBlocked(run, options[k]) || (FactoryRun.isBattleNode(options[k]) && down) ? null : () => pick(k),
+                    sub: FactoryRun.nodeBlocked(run, options[k]) ? _hmHint(run, options[k] as Map?) : tr(_hmPathInfo(options[k])!.$3), key: ValueKey('map-node-$k'))
+              else
+                btn(kind: '${options[k]['kind']}', hidden: true, k == 0 ? '➡️ ${tr('SEGUIR EM FRENTE')}' : '↗️ ${tr('OUTRO CAMINHO')}${options.length > 2 ? ' $k' : ''}',
+                  widget.busy || FactoryRun.nodeBlocked(run, options[k]) || (FactoryRun.isBattleNode(options[k]) && down) ? null : () => pick(k),
+                  sub: FactoryRun.nodeBlocked(run, options[k])
+                      ? _hmHint(run, options[k] as Map?)
+                      : k == 0
+                          ? tr('Continuar por onde você está')
+                          : tr('Não dá para saber aonde ele leva (o Mapa mostra)'),
+                  key: ValueKey('map-node-$k')),
+          if (hasMap || !fork)
+            for (var k = 0; k < options.length; k++)
+              Builder(builder: (context) {
+                final node = options[k];
+                if (node['kind'] == 'dungeon') return placeButton(k);
+                final info = node['area'] == true
+                    ? _nodeInfo['area']!
+                    : node['mythic'] == true
+                    ? _nodeInfo['mythic']!
+                    : node['meteor'] == true
+                        ? _nodeInfo['meteor']!
+                        : node['roam'] == true
+                            ? _roamInfo
+                            : node['plot'] != null
+                            ? _plotInfo
+                            : _hmPathInfo(node) ?? (node['legend'] != null ? _legendInfo : _nodeInfo[node['kind']] ?? _nodeInfo['wild']!);
+                final placeLegend = node['placeLegend'] == true || node['routeLegend'] == true;
+                final b = _hmPathInfo(node) != null ? null : _biomeInfo[node['biome']];
+                final isBoss = node['kind'] == 'boss';
+                final foeName = isBoss ? '${boss['name']}' : node['kind'] == 'rival' && rival != null ? '${rival['name']}' : null;
+                final noSurf = FactoryRun.nodeBlocked(run, node);
+                return btn(
+                  kind: node['area'] == true ? 'area' : node['mythic'] == true ? 'mythic' : node['meteor'] == true ? 'meteor' : '${node['kind']}',
+                  '${options.length == 1 && foeName == null && node['kind'] != 'dboss' ? '${tr('SEGUIR')}: ' : ''}${node['biome'] == 'underwater' && route['biome'] != 'underwater' ? '🤿 ${tr('MERGULHAR')}: ' : ''}${town && isBoss ? '🏟️' : b?.$2 ?? info.$1} ${foeName ?? tr(info.$2).replaceAll('{0}', node['blocker'] != null ? _name(node['legend']) : '')}${node['roam'] == true || placeLegend ? ' · ${node['forceShiny'] == true ? '✨ ' : ''}${_name(node['legend'])}' : ''}${b != null ? ' · ${tr(b.$1)}' : ''}${node['hidden'] != null ? ' 📡' : ''}',
+                  widget.busy || (FactoryRun.isBattleNode(node) && down) || noSurf ? null : () => pick(k),
+                  sub: noSurf
+                      ? _hmHint(run, node)
+                      : isBoss
+                          ? '${_bossKind(boss['kind'])}${ambush ? '' : ' · ${cities.to}'}'
+                          : node['kind'] == 'dboss'
+                              ? dungeon != null
+                                  ? tr('O chefe do lugar: vencendo, volta para {0}.').replaceAll('{0}', backTo)
+                                  : tr('O chefe da rota: vencendo, você chega em {0}.').replaceAll('{0}', cities.to)
+                              : node['hidden'] != null
+                                  ? '📡 ${tr('A Dowsing Machine apita: tem um item escondido aqui!')}'
+                                  : tr(placeLegend ? _placeLegendHelp : info.$3).replaceAll('{0}', '${FactoryRun.roamTurns}'),
+                  key: ValueKey('map-node-$k'),
+                );
+              }),
+    ];
+    final extras = <Widget>[
+          // O desafio do ginásio (antes do líder): vencendo, o time dele vem mais fraco.
+          if (town && FactoryRun.gymPuzzleOf(data, run) != null)
+            _menuButton('🧩 ${tr('DESAFIO DO GINÁSIO')}: ${tr(_puzzleInfo[FactoryRun.gymPuzzleOf(data, run)!.type]!.$1)}', widget.busy ? null : () => _save(FactoryRun.startPuzzle(run, data)),
+                sub: tr('Uma tentativa: vencendo, o time do líder vem {0} níveis abaixo e você ganha um prêmio.').replaceAll('{0}', '${FactoryRun.gymEdgeLevels}'), key: const ValueKey('town-puzzle')),
+          if (town && (run['gymEdge'] as Map?)?['leg'] == FactoryRun.legOf(run))
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Text('🧩 ${tr((run['gymEdge'] as Map)['won'] == true ? 'Desafio vencido: o time do líder vem mais fraco.' : 'Desafio perdido: o líder luta com tudo.')}',
+                  key: const ValueKey('town-puzzle-done'), style: TextStyle(fontSize: 11, color: _dlgSub)),
+            ),
+          // As ações da rota, numa grade: pescar, sacudir a árvore, o mel, o vaso de frutas, a bicicleta e o álbum.
+          ..._routeActions(run, data, meeting, town),
+          if (cut != null)
+            _menuButton('✂️ ${tr('USAR {0}').replaceAll('{0}', 'Cut')}', widget.busy ? null : () => _save(cut),
+                sub: tr(_hmInfo['cut']!.$3), key: const ValueKey('factory-cut')),
+          if (smash != null)
+            _menuButton('🪨 ${tr('USAR {0}').replaceAll('{0}', 'Rock Smash')}', widget.busy ? null : () => _save(smash),
+                sub: tr(_hmInfo['rock-smash']!.$3), key: const ValueKey('factory-smash')),
+          if (strength != null)
+            _menuButton('💪 ${tr('USAR {0}').replaceAll('{0}', 'Strength')}', widget.busy ? null : () => _save(strength),
+                sub: tr(_hmInfo['strength']!.$3), key: const ValueKey('factory-strength')),
+          if (((run['rerolls'] as num?) ?? 0) > 0 && !meeting && !town && hasMap)
+            _menuButton('🎲 ${tr('SORTEAR O CAMINHO DE NOVO')}', widget.busy ? null : () => _save(FactoryRun.rerollRoute(run, data)),
+                sub: tr('Restam {0} nesta corrida').replaceAll('{0}', '${run['rerolls']}'), key: const ValueKey('factory-reroll')),
+    ];
     return _frame(
+      menuFill: asCards,
       run: run,
-      field: fork && hasMap
+      field: fork && hasMap && !asCards
           ? _townMap(route, options, pos % FactoryRun.routeLength, cities.from, cities.to, '${boss['region']} · ${boss['game']}', me,
               widget.busy ? null : pick, (node) => (FactoryRun.isBattleNode(node) && down) || FactoryRun.nodeBlocked(run, node), placeName, hud)
           // O líder espera no ginásio da cidade; a Elite dos Quatro e o Campeão, na Liga (nunca no meio da rota).
@@ -4761,12 +4982,41 @@ class _FactoryScreenState extends State<FactoryScreen> {
                   Positioned(
                       key: const ValueKey('follower'),
                       // Do tamanho dele perto de você (a mesma escala da batalha).
-                      left: w * 0.42,
-                      bottom: h * 0.23,
-                      width: w * 0.58,
-                      height: w * 0.58,
+                      left: w * 0.3,
+                      bottom: h * 0.2,
+                      width: w * 0.36,
+                      height: w * 0.36,
                       child: StageMon(id: (lead['id'] as num).toInt(), shiny: lead['shiny'] == true, base: false, scene: _scene, scale: follow?.scale)),
                 if (!town && lead != null) _fieldMon(lead, w, h, back: true),
+                // As cartas dos caminhos e, ao lado delas, o que dá para fazer aqui (árvore, mel, fruta...).
+                if (asCards)
+                  Positioned(
+                    key: ValueKey('cards-${run['floor']}'),
+                    left: w * 0.03,
+                    right: w * 0.03,
+                    top: h * 0.16,
+                    bottom: h * 0.37,
+                    child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                      Expanded(
+                        child: Row(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                          for (final (i, c) in paths.indexed) ...[if (i > 0) SizedBox(width: w * 0.02), SizedBox(width: w * 0.16, child: _CardIn(index: i, child: c))],
+                        ]),
+                      ),
+                      if (extras.isNotEmpty)
+                        SizedBox(
+                          width: w * 0.24,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: SizedBox(
+                              width: w * 0.24,
+                              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                                for (final e in extras) Padding(padding: const EdgeInsets.only(bottom: 4), child: e),
+                              ]),
+                            ),
+                          ),
+                        ),
+                    ]),
+                  ),
               ];
             }),
       text: [
@@ -4801,93 +5051,16 @@ class _FactoryScreenState extends State<FactoryScreen> {
               style: TextStyle(fontSize: 11, color: _dlgSub)),
         if (down) _small(tr('O time todo está desmaiado: use um Revive ou desista.'), color: const Color(0xFFDC2626)),
       ],
-      menu: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        _menuGrid(wide: true, [
-          // Sem o Mapa: dá para seguir em frente ou pegar outro caminho, sem saber aonde ele leva. Igual ao site.
-          if (fork && !hasMap)
-            for (var k = 0; k < options.length; k++)
-              if (options[k]['kind'] == 'dungeon')
-                placeButton(k)
-              // O caminho aberto com uma MO (Cut, Rock Smash, Strength): você sabe o que tem nele, mesmo sem o Mapa.
-              // A entrada da Safari Zone dá para ver, mesmo sem o Mapa.
-              else if (options[k]['kind'] == 'safari')
-                _menuButton('${_nodeInfo['safari']!.$1} ${options[k]['name'] ?? 'Safari Zone'}', widget.busy || FactoryRun.nodeBlocked(run, options[k]) ? null : () => pick(k),
-                    sub: FactoryRun.nodeBlocked(run, options[k]) ? _hmHint(run, options[k] as Map?) : tr(_nodeInfo['safari']!.$3), key: ValueKey('map-node-$k'))
-              else if (_hmPathInfo(options[k]) != null)
-                _menuButton('${_hmPathInfo(options[k])!.$1} ${tr(_hmPathInfo(options[k])!.$2).replaceAll('{0}', options[k]['blocker'] != null ? _name(options[k]['legend']) : '')}',
-                    widget.busy || FactoryRun.nodeBlocked(run, options[k]) || (FactoryRun.isBattleNode(options[k]) && down) ? null : () => pick(k),
-                    sub: FactoryRun.nodeBlocked(run, options[k]) ? _hmHint(run, options[k] as Map?) : tr(_hmPathInfo(options[k])!.$3), key: ValueKey('map-node-$k'))
-              else
-                _menuButton(k == 0 ? '➡️ ${tr('SEGUIR EM FRENTE')}' : '↗️ ${tr('OUTRO CAMINHO')}${options.length > 2 ? ' $k' : ''}',
-                  widget.busy || FactoryRun.nodeBlocked(run, options[k]) || (FactoryRun.isBattleNode(options[k]) && down) ? null : () => pick(k),
-                  sub: FactoryRun.nodeBlocked(run, options[k])
-                      ? _hmHint(run, options[k] as Map?)
-                      : k == 0
-                          ? tr('Continuar por onde você está')
-                          : tr('Não dá para saber aonde ele leva (o Mapa mostra)'),
-                  key: ValueKey('map-node-$k')),
-          if (hasMap || !fork)
-            for (var k = 0; k < options.length; k++)
-              Builder(builder: (context) {
-                final node = options[k];
-                if (node['kind'] == 'dungeon') return placeButton(k);
-                final info = node['area'] == true
-                    ? _nodeInfo['area']!
-                    : node['mythic'] == true
-                    ? _nodeInfo['mythic']!
-                    : node['meteor'] == true
-                        ? _nodeInfo['meteor']!
-                        : node['roam'] == true
-                            ? _roamInfo
-                            : node['plot'] != null
-                            ? _plotInfo
-                            : _hmPathInfo(node) ?? (node['legend'] != null ? _legendInfo : _nodeInfo[node['kind']] ?? _nodeInfo['wild']!);
-                final placeLegend = node['placeLegend'] == true || node['routeLegend'] == true;
-                final b = _hmPathInfo(node) != null ? null : _biomeInfo[node['biome']];
-                final isBoss = node['kind'] == 'boss';
-                final foeName = isBoss ? '${boss['name']}' : node['kind'] == 'rival' && rival != null ? '${rival['name']}' : null;
-                final noSurf = FactoryRun.nodeBlocked(run, node);
-                return _menuButton(
-                  '${options.length == 1 && foeName == null && node['kind'] != 'dboss' ? '${tr('SEGUIR')}: ' : ''}${node['biome'] == 'underwater' && route['biome'] != 'underwater' ? '🤿 ${tr('MERGULHAR')}: ' : ''}${town && isBoss ? '🏟️' : b?.$2 ?? info.$1} ${foeName ?? tr(info.$2).replaceAll('{0}', node['blocker'] != null ? _name(node['legend']) : '')}${node['roam'] == true || placeLegend ? ' · ${node['forceShiny'] == true ? '✨ ' : ''}${_name(node['legend'])}' : ''}${b != null ? ' · ${tr(b.$1)}' : ''}${node['hidden'] != null ? ' 📡' : ''}',
-                  widget.busy || (FactoryRun.isBattleNode(node) && down) || noSurf ? null : () => pick(k),
-                  sub: noSurf
-                      ? _hmHint(run, node)
-                      : isBoss
-                          ? '${_bossKind(boss['kind'])}${ambush ? '' : ' · ${cities.to}'}'
-                          : node['kind'] == 'dboss'
-                              ? dungeon != null
-                                  ? tr('O chefe do lugar: vencendo, volta para {0}.').replaceAll('{0}', backTo)
-                                  : tr('O chefe da rota: vencendo, você chega em {0}.').replaceAll('{0}', cities.to)
-                              : node['hidden'] != null
-                                  ? '📡 ${tr('A Dowsing Machine apita: tem um item escondido aqui!')}'
-                                  : tr(placeLegend ? _placeLegendHelp : info.$3).replaceAll('{0}', '${FactoryRun.roamTurns}'),
-                  key: ValueKey('map-node-$k'),
-                );
-              }),
-          // O desafio do ginásio (antes do líder): vencendo, o time dele vem mais fraco.
-          if (town && FactoryRun.gymPuzzleOf(data, run) != null)
-            _menuButton('🧩 ${tr('DESAFIO DO GINÁSIO')}: ${tr(_puzzleInfo[FactoryRun.gymPuzzleOf(data, run)!.type]!.$1)}', widget.busy ? null : () => _save(FactoryRun.startPuzzle(run, data)),
-                sub: tr('Uma tentativa: vencendo, o time do líder vem {0} níveis abaixo e você ganha um prêmio.').replaceAll('{0}', '${FactoryRun.gymEdgeLevels}'), key: const ValueKey('town-puzzle')),
-          if (town && (run['gymEdge'] as Map?)?['leg'] == FactoryRun.legOf(run))
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text('🧩 ${tr((run['gymEdge'] as Map)['won'] == true ? 'Desafio vencido: o time do líder vem mais fraco.' : 'Desafio perdido: o líder luta com tudo.')}',
-                  key: const ValueKey('town-puzzle-done'), style: TextStyle(fontSize: 11, color: _dlgSub)),
-            ),
-          // As ações da rota, numa grade: pescar, sacudir a árvore, o mel, o vaso de frutas, a bicicleta e o álbum.
-          ..._routeActions(run, data, meeting, town),
-          if (cut != null)
-            _menuButton('✂️ ${tr('USAR {0}').replaceAll('{0}', 'Cut')}', widget.busy ? null : () => _save(cut),
-                sub: tr(_hmInfo['cut']!.$3), key: const ValueKey('factory-cut')),
-          if (smash != null)
-            _menuButton('🪨 ${tr('USAR {0}').replaceAll('{0}', 'Rock Smash')}', widget.busy ? null : () => _save(smash),
-                sub: tr(_hmInfo['rock-smash']!.$3), key: const ValueKey('factory-smash')),
-          if (strength != null)
-            _menuButton('💪 ${tr('USAR {0}').replaceAll('{0}', 'Strength')}', widget.busy ? null : () => _save(strength),
-                sub: tr(_hmInfo['strength']!.$3), key: const ValueKey('factory-strength')),
-          if (((run['rerolls'] as num?) ?? 0) > 0 && !meeting && !town && hasMap)
-            _menuButton('🎲 ${tr('SORTEAR O CAMINHO DE NOVO')}', widget.busy ? null : () => _save(FactoryRun.rerollRoute(run, data)),
-                sub: tr('Restam {0} nesta corrida').replaceAll('{0}', '${run['rerolls']}'), key: const ValueKey('factory-reroll')),
+      menu: asCards
+          ? Column(children: [
+              for (final row in [tools.sublist(0, 2), tools.sublist(2)])
+                Expanded(child: Padding(padding: const EdgeInsets.only(bottom: 3), child: Row(children: [Expanded(child: row[0]), const SizedBox(width: 4), Expanded(child: row[1])]))),
+            ])
+          : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        // Na cidade: 2 por fileira, como os botões da batalha.
+        _menuGrid(wide: !town, [
+          ...paths,
+          ...extras,
         ]),
         // Na cidade: o Poké Mart, o Centro Pokémon e a Creche (cada um no seu lugar). Igual ao site.
         if (town)
@@ -4948,7 +5121,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
                 }),
           ]),
       ]),
-      tools: tools,
+      // Com as cartas, BOLSA/TIME/MAPA/AJUDA ficam nos 4 botões (não repetem na faixa).
+      tools: asCards ? null : tools,
     );
   }
 
@@ -4989,11 +5163,10 @@ class _FactoryScreenState extends State<FactoryScreen> {
     final here = pos + 1;
     return ClipRRect(
       key: const ValueKey('factory-map'),
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-      child: AspectRatio(
-        aspectRatio: 4 / 3,
+      borderRadius: BorderRadius.zero,
+      child: SizedBox.expand(
         child: DecoratedBox(
-          decoration: BoxDecoration(border: Border.all(color: _border, width: 4), color: const Color(0xFF1D3F8F)),
+          decoration: const BoxDecoration(color: Color(0xFF1D3F8F)),
           child: LayoutBuilder(builder: (context, box) {
             final w = box.maxWidth, h = box.maxHeight;
             // Em unidades de 160 × 120, como o site.
@@ -5950,7 +6123,7 @@ class _PagedMenuState extends State<_PagedMenu> {
   List<(double, double)> _pages = const [];
   int _page = 0;
   double _limit = 0;
-  static const _nav = 30.0;
+  static const _nav = 22.0;
 
   /// Mede as fileiras e divide em páginas que cabem na caixa (o resto fica para a próxima).
   void _measure() {
@@ -6373,4 +6546,92 @@ class _PcPanelState extends State<_PcPanel> {
       }),
     );
   }
+}
+
+/// As cores das cartas dos caminhos, pelo que tem nelas (batalha vermelha, selvagem verde, loja azul, chefe roxo...).
+/// Igual ao site (CARD_COLORS).
+const _cardColors = {
+  'wild': (Color(0xFF22C55E), Color(0xFF15803D)), 'trainer': (Color(0xFFEF4444), Color(0xFFB91C1C)), 'ace': (Color(0xFFF97316), Color(0xFFC2410C)),
+  'rival': (Color(0xFFF43F5E), Color(0xFF9F1239)), 'boss': (Color(0xFFA855F7), Color(0xFF6B21A8)), 'dboss': (Color(0xFF7C3AED), Color(0xFF4C1D95)),
+  'area': (Color(0xFFA855F7), Color(0xFF6B21A8)), 'wildboss': (Color(0xFFD946EF), Color(0xFF86198F)), 'mart': (Color(0xFF3B82F6), Color(0xFF1D4ED8)),
+  'center': (Color(0xFFEC4899), Color(0xFFBE185D)), 'event': (Color(0xFFEAB308), Color(0xFFA16207)), 'trade': (Color(0xFF06B6D4), Color(0xFF0E7490)),
+  'safari': (Color(0xFF84CC16), Color(0xFF4D7C0F)), 'meteor': (Color(0xFFF59E0B), Color(0xFFB45309)), 'mythic': (Color(0xFFF0ABFC), Color(0xFFA21CAF)),
+  'bike': (Color(0xFF14B8A6), Color(0xFF0F766E)), 'rematch': (Color(0xFFFACC15), Color(0xFFA16207)), 'leave': (Color(0xFF64748B), Color(0xFF334155)),
+  'dungeon': (Color(0xFF78716C), Color(0xFF44403C)),
+};
+
+/// Um caminho como carta: o ícone grande, o nome e o que tem nele; virada (❔) quando, sem o Mapa, não dá para saber.
+/// Igual ao site (PathCard).
+class _PathCard extends StatelessWidget {
+  const _PathCard({super.key, required this.label, this.sub, this.onTap, this.kind, this.hidden = false});
+  final String label;
+  final String? sub;
+  final VoidCallback? onTap;
+  final String? kind;
+  final bool hidden;
+
+  @override
+  Widget build(BuildContext context) {
+    final (c1, c2) = hidden ? (const Color(0xFF475569), const Color(0xFF1E293B)) : _cardColors[kind] ?? (const Color(0xFF64748B), const Color(0xFF334155));
+    final icon = hidden ? '❔' : kind == 'dungeon' ? '🕳️' : _nodeInfo[kind]?.$1 ?? '❔';
+    return Opacity(
+      opacity: onTap == null ? 0.5 : 1,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.9), width: 3),
+              gradient: LinearGradient(colors: [c1, c2], begin: Alignment.topLeft, end: Alignment.bottomRight),
+              boxShadow: const [BoxShadow(color: Color(0x59000000), offset: Offset(0, 5))],
+            ),
+            child: LayoutBuilder(builder: (context, box) {
+              final s = box.maxWidth;
+              return FittedBox(fit: BoxFit.scaleDown, child: SizedBox(width: s, child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Container(
+                  width: s * 0.5,
+                  height: s * 0.5,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: 0.2), border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 2)),
+                  child: Text(icon, style: TextStyle(fontSize: s * 0.24)),
+                ),
+                SizedBox(height: s * 0.04),
+                Text(label, textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: hidden ? s * 0.075 : s * 0.1, height: 1.1, shadows: const [Shadow(color: Colors.black54, offset: Offset(1, 1))])),
+                if (sub != null && !hidden)
+                  Padding(
+                    padding: EdgeInsets.only(top: s * 0.02),
+                    child: Text(sub!, textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontWeight: FontWeight.w600, fontSize: s * 0.065, height: 1.1)),
+                  ),
+              ])));
+            }),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A carta entrando: desliza de baixo, uma depois da outra. Igual ao site (path-card-in).
+class _CardIn extends StatelessWidget {
+  const _CardIn({required this.index, required this.child});
+  final int index;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: Duration(milliseconds: 420 + index * 90),
+        curve: Interval(index * 90 / (420 + index * 90), 1, curve: Curves.easeOutBack),
+        builder: (context, v, child) => Opacity(
+          opacity: v.clamp(0.0, 1.0),
+          child: Transform.translate(offset: Offset(0, (1 - v) * 60), child: Transform.rotate(angle: (1 - v) * -0.14, child: child)),
+        ),
+        child: child,
+      );
 }

@@ -354,7 +354,7 @@ Future<void> _openTeam(WidgetTester tester) async {
 /// Toca num botão da cidade (virando a página do menu até ele aparecer).
 Future<void> _openTown(WidgetTester tester, String key) async {
   final button = find.byKey(ValueKey(key));
-  for (var i = 0; i < 8 && button.hitTestable().evaluate().isEmpty; i++) {
+  for (var i = 0; i < 20 && button.hitTestable().evaluate().isEmpty; i++) {
     await tester.tap(find.byKey(const ValueKey('factory-menu-next')));
     await tester.pump(const Duration(milliseconds: 300));
   }
@@ -650,7 +650,7 @@ final Map<String, Future<void> Function(WidgetTester)> actions = {
     await tester.pump(const Duration(milliseconds: 200));
     expect(find.byKey(const ValueKey('item-info-extra-0')), findsOneWidget);
   },
-  'Battle Factory deitada': (tester) async => expect(find.byKey(const ValueKey('ds-lying')), findsOneWidget),
+  'Battle Factory deitada': (tester) async => expect(find.byKey(const ValueKey('ds-single')), findsOneWidget),
   'Battle Factory (time) deitada': (tester) async => _openTeam(tester),
   'Battle Factory (aprender golpe)': (tester) async {
     await tester.tap(find.byKey(const ValueKey('factory-continue')));
