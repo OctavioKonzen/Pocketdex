@@ -9026,6 +9026,11 @@
   "fr": "SORTIR",
   "es": "SALIR"
  },
+ "DESISTIR": {
+  "en": "GIVE UP",
+  "fr": "ABANDONNER",
+  "es": "RENDIRSE"
+ },
  "Trocado ganha mais XP.": {
   "en": "Traded Pokémon earn more XP.",
   "fr": "Les Pokémon échangés gagnent plus d'XP.",

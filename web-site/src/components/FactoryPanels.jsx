@@ -33,7 +33,7 @@ import {
 } from '../lib/factoryRun'
 import { startMusic, stopMusic } from '../lib/battleSound'
 import { REGION_MAPS, regionMap } from '../lib/regionMaps'
-import { language, t } from '../lib/i18n'
+import { language, localText, t } from '../lib/i18n'
 import { prettyName, typeColor } from '../lib/pokemon'
 import { usePokemonIndex } from '../lib/pokemonIndex'
 import { prettySlug } from '../lib/teamSets'
@@ -366,6 +366,8 @@ function MonOptions({ run, data, i, save, onLead, part = 'items' }) {
 }
 
 const TEAM_TABS = ['DADOS', 'GOLPES', 'ITENS', 'OPÇÕES']
+// As caixas do port (como a tela do time): escuras, com a borda cinza.
+const PORT_BOX = 'rounded-md border-2 border-[#8b93a1] bg-[#181a1eeb]'
 
 /**
  * Os dados de um Pokémon do time em páginas de tamanho fixo, como o resumo dos jogos: DADOS, GOLPES, ITENS e OPÇÕES,
@@ -376,6 +378,15 @@ function TeamPages({ d, items, actions, onBack }) {
   const [page, setPage] = useState(0)
   const go = (k) => { const el = ref.current; if (el && k >= 0 && k < TEAM_TABS.length) el.scrollTo({ left: k * el.clientWidth, behavior: 'smooth' }) }
   const hp = d.maxHp > 0 ? Math.max(0, Math.min(1, d.hp / d.maxHp)) : 0
+  const statTop = Math.max(1, ...SUMMARY_STATS.map(([key]) => d.stats?.[key] ?? 0))
+  // O golpe tocado na página GOLPES e os dados dele (poder, precisão, categoria e o que faz).
+  const [movePick, setMovePick] = useState(0)
+  const [moveData, setMoveData] = useState(null)
+  useEffect(() => { let live = true; getMoves().then((m) => live && setMoveData(m)).catch(() => {}); return () => { live = false } }, [])
+  const pick = d.moves.length ? Math.min(movePick, d.moves.length - 1) : -1
+  const shown = pick >= 0 ? d.moves[pick] : null
+  const md = shown && moveData ? moveData[shown.name.toLowerCase().replace(/[^a-z0-9 -]/g, '').replace(/ /g, '-')] : null
+  const num = (v) => (v == null || v === 'None' || v === '' ? '—' : v)
   return (
     <div className="bw-party flex h-full flex-col gap-1.5 p-1.5" data-testid="team-pages">
       {/* Em cima, como as outras telas: ◀ o nome e o nível, as abas (a de agora acesa) ▶ e o ✕ (volta ao time). Igual ao app. */}
@@ -394,33 +405,53 @@ function TeamPages({ d, items, actions, onBack }) {
       {/* As páginas: arrastar para o lado troca (cada uma do tamanho do campo). */}
       <div ref={ref} onScroll={(e) => setPage(Math.round(e.currentTarget.scrollLeft / Math.max(1, e.currentTarget.clientWidth)))}
         className="flex min-h-0 flex-1 snap-x snap-mandatory overflow-x-auto overflow-y-hidden [scrollbar-width:none]">
-        <div className="flex w-full shrink-0 snap-start flex-col gap-1.5">
-          <div className="flex gap-2">
-            <div className="h-16 w-16 shrink-0 rounded-md border-2 border-[#8b93a1] bg-[#181a1eeb]"><PokeIcon id={d.id} shiny={Boolean(d.shiny)} className="h-full w-full" /></div>
-            <div className="min-w-0 flex-1 text-[11px] font-black text-white">
-              <div className="flex flex-wrap gap-1">{d.types.map((type) => <TypeBadge key={type} type={type} small />)}</div>
-              <div className="mt-1 flex items-center gap-1">HP
-                <span className="block h-1.5 flex-1 overflow-hidden rounded bg-slate-800"><span className={`block h-full ${hp > 0.5 ? 'bg-emerald-400' : hp > 0.2 ? 'bg-amber-400' : 'bg-red-500'}`} style={{ width: `${hp * 100}%` }} /></span>
-                <span className="tabular-nums">{d.hp}/{d.maxHp}</span>
-              </div>
-              <p className="truncate">{t('Habilidade')}: <span className="text-amber-200" data-no-translate>{d.ability || '—'}</span></p>
-              <p className="truncate">{t('Item')}: <span className="text-amber-200" data-no-translate>{d.item || '—'}</span></p>
+        {/* DADOS, como nos desenhos: à esquerda o Pokémon (sprite, tipos, HP, habilidade e item); à direita os atributos com as barras. Igual ao app. */}
+        <div className="flex w-full shrink-0 snap-start gap-1.5">
+          <div className={`${PORT_BOX} flex w-2/5 flex-col gap-1 p-2 text-[11px] font-black text-white`}>
+            <PokeIcon id={d.id} shiny={Boolean(d.shiny)} className="min-h-0 w-full flex-1" />
+            <div className="flex flex-wrap justify-center gap-1">{d.types.map((type) => <TypeBadge key={type} type={type} small />)}</div>
+            <div className="flex items-center gap-1"><span className="text-lime-400">HP</span>
+              <span className="block h-1.5 flex-1 overflow-hidden border border-black bg-[#2b3240]"><span className={`block h-full ${hp > 0.5 ? 'bg-green-400' : hp > 0.2 ? 'bg-yellow-400' : 'bg-red-500'}`} style={{ width: `${hp * 100}%` }} /></span>
+              <span className="tabular-nums">{d.hp}/{d.maxHp}</span>
             </div>
+            <p className="truncate">{t('Habilidade')}: <span className="text-amber-200" data-no-translate>{d.ability || '—'}</span></p>
+            <p className="truncate">{t('Item')}: <span className="text-amber-200" data-no-translate>{d.item || '—'}</span></p>
           </div>
-          <div className="grid flex-1 grid-cols-2 content-evenly gap-x-3 rounded-md border-2 border-[#8b93a1] bg-[#181a1eeb] px-2 py-1 text-[12px] font-bold text-white">
+          <div className={`${PORT_BOX} flex flex-1 flex-col justify-evenly px-3 py-1 text-[12px] font-bold text-white`}>
             {SUMMARY_STATS.map(([key, label]) => (
-              <p key={key} className="flex justify-between"><span>{t(label)}</span><span className="tabular-nums font-black text-amber-200">{d.stats?.[key] ?? '—'}</span></p>
+              <p key={key} className="flex items-center gap-2">
+                <span className="w-24 truncate">{t(label)}</span>
+                <span className="w-8 text-right tabular-nums font-black text-amber-200">{d.stats?.[key] ?? '—'}</span>
+                <span className="block h-2 flex-1 border border-black bg-[#2b3240]"><span className="block h-full bg-cyan-400" style={{ width: `${Math.min(100, ((d.stats?.[key] ?? 0) / statTop) * 100)}%` }} /></span>
+              </p>
             ))}
           </div>
         </div>
-        <div className="flex w-full shrink-0 snap-start flex-col gap-1">
-          {d.moves.map((mv, k) => (
-            <p key={k} className="flex flex-1 items-center gap-1.5 rounded-md border-2 border-[#8b93a1] bg-[#181a1eeb] px-2 text-xs font-black text-white">
-              {mv.type && <TypeBadge type={mv.type} small />}
-              <span className="min-w-0 flex-1 truncate" data-no-translate>{mv.name}</span>
-              <span className="tabular-nums text-amber-200">PP {mv.pp}/{mv.maxPp}</span>
-            </p>
-          ))}
+        {/* GOLPES, como nos desenhos: à esquerda os 4 golpes (toque num); à direita o tocado: tipo, categoria, poder, precisão, PP e o que ele faz. Igual ao app. */}
+        <div className="flex w-full shrink-0 snap-start gap-1.5">
+          <div className="flex w-2/5 flex-col gap-1">
+            {[0, 1, 2, 3].map((k) => {
+              const mv = d.moves[k]
+              if (!mv) return <div key={k} className={`${PORT_BOX} flex-1 opacity-40`} />
+              return (
+                <button key={k} type="button" onClick={() => setMovePick(k)} data-testid={`team-move-${k}`}
+                  className={`flex flex-1 cursor-pointer items-center gap-1.5 rounded-md border-2 px-2 text-left text-xs font-black text-white ${k === pick ? 'border-yellow-400 bg-[#42340aeb]' : 'border-[#8b93a1] bg-[#181a1eeb]'}`}>
+                  {mv.type && <TypeBadge type={mv.type} small />}
+                  <span className="min-w-0 flex-1 truncate" data-no-translate>{mv.name}</span>
+                </button>
+              )
+            })}
+          </div>
+          <div className={`${PORT_BOX} flex flex-1 flex-col gap-0.5 px-3 py-1.5 text-[12px] font-bold text-white`} data-testid="team-move-info">
+            {shown && <>
+              <p className="flex items-center gap-2 text-sm font-black"><span className="min-w-0 flex-1 truncate" data-no-translate>{shown.name}</span>{shown.type && <TypeBadge type={shown.type} small />}</p>
+              <p className="flex"><span className="w-24">{t('Categoria')}</span><span className="text-amber-200">{md ? t(CATEGORY_LABEL[md.category] ?? '—') : '—'}</span></p>
+              <p className="flex"><span className="w-24">{t('Poder')}</span><span className="text-amber-200">{num(md?.power)}</span></p>
+              <p className="flex"><span className="w-24">{t('Precisão')}</span><span className="text-amber-200">{num(md?.accuracy)}</span></p>
+              <p className="flex"><span className="w-24">PP</span><span className="text-amber-200 tabular-nums">{shown.pp}/{shown.maxPp}</span></p>
+              <p className="mt-1 min-h-0 flex-1 overflow-hidden text-[11px] font-semibold text-slate-300">{md ? localText('moves', md.name, md.effect) : ''}</p>
+            </>}
+          </div>
         </div>
         {/* Muitos itens guardados: só esta página rola. */}
         <div className="w-full shrink-0 snap-start overflow-y-auto">{items}</div>
@@ -1919,7 +1950,7 @@ const HELP = [
   ['🏙️', 'Cidades e lugares', 'A cada rota de 10 andares você chega numa cidade: ginásio, Poké Mart, Centro Pokémon e Creche. Perto dela há um lugar com 10 andares e um chefe; depois, de volta à cidade.'],
   ['💞', 'Amizade e habilidades', 'Quem fica no time ganha amizade e alguns evoluem por ela. Pickup acha itens, Intimidate espanta selvagens e Synchronize passa a Nature para o capturado.'],
 ]
-function HelpPanel({ onClose }) {
+function HelpPanel({ onClose, onExit = null, onGiveUp = null }) {
   // Tela única: 4 tópicos por página (2 × 2), do tamanho do campo, sem rolar; ◀ ▶ troca a página.
   const [page, setPage] = useState(0)
   const per = 4
@@ -1935,10 +1966,13 @@ function HelpPanel({ onClose }) {
           </div>
         ))}
       </div>
+      {/* Sair (a corrida fica salva) e Desistir ficam aqui, dentro do jogo (nada embaixo da tela). Igual ao app. */}
       <div className="flex shrink-0 items-center justify-center gap-4 text-[1.8cqw]">
+        {onExit && <button type="button" className="port-chip mr-auto cursor-pointer px-3" onClick={onExit} data-testid="factory-exit">⏏ {t('SAIR')}</button>}
         <button type="button" className="port-chip cursor-pointer px-3 disabled:opacity-30" disabled={page === 0} onClick={() => setPage(page - 1)} aria-label={t('Anterior')} data-testid="help-prev">◀</button>
         <span className="tabular-nums">{page + 1}/{pages}</span>
         <button type="button" className="port-chip cursor-pointer px-3 disabled:opacity-30" disabled={page === pages - 1} onClick={() => setPage(page + 1)} aria-label={t('Próxima')} data-testid="help-next">▶</button>
+        {onGiveUp && <button type="button" className="port-chip ml-auto cursor-pointer px-3" onClick={onGiveUp} data-testid="factory-give-up">🏳 {t('DESISTIR')}</button>}
       </div>
     </div>
   )
@@ -2401,19 +2435,11 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
   // O Pokémon que segue você na cidade, na altura de verdade perto do treinador (followerFit).
   const leadInfo = lead && byId?.get(lead.id)
   const follow = leadInfo ? followerFit(leadInfo.height, standOf(lead.shiny ? shinyPath(leadInfo.sprite) : leadInfo.sprite, sprites, leadInfo.box)) : { k: 1, scale: null }
-  const links = run && (
-    <div className="mt-2 flex flex-wrap justify-between gap-2 text-sm">
-      <button type="button" onClick={onExit} className="cursor-pointer text-muted hover:text-text">← {t('Sair (a corrida fica salva)')}</button>
-      <button type="button" onClick={() => window.confirm(t('Desistir da corrida? A pontuação vira moedas.')) && saveFactory(endRun(factory, run))} className="cursor-pointer text-muted hover:text-red-500">
-        {t('Desistir (recebe as moedas)')}
-      </button>
-    </div>
-  )
   const extras = run && (panel === 'bag' || panel === 'team' || panel === 'region' || panel === 'help') && (
     panel === 'region' ? (
       <RegionMap data={data} run={run} onClose={() => setPanel(null)} monName={name} />
     ) : panel === 'help' ? (
-      <HelpPanel onClose={() => setPanel(null)} />
+      <HelpPanel onClose={() => setPanel(null)} onExit={onExit} onGiveUp={() => window.confirm(t('Desistir da corrida? A pontuação vira moedas.')) && saveFactory(endRun(factory, run))} />
     ) : panel === 'bag' ? (
       <BagPanel run={run} byId={byId} save={save} onClose={() => setPanel(null)} />
     ) : (
@@ -3341,7 +3367,6 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
             </p>
           ))}
         </>} />
-      {links}
     </section>
   )
 }

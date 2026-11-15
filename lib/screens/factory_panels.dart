@@ -1040,75 +1040,87 @@ class _TeamPagesState extends State<_TeamPages> {
 
   void _go(int page) => _pages.animateToPage(page.clamp(0, _tabs.length - 1), duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
 
+  /// Os dados dos golpes (poder, precisão, categoria e o que fazem) e o golpe tocado na página GOLPES.
+  Map<String, Map<String, dynamic>> _moveData = const {};
+  int _movePick = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    LocalDatabase.instance.movesByName().then((m) {
+      if (mounted) setState(() => _moveData = m);
+    });
+  }
+
+  // As caixas do port (como a tela do time): escuras, com a borda cinza.
+  static final _box = BoxDecoration(color: const Color(0xEB181A1E), borderRadius: BorderRadius.circular(6), border: Border.all(color: const Color(0xFF8B93A1), width: 2));
+  static const _label = TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800);
+  static const _value = TextStyle(color: Color(0xFFFDE68A), fontSize: 12, fontWeight: FontWeight.w900);
+
+  Widget _line(String label, String value) => Row(children: [
+        SizedBox(width: 78, child: Text(label, style: _label)),
+        // Habilidade e item: nomes do jogo (não traduz).
+        Expanded(child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(value, maxLines: 1, style: _value))),
+      ]);
+
+  /// DADOS, como nos desenhos: à esquerda o Pokémon (sprite, tipos, HP, habilidade e item); à direita os atributos com
+  /// as barras.
   Widget _info(SummaryData d) {
     final hp = d.maxHp > 0 ? (d.hp / d.maxHp).clamp(0.0, 1.0) : 0.0;
-    Widget row(String label, String value) => Row(children: [
-          SizedBox(width: 74, child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800))),
-          // Habilidade e item: nomes do jogo (não traduz).
-          Expanded(child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(value, maxLines: 1, style: const TextStyle(color: Color(0xFFFDE68A), fontSize: 11, fontWeight: FontWeight.w900)))),
-        ]);
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Container(
-          width: 64,
-          height: 64,
-          decoration: BoxDecoration(color: const Color(0xEB181A1E), borderRadius: BorderRadius.circular(6), border: Border.all(color: const Color(0xFF8B93A1), width: 2)),
-          child: PokemonSprite(d.id, shiny: d.shiny, fill: 0.85),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Wrap(spacing: 4, runSpacing: 2, children: [for (final t in d.types) TypeChip(t)]),
-            const SizedBox(height: 3),
+    final top = max(1, [for (final (k, _) in summaryStats) d.stats[k] ?? 0].fold<int>(0, max));
+    return Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Expanded(
+        flex: 2,
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: _box,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Expanded(child: PokemonSprite(d.id, shiny: d.shiny, fill: 0.9)),
+            const SizedBox(height: 4),
+            Wrap(alignment: WrapAlignment.center, spacing: 4, runSpacing: 2, children: [for (final t in d.types) TypeChip(t)]),
+            const SizedBox(height: 4),
             Row(children: [
-              const Text('HP', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900)),
+              const Text('HP', style: TextStyle(color: Color(0xFFA3E635), fontSize: 11, fontWeight: FontWeight.w900)),
               const SizedBox(width: 4),
               Expanded(
                 child: Container(
-                  height: 5,
-                  decoration: BoxDecoration(color: const Color(0xFF1E293B), borderRadius: BorderRadius.circular(3)),
+                  height: 6,
+                  decoration: BoxDecoration(color: const Color(0xFF2B3240), border: Border.all(color: Colors.black)),
                   alignment: Alignment.centerLeft,
                   child: FractionallySizedBox(
-                      widthFactor: hp,
-                      child: Container(
-                          decoration: BoxDecoration(
-                              color: hp > 0.5 ? const Color(0xFF34D399) : hp > 0.2 ? const Color(0xFFFBBF24) : const Color(0xFFEF4444),
-                              borderRadius: BorderRadius.circular(3)))),
+                      widthFactor: hp, heightFactor: 1, child: ColoredBox(color: hp > 0.5 ? const Color(0xFF4ADE80) : hp > 0.2 ? const Color(0xFFFACC15) : const Color(0xFFEF4444))),
                 ),
               ),
               const SizedBox(width: 4),
-              Text('${d.hp}/${d.maxHp}', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900)),
+              Text('${d.hp}/${d.maxHp}', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900)),
             ]),
-            row(tr('Habilidade'), d.ability.isEmpty ? '—' : d.ability),
-            row(tr('Item'), d.item.isEmpty ? '—' : d.item),
+            const SizedBox(height: 2),
+            _line(tr('Habilidade'), d.ability.isEmpty ? '—' : d.ability),
+            _line(tr('Item'), d.item.isEmpty ? '—' : d.item),
           ]),
         ),
-      ]),
-      const SizedBox(height: 6),
-      // Os atributos em duas colunas (cabe sem rolar).
+      ),
+      const SizedBox(width: 6),
       Expanded(
+        flex: 3,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(color: const Color(0xEB181A1E), borderRadius: BorderRadius.circular(6), border: Border.all(color: const Color(0xFF8B93A1), width: 2)),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: _box,
           child: Column(children: [
-            for (var r = 0; r < summaryStats.length; r += 2)
+            for (final (k, label) in summaryStats)
               Expanded(
                 child: Row(children: [
-                  for (var k = r; k < r + 2; k++) ...[
-                    if (k > r) const SizedBox(width: 12),
-                    Expanded(
-                      child: k >= summaryStats.length
-                          ? const SizedBox()
-                          : Row(children: [
-                              Expanded(
-                                  child: FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      alignment: Alignment.centerLeft,
-                                      child: Text(summaryStats[k].$2, maxLines: 1, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)))),
-                              Text('${d.stats[summaryStats[k].$1] ?? '—'}', style: const TextStyle(color: Color(0xFFFDE68A), fontSize: 12, fontWeight: FontWeight.w900)),
-                            ]),
+                  SizedBox(width: 90, child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(tr(label), maxLines: 1, style: _label))),
+                  SizedBox(width: 34, child: Text('${d.stats[k] ?? '—'}', textAlign: TextAlign.right, style: _value)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Container(
+                      height: 7,
+                      decoration: BoxDecoration(color: const Color(0xFF2B3240), border: Border.all(color: Colors.black)),
+                      alignment: Alignment.centerLeft,
+                      child: FractionallySizedBox(widthFactor: ((d.stats[k] ?? 0) / top).clamp(0.0, 1.0), heightFactor: 1, child: const ColoredBox(color: Color(0xFF22D3EE))),
                     ),
-                  ],
+                  ),
                 ]),
               ),
           ]),
@@ -1117,28 +1129,73 @@ class _TeamPagesState extends State<_TeamPages> {
     ]);
   }
 
-  // Os 4 golpes dividem a altura da página (sem rolar, em qualquer celular).
-  Widget _moves(SummaryData d) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        for (var k = 0; k < 4; k++)
-          Expanded(
-            child: k >= d.moves.length ? const SizedBox() : Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Builder(builder: (context) {
-              final mv = d.moves[k];
-              return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              decoration: BoxDecoration(color: const Color(0xEB181A1E), borderRadius: BorderRadius.circular(6), border: Border.all(color: const Color(0xFF8B93A1), width: 2)),
-              child: Row(children: [
-                if (mv.type.isNotEmpty) TypeChip(mv.type),
-                const SizedBox(width: 6),
-                // Nome do golpe como no jogo (não traduz).
-                Expanded(child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(mv.name, maxLines: 1, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w900)))),
-                Text('PP ${mv.pp}/${mv.maxPp}', style: const TextStyle(color: Color(0xFFFDE68A), fontSize: 11, fontWeight: FontWeight.w800)),
-              ]),
-            );
-            }),
-          )),
-      ]);
+  /// GOLPES, como nos desenhos: à esquerda os 4 golpes (toque num); à direita o tocado: tipo, categoria, poder,
+  /// precisão, PP e o que ele faz.
+  Widget _moves(SummaryData d) {
+    final pick = d.moves.isEmpty ? -1 : _movePick.clamp(0, d.moves.length - 1);
+    final mv = pick < 0 ? null : d.moves[pick];
+    final m = mv == null ? null : _moveData[mv.name.toLowerCase().replaceAll(RegExp(r"[^a-z0-9 -]"), '').replaceAll(' ', '-')];
+    String n(Object? v) => v == null || '$v' == 'None' || '$v'.isEmpty ? '—' : '$v';
+    return Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Expanded(
+        flex: 2,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          for (var k = 0; k < 4; k++)
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(bottom: k < 3 ? 4 : 0),
+                child: k >= d.moves.length
+                    ? Container(decoration: _box.copyWith(color: const Color(0x66181A1E)))
+                    : Material(
+                        key: ValueKey('team-move-$k'),
+                        color: k == pick ? const Color(0xEB42340A) : const Color(0xEB181A1E),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6), side: BorderSide(color: k == pick ? const Color(0xFFFACC15) : const Color(0xFF8B93A1), width: 2)),
+                        child: InkWell(
+                          onTap: () => setState(() => _movePick = k),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            child: Row(children: [
+                              if (d.moves[k].type.isNotEmpty) TypeChip(d.moves[k].type),
+                              const SizedBox(width: 6),
+                              // Nome do golpe como no jogo (não traduz).
+                              Expanded(child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(d.moves[k].name, maxLines: 1, style: _label))),
+                            ]),
+                          ),
+                        ),
+                      ),
+              ),
+            ),
+        ]),
+      ),
+      const SizedBox(width: 6),
+      Expanded(
+        flex: 3,
+        child: Container(
+          key: const ValueKey('team-move-info'),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: _box,
+          child: mv == null
+              ? const SizedBox()
+              : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  Row(children: [
+                    Expanded(child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(mv.name, maxLines: 1, style: _label.copyWith(fontSize: 15)))),
+                    if (mv.type.isNotEmpty) TypeChip(mv.type),
+                  ]),
+                  const SizedBox(height: 4),
+                  _line(tr('Categoria'), m == null ? '—' : tr(_categoryLabel['${m['damage_class']}'] ?? '—')),
+                  _line(tr('Poder'), n(m?['power'])),
+                  _line(tr('Precisão'), n(m?['accuracy'])),
+                  _line('PP', '${mv.pp}/${mv.maxPp}'),
+                  const SizedBox(height: 4),
+                  Expanded(
+                    child: Text(m == null ? '' : I18n.pick(m['effect'] as String?, m['flavors']) ?? '',
+                        overflow: TextOverflow.fade, style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 11, fontWeight: FontWeight.w600)),
+                  ),
+                ]),
+        ),
+      ),
+    ]);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -3042,7 +3099,22 @@ class _FactoryScreenState extends State<FactoryScreen> {
   int _helpPage = 0;
 
   /// A ajuda numa tela só: 4 tópicos por página (2 × 2), do tamanho do campo; ◀ ▶ troca a página. Igual ao site.
-  Widget _helpPanel(VoidCallback close) {
+  /// Desistir da corrida (com a pergunta): a pontuação vira moedas.
+  Future<void> _giveUp(Json run) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        content: Text(tr('Desistir da corrida? A pontuação vira moedas.')),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(tr('Cancelar'))),
+          TextButton(key: const ValueKey('factory-give-up-yes'), onPressed: () => Navigator.pop(context, true), child: Text(tr('Desistir (recebe as moedas)'))),
+        ],
+      ),
+    );
+    if (ok == true && mounted) setState(() => saveFactory(FactoryRun.endRun(currentFactory(), run)));
+  }
+
+  Widget _helpPanel(Json run, VoidCallback close) {
     const per = 4;
     final pages = (_helpTopics.length / per).ceil();
     final page = _helpPage.clamp(0, pages - 1);
@@ -3090,10 +3162,17 @@ class _FactoryScreenState extends State<FactoryScreen> {
         ),
         Padding(
           padding: const EdgeInsets.only(bottom: 4),
-          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          // Sair (a corrida fica salva) e Desistir ficam aqui, dentro do jogo (nada embaixo da tela). Igual ao site.
+          child: Row(children: [
+            const SizedBox(width: 6),
+            arrow('⏏ ${tr('SAIR')}', 'factory-exit', widget.onExit),
+            const Spacer(),
             arrow('◀', 'help-prev', page > 0 ? () => setState(() => _helpPage = page - 1) : null),
             Padding(padding: const EdgeInsets.symmetric(horizontal: 12), child: Text('${page + 1}/$pages', style: _portText)),
             arrow('▶', 'help-next', page < pages - 1 ? () => setState(() => _helpPage = page + 1) : null),
+            const Spacer(),
+            arrow('🏳 ${tr('DESISTIR')}', 'factory-give-up', () => _giveUp(run)),
+            const SizedBox(width: 6),
           ]),
         ),
       ]),
@@ -3330,8 +3409,6 @@ class _FactoryScreenState extends State<FactoryScreen> {
   /// dela (a Bolsa, o time, o mapa e o resto abrem por cima do campo). Igual ao site.
   Widget _frameColumn({required Widget field, Json? run, required List<Widget> text, Widget? menu, List<Widget>? tools, bool menuFill = false}) => DsLayout(
         single: true,
-        // Deitado: sobra lugar para o Sair/Desistir embaixo (a tela não rola).
-        reserve: 52,
         top: LayoutBuilder(builder: (context, box) {
           final w = box.maxWidth, h = w * 9 / 16;
           return MediaQuery.withNoTextScaling(
@@ -3488,7 +3565,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
     _framePanel = _panel == 'region'
         ? _regionMap(run, data, close)
         : _panel == 'help'
-            ? _helpPanel(close)
+            ? _helpPanel(run, close)
             : _panel == 'bag'
         ? _BagAndItems(run: run, data: data, names: _names, onSave: _save, only: 'bag', onClose: close)
         : _panel == 'team'
@@ -3694,25 +3771,6 @@ class _FactoryScreenState extends State<FactoryScreen> {
           decoration: BoxDecoration(color: const Color(0x26F59E0B), borderRadius: BorderRadius.circular(12)),
           child: Text('✨ ${tr('{0} shiny liberado para começar as próximas corridas!').replaceAll('{0}', _name(_unlocked))}', style: TextStyle(fontWeight: FontWeight.bold, color: c.text)),
         ),
-      Wrap(alignment: WrapAlignment.spaceBetween, children: [
-        TextButton(onPressed: widget.onExit, child: Text('← ${tr('Sair (a corrida fica salva)')}')),
-        TextButton(
-          onPressed: () async {
-            final ok = await showDialog<bool>(
-              context: context,
-              builder: (context) => AlertDialog(
-                content: Text(tr('Desistir da corrida? A pontuação vira moedas.')),
-                actions: [
-                  TextButton(onPressed: () => Navigator.pop(context, false), child: Text(tr('Cancelar'))),
-                  TextButton(onPressed: () => Navigator.pop(context, true), child: Text(tr('Desistir (recebe as moedas)'))),
-                ],
-              ),
-            );
-            if (ok == true && mounted) setState(() => saveFactory(FactoryRun.endRun(currentFactory(), run)));
-          },
-          child: Text(tr('Desistir (recebe as moedas)'), style: TextStyle(color: c.muted)),
-        ),
-      ]),
     ]);
   }
 
