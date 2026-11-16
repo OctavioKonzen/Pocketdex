@@ -1869,15 +1869,28 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
   final Set<Timer> _timers = {};
   /// Toca o golpe: a câmera move o campo, os efeitos são desenhados por cima e os sprites mudam (fxPlan).
   Future<void> _playFx(MoveFxPlan p) async {
+    // Um golpe por vez: o anterior termina antes.
+    await _fxRunning;
+    if (!mounted) return;
     setState(() => _fxPlan = p);
     _fxCtl.duration = Duration(milliseconds: max(1, BattleSpeed.ms(p.dur.round())));
-    try {
-      await _fxCtl.forward(from: 0).orCancel;
-    } catch (_) {
-      // Cancelado (saiu da batalha).
-    }
-    if (mounted) setState(() => _fxPlan = null);
+    final done = () async {
+      try {
+        await _fxCtl.forward(from: 0).orCancel;
+      } catch (_) {
+        // Cancelado (saiu da batalha).
+      }
+      if (mounted && identical(_fxPlan, p)) setState(() => _fxPlan = null);
+    }();
+    _fxRunning = done;
+    // O dano (a vida caindo) começa no impacto, não depois da animação inteira (a volta e o piscar terminam por cima).
+    final hit = p.hitMs;
+    if (hit == null || hit >= p.dur - 50) return done;
+    await _wait(hit.round() + 120);
   }
+
+  /// A animação do golpe que ainda está terminando (a próxima espera por ela).
+  Future<void> _fxRunning = Future.value();
 
   /// Onde ficam os dois como no port (guardado: muda só quando troca o Pokémon). Null sem os dados ou sem o GIF.
   ({FxSpot near, FxSpot far})? _stageVal;
@@ -2216,6 +2229,8 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
           }
       }
     }
+    // A última animação termina antes do menu voltar.
+    await _fxRunning;
     } catch (error, stack) {
       debugPrint('Battle presentation failed: $error\n$stack');
     // Fim do turno: o clima e o terreno com os turnos que faltam, no registro.

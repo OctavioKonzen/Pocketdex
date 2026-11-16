@@ -8,6 +8,7 @@
 // site (web-site/src/components/FactoryPanels.jsx e web-site/src/lib/factoryBattle.js).
 
 import 'dart:async';
+import 'dart:convert' show jsonEncode;
 import 'dart:math';
 
 import 'package:flutter/material.dart' hide Text;
@@ -3499,6 +3500,24 @@ class _FactoryScreenState extends State<FactoryScreen> {
       );
 
   /// A caixa de vida do Pokémon da frente (como a sua na batalha).
+  /// O HP máximo do Pokémon da frente (a mesma conta da tela DADOS, com os bônus da corrida), guardado; null enquanto calcula.
+  final Map<String, int> _maxHpCache = {};
+  final Set<String> _maxHpBusy = {};
+  int? _leadMaxHp(Json run, Map m) {
+    final key = '${m['id']}-${m['level']}-${jsonEncode(m['ivs'])}-${jsonEncode(m['evs'])}-${m['nature']}-${jsonEncode(FactoryRun.boostOf(run, m))}';
+    final hit = _maxHpCache[key];
+    if (hit != null || _maxHpBusy.contains(key) || _data == null) return hit;
+    _maxHpBusy.add(key);
+    () async {
+      final member = FactoryRun.memberOf(run, Map<String, dynamic>.from(m), const [], _data!);
+      final calc = await TeamBattle.calcPokemon(await DamageData.load(), member);
+      if (calc == null || !mounted) return;
+      final hp = (calc.rawStats['hp']! * (1 + (FactoryRun.boostOf(run, m)['hp'] ?? 0))).round();
+      setState(() => _maxHpCache[key] = hp);
+    }();
+    return null;
+  }
+
   Widget _leadHp(Json run, double f) {
     final w = f / 0.023;
     final team = FactoryRun.teamOf(run);
@@ -3530,6 +3549,34 @@ class _FactoryScreenState extends State<FactoryScreen> {
               ),
             ),
           ]),
+          // A vida em números (17/68) e o XP do nível (a barra azul e quanto falta). Igual ao site.
+          Builder(builder: (context) {
+            final max = _leadMaxHp(run, m);
+            final level = (m['level'] as num).toInt();
+            final base = FactoryRun.expAt(level), need = FactoryRun.expAt(level + 1) - base;
+            final got = (((m['exp'] as num?) ?? base) - base).clamp(0, need).toInt();
+            return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(max == null ? '${(pct * 100).round()}%' : '${(pct * max).round()}/$max',
+                    key: const ValueKey('port-hp-num'), style: font.copyWith(fontSize: w * 0.014)),
+              ),
+              Row(children: [
+                Text('XP', style: font.copyWith(color: const Color(0xFF38BDF8), fontSize: w * 0.011, fontWeight: FontWeight.w700)),
+                SizedBox(width: w * 0.006),
+                Expanded(
+                  child: Container(
+                    height: w * 0.005,
+                    color: const Color(0xFF1E293B),
+                    alignment: Alignment.centerLeft,
+                    child: FractionallySizedBox(widthFactor: need > 0 ? got / need : 0, heightFactor: 1, child: const ColoredBox(color: Color(0xFF38BDF8))),
+                  ),
+                ),
+                SizedBox(width: w * 0.006),
+                Text('$got/$need', key: const ValueKey('port-xp-num'), style: font.copyWith(fontSize: w * 0.011, color: const Color(0xFFCBD5E1))),
+              ]),
+            ]);
+          }),
         ]),
       ),
     );

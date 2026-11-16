@@ -30,6 +30,18 @@ class MoveFxPlan {
   final List<List<double>> shake;
   final List<Map<String, dynamic>> sprites;
   final List<Map<String, dynamic>> layers;
+
+  /// O impacto (ms): quando o alvo começa a reagir (fica da cor do golpe, recua ou pisca). O dano começa aqui, com a
+  /// animação ainda terminando por cima (como nos jogos). Sem alvo (golpe em si mesmo): null.
+  double? get hitMs {
+    double? at;
+    for (final s in sprites) {
+      if (s['who'] != 'T' || !const ['tint', 'move', 'flash'].contains(s['k'])) continue;
+      final t = (s['t0'] as num?)?.toDouble();
+      if (t != null && (at == null || t < at)) at = t;
+    }
+    return at;
+  }
 }
 
 /// Onde fica um lado no palco (mundo de 960 × 540): o pé, a altura, a caixa do sprite, a boca e a frente.

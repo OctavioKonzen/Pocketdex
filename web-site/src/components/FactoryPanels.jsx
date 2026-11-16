@@ -30,6 +30,7 @@ import {
   cutPath, smashPath, strengthPath, weatherOf, outbreakOf, ROAM_TURNS, nodeBlocked, hmNeeded, hasHm, clockOf, healerOf, inTown, DARK_BIOMES, dexOf, dexRewardFor, leaveDaycare, takeDaycare, DAYCARE_EGG, EGG_BATTLES, withSeen,
   mapMusic,
   heartsOf, roamerSeen, villainPlot, fieldOf, mysteryEgg, takeMysteryEgg, LEAGUE_FLAWLESS,
+  expAt,
 } from '../lib/factoryRun'
 import { startMusic, stopMusic } from '../lib/battleSound'
 import { REGION_MAPS, regionMap } from '../lib/regionMaps'
@@ -267,6 +268,44 @@ function ForgetPanel({ mon, move, moves, name, types, pick, onPick, actions = nu
 }
 
 /** Os dados do Pokémon da corrida (como a tela DADOS da batalha): monta como na batalha e lê os atributos (com os bônus da corrida). */
+/** O HP máximo do Pokémon da corrida (a mesma conta da tela DADOS, com os bônus), guardado pela chave dele. */
+const maxHpCache = new Map()
+async function maxHpOfRun(run, m, data) {
+  const key = JSON.stringify([m.id, m.level, m.ivs, m.evs, m.nature, boostOf(run, m)])
+  if (maxHpCache.has(key)) return maxHpCache.get(key)
+  const [mon] = await battleMons([memberOf(run, m, m.moves?.length ? m.moves : ['tackle'], data)])
+  const hp = mon ? Math.round(mon.maxHp * (1 + (boostOf(run, m).hp ?? 0))) : null
+  maxHpCache.set(key, hp)
+  return hp
+}
+
+/**
+ * A caixa de vida do Pokémon da frente (no lugar da sua na batalha): o nome, o nível, a barra de HP, a vida em números
+ * (17/68) e o XP do nível (a barra azul e quanto falta). Igual ao app.
+ */
+function LeadHp({ run, data, byId }) {
+  const m = run.team.find((x) => (x.hp ?? 1) > 0) ?? run.team[0]
+  const [maxHp, setMaxHp] = useState(null)
+  useEffect(() => {
+    let live = true
+    if (m && data) maxHpOfRun(run, m, data).then((hp) => live && setMaxHp(hp)).catch(() => {})
+    return () => { live = false }
+  }, [run, m, data])
+  if (!m) return null
+  const pct = Math.max(0, Math.min(100, (m.hp ?? 1) * 100))
+  const base = expAt(m.level)
+  const need = expAt(m.level + 1) - base
+  const got = Math.max(0, Math.min(need, (m.exp ?? base) - base))
+  return (
+    <div className="port-hp lead-hp absolute right-[1.25%] bottom-[24%] z-20 w-[24%]" data-testid="port-hp-me">
+      <div className="port-hp-row"><span className="truncate" data-no-translate>{m.nick ?? prettyName(byId?.get(m.id)?.name ?? '')}</span><span className="port-lv">{`Lv.${m.level ?? ''}`}</span></div>
+      <div className="port-hp-bar"><b>HP</b><i><u style={{ width: `${pct}%`, background: pct > 50 ? '#4ade80' : pct > 20 ? '#facc15' : '#ef4444' }} /></i></div>
+      <div className="port-hp-num" data-testid="port-hp-num">{maxHp ? `${Math.round((pct / 100) * maxHp)}/${maxHp}` : `${Math.round(pct)}%`}</div>
+      <div className="port-hp-bar"><b style={{ color: "#38bdf8" }}>XP</b><i><u style={{ width: `${need > 0 ? (got / need) * 100 : 0}%`, background: '#38bdf8' }} /></i><span className="lead-xp" data-testid="port-xp-num">{got}/{need}</span></div>
+    </div>
+  )
+}
+
 async function summaryOfRun(run, i, data, byId) {
   const m = run.team[i]
   const moves = m.moves?.length ? m.moves : await movesFor(m.id, m.level)
@@ -2321,17 +2360,7 @@ function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, 
         {text}
       </div>
       {/* A vida do Pokémon da frente, no mesmo lugar da sua caixa de HP na batalha (os botões ficam embaixo dela). */}
-      {run && menu && (() => {
-        const m = run.team.find((x) => (x.hp ?? 1) > 0) ?? run.team[0]
-        if (!m) return null
-        const pct = Math.max(0, Math.min(100, (m.hp ?? 1) * 100))
-        return (
-          <div className="port-hp lead-hp absolute right-[1.25%] bottom-[24%] z-20 w-[24%]" data-testid="port-hp-me">
-            <div className="port-hp-row"><span className="truncate" data-no-translate>{m.nick ?? prettyName(byId?.get(m.id)?.name ?? '')}</span><span className="port-lv">{`Lv.${m.level ?? ''}`}</span></div>
-            <div className="port-hp-bar"><b>HP</b><i><u style={{ width: `${pct}%`, background: pct > 50 ? '#4ade80' : pct > 20 ? '#facc15' : '#ef4444' }} /></i></div>
-          </div>
-        )
-      })()}
+      {run && menu && <LeadHp run={run} data={data} byId={byId} />}
       {/* Os botões no lugar dos da batalha, à direita da caixa de texto (o que não cabe vai para a próxima página). */}
       {menu && <div className="port-controls absolute right-[1.25%] bottom-[8.5%] z-30 h-[14.5%] w-[36%]" data-testid="factory-bottom">{menuFill ? menu : <PagedMenu wide={menuCount(menu) > 4} key={field?.props?.testid ?? ''}>{menu}</PagedMenu>}</div>}
       {/* A faixa de dica da batalha: o andar, o dinheiro, a Bolsa, as insígnias, BOLSA/TIME/MAPA/AJUDA e o time. */}

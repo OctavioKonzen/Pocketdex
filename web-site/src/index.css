@@ -833,3 +833,6 @@ h1, h2, .font-display {
 .lead-hp .port-hp-bar i { height: 0.6cqw; }
 /* A caixa de vida menor do Pokelike: o canto cortado menor e a barra terminando antes dele (não corta a barra). */
 .lead-hp { padding: 0.8% 5% 1.2% 4%; clip-path: polygon(0 0, 100% 0, 100% 50%, calc(100% - 2.2cqw) 100%, 0 100%); }
+/* O XP em números ao lado da barra azul e a vida em números (17/68), pequenos. Igual ao app. */
+.lead-hp .port-hp-num { font-size: 1.3cqw; }
+.lead-hp .lead-xp { font-size: 1cqw; color: #cbd5e1; }

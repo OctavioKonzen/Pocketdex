@@ -1283,6 +1283,8 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
       addLog({ kind: 'hp', side, text: `${mon.name}: ${diff < 0 ? '−' : '+'}${Math.abs(diff)} HP (${pct}%) → ${Math.max(0, hp)}/${mon.maxHp}` })
     }
     let lastEffect = null
+    // A animação do golpe que ainda está terminando (a próxima e o fim do turno esperam por ela).
+    let fxRunning = Promise.resolve()
     for (const e of events) {
       if (!live.current) return
       // Som de cada evento (golpe, super efetivo, desmaio, atributos, cura).
@@ -1311,7 +1313,16 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         if (stage) {
           if (e.category !== 'status') lastHit.current = typeColor(e.type)
           const plan2 = fxForMove({ slug: fxSlug, type: e.type, category: e.category, self, entry, recipe, from: e.side, seed: turnNo.current, stage, boosts: active(battle, e.side).boosts })
-          await runFx({ field: field.current, world: world.current, canvas: fxCanvas.current, spriteEls: [sprites[0].current, sprites[1].current], plan: plan2, rate: fast(1000) / 1000, live: () => live.current })
+          // Um golpe por vez: o anterior termina antes.
+          await fxRunning
+          if (!live.current) return
+          fxRunning = runFx({ field: field.current, world: world.current, canvas: fxCanvas.current, spriteEls: [sprites[0].current, sprites[1].current], plan: plan2, rate: fast(1000) / 1000, live: () => live.current })
+          // O dano (a vida caindo) começa no impacto (quando o alvo reage), não depois da animação inteira; a volta e o
+          // piscar terminam por cima. Igual ao app.
+          const hits = (plan2.sprites ?? []).filter((x) => x.who === 'T' && ['tint', 'move', 'flash'].includes(x.k)).map((x) => x.t0)
+          const hitAt = hits.length ? Math.min(...hits) : null
+          if (hitAt == null || hitAt >= plan2.dur - 50) await fxRunning
+          else await wait(hitAt + 120)
           if (!live.current) return
           continue
         }
@@ -1506,6 +1517,8 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         await wait(500)
       }
     }
+    // A última animação termina antes do menu voltar.
+    await fxRunning
     // Fim do turno: o clima e o terreno com os turnos que faltam, no registro.
     if (events.some((e) => e.t === 'attack'))
       for (const [name, turns] of fieldLines(battle))
