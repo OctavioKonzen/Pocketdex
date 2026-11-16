@@ -12,7 +12,7 @@ import {
   battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, RARE_PLACES, atPc, pcOf, pcMove, pcSlots, PC_BOX, boxName, renameBox, boxWall, nextWall, setNick, gameOf, leagueAhead, rivalGrowth, sortBox, shownScene, bagsFor, NUZLOCKE_DEFAULT, levelCapOf, EXP_BENCH, benchShare, TRADE_EXP, TRADE_EVOS, familyOf, townTrade, townTradeable, featuresOf, climateOf, RODS, rodOf, fishPath, headbuttPath, slatherHoney, honeyReady, honeyPath, TREE_MONS, HONEY_FLOORS, plantBerry, harvestBerry, BERRIES, BERRY_FLOORS, BERRY_RAIN_FLOORS, BERRY_YIELD, bikePath, bikeUses, FERRY, HORDE_SIZE, HORDE_FLOOR, SKY_FIELDS, FIELD_TYPES, takePhoto, photoNow, PHOTO_MAX, GYM_PUZZLES, SUPER_EFFECTIVE, gymPuzzleOf, startPuzzle, puzzleAct, finishPuzzle, puzzleView, puzzleOfType, PUZZLE_MONEY, GYM_EDGE_LEVELS, priceScale, inTown, isCity, townScene, WEATHER_TYPES, SAND_SCENES, SNOW_SCENES, SCENE_WEATHER, OPEN_SCENES, waterReach, hasWaterfall, WATER_REACH, daycareHere, daycareOpen, rarePlacesOf, SECRET_BIOMES, PLACE_SCENES, hasKey, KEY_ITEMS, placeLegendOf, blockerOf, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, forgetMove, reminderCost, SAFARI_FEE, SAFARI_BALLS, SAFARI_ENCOUNTERS, SAFARI_MONS, safariRates, safariAct, safariPool, leaveSafari, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
   HELD_BOOST, levelTo, MAX_TEAM, memberOf, movesAt, nextFloor, nextRandom, overflowPoints, pokemonPrice, runCoins, setMainItem, shopPrice,
   SHINY_BOOST, FOE_SHINY_BOOST, SHINY_CHANCE, START_BAG, START_BALLS, startersOf, unlockShiny, claimStarter, freePick, canEvolveWith, teachMove,
-  equipFromStash, gimmicksOf, setGimmick, storyLine, startRun, takeCard, teamDown, applyBagItem, winFloor, chooseNode, routeOptions, routeCities,
+  equipFromStash, gimmicksOf, setGimmick, storyLine, startRun, takeCard, teamDown, applyBagItem, winFloor, chooseNode as chooseNodeRaw, routeOptions, gymLocked, routeCities,
   captureFor, factoryOf, BIOMES, isBattleNode, skipCapture, FORKS, ROUTE_LENGTH, BALL_TIERS, HEAL_TIERS, tierPick, minLevelOf, devolve,
   EXP_SHARE, expProgress, shopOwned, baseForm, forSale, normalizeOwned, buyUpgrade, upgradePrice, UPGRADES,
   tradeMon, skipTrade, TRADE_LEVELS, escapeRope, ESCAPE_HP, progress, ACHIEVEMENTS, LUCKY_EGG, rerollRoute, FOE_ITEMS,
@@ -24,6 +24,9 @@ import {
 } from './factoryRun'
 
 const data = JSON.parse(readFileSync(new URL('../../../assets/database/factory.json', import.meta.url), 'utf8'))
+// O desafio do ginásio é obrigatório: nos testes que vão até o líder, quem joga vence o desafio antes (como um jogador).
+const clearGym = (run, data, i) => (gymLocked(data, run, run?.route?.options?.[i]) ? { ...run, gymEdge: { leg: legOf(run), won: true } } : run)
+const chooseNode = (run, data, i, clock) => chooseNodeRaw(clearGym(run, data, i), data, i, clock)
 const moves = Object.fromEntries(JSON.parse(readFileSync(new URL('../../../assets/database/moves.json', import.meta.url), 'utf8')).map((m) => [m.name, { ...m, category: m.damage_class }]))
 const forms = Object.fromEntries(JSON.parse(readFileSync(new URL('../../../assets/database/pokemon.json', import.meta.url), 'utf8')).map((p) => [p.id, p]))
 const ROUTE_42 = { floor: 1, biome: 'grass', options: [{ kind: 'trainer' }] }
@@ -751,7 +754,10 @@ function factoryTrace(F, data) {
       for (const id of run.pending.shop) run = F.buyItem(run, id, 0, data) ?? run
       run = { ...run, pending: null }
     }
-    run = F.chooseNode(run, data, i % options.length)
+    // O desafio do ginásio é obrigatório: vence antes de enfrentar o líder (igual ao app).
+    const pick = i % options.length
+    if (F.gymLocked(data, run, options[pick])) run = { ...run, gymEdge: { leg: F.legOf(run), won: true } }
+    run = F.chooseNode(run, data, pick)
     const encounter = run.encounter
     if (encounter) run = F.winFloor(run, data, { hp: run.team.map((_, k) => (k === 0 ? 0.7 : 1)), captured: i % 3 === 0 })
     run = { ...run, pending: run.pending ?? {} }
@@ -1875,7 +1881,7 @@ describe('pesca, árvores, frutas, bicicleta, balsa, hordas, neblina, fotos e os
     expect(photoNow({ ...run, pending: null })).toBe(null)
     expect(takePhoto({ ...run, photos: Array.from({ length: PHOTO_MAX }, (_, k) => ({ floor: 100 + k, kind: 'capture', id: 1 })) }, photoNow(run))).toBe(null)
   })
-  it('todo tipo de ginásio tem o desafio dele, sempre com solução; vencendo, o líder vem mais fraco e sai um prêmio (igual ao app)', () => {
+  it('todo tipo de ginásio tem o desafio dele, sempre com solução e obrigatório: vencendo, o líder aparece e sai um prêmio (igual ao app)', () => {
     expect(Object.keys(GYM_PUZZLES).sort()).toEqual(Object.keys(SUPER_EFFECTIVE).sort())
     const gymRun = (seed) => nextFloor({ ...at(red, 'Pewter City'), seed, floor: 1 + ROUTE_LENGTH, boss: { region: red, step: data.bosses[red].leaders.findIndex((l) => l.city === 'Pewter City' && l.kind === 'gym') } }, data)
     const base = gymRun(42)
@@ -1927,7 +1933,7 @@ describe('pesca, árvores, frutas, bicicleta, balsa, hordas, neblina, fotos e os
         expect(started.pending.puzzle.kind).toBe('tiles')
       }
     }
-    // Errando: perde o desafio (sem vantagem); vencendo: prêmio e o líder GYM_EDGE_LEVELS níveis abaixo.
+    // Errando: perde o desafio e o líder continua trancado (tenta de novo); vencendo: prêmio e o líder aparece.
     const quiz = puzzleOfType(data, base, 'fire')
     let wrong = quiz
     for (let k = 0; k < 3; k++) wrong = puzzleAct(wrong, data, (wrong.pending.puzzle.qs[wrong.pending.puzzle.at].answer + 1) % 4)
@@ -1936,10 +1942,18 @@ describe('pesca, árvores, frutas, bicicleta, balsa, hordas, neblina, fotos e os
     expect(lost).toMatchObject({ pending: null, money: base.money, gymEdge: { leg: legOf(base), won: false } })
     const won = finishPuzzle(solve(quiz))
     expect(won.money).toBe(base.money + Math.round(PUZZLE_MONEY * priceScale(base.floor)))
-    const boss = (run) => chooseNode(nextFloor({ ...run, floor: 1 + CITY_BOSS }, data), data, 0).encounter
-    const weak = boss(won), normal = boss(lost)
-    expect(weak.edge).toBe(true)
-    expect(weak.foes.map((f) => f.level)).toEqual(normal.foes.map((f) => Math.max(1, f.level - GYM_EDGE_LEVELS)))
+    const atBoss = (run) => nextFloor({ ...run, floor: 1 + CITY_BOSS }, data)
+    // Perdeu: o líder fica trancado e o desafio volta (outro sorteio).
+    const lockedRun = atBoss(lost)
+    expect(gymLocked(data, lockedRun, lockedRun.route.options[0])).toBe(true)
+    expect(chooseNodeRaw(lockedRun, data, 0)).toBe(lockedRun)
+    expect(startPuzzle(lockedRun, data)?.pending?.puzzle).toBeTruthy()
+    // Venceu: o líder aparece, no nível de sempre (sem desconto).
+    const openRun = atBoss(won)
+    expect(gymLocked(data, openRun, openRun.route.options[0])).toBe(false)
+    const fight = chooseNodeRaw(openRun, data, 0).encounter
+    expect(fight.boss.kind).toBe('gym')
+    expect(fight.edge).toBeUndefined()
   })
 })
 

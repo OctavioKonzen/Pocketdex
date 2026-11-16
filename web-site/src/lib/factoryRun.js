@@ -1577,7 +1577,8 @@ export function photoNow(run) {
 /**
  * Os desafios dos ginásios: antes do líder, um quebra-cabeça no tema do ginásio (os dos jogos: as lixeiras do Lt. Surge,
  * o gelo do Pryce, o quiz do Blaine, as paredes invisíveis do Koga, o piso de gelo do Juan, os teleportes da Sabrina...).
- * Vencendo, o time do líder vem GYM_EDGE_LEVELS níveis abaixo e você ganha um prêmio. Uma tentativa por ginásio. Igual ao app.
+ * Obrigatório: o líder só aparece depois de vencer (perdendo, tenta de novo com outro desafio). Vencendo, um prêmio.
+ * Igual ao app.
  */
 export const GYM_PUZZLES = {
   normal: 'silhouette', fire: 'quiz', water: 'tiles', grass: 'maze', electric: 'switches', ice: 'slide', fighting: 'memory', poison: 'maze', ground: 'slide',
@@ -1653,8 +1654,12 @@ function quizQuestion(data, rand, ids) {
   return { q: 'hasType', type, options, answer: options.indexOf(right) }
 }
 /** O desafio do ginásio de agora (o tipo do líder) ou null: só na cidade de um ginásio, uma vez por ginásio. */
+/** Venceu o desafio do ginásio desta cidade (o líder já pode ser enfrentado). */
+export const gymCleared = (run) => run.gymEdge?.leg === legOf(run) && run.gymEdge?.won === true
+/** O líder do ginásio ainda trancado: o desafio dele é obrigatório (vence e o líder aparece). Igual ao app. */
+export const gymLocked = (data, run, node) => node?.kind === 'boss' && gymPuzzleOf(data, run) != null
 export function gymPuzzleOf(data, run) {
-  if (!run.town || run.dungeon || run.encounter || run.pending || run.puzzleLeg === legOf(run)) return null
+  if (!run.town || run.dungeon || run.encounter || run.pending || gymCleared(run)) return null
   const boss = bossOf(data, run)
   if (boss?.kind !== 'gym') return null
   const type = leaderType(data, boss)
@@ -1713,9 +1718,28 @@ export function puzzleOfType(data, run, type) {
     const n = shortest(start, goal, (at) => neighbors(at, cols, rows).filter((to) => !walls.includes(to)))
     Object.assign(p, { cols, rows, pos: start, goal, walls, seen: [], hidden, left: hidden ? 3 : n + 3 })
   } else if (kind === 'tiles') {
-    // Um caminho que passa por todos os ladrilhos existe sempre (o do sorteio); você tem de achar um.
-    const cols = 4, rows = 3, start = 8
-    Object.assign(p, { cols, rows, pos: start, visited: [start] })
+    // 5 × 4 com buracos (onde não dá para pisar): um caminho que passa por todas as lajes existe sempre (procurado
+    // antes de mostrar); você tem de achar um. Igual ao app.
+    const cols = 5, rows = 4, start = 15
+    for (let tries = 0; tries < 200 && p.cols == null; tries++) {
+      const order = shuffled(Array.from({ length: cols * rows }, (_, i) => i).filter((i) => i !== start), rand)
+      const holes = order.slice(0, 2 + randInt(rand, 2))
+      const free = cols * rows - holes.length
+      const seen = new Set([start])
+      // Busca em profundidade por um caminho que passa por todas as lajes (poucas: é rápido).
+      const tour = (at) => {
+        if (seen.size === free) return true
+        for (const to of neighbors(at, cols, rows)) {
+          if (holes.includes(to) || seen.has(to)) continue
+          seen.add(to)
+          if (tour(to)) return true
+          seen.delete(to)
+        }
+        return false
+      }
+      if (tour(start)) Object.assign(p, { cols, rows, pos: start, visited: [start], holes })
+    }
+    if (p.cols == null) Object.assign(p, { cols, rows, pos: start, visited: [start], holes: [] })
   } else {
     Object.assign(p, { seq: [0, 1, 2, 3, 4].map(() => randInt(rand, 4)), shown: true, at: 0 })
   }
@@ -1771,13 +1795,14 @@ export function puzzleAct(run, data, i) {
       else if (p.left <= 0) end(false)
     }
   } else if (p.kind === 'tiles') {
-    if (!neighbors(p.pos, p.cols, p.rows).includes(i)) return run
+    const holes = p.holes ?? []
+    if (!neighbors(p.pos, p.cols, p.rows).includes(i) || holes.includes(i)) return run
     if (p.visited.includes(i)) end(false)
     else {
       p.pos = i
       p.visited = [...p.visited, i]
-      if (p.visited.length >= p.cols * p.rows) end(true)
-      else if (neighbors(i, p.cols, p.rows).every((n) => p.visited.includes(n))) end(false)
+      if (p.visited.length >= p.cols * p.rows - holes.length) end(true)
+      else if (neighbors(i, p.cols, p.rows).every((n) => p.visited.includes(n) || holes.includes(n))) end(false)
     }
   } else if (p.kind === 'memory') {
     if (p.shown) { if (i !== -1) return run; p.shown = false }
@@ -1820,7 +1845,8 @@ export function puzzleView(run) {
     return { ...base, cols: p.cols, left: p.left, hidden: p.hidden, cells: Array.from({ length: p.cols * p.rows }, (_, i) => ({ c: i === p.pos ? 'me' : i === p.goal ? 'goal' : shown(i) ? 'wall' : 'floor' })) }
   }
   if (p.kind === 'tiles') {
-    return { ...base, cols: p.cols, left: p.cols * p.rows - p.visited.length, cells: Array.from({ length: p.cols * p.rows }, (_, i) => ({ c: i === p.pos ? 'me' : p.visited.includes(i) ? 'done' : 'floor' })) }
+    const holes = p.holes ?? []
+    return { ...base, cols: p.cols, left: p.cols * p.rows - holes.length - p.visited.length, cells: Array.from({ length: p.cols * p.rows }, (_, i) => ({ c: i === p.pos ? 'me' : holes.includes(i) ? 'wall' : p.visited.includes(i) ? 'done' : 'floor' })) }
   }
   return { ...base, cols: 4, seq: p.shown || p.done ? p.seq : null, at: p.at, total: p.seq.length, cells: [0, 1, 2, 3].map((n) => ({ c: 'sym', n })) }
 }
@@ -2183,7 +2209,7 @@ export const CHOICE_CHANCE = 0.4
  */
 export function chooseNode(run, data, index, clock = null) {
   const node = run.route?.options?.[index]
-  if (!node || run.encounter || run.pending || nodeBlocked(run, node)) return run
+  if (!node || run.encounter || run.pending || nodeBlocked(run, node) || gymLocked(data, run, node)) return run
   const out = { ...run, route: null }
   // Entra num lugar (Mt. Moon, esgoto, base vilã, a praia...): 10 andares e o chefe dele; depois volta para o andar em que entrou.
   // Da praia para o mar (e assim por diante), a volta continua sendo para onde você entrou na água.
@@ -2221,10 +2247,6 @@ export function chooseNode(run, data, index, clock = null) {
       for (let k = 0; k < 8 && out.encounter.foes.every((f) => had.has(baseForm(data, f.id))); k++) out.encounter = roll()
     }
     countHunt(data, out)
-    // Venceu o desafio do ginásio: o time do líder vem GYM_EDGE_LEVELS níveis abaixo.
-    if (node.kind === 'boss' && run.gymEdge?.won && run.gymEdge.leg === legOf(run) && out.encounter.boss?.kind === 'gym') {
-      out.encounter = { ...out.encounter, edge: true, foes: out.encounter.foes.map((f) => ({ ...f, level: Math.max(1, f.level - GYM_EDGE_LEVELS) })) }
-    }
     // O capanga do plano da equipe vilã (vencendo, o plano atrasa).
     if (node.plot) out.encounter = { ...out.encounter, plot: node.plot }
     // Cada capítulo do plano atrapalhado: o chefe da equipe vem PLOT_LEVELS nível abaixo.

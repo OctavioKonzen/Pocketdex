@@ -23,7 +23,7 @@ import {
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, teamRoom, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, sceneLines, bossCity, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, atPc, pcOf, PC_SIZE, RARE_PLACES, shownScene, gameOf, tierOf, foeBoostAt, leagueAhead, unlockShiny, VITAMIN_EVS, VITAMINS,
   forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor, isKeystone,
-  tradeMon, skipTrade, TRADE_LEVELS, levelCapOf, townTrade, townTradeable, legOf, fishPath, rodOf, RODS, headbuttPath, slatherHoney, honeyReady, honeyPath, HONEY_FLOORS, plantBerry, berryReady, harvestBerry, bikePath, takePhoto, photoNow, gymPuzzleOf, startPuzzle, puzzleAct, finishPuzzle, puzzleView, GYM_EDGE_LEVELS, KEY_ITEMS, hasKey, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, reminderCost, forgetMove, daycareOpen, daycareHere, safariAct, safariRates, leaveSafari, SAFARI_FEE, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, swapTeam, bossScene,
+  tradeMon, skipTrade, TRADE_LEVELS, levelCapOf, townTrade, townTradeable, legOf, fishPath, rodOf, RODS, headbuttPath, slatherHoney, honeyReady, honeyPath, HONEY_FLOORS, plantBerry, berryReady, harvestBerry, bikePath, takePhoto, photoNow, gymPuzzleOf, startPuzzle, puzzleAct, finishPuzzle, puzzleView, gymLocked, KEY_ITEMS, hasKey, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, reminderCost, forgetMove, daycareOpen, daycareHere, safariAct, safariRates, leaveSafari, SAFARI_FEE, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, swapTeam, bossScene,
   resolveChoice, regionLegend, leaderType, villainTeam, rivalBoss, rocketBoss, placeInfo, routeInfo, DUNGEON_LENGTH, dungeonPos, townShop, townCenter,
   weeklyOf, startWeekly, COSMETIC_BALLS, COSMETIC_FRAMES, hasCosmetic, buyCosmetic, equipCosmetic,
   boostOf, memberOf, learnMove, movesLearnedBetween,
@@ -2933,7 +2933,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     const question = v.prompt ? t(PUZZLE_QUESTION[v.prompt.q]).replace('{0}', v.prompt.q === 'typeOf' ? name(v.prompt.mon) : t(TYPE_PT[v.prompt.type] ?? '')) : null
     const status = (
         <p className="text-center text-xs font-bold text-amber-500" data-testid="puzzle-status">
-          {v.done ? (v.won ? `🎉 ${t('Você venceu o desafio! O time do líder vem {0} níveis abaixo.').replace('{0}', GYM_EDGE_LEVELS)}` : `💥 ${t('Não foi desta vez: o líder luta com tudo.')}`)
+          {v.done ? (v.won ? `🎉 ${t('Você venceu o desafio! O líder do ginásio te espera.')}` : `💥 ${t('Não foi desta vez: tente de novo para enfrentar o líder.')}`)
             : v.total && v.kind !== 'memory' ? t('Pergunta {0} de {1} · acertos: {2}').replace('{0}', Math.min(v.total, v.at + 1)).replace('{1}', v.total).replace('{2}', v.right)
               : v.kind === 'memory' ? (v.seq ? t('Memorize a ordem.') : t('Repita a ordem: {0} de {1}.').replace('{0}', v.at).replace('{1}', v.total))
                 : v.kind === 'tiles' ? t('Faltam {0}.').replace('{0}', v.left) : v.kind === 'switches' ? t('Tentativas: {0} · achados: {1} de 2').replace('{0}', v.left).replace('{1}', v.found)
@@ -3110,6 +3110,16 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
           const info = node.area ? NODE_INFO.area : node.mythic ? NODE_INFO.mythic : node.meteor ? NODE_INFO.meteor : node.roam ? ROAM_INFO : node.plot ? PLOT_INFO : hmPathInfo(node) ?? (node.legend != null ? LEGEND_INFO : NODE_INFO[node.kind])
           const b = node.biome && !hmPathInfo(node) ? BIOME_INFO[node.biome] : null
           const noSurf = nodeBlocked(run, node)
+          // O desafio do ginásio é obrigatório: no lugar do líder, a carta do desafio (vencendo, o líder aparece). Igual ao app.
+          if (gymLocked(data, run, node)) {
+            const puzzle = gymPuzzleOf(data, run)
+            return (
+              <Btn key={k} i={k} kind="event" testid="town-puzzle" disabled={busy} onClick={() => save(startPuzzle(run, data))}
+                sub={t('Obrigatório: vença para enfrentar {0} (e ganhe um prêmio). Perdendo, tenta de novo.').replace('{0}', boss.name)}>
+                🧩 {t('DESAFIO DO GINÁSIO')}: {t(PUZZLE_INFO[puzzle.type].title)}
+              </Btn>
+            )
+          }
           return (
             <Btn key={k} i={k} kind={node.kind} testid={`map-node-${k}`} disabled={busy || (isBattleNode(node) && down) || noSurf} onClick={() => pickNode(k)}
               sub={noSurf ? hmHint(run, node) : node.kind === 'boss' ? `${bossKindLabel(boss.kind)}${CITY_KIND_SET.has(boss.kind) ? ` · ${to}` : ''}` : node.kind === 'dboss' ? (inside ? t('O chefe do lugar: vencendo, volta para {0}.').replace('{0}', backTo) : t('O chefe da rota: vencendo, você chega em {0}.').replace('{0}', to)) : node.hidden ? `📡 ${t('A Dowsing Machine apita: tem um item escondido aqui!')}` : t(node.placeLegend || node.routeLegend ? PLACE_LEGEND_HELP : info.help).replace('{0}', ROAM_TURNS)}>
@@ -3238,15 +3248,6 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
             🔁 {t('Um morador troca {0} por um {1}').replace('{0}', `${run.town.trade.shiny ? '✨ ' : ''}${name(run.town.trade.give)}`).replace('{1}', name(run.town.trade.want))}
           </MenuButton>
         ))}
-        {/* O desafio do ginásio (antes do líder): vencendo, o time dele vem mais fraco. */}
-        {town && gymPuzzleOf(data, run) && (
-          <MenuButton testid="town-puzzle" disabled={busy} onClick={() => save(startPuzzle(run, data))} sub={t('Uma tentativa: vencendo, o time do líder vem {0} níveis abaixo e você ganha um prêmio.').replace('{0}', GYM_EDGE_LEVELS)}>
-            🧩 {t('DESAFIO DO GINÁSIO')}: {t(PUZZLE_INFO[gymPuzzleOf(data, run).type].title)}
-          </MenuButton>
-        )}
-        {town && run.gymEdge?.leg === legOf(run) && (
-          <p className="dlg-sub px-2 text-xs" data-testid="town-puzzle-done">🧩 {t(run.gymEdge.won ? 'Desafio vencido: o time do líder vem mais fraco.' : 'Desafio perdido: o líder luta com tudo.')}</p>
-        )}
         {/* As ações da rota, numa grade: pescar, sacudir a árvore, o mel, o vaso de frutas, a bicicleta e o álbum. */}
         {(() => {
           const acts = [

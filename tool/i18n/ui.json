@@ -9026,6 +9026,21 @@
   "fr": "SORTIR",
   "es": "SALIR"
  },
+ "Você venceu o desafio! O líder do ginásio te espera.": {
+  "en": "You beat the challenge! The gym leader is waiting for you.",
+  "fr": "Défi réussi ! Le champion d'arène t'attend.",
+  "es": "¡Superaste el desafío! El líder del gimnasio te espera."
+ },
+ "Não foi desta vez: tente de novo para enfrentar o líder.": {
+  "en": "Not this time: try again to face the leader.",
+  "fr": "Pas cette fois : réessaie pour affronter le champion.",
+  "es": "Esta vez no: inténtalo de nuevo para enfrentar al líder."
+ },
+ "Obrigatório: vença para enfrentar {0} (e ganhe um prêmio). Perdendo, tenta de novo.": {
+  "en": "Required: win to face {0} (and get a prize). If you lose, try again.",
+  "fr": "Obligatoire : gagne pour affronter {0} (et reçois un prix). En cas d'échec, réessaie.",
+  "es": "Obligatorio: gana para enfrentar a {0} (y recibe un premio). Si pierdes, inténtalo de nuevo."
+ },
  "AÇÕES": {
   "en": "ACTIONS",
   "fr": "ACTIONS",

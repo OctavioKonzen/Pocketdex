@@ -4484,8 +4484,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
     final cols = (v['cols'] as num).toInt();
     final status = done
         ? (v['won'] == true
-            ? '🎉 ${tr('Você venceu o desafio! O time do líder vem {0} níveis abaixo.').replaceAll('{0}', '${FactoryRun.gymEdgeLevels}')}'
-            : '💥 ${tr('Não foi desta vez: o líder luta com tudo.')}')
+            ? '🎉 ${tr('Você venceu o desafio! O líder do ginásio te espera.')}'
+            : '💥 ${tr('Não foi desta vez: tente de novo para enfrentar o líder.')}')
         : kind == 'quiz' || kind == 'silhouette'
             ? tr('Pergunta {0} de {1} · acertos: {2}').replaceAll('{0}', '${min((v['total'] as num).toInt(), (v['at'] as num).toInt() + 1)}').replaceAll('{1}', '${v['total']}').replaceAll('{2}', '${v['right']}')
             : kind == 'memory'
@@ -5118,6 +5118,14 @@ class _FactoryScreenState extends State<FactoryScreen> {
                 final isBoss = node['kind'] == 'boss';
                 final foeName = isBoss ? '${boss['name']}' : node['kind'] == 'rival' && rival != null ? '${rival['name']}' : null;
                 final noSurf = FactoryRun.nodeBlocked(run, node);
+                // O desafio do ginásio é obrigatório: no lugar do líder, a carta do desafio (vencendo, o líder aparece).
+                if (FactoryRun.gymLocked(data, run, node)) {
+                  final puzzle = FactoryRun.gymPuzzleOf(data, run)!;
+                  return btn('🧩 ${tr('DESAFIO DO GINÁSIO')}: ${tr(_puzzleInfo[puzzle.type]!.$1)}', widget.busy ? null : () => _save(FactoryRun.startPuzzle(run, data)),
+                      kind: 'event',
+                      sub: tr('Obrigatório: vença para enfrentar {0} (e ganhe um prêmio). Perdendo, tenta de novo.').replaceAll('{0}', '${boss['name']}'),
+                      key: const ValueKey('town-puzzle'));
+                }
                 return btn(
                   kind: node['area'] == true ? 'area' : node['mythic'] == true ? 'mythic' : node['meteor'] == true ? 'meteor' : '${node['kind']}',
                   '${options.length == 1 && foeName == null && node['kind'] != 'dboss' ? '${tr('SEGUIR')}: ' : ''}${node['biome'] == 'underwater' && route['biome'] != 'underwater' ? '🤿 ${tr('MERGULHAR')}: ' : ''}${town && isBoss ? '🏟️' : b?.$2 ?? info.$1} ${foeName ?? tr(info.$2).replaceAll('{0}', node['blocker'] != null ? _name(node['legend']) : '')}${node['roam'] == true || placeLegend ? ' · ${node['forceShiny'] == true ? '✨ ' : ''}${_name(node['legend'])}' : ''}${b != null ? ' · ${tr(b.$1)}' : ''}${node['hidden'] != null ? ' 📡' : ''}',
@@ -5138,16 +5146,6 @@ class _FactoryScreenState extends State<FactoryScreen> {
               }),
     ];
     final extras = <Widget>[
-          // O desafio do ginásio (antes do líder): vencendo, o time dele vem mais fraco.
-          if (town && FactoryRun.gymPuzzleOf(data, run) != null)
-            _menuButton('🧩 ${tr('DESAFIO DO GINÁSIO')}: ${tr(_puzzleInfo[FactoryRun.gymPuzzleOf(data, run)!.type]!.$1)}', widget.busy ? null : () => _save(FactoryRun.startPuzzle(run, data)),
-                sub: tr('Uma tentativa: vencendo, o time do líder vem {0} níveis abaixo e você ganha um prêmio.').replaceAll('{0}', '${FactoryRun.gymEdgeLevels}'), key: const ValueKey('town-puzzle')),
-          if (town && (run['gymEdge'] as Map?)?['leg'] == FactoryRun.legOf(run))
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text('🧩 ${tr((run['gymEdge'] as Map)['won'] == true ? 'Desafio vencido: o time do líder vem mais fraco.' : 'Desafio perdido: o líder luta com tudo.')}',
-                  key: const ValueKey('town-puzzle-done'), style: TextStyle(fontSize: 11, color: _dlgSub)),
-            ),
           // As ações da rota, numa grade: pescar, sacudir a árvore, o mel, o vaso de frutas, a bicicleta e o álbum.
           ..._routeActions(run, data, meeting, town),
           if (cut != null)

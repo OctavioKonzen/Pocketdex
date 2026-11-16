@@ -2383,7 +2383,7 @@ class FactoryRun {
     final options = (run['route']?['options'] as List?) ?? const [];
     if (index < 0 || index >= options.length || run['encounter'] != null || run['pending'] != null) return run;
     final node = Map<String, dynamic>.from(options[index] as Map);
-    if (nodeBlocked(run, node)) return run;
+    if (nodeBlocked(run, node) || gymLocked(data, run, node)) return run;
     final out = _copy(run)..['route'] = null;
     // Entra no lugar perto da cidade (esgoto, casa assombrada, base vilã...): 10 andares e o chefe dele; depois volta para a cidade.
     if (node['kind'] == 'dungeon') {
@@ -2435,15 +2435,6 @@ class FactoryRun {
         }
       }
       _countHunt(data, out);
-      // Venceu o desafio do ginásio: o time do líder vem gymEdgeLevels níveis abaixo.
-      final edge = run['gymEdge'] as Map?;
-      if (node['kind'] == 'boss' && edge?['won'] == true && edge?['leg'] == legOf(run) && (out['encounter']['boss'] as Map?)?['kind'] == 'gym') {
-        out['encounter'] = {
-          ...Map<String, dynamic>.from(out['encounter'] as Map),
-          'edge': true,
-          'foes': [for (final f in out['encounter']['foes'] as List) {...Map<String, dynamic>.from(f as Map), 'level': math.max(1, _int(f['level']) - gymEdgeLevels)}],
-        };
-      }
       // O capanga do plano da equipe vilã (vencendo, o plano atrasa).
       if (node['plot'] != null) out['encounter'] = {...Map<String, dynamic>.from(out['encounter'] as Map), 'plot': node['plot']};
       // Cada capítulo do plano atrapalhado: o chefe da equipe vem plotLevels nível abaixo.
@@ -3656,7 +3647,8 @@ class FactoryRun {
 
   /// Os desafios dos ginásios: antes do líder, um quebra-cabeça no tema do ginásio (os dos jogos: as lixeiras do Lt. Surge,
   /// o gelo do Pryce, o quiz do Blaine, as paredes invisíveis do Koga, o piso de gelo do Juan, os teleportes da Sabrina...).
-  /// Vencendo, o time do líder vem gymEdgeLevels níveis abaixo e você ganha um prêmio. Uma tentativa por ginásio. Igual ao site.
+  /// Obrigatório: o líder só aparece depois de vencer (perdendo, tenta de novo com outro desafio). Vencendo, um prêmio.
+  /// Igual ao site.
   static const gymPuzzles = {
     'normal': 'silhouette', 'fire': 'quiz', 'water': 'tiles', 'grass': 'maze', 'electric': 'switches', 'ice': 'slide', 'fighting': 'memory', 'poison': 'maze', 'ground': 'slide',
     'flying': 'slide', 'psychic': 'memory', 'bug': 'switches', 'rock': 'tiles', 'ghost': 'maze', 'dragon': 'memory', 'dark': 'silhouette', 'steel': 'slide', 'fairy': 'quiz',
@@ -3755,9 +3747,18 @@ class FactoryRun {
     return {'q': 'hasType', 'type': type, 'options': options, 'answer': options.indexOf(right)};
   }
 
-  /// O desafio do ginásio de agora (o tipo do líder) ou null: só na cidade de um ginásio, uma vez por ginásio.
+  /// Venceu o desafio do ginásio desta cidade (o líder já pode ser enfrentado).
+  static bool gymCleared(Json run) {
+    final edge = run['gymEdge'] as Map?;
+    return edge?['leg'] == legOf(run) && edge?['won'] == true;
+  }
+
+  /// O líder do ginásio ainda trancado: o desafio dele é obrigatório (vence e o líder aparece). Igual ao site.
+  static bool gymLocked(FactoryData data, Json run, Map? node) => node?['kind'] == 'boss' && gymPuzzleOf(data, run) != null;
+
+  /// O desafio do ginásio de agora (o tipo do líder) ou null: só na cidade de um ginásio, até vencer (obrigatório).
   static ({String type, String kind})? gymPuzzleOf(FactoryData data, Json run) {
-    if (run['town'] == null || run['dungeon'] != null || run['encounter'] != null || run['pending'] != null || run['puzzleLeg'] == legOf(run)) return null;
+    if (run['town'] == null || run['dungeon'] != null || run['encounter'] != null || run['pending'] != null || gymCleared(run)) return null;
     final boss = bossOf(data, run);
     if (boss['kind'] != 'gym') return null;
     final type = leaderType(data, boss);
@@ -3826,8 +3827,30 @@ class FactoryRun {
       final n = _shortest(start, goal, (at) => _neighbors(at, cols, rows).where((to) => !walls.contains(to)));
       p.addAll({'cols': cols, 'rows': rows, 'pos': start, 'goal': goal, 'walls': walls, 'seen': <int>[], 'hidden': hidden, 'left': hidden ? 3 : n + 3});
     } else if (kind == 'tiles') {
-      // Um caminho que passa por todos os ladrilhos existe sempre; você tem de achar um.
-      p.addAll({'cols': 4, 'rows': 3, 'pos': 8, 'visited': [8]});
+      // 5 × 4 com buracos (onde não dá para pisar): um caminho que passa por todas as lajes existe sempre (procurado
+      // antes de mostrar); você tem de achar um.
+      const cols = 5, rows = 4, start = 15;
+      for (var tries = 0; tries < 200; tries++) {
+        final holes = _shuffled([for (var i = 0; i < cols * rows; i++) if (i != start) i], rand).take(2 + _randInt(rand, 2)).toList();
+        final free = cols * rows - holes.length;
+        // Busca em profundidade por um caminho que passa por todas as lajes (poucas: é rápido).
+        bool tour(int at, Set<int> seen) {
+          if (seen.length == free) return true;
+          for (final to in _neighbors(at, cols, rows)) {
+            if (holes.contains(to) || seen.contains(to)) continue;
+            seen.add(to);
+            if (tour(to, seen)) return true;
+            seen.remove(to);
+          }
+          return false;
+        }
+
+        if (tour(start, {start})) {
+          p.addAll({'cols': cols, 'rows': rows, 'pos': start, 'visited': [start], 'holes': holes});
+          break;
+        }
+      }
+      if (p['cols'] == null) p.addAll({'cols': cols, 'rows': rows, 'pos': start, 'visited': [start], 'holes': <int>[]});
     } else {
       p.addAll({'seq': [for (var k = 0; k < 5; k++) _randInt(rand, 4)], 'shown': true, 'at': 0});
     }
@@ -3906,7 +3929,8 @@ class FactoryRun {
       }
     } else if (kind == 'tiles') {
       final cols = _int(p['cols']), rows = _int(p['rows']);
-      if (!_neighbors(_int(p['pos']), cols, rows).contains(i)) return run;
+      final holes = (p['holes'] as List?) ?? const [];
+      if (!_neighbors(_int(p['pos']), cols, rows).contains(i) || holes.contains(i)) return run;
       final visited = p['visited'] as List;
       if (visited.contains(i)) {
         end(false);
@@ -3914,9 +3938,9 @@ class FactoryRun {
         p['pos'] = i;
         final now = [...visited, i];
         p['visited'] = now;
-        if (now.length >= cols * rows) {
+        if (now.length >= cols * rows - holes.length) {
           end(true);
-        } else if (_neighbors(i, cols, rows).every(now.contains)) {
+        } else if (_neighbors(i, cols, rows).every((n) => now.contains(n) || holes.contains(n))) {
           end(false);
         }
       }
@@ -4018,8 +4042,8 @@ class FactoryRun {
       return {
         ...base,
         'cols': cols,
-        'left': count - visited.length,
-        'cells': [for (var i = 0; i < count; i++) {'c': i == p['pos'] ? 'me' : visited.contains(i) ? 'done' : 'floor'}],
+        'left': count - ((p['holes'] as List?)?.length ?? 0) - visited.length,
+        'cells': [for (var i = 0; i < count; i++) {'c': i == p['pos'] ? 'me' : ((p['holes'] as List?) ?? const []).contains(i) ? 'wall' : visited.contains(i) ? 'done' : 'floor'}],
       };
     }
     return {

@@ -8,6 +8,15 @@ import 'package:pocket_dex/services/factory_run.dart';
 import 'package:pocket_dex/services/league.dart';
 import 'package:pocket_dex/services/turn_battle.dart';
 
+/// O desafio do ginásio é obrigatório: nos testes que vão até o líder, quem joga vence o desafio antes (como um jogador).
+/// Igual ao site (clearGym).
+Json _choose(Json run, FactoryData data, int i, [({bool night, String season, int? day})? clock]) {
+  final options = (run['route'] as Map?)?['options'] as List?;
+  final node = options != null && i >= 0 && i < options.length ? options[i] as Map : null;
+  final r = FactoryRun.gymLocked(data, run, node) ? {...run, 'gymEdge': {'leg': FactoryRun.legOf(run), 'won': true}} : run;
+  return FactoryRun.chooseNode(r, data, i, clock);
+}
+
 void main() {
   test('golpes novos subindo de nível (com a regra do poder) e aprender no lugar de outro, como no site', () {
     final form = [['tackle', 'level-up', 1], ['ember', 'level-up', 13], ['flamethrower', 'level-up', 20], ['growl', 'egg', 0]];
@@ -51,7 +60,7 @@ void main() {
     expect(run['boss'], {'region': 14, 'step': 0});
     expect(run['encounter'], isNull);
     expect(run['route'], {'floor': 1, 'biome': 'grass', 'options': [{'kind': 'trainer'}]});
-    expect(FactoryRun.chooseNode(run, data, 0)['encounter'], {
+    expect(_choose(run, data, 0)['encounter'], {
       'kind': 'trainer', 'foes': [{'id': 276, 'level': 3, 'iv': 0, 'ev': 3}], 'trainerSeed': 500729487, 'scene': 'grass',
     });
   });
@@ -88,7 +97,7 @@ void main() {
         }
         run = {...run, 'pending': null};
       }
-      run = FactoryRun.chooseNode(run, data, i % options.length);
+      run = _choose(run, data, i % options.length);
       final encounter = run['encounter'] == null ? null : Map<String, dynamic>.from(run['encounter'] as Map);
       final foes = FactoryRun.foesOf(run);
       if (encounter != null) {
@@ -356,8 +365,8 @@ void main() {
     expect(optionsOf(toCity(gameOf('Diamond/Pearl'), 'Pastoria City', {'floor': 1 + FactoryRun.forks[1]})), contains(equals({'kind': 'safari', 'name': 'Great Marsh'})));
     final base = {...fuchsia, 'route': {'floor': fuchsia['floor'], 'biome': 'grass', 'options': [{'kind': 'safari', 'name': 'Safari Zone'}]}};
     expect(FactoryRun.nodeBlocked({...base, 'money': FactoryRun.safariFee - 1}, {'kind': 'safari'}), isTrue);
-    expect(FactoryRun.chooseNode({...base, 'money': FactoryRun.safariFee - 1}, data, 0)['pending'], isNull);
-    var run = FactoryRun.chooseNode(base, data, 0);
+    expect(_choose({...base, 'money': FactoryRun.safariFee - 1}, data, 0)['pending'], isNull);
+    var run = _choose(base, data, 0);
     expect(run['money'], 7);
     expect(run['floor'], (base['floor'] as int) + 1);
     expect(run['safariLeg'], FactoryRun.legOf(base));
@@ -386,7 +395,7 @@ void main() {
     expect(safari()['caught'], caught);
     expect(safari()['balls'] == 0 || safari()['left'] == 0, isTrue);
     expect(FactoryRun.pendingOf(FactoryRun.leaveSafari(run))!['safari'], isNull);
-    final moved = FactoryRun.pendingOf(FactoryRun.safariAct(FactoryRun.chooseNode(base, data, 0), data, 'run'))!['safari'] as Map;
+    final moved = FactoryRun.pendingOf(FactoryRun.safariAct(_choose(base, data, 0), data, 'run'))!['safari'] as Map;
     expect([moved['balls'], moved['left'], moved['last']], [FactoryRun.safariBalls, FactoryRun.safariEncounters - 2, 'left']);
     expect(FactoryRun.safariPool({...base, 'mono': ['dragon']}, data), [147]);
   });
@@ -569,7 +578,7 @@ void main() {
     final rider = onRoute('grass', {'keyItems': ['bicycle']});
     final ride = FactoryRun.bikePath(rider, data)!;
     expect(last(ride), {'kind': 'bike'});
-    final rode = FactoryRun.chooseNode(ride, data, (ride['route']['options'] as List).length - 1);
+    final rode = _choose(ride, data, (ride['route']['options'] as List).length - 1);
     expect([rode['floor'], rode['pending'], rode['encounter']], [(rider['floor'] as int) + 1, {'event': {'kind': 'bike'}}, null]);
     expect(FactoryRun.bikePath({...rider, 'bike': ride['bike']}, data), isNull);
     expect(FactoryRun.bikeUses(data, toCity(red, 'Fuchsia City')), 2);
@@ -617,10 +626,18 @@ void main() {
     }
     final won = FactoryRun.finishPuzzle(quiz);
     expect(won['money'], (base['money'] as int) + (FactoryRun.puzzleMoney * FactoryRun.priceScale(base['floor'] as int)).round());
-    Map boss(Json r) => FactoryRun.chooseNode(FactoryRun.nextFloor({...r, 'floor': 1 + FactoryRun.cityBoss}, data), data, 0)['encounter'] as Map;
-    final weak = boss(won), normal = boss(lost);
-    expect(weak['edge'], true);
-    expect([for (final f in weak['foes'] as List) f['level']], [for (final f in normal['foes'] as List) max(1, (f['level'] as int) - FactoryRun.gymEdgeLevels)]);
+    Json atBoss(Json r) => FactoryRun.nextFloor({...r, 'floor': 1 + FactoryRun.cityBoss}, data);
+    // Perdeu: o líder fica trancado e o desafio volta (outro sorteio).
+    final lockedRun = atBoss(lost);
+    expect(FactoryRun.gymLocked(data, lockedRun, (lockedRun['route']['options'] as List).first as Map), isTrue);
+    expect(identical(FactoryRun.chooseNode(lockedRun, data, 0), lockedRun), isTrue);
+    expect(FactoryRun.startPuzzle(lockedRun, data)?['pending']?['puzzle'], isNotNull);
+    // Venceu: o líder aparece, no nível de sempre (sem desconto).
+    final openRun = atBoss(won);
+    expect(FactoryRun.gymLocked(data, openRun, (openRun['route']['options'] as List).first as Map), isFalse);
+    final fight = FactoryRun.chooseNode(openRun, data, 0)['encounter'] as Map;
+    expect(fight['boss']['kind'], 'gym');
+    expect(fight['edge'], isNull);
   });
 
   test('cada cidade tem o cenário do tipo dela: porto, metrópole, neve, vulcão, Liga... (igual ao site)', () {
@@ -642,7 +659,7 @@ void main() {
     expect(weathers('town-port'), isNot(contains('snow')));
     expect(weathers('town-desert'), contains('sand'));
     final walked = FactoryRun.nextFloor(toCity(red, 'Vermilion City', {'floor': 1 + FactoryRun.routeLength}), data);
-    final fight = FactoryRun.chooseNode({...walked, 'route': {...walked['route'] as Map, 'options': [{'kind': 'trainer'}]}}, data, 0);
+    final fight = _choose({...walked, 'route': {...walked['route'] as Map, 'options': [{'kind': 'trainer'}]}}, data, 0);
     expect(fight['encounter']['scene'], 'town-port');
   });
 
@@ -736,14 +753,14 @@ void main() {
     List optionsOf(Json r) => FactoryRun.routeOf(r)!['options'] as List;
     final plant = FactoryRun.nextFloor(inPlace(red, 'Saffron City', 'power-plant', 'plant'), data);
     expect(optionsOf(plant), [{'kind': 'wildboss', 'legend': 145, 'placeLegend': true}]);
-    final fight = FactoryRun.chooseNode(plant, data, 0);
+    final fight = _choose(plant, data, 0);
     expect(fight['encounter']['foes'][0]['id'], 145);
     expect(fight['encounter']['placeLegend'], true);
     final won = FactoryRun.winFloor(fight, data, captured: true);
     expect(won['dungeon'], isNull);
     expect(FactoryRun.pendingOf(won)!['capture']['id'], 145);
     expect(FactoryRun.placeLegendOf(data, toCity(red, 'Cinnabar Island'), 'seafoam-islands'), {'id': 144});
-    final rage = FactoryRun.chooseNode(FactoryRun.nextFloor(inPlace(gs, 'Blackthorn City', 'lake-of-rage', 'swamp'), data), data, 0);
+    final rage = _choose(FactoryRun.nextFloor(inPlace(gs, 'Blackthorn City', 'lake-of-rage', 'swamp'), data), data, 0);
     expect([rage['encounter']['foes'][0]['id'], rage['encounter']['foes'][0]['shiny']], [130, true]);
     final victory = FactoryRun.nextFloor(toCity(red, 'Indigo Plateau', {'floor': FactoryRun.routeLength}), data);
     expect(optionsOf(victory), [{'kind': 'wildboss', 'legend': 146, 'routeLegend': true}]);
@@ -752,12 +769,12 @@ void main() {
     final opts = optionsOf(FactoryRun.nextFloor(road, data));
     expect(opts, [{'kind': 'wildboss', 'legend': 143, 'blocker': 'poke-flute'}, {'kind': 'trainer', 'around': true}]);
     expect(FactoryRun.nodeBlocked(road, opts[0] as Map), isTrue);
-    final around = FactoryRun.chooseNode(FactoryRun.nextFloor(road, data), data, 1);
+    final around = _choose(FactoryRun.nextFloor(road, data), data, 1);
     expect(around['blockLeg'], FactoryRun.legOf(road));
     expect(FactoryRun.blockerOf(data, around), isNull);
     final flute = FactoryRun.nextFloor({...road, 'keyItems': ['poke-flute']}, data);
     expect(FactoryRun.nodeBlocked(flute, optionsOf(flute)[0] as Map), isFalse);
-    final snorlax = FactoryRun.chooseNode(flute, data, 0);
+    final snorlax = _choose(flute, data, 0);
     expect(snorlax['encounter']['foes'][0]['id'], 143);
     expect(FactoryRun.winFloor(snorlax, data)['blockLeg'], FactoryRun.legOf(road));
     // Celadon: sem o Silph Scope, a Pokémon Tower fica fechada; o Rocket Hideout dá o Silph Scope e a torre, a Poké Flute.
@@ -775,7 +792,7 @@ void main() {
     // A Squirt Bottle: vencendo a Whitney (ginásio de Goldenrod).
     final step = (data.bosses[gs]['leaders'] as List).indexWhere((l) => l['city'] == 'Goldenrod City' && l['kind'] == 'gym');
     final whitney = toCity(gs, 'Goldenrod City', {'floor': 1 + FactoryRun.cityBoss, 'boss': {'region': gs, 'step': step}});
-    final gym = FactoryRun.winFloor(FactoryRun.chooseNode(FactoryRun.nextFloor(whitney, data), data, 0), data);
+    final gym = FactoryRun.winFloor(_choose(FactoryRun.nextFloor(whitney, data), data, 0), data);
     expect(FactoryRun.pendingOf(gym)!['key'], 'squirt-bottle');
     expect(FactoryRun.blockerOf(data, toCity(gs, 'Ecruteak City')), {'id': 185, 'item': 'squirt-bottle'});
     expect(FactoryRun.keyItems.keys.take(3), ['silph-scope', 'poke-flute', 'squirt-bottle']);
@@ -1074,9 +1091,9 @@ void main() {
     final won = FactoryRun.winFloor({...at(30), 'encounter': {...ace, 'reward': 'ultra-ball'}}, data);
     expect(won['bag']['ultra-ball'], 1);
     final base = {...at(4), 'team': [{...FactoryRun.teamOf(at(4)).first, 'hp': 0}]};
-    final center = FactoryRun.chooseNode({...base, 'route': {'floor': 4, 'options': [{'kind': 'center'}]}}, data, 0);
+    final center = _choose({...base, 'route': {'floor': 4, 'options': [{'kind': 'center'}]}}, data, 0);
     expect([center['floor'], center['team'][0]['hp']], [5, 1]);
-    final mart = FactoryRun.chooseNode({...base, 'route': {'floor': 4, 'options': [{'kind': 'mart'}]}}, data, 0);
+    final mart = _choose({...base, 'route': {'floor': 4, 'options': [{'kind': 'mart'}]}}, data, 0);
     expect((FactoryRun.pendingOf(mart)!['shop'] as List).length, greaterThanOrEqualTo(10));
     final old = FactoryRun.of({'factory': {'run': {...at(3), 'balls': 7}}});
     expect([old['run']['balls'], old['run']['bag']['poke-ball']], [null, 12]);
@@ -1151,7 +1168,7 @@ void main() {
     expect(
         FactoryRun.newMission({...base, 'boss': step('villain'), 'dungeon': {'place': 'base', 'scene': 'base-rocket', 'start': 1}}, data, () => 0.5)['kind'],
         'grunts');
-    final rival = FactoryRun.chooseNode({
+    final rival = _choose({
       ...base,
       'boss': step('rival'),
       'floor': 9,
@@ -1252,7 +1269,7 @@ void main() {
     }
     expect(hidden, isNotNull);
     expect(FactoryRun.dowseItems, contains(hidden!.item));
-    final picked = FactoryRun.chooseNode(hidden.r, data, hidden.k);
+    final picked = _choose(hidden.r, data, hidden.k);
     expect(picked['dowsed'], hidden.item);
     final won = FactoryRun.winFloor(picked, data);
     expect(won['pending']['dowsed'], hidden.item);
@@ -1274,7 +1291,7 @@ void main() {
     };
     final dive = (sea['route'] as Map)['options'][0] as Map;
     expect(FactoryRun.nodeBlocked(sea, dive), isTrue);
-    expect(identical(FactoryRun.chooseNode(sea, data, 0), sea), isTrue);
+    expect(identical(_choose(sea, data, 0), sea), isTrue);
     expect(FactoryRun.blindPick(sea), 1);
     expect(FactoryRun.hmNeeded(sea, dive), 'dive');
     expect(FactoryRun.nodeBlocked({...sea, 'hms': ['surf']}, dive), isTrue);
@@ -1314,7 +1331,7 @@ void main() {
     expect((pushed['route']['options'] as List).last, {'kind': 'ace', 'strength': true});
     expect(FactoryRun.strengthPath(pushed), isNull);
     expect(FactoryRun.strengthPath({...pusher, 'route': {...pusher['route'] as Map, 'biome': 'grass'}}), isNull);
-    expect(FactoryRun.chooseNode(pushed, data, (pushed['route']['options'] as List).length - 1)['encounter']['kind'], 'ace');
+    expect(_choose(pushed, data, (pushed['route']['options'] as List).length - 1)['encounter']['kind'], 'ace');
     // Waterfall: a gruta da cachoeira pede Waterfall.
     const fallNode = {'kind': 'dungeon', 'place': 'waterfall', 'scene': 'waterfall'};
     expect(FactoryRun.hmNeeded({...base, 'hms': ['surf']}, fallNode), 'waterfall');
@@ -1365,7 +1382,7 @@ void main() {
     final red = data.bosses.indexWhere((b) => b['game'] == 'Red/Blue');
     final re = {...base, 'rematch': {'region': red}};
     expect(FactoryRun.rematchBoss(data, re)['kind'], 'champion');
-    final fight = FactoryRun.chooseNode({
+    final fight = _choose({
       ...re,
       'route': {'floor': 2, 'biome': 'grass', 'options': [{'kind': 'rematch'}]},
     }, data, 0);
@@ -1398,7 +1415,7 @@ void main() {
           'floor': 40,
           'route': {'floor': 40, 'biome': 'grass', 'options': [{'kind': 'trainer'}]},
         };
-        final out = FactoryRun.chooseNode(run, data, 0, night ? (night: true, season: 'spring', day: null) : null);
+        final out = _choose(run, data, 0, night ? (night: true, season: 'spring', day: null) : null);
         n += (out['encounter']['foes'] as List).where((f) => ((data.species[f['id']] ?? data.formSpecies[f['id']])?[4] as List? ?? const []).any((t) => t == 'ghost' || t == 'dark')).length;
       }
       return n;
@@ -1486,12 +1503,12 @@ void main() {
     List places(Json run) => [for (final o in FactoryRun.routeOf(run)!['options'] as List) if (o['kind'] == 'dungeon') o['place']];
     expect(places(run), ['rocket-hideout', 'pok-mon-tower']);
     final options = FactoryRun.routeOf(run)!['options'] as List;
-    run = FactoryRun.chooseNode(run, data, options.indexWhere((o) => o['place'] == 'rocket-hideout'));
+    run = _choose(run, data, options.indexWhere((o) => o['place'] == 'rocket-hideout'));
     expect(FactoryRun.townHub(data, run), isFalse);
     expect(FactoryRun.routeOf(run)!['biome'], 'base-rocket');
     run = FactoryRun.nextFloor({...run, 'floor': (run['floor'] as int) + FactoryRun.dungeonLength - 1}, data);
     expect(FactoryRun.routeOf(run)!['options'], [{'kind': 'dboss'}]);
-    run = FactoryRun.nextFloor(FactoryRun.winFloor(FactoryRun.chooseNode(run, data, 0), data), data);
+    run = FactoryRun.nextFloor(FactoryRun.winFloor(_choose(run, data, 0), data), data);
     expect(FactoryRun.routePos(run), r + f[0]);
     expect(FactoryRun.routeOf(run)!['options'], hasLength(1));
     run = FactoryRun.nextFloor({...run, 'floor': (run['floor'] as int) + f[1] - f[0]}, data);
@@ -1499,7 +1516,7 @@ void main() {
     run = FactoryRun.nextFloor({...run, 'floor': (run['floor'] as int) + FactoryRun.cityBoss - r - f[1]}, data);
     expect(FactoryRun.routePos(run), FactoryRun.cityBoss);
     expect(FactoryRun.routeOf(run)!['options'], [{'kind': 'boss'}]);
-    final won = FactoryRun.winFloor(FactoryRun.chooseNode(run, data, 0), data);
+    final won = FactoryRun.winFloor(_choose(run, data, 0), data);
     expect(won['leg'], won['floor']);
     expect(won.containsKey('places'), isFalse);
     expect(won.containsKey('detour'), isFalse);
@@ -1521,9 +1538,9 @@ void main() {
       expect(FactoryRun.waterReach(data, at), 1);
       expect(FactoryRun.hasWaterfall(data, at), isFalse);
       var sea = FactoryRun.nextFloor({...at, 'floor': 1 + FactoryRun.forks[1]}, data);
-      sea = FactoryRun.chooseNode(sea, data, (FactoryRun.routeOf(sea)!['options'] as List).indexWhere((o) => o['kind'] == 'dungeon'));
+      sea = _choose(sea, data, (FactoryRun.routeOf(sea)!['options'] as List).indexWhere((o) => o['kind'] == 'dungeon'));
       sea = FactoryRun.nextFloor({...sea, 'floor': (sea['floor'] as int) + FactoryRun.dungeonLength - 1}, data);
-      sea = FactoryRun.winFloor(FactoryRun.chooseNode(sea, data, 0), data);
+      sea = FactoryRun.winFloor(_choose(sea, data, 0), data);
       expect(sea['dungeon'], isNull);
     }
     // O resto do teste usa um mapa em que a rota de Olivine tem a água inteira e a cachoeira.
@@ -1540,9 +1557,9 @@ void main() {
     final k = options.indexWhere((o) => o['kind'] == 'dungeon');
     expect(options[k], {'kind': 'dungeon', 'place': 'sea', 'scene': 'water'});
     expect(FactoryRun.nodeBlocked({...run, 'hms': []}, options[k] as Map), isTrue);
-    run = FactoryRun.chooseNode(run, full, k);
+    run = _choose(run, full, k);
     run = FactoryRun.nextFloor({...run, 'floor': (run['floor'] as int) + FactoryRun.dungeonLength - 1}, full);
-    run = FactoryRun.nextFloor(FactoryRun.winFloor(FactoryRun.chooseNode(run, full, 0), full), full);
+    run = FactoryRun.nextFloor(FactoryRun.winFloor(_choose(run, full, 0), full), full);
     expect(FactoryRun.routeOf(run)!['options'], [
       {'kind': 'dungeon', 'place': 'deep', 'scene': 'underwater', 'deeper': true},
       {'kind': 'dungeon', 'place': 'waterfall', 'scene': 'waterfall', 'deeper': true},
@@ -1552,17 +1569,17 @@ void main() {
     expect(FactoryRun.nodeBlocked(run, fallOption), isFalse);
     expect(FactoryRun.nodeBlocked({...run, 'hms': ['surf', 'dive']}, fallOption), isTrue);
     // A gruta da cachoeira: 10 andares de selvagens e um chefe forte.
-    var fall = FactoryRun.chooseNode(run, full, 1);
+    var fall = _choose(run, full, 1);
     expect(FactoryRun.routeOf(fall)!['biome'], 'waterfall');
     expect(FactoryRun.placeInfo(full, fall, 'waterfall').name, 'Gruta da cachoeira');
     expect((FactoryRun.routeOf(fall)!['options'] as List).every((o) => o['kind'] == 'wild'), isTrue);
     fall = FactoryRun.nextFloor({...fall, 'floor': (fall['floor'] as int) + FactoryRun.dungeonLength - 1}, full);
     expect(FactoryRun.routeOf(fall)!['options'], [{'kind': 'wildboss', 'area': true}]);
-    run = FactoryRun.chooseNode(run, full, 0);
+    run = _choose(run, full, 0);
     expect(run['dungeon']['entry'], 1 + f[1]);
     run = FactoryRun.nextFloor({...run, 'floor': (run['floor'] as int) + FactoryRun.dungeonLength - 1}, full);
-    run = FactoryRun.nextFloor(FactoryRun.winFloor(FactoryRun.chooseNode(run, full, 0), full), full);
-    run = FactoryRun.chooseNode(run, full, 1);
+    run = FactoryRun.nextFloor(FactoryRun.winFloor(_choose(run, full, 0), full), full);
+    run = _choose(run, full, 1);
     expect(run['dungeon'], isNull);
     expect(FactoryRun.routePos(run), f[1]);
     expect(FactoryRun.townHub(full, run), isFalse);
@@ -1600,7 +1617,7 @@ void main() {
     }
     var run = FactoryRun.nextFloor({...start, 'floor': 39}, data);
     expect(FactoryRun.routeOf(run)!['options'], [{'kind': 'wildboss', 'area': true}]);
-    run = FactoryRun.chooseNode(run, data, 0);
+    run = _choose(run, data, 0);
     expect(run['encounter']['kind'], 'wildboss');
     expect(run['encounter']['area'], true);
     expect(((run['encounter']['foes'] as List).first as Map)['iv'], greaterThanOrEqualTo(31));
@@ -1620,10 +1637,10 @@ void main() {
     final red = data.bosses.indexWhere((b) => b['game'] == 'Red/Blue');
     // A partir de dbossGimmickFloor, o mais forte usa a mecânica; antes, nada disso, só 2 Pokémon e no nível do andar + 1 (igual ao site).
     final start = {...FactoryRun.startRun(FactoryRun.empty(), data, 4, 3)!, 'floor': FactoryRun.dbossGimmickFloor, 'leg': 3, 'boss': {'region': red, 'step': 3}};
-    final run = FactoryRun.chooseNode({...start, 'route': {'options': [{'kind': 'dboss'}], 'biome': 'grass'}}, data, 0);
+    final run = _choose({...start, 'route': {'options': [{'kind': 'dboss'}], 'biome': 'grass'}}, data, 0);
     expect(run['encounter']['kind'], 'dboss');
     expect(['mega', 'dmax', 'tera', 'z'], contains(((run['encounter']['foes'] as List).last as Map)['gimmick']));
-    final early = FactoryRun.chooseNode({...start, 'floor': 9, 'leg': 1, 'route': {'options': [{'kind': 'dboss'}], 'biome': 'grass'}}, data, 0);
+    final early = _choose({...start, 'floor': 9, 'leg': 1, 'route': {'options': [{'kind': 'dboss'}], 'biome': 'grass'}}, data, 0);
     final earlyFoes = (early['encounter']['foes'] as List).cast<Map>();
     expect(earlyFoes.length, lessThanOrEqualTo(2));
     expect(earlyFoes.any((f) => f['gimmick'] != null), isFalse);
@@ -1763,8 +1780,8 @@ void main() {
     var other = 0;
     for (var seed = 1; seed <= 30; seed++) {
       final at = {...FactoryRun.startRun(FactoryRun.empty(), data, 1, seed, nuzlocke: true)!, 'floor': 12, 'route': {'floor': 12, 'biome': 'grass', 'options': [{'kind': 'wild'}]}};
-      final first = (FactoryRun.chooseNode({...at, 'nuzRules': <String>[]}, data, 0)['encounter']['foes'] as List).first['id'] as int;
-      final next = (FactoryRun.chooseNode({...at, 'dex': [FactoryRun.baseForm(data, first)]}, data, 0)['encounter']['foes'] as List).first['id'] as int;
+      final first = (_choose({...at, 'nuzRules': <String>[]}, data, 0)['encounter']['foes'] as List).first['id'] as int;
+      final next = (_choose({...at, 'dex': [FactoryRun.baseForm(data, first)]}, data, 0)['encounter']['foes'] as List).first['id'] as int;
       if (FactoryRun.baseForm(data, next) != FactoryRun.baseForm(data, first)) other++;
     }
     expect(other, 30);
@@ -1903,7 +1920,7 @@ void main() {
     final options = FactoryRun.routeOf(run)!['options'] as List;
     final k = options.indexWhere((o) => o['kind'] == 'dungeon');
     expect(options[k], {'kind': 'dungeon', 'place': 'viridian-forest', 'scene': 'forest'});
-    run = FactoryRun.chooseNode(run, data, k);
+    run = _choose(run, data, k);
     expect(run['dungeon'], {'place': 'viridian-forest', 'scene': 'forest', 'start': 1 + fork});
     for (var i = 0; i < FactoryRun.dungeonLength - 1; i++) {
       expect(FactoryRun.dungeonPos(run), i);
@@ -1911,13 +1928,13 @@ void main() {
       run = FactoryRun.nextFloor({...run, 'floor': (run['floor'] as int) + 1}, data);
     }
     expect(FactoryRun.routeOf(run)!['options'], [{'kind': 'dboss'}]);
-    run = FactoryRun.nextFloor(FactoryRun.winFloor(FactoryRun.chooseNode(run, data, 0), data), data);
+    run = FactoryRun.nextFloor(FactoryRun.winFloor(_choose(run, data, 0), data), data);
     expect(run['dungeon'], isNull);
     expect(FactoryRun.routePos(run), fork);
     expect(FactoryRun.legOf(run), 1);
     expect(FactoryRun.routeOf(run)!['options'], hasLength(1));
     expect(run['places'], ['viridian-forest']);
-    var rope = FactoryRun.chooseNode(FactoryRun.nextFloor({...start, 'floor': 1 + fork, 'bag': {'escape-rope': 1}}, data), data, k);
+    var rope = _choose(FactoryRun.nextFloor({...start, 'floor': 1 + fork, 'bag': {'escape-rope': 1}}, data), data, k);
     rope = FactoryRun.escapeRope({...rope, 'floor': (rope['floor'] as int) + 3}, data)!;
     expect(FactoryRun.routePos(rope), fork);
     expect(FactoryRun.routeOf(rope)!['options'], hasLength(1));
