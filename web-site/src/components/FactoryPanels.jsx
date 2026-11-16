@@ -301,7 +301,7 @@ function LeadHp({ run, data, byId }) {
       <div className="port-hp-row"><span className="truncate" data-no-translate>{m.nick ?? prettyName(byId?.get(m.id)?.name ?? '')}</span><span className="port-lv">{`Lv.${m.level ?? ''}`}</span></div>
       <div className="port-hp-bar"><b>HP</b><i><u style={{ width: `${pct}%`, background: pct > 50 ? '#4ade80' : pct > 20 ? '#facc15' : '#ef4444' }} /></i></div>
       <div className="port-hp-num" data-testid="port-hp-num">{maxHp ? `${Math.round((pct / 100) * maxHp)}/${maxHp}` : `${Math.round(pct)}%`}</div>
-      <div className="port-hp-bar"><b style={{ color: "#38bdf8" }}>XP</b><i><u style={{ width: `${need > 0 ? (got / need) * 100 : 0}%`, background: '#38bdf8' }} /></i><span className="lead-xp" data-testid="port-xp-num">{got}/{need}</span></div>
+      <div className="port-hp-bar lead-xp-bar"><b style={{ color: "#38bdf8" }} data-no-translate>XP</b><i><u style={{ width: `${need > 0 ? (got / need) * 100 : 0}%`, background: '#38bdf8' }} /></i><span className="lead-xp" data-testid="port-xp-num">{got}/{need}</span></div>
     </div>
   )
 }

@@ -3,7 +3,7 @@
 // golpe, recuo, silhueta branca, sumir). Os HPs somem e voltam (data-fx-hud). Igual ao app (battle_fx_player.dart).
 
 import { fxHud, fxSprite } from './battleFx'
-import { applyCamera, cameraCssPx, paintFx } from './fxPainter'
+import { cameraCssPx, paintFx } from './fxPainter'
 
 /** Onde a imagem aparece de verdade dentro do <img> (object-contain, embaixo ou no meio), em pixels do campo. */
 function drawnRect(img, field) {
@@ -90,8 +90,27 @@ export function runFx({ field, world, canvas, spriteEls, plan, rate = 1, live = 
     const who = plan.from === 0 ? ['A', 'T'] : ['T', 'A']
     const imgs = spriteEls.map((el) => el?.querySelector('img, canvas'))
     const boxes = imgs.map((img) => (img ? drawnRect(img, field) : null))
-    const off = document.createElement('canvas')
-    const og = off.getContext('2d')
+    // A cor do golpe fica numa camada DENTRO de cada sprite, em cima da imagem: anda, recua e amassa junto com ele
+    // (antes era uma cópia desenhada à parte, que não acompanhava e parecia um segundo Pokémon).
+    const overlays = spriteEls.map((el, i) => {
+      const img = imgs[i]
+      if (!el || !img) return null
+      const er = el.getBoundingClientRect()
+      const b = boxes[i]
+      const fr = field.getBoundingClientRect()
+      const c = document.createElement('canvas')
+      c.setAttribute('aria-hidden', 'true')
+      c.dataset.fxTint = '1'
+      // O retângulo desenhado da imagem, relativo ao sprite (sem a câmera: medido antes dela mexer).
+      const left = b.left - (er.left - fr.left)
+      const top = b.top - (er.top - fr.top)
+      Object.assign(c.style, { position: 'absolute', left: `${left}px`, top: `${top}px`, width: `${b.w}px`, height: `${b.h}px`, pointerEvents: 'none', imageRendering: 'pixelated', display: 'none' })
+      c.width = Math.max(1, Math.ceil(b.w * dpr))
+      c.height = Math.max(1, Math.ceil(b.h * dpr))
+      if (getComputedStyle(el).position === 'static') el.style.position = 'relative'
+      el.appendChild(c)
+      return c
+    })
     const start = performance.now()
     const reset = () => {
       world.style.transform = ''
@@ -106,6 +125,7 @@ export function runFx({ field, world, canvas, spriteEls, plan, rate = 1, live = 
       })
       g.setTransform(1, 0, 0, 1, 0, 0)
       g.clearRect(0, 0, canvas.width, canvas.height)
+      for (const c of overlays) c?.remove()
     }
     const frame = () => {
       const ms = (performance.now() - start) / rate
@@ -129,37 +149,34 @@ export function runFx({ field, world, canvas, spriteEls, plan, rate = 1, live = 
       })
       g.setTransform(dpr, 0, 0, dpr, 0, 0)
       paintFx(g, plan, ms, W, H)
-      // A cor do golpe por cima do sprite (ele fica vermelho no Fusion Flare, amarelo no Thunderbolt...).
+      // A cor do golpe por cima do sprite (ele fica vermelho no Fusion Flare, amarelo no Thunderbolt...), na camada dele.
       looks.forEach((s, i) => {
+        const c = overlays[i]
         const img = imgs[i]
         const b = boxes[i]
-        if (!s.tintA || s.hidden || !img || !b?.w) return
-        off.width = Math.ceil(b.w)
-        off.height = Math.ceil(b.h)
-        og.imageSmoothingEnabled = false
-        og.globalCompositeOperation = 'source-over'
-        og.save()
-        if (b.mirrored) {
-          og.translate(b.w, 0)
-          og.scale(-1, 1)
+        if (!c) return
+        if (!s.tintA || s.hidden || !img || !b?.w) {
+          c.style.display = 'none'
+          return
         }
-        og.drawImage(img, 0, 0, b.w, b.h)
-        og.restore()
-        og.globalCompositeOperation = 'source-atop'
-        og.globalAlpha = s.tintA
-        og.fillStyle = s.tint
-        og.fillRect(0, 0, b.w, b.h)
-        og.globalAlpha = 1
-        g.save()
-        g.setTransform(dpr, 0, 0, dpr, 0, 0)
-        // Mesma câmera do mundo, em pixels do campo.
-        applyCamera(g, plan, ms, W, H)
-        g.scale(1 / f, 1 / f)
-        g.imageSmoothingEnabled = false
-        g.translate(b.left + s.dx * f + b.w / 2, b.top + s.dy * f + b.h)
-        g.scale(s.sx, s.sy)
-        g.drawImage(off, -b.w / 2, -b.h)
-        g.restore()
+        const cg = c.getContext('2d')
+        cg.setTransform(1, 0, 0, 1, 0, 0)
+        cg.globalCompositeOperation = 'source-over'
+        cg.clearRect(0, 0, c.width, c.height)
+        cg.imageSmoothingEnabled = false
+        cg.save()
+        if (b.mirrored) {
+          cg.translate(c.width, 0)
+          cg.scale(-1, 1)
+        }
+        cg.drawImage(img, 0, 0, c.width, c.height)
+        cg.restore()
+        cg.globalCompositeOperation = 'source-atop'
+        cg.globalAlpha = s.tintA
+        cg.fillStyle = s.tint
+        cg.fillRect(0, 0, c.width, c.height)
+        cg.globalAlpha = 1
+        c.style.display = 'block'
       })
       requestAnimationFrame(frame)
     }

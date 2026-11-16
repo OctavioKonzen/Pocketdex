@@ -3529,7 +3529,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
       key: const ValueKey('port-hp-me'),
       clipper: _CutCorner(w * 0.03),
       child: Container(
-        padding: EdgeInsets.fromLTRB(w * 0.0126, w * 0.004, w * 0.045, w * 0.008), // a barra termina antes do canto cortado
+        padding: EdgeInsets.fromLTRB(w * 0.016, w * 0.0053, w * 0.032, w * 0.008), // a barra termina antes do canto cortado (as mesmas medidas do site)
         decoration: BoxDecoration(color: const Color(0xEB181A1E), border: Border.all(color: const Color(0xFF8B93A1), width: 2)),
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
@@ -3559,7 +3559,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
               Align(
                 alignment: Alignment.centerRight,
                 child: Text(max == null ? '${(pct * 100).round()}%' : '${(pct * max).round()}/$max',
-                    key: const ValueKey('port-hp-num'), style: font.copyWith(fontSize: w * 0.014)),
+                    key: const ValueKey('port-hp-num'), style: font.copyWith(fontSize: w * 0.014, height: 1.3)),
               ),
               Row(children: [
                 Text('XP', style: font.copyWith(color: const Color(0xFF38BDF8), fontSize: w * 0.011, fontWeight: FontWeight.w700)),
