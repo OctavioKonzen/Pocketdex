@@ -2998,9 +2998,14 @@ export function fxPlan2({ kind, type, slug = '', from = 0, seed = 1, stage = FX_
   if (!hud) hud = [120, dur - 80]
   cam.sort((x, y) => x[0] - y[0])
   if (cam[cam.length - 1][0] < dur) cam.push([dur, ...cam[cam.length - 1].slice(1)])
-  // As caixas de vida voltam no impacto (quando o alvo reage), para a vida cair junto com o golpe (não depois dele).
-  const hitAt = Math.min(...S.filter((x) => x.who === 'T' && ['tint', 'move', 'flash'].includes(x.k)).map((x) => x.t0))
-  if (hud && Number.isFinite(hitAt) && hitAt > hud[0]) hud = [hud[0], Math.min(hud[1], hitAt)]
+  // O impacto: quando o alvo reage (fica da cor do golpe ou recua).
+  const hitAt = Math.min(...S.filter((x) => x.who === 'T' && ['tint', 'move'].includes(x.k)).map((x) => x.t0))
+  if (Number.isFinite(hitAt)) {
+    // O alvo pisca branco no impacto (junto com a vida caindo), não depois que a câmera volta (parecia um segundo golpe).
+    for (const x of S) if (x.who === 'T' && x.k === 'flash' && x.t0 > hitAt) x.t0 = hitAt + 60
+    // As caixas de vida voltam no impacto, para a vida cair junto com o golpe (não depois dele).
+    if (hud && hitAt > hud[0]) hud = [hud[0], Math.min(hud[1], hitAt)]
+  }
   return { dur, cam, hud, shake, sprites: S, layers: L, contact, from, world: [stage.w, stage.h] }
 }
 
