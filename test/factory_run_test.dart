@@ -513,6 +513,19 @@ void main() {
           }()
     ];
     expect(norm(puzzles), expected['puzzles']);
+    // O desafio de cada líder e umas jogadas nele (as mesmas no site).
+    final gyms = [
+      for (final name in FactoryRun.gymChallenges.keys)
+        () {
+          final r = FactoryRun.puzzleOfType(data, gym(3), 'rock', name)!;
+          var played = r;
+          for (final i in const [-1, 0, 1, 2, 3, 1, 0, 2, 5, 4, 7, 6]) {
+            played = FactoryRun.puzzleAct(played, data, i);
+          }
+          return [name, r['pending']['puzzle'], FactoryRun.puzzleView(r), played['pending']['puzzle'], FactoryRun.puzzleView(played)];
+        }()
+    ];
+    expect(norm(gyms), expected['gyms']);
     final wild = [
       for (var k = 0; k < 60; k++)
         () {
@@ -608,7 +621,8 @@ void main() {
     // O desafio do ginásio: uma vez por ginásio; errando perde, acertando o líder vem mais fraco e sai o prêmio.
     final step = (data.bosses[red]['leaders'] as List).indexWhere((l) => l['city'] == 'Pewter City' && l['kind'] == 'gym');
     final base = FactoryRun.nextFloor({...toCity(red, 'Pewter City'), 'floor': 1 + FactoryRun.routeLength, 'boss': {'region': red, 'step': step}}, data);
-    expect(FactoryRun.gymPuzzleOf(data, base), (type: 'rock', kind: 'tiles'));
+    expect(FactoryRun.gymPuzzleOf(data, base), (type: 'rock', kind: 'boulder', gym: 'Brock'));
+    expect(FactoryRun.puzzleTitle('Brock'), 'As pedras do Ginásio de Pewter');
     expect(FactoryRun.startPuzzle(FactoryRun.startPuzzle(base, data)!, data), isNull);
     expect(FactoryRun.gymPuzzles.keys.toSet(), FactoryRun.superEffective.keys.toSet());
     var quiz = FactoryRun.puzzleOfType(data, base, 'fire')!;

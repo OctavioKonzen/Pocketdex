@@ -23,7 +23,7 @@ import {
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, teamRoom, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, sceneLines, bossCity, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, atPc, pcOf, PC_SIZE, RARE_PLACES, shownScene, gameOf, tierOf, foeBoostAt, leagueAhead, unlockShiny, VITAMIN_EVS, VITAMINS,
   forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor, isKeystone,
-  tradeMon, skipTrade, TRADE_LEVELS, levelCapOf, townTrade, townTradeable, legOf, fishPath, rodOf, RODS, headbuttPath, slatherHoney, honeyReady, honeyPath, HONEY_FLOORS, plantBerry, berryReady, harvestBerry, bikePath, takePhoto, photoNow, gymPuzzleOf, startPuzzle, puzzleAct, finishPuzzle, puzzleView, gymLocked, KEY_ITEMS, hasKey, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, reminderCost, forgetMove, daycareOpen, daycareHere, safariAct, safariRates, leaveSafari, SAFARI_FEE, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, swapTeam, bossScene,
+  tradeMon, skipTrade, TRADE_LEVELS, levelCapOf, townTrade, townTradeable, legOf, fishPath, rodOf, RODS, headbuttPath, slatherHoney, honeyReady, honeyPath, HONEY_FLOORS, plantBerry, berryReady, harvestBerry, bikePath, takePhoto, photoNow, gymPuzzleOf, startPuzzle, puzzleAct, finishPuzzle, puzzleView, gymLocked, puzzleTitle, GYM_CHALLENGES, KEY_ITEMS, hasKey, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, reminderCost, forgetMove, daycareOpen, daycareHere, safariAct, safariRates, leaveSafari, SAFARI_FEE, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, swapTeam, bossScene,
   resolveChoice, regionLegend, leaderType, villainTeam, rivalBoss, rocketBoss, placeInfo, routeInfo, DUNGEON_LENGTH, dungeonPos, townShop, townCenter,
   weeklyOf, startWeekly, COSMETIC_BALLS, COSMETIC_FRAMES, hasCosmetic, buyCosmetic, equipCosmetic,
   boostOf, memberOf, learnMove, movesLearnedBetween,
@@ -1272,10 +1272,37 @@ const PUZZLE_INFO = {
   steel: { title: 'As esteiras do Byron', intro: 'A esteira te leva em linha reta até bater. Chegue ao líder.' },
   fairy: { title: 'O quiz da Opal', intro: 'Responda as perguntas da líder: acerte 4 de 5.' },
 }
-const PUZZLE_CELL = { me: '🧍', goal: '🏅', rock: '🪨', wall: '🧱', floor: '', done: '✅', closed: '🗑️', hit: '🔘' }
+const PUZZLE_CELL = { me: '🧍', goal: '🏅', rock: '🪨', wall: '🧱', floor: '', done: '✅', closed: '🗑️', hit: '🔘', dark: '', boulder: '🪨', target: '⭕', switch: '🔀', on: '💡', off: '', back: '❔' }
+/** O que fazer em cada mecânica (o título é o do líder). Igual ao app. */
+const PUZZLE_HELP = {
+  quiz: 'Responda as perguntas do líder: acerte {0} de {1}.',
+  silhouette: 'Reconheça a silhueta: acerte {0} de {1}.',
+  switches: 'Dois interruptores, um ao lado do outro, estão escondidos. O número diz a quantas casas está o mais próximo.',
+  slide: 'Você escorrega até bater numa pedra. Chegue ao líder.',
+  maze: 'Ache o caminho até o líder sem gastar os passos.',
+  hidden: 'As paredes não aparecem até você bater nelas. Chegue ao líder com poucas batidas.',
+  dark: 'Está escuro: você só vê em volta de onde já passou. Chegue ao líder sem gastar os passos.',
+  tiles: 'Pise em todas as casas uma única vez: pisar de novo faz desabar.',
+  memory: 'Memorize a ordem e repita sem errar.',
+  teleport: 'Cada plataforma leva para outra sala (a que você já usou mostra o destino). Ache a sala do líder.',
+  boulder: 'Empurre a pedra até o alvo: ande até ela e continue na mesma direção.',
+  arrows: 'Cada seta te leva na direção dela até parar. Chegue ao líder.',
+  gates: 'Os interruptores trocam as barreiras: sobem as vermelhas e descem as azuis (ou o contrário). Chegue ao líder.',
+  lights: 'Tocar acende ou apaga a casa e as vizinhas. Acenda todas.',
+  pairs: 'Ache os pares virando duas cartas de cada vez, sem errar demais.',
+}
+const PUZZLE_ARROWS = ['⬆️', '➡️', '⬇️', '⬅️']
 const PUZZLE_SKIN = { bug: { closed: '🕸️', hit: '🕹️' }, water: { done: '💧', floor: '🧊' }, rock: { done: '🪨', floor: '⬜' }, ghost: { wall: '🕳️' }, grass: { wall: '🌳' }, ice: { floor: '🧊' } }
-const PUZZLE_SYMBOLS = { fighting: ['👊', '🦵', '🤜', '🥋'], psychic: ['🔴', '🔵', '🟢', '🟡'], dragon: ['🐉', '🐲', '🔥', '💎'] }
-const PUZZLE_QUESTION = { strong: 'Qual tipo é super efetivo contra {0}?', typeOf: 'Qual é um dos tipos de {0}?', hasType: 'Qual destes Pokémon é do tipo {0}?', who: 'Quem é esse Pokémon?' }
+const PUZZLE_SYMBOLS = {
+  fighting: ['👊', '🦵', '🤜', '🥋', '💥', '🛡️'], psychic: ['🔴', '🔵', '🟢', '🟡', '🟣', '🟠'], dragon: ['🐉', '🐲', '🔥', '💎', '⚡', '🌀'],
+  grass: ['🌸', '🌻', '🌷', '🌹', '🍀', '🌼'], fire: ['🔥', '💃', '🎶', '⭐', '🌋', '✨'], water: ['🐟', '🦐', '🥬', '🍋', '🧅', '🌶️'],
+  ghost: ['🎵', '🎤', '🥁', '🎧', '🎸', '🎹'],
+}
+const PUZZLE_QUESTION = {
+  strong: 'Qual tipo é super efetivo contra {0}?', typeOf: 'Qual é um dos tipos de {0}?', hasType: 'Qual destes Pokémon é do tipo {0}?', who: 'Quem é esse Pokémon?',
+  beats: 'Qual tipo vence {0}?', math: 'Quanto é {0}?', dexNo: 'Qual é o número de {0} na Pokédex?', evo: 'Em quem {0} evolui?',
+}
+const PUZZLE_MON_Q = ['typeOf', 'beats', 'dexNo', 'evo']
 const TYPE_PT = { normal: 'Normal', fire: 'Fogo', water: 'Água', grass: 'Planta', electric: 'Elétrico', ice: 'Gelo', fighting: 'Lutador', poison: 'Venenoso', ground: 'Terra', flying: 'Voador', psychic: 'Psíquico', bug: 'Inseto', rock: 'Pedra', ghost: 'Fantasma', dragon: 'Dragão', dark: 'Sombrio', steel: 'Aço', fairy: 'Fada' }
 /** O item-chave que falta para este caminho (o Silph Scope, a Poké Flute, a Squirt Bottle) ou null. */
 const keyNeeded = (run, node) => [node?.needs, node?.blocker].find((k) => k != null && !hasKey(run, k)) ?? null
@@ -3109,40 +3136,62 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     )
   } else if (step === 'puzzle') {
     const v = puzzleView(run)
-    const info = PUZZLE_INFO[v.type]
-    const skin = { ...PUZZLE_CELL, ...(PUZZLE_SKIN[v.type] ?? {}) }
+    const title = puzzleTitle(v.gym) ?? PUZZLE_INFO[v.type].title
+    const skin = { ...PUZZLE_CELL, ...(PUZZLE_SKIN[v.type] ?? {}), ...(GYM_CHALLENGES[v.gym]?.[3] ?? {}) }
     const symbols = PUZZLE_SYMBOLS[v.type] ?? PUZZLE_SYMBOLS.psychic
     const act = (i) => save(puzzleAct(run, data, i))
     field = <Field biome={`gym-${v.type}`} fieldRef={fieldRef} testid="factory-puzzle" />
-    const question = v.prompt ? t(PUZZLE_QUESTION[v.prompt.q]).replace('{0}', v.prompt.q === 'typeOf' ? name(v.prompt.mon) : t(TYPE_PT[v.prompt.type] ?? '')) : null
+    // O que fazer: o da mecânica (o do tipo, no desafio sem líder).
+    const help = v.gym ? t(PUZZLE_HELP[v.kind === 'maze' && v.hidden ? 'hidden' : v.kind === 'maze' && v.dark ? 'dark' : v.kind]).replace('{0}', v.need ?? '').replace('{1}', v.total ?? '') : t(PUZZLE_INFO[v.type].intro)
+    const q = v.prompt?.q
+    const question = v.prompt ? t(PUZZLE_QUESTION[q]).replace('{0}', PUZZLE_MON_Q.includes(q) ? name(v.prompt.mon) : q === 'math' ? `${v.prompt.a} ${v.prompt.op} ${v.prompt.b}` : t(TYPE_PT[v.prompt.type] ?? '')) : null
+    const left = (text) => t(text).replace('{0}', v.left)
     const status = (
         <p className="text-center text-xs font-bold text-amber-500" data-testid="puzzle-status">
           {v.done ? (v.won ? `🎉 ${t('Você venceu o desafio! O líder do ginásio te espera.')}` : `💥 ${t('Não foi desta vez: tente de novo para enfrentar o líder.')}`)
-            : v.total && v.kind !== 'memory' ? t('Pergunta {0} de {1} · acertos: {2}').replace('{0}', Math.min(v.total, v.at + 1)).replace('{1}', v.total).replace('{2}', v.right)
+            : v.kind === 'quiz' || v.kind === 'silhouette' ? t('Pergunta {0} de {1} · acertos: {2}').replace('{0}', Math.min(v.total, v.at + 1)).replace('{1}', v.total).replace('{2}', v.right)
               : v.kind === 'memory' ? (v.seq ? t('Memorize a ordem.') : t('Repita a ordem: {0} de {1}.').replace('{0}', v.at).replace('{1}', v.total))
-                : v.kind === 'tiles' ? t('Faltam {0}.').replace('{0}', v.left) : v.kind === 'switches' ? t('Tentativas: {0} · achados: {1} de 2').replace('{0}', v.left).replace('{1}', v.found)
-                  : v.kind === 'maze' && v.hidden ? t('Batidas que ainda aguenta: {0}').replace('{0}', v.left) : t('Jogadas: {0}').replace('{0}', v.left)}
+                : v.kind === 'tiles' ? left('Faltam {0}.') : v.kind === 'switches' ? t('Tentativas: {0} · achados: {1} de 2').replace('{0}', v.left).replace('{1}', v.found)
+                  : v.kind === 'teleport' ? t('Sala {0} de {1} · o líder está na sala {1} · jogadas: {2}').replace('{0}', v.room).replaceAll('{1}', v.rooms).replace('{2}', v.left)
+                    : v.kind === 'pairs' ? left('Erros que ainda pode: {0}') : v.kind === 'lights' ? left('Toques: {0}')
+                      : v.kind === 'maze' && v.hidden ? left('Batidas que ainda aguenta: {0}') : left('Jogadas: {0}')}
         </p>
     )
-    text = <p className="font-black">🧩 {t(info.title)}</p>
+    const small = v.cells.length / v.cols >= 5 || v.cells.length > 16
+    const look = (cell) => ({
+      me: 'border-amber-400 bg-amber-100 text-slate-900', goal: 'border-emerald-400 bg-emerald-100 text-slate-900', target: 'border-emerald-400 bg-emerald-100 text-slate-900', pair: 'border-emerald-400 bg-emerald-100 text-slate-900',
+      wall: 'border-slate-500 bg-slate-600 text-white', rock: 'border-slate-500 bg-slate-600 text-white', boulder: 'border-amber-700 bg-amber-300 text-slate-900', done: 'border-sky-300 bg-sky-200 text-slate-900',
+      dark: 'border-slate-700 bg-slate-900', off: 'border-slate-700 bg-slate-900', on: 'border-amber-500 bg-amber-200 text-slate-900',
+      red: cell.up ? 'border-red-800 bg-red-600 text-white' : 'border-red-300 bg-red-200', blue: cell.up ? 'border-blue-900 bg-blue-600 text-white' : 'border-blue-300 bg-blue-200',
+      switch: 'border-purple-500 bg-purple-200 text-slate-900', pad: 'border-purple-500 bg-purple-200 text-slate-900', arrow: 'border-sky-400 bg-sky-100 text-slate-900', back: 'border-indigo-900 bg-indigo-700 text-white',
+    })[cell.c] ?? 'border-white/60 bg-white/90 text-slate-900 hover:bg-amber-200'
+    text = <p className="font-black">🧩 {t(title)}</p>
     below = (
       <div className="flex h-full flex-col items-center justify-center gap-1.5 p-2" data-testid="puzzle">
-        <p className="text-center text-sm font-black" data-testid="puzzle-title">🧩 {t(info.title)}</p>
-        <p className="text-center text-xs text-muted">{t(info.intro)}</p>
+        <p className="text-center text-sm font-black" data-testid="puzzle-title">🧩 {t(title)}</p>
+        <p className="text-center text-xs text-muted" data-testid="puzzle-help">{help}</p>
         {status}
         {question && (
           <div className="flex items-center gap-2">
-            {v.prompt.q === 'who' && <div data-testid="puzzle-silhouette" style={v.done ? undefined : { filter: 'brightness(0)' }}><PokeIcon id={v.prompt.mon} className="h-20 w-20" /></div>}
-            {v.prompt.q === 'typeOf' && <PokeIcon id={v.prompt.mon} className="h-14 w-14" />}
+            {q === 'who' && <div data-testid="puzzle-silhouette" style={v.done ? undefined : { filter: 'brightness(0)' }}><PokeIcon id={v.prompt.mon} className="h-20 w-20" /></div>}
+            {PUZZLE_MON_Q.includes(q) && <PokeIcon id={v.prompt.mon} className="h-14 w-14" />}
             <p className="text-center text-sm font-black" data-testid="puzzle-question">{question}</p>
           </div>
         )}
         {v.kind === 'memory' && <p className="text-3xl tracking-widest" data-testid="puzzle-seq" data-no-translate>{v.seq ? v.seq.map((n) => symbols[n]).join(' ') : '❔ '.repeat(v.total).trim()}</p>}
-        <div className="grid w-full max-w-sm gap-1" style={{ gridTemplateColumns: `repeat(${v.cols}, minmax(0, 1fr))` }}>
+        <div className={`grid w-full ${v.kind === 'teleport' ? 'max-w-[14rem]' : v.cols >= 6 ? 'max-w-md' : 'max-w-sm'} ${small ? 'gap-0.5' : 'gap-1'}`} style={{ gridTemplateColumns: `repeat(${v.cols}, minmax(0, 1fr))` }}>
           {v.cells.map((cell, i) => (
-            <button key={i} type="button" data-testid={`puzzle-cell-${i}`} disabled={busy || v.done || (v.kind === 'memory' && Boolean(v.seq)) || cell.c === 'num' || cell.c === 'hit'} onClick={() => act(i)}
-              className={`flex min-h-10 cursor-pointer items-center justify-center rounded-lg border-2 px-1 py-1 text-sm font-black disabled:cursor-default ${cell.c === 'me' ? 'border-amber-400 bg-amber-100 text-slate-900' : cell.c === 'goal' ? 'border-emerald-400 bg-emerald-100 text-slate-900' : cell.c === 'wall' || cell.c === 'rock' ? 'border-slate-500 bg-slate-600 text-white' : cell.c === 'done' ? 'border-sky-300 bg-sky-200 text-slate-900' : 'border-white/60 bg-white/90 text-slate-900 hover:bg-amber-200'}`}>
-              {cell.c === 'type' ? t(TYPE_PT[cell.type]) : cell.c === 'mon' ? <span className="flex items-center gap-1" data-no-translate>{v.kind !== 'silhouette' && <PokeIcon id={cell.mon} className="h-7 w-7" />}{name(cell.mon)}</span> : cell.c === 'num' ? cell.n : cell.c === 'sym' ? <span className="text-2xl">{symbols[cell.n]}</span> : <span className="text-xl">{skin[cell.c]}</span>}
+            <button key={i} type="button" data-testid={`puzzle-cell-${i}`} disabled={busy || v.done || (v.kind === 'memory' && Boolean(v.seq)) || cell.c === 'num' || cell.c === 'hit' || cell.c === 'pair'} onClick={() => act(i)}
+              className={`flex cursor-pointer items-center justify-center border-2 px-0.5 py-0.5 text-sm font-black disabled:cursor-default ${v.kind === 'teleport' ? 'min-h-12' : small ? 'min-h-7 rounded-md' : 'min-h-10 rounded-lg'} ${look(cell)}`}>
+              {cell.c === 'type' ? t(TYPE_PT[cell.type])
+                : cell.c === 'mon' ? <span className="flex items-center gap-1" data-no-translate>{v.kind !== 'silhouette' && <PokeIcon id={cell.mon} className="h-7 w-7" />}{name(cell.mon)}</span>
+                  : cell.c === 'card' || cell.c === 'pair' ? <PokeIcon id={cell.mon} className="h-8 w-8" />
+                    : cell.c === 'num' || cell.c === 'ans' ? cell.n
+                      : cell.c === 'sym' ? <span className="text-2xl">{symbols[cell.n]}</span>
+                        : cell.c === 'arrow' ? <span className={small ? 'text-base' : 'text-xl'}>{PUZZLE_ARROWS[cell.n]}</span>
+                          : cell.c === 'pad' ? <span className="text-base">🌀{cell.n ?? '?'}</span>
+                            : cell.c === 'red' || cell.c === 'blue' ? (cell.up ? '▮' : '')
+                              : <span className={small ? 'text-base' : 'text-xl'}>{skin[cell.c]}</span>}
             </button>
           ))}
         </div>
@@ -3300,7 +3349,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
             return (
               <Btn key={k} i={k} kind="event" testid="town-puzzle" disabled={busy} onClick={() => save(startPuzzle(run, data))}
                 sub={t('Obrigatório: vença para enfrentar {0} (e ganhe um prêmio). Perdendo, tenta de novo.').replace('{0}', boss.name)}>
-                🧩 {t('DESAFIO DO GINÁSIO')}: {t(PUZZLE_INFO[puzzle.type].title)}
+                🧩 {t('DESAFIO DO GINÁSIO')}: {t(puzzleTitle(puzzle.gym) ?? PUZZLE_INFO[puzzle.type].title)}
               </Btn>
             )
           }

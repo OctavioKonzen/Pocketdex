@@ -1575,17 +1575,157 @@ export function photoNow(run) {
 }
 
 /**
- * Os desafios dos ginásios: antes do líder, um quebra-cabeça no tema do ginásio (os dos jogos: as lixeiras do Lt. Surge,
- * o gelo do Pryce, o quiz do Blaine, as paredes invisíveis do Koga, o piso de gelo do Juan, os teleportes da Sabrina...).
- * Obrigatório: o líder só aparece depois de vencer (perdendo, tenta de novo com outro desafio). Vencendo, um prêmio.
+ * Os desafios dos ginásios: antes do líder, um quebra-cabeça só daquele ginásio, inspirado no dos jogos (as lixeiras do
+ * Lt. Surge, os teleportes da Sabrina, os ladrilhos giratórios do Giovanni, o gelo do Pryce, a ponte invisível do Morty,
+ * as barreiras do Wattson, os Wooloo do Milo, a azeitona da Katy...); sem um nos jogos, um no tema do líder.
+ * Obrigatório: o líder só aparece depois de vencer (perdendo, tenta de novo com outro sorteio). Vencendo, um prêmio.
  * Igual ao app.
  */
 export const GYM_PUZZLES = {
   normal: 'silhouette', fire: 'quiz', water: 'tiles', grass: 'maze', electric: 'switches', ice: 'slide', fighting: 'memory', poison: 'maze', ground: 'slide',
   flying: 'slide', psychic: 'memory', bug: 'switches', rock: 'tiles', ghost: 'maze', dragon: 'memory', dark: 'silhouette', steel: 'slide', fairy: 'quiz',
 }
-/** Os labirintos de paredes que não se veem (o do Koga e a ponte invisível do Morty). */
+/** Os labirintos de paredes que não se veem (no desafio pelo tipo, sem um do líder). */
 export const PUZZLE_HIDDEN = ['poison', 'ghost']
+/** O desafio de cada líder: [mecânica, ajustes, título, o desenho das casas]. Igual ao app. */
+export const GYM_CHALLENGES = {
+  Brock: ['boulder', { cols: 5, rows: 4, min: 5, max: 10 }, 'As pedras do Ginásio de Pewter', {}],
+  Misty: ['arrows', { cols: 6, rows: 5, arrows: 0.3 }, 'As correntezas da piscina da Misty', { floor: '🟦' }],
+  'Lt. Surge': ['switches', { cols: 5, rows: 3, left: 5 }, 'As lixeiras do Lt. Surge', {}],
+  Erika: ['maze', { cols: 7, rows: 5, density: 0.7 }, 'As árvores do jardim da Erika', { wall: '🌳' }],
+  Koga: ['maze', { cols: 7, rows: 5, hidden: true, bumps: 3 }, 'As paredes invisíveis do Koga', {}],
+  Sabrina: ['teleport', { rooms: 9, min: 3, max: 6 }, 'Os teleportes da Sabrina', {}],
+  Blaine: ['quiz', { topics: ['strong', 'typeOf', 'hasType'] }, 'O quiz do Blaine', {}],
+  Giovanni: ['arrows', { cols: 7, rows: 5, arrows: 0.4, min: 6, max: 11 }, 'Os ladrilhos giratórios do Giovanni', {}],
+  Falkner: ['slide', { cols: 6, rows: 5, rocks: 9 }, 'As correntes de vento do Falkner', { floor: '☁️' }],
+  Bugsy: ['gates', { cols: 6, rows: 5 }, 'Os trilhos de teia do Bugsy', { switch: '🕷️' }],
+  Whitney: ['maze', { cols: 6, rows: 5, density: 0.55, slack: 1 }, 'O labirinto de flores da Whitney', { wall: '🌷' }],
+  Morty: ['maze', { cols: 6, rows: 6, hidden: true, bumps: 2 }, 'A ponte invisível do Morty', { wall: '🕳️' }],
+  Chuck: ['boulder', { cols: 6, rows: 5, min: 8, max: 14 }, 'As pedras da cachoeira do Chuck', {}],
+  Jasmine: ['lights', { cols: 4, rows: 4, taps: 4 }, 'As luzes do farol da Jasmine', {}],
+  Pryce: ['slide', { cols: 6, rows: 6, rocks: 10, min: 5, max: 8 }, 'O gelo do Pryce', { floor: '🧊' }],
+  Clair: ['arrows', { cols: 6, rows: 6, arrows: 0.35, walls: 0.15 }, 'Os ladrilhos-dragão sobre a lava da Clair', { wall: '🌋' }],
+  Janine: ['pairs', { pairs: 6, misses: 5 }, 'Os disfarces da Janine', {}],
+  Blue: ['quiz', { n: 6, need: 5, topics: ['strong', 'beats', 'typeOf', 'evo'] }, 'A prova final do Blue', {}],
+  Roxanne: ['quiz', { topics: ['typeOf', 'hasType', 'dexNo'] }, 'A Escola de Treinadores da Roxanne', {}],
+  Brawly: ['maze', { cols: 7, rows: 5, dark: true, slack: 4 }, 'O ginásio escuro do Brawly', {}],
+  Wattson: ['gates', { cols: 7, rows: 5 }, 'As barreiras elétricas do Wattson', { switch: '⚡' }],
+  Flannery: ['tiles', { cols: 6, rows: 3, holes: 1, extra: 3 }, 'O chão que desaba da Flannery', { done: '🔥', floor: '🟫' }],
+  Norman: ['quiz', { topics: ['beats'] }, 'As salas do Norman', {}],
+  Winona: ['gates', { cols: 7, rows: 5, switches: 3 }, 'Os portões giratórios da Winona', { switch: '🪶' }],
+  'Tate & Liza': ['teleport', { rooms: 7, min: 3, max: 5 }, 'As plataformas de Tate & Liza', {}],
+  Wallace: ['tiles', { cols: 5, rows: 4, holes: 2, extra: 2 }, 'O piso de gelo de Sootopolis', { done: '💧', floor: '🧊' }],
+  Juan: ['tiles', { cols: 4, rows: 5, holes: 2, extra: 1 }, 'O piso de gelo do Juan', { done: '💧', floor: '🧊' }],
+  Roark: ['tiles', { cols: 6, rows: 3, holes: 1, extra: 2 }, 'As lajes da mina do Roark', { done: '🪨', floor: '⬜' }],
+  Gardenia: ['memory', { len: 6, syms: 6 }, 'O relógio de flores da Gardenia', {}],
+  Fantina: ['quiz', { topics: ['math'] }, 'A matemática da Fantina', {}],
+  Maylene: ['memory', { len: 8, syms: 4 }, 'Os sacos de pancada da Maylene', {}],
+  Wake: ['gates', { cols: 6, rows: 5, switches: 2 }, 'O nível da água do Wake', { switch: '🌊' }],
+  Byron: ['teleport', { rooms: 6, min: 3, max: 5 }, 'Os elevadores do Byron', {}],
+  Candice: ['slide', { cols: 5, rows: 6, rocks: 9 }, 'As bolas de neve da Candice', { floor: '❄️', rock: '⛄' }],
+  Volkner: ['lights', { cols: 5, rows: 4, taps: 5 }, 'As engrenagens de luz do Volkner', {}],
+  Cilan: ['quiz', { topics: ['beats', 'strong'] }, 'O cardápio do Cilan', {}],
+  Lenora: ['switches', { cols: 6, rows: 4, left: 6 }, 'Os livros da biblioteca da Lenora', { closed: '📚', hit: '📕' }],
+  Burgh: ['maze', { cols: 7, rows: 5, density: 0.65 }, 'As paredes de mel do Burgh', { wall: '🍯' }],
+  Elesa: ['gates', { cols: 7, rows: 5, switches: 3 }, 'A montanha-russa da Elesa', { switch: '🎢' }],
+  Clay: ['boulder', { cols: 6, rows: 5, min: 6, max: 12 }, 'Os vagões da mina do Clay', { boulder: '🛒' }],
+  Skyla: ['arrows', { cols: 6, rows: 6, arrows: 0.3 }, 'Os canhões da Skyla', {}],
+  Brycen: ['slide', { cols: 6, rows: 5, rocks: 8, min: 5, max: 8 }, 'O set de filmagem gelado do Brycen', { floor: '🧊' }],
+  Drayden: ['memory', { len: 7, syms: 6 }, 'As estátuas de dragão do Drayden', {}],
+  Cheren: ['quiz', { topics: ['strong', 'typeOf'] }, 'A aula do Cheren', {}],
+  Roxie: ['pairs', { pairs: 6, misses: 6 }, 'O show da Roxie', {}],
+  Marlon: ['arrows', { cols: 7, rows: 5, arrows: 0.35 }, 'As ondas do Marlon', { floor: '🟦' }],
+  Viola: ['silhouette', { n: 5, need: 4 }, 'As fotos da Viola', {}],
+  Grant: ['tiles', { cols: 5, rows: 4, holes: 3, extra: 1 }, 'A parede de escalada do Grant', { done: '🧗', floor: '🟫' }],
+  Korrina: ['arrows', { cols: 6, rows: 5, arrows: 0.4 }, 'A pista de patins da Korrina', {}],
+  Ramos: ['maze', { cols: 7, rows: 5, density: 0.7, slack: 1 }, 'Os cipós do Ramos', { wall: '🌿' }],
+  Clemont: ['quiz', { topics: ['strong', 'typeOf', 'hasType', 'dexNo'] }, 'O quiz do robô do Clemont', {}],
+  Valerie: ['teleport', { rooms: 8, min: 3, max: 6 }, 'Os espelhos da Valerie', {}],
+  Olympia: ['lights', { cols: 4, rows: 4, taps: 5 }, 'As constelações da Olympia', { on: '⭐' }],
+  Wulfric: ['gates', { cols: 6, rows: 6, switches: 2 }, 'As engrenagens de gelo do Wulfric', { switch: '⚙️' }],
+  Ilima: ['switches', { cols: 5, rows: 4, left: 6 }, 'As tocas da Verdant Cavern', { closed: '🕳️', hit: '🐾' }],
+  Hala: ['quiz', { topics: ['beats', 'strong'], n: 5, need: 4 }, 'O ritual do Kahuna Hala', {}],
+  Lana: ['switches', { cols: 6, rows: 3, left: 5 }, 'Os respingos do Brooklet Hill', { closed: '💦', hit: '🐟' }],
+  Kiawe: ['memory', { len: 6, syms: 6 }, 'A dança do fogo do Kiawe', {}],
+  Mallow: ['pairs', { pairs: 6, misses: 6 }, 'Os ingredientes da Mallow', {}],
+  Olivia: ['tiles', { cols: 5, rows: 4, holes: 2, extra: 2 }, 'As ruínas da Olivia', { done: '💎', floor: '⬜' }],
+  Molayne: ['lights', { cols: 4, rows: 4, taps: 4 }, 'Os geradores do observatório', {}],
+  Sophocles: ['lights', { cols: 5, rows: 4, taps: 4 }, 'Os geradores do Sophocles', {}],
+  Nanu: ['maze', { cols: 7, rows: 5, dark: true, slack: 3 }, 'O supermercado escuro do Nanu', {}],
+  Mina: ['silhouette', { n: 5, need: 4 }, 'As pinturas da Mina', {}],
+  Hapu: ['boulder', { cols: 6, rows: 5, min: 7, max: 13 }, 'As pedras do cânion da Hapu', {}],
+  Milo: ['boulder', { cols: 6, rows: 5, min: 6, max: 12 }, 'Os Wooloo do Milo', { boulder: '🐑', target: '🚪' }],
+  Nessa: ['gates', { cols: 7, rows: 5, switches: 2 }, 'As comportas da Nessa', { switch: '🚰' }],
+  Kabu: ['quiz', { topics: ['beats'], n: 6, need: 5 }, 'O desafio de fogo do Kabu', {}],
+  Bea: ['arrows', { cols: 6, rows: 6, arrows: 0.4 }, 'As esteiras da Bea', {}],
+  Opal: ['quiz', { topics: ['typeOf', 'hasType', 'strong', 'evo'] }, 'O quiz da Opal', {}],
+  Gordie: ['maze', { cols: 7, rows: 5, hidden: true, bumps: 3 }, 'Os buracos do Gordie', { wall: '🕳️' }],
+  Piers: ['pairs', { pairs: 6, misses: 5 }, 'O show do Piers', {}],
+  Raihan: ['memory', { len: 7, syms: 4 }, 'O clima do Raihan', {}],
+  Katy: ['boulder', { cols: 6, rows: 5, min: 6, max: 12 }, 'A azeitona da Katy', { boulder: '🫒', target: '🥅' }],
+  Brassius: ['switches', { cols: 6, rows: 4, left: 6 }, 'Os Sunflora escondidos do Brassius', { closed: '🌿', hit: '🌻' }],
+  Iono: ['silhouette', { n: 5, need: 4 }, 'Quem apareceu na live da Iono?', {}],
+  Kofu: ['memory', { len: 6, syms: 6 }, 'As compras do Kofu', {}],
+  Larry: ['quiz', { topics: ['math', 'dexNo'] }, 'O pedido do Larry', {}],
+  Ryme: ['memory', { len: 8, syms: 4 }, 'O ritmo da Ryme', {}],
+  Tulip: ['silhouette', { n: 6, need: 5 }, 'A sessão de fotos da Tulip', {}],
+  Grusha: ['slide', { cols: 5, rows: 6, rocks: 8 }, 'A pista de snowboard do Grusha', { floor: '❄️' }],
+  Lian: ['boulder', { cols: 5, rows: 5, min: 6, max: 11 }, 'As pedras de Obsidian', {}],
+  Arezu: ['pairs', { pairs: 6, misses: 6 }, 'As flores de Crimson', {}],
+  Melli: ['maze', { cols: 6, rows: 5, dark: true, slack: 3 }, 'O vulcão escuro de Cobalt', {}],
+  Ingo: ['gates', { cols: 6, rows: 5, switches: 2 }, 'Os trilhos do Ingo', { switch: '🚂' }],
+  Gaeric: ['slide', { cols: 6, rows: 6, rocks: 11 }, 'O gelo de Alabaster', { floor: '🧊' }],
+  'Miror B.': ['memory', { len: 8, syms: 6 }, 'A dança do Miror B.', {}],
+  Dakim: ['boulder', { cols: 6, rows: 4, min: 5, max: 10 }, 'As rochas do Dakim', {}],
+  Venus: ['silhouette', { n: 5, need: 4 }, 'O show da Venus', {}],
+  Ein: ['lights', { cols: 5, rows: 4, taps: 5 }, 'O laboratório do Ein', {}],
+  Nascour: ['quiz', { topics: ['strong', 'beats', 'math'] }, 'O teste do Nascour', {}],
+  'Billy Jo': ['arrows', { cols: 6, rows: 5, arrows: 0.35 }, 'As correntezas de Fall City', {}],
+  Lavana: ['maze', { cols: 7, rows: 5, density: 0.6, slack: 2 }, 'O vulcão de Summerland', { wall: '🌋' }],
+  Clyde: ['slide', { cols: 5, rows: 5, rocks: 7 }, 'O gelo de Wintown', { floor: '🧊' }],
+  Garret: ['teleport', { rooms: 7, min: 3, max: 6 }, 'As trilhas de Sekra', {}],
+  Heath: ['switches', { cols: 5, rows: 4, left: 5 }, 'Os esconderijos de Pueltown', {}],
+  Wendy: ['quiz', { topics: ['typeOf', 'dexNo'] }, 'O teste da Wendy', {}],
+  Sven: ['tiles', { cols: 5, rows: 4, holes: 2, extra: 2 }, 'As placas de Boyleland', {}],
+  Kincaid: ['gates', { cols: 7, rows: 5, switches: 3 }, 'Os portões do Altru Building', {}],
+  'Purple Eyes': ['teleport', { rooms: 8, min: 3, max: 6 }, 'Os portais de Renbow', {}],
+  'Blue Eyes': ['memory', { len: 7, syms: 6 }, 'Os símbolos de Mitonga', {}],
+  'Red Eyes': ['lights', { cols: 5, rows: 4, taps: 5 }, 'As tochas de Faldera', { on: '🔥' }],
+  Munkidori: ['pairs', { pairs: 6, misses: 5 }, 'As maçãs de Apple Hills', {}],
+  Okidogi: ['boulder', { cols: 6, rows: 5, min: 7, max: 12 }, 'As pedras do Oni Mountain', {}],
+  Fezandipiti: ['maze', { cols: 7, rows: 5, dark: true, slack: 3 }, 'A noite em Kitakami Hall', {}],
+  Crispin: ['arrows', { cols: 6, rows: 5, arrows: 0.35 }, 'O desafio do Crispin', {}],
+  Lacey: ['quiz', { topics: ['strong', 'typeOf', 'hasType', 'evo'], n: 6, need: 5 }, 'O quiz da Lacey', {}],
+  Amarys: ['tiles', { cols: 6, rows: 3, holes: 1, extra: 2 }, 'O cânion da Amarys', {}],
+  Drayton: ['memory', { len: 8, syms: 6 }, 'O desafio do Drayton', {}],
+  Paxton: ['switches', { cols: 6, rows: 3, left: 5 }, 'Os esconderijos de Three Island', {}],
+  Gideon: ['quiz', { topics: ['dexNo', 'evo'] }, 'O teste do Gideon', {}],
+  Avery: ['teleport', { rooms: 7, min: 3, max: 5 }, 'O poder psíquico do Avery', {}],
+  Klara: ['maze', { cols: 7, rows: 5, hidden: true, bumps: 3 }, 'O pântano da Klara', {}],
+  Kubfu: ['boulder', { cols: 6, rows: 5, min: 6, max: 12 }, 'O dojo do Kubfu', {}],
+  Regieleki: ['lights', { cols: 4, rows: 4, taps: 5 }, 'As ruínas de Split-Decision', {}],
+  Calyrex: ['silhouette', { n: 6, need: 5 }, 'O altar do Calyrex', {}],
+  Cissy: ['switches', { cols: 5, rows: 4, left: 5 }, 'Os alvos da Cissy', { closed: '🎯', hit: '💥' }],
+  Danny: ['slide', { cols: 6, rows: 5, rocks: 8 }, 'A descida de gelo do Danny', { floor: '🧊' }],
+  Rudy: ['memory', { len: 7, syms: 4 }, 'A dança do Rudy', {}],
+  Luana: ['quiz', { topics: ['strong', 'beats'] }, 'A dupla da Luana', {}],
+}
+/** Os ajustes de cada mecânica (o que o líder não muda). */
+const PUZZLE_DEFAULTS = {
+  quiz: { n: 5, need: 4, topics: ['strong', 'typeOf', 'hasType'] },
+  silhouette: { n: 5, need: 4 },
+  switches: { cols: 6, rows: 4, left: 7 },
+  slide: { cols: 5, rows: 5, rocks: 8, min: 4, max: 7 },
+  maze: { cols: 7, rows: 5, density: 0.6, hidden: false, dark: false, slack: 2, bumps: 3 },
+  tiles: { cols: 5, rows: 4, holes: 2, extra: 2 },
+  memory: { len: 7, syms: 4 },
+  teleport: { rooms: 8, min: 3, max: 6, slack: 3 },
+  boulder: { cols: 6, rows: 5, walls: 0.18, min: 6, max: 14, slack: 4 },
+  arrows: { cols: 6, rows: 5, arrows: 0.3, walls: 0.12, min: 4, max: 9, slack: 2 },
+  gates: { cols: 6, rows: 5, walls: 0.12, red: 0.14, blue: 0.14, switches: 2, min: 6, max: 14, slack: 4 },
+  lights: { cols: 4, rows: 4, taps: 4, slack: 3 },
+  pairs: { pairs: 6, cols: 4, misses: 6 },
+}
 export const GYM_EDGE_LEVELS = 2
 export const PUZZLE_MONEY = 150
 /** Quem ganha de quem (atacante → os tipos em que ele é super efetivo): para o quiz. */
@@ -1597,6 +1737,7 @@ export const SUPER_EFFECTIVE = {
 }
 const TYPES_18 = Object.keys(SUPER_EFFECTIVE)
 const randInt = (rand, n) => Math.floor(rand() * n)
+const range = (n) => Array.from({ length: n }, (_, i) => i)
 /** Embaralha (Fisher–Yates) com o sorteio da corrida. */
 function shuffled(list, rand) {
   const out = [...list]
@@ -1607,6 +1748,14 @@ const neighbors = (i, cols, rows) => {
   const x = i % cols, y = Math.floor(i / cols)
   return [y > 0 ? i - cols : -1, x < cols - 1 ? i + 1 : -1, y < rows - 1 ? i + cols : -1, x > 0 ? i - 1 : -1].filter((n) => n >= 0)
 }
+const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]]
+/** A casa ao lado na direção d (0 cima, 1 direita, 2 baixo, 3 esquerda), ou -1 fora do tabuleiro. */
+function stepDir(i, d, cols, rows) {
+  const x = (i % cols) + DIRS[d][0], y = Math.floor(i / cols) + DIRS[d][1]
+  return x < 0 || y < 0 || x >= cols || y >= rows ? -1 : y * cols + x
+}
+/** De que lado fica a casa vizinha (ou -1 se não é vizinha). */
+const dirTo = (from, to, cols, rows) => (to < 0 ? -1 : [0, 1, 2, 3].find((d) => stepDir(from, d, cols, rows) === to) ?? -1)
 /** Deslizar no gelo: de pos na direção (dx, dy) até bater numa pedra ou na borda; passando pela saída, para nela. */
 function slideTo(p, pos, dx, dy) {
   let x = pos % p.cols, y = Math.floor(pos / p.cols)
@@ -1618,21 +1767,41 @@ function slideTo(p, pos, dx, dy) {
   }
   return y * p.cols + x
 }
-const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]]
-/** O menor número de jogadas (busca em largura); -1 se não dá. step(pos) devolve as casas alcançáveis numa jogada. */
-function shortest(start, goal, step) {
+/** O menor número de jogadas (busca em largura); -1 se não dá. step(estado) devolve os alcançáveis numa jogada. */
+function shortest(start, done, step) {
   const dist = new Map([[start, 0]])
   const queue = [start]
-  while (queue.length) {
-    const at = queue.shift()
-    if (at === goal) return dist.get(at)
+  for (let k = 0; k < queue.length; k++) {
+    const at = queue[k]
+    if (done(at)) return dist.get(at)
     for (const to of step(at)) if (!dist.has(to)) { dist.set(to, dist.get(at) + 1); queue.push(to) }
   }
   return -1
 }
+/** Nas setas: anda pela seta até parar (numa casa sem seta, numa parede, na borda, no líder ou voltando ao caminho). */
+function ride(p, at) {
+  let pos = at
+  const seen = [pos]
+  while (p.arrows[pos] >= 0 && pos !== p.goal) {
+    const to = stepDir(pos, p.arrows[pos], p.cols, p.rows)
+    if (to < 0 || p.walls.includes(to) || seen.includes(to)) break
+    pos = to
+    seen.push(pos)
+  }
+  return pos
+}
+/** Nas barreiras: dá para pisar (parede não; a vermelha sobe com a chave em 0, a azul com a chave em 1). */
+const gateOpen = (p, i, flag) => !p.walls.includes(i) && !(flag === 0 && p.red.includes(i)) && !(flag === 1 && p.blue.includes(i))
+/** Acender: a casa e as vizinhas trocam. */
+function flip(on, i, cols, rows) {
+  const out = [...on]
+  for (const k of [i, ...neighbors(i, cols, rows)]) out[k] = !out[k]
+  return out
+}
 const speciesIds = (data) => Object.keys(data.species).map(Number).filter((id) => id > 0 && id <= 1025).sort((a, b) => a - b)
-function quizQuestion(data, rand, ids) {
-  const kind = pickOne(['strong', 'typeOf', 'hasType'], rand)
+const typesOf = (data, id) => data.species[id]?.[4] ?? []
+function quizQuestion(data, rand, ids, topics) {
+  const kind = pickOne(topics, rand)
   if (kind === 'strong') {
     const target = pickOne(TYPES_18.filter((t) => TYPES_18.some((a) => SUPER_EFFECTIVE[a].includes(t))), rand)
     const right = pickOne(TYPES_18.filter((a) => SUPER_EFFECTIVE[a].includes(target)), rand)
@@ -1642,91 +1811,122 @@ function quizQuestion(data, rand, ids) {
   }
   if (kind === 'typeOf') {
     const id = pickOne(ids, rand)
-    const types = data.species[id][4] ?? []
+    const types = typesOf(data, id)
     const right = types[0]
     const options = shuffled([right, ...shuffled(TYPES_18.filter((t) => !types.includes(t)), rand).slice(0, 3)], rand)
     return { q: kind, mon: id, options, answer: options.indexOf(right) }
   }
-  const type = pickOne(TYPES_18, rand)
-  const has = ids.filter((id) => (data.species[id][4] ?? []).includes(type))
-  const right = pickOne(has.length ? has : ids, rand)
-  const options = shuffled([right, ...shuffled(ids.filter((id) => !(data.species[id][4] ?? []).includes(type)), rand).slice(0, 3)], rand)
-  return { q: 'hasType', type, options, answer: options.indexOf(right) }
+  if (kind === 'beats') {
+    // Qual tipo vence este Pokémon (super efetivo contra um dos tipos dele)?
+    const id = pickOne(ids, rand)
+    const types = typesOf(data, id)
+    const good = TYPES_18.filter((a) => types.some((t) => SUPER_EFFECTIVE[a].includes(t)))
+    const right = pickOne(good, rand)
+    const options = shuffled([right, ...shuffled(TYPES_18.filter((a) => !good.includes(a)), rand).slice(0, 3)], rand)
+    return { q: kind, mon: id, options, answer: options.indexOf(right) }
+  }
+  if (kind === 'math') {
+    // A conta da Fantina (Platinum): o resultado entre 4 números.
+    const op = pickOne(['+', '-', '×'], rand)
+    const a = op === '×' ? 2 + randInt(rand, 8) : 10 + randInt(rand, 40)
+    const b = op === '×' ? 2 + randInt(rand, 8) : 2 + randInt(rand, op === '-' ? a - 2 : 40)
+    const right = op === '+' ? a + b : op === '-' ? a - b : a * b
+    const wrong = shuffled([right - 3, right - 2, right - 1, right + 1, right + 2, right + 3].filter((n) => n >= 0), rand).slice(0, 3)
+    const options = shuffled([right, ...wrong], rand)
+    return { q: kind, a, b, op, nums: true, options, answer: options.indexOf(right) }
+  }
+  if (kind === 'dexNo') {
+    const id = pickOne(ids, rand)
+    const near = ids.filter((x) => x !== id && Math.abs(x - id) <= 40)
+    const options = shuffled([id, ...shuffled(near, rand).slice(0, 3)], rand)
+    return { q: kind, mon: id, nums: true, options, answer: options.indexOf(id) }
+  }
+  // evo: em quem ele evolui?
+  const from = ids.filter((id) => (data.evolutions[id] ?? []).some((e) => ids.includes(e[0])))
+  const id = pickOne(from, rand)
+  const into = (data.evolutions[id] ?? []).map((e) => e[0]).filter((x) => ids.includes(x))
+  const right = pickOne(into, rand)
+  const options = shuffled([right, ...shuffled(ids.filter((x) => x !== id && !into.includes(x)), rand).slice(0, 3)], rand)
+  return { q: 'evo', mon: id, options, answer: options.indexOf(right) }
 }
-/** O desafio do ginásio de agora (o tipo do líder) ou null: só na cidade de um ginásio, uma vez por ginásio. */
 /** Venceu o desafio do ginásio desta cidade (o líder já pode ser enfrentado). */
 export const gymCleared = (run) => run.gymEdge?.leg === legOf(run) && run.gymEdge?.won === true
 /** O líder do ginásio ainda trancado: o desafio dele é obrigatório (vence e o líder aparece). Igual ao app. */
 export const gymLocked = (data, run, node) => node?.kind === 'boss' && gymPuzzleOf(data, run) != null
+/** O desafio do ginásio de agora ({ type, kind, gym }) ou null: só na cidade de um ginásio, até vencer (obrigatório). */
 export function gymPuzzleOf(data, run) {
   if (!run.town || run.dungeon || run.encounter || run.pending || gymCleared(run)) return null
   const boss = bossOf(data, run)
   if (boss?.kind !== 'gym') return null
   const type = leaderType(data, boss)
-  return GYM_PUZZLES[type] ? { type, kind: GYM_PUZZLES[type] } : null
+  const own = GYM_CHALLENGES[boss.name]
+  if (own) return { type, kind: own[0], gym: boss.name }
+  return GYM_PUZZLES[type] ? { type, kind: GYM_PUZZLES[type], gym: null } : null
 }
+/** O título do desafio (o do líder ou, sem um, o do tipo). */
+export const puzzleTitle = (gym) => GYM_CHALLENGES[gym]?.[2] ?? null
 /** Monta o desafio (sempre com solução) e abre a tela dele. */
 export function startPuzzle(run, data) {
   const info = gymPuzzleOf(data, run)
-  return info ? puzzleOfType(data, run, info.type) : null
+  return info ? puzzleOfType(data, run, info.type, info.gym) : null
 }
-/** O desafio de um tipo de ginásio (o do líder de agora é o startPuzzle). */
-export function puzzleOfType(data, run, type) {
-  const info = { type, kind: GYM_PUZZLES[type] }
-  if (!info.kind) return null
+/** O desafio de um líder (gym) ou, sem ele, o do tipo do ginásio (o do líder de agora é o startPuzzle). */
+export function puzzleOfType(data, run, type, gym = null) {
+  const own = gym ? GYM_CHALLENGES[gym] : null
+  const kind = own ? own[0] : GYM_PUZZLES[type]
+  if (!kind) return null
+  const o = { ...PUZZLE_DEFAULTS[kind], ...(own ? own[1] : kind === 'maze' && PUZZLE_HIDDEN.includes(type) ? { hidden: true } : {}) }
   const out = { ...run, puzzleLeg: legOf(run) }
   const rand = dice(out)
-  const { kind } = info
-  const p = { kind, type, done: false, won: false }
+  const p = { kind, type, ...(own ? { gym } : {}), done: false, won: false }
+  const cols = o.cols ?? 0, rows = o.rows ?? 0, size = cols * rows
+  const start = (rows - 1) * cols + Math.floor(cols / 2), top = Math.floor(cols / 2)
   if (kind === 'quiz') {
     const ids = speciesIds(data)
-    Object.assign(p, { qs: [0, 1, 2, 3, 4].map(() => quizQuestion(data, rand, ids)), at: 0, right: 0 })
+    Object.assign(p, { qs: range(o.n).map(() => quizQuestion(data, rand, ids, o.topics)), at: 0, right: 0, need: o.need })
   } else if (kind === 'silhouette') {
     const ids = speciesIds(data)
-    Object.assign(p, { qs: [0, 1, 2, 3, 4].map(() => { const options = shuffled(ids, rand).slice(0, 4); const right = pickOne(options, rand); return { mon: right, options, answer: options.indexOf(right) } }), at: 0, right: 0 })
+    Object.assign(p, { qs: range(o.n).map(() => { const options = shuffled(ids, rand).slice(0, 4); const right = pickOne(options, rand); return { mon: right, options, answer: options.indexOf(right) } }), at: 0, right: 0, need: o.need })
   } else if (kind === 'switches') {
-    const a = randInt(rand, 24)
-    Object.assign(p, { cols: 6, rows: 4, a, b: pickOne(neighbors(a, 6, 4), rand), open: {}, found: 0, left: 7 })
+    const a = randInt(rand, size)
+    Object.assign(p, { cols, rows, a, b: pickOne(neighbors(a, cols, rows), rand), open: {}, found: 0, left: o.left })
   } else if (kind === 'slide') {
-    Object.assign(p, { cols: 5, rows: 5, pos: 22, goal: 2, rocks: [], left: 3 })
-    // Um caminho mais longo (4 a 7 deslizadas) com mais pedras, e só uma jogada de sobra.
+    Object.assign(p, { cols, rows, pos: start, goal: top, rocks: [], left: 3 })
+    // Um caminho de min a max deslizadas, e só uma jogada de sobra.
     for (let k = 0; k < 200; k++) {
-      const goal = randInt(rand, 5)
-      const rocks = shuffled(Array.from({ length: 25 }, (_, i) => i).filter((i) => i !== 22 && i !== goal), rand).slice(0, 8)
+      const goal = randInt(rand, cols)
+      const rocks = shuffled(range(size).filter((i) => i !== start && i !== goal), rand).slice(0, o.rocks)
       const trial = { ...p, goal, rocks }
-      const n = shortest(22, goal, (at) => DIRS.map(([dx, dy]) => slideTo(trial, at, dx, dy)).filter((to) => to !== at))
-      if (n >= 4 && n <= 7) { Object.assign(p, { goal, rocks, left: n + 1 }); break }
+      const n = shortest(start, (at) => at === goal, (at) => DIRS.map(([dx, dy]) => slideTo(trial, at, dx, dy)).filter((to) => to !== at))
+      if (n >= o.min && n <= o.max) { Object.assign(p, { goal, rocks, left: n + 1 }); break }
     }
   } else if (kind === 'maze') {
-    // Um caminho garantido da entrada até o líder; o resto vira parede (as que não se veem, no do Koga e no do Morty).
-    const cols = 7, rows = 5, start = 31, goal = 3
-    const path = (() => {
-      const seen = new Set([start])
-      const walk = (at) => {
-        if (at === goal) return [at]
-        for (const to of shuffled(neighbors(at, cols, rows), rand)) {
-          if (seen.has(to)) continue
-          seen.add(to)
-          const rest = walk(to)
-          if (rest) return [at, ...rest]
-        }
-        return null
+    // Um caminho garantido da entrada até o líder; o resto vira parede (as que não se veem, no do Koga e no do Morty;
+    // no escuro, só se vê em volta de onde você já passou).
+    const goal = top
+    const seen = new Set([start])
+    const walk = (at) => {
+      if (at === goal) return [at]
+      for (const to of shuffled(neighbors(at, cols, rows), rand)) {
+        if (seen.has(to)) continue
+        seen.add(to)
+        const rest = walk(to)
+        if (rest) return [at, ...rest]
       }
-      return walk(start)
-    })()
-    const walls = Array.from({ length: cols * rows }, (_, i) => i).filter((i) => !path.includes(i) && rand() < 0.6)
-    const hidden = PUZZLE_HIDDEN.includes(type)
-    const n = shortest(start, goal, (at) => neighbors(at, cols, rows).filter((to) => !walls.includes(to)))
-    Object.assign(p, { cols, rows, pos: start, goal, walls, seen: [], hidden, left: hidden ? 3 : n + 2 })
+      return null
+    }
+    const path = walk(start)
+    const walls = range(size).filter((i) => !path.includes(i) && rand() < o.density)
+    const n = shortest(start, (at) => at === goal, (at) => neighbors(at, cols, rows).filter((to) => !walls.includes(to)))
+    Object.assign(p, { cols, rows, pos: start, goal, walls, seen: [], hidden: Boolean(o.hidden), ...(o.dark ? { dark: true, trail: [start] } : {}), left: o.hidden ? o.bumps : n + o.slack })
   } else if (kind === 'tiles') {
-    // 5 × 4 com buracos (onde não dá para pisar): um caminho que passa por todas as lajes existe sempre (procurado
-    // antes de mostrar); você tem de achar um. Igual ao app.
-    const cols = 5, rows = 4, start = 15
+    // Com buracos (onde não dá para pisar): um caminho que passa por todas as lajes existe sempre (procurado antes de
+    // mostrar); você tem de achar um.
+    const from = (rows - 1) * cols
     for (let tries = 0; tries < 200 && p.cols == null; tries++) {
-      const order = shuffled(Array.from({ length: cols * rows }, (_, i) => i).filter((i) => i !== start), rand)
-      const holes = order.slice(0, 2 + randInt(rand, 2))
-      const free = cols * rows - holes.length
-      const seen = new Set([start])
+      const holes = shuffled(range(size).filter((i) => i !== from), rand).slice(0, o.holes + randInt(rand, o.extra))
+      const free = size - holes.length
+      const seen = new Set([from])
       // Busca em profundidade por um caminho que passa por todas as lajes (poucas: é rápido).
       const tour = (at) => {
         if (seen.size === free) return true
@@ -1738,11 +1938,95 @@ export function puzzleOfType(data, run, type) {
         }
         return false
       }
-      if (tour(start)) Object.assign(p, { cols, rows, pos: start, visited: [start], holes })
+      if (tour(from)) Object.assign(p, { cols, rows, pos: from, visited: [from], holes })
     }
-    if (p.cols == null) Object.assign(p, { cols, rows, pos: start, visited: [start], holes: [] })
+    if (p.cols == null) Object.assign(p, { cols, rows, pos: from, visited: [from], holes: [] })
+  } else if (kind === 'memory') {
+    Object.assign(p, { seq: range(o.len).map(() => randInt(rand, o.syms)), syms: o.syms, shown: true, at: 0 })
+  } else if (kind === 'teleport') {
+    // Salas com 4 plataformas, cada uma leva para outra sala; o líder está na última. Já usada, mostra o destino.
+    const rooms = o.rooms
+    let warps = null, n = -1
+    for (let tries = 0; tries < 300; tries++) {
+      const trial = range(rooms * 4).map((k) => { const d = randInt(rand, rooms - 1); return d >= Math.floor(k / 4) ? d + 1 : d })
+      n = shortest(0, (r) => r === rooms - 1, (r) => [0, 1, 2, 3].map((k) => trial[r * 4 + k]))
+      if (n >= o.min && n <= o.max) { warps = trial; break }
+    }
+    if (!warps) { warps = range(rooms * 4).map((k) => (k % 4 === 0 ? Math.min(rooms - 1, Math.floor(k / 4) + 1) : 0)); n = rooms - 1 }
+    Object.assign(p, { cols: 2, rows: 2, rooms, room: 0, goal: rooms - 1, warps, known: range(rooms * 4).map(() => -1), left: n + o.slack })
+  } else if (kind === 'boulder') {
+    // Empurrar a pedra (Strength) até o alvo: você anda até ela e continua na mesma direção.
+    const solve = (walls, me, box, goal) => shortest(me * size + box, (s) => s % size === goal, (s) => {
+      const at = Math.floor(s / size), b = s % size
+      const out2 = []
+      for (let d = 0; d < 4; d++) {
+        const to = stepDir(at, d, cols, rows)
+        if (to < 0 || walls.includes(to)) continue
+        if (to !== b) { out2.push(to * size + b); continue }
+        const nb = stepDir(b, d, cols, rows)
+        if (nb >= 0 && !walls.includes(nb)) out2.push(to * size + nb)
+      }
+      return out2
+    })
+    for (let tries = 0; tries < 400 && p.cols == null; tries++) {
+      const walls = range(size).filter(() => rand() < o.walls)
+      const free = range(size).filter((i) => !walls.includes(i))
+      if (free.length < 6) continue
+      const [me, box, goal] = shuffled(free, rand).slice(0, 3)
+      const n = solve(walls, me, box, goal)
+      if (n >= o.min && n <= o.max) Object.assign(p, { cols, rows, walls, pos: me, box, goal, left: n + o.slack })
+    }
+    if (p.cols == null) Object.assign(p, { cols, rows, walls: [], pos: 2 * cols + 1, box: cols + 1, goal: 1, left: 1 + o.slack })
+  } else if (kind === 'arrows') {
+    // As setas (os ladrilhos giratórios do Giovanni, os canhões da Skyla): pisou, vai na direção dela até parar.
+    const goal = top
+    for (let tries = 0; tries < 400 && p.cols == null; tries++) {
+      const walls = [], arrows = []
+      for (let i = 0; i < size; i++) {
+        const r = rand()
+        if (i === start || i === goal) arrows.push(-1)
+        else if (r < o.walls) { walls.push(i); arrows.push(-1) } else if (r < o.walls + o.arrows) arrows.push(randInt(rand, 4))
+        else arrows.push(-1)
+      }
+      const trial = { cols, rows, goal, walls, arrows }
+      const n = shortest(start, (at) => at === goal, (at) => neighbors(at, cols, rows).filter((to) => !walls.includes(to)).map((to) => ride(trial, to)))
+      if (n >= o.min && n <= o.max) Object.assign(p, { ...trial, pos: start, left: n + o.slack })
+    }
+    if (p.cols == null) Object.assign(p, { cols, rows, goal, walls: [], arrows: range(size).map(() => -1), pos: start, left: rows + o.slack })
+  } else if (kind === 'gates') {
+    // As barreiras (Wattson, Nessa): cada interruptor sobe as vermelhas e desce as azuis, ou o contrário.
+    const goal = top
+    for (let tries = 0; tries < 500 && p.cols == null; tries++) {
+      const walls = [], red = [], blue = []
+      for (let i = 0; i < size; i++) {
+        const r = rand()
+        if (i === start || i === goal) continue
+        if (r < o.walls) walls.push(i)
+        else if (r < o.walls + o.red) red.push(i)
+        else if (r < o.walls + o.red + o.blue) blue.push(i)
+      }
+      const floor = range(size).filter((i) => i !== start && i !== goal && !walls.includes(i) && !red.includes(i) && !blue.includes(i))
+      const switches = shuffled(floor, rand).slice(0, o.switches)
+      const trial = { walls, red, blue, switches }
+      const moves = (toggle) => (s) => {
+        const at = s >> 1, flag = s & 1
+        return neighbors(at, cols, rows).filter((to) => gateOpen(trial, to, flag)).map((to) => to * 2 + (toggle && switches.includes(to) ? 1 - flag : flag))
+      }
+      const n = shortest(start * 2, (s) => s >> 1 === goal, moves(true))
+      if (n < o.min || n > o.max || shortest(start * 2, (s) => s >> 1 === goal, moves(false)) !== -1) continue
+      Object.assign(p, { cols, rows, goal, ...trial, pos: start, flag: 0, left: n + o.slack })
+    }
+    if (p.cols == null) Object.assign(p, { cols, rows, goal, walls: [], red: [], blue: [], switches: [], pos: start, flag: 0, left: rows + o.slack })
+  } else if (kind === 'lights') {
+    // Acender todas (as constelações da Olympia): tocar troca a casa e as vizinhas.
+    const sol = shuffled(range(size), rand).slice(0, o.taps)
+    let on = range(size).map(() => true)
+    for (const i of sol) on = flip(on, i, cols, rows)
+    Object.assign(p, { cols, rows, on, sol, left: o.taps + o.slack })
   } else {
-    Object.assign(p, { seq: [0, 1, 2, 3, 4, 5, 6].map(() => randInt(rand, 4)), shown: true, at: 0 })
+    // pairs: os pares de cartas (virando duas de cada vez).
+    const ids = shuffled(speciesIds(data), rand).slice(0, o.pairs)
+    Object.assign(p, { cols: o.cols, rows: (o.pairs * 2) / o.cols, cards: shuffled([...ids, ...ids], rand), found: [], open: [], left: o.misses })
   }
   out.pending = { puzzle: p }
   return out
@@ -1753,13 +2037,15 @@ export function puzzleAct(run, data, i) {
   if (!p0 || p0.done) return run
   const p = { ...p0 }
   const end = (won) => { p.done = true; p.won = won }
+  // Gastou uma jogada: no fim delas, perdeu.
+  const spend = () => { p.left -= 1; if (p.left <= 0) end(false) }
   if (p.kind === 'quiz' || p.kind === 'silhouette') {
     const q = p.qs[p.at]
     if (!q || i < 0 || i >= q.options.length) return run
     p.picked = i
     if (i === q.answer) p.right += 1
     p.at += 1
-    if (p.at >= p.qs.length) end(p.right >= 4)
+    if (p.at >= p.qs.length) end(p.right >= (p.need ?? 4))
   } else if (p.kind === 'switches') {
     if (i < 0 || i >= p.cols * p.rows || p.open[i] != null) return run
     const targets = [p.a, p.b].filter((t) => p.open[t] == null)
@@ -1770,8 +2056,7 @@ export function puzzleAct(run, data, i) {
     } else {
       const dist = Math.min(...targets.map((t) => Math.abs((t % p.cols) - (i % p.cols)) + Math.abs(Math.floor(t / p.cols) - Math.floor(i / p.cols))))
       p.open = { ...p.open, [i]: dist }
-      p.left -= 1
-      if (p.left <= 0) end(false)
+      spend()
     }
   } else if (p.kind === 'slide') {
     if (i < 0 || i >= p.cols * p.rows || i === p.pos) return run
@@ -1779,21 +2064,19 @@ export function puzzleAct(run, data, i) {
     const to = Math.abs(dx) >= Math.abs(dy) ? slideTo(p, p.pos, Math.sign(dx), 0) : slideTo(p, p.pos, 0, Math.sign(dy))
     if (to === p.pos) return run
     p.pos = to
-    p.left -= 1
     if (p.pos === p.goal) end(true)
-    else if (p.left <= 0) end(false)
+    else spend()
   } else if (p.kind === 'maze') {
     if (!neighbors(p.pos, p.cols, p.rows).includes(i)) return run
     if (p.walls.includes(i)) {
       if (!p.hidden || p.seen.includes(i)) return run
       p.seen = [...p.seen, i]
-      p.left -= 1
-      if (p.left <= 0) end(false)
+      spend()
     } else {
       p.pos = i
-      if (!p.hidden) p.left -= 1
+      if (p.dark && !p.trail.includes(i)) p.trail = [...p.trail, i]
       if (p.pos === p.goal) end(true)
-      else if (p.left <= 0) end(false)
+      else if (!p.hidden) spend()
     }
   } else if (p.kind === 'tiles') {
     const holes = p.holes ?? []
@@ -1807,13 +2090,59 @@ export function puzzleAct(run, data, i) {
     }
   } else if (p.kind === 'memory') {
     if (p.shown) { if (i !== -1) return run; p.shown = false }
-    else if (i < 0 || i > 3) return run
+    else if (i < 0 || i >= (p.syms ?? 4)) return run
     else if (p.seq[p.at] === i) { p.at += 1; if (p.at >= p.seq.length) end(true) }
     else end(false)
+  } else if (p.kind === 'teleport') {
+    if (i < 0 || i > 3) return run
+    const k = p.room * 4 + i
+    p.known = p.known.map((x, j) => (j === k ? p.warps[k] : x))
+    p.room = p.warps[k]
+    if (p.room === p.goal) end(true)
+    else spend()
+  } else if (p.kind === 'boulder') {
+    const d = dirTo(p.pos, i, p.cols, p.rows)
+    if (d < 0 || p.walls.includes(i)) return run
+    if (i === p.box) {
+      const nb = stepDir(p.box, d, p.cols, p.rows)
+      if (nb < 0 || p.walls.includes(nb)) return run
+      p.box = nb
+    }
+    p.pos = i
+    if (p.box === p.goal) end(true)
+    else spend()
+  } else if (p.kind === 'arrows') {
+    if (!neighbors(p.pos, p.cols, p.rows).includes(i) || p.walls.includes(i)) return run
+    p.pos = ride(p, i)
+    if (p.pos === p.goal) end(true)
+    else spend()
+  } else if (p.kind === 'gates') {
+    if (!neighbors(p.pos, p.cols, p.rows).includes(i) || !gateOpen(p, i, p.flag)) return run
+    p.pos = i
+    if (p.switches.includes(i)) p.flag = 1 - p.flag
+    if (p.pos === p.goal) end(true)
+    else spend()
+  } else if (p.kind === 'lights') {
+    if (i < 0 || i >= p.cols * p.rows) return run
+    p.on = flip(p.on, i, p.cols, p.rows)
+    if (p.on.every(Boolean)) end(true)
+    else spend()
+  } else if (p.kind === 'pairs') {
+    if (i < 0 || i >= p.cards.length || p.found.includes(i) || p.open.includes(i)) return run
+    // As duas erradas ficam à mostra até a próxima carta.
+    const open = [...(p.open.length >= 2 ? [] : p.open), i]
+    p.open = open
+    if (open.length === 2) {
+      if (p.cards[open[0]] === p.cards[open[1]]) {
+        p.found = [...p.found, ...open]
+        p.open = []
+        if (p.found.length >= p.cards.length) end(true)
+      } else spend()
+    }
   }
   return { ...run, pending: { ...run.pending, puzzle: p } }
 }
-/** Sai do desafio (ou desiste dele): guarda se venceu (a vantagem contra o líder) e dá o prêmio. */
+/** Sai do desafio (ou desiste dele): guarda se venceu (o líder aparece) e dá o prêmio. */
 export function finishPuzzle(run) {
   const p = run.pending?.puzzle
   if (!p) return run
@@ -1824,32 +2153,53 @@ export function finishPuzzle(run) {
 /**
  * O desafio como a tela mostra: as casas (c: o que tem nela), quantas colunas e o que perguntar. As casas:
  * 'me' você, 'goal' o líder, 'rock' pedra, 'wall' parede (vista), 'floor' chão, 'done' ladrilho pisado, 'closed' lixeira
- * fechada, 'num' vazia (n: a distância até o interruptor), 'hit' interruptor, 'type' (type), 'mon' (mon), 'sym' (n).
+ * fechada, 'num' vazia (n: a distância até o interruptor), 'hit' interruptor, 'type' (type), 'mon' (mon), 'ans' (n: um
+ * número para responder), 'sym' (n), 'dark' (no escuro), 'pad' (n: a sala de destino, ou null), 'boulder', 'target',
+ * 'arrow' (n: a direção), 'red' e 'blue' (up: levantada), 'switch', 'on' e 'off' (as luzes), 'back' (carta virada),
+ * 'card' (mon, à mostra) e 'pair' (mon, par achado).
  */
 export function puzzleView(run) {
   const p = run.pending?.puzzle
   if (!p) return null
-  const base = { kind: p.kind, type: p.type, done: p.done, won: p.won }
+  const base = { kind: p.kind, type: p.type, gym: p.gym ?? null, done: p.done, won: p.won }
+  const cells = (f) => range(p.cols * p.rows).map(f)
   if (p.kind === 'quiz' || p.kind === 'silhouette') {
     const q = p.qs[Math.min(p.at, p.qs.length - 1)]
-    const cells = q.options.map((o) => (typeof o === 'number' ? { c: 'mon', mon: o } : { c: 'type', type: o }))
-    return { ...base, cols: 2, cells, prompt: p.kind === 'silhouette' ? { q: 'who', mon: q.mon } : { q: q.q, ...(q.type ? { type: q.type } : {}), ...(q.mon ? { mon: q.mon } : {}) }, at: p.at, total: p.qs.length, right: p.right }
+    const opts = q.options.map((o) => (q.nums ? { c: 'ans', n: o } : typeof o === 'number' ? { c: 'mon', mon: o } : { c: 'type', type: o }))
+    const prompt = p.kind === 'silhouette' ? { q: 'who', mon: q.mon } : { q: q.q, ...(q.type ? { type: q.type } : {}), ...(q.mon ? { mon: q.mon } : {}), ...(q.op ? { a: q.a, b: q.b, op: q.op } : {}) }
+    return { ...base, cols: 2, cells: opts, prompt, at: p.at, total: p.qs.length, right: p.right, need: p.need ?? 4 }
   }
   if (p.kind === 'switches') {
-    return { ...base, cols: p.cols, left: p.left, found: p.found, cells: Array.from({ length: p.cols * p.rows }, (_, i) => (p.open[i] == null ? (p.done && [p.a, p.b].includes(i) ? { c: 'hit' } : { c: 'closed' }) : p.open[i] === 'hit' ? { c: 'hit' } : { c: 'num', n: p.open[i] })) }
+    return { ...base, cols: p.cols, left: p.left, found: p.found, cells: cells((i) => (p.open[i] == null ? (p.done && [p.a, p.b].includes(i) ? { c: 'hit' } : { c: 'closed' }) : p.open[i] === 'hit' ? { c: 'hit' } : { c: 'num', n: p.open[i] })) }
   }
-  if (p.kind === 'slide') {
-    return { ...base, cols: p.cols, left: p.left, cells: Array.from({ length: p.cols * p.rows }, (_, i) => ({ c: i === p.pos ? 'me' : i === p.goal ? 'goal' : p.rocks.includes(i) ? 'rock' : 'floor' })) }
-  }
+  if (p.kind === 'slide') return { ...base, cols: p.cols, left: p.left, cells: cells((i) => ({ c: i === p.pos ? 'me' : i === p.goal ? 'goal' : p.rocks.includes(i) ? 'rock' : 'floor' })) }
   if (p.kind === 'maze') {
     const shown = (i) => p.walls.includes(i) && (!p.hidden || p.seen.includes(i) || p.done)
-    return { ...base, cols: p.cols, left: p.left, hidden: p.hidden, cells: Array.from({ length: p.cols * p.rows }, (_, i) => ({ c: i === p.pos ? 'me' : i === p.goal ? 'goal' : shown(i) ? 'wall' : 'floor' })) }
+    const lit = (i) => !p.dark || p.done || i === p.goal || p.trail.some((t) => t === i || neighbors(t, p.cols, p.rows).includes(i))
+    return { ...base, cols: p.cols, left: p.left, hidden: p.hidden, dark: Boolean(p.dark), cells: cells((i) => ({ c: i === p.pos ? 'me' : i === p.goal ? 'goal' : !lit(i) ? 'dark' : shown(i) ? 'wall' : 'floor' })) }
   }
   if (p.kind === 'tiles') {
     const holes = p.holes ?? []
-    return { ...base, cols: p.cols, left: p.cols * p.rows - holes.length - p.visited.length, cells: Array.from({ length: p.cols * p.rows }, (_, i) => ({ c: i === p.pos ? 'me' : holes.includes(i) ? 'wall' : p.visited.includes(i) ? 'done' : 'floor' })) }
+    return { ...base, cols: p.cols, left: p.cols * p.rows - holes.length - p.visited.length, cells: cells((i) => ({ c: i === p.pos ? 'me' : holes.includes(i) ? 'wall' : p.visited.includes(i) ? 'done' : 'floor' })) }
   }
-  return { ...base, cols: 4, seq: p.shown || p.done ? p.seq : null, at: p.at, total: p.seq.length, cells: [0, 1, 2, 3].map((n) => ({ c: 'sym', n })) }
+  if (p.kind === 'memory') {
+    const syms = p.syms ?? 4
+    return { ...base, cols: syms === 6 ? 3 : 4, seq: p.shown || p.done ? p.seq : null, at: p.at, total: p.seq.length, cells: range(syms).map((n) => ({ c: 'sym', n })) }
+  }
+  if (p.kind === 'teleport') {
+    return { ...base, cols: 2, left: p.left, room: p.room + 1, rooms: p.rooms, cells: [0, 1, 2, 3].map((k) => ({ c: 'pad', n: p.known[p.room * 4 + k] >= 0 ? p.known[p.room * 4 + k] + 1 : null })) }
+  }
+  if (p.kind === 'boulder') {
+    return { ...base, cols: p.cols, left: p.left, cells: cells((i) => ({ c: i === p.pos ? 'me' : i === p.box ? 'boulder' : i === p.goal ? 'target' : p.walls.includes(i) ? 'wall' : 'floor' })) }
+  }
+  if (p.kind === 'arrows') {
+    return { ...base, cols: p.cols, left: p.left, cells: cells((i) => (i === p.pos ? { c: 'me' } : i === p.goal ? { c: 'goal' } : p.walls.includes(i) ? { c: 'wall' } : p.arrows[i] >= 0 ? { c: 'arrow', n: p.arrows[i] } : { c: 'floor' })) }
+  }
+  if (p.kind === 'gates') {
+    return { ...base, cols: p.cols, left: p.left, cells: cells((i) => (i === p.pos ? { c: 'me' } : i === p.goal ? { c: 'goal' } : p.walls.includes(i) ? { c: 'wall' } : p.red.includes(i) ? { c: 'red', up: p.flag === 0 } : p.blue.includes(i) ? { c: 'blue', up: p.flag === 1 } : p.switches.includes(i) ? { c: 'switch' } : { c: 'floor' })) }
+  }
+  if (p.kind === 'lights') return { ...base, cols: p.cols, left: p.left, cells: cells((i) => ({ c: p.on[i] ? 'on' : 'off' })) }
+  return { ...base, cols: p.cols, left: p.left, cells: p.cards.map((mon, i) => (p.found.includes(i) ? { c: 'pair', mon } : p.open.includes(i) || p.done ? { c: 'card', mon } : { c: 'back' })) }
 }
 
 /**

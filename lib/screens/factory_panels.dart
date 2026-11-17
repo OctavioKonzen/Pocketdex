@@ -2370,15 +2370,41 @@ const _puzzleInfo = {
   'steel': ('As esteiras do Byron', 'A esteira te leva em linha reta até bater. Chegue ao líder.'),
   'fairy': ('O quiz da Opal', 'Responda as perguntas da líder: acerte 4 de 5.'),
 };
-const _puzzleCell = {'me': '🧍', 'goal': '🏅', 'rock': '🪨', 'wall': '🧱', 'floor': '', 'done': '✅', 'closed': '🗑️', 'hit': '🔘'};
+const _puzzleCell = {
+  'me': '🧍', 'goal': '🏅', 'rock': '🪨', 'wall': '🧱', 'floor': '', 'done': '✅', 'closed': '🗑️', 'hit': '🔘', 'dark': '', 'boulder': '🪨', 'target': '⭕', 'switch': '🔀',
+  'on': '💡', 'off': '', 'back': '❔',
+};
+
+/// O que fazer em cada mecânica (o título é o do líder). Igual ao site.
+const _puzzleHelp = {
+  'quiz': 'Responda as perguntas do líder: acerte {0} de {1}.',
+  'silhouette': 'Reconheça a silhueta: acerte {0} de {1}.',
+  'switches': 'Dois interruptores, um ao lado do outro, estão escondidos. O número diz a quantas casas está o mais próximo.',
+  'slide': 'Você escorrega até bater numa pedra. Chegue ao líder.',
+  'maze': 'Ache o caminho até o líder sem gastar os passos.',
+  'hidden': 'As paredes não aparecem até você bater nelas. Chegue ao líder com poucas batidas.',
+  'dark': 'Está escuro: você só vê em volta de onde já passou. Chegue ao líder sem gastar os passos.',
+  'tiles': 'Pise em todas as casas uma única vez: pisar de novo faz desabar.',
+  'memory': 'Memorize a ordem e repita sem errar.',
+  'teleport': 'Cada plataforma leva para outra sala (a que você já usou mostra o destino). Ache a sala do líder.',
+  'boulder': 'Empurre a pedra até o alvo: ande até ela e continue na mesma direção.',
+  'arrows': 'Cada seta te leva na direção dela até parar. Chegue ao líder.',
+  'gates': 'Os interruptores trocam as barreiras: sobem as vermelhas e descem as azuis (ou o contrário). Chegue ao líder.',
+  'lights': 'Tocar acende ou apaga a casa e as vizinhas. Acenda todas.',
+  'pairs': 'Ache os pares virando duas cartas de cada vez, sem errar demais.',
+};
+const _puzzleArrows = ['⬆️', '➡️', '⬇️', '⬅️'];
 const _puzzleSkin = {
   'bug': {'closed': '🕸️', 'hit': '🕹️'}, 'water': {'done': '💧', 'floor': '🧊'}, 'rock': {'done': '🪨', 'floor': '⬜'}, 'ghost': {'wall': '🕳️'}, 'grass': {'wall': '🌳'}, 'ice': {'floor': '🧊'},
 };
 const _puzzleSymbols = {
-  'fighting': ['👊', '🦵', '🤜', '🥋'], 'psychic': ['🔴', '🔵', '🟢', '🟡'], 'dragon': ['🐉', '🐲', '🔥', '💎'],
+  'fighting': ['👊', '🦵', '🤜', '🥋', '💥', '🛡️'], 'psychic': ['🔴', '🔵', '🟢', '🟡', '🟣', '🟠'], 'dragon': ['🐉', '🐲', '🔥', '💎', '⚡', '🌀'],
+  'grass': ['🌸', '🌻', '🌷', '🌹', '🍀', '🌼'], 'fire': ['🔥', '💃', '🎶', '⭐', '🌋', '✨'], 'water': ['🐟', '🦐', '🥬', '🍋', '🧅', '🌶️'],
+  'ghost': ['🎵', '🎤', '🥁', '🎧', '🎸', '🎹'],
 };
 const _puzzleQuestion = {
   'strong': 'Qual tipo é super efetivo contra {0}?', 'typeOf': 'Qual é um dos tipos de {0}?', 'hasType': 'Qual destes Pokémon é do tipo {0}?', 'who': 'Quem é esse Pokémon?',
+  'beats': 'Qual tipo vence {0}?', 'math': 'Quanto é {0}?', 'dexNo': 'Qual é o número de {0} na Pokédex?', 'evo': 'Em quem {0} evolui?',
 };
 const _typePt = {
   'normal': 'Normal', 'fire': 'Fogo', 'water': 'Água', 'grass': 'Planta', 'electric': 'Elétrico', 'ice': 'Gelo', 'fighting': 'Lutador', 'poison': 'Venenoso', 'ground': 'Terra',
@@ -4769,11 +4795,11 @@ class _FactoryScreenState extends State<FactoryScreen> {
   /// O desafio do ginásio: o cenário do ginásio, o nome do desafio e os botões (memorizei, desistir, continuar). Igual ao site.
   Widget _puzzleFrame(Json run, FactoryData data) {
     final v = FactoryRun.puzzleView(run)!;
-    final info = _puzzleInfo[v['type']]!;
+    final title = FactoryRun.puzzleTitle(v['gym'] as String?) ?? _puzzleInfo[v['type']]!.$1;
     return _frame(
       field: _field('gym-${v['type']}', key: const ValueKey('factory-puzzle'), (w, h) => const []),
       run: run,
-      text: [Text('🧩 ${tr(info.$1)}', style: const TextStyle(fontWeight: FontWeight.w900))],
+      text: [Text('🧩 ${tr(title)}', style: const TextStyle(fontWeight: FontWeight.w900))],
       menu: v['done'] == true
           ? _menuButton(tr('CONTINUAR'), () => _save(FactoryRun.finishPuzzle(run)), key: const ValueKey('factory-continue'))
           : _menuGrid([
@@ -4788,41 +4814,66 @@ class _FactoryScreenState extends State<FactoryScreen> {
     final v = FactoryRun.puzzleView(run)!;
     final c = SiteColors.of(context);
     final type = '${v['type']}';
-    final info = _puzzleInfo[type]!;
-    final skin = {..._puzzleCell, ...?_puzzleSkin[type]};
+    final gym = v['gym'] as String?;
+    final title = FactoryRun.puzzleTitle(gym) ?? _puzzleInfo[type]!.$1;
+    final skin = {..._puzzleCell, ...?_puzzleSkin[type], ...FactoryRun.puzzleSkin(gym)};
     final symbols = _puzzleSymbols[type] ?? _puzzleSymbols['psychic']!;
-    final done = v['done'] == true, kind = v['kind'];
+    final done = v['done'] == true, kind = '${v['kind']}';
     final prompt = v['prompt'] as Map?;
     final seq = v['seq'] as List?;
     final cells = v['cells'] as List;
     final cols = (v['cols'] as num).toInt();
+    final rows = (cells.length / cols).ceil();
+    // O que fazer: o da mecânica (o do tipo, no desafio sem líder).
+    final help = gym == null
+        ? _puzzleInfo[type]!.$2
+        : tr(_puzzleHelp[kind == 'maze' && v['hidden'] == true ? 'hidden' : kind == 'maze' && v['dark'] == true ? 'dark' : kind]!)
+            .replaceAll('{0}', '${v['need'] ?? ''}')
+            .replaceAll('{1}', '${v['total'] ?? ''}');
+    String left(String text) => tr(text).replaceAll('{0}', '${v['left']}');
     final status = done
         ? (v['won'] == true
             ? '🎉 ${tr('Você venceu o desafio! O líder do ginásio te espera.')}'
             : '💥 ${tr('Não foi desta vez: tente de novo para enfrentar o líder.')}')
-        : kind == 'quiz' || kind == 'silhouette'
-            ? tr('Pergunta {0} de {1} · acertos: {2}').replaceAll('{0}', '${min((v['total'] as num).toInt(), (v['at'] as num).toInt() + 1)}').replaceAll('{1}', '${v['total']}').replaceAll('{2}', '${v['right']}')
-            : kind == 'memory'
-                ? (seq != null ? tr('Memorize a ordem.') : tr('Repita a ordem: {0} de {1}.').replaceAll('{0}', '${v['at']}').replaceAll('{1}', '${v['total']}'))
-                : kind == 'tiles'
-                    ? tr('Faltam {0}.').replaceAll('{0}', '${v['left']}')
-                    : kind == 'switches'
-                        ? tr('Tentativas: {0} · achados: {1} de 2').replaceAll('{0}', '${v['left']}').replaceAll('{1}', '${v['found']}')
-                        : kind == 'maze' && v['hidden'] == true
-                            ? tr('Batidas que ainda aguenta: {0}').replaceAll('{0}', '${v['left']}')
-                            : tr('Jogadas: {0}').replaceAll('{0}', '${v['left']}');
+        : switch (kind) {
+            'quiz' || 'silhouette' => tr('Pergunta {0} de {1} · acertos: {2}').replaceAll('{0}', '${min((v['total'] as num).toInt(), (v['at'] as num).toInt() + 1)}').replaceAll('{1}', '${v['total']}').replaceAll('{2}', '${v['right']}'),
+            'memory' => seq != null ? tr('Memorize a ordem.') : tr('Repita a ordem: {0} de {1}.').replaceAll('{0}', '${v['at']}').replaceAll('{1}', '${v['total']}'),
+            'tiles' => left('Faltam {0}.'),
+            'switches' => tr('Tentativas: {0} · achados: {1} de 2').replaceAll('{0}', '${v['left']}').replaceAll('{1}', '${v['found']}'),
+            'teleport' => tr('Sala {0} de {1} · o líder está na sala {1} · jogadas: {2}').replaceAll('{0}', '${v['room']}').replaceAll('{1}', '${v['rooms']}').replaceAll('{2}', '${v['left']}'),
+            'pairs' => left('Erros que ainda pode: {0}'),
+            'lights' => left('Toques: {0}'),
+            'maze' when v['hidden'] == true => left('Batidas que ainda aguenta: {0}'),
+            _ => left('Jogadas: {0}'),
+          };
     final question = prompt == null
         ? null
-        : tr(_puzzleQuestion[prompt['q']]!).replaceAll('{0}', prompt['q'] == 'typeOf' ? _name(prompt['mon']) : tr(_typePt[prompt['type']] ?? ''));
+        : tr(_puzzleQuestion[prompt['q']]!).replaceAll(
+            '{0}',
+            switch (prompt['q']) {
+              'typeOf' || 'beats' || 'dexNo' || 'evo' => _name(prompt['mon']),
+              'math' => '${prompt['a']} ${prompt['op']} ${prompt['b']}',
+              _ => tr(_typePt[prompt['type']] ?? ''),
+            });
+    final small = rows >= 5 || cells.length > 16;
     Widget cell(int i) {
       final x = cells[i] as Map;
       final code = '${x['c']}';
-      final off = widget.busy || done || (kind == 'memory' && seq != null) || code == 'num' || code == 'hit';
+      final up = x['up'] == true;
+      final off = widget.busy || done || (kind == 'memory' && seq != null) || code == 'num' || code == 'hit' || code == 'pair';
       final (bg, border) = switch (code) {
         'me' => (const Color(0xFFFEF3C7), const Color(0xFFFBBF24)),
-        'goal' => (const Color(0xFFD1FAE5), const Color(0xFF34D399)),
+        'goal' || 'target' || 'pair' => (const Color(0xFFD1FAE5), const Color(0xFF34D399)),
         'wall' || 'rock' => (const Color(0xFF475569), const Color(0xFF64748B)),
+        'boulder' => (const Color(0xFFFCD34D), const Color(0xFFB45309)),
         'done' => (const Color(0xFFBAE6FD), const Color(0xFF7DD3FC)),
+        'dark' || 'off' => (const Color(0xFF0F172A), const Color(0xFF334155)),
+        'on' => (const Color(0xFFFDE68A), const Color(0xFFF59E0B)),
+        'red' => up ? (const Color(0xFFDC2626), const Color(0xFF991B1B)) : (const Color(0xFFFECACA), const Color(0xFFFCA5A5)),
+        'blue' => up ? (const Color(0xFF2563EB), const Color(0xFF1E3A8A)) : (const Color(0xFFBFDBFE), const Color(0xFF93C5FD)),
+        'switch' || 'pad' => (const Color(0xFFE9D5FF), const Color(0xFFA855F7)),
+        'arrow' => (const Color(0xFFE0F2FE), const Color(0xFF38BDF8)),
+        'back' => (const Color(0xFF4338CA), const Color(0xFF312E81)),
         _ => (const Color(0xF2FFFFFF), const Color(0x99FFFFFF)),
       };
       final Widget child = switch (code) {
@@ -4831,18 +4882,22 @@ class _FactoryScreenState extends State<FactoryScreen> {
             if (kind != 'silhouette') SizedBox(width: 26, height: 26, child: PokemonSprite((x['mon'] as num).toInt(), fill: 0.9)),
             Flexible(child: Text(_name(x['mon']), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: _ink))),
           ]),
-        'num' => Text('${x['n']}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: _ink)),
+        'card' || 'pair' => SizedBox(width: 30, height: 30, child: PokemonSprite((x['mon'] as num).toInt(), fill: 0.95)),
+        'num' || 'ans' => Text('${x['n']}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: _ink)),
         'sym' => Text(symbols[(x['n'] as num).toInt()], style: const TextStyle(fontSize: 22)),
-        _ => Text(skin[code] ?? '', style: const TextStyle(fontSize: 18)),
+        'arrow' => Text(_puzzleArrows[(x['n'] as num).toInt()], style: TextStyle(fontSize: small ? 15 : 18)),
+        'pad' => Text('🌀${x['n'] ?? '?'}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: _ink)),
+        'red' || 'blue' => Text(up ? '▮' : '', style: const TextStyle(fontSize: 14, color: Colors.white)),
+        _ => Text(skin[code] ?? '', style: TextStyle(fontSize: small ? 15 : 18)),
       };
       return Material(
         color: bg,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: BorderSide(color: border, width: 2)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(small ? 5 : 8), side: BorderSide(color: border, width: 2)),
         child: InkWell(
           key: ValueKey('puzzle-cell-$i'),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(small ? 5 : 8),
           onTap: off ? null : () => _save(FactoryRun.puzzleAct(run, data, i)),
-          child: Container(constraints: BoxConstraints(minHeight: cells.length > 16 ? 26 : 36), alignment: Alignment.center, padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2), child: child),
+          child: Container(constraints: BoxConstraints(minHeight: kind == 'teleport' ? 44 : small ? 24 : 36), alignment: Alignment.center, padding: const EdgeInsets.all(1), child: child),
         ),
       );
     }
@@ -4851,8 +4906,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
       key: const ValueKey('puzzle'),
       padding: const EdgeInsets.all(8),
       child: Column(mainAxisAlignment: MainAxisAlignment.center, mainAxisSize: MainAxisSize.min, children: [
-        Text('🧩 ${tr(info.$1)}', key: const ValueKey('puzzle-title'), textAlign: TextAlign.center, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: c.text)),
-        Text(tr(info.$2), textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: c.muted)),
+        Text('🧩 ${tr(title)}', key: const ValueKey('puzzle-title'), textAlign: TextAlign.center, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: c.text)),
+        Text(tr(help), key: const ValueKey('puzzle-help'), textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: c.muted)),
         Text(status, key: const ValueKey('puzzle-status'), textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFF59E0B))),
         if (question != null)
           Padding(
@@ -4867,7 +4922,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                       ? PokemonSprite((prompt['mon'] as num).toInt(), fill: 0.9)
                       : ColorFiltered(colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn), child: PokemonSprite((prompt['mon'] as num).toInt(), fill: 0.9)),
                 ),
-              if (prompt['q'] == 'typeOf') SizedBox(width: 48, height: 48, child: PokemonSprite((prompt['mon'] as num).toInt(), fill: 0.9)),
+              if (const ['typeOf', 'beats', 'dexNo', 'evo'].contains(prompt['q'])) SizedBox(width: 48, height: 48, child: PokemonSprite((prompt['mon'] as num).toInt(), fill: 0.9)),
               Flexible(child: Text(question, key: const ValueKey('puzzle-question'), textAlign: TextAlign.center, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: c.text))),
             ]),
           ),
@@ -4879,14 +4934,14 @@ class _FactoryScreenState extends State<FactoryScreen> {
           ),
         const SizedBox(height: 4),
         ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 360),
+          constraints: BoxConstraints(maxWidth: kind == 'teleport' ? 220 : cols >= 6 ? 400 : 340),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             for (var r = 0; r * cols < cells.length; r++)
               Padding(
-                padding: EdgeInsets.only(bottom: cells.length > 16 ? 3 : 4),
+                padding: EdgeInsets.only(bottom: small ? 2 : 4),
                 child: Row(children: [
                   for (var k = 0; k < cols; k++) ...[
-                    if (k > 0) const SizedBox(width: 4),
+                    if (k > 0) SizedBox(width: small ? 2 : 4),
                     Expanded(child: r * cols + k < cells.length ? cell(r * cols + k) : const SizedBox()),
                   ],
                 ]),
@@ -5455,7 +5510,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                 // O desafio do ginásio é obrigatório: no lugar do líder, a carta do desafio (vencendo, o líder aparece).
                 if (FactoryRun.gymLocked(data, run, node)) {
                   final puzzle = FactoryRun.gymPuzzleOf(data, run)!;
-                  return btn('🧩 ${tr('DESAFIO DO GINÁSIO')}: ${tr(_puzzleInfo[puzzle.type]!.$1)}', widget.busy ? null : () => _save(FactoryRun.startPuzzle(run, data)),
+                  return btn('🧩 ${tr('DESAFIO DO GINÁSIO')}: ${tr(FactoryRun.puzzleTitle(puzzle.gym) ?? _puzzleInfo[puzzle.type]!.$1)}', widget.busy ? null : () => _save(FactoryRun.startPuzzle(run, data)),
                       kind: 'event',
                       sub: tr('Obrigatório: vença para enfrentar {0} (e ganhe um prêmio). Perdendo, tenta de novo.').replaceAll('{0}', '${boss['name']}'),
                       key: const ValueKey('town-puzzle'));

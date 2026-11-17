@@ -250,6 +250,11 @@
   "fr": "La Team Star a ses propres raisons... prouvez que vous méritez de savoir !",
   "es": "El Team Star tiene sus motivos... ¡demuestra que mereces saberlos!"
  },
+ "A Escola de Treinadores da Roxanne": {
+  "en": "Roxanne's Trainers' School",
+  "fr": "L'École des Dresseurs de Roxanne",
+  "es": "La Escuela de Entrenadores de Petra"
+ },
  "A Fundação Aether esconde segredos sobre as Ultra Beasts!": {
   "en": "The Aether Foundation hides secrets about the Ultra Beasts!",
   "fr": "La Fondation Æther cache des secrets sur les Ultra-Chimères !",
@@ -295,6 +300,16 @@
   "en": "The sand warms your feet and the sea shines far away.",
   "fr": "Le sable chauffe les pieds et la mer brille au loin.",
   "es": "La arena calienta los pies y el mar brilla a lo lejos."
+ },
+ "A aula do Cheren": {
+  "en": "Cheren's class",
+  "fr": "Le cours de Tcheren",
+  "es": "La clase de Cheren"
+ },
+ "A azeitona da Katy": {
+  "en": "Katy's olive",
+  "fr": "L'olive de Katy",
+  "es": "La aceituna de Araceli"
  },
  "A batalha ainda não começou: espere todos entrarem.": {
   "en": "The battle hasn't started yet: wait for everyone to join.",
@@ -351,10 +366,35 @@
   "fr": "La partie s’est terminée à l’étage {0} : +{1} pièces. Record : étage {2}.",
   "es": "La partida terminó en el piso {0}: +{1} monedas. Récord: piso {2}."
  },
+ "A dança do Miror B.": {
+  "en": "Miror B.'s dance",
+  "fr": "La danse de Miror B.",
+  "es": "El baile de Miror B."
+ },
+ "A dança do Rudy": {
+  "en": "Rudy's dance",
+  "fr": "La danse de Rudy",
+  "es": "El baile de Rudy"
+ },
+ "A dança do fogo do Kiawe": {
+  "en": "Kiawe's fire dance",
+  "fr": "La danse du feu de Kiawe",
+  "es": "La danza del fuego de Kiawe"
+ },
  "A defesa de {0} venceu. O resultado foi enviado.": {
   "en": "{0}'s defense won. The result was sent.",
   "fr": "La défense de {0} a gagné. Le résultat a été envoyé.",
   "es": "La defensa de {0} ganó. El resultado fue enviado."
+ },
+ "A descida de gelo do Danny": {
+  "en": "Danny's ice slide",
+  "fr": "La descente glacée de Danny",
+  "es": "El descenso de hielo de Danny"
+ },
+ "A dupla da Luana": {
+  "en": "Luana's duo",
+  "fr": "Le duo de Luana",
+  "es": "El dúo de Luana"
  },
  "A eletricidade do campo sumiu.": {
   "en": "The electricity disappeared from the battlefield.",
@@ -411,6 +451,11 @@
   "fr": "Le soleil est redevenu normal.",
   "es": "El sol vuelve a brillar como siempre."
  },
+ "A matemática da Fantina": {
+  "en": "Fantina's math",
+  "fr": "Les calculs de Kiméra",
+  "es": "Las cuentas de Fantina"
+ },
  "A melhor vara: na pesca vêm os Pokémon de Água raros.": {
   "en": "The best rod: rare Water Pokémon bite.",
   "fr": "La meilleure canne : les Pokémon Eau rares mordent.",
@@ -425,6 +470,11 @@
   "en": "The same run for everyone this week: see who gets the furthest.",
   "fr": "La même partie pour tout le monde cette semaine : voyez qui va le plus loin.",
   "es": "La misma partida para todos esta semana: mira quién llega más lejos."
+ },
+ "A montanha-russa da Elesa": {
+  "en": "Elesa's roller coaster",
+  "fr": "Les montagnes russes d'Inezia",
+  "es": "La montaña rusa de Camila"
  },
  "A natureza tem paciência... e raízes fortes. Prepare-se!": {
   "en": "Nature is patient... and has strong roots. Get ready!",
@@ -451,15 +501,35 @@
   "fr": "La nuit est tombée 🌙",
   "es": "Llegó la noche 🌙"
  },
+ "A noite em Kitakami Hall": {
+  "en": "Night at Kitakami Hall",
+  "fr": "La nuit au Hall de Kitakami",
+  "es": "La noche en el Salón Kitakami"
+ },
  "A névoa do campo sumiu.": {
   "en": "The mist disappeared from the battlefield.",
   "fr": "La brume a disparu du terrain.",
   "es": "La niebla desapareció del terreno."
  },
+ "A parede de escalada do Grant": {
+  "en": "Grant's climbing wall",
+  "fr": "Le mur d'escalade de Lino",
+  "es": "El muro de escalada de Lino"
+ },
  "A partida acabou.": {
   "en": "The match is over.",
   "fr": "La partie est terminée.",
   "es": "La partida terminó."
+ },
+ "A pista de patins da Korrina": {
+  "en": "Korrina's skating track",
+  "fr": "La piste de patins de Cornélia",
+  "es": "La pista de patines de Corelia"
+ },
+ "A pista de snowboard do Grusha": {
+  "en": "Grusha's snowboard run",
+  "fr": "La piste de snowboard de Grusha",
+  "es": "La pista de snowboard de Grusha"
  },
  "A ponte invisível do Morty": {
   "en": "Morty's invisible bridge",
@@ -471,10 +541,20 @@
   "fr": "La première version n'a pas encore été publiée.",
   "es": "La primera versión aún no se ha publicado."
  },
+ "A prova final do Blue": {
+  "en": "Blue's final exam",
+  "fr": "L'examen final de Blue",
+  "es": "El examen final de Azul"
+ },
  "A sequência terminou com {0} vitórias. Recorde: {1}.": {
   "en": "The streak ended at {0} wins. Record: {1}.",
   "fr": "La série s'arrête à {0} victoires. Record : {1}.",
   "es": "La racha terminó con {0} victorias. Récord: {1}."
+ },
+ "A sessão de fotos da Tulip": {
+  "en": "Tulip's photo shoot",
+  "fr": "La séance photo de Tully",
+  "es": "La sesión de fotos de Tuli"
  },
  "A tempestade de areia continua.": {
   "en": "The sandstorm is raging.",
@@ -674,10 +754,20 @@
   "fr": "On t'a trouvé ! Ces Pokémon vont droit au boss !",
   "es": "¡Te encontramos! ¡Estos Pokémon van directos al jefe!"
  },
+ "Ache o caminho até o líder sem gastar os passos.": {
+  "en": "Find the way to the leader before you run out of steps.",
+  "fr": "Trouvez le chemin jusqu'au champion sans épuiser vos pas.",
+  "es": "Encuentra el camino al líder sin gastar los pasos."
+ },
  "Ache o caminho entre as cercas vivas até a líder, sem gastar os passos.": {
   "en": "Find the way through the hedges to the leader before you run out of steps.",
   "fr": "Trouvez le chemin entre les haies jusqu'à la championne sans épuiser vos pas.",
   "es": "Encuentra el camino entre los setos hasta la líder sin gastar tus pasos."
+ },
+ "Ache os pares virando duas cartas de cada vez, sem errar demais.": {
+  "en": "Find the pairs by flipping two cards at a time, without too many mistakes.",
+  "fr": "Trouvez les paires en retournant deux cartes à la fois, sans trop d'erreurs.",
+  "es": "Encuentra las parejas volteando dos cartas a la vez, sin fallar demasiado."
  },
  "Achei ✨": {
   "en": "Found it ✨",
@@ -1150,10 +1240,65 @@
   "fr": "Les 16 jets de dégâts",
   "es": "Las 16 tiradas de daño"
  },
+ "As barreiras elétricas do Wattson": {
+  "en": "Wattson's electric barriers",
+  "fr": "Les barrières électriques de Voltère",
+  "es": "Las barreras eléctricas de Erico"
+ },
+ "As bolas de neve da Candice": {
+  "en": "Candice's snowballs",
+  "fr": "Les boules de neige de Gladys",
+  "es": "Las bolas de nieve de Inverna"
+ },
  "As chamas do meu ginásio vão testar a sua coragem!": {
   "en": "The flames of my gym will test your courage!",
   "fr": "Les flammes de mon arène vont tester votre courage !",
   "es": "¡Las llamas de mi gimnasio pondrán a prueba tu valor!"
+ },
+ "As comportas da Nessa": {
+  "en": "Nessa's floodgates",
+  "fr": "Les vannes de Donna",
+  "es": "Las compuertas de Cathy"
+ },
+ "As compras do Kofu": {
+  "en": "Kofu's shopping",
+  "fr": "Les courses de Kombu",
+  "es": "Las compras de Fuco"
+ },
+ "As constelações da Olympia": {
+  "en": "Olympia's constellations",
+  "fr": "Les constellations d'Astera",
+  "es": "Las constelaciones de Ástrid"
+ },
+ "As correntes de vento do Falkner": {
+  "en": "Falkner's wind currents",
+  "fr": "Les courants d'air d'Albert",
+  "es": "Las corrientes de viento de Pegaso"
+ },
+ "As correntezas da piscina da Misty": {
+  "en": "Misty's pool currents",
+  "fr": "Les courants de la piscine d'Ondine",
+  "es": "Las corrientes de la piscina de Misty"
+ },
+ "As correntezas de Fall City": {
+  "en": "The Fall City currents",
+  "fr": "Les courants de Fall City",
+  "es": "Las corrientes de Fall City"
+ },
+ "As engrenagens de gelo do Wulfric": {
+  "en": "Wulfric's ice gears",
+  "fr": "Les engrenages de glace d'Urup",
+  "es": "Los engranajes de hielo de Édel"
+ },
+ "As engrenagens de luz do Volkner": {
+  "en": "Volkner's light gears",
+  "fr": "Les engrenages lumineux de Tanguy",
+  "es": "Los engranajes de luz de Lectro"
+ },
+ "As esteiras da Bea": {
+  "en": "Bea's conveyor belts",
+  "fr": "Les tapis roulants de Faïza",
+  "es": "Las cintas de Judith"
  },
  "As esteiras do Byron": {
   "en": "Byron's conveyor belts",
@@ -1165,6 +1310,21 @@
   "fr": "Les statues de dragon de Watson",
   "es": "Las estatuas de dragón de Lirio"
  },
+ "As flores de Crimson": {
+  "en": "The Crimson flowers",
+  "fr": "Les fleurs des Marais Carmin",
+  "es": "Las flores de Carmesí"
+ },
+ "As fotos da Viola": {
+  "en": "Viola's photos",
+  "fr": "Les photos de Violette",
+  "es": "Las fotos de Violeta"
+ },
+ "As lajes da mina do Roark": {
+  "en": "Roark's mine slabs",
+  "fr": "Les dalles de la mine de Pierrick",
+  "es": "Las losas de la mina de Roco"
+ },
  "As lajes do Roark": {
   "en": "Roark's slabs",
   "fr": "Les dalles de Pierrick",
@@ -1175,10 +1335,20 @@
   "fr": "Les poubelles du Major Bob",
   "es": "Los cubos de basura del Teniente Surge"
  },
+ "As luzes do farol da Jasmine": {
+  "en": "Jasmine's lighthouse lights",
+  "fr": "Les lumières du phare de Jasmine",
+  "es": "Las luces del faro de Yasmina"
+ },
  "As luzes estão apagadas. Reconheça a silhueta: acerte 4 de 5.": {
   "en": "The lights are out. Name the silhouette: get 4 of 5 right.",
   "fr": "Les lumières sont éteintes. Reconnaissez la silhouette : 4 bonnes sur 5.",
   "es": "Las luces están apagadas. Reconoce la silueta: acierta 4 de 5."
+ },
+ "As maçãs de Apple Hills": {
+  "en": "The Apple Hills apples",
+  "fr": "Les pommes de la Colline aux Pommes",
+  "es": "Las manzanas de la Colina Manzana"
  },
  "As mensagens somem sozinhas depois de 7 dias.": {
   "en": "Messages disappear on their own after 7 days.",
@@ -1190,6 +1360,16 @@
   "fr": "Les vagues frappent fort ; les Pokémon Eau sont agités.",
   "es": "Las olas golpean fuerte; los Pokémon de Agua están inquietos."
  },
+ "As ondas do Marlon": {
+  "en": "Marlon's waves",
+  "fr": "Les vagues d'Amana",
+  "es": "Las olas de Ciprián"
+ },
+ "As paredes de mel do Burgh": {
+  "en": "Burgh's honey walls",
+  "fr": "Les murs de miel d'Artie",
+  "es": "Las paredes de miel de Camus"
+ },
  "As paredes invisíveis do Koga": {
   "en": "Koga's invisible walls",
   "fr": "Les murs invisibles de Koga",
@@ -1200,10 +1380,70 @@
   "fr": "Les murs restent invisibles jusqu'à ce que vous les heurtiez. Atteignez le champion avec peu de chocs.",
   "es": "Las paredes no aparecen hasta que chocas con ellas. Llega al líder con pocos choques."
  },
+ "As pedras da cachoeira do Chuck": {
+  "en": "Chuck's waterfall boulders",
+  "fr": "Les rochers de la cascade de Chuck",
+  "es": "Las rocas de la cascada de Aníbal"
+ },
+ "As pedras de Obsidian": {
+  "en": "The Obsidian boulders",
+  "fr": "Les rochers d'Obsidienne",
+  "es": "Las rocas de Obsidiana"
+ },
+ "As pedras do Ginásio de Pewter": {
+  "en": "The Pewter Gym boulders",
+  "fr": "Les rochers de l'Arène d'Argenta",
+  "es": "Las rocas del Gimnasio de Plateada"
+ },
+ "As pedras do Oni Mountain": {
+  "en": "The Oni Mountain boulders",
+  "fr": "Les rochers du Mont Oni",
+  "es": "Las rocas del Monte Oni"
+ },
+ "As pedras do cânion da Hapu": {
+  "en": "Hapu's canyon boulders",
+  "fr": "Les rochers du canyon de Paulo",
+  "es": "Las rocas del cañón de Hela"
+ },
+ "As pinturas da Mina": {
+  "en": "Mina's paintings",
+  "fr": "Les peintures de Néa",
+  "es": "Las pinturas de Mina"
+ },
+ "As placas de Boyleland": {
+  "en": "The Boyleland plates",
+  "fr": "Les plaques de Boyleland",
+  "es": "Las placas de Boyleland"
+ },
+ "As plataformas de Tate & Liza": {
+  "en": "Tate & Liza's warp panels",
+  "fr": "Les plateformes de Lévy & Tatia",
+  "es": "Las plataformas de Vito & Leti"
+ },
  "As regras da batalha ainda não foram carregadas": {
   "en": "The battle rules have not loaded yet",
   "fr": "Les règles du combat ne sont pas encore chargées",
   "es": "Las reglas de la batalla aún no se han cargado"
+ },
+ "As rochas do Dakim": {
+  "en": "Dakim's rocks",
+  "fr": "Les rochers de Dakim",
+  "es": "Las rocas de Dakim"
+ },
+ "As ruínas da Olivia": {
+  "en": "Olivia's ruins",
+  "fr": "Les ruines d'Alyxia",
+  "es": "Las ruinas de Mayla"
+ },
+ "As ruínas de Split-Decision": {
+  "en": "The Split-Decision Ruins",
+  "fr": "Les ruines du Choix",
+  "es": "Las ruinas de la Decisión"
+ },
+ "As salas do Norman": {
+  "en": "Norman's rooms",
+  "fr": "Les salles de Norman",
+  "es": "Las salas de Norman"
  },
  "As senhas não são iguais.": {
   "en": "The passwords don't match.",
@@ -1215,10 +1455,30 @@
   "fr": "Les toiles d'Hector",
   "es": "Las telarañas de Antón"
  },
+ "As tocas da Verdant Cavern": {
+  "en": "The Verdant Cavern dens",
+  "fr": "Les terriers de la Grotte Verdoyante",
+  "es": "Las madrigueras de la Gruta Sotobosque"
+ },
+ "As tochas de Faldera": {
+  "en": "The Faldera torches",
+  "fr": "Les torches de Faldera",
+  "es": "Las antorchas de Faldera"
+ },
+ "As trilhas de Sekra": {
+  "en": "The Sekra trails",
+  "fr": "Les sentiers de Sekra",
+  "es": "Los senderos de Sekra"
+ },
  "As versões novas são avisadas ao abrir o app.": {
   "en": "New versions are announced when you open the app.",
   "fr": "Les nouvelles versions sont annoncées à l'ouverture de l'appli.",
   "es": "Las versiones nuevas se avisan al abrir la app."
+ },
+ "As árvores do jardim da Erika": {
+  "en": "Erika's garden trees",
+  "fr": "Les arbres du jardin d'Erika",
+  "es": "Los árboles del jardín de Erika"
  },
  "As árvores fecham o céu; algo se mexe entre as folhas.": {
   "en": "The trees hide the sky; something moves among the leaves.",
@@ -1787,6 +2047,16 @@
   "en": "Each participant needs enough Pokémon for the positions they control.",
   "fr": "Chaque participant a besoin d'assez de Pokémon pour les positions qu'il contrôle.",
   "es": "Cada participante necesita suficientes Pokémon para las posiciones que controla."
+ },
+ "Cada plataforma leva para outra sala (a que você já usou mostra o destino). Ache a sala do líder.": {
+  "en": "Each pad leads to another room (used ones show where they go). Find the leader's room.",
+  "fr": "Chaque plateforme mène à une autre salle (celles déjà utilisées indiquent leur destination). Trouvez la salle du champion.",
+  "es": "Cada plataforma lleva a otra sala (las que ya usaste muestran el destino). Encuentra la sala del líder."
+ },
+ "Cada seta te leva na direção dela até parar. Chegue ao líder.": {
+  "en": "Each arrow carries you its way until you stop. Reach the leader.",
+  "fr": "Chaque flèche vous emporte dans sa direction jusqu'à l'arrêt. Atteignez le champion.",
+  "es": "Cada flecha te lleva en su dirección hasta parar. Llega al líder."
  },
  "Cadeias para {0} aprender {1}": {
   "en": "Chains for {0} to learn {1}",
@@ -3577,6 +3847,11 @@
   "fr": "Deux interrupteurs côte à côte sont cachés dans les poubelles. Le chiffre indique à combien de cases se trouve le plus proche.",
   "es": "Dos interruptores, uno junto al otro, están escondidos en los cubos. El número dice a cuántas casillas está el más cercano."
  },
+ "Dois interruptores, um ao lado do outro, estão escondidos. O número diz a quantas casas está o mais próximo.": {
+  "en": "Two switches, side by side, are hidden. The number tells how many squares away the closest one is.",
+  "fr": "Deux interrupteurs côte à côte sont cachés. Le nombre indique à combien de cases se trouve le plus proche.",
+  "es": "Hay dos interruptores escondidos, uno al lado del otro. El número dice a cuántas casillas está el más cercano."
+ },
  "Dormindo": {
   "en": "Asleep",
   "fr": "Endormi",
@@ -3856,6 +4131,11 @@
   "fr": "Sur qui",
   "es": "¿Contra quién"
  },
+ "Em quem {0} evolui?": {
+  "en": "What does {0} evolve into?",
+  "fr": "En quoi {0} évolue-t-il ?",
+  "es": "¿En qué evoluciona {0}?"
+ },
  "Em {0} te deram {1}!": {
   "en": "In {0} you got the {1}!",
   "fr": "À {0}, on vous a donné {1} !",
@@ -3870,6 +4150,11 @@
   "en": "Tie!",
   "fr": "Égalité !",
   "es": "¡Empate!"
+ },
+ "Empurre a pedra até o alvo: ande até ela e continue na mesma direção.": {
+  "en": "Push the boulder onto the target: walk into it and keep going the same way.",
+  "fr": "Poussez le rocher sur la cible : avancez vers lui et continuez dans la même direction.",
+  "es": "Empuja la roca hasta el objetivo: camina hacia ella y sigue en la misma dirección."
  },
  "Encanto e poder: não se engane com a aparência!": {
   "en": "Charm and power: don't be fooled by looks!",
@@ -4145,6 +4430,11 @@
   "en": "Error: {0}",
   "fr": "Erreur : {0}",
   "es": "Error: {0}"
+ },
+ "Erros que ainda pode: {0}": {
+  "en": "Mistakes left: {0}",
+  "fr": "Erreurs restantes : {0}",
+  "es": "Fallos que te quedan: {0}"
  },
  "Errou!": {
   "en": "Wrong!",
@@ -4630,6 +4920,11 @@
   "en": "It's dark inside: without Flash you may find nothing.",
   "fr": "Il fait noir dedans : sans Flash, vous risquez de ne rien trouver.",
   "es": "Está oscuro dentro: sin Destello puede que no encuentres nada."
+ },
+ "Está escuro: você só vê em volta de onde já passou. Chegue ao líder sem gastar os passos.": {
+  "en": "It's dark: you only see around where you've been. Reach the leader before you run out of steps.",
+  "fr": "Il fait noir : vous ne voyez qu'autour de là où vous êtes passé. Atteignez le champion sans épuiser vos pas.",
+  "es": "Está oscuro: solo ves alrededor de donde ya pasaste. Llega al líder sin gastar los pasos."
  },
  "Estágio": {
   "en": "Stage",
@@ -6296,6 +6591,11 @@
   "fr": "Mémorisez l'ordre des coups et répétez-le sans erreur.",
   "es": "Memoriza el orden de los golpes y repítelo sin fallar."
  },
+ "Memorize a ordem e repita sem errar.": {
+  "en": "Memorize the order and repeat it without mistakes.",
+  "fr": "Mémorisez l'ordre et répétez-le sans erreur.",
+  "es": "Memoriza el orden y repítelo sin errores."
+ },
  "Memorize a ordem.": {
   "en": "Memorize the order.",
   "fr": "Mémorisez l'ordre.",
@@ -7532,6 +7832,11 @@
   "fr": "L'adversaire va envoyer un autre Pokémon. Voulez-vous changer de Pokémon ?",
   "es": "El rival va a sacar otro Pokémon. ¿Quieres cambiar de Pokémon?"
  },
+ "O altar do Calyrex": {
+  "en": "Calyrex's altar",
+  "fr": "L'autel de Sylveroy",
+  "es": "El altar de Calyrex"
+ },
  "O alvo acabou de entrar": {
   "en": "The target just switched in",
   "fr": "La cible vient d'entrer",
@@ -7622,6 +7927,11 @@
   "fr": "Le canon vous propulse tout droit jusqu'au mur. Atteignez la championne.",
   "es": "El cañón te dispara en línea recta hasta la pared. Llega a la líder."
  },
+ "O cardápio do Cilan": {
+  "en": "Cilan's menu",
+  "fr": "Le menu de Rachid",
+  "es": "El menú de Millo"
+ },
  "O cartão com o Pokémon do dia em cima da Pokédex. Vale no app também (lá, em Editar no Início).": {
   "en": "The Pokémon of the day card above the Pokédex. Also applies in the app (there, in Edit on Home).",
   "fr": "La carte du Pokémon du jour au-dessus du Pokédex. Vaut aussi dans l'app (là, dans Modifier sur l'accueil).",
@@ -7647,6 +7957,11 @@
   "fr": "Le boss vous attend",
   "es": "El jefe te espera"
  },
+ "O chão que desaba da Flannery": {
+  "en": "Flannery's crumbling floor",
+  "fr": "Le sol qui s'effondre d'Adriane",
+  "es": "El suelo que se derrumba de Candela"
+ },
  "O chão treme e a lava borbulha por perto.": {
   "en": "The ground shakes and lava bubbles nearby.",
   "fr": "Le sol tremble et la lave bouillonne tout près.",
@@ -7656,6 +7971,11 @@
   "en": "The ground turned into quicksand!",
   "fr": "Le sol s'est changé en sables mouvants !",
   "es": "¡El suelo se volvió arenas movedizas!"
+ },
+ "O clima do Raihan": {
+  "en": "Raihan's weather",
+  "fr": "La météo de Roy",
+  "es": "El clima de Roy"
  },
  "O computador joga pelo adversário. Golpes com PP, precisão, prioridade, crítico, status, mudanças de atributo e clima.": {
   "en": "The computer plays for the opponent. Moves with PP, accuracy, priority, critical hits, status, stat changes and weather.",
@@ -7667,20 +7987,55 @@
   "fr": "L'ordinateur joue pour lui",
   "es": "La computadora juega por él"
  },
+ "O cânion da Amarys": {
+  "en": "Amarys's canyon",
+  "fr": "Le canyon d'Amarys",
+  "es": "El cañón de Amarys"
+ },
  "O dele é mais rápido.": {
   "en": "Theirs is faster.",
   "fr": "Le sien est plus rapide.",
   "es": "El suyo es más rápido."
+ },
+ "O desafio de fogo do Kabu": {
+  "en": "Kabu's fire challenge",
+  "fr": "Le défi du feu de Kabu",
+  "es": "El desafío de fuego de Naboru"
  },
  "O desafio de hoje já está valendo. Quem é esse Pokémon?": {
   "en": "Today's challenge is live. Who's that Pokémon?",
   "fr": "Le défi du jour est lancé. Quel est ce Pokémon ?",
   "es": "El reto de hoy ya está en marcha. ¿Quién es ese Pokémon?"
  },
+ "O desafio do Crispin": {
+  "en": "Crispin's challenge",
+  "fr": "Le défi de Rubépin",
+  "es": "El desafío de Rubén"
+ },
+ "O desafio do Drayton": {
+  "en": "Drayton's challenge",
+  "fr": "Le défi de Drayton",
+  "es": "El desafío de Drayton"
+ },
+ "O dojo do Kubfu": {
+  "en": "The Kubfu dojo",
+  "fr": "Le dojo de Wushours",
+  "es": "El dojo de Kubfu"
+ },
  "O draft já acabou.": {
   "en": "The draft is already over.",
   "fr": "Le draft est déjà terminé.",
   "es": "El draft ya terminó."
+ },
+ "O gelo de Alabaster": {
+  "en": "The Alabaster ice",
+  "fr": "La glace d'Albâtre",
+  "es": "El hielo de Alabastro"
+ },
+ "O gelo de Wintown": {
+  "en": "The Wintown ice",
+  "fr": "La glace de Wintown",
+  "es": "El hielo de Wintown"
  },
  "O gelo do Pryce": {
   "en": "Pryce's ice",
@@ -7691,6 +8046,11 @@
   "en": "The ice cracks underfoot; careful not to slip.",
   "fr": "La glace craque sous les pieds ; attention à ne pas glisser.",
   "es": "El hielo cruje bajo los pies; cuidado con resbalar."
+ },
+ "O ginásio escuro do Brawly": {
+  "en": "Brawly's dark gym",
+  "fr": "L'arène obscure de Bastien",
+  "es": "El gimnasio oscuro de Marcial"
  },
  "O granizo continua.": {
   "en": "Hail continues to fall.",
@@ -7716,6 +8076,16 @@
   "en": "Erika's garden",
   "fr": "Le jardin d'Erika",
   "es": "El jardín de Erika"
+ },
+ "O labirinto de flores da Whitney": {
+  "en": "Whitney's flower maze",
+  "fr": "Le labyrinthe fleuri de Blanche",
+  "es": "El laberinto de flores de Blanca"
+ },
+ "O laboratório do Ein": {
+  "en": "Ein's lab",
+  "fr": "Le labo d'Ein",
+  "es": "El laboratorio de Ein"
  },
  "O lendário da região espera aqui. Dá para capturar.": {
   "en": "The region's legend waits here. You can catch it.",
@@ -7757,6 +8127,11 @@
   "fr": "Le nom peut avoir au maximum {0} lettres.",
   "es": "El nombre puede tener como máximo {0} letras."
  },
+ "O nível da água do Wake": {
+  "en": "Wake's water level",
+  "fr": "Le niveau de l'eau de Lovis",
+  "es": "El nivel del agua de Mananti"
+ },
  "O ovo da Creche chocou: é um {0}!": {
   "en": "The Day Care egg hatched: it's a {0}!",
   "fr": "L'œuf de la Pension a éclos : c'est un {0} !",
@@ -7768,10 +8143,25 @@
   "es": "¡El huevo misterioso eclosionó: es un {0}!",
   "pt": "O ovo misterioso chocou: é um {0}!"
  },
+ "O pedido do Larry": {
+  "en": "Larry's order",
+  "fr": "La commande d'Okuba",
+  "es": "El pedido de Laureano"
+ },
+ "O piso de gelo de Sootopolis": {
+  "en": "The Sootopolis ice floor",
+  "fr": "Le sol de glace d'Atalanopolis",
+  "es": "El suelo de hielo de Arrecípolis"
+ },
  "O piso de gelo do Juan": {
   "en": "Juan's ice floor",
   "fr": "Le sol de glace de Juan",
   "es": "El suelo de hielo de Galano"
+ },
+ "O poder psíquico do Avery": {
+  "en": "Avery's psychic power",
+  "fr": "Le pouvoir psychique d'Avery",
+  "es": "El poder psíquico de Avery"
  },
  "O principal tem o efeito de verdade; os outros dão só uma porcentagem pequena no atributo. Toque num extra para ele virar o principal.": {
   "en": "The main item has its real effect; the others only give a small percentage to the stat. Tap an extra to make it the main one.",
@@ -7783,6 +8173,11 @@
   "fr": "Le marais sent le poison et la boue retient vos pas.",
   "es": "El pantano huele a veneno y el barro atrapa los pasos."
  },
+ "O pântano da Klara": {
+  "en": "Klara's swamp",
+  "fr": "Le marais de Klara",
+  "es": "El pantano de Klara"
+ },
  "O que": {
   "en": "What will",
   "fr": "Que va faire",
@@ -7792,6 +8187,11 @@
   "en": "What each ability does and who has it",
   "fr": "Ce que fait chaque talent et qui l'a",
   "es": "Qué hace cada habilidad y quién la tiene"
+ },
+ "O quiz da Lacey": {
+  "en": "Lacey's quiz",
+  "fr": "Le quiz de Lacey",
+  "es": "El quiz de Lacey"
  },
  "O quiz da Opal": {
   "en": "Opal's quiz",
@@ -7803,6 +8203,16 @@
   "fr": "Le quiz d'Auguste",
   "es": "El concurso de Blaine"
  },
+ "O quiz do robô do Clemont": {
+  "en": "Clemont's robot quiz",
+  "fr": "Le quiz du robot de Lem",
+  "es": "El quiz del robot de Lem"
+ },
+ "O relógio de flores da Gardenia": {
+  "en": "Gardenia's flower clock",
+  "fr": "L'horloge fleurie de Flo",
+  "es": "El reloj de flores de Gardenia"
+ },
  "O replay não pôde continuar daqui (os dados mudaram desde a batalha).": {
   "en": "The replay couldn't continue from here (the data changed since the battle).",
   "fr": "Le replay n'a pas pu continuer (les données ont changé depuis le combat).",
@@ -7813,10 +8223,25 @@
   "fr": "Le reste de l'équipe gagne de l'XP grâce au Multi Exp !",
   "es": "¡El resto del equipo ganó XP con el Repartir Exp.!"
  },
+ "O ritmo da Ryme": {
+  "en": "Ryme's rhythm",
+  "fr": "Le rythme de Laïm",
+  "es": "El ritmo de Lima"
+ },
+ "O ritual do Kahuna Hala": {
+  "en": "Kahuna Hala's ritual",
+  "fr": "Le rituel du Doyen Pectorius",
+  "es": "El ritual del kahuna Kaudan"
+ },
  "O rosto dele vira a sua foto de perfil.": {
   "en": "Their face becomes your profile photo.",
   "fr": "Son visage devient ta photo de profil.",
   "es": "Su cara será tu foto de perfil."
+ },
+ "O set de filmagem gelado do Brycen": {
+  "en": "Brycen's frozen film set",
+  "fr": "Le plateau de tournage gelé de Zhu",
+  "es": "El plató helado de Junco"
  },
  "O seu rival te seguiu pela rota: quer ver quem ficou mais forte (prêmio maior).": {
   "en": "Your rival followed you down the route: they want to see who got stronger (bigger prize).",
@@ -7838,6 +8263,21 @@
   "fr": "Le vôtre est plus rapide.",
   "es": "El tuyo es más rápido."
  },
+ "O show da Roxie": {
+  "en": "Roxie's concert",
+  "fr": "Le concert de Strykna",
+  "es": "El concierto de Hiedra"
+ },
+ "O show da Venus": {
+  "en": "Venus's show",
+  "fr": "Le show de Venus",
+  "es": "El show de Venus"
+ },
+ "O show do Piers": {
+  "en": "Piers's concert",
+  "fr": "Le concert de Peterson",
+  "es": "El concierto de Nerio"
+ },
  "O site fica na cor do Pokémon e o desenho dele aparece no fundo. Vale no app também.": {
   "en": "The site takes the Pokémon's color and its drawing appears in the background. Works in the app too.",
   "fr": "Le site prend la couleur du Pokémon et son dessin apparaît en fond. Valable aussi dans l'app.",
@@ -7848,10 +8288,30 @@
   "fr": "Le soleil brûle et le sable efface les traces.",
   "es": "El sol quema y la arena borra las huellas."
  },
+ "O supermercado escuro do Nanu": {
+  "en": "Nanu's dark supermarket",
+  "fr": "Le supermarché obscur de Danh",
+  "es": "El supermercado oscuro de Denio"
+ },
  "O tema muda sozinho todo dia para o Pokémon do dia.": {
   "en": "The theme changes on its own every day to the Pokémon of the day.",
   "fr": "Le thème change tout seul chaque jour pour le Pokémon du jour.",
   "es": "El tema cambia solo cada día al Pokémon del día."
+ },
+ "O teste da Wendy": {
+  "en": "Wendy's test",
+  "fr": "Le test de Wendy",
+  "es": "La prueba de Wendy"
+ },
+ "O teste do Gideon": {
+  "en": "Gideon's test",
+  "fr": "Le test de Gideon",
+  "es": "La prueba de Gideon"
+ },
+ "O teste do Nascour": {
+  "en": "Nascour's test",
+  "fr": "Le test de Nascour",
+  "es": "La prueba de Nascour"
  },
  "O time não tem golpes super efetivos (STAB) contra {0} tipos.": {
   "en": "The team has no super effective moves (STAB) against {0} types.",
@@ -7877,6 +8337,16 @@
   "en": "The wind sways the tall grass: Pokémon are everywhere.",
   "fr": "Le vent agite les hautes herbes : il y a des Pokémon partout.",
   "es": "El viento mece la hierba alta: hay Pokémon por todas partes."
+ },
+ "O vulcão de Summerland": {
+  "en": "The Summerland volcano",
+  "fr": "Le volcan de Summerland",
+  "es": "El volcán de Summerland"
+ },
+ "O vulcão escuro de Cobalt": {
+  "en": "The dark Cobalt volcano",
+  "fr": "Le volcan obscur de Cobalt",
+  "es": "El volcán oscuro de Cobalto"
  },
  "OK": {
   "en": "OK",
@@ -7963,6 +8433,21 @@
   "fr": "Les Pokémon bougent, style Noir & Blanc.",
   "es": "Los Pokémon se mueven, estilo Blanco y Negro."
  },
+ "Os Sunflora escondidos do Brassius": {
+  "en": "Brassius's hidden Sunflora",
+  "fr": "Les Héliatronc cachés de Colza",
+  "es": "Los Sunflora escondidos de Brais"
+ },
+ "Os Wooloo do Milo": {
+  "en": "Milo's Wooloo",
+  "fr": "Les Moumouton de Percy",
+  "es": "Los Wooloo de Percy"
+ },
+ "Os alvos da Cissy": {
+  "en": "Cissy's targets",
+  "fr": "Les cibles de Cissy",
+  "es": "Los blancos de Cissy"
+ },
  "Os amigos batalham contra ele quando quiserem, com o computador jogando por você.": {
   "en": "Friends battle against it whenever they want, with the computer playing for you.",
   "fr": "Tes amis l'affrontent quand ils veulent, l'ordinateur jouant pour toi.",
@@ -7983,25 +8468,90 @@
   "fr": "Les bambous craquent au vent et la lumière entre en rayons.",
   "es": "El bambú cruje con el viento y la luz entra en franjas."
  },
+ "Os buracos do Gordie": {
+  "en": "Gordie's pits",
+  "fr": "Les trous de Chaz",
+  "es": "Los agujeros de Morris"
+ },
  "Os canhões da Skyla": {
   "en": "Skyla's cannons",
   "fr": "Les canons de Carolina",
   "es": "Los cañones de Gerania"
+ },
+ "Os cipós do Ramos": {
+  "en": "Ramos's vines",
+  "fr": "Les lianes d'Amaro",
+  "es": "Las lianas de Amaro"
+ },
+ "Os disfarces da Janine": {
+  "en": "Janine's disguises",
+  "fr": "Les déguisements de Jeannine",
+  "es": "Los disfraces de Sachiko"
  },
  "Os dragões só respeitam quem é forte de verdade!": {
   "en": "Dragons only respect the truly strong!",
   "fr": "Les dragons ne respectent que les vrais forts !",
   "es": "¡Los dragones solo respetan a los realmente fuertes!"
  },
+ "Os elevadores do Byron": {
+  "en": "Byron's elevators",
+  "fr": "Les ascenseurs de Charles",
+  "es": "Los ascensores de Acero"
+ },
+ "Os esconderijos de Pueltown": {
+  "en": "The Pueltown hideouts",
+  "fr": "Les cachettes de Pueltown",
+  "es": "Los escondites de Pueltown"
+ },
+ "Os esconderijos de Three Island": {
+  "en": "The Three Island hideouts",
+  "fr": "Les cachettes de l'Île 3",
+  "es": "Los escondites de Isla Tres"
+ },
+ "Os espelhos da Valerie": {
+  "en": "Valerie's mirrors",
+  "fr": "Les miroirs de Valériane",
+  "es": "Los espejos de Valeria"
+ },
+ "Os geradores do Sophocles": {
+  "en": "Sophocles's generators",
+  "fr": "Les générateurs de Chrys",
+  "es": "Los generadores de Chris"
+ },
+ "Os geradores do observatório": {
+  "en": "The observatory generators",
+  "fr": "Les générateurs de l'observatoire",
+  "es": "Los generadores del observatorio"
+ },
  "Os grandes marcos, cada um com o desenho de um Pokémon.": {
   "en": "The big milestones, each with a Pokémon drawing.",
   "fr": "Les grandes étapes, chacune avec le dessin d'un Pokémon.",
   "es": "Los grandes hitos, cada uno con el dibujo de un Pokémon."
  },
+ "Os ingredientes da Mallow": {
+  "en": "Mallow's ingredients",
+  "fr": "Les ingrédients de Barbara",
+  "es": "Los ingredientes de Lulú"
+ },
+ "Os interruptores trocam as barreiras: sobem as vermelhas e descem as azuis (ou o contrário). Chegue ao líder.": {
+  "en": "Switches flip the barriers: red ones rise and blue ones drop (or the other way). Reach the leader.",
+  "fr": "Les interrupteurs inversent les barrières : les rouges montent et les bleues descendent (ou l'inverse). Atteignez le champion.",
+  "es": "Los interruptores cambian las barreras: suben las rojas y bajan las azules (o al revés). Llega al líder."
+ },
  "Os ladrilhos giratórios do Giovanni": {
   "en": "Giovanni's spin tiles",
   "fr": "Les dalles tournantes de Giovanni",
   "es": "Las baldosas giratorias de Giovanni"
+ },
+ "Os ladrilhos-dragão sobre a lava da Clair": {
+  "en": "Clair's dragon tiles over lava",
+  "fr": "Les dalles-dragons sur la lave de Sandra",
+  "es": "Las baldosas dragón sobre la lava de Débora"
+ },
+ "Os livros da biblioteca da Lenora": {
+  "en": "Lenora's library books",
+  "fr": "Les livres de la bibliothèque d'Aloé",
+  "es": "Los libros de la biblioteca de Aloe"
  },
  "Os maiores recordes no modo Ranked.": {
   "en": "The highest records in Ranked mode.",
@@ -8033,6 +8583,21 @@
   "fr": "Les habitants parlent d'un Pokémon légendaire qui vit dans cette région...",
   "es": "Los lugareños hablan de un Pokémon legendario que vive en esta región..."
  },
+ "Os portais de Renbow": {
+  "en": "The Renbow portals",
+  "fr": "Les portails de Renbow",
+  "es": "Los portales de Renbow"
+ },
+ "Os portões do Altru Building": {
+  "en": "The Altru Building gates",
+  "fr": "Les portes de l'Altru Building",
+  "es": "Las puertas del Altru Building"
+ },
+ "Os portões giratórios da Winona": {
+  "en": "Winona's turnstiles",
+  "fr": "Les tourniquets d'Alizée",
+  "es": "Los torniquetes de Alana"
+ },
  "Os prêmios daqui (as fichas ficam com você a corrida toda):": {
   "en": "The prizes here (coins stay with you for the whole run):",
   "fr": "Les prix d'ici (les jetons restent avec vous toute la partie) :",
@@ -8048,6 +8613,11 @@
   "fr": "Ceux que j'ai vus",
   "es": "Los que ya vi"
  },
+ "Os respingos do Brooklet Hill": {
+  "en": "The Brooklet Hill splashes",
+  "fr": "Les éclaboussures de la Colline Clapotis",
+  "es": "Las salpicaduras de la Colina Saltagua"
+ },
  "Os sacos de pancada da Maylene": {
   "en": "Maylene's punching bags",
   "fr": "Les sacs de frappe de Mélina",
@@ -8058,6 +8628,11 @@
   "fr": "Tes Pokémon seraient très utiles à nos plans...",
   "es": "Tus Pokémon serían muy útiles para nuestros planes..."
  },
+ "Os símbolos de Mitonga": {
+  "en": "The Mitonga symbols",
+  "fr": "Les symboles de Mitonga",
+  "es": "Los símbolos de Mitonga"
+ },
  "Os teleportes da Sabrina": {
   "en": "Sabrina's warp panels",
   "fr": "Les téléporteurs de Morgane",
@@ -8067,6 +8642,21 @@
   "en": "The official teams from the games: each Pokémon's level, moves, item, IVs, EVs, nature and ability, in every fight.",
   "fr": "Les équipes officielles des jeux : niveau, capacités, objet, IV, EV, nature et talent de chaque Pokémon, dans tous les combats.",
   "es": "Los equipos oficiales de los juegos: nivel, movimientos, objeto, IV, EV, naturaleza y habilidad de cada Pokémon, en todos los combates."
+ },
+ "Os trilhos de teia do Bugsy": {
+  "en": "Bugsy's web tracks",
+  "fr": "Les rails de toile d'Hector",
+  "es": "Los raíles de telaraña de Antón"
+ },
+ "Os trilhos do Ingo": {
+  "en": "Ingo's tracks",
+  "fr": "Les rails d'Ingo",
+  "es": "Los raíles de Ingo"
+ },
+ "Os vagões da mina do Clay": {
+  "en": "Clay's mine carts",
+  "fr": "Les wagonnets de la mine de Bardane",
+  "es": "Las vagonetas de la mina de Yakón"
  },
  "Ou mande para um amigo:": {
   "en": "Or send it to a friend:",
@@ -8400,6 +8990,11 @@
   "fr": "Physique",
   "es": "Físico",
   "pt": "Físico"
+ },
+ "Pise em todas as casas uma única vez: pisar de novo faz desabar.": {
+  "en": "Step on every square only once: stepping again makes it collapse.",
+  "fr": "Marchez une seule fois sur chaque case : y revenir la fait s'effondrer.",
+  "es": "Pisa cada casilla una sola vez: volver a pisarla la derrumba."
  },
  "Pise em todas as lajes uma única vez: pisar de novo faz desmoronar.": {
   "en": "Step on every slab exactly once: stepping twice makes it collapse.",
@@ -8929,10 +9524,20 @@
   "fr": "Quelle attaque oublie-t-il ? (Même une CS ; c'est définitif.)",
   "es": "¿Qué movimiento olvida? (Incluso una MO; no se puede deshacer.)"
  },
+ "Qual tipo vence {0}?": {
+  "en": "Which type beats {0}?",
+  "fr": "Quel type bat {0} ?",
+  "es": "¿Qué tipo vence a {0}?"
+ },
  "Qual tipo é super efetivo contra {0}?": {
   "en": "Which type is super effective against {0}?",
   "fr": "Quel type est super efficace contre {0} ?",
   "es": "¿Qué tipo es súper eficaz contra {0}?"
+ },
+ "Qual é o número de {0} na Pokédex?": {
+  "en": "What is {0}'s Pokédex number?",
+  "fr": "Quel est le numéro de {0} dans le Pokédex ?",
+  "es": "¿Cuál es el número de {0} en la Pokédex?"
  },
  "Qual é um dos tipos de {0}?": {
   "en": "What is one of {0}'s types?",
@@ -8964,6 +9569,11 @@
   "fr": "Les dégâts d'une capacité et qui gagne en 1 contre 1",
   "es": "Cuánto quita un movimiento y quién gana 1 contra 1"
  },
+ "Quanto é {0}?": {
+  "en": "What is {0}?",
+  "fr": "Combien font {0} ?",
+  "es": "¿Cuánto es {0}?"
+ },
  "Quantos Pokémon acertam cada tipo com dano super efetivo usando golpes do próprio tipo (STAB).": {
   "en": "How many Pokémon hit each type super effectively using moves of their own type (STAB).",
   "fr": "Combien de Pokémon touchent chaque type de façon super efficace avec des attaques de leur propre type (STAB).",
@@ -8993,6 +9603,11 @@
   "en": "Attackers using contact moves lose 1/6 of their HP",
   "fr": "Qui touche avec une capacité de contact perd 1/6 de ses PV",
   "es": "Quien golpea con un movimiento de contacto pierde 1/6 de sus PS"
+ },
+ "Quem apareceu na live da Iono?": {
+  "en": "Who showed up on Iono's stream?",
+  "fr": "Qui est apparu dans le live de Mashynn?",
+  "es": "¿Quién salió en el directo de e-Nigma?"
  },
  "Quem ataca primeiro, com Scarf, Tailwind e Trick Room": {
   "en": "Who moves first, with Scarf, Tailwind and Trick Room",
@@ -9179,6 +9794,11 @@
   "en": "Name the silhouette: get 4 of 5 right.",
   "fr": "Reconnaissez la silhouette : 4 bonnes sur 5.",
   "es": "Reconoce la silueta: acierta 4 de 5."
+ },
+ "Reconheça a silhueta: acerte {0} de {1}.": {
+  "en": "Recognize the silhouette: get {0} of {1} right.",
+  "fr": "Reconnaissez la silhouette : {0} bonnes réponses sur {1}.",
+  "es": "Reconoce la silueta: acierta {0} de {1}."
  },
  "Recorde": {
   "en": "Record",
@@ -9411,6 +10031,11 @@
   "fr": "Répondez aux questions du champion : 4 bonnes sur 5.",
   "es": "Responde las preguntas del líder: acierta 4 de 5."
  },
+ "Responda as perguntas do líder: acerte {0} de {1}.": {
+  "en": "Answer the leader's questions: get {0} of {1} right.",
+  "fr": "Répondez aux questions du champion : {0} bonnes réponses sur {1}.",
+  "es": "Responde las preguntas del líder: acierta {0} de {1}."
+ },
  "Restam {0} nesta corrida": {
   "en": "{0} left this run",
   "fr": "Il en reste {0} pour cette course",
@@ -9585,6 +10210,11 @@
   "en": "Sakura",
   "fr": "Sakura",
   "es": "Sakura"
+ },
+ "Sala {0} de {1} · o líder está na sala {1} · jogadas: {2}": {
+  "en": "Room {0} of {1} · the leader is in room {1} · moves: {2}",
+  "fr": "Salle {0} sur {1} · le champion est en salle {1} · coups : {2}",
+  "es": "Sala {0} de {1} · el líder está en la sala {1} · jugadas: {2}"
  },
  "Salvar meu time": {
   "en": "Save my team",
@@ -10703,6 +11333,11 @@
   "fr": "En jouant de la Pokéflûte",
   "es": "Tocando la Poké Flauta"
  },
+ "Tocar acende ou apaga a casa e as vizinhas. Acenda todas.": {
+  "en": "Tapping turns a square and its neighbors on or off. Light them all.",
+  "fr": "Toucher allume ou éteint la case et ses voisines. Allumez-les toutes.",
+  "es": "Tocar enciende o apaga la casilla y sus vecinas. Enciéndelas todas."
+ },
  "Todas": {
   "en": "All",
   "fr": "Toutes",
@@ -10802,6 +11437,11 @@
   "en": "Tap: use · Hold: details",
   "fr": "Touche : utiliser · Maintiens : détails",
   "es": "Toca: usar · Mantén: detalles"
+ },
+ "Toques: {0}": {
+  "en": "Taps: {0}",
+  "fr": "Touches : {0}",
+  "es": "Toques: {0}"
  },
  "Torre": {
   "en": "Tower",
@@ -11894,6 +12534,11 @@
   "en": "You're in: {0} floors and a boss at the end. Then back to the city.",
   "fr": "Vous êtes entré : {0} étages et un chef à la fin. Ensuite, retour en ville.",
   "es": "Has entrado: {0} pisos y un jefe al final. Después, de vuelta a la ciudad."
+ },
+ "Você escorrega até bater numa pedra. Chegue ao líder.": {
+  "en": "You slide until you hit a rock. Reach the leader.",
+  "fr": "Vous glissez jusqu'à heurter un rocher. Atteignez le champion.",
+  "es": "Te deslizas hasta chocar con una roca. Llega al líder."
  },
  "Você ficou forte de verdade... mas eu não desisto.": {
   "en": "You've gotten really strong... but I won't give up.",

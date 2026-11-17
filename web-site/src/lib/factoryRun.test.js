@@ -9,7 +9,7 @@ import {
   placeInfo, routeInfo, DBOSS_GIMMICK_FLOOR, UPGRADE_FX, SHORE, CAVE_OF, dungeonPos, routePos, DUNGEON_LENGTH, CITY_BOSS, waterNext, RIVAL_FLOOR, targetOf, rivalBoss, rocketBoss, townShop, townCenter, townHub, biomesLinked,
   isDoubleBattle,
   DOUBLE_FLOOR,
-  battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, RARE_PLACES, atPc, pcOf, pcMove, pcSlots, PC_BOX, boxName, renameBox, boxWall, nextWall, setNick, gameOf, leagueAhead, rivalGrowth, sortBox, shownScene, bagsFor, NUZLOCKE_DEFAULT, levelCapOf, EXP_BENCH, benchShare, TRADE_EXP, TRADE_EVOS, familyOf, townTrade, townTradeable, featuresOf, climateOf, RODS, rodOf, fishPath, headbuttPath, slatherHoney, honeyReady, honeyPath, TREE_MONS, HONEY_FLOORS, plantBerry, harvestBerry, BERRIES, BERRY_FLOORS, BERRY_RAIN_FLOORS, BERRY_YIELD, bikePath, bikeUses, FERRY, HORDE_SIZE, HORDE_FLOOR, SKY_FIELDS, FIELD_TYPES, takePhoto, photoNow, PHOTO_MAX, GYM_PUZZLES, SUPER_EFFECTIVE, gymPuzzleOf, startPuzzle, puzzleAct, finishPuzzle, puzzleView, puzzleOfType, PUZZLE_MONEY, GYM_EDGE_LEVELS, priceScale, inTown, isCity, townScene, WEATHER_TYPES, SAND_SCENES, SNOW_SCENES, SCENE_WEATHER, OPEN_SCENES, waterReach, hasWaterfall, WATER_REACH, daycareHere, daycareOpen, rarePlacesOf, SECRET_BIOMES, PLACE_SCENES, hasKey, KEY_ITEMS, placeLegendOf, blockerOf, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, forgetMove, reminderCost, SAFARI_FEE, SAFARI_BALLS, SAFARI_ENCOUNTERS, SAFARI_MONS, safariRates, safariAct, safariPool, leaveSafari, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
+  battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, RARE_PLACES, atPc, pcOf, pcMove, pcSlots, PC_BOX, boxName, renameBox, boxWall, nextWall, setNick, gameOf, leagueAhead, rivalGrowth, sortBox, shownScene, bagsFor, NUZLOCKE_DEFAULT, levelCapOf, EXP_BENCH, benchShare, TRADE_EXP, TRADE_EVOS, familyOf, townTrade, townTradeable, featuresOf, climateOf, RODS, rodOf, fishPath, headbuttPath, slatherHoney, honeyReady, honeyPath, TREE_MONS, HONEY_FLOORS, plantBerry, harvestBerry, BERRIES, BERRY_FLOORS, BERRY_RAIN_FLOORS, BERRY_YIELD, bikePath, bikeUses, FERRY, HORDE_SIZE, HORDE_FLOOR, SKY_FIELDS, FIELD_TYPES, takePhoto, photoNow, PHOTO_MAX, GYM_PUZZLES, GYM_CHALLENGES, SUPER_EFFECTIVE, gymPuzzleOf, startPuzzle, puzzleAct, finishPuzzle, puzzleView, puzzleOfType, PUZZLE_MONEY, GYM_EDGE_LEVELS, priceScale, inTown, isCity, townScene, WEATHER_TYPES, SAND_SCENES, SNOW_SCENES, SCENE_WEATHER, OPEN_SCENES, waterReach, hasWaterfall, WATER_REACH, daycareHere, daycareOpen, rarePlacesOf, SECRET_BIOMES, PLACE_SCENES, hasKey, KEY_ITEMS, placeLegendOf, blockerOf, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, forgetMove, reminderCost, SAFARI_FEE, SAFARI_BALLS, SAFARI_ENCOUNTERS, SAFARI_MONS, safariRates, safariAct, safariPool, leaveSafari, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
   HELD_BOOST, levelTo, MAX_TEAM, memberOf, movesAt, nextFloor, nextRandom, overflowPoints, pokemonPrice, runCoins, setMainItem, shopPrice,
   SHINY_BOOST, FOE_SHINY_BOOST, SHINY_CHANCE, START_BAG, START_BALLS, startersOf, unlockShiny, claimStarter, freePick, canEvolveWith, teachMove,
   equipFromStash, gimmicksOf, setGimmick, storyLine, startRun, takeCard, teamDown, applyBagItem, winFloor, chooseNode as chooseNodeRaw, routeOptions, gymLocked, routeCities,
@@ -1885,52 +1885,63 @@ describe('pesca, árvores, frutas, bicicleta, balsa, hordas, neblina, fotos e os
     expect(Object.keys(GYM_PUZZLES).sort()).toEqual(Object.keys(SUPER_EFFECTIVE).sort())
     const gymRun = (seed) => nextFloor({ ...at(red, 'Pewter City'), seed, floor: 1 + ROUTE_LENGTH, boss: { region: red, step: data.bosses[red].leaders.findIndex((l) => l.city === 'Pewter City' && l.kind === 'gym') } }, data)
     const base = gymRun(42)
-    expect(gymPuzzleOf(data, base)).toEqual({ type: 'rock', kind: 'tiles' })
+    expect(gymPuzzleOf(data, base)).toEqual({ type: 'rock', kind: 'boulder', gym: 'Brock' })
     expect(gymPuzzleOf(data, onRoute('grass'))).toBe(null)
-    // Resolve cada tipo de desafio com um resolvedor de verdade (para provar que sempre há solução).
+    // Cada líder tem o seu (o título não se repete) e todos os ginásios dos dados têm um.
+    const titles = Object.values(GYM_CHALLENGES).map((g) => g[2])
+    expect(new Set(titles).size).toBe(titles.length)
+    for (const g of data.bosses) for (const l of g.leaders) if (l.kind === 'gym') expect(GYM_CHALLENGES[l.name], l.name).toBeTruthy()
+    // Resolve cada desafio com um resolvedor de verdade (para provar que sempre há solução).
     const solve = (run) => {
-      for (let step = 0; step < 80 && !run.pending.puzzle.done; step++) {
+      for (let step = 0; step < 200 && !run.pending.puzzle.done; step++) {
         const p = run.pending.puzzle
         let move = 0
         if (p.kind === 'quiz' || p.kind === 'silhouette') move = p.qs[p.at].answer
         else if (p.kind === 'switches') move = [p.a, p.b].find((t) => p.open[t] == null)
         else if (p.kind === 'memory') move = p.shown ? -1 : p.seq[p.at]
-        else {
-          // Busca em largura pelo próximo passo.
-          const key = (s) => (p.kind === 'tiles' ? `${s.pos}:${[...s.visited].sort((a, b) => a - b).join()}` : String(s.pos))
+        else if (p.kind === 'lights') move = p.sol[step]
+        else if (p.kind === 'pairs') {
+          const o = p.open.length === 1 ? p.open[0] : -1
+          move = o >= 0 ? p.cards.findIndex((c, i) => i !== o && c === p.cards[o]) : p.cards.findIndex((_, i) => !p.found.includes(i))
+        } else {
+          // Busca em largura pelo próximo passo (sem contar as jogadas: o desafio dá as que precisa e um pouco mais).
+          const key = (s) => (p.kind === 'tiles' ? `${s.pos}:${[...s.visited].sort((a, b) => a - b).join()}` : p.kind === 'boulder' ? `${s.pos}:${s.box}` : p.kind === 'gates' ? `${s.pos}:${s.flag}` : p.kind === 'teleport' ? String(s.room) : String(s.pos))
           const seen = new Set([key(p)])
           const queue = [[p, null]]
           let found = null
-          while (queue.length && found == null) {
-            const [s, first] = queue.shift()
+          for (let q = 0; q < queue.length && found == null; q++) {
+            const [s, first] = queue[q]
             for (let i = 0; i < s.cols * s.rows; i++) {
-              const next = puzzleAct({ ...run, pending: { puzzle: s } }, data, i).pending.puzzle
-              if (next === s || (next.done && !next.won) || (p.kind === 'maze' && next.pos === s.pos)) continue
+              const next = puzzleAct({ ...run, pending: { puzzle: { ...s, left: 99 } } }, data, i).pending.puzzle
+              if ((next.done && !next.won) || (p.kind === 'maze' && next.pos === s.pos)) continue
               if (next.done && next.won) { found = first ?? i; break }
               if (seen.has(key(next))) continue
               seen.add(key(next))
               queue.push([next, first ?? i])
             }
           }
-          expect(found, `${p.kind} ${p.type}`).not.toBe(null)
+          expect(found, `${p.kind} ${p.gym ?? p.type}`).not.toBe(null)
           move = found
         }
         run = puzzleAct(run, data, move)
       }
       return run
     }
+    for (const name of Object.keys(GYM_CHALLENGES)) {
+      for (const seed of [1, 7, 19]) {
+        const done = solve(puzzleOfType(data, gymRun(seed), 'rock', name))
+        expect(done.pending.puzzle, `${name} seed ${seed}`).toMatchObject({ done: true, won: true, gym: name })
+        expect(puzzleView(done).done).toBe(true)
+      }
+    }
     for (const type of Object.keys(GYM_PUZZLES)) {
-      for (let seed = 1; seed <= 25; seed++) {
-        const started = startPuzzle({ ...gymRun(seed), pending: null }, data)
-        // O tipo do líder muda o desafio: força o tipo trocando o desafio montado.
+      for (let seed = 1; seed <= 8; seed++) {
         const forced = startPuzzle({ ...gymRun(seed), boss: base.boss }, data)
         expect(forced.puzzleLeg).toBe(legOf(forced))
+        expect(forced.pending.puzzle.kind).toBe('boulder')
         expect(startPuzzle(forced, data)).toBe(null)
-        const p = puzzleOfType(data, gymRun(seed), type)
-        const done = solve(p)
+        const done = solve(puzzleOfType(data, gymRun(seed), type))
         expect(done.pending.puzzle, `${type} seed ${seed}`).toMatchObject({ done: true, won: true })
-        expect(puzzleView(done).done).toBe(true)
-        expect(started.pending.puzzle.kind).toBe('tiles')
       }
     }
     // Errando: perde o desafio e o líder continua trancado (tenta de novo); vencendo: prêmio e o líder aparece.
@@ -1966,7 +1977,14 @@ function round14Trace(F) {
   const wild = Array.from({ length: 60 }, (_, k) => { const e = F.encounterFor(data, 30, seededRandom(k + 1), null, false, { kind: 'wild', biome: 'grass', ...(k % 3 === 0 ? { fish: k % 9 === 0 ? 0 : 2, biome: 'water' } : k % 3 === 1 ? { tree: k % 2 ? 'honey' : 'headbutt' } : {}) }); return [e.horde ? 1 : 0, e.foes.map((f) => [f.id, f.level, f.shiny ? 1 : 0])] })
   const route = { ...gym(5), town: null, floor: 3, route: { floor: 3, biome: 'grass', options: [{ kind: 'trainer' }] } }
   const berry = [5, 6, 7, 8].map((seed) => { const r = F.plantBerry({ ...route, seed }, data); return [r.berry, r.seed] })
-  return { puzzles, wild, berry }
+  // O desafio de cada líder e umas jogadas nele (as mesmas no app).
+  const gyms = Object.keys(F.GYM_CHALLENGES).map((name) => {
+    const r = F.puzzleOfType(data, gym(3), 'rock', name)
+    let played = r
+    for (const i of [-1, 0, 1, 2, 3, 1, 0, 2, 5, 4, 7, 6]) played = F.puzzleAct(played, data, i)
+    return [name, r.pending.puzzle, F.puzzleView(r), played.pending.puzzle, F.puzzleView(played)]
+  })
+  return { puzzles, wild, berry, gyms }
 }
 describe('rodada 14 igual ao app', () => {
   it('os desafios, as hordas, a pesca, as árvores e as frutas dão o mesmo que test/fixtures/round14.json', async () => {

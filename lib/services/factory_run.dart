@@ -3659,17 +3659,159 @@ class FactoryRun {
     return null;
   }
 
-  /// Os desafios dos ginásios: antes do líder, um quebra-cabeça no tema do ginásio (os dos jogos: as lixeiras do Lt. Surge,
-  /// o gelo do Pryce, o quiz do Blaine, as paredes invisíveis do Koga, o piso de gelo do Juan, os teleportes da Sabrina...).
-  /// Obrigatório: o líder só aparece depois de vencer (perdendo, tenta de novo com outro desafio). Vencendo, um prêmio.
+  /// Os desafios dos ginásios: antes do líder, um quebra-cabeça só daquele ginásio, inspirado no dos jogos (as lixeiras
+  /// do Lt. Surge, os teleportes da Sabrina, os ladrilhos giratórios do Giovanni, o gelo do Pryce, a ponte invisível do
+  /// Morty, as barreiras do Wattson, os Wooloo do Milo, a azeitona da Katy...); sem um nos jogos, um no tema do líder.
+  /// Obrigatório: o líder só aparece depois de vencer (perdendo, tenta de novo com outro sorteio). Vencendo, um prêmio.
   /// Igual ao site.
   static const gymPuzzles = {
     'normal': 'silhouette', 'fire': 'quiz', 'water': 'tiles', 'grass': 'maze', 'electric': 'switches', 'ice': 'slide', 'fighting': 'memory', 'poison': 'maze', 'ground': 'slide',
     'flying': 'slide', 'psychic': 'memory', 'bug': 'switches', 'rock': 'tiles', 'ghost': 'maze', 'dragon': 'memory', 'dark': 'silhouette', 'steel': 'slide', 'fairy': 'quiz',
   };
 
-  /// Os labirintos de paredes que não se veem (o do Koga e a ponte invisível do Morty).
+  /// Os labirintos de paredes que não se veem (no desafio pelo tipo, sem um do líder).
   static const puzzleHidden = ['poison', 'ghost'];
+
+  /// O desafio de cada líder: [mecânica, ajustes, título, o desenho das casas]. Igual ao site.
+  static const gymChallenges = <String, List<Object>>{
+    'Brock': ['boulder', {'cols': 5, 'rows': 4, 'min': 5, 'max': 10}, 'As pedras do Ginásio de Pewter', <String, Object>{}],
+    'Misty': ['arrows', {'cols': 6, 'rows': 5, 'arrows': 0.3}, 'As correntezas da piscina da Misty', {'floor': '🟦'}],
+    'Lt. Surge': ['switches', {'cols': 5, 'rows': 3, 'left': 5}, 'As lixeiras do Lt. Surge', <String, Object>{}],
+    'Erika': ['maze', {'cols': 7, 'rows': 5, 'density': 0.7}, 'As árvores do jardim da Erika', {'wall': '🌳'}],
+    'Koga': ['maze', {'cols': 7, 'rows': 5, 'hidden': true, 'bumps': 3}, 'As paredes invisíveis do Koga', <String, Object>{}],
+    'Sabrina': ['teleport', {'rooms': 9, 'min': 3, 'max': 6}, 'Os teleportes da Sabrina', <String, Object>{}],
+    'Blaine': ['quiz', {'topics': ['strong', 'typeOf', 'hasType']}, 'O quiz do Blaine', <String, Object>{}],
+    'Giovanni': ['arrows', {'cols': 7, 'rows': 5, 'arrows': 0.4, 'min': 6, 'max': 11}, 'Os ladrilhos giratórios do Giovanni', <String, Object>{}],
+    'Falkner': ['slide', {'cols': 6, 'rows': 5, 'rocks': 9}, 'As correntes de vento do Falkner', {'floor': '☁️'}],
+    'Bugsy': ['gates', {'cols': 6, 'rows': 5}, 'Os trilhos de teia do Bugsy', {'switch': '🕷️'}],
+    'Whitney': ['maze', {'cols': 6, 'rows': 5, 'density': 0.55, 'slack': 1}, 'O labirinto de flores da Whitney', {'wall': '🌷'}],
+    'Morty': ['maze', {'cols': 6, 'rows': 6, 'hidden': true, 'bumps': 2}, 'A ponte invisível do Morty', {'wall': '🕳️'}],
+    'Chuck': ['boulder', {'cols': 6, 'rows': 5, 'min': 8, 'max': 14}, 'As pedras da cachoeira do Chuck', <String, Object>{}],
+    'Jasmine': ['lights', {'cols': 4, 'rows': 4, 'taps': 4}, 'As luzes do farol da Jasmine', <String, Object>{}],
+    'Pryce': ['slide', {'cols': 6, 'rows': 6, 'rocks': 10, 'min': 5, 'max': 8}, 'O gelo do Pryce', {'floor': '🧊'}],
+    'Clair': ['arrows', {'cols': 6, 'rows': 6, 'arrows': 0.35, 'walls': 0.15}, 'Os ladrilhos-dragão sobre a lava da Clair', {'wall': '🌋'}],
+    'Janine': ['pairs', {'pairs': 6, 'misses': 5}, 'Os disfarces da Janine', <String, Object>{}],
+    'Blue': ['quiz', {'n': 6, 'need': 5, 'topics': ['strong', 'beats', 'typeOf', 'evo']}, 'A prova final do Blue', <String, Object>{}],
+    'Roxanne': ['quiz', {'topics': ['typeOf', 'hasType', 'dexNo']}, 'A Escola de Treinadores da Roxanne', <String, Object>{}],
+    'Brawly': ['maze', {'cols': 7, 'rows': 5, 'dark': true, 'slack': 4}, 'O ginásio escuro do Brawly', <String, Object>{}],
+    'Wattson': ['gates', {'cols': 7, 'rows': 5}, 'As barreiras elétricas do Wattson', {'switch': '⚡'}],
+    'Flannery': ['tiles', {'cols': 6, 'rows': 3, 'holes': 1, 'extra': 3}, 'O chão que desaba da Flannery', {'done': '🔥', 'floor': '🟫'}],
+    'Norman': ['quiz', {'topics': ['beats']}, 'As salas do Norman', <String, Object>{}],
+    'Winona': ['gates', {'cols': 7, 'rows': 5, 'switches': 3}, 'Os portões giratórios da Winona', {'switch': '🪶'}],
+    'Tate & Liza': ['teleport', {'rooms': 7, 'min': 3, 'max': 5}, 'As plataformas de Tate & Liza', <String, Object>{}],
+    'Wallace': ['tiles', {'cols': 5, 'rows': 4, 'holes': 2, 'extra': 2}, 'O piso de gelo de Sootopolis', {'done': '💧', 'floor': '🧊'}],
+    'Juan': ['tiles', {'cols': 4, 'rows': 5, 'holes': 2, 'extra': 1}, 'O piso de gelo do Juan', {'done': '💧', 'floor': '🧊'}],
+    'Roark': ['tiles', {'cols': 6, 'rows': 3, 'holes': 1, 'extra': 2}, 'As lajes da mina do Roark', {'done': '🪨', 'floor': '⬜'}],
+    'Gardenia': ['memory', {'len': 6, 'syms': 6}, 'O relógio de flores da Gardenia', <String, Object>{}],
+    'Fantina': ['quiz', {'topics': ['math']}, 'A matemática da Fantina', <String, Object>{}],
+    'Maylene': ['memory', {'len': 8, 'syms': 4}, 'Os sacos de pancada da Maylene', <String, Object>{}],
+    'Wake': ['gates', {'cols': 6, 'rows': 5, 'switches': 2}, 'O nível da água do Wake', {'switch': '🌊'}],
+    'Byron': ['teleport', {'rooms': 6, 'min': 3, 'max': 5}, 'Os elevadores do Byron', <String, Object>{}],
+    'Candice': ['slide', {'cols': 5, 'rows': 6, 'rocks': 9}, 'As bolas de neve da Candice', {'floor': '❄️', 'rock': '⛄'}],
+    'Volkner': ['lights', {'cols': 5, 'rows': 4, 'taps': 5}, 'As engrenagens de luz do Volkner', <String, Object>{}],
+    'Cilan': ['quiz', {'topics': ['beats', 'strong']}, 'O cardápio do Cilan', <String, Object>{}],
+    'Lenora': ['switches', {'cols': 6, 'rows': 4, 'left': 6}, 'Os livros da biblioteca da Lenora', {'closed': '📚', 'hit': '📕'}],
+    'Burgh': ['maze', {'cols': 7, 'rows': 5, 'density': 0.65}, 'As paredes de mel do Burgh', {'wall': '🍯'}],
+    'Elesa': ['gates', {'cols': 7, 'rows': 5, 'switches': 3}, 'A montanha-russa da Elesa', {'switch': '🎢'}],
+    'Clay': ['boulder', {'cols': 6, 'rows': 5, 'min': 6, 'max': 12}, 'Os vagões da mina do Clay', {'boulder': '🛒'}],
+    'Skyla': ['arrows', {'cols': 6, 'rows': 6, 'arrows': 0.3}, 'Os canhões da Skyla', <String, Object>{}],
+    'Brycen': ['slide', {'cols': 6, 'rows': 5, 'rocks': 8, 'min': 5, 'max': 8}, 'O set de filmagem gelado do Brycen', {'floor': '🧊'}],
+    'Drayden': ['memory', {'len': 7, 'syms': 6}, 'As estátuas de dragão do Drayden', <String, Object>{}],
+    'Cheren': ['quiz', {'topics': ['strong', 'typeOf']}, 'A aula do Cheren', <String, Object>{}],
+    'Roxie': ['pairs', {'pairs': 6, 'misses': 6}, 'O show da Roxie', <String, Object>{}],
+    'Marlon': ['arrows', {'cols': 7, 'rows': 5, 'arrows': 0.35}, 'As ondas do Marlon', {'floor': '🟦'}],
+    'Viola': ['silhouette', {'n': 5, 'need': 4}, 'As fotos da Viola', <String, Object>{}],
+    'Grant': ['tiles', {'cols': 5, 'rows': 4, 'holes': 3, 'extra': 1}, 'A parede de escalada do Grant', {'done': '🧗', 'floor': '🟫'}],
+    'Korrina': ['arrows', {'cols': 6, 'rows': 5, 'arrows': 0.4}, 'A pista de patins da Korrina', <String, Object>{}],
+    'Ramos': ['maze', {'cols': 7, 'rows': 5, 'density': 0.7, 'slack': 1}, 'Os cipós do Ramos', {'wall': '🌿'}],
+    'Clemont': ['quiz', {'topics': ['strong', 'typeOf', 'hasType', 'dexNo']}, 'O quiz do robô do Clemont', <String, Object>{}],
+    'Valerie': ['teleport', {'rooms': 8, 'min': 3, 'max': 6}, 'Os espelhos da Valerie', <String, Object>{}],
+    'Olympia': ['lights', {'cols': 4, 'rows': 4, 'taps': 5}, 'As constelações da Olympia', {'on': '⭐'}],
+    'Wulfric': ['gates', {'cols': 6, 'rows': 6, 'switches': 2}, 'As engrenagens de gelo do Wulfric', {'switch': '⚙️'}],
+    'Ilima': ['switches', {'cols': 5, 'rows': 4, 'left': 6}, 'As tocas da Verdant Cavern', {'closed': '🕳️', 'hit': '🐾'}],
+    'Hala': ['quiz', {'topics': ['beats', 'strong'], 'n': 5, 'need': 4}, 'O ritual do Kahuna Hala', <String, Object>{}],
+    'Lana': ['switches', {'cols': 6, 'rows': 3, 'left': 5}, 'Os respingos do Brooklet Hill', {'closed': '💦', 'hit': '🐟'}],
+    'Kiawe': ['memory', {'len': 6, 'syms': 6}, 'A dança do fogo do Kiawe', <String, Object>{}],
+    'Mallow': ['pairs', {'pairs': 6, 'misses': 6}, 'Os ingredientes da Mallow', <String, Object>{}],
+    'Olivia': ['tiles', {'cols': 5, 'rows': 4, 'holes': 2, 'extra': 2}, 'As ruínas da Olivia', {'done': '💎', 'floor': '⬜'}],
+    'Molayne': ['lights', {'cols': 4, 'rows': 4, 'taps': 4}, 'Os geradores do observatório', <String, Object>{}],
+    'Sophocles': ['lights', {'cols': 5, 'rows': 4, 'taps': 4}, 'Os geradores do Sophocles', <String, Object>{}],
+    'Nanu': ['maze', {'cols': 7, 'rows': 5, 'dark': true, 'slack': 3}, 'O supermercado escuro do Nanu', <String, Object>{}],
+    'Mina': ['silhouette', {'n': 5, 'need': 4}, 'As pinturas da Mina', <String, Object>{}],
+    'Hapu': ['boulder', {'cols': 6, 'rows': 5, 'min': 7, 'max': 13}, 'As pedras do cânion da Hapu', <String, Object>{}],
+    'Milo': ['boulder', {'cols': 6, 'rows': 5, 'min': 6, 'max': 12}, 'Os Wooloo do Milo', {'boulder': '🐑', 'target': '🚪'}],
+    'Nessa': ['gates', {'cols': 7, 'rows': 5, 'switches': 2}, 'As comportas da Nessa', {'switch': '🚰'}],
+    'Kabu': ['quiz', {'topics': ['beats'], 'n': 6, 'need': 5}, 'O desafio de fogo do Kabu', <String, Object>{}],
+    'Bea': ['arrows', {'cols': 6, 'rows': 6, 'arrows': 0.4}, 'As esteiras da Bea', <String, Object>{}],
+    'Opal': ['quiz', {'topics': ['typeOf', 'hasType', 'strong', 'evo']}, 'O quiz da Opal', <String, Object>{}],
+    'Gordie': ['maze', {'cols': 7, 'rows': 5, 'hidden': true, 'bumps': 3}, 'Os buracos do Gordie', {'wall': '🕳️'}],
+    'Piers': ['pairs', {'pairs': 6, 'misses': 5}, 'O show do Piers', <String, Object>{}],
+    'Raihan': ['memory', {'len': 7, 'syms': 4}, 'O clima do Raihan', <String, Object>{}],
+    'Katy': ['boulder', {'cols': 6, 'rows': 5, 'min': 6, 'max': 12}, 'A azeitona da Katy', {'boulder': '🫒', 'target': '🥅'}],
+    'Brassius': ['switches', {'cols': 6, 'rows': 4, 'left': 6}, 'Os Sunflora escondidos do Brassius', {'closed': '🌿', 'hit': '🌻'}],
+    'Iono': ['silhouette', {'n': 5, 'need': 4}, 'Quem apareceu na live da Iono?', <String, Object>{}],
+    'Kofu': ['memory', {'len': 6, 'syms': 6}, 'As compras do Kofu', <String, Object>{}],
+    'Larry': ['quiz', {'topics': ['math', 'dexNo']}, 'O pedido do Larry', <String, Object>{}],
+    'Ryme': ['memory', {'len': 8, 'syms': 4}, 'O ritmo da Ryme', <String, Object>{}],
+    'Tulip': ['silhouette', {'n': 6, 'need': 5}, 'A sessão de fotos da Tulip', <String, Object>{}],
+    'Grusha': ['slide', {'cols': 5, 'rows': 6, 'rocks': 8}, 'A pista de snowboard do Grusha', {'floor': '❄️'}],
+    'Lian': ['boulder', {'cols': 5, 'rows': 5, 'min': 6, 'max': 11}, 'As pedras de Obsidian', <String, Object>{}],
+    'Arezu': ['pairs', {'pairs': 6, 'misses': 6}, 'As flores de Crimson', <String, Object>{}],
+    'Melli': ['maze', {'cols': 6, 'rows': 5, 'dark': true, 'slack': 3}, 'O vulcão escuro de Cobalt', <String, Object>{}],
+    'Ingo': ['gates', {'cols': 6, 'rows': 5, 'switches': 2}, 'Os trilhos do Ingo', {'switch': '🚂'}],
+    'Gaeric': ['slide', {'cols': 6, 'rows': 6, 'rocks': 11}, 'O gelo de Alabaster', {'floor': '🧊'}],
+    'Miror B.': ['memory', {'len': 8, 'syms': 6}, 'A dança do Miror B.', <String, Object>{}],
+    'Dakim': ['boulder', {'cols': 6, 'rows': 4, 'min': 5, 'max': 10}, 'As rochas do Dakim', <String, Object>{}],
+    'Venus': ['silhouette', {'n': 5, 'need': 4}, 'O show da Venus', <String, Object>{}],
+    'Ein': ['lights', {'cols': 5, 'rows': 4, 'taps': 5}, 'O laboratório do Ein', <String, Object>{}],
+    'Nascour': ['quiz', {'topics': ['strong', 'beats', 'math']}, 'O teste do Nascour', <String, Object>{}],
+    'Billy Jo': ['arrows', {'cols': 6, 'rows': 5, 'arrows': 0.35}, 'As correntezas de Fall City', <String, Object>{}],
+    'Lavana': ['maze', {'cols': 7, 'rows': 5, 'density': 0.6, 'slack': 2}, 'O vulcão de Summerland', {'wall': '🌋'}],
+    'Clyde': ['slide', {'cols': 5, 'rows': 5, 'rocks': 7}, 'O gelo de Wintown', {'floor': '🧊'}],
+    'Garret': ['teleport', {'rooms': 7, 'min': 3, 'max': 6}, 'As trilhas de Sekra', <String, Object>{}],
+    'Heath': ['switches', {'cols': 5, 'rows': 4, 'left': 5}, 'Os esconderijos de Pueltown', <String, Object>{}],
+    'Wendy': ['quiz', {'topics': ['typeOf', 'dexNo']}, 'O teste da Wendy', <String, Object>{}],
+    'Sven': ['tiles', {'cols': 5, 'rows': 4, 'holes': 2, 'extra': 2}, 'As placas de Boyleland', <String, Object>{}],
+    'Kincaid': ['gates', {'cols': 7, 'rows': 5, 'switches': 3}, 'Os portões do Altru Building', <String, Object>{}],
+    'Purple Eyes': ['teleport', {'rooms': 8, 'min': 3, 'max': 6}, 'Os portais de Renbow', <String, Object>{}],
+    'Blue Eyes': ['memory', {'len': 7, 'syms': 6}, 'Os símbolos de Mitonga', <String, Object>{}],
+    'Red Eyes': ['lights', {'cols': 5, 'rows': 4, 'taps': 5}, 'As tochas de Faldera', {'on': '🔥'}],
+    'Munkidori': ['pairs', {'pairs': 6, 'misses': 5}, 'As maçãs de Apple Hills', <String, Object>{}],
+    'Okidogi': ['boulder', {'cols': 6, 'rows': 5, 'min': 7, 'max': 12}, 'As pedras do Oni Mountain', <String, Object>{}],
+    'Fezandipiti': ['maze', {'cols': 7, 'rows': 5, 'dark': true, 'slack': 3}, 'A noite em Kitakami Hall', <String, Object>{}],
+    'Crispin': ['arrows', {'cols': 6, 'rows': 5, 'arrows': 0.35}, 'O desafio do Crispin', <String, Object>{}],
+    'Lacey': ['quiz', {'topics': ['strong', 'typeOf', 'hasType', 'evo'], 'n': 6, 'need': 5}, 'O quiz da Lacey', <String, Object>{}],
+    'Amarys': ['tiles', {'cols': 6, 'rows': 3, 'holes': 1, 'extra': 2}, 'O cânion da Amarys', <String, Object>{}],
+    'Drayton': ['memory', {'len': 8, 'syms': 6}, 'O desafio do Drayton', <String, Object>{}],
+    'Paxton': ['switches', {'cols': 6, 'rows': 3, 'left': 5}, 'Os esconderijos de Three Island', <String, Object>{}],
+    'Gideon': ['quiz', {'topics': ['dexNo', 'evo']}, 'O teste do Gideon', <String, Object>{}],
+    'Avery': ['teleport', {'rooms': 7, 'min': 3, 'max': 5}, 'O poder psíquico do Avery', <String, Object>{}],
+    'Klara': ['maze', {'cols': 7, 'rows': 5, 'hidden': true, 'bumps': 3}, 'O pântano da Klara', <String, Object>{}],
+    'Kubfu': ['boulder', {'cols': 6, 'rows': 5, 'min': 6, 'max': 12}, 'O dojo do Kubfu', <String, Object>{}],
+    'Regieleki': ['lights', {'cols': 4, 'rows': 4, 'taps': 5}, 'As ruínas de Split-Decision', <String, Object>{}],
+    'Calyrex': ['silhouette', {'n': 6, 'need': 5}, 'O altar do Calyrex', <String, Object>{}],
+    'Cissy': ['switches', {'cols': 5, 'rows': 4, 'left': 5}, 'Os alvos da Cissy', {'closed': '🎯', 'hit': '💥'}],
+    'Danny': ['slide', {'cols': 6, 'rows': 5, 'rocks': 8}, 'A descida de gelo do Danny', {'floor': '🧊'}],
+    'Rudy': ['memory', {'len': 7, 'syms': 4}, 'A dança do Rudy', <String, Object>{}],
+    'Luana': ['quiz', {'topics': ['strong', 'beats']}, 'A dupla da Luana', <String, Object>{}],
+  };
+
+  /// Os ajustes de cada mecânica (o que o líder não muda).
+  static const _puzzleDefaults = <String, Map<String, Object>>{
+    'quiz': {'n': 5, 'need': 4, 'topics': ['strong', 'typeOf', 'hasType']},
+    'silhouette': {'n': 5, 'need': 4},
+    'switches': {'cols': 6, 'rows': 4, 'left': 7},
+    'slide': {'cols': 5, 'rows': 5, 'rocks': 8, 'min': 4, 'max': 7},
+    'maze': {'cols': 7, 'rows': 5, 'density': 0.6, 'hidden': false, 'dark': false, 'slack': 2, 'bumps': 3},
+    'tiles': {'cols': 5, 'rows': 4, 'holes': 2, 'extra': 2},
+    'memory': {'len': 7, 'syms': 4},
+    'teleport': {'rooms': 8, 'min': 3, 'max': 6, 'slack': 3},
+    'boulder': {'cols': 6, 'rows': 5, 'walls': 0.18, 'min': 6, 'max': 14, 'slack': 4},
+    'arrows': {'cols': 6, 'rows': 5, 'arrows': 0.3, 'walls': 0.12, 'min': 4, 'max': 9, 'slack': 2},
+    'gates': {'cols': 6, 'rows': 5, 'walls': 0.12, 'red': 0.14, 'blue': 0.14, 'switches': 2, 'min': 6, 'max': 14, 'slack': 4},
+    'lights': {'cols': 4, 'rows': 4, 'taps': 4, 'slack': 3},
+    'pairs': {'pairs': 6, 'cols': 4, 'misses': 6},
+  };
   static const gymEdgeLevels = 2, puzzleMoney = 150;
 
   /// Quem ganha de quem (atacante → os tipos em que ele é super efetivo): para o quiz.
@@ -3681,6 +3823,7 @@ class FactoryRun {
   };
   static List<String> get _types18 => superEffective.keys.toList();
   static int _randInt(double Function() rand, int n) => (rand() * n).floor();
+  static List<int> _range(int n) => [for (var i = 0; i < n; i++) i];
 
   /// Embaralha (Fisher–Yates) com o sorteio da corrida.
   static List<T> _shuffled<T>(List<T> list, double Function() rand) {
@@ -3699,6 +3842,23 @@ class FactoryRun {
     return [if (y > 0) i - cols, if (x < cols - 1) i + 1, if (y < rows - 1) i + cols, if (x > 0) i - 1];
   }
 
+  static const _dirs = [(0, -1), (1, 0), (0, 1), (-1, 0)];
+
+  /// A casa ao lado na direção d (0 cima, 1 direita, 2 baixo, 3 esquerda), ou -1 fora do tabuleiro.
+  static int _stepDir(int i, int d, int cols, int rows) {
+    final x = i % cols + _dirs[d].$1, y = i ~/ cols + _dirs[d].$2;
+    return x < 0 || y < 0 || x >= cols || y >= rows ? -1 : y * cols + x;
+  }
+
+  /// De que lado fica a casa vizinha (ou -1 se não é vizinha).
+  static int _dirTo(int from, int to, int cols, int rows) {
+    if (to < 0) return -1;
+    for (var d = 0; d < 4; d++) {
+      if (_stepDir(from, d, cols, rows) == to) return d;
+    }
+    return -1;
+  }
+
   /// Deslizar no gelo: de pos na direção (dx, dy) até bater numa pedra ou na borda; passando pela saída, para nela.
   static int _slideTo(Map p, int pos, int dx, int dy) {
     final cols = _int(p['cols']), rows = _int(p['rows']), goal = _int(p['goal']);
@@ -3714,15 +3874,13 @@ class FactoryRun {
     return y * cols + x;
   }
 
-  static const _dirs = [(0, -1), (1, 0), (0, 1), (-1, 0)];
-
-  /// O menor número de jogadas (busca em largura); -1 se não dá.
-  static int _shortest(int start, int goal, Iterable<int> Function(int) step) {
+  /// O menor número de jogadas (busca em largura); -1 se não dá. step(estado) devolve os alcançáveis numa jogada.
+  static int _shortest(int start, bool Function(int) done, Iterable<int> Function(int) step) {
     final dist = {start: 0};
     final queue = [start];
-    while (queue.isNotEmpty) {
-      final at = queue.removeAt(0);
-      if (at == goal) return dist[at]!;
+    for (var k = 0; k < queue.length; k++) {
+      final at = queue[k];
+      if (done(at)) return dist[at]!;
       for (final to in step(at)) {
         if (!dist.containsKey(to)) {
           dist[to] = dist[at]! + 1;
@@ -3733,10 +3891,38 @@ class FactoryRun {
     return -1;
   }
 
+  /// Nas setas: anda pela seta até parar (numa casa sem seta, numa parede, na borda, no líder ou voltando ao caminho).
+  static int _ride(Map p, int at) {
+    final cols = _int(p['cols']), rows = _int(p['rows']), goal = _int(p['goal']);
+    final arrows = p['arrows'] as List, walls = p['walls'] as List;
+    var pos = at;
+    final seen = [pos];
+    while (_int(arrows[pos]) >= 0 && pos != goal) {
+      final to = _stepDir(pos, _int(arrows[pos]), cols, rows);
+      if (to < 0 || walls.contains(to) || seen.contains(to)) break;
+      pos = to;
+      seen.add(pos);
+    }
+    return pos;
+  }
+
+  /// Nas barreiras: dá para pisar (parede não; a vermelha sobe com a chave em 0, a azul com a chave em 1).
+  static bool _gateOpen(Map p, int i, int flag) =>
+      !(p['walls'] as List).contains(i) && !(flag == 0 && (p['red'] as List).contains(i)) && !(flag == 1 && (p['blue'] as List).contains(i));
+
+  /// Acender: a casa e as vizinhas trocam.
+  static List<bool> _flip(List on, int i, int cols, int rows) {
+    final out = [for (final x in on) x == true];
+    for (final k in [i, ..._neighbors(i, cols, rows)]) {
+      out[k] = !out[k];
+    }
+    return out;
+  }
+
   static List<int> _speciesIds(FactoryData data) => [for (final id in data.species.keys) if (id > 0 && id <= 1025) id]..sort();
   static List _typesOfId(FactoryData data, int id) => (data.species[id]?.elementAtOrNull(4) as List?) ?? const [];
-  static Json _quizQuestion(FactoryData data, double Function() rand, List<int> ids) {
-    final kind = _pick(const ['strong', 'typeOf', 'hasType'], rand);
+  static Json _quizQuestion(FactoryData data, double Function() rand, List<int> ids, List topics) {
+    final kind = '${_pick(topics, rand)}';
     final all = _types18;
     if (kind == 'strong') {
       final target = _pick([for (final t in all) if (all.any((a) => superEffective[a]!.contains(t))) t], rand);
@@ -3753,12 +3939,41 @@ class FactoryRun {
       final options = _shuffled([right, ...others], rand);
       return {'q': kind, 'mon': id, 'options': options, 'answer': options.indexOf(right)};
     }
-    final type = _pick(all, rand);
-    final has = [for (final id in ids) if (_typesOfId(data, id).contains(type)) id];
-    final right = _pick(has.isNotEmpty ? has : ids, rand);
-    final others = _shuffled([for (final id in ids) if (!_typesOfId(data, id).contains(type)) id], rand).take(3);
+    if (kind == 'beats') {
+      // Qual tipo vence este Pokémon (super efetivo contra um dos tipos dele)?
+      final id = _pick(ids, rand);
+      final types = _typesOfId(data, id);
+      final good = [for (final a in all) if (types.any((t) => superEffective[a]!.contains(t))) a];
+      final right = _pick(good, rand);
+      final others = _shuffled([for (final a in all) if (!good.contains(a)) a], rand).take(3);
+      final options = _shuffled([right, ...others], rand);
+      return {'q': kind, 'mon': id, 'options': options, 'answer': options.indexOf(right)};
+    }
+    if (kind == 'math') {
+      // A conta da Fantina (Platinum): o resultado entre 4 números.
+      final op = _pick(const ['+', '-', '×'], rand);
+      final a = op == '×' ? 2 + _randInt(rand, 8) : 10 + _randInt(rand, 40);
+      final b = op == '×' ? 2 + _randInt(rand, 8) : 2 + _randInt(rand, op == '-' ? a - 2 : 40);
+      final right = op == '+' ? a + b : op == '-' ? a - b : a * b;
+      final wrong = _shuffled([for (final n in [right - 3, right - 2, right - 1, right + 1, right + 2, right + 3]) if (n >= 0) n], rand).take(3);
+      final options = _shuffled([right, ...wrong], rand);
+      return {'q': kind, 'a': a, 'b': b, 'op': op, 'nums': true, 'options': options, 'answer': options.indexOf(right)};
+    }
+    if (kind == 'dexNo') {
+      final id = _pick(ids, rand);
+      final near = [for (final x in ids) if (x != id && (x - id).abs() <= 40) x];
+      final options = _shuffled([id, ..._shuffled(near, rand).take(3)], rand);
+      return {'q': kind, 'mon': id, 'nums': true, 'options': options, 'answer': options.indexOf(id)};
+    }
+    // evo: em quem ele evolui?
+    List<int> into(int id) => [for (final e in data.evolutions[id] ?? const <List>[]) if (ids.contains(_int(e[0]))) _int(e[0])];
+    final from = [for (final id in ids) if (into(id).isNotEmpty) id];
+    final id = _pick(from, rand);
+    final targets = into(id);
+    final right = _pick(targets, rand);
+    final others = _shuffled([for (final x in ids) if (x != id && !targets.contains(x)) x], rand).take(3);
     final options = _shuffled([right, ...others], rand);
-    return {'q': 'hasType', 'type': type, 'options': options, 'answer': options.indexOf(right)};
+    return {'q': 'evo', 'mon': id, 'options': options, 'answer': options.indexOf(right)};
   }
 
   /// Venceu o desafio do ginásio desta cidade (o líder já pode ser enfrentado).
@@ -3770,60 +3985,78 @@ class FactoryRun {
   /// O líder do ginásio ainda trancado: o desafio dele é obrigatório (vence e o líder aparece). Igual ao site.
   static bool gymLocked(FactoryData data, Json run, Map? node) => node?['kind'] == 'boss' && gymPuzzleOf(data, run) != null;
 
-  /// O desafio do ginásio de agora (o tipo do líder) ou null: só na cidade de um ginásio, até vencer (obrigatório).
-  static ({String type, String kind})? gymPuzzleOf(FactoryData data, Json run) {
+  /// O desafio do ginásio de agora (type, kind, gym) ou null: só na cidade de um ginásio, até vencer (obrigatório).
+  static ({String type, String kind, String? gym})? gymPuzzleOf(FactoryData data, Json run) {
     if (run['town'] == null || run['dungeon'] != null || run['encounter'] != null || run['pending'] != null || gymCleared(run)) return null;
     final boss = bossOf(data, run);
     if (boss['kind'] != 'gym') return null;
     final type = leaderType(data, boss);
+    final own = gymChallenges['${boss['name']}'];
+    if (own != null) return (type: type, kind: own[0] as String, gym: '${boss['name']}');
     final kind = gymPuzzles[type];
-    return kind == null ? null : (type: type, kind: kind);
+    return kind == null ? null : (type: type, kind: kind, gym: null);
   }
+
+  /// O título do desafio do líder (null: o do tipo).
+  static String? puzzleTitle(String? gym) => gymChallenges[gym]?[2] as String?;
+
+  /// O desenho das casas do desafio do líder (o que muda do do tipo).
+  static Map<String, String> puzzleSkin(String? gym) => Map<String, String>.from((gymChallenges[gym]?[3] as Map?) ?? const {});
 
   /// Monta o desafio (sempre com solução) e abre a tela dele.
   static Json? startPuzzle(Json run, FactoryData data) {
     final info = gymPuzzleOf(data, run);
-    return info == null ? null : puzzleOfType(data, run, info.type);
+    return info == null ? null : puzzleOfType(data, run, info.type, info.gym);
   }
 
-  /// O desafio de um tipo de ginásio (o do líder de agora é o startPuzzle).
-  static Json? puzzleOfType(FactoryData data, Json run, String type) {
-    final kind = gymPuzzles[type];
+  /// O desafio de um líder (gym) ou, sem ele, o do tipo do ginásio (o do líder de agora é o startPuzzle).
+  static Json? puzzleOfType(FactoryData data, Json run, String type, [String? gym]) {
+    final own = gym == null ? null : gymChallenges[gym];
+    final kind = own != null ? own[0] as String : gymPuzzles[type];
     if (kind == null) return null;
+    final o = <String, Object>{
+      ..._puzzleDefaults[kind]!,
+      if (own != null) ...(own[1] as Map).cast<String, Object>() else if (kind == 'maze' && puzzleHidden.contains(type)) 'hidden': true,
+    };
+    int oi(String k) => (o[k] as num).toInt();
+    double od(String k) => (o[k] as num).toDouble();
     final out = _copy(run)..['puzzleLeg'] = legOf(run);
     final rand = _dice(out);
-    final p = <String, dynamic>{'kind': kind, 'type': type, 'done': false, 'won': false};
+    final p = <String, dynamic>{'kind': kind, 'type': type, if (own != null) 'gym': gym, 'done': false, 'won': false};
+    final cols = o['cols'] == null ? 0 : oi('cols'), rows = o['rows'] == null ? 0 : oi('rows'), size = cols * rows;
+    final start = (rows - 1) * cols + cols ~/ 2, top = cols ~/ 2;
     if (kind == 'quiz') {
       final ids = _speciesIds(data);
-      p.addAll({'qs': [for (var k = 0; k < 5; k++) _quizQuestion(data, rand, ids)], 'at': 0, 'right': 0});
+      p.addAll({'qs': [for (var k = 0; k < oi('n'); k++) _quizQuestion(data, rand, ids, o['topics'] as List)], 'at': 0, 'right': 0, 'need': oi('need')});
     } else if (kind == 'silhouette') {
       final ids = _speciesIds(data);
       final qs = <Json>[];
-      for (var k = 0; k < 5; k++) {
+      for (var k = 0; k < oi('n'); k++) {
         final options = _shuffled(ids, rand).take(4).toList();
         final right = _pick(options, rand);
         qs.add({'mon': right, 'options': options, 'answer': options.indexOf(right)});
       }
-      p.addAll({'qs': qs, 'at': 0, 'right': 0});
+      p.addAll({'qs': qs, 'at': 0, 'right': 0, 'need': oi('need')});
     } else if (kind == 'switches') {
-      final a = _randInt(rand, 24);
-      p.addAll({'cols': 6, 'rows': 4, 'a': a, 'b': _pick(_neighbors(a, 6, 4), rand), 'open': <String, dynamic>{}, 'found': 0, 'left': 7});
+      final a = _randInt(rand, size);
+      p.addAll({'cols': cols, 'rows': rows, 'a': a, 'b': _pick(_neighbors(a, cols, rows), rand), 'open': <String, dynamic>{}, 'found': 0, 'left': oi('left')});
     } else if (kind == 'slide') {
-      p.addAll({'cols': 5, 'rows': 5, 'pos': 22, 'goal': 2, 'rocks': <int>[], 'left': 3});
-      // Um caminho mais longo (4 a 7 deslizadas) com mais pedras, e só uma jogada de sobra.
+      p.addAll({'cols': cols, 'rows': rows, 'pos': start, 'goal': top, 'rocks': <int>[], 'left': 3});
+      // Um caminho de min a max deslizadas, e só uma jogada de sobra.
       for (var k = 0; k < 200; k++) {
-        final goal = _randInt(rand, 5);
-        final rocks = _shuffled([for (var i = 0; i < 25; i++) if (i != 22 && i != goal) i], rand).take(8).toList();
+        final goal = _randInt(rand, cols);
+        final rocks = _shuffled([for (final i in _range(size)) if (i != start && i != goal) i], rand).take(oi('rocks')).toList();
         final trial = {...p, 'goal': goal, 'rocks': rocks};
-        final n = _shortest(22, goal, (at) => [for (final d in _dirs) _slideTo(trial, at, d.$1, d.$2)].where((to) => to != at));
-        if (n >= 4 && n <= 7) {
+        final n = _shortest(start, (at) => at == goal, (at) => [for (final d in _dirs) _slideTo(trial, at, d.$1, d.$2)].where((to) => to != at));
+        if (n >= oi('min') && n <= oi('max')) {
           p.addAll({'goal': goal, 'rocks': rocks, 'left': n + 1});
           break;
         }
       }
     } else if (kind == 'maze') {
-      // Um caminho garantido da entrada até o líder; o resto vira parede (as que não se veem, no do Koga e no do Morty).
-      const cols = 7, rows = 5, start = 31, goal = 3;
+      // Um caminho garantido da entrada até o líder; o resto vira parede (as que não se veem, no do Koga e no do Morty;
+      // no escuro, só se vê em volta de onde você já passou).
+      final goal = top;
       final seen = {start};
       List<int>? walk(int at) {
         if (at == goal) return [at];
@@ -3837,17 +4070,27 @@ class FactoryRun {
       }
 
       final path = walk(start)!;
-      final walls = [for (var i = 0; i < cols * rows; i++) if (!path.contains(i) && rand() < 0.6) i];
-      final hidden = puzzleHidden.contains(type);
-      final n = _shortest(start, goal, (at) => _neighbors(at, cols, rows).where((to) => !walls.contains(to)));
-      p.addAll({'cols': cols, 'rows': rows, 'pos': start, 'goal': goal, 'walls': walls, 'seen': <int>[], 'hidden': hidden, 'left': hidden ? 3 : n + 2});
+      final walls = [for (final i in _range(size)) if (!path.contains(i) && rand() < od('density')) i];
+      final n = _shortest(start, (at) => at == goal, (at) => _neighbors(at, cols, rows).where((to) => !walls.contains(to)));
+      final hidden = o['hidden'] == true;
+      p.addAll({
+        'cols': cols,
+        'rows': rows,
+        'pos': start,
+        'goal': goal,
+        'walls': walls,
+        'seen': <int>[],
+        'hidden': hidden,
+        if (o['dark'] == true) ...{'dark': true, 'trail': [start]},
+        'left': hidden ? oi('bumps') : n + oi('slack'),
+      });
     } else if (kind == 'tiles') {
-      // 5 × 4 com buracos (onde não dá para pisar): um caminho que passa por todas as lajes existe sempre (procurado
-      // antes de mostrar); você tem de achar um.
-      const cols = 5, rows = 4, start = 15;
+      // Com buracos (onde não dá para pisar): um caminho que passa por todas as lajes existe sempre (procurado antes de
+      // mostrar); você tem de achar um.
+      final from = (rows - 1) * cols;
       for (var tries = 0; tries < 200; tries++) {
-        final holes = _shuffled([for (var i = 0; i < cols * rows; i++) if (i != start) i], rand).take(2 + _randInt(rand, 2)).toList();
-        final free = cols * rows - holes.length;
+        final holes = _shuffled([for (final i in _range(size)) if (i != from) i], rand).take(oi('holes') + _randInt(rand, oi('extra'))).toList();
+        final free = size - holes.length;
         // Busca em profundidade por um caminho que passa por todas as lajes (poucas: é rápido).
         bool tour(int at, Set<int> seen) {
           if (seen.length == free) return true;
@@ -3860,14 +4103,131 @@ class FactoryRun {
           return false;
         }
 
-        if (tour(start, {start})) {
-          p.addAll({'cols': cols, 'rows': rows, 'pos': start, 'visited': [start], 'holes': holes});
+        if (tour(from, {from})) {
+          p.addAll({'cols': cols, 'rows': rows, 'pos': from, 'visited': [from], 'holes': holes});
           break;
         }
       }
-      if (p['cols'] == null) p.addAll({'cols': cols, 'rows': rows, 'pos': start, 'visited': [start], 'holes': <int>[]});
+      if (p['cols'] == null) p.addAll({'cols': cols, 'rows': rows, 'pos': from, 'visited': [from], 'holes': <int>[]});
+    } else if (kind == 'memory') {
+      p.addAll({'seq': [for (var k = 0; k < oi('len'); k++) _randInt(rand, oi('syms'))], 'syms': oi('syms'), 'shown': true, 'at': 0});
+    } else if (kind == 'teleport') {
+      // Salas com 4 plataformas, cada uma leva para outra sala; o líder está na última. Já usada, mostra o destino.
+      final rooms = oi('rooms');
+      List<int>? warps;
+      var n = -1;
+      for (var tries = 0; tries < 300; tries++) {
+        final trial = [
+          for (var k = 0; k < rooms * 4; k++)
+            () {
+              final d = _randInt(rand, rooms - 1);
+              return d >= k ~/ 4 ? d + 1 : d;
+            }()
+        ];
+        n = _shortest(0, (r) => r == rooms - 1, (r) => [for (var k = 0; k < 4; k++) trial[r * 4 + k]]);
+        if (n >= oi('min') && n <= oi('max')) {
+          warps = trial;
+          break;
+        }
+      }
+      if (warps == null) {
+        warps = [for (var k = 0; k < rooms * 4; k++) k % 4 == 0 ? math.min(rooms - 1, k ~/ 4 + 1) : 0];
+        n = rooms - 1;
+      }
+      p.addAll({'cols': 2, 'rows': 2, 'rooms': rooms, 'room': 0, 'goal': rooms - 1, 'warps': warps, 'known': [for (var k = 0; k < rooms * 4; k++) -1], 'left': n + oi('slack')});
+    } else if (kind == 'boulder') {
+      // Empurrar a pedra (Strength) até o alvo: você anda até ela e continua na mesma direção.
+      int solve(List<int> walls, int me, int box, int goal) => _shortest(me * size + box, (s) => s % size == goal, (s) {
+            final at = s ~/ size, b = s % size;
+            final next = <int>[];
+            for (var d = 0; d < 4; d++) {
+              final to = _stepDir(at, d, cols, rows);
+              if (to < 0 || walls.contains(to)) continue;
+              if (to != b) {
+                next.add(to * size + b);
+                continue;
+              }
+              final nb = _stepDir(b, d, cols, rows);
+              if (nb >= 0 && !walls.contains(nb)) next.add(to * size + nb);
+            }
+            return next;
+          });
+      for (var tries = 0; tries < 400 && p['cols'] == null; tries++) {
+        final walls = [for (final i in _range(size)) if (rand() < od('walls')) i];
+        final free = [for (final i in _range(size)) if (!walls.contains(i)) i];
+        if (free.length < 6) continue;
+        final pick = _shuffled(free, rand).take(3).toList();
+        final n = solve(walls, pick[0], pick[1], pick[2]);
+        if (n >= oi('min') && n <= oi('max')) {
+          p.addAll({'cols': cols, 'rows': rows, 'walls': walls, 'pos': pick[0], 'box': pick[1], 'goal': pick[2], 'left': n + oi('slack')});
+        }
+      }
+      if (p['cols'] == null) p.addAll({'cols': cols, 'rows': rows, 'walls': <int>[], 'pos': 2 * cols + 1, 'box': cols + 1, 'goal': 1, 'left': 1 + oi('slack')});
+    } else if (kind == 'arrows') {
+      // As setas (os ladrilhos giratórios do Giovanni, os canhões da Skyla): pisou, vai na direção dela até parar.
+      final goal = top;
+      for (var tries = 0; tries < 400 && p['cols'] == null; tries++) {
+        final walls = <int>[], arrows = <int>[];
+        for (var i = 0; i < size; i++) {
+          final r = rand();
+          if (i == start || i == goal) {
+            arrows.add(-1);
+          } else if (r < od('walls')) {
+            walls.add(i);
+            arrows.add(-1);
+          } else if (r < od('walls') + od('arrows')) {
+            arrows.add(_randInt(rand, 4));
+          } else {
+            arrows.add(-1);
+          }
+        }
+        final trial = <String, dynamic>{'cols': cols, 'rows': rows, 'goal': goal, 'walls': walls, 'arrows': arrows};
+        final n = _shortest(start, (at) => at == goal, (at) => [for (final to in _neighbors(at, cols, rows)) if (!walls.contains(to)) _ride(trial, to)]);
+        if (n >= oi('min') && n <= oi('max')) p.addAll({...trial, 'pos': start, 'left': n + oi('slack')});
+      }
+      if (p['cols'] == null) p.addAll({'cols': cols, 'rows': rows, 'goal': goal, 'walls': <int>[], 'arrows': [for (var i = 0; i < size; i++) -1], 'pos': start, 'left': rows + oi('slack')});
+    } else if (kind == 'gates') {
+      // As barreiras (Wattson, Nessa): cada interruptor sobe as vermelhas e desce as azuis, ou o contrário.
+      final goal = top;
+      for (var tries = 0; tries < 500 && p['cols'] == null; tries++) {
+        final walls = <int>[], red = <int>[], blue = <int>[];
+        for (var i = 0; i < size; i++) {
+          final r = rand();
+          if (i == start || i == goal) continue;
+          if (r < od('walls')) {
+            walls.add(i);
+          } else if (r < od('walls') + od('red')) {
+            red.add(i);
+          } else if (r < od('walls') + od('red') + od('blue')) {
+            blue.add(i);
+          }
+        }
+        final floor = [for (final i in _range(size)) if (i != start && i != goal && !walls.contains(i) && !red.contains(i) && !blue.contains(i)) i];
+        final switches = _shuffled(floor, rand).take(oi('switches')).toList();
+        final trial = <String, dynamic>{'walls': walls, 'red': red, 'blue': blue, 'switches': switches};
+        Iterable<int> Function(int) moves(bool toggle) => (s) {
+              final at = s >> 1, flag = s & 1;
+              return [for (final to in _neighbors(at, cols, rows)) if (_gateOpen(trial, to, flag)) to * 2 + (toggle && switches.contains(to) ? 1 - flag : flag)];
+            };
+        final n = _shortest(start * 2, (s) => s >> 1 == goal, moves(true));
+        if (n < oi('min') || n > oi('max') || _shortest(start * 2, (s) => s >> 1 == goal, moves(false)) != -1) continue;
+        p.addAll({'cols': cols, 'rows': rows, 'goal': goal, ...trial, 'pos': start, 'flag': 0, 'left': n + oi('slack')});
+      }
+      if (p['cols'] == null) {
+        p.addAll({'cols': cols, 'rows': rows, 'goal': goal, 'walls': <int>[], 'red': <int>[], 'blue': <int>[], 'switches': <int>[], 'pos': start, 'flag': 0, 'left': rows + oi('slack')});
+      }
+    } else if (kind == 'lights') {
+      // Acender todas (as constelações da Olympia): tocar troca a casa e as vizinhas.
+      final sol = _shuffled(_range(size), rand).take(oi('taps')).toList();
+      List<bool> on = [for (var i = 0; i < size; i++) true];
+      for (final i in sol) {
+        on = _flip(on, i, cols, rows);
+      }
+      p.addAll({'cols': cols, 'rows': rows, 'on': on, 'sol': sol, 'left': oi('taps') + oi('slack')});
     } else {
-      p.addAll({'seq': [for (var k = 0; k < 7; k++) _randInt(rand, 4)], 'shown': true, 'at': 0});
+      // pairs: os pares de cartas (virando duas de cada vez).
+      final ids = _shuffled(_speciesIds(data), rand).take(oi('pairs')).toList();
+      p.addAll({'cols': oi('cols'), 'rows': oi('pairs') * 2 ~/ oi('cols'), 'cards': _shuffled([...ids, ...ids], rand), 'found': <int>[], 'open': <int>[], 'left': oi('misses')});
     }
     out['pending'] = {'puzzle': p};
     return out;
@@ -3883,7 +4243,15 @@ class FactoryRun {
       p['won'] = won;
     }
 
+    // Gastou uma jogada: no fim delas, perdeu.
+    void spend() {
+      p['left'] = _int(p['left']) - 1;
+      if (_int(p['left']) <= 0) end(false);
+    }
+
     final kind = p['kind'];
+    final cols = _int(p['cols'] ?? 0), rows = _int(p['rows'] ?? 0);
+    List<int> ints(String k) => [for (final x in (p[k] as List?) ?? const []) _int(x)];
     if (kind == 'quiz' || kind == 'silhouette') {
       final qs = p['qs'] as List;
       final at = _int(p['at']);
@@ -3893,9 +4261,8 @@ class FactoryRun {
       p['picked'] = i;
       if (i == q['answer']) p['right'] = _int(p['right']) + 1;
       p['at'] = at + 1;
-      if (at + 1 >= qs.length) end(_int(p['right']) >= 4);
+      if (at + 1 >= qs.length) end(_int(p['right']) >= _int(p['need'] ?? 4));
     } else if (kind == 'switches') {
-      final cols = _int(p['cols']), rows = _int(p['rows']);
       final open = Map<String, dynamic>.from(p['open'] as Map);
       if (i < 0 || i >= cols * rows || open['$i'] != null) return run;
       final targets = [for (final t in [_int(p['a']), _int(p['b'])]) if (open['$t'] == null) t];
@@ -3908,42 +4275,37 @@ class FactoryRun {
         final dist = [for (final t in targets) ((t % cols) - (i % cols)).abs() + ((t ~/ cols) - (i ~/ cols)).abs()].reduce(math.min);
         open['$i'] = dist;
         p['open'] = open;
-        p['left'] = _int(p['left']) - 1;
-        if (_int(p['left']) <= 0) end(false);
+        spend();
       }
     } else if (kind == 'slide') {
-      final cols = _int(p['cols']), rows = _int(p['rows']), pos = _int(p['pos']);
+      final pos = _int(p['pos']);
       if (i < 0 || i >= cols * rows || i == pos) return run;
       final dx = (i % cols) - (pos % cols), dy = (i ~/ cols) - (pos ~/ cols);
       final to = dx.abs() >= dy.abs() ? _slideTo(p, pos, dx.sign, 0) : _slideTo(p, pos, 0, dy.sign);
       if (to == pos) return run;
       p['pos'] = to;
-      p['left'] = _int(p['left']) - 1;
       if (to == p['goal']) {
         end(true);
-      } else if (_int(p['left']) <= 0) {
-        end(false);
+      } else {
+        spend();
       }
     } else if (kind == 'maze') {
-      final cols = _int(p['cols']), rows = _int(p['rows']);
       if (!_neighbors(_int(p['pos']), cols, rows).contains(i)) return run;
       final hidden = p['hidden'] == true;
       if ((p['walls'] as List).contains(i)) {
         if (!hidden || (p['seen'] as List).contains(i)) return run;
         p['seen'] = [...(p['seen'] as List), i];
-        p['left'] = _int(p['left']) - 1;
-        if (_int(p['left']) <= 0) end(false);
+        spend();
       } else {
         p['pos'] = i;
-        if (!hidden) p['left'] = _int(p['left']) - 1;
+        if (p['dark'] == true && !(p['trail'] as List).contains(i)) p['trail'] = [...(p['trail'] as List), i];
         if (i == p['goal']) {
           end(true);
-        } else if (_int(p['left']) <= 0) {
-          end(false);
+        } else if (!hidden) {
+          spend();
         }
       }
     } else if (kind == 'tiles') {
-      final cols = _int(p['cols']), rows = _int(p['rows']);
       final holes = (p['holes'] as List?) ?? const [];
       if (!_neighbors(_int(p['pos']), cols, rows).contains(i) || holes.contains(i)) return run;
       final visited = p['visited'] as List;
@@ -3964,13 +4326,82 @@ class FactoryRun {
       if (p['shown'] == true) {
         if (i != -1) return run;
         p['shown'] = false;
-      } else if (i < 0 || i > 3) {
+      } else if (i < 0 || i >= _int(p['syms'] ?? 4)) {
         return run;
       } else if (seq[_int(p['at'])] == i) {
         p['at'] = _int(p['at']) + 1;
         if (_int(p['at']) >= seq.length) end(true);
       } else {
         end(false);
+      }
+    } else if (kind == 'teleport') {
+      if (i < 0 || i > 3) return run;
+      final k = _int(p['room']) * 4 + i;
+      final warps = ints('warps');
+      p['known'] = [for (final (j, x) in ints('known').indexed) j == k ? warps[k] : x];
+      p['room'] = warps[k];
+      if (p['room'] == p['goal']) {
+        end(true);
+      } else {
+        spend();
+      }
+    } else if (kind == 'boulder') {
+      final pos = _int(p['pos']), box = _int(p['box']);
+      final walls = ints('walls');
+      final d = _dirTo(pos, i, cols, rows);
+      if (d < 0 || walls.contains(i)) return run;
+      if (i == box) {
+        final nb = _stepDir(box, d, cols, rows);
+        if (nb < 0 || walls.contains(nb)) return run;
+        p['box'] = nb;
+      }
+      p['pos'] = i;
+      if (p['box'] == p['goal']) {
+        end(true);
+      } else {
+        spend();
+      }
+    } else if (kind == 'arrows') {
+      if (!_neighbors(_int(p['pos']), cols, rows).contains(i) || ints('walls').contains(i)) return run;
+      p['pos'] = _ride(p, i);
+      if (p['pos'] == p['goal']) {
+        end(true);
+      } else {
+        spend();
+      }
+    } else if (kind == 'gates') {
+      final flag = _int(p['flag']);
+      if (!_neighbors(_int(p['pos']), cols, rows).contains(i) || !_gateOpen(p, i, flag)) return run;
+      p['pos'] = i;
+      if (ints('switches').contains(i)) p['flag'] = 1 - flag;
+      if (i == p['goal']) {
+        end(true);
+      } else {
+        spend();
+      }
+    } else if (kind == 'lights') {
+      if (i < 0 || i >= cols * rows) return run;
+      final on = _flip(p['on'] as List, i, cols, rows);
+      p['on'] = on;
+      if (on.every((x) => x)) {
+        end(true);
+      } else {
+        spend();
+      }
+    } else if (kind == 'pairs') {
+      final cards = ints('cards'), found = ints('found'), open0 = ints('open');
+      if (i < 0 || i >= cards.length || found.contains(i) || open0.contains(i)) return run;
+      // As duas erradas ficam à mostra até a próxima carta.
+      final open = [if (open0.length < 2) ...open0, i];
+      p['open'] = open;
+      if (open.length == 2) {
+        if (cards[open[0]] == cards[open[1]]) {
+          p['found'] = [...found, ...open];
+          p['open'] = <int>[];
+          if (found.length + 2 >= cards.length) end(true);
+        } else {
+          spend();
+        }
       }
     }
     return {
@@ -3979,7 +4410,7 @@ class FactoryRun {
     };
   }
 
-  /// Sai do desafio (ou desiste dele): guarda se venceu (a vantagem contra o líder) e dá o prêmio.
+  /// Sai do desafio (ou desiste dele): guarda se venceu (o líder aparece) e dá o prêmio.
   static Json finishPuzzle(Json run) {
     final p = (run['pending'] as Map?)?['puzzle'] as Map?;
     if (p == null) return run;
@@ -3996,27 +4427,42 @@ class FactoryRun {
 
   /// O desafio como a tela mostra: as casas (c: o que tem nela), quantas colunas e o que perguntar. As casas:
   /// 'me' você, 'goal' o líder, 'rock' pedra, 'wall' parede (vista), 'floor' chão, 'done' ladrilho pisado, 'closed' lixeira
-  /// fechada, 'num' vazia (n: a distância até o interruptor), 'hit' interruptor, 'type' (type), 'mon' (mon), 'sym' (n).
+  /// fechada, 'num' vazia (n: a distância até o interruptor), 'hit' interruptor, 'type' (type), 'mon' (mon), 'ans' (n: um
+  /// número para responder), 'sym' (n), 'dark' (no escuro), 'pad' (n: a sala de destino, ou null), 'boulder', 'target',
+  /// 'arrow' (n: a direção), 'red' e 'blue' (up: levantada), 'switch', 'on' e 'off' (as luzes), 'back' (carta virada),
+  /// 'card' (mon, à mostra) e 'pair' (mon, par achado).
   static Json? puzzleView(Json run) {
     final p = (run['pending'] as Map?)?['puzzle'] as Map?;
     if (p == null) return null;
-    final base = <String, dynamic>{'kind': p['kind'], 'type': p['type'], 'done': p['done'], 'won': p['won']};
+    final base = <String, dynamic>{'kind': p['kind'], 'type': p['type'], 'gym': p['gym'], 'done': p['done'], 'won': p['won']};
     final kind = p['kind'];
+    final cols = _int(p['cols'] ?? 0), count = cols * _int(p['rows'] ?? 0);
+    final done = p['done'] == true;
+    List<int> ints(String k) => [for (final x in (p[k] as List?) ?? const []) _int(x)];
+    List<Json> cells(Json Function(int) f) => [for (var i = 0; i < count; i++) f(i)];
     if (kind == 'quiz' || kind == 'silhouette') {
       final qs = p['qs'] as List;
       final q = qs[math.min(_int(p['at']), qs.length - 1)] as Map;
       return {
         ...base,
         'cols': 2,
-        'cells': [for (final o in q['options'] as List) o is num ? {'c': 'mon', 'mon': o.toInt()} : {'c': 'type', 'type': o}],
-        'prompt': kind == 'silhouette' ? {'q': 'who', 'mon': q['mon']} : {'q': q['q'], if (q['type'] != null) 'type': q['type'], if (q['mon'] != null) 'mon': q['mon']},
+        'cells': [
+          for (final o in q['options'] as List)
+            q['nums'] == true
+                ? {'c': 'ans', 'n': o}
+                : o is num
+                    ? {'c': 'mon', 'mon': o.toInt()}
+                    : {'c': 'type', 'type': o}
+        ],
+        'prompt': kind == 'silhouette'
+            ? {'q': 'who', 'mon': q['mon']}
+            : {'q': q['q'], if (q['type'] != null) 'type': q['type'], if (q['mon'] != null) 'mon': q['mon'], if (q['op'] != null) ...{'a': q['a'], 'b': q['b'], 'op': q['op']}},
         'at': p['at'],
         'total': qs.length,
         'right': p['right'],
+        'need': p['need'] ?? 4,
       };
     }
-    final cols = kind == 'memory' ? 4 : _int(p['cols']);
-    final count = kind == 'memory' ? 4 : cols * _int(p['rows']);
     if (kind == 'switches') {
       final open = p['open'] as Map;
       return {
@@ -4024,50 +4470,128 @@ class FactoryRun {
         'cols': cols,
         'left': p['left'],
         'found': p['found'],
-        'cells': [
-          for (var i = 0; i < count; i++)
-            open['$i'] == null
-                ? (p['done'] == true && (i == p['a'] || i == p['b']) ? {'c': 'hit'} : {'c': 'closed'})
-                : open['$i'] == 'hit'
-                    ? {'c': 'hit'}
-                    : {'c': 'num', 'n': open['$i']}
-        ],
+        'cells': cells((i) => open['$i'] == null
+            ? (done && (i == p['a'] || i == p['b']) ? {'c': 'hit'} : {'c': 'closed'})
+            : open['$i'] == 'hit'
+                ? {'c': 'hit'}
+                : {'c': 'num', 'n': open['$i']}),
       };
     }
     if (kind == 'slide') {
-      return {
-        ...base,
-        'cols': cols,
-        'left': p['left'],
-        'cells': [for (var i = 0; i < count; i++) {'c': i == p['pos'] ? 'me' : i == p['goal'] ? 'goal' : (p['rocks'] as List).contains(i) ? 'rock' : 'floor'}],
-      };
+      final rocks = ints('rocks');
+      return {...base, 'cols': cols, 'left': p['left'], 'cells': cells((i) => {'c': i == p['pos'] ? 'me' : i == p['goal'] ? 'goal' : rocks.contains(i) ? 'rock' : 'floor'})};
     }
     if (kind == 'maze') {
-      bool shown(int i) => (p['walls'] as List).contains(i) && (p['hidden'] != true || (p['seen'] as List).contains(i) || p['done'] == true);
+      final walls = ints('walls'), seen = ints('seen'), trail = ints('trail');
+      final rows = _int(p['rows']);
+      final dark = p['dark'] == true;
+      bool shown(int i) => walls.contains(i) && (p['hidden'] != true || seen.contains(i) || done);
+      bool lit(int i) => !dark || done || i == p['goal'] || trail.any((t) => t == i || _neighbors(t, cols, rows).contains(i));
       return {
         ...base,
         'cols': cols,
         'left': p['left'],
         'hidden': p['hidden'],
-        'cells': [for (var i = 0; i < count; i++) {'c': i == p['pos'] ? 'me' : i == p['goal'] ? 'goal' : shown(i) ? 'wall' : 'floor'}],
+        'dark': dark,
+        'cells': cells((i) => {'c': i == p['pos'] ? 'me' : i == p['goal'] ? 'goal' : !lit(i) ? 'dark' : shown(i) ? 'wall' : 'floor'}),
       };
     }
     if (kind == 'tiles') {
-      final visited = p['visited'] as List;
+      final visited = ints('visited'), holes = ints('holes');
       return {
         ...base,
         'cols': cols,
-        'left': count - ((p['holes'] as List?)?.length ?? 0) - visited.length,
-        'cells': [for (var i = 0; i < count; i++) {'c': i == p['pos'] ? 'me' : ((p['holes'] as List?) ?? const []).contains(i) ? 'wall' : visited.contains(i) ? 'done' : 'floor'}],
+        'left': count - holes.length - visited.length,
+        'cells': cells((i) => {'c': i == p['pos'] ? 'me' : holes.contains(i) ? 'wall' : visited.contains(i) ? 'done' : 'floor'}),
       };
     }
+    if (kind == 'memory') {
+      final syms = _int(p['syms'] ?? 4);
+      return {
+        ...base,
+        'cols': syms == 6 ? 3 : 4,
+        'seq': p['shown'] == true || done ? p['seq'] : null,
+        'at': p['at'],
+        'total': (p['seq'] as List).length,
+        'cells': [for (var n = 0; n < syms; n++) {'c': 'sym', 'n': n}],
+      };
+    }
+    if (kind == 'teleport') {
+      final known = ints('known'), room = _int(p['room']);
+      return {
+        ...base,
+        'cols': 2,
+        'left': p['left'],
+        'room': room + 1,
+        'rooms': p['rooms'],
+        'cells': [for (var k = 0; k < 4; k++) {'c': 'pad', 'n': known[room * 4 + k] >= 0 ? known[room * 4 + k] + 1 : null}],
+      };
+    }
+    if (kind == 'boulder') {
+      final walls = ints('walls');
+      return {
+        ...base,
+        'cols': cols,
+        'left': p['left'],
+        'cells': cells((i) => {'c': i == p['pos'] ? 'me' : i == p['box'] ? 'boulder' : i == p['goal'] ? 'target' : walls.contains(i) ? 'wall' : 'floor'}),
+      };
+    }
+    if (kind == 'arrows') {
+      final walls = ints('walls'), arrows = ints('arrows');
+      return {
+        ...base,
+        'cols': cols,
+        'left': p['left'],
+        'cells': cells((i) => i == p['pos']
+            ? {'c': 'me'}
+            : i == p['goal']
+                ? {'c': 'goal'}
+                : walls.contains(i)
+                    ? {'c': 'wall'}
+                    : arrows[i] >= 0
+                        ? {'c': 'arrow', 'n': arrows[i]}
+                        : {'c': 'floor'}),
+      };
+    }
+    if (kind == 'gates') {
+      final walls = ints('walls'), red = ints('red'), blue = ints('blue'), switches = ints('switches');
+      final flag = _int(p['flag']);
+      return {
+        ...base,
+        'cols': cols,
+        'left': p['left'],
+        'cells': cells((i) => i == p['pos']
+            ? {'c': 'me'}
+            : i == p['goal']
+                ? {'c': 'goal'}
+                : walls.contains(i)
+                    ? {'c': 'wall'}
+                    : red.contains(i)
+                        ? {'c': 'red', 'up': flag == 0}
+                        : blue.contains(i)
+                            ? {'c': 'blue', 'up': flag == 1}
+                            : switches.contains(i)
+                                ? {'c': 'switch'}
+                                : {'c': 'floor'}),
+      };
+    }
+    if (kind == 'lights') {
+      final on = p['on'] as List;
+      return {...base, 'cols': cols, 'left': p['left'], 'cells': cells((i) => {'c': on[i] == true ? 'on' : 'off'})};
+    }
+    final cards = ints('cards'), found = ints('found'), open = ints('open');
     return {
       ...base,
-      'cols': 4,
-      'seq': p['shown'] == true || p['done'] == true ? p['seq'] : null,
-      'at': p['at'],
-      'total': (p['seq'] as List).length,
-      'cells': [for (var n = 0; n < 4; n++) {'c': 'sym', 'n': n}],
+      'cols': cols,
+      'left': p['left'],
+      'cells': [
+        for (final (i, mon) in cards.indexed)
+          found.contains(i)
+              ? {'c': 'pair', 'mon': mon}
+              : open.contains(i) || done
+                  ? {'c': 'card', 'mon': mon}
+                  : {'c': 'back'}
+      ],
     };
   }
 
