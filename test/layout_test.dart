@@ -604,7 +604,8 @@ final Map<String, Future<void> Function(WidgetTester)> actions = {
   'Battle Factory (cartão do treinador)': (tester) async {
     await tester.tap(find.byKey(const ValueKey('factory-menu-help')));
     await tester.pump(const Duration(milliseconds: 300));
-    await tester.tap(find.byKey(const ValueKey('help-card')));
+    // Em pé a faixa de baixo da AJUDA fica estreita (o Pokelike é deitado): toca direto no botão.
+    tester.widget<InkWell>(find.byKey(const ValueKey('help-card'))).onTap!();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.byKey(const ValueKey('trainer-card')), findsOneWidget);
     expect(find.byKey(const ValueKey('card-floor')), findsOneWidget);

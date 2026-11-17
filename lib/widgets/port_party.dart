@@ -29,7 +29,8 @@ class PortParty extends StatefulWidget {
       this.onMove,
       this.active,
       this.selected,
-      this.onSelect});
+      this.onSelect,
+      this.footer});
   final List<PartySlot> team;
   final ValueChanged<int> onPick;
   final String? title;
@@ -53,6 +54,9 @@ class PortParty extends StatefulWidget {
   /// Na batalha: quem foi tocado (em amarelo); com [onSelect], tocar só marca (as opções ficam nos botões de baixo).
   final int? selected;
   final ValueChanged<int>? onSelect;
+
+  /// Embaixo de tudo (na batalha: a fala e os botões TROCAR / DADOS / CANCELAR), com a tela do time na tela inteira.
+  final Widget? footer;
 
   @override
   State<PortParty> createState() => _PortPartyState();
@@ -218,6 +222,7 @@ class _PortPartyState extends State<PortParty> {
                   padding: const EdgeInsets.only(top: 3),
                   child: Text(tr('Arraste um Pokémon em cima de outro para trocar de lugar.'), textAlign: TextAlign.center, style: _font.copyWith(fontSize: w * 0.013, color: const Color(0xFFCBD5E1))),
                 ),
+              if (widget.footer != null) ...[SizedBox(height: w * 0.012), SizedBox(height: w * 0.075, child: widget.footer)],
               if (widget.onCancel != null)
                 Align(
                   alignment: Alignment.centerRight,

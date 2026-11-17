@@ -1708,14 +1708,6 @@ waiting && online?.waitForSwitch
                 <MenuButton testId="bag-use" disabled={bagPicked.disabled} onClick={() => bagPicked.onUse(bagPicked)}>{bagPicked.use ?? t('USAR')}</MenuButton>
                 <MenuButton testId="bag-cancel" onClick={() => setBagPick(null)}>CANCELAR</MenuButton>
               </MenuGrid>
-          : waiting && menu === 'party' && summary == null && partyPick != null && !item
-            // Tocou num Pokémon do time: as opções nos botões fixos (como no jogo).
-            ? <MenuGrid>
-                <MenuButton testId="party-pick" disabled={battle.sides[0].switchOptions ? !battle.sides[0].switchOptions.includes(partyPick) : battle.sides[0].team[partyPick].hp <= 0 || partyPick === battle.sides[0].active}
-                  onClick={() => { const i = partyPick; setPartyPick(null); choose(i) }}>TROCAR</MenuButton>
-                <MenuButton testId="party-info" onClick={() => setSummary(partyPick)}>DADOS</MenuButton>
-                <MenuButton testId="party-close" onClick={() => setPartyPick(null)}>CANCELAR</MenuButton>
-              </MenuGrid>
           : waiting && battle.shiftPending && menu === 'main'
             ? <MenuGrid>
                 <MenuButton testId="shift-yes" onClick={() => (setItem(null), setPartyPick(null), setSummary(null), setMenu('party'))}>SIM</MenuButton>
@@ -1779,8 +1771,7 @@ waiting && online?.waitForSwitch
 waiting && !locked && menu === 'fight' ? <MenuButton onClick={() => setMenu('main')} className="h-full w-full text-sm">Voltar</MenuButton>
           : waiting && menu === 'bag'
             ? <MenuButton testId="bag-close" onClick={() => { setBagPick(null); setMenu('main') }} className="h-full w-full text-sm">Voltar</MenuButton>
-          : waiting && menu === 'party' && summary == null && !battle.needSwitch
-            ? <MenuButton testId="party-back" onClick={() => { setPartyPick(null); if (item) { setItem(null); setMenu('bag') } else setMenu('main') }} className="h-full w-full text-sm">Voltar</MenuButton> : null
+          : null
   )
   return (
     <BattleWithLog log={log} summary={!busy && battle.winner != null ? <BattleSummary battle={battle} stats={stats.current} turns={turnNo.current - 1} kos={kos.current} /> : null}>
@@ -1936,7 +1927,8 @@ waiting && !locked && menu === 'fight' ? <MenuButton onClick={() => setMenu('mai
         {waiting && menu === 'party' && summary == null && (
           // A tela do time do Black & White: os 6 cabem exatamente na tela, em cima da caixa de texto (a pergunta aparece
           // nela); tocou num Pokémon, as opções ficam nos botões fixos de baixo (como no jogo).
-          <div className="panel-in absolute inset-x-0 top-0 bottom-[23.5%] z-30" data-testid="party-screen">
+          // A tela do time na tela inteira (como fora da batalha): a fala e os botões ficam embaixo dela.
+          <div className="panel-in absolute inset-0 z-40" data-testid="party-screen">
             <BwParty testid="party" active={battle.sides[0].active} selected={item ? null : partyPick}
               team={battle.sides[0].team.map((m) => {
                 const match = !item && m.hp > 0 ? switchMatchup(hit, m, rival, typeEff) : null
@@ -1948,7 +1940,16 @@ waiting && !locked && menu === 'fight' ? <MenuButton onClick={() => setMenu('mai
               })}
               disabled={(i) => (item ? !canUseItem(battle, 0, item, i) : false)}
               dim={(i) => !item && (battle.sides[0].switchOptions ? !battle.sides[0].switchOptions.includes(i) : battle.sides[0].team[i].hp <= 0 || i === battle.sides[0].active)}
-              onPick={(i) => (item ? choose(i) : setPartyPick(i))} />
+              onPick={(i) => (item ? choose(i) : setPartyPick(i))}
+              footer={<>
+                <p className="party-box flex flex-1 items-center truncate px-[2cqw] text-[2cqw]" data-testid="party-prompt">{battle.needSwitch ? t('Escolha o próximo Pokémon') : item ? t('Usar em qual Pokémon?') : t('Escolha um Pokémon.')}</p>
+                {!item && partyPick != null ? <>
+                  <MenuButton testId="party-pick" className="party-box !flex-none h-full w-[17%] !text-[1.8cqw]" disabled={battle.sides[0].switchOptions ? !battle.sides[0].switchOptions.includes(partyPick) : battle.sides[0].team[partyPick].hp <= 0 || partyPick === battle.sides[0].active}
+                    onClick={() => { const i = partyPick; setPartyPick(null); choose(i) }}>TROCAR</MenuButton>
+                  <MenuButton testId="party-info" className="party-box !flex-none h-full w-[17%] !text-[1.8cqw]" onClick={() => setSummary(partyPick)}>DADOS</MenuButton>
+                  <MenuButton testId="party-close" className="party-box !flex-none h-full w-[17%] !text-[1.8cqw]" onClick={() => setPartyPick(null)}>CANCELAR</MenuButton>
+                </> : !battle.needSwitch && <MenuButton testId="party-back" className="party-box !flex-none h-full w-[17%] !text-[1.8cqw]" onClick={() => { setPartyPick(null); if (item) { setItem(null); setMenu('bag') } else setMenu('main') }}>Voltar</MenuButton>}
+              </>} />
           </div>
         )}
       </div>

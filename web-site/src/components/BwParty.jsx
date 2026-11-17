@@ -20,7 +20,7 @@ const hpColor = (hp) => (hp > 0.5 ? '#4ade80' : hp > 0.2 ? '#facc15' : '#ef4444'
  * Na batalha: active (quem está em campo, borda verde), dim(i) (não dá para trocar: apagado, mas toca para ver os dados)
  * e status (QUE, PAR...) no cartão. Igual ao app (PortParty).
  */
-export default function BwParty({ team, title, onPick, onMove, disabled = () => false, dim = () => false, selected = null, active = null, onCancel, cancelLabel, testid = 'bw-party', eggs = [] }) {
+export default function BwParty({ team, title, onPick, onMove, disabled = () => false, dim = () => false, selected = null, active = null, footer = null, onCancel, cancelLabel, testid = 'bw-party', eggs = [] }) {
   const [drag, setDrag] = useState(null) // { from, over, x, y }
   const start = useRef(null)
   const moved = useRef(false)
@@ -101,6 +101,8 @@ export default function BwParty({ team, title, onPick, onMove, disabled = () => 
           {Array.from({ length: 5 }, (_, k) => rest[k] ? slot(rest[k]) : <div key={`empty-${k}`} className="party-box empty" />)}
         </div>
       </div>
+      {/* Na batalha: a fala e os botões TROCAR / DADOS / CANCELAR, com o time na tela inteira. Igual ao app. */}
+      {footer && <div className="flex h-[7.5cqw] shrink-0 gap-[1cqw]">{footer}</div>}
       {onMove && <p className="text-center text-[1.3cqw] text-slate-300">{t('Arraste um Pokémon em cima de outro para trocar de lugar.')}</p>}
       {onCancel && (
         <button type="button" onClick={onCancel} className="party-box self-end cursor-pointer px-[2cqw] py-[0.6cqw] text-[1.6cqw]" data-testid={`${testid}-cancel`}>

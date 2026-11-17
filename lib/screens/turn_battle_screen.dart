@@ -2524,6 +2524,39 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
                 ],
                 disabled: (i) => !(_item != null ? _b.canUseItem(0, _item!, i) : _b.canSwitch(0, i)),
                 onPick: _choose,
+                // A tela do time na tela inteira (como fora da batalha): a fala e os botões ficam embaixo dela.
+                footer: _PortScope(
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    Expanded(
+                      child: Container(
+                        key: const ValueKey('party-prompt'),
+                        alignment: Alignment.centerLeft,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(color: const Color(0xEB14161C), border: Border.all(color: const Color(0xFF8B93A1), width: 2)),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: m.Text(_b.needSwitch ? tr('Escolha o próximo Pokémon') : _item != null ? tr('Usar em qual Pokémon?') : tr('Escolha um Pokémon.'),
+                              style: const TextStyle(fontFamily: 'PixelifySans', color: Colors.white, fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                    ),
+                    for (final b in [
+                      if (_item == null && _partyPick != null) ...[
+                        _MenuButton(key: const ValueKey('battle-single-switch-pick'), tr('TROCAR'), _b.canSwitch(0, _partyPick!) ? () => _choose(_partyPick!) : null),
+                        _MenuButton(key: const ValueKey('battle-single-switch-info'), tr('DADOS'), () => setState(() => _summary = _partyPick)),
+                        _MenuButton(key: const ValueKey('battle-single-switch-close'), tr('CANCELAR'), () => setState(() => _partyPick = null)),
+                      ] else if (!_b.needSwitch)
+                        _MenuButton(
+                            key: const ValueKey('battle-single-switch-cancel'),
+                            'Voltar',
+                            () => setState(() {
+                                  _menu = _item != null ? 'bag' : 'main';
+                                  _item = null;
+                                  _partyPick = null;
+                                })),
+                    ]) ...[const SizedBox(width: 6), Flexible(child: SizedBox(width: 120, child: b))],
+                  ]),
+                ),
               )
             : null;
     // A mecânica do set (montador) ativa sozinha no primeiro ataque, como nos
@@ -2573,13 +2606,9 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
                               _MenuButton(key: const ValueKey('bag-use'), bagPicked.use ?? tr('USAR'), bagPicked.disabled ? null : bagPicked.onUse),
                               _MenuButton(key: const ValueKey('bag-cancel'), tr('CANCELAR'), () => setState(() => _bagPick = null)),
                             ])
-                      : _menu == 'party' && _partyPick != null
-                          // Tocou num Pokémon do time: as opções (como no jogo).
-                          ? _menuGrid([
-                              _MenuButton(key: const ValueKey('battle-single-switch-pick'), tr('TROCAR'), _b.canSwitch(0, _partyPick!) ? () => _choose(_partyPick!) : null),
-                              _MenuButton(key: const ValueKey('battle-single-switch-info'), tr('DADOS'), () => setState(() => _summary = _partyPick)),
-                              _MenuButton(key: const ValueKey('battle-single-switch-close'), tr('CANCELAR'), () => setState(() => _partyPick = null)),
-                            ])
+                      : _menu == 'party' && _summary == null
+                          // A tela do time tem a fala e as opções dentro dela (na tela inteira).
+                          ? null
                       : _menu == 'fight'
                           // A mecânica (Mega, Z, Dynamax, Tera): o botão redondo no meio dos 4 golpes; ligado, ativa no ataque.
                           ? Stack(alignment: Alignment.center, children: [
@@ -2643,15 +2672,6 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
                         _menu = 'main';
                         _bagPick = null;
                       }))
-              : waiting && _menu == 'party' && _summary == null && !_b.needSwitch
-                  ? _MenuButton(
-                      key: const ValueKey('battle-single-switch-cancel'),
-                      'Voltar',
-                      () => setState(() {
-                            _menu = _item != null ? 'bag' : 'main';
-                            _item = null;
-                            _partyPick = null;
-                          }))
                   : null;
     return DsLayout(
       single: true,
@@ -2982,7 +3002,7 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
                             left: 0,
                             right: 0,
                             top: 0,
-                            bottom: _menu == 'bag' || _menu == 'party' && _summary == null ? h * 0.235 : 0,
+                            bottom: _menu == 'bag' ? h * 0.235 : 0,
                             child: _Appear(key: ValueKey(_menu), child: _menu == 'bag' || _summary == null ? fieldPanel : SingleChildScrollView(child: fieldPanel))),
                       // A tela VS por cima de tudo: só os dois treinadores (o resto some até ela acabar).
                       if (_vsOn)
