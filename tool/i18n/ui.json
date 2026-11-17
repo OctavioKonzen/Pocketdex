@@ -1235,6 +1235,11 @@
   "fr": "Fais glisser un Pokémon sur un autre pour les échanger.",
   "es": "Arrastra un Pokémon sobre otro para cambiarlos de lugar."
  },
+ "Arraste um Pokémon para cima de quem está em campo para trocar.": {
+  "en": "Drag a Pokémon onto the one in battle to switch.",
+  "fr": "Faites glisser un Pokémon sur celui au combat pour l'échanger.",
+  "es": "Arrastra un Pokémon sobre el que está en combate para cambiarlo."
+ },
  "As 16 variações de dano": {
   "en": "The 16 damage rolls",
   "fr": "Les 16 jets de dégâts",

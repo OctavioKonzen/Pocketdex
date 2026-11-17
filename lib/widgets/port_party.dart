@@ -5,6 +5,8 @@
 // Arrastar um em cima do outro troca os dois de lugar (onMove). Abre por cima do campo, para escolher em quem usar um
 // item, quem trocar, quem sai do time ou quem entra. Igual ao site (web-site/src/components/BwParty.jsx).
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../i18n/i18n.dart';
@@ -30,7 +32,8 @@ class PortParty extends StatefulWidget {
       this.active,
       this.selected,
       this.onSelect,
-      this.footer});
+      this.footer,
+      this.leads});
   final List<PartySlot> team;
   final ValueChanged<int> onPick;
   final String? title;
@@ -57,6 +60,10 @@ class PortParty extends StatefulWidget {
 
   /// Embaixo de tudo (na batalha: a fala e os botões TROCAR / DADOS / CANCELAR), com a tela do time na tela inteira.
   final Widget? footer;
+
+  /// Na batalha: quem está em campo (posições no time), à esquerda, um embaixo do outro (1 na normal, 2 na dupla, 3 na
+  /// tripla); os outros à direita, na ordem do time. Sem: o primeiro grande à esquerda e os outros cinco à direita.
+  final List<int>? leads;
 
   @override
   State<PortParty> createState() => _PortPartyState();
@@ -133,9 +140,25 @@ class _PortPartyState extends State<PortParty> {
     Widget card = Opacity(
       opacity: off ? 0.45 : _from == i ? 0.4 : 1,
       child: _frame(InkWell(onTap: off && widget.onSelect == null ? null : () => (widget.onSelect ?? widget.onPick)(i), child: body),
-          over: _over == i && _from != i, hot: widget.selected == i, field: widget.active == i, key: ValueKey('${widget.testKey}-$i')),
+          over: _over == i && _from != i, hot: widget.selected == i, field: widget.active == i || (widget.leads?.contains(i) ?? false), key: ValueKey('${widget.testKey}-$i')),
     );
-    if (widget.onMove == null || off) return DragTarget<int>(builder: (_, _, _) => card, onWillAcceptWithDetails: (_) => false);
+    if (widget.onMove == null) return DragTarget<int>(builder: (_, _, _) => card, onWillAcceptWithDetails: (_) => false);
+    // Apagado (na batalha: quem já está em campo): não sai do lugar, mas recebe quem for solto em cima (troca).
+    if (off) {
+      return DragTarget<int>(
+        onWillAcceptWithDetails: (d) {
+          if (d.data == i) return false;
+          setState(() => _over = i);
+          return true;
+        },
+        onLeave: (_) => setState(() => _over = null),
+        onAcceptWithDetails: (d) {
+          setState(() => _over = null);
+          widget.onMove!(d.data, i);
+        },
+        builder: (context, _, _) => card,
+      );
+    }
     // Segura e arrasta (como no jogo): solta em cima de outro para trocar os dois de lugar.
     return DragTarget<int>(
       onWillAcceptWithDetails: (d) {
@@ -159,6 +182,29 @@ class _PortPartyState extends State<PortParty> {
         ),
       ),
     );
+  }
+
+  /// Na batalha: quem está em campo à esquerda (um embaixo do outro) e o resto à direita, na ordem do time.
+  Widget _battleRows(List<Widget Function({bool big})> slots, double w) {
+    final leads = [for (final i in widget.leads!) if (i >= 0 && i < widget.team.length) i];
+    final rest = [for (var i = 0; i < widget.team.length; i++) if (!leads.contains(i)) i];
+    final rows = math.max(rest.length, 6 - leads.length);
+    Widget column(List<int> list, int count, {bool big = false}) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          for (var k = 0; k < count; k++) ...[
+            if (k > 0) SizedBox(height: w * 0.01),
+            Expanded(child: k < list.length ? slots[list[k]](big: big) : Opacity(opacity: 0.35, child: _frame(const SizedBox.expand()))),
+          ],
+        ]);
+    return Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      // Um só em campo: grande, no meio da altura (como fora da batalha); dois ou três: um embaixo do outro.
+      SizedBox(
+          width: w * 0.42,
+          child: leads.length == 1
+              ? Center(child: FractionallySizedBox(heightFactor: 0.62, child: slots[leads.first](big: true)))
+              : Padding(padding: EdgeInsets.symmetric(vertical: w * 0.02), child: column(leads, leads.length))),
+      SizedBox(width: w * 0.015),
+      Expanded(child: column(rest, rows)),
+    ]);
   }
 
   Widget _egg(int k, double w) {
@@ -201,6 +247,9 @@ class _PortPartyState extends State<PortParty> {
                 _frame(Padding(padding: EdgeInsets.symmetric(horizontal: w * 0.015, vertical: 3), child: Text(widget.title!, style: _font.copyWith(fontSize: w * 0.018)))),
                 SizedBox(height: w * 0.012),
               ],
+              if (widget.leads != null)
+                Expanded(child: _battleRows(slots, w))
+              else
               Expanded(
                 child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                   // O primeiro (quem vai na frente) grande, à esquerda.
@@ -220,7 +269,7 @@ class _PortPartyState extends State<PortParty> {
               if (widget.onMove != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 3),
-                  child: Text(tr('Arraste um Pokémon em cima de outro para trocar de lugar.'), textAlign: TextAlign.center, style: _font.copyWith(fontSize: w * 0.013, color: const Color(0xFFCBD5E1))),
+                  child: Text(tr(widget.leads != null ? 'Arraste um Pokémon para cima de quem está em campo para trocar.' : 'Arraste um Pokémon em cima de outro para trocar de lugar.'), textAlign: TextAlign.center, style: _font.copyWith(fontSize: w * 0.013, color: const Color(0xFFCBD5E1))),
                 ),
               if (widget.footer != null) ...[SizedBox(height: w * 0.012), SizedBox(height: w * 0.075, child: widget.footer)],
               if (widget.onCancel != null)

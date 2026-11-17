@@ -1941,6 +1941,12 @@ waiting && !locked && menu === 'fight' ? <MenuButton onClick={() => setMenu('mai
               disabled={(i) => (item ? !canUseItem(battle, 0, item, i) : false)}
               dim={(i) => !item && (battle.sides[0].switchOptions ? !battle.sides[0].switchOptions.includes(i) : battle.sides[0].team[i].hp <= 0 || i === battle.sides[0].active)}
               onPick={(i) => (item ? choose(i) : setPartyPick(i))}
+              // Quem está em campo à esquerda; arrastar outro para cima dele troca. Igual ao app.
+              leads={[battle.sides[0].active]}
+              onMove={item ? undefined : (from, to) => {
+                const ok = battle.sides[0].switchOptions ? battle.sides[0].switchOptions.includes(from) : battle.sides[0].team[from].hp > 0 && from !== battle.sides[0].active
+                if (to === battle.sides[0].active && ok) { setPartyPick(null); choose(from) }
+              }}
               footer={<>
                 <p className="party-box flex flex-1 items-center truncate px-[2cqw] text-[2cqw]" data-testid="party-prompt">{battle.needSwitch ? t('Escolha o próximo Pokémon') : item ? t('Usar em qual Pokémon?') : t('Escolha um Pokémon.')}</p>
                 {!item && partyPick != null ? <>
@@ -2419,6 +2425,9 @@ export function MultiBattle({battle, hit = null, onExit, onAgain, onFinish, onli
           team={battle.sides[side].team.map((m, i) => ({ id: m.id, shiny: m.shiny, name: m.name, level: m.level, status: m.status, hp: m.maxHp > 0 ? m.hp / m.maxHp : 0,
             sub: m.hp <= 0 ? t('Desmaiado') : `${m.hp}/${m.maxHp}${heldTag(battle, side, i)}` }))}
           dim={(i) => (item ? !canItem(item, i) : !options.includes(i))} onPick={(i) => setPartyPick(i)}
+          // Quem está em campo (2 na dupla, 3 na tripla) à esquerda; arrastar um de fora para cima do desta vez troca.
+          leads={state.sides[side].slots.map((s) => s.index).filter((i) => i >= 0)}
+          onMove={item || locked ? undefined : (from, to) => { if (to === slot.index && options.includes(from)) { setPartyPick(null); commit(slot, { kind: 'switch', index: from }) } }}
           footer={<>
             <p className="party-box flex flex-1 items-center truncate px-[2cqw] text-[2cqw]" data-testid="party-prompt">{prompt}</p>
             {partyPick != null ? <>

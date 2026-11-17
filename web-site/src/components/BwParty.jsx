@@ -18,9 +18,10 @@ const hpColor = (hp) => (hp > 0.5 ? '#4ade80' : hp > 0.2 ? '#facc15' : '#ef4444'
  * (um número, ou { left, mystery } para o ovo misterioso, que aparece como ❔).
  * hearts (em cada um do time): a amizade, de 0 a 5 corações.
  * Na batalha: active (quem está em campo, borda verde), dim(i) (não dá para trocar: apagado, mas toca para ver os dados)
- * e status (QUE, PAR...) no cartão. Igual ao app (PortParty).
+ * e status (QUE, PAR...) no cartão. leads: quem está em campo (posições no time), à esquerda, um embaixo do outro (1 na
+ * normal, 2 na dupla, 3 na tripla); os outros à direita, na ordem do time. Igual ao app (PortParty).
  */
-export default function BwParty({ team, title, onPick, onMove, disabled = () => false, dim = () => false, selected = null, active = null, footer = null, onCancel, cancelLabel, testid = 'bw-party', eggs = [] }) {
+export default function BwParty({ team, title, onPick, onMove, disabled = () => false, dim = () => false, selected = null, active = null, footer = null, leads = null, onCancel, cancelLabel, testid = 'bw-party', eggs = [] }) {
   const [drag, setDrag] = useState(null) // { from, over, x, y }
   const start = useRef(null)
   const moved = useRef(false)
@@ -70,7 +71,7 @@ export default function BwParty({ team, title, onPick, onMove, disabled = () => 
     return (
       <button key={i} type="button" disabled={off} data-slot={i} data-testid={`${testid}-${i}`}
         onClick={() => { if (!moved.current) onPick(i) }} onPointerDown={down(i)}
-        className={`party-box flex min-h-0 min-w-0 cursor-pointer text-left disabled:cursor-default disabled:opacity-45 ${big ? 'flex-col items-center justify-center gap-[1cqw] px-[2cqw]' : 'items-center gap-[1.2cqw] px-[1.2cqw]'} ${selected === i ? 'selected' : active === i ? 'lead' : ''} ${dim(i) ? 'opacity-60' : ''} ${isOver ? 'over' : ''} ${drag?.from === i ? 'opacity-40' : ''}`}
+        className={`party-box flex min-h-0 min-w-0 cursor-pointer text-left disabled:cursor-default disabled:opacity-45 ${big ? 'flex-col items-center justify-center gap-[1cqw] px-[2cqw]' : 'items-center gap-[1.2cqw] px-[1.2cqw]'} ${selected === i ? 'selected' : active === i || leads?.includes(i) ? 'lead' : ''} ${dim(i) ? 'opacity-60' : ''} ${isOver ? 'over' : ''} ${drag?.from === i ? 'opacity-40' : ''}`}
         style={{ touchAction: onMove ? 'none' : undefined }}>
         <PokeIcon id={m.id} shiny={Boolean(m.shiny)} className={`shrink-0 ${big ? 'h-[11cqw] w-[11cqw]' : 'h-[5.5cqw] w-[5.5cqw]'} ${hp > 0 ? '' : 'grayscale'}`} />
         <span className={`min-w-0 ${big ? 'w-full' : 'flex-1'}`}>
@@ -93,17 +94,32 @@ export default function BwParty({ team, title, onPick, onMove, disabled = () => 
   return (
     <div className="bw-party port-field flex h-full min-h-full flex-col gap-[1.2cqw] p-[1.5cqw]" data-testid={testid} onPointerMove={move} onPointerUp={up} onPointerCancel={() => { start.current = null; setDrag(null) }}>
       {title && <p className="party-title px-[1.5cqw] py-[0.6cqw] text-[1.8cqw]">{title}</p>}
-      <div className="flex min-h-0 flex-1 gap-[1.5cqw]">
+      {leads ? (() => {
+        // Na batalha: quem está em campo à esquerda (um grande, ou dois/três um embaixo do outro); o resto à direita.
+        const front = leads.filter((i) => i >= 0 && i < team.length)
+        const back = slots.filter(({ i }) => !front.includes(i))
+        const rows = Math.max(back.length, 6 - front.length)
+        return (
+          <div className="flex min-h-0 flex-1 gap-[1.5cqw]">
+            <div className={`flex w-[44%] shrink-0 flex-col ${front.length === 1 ? 'justify-center' : 'gap-[1cqw] py-[2cqw]'}`}>
+              {front.length === 1 ? <div className="flex h-[62%]">{slot(slots[front[0]], true)}</div> : front.map((i) => <div key={i} className="flex min-h-0 flex-1">{slot(slots[i])}</div>)}
+            </div>
+            <div className="grid min-h-0 flex-1 gap-[1cqw]" style={{ gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))` }}>
+              {Array.from({ length: rows }, (_, k) => back[k] ? slot(back[k]) : <div key={`empty-${k}`} className="party-box empty" />)}
+            </div>
+          </div>
+        )
+      })() : <div className="flex min-h-0 flex-1 gap-[1.5cqw]">
         {/* O primeiro (quem vai na frente) grande, à esquerda. */}
         <div className="flex w-[44%] shrink-0 flex-col justify-center">{lead && <div className="flex h-[62%]">{slot(lead, true)}</div>}</div>
         {/* Os outros, um embaixo do outro. */}
         <div className="grid min-h-0 flex-1 grid-rows-5 gap-[1cqw]">
           {Array.from({ length: 5 }, (_, k) => rest[k] ? slot(rest[k]) : <div key={`empty-${k}`} className="party-box empty" />)}
         </div>
-      </div>
+      </div>}
       {/* Na batalha: a fala e os botões TROCAR / DADOS / CANCELAR, com o time na tela inteira. Igual ao app. */}
       {footer && <div className="flex h-[7.5cqw] shrink-0 gap-[1cqw]">{footer}</div>}
-      {onMove && <p className="text-center text-[1.3cqw] text-slate-300">{t('Arraste um Pokémon em cima de outro para trocar de lugar.')}</p>}
+      {onMove && <p className="text-center text-[1.3cqw] text-slate-300">{t(leads ? 'Arraste um Pokémon para cima de quem está em campo para trocar.' : 'Arraste um Pokémon em cima de outro para trocar de lugar.')}</p>}
       {onCancel && (
         <button type="button" onClick={onCancel} className="party-box self-end cursor-pointer px-[2cqw] py-[0.6cqw] text-[1.6cqw]" data-testid={`${testid}-cancel`}>
           ✕ {cancelLabel ?? t('Voltar')}

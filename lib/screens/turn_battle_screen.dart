@@ -2524,6 +2524,9 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
                 ],
                 disabled: (i) => !(_item != null ? _b.canUseItem(0, _item!, i) : _b.canSwitch(0, i)),
                 onPick: _choose,
+                // Quem está em campo à esquerda; arrastar outro para cima dele troca.
+                leads: [_b.activeIndex[0]],
+                onMove: _item == null ? (from, to) => to == _b.activeIndex[0] && _b.canSwitch(0, from) ? _choose(from) : null : null,
                 // A tela do time na tela inteira (como fora da batalha): a fala e os botões ficam embaixo dela.
                 footer: _PortScope(
                   child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -5197,6 +5200,15 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
       ],
       disabled: (i) => _locked || (item != null ? !_canItem(item, i) : !options.contains(i)),
       onPick: (i) => _commit(slot, item != null ? {'kind': 'item', 'item': item, 'index': i} : {'kind': 'switch', 'index': i}),
+      // Quem está em campo (2 na dupla, 3 na tripla) à esquerda; arrastar um de fora para cima do desta vez troca.
+      leads: [for (final s in _slots) if ((s['index'] as int) >= 0) s['index'] as int],
+      onMove: item == null && !_locked
+          ? (from, to) {
+              if (to == slot['index']) {
+                if (options.contains(from)) _commit(slot, {'kind': 'switch', 'index': from});
+              }
+            }
+          : null,
       // Na tela inteira (como a 1v1): a pergunta e as opções embaixo do time.
       footer: _partyFooter(_prompt(), [
         if (_partyPick != null) ...[
