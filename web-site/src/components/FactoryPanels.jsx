@@ -19,7 +19,7 @@ import { getFactoryData, getMoves, shinyPath, spriteUrl } from '../lib/data'
 import { learnsetOf, movesFor } from '../lib/factoryBattle'
 import { battleMons } from '../lib/battleSetup'
 import {
-  BAG_ITEMS, BOX_SIZE, boxToSet, releaseFromBox, HUNT_MAX, HUNT_STEP, huntBase, huntMultOf, setHunt, bossOf, regionOf, genderOf, piecesOf, pieceOf, upgradePieces, tradePieces, PIECE_ITEMS, PIECE_TRADE, capturedMon, isRegionalForm, emptyFactory, unequipItem, ROUTE_LENGTH, CITY_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
+  BAG_ITEMS, runSummary, BOX_SIZE, boxToSet, releaseFromBox, HUNT_MAX, HUNT_STEP, huntBase, huntMultOf, setHunt, bossOf, regionOf, genderOf, piecesOf, pieceOf, upgradePieces, tradePieces, PIECE_ITEMS, PIECE_TRADE, capturedMon, isRegionalForm, emptyFactory, unequipItem, ROUTE_LENGTH, CITY_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, teamRoom, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, sceneLines, bossCity, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, atPc, pcOf, PC_SIZE, RARE_PLACES, shownScene, gameOf, tierOf, foeBoostAt, leagueAhead, unlockShiny, VITAMIN_EVS, VITAMINS,
   forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor, isKeystone,
@@ -2002,28 +2002,63 @@ const HELP = [
   ['🏙️', 'Cidades e lugares', 'A cada rota de 10 andares você chega numa cidade: ginásio, Poké Mart, Centro Pokémon e Creche. Perto dela há um lugar com 10 andares e um chefe; depois, de volta à cidade.'],
   ['💞', 'Amizade e habilidades', 'Quem fica no time ganha amizade e alguns evoluem por ela. Pickup acha itens, Intimidate espanta selvagens e Synchronize passa a Nature para o capturado.'],
 ]
-function HelpPanel({ onClose, onExit = null, onGiveUp = null }) {
+/** O cartão do treinador (como nos jogos): quem é, a região, as insígnias, o dinheiro, a Pokédex da corrida, o andar e as
+ * vitórias. Fica na AJUDA (🪪). Igual ao app. */
+function TrainerCard({ data, run }) {
+  const me = useMyTrainer()
+  const [ref, width] = useWidth()
+  const game = data?.bosses?.[run.boss.region]
+  const sum = runSummary(run)
+  const row = (icon, name, value, testid) => (
+    <div className="flex min-h-0 flex-1 items-center rounded bg-black/40 px-[1.5cqw] text-[1.9cqw]">
+      <span className="text-slate-300">{icon} {t(name)}</span>
+      <span className="ml-auto flex items-center gap-[1cqw] text-[2.2cqw]" data-testid={testid}>{value}</span>
+    </div>
+  )
+  return (
+    <div className="flex min-h-0 flex-1 gap-[1cqw] rounded-[1.5cqw] border-2 border-slate-200 bg-gradient-to-br from-blue-600 to-blue-900 p-[1cqw]" ref={ref} data-testid="trainer-card">
+      <div className="flex w-[28%] flex-col items-center justify-center rounded-[1cqw] bg-white/20">
+        {me && width > 0 && <TrainerSprite trainer={me} height={width * 0.19} still />}
+        {me && <p className="truncate text-[2cqw]">{me.name}</p>}
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col gap-[0.6cqw]">
+        {game && row('🗺️', 'Região', game.region)}
+        {row('🏅', 'Insígnias', <>{data && <Badges data={data} run={run} />}<span>{sum.badges}</span></>, 'card-badges')}
+        {row('💰', 'Dinheiro', run.money ?? 0, 'card-money')}
+        {row('📖', 'Pokédex', dexOf(run).length, 'card-dex')}
+        {row('🧗', 'Andar', run.floor ?? 0, 'card-floor')}
+        {row('⚔️', 'Vencidos', `${sum.defeated} · 👑 ${sum.bosses}`)}
+      </div>
+    </div>
+  )
+}
+
+function HelpPanel({ onClose, onExit = null, onGiveUp = null, data = null, run = null }) {
   // Tela única: 4 tópicos por página (2 × 2), do tamanho do campo, sem rolar; ◀ ▶ troca a página.
   const [page, setPage] = useState(0)
+  const [card, setCard] = useState(false)
   const per = 4
   const pages = Math.ceil(HELP.length / per)
   return (
     <div className="port-panel flex h-full flex-col gap-2 overflow-hidden p-2" style={{ containerType: 'inline-size' }} data-testid="help-panel">
-      <OverlayClose onClose={onClose} title={`❓ ${t('Ajuda')}`} />
-      <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-2">
+      <OverlayClose onClose={onClose} title={card ? `🪪 ${t('Cartão do treinador')}` : `❓ ${t('Ajuda')}`} />
+      {card && run ? <TrainerCard data={data} run={run} /> : <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-2">
         {HELP.slice(page * per, page * per + per).map(([icon, title, text]) => (
           <div key={title} className="port-card flex min-h-0 flex-col gap-[0.8cqw] overflow-hidden p-[1.5cqw]">
             <p className="text-[2.2cqw]">{icon} {t(title)}</p>
             <p className="text-[1.6cqw] leading-snug text-slate-300">{t(text)}</p>
           </div>
         ))}
-      </div>
+      </div>}
       {/* Sair (a corrida fica salva) e Desistir ficam aqui, dentro do jogo (nada embaixo da tela). Igual ao app. */}
       <div className="flex shrink-0 items-center justify-center gap-4 text-[1.8cqw]">
         {onExit && <button type="button" className="port-chip mr-auto cursor-pointer px-3" onClick={onExit} data-testid="factory-exit">⏏ {t('SAIR')}</button>}
-        <button type="button" className="port-chip cursor-pointer px-3 disabled:opacity-30" disabled={page === 0} onClick={() => setPage(page - 1)} aria-label={t('Anterior')} data-testid="help-prev">◀</button>
-        <span className="tabular-nums">{page + 1}/{pages}</span>
-        <button type="button" className="port-chip cursor-pointer px-3 disabled:opacity-30" disabled={page === pages - 1} onClick={() => setPage(page + 1)} aria-label={t('Próxima')} data-testid="help-next">▶</button>
+        {!card && <>
+          <button type="button" className="port-chip cursor-pointer px-3 disabled:opacity-30" disabled={page === 0} onClick={() => setPage(page - 1)} aria-label={t('Anterior')} data-testid="help-prev">◀</button>
+          <span className="tabular-nums">{page + 1}/{pages}</span>
+          <button type="button" className="port-chip cursor-pointer px-3 disabled:opacity-30" disabled={page === pages - 1} onClick={() => setPage(page + 1)} aria-label={t('Próxima')} data-testid="help-next">▶</button>
+        </>}
+        {run && <button type="button" className="port-chip cursor-pointer px-3" onClick={() => setCard(!card)} data-testid="help-card">{card ? `❓ ${t('AJUDA')}` : `🪪 ${t('CARTÃO')}`}</button>}
         {onGiveUp && <button type="button" className="port-chip ml-auto cursor-pointer px-3" onClick={onGiveUp} data-testid="factory-give-up">🏳 {t('DESISTIR')}</button>}
       </div>
     </div>
@@ -2438,6 +2473,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
   const [note, setNote] = useState(null)
   const noteKeep = useRef(false)
   const autoResult = useRef(false)
+  const autoCapture = useRef(false)
   // Subiu de nível (como nos jogos): quem subiu, um de cada vez, com os atributos antes e depois; passa sozinho em
   // alguns segundos (ou com um toque). { key, list, at, stats }. Igual ao app.
   const [lv, setLv] = useState(null)
@@ -2516,7 +2552,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     panel === 'region' ? (
       <RegionMap data={data} run={run} onClose={() => setPanel(null)} monName={name} />
     ) : panel === 'help' ? (
-      <HelpPanel onClose={() => setPanel(null)} onExit={onExit} onGiveUp={() => window.confirm(t('Desistir da corrida? A pontuação vira moedas.')) && saveFactory(endRun(factory, run))} />
+      <HelpPanel data={data} run={run} onClose={() => setPanel(null)} onExit={onExit} onGiveUp={() => window.confirm(t('Desistir da corrida? A pontuação vira moedas.')) && saveFactory(endRun(factory, run))} />
     ) : panel === 'bag' ? (
       <BagPanel run={run} byId={byId} save={save} onClose={() => setPanel(null)} />
     ) : (
@@ -2882,6 +2918,23 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         {full && <p className="text-sm">{t('Time cheio: escolha quem sai ou mande para o PC.')}</p>}
       </>
     )
+    // Com vaga no time: entra sozinho (sem CONTINUAR); a captura vai numa linha do resumo da tela seguinte. Só para
+    // escolher (time cheio), ver o shiny (e tirar a foto) ou o ovo chocando e o fóssil revivido. Igual ao app.
+    if (!full && !mon.egg && !mon.fossil && !mon.shiny && !autoCapture.current) {
+      autoCapture.current = true
+      const isNew = !dexOf(run).includes(mon.id)
+      const line = [
+        `${mon.shiny ? '✨ ' : ''}${t('Pegou! {0} foi capturado!').replace('{0}', name(mon.id))}`,
+        ...(isNew ? [`📖 ${t('Novo na Pokédex da corrida ({0})').replace('{0}', dexOf(run).length + 1)}`] : []),
+        ...(isNew && dexReward ? [`🎁 ${dexReward.count}× ${itemName(dexReward.item)} +💰${dexReward.money}`] : []),
+      ].join(' · ')
+      setTimeout(() => {
+        autoCapture.current = false
+        // keep() salva direto (sem save()), então a nota já fica para a tela seguinte.
+        setNote((n) => [n, line].filter(Boolean).join(' · '))
+        keep(null)
+      }, 0)
+    }
     // Time cheio: a tela do time do Black & White, por cima do campo, para escolher quem sai.
     if (full && !panel) {
       below = <BwParty title={t('Time cheio: escolha quem sai para {0} entrar.').replace('{0}', name(mon.id))} team={partyOf(run, byId)} testid="replace" eggs={(run.eggs ?? []).map((e) => (e.mystery ? { left: e.left, mystery: true } : e.left))} onPick={keep} onCancel={() => save(skipCapture(run))} cancelLabel={t('SOLTAR')} />

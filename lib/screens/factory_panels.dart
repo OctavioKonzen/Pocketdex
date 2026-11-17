@@ -3113,6 +3113,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
   /// A ajuda para quem está começando: tipos, clima, efeitos, status, mecânicas e captura. Igual ao site.
   // A página da ajuda (4 tópicos por página, sem rolar).
   int _helpPage = 0;
+  bool _helpCard = false;
 
   /// A ajuda numa tela só: 4 tópicos por página (2 × 2), do tamanho do campo; ◀ ▶ troca a página. Igual ao site.
   /// Desistir da corrida (com a pergunta): a pontuação vira moedas.
@@ -3130,7 +3131,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
     if (ok == true && mounted) setState(() => saveFactory(FactoryRun.endRun(currentFactory(), run)));
   }
 
-  Widget _helpPanel(Json run, VoidCallback close) {
+  Widget _helpPanel(Json run, VoidCallback close, [FactoryData? data]) {
     const per = 4;
     final pages = (_helpTopics.length / per).ceil();
     final page = _helpPage.clamp(0, pages - 1);
@@ -3164,11 +3165,11 @@ class _FactoryScreenState extends State<FactoryScreen> {
       key: const ValueKey('help-panel'),
       color: const Color(0xFF1F6F78),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        _overlayHeader('❓ ${tr('Ajuda')}', close),
+        _overlayHeader(_helpCard ? '🪪 ${tr('Cartão do treinador')}' : '❓ ${tr('Ajuda')}', close),
         Expanded(
           child: Padding(
             padding: const EdgeInsets.all(6),
-            child: Column(children: [
+            child: _helpCard ? _trainerCard(data, run) : Column(children: [
               for (final r in [0, 2]) ...[
                 if (r > 0) const SizedBox(height: 6),
                 Expanded(child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [card(shown.elementAtOrNull(r)), const SizedBox(width: 6), card(shown.elementAtOrNull(r + 1))])),
@@ -3183,12 +3184,72 @@ class _FactoryScreenState extends State<FactoryScreen> {
             const SizedBox(width: 6),
             arrow('⏏ ${tr('SAIR')}', 'factory-exit', widget.onExit),
             const Spacer(),
-            arrow('◀', 'help-prev', page > 0 ? () => setState(() => _helpPage = page - 1) : null),
-            Padding(padding: const EdgeInsets.symmetric(horizontal: 12), child: Text('${page + 1}/$pages', style: _portText)),
-            arrow('▶', 'help-next', page < pages - 1 ? () => setState(() => _helpPage = page + 1) : null),
+            if (!_helpCard) ...[
+              arrow('◀', 'help-prev', page > 0 ? () => setState(() => _helpPage = page - 1) : null),
+              Padding(padding: const EdgeInsets.symmetric(horizontal: 12), child: Text('${page + 1}/$pages', style: _portText)),
+              arrow('▶', 'help-next', page < pages - 1 ? () => setState(() => _helpPage = page + 1) : null),
+              const SizedBox(width: 12),
+            ],
+            arrow(_helpCard ? '❓ ${tr('AJUDA')}' : '🪪 ${tr('CARTÃO')}', 'help-card', () => setState(() => _helpCard = !_helpCard)),
             const Spacer(),
             arrow('🏳 ${tr('DESISTIR')}', 'factory-give-up', () => _giveUp(run)),
             const SizedBox(width: 6),
+          ]),
+        ),
+      ]),
+    );
+  }
+
+  /// O cartão do treinador (como nos jogos): quem é, a região, as insígnias, o dinheiro, a Pokédex da corrida, o andar e
+  /// as vitórias. Fica na AJUDA (🪪). Igual ao site.
+  Widget _trainerCard(FactoryData? data, Json run) {
+    final me = Trainers.mine;
+    final game = data == null || data.bosses.isEmpty ? null : data.bosses[(run['boss']['region'] as num).toInt()];
+    final sum = FactoryRun.runSummary(run);
+    final label = _portText.copyWith(fontSize: 11, color: const Color(0xFFCBD5E1), fontWeight: FontWeight.w500);
+    final value = _portText.copyWith(fontSize: 13);
+    Widget row(String icon, String name, Widget v) => Expanded(
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 3),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            decoration: BoxDecoration(color: const Color(0x66000000), borderRadius: BorderRadius.circular(4)),
+            child: Row(children: [Text('$icon ${tr(name)}', style: label), const Spacer(), v]),
+          ),
+        );
+    Widget text(Object v, [String key = '']) => Text('$v', key: key.isEmpty ? null : ValueKey(key), style: value);
+    return Container(
+      key: const ValueKey('trainer-card'),
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(colors: [Color(0xFF2563EB), Color(0xFF1E3A8A)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 2),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Expanded(
+          flex: 2,
+          child: Container(
+            decoration: BoxDecoration(color: const Color(0x33FFFFFF), borderRadius: BorderRadius.circular(6)),
+            child: LayoutBuilder(builder: (context, c) => Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  if (me != null) TrainerSprite(me, height: c.maxHeight * 0.7, still: true),
+                  if (me != null) Text(me.name, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: value),
+                ])),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          flex: 5,
+          child: Column(children: [
+            if (game != null) row('🗺️', 'Região', text('${game['region']}')),
+            row('🏅', 'Insígnias', Row(mainAxisSize: MainAxisSize.min, children: [
+              if (data != null) _badges(data, run),
+              const SizedBox(width: 6),
+              text(sum['badges'], 'card-badges'),
+            ])),
+            row('💰', 'Dinheiro', text(run['money'] ?? 0, 'card-money')),
+            row('📖', 'Pokédex', text(FactoryRun.dexOf(run).length, 'card-dex')),
+            row('🧗', 'Andar', text(run['floor'] ?? 0, 'card-floor')),
+            row('⚔️', 'Vencidos', text('${sum['defeated']} · 👑 ${sum['bosses']}')),
           ]),
         ),
       ]),
@@ -3648,7 +3709,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
     _framePanel = _panel == 'region'
         ? _regionMap(run, data, close)
         : _panel == 'help'
-            ? _helpPanel(run, close)
+            ? _helpPanel(run, close, data)
             : _panel == 'bag'
         ? _BagAndItems(run: run, data: data, names: _names, onSave: _save, only: 'bag', onClose: close)
         : _panel == 'team'
@@ -4095,6 +4156,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
   String? _note;
   bool _noteKeep = false;
   bool _autoResult = false;
+  bool _autoCapture = false;
 
   /// Os golpes que o time aprende subindo de nível (como nos jogos), um de cada vez: (posição no time, golpe, entrou sozinho).
   List<(int, String, bool)>? _learn;
@@ -4985,6 +5047,26 @@ class _FactoryScreenState extends State<FactoryScreen> {
       _save(next, meta);
     }
 
+    // Com vaga no time: entra sozinho (sem CONTINUAR); a captura vai numa linha do resumo da tela seguinte. Só para
+    // escolher (time cheio), ver o shiny (e tirar a foto) ou o ovo chocando e o fóssil revivido. Igual ao site.
+    if (!full && foe['egg'] != true && foe['fossil'] != true && !shiny && !_autoCapture) {
+      _autoCapture = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _autoCapture = false;
+        if (!mounted) return;
+        final id = (foe['id'] as num).toInt();
+        final isNew = !FactoryRun.dexOf(run).contains(id);
+        final reward = isNew ? FactoryRun.dexRewardFor(run, id) : null;
+        final line = [
+          '${shiny ? '✨ ' : ''}${tr('Pegou! {0} foi capturado!').replaceAll('{0}', _name(id))}',
+          if (isNew) '📖 ${tr('Novo na Pokédex da corrida ({0})').replaceAll('{0}', '${FactoryRun.dexOf(run).length + 1}')}',
+          if (reward != null) '🎁 ${reward['count']}× ${_itemName('${reward['item']}')} +💰${reward['money']}',
+        ].join(' · ');
+        _note = [if (_note != null) _note!, line].join(' · ');
+        _noteKeep = true;
+        keep();
+      });
+    }
     // Time cheio: a tela do time do Black & White, por cima do campo, para escolher quem sai.
     if (full && _panel == null) {
       _framePanel = PortParty(
