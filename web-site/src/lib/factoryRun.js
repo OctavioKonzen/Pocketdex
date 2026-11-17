@@ -1680,25 +1680,26 @@ export function puzzleOfType(data, run, type) {
   const p = { kind, type, done: false, won: false }
   if (kind === 'quiz') {
     const ids = speciesIds(data)
-    Object.assign(p, { qs: [0, 1, 2].map(() => quizQuestion(data, rand, ids)), at: 0, right: 0 })
+    Object.assign(p, { qs: [0, 1, 2, 3, 4].map(() => quizQuestion(data, rand, ids)), at: 0, right: 0 })
   } else if (kind === 'silhouette') {
     const ids = speciesIds(data)
-    Object.assign(p, { qs: [0, 1, 2].map(() => { const options = shuffled(ids, rand).slice(0, 4); const right = pickOne(options, rand); return { mon: right, options, answer: options.indexOf(right) } }), at: 0, right: 0 })
+    Object.assign(p, { qs: [0, 1, 2, 3, 4].map(() => { const options = shuffled(ids, rand).slice(0, 4); const right = pickOne(options, rand); return { mon: right, options, answer: options.indexOf(right) } }), at: 0, right: 0 })
   } else if (kind === 'switches') {
-    const a = randInt(rand, 15)
-    Object.assign(p, { cols: 5, rows: 3, a, b: pickOne(neighbors(a, 5, 3), rand), open: {}, found: 0, left: 6 })
+    const a = randInt(rand, 24)
+    Object.assign(p, { cols: 6, rows: 4, a, b: pickOne(neighbors(a, 6, 4), rand), open: {}, found: 0, left: 7 })
   } else if (kind === 'slide') {
     Object.assign(p, { cols: 5, rows: 5, pos: 22, goal: 2, rocks: [], left: 3 })
-    for (let k = 0; k < 60; k++) {
+    // Um caminho mais longo (4 a 7 deslizadas) com mais pedras, e só uma jogada de sobra.
+    for (let k = 0; k < 200; k++) {
       const goal = randInt(rand, 5)
-      const rocks = shuffled(Array.from({ length: 25 }, (_, i) => i).filter((i) => i !== 22 && i !== goal), rand).slice(0, 6)
+      const rocks = shuffled(Array.from({ length: 25 }, (_, i) => i).filter((i) => i !== 22 && i !== goal), rand).slice(0, 8)
       const trial = { ...p, goal, rocks }
       const n = shortest(22, goal, (at) => DIRS.map(([dx, dy]) => slideTo(trial, at, dx, dy)).filter((to) => to !== at))
-      if (n >= 2 && n <= 5) { Object.assign(p, { goal, rocks, left: n + 2 }); break }
+      if (n >= 4 && n <= 7) { Object.assign(p, { goal, rocks, left: n + 1 }); break }
     }
   } else if (kind === 'maze') {
     // Um caminho garantido da entrada até o líder; o resto vira parede (as que não se veem, no do Koga e no do Morty).
-    const cols = 5, rows = 5, start = 22, goal = 2
+    const cols = 7, rows = 5, start = 31, goal = 3
     const path = (() => {
       const seen = new Set([start])
       const walk = (at) => {
@@ -1713,10 +1714,10 @@ export function puzzleOfType(data, run, type) {
       }
       return walk(start)
     })()
-    const walls = Array.from({ length: 25 }, (_, i) => i).filter((i) => !path.includes(i) && rand() < 0.6)
+    const walls = Array.from({ length: cols * rows }, (_, i) => i).filter((i) => !path.includes(i) && rand() < 0.6)
     const hidden = PUZZLE_HIDDEN.includes(type)
     const n = shortest(start, goal, (at) => neighbors(at, cols, rows).filter((to) => !walls.includes(to)))
-    Object.assign(p, { cols, rows, pos: start, goal, walls, seen: [], hidden, left: hidden ? 3 : n + 3 })
+    Object.assign(p, { cols, rows, pos: start, goal, walls, seen: [], hidden, left: hidden ? 3 : n + 2 })
   } else if (kind === 'tiles') {
     // 5 × 4 com buracos (onde não dá para pisar): um caminho que passa por todas as lajes existe sempre (procurado
     // antes de mostrar); você tem de achar um. Igual ao app.
@@ -1741,7 +1742,7 @@ export function puzzleOfType(data, run, type) {
     }
     if (p.cols == null) Object.assign(p, { cols, rows, pos: start, visited: [start], holes: [] })
   } else {
-    Object.assign(p, { seq: [0, 1, 2, 3, 4].map(() => randInt(rand, 4)), shown: true, at: 0 })
+    Object.assign(p, { seq: [0, 1, 2, 3, 4, 5, 6].map(() => randInt(rand, 4)), shown: true, at: 0 })
   }
   out.pending = { puzzle: p }
   return out
@@ -1758,7 +1759,7 @@ export function puzzleAct(run, data, i) {
     p.picked = i
     if (i === q.answer) p.right += 1
     p.at += 1
-    if (p.at >= p.qs.length) end(p.right >= 2)
+    if (p.at >= p.qs.length) end(p.right >= 4)
   } else if (p.kind === 'switches') {
     if (i < 0 || i >= p.cols * p.rows || p.open[i] != null) return run
     const targets = [p.a, p.b].filter((t) => p.open[t] == null)

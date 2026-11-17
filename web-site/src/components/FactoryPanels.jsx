@@ -1240,8 +1240,8 @@ const HONEY_INFO = { icon: '🍯', label: 'Árvore de mel', help: 'Um Pokémon r
  * Os desafios dos ginásios, cada um no tema do tipo (os quebra-cabeças dos jogos): o nome, o que fazer e os símbolos.
  */
 const PUZZLE_INFO = {
-  normal: { title: 'Quem é esse Pokémon?', intro: 'Reconheça a silhueta: acerte 2 de 3.' },
-  fire: { title: 'O quiz do Blaine', intro: 'Responda as perguntas do líder: acerte 2 de 3.' },
+  normal: { title: 'Quem é esse Pokémon?', intro: 'Reconheça a silhueta: acerte 4 de 5.' },
+  fire: { title: 'O quiz do Blaine', intro: 'Responda as perguntas do líder: acerte 4 de 5.' },
   water: { title: 'O piso de gelo do Juan', intro: 'Pise em todos os ladrilhos uma única vez: pisar de novo quebra o gelo.' },
   grass: { title: 'O jardim da Erika', intro: 'Ache o caminho entre as cercas vivas até a líder, sem gastar os passos.' },
   electric: { title: 'As lixeiras do Lt. Surge', intro: 'Dois interruptores, um ao lado do outro, estão escondidos nas lixeiras. O número diz a quantas casas está o mais próximo.' },
@@ -1255,9 +1255,9 @@ const PUZZLE_INFO = {
   rock: { title: 'As lajes do Roark', intro: 'Pise em todas as lajes uma única vez: pisar de novo faz desmoronar.' },
   ghost: { title: 'A ponte invisível do Morty', intro: 'O caminho não aparece: um passo fora dele e você cai. Chegue ao líder.' },
   dragon: { title: 'As estátuas de dragão do Drayden', intro: 'Memorize a ordem das estátuas e repita sem errar.' },
-  dark: { title: 'No escuro: quem é esse Pokémon?', intro: 'As luzes estão apagadas. Reconheça a silhueta: acerte 2 de 3.' },
+  dark: { title: 'No escuro: quem é esse Pokémon?', intro: 'As luzes estão apagadas. Reconheça a silhueta: acerte 4 de 5.' },
   steel: { title: 'As esteiras do Byron', intro: 'A esteira te leva em linha reta até bater. Chegue ao líder.' },
-  fairy: { title: 'O quiz da Opal', intro: 'Responda as perguntas da líder: acerte 2 de 3.' },
+  fairy: { title: 'O quiz da Opal', intro: 'Responda as perguntas da líder: acerte 4 de 5.' },
 }
 const PUZZLE_CELL = { me: '🧍', goal: '🏅', rock: '🪨', wall: '🧱', floor: '', done: '✅', closed: '🗑️', hit: '🔘' }
 const PUZZLE_SKIN = { bug: { closed: '🕸️', hit: '🕹️' }, water: { done: '💧', floor: '🧊' }, rock: { done: '🪨', floor: '⬜' }, ghost: { wall: '🕳️' }, grass: { wall: '🌳' }, ice: { floor: '🧊' } }

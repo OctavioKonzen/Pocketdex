@@ -2351,8 +2351,8 @@ const _honeyInfo = ('🍯', 'Árvore de mel', 'Um Pokémon raro está lambendo o
 
 /// Os desafios dos ginásios, cada um no tema do tipo (os quebra-cabeças dos jogos): o nome e o que fazer. Igual ao site.
 const _puzzleInfo = {
-  'normal': ('Quem é esse Pokémon?', 'Reconheça a silhueta: acerte 2 de 3.'),
-  'fire': ('O quiz do Blaine', 'Responda as perguntas do líder: acerte 2 de 3.'),
+  'normal': ('Quem é esse Pokémon?', 'Reconheça a silhueta: acerte 4 de 5.'),
+  'fire': ('O quiz do Blaine', 'Responda as perguntas do líder: acerte 4 de 5.'),
   'water': ('O piso de gelo do Juan', 'Pise em todos os ladrilhos uma única vez: pisar de novo quebra o gelo.'),
   'grass': ('O jardim da Erika', 'Ache o caminho entre as cercas vivas até a líder, sem gastar os passos.'),
   'electric': ('As lixeiras do Lt. Surge', 'Dois interruptores, um ao lado do outro, estão escondidos nas lixeiras. O número diz a quantas casas está o mais próximo.'),
@@ -2366,9 +2366,9 @@ const _puzzleInfo = {
   'rock': ('As lajes do Roark', 'Pise em todas as lajes uma única vez: pisar de novo faz desmoronar.'),
   'ghost': ('A ponte invisível do Morty', 'O caminho não aparece: um passo fora dele e você cai. Chegue ao líder.'),
   'dragon': ('As estátuas de dragão do Drayden', 'Memorize a ordem das estátuas e repita sem errar.'),
-  'dark': ('No escuro: quem é esse Pokémon?', 'As luzes estão apagadas. Reconheça a silhueta: acerte 2 de 3.'),
+  'dark': ('No escuro: quem é esse Pokémon?', 'As luzes estão apagadas. Reconheça a silhueta: acerte 4 de 5.'),
   'steel': ('As esteiras do Byron', 'A esteira te leva em linha reta até bater. Chegue ao líder.'),
-  'fairy': ('O quiz da Opal', 'Responda as perguntas da líder: acerte 2 de 3.'),
+  'fairy': ('O quiz da Opal', 'Responda as perguntas da líder: acerte 4 de 5.'),
 };
 const _puzzleCell = {'me': '🧍', 'goal': '🏅', 'rock': '🪨', 'wall': '🧱', 'floor': '', 'done': '✅', 'closed': '🗑️', 'hit': '🔘'};
 const _puzzleSkin = {

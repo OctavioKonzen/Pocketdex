@@ -3781,34 +3781,35 @@ class FactoryRun {
     final p = <String, dynamic>{'kind': kind, 'type': type, 'done': false, 'won': false};
     if (kind == 'quiz') {
       final ids = _speciesIds(data);
-      p.addAll({'qs': [for (var k = 0; k < 3; k++) _quizQuestion(data, rand, ids)], 'at': 0, 'right': 0});
+      p.addAll({'qs': [for (var k = 0; k < 5; k++) _quizQuestion(data, rand, ids)], 'at': 0, 'right': 0});
     } else if (kind == 'silhouette') {
       final ids = _speciesIds(data);
       final qs = <Json>[];
-      for (var k = 0; k < 3; k++) {
+      for (var k = 0; k < 5; k++) {
         final options = _shuffled(ids, rand).take(4).toList();
         final right = _pick(options, rand);
         qs.add({'mon': right, 'options': options, 'answer': options.indexOf(right)});
       }
       p.addAll({'qs': qs, 'at': 0, 'right': 0});
     } else if (kind == 'switches') {
-      final a = _randInt(rand, 15);
-      p.addAll({'cols': 5, 'rows': 3, 'a': a, 'b': _pick(_neighbors(a, 5, 3), rand), 'open': <String, dynamic>{}, 'found': 0, 'left': 6});
+      final a = _randInt(rand, 24);
+      p.addAll({'cols': 6, 'rows': 4, 'a': a, 'b': _pick(_neighbors(a, 6, 4), rand), 'open': <String, dynamic>{}, 'found': 0, 'left': 7});
     } else if (kind == 'slide') {
       p.addAll({'cols': 5, 'rows': 5, 'pos': 22, 'goal': 2, 'rocks': <int>[], 'left': 3});
-      for (var k = 0; k < 60; k++) {
+      // Um caminho mais longo (4 a 7 deslizadas) com mais pedras, e só uma jogada de sobra.
+      for (var k = 0; k < 200; k++) {
         final goal = _randInt(rand, 5);
-        final rocks = _shuffled([for (var i = 0; i < 25; i++) if (i != 22 && i != goal) i], rand).take(6).toList();
+        final rocks = _shuffled([for (var i = 0; i < 25; i++) if (i != 22 && i != goal) i], rand).take(8).toList();
         final trial = {...p, 'goal': goal, 'rocks': rocks};
         final n = _shortest(22, goal, (at) => [for (final d in _dirs) _slideTo(trial, at, d.$1, d.$2)].where((to) => to != at));
-        if (n >= 2 && n <= 5) {
-          p.addAll({'goal': goal, 'rocks': rocks, 'left': n + 2});
+        if (n >= 4 && n <= 7) {
+          p.addAll({'goal': goal, 'rocks': rocks, 'left': n + 1});
           break;
         }
       }
     } else if (kind == 'maze') {
       // Um caminho garantido da entrada até o líder; o resto vira parede (as que não se veem, no do Koga e no do Morty).
-      const cols = 5, rows = 5, start = 22, goal = 2;
+      const cols = 7, rows = 5, start = 31, goal = 3;
       final seen = {start};
       List<int>? walk(int at) {
         if (at == goal) return [at];
@@ -3822,10 +3823,10 @@ class FactoryRun {
       }
 
       final path = walk(start)!;
-      final walls = [for (var i = 0; i < 25; i++) if (!path.contains(i) && rand() < 0.6) i];
+      final walls = [for (var i = 0; i < cols * rows; i++) if (!path.contains(i) && rand() < 0.6) i];
       final hidden = puzzleHidden.contains(type);
       final n = _shortest(start, goal, (at) => _neighbors(at, cols, rows).where((to) => !walls.contains(to)));
-      p.addAll({'cols': cols, 'rows': rows, 'pos': start, 'goal': goal, 'walls': walls, 'seen': <int>[], 'hidden': hidden, 'left': hidden ? 3 : n + 3});
+      p.addAll({'cols': cols, 'rows': rows, 'pos': start, 'goal': goal, 'walls': walls, 'seen': <int>[], 'hidden': hidden, 'left': hidden ? 3 : n + 2});
     } else if (kind == 'tiles') {
       // 5 × 4 com buracos (onde não dá para pisar): um caminho que passa por todas as lajes existe sempre (procurado
       // antes de mostrar); você tem de achar um.
@@ -3852,7 +3853,7 @@ class FactoryRun {
       }
       if (p['cols'] == null) p.addAll({'cols': cols, 'rows': rows, 'pos': start, 'visited': [start], 'holes': <int>[]});
     } else {
-      p.addAll({'seq': [for (var k = 0; k < 5; k++) _randInt(rand, 4)], 'shown': true, 'at': 0});
+      p.addAll({'seq': [for (var k = 0; k < 7; k++) _randInt(rand, 4)], 'shown': true, 'at': 0});
     }
     out['pending'] = {'puzzle': p};
     return out;
@@ -3878,7 +3879,7 @@ class FactoryRun {
       p['picked'] = i;
       if (i == q['answer']) p['right'] = _int(p['right']) + 1;
       p['at'] = at + 1;
-      if (at + 1 >= qs.length) end(_int(p['right']) >= 2);
+      if (at + 1 >= qs.length) end(_int(p['right']) >= 4);
     } else if (kind == 'switches') {
       final cols = _int(p['cols']), rows = _int(p['rows']);
       final open = Map<String, dynamic>.from(p['open'] as Map);

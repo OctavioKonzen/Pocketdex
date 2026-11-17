@@ -613,14 +613,14 @@ void main() {
     expect(FactoryRun.gymPuzzles.keys.toSet(), FactoryRun.superEffective.keys.toSet());
     var quiz = FactoryRun.puzzleOfType(data, base, 'fire')!;
     var wrong = quiz;
-    for (var k = 0; k < 3; k++) {
+    for (var k = 0; k < 5; k++) {
       final p = wrong['pending']['puzzle'] as Map;
       wrong = FactoryRun.puzzleAct(wrong, data, ((p['qs'] as List)[p['at'] as int]['answer'] as int) + 1 & 3);
     }
     expect([wrong['pending']['puzzle']['done'], wrong['pending']['puzzle']['won']], [true, false]);
     final lost = FactoryRun.finishPuzzle(wrong);
     expect([lost['pending'], lost['money'], lost['gymEdge']], [null, base['money'], {'leg': FactoryRun.legOf(base), 'won': false}]);
-    for (var k = 0; k < 3; k++) {
+    for (var k = 0; k < 5; k++) {
       final p = quiz['pending']['puzzle'] as Map;
       quiz = FactoryRun.puzzleAct(quiz, data, (p['qs'] as List)[p['at'] as int]['answer'] as int);
     }

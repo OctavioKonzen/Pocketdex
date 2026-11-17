@@ -1936,7 +1936,7 @@ describe('pesca, árvores, frutas, bicicleta, balsa, hordas, neblina, fotos e os
     // Errando: perde o desafio e o líder continua trancado (tenta de novo); vencendo: prêmio e o líder aparece.
     const quiz = puzzleOfType(data, base, 'fire')
     let wrong = quiz
-    for (let k = 0; k < 3; k++) wrong = puzzleAct(wrong, data, (wrong.pending.puzzle.qs[wrong.pending.puzzle.at].answer + 1) % 4)
+    for (let k = 0; k < 5; k++) wrong = puzzleAct(wrong, data, (wrong.pending.puzzle.qs[wrong.pending.puzzle.at].answer + 1) % 4)
     expect(wrong.pending.puzzle).toMatchObject({ done: true, won: false })
     const lost = finishPuzzle(wrong)
     expect(lost).toMatchObject({ pending: null, money: base.money, gymEdge: { leg: legOf(base), won: false } })
