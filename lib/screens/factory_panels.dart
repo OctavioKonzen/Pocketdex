@@ -3630,7 +3630,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
               return FittedBox(
                 fit: BoxFit.contain,
                 alignment: Alignment.topCenter,
-                child: SizedBox(width: vw, height: vh, child: const {'team', 'pc', 'region', 'help', 'buy'}.contains(_panel) ? panel : SingleChildScrollView(child: panel)),
+                child: SizedBox(width: vw, height: vh, child: const {'team', 'pc', 'region', 'help', 'buy', 'dex'}.contains(_panel) ? panel : SingleChildScrollView(child: panel)),
               );
             }),
           ),
