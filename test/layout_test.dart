@@ -180,6 +180,7 @@ final screens = <String, Widget Function()>{
   'Batalha (segurar golpe)': () => const TurnBattleScreen(mine: [(6, null), (9, null)], theirs: [(3, null), (94, null)], foeName: 'Ash'),
   'Batalha (tema Charizard, campeão)': () => const TurnBattleScreen(mine: [(6, null), (9, null)], theirs: [(3, null), (94, null)], foeName: 'Ash'),
   'Batalha (trocar)': () => const TurnBattleScreen(mine: [(6, null), (9, null), (25, null)], theirs: [(3, null), (94, null)], foeName: 'Ash'),
+  'Batalha (trocar, deitada)': () => const TurnBattleScreen(mine: [(6, null), (9, null), (25, null)], theirs: [(3, null), (94, null)], foeName: 'Ash'),
   'Batalha deitada': () => const TurnBattleScreen(mine: [(6, null), (9, null)], theirs: [(3, null), (94, null)], foeName: 'Ash'),
   'Battle Factory (resultado)': () => _factory({'exp': 120, 'money': 80, 'levels': [{'index': 0, 'from': 11, 'to': 12, 'evolved': null}], 'joy': true, 'drop': 'firium-z',
         'reward': 'leftovers', 'capture': null, 'cards': null, 'shop': null}),
@@ -834,6 +835,7 @@ final Map<String, Future<void> Function(WidgetTester)> actions = {
     }
     expect(find.byKey(const ValueKey('battle-single-switch')), findsOneWidget);
   },
+  'Batalha (trocar, deitada)': (tester) => actions['Batalha (trocar)']!(tester),
   // O registro aberto depois de um turno (o botão 📜).
   'Registro da batalha': (tester) async {
     await actions['Batalha por turnos']!(tester);
