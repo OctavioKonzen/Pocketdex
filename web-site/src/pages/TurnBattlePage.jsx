@@ -1365,6 +1365,12 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
           setFlash((n) => n + 1)
           pulse(field.current, 'battle-shake', 650)
         }
+        // Item segurado em ação (Leftovers, Sitrus Berry, Focus Sash...): a mesma faixa das habilidades, com o texto junto.
+        if (ITEM_KEYS.has(e.key) && (who === 0 || who === 1) && e.args[1]) {
+          const shownItem = { side: who, name: e.args[0].name, ability: `🎒 ${e.args[1]}`, k: Date.now() }
+          setAbility(shownItem)
+          setTimeout(() => setAbility((a) => (a?.k === shownItem.k ? null : a)), 2200)
+        }
         // Habilidade em ação: a faixa do lado do Pokémon, como nos jogos.
         if (e.key === 'abilityShow' && (who === 0 || who === 1)) {
           const shownAbility = { side: who, name: e.args[0].name, ability: e.args[1], k: Date.now() }
@@ -2559,6 +2565,9 @@ function BottomScreen({ info, grid, footer, extra, testId = 'battle-bottom', inF
 function IdleMenu() {
   return <div aria-hidden="true" className="h-full"><MenuGrid>{['LUTAR', 'BOLSA', 'POKÉMON', 'FUGIR'].map(label => <MenuButton key={label} disabled>{label}</MenuButton>)}</MenuGrid></div>
 }
+
+/** As falas de item segurado em ação: mostram a faixa do item (como a das habilidades). Igual ao app. */
+const ITEM_KEYS = new Set(['ateItem', 'itemUsedUp', 'itemActive', 'healedBy', 'itemShow'])
 
 /** Divide a fala em partes que cabem na caixa de texto (como nos jogos: a caixa não aumenta; o resto vem depois). */
 function dialogPages(text, box) {

@@ -2057,6 +2057,15 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
             setState(() => _flash++);
             _shake.forward(from: 0);
           }
+          // Item segurado em ação (Leftovers, Sitrus Berry, Focus Sash...): a mesma faixa das habilidades, com o texto junto.
+          if (const {'ateItem', 'itemUsedUp', 'itemActive', 'healedBy', 'itemShow'}.contains(e.key) && e.args.length > 1 && e.args.first is (int, String)) {
+            final who = e.args.first as (int, String);
+            final shown = (who.$1, who.$2, '🎒 ${e.args[1]}');
+            setState(() => _ability = shown);
+            Future.delayed(const Duration(milliseconds: 2200), () {
+              if (mounted && identical(_ability, shown)) setState(() => _ability = null);
+            });
+          }
           // Habilidade em ação: a faixa do lado do Pokémon, como nos jogos.
           if (e.key == 'abilityShow' && e.args.length > 1 && e.args.first is (int, String)) {
             final who = e.args.first as (int, String);
