@@ -7,6 +7,7 @@ import { useRef, useState } from 'react'
 import PokeIcon from './PokeIcon'
 import { t } from '../lib/i18n'
 
+const STATUS_COLOR = { brn: '#ea580c', par: '#ca8a04', psn: '#9333ea', tox: '#7e22ce', slp: '#64748b', frz: '#0891b2' }
 const hpColor = (hp) => (hp > 0.5 ? '#4ade80' : hp > 0.2 ? '#facc15' : '#ef4444')
 
 /**
@@ -16,8 +17,10 @@ const hpColor = (hp) => (hp > 0.5 ? '#4ade80' : hp > 0.2 ? '#facc15' : '#ef4444'
  * eggs: os ovos no time (Battle Factory), cada um numa vaga depois dos Pokémon, com as vitórias que faltam para chocar
  * (um número, ou { left, mystery } para o ovo misterioso, que aparece como ❔).
  * hearts (em cada um do time): a amizade, de 0 a 5 corações.
+ * Na batalha: active (quem está em campo, borda verde), dim(i) (não dá para trocar: apagado, mas toca para ver os dados)
+ * e status (QUE, PAR...) no cartão. Igual ao app (PortParty).
  */
-export default function BwParty({ team, title, onPick, onMove, disabled = () => false, selected = null, onCancel, cancelLabel, testid = 'bw-party', eggs = [] }) {
+export default function BwParty({ team, title, onPick, onMove, disabled = () => false, dim = () => false, selected = null, active = null, onCancel, cancelLabel, testid = 'bw-party', eggs = [] }) {
   const [drag, setDrag] = useState(null) // { from, over, x, y }
   const start = useRef(null)
   const moved = useRef(false)
@@ -67,12 +70,12 @@ export default function BwParty({ team, title, onPick, onMove, disabled = () => 
     return (
       <button key={i} type="button" disabled={off} data-slot={i} data-testid={`${testid}-${i}`}
         onClick={() => { if (!moved.current) onPick(i) }} onPointerDown={down(i)}
-        className={`party-box flex min-h-0 min-w-0 cursor-pointer text-left disabled:cursor-default disabled:opacity-45 ${big ? 'flex-col items-center justify-center gap-[1cqw] px-[2cqw]' : 'items-center gap-[1.2cqw] px-[1.2cqw]'} ${selected === i ? 'selected' : ''} ${isOver ? 'over' : ''} ${drag?.from === i ? 'opacity-40' : ''}`}
+        className={`party-box flex min-h-0 min-w-0 cursor-pointer text-left disabled:cursor-default disabled:opacity-45 ${big ? 'flex-col items-center justify-center gap-[1cqw] px-[2cqw]' : 'items-center gap-[1.2cqw] px-[1.2cqw]'} ${selected === i ? 'selected' : active === i ? 'lead' : ''} ${dim(i) ? 'opacity-60' : ''} ${isOver ? 'over' : ''} ${drag?.from === i ? 'opacity-40' : ''}`}
         style={{ touchAction: onMove ? 'none' : undefined }}>
         <PokeIcon id={m.id} shiny={Boolean(m.shiny)} className={`shrink-0 ${big ? 'h-[11cqw] w-[11cqw]' : 'h-[5.5cqw] w-[5.5cqw]'} ${hp > 0 ? '' : 'grayscale'}`} />
         <span className={`min-w-0 ${big ? 'w-full' : 'flex-1'}`}>
           <span className="flex items-baseline justify-between gap-[1cqw]">
-            <span className={`truncate ${big ? 'text-[2.6cqw]' : 'text-[1.9cqw]'}`} data-no-translate>{m.name}</span>
+            <span className={`truncate ${big ? 'text-[2.6cqw]' : 'text-[1.9cqw]'}`} data-no-translate>{m.name}{m.status && hp > 0 && <span className="ml-[0.8cqw] rounded-sm px-[0.5cqw] text-[1.2cqw]" style={{ background: STATUS_COLOR[m.status] ?? '#64748b' }}>{m.status.toUpperCase()}</span>}</span>
             <span className="shrink-0 text-[1.5cqw]">Lv.{m.level}{m.max && <span className="ml-[0.5cqw] bg-amber-400 px-[0.4cqw] text-[1.1cqw] text-slate-900" data-testid={`${testid}-max-${i}`}>MÁX</span>}</span>
           </span>
           {m.hearts != null && (

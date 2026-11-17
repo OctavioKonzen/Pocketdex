@@ -33,6 +33,7 @@ import { fxPlan, moveAnim, SELF_KINDS } from '../lib/moveAnim'
 import { active, critChance, damageRange, fieldConditions, monDetails, lockedMove, canGimmick, canUseItem, effectLabel, forfeit, HEAL_SHARE, ITEMS, lineOf, MAX_MOVES, maxPower, moveEffect, newBattle, playTurn, replace, replayActions, shiftSwitch, fieldLines, startBattle, STAT_NAMES, switchMatchup, usableMoves, weaknesses, Z_MOVES, zPower } from '../lib/turnBattle'
 import Sprite, { pixelRatio } from '../components/Sprite'
 import BwBag from '../components/BwBag'
+import BwParty from '../components/BwParty'
 import BwSummary, { summaryOf } from '../components/BwSummary'
 import { BattleBackground, battleScale, battleScene, farPerson, foeBottom, nearPerson, PlatformBase, sceneOfBoss } from '../components/BattleScene'
 import { TrainerBack, TrainerSprite } from '../components/Trainer'
@@ -1935,17 +1936,20 @@ waiting && !locked && menu === 'fight' ? <MenuButton onClick={() => setMenu('mai
         {waiting && menu === 'party' && summary == null && (
           // A tela do time do Black & White: os 6 cabem exatamente na tela, em cima da caixa de texto (a pergunta aparece
           // nela); tocou num Pokémon, as opções ficam nos botões fixos de baixo (como no jogo).
-          <PartyGrid team={battle.sides[0].team} active={battle.sides[0].active} picked={item ? null : partyPick} testPrefix="party"
-            disabled={(i) => item ? !canUseItem(battle, 0, item, i) : false}
-            dim={(i, m) => !item && (battle.sides[0].switchOptions ? !battle.sides[0].switchOptions.includes(i) : m.hp <= 0 || i === battle.sides[0].active)}
-            onTap={(i) => (item ? choose(i) : setPartyPick(i))}
-            badge={(m) => {
-              const match = !item && m.hp > 0 ? switchMatchup(hit, m, rival, typeEff) : null
-              return match && <span className="flex gap-1 text-[10px] font-bold" data-testid="matchup">
-                {match.attack != null && <EffectTag eff={match.attack} prefix={t('Ataca')} />}
-                <DefenseTag mult={match.defense} />
-              </span>
-            }} />
+          <div className="panel-in absolute inset-x-0 top-0 bottom-[23.5%] z-30" data-testid="party-screen">
+            <BwParty testid="party" active={battle.sides[0].active} selected={item ? null : partyPick}
+              team={battle.sides[0].team.map((m) => {
+                const match = !item && m.hp > 0 ? switchMatchup(hit, m, rival, typeEff) : null
+                return {
+                  id: m.id, shiny: m.shiny, name: m.name, level: m.level, status: m.status, hp: m.maxHp > 0 ? m.hp / m.maxHp : 0,
+                  sub: m.hp <= 0 ? t('Desmaiado') : <span className="inline-flex items-center gap-[0.8cqw]"><span className="tabular-nums">{m.hp}/{m.maxHp}</span>
+                    {match && <span className="flex gap-[0.5cqw]" data-testid="matchup">{match.attack != null && <EffectTag eff={match.attack} prefix={t('Ataca')} />}<DefenseTag mult={match.defense} /></span>}</span>,
+                }
+              })}
+              disabled={(i) => (item ? !canUseItem(battle, 0, item, i) : false)}
+              dim={(i) => !item && (battle.sides[0].switchOptions ? !battle.sides[0].switchOptions.includes(i) : battle.sides[0].team[i].hp <= 0 || i === battle.sides[0].active)}
+              onPick={(i) => (item ? choose(i) : setPartyPick(i))} />
+          </div>
         )}
       </div>
 

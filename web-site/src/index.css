@@ -637,6 +637,7 @@ body {
 .bw-party .party-box { flex: 1; height: 100%; }
 .bw-party .party-box.empty { opacity: 0.35; }
 .bw-party .party-box.selected, .bw-party .party-box:hover:not(:disabled):not(.empty) { border-color: #facc15; background: rgba(66, 52, 10, 0.92); }
+.bw-party .party-box.lead { border-color: #4ade80; }
 .bw-party .party-box.over { border-color: #22d3ee; background: rgba(8, 51, 68, 0.95); }
 .bw-party .port-hp-bar b { font-size: 1.2cqw; }
 .bw-party .port-hp-bar i { height: 0.8cqw; }
