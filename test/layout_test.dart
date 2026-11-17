@@ -304,6 +304,7 @@ final screens = <String, Widget Function()>{
   // As ações da rota (pescar, sacudir a árvore, o mel, o vaso de frutas, a bicicleta e o álbum) e o álbum aberto.
   'Battle Factory (ações da rota)': () => _factory(null, {'floor': 3, 'biome': 'forest', 'options': [{'kind': 'wild', 'biome': 'forest'}, {'kind': 'trainer'}]}, {'leg': 1, 'keyItems': ['super-rod', 'bicycle'], 'berry': {'floor': 0, 'item': 'sitrus-berry', 'need': 3, 'count': 3}, 'photos': [{'floor': 2, 'scene': 'forest', 'kind': 'capture', 'id': 25, 'shiny': true}, {'floor': 9, 'scene': 'town-mountain', 'kind': 'gym', 'id': 4, 'name': 'Brock'}]}),
   'Battle Factory (cartão do treinador)': () => _factory(null, {'floor': 3, 'biome': 'forest', 'options': [{'kind': 'wild', 'biome': 'forest'}, {'kind': 'trainer'}]}, {'leg': 1, 'badges': 2, 'defeated': 31, 'bosses': 4}),
+  'Battle Factory (Pokédex)': () => _factory(null, {'floor': 3, 'biome': 'forest', 'options': [{'kind': 'wild', 'biome': 'forest'}, {'kind': 'trainer'}]}, {'leg': 1, 'dex': [4, 16, 25]}),
   'Battle Factory (álbum)': () => _factory(null, {'floor': 3, 'biome': 'forest', 'options': [{'kind': 'wild', 'biome': 'forest'}, {'kind': 'trainer'}]}, {'leg': 1, 'photos': [{'floor': 2, 'scene': 'forest', 'kind': 'capture', 'id': 25, 'shiny': true}, {'floor': 9, 'scene': 'town-mountain', 'kind': 'gym', 'id': 4, 'name': 'Brock'}, {'floor': 6, 'scene': 'cave', 'kind': 'capture', 'id': 74}]}),
   // O desafio do ginásio na cidade (o botão junto do líder).
   'Battle Factory (cidade, desafio)': () => _factory(null, {'floor': 11, 'biome': 'city', 'town': true, 'options': [{'kind': 'boss'}]}, {'leg': 1, 'boss': {'region': 0, 'step': 1}, 'town': {'leg': 1, 'shop': ['potion'], 'got': ['old-rod']}, 'keyItems': ['old-rod']}),
@@ -606,6 +607,18 @@ final Map<String, Future<void> Function(WidgetTester)> actions = {
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.byKey(const ValueKey('trainer-card')), findsOneWidget);
     expect(find.byKey(const ValueKey('card-floor')), findsOneWidget);
+  },
+  // A Pokédex: tocar no 📖 da faixa; capturados inteiros, o resto em silhueta; tocar num abre ele à esquerda.
+  'Battle Factory (Pokédex)': (tester) async {
+    await tester.tap(find.byKey(const ValueKey('factory-dex')));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byKey(const ValueKey('dex-panel')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('dex-2')));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Nº 002'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('dex-gen-4')));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byKey(const ValueKey('dex-387')), findsOneWidget);
   },
   'Battle Factory (álbum)': (tester) async {
     await _openTown(tester, 'factory-album');

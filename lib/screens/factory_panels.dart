@@ -2799,7 +2799,11 @@ class _FactoryScreenState extends State<FactoryScreen> {
                 // Os ovos que vão junto: quantas vitórias faltam para chocar.
                 for (final e in FactoryRun.eggsOf(run))
                   Text('${e['mystery'] == true ? '❔' : '🥚'}${e['left']}', key: const ValueKey('factory-egg'), style: style),
-                Text('📖 ${FactoryRun.dexOf(run).length}', key: const ValueKey('factory-dex'), style: style),
+                // Tocar abre a Pokédex (todos os Pokémon: os capturados inteiros, os que faltam em silhueta).
+                GestureDetector(
+                  onTap: () => setState(() => _panel = _panel == 'dex' ? null : 'dex'),
+                  child: Text('📖 ${FactoryRun.dexOf(run).length}', key: const ValueKey('factory-dex'), style: style),
+                ),
                 if (_data != null) _badges(_data!, run),
                 for (final hm in (run['hms'] as List? ?? const [])) Text(_hmInfo[hm]?.$2 ?? '', style: style),
                 for (final k in (run['keyItems'] as List? ?? const [])) Text(_keyInfo[k]?.$1 ?? '', key: ValueKey('factory-key-$k'), style: style),
@@ -3114,6 +3118,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
   // A página da ajuda (4 tópicos por página, sem rolar).
   int _helpPage = 0;
   bool _helpCard = false;
+  int _dexPage = -1; // -1: a página do escolhido
+  int? _dexPick;
 
   /// A ajuda numa tela só: 4 tópicos por página (2 × 2), do tamanho do campo; ◀ ▶ troca a página. Igual ao site.
   /// Desistir da corrida (com a pergunta): a pontuação vira moedas.
@@ -3247,9 +3253,131 @@ class _FactoryScreenState extends State<FactoryScreen> {
               text(sum['badges'], 'card-badges'),
             ])),
             row('💰', 'Dinheiro', text(run['money'] ?? 0, 'card-money')),
-            row('📖', 'Pokédex', text(FactoryRun.dexOf(run).length, 'card-dex')),
+            row('📖', 'Pokédex', InkWell(
+              key: const ValueKey('card-open-dex'),
+              onTap: () => setState(() => _panel = 'dex'),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [text(FactoryRun.dexOf(run).length, 'card-dex'), Text('  ${tr('ABRIR')} ▸', style: value.copyWith(color: const Color(0xFFFACC15)))]),
+            )),
             row('🧗', 'Andar', text(run['floor'] ?? 0, 'card-floor')),
             row('⚔️', 'Vencidos', text('${sum['defeated']} · 👑 ${sum['bosses']}')),
+          ]),
+        ),
+      ]),
+    );
+  }
+
+  /// A Pokédex (como nos jogos): todos os Pokémon pelo número; à direita a lista (em páginas, com as gerações), à esquerda
+  /// o tocado. Capturado (na conta ou nesta corrida): inteiro, com nome e tipos; o resto, só a silhueta (visto: com o
+  /// nome; nunca visto: ???). Igual ao site.
+  Widget _dexPanel(Json run, FactoryData data, VoidCallback close) {
+    final book = FactoryRun.dexBook(currentFactory(), data);
+    final all = book.all;
+    const cols = 8, rows = 4, per = cols * rows;
+    final pages = (all.length / per).ceil();
+    final pick = _dexPick ?? FactoryRun.dexOf(run).firstOrNull ?? all.first;
+    final page = (_dexPage < 0 ? max(0, all.indexOf(pick)) ~/ per : _dexPage).clamp(0, pages - 1);
+    final shown = all.skip(page * per).take(per).toList();
+    const ink = _portText;
+    String num3(int id) => 'Nº ${'$id'.padLeft(3, '0')}';
+    Widget chip(String label, String key, VoidCallback? onTap, {bool on = false}) => Opacity(
+          opacity: onTap == null ? 0.3 : 1,
+          child: InkWell(
+            key: ValueKey(key),
+            onTap: onTap,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+              decoration: BoxDecoration(color: on ? const Color(0xFFFACC15) : const Color(0xEB14161C), border: Border.all(color: const Color(0xFF8B93A1))),
+              child: Text(label, style: ink.copyWith(fontSize: 11, color: on ? const Color(0xFF0F172A) : null)),
+            ),
+          ),
+        );
+    final caught = book.caught.contains(pick), seen = book.seen.contains(pick);
+    final types = caught ? [for (final t in (data.species[pick]?[4] as List?) ?? const []) '$t'] : const <String>[];
+    final detail = Container(
+      key: const ValueKey('dex-detail'),
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(color: const Color(0xFF14161C), border: Border.all(color: const Color(0xFF8B93A1), width: 2), borderRadius: BorderRadius.circular(6)),
+      child: Column(children: [
+        Text(num3(pick), style: ink.copyWith(fontSize: 11, color: const Color(0xFFCBD5E1))),
+        Expanded(
+          child: Container(
+            margin: const EdgeInsets.symmetric(vertical: 4),
+            decoration: BoxDecoration(gradient: const RadialGradient(colors: [Color(0xFF9FD8C8), Color(0xFF3F7F74)]), borderRadius: BorderRadius.circular(6)),
+            child: PokemonSprite(pick, key: ValueKey('dex-big-$pick-${caught ? 'c' : 's'}'), fill: 0.85, silhouette: caught ? null : const Color(0xFF0F172A)),
+          ),
+        ),
+        Text(seen ? _name(pick) : '???', key: const ValueKey('dex-name'), maxLines: 1, overflow: TextOverflow.ellipsis, style: ink.copyWith(fontSize: 14)),
+        const SizedBox(height: 2),
+        SizedBox(height: 18, child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [for (final t in types) Padding(padding: const EdgeInsets.symmetric(horizontal: 2), child: TypeChip(t))])),
+        Text(caught ? '✔ ${tr('Capturado')}' : seen ? '👁 ${tr('Visto')}' : '❔ ${tr('Não visto')}',
+            key: const ValueKey('dex-status'), style: ink.copyWith(fontSize: 11, color: caught ? const Color(0xFF86EFAC) : const Color(0xFFCBD5E1))),
+      ]),
+    );
+    Widget cell(int id) {
+      final c = book.caught.contains(id);
+      final on = id == pick;
+      return Expanded(
+        child: InkWell(
+          key: ValueKey('dex-$id'),
+          onTap: () => setState(() {
+            _dexPick = id;
+            _dexPage = page;
+          }),
+          child: Container(
+            margin: const EdgeInsets.all(1.5),
+            decoration: BoxDecoration(
+              color: on ? const Color(0xFF3B4252) : const Color(0xCC14161C),
+              border: Border.all(color: on ? const Color(0xFFFACC15) : const Color(0xFF4B5563), width: on ? 2 : 1),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Stack(children: [
+              Positioned.fill(child: Padding(padding: const EdgeInsets.fromLTRB(2, 6, 2, 0), child: PokemonSprite(id, fill: 0.9, silhouette: c ? null : const Color(0xFF0F172A)))),
+              Positioned(left: 2, top: 0, child: Text('$id', style: ink.copyWith(fontSize: 8, color: c ? Colors.white : const Color(0xFF94A3B8)))),
+              if (c) const Positioned(right: 2, top: 1, child: Icon(Icons.catching_pokemon, size: 8, color: Color(0xFFEF4444))),
+            ]),
+          ),
+        ),
+      );
+    }
+    const gens = [1, 152, 252, 387, 494, 650, 722, 810, 906];
+    const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX'];
+    final first = shown.firstOrNull ?? 1;
+    return Container(
+      key: const ValueKey('dex-panel'),
+      color: const Color(0xFFB3262B),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        _overlayHeader('📖 ${tr('Pokédex')} · ✔ ${book.caught.length} · 👁 ${book.seen.length} / ${all.length}', close),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.all(6),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Expanded(flex: 2, child: detail),
+              const SizedBox(width: 6),
+              Expanded(
+                flex: 5,
+                child: Column(children: [
+                  for (var r = 0; r < rows; r++)
+                    Expanded(child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                      for (var k = 0; k < cols; k++) r * cols + k < shown.length ? cell(shown[r * cols + k]) : const Expanded(child: SizedBox()),
+                    ])),
+                ]),
+              ),
+            ]),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 4, left: 6, right: 6),
+          child: Row(children: [
+            for (var g = 0; g < gens.length; g++)
+              Padding(
+                padding: const EdgeInsets.only(right: 3),
+                child: chip(roman[g], 'dex-gen-${g + 1}', () => setState(() => _dexPage = max(0, all.indexWhere((id) => id >= gens[g])) ~/ per),
+                    on: first >= gens[g] && (g == gens.length - 1 || first < gens[g + 1])),
+              ),
+            const Spacer(),
+            chip('◀', 'dex-prev', page > 0 ? () => setState(() => _dexPage = page - 1) : null),
+            Padding(padding: const EdgeInsets.symmetric(horizontal: 8), child: Text('${page + 1}/$pages', style: ink.copyWith(fontSize: 11))),
+            chip('▶', 'dex-next', page < pages - 1 ? () => setState(() => _dexPage = page + 1) : null),
           ]),
         ),
       ]),
@@ -3706,7 +3834,9 @@ class _FactoryScreenState extends State<FactoryScreen> {
     ];
     Widget frame;
     void close() => setState(() => _panel = null);
-    _framePanel = _panel == 'region'
+    _framePanel = _panel == 'dex'
+        ? _dexPanel(run, data, close)
+        : _panel == 'region'
         ? _regionMap(run, data, close)
         : _panel == 'help'
             ? _helpPanel(run, close, data)

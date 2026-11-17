@@ -496,6 +496,11 @@
   "fr": "L'eau frappe les rochers et résonne dans toute la grotte.",
   "es": "El agua golpea las rocas y resuena por toda la cueva."
  },
+ "ABRIR": {
+  "en": "OPEN",
+  "fr": "OUVRIR",
+  "es": "ABRIR"
+ },
  "AJUDA": {
   "en": "HELP",
   "fr": "AIDE",
@@ -7396,6 +7401,11 @@
   "en": "Takes no damage from entry hazards (Stealth Rock, Spikes...)",
   "fr": "Ne subit pas les pièges du terrain (Stealth Rock, Spikes...)",
   "es": "No recibe daño de las trampas del campo (Stealth Rock, Spikes...)"
+ },
+ "Não visto": {
+  "en": "Not seen",
+  "fr": "Pas vu",
+  "es": "No visto"
  },
  "Não vou deixar você chegar no próximo ginásio sem uma revanche!": {
   "en": "I won't let you reach the next gym without a rematch!",

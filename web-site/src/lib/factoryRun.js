@@ -4116,6 +4116,18 @@ export function boxToSet(entry, moves) {
  * vencidos, chefes, insígnias, quem caiu no Nuzlocke, o time e o MVP (quem
  * mais ganhou XP; sem XP contado, o de nível mais alto) — [id, nível, shiny].
  */
+/**
+ * A Pokédex da conta (como nos jogos): todos os Pokémon pelo número (1 a 1025, sem as formas), os capturados (na conta,
+ * nesta corrida e no time) e os vistos (os capturados contam como vistos). Igual ao app.
+ */
+export function dexBook(factory, data) {
+  const all = Object.keys(data.species).map(Number).filter((id) => id >= 1 && id <= 1025).sort((a, b) => a - b)
+  const run = factory.run
+  const caught = new Set([...(factory.caught ?? []).map(Number), ...(run ? dexOf(run) : []), ...(run ? run.team.map((m) => m.id) : [])])
+  const seen = new Set([...(factory.seen ?? []).map(Number), ...caught])
+  return { all, caught, seen }
+}
+
 export function runSummary(run) {
   const card = (m) => [m.id, m.level ?? 1, m.shiny ? 1 : 0]
   let mvp = null

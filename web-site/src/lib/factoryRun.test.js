@@ -13,7 +13,7 @@ import {
   HELD_BOOST, levelTo, MAX_TEAM, memberOf, movesAt, nextFloor, nextRandom, overflowPoints, pokemonPrice, runCoins, setMainItem, shopPrice,
   SHINY_BOOST, FOE_SHINY_BOOST, SHINY_CHANCE, START_BAG, START_BALLS, startersOf, unlockShiny, claimStarter, freePick, canEvolveWith, teachMove,
   equipFromStash, gimmicksOf, setGimmick, storyLine, startRun, takeCard, teamDown, applyBagItem, winFloor, chooseNode as chooseNodeRaw, routeOptions, gymLocked, routeCities,
-  captureFor, factoryOf, BIOMES, isBattleNode, skipCapture, FORKS, ROUTE_LENGTH, BALL_TIERS, HEAL_TIERS, tierPick, minLevelOf, devolve,
+  captureFor, dexBook, factoryOf, BIOMES, isBattleNode, skipCapture, FORKS, ROUTE_LENGTH, BALL_TIERS, HEAL_TIERS, tierPick, minLevelOf, devolve,
   EXP_SHARE, expProgress, shopOwned, baseForm, forSale, normalizeOwned, buyUpgrade, upgradePrice, UPGRADES,
   tradeMon, skipTrade, TRADE_LEVELS, escapeRope, ESCAPE_HP, progress, ACHIEVEMENTS, LUCKY_EGG, rerollRoute, FOE_ITEMS,
   regionLegend, REGION_LEGENDS, starterLine, newMission, resolveChoice, MISSION_MONEY, CHOICE_EVENTS,
@@ -2451,3 +2451,15 @@ function round15Trace(F) {
   const friends = [null, true, false].map((night) => F.winFloor(fr, data, { hp: [1, 1, 0], ...(night == null ? {} : { night }) }).team.map((m) => [m.id, m.friendship]))
   return { roam, plot, eggs, tags, wild, friends }
 }
+
+describe('Pokédex da conta', () => {
+  it('1 a 1025, capturados da conta, da corrida e do time; capturado conta como visto', () => {
+    const run = { ...startRun(emptyFactory(), data, 4, 42), dex: [4, 16] }
+    const book = dexBook({ caught: [1], seen: [2], run }, data)
+    expect(book.all[0]).toBe(1)
+    expect(book.all.every((id) => id <= 1025)).toBe(true)
+    expect([...book.caught].sort((a, b) => a - b)).toEqual([1, 4, 16])
+    expect(book.seen.has(2) && book.seen.has(16)).toBe(true)
+    expect(book.caught.has(2)).toBe(false)
+  })
+})

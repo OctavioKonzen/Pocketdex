@@ -19,7 +19,7 @@ import { getFactoryData, getMoves, shinyPath, spriteUrl } from '../lib/data'
 import { learnsetOf, movesFor } from '../lib/factoryBattle'
 import { battleMons } from '../lib/battleSetup'
 import {
-  BAG_ITEMS, runSummary, BOX_SIZE, boxToSet, releaseFromBox, HUNT_MAX, HUNT_STEP, huntBase, huntMultOf, setHunt, bossOf, regionOf, genderOf, piecesOf, pieceOf, upgradePieces, tradePieces, PIECE_ITEMS, PIECE_TRADE, capturedMon, isRegionalForm, emptyFactory, unequipItem, ROUTE_LENGTH, CITY_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
+  BAG_ITEMS, runSummary, dexBook, BOX_SIZE, boxToSet, releaseFromBox, HUNT_MAX, HUNT_STEP, huntBase, huntMultOf, setHunt, bossOf, regionOf, genderOf, piecesOf, pieceOf, upgradePieces, tradePieces, PIECE_ITEMS, PIECE_TRADE, capturedMon, isRegionalForm, emptyFactory, unequipItem, ROUTE_LENGTH, CITY_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, teamRoom, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, sceneLines, bossCity, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, atPc, pcOf, PC_SIZE, RARE_PLACES, shownScene, gameOf, tierOf, foeBoostAt, leagueAhead, unlockShiny, VITAMIN_EVS, VITAMINS,
   forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor, isKeystone,
@@ -2004,7 +2004,7 @@ const HELP = [
 ]
 /** O cartão do treinador (como nos jogos): quem é, a região, as insígnias, o dinheiro, a Pokédex da corrida, o andar e as
  * vitórias. Fica na AJUDA (🪪). Igual ao app. */
-function TrainerCard({ data, run }) {
+function TrainerCard({ data, run, onDex = null }) {
   const me = useMyTrainer()
   const [ref, width] = useWidth()
   const game = data?.bosses?.[run.boss.region]
@@ -2025,7 +2025,7 @@ function TrainerCard({ data, run }) {
         {game && row('🗺️', 'Região', game.region)}
         {row('🏅', 'Insígnias', <>{data && <Badges data={data} run={run} />}<span>{sum.badges}</span></>, 'card-badges')}
         {row('💰', 'Dinheiro', run.money ?? 0, 'card-money')}
-        {row('📖', 'Pokédex', dexOf(run).length, 'card-dex')}
+        {row('📖', 'Pokédex', <>{dexOf(run).length}{onDex && <button type="button" className="cursor-pointer text-yellow-400" onClick={onDex} data-testid="card-open-dex">{t('ABRIR')} ▸</button>}</>, 'card-dex')}
         {row('🧗', 'Andar', run.floor ?? 0, 'card-floor')}
         {row('⚔️', 'Vencidos', `${sum.defeated} · 👑 ${sum.bosses}`)}
       </div>
@@ -2033,7 +2033,72 @@ function TrainerCard({ data, run }) {
   )
 }
 
-function HelpPanel({ onClose, onExit = null, onGiveUp = null, data = null, run = null }) {
+const DEX_GENS = [1, 152, 252, 387, 494, 650, 722, 810, 906]
+const DEX_ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX']
+
+/**
+ * A Pokédex (como nos jogos): todos os Pokémon pelo número; à direita a lista (em páginas, com as gerações), à esquerda o
+ * tocado. Capturado (na conta ou nesta corrida): inteiro, com nome e tipos; o resto, só a silhueta (visto: com o nome;
+ * nunca visto: ???). Igual ao app.
+ */
+function DexPanel({ factory, data, run, name, onClose }) {
+  const book = dexBook(factory, data)
+  const { all } = book
+  const cols = 8
+  const per = cols * 4
+  const pages = Math.ceil(all.length / per)
+  const [pick, setPick] = useState(() => dexOf(run)[0] ?? all[0])
+  const [pageAt, setPage] = useState(() => Math.floor(Math.max(0, all.indexOf(dexOf(run)[0] ?? all[0])) / per))
+  const page = Math.min(Math.max(0, pageAt), pages - 1)
+  const shown = all.slice(page * per, page * per + per)
+  const caught = book.caught.has(pick)
+  const seen = book.seen.has(pick)
+  const types = caught ? data.species[pick]?.[4] ?? [] : []
+  const first = shown[0] ?? 1
+  const black = { filter: 'brightness(0)' }
+  return (
+    <div className="flex h-full flex-col gap-2 overflow-hidden p-2" style={{ containerType: 'inline-size', background: '#b3262b' }} data-testid="dex-panel">
+      <OverlayClose onClose={onClose} title={`📖 ${t('Pokédex')} · ✔ ${book.caught.size} · 👁 ${book.seen.size} / ${all.length}`} />
+      <div className="flex min-h-0 flex-1 gap-[1cqw]">
+        <div className="flex w-[28%] flex-col items-center rounded-[0.8cqw] border-2 border-[#8b93a1] bg-[#14161c] p-[1cqw]" data-testid="dex-detail">
+          <p className="text-[1.6cqw] text-slate-300">Nº {String(pick).padStart(3, '0')}</p>
+          <div className="my-[0.8cqw] flex min-h-0 w-full flex-1 items-center justify-center rounded-[0.8cqw]" style={{ background: 'radial-gradient(#9fd8c8, #3f7f74)' }}>
+            <div className="h-full w-full" style={caught ? undefined : black}><PokeIcon key={pick} id={pick} fill={0.85} className="h-full w-full" /></div>
+          </div>
+          <p className="w-full truncate text-center text-[2.2cqw]" data-testid="dex-name">{seen ? name(pick) : '???'}</p>
+          <div className="flex h-[2.6cqw] items-center justify-center gap-1">{types.map((type) => <TypeBadge key={type} type={type} small />)}</div>
+          <p className={`text-[1.6cqw] ${caught ? 'text-green-300' : 'text-slate-300'}`} data-testid="dex-status">{caught ? `✔ ${t('Capturado')}` : seen ? `👁 ${t('Visto')}` : `❔ ${t('Não visto')}`}</p>
+        </div>
+        <div className="grid min-h-0 flex-1 grid-cols-8 grid-rows-4 gap-[0.3cqw]">
+          {shown.map((id) => {
+            const c = book.caught.has(id)
+            const on = id === pick
+            return (
+              <button key={id} type="button" onClick={() => { setPick(id); setPage(page) }} data-testid={`dex-${id}`}
+                className={`relative min-h-0 cursor-pointer overflow-hidden rounded-[0.5cqw] ${on ? 'border-2 border-yellow-400 bg-[#3b4252]' : 'border border-[#4b5563] bg-[#14161ccc]'}`}>
+                <span className={`absolute left-[0.3cqw] top-0 text-[1.1cqw] ${c ? 'text-white' : 'text-slate-400'}`}>{id}</span>
+                {c && <span className="absolute right-[0.3cqw] top-0 text-[1.1cqw] text-red-500">●</span>}
+                <div className="absolute inset-x-[0.3cqw] bottom-0 top-[1cqw]" style={c ? undefined : black}><PokeIcon id={id} fill={0.9} className="h-full w-full" /></div>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+      <div className="flex shrink-0 items-center gap-[0.5cqw] text-[1.5cqw]">
+        {DEX_GENS.map((g, k) => {
+          const on = first >= g && (k === DEX_GENS.length - 1 || first < DEX_GENS[k + 1])
+          return <button key={g} type="button" className={`port-chip cursor-pointer px-[1cqw] ${on ? '!bg-yellow-400 !text-slate-900' : ''}`} onClick={() => setPage(Math.floor(Math.max(0, all.findIndex((id) => id >= g)) / per))} data-testid={`dex-gen-${k + 1}`}>{DEX_ROMAN[k]}</button>
+        })}
+        <span className="ml-auto" />
+        <button type="button" className="port-chip cursor-pointer px-3 disabled:opacity-30" disabled={page === 0} onClick={() => setPage(page - 1)} data-testid="dex-prev">◀</button>
+        <span className="tabular-nums">{page + 1}/{pages}</span>
+        <button type="button" className="port-chip cursor-pointer px-3 disabled:opacity-30" disabled={page === pages - 1} onClick={() => setPage(page + 1)} data-testid="dex-next">▶</button>
+      </div>
+    </div>
+  )
+}
+
+function HelpPanel({ onClose, onExit = null, onGiveUp = null, onDex = null, data = null, run = null }) {
   // Tela única: 4 tópicos por página (2 × 2), do tamanho do campo, sem rolar; ◀ ▶ troca a página.
   const [page, setPage] = useState(0)
   const [card, setCard] = useState(false)
@@ -2042,7 +2107,7 @@ function HelpPanel({ onClose, onExit = null, onGiveUp = null, data = null, run =
   return (
     <div className="port-panel flex h-full flex-col gap-2 overflow-hidden p-2" style={{ containerType: 'inline-size' }} data-testid="help-panel">
       <OverlayClose onClose={onClose} title={card ? `🪪 ${t('Cartão do treinador')}` : `❓ ${t('Ajuda')}`} />
-      {card && run ? <TrainerCard data={data} run={run} /> : <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-2">
+      {card && run ? <TrainerCard data={data} run={run} onDex={onDex} /> : <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-2">
         {HELP.slice(page * per, page * per + per).map(([icon, title, text]) => (
           <div key={title} className="port-card flex min-h-0 flex-col gap-[0.8cqw] overflow-hidden p-[1.5cqw]">
             <p className="text-[2.2cqw]">{icon} {t(title)}</p>
@@ -2395,7 +2460,7 @@ function Badges({ data, run }) {
 }
 
 // tools: BOLSA, TIME, MAPA e AJUDA numa linha fixa no alto da tela de baixo; os caminhos e o resto, nas páginas (◀ ▶).
-function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, panel = null, tools = null, menuFill = false }) {
+function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, panel = null, tools = null, menuFill = false, onDex = null }) {
   // A HUD da batalha (o port de Black & White), igual: o campo 16:9, a caixa de texto à esquerda, os botões à direita
   // dela e a faixa de dica embaixo, tudo dentro da tela (nada embaixo dela). Igual ao app.
   return (
@@ -2420,7 +2485,7 @@ function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, 
             <span>💰 {run.money}</span>
             <span title={t('Bolsa')} data-testid="factory-bag-count">🎒 {BAG_ITEMS.reduce((n, id) => n + (run.bag[id] ?? 0), 0)}</span>
             {(run.eggs ?? []).map((e, i) => <span key={i} title={t(e.mystery ? 'Ovo misterioso: choca em {0} vitórias' : 'Choca em {0} vitórias').replace('{0}', e.left)} data-testid="factory-egg">{e.mystery ? '❔' : '🥚'}{e.left}</span>)}
-            <span title={t('Pokédex da corrida')} data-testid="factory-dex">📖 {dexOf(run).length}</span>
+            <span title={t('Pokédex da corrida')} className={onDex ? 'cursor-pointer' : ''} onClick={onDex ?? undefined} data-testid="factory-dex">📖 {dexOf(run).length}</span>
             {data && <Badges data={data} run={run} />}
             {(run.hms ?? []).map((hm) => <span key={hm} title={HM_INFO[hm]?.name}>{HM_INFO[hm]?.icon}</span>)}
             {(run.keyItems ?? []).map((k) => <span key={k} title={KEY_ITEMS[k]} data-testid={`factory-key-${k}`}>{KEY_INFO[k]?.icon}</span>)}
@@ -2548,11 +2613,13 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
   // O Pokémon que segue você na cidade, na altura de verdade perto do treinador (followerFit).
   const leadInfo = lead && byId?.get(lead.id)
   const follow = leadInfo ? followerFit(leadInfo.height, standOf(lead.shiny ? shinyPath(leadInfo.sprite) : leadInfo.sprite, sprites, leadInfo.box)) : { k: 1, scale: null }
-  const extras = run && (panel === 'bag' || panel === 'team' || panel === 'region' || panel === 'help') && (
-    panel === 'region' ? (
+  const extras = run && (panel === 'bag' || panel === 'team' || panel === 'region' || panel === 'help' || panel === 'dex') && (
+    panel === 'dex' ? (
+      <DexPanel factory={factory} data={data} run={run} name={name} onClose={() => setPanel(null)} />
+    ) : panel === 'region' ? (
       <RegionMap data={data} run={run} onClose={() => setPanel(null)} monName={name} />
     ) : panel === 'help' ? (
-      <HelpPanel data={data} run={run} onClose={() => setPanel(null)} onExit={onExit} onGiveUp={() => window.confirm(t('Desistir da corrida? A pontuação vira moedas.')) && saveFactory(endRun(factory, run))} />
+      <HelpPanel data={data} run={run} onDex={() => setPanel('dex')} onClose={() => setPanel(null)} onExit={onExit} onGiveUp={() => window.confirm(t('Desistir da corrida? A pontuação vira moedas.')) && saveFactory(endRun(factory, run))} />
     ) : panel === 'bag' ? (
       <BagPanel run={run} byId={byId} save={save} onClose={() => setPanel(null)} />
     ) : (
@@ -3523,7 +3590,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
 
   return (
     <section data-testid="factory-screen">
-      <BattleFrame field={field} run={run} byId={byId} data={data} frame={factory.frame} menu={menu} menuFill={menuFill} tools={toolRow ? tools : null} panel={below || extras || null}
+      <BattleFrame onDex={() => setPanel(panel === 'dex' ? null : 'dex')} field={field} run={run} byId={byId} data={data} frame={factory.frame} menu={menu} menuFill={menuFill} tools={toolRow ? tools : null} panel={below || extras || null}
         text={<>
           {note && <p data-testid="factory-note">{note}</p>}
           {text}

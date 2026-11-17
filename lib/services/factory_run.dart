@@ -3459,6 +3459,20 @@ class FactoryRun {
     return dexRewards.where((r) => r['at'] == dex.length + 1).firstOrNull;
   }
 
+  /// A Pokédex da conta (como nos jogos): todos os Pokémon pelo número (1 a 1025, sem as formas), os capturados (na conta,
+  /// nesta corrida e no time) e os vistos (os capturados contam como vistos). Igual ao site.
+  static ({List<int> all, Set<int> caught, Set<int> seen}) dexBook(Json factory, FactoryData data) {
+    final all = [for (final id in data.species.keys) if (id >= 1 && id <= 1025) id]..sort();
+    final run = factory['run'] as Map?;
+    final caught = <int>{
+      for (final x in (factory['caught'] as List?) ?? const []) _int(x),
+      if (run != null) ...dexOf(Json.from(run)),
+      if (run != null) for (final m in teamOf(Json.from(run))) _int(m['id']),
+    };
+    final seen = <int>{for (final x in (factory['seen'] as List?) ?? const []) _int(x), ...caught};
+    return (all: all, caught: caught, seen: seen);
+  }
+
   static void _addDex(Json out, int id) {
     final reward = dexRewardFor(out, id);
     if (dexOf(out).contains(id)) return;
