@@ -32,7 +32,7 @@ import {
   heartsOf, roamerSeen, villainPlot, fieldOf, mysteryEgg, takeMysteryEgg, LEAGUE_FLAWLESS,
   expAt,
 } from '../lib/factoryRun'
-import { startMusic, stopMusic } from '../lib/battleSound'
+import { playSound, startMusic, stopMusic } from '../lib/battleSound'
 import { REGION_MAPS, regionMap } from '../lib/regionMaps'
 import { language, localText, t } from '../lib/i18n'
 import { prettyName, typeColor } from '../lib/pokemon'
@@ -2460,6 +2460,9 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
   const name = (id) => t(prettyName(byId?.get(id)?.name ?? ''))
   const save = (next) => {
     if (!next) return
+    // O time curado (Centro Pokémon, Enfermeira Joy ou quem cuida no caminho): a musiquinha da cura, como nos jogos. Igual ao app.
+    const healed = next.pending && !next.pending.seen && (next.pending.center || next.pending.joy)
+    if (healed && !(run?.pending?.center || run?.pending?.joy)) playSound('center', 0.7)
     // Fez uma ação (ou seguiu): a lista de ações fecha.
     if (panel === 'actions') setPanel(null)
     // O resumo do andar fica só na tela seguinte.

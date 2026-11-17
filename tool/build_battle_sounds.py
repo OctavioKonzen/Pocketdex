@@ -173,6 +173,21 @@ def sfx_heal():
     return seq(parts)
 
 
+def sfx_lowhp():
+    """O alarme de vida baixa (original): dois bipes agudos e uma pausa; toca em loop enquanto a vida está no vermelho."""
+    beep = lambda m: pulse(freq(m), 0.11, 0.5) * env(int(RATE * 0.11), 0.002, 0.02) * 0.32
+    return seq([beep(86), np.zeros(int(RATE * 0.05)), beep(86), np.zeros(int(RATE * 0.42))])
+
+
+def sfx_center():
+    """A cura do Centro Pokémon (original): as Poké Balls na máquina (bipes) e uma melodia curta subindo."""
+    balls = [triangle(freq(91), 0.06) * env(int(RATE * 0.06), 0.002, 0.02) * 0.45 for _ in range(3)]
+    gaps = [np.zeros(int(RATE * 0.08))] * 3
+    tick = seq([x for pair in zip(balls, gaps) for x in pair])
+    tune = seq([pulse(freq(m), 0.13 * d, 0.25) * env(int(RATE * 0.13 * d), 0.003, 0.04) * 0.38 for m, d in [(72, 1), (76, 1), (79, 1), (84, 2), (79, 1), (84, 3)]])
+    return seq([tick, tune])
+
+
 def sfx_shiny():
     """Brilho do shiny (original): estrelinhas descendo rápidas e um cintilar no fim."""
     stars = []
@@ -3919,6 +3934,8 @@ def main():
         'select': sfx_select,
         'shiny': sfx_shiny,
         'victory': sfx_victory,
+        'lowhp': sfx_lowhp,
+        'center': sfx_center,
     }
     # Só alguns: python3 tool/build_battle_sounds.py shiny | music | map_kalos | mega ...
     only = sys.argv[1:]

@@ -2652,6 +2652,10 @@ class _FactoryScreenState extends State<FactoryScreen> {
   /// Salva; sem mais nada para ver depois do andar, abre o mapa (os caminhos do próximo).
   void _save(Json? next, [Json? meta]) {
     if (next == null) return;
+    // O time curado (Centro Pokémon, Enfermeira Joy ou quem cuida no caminho): a musiquinha da cura, como nos jogos.
+    final healed = next['pending'] is Map && next['pending']['seen'] != true && (next['pending']['center'] == true || next['pending']['joy'] == true);
+    final before = FactoryRun.pendingOf(currentFactory()['run'] as Json? ?? const {});
+    if (healed && !(before?['center'] == true || before?['joy'] == true)) BattleSounds.play('center', volume: 0.7);
     // Fez uma ação (ou seguiu): a lista de ações fecha.
     if (_panel == 'actions') _panel = null;
     // O resumo do andar fica só na tela seguinte.

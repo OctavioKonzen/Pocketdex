@@ -39,7 +39,7 @@ import { TrainerBack, TrainerSprite } from '../components/Trainer'
 import { genericTrainer, isPairTrainer, pairTrainer, randomTrainer, trainerPersona, useMyTrainer, useTrainers } from '../lib/trainers'
 import { battleRecord } from '../lib/battleLog'
 import { battleAnalysis } from '../lib/battleAnalysis'
-import { isPlaying, playSound, soundOf, startMusic, stopMusic, syncedStart } from '../lib/battleSound'
+import { isPlaying, lowHpAlarm, playCry, playSound, soundOf, startMusic, stopMusic, syncedStart } from '../lib/battleSound'
 import {simulatorTargets, simulatorTurn} from '../lib/battleSimulator'
 import {newPartyBattle, playPartyTurn, describeEvents} from '../lib/partyBattle'
 import { FactoryHub, FactoryScreen, factoryDataNow, saveFactory } from '../components/FactoryPanels'
@@ -1135,7 +1135,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   // A música da batalha (para quando sai da tela).
   useEffect(() => {
     if (battle.winner == null) startMusic(music ?? musicOf(null, battle.sides[1].team[battle.sides[1].active].id, battle.seed ?? 0))
-    return () => stopMusic()
+    return () => { stopMusic(); lowHpAlarm(false) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [battle])
   useEffect(() => {
@@ -1199,6 +1199,8 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   /** Shiny entrando: estrelinhas em volta dele e o som de brilho, como nos jogos. */
   const sparkleIfShiny = async (side) => {
     const mon = battle.sides[side].team[shownRef.current.active[side]]
+    // O grito de quem entra (como nos jogos).
+    if (mon) playCry(mon.id)
     if (!mon?.shiny) return
     playSound('shiny', 0.7)
     setShine({ side, n: Date.now() })
@@ -1587,6 +1589,9 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
 
   const me = battle.sides[0].team[shown.active[0]]
   const foe = battle.sides[1].team[shown.active[1]]
+  // O alarme de vida baixa (como nos jogos): toca enquanto o seu está no vermelho, até a batalha acabar.
+  const myHp = shown.hp[0][shown.active[0]]
+  lowHpAlarm(battle.winner == null && me?.maxHp > 0 && myHp > 0 && myHp / me.maxHp <= 0.2)
   const scene = battleScene(battle.scene, battle.seed ?? battle.turn)
   const current = active(battle, 0)
   const usable = usableMoves(current)

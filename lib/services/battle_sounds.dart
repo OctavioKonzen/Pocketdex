@@ -13,6 +13,7 @@ import 'package:just_audio/just_audio.dart' as ja;
 import 'package:flutter/widgets.dart';
 
 import 'app_settings.dart';
+import 'cry_player.dart';
 import 'music_cache.dart';
 import 'turn_battle.dart';
 
@@ -88,6 +89,34 @@ class BattleSounds {
       if (from > Duration.zero) await player.seek(from);
       await player.setVolume(volume * sfxLevel);
       await player.resume();
+    } catch (_) {
+      // Sem som: a batalha continua.
+    }
+  }
+
+  /// O grito do Pokémon entrando em campo (como nos jogos). Só as espécies (até 1025): as formas usam o grito delas
+  /// pela espécie, quando quem chama passa [species].
+  static Future<void> cry(int id) async {
+    if (_off || !AppSettings.instance.battleSounds || _backgrounded || _covered || id < 1 || id > 1025) return;
+    await CryPlayer.instance.play(id);
+  }
+
+  /// O alarme de vida baixa (os bipes, em loop) enquanto o seu Pokémon está no vermelho. Igual ao site.
+  static AudioPlayer? _alarm;
+  static bool _alarmOn = false;
+  static Future<void> alarm(bool on) async {
+    if (on == _alarmOn) return;
+    _alarmOn = on;
+    try {
+      if (!on || _off || !AppSettings.instance.battleSounds) {
+        await _alarm?.stop();
+        return;
+      }
+      final player = _alarm ??= AudioPlayer();
+      await player.setAudioContext(mixed);
+      await player.setReleaseMode(ReleaseMode.loop);
+      await player.setVolume(0.45 * sfxLevel);
+      await player.play(AssetSource('database/sounds/lowhp.mp3'));
     } catch (_) {
       // Sem som: a batalha continua.
     }

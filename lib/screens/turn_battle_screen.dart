@@ -1648,6 +1648,8 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
 
   /// Shiny entrando: estrelinhas em volta dele e o som de brilho, como nos jogos.
   Future<void> _sparkleIfShiny(int side) async {
+    // O grito de quem entra (como nos jogos).
+    if (mounted) BattleSounds.cry(_b.teams[side][_active[side]].id);
     if (!mounted || !_b.teams[side][_active[side]].shiny) return;
     BattleSounds.play('shiny', volume: 0.7);
     setState(() => _shine = (side, ++_shineCount));
@@ -1750,8 +1752,11 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
   @override
   void didPopNext() => BattleSounds.setCovered(false, this);
 
+  bool _lowHpOn = false;
+
   @override
   void dispose() {
+    if (_lowHpOn) BattleSounds.alarm(false);
     BattleSpeed.leave();
     for (final t in _timers) {
       t.cancel();
@@ -2422,6 +2427,12 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
     final me = _b.teams[0][_active[0]];
     final foe = _b.teams[1][_active[1]];
     final current = _b.active(0);
+    // O alarme de vida baixa (como nos jogos): toca enquanto o seu está no vermelho, até a batalha acabar.
+    final lowHp = _b.winner == null && me.maxHp > 0 && _hp[0][_active[0]] > 0 && _hp[0][_active[0]] / me.maxHp <= 0.2;
+    if (lowHp != _lowHpOn) {
+      _lowHpOn = lowHp;
+      BattleSounds.alarm(lowHp);
+    }
     final waiting = !_busy && !(widget.online?.locked ?? false) && _b.winner == null;
     // Efetividade (como nos jogos): nos golpes, nas fraquezas do inimigo e na troca.
     final rival = _b.active(1);

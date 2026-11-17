@@ -8,6 +8,38 @@ const BASE = import.meta.env.BASE_URL
 const url = (name) => `${BASE}sounds/${name}.mp3`
 const cache = new Map()
 
+/** O grito do Pokémon entrando em campo (como nos jogos): só as espécies (até 1025). Igual ao app. */
+export function playCry(id) {
+  if (!usePrefs.getState().battleSounds || typeof Audio === 'undefined' || !(id >= 1 && id <= 1025)) return
+  try {
+    const audio = new Audio(`${BASE}cries/${id}.mp3`)
+    audio.volume = Math.min(1, 0.7 * SFX_LEVEL)
+    audio.play().catch(() => {})
+  } catch {
+    // Sem som: a batalha continua.
+  }
+}
+
+/** O alarme de vida baixa (os bipes, em loop) enquanto o seu Pokémon está no vermelho. Igual ao app. */
+let alarm = null
+export function lowHpAlarm(on) {
+  if (typeof Audio === 'undefined') return
+  try {
+    if (!on || !usePrefs.getState().battleSounds) {
+      alarm?.pause()
+      return
+    }
+    if (!alarm) {
+      alarm = new Audio(url('lowhp'))
+      alarm.loop = true
+    }
+    alarm.volume = Math.min(1, 0.45 * SFX_LEVEL)
+    if (alarm.paused) alarm.play().catch(() => {})
+  } catch {
+    // Sem som: a batalha continua.
+  }
+}
+
 /** Um efeito: hit, super, weak, faint, throw, open, recall, statup, statdown, heal, select, victory, mega, dmax. */
 export function playSound(name, volume = 0.6, from = 0) {
   if (!usePrefs.getState().battleSounds || typeof Audio === 'undefined') return
