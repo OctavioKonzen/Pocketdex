@@ -2643,6 +2643,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
   @override
   void dispose() {
     BattleSounds.stopMusic(this);
+    _lvTimer?.cancel();
     PhoneOrientation.leaveLandscape();
     super.dispose();
   }
@@ -3506,6 +3507,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
   /// A caixa de vida do Pokémon da frente (como a sua na batalha).
   /// O HP máximo do Pokémon da frente (a mesma conta da tela DADOS, com os bônus da corrida), guardado; null enquanto calcula.
   final Map<String, int> _maxHpCache = {};
+  /// O XP que a barra já mostrou (para encher dali até o novo).
+  final Map<String, double> _xpSeen = {};
   final Set<String> _maxHpBusy = {};
   int? _leadMaxHp(Json run, Map m) {
     final key = '${m['id']}-${m['level']}-${jsonEncode(m['ivs'])}-${jsonEncode(m['evs'])}-${m['nature']}-${jsonEncode(FactoryRun.boostOf(run, m))}';
@@ -3573,7 +3576,20 @@ class _FactoryScreenState extends State<FactoryScreen> {
                     height: w * 0.005,
                     color: const Color(0xFF1E293B),
                     alignment: Alignment.centerLeft,
-                    child: FractionallySizedBox(widthFactor: need > 0 ? got / need : 0, heightFactor: 1, child: const ColoredBox(color: Color(0xFF38BDF8))),
+                    // O XP subindo na barra (como nos jogos): de onde estava até o valor novo (subindo de nível, desde o começo).
+                    child: Builder(builder: (context) {
+                      final ratio = need > 0 ? got / need : 0.0;
+                      final key = '${m['id']}-$level';
+                      final from = _xpSeen[key] ?? (_xpSeen.keys.any((k) => k.startsWith('${m['id']}-')) ? 0.0 : ratio);
+                      _xpSeen[key] = ratio;
+                      return TweenAnimationBuilder<double>(
+                        key: ValueKey('xp-$key-$ratio'),
+                        tween: Tween(begin: from, end: ratio),
+                        duration: Duration(milliseconds: from == ratio ? 1 : 900),
+                        curve: Curves.easeOut,
+                        builder: (context, v, _) => FractionallySizedBox(widthFactor: v.clamp(0.0, 1.0), heightFactor: 1, child: const ColoredBox(color: Color(0xFF38BDF8))),
+                      );
+                    }),
                   ),
                 ),
                 SizedBox(width: w * 0.006),
@@ -3658,15 +3674,32 @@ class _FactoryScreenState extends State<FactoryScreen> {
                         ? _pcPanel(run, close)
                         : null;
     // Esquecer um golpe para aprender o novo: a tela dos 5 golpes por cima de tudo (como nos jogos).
+    // Subiu de nível (como nos jogos): "Fulano subiu para o nível 13!" com os atributos novos, antes de seguir.
+    if (step == 'result' && _learn == null && _quickResult(p!)) {
+      final team = FactoryRun.teamOf(run);
+      final ups = [
+        for (final l in (p['levels'] as List? ?? const []).cast<Map>())
+          if (l['friend'] != true && (l['index'] as num).toInt() < team.length && (l['to'] as num) > (l['from'] as num)) l
+      ];
+      final key = '${run['floor']}-${jsonEncode(p['levels'])}';
+      if (ups.isNotEmpty && _lvKey != key) {
+        _lvKey = key;
+        _lvList = ups;
+        _lvAt = 0;
+        _levelStart(run);
+      }
+    }
     // Vencer um andar sem nada importante: segue sozinho (sem CONTINUAR).
-    if (step == 'result' && _learn == null && !_autoResult && _quickResult(p!)) {
+    if (step == 'result' && _learn == null && _lvList == null && !_autoResult && _quickResult(p!)) {
       _autoResult = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _afterResult(run, p, quick: true).whenComplete(() => _autoResult = false);
       });
     }
     if (step == 'result' && _learn != null && _learnStep == 'forget') _framePanel = _forgetPanel(run);
-    if (step == 'result' && _learn != null && _learn!.isNotEmpty) {
+    if (step == 'result' && _lvList != null) {
+      frame = _levelFrame(run, p!);
+    } else if (step == 'result' && _learn != null && _learn!.isNotEmpty) {
       frame = _learnFrame(run, p!);
     } else if (step == 'result') {
       frame = _resultFrame(run, p!, lead);
@@ -4075,6 +4108,91 @@ class _FactoryScreenState extends State<FactoryScreen> {
   /// Quantas ações há (a grade da rota conta cada botão dela).
   int _actionCount(List<Widget> extras) => extras.fold(0, (n, e) => n + (e is KeyedSubtree && e.key == const ValueKey('route-actions') ? _routeActionCount : 1));
   int _routeActionCount = 0;
+
+  /// Subiu de nível (como nos jogos): quem subiu, um de cada vez, com os atributos antes e depois. Passa sozinho em
+  /// alguns segundos (ou com um toque). Igual ao site.
+  List<Map>? _lvList;
+  int _lvAt = 0;
+  String? _lvKey;
+  Timer? _lvTimer;
+  final Map<int, (Map<String, int>, Map<String, int>)> _lvStats = {};
+
+  Future<Map<String, int>?> _statsAt(Json run, Map mon, int level) async {
+    final member = FactoryRun.memberOf(run, {...Map<String, dynamic>.from(mon), 'level': level}, const [], _data!);
+    final calc = await TeamBattle.calcPokemon(await DamageData.load(), member);
+    if (calc == null) return null;
+    final boost = FactoryRun.boostOf(run, mon);
+    return {for (final k in const ['hp', 'atk', 'def', 'spa', 'spd', 'spe']) k: (calc.rawStats[k]! * (1 + (boost[k] ?? 0))).round()};
+  }
+
+  void _levelStart(Json run) {
+    _lvTimer?.cancel();
+    _lvTimer = Timer(const Duration(milliseconds: 3200), _levelNext);
+    final l = _lvList![_lvAt];
+    final i = (l['index'] as num).toInt();
+    final mon = FactoryRun.teamOf(run)[i];
+    BattleSounds.play('statup', volume: 0.6);
+    () async {
+      final before = await _statsAt(run, mon, (l['from'] as num).toInt());
+      final after = await _statsAt(run, mon, (l['to'] as num).toInt());
+      if (before != null && after != null && mounted) setState(() => _lvStats[i] = (before, after));
+    }();
+  }
+
+  void _levelNext() {
+    _lvTimer?.cancel();
+    if (!mounted || _lvList == null) return;
+    setState(() {
+      _lvAt++;
+      if (_lvAt >= _lvList!.length) {
+        _lvList = null;
+        _lvStats.clear();
+      }
+    });
+    final run = currentFactory()['run'] as Json?;
+    if (_lvList != null && run != null) _levelStart(run);
+  }
+
+  Widget _levelFrame(Json run, Json p) {
+    final l = _lvList![_lvAt];
+    final i = (l['index'] as num).toInt();
+    final team = FactoryRun.teamOf(run);
+    final mon = team[i];
+    final name = (mon['nick'] as String?) ?? _name(mon['id']);
+    final st = _lvStats[i];
+    const labels = [('hp', 'HP'), ('atk', 'Ataque'), ('def', 'Defesa'), ('spa', 'At. Esp.'), ('spd', 'Def. Esp.'), ('spe', 'Velocidade')];
+    return _frame(
+      run: run,
+      field: _field('${run['scene'] ?? 'grass'}', key: const ValueKey('factory-level'), (w, h) => [
+            _fieldMon(mon, w, h, back: true),
+            // O quadro dos atributos (como nos jogos): o valor novo e quanto subiu.
+            Positioned(
+              right: w * 0.03,
+              top: h * 0.1,
+              width: w * 0.38,
+              child: Container(
+                key: const ValueKey('level-stats'),
+                padding: EdgeInsets.symmetric(horizontal: w * 0.015, vertical: w * 0.008),
+                decoration: BoxDecoration(color: const Color(0xEB181A1E), borderRadius: BorderRadius.circular(6), border: Border.all(color: const Color(0xFF8B93A1), width: 2)),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  for (final (k, label) in labels)
+                    Row(children: [
+                      Expanded(child: Text(tr(label), style: _portText.copyWith(fontSize: w * 0.024))),
+                      Text(st == null ? '…' : '${st.$2[k]}', style: _portText.copyWith(fontSize: w * 0.024, color: const Color(0xFFFDE68A))),
+                      SizedBox(
+                        width: w * 0.065,
+                        child: Text(st == null ? '' : '+${st.$2[k]! - st.$1[k]!}', textAlign: TextAlign.right,
+                            style: _portText.copyWith(fontSize: w * 0.024, color: const Color(0xFF4ADE80))),
+                      ),
+                    ]),
+                ]),
+              ),
+            ),
+          ]),
+      text: [Text('🎉 ${tr('{0} subiu para o nível {1}!').replaceAll('{0}', name).replaceAll('{1}', '${l['to']}')}', key: const ValueKey('level-text'))],
+      menu: _menuButton(tr('CONTINUAR'), _levelNext, key: const ValueKey('level-continue')),
+    );
+  }
 
   /// O resultado do andar numa linha: XP, dinheiro, quem subiu de nível e os itens achados.
   String _resultLine(Json run, Json p) {

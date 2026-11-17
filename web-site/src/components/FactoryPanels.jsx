@@ -268,6 +268,19 @@ function ForgetPanel({ mon, move, moves, name, types, pick, onPick, actions = nu
 }
 
 /** Os dados do Pokémon da corrida (como a tela DADOS da batalha): monta como na batalha e lê os atributos (com os bônus da corrida). */
+/** Os atributos do Pokémon da corrida num nível (a mesma conta da tela DADOS, com os bônus): para o quadro de subiu de nível. */
+async function statsAtLevel(run, m, level, data) {
+  const [mon] = await battleMons([memberOf(run, { ...m, level }, m.moves?.length ? m.moves : ['tackle'], data)])
+  if (!mon) return null
+  const calc = await import('../lib/damageCalc')
+  const stats = calc.sideStats(mon.base, { ...mon.side, hpPct: 100 })?.stats ?? {}
+  const boost = boostOf(run, m)
+  return {
+    hp: Math.round(mon.maxHp * (1 + (boost.hp ?? 0))),
+    ...Object.fromEntries(['atk', 'def', 'spa', 'spd', 'spe'].map((k) => [k, Math.round((stats[k] ?? 0) * (1 + (boost[k] ?? 0)))])),
+  }
+}
+
 /** O HP máximo do Pokémon da corrida (a mesma conta da tela DADOS, com os bônus), guardado pela chave dele. */
 const maxHpCache = new Map()
 async function maxHpOfRun(run, m, data) {
@@ -2425,6 +2438,30 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
   const [note, setNote] = useState(null)
   const noteKeep = useRef(false)
   const autoResult = useRef(false)
+  // Subiu de nível (como nos jogos): quem subiu, um de cada vez, com os atributos antes e depois; passa sozinho em
+  // alguns segundos (ou com um toque). { key, list, at, stats }. Igual ao app.
+  const [lv, setLv] = useState(null)
+  const lvShown = useRef(null)
+  const lvDone = useRef(null)
+  const lvNext = () => setLv((l) => {
+    if (!l) return null
+    if (l.at + 1 < l.list.length) return { ...l, at: l.at + 1 }
+    lvDone.current = l.key
+    return null
+  })
+  useEffect(() => {
+    if (!lv || !run) return
+    const l = lv.list[lv.at]
+    const m = run.team[l.index]
+    playSound('statup', 0.6)
+    let live = true
+    Promise.all([statsAtLevel(run, m, l.from, data), statsAtLevel(run, m, l.to, data)])
+      .then(([before, after]) => live && before && after && setLv((x) => (x && x.key === lv.key && x.at === lv.at ? { ...x, stats: { before, after } } : x)))
+      .catch(() => {})
+    const timer = setTimeout(lvNext, 3200)
+    return () => { live = false; clearTimeout(timer) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lv?.key, lv?.at])
   // O PC no Centro Pokémon da cidade (aberto).
   const [pcOpen, setPcOpen] = useState(false)
   const [unlocked, setUnlocked] = useState(null)
@@ -2605,8 +2642,15 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     save(learnMove(run, i, move, current, learn.pick))
   }
   const step = stepOf(p)
-  // Vencer um andar sem nada importante: segue sozinho (sem CONTINUAR).
-  if (step === 'result' && !learn && !autoResult.current && quickResult(p)) {
+  // Subiu de nível: o quadro com os atributos novos antes de seguir (como nos jogos).
+  const lvUps = step === 'result' && !learn && quickResult(p) ? (p.levels ?? []).filter((l) => !l.friend && run.team[l.index] && l.to > l.from) : []
+  const lvKey = step === 'result' ? `${run.floor}-${JSON.stringify(p.levels ?? [])}` : null
+  if (lvUps.length && lvShown.current !== lvKey) {
+    lvShown.current = lvKey
+    setLv({ key: lvKey, list: lvUps, at: 0, stats: null })
+  }
+  // Vencer um andar sem nada importante: segue sozinho (sem CONTINUAR); com nível, depois do quadro.
+  if (step === 'result' && !learn && !lv && !autoResult.current && quickResult(p) && (!lvUps.length || lvDone.current === lvKey)) {
     autoResult.current = true
     setTimeout(() => afterResult(true).finally(() => { autoResult.current = false }), 0)
   }
@@ -2639,7 +2683,24 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       )
   }
 
-  if (step === 'result' && learn?.queue?.length) {
+  if (step === 'result' && lv) {
+    const l = lv.list[lv.at]
+    const mon = run.team[l.index]
+    const st = lv.stats
+    field = (
+      <Field biome={run.scene ?? 'grass'} fieldRef={fieldRef} testid="factory-level">
+        <FieldMon mon={mon} byId={byId} back scene={run.scene} />
+        {/* O quadro dos atributos (como nos jogos): o valor novo e quanto subiu. */}
+        <div className="absolute right-[3%] top-[10%] z-20 w-[38%] rounded-md border-2 border-[#8b93a1] bg-[#181a1eeb] px-[1.5cqw] py-[0.8cqw] font-['Pixelify_Sans',monospace] text-[2.4cqw] text-white" data-testid="level-stats">
+          {[['hp', 'HP'], ['atk', 'Ataque'], ['def', 'Defesa'], ['spa', 'At. Esp.'], ['spd', 'Def. Esp.'], ['spe', 'Velocidade']].map(([k, label]) => (
+            <p key={k} className="flex items-center"><span className="flex-1">{t(label)}</span><span className="text-amber-200">{st ? st.after[k] : '…'}</span><span className="w-[6.5cqw] text-right text-green-400">{st ? `+${st.after[k] - st.before[k]}` : ''}</span></p>
+          ))}
+        </div>
+      </Field>
+    )
+    text = <p data-testid="level-text">🎉 {t('{0} subiu para o nível {1}!').replace('{0}', mon.nick ?? name(mon.id)).replace('{1}', l.to)}</p>
+    menu = <MenuButton onClick={lvNext} testid="level-continue">{t('CONTINUAR')}</MenuButton>
+  } else   if (step === 'result' && learn?.queue?.length) {
     // "Fulano quer aprender X": aprendeu sozinho (tinha vaga), ou a pergunta (SIM abre a tela dos 5 golpes).
     const [i, move, auto] = learn.queue[0]
     const mon = run.team[i]

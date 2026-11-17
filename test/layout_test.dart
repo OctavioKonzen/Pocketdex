@@ -209,6 +209,7 @@ final screens = <String, Widget Function()>{
   'Battle Factory (time) deitada': () => _factory(null, {'floor': 14, 'biome': 'water', 'options': [{'kind': 'wild', 'biome': 'water'}, {'kind': 'ace'}]}),
   // Subiu de nível com 4 golpes: a pergunta e a tela dos 5 golpes (como nos jogos).
   'Battle Factory (aprender golpe)': () => _factory({'exp': 120, 'money': 80, 'levels': [{'index': 0, 'from': 12, 'to': 40, 'evolved': null}], 'joy': false}),
+  'Battle Factory (subiu de nível)': () => _factory({'exp': 120, 'money': 80, 'levels': [{'index': 0, 'from': 11, 'to': 12, 'evolved': null}], 'joy': false}),
   'Battle Factory (vitória direta)': () => _factory({'exp': 120, 'money': 80, 'levels': [{'index': 0, 'from': 11, 'to': 12, 'evolved': null}], 'joy': false}),
   'Battle Factory (esquecer golpe)': () => _factory({'exp': 120, 'money': 80, 'levels': [{'index': 0, 'from': 12, 'to': 40, 'evolved': null}], 'joy': false}),
   'Battle Factory (time, golpes)': () => _factory(null, {'floor': 14, 'biome': 'water', 'options': [{'kind': 'wild', 'biome': 'water'}, {'kind': 'ace'}]}),
@@ -682,6 +683,15 @@ final Map<String, Future<void> Function(WidgetTester)> actions = {
       await tester.pump(const Duration(milliseconds: 200));
     }
     expect(find.byKey(const ValueKey('learn-yes')), findsOneWidget);
+  },
+  // Subiu de nível: o quadro com os atributos novos (passa sozinho ou com CONTINUAR).
+  'Battle Factory (subiu de nível)': (tester) async {
+    for (var i = 0; i < 10 && find.byKey(const ValueKey('level-stats')).evaluate().isEmpty; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(find.byKey(const ValueKey('level-stats')), findsOneWidget);
+    expect(find.byKey(const ValueKey('level-continue')), findsOneWidget);
   },
   // Vencer só com XP e nível: sem CONTINUAR, já vai para o próximo andar com o resumo na caixa de texto.
   'Battle Factory (vitória direta)': (tester) async {
