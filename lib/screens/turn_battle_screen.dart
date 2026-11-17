@@ -2507,7 +2507,7 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
                 onSelect: _item == null ? (i) => setState(() => _partyPick = i) : null,
                 active: _b.activeIndex[0],
                 team: [
-                  for (final mon in _b.teams[0])
+                  for (final (k, mon) in _b.teams[0].indexed)
                     PartySlot(
                       id: mon.id,
                       shiny: mon.shiny,
@@ -2518,8 +2518,8 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
                       sub: mon.hp <= 0
                           ? tr('Desmaiado')
                           : _item == null
-                              ? '${mon.hp}/${mon.maxHp} · ${_matchupText(TurnBattle.switchMatchup(widget.hit, mon, rival, widget.typeEff))}'
-                              : '${mon.hp}/${mon.maxHp}',
+                              ? '${mon.hp}/${mon.maxHp} · ${_matchupText(TurnBattle.switchMatchup(widget.hit, mon, rival, widget.typeEff))}${_heldTag(_b, 0, k)}'
+                              : '${mon.hp}/${mon.maxHp}${_heldTag(_b, 0, k)}',
                     ),
                 ],
                 disabled: (i) => !(_item != null ? _b.canUseItem(0, _item!, i) : _b.canSwitch(0, i)),
@@ -3175,6 +3175,22 @@ const _portMenuText = TextStyle(fontFamily: 'PixelifySans', color: Colors.white,
 
 const _portCut = BeveledRectangleBorder(borderRadius: BorderRadius.only(topLeft: Radius.circular(7), bottomRight: Radius.circular(7)));
 
+/// Embaixo da tela do time na batalha (na tela inteira): a pergunta e os botões (TROCAR / DADOS / CANCELAR ou Voltar).
+Widget _partyFooter(String prompt, List<Widget> buttons) => _PortScope(
+      child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Expanded(
+          child: Container(
+            key: const ValueKey('party-prompt'),
+            alignment: Alignment.centerLeft,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(color: const Color(0xEB14161C), border: Border.all(color: const Color(0xFF8B93A1), width: 2)),
+            child: FittedBox(fit: BoxFit.scaleDown, child: Text(prompt, style: const TextStyle(fontFamily: 'PixelifySans', color: Colors.white, fontWeight: FontWeight.w600))),
+          ),
+        ),
+        for (final b in buttons) ...[const SizedBox(width: 6), Flexible(child: SizedBox(width: 120, child: b))],
+      ]),
+    );
+
 class _MenuButton extends StatelessWidget {
   final String label;
   final VoidCallback? onTap;
@@ -3237,6 +3253,12 @@ class _MenuButton extends StatelessWidget {
         ),
       );
   }
+}
+
+/// O item que ele segura (para a tela do time na troca): ' · 🎒 item', ou vazio.
+String _heldTag(TurnBattle b, int side, int i) {
+  final item = summaryOf(b, side, i).item;
+  return item.isEmpty ? '' : ' · 🎒 $item';
 }
 
 /// Os dados de um Pokémon (a tela de resumo, como no jogo). Na normal e na dupla.
@@ -5088,7 +5110,7 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
                 ),
               ),
               // A troca abre por cima do campo, em cima da caixa de texto (a pergunta aparece nela), como na batalha normal.
-              if (panel != null) Positioned(key: const ValueKey('battle-panel'), left: 0, right: 0, top: 0, bottom: _summary != null ? 0 : h * 0.235, child: _Appear(child: panel)),
+              if (panel != null) Positioned(key: const ValueKey('battle-panel'), left: 0, right: 0, top: 0, bottom: _summary != null || panel is PortParty ? 0 : h * 0.235, child: _Appear(child: panel)),
               if (_vsOn)
                 Positioned.fill(
                   child: _VsSplash(
@@ -5162,7 +5184,7 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
       onSelect: (i) => setState(() => _partyPick = i),
       active: slot['index'] as int,
       team: [
-        for (final mon in _b.teams[_side])
+        for (final (k, mon) in _b.teams[_side].indexed)
           PartySlot(
             id: mon.id,
             shiny: mon.shiny,
@@ -5170,11 +5192,22 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
             level: mon.level,
             hp: mon.maxHp > 0 ? mon.hp / mon.maxHp : 0,
             status: mon.status,
-            sub: mon.hp <= 0 ? tr('Desmaiado') : '${mon.hp}/${mon.maxHp}',
+            sub: mon.hp <= 0 ? tr('Desmaiado') : '${mon.hp}/${mon.maxHp}${_heldTag(_b, _side, k)}',
           ),
       ],
       disabled: (i) => _locked || (item != null ? !_canItem(item, i) : !options.contains(i)),
       onPick: (i) => _commit(slot, item != null ? {'kind': 'item', 'item': item, 'index': i} : {'kind': 'switch', 'index': i}),
+      // Na tela inteira (como a 1v1): a pergunta e as opções embaixo do time.
+      footer: _partyFooter(_prompt(), [
+        if (_partyPick != null) ...[
+          item != null
+              ? _MenuButton(key: ValueKey('battle-switch-$position-pick'), tr('USAR'), _locked || !_canItem(item, _partyPick!) ? null : () => _commit(slot, {'kind': 'item', 'item': item, 'index': _partyPick!}))
+              : _MenuButton(key: ValueKey('battle-switch-$position-pick'), tr('TROCAR'), _locked || !options.contains(_partyPick) ? null : () => _commit(slot, {'kind': 'switch', 'index': _partyPick!})),
+          _MenuButton(key: ValueKey('battle-switch-$position-info'), tr('DADOS'), () => setState(() => _summary = _partyPick)),
+          _MenuButton(key: ValueKey('battle-switch-$position-close'), tr('CANCELAR'), () => setState(() => _partyPick = null)),
+        ] else if (!_locked && (!forced || _pending.any((s) => _choices.containsKey(s['slot']))))
+          _MenuButton(key: const ValueKey('battle-back'), 'Voltar', _back),
+      ]),
     );
   }
 
@@ -5375,23 +5408,14 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
               _MenuButton(key: const ValueKey('bag-cancel'), tr('CANCELAR'), () => setState(() => _bagPick = null)),
             ]);
     } else {
-      // A troca abre por cima do campo (a tela do time); tocou num Pokémon: as opções nos botões fixos (como no jogo).
-      final options = _switchOptions(slot);
-      final item = forced ? null : _item;
+      // A troca abre por cima do campo (a tela do time, na tela inteira): as opções ficam dentro dela.
       if (foes.isNotEmpty) info = _Weak(foes.first, TurnBattle.weaknesses(typesOf(foes.first), allTypes, widget.typeEff), dark: true);
-      final pick = _partyPick;
-      grid = pick == null
-          ? null
-          : _menuGrid([
-              item != null
-                  ? _MenuButton(key: ValueKey('battle-switch-$position-pick'), tr('USAR'), _locked || !_canItem(item, pick) ? null : () => _commit(slot, {'kind': 'item', 'item': item, 'index': pick}))
-                  : _MenuButton(key: ValueKey('battle-switch-$position-pick'), tr('TROCAR'), _locked || !options.contains(pick) ? null : () => _commit(slot, {'kind': 'switch', 'index': pick})),
-              _MenuButton(key: ValueKey('battle-switch-$position-info'), tr('DADOS'), () => setState(() => _summary = pick)),
-              _MenuButton(key: ValueKey('battle-switch-$position-close'), tr('CANCELAR'), () => setState(() => _partyPick = null)),
-            ]);
+      grid = null;
     }
     final canBack = !_locked && (_aim != null || menu == 'fight' || menu == 'bag' || menu == 'party' && !forced || chosen.isNotEmpty && (menu == 'main' || forced));
-    return (info: info, grid: grid, footer: canBack ? _MenuButton(key: const ValueKey('battle-back'), 'Voltar', _back) : null);
+    // Na tela do time (na tela inteira) o Voltar fica nela.
+    final inParty = (menu == 'party' || forced) && _summary == null;
+    return (info: info, grid: grid, footer: canBack && !inParty ? _MenuButton(key: const ValueKey('battle-back'), 'Voltar', _back) : null);
   }
 
   @override

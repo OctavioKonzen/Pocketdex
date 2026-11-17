@@ -3195,16 +3195,15 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
             </button>
           ))}
         </div>
+        <div className="mt-1 flex flex-wrap justify-center gap-2">
+          {v.done && <button type="button" className="port-chip cursor-pointer px-4 py-1.5 text-sm font-black disabled:opacity-40" disabled={busy} onClick={() => save(finishPuzzle(run))} data-testid="factory-continue">▸ {t('CONTINUAR')}</button>}
+          {!v.done && v.kind === 'memory' && v.seq && <button type="button" className="port-chip cursor-pointer px-4 py-1.5 text-sm font-black disabled:opacity-40" disabled={busy} onClick={() => act(-1)} data-testid="puzzle-ready">▸ {t('MEMORIZEI')}</button>}
+          {!v.done && <button type="button" className="port-chip cursor-pointer px-4 py-1.5 text-sm font-black disabled:opacity-40" disabled={busy} onClick={() => save(finishPuzzle(run))} data-testid="puzzle-quit">▸ {t('DESISTIR DO DESAFIO')}</button>}
+        </div>
       </div>
     )
-    menu = v.done ? (
-      <MenuButton onClick={() => save(finishPuzzle(run))} testid="factory-continue">{t('CONTINUAR')}</MenuButton>
-    ) : (
-      <>
-        {v.kind === 'memory' && v.seq && <MenuButton onClick={() => act(-1)} testid="puzzle-ready">{t('MEMORIZEI')}</MenuButton>}
-        <MenuButton onClick={() => save(finishPuzzle(run))} testid="puzzle-quit">{t('DESISTIR DO DESAFIO')}</MenuButton>
-      </>
-    )
+    // Os botões (memorizei, desistir, continuar) ficam dentro da tela do desafio, que cobre o campo. Igual ao app.
+    menu = null
   } else if (step === 'shop') {
     const pick = Math.min(target, run.team.length - 1)
     // O Poké Mart só na cidade; na rota, o vendedor ambulante (vende o mesmo), no próprio lugar.

@@ -92,9 +92,8 @@ void main() {
       await tester.tap(find.byWidgetPredicate((w) => w.key is ValueKey && RegExp(r'^battle-(single-)?switch-(\d-)?1$').hasMatch('${(w.key as ValueKey).value}')));
       await tester.pump();
       await shot('3b-opcoes');
-      // Na 1v1 a troca é a tela do time inteira: CANCELAR e depois Voltar ficam nela; na dupla, o Voltar fica na
-      // ponta da barra de dicas (como no port).
-      final close = find.byKey(const ValueKey('battle-single-switch-close'));
+      // A troca é a tela do time inteira (na 1v1 e na dupla): CANCELAR e depois Voltar ficam nela.
+      final close = find.byWidgetPredicate((w) => w.key is ValueKey && RegExp(r'^battle-(single-)?switch-(\d-)?close$').hasMatch('${(w.key as ValueKey).value}'));
       if (close.evaluate().isNotEmpty) {
         await tester.tap(close);
         await tester.pump();

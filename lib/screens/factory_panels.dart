@@ -4800,12 +4800,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
       field: _field('gym-${v['type']}', key: const ValueKey('factory-puzzle'), (w, h) => const []),
       run: run,
       text: [Text('🧩 ${tr(title)}', style: const TextStyle(fontWeight: FontWeight.w900))],
-      menu: v['done'] == true
-          ? _menuButton(tr('CONTINUAR'), () => _save(FactoryRun.finishPuzzle(run)), key: const ValueKey('factory-continue'))
-          : _menuGrid([
-              if (v['kind'] == 'memory' && v['seq'] != null) _menuButton(tr('MEMORIZEI'), () => _save(FactoryRun.puzzleAct(run, data, -1)), key: const ValueKey('puzzle-ready')),
-              _menuButton(tr('DESISTIR DO DESAFIO'), () => _save(FactoryRun.finishPuzzle(run)), key: const ValueKey('puzzle-quit')),
-            ]),
+      // Os botões (memorizei, desistir, continuar) ficam dentro da tela do desafio, que cobre o campo.
     );
   }
 
@@ -4934,6 +4929,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
           ),
         const SizedBox(height: 4),
         ConstrainedBox(
+          key: const ValueKey('puzzle-grid'),
           constraints: BoxConstraints(maxWidth: kind == 'teleport' ? 220 : cols >= 6 ? 400 : 340),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             for (var r = 0; r * cols < cells.length; r++)
@@ -4948,6 +4944,16 @@ class _FactoryScreenState extends State<FactoryScreen> {
               ),
           ]),
         ),
+        const SizedBox(height: 8),
+        // Memorizei, desistir e continuar (o desafio cobre o campo inteiro).
+        Wrap(alignment: WrapAlignment.center, spacing: 8, runSpacing: 6, children: [
+          for (final (label, key, act) in [
+            if (done) (tr('CONTINUAR'), 'factory-continue', () => _save(FactoryRun.finishPuzzle(run))),
+            if (!done && kind == 'memory' && seq != null) (tr('MEMORIZEI'), 'puzzle-ready', () => _save(FactoryRun.puzzleAct(run, data, -1))),
+            if (!done) (tr('DESISTIR DO DESAFIO'), 'puzzle-quit', () => _save(FactoryRun.finishPuzzle(run))),
+          ])
+            SizedBox(width: 190, height: 40, child: _menuButton(label, widget.busy ? null : act, key: ValueKey(key))),
+        ]),
       ]),
     );
   }

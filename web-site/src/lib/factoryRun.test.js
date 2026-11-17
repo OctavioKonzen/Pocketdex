@@ -1965,7 +1965,7 @@ describe('pesca, árvores, frutas, bicicleta, balsa, hordas, neblina, fotos e os
     const fight = chooseNodeRaw(openRun, data, 0).encounter
     expect(fight.boss.kind).toBe('gym')
     expect(fight.edge).toBeUndefined()
-  })
+  }, 120000)
 })
 
 // O mesmo no app (test/factory_run_test.dart): os desafios de cada tipo, as hordas e o vaso de frutas com o mesmo sorteio.

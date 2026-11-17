@@ -1930,11 +1930,11 @@ waiting && !locked && menu === 'fight' ? <MenuButton onClick={() => setMenu('mai
           // A tela do time na tela inteira (como fora da batalha): a fala e os botões ficam embaixo dela.
           <div className="panel-in absolute inset-0 z-40" data-testid="party-screen">
             <BwParty testid="party" active={battle.sides[0].active} selected={item ? null : partyPick}
-              team={battle.sides[0].team.map((m) => {
+              team={battle.sides[0].team.map((m, k) => {
                 const match = !item && m.hp > 0 ? switchMatchup(hit, m, rival, typeEff) : null
                 return {
                   id: m.id, shiny: m.shiny, name: m.name, level: m.level, status: m.status, hp: m.maxHp > 0 ? m.hp / m.maxHp : 0,
-                  sub: m.hp <= 0 ? t('Desmaiado') : <span className="inline-flex items-center gap-[0.8cqw]"><span className="tabular-nums">{m.hp}/{m.maxHp}</span>
+                  sub: m.hp <= 0 ? t('Desmaiado') : <span className="inline-flex items-center gap-[0.8cqw]"><span className="tabular-nums">{m.hp}/{m.maxHp}{heldTag(battle, 0, k)}</span>
                     {match && <span className="flex gap-[0.5cqw]" data-testid="matchup">{match.attack != null && <EffectTag eff={match.attack} prefix={t('Ataca')} />}<DefenseTag mult={match.defense} /></span>}</span>,
                 }
               })}
@@ -2395,14 +2395,6 @@ export function MultiBattle({battle, hit = null, onExit, onAgain, onFinish, onli
   const choosing = state.winner == null && pending.length > 0 && !playing && Boolean(current) && !online?.locked
   const view = current?.forceSwitch ? 'party' : menu
   const canBack = !locked && (Boolean(aim) || view === 'fight' || view === 'bag' || view === 'party' && !current?.forceSwitch || pending.some(slot=>choices[slot.slot]) && (view === 'main' || Boolean(current?.forceSwitch)))
-  // A tela do time do Black & White por cima do campo (a mesma da batalha normal).
-  // A tela do time (a mesma da batalha normal): os 6 cabem exatamente na tela; tocou num Pokémon, as opções nos botões fixos.
-  const party = choosing && !aim && view === 'party' && (()=>{
-    const slot=current, options=switchOptions(slot)
-    if (summary != null) return <div className="field-overlay"><BwSummary data={summaryOf(battle, side, summary)} onBack={() => setSummary(null)} /></div>
-    return <PartyGrid team={battle.sides[side].team} active={slot.index} picked={partyPick} testPrefix={`battle-switch-${slot.slot}`}
-      dim={(i) => (item ? !canItem(item, i) : !options.includes(i))} onTap={(i) => setPartyPick(i)} />
-  })()
   // A Bolsa abre no mesmo lugar (a descrição do item vai para a caixa de texto).
   const bag = choosing && !aim && view === 'bag' && <div className="panel-in absolute inset-x-0 top-0 bottom-[23.5%] z-30"><BwBag testid="bag" external selected={bagPick} onSelect={setBagPick} pockets={bagPockets} /></div>
   const status = online?.message || (state.winner != null ? state.winner === -1 ? 'Empate!' : state.winner === side ? 'Você venceu!' : 'A equipe adversária venceu!' : `${t('Turno')} ${state.turn}`)
@@ -2415,6 +2407,30 @@ export function MultiBattle({battle, hit = null, onExit, onAgain, onFinish, onli
     if (menu === 'bag') return bagPicked ? `${bagPicked.name}: ${bagPicked.help}` : `${t('Escolha um item.')}${step}`
     if (menu === 'party') return `${t(item ? 'Usar em qual Pokémon?' : 'Escolha um Pokémon.')}${step}`
     return `${t('O que')} ${mon.name} ${t('vai fazer?')}${step}`
+  })()
+  // A tela do time do Black & White na tela inteira (a mesma da batalha normal): a pergunta e as opções embaixo dela.
+  const party = choosing && !aim && view === 'party' && (()=>{
+    const slot=current, options=switchOptions(slot)
+    if (summary != null) return <div className="field-overlay"><BwSummary data={summaryOf(battle, side, summary)} onBack={() => setSummary(null)} /></div>
+    const btn = 'party-box !flex-none h-full w-[17%] !text-[1.8cqw]'
+    return (
+      <div className="panel-in absolute inset-0 z-40" data-testid={`battle-switch-${slot.slot}-screen`}>
+        <BwParty testid={`battle-switch-${slot.slot}`} active={slot.index} selected={partyPick}
+          team={battle.sides[side].team.map((m, i) => ({ id: m.id, shiny: m.shiny, name: m.name, level: m.level, status: m.status, hp: m.maxHp > 0 ? m.hp / m.maxHp : 0,
+            sub: m.hp <= 0 ? t('Desmaiado') : `${m.hp}/${m.maxHp}${heldTag(battle, side, i)}` }))}
+          dim={(i) => (item ? !canItem(item, i) : !options.includes(i))} onPick={(i) => setPartyPick(i)}
+          footer={<>
+            <p className="party-box flex flex-1 items-center truncate px-[2cqw] text-[2cqw]" data-testid="party-prompt">{prompt}</p>
+            {partyPick != null ? <>
+              {item && !slot.forceSwitch
+                ? <MenuButton className={btn} testId={`battle-switch-${slot.slot}-pick`} disabled={locked || !canItem(item, partyPick)} onClick={()=>commit(slot,{kind:'item',item,index:partyPick})}>USAR</MenuButton>
+                : <MenuButton className={btn} testId={`battle-switch-${slot.slot}-pick`} disabled={locked || !options.includes(partyPick)} onClick={()=>commit(slot,{kind:'switch',index:partyPick})}>TROCAR</MenuButton>}
+              <MenuButton className={btn} testId={`battle-switch-${slot.slot}-info`} onClick={()=>setSummary(partyPick)}>DADOS</MenuButton>
+              <MenuButton className={btn} testId={`battle-switch-${slot.slot}-close`} onClick={()=>setPartyPick(null)}>CANCELAR</MenuButton>
+            </> : canBack && <MenuButton className={btn} onClick={back} testId="battle-back">Voltar</MenuButton>}
+          </>} />
+      </div>
+    )
   })()
   // O menu, os golpes e os alvos (dentro do campo, como no port) e as escolhas do fim (embaixo).
   const multiActions = (()=>{
@@ -2476,16 +2492,10 @@ export function MultiBattle({battle, hit = null, onExit, onAgain, onFinish, onli
           </MenuGrid> : null}
         if (view === 'party') {
           const options = switchOptions(slot)
-          return {footer,
+          // A tela do time (na tela inteira) tem a pergunta e as opções; nos dados, o Voltar fica embaixo.
+          return {footer: summary != null ? footer : null,
             info: foesOnField[0] && typeData ? <Weak mon={foesOnField[0]} list={weaknesses(typesOf(foesOnField[0]), ALL_TYPES, typeEff)}/> : null,
-            // Tocou num Pokémon: as opções nos botões fixos (como no jogo).
-            grid: partyPick != null && summary == null ? <MenuGrid>
-              {item && !slot.forceSwitch
-                ? <MenuButton testId={`battle-switch-${slot.slot}-pick`} disabled={locked || !canItem(item, partyPick)} onClick={()=>commit(slot,{kind:'item',item,index:partyPick})}>USAR</MenuButton>
-                : <MenuButton testId={`battle-switch-${slot.slot}-pick`} disabled={locked || !options.includes(partyPick)} onClick={()=>commit(slot,{kind:'switch',index:partyPick})}>TROCAR</MenuButton>}
-              <MenuButton testId={`battle-switch-${slot.slot}-info`} onClick={()=>setSummary(partyPick)}>DADOS</MenuButton>
-              <MenuButton testId={`battle-switch-${slot.slot}-close`} onClick={()=>setPartyPick(null)}>CANCELAR</MenuButton>
-            </MenuGrid> : null,
+            grid: null,
             // O que a tela do time não tem: embaixo dos botões fixos.
             extra: (slot.canShift || slot.forceSwitch && !options.length) ? <>
               {slot.canShift && <Button disabled={locked} onClick={()=>commit(slot,{kind:'shift',index:0})}>{t('Trocar posição com o centro')}</Button>}
@@ -2619,28 +2629,10 @@ function BattleDialog({ text, onSkip, boxRef, narrow = false }) {
   )
 }
 
-/** A tela do time na batalha (como no jogo): os 6 cabem exatamente na tela (3 linhas × 2 colunas, sem rolar), em cima da caixa de texto. */
-function PartyGrid({ team, active, picked, disabled, dim, onTap, testPrefix, badge }) {
-  return (
-    <div className="bw-party panel-in absolute inset-x-0 top-0 bottom-[23.5%] z-30 p-1.5" data-testid={`${testPrefix}-screen`}>
-      <div className="grid h-full grid-cols-2 grid-rows-3 gap-1.5" data-testid={testPrefix}>
-        {team.map((m, i) => (
-          <button key={i} type="button" data-testid={`${testPrefix}-${i}`} disabled={disabled?.(i)} onClick={() => onTap(i)}
-            className={`bw-party-slot flex min-h-0 min-w-0 cursor-pointer items-center gap-1.5 overflow-hidden rounded-xl border-2 p-1 text-left disabled:cursor-default disabled:opacity-50 ${dim?.(i, m) ? 'opacity-60' : ''} ${picked === i ? 'selected' : i === active ? 'lead' : ''}`}>
-            <PokeIcon id={m.id} shiny={m.shiny} className="h-9 w-9 shrink-0 sm:h-12 sm:w-12" />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5 text-sm font-bold">
-                <span className="truncate">{m.name}</span>
-                {m.status && m.hp > 0 && <span className="shrink-0 rounded px-1 text-[10px] font-black text-white" style={{ background: STATUS_BADGE[m.status] }}>{m.status.toUpperCase()}</span>}
-              </div>
-              <HpBar hp={m.hp} max={m.maxHp} />
-              <div className="flex items-center gap-1 text-[11px] font-bold tabular-nums opacity-80"><span>{m.hp > 0 ? `${m.hp}/${m.maxHp}` : t('Desmaiado')}</span>{badge?.(m, i)}</div>
-            </div>
-          </button>
-        ))}
-      </div>
-    </div>
-  )
+/** O item que ele segura (para a tela do time na troca): ' · 🎒 item', ou vazio. Igual ao app. */
+function heldTag(battle, side, i) {
+  const item = summaryOf(battle, side, i).item
+  return item ? ` · 🎒 ${item}` : ''
 }
 
 /** O menu (LUTAR, BOLSA / POKÉMON, FUGIR) em 2×2, no mesmo lugar dos golpes. */
