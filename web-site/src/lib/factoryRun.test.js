@@ -2525,3 +2525,17 @@ describe('Repelente', () => {
     expect(onlyWild.route.options).toEqual([{ kind: 'wild' }])
   })
 })
+
+describe('Shiny Charm', () => {
+  it('completou a Pokédex da conta: o Charm para sempre e 3× de shiny nas corridas (igual ao app)', async () => {
+    const F = await import('./factoryRun')
+    const all = Object.keys(data.species).map(Number).filter((id) => id >= 1 && id <= 1025)
+    const almost = { ...F.emptyFactory(), caught: all.slice(1) }
+    expect(F.withShinyCharm(almost, data)).toBe(almost)
+    const done = F.withShinyCharm({ ...almost, caught: all }, data)
+    expect(done).toMatchObject({ charm: true, charmNew: true })
+    expect(F.withShinyCharm({ ...done, caught: [] }, data).charm).toBe(true)
+    expect(F.startRun({ ...F.emptyFactory(), charm: true }, data, 1, 42).shinyRate).toBe(F.SHINY_CHARM)
+    expect(F.startRun(F.emptyFactory(), data, 1, 42).shinyRate).toBeUndefined()
+  })
+})

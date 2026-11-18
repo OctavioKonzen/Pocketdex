@@ -1607,6 +1607,8 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
     if (p == null) return false;
     if (kind == 'sendout') BattleSounds.play('open');
     if (kind == 'recall') BattleSounds.play('recall');
+    // O som do status (queimou, envenenou, paralisado, dormindo, congelado, confuso). Igual ao site.
+    if (_statusEmoji.containsKey(kind)) BattleSounds.play('status_$kind');
     // Sai da Poké Ball: o sprite já existe (escondido pela cena até a bola abrir).
     setState(() {
       _fxPlan = p;
@@ -4904,6 +4906,10 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
   }
 
   /// Quem é no time o Pokémon da posição [pos] (pelo que a tela mostra).
+  /// O símbolo do status subindo em cima de um Pokémon (lado, posição no time, status, chave).
+  (int, int, String, int)? _burst;
+  int _burstKey = 0;
+
   int _at(BattleEvent e) {
     if (e.at >= 0) return e.at;
     if (e.side < 0 || e.side > 1) return -1;
@@ -4929,11 +4935,24 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
       final at = _at(e);
       switch (e.t) {
         case 'text':
+          // O status na vez dele (como na batalha normal): o símbolo subindo em cima dele e o som. Igual ao site.
+          final burst = _statusTextScene[e.key];
+          // O lado do evento é o mesmo do campo (como no 'hp': _key(e.side, ...)).
+          final who = e.side >= 0 ? e.side : e.args.isNotEmpty && e.args.first is (int, String) ? (e.args.first as (int, String)).$1 : -1;
+          // Quem é: a posição do evento ou, sem ela, o do nome do texto entre os que estão em campo.
+          final named = e.args.isNotEmpty && e.args.first is (int, String) ? (e.args.first as (int, String)).$2 : null;
+          final target = at >= 0 || who < 0 || who > 1
+              ? at
+              : [for (final i in _shown?.slots[who] ?? const <int>[]) if (i >= 0 && _b.teams[who][i].name == named) i].firstOrNull ?? -1;
+          if (burst != null && target >= 0 && (who == 0 || who == 1) && AppSettings.instance.battleAnims) {
+            BattleSounds.play('status_$burst');
+            setState(() => _burst = (who, target, burst, ++_burstKey));
+          }
           // Não cabe na caixa: em partes, uma depois da outra (como nos jogos; a caixa não aumenta).
           for (final page in dialogPages(_format(e), _dialogSize, _dialogScale)) {
             if (!mounted) return;
             setState(() => _text = page);
-            await _wait(e.key == 'turnOrder' ? 1600 : 1000);
+            await _wait(((e.key == 'turnOrder' ? 1600 : 1000) * AppSettings.instance.textFactor).round());
           }
         case 'attack':
           if (at >= 0 && e.category != 'status') _key(e.side, at).currentState?.lunge();
@@ -5008,6 +5027,8 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
                   child: Stack(clipBehavior: Clip.none, fit: StackFit.expand, children: [
                     PlatformBase(scene: scene, side: side == _side ? 'mine' : 'foe', id: id),
                     _Sprite(key: _key(side, index), mon: mon, id: id, dmax: mon.dmax > 0, tera: _teraOf(mon), back: side == _side, fainted: _hpOf(side, index) <= 0),
+                    if (_burst case (final bs, final bi, final kind, final k) when bs == side && bi == index)
+                      Positioned.fill(child: _StatusBurst(key: ValueKey('burst-$k'), emoji: _statusEmoji[kind]!)),
                   ]),
                 ),
               );
@@ -5488,6 +5509,33 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
 }
 
 /// Quanto o texto do turno muda o estágio (statUp2 = +2...).
+/// O símbolo de cada status (na dupla e na tripla, subindo em cima dele). Igual ao site.
+const _statusEmoji = {'brn': '🔥', 'psn': '💜', 'par': '⚡', 'slp': '💤', 'frz': '❄️', 'cnf': '💫'};
+
+/// O status em cima do Pokémon (dupla e tripla): o símbolo sobe em leque e some.
+class _StatusBurst extends StatelessWidget {
+  const _StatusBurst({super.key, required this.emoji});
+  final String emoji;
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: 1),
+          duration: const Duration(milliseconds: 1000),
+          builder: (context, v, _) => LayoutBuilder(
+            builder: (context, box) => Stack(clipBehavior: Clip.none, children: [
+              for (var k = 0; k < 5; k++)
+                Positioned(
+                  left: box.maxWidth * (0.15 + k * 0.17),
+                  top: box.maxHeight * (0.55 - v * (0.45 + (k % 2) * 0.15)),
+                  child: Opacity(opacity: (v < 0.7 ? 1.0 : (1 - v) / 0.3).clamp(0.0, 1.0), child: Text(emoji, style: TextStyle(fontSize: box.maxWidth * 0.16))),
+                ),
+            ]),
+          ),
+        ),
+      );
+}
+
 /// O texto da batalha que mostra a cena de status (as mesmas do site: STATUS_TEXT_SCENE).
 const _statusTextScene = {'hurtBurn': 'brn', 'hurtPoison': 'psn', 'fullPara': 'par', 'asleep': 'slp', 'isFrozen': 'frz', 'isConfused': 'cnf'};
 

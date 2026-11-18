@@ -7157,6 +7157,11 @@
   "fr": "Aucun pour l'instant.",
   "es": "Ninguno todavía."
  },
+ "Nenhum com esse filtro: mostrando todos.": {
+  "en": "None with this filter: showing all.",
+  "fr": "Aucun avec ce filtre : tous affichés.",
+  "es": "Ninguno con ese filtro: mostrando todos."
+ },
  "Nenhum draft ainda.": {
   "en": "No drafts yet.",
   "fr": "Aucun draft pour l'instant.",
@@ -9211,6 +9216,11 @@
   "en": "National Pokédex",
   "fr": "Pokédex National",
   "es": "Pokédex Nacional"
+ },
+ "Pokédex completa! Você ganhou o Shiny Charm: {0}× de chance de shiny para sempre.": {
+  "en": "Pokédex complete! You got the Shiny Charm: {0}× shiny chance forever.",
+  "fr": "Pokédex complet ! Vous avez obtenu le Charme Chroma : {0}× de chances de chromatique pour toujours.",
+  "es": "¡Pokédex completa! Conseguiste el Amuleto Iris: {0}× de probabilidad de variocolor para siempre."
  },
  "Pokédex da corrida": {
   "en": "Run Pokédex",
@@ -11402,6 +11412,11 @@
   "en": "Latest teams",
   "fr": "Équipes les plus récentes",
   "es": "Equipos más recientes"
+ },
+ "Tipo": {
+  "en": "Type",
+  "fr": "Type",
+  "es": "Tipo"
  },
  "Tipo Tera": {
   "en": "Tera Type",

@@ -69,6 +69,16 @@ const KIND_LABEL = { gym: 'Líder de Ginásio', elite: 'Elite dos Quatro', champ
 const STEP_MS = 1100
 /** Quanto o texto fica na tela (a velocidade do texto das Configurações). Igual ao app. */
 const TEXT_FACTOR = { slow: 1.6, normal: 1, fast: 0.55 }
+/** O símbolo de cada status (na dupla e na tripla, subindo em cima dele). Igual ao app. */
+const STATUS_EMOJI = { brn: '🔥', psn: '💜', par: '⚡', slp: '💤', frz: '❄️', cnf: '💫' }
+/** O status em cima do Pokémon (dupla e tripla): o símbolo sobe em leque e some. */
+function StatusBurst({ emoji }) {
+  return (
+    <div className="pointer-events-none absolute inset-0 z-20" data-testid="status-burst">
+      {[0, 1, 2, 3, 4].map((k) => <span key={k} className="status-rise absolute text-2xl" style={{ left: `${15 + k * 17}%`, top: '50%', animationDelay: `${k * 60}ms` }}>{emoji}</span>)}
+    </div>
+  )
+}
 
 const STAT_LABELS = new Set(Object.values(STAT_NAMES))
 const format = (event) => {
@@ -1182,6 +1192,8 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
     const plan = fxScene({ kind, side, stage, seed: (turnNo.current * 7 + side) % 997 })
     if (kind === 'sendout') playSound('open')
     if (kind === 'recall') playSound('recall')
+    // O som do status (queimou, envenenou, paralisado, dormindo, congelado, confuso). Igual ao app.
+    if (STATUS_EMOJI[kind]) playSound(`status_${kind}`)
     const done = runFx({ field: field.current, world: world.current, canvas: fxCanvas.current, spriteEls: [sprites[0].current, sprites[1].current], plan, rate: fast(1000) / 1000, live: () => live.current, endHidden: kind === 'recall' || kind === 'faint' ? side : null })
     // Sai da Poké Ball: o sprite já existe (escondido pela cena até a bola abrir).
     if (kind === 'sendout') requestAnimationFrame(() => setSide(setPoke, side, ''))
@@ -2244,10 +2256,18 @@ export function MultiBattle({battle, hit = null, onExit, onAgain, onFinish, onli
     for (const e of events) {
       const index = at(e)
       if (e.t === 'text') {
+        // O status na vez dele (como na batalha normal): o símbolo subindo em cima dele e o som. Igual ao app.
+        const burst = STATUS_TEXT_SCENE[e.key]
+        const who = e.side >= 0 ? e.side : e.args?.[0]?.side ?? -1
+        const target = index >= 0 || who < 0 ? index : (view.slots[who] ?? []).find((i) => i >= 0 && battle.sides[who].team[i]?.name === e.args?.[0]?.name) ?? -1
+        if (burst && target >= 0 && usePrefs.getState().battleAnims !== false) {
+          playSound(`status_${burst}`)
+          show(()=>({burst: {side: who, index: target, kind: burst, k: Date.now()}}))
+        }
         // Não cabe na caixa: em partes, uma depois da outra (como nos jogos; a caixa não aumenta).
         for (const page of dialogPages(format(e), dialogRef.current)) {
           show(()=>({text: page}))
-          await wait(e.key === 'turnOrder' ? 1600 : 1000)
+          await wait((e.key === 'turnOrder' ? 1600 : 1000) * (TEXT_FACTOR[usePrefs.getState().textSpeed] ?? 1))
         }
       } else if ((e.t === 'hp' || e.t === 'heal') && (index >= 0 || e.index >= 0)) {
         const i = index >= 0 ? index : e.index
@@ -2377,6 +2397,7 @@ export function MultiBattle({battle, hit = null, onExit, onAgain, onFinish, onli
     {fieldSlots(teamSide).map(slot=>{const mon=battle.sides[teamSide].team[slot.index],id=mon.dmax && mon.gmax || mon.id;return <div key={slot.slot} className="relative">
       <PlatformBase scene={scene} side={teamSide===side?'mine':'foe'} scale={battleScale(byId?.get(id)?.height)}/>
       <BattleSprite mon={mon} id={id} back={teamSide===side} fainted={hpOf(teamSide,slot.index)<=0} dmax={mon.dmax>0} tera={teraOf(mon)} byId={byId}/>
+      {shown?.burst?.side===teamSide && shown.burst.index===slot.index && <StatusBurst key={shown.burst.k} emoji={STATUS_EMOJI[shown.burst.kind]}/>}
     </div>})}
   </div>
   // As fraquezas e a eficácia (como na batalha normal).

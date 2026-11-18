@@ -18,6 +18,18 @@ Json _choose(Json run, FactoryData data, int i, [({bool night, String season, in
 }
 
 void main() {
+  test('Shiny Charm: completou a Pokédex da conta, o Charm para sempre e 3× de shiny nas corridas (igual ao site)', () async {
+    final data = await FactoryData.load();
+    final all = [for (final id in data.species.keys) if (id >= 1 && id <= 1025) id];
+    final almost = {...FactoryRun.empty(), 'caught': all.skip(1).toList()};
+    expect(identical(FactoryRun.withShinyCharm(almost, data), almost), isTrue);
+    final done = FactoryRun.withShinyCharm({...almost, 'caught': all}, data);
+    expect([done['charm'], done['charmNew']], [true, true]);
+    expect(FactoryRun.withShinyCharm({...done, 'caught': <int>[]}, data)['charm'], true);
+    expect(FactoryRun.startRun({...FactoryRun.empty(), 'charm': true}, data, 1, 42)!['shinyRate'], FactoryRun.shinyCharm);
+    expect(FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!['shinyRate'], isNull);
+  });
+
   test('Repelente: tira os caminhos de selvagens por repelFloors andares (se sobrar algum) (igual ao site)', () {
     final run = <String, dynamic>{'floor': 3, 'encounter': null, 'pending': null, 'repels': 1, 'route': {'floor': 3, 'biome': 'grass', 'options': [{'kind': 'wild'}, {'kind': 'trainer'}]}};
     final r = FactoryRun.applyRepel(run)!;

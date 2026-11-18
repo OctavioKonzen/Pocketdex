@@ -844,3 +844,7 @@ h1, h2, .font-display {
 .badge-shine { animation: badge-in 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) both, badge-glow 1.6s ease-in-out 0.9s infinite alternate; }
 @keyframes badge-in { from { transform: rotate(180deg) scale(0); } to { transform: rotate(0deg) scale(1); } }
 @keyframes badge-glow { from { filter: drop-shadow(0 0 4px #fff8); } to { filter: drop-shadow(0 0 14px #fffc); } }
+
+/* O status na dupla/tripla: o símbolo sobe e some. Igual ao app. */
+.status-rise { animation: status-rise 1s ease-out both; }
+@keyframes status-rise { from { transform: translateY(0); opacity: 1; } 70% { opacity: 1; } to { transform: translateY(-160%); opacity: 0; } }

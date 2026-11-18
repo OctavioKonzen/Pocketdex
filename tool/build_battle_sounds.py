@@ -229,6 +229,42 @@ def sfx_evolve():
     return out
 
 
+def sfx_status_brn():
+    """Queimadura (original): um chiado de fogo curto, subindo."""
+    n = int(RATE * 0.45)
+    hiss = noise(0.45, seed=11, step=3) * env(n, 0.01, 0.15) * 0.35
+    crackle = seq([noise(0.03, seed=20 + i, step=1) * decay(int(RATE * 0.03), 8) * 0.4 for i in range(6)] + [np.zeros(int(RATE * 0.27))])
+    out = hiss.copy()
+    out[: len(crackle)] += crackle[: len(out)]
+    return out
+
+
+def sfx_status_psn():
+    """Veneno (original): bolhas descendo."""
+    return seq([triangle(freq(m), 0.07) * env(int(RATE * 0.07), 0.003, 0.03) * 0.4 for m in [70, 66, 72, 64, 68, 60]])
+
+
+def sfx_status_par():
+    """Paralisia (original): um zumbido elétrico tremido."""
+    parts = [pulse(freq(m), 0.04, 0.5) * 0.25 for m in [84, 79, 86, 77, 84, 80, 88, 76]]
+    return seq(parts) * env(int(RATE * 0.32), 0.002, 0.08)
+
+
+def sfx_status_slp():
+    """Sono (original): duas notas lentas descendo, como um ronco."""
+    return seq([triangle(freq(m), 0.22) * env(int(RATE * 0.22), 0.02, 0.1) * 0.45 for m in [62, 57]])
+
+
+def sfx_status_frz():
+    """Congelado (original): um cristal tilintando."""
+    return seq([triangle(freq(m), 0.06) * decay(int(RATE * 0.06), 5) * 0.4 for m in [96, 100, 103, 98]])
+
+
+def sfx_status_cnf():
+    """Confusão (original): um apito girando, sobe e desce."""
+    return seq([pulse(freq(m), 0.05, 0.25) * env(int(RATE * 0.05), 0.002, 0.02) * 0.3 for m in [76, 81, 76, 72, 76, 81, 76, 72]])
+
+
 def sfx_badge():
     """Recebeu a insígnia (original): fanfarra curta e solene, terminando num acorde aberto."""
     beat = 0.13
@@ -3966,6 +4002,12 @@ def main():
         'center': sfx_center,
         'evolve': sfx_evolve,
         'badge': sfx_badge,
+        'status_brn': sfx_status_brn,
+        'status_psn': sfx_status_psn,
+        'status_par': sfx_status_par,
+        'status_slp': sfx_status_slp,
+        'status_frz': sfx_status_frz,
+        'status_cnf': sfx_status_cnf,
     }
     # Só alguns: python3 tool/build_battle_sounds.py shiny | music | map_kalos | mega ...
     only = sys.argv[1:]

@@ -23,7 +23,7 @@ import {
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, teamRoom, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, sceneLines, bossCity, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, atPc, pcOf, PC_SIZE, RARE_PLACES, shownScene, gameOf, tierOf, foeBoostAt, leagueAhead, unlockShiny, VITAMIN_EVS, VITAMINS,
   forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor, isKeystone,
-  tradeMon, skipTrade, TRADE_LEVELS, levelCapOf, townTrade, townTradeable, legOf, fishPath, rodOf, RODS, headbuttPath, slatherHoney, honeyReady, honeyPath, HONEY_FLOORS, plantBerry, berryReady, harvestBerry, bikePath, takePhoto, photoNow, cancelEvolution, evolutionMoves, setNick, applyRepel, repelOn, repelLeft, REPEL_FLOORS, gymPuzzleOf, startPuzzle, puzzleAct, finishPuzzle, puzzleView, gymLocked, puzzleTitle, GYM_CHALLENGES, KEY_ITEMS, hasKey, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, reminderCost, forgetMove, daycareOpen, daycareHere, safariAct, safariRates, leaveSafari, SAFARI_FEE, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, swapTeam, bossScene,
+  tradeMon, skipTrade, TRADE_LEVELS, levelCapOf, townTrade, townTradeable, legOf, fishPath, rodOf, RODS, headbuttPath, slatherHoney, honeyReady, honeyPath, HONEY_FLOORS, plantBerry, berryReady, harvestBerry, bikePath, takePhoto, photoNow, cancelEvolution, withShinyCharm, SHINY_CHARM, evolutionMoves, setNick, applyRepel, repelOn, repelLeft, REPEL_FLOORS, gymPuzzleOf, startPuzzle, puzzleAct, finishPuzzle, puzzleView, gymLocked, puzzleTitle, GYM_CHALLENGES, KEY_ITEMS, hasKey, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, reminderCost, forgetMove, daycareOpen, daycareHere, safariAct, safariRates, leaveSafari, SAFARI_FEE, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, swapTeam, bossScene,
   resolveChoice, regionLegend, leaderType, villainTeam, rivalBoss, rocketBoss, placeInfo, routeInfo, DUNGEON_LENGTH, dungeonPos, townShop, townCenter,
   weeklyOf, startWeekly, COSMETIC_BALLS, COSMETIC_FRAMES, hasCosmetic, buyCosmetic, equipCosmetic,
   boostOf, memberOf, learnMove, movesLearnedBetween,
@@ -75,6 +75,8 @@ export const saveFactory = (factory) => {
   factory = trackDaily(factoryOf(useStore.getState().league), factory)
   // Os vistos na corrida vão para a Pokédex (visto × capturado). Igual ao app.
   factory = withSeen(factory, loadedData)
+  // Completou a Pokédex: o Shiny Charm para sempre. Igual ao app.
+  factory = withShinyCharm(factory, loadedData)
   // Acabou a corrida da semana: o andar vai para o ranking dela (uma vez, com a conta conectada).
   const last = factory?.last
   if (last?.weekly && !last.posted) {
@@ -2109,7 +2111,7 @@ function ContinueCard({ run, data }) {
 
 /** O cartão do treinador (como nos jogos): quem é, a região, as insígnias, o dinheiro, a Pokédex da corrida, o andar e as
  * vitórias. Fica na AJUDA (🪪). Igual ao app. */
-function TrainerCard({ data, run, onDex = null, askNick = false, onAskNick = null }) {
+function TrainerCard({ data, run, onDex = null, askNick = false, onAskNick = null, charm = false }) {
   const me = useMyTrainer()
   const [ref, width] = useWidth()
   const game = data?.bosses?.[run.boss.region]
@@ -2133,6 +2135,7 @@ function TrainerCard({ data, run, onDex = null, askNick = false, onAskNick = nul
         {row('📖', 'Pokédex', <>{dexOf(run).length}{onDex && <button type="button" className="cursor-pointer text-yellow-400" onClick={onDex} data-testid="card-open-dex">{t('ABRIR')} ▸</button>}</>, 'card-dex')}
         {row('🧗', 'Andar', run.floor ?? 0, 'card-floor')}
         {row('⏱️', 'Tempo de jogo', playTimeText(run.playMs), 'card-time')}
+        {row('✨', 'Shiny Charm', charm ? `✅ ${SHINY_CHARM}×` : '—', 'card-charm')}
         {row('⚔️', 'Vencidos', `${sum.defeated} · 👑 ${sum.bosses}`)}
         {/* Perguntar o apelido ao capturar (vem desligado: a captura segue direto). Igual ao app. */}
         {onAskNick && row('✏️', 'Apelido ao capturar', <button type="button" className="cursor-pointer text-yellow-400" onClick={onAskNick} data-testid="card-ask-nick">{askNick ? `✅ ${t('SIM')}` : `⬜ ${t('NÃO')}`}</button>)}
@@ -2151,11 +2154,21 @@ const DEX_ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX']
  */
 function DexPanel({ factory, data, run, name, onClose }) {
   const book = dexBook(factory, data)
-  const { all } = book
+  // A busca e os filtros (como nos jogos): pelo nome (dos já vistos), pelo tipo (dos capturados) e só os capturados ou
+  // só os que faltam. Igual ao app.
+  const [query, setQuery] = useState('')
+  const [type, setType] = useState('')
+  const [showing, setShowing] = useState('all')
+  const q = query.trim().toLowerCase()
+  const filtered = book.all.filter((id) => (!q || (book.seen.has(id) && name(id).toLowerCase().includes(q)))
+    && (!type || (book.caught.has(id) && (data.species[id]?.[4] ?? []).includes(type)))
+    && (showing === 'all' || (showing === 'caught') === book.caught.has(id)))
+  const all = filtered.length ? filtered : book.all
   const cols = 8
   const per = cols * 4
   const pages = Math.ceil(all.length / per)
-  const [pick, setPick] = useState(() => dexOf(run)[0] ?? all[0])
+  const [pickAt, setPick] = useState(() => dexOf(run)[0] ?? all[0])
+  const pick = all.includes(pickAt) ? pickAt : all[0]
   const [pageAt, setPage] = useState(() => Math.floor(Math.max(0, all.indexOf(dexOf(run)[0] ?? all[0])) / per))
   const page = Math.min(Math.max(0, pageAt), pages - 1)
   const shown = all.slice(page * per, page * per + per)
@@ -2193,6 +2206,17 @@ function DexPanel({ factory, data, run, name, onClose }) {
           )}
           <p className={`text-[1.6cqw] ${caught ? 'text-green-300' : 'text-slate-300'}`} data-testid="dex-status">{caught ? `✔ ${t('Capturado')}` : seen ? `👁 ${t('Visto')}` : `❔ ${t('Não visto')}`}</p>
         </div>
+        <div className="flex min-h-0 flex-1 flex-col gap-[0.5cqw]">
+        {/* A busca e os filtros, numa linha em cima da grade. */}
+        <div className="flex shrink-0 items-center gap-[0.6cqw] text-[1.5cqw]">
+          <input value={query} onChange={(e) => { setQuery(e.target.value); setPage(0) }} placeholder={`🔍 ${t('Nome')}`} className="min-w-0 flex-1 rounded border border-[#8b93a1] bg-[#14161c] px-2 py-0.5 text-white" data-testid="dex-search" />
+          <select value={type} onChange={(e) => { setType(e.target.value); setPage(0) }} className="rounded border border-[#8b93a1] bg-[#14161c] px-1 py-0.5 text-white" data-testid="dex-type">
+            <option value="">{t('Tipo')}</option>
+            {Object.keys(TYPE_PT).map((k) => <option key={k} value={k}>{t(TYPE_PT[k])}</option>)}
+          </select>
+          <button type="button" className={`port-chip cursor-pointer px-[1cqw] ${showing !== 'all' ? '!bg-yellow-400 !text-slate-900' : ''}`} onClick={() => { setShowing(showing === 'all' ? 'caught' : showing === 'caught' ? 'missing' : 'all'); setPage(0) }} data-testid="dex-show">{showing === 'caught' ? '✔' : showing === 'missing' ? '❔' : t('Todos')}</button>
+        </div>
+        {!filtered.length && <p className="text-[1.3cqw]" data-testid="dex-none">{t('Nenhum com esse filtro: mostrando todos.')}</p>}
         <div className="grid min-h-0 flex-1 grid-cols-8 grid-rows-4 gap-[0.3cqw]">
           {shown.map((id) => {
             const c = book.caught.has(id)
@@ -2206,6 +2230,7 @@ function DexPanel({ factory, data, run, name, onClose }) {
               </button>
             )
           })}
+        </div>
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-[0.5cqw] text-[1.5cqw]">
@@ -2222,7 +2247,7 @@ function DexPanel({ factory, data, run, name, onClose }) {
   )
 }
 
-function HelpPanel({ onClose, onExit = null, onGiveUp = null, onDex = null, data = null, run = null, askNick = false, onAskNick = null }) {
+function HelpPanel({ onClose, onExit = null, onGiveUp = null, onDex = null, data = null, run = null, askNick = false, onAskNick = null, charm = false }) {
   // Tela única: 4 tópicos por página (2 × 2), do tamanho do campo, sem rolar; ◀ ▶ troca a página.
   const [page, setPage] = useState(0)
   const [card, setCard] = useState(false)
@@ -2231,7 +2256,7 @@ function HelpPanel({ onClose, onExit = null, onGiveUp = null, onDex = null, data
   return (
     <div className="port-panel flex h-full flex-col gap-2 overflow-hidden p-2" style={{ containerType: 'inline-size' }} data-testid="help-panel">
       <OverlayClose onClose={onClose} title={card ? `🪪 ${t('Cartão do treinador')}` : `❓ ${t('Ajuda')}`} />
-      {card && run ? <TrainerCard data={data} run={run} onDex={onDex} askNick={askNick} onAskNick={onAskNick} /> : <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-2">
+      {card && run ? <TrainerCard data={data} run={run} onDex={onDex} askNick={askNick} onAskNick={onAskNick} charm={charm} /> : <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-2">
         {HELP.slice(page * per, page * per + per).map(([icon, title, text]) => (
           <div key={title} className="port-card flex min-h-0 flex-col gap-[0.8cqw] overflow-hidden p-[1.5cqw]">
             <p className="text-[2.2cqw]">{icon} {t(title)}</p>
@@ -2584,7 +2609,7 @@ function Badges({ data, run }) {
 }
 
 // tools: BOLSA, TIME, MAPA e AJUDA numa linha fixa no alto da tela de baixo; os caminhos e o resto, nas páginas (◀ ▶).
-function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, panel = null, tools = null, menuFill = false, onDex = null }) {
+function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, panel = null, tools = null, menuFill = false, onDex = null, hideHp = false }) {
   // A HUD da batalha (o port de Black & White), igual: o campo 16:9, a caixa de texto à esquerda, os botões à direita
   // dela e a faixa de dica embaixo, tudo dentro da tela (nada embaixo dela). Igual ao app.
   return (
@@ -2597,7 +2622,7 @@ function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, 
         {text}
       </div>
       {/* A vida do Pokémon da frente, no mesmo lugar da sua caixa de HP na batalha (os botões ficam embaixo dela). */}
-      {run && menu && <LeadHp run={run} data={data} byId={byId} />}
+      {run && menu && !hideHp && <LeadHp run={run} data={data} byId={byId} />}
       {/* Os botões no lugar dos da batalha, à direita da caixa de texto (o que não cabe vai para a próxima página). */}
       {menu && <div className="port-controls absolute right-[1.25%] bottom-[8.5%] z-30 h-[14.5%] w-[36%]" data-testid="factory-bottom">{menuFill ? menu : <PagedMenu wide={menuCount(menu) > 4} key={field?.props?.testid ?? ''}>{menu}</PagedMenu>}</div>}
       {/* A faixa de dica da batalha: o andar, o dinheiro, a Bolsa, as insígnias, BOLSA/TIME/MAPA/AJUDA e o time. */}
@@ -2763,7 +2788,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     ) : panel === 'region' ? (
       <RegionMap data={data} run={run} onClose={() => setPanel(null)} monName={name} />
     ) : panel === 'help' ? (
-      <HelpPanel data={data} run={run} askNick={Boolean(factory.askNick)} onAskNick={() => saveFactory({ ...factory, askNick: !factory.askNick })} onDex={() => setPanel('dex')} onClose={() => setPanel(null)} onExit={onExit} onGiveUp={() => window.confirm(t('Desistir da corrida? A pontuação vira moedas.')) && saveFactory(endRun(factory, run))} />
+      <HelpPanel data={data} run={run} charm={Boolean(factory.charm)} askNick={Boolean(factory.askNick)} onAskNick={() => saveFactory({ ...factory, askNick: !factory.askNick })} onDex={() => setPanel('dex')} onClose={() => setPanel(null)} onExit={onExit} onGiveUp={() => window.confirm(t('Desistir da corrida? A pontuação vira moedas.')) && saveFactory(endRun(factory, run))} />
     ) : panel === 'bag' ? (
       <BagPanel run={run} byId={byId} save={save} onClose={() => setPanel(null)} />
     ) : (
@@ -2892,6 +2917,15 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     save(learnMove(run, i, move, current, learn.pick))
   }
   const step = stepOf(p)
+  // Completou a Pokédex: o aviso do Shiny Charm, uma vez (fica na conta para sempre). Igual ao app.
+  if (factory.charmNew) {
+    const { charmNew: _seen, ...rest } = factory
+    setTimeout(() => {
+      noteKeep.current = true
+      setNote(`✨ ${t('Pokédex completa! Você ganhou o Shiny Charm: {0}× de chance de shiny para sempre.').replace('{0}', SHINY_CHARM)}`)
+      saveFactory(rest)
+    }, 0)
+  }
   // As dicas da primeira vez (como o tutorial dos jogos): uma linha 💡 na caixa de texto, uma vez cada. Igual ao app.
   const seenTips = factory.tips ?? []
   const screen = run ? `${run.floor}-${step}-${!p}` : ''
@@ -2928,7 +2962,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
   const town = run && inTown(run.scene ?? 'grass')
   const [healerSprite, healerName] = run ? (town ? ['sd-nurse', 'Enfermeira Joy'] : healerOf(run)) : ['sd-nurse', '']
   const nurse = <FarPerson id={healerSprite} trainers={trainers} width={width} />
-  let field, text, menu, below = null, toolRow = false, menuFill = false
+  let field, text, menu, below = null, toolRow = false, menuFill = false, hideHp = false
   // A Creche (um lugar da cidade, separado do Poké Mart): quem fica e o ovo.
   const daycareView = () => {
       const care = run.daycare
@@ -2980,6 +3014,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         {evo.phase === 'run' && <p className="dlg-sub text-sm">{t('Toque em PARAR para ele não evoluir agora.')}</p>}
       </>
     )
+    // A evolução sem a caixa de vida por cima (como nos jogos). Igual ao app.
+    hideHp = true
     menu = evo.phase === 'run' ? (
       <MenuButton disabled={busy} onClick={() => { setEvo({ ...evo, phase: 'stopped' }); save(cancelEvolution(run, i, from)) }} testid="evo-stop">{t('PARAR')}</MenuButton>
     ) : (
@@ -3824,7 +3860,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
 
   return (
     <section data-testid="factory-screen">
-      <BattleFrame onDex={() => setPanel(panel === 'dex' ? null : 'dex')} field={field} run={run} byId={byId} data={data} frame={factory.frame} menu={menu} menuFill={menuFill} tools={toolRow ? tools : null} panel={below || extras || null}
+      <BattleFrame hideHp={hideHp} onDex={() => setPanel(panel === 'dex' ? null : 'dex')} field={field} run={run} byId={byId} data={data} frame={factory.frame} menu={menu} menuFill={menuFill} tools={toolRow ? tools : null} panel={below || extras || null}
         text={<>
           {tipLine && <p className="font-bold text-amber-200" data-testid="factory-tip">💡 {t(TIPS[tipLine])}</p>}
           {note && <p data-testid="factory-note">{note}</p>}

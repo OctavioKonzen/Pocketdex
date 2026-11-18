@@ -2843,7 +2843,8 @@ class FactoryRun {
       if (up('cards') > 0) 'cardCount': 3 + up('cards'),
       if (up('reroll') + fxTotal(factory, 'reroll') > 0) 'rerolls': up('reroll') + fxTotal(factory, 'reroll'),
       // A melhoria grande e os nós da trilha (até maxShinyRate).
-      if (up('shiny') + fxTotal(factory, 'shiny') > 0) 'shinyRate': math.min(maxShinyRate, 1 + up('shiny') + fxTotal(factory, 'shiny')),
+      if (up('shiny') + fxTotal(factory, 'shiny') > 0 || factory['charm'] == true)
+        'shinyRate': math.min(maxShinyRate, 1 + up('shiny') + fxTotal(factory, 'shiny')) * (factory['charm'] == true ? shinyCharm : 1),
       if (factory['hunt'] is Map) 'hunt': _int((factory['hunt'] as Map)['id']),
       if (factory['hunt'] is Map) 'huntCount': _int((factory['hunt'] as Map)['count'] ?? 0),
       'tms': <String, dynamic>{}, 'tokens': {'move-tutor': 0, 'move-reminder': 0}, 'stash': <String>[], 'dmax': up('dmax') > 0, 'tera': up('tera') > 0, 'expShare': up('expShare') > 0,
@@ -3476,6 +3477,17 @@ class FactoryRun {
     final dex = dexOf(run);
     if (dex.contains(id)) return null;
     return dexRewards.where((r) => r['at'] == dex.length + 1).firstOrNull;
+  }
+
+  /// O Shiny Charm (como nos jogos): completou a Pokédex da conta (todos capturados) e fica com ele para sempre: 3× de
+  /// chance de shiny nas corridas. Igual ao site.
+  static const shinyCharm = 3;
+
+  /// Completou a Pokédex agora: o Charm entra na conta (charmNew: o aviso da primeira vez). Senão, a mesma conta.
+  static Json withShinyCharm(Json factory, FactoryData? data) {
+    if (factory['charm'] == true || data == null) return factory;
+    final book = dexBook(factory, data);
+    return book.all.isNotEmpty && book.all.every(book.caught.contains) ? {...factory, 'charm': true, 'charmNew': true} : factory;
   }
 
   /// A Pokédex da conta (como nos jogos): todos os Pokémon pelo número (1 a 1025, sem as formas), os capturados (na conta,

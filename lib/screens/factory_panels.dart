@@ -90,6 +90,8 @@ void saveFactory(Json factory) {
   factory = FactoryDaily.track(before, factory);
   // Os vistos na corrida vão para a Pokédex (visto × capturado). Igual ao site.
   factory = FactoryRun.withSeen(factory, FactoryData.loaded);
+  // Completou a Pokédex: o Shiny Charm para sempre. Igual ao site.
+  factory = FactoryRun.withShinyCharm(factory, FactoryData.loaded);
   // Acabou a corrida da semana: o andar vai para o ranking dela (uma vez, com a conta conectada). Igual ao site.
   final last = factory['last'] as Map?;
   if (last?['weekly'] != null && last?['posted'] != true) {
@@ -3194,6 +3196,9 @@ class _FactoryScreenState extends State<FactoryScreen> {
   bool _helpCard = false;
   int _dexPage = -1; // -1: a página do escolhido
   int? _dexPick;
+  String _dexQuery = '';
+  String? _dexType;
+  String _dexShow = 'all'; // all | caught | missing
   final Map<int, Future<({String genus, String flavor, int height, int weight})?>> _dexInfo = {};
 
   /// O texto da Pokédex (como nos jogos): a espécie ("Pokémon Rato"), a descrição, a altura e o peso.
@@ -3364,6 +3369,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
             )),
             row('🧗', 'Andar', text(run['floor'] ?? 0, 'card-floor')),
             row('⏱️', 'Tempo de jogo', text(playTimeText(((run['playMs'] as num?) ?? 0).toInt()), 'card-time')),
+            row('✨', 'Shiny Charm', text(currentFactory()['charm'] == true ? '✅ ${FactoryRun.shinyCharm}×' : '—', 'card-charm')),
             row('⚔️', 'Vencidos', text('${sum['defeated']} · 👑 ${sum['bosses']}')),
             // Perguntar o apelido ao capturar (vem desligado: a captura segue direto).
             row('✏️', 'Apelido ao capturar', InkWell(
@@ -3382,10 +3388,20 @@ class _FactoryScreenState extends State<FactoryScreen> {
   /// nome; nunca visto: ???). Igual ao site.
   Widget _dexPanel(Json run, FactoryData data, VoidCallback close) {
     final book = FactoryRun.dexBook(currentFactory(), data);
-    final all = book.all;
+    // A busca e os filtros (como nos jogos): pelo nome (dos já vistos), pelo tipo (dos capturados) e só os capturados ou
+    // só os que faltam. Igual ao site.
+    final q = _dexQuery.trim().toLowerCase();
+    final filtered = [
+      for (final id in book.all)
+        if ((q.isEmpty || (book.seen.contains(id) && _name(id).toLowerCase().contains(q))) &&
+            (_dexType == null || (book.caught.contains(id) && ((data.species[id]?[4] as List?) ?? const []).contains(_dexType))) &&
+            (_dexShow == 'all' || (_dexShow == 'caught') == book.caught.contains(id)))
+          id
+    ];
+    final all = filtered.isEmpty ? book.all : filtered;
     const cols = 8, rows = 4, per = cols * rows;
     final pages = (all.length / per).ceil();
-    final pick = _dexPick ?? FactoryRun.dexOf(run).firstOrNull ?? all.first;
+    final pick = _dexPick != null && all.contains(_dexPick) ? _dexPick! : all.contains(FactoryRun.dexOf(run).firstOrNull) ? FactoryRun.dexOf(run).first : all.first;
     final page = (_dexPage < 0 ? max(0, all.indexOf(pick)) ~/ per : _dexPage).clamp(0, pages - 1);
     final shown = all.skip(page * per).take(per).toList();
     const ink = _portText;
@@ -3488,6 +3504,55 @@ class _FactoryScreenState extends State<FactoryScreen> {
               Expanded(
                 flex: 5,
                 child: Column(children: [
+                  // A busca e os filtros, numa linha em cima da grade.
+                  SizedBox(
+                    height: 30,
+                    child: Row(children: [
+                      Expanded(
+                        child: TextField(
+                          key: const ValueKey('dex-search'),
+                          onChanged: (v) => setState(() {
+                            _dexQuery = v;
+                            _dexPage = 0;
+                          }),
+                          style: ink.copyWith(fontSize: 12),
+                          decoration: InputDecoration(
+                            isDense: true,
+                            hintText: '🔍 ${tr('Nome')}',
+                            hintStyle: ink.copyWith(fontSize: 12, color: const Color(0xFF94A3B8)),
+                            filled: true,
+                            fillColor: const Color(0xEB14161C),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                            border: const OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF8B93A1))),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      chip(_dexType == null ? tr('Tipo') : tr(_typePt[_dexType] ?? ''), 'dex-type', () async {
+                        final picked = await showDialog<String>(
+                          context: context,
+                          builder: (context) => SimpleDialog(title: Text(tr('Tipo')), children: [
+                            SimpleDialogOption(key: const ValueKey('dex-type-all'), onPressed: () => Navigator.pop(context, ''), child: Text(tr('Todos'))),
+                            for (final t in _typePt.keys) SimpleDialogOption(key: ValueKey('dex-type-$t'), onPressed: () => Navigator.pop(context, t), child: TypeChip(t)),
+                          ]),
+                        );
+                        if (picked != null && mounted) {
+                          setState(() {
+                            _dexType = picked.isEmpty ? null : picked;
+                            _dexPage = 0;
+                          });
+                        }
+                      }, on: _dexType != null),
+                      const SizedBox(width: 4),
+                      chip(_dexShow == 'caught' ? '✔' : _dexShow == 'missing' ? '❔' : tr('Todos'), 'dex-show', () => setState(() {
+                            _dexShow = _dexShow == 'all' ? 'caught' : _dexShow == 'caught' ? 'missing' : 'all';
+                            _dexPage = 0;
+                          }), on: _dexShow != 'all'),
+                    ]),
+                  ),
+                  if (filtered.isEmpty)
+                    Padding(padding: const EdgeInsets.only(top: 2), child: Text(tr('Nenhum com esse filtro: mostrando todos.'), key: const ValueKey('dex-none'), style: ink.copyWith(fontSize: 10))),
+                  const SizedBox(height: 4),
                   for (var r = 0; r < rows; r++)
                     Expanded(child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                       for (var k = 0; k < cols; k++) r * cols + k < shown.length ? cell(shown[r * cols + k]) : const Expanded(child: SizedBox()),
@@ -3743,13 +3808,13 @@ class _FactoryScreenState extends State<FactoryScreen> {
         ),
       );
 
-  Widget _frame({required Widget field, Json? run, required List<Widget> text, Widget? menu, List<Widget>? tools, bool menuFill = false}) =>
-      _frameColumn(field: field, run: run, text: text, menu: menu, tools: tools, menuFill: menuFill);
+  Widget _frame({required Widget field, Json? run, required List<Widget> text, Widget? menu, List<Widget>? tools, bool menuFill = false, bool hideHp = false}) =>
+      _frameColumn(field: field, run: run, text: text, menu: menu, tools: tools, menuFill: menuFill, hideHp: hideHp);
 
   /// A HUD da batalha (o port de Black & White), igual: o campo 16:9, a caixa de texto à esquerda, a vida do Pokémon
   /// da frente e, embaixo dela, os botões, ao lado da caixa; a faixa de dica embaixo. Tudo numa tela só, nada embaixo
   /// dela (a Bolsa, o time, o mapa e o resto abrem por cima do campo). Igual ao site.
-  Widget _frameColumn({required Widget field, Json? run, required List<Widget> text, Widget? menu, List<Widget>? tools, bool menuFill = false}) => DsLayout(
+  Widget _frameColumn({required Widget field, Json? run, required List<Widget> text, Widget? menu, List<Widget>? tools, bool menuFill = false, bool hideHp = false}) => DsLayout(
         single: true,
         top: LayoutBuilder(builder: (context, box) {
           final w = box.maxWidth, h = w * 9 / 16;
@@ -3775,7 +3840,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                     ),
                   ),
                   // A vida do Pokémon da frente, no lugar da sua caixa de HP na batalha (os botões ficam embaixo dela).
-                  if (run != null && menu != null) Positioned(right: w * 0.0125, bottom: m.hpBottom, width: w * 0.24, child: _leadHp(run, m.font * 0.75)),
+                  if (run != null && menu != null && !hideHp) Positioned(right: w * 0.0125, bottom: m.hpBottom, width: w * 0.24, child: _leadHp(run, m.font * 0.75)),
                   // A caixa de texto no lugar da da batalha (o que não cabe: tocar passa).
                   Positioned(
                     left: w * 0.0125,
@@ -3948,6 +4013,12 @@ class _FactoryScreenState extends State<FactoryScreen> {
     final lead = team.where((m) => FactoryRun.hpOf(m) > 0).firstOrNull ?? team.firstOrNull;
     final p = FactoryRun.pendingOf(run);
     final step = _stepOf(p);
+    // Completou a Pokédex: o aviso do Shiny Charm, uma vez (fica na conta para sempre). Igual ao site.
+    if (factory['charmNew'] == true) {
+      _note = '✨ ${tr('Pokédex completa! Você ganhou o Shiny Charm: {0}× de chance de shiny para sempre.').replaceAll('{0}', '${FactoryRun.shinyCharm}')}';
+      _noteKeep = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => mounted ? setState(() => saveFactory({...currentFactory()}..remove('charmNew'))) : null);
+    }
     // As dicas da primeira vez (como o tutorial dos jogos): uma linha 💡 na caixa de texto, uma vez cada. Igual ao site.
     final seenTips = [for (final x in (factory['tips'] as List?) ?? const []) '$x'];
     final screen = '${run['floor']}-$step-${p == null}';
@@ -4544,6 +4615,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
           ]),
       text: [Text('🎬 ${tr('Créditos')}', style: const TextStyle(fontWeight: FontWeight.w900))],
       menu: _menuButton(tr('PULAR'), done, key: const ValueKey('credits-skip')),
+      // Os créditos sem a caixa de vida por cima (como a tela dos créditos dos jogos). Igual ao site.
+      hideHp: true,
     );
   }
 
@@ -4630,6 +4703,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
       menu: phase == 'run'
           ? _menuButton(tr('PARAR'), widget.busy ? null : () => _evoStop(run), key: const ValueKey('evo-stop'))
           : _menuButton(tr('CONTINUAR'), _evoNext, key: const ValueKey('evo-continue')),
+      hideHp: true,
     );
   }
 

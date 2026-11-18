@@ -632,6 +632,15 @@ export const MINOR_BASE = {
 export const MINOR_LABEL = { 'shiny:rate': '+{0}× de chance de shiny' }
 /** O máximo de shiny mais comum (20×: 1 em ~205). */
 export const MAX_SHINY_RATE = 20
+/** O Shiny Charm (como nos jogos): completou a Pokédex da conta (todos capturados) e fica com ele para sempre: 3× de
+ * chance de shiny nas corridas. Igual ao app. */
+export const SHINY_CHARM = 3
+/** Completou a Pokédex agora: o Charm entra na conta (charmNew: o aviso da primeira vez). Senão, a mesma conta. */
+export function withShinyCharm(factory, data) {
+  if (!factory || factory.charm || !data) return factory
+  const book = dexBook(factory, data)
+  return book.all.length && book.all.every((id) => book.caught.has(id)) ? { ...factory, charm: true, charmNew: true } : factory
+}
 /** Efeitos que entraram na trilha depois dos 8 nós (não tiram nada dos antigos): quanto cada nó dá. */
 export const NEW_MINOR_FX = { 'shiny:rate': 2 }
 /** A melhoria grande de um nó pequeno ("atk~3" → "atk"), ou ele mesmo. */
@@ -2946,7 +2955,7 @@ export function startRun(factory, data, id, seed, shiny = false, options = {}) {
   const run = {
     seed: seed >>> 0, floor: 1, money: up('money') + fxTotal(factory, 'money'), defeated: 0, bosses: 0, bag,
     team: [], teamBoost: zero(), mult: { money: 1, exp: round3(1 + up('exp') / 100), shop: round3(1 - Math.min(MAX_DISCOUNT, up('shop') + fxTotal(factory, 'discount')) / 100) }, cards: [], boss: { region: 0, step: 0 }, played: [],
-    ...(up('cards') ? { cardCount: 3 + up('cards') } : {}), ...(up('reroll') + fxTotal(factory, 'reroll') ? { rerolls: up('reroll') + fxTotal(factory, 'reroll') } : {}), ...(up('shiny') + fxTotal(factory, 'shiny') ? { shinyRate: Math.min(MAX_SHINY_RATE, 1 + up('shiny') + fxTotal(factory, 'shiny')) } : {}),
+    ...(up('cards') ? { cardCount: 3 + up('cards') } : {}), ...(up('reroll') + fxTotal(factory, 'reroll') ? { rerolls: up('reroll') + fxTotal(factory, 'reroll') } : {}), ...(up('shiny') + fxTotal(factory, 'shiny') || factory.charm ? { shinyRate: Math.min(MAX_SHINY_RATE, 1 + up('shiny') + fxTotal(factory, 'shiny')) * (factory.charm ? SHINY_CHARM : 1) } : {}),
     ...(factory.hunt ? { hunt: factory.hunt.id, huntCount: factory.hunt.count ?? 0 } : {}),
     tms: {}, tokens: { 'move-tutor': 0, 'move-reminder': 0 }, stash: [], dmax: up('dmax') > 0, tera: up('tera') > 0, expShare: up('expShare') > 0, leg: 1, route: null, encounter: null, pending: null,
     ...(up('map') ? { townMap: true } : {}),
