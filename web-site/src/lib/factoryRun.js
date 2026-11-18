@@ -205,6 +205,8 @@ export const SHOP = {
   'exp-share': 800,
   // Mapa (Town Map): mostra o mapa da rota e deixa escolher o caminho nas bifurcações (sem ele, vai às cegas).
   'town-map': 200,
+  // Repelente: os caminhos de selvagens somem por REPEL_FLOORS andares (sempre à venda).
+  repel: 60,
 }
 /** Preço base de um TM ("tm:<golpe>") e de uma pedra de evolução ("evo:<item>"). */
 export const TM_PRICE = 220
@@ -3347,7 +3349,7 @@ function pickShop(rand, data, floor, size = 8, hasMap = false) {
   if (rand() < 0.5) add('revive')
   // O Mapa aparece fácil (até ser comprado).
   if (!hasMap && rand() < TOWN_MAP_CHANCE) add('town-map')
-  const ids = Object.keys(SHOP).filter((id) => !BALL_IDS.includes(id) && !HEAL_TIERS.includes(id) && id !== 'revive' && id !== 'town-map')
+  const ids = Object.keys(SHOP).filter((id) => !BALL_IDS.includes(id) && !HEAL_TIERS.includes(id) && id !== 'revive' && id !== 'town-map' && id !== 'repel')
   // TM e pedra de evolução, às vezes.
   if (data.tms?.length && rand() < 0.6) out.push(`tm:${pickOne(data.tms, rand)}`)
   if (data.stones?.length && rand() < 0.45) out.push(`evo:${pickOne(data.stones, rand)}`)
@@ -3355,6 +3357,8 @@ function pickShop(rand, data, floor, size = 8, hasMap = false) {
     const id = pickOne(ids, rand)
     if (!out.includes(id)) out.push(id)
   }
+  // O Repelente sempre à venda (como nos jogos), no fim da lista.
+  out.push('repel')
   return out
 }
 
@@ -4232,6 +4236,7 @@ export function buyItem(run, id, index, data) {
   if (id === 'tera-orb') return { ...out, tera: true }
   if (id === 'exp-share') return { ...out, expShare: true }
   if (id === 'town-map') return { ...out, townMap: true }
+  if (id === 'repel') return { ...out, repels: (out.repels ?? 0) + 1 }
   if (TOKENS.includes(id)) return { ...out, tokens: { ...out.tokens, [id]: (out.tokens?.[id] ?? 0) + 1 } }
   if (id.startsWith('tm:')) {
     const move = id.slice(3)
@@ -4369,6 +4374,24 @@ export function setGimmick(run, index, gimmick) {
 export const teamDown = (run) => run.team.every((m) => !((m.hp ?? 1) > 0))
 
 /** Sai da loja (ou não tinha): os caminhos do próximo andar no mapa. */
+/** Quantos andares o Repelente dura. */
+export const REPEL_FLOORS = 5
+/** O Repelente está valendo (os caminhos de selvagens somem). */
+export const repelOn = (run) => Boolean(run.repel) && run.floor - run.repel.floor < REPEL_FLOORS
+/** Andares que o Repelente ainda dura (0: acabou). */
+export const repelLeft = (run) => (repelOn(run) ? REPEL_FLOORS - (run.floor - run.repel.floor) : 0)
+/** Os caminhos sem os de selvagens, com o Repelente (se sobrar algum). Igual ao app. */
+function repelled(run, route) {
+  if (!repelOn(run) || !route?.options) return route
+  const options = route.options.filter((o) => o.kind !== 'wild')
+  return options.length ? { ...route, options } : route
+}
+/** Usa um Repelente (da bolsa): vale já nos caminhos de agora e por REPEL_FLOORS andares. null se não dá. */
+export function applyRepel(run) {
+  if (!(run.repels > 0) || repelOn(run) || run.encounter || run.pending) return null
+  const out = { ...run, repels: run.repels - 1, repel: { floor: run.floor } }
+  return { ...out, route: repelled(out, run.route) }
+}
 export function nextFloor(run, data) {
   const out = { ...run, pending: null, encounter: null }
   const rand = dice(out)
@@ -4381,7 +4404,7 @@ export function nextFloor(run, data) {
     const got = (featuresOf(data, out).arrive ?? []).map((k) => addKey(out, k)).filter(Boolean)
     if (got.length) out.town.got = got
   }
-  out.route = routeOptions(out, data, rand)
+  out.route = repelled(out, routeOptions(out, data, rand))
   // Começo de uma rota nova: a missão dela.
   if (routePos(out) === 0 && !atCity(data, out) && run.mission?.leg !== (out.leg ?? 1)) out.mission = newMission(out, data, rand)
   return out

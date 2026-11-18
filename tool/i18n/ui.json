@@ -9755,6 +9755,11 @@
   "fr": "REFUSER",
   "es": "RECHAZAR"
  },
+ "REPELENTE": {
+  "en": "REPEL",
+  "fr": "REPOUSSE",
+  "es": "REPELENTE"
+ },
  "Raid": {
   "en": "Raid",
   "fr": "Raid",
@@ -10019,6 +10024,11 @@
   "en": "Medicine",
   "fr": "Soins",
   "es": "Botiquín"
+ },
+ "Repelente": {
+  "en": "Repel",
+  "fr": "Repousse",
+  "es": "Repelente"
  },
  "Repita a ordem: {0} de {1}.": {
   "en": "Repeat the order: {0} of {1}.",
@@ -12127,6 +12137,11 @@
   "en": "Use a specific move",
   "fr": "Utiliser une capacité précise",
   "es": "Usar un movimiento concreto"
+ },
+ "Use em AÇÕES: os caminhos de selvagens somem por {0} andares": {
+  "en": "Use it in ACTIONS: wild paths disappear for {0} floors",
+  "fr": "Utilisez-le dans ACTIONS : les chemins sauvages disparaissent pendant {0} étages",
+  "es": "Úsalo en ACCIONES: los caminos de salvajes desaparecen durante {0} pisos"
  },
  "Use só letras, números, espaço, ponto, - ou _.": {
   "en": "Use only letters, numbers, spaces, periods, - or _.",

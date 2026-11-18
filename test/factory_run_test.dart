@@ -18,6 +18,19 @@ Json _choose(Json run, FactoryData data, int i, [({bool night, String season, in
 }
 
 void main() {
+  test('Repelente: tira os caminhos de selvagens por repelFloors andares (se sobrar algum) (igual ao site)', () {
+    final run = <String, dynamic>{'floor': 3, 'encounter': null, 'pending': null, 'repels': 1, 'route': {'floor': 3, 'biome': 'grass', 'options': [{'kind': 'wild'}, {'kind': 'trainer'}]}};
+    final r = FactoryRun.applyRepel(run)!;
+    expect(r['repels'], 0);
+    expect(r['route']['options'], [{'kind': 'trainer'}]);
+    expect(FactoryRun.repelLeft(r), FactoryRun.repelFloors);
+    expect(FactoryRun.applyRepel(r), isNull);
+    expect(FactoryRun.repelOn({...r, 'floor': 3 + FactoryRun.repelFloors}), isFalse);
+    expect(FactoryRun.applyRepel({...run, 'repels': 0}), isNull);
+    final onlyWild = FactoryRun.applyRepel({...run, 'route': {'floor': 3, 'options': [{'kind': 'wild'}]}})!;
+    expect(onlyWild['route']['options'], [{'kind': 'wild'}]);
+  });
+
   test('golpes da evolução: os de nível 1 da forma nova que a de antes não aprendia por nível (igual ao site)', () {
     final moves = <String, Map<String, dynamic>>{'wing-attack': {}, 'scratch': {}, 'growl': {}, 'air-slash': {}};
     final charmeleon = [['scratch', 'level-up', 1], ['growl', 'level-up', 1], ['ember', 'level-up', 9]];

@@ -299,6 +299,8 @@ class FactoryRun {
     'exp-share': 800,
     // Mapa (Town Map): mostra o mapa da rota e deixa escolher o caminho nas bifurcações (sem ele, vai às cegas).
     'town-map': 200,
+    // Repelente: os caminhos de selvagens somem por repelFloors andares (sempre à venda).
+    'repel': 60,
   };
 
   /// Preço base de um TM ("tm:<golpe>") e de uma pedra de evolução ("evo:<item>").
@@ -3391,7 +3393,7 @@ class FactoryRun {
     if (rand() < 0.5) add('revive');
     // O Mapa aparece fácil (até ser comprado).
     if (!hasMap && rand() < townMapChance) add('town-map');
-    final ids = [for (final id in shop.keys) if (!ballIds.contains(id) && !healTiers.contains(id) && id != 'revive' && id != 'town-map') id];
+    final ids = [for (final id in shop.keys) if (!ballIds.contains(id) && !healTiers.contains(id) && id != 'revive' && id != 'town-map' && id != 'repel') id];
     // TM e pedra de evolução, às vezes.
     if (data.tms.isNotEmpty && rand() < 0.6) out.add('tm:${_pick(data.tms, rand)}');
     if (data.stones.isNotEmpty && rand() < 0.45) out.add('evo:${_pick(data.stones, rand)}');
@@ -3399,6 +3401,8 @@ class FactoryRun {
       final id = _pick(ids, rand);
       if (!out.contains(id)) out.add(id);
     }
+    // O Repelente sempre à venda (como nos jogos), no fim da lista.
+    out.add('repel');
     return out;
   }
 
@@ -4639,6 +4643,29 @@ class FactoryRun {
     };
   }
 
+  /// Quantos andares o Repelente dura.
+  static const repelFloors = 5;
+
+  /// O Repelente está valendo (os caminhos de selvagens somem).
+  static bool repelOn(Json run) => run['repel'] is Map && _int(run['floor']) - _int(run['repel']['floor']) < repelFloors;
+
+  /// Andares que o Repelente ainda dura (0: acabou).
+  static int repelLeft(Json run) => repelOn(run) ? repelFloors - (_int(run['floor']) - _int(run['repel']['floor'])) : 0;
+
+  /// Os caminhos sem os de selvagens, com o Repelente (se sobrar algum). Igual ao site.
+  static Json? _repelled(Json run, Json? route) {
+    if (!repelOn(run) || route == null || route['options'] is! List) return route;
+    final options = [for (final o in route['options'] as List) if ((o as Map)['kind'] != 'wild') o];
+    return options.isEmpty ? route : {...route, 'options': options};
+  }
+
+  /// Usa um Repelente (da bolsa): vale já nos caminhos de agora e por repelFloors andares. null se não dá.
+  static Json? applyRepel(Json run) {
+    if (_int(run['repels'] ?? 0) <= 0 || repelOn(run) || run['encounter'] != null || run['pending'] != null) return null;
+    final out = {...run, 'repels': _int(run['repels']) - 1, 'repel': {'floor': run['floor']}};
+    return {...out, 'route': _repelled(out, run['route'] == null ? null : Map<String, dynamic>.from(run['route'] as Map))};
+  }
+
   /// Cut: uma vez por rota, corta a árvore e abre um caminho escondido (um selvagem raro do lugar). null se não dá.
   static Json? cutPath(Json run) {
     final route = run['route'] as Map?;
@@ -5455,6 +5482,7 @@ class FactoryRun {
     if (id == 'tera-orb') return out..['tera'] = true;
     if (id == 'exp-share') return out..['expShare'] = true;
     if (id == 'town-map') return out..['townMap'] = true;
+    if (id == 'repel') return out..['repels'] = _int(out['repels'] ?? 0) + 1;
     if (tokens.contains(id)) {
       final t = Map<String, dynamic>.from((out['tokens'] as Map?) ?? const {});
       t[id] = ((t[id] as num?) ?? 0).toInt() + 1;
@@ -5641,7 +5669,7 @@ class FactoryRun {
       final got = [for (final k in (featuresOf(data, out)['arrive'] as List?) ?? const []) _addKey(out, k)].whereType<String>().toList();
       if (got.isNotEmpty) (out['town'] as Map)['got'] = got;
     }
-    out['route'] = routeOptions(out, data, rand);
+    out['route'] = _repelled(out, routeOptions(out, data, rand));
     // Começo de uma rota nova: a missão dela.
     if (routePos(out) == 0 && !atCity(data, out) && run['mission']?['leg'] != _int(out['leg'] ?? 1)) out['mission'] = newMission(out, data, rand);
     return out;

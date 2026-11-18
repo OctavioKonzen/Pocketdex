@@ -2750,6 +2750,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
     }
     if (id == 'exp-share') return tr('O time todo ganha XP (quem não lutou, a metade)');
     if (id == 'town-map') return tr('Mostra o mapa da rota e deixa escolher o caminho nas bifurcações (sem ele, vai às cegas)');
+    if (id == 'repel') return tr('Use em AÇÕES: os caminhos de selvagens somem por {0} andares').replaceAll('{0}', '${FactoryRun.repelFloors}');
     if (id == 'revive') return tr('Revive com metade do HP');
     final share = FactoryRun.healShare[id];
     if (share != null) return share >= 1 ? tr('Recupera todo o HP') : tr('Recupera {0}% do HP').replaceAll('{0}', '${(share * 100).round()}');
@@ -2873,6 +2874,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                 if (((run['gcCoins'] as num?) ?? 0) > 0) Text('🎰 ${run['gcCoins']}', key: const ValueKey('factory-coins'), style: style),
                 if (run['honey'] != null)
                   Text('🍯${max(0, FactoryRun.honeyFloors - ((run['floor'] as num).toInt() - (run['honey']['floor'] as num).toInt()))}', key: const ValueKey('factory-honey'), style: style),
+                if (FactoryRun.repelOn(run)) Text('🧴${FactoryRun.repelLeft(run)}', key: const ValueKey('factory-repel-on'), style: style),
                 if (run['berry'] != null)
                   Text('🌱${max(0, (run['berry']['need'] as num).toInt() - ((run['floor'] as num).toInt() - (run['berry']['floor'] as num).toInt()))}', key: const ValueKey('factory-berry'), style: style),
                 if (run['daycare'] != null) Text('🏡', style: style),
@@ -4958,6 +4960,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
       if (plant != null) act('factory-berry-plant', '🌱 ${tr('PLANTAR FRUTA')}', plant),
       if (pick != null) act('factory-berry-pick', '🍓 ${tr('COLHER {0}× {1}').replaceAll('{0}', '${run['berry']['count']}').replaceAll('{1}', _itemName('${run['berry']['item']}'))}', pick),
       if (bike != null) act('factory-bike', '🚲 Bicycle', bike),
+      if (!meeting && FactoryRun.applyRepel(run) != null) act('factory-repel', '🧴 ${tr('REPELENTE')} (${run['repels']})', FactoryRun.applyRepel(run)!),
       if (photos.isNotEmpty)
         _menuButton('📷 ${tr('ÁLBUM')} (${photos.length})', widget.busy ? null : () => setState(() => _panel = _panel == 'album' ? null : 'album'),
             active: _panel == 'album', key: const ValueKey('factory-album')),

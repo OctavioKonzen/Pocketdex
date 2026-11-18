@@ -23,7 +23,7 @@ import {
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, teamRoom, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, sceneLines, bossCity, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, atPc, pcOf, PC_SIZE, RARE_PLACES, shownScene, gameOf, tierOf, foeBoostAt, leagueAhead, unlockShiny, VITAMIN_EVS, VITAMINS,
   forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor, isKeystone,
-  tradeMon, skipTrade, TRADE_LEVELS, levelCapOf, townTrade, townTradeable, legOf, fishPath, rodOf, RODS, headbuttPath, slatherHoney, honeyReady, honeyPath, HONEY_FLOORS, plantBerry, berryReady, harvestBerry, bikePath, takePhoto, photoNow, cancelEvolution, evolutionMoves, setNick, gymPuzzleOf, startPuzzle, puzzleAct, finishPuzzle, puzzleView, gymLocked, puzzleTitle, GYM_CHALLENGES, KEY_ITEMS, hasKey, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, reminderCost, forgetMove, daycareOpen, daycareHere, safariAct, safariRates, leaveSafari, SAFARI_FEE, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, swapTeam, bossScene,
+  tradeMon, skipTrade, TRADE_LEVELS, levelCapOf, townTrade, townTradeable, legOf, fishPath, rodOf, RODS, headbuttPath, slatherHoney, honeyReady, honeyPath, HONEY_FLOORS, plantBerry, berryReady, harvestBerry, bikePath, takePhoto, photoNow, cancelEvolution, evolutionMoves, setNick, applyRepel, repelOn, repelLeft, REPEL_FLOORS, gymPuzzleOf, startPuzzle, puzzleAct, finishPuzzle, puzzleView, gymLocked, puzzleTitle, GYM_CHALLENGES, KEY_ITEMS, hasKey, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, reminderCost, forgetMove, daycareOpen, daycareHere, safariAct, safariRates, leaveSafari, SAFARI_FEE, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, swapTeam, bossScene,
   resolveChoice, regionLegend, leaderType, villainTeam, rivalBoss, rocketBoss, placeInfo, routeInfo, DUNGEON_LENGTH, dungeonPos, townShop, townCenter,
   weeklyOf, startWeekly, COSMETIC_BALLS, COSMETIC_FRAMES, hasCosmetic, buyCosmetic, equipCosmetic,
   boostOf, memberOf, learnMove, movesLearnedBetween,
@@ -2566,6 +2566,7 @@ function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, 
             {(run.hms ?? []).map((hm) => <span key={hm} title={HM_INFO[hm]?.name}>{HM_INFO[hm]?.icon}</span>)}
             {(run.keyItems ?? []).map((k) => <span key={k} title={KEY_ITEMS[k]} data-testid={`factory-key-${k}`}>{KEY_INFO[k]?.icon}</span>)}
             {(run.gcCoins ?? 0) > 0 && <span title={t('Fichas do Game Corner')} data-testid="factory-coins">🎰 {run.gcCoins}</span>}
+            {repelOn(run) && <span title={t('Repelente')} data-testid="factory-repel-on">🧴{repelLeft(run)}</span>}
             {run.honey && <span title={t('Mel na árvore')} data-testid="factory-honey">🍯{Math.max(0, HONEY_FLOORS - (run.floor - run.honey.floor))}</span>}
             {run.berry && <span title={t('Vaso de frutas')} data-testid="factory-berry">🌱{Math.max(0, run.berry.need - (run.floor - run.berry.floor))}</span>}
             {run.daycare && <span title={t('Creche')}>🏡</span>}
@@ -3604,6 +3605,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
             !meeting && !town && plantBerry(run, data) && ['factory-berry-plant', `🌱 ${t('PLANTAR FRUTA')}`, () => save(plantBerry(run, data))],
             berryReady(run) && harvestBerry(run) && ['factory-berry-pick', `🍓 ${t('COLHER {0}× {1}').replace('{0}', run.berry.count).replace('{1}', itemName(run.berry.item))}`, () => save(harvestBerry(run))],
             !meeting && bikePath(run, data) && ['factory-bike', '🚲 Bicycle', () => save(bikePath(run, data))],
+            !meeting && applyRepel(run) && ['factory-repel', `🧴 ${t('REPELENTE')} (${run.repels})`, () => save(applyRepel(run))],
             (run.photos ?? []).length > 0 && ['factory-album', `📷 ${t('ÁLBUM')} (${run.photos.length})`, () => setPanel(panel === 'album' ? null : 'album')],
           ].filter(Boolean)
           return acts.length > 0 && (
@@ -3817,6 +3819,7 @@ function itemHelp(id) {
   if (id === 'lucky-egg') return t('Quem segura ganha +{0}% de XP (como extra, +{1}%)').replace('{0}', Math.round((LUCKY_EGG.held - 1) * 100)).replace('{1}', Math.round((LUCKY_EGG.extra - 1) * 100))
   if (id === 'exp-share') return t('O time todo ganha XP (quem não lutou, a metade)')
   if (id === 'town-map') return t('Mostra o mapa da rota e deixa escolher o caminho nas bifurcações (sem ele, vai às cegas)')
+  if (id === 'repel') return t('Use em AÇÕES: os caminhos de selvagens somem por {0} andares').replace('{0}', REPEL_FLOORS)
   if (id === 'revive') return t('Revive com metade do HP')
   if (HEAL_SHARE[id]) return HEAL_SHARE[id] >= 1 ? t('Recupera todo o HP') : t('Recupera {0}% do HP').replace('{0}', Math.round(HEAL_SHARE[id] * 100))
   if (id === 'rare-candy') return t('+1 nível')

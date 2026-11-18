@@ -2502,3 +2502,19 @@ describe('golpes da evolução', () => {
     expect(F.evolutionMoves(charmeleon, charmeleon, moves)).toEqual([])
   })
 })
+
+describe('Repelente', () => {
+  it('tira os caminhos de selvagens por REPEL_FLOORS andares (se sobrar algum) e está sempre à venda (igual ao app)', async () => {
+    const F = await import('./factoryRun')
+    const run = { ...F.startRun(F.emptyFactory(), data, 1, 42), floor: 3, encounter: null, pending: null, repels: 1, route: { floor: 3, biome: 'grass', options: [{ kind: 'wild' }, { kind: 'trainer' }] } }
+    const r = F.applyRepel(run)
+    expect(r.repels).toBe(0)
+    expect(r.route.options).toEqual([{ kind: 'trainer' }])
+    expect(F.repelLeft(r)).toBe(F.REPEL_FLOORS)
+    expect(F.applyRepel(r)).toBe(null)
+    expect(F.repelOn({ ...r, floor: r.floor + F.REPEL_FLOORS })).toBe(false)
+    expect(F.applyRepel({ ...run, repels: 0 })).toBe(null)
+    const onlyWild = F.applyRepel({ ...run, route: { ...run.route, options: [{ kind: 'wild' }] } })
+    expect(onlyWild.route.options).toEqual([{ kind: 'wild' }])
+  })
+})
