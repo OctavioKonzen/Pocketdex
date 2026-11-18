@@ -19,7 +19,7 @@ import { getFactoryData, getMoves, getSpecies, shinyPath, spriteUrl } from '../l
 import { learnsetOf, movesFor } from '../lib/factoryBattle'
 import { battleMons } from '../lib/battleSetup'
 import {
-  BAG_ITEMS, runSummary, dexBook, BOX_SIZE, boxToSet, releaseFromBox, HUNT_MAX, HUNT_STEP, huntBase, huntMultOf, setHunt, bossOf, regionOf, genderOf, piecesOf, pieceOf, upgradePieces, tradePieces, PIECE_ITEMS, PIECE_TRADE, capturedMon, isRegionalForm, emptyFactory, unequipItem, ROUTE_LENGTH, CITY_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
+  BAG_ITEMS, runSummary, dexBook, HUNT_MAX, HUNT_STEP, huntBase, huntMultOf, setHunt, bossOf, regionOf, genderOf, piecesOf, pieceOf, upgradePieces, tradePieces, PIECE_ITEMS, PIECE_TRADE, capturedMon, isRegionalForm, emptyFactory, unequipItem, ROUTE_LENGTH, CITY_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, teamRoom, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, sceneLines, bossCity, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, atPc, pcOf, PC_SIZE, RARE_PLACES, shownScene, gameOf, tierOf, foeBoostAt, leagueAhead, unlockShiny, VITAMIN_EVS, VITAMINS,
   forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor, isKeystone,
@@ -773,86 +773,6 @@ function HuntCard({ factory, data, byId }) {
     </details>
   )
 }
-
-/**
- * O PC: os Pokémon das corridas (o time do fim e quem saiu do time). Tocando
- * num, abre os dados e dá para pôr num dos seus times (para as outras
- * batalhas) ou soltar. Igual ao app.
- */
-function BoxPanel({ factory, byId, data }) {
-  const box = factory.box ?? []
-  const [open, setOpen] = useState(null)
-  const [moves, setMoves] = useState([])
-  const teams = useStore((s) => s.teams)
-  const updateTeam = useStore((s) => s.updateTeam)
-  const importTeam = useStore((s) => s.importTeam)
-  const pick = open == null ? null : box[open]
-  const show = async (i) => {
-    setOpen(i)
-    const m = box[i]
-    setMoves(m.moves?.length ? m.moves : await movesFor(m.id, m.level))
-  }
-  const toTeam = (team) => {
-    const set = boxToSet(pick, moves)
-    if (!team) importTeam({ name: t('Time do PC'), pokemon: [pick.id], sets: [set] })
-    else {
-      const ids = Array.from({ length: 6 }, (_, k) => team.pokemon?.[k] ?? null)
-      const sets = Array.from({ length: 6 }, (_, k) => team.sets?.[k] ?? null)
-      const slot = ids.indexOf(null)
-      if (slot < 0) return
-      ids[slot] = pick.id
-      sets[slot] = set
-      updateTeam(team.id, { pokemon: ids, sets })
-    }
-    setOpen(null)
-  }
-  const p = pick && byId?.get(pick.id)
-  return (
-    <details className="rounded-2xl bg-bg p-3" data-testid="factory-box">
-      <summary className="cursor-pointer font-bold">💻 {t('PC')} <span className="text-xs text-muted">· {box.length}/{BOX_SIZE}</span></summary>
-      <p className="my-2 text-xs text-muted">{t('Quando a corrida acaba, o time vai para o PC (e quem saiu do time no caminho também). Toque num Pokémon para pôr num dos seus times.')}</p>
-      {!box.length && <p className="text-xs text-muted">{t('O PC está vazio: termine uma corrida.')}</p>}
-      <div className="flex flex-wrap gap-1">
-        {box.map((m, i) => {
-          const q = byId?.get(m.id)
-          return (
-            <button key={i} type="button" data-testid={`box-${i}`} onClick={() => show(i)}
-              className={`flex w-14 cursor-pointer flex-col items-center rounded-xl bg-card py-0.5 ring-2 ${open === i ? 'ring-amber-500' : 'ring-transparent'}`}>
-              <span className="h-10 w-10">{q && <Sprite path={m.shiny ? shinyPath(q.sprite) : q.sprite} box={q.box} fill={0.95} alt={q.name} />}</span>
-              <span className="text-[10px] font-bold text-muted">Nv. {m.level}</span>
-            </button>
-          )
-        })}
-      </div>
-      {pick && (
-        <div className="mt-3 rounded-xl bg-card p-3" data-testid="box-detail">
-          <div className="flex items-center gap-3">
-            <span className="h-16 w-16 shrink-0">{p && <Sprite path={pick.shiny ? shinyPath(p.sprite) : p.sprite} box={p.box} fill={0.95} alt={p.name} />}</span>
-            <div className="min-w-0">
-              <p className="font-black" data-no-translate>{pick.shiny ? '✨ ' : ''}{prettyName(p?.name ?? '')} {{ F: '♀', M: '♂' }[genderOf(data, pick)] ?? ''}</p>
-              <p className="text-xs text-muted">Nv. {pick.level} · {pick.nature}{pick.item ? ` · ${prettySlug(pick.item)}` : ''}</p>
-              <p className="text-xs" data-no-translate>{moves.map(prettySlug).join(' · ')}</p>
-            </div>
-          </div>
-          <p className="mt-2 text-sm font-bold">{t('Pôr num time')}</p>
-          <div className="mt-1 flex flex-wrap gap-1.5">
-            {teams.map((team) => {
-              const used = (team.pokemon ?? []).filter((x) => x != null).length
-              return (
-                <button key={team.id} type="button" data-testid={`box-team-${team.id}`} disabled={used >= 6} onClick={() => toTeam(team)}
-                  className="cursor-pointer rounded-full px-3 py-1 text-sm ring-1 ring-line disabled:opacity-40" data-no-translate>{team.name} ({used}/6)</button>
-              )
-            })}
-            <button type="button" data-testid="box-new-team" onClick={() => toTeam(null)} className="cursor-pointer rounded-full bg-sky-600 px-3 py-1 text-sm font-bold text-white">+ {t('Novo time')}</button>
-          </div>
-          <button type="button" data-testid="box-release" onClick={() => { saveFactory(releaseFromBox(factory, open)); setOpen(null) }}
-            className="mt-2 cursor-pointer text-sm font-bold text-red-500">{t('Soltar')}</button>
-        </div>
-      )}
-    </details>
-  )
-}
-
 /** A troca dos itens da árvore: 3 de um por 1 de outro (quando falta um tipo de chefe). Igual ao app. */
 function PiecesTrade({ factory }) {
   const [from, setFrom] = useState(PIECE_ITEMS[0])
@@ -1099,8 +1019,6 @@ export function FactoryHub({ onContinue, busy }) {
         <PiecesTrade factory={factory} />
         <Bonuses factory={factory} data={data} />
       </details>
-
-      <BoxPanel factory={factory} byId={byId} data={data} />
 
       {(factory.history ?? []).length > 0 && (
         <details className="rounded-2xl bg-bg p-3" data-testid="factory-history">

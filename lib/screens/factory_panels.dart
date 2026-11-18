@@ -33,7 +33,6 @@ import '../services/team_battle.dart';
 import '../services/team_sets.dart';
 import '../services/trainers.dart';
 import '../services/turn_battle.dart';
-import 'package:uuid/uuid.dart';
 import '../services/user_data.dart';
 import '../utils/pokemon_colors.dart';
 import '../utils/site_ui.dart';
@@ -1534,141 +1533,6 @@ Widget _bestRuns(BuildContext context, List gallery) {
   );
 }
 
-/// O PC: os Pokémon das corridas (o time do fim e quem saiu do time). Tocando num, abre os dados e dá para pôr num
-/// dos seus times (para as outras batalhas) ou soltar. Igual ao site.
-class _BoxPanel extends StatelessWidget {
-  final Json factory;
-  final String Function(int) name;
-  final void Function(Json) onSave;
-  const _BoxPanel({required this.factory, required this.name, required this.onSave});
-
-  @override
-  Widget build(BuildContext context) {
-    final c = SiteColors.of(context);
-    final box = [for (final b in (factory['box'] as List?) ?? const []) Map<String, dynamic>.from(b as Map)];
-    return _panel(context, '💻 ${tr('PC')} · ${box.length}/${FactoryRun.boxSize}', key: const ValueKey('factory-box'), [
-      Text(tr('Quando a corrida acaba, o time vai para o PC (e quem saiu do time no caminho também). Toque num Pokémon para pôr num dos seus times.'),
-          style: TextStyle(color: c.muted, fontSize: 12)),
-      const SizedBox(height: 8),
-      if (box.isEmpty) Text(tr('O PC está vazio: termine uma corrida.'), style: TextStyle(color: c.muted, fontSize: 12)),
-      Wrap(spacing: 4, runSpacing: 4, children: [
-        for (final (i, m) in box.indexed)
-          InkWell(
-            key: ValueKey('box-$i'),
-            borderRadius: BorderRadius.circular(10),
-            onTap: () => _open(context, i, m),
-            child: Container(
-              width: 56,
-              padding: const EdgeInsets.symmetric(vertical: 2),
-              decoration: BoxDecoration(color: c.card, borderRadius: BorderRadius.circular(10)),
-              child: Column(children: [
-                SizedBox.square(dimension: 40, child: PokemonSprite((m['id'] as num).toInt(), shiny: m['shiny'] == true, fill: 0.95)),
-                Text('Nv. ${m['level']}', style: TextStyle(fontSize: 10, color: c.muted, fontWeight: FontWeight.bold)),
-              ]),
-            ),
-          ),
-      ]),
-    ]);
-  }
-
-  Future<void> _open(BuildContext context, int index, Map<String, dynamic> m) async {
-    final id = (m['id'] as num).toInt();
-    final own = [for (final x in (m['moves'] as List?) ?? const []) '$x'];
-    final moves = own.isNotEmpty ? own : await _movesFor(id, (m['level'] as num).toInt());
-    if (!context.mounted) return;
-    await showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      // Muitos times: a janela rola (no celular pequeno os botões não cabem).
-      isScrollControlled: true,
-      builder: (sheet) {
-        final c = SiteColors.of(sheet);
-        final teams = UserData.instance.teams;
-        return SafeArea(
-          child: SingleChildScrollView(
-            child: Padding(
-            key: const ValueKey('box-detail'),
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Row(children: [
-                SizedBox.square(dimension: 72, child: PokemonSprite(id, shiny: m['shiny'] == true, fill: 0.95)),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('${m['shiny'] == true ? '✨ ' : ''}${name(id)}${switch (FactoryData.loaded == null ? null : FactoryRun.genderOf(FactoryData.loaded!, m)) { 'F' => ' ♀', 'M' => ' ♂', _ => '' }}',
-                        style: TextStyle(fontWeight: FontWeight.w900, color: c.text, fontSize: 16)),
-                    Text('Nv. ${m['level']} · ${m['nature']}${m['item'] != null ? ' · ${prettySlug('${m['item']}')}' : ''}', style: TextStyle(color: c.muted, fontSize: 12)),
-                    Text(moves.map(prettySlug).join(' · '), style: TextStyle(color: c.text, fontSize: 12)),
-                  ]),
-                ),
-              ]),
-              const SizedBox(height: 10),
-              Text(tr('Pôr num time'), style: TextStyle(fontWeight: FontWeight.bold, color: c.text)),
-              const SizedBox(height: 4),
-              Wrap(spacing: 6, runSpacing: 6, children: [
-                for (final t in teams)
-                  Builder(builder: (_) {
-                    final free = ((t['pokemon'] as List?) ?? const []).where((x) => x == null).length + (6 - ((t['pokemon'] as List?) ?? const []).length);
-                    return OutlinedButton(
-                      key: ValueKey('box-team-${t['id']}'),
-                      onPressed: free <= 0
-                          ? null
-                          : () {
-                              _toTeam(t['id'] as String?, id, FactoryRun.boxToSet(m, moves));
-                              Navigator.pop(sheet);
-                            },
-                      child: Text('${t['name']} (${6 - free}/6)'),
-                    );
-                  }),
-                FilledButton(
-                  key: const ValueKey('box-new-team'),
-                  onPressed: () {
-                    _toTeam(null, id, FactoryRun.boxToSet(m, moves));
-                    Navigator.pop(sheet);
-                  },
-                  child: Text('+ ${tr('Novo time')}'),
-                ),
-              ]),
-              const SizedBox(height: 8),
-              TextButton(
-                key: const ValueKey('box-release'),
-                style: TextButton.styleFrom(foregroundColor: const Color(0xFFEF4444)),
-                onPressed: () {
-                  onSave(FactoryRun.releaseFromBox(factory, index));
-                  Navigator.pop(sheet);
-                },
-                child: Text(tr('Soltar')),
-              ),
-            ]),
-          ),
-          ),
-        );
-      },
-    );
-  }
-
-  /// Põe no primeiro lugar vazio do time (ou num time novo "Time do PC").
-  static void _toTeam(String? teamId, int id, Json set) {
-    final teams = [for (final t in UserData.instance.teams) Map<String, dynamic>.from(t)];
-    final i = teams.indexWhere((t) => t['id'] == teamId);
-    if (i < 0) {
-      teams.add({
-        'id': const Uuid().v4(), 'name': tr('Time do PC'), 'color': null,
-        'pokemon': [id, null, null, null, null, null], 'sets': [set, null, null, null, null, null],
-      });
-    } else {
-      final ids = [for (var k = 0; k < 6; k++) k < ((teams[i]['pokemon'] as List?) ?? const []).length ? (teams[i]['pokemon'] as List)[k] : null];
-      final sets = [for (var k = 0; k < 6; k++) k < ((teams[i]['sets'] as List?) ?? const []).length ? (teams[i]['sets'] as List)[k] : null];
-      final slot = ids.indexOf(null);
-      if (slot < 0) return;
-      ids[slot] = id;
-      sets[slot] = set;
-      teams[i] = {...teams[i], 'pokemon': ids, 'sets': sets};
-    }
-    UserData.instance.update({'teams': teams});
-  }
-}
-
 /// A caça shiny: o Pokémon escolhido, quantas vezes já apareceu e quantas vezes mais comum está o shiny dele.
 /// Igual ao site.
 class _HuntCard extends StatelessWidget {
@@ -2194,7 +2058,6 @@ class _FactoryHubState extends State<FactoryHub> {
                   ])
             ),
             ('🎨', 'Cosméticos', (context) => _panel(context, '🎨 ${tr('Loja de cosméticos')}', [_cosmeticsTile(context, factory, (next) => next == null ? null : setState(() => saveFactory(next)))])),
-            ('💻', 'PC', (context) => _BoxPanel(factory: factory, name: _name, onSave: _save)),
             (
               '📜',
               'Corridas',

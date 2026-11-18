@@ -227,14 +227,6 @@ final screens = <String, Widget Function()>{
     saveFactory({'best': 30, 'coins': 5000, 'owned': [1, 4, 7, 25, 133, 152], 'shinies': [], 'run': null, 'upgrades': {'level': 5}});
     return Scaffold(body: ListView(padding: const EdgeInsets.all(12), children: [FactoryHub(onContinue: () {}, busy: false)]));
   },
-  // O PC: os Pokémon das corridas; tocando num, os dados e "Pôr num time".
-  'Battle Factory (PC)': () {
-    saveFactory({'best': 30, 'coins': 500, 'owned': [1, 4, 7], 'shinies': [], 'run': null, 'box': [
-      for (final (i, id) in [6, 25, 94, 130, 149, 248, 445, 3, 9, 65, 143, 131].indexed)
-        {'id': id, 'level': 20 + i * 3, 'nature': 'Adamant', 'ivs': {'hp': 20}, 'evs': {}, 'moves': i == 0 ? ['flamethrower', 'air-slash', 'dragon-claw', 'roost'] : [], if (i == 3) 'shiny': true, 'date': '2026-11-04'},
-    ]});
-    return Scaffold(body: ListView(padding: const EdgeInsets.all(12), children: [FactoryHub(onContinue: () {}, busy: false)]));
-  },
   // A caça shiny: o escolhido, os encontros e quantas vezes mais comum está o shiny.
   'Battle Factory (caça shiny)': () {
     saveFactory({'best': 30, 'coins': 500, 'owned': [1, 4, 7], 'shinies': [], 'run': null, 'hunt': {'id': 133, 'count': 47, 'found': 1}});
@@ -559,21 +551,6 @@ final Map<String, Future<void> Function(WidgetTester)> actions = {
     await tester.pump(const Duration(milliseconds: 300));
     await tester.runAsync(() => Future.delayed(const Duration(milliseconds: 300)));
     await tester.pump();
-  },
-  'Battle Factory (PC)': (tester) async {
-    await tester.ensureVisible(find.byKey(const ValueKey('factory-tab-💻')));
-    await tester.pump();
-    await tester.tap(find.byKey(const ValueKey('factory-tab-💻')));
-    await tester.pump(const Duration(milliseconds: 300));
-    await tester.pump();
-    expect(find.byKey(const ValueKey('factory-box')), findsOneWidget);
-    await tester.ensureVisible(find.byKey(const ValueKey('box-0')));
-    await tester.pump();
-    await tester.tap(find.byKey(const ValueKey('box-0')));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
-    expect(find.byKey(const ValueKey('box-detail')), findsOneWidget);
-    expect(find.byKey(const ValueKey('box-new-team')), findsOneWidget);
   },
   'Battle Factory (caça shiny)': (tester) async {
     await tester.ensureVisible(find.byKey(const ValueKey('factory-tab-✨')));
