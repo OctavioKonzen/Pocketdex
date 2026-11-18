@@ -3133,14 +3133,18 @@ class FactoryRun {
   /// As cenas da história (tool/factory_scenes.py): kind 'city' (ao chegar na cidade, key = a cidade) ou
   /// 'before'/'last'/'after' (antes, no meio e depois da luta, key = "Nome@Cidade"). [[quem fala, texto]]. Igual ao site.
   static List<(String, String)> sceneLines(FactoryData data, String region, String kind, String key, [String lang = 'pt']) {
-    final s = data.scenes[region] as Map?;
-    final List? list = kind == 'city' ? ((s?['cities'] as Map?)?[key] as List?) : (((s?['bosses'] as Map?)?[key] as Map?)?[kind] as List?);
+    // As do jogo ("Kanto|Red/Blue") e, se ele não tiver a fala, as da região. Sem a língua: o inglês (e o português).
+    List? pick(Map? s) => kind == 'city' ? ((s?['cities'] as Map?)?[key] as List?) : (((s?['bosses'] as Map?)?[key] as Map?)?[kind] as List?);
+    final list = pick(data.scenes[region] as Map?) ?? pick(data.scenes[region.split('|').first] as Map?);
     final i = math.max(0, sceneLangs.indexOf(lang));
     return [
       for (final l in list ?? const [])
-        ('${(l as List)[0]}', '${l.length > 1 + i ? l[1 + i] : l[1]}')
+        ('${(l as List)[0]}', '${l.length > 1 + i ? l[1 + i] : l.length > 2 ? l[2] : l[1]}')
     ];
   }
+
+  /// A chave das cenas e da história de um chefe (ou de um jogo da lista de chefes): "Região|Jogo". Igual ao site.
+  static String sceneRegion(Map? b) => b?['game'] != null ? '${b!['region']}|${b['game']}' : '${b?['region'] ?? ''}';
 
   /// A cidade do chefe de agora na corrida (a chave das cenas dele).
   static String? bossCity(FactoryData data, Json? run) {
@@ -3151,7 +3155,8 @@ class FactoryRun {
     return l?['city'] as String?;
   }
 
-  static String storyLine(FactoryData data, String region, String key, [String name = '']) => (data.stories[region]?[key] ?? '').replaceFirst('{0}', name);
+  static String storyLine(FactoryData data, String region, String key, [String name = '']) =>
+      (data.stories[region]?[key] ?? data.stories[region.split('|').first]?[key] ?? '').replaceFirst('{0}', name);
 
   /// Venceu o andar. hp: a parte do HP de cada um do time (na ordem da
   /// corrida) no fim da batalha; bag: a Bolsa que sobrou; captured: capturou o
@@ -3459,7 +3464,7 @@ class FactoryRun {
       // Acabou a história da região: o fim dela e o começo da próxima.
       if (boss['step'] == 0) {
         out['games'] = tierOf(run) + 1;
-        story = '${storyLine(data, '${beaten['region']}', 'end')}\n\n${storyLine(data, '${data.bosses[_int(boss['region'])]['region']}', 'intro')}';
+        story = '${storyLine(data, sceneRegion(beaten), 'end')}\n\n${storyLine(data, sceneRegion(data.bosses[_int(boss['region'])]), 'intro')}';
       }
       out['boss'] = boss;
       out['played'] = played;
@@ -3546,6 +3551,7 @@ class FactoryRun {
       if (kind == 'boss' || kind == 'rival')
         'beat': {
           'kind': run['encounter']['boss']['kind'], 'name': run['encounter']['boss']['name'], 'region': run['encounter']['boss']['region'],
+          if (run['encounter']['boss']['game'] != null) 'game': run['encounter']['boss']['game'],
           if (kind == 'boss' && bossCity(data, run) != null) 'city': bossCity(data, run),
         },
       if (mission != null) 'mission': mission,

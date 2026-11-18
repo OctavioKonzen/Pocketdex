@@ -3117,17 +3117,20 @@ export const SCENE_LANGS = ['pt', 'en', 'fr', 'es']
  * (antes e depois da luta, key = "Nome@Cidade"). Devolve [[quem fala ('' = narrador), texto na língua]]. Igual ao app.
  */
 export function sceneLines(data, region, kind, key, lang = 'pt') {
-  const s = data?.scenes?.[region]
-  const list = kind === 'city' ? s?.cities?.[key] : s?.bosses?.[key]?.[kind]
+  // As do jogo ("Kanto|Red/Blue") e, se ele não tiver a fala, as da região. Sem a língua: o inglês (e o português).
+  const pick = (s) => (kind === 'city' ? s?.cities?.[key] : s?.bosses?.[key]?.[kind])
+  const list = pick(data?.scenes?.[region]) ?? pick(data?.scenes?.[String(region).split('|')[0]])
   const i = Math.max(0, SCENE_LANGS.indexOf(lang))
-  return (list ?? []).map((l) => [l[0], l[1 + i] ?? l[1]])
+  return (list ?? []).map((l) => [l[0], l[1 + i] ?? l[2] ?? l[1]])
 }
+/** A chave das cenas e da história de um chefe (ou de um jogo da lista de chefes): "Região|Jogo". Igual ao app. */
+export const sceneRegion = (b) => (b?.game ? `${b.region}|${b.game}` : b?.region ?? '')
 /** A cidade do chefe de agora na corrida (a chave das cenas dele). */
 export const bossCity = (data, run) => data?.bosses?.[run?.boss?.region]?.leaders?.[run.boss.step]?.city ?? null
 
 /** O texto da história (tool/factory_stories.py) para a região e o momento ({0}: o nome do chefe). */
 export function storyLine(data, region, key, name = '') {
-  return (data.stories?.[region]?.[key] ?? '').replace('{0}', name)
+  return (data.stories?.[region]?.[key] ?? data.stories?.[String(region).split('|')[0]]?.[key] ?? '').replace('{0}', name)
 }
 
 /**
@@ -3374,7 +3377,7 @@ export function winFloor(run, data, after = {}) {
     const [boss, played] = nextBoss(out, data, rand)
     // Acabou a história da região: o fim dela e o começo da próxima.
     if (boss.step === 0) out.games = (run.games ?? 0) + 1
-    if (boss.step === 0) story = `${storyLine(data, beaten.region, 'end')}\n\n${storyLine(data, data.bosses[boss.region].region, 'intro')}`
+    if (boss.step === 0) story = `${storyLine(data, sceneRegion(beaten), 'end')}\n\n${storyLine(data, sceneRegion(data.bosses[boss.region]), 'intro')}`
     out.boss = boss
     out.played = played
     // Em Alola (onde existem os Z-Moves), o chefe deixa o Cristal Z do tipo do Pokémon mais forte dele.
@@ -3435,7 +3438,7 @@ export function winFloor(run, data, after = {}) {
     // A loja da cidade: chegando nela, logo antes do chefe (no resto da rota, os Poké Marts do mapa).
     shop: kind !== 'boss' || !CITY_KINDS.includes(run.encounter.boss.kind) ? (atCity(data, out) && !inLeague(data, out) && !townHub(data, out) ? pickShop(rand, data, run.floor, 8, Boolean(run.townMap)) : null) : null,
     // O chefe que acabou de perder (as falas depois da luta) e a missão completa.
-    ...(kind === 'boss' || kind === 'rival' ? { beat: { kind: run.encounter.boss.kind, name: run.encounter.boss.name, region: run.encounter.boss.region, ...(kind === 'boss' && bossCity(data, run) ? { city: bossCity(data, run) } : {}) } } : {}),
+    ...(kind === 'boss' || kind === 'rival' ? { beat: { kind: run.encounter.boss.kind, name: run.encounter.boss.name, region: run.encounter.boss.region, ...(run.encounter.boss.game ? { game: run.encounter.boss.game } : {}), ...(kind === 'boss' && bossCity(data, run) ? { city: bossCity(data, run) } : {}) } } : {}),
     ...(mission ? { mission } : {}),
     ...(hm ? { hm } : {}),
     ...(badge ? { badge } : {}),

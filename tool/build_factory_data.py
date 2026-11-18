@@ -31,6 +31,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from factory_stories import CITIES, STORIES  # noqa: E402
 from factory_extra_regions import REGIONS as EXTRA_REGIONS  # noqa: E402
 from factory_scenes import SCENES  # noqa: E402
+from story import GAMES as STORY_GAMES  # noqa: E402
 from factory_routes import CITIES as ROUTE_CITIES, START as ROUTE_START, FEATURES as ROUTE_FEATURES, RARE as ROUTE_RARE, TUTOR_EVERYWHERE as ROUTE_TUTORS  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -454,6 +455,20 @@ def habitats(sid, s, p, encounters):
     return [b for b in ORDER if b in places] or ['grass']
 
 
+def check_story(bosses):
+    """Cada fala da história tem que ser de um chefe e de uma cidade do jogo (senão ela nunca aparece)."""
+    by_game = {f"{b['region']}|{b['game']}": b for b in bosses}
+    for key, game in STORY_GAMES.items():
+        b = by_game.get(key)
+        assert b, f'jogo desconhecido na história: {key}'
+        keys = {f"{l['name']}@{l.get('city')}" for l in b['leaders']}
+        cities = {l.get('city') for l in b['leaders']}
+        for k in game.get('bosses', {}):
+            assert k in keys, f'{key}: chefe que não existe: {k}'
+        for c in game.get('cities', {}):
+            assert c in cities, f'{key}: cidade que não existe: {c}'
+
+
 def main():
     pokemon = {p['id']: p for p in load('pokemon') if p['is_default'] and p['id'] <= MAX_SPECIES}
     species = {s['id']: s for s in load('species') if s['id'] <= MAX_SPECIES}
@@ -572,6 +587,12 @@ def main():
             'scenes': {r: {'cities': {c: [list(x) for x in ls] for c, ls in sc.get('cities', {}).items()},
                            'bosses': {k: {w: [list(x) for x in ls] for w, ls in v.items()} for k, v in sc.get('bosses', {}).items()}} for r, sc in SCENES.items()},
             'routes': {'cities': ROUTE_CITIES, 'start': ROUTE_START, 'features': ROUTE_FEATURES, 'rare': ROUTE_RARE, 'tutors': ROUTE_TUTORS}}
+    # A história de cada jogo (docs/historia): as cenas e o começo e o fim dele ("Região|Jogo").
+    check_story(bosses)
+    for key, game in STORY_GAMES.items():
+        data['scenes'][key] = {'cities': {c: [list(x) for x in ls] for c, ls in game.get('cities', {}).items()},
+                               'bosses': {k: {w: [list(x) for x in ls] for w, ls in v.items()} for k, v in game.get('bosses', {}).items()}}
+        data['stories'][key] = {k: game[k] for k in ('intro', 'end') if game.get(k)}
     with open(os.path.join(DB, 'factory.json'), 'w', encoding='utf-8') as f:
         json.dump(data, f, separators=(',', ':'))
         f.write('\n')

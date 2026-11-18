@@ -668,7 +668,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
                     keepMine: _challenge?['kind'] == 'factory',
                     taunt: _challenge?['kind'] == 'factory' && _challenge?['boss'] is Map && FactoryData.loaded != null
                         ? [
-                            for (final l in FactoryRun.sceneLines(FactoryData.loaded!, '${_challenge!['boss']['region']}', 'last',
+                            for (final l in FactoryRun.sceneLines(FactoryData.loaded!, FactoryRun.sceneRegion(_challenge!['boss'] as Map), 'last',
                                 '${_challenge!['boss']['name']}@${FactoryRun.bossCity(FactoryData.loaded!, currentFactory()['run'] as Map<String, dynamic>?)}', I18n.language))
                               l.$1.isNotEmpty ? '${tr(l.$1)}: ${l.$2}' : l.$2
                           ]

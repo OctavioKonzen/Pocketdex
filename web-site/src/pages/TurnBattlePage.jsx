@@ -45,7 +45,7 @@ import {simulatorTargets, simulatorTurn} from '../lib/battleSimulator'
 import {newPartyBattle, playPartyTurn, describeEvents} from '../lib/partyBattle'
 import { FactoryHub, FactoryScreen, factoryDataNow, saveFactory } from '../components/FactoryPanels'
 import { expBarOf, factoryAfter, factoryBattle, factoryFoe } from '../lib/factoryBattle'
-import { battleMusic, bossCity, endRun, escapeRope, factoryOf, sceneLines, winFloor } from '../lib/factoryRun'
+import { battleMusic, bossCity, endRun, escapeRope, factoryOf, sceneLines, sceneRegion, winFloor } from '../lib/factoryRun'
 import { getFactoryData } from '../lib/data'
 
 const CARD = 'rounded-2xl bg-card p-5 shadow'
@@ -3079,7 +3079,7 @@ export default function TurnBattlePage() {
           // Na Battle Factory, sem chefe: a música do lugar.
           keepMine={challenge?.kind === 'factory'}
           // Na história do Pokelike: a fala do chefe quando ele manda o último Pokémon.
-          taunt={challenge?.kind === 'factory' && challenge.boss && factoryDataNow() ? sceneLines(factoryDataNow(), challenge.boss.region, 'last', `${challenge.boss.name}@${bossCity(factoryDataNow(), factoryOf(useStore.getState().league).run)}`, language).map(([who, text]) => (who ? `${t(who)}: ${text}` : text)) : []}
+          taunt={challenge?.kind === 'factory' && challenge.boss && factoryDataNow() ? sceneLines(factoryDataNow(), sceneRegion(challenge.boss), 'last', `${challenge.boss.name}@${bossCity(factoryDataNow(), factoryOf(useStore.getState().league).run)}`, language).map(([who, text]) => (who ? `${t(who)}: ${text}` : text)) : []}
           vs={foeLeader ?? (VS_KIND[challenge?.boss?.kind] ? challenge.boss : null)}
           // Sem chefe: o tema de batalha da região, como num ginásio dela (na Battle Factory, a da corrida).
           music={!foeLeader && !challenge?.boss && challenge?.kind === 'factory' && factoryDataNow() ? battleMusic(factoryDataNow(), factoryOf(useStore.getState().league).run) : musicOf(foeLeader ?? challenge?.boss, game.battle.sides[1].team[game.battle.sides[1].active].id, game.battle.seed ?? 0)}

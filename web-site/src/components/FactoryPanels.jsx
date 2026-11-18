@@ -24,7 +24,7 @@ import {
   shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, sceneLines, bossCity, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, atPc, pcOf, PC_SIZE, RARE_PLACES, shownScene, gameOf, tierOf, foeBoostAt, leagueAhead, unlockShiny, VITAMIN_EVS, VITAMINS,
   forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor, isKeystone,
   tradeMon, skipTrade, TRADE_LEVELS, levelCapOf, townTrade, townTradeable, legOf, fishPath, rodOf, RODS, headbuttPath, slatherHoney, honeyReady, honeyPath, HONEY_FLOORS, plantBerry, berryReady, harvestBerry, bikePath, takePhoto, photoNow, cancelEvolution, CONTEST_CATS, CONTEST_OF_TYPE, CONTEST_ROUNDS, contestOpen, startContest, contestAct, finishContest, SEASON_EVENTS, eventOn, eggMoves, withShinyCharm, SHINY_CHARM, radarPath, radarShiny, followerMood, withLegends, legendQuest, QUEST_CLUES, QUEST_PRIZE, LEGEND_LAIRS, evolutionMoves, setNick, applyRepel, repelOn, repelLeft, REPEL_FLOORS, gymPuzzleOf, startPuzzle, puzzleAct, finishPuzzle, puzzleView, gymLocked, puzzleTitle, GYM_CHALLENGES, KEY_ITEMS, hasKey, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, reminderCost, forgetMove, daycareOpen, daycareHere, safariAct, safariRates, leaveSafari, SAFARI_FEE, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, swapTeam, bossScene,
-  resolveChoice, regionLegend, leaderType, villainTeam, rivalBoss, rocketBoss, placeInfo, routeInfo, DUNGEON_LENGTH, dungeonPos, townShop, townCenter,
+  resolveChoice, regionLegend, sceneRegion, leaderType, villainTeam, rivalBoss, rocketBoss, placeInfo, routeInfo, DUNGEON_LENGTH, dungeonPos, townShop, townCenter,
   weeklyOf, startWeekly, COSMETIC_BALLS, COSMETIC_FRAMES, hasCosmetic, buyCosmetic, equipCosmetic,
   boostOf, memberOf, learnMove, movesLearnedBetween,
   cutPath, smashPath, strengthPath, weatherOf, outbreakOf, ROAM_TURNS, nodeBlocked, hmNeeded, hasHm, clockOf, healerOf, inTown, DARK_BIOMES, dexOf, dexRewardFor, leaveDaycare, takeDaycare, DAYCARE_EGG, EGG_BATTLES, withSeen,
@@ -639,12 +639,12 @@ function MoveTeacher({ run, index, save, onClose }) {
 /** O texto da história: o começo da região (1º chefe) e quem vem a seguir. */
 function StoryPanel({ run, data }) {
   const boss = bossOf(data, run)
-  const intro = run.boss.step === 0 ? storyLine(data, boss.region, 'intro') : ''
+  const intro = run.boss.step === 0 ? storyLine(data, sceneRegion(boss), 'intro') : ''
   return (
     <div className="space-y-1 rounded-xl bg-indigo-500/10 p-2 text-sm" data-testid="factory-story">
       <p className="font-black">📖 <span data-no-translate>{boss.region} · {boss.game}</span></p>
       {intro && <p>{intro}</p>}
-      <p className="text-muted">{storyLine(data, boss.region, boss.kind, boss.name)}</p>
+      <p className="text-muted">{storyLine(data, sceneRegion(boss), boss.kind, boss.name)}</p>
     </div>
   )
 }
@@ -3230,7 +3230,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
           </p>
         )}
         {/* O que o chefe diz depois de perder (a história segue). */}
-        {p.beat?.city && sceneLines(data, p.beat.region ?? data.bosses[run.boss.region]?.region, 'after', `${p.beat.name}@${p.beat.city}`, language).map(([who, text], k) => (
+        {p.beat?.city && sceneLines(data, p.beat.region ? sceneRegion(p.beat) : sceneRegion(data.bosses[run.boss.region]), 'after', `${p.beat.name}@${p.beat.city}`, language).map(([who, text], k) => (
           <p key={`after-${k}`} className="text-sm" data-testid="factory-scene-after">{who ? `💬 ${t(who)}: ` : '📖 '}{text}</p>
         ))}
         {p.story && p.story.split('\n\n').map((line, k) => <p key={k} className="text-sm font-semibold" data-testid="factory-story-end">📖 {line}</p>)}
@@ -3645,7 +3645,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     // Ou Jessie e James (Equipe Rocket), de surpresa.
     const rival = route.options.length === 1 && route.options[0].kind === 'rival' ? (route.options[0].rocket ? rocketBoss(data, run) : rivalBoss(data, run)) : null
     const coach = trainers?.find((x) => x.id === (rival ?? boss).trainer) ?? null
-    const intro = run.boss.step === 0 && pos === 0 ? storyLine(data, boss.region, 'intro') : ''
+    const intro = run.boss.step === 0 && pos === 0 ? storyLine(data, sceneRegion(boss), 'intro') : ''
     const legend = regionLegend(data, run)
     const quest = run.floor >= 1 ? legendQuest(data, run) : null
     const mood = followerMood(data, run, clockOf().night)
@@ -3754,8 +3754,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     )
     // As cenas da história: ao chegar na cidade e antes da luta do chefe (o que ele diz naquele momento da trama).
     const sceneText = ([who, text]) => (who ? `💬 ${t(who)}: ${text}` : `📖 ${text}`)
-    const arrival = town && pos === ROUTE_LENGTH ? sceneLines(data, boss.region, 'city', to, language).map(sceneText) : []
-    const before = meeting ? sceneLines(data, boss.region, 'before', `${boss.name}@${bossCity(data, run)}`, language).map(sceneText) : []
+    const arrival = town && pos === ROUTE_LENGTH ? sceneLines(data, sceneRegion(boss), 'city', to, language).map(sceneText) : []
+    const before = meeting ? sceneLines(data, sceneRegion(boss), 'before', `${boss.name}@${bossCity(data, run)}`, language).map(sceneText) : []
     // As falas (uma por vez, tocando para passar, como nos jogos).
     const lines = [
       intro && `📖 ${intro}`,
@@ -3775,7 +3775,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       meeting && !before.length && boss.kind === 'gym' && `💬 ${boss.name}: ${t(LEADER_LINES[leaderType(data, boss)] ?? LEADER_LINES.normal)}`,
       meeting && (boss.kind === 'rival' || boss.kind === 'villain') && t('{0} apareceu no caminho!').replace('{0}', boss.name),
       meeting && !(boss.kind === 'rival' || boss.kind === 'villain') && t('O chefe espera'),
-      meeting && !before.length && storyLine(data, boss.region, boss.kind, boss.name),
+      meeting && !before.length && storyLine(data, sceneRegion(boss), boss.kind, boss.name),
       rival && `💬 ${rival.name}: ${t(rival.pair ? ROCKET_LINES[(run.rivalRaces ?? 0) % ROCKET_LINES.length] : RIVAL_RACE_LINES[(run.rivalRaces ?? 0) % RIVAL_RACE_LINES.length])}`,
       rival && t('{0} apareceu no caminho!').replace('{0}', rival.name),
       route.options.length === 1 && route.options[0].meteor && `☄️ ${t('Uma chuva de meteoros! Algo caiu bem perto daqui...')}`,

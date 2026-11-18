@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { bossCity, sceneLines } from './factoryRun.js'
+import { bossCity, sceneLines, sceneRegion, storyLine } from './factoryRun.js'
 
 const data = JSON.parse(readFileSync(new URL('../../../assets/database/factory.json', import.meta.url), 'utf8'))
 
@@ -27,5 +27,18 @@ describe('a história em cenas (igual ao app)', () => {
         }
       })
     }
+  })
+
+  it('a história de cada jogo (docs/historia): as falas do jogo primeiro, as da região quando ele não tem; sem a língua, o inglês', () => {
+    const rb = data.bosses.find((b) => b.game === 'Red/Blue')
+    const yellow = data.bosses.find((b) => b.game === 'Yellow')
+    expect(sceneRegion(rb)).toBe('Kanto|Red/Blue')
+    expect(sceneLines(data, sceneRegion(rb), 'before', 'Brock@Pewter City')[0][1]).toContain('defesa sólida')
+    expect(sceneLines(data, sceneRegion(rb), 'before', 'Brock@Pewter City', 'fr')[0][1]).toContain('rock-hard defense')
+    // O Yellow tem a fala do Blue com o Eevee; a do Brock vem da região.
+    expect(sceneLines(data, sceneRegion(yellow), 'before', 'Blue@Pewter City')[0][1]).toContain('Eevee')
+    expect(sceneLines(data, sceneRegion(yellow), 'before', 'Brock@Pewter City')).toEqual(sceneLines(data, 'Kanto', 'before', 'Brock@Pewter City'))
+    expect(storyLine(data, sceneRegion(yellow), 'intro')).toContain('Pikachu')
+    expect(storyLine(data, sceneRegion(yellow), 'gym', 'Brock')).toBe(storyLine(data, 'Kanto', 'gym', 'Brock'))
   })
 })

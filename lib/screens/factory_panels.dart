@@ -2182,7 +2182,8 @@ Widget _story(BuildContext context, FactoryData data, Json run) {
   final c = SiteColors.of(context);
   final boss = FactoryRun.bossOf(data, run);
   final region = '${boss['region']}';
-  final intro = run['boss']['step'] == 0 ? FactoryRun.storyLine(data, region, 'intro') : '';
+  final scene = FactoryRun.sceneRegion(boss);
+  final intro = run['boss']['step'] == 0 ? FactoryRun.storyLine(data, scene, 'intro') : '';
   return Container(
     key: const ValueKey('factory-story'),
     margin: const EdgeInsets.only(top: 6),
@@ -2191,7 +2192,7 @@ Widget _story(BuildContext context, FactoryData data, Json run) {
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text('📖 $region · ${boss['game']}', style: TextStyle(fontWeight: FontWeight.w900, color: c.text)),
       if (intro.isNotEmpty) Text(intro, style: TextStyle(color: c.text, fontSize: 13)),
-      Text(FactoryRun.storyLine(data, region, '${boss['kind']}', '${boss['name']}'), style: TextStyle(color: c.muted, fontSize: 13)),
+      Text(FactoryRun.storyLine(data, scene, '${boss['kind']}', '${boss['name']}'), style: TextStyle(color: c.muted, fontSize: 13)),
     ]),
   );
 }
@@ -4616,7 +4617,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
               key: const ValueKey('factory-mission-done'), style: const TextStyle(fontSize: 13, color: Color(0xFFD97706))),
         // O que o chefe diz depois de perder (a história segue). Igual ao site.
         if ((p['beat'] as Map?)?['city'] != null && _data != null)
-          for (final l in FactoryRun.sceneLines(_data!, '${(p['beat'] as Map)['region']}', 'after', '${(p['beat'] as Map)['name']}@${(p['beat'] as Map)['city']}', I18n.language))
+          for (final l in FactoryRun.sceneLines(_data!, FactoryRun.sceneRegion(p['beat'] as Map), 'after', '${(p['beat'] as Map)['name']}@${(p['beat'] as Map)['city']}', I18n.language))
             Text(l.$1.isNotEmpty ? '💬 ${tr(l.$1)}: ${l.$2}' : '📖 ${l.$2}', key: const ValueKey('factory-scene-after'), style: const TextStyle(fontSize: 13)),
         if (p['story'] != null)
           for (final line in '${p['story']}'.split('\n\n')) Text('📖 $line', key: const ValueKey('factory-story-end'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
@@ -5974,7 +5975,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
     final rival = options.length == 1 && options.first['kind'] == 'rival' ? (options.first['rocket'] == true ? FactoryRun.rocketBoss(data, run) : FactoryRun.rivalBoss(data, run)) : null;
     final me = Trainers.mine;
     final coach = Trainers.byId('${(rival ?? boss)['trainer'] ?? ''}');
-    final region = '${boss['region']}';
+    final region = FactoryRun.sceneRegion(boss);
     final intro = run['boss']['step'] == 0 && pos == 0 ? FactoryRun.storyLine(data, region, 'intro') : '';
     final legend = FactoryRun.regionLegend(data, run);
     final quest = FactoryRun.legendQuest(data, run);
