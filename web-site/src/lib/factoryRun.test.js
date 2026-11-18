@@ -816,9 +816,9 @@ describe('mapa da corrida', () => {
     for (let i = 0; i < 600; i++) {
       const route = routeOptions(at(1 + FORKS[i % 3]), data, rand)
       // (o lugar raro e o Hidden Grotto, quando aparecem, são a mais.)
-      expect(route.options.filter((o) => !RARE_PLACES[o.place] && o.kind !== 'grotto').length).toBe((1 + FORKS[i % 3] <= 2 ? 2 : 3) + (i % 3 === 2 ? 1 : 0))
+      expect(route.options.filter((o) => !RARE_PLACES[o.place] && o.kind !== 'grotto' && !o.call).length).toBe((1 + FORKS[i % 3] <= 2 ? 2 : 3) + (i % 3 === 2 ? 1 : 0))
       expect(route.options.some(isBattleNode)).toBe(true)
-      for (const o of route.options.filter((o) => o.kind !== 'dungeon' && o.kind !== 'grotto')) kinds[o.kind] = (kinds[o.kind] ?? 0) + 1
+      for (const o of route.options.filter((o) => o.kind !== 'dungeon' && o.kind !== 'grotto' && !o.call)) kinds[o.kind] = (kinds[o.kind] ?? 0) + 1
       for (const o of route.options.filter((o) => o.kind === 'wild')) expect(Object.keys(BIOMES)).toContain(o.biome)
     }
     // O lugar raro: às vezes na última bifurcação; dentro, só selvagens e, no fim, o lendário do lugar; vencer deixa uma Master Ball.
@@ -2053,7 +2053,30 @@ function round14Trace(F) {
     const mon = won ? F.capturedMon(won) : null
     return [r.route.biome, next.grottoLeg, next.pending ?? null, next.encounter?.foes ?? null, mon ? [mon.ha ?? null, mon.ivs, F.memberOf(won, mon, ['tackle']).set.ability ?? null] : null]
   })
-  return { puzzles, wild, berry, gyms, gymStep, badges, stopped: [stopped.team[0].id, stopped.pending.levels], sick, fresh, inherit, days, season, contest, quest, kept, radar, grotto }
+  // O Pokégear, o seguidor, a Heart Scale, o Z-Crystal do Kahuna, a bola e o diário (o mesmo no app).
+  const calls = Array.from({ length: 30 }, (_, k) => {
+    const r0 = { ...route, seed: 90 + k, badges: 1 + (k % 3), defeated: k % 7, leg: 1 + (k % 4) }
+    const call = F.callOf(data, r0)
+    let opened = null
+    for (let floor = 1; floor < 14 && !opened; floor++) {
+      const r = F.nextFloor({ ...F.startRun(F.emptyFactory(), data, 1, 42), seed: 90 + k, badges: 1 + (k % 3), defeated: 3, floor, leg: 1 + (k % 4), encounter: null, pending: null, boss: { region: red, step: 2 } }, data)
+      if (r.route?.options?.some((o) => o.call)) opened = r
+    }
+    const at = opened ? opened.route.options.findIndex((o) => o.call) : -1
+    const met = at >= 0 ? F.chooseNode(opened, data, at) : null
+    return [call, at, opened?.route.options[at] ?? null, met ? [met.encounter.kind, met.encounter.call ?? null, met.encounter.foes.map((f) => [f.id, f.minIv ?? null, f.shiny ? 1 : 0])] : null]
+  })
+  const moods = [[4, 'volcano', 1, 0, false], [4, 'water', 1, 0, false], [92, 'grass', 1, 0, true], [25, 'grass', 0.2, 0, false], [87, 'desert', 1, 0, false], [25, 'cave', 1, 255, false], [25, 'cave', 1, 0, false], [1, 'forest', 1, 0, false]]
+    .map(([id, biome, hp, friendship, night]) => F.followerMood(data, { ...route, team: [{ ...route.team[0], id, hp, friendship }], route: { ...route.route, biome } }, night))
+  const luvdisc = F.winFloor({ ...route, route: { ...route.route, biome: 'water' }, encounter: { kind: 'wild', foes: [{ id: 370, level: 5, iv: 0, ev: 0 }] } }, data)
+  const alola = data.bosses.findIndex((b) => b.region === 'Alola')
+  const kahuna = data.bosses[alola].leaders.find((l) => l.kind === 'gym')
+  const zWon = F.winFloor({ ...gym(5), boss: { region: alola, step: data.bosses[alola].leaders.indexOf(kahuna) }, encounter: { kind: 'boss', boss: { ...kahuna, region: 'Alola' }, foes: [{ id: 19, level: 5, iv: 0, ev: 0 }] } }, data)
+  const caught = F.capture({ ...route, team: [route.team[0]], pending: { capture: { id: 16, level: 5, shiny: true }, ball: 'great-ball' } })
+  const fainted = F.winFloor({ ...caught, pending: null, team: [{ ...caught.team[0], hp: 1 }, { ...caught.team[1], hp: 1 }], encounter: { kind: 'wild', foes: [{ id: 19, level: 5, iv: 0, ev: 0 }] } }, data, { hp: [0, 0.5] })
+  const extras = [luvdisc.scales ?? null, luvdisc.pending.scale ?? null, zWon.pending.badge, zWon.stash ?? null, caught.team[1].ball ?? null, fainted.diary, F.addToHistory([], fainted, 10, '2026-01-01')[0].diary,
+    ...[1, 0].map((scales) => { const rs = data.bosses.findIndex((b) => b.game === 'Ruby/Sapphire'); const r = F.townReminder({ ...route, money: 5000, scales, boss: { region: rs, step: data.bosses[rs].leaders.findIndex((l) => l.city === 'Lavaridge Town') }, town: { leg: 1 }, encounter: null, pending: null }, data); return r ? [r.money, r.scales ?? null, r.tokens['move-reminder']] : null })]
+  return { puzzles, wild, berry, gyms, gymStep, badges, stopped: [stopped.team[0].id, stopped.pending.levels], sick, fresh, inherit, days, season, contest, quest, kept, radar, grotto, calls, moods, extras }
 }
 describe('rodada 14 igual ao app', () => {
   it('os desafios, as hordas, a pesca, as árvores e as frutas dão o mesmo que test/fixtures/round14.json', async () => {

@@ -706,6 +706,57 @@ void main() {
         }()
     ];
     expect(norm(grotto), expected['grotto']);
+    // O Pokégear, o seguidor, a Heart Scale, o Z-Crystal do Kahuna, a bola e o diário (o mesmo no site).
+    final calls = [
+      for (var k = 0; k < 30; k++)
+        () {
+          final r0 = {...rt, 'seed': 90 + k, 'badges': 1 + k % 3, 'defeated': k % 7, 'leg': 1 + k % 4};
+          final call = FactoryRun.callOf(data, r0);
+          Json? opened;
+          for (var floor = 1; floor < 14 && opened == null; floor++) {
+            final r = FactoryRun.nextFloor({
+              ...FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!,
+              'seed': 90 + k, 'badges': 1 + k % 3, 'defeated': 3, 'floor': floor, 'leg': 1 + k % 4, 'encounter': null, 'pending': null, 'boss': {'region': red, 'step': 2},
+            }, data);
+            if (((r['route']?['options'] as List?) ?? const []).any((o) => o['call'] != null)) opened = r;
+          }
+          final at = opened == null ? -1 : (opened['route']['options'] as List).indexWhere((o) => o['call'] != null);
+          final met = at >= 0 ? FactoryRun.chooseNode(opened!, data, at) : null;
+          return [
+            call, at, at >= 0 ? opened!['route']['options'][at] : null,
+            met == null ? null : [met['encounter']['kind'], met['encounter']['call'], [for (final f in met['encounter']['foes'] as List) [f['id'], f['minIv'], f['shiny'] == true ? 1 : 0]]],
+          ];
+        }()
+    ];
+    expect(norm(calls), expected['calls']);
+    final moods = [
+      for (final (id, biome, hp, friendship, night) in const [(4, 'volcano', 1, 0, false), (4, 'water', 1, 0, false), (92, 'grass', 1, 0, true), (25, 'grass', 0.2, 0, false), (87, 'desert', 1, 0, false), (25, 'cave', 1, 255, false), (25, 'cave', 1, 0, false), (1, 'forest', 1, 0, false)])
+        FactoryRun.followerMood(data, {...rt, 'team': [{...(rt['team'] as List).first as Map, 'id': id, 'hp': hp, 'friendship': friendship}], 'route': {...rt['route'] as Map, 'biome': biome}}, night),
+    ];
+    expect(norm(moods), expected['moods']);
+    final luvdisc = FactoryRun.winFloor({...rt, 'route': {...rt['route'] as Map, 'biome': 'water'}, 'encounter': {'kind': 'wild', 'foes': [{'id': 370, 'level': 5, 'iv': 0, 'ev': 0}]}}, data);
+    final alola = data.bosses.indexWhere((b) => b['region'] == 'Alola');
+    final kahuna = (data.bosses[alola]['leaders'] as List).firstWhere((l) => l['kind'] == 'gym') as Map;
+    final zWon = FactoryRun.winFloor({
+      ...gym(5), 'boss': {'region': alola, 'step': (data.bosses[alola]['leaders'] as List).indexOf(kahuna)},
+      'encounter': {'kind': 'boss', 'boss': {...kahuna, 'region': 'Alola'}, 'foes': [{'id': 19, 'level': 5, 'iv': 0, 'ev': 0}]},
+    }, data);
+    final caught = FactoryRun.capture({...rt, 'team': [(rt['team'] as List).first], 'pending': {'capture': {'id': 16, 'level': 5, 'shiny': true}, 'ball': 'great-ball'}});
+    final ct = caught['team'] as List;
+    final fainted = FactoryRun.winFloor({...caught, 'pending': null, 'team': [{...ct[0] as Map, 'hp': 1}, {...ct[1] as Map, 'hp': 1}], 'encounter': {'kind': 'wild', 'foes': [{'id': 19, 'level': 5, 'iv': 0, 'ev': 0}]}}, data, hp: [0, 0.5]);
+    final rs = data.bosses.indexWhere((b) => b['game'] == 'Ruby/Sapphire');
+    final extras = [
+      luvdisc['scales'], luvdisc['pending']['scale'], zWon['pending']['badge'], zWon['stash'], ct[1]['ball'], fainted['diary'], FactoryRun.addToHistory([], fainted, 10, '2026-01-01').first['diary'],
+      for (final scales in const [1, 0])
+        () {
+          final r = FactoryRun.townReminder({
+            ...rt, 'money': 5000, 'scales': scales, 'boss': {'region': rs, 'step': (data.bosses[rs]['leaders'] as List).indexWhere((l) => l['city'] == 'Lavaridge Town')},
+            'town': {'leg': 1}, 'encounter': null, 'pending': null,
+          }, data);
+          return r == null ? null : [r['money'], r['scales'], r['tokens']['move-reminder']];
+        }(),
+    ];
+    expect(norm(extras), expected['extras']);
     final wild = [
       for (var k = 0; k < 60; k++)
         () {

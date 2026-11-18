@@ -1691,12 +1691,22 @@ class FactoryRun {
   static int reminderCost(FactoryData data, Json run) => tutorsOf(data, run).contains('heart-scale') ? (heartScale * priceScale(_int(run['floor']))).round() : 0;
   static Json? townReminder(Json run, FactoryData data) {
     if (!tutorsOf(data, run).contains('reminder') || (run['town'] as Map?)?['reminded'] == true || run['encounter'] != null || run['pending'] != null) return null;
-    final cost = reminderCost(data, run);
+    // Com uma Heart Scale achada no caminho, ele aceita ela no lugar do dinheiro.
+    final scale = reminderCost(data, run) > 0 && _int(run['scales'] ?? 0) > 0;
+    final cost = scale ? 0 : reminderCost(data, run);
     if (_n(run, 'money') < cost) return null;
     final tokens = Map<String, dynamic>.from((run['tokens'] as Map?) ?? const {});
     tokens['move-reminder'] = ((tokens['move-reminder'] as num?) ?? 0).toInt() + 1;
-    return {...run, 'money': _n(run, 'money') - cost, 'town': {...Map<String, dynamic>.from(run['town'] as Map), 'reminded': true}, 'tokens': tokens};
+    return {
+      ...run, 'money': _n(run, 'money') - cost, if (scale) 'scales': _int(run['scales']) - 1,
+      'town': {...Map<String, dynamic>.from(run['town'] as Map), 'reminded': true}, 'tokens': tokens,
+    };
   }
+
+  /// A Heart Scale dos selvagens: o Luvdisc sempre deixa uma; nas rotas de água, às vezes (scaleChance).
+  static const scaleChance = 0.08;
+  static const scaleBiomes = ['water', 'beach', 'underwater', 'seacave', 'lake'];
+  static const scaleMon = 370;
 
   /// O Move Deleter: o Pokémon index esquece o golpe slot (fica com pelo menos um).
   static Json? forgetMove(Json run, FactoryData data, int index, int slot) {
@@ -2015,7 +2025,7 @@ class FactoryRun {
 
   /// A Dowsing Machine: a chance de apitar numa bifurcação e o que pode estar escondido. Igual ao site.
   static const dowseChance = 0.2;
-  static const dowseItems = ['ultra-ball', 'hyper-potion', 'max-potion', 'revive', 'escape-rope', 'move-tutor'];
+  static const dowseItems = ['ultra-ball', 'hyper-potion', 'max-potion', 'revive', 'escape-rope', 'move-tutor', 'heart-scale'];
   static void _dowse(Json run, List options) {
     final battles = [for (var k = 0; k < options.length; k++) if (isBattleNode(options[k] as Map?) && options[k]['kind'] != 'boss') k];
     if (options.length < 2 || battles.isEmpty || followRoll(run, 3266489917) >= dowseChance) return;
@@ -2180,6 +2190,11 @@ class FactoryRun {
       }
       // Depois de virar Campeão: o Campeão vencido quer revanche (num dos caminhos da primeira bifurcação).
       if (run['rematch'] != null && pos == forks[0]) options[options.length - 1] = {'kind': 'rematch'};
+      // A ligação do Pokégear: a revanche ou o Pokémon raro, na primeira bifurcação.
+      final call = !inside && pos == forks[0] ? callOf(data, run) : null;
+      if (call != null) {
+        options.add(call['kind'] == 'rematch' ? {'kind': 'ace', 'call': 'rematch', 'caller': call['name']} : {'kind': 'wild', 'call': 'rare', 'caller': call['name']});
+      }
       // O Hidden Grotto: um caminho a mais nas rotas de mato (uma vez por rota).
       if (!inside && pos == forks[1] && floor >= questFloor && grottoBiomes.contains(biome) && run['grottoLeg'] != legOf(run) && followRoll(run, 1103515245) < grottoChance) {
         options.add({'kind': 'grotto'});
@@ -2336,6 +2351,57 @@ class FactoryRun {
     return legends.any((id) => !have.contains(id)) ? {...factory, 'legends': [...have, for (final id in legends) if (!have.contains(id)) id]} : factory;
   }
 
+  /// O Pokégear (depois da 1ª insígnia): às vezes, ao entrar numa rota (callChance), um treinador que você venceu liga.
+  /// 'rematch': ele quer revanche (um treinador forte na primeira bifurcação); 'rare': ele viu um Pokémon raro ali (um
+  /// selvagem com callShiny vezes mais chance de shiny e IVs de pelo menos callIvs). Igual ao site.
+  static const callChance = 0.3;
+  static const callShiny = 3;
+  static const callIvs = 15;
+  static const callers = ['Joey', 'Wade', 'Liz', 'Anthony', 'Todd', 'Gina', 'Ralph', 'Dana', 'Chad', 'Erin', 'Tully', 'Wilton'];
+  static Json? callOf(FactoryData data, Json run) {
+    if (_int(run['badges'] ?? 0) < 1 || run['dungeon'] != null || _int(run['defeated'] ?? 0) == 0) return null;
+    final at = {'seed': run['seed'], 'floor': legOf(run) * 13 + 5};
+    if (followRoll(at, 2246822507) >= callChance) return null;
+    return {'kind': followRoll(at, 3266489909) < 0.5 ? 'rematch' : 'rare', 'name': callers[(followRoll(at, 668265261) * callers.length).floor()]};
+  }
+
+  /// O Pokémon que segue você (o primeiro do time) comenta o lugar ao chegar numa rota: cansado (pouco HP), animado à
+  /// noite (Fantasma e Sombrio), feliz no lugar do tipo dele, molhado ou com calor no lugar errado, ou contente com você
+  /// (amizade alta). Igual ao site.
+  static const _wetBiomes = ['water', 'beach', 'underwater', 'seacave', 'lake', 'snow', 'icecave', 'waterfall', 'swamp'];
+  static const _hotBiomes = ['volcano', 'desert', 'lavacave', 'dunes'];
+  static Json? followerMood(FactoryData data, Json run, [bool night = false]) {
+    final order = battleOrder(run);
+    final team = teamOf(run);
+    final lead = order.isEmpty ? null : team[order.first];
+    if (lead == null) return null;
+    final types = [for (final t in (data.speciesOf(_int(lead['id']))?.elementAtOrNull(4) as List?) ?? const []) '$t'];
+    final biome = '${run['route']?['biome'] ?? 'grass'}';
+    final mood = hpOf(lead) < 0.3
+        ? 'tired'
+        : night && types.any((x) => x == 'ghost' || x == 'dark')
+            ? 'night'
+            : types.any((x) => (biomes[biome] ?? const []).contains(x))
+                ? 'happy'
+                : types.contains('fire') && _wetBiomes.contains(biome)
+                    ? 'wet'
+                    : types.contains('ice') && _hotBiomes.contains(biome)
+                        ? 'hot'
+                        : _int(lead['friendship'] ?? 0) >= friendEvolve
+                            ? 'love'
+                            : 'calm';
+    return {'id': lead['id'], 'mood': mood};
+  }
+
+  /// O diário da corrida: o que aconteceu, andar por andar ([tipo, andar, quem]): 'c' capturou (shiny: 4º campo), 'h'
+  /// ovo chocou, 'f' desmaiou, 'b' insígnia, 'w' virou Campeão, 'l' missão lendária. Os últimos diaryMax. Vai para o
+  /// histórico no fim da corrida. Igual ao site.
+  static const diaryMax = 120;
+  static void _note(Json out, Json run, String kind, Object? who, [bool shiny = false]) {
+    final all = [...((out['diary'] ?? run['diary']) as List? ?? const []), [kind, run['floor'], who, if (shiny) 1]];
+    out['diary'] = all.length > diaryMax ? all.sublist(all.length - diaryMax) : all;
+  }
+
   /// O lendário da região da corrida (sempre o mesmo para a mesma corrida e região).
   static int? regionLegend(FactoryData data, Json run) {
     final list = regionLegends['${data.bosses[_int(run['boss']['region'])]['region']}'] ?? const <int>[];
@@ -2366,7 +2432,10 @@ class FactoryRun {
 
   /// Um item ganho: bolas e remédios na Bolsa, ficha de Move Tutor, os de segurar guardados.
   static void _giveItem(Json out, String item) {
-    if (bagItems.contains(item)) {
+    // A Heart Scale: paga o Move Reminder no lugar do dinheiro.
+    if (item == 'heart-scale') {
+      out['scales'] = _int(out['scales'] ?? 0) + 1;
+    } else if (bagItems.contains(item)) {
       final bag = Map<String, dynamic>.from(out['bag'] as Map);
       bag[item] = ((bag[item] as num?) ?? 0).toInt() + 1;
       out['bag'] = bag;
@@ -2510,7 +2579,7 @@ class FactoryRun {
       final mist = fieldOf(run, shownScene(run, scene, data), data);
       Json roll() => {
             ...encounterFor(data, floor, rand, node['kind'] == 'boss' ? bossOf(data, out) : null, node['kind'] == 'wildboss',
-                {...node, 'biome': scene, 'shiny': ((run['shinyRate'] as num?) ?? 1) * (node['radar'] == true ? radarShiny(run['chain'] as Map?) : 1), ...when, if (sky.isNotEmpty) 'weather': sky, if (fieldTypes.containsKey(mist)) 'field': mist, ...huntNode(run), if (seasonEvents.containsKey(run['event'])) 'event': run['event']}),
+                {...node, 'biome': scene, 'shiny': ((run['shinyRate'] as num?) ?? 1) * (node['radar'] == true ? radarShiny(run['chain'] as Map?) : 1) * (node['call'] == 'rare' ? callShiny : 1), ...when, if (sky.isNotEmpty) 'weather': sky, if (fieldTypes.containsKey(mist)) 'field': mist, ...huntNode(run), if (seasonEvents.containsKey(run['event'])) 'event': run['event']}),
             'scene': scene,
           };
       out['encounter'] = roll();
@@ -2523,18 +2592,18 @@ class FactoryRun {
         }
       }
       // O Poké Radar (a espécie da corrente) e o Hidden Grotto (a habilidade oculta): um só, sem horda.
-      if (node['radar'] == true || node['grotto'] == true) {
+      if (node['radar'] == true || node['grotto'] == true || node['call'] == 'rare') {
         final f = Map<String, dynamic>.from((out['encounter']['foes'] as List).first as Map);
         final chain = run['chain'] as Map?;
         final id = node['radar'] == true && chain?['id'] != null && data.species[_int(chain!['id'])] != null ? chain['id'] : f['id'];
-        final minIv = node['grotto'] == true ? grottoIvs : radarIvs(_int(chain?['n'] ?? 0));
+        final minIv = node['grotto'] == true ? grottoIvs : node['radar'] == true ? radarIvs(_int(chain?['n'] ?? 0)) : callIvs;
         out['encounter'] = {
           ...Map<String, dynamic>.from(out['encounter'] as Map),
           'horde': false,
           'foes': [
             {...f, 'id': id, if (minIv > 0) 'minIv': minIv, if (node['grotto'] == true) 'ha': true}
           ],
-          if (node['radar'] == true) 'radar': true else 'grotto': true,
+          if (node['radar'] == true) 'radar': true else if (node['grotto'] == true) 'grotto': true else 'call': 'rare',
         };
       }
       _countHunt(data, out);
@@ -3255,10 +3324,23 @@ class FactoryRun {
     if (questDone != null) {
       out['money'] = _int(out['money']) + questPrize;
       out['quest'] = null;
+      _note(out, run, 'l', questDone);
     } else if (questFight) {
       out['quest'] = {'region': _regionName(data, run), 'id': allFoes.isNotEmpty ? allFoes.first['id'] : null, 'clues': questClues - 1};
     }
     // O Poké Radar: vencendo ou capturando, a corrente sobe (outra espécie começa outra).
+    // Quem desmaiou nesta batalha vai para o diário.
+    for (var i = 0; i < team0.length; i++) {
+      if (hpOf(team0[i]) > 0 && !((hp != null && i < hp.length ? hp[i] : hpOf(team0[i])) > 0)) _note(out, run, 'f', team0[i]['id']);
+    }
+    // A Heart Scale dos selvagens: o Luvdisc sempre; nas rotas de água, às vezes.
+    var scale = false;
+    if (kind == 'wild' &&
+        !fled &&
+        (foes.any((f) => _int(f['id']) == scaleMon) || (scaleBiomes.contains(run['route']?['biome'] ?? run['scene']) && followRoll(run, 2147483629) < scaleChance))) {
+      out['scales'] = _int(run['scales'] ?? 0) + 1;
+      scale = true;
+    }
     if (run['encounter']['radar'] == true && !fled && foes.isNotEmpty) {
       final chain = run['chain'] as Map?;
       final id = foes.first['id'];
@@ -3347,11 +3429,16 @@ class FactoryRun {
           tms[tm] = _int(tms[tm] ?? 0) + 1;
           out['tms'] = tms;
         }
-        badge = {'name': beaten['name'], 'type': type, if (tm != null) 'tm': tm};
+        // Em Alola, o Kahuna (e o capitão) dá o Z-Crystal do tipo dele: segurando, o Pokémon usa o Z-Move.
+        final crystal = _regionName(data, run) == 'Alola' ? data.zcrystals[type] : null;
+        if (crystal != null) _giveItem(out, crystal);
+        badge = {'name': beaten['name'], 'type': type, if (tm != null) 'tm': tm, if (crystal != null) 'z': crystal};
+        _note(out, run, 'b', beaten['name']);
       }
       if (beaten['kind'] == 'champion') {
         out['champions'] = ((run['champions'] as num?) ?? 0).toInt() + 1;
         champion = true;
+        _note(out, run, 'w', beaten['name']);
         // O Campeão vencido vai querer revanche na região seguinte.
         out['rematch'] = {'region': run['boss']['region']};
       }
@@ -3465,6 +3552,7 @@ class FactoryRun {
       if (hm != null) 'hm': hm,
       if (badge != null) 'badge': badge,
       if (pokerus.isNotEmpty) 'pokerus': pokerus,
+      if (scale) 'scale': true,
       if (questDone != null) 'quest': {'id': questDone, 'prize': questPrize} else if (questFight) 'quest': {'id': allFoes.isNotEmpty ? allFoes.first['id'] : null, 'lost': true},
       if (key != null) 'key': key,
       if (placeReward != null) 'placeReward': placeReward,
@@ -3575,6 +3663,8 @@ class FactoryRun {
     var mon = newMon(_int(foe['id']), _int(foe['level']), rand, foe['egg'] == true ? eggIvs : _int(foe['minIv'] ?? 0), foe['shiny'] == true);
     // O do Hidden Grotto: com a habilidade oculta.
     if (foe['ha'] == true) mon = {...mon, 'ha': true};
+    // A Poké Ball em que ele foi capturado (ele sai dela nas batalhas).
+    if (pendingOf(run)?['ball'] != null) mon = {...mon, 'ball': pendingOf(run)!['ball']};
     // Do ovo da Creche: os 3 melhores IVs do pai passam para o filhote (fica o maior). Igual ao site.
     if ((foe['parent'] as Map?)?['ivs'] is Map) mon = {...mon, 'ivs': inheritIvs(mon['ivs'] as Map?, (foe['parent'] as Map)['ivs'] as Map)};
     // Synchronize em quem vai na frente: metade das vezes, o capturado vem com a Nature dele.
@@ -3612,6 +3702,7 @@ class FactoryRun {
     out['team'] = team;
     (out['pending'] as Map)['capture'] = null;
     _addDex(out, _int(foe['id']));
+    _note(out, run, foe['egg'] == true ? 'h' : 'c', foe['id'], foe['shiny'] == true);
     return out;
   }
 
@@ -3857,7 +3948,7 @@ class FactoryRun {
   static const grottoChance = 0.35;
   static const grottoMon = 0.6;
   static const grottoIvs = 20;
-  static const grottoItems = ['bottle-cap', 'rare-candy', 'ultra-ball', 'max-potion', 'leftovers', 'focus-sash'];
+  static const grottoItems = ['bottle-cap', 'rare-candy', 'ultra-ball', 'max-potion', 'leftovers', 'focus-sash', 'heart-scale'];
 
   /// A Bicycle: uma vez por rota (duas na Cycling Road), passa um andar sem batalha. Não vale no último andar da rota.
   static int bikeUses(FactoryData data, Json run) => featuresOf(data, run)['cycling'] == true ? 2 : 1;
@@ -6117,6 +6208,7 @@ class FactoryRun {
       if (run['pieces'] is Map) 'pieces': piecesOf(run),
       'modes': [if (run['nuzlocke'] == true) 'nuzlocke', for (final m in runModes) if (run[m] != null && run[m] != false) m],
       'summary': runSummary(run),
+      if (((run['diary'] as List?) ?? const []).isNotEmpty) 'diary': run['diary'],
     };
     return [entry, ...old].take(historySize).toList();
   }

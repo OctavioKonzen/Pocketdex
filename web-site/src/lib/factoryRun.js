@@ -1468,10 +1468,16 @@ export function tutorsOf(data, run) {
 export const reminderCost = (data, run) => (tutorsOf(data, run).includes('heart-scale') ? Math.round(HEART_SCALE * priceScale(run.floor)) : 0)
 export function townReminder(run, data) {
   if (!tutorsOf(data, run).includes('reminder') || run.town?.reminded || run.encounter || run.pending) return null
-  const cost = reminderCost(data, run)
+  // Com uma Heart Scale achada no caminho, ele aceita ela no lugar do dinheiro.
+  const scale = reminderCost(data, run) > 0 && (run.scales ?? 0) > 0
+  const cost = scale ? 0 : reminderCost(data, run)
   if (run.money < cost) return null
-  return { ...run, money: run.money - cost, town: { ...run.town, reminded: true }, tokens: { ...run.tokens, 'move-reminder': (run.tokens?.['move-reminder'] ?? 0) + 1 } }
+  return { ...run, money: run.money - cost, ...(scale ? { scales: run.scales - 1 } : {}), town: { ...run.town, reminded: true }, tokens: { ...run.tokens, 'move-reminder': (run.tokens?.['move-reminder'] ?? 0) + 1 } }
 }
+/** A Heart Scale dos selvagens: o Luvdisc sempre deixa uma; nas rotas de água, às vezes (SCALE_CHANCE). */
+export const SCALE_CHANCE = 0.08
+export const SCALE_BIOMES = ['water', 'beach', 'underwater', 'seacave', 'lake']
+export const SCALE_MON = 370
 /** O Move Deleter: o Pokémon index esquece o golpe slot (fica com pelo menos um). */
 export function forgetMove(run, data, index, slot) {
   const mon = run.team[index]
@@ -1593,7 +1599,7 @@ export const GROTTO_BIOMES = ['grass', 'forest', 'flowers', 'bamboo', 'swamp']
 export const GROTTO_CHANCE = 0.35
 export const GROTTO_MON = 0.6
 export const GROTTO_IVS = 20
-export const GROTTO_ITEMS = ['bottle-cap', 'rare-candy', 'ultra-ball', 'max-potion', 'leftovers', 'focus-sash']
+export const GROTTO_ITEMS = ['bottle-cap', 'rare-candy', 'ultra-ball', 'max-potion', 'leftovers', 'focus-sash', 'heart-scale']
 
 /** As fotos da corrida: um álbum com os momentos guardados (o lugar, o Pokémon e o andar). Até PHOTO_MAX. */
 export const PHOTO_MAX = 24
@@ -2390,7 +2396,7 @@ export function roamerNode(run, data = null) {
 }
 /** A Dowsing Machine: a chance de apitar numa bifurcação e o que pode estar escondido. Igual ao app. */
 export const DOWSE_CHANCE = 0.2
-export const DOWSE_ITEMS = ['ultra-ball', 'hyper-potion', 'max-potion', 'revive', 'escape-rope', 'move-tutor']
+export const DOWSE_ITEMS = ['ultra-ball', 'hyper-potion', 'max-potion', 'revive', 'escape-rope', 'move-tutor', 'heart-scale']
 function dowse(run, options) {
   const battles = options.map((o, k) => (isBattleNode(o) && o.kind !== 'boss' ? k : -1)).filter((k) => k >= 0)
   if (options.length < 2 || !battles.length || followRoll(run, 3266489917) >= DOWSE_CHANCE) return
@@ -2533,6 +2539,9 @@ export function routeOptions(run, data, rand) {
     if (quest?.id != null && quest.clues >= QUEST_CLUES && pos === FORKS[1]) options[options.some((o) => o.legend) ? 0 : options.length - 1] = { kind: 'wildboss', legend: quest.id, quest: true, biome: quest.scene }
     // Depois de virar Campeão: o Campeão vencido quer revanche (num dos caminhos da primeira bifurcação).
     if (run.rematch && pos === FORKS[0]) options[options.length - 1] = { kind: 'rematch' }
+    // A ligação do Pokégear: a revanche ou o Pokémon raro, na primeira bifurcação.
+    const call = !inside && pos === FORKS[0] ? callOf(data, run) : null
+    if (call) options.push(call.kind === 'rematch' ? { kind: 'ace', call: 'rematch', caller: call.name } : { kind: 'wild', call: 'rare', caller: call.name })
     // O Hidden Grotto: um caminho a mais nas rotas de mato (uma vez por rota).
     if (!inside && pos === FORKS[1] && run.floor >= QUEST_FLOOR && GROTTO_BIOMES.includes(biome) && run.grottoLeg !== legOf(run) && followRoll(run, 1103515245) < GROTTO_CHANCE) options.push({ kind: 'grotto' })
   }
@@ -2647,7 +2656,7 @@ export function chooseNode(run, data, index, clock = null) {
     // O clima da rota (o mesmo em todos os andares dela) atrai Pokémon diferentes.
     const sky = weatherOf(run, shownScene(run, scene, data), null, data)
     const mist = fieldOf(run, shownScene(run, scene, data), data)
-    const roll = () => ({ ...encounterFor(data, out.floor, rand, node.kind === 'boss' ? bossOf(data, out) : null, node.kind === 'wildboss', { ...node, biome: scene, shiny: (run.shinyRate ?? 1) * (node.radar ? radarShiny(run.chain) : 1), ...when, ...(sky ? { weather: sky } : {}), ...(FIELD_TYPES[mist] ? { field: mist } : {}), ...huntNode(run), ...(SEASON_EVENTS[run.event] ? { event: run.event } : {}) }), scene })
+    const roll = () => ({ ...encounterFor(data, out.floor, rand, node.kind === 'boss' ? bossOf(data, out) : null, node.kind === 'wildboss', { ...node, biome: scene, shiny: (run.shinyRate ?? 1) * (node.radar ? radarShiny(run.chain) : 1) * (node.call === 'rare' ? CALL_SHINY : 1), ...when, ...(sky ? { weather: sky } : {}), ...(FIELD_TYPES[mist] ? { field: mist } : {}), ...huntNode(run), ...(SEASON_EVENTS[run.event] ? { event: run.event } : {}) }), scene })
     out.encounter = roll()
     // Nuzlocke (cláusula de repetidos): o primeiro selvagem da área não é de uma linha evolutiva que você já teve.
     if (nuzRule(run, 'dupes') && out.encounter.kind === 'wild' && !areaUsed(run)) {
@@ -2655,11 +2664,11 @@ export function chooseNode(run, data, index, clock = null) {
       for (let k = 0; k < 8 && out.encounter.foes.every((f) => had.has(baseForm(data, f.id))); k++) out.encounter = roll()
     }
     // O Poké Radar (a espécie da corrente) e o Hidden Grotto (a habilidade oculta): um só, sem horda.
-    if (node.radar || node.grotto) {
+    if (node.radar || node.grotto || node.call === 'rare') {
       const f = out.encounter.foes[0]
       const id = node.radar && run.chain?.id != null && data.species[run.chain.id] ? run.chain.id : f.id
-      const minIv = node.grotto ? GROTTO_IVS : radarIvs(run.chain?.n)
-      out.encounter = { ...out.encounter, horde: false, foes: [{ ...f, id, ...(minIv ? { minIv } : {}), ...(node.grotto ? { ha: true } : {}) }], ...(node.radar ? { radar: true } : { grotto: true }) }
+      const minIv = node.grotto ? GROTTO_IVS : node.radar ? radarIvs(run.chain?.n) : CALL_IVS
+      out.encounter = { ...out.encounter, horde: false, foes: [{ ...f, id, ...(minIv ? { minIv } : {}), ...(node.grotto ? { ha: true } : {}) }], ...(node.radar ? { radar: true } : node.grotto ? { grotto: true } : { call: 'rare' }) }
     }
     countHunt(data, out)
     // O capanga do plano da equipe vilã (vencendo, o plano atrasa).
@@ -3252,7 +3261,7 @@ export function winFloor(run, data, after = {}) {
   out.money += money
   out.defeated += foes.length
   out.floor += 1
-  let drop = null, story = null
+  let drop = null, story = null, scale = false
   if ((kind === 'boss' || kind === 'wildboss') && !fled) out.bosses = (out.bosses ?? 0) + 1
   const region = regionName(data, run)
   if (roamer != null) out.roamer = fled ? { id: roamer, region, hp: round3(Math.max(0.01, after.foeHp ?? 1)) } : { id: roamer, region, done: after.captured ? 'caught' : 'fainted' }
@@ -3262,7 +3271,15 @@ export function winFloor(run, data, after = {}) {
   if (questDone != null) {
     out.money += QUEST_PRIZE
     out.quest = null
+    note(out, run, 'l', questDone)
   } else if (run.encounter.quest) out.quest = { region, id: run.encounter.foes[0]?.id ?? null, clues: QUEST_CLUES - 1 }
+  // Quem desmaiou nesta batalha vai para o diário.
+  run.team.forEach((m, i) => { if ((m.hp ?? 1) > 0 && !((after.hp?.[i] ?? m.hp ?? 1) > 0)) note(out, run, 'f', m.id) })
+  // A Heart Scale dos selvagens: o Luvdisc sempre; nas rotas de água, às vezes.
+  if (kind === 'wild' && !fled && (foes.some((f) => f.id === SCALE_MON) || (SCALE_BIOMES.includes(run.route?.biome ?? run.scene) && followRoll(run, 2147483629) < SCALE_CHANCE))) {
+    out.scales = (run.scales ?? 0) + 1
+    scale = true
+  }
   // O Poké Radar: vencendo ou capturando, a corrente sobe (outra espécie começa outra).
   if (run.encounter.radar && !fled && foes[0]) out.chain = { id: foes[0].id, n: Math.min(RADAR_MAX, (run.chain?.id === foes[0].id ? run.chain.n : 0) + 1) }
   // O item escondido do caminho (Dowsing Machine).
@@ -3328,11 +3345,16 @@ export function winFloor(run, data, after = {}) {
       const type = leaderType(data, beaten)
       const tm = gymTmOf(data, type, out.badges)
       if (tm) out.tms = { ...(out.tms ?? run.tms ?? {}), [tm]: ((out.tms ?? run.tms ?? {})[tm] ?? 0) + 1 }
-      badge = { name: beaten.name, type, ...(tm ? { tm } : {}) }
+      // Em Alola, o Kahuna (e o capitão) dá o Z-Crystal do tipo dele: segurando, o Pokémon usa o Z-Move.
+      const crystal = regionName(data, run) === 'Alola' ? data.zcrystals?.[type] ?? null : null
+      if (crystal) giveItem(out, crystal)
+      badge = { name: beaten.name, type, ...(tm ? { tm } : {}), ...(crystal ? { z: crystal } : {}) }
+      note(out, run, 'b', beaten.name)
     }
     if (beaten.kind === 'champion') {
       out.champions = (run.champions ?? 0) + 1
       champion = true
+      note(out, run, 'w', beaten.name)
       // O Campeão vencido vai querer revanche na região seguinte.
       out.rematch = { region: run.boss.region }
     }
@@ -3418,6 +3440,7 @@ export function winFloor(run, data, after = {}) {
     ...(hm ? { hm } : {}),
     ...(badge ? { badge } : {}),
     ...(pokerus.length ? { pokerus } : {}),
+    ...(scale ? { scale: true } : {}),
     ...(questDone != null ? { quest: { id: questDone, prize: QUEST_PRIZE } } : run.encounter.quest ? { quest: { id: run.encounter.foes[0]?.id ?? null, lost: true } } : {}),
     ...(key ? { key } : {}),
     ...(placeReward ? { placeReward } : {}),
@@ -3503,6 +3526,8 @@ export function capturedMon(run, into = null) {
   let mon = newMon(foe.id, foe.level, rand, foe.egg ? EGG_IVS : foe.minIv ?? 0, Boolean(foe.shiny))
   // O do Hidden Grotto: com a habilidade oculta.
   if (foe.ha) mon = { ...mon, ha: true }
+  // A Poké Ball em que ele foi capturado (ele sai dela nas batalhas).
+  if (run.pending?.ball) mon = { ...mon, ball: run.pending.ball }
   // Do ovo da Creche: os 3 melhores IVs do pai passam para o filhote (fica o maior). Igual ao app.
   if (foe.parent?.ivs) mon = { ...mon, ivs: inheritIvs(mon.ivs, foe.parent.ivs) }
   // Synchronize em quem vai na frente: metade das vezes, o capturado vem com a Nature dele.
@@ -3531,6 +3556,7 @@ export function capture(run, replace = null) {
     out.team[replace] = mon
   } else return run
   addDex(out, foe.id)
+  note(out, run, foe.egg ? 'h' : 'c', foe.id, foe.shiny)
   return out
 }
 
@@ -4166,6 +4192,55 @@ export function withLegends(factory) {
   return legends.some((id) => !have.includes(id)) ? { ...factory, legends: [...have, ...legends.filter((id) => !have.includes(id))] } : factory
 }
 
+/**
+ * O Pokégear (depois da 1ª insígnia): às vezes, ao entrar numa rota (CALL_CHANCE), um treinador que você venceu liga.
+ * 'rematch': ele quer revanche (um treinador forte na primeira bifurcação); 'rare': ele viu um Pokémon raro ali (um
+ * selvagem com CALL_SHINY vezes mais chance de shiny e IVs de pelo menos CALL_IVS). Igual ao app.
+ */
+export const CALL_CHANCE = 0.3
+export const CALL_SHINY = 3
+export const CALL_IVS = 15
+export const CALLERS = ['Joey', 'Wade', 'Liz', 'Anthony', 'Todd', 'Gina', 'Ralph', 'Dana', 'Chad', 'Erin', 'Tully', 'Wilton']
+export function callOf(data, run) {
+  if ((run.badges ?? 0) < 1 || run.dungeon || !run.defeated) return null
+  const at = { seed: run.seed, floor: legOf(run) * 13 + 5 }
+  if (followRoll(at, 2246822507) >= CALL_CHANCE) return null
+  return { kind: followRoll(at, 3266489909) < 0.5 ? 'rematch' : 'rare', name: CALLERS[Math.floor(followRoll(at, 668265261) * CALLERS.length)] }
+}
+
+/**
+ * O Pokémon que segue você (o primeiro do time) comenta o lugar ao chegar numa rota: cansado (pouco HP), animado à
+ * noite (Fantasma e Sombrio), feliz no lugar do tipo dele, molhado ou com calor no lugar errado, ou contente com você
+ * (amizade alta). Igual ao app.
+ */
+const WET_BIOMES = ['water', 'beach', 'underwater', 'seacave', 'lake', 'snow', 'icecave', 'waterfall', 'swamp']
+const HOT_BIOMES = ['volcano', 'desert', 'lavacave', 'dunes']
+export function followerMood(data, run, night = false) {
+  const order = battleOrder(run)
+  const lead = order.length ? run.team[order[0]] : null
+  if (!lead) return null
+  const types = speciesOf(data, lead.id)?.[4] ?? []
+  const biome = run.route?.biome ?? 'grass'
+  const mood = (lead.hp ?? 1) < 0.3 ? 'tired'
+    : night && types.some((x) => x === 'ghost' || x === 'dark') ? 'night'
+    : types.some((x) => (BIOMES[biome] ?? []).includes(x)) ? 'happy'
+    : types.includes('fire') && WET_BIOMES.includes(biome) ? 'wet'
+    : types.includes('ice') && HOT_BIOMES.includes(biome) ? 'hot'
+    : (lead.friendship ?? 0) >= FRIEND_EVOLVE ? 'love'
+    : 'calm'
+  return { id: lead.id, mood }
+}
+
+/**
+ * O diário da corrida: o que aconteceu, andar por andar ([tipo, andar, quem]): 'c' capturou (shiny: 4º campo), 'h' ovo
+ * chocou, 'f' desmaiou, 'b' insígnia, 'w' virou Campeão, 'l' missão lendária. Os últimos DIARY_MAX. Vai para o
+ * histórico no fim da corrida. Igual ao app.
+ */
+export const DIARY_MAX = 120
+function note(out, run, kind, who, shiny = false) {
+  out.diary = [...(out.diary ?? run.diary ?? []), [kind, run.floor, who, ...(shiny ? [1] : [])]].slice(-DIARY_MAX)
+}
+
 /** O lendário da região da corrida (sempre o mesmo para a mesma corrida e região). */
 export function regionLegend(data, run) {
   const list = REGION_LEGENDS[data.bosses[run.boss.region].region] ?? []
@@ -4271,7 +4346,9 @@ export function resolveChoice(run, data, accept) {
 }
 /** Um item ganho: bolas e remédios na Bolsa, ficha de Move Tutor, os de segurar guardados. */
 function giveItem(out, item) {
-  if (BAG_ITEMS.includes(item)) out.bag = { ...out.bag, [item]: (out.bag[item] ?? 0) + 1 }
+  // A Heart Scale: paga o Move Reminder no lugar do dinheiro.
+  if (item === 'heart-scale') out.scales = (out.scales ?? 0) + 1
+  else if (BAG_ITEMS.includes(item)) out.bag = { ...out.bag, [item]: (out.bag[item] ?? 0) + 1 }
   else if (TOKENS.includes(item)) out.tokens = { ...out.tokens, [item]: (out.tokens?.[item] ?? 0) + 1 }
   else out.stash = [...(out.stash ?? []), item]
 }
@@ -4840,6 +4917,7 @@ export function addToHistory(history = [], run, coins, date = new Date().toISOSt
     ...(run.pieces && typeof run.pieces === 'object' ? { pieces: piecesOf(run) } : {}),
     modes: [...(run.nuzlocke ? ['nuzlocke'] : []), ...RUN_MODES.filter((m) => run[m] != null && run[m] !== false)],
     summary: runSummary(run),
+    ...(run.diary?.length ? { diary: run.diary } : {}),
   }
   return [entry, ...history].slice(0, HISTORY_SIZE)
 }
