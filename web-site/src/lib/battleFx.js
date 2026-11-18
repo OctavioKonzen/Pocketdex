@@ -3010,11 +3010,17 @@ export function fxPlan2({ kind, type, slug = '', from = 0, seed = 1, stage = FX_
 }
 
 
+/** As cenas de status (na vez do Pokémon ou no fim do turno) e o efeito de cada uma. Igual ao app (o mesmo plano). */
+export const STATUS_SCENES = { brn: 'burn', psn: 'poison', par: 'para', slp: 'sleep', frz: 'freeze', cnf: 'confuse' }
+/** O texto da batalha que mostra a cena de status. */
+export const STATUS_TEXT_SCENE = { hurtBurn: 'brn', hurtPoison: 'psn', fullPara: 'par', asleep: 'slp', isFrozen: 'frz', isConfused: 'cnf' }
+
 /**
  * As cenas da batalha como no Black & White (mesmo motor dos golpes): kind
  *   sendout  a Poké Ball voa, abre num clarão com brilhos e o Pokémon sai dela como silhueta branca e cresce
  *   recall   o raio vermelho volta para a Poké Ball: o Pokémon fica vermelho e encolhe até sumir
  *   faint    o Pokémon desmaia: desce, fica escuro e some
+ *   brn psn par slp frz cnf  o status na vez dele (chamas, bolhas, faíscas, Zzz, cristais, estrelas girando)
  * [side] 0 o seu (perto, de costas), 1 o outro. A câmera vai até ele e volta.
  */
 export function fxScene({ kind, side = 1, stage = FX_STAGE, seed = 1 }) {
@@ -3057,6 +3063,19 @@ export function fxScene({ kind, side = 1, stage = FX_STAGE, seed = 1 }) {
     SP.push({ who, k: 'grow', t0: 450, t1: 900, s0: 1, s1: 0 })
     SP.push({ who, k: 'hide', t0: 900, t1: 99999 })
     dur = 1500
+  } else if (STATUS_SCENES[kind]) {
+    // O status na vez dele (como nos jogos): queimou, envenenou, está paralisado, dormindo, congelado ou confuso.
+    const F = FX_EFFECT[STATUS_SCENES[kind]]
+    cam = [[0, ...NEUTRAL], [220, ...look(c, side === 0 ? 1.1 : 1.25, 0)], [900, ...look(c, side === 0 ? 1.1 : 1.25, 0)], [1150, ...NEUTRAL]]
+    L.push({ s: 'particles', t0: 150, t1: 1050, n: F.n, seed, x: c.x, y: c.y + (F.vy > 0 ? -S.h * 0.4 : S.h * 0.15), sx: S.h * 0.35, sy: 30, v: F.v ?? 0, vy: F.vy, g: 0, life: 650, mode: F.mode ?? 'stream', r: S.h * 0.55, size: F.size, style: F.style, c: F.c })
+    if (F.tint) SP.push({ who, k: 'tint', t0: 150, t1: 950, color: F.tint, a: 0.45, pulse: 16 })
+    if (F.ring) L.push({ s: 'ring', t0: 150, t1: 850, x: c.x, y: c.y, r: [S.h * 0.7, S.h * 0.2], ratio: 0.6, w: [2, 6], c: F.ring, a: [0, 1], n: 2 })
+    if (F.bolt) L.push({ s: 'bolt', t0: 150, t1: 750, x: c.x, y: c.y, r: S.h * 0.6, n: 5, c: '#ffffff', c2: '#ffe94a', w: 2.5, flicker: 1 })
+    // Paralisado: treme; queimado e envenenado: um tranco (o dano).
+    if (kind === 'par') SP.push({ who, k: 'move', t0: 200, t1: 700, dx: 6, dy: 0, bounce: 6 })
+    if (kind === 'brn' || kind === 'psn') SP.push({ who, k: 'move', t0: 500, t1: 750, dx: -8 * toward, dy: 0, bounce: 2 })
+    if (kind === 'brn' || kind === 'psn') shake.push([500, 650, 2])
+    dur = 1200
   } else {
     // Desmaio: grito, desce do chão e some (como no jogo), a câmera chega perto.
     cam = [[0, ...NEUTRAL], [300, ...look(c, side === 0 ? 1.1 : 1.3, toward)], [1200, ...look(c, side === 0 ? 1.1 : 1.3, toward)], [1500, ...NEUTRAL]]

@@ -13,7 +13,7 @@ import { raidAfterFight, raidDamage, raidMember } from '../lib/raid'
 import { battleHitter, battleMons, leaderTeam, randomTeam } from '../lib/battleSetup'
 import { friendsOnly, useFriends } from '../lib/friends'
 import { getFxAnchors, getGymLeaders, getMoveAnims, getMoveFx, getMoves, getTypes, shinyPath, spriteUrl } from '../lib/data'
-import { FX_SCALE, fxForMove, fxKey, fxScene, fxStage } from '../lib/battleFx'
+import { FX_SCALE, STATUS_TEXT_SCENE, fxForMove, fxKey, fxScene, fxStage } from '../lib/battleFx'
 import { HAND_MOVES } from '../lib/battleFxMoves'
 import { canPlayFx, measureStage, runFx } from '../lib/fxRun'
 import { addHallOfFame, badgesNeeded, badgesOf, leagueOpen, leagueOrder, musicOf, regionGyms, regionOf, streakResult, winBadge } from '../lib/gymChallenge'
@@ -1180,7 +1180,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
     const plan = fxScene({ kind, side, stage, seed: (turnNo.current * 7 + side) % 997 })
     if (kind === 'sendout') playSound('open')
     if (kind === 'recall') playSound('recall')
-    const done = runFx({ field: field.current, world: world.current, canvas: fxCanvas.current, spriteEls: [sprites[0].current, sprites[1].current], plan, rate: fast(1000) / 1000, live: () => live.current, endHidden: kind === 'sendout' ? null : side })
+    const done = runFx({ field: field.current, world: world.current, canvas: fxCanvas.current, spriteEls: [sprites[0].current, sprites[1].current], plan, rate: fast(1000) / 1000, live: () => live.current, endHidden: kind === 'recall' || kind === 'faint' ? side : null })
     // Sai da Poké Ball: o sprite já existe (escondido pela cena até a bola abrir).
     if (kind === 'sendout') requestAnimationFrame(() => setSide(setPoke, side, ''))
     await done
@@ -1361,6 +1361,9 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
             boosts: s.boosts.map((b, i) => (i === who ? { ...b, [e.args[1]]: Math.max(-6, Math.min(6, (b[e.args[1]] ?? 0) + by)) } : b)),
           }))
         if (e.key === 'statsReset') setShown((s) => ({ ...s, boosts: [{}, {}] }))
+        // O status na vez dele, como nos jogos (chamas da queimadura, bolhas do veneno, Zzz, faíscas...). Igual ao app.
+        if (STATUS_TEXT_SCENE[e.key] && (who === 0 || who === 1)) await playScene(STATUS_TEXT_SCENE[e.key], who)
+        if (!live.current) return
         // Golpe crítico: o clarão e a tela tremendo (igual ao app).
         if (e.key === 'crit') {
           setFlash((n) => n + 1)

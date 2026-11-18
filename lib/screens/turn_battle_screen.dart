@@ -2082,6 +2082,10 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
           // Estágio do atributo na caixa de HP, junto com o texto (o fim do turno confere com o motor).
           final by = _boostText[e.key];
           final who = e.args.isNotEmpty && e.args.first is (int, String) ? (e.args.first as (int, String)).$1 : -1;
+          // O status na vez dele, como nos jogos (chamas da queimadura, bolhas do veneno, Zzz, faíscas...). Igual ao site.
+          final statusScene = _statusTextScene[e.key];
+          if (statusScene != null && (who == 0 || who == 1) && !_fainted[who]) await _playScene(statusScene, who);
+          if (!mounted) return;
           if (by != null && e.args.length > 1 && (who == 0 || who == 1)) {
             final stat = '${e.args[1]}';
             setState(() => _boosts[who][stat] = ((_boosts[who][stat] ?? 0) + by).clamp(-6, 6));
@@ -5484,6 +5488,9 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
 }
 
 /// Quanto o texto do turno muda o estágio (statUp2 = +2...).
+/// O texto da batalha que mostra a cena de status (as mesmas do site: STATUS_TEXT_SCENE).
+const _statusTextScene = {'hurtBurn': 'brn', 'hurtPoison': 'psn', 'fullPara': 'par', 'asleep': 'slp', 'isFrozen': 'frz', 'isConfused': 'cnf'};
+
 const _boostText = {'statUp': 1, 'statUp2': 2, 'statUp3': 3, 'statDown': -1, 'statDown2': -2, 'statDown3': -3};
 
 
