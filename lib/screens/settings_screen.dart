@@ -207,6 +207,16 @@ class SettingsScreen extends StatelessWidget {
                       below: _Choice(value: settings.battleStyle, onChanged: settings.setBattleStyle, options: const [('shift', 'Troca'), ('set', 'Fixo')]),
                     ),
                     row(
+                      title: 'Velocidade do texto',
+                      subtitle: 'Quanto tempo cada fala da batalha fica na caixa de texto (tocar sempre passa).',
+                      below: _Choice(value: settings.textSpeed, onChanged: settings.setTextSpeed, options: const [('slow', 'Lenta'), ('normal', 'Normal'), ('fast', 'Rápida')]),
+                    ),
+                    row(
+                      title: 'Animações de golpe',
+                      subtitle: 'A câmera e os efeitos de cada golpe, de status e da Poké Ball. Desligadas, a batalha anda mais rápido.',
+                      trailing: Switch(value: settings.battleAnims, activeTrackColor: const Color(0xFF0EA5E9), onChanged: settings.setBattleAnims),
+                    ),
+                    row(
                       title: 'Efeitos sonoros',
                       subtitle: 'Golpes, Poké Ball, desmaio, atributos e a fanfarra da vitória.',
                       trailing: Switch(value: settings.battleSounds, activeTrackColor: const Color(0xFF0EA5E9), onChanged: settings.setBattleSounds),

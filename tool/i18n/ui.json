@@ -366,6 +366,11 @@
   "fr": "La partie s’est terminée à l’étage {0} : +{1} pièces. Record : étage {2}.",
   "es": "La partida terminó en el piso {0}: +{1} monedas. Récord: piso {2}."
  },
+ "A câmera e os efeitos de cada golpe, de status e da Poké Ball. Desligadas, a batalha anda mais rápido.": {
+  "en": "The camera and effects of each move, status and Poké Ball. Turned off, battles go faster.",
+  "fr": "La caméra et les effets de chaque capacité, statut et Poké Ball. Désactivées, les combats vont plus vite.",
+  "es": "La cámara y los efectos de cada movimiento, estado y Poké Ball. Desactivadas, los combates van más rápido."
+ },
  "A dança do Miror B.": {
   "en": "Miror B.'s dance",
   "fr": "La danse de Miror B.",
@@ -1119,6 +1124,11 @@
   "en": "Animations",
   "fr": "Animations",
   "es": "Animaciones"
+ },
+ "Animações de golpe": {
+  "en": "Move animations",
+  "fr": "Animations des capacités",
+  "es": "Animaciones de movimientos"
  },
  "Animações e sprites": {
   "en": "Animations and sprites",
@@ -6219,6 +6229,11 @@
   "fr": "Légendaires",
   "es": "Legendarios"
  },
+ "Lenta": {
+  "en": "Slow",
+  "fr": "Lente",
+  "es": "Lenta"
+ },
  "Leva menos de um minuto.": {
   "en": "It takes less than a minute.",
   "fr": "Cela prend moins d'une minute.",
@@ -9604,6 +9619,11 @@
   "fr": "Moins de PV et un statut rendent la capture plus facile. Les sauvages de bas niveau sont plus faciles ; ceux au-dessus du niveau de votre Pokémon, bien plus difficiles. De meilleures Balls aident.",
   "es": "Menos PS y un estado lo hacen más fácil. Los salvajes de nivel bajo son más fáciles; los de nivel superior a tu Pokémon, mucho más difíciles. Mejores Balls ayudan."
  },
+ "Quanto tempo cada fala da batalha fica na caixa de texto (tocar sempre passa).": {
+  "en": "How long each battle line stays in the text box (tapping always skips).",
+  "fr": "Durée d'affichage de chaque réplique du combat (toucher passe toujours).",
+  "es": "Cuánto tiempo queda cada frase del combate en el cuadro de texto (tocar siempre pasa)."
+ },
  "Quanto um golpe tira do outro": {
   "en": "How much one move takes from another Pokémon",
   "fr": "Combien une attaque retire à l'autre",
@@ -10180,6 +10200,11 @@
   "en": "Ruins",
   "fr": "Ruines",
   "es": "Ruinas"
+ },
+ "Rápida": {
+  "en": "Fast",
+  "fr": "Rapide",
+  "es": "Rápida"
  },
  "SACUDIR A ÁRVORE": {
   "en": "SHAKE THE TREE",
@@ -12237,6 +12262,11 @@
   "en": "Battle speed",
   "fr": "Vitesse du combat",
   "es": "Velocidad de la batalla"
+ },
+ "Velocidade do texto": {
+  "en": "Text speed",
+  "fr": "Vitesse du texte",
+  "es": "Velocidad del texto"
  },
  "Velocidade ×1,5, mas só usa o primeiro golpe escolhido até trocar": {
   "en": "Speed ×1.5, but locked into the first move chosen until it switches out",

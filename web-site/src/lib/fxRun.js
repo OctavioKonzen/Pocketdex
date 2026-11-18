@@ -1,3 +1,4 @@
+import { usePrefs } from './prefs'
 // Toca a animação de um golpe (battleFx.js) dentro da batalha: mede onde cada Pokémon está no campo, move a câmera
 // sobre o campo inteiro (fundo, bases e sprites), desenha os efeitos num <canvas> por cima e muda os sprites (cor do
 // golpe, recuo, silhueta branca, sumir). Os HPs somem e voltam (data-fx-hud). Igual ao app (battle_fx_player.dart).
@@ -69,7 +70,7 @@ export function measureStage(field, spriteEls, ids, anchors) {
 
 /** Dá para desenhar (no navegador de verdade; nos testes sem canvas, não). */
 export const canPlayFx = () =>
-  typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function' && !/jsdom/i.test(navigator.userAgent ?? '')
+  typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function' && !/jsdom/i.test(navigator.userAgent ?? '') && usePrefs.getState().battleAnims !== false
 
 /**
  * Toca o golpe. [world] o elemento que a câmera move (fundo e sprites), [canvas] por cima, [spriteEls] [o seu, o outro],

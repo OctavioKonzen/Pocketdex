@@ -1592,7 +1592,7 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
       });
     } else if (opening.isNotEmpty) {
       _busy = true;
-      _wait(_step.inMilliseconds).then((_) => mounted ? _play(opening) : null);
+      _wait((_step.inMilliseconds * AppSettings.instance.textFactor).round()).then((_) => mounted ? _play(opening) : null);
     }
   }
 
@@ -1600,7 +1600,7 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
   /// As cenas como no Black & White (mesma câmera e efeitos dos golpes): 'sendout' (a Poké Ball voa e abre),
   /// 'recall' (o raio vermelho) e 'faint' (desmaio). Devolve false quando não dá (sem os dados): usa a de antes.
   Future<bool> _playScene(String kind, int side) async {
-    if (!_fxReady || !mounted) return false;
+    if (!_fxReady || !mounted || !AppSettings.instance.battleAnims) return false;
     final near = _form[0] ?? _b.teams[0][_active[0]].id, far = _form[1] ?? _b.teams[1][_active[1]].id;
     if (_portStage(near, far, _b.teams[0][_active[0]].shiny, _b.teams[1][_active[1]].shiny) == null) return false;
     final p = BattleFx.scene(kind: kind, side: side, near: near, far: far, seed: (_turnNo * 7 + side) % 997);
@@ -2010,7 +2010,7 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
                   : moveAnim(e.slug, e.type, e.category);
           final variant = entry is List ? (entry[2] as num).toInt() : 0;
           // A animação nova (como no Black & White): câmera, fases, efeitos desenhados saindo da boca ou da frente.
-          if (_fxReady) {
+          if (_fxReady && AppSettings.instance.battleAnims) {
             final p = BattleFx.plan(
               slug: e.slug,
               type: e.type,
@@ -2105,7 +2105,7 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
             if (!mounted) return;
             setState(() => _text = page);
             _skip = Completer<void>();
-            await Future.any([_wait(_step.inMilliseconds), _skip!.future]);
+            await Future.any([_wait((_step.inMilliseconds * AppSettings.instance.textFactor).round()), _skip!.future]);
             _skip = null;
           }
         case 'hp':

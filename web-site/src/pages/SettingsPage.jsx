@@ -35,6 +35,10 @@ export default function SettingsPage() {
   const setAnimatedSprites = usePrefs((s) => s.setAnimatedSprites)
   const setBackgroundAnimation = usePrefs((s) => s.setBackgroundAnimation)
   const battleSounds = usePrefs((s) => s.battleSounds)
+  const textSpeed = usePrefs((s) => s.textSpeed)
+  const setTextSpeed = usePrefs((s) => s.setTextSpeed)
+  const battleAnims = usePrefs((s) => s.battleAnims)
+  const setBattleAnims = usePrefs((s) => s.setBattleAnims)
   const setBattleSounds = usePrefs((s) => s.setBattleSounds)
   const battleMusic = usePrefs((s) => s.battleMusic)
   const setBattleMusic = usePrefs((s) => s.setBattleMusic)
@@ -109,6 +113,12 @@ export default function SettingsPage() {
         <Section title="Batalha" icon="⚔️" summary="Estilo, efeitos sonoros e música" color="#EF4444">
           <Row title="Estilo da batalha" text="Troca: quando o Pokémon do adversário desmaia, pergunta se você quer trocar. Fixo: como no competitivo, sem a pergunta.">
             <Choice value={battleStyle} onChange={setBattleStyle} options={[{ key: 'shift', label: 'Troca' }, { key: 'set', label: 'Fixo' }]} />
+          </Row>
+          <Row title="Velocidade do texto" text="Quanto tempo cada fala da batalha fica na caixa de texto (tocar sempre passa).">
+            <Choice value={textSpeed} onChange={setTextSpeed} options={[{ key: 'slow', label: 'Lenta' }, { key: 'normal', label: 'Normal' }, { key: 'fast', label: 'Rápida' }]} />
+          </Row>
+          <Row title="Animações de golpe" text="A câmera e os efeitos de cada golpe, de status e da Poké Ball. Desligadas, a batalha anda mais rápido.">
+            <Switch on={battleAnims} onChange={setBattleAnims} label="Animações de golpe" />
           </Row>
           <Row title="Efeitos sonoros" text="Golpes, Poké Ball, desmaio, atributos e a fanfarra da vitória.">
             <Switch on={battleSounds} onChange={setBattleSounds} label="Efeitos sonoros" />

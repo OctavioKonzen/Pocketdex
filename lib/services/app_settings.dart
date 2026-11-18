@@ -23,6 +23,8 @@ class AppSettings extends ChangeNotifier {
   static const _backgroundKey = 'settings_background_pokeball';
   static const _animatedSpritesKey = 'settings_animated_sprites';
   static const _battleSoundsKey = 'settings_battle_sounds';
+  static const _textSpeedKey = 'settings_text_speed';
+  static const _battleAnimsKey = 'settings_battle_anims';
   static const _battleMusicKey = 'settings_battle_music';
   static const _musicVolumeKey = 'settings_music_volume';
   static const _battleStyleKey = 'settings_battle_style';
@@ -44,6 +46,15 @@ class AppSettings extends ChangeNotifier {
 
   /// Sons da batalha (golpes, Poké Ball...) e a música (battle_sounds.dart).
   bool battleSounds = true;
+
+  /// A velocidade do texto da batalha (como nos jogos): 'slow', 'normal' ou 'fast'. Igual ao site.
+  String textSpeed = 'normal';
+
+  /// As animações dos golpes e das cenas (câmera, efeitos); desligadas, a batalha anda mais rápido. Igual ao site.
+  bool battleAnims = true;
+
+  /// Quanto o texto fica na tela (multiplica a espera de cada fala).
+  double get textFactor => textSpeed == 'slow' ? 1.6 : textSpeed == 'fast' ? 0.55 : 1.0;
   bool battleMusic = true;
 
   /// Volume da música (0 a 1; 0,5 é o volume de sempre). Igual ao site.
@@ -106,6 +117,8 @@ class AppSettings extends ChangeNotifier {
       backgroundAnimation = prefs.getBool(_backgroundKey) ?? true;
       animatedSprites = prefs.getBool(_animatedSpritesKey) ?? true;
       battleSounds = prefs.getBool(_battleSoundsKey) ?? true;
+      textSpeed = prefs.getString(_textSpeedKey) ?? 'normal';
+      battleAnims = prefs.getBool(_battleAnimsKey) ?? true;
       battleMusic = prefs.getBool(_battleMusicKey) ?? true;
       musicVolume = (prefs.getDouble(_musicVolumeKey) ?? 0.5).clamp(0.0, 1.0);
       battleStyle = prefs.getString(_battleStyleKey) ?? 'shift';
@@ -169,6 +182,22 @@ class AppSettings extends ChangeNotifier {
     if (!save) return;
     try {
       await (await SharedPreferences.getInstance()).setDouble(_musicVolumeKey, musicVolume);
+    } catch (_) {}
+  }
+
+  Future<void> setTextSpeed(String value) async {
+    textSpeed = value;
+    notifyListeners();
+    try {
+      await (await SharedPreferences.getInstance()).setString(_textSpeedKey, value);
+    } catch (_) {}
+  }
+
+  Future<void> setBattleAnims(bool value) async {
+    battleAnims = value;
+    notifyListeners();
+    try {
+      await (await SharedPreferences.getInstance()).setBool(_battleAnimsKey, value);
     } catch (_) {}
   }
 

@@ -67,6 +67,8 @@ const DEFENSE = '__defense__'
 const streakDifficulty = (wins, difficulty) => (wins >= 3 ? 'hard' : difficulty)
 const KIND_LABEL = { gym: 'Líder de Ginásio', elite: 'Elite dos Quatro', champion: 'Campeão', kahuna: 'Kahuna' }
 const STEP_MS = 1100
+/** Quanto o texto fica na tela (a velocidade do texto das Configurações). Igual ao app. */
+const TEXT_FACTOR = { slow: 1.6, normal: 1, fast: 0.55 }
 
 const STAT_LABELS = new Set(Object.values(STAT_NAMES))
 const format = (event) => {
@@ -1393,7 +1395,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
           if (!live.current) return
           setText(page)
           await new Promise((resolve) => {
-            const id = setTimeout(resolve, fast(STEP_MS))
+            const id = setTimeout(resolve, fast(STEP_MS * (TEXT_FACTOR[usePrefs.getState().textSpeed] ?? 1)))
             skip.current = () => (clearTimeout(id), resolve())
           })
           skip.current = null

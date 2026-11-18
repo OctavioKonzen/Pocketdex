@@ -35,6 +35,12 @@ export const usePrefs = create(
       /** Sons da batalha (golpes, Poké Ball...) e a música (lib/battleSound.js). */
       battleSounds: true,
       setBattleSounds: (battleSounds) => set({ battleSounds }),
+      /** A velocidade do texto da batalha (como nos jogos): 'slow', 'normal' ou 'fast'. Igual ao app. */
+      textSpeed: 'normal',
+      setTextSpeed: (textSpeed) => set({ textSpeed }),
+      /** As animações dos golpes e das cenas (câmera, efeitos); desligadas, a batalha anda mais rápido. Igual ao app. */
+      battleAnims: true,
+      setBattleAnims: (battleAnims) => set({ battleAnims }),
       battleMusic: true,
       setBattleMusic: (battleMusic) => set({ battleMusic }),
       /** Volume da música (0 a 1; 0,5 é o volume de sempre). Igual ao app. */
