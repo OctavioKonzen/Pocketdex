@@ -87,7 +87,7 @@ class _PortPartyState extends State<PortParty> {
     final m = widget.team[i];
     final off = widget.disabled?.call(i) ?? false;
     final hp = m.hp.clamp(0.0, 1.0).toDouble();
-    final icon = Opacity(opacity: hp > 0 ? 1 : 0.5, child: SizedBox(width: big ? w * 0.11 : w * 0.055, height: big ? w * 0.11 : w * 0.055, child: PokemonSprite(m.id, shiny: m.shiny, fill: 0.95)));
+    final icon = Opacity(opacity: hp > 0 ? 1 : 0.5, child: SizedBox(width: big ? w * 0.11 : w * 0.055, height: big ? w * 0.11 : w * 0.055, child: PokemonSprite(m.id, shiny: m.shiny, fill: 0.95, lite: !big)));
     final info = Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
       Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
         Expanded(child: Text(m.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: _font.copyWith(fontSize: big ? w * 0.026 : w * 0.019))),

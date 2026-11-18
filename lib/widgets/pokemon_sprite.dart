@@ -75,7 +75,11 @@ class PokemonSprite extends StatelessWidget {
       this.battle = false,
       this.prefetchShiny = false,
       this.crown,
-      this.crystal});
+      this.crystal,
+      this.lite = false});
+
+  /// Em grades grandes (Pokédex, PC, troca): o sprite parado do app, sem baixar nem animar o GIF (celular fraco).
+  final bool lite;
 
   @override
   Widget build(BuildContext context) {
@@ -84,7 +88,7 @@ class PokemonSprite extends StatelessWidget {
     // é o sprite parado de sempre.
     final pid = id is int ? id as int : int.tryParse('$id');
     final still = back ? Transform.flip(flipX: true, child: _static()) : _static();
-    if (silhouette != null || pid == null) return still;
+    if (silhouette != null || pid == null || lite) return still;
     return ListenableBuilder(
       listenable: AppSettings.instance,
       builder: (context, _) {

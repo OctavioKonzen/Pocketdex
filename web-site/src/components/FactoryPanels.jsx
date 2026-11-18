@@ -2045,6 +2045,15 @@ const HELP = [
   ['🏙️', 'Cidades e lugares', 'A cada rota de 10 andares você chega numa cidade: ginásio, Poké Mart, Centro Pokémon e Creche. Perto dela há um lugar com 10 andares e um chefe; depois, de volta à cidade.'],
   ['💞', 'Amizade e habilidades', 'Quem fica no time ganha amizade e alguns evoluem por ela. Pickup acha itens, Intimidate espanta selvagens e Synchronize passa a Nature para o capturado.'],
 ]
+/** As dicas da primeira vez (o tutorial curto). Igual ao app. */
+const TIPS = {
+  paths: 'Escolha um caminho: cada carta é um andar (treinador, selvagem, lugar...). No fim da rota, o chefe.',
+  actions: 'Em AÇÕES: pescar, sacudir árvores, passar mel, usar o Repelente e mais.',
+  cards: 'Depois de cada chefe, escolha 1 de 3 cartas: o bônus vale para a corrida toda.',
+  puzzle: 'Antes do líder, vença o desafio do ginásio. Perdendo, tenta de novo com outro sorteio.',
+  help: 'Dúvidas? Em AJUDA tem a explicação de tudo, o cartão do treinador e a Pokédex.',
+}
+
 /** Os créditos depois do Campeão (como nos jogos): o time campeão passando, o treinador, a região, os números da corrida,
  * "Obrigado por jogar!" e FIM, subindo devagar; no fim (ou PULAR) segue para o resultado. Igual ao app. */
 function Credits({ run, data, name, onEnd }) {
@@ -2193,7 +2202,7 @@ function DexPanel({ factory, data, run, name, onClose }) {
                 className={`relative min-h-0 cursor-pointer overflow-hidden rounded-[0.5cqw] ${on ? 'border-2 border-yellow-400 bg-[#3b4252]' : 'border border-[#4b5563] bg-[#14161ccc]'}`}>
                 <span className={`absolute left-[0.3cqw] top-0 text-[1.1cqw] ${c ? 'text-white' : 'text-slate-400'}`}>{id}</span>
                 {c && <span className="absolute right-[0.3cqw] top-0 text-[1.1cqw] text-red-500">●</span>}
-                <div className="absolute inset-x-[0.3cqw] bottom-0 top-[1cqw]" style={c ? undefined : black}><PokeIcon id={id} fill={0.9} className="h-full w-full" /></div>
+                <div className="absolute inset-x-[0.3cqw] bottom-0 top-[1cqw]" style={c ? undefined : black}><PokeIcon id={id} fill={0.9} lite className="h-full w-full" /></div>
               </button>
             )
           })}
@@ -2694,6 +2703,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
   }, [evo?.at, evo?.phase])
   // A fanfarra da insígnia (uma vez).
   const badgeShown = useRef(null)
+  // A dica mostrada agora ([id, a tela]).
+  const tipNow = useRef(null)
   // Os créditos do Campeão já passaram (a chave do andar).
   const [creditsDone, setCreditsDone] = useState(null)
   // O PC no Centro Pokémon da cidade (aberto).
@@ -2881,6 +2892,16 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     save(learnMove(run, i, move, current, learn.pick))
   }
   const step = stepOf(p)
+  // As dicas da primeira vez (como o tutorial dos jogos): uma linha 💡 na caixa de texto, uma vez cada. Igual ao app.
+  const seenTips = factory.tips ?? []
+  const screen = run ? `${run.floor}-${step}-${!p}` : ''
+  const tipId = !run ? null : step === 'cards' ? 'cards' : step === 'puzzle' ? 'puzzle'
+    : !p && !run.encounter ? ['paths', ...(run.floor >= 2 ? ['actions'] : []), ...(run.floor >= 4 ? ['help'] : [])].find((id) => !seenTips.includes(id)) ?? null : null
+  if (tipId && !seenTips.includes(tipId) && tipNow.current?.[0] !== tipId) {
+    tipNow.current = [tipId, screen]
+    setTimeout(() => saveFactory({ ...factoryOf(useStore.getState().league), tips: [...seenTips, tipId] }), 0)
+  }
+  const tipLine = tipNow.current && tipNow.current[1] === screen ? tipNow.current[0] : null
   // Subiu de nível: o quadro com os atributos novos antes de seguir (como nos jogos).
   const lvUps = step === 'result' && !learn && !evo && quickResult(p) ? (p.levels ?? []).filter((l) => !l.friend && run.team[l.index] && l.to > l.from) : []
   const lvKey = step === 'result' ? `${run.floor}-${JSON.stringify(p.levels ?? [])}` : null
@@ -3805,6 +3826,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     <section data-testid="factory-screen">
       <BattleFrame onDex={() => setPanel(panel === 'dex' ? null : 'dex')} field={field} run={run} byId={byId} data={data} frame={factory.frame} menu={menu} menuFill={menuFill} tools={toolRow ? tools : null} panel={below || extras || null}
         text={<>
+          {tipLine && <p className="font-bold text-amber-200" data-testid="factory-tip">💡 {t(TIPS[tipLine])}</p>}
           {note && <p data-testid="factory-note">{note}</p>}
           {text}
           {unlocked != null && <p className="text-sm text-amber-600" data-testid="factory-shiny-unlocked">✨ {t('{0} shiny liberado para começar as próximas corridas!').replace('{0}', name(unlocked))}</p>}

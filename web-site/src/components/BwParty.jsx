@@ -73,7 +73,7 @@ export default function BwParty({ team, title, onPick, onMove, disabled = () => 
         onClick={() => { if (!moved.current) onPick(i) }} onPointerDown={down(i)}
         className={`party-box flex min-h-0 min-w-0 cursor-pointer text-left disabled:cursor-default disabled:opacity-45 ${big ? 'flex-col items-center justify-center gap-[1cqw] px-[2cqw]' : 'items-center gap-[1.2cqw] px-[1.2cqw]'} ${selected === i ? 'selected' : active === i || leads?.includes(i) ? 'lead' : ''} ${dim(i) ? 'opacity-60' : ''} ${isOver ? 'over' : ''} ${drag?.from === i ? 'opacity-40' : ''}`}
         style={{ touchAction: onMove ? 'none' : undefined }}>
-        <PokeIcon id={m.id} shiny={Boolean(m.shiny)} className={`shrink-0 ${big ? 'h-[11cqw] w-[11cqw]' : 'h-[5.5cqw] w-[5.5cqw]'} ${hp > 0 ? '' : 'grayscale'}`} />
+        <PokeIcon id={m.id} shiny={Boolean(m.shiny)} lite={!big} className={`shrink-0 ${big ? 'h-[11cqw] w-[11cqw]' : 'h-[5.5cqw] w-[5.5cqw]'} ${hp > 0 ? '' : 'grayscale'}`} />
         <span className={`min-w-0 ${big ? 'w-full' : 'flex-1'}`}>
           <span className="flex items-baseline justify-between gap-[1cqw]">
             <span className={`truncate ${big ? 'text-[2.6cqw]' : 'text-[1.9cqw]'}`} data-no-translate>{m.name}{m.status && hp > 0 && <span className="ml-[0.8cqw] rounded-sm px-[0.5cqw] text-[1.2cqw]" style={{ background: STATUS_COLOR[m.status] ?? '#64748b' }}>{m.status.toUpperCase()}</span>}</span>

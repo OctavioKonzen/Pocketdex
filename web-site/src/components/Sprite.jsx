@@ -157,6 +157,8 @@ export default function Sprite(props) {
     return () => observer.disconnect()
   }, [pixelArt])
   const gif = anim?.gif
+  // lite: em grades grandes (Pokédex, PC, troca) fica o sprite parado, sem baixar nem animar o GIF (celular fraco). Igual ao app.
+  if (props.lite && !props.back) return <StaticSprite {...props} />
   if (!gif || failed === gif) {
     // De costas sem as costas no banco: a frente espelhada.
     if (props.back) {

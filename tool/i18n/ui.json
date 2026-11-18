@@ -1140,6 +1140,11 @@
   "fr": "Précédent",
   "es": "Anterior"
  },
+ "Antes do líder, vença o desafio do ginásio. Perdendo, tenta de novo com outro sorteio.": {
+  "en": "Before the leader, beat the gym challenge. If you lose, try again with a new one.",
+  "fr": "Avant le champion, réussissez le défi de l'arène. En cas d'échec, réessayez avec un autre.",
+  "es": "Antes del líder, supera el desafío del gimnasio. Si pierdes, inténtalo de nuevo con otro."
+ },
  "Análise do time": {
   "en": "Team analysis",
   "fr": "Analyse de l'équipe",
@@ -3597,6 +3602,11 @@
   "fr": "Plus tard",
   "es": "Después"
  },
+ "Depois de cada chefe, escolha 1 de 3 cartas: o bônus vale para a corrida toda.": {
+  "en": "After each boss, pick 1 of 3 cards: the bonus lasts the whole run.",
+  "fr": "Après chaque boss, choisissez 1 carte sur 3 : le bonus dure toute la partie.",
+  "es": "Después de cada jefe, elige 1 de 3 cartas: el bono dura toda la partida."
+ },
  "Depois de cada vitória, o time recupera {0}% do HP": {
   "en": "After each win, the team recovers {0}% HP",
   "fr": "Après chaque victoire, l'équipe récupère {0} % des PV",
@@ -3997,6 +4007,11 @@
   "fr": "Double-cliquez sur une carte du Pokédex (ou utilisez l'étoile dans les détails) pour l'ajouter aux favoris.",
   "es": "Haz doble clic en una tarjeta de la Pokédex (o usa la estrella en los detalles) para marcarla como favorita."
  },
+ "Dúvidas? Em AJUDA tem a explicação de tudo, o cartão do treinador e a Pokédex.": {
+  "en": "Questions? HELP explains everything and has the trainer card and the Pokédex.",
+  "fr": "Des questions ? AIDE explique tout et contient la carte de dresseur et le Pokédex.",
+  "es": "¿Dudas? AYUDA lo explica todo y tiene la tarjeta de entrenador y la Pokédex."
+ },
  "E-mail": {
   "en": "Email",
   "fr": "E-mail",
@@ -4155,6 +4170,11 @@
   "en": "Electric",
   "fr": "Électrik",
   "es": "Eléctrico"
+ },
+ "Em AÇÕES: pescar, sacudir árvores, passar mel, usar o Repelente e mais.": {
+  "en": "In ACTIONS: fish, shake trees, spread honey, use a Repel and more.",
+  "fr": "Dans ACTIONS : pêcher, secouer les arbres, étaler du miel, utiliser un Repousse et plus.",
+  "es": "En ACCIONES: pescar, sacudir árboles, untar miel, usar el Repelente y más."
  },
  "Em chamas": {
   "en": "On fire",
@@ -4655,6 +4675,11 @@
   "en": "Pick a friend…",
   "fr": "Choisissez un ami…",
   "es": "Elige un amigo…"
+ },
+ "Escolha um caminho: cada carta é um andar (treinador, selvagem, lugar...). No fim da rota, o chefe.": {
+  "en": "Pick a path: each card is a floor (trainer, wild Pokémon, place...). The boss waits at the end of the route.",
+  "fr": "Choisissez un chemin : chaque carte est un étage (dresseur, sauvage, lieu...). Le boss attend au bout de la route.",
+  "es": "Elige un camino: cada carta es un piso (entrenador, salvaje, lugar...). El jefe espera al final de la ruta."
  },
  "Escolha um do adversário e um seu para trocar, ou siga com o mesmo time.": {
   "en": "Pick one of the opponent's and one of yours to swap, or keep the same team.",

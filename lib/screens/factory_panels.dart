@@ -2562,6 +2562,15 @@ const _leaderLines = {
   'fairy': 'Encanto e poder: não se engane com a aparência!',
 };
 
+/// As dicas da primeira vez (o tutorial curto). Igual ao site.
+const _tips = {
+  'paths': 'Escolha um caminho: cada carta é um andar (treinador, selvagem, lugar...). No fim da rota, o chefe.',
+  'actions': 'Em AÇÕES: pescar, sacudir árvores, passar mel, usar o Repelente e mais.',
+  'cards': 'Depois de cada chefe, escolha 1 de 3 cartas: o bônus vale para a corrida toda.',
+  'puzzle': 'Antes do líder, vença o desafio do ginásio. Perdendo, tenta de novo com outro sorteio.',
+  'help': 'Dúvidas? Em AJUDA tem a explicação de tudo, o cartão do treinador e a Pokédex.',
+};
+
 /// Depois da luta: o líder entrega a insígnia, o rival reage (conforme perde), o vilão foge. Igual ao site.
 const _beatLines = {
   'gym': 'Você venceu de forma justa. Esta insígnia é sua!',
@@ -3454,7 +3463,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
               borderRadius: BorderRadius.circular(4),
             ),
             child: Stack(children: [
-              Positioned.fill(child: Padding(padding: const EdgeInsets.fromLTRB(2, 6, 2, 0), child: PokemonSprite(id, fill: 0.9, silhouette: c ? null : const Color(0xFF0F172A)))),
+              Positioned.fill(child: Padding(padding: const EdgeInsets.fromLTRB(2, 6, 2, 0), child: PokemonSprite(id, fill: 0.9, lite: true, silhouette: c ? null : const Color(0xFF0F172A)))),
               Positioned(left: 2, top: 0, child: Text('$id', style: ink.copyWith(fontSize: 8, color: c ? Colors.white : const Color(0xFF94A3B8)))),
               if (c) const Positioned(right: 2, top: 1, child: Icon(Icons.catching_pokemon, size: 8, color: Color(0xFFEF4444))),
             ]),
@@ -3779,7 +3788,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                           ? _dlgBox().copyWith(border: Border.all(color: _frameColors[currentFactory()['frame']]?.$1 ?? _border, width: 3))
                           : _dlgBox(),
                       style: _portText.copyWith(fontSize: m.font, height: 1.3),
-                      children: [if (_note != null) Text(_note!, key: const ValueKey('factory-note')), ...text],
+                      children: [if (_tipLine != null) _tipLine!, if (_note != null) Text(_note!, key: const ValueKey('factory-note')), ...text],
                     ),
                   ),
                   // Os botões no lugar dos da batalha, à direita da caixa de texto (o que não cabe vai para a próxima página).
@@ -3939,6 +3948,28 @@ class _FactoryScreenState extends State<FactoryScreen> {
     final lead = team.where((m) => FactoryRun.hpOf(m) > 0).firstOrNull ?? team.firstOrNull;
     final p = FactoryRun.pendingOf(run);
     final step = _stepOf(p);
+    // As dicas da primeira vez (como o tutorial dos jogos): uma linha 💡 na caixa de texto, uma vez cada. Igual ao site.
+    final seenTips = [for (final x in (factory['tips'] as List?) ?? const []) '$x'];
+    final screen = '${run['floor']}-$step-${p == null}';
+    final floor = (run['floor'] as num).toInt();
+    final tipId = step == 'cards'
+        ? 'cards'
+        : step == 'puzzle'
+            ? 'puzzle'
+            : p == null && run['encounter'] == null
+                ? [
+                    'paths',
+                    if (floor >= 2) 'actions',
+                    if (floor >= 4) 'help',
+                  ].where((id) => !seenTips.contains(id)).firstOrNull
+                : null;
+    if (tipId != null && !seenTips.contains(tipId) && _tipNow?.$1 != tipId) {
+      _tipNow = (tipId, screen);
+      WidgetsBinding.instance.addPostFrameCallback((_) => mounted ? setState(() => saveFactory({...currentFactory(), 'tips': [...seenTips, tipId]})) : null);
+    }
+    _tipLine = _tipNow != null && _tipNow!.$2 == screen
+        ? Text('💡 ${tr(_tips[_tipNow!.$1]!)}', key: const ValueKey('factory-tip'), style: const TextStyle(color: Color(0xFFFDE68A), fontWeight: FontWeight.w700))
+        : null;
     // Saiu no meio da batalha do andar: voltando, ela continua de onde parou (direto, sem passar pelo mapa).
     if (!_resumeAsked && !widget.busy && p == null && run['encounter'] != null && run['battle'] is Map && (run['battle'] as Map)['floor'] == run['floor']) {
       _resumeAsked = true;
@@ -4521,6 +4552,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
   List<(int, int, int)>? _evoList; // (posição no time, de, para)
   String? _badgeKey; // a fanfarra da insígnia já tocou
   String? _creditsDone; // os créditos do Campeão já passaram (a chave do andar)
+  (String, String)? _tipNow; // a dica mostrada agora (id, a tela)
+  Widget? _tipLine;
   int _evoAt = 0;
   String? _evoKey;
   String _evoPhase = 'run'; // run | done | stopped
@@ -7309,7 +7342,7 @@ class _PcPanelState extends State<_PcPanel> {
     final picked = _picked == l;
     Widget sprite(Json m, {double opacity = 1}) => Opacity(
           opacity: opacity,
-          child: PokemonSprite((m['id'] as num).toInt(), shiny: m['shiny'] == true, fill: 0.85),
+          child: PokemonSprite((m['id'] as num).toInt(), shiny: m['shiny'] == true, fill: 0.85, lite: true),
         );
     return DragTarget<_PcLoc>(
       onWillAcceptWithDetails: (d) => d.data != l,

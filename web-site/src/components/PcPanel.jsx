@@ -114,7 +114,7 @@ export default function PcPanel({ run, data, nameOf, onSave, onClose = null }) {
       <div key={key(l)} data-pc-slot={key(l)} data-testid={`pc-slot-${l.where}-${l.index}`} onPointerDown={(e) => start(e, l)}
         className={`relative grid min-h-0 min-w-0 cursor-pointer overflow-hidden ${small ? 'flex-1' : ''} touch-none select-none place-items-center rounded-lg border-2 ${isPicked ? 'border-yellow-400 bg-[#42340aeb]' : mon ? 'border-[#8b93a1] bg-[#181a1eeb]' : 'border-[#8b93a1] bg-[#181a1e66]'}`}
         title={mon ? label(mon) : ''}>
-        {mon && <PokeIcon id={mon.id} shiny={Boolean(mon.shiny)} fill={0.85} className={`pointer-events-none aspect-square h-full max-h-full max-w-full ${dragging ? 'opacity-30' : ''}`} />}
+        {mon && <PokeIcon id={mon.id} shiny={Boolean(mon.shiny)} fill={0.85} lite className={`pointer-events-none aspect-square h-full max-h-full max-w-full ${dragging ? 'opacity-30' : ''}`} />}
         {mon && !small && <span className="pointer-events-none absolute right-0.5 bottom-0 text-[8px] font-black text-white">{mon.level}</span>}
       </div>
     )
@@ -170,7 +170,7 @@ export default function PcPanel({ run, data, nameOf, onSave, onClose = null }) {
               const m = memorial[k]
               return (
                 <div key={k} className="relative grid min-h-0 min-w-0 place-items-center overflow-hidden rounded-lg border-2 border-white/20 bg-black/20" title={m ? `${label(m)} · Nv. ${m.level} · ${t('andar')} ${m.floor}` : ''}>
-                  {m && <PokeIcon id={m.id} shiny={Boolean(m.shiny)} fill={0.85} className="pointer-events-none aspect-square h-full max-h-full max-w-full grayscale" />}
+                  {m && <PokeIcon id={m.id} shiny={Boolean(m.shiny)} fill={0.85} lite className="pointer-events-none aspect-square h-full max-h-full max-w-full grayscale" />}
                   {m && <span className="pointer-events-none absolute right-0.5 bottom-0 text-[8px] font-black text-white">{m.level}</span>}
                 </div>
               )
