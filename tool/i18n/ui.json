@@ -15298,5 +15298,11 @@
   "fr": "Vous avez trouvé une Écaille Cœur ! Elle paie le Maître des Capacités.",
   "es": "¡Encontraste una Escama Corazón! Paga al Recordador de Movimientos.",
   "pt": "Você achou uma Heart Scale! Ela paga o Move Reminder."
+ },
+ "Ver como ele está": {
+  "en": "See how it's doing",
+  "fr": "Voir comment il va",
+  "es": "Ver cómo está",
+  "pt": "Ver como ele está"
  }
 }

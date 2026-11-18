@@ -39,6 +39,7 @@ import { prettyName, typeColor } from '../lib/pokemon'
 import { usePokemonIndex } from '../lib/pokemonIndex'
 import { prettySlug } from '../lib/teamSets'
 import { useStore } from '../lib/store'
+import { usePrefs } from '../lib/prefs'
 import { saveWeekly, useAuth, watchRanking } from '../lib/auth'
 import { weekKey } from '../lib/league'
 import { dailyMissions, dailyOf, missionLabel, trackDaily } from '../lib/factoryDaily'
@@ -1568,6 +1569,9 @@ const MOOD_TEXT = {
   love: 'olha para você, todo contente.',
   calm: 'segue você, atento ao caminho.',
 }
+/** O balão do Pokémon que segue você (como em HeartGold/SoulSilver). Igual ao app. */
+const PET_MS = 3000
+const MOOD_EMOTE = { tired: '💤', night: '❗', happy: '🎵', wet: '💢', hot: '💦', love: '❤️', calm: '💭' }
 /** O que quem ligou no Pokégear disse. Igual ao app. */
 const CALL_TEXT = {
   rematch: 'ligou no Pokégear: quer revanche! Está te esperando num dos caminhos.',
@@ -1785,7 +1789,7 @@ export function followerFit(height, stand) {
   return { k, scale: Math.min(want * k, room) / (0.95 * Math.max(h, 0.01)) }
 }
 
-function FieldMon({ mon, byId, back = false, follower = false, scene, followScale = null }) {
+function FieldMon({ mon, byId, back = false, follower = false, scene, followScale = null, emote = null, say = null, onPet = null }) {
   const p = byId?.get(mon.id)
   if (!p) return null
   const scale = follower && followScale != null ? followScale : battleScale(p.height)
@@ -1799,6 +1803,14 @@ function FieldMon({ mon, byId, back = false, follower = false, scene, followScal
             cabe na caixa e quem é largo, como o Koraidon, encolhe). */}
         <Sprite key={`${p.id}-${mon.shiny}`} path={mon.shiny ? shinyPath(p.sprite) : p.sprite} box={p.box} fill={0.95} align="bottom" back={back} battle={!follower} alt={p.name} />
       </div>
+      {/* O Pokémon que segue você: tocando nele, ele reage (o balão e o grito), como em HeartGold/SoulSilver. */}
+      {onPet && <button type="button" className="absolute inset-0 z-10 cursor-pointer" onClick={onPet} aria-label={t('Ver como ele está')} data-testid="follower-pet" />}
+      {emote && (
+        <div key={say ?? 'emote'} className="mood-bubble pointer-events-none absolute bottom-[80%] left-[2%] z-20 flex w-max max-w-[46%] items-center gap-1 rounded-2xl border-2 border-slate-800 bg-white px-2 py-0.5 text-slate-900 shadow-lg" data-testid="follower-emote" data-no-translate>
+          <span className="text-xl leading-none">{emote}</span>
+          {say && <span className="text-[11px] font-bold leading-tight sm:text-xs">{say}</span>}
+        </div>
+      )}
     </div>
   )
 }
@@ -2326,19 +2338,77 @@ const TEAM_NAMES = {
   flare: 'Equipe Flare', skull: 'Equipe Skull', aether: 'Fundação Aether', star: 'Equipe Star',
 }
 
-/**
- * As falas uma de cada vez, no mesmo lugar (a caixa não cresce), como nos jogos:
- * tocar passa para a próxima (▼). Sem falas, o texto de fallback. Igual ao app.
- */
+/** As falas em sequência (a caixa de fala mostra 2 linhas por vez e passa sozinha ou tocando). Sem falas, o fallback. */
 function Dialogue({ lines, fallback = null }) {
-  const [k, setK] = useState(0)
   if (!lines.length) return fallback ? <p>{fallback}</p> : null
-  const last = k >= lines.length - 1
+  return <div data-testid="factory-dialogue">{lines.map((l, i) => <p key={i}>{l}</p>)}</div>
+}
+
+/**
+ * A caixa de fala como nos jogos: o tamanho não muda e mostra PAGE_LINES linhas por vez; o texto aparece letra por letra
+ * (na velocidade das Opções). Tocar enquanto escreve mostra tudo; com tudo escrito, tocar passa (▼) e, sem tocar, passa
+ * sozinho depois de AUTO_MS. Igual ao app.
+ */
+const PAGE_LINES = 2
+const CHAR_MS = 28
+const AUTO_MS = 2400
+const SPEED = { slow: 1.6, normal: 1, fast: 0.55 }
+function PagedText({ className, children, onDone = null }) {
+  const win = useRef(null)
+  const body = useRef(null)
+  const [view, setView] = useState({ page: 0, pages: 1, line: 0, sig: '', chars: 0 })
+  const [shown, setShown] = useState(PAGE_LINES)
+  const factor = SPEED[usePrefs((s) => s.textSpeed)] ?? 1
+  // Mede de novo quando o texto muda (volta para o começo e escreve de novo).
+  useLayoutEffect(() => {
+    const w = win.current, b = body.current
+    if (!w || !b) return
+    const line = parseFloat(getComputedStyle(w).lineHeight) || 0
+    const sig = b.textContent ?? ''
+    const pages = line ? Math.max(1, Math.ceil((b.scrollHeight - 1) / (line * PAGE_LINES))) : 1
+    if (sig !== view.sig || line !== view.line || pages !== view.pages) {
+      setView((v) => ({ page: sig !== v.sig ? 0 : Math.min(v.page, pages - 1), pages, line, sig, chars: sig.length }))
+      if (sig !== view.sig) setShown(0)
+    }
+  })
+  // Letra por letra: as 2 linhas da página vão aparecendo da esquerda para a direita, uma depois da outra.
+  useEffect(() => {
+    if (shown >= PAGE_LINES) return undefined
+    const perLine = Math.max(8, view.chars / Math.max(1, view.pages * PAGE_LINES))
+    const ms = Math.max(120, perLine * CHAR_MS * factor)
+    const start = performance.now() - (shown % 1) * ms
+    let id
+    const tick = (now) => {
+      const next = Math.min(PAGE_LINES, Math.floor(shown) + (now - start) / ms)
+      setShown(next)
+      if (next < PAGE_LINES) id = requestAnimationFrame(tick)
+    }
+    id = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(id)
+  }, [shown >= PAGE_LINES, view.page, view.sig]) // eslint-disable-line react-hooks/exhaustive-deps
+  const more = view.page < view.pages - 1
+  const next = () => {
+    setView((v) => ({ ...v, page: Math.min(v.pages - 1, v.page + 1) }))
+    setShown(0)
+  }
+  // Com tudo escrito, passa sozinho.
+  useEffect(() => {
+    if (shown < PAGE_LINES || !more) return undefined
+    const id = setTimeout(next, AUTO_MS * factor)
+    return () => clearTimeout(id)
+  }, [shown, more, view.page, factor]) // eslint-disable-line react-hooks/exhaustive-deps
+  const typing = shown < PAGE_LINES
+  // Toda a fala já apareceu: as escolhas (os botões e as cartas) aparecem.
+  const done = !view.line || (!typing && !more)
+  useEffect(() => { onDone?.(done) }, [done, onDone])
+  const a = Math.min(1, shown) * 100, c = Math.max(0, shown - 1) * 100
   return (
-    <button type="button" onClick={() => !last && setK(k + 1)} className={`block w-full text-left ${last ? 'cursor-default' : 'cursor-pointer'}`} data-testid="factory-dialogue">
-      <span className="block min-h-[3.2em]">{lines[Math.min(k, lines.length - 1)]}</span>
-      {!last && <span className="dlg-sub block animate-pulse text-right text-xs">▼ {k + 1}/{lines.length}</span>}
-    </button>
+    <div className={className} data-testid="factory-text" onClick={() => (typing ? setShown(PAGE_LINES) : more && next())}>
+      <div ref={win} className="paged-text relative overflow-hidden" style={{ height: view.line ? view.line * PAGE_LINES : undefined, clipPath: typing && view.line ? `polygon(0 0, ${a}% 0, ${a}% 50%, ${c}% 50%, ${c}% 100%, 0 100%)` : undefined }}>
+        <div ref={body} style={{ transform: `translateY(${-view.page * view.line * PAGE_LINES}px)` }}>{children}</div>
+      </div>
+      {more && !typing && <span className="absolute bottom-[4%] right-[1.5%] animate-bounce text-[1.6cqw] leading-none" data-testid="factory-text-more">▼</span>}
+    </div>
   )
 }
 
@@ -2596,22 +2666,23 @@ function Badges({ data, run }) {
 }
 
 // tools: BOLSA, TIME, MAPA e AJUDA numa linha fixa no alto da tela de baixo; os caminhos e o resto, nas páginas (◀ ▶).
-function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, panel = null, tools = null, menuFill = false, onDex = null, hideHp = false }) {
+function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, panel = null, tools = null, menuFill = false, onDex = null, hideHp = false, menuWait = true }) {
   // A HUD da batalha (o port de Black & White), igual: o campo 16:9, a caixa de texto à esquerda, os botões à direita
   // dela e a faixa de dica embaixo, tudo dentro da tela (nada embaixo dela). Igual ao app.
+  // Como nos jogos: as escolhas só aparecem depois de toda a fala aparecer.
+  const [textDone, setTextDone] = useState(true)
   return (
-    <div className="battle-field port-field factory-port relative aspect-video select-none overflow-clip rounded-2xl border-4 hud-edge" style={{ background: '#9fdcff' }}>
+    <div className={`battle-field port-field factory-port relative aspect-video select-none overflow-clip rounded-2xl border-4 hud-edge ${textDone ? '' : 'text-busy'}`} style={{ background: '#9fdcff' }}>
       {/* Sem corte seco: a tela do lugar troca com um fade (mapa, loja, resultado...). */}
       <div key={field?.props?.testid ?? ''} className="page-in absolute inset-0">{field}</div>
       {/* A caixa de texto no lugar da da batalha (o que não cabe: tocar passa). */}
-      <div className={`bw-message absolute left-[1.25%] ${menu ? 'right-[37.3%]' : 'right-[1.25%]'} bottom-[8.5%] z-30 h-[14.5%] cursor-pointer space-y-0.5 overflow-hidden px-[2.2%] py-[0.8%] text-left text-[2.3cqw] leading-snug font-bold ${frame ? `frame-${frame}` : ''}`}
-        data-testid="factory-text" onClick={(e) => { const el = e.currentTarget; el.scrollTop = el.scrollTop + el.clientHeight >= el.scrollHeight - 1 ? 0 : el.scrollTop + el.clientHeight - 8 }}>
+      <PagedText onDone={setTextDone} className={`bw-message absolute left-[1.25%] ${menu ? 'right-[37.3%]' : 'right-[1.25%]'} bottom-[8.5%] z-30 h-[14.5%] cursor-pointer overflow-hidden px-[2.2%] py-[0.8%] text-left text-[2.3cqw] leading-snug font-bold ${frame ? `frame-${frame}` : ''}`}>
         {text}
-      </div>
+      </PagedText>
       {/* A vida do Pokémon da frente, no mesmo lugar da sua caixa de HP na batalha (os botões ficam embaixo dela). */}
       {run && menu && !hideHp && <LeadHp run={run} data={data} byId={byId} />}
       {/* Os botões no lugar dos da batalha, à direita da caixa de texto (o que não cabe vai para a próxima página). */}
-      {menu && <div className="port-controls absolute right-[1.25%] bottom-[8.5%] z-30 h-[14.5%] w-[36%]" data-testid="factory-bottom">{menuFill ? menu : <PagedMenu wide={menuCount(menu) > 4} key={field?.props?.testid ?? ''}>{menu}</PagedMenu>}</div>}
+      {menu && <div className={`port-controls ${menuWait ? 'choice-wait' : ''} absolute right-[1.25%] bottom-[8.5%] z-30 h-[14.5%] w-[36%]`} data-testid="factory-bottom">{menuFill ? menu : <PagedMenu wide={menuCount(menu) > 4} key={field?.props?.testid ?? ''}>{menu}</PagedMenu>}</div>}
       {/* A faixa de dica da batalha: o andar, o dinheiro, a Bolsa, as insígnias, BOLSA/TIME/MAPA/AJUDA e o time. */}
       <div className="port-hint absolute inset-x-0 bottom-0 z-30 flex h-[6.7%] items-center gap-[1.2cqw] whitespace-nowrap px-2 text-[1.5cqw] font-bold" data-testid="factory-bar">
         {run && (
@@ -2668,6 +2739,13 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
   const [fieldRef, width] = useWidth()
   const sprites = useAnimated()
   const [panel, setPanel] = useState(null) // embaixo do menu: 'bag' | 'team' (na loja, a lista de compras)
+  // Tocou no Pokémon que segue você: o balão fica um pouco (PET_MS) e some.
+  const [pet, setPet] = useState(0)
+  useEffect(() => {
+    if (!pet) return undefined
+    const id = setTimeout(() => setPet(0), PET_MS)
+    return () => clearTimeout(id)
+  }, [pet])
   // Os golpes que o time aprende subindo de nível (como nos jogos), um de cada vez: queue [[posição, golpe, entrou sozinho]];
   // step 'ask' (quer aprender?) ou 'forget' (a tela dos 5 golpes); msg: o que aconteceu (com CONTINUAR); pick: o golpe tocado.
   const [learn, setLearn] = useState(null)
@@ -2970,7 +3048,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
   const town = run && inTown(run.scene ?? 'grass')
   const [healerSprite, healerName] = run ? (town ? ['sd-nurse', 'Enfermeira Joy'] : healerOf(run)) : ['sd-nurse', '']
   const nurse = <FarPerson id={healerSprite} trainers={trainers} width={width} />
-  let field, text, menu, below = null, toolRow = false, menuFill = false, hideHp = false
+  // menuWait: os botões ao lado da caixa esperam a fala (não quando são só BOLSA/TIME/MAPA/AJUDA).
+  let field, text, menu, below = null, toolRow = false, menuFill = false, hideHp = false, menuWait = true
   // A Creche (um lugar da cidade, separado do Poké Mart): quem fica e o ovo.
   const daycareView = () => {
       const care = run.daycare
@@ -3570,6 +3649,12 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     const legend = regionLegend(data, run)
     const quest = run.floor >= 1 ? legendQuest(data, run) : null
     const mood = followerMood(data, run, clockOf().night)
+    // Tocando no Pokémon que segue você: o balão com o que ele sente (e o grito). Ao chegar numa rota, só o balão.
+    const petProps = mood && !meeting ? {
+      emote: pet || (!town && !inside && pos === 0) ? MOOD_EMOTE[mood.mood] : null,
+      say: pet ? `${name(mood.id)} ${t(MOOD_TEXT[mood.mood])}` : null,
+      onPet: () => { playCry(byId?.get(mood.id)?.species ?? mood.id); setPet((n) => n + 1) },
+    } : {}
     const clock = clockOf()
     const pickNode = (index) => {
       // Antes da Elite dos Quatro (como nos jogos): depois dela, as lutas da Liga vêm uma atrás da outra.
@@ -3663,8 +3748,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         {coach && (meeting || rival) && <FarStand scene={meetScene}><TrainerSprite trainer={coach} height={farPerson(width)} /></FarStand>}
         {town && me && <div className="absolute bottom-[23%] left-[2%] flex"><TrainerSprite trainer={me} height={nearPerson(width) * FOLLOW_PERSON * follow.k} /></div>}
         {/* Quem vai na frente acompanha você na cidade (como o Pokémon que segue o treinador). */}
-        {town && lead && <FieldMon mon={lead} byId={byId} follower scene={run.scene} followScale={follow.scale} />}
-        {!town && lead && <FieldMon mon={lead} byId={byId} back scene={meetScene} />}
+        {town && lead && <FieldMon mon={lead} byId={byId} follower scene={run.scene} followScale={follow.scale} {...petProps} />}
+        {!town && lead && <FieldMon mon={lead} byId={byId} back scene={meetScene} {...petProps} />}
       </Field>
     )
     // As cenas da história: ao chegar na cidade e antes da luta do chefe (o que ele diz naquele momento da trama).
@@ -3822,9 +3907,10 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       const rest = Children.toArray(menu.props.children)
       menu = <div className="grid h-full grid-cols-2 grid-rows-2 gap-[6%]">{tools}</div>
       menuFill = true
+      menuWait = false
       toolRow = false
       const cards = (
-        <div key={`cards-${run.floor}`} className="absolute left-[3%] right-[3%] top-[16%] bottom-[37%] z-20 flex gap-[2%]" data-testid="path-cards">
+        <div key={`cards-${run.floor}`} className="choice-wait absolute left-[3%] right-[3%] top-[16%] bottom-[37%] z-20 flex gap-[2%]" data-testid="path-cards">
           <div className="flex min-w-0 flex-1 items-stretch justify-center gap-[2.5%]">{pathItems}</div>
           {/* O que dá para fazer aqui (árvore, mel, fruta...): um botão só, que abre a lista por cima. Igual ao app. */}
           {rest.length > 0 && (
@@ -3932,7 +4018,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
 
   return (
     <section data-testid="factory-screen">
-      <BattleFrame hideHp={hideHp} onDex={() => setPanel(panel === 'dex' ? null : 'dex')} field={field} run={run} byId={byId} data={data} frame={factory.frame} menu={menu} menuFill={menuFill} tools={toolRow ? tools : null} panel={below || extras || null}
+      <BattleFrame hideHp={hideHp} onDex={() => setPanel(panel === 'dex' ? null : 'dex')} field={field} run={run} byId={byId} data={data} frame={factory.frame} menu={menu} menuFill={menuFill} menuWait={menuWait} tools={toolRow ? tools : null} panel={below || extras || null}
         text={<>
           {tipLine && <p className="font-bold text-amber-200" data-testid="factory-tip">💡 {t(TIPS[tipLine])}</p>}
           {note && <p data-testid="factory-note">{note}</p>}

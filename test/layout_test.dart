@@ -636,6 +636,15 @@ final Map<String, Future<void> Function(WidgetTester)> actions = {
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.byKey(const ValueKey('factory-evolved')), findsOneWidget);
   },
+  // Tocando no Pokémon que segue você: o balão com o que ele sente.
+  'Battle Factory (covil do lendário)': (tester) async {
+    // (Em pé, as cartas dos caminhos cobrem parte dele: toca direto.)
+    tester.widget<GestureDetector>(find.byKey(const ValueKey('follower-pet'))).onTap!();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byKey(const ValueKey('follower-emote-true')), findsOneWidget);
+    await tester.pump(const Duration(seconds: 4));
+    expect(find.byKey(const ValueKey('follower-emote-true')), findsNothing);
+  },
   'Battle Factory (pista do lendário)': (tester) async {
     expect(find.byKey(const ValueKey('quest-silhouette')), findsOneWidget);
     expect(find.byKey(const ValueKey('factory-event')), findsOneWidget);

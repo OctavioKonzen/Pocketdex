@@ -494,6 +494,11 @@ body {
   animation: stars-twinkle 3.2s ease-in-out infinite alternate;
 }
 @keyframes stars-twinkle { from { opacity: 0.55; } to { opacity: 1; } }
+/* O balão do Pokémon que segue você: aparece crescendo e balança de leve. */
+.mood-bubble { transform-origin: 0% 100%; animation: mood-pop 260ms cubic-bezier(.3,1.6,.5,1) both, mood-bob 1.6s ease-in-out 260ms infinite; }
+@keyframes mood-pop { from { transform: scale(0.2); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes mood-bob { 50% { transform: translateY(-3px); } }
+.mood-bubble::after { content: ''; position: absolute; left: 10px; bottom: -8px; border: 6px solid transparent; border-top-color: #1e293b; }
 .dawn-tint { background: rgb(255 170 190 / 0.18); mix-blend-mode: soft-light; pointer-events: none; }
 .dusk-tint { background: rgb(255 120 40 / 0.28); mix-blend-mode: multiply; pointer-events: none; }
 @keyframes place-rise { to { background-position: 20px -140px; } }
@@ -815,6 +820,11 @@ h1, h2, .font-display {
 /* Pokelike: os 4 botões do port (como LUTAR/BOLSA/POKÉMON/FUGIR) e os extras ao lado das cartas. */
 .port-controls .tool-btn { height: 100%; font-size: 1.9cqw; display: flex; align-items: center; justify-content: center; gap: 0.6cqw; }
 .port-field .bw-message p { font-size: 1.5cqw; }
+/* A caixa de fala: todas as linhas do mesmo tamanho (as páginas de 2 linhas não cortam nenhuma no meio). */
+/* As escolhas (botões e cartas) só aparecem depois de toda a fala aparecer, como nos jogos. */
+.text-busy .choice-wait { visibility: hidden; opacity: 0; }
+.choice-wait { transition: opacity 180ms ease-out; }
+.paged-text * { font-size: inherit !important; line-height: inherit !important; margin: 0 !important; }
 .port-extras .dlg-btn {
   background: rgba(20, 22, 28, 0.92); color: #fff; border: 2px solid #8b93a1; border-left: 6px solid #facc15; border-radius: 0;
   text-shadow: 1px 1px 0 #000; font-family: 'Pixelify Sans', monospace; font-size: 1.5cqw; padding: 0.6cqw 0.8cqw;

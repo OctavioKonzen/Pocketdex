@@ -9,6 +9,7 @@
 
 import 'dart:async';
 import 'dart:convert' show jsonEncode;
+import 'dart:io' show Platform;
 import 'dart:math';
 
 import 'package:flutter/material.dart' hide Text;
@@ -17,6 +18,7 @@ import '../utils/hud_colors.dart';
 
 import '../i18n/i18n.dart';
 import '../i18n/text.dart';
+import '../services/app_settings.dart';
 import '../services/account_sync.dart';
 import '../services/animated_sprites.dart';
 import '../services/battle_log.dart';
@@ -2321,6 +2323,53 @@ const _keyInfo = {
 /// Os caminhos da rodada 14: a pesca e as árvores. Igual ao site.
 const _fishInfo = ('🎣', 'Pescaria', 'Um Pokémon de Água mordeu a isca: quem vem depende da vara.');
 const _headbuttInfo = ('🌳', 'Árvore sacudida', 'Caiu um Pokémon que vive na árvore.');
+/// O balão do Pokémon que segue você (como em HeartGold/SoulSilver). Igual ao site.
+const _moodEmote = {'tired': '💤', 'night': '❗', 'happy': '🎵', 'wet': '💢', 'hot': '💦', 'love': '❤️', 'calm': '💭'};
+
+/// O balão em cima do Pokémon que segue você: aparece crescendo e balança de leve. Igual ao site.
+class _MoodBubble extends StatefulWidget {
+  final String emote;
+  final String? say;
+  final double maxWidth;
+  const _MoodBubble({super.key, required this.emote, this.say, required this.maxWidth});
+
+  @override
+  State<_MoodBubble> createState() => _MoodBubbleState();
+}
+
+class _MoodBubbleState extends State<_MoodBubble> with SingleTickerProviderStateMixin {
+  late final AnimationController _pop = AnimationController(vsync: this, duration: const Duration(milliseconds: 260))..forward();
+
+  @override
+  void dispose() {
+    _pop.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => ScaleTransition(
+        alignment: Alignment.bottomLeft,
+        scale: CurvedAnimation(parent: _pop, curve: Curves.easeOutBack),
+        child: Container(
+          constraints: BoxConstraints(maxWidth: widget.maxWidth),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: const Color(0xFF1E293B), width: 2),
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: const [BoxShadow(color: Color(0x55000000), blurRadius: 6)],
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Text(widget.emote, style: const TextStyle(fontSize: 18, height: 1)),
+            if (widget.say != null) ...[
+              const SizedBox(width: 4),
+              Flexible(child: Text(widget.say!, style: const TextStyle(color: Color(0xFF0F172A), fontSize: 11, fontWeight: FontWeight.w800))),
+            ],
+          ]),
+        ),
+      );
+}
+
 const _callInfo = {
   'rematch': ('📞', 'Revanche (Pokégear)', 'Quem ligou quer revanche: um treinador forte, com prêmio maior.'),
   'rare': ('📞', 'Dica do Pokégear', 'Quem ligou viu um Pokémon raro aqui: mais chance de shiny e IVs altos.'),
@@ -2699,11 +2748,22 @@ class _FactoryScreenState extends State<FactoryScreen> {
     });
   }
 
+  /// Como nos jogos: as escolhas (os botões e as cartas) só aparecem depois de toda a fala aparecer. Igual ao site.
+  bool _textDone = true;
+  Widget _choiceWait(Widget child) =>
+      IgnorePointer(ignoring: !_textDone, child: AnimatedOpacity(opacity: _textDone ? 1 : 0, duration: const Duration(milliseconds: 180), child: child));
+
+  /// Tocou no Pokémon que segue você: o balão fica um pouco (_petMs) e some. Igual ao site.
+  bool _pet = false;
+  Timer? _petTimer;
+  static const _petMs = 3000;
+
   @override
   void dispose() {
     BattleSounds.stopMusic(this);
     _lvTimer?.cancel();
     _evoTimer?.cancel();
+    _petTimer?.cancel();
     PhoneOrientation.leaveLandscape();
     super.dispose();
   }
@@ -3811,13 +3871,14 @@ class _FactoryScreenState extends State<FactoryScreen> {
         ),
       );
 
-  Widget _frame({required Widget field, Json? run, required List<Widget> text, Widget? menu, List<Widget>? tools, bool menuFill = false, bool hideHp = false}) =>
-      _frameColumn(field: field, run: run, text: text, menu: menu, tools: tools, menuFill: menuFill, hideHp: hideHp);
+  Widget _frame({required Widget field, Json? run, required List<Widget> text, Widget? menu, List<Widget>? tools, bool menuFill = false, bool hideHp = false, bool menuWait = true}) =>
+      _frameColumn(field: field, run: run, text: text, menu: menu, tools: tools, menuFill: menuFill, hideHp: hideHp, menuWait: menuWait);
 
   /// A HUD da batalha (o port de Black & White), igual: o campo 16:9, a caixa de texto à esquerda, a vida do Pokémon
   /// da frente e, embaixo dela, os botões, ao lado da caixa; a faixa de dica embaixo. Tudo numa tela só, nada embaixo
   /// dela (a Bolsa, o time, o mapa e o resto abrem por cima do campo). Igual ao site.
-  Widget _frameColumn({required Widget field, Json? run, required List<Widget> text, Widget? menu, List<Widget>? tools, bool menuFill = false, bool hideHp = false}) => DsLayout(
+  /// menuWait: os botões ao lado da caixa esperam a fala (não quando são só BOLSA/TIME/MAPA/AJUDA). Igual ao site.
+  Widget _frameColumn({required Widget field, Json? run, required List<Widget> text, Widget? menu, List<Widget>? tools, bool menuFill = false, bool hideHp = false, bool menuWait = true}) => DsLayout(
         single: true,
         top: LayoutBuilder(builder: (context, box) {
           final w = box.maxWidth, h = w * 9 / 16;
@@ -3852,6 +3913,9 @@ class _FactoryScreenState extends State<FactoryScreen> {
                     height: m.zone,
                     child: _PagedText(
                       key: const ValueKey('factory-text'),
+                      onDone: (done) {
+                        if (done != _textDone && mounted) setState(() => _textDone = done);
+                      },
                       decoration: currentFactory()['frame'] is String
                           ? _dlgBox().copyWith(border: Border.all(color: _frameColors[currentFactory()['frame']]?.$1 ?? _border, width: 3))
                           : _dlgBox(),
@@ -3876,7 +3940,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                             width: vw,
                             height: vh,
                             // Nos 4 botões, só o nome (maior, para ler); a explicação fica ao segurar o botão.
-                            child: _NoSubs(child: menuFill ? menu : _PagedMenu(key: ValueKey(('menu', field.key)), color: Colors.white, child: menu is _MenuRow ? menu : _MenuRow(child: menu))),
+                            child: (menuWait ? _choiceWait : (Widget w) => w)(_NoSubs(child: menuFill ? menu : _PagedMenu(key: ValueKey(('menu', field.key)), color: Colors.white, child: menu is _MenuRow ? menu : _MenuRow(child: menu)))),
                           ),
                         );
                       }),
@@ -6197,8 +6261,11 @@ class _FactoryScreenState extends State<FactoryScreen> {
     ];
     // O que dá para fazer aqui (as ações da rota e os lugares da cidade): tudo no AÇÕES.
     final acts = [...extras, ...townItems];
+    // O Pokémon que segue você: o que ele sente aqui (o balão em cima dele).
+    final petMood = FactoryRun.followerMood(data, run, FactoryRun.clockOf().night);
     return _frame(
       menuFill: asCards,
+      menuWait: !asCards,
       run: run,
       field: fork && hasMap && !asCards
           ? _townMap(route, options, pos % FactoryRun.routeLength, cities.from, cities.to, '${boss['region']} · ${boss['game']}', me,
@@ -6243,6 +6310,44 @@ class _FactoryScreenState extends State<FactoryScreen> {
                       height: w * 0.36,
                       child: StageMon(id: (lead['id'] as num).toInt(), shiny: lead['shiny'] == true, base: false, scene: _scene, scale: follow?.scale)),
                 if (!town && lead != null) _fieldMon(lead, w, h, back: true),
+                // Tocando no Pokémon que segue você: o balão com o que ele sente (e o grito). Ao chegar numa rota, só o balão.
+                if (lead != null && petMood != null && !meeting)
+                  Positioned(
+                    left: w * (town ? 0.3 : 0.04),
+                    bottom: h * (town ? 0.2 : 0.18),
+                    width: w * 0.36,
+                    height: w * 0.36,
+                    child: Stack(clipBehavior: Clip.none, children: [
+                      Positioned.fill(
+                        child: GestureDetector(
+                          key: const ValueKey('follower-pet'),
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () {
+                            final id = _int(petMood['id']);
+                            BattleSounds.cry(_int((data.formSpecies[id])?.elementAtOrNull(8) ?? id));
+                            _petTimer?.cancel();
+                            _petTimer = Timer(const Duration(milliseconds: _petMs), () {
+                              if (mounted) setState(() => _pet = false);
+                            });
+                            setState(() => _pet = true);
+                          },
+                        ),
+                      ),
+                      if (_pet || (!town && dungeon == null && pos == 0))
+                        Positioned(
+                          left: w * 0.005,
+                          bottom: w * 0.29,
+                          child: IgnorePointer(
+                            child: _MoodBubble(
+                              key: ValueKey('follower-emote-$_pet'),
+                              emote: _moodEmote[petMood['mood']] ?? '💭',
+                              say: _pet ? '${_name(petMood['id'])} ${tr(_moodText[petMood['mood']] ?? '')}' : null,
+                              maxWidth: w * 0.17,
+                            ),
+                          ),
+                        ),
+                    ]),
+                  ),
                 // As cartas dos caminhos e, ao lado delas, o que dá para fazer aqui (árvore, mel, fruta...).
                 if (asCards)
                   Builder(builder: (context) {
@@ -6253,7 +6358,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                       right: w * 0.03,
                       top: pm.cardsTop,
                       bottom: pm.cardsBottom,
-                      child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                      child: _choiceWait(Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                         Expanded(
                           child: Row(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                             for (final (i, c) in paths.indexed) ...[if (i > 0) SizedBox(width: w * 0.02), SizedBox(width: w * 0.16, child: _CardIn(index: i, child: c))],
@@ -6284,7 +6389,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                                 ),
                             ]),
                           ),
-                      ]),
+                      ])),
                     );
                   }),
               ];
@@ -6756,22 +6861,12 @@ class _Dialogue extends StatefulWidget {
 }
 
 class _DialogueState extends State<_Dialogue> {
-  int _k = 0;
-
   @override
   Widget build(BuildContext context) {
     final lines = widget.lines;
     if (lines.isEmpty) return widget.fallback == null ? const SizedBox.shrink() : Text(widget.fallback!);
-    final last = _k >= lines.length - 1;
-    return GestureDetector(
-      key: const ValueKey('factory-dialogue'),
-      behavior: HitTestBehavior.opaque,
-      onTap: last ? null : () => setState(() => _k++),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        ConstrainedBox(constraints: const BoxConstraints(minHeight: 44), child: Text(lines[min(_k, lines.length - 1)])),
-        if (!last) Text('▼ ${_k + 1}/${lines.length}', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, color: widget.sub)),
-      ]),
-    );
+    // As falas em sequência: a caixa de fala mostra 2 linhas por vez e passa sozinha ou tocando.
+    return Column(key: const ValueKey('factory-dialogue'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [for (final l in lines) Text(l)]);
   }
 }
 
@@ -7309,8 +7404,9 @@ class _TreePainter extends CustomPainter {
 /// A caixa de texto da corrida (a mesma da batalha): sempre do mesmo tamanho; o que não cabe vem em partes (tocar passa
 /// para a próxima parte, com a setinha ▼ no canto, como nos jogos).
 class _PagedText extends StatefulWidget {
-  const _PagedText({super.key, required this.children, required this.decoration, required this.style});
+  const _PagedText({super.key, required this.children, required this.decoration, required this.style, this.onDone});
   final List<Widget> children;
+  final ValueChanged<bool>? onDone;
   final BoxDecoration decoration;
   final TextStyle style;
 
@@ -7318,50 +7414,166 @@ class _PagedText extends StatefulWidget {
   State<_PagedText> createState() => _PagedTextState();
 }
 
-class _PagedTextState extends State<_PagedText> {
+/// A caixa de fala como nos jogos: o tamanho não muda e mostra as linhas que cabem (2) por vez; o texto aparece letra por
+/// letra (na velocidade das Opções). Tocar enquanto escreve mostra tudo; com tudo escrito, tocar passa (▼) e, sem tocar,
+/// passa sozinho depois de _autoMs. Igual ao site.
+class _PagedTextState extends State<_PagedText> with SingleTickerProviderStateMixin {
+  static const _charMs = 28, _autoMs = 2400;
+
+  /// Nos testes, o texto aparece inteiro de uma vez (e as escolhas logo).
+  static final bool _instant = Platform.environment.containsKey('FLUTTER_TEST');
+  bool? _lastDone;
   final _scroll = ScrollController();
-  bool _more = false;
+  late final AnimationController _type = AnimationController(vsync: this, upperBound: 2)..addStatusListener(_typed);
+  Timer? _auto;
+  int _page = 0, _pages = 1, _lines = 2;
+  double _line = 16;
+  String _sig = '';
+
+  /// O texto da caixa (para saber quando ele mudou e escrever de novo do começo).
+  static String _sigOf(List<Widget> ws) =>
+      ws.map((w) => w is Text ? (w.data ?? w.textSpan?.toPlainText() ?? '') : '${w.key ?? w.runtimeType}').join('|');
+
+  double get _factor => AppSettings.instance.textFactor;
+
+  @override
+  void initState() {
+    super.initState();
+    _sig = _sigOf(widget.children);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _measure(restart: true));
+  }
+
+  @override
+  void didUpdateWidget(_PagedText old) {
+    super.didUpdateWidget(old);
+    final sig = _sigOf(widget.children);
+    if (sig != _sig) {
+      _sig = sig;
+      _page = 0;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _measure(restart: true));
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
+    }
+  }
 
   @override
   void dispose() {
+    _auto?.cancel();
+    _type.dispose();
     _scroll.dispose();
     super.dispose();
   }
 
-  void _check() {
+  void _measure({bool restart = false}) {
     if (!mounted || !_scroll.hasClients) return;
-    final more = _scroll.offset < _scroll.position.maxScrollExtent - 1;
-    if (more != _more) setState(() => _more = more);
+    final line = MediaQuery.textScalerOf(context).scale(widget.style.fontSize ?? 14) * (widget.style.height ?? 1.25);
+    final view = _scroll.position.viewportDimension;
+    final lines = max(1, (view / line).floor());
+    final pages = max(1, ((_scroll.position.maxScrollExtent + view - 1) / (line * lines)).ceil());
+    if (pages != _pages || lines != _lines || line != _line || restart) {
+      setState(() {
+        _pages = pages;
+        _lines = lines;
+        _line = line;
+        _page = min(_page, pages - 1);
+      });
+    }
+    if (restart) _go(_page);
+  }
+
+  /// Vai para a página [page] e escreve ela letra por letra.
+  void _go(int page) {
+    _auto?.cancel();
+    if (!_scroll.hasClients) return;
+    setState(() => _page = page);
+    _scroll.jumpTo(min(page * _line * _lines, _scroll.position.maxScrollExtent));
+    final perLine = max(8.0, _sig.length / max(1, _pages * _lines));
+    _type.duration = Duration(milliseconds: max(120, (perLine * _charMs * _factor * _lines).round()));
+    if (_instant) {
+      _type.value = 2;
+      return;
+    }
+    _type.forward(from: 0);
+  }
+
+  void _typed(AnimationStatus status) {
+    // Com tudo escrito, passa sozinho.
+    if (status != AnimationStatus.completed || _page >= _pages - 1) return;
+    _auto?.cancel();
+    _auto = Timer(Duration(milliseconds: (_autoMs * _factor).round()), () {
+      if (mounted && _page < _pages - 1) _go(_page + 1);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    WidgetsBinding.instance.addPostFrameCallback((_) => _check());
+    final more = _page < _pages - 1;
+    return AnimatedBuilder(animation: _type, builder: (context, _) {
+      // Toda a fala já apareceu: as escolhas aparecem.
+      final done = _instant || (!_type.isAnimating && !more);
+      if (done != _lastDone) {
+        _lastDone = done;
+        WidgetsBinding.instance.addPostFrameCallback((_) => widget.onDone?.call(done));
+      }
+      return _box(more);
+    });
+  }
+
+  Widget _box(bool more) {
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
       onTap: () {
-        if (!_scroll.hasClients || !_more) return;
-        // A próxima parte: uma "página" (as linhas inteiras que cabem na caixa).
-        final line = MediaQuery.textScalerOf(context).scale(widget.style.fontSize ?? 14) * (widget.style.height ?? 1.25);
-        final page = max(line, (_scroll.position.viewportDimension / line).floor() * line);
-        _scroll.animateTo(min(_scroll.offset + page, _scroll.position.maxScrollExtent), duration: const Duration(milliseconds: 200), curve: Curves.easeOut).then((_) => _check());
+        if (_type.isAnimating) {
+          _type.value = 2;
+          _type.stop();
+          _typed(AnimationStatus.completed);
+        } else if (more) {
+          _go(_page + 1);
+        }
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: widget.decoration,
         child: Stack(children: [
           Positioned.fill(
-            child: SingleChildScrollView(
-              controller: _scroll,
-              physics: const NeverScrollableScrollPhysics(),
-              child: DefaultTextStyle.merge(style: widget.style, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: widget.children)),
+            child: AnimatedBuilder(
+              animation: _type,
+              builder: (context, child) => ClipPath(clipper: _TypeClip(_type.isAnimating ? _type.value * _lines / 2 : _lines.toDouble(), _lines, _line), child: child),
+              child: SingleChildScrollView(
+                controller: _scroll,
+                physics: const NeverScrollableScrollPhysics(),
+                child: DefaultTextStyle.merge(style: widget.style, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: widget.children)),
+              ),
             ),
           ),
-          if (_more) Positioned(right: 0, bottom: 0, child: Text('▼', key: const ValueKey('factory-text-more'), style: TextStyle(fontSize: 12, color: widget.style.color))),
+          if (more && !_type.isAnimating)
+            Positioned(right: 0, bottom: 0, child: Text('▼', key: const ValueKey('factory-text-more'), style: TextStyle(fontSize: 12, color: widget.style.color))),
         ]),
       ),
     );
   }
+}
+
+/// O recorte da escrita letra por letra: as linhas da página vão aparecendo da esquerda para a direita, uma depois da
+/// outra ([shown] de 0 até o número de linhas).
+class _TypeClip extends CustomClipper<Path> {
+  const _TypeClip(this.shown, this.lines, this.line);
+  final double shown, line;
+  final int lines;
+
+  @override
+  Path getClip(Size size) {
+    final path = Path();
+    for (var k = 0; k < lines; k++) {
+      final p = (shown - k).clamp(0.0, 1.0);
+      final bottom = k == lines - 1 ? size.height : (k + 1) * line;
+      if (p > 0) path.addRect(Rect.fromLTRB(0, k * line, size.width * p, bottom));
+    }
+    return path;
+  }
+
+  @override
+  bool shouldReclip(_TypeClip old) => old.shown != shown || old.lines != lines || old.line != line;
 }
 
 
