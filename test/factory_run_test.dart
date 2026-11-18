@@ -18,6 +18,14 @@ Json _choose(Json run, FactoryData data, int i, [({bool night, String season, in
 }
 
 void main() {
+  test('golpes da evolução: os de nível 1 da forma nova que a de antes não aprendia por nível (igual ao site)', () {
+    final moves = <String, Map<String, dynamic>>{'wing-attack': {}, 'scratch': {}, 'growl': {}, 'air-slash': {}};
+    final charmeleon = [['scratch', 'level-up', 1], ['growl', 'level-up', 1], ['ember', 'level-up', 9]];
+    final charizard = [['scratch', 'level-up', 1], ['wing-attack', 'level-up', 1], ['air-slash', 'level-up', 1], ['air-slash', 'machine', 0], ['growl', 'level-up', 1], ['flamethrower', 'level-up', 46]];
+    expect(FactoryRun.evolutionMoves(charizard, charmeleon, moves), ['wing-attack', 'air-slash']);
+    expect(FactoryRun.evolutionMoves(charmeleon, charmeleon, moves), isEmpty);
+  });
+
   test('golpes novos subindo de nível (com a regra do poder) e aprender no lugar de outro, como no site', () {
     final form = [['tackle', 'level-up', 1], ['ember', 'level-up', 13], ['flamethrower', 'level-up', 20], ['growl', 'egg', 0]];
     final moves = <String, Map<String, dynamic>>{'tackle': {'power': 40}, 'ember': {'power': 40}, 'flamethrower': {'power': 90}, 'growl': {'power': null}};
@@ -2011,4 +2019,5 @@ Map<String, dynamic> _buyAll(Map<String, dynamic> f, [Iterable<String>? ids]) {
     }
   }
   return f;
+
 }

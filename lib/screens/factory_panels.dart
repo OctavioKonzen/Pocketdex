@@ -4657,7 +4657,11 @@ class _FactoryScreenState extends State<FactoryScreen> {
       if (row == null) continue;
       final own = [for (final m in (mon['moves'] as List?) ?? const []) '$m'];
       var current = own.isNotEmpty ? own : await _movesFor(id, from);
-      for (final move in FactoryRun.movesLearnedBetween(row['moves'] as List, from, to, _moveData)) {
+      // Evoluiu: primeiro os golpes da evolução (como nos jogos novos). Igual ao site.
+      final prev = l['evolved'] != null ? _evoFrom(id) : null;
+      final prevRow = prev == null ? null : await LocalDatabase.instance.pokemonRow(prev);
+      final evoMoves = prevRow == null ? const <String>[] : FactoryRun.evolutionMoves(row['moves'] as List, prevRow['moves'] as List, _moveData);
+      for (final move in {...evoMoves, ...FactoryRun.movesLearnedBetween(row['moves'] as List, from, to, _moveData)}) {
         if (current.contains(move)) continue;
         if (current.length < 4) {
           current = [...current, move];

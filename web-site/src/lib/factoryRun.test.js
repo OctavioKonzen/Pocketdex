@@ -2491,3 +2491,14 @@ describe('Pokédex da conta', () => {
     expect(book.caught.has(2)).toBe(false)
   })
 })
+
+describe('golpes da evolução', () => {
+  it('os de nível 1 da forma nova que a de antes não aprendia por nível (igual ao app)', async () => {
+    const F = await import('./factoryRun')
+    const moves = { 'wing-attack': {}, scratch: {}, growl: {}, 'air-slash': {} }
+    const charmeleon = [['scratch', 'level-up', 1], ['growl', 'level-up', 1], ['ember', 'level-up', 9]]
+    const charizard = [['scratch', 'level-up', 1], ['wing-attack', 'level-up', 1], ['air-slash', 'level-up', 1], ['air-slash', 'machine', 0], ['growl', 'level-up', 1], ['flamethrower', 'level-up', 46]]
+    expect(F.evolutionMoves(charizard, charmeleon, moves)).toEqual(['wing-attack', 'air-slash'])
+    expect(F.evolutionMoves(charmeleon, charmeleon, moves)).toEqual([])
+  })
+})

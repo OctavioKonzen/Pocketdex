@@ -4603,6 +4603,16 @@ export function movesLearnedBetween(formMoves, from, to, moves) {
   return out
 }
 
+/**
+ * Os golpes que ele aprende ao evoluir (como nos jogos novos): os de nível 1 da forma nova que a de antes não aprendia
+ * por nível (Charizard: Wing Attack; Charmeleon não aprende). Igual ao app (evolutionMoves).
+ */
+export function evolutionMoves(newForm, oldForm, moves) {
+  const before = new Set(oldForm.filter((m) => m[1] === 'level-up').map((m) => m[0]))
+  const out = []
+  for (const m of newForm) if (m[1] === 'level-up' && m[2] <= 1 && moves[m[0]] && !before.has(m[0]) && !out.includes(m[0])) out.push(m[0])
+  return out
+}
 /** Aprende move subindo de nível: com vaga entra no fim; com 4, no lugar do golpe slot. current: os golpes de agora. */
 export function learnMove(run, index, move, current, slot = -1) {
   const mon = run.team[index]

@@ -5860,6 +5860,18 @@ class FactoryRun {
   /// Golpes que ele sabe no nível (os aprendidos por nível até ali), os melhores 4. Igual ao site.
   /// Os golpes novos subindo de [from] para [to] (os por nível que ficam liberados no caminho, com a regra do poder), na ordem
   /// em que ele aprende. Igual ao site (movesLearnedBetween).
+  /// Os golpes que ele aprende ao evoluir (como nos jogos novos): os de nível 1 da forma nova que a de antes não aprendia
+  /// por nível (Charizard: Wing Attack; Charmeleon não aprende). Igual ao site (evolutionMoves).
+  static List<String> evolutionMoves(List newForm, List oldForm, Map<String, Map<String, dynamic>> moves) {
+    final before = {for (final m in oldForm.cast<List>()) if (m[1] == 'level-up') '${m[0]}'};
+    final out = <String>[];
+    for (final m in newForm.cast<List>()) {
+      final name = '${m[0]}';
+      if (m[1] == 'level-up' && (m[2] as num) <= 1 && moves.containsKey(name) && !before.contains(name) && !out.contains(name)) out.add(name);
+    }
+    return out;
+  }
+
   static List<String> movesLearnedBetween(List formMoves, int from, int to, Map<String, Map<String, dynamic>> moves) {
     bool knows(List m, int level) =>
         m[1] == 'level-up' && (m[2] as num) <= level && moves.containsKey(m[0]) && level >= movePowerLevel(_escalating[m[0]] ?? (moves[m[0]]!['power'] as num?) ?? 0);
